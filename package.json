@@ -1,0 +1,39 @@
+{
+  "name": "japanmap",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Open-World-Map in Three.js — siehe SPEC.md / PLAN.md",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "assets": "node tools/polyhaven.mjs",
+    "bake": "node tools/bake-terrain.mjs --seed 20260725 --res 2048 --erosion 2000000",
+    "sun": "node tools/hdri-sun.mjs assets/hdri/industrial_sunset_02_puresky_4k.hdr",
+    "shade": "node tools/bake-shadows.mjs",
+    "world": "npm run bake && npm run sun && npm run shade"
+  },
+  "dependencies": {
+    "n8ao": "^2.0.0",
+    "postprocessing": "^6.39.3",
+    "simplex-noise": "^4.0.3",
+    "three": "^0.185.1",
+    "three-mesh-bvh": "^0.9.13"
+  },
+  "devDependencies": {
+    "@tweakpane/core": "^2.0.5",
+    "@types/node": "^22.10.0",
+    "@types/three": "^0.185.0",
+    "pngjs": "^7.0.0",
+    "stats-gl": "^4.2.3",
+    "tweakpane": "^4.0.5",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.3",
+    "vite-plugin-glsl": "~1.3.3"
+  }
+}

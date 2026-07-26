@@ -1,0 +1,165 @@
+import './style.css';
+
+import { FreeFlyController } from './camera/FreeFlyController';
+import { Engine } from './core/Engine';
+import { WebGLUnsupportedError } from './core/createRenderer';
+import { AtmosphereSystem } from './render/atmosphere/AtmosphereSystem';
+import { LightingRig } from './render/LightingRig';
+import { LookController } from './render/looks/LookController';
+import { PostFXPipeline } from './render/PostFXPipeline';
+import { TerrainDataError } from './world/TerrainSampler';
+import { TerrainSystem } from './world/TerrainSystem';
+import { WaterSystem } from './world/WaterSystem';
+
+function fatal(message: string, detail?: string): never {
+  document.body.innerHTML = `
+    <div class="fatal">
+      <p>${message}</p>
+      ${detail ? `<p><code>${detail}</code></p>` : ''}
+    </div>`;
+  throw new Error(message);
+}
+
+const canvas = document.querySelector<HTMLCanvasElement>('#viewport');
+const overlay = document.querySelector<HTMLElement>('#overlay');
+if (!canvas || !overlay) fatal('Grundgerüst der Seite fehlt (#viewport / #overlay).');
+
+let engine: Engine;
+try {
+  engine = new Engine(canvas);
+} catch (error) {
+  if (error instanceof WebGLUnsupportedError) {
+    fatal(
+      'japanMap braucht WebGL2.',
+      'Bitte einen aktuellen Browser verwenden und Hardwarebeschleunigung aktivieren.',
+    );
+  }
+  throw error;
+}
+
+// Die Debug-UI wird dynamisch geladen: so landen Tweakpane und stats-gl nicht
+// im Produktions-Bundle (SPEC §4 — erstes Bild unter 15 MB).
+if (import.meta.env.DEV) {
+  const [{ DebugPanel }, { SceneScaffold }] = await Promise.all([
+    import('./debug/DebugPanel'),
+    import('./debug/SceneScaffold'),
+  ]);
+
+  engine.setDebugHost(
+    await DebugPanel.create({
+      renderer: engine.renderer,
+      scene: engine.scene,
+      camera: engine.camera,
+      bus: engine.bus,
+      container: overlay,
+      extraTextures: () => engine.resources.tracked,
+      onDispose: () => {
+        engine.dispose();
+      },
+    }),
+  );
+
+  engine.add(new SceneScaffold());
+
+  window.japanMap = { engine };
+}
+
+/**
+ * Einen Frame rendern und das Bild sofort auslesen.
+ *
+ * Nur im Dev-Build. Der Grund ist ein handfestes Messproblem: der Browser
+ * drosselt `requestAnimationFrame` auf wenige Hertz, sobald das Fenster verdeckt
+ * ist, und mit `preserveDrawingBuffer: false` trifft ein Bildschirmfoto dann
+ * fast immer die Lücke zwischen zwei Frames — schwarz, obwohl korrekt gerendert
+ * wurde. Rendern und Auslesen im selben Aufruf umgeht beides und ist damit die
+ * einzige Prüfung, die unabhängig von der Bildrate eine Aussage macht.
+ */
+function installFrameProbe(target: Engine): void {
+  window.japanMap = {
+    ...window.japanMap,
+    engine: target,
+    probe: () => {
+      target.loop.tick();
+      const gl = target.renderer.getContext();
+      const width = gl.drawingBufferWidth;
+      const height = gl.drawingBufferHeight;
+      const pixels = new Uint8Array(width * height * 4);
+      gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+      let sum = 0;
+      let maximum = 0;
+      let nonBlack = 0;
+      for (let i = 0; i < pixels.length; i += 4) {
+        const luma = (pixels[i] ?? 0) * 0.2126 + (pixels[i + 1] ?? 0) * 0.7152 + (pixels[i + 2] ?? 0) * 0.0722;
+        sum += luma;
+        if (luma > maximum) maximum = luma;
+        if (luma > 2) nonBlack++;
+      }
+      const count = pixels.length / 4;
+      return {
+        width,
+        height,
+        mittlereHelligkeit: sum / count,
+        maximum,
+        anteilNichtSchwarz: nonBlack / count,
+      };
+    },
+  };
+}
+
+// Die Reihenfolge ist dreifach bedeutsam, deshalb steht sie hier und nicht
+// verstreut in den Systemen:
+//
+//  1. init() läuft nacheinander. Das TerrainSystem sendet `terrain:ready`
+//     während seiner Initialisierung — wer den Sampler oder die Höhen-Uniforms
+//     will, muss vorher angemeldet sein. Deshalb stehen Kamera und Wasser
+//     **vor** dem Terrain.
+//  2. Der Atmosphären-Block wird dagegen beim Konstruieren weitergereicht, nicht
+//     per Ereignis. Terrain und Wasser brauchen ihn schon beim Bauen ihrer
+//     Materialien, also *nach* der Initialisierung der Atmosphäre — und für
+//     diese Richtung taugt das Ereignismuster nicht (siehe TerrainSystem).
+//  3. update() läuft in derselben Reihenfolge. Die Kamera bewegt sich zuerst,
+//     danach richten Sonne, Wasserebene und Bodenmarkierung sich daran aus;
+//     sonst hinkten alle drei einen Frame hinterher.
+const atmosphere = new AtmosphereSystem();
+
+engine.add(new FreeFlyController());
+engine.add(atmosphere);
+engine.add(new LightingRig(atmosphere.uniforms));
+engine.add(new WaterSystem(atmosphere.uniforms));
+engine.add(new TerrainSystem(atmosphere.uniforms));
+engine.add(
+  new PostFXPipeline((present) => {
+    engine.setPresenter(present);
+  }),
+);
+// Zuletzt: `look:apply` beim Start erreicht nur Systeme, die bereits angemeldet
+// sind. Ein Preset, das die Hälfte der Werte setzt, wäre schlimmer als keins.
+engine.add(new LookController());
+
+// Erste Größe setzen, bevor der ResizeObserver das erste Mal feuert — sonst
+// rendert der erste Frame mit 1×1 Pixeln.
+engine.resize(canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight);
+
+try {
+  await engine.init();
+} catch (error) {
+  if (error instanceof TerrainDataError) {
+    fatal('Das gebackene Terrain passt nicht zur Konfiguration.', error.message);
+  }
+  throw error;
+}
+engine.start();
+
+if (import.meta.env.DEV) installFrameProbe(engine);
+
+// Vite führt dieses Modul bei einem Hot-Update erneut aus, ohne die Seite neu
+// zu laden. Ohne diesen Haken entsteht dabei eine **zweite** Engine im selben
+// Dokument: zwei Render-Schleifen auf einem Canvas, zwei Debug-Overlays
+// übereinander, doppelte Draw-Calls im Budget. Genau dafür hat P0 dispose()
+// gebaut — hier wird es benutzt.
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    engine.dispose();
+  });
+}

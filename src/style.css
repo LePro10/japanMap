@@ -1,0 +1,191 @@
+/*
+ * Basis-Layout und Debug-Overlay.
+ *
+ * Das Overlay ist bewusst handgeschriebenes DOM statt einer UI-Bibliothek:
+ * es muss jeden Frame Zahlen aktualisieren und dabei selbst nichts kosten.
+ */
+
+:root {
+  --bg: #06080c;
+  --fg: #d8dee9;
+  --fg-dim: #7b8494;
+  --panel-bg: rgba(10, 13, 18, 0.82);
+  --panel-border: rgba(255, 255, 255, 0.09);
+
+  /* Budget-Ampel — Bedeutung steht in src/debug/budgets.ts */
+  --status-ok: #4ade80;
+  --status-warn: #fbbf24;
+  --status-over: #f87171;
+  --status-none: #7b8494;
+
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+#viewport {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Verhindert, dass ein Zeiger-Drag die Seite auswählt oder scrollt. */
+  touch-action: none;
+  outline: none;
+}
+
+#overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+#overlay > * {
+  pointer-events: auto;
+}
+
+.fatal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  margin: 0;
+  padding: 2rem;
+  text-align: center;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--fg);
+  background: var(--bg);
+  z-index: 100;
+}
+
+.fatal code {
+  font-family: var(--mono);
+  color: var(--status-warn);
+}
+
+/* ── Statistik-Overlay ─────────────────────────────────────────────────── */
+
+.stats {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  min-width: 268px;
+  padding: 10px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(6px);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.45;
+  user-select: none;
+}
+
+.stats[hidden] {
+  display: none;
+}
+
+.stats__group {
+  margin: 0 0 8px;
+}
+
+.stats__group:last-child {
+  margin-bottom: 0;
+}
+
+.stats__title {
+  margin: 0 0 4px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+.stats__row {
+  display: grid;
+  grid-template-columns: 3px 1fr auto;
+  align-items: baseline;
+  gap: 7px;
+  padding: 1px 0;
+}
+
+/* Der Ampelstreifen. Grau bedeutet: für diese Metrik gibt es kein Budget. */
+.stats__flag {
+  align-self: stretch;
+  border-radius: 1px;
+  background: var(--status-none);
+}
+
+.stats__row--ok .stats__flag {
+  background: var(--status-ok);
+}
+.stats__row--warn .stats__flag {
+  background: var(--status-warn);
+}
+.stats__row--over .stats__flag {
+  background: var(--status-over);
+}
+
+.stats__label {
+  color: var(--fg-dim);
+  white-space: nowrap;
+}
+
+.stats__value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.stats__row--warn .stats__value {
+  color: var(--status-warn);
+}
+.stats__row--over .stats__value {
+  color: var(--status-over);
+  font-weight: 600;
+}
+
+.stats__budget {
+  color: var(--fg-dim);
+  opacity: 0.65;
+}
+
+.stats__note {
+  margin: 6px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--panel-border);
+  font-size: 10px;
+  color: var(--fg-dim);
+}
+
+.stats__note--warn {
+  color: var(--status-warn);
+}
+
+/* ── Tweakpane ─────────────────────────────────────────────────────────── */
+
+.debug-pane {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 280px;
+}
+
+.debug-pane[hidden] {
+  display: none;
+}

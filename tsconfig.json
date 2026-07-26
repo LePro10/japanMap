@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "useDefineForClassFields": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+
+    /* PLAN.md P0/0.1 — die drei Flags über `strict` hinaus sind Absicht:
+       noUncheckedIndexedAccess zwingt zu Undefined-Prüfungen bei Array- und
+       Map-Zugriffen (in Chunk-/Instanz-Code später der häufigste Fehler),
+       exactOptionalPropertyTypes trennt "Property fehlt" von "Property ist
+       undefined" — bei Konfig-Objekten mit Defaults sonst eine Fehlerquelle. */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "types": ["vite/client", "node", "vite-plugin-glsl/ext"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src", "vite.config.ts"]
+}
