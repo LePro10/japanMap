@@ -1,0 +1,21 @@
+# Abhängigkeiten & Build
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Zwischenspeicher
+.cache/
+.vite/
+
+# Generierte Assets — reproduzierbar aus Seed + tools/ via `npm run bake`.
+# Bewusst nicht eingecheckt: sonst wächst das Repo bei jeder Terrain-Iteration
+# um dreistellige Megabyte. Siehe PLAN.md P0 / 0.1.
+assets/generated/
+
+# Betriebssystem / Editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json

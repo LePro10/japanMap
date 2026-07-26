@@ -1,0 +1,56 @@
+{
+  "name": "Blaue Stunde nach Regen",
+  "version": 2,
+  "exposure": 1,
+  "lighting": {
+    "sunIntensity": 5,
+    "sunColorHex": "#ffb27a",
+    "sunElevationDeg": 2.23,
+    "environmentIntensity": 0.5,
+    "skyIntensity": 1
+  },
+  "fog": {
+    "groundDensity": 0.0029,
+    "groundFalloff": 26,
+    "groundSkyBlend": 0.45,
+    "groundTintHex": "#8fa6bd",
+    "aerialDensity": 0.00021,
+    "aerialFalloff": 340,
+    "aerialSkyBlend": 1,
+    "maxOpacity": 0.94
+  },
+  "shade": {
+    "penumbraBaseDeg": 0.25,
+    "penumbraPerKmDeg": 0.3,
+    "ambientFloor": 0.04
+  },
+  "water": {
+    "deepColorHex": "#050d14",
+    "shallowColorHex": "#0d2530",
+    "roughness": 0.075,
+    "foamIntensity": 0.65
+  },
+  "postfx": {
+    "bloomEnabled": true,
+    "bloomIntensity": 0.62,
+    "bloomThreshold": 1.05,
+    "bloomSmoothing": 0.4,
+    "vignetteEnabled": true,
+    "vignetteOffset": 0.32,
+    "vignetteDarkness": 0.42,
+    "aoEnabled": true,
+    "aoIntensity": 2.1,
+    "aoRadius": 14,
+    "smaaEnabled": true
+  },
+  "grading": {
+    "contrast": 1.06,
+    "saturation": 1.04,
+    "temperature": -0.06,
+    "tint": 0.01,
+    "lift": 0.008,
+    "gamma": 1,
+    "gain": 1.02,
+    "shadowTint": 0.16
+  }
+}
