@@ -1,7 +1,7 @@
 # japanMap — Technische Spezifikation
 
 > Open-World-Map in Three.js als Basis für ein späteres Browser-Game
-> (Racing / Drifting / Erkundung). Stand: 2026-07-25.
+> (Racing / Drifting / Erkundung). Stand: 2026-07-26.
 
 ---
 
@@ -57,6 +57,14 @@ für einen echten Ortswechsel.
 Stichstraße mit Serpentinen (Drift-Strecke). Ein Küstenhighway läuft im Süden.
 Der Höhenunterschied von 450 m ist der stärkste Hebel, damit 3 km groß wirken.
 
+> **Die Serpentinen stehen noch aus (Stand P3).** Der Bergpass fährt, hält
+> Radius und Steigung, hat aber **null Kehren**. Das ist keine Auslassung im
+> Bau, sondern ein Widerspruch in dieser Vorgabe: 408 Höhenmeter brauchen bei
+> 11 % Höchstneigung über drei Kilometer Strecke, und der Hang zwischen
+> Ringanschluss und Gipfel gibt sie nicht her. Solange das Höhenfeld so aussieht,
+> lässt sich die Anforderung nicht erfüllen — nötig wäre ein schmaleres,
+> steileres Tal im Massiv. Siehe PLAN.md, „Warum der Bergpass keine Kehren hat".
+
 ### 2.2 Terrain
 
 - **Quelle:** Prozedural generiert (Simplex/FBM + Erosions-Pass + Zonen-Masken),
@@ -77,8 +85,11 @@ Straßen sind **das wichtigste Datenmodell im Projekt** — sie werden dreifach 
 2. Terrain-Carving (Heightmap wird beim Bake entlang des Splines geglättet)
 3. Gameplay-Daten: Racing-Line, KI-Pfade, Spawnpunkte, Streckenabschnitte
 
-**Format:** Catmull-Rom-Splines in JSON (Kontrollpunkte + Breite + Bankwinkel +
-Typ). Ein minimaler In-Browser-Spline-Editor kommt in M3 — von Hand JSON zu
+**Format:** Zentripetale Catmull-Rom-Splines in JSON (Kontrollpunkte + Breite +
+Bankwinkel + Typ), dazu die fertig abgetastete Mittellinie: Baker und Renderer
+sollen die Kurve **nicht beide auswerten**, sonst liegt die eingeschnittene
+Rinne im Terrain neben dem Mesh. Ein In-Browser-Spline-Editor kommt in M3 — von
+Hand JSON zu
 tippen skaliert nicht.
 
 ### 2.4 Vegetation & Props
@@ -158,9 +169,10 @@ src/
 ├── camera/        FreeFlyController  (später: VehicleCamera, PhotoMode)
 ├── debug/         StatsOverlay, Tweakpane-Panels, FreezeCulling-View
 ├── config/        world.config.ts, quality.config.ts
-└── assets/        heightmap, hdri, models, splines.json
+└── assets/        heightmap, hdri, models, roads.json
 
-tools/             Heightmap-Baker, glTF-Optimizer, Spline-Editor
+tools/             Heightmap-Baker, Schatten-Baker, Straßen-Generator,
+                   Trassierung, Sonnenstand aus HDRI, Poly-Haven-Download
 ```
 
 ### Bibliotheken
