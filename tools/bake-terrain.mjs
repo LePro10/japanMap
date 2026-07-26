@@ -563,6 +563,133 @@ function chunkBounds(height, res, spacing) {
 
 const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex');
 
+// ── Schritt 5b: Straßen einschneiden ─────────────────────────────────────────
+
+/** Seitliches Auslaufen der Böschung in Metern — Spiegel von ROAD_MESH.embankment. */
+const EMBANKMENT = 15;
+
+/**
+ * Straßen ins Höhenfeld einschneiden — PLAN.md P3 / 3.3.
+ *
+ * Läuft **nach** der Erosion. Der Plan nannte als Alternative, die Splines
+ * vorher als Zwangsbedingung einzuspeisen; das wäre nötig, wenn die Erosion
+ * die Straße wieder zerfressen würde. Sie tut es nicht — sie läuft nur einmal
+ * und vorher. Nachher einzuschneiden hat dafür einen handfesten Vorteil: die
+ * Rinnen der Erosion bleiben erhalten und laufen sichtbar an die Böschung
+ * heran, statt von ihr überschrieben zu werden.
+ *
+ * Verfahren: pro Segment die betroffenen Texel bestimmen, den Abstand zur
+ * Segmentachse messen und **den nächstliegenden Straßenpunkt gewinnen lassen**.
+ * Das „nächster gewinnt" ist der Grund, warum Kreuzungen ohne Sonderbehandlung
+ * funktionieren: wo zwei Straßen sich treffen, entscheidet schlicht, welche
+ * näher liegt.
+ *
+ * Der Übergang ist ein Kosinus. Eine lineare Rampe hinterlässt am oberen Ende
+ * einen Knick, und bei 2,2° Sonnenstand zeichnet jeder Knick eine harte
+ * Lichtkante — dieselbe Beobachtung wie überall sonst in diesem Projekt.
+ */
+function carveRoads(height, res, spacing, roadFile) {
+  const half = WORLD_SIZE / 2;
+  const roadHeight = new Float32Array(res * res);
+  const roadDistance = new Float32Array(res * res).fill(Infinity);
+  const roadHalfWidth = new Float32Array(res * res);
+
+  for (const road of roadFile.roads) {
+    const line = road.centerline;
+    const count = line.length / 3;
+    const last = road.closed ? count : count - 1;
+
+    for (let i = 0; i < last; i++) {
+      const j = road.closed ? (i + 1) % count : i + 1;
+      const ax = line[i * 3];
+      const ay = line[i * 3 + 1];
+      const az = line[i * 3 + 2];
+      const bx = line[j * 3];
+      const by = line[j * 3 + 1];
+      const bz = line[j * 3 + 2];
+
+      // Halbe Breite inklusive Bankett; die Straßendatei führt die Breite mit,
+      // damit ein späterer Editor sie je Knoten verändern kann.
+      const halfWidth = (road.widths[i] ?? 6) / 2 + 1.6;
+      const reach = halfWidth + EMBANKMENT;
+
+      const minX = Math.max(0, Math.floor((Math.min(ax, bx) - reach + half) / spacing));
+      const maxX = Math.min(res - 1, Math.ceil((Math.max(ax, bx) + reach + half) / spacing));
+      const minZ = Math.max(0, Math.floor((Math.min(az, bz) - reach + half) / spacing));
+      const maxZ = Math.min(res - 1, Math.ceil((Math.max(az, bz) + reach + half) / spacing));
+
+      const dx = bx - ax;
+      const dz = bz - az;
+      const lengthSquared = dx * dx + dz * dz;
+      if (lengthSquared < 1e-8) continue;
+
+      for (let iz = minZ; iz <= maxZ; iz++) {
+        const wz = -half + iz * spacing;
+        for (let ix = minX; ix <= maxX; ix++) {
+          const wx = -half + ix * spacing;
+
+          const t = clamp(((wx - ax) * dx + (wz - az) * dz) / lengthSquared, 0, 1);
+          const px = ax + dx * t;
+          const pz = az + dz * t;
+          const distance = Math.hypot(wx - px, wz - pz);
+          if (distance >= reach) continue;
+
+          const index = iz * res + ix;
+          if (distance >= roadDistance[index]) continue;
+          roadDistance[index] = distance;
+          roadHeight[index] = ay + (by - ay) * t;
+          roadHalfWidth[index] = halfWidth;
+        }
+      }
+    }
+  }
+
+  let carved = 0;
+  let deepestCut = 0;
+  let highestFill = 0;
+  let sumAbsolute = 0;
+  const magnitudes = [];
+
+  for (let index = 0; index < height.length; index++) {
+    const distance = roadDistance[index];
+    if (!Number.isFinite(distance)) continue;
+
+    const halfWidth = roadHalfWidth[index];
+    let weight;
+    if (distance <= halfWidth) {
+      weight = 1;
+    } else {
+      const t = (distance - halfWidth) / EMBANKMENT;
+      if (t >= 1) continue;
+      weight = 0.5 * (1 + Math.cos(Math.PI * t));
+    }
+
+    const before = height[index];
+    height[index] = before + (roadHeight[index] - before) * weight;
+    const delta = height[index] - before;
+    if (delta < deepestCut) deepestCut = delta;
+    if (delta > highestFill) highestFill = delta;
+    sumAbsolute += Math.abs(delta);
+    magnitudes.push(Math.abs(delta));
+    carved++;
+  }
+
+  // Nicht nur der Extremwert. Er entsteht dort, wo die Böschung eine der
+  // Erosionsnadeln streift, die die Heightmap in Steilhängen stehen lässt — ein
+  // einzelner Texel, der 168 m abgetragen bekommt, sagt über die Trasse nichts.
+  // Erst Mittelwert und 95. Perzentil trennen „eine Nadel gesprengt" von „die
+  // Straße liegt auf ganzer Länge im Graben".
+  magnitudes.sort((a, b) => a - b);
+  const percentile95 = magnitudes[Math.floor(magnitudes.length * 0.95)] ?? 0;
+
+  return {
+    carved,
+    deepestCut,
+    highestFill,
+    mean: sumAbsolute / Math.max(carved, 1),
+    percentile95,
+  };
+}
 
 // ── CLI ──────────────────────────────────────────────────────────────────────
 
@@ -650,6 +777,55 @@ async function main() {
   if (clamped > 0) {
     const percent = ((clamped / height.length) * 100).toFixed(3);
     console.log(c.yellow(`  ⚠ ${clamped} Texel (${percent} %) auf den Höhenbereich beschnitten.`));
+  }
+
+  // Straßen einschneiden. Fehlt roads.json, wird das Terrain ohne Straßen
+  // gebacken — genau so entsteht der erste Durchlauf, denn der Generator
+  // braucht seinerseits ein fertiges Höhenfeld. Die Reihenfolge nach einem
+  // frischen Clone ist deshalb: bake → gen-roads → bake.
+  //
+  // `--no-roads` erzwingt den Zustand *vor* dem Einschneiden. Ohne diesen
+  // Schalter frisst sich die Kette selbst auf: `npm run world` bäckt, erzeugt
+  // Straßen, bäckt erneut — und der **erste** Bake schnitt die Straßen des
+  // vorherigen Laufs bereits ein. Der Generator trassierte dann durch eigene
+  // Einschnitte, und das Ergebnis wanderte bei jedem Lauf weiter. Sichtbar
+  // wurde es an der Dorfstraße: ihr Mindestradius fiel von 21,8 m auf 8,1 m,
+  // ohne dass sich an ihrem Quelltext etwas geändert hätte.
+  const roadPath = join(outDir, '..', 'roads', 'roads.json');
+  let roadReport = null;
+  try {
+    if (opts['no-roads']) throw Object.assign(new Error('übersprungen'), { code: 'ENOENT' });
+    const roadFile = JSON.parse(await readFile(roadPath, 'utf8'));
+    process.stdout.write('  5b   Straßen einschneiden … ');
+    roadReport = carveRoads(height, res, spacing, roadFile);
+    console.log(
+      c.green('fertig') +
+        c.dim(
+          ` ${roadReport.carved.toLocaleString('de-DE')} Texel · ` +
+            `⌀ ${roadReport.mean.toFixed(1)} m · ` +
+            `95 % unter ${roadReport.percentile95.toFixed(1)} m · ` +
+            `Einschnitt bis ${roadReport.deepestCut.toFixed(1)} m · ` +
+            `Auftrag bis ${roadReport.highestFill.toFixed(1)} m`,
+        ),
+    );
+
+    actualMin = Infinity;
+    actualMax = -Infinity;
+    for (let i = 0; i < height.length; i++) {
+      const v = clamp(height[i], MIN_HEIGHT, MAX_HEIGHT);
+      height[i] = v;
+      if (v < actualMin) actualMin = v;
+      if (v > actualMax) actualMax = v;
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    console.log(
+      c.dim(
+        opts['no-roads']
+          ? '  5b   --no-roads: Terrain ohne Einschnitte.'
+          : '  5b   Keine roads.json — Terrain ohne Straßen.',
+      ),
+    );
   }
 
   process.stdout.write('  6    Zonenmaske, Normalen, Kodierung … ');

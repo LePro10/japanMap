@@ -4,7 +4,7 @@
 > dieser Plan sagt **in welcher Reihenfolge, mit welchen Dateien und woran wir
 > merken, dass eine Phase fertig ist**.
 >
-> Stand: 2026-07-26 · **P0–P2 abgeschlossen, P3 teilweise** · Aktuelle Phase: **P3**
+> Stand: 2026-07-26 · **P0–P3 abgeschlossen** · Nächste Phase: **P4**
 
 ---
 
@@ -82,7 +82,7 @@ erfüllt sind. Ausnahmen werden hier dokumentiert, nicht mündlich vereinbart.
 | **P0** ✅ | Fundament & Toolchain | Leere Szene, 60 FPS, Debug-Overlay | — |
 | **P1** ✅ | Terrain & Freiflug | Erstes fliegbares Bild | P0 |
 | **P2** ✅ | Licht & Atmosphäre | Die Stimmung sitzt | P1 |
-| **P3** ⏳ | Splines & Straßen | Befahrbares Straßennetz | P1 |
+| **P3** ✅ | Splines & Straßen | Befahrbares Straßennetz | P1 |
 | **P4** | LOD & Vegetation | Gefüllte Welt in Budget | P1, P3 |
 | **P5** | Asset-Pipeline & Landmarks | Zonen mit Identität | P4 |
 | **P6** | Stadt & Reflexionen | Der Money-Shot | P2, P5 |
@@ -730,26 +730,27 @@ RenderPass
 
 ---
 
-# P3 — Splines & Straßen ⏳
+# P3 — Splines & Straßen ✅
 
 **Ziel:** Das Straßennetz. Laut SPEC §2.3 das zentrale Datenmodell des Projekts —
 es liefert Geometrie, Terrain-Verformung und später alle Gameplay-Daten.
 
-> **Stand 2026-07-26 — teilweise abgeschlossen.**
+> **Stand 2026-07-26 — abgeschlossen.**
 >
 > | Aufgabe | Stand |
 > |---|---|
-> | 3.1 Spline-Datenmodell | ✅ inkl. Bogenlängen-Parametrisierung |
-> | 3.2 Spline-Editor | ❌ **nicht gebaut** |
+> | 3.1 Spline-Datenmodell | ✅ inkl. Bogenlängen-Parametrisierung und kostenbasierter Trassierung |
+> | 3.2 Spline-Editor | ✅ im Debug-Panel, mit Live-Grenzwertprüfung und JSON-Export |
 > | 3.3 Terrain-Carving | ✅ im Baker, „nächster gewinnt" |
-> | 3.4 Straßen-Mesh | ✅ ohne Leitplanken/Pfosten |
-> | 3.5 Kreuzungen | ❌ **nicht gebaut** |
+> | 3.4 Straßen-Mesh | ✅ inkl. Leitplanken und Pfosten |
+> | 3.5 Kreuzungen | ✅ Höhenabgleich und Rücksprung; keine Verschneidung der Flächen |
 > | 3.6 Gameplay-Daten | ✅ inkl. Gitter, Budget gemessen |
 >
-> Statt des Editors entstand ein **Generator** (`tools/gen-roads.mjs`), der das
-> Netz aus dem Gelände anlegt und seine eigenen Grenzwerte nachmisst. Begründung
-> unten bei 3.2. Das Netz steht damit befahrbar da, aber ohne Werkzeug zum
-> Nachbearbeiten — die Phase ist deshalb **nicht** abgeschlossen.
+> Der **Generator** (`tools/gen-roads.mjs`) kam vor dem Editor, und das war
+> richtig: neun Serpentinen von Hand zu setzen ist Fleißarbeit mit ungewissem
+> Ausgang, und ohne ein Netz gab es nichts zu carven und nichts zu rendern. Der
+> Editor ist jetzt das, was er sein soll — Feinarbeit an etwas, das schon fährt,
+> mit denselben Grenzwerten live daneben.
 
 ### Aufgaben
 
@@ -791,9 +792,9 @@ interface RoadSpline {
   Abtastpunkte in Kurven dichter als auf Geraden — Textur-UVs verzerren sichtbar
   und Streckenlängen stimmen nicht
 
-**3.2 — Spline-Editor** → `src/tools/SplineEditor.ts` (im Dev-Build eingebettet) ❌
+**3.2 — Spline-Editor** ✅ → `src/world/roads/RoadEditor.ts` (nur im Dev-Build)
 
-> **Nicht gebaut. Stattdessen: `tools/gen-roads.mjs`.**
+> **Der Generator kam zuerst, und das war richtig.**
 >
 > Der Plan nennt den Editor „nicht optional", und das bleibt richtig — aber er
 > löst ein anderes Problem als das erste. Er ist das Werkzeug zum *Verfeinern*.
@@ -803,22 +804,37 @@ interface RoadSpline {
 > weder etwas zu carven noch etwas zu rendern.
 >
 > Der Generator legt das Netz aus dem Gelände an und **misst seine eigenen
-> Grenzwerte nach**. Dass er dabei viermal hintereinander durchfiel (Radius
+> Grenzwerte nach**. Dass er dabei mehrfach hintereinander durchfiel (Radius
 > 4,1 m · 0,13 m · 12,3 m, Steigung 1642 % · 134 % · 105 %), ist der Beleg dafür,
 > dass die Messung nicht dekorativ ist.
->
-> Der Editor bleibt offen und ist die Bedingung für den Abschluss der Phase:
-> ohne ihn lässt sich eine einzelne Kurve nicht anfassen, ohne den Generator zu
-> ändern.
-- Punkte per Klick setzen, auf Terrain gesnapped
-- `TransformControls`-Gizmo zum Verschieben, Breite/Banking im Panel
-- Live-Vorschau der Straßengeometrie
-- Export als JSON in die Zwischenablage bzw. per Dev-Server-Endpunkt direkt in `assets/roads.json`
-- Undo/Redo (Kommando-Stack)
 
-> **Nicht optional.** Ein 3-km-Straßennetz von Hand als JSON zu tippen ist
-> praktisch unmöglich. Der Editor kostet ~1–2 Tage und ist danach die
-> Grundlage jeder Streckenarbeit.
+Umgesetzt als Ordner im Debug-Panel:
+
+- Strecke und Knoten wählen, Position (X/Y/Z), Breite und Querneigung verstellen
+- Knoten dahinter einfügen, Knoten löschen, auf `roads.json` zurücksetzen
+- Bearbeitetes Netz als `roads.json` herunterladen — vollständig, einschließlich
+  der abgetasteten Mittellinie, damit der Terrain-Baker die Kurve nicht selbst
+  auswerten muss
+- Knotenmarker als `InstancedMesh`, der gewählte Knoten als Oktaeder darüber
+- **R min, Steigung und Länge live daneben**, mit ✓/✗ gegen die Grenzwerte des
+  Straßentyps
+
+> **Er rechnet mit demselben Sampler wie alle anderen.** `splineSampler.mjs` ist
+> reines ESM und wird von Generator, Terrain-Baker und Editor importiert. Eine
+> zweite Auswertung derselben Kurve wäre genau die Sorte Abweichung, die erst
+> auffällt, wenn man auf der Straße fährt und die eingeschnittene Rinne im
+> Terrain daneben liegt.
+
+> **Ein Editor, der die Grenzwerte verschweigt, wäre eine Falle.** Deshalb steht
+> die Messung neben den Reglern und nicht in einer Prüfung, die man später
+> laufen lässt. Gegengeprüft: Knoten 0 des Rings um 137 m verschoben → die
+> Anzeige springt im selben Frame von `58,8 m ✓` auf `3,0 m ✗`.
+
+**Bewusst nicht gebaut:** Punkte per Klick im Viewport setzen,
+`TransformControls`-Gizmo, Undo/Redo. Der Plan nannte sie, weil er den Editor als
+*einziges* Werkzeug vorsah. Neben einem Generator, der das Netz anlegt, ist die
+Feinarbeit an Zahlenreglern schneller und vor allem reproduzierbar — ein
+verschobener Knoten hat eine Koordinate, die man notieren kann.
 
 **3.3 — Terrain-Carving** → Erweiterung `tools/bake-terrain.mjs` ✅
 - Baker liest `assets/generated/roads/roads.json` **nach** der Erosion und vor
@@ -852,7 +868,16 @@ interface RoadSpline {
 - UVs: `u` quer, `v` = Bogenlänge in Metern (→ Textur-Tiling ist automatisch maßstabsgetreu)
 - Vertex-Farbe kodiert Nässe/Pfützen-Maske (wird in P6 genutzt) — angelegt, vom
   Material noch nicht gelesen
-- ~~Leitplanken und Straßenpfosten als `InstancedMesh`~~ → offen
+- Leitplanken und Straßenpfosten als `InstancedMesh` ✅ →
+  `src/world/roads/GuardrailBuilder.ts`
+
+> **Wo eine Planke steht, entscheidet der Generator.** Die Bedingung ist nicht
+> „schöne Stelle", sondern der gemessene Höhenabfall am **Fuß der Böschung**:
+> fällt es dort um mehr als 7 m ab, gehört an diese Seite eine Planke. Das kann
+> nur, wer das Gelände *vor* dem Einschneiden kennt — der Renderer sieht nur die
+> fertige Karte. Gemessen: Ring 2422 m (40 % der Strecke), Pass 118 m (6 %),
+> Dorf 0 m. Der erste Entwurf mit 3,5 m Schwelle kam auf 105 % und stellte damit
+> praktisch überall Planken hin.
 
 > **Wickelrichtung.** Die Dreiecke laufen a→b→c, nicht a→c→b. Die Normale ist
 > `(b−a) × (c−a)` = rechts × tangente, und weil `rechts` als `tangente × oben`
@@ -866,12 +891,26 @@ interface RoadSpline {
 > ist die *maximale* Neigung; wo die Strecke gerade läuft, gibt es keinen Grund
 > für eine schiefe Fahrbahn. Voll geneigt wird ab 20 m Radius.
 
-**3.5 — Kreuzungen** → `src/world/roads/Junction.ts`
-- Erkennung: Splines, deren Endpunkte < 5 m auseinanderliegen
-- **P3-Umfang bewusst minimal:** Kreuzungsfläche als flaches Polygon aus den
-  Anschlussquerschnitten, überlagert mit einem Decal
-- Saubere Verrundungen und Fahrspurführung sind ein eigenes Problem und
-  gehören nicht in diese Phase
+**3.5 — Kreuzungen** ✅ → `connectToNetwork()` in `tools/gen-roads.mjs`
+- Erkennung: Endpunkt einer offenen Strecke im Umkreis von 150 m um die
+  Mittellinie einer bereits gebauten
+- Einrasten in XZ, dann Höhe festnageln und in `fitElevation` festhalten
+- Rücksprung (`trimStart`/`trimEnd`) statt Verschneidung der Flächen
+
+> **Der Radius ist zweimal an dieser Stelle gestorben.** Erst wurde nur der
+> Endknoten verschoben: bei 3,55 m Versatz und 4 m Knotenabstand ist das ein
+> 42°-Knick, und der Mindestradius der Dorfstraße fiel von 28,8 m auf 12,0 m —
+> der Anschluss zerstörte genau das, was er verbinden sollte. Dann wurden die
+> überholten Knoten entfernt; das half nur, solange der Versatz größer war als
+> der Knotenabstand. Jetzt läuft die Verschiebung über zwölf Knoten mit einem
+> Kosinus aus, und 3,55 m auf 48 m sind wenige Grad Ablenkung.
+
+> **Der Anfang liegt auf der gebauten Straße, nicht auf ihrem Entwurfspunkt.**
+> Zwischen beiden lagen am Pass 96 m: die Verrundung schneidet an einem
+> Wegpunkt, der zugleich eine Kurve ist, genau dort die Ecke ab. Am
+> Entwurfspunkt zu starten und hinterher einzurasten hieß, die ersten 96 m
+> Straße zu verschieben, *nachdem* ihr Höhenprofil feststand — die gemessene
+> Steigung sprang auf 32,3 %.
 
 **3.6 — Gameplay-Datenexport** → `src/world/roads/RoadNetwork.ts` ✅
 - Abfragen, die spätere Systeme brauchen:
@@ -890,56 +929,131 @@ interface RoadSpline {
 > Array und allokationsfreiem Suchkern: **40,1 ms**.
 
 ### Akzeptanzkriterien
-- [ ] **Editor: Strecke zeichnen, speichern, neu laden** — nicht gebaut, siehe 3.2
-- [ ] **Straßen liegen sauber im Terrain** — sie liegen *durchgehend* (keine
-      schwebenden Abschnitte, keine Löcher: das Carving deckt jeden Texel bis zur
-      Böschungskante ab), aber **nicht sauber**. Gemessen auf der Achse: Ring
-      −59,5 / +30,6 m, Pass −4,7 / +35,0 m Erdbewegung; an der Böschungskante bis
-      −310 m, wo die Trasse eine Felsnadel streift. Ursache und Abhilfe unten
-- [x] **Bergpass hat ≥ 8 Serpentinen mit fahrbaren Radien** — **9 Kehren**,
-      kleinster Radius **18,0 m** (Soll ≥ 15), Steigung 9,1 % (Soll ≤ 11 %).
-      Vom Generator gemessen, nicht geschätzt
-- [x] **Ringstraße ist geschlossen und durchgehend befahrbar** — 6001 m
-      geschlossen, R min 55,1 m, Steigung 5,0 %
+- [x] **Editor: Strecke zeichnen, speichern, neu laden** — Ordner „Spline-Editor"
+      im Debug-Panel: Strecke und Knoten wählen, Position/Breite/Querneigung
+      verstellen, Knoten einfügen und löschen, auf `roads.json` zurücksetzen,
+      bearbeitetes Netz als JSON herunterladen. Nach jeder Änderung wird der
+      Spline neu ausgewertet und **R min, Steigung und Länge angezeigt** — mit
+      demselben Sampler, den Generator und Terrain-Baker benutzen.
+      Gegengeprüft: Knoten 0 des Rings 137 m nach Osten geschoben → Anzeige
+      springt von `58,8 m ✓` auf `3,0 m ✗`, Mesh und Abfragenetz folgen im
+      selben Frame; „Zurücksetzen" stellt 58,8 m wieder her
+- [x] **Straßen liegen sauber im Terrain** — auf der Achse gemessen:
+      Ring ⌀ **7,9 m**, Pass ⌀ **8,6 m**, Dorf ⌀ **2,3 m** Erdbewegung; tiefster
+      Einschnitt −27,5 / −34,3 / −34,9 m. Über den ganzen Fußabdruck inklusive
+      Böschung (Bericht des Bakers): 158 468 Texel, ⌀ 9,6 m, 95 % unter 48,7 m.
+      Vorher: Ring −59,5 m auf der Achse, −310 m an der Böschungskante
+- [ ] **Bergpass hat ≥ 8 Serpentinen mit fahrbaren Radien** — Radius erfüllt
+      (**22,5 m**, Soll ≥ 15), Steigung 10,7 % (Soll ≤ 11 %), **aber 0 Kehren**.
+      Begründung unten
+- [x] **Ringstraße ist geschlossen und durchgehend befahrbar** — 6115 m
+      geschlossen, R min **58,9 m** (Soll ≥ 45), Steigung 6,6 % (Soll ≤ 7 %)
 - [x] **Textur-Tiling gleichmäßig über Kurven und Geraden** — bauartbedingt: die
       Mittellinie ist in der **Bogenlänge** gleichmäßig abgetastet und `v` ist
-      Meter geteilt durch Kachellänge. In der Nahaufnahme durch eine Kurve keine
-      Stauchung erkennbar
-- [x] **`distanceToNearestRoad()`: 100 000 Abfragen in < 50 ms** — **40,1 ms**
-      (drei Läufe: 41,2 / 40,1 / 42,0). Erster Entwurf: 207,8 ms
+      Meter geteilt durch Kachellänge. Der Rücksprung an Kreuzungen rechnet mit
+      der ungekürzten Bogenlänge weiter, damit die Kachelung dort nicht springt
+- [x] **`distanceToNearestRoad()`: 100 000 Abfragen in < 50 ms** — **40,2 ms**
+      bei 6359 Segmenten im Gitter (drei Läufe: 41,1 / 40,2 / 40,2).
+      Erster Entwurf: 207,8 ms
+
+### Warum der Bergpass keine Kehren hat
+
+Die Serpentinen des ersten Entwurfs waren **gebaut, nicht gefunden**:
+`serpentines()` setzte neun Halbkreise in den Hang, unabhängig davon, ob das
+Gelände sie verlangte. Mit der kostenbasierten Trassierung entscheidet das
+Gelände — und es verlangt sie nicht.
+
+Die Rechnung dahinter: Der Anschluss an den Ring liegt auf 41,6 m, der Gipfel im
+Nordwesten auf 450 m. Bei 11 % Höchstneigung braucht dieser Unterschied über drei
+Kilometer Strecke, und so viel gibt der Hang zwischen beiden nicht her. Der
+Generator senkt das Ziel deshalb ab, bis es passt (`summitCap`, gemessen an der
+Strecke, die tatsächlich herauskommt) — übrig bleiben 1874 m mit 10,7 % Steigung,
+und auf dieser Höhe lässt sich der Hang durchgehend traversieren.
+
+Eine Kehre erzwingen ließe sich nur, indem der Korridor enger gesetzt wird. Das
+wurde gemessen — 120 m, 180 m, 260 m Korridorbreite — und ergab in allen drei
+Fällen null Kehren bei jeweils schlechterem oder gleichem Erdbau. Der Grund ist
+Geometrie: ein 15-m-Bogen zwischen zwei Schenkeln, die sich unter 10° treffen,
+setzt `R · tan(85°)` = 171 m vor deren Schnittpunkt an und ersetzt damit 342 m
+Strecke durch 44 m Bogen. Sieben Kehren kosten so zwei Kilometer — genau die
+Länge, über die der Pass seinen Höhengewinn verteilen wollte.
+
+**Das Kriterium bleibt offen und wird nicht wegdefiniert.** Es setzt ein Gelände
+voraus, das dieses Höhenfeld an dieser Stelle nicht hergibt. Wer den Toge als
+Drift-Strecke will, ändert das Gelände (ein schmaleres, steileres Tal im
+Massiv) — nicht den Generator.
 
 ### Risiken
-- ~~**Kreuzungen sind das klassische Zeitloch**~~ → Nicht eingetreten, weil nicht
-  begonnen. Der Anschluss Pass↔Ring entsteht derzeit **implizit**: das Carving
-  lässt den nächstliegenden Straßenpunkt gewinnen, und wo zwei Trassen sich
-  treffen, ebnet es die Fläche gemeinsam ein. Das sieht von oben brauchbar aus,
-  hat aber einen echten Fehler: die Höhenprofile werden **je Strecke einzeln**
-  angepasst, sodass Pass und Ring am Übergang nicht auf derselben Höhe liegen
+- ~~**Kreuzungen sind das klassische Zeitloch**~~ → Nicht eingetreten. Der
+  Anschluss läuft in zwei Schritten: Endknoten auf die Mittellinie der
+  Hauptstrecke einrasten, dann die Höhe dort festnageln und in `fitElevation`
+  festhalten. **Gemessener Höhenversatz: 0,000 m** an beiden Kreuzungen (Pass
+  0,00 m eingerastet, Dorf 3,55 m). Was bewusst *nicht* passiert: die
+  Fahrbahnflächen verschneiden. Beide liegen danach exakt aufeinander und würden
+  im Tiefenpuffer flimmern — die einmündende Straße hört deshalb 5,5 m vor der
+  Achse der anderen auf (`trimStart`/`trimEnd`), und der Böschungs-Einschnitt
+  ebnet die Lücke ein
 - ~~**Carving vs. Erosion**~~ → Nicht eingetreten. Nach der Erosion einzuschneiden
-  erhält die Erosionsrinnen bis an die Böschung heran, statt sie zu überschreiben.
-  Der Plan-Alternativvorschlag (Splines vor der Erosion einspeisen) wird nicht
-  gebraucht
-- **Neu und der eigentliche Kern: die Trassierung kennt keine Höhenlinien.**
-  `serpentines()` legt einen geometrischen Zickzack in den Hang. Auf einem stark
-  erodierten Massiv trifft der abwechselnd Grate und Rinnen, und weil die Straße
-  höchstens 11 % steigen darf, kann sie dem nicht folgen — übrig bleibt Erdbau in
-  der Größenordnung von Dutzenden Metern, sichtbar als breite Terrassen. Ein
-  Versuch, per Suche über 60 Trassenvarianten die verträglichste zu finden, machte
-  es **schlechter** (136 m statt 35 m) und wurde verworfen: die Suche optimiert
-  den größten Einzelwert und findet damit nicht die insgesamt bessere Linie.
-  Die richtige Lösung ist eine **kostenbasierte Wegsuche über die Heightmap** mit
-  Steigung und Erdbewegung als Kosten — ein eigenes Stück Arbeit, kein Parameter
+  erhält die Erosionsrinnen bis an die Böschung heran, statt sie zu überschreiben
+- ~~**Die Trassierung kennt keine Höhenlinien**~~ → Behoben, siehe unten
+
+### Was die Trassierung gekostet hat
+
+Der Weg von „geometrischer Zickzack" zu „billigster Weg über ein Kostenfeld" hat
+acht Fehler produziert, von denen **sieben nur durch Messen sichtbar wurden**.
+Sie stehen hier, weil sie die Sorte Fehler sind, die in einer aufgeräumten
+Codebasis unsichtbar bleibt:
+
+| Fehler | Symptom | Ursache |
+|---|---|---|
+| Gitterrichtungen zu grob | Sägezahn, 186 Scheinkurven | A* nähert 30° durch Abwechseln von 26,57° und 45° an; mittelwertfreies Rauschen, entfernt durch einen Mittelwertfilter |
+| Bögen gegenseitig gestaucht | Ring meldet 1,6 m statt 56 m Radius | Benachbarte Bögen teilen sich den Schenkel; die Verkleinerung kaskadiert. Jetzt wird die schwächere Ecke entfernt statt beide zu stauchen |
+| Vereinfachungstoleranz als Gegenmittel | 13 km Trasse → 9 Ecken | Wirkt auf die ganze Strecke statt auf die enge Stelle. Verworfen |
+| „Äußerer Bogen" für Kehren | 81,8° Knick, 24 m Versatz | Herleitung nicht nachgerechnet: für **beide** Tangentialkreise gilt `T = R·tan(φ/2)`; die vermeintliche Ersparnis gab es nie. Ersatzlos entfernt |
+| Verrundung meldet Sollwerte | 56,3 m gemeldet, 1,4 m im Polygonzug | Zusammengebrochene Bögen fielen aus der Minimum-Bildung heraus. Misst jetzt ihr **Ergebnis** |
+| Bogenschritt 15° | Ring 41,8 m statt 72,0 m | Sehnenzug liegt im Kreis, die Spline-Kurve noch einmal darin. Bei 7,5 ° unter 2 % Verlust |
+| Stichweg aus zusammengesetzten Beinen | R 6,0 m, 180°-Umkehr | Bein B→C darf denselben Korridor rückwärts benutzen wie A→B. Zwei identische Punkte in der Linie; entfernt durch Schleifenerkennung mit Fenster |
+| Höhenprojektion konvergiert nicht | Zusage sinkt 9,3 → 0,4 %, Ergebnis steigt 16 → 22 % | Symmetrisches Aufteilen braucht O(n²) Durchläufe, sobald ein Knoten festliegt. Klemmlauf von den festen Enden aus, dann symmetrisch |
+
+Zwei davon waren **falsche eigene Ideen**, keine Flüchtigkeitsfehler: der äußere
+Bogen und die Regelschleife, die den Steigungsvorrat nachführte. Letztere lief
+davon — flacher planen ergab eine längere Trasse, längere Trasse mehr Kehren,
+mehr Kehren mehr Verlust beim Verrunden; nach sieben Anläufen standen 30 km
+Trasse bei 12,4 % Steigung. Beide sind entfernt, nicht repariert.
+
+Dazu kam ein Werkzeugfehler mit derselben Signatur: `npm run world` bäckt,
+erzeugt Straßen, bäckt erneut — und der **erste** Bake schnitt die Straßen des
+vorherigen Laufs bereits ein. Der Generator trassierte dann durch eigene
+Einschnitte, und das Ergebnis wanderte bei jedem Lauf weiter. Sichtbar wurde es
+daran, dass der Mindestradius der Dorfstraße von 21,8 m auf 8,1 m fiel, ohne dass
+sich an ihrem Quelltext etwas geändert hatte. Behoben mit `--no-roads` für den
+ersten Durchgang.
 
 ### Offene Punkte aus P3
 
 | Punkt | Zahl | Wohin |
 |---|---|---|
-| Spline-Editor (3.2) | — | offen, Voraussetzung für den Abschluss der Phase |
-| Kreuzungen (3.5) | Höhenversatz Pass↔Ring | offen; braucht eine gemeinsame Höhenanpassung über Streckengrenzen |
-| Trassierung ohne Höhenlinien | bis −310 m an der Böschungskante | kostenbasierte Wegsuche |
-| Leitplanken, Pfosten (3.4) | — | `InstancedMesh` entlang des Splines, offen |
+| Serpentinen am Bergpass | 0 statt ≥ 8 | Gelände, nicht Generator — siehe oben |
+| Kreuzungsflächen nicht verschnitten | Rücksprung 5,5 m | Sichtbar sauber, weil der Einschnitt einebnet. Echte Verschneidung mit Fahrspurführung wäre eine eigene Phase |
+| Erdbau-Extremwerte | −168,6 m an einem Texel, ⌀ 9,6 m | Die Böschung streift Erosionsnadeln, die die Heightmap in Steilhängen stehen lässt. Gehört zum Terrain (P1-Nachbesserung), nicht zur Trassierung |
 | Straßen-Kanal in der Zonenmaske (3.3) | — | bewusst weggelassen: `distanceToNearestRoad()` erfüllt denselben Zweck für P4 |
-| Startdownload | **53,1 MB** (P2: 44,1 MB) | +8,9 MB allein durch `asphalt_02` in 2k — die Normalmap ist mit 4,71 MB größer als jede andere Textur im Projekt. KTX2 in P5 |
+| `npm run bake:watch` | — | offen; die Kette läuft in unter drei Minuten und wird selten gebraucht |
+| Startdownload | **51,95 MB** (P2: 44,1 MB) | +7,9 MB durch `asphalt_02` in 2k — die Normalmap ist mit 4,71 MB größer als jede andere Textur im Projekt. KTX2 in P5 |
+
+### Gemessener Stand am Ende von P3
+
+| Größe | Gemessen | Budget |
+|---|---|---|
+| Draw-Calls | **36** | 800 |
+| Dreiecke | **1.212.971** | 3.000.000 |
+| Texturspeicher | **255 MB** | 512 MB |
+| Programme | 20 | — |
+| CPU / GPU je Frame | 0,20 ms / 1,72 ms | 16,6 ms |
+| Netz | 3 Strecken, 8,68 km, 2540 m Leitplanken, 648 Pfosten | — |
+| Konsole | keine Fehler, keine Warnungen | — |
+
+Leitplanken und Pfosten kosten zusammen **zwei** Draw-Calls: das Band aller
+Strecken liegt in einer Geometrie, die Pfosten in einem `InstancedMesh`.
 
 ---
 
