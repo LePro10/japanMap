@@ -8,6 +8,7 @@ import { LightingRig } from './render/LightingRig';
 import { LookController } from './render/looks/LookController';
 import { PostFXPipeline } from './render/PostFXPipeline';
 import { TerrainDataError } from './world/TerrainSampler';
+import { RoadSystem } from './world/RoadSystem';
 import { TerrainSystem } from './world/TerrainSystem';
 import { WaterSystem } from './world/WaterSystem';
 
@@ -128,6 +129,7 @@ engine.add(atmosphere);
 engine.add(new LightingRig(atmosphere.uniforms));
 engine.add(new WaterSystem(atmosphere.uniforms));
 engine.add(new TerrainSystem(atmosphere.uniforms));
+engine.add(new RoadSystem(atmosphere.uniforms));
 engine.add(
   new PostFXPipeline((present) => {
     engine.setPresenter(present);
