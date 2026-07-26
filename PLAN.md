@@ -50,7 +50,7 @@ erfüllt sind. Ausnahmen werden hier dokumentiert, nicht mündlich vereinbart.
 >
 > ```bash
 > npm install
-> npm run world   # backt alles der Reihe nach (~45 s)
+> npm run world   # backt alles der Reihe nach (gemessen 44,9 s)
 > npm run dev
 > ```
 >
@@ -58,12 +58,21 @@ erfüllt sind. Ausnahmen werden hier dokumentiert, nicht mündlich vereinbart.
 > ist nicht beliebig, sondern zirkulär aufgelöst:
 >
 > ```bash
-> npm run bake    # Terrain ohne Straßen — der Generator braucht ein Höhenfeld
-> npm run sun     # Sonnenrichtung aus dem Himmels-HDRI
-> npm run roads   # Straßennetz, an das Gelände angepasst
-> npm run bake    # noch einmal, jetzt mit eingeschnittenen Straßen
-> npm run shade   # Verschattung des fertigen Geländes
+> npm run bake:clean  # Terrain OHNE Straßen — der Generator braucht ein Höhenfeld
+> npm run sun         # Sonnenrichtung aus dem Himmels-HDRI
+> npm run roads       # Straßennetz, an das Gelände angepasst
+> npm run bake        # noch einmal, jetzt mit eingeschnittenen Straßen
+> npm run shade       # Verschattung des fertigen Geländes
 > ```
+>
+> **`bake:clean` ist nicht dasselbe wie `bake`, und der Unterschied ist der
+> ganze Punkt.** Der erste Durchgang muss den Zustand *vor* dem Einschneiden
+> herstellen (`--no-roads`). Ohne diesen Schalter frisst sich die Kette selbst
+> auf: `bake` schneidet die Straßen des **vorherigen** Laufs ein, der Generator
+> trassiert anschließend durch seine eigenen Einschnitte, und das Ergebnis
+> wandert bei jedem Aufruf weiter. Sichtbar wurde es daran, dass der
+> Mindestradius der Dorfstraße von 21,8 m auf 8,1 m fiel, ohne dass sich an
+> ihrem Quelltext etwas geändert hatte.
 
 ### Codebasis-Regeln
 
@@ -792,6 +801,38 @@ interface RoadSpline {
   Abtastpunkte in Kurven dichter als auf Geraden — Textur-UVs verzerren sichtbar
   und Streckenlängen stimmen nicht
 
+**3.1b — Trassierung** ✅ → `tools/route-planner.mjs`
+
+Nicht im ursprünglichen Plan. Der Plan setzte voraus, dass Strecken von Hand
+gezeichnet werden; sobald sie stattdessen erzeugt werden, muss jemand
+entscheiden, **wo** sie langlaufen — und das ist ein eigenes Problem.
+
+- A* über ein Kostenfeld, 155×155 Zellen à 20 m, 16 Nachbarrichtungen
+- Kosten: Längsneigung über dem Grenzwert (quadratisch bestraft, nicht
+  verboten), **Querneigung** des Geländes (quadratisch), Wasser, optional ein
+  Korridor um die Luftlinie
+- Danach: Stichwege entfernen → Mittelwertfilter → Douglas-Peucker →
+  Gerade-Bogen-Gerade → Kontrollpunkte
+
+> **Die Querneigung war der Fund.** Der Abtrag an der Böschungskante ist
+> ungefähr `Querneigung × halbe Breite`, und keine Längsbetrachtung sieht ihn.
+> Genau daher kamen die −310 m des ersten Entwurfs: die Trasse lief mit
+> korrekter Steigung quer an einer Felsnadel vorbei.
+
+> **20 m Zellgröße ist kein runder Wert.** 9 m Fahrbahn plus zweimal 15 m
+> Böschung ergeben knapp 40 m Fußabdruck; feiner zu suchen täuscht eine
+> Genauigkeit vor, die die Straße nicht hat.
+
+> **16 Richtungen statt 8.** Mit acht kann ein Weg nur in 45°-Stufen laufen. Am
+> Hang heißt das: die Traverse liegt entweder zu flach oder zu steil, nie
+> dazwischen — und die Steigungskosten erzwingen dann ein Sägezahnmuster. Die
+> Springerzüge bringen 26,57° und 63,43° dazu.
+
+> **Der Korridor stellt die Frage richtig.** Ohne ihn nimmt die Suche den
+> billigsten Weg, und um einen kegelförmigen Gipfel ist das eine **Spirale**,
+> keine Serpentine: gemessen 3,77-facher Umweg und null Kehren. Das ist keine
+> falsche Lösung, sondern die Antwort auf eine falsch gestellte Frage.
+
 **3.2 — Spline-Editor** ✅ → `src/world/roads/RoadEditor.ts` (nur im Dev-Build)
 
 > **Der Generator kam zuerst, und das war richtig.**
@@ -844,18 +885,23 @@ verschobener Knoten hat eine Koordinate, die man notieren kann.
 - Zonenmaske bekommt einen Straßen-Kanal (unterdrückt Vegetation in P4)
 - Neuer Ablauf: `Splines ändern → npm run roads && npm run bake && npm run shade → Reload`
   (oder `npm run world` für die ganze Kette)
-- ~~`npm run bake:watch`~~ → offen; sinnvoll erst mit dem Editor aus 3.2
+- ~~`npm run bake:watch`~~ → offen. Die ganze Kette braucht gemessen 44,9 s; ein
+  Watch-Modus spart daran nichts Wesentliches und müsste die zirkuläre
+  Reihenfolge selbst korrekt nachbilden
 
 > **„Nächster gewinnt" statt Sonderfall für Kreuzungen.** Jeder Texel merkt sich
 > den nächstliegenden Straßenpunkt; wo zwei Trassen sich treffen, entscheidet
-> schlicht der Abstand. Deshalb funktioniert der Anschluss Pass↔Ring ohne
-> Kreuzungscode — mit der Einschränkung aus den Risiken.
+> schlicht der Abstand. Das Einebnen braucht deshalb keinen Kreuzungscode — die
+> *Höhen* der beiden Straßen gleicht dagegen 3.5 ab, sonst ebnet das Carving
+> zwei Fahrbahnen ein, die auf verschiedenen Höhen liegen.
 
 > **Der Ablauf ist zirkulär und wird durch zweimaliges Backen aufgelöst:** der
 > Generator braucht ein Höhenfeld, der Baker braucht die Straßen. Erster Lauf
-> ohne `roads.json` (der Baker meldet das und backt ohne Straßen), dann
-> `gen-roads`, dann noch einmal backen. Stabil, weil das Basis-Terrain bei
-> gleichem Seed identisch bleibt und sich nur das Carving ändert.
+> mit `--no-roads`, dann `gen-roads`, dann noch einmal backen. Stabil, weil das
+> Basis-Terrain bei gleichem Seed identisch bleibt und sich nur das Carving
+> ändert — **aber nur, wenn der erste Lauf wirklich ohne Einschnitte bäckt.**
+> Ohne den Schalter genügt schon eine vorhandene `roads.json` aus einem früheren
+> Lauf, damit der Generator durch fremde Einschnitte trassiert. Siehe oben.
 
 **3.4 — Straßen-Mesh-Generator** → `src/world/roads/RoadMeshBuilder.ts` ✅
 - ~~Adaptive Abtastung: dicht in Kurven (nach Krümmung), spärlich auf Geraden~~
@@ -926,7 +972,10 @@ verschobener Knoten hat eine Koordinate, die man notieren kann.
 > Punkte liegen weitab vom Netz, für sie besteht die Arbeit fast nur aus 25
 > Zugriffen auf leere Zellen (`Map` ~50 ns, Array-Index <2 ns), und für die
 > übrigen 6 % entstanden pro Abfrage hunderte kurzlebige Objekte. Mit flachem
-> Array und allokationsfreiem Suchkern: **40,1 ms**.
+> Array und allokationsfreiem Suchkern: **40,1 ms** — und **40,2 ms**, nachdem
+> die kostenbasierte Trassierung das Netz auf 6359 Segmente hat wachsen lassen.
+> Der Suchaufwand hängt an der Verteilung der Abfragepunkte, nicht an der
+> Netzgröße; genau das war der Grund für das Gitter.
 
 ### Akzeptanzkriterien
 - [x] **Editor: Strecke zeichnen, speichern, neu laden** — Ordner „Spline-Editor"
@@ -1037,7 +1086,7 @@ ersten Durchgang.
 | Kreuzungsflächen nicht verschnitten | Rücksprung 5,5 m | Sichtbar sauber, weil der Einschnitt einebnet. Echte Verschneidung mit Fahrspurführung wäre eine eigene Phase |
 | Erdbau-Extremwerte | −168,6 m an einem Texel, ⌀ 9,6 m | Die Böschung streift Erosionsnadeln, die die Heightmap in Steilhängen stehen lässt. Gehört zum Terrain (P1-Nachbesserung), nicht zur Trassierung |
 | Straßen-Kanal in der Zonenmaske (3.3) | — | bewusst weggelassen: `distanceToNearestRoad()` erfüllt denselben Zweck für P4 |
-| `npm run bake:watch` | — | offen; die Kette läuft in unter drei Minuten und wird selten gebraucht |
+| `npm run bake:watch` | Kette gemessen: **44,9 s** | offen; bei dieser Laufzeit ist ein Watch-Modus keine Erleichterung, sondern eine zweite Fehlerquelle |
 | Startdownload | **51,95 MB** (P2: 44,1 MB) | +7,9 MB durch `asphalt_02` in 2k — die Normalmap ist mit 4,71 MB größer als jede andere Textur im Projekt. KTX2 in P5 |
 
 ### Gemessener Stand am Ende von P3
@@ -1354,7 +1403,7 @@ früh, damit der Übergang keine Umbauten erzwingt.
 | # | Frage | Spätestens in | Vorläufige Tendenz |
 |---|---|---|---|
 | 1 | SSR oder planare Reflexion + Probes | P6 | Erst SSR testen, Fallback steht |
-| 2 | Kreuzungen prozedural oder handmodelliert | P3 | Prozedural, hart zeitbegrenzt |
+| ~~2~~ | ~~Kreuzungen prozedural oder handmodelliert~~ | ~~P3~~ | **Entschieden:** prozedural im Generator — Einrasten in XZ, Höhe festnageln, Rücksprung statt Verschneidung |
 | 3 | Physik-Engine | nach P7 | Rapier (WASM, bewährt) |
 | 4 | Imposter-Baking headless oder in-app | P4 | In-app, falls headless zickt |
-| 5 | Carving vor oder nach der Erosion | P3 | Nachher, sonst neu bewerten |
+| ~~5~~ | ~~Carving vor oder nach der Erosion~~ | ~~P3~~ | **Entschieden:** nachher. Die Erosionsrinnen laufen dadurch bis an die Böschung heran, statt überschrieben zu werden |
