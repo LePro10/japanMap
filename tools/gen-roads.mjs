@@ -36,7 +36,10 @@ import {
   routePath,
   simplify,
   smoothPath,
+  hairpinApexes,
+  selfCollision,
   toControlPoints,
+  widenHairpins,
 } from './route-planner.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
@@ -46,15 +49,42 @@ const ROOT = new URL('..', import.meta.url).pathname;
 // Node liest kein TypeScript. Die Werte hier sind deshalb dupliziert — anders
 // als bei der Kurvenmathematik ist das vertretbar: eine Abweichung fällt
 // sofort auf, weil der Generator seine eigenen Grenzwerte prüft und meldet.
+/**
+ * `maxEarthwork` ist die mittlere Abweichung zwischen Fahrbahn und Gelände, ab
+ * der die Trasse als misslungen gilt — gemessen auf der ganzen Mittellinie,
+ * nicht an den Kontrollpunkten.
+ *
+ * Sie steht hier, weil Radius und Steigung allein eine Straße durchgehen
+ * lassen, die beides hält und trotzdem falsch liegt: der Bergpass meldete
+ * 22,5 m Radius ✓ und 10,7 % Steigung ✓ bei **49,2 m** mittlerem Abtrag — auf
+ * 83 % seiner Länge ein Graben mit Gelände über der Fahrbahn zu beiden Seiten.
+ * Beide Grenzwerte waren erfüllt, die Straße war es nicht.
+ *
+ * Die Zahlen sind an gebauten Strecken geeicht, nicht geraten: Ring 6,9 m,
+ * Dorf 0,2 m, Bergpass 28,8 m. Der Pass bekommt 30 m, weil ein Serpentinenstapel
+ * sich zwangsläufig in den Hang terrassiert — gemessen kostet jede zusätzliche
+ * Kehre rund einen halben Meter mittleren Abtrag. Ein Bergpass bewegt nun einmal
+ * mehr Erde als eine Ringstraße, aber keine fünfzig Meter: der Grenzwert trennt
+ * die gebaute Strecke (28,8 m) sauber von der kaputten, die er finden soll
+ * (49,2 m, siehe oben).
+ */
 const TYPES = {
-  highway: { width: 9, maxGradient: 0.07, minRadius: 45 },
-  mountain: { width: 6.5, maxGradient: 0.11, minRadius: 15 },
-  village: { width: 5, maxGradient: 0.09, minRadius: 18 },
-  city: { width: 8, maxGradient: 0.06, minRadius: 25 },
-  dirt: { width: 4, maxGradient: 0.14, minRadius: 12 },
+  highway: { width: 9, maxGradient: 0.07, minRadius: 45, maxEarthwork: 12 },
+  mountain: { width: 6.5, maxGradient: 0.11, minRadius: 15, maxEarthwork: 30 },
+  village: { width: 5, maxGradient: 0.09, minRadius: 18, maxEarthwork: 8 },
+  city: { width: 8, maxGradient: 0.06, minRadius: 25, maxEarthwork: 10 },
+  dirt: { width: 4, maxGradient: 0.14, minRadius: 12, maxEarthwork: 20 },
 };
 
 const SAMPLE_SPACING = 2;
+
+/**
+ * Wie weit die Fahrbahn am Gipfelende unter dem Gelände liegen darf, in Metern.
+ *
+ * Darüber gilt das Ziel als nicht erreicht und wird abgesenkt — siehe die
+ * Gipfelschleife im Hauptlauf.
+ */
+const SUMMIT_TOLERANCE = 15;
 
 const c = {
   dim: (s) => `\x1b[2m${s}\x1b[0m`,
@@ -394,7 +424,7 @@ function fitElevation(terrain, points, options) {
 function traceRoute(
   grid,
   waypoints,
-  { settings, closed, radiusFactor = 1.6, corridor, headroom = 1 },
+  { settings, closed, radiusFactor = 1.6, corridor, headroom = 1, hairpins = false, skipApexes = new Set(), downhillBias = 0 },
 ) {
   const legs = waypoints.length - (closed ? 0 : 1);
   const raw = [];
@@ -429,10 +459,53 @@ function traceRoute(
 
   // Erst Stichwege, dann glätten. Andersherum verwischt der Mittelwertfilter
   // die exakte Punktdopplung, an der ein Stichweg zu erkennen ist.
-  const simple = removeSpurs(raw, 24, closed);
-  const soft = smoothPath(simple, 3, closed);
-  const lean = simplify(soft, 12);
-  const rounded = filletPath(lean, {
+  // Ein Viertel der Höchstneigung als Schwelle: eine Serpentine am Grenzwert
+  // gewinnt das Vierfache davon, ein Stichweg gewinnt nichts. Dazwischen liegt
+  // reichlich Luft, und die Schwelle skaliert mit dem Straßentyp statt fest zu
+  // stehen — der Ring darf bei 7 % nicht dieselbe Latte bekommen wie der Pass.
+  const simple = removeSpurs(raw, 24, closed, {
+    heightAt: (x, z) => {
+      const [ix, iz] = grid.toCell(x, z);
+      return grid.height[grid.index(ix, iz)];
+    },
+    minClimbRate: settings.maxGradient * 0.25,
+  });
+  // **70°, nicht 100°.** Eine Kehre im Suchgitter ist kein 170°-Scheitel,
+  // sondern ein Z aus zwei rund 90°-Ecken mit einem Verbindungsstück dazwischen.
+  // Wer erst ab 100° schützt, schützt genau die verschmolzene Form, die nicht
+  // mehr baubar ist, und lässt die beiden Ecken verschmelzen, die es wären.
+  // Der Sägezahn der Gitterrichtungen liegt bei 18,4°, eine normale Kurve
+  // wechselt in 45°-Schritten — 70° trennt beides von der Umkehr.
+  const soft = smoothPath(simple, 3, closed, { preserveAngle: 70 });
+  const lean = simplify(soft, 12, 70);
+  // **Kehren bauen, verrunden, messen — und den Verursacher zurücknehmen.**
+  //
+  // Nur wo Kehren erwünscht sind: eine Ringstraße mit Haarnadeln ist kein
+  // Merkmal, sondern ein Fehler. Dort sind die scharfen Ecken Reste der
+  // Gittersuche, und sie aufzuweiten schöbe die Trasse grundlos zur Seite
+  // (gemessen: 33 Scheitel, Querstück 158 m, Mindestradius von 57,3 auf 51,0 m).
+  // Serpentinen fordert SPEC §2.1 für den Bergpass, sonst für keine Strecke.
+  //
+  // Die Schleife ist nötig, weil zwei benachbarte Kehren erst **nach** dem
+  // Verrunden ineinanderlaufen: vor den Bögen hielten die Punkte 53 m Abstand,
+  // danach kreuzte der Pass sich mit 0,9 m. Geprüft wird deshalb die fertige
+  // Linie, und bei einem Treffer fällt die nächstgelegene Aufweitung weg.
+  const apexes = hairpins
+    ? hairpinApexes(lean, 120, (x, z) => {
+        const [ix, iz] = grid.toCell(x, z);
+        return grid.height[grid.index(ix, iz)];
+      })
+    : [];
+  // Querstück gut doppelt so lang wie der Sollradius: zwei Bögen à
+  // `R·tan(42,5°)` ≈ 0,92 R brauchen zusammen 1,84 R, und die Stauchung
+  // benachbarter Bögen rechnet mit 97 % der Sehne. Gemessen über 2,0 / 2,2 /
+  // 2,5: bei 2,0 verrundet die Kehre zu früh weg, bei 2,5 stoßen zu viele
+  // aneinander.
+  const riser = settings.minRadius * radiusFactor * 2.2;
+  const opened =
+    apexes.length > 0 ? widenHairpins(lean, { apexes, riser, skip: skipApexes, downhillBias }) : lean;
+
+  const rounded = filletPath(opened, {
     radius: settings.minRadius * radiusFactor,
     // Ecken, die den Grenzwert nicht halten können, fallen weg statt
     // durchzurutschen. Ohne diese Untergrenze staucht die gegenseitige
@@ -452,10 +525,11 @@ function traceRoute(
 
   return {
     points,
+    apexes,
     expanded,
     filletRadius: rounded.minRadius,
     corners: rounded.corners,
-    vertices: lean.length,
+    vertices: opened.length,
     // Radius nach der Ausdünnung, vor der Spline-Auswertung. Die drei Zahlen
     // (Sollradius, Bogenradius, Knotenradius) sagen zusammen, welche Stufe ihn
     // verliert — ohne sie wäre nur bekannt, dass er weg ist.
@@ -497,6 +571,82 @@ function polylineLength(points, closed) {
 }
 
 /** Spitzkehren zählen: Läufe gleichsinniger Krümmung mit über 150° Gesamtdrehung. */
+
+/**
+ * Die fertige Mittellinie am oberen Ende kürzen, solange sie unter Grund liegt.
+ *
+ * Greift **nach** dem Bau in die Ergebnisdaten, nicht vorher in die Trasse:
+ * genau dadurch bleiben Verlauf, Höhenprofil und Kehren des restlichen Passes
+ * unverändert. Gekürzt werden alle Felder, die je Abtastpunkt geführt werden,
+ * dazu Länge und Leitplanken.
+ */
+function trimSummitTail(terrain, data) {
+  const line = data.centerline;
+  const count = line.length / 3;
+  let keep = count - 1;
+  while (
+    keep > 1 &&
+    terrain.at(line[keep * 3], line[keep * 3 + 2]) - line[keep * 3 + 1] > SUMMIT_TOLERANCE
+  ) {
+    keep--;
+  }
+
+  const tail = (count - 1 - keep) * SAMPLE_SPACING;
+  if (tail < 40 || keep < count * 0.5) return 0;
+
+  data.centerline = line.slice(0, (keep + 1) * 3);
+  data.widths = data.widths.slice(0, keep + 1);
+  data.banking = data.banking.slice(0, keep + 1);
+  data.length = Number((keep * SAMPLE_SPACING).toFixed(2));
+  data.rails = data.rails
+    .filter((rail) => rail.from < data.length)
+    .map((rail) => (rail.to > data.length ? { ...rail, to: data.length } : rail));
+  data.measured.railLength = Number(
+    data.rails.reduce((sum, rail) => sum + (rail.to - rail.from), 0).toFixed(0),
+  );
+
+  // **Nach dem Kürzen neu messen.** Sonst meldet die Strecke die Kennwerte der
+  // Trasse, die sie vor dem Schnitt war — genau die Sorte Zusage-statt-Ergebnis,
+  // an der die Verrundung schon einmal 56,3 m meldete, wo 1,4 m standen.
+  const trimmed = {
+    positions: data.centerline,
+    count: keep + 1,
+    closed: false,
+  };
+  let deepestCut = 0;
+  let highestFill = 0;
+  let sumAbsolute = 0;
+  let worstAt = 0;
+  const magnitudes = new Float64Array(keep + 1);
+  for (let i = 0; i <= keep; i++) {
+    const delta =
+      data.centerline[i * 3 + 1] - terrain.at(data.centerline[i * 3], data.centerline[i * 3 + 2]);
+    if (delta < deepestCut) {
+      deepestCut = delta;
+      worstAt = i * SAMPLE_SPACING;
+    }
+    if (delta > highestFill) highestFill = delta;
+    sumAbsolute += Math.abs(delta);
+    magnitudes[i] = Math.abs(delta);
+  }
+  magnitudes.sort();
+
+  data.measured.minRadius = Number(minCurveRadius(trimmed).toFixed(2));
+  data.measured.maxGradient = Number(maxGradient(trimmed).toFixed(4));
+  data.measured.hairpins = countHairpins(trimmed);
+  data.measured.deepestCut = Number(deepestCut.toFixed(1));
+  data.measured.highestFill = Number(highestFill.toFixed(1));
+  data.measured.meanEarthwork = Number((sumAbsolute / (keep + 1)).toFixed(2));
+  data.measured.earthwork95 = Number(
+    magnitudes[Math.min(keep, Math.floor((keep + 1) * 0.95))].toFixed(2),
+  );
+  data.measured.worstAt = Number(worstAt.toFixed(0));
+  if (process.env.STAGES) {
+    console.log(c.dim(`      [gipfel] ${tail.toFixed(0)} m Schwanz unter Grund gekappt`));
+  }
+  return tail;
+}
+
 function countHairpins(sampled) {
   const { positions, count } = sampled;
   let hairpins = 0;
@@ -910,6 +1060,29 @@ function buildRoad(terrain, { id, type, closed, tags, points, banking = 0, pins,
 async function main() {
   const terrainDir = join(ROOT, 'assets/generated/terrain');
   const meta = JSON.parse(await readFile(join(terrainDir, 'meta.json'), 'utf8'));
+
+  // **Gegen die zirkuläre Kette.** Der Generator braucht ein Höhenfeld, der
+  // Baker braucht die Straßen; aufgelöst wird das durch zweimaliges Backen, und
+  // der erste Durchgang muss `--no-roads` sein. Läuft der Generator stattdessen
+  // gegen ein bereits eingeschnittenes Feld, trassiert er durch seine eigenen
+  // Einschnitte: gemessen wurde derselbe Bergpass einmal mit 3966 m, 8 Kehren
+  // und 28,8 m Erdbau und einmal mit 3410 m, 5 Kehren und 11,2 m — dieselbe
+  // Quelldatei, dieselben Parameter. Das ist keine Feinheit, das ist der
+  // Unterschied zwischen einer Messung und einer Zahl.
+  if (meta.carved && !process.argv.includes('--allow-carved')) {
+    console.error(
+      c.red('\n  Das geladene Höhenfeld enthält bereits eingeschnittene Straßen.\n') +
+        '  Der Generator würde durch seine eigenen Einschnitte trassieren und Zahlen\n' +
+        '  liefern, die niemand reproduzieren kann.\n\n' +
+        c.bold('    npm run bake:clean') +
+        '   ← erst das, dann noch einmal hierher\n' +
+        c.bold('    npm run world') +
+        '        ← oder gleich die ganze Kette\n\n' +
+        c.dim('  (--allow-carved hebt die Sperre auf, wenn du weißt, warum.)\n'),
+    );
+    process.exitCode = 1;
+    return;
+  }
   const buffer = await readFile(join(terrainDir, meta.heightmap.file));
   const raw = new Uint16Array(buffer.buffer.slice(0));
 
@@ -923,7 +1096,34 @@ async function main() {
 
   console.log(c.bold('\nStraßennetz-Generator'));
 
-  const grid = createRouteGrid(terrain, meta.world.size);
+  /**
+   * Suchgitter je Zellgröße, auf Abruf gebaut.
+   *
+   * Nicht alle Strecken wollen dasselbe Gitter. Für eine Kehre muss das
+   * Verbindungsstück des Z die beiden Bogentangenten tragen: bei
+   * `floor = minRadius · 1,3` = 19,5 m sind das zweimal 19,5 m, also knapp 40 m.
+   * Genau so lang ist bei 40 m Zellgröße ein Querschritt. Bei 20 m sind es 20 m,
+   * die Bögen werden auf 9,7 m gestaucht, fallen unter die Untergrenze und die
+   * Ecke wird entfernt — die Kehre stirbt an der Auflösung der Suche, nicht am
+   * Gelände.
+   *
+   * Der Ring bekommt die 40 m **nicht**: dort kostet die gröbere Suche Erdbau
+   * (gemessen 13,0 m gegen einen Grenzwert von 12 m), und Kehren braucht er
+   * keine. 40 m sind für den Pass ohnehin die ehrlichere Zahl — 6,5 m Fahrbahn
+   * plus zweimal 15 m Böschung sind 36,5 m Fußabdruck.
+   */
+  const grids = new Map();
+  const gridFor = (cellSize) => {
+    const key = cellSize ?? 0;
+    if (!grids.has(key)) {
+      grids.set(
+        key,
+        createRouteGrid(terrain, meta.world.size, cellSize ? { cellSize } : {}),
+      );
+    }
+    return grids.get(key);
+  };
+  const grid = gridFor(null);
   console.log(
     c.dim(
       `  Suchgitter ${grid.res}×${grid.res} Zellen à ${grid.cellSize} m ` +
@@ -961,12 +1161,55 @@ async function main() {
       // gemessene Steigung sprang auf 32,3 %.
       startsOn: { road: 'ring', near: plan.passStart },
       summit: { region: plan.passRegion },
+      // Gröberes Suchgitter als der Rest des Netzes — siehe `gridFor`.
+      cellSize: 40,
+      // Die einzige Strecke, die Kehren bekommt. SPEC §2.1 fordert sie für den
+      // Bergpass; überall sonst wäre eine Haarnadel ein Fehler.
+      hairpins: true,
+      /**
+       * **Der Regler zwischen Serpentinen und Erdbau. Bewusst auf 0.**
+       *
+       * Eine Kehre wird symmetrisch um den Scheitel aufgeweitet und schiebt
+       * damit ihre halbe Schleife in den Hang: gemessen ⌀ 49 m Einschnitt an den
+       * Kehren gegen 20 m auf der übrigen Strecke. `downhillBias` versetzt die
+       * Schleife hangabwärts, in Vielfachen des Querstücks.
+       *
+       * Es hilft — und kostet genau das, wofür es da ist:
+       *
+       * | Versatz | Kehren | Erdbau ⌀ | Strecke über 50 m Einschnitt |
+       * |---|---|---|---|
+       * | 0     | 5     | 30,2 m | 740 m (20,2 %) |
+       * | **0,3** | **2** | **19,5 m** | **320 m (10,7 %)** |
+       * | 0,75  | 1     | 24,1 m | 508 m (17,8 %) |
+       *
+       * Auf einem 45-%-Hang liegen zwei Serpentinenschenkel zwangsläufig 50 bis
+       * 100 m auseinander im Gelände, aber nur 30 bis 60 m in der Fahrbahnhöhe —
+       * die Differenz *ist* der Einschnitt. Die Kehren sind der Erdbau, nicht
+       * ein Nebeneffekt davon.
+       *
+       * **0,3 steht hier, nicht 0.** Mit 0 legt der Pass rund 300 × 250 m Massiv
+       * um 50 bis 150 m tiefer — im Erdbau-Bild eine zusammenhängende Fläche,
+       * kein Hanganschnitt. Das ist in einem Spiel, das jemand ansieht, der
+       * größere Fehler als ein paar Kehren zu wenig.
+       *
+       * Vier Hebel wurden gegen diesen Zielkonflikt gemessen und alle vier
+       * verworfen, weil sie den Erdbau nur über den Verlust von Kehren senken:
+       * Gegensteigung als Kostenterm (12 → 0 Kehren), Korridorbreite,
+       * Mindestabstand zwischen Kehren, und dieser Versatz selbst. Der Grund ist
+       * Geometrie, kein Parameter — siehe PLAN.md, „Wie der Bergpass zu seinen
+       * Kehren kam".
+       */
+      downhillBias: 0.3,
       waypoints: [plan.passStart, plan.passStart],
       banking: 3,
-      // 220 m Korridor um die Luftlinie: der Pass muss seine Höhe im Tal
-      // gewinnen, nicht um den Berg herum. Ohne diese Vorgabe lief er als
-      // Spirale mit null Kehren.
-      corridor: 260,
+      // **900 m, nicht 260.** Der enge Korridor stammt aus der Zeit, als es
+      // keine baubaren Kehren gab: ohne Korridor lief der Pass als Spirale um
+      // den Berg, und die Antwort darauf war, ihn ins Tal zu zwingen. Mit
+      // `widenHairpins` gewinnt er die Höhe stattdessen in Serpentinen, und
+      // dafür braucht er Platz. Gemessen über 260 / 400 / 600 / 900 / 1200 /
+      // 1600 m: die Kehren steigen von 9 auf 17 und der Erdbau fällt von
+      // 33,1 auf 24,2 m; darüber wird beides wieder schlechter.
+      corridor: 700,
     },
     {
       id: 'dorf',
@@ -987,6 +1230,7 @@ async function main() {
   // stellt danach die Trassierung neu ein — nicht umgekehrt.
   const roads = [];
   let violations = 0;
+  let overburden = 0;
   let totalLength = 0;
 
   for (const definition of definitions) {
@@ -1022,19 +1266,86 @@ async function main() {
         ? [start ?? definition.waypoints[0], findSummit(terrain, definition.summit.region, summitCap)]
         : definition.waypoints;
 
-      route = traceRoute(grid, waypoints, {
-        settings,
-        closed: definition.closed,
-        headroom: definition.headroom ?? 0.8,
-        ...(definition.corridor ? { corridor: definition.corridor } : {}),
-      });
-      const connection = connectToNetwork(route.points, roads, definition.closed);
-      built = buildRoad(terrain, {
-        ...definition,
-        points: route.points,
-        pins: connection.pins,
-        junctions: connection.junctions,
-      });
+      // **Eigenkollision an der fertigen Mittellinie prüfen, nicht früher.**
+      //
+      // Zwei benachbarte Kehren laufen erst ineinander, nachdem Bögen,
+      // Kontrollpunkte und Spline-Abtastung durch sind — gemessen kreuzte der
+      // Pass sich bei km 3,00 und km 3,22 mit 1,1 m Achsabstand, während der
+      // Polygonzug davor noch 53 m Abstand hielt. Geprüft wird deshalb genau
+      // die Linie, die der Baker einschneidet und der Renderer vermascht.
+      // Trifft es zu, fällt die Aufweitung der Kehre **zwischen** beiden
+      // Fundstellen weg — nicht die dem Kreuz nächstgelegene: das Kreuz liegt
+      // an den Schenkeln, der Scheitel weit davon am Ende der Schleife.
+      const skipApexes = new Set();
+      const clearance = settings.width + 2;
+      for (let attempt = 0; ; attempt++) {
+        route = traceRoute(gridFor(definition.cellSize ?? null), waypoints, {
+          settings,
+          closed: definition.closed,
+          headroom: definition.headroom ?? 0.8,
+          hairpins: definition.hairpins === true,
+          downhillBias: definition.downhillBias ?? 0,
+          skipApexes,
+          ...(definition.corridor ? { corridor: definition.corridor } : {}),
+        });
+        const connection = connectToNetwork(route.points, roads, definition.closed);
+        built = buildRoad(terrain, {
+          ...definition,
+          points: route.points,
+          pins: connection.pins,
+          junctions: connection.junctions,
+        });
+
+        const line = built.data.centerline;
+        const path = [];
+        for (let i = 0; i < line.length; i += 3) path.push([line[i], line[i + 2]]);
+        const hit = route.apexes.length > 0 ? selfCollision(path, clearance) : null;
+        if (!hit || attempt >= route.apexes.length) break;
+
+        let culprit = -1;
+        let best = Infinity;
+        for (const apex of route.apexes) {
+          if (skipApexes.has(apex.index)) continue;
+          let closest = Infinity;
+          for (let k = hit.from; k <= hit.to; k++) {
+            const d = Math.hypot(apex.x - path[k][0], apex.z - path[k][1]);
+            if (d < closest) closest = d;
+          }
+          if (closest < best) {
+            best = closest;
+            culprit = apex.index;
+          }
+        }
+        if (culprit < 0) break;
+        skipApexes.add(culprit);
+      }
+      // **Den Schwanz abschneiden, der unter Grund läuft.**
+      //
+      // Auf den letzten Metern steigt das Massiv mit 17 %, die Fahrbahn darf
+      // 11 % — sie fällt zurück und wühlt sich als Einschnitt zu einem Ziel,
+      // das sie nicht erreichen kann. Gemessen endete der Pass 59 m unter
+      // Grund; dieser Schwanz allein trug den mittleren Erdbau von 24 auf 31 m.
+      //
+      // Zwei Antworten wurden gemessen und beide verworfen: das **Ziel
+      // abzusenken** nimmt der Trasse die Länge und damit die Kehren (9 → 1),
+      // und die **Kontrollpunkte zu kürzen und neu zu bauen** legt das
+      // Höhenprofil neu aus, wodurch auch weiter unten Kehren verschwinden
+      // (9 → 7). Richtig ist, Trasse und Profil unangetastet zu lassen und nur
+      // die fertige Linie hinten zu kappen — ein Bergpass hört an einem
+      // Aussichtspunkt auf, nicht in einem Loch.
+      if (definition.summit) trimSummitTail(terrain, built.data);
+
+      if (process.env.STAGES && route.apexes.length > 0) {
+        console.log(
+          c.dim(
+            `      [kehren] ${route.apexes.length - skipApexes.size} von ` +
+              `${route.apexes.length} Scheiteln aufgeweitet` +
+              (skipApexes.size > 0
+                ? `, ${skipApexes.size} wegen Eigenkollision zurückgenommen`
+                : ''),
+          ),
+        );
+      }
 
       const m = built.data.measured;
       if (!definition.summit || m.neededLength <= built.data.length) break;
@@ -1054,6 +1365,15 @@ async function main() {
     // hier der Grenzwert ohne Zuschlag.
     const gradeOk = data.measured.maxGradient <= settings.maxGradient * 1.001;
     if (!radiusOk || !gradeOk) violations++;
+
+    // Erdbau wird getrennt geführt und **nicht** in den Fehlercode gezogen.
+    // Radius und Steigung entscheiden, ob die Straße befahrbar ist; wer sie
+    // reißt, hat kein Ergebnis. Der Erdbau entscheidet, ob sie ins Gelände
+    // gehört — das ist eine Aussage über die Qualität der Trasse, und sie darf
+    // die Bake-Kette nicht anhalten, während genau daran gearbeitet wird.
+    // Laut ist sie trotzdem: die Zeile steht in Rot und wird unten gezählt.
+    const earthworkOk = data.measured.meanEarthwork <= settings.maxEarthwork;
+    if (!earthworkOk) overburden++;
 
     const mark = radiusOk && gradeOk ? c.green('✓') : c.red('✗');
     console.log(
@@ -1088,13 +1408,16 @@ async function main() {
         ),
       );
     }
+    const earthworkLine =
+      `      Erdbau ⌀ ${data.measured.meanEarthwork.toFixed(1)} m ` +
+      `(Soll ≤ ${settings.maxEarthwork} m) · ` +
+      `95 % unter ${data.measured.earthwork95.toFixed(1)} m · ` +
+      `tiefster Einschnitt ${data.measured.deepestCut} m bei km ` +
+      `${(data.measured.worstAt / 1000).toFixed(2)} · ` +
+      `Auftrag bis +${data.measured.highestFill} m`;
     console.log(
-      c.dim(
-        `      Erdbau ⌀ ${data.measured.meanEarthwork.toFixed(1)} m · ` +
-          `95 % unter ${data.measured.earthwork95.toFixed(1)} m · ` +
-          `tiefster Einschnitt ${data.measured.deepestCut} m bei km ` +
-          `${(data.measured.worstAt / 1000).toFixed(2)} · ` +
-          `Auftrag bis +${data.measured.highestFill} m` +
+      (earthworkOk ? c.dim : c.red)(
+        earthworkLine +
           (data.measured.neededLength > data.length
             ? c.yellow(
                 `  ⚠ ${data.measured.climb} Höhenmeter brauchen bei ` +
@@ -1128,6 +1451,19 @@ async function main() {
         `${(text.length / 1024).toFixed(0)} KB · sha256 ${sha256(text).slice(0, 12)}\n`,
     ),
   );
+
+  if (overburden > 0) {
+    console.warn(
+      c.red(
+        `  ${overburden} Strecke(n) liegen im Mittel weiter neben dem Gelände, ` +
+          'als ihr Typ erlaubt.\n' +
+          '  Radius und Steigung sagen darüber nichts: eine Trasse kann beide ' +
+          'halten und trotzdem\n  als Graben durch den Hang laufen. Die Ursache ' +
+          'liegt in der Trassierung, nicht\n  im Höhenprofil — siehe PLAN.md, ' +
+          '„Warum der Bergpass keine Kehren hat".\n',
+      ),
+    );
+  }
 
   if (violations > 0) {
     console.warn(

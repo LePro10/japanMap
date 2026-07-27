@@ -78,6 +78,20 @@ const COST = {
 /** Unter dieser Höhe gilt eine Zelle als nass. */
 const DRY_HEIGHT = 3;
 
+/**
+ * Sicherheitsabstand zur Weltkante, in Metern.
+ *
+ * Die Suche selbst bleibt im Gitter — sie *kann* die Welt nicht verlassen. Was
+ * danach kommt, kann es sehr wohl: eine aufgeweitete Kehre versetzt die Linie um
+ * `riser/2` (26 m), die Verrundung beult zusätzlich aus, und das Straßen-Mesh
+ * legt noch die halbe Fahrbahn plus Bankett daneben. Gemessen lagen dadurch
+ * 124 m des Bergpasses jenseits der Kante, bis zu 40 m weit — Fahrbahn über dem
+ * Nichts, und das sieht man sofort.
+ *
+ * 80 m decken Querstück, Bogen und Fahrbahnrand mit Reserve ab.
+ */
+const EDGE_MARGIN = 80;
+
 // ── Suchgitter ──────────────────────────────────────────────────────────────
 
 /**
@@ -265,6 +279,7 @@ export function routePath(grid, from, to, options = {}) {
   const start = grid.index(sx, sz);
   const goal = grid.index(tx, tz);
 
+
   const gScore = new Float64Array(res * res).fill(Infinity);
   const cameFrom = new Int32Array(res * res).fill(-1);
   const closed = new Uint8Array(res * res);
@@ -299,6 +314,16 @@ export function routePath(grid, from, to, options = {}) {
 
       const next = grid.index(jx, jz);
       if (closed[next]) continue;
+
+      // Randstreifen sperren, nicht bestrafen: eine Straße, die 40 m neben der
+      // Welt endet, ist kein teurer Kompromiss, sondern kaputt.
+      const [ex, ez] = grid.toWorld(jx, jz);
+      if (
+        Math.abs(ex) > grid.half - EDGE_MARGIN ||
+        Math.abs(ez) > grid.half - EDGE_MARGIN
+      ) {
+        continue;
+      }
 
       const run = Math.hypot(dx, dz) * cellSize;
       const rise = height[next] - h0;
@@ -376,25 +401,70 @@ export function routePath(grid, from, to, options = {}) {
  * Der Sägezahn ist mittelwertfrei, echte Richtungswechsel sind es nicht —
  * deshalb genügt ein Mittelwertfilter, um das eine zu entfernen und das andere
  * zu behalten.
+ *
+ * **Für eine Kehre gilt das nicht.** Der Satz oben stimmt für Kurven, aber eine
+ * Serpentinenkehre ist keine Kurve, sondern eine Umkehr: sie ist 40 bis 60 m
+ * breit, und ein Fenster von 3 mittelt bei 33 m Punktabstand über 230 m Weg.
+ * Bis zum 2026-07-26 hat diese Stufe deshalb 21 von 22 Kehren am Bergpass
+ * plattgezogen und 1335 m Strecke mitgenommen — nachdem `removeSpurs` schon
+ * eine Runde gemacht hatte.
+ *
+ * `preserveAngle` zieht die Grenze: an Punkten, deren Richtungswechsel darüber
+ * liegt, bricht das Fenster ab. Der Scheitel bleibt unangetastet, die beiden
+ * Schenkel werden getrennt voneinander geglättet. Der Sägezahn liegt bei 18,4°
+ * (zwei benachbarte Gitterrichtungen), eine Kehre über 120° — dazwischen ist
+ * reichlich Platz für die Schwelle.
  */
-export function smoothPath(points, window, closed = false) {
+export function smoothPath(points, window, closed = false, options = {}) {
+  const { preserveAngle = 0 } = options;
   const n = points.length;
   if (n < 3 || window < 1) return points.map((p) => [p[0], p[1]]);
 
+  // Bruchstellen: Punkte, an denen der Weg scharf umkehrt. Über sie hinweg wird
+  // nicht gemittelt, und sie selbst bleiben liegen, wo die Suche sie hingelegt hat.
+  const breaks = new Uint8Array(n);
+  if (preserveAngle > 0) {
+    const limit = Math.cos((preserveAngle * Math.PI) / 180);
+    for (let i = 0; i < n; i++) {
+      const before = closed ? points[(i - 1 + n) % n] : points[i - 1];
+      const after = closed ? points[(i + 1) % n] : points[i + 1];
+      if (!before || !after) continue;
+      const ax = points[i][0] - before[0];
+      const az = points[i][1] - before[1];
+      const bx = after[0] - points[i][0];
+      const bz = after[1] - points[i][1];
+      const la = Math.hypot(ax, az);
+      const lb = Math.hypot(bx, bz);
+      if (la < 1e-6 || lb < 1e-6) continue;
+      if ((ax * bx + az * bz) / (la * lb) < limit) breaks[i] = 1;
+    }
+  }
+
   const out = new Array(n);
   for (let i = 0; i < n; i++) {
-    if (!closed && (i < window || i >= n - window)) {
+    if (breaks[i] || (!closed && (i < window || i >= n - window))) {
       out[i] = [points[i][0], points[i][1]];
       continue;
     }
-    let sx = 0;
-    let sz = 0;
-    for (let d = -window; d <= window; d++) {
-      const p = points[((i + d) % n + n) % n];
-      sx += p[0];
-      sz += p[1];
+    let sx = points[i][0];
+    let sz = points[i][1];
+    let count = 1;
+    // Symmetrisch nach außen laufen und an der ersten Bruchstelle stehenbleiben.
+    // Asymmetrisch zu mitteln würde den Punkt zur offenen Seite verschieben.
+    let reach = 0;
+    for (let d = 1; d <= window; d++) {
+      const before = ((i - d) % n + n) % n;
+      const after = (i + d) % n;
+      if (breaks[before] || breaks[after]) break;
+      reach = d;
     }
-    const count = 2 * window + 1;
+    for (let d = 1; d <= reach; d++) {
+      const before = points[((i - d) % n + n) % n];
+      const after = points[(i + d) % n];
+      sx += before[0] + after[0];
+      sz += before[1] + after[1];
+      count += 2;
+    }
     out[i] = [sx / count, sz / count];
   }
   return out;
@@ -417,8 +487,31 @@ export function smoothPath(points, window, closed = false) {
  * Verfahren: kommt der Weg einem früheren Punkt wieder näher als `radius`, wird
  * alles dazwischen entfernt. Das fasst Stichwege und echte Schleifen in einem
  * Schritt.
+ *
+ * **Eine Kehre sieht in XZ genauso aus — und darf nicht wegfallen.** Zwei
+ * Serpentinenschenkel liegen eine Zellbreite nebeneinander, der Rückweg kommt
+ * dem Hinweg also näher als `radius`. Bis zum 2026-07-26 hat diese Stufe
+ * deshalb 20 der 30 Kehren gelöscht, die A* am Bergpass fand, und mit ihnen
+ * 1101 m Strecke — die Länge, über die der Pass seinen Höhengewinn verteilen
+ * wollte. Zurück blieb eine Trasse, die dieselben Höhenmeter über die halbe
+ * Länge nehmen musste und dadurch als 50-m-Graben im Hang lag.
+ *
+ * Unterschieden wird am **Höhengewinn**: ein Stichweg kommt dorthin zurück, wo
+ * er losgefahren ist, eine Serpentine ist inzwischen gestiegen. Wer zwischen
+ * zwei nahen Punkten mindestens `minClimbRate` mal der zurückgelegten Strecke
+ * an Höhe gewonnen hat, hat gearbeitet und wird nicht gelöscht. Rein
+ * geometrisch ist die Unterscheidung nicht zu treffen — deshalb braucht diese
+ * Stufe `heightAt`.
+ *
+ * @param {object} [options]
+ * @param {number} [options.maxSpur=800] Streckenlänge, über die rückwärts gesucht wird.
+ * @param {(x: number, z: number) => number} [options.heightAt] Geländehöhe; ohne
+ *   sie verhält sich die Stufe wie vorher und löscht jede Schleife.
+ * @param {number} [options.minClimbRate=0] Höhengewinn je Meter Strecke, ab dem
+ *   eine Schleife als Kehre gilt. Sinnvoll: ein Viertel der Höchstneigung.
  */
-export function removeSpurs(points, radius, closed, maxSpur = 800) {
+export function removeSpurs(points, radius, closed, options = {}) {
+  const { maxSpur = 800, heightAt = null, minClimbRate = 0 } = options;
   const out = [];
   const travelled = [];
   const radiusSquared = radius * radius;
@@ -443,6 +536,13 @@ export function removeSpurs(points, radius, closed, maxSpur = 800) {
       const dx = p[0] - q[0];
       const dz = p[1] - q[1];
       if (dx * dx + dz * dz < radiusSquared) {
+        // Kehre oder Stichweg? Wer auf dem Weg hierher gestiegen ist, hat
+        // gearbeitet — weitersuchen, ob weiter zurück ein echter Stichweg liegt.
+        if (heightAt !== null && minClimbRate > 0) {
+          const travel = total - travelled[k];
+          const climb = Math.abs(heightAt(p[0], p[1]) - heightAt(q[0], q[1]));
+          if (climb >= minClimbRate * travel) continue;
+        }
         hit = k;
         break;
       }
@@ -474,15 +574,240 @@ export function removeSpurs(points, radius, closed, maxSpur = 800) {
   return out;
 }
 
-/** Douglas–Peucker in XZ. Macht aus der Gittertreppe saubere Geraden. */
-export function simplify(points, tolerance) {
+/**
+ * Kehren aufweiten, damit sie gebaut werden können.
+ *
+ * **Das Problem, an dem alles andere hing.** Die Suche liefert eine Umkehr als
+ * *einen* Scheitel: zwei Schenkel, die sich unter 10 bis 20° treffen. Ein Bogen,
+ * der beide tangential verbindet, braucht `R·tan(φ/2)` — bei 170° und R = 24 m
+ * sind das 274 m auf jedem Schenkel. Der äußere Tangentialkreis hilft nicht: er
+ * berührt zwar beide Geraden, aber dort ist die Fahrtrichtung entgegengesetzt.
+ * Für zwei Strahlen aus einem gemeinsamen Scheitel gibt es keinen kleinen Bogen,
+ * und deshalb hat `filletPath` die Kehren reihenweise entfernt — gemessene
+ * Radien 2,4 · 3,1 · 4,7 · 4,8 · 6,3 · 7,9 · 14,6 m gegen eine Untergrenze von
+ * 19,5 m.
+ *
+ * Eine echte Serpentinenkehre hat diesen Scheitel gar nicht. Sie hat zwei
+ * **seitlich versetzte** Schenkel und dazwischen ein Querstück, das die beiden
+ * Bogentangenten trägt — auf der Karte die bekannte Haarnadel. Genau das setzt
+ * diese Stufe ein: der Scheitel wird durch zwei Punkte im Abstand `riser`
+ * senkrecht zur Außenwinkelhalbierenden ersetzt. Aus einer 170°-Ecke, die
+ * niemand bauen kann, werden zwei 85°-Ecken, die je `R·tan(42,5°)` ≈ 0,92 R
+ * brauchen.
+ *
+ * Der Preis ist ehrlich: die Straße rückt am Scheitel bis zu `riser/2` seitlich
+ * von der gesuchten Trasse ab. Eine Kehre braucht nun einmal Platz.
+ *
+ * @param {number} [options.minAngle=120] Richtungswechsel in Grad, ab dem
+ *   aufgeweitet wird.
+ * @param {number} [options.riser=50] Länge des Querstücks in Metern. Sinnvoll
+ *   ist gut das Doppelte des Sollradius, sonst stauchen sich die beiden Bögen
+ *   gegenseitig unter die Untergrenze.
+ */
+/**
+ * Scheitel finden, an denen die Trasse umkehrt.
+ *
+ * Getrennt von `widenHairpins`, weil die Entscheidung *welche* Kehre gebaut wird
+ * erst nach dem Verrunden fällt: erst dort zeigt sich, ob zwei benachbarte
+ * Kehren ineinanderlaufen. Siehe `traceRoute`.
+ */
+export function hairpinApexes(points, minAngle = 120, heightAt = null) {
+  const limit = Math.cos((minAngle * Math.PI) / 180);
+  const apexes = [];
+  for (let i = 1; i < points.length - 1; i++) {
+    const a = points[i - 1];
+    const q = points[i];
+    const b = points[i + 1];
+    const ux = q[0] - a[0];
+    const uz = q[1] - a[1];
+    const vx = b[0] - q[0];
+    const vz = b[1] - q[1];
+    const lu = Math.hypot(ux, uz);
+    const lv = Math.hypot(vx, vz);
+    if (lu < 1e-6 || lv < 1e-6) continue;
+
+    const unx = ux / lu;
+    const unz = uz / lu;
+    const vnx = vx / lv;
+    const vnz = vz / lv;
+    if (unx * vnx + unz * vnz >= limit) continue;
+
+    let ex = unx - vnx;
+    let ez = unz - vnz;
+    const le = Math.hypot(ex, ez);
+    if (le < 1e-6) continue;
+    ex /= le;
+    ez /= le;
+
+    // Senkrechte zur Außenwinkelhalbierenden, orientiert zur abgehenden Seite —
+    // sonst läge das Querstück verkehrt herum und die Straße kreuzte sich selbst.
+    let nx = -ez;
+    let nz = ex;
+    if (nx * vnx + nz * vnz < 0) {
+      nx = -nx;
+      nz = -nz;
+    }
+    // **Welche Seite liegt bergab?** Eine Kehre, die symmetrisch um den Scheitel
+    // sitzt, schiebt ihre halbe Schleife in den Hang: gemessen kostete das an
+    // den Kehren ⌀ 49 m Einschnitt gegen 20 m auf der übrigen Strecke. Eine
+    // echte Serpentinenkehre beult nach außen aus, ins Freie. Dafür muss die
+    // Stufe wissen, wo „außen" ist — rein geometrisch ist das nicht zu sehen.
+    let downhill = 0;
+    if (heightAt !== null) {
+      const probe = 30;
+      const a = heightAt(q[0] + nx * probe, q[1] + nz * probe);
+      const b = heightAt(q[0] - nx * probe, q[1] - nz * probe);
+      downhill = a < b ? 1 : -1;
+    }
+    apexes.push({ index: i, nx, nz, x: q[0], z: q[1], downhill });
+  }
+  return apexes;
+}
+
+export function widenHairpins(points, options = {}) {
+  const { apexes = [], riser = 50, skip = new Set(), downhillBias = 0 } = options;
+  const half = riser / 2;
+  const byIndex = new Map(apexes.map((a) => [a.index, a]));
+
+  const out = [];
+  for (let i = 0; i < points.length; i++) {
+    const apex = byIndex.get(i);
+    if (!apex || skip.has(i)) {
+      out.push([points[i][0], points[i][1]]);
+      continue;
+    }
+    // Die Schleife hangabwärts versetzen, statt sie um den Scheitel zu zentrieren.
+    const shift = apex.downhill * downhillBias * riser;
+    const cx = points[i][0] + apex.nx * shift;
+    const cz = points[i][1] + apex.nz * shift;
+    out.push([cx - apex.nx * half, cz - apex.nz * half]);
+    out.push([cx + apex.nx * half, cz + apex.nz * half]);
+  }
+  return out;
+}
+
+/**
+ * Erste Stelle, an der die fertige Trasse sich selbst zu nahe kommt.
+ *
+ * **Gemessen wird die verrundete Linie, nicht der Polygonzug davor.** Eine
+ * einzelne aufgeweitete Kehre kollidiert nie mit sich selbst — ihre Schenkel
+ * laufen vom Scheitel weg auseinander. Zwei *benachbarte* Kehren tun es sehr
+ * wohl, und zwar erst, nachdem die Bögen eingesetzt sind: vor dem Verrunden
+ * hielten die Punkte 53 m Abstand, danach kreuzte der Pass sich bei km 3,00 und
+ * km 3,22 mit 0,9 m Achsabstand. Bei 6,5 m Fahrbahn liegen die Beläge dann
+ * übereinander, ohne dass Radius, Steigung oder Erdbau anschlagen.
+ *
+ * `minGap` ist eine **Bogenlänge**, kein Punktabstand: die verrundete Linie ist
+ * in den Bögen dicht abgetastet, ein Indexabstand sagt dort nichts.
+ *
+ * @returns `{ from, to, path }` mit den beiden Indizes der Fundstelle, oder
+ *   `null`. Gemeldet wird die Spanne, nicht ein Punkt: der Verursacher ist die
+ *   Kehre **zwischen** beiden Stellen, nicht die dem Kreuz nächstgelegene.
+ */
+export function selfCollision(path, clearance, minGap = 120) {
+  const travelled = [0];
+  for (let i = 1; i < path.length; i++) {
+    travelled.push(travelled[i - 1] + Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]));
+  }
+
+  for (let i = 0; i + 1 < path.length; i++) {
+    for (let j = i + 1; j + 1 < path.length; j++) {
+      if (travelled[j] - travelled[i] < minGap) continue;
+      const d = segmentDistance(path[i], path[i + 1], path[j], path[j + 1]);
+      if (d >= clearance) continue;
+      if (process.env.STAGES) {
+        console.log(
+          `      [kollision] ${d.toFixed(2)} m < ${clearance.toFixed(1)} m · Bogenlänge ` +
+            `${travelled[i].toFixed(0)} m gegen ${travelled[j].toFixed(0)} m`,
+        );
+      }
+      return { from: i, to: j };
+    }
+  }
+  return null;
+}
+
+/** Kleinster Abstand zweier Strecken in XZ. */
+function segmentDistance(p, q, r, s) {
+  const pointToSegment = (pt, a, b) => {
+    const dx = b[0] - a[0];
+    const dz = b[1] - a[1];
+    const lengthSquared = dx * dx + dz * dz;
+    let t = lengthSquared > 1e-12 ? ((pt[0] - a[0]) * dx + (pt[1] - a[1]) * dz) / lengthSquared : 0;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return Math.hypot(pt[0] - (a[0] + dx * t), pt[1] - (a[1] + dz * t));
+  };
+
+  // Schneiden sie sich, ist der Abstand null — der Punkt-zu-Strecke-Test allein
+  // sieht das bei einem echten Kreuz nicht zuverlässig.
+  const d1x = q[0] - p[0];
+  const d1z = q[1] - p[1];
+  const d2x = s[0] - r[0];
+  const d2z = s[1] - r[1];
+  const den = d1x * d2z - d1z * d2x;
+  if (Math.abs(den) > 1e-12) {
+    const t = ((r[0] - p[0]) * d2z - (r[1] - p[1]) * d2x) / den;
+    const u = ((r[0] - p[0]) * d1z - (r[1] - p[1]) * d1x) / den;
+    if (t > 0 && t < 1 && u > 0 && u < 1) return 0;
+  }
+
+  return Math.min(
+    pointToSegment(p, r, s),
+    pointToSegment(q, r, s),
+    pointToSegment(r, p, q),
+    pointToSegment(s, p, q),
+  );
+}
+
+/**
+ * Douglas–Peucker in XZ. Macht aus der Gittertreppe saubere Geraden.
+ *
+ * **`protectAngle` rettet die Kehre.** Im Suchgitter ist eine Serpentinenkehre
+ * kein 170°-Scheitel, sondern ein **Z**: hin auf einer Zellreihe, ein kurzes
+ * Stück quer, zurück auf der nächsten. Zwei Ecken von je rund 90°, dazwischen
+ * das Verbindungsstück — und genau dieses Stück weicht bei 20 m Zellgröße nur
+ * etwa 10 m von der Sehne ab. Bei einer Toleranz von 12 m fällt es weg, die
+ * beiden 90°-Ecken verschmelzen zu *einem* 170°-Scheitel, und der ist mit
+ * `R·tan(85°)` = 274 m Tangente nicht mehr baubar.
+ *
+ * Die Vereinfachung sieht davon nichts: 10 m Abweichung sind 10 m Abweichung,
+ * ob sie von einer Gittertreppe stammen oder von der einzigen Stelle, an der die
+ * Straße umkehrt. Der Winkel unterscheidet beides — an geschützten Ecken wird
+ * die Strecke geteilt und jeder Teil für sich vereinfacht.
+ *
+ * @param {number} [protectAngle=0] Richtungswechsel in Grad, ab dem eine Ecke
+ *   erhalten bleibt. 0 schaltet den Schutz ab.
+ */
+export function simplify(points, tolerance, protectAngle = 0) {
   if (points.length < 3) return points.slice();
 
   const keep = new Uint8Array(points.length);
   keep[0] = 1;
   keep[points.length - 1] = 1;
 
-  const stack = [[0, points.length - 1]];
+  // Geschützte Ecken sind Ankerpunkte: die Vereinfachung läuft zwischen ihnen,
+  // nie über sie hinweg.
+  const anchors = [0];
+  if (protectAngle > 0) {
+    const limit = Math.cos((protectAngle * Math.PI) / 180);
+    for (let i = 1; i < points.length - 1; i++) {
+      const ax = points[i][0] - points[i - 1][0];
+      const az = points[i][1] - points[i - 1][1];
+      const bx = points[i + 1][0] - points[i][0];
+      const bz = points[i + 1][1] - points[i][1];
+      const la = Math.hypot(ax, az);
+      const lb = Math.hypot(bx, bz);
+      if (la < 1e-6 || lb < 1e-6) continue;
+      if ((ax * bx + az * bz) / (la * lb) < limit) {
+        keep[i] = 1;
+        anchors.push(i);
+      }
+    }
+  }
+  anchors.push(points.length - 1);
+
+  const stack = [];
+  for (let k = 0; k < anchors.length - 1; k++) stack.push([anchors[k], anchors[k + 1]]);
   while (stack.length > 0) {
     const [first, last] = stack.pop();
     if (last - first < 2) continue;
@@ -674,6 +999,13 @@ export function filletPath(points, options = {}) {
     }
     if (smallestRadius >= floor || collapsed < 0) break;
 
+    if (process.env.STAGES) {
+      console.log(
+        `      [fillet] Ecke ${collapsed}/${n} entfernt: Radius ` +
+          `${smallestRadius.toFixed(1)} m < Untergrenze ${floor.toFixed(1)} m ` +
+          `· Ablenkung ${((deflection[collapsed] * 180) / Math.PI).toFixed(0)}°`,
+      );
+    }
     work.splice(collapsed, 1);
   }
 
@@ -1026,4 +1358,4 @@ export function toControlPoints(path, options = {}) {
   return cleaned;
 }
 
-export { CELL_SIZE, DRY_HEIGHT };
+export { CELL_SIZE, DRY_HEIGHT, EDGE_MARGIN };
