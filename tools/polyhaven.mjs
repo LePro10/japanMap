@@ -19,9 +19,11 @@
 
 import { mkdir, writeFile, readFile, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const API = 'https://api.polyhaven.com';
-const ROOT = new URL('..', import.meta.url).pathname;
+// `fileURLToPath`, nicht `.pathname` — siehe tools/bake-terrain.mjs.
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const OUT_DIRS = { hdris: 'assets/hdri', textures: 'assets/textures', models: 'assets/models' };
 
 const c = {

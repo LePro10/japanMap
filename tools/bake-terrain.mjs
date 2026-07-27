@@ -22,6 +22,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createNoise2D } from 'simplex-noise';
 import { PNG } from 'pngjs';
 
@@ -724,7 +725,13 @@ async function main() {
   const res = Number(opts.res ?? 2048);
   const droplets = Number(opts.erosion ?? 2_000_000);
   const zoneRes = Number(opts.zones ?? 1024);
-  const outDir = join(new URL('..', import.meta.url).pathname, opts.out ?? 'assets/generated/terrain');
+  // `fileURLToPath`, nicht `.pathname`: unter Windows liefert letzteres
+  // `/P:/projects/japanMap/` — mit führendem Schrägstrich vor dem Laufwerk.
+  // `join` hält das für einen relativen Pfad und hängt es an das aktuelle
+  // Verzeichnis; heraus kommt `P:\P:\projects\…`, und mkdir bricht mit ENOENT
+  // ab. Auf POSIX sind beide Wege identisch.
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const outDir = join(root, opts.out ?? 'assets/generated/terrain');
 
   if (!Number.isInteger(seed)) throw new Error('--seed muss eine ganze Zahl sein.');
   if (res < 64) throw new Error('--res ist zu klein.');

@@ -41,9 +41,16 @@
 import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+// `fileURLToPath`, nicht `.pathname`: unter Windows liefert letzteres
+// `/P:/projects/japanMap/` — mit führendem Schrägstrich vor dem Laufwerk. `join`
+// hält das für einen relativen Pfad und hängt es an das aktuelle Verzeichnis;
+// heraus kommt `P:\P:\projects\…`, und der Baker bricht mit ENOENT ab. Auf
+// POSIX sind beide Wege identisch, deshalb fiel es bis zum ersten Lauf unter
+// Windows nicht auf.
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 /** Siehe tools/bake-terrain.mjs — pngjs liest den Farbtyp nur aus dem 2. Argument. */
 function writePng(data, width, height, colorType) {
