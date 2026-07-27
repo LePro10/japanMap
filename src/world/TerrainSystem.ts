@@ -1,23 +1,21 @@
 import {
-  Box3,
   ClampToEdgeWrapping,
   DataTexture,
   Mesh,
   MeshBasicMaterial,
   NearestFilter,
-  PlaneGeometry,
   RedIntegerFormat,
-  Sphere,
   SphereGeometry,
   UnsignedShortType,
   Vector3,
   type PerspectiveCamera,
 } from 'three';
 
-import { TERRAIN, TERRAIN_LAYERS } from '@/config/terrain.config';
-import { WORLD } from '@/config/world.config';
+import { LOD } from '@/config/lod.config';
+import { TERRAIN_LAYERS } from '@/config/terrain.config';
 import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
+import { ChunkManager } from './ChunkManager';
 import { createLayerArray } from './materials/createLayerArray';
 import {
   createTerrainDepthMaterial,
@@ -35,19 +33,24 @@ const DEBUG_VIEWS = {
   Neigung: 3,
   Sonnenverschattung: 4,
   Himmelssicht: 5,
+  'LOD-Stufen': 6,
+  'Morph-Faktor': 7,
 } as const;
 
 /**
- * Das Terrain — PLAN.md P1 / 1.3.
+ * Das Terrain — PLAN.md P1 / 1.3, LOD ab P4 / 4.1.
  *
- * In P1 bewusst **ohne LOD**: ein einzelnes Gitter über die ganze Welt. Das ist
- * auf der Zielhardware knapp und genau deshalb richtig — es liefert die
- * Vergleichszahl, an der sich der Quadtree in P4 messen lassen muss.
+ * P1 hatte bewusst **kein** LOD: ein einzelnes 768²-Gitter über die ganze Welt,
+ * 4,0 m pro Vertex, 1.176.578 Dreiecke je Durchlauf. Das war die Vergleichszahl,
+ * an der sich der Quadtree messen lassen musste. Seit P4 wählt der ChunkManager
+ * die Knoten aus; das System hier hält nur noch Material, Texturen und die
+ * Debug-Anbindung.
  */
 export class TerrainSystem implements System {
   readonly name = 'TerrainSystem';
 
   #sampler: TerrainSampler | null = null;
+  #chunks: ChunkManager | null = null;
   #mesh: Mesh | null = null;
   #marker: Mesh | null = null;
   #uniforms: TerrainUniforms | null = null;
@@ -61,6 +64,8 @@ export class TerrainSystem implements System {
   readonly #readouts = {
     hoeheUeberGrund: '—',
     fadenkreuz: '—',
+    knoten: '—',
+    stufen: '—',
   };
 
   /**
@@ -133,8 +138,19 @@ export class TerrainSystem implements System {
     const material = new TerrainMaterial(uniforms, this.atmosphere);
     this.#material = material;
 
-    const mesh = new Mesh(this.#createGeometry(), material);
+    const chunks = new ChunkManager(sampler);
+    this.#chunks = chunks;
+    // Erste Auswahl vor dem ersten Frame: sonst rendert das Terrain einen Frame
+    // lang mit `instanceCount = 0` — beim Start unsichtbar, beim Hot-Reload ein
+    // schwarzer Blitz.
+    chunks.select(context.camera);
+    uniforms.uLodCamera.value.copy(context.camera.position);
+
+    const mesh = new Mesh(chunks.geometry, material);
     mesh.name = 'Terrain';
+    // Gecullt wird pro Knoten auf der CPU. Three dürfte das Mesh sonst als
+    // Ganzes verwerfen, sobald seine (fehlende) Hülle aus dem Kegel fällt.
+    mesh.frustumCulled = false;
     // Die Flags bleiben gesetzt, obwohl die Verschattung seit P2 gebacken ist
     // (shade.png). Sie kosten nichts: die Sonne hat `castShadow = false`, damit
     // rendert three gar keine Schattenkarte und übersetzt das Material ohne die
@@ -183,36 +199,19 @@ export class TerrainSystem implements System {
     return texture;
   }
 
-  #createGeometry(): PlaneGeometry {
-    const segments = TERRAIN.gridVertices - 1;
-    const geometry = new PlaneGeometry(WORLD.size, WORLD.size, segments, segments);
-    // Rotation in die Geometrie backen: danach sind Objekt- und Weltraum
-    // identisch, und `transformed.xz` im Vertex-Shader sind direkt
-    // Weltkoordinaten. Eine Rotation am Mesh würde diese Gleichheit brechen.
-    geometry.rotateX(-Math.PI / 2);
-
-    // Die Hülle muss von Hand gesetzt werden. Die Geometrie ist flach; die
-    // Höhe entsteht erst im Vertex-Shader, davon weiß three nichts. Mit der
-    // automatisch berechneten Hülle würde das Terrain aus manchen
-    // Kamerawinkeln fälschlich weggecullt — und zwar erst dann, wenn man es am
-    // wenigsten erwartet: beim Blick von oben auf die Berge.
-    geometry.boundingBox = new Box3(
-      new Vector3(-WORLD.half, WORLD.minHeight, -WORLD.half),
-      new Vector3(WORLD.half, WORLD.maxHeight, WORLD.half),
-    );
-    const midHeight = (WORLD.minHeight + WORLD.maxHeight) / 2;
-    const halfHeight = (WORLD.maxHeight - WORLD.minHeight) / 2;
-    geometry.boundingSphere = new Sphere(
-      new Vector3(0, midHeight, 0),
-      Math.sqrt(2 * WORLD.half * WORLD.half + halfHeight * halfHeight),
-    );
-    return geometry;
-  }
-
   update(): void {
     const sampler = this.#sampler;
     const camera = this.#camera;
     if (!sampler || !camera) return;
+
+    // Reihenfolge: erst die Auswahl, dann die Uniform. Beide beschreiben
+    // denselben Kamerastand, und liefe die Uniform der Auswahl einen Frame
+    // hinterher, morphte das Gitter gegen eine Position, die die Auswahl nicht
+    // mehr benutzt — sichtbar als kurzes Zucken an den Stufengrenzen.
+    if (this.#chunks && this.#uniforms) {
+      this.#chunks.select(camera);
+      if (!this.#chunks.frozen) this.#uniforms.uLodCamera.value.copy(camera.position);
+    }
 
     const ground = sampler.getHeightAt(camera.position.x, camera.position.z);
 
@@ -240,6 +239,14 @@ export class TerrainSystem implements System {
     this.#readouts.fadenkreuz = hit
       ? `${this.#hit.x.toFixed(0)} / ${this.#hit.y.toFixed(0)} / ${this.#hit.z.toFixed(0)}`
       : 'kein Treffer';
+
+    const stats = this.#chunks?.stats;
+    if (stats) {
+      this.#readouts.knoten =
+        `${stats.nodes} · ${stats.culled} gecullt · ${stats.selectMs.toFixed(2)} ms` +
+        (stats.overflow > 0 ? ` · ${stats.overflow} FEHLEN` : '');
+      this.#readouts.stufen = stats.perLevel.join(' / ');
+    }
   }
 
   #registerDebug(context: EngineContext): void {
@@ -259,6 +266,23 @@ export class TerrainSystem implements System {
       label: 'Fadenkreuz X/Y/Z',
       interval: 200,
     });
+    folder.addBinding(this.#readouts, 'knoten', {
+      readonly: true,
+      label: 'Quadtree-Knoten',
+      interval: 200,
+    });
+    folder.addBinding(this.#readouts, 'stufen', {
+      readonly: true,
+      label: `Knoten je Stufe (0…${LOD.maxDepth})`,
+      interval: 200,
+    });
+
+    // Auswahl einfrieren und dann weiterfliegen: das ist die einzige Art, die
+    // Knotengrenzen von außen zu sehen. Ohne sie sitzt man immer im Zentrum der
+    // feinsten Stufe und bekommt die Übergänge nie zu Gesicht — dieselbe Falle,
+    // aus der die „FreezeCulling-View" in SPEC §5 entstanden ist.
+    const chunks = this.#chunks;
+    if (chunks) folder.addBinding(chunks, 'frozen', { label: 'LOD einfrieren' });
 
     folder.addBinding(uniforms.uHeightScale, 'value', {
       label: 'Höhen-Skalierung',
@@ -314,10 +338,13 @@ export class TerrainSystem implements System {
 
     if (this.#mesh) {
       scene?.remove(this.#mesh);
-      this.#mesh.geometry.dispose();
       this.#mesh.customDepthMaterial?.dispose();
       this.#mesh = null;
     }
+    // Die Geometrie gehört dem ChunkManager, nicht dem Mesh — deshalb wird sie
+    // dort freigegeben und nicht über `mesh.geometry.dispose()`.
+    this.#chunks?.dispose();
+    this.#chunks = null;
     if (this.#marker) {
       scene?.remove(this.#marker);
       this.#marker.geometry.dispose();
