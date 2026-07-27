@@ -15,8 +15,10 @@
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+// `fileURLToPath`, nicht `.pathname` — siehe tools/bake-terrain.mjs.
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 const c = {
   dim: (s) => `\x1b[2m${s}\x1b[0m`,

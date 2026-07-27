@@ -20,6 +20,16 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 5173,
     strictPort: true,
+    watch: {
+      // Auf einem SMB-Mount (siehe CLAUDE.md, „Umgebung") liefert der native
+      // Watcher `UNKNOWN: unknown error, watch` und reißt den Dev-Server beim
+      // ersten Dateiereignis mit — der Server startet, stirbt aber, sobald
+      // irgendetwas im Baum angefasst wird. Polling ist der einzige Modus, den
+      // der Mount trägt; auf lokaler Platte kostet es nichts, weil chokidar
+      // node_modules ohnehin auslässt.
+      usePolling: true,
+      interval: 500,
+    },
   },
 
   build: {

@@ -23,6 +23,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   maxGradient,
@@ -42,7 +43,10 @@ import {
   widenHairpins,
 } from './route-planner.mjs';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+// `fileURLToPath`, nicht `.pathname` — siehe tools/bake-terrain.mjs: unter
+// Windows trägt `.pathname` einen führenden Schrägstrich vor dem Laufwerk, und
+// `join` macht daraus `P:\P:\projects\…`.
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 // ── Straßentypen (Spiegel von src/config/roads.config.ts) ────────────────────
 //
