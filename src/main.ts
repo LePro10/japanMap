@@ -105,6 +105,46 @@ function installFrameProbe(target: Engine): void {
         anteilNichtSchwarz: nonBlack / count,
       };
     },
+
+    /**
+     * Denselben Frame als PNG in `.cache/shots/` legen.
+     *
+     * `probe()` beantwortet „wurde überhaupt etwas gezeichnet"; für „sieht es
+     * richtig aus" braucht es ein Bild. Die Kette ist bewusst kurz gehalten:
+     * readPixels → Canvas → toDataURL → POST an den Dev-Server. Ein
+     * Bildschirmfoto über das Fenster scheidet aus, weil der Browser im
+     * Hintergrund gar keine Frames mehr komponiert.
+     *
+     * `readPixels` liefert die unterste Zeile zuerst — deshalb wird beim
+     * Zeichnen auf den Canvas gespiegelt. Ohne das steht das Gelände auf dem
+     * Kopf, und zwar plausibel genug, um es zu übersehen.
+     */
+    shot: async (name = 'shot') => {
+      target.loop.tick();
+      const gl = target.renderer.getContext();
+      const width = gl.drawingBufferWidth;
+      const height = gl.drawingBufferHeight;
+      const pixels = new Uint8ClampedArray(width * height * 4);
+      gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+      const source = document.createElement('canvas');
+      source.width = width;
+      source.height = height;
+      source.getContext('2d')?.putImageData(new ImageData(pixels, width, height), 0, 0);
+
+      const flipped = document.createElement('canvas');
+      flipped.width = width;
+      flipped.height = height;
+      const context = flipped.getContext('2d');
+      if (!context) throw new Error('Kein 2D-Kontext für das Bildschirmfoto.');
+      context.translate(0, height);
+      context.scale(1, -1);
+      context.drawImage(source, 0, 0);
+
+      const base64 = flipped.toDataURL('image/png').split(',')[1] ?? '';
+      const response = await fetch('/__shot', { method: 'POST', body: `${name}\n${base64}` });
+      return response.text();
+    },
   };
 }
 

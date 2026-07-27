@@ -31,6 +31,9 @@ uniform vec2 uDetailFade;
 uniform int uDebugMode;
 
 varying vec3 vTerrainWorld;
+/** Aus dem Quadtree (P4 / 4.1) — nur für die Debug-Ansichten. */
+varying float vLodLevel;
+varying float vLodMorph;
 
 // Zwischenergebnisse aus <map_fragment>, gebraucht in den späteren Chunks.
 vec3 gTerrainArm;
@@ -93,6 +96,25 @@ vec3 terrainDebugColor() {
   }
   if (uDebugMode == 5) {
     return vec3(gTerrainShade.y);
+  }
+  if (uDebugMode == 6) {
+    // LOD-Stufen. Zusammen mit dem Drahtgitter ist das die Ansicht, in der sich
+    // der Quadtree überhaupt beurteilen lässt — PLAN.md nennt sie unter den
+    // Risiken von P4 ausdrücklich: „Zuerst mit Wireframe und eingefärbten
+    // LOD-Stufen entwickeln, nicht mit fertigem Material."
+    float t = vLodLevel / 6.0;
+    return vec3(
+      clamp(1.5 - abs(t * 4.0 - 3.0), 0.0, 1.0),
+      clamp(1.5 - abs(t * 4.0 - 2.0), 0.0, 1.0),
+      clamp(1.5 - abs(t * 4.0 - 1.0), 0.0, 1.0)
+    );
+  }
+  if (uDebugMode == 7) {
+    // Morph-Faktor: schwarz = ungemorpht, weiß = vollständig auf die nächst-
+    // gröbere Stufe zusammengezogen. Ein sichtbarer Sprung von Weiß auf
+    // Schwarz über eine Knotengrenze hinweg ist genau der Riss, den 4.1
+    // ausschließt.
+    return vec3(vLodMorph);
   }
   // Neigung: flach = dunkelblau, senkrecht = rot.
   float slope = 1.0 - clamp(gTerrainNormal.y, 0.0, 1.0);

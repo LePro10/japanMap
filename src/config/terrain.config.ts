@@ -7,24 +7,16 @@
  */
 
 export const TERRAIN = {
-  /**
-   * Stützstellen pro Achse im Rendergitter. 4,0 m pro Vertex.
-   *
-   * In P1 bewusst **ohne LOD**: ein einziges Gitter über die ganze Welt. Der
-   * Wert ist die Messlatte, an der P4 zeigen muss, dass der Quadtree etwas
-   * bringt.
-   *
-   * PLAN.md nannte hier 1024 mit „~2,1 Mio. Dreiecke". Die Rechnung war
-   * unvollständig: das Gitter wird **zweimal** gerendert, einmal für das Bild
-   * und einmal für die Schattenkarte. Gemessen wurden 4.186.128 Dreiecke pro
-   * Frame — deutlich über dem Budget von 3 M aus SPEC §4. Mit 768 sind es
-   * 2 × 767² × 2 = 2.352.578, und das Budget hält.
-   *
-   * Die Heightmap hat 1,5 m pro Texel, das Gitter tastet sie also gröber ab
-   * als sie vorliegt. Genau das löst P4 auf: LOD0 kommt mit 2 m pro Vertex
-   * nah heran, ohne die ganze Welt dafür zu bezahlen.
-   */
-  gridVertices: 768,
+  // `gridVertices: 768` stand hier bis P4 und beschrieb das feste Rendergitter
+  // aus P1 — ein einziges Gitter über die ganze Welt, 4,0 m pro Vertex,
+  // 1.176.578 Dreiecke je Durchlauf. Es ist durch den Quadtree ersetzt
+  // (lod.config.ts). Die Lehre daraus gehört mit:
+  //
+  //   PLAN.md nannte ursprünglich 1024 Stützstellen mit „~2,1 Mio. Dreiecke".
+  //   Die Rechnung war unvollständig, weil das Gitter **zweimal** gerendert
+  //   wurde, einmal fürs Bild und einmal für die Schattenkarte. Gemessen waren
+  //   es 4.186.128 gegen 3 M Budget. Gefunden hat das nicht die Überlegung,
+  //   sondern die Budget-Ampel aus P0.
 
   /** Kantenlänge einer Detailtextur-Kachel in Metern. */
   detailTileMeters: 11,

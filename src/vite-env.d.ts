@@ -23,6 +23,11 @@ declare global {
         maximum: number;
         anteilNichtSchwarz: number;
       };
+      /**
+       * Rendert einen Frame und legt ihn als PNG in `.cache/shots/` ab.
+       * Liefert den geschriebenen Pfad.
+       */
+      shot?: (name?: string) => Promise<string>;
     };
   }
 }
