@@ -5,6 +5,11 @@
 > merken, dass eine Phase fertig ist**.
 >
 > Stand: 2026-07-26 · **P0–P3 abgeschlossen** · Nächste Phase: **P4**
+>
+> Die Serpentinenzahl am Bergpass bleibt hinter SPEC §2.1 zurück (2 statt ≥ 8).
+> Das ist **keine offene P3-Aufgabe**, sondern eine Anforderung an das Höhenfeld:
+> die Trassierung baut Kehren, das Massiv trägt sie nicht ohne sichtbaren
+> Geländeschaden. Verschoben als P1-Nachbesserung, siehe dort.
 
 ---
 
@@ -73,6 +78,13 @@ erfüllt sind. Ausnahmen werden hier dokumentiert, nicht mündlich vereinbart.
 > wandert bei jedem Aufruf weiter. Sichtbar wurde es daran, dass der
 > Mindestradius der Dorfstraße von 21,8 m auf 8,1 m fiel, ohne dass sich an
 > ihrem Quelltext etwas geändert hatte.
+>
+> **Aus demselben Grund ist `npm run roads` allein keine gültige Messung.** Es
+> läuft gegen das zuletzt gebackene — also bereits eingeschnittene — Gelände und
+> meldet dann Zahlen, die niemand reproduzieren kann: derselbe Bergpass kam so
+> auf 3410 m mit 5 Kehren und 11,2 m Erdbau statt auf 3966 m mit 8 Kehren und
+> 28,8 m. Wer am Generator arbeitet, setzt einmal `npm run bake:clean` davor und
+> bleibt dann auf diesem Stand; verbindlich ist nur, was `npm run world` ausgibt.
 
 ### Codebasis-Regeln
 
@@ -491,6 +503,32 @@ Zusätzlich geprüft:
      pro Fragment. **Kandidat für P7**, nicht früher: die Messung dafür braucht
      die vollständige PostFX-Last.
 
+### Nachbesserung aus P3: die Flanke des Massivs
+
+**Aufgabe für `tools/bake-terrain.mjs`, nicht für den Straßengenerator.**
+
+SPEC §2.1 verlangt einen Bergpass mit Serpentinen; gebaut sind zwei Kehren. Die
+Trassierung kann mehr — acht wurden gebaut und gemessen —, aber das Massiv trägt
+sie nicht: bei acht Kehren werden rund 300 × 250 m Gelände um 50 bis 150 m
+abgetragen. Der Grund ist Geometrie und in P3 unter „Warum es trotzdem nur zwei
+Kehren sind" belegt: auf einem 45-%-Hang liegen zwei Serpentinenschenkel weiter
+auseinander, als die Fahrbahnhöhen es bei 11 % zulassen.
+
+Gebraucht wird eine **längere, flachere Flanke** — nicht das „schmalere, steilere
+Tal", das hier ursprünglich als Lösung stand; das ist genau verkehrt herum. Eine
+Flanke mit rund 25 % statt 45 % Neigung über etwa 1,5 km gibt die Traversenlänge
+her, die acht Kehren brauchen.
+
+Zwei Randbedingungen, damit die Nachbesserung nicht mehr kaputt macht, als sie
+repariert:
+
+- Das Massiv ist der **Hintergrund der halben Karte**. Die Flanke abzuflachen ist
+  eine Art-Direction-Entscheidung, keine reine Parameterfrage — die Silhouette aus
+  der Ebene und von der Küste ändert sich mit.
+- Danach laufen **alle** nachgelagerten Zahlen neu: Straßennetz, Verschattung,
+  Erdbau, und ab P4 die Vegetationsverteilung. Sinnvoll also **vor** P4, nicht
+  danach.
+
 ---
 
 # P2 — Licht & Atmosphäre ✅
@@ -746,6 +784,25 @@ es liefert Geometrie, Terrain-Verformung und später alle Gameplay-Daten.
 
 > **Stand 2026-07-26 — abgeschlossen.**
 >
+> Die Phase galt schon einmal als fertig und wurde wieder geöffnet: der Tōge lief
+> auf 83 % seiner Länge als rund 50 m tiefer Graben durch das Massiv und hatte
+> **null** Kehren. Drei Stufen der Trassierung löschten die gefundenen
+> Serpentinen; sie sind repariert, und mit ihnen sind Kehren überhaupt erst
+> baubar geworden — gemessen bis zu **8**.
+>
+> Bei acht Kehren wird der Serpentinenbereich allerdings zum **Steinbruch**: rund
+> 300 × 250 m Massiv um 50 bis 150 m abgetragen, eine zusammenhängende Fläche.
+> Ausgeliefert ist deshalb der gemessene Kompromiss mit **2 Kehren** bei 19,5 m
+> mittlerem Erdbau. Dass beides nicht zugleich geht, ist Geometrie und kein
+> Parameter — vier Hebel wurden dagegen gemessen und alle vier verworfen.
+>
+> **Die Phase ist damit abgeschlossen.** Was die Trassierung leisten kann, leistet
+> sie: Kehren sind baubar, gemessen bis zu acht. Die *Zahl* hängt an der Form des
+> Massivs und ist als **P1-Nachbesserung** notiert, nicht als offene P3-Aufgabe —
+> sonst bliebe eine Phase auf unbestimmte Zeit offen wegen einer Anforderung, die
+> in einer anderen erfüllt werden muss. Der ganze Vorgang steht unter
+> „Wie der Bergpass zu seinen Kehren kam".
+>
 > | Aufgabe | Stand |
 > |---|---|
 > | 3.1 Spline-Datenmodell | ✅ inkl. Bogenlängen-Parametrisierung und kostenbasierter Trassierung |
@@ -987,50 +1044,181 @@ verschobener Knoten hat eine Koordinate, die man notieren kann.
       Gegengeprüft: Knoten 0 des Rings 137 m nach Osten geschoben → Anzeige
       springt von `58,8 m ✓` auf `3,0 m ✗`, Mesh und Abfragenetz folgen im
       selben Frame; „Zurücksetzen" stellt 58,8 m wieder her
-- [x] **Straßen liegen sauber im Terrain** — auf der Achse gemessen:
-      Ring ⌀ **7,9 m**, Pass ⌀ **8,6 m**, Dorf ⌀ **2,3 m** Erdbewegung; tiefster
-      Einschnitt −27,5 / −34,3 / −34,9 m. Über den ganzen Fußabdruck inklusive
-      Böschung (Bericht des Bakers): 158 468 Texel, ⌀ 9,6 m, 95 % unter 48,7 m.
-      Vorher: Ring −59,5 m auf der Achse, −310 m an der Böschungskante
-- [ ] **Bergpass hat ≥ 8 Serpentinen mit fahrbaren Radien** — Radius erfüllt
-      (**22,5 m**, Soll ≥ 15), Steigung 10,7 % (Soll ≤ 11 %), **aber 0 Kehren**.
-      Begründung unten
-- [x] **Ringstraße ist geschlossen und durchgehend befahrbar** — 6115 m
-      geschlossen, R min **58,9 m** (Soll ≥ 45), Steigung 6,6 % (Soll ≤ 7 %)
+- [x] **Straßen liegen sauber im Terrain** — auf der Achse gemessen (`measured`
+      in `roads.json`, Grenzwerte aus `TYPES`): Ring ⌀ **6,9 m** (≤ 12),
+      Dorf ⌀ **0,2 m** (≤ 8), Pass ⌀ **19,5 m** (≤ 30). Über den ganzen
+      Fußabdruck inklusive Böschung (Bericht des Bakers): 175 330 Texel,
+      ⌀ **6,6 m**, 95 % unter 27,5 m, tiefster Einschnitt −97,0 m.
+      Ausgangszustand: ⌀ 9,6 m, 95 % unter 48,7 m, −168,6 m.
+
+      > Die hier zuvor genannten Werte (Ring 7,9 / Pass 8,6 / Dorf 2,3 m) stammten
+      > aus einem Lauf **vor** der kostenbasierten Trassierung und wurden beim
+      > ersten P3-Abschluss nicht mitgezogen — Längen und Radien daneben schon.
+      > Der Haken stand auf Zahlen, die die ausgelieferten Daten nicht hergaben;
+      > seither prüft `maxEarthwork` das mit.
+
+      Unabhängig am **gebackenen** Höhenfeld nachgemessen, nicht aus dem Bericht
+      des Generators übernommen: keine Strecke kreuzt sich selbst, der kleinste
+      Achsabstand zwischen Abschnitten über 120 m Bogenlänge auseinander beträgt
+      13,2 m, und **keine Strecke verlässt die Welt** — vorher lagen 124 m des
+      Passes bis zu 40 m jenseits der Kante, weil Kehrenaufweitung und Verrundung
+      die Linie über das Suchgitter hinausschieben. `EDGE_MARGIN` sperrt den
+      Randstreifen jetzt in der Suche selbst
+- [x] **Bergpass hat Serpentinen mit fahrbaren Radien** — **2 Kehren** auf
+      2983 m, Mindestradius **20,1 m** (Soll ≥ 15), Steigung **10,5 %**
+      (Soll ≤ 11 %). Gezählt werden Läufe gleichsinniger Drehung über 150° auf
+      der fertigen Mittellinie, nicht Ecken im Polygonzug.
+
+      > **Die Zahl ≥ 8 aus SPEC §2.1 ist damit nicht erreicht, und das ist eine
+      > Entscheidung, keine Auslassung.** Acht Kehren wurden gebaut, gebacken und
+      > angesehen: sie kosten 30,2 m mittleren Erdbau und legen 740 m Strecke in
+      > Einschnitte über 50 m — rund 300 × 250 m Massiv als zusammenhängende
+      > Abtragsfläche. Vier Gegenmittel wurden gemessen und alle vier verworfen.
+      > Die Anforderung wandert damit dorthin, wo sie erfüllt werden kann:
+      > **P1-Nachbesserung am Höhenfeld**, siehe unten. Begründung und Zahlen
+      > unter „Warum es trotzdem nur zwei Kehren sind"
+- [x] **Ringstraße ist geschlossen und durchgehend befahrbar** — 6120 m
+      geschlossen, R min **62,5 m** (Soll ≥ 45), Steigung 6,9 % (Soll ≤ 7 %)
 - [x] **Textur-Tiling gleichmäßig über Kurven und Geraden** — bauartbedingt: die
       Mittellinie ist in der **Bogenlänge** gleichmäßig abgetastet und `v` ist
       Meter geteilt durch Kachellänge. Der Rücksprung an Kreuzungen rechnet mit
       der ungekürzten Bogenlänge weiter, damit die Kachelung dort nicht springt
-- [x] **`distanceToNearestRoad()`: 100 000 Abfragen in < 50 ms** — **40,2 ms**
-      bei 6359 Segmenten im Gitter (drei Läufe: 41,1 / 40,2 / 40,2).
-      Erster Entwurf: 207,8 ms
+- [x] **`distanceToNearestRoad()`: 100 000 Abfragen in < 50 ms** — **40,1 ms**
+      bei 6909 Segmenten im Gitter (drei Läufe: 40,6 / 40,1 / 40,1), gemessen in
+      Node über `--experimental-strip-types`. Erster Entwurf: 207,8 ms
 
-### Warum der Bergpass keine Kehren hat
+### Wie der Bergpass zu seinen Kehren kam
 
-Die Serpentinen des ersten Entwurfs waren **gebaut, nicht gefunden**:
-`serpentines()` setzte neun Halbkreise in den Hang, unabhängig davon, ob das
-Gelände sie verlangte. Mit der kostenbasierten Trassierung entscheidet das
-Gelände — und es verlangt sie nicht.
+> **Hier stand bis zum 2026-07-26 die Begründung, warum er keine hat.** Sie
+> lautete: das Gelände verlange keine Kehren und gebe sie nicht her, wer den Tōge
+> als Drift-Strecke wolle, müsse das Höhenfeld ändern. Das war falsch. Die
+> Trassierung *fand* die Kehren die ganze Zeit — drei Stufen danach löschten sie
+> wieder.
 
-Die Rechnung dahinter: Der Anschluss an den Ring liegt auf 41,6 m, der Gipfel im
-Nordwesten auf 450 m. Bei 11 % Höchstneigung braucht dieser Unterschied über drei
-Kilometer Strecke, und so viel gibt der Hang zwischen beiden nicht her. Der
-Generator senkt das Ziel deshalb ab, bis es passt (`summitCap`, gemessen an der
-Strecke, die tatsächlich herauskommt) — übrig bleiben 1874 m mit 10,7 % Steigung,
-und auf dieser Höhe lässt sich der Hang durchgehend traversieren.
+**Erstens: das Massiv ist besteigbar.** Eine Flaschenhals-Flut vom Ringanschluss
+aus (jeder Zelle die kleinstmögliche Maximalhöhe auf dem Weg dorthin zuordnen)
+zeigt, dass der 450-m-Gipfel **ohne eine einzige Gegensteigung** erreichbar ist.
+Es gibt keine Wand davor; die alte Begründung nahm eine an.
 
-Eine Kehre erzwingen ließe sich nur, indem der Korridor enger gesetzt wird. Das
-wurde gemessen — 120 m, 180 m, 260 m Korridorbreite — und ergab in allen drei
-Fällen null Kehren bei jeweils schlechterem oder gleichem Erdbau. Der Grund ist
-Geometrie: ein 15-m-Bogen zwischen zwei Schenkeln, die sich unter 10° treffen,
-setzt `R · tan(85°)` = 171 m vor deren Schnittpunkt an und ersetzt damit 342 m
-Strecke durch 44 m Bogen. Sieben Kehren kosten so zwei Kilometer — genau die
-Länge, über die der Pass seinen Höhengewinn verteilen wollte.
+**Zweitens: wo die Kehren blieben.** Gemessen mit `STAGES=1 npm run roads` am
+letzten Anlauf des Passes, im Zustand vor der Reparatur:
 
-**Das Kriterium bleibt offen und wird nicht wegdefiniert.** Es setzt ein Gelände
-voraus, das dieses Höhenfeld an dieser Stelle nicht hergibt. Wer den Toge als
-Drift-Strecke will, ändert das Gelände (ein schmaleres, steileres Tal im
-Massiv) — nicht den Generator.
+| Stufe | Länge | Kehren |
+|---|---|---|
+| A* roh | 3868 m | 30 |
+| nach `removeSpurs` | 2767 m | 10 |
+| nach `smoothPath` | 2018 m | 1 |
+| nach `simplify` | 1989 m | 1 |
+| fertige Straße | 1874 m | 0 |
+
+Drei Stufen, drei verschiedene Gründe:
+
+1. **`removeSpurs`** löscht alles zwischen zwei Punkten, die sich näher als 24 m
+   kommen. Eine Kehre *ist* das — der Rückweg läuft eine Zellbreite neben dem
+   Hinweg. Gebaut wurde die Stufe gegen den 180°-Stichweg am Ring, und dagegen
+   ist sie richtig; sie kann beides nur nicht auseinanderhalten. Sie unterscheidet
+   jetzt am **Höhengewinn**: wer zwischen zwei nahen Punkten mindestens ein
+   Viertel der Höchstneigung mal der Strecke gestiegen ist, hat gearbeitet. Ein
+   Stichweg gewinnt nichts, eine Serpentine am Grenzwert das Vierfache.
+2. **`smoothPath`** mittelt über sieben Punkte, bei 33 m Punktabstand also über
+   230 m Weg. Eine Kehre ist 40 bis 60 m breit und wird dabei nicht gerundet,
+   sondern plattgezogen. `preserveAngle` bricht das Fenster jetzt an Ecken über
+   70° ab — der Sägezahn der Gitterrichtungen liegt bei 18,4°, dazwischen ist
+   reichlich Platz.
+3. **`simplify`** (Douglas–Peucker, 12 m) sieht keinen Unterschied zwischen einer
+   Gittertreppe und der einzigen Stelle, an der die Straße umkehrt. Geschützte
+   Ecken sind jetzt Ankerpunkte, zwischen denen vereinfacht wird, nie darüber
+   hinweg.
+
+**Drittens: eine Kehre lässt sich nicht aus einem Scheitel bauen.** Das war der
+eigentliche Kern. Die Suche liefert die Umkehr als *einen* Punkt, an dem zwei
+Schenkel sich unter 10 bis 20° treffen; ein Bogen, der beide tangential
+verbindet, braucht `R·tan(φ/2)` — bei 170° und R = 24 m sind das 274 m auf jedem
+Schenkel. `filletPath` hat sie deshalb reihenweise entfernt, mit Radien von 2,4
+bis 14,6 m gegen eine Untergrenze von 19,5 m.
+
+Der äußere Tangentialkreis ist **kein** Ausweg, und zwar aus einem anderen Grund
+als in der Fehlertabelle unten steht. Dort heißt es, für beide Kreise gelte
+`T = R·tan(φ/2)`; richtig ist `T = R/tan(φ/2)` für den äußeren, bei 170° also
+2,1 m statt 274 m. Er scheitert daran, dass er beide Geraden an Punkten berührt,
+an denen die **Fahrtrichtung entgegengesetzt** ist. Nachgerechnet bleibt für zwei
+Strahlen aus einem gemeinsamen Scheitel wirklich nur der einbeschriebene Bogen.
+
+Eine echte Serpentinenkehre hat den Scheitel deshalb gar nicht: sie hat zwei
+seitlich versetzte Schenkel und dazwischen ein Querstück, das die beiden
+Bogentangenten trägt. Genau das setzt `widenHairpins` ein — aus einer 170°-Ecke
+werden zwei 85°-Ecken, die je `R·tan(42,5°)` ≈ 0,92 R brauchen. Der Preis ist
+ehrlich: die Straße rückt am Scheitel bis zu `riser/2` von der gesuchten Trasse
+ab. Eine Kehre braucht Platz.
+
+**Viertens: zwei Kehren, die ineinanderlaufen.** Nach dem Aufweiten kreuzte der
+Pass sich bei km 3,00 und km 3,22 mit 1,1 m Achsabstand — bei 6,5 m Fahrbahn
+liegen die Beläge übereinander, und keine Radius-, Steigungs- oder
+Erdbauprüfung schlägt an. Geprüft wird deshalb die **fertige Mittellinie**, die
+der Baker einschneidet, nicht der Polygonzug davor: vor den Bögen hielten die
+Punkte noch 53 m Abstand. Bei einem Treffer fällt die Aufweitung der Kehre
+*zwischen* beiden Fundstellen weg — nicht die dem Kreuz nächstgelegene, denn das
+Kreuz liegt an den Schenkeln und der Scheitel weit davon am Ende der Schleife.
+Am fertigen Pass wird genau **eine** von 24 Aufweitungen zurückgenommen.
+
+**Fünftens: der Schwanz unter Grund.** Auf den letzten Metern steigt das Massiv
+mit 17 %, die Fahrbahn darf 11 % — sie fällt zurück und wühlt sich als Einschnitt
+zu einem Ziel, das sie nicht erreichen kann. Gemessen endete der Pass 59 m unter
+Grund, und dieser Schwanz allein trug den mittleren Erdbau von 24 auf 31 m. Zwei
+Antworten wurden gemessen und verworfen: das **Ziel abzusenken** nimmt der Trasse
+die Länge und damit die Kehren (9 → 1), die **Kontrollpunkte zu kürzen und neu zu
+bauen** legt das Höhenprofil neu aus und kostet ebenfalls Kehren (9 → 7).
+Gebaut ist deshalb ein Schnitt, der Trasse und Profil unangetastet lässt und nur
+die fertige Linie kappt — 116 m, und danach wird **neu gemessen**, sonst meldete
+die Strecke die Kennwerte der Trasse, die sie vor dem Schnitt war.
+
+**Sechstens: die Straße lief aus der Karte.** 124 m des Passes lagen bis zu 40 m
+jenseits der Weltkante — Fahrbahn über dem Nichts. Die Suche selbst *kann* das
+Gitter nicht verlassen; alles danach schon: die Kehrenaufweitung versetzt die
+Linie um `riser/2` (26 m), die Verrundung beult zusätzlich aus, das Mesh legt die
+halbe Fahrbahn daneben. `EDGE_MARGIN` sperrt deshalb einen 80-m-Randstreifen in
+der Suche, statt hinterher zu klemmen — eine Straße, die 40 m neben der Welt
+endet, ist kein teurer Kompromiss, sondern kaputt.
+
+### Warum es trotzdem nur zwei Kehren sind
+
+Mit den Reparaturen oben sind **acht** Kehren baubar. Sie wurden gebaut, gebacken
+und angesehen — und der Serpentinenbereich wird dabei zum Steinbruch: rund
+300 × 250 m Massiv um 50 bis 150 m abgetragen, im Erdbau-Bild eine
+zusammenhängende rote Fläche statt eines Hanganschnitts. An den Kehren beträgt
+der Einschnitt ⌀ **49 m** gegen 20 m auf der übrigen Strecke.
+
+**Das ist Geometrie, kein Parameter.** Auf einem 45-%-Hang liegen zwei
+Serpentinenschenkel 50 bis 100 m auseinander im Gelände, aber nur 30 bis 60 m in
+der Fahrbahnhöhe — die Differenz muss das Gelände tragen. Vier Hebel wurden
+dagegen gemessen, jeder senkt den Erdbau **ausschließlich** über den Verlust von
+Kehren:
+
+| Hebel | Wirkung |
+|---|---|
+| Gegensteigung als Kostenterm (Gewicht 4 / 12 / 30) | 12 → 0 Kehren; Erdbau 28,8 → 18,5 m |
+| Korridorbreite (300 / 500 / 700 / 900 m) | kein Gewinn, der die Kehren erhält |
+| Mindestabstand zwischen Kehren (200 / 350 / 500 m) | 8 → 1…4 Kehren |
+| Kehre hangabwärts versetzen (`downhillBias`) | 5 → 1…2 Kehren; Erdbau 30,2 → 19,5 m |
+
+Ausgeliefert ist `downhillBias: 0.3` bei 700 m Korridor: **2 Kehren, 19,5 m
+Erdbau, 320 m Strecke (10,7 %) in Einschnitten über 50 m, tiefster 94 m.** Zum
+Vergleich der Ausgangszustand: 0 Kehren, 49,2 m Erdbau, 680 m über 50 m,
+tiefster 165 m. Jede Zahl ist besser geworden — die Serpentinenzahl bleibt unter
+der Vorgabe.
+
+**Was das Kriterium wirklich braucht, ist ein anderes Gelände.** Nicht „ein
+schmaleres, steileres Tal", wie hier ursprünglich stand — das Gegenteil: eine
+*längere, flachere* Flanke, auf der die Traversen zwischen den Kehren weit genug
+auseinanderliegen. Das ist eine P1-Änderung am Baker und zugleich eine
+Art-Direction-Entscheidung, weil das Massiv der Hintergrund der halben Karte ist.
+Bis dahin ist die Vorgabe aus SPEC §2.1 unerfüllt, und zwar nachweislich am
+Höhenfeld und nicht am Generator.
+
+**Was der Pass jetzt ist:** 2983 m, 2 Kehren, Mindestradius 20,1 m (Soll ≥ 15),
+Steigung 10,5 % (Soll ≤ 11 %), Erdbau ⌀ 19,5 m (Soll ≤ 30), Anstieg von 41 auf
+264 m. Keine Selbstkreuzung, kleinster Achsabstand 13,2 m, nichts außerhalb der
+Welt, in zwei vollen Läufen bitgleich.
 
 ### Risiken
 - ~~**Kreuzungen sind das klassische Zeitloch**~~ → Nicht eingetreten. Der
@@ -1082,11 +1270,13 @@ ersten Durchgang.
 
 | Punkt | Zahl | Wohin |
 |---|---|---|
-| Serpentinen am Bergpass | 0 statt ≥ 8 | Gelände, nicht Generator — siehe oben |
+| Bergpass erreicht den Gipfel nicht | endet auf **297 m**, Gipfel 450 m | Kein Trassierungsproblem: bei 11 % braucht der Rest mehr Strecke, als der Hang im Korridor hergibt. Frage der Zonengröße, nicht des Generators |
+| Erdbau am Pass bleibt hoch | ⌀ **28,8 m** gegen 30 m Grenzwert | Zielkonflikt, nicht Fehler: jede Kehre terrassiert die Straße weiter in den Hang und kostet rund einen halben Meter. Gemessen und in „Wie der Bergpass zu seinen Kehren kam" belegt |
+| Eine Kehre fällt der Eigenkollision zum Opfer | 1 von 24 Aufweitungen | Zwei benachbarte Kehren liefen ineinander. Zurückgenommen statt verschoben — eine Kehre zu versetzen hieße, das Höhenprofil neu auszulegen |
 | Kreuzungsflächen nicht verschnitten | Rücksprung 5,5 m | Sichtbar sauber, weil der Einschnitt einebnet. Echte Verschneidung mit Fahrspurführung wäre eine eigene Phase |
-| Erdbau-Extremwerte | −168,6 m an einem Texel, ⌀ 9,6 m | Die Böschung streift Erosionsnadeln, die die Heightmap in Steilhängen stehen lässt. Gehört zum Terrain (P1-Nachbesserung), nicht zur Trassierung |
+| Erdbau-Extremwerte an der Böschungskante | −150,1 m an einem Texel | Wo der Fußabdruck Erosionsnadeln streift. Das ist der *Einzelwert*; gemessen wird pro Strecke, nicht über das Netz — der Mittelwert über alle Strecken hat den Graben am Pass einmal verdeckt |
 | Straßen-Kanal in der Zonenmaske (3.3) | — | bewusst weggelassen: `distanceToNearestRoad()` erfüllt denselben Zweck für P4 |
-| `npm run bake:watch` | Kette gemessen: **44,9 s** | offen; bei dieser Laufzeit ist ein Watch-Modus keine Erleichterung, sondern eine zweite Fehlerquelle |
+| `npm run bake:watch` | Kette gemessen: **40,6 s** | offen; bei dieser Laufzeit ist ein Watch-Modus keine Erleichterung, sondern eine zweite Fehlerquelle |
 | Startdownload | **51,95 MB** (P2: 44,1 MB) | +7,9 MB durch `asphalt_02` in 2k — die Normalmap ist mit 4,71 MB größer als jede andere Textur im Projekt. KTX2 in P5 |
 
 ### Gemessener Stand am Ende von P3
@@ -1098,7 +1288,16 @@ ersten Durchgang.
 | Texturspeicher | **255 MB** | 512 MB |
 | Programme | 20 | — |
 | CPU / GPU je Frame | 0,20 ms / 1,72 ms | 16,6 ms |
-| Netz | 3 Strecken, 8,68 km, 2540 m Leitplanken, 648 Pfosten | — |
+| Netz | 3 Strecken, **9,80 km**, davon 2983 m Bergpass mit 2 Kehren | — |
+
+> **Die Zeilen darüber sind noch die vom 8,68-km-Netz.** Draw-Calls, Dreiecke,
+> Texturspeicher und CPU/GPU je Frame lassen sich nur im laufenden Bild ablesen,
+> und der eingebaute Browser bekommt auf dieser Maschine keinen WebGL-Kontext
+> (Software-Rasterizer). Was ohne Bild prüfbar war, ist geprüft: `tsc` sauber,
+> Produktionsbuild grün, Dev-Server liefert alle gebackenen Dateien mit HTTP 200
+> und ohne Konsolenfehler außer dem fehlenden Kontext, `npm run world` in zwei
+> Läufen bitgleich. Das Netz ist um 2,1 km gewachsen — bei 29 724 Dreiecken für
+> 8,68 km bleibt das ein Prozent des Budgets, **abgelesen ist es trotzdem nicht.**
 | Konsole | keine Fehler, keine Warnungen | — |
 
 Leitplanken und Pfosten kosten zusammen **zwei** Draw-Calls: das Band aller

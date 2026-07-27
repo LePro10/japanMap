@@ -57,13 +57,24 @@ für einen echten Ortswechsel.
 Stichstraße mit Serpentinen (Drift-Strecke). Ein Küstenhighway läuft im Süden.
 Der Höhenunterschied von 450 m ist der stärkste Hebel, damit 3 km groß wirken.
 
-> **Die Serpentinen stehen noch aus (Stand P3).** Der Bergpass fährt, hält
-> Radius und Steigung, hat aber **null Kehren**. Das ist keine Auslassung im
-> Bau, sondern ein Widerspruch in dieser Vorgabe: 408 Höhenmeter brauchen bei
-> 11 % Höchstneigung über drei Kilometer Strecke, und der Hang zwischen
-> Ringanschluss und Gipfel gibt sie nicht her. Solange das Höhenfeld so aussieht,
-> lässt sich die Anforderung nicht erfüllen — nötig wäre ein schmaleres,
-> steileres Tal im Massiv. Siehe PLAN.md, „Warum der Bergpass keine Kehren hat".
+> **Die Serpentinen sind baubar, aber nicht bezahlbar (Stand P3, abgeschlossen).**
+> Der Bergpass hat **2 Kehren** auf 2983 m, Mindestradius 20,1 m, Steigung 10,5 %,
+> und steigt von 41 auf 264 m.
+>
+> Hier stand bis zum 2026-07-26, die Vorgabe widerspreche sich selbst und das
+> Höhenfeld gebe keine Kehren her. Beides war falsch: die Trassierung fand die
+> Kehren die ganze Zeit, drei Stufen der Nachbearbeitung löschten sie, und nach
+> deren Reparatur sind **acht** Kehren gebaut worden. Sie legen dabei rund
+> 300 × 250 m Massiv um 50 bis 150 m tiefer — ein Steinbruch, kein Bergpass.
+>
+> Der Grund ist Geometrie: auf einem 45-%-Hang liegen zwei Serpentinenschenkel
+> horizontal weiter auseinander, als die Fahrbahnhöhen es bei 11 % zulassen; die
+> Differenz muss das Gelände tragen. **Die Vorgabe braucht eine längere, flachere
+> Flanke** — eine Änderung am Terrain (P1) und zugleich eine
+> Art-Direction-Entscheidung. Sie ist als **P1-Nachbesserung** notiert und
+> gehört vor P4 erledigt, weil danach Vegetation und Verschattung darauf
+> aufbauen. Messwerte und die vier verworfenen Gegenmittel in PLAN.md,
+> „Wie der Bergpass zu seinen Kehren kam".
 
 ### 2.2 Terrain
 
@@ -116,11 +127,11 @@ Materialien den Look gibt. Ein reines Himmels-HDRI beleuchtet zu flach.
 |---|---|
 | Sichtbarer Himmel | `industrial_sunset_02_puresky` 4k → `scene.background` |
 | Ambient / IBL | `rooftop_night` 2k → `PMREMGenerator` → `scene.environment` |
-| Key-Light | 1 × `DirectionalLight`, sehr flach, kühl-blau, mit CSM (4 Kaskaden) |
+| Key-Light | 1 × `DirectionalLight`, sehr flach, kühl-blau. Wirft **keinen** Echtzeitschatten — siehe „Schatten" |
 | Neon / Laternen | Emissive-Materialien + Bloom. Echte `PointLight` nur an ~10 Schlüsselstellen |
 | Nasser Asphalt | Niedrige Roughness + Roughness-Variation-Map + SSR |
 | Nebel | Custom Height-Fog im Shader (dichter in den Tälern) |
-| Schatten | CSM 4 × 2048, Kaskaden bei 30 / 100 / 350 / 1200 m |
+| Schatten | **Gebackene Geländeverschattung** (`shade.png`, 1024², Horizontwinkel + Verdeckerentfernung + Himmelssicht). ~~CSM 4 × 2048~~ — in P2 verworfen: vier Kaskaden kosten 5,88 Mio. Dreiecke gegen 3 Mio. Budget, und bei 2,2° Sonnenstand wirft ein 450-m-Gipfel 11,5 km Schatten, die keine Kaskadenaufteilung einfängt. Echtzeitschatten kommen in P4 zurück, sobald es bewegliche Werfer gibt |
 
 **Kein Tag-Nacht-Zyklus.** Das erlaubt später gebackene Lightmaps und
 Reflexions-Probes — dort liegt der größte Qualitätssprung.
@@ -128,8 +139,15 @@ Reflexions-Probes — dort liegt der größte Qualitätssprung.
 ### 3.2 Postprocessing-Kette
 
 ```
-Render → GTAO → SSR → Bloom → DoF(opt) → AgX-Tonemapping → LUT → SMAA → Vignette
+Render → N8AO → [SSR] → Bloom → AgX-Tonemapping → LUT → Vignette → SMAA
 ```
+
+Gebaut ist das ab P2 in **zwei** Effekt-Pässen: `EffectPass(Bloom, AgX, LUT,
+Vignette)`, danach `EffectPass(SMAA)`. Beides in einem Pass gebündelt bekäme SMAA
+zur Kantenerkennung den *Eingangspuffer* des Passes, also HDR-Werte — und
+Kantenglättung vor dem Tonemapping funktioniert nicht. **N8AO statt GTAO**, weil
+`SSAOEffect` einen `NormalPass` und damit einen dritten Terrain-Durchlauf
+bräuchte. SSR und DoF sind vorgesehen, aber nicht gebaut.
 
 ⚠️ **Risiko:** SSR ist in `pmndrs/postprocessing` der teuerste und zickigste
 Pass (Ghosting, Rauschen an Kanten). Fallback wenn es nicht trägt: planare
@@ -154,7 +172,7 @@ unten, abgelesen im Debug-Overlay, nicht das Bauchgefühl beim Fliegen.
 | Frame-Time-Budget | 16,6 ms → davon max. 5 ms Postprocessing |
 
 **Quality-Presets** (Ultra / High / Medium / Low) skalieren: Schattenauflösung,
-SSR an/aus, GTAO-Samples, Sichtweite, Vegetationsdichte, Render-Scale.
+SSR an/aus, N8AO-Samples, Sichtweite, Vegetationsdichte, Render-Scale.
 Von Anfang an eingebaut — nachträglich einzuziehen ist teuer.
 
 ---
@@ -168,8 +186,11 @@ src/
 ├── render/        PostFXPipeline, LightingRig, MaterialLibrary, QualityPresets
 ├── camera/        FreeFlyController  (später: VehicleCamera, PhotoMode)
 ├── debug/         StatsOverlay, Tweakpane-Panels, FreezeCulling-View
-├── config/        world.config.ts, quality.config.ts
-└── assets/        heightmap, hdri, models, roads.json
+└── config/        world.config.ts, quality.config.ts, roads.config.ts, …
+
+assets/            hdri/, textures/  — eingecheckte Quellen
+assets/generated/  heightmap, Verschattung, roads.json — nie eingecheckt,
+                   reproduzierbar aus Seed und tools/ (`npm run world`)
 
 tools/             Heightmap-Baker, Schatten-Baker, Straßen-Generator,
                    Trassierung, Sonnenstand aus HDRI, Poly-Haven-Download
@@ -233,18 +254,27 @@ Kitbashing aus verschiedenen Gratis-Quellen scheitert sonst am Stil-Mix.
 |---|---|---|
 | **P0** | Vite/TS-Setup, Engine-Skelett, Render-Loop, Debug-Overlay mit Budget-Ampel | Messbares Fundament |
 | **P1** | Heightmap-Baker, Terrain-Renderer, Free-Fly-Kamera, HDRI-Licht | **Erstes fliegbares Bild** |
-| **P2** | Postprocessing-Pipeline, Höhennebel, CSM, Wasser, Color-Grading | Die Stimmung sitzt |
+| **P2** | Postprocessing-Pipeline, Höhennebel, gebackene Verschattung, Wasser, Color-Grading | Die Stimmung sitzt |
 | **P3** | Spline-System, Spline-Editor, Terrain-Carving, Straßen-Meshes | Befahrbares Straßennetz |
 | **P4** | CDLOD-Quadtree, Vegetations-Streuung, Instancing, Imposter | Welt füllt sich, Budgets greifen |
 | **P5** | Asset-Pipeline, Landmarks: Tempel, Torii, Dorf, Reisfelder | Zonen bekommen Identität |
 | **P6** | Stadt-Generator, Emissive-Neon, nasser Asphalt, Reflexions-Entscheidung | Der Money-Shot |
 | **P7** | Quality-Presets, Streaming, Ladebildschirm, Profiling | Auslieferbar |
 
-**Aktueller Stand: P0 und P1 abgeschlossen (2026-07-25). Nächste Phase: P2.**
+**Aktueller Stand: P0–P3 abgeschlossen (2026-07-26). Nächste Phase: P4.**
 
-Bekannte offene Budget-Abweichung: der initiale Download liegt bei 42,8 MB
-gegen die 15 MB aus §4 — die dafür vorgesehene KTX2-Pipeline ist P5.1.
-Aufschlüsselung und Reduktionspfad in [PLAN.md](PLAN.md), Risiken zu P1.
+Vor P4 steht eine **P1-Nachbesserung am Höhenfeld** an: die Flanke des Massivs
+trägt die geforderten Serpentinen nicht (siehe §2.1). Danach laufen Straßennetz,
+Verschattung und Vegetationsverteilung neu — deshalb vorher, nicht nachher.
+
+Zwei bekannte offene Punkte:
+
+- **Startdownload 51,95 MB** gegen die 15 MB aus §4 — die dafür vorgesehene
+  KTX2-Pipeline ist P5.1. Aufschlüsselung und Reduktionspfad in
+  [PLAN.md](PLAN.md), Risiken zu P1 und „Offene Punkte aus P3".
+- **Bergpass: 2 Serpentinen statt ≥ 8, Gipfelhöhe 264 m statt 450 m.** Beides
+  hängt am Höhenfeld, nicht am Straßengenerator — als P1-Nachbesserung notiert.
+  Siehe §2.1 und PLAN.md, „Wie der Bergpass zu seinen Kehren kam".
 
 Ausführungsdetails, Dateilisten und Akzeptanzkriterien pro Phase: **[PLAN.md](PLAN.md)**.
 Diese Tabelle ist die Kurzfassung — bei Widersprüchen gilt PLAN.md.

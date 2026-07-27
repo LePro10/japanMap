@@ -853,6 +853,17 @@ async function main() {
   const meta = {
     generator: 'tools/bake-terrain.mjs',
     seed,
+    /**
+     * Sind in diesem Höhenfeld bereits Straßen eingeschnitten?
+     *
+     * Steht hier, damit der Straßengenerator es **prüfen** kann statt es
+     * anzunehmen. Die Kette ist zirkulär — der Generator braucht ein Höhenfeld,
+     * der Baker braucht die Straßen — und wird durch zweimaliges Backen
+     * aufgelöst. Wer den Generator gegen ein schon eingeschnittenes Feld laufen
+     * lässt, trassiert durch eigene Einschnitte und bekommt Zahlen, die niemand
+     * reproduzieren kann. Genau das ist mehrfach passiert.
+     */
+    carved: roadReport !== null,
     world: {
       size: WORLD_SIZE,
       seaLevel: SEA_LEVEL,
