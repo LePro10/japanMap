@@ -4,6 +4,7 @@ import {
   MeshStandardMaterial,
   RGBADepthPacking,
   Vector2,
+  Vector3,
   Vector4,
   type DataArrayTexture,
   type DataTexture,
@@ -12,6 +13,7 @@ import {
   type WebGLProgramParametersWithUniforms,
 } from 'three';
 
+import { LOD } from '@/config/lod.config';
 import { TERRAIN, TERRAIN_LAYERS } from '@/config/terrain.config';
 import { WORLD } from '@/config/world.config';
 import {
@@ -48,6 +50,10 @@ export interface TerrainUniforms {
   readonly uDetailNormalStrength: IUniform<number>;
   readonly uDetailFade: IUniform<Vector2>;
   readonly uDebugMode: IUniform<number>;
+  /** Quads pro Achse im Einheitsgitter des Quadtrees (P4 / 4.1). */
+  readonly uLodGridQuads: IUniform<number>;
+  /** Spielerkamera für die Morph-Entfernung — nicht `cameraPosition`, siehe Shader. */
+  readonly uLodCamera: IUniform<Vector3>;
 }
 
 export interface TerrainTextures {
@@ -117,6 +123,8 @@ export function createTerrainUniforms(textures: TerrainTextures): TerrainUniform
     uDetailNormalStrength: { value: TERRAIN.detailNormalStrength },
     uDetailFade: { value: new Vector2(TERRAIN.detailFadeStart, TERRAIN.detailFadeEnd) },
     uDebugMode: { value: 0 },
+    uLodGridQuads: { value: LOD.gridQuads },
+    uLodCamera: { value: new Vector3() },
   };
 }
 
