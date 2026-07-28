@@ -9,11 +9,13 @@ import {
 } from 'three';
 
 import { DEFAULT_QUALITY, QUALITY, type QualityLevel } from '@/config/quality.config';
-import { SCATTER, SPECIES } from '@/config/vegetation.config';
+import { GROUND_AO, SCATTER, SPECIES, VEGETATION_LOOK } from '@/config/vegetation.config';
 import { WORLD } from '@/config/world.config';
 import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
 import { ImposterMaterial } from '../materials/ImposterMaterial';
+import type { TerrainHeightUniforms } from '../materials/TerrainMaterial';
+import { GroundAoDecals } from './GroundAoDecals';
 import {
   createVegetationUniforms,
   VegetationMaterial,
@@ -72,7 +74,17 @@ export class ScatterSystem implements System {
   #imposterMaterials: ImposterMaterial[] = [];
   #atlases: ImposterAtlas[] = [];
   #lods: InstancedLOD[] = [];
+  #decals: GroundAoDecals | null = null;
   #bakeMs = 0;
+
+  /**
+   * Fleckradius je Art in Metern bei Instanzmaßstab 1, oder 0 für „keine".
+   *
+   * Vorgerechnet, weil er aus zwei Quellen kommt — dem Modellradius der Art und
+   * dem Faktor aus der Konfiguration — und sonst für jede der bis zu 4096
+   * Instanzen je Durchlauf neu multipliziert würde.
+   */
+  #aoRadius: number[] = [];
 
   /** Chunk-Cache. Schlüssel ist `cz * CHUNKS_PER_AXIS + cx`. */
   readonly #cache = new Map<number, ScatterChunk>();
@@ -88,6 +100,8 @@ export class ScatterSystem implements System {
   #frameStart = 0;
 
   #quality: QualityLevel = DEFAULT_QUALITY;
+  /** Look-Stärke der Bodenverdeckung, gepuffert bis die Flecken existieren. */
+  #lookGroundAo: number = VEGETATION_LOOK.groundAo;
 
   readonly #frustum = new Frustum();
   readonly #viewProjection = new Matrix4();
@@ -97,6 +111,7 @@ export class ScatterSystem implements System {
   readonly #readouts = {
     instanzen: '—',
     stufen: '—',
+    flecken: '—',
     chunks: '—',
     aufwand: '—',
   };
@@ -106,8 +121,14 @@ export class ScatterSystem implements System {
   async init(context: EngineContext): Promise<void> {
     this.#context = context;
 
-    context.bus.on('terrain:ready', ({ sampler }) => {
+    context.bus.on('terrain:ready', ({ sampler, height }) => {
       this.#sampler = sampler;
+      // Erst hier, nicht in `init()`: die Höhen-Uniforms entstehen im
+      // TerrainSystem, und das wird **nach** diesem System initialisiert. Der
+      // Fleck-Shader tastet dieselbe Heightmap ab wie das Gelände selbst, und
+      // zwar über dieselben Uniform-Objekte — ein Kopieren würde ihn beim
+      // Verstellen der Höhenskalierung im Boden zurücklassen.
+      this.#createDecals(height);
     });
     context.bus.on('roads:ready', ({ network }) => {
       this.#network = network;
@@ -124,11 +145,13 @@ export class ScatterSystem implements System {
     context.bus.on('look:apply', ({ look }) => {
       this.#shared.uWindStrength.value = look.vegetation.windStrength;
       this.#shared.uVegTranslucency.value = look.vegetation.translucency;
+      this.#setGroundAo(look.vegetation.groundAo);
       this.#context?.debug?.refresh();
     });
     context.bus.on('look:collect', ({ target }) => {
       target.vegetation.windStrength = this.#shared.uWindStrength.value;
       target.vegetation.translucency = this.#shared.uVegTranslucency.value;
+      target.vegetation.groundAo = this.#shared.uVegBaseAo.value;
     });
 
     context.bus.on('quality:changed', ({ level }) => {
@@ -149,6 +172,9 @@ export class ScatterSystem implements System {
       Object.fromEntries(SPECIES.map((s) => [s.id, s.variants])),
     );
     this.#quad = createImposterQuad();
+    this.#aoRadius = SPECIES.map((species) =>
+      species.groundAo ? (this.#meshes?.[species.id]?.radius ?? 0) * species.groundAo.radius : 0,
+    );
     const bakeStarted = performance.now();
 
     for (const species of SPECIES) {
@@ -202,6 +228,34 @@ export class ScatterSystem implements System {
 
     context.scene.add(group);
     this.#registerDebug(context);
+  }
+
+  /**
+   * Bodenverdeckung einstellen — Fleck **und** Pflanzenfuß in einem Zug.
+   *
+   * Es ist dieselbe Verdeckung, nur an zwei Orten: der Fleck erreicht die
+   * Pflanze nicht (er liegt hinter ihr), die Pflanze erreicht den Boden nicht.
+   * Getrennte Regler wären zwei Wege, denselben Übergang gegeneinander zu
+   * verstellen — und der Übergang ist genau das, was hier stimmen muss.
+   */
+  #setGroundAo(value: number): void {
+    this.#lookGroundAo = value;
+    this.#shared.uVegBaseAo.value = value;
+    if (this.#decals) this.#decals.material.strengthUniform.value = value;
+  }
+
+  #createDecals(height: TerrainHeightUniforms): void {
+    if (this.#decals) return;
+    if (!this.#group) {
+      throw new Error(
+        'terrain:ready kam vor ScatterSystem.init() — die Registrierreihenfolge stimmt nicht.',
+      );
+    }
+    const decals = new GroundAoDecals(height);
+    decals.material.strengthUniform.value = this.#lookGroundAo;
+    this.#decals = decals;
+    this.#group.add(decals.mesh);
+    this.#context?.debug?.refresh();
   }
 
   /**
@@ -297,6 +351,7 @@ export class ScatterSystem implements System {
     this.#cursor = 0;
     this.#passOpen = true;
     for (const lod of this.#lods) lod.beginPass();
+    this.#decals?.beginPass();
   }
 
   #advancePass(camera: PerspectiveCamera): void {
@@ -337,6 +392,7 @@ export class ScatterSystem implements System {
 
     if (this.#cursor >= this.#pass.length) {
       for (const lod of this.#lods) lod.endPass();
+      this.#decals?.endPass();
       this.#passOpen = false;
     }
   }
@@ -345,12 +401,20 @@ export class ScatterSystem implements System {
     const cameraX = camera.position.x;
     const cameraY = camera.position.y;
     const cameraZ = camera.position.z;
+    const decals = this.#decals;
+    // Der Fleck ist ein Nahbereichs-Effekt: er multipliziert auf das **fertige**
+    // Bild, und in der Ferne läge dort überwiegend Nebel, den er mitverdunkeln
+    // würde. Die Ausblendgrenze ist deshalb zugleich die Einsortiergrenze —
+    // was jenseits davon liegt, kostet gar nicht erst einen Pufferplatz.
+    const aoFar = GROUND_AO.fade[1] * GROUND_AO.fade[1];
 
     for (let s = 0; s < SPECIES.length; s++) {
       const species = SPECIES[s]!;
       const lod = this.#lods[s];
       const data = chunk.instances[s];
       if (!lod || !data) continue;
+      const ao = species.groundAo;
+      const aoRadius = this.#aoRadius[s] ?? 0;
 
       // Quadrierte Grenzen: die Wurzel je Instanz wäre bei 60 000 Instanzen
       // 60 000 unnötige Rechnungen, und verglichen wird ohnehin nur.
@@ -367,6 +431,10 @@ export class ScatterSystem implements System {
         const dz = z - cameraZ;
         const distance = dx * dx + dy * dy + dz * dz;
         if (distance > far) continue;
+
+        if (decals && ao && distance < aoFar) {
+          decals.push(x, z, aoRadius * data[i + 3]!, ao.strength);
+        }
 
         const stage = distance < near ? 0 : distance < mid ? 1 : 2;
         lod.push(
@@ -473,6 +541,10 @@ export class ScatterSystem implements System {
     this.#readouts.instanzen =
       `${total.toLocaleString('de-DE')}` + (dropped > 0 ? ` · ${dropped} VERWORFEN` : '');
     this.#readouts.stufen = `${perStage[0]} / ${perStage[1]} / ${perStage[2]}`;
+    this.#readouts.flecken = this.#decals
+      ? `${this.#decals.visible}` +
+        (this.#decals.dropped > 0 ? ` · ${this.#decals.dropped} VERWORFEN` : '')
+      : '—';
     this.#readouts.chunks = `${this.#cache.size} im Cache · ${this.#pass.length} im Durchlauf`;
     this.#readouts.aufwand = `${ms.toFixed(2)} ms`;
   }
@@ -490,6 +562,11 @@ export class ScatterSystem implements System {
     folder.addBinding(this.#readouts, 'stufen', {
       readonly: true,
       label: 'Nah / Mittel / Fern',
+      interval: 200,
+    });
+    folder.addBinding(this.#readouts, 'flecken', {
+      readonly: true,
+      label: 'Bodenflecken',
       interval: 200,
     });
     folder.addBinding(this.#readouts, 'chunks', {
@@ -520,6 +597,15 @@ export class ScatterSystem implements System {
       max: 2,
       step: 0.01,
     });
+
+    // Die Flecken entstehen erst mit `terrain:ready`, also nach diesem Aufruf.
+    // Der Regler greift deshalb über einen Umweg auf sie zu und schreibt den
+    // Wert auch dann, wenn es sie noch nicht gibt — sonst stünde er beim
+    // ersten Verstellen ins Leere.
+    const groundAo = { value: this.#lookGroundAo };
+    folder
+      .addBinding(groundAo, 'value', { label: 'Bodenverdeckung', min: 0, max: 2, step: 0.01 })
+      .on('change', (event: { value: number }) => this.#setGroundAo(event.value));
 
     // Ein Regler für alle Imposter zugleich: die Schwelle ist eine Eigenschaft
     // des Verfahrens, nicht der Art. Getrennt einzustellen hieße, vier Werte zu
@@ -563,6 +649,8 @@ export class ScatterSystem implements System {
     }
     for (const lod of this.#lods) lod.dispose();
     this.#lods = [];
+    this.#decals?.dispose();
+    this.#decals = null;
     for (const material of this.#materials) material.dispose();
     this.#materials = [];
     for (const material of this.#imposterMaterials) material.dispose();

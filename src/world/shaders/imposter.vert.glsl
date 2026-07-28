@@ -51,6 +51,11 @@ transformed = vegetationWind(
     transformed, impOrigin, vegetationWindLocal(instanceMatrix), position.y * position.y);
 
 vImposterQuad = vec2(position.x + 0.5, position.y);
+// `impY` ist die Höhe über dem Instanzursprung, also über dem Boden — die
+// Unterkante des Quads liegt darunter und ergibt hier negative Werte, die das
+// clamp abfängt.
+float impBase = clamp(impY / uImposterHeight, 0.0, 1.0);
+vImposterBase = impBase * impBase;
 // Die Weltposition wird aus der **ungewiegten** Höhe gebildet. Der Wind
 // verschiebt hier nur waagerecht, und Nebel wie Verschattung an einer um
 // Zentimeter versetzten Stelle abzufragen wäre teurer als der Fehler wert ist.

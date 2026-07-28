@@ -67,6 +67,8 @@ export interface LookState {
     windStrength: number;
     /** Streulicht durch Blätter — siehe VegetationMaterial. */
     translucency: number;
+    /** Bodenverdeckung am Fuß der Pflanze — siehe GroundAoMaterial. */
+    groundAo: number;
   };
 
   postfx: {
@@ -127,6 +129,7 @@ export function defaultLook(): LookState {
     vegetation: {
       windStrength: VEGETATION_LOOK.windStrength,
       translucency: VEGETATION_LOOK.translucency,
+      groundAo: VEGETATION_LOOK.groundAo,
     },
     postfx: {
       bloomEnabled: POSTFX.bloom.enabled,

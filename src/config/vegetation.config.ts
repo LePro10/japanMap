@@ -111,6 +111,16 @@ export interface SpeciesSettings {
 
   /** Amplitude des Windwiegens in Metern bei voller Höhe (P4 / 4.5). */
   readonly windAmplitude: number;
+
+  /**
+   * Bodenverdeckung am Fuß der Pflanze — `null`, wenn die Art keine bekommt.
+   *
+   * `radius` ist ein Vielfaches des Modellradius, `strength` skaliert die
+   * Verdunkelung gegen `GROUND_AO.floor`. Gras bekommt keine: ein 0,4 m hoher
+   * Halm verdeckt nichts, und bei 33 000 sichtbaren Grasinstanzen wäre der
+   * Boden ein einziger dunkler Teppich.
+   */
+  readonly groundAo: { readonly radius: number; readonly strength: number } | null;
 }
 
 /**
@@ -143,6 +153,7 @@ export const SPECIES: readonly SpeciesSettings[] = [
     color: 0x2f4a34,
     tintJitter: 0.18,
     windAmplitude: 0.55,
+    groundAo: { radius: 1.15, strength: 1 },
   },
   {
     id: 'broadleaf',
@@ -162,6 +173,7 @@ export const SPECIES: readonly SpeciesSettings[] = [
     color: 0x3f5a2e,
     tintJitter: 0.22,
     windAmplitude: 0.75,
+    groundAo: { radius: 1.25, strength: 1 },
   },
   {
     id: 'bush',
@@ -181,6 +193,7 @@ export const SPECIES: readonly SpeciesSettings[] = [
     color: 0x46592f,
     tintJitter: 0.24,
     windAmplitude: 0.3,
+    groundAo: { radius: 1.1, strength: 0.55 },
   },
   {
     id: 'grass',
@@ -215,6 +228,7 @@ export const SPECIES: readonly SpeciesSettings[] = [
     color: 0x5a6b35,
     tintJitter: 0.26,
     windAmplitude: 0.16,
+    groundAo: null,
   },
 ];
 
@@ -323,6 +337,75 @@ export const VEGETATION_LOOK = {
    * abgewandte Seite nicht auf null fällt.
    */
   translucency: 0.55,
+
+  /**
+   * Stärke der Bodenverdeckung, 0…2. Siehe `GROUND_AO`.
+   *
+   * Gehört in den Look und nicht in die Qualitätsstufe: der Fleck kostet einen
+   * einzigen Draw-Call und ist damit kein Leistungsparameter, sondern ein
+   * Regler am Bild.
+   */
+  groundAo: 1,
+} as const;
+
+/**
+ * Bodenverdeckung — offener Punkt aus P4, nachgeholt vor P5.
+ *
+ * **Das ist Umgebungsverdeckung, kein Schattenwurf.** Der Unterschied ist hier
+ * nicht sprachlich: die Sonne steht auf 2,2°, ein 9-m-Baum wirft damit einen
+ * rund 230 m langen Schatten quer über den Hang. Ein runder Fleck unter dem
+ * Stamm wäre als *Sonnenschatten* schlicht falsch. Als **Himmelsverdeckung**
+ * ist er richtig und noch dazu sonnenunabhängig: die Krone nimmt dem Boden
+ * unter sich den Himmel weg, und das ist der Kontakt, der fehlte.
+ *
+ * Bezahlt wird das mit **einem** Draw-Call: alle Arten schreiben in dasselbe
+ * `InstancedMesh`, weil der Fleck keine Textur und keine Art kennt.
+ */
+export const GROUND_AO = {
+  /**
+   * Restlicht in der Mitte des Flecks. 0 wäre schwarz, 1 wirkungslos.
+   *
+   * Gemischt wird **multiplikativ** auf das fertig beleuchtete Bild, nicht nur
+   * auf den Umgebungsanteil. Das ist eine Vereinfachung: streng genommen darf
+   * Umgebungsverdeckung das direkte Sonnenlicht nicht dämpfen. Bei 2,2°
+   * Sonnenstand liegt der Waldboden ohnehin fast überall im Eigenschatten des
+   * Geländes, der direkte Anteil ist dort also klein — und der Preis für die
+   * saubere Trennung wäre ein zweiter Geometriedurchlauf mit G-Buffer.
+   */
+  floor: 0.4,
+
+  /**
+   * Radius, bis zu dem der Fleck voll deckt; darüber blendet er zum Rand aus.
+   *
+   * Klein gehalten: ein Fleck mit hartem Kern und weitem Saum liest sich als
+   * Kontakt, einer mit weitem Kern als Fleck auf dem Boden.
+   */
+  core: 0.12,
+
+  /** Ausblenden mit der Entfernung, in Metern: x = Beginn, y = Ende. */
+  fade: [55, 95] as const,
+
+  /**
+   * Anhebung über die abgetastete Geländehöhe, in Metern.
+   *
+   * Der Fleck tastet die Heightmap **exakt** ab, das gerenderte Gelände ist
+   * dagegen ein gemorphtes CDLOD-Gitter. Beide fallen nur an den Stützstellen
+   * zusammen; dazwischen liegt der Fleck mal darüber, mal darunter. Die
+   * Anhebung deckt die Differenz ab, `polygonOffset` den Rest.
+   */
+  lift: 0.06,
+
+  /**
+   * Stützstellen je Achse im Fleck-Gitter.
+   *
+   * Ein einzelnes Quad wäre eben und stünde am Hang schräg im Boden. Mit 5 × 5
+   * Stützstellen liegt der Abstand bei einem 8-m-Fleck bei 2 m und damit in der
+   * Größenordnung des feinsten Terrain-Gitters (1,5 m).
+   */
+  vertices: 5,
+
+  /** Pufferplätze. Überlauf wird gezählt und muss null bleiben. */
+  capacity: 4096,
 } as const;
 
 export const IMPOSTER = {

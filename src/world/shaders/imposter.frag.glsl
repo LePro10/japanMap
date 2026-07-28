@@ -32,7 +32,12 @@ vec4 impB = texture2D(uImposterAlbedo, impUvB);
 vec4 impAlbedo = mix(impA, impB, impBlend);
 if (impAlbedo.a < uImposterAlphaTest) discard;
 
-diffuseColor.rgb *= impAlbedo.rgb * vegetationTint(vImposterTint);
+// Verdeckung am Fuß, aus derselben Datei und mit demselben Uniform wie das
+// Mesh. Der Bodenfleck reicht bis 95 m, die Mesh-Stufen bis 180 m — ohne diese
+// Zeile bekäme der Baum beim Stufenwechsel auf den Imposter seinen hellen
+// Stammfuß zurück.
+diffuseColor.rgb *=
+    impAlbedo.rgb * vegetationTint(vImposterTint) * vegetationBaseAo(vImposterBase);
 
 vec3 impNa = texture2D(uImposterNormal, impUvA).xyz * 2.0 - 1.0;
 vec3 impNb = texture2D(uImposterNormal, impUvB).xyz * 2.0 - 1.0;
