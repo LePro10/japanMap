@@ -41,6 +41,15 @@ float impY = uImposterSize.y + position.y * uImposterSize.x;
 
 transformed = impRightLocal * (position.x * uImposterSize.x) + vec3(0.0, impY, 0.0);
 
+// **Auch der Imposter wiegt sich.** PLAN.md 4.5 verlangt Wind für *alle*
+// Vegetation, und bis hierher hatte ihn nur das Mesh — bei 74,6 % Imposteranteil
+// stand also drei Viertel des Waldes still, während der Vordergrund sich bewegte.
+// Die Maske ist die Höhe im Quad, quadratisch wie beim Mesh; der Fuß bleibt
+// stehen, die Krone kippt. Dieselbe Funktion, derselbe Uniform-Block, dieselbe
+// Phase aus der Weltposition — sonst liefe die Ferne gegen den Vordergrund.
+transformed = vegetationWind(
+    transformed, impOrigin, vegetationWindLocal(instanceMatrix), position.y * position.y);
+
 vImposterQuad = vec2(position.x + 0.5, position.y);
 // Die Weltposition wird aus der **ungewiegten** Höhe gebildet. Der Wind
 // verschiebt hier nur waagerecht, und Nebel wie Verschattung an einer um
