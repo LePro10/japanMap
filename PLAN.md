@@ -1612,13 +1612,17 @@ Distance-Dependent Level of Detail).
       zum Vergleich lieferte der erste Entwurf mit f = 3 an denselben Punkten
       **207**
 - [x] **≥ 50 000 sichtbare Vegetations-Instanzen bei < 100 Draw-Calls** —
-      **50 211** Instanzen (1 520 nah · 11 232 mittel · 37 459 fern) bei
-      **12** Draw-Calls für Vegetation. An einem zweiten Blickpunkt in der
-      Wiesenzone **62 429**
-- [x] **Gesamt-Draw-Calls < 800, Dreiecke < 3 Mio.** — **48 / 800** und
-      **537 587 / 3 000 000** am dichtesten Blickpunkt der Karte. Dazu
+      **50 203** Instanzen bei **28** Draw-Calls für Vegetation (vier Arten à
+      drei Formvarianten mal zwei Mesh-Stufen, plus ein geteilter Imposter je
+      Art). An einem zweiten Blickpunkt in der Wiesenzone **62 429**
+- [x] **Gesamt-Draw-Calls < 800, Dreiecke < 3 Mio.** — **64 / 800** und
+      **567 815 / 3 000 000** am dichtesten Blickpunkt der Karte. Dazu
       **287 MB / 512 MB** Texturspeicher (P3: 255 MB; +32 MB durch die acht
       Imposter-Atlanten, genau wie gerechnet)
+
+      > Vor den Formvarianten waren es 48 Draw-Calls und 537 587 Dreiecke. Die
+      > Varianten kosten 16 Draw-Calls und 5,6 % Dreiecke; der Texturspeicher
+      > bleibt unverändert, weil die Imposter sich einen Atlas je Art teilen
 - [x] **Keine Vegetation auf Straßen oder im Wasser** — über alle 50 211
       Instanzen: **0** mit weniger als 7 m Achsabstand, kleinster gemessener
       Abstand exakt **7,00 m** (der Grenzwert der Gräser); tiefste Instanz
@@ -1645,6 +1649,15 @@ Zusätzlich geprüft:
 - [x] **Wind bewegt Geometrie** — bei Stärke 0 sind zwei aufeinanderfolgende
       Frames **pixelgleich** (0 von 256 000), bei Stärke 2,5 unterscheiden sich
       **51 189** Pixel
+
+      > **Diese Zeile hat einen Fehler verdeckt und ist der Grund, warum sie
+      > jetzt zweigeteilt ist.** Gemessen wurde an einem Nahblickpunkt, ohne die
+      > LOD-Stufen zu trennen — und der Wind hing allein im Mesh-Material. Drei
+      > Viertel der sichtbaren Instanzen (37 459 von 50 211) waren Imposter und
+      > standen still. Nachgeholt mit ausgeblendeten Mesh-Stufen: bei Stärke 0
+      > zwei pixelgleiche Frames, bei 2,5 **56 205 von 400 000** Pixeln
+      > Unterschied. Wer eine Eigenschaft für „alle" prüft, muss über alle
+      > messen, nicht über die, die gerade im Bild sind
 - [x] **BudgetGuard schlägt an** — mit 900 künstlichen Draw-Calls erscheint bei
       948 / 800 nach 30 Frames „BUDGET ÜBERSCHRITTEN — Draw-Calls 948 / 800"
       samt Verursachertabelle; nach dem Entfernen der Last fällt der Zähler auf
@@ -1666,12 +1679,12 @@ Zusätzlich geprüft:
 
 | Größe | Gemessen | Budget |
 |---|---|---|
-| Draw-Calls | **48** (davon 12 Vegetation, 1 Terrain) | 800 |
-| Dreiecke | **537 587** | 3 000 000 |
+| Draw-Calls | **64** (davon 28 Vegetation, 1 Terrain) | 800 |
+| Dreiecke | **567 815** | 3 000 000 |
 | Texturspeicher | **287 MB** | 512 MB |
 | Programme | 22 | — |
 | Quadtree-Knoten | 73…137 je Blick | — |
-| Vegetations-Instanzen | **50 211** (Spitze 62 429) | ≥ 50 000 gefordert |
+| Vegetations-Instanzen | **50 203** (Spitze 62 429) | ≥ 50 000 gefordert |
 | CPU Streuung je Frame | **0,10 ms** (Median, eingeschwungen) | 16,6 ms Frame |
 | GPU je Frame | **nicht messbar** — kein Timer auf dem Software-Rasterizer | 16,6 ms |
 | Konsole | keine Fehler, keine Warnungen außer der Timer-Notiz | — |
@@ -1679,6 +1692,37 @@ Zusätzlich geprüft:
 Zum Vergleich der Stand am Ende von P3: 36 Draw-Calls, 1 212 971 Dreiecke,
 255 MB. Das Terrain kostet jetzt **ein Fünftel** der Dreiecke bei zweieinhalbfach
 feinerer Abtastung im Nahbereich, und der Rest ist Vegetation.
+
+### Nach der Abnahme: Formvarianz
+
+Die Abnahme prüft Zahlen, und die Zahlen stimmten — aber jede Kiefer war
+dieselbe Kiefer, variiert nur über Maßstab, Y-Drehung und einen Farb-Hash. In
+einem Bestand ist das sofort zu sehen. Drei Hebel dagegen, nach Wirkung je
+Draw-Call geordnet:
+
+| Hebel | Kosten | Gemessene Spanne |
+|---|---|---|
+| Seitenverhältnis je Instanz | **null** — steht in der Instanzmatrix | 0,46 … 1,74 |
+| Neigung je Instanz (Scherung der Y-Spalte) | **null** — ebenso | bis 15° |
+| Drei Formvarianten je Art | 16 Draw-Calls, +5,6 % Dreiecke | — |
+
+Die ersten beiden sind gratis, weil die Matrix ohnehin geschrieben wird; erst
+der dritte kostet etwas. Die Reihenfolge ist deshalb keine Geschmacksfrage.
+
+> **Alle Varianten einer Art sind auf dieselbe Höhe normiert.** Die Variante darf
+> die *Form* ändern, nicht die Größe — die kommt aus der Instanzmatrix. Ohne die
+> Normierung spränge ein hoher Baum beim Wechsel auf den Imposter, weil sich alle
+> Varianten einen Atlas teilen.
+
+> **Die Imposter teilen sich einen Atlas je Art.** Sie übernehmen ab 180 m, und
+> dort ist ein Baum rund 19 Pixel hoch — die Form ist nicht mehr auflösbar. Drei
+> Atlanten wären dreimal derselbe Fleck bei dreifachem Texturspeicher, und der
+> bleibt deshalb bei 287 MB.
+
+> **Der Imposter-Shader liest waagerechte und senkrechte Skalierung getrennt.**
+> Die Y-Spalte als einzigen Maßstab zu nehmen war richtig, solange die Matrix
+> uniform skaliert war; mit gestreutem Seitenverhältnis machte es breite Büsche
+> zu hohen.
 
 ### Risiken
 - **CDLOD-Morphing ist fehleranfällig** — falsche Morph-Distanzen erzeugen
@@ -1736,7 +1780,8 @@ Leistungsparameter der Qualitätsstufe.
 | Punkt | Zahl | Wohin |
 |---|---|---|
 | GPU-Zeit nicht messbar | `EXT_disjoint_timer_query_webgl2` fehlt auf dem Software-Rasterizer | P7, Profiling auf Hardware mit Timer |
-| Vegetation ist prozedural | 4 Arten, ~100 Dreiecke je Modell | P5.1, Asset-Pipeline mit echten Modellen |
+| Vegetation ist prozedural | 4 Arten à 3 Formvarianten, ~100 Dreiecke je Modell | P5.1, Asset-Pipeline mit echten Modellen |
+| Vegetation wirft und empfängt keinen Schatten | `castShadow` und `receiveShadow` beide aus | Kein Kontaktschatten am Stammfuß — der wahrscheinlichste Grund, warum Bäume aufgeklebt wirken. Braucht **keine** Shadow-Map und ist deshalb eine eigene, billigere Frage als die verschobenen Echtzeitschatten |
 | Imposter mischen 2 von 4 Nachbarn | Winkelfehler bis 11° | offen; bilinear über alle vier wäre der doppelte Aufwand für die zweite Hälfte eines Fehlers, den man bei 180 m nicht sieht |
 | Imposter-Atlas ohne Mipmaps | Silhouette 6,5 % breiter als das Mesh | offen; Mipmaps über einen Atlas bluten zellenübergreifend, das braucht eine eigene Lösung |
 | Kein Echtzeitschatten | P2 hatte ihn „für P4, sobald es bewegliche Werfer gibt" angekündigt | verschoben: es gibt noch keine beweglichen Werfer. Vegetation wirft keinen — bei 50 000 Instanzen wäre das ein zweiter Geometriedurchlauf im dreistelligen Draw-Call-Bereich |

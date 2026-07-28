@@ -116,8 +116,10 @@ tippen skaliert nicht.
   PLAN.md P4 / 4.3
 - Billboard-Imposter ab ~150 m Distanz (gebaut: 180 m für Bäume, oktaedrischer
   8 × 8-Atlas über der Halbkugel, zur Laufzeit gebacken)
+- Vier Arten à **drei Formvarianten**, dazu Seitenverhältnis und Neigung je
+  Instanz. Die beiden letzten kosten nichts — sie stehen in der Instanzmatrix
 - Ziel: ~50.000 Instanzen sichtbar bei < 100 Draw-Calls.
-  **Gemessen: 50.211 bei 12** (Vegetation) bzw. 48 Draw-Calls für die ganze Szene
+  **Gemessen: 50.203 bei 28** (Vegetation) bzw. 64 Draw-Calls für die ganze Szene
 
 ---
 

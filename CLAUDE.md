@@ -221,6 +221,11 @@ Kurzliste, damit es nicht wieder passiert:
   mit 0,70 ms harmlos aus — gemessen auf einer Seite, deren Chunk-Cache seit
   Minuten voll war. Auf einer frisch geladenen Seite waren es 12,7 ms. Bei
   allem, was zwischenspeichert, ist der **kalte** Zustand die Messung, die zählt.
+- **Eine Eigenschaft für „alle" an einem Teil geprüft.** Die Abnahmezeile „Wind
+  bewegt Geometrie" stand auf einer Messung an einem Nahblickpunkt — und der
+  Wind hing allein im Mesh-Material. Drei Viertel der sichtbaren Instanzen waren
+  Imposter und standen still. Wer „für alle" prüft, muss über alle messen, nicht
+  über die, die gerade im Bild sind.
 - **Über das ganze Bild gemittelt, obwohl der Effekt lokal ist.** Fünf Anläufe
   meldeten „Streulicht wirkt nicht", weil der Mittelwert über 31 % Vegetation
   und 69 % Himmel gebildet wurde. Mit einer Maske — Differenz gegen ein Bild mit
