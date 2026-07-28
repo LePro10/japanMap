@@ -689,6 +689,290 @@ function carveRoads(height, res, spacing, roadFile) {
     highestFill,
     mean: sumAbsolute / Math.max(carved, 1),
     percentile95,
+    // Wird von den Reisfeld-Terrassen gebraucht: eine Parzelle, die bis an die
+    // Achse heranreicht, hübe die Fahrbahn mit an.
+    roadDistance,
+  };
+}
+
+// ── Schritt 5c: Reisfeld-Terrassen ───────────────────────────────────────────
+
+const PADDY = {
+  /** Mittlerer Abstand der Saatpunkte in Metern — die Parzellengröße. */
+  spacing: 34,
+  /** Versatz der Saatpunkte gegen das Raster, als Anteil davon. */
+  jitter: 0.4,
+  /** Halbe Dammbreite in Metern. */
+  dam: 1.7,
+  /** Höhe des Damms über dem Parzellenniveau. */
+  damHeight: 0.55,
+  /**
+   * Terrassenstufe in Metern.
+   *
+   * Parzellenhöhen werden darauf gerastert. Ohne diese Rasterung bekäme jede
+   * Parzelle ihre eigene Höhe, und der Hang liefe stufenlos durch — sichtbar
+   * wäre dann nur ein Muster aus Dämmen, keine Terrasse. Mit 0,6 m fallen
+   * benachbarte Parzellen entweder zusammen oder springen um eine erkennbare
+   * Stufe.
+   */
+  step: 0.6,
+  /**
+   * Ab welchem Reisfeldgewicht eingeebnet wird.
+   *
+   * **Dieser Wert entscheidet über die Kehren am Bergpass**, und das war nicht
+   * vorhersehbar. Die Reisfeldzone hat einen 380 m breiten weichen Rand; wo er
+   * hinreicht, ändert das Einebnen die Kostenfläche, auf der der
+   * Straßengenerator seine Trasse sucht. Gemessen, jeweils `bake:clean` gefolgt
+   * von `gen-roads`:
+   *
+   * | Schwelle | Parzellen | Niveaubereich | Tōge | Kehren |
+   * |---|---|---|---|---|
+   * | keine Terrassen | — | — | 2983 m | **2** |
+   * | 0,40 | 937 | 17,4…117,0 m | 3073 m | **1** |
+   * | 0,55 | 841 | 18,6…58,8 m | 3003 m | **3** |
+   *
+   * 0,40 kostete eine Kehre und ließ Parzellen bis auf 117 m klettern — also
+   * bis weit in die Hänge hinein, wo sie den Fuß des Passes verändern. 0,55
+   * hält sie im Tal (58,8 m) und gibt sogar eine Kehre mehr her als das
+   * unberührte Gelände.
+   *
+   * Der Zusammenhang gehört hierher notiert, weil er nicht zu erraten ist: wer
+   * an dieser Zahl dreht, dreht am Bergpass mit und muss `npm run world`
+   * ansehen, nicht nur die Reisfelder.
+   */
+  minWeight: 0.55,
+  /** Abstand zur Straßenachse, in Metern. */
+  roadClearance: 16,
+  /** Auflösung der Wassermaske. 1024 über 3072 m sind 3 m je Texel. */
+  maskRes: 1024,
+};
+
+/**
+ * Reisfeld-Parzellen einebnen — PLAN.md P5 / 5.4.
+ *
+ * **Warum im Baker und nicht zur Laufzeit.** Der naheliegende Weg wäre, eine
+ * flache Wasserfläche über das Gelände zu legen. Gemessen trägt die
+ * Reisfeldzone 101,2 ha bei einer Höhenspanne von 17,7 bis 123,8 m, und die
+ * Höhendifferenz innerhalb einer 30-m-Zelle liegt im Median bei 1,10 m, im
+ * 95. Perzentil aber bei **7,41 m** und im Extrem bei 33,85 m. Eine ebene
+ * Fläche darüber würde an jedem zwanzigsten Feld vom Gelände durchstoßen.
+ * Eingeebnet werden muss das Gelände selbst — und dann sehen es auch
+ * Vegetationsstreuung, Prop-Platzierung und Höhenabfrage.
+ *
+ * Verfahren: Voronoi über gejitterte Saatpunkte. Jede Zelle bekommt das
+ * gerasterte Mittel ihrer eigenen Höhen; auf der Zellgrenze bleibt ein Damm
+ * stehen. „Nächster Saatpunkt gewinnt" ist dieselbe Regel wie beim
+ * Straßeneinschnitt, und sie löst dasselbe Problem: Grenzen entstehen von
+ * selbst, ohne Sonderfall.
+ *
+ * Läuft **nach** dem Straßeneinschnitt und hält Abstand zur Achse — sonst
+ * hübe eine Parzelle die Fahrbahn mit an.
+ */
+function terracePaddies(height, res, spacing, seed, roadDistance) {
+  const half = WORLD_SIZE / 2;
+  const nField = createNoise2D(stream(seed, 'field'));
+  const rng = mulberry32((seed ^ 0x9d2c5680) >>> 0);
+
+  // 1. Maske: wo darf überhaupt eingeebnet werden? Dieselbe Formel wie in
+  //    `computeZones`, nur auf dem Höhengitter statt auf dem Zonengitter — die
+  //    Zonen entstehen erst danach und sähen sonst ein Gelände, das es zum
+  //    Zeitpunkt ihrer Berechnung noch nicht gab.
+  const weight = new Float32Array(res * res);
+  for (let iz = 0; iz < res; iz++) {
+    for (let ix = 0; ix < res; ix++) {
+      const index = iz * res + ix;
+      const x = -half + ix * spacing;
+      const z = -half + iz * spacing;
+      const h = height[index];
+      const hL = height[iz * res + clamp(ix - 1, 0, res - 1)];
+      const hR = height[iz * res + clamp(ix + 1, 0, res - 1)];
+      const hU = height[clamp(iz - 1, 0, res - 1) * res + ix];
+      const hD = height[clamp(iz + 1, 0, res - 1) * res + ix];
+      const slope = Math.hypot((hR - hL) / (2 * spacing), (hD - hU) / (2 * spacing));
+
+      const flat = 1 - smoothstep(0.12, 0.35, slope);
+      const zone = boxMask(x, z, ZONES.rice, fbm(nField, x / 340, z / 340, 3) * 190);
+      let w = flat * zone * smoothstep(8, 14, h);
+      if (roadDistance) {
+        w *= smoothstep(PADDY.roadClearance, PADDY.roadClearance + 12, roadDistance[index]);
+      }
+      weight[index] = w;
+    }
+  }
+
+  // 2. Saatpunkte auf einem gejitterten Raster. Ein echtes Poisson-Sampling
+  //    wäre gleichmäßiger und hier ohne Wert: die Parzellen sollen ohnehin
+  //    ungleich groß sein.
+  const seeds = [];
+  const grid = PADDY.spacing;
+  for (let z = -half; z < half; z += grid) {
+    for (let x = -half; x < half; x += grid) {
+      const sx = x + grid * (0.5 + (rng() - 0.5) * 2 * PADDY.jitter);
+      const sz = z + grid * (0.5 + (rng() - 0.5) * 2 * PADDY.jitter);
+      const ix = Math.round((sx + half) / spacing);
+      const iz = Math.round((sz + half) / spacing);
+      if (ix < 0 || iz < 0 || ix >= res || iz >= res) continue;
+      if (weight[iz * res + ix] < PADDY.minWeight) continue;
+      seeds.push({ x: sx, z: sz, heights: [], count: 0, level: 0 });
+    }
+  }
+  if (!seeds.length) return null;
+
+  // Suchraster über die Saatpunkte: sonst kostet „nächster Saatpunkt" für jeden
+  // der 4,2 Mio. Texel einen Durchlauf über alle Punkte.
+  const cellSize = PADDY.spacing * 2;
+  const columns = Math.ceil(WORLD_SIZE / cellSize) + 1;
+  const buckets = new Map();
+  seeds.forEach((s, index) => {
+    const key =
+      Math.floor((s.z + half) / cellSize) * columns + Math.floor((s.x + half) / cellSize);
+    const list = buckets.get(key);
+    if (list) list.push(index);
+    else buckets.set(key, [index]);
+  });
+
+  /** Die zwei nächsten Saatpunkte zu einer Weltposition. */
+  const nearestTwo = (x, z) => {
+    const cx = Math.floor((x + half) / cellSize);
+    const cz = Math.floor((z + half) / cellSize);
+    let best = -1;
+    let d1 = Infinity;
+    let d2 = Infinity;
+    for (let oz = -1; oz <= 1; oz++) {
+      for (let ox = -1; ox <= 1; ox++) {
+        const list = buckets.get((cz + oz) * columns + (cx + ox));
+        if (!list) continue;
+        for (const index of list) {
+          const s = seeds[index];
+          const d = Math.hypot(s.x - x, s.z - z);
+          if (d < d1) {
+            d2 = d1;
+            d1 = d;
+            best = index;
+          } else if (d < d2) {
+            d2 = d;
+          }
+        }
+      }
+    }
+    return { index: best, d1, d2 };
+  };
+
+  // 3. Erster Durchlauf: jede Zelle sammelt die Höhen ihrer eigenen Texel.
+  const owner = new Int32Array(res * res).fill(-1);
+  const border = new Float32Array(res * res);
+  for (let iz = 0; iz < res; iz++) {
+    for (let ix = 0; ix < res; ix++) {
+      const index = iz * res + ix;
+      if (weight[index] < 0.05) continue;
+      const x = -half + ix * spacing;
+      const z = -half + iz * spacing;
+      const { index: seedIndex, d1, d2 } = nearestTwo(x, z);
+      if (seedIndex < 0) continue;
+      owner[index] = seedIndex;
+      // Abstand zur Zellgrenze: bei Voronoi ist (d2 − d1) / 2 genau das.
+      border[index] = (d2 - d1) * 0.5;
+      // **Nur volle Texel zählen mit.** Der Rand einer Zone ist ausgefranst;
+      // nähme man ihn ins Mittel, zöge er das Niveau der ganzen Parzelle mit
+      // sich.
+      if (weight[index] >= PADDY.minWeight) seeds[seedIndex].heights.push(height[index]);
+      seeds[seedIndex].count++;
+    }
+  }
+  for (const s of seeds) {
+    if (!s.heights.length) {
+      s.count = 0;
+      continue;
+    }
+    // **Median statt Mittel.** Eine Parzelle, die über eine Geländestufe
+    // hinweg liegt, hat zwei Höhenniveaus; das Mittel landet dazwischen und
+    // gehört zu keinem von beiden — die Parzelle würde auf der einen Hälfte
+    // ausgehoben und auf der anderen aufgeschüttet. Der Median wählt das
+    // Niveau, auf dem die Mehrheit der Fläche ohnehin schon liegt.
+    s.heights.sort((a, b) => a - b);
+    const median = s.heights[Math.floor(s.heights.length / 2)];
+    s.level = Math.round(median / PADDY.step) * PADDY.step;
+  }
+
+  // 4. Zweiter Durchlauf: einebnen, Damm stehen lassen, Wassermaske schreiben.
+  const mask = Buffer.alloc(PADDY.maskRes * PADDY.maskRes);
+  const maskStep = (res - 1) / (PADDY.maskRes - 1);
+  let levelled = 0;
+  let deepest = 0;
+  let highest = 0;
+
+  for (let iz = 0; iz < res; iz++) {
+    for (let ix = 0; ix < res; ix++) {
+      const index = iz * res + ix;
+      const seedIndex = owner[index];
+      if (seedIndex < 0) continue;
+      const s = seeds[seedIndex];
+      if (!s.count) continue;
+
+      // Der Damm ist ein Rücken auf der Zellgrenze: voll auf der Grenze, in
+      // `dam` Metern Abstand wieder auf Parzellenniveau. Ein Kosinus statt einer
+      // Rampe, aus demselben Grund wie beim Straßeneinschnitt — ein Knick
+      // zeichnet bei 2,23° Sonnenstand eine harte Lichtkante.
+      const t = clamp(border[index] / PADDY.dam, 0, 1);
+      const crest = 0.5 * (1 + Math.cos(Math.PI * t));
+      const target = s.level + PADDY.damHeight * crest;
+
+      const before = height[index];
+      // **Was zu weit vom Parzellenniveau abweicht, bleibt stehen.**
+      //
+      // Ohne diese Sperre hat der erste Lauf 113,3 m tief abgetragen und 55,8 m
+      // hoch aufgeschüttet: eine Parzelle, deren Zelle über eine Steilkante
+      // reicht, ebnet den Abhang mit ein. Das Ergebnis wäre keine Terrasse,
+      // sondern ein Krater. Mit der Sperre hört die Parzelle dort auf, wo das
+      // Gelände nicht mehr zu ihr passt — und genau so enden echte Terrassen
+      // auch: an der Böschung.
+      const fit = 1 - smoothstep(2.5, 6, Math.abs(before - s.level));
+      const blend = smoothstep(0.05, PADDY.minWeight, weight[index]) * fit;
+      if (blend < 0.01) continue;
+      height[index] = before + (target - before) * blend;
+      const delta = height[index] - before;
+      if (delta < deepest) deepest = delta;
+      if (delta > highest) highest = delta;
+      levelled++;
+    }
+  }
+
+  // Die Wassermaske entsteht aus dem **eingeebneten** Feld: Wasser steht dort,
+  // wo die Parzelle voll durchgesetzt ist und kein Damm im Weg liegt.
+  for (let my = 0; my < PADDY.maskRes; my++) {
+    for (let mx = 0; mx < PADDY.maskRes; mx++) {
+      const ix = Math.round(mx * maskStep);
+      const iz = Math.round(my * maskStep);
+      const index = iz * res + ix;
+      const seedIndex = owner[index];
+      let value = 0;
+      if (seedIndex >= 0 && seeds[seedIndex].heights.length) {
+        // Dieselben drei Bedingungen wie beim Einebnen: volle Zone, kein Damm,
+        // und das Gelände muss zur Parzelle passen. Ein Wasserspiegel über
+        // nicht eingeebnetem Boden wäre eine Pfütze am Hang.
+        const full = weight[index] >= PADDY.minWeight ? 1 : 0;
+        const dry = border[index] < PADDY.dam ? 0 : 1;
+        const fits = Math.abs(height[index] - seeds[seedIndex].level) < 0.4 ? 1 : 0;
+        value = full * dry * fits * 255;
+      }
+      mask[my * PADDY.maskRes + mx] = value;
+    }
+  }
+
+  const used = seeds.filter((s) => s.count).length;
+  const levels = seeds.filter((s) => s.count).map((s) => s.level);
+  return {
+    mask,
+    maskRes: PADDY.maskRes,
+    parcels: used,
+    levelled,
+    deepest,
+    highest,
+    minLevel: Math.min(...levels),
+    maxLevel: Math.max(...levels),
+    /** Wasserstand über dem Parzellenniveau — die Laufzeit legt ihn darauf. */
+    waterDepth: 0.3,
+    damHeight: PADDY.damHeight,
   };
 }
 
@@ -835,6 +1119,34 @@ async function main() {
     );
   }
 
+  // Reisfeld-Terrassen. **Nach** dem Straßeneinschnitt, damit die Parzellen um
+  // die Fahrbahn herum aufhören statt sie mit anzuheben — und vor der
+  // Zonenmaske, damit die eingeebnete Fläche als Reisfeld texturiert wird.
+  process.stdout.write('  5c   Reisfeld-Terrassen … ');
+  const paddyReport = terracePaddies(height, res, spacing, seed, roadReport?.roadDistance ?? null);
+  if (paddyReport) {
+    console.log(
+      c.green('fertig') +
+        c.dim(
+          ` ${paddyReport.parcels} Parzellen · ` +
+            `${paddyReport.levelled.toLocaleString('de-DE')} Texel · ` +
+            `Niveau ${paddyReport.minLevel.toFixed(1)}…${paddyReport.maxLevel.toFixed(1)} m · ` +
+            `Abtrag bis ${paddyReport.deepest.toFixed(1)} m · ` +
+            `Auftrag bis ${paddyReport.highest.toFixed(1)} m`,
+        ),
+    );
+    actualMin = Infinity;
+    actualMax = -Infinity;
+    for (let i = 0; i < height.length; i++) {
+      const v = clamp(height[i], MIN_HEIGHT, MAX_HEIGHT);
+      height[i] = v;
+      if (v < actualMin) actualMin = v;
+      if (v > actualMax) actualMax = v;
+    }
+  } else {
+    console.log(c.dim('keine Parzellen gefunden.'));
+  }
+
   process.stdout.write('  6    Zonenmaske, Normalen, Kodierung … ');
 
   // height.r16 — roh, 16 Bit, little endian. Der Wertebereich ist der
@@ -855,6 +1167,12 @@ async function main() {
   const previewBuffer = writePng(preview, res, res, 0);
   const normalBuffer = writePng(normals, res, res, 2);
   const zoneBuffer = writePng(zones, zoneRes, zoneRes, 6);
+  // Wassermaske der Reisfelder, Graustufen. Die **Höhe** steht nicht darin: das
+  // Gelände ist innerhalb einer Parzelle exakt eben, die Laufzeit holt sie
+  // deshalb aus derselben Heightmap wie alles andere und schlägt den
+  // Wasserstand auf. Zwei Quellen für dieselbe Zahl wären genau die
+  // Doppelimplementierung, die dieses Projekt schon zweimal eingeholt hat.
+  const paddyBuffer = paddyReport ? writePng(paddyReport.mask, paddyReport.maskRes, paddyReport.maskRes, 0) : null;
   console.log(c.green('fertig'));
 
   const meta = {
@@ -887,6 +1205,17 @@ async function main() {
     },
     normals: { file: 'normal.png', res, encoding: 'rgb8-world-normal' },
     zones: { file: 'zones.png', res: zoneRes, channels: ['rock', 'grass', 'sand', 'paddy'] },
+    paddies: paddyReport
+      ? {
+          file: 'paddy.png',
+          res: paddyReport.maskRes,
+          encoding: 'gray8-wassermaske',
+          parcels: paddyReport.parcels,
+          waterDepth: paddyReport.waterDepth,
+          damHeight: paddyReport.damHeight,
+          levelRange: [paddyReport.minLevel, paddyReport.maxLevel],
+        }
+      : null,
     measured: {
       minHeight: Math.round(actualMin * 100) / 100,
       maxHeight: Math.round(actualMax * 100) / 100,
@@ -901,6 +1230,7 @@ async function main() {
       'height_preview.png': sha256(previewBuffer),
       'normal.png': sha256(normalBuffer),
       'zones.png': sha256(zoneBuffer),
+      ...(paddyBuffer ? { 'paddy.png': sha256(paddyBuffer) } : {}),
     },
   };
 
@@ -910,6 +1240,7 @@ async function main() {
     writeFile(join(outDir, 'height_preview.png'), previewBuffer),
     writeFile(join(outDir, 'normal.png'), normalBuffer),
     writeFile(join(outDir, 'zones.png'), zoneBuffer),
+    ...(paddyBuffer ? [writeFile(join(outDir, 'paddy.png'), paddyBuffer)] : []),
     writeFile(join(outDir, 'meta.json'), `${JSON.stringify(meta, null, 2)}\n`),
   ]);
 
