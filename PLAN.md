@@ -4,12 +4,21 @@
 > dieser Plan sagt **in welcher Reihenfolge, mit welchen Dateien und woran wir
 > merken, dass eine Phase fertig ist**.
 >
-> Stand: 2026-07-26 · **P0–P3 abgeschlossen** · Nächste Phase: **P4**
+> Stand: 2026-07-27 · **P0–P4 abgeschlossen** · Nächste Phase: **P5**
 >
 > Die Serpentinenzahl am Bergpass bleibt hinter SPEC §2.1 zurück (2 statt ≥ 8).
 > Das ist **keine offene P3-Aufgabe**, sondern eine Anforderung an das Höhenfeld:
 > die Trassierung baut Kehren, das Massiv trägt sie nicht ohne sichtbaren
 > Geländeschaden. Verschoben als P1-Nachbesserung, siehe dort.
+>
+> **Diese Nachbesserung war für „vor P4" vorgemerkt und ist nicht erfolgt.** Das
+> ist eine Entscheidung und keine Auslassung: die Flanke abzuflachen ändert die
+> Silhouette des Massivs, und das Massiv ist der Hintergrund der halben Karte —
+> eine Art-Direction-Frage, die nicht nebenbei mitentschieden wird. Technisch
+> kostet die Verschiebung nichts: die Streuung ist zur Laufzeit deterministisch
+> aus Seed und Chunk-Koordinate gerechnet und folgt einem geänderten Höhenfeld
+> von selbst, und die Verschattung wird ohnehin neu gebacken. Was nachgezogen
+> werden muss, sind die **Zahlen** in dieser Datei.
 
 ---
 
@@ -104,7 +113,7 @@ erfüllt sind. Ausnahmen werden hier dokumentiert, nicht mündlich vereinbart.
 | **P1** ✅ | Terrain & Freiflug | Erstes fliegbares Bild | P0 |
 | **P2** ✅ | Licht & Atmosphäre | Die Stimmung sitzt | P1 |
 | **P3** ✅ | Splines & Straßen | Befahrbares Straßennetz | P1 |
-| **P4** | LOD & Vegetation | Gefüllte Welt in Budget | P1, P3 |
+| **P4** ✅ | LOD & Vegetation | Gefüllte Welt in Budget | P1, P3 |
 | **P5** | Asset-Pipeline & Landmarks | Zonen mit Identität | P4 |
 | **P6** | Stadt & Reflexionen | Der Money-Shot | P2, P5 |
 | **P7** | Optimierung & Auslieferung | Läuft auf Zielhardware | alle |
@@ -1305,14 +1314,43 @@ Strecken liegt in einer Geometrie, die Pfosten in einem `InstancedMesh`.
 
 ---
 
-# P4 — LOD & Vegetation
+# P4 — LOD & Vegetation ✅
 
 **Ziel:** Die Welt füllt sich, und zwar innerhalb der Budgets aus SPEC §4. Ab
 hier gilt: was das Overlay nicht bestätigt, gilt als nicht erledigt.
 
+> **Abgeschlossen am 2026-07-27.** Alle Zahlen dieser Phase sind im laufenden
+> Bild abgelesen, bei 1280×720.
+>
+> **Was P3 als blockiert notiert hatte, ist es nicht mehr.** Dort stand: „der
+> eingebaute Browser bekommt auf dieser Maschine keinen WebGL-Kontext
+> (Software-Rasterizer)", und damit sei P4 nicht abnehmbar. Nachgesehen: es
+> *gibt* einen WebGL2-Kontext, über ANGLE auf dem *Microsoft Basic Render
+> Driver*. Was fehlt, ist allein `EXT_disjoint_timer_query_webgl2` — GPU-ms
+> bleiben `n/a`, und die Bildrate (5 bis 8 FPS) sagt über die Zielhardware
+> nichts. **Draw-Calls, Dreiecke, Texturspeicher und Instanzzahlen sind dagegen
+> CPU-seitige Zähler und exakt**, und Popping, Risse und Imposter sind
+> Bildfragen. Genau das sind die Akzeptanzkriterien dieser Phase; keines davon
+> hängt an der GPU-Zeit.
+>
+> Zwei Werkzeuge sind dafür entstanden, ohne die keine der Messungen möglich
+> gewesen wäre: `window.japanMap.shot()` legt den gerenderten Frame als PNG in
+> `.cache/shots/` ab (der Browser komponiert im Hintergrund keine Frames, ein
+> Bildschirmfoto von außen scheidet damit aus), und der Dev-Server nimmt es über
+> `/__shot` entgegen. Beides nur im Dev-Build.
+>
+> | Aufgabe | Stand |
+> |---|---|
+> | 4.1 CDLOD-Quadtree | ✅ ein Draw-Call für das ganze Terrain |
+> | 4.2 Streu-System | ✅ deterministisch, vier Arten |
+> | 4.3 Instanzierung & LOD | ✅ zwölf Draw-Calls statt der geplanten ~600 |
+> | 4.4 Imposter | ✅ in der App gebacken statt in `tools/` |
+> | 4.5 Wind | ✅ zwei Frequenzen, Amplitude je Art |
+> | 4.6 Budget-Durchsetzung | ✅ Banner plus Verursachertabelle |
+
 ### Aufgaben
 
-**4.1 — Terrain-Quadtree mit CDLOD** → `src/world/ChunkManager.ts`
+**4.1 — Terrain-Quadtree mit CDLOD** → `src/world/ChunkManager.ts`, `src/config/lod.config.ts`, `src/world/terrain/HeightPyramid.ts` ✅
 
 Ersetzt das feste Gitter aus P1. Verfahren: **CDLOD** (Continuous
 Distance-Dependent Level of Detail).
@@ -1333,7 +1371,63 @@ Distance-Dependent Level of Detail).
 > Ergebnis — und da der Shader aus P1 die Höhe bereits per Textur-Fetch holt,
 > ist der Umbau kleiner als er klingt.
 
-**4.2 — Streu-System** → `src/world/scatter/ScatterSystem.ts`
+> **Umgesetzt mit drei Abweichungen, davon eine gemessen erzwungene.**
+>
+> **1. Die Knoten sind Instanzen einer Geometrie, nicht Meshes.** Der Plan sagt
+> „eine einzige geteilte Gittergeometrie, pro Knoten skaliert und verschoben",
+> und die naheliegende Lesart wäre ein `Mesh` je Knoten mit eigener Matrix. Das
+> hätte bei den gemessenen 73 bis 137 Knoten ebenso viele Draw-Calls gekostet —
+> ein Sechstel des Budgets aus SPEC §4 für etwas, das vorher **einen** gekostet
+> hat. Gebaut ist eine `InstancedBufferGeometry` über ein Einheitsquadrat [0,1]²
+> mit vier Instanzattributen (Ecke, Kantenlänge, Morph-Bereich, Stufe). Das
+> Terrain kostet weiterhin genau einen Draw-Call.
+>
+> **2. Der Aufteilungsfaktor ist 6, nicht der zunächst gewählte 3 — und das ist
+> hergeleitet.** Risslos ist der Baum nur, wenn zwei Bedingungen gelten:
+>
+>   - *Höchstens eine Stufe Unterschied zwischen Nachbarn.* Ein gezeichneter
+>     Knoten A der Stufe L erfüllt `d(c,A) ≥ r[L−1]`; ein Nachbar der Stufe L−2
+>     verlangt, dass dessen Elternknoten P (Stufe L−1, an A angrenzend)
+>     unterteilt wurde, also `d(c,P) < r[L−1]/2`. Mit `d(c,A) ≤ d(c,P) + diam(P)`
+>     folgt **f > 2√2 ≈ 2,83**.
+>   - *An der Naht muss die gröbere Stufe ungemorpht sein.* Nur dann liegen ihre
+>     Stützstellen dort, wo die feinere ihre vollständig zusammengezogenen
+>     hinlegt. Für einen Punkt v auf der gemeinsamen Kante gilt nur
+>     `d(v) < (f/2 + √2)·s_L`, also muss `morphStart ≥ 0,5 + √2/f` sein.
+>
+> Die zweite Bedingung fehlte im ersten Entwurf. Bei f = 3 verlangt sie
+> `morphStart ≥ 0,971` — dann bleibt für den Morph kein Weg mehr, und aus dem
+> Riss würde ein Sprung. Bei f = 6 sind es 0,736, ausgeliefert ist 0,78 mit
+> Zugabe für die Höhe der Knoten (die Herleitung rechnet nur in XZ).
+>
+> **Nachgemessen, nicht hergeleitet stehengelassen.** Sieben Blickpunkte, alles
+> außer dem Gelände ausgeblendet, Himmel auf Magenta, Kamera so gekippt, dass
+> kein Himmel im Bild steht; gezählt wurden Himmelspixel *unterhalb* des
+> obersten Geländepixels jeder Spalte — jedes davon ist ein Loch:
+>
+> | Einstellung | Löcher | schlimmster Blick | Knoten je Bild |
+> |---|---|---|---|
+> | f = 3 · morphStart 0,66 | **207** | 86 | 34…49 |
+> | f = 6 · morphStart 0,78 | **1** | 1 | 73…105 |
+>
+> Das eine verbliebene Pixel liegt an einer Grat-Silhouette und ist von echtem
+> Himmel hinter einer Kante nicht zu unterscheiden.
+>
+> **3. Die Min/Max-Werte kommen nicht aus `meta.json`.** Der Plan nennt die je
+> 256-m-Chunk gebackenen Werte aus P1, aber 3072 / 256 = 12 ist keine
+> Zweierpotenz: das Chunk-Gitter liegt schief zum Quadtree, dessen Knoten sich
+> fortlaufend halbieren. Ein 48-m-Blatt müsste bis zu vier Chunks vereinigen und
+> bekäme deren Extremwerte über die 25-fache Fläche zugeschlagen. `HeightPyramid`
+> rechnet die Hülle stattdessen einmal beim Laden direkt über das Höhenfeld —
+> O(n) über die Heightmap, gemessen 34 ms — und legt sie exakt auf die
+> Knotengrenzen.
+>
+> Nebenwirkung, die P2 als offenen Punkt notiert hatte: die **Uferkante** folgte
+> mit 4 m pro Terrain-Quad der Triangulierung und zerfiel auf flachem Strand in
+> Stufen. Ein Blattknoten hat jetzt 1,5 m pro Vertex — genau den Texelabstand
+> der Heightmap. Damit ist der Punkt erledigt, wie dort vorhergesagt.
+
+**4.2 — Streu-System** → `src/world/scatter/ScatterSystem.ts` ✅
 - Deterministisch pro Chunk (Seed = Chunk-Koordinate) → keine Speicherung nötig,
   identisch bei jedem Laden
 - Verteilung: jittered Grid (Poisson-Disk-Näherung, deutlich schneller als echtes Poisson)
@@ -1342,48 +1436,267 @@ Distance-Dependent Level of Detail).
   2. Steilheit (Bäume bis 30°, Gras bis 45°)
   3. Höhe (Baumgrenze bei 350 m, kein Gras unter dem Meeresspiegel)
   4. `distanceToNearestRoad()` aus P3
-- Ausgabe: `InstancedMesh` je (Chunk × Asset × LOD-Stufe)
+- Ausgabe: ~~`InstancedMesh` je (Chunk × Asset × LOD-Stufe)~~ → je (Asset × LOD),
+  siehe 4.3
 
-**4.3 — Instanzierung & LOD** → `src/world/scatter/InstancedLOD.ts`
-- 3 Stufen: Volles Mesh (< 60 m) → reduziertes Mesh (< 150 m) → Imposter (< 400 m)
-- Umsortierung der Instanzmatrizen bei Stufenwechsel, in Zeitscheiben über
-  mehrere Frames verteilt (sonst Ruckler beim Fliegen)
-- Per-Instanz-Attribute: Skalierung, Y-Rotation, Farbvariation (`instanceColor`)
+> **Die Streuzelle ist 64 m, nicht `WORLD.chunkSize`.** Das Sichtfeld der
+> Vegetation endet bei rund 520 m; mit 256-m-Kacheln wären das 5 × 5 Chunks — zu
+> grob, um mit dem Frustum sinnvoll zu cullen. Mit 64 m sind es rund 140 im
+> Umkreis, von denen das Frustum etwa ein Drittel behält.
 
-**4.4 — Imposter-Baker** → `tools/bake-imposters.mjs`
+> **Die Zonenmaske wird ein zweites Mal dekodiert, statt nachgebildet.**
+> `zones.png` liegt seit P1 als Textur auf der GPU, die Streuung läuft aber auf
+> der CPU. Sie kostet dort gemessen 21 ms und 4 MB. Die Alternative wäre, das
+> Biom aus Höhe und Neigung *nachzurechnen* — also dieselbe Regel ein zweites Mal
+> aufzuschreiben, mit der sicheren Aussicht, dass beide Fassungen auseinander­
+> laufen. Genau diese Sorte Doppelimplementierung hat in P3 die eingeschnittene
+> Rinne neben das Straßen-Mesh gelegt.
+
+> **Aus dem Biom-Gewicht wird eine Wahrscheinlichkeit, kein Ja/Nein.** Das ist
+> der Unterschied zwischen einem Waldrand und einer ausgestanzten Kante: an der
+> Grenze zwischen Gras und Fels stehen immer weniger Bäume, statt dass die letzte
+> Reihe wie mit dem Lineal gezogen endet.
+
+> **Gras wächst auch in der Reisfeldzone.** Reis *ist* ein Gras, und die
+> Reisfeldzone ist die größte zusammenhängende Fläche der Karte (SPEC §2.1). Sie
+> leer zu lassen, bis P5 dort Parzellen baut, hieße: das größte Stück Karte
+> bleibt kahl.
+
+**4.3 — Instanzierung & LOD** → `src/world/scatter/InstancedLOD.ts` ✅
+- 3 Stufen: Volles Mesh → reduziertes Mesh → Imposter. Grenzen **je Art**, nicht
+  global: 80/180/520 m für Bäume, 30/70/160 m für Gras
+- Umsortierung der Instanzmatrizen in Zeitscheiben über mehrere Frames verteilt
+- Per-Instanz: Skalierung und Y-Rotation in der Matrix, Farbvariation
+  ~~(`instanceColor`)~~ **gerechnet aus einem Hash der Instanzposition**
+
+> **Ein `InstancedMesh` je Art und Stufe, nicht je Chunk.** Der Plan schrieb
+> „je (Chunk × Asset × LOD)", und das ist mit dem Draw-Call-Budget derselben
+> Phase nicht vereinbar: rund 50 sichtbare Chunks × 4 Arten × 3 Stufen sind
+> **600 Draw-Calls** allein für Vegetation, gegen ein Teilbudget von 100.
+> Zusammengefasst sind es **zwölf** — gemessen. Der Preis ist genau die
+> Umsortierung, die derselbe Abschnitt ohnehin verlangt.
+
+> **`instanceColor` wäre ein zweites Attribut**, das bei jedem Umsortieren
+> mitkopiert werden müsste. Bei 50 000 Instanzen und einem Umbau alle vier Frames
+> ist das messbar; der Positions-Hash kostet drei Rechenschritte, ist ortsfest
+> und braucht keinen Speicher. Er liegt in `vegetation_tint.glsl`, weil **zwei**
+> Materialien ihn brauchen — Mesh und Imposter. Getrennt gerechnet wäre der
+> Stufenwechsel ein Farbsprung, und zwar ein leiser, der als „Imposter sehen
+> anders aus" durchgeht.
+
+> **Zeitscheibe und Chunk-Erzeugung sind getrennt gedeckelt.** Einsortieren heißt
+> eine Matrix schreiben, Erzeugen heißt rund 6700 Kandidaten filtern. Ohne die
+> zweite Bremse kostet der erste Frame in einem neuen Gebiet 48 Streuungen auf
+> einmal — ein Ruckler an genau der Stelle, an der man gerade beschleunigt.
+>
+> **Der zweite Deckel war zuerst eine Stückzahl (4 Chunks), und das war zu grob.**
+> Gemessen über 25 Frames: Median **0,70 ms** — Spitze aber **11,7 ms** gegen
+> 16,6 ms Frame-Budget. Die Stückzahl zu senken wäre die naheliegende und die
+> schlechtere Antwort: sie deckelt nur, solange die Kosten je Chunk konstant
+> bleiben, und die hängen an der Zellgröße der dichtesten Art. Gebaut ist ein
+> **Zeitbudget** von 2 ms plus garantiert einem Chunk — sonst bliebe die Streuung
+> bei einem langsamen Frame ganz stehen.
+>
+> **Das Budget allein hat nicht gereicht, weil ein einzelner Chunk teurer war als
+> das ganze Budget.** Die Füllphase kostete danach **12,7 ms im Median**, und
+> weder das Zeitbudget noch eine kleinere Zeitscheibe (48 → 16 Chunks) haben
+> daran etwas geändert. Die Ursache lag woanders und war eine
+> Verschwendung dritter Art: **ein Chunk auf 400 m Entfernung streute 6400
+> Gras-Kandidaten, obwohl Gras nur bis 160 m gezeichnet wird.** Über den ganzen
+> Vegetations-Umkreis waren das 1,33 Mio. Gras-Kandidaten statt 125 000 — 98 %
+> der Arbeit für Instanzen, die nie in einen Puffer wandern.
+>
+> Ein Chunk streut deshalb nur die Arten, die auf seiner Entfernung überhaupt
+> gezeichnet werden; die Maske steht im Chunk, und weil jede Art einen eigenen
+> Zufallsstrom hat, ist ein Nachstreuen bei Annäherung bitgleich. Gemessen, CPU
+> des Streu-Systems je Frame:
+>
+> | Zustand | Median | Mittel | Spitze |
+> |---|---|---|---|
+> | Füllphase, ohne Artenmaske | 12,70 ms | 12,90 ms | 35,2 ms |
+> | Füllphase, mit Artenmaske | **0,40 ms** | 2,57 ms | 26,2 ms |
+> | eingeschwungen, mit Artenmaske | **0,10 ms** | 0,29 ms | 3,5 ms |
+>
+> Die 26,2 ms in der Füllphase sind ein einzelner Frame, der einen Nahchunk mit
+> Gräsern erzeugt — auf einer Maschine, deren Frames im Software-Rasterizer
+> ohnehin über 600 ms brauchen. Auf Hardware mit GPU wäre das anders zu bewerten;
+> hier ist es nicht trennbar, und deshalb steht der Median vorn.
+
+**4.4 — Imposter** → `src/world/scatter/ImposterAtlas.ts`, `src/world/materials/ImposterMaterial.ts` ✅
 - Rendert jedes Vegetations-Asset aus 8×8 Richtungen in einen Atlas
-  (oktaedrische Projektion)
-- Ausgabe: Albedo+Alpha-Atlas und Normalen-Atlas nach `assets/generated/imposters/`
+  (oktaedrische Projektion, **Halbkugel**)
+- Ausgabe: Albedo+Alpha-Atlas und Normalen-Atlas, ~~nach
+  `assets/generated/imposters/`~~ → als Render-Target zur Laufzeit
 - Shader mischt zwischen den zwei nächsten Ansichten → kein Springen beim Umkreisen
-- Headless über `node` + `gl`-Paket, alternativ ein Bake-Modus in der App selbst
+- ~~Headless über `node` + `gl`-Paket~~ → **Bake in der laufenden App**
 
-**4.5 — Wind** → `src/world/materials/windVertex.glsl`
+> **Gebacken wird in der Anwendung, nicht in `tools/`.** Das ist der im Plan
+> vorgesehene Rückfall („Offene Entscheidungen", Punkt 4), und er ist hier der
+> bessere Weg — aus drei Gründen, von denen der dritte den Ausschlag gab:
+>
+>  1. `gl` ist ein natives Modul und braucht eine Build-Kette, die auf dieser
+>     Maschine nicht steht.
+>  2. Der Atlas wäre eine Datei mehr im Startdownload, der mit 51,95 MB bereits
+>     das 15-MB-Budget aus SPEC §4 um mehr als das Dreifache reißt. Gerechnet
+>     kostet er **null Bytes**.
+>  3. Die Modelle entstehen selbst prozedural. Ein offline gebackener Atlas wäre
+>     die Ableitung einer Quelle, die es als Datei nicht gibt — er könnte
+>     veralten, ohne dass es jemand merkt. Ab P5 kommen echte glTF-Modelle, und
+>     dann ändert sich diese Rechnung; die Asset-Pipeline aus 5.1 ist der richtige
+>     Ort dafür.
+
+> **Halbkugel statt Kugel.** Eine volle Oktaeder-Abbildung verteilt 64 Zellen auf
+> 4π; die untere Hälfte zeigt Bäume von unten und wird nie gebraucht. Auf die
+> Halbkugel verteilt sind es doppelt so viele Zellen pro Raumwinkel, also der
+> halbe Winkelfehler zum Nulltarif — rund 22° zwischen Nachbaransichten.
+
+> **Das Quad ist zylindrisch ausgerichtet, nicht kameraorientiert.** Seine
+> Y-Achse bleibt die Weltachse nach oben. Ein voll kameraorientiertes Quad ist
+> beim Blick von oben falsch: der Baum kippt mit, legt sich in den Hang und hebt
+> seinen Fuß in die Luft. Die Neigung des Blicks steckt in der Wahl der
+> Atlas-Zelle.
+
+> **Die Normale wird im Objektraum gebacken**, nicht im Sichtraum der
+> Aufnahmekamera — der wäre je Zelle ein anderes Bezugssystem. Zur Laufzeit
+> genügt die Y-Drehung der Instanz. Ohne gebackene Normale wäre jeder Imposter
+> eine flache Scheibe, und ein Wald aus flachen Scheiben ist bei 2,2°
+> Sonnenstand entweder ganz hell oder ganz dunkel.
+
+**4.5 — Wind** → `src/world/shaders/vegetation_wind.vert.glsl` ✅
 - Zwei Frequenzen: großes Wiegen des Stamms + hochfrequentes Blattzittern
-- Amplitude über Vertex-Farbe maskiert (Wurzel unbewegt, Krone stark)
+- Amplitude maskiert ~~über Vertex-Farbe~~ **über ein eigenes Attribut `aWind`**
 - Ein globaler Wind-Uniform für alle Vegetation, damit die Bewegung kohärent wirkt
 
-**4.6 — Budget-Durchsetzung** → `src/debug/BudgetGuard.ts`
+> **Nicht die Vertex-Farbe.** `MeshStandardMaterial` multipliziert mit
+> `vertexColors` das Albedo — der Wurzelbereich wäre dann schwarz. Die Maske hat
+> mit Farbe nichts zu tun und bekommt deshalb ein eigenes Attribut. Sie ist
+> **quadratisch** in der Höhe, nicht linear: ein Stamm biegt sich wie ein
+> eingespannter Balken, und linear sieht aus, als kippe der ganze Baum.
+
+> **Der Ausschlag hängt an der Art, die Zeit am globalen Block.** Ein
+> Grasbüschel und eine Fichte im gleichen Maß zu bewegen sieht bei einem von
+> beiden falsch aus — 0,16 m am Halm sind viel, 0,16 m an einer 8-m-Fichte sind
+> nichts. Die Zeitbasis dagegen muss geteilt sein, sonst wiegen sich die Bäume
+> desselben Hangs gegeneinander.
+
+**4.6 — Budget-Durchsetzung** → `src/debug/BudgetGuard.ts` ✅
 - Liest jeden Frame `renderer.info`, vergleicht mit `quality.config.ts`
 - Bei Überschreitung: **auffällige Warnung im Overlay** plus einmaliger
   Konsolen-Eintrag mit dem Verursacher (welches System hat die meisten Draw-Calls)
 - Bewusst laut. Budget-Überschreitungen fallen sonst erst Wochen später auf,
   wenn die Ursache nicht mehr zuzuordnen ist
 
+> **Eine Metrik muss 30 Frames über dem Limit liegen, bevor der Guard
+> anschlägt.** Nicht null: der erste Frame nach einem Materialwechsel, einem
+> Resize oder dem Imposter-Bake sieht anders aus als der Dauerzustand, und eine
+> Warnung, die bei jedem Reload aufblitzt, liest irgendwann keiner mehr. Sinkt
+> die Metrik zurück ins Budget, wird der Konsolen-Eintrag wieder freigegeben —
+> sonst bliebe eine reparierte Überschreitung für den Rest der Sitzung stumm.
+
+> **Die Aufschlüsselung ist als Schätzung gekennzeichnet.** Sie zählt, was
+> sichtbar ist und Geometrie hat, ohne Frustum-Culling und ohne den zweiten
+> Durchlauf für eine Schattenkarte; ihre Summe weicht deshalb von
+> `renderer.info.render.calls` ab. Für „wer ist der größte Posten" reicht das,
+> für die absolute Zahl gilt weiterhin das Overlay.
+
 ### Akzeptanzkriterien
-- [ ] Kein sichtbares Popping bei Kamerafahrt in beliebiger Geschwindigkeit
-- [ ] Keine Risse zwischen LOD-Stufen, auch nicht bei flachem Blickwinkel
-- [ ] ≥ 50 000 sichtbare Vegetations-Instanzen bei **< 100 Draw-Calls**
-- [ ] Gesamt-Draw-Calls **< 800**, Dreiecke **< 3 Mio.** (SPEC §4)
-- [ ] Keine Vegetation auf Straßen oder im Wasser
-- [ ] Streuung ist reproduzierbar: zweimal laden = identische Platzierung
-- [ ] Imposter sind bei 150 m nicht vom Mesh zu unterscheiden
+- [x] **Kein sichtbares Popping bei Kamerafahrt in beliebiger Geschwindigkeit** —
+      bauartbedingt, und die Bauart ist geprüft: die Debug-Ansicht „Morph-Faktor"
+      zeigt den Übergang als stetigen Verlauf, und die Bedingung dafür
+      (`morphStart ≥ 0,5 + √2/f`) ist bei 4.1 hergeleitet. Ein Sprung wäre nur
+      möglich, wenn ein Knoten die Stufe wechselt, *bevor* er vollständig
+      zusammengezogen ist — genau das schließt die Ungleichung aus
+- [x] **Keine Risse zwischen LOD-Stufen, auch nicht bei flachem Blickwinkel** —
+      **1 Loch-Pixel** über sieben Blickpunkte à 1162 Spalten, alle mit nach
+      unten gekippter Kamera ohne Himmel im Bild. Das Verfahren steht bei 4.1;
+      zum Vergleich lieferte der erste Entwurf mit f = 3 an denselben Punkten
+      **207**
+- [x] **≥ 50 000 sichtbare Vegetations-Instanzen bei < 100 Draw-Calls** —
+      **50 211** Instanzen (1 520 nah · 11 232 mittel · 37 459 fern) bei
+      **12** Draw-Calls für Vegetation. An einem zweiten Blickpunkt in der
+      Wiesenzone **62 429**
+- [x] **Gesamt-Draw-Calls < 800, Dreiecke < 3 Mio.** — **48 / 800** und
+      **537 587 / 3 000 000** am dichtesten Blickpunkt der Karte. Dazu
+      **287 MB / 512 MB** Texturspeicher (P3: 255 MB; +32 MB durch die acht
+      Imposter-Atlanten, genau wie gerechnet)
+- [x] **Keine Vegetation auf Straßen oder im Wasser** — über alle 50 211
+      Instanzen: **0** mit weniger als 7 m Achsabstand, kleinster gemessener
+      Abstand exakt **7,00 m** (der Grenzwert der Gräser); tiefste Instanz
+      **22,84 m** über dem Meeresspiegel
+- [x] **Streuung ist reproduzierbar: zweimal laden = identische Platzierung** —
+      Chunk-Cache vollständig verworfen und neu gestreut; die ordnungs­unabhängige
+      Summe über Position, Maßstab und Drehung aller 50 211 Instanzen ist
+      **bitgleich** (n, s₁, s₂, s₃ in allen vier Stellen identisch)
+- [x] **Imposter sind bei 150 m nicht vom Mesh zu unterscheiden** — geprüft mit
+      **identischen Instanzmatrizen**, nicht mit zwei verschiedenen Wäldern: am
+      einzelnen Baum aus **24 m** — siebenmal näher als der Imposter je zum
+      Einsatz kommt — bleiben **6,5 % Breite** und **9,7 % Höhe** Unterschied in
+      der Hüllbox
+
+      > Die Freistellschwelle stellte sich dabei als fast wirkungslos heraus
+      > (0,3 → 0,8 ändert die Deckung um 4 %), womit die Begründung fiel, die im
+      > Code stand. Der Unterschied kommt daher, dass ein 5,4-m-Baum auf 180 m
+      > nur 19 Pixel hoch ist: dort besteht das **Mesh** aus Dreiecken unterhalb
+      > der Pixelgröße und fällt in Lücken, während der Imposter eine gefilterte
+      > Textur ist. An dieser Stelle ist der Imposter nicht schlechter, sondern
+      > besser abgetastet
+
+Zusätzlich geprüft:
+- [x] **Wind bewegt Geometrie** — bei Stärke 0 sind zwei aufeinanderfolgende
+      Frames **pixelgleich** (0 von 256 000), bei Stärke 2,5 unterscheiden sich
+      **51 189** Pixel
+- [x] **BudgetGuard schlägt an** — mit 900 künstlichen Draw-Calls erscheint bei
+      948 / 800 nach 30 Frames „BUDGET ÜBERSCHRITTEN — Draw-Calls 948 / 800"
+      samt Verursachertabelle; nach dem Entfernen der Last fällt der Zähler auf
+      48 und das Banner verschwindet
+- [x] `tsc --noEmit` sauber, Produktionsbuild grün
+- [x] **CPU-Kosten der Streuung** — eingeschwungen **0,10 ms** je Frame im
+      Median (Mittel 0,29 · 95. Perzentil 2,3 · Spitze 3,5), in der Füllphase
+      0,40 ms im Median. Der Weg dahin ging über drei Anläufe und ist bei 4.3
+      samt Tabelle festgehalten; der wirksame Schritt war, dass ein Chunk nur die
+      Arten streut, die auf seiner Entfernung gezeichnet werden
+
+### Gemessener Stand am Ende von P4
+
+| Größe | Gemessen | Budget |
+|---|---|---|
+| Draw-Calls | **48** (davon 12 Vegetation, 1 Terrain) | 800 |
+| Dreiecke | **537 587** | 3 000 000 |
+| Texturspeicher | **287 MB** | 512 MB |
+| Programme | 22 | — |
+| Quadtree-Knoten | 73…137 je Blick | — |
+| Vegetations-Instanzen | **50 211** (Spitze 62 429) | ≥ 50 000 gefordert |
+| CPU Streuung je Frame | **0,10 ms** (Median, eingeschwungen) | 16,6 ms Frame |
+| GPU je Frame | **nicht messbar** — kein Timer auf dem Software-Rasterizer | 16,6 ms |
+| Konsole | keine Fehler, keine Warnungen außer der Timer-Notiz | — |
+
+Zum Vergleich der Stand am Ende von P3: 36 Draw-Calls, 1 212 971 Dreiecke,
+255 MB. Das Terrain kostet jetzt **ein Fünftel** der Dreiecke bei zweieinhalbfach
+feinerer Abtastung im Nahbereich, und der Rest ist Vegetation.
 
 ### Risiken
 - **CDLOD-Morphing ist fehleranfällig** — falsche Morph-Distanzen erzeugen
   sichtbares Wabern. Zuerst mit Wireframe und eingefärbten LOD-Stufen entwickeln,
-  nicht mit fertigem Material
-- **Imposter-Baking headless** kann an fehlendem GPU-Kontext scheitern.
-  → Fallback: Bake-Modus in der laufenden App, Ergebnis herunterladen
+  nicht mit fertigem Material.
+  → **Eingetreten, und der Ratschlag war richtig.** Die Ansichten „LOD-Stufen"
+  und „Morph-Faktor" haben den Fehler gezeigt, bevor er als Riss auffiel: mit
+  f = 3 war das Morph-Bild fast durchgehend weiß, also überall vollständig
+  gemorpht. Das ist für sich nicht falsch — ein voll gemorphter Knoten *ist* die
+  nächstgröbere Stufe —, aber es heißt, dass die Nähte nicht dort liegen, wo die
+  Rechnung sie annimmt. Der Riss war die Folge, nicht die Ursache
+- ~~**Imposter-Baking headless** kann an fehlendem GPU-Kontext scheitern.~~
+  → **Eingetreten wie vorhergesagt**, und der Rückfall ist gebaut. Siehe 4.4
+
+### Offene Punkte aus P4
+
+| Punkt | Zahl | Wohin |
+|---|---|---|
+| GPU-Zeit nicht messbar | `EXT_disjoint_timer_query_webgl2` fehlt auf dem Software-Rasterizer | P7, Profiling auf Hardware mit Timer |
+| Vegetation ist prozedural | 4 Arten, ~100 Dreiecke je Modell | P5.1, Asset-Pipeline mit echten Modellen |
+| Imposter mischen 2 von 4 Nachbarn | Winkelfehler bis 11° | offen; bilinear über alle vier wäre der doppelte Aufwand für die zweite Hälfte eines Fehlers, den man bei 180 m nicht sieht |
+| Imposter-Atlas ohne Mipmaps | Silhouette 6,5 % breiter als das Mesh | offen; Mipmaps über einen Atlas bluten zellenübergreifend, das braucht eine eigene Lösung |
+| Kein Echtzeitschatten | P2 hatte ihn „für P4, sobald es bewegliche Werfer gibt" angekündigt | verschoben: es gibt noch keine beweglichen Werfer. Vegetation wirft keinen — bei 50 000 Instanzen wäre das ein zweiter Geometriedurchlauf im dreistelligen Draw-Call-Bereich |
+| Streuung nicht im Worker | eingeschwungen 0,10 ms je Frame, Füllphase 0,40 ms — Spitze aber 26,2 ms, wenn ein Nahchunk mit Gräsern erzeugt wird | Ein Web Worker (P7.2) ist der einzige Weg, der die Spitze wirklich beseitigt statt sie zu verteilen |
 
 ---
 
