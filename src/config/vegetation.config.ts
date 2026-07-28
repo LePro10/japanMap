@@ -256,6 +256,30 @@ export const SCATTER = {
   cacheSize: 512,
 } as const;
 
+/**
+ * Vegetations-Anteil am Look — PLAN.md P2 / 2.6.
+ *
+ * Getrennt von `SPECIES` und `SCATTER`, weil der Look-Controller nur das
+ * einsammeln darf, was am **Bild** dreht. Streudichte, Zellgröße und
+ * LOD-Grenzen sind Leistungsparameter der Qualitätsstufe: ein Preset, das die
+ * halbe Vegetation abschaltet, wäre kein anderer Look, sondern eine andere Welt.
+ */
+export const VEGETATION_LOOK = {
+  windStrength: 1,
+
+  /**
+   * Streulicht durch Blätter, 0…1.
+   *
+   * Bei 2,2° Sonnenstand steht die Sonne fast waagerecht hinter allem, was man
+   * ansieht — und Laub ist dünn. Ohne diesen Anteil ist ein Baum im Gegenlicht
+   * eine schwarze Silhouette, und genau das sah das erste Bild der Vegetation
+   * so nach Pappaufsteller aussehen. Der Effekt ist zwei Terme: ein Rückstreu-
+   * Keulchen zur Sonne hin und eine Umschlingung der Normale, damit auch die
+   * abgewandte Seite nicht auf null fällt.
+   */
+  translucency: 0.55,
+} as const;
+
 export const IMPOSTER = {
   /**
    * Ansichten pro Achse im oktaedrischen Atlas. 8 × 8 = 64, wie in PLAN.md 4.4.

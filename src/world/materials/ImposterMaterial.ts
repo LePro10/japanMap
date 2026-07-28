@@ -11,9 +11,11 @@ import {
   injectAtmosphere,
   type AtmosphereUniforms,
 } from '@/render/atmosphere/atmosphereUniforms';
+import type { VegetationUniforms } from './VegetationMaterial';
 
 import octGlsl from '../shaders/imposter_oct.glsl';
 import tintGlsl from '../shaders/vegetation_tint.glsl';
+import translucencyGlsl from '../shaders/vegetation_translucency.glsl';
 import parsGlsl from '../shaders/imposter_pars.glsl';
 import vertexGlsl from '../shaders/imposter.vert.glsl';
 import fragmentGlsl from '../shaders/imposter.frag.glsl';
@@ -60,9 +62,15 @@ export class ImposterMaterial extends MeshStandardMaterial {
   readonly declaredTextures: readonly Texture[];
 
   readonly #atmosphere: AtmosphereUniforms;
+  readonly #shared: VegetationUniforms;
   readonly #uniforms: Record<string, IUniform>;
 
-  constructor(atlas: ImposterAtlas, atmosphere: AtmosphereUniforms, color: number) {
+  constructor(
+    atlas: ImposterAtlas,
+    atmosphere: AtmosphereUniforms,
+    shared: VegetationUniforms,
+    color: number,
+  ) {
     super({
       color,
       roughness: 0.9,
@@ -75,6 +83,7 @@ export class ImposterMaterial extends MeshStandardMaterial {
       transparent: false,
     });
     this.#atmosphere = atmosphere;
+    this.#shared = shared;
     this.name = 'ImposterMaterial';
     this.alphaTestUniform = { value: IMPOSTER.alphaTest };
     this.declaredTextures = [atlas.albedo, atlas.normal];
@@ -95,6 +104,10 @@ export class ImposterMaterial extends MeshStandardMaterial {
       shader.uniforms[name] = uniform;
     }
 
+    for (const [name, uniform] of Object.entries(this.#shared)) {
+      shader.uniforms[name] = uniform;
+    }
+
     const pars = `${octGlsl}\n${tintGlsl}\n${parsGlsl}`;
 
     shader.vertexShader = shader.vertexShader
@@ -103,7 +116,7 @@ export class ImposterMaterial extends MeshStandardMaterial {
 
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <common>',
-      `#include <common>\n${pars}`,
+      `#include <common>\n${pars}\n${translucencyGlsl}\nuniform float uVegTranslucency;`,
     );
 
     injectAtmosphere(
@@ -129,7 +142,16 @@ export class ImposterMaterial extends MeshStandardMaterial {
         '#include <lights_fragment_end>\n' +
           'vec2 impShade = atmoShade(vImposterWorld);\n' +
           'reflectedLight.directDiffuse *= impShade.x;\n' +
-          'reflectedLight.directSpecular *= impShade.x;',
+          'reflectedLight.directSpecular *= impShade.x;\n' +
+          // Dasselbe Streulicht wie beim Mesh, aus derselben Datei und mit
+          // demselben Uniform. Getrennt gerechnet wäre der Stufenwechsel im
+          // Gegenlicht ein Helligkeitssprung — dort, wo er am meisten auffällt.
+          '#if ( NUM_DIR_LIGHTS > 0 )\n' +
+          'reflectedLight.directDiffuse += vegetationTranslucency(\n' +
+          '    diffuseColor.rgb, normal, normalize(vViewPosition),\n' +
+          '    directionalLights[0].direction, directionalLights[0].color,\n' +
+          '    uVegTranslucency, impShade.x);\n' +
+          '#endif',
       );
   }
 
