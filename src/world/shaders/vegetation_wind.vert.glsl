@@ -17,8 +17,17 @@
 // gesparten Rechnungen je Vertex — bei 0,55 m Amplitude auf 5,4 m Höhe beträgt
 // sie 2,8 cm.
 //
-// `aWind` ist die Amplitudenmaske aus vegetationMeshes.ts: null an der Wurzel,
-// eins in der Krone, quadratisch dazwischen.
+// **Die Windrichtung kommt im Modellraum herein, nicht im Weltraum.** Der erste
+// Entwurf addierte `vec3(uWindDirection.x, 0, uWindDirection.y)` direkt auf
+// `transformed` — also *vor* der Instanzmatrix, deren Y-Drehung je Instanz
+// zufällig ist. Jeder Baum wiegte sich damit in eine andere Richtung, und aus
+// der geforderten kohärenten Böe wurde ein Zittern ohne Richtung. Der Aufrufer
+// dreht die Richtung deshalb in den Modellraum, bevor er sie übergibt.
+//
+// Die **Maske** ist ebenfalls ein Parameter: das Mesh liefert sie als Attribut
+// `aWind` (null an der Wurzel, eins in der Krone), das Imposter-Quad rechnet sie
+// aus seiner eigenen Höhe. Eine zweite Fassung der Formel für den Imposter wäre
+// genau die Doppelimplementierung, die sonst auseinanderläuft.
 
 uniform vec2 uWindDirection;
 /** Globaler Regler, gilt für alle Arten. */
@@ -33,10 +42,13 @@ uniform float uWindTime;
  */
 uniform float uWindAmplitude;
 
-attribute float aWind;
-
-vec3 vegetationWind(vec3 local, vec3 worldOrigin) {
-  float mask = aWind;
+/**
+ * @param local       Vertexposition im Modellraum.
+ * @param worldOrigin Weltposition des Instanzursprungs — trägt die Phase.
+ * @param dirLocal    Windrichtung in die XZ-Ebene des Modellraums gedreht.
+ * @param mask        Amplitudenmaske, 0 am Fuß bis 1 an der Spitze.
+ */
+vec3 vegetationWind(vec3 local, vec3 worldOrigin, vec2 dirLocal, float mask) {
   if (mask <= 0.0) return local;
 
   // Phase aus der Weltposition des **Instanzursprungs**, nicht des Vertex:
@@ -47,5 +59,13 @@ vec3 vegetationWind(vec3 local, vec3 worldOrigin) {
   float flutter = sin(along * 0.9 + uWindTime * 3.1 + worldOrigin.y * 0.7);
 
   float amount = (gust * 0.75 + flutter * 0.25) * uWindStrength * uWindAmplitude * mask;
-  return local + vec3(uWindDirection.x, 0.0, uWindDirection.y) * amount;
+  return local + vec3(dirLocal.x, 0.0, dirLocal.y) * amount;
+}
+
+/** Weltrichtung des Windes in den Modellraum der Instanz drehen. */
+vec2 vegetationWindLocal(mat4 instance) {
+  vec3 axisX = normalize(instance[0].xyz);
+  vec3 axisZ = normalize(instance[2].xyz);
+  vec3 world = vec3(uWindDirection.x, 0.0, uWindDirection.y);
+  return vec2(dot(world, axisX), dot(world, axisZ));
 }

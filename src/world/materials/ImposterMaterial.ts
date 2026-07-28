@@ -16,6 +16,7 @@ import type { VegetationUniforms } from './VegetationMaterial';
 import octGlsl from '../shaders/imposter_oct.glsl';
 import tintGlsl from '../shaders/vegetation_tint.glsl';
 import translucencyGlsl from '../shaders/vegetation_translucency.glsl';
+import windGlsl from '../shaders/vegetation_wind.vert.glsl';
 import parsGlsl from '../shaders/imposter_pars.glsl';
 import vertexGlsl from '../shaders/imposter.vert.glsl';
 import fragmentGlsl from '../shaders/imposter.frag.glsl';
@@ -63,6 +64,7 @@ export class ImposterMaterial extends MeshStandardMaterial {
 
   readonly #atmosphere: AtmosphereUniforms;
   readonly #shared: VegetationUniforms;
+  readonly #amplitude: IUniform<number>;
   readonly #uniforms: Record<string, IUniform>;
 
   constructor(
@@ -70,6 +72,7 @@ export class ImposterMaterial extends MeshStandardMaterial {
     atmosphere: AtmosphereUniforms,
     shared: VegetationUniforms,
     color: number,
+    windAmplitude: number,
   ) {
     super({
       color,
@@ -84,6 +87,9 @@ export class ImposterMaterial extends MeshStandardMaterial {
     });
     this.#atmosphere = atmosphere;
     this.#shared = shared;
+    // Dieselbe Amplitude wie das Mesh derselben Art — sonst wechselte ein Baum
+    // beim Stufensprung seine Ausschlagweite.
+    this.#amplitude = { value: windAmplitude };
     this.name = 'ImposterMaterial';
     this.alphaTestUniform = { value: IMPOSTER.alphaTest };
     this.declaredTextures = [atlas.albedo, atlas.normal];
@@ -110,8 +116,10 @@ export class ImposterMaterial extends MeshStandardMaterial {
 
     const pars = `${octGlsl}\n${tintGlsl}\n${parsGlsl}`;
 
+    shader.uniforms['uWindAmplitude'] = this.#amplitude;
+
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', `#include <common>\n${pars}`)
+      .replace('#include <common>', `#include <common>\n${pars}\n${windGlsl}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>\n${vertexGlsl}`);
 
     shader.fragmentShader = shader.fragmentShader.replace(

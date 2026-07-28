@@ -111,6 +111,11 @@ export class VegetationMaterial extends MeshStandardMaterial {
       .replace(
         '#include <common>',
         `#include <common>\n${tintGlsl}\n${windGlsl}\n` +
+          // Die Maske liegt als eigenes Attribut vor, nicht als Vertex-Farbe:
+          // `vertexColors` multipliziert das Albedo, und der Wurzelbereich wäre
+          // dann schwarz. Deklariert wird sie hier und nicht im geteilten
+          // Shader-Stück, weil das Imposter-Quad sie nicht hat.
+          'attribute float aWind;\n' +
           'varying vec3 vVegWorld;\nvarying float vVegTint;',
       )
       .replace(
@@ -120,7 +125,8 @@ export class VegetationMaterial extends MeshStandardMaterial {
           // Position des Modells, unabhängig davon, wo im Modell dieser Vertex
           // sitzt. Genau das braucht der Wind für seine Phase.
           'vec3 vegOrigin = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;\n' +
-          'transformed = vegetationWind(transformed, vegOrigin);\n' +
+          'transformed = vegetationWind(\n' +
+          '    transformed, vegOrigin, vegetationWindLocal(instanceMatrix), aWind);\n' +
           'vVegWorld = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;\n' +
           'vVegTint = vegetationTintHash(vegOrigin.xz);',
       );

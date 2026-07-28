@@ -175,7 +175,13 @@ export class ScatterSystem implements System {
         meshes.radius,
       );
       this.#atlases.push(atlas);
-      const imposter = new ImposterMaterial(atlas, this.atmosphere, this.#shared, 0xffffff);
+      const imposter = new ImposterMaterial(
+        atlas,
+        this.atmosphere,
+        this.#shared,
+        0xffffff,
+        species.windAmplitude,
+      );
       this.#imposterMaterials.push(imposter);
 
       const stages: LodStage[][] = meshes.variants.map((variant) => [
