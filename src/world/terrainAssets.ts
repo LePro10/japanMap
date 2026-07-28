@@ -12,6 +12,9 @@ import normalUrl from '../../assets/generated/terrain/normal.png?url';
 import zonesUrl from '../../assets/generated/terrain/zones.png?url';
 import metaUrl from '../../assets/generated/terrain/meta.json?url';
 import shadeUrl from '../../assets/generated/terrain/shade.png?url';
+// Wassermaske der Reisfeld-Parzellen (P5.4). Entsteht im Terrain-Baker,
+// Schritt 5c, und liegt deshalb bei den Terrain-Assets und nicht bei den Props.
+import paddyUrl from '../../assets/generated/terrain/paddy.png?url';
 import shadeMetaUrl from '../../assets/generated/terrain/shade.json?url';
 
 import skyUrl from '../../assets/hdri/industrial_sunset_02_puresky_4k.hdr?url';
@@ -41,6 +44,7 @@ export const TERRAIN_ASSETS = {
   meta: metaUrl,
   /** Gebackene Verschattung aus tools/bake-shadows.mjs — PLAN.md P2 / 2.3. */
   shade: shadeUrl,
+  paddy: paddyUrl,
   shadeMeta: shadeMetaUrl,
 } as const;
 

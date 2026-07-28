@@ -92,6 +92,15 @@ export interface SpeciesSettings {
    * zwischen einem Waldrand und einer ausgestanzten Kante: an der Grenze
    * zwischen Gras und Fels stehen dann immer weniger Bäume, statt dass die
    * letzte Reihe wie mit dem Lineal gezogen endet.
+   *
+   * **Negative Werte schließen aus.** Bäume bekommen `paddy: -1`, seit die
+   * Reisfelder aus P5.4 im Gelände stehen: dort war zuvor ein Wald, weil die
+   * Parzellen zwar überwiegend Reisfeld sind, aber nicht ausschließlich — bei
+   * 70 % Reisfeld bleiben 30 % Gras, und daraus wurde eine
+   * Annahmewahrscheinlichkeit von 10 %. Über 101 ha sind das tausende Bäume
+   * mitten im Wasser. Mit dem negativen Gewicht fällt das Skalarprodukt dort
+   * unter null, und der Rand bleibt trotzdem weich: bei 20 % Reisfeld ist es
+   * noch positiv, bei 40 % nicht mehr.
    */
   readonly zones: ZoneWeights;
 
@@ -148,7 +157,7 @@ export const SPECIES: readonly SpeciesSettings[] = [
     // Baumgrenze. PLAN.md nennt 350 m; der Gipfel liegt auf 450 m, es bleibt
     // also eine kahle Kuppe, und genau die soll man sehen.
     maxHeight: 350,
-    zones: { rock: 0.0, grass: 0.35, sand: 0.0, paddy: 0.0 },
+    zones: { rock: 0.0, grass: 0.35, sand: 0.0, paddy: -1.0 },
     roadClearance: 20,
     color: 0x2f4a34,
     tintJitter: 0.18,
@@ -168,7 +177,7 @@ export const SPECIES: readonly SpeciesSettings[] = [
     maxSlopeDeg: 27,
     minHeight: 6,
     maxHeight: 190,
-    zones: { rock: 0.0, grass: 0.5, sand: 0.0, paddy: 0.0 },
+    zones: { rock: 0.0, grass: 0.5, sand: 0.0, paddy: -1.0 },
     roadClearance: 22,
     color: 0x3f5a2e,
     tintJitter: 0.22,
@@ -188,7 +197,7 @@ export const SPECIES: readonly SpeciesSettings[] = [
     maxSlopeDeg: 42,
     minHeight: 2,
     maxHeight: 400,
-    zones: { rock: 0.0, grass: 0.3, sand: 0.0, paddy: 0.0 },
+    zones: { rock: 0.0, grass: 0.3, sand: 0.0, paddy: -1.0 },
     roadClearance: 16,
     color: 0x46592f,
     tintJitter: 0.24,

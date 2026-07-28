@@ -10,6 +10,7 @@ import { PostFXPipeline } from './render/PostFXPipeline';
 import { TerrainDataError } from './world/TerrainSampler';
 import { RoadSystem } from './world/RoadSystem';
 import { PropSystem } from './world/props/PropSystem';
+import { RicePaddy } from './world/props/RicePaddy';
 import { ScatterSystem } from './world/scatter/ScatterSystem';
 import { TerrainSystem } from './world/TerrainSystem';
 import { WaterSystem } from './world/WaterSystem';
@@ -178,6 +179,9 @@ engine.add(new ScatterSystem(atmosphere.uniforms));
 // sie einen neuen Terrain-Bake überleben, statt eine Zahl aus der Datei zu
 // glauben.
 engine.add(new PropSystem(atmosphere.uniforms));
+// Ebenso: die Wasserflächen der Reisfelder holen ihre Höhe aus dem Sampler,
+// weil das Gelände die Parzellen bereits trägt (Baker, Schritt 5c).
+engine.add(new RicePaddy(atmosphere.uniforms));
 engine.add(new TerrainSystem(atmosphere.uniforms));
 engine.add(new RoadSystem(atmosphere.uniforms));
 engine.add(

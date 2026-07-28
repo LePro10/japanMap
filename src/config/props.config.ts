@@ -104,6 +104,48 @@ export const PROP_CLEARANCE: Readonly<Record<string, number>> = {
   coastal_cliff_04: 20,
 };
 
+/**
+ * Wasserflächen der Reisfelder — PLAN.md P5 / 5.4.
+ *
+ * Die Parzellen selbst stehen im Gelände (Terrain-Baker, Schritt 5c); hier
+ * steht nur, wie das Wasser darauf aussieht und wie fein es aufgelöst wird.
+ */
+export const PADDY_WATER = {
+  /**
+   * Kantenlänge eines Wasserquads in Metern.
+   *
+   * Die Maske liegt mit 3 m je Texel vor; 6 m ist doppelt so grob und damit
+   * ein Kompromiss zugunsten der Dreieckszahl. Die Reisfelder bedecken 101 ha
+   * — bei 3 m wären das rund 224 000 Dreiecke, bei 6 m ein Viertel davon.
+   * Sichtbar ist der Unterschied nur an der Kante zum Damm, und dort steht
+   * ohnehin ein 3,4 m breiter Rücken.
+   */
+  grid: 6,
+
+  /** Kantenlänge einer Kachel. Wie `WORLD.chunkSize` — das Frustum cullt sie. */
+  tile: 256,
+
+  /**
+   * Höhentoleranz der vier Ecken eines Quads, in Metern.
+   *
+   * Knapp, weil das Gelände innerhalb einer Parzelle **exakt** eben ist: jede
+   * Abweichung darüber ist bereits eine Terrassenkante.
+   */
+  levelTolerance: 0.08,
+
+  /**
+   * Tiefes Grün-Braun statt Blau.
+   *
+   * Ein Reisfeld im Mai ist eine dünne Wasserschicht über Schlamm, kein See —
+   * die Farbe kommt vom Boden darunter. Was es zum Wasser macht, ist die
+   * Rauheit: bei 2,23° Sonnenstand spiegelt eine solche Fläche den ganzen
+   * Himmel, und genau darauf zielt SPEC §3.1 mit der blauen Stunde.
+   */
+  color: 0x2b3026,
+  roughness: 0.06,
+  metalness: 0,
+} as const;
+
 /** Eine Platzierung, wie sie in `assets/props.json` steht. */
 export interface PropPlacement {
   /** Asset-Kennung: Landmark-Id oder Schlüssel aus dem Modell-Manifest. */
