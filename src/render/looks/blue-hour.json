@@ -30,6 +30,10 @@
     "roughness": 0.075,
     "foamIntensity": 0.65
   },
+  "vegetation": {
+    "windStrength": 1,
+    "translucency": 0.55
+  },
   "postfx": {
     "bloomEnabled": true,
     "bloomIntensity": 0.62,
