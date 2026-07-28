@@ -17,10 +17,34 @@ import type { ZoneMap } from './ZoneMap';
 /** Sechs Werte je Instanz: Position, Skalierung, Drehung um Y, Farbwurf. */
 export const INSTANCE_STRIDE = 6;
 
+/** Geteiltes leeres Feld für Arten, die in einem Chunk nicht gestreut wurden. */
+const EMPTY = new Float32Array(0);
+
 export interface ScatterChunk {
   readonly cx: number;
   readonly cz: number;
-  /** Ein Feld je Art, Reihenfolge wie `SPECIES`. */
+  /**
+   * Welche Arten in diesem Chunk gestreut wurden, als Bitmaske über den Index in
+   * `SPECIES`.
+   *
+   * **Der Grund, warum das nicht immer „alle" ist, war die teuerste Messung
+   * dieser Phase.** Ein Chunk auf 400 m Entfernung erzeugte 6400
+   * Gras-Kandidaten, obwohl Gras nur bis 160 m gezeichnet wird — 98 % der Arbeit
+   * für Instanzen, die nie in einen Puffer wandern. Über den ganzen
+   * Vegetations-Umkreis waren das 1,33 Mio. Gras-Kandidaten statt 125 000.
+   *
+   * Gemessen an der Füllphase, Median der CPU-Zeit des Streu-Systems je Frame:
+   * **12,7 ms ohne Maske, 0,4 ms mit.** Im eingeschwungenen Zustand 0,10 ms
+   * (Mittel 0,29 · 95. Perzentil 2,3 · Spitze 3,5), vorher 0,30 ms bei Spitze
+   * 18,2 ms.
+   *
+   * Weil die Streuung je Art einen eigenen Zufallsstrom benutzt, ist ein
+   * Teilstreuen deterministisch und ein Nachstreuen später folgenlos: kommt die
+   * Kamera näher, wird der Chunk mit einer größeren Maske neu erzeugt und die
+   * bereits gestreuten Arten landen bitgleich wieder an derselben Stelle.
+   */
+  readonly generated: number;
+  /** Ein Feld je Art, Reihenfolge wie `SPECIES`. Leer, wo die Maske es sagt. */
   readonly instances: readonly Float32Array[];
   /** Kleinste und größte Höhe der Instanzen — für das Culling des Chunks. */
   readonly minY: number;
@@ -73,7 +97,12 @@ export interface ScatterInputs {
   readonly density: number;
 }
 
-export function scatterChunk(cx: number, cz: number, input: ScatterInputs): ScatterChunk {
+export function scatterChunk(
+  cx: number,
+  cz: number,
+  mask: number,
+  input: ScatterInputs,
+): ScatterChunk {
   const originX = -WORLD.half + cx * SCATTER.chunkSize;
   const originZ = -WORLD.half + cz * SCATTER.chunkSize;
 
@@ -82,6 +111,10 @@ export function scatterChunk(cx: number, cz: number, input: ScatterInputs): Scat
   let maxY = -Infinity;
 
   SPECIES.forEach((species, index) => {
+    if ((mask & (1 << index)) === 0) {
+      instances.push(EMPTY);
+      return;
+    }
     const random = mulberry32(chunkSeed(cx, cz, index * 0x9e37 + 1));
     const cells = Math.max(1, Math.round(SCATTER.chunkSize / species.cellSize));
     const cell = SCATTER.chunkSize / cells;
@@ -102,15 +135,25 @@ export function scatterChunk(cx: number, cz: number, input: ScatterInputs): Scat
         const tint = random();
 
         // Reihenfolge der Filter: **billigste Ablehnung zuerst** (PLAN.md 4.2).
-        // Höhe ist eine Texturabfrage, Neigung sind vier, die Zonenmaske eine,
-        // und der Straßenabstand läuft über das Gitter aus P3. Die Sortierung
-        // ist keine Kosmetik: 94 % aller Kandidaten fallen durch, und wo sie
-        // durchfallen, entscheidet über die Laufzeit der ganzen Streuung.
+        //
+        // Kosten je Kandidat:
+        //   Höhe            1 bilineare Abfrage (4 Array-Zugriffe)
+        //   Zonen + Wurf    4 Array-Zugriffe, ohne Interpolation
+        //   Neigung         **4 bilineare Abfragen** — der teuerste Filter
+        //   Straßenabstand  Gitterabfrage aus P3, für weitab liegende Punkte
+        //                   25 Zugriffe auf leere Zellen
+        //
+        // Der erste Entwurf prüfte die Neigung **vor** der Zonenmaske und
+        // bezahlte damit vier Höhenabfragen für Kandidaten, die der billige
+        // Zufallswurf ohnehin verworfen hätte. Bei einem Grasbüschel liegt die
+        // Annahmequote selbst in seiner Zone unter der Hälfte.
+        //
+        // **Der Gewinn daraus ist nicht isoliert gemessen.** Er wurde zusammen
+        // mit der Artenmaske eingebaut, und die hat den Löwenanteil gebracht
+        // (Median der Füllphase 12,7 ms → 0,4 ms). Die Reihenfolge ist trotzdem
+        // richtig so, und die Kostentabelle oben sagt, warum.
         const y = input.sampler.getHeightAt(x, z);
         if (y < species.minHeight || y > species.maxHeight) continue;
-
-        const slope = input.sampler.getSlopeAt(x, z);
-        if (slope > species.maxSlopeDeg * RAD_PER_DEG) continue;
 
         const suitability =
           input.zones.weight(x, z, 0) * species.zones.rock +
@@ -118,6 +161,9 @@ export function scatterChunk(cx: number, cz: number, input: ScatterInputs): Scat
           input.zones.weight(x, z, 2) * species.zones.sand +
           input.zones.weight(x, z, 3) * species.zones.paddy;
         if (roll >= suitability * input.density) continue;
+
+        const slope = input.sampler.getSlopeAt(x, z);
+        if (slope > species.maxSlopeDeg * RAD_PER_DEG) continue;
 
         if (
           input.network !== null &&
@@ -152,5 +198,5 @@ export function scatterChunk(cx: number, cz: number, input: ScatterInputs): Scat
     maxY = 0;
   }
 
-  return { cx, cz, instances, minY, maxY, lastUsed: 0 };
+  return { cx, cz, generated: mask, instances, minY, maxY, lastUsed: 0 };
 }

@@ -80,9 +80,12 @@ export class ScatterSystem implements System {
 
   /** Kandidatenliste des laufenden Durchlaufs, als Chunk-Schlüssel. */
   #pass: number[] = [];
+  /** Quadrierter XZ-Abstand je Kandidat — nur zum Sortieren des Durchlaufs. */
+  readonly #passDistance = new Map<number, number>();
   #cursor = 0;
   #passOpen = false;
   #newThisFrame = 0;
+  #frameStart = 0;
 
   #quality: QualityLevel = DEFAULT_QUALITY;
 
@@ -206,6 +209,7 @@ export class ScatterSystem implements System {
 
     const camera = this.#context.camera;
     const started = performance.now();
+    this.#frameStart = started;
     this.#newThisFrame = 0;
 
     if (!this.#passOpen) this.#beginPass(camera);
@@ -236,6 +240,7 @@ export class ScatterSystem implements System {
     const reach = Math.ceil(range / cell);
 
     this.#pass.length = 0;
+    this.#passDistance.clear();
     for (let cz = centerZ - reach; cz <= centerZ + reach; cz++) {
       if (cz < 0 || cz >= CHUNKS_PER_AXIS) continue;
       for (let cx = centerX - reach; cx <= centerX + reach; cx++) {
@@ -248,11 +253,23 @@ export class ScatterSystem implements System {
         const z0 = -WORLD.half + cz * cell;
         const dx = Math.max(x0 - camera.position.x, 0, camera.position.x - (x0 + cell));
         const dz = Math.max(z0 - camera.position.z, 0, camera.position.z - (z0 + cell));
-        if (dx * dx + dz * dz > range * range) continue;
+        const distanceSq = dx * dx + dz * dz;
+        if (distanceSq > range * range) continue;
 
         this.#pass.push(cz * CHUNKS_PER_AXIS + cx);
+        this.#passDistance.set(cz * CHUNKS_PER_AXIS + cx, distanceSq);
       }
     }
+
+    // **Von nah nach fern abarbeiten.** In Zeilenordnung liegt der erste Chunk
+    // eines Durchlaufs in der Nordwestecke des Umkreises — also fast immer
+    // hinter der Kamera. Der Etat für neue Chunks (unten) ginge dann an
+    // Vegetation, die niemand sieht, und der Vordergrund füllte sich zuletzt.
+    // Gemessen war das der Unterschied zwischen 13 591 und 50 211 sichtbaren
+    // Instanzen nach 85 Frames.
+    this.#pass.sort(
+      (a, b) => (this.#passDistance.get(a) ?? 0) - (this.#passDistance.get(b) ?? 0),
+    );
 
     this.#cursor = 0;
     this.#passOpen = true;
@@ -268,14 +285,26 @@ export class ScatterSystem implements System {
       const cx = key % CHUNKS_PER_AXIS;
       const cz = (key - cx) / CHUNKS_PER_AXIS;
 
-      const chunk = this.#chunk(cx, cz);
-      if (!chunk) continue;
-
       const x0 = -WORLD.half + cx * cell;
       const z0 = -WORLD.half + cz * cell;
-      // Die Hülle bekommt oben Luft für das höchste Modell der größten Art —
-      // sonst schneidet das Frustum die Kronen der Bäume ab, deren Fuß knapp
-      // unter dem Bildrand liegt.
+
+      // **Frustum-Vorprüfung, bevor gestreut wird.** Ein Chunk, der nicht im
+      // Bild liegt, soll den Etat für neue Chunks nicht verbrauchen. Weil die
+      // Höhenausdehnung erst nach dem Streuen bekannt ist, wird hier der volle
+      // Höhenbereich der Welt angenommen — eine echte Obermenge der späteren
+      // Hülle, die also niemals zu Unrecht verwirft.
+      this.#box.min.set(x0, WORLD.minHeight, z0);
+      this.#box.max.set(x0 + cell, WORLD.maxHeight + 9, z0 + cell);
+      if (!this.#frustum.intersectsBox(this.#box)) continue;
+
+      // Nur die Arten streuen, die auf dieser Entfernung überhaupt gezeichnet
+      // werden. Gras endet bei 160 m, Bäume bei 520 m — siehe `ScatterChunk.generated`.
+      const chunk = this.#chunk(cx, cz, this.#speciesMask(x0, z0, camera));
+      if (!chunk) continue;
+
+      // Jetzt die knappe Hülle. Oben Luft für das höchste Modell der größten
+      // Art — sonst schneidet das Frustum die Kronen der Bäume ab, deren Fuß
+      // knapp unter dem Bildrand liegt.
       this.#box.min.set(x0, chunk.minY, z0);
       this.#box.max.set(x0 + cell, chunk.maxY + 9, z0 + cell);
       if (!this.#frustum.intersectsBox(this.#box)) continue;
@@ -325,24 +354,33 @@ export class ScatterSystem implements System {
   /**
    * Chunk aus dem Cache oder neu gestreut.
    *
-   * Pro Frame werden höchstens `maxNewChunks` erzeugt. Ohne diese Bremse kostet
-   * der erste Frame in einem neuen Gebiet die Streuung aller Chunks der
-   * Zeitscheibe auf einmal — bei 48 Chunks à rund 3600 Kandidaten ist das ein
-   * sichtbarer Ruckler an genau der Stelle, an der man gerade beschleunigt.
-   * Übersprungene Chunks kommen im nächsten Durchlauf dran.
+   * Das Erzeugen steht unter einem **Zeitbudget**, nicht unter einer Stückzahl —
+   * die Begründung samt Messung steht bei `SCATTER.newChunkBudgetMs`. Der erste
+   * Chunk eines Frames wird immer erzeugt, damit die Streuung auch bei einem
+   * langsamen Frame vorankommt. Übersprungene Chunks kommen im nächsten
+   * Durchlauf dran.
    */
-  #chunk(cx: number, cz: number): ScatterChunk | null {
+  #chunk(cx: number, cz: number, mask: number): ScatterChunk | null {
     const key = cz * CHUNKS_PER_AXIS + cx;
     const cached = this.#cache.get(key);
-    if (cached) {
+    if (cached && (cached.generated & mask) === mask) {
       cached.lastUsed = this.#clock;
       return cached;
     }
-    if (this.#newThisFrame >= SCATTER.maxNewChunks) return null;
+    if (
+      this.#newThisFrame > 0 &&
+      performance.now() - this.#frameStart >= SCATTER.newChunkBudgetMs
+    ) {
+      return null;
+    }
     if (!this.#sampler || !this.#zones) return null;
 
     this.#newThisFrame++;
-    const chunk = scatterChunk(cx, cz, {
+    // Was schon gestreut war, bleibt drin: die Maske wird vereinigt, nicht
+    // ersetzt. Sonst verlöre ein Chunk beim Wegfliegen seine Gräser und bekäme
+    // sie beim Zurückkommen erneut gestreut — dieselbe Arbeit zweimal.
+    const wanted = mask | (cached?.generated ?? 0);
+    const chunk = scatterChunk(cx, cz, wanted, {
       sampler: this.#sampler,
       zones: this.#zones,
       network: this.#network,
@@ -352,6 +390,27 @@ export class ScatterSystem implements System {
     this.#cache.set(key, chunk);
     this.#evict();
     return chunk;
+  }
+
+  /**
+   * Welche Arten ein Chunk in dieser Entfernung braucht.
+   *
+   * Gemessen wird gegen die **nächste Ecke** des Chunks: ein 64-m-Chunk, dessen
+   * nahe Kante gerade noch in der Grasreichweite liegt, braucht Gras — sonst
+   * fehlte es auf dem vorderen Streifen jedes Chunks.
+   */
+  #speciesMask(x0: number, z0: number, camera: PerspectiveCamera): number {
+    const cell = SCATTER.chunkSize;
+    const dx = Math.max(x0 - camera.position.x, 0, camera.position.x - (x0 + cell));
+    const dz = Math.max(z0 - camera.position.z, 0, camera.position.z - (z0 + cell));
+    const distanceSq = dx * dx + dz * dz;
+
+    let mask = 0;
+    for (let s = 0; s < SPECIES.length; s++) {
+      const far = SPECIES[s]!.lodDistances[2];
+      if (distanceSq <= far * far) mask |= 1 << s;
+    }
+    return mask;
   }
 
   /** Ältesten Chunk verwerfen, wenn der Cache überläuft. */

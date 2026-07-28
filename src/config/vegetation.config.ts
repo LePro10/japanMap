@@ -195,25 +195,54 @@ export const SCATTER = {
   /**
    * Chunks, deren Instanzen je Frame neu einsortiert werden.
    *
-   * Ein vollständiger Durchlauf über alle sichtbaren Chunks kostet bei 60 000
-   * Instanzen gemessen mehrere Millisekunden — zu viel für jeden Frame. Verteilt
-   * auf mehrere Frames sind es Bruchteile davon, und die Stufenzuordnung hinkt
-   * höchstens vier Frames hinterher. Bei 60 FPS und 30 m/s Kamerafahrt sind das
-   * 2 m Versatz an einer LOD-Grenze — unsichtbar.
+   * Ein vollständiger Durchlauf sortiert alle sichtbaren Instanzen neu ein — bei
+   * 50 211 gemessen rund 10 ms. Verteilt auf mehrere Frames sind es Bruchteile
+   * davon; der Preis ist, dass die Stufenzuordnung um die Länge eines Durchlaufs
+   * hinterherhinkt.
+   *
+   * Hier stand zuerst 48. Im Umkreis der Vegetation liegen rund 207 Kandidaten,
+   * ein Durchlauf dauerte damit fünf Frames; mit 16 sind es dreizehn, also 0,22 s
+   * Nachlauf — bei 30 m/s Kamerafahrt 6,5 m Versatz an einer LOD-Grenze, deren
+   * nächste bei 30 m liegt.
+   *
+   * **Der Wert war nicht die Ursache des Problems, das ihn geändert hat.** Die
+   * Füllphase kostete 12,7 ms im Median, und die Senkung von 48 auf 16 hat daran
+   * *nichts* geändert — die Ursache lag in der Chunk-Erzeugung, nicht im
+   * Einsortieren (siehe `ScatterChunk.generated`). Der kleinere Wert bleibt
+   * trotzdem: er verteilt gleichmäßiger, und die Messung gibt für 48 keinen
+   * Vorteil her. Das ist eine Änderung ohne isolierten Nachweis, und das gehört
+   * dazugesagt.
    */
-  chunksPerFrame: 48,
+  chunksPerFrame: 16,
 
   /**
-   * Chunks, die je Frame **neu gestreut** werden dürfen.
+   * Zeitbudget je Frame für das **Erzeugen** neuer Chunks, in Millisekunden.
    *
-   * Getrennt von `chunksPerFrame`, weil Einsortieren und Erzeugen zwei ganz
+   * Getrennt von `chunksPerFrame`, weil Einsortieren und Erzeugen ganz
    * verschiedene Kosten haben: einsortieren heißt eine Matrix schreiben,
-   * erzeugen heißt rund 3600 Kandidaten filtern. Ohne diese Bremse kostet der
-   * erste Frame in einem neuen Gebiet 48 Streuungen auf einmal — ein Ruckler an
-   * genau der Stelle, an der man gerade beschleunigt. Übersprungene Chunks
-   * kommen im nächsten Durchlauf dran, also ein paar Frames später.
+   * erzeugen heißt rund 6700 Kandidaten filtern. Ohne Bremse kostet der erste
+   * Frame in einem neuen Gebiet 48 Streuungen auf einmal — ein Ruckler an genau
+   * der Stelle, an der man gerade beschleunigt.
+   *
+   * **Hier stand zuerst eine Chunk-Zahl (4), und die war zu grob.** Gemessen
+   * über 25 Frames: Median 0,70 ms, aber **Spitze 11,7 ms** gegen ein
+   * Frame-Budget von 16,6 ms. Eine kleinere Zahl wäre die naheliegende Antwort
+   * und die schlechtere: sie deckelt nur, solange die Kosten je Chunk konstant
+   * bleiben, und die hängen an der Zellgröße der dichtesten Art — ein Chunk mit
+   * Gräsern kostet auf dieser Maschine gemessen rund 12 ms, einer ohne unter
+   * 0,3 ms.
+   *
+   * Ein Zeitbudget deckelt direkt, was zu deckeln ist. **Ein** Chunk wird immer
+   * erzeugt, auch wenn das Budget schon aufgebraucht ist — sonst könnte die
+   * Streuung bei einem langsamen Frame ganz stehenbleiben und käme nie
+   * hinterher. Die Spitze liegt damit bei Budget plus einem Chunk, und dass ein
+   * *einzelner* Chunk das Budget überschreiten kann, ist der Grund, warum es die
+   * Artenmaske aus `ScatterChunk.generated` zusätzlich braucht.
+   *
+   * PLAN.md P7.2 sieht für Chunk-Arbeit dasselbe Budget vor; hier ist es
+   * vorgezogen, weil es die Messung so verlangt hat.
    */
-  maxNewChunks: 4,
+  newChunkBudgetMs: 2,
 
   /**
    * Zwischengespeicherte Chunks. Darüber wird der am längsten unbenutzte
