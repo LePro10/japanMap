@@ -21,8 +21,6 @@ export const INSTANCE_STRIDE = 6;
 const EMPTY = new Float32Array(0);
 
 export interface ScatterChunk {
-  readonly cx: number;
-  readonly cz: number;
   /**
    * Welche Arten in diesem Chunk gestreut wurden, als Bitmaske über den Index in
    * `SPECIES`.
@@ -198,5 +196,5 @@ export function scatterChunk(
     maxY = 0;
   }
 
-  return { cx, cz, generated: mask, instances, minY, maxY, lastUsed: 0 };
+  return { generated: mask, instances, minY, maxY, lastUsed: 0 };
 }

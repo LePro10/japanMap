@@ -2,10 +2,7 @@ import { InstancedMesh, type BufferGeometry, type Material } from 'three';
 
 import type { SpeciesSettings } from '@/config/vegetation.config';
 
-/** Die drei Stufen, in der Reihenfolge von nah nach fern. */
-export const LOD_NEAR = 0;
-export const LOD_MID = 1;
-export const LOD_FAR = 2;
+/** Zahl der Stufen. Nach außen ist nur sie sichtbar — die Indizes bleiben hier. */
 export const LOD_COUNT = 3;
 
 export interface LodStage {
@@ -72,9 +69,7 @@ export class InstancedLOD {
 
   /** Zwischenpuffer leeren — Beginn eines neuen Durchlaufs. */
   beginPass(): void {
-    this.#counts[LOD_NEAR] = 0;
-    this.#counts[LOD_MID] = 0;
-    this.#counts[LOD_FAR] = 0;
+    this.#counts.fill(0);
     this.#dropped = 0;
   }
 
@@ -129,10 +124,6 @@ export class InstancedLOD {
       mesh.instanceMatrix.needsUpdate = true;
       mesh.count = count;
     }
-  }
-
-  get counts(): readonly number[] {
-    return this.#counts;
   }
 
   /** Instanzen, die nicht mehr in den Puffer passten. Muss null bleiben. */
