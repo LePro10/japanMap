@@ -15,7 +15,12 @@ vec2 normalUv = atmoMapUv(vTerrainWorld.xz, uMapRes.y);
 // Die Gewichte werden neu normiert, nicht bloß gelesen. Der Baker normiert
 // zwar schon, aber die 8-bit-Rundung und die Debug-Maske verschieben die
 // Summe — ohne die Division wäre das Ergebnis an manchen Stellen dunkler.
-vec4 splat = texture(uZones, zonesUv) * uLayerMask;
+// **Drei Kanäle in der Datei, vier im Splat.** Der vierte (Reisfeld) ergibt
+// sich als Rest, weil der Baker die Gewichte auf 1 normiert. Er stand früher im
+// Alphakanal — was auf der GPU funktionierte und auf der CPU nicht, weil jeder
+// Canvas-Umweg RGB mit Alpha multipliziert. Siehe ZoneMap.ts.
+vec3 zoneRgb = texture(uZones, zonesUv).rgb;
+vec4 splat = vec4(zoneRgb, max(0.0, 1.0 - zoneRgb.r - zoneRgb.g - zoneRgb.b)) * uLayerMask;
 splat /= max(dot(splat, vec4(1.0)), 1e-4);
 gTerrainSplat = splat;
 

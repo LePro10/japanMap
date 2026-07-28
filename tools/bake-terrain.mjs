@@ -481,7 +481,16 @@ function computeNormals(height, res, spacing) {
  * dunkle oder ausgewaschene Flecken wären die Folge.
  */
 function computeZones(height, res, spacing, zoneRes, seed) {
-  const data = Buffer.alloc(zoneRes * zoneRes * 4);
+  // **Drei Kanäle, nicht vier.** Der vierte (Reisfeld) ist redundant, weil die
+  // Gewichte auf 255 normiert werden — er ergibt sich als Rest. Ihn trotzdem
+  // in den Alphakanal zu schreiben war ein Fehler mit weiter Folge: eine
+  // PNG-Alpha ist für den Browser **Transparenz**, und jeder Weg über ein
+  // Canvas (drawImage → getImageData) multipliziert RGB damit und rechnet es
+  // wieder heraus. Wo Alpha null war — also fast überall — kam RGB als **0**
+  // zurück. Die GPU war nie betroffen (three lädt ohne Premultiplikation), die
+  // CPU-Seite dagegen vollständig: die Zonenneigung der Vegetationsstreuung
+  // hat nie gewirkt. Siehe src/world/scatter/ZoneMap.ts.
+  const data = Buffer.alloc(zoneRes * zoneRes * 3);
   const nBreak = createNoise2D(stream(seed, 'splat'));
   // Derselbe Strom wie im Höhenfeld: die Reisfeld-Maske muss exakt dort
   // liegen, wo auch eingeebnet wurde, sonst wandert die Textur über die Kante.
@@ -524,11 +533,12 @@ function computeZones(height, res, spacing, zoneRes, seed) {
       const sum = rock + grass + sand + paddy;
       const inv = sum > 1e-5 ? 255 / sum : 0;
 
-      const o = (zy * zoneRes + zx) * 4;
+      const o = (zy * zoneRes + zx) * 3;
       data[o] = Math.round(rock * inv);
       data[o + 1] = Math.round(grass * inv);
       data[o + 2] = Math.round(sand * inv);
-      data[o + 3] = Math.round(paddy * inv);
+      // Reisfeld steht nicht in der Datei. Wer es braucht, rechnet
+      // `max(0, 1 − rock − grass − sand)` — so machen es Shader und ZoneMap.
     }
   }
   return data;
@@ -1166,7 +1176,7 @@ async function main() {
 
   const previewBuffer = writePng(preview, res, res, 0);
   const normalBuffer = writePng(normals, res, res, 2);
-  const zoneBuffer = writePng(zones, zoneRes, zoneRes, 6);
+  const zoneBuffer = writePng(zones, zoneRes, zoneRes, 2);
   // Wassermaske der Reisfelder, Graustufen. Die **Höhe** steht nicht darin: das
   // Gelände ist innerhalb einer Parzelle exakt eben, die Laufzeit holt sie
   // deshalb aus derselben Heightmap wie alles andere und schlägt den
@@ -1204,7 +1214,14 @@ async function main() {
       heightRange: HEIGHT_RANGE,
     },
     normals: { file: 'normal.png', res, encoding: 'rgb8-world-normal' },
-    zones: { file: 'zones.png', res: zoneRes, channels: ['rock', 'grass', 'sand', 'paddy'] },
+    zones: {
+      file: 'zones.png',
+      res: zoneRes,
+      encoding: 'rgb8-splat',
+      channels: ['rock', 'grass', 'sand'],
+      /** Der vierte Kanal ergibt sich als Rest — siehe computeZones. */
+      impliedChannel: 'paddy',
+    },
     paddies: paddyReport
       ? {
           file: 'paddy.png',
