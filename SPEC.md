@@ -81,9 +81,14 @@ Der Höhenunterschied von 450 m ist der stärkste Hebel, damit 3 km groß wirken
 - **Quelle:** Prozedural generiert (Simplex/FBM + Erosions-Pass + Zonen-Masken),
   aber **einmalig gebacken** in eine 16-bit-Heightmap (2048², ≈1,5 m/px).
   Deterministisch, versionierbar, von Hand nacheditierbar.
-- **LOD:** Quadtree-Chunked-LOD mit Vertex-Morphing zwischen den Stufen.
-  Chunk = 256 m. 12 × 12 = 144 Chunks.
-  LOD0 = 2 m/Vertex nah → LOD3 = 16 m/Vertex fern.
+- **LOD:** CDLOD-Quadtree mit Vertex-Morphing zwischen den Stufen. Wurzel
+  3072 m, Blätter 48 m, sieben Stufen. ~~Chunk = 256 m, 12 × 12 = 144 Chunks,
+  LOD0 = 2 m/Vertex nah → LOD3 = 16 m/Vertex fern.~~ Gebaut ab P4: 33 × 33
+  Stützstellen je Knoten, also **1,5 m/Vertex** auf der feinsten Stufe — genau
+  der Texelabstand der Heightmap — bis 96 m/Vertex auf der Wurzel. Die 256-m-
+  Chunks bleiben als Einheit für die *Vegetations*-Streuung erhalten (dort 64 m),
+  nicht für das Terrain-Gitter: 3072 / 256 = 12 ist keine Zweierpotenz und liegt
+  damit schief zu einem Quadtree.
 - **Materialien:** Splat-Blending über 4 Kanäle (Fels / Gras / Sand / Reisfeld),
   gesteuert von Höhe, Steilheit und Zonen-Maske. Triplanar-Mapping an Steilhängen.
 - **Culling:** Frustum-Culling pro Chunk + Occlusion durch Berge (später).
@@ -106,9 +111,13 @@ tippen skaliert nicht.
 ### 2.4 Vegetation & Props
 
 - Poisson-Disk-Sampling mit Dichtekarten pro Biom, Ausschlusszone um Straßen
-- `InstancedMesh` gruppiert nach (Chunk × Asset × LOD)
-- Billboard-Imposter ab ~150 m Distanz
-- Ziel: ~50.000 Instanzen sichtbar bei < 100 Draw-Calls
+- `InstancedMesh` gruppiert nach ~~(Chunk × Asset × LOD)~~ **(Asset × LOD)** —
+  je Chunk wären es rund 600 Draw-Calls gegen ein Teilbudget von 100, siehe
+  PLAN.md P4 / 4.3
+- Billboard-Imposter ab ~150 m Distanz (gebaut: 180 m für Bäume, oktaedrischer
+  8 × 8-Atlas über der Halbkugel, zur Laufzeit gebacken)
+- Ziel: ~50.000 Instanzen sichtbar bei < 100 Draw-Calls.
+  **Gemessen: 50.211 bei 12** (Vegetation) bzw. 48 Draw-Calls für die ganze Szene
 
 ---
 
@@ -256,18 +265,21 @@ Kitbashing aus verschiedenen Gratis-Quellen scheitert sonst am Stil-Mix.
 | **P1** | Heightmap-Baker, Terrain-Renderer, Free-Fly-Kamera, HDRI-Licht | **Erstes fliegbares Bild** |
 | **P2** | Postprocessing-Pipeline, Höhennebel, gebackene Verschattung, Wasser, Color-Grading | Die Stimmung sitzt |
 | **P3** | Spline-System, Spline-Editor, Terrain-Carving, Straßen-Meshes | Befahrbares Straßennetz |
-| **P4** | CDLOD-Quadtree, Vegetations-Streuung, Instancing, Imposter | Welt füllt sich, Budgets greifen |
+| **P4** ✅ | CDLOD-Quadtree, Vegetations-Streuung, Instancing, Imposter | Welt füllt sich, Budgets greifen |
 | **P5** | Asset-Pipeline, Landmarks: Tempel, Torii, Dorf, Reisfelder | Zonen bekommen Identität |
 | **P6** | Stadt-Generator, Emissive-Neon, nasser Asphalt, Reflexions-Entscheidung | Der Money-Shot |
 | **P7** | Quality-Presets, Streaming, Ladebildschirm, Profiling | Auslieferbar |
 
-**Aktueller Stand: P0–P3 abgeschlossen (2026-07-26). Nächste Phase: P4.**
+**Aktueller Stand: P0–P4 abgeschlossen (2026-07-27). Nächste Phase: P5.**
 
-Vor P4 steht eine **P1-Nachbesserung am Höhenfeld** an: die Flanke des Massivs
-trägt die geforderten Serpentinen nicht (siehe §2.1). Danach laufen Straßennetz,
-Verschattung und Vegetationsverteilung neu — deshalb vorher, nicht nachher.
+Die **P1-Nachbesserung am Höhenfeld** war für „vor P4" vorgemerkt und ist nicht
+erfolgt: die Flanke abzuflachen ändert die Silhouette des Massivs, und das
+Massiv ist der Hintergrund der halben Karte — eine Art-Direction-Entscheidung,
+die nicht nebenbei mitgetroffen wird. Technisch kostet die Verschiebung nichts,
+weil die Vegetations-Streuung zur Laufzeit aus Seed und Chunk-Koordinate
+gerechnet wird und einem geänderten Höhenfeld von selbst folgt.
 
-Zwei bekannte offene Punkte:
+Drei bekannte offene Punkte:
 
 - **Startdownload 51,95 MB** gegen die 15 MB aus §4 — die dafür vorgesehene
   KTX2-Pipeline ist P5.1. Aufschlüsselung und Reduktionspfad in
@@ -275,6 +287,12 @@ Zwei bekannte offene Punkte:
 - **Bergpass: 2 Serpentinen statt ≥ 8, Gipfelhöhe 264 m statt 450 m.** Beides
   hängt am Höhenfeld, nicht am Straßengenerator — als P1-Nachbesserung notiert.
   Siehe §2.1 und PLAN.md, „Wie der Bergpass zu seinen Kehren kam".
+- **GPU-Zeit ist auf dieser Maschine nicht messbar.** Der eingebaute Browser
+  bekommt einen WebGL2-Kontext (ANGLE über den Microsoft Basic Render Driver),
+  aber keine `EXT_disjoint_timer_query_webgl2`. Draw-Calls, Dreiecke,
+  Texturspeicher und Instanzzahlen sind CPU-seitige Zähler und damit exakt; die
+  Bildrate sagt über die Zielhardware nichts. Frame-Time-Budgets gehören
+  deshalb nach P7, auf Hardware mit Timer.
 
 Ausführungsdetails, Dateilisten und Akzeptanzkriterien pro Phase: **[PLAN.md](PLAN.md)**.
 Diese Tabelle ist die Kurzfassung — bei Widersprüchen gilt PLAN.md.
