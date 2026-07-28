@@ -60,8 +60,4 @@ export class ZoneMap {
     const iz = Math.min(Math.max(Math.round((z + WORLD.half) * this.#invSpacing), 0), this.#last);
     return this.#data[(iz * this.#res + ix) * 4 + channel]! / 255;
   }
-
-  get resolution(): number {
-    return this.#res;
-  }
 }

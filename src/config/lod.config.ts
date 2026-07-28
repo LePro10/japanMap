@@ -118,8 +118,6 @@ export const LOD = {
   levels: MAX_DEPTH + 1,
   ranges: buildRanges(),
 
-  splitFactor: SPLIT_FACTOR,
-
   /**
    * Ab welchem Anteil von `ranges[l]` das Morphing einsetzt.
    *
