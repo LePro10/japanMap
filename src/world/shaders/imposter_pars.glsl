@@ -24,6 +24,8 @@ uniform float uImposterAlphaTest;
  * als Sprung sichtbar.
  */
 uniform vec2 uImposterSize;
+/** Modellhöhe in Metern beim Maßstab 1 — für die Verdeckung am Fuß. */
+uniform float uImposterHeight;
 
 /** Position im Quad: (0,0) unten links, (1,1) oben rechts. */
 varying vec2 vImposterQuad;
@@ -34,6 +36,14 @@ varying vec3 vImposterLocalView;
 varying vec2 vImposterRot;
 /** Farbwurf dieser Instanz — dieselbe Rechnung wie im Mesh-Material. */
 varying float vImposterTint;
+/**
+ * Höhe über dem Boden, auf die Modellhöhe normiert und quadriert.
+ *
+ * Deckungsgleich mit `aWind` im Mesh — deshalb quadriert und nicht linear.
+ * Ohne diese Gleichheit hätte der Stufenwechsel bei 180 m einen Sprung am
+ * Stammfuß, also genau dort, wo die Verdeckung am stärksten ist.
+ */
+varying float vImposterBase;
 
 /** Weltnormale aus dem Atlas, gesetzt in imposter.frag.glsl. */
 vec3 gImposterNormal;

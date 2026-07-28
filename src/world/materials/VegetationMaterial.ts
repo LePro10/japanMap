@@ -13,6 +13,7 @@ import {
   type AtmosphereUniforms,
 } from '@/render/atmosphere/atmosphereUniforms';
 
+import baseAoGlsl from '../shaders/vegetation_base_ao.glsl';
 import tintGlsl from '../shaders/vegetation_tint.glsl';
 import translucencyGlsl from '../shaders/vegetation_translucency.glsl';
 import windGlsl from '../shaders/vegetation_wind.vert.glsl';
@@ -35,6 +36,8 @@ export interface VegetationUniforms {
   readonly uWindStrength: IUniform<number>;
   readonly uWindTime: IUniform<number>;
   readonly uVegTranslucency: IUniform<number>;
+  /** Verdeckung am Fuß der Pflanze — siehe vegetation_base_ao.glsl. */
+  readonly uVegBaseAo: IUniform<number>;
 }
 
 export function createVegetationUniforms(): VegetationUniforms {
@@ -46,6 +49,10 @@ export function createVegetationUniforms(): VegetationUniforms {
     uWindStrength: { value: VEGETATION_LOOK.windStrength },
     uWindTime: { value: 0 },
     uVegTranslucency: { value: VEGETATION_LOOK.translucency },
+    // Derselbe Regler wie der Bodenfleck: es ist dieselbe Verdeckung, einmal
+    // auf dem Boden und einmal an der Pflanze. Zwei Regler wären zwei Wege,
+    // denselben Übergang gegeneinander zu verstellen.
+    uVegBaseAo: { value: VEGETATION_LOOK.groundAo },
   };
 }
 
@@ -116,7 +123,7 @@ export class VegetationMaterial extends MeshStandardMaterial {
           // dann schwarz. Deklariert wird sie hier und nicht im geteilten
           // Shader-Stück, weil das Imposter-Quad sie nicht hat.
           'attribute float aWind;\n' +
-          'varying vec3 vVegWorld;\nvarying float vVegTint;',
+          'varying vec3 vVegWorld;\nvarying float vVegTint;\nvarying float vVegBase;',
       )
       .replace(
         '#include <begin_vertex>',
@@ -128,14 +135,18 @@ export class VegetationMaterial extends MeshStandardMaterial {
           'transformed = vegetationWind(\n' +
           '    transformed, vegOrigin, vegetationWindLocal(instanceMatrix), aWind);\n' +
           'vVegWorld = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;\n' +
-          'vVegTint = vegetationTintHash(vegOrigin.xz);',
+          'vVegTint = vegetationTintHash(vegOrigin.xz);\n' +
+          // Dieselbe Maske wie der Wind: null an der Wurzel, eins in der Krone.
+          // Ein zweites Attribut dafür wäre derselbe Wert unter anderem Namen.
+          'vVegBase = aWind;',
       );
 
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <common>',
-      `#include <common>\n${tintGlsl}\n${translucencyGlsl}\n` +
+      `#include <common>\n${tintGlsl}\n${translucencyGlsl}\n${baseAoGlsl}\n` +
         'uniform float uVegTranslucency;\n' +
-        'varying vec3 vVegWorld;\nvarying float vVegTint;\nvec2 gVegShade;',
+        'varying vec3 vVegWorld;\nvarying float vVegTint;\nvarying float vVegBase;\n' +
+        'vec2 gVegShade;',
     );
 
     injectAtmosphere(
@@ -149,7 +160,13 @@ export class VegetationMaterial extends MeshStandardMaterial {
         '#include <map_fragment>',
         '#include <map_fragment>\n' +
           'gVegShade = atmoShade(vVegWorld);\n' +
-          'diffuseColor.rgb *= vegetationTint(vVegTint);',
+          // Die Verdeckung geht ins **Albedo**, nicht ans Licht. Für den
+          // diffusen Anteil ist das dasselbe Produkt (Albedo × Einstrahlung),
+          // spart aber die Zeilen für jeden Lichtpfad einzeln — und das
+          // Streulicht durch Blätter, das weiter unten aus `diffuseColor`
+          // rechnet, wird damit gleich mitverdunkelt. Am Stammfuß soll auch
+          // nichts durchleuchten.
+          'diffuseColor.rgb *= vegetationTint(vVegTint) * vegetationBaseAo(vVegBase);',
       )
       .replace(
         '#include <lights_fragment_end>',
