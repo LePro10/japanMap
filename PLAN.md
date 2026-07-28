@@ -1775,13 +1775,79 @@ Streulicht selbst in `look:collect` ein und liest sie aus `look:apply` zurück.
 Streudichte und LOD-Grenzen bleiben bewusst draußen — sie sind
 Leistungsparameter der Qualitätsstufe.
 
+### Nach der Abnahme: Bodenverdeckung
+
+Der letzte offene Punkt aus P4, und der Grund, warum Bäume trotz Formvarianz und
+Wind noch aufgeklebt wirkten. **Die Diagnose in der Tabelle unten war falsch
+formuliert** und steht deshalb durchgestrichen dort: sie nannte einen
+„Kontaktschatten". Ein Schatten ist es nicht — bei 2,23° Sonnenstand wirft ein
+9 m hoher Baum einen rund 230 m langen Schatten quer über den Hang, und ein
+runder Fleck unter dem Stamm wäre als Sonnenschatten schlicht falsch. Was fehlt,
+ist **Umgebungsverdeckung**: die Krone nimmt dem Boden unter sich den Himmel
+weg. Das ist sonnenunabhängig und damit eine ganz andere, billigere Aufgabe.
+
+Sie hat zwei Hälften, und die eine allein reicht nicht:
+
+| Anteil | wo | Kosten | geänderte Pixel | mittlere Verdunkelung dort |
+|---|---|---|---|---|
+| Fleck auf dem Boden | `GroundAoMaterial` | **1 Draw-Call**, 32 Dreiecke je Fleck | 56 824 (6,2 %) | **24,6 %** |
+| Verdeckung am Pflanzenfuß | `vegetation_base_ao.glsl` | keine, drei Rechenschritte im Fragment | 95 741 (10,4 %) | **11,0 %** |
+| beides | | | 147 273 (16,0 %) | **14,8 %** |
+
+Gemessen an einem Waldhang, 1280 × 720, alle vier Zustände aus **derselben**
+eingefrorenen Streuung — ein Kontrollpaar aus zwei identischen Aufnahmen ergab
+0 abweichende Pixel. Ohne dieses Einfrieren war die Messung wertlos: der
+laufende Durchlauf sortiert zwischen zwei Aufnahmen Instanzen um, und der erste
+Vergleich meldete daraufhin 49 923 „geänderte" Pixel bei **−0,25 %** mittlerer
+Verdunkelung — also Rauschen in der Größenordnung des Effekts.
+
+> **Warum zwei Hälften.** Der Fleck liegt *hinter* der Pflanze und fällt am
+> Stamm durch den Tiefentest; er kann die Pflanze nicht erreichen. Umgekehrt
+> steht im Vordergrund Gras vor dem Boden, das der Fleck ebenfalls nicht
+> verdunkelt. Mit dem Fleck allein stünde der Baum in einer Schattenpfütze,
+> statt darin zu verschwinden. Die beiden Pixelmengen überschneiden sich
+> gemessen nur zu 5 292 von 152 565 — sie treffen fast disjunkte Bildbereiche.
+
+> **Der Fleck folgt dem Gelände, statt darauf zu liegen.** Seine 5 × 5
+> Stützstellen holen ihre Höhe aus derselben Heightmap und mit demselben
+> Shader-Block wie das Terrain (`terrain_height.glsl`). Ein ebenes Quad mit
+> `polygonOffset` wäre kürzer und stünde am Hang schräg im Boden.
+
+> **Der Stufenwechsel bei 180 m ist dadurch nicht schlechter geworden.** Geprüft
+> nach der Lehre aus dem Wind — nicht am Nahblickpunkt, sondern über beide
+> Stufen: derselbe Kiefernbestand einmal als Mesh und einmal als Imposter
+> gezeichnet (`lodDistances[1]` zur Laufzeit umgestellt), verglichen über die
+> 476 516 Pixel, die in **beiden** Aufnahmen Kiefer sind.
+>
+> | | Mesh | Imposter | Abweichung |
+> |---|---|---|---|
+> | ohne Fußverdeckung | 42,33 | 41,53 | **−1,89 %** |
+> | mit Fußverdeckung | 41,70 | 41,14 | **−1,35 %** |
+>
+> Der Sprung war schon vorher da (er kommt aus der Filterung des Atlas) und ist
+> mit der Verdeckung eher kleiner. Beide Pfade rufen dieselbe Funktion mit
+> demselben Uniform auf; die Maske ist im Imposter deshalb ebenfalls
+> **quadriert**, damit sie deckungsgleich mit `aWind` im Mesh ist.
+
+Kosten am dichtesten gemessenen Blickpunkt: **+1 Draw-Call** (64 → 65) und
+**+34 656 Dreiecke** (1083 Flecken × 32) gegen ein Budget von 3 000 000. Kein
+zusätzlicher Texturspeicher. Die meisten Flecken in einem Durchlauf waren
+**1168 von 4096** Pufferplätzen, bei einer Kamera in 33 m Höhe über dichtem
+Bestand mit Blick nach unten.
+
+> **Warum kein gebackenes Verdeckungsbild.** Naheliegend, weil die Streuung
+> deterministisch ist — aber die Streudichte hängt an der Qualitätsstufe
+> (`vegetationDensity`, 0,25 bis 1,0). Eine gebackene Karte wäre auf drei von
+> vier Stufen falsch, und die Kopplung liefe vom Terrain-Baker in
+> TypeScript-Code des Renderers hinein.
+
 ### Offene Punkte aus P4
 
 | Punkt | Zahl | Wohin |
 |---|---|---|
 | GPU-Zeit nicht messbar | `EXT_disjoint_timer_query_webgl2` fehlt auf dem Software-Rasterizer | P7, Profiling auf Hardware mit Timer |
 | Vegetation ist prozedural | 4 Arten à 3 Formvarianten, ~100 Dreiecke je Modell | P5.1, Asset-Pipeline mit echten Modellen |
-| Vegetation wirft und empfängt keinen Schatten | `castShadow` und `receiveShadow` beide aus | Kein Kontaktschatten am Stammfuß — der wahrscheinlichste Grund, warum Bäume aufgeklebt wirken. Braucht **keine** Shadow-Map und ist deshalb eine eigene, billigere Frage als die verschobenen Echtzeitschatten |
+| ~~Vegetation wirft und empfängt keinen Schatten~~ | `castShadow` und `receiveShadow` bleiben aus | **Erledigt, aber anders als angekündigt** — hier stand „kein Kontaktschatten am Stammfuß". Das war die falsche Kategorie: bei 2,23° Sonnenstand ist der Schatten eines 9-m-Baums 230 m lang, ein Fleck unter dem Stamm wäre als Sonnenschatten falsch. Gefehlt hat **Umgebungsverdeckung**, und die braucht die Sonne gar nicht. Siehe „Nach der Abnahme: Bodenverdeckung" |
 | Imposter mischen 2 von 4 Nachbarn | Winkelfehler bis 11° | offen; bilinear über alle vier wäre der doppelte Aufwand für die zweite Hälfte eines Fehlers, den man bei 180 m nicht sieht |
 | Imposter-Atlas ohne Mipmaps | Silhouette 6,5 % breiter als das Mesh | offen; Mipmaps über einen Atlas bluten zellenübergreifend, das braucht eine eigene Lösung |
 | Kein Echtzeitschatten | P2 hatte ihn „für P4, sobald es bewegliche Werfer gibt" angekündigt | verschoben: es gibt noch keine beweglichen Werfer. Vegetation wirft keinen — bei 50 000 Instanzen wäre das ein zweiter Geometriedurchlauf im dreistelligen Draw-Call-Bereich |

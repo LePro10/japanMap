@@ -13,6 +13,7 @@ import {
 } from '@/render/atmosphere/atmosphereUniforms';
 import type { VegetationUniforms } from './VegetationMaterial';
 
+import baseAoGlsl from '../shaders/vegetation_base_ao.glsl';
 import octGlsl from '../shaders/imposter_oct.glsl';
 import tintGlsl from '../shaders/vegetation_tint.glsl';
 import translucencyGlsl from '../shaders/vegetation_translucency.glsl';
@@ -102,6 +103,7 @@ export class ImposterMaterial extends MeshStandardMaterial {
       uImposterSize: {
         value: new Vector2(atlas.frameHalf * 2, atlas.height / 2 - atlas.frameHalf),
       },
+      uImposterHeight: { value: atlas.height },
     };
   }
 
@@ -124,7 +126,8 @@ export class ImposterMaterial extends MeshStandardMaterial {
 
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <common>',
-      `#include <common>\n${pars}\n${translucencyGlsl}\nuniform float uVegTranslucency;`,
+      `#include <common>\n${pars}\n${translucencyGlsl}\n${baseAoGlsl}\n` +
+        'uniform float uVegTranslucency;',
     );
 
     injectAtmosphere(
