@@ -14,8 +14,17 @@ import type { ZoneMap } from './ZoneMap';
  * beim tausendsten Betreten so wie beim ersten.
  */
 
-/** Sechs Werte je Instanz: Position, Skalierung, Drehung um Y, Farbwurf. */
-export const INSTANCE_STRIDE = 6;
+/**
+ * Acht Werte je Instanz:
+ * `x, y, z, scaleXZ, scaleY, rotationY, lean, variante`.
+ *
+ * Der Farbwurf steht **nicht** dabei: er wird im Shader aus der Position
+ * gehasht (vegetation_tint.glsl) und kostet damit weder Speicher noch eine
+ * Kopie beim Umsortieren. Waagerechte und senkrechte Skalierung sind getrennt,
+ * weil das Seitenverhältnis der billigste Varianz-Hebel ist — er steht in der
+ * Matrix, die ohnehin geschrieben wird.
+ */
+export const INSTANCE_STRIDE = 8;
 
 /** Geteiltes leeres Feld für Arten, die in einem Chunk nicht gestreut wurden. */
 const EMPTY = new Float32Array(0);
@@ -130,7 +139,14 @@ export function scatterChunk(
         const roll = random();
         const scaleRoll = random();
         const rotation = random() * Math.PI * 2;
-        const tint = random();
+        // **Alle Würfe passieren vor den Filtern, auch für verworfene
+        // Kandidaten.** Das kostet ein paar Rechenschritte an Stellen, an denen
+        // nichts wächst, hält aber den Zufallsstrom an die *Zelle* gebunden
+        // statt an die Reihenfolge der Annahmen. Nur so ändert eine Änderung am
+        // Zonenfilter nicht die Form jedes Baums dahinter.
+        const aspectRoll = random() * 2 - 1;
+        const leanRoll = random();
+        const variantRoll = random();
 
         // Reihenfolge der Filter: **billigste Ablehnung zuerst** (PLAN.md 4.2).
         //
@@ -171,13 +187,20 @@ export function scatterChunk(
           continue;
         }
 
+        const base = species.minScale + (species.maxScale - species.minScale) * scaleRoll;
+        // Das Seitenverhältnis dreht Höhe und Breite gegeneinander, statt beide
+        // gemeinsam zu verändern — sonst wäre es nur eine zweite Größenstreuung.
+        const aspect = 1 + species.aspectJitter * aspectRoll;
+
         const at = count * INSTANCE_STRIDE;
         buffer[at] = x;
         buffer[at + 1] = y;
         buffer[at + 2] = z;
-        buffer[at + 3] = species.minScale + (species.maxScale - species.minScale) * scaleRoll;
-        buffer[at + 4] = rotation;
-        buffer[at + 5] = tint;
+        buffer[at + 3] = base / aspect;
+        buffer[at + 4] = base * aspect;
+        buffer[at + 5] = rotation;
+        buffer[at + 6] = Math.tan((species.leanDeg * RAD_PER_DEG) * leanRoll);
+        buffer[at + 7] = Math.min(species.variants - 1, Math.floor(variantRoll * species.variants));
         count++;
 
         if (y < minY) minY = y;

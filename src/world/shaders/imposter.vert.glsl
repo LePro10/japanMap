@@ -15,9 +15,16 @@
 // `position.x` läuft von −0,5 bis 0,5, `position.y` von 0 bis 1 — der Fuß liegt
 // damit auf dem Instanzursprung, also auf dem Gelände.
 
-float impScale = length(instanceMatrix[1].xyz);
-vec3 impAxisX = instanceMatrix[0].xyz / impScale;
-vec3 impAxisZ = instanceMatrix[2].xyz / impScale;
+// **Waagerechte und senkrechte Skalierung getrennt.** Seit die Instanzen ein
+// gestreutes Seitenverhältnis haben, ist die Matrix nicht mehr uniform
+// skaliert; die Y-Spalte als einzigen Maßstab zu nehmen machte breite Büsche zu
+// hohen. Die Drehachsen stecken in der X- und Z-Spalte und tragen deshalb den
+// waagerechten Maßstab. Eine Scherung bekommt der Imposter nicht (siehe
+// InstancedLOD.push) — sonst wäre die Y-Spalte länger als ihr Maßstab.
+float impScaleXZ = length(instanceMatrix[0].xyz);
+float impScaleY = length(instanceMatrix[1].xyz);
+vec3 impAxisX = instanceMatrix[0].xyz / impScaleXZ;
+vec3 impAxisZ = instanceMatrix[2].xyz / impScaleXZ;
 
 vec3 impOrigin = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 vec3 impToCamera = cameraPosition - impOrigin;
@@ -35,10 +42,13 @@ float impY = uImposterSize.y + position.y * uImposterSize.x;
 transformed = impRightLocal * (position.x * uImposterSize.x) + vec3(0.0, impY, 0.0);
 
 vImposterQuad = vec2(position.x + 0.5, position.y);
+// Die Weltposition wird aus der **ungewiegten** Höhe gebildet. Der Wind
+// verschiebt hier nur waagerecht, und Nebel wie Verschattung an einer um
+// Zentimeter versetzten Stelle abzufragen wäre teurer als der Fehler wert ist.
 vImposterWorld =
     impOrigin +
-    impRightWorld * (position.x * uImposterSize.x * impScale) +
-    vec3(0.0, impY * impScale, 0.0);
+    impRightWorld * (position.x * uImposterSize.x * impScaleXZ) +
+    vec3(0.0, impY * impScaleY, 0.0);
 
 vec3 impDir = normalize(impToCamera);
 vImposterLocalView = normalize(vec3(dot(impDir, impAxisX), max(impDir.y, 0.0), dot(impDir, impAxisZ)));

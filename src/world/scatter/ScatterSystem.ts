@@ -145,7 +145,9 @@ export class ScatterSystem implements System {
     group.matrixAutoUpdate = false;
     this.#group = group;
 
-    this.#meshes = createVegetationMeshes();
+    this.#meshes = createVegetationMeshes(
+      Object.fromEntries(SPECIES.map((s) => [s.id, s.variants])),
+    );
     this.#quad = createImposterQuad();
     const bakeStarted = performance.now();
 
@@ -161,12 +163,13 @@ export class ScatterSystem implements System {
       );
       this.#materials.push(material);
 
-      // Gebacken wird aus dem **vollen** Mesh, nicht aus dem reduzierten. Der
-      // Imposter soll die Silhouette der Nahansicht tragen; nimmt man das
-      // reduzierte, verliert man den Detailgrad zweimal.
+      // Gebacken wird aus dem **vollen** Mesh der ersten Variante, nicht aus dem
+      // reduzierten. Der Imposter soll die Silhouette der Nahansicht tragen;
+      // nimmt man das reduzierte, verliert man den Detailgrad zweimal. Der
+      // Rahmen fasst die breiteste aller Varianten (`meshes.radius`).
       const atlas = ImposterAtlas.bake(
         context.renderer,
-        meshes.full,
+        meshes.variants[0]!.full,
         species.color,
         meshes.height,
         meshes.radius,
@@ -175,11 +178,11 @@ export class ScatterSystem implements System {
       const imposter = new ImposterMaterial(atlas, this.atmosphere, this.#shared, 0xffffff);
       this.#imposterMaterials.push(imposter);
 
-      const stages: LodStage[] = [
-        { geometry: meshes.full, material },
-        { geometry: meshes.reduced, material },
-        { geometry: this.#quad, material: imposter },
-      ];
+      const stages: LodStage[][] = meshes.variants.map((variant) => [
+        { geometry: variant.full, material },
+        { geometry: variant.reduced, material },
+        { geometry: this.#quad!, material: imposter },
+      ]);
 
       const lod = new InstancedLOD(
         species,
@@ -360,7 +363,17 @@ export class ScatterSystem implements System {
         if (distance > far) continue;
 
         const stage = distance < near ? 0 : distance < mid ? 1 : 2;
-        lod.push(stage, x, y, z, data[i + 3]!, data[i + 4]!);
+        lod.push(
+          stage,
+          data[i + 7]!,
+          x,
+          y,
+          z,
+          data[i + 3]!,
+          data[i + 4]!,
+          data[i + 5]!,
+          data[i + 6]!,
+        );
       }
     }
   }
@@ -448,7 +461,7 @@ export class ScatterSystem implements System {
     for (const lod of this.#lods) {
       total += lod.visible;
       dropped += lod.dropped;
-      for (let stage = 0; stage < LOD_COUNT; stage++) perStage[stage]! += lod.meshes[stage]!.count;
+      for (let stage = 0; stage < LOD_COUNT; stage++) perStage[stage]! += lod.visibleOnStage(stage);
     }
 
     this.#readouts.instanzen =
@@ -523,9 +536,14 @@ export class ScatterSystem implements System {
       folder
         .addBinding(state, 'on', { label: labels[stage] ?? `Stufe ${stage}` })
         .on('change', (event: { value: boolean }) => {
+          // Der Name trägt die Stufe: `art:vN:lodM` für die Mesh-Stufen,
+          // `art:imposter` für die dritte. Über den Index zu gehen wäre seit den
+          // Varianten falsch — die Eimer sind nach Variante gruppiert.
+          const suffix = stage < 2 ? `lod${stage}` : 'imposter';
           for (const lod of this.#lods) {
-            const mesh = lod.meshes[stage];
-            if (mesh) mesh.visible = event.value;
+            for (const mesh of lod.meshes) {
+              if (mesh.name.endsWith(suffix)) mesh.visible = event.value;
+            }
           }
         });
     }
@@ -549,8 +567,10 @@ export class ScatterSystem implements System {
     this.#quad = null;
     if (this.#meshes) {
       for (const meshes of Object.values(this.#meshes)) {
-        meshes.full.dispose();
-        meshes.reduced.dispose();
+        for (const variant of meshes.variants) {
+          variant.full.dispose();
+          variant.reduced.dispose();
+        }
       }
       this.#meshes = null;
     }

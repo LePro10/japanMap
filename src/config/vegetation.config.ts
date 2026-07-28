@@ -45,6 +45,39 @@ export interface SpeciesSettings {
   readonly minScale: number;
   readonly maxScale: number;
 
+  /**
+   * Zahl der Formvarianten dieser Art.
+   *
+   * Jede Variante ist ein eigenes Modell aus demselben Bauplan mit anderem
+   * Zufallsstrom — bei der Kiefer etwa eine andere Etagenzahl, Schlankheit und
+   * ein seitlicher Versatz je Etage. Sie kostet **zwei** Draw-Calls (nahe und
+   * reduzierte Stufe); die Imposter teilen sich einen Atlas je Art, weil sie
+   * erst ab 180 m übernehmen und die Form dort nicht mehr auflösbar ist.
+   *
+   * Drei ist die Zahl, ab der die Wiederholung in einem Bestand nicht mehr ins
+   * Auge springt — zusammen mit dem Seitenverhältnis und der Neigung je Instanz
+   * (siehe unten), die den weit größeren Teil der Varianz tragen.
+   */
+  readonly variants: number;
+
+  /**
+   * Streuung des Höhen-Breiten-Verhältnisses je Instanz, 0…1.
+   *
+   * Ein Wert von 0,22 heißt: die Höhe schwankt um ±22 % gegen die Breite. Das
+   * ist der billigste aller Varianz-Hebel — er steht in der Instanzmatrix, die
+   * ohnehin geschrieben wird, und kostet weder Draw-Call noch Speicher.
+   */
+  readonly aspectJitter: number;
+
+  /**
+   * Größte Neigung aus der Senkrechten, in Grad.
+   *
+   * Ebenfalls in der Instanzmatrix, als Scherung. Nichts verrät ein
+   * wiederholtes Modell so zuverlässig wie ein Bestand, in dem jeder Stamm
+   * exakt lotrecht steht.
+   */
+  readonly leanDeg: number;
+
   /** Höchste Geländeneigung in Grad, auf der die Art noch steht. */
   readonly maxSlopeDeg: number;
   /** Höhenbereich in Metern über dem Meeresspiegel. */
@@ -95,6 +128,9 @@ export const SPECIES: readonly SpeciesSettings[] = [
     lodDistances: [80, 180, 520],
     minScale: 0.75,
     maxScale: 1.45,
+    variants: 3,
+    aspectJitter: 0.22,
+    leanDeg: 5,
     // Nadelbäume stehen steiler als alles andere — auf einer 38°-Flanke steht
     // im Gebirge tatsächlich Wald, und ohne diesen Wert bliebe das Massiv kahl.
     maxSlopeDeg: 38,
@@ -115,6 +151,9 @@ export const SPECIES: readonly SpeciesSettings[] = [
     lodDistances: [80, 180, 520],
     minScale: 0.8,
     maxScale: 1.5,
+    variants: 3,
+    aspectJitter: 0.20,
+    leanDeg: 7,
     maxSlopeDeg: 27,
     minHeight: 6,
     maxHeight: 190,
@@ -131,6 +170,9 @@ export const SPECIES: readonly SpeciesSettings[] = [
     lodDistances: [45, 100, 190],
     minScale: 0.6,
     maxScale: 1.35,
+    variants: 3,
+    aspectJitter: 0.26,
+    leanDeg: 11,
     maxSlopeDeg: 42,
     minHeight: 2,
     maxHeight: 400,
@@ -156,6 +198,9 @@ export const SPECIES: readonly SpeciesSettings[] = [
     lodDistances: [30, 70, 160],
     minScale: 0.7,
     maxScale: 1.4,
+    variants: 3,
+    aspectJitter: 0.32,
+    leanDeg: 15,
     maxSlopeDeg: 45,
     minHeight: 0.6,
     maxHeight: 400,
