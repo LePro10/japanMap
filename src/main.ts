@@ -9,6 +9,7 @@ import { LookController } from './render/looks/LookController';
 import { PostFXPipeline } from './render/PostFXPipeline';
 import { TerrainDataError } from './world/TerrainSampler';
 import { RoadSystem } from './world/RoadSystem';
+import { PropSystem } from './world/props/PropSystem';
 import { ScatterSystem } from './world/scatter/ScatterSystem';
 import { TerrainSystem } from './world/TerrainSystem';
 import { WaterSystem } from './world/WaterSystem';
@@ -173,6 +174,10 @@ engine.add(new WaterSystem(atmosphere.uniforms));
 // `roads:ready`, und beide werden genau einmal gesendet, während sich jene
 // Systeme initialisieren.
 engine.add(new ScatterSystem(atmosphere.uniforms));
+// Ebenfalls vor dem Terrain: die Props holen ihre Höhe aus dem Sampler, damit
+// sie einen neuen Terrain-Bake überleben, statt eine Zahl aus der Datei zu
+// glauben.
+engine.add(new PropSystem(atmosphere.uniforms));
 engine.add(new TerrainSystem(atmosphere.uniforms));
 engine.add(new RoadSystem(atmosphere.uniforms));
 engine.add(

@@ -1,6 +1,7 @@
 import type { QualityLevel } from '@/config/quality.config';
 import type { LookState } from '@/render/looks/lookState';
 import type { TerrainHeightUniforms } from '@/world/materials/TerrainMaterial';
+import type { PropClearance } from '@/world/props/PropClearance';
 import type { RoadNetwork } from '@/world/roads/RoadNetwork';
 import type { TerrainSampler } from '@/world/TerrainSampler';
 import type { EventBus } from './EventBus';
@@ -55,6 +56,16 @@ export type AppEvents = {
    * zuhört, muss **vor** dem RoadSystem registriert sein.
    */
   'roads:ready': { network: RoadNetwork };
+
+  /**
+   * Die Props stehen, und mit ihnen die Flächen, die sie freihalten.
+   *
+   * Die Streuung aus P4 muss davon wissen, sonst wachsen Bäume durch die
+   * Tempelhalle — dieselbe Regel wie bei den Straßen, nur mit Kreisen statt
+   * einer Achse. Dieselbe Reihenfolgenbedingung gilt auch: wer zuhört, muss
+   * **vor** dem PropSystem registriert sein.
+   */
+  'props:ready': { clearance: PropClearance };
 
   /**
    * Look-Presets (PLAN.md P2 / 2.6). Zwei Richtungen, bewusst getrennt:
