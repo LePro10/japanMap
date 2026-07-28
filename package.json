@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "assets": "node tools/polyhaven.mjs",
+    "models": "node tools/process-assets.mjs",
     "bake": "node tools/bake-terrain.mjs --seed 20260725 --res 2048 --erosion 2000000",
     "sun": "node tools/hdri-sun.mjs assets/hdri/industrial_sunset_02_puresky_4k.hdr",
     "shade": "node tools/bake-shadows.mjs",
@@ -29,9 +30,13 @@
     "three-mesh-bvh": "^0.9.13"
   },
   "devDependencies": {
+    "@gltf-transform/core": "^4.4.2",
+    "@gltf-transform/extensions": "^4.4.2",
+    "@gltf-transform/functions": "^4.4.2",
     "@tweakpane/core": "^2.0.5",
     "@types/node": "^22.10.0",
     "@types/three": "^0.185.0",
+    "meshoptimizer": "^1.2.0",
     "pngjs": "^7.0.0",
     "stats-gl": "^4.2.3",
     "tweakpane": "^4.0.5",
