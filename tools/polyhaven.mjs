@@ -24,7 +24,16 @@ import { fileURLToPath } from 'node:url';
 const API = 'https://api.polyhaven.com';
 // `fileURLToPath`, nicht `.pathname` — siehe tools/bake-terrain.mjs.
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const OUT_DIRS = { hdris: 'assets/hdri', textures: 'assets/textures', models: 'assets/models' };
+// Modelle landen im **Quellordner**, nicht dort, wo der Renderer lädt: PLAN.md
+// P5.1 verlangt, dass jedes Modell erst durch `tools/process-assets.mjs` geht.
+// `assets/source/` ist der Eingang dieser Kette, `assets/generated/models/` ihr
+// Ausgang — und nur der wird geladen. HDRIs und Texturen bleiben, wo sie sind:
+// die laufen nicht durch die Pipeline.
+const OUT_DIRS = {
+  hdris: 'assets/hdri',
+  textures: 'assets/textures',
+  models: 'assets/source/models',
+};
 
 const c = {
   dim: (s) => `\x1b[2m${s}\x1b[0m`,

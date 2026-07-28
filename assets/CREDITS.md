@@ -12,3 +12,7 @@ Alle Assets von [Poly Haven](https://polyhaven.com) stehen unter **CC0** (Public
 | `aerial_grass_rock` | textures | Rob Tuytel | https://polyhaven.com/a/aerial_grass_rock |
 | `coast_sand_01` | textures | Rob Tuytel | https://polyhaven.com/a/coast_sand_01 |
 | `brown_mud_02` | textures | Rob Tuytel | https://polyhaven.com/a/brown_mud_02 |
+| `boulder_01` | models | Rico Cilliers | https://polyhaven.com/a/boulder_01 |
+| `coastal_cliff_04` | models | Rob Tuytel, Rico Cilliers | https://polyhaven.com/a/coastal_cliff_04 |
+| `rock_moss_set_02` | models | Kless Gyzen | https://polyhaven.com/a/rock_moss_set_02 |
+| `modular_wooden_pier` | models | Rico Cilliers | https://polyhaven.com/a/modular_wooden_pier |

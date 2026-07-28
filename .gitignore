@@ -12,6 +12,16 @@ dist/
 # um dreistellige Megabyte. Siehe PLAN.md P0 / 0.1.
 assets/generated/
 
+# Fremdmodelle im Rohzustand — Eingang der Asset-Pipeline (PLAN.md P5.1).
+# Anders als HDRIs und Texturen kommen sie nicht in den Build: geladen wird
+# ausschließlich `assets/generated/models/`, und das entsteht daraus mit
+# `npm run models`. Allein `coastal_cliff_04` bringt 41,7 MB Rohgeometrie mit,
+# aus der 14 kB werden — die Quelle einzuchecken hieße, das Repo um das
+# Dreitausendfache dessen zu belasten, was am Ende benutzt wird. Welche Assets
+# es sind, steht in den Rezepturen von `tools/process-assets.mjs` und in
+# assets/CREDITS.md; das Werkzeug nennt beim Fehlen den passenden Befehl.
+assets/source/
+
 # Betriebssystem / Editor
 .DS_Store
 Thumbs.db
