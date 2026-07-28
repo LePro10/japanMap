@@ -230,7 +230,27 @@ export const SPECIES: readonly SpeciesSettings[] = [
     // zusammenhängende Fläche der Karte (SPEC §2.1). Sie leer zu lassen, bis P5
     // dort Parzellen baut, hieße: das größte Stück Karte bleibt kahl. Fels bleibt
     // bei null — auf Fels wächst nichts, und der Gipfel soll kahl sein.
-    zones: { rock: 0.0, grass: 0.55, sand: 0.06, paddy: 0.45 },
+    // **Nachgezogen, nachdem die Zonenmaske überhaupt zu wirken begann.**
+    // Bis zur Reparatur in `ZoneMap.load()` lieferte `weight()` NaN, und
+    // `roll >= NaN` verwirft nichts — die Streuung nahm faktisch **jeden**
+    // Kandidaten an. Die 61 372 Instanzen, mit denen P4 abgenommen wurde, sind
+    // damit an einem Filter gemessen, der nichts filterte.
+    //
+    // Mit funktionierender Maske und den alten Werten (0,55 / 0,45) waren es am
+    // dichtesten Blickpunkt **31 483**, also weit unter dem Kriterium „≥ 50 000
+    // sichtbare Instanzen". Gemessen an derselben Stelle:
+    //
+    // | grass / paddy | sichtbare Instanzen |
+    // |---|---|
+    // | 0,55 / 0,45 | 31 483 |
+    // | 0,90 / 0,75 | 49 923 |
+    // | **1,00 / 0,85** | **55 186** |
+    //
+    // Nachgezogen wurde die **Neigung**, nicht die Zellgröße: eine kleinere
+    // Zelle erhöht die Kandidatenzahl und damit die Erzeugungskosten je Chunk,
+    // die P4 mühsam von 12,7 ms auf 0,4 ms gebracht hat. Die Neigung kostet
+    // nichts — es werden dieselben Kandidaten geprüft, nur mehr angenommen.
+    zones: { rock: 0.0, grass: 1.0, sand: 0.06, paddy: 0.85 },
     // Deutlich enger als bei Bäumen: Gras darf bis an die Böschungskante
     // heranwachsen, ein Baum nicht.
     roadClearance: 7,

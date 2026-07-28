@@ -21,6 +21,7 @@ import {
   type PropPlacement,
   type PropScale,
 } from '@/config/props.config';
+import type { DebugHost } from '@/debug/DebugHost';
 import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
 import { PropMaterial } from '../materials/PropMaterial';
@@ -30,13 +31,22 @@ import { PropClearance } from './PropClearance';
 import { modelUrl, PROP_ASSETS, type ModelManifest } from './propAssets';
 
 /** Eine Stufe eines Assets: Geometrie plus die Instanzen, die sie zeichnet. */
-interface PropStage {
+export interface PropStage {
   readonly mesh: InstancedMesh;
   readonly scratch: Float32Array;
+  /**
+   * Welche Platzierung in welchem Instanzplatz steckt.
+   *
+   * Gebraucht **nur vom Editor**, und ohne diese Zuordnung ginge es nicht:
+   * three liefert beim Raycast eine `instanceId`, und die ist der Platz im
+   * Puffer — der wechselt aber je Frame mit Culling und LOD-Stufe. Ohne die
+   * Rückabbildung würde ein Klick mal das eine, mal das andere Prop treffen.
+   */
+  readonly slots: number[];
   count: number;
 }
 
-interface PropAsset {
+export interface PropAsset {
   readonly id: string;
   readonly stages: PropStage[];
   /** Hüllkugel der vollen Stufe, für das Culling. */
@@ -47,18 +57,28 @@ interface PropAsset {
   readonly placements: PlacedProp[];
 }
 
-interface PlacedProp {
-  readonly x: number;
-  readonly z: number;
+/**
+ * Eine Platzierung im Speicher.
+ *
+ * Durchweg schreibbar, weil der Editor (P5.3) genau daran dreht — und weil das
+ * `update()` dieses Systems die Instanzmatrizen ohnehin je Frame neu aus diesen
+ * Werten schreibt. Eine Änderung ist damit im nächsten Bild zu sehen, ohne dass
+ * irgendetwas neu aufgebaut werden müsste.
+ */
+export interface PlacedProp {
+  x: number;
+  z: number;
   /** Weltdrehung um Y in Radiant. */
-  readonly rot: number;
-  readonly scale: number;
+  rot: number;
+  scale: number;
   /** Endgültige Höhe, beim Laden aus dem Sampler oder aus der Datei. */
   y: number;
   /** Aus der Datei; wird nach dem Aufsetzen einmal aufgeschlagen. */
-  readonly yOffset: number;
+  yOffset: number;
   /** `true`, sobald die Höhe endgültig ist. */
   gesetzt: boolean;
+  /** Stand die Höhe in der Datei? Dann bleibt sie beim Verschieben stehen. */
+  readonly festeHoehe: boolean;
 }
 
 /** Eine Geometriestufe mit dem Material, das sie zeichnet. */
@@ -100,6 +120,14 @@ export class PropSystem implements System {
   #materials: Material[] = [];
   #geometries: BufferGeometry[] = [];
   #placed = false;
+  /**
+   * Der Editor, nur im Dev-Build.
+   *
+   * Als strukturelles Typ-Literal statt als Import: ein `import type` aus
+   * `PropEditor` zöge dessen Modul in die Typ-Auflösung des Produktionspfads,
+   * und der dynamische Import unten wäre nicht mehr die einzige Verbindung.
+   */
+  #editor: { registerDebug(host: DebugHost): void; dispose(): void } | null = null;
 
   readonly #frustum = new Frustum();
   readonly #viewProjection = new Matrix4();
@@ -166,6 +194,22 @@ export class PropSystem implements System {
 
     context.scene.add(group);
     this.#registerDebug(context);
+
+    // Der Editor lebt nur im Dev-Build, und der Import steht deshalb hinter
+    // `import.meta.env.DEV`: Tweakpane-nahe Logik und ein Raycaster über alle
+    // Prop-Meshes haben im Produktions-Bundle nichts verloren. Dasselbe Muster
+    // wie beim Spline-Editor aus P3.
+    if (import.meta.env.DEV && context.debug) {
+      const { PropEditor } = await import('./PropEditor');
+      this.#editor = new PropEditor(
+        this,
+        context.renderer.domElement,
+        context.camera,
+        context.scene,
+        file.seed,
+      );
+      this.#editor.registerDebug(context.debug);
+    }
   }
 
   /**
@@ -268,7 +312,7 @@ export class PropSystem implements System {
       mesh.matrixAutoUpdate = false;
       mesh.count = 0;
       group.add(mesh);
-      return { mesh, scratch: new Float32Array(slots * 16), count: 0 };
+      return { mesh, scratch: new Float32Array(slots * 16), slots: [], count: 0 };
     });
 
     return {
@@ -287,6 +331,7 @@ export class PropSystem implements System {
         y: p.y ?? 0,
         yOffset: p.yOffset ?? 0,
         gesetzt: p.y !== undefined,
+        festeHoehe: p.y !== undefined,
       })),
     };
   }
@@ -325,12 +370,13 @@ export class PropSystem implements System {
     let total = 0;
 
     for (const asset of this.#assets) {
-      for (const stage of asset.stages) stage.count = 0;
+      for (const stage of asset.stages) { stage.count = 0; stage.slots.length = 0; }
       const limits = PROP_CLASSES[asset.klasse];
       const fadeStart = limits.cullDistance * (1 - PROPS.fade);
       total += asset.placements.length;
 
-      for (const prop of asset.placements) {
+      for (let placementIndex = 0; placementIndex < asset.placements.length; placementIndex++) {
+        const prop = asset.placements[placementIndex]!;
         const dx = prop.x - camera.position.x;
         const dy = prop.y - camera.position.y;
         const dz = prop.z - camera.position.z;
@@ -380,6 +426,7 @@ export class PropSystem implements System {
         m[i + 13] = prop.y;
         m[i + 14] = prop.z;
         m[i + 15] = 1;
+        stage.slots.push(placementIndex);
         stage.count++;
         visible++;
       }
@@ -398,6 +445,59 @@ export class PropSystem implements System {
     }
   }
 
+  // ── Schnittstelle für den Editor (P5.3) ────────────────────────────────
+  //
+  // Bewusst schmal: der Editor darf Platzierungen lesen und ändern, Höhen neu
+  // vom Gelände holen und die Freiflächen neu bekanntgeben. Er baut nichts auf
+  // und zeichnet nichts — das bleibt hier.
+
+  get assets(): readonly PropAsset[] {
+    return this.#assets;
+  }
+
+  /** Höhe einer Platzierung neu vom Gelände holen. */
+  snap(prop: PlacedProp): void {
+    if (!this.#sampler || prop.festeHoehe) return;
+    prop.y = this.#sampler.getHeightAt(prop.x, prop.z) + prop.yOffset;
+  }
+
+  /**
+   * Freiflächen neu bekanntgeben.
+   *
+   * Verwirft den Chunk-Cache der Vegetation und ist deshalb teuer — der Editor
+   * ruft es auf Knopfdruck auf, nicht bei jedem Ziehen.
+   */
+  refreshClearance(): void {
+    if (!this.#context) return;
+    const clearance = new PropClearance();
+    for (const asset of this.#assets) {
+      const radius = PROP_CLEARANCE[asset.id];
+      if (!radius) continue;
+      for (const prop of asset.placements) clearance.add(prop.x, prop.z, radius * prop.scale);
+    }
+    this.#readouts.freiflaechen = `${clearance.count} Kreise`;
+    this.#context.bus.emit('props:ready', { clearance });
+  }
+
+  /** Aktueller Stand als Dateiformat — für den Export des Editors. */
+  toFile(seed: number): PropFile {
+    const props: PropPlacement[] = [];
+    for (const asset of this.#assets) {
+      for (const prop of asset.placements) {
+        props.push({
+          id: asset.id,
+          x: Number(prop.x.toFixed(2)),
+          z: Number(prop.z.toFixed(2)),
+          rot: Number(((prop.rot * 180) / Math.PI).toFixed(1)),
+          scale: Number(prop.scale.toFixed(3)),
+          ...(prop.festeHoehe ? { y: Number((prop.y - prop.yOffset).toFixed(2)) } : {}),
+          ...(prop.yOffset ? { yOffset: Number(prop.yOffset.toFixed(2)) } : {}),
+        });
+      }
+    }
+    return { version: 1, seed, props };
+  }
+
   #registerDebug(context: EngineContext): void {
     const folder = context.debug?.folder('Props');
     const group = this.#group;
@@ -411,6 +511,8 @@ export class PropSystem implements System {
   }
 
   dispose(): void {
+    this.#editor?.dispose();
+    this.#editor = null;
     if (this.#group) {
       this.#context?.scene.remove(this.#group);
       for (const asset of this.#assets) {
