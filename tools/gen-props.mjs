@@ -105,10 +105,25 @@ async function loadWorld() {
   };
 
   const zoneRes = zones.width;
+  /**
+   * Splat-Gewicht, 0…1.
+   *
+   * **Kanal 3 (Reisfeld) steht nicht in der Datei.** `zones.png` ist seit der
+   * Reparatur der Zonenmaske ein RGB-Bild; der vierte Kanal ergibt sich als
+   * Rest, weil der Baker auf 255 normiert. pngjs liefert trotzdem RGBA mit
+   * Alpha 255 — wer den Index 3 direkt liest, bekommt überall 1,0 und damit
+   * lauter Reisfeld. Genau so fiel bei der ersten Umstellung die
+   * Gehöft-Platzierung aus.
+   */
   const zoneAt = (x, z, channel) => {
     const ix = Math.min(Math.max(Math.round(((x + half) / meta.world.size) * (zoneRes - 1)), 0), zoneRes - 1);
     const iz = Math.min(Math.max(Math.round(((z + half) / meta.world.size) * (zoneRes - 1)), 0), zoneRes - 1);
-    return zones.data[(iz * zoneRes + ix) * 4 + channel] / 255;
+    const o = (iz * zoneRes + ix) * 4;
+    if (channel === 3) {
+      const rest = 255 - zones.data[o] - zones.data[o + 1] - zones.data[o + 2];
+      return rest > 0 ? rest / 255 : 0;
+    }
+    return zones.data[o + channel] / 255;
   };
 
   // Straßenachsen einmal abtasten. Der Abstand zur nächsten Achse entscheidet,
