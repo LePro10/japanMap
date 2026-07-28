@@ -21,6 +21,7 @@ import {
   VegetationMaterial,
   type VegetationUniforms,
 } from '../materials/VegetationMaterial';
+import type { PropClearance } from '../props/PropClearance';
 import type { RoadNetwork } from '../roads/RoadNetwork';
 import type { TerrainSampler } from '../TerrainSampler';
 import { ImposterAtlas } from './ImposterAtlas';
@@ -67,6 +68,7 @@ export class ScatterSystem implements System {
   #zones: ZoneMap | null = null;
   #sampler: TerrainSampler | null = null;
   #network: RoadNetwork | null = null;
+  #clearance: PropClearance | null = null;
 
   #meshes: Readonly<Record<string, SpeciesMeshes>> | null = null;
   #quad: BufferGeometry | null = null;
@@ -129,6 +131,15 @@ export class ScatterSystem implements System {
       // zwar über dieselben Uniform-Objekte — ein Kopieren würde ihn beim
       // Verstellen der Höhenskalierung im Boden zurücklassen.
       this.#createDecals(height);
+    });
+    // Dieselbe Regel wie bei den Straßen: was ohne die Freiflächen gestreut
+    // wurde, hätte Bäume in der Tempelhalle. Der Cache wird verworfen statt
+    // nachträglich gefiltert — die Streuung ist deterministisch, das kostet nur
+    // Rechenzeit und keine Genauigkeit.
+    context.bus.on('props:ready', ({ clearance }) => {
+      this.#clearance = clearance;
+      this.#cache.clear();
+      this.#passOpen = false;
     });
     context.bus.on('roads:ready', ({ network }) => {
       this.#network = network;
@@ -485,6 +496,7 @@ export class ScatterSystem implements System {
       sampler: this.#sampler,
       zones: this.#zones,
       network: this.#network,
+      clearance: this.#clearance,
       density: QUALITY[this.#quality].vegetationDensity,
     });
     chunk.lastUsed = this.#clock;

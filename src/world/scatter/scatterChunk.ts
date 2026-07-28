@@ -1,5 +1,6 @@
 import { SCATTER, SPECIES } from '@/config/vegetation.config';
 import { WORLD } from '@/config/world.config';
+import type { PropClearance } from '../props/PropClearance';
 import type { RoadNetwork } from '../roads/RoadNetwork';
 import type { TerrainSampler } from '../TerrainSampler';
 import type { ZoneMap } from './ZoneMap';
@@ -100,6 +101,8 @@ export interface ScatterInputs {
   readonly sampler: TerrainSampler;
   readonly zones: ZoneMap;
   readonly network: RoadNetwork | null;
+  /** Freiflächen um Props (P5). `null`, solange sie noch nicht bekannt sind. */
+  readonly clearance: PropClearance | null;
   /** Dichtefaktor aus der Qualitätsstufe, 0…1. */
   readonly density: number;
 }
@@ -186,6 +189,14 @@ export function scatterChunk(
         ) {
           continue;
         }
+
+        // **Zuletzt: Freiflächen um Props** (P5). Der Test ist eine
+        // Rasterabfrage und damit billiger als der Straßenabstand — er steht
+        // trotzdem dahinter, weil er nur an wenigen hundert Stellen der Karte
+        // überhaupt etwas verwirft, während die Straßen sie durchziehen. Ohne
+        // ihn wachsen Bäume durch die Tempelhalle; das war der Zustand beim
+        // ersten Lauf.
+        if (input.clearance !== null && input.clearance.blocks(x, z)) continue;
 
         const base = species.minScale + (species.maxScale - species.minScale) * scaleRoll;
         // Das Seitenverhältnis dreht Höhe und Breite gegeneinander, statt beide
