@@ -1,6 +1,7 @@
 import type { QualityLevel } from '@/config/quality.config';
 import type { LookState } from '@/render/looks/lookState';
 import type { TerrainHeightUniforms } from '@/world/materials/TerrainMaterial';
+import type { RoadNetwork } from '@/world/roads/RoadNetwork';
 import type { TerrainSampler } from '@/world/TerrainSampler';
 import type { EventBus } from './EventBus';
 
@@ -44,6 +45,16 @@ export type AppEvents = {
    * gesendet, während das Terrain initialisiert wird.
    */
   'terrain:ready': { sampler: TerrainSampler; height: TerrainHeightUniforms };
+
+  /**
+   * Das Straßennetz ist geladen und die Abfragestruktur steht.
+   *
+   * Trägt das Netz mit, weil die Vegetations-Streuung (P4 / 4.2) für jeden
+   * Kandidaten `distanceToNearestRoad()` braucht — und zwar ohne das
+   * RoadSystem zu importieren. Dieselbe Regel wie bei `terrain:ready`: wer
+   * zuhört, muss **vor** dem RoadSystem registriert sein.
+   */
+  'roads:ready': { network: RoadNetwork };
 
   /**
    * Look-Presets (PLAN.md P2 / 2.6). Zwei Richtungen, bewusst getrennt:

@@ -9,6 +9,7 @@ import { LookController } from './render/looks/LookController';
 import { PostFXPipeline } from './render/PostFXPipeline';
 import { TerrainDataError } from './world/TerrainSampler';
 import { RoadSystem } from './world/RoadSystem';
+import { ScatterSystem } from './world/scatter/ScatterSystem';
 import { TerrainSystem } from './world/TerrainSystem';
 import { WaterSystem } from './world/WaterSystem';
 
@@ -168,6 +169,10 @@ engine.add(new FreeFlyController());
 engine.add(atmosphere);
 engine.add(new LightingRig(atmosphere.uniforms));
 engine.add(new WaterSystem(atmosphere.uniforms));
+// Vor Terrain **und** Straßen: die Streuung hört auf `terrain:ready` und
+// `roads:ready`, und beide werden genau einmal gesendet, während sich jene
+// Systeme initialisieren.
+engine.add(new ScatterSystem(atmosphere.uniforms));
 engine.add(new TerrainSystem(atmosphere.uniforms));
 engine.add(new RoadSystem(atmosphere.uniforms));
 engine.add(
@@ -189,7 +194,13 @@ try {
   if (error instanceof TerrainDataError) {
     fatal('Das gebackene Terrain passt nicht zur Konfiguration.', error.message);
   }
-  throw error;
+  // **Jeder andere Fehler wird ebenfalls angezeigt, nicht nur geworfen.**
+  // Vorher lief er als unbehandelte Zusage ins Nichts: die Seite blieb bei
+  // halb aufgebautem Debug-Panel stehen, ohne Meldung, und der Grund stand
+  // ausschließlich in der Konsole. Genau so ist beim Bau der Vegetation eine
+  // fehlgeschlagene Geometrie-Zusammenführung eine Viertelstunde lang als
+  // „lädt eben langsam" durchgegangen.
+  fatal('Ein System ist beim Initialisieren gescheitert.', String(error));
 }
 engine.start();
 
