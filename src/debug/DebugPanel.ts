@@ -5,6 +5,7 @@ import { DEFAULT_QUALITY, QUALITY, QUALITY_LEVELS, type QualityLevel } from '@/c
 import type { AppBus } from '@/core/events';
 import type { DebugHost } from './DebugHost';
 import { FrameTimer } from './FrameTimer';
+import { BudgetGuard } from './BudgetGuard';
 import { StatsOverlay } from './StatsOverlay';
 
 const VISIBILITY_KEY = 'japanmap.debug.visible';
@@ -31,6 +32,7 @@ export class DebugPanel implements DebugHost {
   readonly #pane: Pane;
   readonly #paneElement: HTMLElement;
   readonly #overlay: StatsOverlay;
+  readonly #guard: BudgetGuard;
   readonly #timer: FrameTimer;
   readonly #folders = new Map<string, FolderApi>();
   readonly #camera: PerspectiveCamera;
@@ -66,6 +68,12 @@ export class DebugPanel implements DebugHost {
       ...(options.extraTextures ? { extraTextures: options.extraTextures } : {}),
     };
     this.#overlay = new StatsOverlay(overlayOptions);
+    this.#guard = new BudgetGuard(
+      options.renderer,
+      options.scene,
+      options.container,
+      options.extraTextures,
+    );
 
     this.#buildEngineFolder(options.renderer);
     this.#buildSystemFolder(options.renderer, options.onDispose);
@@ -108,6 +116,7 @@ export class DebugPanel implements DebugHost {
     this.#readouts.position = `${p.x.toFixed(0)} / ${p.y.toFixed(0)} / ${p.z.toFixed(0)}`;
 
     this.#overlay.update();
+    this.#guard.update();
   }
 
   refresh(): void {
@@ -124,6 +133,7 @@ export class DebugPanel implements DebugHost {
   dispose(): void {
     window.removeEventListener('keydown', this.#onKeyDown);
     this.#overlay.dispose();
+    this.#guard.dispose();
     this.#timer.dispose();
     this.#pane.dispose();
     this.#paneElement.remove();
