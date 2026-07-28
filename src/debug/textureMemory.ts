@@ -117,6 +117,30 @@ export function estimateTextureBytes(texture: Texture): number {
   return texture.generateMipmaps ? base * MIPMAP_FACTOR : base;
 }
 
+/**
+ * Texturen, die ein Material selbst anmeldet.
+ *
+ * **Warum es diese Verabredung braucht.** Der Schätzer findet Texturen auf zwei
+ * Wegen: als Eigenschaft des Materials (`map`, `normalMap`, …) und als Uniform
+ * eines `ShaderMaterial`. Die Materialien dieses Projekts sind aber alle
+ * `MeshStandardMaterial` mit Injektion, und ihre Texturen hängen in einem
+ * eigenen Uniform-Objekt, das erst in `onBeforeCompile` in den Shader wandert —
+ * auf keinem der beiden Wege sichtbar.
+ *
+ * Beim Terrain fiel das nicht auf, weil dessen Karten über
+ * `ResourceManager.tracked` mitgezählt werden. Die Imposter-Atlanten aus P4 sind
+ * dagegen **Render-Targets** und stehen dort nicht: 32 MB fehlten in der
+ * Schätzung, ohne dass irgendetwas darauf hingewiesen hätte. Genau die Sorte
+ * Lücke, wegen der das Overlay von einer „Schätzung" spricht.
+ */
+interface DeclaresTextures {
+  readonly declaredTextures: readonly Texture[];
+}
+
+function declaresTextures(material: Material): material is Material & DeclaresTextures {
+  return Array.isArray((material as Partial<DeclaresTextures>).declaredTextures);
+}
+
 function collectFromMaterial(material: Material, out: Set<Texture>): void {
   for (const value of Object.values(material)) {
     if (value instanceof Texture) out.add(value);
@@ -126,6 +150,9 @@ function collectFromMaterial(material: Material, out: Set<Texture>): void {
       const value: unknown = uniform?.value;
       if (value instanceof Texture) out.add(value);
     }
+  }
+  if (declaresTextures(material)) {
+    for (const texture of material.declaredTextures) out.add(texture);
   }
 }
 

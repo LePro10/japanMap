@@ -87,6 +87,10 @@ export class RoadSystem implements System {
     this.#build(file.roads);
     context.scene.add(group);
 
+    // Erst nach `#build()`: dort entsteht das Abfragenetz. Die Streuung in P4
+    // hört darauf und darf es nicht halb aufgebaut bekommen.
+    if (this.#network) context.bus.emit('roads:ready', { network: this.#network });
+
     await this.#registerDebug(context, file);
   }
 
