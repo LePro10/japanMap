@@ -1650,6 +1650,12 @@ Zusätzlich geprüft:
       samt Verursachertabelle; nach dem Entfernen der Last fällt der Zähler auf
       48 und das Banner verschwindet
 - [x] `tsc --noEmit` sauber, Produktionsbuild grün
+- [x] **Speicherfreigabe** (Kriterium aus P0) — `ScatterSystem.dispose()` gibt
+      genau frei, was es angelegt hat: 9 Geometrien (4 Arten × 2 Stufen plus
+      Imposter-Quad), 8 Texturen (4 Atlanten × 2) und 2 Programme. Nach
+      `engine.dispose()` bleiben insgesamt 1 Geometrie, 1 Textur und 5 Programme
+      stehen — nachweislich **nicht** aus P4, weil die Einzelfreigabe oben
+      vollständig aufgeht
 - [x] **CPU-Kosten der Streuung** — eingeschwungen **0,10 ms** je Frame im
       Median (Mittel 0,29 · 95. Perzentil 2,3 · Spitze 3,5), in der Füllphase
       0,40 ms im Median. Der Weg dahin ging über drei Anläufe und ist bei 4.3
@@ -1686,6 +1692,44 @@ feinerer Abtastung im Nahbereich, und der Rest ist Vegetation.
   Rechnung sie annimmt. Der Riss war die Folge, nicht die Ursache
 - ~~**Imposter-Baking headless** kann an fehlendem GPU-Kontext scheitern.~~
   → **Eingetreten wie vorhergesagt**, und der Rückfall ist gebaut. Siehe 4.4
+
+### Nach der Abnahme: Streulicht durch Blätter
+
+Nicht im Plan, aber aus der Beleuchtung dieser Karte zwingend. Bei 2,2°
+Sonnenstand steht die Sonne fast waagerecht hinter allem, was man von der Ebene
+aus ansieht; ohne Streulicht ist jeder Baum im Gegenlicht eine schwarze
+Silhouette. Für ein undurchsichtiges Material ist das richtig, für Laub falsch.
+
+**Der erste Entwurf war messbar wirkungslos.** Er setzte auf eine schmale
+Blickrichtungs-Keule (`pow(dot, 3)`). Gemessen über 125 336 maskierte
+Vegetationspixel — die Maske aus der Differenz gegen ein Bild mit ausgeblendeter
+Vegetation, weil der Mittelwert über das ganze Bild im Himmel ertrinkt:
+
+| Fassung | Mittel über Vegetationspixel | größte Einzelaufhellung |
+|---|---|---|
+| Keule `pow(dot,3)` × Umschlingung | **+0,03 %** | 63,7 |
+| Umschlingung² × (0,3 + 0,7·dot²) | **+0,66 %** | 112,1 |
+
+Die Keule trifft nur ein paar Dutzend Pixel um die Sonnenscheibe. Tragend ist die
+**Umschlingung**: die abgewandte Seite bekommt grundsätzlich etwas ab, die
+Blickrichtung verstärkt es nur.
+
+> **Das Vorzeichen der Blickrichtung ist gemessen, nicht hergeleitet.** Aus den
+> Konventionen von `vViewPosition` (zeigt zum Betrachter) und
+> `directionalLights[].direction` (zeigt zur Lichtquelle) folgt das Gegenteil
+> dessen, was die Messung zeigt. Welche der beiden anders liegt als angenommen,
+> ist für das Ergebnis gleichgültig — aber die Herleitung stehenzulassen, ohne
+> sie zu prüfen, hätte den Effekt lautlos abgeschaltet.
+
+> **Eine Messung, die im Himmel ertrinkt, ist keine Messung.** Die ersten fünf
+> Anläufe mittelten die Helligkeit über das ganze Bild und meldeten „keine
+> Wirkung" — bei 31 % Vegetationsanteil und einem Effekt auf einem Bruchteil
+> davon war das nicht auflösbar. Erst die Maske hat die Frage beantwortet.
+
+Der Anteil hängt am Look-Zustand (P2 / 2.6): das System trägt Windstärke und
+Streulicht selbst in `look:collect` ein und liest sie aus `look:apply` zurück.
+Streudichte und LOD-Grenzen bleiben bewusst draußen — sie sind
+Leistungsparameter der Qualitätsstufe.
 
 ### Offene Punkte aus P4
 
