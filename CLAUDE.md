@@ -106,6 +106,8 @@ Dazu, je nach Änderung:
 | `npm run inspect` | Selbstschnitte, Weltgrenzen, Achsabstände, Grabentiefe + Schummerung als PNG |
 | `npm run inspect -- --road toge --clean .cache/clean.r16` | Enger Ausschnitt plus Erdbau-Karte (rot = Abtrag, blau = Auftrag) |
 | `STAGES=1 npm run roads` | Zeigt, was jede Stufe der Trassierung mit Länge und Kehren macht |
+| `npm run models` | Fremdmodelle aus `assets/source/models` durch die Pipeline (P5.1) |
+| `node tools/gen-props.mjs` | Landmarks neu platzieren → `assets/props.json` |
 | `npm run dev` | Dev-Server. Debug-Overlay mit `F1` |
 
 **Erdbau-Karte erzeugen** (braucht ein Referenzfeld ohne Einschnitte):
@@ -231,6 +233,27 @@ Kurzliste, damit es nicht wieder passiert:
   und 69 % Himmel gebildet wurde. Mit einer Maske — Differenz gegen ein Bild mit
   ausgeblendeter Vegetation — war die Antwort in einem Lauf da. **Wo der Effekt
   hinwirkt, muss die Messung hinsehen.**
+- **Ein Filter, der nie gefiltert hat.** Die Zonenneigung der Vegetation war
+  von P4 an wirkungslos: `ZoneMap` bekam ihre Auflösung aus `bitmap.width`
+  **nach** `bitmap.close()` — also 0 —, griff daneben und lieferte `NaN`. Und
+  `roll >= NaN` ist immer `false`, verwirft also nichts. Ein zweiter Fehler lag
+  darunter: der vierte Splat-Kanal stand im **Alphakanal** eines PNG, und jeder
+  Weg über ein Canvas multipliziert RGB damit und rechnet es wieder heraus —
+  wo Alpha null ist, kommt RGB als 0 zurück. Zwei Lehren: **eine Ressource
+  erst freigeben, wenn niemand mehr etwas von ihr braucht**, und **Alpha in
+  einem PNG ist Transparenz, kein vierter Datenkanal**. Aufgefallen ist es
+  erst nach Monaten, weil Höhen- und Neigungsfilter das Bild plausibel
+  hielten. Wer einen Filter einbaut, sollte einmal messen, wie viel er
+  *verwirft* — nicht nur, ob das Ergebnis gut aussieht.
+- **Eine Zahl, die von einem kaputten Filter stammt, wandert in die Doku.** Die
+  P4-Abnahme nennt 61 372 sichtbare Instanzen. Mit wirkender Zonenmaske sind es
+  an derselben Stelle 31 483. Die Zahl war nie falsch gemessen — sie war an
+  einem System gemessen, das etwas anderes tat als beschrieben.
+- **Ein Parameter mit Fernwirkung.** Die Einebnungsschwelle der Reisfelder
+  (P5.4) entscheidet über die **Kehren am Bergpass**: sie verändert die
+  Kostenfläche, auf der der Straßengenerator sucht. 0,40 kostete eine Kehre,
+  0,55 brachte eine dazu. Wer an einem Geländeparameter dreht, muss `npm run
+  world` ganz ansehen, nicht nur die Zone, um die es geht.
 - **Außerhalb des Gitters extrapoliert.** Bilineare Interpolation braucht die
   Klemmung auf der Gitterkoordinate, nicht auf dem Index — sonst entstehen
   Messwerte, die es nicht gibt.

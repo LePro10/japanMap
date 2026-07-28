@@ -1907,11 +1907,106 @@ Zielliste:
 - Kleine Props verschwinden ab Distanzschwelle komplett statt zum Imposter zu werden
 
 ### Akzeptanzkriterien
-- [ ] Jede Zone ist im Vorbeifliegen ohne Karte identifizierbar
-- [ ] Alle Assets sind maßstabsgetreu (Tür ≈ 2 m, Torii ≈ 5 m)
-- [ ] Kein Modell wird aus `assets/source/` geladen
-- [ ] Draw-Call-Budget weiterhin eingehalten
-- [ ] `CREDITS.md` listet jedes verwendete Fremd-Asset
+
+- [x] **Jede Zone ist im Vorbeifliegen ohne Karte identifizierbar.** Vier
+      Blickpunkte, vier Bilder in `.cache/shots/p5_zone_*.png`:
+
+      | Zone | woran man sie erkennt |
+      |---|---|
+      | Wald/Tempel | Torii-Reihe auf dem freigeräumten Zugangsweg, Tempelhalle auf dem Rücken, Steinlaternen paarweise |
+      | Reisfelder | Voronoi-Parzellen mit Dämmen bis zum Massiv, Strommastenreihe, Gehöfte |
+      | Küste | Wellenbrecher aus 372 Tetrapoden über 300 m, Steg, Boote, Leuchtturm |
+      | Berg/Tōge | Hokora auf dem Pass, 158 Streckenmarkierungen in den Kehren, Felsformationen |
+
+- [x] **Alle Assets sind maßstabsgetreu.** Gemessen aus den Hüllboxen der
+      erzeugten Geometrie: Torii **5,19 m** hoch (Abnahme nennt ≈ 5 m), Tür am
+      Bauernhaus **2,00 m** (nennt ≈ 2 m), Strommast 9,00 m, Leuchtturm
+      13,56 m, Steinlaterne 2,24 m. Die Fremdmodelle behalten ihren
+      photogrammetrisch vermessenen Maßstab; nur `boulder_01` wird skaliert,
+      und warum, steht in seiner Rezeptur.
+
+- [x] **Kein Modell wird aus `assets/source/` geladen.** Der Renderer kennt den
+      Ordner nicht: `propAssets.ts` bündelt ausschließlich
+      `assets/generated/models/*.glb` über `import.meta.glob`. `assets/source/`
+      steht in `.gitignore` und existiert auf einem frischen Auschecken gar
+      nicht — das Werkzeug nennt dann den Befehl, mit dem man es füllt.
+
+- [x] **Draw-Call-Budget weiterhin eingehalten.** Gemessen an denselben vier
+      Blickpunkten, 1280 × 720:
+
+      | Blickpunkt | Draw-Calls | Dreiecke |
+      |---|---|---|
+      | Tempel | 67 | 442 059 |
+      | Reisfeld | 62 | 372 171 |
+      | Bergpass | 60 | 226 359 |
+      | Küste | 47 | 287 293 |
+      | Budget (SPEC §4) | **800** | **3 000 000** |
+
+      Texturspeicher **302,7 MB** von 512 MB — plus 15,7 MB gegen P4, und die
+      stecken vollständig in den sechs 1k-Texturen des Stegs, dem einzigen
+      Asset, das seine Textur behalten darf.
+
+- [x] **`CREDITS.md` listet jedes verwendete Fremd-Asset.** Vier Modelle,
+      alle CC0, alle von `tools/polyhaven.mjs` selbst eingetragen.
+
+### Was P5 anders gemacht hat als geplant
+
+> **Die Landmarks sind prozedural, nicht eingekauft.** Der Katalog von Poly
+> Haven wurde vollständig durchsucht (400 Assets): **null Treffer** für Torii,
+> Schrein, Tempel oder Steinlaterne — die vier „Laternen" dort sind eine
+> Sturmlaterne, eine Deckslaterne, ein Kronleuchter und eine indische Diya.
+> Genau die fehlenden Stücke tragen aber die erste Abnahmezeile. Zwölf
+> Landmarks entstehen deshalb in `landmarkMeshes.ts`, zusammen 2104 Dreiecke.
+>
+> Die Pipeline aus 5.1 ist dadurch **nicht** überflüssig geworden: sie
+> verarbeitet die Felsen und den Steg, wo echte Geometrie besser ist als
+> gerechnete, und dort zeigt sie ihren Wert in einer Zahl —
+> `coastal_cliff_04` kommt mit 1 537 926 Dreiecken aus dem Netz und verlässt
+> die Kette mit 2 499 in 14 kB.
+
+> **KTX2 fehlt.** 5.1 nennt es unter Schritt 3. Der Basis-Encoder liegt nicht
+> als Bibliothek vor, sondern als externes Programm (`toktx`), das hier nicht
+> installiert ist. Texturen werden auf 1024 begrenzt und als JPEG geschrieben.
+> Der Rest gehört zu P7.5 („alle Texturen KTX2"), wo er ohnehin steht — und
+> betrifft genau ein Asset, weil alle anderen ihre Textur gegen eine
+> Palettenfarbe tauschen.
+
+> **Die Tempelhalle reißt die 500er-Schwelle aus 5.5 — um vier Dreiecke.** Sie
+> bekommt trotzdem keine zweite Stufe: die Schwelle ist für Fremdmodelle
+> gedacht, die fünfstellig anfangen, und ein zusätzlicher Draw-Call, um 300
+> Dreiecke gegen ein Budget von 3 000 000 zu sparen, ist ein schlechtes
+> Geschäft. Die Zahl stehenzulassen ist ehrlicher, als die Halle um vier
+> Dreiecke zu beschneiden, damit die Regel formal stimmt.
+
+> **Der Editor schreibt nicht selbst.** Wie der Spline-Editor aus P3
+> exportiert er `props.json` als Download; die Datei wandert von Hand nach
+> `assets/`. Ein Schreib-Endpunkt wäre bequemer und würde beim ersten
+> Fehlgriff die einzige Quelle überschreiben.
+
+### Was das Bild an P5 korrigiert hat
+
+Vier Dinge sahen auf dem Papier richtig aus und im Bild nicht:
+
+1. **Bäume wuchsen durch die Tempelhalle.** Die Streuung aus P4 kennt Straßen
+   und Zonen, aber keine Gebäude. Neu ist `PropClearance`, ein Raster aus 152
+   Freihaltekreisen, das `scatterChunk` als letzten Filter abfragt.
+2. **Das Torii stand längs zum Weg** statt quer — im Bild ein roter Pfosten.
+3. **Der Wellenbrecher war kein Bauwerk**, sondern 322 einzeln über 1600 m
+   verstreute Tetrapoden. Jetzt 372 auf 300 m in drei versetzten Reihen.
+4. **Das Walmdach der Tempelhalle war quadratisch** (gemessen 14,00 × 14,00 m
+   über einem Bau von 13,2 × 10,6 m): die Stauchung wurde vor der Drehung
+   angewandt und drehte sich mit.
+
+Und zwei Regeln des Generators waren Annahmen statt Messungen. Beide lieferten
+**null** Ergebnisse, bis nachgemessen wurde:
+
+- „Streckenmarkierungen nur an der Talseite" — gemessen liegt das Gelände
+  5,5 m neben der Passachse im Median **+0,09 m** über ihr, weil der Erdbau aus
+  P3 beidseitig eine ebene Schulter anlegt. Eine Talseite gibt es dort nicht.
+  Die Regel setzt jetzt auf die Krümmung.
+- „Leuchtturm auf einer Klippe" — über alle 301 Stützpunkte der Uferlinie liegt
+  die Höhe 12 m landeinwärts im Median bei **0,02 m** und im Maximum bei
+  0,57 m. Diese Küste ist ein Flachstrand.
 
 ### Risiken
 - **Stil-Bruch** zwischen Quellen. → Material-Umschreibung in 5.1 ist verpflichtend;
