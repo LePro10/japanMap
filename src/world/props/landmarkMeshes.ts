@@ -159,7 +159,7 @@ function finish(parts: BufferGeometry[], name: string): BufferGeometry {
  * auslaufen. Die Neigung beträgt echte 1,5° — sichtbar ist davon fast nichts,
  * aber ein exakt senkrechtes Torii sieht aus wie ein Türrahmen.
  *
- * Höhe 5,2 m — die Abnahme nennt „Torii ≈ 5 m".
+ * Gemessen 6,92 × 5,19 × 0,88 m — die Abnahme nennt „Torii ≈ 5 m".
  */
 function torii(): BufferGeometry {
   const parts: BufferGeometry[] = [];
@@ -197,7 +197,7 @@ function torii(): BufferGeometry {
 }
 
 /**
- * Steinlaterne im Kasuga-Stil, 2,2 m.
+ * Steinlaterne im Kasuga-Stil, gemessen 2,24 m.
  *
  * Sechseckig, weil sie es ist — und weil ein Sechseck bei diesem Durchmesser
  * aus jeder Entfernung, aus der man sie sieht, von einem Kreis nicht zu
@@ -221,7 +221,7 @@ function stoneLantern(): BufferGeometry {
 }
 
 /**
- * Hokora — der kleine Bergschrein am Pass, 1,5 m.
+ * Hokora — der kleine Bergschrein am Pass, gemessen 1,4 m hoch.
  *
  * Der billigste Landmark im Satz und einer der wirksamsten: ein Stück
  * bearbeiteter Stein an einer Stelle, an der sonst nur Fels ist, sagt sofort,
@@ -244,7 +244,7 @@ function hokora(): BufferGeometry {
 }
 
 /**
- * Tempelhalle, 12 × 10 m Grundfläche, 8,3 m hoch.
+ * Tempelhalle, gemessen 14,0 × 7,7 × 11,0 m.
  *
  * Was eine japanische Halle ausmacht und hier drinsteckt: ein **Steinpodest**,
  * eine Reihe freistehender Säulen davor und ein Dach mit **weitem Überstand**
@@ -275,9 +275,13 @@ function templeHall(): BufferGeometry {
   // Walmdach als vierseitiger Kegel — 4 Segmente, um 45° gedreht, damit die
   // Grate über die Ecken laufen. Der Kegel ist rund, das Dach soll es nicht
   // sein; die Skalierung in Z macht daraus die rechteckige Grundfläche.
-  const roof = cone(9.9, 3.1, 4, 'roofTile');
-  roof.applyMatrix4(matrix.makeScale(1, 1, 0.8));
-  parts.push(at(rotY(roof, Math.PI / 4), 0, eaveY + 0.34, 0));
+  // **Erst drehen, dann stauchen.** Umgekehrt dreht sich die Stauchung mit und
+  // das Dach bleibt quadratisch — gemessen 14,00 × 14,00 m über einem Bau von
+  // 13,2 × 10,6 m. Ein japanisches Walmdach ist rechteckig; der First braucht
+  // eine Richtung.
+  const roof = rotY(cone(9.9, 3.1, 4, 'roofTile'), Math.PI / 4);
+  roof.applyMatrix4(matrix.makeScale(1, 1, 0.78));
+  parts.push(at(roof, 0, eaveY + 0.34, 0));
   // Firstbalken. Ohne ihn läuft das Dach in einer Spitze zusammen, und das tut
   // ein japanisches Walmdach nie.
   parts.push(at(box(4.4, 0.5, 0.7, 'roofTile'), 0, eaveY + 3.1, 0));
@@ -285,7 +289,7 @@ function templeHall(): BufferGeometry {
 }
 
 /**
- * Treppenaufgang, 12 Stufen auf 2,2 m Höhe.
+ * Treppenaufgang, 12 Stufen, gemessen 4,3 × 2,5 × 3,8 m.
  *
  * Steigung 18 cm, Auftritt 30 cm — steiler als eine europäische Treppe und
  * damit ein eigenes Erkennungsmerkmal. Die Stufen sind volle Quader bis zum
@@ -315,7 +319,7 @@ function templeStairs(): BufferGeometry {
 // ── Reisfelder ───────────────────────────────────────────────────────────────
 
 /**
- * Bauernhaus im Minka-Stil, 11 × 8 m, 7,4 m hoch.
+ * Bauernhaus im Minka-Stil, gemessen 11,9 × 7,5 × 9,8 m.
  *
  * Das Dach ist **mehr als die Hälfte der Bauhöhe** — das ist kein Versehen,
  * sondern das Merkmal: ein Reetdach mit 45° Neigung über einem niedrigen
@@ -353,7 +357,7 @@ function farmhouse(): BufferGeometry {
   return finish(parts, 'farmhouse');
 }
 
-/** Geräteschuppen, 4 × 3 m. Das Beiwerk, das ein Bauernhaus zum Hof macht. */
+/** Geräteschuppen, gemessen 4,6 × 2,9 × 3,6 m — das Beiwerk, das einen Hof ausmacht. */
 function shed(): BufferGeometry {
   const parts: BufferGeometry[] = [];
   parts.push(at(box(4, 2.3, 3, 'wood'), 0, 1.15, 0));
@@ -365,7 +369,7 @@ function shed(): BufferGeometry {
 }
 
 /**
- * Strommast, 9 m.
+ * Strommast, gemessen 9,00 m.
  *
  * Betonmast mit zwei Auslegern und sechs Isolatoren. Über den Reisfeldern
  * stehen sie in Reihen und sind aus der Luft der stärkste Hinweis darauf, dass
@@ -387,7 +391,7 @@ function powerPole(): BufferGeometry {
 // ── Küste ────────────────────────────────────────────────────────────────────
 
 /**
- * Wellenbrecher-Tetrapode, 2,4 m.
+ * Wellenbrecher-Tetrapode, gemessen 2,0 × 1,7 × 2,2 m.
  *
  * Vier Kegelstümpfe aus einem gemeinsamen Kern, in die Ecken eines Tetraeders.
  * Zu Hunderten an japanischen Küsten aufgeschüttet, und in dieser Karte das
@@ -426,7 +430,7 @@ function tetrapod(): BufferGeometry {
   return at(merged, 0, -(merged.boundingBox?.min.y ?? 0), 0);
 }
 
-/** Leuchtturm, 13,6 m. Der Fixpunkt der Küstenzone. */
+/** Leuchtturm, gemessen 13,56 m. Der Fixpunkt der Küstenzone. */
 function lighthouse(): BufferGeometry {
   const parts: BufferGeometry[] = [];
   let y = 0;
@@ -446,7 +450,7 @@ function lighthouse(): BufferGeometry {
 }
 
 /**
- * Fischerboot, 5,6 m.
+ * Fischerboot, gemessen 5,6 m lang.
  *
  * Der Rumpf ist ein sechseckiger Zylinder quer gelegt und in der Länge
  * gestreckt — aus dem Wasser ragt ohnehin nur die obere Hälfte, und die
@@ -467,7 +471,7 @@ function boat(): BufferGeometry {
 // ── Berg / Tōge ──────────────────────────────────────────────────────────────
 
 /**
- * Streckenmarkierung am Bergpass, 1,0 m.
+ * Streckenmarkierung am Bergpass, gemessen 1,00 m.
  *
  * Ein Pfosten mit reflektierendem Kopf, wie er an japanischen Bergstraßen
  * alle paar Meter steht. Einzeln bedeutungslos, in der Reihe entlang einer
