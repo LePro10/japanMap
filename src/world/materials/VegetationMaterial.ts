@@ -7,36 +7,45 @@ import {
   type WebGLProgramParametersWithUniforms,
 } from 'three';
 
+import { VEGETATION_LOOK } from '@/config/vegetation.config';
 import {
   injectAtmosphere,
   type AtmosphereUniforms,
 } from '@/render/atmosphere/atmosphereUniforms';
 
 import tintGlsl from '../shaders/vegetation_tint.glsl';
+import translucencyGlsl from '../shaders/vegetation_translucency.glsl';
 import windGlsl from '../shaders/vegetation_wind.vert.glsl';
 
-export interface WindUniforms {
+/**
+ * Der geteilte Uniform-Block aller Vegetation — Wind und Streulicht.
+ *
+ * PLAN.md 4.5 verlangt „ein globaler Wind-Uniform für alle Vegetation, damit die
+ * Bewegung kohärent wirkt", und das ist keine Sparmaßnahme, sondern der ganze
+ * Punkt: zwei Materialien mit eigener Zeitbasis ergeben zwei Winde, und die
+ * Bäume auf demselben Hang wiegen sich gegeneinander. Für das Streulicht gilt
+ * dasselbe eine Ebene höher — Mesh und Imposter müssen es teilen, sonst wird
+ * der Stufenwechsel im Gegenlicht zum Helligkeitssprung.
+ *
+ * Beide Werte sind Teil des Look-Zustands (P2 / 2.6): sie drehen am Bild und
+ * gehören damit in ein Preset.
+ */
+export interface VegetationUniforms {
   readonly uWindDirection: IUniform<Vector2>;
   readonly uWindStrength: IUniform<number>;
   readonly uWindTime: IUniform<number>;
+  readonly uVegTranslucency: IUniform<number>;
 }
 
-/**
- * Ein Wind-Block für alle Vegetation.
- *
- * PLAN.md 4.5 verlangt „ein globaler Wind-Uniform für alle Vegetation, damit die
- * Bewegung kohärent wirkt" — und das ist keine Sparmaßnahme, sondern der ganze
- * Punkt: zwei Materialien mit eigener Zeitbasis ergeben zwei Winde, und die
- * Bäume auf demselben Hang wiegen sich gegeneinander.
- */
-export function createWindUniforms(): WindUniforms {
+export function createVegetationUniforms(): VegetationUniforms {
   return {
     // Aus Nordwest, also grob aus Richtung des Massivs. Keine Messung, eine
     // Entscheidung: der Wind läuft damit auf die Kamera zu, wenn man von der
     // Küste ins Land schaut, und die Böen wandern durchs Bild statt quer.
     uWindDirection: { value: new Vector2(0.78, 0.63).normalize() },
-    uWindStrength: { value: 1 },
+    uWindStrength: { value: VEGETATION_LOOK.windStrength },
     uWindTime: { value: 0 },
+    uVegTranslucency: { value: VEGETATION_LOOK.translucency },
   };
 }
 
@@ -64,13 +73,13 @@ export function createWindUniforms(): WindUniforms {
  */
 export class VegetationMaterial extends MeshStandardMaterial {
   readonly #atmosphere: AtmosphereUniforms;
-  readonly #wind: WindUniforms;
+  readonly #shared: VegetationUniforms;
 
   readonly #amplitude: IUniform<number>;
 
   constructor(
     atmosphere: AtmosphereUniforms,
-    wind: WindUniforms,
+    shared: VegetationUniforms,
     base: number,
     windAmplitude: number,
   ) {
@@ -87,13 +96,13 @@ export class VegetationMaterial extends MeshStandardMaterial {
       flatShading: true,
     });
     this.#atmosphere = atmosphere;
-    this.#wind = wind;
+    this.#shared = shared;
     this.#amplitude = { value: windAmplitude };
     this.name = 'VegetationMaterial';
   }
 
   override onBeforeCompile(shader: WebGLProgramParametersWithUniforms): void {
-    for (const [name, uniform] of Object.entries(this.#wind)) {
+    for (const [name, uniform] of Object.entries(this.#shared)) {
       shader.uniforms[name] = uniform as IUniform;
     }
     shader.uniforms['uWindAmplitude'] = this.#amplitude;
@@ -118,7 +127,8 @@ export class VegetationMaterial extends MeshStandardMaterial {
 
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <common>',
-      `#include <common>\n${tintGlsl}\n` +
+      `#include <common>\n${tintGlsl}\n${translucencyGlsl}\n` +
+        'uniform float uVegTranslucency;\n' +
         'varying vec3 vVegWorld;\nvarying float vVegTint;\nvec2 gVegShade;',
     );
 
@@ -139,7 +149,16 @@ export class VegetationMaterial extends MeshStandardMaterial {
         '#include <lights_fragment_end>',
         '#include <lights_fragment_end>\n' +
           'reflectedLight.directDiffuse *= gVegShade.x;\n' +
-          'reflectedLight.directSpecular *= gVegShade.x;',
+          'reflectedLight.directSpecular *= gVegShade.x;\n' +
+          // Streulicht durch Blätter. Steht **nach** der Verschattung, damit es
+          // von ihr nicht noch einmal multipliziert wird — es bekommt sie als
+          // Argument und rechnet sie selbst ein.
+          '#if ( NUM_DIR_LIGHTS > 0 )\n' +
+          'reflectedLight.directDiffuse += vegetationTranslucency(\n' +
+          '    diffuseColor.rgb, normal, normalize(vViewPosition),\n' +
+          '    directionalLights[0].direction, directionalLights[0].color,\n' +
+          '    uVegTranslucency, gVegShade.x);\n' +
+          '#endif',
       )
       .replace(
         '#include <aomap_fragment>',

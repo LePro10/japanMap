@@ -1,6 +1,7 @@
 import { FOG } from '@/config/atmosphere.config';
 import { LIGHTING } from '@/config/lighting.config';
 import { GRADING, POSTFX, type GradingParams } from '@/config/postfx.config';
+import { VEGETATION_LOOK } from '@/config/vegetation.config';
 import { WATER } from '@/config/water.config';
 
 /**
@@ -52,6 +53,20 @@ export interface LookState {
     shallowColorHex: string;
     roughness: number;
     foamIntensity: number;
+  };
+
+  /**
+   * Vegetation — ab P4.
+   *
+   * Nur das, was am **Bild** dreht. Streudichte und LOD-Grenzen gehören nicht
+   * hierher: sie sind Leistungsparameter der Qualitätsstufe, kein Look. Ein
+   * Preset, das die halbe Vegetation abschaltet, wäre kein anderer Look, sondern
+   * eine andere Welt.
+   */
+  vegetation: {
+    windStrength: number;
+    /** Streulicht durch Blätter — siehe VegetationMaterial. */
+    translucency: number;
   };
 
   postfx: {
@@ -109,6 +124,10 @@ export function defaultLook(): LookState {
       roughness: WATER.roughness,
       foamIntensity: WATER.foam.intensity,
     },
+    vegetation: {
+      windStrength: VEGETATION_LOOK.windStrength,
+      translucency: VEGETATION_LOOK.translucency,
+    },
     postfx: {
       bloomEnabled: POSTFX.bloom.enabled,
       bloomIntensity: POSTFX.bloom.intensity,
@@ -152,6 +171,7 @@ export function mergeLook(partial: unknown): LookState {
   section('fog');
   section('shade');
   section('water');
+  section('vegetation');
   section('postfx');
   section('grading');
 

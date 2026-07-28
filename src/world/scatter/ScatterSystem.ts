@@ -15,9 +15,9 @@ import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
 import { ImposterMaterial } from '../materials/ImposterMaterial';
 import {
-  createWindUniforms,
+  createVegetationUniforms,
   VegetationMaterial,
-  type WindUniforms,
+  type VegetationUniforms,
 } from '../materials/VegetationMaterial';
 import type { RoadNetwork } from '../roads/RoadNetwork';
 import type { TerrainSampler } from '../TerrainSampler';
@@ -58,7 +58,7 @@ const CHUNKS_PER_AXIS = WORLD.size / SCATTER.chunkSize;
 export class ScatterSystem implements System {
   readonly name = 'ScatterSystem';
 
-  readonly #wind: WindUniforms = createWindUniforms();
+  readonly #shared: VegetationUniforms = createVegetationUniforms();
 
   #context: EngineContext | null = null;
   #group: Group | null = null;
@@ -117,6 +117,20 @@ export class ScatterSystem implements System {
       this.#cache.clear();
       this.#passOpen = false;
     });
+    // Look-Anbindung nach dem Muster aus P2 / 2.6: der Controller kennt dieses
+    // System nicht, es trägt seinen Abschnitt selbst ein und liest ihn selbst
+    // zurück. Nur Windstärke und Streulicht — Dichte und LOD-Grenzen sind
+    // Leistungsparameter der Qualitätsstufe, kein Look.
+    context.bus.on('look:apply', ({ look }) => {
+      this.#shared.uWindStrength.value = look.vegetation.windStrength;
+      this.#shared.uVegTranslucency.value = look.vegetation.translucency;
+      this.#context?.debug?.refresh();
+    });
+    context.bus.on('look:collect', ({ target }) => {
+      target.vegetation.windStrength = this.#shared.uWindStrength.value;
+      target.vegetation.translucency = this.#shared.uVegTranslucency.value;
+    });
+
     context.bus.on('quality:changed', ({ level }) => {
       if (level === this.#quality) return;
       this.#quality = level;
@@ -141,7 +155,7 @@ export class ScatterSystem implements System {
 
       const material = new VegetationMaterial(
         this.atmosphere,
-        this.#wind,
+        this.#shared,
         species.color,
         species.windAmplitude,
       );
@@ -158,7 +172,7 @@ export class ScatterSystem implements System {
         meshes.radius,
       );
       this.#atlases.push(atlas);
-      const imposter = new ImposterMaterial(atlas, this.atmosphere, 0xffffff);
+      const imposter = new ImposterMaterial(atlas, this.atmosphere, this.#shared, 0xffffff);
       this.#imposterMaterials.push(imposter);
 
       const stages: LodStage[] = [
@@ -204,7 +218,7 @@ export class ScatterSystem implements System {
   }
 
   update(dt: number): void {
-    this.#wind.uWindTime.value += dt;
+    this.#shared.uWindTime.value += dt;
     if (!this.#sampler || !this.#zones || !this.#context) return;
 
     const camera = this.#context.camera;
@@ -475,10 +489,16 @@ export class ScatterSystem implements System {
     });
 
     folder.addBinding(group, 'visible', { label: 'Sichtbar' });
-    folder.addBinding(this.#wind.uWindStrength, 'value', {
+    folder.addBinding(this.#shared.uWindStrength, 'value', {
       label: 'Windstärke',
       min: 0,
       max: 3,
+      step: 0.01,
+    });
+    folder.addBinding(this.#shared.uVegTranslucency, 'value', {
+      label: 'Streulicht (Blätter)',
+      min: 0,
+      max: 2,
       step: 0.01,
     });
 
