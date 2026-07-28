@@ -221,6 +221,11 @@ Kurzliste, damit es nicht wieder passiert:
   mit 0,70 ms harmlos aus — gemessen auf einer Seite, deren Chunk-Cache seit
   Minuten voll war. Auf einer frisch geladenen Seite waren es 12,7 ms. Bei
   allem, was zwischenspeichert, ist der **kalte** Zustand die Messung, die zählt.
+- **Über das ganze Bild gemittelt, obwohl der Effekt lokal ist.** Fünf Anläufe
+  meldeten „Streulicht wirkt nicht", weil der Mittelwert über 31 % Vegetation
+  und 69 % Himmel gebildet wurde. Mit einer Maske — Differenz gegen ein Bild mit
+  ausgeblendeter Vegetation — war die Antwort in einem Lauf da. **Wo der Effekt
+  hinwirkt, muss die Messung hinsehen.**
 - **Außerhalb des Gitters extrapoliert.** Bilineare Interpolation braucht die
   Klemmung auf der Gitterkoordinate, nicht auf dem Index — sonst entstehen
   Messwerte, die es nicht gibt.
