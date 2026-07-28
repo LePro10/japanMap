@@ -156,7 +156,10 @@ const RECIPES = {
     targetHeight: null,
     yawDeg: 0,
     material: 'keep',
-    maxTriangles: 6000,
+    // Knapper als bei einem Asset mit Flachfarbe, weil es keine zweite Stufe
+    // bekommt (siehe `writeLod`): was hier steht, wird bis zur Sichtgrenze
+    // gezeichnet. Die Mole steht einmal auf der Karte.
+    maxTriangles: 3000,
     lodRatio: 0.35,
   },
 };
@@ -458,14 +461,15 @@ async function processAsset(id, recipe, report) {
   await mkdir(OUT_DIR, { recursive: true });
 
   /**
-   * Eine Stufe schreiben.
+   * Eine Stufe als `.glb` schreiben — eine Datei, ein Fetch, alles darin.
    *
-   * **Zwei Formate, und der Grund ist die Textur.** Ein Asset mit Flachfarbe
-   * wird `.glb` — eine Datei, ein Fetch, wenige Kilobyte. Ein Asset, das seine
-   * Textur behält, wird `.gltf` mit ausgelagerten Ressourcen: sonst steckte in
-   * `lod0.glb` und `lod1.glb` je eine vollständige Kopie derselben 1,5 MB
-   * Texturen. Ausgelagert schreiben beide Stufen dieselben Dateien mit
-   * demselben Inhalt, und der Browser lädt sie einmal.
+   * Ausgelagerte Ressourcen (`.gltf` plus `.bin` plus `textures/`) wären der
+   * naheliegende Weg, um Texturen zwischen den Stufen zu **teilen**. Er wurde
+   * gebaut und wieder verworfen: der Renderer lädt jede Datei über Vites
+   * `?url`-Import, damit sie einen Inhalts-Hash bekommt und ein Tippfehler beim
+   * Bauen auffällt statt im Browser. Relative Verweise aus einer `.gltf` heraus
+   * überleben das Hashen nicht — man müsste die URIs beim Laden von Hand
+   * umschreiben. Die einfachere Antwort steht unten bei `LOD_THRESHOLD`.
    */
   const writeLod = async (suffix, count) => {
     // Auf einer **Kopie** komprimiert: `meshopt` quantisiert die Attribute, und
@@ -473,40 +477,22 @@ async function processAsset(id, recipe, report) {
     // Vereinfachung des bereits Gerundeten.
     const clone = cloneDocument(document);
     await clone.transform(meshopt({ encoder: MeshoptEncoder, level: 'high' }));
-
-    if (clone.getRoot().listTextures().length === 0) {
-      const file = `${id}${suffix}.glb`;
-      const bytes = await io.writeBinary(clone);
-      await writeFile(pathJoin(OUT_DIR, file), bytes);
-      lods.push({ datei: file, dreiecke: count, bytes: bytes.length });
-      return;
-    }
-
-    const file = `${id}${suffix}.gltf`;
-    // **Eigener Puffername je Stufe.** Beide Stufen erben die Puffer-URI der
-    // Quelle; ohne diese Zeile schreiben sie dieselbe `.bin`, und die zweite
-    // überschreibt die erste. Das Ergebnis wäre kein Fehler, sondern eine
-    // LOD0-Datei, die auf LOD1-Geometrie zeigt — genau die Sorte Schaden, die
-    // erst im Bild auffällt. Die Texturen sollen sich dagegen überschreiben,
-    // die sind identisch.
-    for (const buffer of clone.getRoot().listBuffers()) buffer.setURI(`${id}${suffix}.bin`);
-    const written = await io.writeJSON(clone, { format: 'GLTF' });
-    let bytes = Buffer.byteLength(JSON.stringify(written.json));
-    for (const [uri, data] of Object.entries(written.resources)) {
-      const target = pathJoin(OUT_DIR, uri);
-      await mkdir(dirname(target), { recursive: true });
-      await writeFile(target, Buffer.from(data));
-      // Texturen zählen **nicht** zur Stufengröße: sie werden geteilt, und sie
-      // zweimal zu zählen führte genau zu der Zahl, die dieser Umweg vermeidet.
-      if (!uri.startsWith('textures/')) bytes += data.byteLength;
-    }
-    await writeFile(pathJoin(OUT_DIR, file), `${JSON.stringify(written.json)}\n`);
-    lods.push({ datei: file, dreiecke: count, bytes });
+    const file = `${id}${suffix}.glb`;
+    const bytes = await io.writeBinary(clone);
+    await writeFile(pathJoin(OUT_DIR, file), bytes);
+    lods.push({ datei: file, dreiecke: count, bytes: bytes.length });
   };
 
   await writeLod('', triangles);
 
-  if (triangles > LOD_THRESHOLD) {
+  // **Eine zweite Stufe nur ohne Textur.** PLAN.md 5.5 setzt die Schwelle bei
+  // 500 Dreiecken, und für Geometrie stimmt sie. Bei einem texturierten Asset
+  // dominiert aber die Textur: `modular_wooden_pier` bringt 1,5 MB davon mit
+  // und 78 kB Geometrie. Eine zweite `.glb` verdoppelte die 1,5 MB, um 3 936
+  // Dreiecke zu sparen — gegen ein Dreiecksbudget von 3 000 000 und ein
+  // Downloadbudget von 15 MB ist das der falsche Tausch. Solche Assets bekommen
+  // stattdessen ein knapperes `maxTriangles`.
+  if (triangles > LOD_THRESHOLD && document.getRoot().listTextures().length === 0) {
     await document.transform(
       simplify({ simplifier: MeshoptSimplifier, ratio: recipe.lodRatio, error: 0.08 }),
     );
