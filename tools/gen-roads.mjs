@@ -42,6 +42,10 @@ import {
   toControlPoints,
   widenHairpins,
 } from './route-planner.mjs';
+// Kein Spiegel, sondern dieselbe Datei, die auch der Renderer liest — der
+// Distrikt muss auf den Zentimeter übereinstimmen, sonst steht die Stadtplatte
+// neben der Straße, die sie tragen soll.
+import { CITY_ROAD_LEVEL, districtBlend } from '../src/config/city.mjs';
 
 // `fileURLToPath`, nicht `.pathname` — siehe tools/bake-terrain.mjs: unter
 // Windows trägt `.pathname` einen führenden Schrägstrich vor dem Laufwerk, und
@@ -220,7 +224,7 @@ function findSummit(terrain, region, maxHeight = Infinity, step = 20) {
  * nur in die richtige Richtung geschoben.
  */
 function fitElevation(terrain, points, options) {
-  const { maxGrade, closed, margin, pins = null, iterations = 400 } = options;
+  const { maxGrade, closed, margin, pins = null, iterations = 400, level = null } = options;
   const n = points.length;
 
   /**
@@ -242,6 +246,29 @@ function fitElevation(terrain, points, options) {
     }
     return sum / weight;
   });
+
+  /**
+   * Stadtebene statt Gelände — PLAN.md P6 / 6.1.
+   *
+   * Eine Stadtstraße folgt keiner Erosionsrinne. Sie liegt in der Ebene, auf
+   * der die Stadt gebaut ist, und genau das braucht P6 auch als *Zusage*: die
+   * Bodenplatte des Distrikts ist exakt planar, weil die Reflexionsentscheidung
+   * (6.5) davon lebt. Eine Straße, die sich um 80 cm durch diese Platte
+   * wellt, macht aus einer planaren Spiegelung eine falsche.
+   *
+   * Der Eingriff sitzt bewusst **an der Bezugshöhe**, nicht am Ergebnis. Wer
+   * die fertigen Höhen hinterher überschreibt, umgeht die Steigungsbegrenzung
+   * und bekommt am Distrikträndern einen Knick; wer die Anziehung umlenkt,
+   * lässt Glättung und Begrenzung ihre Arbeit tun und erhält eine Rampe, die
+   * über `districtBlend` ausläuft.
+   */
+  if (level !== null) {
+    for (let i = 0; i < n; i++) {
+      const blend = districtBlend(points[i][0], points[i][1]);
+      if (blend > 0) ground[i] = ground[i] + (level - ground[i]) * blend;
+    }
+  }
+
   const heights = ground.slice();
 
   // Festgehaltene Höhen aus Kreuzungen (3.5). Ein angehefteter Knoten bewegt
@@ -926,10 +953,58 @@ function layout(terrain) {
       [-300, -60],
       [-190, 90],
     ].map(([x, z]) => pushInland(terrain, x, z, 3)),
+
+    /**
+     * Stadt im Osten — PLAN.md P6 / 6.1.
+     *
+     * **Eine geschlossene Schleife, keine gekreuzten Achsen.** Ein
+     * Straßenraster wäre das Naheliegende und scheitert an einer Eigenschaft
+     * dieses Generators, die aus gutem Grund so ist: zwei Strecken, die sich
+     * treffen, bekommen an der Kreuzung dieselbe Höhe und die einmündende einen
+     * **Rücksprung**, damit nicht zwei koplanare Fahrbahnen um jedes Pixel
+     * streiten (P3 / 3.5). Der Rücksprung greift an einem Streckenende. Eine
+     * Kreuzung *mitten* in beiden Strecken — also jeder Knoten eines Rasters —
+     * hat kein Ende, an dem er zurückspringen könnte.
+     *
+     * Deshalb liefert die Schleife die befahrbare Stadtstraße, und die
+     * Nebenstraßen zwischen den Blöcken entstehen im `CityGenerator` als Teil
+     * der Bodenplatte. Sie sind Fläche, keine Splines — was sie auch sein
+     * sollten: sie werden nicht befahren, nicht ins Gelände geschnitten und
+     * brauchen weder Leitplanke noch Querneigung.
+     *
+     * Die Wegpunkte umschließen den Distrikt mit rund 40 m Abstand zum Rand,
+     * damit an beiden Seiten der Fahrbahn noch Bauland liegt.
+     */
+    cityLoop: [
+      [500, -10],
+      [740, -10],
+      [745, 130],
+      [730, 250],
+      [560, 255],
+      [485, 150],
+    ],
+    /**
+     * Zufahrt: vom Ring nach Westen an die Schleife.
+     *
+     * Der Anschlusspunkt am Ring ist **nicht frei wählbar**. Der Ring fällt von
+     * 61 m an der Nordkante des Plateaus auf 29 m bei z ≈ 204 und läuft erst ab
+     * dort auf Stadthöhe. Ein Anschluss weiter nördlich (etwa bei z = −50, wo
+     * der Ring auf 45 m steht) müsste 15 Höhenmeter auf 150 m Strecke abbauen —
+     * 10 % bei 6 % erlaubter Neigung. Der Anschluss liegt deshalb südöstlich,
+     * wo Ring und Stadtebene sich ohnehin auf einen Meter nahekommen.
+     */
+    cityLink: [
+      [880, 215],
+      [800, 205],
+      [742, 200],
+    ],
   };
 }
 
-function buildRoad(terrain, { id, type, closed, tags, points, banking = 0, pins, junctions = [] }) {
+function buildRoad(
+  terrain,
+  { id, type, closed, tags, points, banking = 0, pins, junctions = [], level = null },
+) {
   const settings = TYPES[type];
 
   const toNodes = (heights) =>
@@ -964,6 +1039,7 @@ function buildRoad(terrain, { id, type, closed, tags, points, banking = 0, pins,
       closed,
       margin,
       pins,
+      level,
     });
     sampled = sampleSpline(toNodes(heights), { closed, spacing: SAMPLE_SPACING });
     const reached = maxGradient(sampled);
@@ -1222,6 +1298,35 @@ async function main() {
       tags: ['dorf'],
       waypoints: plan.village,
       banking: 0,
+    },
+    {
+      id: 'stadt',
+      type: 'city',
+      closed: true,
+      tags: ['stadt', 'nachtstrecke'],
+      waypoints: plan.cityLoop,
+      // Keine Querneigung. Eine Stadtstraße ist eine Ebene mit Bordstein, kein
+      // Kurvenprofil — und die Bodenplatte des Distrikts, an die sie anschließt,
+      // ist per Konstruktion waagerecht.
+      banking: 0,
+      // Der Punkt der ganzen Übung: das Profil liegt auf der Stadtebene statt
+      // auf dem Gelände. Siehe `fitElevation`, Abschnitt „Stadtebene".
+      level: CITY_ROAD_LEVEL,
+      // Enger Korridor. Auf einer Fläche mit 0,81 m Höhenunterschied ist jede
+      // Trasse gleich billig, und ohne Zwang wandert die Suche dorthin, wo das
+      // Rauschen zufällig ein paar Zentimeter spart. Der Entwurf ist hier die
+      // Vorgabe, nicht ein Vorschlag ans Gelände.
+      corridor: 70,
+    },
+    {
+      id: 'zufahrt',
+      type: 'city',
+      closed: false,
+      tags: ['stadt', 'anschluss'],
+      waypoints: plan.cityLink,
+      banking: 0,
+      level: CITY_ROAD_LEVEL,
+      corridor: 70,
     },
   ];
 
