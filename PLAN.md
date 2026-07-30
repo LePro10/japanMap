@@ -4,7 +4,7 @@
 > dieser Plan sagt **in welcher Reihenfolge, mit welchen Dateien und woran wir
 > merken, dass eine Phase fertig ist**.
 >
-> Stand: 2026-07-27 · **P0–P4 abgeschlossen** · Nächste Phase: **P5**
+> Stand: 2026-07-30 · **P0–P6 abgeschlossen** · Nächste Phase: **P7**
 >
 > Die Serpentinenzahl am Bergpass bleibt hinter SPEC §2.1 zurück (2 statt ≥ 8).
 > Das ist **keine offene P3-Aufgabe**, sondern eine Anforderung an das Höhenfeld:
@@ -114,8 +114,8 @@ erfüllt sind. Ausnahmen werden hier dokumentiert, nicht mündlich vereinbart.
 | **P2** ✅ | Licht & Atmosphäre | Die Stimmung sitzt | P1 |
 | **P3** ✅ | Splines & Straßen | Befahrbares Straßennetz | P1 |
 | **P4** ✅ | LOD & Vegetation | Gefüllte Welt in Budget | P1, P3 |
-| **P5** | Asset-Pipeline & Landmarks | Zonen mit Identität | P4 |
-| **P6** | Stadt & Reflexionen | Der Money-Shot | P2, P5 |
+| **P5** ✅ | Asset-Pipeline & Landmarks | Zonen mit Identität | P4 |
+| **P6** ✅ | Stadt & Reflexionen | Der Money-Shot | P2, P5 |
 | **P7** | Optimierung & Auslieferung | Läuft auf Zielhardware | alle |
 
 ---
@@ -2022,7 +2022,7 @@ Und zwei Regeln des Generators waren Annahmen statt Messungen. Beide lieferten
 
 ---
 
-# P6 — Stadt & Reflexionen
+# P6 — Stadt & Reflexionen ✅
 
 **Ziel:** Der Money-Shot. Nasser Asphalt, Neon, Spiegelungen — hier zahlt sich
 die Entscheidung „blaue Stunde nach Regen" aus.
@@ -2073,16 +2073,113 @@ Weg und in Rennspielen weit verbreitet.
 - Als projizierte Quads mit Polygon-Offset, gruppiert instanziert
 
 ### Akzeptanzkriterien
-- [ ] Neon spiegelt sichtbar im nassen Asphalt
-- [ ] Stadt bleibt in Budget (eigenes Teilbudget: < 300 Draw-Calls)
-- [ ] Reflexionsansatz ist entschieden und dokumentiert
-- [ ] Keine flimmernden Reflexionen bei Kamerabewegung
-- [ ] Ein Screenshot der Stadt bei blauer Stunde ist vorzeigbar — das ist das Ziel der Phase
+- [x] **Neon spiegelt sichtbar im nassen Asphalt.** Gemessen mit einer Maske am
+      Blickpunkt `stadt-neon`: Spiegelung an gegen aus ändert **9981 Pixel
+      (1,08 % des Bildes)** bei mittlerer Differenz **123,4**. Das Neon allein
+      (direkt + gespiegelt) trägt 49 430 Pixel (5,36 %).
+- [x] **Stadt bleibt in Budget.** Eigene Draw-Calls: 25 Blöcke + Bürgersteige +
+      Bodenplatte = **27**, dazu 1 für alle 297 Neonschilder und 1 für alle
+      3339 Straßendecals. **29 von 300.** Am ganzen Bild gemessen (Budget
+      800 / 3 000 000):
+
+      | Blickpunkt | Draw-Calls | Dreiecke |
+      |---|---|---|
+      | stadt-neon | 97 | 605 419 |
+      | stadt-strasse | 88 | 643 179 |
+      | stadt | **158** | **701 043** |
+      | stadt-luft | 110 | 465 371 |
+      | stadt-fern | 156 | 557 875 |
+      | Tempel / Pass / Küste | 41 / 39 / 45 | 426 967 / 184 899 / 328 433 |
+
+      Texturspeicher **307,7 MB von 512** (P5: 302,7 MB; dazu kamen der
+      Neon-Atlas mit 4 MB und der Decal-Atlas mit 1 MB). Der Spiegelpuffer
+      (640 × 360 HalfFloat, 1,8 MB) läuft nicht über die Szene und steht nicht
+      in dieser Zahl.
+- [x] **Reflexionsansatz ist entschieden und dokumentiert** — siehe unten und
+      `src/render/PlanarReflection.ts`. **B + C**, entschieden durch Messung.
+- [x] **Keine flimmernden Reflexionen bei Kamerabewegung.** Zweimal derselbe
+      Frame: 90 geänderte Pixel (0,01 %), und die stammen vom Neon-Flackern,
+      nicht von der Spiegelung — sie hat keinen zeitlichen Anteil. Bei 0,25 m
+      Kamerafahrt ändert sich das Bild **innerhalb der Spiegelmaske** im Mittel
+      um 45,3, im übrigen Bild um 25,3; Spitze 283 gegen 448. Der Faktor 1,8 ist
+      das, was ein Spiegelbild geometrisch tun **muss** — die virtuelle Quelle
+      liegt hinter der Ebene, die Parallaxe ist doppelt.
+- [x] **Screenshot vorzeigbar** — `japanMap.view('stadt-neon')`, Bild in
+      `.cache/shots/p6_abnahme_moneyshot.png`: Geschäftsstraße mit hochkanten
+      Kanban über der Fahrbahn, nasser Asphalt mit Pfützen, Neon darin, das
+      Massiv am Ende der Straße.
+
+> **Die Kette ist reproduzierbar.** Zwei Läufe `npm run world` liefern
+> bitgleiche `height.r16`, `zones.png`, `roads.json` und `paddy.png`.
+> `npm run inspect` meldet für alle fünf Strecken 0 Selbstschnitte.
+>
+> Eine Zahl dort ist neu und **gewollt**: `stadt` und `zufahrt` liegen im Mittel
+> 0,94 m bzw. 0,56 m über dem Gelände statt darin. Das ist die Einebnung aus
+> Schritt 5d — der Distrikt liegt auf 29,00 m, die Fahrbahn auf 29,94 m, und
+> dazwischen liegt die Bodenplatte der Stadt. Der Prüfer misst gegen das
+> Höhenfeld und kennt die Platte nicht.
+
+### Die Reflexions-Entscheidung (offene Entscheidung Nr. 1)
+
+**Entschieden: B + C.** Planare Spiegelung an der Stadtebene, ergänzt durch die
+HDRI-Umgebungskarte aus P2 — die *ist* eine Reflexions-Probe, nur eine einzige
+und global; sie liefert Himmel, Horizont und Berge, also alles, was nicht in der
+Ebene steht.
+
+Der Plan sah vor, zuerst SSR zu versuchen und nach „zwei Tagen Tuning" anhand
+von Rauschen und Ghosting zu entscheiden. Das ist eine Regel über Aufwand.
+Entschieden hat stattdessen eine Messung — `japanMap.reflectionProbe()`, die
+Umsetzung in `src/debug/reflectionProbe.ts`:
+
+> Screen-Space-Reflexionen können nur zeigen, was **schon im Bild steht**.
+
+Für ein Raster von Bildpunkten wird der Sehstrahl auf den nassen Asphalt
+geschossen, an der Fläche gespiegelt, gegen die Stadt verfolgt und der Treffer
+in die Kamera zurückprojiziert. Landet er außerhalb des Bildes oder verdeckt,
+kann SSR ihn nicht kennen. Gegen **nur die Neonschilder** — die Abnahmezeile —
+an fünf Standpunkten, 30² Proben:
+
+| Standpunkt | Neon-Treffer | davon SSR-fähig |
+|---|---|---|
+| Straße, Augenhöhe | 24 | **4,2 %** |
+| Straße, Blick hoch | 38 | 31,6 % |
+| Gehweg an der Wand | 18 | 11,1 % |
+| Kreuzung | 28 | 17,9 % |
+| aus dem Wagen | 6 | 33,3 % |
+| **zusammen** | **114** | **19,3 %** |
+
+Vier Fünftel der Neonspiegelungen sind im Primärbild verdeckt. Das ist keine
+Frage von Rauschen oder Tuning, sondern die Blickgeometrie einer Straßenszene:
+die Kamera steht tief und schaut nach vorn, gespiegelt wird, was **über** ihr
+ist. Damit fällt A aus, bevor die erste Zeile SSR geschrieben ist.
+
+Die planare Spiegelung ist hier zudem nicht nur der Rückfallweg, sondern die
+*richtige* Antwort: die Stadtebene ist exakt eben (6.1 hat sie dazu gemacht),
+die Spiegelung an ihr ist damit geometrisch korrekt statt genähert.
+
+**Der Preis steht dabei:** der Durchgang zeichnet die Szene ein zweites Mal und
+verdoppelt Draw-Calls und Dreiecke, solange die Stadt im Bild ist. Außerhalb von
+1400 m um den Distrikt entfällt er ganz. Für die Qualitätsstufen aus P7.1 ist er
+der erste Kandidat zum Abschalten.
+
+### Abweichungen vom Plan, mit Begründung
+
+- **6.1: kein Straßenraster aus Splines.** Eine Kreuzung mitten in zwei Strecken
+  hat kein Ende, an dem der Rücksprung aus P3/3.5 greifen könnte — zwei koplanare
+  Fahrbahnen stritten dort um jedes Pixel. Die Stadtschleife ist die befahrene
+  Straße; die Nebenstraßen zwischen den Blöcken sind Fläche auf der Bodenplatte.
+- **6.2: kein Fassaden-Atlas, sondern ein prozedurales Raster.** Ausführlich in
+  `FacadeMaterial.ts`. Kurz: der Atlas-Ansatz setzt instanzierte Gebäude voraus,
+  P6 fasst aber je Block zusammen (was der Plan selbst verlangt), und ein Atlas
+  hat ein festes Seitenverhältnis, während eine Wand 7,4 m oder 23,1 m hat.
+- **6.4: keine Regen-Ringe.** SPEC §3.1 legt „blaue Stunde **nach** Regen" fest.
 
 ### Risiken
-- **SSR** — siehe 6.5, Fallback ist definiert
-- **Stadt sprengt das Draw-Call-Budget.** → Gebäude aggressiv nach Blöcken
-  zusammenfassen (ein Merge pro Block statt pro Gebäude)
+- ~~**SSR**~~ — entschieden, siehe oben. Der Rückfallweg ist der gewählte Weg.
+- ~~**Stadt sprengt das Draw-Call-Budget.**~~ 29 eigene Draw-Calls von 300.
+  Die Zusammenfassung je Block hat gehalten.
+- **Neu: der Spiegeldurchgang verdoppelt die Szene.** Auf schwacher Hardware ist
+  er der erste Schalter, den P7.1 umlegen muss.
 
 ---
 
@@ -2164,7 +2261,7 @@ früh, damit der Übergang keine Umbauten erzwingt.
 
 | # | Frage | Spätestens in | Vorläufige Tendenz |
 |---|---|---|---|
-| 1 | SSR oder planare Reflexion + Probes | P6 | Erst SSR testen, Fallback steht |
+| ~~1~~ | ~~SSR oder planare Reflexion + Probes~~ | ~~P6~~ | **Entschieden: B + C.** Nicht nach Tuning-Tagen, sondern gemessen — gegen die Neonschilder sind nur 19,3 % der Spiegelungen im Bildschirmraum überhaupt vorhanden, am wichtigsten Standpunkt 4,2 %. Siehe P6, „Die Reflexions-Entscheidung" |
 | ~~2~~ | ~~Kreuzungen prozedural oder handmodelliert~~ | ~~P3~~ | **Entschieden:** prozedural im Generator — Einrasten in XZ, Höhe festnageln, Rücksprung statt Verschneidung |
 | 3 | Physik-Engine | nach P7 | Rapier (WASM, bewährt) |
 | 4 | Imposter-Baking headless oder in-app | P4 | In-app, falls headless zickt |
