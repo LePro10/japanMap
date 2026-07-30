@@ -203,7 +203,13 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
   const matrices: Matrix4[] = [];
   const rectValues: number[] = [];
   const tintValues: number[] = [];
-  const counts: Record<string, number> = { strich: 0, gully: 0, flicken: 0, spur: 0 };
+  const counts: Record<string, number> = {
+    strich: 0,
+    gully: 0,
+    flicken: 0,
+    spur: 0,
+    ueberweg: 0,
+  };
 
   const position = new Vector3();
   const tangent = new Vector3();
@@ -358,6 +364,47 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
         random() * Math.PI,
       );
       counts.flicken!++;
+    }
+
+    // ── Fußgängerüberwege an den Kreuzungen ───────────────────────────
+    //
+    // `roads.json` sagt, wo eine Strecke an eine andere anschließt und wie weit
+    // ihr Mesh dafür zurückspringt. Genau dort — hinter dem Rücksprung, also am
+    // Anfang der eigenen Fahrbahn — gehört der Überweg hin. Ihn aus einer
+    // eigenen Positionsliste zu setzen hieße, dieselbe Kreuzung ein zweites Mal
+    // zu beschreiben; genau diese Sorte Doppelung hat in P3 die Rinne neben das
+    // Straßen-Mesh gelegt.
+    const cw = DECALS.crosswalk;
+    for (const junction of road.junctions) {
+      const trim = junction.at === 'start' ? road.trimStart : road.trimEnd;
+      const fromEnd = Math.round((trim + cw.offset) / spacing);
+      const index = junction.at === 'start' ? fromEnd : count - 1 - fromEnd;
+      if (index < 1 || index > count - 2) continue;
+
+      // So viele Streifen, wie zwischen die Fahrbahnränder passen — gerundet,
+      // damit der Überweg mittig sitzt und nicht an einer Seite ausfranst.
+      const usable = settings.width - 2 * DECALS.edgeInset;
+      const pitch = cw.stripe + cw.gap;
+      const stripes = Math.max(2, Math.floor(usable / pitch));
+      const start = -((stripes - 1) * pitch) / 2;
+      for (let s = 0; s < stripes; s++) {
+        place(line, index, count, road.closed, start + s * pitch, cw.stripe, cw.length,
+          CELLS.line, WHITE);
+        counts.strich!++;
+      }
+
+      // Haltelinie **nur auf der eigenen Seite** der Fahrbahn: wer aus der
+      // Nebenstraße kommt, hält; wer auf der Hauptstrecke fährt, nicht.
+      const stopIndex =
+        junction.at === 'start'
+          ? index + Math.round((cw.length / 2 + cw.stopGap) / spacing)
+          : index - Math.round((cw.length / 2 + cw.stopGap) / spacing);
+      if (stopIndex > 0 && stopIndex < count - 1) {
+        place(line, stopIndex, count, road.closed, half / 2, half - DECALS.edgeInset,
+          cw.stopWidth, CELLS.line, WHITE);
+        counts.strich!++;
+      }
+      counts.ueberweg!++;
     }
 
     // ── Reifenspuren in Kurven ────────────────────────────────────────

@@ -188,6 +188,32 @@ export const DECALS = {
   patchPitch: 48,
   patchSize: [1.1, 3.2] as readonly [number, number],
 
+  /**
+   * Fußgängerüberweg an Kreuzungen.
+   *
+   * Die Streifen laufen **längs zur Fahrtrichtung**, nicht quer — so sieht ein
+   * Zebrastreifen aus, und es ist der einzige Punkt, an dem man die Richtung
+   * der Markierung falsch machen kann.
+   *
+   * Wo eine Kreuzung ist, steht in `roads.json`: der Generator rastet
+   * anschließende Strecken auf die Hauptstrecke ein und notiert den Rücksprung
+   * (`trimStart` / `trimEnd`). Der Überweg liegt genau dahinter — dort, wo das
+   * Fahrbahn-Mesh anfängt.
+   */
+  crosswalk: {
+    /** Breite eines Streifens quer zur Fahrbahn, in Metern. */
+    stripe: 0.45,
+    /** Lücke zwischen zwei Streifen. */
+    gap: 0.32,
+    /** Länge des Überwegs in Fahrtrichtung. */
+    length: 3.6,
+    /** Abstand hinter dem Rücksprung, in Metern. */
+    offset: 2.5,
+    /** Haltelinie: Breite in Fahrtrichtung und Abstand vor dem Überweg. */
+    stopWidth: 0.4,
+    stopGap: 1.4,
+  },
+
   tirePitch: 6,
   /** Ab dieser Krümmung (1/m) wird gebremst. 1/45 m entspricht 0,022. */
   tireCurvature: 0.02,

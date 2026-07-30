@@ -216,7 +216,8 @@ export class RoadSystem implements System {
         this.#readouts.decals =
           `${decals.matrices.length} Decals · 1 Draw-Call · ` +
           `${decals.counts.strich} Striche, ${decals.counts.gully} Gullys, ` +
-          `${decals.counts.flicken} Flicken, ${decals.counts.spur} Reifenspuren`;
+          `${decals.counts.flicken} Flicken, ${decals.counts.spur} Reifenspuren, ` +
+          `${decals.counts.ueberweg} Überwege`;
       }
     }
 
