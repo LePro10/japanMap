@@ -2,6 +2,7 @@ import type { QualityLevel } from '@/config/quality.config';
 import type { LookState } from '@/render/looks/lookState';
 import type { SignAnchor } from '@/world/city/CityGenerator';
 import type { CityUniforms } from '@/world/materials/FacadeMaterial';
+import type { RoadMaterial } from '@/world/materials/RoadMaterial';
 import type { TerrainHeightUniforms } from '@/world/materials/TerrainMaterial';
 import type { PropClearance } from '@/world/props/PropClearance';
 import type { RoadNetwork } from '@/world/roads/RoadNetwork';
@@ -57,7 +58,17 @@ export type AppEvents = {
    * RoadSystem zu importieren. Dieselbe Regel wie bei `terrain:ready`: wer
    * zuhört, muss **vor** dem RoadSystem registriert sein.
    */
-  'roads:ready': { network: RoadNetwork };
+  /**
+   * Trägt zusätzlich das **Belagsmaterial** mit.
+   *
+   * Seit P6 gibt es zwei Flächen aus Asphalt: das Straßennetz und die
+   * Bodenplatte der Stadt. Sie stoßen im Distrikt aneinander, und die Nässe aus
+   * 6.4 läuft über einen gemeinsamen Uniform-Block — zwei Materialien hießen
+   * zwei Regler für dieselbe Pfütze und an der Bordsteinkante eine sichtbare
+   * Kante. Deshalb reicht das RoadSystem sein Material weiter, statt dass jeder
+   * sich eines baut.
+   */
+  'roads:ready': { network: RoadNetwork; surface: RoadMaterial };
 
   /**
    * Die Props stehen, und mit ihnen die Flächen, die sie freihalten.

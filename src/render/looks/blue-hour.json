@@ -35,6 +35,9 @@
     "translucency": 0.55,
     "groundAo": 1
   },
+  "road": {
+    "wetness": 0.62
+  },
   "city": {
     "windowLitFraction": 0.45,
     "windowEmissive": 1.8

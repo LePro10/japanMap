@@ -147,7 +147,18 @@ const FACADE_COLORS: readonly [number, number, number][] = FACADE_HEX.map(toLine
 /** Dach, Brüstung, Vordach — durchweg dunkler als die Wand darunter. */
 const ROOF_COLOR = toLinear(0x3a3a3c);
 const SIDEWALK_COLOR = toLinear(0x7d7b78);
-const ASPHALT_COLOR = toLinear(0x53534f);
+
+/**
+ * Der Vertex-Kanal der **Bodenplatte** trägt keine Farbe, sondern die
+ * Pfützenneigung — genau wie beim Straßen-Mesh seit P3 (`RoadMeshBuilder`,
+ * Kanal R). Die Platte läuft über dasselbe `RoadMaterial`, und das liest den
+ * Kanal als Wasserneigung, nicht als Anstrich.
+ *
+ * Die ebene Fläche bekommt einen hohen Wert: ein Platz ohne Gefälle hält das
+ * Wasser. Die Schürze fällt zum Gelände hin ab, dort läuft es weg.
+ */
+const PUDDLE_SLAB: [number, number, number] = [0.72, 0, 0];
+const PUDDLE_SKIRT: [number, number, number] = [0.22, 0, 0];
 
 /** Kennzeichnung der Fläche für das Fassaden-Material. */
 const KIND_WALL = 0;
@@ -815,7 +826,7 @@ function buildGround(sampleTerrain: (x: number, z: number) => number): {
     [d.minX, y, d.minZ, d.minX, y, d.maxZ, d.maxX, y, d.maxZ, d.maxX, y, d.minZ],
     [0, 1, 0],
     [au, av, bu, bv, cu, cv, du, dv],
-    ASPHALT_COLOR,
+    PUDDLE_SLAB,
     0,
     KIND_FLAT,
   );
@@ -861,7 +872,7 @@ function buildGround(sampleTerrain: (x: number, z: number) => number): {
       [ix0, y, iz0, ox0, oy0, oz0, ox1, oy1, oz1, ix1, y, iz1],
       [0, 1, 0],
       [q0[0], q0[1], q1[0], q1[1], q2[0], q2[1], q3[0], q3[1]],
-      ASPHALT_COLOR,
+      PUDDLE_SKIRT,
       0,
       KIND_FLAT,
     );

@@ -66,6 +66,44 @@ export const CITY_GROUND_Y = 30;
  */
 export const CITY_ROAD_LEVEL = CITY_GROUND_Y - 0.06;
 
+/**
+ * Höhe, auf die der Baker das Gelände im Distrikt legt — Schritt 5d.
+ *
+ * ## Warum das Gelände tiefer liegt als die Stadt
+ *
+ * Die Bodenplatte ist eine **flache Fläche über einem verschobenen Gitter**.
+ * Das Terrain wird im Vertex-Shader aus der Heightmap ausgelenkt, und zwar an
+ * den Stützstellen des CDLOD-Gitters — nicht an denen der Heightmap. Zwischen
+ * zwei Gitterpunkten läuft eine Gerade, und die liegt über der Kurve, der sie
+ * folgen soll. Wie weit, hängt an der LOD-Stufe und ist nicht vorhersagbar.
+ *
+ * **Gemessen wurde das als Fehler, nicht ausgerechnet.** Der erste Entwurf gab
+ * der Platte 3 cm Abstand zum eingeschnittenen Gelände — sauber gerechnet aus
+ * 14 641 Höhenproben. Im Bild stand die Stadt trotzdem auf Gras: das Terrain
+ * wurde über der Platte gezeichnet, auf ganzer Fläche, und zwar auch direkt vor
+ * der Kamera. Die Proben waren richtig und die Frage war falsch — gemessen
+ * gehört das **gerenderte Gitter**, nicht das Höhenfeld, aus dem es entsteht.
+ *
+ * Ein knapper Abstand ist gegen diesen Fehler nicht zu verteidigen, also
+ * bekommt er einen ganzen Meter. Das kostet nichts: unter der Platte sieht
+ * niemand hin.
+ *
+ * Der Schritt läuft **nach** dem Straßeneinschnitt. Sonst füllte die Böschung
+ * der Stadtstraße das Gelände wieder auf ihre eigene Höhe auf — und läge damit
+ * erneut Zentimeter unter der Platte.
+ */
+export const CITY_PAD_Y = 29;
+
+/**
+ * Über welche Strecke die Einebnung ausläuft, in Metern.
+ *
+ * 60 und nicht 120: der Auslauf verändert das Gelände, und das Gelände trägt
+ * die Ringstraße, die 41 m am Distrikt vorbeiführt. Jeder Meter Reichweite hier
+ * ist ein Meter, den die Trassierung der Ringstraße mitbekommt — siehe
+ * CLAUDE.md, „Ein Parameter mit Fernwirkung".
+ */
+export const CITY_PAD_FEATHER = 60;
+
 /** Liegt ein Punkt im Distrikt? */
 export function inDistrict(x, z) {
   return (

@@ -1,11 +1,10 @@
-import { Group, Mesh, RepeatWrapping, type Texture } from 'three';
+import { Group, Mesh } from 'three';
 
 import { CITY, CITY_LOOK, CITY_SLAB_Y } from '@/config/city.config';
 import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
 import { createCityUniforms, FacadeMaterial, type CityUniforms } from '../materials/FacadeMaterial';
-import { RoadMaterial } from '../materials/RoadMaterial';
-import { ROAD_ASSETS } from '../roads/roadAssets';
+import type { RoadMaterial } from '../materials/RoadMaterial';
 import type { RoadNetwork } from '../roads/RoadNetwork';
 import type { TerrainSampler } from '../TerrainSampler';
 import { generateCity, type CityResult } from './CityGenerator';
@@ -61,21 +60,7 @@ export class CitySystem implements System {
 
   async init(context: EngineContext): Promise<void> {
     this.#context = context;
-    const anisotropy = context.renderer.capabilities.getMaxAnisotropy();
-
-    const [albedo, normal, arm] = await Promise.all([
-      context.resources.texture(ROAD_ASSETS.albedo, { srgb: true, anisotropy }),
-      context.resources.texture(ROAD_ASSETS.normal, { srgb: false, anisotropy }),
-      context.resources.texture(ROAD_ASSETS.arm, { srgb: false, anisotropy }),
-    ]);
-    // Dieselben Texturen wie die Straßen — der `ResourceManager` gibt sie aus
-    // seinem Cache, es sind also dieselben Objekte und nicht dieselben Bilder
-    // ein zweites Mal im Texturspeicher.
-    for (const texture of [albedo, normal, arm]) this.#prepare(texture);
-
     this.#facade = new FacadeMaterial(this.atmosphere, this.#shared);
-    this.#groundMaterial = new RoadMaterial({ albedo, normal, arm }, this.atmosphere);
-    this.#groundMaterial.name = 'CityGroundMaterial';
 
     const group = new Group();
     group.name = 'Stadt';
@@ -87,8 +72,13 @@ export class CitySystem implements System {
       this.#sampler = sampler;
       this.#tryBuild();
     });
-    context.bus.on('roads:ready', ({ network }) => {
+    context.bus.on('roads:ready', ({ network, surface }) => {
       this.#network = network;
+      // **Dasselbe Material wie die Fahrbahn**, nicht ein gleich aussehendes.
+      // Bodenplatte und Stadtstraße stoßen im Distrikt aneinander; mit zwei
+      // Materialien liefe die Pfützenmaske aus 6.4 über zwei Uniform-Blöcke und
+      // die Nässe spränge an der Bordsteinkante.
+      this.#groundMaterial = surface;
       this.#tryBuild();
     });
     context.bus.on('look:apply', ({ look }) => {
@@ -181,12 +171,6 @@ export class CitySystem implements System {
     this.#context?.bus.emit('city:ready', { signs: result.signs, uniforms: this.#shared });
   }
 
-  #prepare(texture: Texture): void {
-    texture.wrapS = RepeatWrapping;
-    texture.wrapT = RepeatWrapping;
-    texture.needsUpdate = true;
-  }
-
   #registerDebug(context: EngineContext): void {
     const folder = context.debug?.folder('Stadt');
     const group = this.#group;
@@ -225,7 +209,9 @@ export class CitySystem implements System {
     }
     this.#facade?.dispose();
     this.#facade = null;
-    this.#groundMaterial?.dispose();
+    // Das Belagsmaterial gehört dem RoadSystem und wird dort freigegeben. Es
+    // hier ein zweites Mal zu entsorgen hieße, dem Straßennetz sein Programm
+    // unter den Meshes wegzuziehen.
     this.#groundMaterial = null;
     this.#result = null;
     this.#sampler = null;

@@ -25,6 +25,9 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createNoise2D } from 'simplex-noise';
 import { PNG } from 'pngjs';
+// Dieselbe Datei, die auch der Renderer liest — die Stadtplatte und die
+// Einebnung darunter müssen auf den Zentimeter zusammenpassen.
+import { CITY_PAD_FEATHER, CITY_PAD_Y, districtBlend } from '../src/config/city.mjs';
 
 /**
  * PNG schreiben.
@@ -705,6 +708,60 @@ function carveRoads(height, res, spacing, roadFile) {
   };
 }
 
+// ── Schritt 5d: Stadtplateau ─────────────────────────────────────────────────
+
+/**
+ * Den Distrikt auf eine feste Höhe legen — PLAN.md P6 / 6.1.
+ *
+ * Die Stadt bringt ihre eigene Bodenplatte mit, eine exakt ebene Fläche bei
+ * `CITY_SLAB_Y`. Darunter darf kein Gelände stehen. „Darunter" heißt dabei
+ * nicht „tiefer im Höhenfeld", sondern **tiefer im gerenderten Gitter**, und
+ * das ist ein Unterschied: das Terrain wird an den Stützstellen des
+ * CDLOD-Gitters ausgelenkt, zwischen denen eine Gerade über der Kurve liegt.
+ * Der erste Entwurf gab der Platte 3 cm Abstand, sauber aus 14 641 Proben
+ * gerechnet — im Bild stand die Stadt trotzdem auf Gras.
+ *
+ * **Nach dem Straßeneinschnitt**, und das ist der ganze Grund für einen eigenen
+ * Schritt: die Böschung der Stadtstraße füllt das Gelände sonst wieder auf
+ * Fahrbahnhöhe auf und steht damit erneut Zentimeter unter der Platte. Hier
+ * wird sie überschrieben. Die Fahrbahn selbst bleibt, wo sie ist — sie ist
+ * Geometrie, kein Höhenfeld.
+ */
+function padCity(height, res, spacing) {
+  const half = (res - 1) * spacing * 0.5;
+  let touched = 0;
+  let lowered = 0;
+  let raised = 0;
+  let deepest = 0;
+  let highest = 0;
+
+  for (let j = 0; j < res; j++) {
+    const z = j * spacing - half;
+    for (let i = 0; i < res; i++) {
+      const x = i * spacing - half;
+      const blend = districtBlend(x, z, CITY_PAD_FEATHER);
+      if (blend <= 0) continue;
+
+      const index = j * res + i;
+      const before = height[index];
+      const after = before + (CITY_PAD_Y - before) * blend;
+      height[index] = after;
+
+      touched++;
+      const delta = after - before;
+      if (delta < 0) {
+        lowered++;
+        if (delta < deepest) deepest = delta;
+      } else if (delta > 0) {
+        raised++;
+        if (delta > highest) highest = delta;
+      }
+    }
+  }
+
+  return { touched, lowered, raised, deepest, highest };
+}
+
 // ── Schritt 5c: Reisfeld-Terrassen ───────────────────────────────────────────
 
 const PADDY = {
@@ -1156,6 +1213,18 @@ async function main() {
   } else {
     console.log(c.dim('keine Parzellen gefunden.'));
   }
+
+  // Stadtplateau. **Nach** dem Straßeneinschnitt — Begründung bei `padCity`.
+  process.stdout.write('  5d   Stadtplateau … ');
+  const cityReport = padCity(height, res, spacing);
+  console.log(
+    c.green('fertig') +
+      c.dim(
+        ` ${cityReport.touched.toLocaleString('de-DE')} Texel auf ${CITY_PAD_Y} m · ` +
+          `${cityReport.lowered.toLocaleString('de-DE')} abgetragen (bis ${cityReport.deepest.toFixed(2)} m) · ` +
+          `${cityReport.raised.toLocaleString('de-DE')} aufgefüllt (bis +${cityReport.highest.toFixed(2)} m)`,
+      ),
+  );
 
   process.stdout.write('  6    Zonenmaske, Normalen, Kodierung … ');
 

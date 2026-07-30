@@ -2,6 +2,7 @@ import { FOG } from '@/config/atmosphere.config';
 import { LIGHTING } from '@/config/lighting.config';
 import { CITY_LOOK } from '@/config/city.config';
 import { GRADING, POSTFX, type GradingParams } from '@/config/postfx.config';
+import { ROAD_WET } from '@/config/roads.config';
 import { VEGETATION_LOOK } from '@/config/vegetation.config';
 import { WATER } from '@/config/water.config';
 
@@ -70,6 +71,18 @@ export interface LookState {
     translucency: number;
     /** Bodenverdeckung am Fuß der Pflanze — siehe GroundAoMaterial. */
     groundAo: number;
+  };
+
+  /**
+   * Straßenbelag — PLAN.md P6 / 6.4.
+   *
+   * Ein einziger Wert, und er trägt den halben Look der Phase: SPEC §3.1 legt
+   * „blaue Stunde **nach Regen**" fest, und die Nässe ist das, was diesen Satz
+   * im Bild einlöst. Er steuert die bedeckte **Fläche**, nicht die Stärke —
+   * Begründung in `ROAD_WET`.
+   */
+  road: {
+    wetness: number;
   };
 
   /**
@@ -147,6 +160,9 @@ export function defaultLook(): LookState {
       translucency: VEGETATION_LOOK.translucency,
       groundAo: VEGETATION_LOOK.groundAo,
     },
+    road: {
+      wetness: ROAD_WET.wetness,
+    },
     city: {
       windowLitFraction: CITY_LOOK.windowLitFraction,
       windowEmissive: CITY_LOOK.windowEmissive,
@@ -195,6 +211,7 @@ export function mergeLook(partial: unknown): LookState {
   section('shade');
   section('water');
   section('vegetation');
+  section('road');
   section('city');
   section('postfx');
   section('grading');

@@ -98,6 +98,29 @@ export const ROAD_MESH = {
   surfaceOffset: 0.06,
 } as const;
 
+/**
+ * Nasser Asphalt — PLAN.md P6 / 6.4, SPEC §3.1 („blaue Stunde nach Regen").
+ *
+ * `wetness` steuert die **Fläche**, nicht die Stärke: 0 ist trocken, 1 steht
+ * fast durchgehend unter Wasser. Der Wert wird mit der Pfützenneigung aus dem
+ * Vertex-Kanal multipliziert, den `RoadMeshBuilder` seit P3 anlegt — bei
+ * `wetness = 0,7` sind die Fahrbahnränder also deutlich nässer als die Mitte,
+ * und genau so trocknet eine Straße auch ab.
+ *
+ * `roughness` ist der Wert **in** der Pfütze. Nicht null: eine mathematisch
+ * perfekte Spiegelfläche gibt es nicht, und bei exakt 0 fällt die
+ * Umgebungsspiegelung in den kleinsten Mip-Level zurück, was die Reflexion
+ * härter aliast als sie darf.
+ */
+export const ROAD_WET = {
+  wetness: 0.62,
+  /** Breite des Übergangs am Pfützenrand, in Einheiten der Rauschamplitude. */
+  edge: 0.13,
+  /** Wie stark das Albedo in der Pfütze abdunkelt. */
+  darken: 0.42,
+  roughness: 0.045,
+} as const;
+
 /** Struktur von assets/generated/roads/roads.json. */
 export interface RoadFile {
   readonly seed: number;
