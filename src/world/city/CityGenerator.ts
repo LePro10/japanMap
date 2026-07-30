@@ -1,4 +1,4 @@
-import { BufferAttribute, BufferGeometry, Color, SRGBColorSpace, Vector3 } from 'three';
+import { BufferAttribute, BufferGeometry, Color, SRGBColorSpace } from 'three';
 
 import { CITY, CITY_DISTRICT, CITY_GROUND_Y, CITY_SLAB_Y } from '@/config/city.config';
 
@@ -69,8 +69,6 @@ export interface SignAnchor {
 
 export interface CityBlockMesh {
   readonly geometry: BufferGeometry;
-  readonly buildings: number;
-  readonly triangles: number;
 }
 
 export interface CityResult {
@@ -589,11 +587,7 @@ export function generateCity(input: CityInput): CityResult {
 
     buildingCount += buildings;
     triangles += mesh.triangles;
-    blockMeshes.push({
-      geometry: mesh.build(`Stadtblock:${blockMeshes.length}`),
-      buildings,
-      triangles: mesh.triangles,
-    });
+    blockMeshes.push({ geometry: mesh.build(`Stadtblock:${blockMeshes.length}`) });
   }
 
   const ground = buildGround(input.sampleTerrain);
@@ -928,9 +922,4 @@ function buildGround(sampleTerrain: (x: number, z: number) => number): {
     clearance,
     clearanceAt,
   };
-}
-
-/** Mittelpunkt eines Blocks — für die Debug-Anzeige und die Schild-Verteilung. */
-export function rectCenter(rect: Rect): Vector3 {
-  return new Vector3((rect.minX + rect.maxX) / 2, CITY_GROUND_Y, (rect.minZ + rect.maxZ) / 2);
 }
