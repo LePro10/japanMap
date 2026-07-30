@@ -1,4 +1,4 @@
-import { Color, PerspectiveCamera, Scene, type WebGLRenderer } from 'three';
+import { Color, PerspectiveCamera, Scene, type Object3D, type WebGLRenderer } from 'three';
 
 import { QUALITY } from '@/config/quality.config';
 import { CAMERA, RENDER } from '@/config/world.config';
@@ -31,6 +31,7 @@ export class Engine {
   #width = 1;
   #height = 1;
   #renderScale = 1;
+  #precompileMs = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = createRenderer(canvas);
@@ -105,6 +106,11 @@ export class Engine {
     return { width: this.#width, height: this.#height };
   }
 
+  /** Dauer der Shader-Vorübersetzung in Millisekunden (0, solange init() läuft). */
+  get precompileMs(): number {
+    return this.#precompileMs;
+  }
+
   setDebugHost(host: DebugHost | null): void {
     this.#debug = host;
   }
@@ -133,6 +139,81 @@ export class Engine {
       await system.init?.(context);
     }
     this.#initialized = true;
+    await this.#precompile();
+  }
+
+  /**
+   * Shader übersetzen, bevor der erste sichtbare Frame läuft — PLAN.md P7 / 7.4.
+   *
+   * ## Warum **nicht** `renderer.compileAsync()`
+   *
+   * Der Plan nennt genau diesen Aufruf, und der erste Entwurf hier stand darauf.
+   * **Nachgemessen erzeugt er die falschen Programme.** Frisch geladene Seite:
+   *
+   * | | Programme | Dauer | erster Frame |
+   * |---|---|---|---|
+   * | ohne Vorübersetzung | 30 nach Frame 1 | — | 181,6 ms |
+   * | `compileAsync` davor | **20** davor, **50** danach | 370,6 ms | 653,1 ms |
+   *
+   * Die 20 sind Varianten, die nie gezeichnet werden; die 30 echten entstehen
+   * anschließend trotzdem. Verglichen hat das ein Diff der Cache-Schlüssel: von
+   * 53 Feldern unterscheidet sich **genau eines**. `compile()` bereitet die
+   * Materialien gegen den Zustand vor, der gerade am Renderer eingestellt ist —
+   * gezeichnet wird aber durch den EffectComposer, also in ein anderes Ziel mit
+   * anderem Farbraum. Ein Feld Unterschied, ein anderer Schlüssel, ein zweites
+   * Programm.
+   *
+   * ## Was stattdessen passiert
+   *
+   * Ein vollständiger Frame durch **denselben** Weg, den der Renderer danach
+   * jeden Frame nimmt. Damit sind die übersetzten Programme per Konstruktion die
+   * richtigen — es gibt keinen Zustand, in dem sie sich unterscheiden könnten.
+   *
+   * Der Plan verlangt in derselben Zeile „vor dem ersten Frame"; das ist hier
+   * erfüllt, nur ist der Frame selbst das Werkzeug. Sichtbar wird er nicht: die
+   * Schleife läuft noch nicht, und ab 7.3 steht der Ladebildschirm davor.
+   *
+   * ## Und warum das Frustum-Culling dafür aus muss
+   *
+   * Ein Frame allein reicht nicht: gezeichnet wird nur, was im Bild steht, und
+   * übersetzt wird ein Programm erst beim ersten Zeichnen. Der Startblick liegt
+   * 1,2 km von der Stadt entfernt, ihre Fassaden fallen also aus dem Frustum —
+   * **und ruckeln dann beim ersten Sichtkontakt.** Gemessen, frisch geladen:
+   * der erste Frame in `stadt-neon` kostete 274,4 ms gegen 168 ms danach, und
+   * die Programmzahl sprang dabei von 28 auf 30. 106 ms Ruckler gegen ein
+   * Budget von 50 (PLAN.md P7, Akzeptanzkriterium).
+   *
+   * Genau das wollte `compile()` lösen — es geht die ganze Szene durch statt nur
+   * das Sichtbare. Dasselbe erreicht dieser Frame, indem er das Culling für die
+   * Dauer eines Bildes abschaltet: dann wird alles gezeichnet, auch was hinter
+   * der Kamera liegt, und jedes Programm entsteht auf dem Weg, den es später
+   * wirklich nimmt.
+   */
+  async #precompile(): Promise<void> {
+    const started = performance.now();
+
+    // Für genau einen Frame: nichts wegwerfen. Wiederhergestellt wird nur, was
+    // vorher an war — es gibt Objekte, die aus gutem Grund ungecullt sind.
+    const culled: Object3D[] = [];
+    this.scene.traverse((object) => {
+      if (object.frustumCulled) {
+        object.frustumCulled = false;
+        culled.push(object);
+      }
+    });
+
+    // Die Uhr zurücksetzen, sonst kommt dieser Frame mit dem dt der gesamten
+    // Ladezeit an und die Simulation macht ihre maximale Zahl an Schritten.
+    this.loop.resetClock();
+    this.loop.tick();
+
+    for (const object of culled) object.frustumCulled = true;
+
+    this.#precompileMs = performance.now() - started;
+    console.info(
+      `Aufwärmframe: ${this.renderer.info.programs?.length ?? 0} Programme ` +
+        `in ${this.#precompileMs.toFixed(1)} ms.`,
+    );
   }
 
   start(): void {
