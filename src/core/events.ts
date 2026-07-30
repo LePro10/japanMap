@@ -31,6 +31,17 @@ export type AppEvents = {
 
   'engine:disposed': void;
 
+  /**
+   * Der Aufwärmframe ist durch, alle Shader stehen (P7 / 7.4).
+   *
+   * Wer eine Einstellung hat, die die Menge der benötigten Programme
+   * **verkleinert**, wendet sie erst hier an — sonst übersetzt der Aufwärmframe
+   * nur einen Teil, und der Rest kommt später als Ruckler. Genau das tut die
+   * Qualitätsstufe: auf „Niedrig" entfällt der Spiegeldurchgang, und mit ihm
+   * fünf Programme.
+   */
+  'engine:warmedup': void;
+
   /** Fortschritt des ResourceManagers — speist ab P7 den Ladebildschirm. */
   'resources:progress': { loaded: number; total: number; url: string };
   'resources:error': { url: string; error: unknown };

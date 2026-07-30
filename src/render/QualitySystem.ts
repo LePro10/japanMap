@@ -1,4 +1,5 @@
 import {
+  BENCHMARK,
   DEFAULT_QUALITY,
   QUALITY,
   QUALITY_LEVELS,
@@ -46,9 +47,16 @@ export class QualitySystem implements System {
   #context: EngineContext | null = null;
   #level: QualityLevel;
 
+  /** Läuft eine Einstufung? `null`, wenn nicht. */
+  #run: BenchmarkRun | null = null;
+  #lastFrame = 0;
+  /** Wahr, solange dieses System selbst eine Stufe sendet. */
+  #internal = false;
+
   readonly #readouts = {
     stufe: '—',
     wirkung: '—',
+    einstufung: '—',
   };
 
   constructor(level: QualityLevel = DEFAULT_QUALITY) {
@@ -63,23 +71,153 @@ export class QualitySystem implements System {
     this.#context = context;
 
     // Zuhören **und** senden: die Stufe kann von überall geändert werden (Panel,
-    // Konsole, ab 7.1b der Startbenchmark). Wer sie ändert, sendet das Ereignis;
-    // dieses System führt nur Buch darüber, was gerade gilt.
+    // Konsole, der Startbenchmark). Wer sie ändert, sendet das Ereignis; dieses
+    // System führt nur Buch darüber, was gerade gilt.
     context.bus.on('quality:changed', ({ level }) => {
       this.#level = level;
+      // Kam die Stufe nicht von hier, hat jemand sie von Hand gewählt — im
+      // Panel, in der Konsole. Das beendet die Einstufung und wird gemerkt.
+      // Sonst nähme die Messung dem Nutzer seine Wahl nach einer Sekunde
+      // wieder weg, und zwar unbemerkt.
+      if (!this.#internal) {
+        this.#run = null;
+        this.#readouts.einstufung = 'von Hand gewählt';
+        storeLevel(level);
+      }
       this.#updateReadouts();
     });
+
+    const gespeichert = readStoredLevel();
+    if (gespeichert) {
+      this.#readouts.einstufung = 'aus einem früheren Start übernommen';
+    } else {
+      this.#run = { rest: BENCHMARK.warmupFrames, samples: [], runde: 1 };
+      this.#readouts.einstufung = 'läuft …';
+    }
+
+    /**
+     * Die gespeicherte Stufe wird **nach** dem Aufwärmframe angewendet.
+     *
+     * Der Aufwärmframe übersetzt die Shader (P7.4), und eine niedrige Stufe
+     * braucht weniger davon: auf „Niedrig" entfällt der Spiegeldurchgang.
+     * Vorher standen nach dem Laden 25 Programme, und wer von Hand hochschaltete,
+     * bekam die fehlenden fünf mitten im Bild. Aufgewärmt wird deshalb auf der
+     * höchsten Stufe und erst danach heruntergeschaltet.
+     *
+     * **Vollständig ist das nicht, und zwar nachgemessen:** danach sind es 27
+     * von 30. Die drei übrigen gehören N8AO, und die lassen sich so nicht
+     * einfangen — Abtastzahl und halbe Auflösung stehen dort als Konstanten im
+     * Shader, jede AO-Stufe baut ihn also neu. Ein Aufwärmen für alle vier
+     * Stufen hieße vier Durchgänge. Der Rest ist stattdessen gemessen und
+     * hingenommen: der Wechselframe kostet 214,8 ms gegen 178 ms im Beharren,
+     * also rund 37 ms — innerhalb des 50-ms-Budgets, und er hängt an einer
+     * bewussten Handlung statt an einer Kameradrehung.
+     */
+    if (gespeichert && gespeichert !== this.#level) {
+      context.bus.on('engine:warmedup', () => {
+        this.#emit(gespeichert);
+      });
+    }
 
     this.#registerDebug(context);
     this.#updateReadouts();
 
-    context.bus.emit('quality:changed', { level: this.#level });
+    this.#emit(this.#level);
   }
 
-  /** Umschalten aus Code — `japanMap.quality('low')`. */
+  /** Umschalten aus Code — `japanMap.quality('low')`. Zählt als Wahl von Hand. */
   set(level: QualityLevel): void {
     if (level === this.#level) return;
     this.#context?.bus.emit('quality:changed', { level });
+  }
+
+  /** Eine Stufe, die aus diesem System kommt — keine Wahl von Hand. */
+  #emit(level: QualityLevel): void {
+    this.#internal = true;
+    try {
+      this.#context?.bus.emit('quality:changed', { level });
+    } finally {
+      this.#internal = false;
+    }
+  }
+
+  /**
+   * Die Ersteinstufung — PLAN.md P7 / 7.1, „automatische Ersteinstufung über
+   * einen kurzen Benchmark beim ersten Start".
+   *
+   * Gemessen wird der Abstand zwischen zwei Frames, weil genau das die Frage
+   * ist: hält die Maschine die Bildrate? Heruntergestuft wird eine Stufe pro
+   * Runde, und nach jeder Änderung wird **neu gemessen** — eine Stufe ändert
+   * Auflösung und Instanzzahl, die alte Messung gilt danach nicht mehr. Das ist
+   * die Regel aus CLAUDE.md, hier als Schleife.
+   *
+   * Hochgestuft wird nie. Eine Regelung in beide Richtungen ist genau das, was
+   * in diesem Projekt zweimal davongelaufen ist und beide Male ersatzlos
+   * entfernt wurde: sie pendelt zwischen zwei Stufen, deren Kosten sich beim
+   * Umschalten gegenseitig bedingen.
+   */
+  update(): void {
+    const run = this.#run;
+    const now = performance.now();
+    const delta = now - this.#lastFrame;
+    this.#lastFrame = now;
+    if (!run) return;
+
+    // Ein verdecktes Fenster bekommt rAF im Sekundentakt. Wer währenddessen
+    // einstuft, misst den Browser und nicht die Maschine.
+    if (document.hidden) {
+      this.#finish('abgebrochen — Fenster war verdeckt');
+      return;
+    }
+
+    if (run.rest > 0) {
+      run.rest--;
+      return;
+    }
+
+    run.samples.push(delta);
+    if (run.samples.length < BENCHMARK.sampleFrames) return;
+
+    const sorted = [...run.samples].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+    const runde = run.runde;
+
+    if (median > BENCHMARK.implausibleMs) {
+      this.#finish(`abgebrochen — ${median.toFixed(0)} ms je Frame ist keine Messung`);
+      return;
+    }
+
+    const index = QUALITY_LEVELS.indexOf(this.#level);
+    const next = QUALITY_LEVELS[index + 1];
+    if (median <= BENCHMARK.stepDownMs || !next) {
+      const grund = median <= BENCHMARK.stepDownMs ? 'reicht' : 'niedrigste Stufe';
+      this.#finish(`${QUALITY[this.#level].label} nach ${runde} Runde(n) · ` +
+        `${median.toFixed(1)} ms je Frame — ${grund}`);
+      storeLevel(this.#level);
+      return;
+    }
+
+    console.info(
+      `Einstufung: ${QUALITY[this.#level].label} liefert ${median.toFixed(1)} ms je Frame ` +
+        `(> ${BENCHMARK.stepDownMs}) — eine Stufe herunter auf ${QUALITY[next].label}.`,
+    );
+    this.#run = { rest: BENCHMARK.warmupFrames, samples: [], runde: runde + 1 };
+    this.#emit(next);
+  }
+
+  /** Erneut einstufen — verwirft die gespeicherte Wahl. */
+  reclassify(): void {
+    clearStoredLevel();
+    this.#run = { rest: BENCHMARK.warmupFrames, samples: [], runde: 1 };
+    this.#readouts.einstufung = 'läuft …';
+    this.#emit(DEFAULT_QUALITY);
+    this.#updateReadouts();
+  }
+
+  #finish(text: string): void {
+    this.#run = null;
+    this.#readouts.einstufung = text;
+    this.#updateReadouts();
   }
 
   #updateReadouts(): void {
@@ -103,6 +241,16 @@ export class QualitySystem implements System {
       multiline: true,
       rows: 3,
     });
+    folder.addBinding(this.#readouts, 'einstufung', {
+      readonly: true,
+      label: 'Einstufung',
+      multiline: true,
+      rows: 2,
+    });
+
+    folder.addButton({ title: 'Neu einstufen' }).on('click', () => {
+      this.reclassify();
+    });
 
     // Der Reihe nach durchschalten: für ein Vorher/Nachher braucht man alle vier
     // Stufen am selben Blickpunkt, und dafür ist ein Knopf schneller als ein
@@ -115,6 +263,56 @@ export class QualitySystem implements System {
   }
 
   dispose(): void {
+    this.#run = null;
     this.#context = null;
+  }
+}
+
+interface BenchmarkRun {
+  /** Noch zu verwerfende Aufwärmframes. */
+  rest: number;
+  samples: number[];
+  runde: number;
+}
+
+/**
+ * Gespeicherte Einstufung.
+ *
+ * `localStorage` kann werfen — im privaten Modus mancher Browser und in einem
+ * Iframe ohne Berechtigung schon beim Lesen. Ein Renderer, der daran scheitert,
+ * wäre eine schlechte Bilanz für eine Bequemlichkeitsfunktion; deshalb ist jeder
+ * Zugriff eingepackt und der Fehlerfall schlicht „nichts gespeichert".
+ */
+function readStoredLevel(): QualityLevel | null {
+  try {
+    const raw = localStorage.getItem(BENCHMARK.storageKey);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    const { level, version } = parsed as { level?: unknown; version?: unknown };
+    if (version !== BENCHMARK.storageVersion) return null;
+    return QUALITY_LEVELS.find((candidate) => candidate === level) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function storeLevel(level: QualityLevel): void {
+  try {
+    localStorage.setItem(
+      BENCHMARK.storageKey,
+      JSON.stringify({ level, version: BENCHMARK.storageVersion }),
+    );
+  } catch {
+    // Ohne Speicher wird beim nächsten Start neu eingestuft. Das ist der
+    // Rückfall, nicht ein Fehler.
+  }
+}
+
+function clearStoredLevel(): void {
+  try {
+    localStorage.removeItem(BENCHMARK.storageKey);
+  } catch {
+    // siehe storeLevel
   }
 }
