@@ -98,6 +98,10 @@ export interface LookState {
     windowLitFraction: number;
     /** Leuchtstärke eines brennenden Fensters. */
     windowEmissive: number;
+    /** Leuchtstärke der Neonschilder. */
+    neonEmissive: number;
+    /** Faktor auf die zehn echten Punktlichter, 0 schaltet sie aus. */
+    neonLights: number;
   };
 
   postfx: {
@@ -166,6 +170,8 @@ export function defaultLook(): LookState {
     city: {
       windowLitFraction: CITY_LOOK.windowLitFraction,
       windowEmissive: CITY_LOOK.windowEmissive,
+      neonEmissive: CITY_LOOK.neonEmissive,
+      neonLights: CITY_LOOK.neonLights,
     },
     postfx: {
       bloomEnabled: POSTFX.bloom.enabled,

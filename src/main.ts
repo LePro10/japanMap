@@ -9,6 +9,7 @@ import { LightingRig } from './render/LightingRig';
 import { LookController } from './render/looks/LookController';
 import { PostFXPipeline } from './render/PostFXPipeline';
 import { CitySystem } from './world/city/CitySystem';
+import { NeonSystem } from './world/city/NeonSystem';
 import { TerrainDataError } from './world/TerrainSampler';
 import { RoadSystem } from './world/RoadSystem';
 import { PropSystem } from './world/props/PropSystem';
@@ -197,6 +198,8 @@ engine.add(new RicePaddy(atmosphere.uniforms));
 // Distriktrand und das Straßennetz, damit die Blöcke der Stadtstraße
 // ausweichen. Beides kommt als Ereignis aus Systemen, die danach kommen.
 engine.add(new CitySystem(atmosphere.uniforms));
+// Nach der Stadt: das Neon hört auf `city:ready` und hat vorher nichts zu tun.
+engine.add(new NeonSystem(atmosphere.uniforms));
 engine.add(new TerrainSystem(atmosphere.uniforms));
 engine.add(new RoadSystem(atmosphere.uniforms));
 engine.add(

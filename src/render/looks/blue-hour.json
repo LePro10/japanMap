@@ -40,7 +40,9 @@
   },
   "city": {
     "windowLitFraction": 0.45,
-    "windowEmissive": 1.8
+    "windowEmissive": 1.8,
+    "neonEmissive": 5.5,
+    "neonLights": 1
   },
   "postfx": {
     "bloomEnabled": true,
