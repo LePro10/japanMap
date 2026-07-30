@@ -302,6 +302,14 @@ Kurzliste, damit es nicht wieder passiert:
   glattes Glas, kaputte Ableitungen); alle drei wurden gemessen und verworfen.
   Gefunden hat es erst eine **Diagnose-Ausgabe**, die den nackten Hash zeigt —
   sie steht seitdem im Debug-Panel.
+- **Eine Ursache benannt, ohne sie zu trennen.** „Die Stadt steht als heller
+  Fleck in der Landschaft" — begründet mit dem Anstrich, und die Palette wurde
+  abgedunkelt. Nachgemessen war die Begründung falsch: **ohne Fenster- und
+  Neonlicht ist die Stadt dunkler als ihre Umgebung** (Verhältnis 0,83 gegen
+  1,43 im Betrieb). Die Helligkeit kam vollständig aus dem Eigenlicht. Wer bei
+  einem Look-Problem am erstbesten plausiblen Regler dreht, verschiebt
+  irgendwann alles ein Stück und hat nichts gelernt. **Erst den Anteil
+  ausschalten, dann messen, dann drehen.**
 - **Am Ergebnis eingehängt statt an der Eingabe.** Die planare Spiegelung
   überschrieb zuerst `reflectedLight.indirectSpecular` — also den bereits mit
   der Fresnel-Gewichtung multiplizierten Wert — mit der **rohen**

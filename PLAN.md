@@ -2162,6 +2162,28 @@ verdoppelt Draw-Calls und Dreiecke, solange die Stadt im Bild ist. Außerhalb vo
 1400 m um den Distrikt entfällt er ganz. Für die Qualitätsstufen aus P7.1 ist er
 der erste Kandidat zum Abschalten.
 
+### Ein Befund aus dem Polish-Durchgang
+
+Nach 6.2 stand im Commit die Bemerkung, die Stadt sei „bei blauer Stunde noch zu
+hell und zu einheitlich" — aus 1,2 km ein heller Fleck in dunkler Landschaft.
+**Nachgemessen ist die Prämisse falsch.** Maske am Blickpunkt `stadt-fern`,
+mittlere Helligkeit der Stadtpixel gegen einen 60-px-Rahmen ringsum:
+
+| Zustand | Stadt | Umgebung | Verhältnis |
+|---|---|---|---|
+| wie gebaut | 141,8 | 99,3 | **1,43** |
+| ohne Fenster- und Neonlicht | 63,2 | 76,4 | **0,83** |
+
+Ohne ihr Eigenlicht ist die Stadt **dunkler als die Landschaft**. Der Fleck
+besteht also aus brennenden Fenstern — aus genau dem, was SPEC §3.1 als
+„dominante urbane Lichtquelle" fordert, und nicht aus zu hellem Beton. Der Hebel
+wäre `windowEmissive`, und der ist gegen den Bloom-Halo bereits eingemessen
+(Tabelle in `city.config.ts`).
+
+Damit ist der Punkt geschlossen, ohne dass etwas geändert wurde. Er steht hier,
+weil eine widerlegte Annahme mehr wert ist als eine glatte Doku — dieselbe Regel
+wie bei den Serpentinen des Bergpasses in P3.
+
 ### Abweichungen vom Plan, mit Begründung
 
 - **6.1: kein Straßenraster aus Splines.** Eine Kreuzung mitten in zwei Strecken
