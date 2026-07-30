@@ -341,6 +341,14 @@ export class RoadSystem implements System {
     }
     this.#material?.dispose();
     this.#material = null;
+    // **Beide gehören hierher.** Die Decal-Geometrie räumt die Traversierung
+    // oben mit weg — ein `InstancedMesh` ist ein `Mesh` —, aber Material und
+    // Atlas hängen an keinem Objekt in der Szene und wären sonst genau das,
+    // wonach die P0-Abnahme sucht: eine Textur, die den `dispose()` überlebt.
+    this.#decalMaterial?.dispose();
+    this.#decalMaterial = null;
+    this.#decalAtlas?.dispose();
+    this.#decalAtlas = null;
     this.#network = null;
     this.#context = null;
   }
