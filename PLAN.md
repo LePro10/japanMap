@@ -2077,10 +2077,18 @@ Weg und in Rennspielen weit verbreitet.
       Blickpunkt `stadt-neon`: Spiegelung an gegen aus ändert **9981 Pixel
       (1,08 % des Bildes)** bei mittlerer Differenz **123,4**. Das Neon allein
       (direkt + gespiegelt) trägt 49 430 Pixel (5,36 %).
-- [x] **Stadt bleibt in Budget.** Eigene Draw-Calls: 25 Blöcke + Bürgersteige +
-      Bodenplatte = **27**, dazu 1 für alle 297 Neonschilder und 1 für alle
-      3339 Straßendecals. **29 von 300.** Am ganzen Bild gemessen (Budget
-      800 / 3 000 000):
+- [x] **Stadt bleibt in Budget.** 25 Blöcke + Bürgersteige + Bodenplatte = 27,
+      dazu 1 Aufruf für alle 297 Neonschilder: **28 von 300.** Die 3339
+      Straßendecals zählen nicht dazu — sie liegen auf dem ganzen Netz, nicht in
+      der Stadt (ihr eines Instanz-Mesh steht im Gesamtbudget).
+
+      Die Zahl steht seit dem Polish-Durchgang **im Overlay und im BudgetGuard**,
+      nicht mehr in einer einmaligen Handzählung: `davon Stadt 28 / 300` neben
+      `Draw-Calls 164 / 800`. Gezählt wird ohne Frustum-Culling, also für den
+      Fall, dass der ganze Distrikt im Bild steht — ein Budget soll die Bauweise
+      prüfen, nicht die Blickrichtung.
+
+      Am ganzen Bild gemessen (Budget 800 / 3 000 000):
 
       | Blickpunkt | Draw-Calls | Dreiecke |
       |---|---|---|
@@ -2198,8 +2206,9 @@ wie bei den Serpentinen des Bergpasses in P3.
 
 ### Risiken
 - ~~**SSR**~~ — entschieden, siehe oben. Der Rückfallweg ist der gewählte Weg.
-- ~~**Stadt sprengt das Draw-Call-Budget.**~~ 29 eigene Draw-Calls von 300.
-  Die Zusammenfassung je Block hat gehalten.
+- ~~**Stadt sprengt das Draw-Call-Budget.**~~ 28 eigene Draw-Calls von 300.
+  Die Zusammenfassung je Block hat gehalten — und die Zahl wird jetzt bewacht,
+  nicht einmalig abgezählt.
 - **Neu: der Spiegeldurchgang verdoppelt die Szene.** Auf schwacher Hardware ist
   er der erste Schalter, den P7.1 umlegen muss.
 

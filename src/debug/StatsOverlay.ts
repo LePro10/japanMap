@@ -7,6 +7,7 @@ import {
   formatLimit,
   formatMegabytes,
   formatMillis,
+  tallyCityCalls,
   type BudgetStatus,
 } from './budgets';
 import type { FrameTimer } from './FrameTimer';
@@ -47,6 +48,10 @@ const GROUPS: readonly MetricGroup[] = [
     metrics: [
       { id: 'calls', label: 'Draw-Calls', budget: BUDGETS.drawCalls, unitSuffix: '' },
       { id: 'triangles', label: 'Dreiecke', budget: BUDGETS.triangles, unitSuffix: '' },
+      // Das Teilbudget aus PLAN.md P6. Es steht neben der Gesamtzahl und nicht
+      // in einer eigenen Gruppe, weil man beide zusammen liest: 158 von 800
+      // sagt wenig, wenn nicht danebensteht, wie viel davon die Stadt ist.
+      { id: 'cityCalls', label: 'davon Stadt', budget: BUDGETS.cityDrawCalls, unitSuffix: '' },
     ],
   },
   {
@@ -203,6 +208,16 @@ export class StatsOverlay {
       'triangles',
       formatCount(info.render.triangles),
       evaluateBudget(info.render.triangles, BUDGETS.triangles),
+    );
+
+    // Dieselbe Zählung wie im BudgetGuard, aus derselben Funktion — zwei
+    // Zählungen wären zwei Wahrheiten, und die Ampel im Overlay muss dieselbe
+    // Schwelle meinen wie das Banner darüber.
+    const cityCalls = tallyCityCalls(this.#scene);
+    this.#set(
+      'cityCalls',
+      formatCount(cityCalls),
+      evaluateBudget(cityCalls, BUDGETS.cityDrawCalls),
     );
 
     this.#set(
