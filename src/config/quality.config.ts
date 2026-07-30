@@ -161,10 +161,64 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
 export const QUALITY_LEVELS: readonly QualityLevel[] = ['ultra', 'high', 'medium', 'low'];
 
 /**
- * Startstufe. P7 ersetzt das durch eine Einstufung per Kurz-Benchmark; bis
- * dahin wird auf der Zielhardware von Hand umgeschaltet.
+ * Stufe, mit der die Einstufung beginnt — und die gilt, wenn sie nicht
+ * stattfindet (gespeicherte Wahl, verdecktes Fenster, abgeschaltet).
+ *
+ * Bewusst die höchste: heruntergestuft wird gemessen, hochgestuft nie. Andersrum
+ * bekäme jede starke Maschine dauerhaft das schlechtere Bild, weil niemand
+ * merkt, dass mehr ginge.
  */
 export const DEFAULT_QUALITY: QualityLevel = 'ultra';
+
+/**
+ * Ersteinstufung beim ersten Start — PLAN.md P7 / 7.1.
+ *
+ * Gemessen wird der **Abstand zwischen zwei rAF-Frames**, nicht die Rechenzeit
+ * eines Frames. Das ist Absicht und der Unterschied ist wesentlich: die
+ * Einstufung soll beantworten, ob die Maschine die Bildrate *hält* — und dazu
+ * gehören Vsync, der Verbund mit dem Compositor und alles, was der Browser
+ * zwischen zwei Bildern sonst noch tut. `frameTiming.ts` misst die andere
+ * Frage (was kostet ein Zustand gegen einen anderen) und taugt dafür nicht:
+ * es rendert ohne Vsync, so schnell es geht.
+ *
+ * Heruntergestuft wird höchstens dreimal — von Ultra nach Niedrig ist Schluss.
+ */
+export const BENCHMARK = {
+  /**
+   * Frames, die vor der Messung verworfen werden.
+   *
+   * Der Start ist der ungünstigste denkbare Messzeitpunkt: der Chunk-Cache der
+   * Streuung ist leer und füllt sich mit einem Zeitbudget je Frame, die
+   * Texturen wandern noch auf die GPU. In P4 hat genau diese Verwechslung
+   * 0,70 ms statt 12,7 ms gemeldet.
+   */
+  warmupFrames: 30,
+  /** Frames je Runde. Bei 60 Hz ist das eine Sekunde. */
+  sampleFrames: 60,
+  /**
+   * Ab diesem Median wird eine Stufe heruntergegangen.
+   *
+   * 20 ms und nicht 16,6: bei Vsync gibt es keine Zwischenwerte. Wer 60 Hz
+   * hält, misst 16,7 ms; wer sie verfehlt, springt auf 33,3 ms. Die Schwelle
+   * liegt dazwischen und ist damit gegen die übliche Streuung robust.
+   */
+  stepDownMs: 20,
+  /**
+   * Darüber gilt die Messung als **unbrauchbar**, nicht als schlecht.
+   *
+   * Ein verdecktes Fenster bekommt rAF im Sekundentakt. Ohne diese Grenze
+   * stufte ein kurz weggeklickter Tab die Maschine dauerhaft auf „Niedrig" —
+   * und speicherte das Ergebnis auch noch.
+   */
+  implausibleMs: 400,
+  /** Schlüssel im localStorage. */
+  storageKey: 'japanMap.quality',
+  /**
+   * Erhöhen, wenn sich die Bedeutung der Stufen ändert. Eine gespeicherte
+   * Einstufung aus einer anderen Tabelle ist keine Einstufung.
+   */
+  storageVersion: 1,
+} as const;
 
 /**
  * Ein Budget hat zwei Schwellen: `warn` färbt gelb (noch tragbar, aber der
