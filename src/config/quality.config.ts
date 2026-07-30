@@ -13,14 +13,49 @@ export type AoQuality = 'high' | 'medium' | 'low' | 'off';
 
 export interface QualitySettings {
   readonly label: string;
-  /** Anzahl Schattenkaskaden (CSM, ab P2). */
-  readonly shadowCascades: number;
-  /** Kantenlänge einer Kaskaden-Shadowmap. */
+  /**
+   * Kantenlänge der Shadow-Map.
+   *
+   * **Wirkt nur im Vergleichsfall.** Echtzeit-Schatten sind seit P2 aus
+   * (`LIGHTING.castShadow`), weil die Geländeverschattung gebacken ist; der
+   * Schalter im Debug-Panel stellt die P1-Variante wieder her, und *dann*
+   * entscheidet diese Zahl über Auflösung und Kosten. Solange er aus steht,
+   * kostet die Stufe hier nichts — was in der Messtabelle unten auch so
+   * dasteht, statt als Erfolg der Stufe verbucht zu werden.
+   */
   readonly shadowMapSize: number;
-  /** Screen-Space-Reflexionen (ab P6). */
-  readonly ssr: boolean;
+  /**
+   * Lokale Spiegelung auf nassem Asphalt (P6.5).
+   *
+   * Hieß im Plan `ssr`. P6 hat gemessen, dass Screen-Space-Reflexionen für
+   * diese Blickgeometrie strukturell nicht taugen (19,3 % der Neonspiegelungen
+   * stehen überhaupt im Bild) und stattdessen einen planaren Durchgang gebaut.
+   * Der Schalter ist geblieben, sein Inhalt nicht: er schaltet jetzt den
+   * planaren Durchgang, und der ist genau der Kandidat, den PLAN.md P6 dafür
+   * benannt hat — er zeichnet die Szene ein zweites Mal, solange die Stadt im
+   * Bild steht.
+   */
+  readonly reflections: boolean;
   readonly ao: AoQuality;
-  /** Sichtweite in Metern — begrenzt Chunk-Auswahl und Vegetation (ab P4). */
+  /**
+   * Sichtweite der **Streuung** in Metern (ab P4).
+   *
+   * PLAN.md schreibt „begrenzt Chunk-Auswahl und Vegetation". Die Chunk-Auswahl
+   * steht bewusst nicht dran, und dafür gibt es zwei gemessene Gründe:
+   *
+   *  - **Gelände:** ein Schnitt bei 600 m nähme der Karte ihre Berge. Und den
+   *    LOD-Baum stattdessen gröber zu stellen — alle `LOD.ranges` mit einem
+   *    Faktor k < 1 — verletzt die Rissfreiheit: der Aufteilungsfaktor wirkt
+   *    dabei wie f' = k·f, und die Herleitung in `lod.config.ts` verlangt
+   *    `morphStart ≥ 0,5 + √2/f'`. Bei k = 0,7 wären das 0,837 gegen die
+   *    eingestellten 0,78. Genau diesen Fall hat P4 gemessen: 207 Löcher gegen
+   *    1. Der Regler ist also nicht „etwas gröber", sondern „kaputt".
+   *  - **Landmarks:** die Props tragen ihre Cull-Distanz je Modell, und ein
+   *    Torii, das bei 600 m verschwindet, ist keine Landmarke mehr.
+   *
+   * Übrig bleibt die Vegetation — und die ist auch der Posten, an dem es hängt:
+   * sie stellt den Großteil der Instanzen und den ganzen Füllaufwand.
+   */
   readonly viewDistance: number;
   /** Anteil der gestreuten Vegetations-Instanzen, 0..1 (ab P4). */
   readonly vegetationDensity: number;
@@ -28,12 +63,67 @@ export interface QualitySettings {
   readonly renderScale: number;
 }
 
+/**
+ * Was eine AO-Stufe für N8AO bedeutet.
+ *
+ * Die Grundwerte stehen in `postfx.config.ts` und sind dort eingemessen; hier
+ * steht nur, was die Stufe daran ändert. `halfRes` ist der große Hebel (rund
+ * ein Drittel der AO-Kosten), die Abtastzahl der kleinere.
+ */
+export interface AoSettings {
+  readonly enabled: boolean;
+  readonly aoSamples: number;
+  readonly denoiseSamples: number;
+  readonly halfRes: boolean;
+}
+
+export const AO_QUALITY: Readonly<Record<AoQuality, AoSettings>> = {
+  high: { enabled: true, aoSamples: 16, denoiseSamples: 8, halfRes: false },
+  medium: { enabled: true, aoSamples: 16, denoiseSamples: 8, halfRes: true },
+  low: { enabled: true, aoSamples: 8, denoiseSamples: 4, halfRes: true },
+  off: { enabled: false, aoSamples: 8, denoiseSamples: 4, halfRes: true },
+};
+
+/**
+ * Die vier Stufen — und was sie **gemessen** bewirken.
+ *
+ * Blickpunkt `stadt-neon`, 1280×720 CSS-Pixel, Streuung je Stufe bis zur
+ * Stabilität vorgefüllt (sonst misst man den Füllvorgang, siehe
+ * `frameTiming.ts`), danach 12 Frames, Median:
+ *
+ * | Stufe | Zeichenpuffer | Draw-Calls | Dreiecke | Instanzen | Frame |
+ * |---|---|---|---|---|---|
+ * | Ultra   | 1280×720 | 100 | 611 974 | 1622 | 169,4 ms |
+ * | Hoch    | 1280×720 | 101 | 610 151 | 1166 | 164,9 ms |
+ * | Mittel  | 1088×612 |  69 | 329 823 |  735 | 104,3 ms |
+ * | Niedrig |  896×503 |  62 | 329 118 |  386 |  63,2 ms |
+ *
+ * Zu lesen ist das so:
+ *
+ *  - **Die Instanzzahlen treffen die Vorgabe.** 1622 / 1166 / 735 / 386 sind
+ *    1,00 / 0,719 / 0,453 / 0,238 — gegen die eingestellten 1 / 0,7 / 0,45 /
+ *    0,25. Der Dichteregler wirkt also tatsächlich und nicht nur im Kommentar.
+ *  - **Der Sprung von Hoch auf Mittel halbiert die Dreiecke**, ohne dass an der
+ *    Szene etwas fehlt: dort fällt der planare Spiegeldurchgang weg, und der
+ *    zeichnet sie ein zweites Mal. Genau der Kandidat, den PLAN.md P6 dafür
+ *    benannt hat.
+ *  - **Ultra gegen Hoch ist auf dieser Maschine nicht messbar.** Der Unterschied
+ *    ist eine AO-Berechnung in voller statt halber Auflösung; 4,5 ms sind 2,7 %
+ *    und liegen unter dem Rauschen. Vier Wiederholungen **desselben** Zustands
+ *    ergaben 107,9 / 129,7 / 117,7 / 112,5 ms — rund ±10 %. Was darunter liegt,
+ *    wird hier nicht behauptet.
+ *  - **Die Shadow-Map steht in keiner Spalte.** Echtzeit-Schatten sind aus, also
+ *    kostet ihre Auflösung nichts. Das ist kein Verdienst der Stufe.
+ *
+ * Die absoluten Zeiten gehören dem Software-Rasterisierer dieser Maschine
+ * (ANGLE / Microsoft Basic Render Driver) und sagen nichts über eine GTX 1660.
+ * Belastbar sind die **Verhältnisse** und die exakten Zähler daneben.
+ */
 export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
   ultra: {
     label: 'Ultra',
-    shadowCascades: 4,
     shadowMapSize: 2048,
-    ssr: true,
+    reflections: true,
     ao: 'high',
     viewDistance: 2000,
     vegetationDensity: 1,
@@ -41,9 +131,8 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
   },
   high: {
     label: 'Hoch',
-    shadowCascades: 4,
     shadowMapSize: 1024,
-    ssr: true,
+    reflections: true,
     ao: 'medium',
     viewDistance: 1500,
     vegetationDensity: 0.7,
@@ -51,9 +140,8 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
   },
   medium: {
     label: 'Mittel',
-    shadowCascades: 3,
     shadowMapSize: 1024,
-    ssr: false,
+    reflections: false,
     ao: 'low',
     viewDistance: 1000,
     vegetationDensity: 0.45,
@@ -61,9 +149,8 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
   },
   low: {
     label: 'Niedrig',
-    shadowCascades: 2,
     shadowMapSize: 1024,
-    ssr: false,
+    reflections: false,
     ao: 'off',
     viewDistance: 600,
     vegetationDensity: 0.25,

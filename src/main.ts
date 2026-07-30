@@ -8,8 +8,10 @@ import { WebGLUnsupportedError } from './core/createRenderer';
 import { AtmosphereSystem } from './render/atmosphere/AtmosphereSystem';
 import { LightingRig } from './render/LightingRig';
 import { LookController } from './render/looks/LookController';
+import { measureFrameTime } from './render/frameTiming';
 import { PlanarReflection } from './render/PlanarReflection';
 import { PostFXPipeline } from './render/PostFXPipeline';
+import { QualitySystem } from './render/QualitySystem';
 import { CitySystem } from './world/city/CitySystem';
 import { NeonSystem } from './world/city/NeonSystem';
 import { TerrainDataError } from './world/TerrainSampler';
@@ -83,10 +85,36 @@ if (import.meta.env.DEV) {
  * wurde. Rendern und Auslesen im selben Aufruf umgeht beides und ist damit die
  * einzige Prüfung, die unabhängig von der Bildrate eine Aussage macht.
  */
-function installFrameProbe(target: Engine, camera: FreeFlyController): void {
+function installFrameProbe(
+  target: Engine,
+  camera: FreeFlyController,
+  qualitySystem: QualitySystem,
+): void {
   window.japanMap = {
     ...window.japanMap,
     engine: target,
+
+    /**
+     * Qualitätsstufe setzen oder abfragen — `japanMap.quality('low')`.
+     *
+     * Zusammen mit `view()` und `bench()` ist das die Messkette für P7.1: an
+     * einen benannten Standpunkt fliegen, Stufe setzen, Frame-Zeit messen.
+     * Ohne den festen Standpunkt misst ein Vorher/Nachher die Kamera.
+     */
+    quality: (level) => {
+      if (level) qualitySystem.set(level);
+      return qualitySystem.level;
+    },
+
+    /** Frame-Zeit ohne Vsync und ohne rAF-Drosselung — siehe frameTiming.ts. */
+    bench: (frames) =>
+      measureFrameTime({
+        tick: () => {
+          target.loop.tick();
+        },
+        gl: target.renderer.getContext() as WebGL2RenderingContext,
+        ...(frames === undefined ? {} : { frames }),
+      }),
 
     /**
      * Benannten Blickpunkt anfliegen — `japanMap.view('stadt')`.
@@ -233,6 +261,13 @@ engine.add(
 // Zuletzt: `look:apply` beim Start erreicht nur Systeme, die bereits angemeldet
 // sind. Ein Preset, das die Hälfte der Werte setzt, wäre schlimmer als keins.
 engine.add(new LookController());
+// Und danach die Qualitätsstufe, aus demselben Grund und noch eine Stufe
+// strenger: sie sendet ihre Stufe beim Start genau einmal, und wer sie hört,
+// muss vorher registriert sein. Nach dem Look, weil beide auf die
+// Umgebungsverdeckung zeigen — dass die Reihenfolge trotzdem egal ist, stellt
+// die UND-Verknüpfung in der PostFX-Kette sicher, nicht diese Zeile.
+const quality = new QualitySystem();
+engine.add(quality);
 
 // Erste Größe setzen, bevor der ResizeObserver das erste Mal feuert — sonst
 // rendert der erste Frame mit 1×1 Pixeln.
@@ -254,7 +289,7 @@ try {
 }
 engine.start();
 
-if (import.meta.env.DEV) installFrameProbe(engine, controller);
+if (import.meta.env.DEV) installFrameProbe(engine, controller, quality);
 
 // Vite führt dieses Modul bei einem Hot-Update erneut aus, ohne die Seite neu
 // zu laden. Ohne diesen Haken entsteht dabei eine **zweite** Engine im selben

@@ -1,5 +1,6 @@
 import { Color, PerspectiveCamera, Scene, type WebGLRenderer } from 'three';
 
+import { QUALITY } from '@/config/quality.config';
 import { CAMERA, RENDER } from '@/config/world.config';
 import type { DebugHost } from '@/debug/DebugHost';
 import { createRenderer, observeCanvasSize, observeContextLoss } from './createRenderer';
@@ -29,6 +30,7 @@ export class Engine {
   #disposed = false;
   #width = 1;
   #height = 1;
+  #renderScale = 1;
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = createRenderer(canvas);
@@ -53,6 +55,16 @@ export class Engine {
       fixedUpdate: this.#fixedUpdate,
       update: this.#update,
       render: this.#render,
+    });
+
+    // Der Auflösungsfaktor der Qualitätsstufe gehört hierher und nicht in ein
+    // System: die Puffergröße ist Sache dessen, der `setSize` besitzt, und ein
+    // System, das den Pixelfaktor umstellt, käme an den `resize`-Aufruf der
+    // anderen nicht heran. Auf `quality:changed` zu hören ist der schmalste Weg
+    // dorthin — die Engine kennt dadurch die Qualitätstabelle, aber kein System.
+    this.bus.on('quality:changed', ({ level }) => {
+      this.#renderScale = QUALITY[level].renderScale;
+      this.#applyPixelRatio();
     });
 
     this.#teardown.push(
@@ -142,12 +154,36 @@ export class Engine {
     // false: die CSS-Größe steuert das Layout, three darf sie nicht überschreiben.
     this.renderer.setSize(width, height, false);
 
-    for (const system of this.#systems) system.resize?.(width, height);
+    this.#propagateSize();
+  }
 
+  /**
+   * Der Pixelfaktor, mit dem gerendert wird: Anzeige mal Auflösungsfaktor der
+   * Qualitätsstufe. Die Anzeige-Seite ist gedeckelt (`RENDER.maxPixelRatio`),
+   * weil ein 4K-Bildschirm sonst die vierfache Fläche verlangt, ohne dass man
+   * es sieht.
+   */
+  #pixelRatio(): number {
+    return Math.min(window.devicePixelRatio, RENDER.maxPixelRatio) * this.#renderScale;
+  }
+
+  #applyPixelRatio(): void {
+    const ratio = this.#pixelRatio();
+    if (Math.abs(this.renderer.getPixelRatio() - ratio) < 1e-4) return;
+    this.renderer.setPixelRatio(ratio);
+    // Die CSS-Größe bleibt, der Zeichenpuffer ändert sich. `setSize` erneut
+    // aufzurufen ist der einzige Weg, three das mitzuteilen — der Pixelfaktor
+    // allein löst keine Neuberechnung aus.
+    this.renderer.setSize(this.#width, this.#height, false);
+    this.#propagateSize();
+  }
+
+  #propagateSize(): void {
+    for (const system of this.#systems) system.resize?.(this.#width, this.#height);
     this.bus.emit('engine:resize', {
-      width,
-      height,
-      pixelRatio: Math.min(window.devicePixelRatio, RENDER.maxPixelRatio),
+      width: this.#width,
+      height: this.#height,
+      pixelRatio: this.#pixelRatio(),
     });
   }
 

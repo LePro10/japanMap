@@ -1,7 +1,9 @@
 /// <reference types="vite/client" />
 /// <reference types="vite-plugin-glsl/ext" />
 
+import type { QualityLevel } from './config/quality.config';
 import type { Engine } from './core/Engine';
+import type { FrameTiming } from './render/frameTiming';
 
 declare global {
   interface Window {
@@ -40,6 +42,15 @@ declare global {
               lookAt: readonly [number, number, number];
             },
       ) => string;
+      /**
+       * Qualitätsstufe setzen oder abfragen (P7 / 7.1).
+       */
+      quality?: (level?: QualityLevel) => QualityLevel;
+      /**
+       * Frame-Zeit messen, unabhängig von der Bildwiederholrate — siehe
+       * `src/render/frameTiming.ts`.
+       */
+      bench?: (frames?: number) => FrameTiming;
       /**
        * Misst, welcher Anteil der Spiegelbilder im Bildschirmraum steht —
        * die Grundlage der Reflexions-Entscheidung aus P6 / 6.5.
