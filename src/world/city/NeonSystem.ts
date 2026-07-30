@@ -81,7 +81,10 @@ export class NeonSystem implements System {
 
     const atlas = buildNeonAtlas();
     this.#atlas = atlas;
-    context.resources.track?.(atlas.texture);
+    // Angemeldet, damit der Atlas im Texturspeicher-Budget des Overlays
+    // auftaucht: er entsteht zur Laufzeit auf einem Canvas und liefe sonst an
+    // der Zählung vorbei, die über die Szene läuft.
+    context.resources.track(atlas.texture);
 
     const material = new NeonMaterial(atlas.texture, this.atmosphere, uniforms);
     material.userData.cityUniforms = uniforms;
