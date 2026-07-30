@@ -88,6 +88,13 @@ Dazu, je nach Änderung:
   Seit P4 schlägt zusätzlich der `BudgetGuard` an: ein Banner über dem Overlay
   plus ein Konsolen-Eintrag mit der Aufschlüsselung nach System.
 
+- **Zum Blickpunkt fliegen, bevor gemessen wird.** `japanMap.view('stadt-neon')`
+  setzt die Kamera auf einen benannten Standpunkt; die Tabelle steht in
+  `src/debug/viewpoints.ts`, und `view({position, lookAt})` nimmt auch freie
+  Werte für die Suche. Ein Bild oder eine Draw-Call-Zahl gilt **an einem Ort**,
+  nicht auf der Karte — ohne reproduzierbaren Standpunkt misst ein
+  Vorher/Nachher die Kamera statt die Änderung.
+
 - **Ein Bild aus dem laufenden Renderer holen:** `window.japanMap.shot('name')`
   in der Browser-Konsole rendert einen Frame, liest ihn mit `readPixels` aus und
   legt ihn als PNG in `.cache/shots/`. Der Weg über ein Bildschirmfoto
@@ -109,6 +116,8 @@ Dazu, je nach Änderung:
 | `npm run models` | Fremdmodelle aus `assets/source/models` durch die Pipeline (P5.1) |
 | `node tools/gen-props.mjs` | Landmarks neu platzieren → `assets/props.json` |
 | `npm run dev` | Dev-Server. Debug-Overlay mit `F1` |
+| `japanMap.view('name')` | Kamera auf einen benannten Blickpunkt (P6) |
+| `japanMap.reflectionProbe()` | Wie viel einer Spiegelung stünde im Bildschirmraum? Die Messung, die in P6/6.5 gegen SSR entschieden hat |
 
 **Erdbau-Karte erzeugen** (braucht ein Referenzfeld ohne Einschnitte):
 
@@ -257,3 +266,47 @@ Kurzliste, damit es nicht wieder passiert:
 - **Außerhalb des Gitters extrapoliert.** Bilineare Interpolation braucht die
   Klemmung auf der Gitterkoordinate, nicht auf dem Index — sonst entstehen
   Messwerte, die es nicht gibt.
+- **Etwas ist nicht im Bild — und jede Zahl sagt, es sei alles in Ordnung.**
+  Dreimal in P6, mit drei verschiedenen Ursachen und **demselben Messbild**:
+  Draw-Calls stimmen, Instanzzahlen stimmen, die Geometrie liegt an der
+  richtigen Stelle, ein Raycast trifft sie, die Bounding-Box passt — und im
+  Bild ist nichts.
+  1. Ein **Fragment-Shader, der nicht übersetzt** (`geometryNormal` heißt in
+     three 0.185 `nonPerturbedNormal`). Sämtliche Asphaltflächen der Karte
+     verschwanden; three zeichnete die Draw-Calls unbeirrt weiter. **Nur die
+     Browser-Konsole wusste Bescheid.**
+  2. Eine **Fläche unter einer anderen**: die Stadtplatte lag 3 cm über dem
+     Höhenfeld — sauber aus 14 641 Proben gerechnet — und trotzdem unter dem
+     *gerenderten* Gelände. Das Terrain wird an den Stützstellen des
+     CDLOD-Gitters ausgelenkt, und zwischen zwei Gitterpunkten liegt eine
+     Gerade über der Kurve. Gemessen gehört das gerenderte Gitter, nicht das
+     Feld, aus dem es entsteht.
+  3. Ein **vergessener Versatz**: die Straßendecals lagen auf der Mittellinie
+     aus `roads.json`, die Fahrbahn liegt seit P3 um 6 cm darüber. 3339
+     Instanzen, alle korrekt, alle im Asphalt.
+
+  Daraus die Regel: **nach jeder Änderung an einem Material die Konsole
+  ansehen**, und wenn etwas fehlt, nicht die Zahlen fragen, sondern eine
+  Differenz gegen ein Bild ohne das Ding messen — und danach prüfen, gegen
+  *welche* Fläche man eigentlich gemessen hat.
+- **Ein Rundungsfehler, der als weißes Rauschen sichtbar wird.** Die Fassaden
+  rauschten pixelfein, obwohl der Hash je Fenster konstant sein muss. Ursache:
+  `fract(sin(dot(p,k)) * 43758.5453)`. Der Startwert läuft als `varying` durch
+  die perspektivisch korrekte Interpolation, die (a/w)/(1/w) rechnet und je
+  Pixel die letzten Bits unterschiedlich trifft. Bei einem Sinus-Argument um
+  3700 liegt die Auflösung von `float` bei 0,00024; mal 43758 sind das zehn
+  ganze Einheiten, und `fract` davon ist gleichverteilt. **Hash-Funktionen mit
+  `sin` und großem Argument sind gegen interpolierte Eingaben nicht robust** —
+  ganzzahlig rechnen und den Startwert beim Eintritt runden.
+  Drei plausible Erklärungen gingen vorher daran vorbei (AO-Entrauschung, zu
+  glattes Glas, kaputte Ableitungen); alle drei wurden gemessen und verworfen.
+  Gefunden hat es erst eine **Diagnose-Ausgabe**, die den nackten Hash zeigt —
+  sie steht seitdem im Debug-Panel.
+- **Am Ergebnis eingehängt statt an der Eingabe.** Die planare Spiegelung
+  überschrieb zuerst `reflectedLight.indirectSpecular` — also den bereits mit
+  der Fresnel-Gewichtung multiplizierten Wert — mit der **rohen**
+  Szenenhelligkeit. Ergebnis: eine überflutete Straße, und zwar auch noch bei
+  einer Stärke von 0,25. Richtig ist die Stelle, an der three die
+  Umgebungskarte einsetzt; alles Weitere macht dann dieselbe BRDF. Wer einen
+  Wert in eine fremde Beleuchtungskette schiebt, muss wissen, **welche
+  Multiplikationen dahinter noch kommen**.
