@@ -15,7 +15,13 @@ import {
 import { HalfFloatType, NoToneMapping, Vector2, type Material } from 'three';
 
 import { GRADING, POSTFX, type GradingParams } from '@/config/postfx.config';
-import { BUDGETS } from '@/config/quality.config';
+import {
+  AO_QUALITY,
+  BUDGETS,
+  DEFAULT_QUALITY,
+  QUALITY,
+  type AoSettings,
+} from '@/config/quality.config';
 import type { Presenter } from '@/core/Engine';
 import type { EngineContext, System } from '@/core/System';
 import { createGradingLut, toCube, updateGradingLut } from './grading';
@@ -55,6 +61,19 @@ export class PostFXPipeline implements System {
 
   readonly #grading: GradingParams = { ...GRADING };
   #profiler: CostProfiler | null = null;
+
+  /**
+   * Zwei Quellen, ein Schalter — und deshalb ein UND statt eines Zuweisens.
+   *
+   * Das Look-Preset sagt, ob Umgebungsverdeckung zum Bild gehört; die
+   * Qualitätsstufe sagt, ob sie sich die Maschine leisten kann. Würde jede
+   * Seite direkt `ao.enabled` setzen, entschiede die Reihenfolge der Ereignisse
+   * — also ob der Nutzer erst das Preset oder erst die Stufe angefasst hat.
+   * Beides getrennt zu halten und beim Anwenden zu verknüpfen, macht das
+   * Ergebnis von der Reihenfolge unabhängig.
+   */
+  #lookWantsAo: boolean = POSTFX.ao.enabled;
+  #aoLevel: AoSettings = AO_QUALITY[QUALITY[DEFAULT_QUALITY].ao];
 
   readonly #readouts = {
     kette: '—',
@@ -125,6 +144,10 @@ export class PostFXPipeline implements System {
     context.bus.on('look:collect', ({ target }) => {
       this.#collectLook(target);
     });
+    context.bus.on('quality:changed', ({ level }) => {
+      this.#aoLevel = AO_QUALITY[QUALITY[level].ao];
+      this.#refreshAo();
+    });
 
     this.#registerDebug(context);
   }
@@ -177,8 +200,9 @@ export class PostFXPipeline implements System {
     if (this.#ao) {
       this.#ao.configuration.intensity = look.postfx.aoIntensity;
       this.#ao.configuration.aoRadius = look.postfx.aoRadius;
-      this.#ao.enabled = look.postfx.aoEnabled;
     }
+    this.#lookWantsAo = look.postfx.aoEnabled;
+    this.#refreshAo();
     if (this.#smaaPass) this.#smaaPass.enabled = look.postfx.smaaEnabled;
 
     Object.assign(this.#grading, look.grading);
@@ -201,15 +225,30 @@ export class PostFXPipeline implements System {
     if (this.#ao) {
       target.postfx.aoIntensity = this.#ao.configuration.intensity;
       target.postfx.aoRadius = this.#ao.configuration.aoRadius;
-      target.postfx.aoEnabled = this.#ao.enabled;
     }
+    // Der **Wunsch**, nicht der wirksame Zustand. Sonst schriebe ein Preset, das
+    // jemand auf „Niedrig" speichert, das Abschalten der AO dauerhaft fest — und
+    // es wäre auf „Ultra" wieder da, ohne dass jemand den Schalter angefasst hat.
+    target.postfx.aoEnabled = this.#lookWantsAo;
     if (this.#smaaPass) target.postfx.smaaEnabled = this.#smaaPass.enabled;
 
     Object.assign(target.grading, this.#grading);
   }
 
+  /** Qualitätsstufe und Look-Wunsch in den einen Schalter zusammenführen. */
+  #refreshAo(): void {
+    const ao = this.#ao;
+    if (!ao) return;
+    ao.enabled = this.#lookWantsAo && this.#aoLevel.enabled;
+    const c = ao.configuration;
+    c.aoSamples = this.#aoLevel.aoSamples;
+    c.denoiseSamples = this.#aoLevel.denoiseSamples;
+    c.halfRes = this.#aoLevel.halfRes;
+  }
+
   #applyEnabled(): void {
-    if (this.#ao) this.#ao.enabled = POSTFX.ao.enabled;
+    this.#lookWantsAo = POSTFX.ao.enabled;
+    this.#refreshAo();
     if (this.#bloom) this.#bloom.blendMode.opacity.value = POSTFX.bloom.enabled ? 1 : 0;
     if (this.#vignette) this.#vignette.blendMode.opacity.value = POSTFX.vignette.enabled ? 1 : 0;
     if (this.#smaaPass) this.#smaaPass.enabled = POSTFX.smaa.enabled;
@@ -252,7 +291,8 @@ export class PostFXPipeline implements System {
     };
 
     effects.addBinding(toggles, 'ao', { label: 'Umgebungsverdeckung' }).on('change', (event) => {
-      if (this.#ao) this.#ao.enabled = event.value;
+      this.#lookWantsAo = event.value;
+      this.#refreshAo();
     });
     effects.addBinding(toggles, 'bloom', { label: 'Bloom' }).on('change', (event) => {
       if (this.#bloom) this.#bloom.blendMode.opacity.value = event.value ? 1 : 0;

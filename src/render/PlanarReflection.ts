@@ -13,6 +13,7 @@ import {
 } from 'three';
 
 import { CITY_DISTRICT, CITY_GROUND_Y, REFLECTION } from '@/config/city.config';
+import { DEFAULT_QUALITY, QUALITY } from '@/config/quality.config';
 import type { EngineContext, System } from '@/core/System';
 
 /**
@@ -134,7 +135,16 @@ export class PlanarReflection implements System {
     ziel: '—',
   };
 
+  /** Der Schalter im Panel. */
   #enabled = REFLECTION.enabled;
+  /**
+   * Was die Qualitätsstufe erlaubt (P7 / 7.1).
+   *
+   * Getrennt vom Schalter und mit UND verknüpft — sonst entschiede die
+   * Reihenfolge, ob man zuletzt die Stufe oder den Schalter angefasst hat.
+   * Derselbe Aufbau wie bei der Umgebungsverdeckung in der PostFX-Kette.
+   */
+  #allowed = QUALITY[DEFAULT_QUALITY].reflections;
   #lastCost = 0;
 
   /**
@@ -157,6 +167,9 @@ export class PlanarReflection implements System {
     });
     context.bus.on('look:collect', ({ target }) => {
       target.road.reflection = this.uniforms.uReflectStrength.value;
+    });
+    context.bus.on('quality:changed', ({ level }) => {
+      this.#allowed = QUALITY[level].reflections;
     });
 
     this.#registerDebug(context);
@@ -215,13 +228,16 @@ export class PlanarReflection implements System {
     const dz = camera.position.z - CITY_DISTRICT.centerZ;
     const tooFar = dx * dx + dz * dz > REFLECTION.range * REFLECTION.range;
 
-    if (!this.#enabled || camera.position.y <= CITY_GROUND_Y + 0.05 || tooFar) {
+    const on = this.#enabled && this.#allowed;
+    if (!on || camera.position.y <= CITY_GROUND_Y + 0.05 || tooFar) {
       plane.y = 0;
-      this.#readouts.status = !this.#enabled
-        ? 'aus'
-        : tooFar
-          ? 'außer Reichweite — übersprungen'
-          : 'unter der Ebene — übersprungen';
+      this.#readouts.status = !this.#allowed
+        ? 'von der Qualitätsstufe abgeschaltet'
+        : !this.#enabled
+          ? 'aus'
+          : tooFar
+            ? 'außer Reichweite — übersprungen'
+            : 'unter der Ebene — übersprungen';
       return;
     }
     plane.y = 1;

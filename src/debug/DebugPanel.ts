@@ -40,6 +40,8 @@ export class DebugPanel implements DebugHost {
   readonly #sizeScratch = new Vector2();
 
   #visible: boolean;
+  /** Letzte gesendete Stufe — verhindert die Rückkopplung Menü → Bus → Menü. */
+  #quality: QualityLevel = DEFAULT_QUALITY;
 
   /** Tweakpane bindet an Objekt-Properties, nicht an Rückgabewerte. */
   readonly #readouts = {
@@ -169,8 +171,21 @@ export class DebugPanel implements DebugHost {
     folder
       .addBinding(this.#readouts, 'qualitaet', { label: 'Qualität', options: qualityOptions })
       .on('change', (event) => {
+        if (event.value === this.#quality) return;
+        this.#quality = event.value;
         this.#bus.emit('quality:changed', { level: event.value });
       });
+
+    // Und zurück: die Stufe kann auch von woanders kommen (Knopf im
+    // Qualitäts-Ordner, Konsole, ab 7.1b der Startbenchmark). Ohne diesen Weg
+    // stünde im Aufklappmenü weiter die alte — eine Anzeige, die lügt, ist
+    // schlimmer als keine.
+    this.#bus.on('quality:changed', ({ level }) => {
+      if (level === this.#quality) return;
+      this.#quality = level;
+      this.#readouts.qualitaet = level;
+      this.#pane.refresh();
+    });
 
     // Auflösung direkt aus dem Renderer, nicht aus dem 'engine:resize'-Ereignis:
     // die Debug-UI wird dynamisch nachgeladen und verpasst deshalb regelmäßig

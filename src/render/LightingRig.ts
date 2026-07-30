@@ -83,6 +83,9 @@ export class LightingRig implements System {
     context.bus.on('look:collect', ({ target }) => {
       this.#collectLook(target);
     });
+    context.bus.on('quality:changed', ({ level }) => {
+      this.#setShadowMapSize(QUALITY[level].shadowMapSize);
+    });
 
     this.#registerDebug(context);
   }
@@ -140,6 +143,29 @@ export class LightingRig implements System {
     this.#shadowTexelSize = (2 * radius) / size;
     this.#applySunDirection();
     return light;
+  }
+
+  /**
+   * Auflösung der Shadow-Map umstellen (P7 / 7.1).
+   *
+   * `mapSize` allein reicht nicht: three legt die Textur beim ersten Gebrauch an
+   * und schaut danach nicht mehr auf die Größe. Die alte muss weg, sonst bleibt
+   * sie im Speicher **und** im Bild — der Wechsel wäre wirkungslos und würde
+   * dabei noch Texturspeicher liegen lassen.
+   *
+   * Wirkt nur, solange Echtzeit-Schatten überhaupt an sind; seit P2 sind sie das
+   * nicht (siehe `LIGHTING.castShadow`). Der Aufruf steht trotzdem hier und
+   * nicht hinter einer Abfrage: wer den Schalter im Panel umlegt, soll die
+   * Auflösung der eingestellten Stufe bekommen und nicht die vom Programmstart.
+   */
+  #setShadowMapSize(size: number): void {
+    const light = this.#light;
+    if (!light || light.shadow.mapSize.x === size) return;
+
+    light.shadow.mapSize.set(size, size);
+    light.shadow.map?.dispose();
+    light.shadow.map = null;
+    this.#shadowTexelSize = (2 * LIGHTING.shadow.radius) / size;
   }
 
   #applySunDirection(): void {
