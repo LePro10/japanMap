@@ -173,8 +173,16 @@ const SIDEWALK_COLOR = toLinear(0x7d7b78);
  *
  * Die ebene Fläche bekommt einen hohen Wert: ein Platz ohne Gefälle hält das
  * Wasser. Die Schürze fällt zum Gelände hin ab, dort läuft es weg.
+ *
+ * > **0,95 und nicht 0,58.** Gemessen war die Stadtplatte bei einer Einstellung,
+ * > die die Fahrbahn zu 33 bis 39 % nass zeigte, praktisch trocken (0,3 %) —
+ * > und das ausgerechnet dort, wo der Money-Shot der Phase steht. Ursache ist
+ * > die Kennlinie in `roadPuddleMask`: die Neigung geht als `mix(0.35, 1.0,
+ * > bias)` ein, ein Wert von 0,58 landet also bei 73 % dessen, was die
+ * > Fahrbahnränder bekommen. Ein Platz **ohne jede Querneigung** hält aber mehr
+ * > Wasser als eine gewölbte Fahrbahn, nicht weniger.
  */
-const PUDDLE_SLAB: [number, number, number] = [0.58, 0, 0];
+const PUDDLE_SLAB: [number, number, number] = [0.95, 0, 0];
 const PUDDLE_SKIRT: [number, number, number] = [0.22, 0, 0];
 
 /** Kennzeichnung der Fläche für das Fassaden-Material. */
