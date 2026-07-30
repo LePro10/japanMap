@@ -11,6 +11,7 @@ import {
 import { ROAD_TYPES, type RoadData, type RoadFile } from '@/config/roads.config';
 import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
+import type { ReflectionUniforms } from '@/render/PlanarReflection';
 import { createRoadUniforms, RoadMaterial, type RoadUniforms } from './materials/RoadMaterial';
 import { buildGuardrails } from './roads/GuardrailBuilder';
 import { ROAD_ASSETS } from './roads/roadAssets';
@@ -51,7 +52,10 @@ export class RoadSystem implements System {
    */
   readonly #surface: RoadUniforms = createRoadUniforms();
 
-  constructor(private readonly atmosphere: AtmosphereUniforms) {}
+  constructor(
+    private readonly atmosphere: AtmosphereUniforms,
+    private readonly reflection: ReflectionUniforms,
+  ) {}
 
   get network(): RoadNetwork | null {
     return this.#network;
@@ -70,7 +74,12 @@ export class RoadSystem implements System {
 
     for (const texture of [albedo, normal, arm]) this.#prepare(texture);
 
-    this.#material = new RoadMaterial({ albedo, normal, arm }, this.atmosphere, this.#surface);
+    this.#material = new RoadMaterial(
+      { albedo, normal, arm },
+      this.atmosphere,
+      this.#surface,
+      this.reflection,
+    );
 
     const group = new Group();
     group.name = 'Straßen';
