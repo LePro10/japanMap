@@ -2084,7 +2084,7 @@ Weg und in Rennspielen weit verbreitet.
       > Polish-Durchgang mit der Nässe nachgezogen worden — wer einen Parameter
       > ändert, von dem eine Abnahmezahl abhängt, misst sie neu.
 - [x] **Stadt bleibt in Budget.** 25 Blöcke + Bürgersteige + Bodenplatte = 27,
-      dazu 1 Aufruf für alle 297 Neonschilder: **28 von 300.** Die 3339
+      dazu 1 Aufruf für alle 297 Neonschilder: **28 von 300.** Die 3373
       Straßendecals zählen nicht dazu — sie liegen auf dem ganzen Netz, nicht in
       der Stadt (ihr eines Instanz-Mesh steht im Gesamtbudget).
 
@@ -2098,17 +2098,22 @@ Weg und in Rennspielen weit verbreitet.
 
       | Blickpunkt | Draw-Calls | Dreiecke |
       |---|---|---|
-      | stadt-neon | 97 | 605 419 |
-      | stadt-strasse | 88 | 643 179 |
-      | stadt | **158** | **701 043** |
-      | stadt-luft | 110 | 465 371 |
-      | stadt-fern | 156 | 557 875 |
-      | Tempel / Pass / Küste | 41 / 39 / 45 | 426 967 / 184 899 / 328 433 |
+      | stadt-neon | 97 | 605 487 |
+      | stadt-strasse | 88 | 643 247 |
+      | stadt | **158** | **701 111** |
+      | stadt-luft | 110 | 465 439 |
+      | stadt-fern | 156 | 557 943 |
+      | Tempel / Pass / Küste | 41 / 39 / 45 | 427 035 / 184 967 / 328 501 |
 
-      Texturspeicher **307,7 MB von 512** (P5: 302,7 MB; dazu kamen der
+      Texturspeicher **308 MB von 512** (P5: 302,7 MB; dazu kamen der
       Neon-Atlas mit 4 MB und der Decal-Atlas mit 1 MB). Der Spiegelpuffer
       (640 × 360 HalfFloat, 1,8 MB) läuft nicht über die Szene und steht nicht
       in dieser Zahl.
+
+      > Die Dreieckszahlen sind gegenüber der ersten Abnahme um 68 gestiegen:
+      > das sind die 34 Decals der vier Fußgängerüberwege aus dem
+      > Polish-Durchgang. Die Draw-Calls sind unverändert — sie liegen im
+      > selben instanzierten Mesh.
 - [x] **Reflexionsansatz ist entschieden und dokumentiert** — siehe unten und
       `src/render/PlanarReflection.ts`. **B + C**, entschieden durch Messung.
 - [x] **Keine flimmernden Reflexionen bei Kamerabewegung.** Zweimal derselbe
