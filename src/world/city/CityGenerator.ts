@@ -157,7 +157,7 @@ const SIDEWALK_COLOR = toLinear(0x7d7b78);
  * Die ebene Fläche bekommt einen hohen Wert: ein Platz ohne Gefälle hält das
  * Wasser. Die Schürze fällt zum Gelände hin ab, dort läuft es weg.
  */
-const PUDDLE_SLAB: [number, number, number] = [0.72, 0, 0];
+const PUDDLE_SLAB: [number, number, number] = [0.58, 0, 0];
 const PUDDLE_SKIRT: [number, number, number] = [0.22, 0, 0];
 
 /** Kennzeichnung der Fläche für das Fassaden-Material. */

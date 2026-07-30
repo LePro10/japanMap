@@ -223,6 +223,53 @@ export const NEON = {
   capacity: 512,
 } as const;
 
+/**
+ * Planare Spiegelung — PLAN.md P6 / 6.5.
+ *
+ * Die Begründung, warum planar und nicht SSR, steht mitsamt Messtabelle in
+ * `src/render/PlanarReflection.ts`.
+ */
+export const REFLECTION = {
+  enabled: true,
+  /** Anteil der Bildschirmauflösung. */
+  scale: 0.5,
+  /** Obergrenze der Breite in Pixeln — die Spiegelung braucht keine 4K. */
+  maxWidth: 1280,
+  /**
+   * Stärke der Spiegelung in der Pfütze.
+   *
+   * Sie ersetzt dort die Umgebungsspiegelung, ersetzt sie aber nicht *ganz*:
+   * die Umgebungskarte trägt Himmel und Horizont bei, die im planaren
+   * Durchgang zwar auch stehen, aber nur bis zum Rand des Spiegelbildes. Wo die
+   * projizierte Koordinate aus dem Puffer läuft, muss etwas übrig bleiben.
+   */
+  strength: 0.85,
+  /**
+   * Vorspann der schiefen Nahebene.
+   *
+   * Ohne ihn schneidet die gekippte Nahebene exakt in der Spiegelebene, und
+   * Flächen, die dort liegen, flackern zwischen geschnitten und nicht
+   * geschnitten. Der Wert ist der übliche kleine Betrag aus Lengyels Verfahren.
+   */
+  clipBias: 0.004,
+  /**
+   * Über welche Höhendifferenz die Spiegelung ausblendet, in Metern.
+   *
+   * Das Belagsmaterial liegt auf allen Straßen der Karte. Ohne diese Bindung
+   * an die Ebene zöge der Shader auf dem Bergpass in 300 m Höhe dieselbe
+   * Spiegelmatrix heran.
+   */
+  planeFalloff: 3,
+  /**
+   * Ab welcher Entfernung vom Distriktmittelpunkt der Durchgang entfällt.
+   *
+   * Der Spiegeldurchgang zeichnet die Szene ein zweites Mal — gemessen
+   * verdoppelt er Draw-Calls und Dreiecke, solange die Stadt im Bild ist. Wer
+   * am Bergpass fährt, soll das nicht bezahlen.
+   */
+  range: 1400,
+} as const;
+
 /** Neon-Farben. Gesättigt und hell — sie sollen über die Bloom-Schwelle. */
 export const NEON_COLORS: readonly number[] = [
   0xff2e63, // Magenta-Rot

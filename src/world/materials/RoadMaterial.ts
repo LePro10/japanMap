@@ -10,6 +10,7 @@ import {
   injectAtmosphere,
   type AtmosphereUniforms,
 } from '@/render/atmosphere/atmosphereUniforms';
+import type { ReflectionUniforms } from '@/render/PlanarReflection';
 
 import puddlesGlsl from '../shaders/road_puddles.glsl';
 
@@ -74,8 +75,14 @@ export function createRoadUniforms(): RoadUniforms {
 export class RoadMaterial extends MeshStandardMaterial {
   readonly #atmosphere: AtmosphereUniforms;
   readonly #road: RoadUniforms;
+  readonly #reflection: ReflectionUniforms;
 
-  constructor(textures: RoadTextures, atmosphere: AtmosphereUniforms, road: RoadUniforms) {
+  constructor(
+    textures: RoadTextures,
+    atmosphere: AtmosphereUniforms,
+    road: RoadUniforms,
+    reflection: ReflectionUniforms,
+  ) {
     super({
       map: textures.albedo,
       normalMap: textures.normal,
@@ -92,27 +99,40 @@ export class RoadMaterial extends MeshStandardMaterial {
     });
     this.#atmosphere = atmosphere;
     this.#road = road;
+    this.#reflection = reflection;
     this.name = 'RoadMaterial';
     this.userData.roadUniforms = road;
+    this.userData.reflectionUniforms = reflection;
   }
 
   override onBeforeCompile(shader: WebGLProgramParametersWithUniforms): void {
     shader.uniforms.uWetness = this.#road.uWetness;
     shader.uniforms.uPuddleEdge = this.#road.uPuddleEdge;
+    shader.uniforms.uReflectMap = this.#reflection.uReflectMap;
+    shader.uniforms.uReflectMatrix = this.#reflection.uReflectMatrix;
+    shader.uniforms.uReflectStrength = this.#reflection.uReflectStrength;
+    shader.uniforms.uReflectPlane = this.#reflection.uReflectPlane;
 
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
         '#include <common>\n' +
           'attribute vec3 color;\n' +
+          'uniform mat4 uReflectMatrix;\n' +
           'varying vec3 vRoadWorld;\n' +
-          'varying float vRoadPuddle;',
+          'varying float vRoadPuddle;\n' +
+          'varying vec4 vRoadReflect;',
       )
       .replace(
         '#include <begin_vertex>',
         '#include <begin_vertex>\n' +
           'vRoadWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\n' +
-          'vRoadPuddle = color.r;',
+          'vRoadPuddle = color.r;\n' +
+          // Projektive Koordinate ins Spiegelbild. Sie muss im Vertex-Shader
+          // entstehen und **unperspektivisch** interpoliert werden — die
+          // Division durch w gehört ans Ende, sonst krümmt sich das Spiegelbild
+          // über große Flächen.
+          'vRoadReflect = uReflectMatrix * vec4(vRoadWorld, 1.0);',
       );
 
     shader.fragmentShader = shader.fragmentShader.replace(
@@ -120,8 +140,12 @@ export class RoadMaterial extends MeshStandardMaterial {
       '#include <common>\n' +
         'uniform float uWetness;\n' +
         'uniform float uPuddleEdge;\n' +
+        'uniform sampler2D uReflectMap;\n' +
+        'uniform float uReflectStrength;\n' +
+        'uniform vec3 uReflectPlane;\n' +
         'varying vec3 vRoadWorld;\n' +
         'varying float vRoadPuddle;\n' +
+        'varying vec4 vRoadReflect;\n' +
         'vec2 gRoadShade;\n' +
         'float gRoadWet;\n' +
         puddlesGlsl,
@@ -169,6 +193,43 @@ export class RoadMaterial extends MeshStandardMaterial {
         '#include <lights_fragment_end>\n' +
           'reflectedLight.directDiffuse *= gRoadShade.x;\n' +
           'reflectedLight.directSpecular *= gRoadShade.x;',
+      )
+      .replace(
+        // ── Planare Spiegelung (P6 / 6.5) ─────────────────────────────────
+        //
+        // **Der Eingriff sitzt an der einfallenden Strahlung, nicht am
+        // Ergebnis.** Das ist der ganze Unterschied zwischen richtig und
+        // grotesk, und er ist gemessen: der erste Entwurf hat
+        // `reflectedLight.indirectSpecular` überschrieben — also den bereits
+        // mit der Fresnel-Gewichtung der BRDF multiplizierten Wert — und
+        // dorthin die **rohe** Szenenhelligkeit gesetzt. Ergebnis: eine
+        // überflutete Straße, ein perfekter Spiegel bis unter die Kamera, und
+        // zwar auch noch bei einer Stärke von 0,25.
+        //
+        // Hier steht die Spiegelung stattdessen an der Stelle, an der three
+        // die Umgebungskarte einsetzt. Alles Weitere — Fresnel, Rauheit,
+        // Energieerhaltung — macht danach dieselbe BRDF, die auch für die
+        // Umgebungskarte zuständig ist. Nasser Asphalt spiegelt damit flach
+        // stark und steil schwach, ohne dass hier irgendetwas nachgebaut wird.
+        //
+        // Der Randabfall bleibt: wo die projizierte Koordinate aus dem Puffer
+        // läuft, gibt es kein Spiegelbild, und ein harter Schnitt dort wäre
+        // eine Kante quer über die Straße.
+        '#include <lights_fragment_maps>',
+        '#include <lights_fragment_maps>\n' +
+          'vec2 mirrorUv = vRoadReflect.xy / max(vRoadReflect.w, 1e-4);\n' +
+          'vec2 mirrorEdge = smoothstep(vec2(0.0), vec2(0.06), mirrorUv)\n' +
+          '  * (1.0 - smoothstep(vec2(0.94), vec2(1.0), mirrorUv));\n' +
+          'float mirrorInside = mirrorEdge.x * mirrorEdge.y * step(0.0, vRoadReflect.w);\n' +
+          // An die Ebene binden: nur was in ihr liegt, spiegelt sich in ihr.
+          'mirrorInside *= uReflectPlane.y\n' +
+          '  * (1.0 - smoothstep(0.5, uReflectPlane.z, abs(vRoadWorld.y - uReflectPlane.x)));\n' +
+          'vec3 mirrorColor = texture2D(uReflectMap, clamp(mirrorUv, 0.0, 1.0)).rgb;\n' +
+          'radiance = mix(\n' +
+          '  radiance,\n' +
+          '  mirrorColor,\n' +
+          '  clamp(gRoadWet * mirrorInside * uReflectStrength, 0.0, 1.0)\n' +
+          ');',
       )
       .replace(
         '#include <aomap_fragment>',

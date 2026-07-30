@@ -36,7 +36,8 @@
     "groundAo": 1
   },
   "road": {
-    "wetness": 0.62
+    "wetness": 0.62,
+    "reflection": 0.85
   },
   "city": {
     "windowLitFraction": 0.45,

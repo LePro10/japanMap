@@ -1,6 +1,6 @@
 import { FOG } from '@/config/atmosphere.config';
 import { LIGHTING } from '@/config/lighting.config';
-import { CITY_LOOK } from '@/config/city.config';
+import { CITY_LOOK, REFLECTION } from '@/config/city.config';
 import { GRADING, POSTFX, type GradingParams } from '@/config/postfx.config';
 import { ROAD_WET } from '@/config/roads.config';
 import { VEGETATION_LOOK } from '@/config/vegetation.config';
@@ -83,6 +83,8 @@ export interface LookState {
    */
   road: {
     wetness: number;
+    /** Stärke der planaren Spiegelung in der Pfütze (P6 / 6.5). */
+    reflection: number;
   };
 
   /**
@@ -166,6 +168,7 @@ export function defaultLook(): LookState {
     },
     road: {
       wetness: ROAD_WET.wetness,
+      reflection: REFLECTION.strength,
     },
     city: {
       windowLitFraction: CITY_LOOK.windowLitFraction,

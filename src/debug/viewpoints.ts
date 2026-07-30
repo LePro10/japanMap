@@ -34,6 +34,11 @@ export const VIEWPOINTS: Readonly<Record<string, Viewpoint>> = {
     lookAt: [620, 40, 60],
     note: 'Auf der Stadtstraße, Augenhöhe. Hier muss das Neon im Asphalt stehen.',
   },
+  'stadt-neon': {
+    position: [660, 31.4, 200],
+    lookAt: [600, 34, 40],
+    note: 'Der Money-Shot der Phase: Geschäftsstraße, Kanban über der Fahrbahn, Neon in der Pfütze.',
+  },
   'stadt-luft': {
     position: [620, 420, 620],
     lookAt: [620, 30, 120],
