@@ -2073,10 +2073,16 @@ Weg und in Rennspielen weit verbreitet.
 - Als projizierte Quads mit Polygon-Offset, gruppiert instanziert
 
 ### Akzeptanzkriterien
-- [x] **Neon spiegelt sichtbar im nassen Asphalt.** Gemessen mit einer Maske am
-      Blickpunkt `stadt-neon`: Spiegelung an gegen aus ändert **9981 Pixel
-      (1,08 % des Bildes)** bei mittlerer Differenz **123,4**. Das Neon allein
-      (direkt + gespiegelt) trägt 49 430 Pixel (5,36 %).
+- [x] **Neon spiegelt sichtbar im nassen Asphalt.** Gemessen mit einer Maske:
+      Spiegelung an gegen aus ändert am Blickpunkt `stadt-neon` **8113 Pixel
+      (0,88 % des Bildes)** bei mittlerer Differenz **120,5**, auf der
+      Stadtschleife **336 578 Pixel (36,5 %)** bei mittlerer Differenz 42,5 —
+      dort steht die Kamera zwischen den Pfützen. Das Neon allein (direkt +
+      gespiegelt) trägt am Money-Shot 49 430 Pixel (5,36 %).
+
+      > Die Zahl für `stadt-neon` stand zuerst bei 9981 Pixeln. Sie ist im
+      > Polish-Durchgang mit der Nässe nachgezogen worden — wer einen Parameter
+      > ändert, von dem eine Abnahmezahl abhängt, misst sie neu.
 - [x] **Stadt bleibt in Budget.** 25 Blöcke + Bürgersteige + Bodenplatte = 27,
       dazu 1 Aufruf für alle 297 Neonschilder: **28 von 300.** Die 3339
       Straßendecals zählen nicht dazu — sie liegen auf dem ganzen Netz, nicht in
