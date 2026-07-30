@@ -214,6 +214,7 @@ export class Engine {
       `Aufwärmframe: ${this.renderer.info.programs?.length ?? 0} Programme ` +
         `in ${this.#precompileMs.toFixed(1)} ms.`,
     );
+    this.bus.emit('engine:warmedup');
   }
 
   start(): void {
