@@ -104,16 +104,6 @@ export const CITY_PAD_Y = 29;
  */
 export const CITY_PAD_FEATHER = 60;
 
-/** Liegt ein Punkt im Distrikt? */
-export function inDistrict(x, z) {
-  return (
-    x >= CITY_DISTRICT.minX &&
-    x <= CITY_DISTRICT.maxX &&
-    z >= CITY_DISTRICT.minZ &&
-    z <= CITY_DISTRICT.maxZ
-  );
-}
-
 /**
  * Weiche Zugehörigkeit zum Distrikt, 1 innen und 0 weiter als `feather` außen.
  *

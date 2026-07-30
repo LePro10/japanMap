@@ -58,7 +58,6 @@ export interface NeonAtlas {
   /** Indizes der hochkanten Zellen (Kanban) bzw. der querliegenden. */
   readonly upright: readonly number[];
   readonly banner: readonly number[];
-  readonly rejected: number;
 }
 
 /** Hochkant, drei Zeichen übereinander — die Bauform, die eine Straße japanisch macht. */
@@ -136,7 +135,6 @@ export function buildNeonAtlas(): NeonAtlas {
   const cells: AtlasCell[] = [];
   const upright: number[] = [];
   const banner: number[] = [];
-  let rejected = 0;
 
   // Obere Hälfte: vier hochkante Zellen, je size/4 breit und size/2 hoch.
   const uprightW = size / 4;
@@ -172,7 +170,6 @@ export function buildNeonAtlas(): NeonAtlas {
       g.restore();
       ink = measureInk(g, x, y, uprightW, uprightH);
       fallback = true;
-      rejected++;
     }
 
     upright.push(cells.length);
@@ -228,7 +225,6 @@ export function buildNeonAtlas(): NeonAtlas {
       g.restore();
       ink = measureInk(g, x, y, bannerW, bannerH);
       fallback = true;
-      rejected++;
     }
 
     banner.push(cells.length);
@@ -256,7 +252,7 @@ export function buildNeonAtlas(): NeonAtlas {
   texture.needsUpdate = true;
   texture.name = 'NeonAtlas';
 
-  return { texture, cells, upright, banner, rejected };
+  return { texture, cells, upright, banner };
 }
 
 /**
