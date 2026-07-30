@@ -59,7 +59,23 @@ export class PropMaterial extends MeshStandardMaterial {
       .replace(
         '#include <worldpos_vertex>',
         '#include <worldpos_vertex>\n' +
-          'vPropWorld = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;',
+          // **`instanceMatrix` gibt es nur bei einem `InstancedMesh`.** Hier
+          // stand die Zeile ohne Fallunterscheidung, weil in P5 alle Props
+          // instanziert waren. Die Reisfeld-Wasserflächen sind es nicht — sie
+          // sind ein zusammengeführtes Mesh —, und dasselbe Material bekommt
+          // dort einen Vertex-Shader, der nicht übersetzt. Three zeichnet den
+          // Draw-Call trotzdem und das Wasser bleibt unsichtbar; gemeldet wird
+          // es allein in der Browser-Konsole.
+          //
+          // Aufgefallen ist es erst in P6, beim Suchen nach einem *anderen*
+          // Shader-Fehler in derselben Konsole. Die Lehre steht in CLAUDE.md:
+          // nach jeder Änderung an einem Material die Konsole ansehen — ein
+          // nicht übersetzter Shader sieht in jeder Zahl wie ein Erfolg aus.
+          '#ifdef USE_INSTANCING\n' +
+          '  vPropWorld = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;\n' +
+          '#else\n' +
+          '  vPropWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\n' +
+          '#endif',
       );
 
     shader.fragmentShader = shader.fragmentShader.replace(

@@ -11,7 +11,7 @@ import {
 import { ROAD_TYPES, type RoadData, type RoadFile } from '@/config/roads.config';
 import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
-import { RoadMaterial } from './materials/RoadMaterial';
+import { createRoadUniforms, RoadMaterial, type RoadUniforms } from './materials/RoadMaterial';
 import { buildGuardrails } from './roads/GuardrailBuilder';
 import { ROAD_ASSETS } from './roads/roadAssets';
 import { buildRoadGeometry } from './roads/RoadMeshBuilder';
@@ -43,6 +43,14 @@ export class RoadSystem implements System {
     abfrage: 'noch nicht gemessen',
   };
 
+  /**
+   * Nässe und Pfützenrand — geteilt mit der Bodenplatte der Stadt.
+   *
+   * Liegt hier und nicht im CitySystem, weil das Straßennetz die ältere und
+   * größere Fläche ist: die Stadt kommt zu ihr dazu, nicht umgekehrt.
+   */
+  readonly #surface: RoadUniforms = createRoadUniforms();
+
   constructor(private readonly atmosphere: AtmosphereUniforms) {}
 
   get network(): RoadNetwork | null {
@@ -62,7 +70,7 @@ export class RoadSystem implements System {
 
     for (const texture of [albedo, normal, arm]) this.#prepare(texture);
 
-    this.#material = new RoadMaterial({ albedo, normal, arm }, this.atmosphere);
+    this.#material = new RoadMaterial({ albedo, normal, arm }, this.atmosphere, this.#surface);
 
     const group = new Group();
     group.name = 'Straßen';
@@ -89,7 +97,17 @@ export class RoadSystem implements System {
 
     // Erst nach `#build()`: dort entsteht das Abfragenetz. Die Streuung in P4
     // hört darauf und darf es nicht halb aufgebaut bekommen.
-    if (this.#network) context.bus.emit('roads:ready', { network: this.#network });
+    if (this.#network) {
+      context.bus.emit('roads:ready', { network: this.#network, surface: this.#material });
+    }
+
+    context.bus.on('look:apply', ({ look }) => {
+      this.#surface.uWetness.value = look.road.wetness;
+      this.#context?.debug?.refresh();
+    });
+    context.bus.on('look:collect', ({ target }) => {
+      target.road.wetness = this.#surface.uWetness.value;
+    });
 
     await this.#registerDebug(context, file);
   }
@@ -207,6 +225,18 @@ export class RoadSystem implements System {
     folder.addBinding(this.#readouts, 'abfrage', { readonly: true, label: 'Abfrage' });
     folder.addBinding(group, 'visible', { label: 'Sichtbar' });
     folder.addBinding(material, 'wireframe', { label: 'Drahtgitter' });
+    folder.addBinding(this.#surface.uWetness, 'value', {
+      label: 'Nässe (Fläche)',
+      min: 0,
+      max: 1,
+      step: 0.01,
+    });
+    folder.addBinding(this.#surface.uPuddleEdge, 'value', {
+      label: 'Pfützenrand',
+      min: 0.01,
+      max: 0.4,
+      step: 0.005,
+    });
 
     for (const road of file.roads) {
       const mesh = group.getObjectByName(`Straße:${road.id}`);
