@@ -1,8 +1,8 @@
-import type { Object3D, Scene, WebGLRenderer } from 'three';
+import type { Scene, WebGLRenderer } from 'three';
 
 import { BUDGETS, type Budget } from '@/config/quality.config';
 import { estimateTextureMemory } from './textureMemory';
-import { formatCount, formatMegabytes } from './budgets';
+import { formatCount, formatMegabytes, tallyCityCalls, tallySubtree } from './budgets';
 
 /** Was der Guard beobachtet. Reihenfolge = Reihenfolge im Banner. */
 interface WatchedMetric {
@@ -15,6 +15,12 @@ interface WatchedMetric {
 const WATCHED: readonly WatchedMetric[] = [
   { id: 'calls', label: 'Draw-Calls', budget: BUDGETS.drawCalls, format: formatCount },
   { id: 'triangles', label: 'Dreiecke', budget: BUDGETS.triangles, format: formatCount },
+  {
+    id: 'cityCalls',
+    label: 'Draw-Calls Stadt',
+    budget: BUDGETS.cityDrawCalls,
+    format: formatCount,
+  },
   {
     id: 'texMemory',
     label: 'Texturspeicher',
@@ -97,6 +103,7 @@ export class BudgetGuard {
     const values: Record<string, number> = {
       calls: info.render.calls,
       triangles: info.render.triangles,
+      cityCalls: this.#cityCalls(),
       texMemory: this.#textureMemoryMb,
     };
 
@@ -141,6 +148,19 @@ export class BudgetGuard {
   }
 
   /**
+   * Draw-Calls der Stadt — das Teilbudget aus PLAN.md P6.
+   *
+   * Läuft über zwei Gruppen mit zusammen rund 30 Objekten und kostet damit
+   * nichts, was ein Frame merkt. Bewusst **ohne** Frustum-Culling: das Budget
+   * soll die Bauweise prüfen, nicht die Blickrichtung. Gemessen im fertigen
+   * Zustand sind es **28 von 300** — 25 Blöcke, Bürgersteige, Bodenplatte, dazu
+   * ein Aufruf für alle 297 Neonschilder.
+   */
+  #cityCalls(): number {
+    return tallyCityCalls(this.#scene);
+  }
+
+  /**
    * Aufschlüsselung nach Verursacher.
    *
    * Gruppiert wird nach den **direkten Kindern der Szene** — genau das sind die
@@ -151,7 +171,7 @@ export class BudgetGuard {
   #report(metric: WatchedMetric, value: number): void {
     const rows: { Gruppe: string; 'Draw-Calls': number; Dreiecke: number }[] = [];
     for (const child of this.#scene.children) {
-      const tally = BudgetGuard.#tally(child);
+      const tally = tallySubtree(child);
       if (tally.calls === 0 && tally.triangles === 0) continue;
       rows.push({
         Gruppe: child.name || child.type,
@@ -168,36 +188,6 @@ export class BudgetGuard {
     console.table(rows);
   }
 
-  /**
-   * Draw-Calls und Dreiecke eines Teilbaums abschätzen.
-   *
-   * Es ist eine **Schätzung**, und das gehört dazugesagt: gezählt wird, was
-   * sichtbar ist und Geometrie hat, ohne Frustum-Culling und ohne die zweite
-   * Runde für eine Schattenkarte. Die Summe über alle Gruppen weicht deshalb von
-   * `renderer.info.render.calls` ab. Für die Frage „wer ist der größte Posten"
-   * reicht das; für die absolute Zahl gilt weiterhin das Overlay.
-   */
-  static #tally(root: Object3D): { calls: number; triangles: number } {
-    let calls = 0;
-    let triangles = 0;
-
-    root.traverseVisible((object) => {
-      const geometry = (object as { geometry?: { index?: { count: number } | null; attributes?: { position?: { count: number } } } }).geometry;
-      if (!geometry) return;
-      const vertices = geometry.index?.count ?? geometry.attributes?.position?.count ?? 0;
-      if (vertices === 0) return;
-
-      const instances = (object as { isInstancedMesh?: boolean; count?: number }).isInstancedMesh
-        ? (object as { count: number }).count
-        : ((geometry as { instanceCount?: number }).instanceCount ?? 1);
-      if (instances === 0) return;
-
-      calls += 1;
-      triangles += (vertices / 3) * instances;
-    });
-
-    return { calls, triangles };
-  }
 
   dispose(): void {
     this.#banner.remove();

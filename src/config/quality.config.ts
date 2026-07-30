@@ -99,6 +99,21 @@ export const BUDGETS = {
   /** Anteil davon, den die Postprocessing-Kette kosten darf (ab P2 messbar). */
   postFxMs: { warn: 4, limit: 5 },
   drawCalls: { warn: 600, limit: 800 },
+  /**
+   * Teilbudget der Stadt — PLAN.md P6, Akzeptanzkriterium.
+   *
+   * Der Plan nennt „< 300 Draw-Calls" als eigenes Budget für die Stadt, und das
+   * ist kein Unterposten des Gesamtbudgets, sondern eine Aussage über die
+   * Bauweise: Gebäude werden **je Block** zusammengefasst, nicht je Haus. Ohne
+   * diese Zusammenfassung wären es bei 135 Gebäuden allein dafür 135 Aufrufe,
+   * und jede spätere Erweiterung der Stadt liefe unbemerkt darauf zu.
+   *
+   * Gezählt wird über die Szenengruppen `Stadt` und `Neon` und **ohne
+   * Frustum-Culling** — also der Fall, dass der ganze Distrikt im Bild steht.
+   * Das ist strenger als das, was der Renderer meldet, und genau richtig für
+   * ein Budget: es soll nicht davon abhängen, wohin die Kamera gerade schaut.
+   */
+  cityDrawCalls: { warn: 200, limit: 300 },
   triangles: { warn: 2_250_000, limit: 3_000_000 },
   /** Geschätzter Texturspeicher auf der GPU. */
   textureMemoryMb: { warn: 384, limit: 512 },
