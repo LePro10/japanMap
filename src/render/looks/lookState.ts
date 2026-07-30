@@ -1,5 +1,6 @@
 import { FOG } from '@/config/atmosphere.config';
 import { LIGHTING } from '@/config/lighting.config';
+import { CITY_LOOK } from '@/config/city.config';
 import { GRADING, POSTFX, type GradingParams } from '@/config/postfx.config';
 import { VEGETATION_LOOK } from '@/config/vegetation.config';
 import { WATER } from '@/config/water.config';
@@ -71,6 +72,21 @@ export interface LookState {
     groundAo: number;
   };
 
+  /**
+   * Stadt — PLAN.md P6 / 6.2.
+   *
+   * Zwei Werte, und beide drehen unübersehbar am Bild: wie viele Fenster
+   * brennen und wie hell. Bei blauer Stunde ist das Fensterlicht laut SPEC §3.1
+   * die dominante urbane Lichtquelle — ein Preset ohne diese beiden Regler
+   * könnte den Look der Stadt nicht festhalten.
+   */
+  city: {
+    /** Schwelle, unter der ein Fenster dunkel bleibt. 0,45 = 55 % brennen. */
+    windowLitFraction: number;
+    /** Leuchtstärke eines brennenden Fensters. */
+    windowEmissive: number;
+  };
+
   postfx: {
     bloomEnabled: boolean;
     bloomIntensity: number;
@@ -131,6 +147,10 @@ export function defaultLook(): LookState {
       translucency: VEGETATION_LOOK.translucency,
       groundAo: VEGETATION_LOOK.groundAo,
     },
+    city: {
+      windowLitFraction: CITY_LOOK.windowLitFraction,
+      windowEmissive: CITY_LOOK.windowEmissive,
+    },
     postfx: {
       bloomEnabled: POSTFX.bloom.enabled,
       bloomIntensity: POSTFX.bloom.intensity,
@@ -175,6 +195,7 @@ export function mergeLook(partial: unknown): LookState {
   section('shade');
   section('water');
   section('vegetation');
+  section('city');
   section('postfx');
   section('grading');
 

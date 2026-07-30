@@ -35,6 +35,10 @@
     "translucency": 0.55,
     "groundAo": 1
   },
+  "city": {
+    "windowLitFraction": 0.45,
+    "windowEmissive": 1.8
+  },
   "postfx": {
     "bloomEnabled": true,
     "bloomIntensity": 0.62,
