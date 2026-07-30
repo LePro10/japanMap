@@ -216,18 +216,25 @@ export class NeonSystem implements System {
     this.#readouts.schilder =
       `${count} Schilder · ${count * 2} Dreiecke · 1 Draw-Call · ` +
       `${flickering} flackern`;
+    // Die **Namen** der durchgefallenen Felder, nicht nur ihre Zahl. Wenn die
+    // Tofu-Prüfung anschlägt, ist die nächste Frage immer „welche Zeichen?" —
+    // und ob es Kanji, Katakana oder beides trifft, sagt sofort, woran die
+    // Schrift des Systems scheitert.
+    const rejectedLabels = atlas.cells.filter((c) => c.fallback).map((c) => c.label);
     this.#readouts.atlas =
       `${atlas.cells.length} Felder auf ${NEON.atlasSize}² · ` +
-      `${atlas.rejected} durch Ersatzmuster ersetzt · ` +
       `Deckung ${Math.min(...atlas.cells.map((c) => c.ink)).toFixed(1)}…` +
-      `${Math.max(...atlas.cells.map((c) => c.ink)).toFixed(1)} %`;
+      `${Math.max(...atlas.cells.map((c) => c.ink)).toFixed(1)} % · ` +
+      (rejectedLabels.length === 0
+        ? 'alle lesbar'
+        : `Ersatzmuster für ${rejectedLabels.join(', ')}`);
     this.#readouts.lichter = `${this.#lights.length} Punktlichter (SPEC: ~10)`;
 
-    if (atlas.rejected > 0) {
+    if (rejectedLabels.length > 0) {
       console.warn(
-        `Neon: ${atlas.rejected} von ${atlas.cells.length} Atlas-Feldern haben die ` +
-          'Tofu-Prüfung nicht bestanden und tragen ein Ersatzmuster. Die Systemschrift ' +
-          'kennt die betreffenden Zeichen nicht.',
+        `Neon: ${rejectedLabels.length} von ${atlas.cells.length} Atlas-Feldern haben die ` +
+          `Tofu-Prüfung nicht bestanden und tragen ein Ersatzmuster: ${rejectedLabels.join(', ')}. ` +
+          'Die Systemschrift kennt diese Zeichen nicht.',
       );
     }
 

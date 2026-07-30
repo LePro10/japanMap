@@ -7,7 +7,7 @@ import { createCityUniforms, FacadeMaterial, type CityUniforms } from '../materi
 import type { RoadMaterial } from '../materials/RoadMaterial';
 import type { RoadNetwork } from '../roads/RoadNetwork';
 import type { TerrainSampler } from '../TerrainSampler';
-import { generateCity, type CityResult } from './CityGenerator';
+import { generateCity } from './CityGenerator';
 
 /**
  * Die Stadt in der Szene — PLAN.md P6 / 6.1, 6.2.
@@ -33,7 +33,6 @@ export class CitySystem implements System {
   #groundMaterial: RoadMaterial | null = null;
   #sampler: TerrainSampler | null = null;
   #network: RoadNetwork | null = null;
-  #result: CityResult | null = null;
   #built = false;
 
   readonly #shared: CityUniforms;
@@ -51,15 +50,6 @@ export class CitySystem implements System {
       CITY_LOOK.windowEmissive,
       CITY_LOOK.neonEmissive,
     );
-  }
-
-  /** Die Schilderplätze für das Neon-System (6.3). */
-  get result(): CityResult | null {
-    return this.#result;
-  }
-
-  get uniforms(): CityUniforms {
-    return this.#shared;
   }
 
   async init(context: EngineContext): Promise<void> {
@@ -120,7 +110,6 @@ export class CitySystem implements System {
       sampleTerrain: (x, z) => sampler.getHeightAt(x, z),
     });
     const elapsed = performance.now() - started;
-    this.#result = result;
 
     for (const block of result.blocks) {
       const mesh = new Mesh(block.geometry, facade);
@@ -230,7 +219,6 @@ export class CitySystem implements System {
     // hier ein zweites Mal zu entsorgen hieße, dem Straßennetz sein Programm
     // unter den Meshes wegzuziehen.
     this.#groundMaterial = null;
-    this.#result = null;
     this.#sampler = null;
     this.#network = null;
     this.#context = null;

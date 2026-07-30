@@ -31,7 +31,5 @@ export declare const CITY_PAD_Y: number;
 /** Auslaufstrecke der Einebnung in Metern. */
 export declare const CITY_PAD_FEATHER: number;
 
-export declare function inDistrict(x: number, z: number): boolean;
-
 /** 1 im Distrikt, 0 weiter als `feather` außerhalb, dazwischen glatt. */
 export declare function districtBlend(x: number, z: number, feather?: number): number;
