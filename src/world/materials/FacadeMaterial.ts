@@ -25,13 +25,23 @@ export interface CityUniforms {
   readonly uCityTime: IUniform<number>;
   readonly uWindowLitFraction: IUniform<number>;
   readonly uWindowEmissive: IUniform<number>;
+  /** Leuchtdichte der Neonschilder — dasselbe `uCityTime` treibt ihr Flackern. */
+  readonly uNeonEmissive: IUniform<number>;
+  /** Diagnose: 0 aus, 1 Detailanteil, 2 Fensterleuchten, 3 Hash je Fenster. */
+  readonly uCityDebug: IUniform<number>;
 }
 
-export function createCityUniforms(litFraction: number, emissive: number): CityUniforms {
+export function createCityUniforms(
+  litFraction: number,
+  emissive: number,
+  neon: number,
+): CityUniforms {
   return {
     uCityTime: { value: 0 },
     uWindowLitFraction: { value: litFraction },
     uWindowEmissive: { value: emissive },
+    uNeonEmissive: { value: neon },
+    uCityDebug: { value: 0 },
   };
 }
 
@@ -104,6 +114,7 @@ export class FacadeMaterial extends MeshStandardMaterial {
     shader.uniforms.uCityTime = this.#city.uCityTime;
     shader.uniforms.uWindowLitFraction = this.#city.uWindowLitFraction;
     shader.uniforms.uWindowEmissive = this.#city.uWindowEmissive;
+    shader.uniforms.uCityDebug = this.#city.uCityDebug;
 
     shader.vertexShader = shader.vertexShader
       .replace(
@@ -128,11 +139,12 @@ export class FacadeMaterial extends MeshStandardMaterial {
         'uniform float uCityTime;\n' +
         'uniform float uWindowLitFraction;\n' +
         'uniform float uWindowEmissive;\n' +
+        'uniform float uCityDebug;\n' +
         'varying vec3 vFacadeWorld;\n' +
         'varying vec2 vFacadeUv;\n' +
         'varying vec2 vFacadeKind;\n' +
         'vec2 gFacadeShade;\n' +
-        'vec3 gFacadeWindow;\n' +
+        'vec4 gFacadeWindow;\n' +
         windowsGlsl,
     );
 
@@ -152,14 +164,31 @@ export class FacadeMaterial extends MeshStandardMaterial {
           // ein zweites Material wäre ein zweites Programm für dieselbe Wand.
           'gFacadeWindow = vFacadeKind.y < 0.5\n' +
           '  ? facadeWindows(vFacadeUv, vFacadeKind.x, uCityTime)\n' +
-          '  : vec3(0.0);\n' +
+          '  : vec4(0.0);\n' +
           // Glas ist dunkler und glatter als Putz, der Rahmen dunkler als beides.
           'diffuseColor.rgb *= 1.0 - gFacadeWindow.x * 0.62 - gFacadeWindow.z * 0.25;',
       )
       .replace(
         '#include <roughnessmap_fragment>',
         '#include <roughnessmap_fragment>\n' +
-          'roughnessFactor = mix(roughnessFactor, 0.12, gFacadeWindow.x);',
+          // **Glas wird mit der Entfernung stumpfer, und das ist kein Kompromiss
+          // an die Optik, sondern an die Abtastung.** Mit Rauheit 0,12 tastet
+          // die Umgebungsspiegelung eine hochaufgelöste Mip-Stufe der HDRI ab;
+          // an einer Fassade, die im streifenden Blick nach hinten wegläuft,
+          // ändert sich der Spiegelvektor je Pixel um ein Vielfaches der
+          // Texelweite. Das Ergebnis war ein dichtes weißes Rauschen über den
+          // hinteren Scheiben — gemessen an einem Nahblick auf eine Ladenzeile,
+          // und es blieb, als das AO abgeschaltet wurde, was den ersten
+          // Verdacht (N8AO-Entrauschung) ausgeschlossen hat.
+          //
+          // `gFacadeWindow.w` ist derselbe Detailanteil, der auch das
+          // Fenstermuster ausblendet: nah 1, fern 0. Eine Scheibe fern spiegelt
+          // damit weich statt zu funkeln.
+          'roughnessFactor = mix(\n' +
+          '  roughnessFactor,\n' +
+          '  mix(0.55, 0.30, gFacadeWindow.w),\n' +
+          '  gFacadeWindow.x\n' +
+          ');',
       )
       .replace(
         '#include <lights_fragment_end>',
@@ -177,7 +206,20 @@ export class FacadeMaterial extends MeshStandardMaterial {
         '#include <emissivemap_fragment>',
         '#include <emissivemap_fragment>\n' +
           'totalEmissiveRadiance += facadeWindowColor(vFacadeUv, vFacadeKind.x)\n' +
-          '  * gFacadeWindow.y * uWindowEmissive;',
+          '  * gFacadeWindow.y * uWindowEmissive;\n' +
+          // Diagnose-Ausgabe. 0 = aus. Sie steht hier und nicht in einem
+          // Wegwerf-Zweig, weil genau diese Frage — „welcher Term rauscht?" —
+          // sich nicht durch Nachdenken beantworten ließ: die Ableitungen sind
+          // nachweislich in Ordnung (fwidth = 1,0 in einem isolierten Test),
+          // das Fenstermuster ist es auch (mit uWindowEmissive = 0 ist die
+          // Fassade sauber), und trotzdem rauschte das Ergebnis.
+          'if (uCityDebug > 0.5) {\n' +
+          '  float d = uCityDebug < 1.5 ? gFacadeWindow.w\n' +
+          '    : uCityDebug < 2.5 ? gFacadeWindow.y\n' +
+          '    : facadeHash(floor(vFacadeUv), vFacadeKind.x);\n' +
+          '  totalEmissiveRadiance = vec3(d);\n' +
+          '  diffuseColor.rgb = vec3(0.0);\n' +
+          '}',
       );
   }
 

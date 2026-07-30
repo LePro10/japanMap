@@ -164,6 +164,77 @@ export const CITY = {
 export const CITY_SLAB_Y = CITY_GROUND_Y - CITY.ground.dropBelowRoad;
 
 /**
+ * Neon — PLAN.md P6 / 6.3.
+ *
+ * Die Schilder sind das, was die Stadt zur *japanischen* Stadt macht: das
+ * einzige gesättigte Farbige im ganzen Bild (SPEC §3.1 — der Rest der Palette
+ * ist bewusst gedämpft, damit sie es sind).
+ */
+export const NEON = {
+  atlasSize: 1024,
+  /**
+   * Schriftangabe für den Atlas.
+   *
+   * **Kein Schriftname, sondern die Systemvorgabe** — und das ist eine
+   * Messentscheidung, keine Bequemlichkeit. Benannte japanische Schriften
+   * zeichnen für ein fehlendes Zeichen einen Kasten, der mehr Fläche deckt als
+   * manches echte Zeichen; die Tofu-Prüfung könnte sie dann nicht unterscheiden.
+   * Die Vorgabe malt für ein fehlendes Zeichen nichts. Messtabelle in
+   * `neonAtlas.ts`.
+   */
+  font: 'sans-serif',
+  /** Ab wie viel Prozent gesetzter Pixel eine Atlas-Zelle als lesbar gilt. */
+  minInk: 8,
+
+  /** Höhe eines hochkanten Schildes in Metern. Die Breite folgt dem Zellformat. */
+  uprightHeight: 3.4,
+  /** Breite eines querliegenden Schildes in Metern. */
+  bannerWidth: 3.6,
+
+  /** Wie weit ein hochkantes Schild von der Wand absteht. */
+  uprightOffset: 1.05,
+  /** Wie weit ein querliegendes Schild vor der Wand hängt. */
+  bannerOffset: 0.22,
+
+  /** Höhe der Ladenzeilen-Schilder über dem Bürgersteig, in Metern. */
+  bannerY: 4.6,
+  /** Höhen der hochkanten Schilder über dem Bürgersteig. */
+  uprightY: [6.4, 11.2],
+
+  /** Anteil der Wandflächen, die überhaupt ein Schild bekommen. */
+  coverage: 0.62,
+  /** Ab dieser Etagenzahl bekommt eine Wand zusätzlich hochkante Schilder. */
+  uprightFloors: 5,
+
+  /**
+   * Echte Punktlichter — SPEC §3.1 nennt „nur ~10 an Schlüsselstellen".
+   *
+   * Jedes zusätzliche Punktlicht kostet in **jedem** beleuchteten Material
+   * Rechenzeit je Fragment, nicht nur dort, wo es scheint. Der Rest der Wirkung
+   * kommt aus Emissive und Bloom, und das ist gratis.
+   */
+  lights: 10,
+  lightIntensity: 90,
+  lightDistance: 26,
+
+  /** Anteil der Schilder, die flackern. */
+  flickerFraction: 0.16,
+
+  capacity: 512,
+} as const;
+
+/** Neon-Farben. Gesättigt und hell — sie sollen über die Bloom-Schwelle. */
+export const NEON_COLORS: readonly number[] = [
+  0xff2e63, // Magenta-Rot
+  0x21e6c1, // Türkis
+  0xffb03a, // Bernstein
+  0x4a7dff, // Kobalt
+  0xff5f1f, // Orange
+  0xd94fff, // Violett
+  0xf5f0e6, // warmes Weiß
+];
+
+/**
  * Startwerte des Stadtlichts — Teil des Look-Zustands (P2 / 2.6).
  *
  * `windowLitFraction` ist die **Schwelle**, unter der ein Fenster dunkel
@@ -207,4 +278,14 @@ export const CITY_SLAB_Y = CITY_GROUND_Y - CITY.ground.dropBelowRoad;
 export const CITY_LOOK = {
   windowLitFraction: 0.45,
   windowEmissive: 1.8,
+  /**
+   * Neon leuchtet stärker als ein Fenster.
+   *
+   * Ein Fenster ist eine beleuchtete Wohnung hinter Glas, ein Neonschild eine
+   * Gasentladung, die genau dafür gebaut wurde, aus 100 m gesehen zu werden.
+   * Der Faktor gegenüber `windowEmissive` ist der eigentliche Grund, warum die
+   * Schilder im Bild die Farbe tragen und nicht die Fassaden.
+   */
+  neonEmissive: 5.5,
+  neonLights: 1,
 } as const;

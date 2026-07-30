@@ -46,7 +46,11 @@ export class CitySystem implements System {
   };
 
   constructor(private readonly atmosphere: AtmosphereUniforms) {
-    this.#shared = createCityUniforms(CITY_LOOK.windowLitFraction, CITY_LOOK.windowEmissive);
+    this.#shared = createCityUniforms(
+      CITY_LOOK.windowLitFraction,
+      CITY_LOOK.windowEmissive,
+      CITY_LOOK.neonEmissive,
+    );
   }
 
   /** Die Schilderplätze für das Neon-System (6.3). */
@@ -196,6 +200,19 @@ export class CitySystem implements System {
       min: 0,
       max: 12,
       step: 0.05,
+    });
+    folder.addBinding(this.#shared.uNeonEmissive, 'value', {
+      label: 'Neonlicht',
+      min: 0,
+      max: 20,
+      step: 0.1,
+    });
+    // Die Diagnose-Ausgabe der Fassade. Sie hat das Pixelrauschen der Fenster
+    // gefunden, nachdem drei Vermutungen daran vorbeigegangen waren — und sie
+    // bleibt aus genau dem Grund stehen.
+    folder.addBinding(this.#shared.uCityDebug, 'value', {
+      label: 'Fassaden-Diagnose',
+      options: { Aus: 0, Detailanteil: 1, Fensterleuchten: 2, 'Hash je Fenster': 3 },
     });
   }
 
