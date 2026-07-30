@@ -124,10 +124,29 @@ function mulberry32(seed: number): () => number {
  * **Und dunkler, als man sie im Farbwähler wählen würde.** Der erste Satz lag
  * um 0x8a8a86; aus 1,2 km Entfernung (Blickpunkt `stadt-fern`) stand die Stadt
  * damit als weißer Fleck in einer Landschaft, deren Gelände-Albedo weit
- * darunter liegt. Bei 2,23° Sonnenstand trifft das Licht die Fassaden fast
- * senkrecht auf die Fläche — eine Wand bekommt dort mehr Licht ab als jeder
- * Hang, und ein Wert, der auf dem Boden richtig aussieht, ist an der Wand zu
- * hell.
+ * darunter liegt.
+ *
+ * > **Die Begründung dafür stand hier zuerst falsch und ist widerlegt.** Sie
+ * > lautete: „bei 2,23° Sonnenstand trifft das Licht die Fassaden fast
+ * > senkrecht, eine Wand bekommt mehr Licht ab als jeder Hang". Das stimmt als
+ * > Physik und erklärt den Fleck nicht. Nachgemessen mit einer Maske am
+ * > Blickpunkt `stadt-fern` — mittlere Helligkeit der Stadtpixel gegen einen
+ * > 60-px-Rahmen ringsum:
+ * >
+ * > | Zustand | Stadt | Umgebung | Verhältnis |
+ * > |---|---|---|---|
+ * > | wie gebaut | 141,8 | 99,3 | **1,43** |
+ * > | ohne Fenster- und Neonlicht | 63,2 | 76,4 | **0,83** |
+ * >
+ * > Ohne ihr Eigenlicht ist die Stadt **dunkler als die Landschaft**. Die
+ * > Helligkeit kommt also fast vollständig aus den brennenden Fenstern und dem
+ * > Neon — und damit aus genau dem, was SPEC §3.1 als „dominante urbane
+ * > Lichtquelle" verlangt. Der Hebel gegen einen zu hellen Fleck wäre
+ * > `windowEmissive`, nicht diese Palette; und der Wert ist in
+ * > `city.config.ts` bereits gegen den Bloom-Halo eingemessen.
+ * >
+ * > Der abgedunkelte Satz bleibt trotzdem: er ist der Grund, **warum** das
+ * > Verhältnis ohne Eigenlicht unter 1 liegt.
  */
 const FACADE_HEX: readonly number[] = [
   0x6e6e6a, // Sichtbeton
