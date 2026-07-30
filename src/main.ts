@@ -2,11 +2,13 @@ import './style.css';
 
 import { FreeFlyController } from './camera/FreeFlyController';
 import { Engine } from './core/Engine';
+import { reflectionProbe } from './debug/reflectionProbe';
 import { applyViewpoint, type Viewpoint } from './debug/viewpoints';
 import { WebGLUnsupportedError } from './core/createRenderer';
 import { AtmosphereSystem } from './render/atmosphere/AtmosphereSystem';
 import { LightingRig } from './render/LightingRig';
 import { LookController } from './render/looks/LookController';
+import { PlanarReflection } from './render/PlanarReflection';
 import { PostFXPipeline } from './render/PostFXPipeline';
 import { CitySystem } from './world/city/CitySystem';
 import { NeonSystem } from './world/city/NeonSystem';
@@ -93,6 +95,21 @@ function installFrameProbe(target: Engine, camera: FreeFlyController): void {
      * Zahlen, dieser hier den Standpunkt, an dem sie gelten.
      */
     view: (target: string | Viewpoint) => applyViewpoint(camera, target),
+
+    /**
+     * Die Messung zur Reflexions-Entscheidung (P6 / 6.5).
+     *
+     * Liefert, welcher Anteil der Spiegelbilder überhaupt im Bildschirmraum
+     * steht — die Zahl, an der SSR gegen planare Reflexion entschieden wird.
+     */
+    reflectionProbe: (grid?: number) =>
+      reflectionProbe({
+        scene: target.scene,
+        camera: target.camera,
+        surfaces: ['Stadtboden', 'Straßen'],
+        reflected: ['Stadt', 'Neon'],
+        ...(grid === undefined ? {} : { grid }),
+      }),
     probe: () => {
       target.loop.tick();
       const gl = target.renderer.getContext();
@@ -177,6 +194,7 @@ function installFrameProbe(target: Engine, camera: FreeFlyController): void {
 //     danach richten Sonne, Wasserebene und Bodenmarkierung sich daran aus;
 //     sonst hinkten alle drei einen Frame hinterher.
 const atmosphere = new AtmosphereSystem();
+const reflection = new PlanarReflection();
 const controller = new FreeFlyController();
 
 engine.add(controller);
@@ -201,7 +219,12 @@ engine.add(new CitySystem(atmosphere.uniforms));
 // Nach der Stadt: das Neon hört auf `city:ready` und hat vorher nichts zu tun.
 engine.add(new NeonSystem(atmosphere.uniforms));
 engine.add(new TerrainSystem(atmosphere.uniforms));
-engine.add(new RoadSystem(atmosphere.uniforms));
+engine.add(new RoadSystem(atmosphere.uniforms, reflection.uniforms));
+// **Nach** allen Systemen, die Geometrie in die Szene bringen, und **vor** der
+// PostFX-Kette: der Spiegeldurchgang rendert die fertige Szene ein zweites Mal
+// aus der gespiegelten Kamera, und er muss das tun, bevor der Composer den
+// eigentlichen Frame zeichnet.
+engine.add(reflection);
 engine.add(
   new PostFXPipeline((present) => {
     engine.setPresenter(present);

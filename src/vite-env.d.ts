@@ -40,6 +40,20 @@ declare global {
               lookAt: readonly [number, number, number];
             },
       ) => string;
+      /**
+       * Misst, welcher Anteil der Spiegelbilder im Bildschirmraum steht —
+       * die Grundlage der Reflexions-Entscheidung aus P6 / 6.5.
+       */
+      reflectionProbe?: (grid?: number) => {
+        onSurface: number;
+        toSky: number;
+        toGeometry: number;
+        resolvable: number;
+        offScreen: number;
+        occluded: number;
+        ssrCoverage: number;
+        meanHitHeight: number;
+      };
     };
   }
 }
