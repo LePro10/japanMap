@@ -1,9 +1,11 @@
 import {
   BoxGeometry,
   Group,
+  InstancedBufferAttribute,
   InstancedMesh,
   Mesh,
   MeshStandardMaterial,
+  PlaneGeometry,
   RepeatWrapping,
   type Texture,
 } from 'three';
@@ -12,7 +14,9 @@ import { ROAD_TYPES, type RoadData, type RoadFile } from '@/config/roads.config'
 import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
 import type { ReflectionUniforms } from '@/render/PlanarReflection';
+import { DecalMaterial } from './materials/DecalMaterial';
 import { createRoadUniforms, RoadMaterial, type RoadUniforms } from './materials/RoadMaterial';
+import { buildDecalAtlas, buildDecals } from './roads/Decals';
 import { buildGuardrails } from './roads/GuardrailBuilder';
 import { ROAD_ASSETS } from './roads/roadAssets';
 import { buildRoadGeometry } from './roads/RoadMeshBuilder';
@@ -38,9 +42,13 @@ export class RoadSystem implements System {
   #network: RoadNetwork | null = null;
   #editor: RoadEditor | null = null;
 
+  #decalMaterial: DecalMaterial | null = null;
+  #decalAtlas: Texture | null = null;
+
   readonly #readouts = {
     netz: '—',
     planken: '—',
+    decals: '—',
     abfrage: 'noch nicht gemessen',
   };
 
@@ -80,6 +88,8 @@ export class RoadSystem implements System {
       this.#surface,
       this.reflection,
     );
+    this.#decalAtlas = context.resources.track(buildDecalAtlas());
+    this.#decalMaterial = new DecalMaterial(this.#decalAtlas, this.atmosphere);
 
     const group = new Group();
     group.name = 'Straßen';
@@ -184,6 +194,32 @@ export class RoadSystem implements System {
       triangles += guardrails.posts.length * 12;
     }
 
+    // ── Decals (P6 / 6.6) ───────────────────────────────────────────────
+    if (this.#decalMaterial) {
+      const decals = buildDecals(roads);
+      if (decals.matrices.length > 0) {
+        const mesh = new InstancedMesh(
+          new PlaneGeometry(1, 1),
+          this.#decalMaterial,
+          decals.matrices.length,
+        );
+        mesh.name = 'Straßendecals';
+        mesh.frustumCulled = false;
+        mesh.castShadow = false;
+        mesh.receiveShadow = false;
+        for (let i = 0; i < decals.matrices.length; i++) mesh.setMatrixAt(i, decals.matrices[i]!);
+        mesh.instanceMatrix.needsUpdate = true;
+        mesh.geometry.setAttribute('aDecalRect', new InstancedBufferAttribute(decals.rects, 4));
+        mesh.geometry.setAttribute('aDecalTint', new InstancedBufferAttribute(decals.tints, 3));
+        group.add(mesh);
+        triangles += decals.matrices.length * 2;
+        this.#readouts.decals =
+          `${decals.matrices.length} Decals · 1 Draw-Call · ` +
+          `${decals.counts.strich} Striche, ${decals.counts.gully} Gullys, ` +
+          `${decals.counts.flicken} Flicken, ${decals.counts.spur} Reifenspuren`;
+      }
+    }
+
     const totalLength = roads.reduce((sum, road) => sum + road.length, 0);
     this.#readouts.netz =
       `${roads.length} Strecken · ${(totalLength / 1000).toFixed(2)} km · ` +
@@ -230,6 +266,7 @@ export class RoadSystem implements System {
 
     folder.addBinding(this.#readouts, 'netz', { readonly: true, label: 'Netz' });
     folder.addBinding(this.#readouts, 'planken', { readonly: true, label: 'Leitplanken' });
+    folder.addBinding(this.#readouts, 'decals', { readonly: true, label: 'Decals' });
     folder.addBinding(rails, 'visible', { label: 'Leitplanken zeigen' });
     folder.addBinding(this.#readouts, 'abfrage', { readonly: true, label: 'Abfrage' });
     folder.addBinding(group, 'visible', { label: 'Sichtbar' });
