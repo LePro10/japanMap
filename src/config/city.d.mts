@@ -25,6 +25,12 @@ export declare const CITY_GROUND_Y: number;
 /** Höhe der **Mittellinie** städtischer Strecken — um den Fahrbahnversatz tiefer. */
 export declare const CITY_ROAD_LEVEL: number;
 
+/** Höhe, auf die der Baker das Gelände im Distrikt legt (Schritt 5d). */
+export declare const CITY_PAD_Y: number;
+
+/** Auslaufstrecke der Einebnung in Metern. */
+export declare const CITY_PAD_FEATHER: number;
+
 export declare function inDistrict(x: number, z: number): boolean;
 
 /** 1 im Distrikt, 0 weiter als `feather` außerhalb, dazwischen glatt. */
