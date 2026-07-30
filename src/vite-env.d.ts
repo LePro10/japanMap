@@ -28,6 +28,18 @@ declare global {
        * Liefert den geschriebenen Pfad.
        */
       shot?: (name?: string) => Promise<string>;
+      /**
+       * Benannten Blickpunkt anfliegen — die Tabelle steht in
+       * `src/debug/viewpoints.ts`. Liefert die Notiz zum Blickpunkt.
+       */
+      view?: (
+        target:
+          | string
+          | {
+              position: readonly [number, number, number];
+              lookAt: readonly [number, number, number];
+            },
+      ) => string;
     };
   }
 }
