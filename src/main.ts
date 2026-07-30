@@ -2,11 +2,13 @@ import './style.css';
 
 import { FreeFlyController } from './camera/FreeFlyController';
 import { Engine } from './core/Engine';
+import { applyViewpoint, type Viewpoint } from './debug/viewpoints';
 import { WebGLUnsupportedError } from './core/createRenderer';
 import { AtmosphereSystem } from './render/atmosphere/AtmosphereSystem';
 import { LightingRig } from './render/LightingRig';
 import { LookController } from './render/looks/LookController';
 import { PostFXPipeline } from './render/PostFXPipeline';
+import { CitySystem } from './world/city/CitySystem';
 import { TerrainDataError } from './world/TerrainSampler';
 import { RoadSystem } from './world/RoadSystem';
 import { PropSystem } from './world/props/PropSystem';
@@ -78,10 +80,18 @@ if (import.meta.env.DEV) {
  * wurde. Rendern und Auslesen im selben Aufruf umgeht beides und ist damit die
  * einzige Prüfung, die unabhängig von der Bildrate eine Aussage macht.
  */
-function installFrameProbe(target: Engine): void {
+function installFrameProbe(target: Engine, camera: FreeFlyController): void {
   window.japanMap = {
     ...window.japanMap,
     engine: target,
+
+    /**
+     * Benannten Blickpunkt anfliegen — `japanMap.view('stadt')`.
+     *
+     * Der Gegenpart zu `shot()` und `probe()`: die beiden liefern Bild und
+     * Zahlen, dieser hier den Standpunkt, an dem sie gelten.
+     */
+    view: (target: string | Viewpoint) => applyViewpoint(camera, target),
     probe: () => {
       target.loop.tick();
       const gl = target.renderer.getContext();
@@ -166,8 +176,9 @@ function installFrameProbe(target: Engine): void {
 //     danach richten Sonne, Wasserebene und Bodenmarkierung sich daran aus;
 //     sonst hinkten alle drei einen Frame hinterher.
 const atmosphere = new AtmosphereSystem();
+const controller = new FreeFlyController();
 
-engine.add(new FreeFlyController());
+engine.add(controller);
 engine.add(atmosphere);
 engine.add(new LightingRig(atmosphere.uniforms));
 engine.add(new WaterSystem(atmosphere.uniforms));
@@ -182,6 +193,10 @@ engine.add(new PropSystem(atmosphere.uniforms));
 // Ebenso: die Wasserflächen der Reisfelder holen ihre Höhe aus dem Sampler,
 // weil das Gelände die Parzellen bereits trägt (Baker, Schritt 5c).
 engine.add(new RicePaddy(atmosphere.uniforms));
+// Und ebenso die Stadt: sie braucht den Sampler für die Schürze am
+// Distriktrand und das Straßennetz, damit die Blöcke der Stadtstraße
+// ausweichen. Beides kommt als Ereignis aus Systemen, die danach kommen.
+engine.add(new CitySystem(atmosphere.uniforms));
 engine.add(new TerrainSystem(atmosphere.uniforms));
 engine.add(new RoadSystem(atmosphere.uniforms));
 engine.add(
@@ -213,7 +228,7 @@ try {
 }
 engine.start();
 
-if (import.meta.env.DEV) installFrameProbe(engine);
+if (import.meta.env.DEV) installFrameProbe(engine, controller);
 
 // Vite führt dieses Modul bei einem Hot-Update erneut aus, ohne die Seite neu
 // zu laden. Ohne diesen Haken entsteht dabei eine **zweite** Engine im selben

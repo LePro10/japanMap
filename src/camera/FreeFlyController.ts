@@ -240,14 +240,34 @@ export class FreeFlyController implements System {
   // ── Zustand ────────────────────────────────────────────────────────────
 
   #reset(): void {
+    this.placeAt(START.position, START.lookAt);
+    this.#speed = SPEED.default;
+  }
+
+  /**
+   * Kamera an einen benannten Ort setzen.
+   *
+   * Öffentlich, weil die Abnahme von Bildern lebt und ein Bild einen
+   * reproduzierbaren Standpunkt braucht. Bis P5 wurde dafür von Hand
+   * hingeflogen — und ein Blickpunkt, den man nicht wiederherstellen kann, ist
+   * genau die Sorte Zahl, die CLAUDE.md „nicht neu abgelesen" nennt: der
+   * nächste Vergleich steht dann woanders, und die Differenz misst die Kamera
+   * statt die Änderung.
+   *
+   * Gieren und Nicken werden **aus der Blickrichtung zurückgerechnet**, nicht
+   * nur die Quaternion gesetzt: `update()` baut die Ausrichtung jeden Frame aus
+   * diesen beiden Zahlen neu auf, eine gesetzte Quaternion wäre nach einem
+   * Frame wieder weg.
+   */
+  placeAt(position: Vector3, lookAt: Vector3): void {
     const camera = this.#camera;
     if (!camera) return;
-    camera.position.copy(START.position);
-    camera.lookAt(START.lookAt);
+    camera.position.copy(position);
+    camera.lookAt(lookAt);
     this.#yaw = camera.rotation.y;
     this.#pitch = camera.rotation.x;
-    this.#speed = SPEED.default;
     this.#velocity.set(0, 0, 0);
+    this.#persist();
   }
 
   /**

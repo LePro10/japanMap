@@ -88,9 +88,15 @@ export function inDistrict(x, z) {
 export function districtBlend(x, z, feather = 60) {
   const dx = Math.max(CITY_DISTRICT.minX - x, x - CITY_DISTRICT.maxX, 0);
   const dz = Math.max(CITY_DISTRICT.minZ - z, z - CITY_DISTRICT.maxZ, 0);
-  const distance = Math.hypot(dx, dz);
-  if (distance <= 0) return 1;
-  if (distance >= feather) return 0;
-  const t = 1 - distance / feather;
+  if (dx === 0 && dz === 0) return 1;
+
+  // Quadratisch vergleichen und die Wurzel nur ziehen, wenn sie gebraucht wird.
+  // Das ist hier keine Mikrooptimierung: die Vegetations-Streuung ruft diese
+  // Funktion für **jeden** Kandidaten auf, das sind bei Gras rund 6700 je Chunk,
+  // und für die weit über 99 % der Karte, die nicht Stadt sind, endet sie damit
+  // nach zwei Multiplikationen.
+  const q = dx * dx + dz * dz;
+  if (q >= feather * feather) return 0;
+  const t = 1 - Math.sqrt(q) / feather;
   return t * t * (3 - 2 * t);
 }

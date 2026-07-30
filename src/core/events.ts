@@ -1,5 +1,7 @@
 import type { QualityLevel } from '@/config/quality.config';
 import type { LookState } from '@/render/looks/lookState';
+import type { SignAnchor } from '@/world/city/CityGenerator';
+import type { CityUniforms } from '@/world/materials/FacadeMaterial';
 import type { TerrainHeightUniforms } from '@/world/materials/TerrainMaterial';
 import type { PropClearance } from '@/world/props/PropClearance';
 import type { RoadNetwork } from '@/world/roads/RoadNetwork';
@@ -66,6 +68,16 @@ export type AppEvents = {
    * **vor** dem PropSystem registriert sein.
    */
   'props:ready': { clearance: PropClearance };
+
+  /**
+   * Die Stadt steht — mit ihr die Wandflächen, an die Neonschilder gehören.
+   *
+   * Anders als bei Terrain und Straßen ist die Reihenfolge hier **nicht**
+   * kritisch: das NeonSystem baut erst auf dieses Ereignis hin und hat vorher
+   * nichts zu tun. Es trägt trotzdem denselben Namen wie die anderen, weil es
+   * dieselbe Rolle spielt — „ab jetzt gibt es das".
+   */
+  'city:ready': { signs: readonly SignAnchor[]; uniforms: CityUniforms };
 
   /**
    * Look-Presets (PLAN.md P2 / 2.6). Zwei Richtungen, bewusst getrennt:

@@ -1,3 +1,4 @@
+import { districtBlend } from '@/config/city.mjs';
 import { SCATTER, SPECIES } from '@/config/vegetation.config';
 import { WORLD } from '@/config/world.config';
 import type { PropClearance } from '../props/PropClearance';
@@ -97,6 +98,14 @@ function chunkSeed(cx: number, cz: number, salt: number): number {
 
 const RAD_PER_DEG = Math.PI / 180;
 
+/**
+ * Über welche Strecke die Vegetation zur Stadt hin ausdünnt, in Metern.
+ *
+ * 30 m, also etwas mehr als die 24 m Schürze der Bodenplatte: die letzten
+ * Grasbüschel enden damit knapp außerhalb des Asphalts statt an seiner Kante.
+ */
+const CITY_VEGETATION_FADE = 30;
+
 export interface ScatterInputs {
   readonly sampler: TerrainSampler;
   readonly zones: ZoneMap;
@@ -172,11 +181,20 @@ export function scatterChunk(
         const y = input.sampler.getHeightAt(x, z);
         if (y < species.minHeight || y > species.maxHeight) continue;
 
+        // **Die Stadt als negative Zone** (P6). Im Distrikt liegt eine
+        // Asphaltplatte über dem Gelände; was darunter gestreut wird, steckt
+        // entweder darin oder wächst hindurch. Der Eingriff sitzt bewusst in
+        // der Eignung und nicht als eigener Filter dahinter: so läuft die
+        // Vegetation über die Schürze weich aus, statt an der Distriktkante
+        // eine kerzengerade Linie zu ziehen — und er kostet keinen zusätzlichen
+        // Wurf, verschiebt also den Zufallsstrom nicht.
+        const town = districtBlend(x, z, CITY_VEGETATION_FADE);
         const suitability =
-          input.zones.weight(x, z, 0) * species.zones.rock +
-          input.zones.weight(x, z, 1) * species.zones.grass +
-          input.zones.weight(x, z, 2) * species.zones.sand +
-          input.zones.weight(x, z, 3) * species.zones.paddy;
+          (input.zones.weight(x, z, 0) * species.zones.rock +
+            input.zones.weight(x, z, 1) * species.zones.grass +
+            input.zones.weight(x, z, 2) * species.zones.sand +
+            input.zones.weight(x, z, 3) * species.zones.paddy) *
+          (1 - town);
         if (roll >= suitability * input.density) continue;
 
         const slope = input.sampler.getSlopeAt(x, z);
