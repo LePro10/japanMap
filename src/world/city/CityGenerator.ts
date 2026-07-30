@@ -615,7 +615,13 @@ function extrudeBuilding(
   signs: SignAnchor[],
 ): { floors: number; height: number } {
   const b = CITY.building;
-  const seed = random();
+  // **Ganzzahlig, nicht 0…1.** Der Startwert läuft als Vertex-Attribut durch
+  // die perspektivisch korrekte Interpolation; die trifft je Pixel die letzten
+  // Bits unterschiedlich, auch wenn an allen Ecken derselbe Wert steht. Der
+  // Hash im Shader rundet ihn deshalb auf eine ganze Zahl — was nur geht, wenn
+  // hier auch eine steht. Die lange Fassung der Geschichte in
+  // `facade_windows.glsl`.
+  const seed = Math.floor(random() * 256);
   const color = FACADE_COLORS[Math.floor(random() * FACADE_COLORS.length)] ?? FACADE_COLORS[0]!;
 
   const cx = (footprint.minX + footprint.maxX) / 2;
