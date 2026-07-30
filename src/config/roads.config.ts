@@ -121,6 +121,54 @@ export const ROAD_WET = {
   roughness: 0.045,
 } as const;
 
+/**
+ * Straßendecals — PLAN.md P6 / 6.6.
+ *
+ * Alle Längen in Metern. Die Zahlen orientieren sich an japanischen
+ * Straßenmaßen: Markierungen 15 cm breit, Mittelstrich 5 m mit 5 m Lücke auf
+ * Landstraßen. Sie stehen hier zusammen, weil sie zusammen einen Maßstab
+ * ergeben — ein 20 cm breiter Strich neben einem 5-m-Strich sähe nach nichts
+ * aus, beide zusammen sagen, wie breit die Fahrbahn ist.
+ */
+export const DECALS = {
+  seed: 20260731,
+  atlasSize: 512,
+
+  /**
+   * Wie weit das Decal über der Fahrbahn liegt, in Metern.
+   *
+   * **Fast null.** Der Tiefenstreit wird über `polygonOffset` gelöst, nicht
+   * über Höhe: 2 cm Abstand ergäben bei 2,23° Sonnenstand einen halben Meter
+   * Schattenstrich neben jeder Markierung. Der Millimeter hier fängt nur die
+   * Rundung der Instanzmatrix ab.
+   */
+  lift: 0.001,
+
+  /** Straßentypen mit Fahrbahnmarkierung. Ein Feldweg hat keine. */
+  markedTypes: ['highway', 'city', 'village'] as readonly string[],
+
+  lineWidth: 0.15,
+  /** Länge eines Randlinien-Stücks. Kürzer = mehr Instanzen, nicht besser. */
+  edgeLength: 8,
+  /** Abstand der Randlinie von der Fahrbahnkante. */
+  edgeInset: 0.35,
+
+  dashLength: 5,
+  dashPitch: 10,
+
+  gullyPitch: 42,
+  gullyInset: 0.7,
+  gullySize: 0.68,
+
+  patchPitch: 48,
+  patchSize: [1.1, 3.2] as readonly [number, number],
+
+  tirePitch: 6,
+  /** Ab dieser Krümmung (1/m) wird gebremst. 1/45 m entspricht 0,022. */
+  tireCurvature: 0.02,
+  tireLength: 9,
+} as const;
+
 /** Struktur von assets/generated/roads/roads.json. */
 export interface RoadFile {
   readonly seed: number;
