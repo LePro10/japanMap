@@ -113,7 +113,32 @@ export const ROAD_MESH = {
  * härter aliast als sie darf.
  */
 export const ROAD_WET = {
-  wetness: 0.62,
+  /**
+   * ## Warum 0,44 und nicht 0,62
+   *
+   * Der erste Wert war geraten. Gemessen wurde danach der **Anteil sichtbar
+   * nasser Fläche**: Maske aller Asphaltpixel im Bild (Differenz gegen ein Bild
+   * ohne Straßen und Stadtboden), darin die Pixel, die sich gegenüber `wetness
+   * = 0` ändern. Die Spiegelung war dabei abgeschaltet — sie verstärkt den
+   * Effekt und würde die Fläche mitmessen, die sie beleuchtet.
+   *
+   * | wetness | Ring von oben | Stadtschleife (streifend) |
+   * |---|---|---|
+   * | 0,36 | 25,6 % | 13,8 % |
+   * | 0,40 | 29,4 % | 23,0 % |
+   * | **0,44** | **32,8 %** | **38,7 %** |
+   * | 0,48 | 36,4 % | 57,6 % |
+   * | 0,52 | 39,4 % | 80,8 % |
+   * | 0,62 | 45,7 % | **94,7 %** |
+   *
+   * Bei 0,62 stand die Stadtschleife praktisch vollständig unter Wasser,
+   * während dieselbe Einstellung von oben gesehen bei 45 % lag. Der Grund ist
+   * der streifende Blick: dort sieht die Kamera fast nur die Fahrbahnränder,
+   * und die tragen die höchste Pfützenneigung. Bei 0,44 liegen beide
+   * Blickpunkte nah beieinander — und das ist das Kriterium, denn nasse
+   * Fahrbahn soll nicht davon abhängen, wie flach man daraufschaut.
+   */
+  wetness: 0.44,
   /** Breite des Übergangs am Pfützenrand, in Einheiten der Rauschamplitude. */
   edge: 0.13,
   /** Wie stark das Albedo in der Pfütze abdunkelt. */
