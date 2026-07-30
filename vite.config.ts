@@ -83,6 +83,29 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
+    /**
+     * **Auf einem Netzlaufwerk keine Pfadauflösung über `realpath`.**
+     *
+     * Vite löst Modul-IDs standardmäßig auf ihren echten Pfad auf. Unter Windows
+     * geht das über die Freigabe und wieder zurück auf **irgendeinen**
+     * zugeordneten Laufwerksbuchstaben — und wenn mehrere Buchstaben auf
+     * dieselbe Freigabe zeigen, ist das nicht zwingend derselbe, unter dem der
+     * Dev-Server gestartet wurde.
+     *
+     * Genau das ist mitten in P6 passiert: `P:` und `Z:` zeigten beide auf
+     * `\\…\projects`, Vite löste `/src/main.ts` nach `Z:/projects/japanMap/…`
+     * auf, und der eigene Prozess konnte diesen Pfad nicht öffnen. Der
+     * Fehlerbericht war eine einzige Zeile im **Server**-Log —
+     * „Pre-transform error: Failed to load url /src/main.ts. Does the file
+     * exist?" —, während der Browser eine leere Seite ohne jede Konsolenmeldung
+     * zeigte und `window.japanMap` schlicht fehlte. Die Datei existierte unter
+     * beiden Buchstaben.
+     *
+     * `preserveSymlinks` schaltet die Auflösung ab: der Pfad bleibt, wie er
+     * hereinkam. Symlinks im Baum gibt es hier keine, der Schalter kostet also
+     * nichts. Auf lokaler Platte greift die Bedingung ohnehin nicht.
+     */
+    ...(isNetworkMount ? { preserveSymlinks: true } : {}),
   },
 
   server: {

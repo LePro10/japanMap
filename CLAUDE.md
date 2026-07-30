@@ -168,6 +168,19 @@ mit `@/` muss man dafür vorher auf relative umschreiben).
   Steht dort `THREE.WebGLRenderer: Error creating WebGL context`, ist es
   wirklich blockiert. Steht nur der Timer nicht zur Verfügung, ist es das nicht.
 
+- **Zeigen zwei Laufwerksbuchstaben auf dieselbe Freigabe, findet Vite seine
+  eigenen Dateien nicht mehr.** Vite löst Modul-IDs über `realpath` auf; unter
+  Windows geht das über die Freigabe und wieder zurück auf *irgendeinen*
+  zugeordneten Buchstaben. Mitten in P6 kam ein zweiter dazu (`P:` und `Z:` auf
+  dieselbe Freigabe), Vite löste `/src/main.ts` nach `Z:/…` auf, und der eigene
+  Prozess konnte den Pfad nicht öffnen. **Im Browser sah das aus wie nichts:**
+  leere Seite, keine Konsolenmeldung, `window.japanMap` fehlt. Die einzige Spur
+  stand im **Server**-Log (`preview_logs` bzw. der Terminalausgabe):
+  „Pre-transform error: Failed to load url /src/main.ts. Does the file exist?"
+  `vite.config.ts` setzt auf einem Netzlaufwerk deshalb
+  `resolve.preserveSymlinks`. Merksatz: wenn die Seite leer bleibt und die
+  Browser-Konsole schweigt, **im Server-Log nachsehen**.
+
 - **Auf einem SMB-Mount hat der Dev-Server keinen Datei-Watcher.** Vites nativer
   Watcher reißt den Server beim ersten Dateiereignis mit, und der Polling-Modus
   lädt die Seite im Sekundentakt neu. `vite.config.ts` erkennt den Mount über
