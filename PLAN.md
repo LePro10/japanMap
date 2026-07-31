@@ -3033,6 +3033,44 @@ anderen nötig sind:
    > dem Gelände — dieselbe Zirkularität wie beim Bake-Kreislauf, und mit
    > demselben Mittel zu lösen (zweimal backen). **Zu entscheiden ist das nicht
    > hier, sondern von der Art Direction.**
+   >
+   > **Was die Bank kostet — nachgemessen, und die erste Einschätzung war
+   > falsch.** „Die Bank ist fast umsonst, der Carve-Mechanismus steht schon"
+   > stimmt für den *Code* und nicht für das *Gelände*. Gemessen auf dem
+   > ausgelieferten Höhenfeld entlang der `toge`-Mittellinie, ohne zu backen:
+   >
+   > *Variante A — auf Fahrbahnhöhe zwingen (was `carveRoads` heute tut):*
+   >
+   > | halbe Breite | Median | 95 % | Maximum | Abtrag > 20 m | Volumen |
+   > |---|---|---|---|---|---|
+   > | 20 m | 3,0 m | 42,4 m | 102,2 m | 15 % | 1,00 Mm³ |
+   > | 30 m | 5,5 m | 54,7 m | 102,8 m | 22 % | 2,18 Mm³ |
+   > | 60 m | 8,5 m | 65,4 m | 183,4 m | 31 % | 6,13 Mm³ |
+   >
+   > *Variante B — nur das Relief glätten (jeder Punkt gegen den Median seines
+   > Querschnitts):*
+   >
+   > | halbe Breite | Median | 95 % | Maximum | Abtrag > 20 m | Volumen |
+   > |---|---|---|---|---|---|
+   > | 20 m | **0,0 m** | 28,6 m |  92,2 m |  8 % | 0,64 Mm³ |
+   > | 30 m | **0,0 m** | 31,8 m |  96,7 m |  9 % | 1,05 Mm³ |
+   > | 60 m | **0,0 m** | 49,3 m | 173,3 m | 17 % | 3,47 Mm³ |
+   >
+   > Der Unterschied ist der Kern der Sache: **Variante A trägt nicht den Grat
+   > ab, sondern den halben Berg.** Der Hang steigt neben der Trasse steil an,
+   > und „auf Fahrbahnhöhe" heißt dort 50 bis 100 m Abtrag. Variante B lässt den
+   > Hang stehen und nimmt nur, was über seinem eigenen Querschnittsmedian
+   > liegt — halbes Volumen, halber Anteil über 20 m, und der **Median fällt auf
+   > null**: der größte Teil des Korridors bleibt unberührt.
+   >
+   > **Umsonst ist auch B nicht.** Bei ±30 m stehen 95 % bei 31,8 m und der
+   > Extremwert bei 96,7 m; an einzelnen Stellen entstehen also weiterhin
+   > sichtbare Anschnitte.
+   >
+   > **Und beides sind Untergrenzen.** Gemessen wurde entlang der *heutigen*
+   > Trasse, und die hat der Generator bereits auf geringen Erdbau optimiert.
+   > Eine Linienführung mit acht Kehren läuft zwangsläufig durch schlechteres
+   > Gelände.
 2. **Die Flanke anisotrop verlängern.** Radial geht es nicht: `outer` von 1080
    auf 1500 zu setzen schiebt den Massivrand mitten in die Reisfelder. Gebraucht
    wird eine **elliptische Maske**, die entlang der Passachse (nach Süden/
