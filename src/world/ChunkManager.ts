@@ -9,7 +9,7 @@ import {
   type PerspectiveCamera,
 } from 'three';
 
-import { LOD, LOD_TRIANGLES_PER_NODE } from '@/config/lod.config';
+import { LOD, lodTrianglesPerNode, type GridVertices } from '@/config/lod.config';
 import { HeightPyramid } from './terrain/HeightPyramid';
 import type { TerrainSampler } from './TerrainSampler';
 
@@ -57,7 +57,14 @@ export interface ChunkStats {
  * mit seiner ganzen Splat-, Nebel- und Verschattungskette unangetastet.
  */
 export class ChunkManager {
-  readonly geometry: InstancedBufferGeometry;
+  /**
+   * Die geteilte Knotengeometrie.
+   *
+   * **Nicht `readonly`, seit P8.1 die Auflösung je Qualitätsstufe verstellt.**
+   * Wer sie an ein Mesh hängt, muss nach `setGridVertices()` neu zuweisen —
+   * `TerrainSystem` tut das über `quality:changed`.
+   */
+  geometry: InstancedBufferGeometry;
   readonly stats: ChunkStats = {
     nodes: 0,
     triangles: 0,
@@ -79,27 +86,65 @@ export class ChunkManager {
   readonly #camera = new Vector3();
 
   #count = 0;
+  #gridVertices: GridVertices;
   /** Auswahl anhalten, um Risse und Popping im Standbild zu begutachten. */
   frozen = false;
 
-  constructor(sampler: TerrainSampler) {
+  constructor(sampler: TerrainSampler, gridVertices: GridVertices = LOD.gridVertices) {
     this.#pyramid = HeightPyramid.build(sampler);
 
-    this.geometry = ChunkManager.#createGeometry();
+    this.#gridVertices = gridVertices;
+    this.geometry = ChunkManager.#createGeometry(gridVertices);
     this.#origin = new InstancedBufferAttribute(new Float32Array(LOD.maxNodes * 2), 2);
     this.#size = new InstancedBufferAttribute(new Float32Array(LOD.maxNodes), 1);
     this.#morph = new InstancedBufferAttribute(new Float32Array(LOD.maxNodes * 2), 2);
     this.#level = new InstancedBufferAttribute(new Float32Array(LOD.maxNodes), 1);
 
+    this.#bindInstanceAttributes();
+    this.geometry.instanceCount = 0;
+  }
+
+  /** Stützstellen pro Achse im aktuellen Gitter. */
+  get gridVertices(): GridVertices {
+    return this.#gridVertices;
+  }
+
+  /**
+   * Gitterauflösung wechseln — P8.1.
+   *
+   * Die Geometrie wird **ersetzt**, nicht umgeschrieben: Position, Normale, UV
+   * und Index ändern alle ihre Länge, und ein `BufferAttribute` mit neuer Länge
+   * ist ohnehin ein neues Objekt. Die alte Geometrie wird freigegeben, sonst
+   * bliebe ihr Puffer bis zum Kontextverlust auf der GPU liegen — bei vier
+   * Stufenwechseln in einer Sitzung fällt das nicht auf, bei einem Regler, an
+   * dem jemand spielt, schon.
+   *
+   * **Die Instanzattribute wandern mit, sie werden nicht neu angelegt.** Sie
+   * halten die Auswahl des letzten Frames; würden sie hier zurückgesetzt,
+   * stünde für einen Frame `instanceCount = 0` im Bild — also nichts. Genau
+   * diesen schwarzen Blitz beschreibt schon der Kommentar zur ersten Auswahl im
+   * `TerrainSystem`.
+   */
+  setGridVertices(gridVertices: GridVertices): void {
+    if (gridVertices === this.#gridVertices) return;
+    const previous = this.geometry;
+    this.#gridVertices = gridVertices;
+    this.geometry = ChunkManager.#createGeometry(gridVertices);
+    this.#bindInstanceAttributes();
+    this.geometry.instanceCount = this.#count;
+    this.stats.triangles = this.#count * lodTrianglesPerNode(gridVertices);
+    previous.dispose();
+  }
+
+  #bindInstanceAttributes(): void {
     this.geometry.setAttribute('aNodeOrigin', this.#origin);
     this.geometry.setAttribute('aNodeSize', this.#size);
     this.geometry.setAttribute('aNodeMorph', this.#morph);
     this.geometry.setAttribute('aNodeLevel', this.#level);
-    this.geometry.instanceCount = 0;
   }
 
   /**
-   * Das geteilte Einheitsgitter: 33 × 33 Stützstellen über [0,1]².
+   * Das geteilte Einheitsgitter: `n × n` Stützstellen über [0,1]².
    *
    * `normal` und `uv` stehen darin, obwohl das Material beide nicht benutzt —
    * die Höhe kommt aus der Textur, die Normale aus normal.png, und die
@@ -109,9 +154,8 @@ export class ChunkManager {
    * `normal` wäre das ein Nullvektor: `normalize()` darauf ergibt NaN, und das
    * Terrain verschwindet — ohne Fehlermeldung, weil formal alles korrekt ist.
    */
-  static #createGeometry(): InstancedBufferGeometry {
-    const n = LOD.gridVertices;
-    const quads = LOD.gridQuads;
+  static #createGeometry(n: number): InstancedBufferGeometry {
+    const quads = n - 1;
     const vertices = n * n;
 
     const position = new Float32Array(vertices * 3);
@@ -186,7 +230,7 @@ export class ChunkManager {
     this.geometry.instanceCount = this.#count;
 
     this.stats.nodes = this.#count;
-    this.stats.triangles = this.#count * LOD_TRIANGLES_PER_NODE;
+    this.stats.triangles = this.#count * lodTrianglesPerNode(this.#gridVertices);
     this.stats.selectMs = performance.now() - start;
   }
 

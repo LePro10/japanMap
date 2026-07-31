@@ -7,6 +7,8 @@
  * unten, kalibriert auf GTX 1660 / RX 580 @ 1080p60 (SPEC §4).
  */
 
+import type { GridVertices } from './lod.config';
+
 export type QualityLevel = 'ultra' | 'high' | 'medium' | 'low';
 
 export type AoQuality = 'high' | 'medium' | 'low' | 'off';
@@ -61,6 +63,19 @@ export interface QualitySettings {
   readonly vegetationDensity: number;
   /** Auflösungsfaktor des Render-Targets gegenüber der Canvas-Größe. */
   readonly renderScale: number;
+  /**
+   * Stützstellen pro Achse im Terrain-Knotengitter (ab P8.1).
+   *
+   * **Der einzige Hebel, mit dem eine Stufe an der Geländelast überhaupt etwas
+   * ändert.** Bis P8 war das eine Konstante, und die Messtabelle unten zeigte
+   * die Folge: „Mittel" und „Niedrig" unterschieden sich um 705 Dreiecke, also
+   * um nichts. Der ganze Abfall von Hoch auf Mittel stammte aus dem
+   * wegfallenden Spiegeldurchgang.
+   *
+   * Zulässige Werte und die Herleitung, warum das die Rissfreiheit *nicht*
+   * verletzt: `GRID_VERTICES_ALLOWED` in `lod.config.ts`.
+   */
+  readonly terrainGridVertices: GridVertices;
 }
 
 /**
@@ -91,33 +106,41 @@ export const AO_QUALITY: Readonly<Record<AoQuality, AoSettings>> = {
  * Stabilität vorgefüllt (sonst misst man den Füllvorgang, siehe
  * `frameTiming.ts`), danach 12 Frames, Median:
  *
- * | Stufe | Zeichenpuffer | Draw-Calls | Dreiecke | Instanzen | Frame |
+ * | Stufe | Zeichenpuffer | Draw-Calls | Dreiecke | davon Gelände | Knoten |
  * |---|---|---|---|---|---|
- * | Ultra   | 1280×720 | 100 | 611 974 | 1622 | 169,4 ms |
- * | Hoch    | 1280×720 | 101 | 610 151 | 1166 | 164,9 ms |
- * | Mittel  | 1088×612 |  69 | 329 823 |  735 | 104,3 ms |
- * | Niedrig |  896×503 |  62 | 329 118 |  386 |  63,2 ms |
+ * | Ultra   | 1280×720 | 96 | 605 486 | 264 192 | 129 |
+ * | Hoch    | 1280×720 | 97 | 605 487 | 264 192 | 129 |
+ * | Mittel  | 1088×612 | 67 | 212 769 | 148 608 | 129 |
+ * | Niedrig |  896×503 | 60 | 130 202 |  66 048 | 129 |
  *
  * Zu lesen ist das so:
  *
- *  - **Die Instanzzahlen treffen die Vorgabe.** 1622 / 1166 / 735 / 386 sind
- *    1,00 / 0,719 / 0,453 / 0,238 — gegen die eingestellten 1 / 0,7 / 0,45 /
- *    0,25. Der Dichteregler wirkt also tatsächlich und nicht nur im Kommentar.
- *  - **Der Sprung von Hoch auf Mittel halbiert die Dreiecke**, ohne dass an der
- *    Szene etwas fehlt: dort fällt der planare Spiegeldurchgang weg, und der
- *    zeichnet sie ein zweites Mal. Genau der Kandidat, den PLAN.md P6 dafür
- *    benannt hat.
- *  - **Ultra gegen Hoch ist auf dieser Maschine nicht messbar.** Der Unterschied
- *    ist eine AO-Berechnung in voller statt halber Auflösung; 4,5 ms sind 2,7 %
- *    und liegen unter dem Rauschen. Vier Wiederholungen **desselben** Zustands
- *    ergaben 107,9 / 129,7 / 117,7 / 112,5 ms — rund ±10 %. Was darunter liegt,
- *    wird hier nicht behauptet.
+ *  - **Der Sprung von Hoch auf Mittel** hat zwei Ursachen, nicht eine: der
+ *    planare Spiegeldurchgang fällt weg (er zeichnet die Szene ein zweites Mal),
+ *    *und* das Knotengitter geht von 33² auf 25².
+ *  - **Mittel gegen Niedrig ist seit P8.1 ein echter Abstand.** Vorher waren es
+ *    329 823 gegen 329 118 Dreiecke — 705 Stück, also Rauschen. Jetzt sind es
+ *    82 567. Der Unterschied kommt vollständig aus dem Gitter; die
+ *    ~~Sichtweite~~ und die Vegetationsdichte wirken auf die Instanzen, nicht
+ *    auf das Gelände.
+ *  - **Die Knotenzahl ist auf allen Stufen gleich**, und das ist Absicht:
+ *    `ranges` und `morphStart` bleiben unangetastet, weil sie die Rissfreiheit
+ *    tragen. Verstellt wird allein die Auflösung *innerhalb* eines Knotens.
+ *    Herleitung und Lochzählung stehen bei `GRID_VERTICES_ALLOWED`.
  *  - **Die Shadow-Map steht in keiner Spalte.** Echtzeit-Schatten sind aus, also
  *    kostet ihre Auflösung nichts. Das ist kein Verdienst der Stufe.
  *
- * Die absoluten Zeiten gehören dem Software-Rasterisierer dieser Maschine
- * (ANGLE / Microsoft Basic Render Driver) und sagen nichts über eine GTX 1660.
- * Belastbar sind die **Verhältnisse** und die exakten Zähler daneben.
+ * > **Die Frame-Zeiten sind aus dieser Tabelle entfernt.** Sie standen hier mit
+ * > 169,4 / 164,9 / 104,3 / 63,2 ms und gehören dem Software-Rasterisierer
+ * > dieser Maschine (ANGLE / Microsoft Basic Render Driver). Vier Wiederholungen
+ * > **desselben** Zustands ergaben 107,9 / 129,7 / 117,7 / 112,5 ms, also rund
+ * > ±10 % — der Abstand Ultra↔Hoch lag darunter. Was unter dem Rauschen liegt,
+ * > wird hier nicht behauptet; belastbar sind die exakten Zähler.
+ *
+ * Die Instanzzahlen aus dem P7-Lauf (1622 / 1166 / 735 / 386 = 1,00 / 0,719 /
+ * 0,453 / 0,238 gegen die eingestellten 1 / 0,7 / 0,45 / 0,25) sind **nicht neu
+ * abgelesen**; sie hängen an `vegetationDensity`, und daran hat P8.1 nichts
+ * geändert.
  */
 export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
   ultra: {
@@ -128,6 +151,7 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     viewDistance: 2000,
     vegetationDensity: 1,
     renderScale: 1,
+    terrainGridVertices: 33,
   },
   high: {
     label: 'Hoch',
@@ -137,6 +161,11 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     viewDistance: 1500,
     vegetationDensity: 0.7,
     renderScale: 1,
+    // Bewusst wie Ultra. „Hoch" unterscheidet sich von Ultra allein in AO und
+    // Vegetationsdichte; das Gelände gröber zu stellen, wäre der erste
+    // sichtbare Verlust und gehört an den Anfang der *unteren* Hälfte der
+    // Tabelle, nicht ans Ende der oberen.
+    terrainGridVertices: 33,
   },
   medium: {
     label: 'Mittel',
@@ -146,6 +175,9 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     viewDistance: 1000,
     vegetationDensity: 0.45,
     renderScale: 0.85,
+    // 2,0 m je Vertex auf dem Blattknoten. Über dem Texelabstand der Heightmap
+    // (1,5 m), aber deutlich unter dem festen P1-Gitter (4,0 m).
+    terrainGridVertices: 25,
   },
   low: {
     label: 'Niedrig',
@@ -155,6 +187,9 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     viewDistance: 600,
     vegetationDensity: 0.25,
     renderScale: 0.7,
+    // 3,0 m je Vertex — jede zweite Stützstelle der Heightmap wird nicht mehr
+    // gelesen. Ein Viertel der Dreiecke von Ultra.
+    terrainGridVertices: 17,
   },
 };
 

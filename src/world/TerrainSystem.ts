@@ -11,7 +11,8 @@ import {
   type PerspectiveCamera,
 } from 'three';
 
-import { LOD } from '@/config/lod.config';
+import { LOD, lodMetersPerVertex } from '@/config/lod.config';
+import { QUALITY } from '@/config/quality.config';
 import { TERRAIN_LAYERS } from '@/config/terrain.config';
 import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
@@ -66,6 +67,15 @@ export class TerrainSystem implements System {
     fadenkreuz: '—',
     knoten: '—',
     stufen: '—',
+    /**
+     * Gitterauflösung und Dreiecke — die Anzeige zu P8.1.
+     *
+     * Ohne sie ist ein Stufenwechsel im Gelände **nicht nachprüfbar**: die
+     * Dreieckszahl im Overlay ist die der ganzen Szene, und die Vegetation
+     * ändert sich gleichzeitig mit. Genau diese Vermischung hat in P7 verdeckt,
+     * dass „Mittel" und „Niedrig" am Gelände gar nichts sparen.
+     */
+    gitter: '—',
   };
 
   /**
@@ -168,6 +178,23 @@ export class TerrainSystem implements System {
       sampler,
       height: uniforms,
     });
+
+    // P8.1 — die Gitterauflösung folgt der Qualitätsstufe.
+    //
+    // Drei Dinge müssen dabei zusammen wandern, und keines davon merkt man
+    // sofort, wenn es fehlt: die Geometrie am Mesh (sonst zeichnet three
+    // weiter das alte Gitter, mit korrekten Zählern), das Uniform für den
+    // Morph (sonst zieht `fract(g · quads/2)` auf die falschen Nachbarn und
+    // das Gitter reißt genau dort auf, wo es dicht sein soll) — und die
+    // Hülle des Tiefen-Materials teilt sich die Uniforms ohnehin.
+    context.bus.on('quality:changed', ({ level }) => {
+      const vertices = QUALITY[level].terrainGridVertices;
+      if (vertices === chunks.gridVertices) return;
+      chunks.setGridVertices(vertices);
+      mesh.geometry = chunks.geometry;
+      uniforms.uLodGridQuads.value = vertices - 1;
+    });
+
     this.#registerDebug(context);
   }
 
@@ -247,6 +274,14 @@ export class TerrainSystem implements System {
         (stats.overflow > 0 ? ` · ${stats.overflow} FEHLEN` : '');
       this.#readouts.stufen = stats.perLevel.join(' / ');
     }
+
+    const chunks = this.#chunks;
+    if (chunks && stats) {
+      const n = chunks.gridVertices;
+      this.#readouts.gitter =
+        `${n}² · ${lodMetersPerVertex(n).toFixed(1)} m/Vertex · ` +
+        `${stats.triangles.toLocaleString('de-DE')} Δ`;
+    }
   }
 
   #registerDebug(context: EngineContext): void {
@@ -274,6 +309,11 @@ export class TerrainSystem implements System {
     folder.addBinding(this.#readouts, 'stufen', {
       readonly: true,
       label: `Knoten je Stufe (0…${LOD.maxDepth})`,
+      interval: 200,
+    });
+    folder.addBinding(this.#readouts, 'gitter', {
+      readonly: true,
+      label: 'Knotengitter',
       interval: 200,
     });
 

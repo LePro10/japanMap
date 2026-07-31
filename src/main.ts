@@ -2,7 +2,9 @@ import './style.css';
 
 import { FreeFlyController } from './camera/FreeFlyController';
 import { Engine } from './core/Engine';
+import { countLodHoles } from './debug/lodHoles';
 import { reflectionProbe } from './debug/reflectionProbe';
+import { QUALITY } from './config/quality.config';
 import { applyViewpoint, type Viewpoint } from './debug/viewpoints';
 import { WebGLUnsupportedError } from './core/createRenderer';
 import { AtmosphereSystem } from './render/atmosphere/AtmosphereSystem';
@@ -154,6 +156,27 @@ function installFrameProbe(
         reflected: ['Stadt', 'Neon'],
         ...(grid === undefined ? {} : { grid }),
       }),
+    /**
+     * Löcher im Terrain-Gitter zählen — die Abnahme von P8.1.
+     *
+     * `japanMap.lodHoles('low')` schaltet zuerst um und misst dann. Ohne das
+     * Argument gilt die eingestellte Stufe. Die Messung rendert selbst und
+     * umgeht dabei die PostFX-Kette; ihr Ergebnis ist deshalb unabhängig von
+     * Tonemapping und Bloom.
+     */
+    lodHoles: (level) => {
+      if (level) qualitySystem.set(level);
+      return countLodHoles({
+        renderer: target.renderer,
+        scene: target.scene,
+        camera: target.camera,
+        gridVertices: QUALITY[qualitySystem.level].terrainGridVertices,
+        tick: () => {
+          target.loop.tick();
+        },
+      });
+    },
+
     probe: () => {
       target.loop.tick();
       const gl = target.renderer.getContext();
