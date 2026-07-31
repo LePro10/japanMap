@@ -34,6 +34,15 @@ uniform float uAtmoShadeAmbient;
 /** x = Wirkung der Himmelssicht auf diffus, y = auf spekular. */
 uniform vec2 uAtmoSkyOcclusion;
 
+/** Kachelbares FBM-Rauschen, erzeugt in createCloudTexture.ts. */
+uniform sampler2D uAtmoCloudMap;
+/** x = Deckung, y = Weichheit der Ränder, z = Stärke (0 = aus). */
+uniform vec3 uAtmoCloud;
+/** xy = Kantenlänge beider Lagen in Metern, zw = ihre Geschwindigkeit in m/s. */
+uniform vec4 uAtmoCloudTile;
+/** Normierte Windrichtung in XZ. */
+uniform vec2 uAtmoCloudDirection;
+
 /**
  * Weltposition auf eine Weltkarten-UV.
  *
@@ -54,6 +63,47 @@ vec2 atmoEquirectUv(vec3 direction) {
     atan(direction.z, direction.x) * RECIPROCAL_PI2 + 0.5,
     asin(clamp(direction.y, -1.0, 1.0)) * RECIPROCAL_PI + 0.5
   );
+}
+
+/**
+ * Wandernder Wolkenschatten — P8.4.
+ *
+ * Zwei Lagen desselben kachelbaren Rauschens mit unterschiedlicher Kantenlänge
+ * und Geschwindigkeit, verknüpft über das **geometrische Mittel**.
+ *
+ * Der erste Entwurf multiplizierte einfach. Das ist als Modell richtig — ein
+ * Punkt liegt nur in der Sonne, wenn ihn keine der beiden Lagen verdeckt —,
+ * verschiebt aber den Wertebereich: das Produkt zweier auf 0…1 gestreckter
+ * Lagen hat den Mittelwert 0,25, und `coverage = 0,52` als Schwelle darauf
+ * legte die **ganze Karte** in den Schatten. Die Wurzel stellt die Skala
+ * wieder her, ohne den Charakter zu ändern: ist eine Lage null, ist das
+ * Ergebnis null.
+ *
+ * Projiziert wird in **Weltkoordinaten XZ**, nicht in Bildschirm- oder
+ * Objektkoordinaten. Nur so passt der Schatten über alle Systeme zusammen: der
+ * Fleck auf der Straße muss derselbe sein wie der auf dem Gras daneben und dem
+ * Dach darüber.
+ *
+ * Der senkrechte Wurf ist eine bewusste Vereinfachung. Bei 2,23° Sonnenstand
+ * läge der Schatten einer Wolke in 1500 m Höhe geometrisch **38 km** neben ihr;
+ * eine korrekte Projektion hieße, dass die sichtbare Wolke und ihr Schatten
+ * nichts miteinander zu tun haben. Der Betrachter sieht ohnehin nie beide
+ * zugleich in einem Bild.
+ */
+float atmoCloudShadow(vec2 worldXZ) {
+  if (uAtmoCloud.z <= 0.0) return 1.0;
+
+  vec2 drift = uAtmoCloudDirection * uAtmoTime;
+  vec2 uvA = (worldXZ + drift * uAtmoCloudTile.z) / uAtmoCloudTile.x;
+  vec2 uvB = (worldXZ + drift * uAtmoCloudTile.w) / uAtmoCloudTile.y;
+
+  float noise = sqrt(texture(uAtmoCloudMap, uvA).r * texture(uAtmoCloudMap, uvB).r);
+
+  // Über der Schwelle steht Sonne, darunter Wolke.
+  float sun = smoothstep(
+    uAtmoCloud.x - uAtmoCloud.y, uAtmoCloud.x + uAtmoCloud.y, noise
+  );
+  return mix(1.0 - uAtmoCloud.z, 1.0, sun);
 }
 
 /**
@@ -79,7 +129,13 @@ vec2 atmoShade(vec3 worldPos) {
   float penumbra = max(uAtmoShadeSoftness.x + occluderDistance * uAtmoShadeSoftness.y, 1e-3);
 
   float lit = smoothstep(horizonDeg - penumbra, horizonDeg + penumbra, uAtmoSunElevationDeg);
-  return vec2(mix(uAtmoShadeAmbient, 1.0, lit), shade.b);
+  // Der Wolkenschatten wird **hier** aufgeschlagen und nicht bei den Aufrufern.
+  // Sieben Materialien rufen atmoShade() (Terrain, Wasser, Straßen, Decals,
+  // Props, Vegetation, Imposter, Fassaden); jedes einzeln zu bedienen wäre
+  // genau der Fehler aus P4, wo der Wind nur im Mesh-Material hing und drei
+  // Viertel der sichtbaren Instanzen stillstanden. An dieser einen Stelle kann
+  // ihn kein System verpassen.
+  return vec2(mix(uAtmoShadeAmbient, 1.0, lit) * atmoCloudShadow(worldPos.xz), shade.b);
 }
 
 /**

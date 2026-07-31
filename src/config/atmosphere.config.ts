@@ -69,6 +69,110 @@ export const FOG = {
   lutClamp: 12,
 } as const;
 
+/**
+ * Wolkenschatten — PLAN.md P8.4.
+ *
+ * ## Warum das der beste Posten dieser Phase ist
+ *
+ * Die Beleuchtung dieser Karte ist **vollständig gebacken**: feste
+ * Sonnenrichtung aus dem HDRI, Verschattung als Textur (`shade.png`). Damit hat
+ * die Welt keinen einzigen bewegten Lichtanteil — was sich bewegt, ist der Wind
+ * in der Vegetation. Ein wandernder Wolkenschatten ist der einzige Effekt, der
+ * dieser statischen Beleuchtung Bewegung gibt, und er kostet zwei
+ * Texturabfragen.
+ *
+ * ## Zwei Lagen, nicht eine
+ *
+ * Eine einzelne gekachelte Rauschtextur verrät ihre Kachelung, sobald man über
+ * sie hinwegfliegt — die Karte ist 3072 m, eine 1200-m-Kachel wiederholt sich
+ * darauf zweieinhalbmal. Zwei Lagen mit **teilerfremden** Kantenlängen und
+ * unterschiedlicher Geschwindigkeit multiplizieren sich zu einem Muster, dessen
+ * Wiederholung weit außerhalb der Welt liegt.
+ *
+ * ## Was der Schatten anfassen darf
+ *
+ * Nur den **direkten** Sonnenanteil (`atmoShade().x`). Eine Wolke verdeckt die
+ * Sonne, nicht den Himmel; das indirekte Licht käme darunter sogar leicht
+ * *zunehmend* an. Auf die Himmelssicht (`.y`) wirkt er deshalb nicht.
+ */
+export const CLOUDS = {
+  /** Auflösung der erzeugten Rauschtextur je Achse. */
+  textureRes: 256,
+  /** Oktaven im gebackenen FBM. Drei reichen für Wolkenränder. */
+  octaves: 4,
+
+  /**
+   * Kantenlänge einer Kachel in Metern, je Lage.
+   *
+   * 1150 und 730 sind bewusst kein glattes Verhältnis: bei 1200/600 fiele jede
+   * zweite Kachel der groben Lage mit einer der feinen zusammen, und das Muster
+   * wiederholte sich schon nach 1200 m.
+   */
+  tileMeters: [1150, 730] as const,
+
+  /** Metern pro Sekunde, je Lage. Die feine Lage zieht schneller. */
+  speed: [7.5, 12] as const,
+
+  /**
+   * Windrichtung in der XZ-Ebene, normiert beim Anlegen.
+   *
+   * Zeigt nach Südosten, also **weg** von der Sonne (Azimut aus `sun.json`).
+   * Umgekehrt zögen die Schatten auf den Betrachter zu, was bei 2,23°
+   * Sonnenstand seltsam aussieht: die Wolken kämen aus der Richtung, in die
+   * ihre eigenen Schatten fallen.
+   */
+  direction: [0.78, 0.63] as const,
+
+  /**
+   * Deckungsgrad: der Schwellwert im Rauschen, ab dem eine Wolke steht.
+   *
+   * 0,52 heißt „knapp die Hälfte", was für die blaue Stunde nach Regen
+   * (SPEC §3.1) passt — aufreißende Bewölkung, keine geschlossene Decke.
+   */
+  coverage: 0.52,
+  /** Breite des Übergangs von Sonne zu Schatten. Groß = weiche Ränder. */
+  softness: 0.22,
+
+  /**
+   * Wie dunkel es unter einer Wolke wird, 0…1.
+   *
+   * **Nicht 1.** Ein Kernschatten von 100 % hieße, dass die Wolke die Sonne
+   * vollständig verdeckt und darunter nur noch das IBL steht — das gibt es,
+   * sieht bei einer 2,2°-Sonne aber wie ein Fehler aus, weil die Landschaft
+   * dort schlagartig ihre Modellierung verliert. 0,55 nimmt gut die Hälfte.
+   */
+  strength: 0.55,
+} as const;
+
+/**
+ * Was der Wolkenschatten **gemessen** tut.
+ *
+ * Maske aus der Differenz gegen ein Bild mit `strength = 0` (Summendifferenz
+ * über 3), Ultra, 1280 × 720:
+ *
+ * | Blickpunkt | betroffen | Anteil | Ø Differenz | Spitze |
+ * |---|---|---|---|---|
+ * | `start`    | 171 548 Px | 18,61 % | 15,1 | 130 |
+ * | `pass`     | 147 459 Px | 16,00 % |  9,5 | 114 |
+ * | `reisfeld` | 146 925 Px | 15,94 % | **18,0** | 142 |
+ * | `kueste`   |   4 131 Px |  0,45 % |  4,8 |  15 |
+ *
+ * Bei `start` bedeckt das Gelände 45,67 % des Bildes; der Schatten trifft dort
+ * also **rund 40 % des sichtbaren Bodens**. Das ist der Deckungsgrad, den
+ * `coverage` tatsächlich erzeugt — die 0,52 oben sind ein Schwellwert auf dem
+ * geometrischen Mittel zweier Lagen und nicht selbst ein Flächenanteil.
+ *
+ * **`kueste` fällt aus der Reihe, und das ist richtig so.** Dort steht fast nur
+ * Meer im Bild, und eine Wasserfläche bei 2,23° Sonnenstand lebt von der
+ * Spiegelung des Himmels, nicht vom direkten Sonnenlicht. Wo keine Sonne
+ * ankommt, kann eine Wolke keine wegnehmen. Am stärksten wirkt es umgekehrt auf
+ * den Reisterrassen — flach, offen, besonnt.
+ *
+ * **Und er wandert:** bei stehender Kamera ändern sich nach 2 s Weltzeit
+ * 12 448 Pixel (1,35 %), nach 10 s 98 725 (10,71 %). Das ist der einzige
+ * bewegte Lichtanteil dieser Karte.
+ */
+
 export const SHADE = {
   /**
    * Halbschatten-Breite in Grad, als Funktion der Verdeckerentfernung.
