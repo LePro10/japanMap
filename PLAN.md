@@ -4,7 +4,8 @@
 > dieser Plan sagt **in welcher Reihenfolge, mit welchen Dateien und woran wir
 > merken, dass eine Phase fertig ist**.
 >
-> Stand: 2026-07-30 · **P0–P6 abgeschlossen, P7 gebaut und teilabgenommen**
+> Stand: 2026-07-30 · **P0–P6 abgeschlossen, P7 gebaut und teilabgenommen,
+> P8 geplant**
 >
 > P7 ist vollständig gebaut. Zwei seiner fünf Akzeptanzkriterien lassen sich auf
 > dieser Maschine nicht prüfen (keine GTX-1660-Klasse, kein GPU-Timer), eines ist
@@ -25,6 +26,11 @@
 > aus Seed und Chunk-Koordinate gerechnet und folgt einem geänderten Höhenfeld
 > von selbst, und die Verschattung wird ohnehin neu gebacken. Was nachgezogen
 > werden muss, sind die **Zahlen** in dieser Datei.
+>
+> **Entschieden am 2026-07-30: die Nachbesserung läuft in P8.5a.** Die
+> Art-Direction-Frage ist damit beantwortet. Sie liegt dort zusammen mit allen
+> anderen Eingriffen ins Höhenfeld in **einem** Durchgang — ein zweiter später
+> kostete die vollständige Neumessung ein zweites Mal.
 
 ---
 
@@ -123,6 +129,7 @@ erfüllt sind. Ausnahmen werden hier dokumentiert, nicht mündlich vereinbart.
 | **P5** ✅ | Asset-Pipeline & Landmarks | Zonen mit Identität | P4 |
 | **P6** ✅ | Stadt & Reflexionen | Der Money-Shot | P2, P5 |
 | **P7** ◐ | Optimierung & Auslieferung | Läuft auf Zielhardware | alle |
+| **P8** ○ | Polish & Presets | Die Karte trägt ein Spiel | P7 |
 
 ---
 
@@ -2465,9 +2472,517 @@ Ebenfalls offen und bewusst nicht angefangen:
 
 ---
 
+# P8 — Polish & Presets ○
+
+**Ziel:** Aus einer technisch abgenommenen Karte ein Grundstück machen, auf dem
+ein Spiel stehen kann — unten lauffähig auf jedem Gerät, oben vorzeigbar, und
+dazwischen eine Welt, die zusammenhängt statt aus fünf Zonen zu bestehen.
+
+> **Diese Phase ist eine Mängelliste, keine Wunschliste.** Jede Aufgabe unten
+> nennt zuerst den **Befund** mit der Zahl, an der er hängt, dann den **Fix**,
+> dann die **Messung**, die ihn abnimmt. Wo der Befund aus dem Quelltext
+> abgeleitet und nicht am laufenden Bild gemessen ist, steht das dabei — nach
+> CLAUDE.md ist das der Unterschied zwischen einer Diagnose und einer Vermutung.
+
+### Zwei Entscheidungen, die vorab getroffen wurden
+
+- **Die Bergflanke wird nachgebessert** (8.5). Die seit P3 offene
+  P1-Nachbesserung ist damit terminiert und nicht mehr aufgeschoben.
+- **Die Stadt wird nicht größer, sondern weicher** (8.8). SPEC §2.1 nennt
+  ~800 × 800 m, gebaut sind 360 × 360 m. Der Distrikt **bleibt** bei 360 m; was
+  fehlt, ist kein Bauvolumen, sondern ein Rand. Ausdrücklich verworfen: den
+  Distrikt auf Spec-Größe aufzublasen — das Teilbudget von 300 Draw-Calls für
+  die Stadt wäre der erste Posten, der reißt, und das Problem („steht als Block
+  in der Landschaft") wäre danach dasselbe, nur größer.
+
+---
+
+### Aufgaben
+
+**8.1 — Terrain-Detail je Qualitätsstufe** → `src/config/lod.config.ts`,
+`src/config/quality.config.ts`, `src/world/ChunkManager.ts`
+
+**Befund.** Die Stufen „Mittel" und „Niedrig" sparen **keine Geometrie**. Aus
+der eigenen Messtabelle in `quality.config.ts`:
+
+| Stufe | Dreiecke |
+|---|---|
+| Mittel | 329 823 |
+| Niedrig | 329 118 |
+
+705 Dreiecke Unterschied, das ist Rauschen. Der ganze Abfall von Hoch (610 151)
+auf Mittel stammt aus dem wegfallenden planaren Spiegeldurchgang, nicht aus
+Detailstufen. Grund: `LOD.gridVertices` ist eine **Konstante** (33), also zeichnet
+das Gelände auf jeder Stufe identisch — 2048 Dreiecke je Knoten bei 73…105
+Knoten im Bild. „Niedrig" hat real nur zwei Hebel, Auflösung (0,7) und
+Vegetationsdichte (0,25), und beide lassen die Geländelast unberührt.
+
+**Fix.** `gridVertices` je Stufe: 33 / 33 / 25 / 17. Bei 17 sind das 512 statt
+2048 Dreiecke je Knoten — rund 150 000 Dreiecke weniger im Bild.
+
+> **Die Rissfreiheit steht dem nicht entgegen, und das ist der ganze Punkt.**
+> Die Ungleichung `morphStart ≥ 0,5 + √2/f` (hergeleitet bei `SPLIT_FACTOR`)
+> verknüpft **Bereichsgrenzen mit Knotengröße**. Die Auflösung *innerhalb* eines
+> Knotens kommt darin nicht vor. Alle Knoten teilen sich eine einzige Geometrie;
+> wird die bei einem Stufenwechsel neu gebaut, sind alle Knoten gleich fein und
+> die Nähte liegen unverändert. Das unterscheidet diesen Hebel von dem, den P7
+> als kaputt verworfen hat — dort wurden die `ranges` skaliert, was wie f' = k·f
+> wirkt und die Ungleichung verletzt (gemessen: 207 Löcher gegen 1).
+>
+> **Das ist eine Herleitung, keine Messung.** Sie kann falsch sein.
+
+Der Preis ist Auflösung: 3 m statt 1,5 m je Vertex bei 17 Stützstellen. Die
+Heightmap wird damit nicht mehr voll ausgelesen (Texelabstand 1,5007 m), Grate
+werden weicher. Für eine Stufe, die auf integrierter Grafik laufen soll, ist das
+der richtige Tausch — für Ultra wäre es einer der falschen, deshalb bleibt sie
+auf 33.
+
+**Messung.** Lochzählung nach dem Verfahren aus P4: alles außer dem Gelände aus,
+Himmel auf Magenta, Kamera ohne Himmel im Bild, Himmelspixel *unterhalb* des
+obersten Geländepixels je Spalte zählen. **Pro Stufe** über dieselben sieben
+Blickpunkte. Grenzwert ist der Stand von P4: höchstens 1 Loch. Dazu Dreiecke und
+Knotenzahl je Stufe neu in die Tabelle in `quality.config.ts`.
+
+---
+
+**8.2 — PostFX staffeln und eine fünfte Stufe** → `src/render/PostFXPipeline.ts`,
+`src/config/quality.config.ts`, `src/core/Engine.ts`
+
+**Befund.** Von der Postprocessing-Kette ist genau **ein** Effekt an die
+Qualitätsstufe gebunden: AO. Bloom, SMAA, Vignette, Grading-LUT und AgX laufen
+auf „Niedrig" in voller Auflösung genauso wie auf Ultra. Auf integrierter Grafik
+bei 1080p ist eine Vollbildkette regelmäßig der teuerste Einzelposten überhaupt —
+und sie ist der einzige Posten, der **nicht** mit `renderScale` schrumpft, weil
+das Ziel der Kette der Canvas ist.
+
+*Abgeleitet aus dem Quelltext, nicht gemessen* — `EXT_disjoint_timer_query_webgl2`
+fehlt hier, also gibt es keine GPU-Zeit je Durchgang. Was messbar ist: ob der
+Effekt läuft, und der Zeichenpuffer, in den er läuft.
+
+**Fix.** Zwei Teile.
+
+1. Staffelung: Bloom ab „Mittel" in halber Auflösung, SMAA unter „Mittel" aus
+   (bei `renderScale` 0,7 ist die Kantenglättung ohnehin gegen einen
+   hochskalierten Puffer), Vignette und Grading bleiben auf allen Stufen — die
+   LUT kostet eine Texturabfrage und trägt den Look aus SPEC §3.1.
+2. Eine fünfte Stufe **„Minimal"** unterhalb von „Niedrig", die den Composer
+   **umgeht** und direkt in den Canvas rendert. Das ist kein „Niedrig mit
+   weniger", sondern ein anderer Renderpfad: `renderScale` 0,5,
+   `vegetationDensity` 0,1, nur Imposter, `gridVertices` 17, keine planare
+   Spiegelung, kein AO, kein Bloom, kein SMAA. Tonemapping übernimmt dann der
+   Renderer selbst.
+
+> **Der Bypass ist der Grund für die eigene Stufe.** Solange die Kette läuft,
+> kostet sie ihre Vollbilddurchgänge, egal wie klein man sie stellt. Große
+> Titel führen diese Stufe deshalb als eigenen Pfad und nicht als Reglerstellung.
+
+**Messung.** Je Stufe: Zeichenpuffergröße, Draw-Calls, Dreiecke, Instanzen,
+Programme, und die rAF-Frameintervalle nach dem Protokoll aus `frameTiming.ts`
+(Streuung bis zur Stabilität vorgefüllt, sonst misst man den Füllvorgang). Die
+absoluten Zeiten bleiben Zahlen dieses Software-Rasterisierers; belastbar sind
+die Verhältnisse. Zusätzlich ein Bild je Stufe von `stadt-neon` — „Minimal" darf
+schlechter aussehen, aber nicht **kaputt**.
+
+---
+
+**8.3 — Ersteinstufung mit Geräte-Vorabschätzung** → `src/render/QualitySystem.ts`,
+`src/config/quality.config.ts`
+
+**Befund.** `DEFAULT_QUALITY` ist `ultra`, und der Benchmark misst von dort aus
+90 Frames (30 Aufwärmung + 60 Messung), bevor er die erste Stufe herunterschaltet.
+Ein schwaches Gerät verbringt damit mehrere Sekunden unter Vollast — genau das
+Gerät, auf dem das den Kontext kosten oder die Seite einfrieren kann. Die
+Begründung für die Richtung ist richtig und bleibt („heruntergestuft wird
+gemessen, hochgestuft nie"); falsch ist allein der **Startpunkt**.
+
+**Fix.** Eine grobe Vorabschätzung *vor* dem ersten gemessenen Frame, aus vier
+Signalen, die ohne Rendern verfügbar sind:
+
+| Signal | wofür |
+|---|---|
+| `WEBGL_debug_renderer_info` | Software-Rasterisierer und mobile GPUs erkennen |
+| `navigator.hardwareConcurrency` | grober Klassenindikator |
+| `navigator.deviceMemory` | dito, wo vorhanden |
+| `matchMedia('(pointer: coarse)')` | Touch-Gerät |
+
+Die Schätzung **ersetzt den Benchmark nicht**, sie setzt nur seine Startstufe:
+bekannt stark → Ultra, unbekannt oder mobil → Mittel, Software-Rasterisierer →
+Minimal. Von dort läuft die bestehende Messung wie bisher weiter.
+
+> Große Titel pflegen dafür Gerätedatenbanken. Das ist hier weder machbar noch
+> nötig — es geht nicht darum, die richtige Stufe zu **raten**, sondern darum,
+> nicht auf der teuersten anzufangen.
+
+**Messung.** Die Schätzung muss auf dieser Maschine „Software-Rasterisierer"
+erkennen und mit Minimal starten; der Benchmark muss danach trotzdem laufen und
+sein Ergebnis speichern dürfen. Dazu die drei bekannten Sonderfälle aus P7 erneut
+prüfen: verdecktes Fenster (Abbruch), gespeicherte Wahl (kein Benchmark),
+manuelle Wahl im Panel (Benchmark stoppt).
+
+---
+
+**8.4 — Wolkenschatten und Wolkenebene** → `src/world/shaders/terrain_pars.frag.glsl`,
+`src/render/atmosphere/`, `src/config/atmosphere.config.ts`
+
+**Befund.** Die Beleuchtung ist vollständig **gebacken** (`shade.png`, feste
+Sonnenrichtung aus dem HDRI). Die Welt hat damit keinen einzigen bewegten
+Lichtanteil; was sich bewegt, ist der Wind in der Vegetation. Wolken gibt es
+nicht — weder als Schatten noch als Geometrie noch im Nebel.
+
+**Fix.** Zwei Teile, in dieser Reihenfolge, weil der erste billiger ist und mehr
+trägt:
+
+1. **Wolkenschatten.** Eine scrollende Rauschtextur, multiplikativ auf den
+   **direkten** Sonnenanteil (nicht auf das IBL — eine Wolke verdeckt die Sonne,
+   nicht den Himmel). Kosten: eine Texturabfrage im Terrain-Shader, dieselbe in
+   Vegetation und Stadt. Projiziert wird in Weltkoordinaten XZ, damit der
+   Schatten über alle Systeme zusammenpasst.
+2. **Wolkenebene.** Zwei Lagen auf einer Kuppel mit unterschiedlicher
+   Scrollgeschwindigkeit — daraus entsteht Parallaxe ohne Volumen. Ein
+   Draw-Call. Bei 2,23° Sonnenstand fangen die Unterseiten die warme
+   Sonnenfarbe; das ist derselbe Effekt, den `FOG.aerial` bereits aus dem
+   Himmels-HDRI liest.
+
+> **Ausdrücklich verworfen: volumetrische Wolken.** Raymarching kostet einen
+> Vollbilddurchgang mit Dutzenden Abtastungen, und die Kamera kommt in dieser
+> Karte auf 420 m (`stadt-luft`). Eine Wolkenschicht läge bei 800…1200 m, also
+> immer über ihr — man flöge nie hindurch. Der Nutzen ist die Silhouette, und
+> die liefert Teil 2 zum Bruchteil des Preises.
+
+**Messung.** Der Wolkenschatten wirkt **lokal**, also wird lokal gemessen — nach
+der Lehre aus P4/P6: Differenz gegen ein Bild mit abgeschaltetem Wolkenschatten,
+maskiert auf die Fläche, die er trifft. Ein Mittelwert über das ganze Bild würde
+ihn im Himmelsanteil ertränken; genau dieser Fehler hat in P6 fünf Anläufe
+gekostet. Dazu: Draw-Calls +1 für die Kuppel, Dreiecke unverändert im Gelände,
+und ein Bild von `start` und `pass`.
+
+---
+
+**8.5 — Der Terrain-Durchgang** → `tools/bake-terrain.mjs`
+
+**Alles, was das Höhenfeld anfasst, passiert hier — in einem Durchgang.** Die
+Kette ist zirkulär (`npm run world`), und jede Geländeänderung zieht
+Verschattung, Zonenmaske, Straßentrassierung, Vegetationsverteilung und
+Prop-Höhen nach. CLAUDE.md führt dazu bereits einen Fall: die Einebnungsschwelle
+der Reisfelder hat über eine **Kehre am Bergpass** entschieden. Ein zweiter
+Durchgang später kostet die vollständige Neumessung ein zweites Mal.
+
+#### 8.5a — Die Flanke des Massivs
+
+**Befund.** Gerechnet aus `ZONES.mountain = { x: −820, z: −900, inner: 300,
+outer: 1080 }`: die Flanke überbrückt 450 m Höhe auf 780 m Radiusdifferenz, also
+im Mittel **58 % Neigung**. P3 hat 45 % am relevanten Hang gemessen. Der
+Zielwert aus der P1-Nachbesserung sind **25 % über etwa 1,5 km**.
+
+**Und der Fuß der Flanke wird abgeschnitten — das stand hier noch nicht.** Der
+Massivrand reicht nach Süden bis z = +180. Die Reisfeldzone beginnt mit ihrer
+380-m-Feder bereits bei z = −640. Das ist ein **Überlappungsband von 820 m**, und
+in `bake-terrain.mjs` läuft die Ebenen-Einebnung (Schritt 4) **nach** dem Massiv
+(Schritt 3) und zieht das Gelände dort per `lerp` auf 22 m. Die Südflanke —
+genau die, an der der Pass hochführt — endet also nicht, sie wird planiert.
+Abstand der Zonenmittelpunkte: 962 m.
+
+> *Aus dem Quelltext gerechnet, nicht am Höhenprofil gemessen.* Die Messung
+> dazu fehlt noch und ist der erste Schritt dieser Aufgabe.
+
+**Fix.** In dieser Reihenfolge, weil der erste Schritt entscheidet, ob die
+anderen nötig sind:
+
+1. **Erst messen.** Ein Höhenprofil entlang der Passachse vom Gipfel bis in die
+   Ebene, plus die Verteilung der Neigung über die Flanke — nicht den Mittelwert
+   allein (CLAUDE.md: „Mittelwerte verstecken Formen"). Werkzeug: Erweiterung von
+   `npm run inspect` um `--profile x0,z0,x1,z1`.
+2. **Die Flanke anisotrop verlängern.** Radial geht es nicht: `outer` von 1080
+   auf 1500 zu setzen schiebt den Massivrand mitten in die Reisfelder. Gebraucht
+   wird eine **elliptische Maske**, die entlang der Passachse (nach Süden/
+   Südosten) länger ausläuft als quer dazu.
+3. **Den Konflikt mit der Reiszone auflösen.** Drei Wege, und die Wahl gehört
+   ins Bild und nicht in eine Formel:
+   - Reiszone nach Süden verschieben (z 60 → ~200; die Karte hat dort Platz bis
+     zur Küstenzone bei z 600),
+   - ihre Feder von 380 m verkürzen — **Vorsicht, das ist der Parameter mit der
+     dokumentierten Fernwirkung auf die Kehren**,
+   - oder die Reihenfolge im Baker ändern, sodass das Massiv die Einebnung
+     begrenzt statt umgekehrt.
+4. **Die Gratamplitude auf der Flanke dämpfen.** `h += r * 645 * massif` legt die
+   Grate mit voller Stärke bis in den Auslauf; eine flachere Flanke mit
+   unverändert scharfen Graten ist wieder steil, nur kleinteiliger.
+
+**Messung.** `npm run world` vollständig, dann:
+- Neigungsverteilung über die Flanke (Ziel: Median ≤ 25 %, kein Extremwert über
+  40 % im Trassenkorridor),
+- **Kehren am Pass** — Zielwert aus SPEC §2.1 ist ≥ 8,
+- **Erdbau** über die Erdbau-Karte (`npm run inspect -- --road toge --clean
+  .cache/clean.r16`). Die Zahl, die den Kompromiss von P3 erzwungen hat, war
+  „300 × 250 m um 50…150 m abgetragen". Der Fix taugt nur, wenn die Kehren
+  kommen **und** diese Zahl fällt. Beides zusammen, nicht eines davon.
+- **Ein Bild der Silhouette** von `start`, `kueste` und `reisfeld`. Das Massiv
+  ist der Hintergrund der halben Karte; wenn es danach flach aussieht, ist der
+  Fix gescheitert, auch wenn alle Zahlen stimmen.
+
+#### 8.5b — Flussbett und Wasserfallstufen
+
+**Befund.** SPEC §2.1 nennt für die Reisfeldzone „Dorf, **Fluss**". Es gibt
+keinen. `WaterSystem.ts:19` und `water.config.ts:4` halten das ausdrücklich als
+aufgeschoben fest. Folge: die Reisterrassen — 101,2 ha — haben keine
+Wasserquelle, und die Karte hat keine Nord-Süd-Verbindung außer der Straße.
+
+**Fix.** **Das Flussbett ist ein Straßentyp.** `bake-terrain.mjs` schneidet
+bereits entlang von Splines ins Höhenfeld ein (Schritt für die Straßen); ein
+Flussbett ist derselbe Vorgang mit V-Profil statt flacher Fahrbahn, ohne
+Überhöhung und ohne Böschungsverrundung. Kein neues System, ein neuer Typ in
+`roads.config.ts` und ein zweiter Profilfall im Baker.
+
+Trasse: vom Massiv über die Terrassen zur Südküste. Wo das Gefälle eine Schwelle
+reißt, wird **nicht** eingeschnitten — dort steht eine Stufe, und das ist die
+Stelle für einen Wasserfall (8.6). Zwei bis drei solcher Stufen an der
+Bergflanke.
+
+> **Reihenfolge im Baker ist nicht beliebig.** Das Flussbett muss **vor** der
+> Reisfeld-Einebnung liegen, sonst planiert diese es zu. Und **nach** dem
+> Straßeneinschnitt, sonst füllen die Straßenböschungen es wieder auf — genau der
+> Fehler, den `CITY_PAD_Y` für die Stadtplatte bereits dokumentiert.
+
+**Messung.** Monotones Gefälle von der Quelle bis zur Mündung (kein Abschnitt,
+in dem das Bett bergauf läuft — ein Fluss, der steigt, ist der sichtbarste
+denkbare Fehler), Bettbreite und -tiefe über die Länge, und die Erdbau-Karte für
+den Einschnitt. Dazu die Prüfung, dass die Reisterrassen **am** Fluss liegen und
+nicht 300 m daneben.
+
+#### 8.5c — Das Vorfeld der Stadt
+
+**Befund.** Der Baker ebnet für die Stadt ein Plateau von **800 × 800 m** ein
+(`ZONES.city`, x 380…1180, z −310…490). Der gebaute Distrikt misst 360 × 360 m
+(x 440…800, z −60…300) und sitzt darauf **außermittig**: 380 m freie Platte im
+Osten, 60 m im Westen. Der Distrikt belegt **20 % seines eigenen Plateaus**.
+
+Das ist die geometrische Seite von „die Stadt steht als Block in der Natur": um
+sie herum liegt eine große, planierte, leere Fläche, und der Übergang von dort
+ins Gelände ist eine 300-m-Feder ohne irgendetwas darauf.
+
+> *Gerechnet, nicht am Bild geprüft.* Ob die Platte im Bild als leer **liest**,
+> ist eine Bildfrage — die Vegetationsstreuung kann sie zuwachsen lassen. Erster
+> Schritt dieser Aufgabe ist deshalb ein Blick von `stadt-luft` und `stadt-fern`
+> mit eingeblendeter Zonenmaske.
+
+**Fix.** Im Baker nur die Vorbereitung: das Plateau bekommt eine **abgestufte**
+statt einer glatten Einebnung — Kernfläche eben, Vorfeld mit leichter Neigung und
+Restrelief, damit dort etwas stehen kann, das nicht wie Stadt aussieht. Der
+sichtbare Teil steht in 8.8.
+
+---
+
+**8.6 — Fluss und Wasserfälle** → `src/world/WaterSystem.ts`,
+`src/world/materials/WaterMaterial.ts`, `src/config/water.config.ts`
+
+**Befund.** `WaterSystem` kennt nur das Meer — eine Ebene auf Y = 0. Ein Fluss
+liegt auf wechselnder Höhe entlang eines Splines und passt nicht in dieses
+Modell.
+
+**Fix.** Ein Flussband als extrudiertes Mesh entlang des Splines aus 8.5b, mit
+der Bett-Mittellinie als Höhenquelle — dasselbe Verfahren wie beim Straßen-Mesh,
+inklusive des Versatzes über der Mittellinie, damit Wasser und eingeschnittenes
+Bett nicht um jedes Pixel streiten (P3, `ROAD_MESH.surfaceOffset`; und P6, wo
+genau dieser vergessene Versatz 3339 Decals im Asphalt versenkt hat).
+
+Wasserfälle an den Stufen aus 8.5b: senkrechtes Band mit scrollender
+Normalenkarte, darunter Gischt als kleine Instanzwolke. Beides an die
+Qualitätsstufe gebunden — unter „Mittel" fällt die Gischt weg.
+
+**Messung.** Kein Riss zwischen Flussband und Bett (Bild aus Augenhöhe an drei
+Stellen), kein Z-Fighting an der Mündung gegen das Meer, Draw-Calls und
+Dreiecke, und ein Bild jedes Wasserfalls. Dazu die Konsole — nach jeder
+Materialänderung, das ist die Regel aus P6.
+
+---
+
+**8.7 — Pfade** → `src/config/roads.config.ts`, `tools/gen-roads.mjs`,
+`src/world/materials/RoadMaterial.ts`
+
+**Befund.** Es gibt nur asphaltierte Straßen. Alles, was in dieser Landschaft
+zu Fuß erschlossen wäre — Tempelaufgang, Feldwege zwischen den Terrassen, der
+Weg zum Leuchtturm —, existiert nicht. Die Karte hat Verkehrswege, aber keine
+Wege.
+
+**Fix.** Ein Straßentyp `pfad`: 1,5…2 m breit, Kies-/Erdmaterial, keine
+Markierung, keine Leitplanke, kein Bankett, minimaler Geländeeinschnitt. Das
+Straßensystem trägt das bereits — es ist im Wesentlichen ein Materialfall und
+ein paar Splines. Verbindungen: Dorf ↔ Tempel, Terrassen untereinander,
+Küstenstraße ↔ Fischerdorf ↔ Leuchtturm.
+
+**Messung.** Pfade dürfen die **Freihaltezone** der Vegetation nutzen, aber nicht
+so breit räumen wie eine Straße — sonst zieht sich eine kahle Schneise durch den
+Wald, wo ein Trampelpfad sein soll. Also: gemessener Freihalteradius je Typ, und
+ein Bild aus Augenhöhe auf dem Waldpfad.
+
+---
+
+**8.8 — Der Stadtrand** → `src/world/city/CityGenerator.ts`,
+`src/config/city.mjs`, `assets/props.json`
+
+**Befund.** Zwei Zahlen, eine gemessen, eine gerechnet:
+
+- **Gemessen (P6, nach dem Viewport-Fix):** die Stadt ist 1,21-mal so hell wie
+  ihre Umgebung. Ohne Fenster- und Neonlicht 0,97. Die Helligkeit kommt also
+  **vollständig aus dem Eigenlicht**, nicht aus dem Anstrich.
+- **Gerechnet (8.5c):** der Distrikt ist ein 360-m-Rechteck auf einer 800-m-Platte.
+
+**Der Anstrich ist damit als Ursache ausgeschlossen.** Das steht in CLAUDE.md
+bereits als Fehler dieses Projekts: „Eine Ursache benannt, ohne sie zu trennen" —
+die Palette wurde abgedunkelt, und die Begründung war falsch. Dieser Weg ist
+nicht noch einmal zu gehen.
+
+**Fix.** Drei Ansätze an der tatsächlichen Ursache:
+
+1. **Neon durch die Luftperspektive schicken.** Emissive Materialien umgehen die
+   Nebelrechnung leicht. Steht das Neon aus 1,2 km ungetrübt im Bild, sitzt die
+   Stadt **vor** der Atmosphäre statt darin — und das ist genau der Eindruck
+   „aufgeklebt". *Zuerst prüfen, ob es so ist*, dann beheben.
+2. **Den Rand ausfransen.** Kein Hochhaus mehr, sondern das, was am Rand einer
+   japanischen Kleinstadt steht: niedrige Hallen, Lagerplätze, Parkflächen,
+   Gewächshäuser, ein Kanal, Strommasten. Der Distrikt bleibt bei 360 m; das
+   Vorfeld aus 8.5c trägt den Übergang. Große Titel enden eine Stadt nie an einer
+   Kante — sie verjüngen sie über mehrere hundert Meter.
+3. **Die Silhouette brechen.** Aus `stadt-fern` prüfen, ob die Höhenverteilung
+   eine Kontur ergibt oder eine Mauer.
+
+**Messung.** Dieselbe Maskenmessung wie in P6, damit die Zahlen vergleichbar
+bleiben: Helligkeitsverhältnis Stadt/Umgebung an `stadt-fern`, mit und ohne
+Eigenlicht, dazu ein Kontrollband strikt außerhalb der Bounding-Box. Ziel ist
+**nicht** ein bestimmter Wert, sondern dass die Kante im Bild verschwindet —
+also gehört ein Vorher/Nachher-Bildpaar dazu und nicht nur eine Zahl. Und:
+`cityDrawCalls` bleibt unter 300, ohne Frustum-Culling gezählt.
+
+---
+
+**8.9 — Fischerdorf und Tempelaufgang** → `assets/props.json`,
+`src/world/props/landmarkMeshes.ts`, `tools/gen-props.mjs`
+
+**Befund.** 686 Props, davon **372 Tetrapoden und 158 Leitpfosten** — 77 % sind
+Küstenschutz und Straßenmöblierung. Was die Karte bewohnt aussehen lässt, sind
+zusammen **36 Objekte**: 7 Höfe, 7 Schuppen, 12 Steinlaternen, 4 Torii, 4 Boote,
+1 Halle, 1 Treppe, 1 Steg, 1 Leuchtturm.
+
+Konkret fehlen zwei Orte, die SPEC §2.1 nennt oder voraussetzt:
+
+- **Der Hafen.** Es gibt Leuchtturm, Steg, vier Boote und 372 Tetrapoden — die
+  Zutaten eines Hafens ohne den Hafen.
+- **Der Tempelaufgang.** Vier Torii ergeben keinen Sandō.
+
+**Fix.**
+- **Fischerdorf** an der Südküste beim Leuchtturm: 6…8 Hütten (die vorhandenen
+  `farmhouse`/`shed`-Meshes mit Varianz in Maß und Dach), Netztrockengestelle,
+  Bootsrampe, ein zweiter kleiner Steg, Reusen und Kisten als Kleinkram. Die
+  Boote bekommen einen Ort, an den sie gehören.
+- **Sandō**: Torii-Reihe in der Achse (die vier vorhandenen plus weitere im
+  16-m-Raster, für das `PROP_CLEARANCE.torii` bereits ausgelegt ist), Laternen
+  paarweise am Weg, ein Chōzuya (Wasserbecken), eine Glocke. Alle Meshes sind
+  prozedural — Varianten kosten hier fast nichts (12 Landmarks = 2104 Dreiecke).
+
+**Messung.** Draw-Calls und Dreiecke der Prop-Systeme, `PROPS.capacity` (512 je
+Asset und Stufe) darf nicht überlaufen — ein Überlauf verwirft Props still.
+Freihalteradien nach `PROP_CLEARANCE` prüfen: nach dem Fehler aus P5 („der
+Tempel stand im Wald") gehört ein Bild dazu, kein Zahlenblick.
+
+---
+
+**8.10 — Weltrand** → bedingt, erst nach Messung
+
+**Befund.** Die Welt ist 3072 m im Quadrat, Diagonale 4344 m, `CAMERA.far` steht
+auf 6000. Von `start` (330 m) und `stadt-luft` (420 m) ist der Rand vermutlich
+im Bild. *Vermutlich* — das ist bisher nicht geprüft.
+
+**Fix, falls die Prüfung ihn verlangt.** Ein **Kulissenring**: grobe
+Silhouettenberge jenseits der Spielfläche, ohne Vegetation, ohne Kollision, tief
+in der Luftperspektive. Kostet wenige tausend Dreiecke und lässt 3 km wie 15 km
+wirken. Der Standardgriff, und er funktioniert nur, wenn er **nie** betretbar
+wirkt.
+
+**Messung.** Zuerst ein Bild von `start`, `stadt-luft` und `pass` mit der Frage,
+ob eine Kante sichtbar ist. Ist sie es nicht, entfällt die Aufgabe — und dann
+gehört das hier notiert, nicht stillschweigend gestrichen.
+
+---
+
+**8.11 — Abnahme und Neumessung**
+
+**Befund vorab, damit er nicht vergessen wird:** 8.5 ändert das Höhenfeld. Damit
+sind **alle** Zahlen aus P1, P3, P4, P5 und P6, die vom Gelände abhängen,
+ungültig — Straßenlängen, Kehren, Erdbau, Vegetationsinstanzen, Verschattung,
+Prop-Höhen, Draw-Calls. Das ist kein Nebeneffekt, sondern der bekannte Preis
+dieses Durchgangs, und er steht in der P1-Nachbesserung bereits so.
+
+**Fix.** Ein vollständiger Messdurchgang:
+- `npm run world` zweimal, `roads.json` und `height.r16` bitgleich
+- `npm run inspect` — alle fünf Strecken bestanden
+- `npm run typecheck`, `npm run build`
+- Alle Blickpunkte × alle fünf Stufen als Bild, mit `probe()` davor — der
+  Anteil nicht-schwarzer Pixel muss bei einer Szene mit Himmel **1,000** sein.
+  Das ist die Zeile aus CLAUDE.md, die den Viewport-Fehler in einem Schritt
+  gefunden hätte.
+- Nachziehen der Zahlen in PLAN.md, SPEC.md und den `*.config.ts`-Kommentaren.
+  Wo eine Zahl nicht neu abgelesen wurde, gehört „nicht neu abgelesen"
+  dazugeschrieben.
+
+---
+
+### Akzeptanzkriterien
+
+- [ ] **Die fünf Stufen unterscheiden sich in der Geländelast.** Dreiecke je
+      Stufe gemessen, Verhältnis Minimal:Ultra ≤ 0,4 — und die Lochzählung
+      bleibt bei allen fünf bei höchstens 1.
+- [ ] **Stufe „Minimal" umgeht die PostFX-Kette nachweislich.** Gemessen an der
+      Zahl der Vollbilddurchgänge, nicht an der Bildrate.
+- [ ] **Die Ersteinstufung startet nicht auf Ultra**, wenn die Vorabschätzung ein
+      schwaches Gerät meldet — auf dieser Maschine also bei „Minimal".
+- [ ] **Wolkenschatten wandern über das Gelände**, gemessen mit Maske gegen ein
+      Bild ohne sie, nicht über das ganze Bild gemittelt.
+- [ ] **Der Bergpass hat ≥ 8 Kehren** (SPEC §2.1) **und** der Erdbau liegt unter
+      dem Stand, der P3 zum Kompromiss gezwungen hat. Beide Zahlen zusammen.
+- [ ] **Ein Fluss läuft vom Massiv bis ins Meer**, monoton fallend, mit
+      mindestens einem Wasserfall, und die Reisterrassen liegen daran.
+- [ ] **Die Stadtkante ist im Bild nicht mehr als Kante lesbar** —
+      Vorher/Nachher von `stadt-fern`, plus das Helligkeitsverhältnis nach der
+      P6-Maskenmessung. `cityDrawCalls` weiterhin < 300.
+- [ ] **Fischerdorf und Sandō stehen und sind erreichbar** — je ein Bild aus
+      Augenhöhe, und ein Pfad führt hin.
+- [ ] **Alle Budgets aus SPEC §4 weiterhin eingehalten**, auf Ultra gemessen.
+- [ ] **Kette reproduzierbar:** `npm run world` zweimal bitgleich.
+
+### Risiken
+
+- **8.1 kann an einer falschen Herleitung hängen.** Die Behauptung, die
+  Gitterauflösung sei von der Rissbedingung unabhängig, ist hergeleitet und nicht
+  gemessen. → Die Lochzählung entscheidet, nicht das Argument. Zeigt sie Risse,
+  fällt der Hebel ersatzlos weg und „Minimal" trägt sich allein über Auflösung
+  und Vegetation. **Kein Nachregeln an `morphStart`**, um die Zahl zu retten —
+  das ist die Regelschleife, die dieses Projekt zweimal ersatzlos entfernt hat.
+- **8.5 ist ein Eingriff mit Fernwirkung, und das ist belegt.** Ein einziger
+  Geländeparameter hat in P5 über eine Kehre entschieden. → Nach jedem
+  Teilschritt `npm run world` **ganz** ansehen, nicht nur die Zone, um die es
+  geht. Und: `.cache/clean.r16` vorher erneuern, sonst zeigt die Erdbau-Karte
+  gegen ein veraltetes Referenzfeld.
+- **Die flachere Flanke kostet Silhouette.** Das Massiv ist der Hintergrund der
+  halben Karte. → Bild vor Zahl: wenn `start`, `kueste` und `reisfeld` danach
+  flach aussehen, ist der Fix gescheitert, auch bei 8 Kehren.
+- **Der Fluss kann die Straßentrassierung verschieben.** Er ändert die
+  Kostenfläche, auf der der Generator sucht — genauso wie die Reisfeldschwelle
+  es tat. → Kehren und Radien aller fünf Strecken nach dem Bake neu messen, nicht
+  nur die des Passes.
+- **Neue Inhalte kosten Startdownload.** P7 steht bei 42,68 MB gegen ein Budget
+  von 15. Jedes Prop-Mesh ist prozedural und kostet null Bytes, jede neue Textur
+  nicht. → Wasserfall und Wolken über prozedurales Rauschen statt über
+  Texturdateien, wo es geht. Wo nicht, gehört der Zuwachs beziffert.
+- **Der Umfang ist groß genug, um zu verwässern.** Elf Aufgaben, davon eine mit
+  vollständiger Neumessung. → 8.1–8.4 sind vom Gelände unabhängig und einzeln
+  abnehmbar; wenn die Phase gekürzt werden muss, wird hinten gekürzt, nicht die
+  Messung.
+
+---
+
 ## Was bewusst NICHT in diesem Plan steht
 
-Diese Punkte sind Spielentwicklung, nicht Kartenbau. Sie kommen nach P7 und
+Diese Punkte sind Spielentwicklung, nicht Kartenbau. Sie kommen nach P8 und
 bekommen einen eigenen Plan:
 
 - Fahrzeugphysik und Drift-Modell (Rapier vs. eigene Arcade-Physik — offen)
