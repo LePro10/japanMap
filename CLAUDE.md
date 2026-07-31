@@ -323,6 +323,35 @@ Kurzliste, damit es nicht wieder passiert:
   einem Look-Problem am erstbesten plausiblen Regler dreht, verschiebt
   irgendwann alles ein Stück und hat nichts gelernt. **Erst den Anteil
   ausschalten, dann messen, dann drehen.**
+- **Ein Fünftel des Bildes fehlte — und alle 64 Messbilder einer Phase waren
+  betroffen.** `ImposterAtlas.bake` setzte den Viewport am Ende auf Atlasgröße
+  statt ihn zurückzusetzen; Render-Ziel, Tonemapping und Löschfarbe wurden
+  gesichert, der Viewport nicht. `setRenderTarget(null)` nimmt in three den
+  **Renderer-Viewport**, nicht die Canvas-Größe — die ganze Postprocessing-Kette
+  landete danach in einem 1024er Quadrat. Bei 1280 × 720 heißt das: rechts 20 %
+  abgeschnitten, und von der 1024 hohen Fläche zeigt der Canvas nur die unteren
+  720. Sichtbar war also **das untere Siebzigstel des Frames, waagerecht
+  gestaucht** — nicht bloß ein fehlender Streifen, sondern ein anderer
+  Ausschnitt.
+  Verdeckt hat sich das monatelang, weil jede Größenänderung `setSize()` ruft
+  und den Viewport mitzieht: ein Fensterwechsel, angedockte DevTools, ein
+  Wechsel der Qualitätsstufe. Zwischen Bake und erstem gemessenen Bild lag fast
+  immer eines davon. Aufgefallen ist es erst, als ein Frame ohne jeden Resize
+  entstand.
+  Drei Lehren, und die dritte ist die teuerste:
+  1. **Was gesichert wird, wird vollständig gesichert.** Über der Löschfarbe
+     stand seit P4 der Kommentar, dass sie zurückgesetzt gehört, weil sie sonst
+     in der Anwendung weiterläuft. Für den Viewport galt derselbe Satz — er
+     stand nur nicht dort.
+  2. **Gefunden hat es kein Zahlenblick.** Draw-Calls, Instanzzahlen, Geometrie:
+     alles richtig. `probe()` meldete 0,799 nicht-schwarze Pixel, und 1024/1280
+     sind 0,800 — die Zahl war da, sie musste nur jemand ansehen.
+  3. **Eine Messung am Bild ist nur so gut wie das Bild.** Jede pixelbasierte
+     Zahl der betroffenen Phase war falsch, ohne dass eine davon falsch
+     *abgelesen* war. Ein Flächenanteil auf einem beschnittenen Bild ist ein
+     Anteil an etwas anderem. Wer am Bild misst, prüft **zuerst**, dass das Bild
+     vollständig ist — `probe()` liefert dafür `anteilNichtSchwarz`, und der
+     muss bei einer Szene mit Himmel 1,000 sein.
 - **Am Ergebnis eingehängt statt an der Eingabe.** Die planare Spiegelung
   überschrieb zuerst `reflectedLight.indirectSpecular` — also den bereits mit
   der Fresnel-Gewichtung multiplizierten Wert — mit der **rohen**
