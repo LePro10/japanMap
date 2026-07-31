@@ -44,6 +44,16 @@ export class RoadNetwork {
   readonly roads: readonly RoadData[];
 
   /**
+   * Die geladene `roads.json`, unverändert.
+   *
+   * Behalten für den Streu-Worker (P7 / 7.2): der baut sein Netz aus derselben
+   * Datei neu auf, statt eine Kopie des Gitters zu bekommen. Das Gitter ließe
+   * sich ohnehin nicht verschicken — seine Zellen teilen sich Segmentobjekte,
+   * und der strukturierte Klon machte daraus vervielfachte Kopien.
+   */
+  readonly file: RoadFile;
+
+  /**
    * Flaches Array statt `Map`, ein Eintrag je Zelle.
    *
    * Gemessen: mit einer `Map` brauchten 100 000 Abfragen **207 ms** gegen ein
@@ -61,6 +71,7 @@ export class RoadNetwork {
   #maxHalfWidth = 0;
 
   constructor(file: RoadFile) {
+    this.file = file;
     this.roads = file.roads;
     this.#columns = Math.ceil(WORLD.size / CELL_SIZE) + 2;
     this.#rows = this.#columns;

@@ -31,8 +31,14 @@ export class ZoneMap {
     this.#invSpacing = (res - 1) / WORLD.size;
   }
 
-  static async load(): Promise<ZoneMap> {
-    const response = await fetch(TERRAIN_ASSETS.zones);
+  /**
+   * `url` ist ein Parameter, weil der Streu-Worker (P7 / 7.2) dieselbe Karte
+   * braucht und seine eigene Basis-URL hat. Der Hauptthread reicht sie durch,
+   * statt dass beide Seiten den Pfad kennen — dann kann er auch nicht
+   * auseinanderlaufen.
+   */
+  static async load(url: string = TERRAIN_ASSETS.zones): Promise<ZoneMap> {
+    const response = await fetch(url);
     if (!response.ok) throw new Error(`zones.png nicht ladbar (HTTP ${response.status}).`);
     const bitmap = await createImageBitmap(await response.blob());
 
