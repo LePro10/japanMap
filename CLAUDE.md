@@ -168,6 +168,16 @@ mit `@/` muss man dafür vorher auf relative umschreiben).
   Steht dort `THREE.WebGLRenderer: Error creating WebGL context`, ist es
   wirklich blockiert. Steht nur der Timer nicht zur Verfügung, ist es das nicht.
 
+- **Auf dieser Maschine laufen fremde Dev-Server auf 5173, 5174 und 4173.**
+  Sie gehören anderen Projekten (`ai/ds4b`, `ai/ds4w`) und starten mit
+  `--strictPort`. japanMap liegt deshalb auf **5180** (dev) und **4180**
+  (preview), fest eingetragen in `.claude/launch.json`.
+  Woran man es merkt, wenn es doch einmal kollidiert: die Seite lädt, aber
+  `/__shot` antwortet mit **404** — dann redet der Browser mit einem fremden
+  Vite. `window.japanMap` kann trotzdem noch funktionieren, weil die Anwendung
+  aus dem Speicher weiterläuft; nur neue Netzanfragen gehen woandershin.
+  **Fremde Server nicht abschießen** — ausweichen.
+
 - **Zeigen zwei Laufwerksbuchstaben auf dieselbe Freigabe, findet Vite seine
   eigenen Dateien nicht mehr.** Vite löst Modul-IDs über `realpath` auf; unter
   Windows geht das über die Freigabe und wieder zurück auf *irgendeinen*
