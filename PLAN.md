@@ -814,7 +814,7 @@ es liefert Geometrie, Terrain-Verformung und später alle Gameplay-Daten.
 >
 > Bei acht Kehren wird der Serpentinenbereich allerdings zum **Steinbruch**: rund
 > 300 × 250 m Massiv um 50 bis 150 m abgetragen, eine zusammenhängende Fläche.
-> Ausgeliefert ist deshalb der gemessene Kompromiss mit **2 Kehren** bei 19,5 m
+> Ausgeliefert ist deshalb der gemessene Kompromiss mit **3 Kehren** bei 19,5 m
 > mittlerem Erdbau. Dass beides nicht zugleich geht, ist Geometrie und kein
 > Parameter — vier Hebel wurden dagegen gemessen und alle vier verworfen.
 >
@@ -1086,10 +1086,22 @@ verschobener Knoten hat eine Koordinate, die man notieren kann.
       Passes bis zu 40 m jenseits der Kante, weil Kehrenaufweitung und Verrundung
       die Linie über das Suchgitter hinausschieben. `EDGE_MARGIN` sperrt den
       Randstreifen jetzt in der Suche selbst
-- [x] **Bergpass hat Serpentinen mit fahrbaren Radien** — **2 Kehren** auf
-      2983 m, Mindestradius **20,1 m** (Soll ≥ 15), Steigung **10,5 %**
+- [x] **Bergpass hat Serpentinen mit fahrbaren Radien** — **3 Kehren** auf
+      3003 m, Mindestradius **20,22 m** (Soll ≥ 15), Steigung **10,66 %**
       (Soll ≤ 11 %). Gezählt werden Läufe gleichsinniger Drehung über 150° auf
       der fertigen Mittellinie, nicht Ecken im Polygonzug.
+
+      > **Diese Zeile stand mit 2 Kehren auf 2983 m, 20,1 m und 10,5 % da, und
+      > die Daten auf der Platte sagten etwas anderes.** Am 2026-07-31 neu
+      > abgelesen aus `roads.json` und bestätigt durch `npm run inspect`: 3
+      > Kehren, 3003 m. Die alten Zahlen stammen aus einem Lauf, den es so nicht
+      > mehr gibt — genau der Fall, der in CLAUDE.md als eines der drei
+      > Eingangsbeispiele steht. Der ausgelieferte Stand ist damit **besser** als
+      > dokumentiert, was die Sache nicht besser macht: eine Doku, die von den
+      > Daten abweicht, ist auch dann falsch, wenn sie zu bescheiden ist.
+      >
+      > Alle weiteren Kennzahlen dieses Blocks (Erdbau ⌀ 19,5 m, 95 % 62,2 m,
+      > Anstieg 209 m) stimmen mit `roads.json` überein und bleiben.
 
       > **Die Zahl ≥ 8 aus SPEC §2.1 ist damit nicht erreicht, und das ist eine
       > Entscheidung, keine Auslassung.** Acht Kehren wurden gebaut, gebacken und
@@ -1223,8 +1235,14 @@ Kehren:
 | Mindestabstand zwischen Kehren (200 / 350 / 500 m) | 8 → 1…4 Kehren |
 | Kehre hangabwärts versetzen (`downhillBias`) | 5 → 1…2 Kehren; Erdbau 30,2 → 19,5 m |
 
-Ausgeliefert ist `downhillBias: 0.3` bei 700 m Korridor: **2 Kehren, 19,5 m
-Erdbau, 320 m Strecke (10,7 %) in Einschnitten über 50 m, tiefster 94 m.** Zum
+Die Tabelle ist das Protokoll der damaligen Suche und bleibt so stehen. Ihre
+Kehrenzahlen gelten für das Höhenfeld von P3; auf dem heutigen liefert dieselbe
+Einstellung 3 statt 1…2.
+
+Ausgeliefert ist `downhillBias: 0.3` bei 700 m Korridor: **3 Kehren, 19,5 m
+Erdbau, 206 m Strecke in Einschnitten über 50 m, tiefster 93,5 m.** (Die
+Kehrenzahl und die Einschnittstrecke sind am 2026-07-31 neu abgelesen; hier
+standen 2 Kehren und 320 m.) Zum
 Vergleich der Ausgangszustand: 0 Kehren, 49,2 m Erdbau, 680 m über 50 m,
 tiefster 165 m. Jede Zahl ist besser geworden — die Serpentinenzahl bleibt unter
 der Vorgabe.
@@ -1237,10 +1255,14 @@ Art-Direction-Entscheidung, weil das Massiv der Hintergrund der halben Karte ist
 Bis dahin ist die Vorgabe aus SPEC §2.1 unerfüllt, und zwar nachweislich am
 Höhenfeld und nicht am Generator.
 
-**Was der Pass jetzt ist:** 2983 m, 2 Kehren, Mindestradius 20,1 m (Soll ≥ 15),
-Steigung 10,5 % (Soll ≤ 11 %), Erdbau ⌀ 19,5 m (Soll ≤ 30), Anstieg von 41 auf
-264 m. Keine Selbstkreuzung, kleinster Achsabstand 13,2 m, nichts außerhalb der
-Welt, in zwei vollen Läufen bitgleich.
+**Was der Pass jetzt ist** (2026-07-31 neu abgelesen)**:** 3003 m, **3 Kehren**,
+Mindestradius 20,22 m (Soll ≥ 15), Steigung 10,66 % (Soll ≤ 11 %), Erdbau
+⌀ 19,5 m (Soll ≤ 30), 95 % bei 62,2 m, Anstieg 209 m. Keine Selbstkreuzung,
+kleinster Achsabstand 23,8 m, nichts außerhalb der Welt.
+
+> Hier standen 2983 m, 2 Kehren, 20,1 m und 10,5 % — Zahlen aus einem Lauf, den
+> es so nicht mehr gibt. Der Achsabstand stand mit 13,2 m sogar deutlich unter
+> dem gemessenen. Nachgezogen aus `roads.json` und `npm run inspect`.
 
 ### Risiken
 - ~~**Kreuzungen sind das klassische Zeitloch**~~ → Nicht eingetreten. Der
@@ -1310,7 +1332,7 @@ ersten Durchgang.
 | Texturspeicher | **255 MB** | 512 MB |
 | Programme | 20 | — |
 | CPU / GPU je Frame | 0,20 ms / 1,72 ms | 16,6 ms |
-| Netz | 3 Strecken, **9,80 km**, davon 2983 m Bergpass mit 2 Kehren | — |
+| Netz | 3 Strecken, **9,80 km**, davon 2983 m Bergpass mit 2 Kehren *(Stand der P3-Abnahme; heute 5 Strecken, 10,86 km, Pass 3003 m mit 3 Kehren)* | — |
 
 > **Die Zeilen darüber sind noch die vom 8,68-km-Netz.** Draw-Calls, Dreiecke,
 > Texturspeicher und CPU/GPU je Frame lassen sich nur im laufenden Bild ablesen,
