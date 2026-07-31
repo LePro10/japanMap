@@ -124,6 +124,14 @@ function installFrameProbe(
       return qualitySystem.level;
     },
 
+    /**
+     * Was die Gerätevorschätzung aus P8.3 gesehen hat.
+     *
+     * Sie setzt die **Startstufe** der Ersteinstufung; ohne diese Ausgabe wäre
+     * nicht nachprüfbar, warum eine Maschine anders anfängt als eine andere.
+     */
+    device: () => qualitySystem.estimate,
+
     /** Frame-Zeit ohne Vsync und ohne rAF-Drosselung — siehe frameTiming.ts. */
     bench: (frames) =>
       measureFrameTime({

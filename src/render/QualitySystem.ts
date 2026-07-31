@@ -6,6 +6,7 @@ import {
   type QualityLevel,
 } from '@/config/quality.config';
 import type { EngineContext, System } from '@/core/System';
+import { estimateDevice, type DeviceEstimate } from './deviceTier';
 
 /**
  * Die Qualitätsstufe — PLAN.md P7 / 7.1.
@@ -53,11 +54,19 @@ export class QualitySystem implements System {
   /** Wahr, solange dieses System selbst eine Stufe sendet. */
   #internal = false;
 
+  /** Ergebnis der Vorabschätzung — nur zur Anzeige und für Messungen. */
+  #estimate: DeviceEstimate | null = null;
+
   readonly #readouts = {
     stufe: '—',
     wirkung: '—',
     einstufung: '—',
+    geraet: '—',
   };
+
+  get estimate(): DeviceEstimate | null {
+    return this.#estimate;
+  }
 
   constructor(level: QualityLevel = DEFAULT_QUALITY) {
     this.#level = level;
@@ -87,35 +96,62 @@ export class QualitySystem implements System {
       this.#updateReadouts();
     });
 
+    const estimate = estimateDevice(context.renderer);
+    this.#estimate = estimate;
+    this.#readouts.geraet =
+      `${QUALITY[estimate.level].label} — ${estimate.reason}` +
+      ` · ${estimate.cores} Kerne` +
+      (estimate.memory === null ? '' : ` · ${estimate.memory} GB`) +
+      (estimate.touch ? ' · Touch' : '');
+
     const gespeichert = readStoredLevel();
     if (gespeichert) {
       this.#readouts.einstufung = 'aus einem früheren Start übernommen';
     } else {
       this.#run = { rest: BENCHMARK.warmupFrames, samples: [], runde: 1 };
       this.#readouts.einstufung = 'läuft …';
+      if (estimate.level !== this.#level) {
+        console.info(
+          `Gerätevorschätzung: Start auf „${QUALITY[estimate.level].label}" statt ` +
+            `„${QUALITY[this.#level].label}" — ${estimate.reason}.`,
+        );
+      }
     }
 
     /**
-     * Die gespeicherte Stufe wird **nach** dem Aufwärmframe angewendet.
+     * Beide Wege zu einer anderen Startstufe laufen hier zusammen: die
+     * gespeicherte Wahl (P7.1) und die Gerätevorschätzung (P8.3). Angewendet
+     * werden sie **nach** dem Aufwärmframe, und zwar aus demselben Grund.
      *
-     * Der Aufwärmframe übersetzt die Shader (P7.4), und eine niedrige Stufe
-     * braucht weniger davon: auf „Niedrig" entfällt der Spiegeldurchgang.
-     * Vorher standen nach dem Laden 25 Programme, und wer von Hand hochschaltete,
-     * bekam die fehlenden fünf mitten im Bild. Aufgewärmt wird deshalb auf der
-     * höchsten Stufe und erst danach heruntergeschaltet.
+     * Der Aufwärmframe übersetzt die Shader (P7.4), und er tut das nur für die
+     * Stufe, auf der er läuft. Eine niedrige braucht weniger davon: auf
+     * „Niedrig" entfällt der Spiegeldurchgang, auf „Minimal" die ganze
+     * Postprocessing-Kette. Vorher standen nach dem Laden 25 Programme, und wer
+     * von Hand hochschaltete, bekam die fehlenden fünf mitten im Bild.
+     * Aufgewärmt wird deshalb auf der höchsten Stufe und erst danach
+     * heruntergeschaltet.
      *
      * **Vollständig ist das nicht, und zwar nachgemessen:** danach sind es 27
      * von 30. Die drei übrigen gehören N8AO, und die lassen sich so nicht
      * einfangen — Abtastzahl und halbe Auflösung stehen dort als Konstanten im
-     * Shader, jede AO-Stufe baut ihn also neu. Ein Aufwärmen für alle vier
-     * Stufen hieße vier Durchgänge. Der Rest ist stattdessen gemessen und
+     * Shader, jede AO-Stufe baut ihn also neu. Ein Aufwärmen für alle Stufen
+     * hieße ebenso viele Durchgänge. Der Rest ist stattdessen gemessen und
      * hingenommen: der Wechselframe kostet 214,8 ms gegen 178 ms im Beharren,
      * also rund 37 ms — innerhalb des 50-ms-Budgets, und er hängt an einer
      * bewussten Handlung statt an einer Kameradrehung.
+     *
+     * > **Damit bleibt ein teurer Frame auf der höchsten Stufe stehen, auch auf
+     * > einem schwachen Gerät.** Das ist eine bewusste Abwägung und keine
+     * > Auslassung: das Problem, das P8.3 löst, sind die 90 Frames der Messung,
+     * > nicht der eine des Aufwärmens. Ob dieser eine Frame auf einem sehr
+     * > schwachen Gerät tragbar ist, ist hier **nicht prüfbar** — im
+     * > Software-Rasterisierer kostet er 274,4 ms, und was das für ein Telefon
+     * > heißt, wäre geraten.
      */
-    if (gespeichert && gespeichert !== this.#level) {
+    const startLevel = gespeichert ?? estimate.level;
+    if (startLevel !== this.#level) {
       context.bus.on('engine:warmedup', () => {
-        this.#emit(gespeichert);
+        this.#emit(startLevel);
       });
     }
 
@@ -205,12 +241,20 @@ export class QualitySystem implements System {
     this.#emit(next);
   }
 
-  /** Erneut einstufen — verwirft die gespeicherte Wahl. */
+  /**
+   * Erneut einstufen — verwirft die gespeicherte Wahl.
+   *
+   * Beginnt bei der **geschätzten** Stufe, nicht bei `DEFAULT_QUALITY`. Sonst
+   * wäre der Knopf im Panel genau der Blindstart auf Ultra, den P8.3 abschafft
+   * — und zwar auf Verlangen des Nutzers, was ihn nicht besser macht. Die
+   * Shader sind zu diesem Zeitpunkt längst übersetzt, der Aufwärmgrund von oben
+   * entfällt hier also.
+   */
   reclassify(): void {
     clearStoredLevel();
     this.#run = { rest: BENCHMARK.warmupFrames, samples: [], runde: 1 };
     this.#readouts.einstufung = 'läuft …';
-    this.#emit(DEFAULT_QUALITY);
+    this.#emit(this.#estimate?.level ?? DEFAULT_QUALITY);
     this.#updateReadouts();
   }
 
@@ -248,12 +292,18 @@ export class QualitySystem implements System {
       multiline: true,
       rows: 2,
     });
+    folder.addBinding(this.#readouts, 'geraet', {
+      readonly: true,
+      label: 'Gerät',
+      multiline: true,
+      rows: 3,
+    });
 
     folder.addButton({ title: 'Neu einstufen' }).on('click', () => {
       this.reclassify();
     });
 
-    // Der Reihe nach durchschalten: für ein Vorher/Nachher braucht man alle vier
+    // Der Reihe nach durchschalten: für ein Vorher/Nachher braucht man alle
     // Stufen am selben Blickpunkt, und dafür ist ein Knopf schneller als ein
     // Aufklappmenü.
     folder.addButton({ title: 'Nächste Stufe' }).on('click', () => {
