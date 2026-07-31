@@ -79,6 +79,32 @@ const ZONES = {
 /** Südküste: ab hier fällt das Terrain, ab `sea` liegt es unter Null. */
 const COAST = { start: 600, sea: 1160, deep: 1536, shore: -2, floor: -38 };
 
+/**
+ * Kern des Stadtplateaus — PLAN.md P8.5c.
+ *
+ * Deckt `CITY_DISTRICT` (440…800 / −60…300) plus die 60-m-Feder von `padCity`
+ * plus 20 m Reserve ab, also 360…880 / −140…380. Innerhalb davon bleibt die
+ * Einebnung, wie sie war: die Bodenplatte der Stadt braucht 29,77 m als obere
+ * Schranke, und ein Restrelief dort würde sie durchstoßen.
+ *
+ * **Außerhalb davon nicht.** Der Distrikt belegt 20 % seines eigenen Plateaus;
+ * die übrigen 80 % sind eine planierte, kahle Fläche, die aus der Luft die
+ * Wahrnehmung der ganzen Ostkarte bestimmt (am Bild geprüft,
+ * `.cache/shots/p8_vorfeld_stadt_luft.png`).
+ */
+const CITY_CORE = { x: 620, z: 120, halfX: 260, halfZ: 260, feather: 200 };
+
+/**
+ * Wie das Vorfeld aussieht, wenn es nicht mehr planiert wird.
+ *
+ * `strength` ist der Anteil, mit dem das Vorfeld noch gegen die Zielhöhe
+ * gezogen wird — 0,96 wie bisher ergäbe wieder eine Ebene, 0 ließe das Gelände
+ * völlig unberührt und die Stadt läge an einem Hang. `relief` ist die Amplitude
+ * des verbleibenden Kleinreliefs, `rise` der Anstieg zum Zonenrand hin: die
+ * Stadt liegt danach in einer flachen Mulde statt auf einem Tisch.
+ */
+const CITY_APRON = { strength: 0.62, relief: 5.5, rise: 6 };
+
 // ── Kleine Mathematik ────────────────────────────────────────────────────────
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -283,10 +309,19 @@ function buildHeightField(res, seed, spacing) {
         h = lerp(h, terrace, riceMask * 0.94);
       }
 
+      // Stadt. Zwei Stufen statt einer: der Kern wird eingeebnet wie bisher,
+      // das Vorfeld behält Restrelief und steigt zum Zonenrand hin leicht an.
+      // Ein `lerp` über die ganze Zone hat 640 000 m² Tischplatte erzeugt, von
+      // denen der Distrikt 130 000 belegt.
       const city = ZONES.city;
       const cityMask = boxMask(x, z, city, edgeJitter * 0.5);
       if (cityMask > 0.001) {
-        h = lerp(h, city.height, cityMask * 0.96);
+        const core = boxMask(x, z, CITY_CORE, edgeJitter * 0.3);
+        const apron = 1 - core;
+        const target =
+          city.height +
+          apron * (fbm(nField, x / 190, z / 190, 3) * CITY_APRON.relief + apron * CITY_APRON.rise);
+        h = lerp(h, target, cityMask * lerp(CITY_APRON.strength, 0.96, core));
       }
 
       height[iy * res + ix] = h;
@@ -603,6 +638,246 @@ function chunkBounds(height, res, spacing) {
 }
 
 const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex');
+
+// ── Schritt 5a: Die Bank ─────────────────────────────────────────────────────
+
+/**
+ * Maße der Bank — PLAN.md P8.5a.
+ *
+ * `tolerance` ist der eigentliche Regler: gekappt wird nicht auf den
+ * Querschnittsmedian, sondern auf **Median + tolerance**. Eine Bank, die exakt
+ * auf den Median zieht, ergäbe ein perfekt glattes Band durch ein raues
+ * Gelände — sichtbar als Fläche, die dort nichts zu suchen hat. Mit Toleranz
+ * bleibt Kleinrelief stehen und nur die Grate fallen.
+ */
+const BENCH = {
+  /**
+   * Kernbreite je Seite in Metern.
+   *
+   * **Der dominante Regler**, und die erste Schätzung (30 m) war zu klein: sie
+   * deckt sich fast mit der Straßenböschung (±20 m), die danach ohnehin alles
+   * überschreibt. Erst jenseits davon fängt die Bank an zu wirken.
+   */
+  halfWidth: 60,
+  /** Kosinus-Auslauf darüber hinaus, damit die Bank keine Kante bekommt. */
+  feather: 25,
+  /** Was über dem Querschnittsmedian stehen bleiben darf, in Metern. */
+  tolerance: 8,
+  /** Abtastschritt im Querschnitt beim Bilden des Medians, in Metern. */
+  sampleStep: 3,
+};
+
+/**
+ * Das Relief im Trassenkorridor glätten — PLAN.md P8.5a, Variante B.
+ *
+ * **Warum überhaupt.** Die Traverse quer zur Falllinie liegt am Massiv auf 84 %
+ * ihrer Länge über 30 % Neigung, bei einem Median von 104 %. Das mittlere
+ * Gefälle der Flanke ist mit 25 % dagegen bereits am Zielwert — das Problem ist
+ * also nicht, dass der Berg zu steil wäre, sondern dass er quer zur Fahrtrichtung
+ * ein Waschbrett aus Graten und Rinnen ist. Eine Variantenserie über
+ * Gratamplitude und Reiszonenlage hat gezeigt, dass sich das **global** nicht
+ * lösen lässt: die beste Kombination kam auf 44 % Median und kostete dafür 38 %
+ * der Gipfelhöhe. Das Problem ist lokal, also gehört die Lösung an den Ort.
+ *
+ * **Warum kappen und nicht zwingen.** `carveRoads` zieht das Gelände auf
+ * Fahrbahnhöhe. Dasselbe über 60 m Breite zu tun wäre der naheliegende Weg und
+ * ist der teure: neben der Trasse steigt der Hang steil an, „auf Fahrbahnhöhe"
+ * heißt dort 50 bis 100 m Abtrag. Gemessen auf dem ausgelieferten Höhenfeld
+ * entlang der `toge`-Mittellinie, je halber Breite ±30 m:
+ *
+ * | | Median | 95 % | Maximum | > 20 m | Volumen |
+ * |---|---|---|---|---|---|
+ * | auf Fahrbahnhöhe zwingen | 5,5 m | 54,7 m | 102,8 m | 22 % | 2,18 Mm³ |
+ * | über Querschnittsmedian kappen | **0,0 m** | 31,8 m | 96,7 m | 9 % | 1,05 Mm³ |
+ *
+ * Das Kappen lässt den Hang stehen und nimmt nur, was über seinem *eigenen*
+ * Querschnitt herausragt: halbes Volumen, halber Anteil über 20 m, und der
+ * Median fällt auf null — der größte Teil des Korridors bleibt unberührt.
+ * Umsonst ist es trotzdem nicht, 95 % liegen bei 31,8 m.
+ *
+ * **Was die Bank nicht tut.** Sie bringt keine zusätzlichen Kehren. Die
+ * Trassierung läuft in `npm run world` auf dem *sauberen* Feld, die Bank erst
+ * im zweiten Bake danach — die Linienführung kennt sie also gar nicht. Sie
+ * beseitigt den Steinbruch, nicht die Ursache seiner Lage. Wer die Kehren
+ * will, bräuchte einen dritten Durchgang (backen → trassieren → backen mit Bank
+ * → erneut trassieren), und dafür ist SPEC §2.1 die falsche Stelle zum
+ * Nachgeben: siehe die Notiz zu „≥ 8 Kehren" in PLAN.md.
+ *
+ * **Nur kappen, nie auffüllen.** Rinnen aufzufüllen würde aus dem Korridor eine
+ * Rampe machen und den Erdbau verdoppeln; gemessen wurde Variante B als reiner
+ * Abtrag, und gebaut wird, was gemessen wurde.
+ *
+ * ## Woher die Maße kommen
+ *
+ * Die erste Messgröße war falsch gewählt. „Relief im Korridor" und „Neigung
+ * quer zur Fahrtrichtung" bewegten sich kaum (45,1 → 42,7 m Median bei ±30 m),
+ * und beinahe wäre daraus „das Verfahren taugt nicht" geworden. Beides misst
+ * innerhalb ±20 m aber gar nicht die Bank, sondern den **Straßeneinschnitt**,
+ * der danach läuft und den Korridor ohnehin planiert. Was am Pass wirklich
+ * stört, ist der **Anschnitt**: wie hoch das Gelände neben der Fahrbahn über
+ * ihr aufragt. Alle sechs Varianten, `toge`, Band ±60 m:
+ *
+ * | Bank | Median | 95 % | Maximum | > 20 m | > 50 m | Abtrag |
+ * |---|---|---|---|---|---|---|
+ * | ohne              | 41,5 m | 97,4 m | 185,4 m | 90 % | 42 % | — |
+ * | ±30 m, Toleranz 8 | 38,7 m | 92,2 m | 185,4 m | 88 % | 37 % | 0,90 Mm³ |
+ * | ±30 m, Toleranz 2 | 37,8 m | 91,4 m | 185,4 m | 86 % | 36 % | 1,59 Mm³ |
+ * | ±45 m, Toleranz 4 | 33,4 m | 73,5 m | 134,5 m | 74 % | 28 % | 2,51 Mm³ |
+ * | **±60 m, Toleranz 8** | **23,7 m** | **65,9 m** | **90,7 m** | **59 %** | **15 %** | **3,30 Mm³** |
+ * | ±60 m, Toleranz 2 | 20,0 m | 61,5 m |  84,7 m | 50 % | 12 % | 4,89 Mm³ |
+ * | ±80 m, Toleranz 2 | 20,5 m | 59,9 m |  86,6 m | 51 % | 12 % | 8,00 Mm³ |
+ *
+ * Drei Ablesungen:
+ *
+ *  - **Die Breite entscheidet, nicht die Toleranz.** Bei ±30 m bringt eine
+ *    Toleranz von 2 statt 8 fast nichts (38,7 → 37,8 m); von ±30 auf ±60 m
+ *    halbiert sich der Anschnitt.
+ *  - **±80 m ist verschenkt.** 8,00 statt 4,89 Mm³ und derselbe Wert (20,5
+ *    gegen 20,0 m). Die Kurve sättigt bei ±60 m.
+ *  - **Toleranz 8 statt 2 spart ein Drittel des Erdbaus** (3,30 gegen 4,89
+ *    Mm³) und kostet 3,7 m Anschnitt. Sie ist außerdem das, was die Bank in der
+ *    Ebene harmlos hält: gemessen bleibt `ring` bei 15,6 → 15,4 m Relief und
+ *    `dorf` bei 2,0 → 2,0 m — dort ragt nichts über den Querschnittsmedian
+ *    hinaus, also wird auch nichts abgetragen. Die Bank braucht deshalb keine
+ *    Beschränkung auf bestimmte Straßen.
+ *
+ * Was sie **nicht** verbessert: den Erdbau der Fahrbahn selbst. `carveRoads`
+ * meldet ⌀ 5,8 → 5,4 m und tiefsten Einschnitt −96,4 → −82,9 m über die ganze
+ * Serie. Die Bank nimmt die Wand daneben weg, nicht den Graben darunter.
+ */
+function benchRoads(height, res, spacing, roadFile) {
+  const half = WORLD_SIZE / 2;
+  const reach = BENCH.halfWidth + BENCH.feather;
+  const last = res - 1;
+
+  // Nächster Texel genügt: gebildet wird ein Median über Dutzende Proben, und
+  // eine bilineare Interpolation verschöbe ihn um Bruchteile eines Meters.
+  const sample = (x, z) => {
+    const ix = clamp(Math.round((x + half) / spacing), 0, last);
+    const iz = clamp(Math.round((z + half) / spacing), 0, last);
+    return height[iz * res + ix];
+  };
+
+  // ── 1. Je Knoten den Querschnittsmedian, auf dem **unveränderten** Feld.
+  // Erst alle Mediane, dann anwenden: sonst hinge der Median eines Knotens
+  // davon ab, ob sein Nachbar schon gekappt wurde, und das Ergebnis liefe mit
+  // der Reihenfolge der Straßen in der Datei davon.
+  const levels = new Map();
+  for (const road of roadFile.roads) {
+    const line = road.centerline;
+    const count = line.length / 3;
+    const perNode = new Float32Array(count);
+
+    for (let i = 0; i < count; i++) {
+      const ax = line[i * 3];
+      const az = line[i * 3 + 2];
+      // Tangente aus den Nachbarn — an den Enden einseitig.
+      const p = road.closed ? (i - 1 + count) % count : Math.max(0, i - 1);
+      const n = road.closed ? (i + 1) % count : Math.min(count - 1, i + 1);
+      let tx = line[n * 3] - line[p * 3];
+      let tz = line[n * 3 + 2] - line[p * 3 + 2];
+      const length = Math.hypot(tx, tz) || 1;
+      tx /= length;
+      tz /= length;
+      const nx = -tz;
+      const nz = tx;
+
+      const cross = [];
+      for (let d = -BENCH.halfWidth; d <= BENCH.halfWidth; d += BENCH.sampleStep) {
+        cross.push(sample(ax + nx * d, az + nz * d));
+      }
+      cross.sort((a, b) => a - b);
+      perNode[i] = cross[cross.length >> 1];
+    }
+    levels.set(road.id, perNode);
+  }
+
+  // ── 2. Rasterisieren, „nächster gewinnt" wie bei `carveRoads`.
+  const benchLevel = new Float32Array(res * res);
+  const benchDistance = new Float32Array(res * res).fill(Infinity);
+
+  for (const road of roadFile.roads) {
+    const line = road.centerline;
+    const perNode = levels.get(road.id);
+    const count = line.length / 3;
+    const lastSegment = road.closed ? count : count - 1;
+
+    for (let i = 0; i < lastSegment; i++) {
+      const j = road.closed ? (i + 1) % count : i + 1;
+      const ax = line[i * 3];
+      const az = line[i * 3 + 2];
+      const bx = line[j * 3];
+      const bz = line[j * 3 + 2];
+
+      const minX = Math.max(0, Math.floor((Math.min(ax, bx) - reach + half) / spacing));
+      const maxX = Math.min(last, Math.ceil((Math.max(ax, bx) + reach + half) / spacing));
+      const minZ = Math.max(0, Math.floor((Math.min(az, bz) - reach + half) / spacing));
+      const maxZ = Math.min(last, Math.ceil((Math.max(az, bz) + reach + half) / spacing));
+
+      const dx = bx - ax;
+      const dz = bz - az;
+      const lengthSquared = dx * dx + dz * dz;
+      if (lengthSquared < 1e-8) continue;
+
+      for (let iz = minZ; iz <= maxZ; iz++) {
+        const wz = -half + iz * spacing;
+        for (let ix = minX; ix <= maxX; ix++) {
+          const wx = -half + ix * spacing;
+          const t = clamp(((wx - ax) * dx + (wz - az) * dz) / lengthSquared, 0, 1);
+          const distance = Math.hypot(wx - (ax + dx * t), wz - (az + dz * t));
+          if (distance >= reach) continue;
+
+          const index = iz * res + ix;
+          if (distance >= benchDistance[index]) continue;
+          benchDistance[index] = distance;
+          benchLevel[index] = perNode[i] + (perNode[j] - perNode[i]) * t;
+        }
+      }
+    }
+  }
+
+  // ── 3. Kappen.
+  let touched = 0;
+  let volume = 0;
+  let deepest = 0;
+  const cuts = [];
+
+  for (let index = 0; index < height.length; index++) {
+    const distance = benchDistance[index];
+    if (!Number.isFinite(distance)) continue;
+
+    let weight;
+    if (distance <= BENCH.halfWidth) {
+      weight = 1;
+    } else {
+      const t = (distance - BENCH.halfWidth) / BENCH.feather;
+      if (t >= 1) continue;
+      weight = 0.5 * (1 + Math.cos(Math.PI * t));
+    }
+
+    const before = height[index];
+    const ceiling = benchLevel[index] + BENCH.tolerance;
+    if (before <= ceiling) continue;
+
+    const after = before + (ceiling - before) * weight;
+    height[index] = after;
+
+    const cut = before - after;
+    cuts.push(cut);
+    volume += cut * spacing * spacing;
+    if (cut > deepest) deepest = cut;
+    touched++;
+  }
+
+  cuts.sort((a, b) => a - b);
+  return {
+    touched,
+    deepest,
+    volume,
+    percentile95: cuts[Math.floor(cuts.length * 0.95)] ?? 0,
+    median: cuts[cuts.length >> 1] ?? 0,
+  };
+}
 
 // ── Schritt 5b: Straßen einschneiden ─────────────────────────────────────────
 
@@ -1120,6 +1395,8 @@ async function main() {
   // woanders liegt.
   EXPERIMENT.ridge = Number(opts.ridge ?? 1);
   EXPERIMENT.riceShift = Number(opts['rice-shift'] ?? 0);
+  BENCH.halfWidth = Number(opts['bench-width'] ?? BENCH.halfWidth);
+  BENCH.tolerance = Number(opts['bench-tolerance'] ?? BENCH.tolerance);
   ZONES.rice.z += EXPERIMENT.riceShift;
   if (EXPERIMENT.ridge !== 1 || EXPERIMENT.riceShift !== 0) {
     console.log(
@@ -1197,6 +1474,28 @@ async function main() {
   try {
     if (opts['no-roads']) throw Object.assign(new Error('übersprungen'), { code: 'ENOENT' });
     const roadFile = JSON.parse(await readFile(roadPath, 'utf8'));
+
+    // Bank **vor** dem Einschnitt: sie glättet das Umfeld, der Einschnitt legt
+    // danach die Fahrbahn hinein. Andersherum würde die Bank die frisch
+    // planierte Fahrbahn wieder gegen ihren eigenen Querschnittsmedian kappen
+    // und das Straßenprofil zerstören.
+    if (opts['no-bench']) {
+      console.log(c.dim('  5a   --no-bench: Korridor ungeglättet.'));
+    } else {
+      process.stdout.write('  5a   Bank … ');
+      const benchReport = benchRoads(height, res, spacing, roadFile);
+      console.log(
+        c.green('fertig') +
+          c.dim(
+            ` ${benchReport.touched.toLocaleString('de-DE')} Texel · ` +
+              `Median ${benchReport.median.toFixed(1)} m · ` +
+              `95 % unter ${benchReport.percentile95.toFixed(1)} m · ` +
+              `tiefster Abtrag ${benchReport.deepest.toFixed(1)} m · ` +
+              `${(benchReport.volume / 1e6).toFixed(2)} Mm³`,
+          ),
+      );
+    }
+
     process.stdout.write('  5b   Straßen einschneiden … ');
     roadReport = carveRoads(height, res, spacing, roadFile);
     console.log(
