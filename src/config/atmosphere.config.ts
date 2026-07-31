@@ -173,6 +173,76 @@ export const CLOUDS = {
  * bewegte Lichtanteil dieser Karte.
  */
 
+/**
+ * Wolkenebene — PLAN.md P8.4, Teil 2.
+ *
+ * ## Was hier fehlte, war nicht „Wolken"
+ *
+ * Der Plan ging davon aus, der Himmel sei leer. **Nachgemessen stimmt das
+ * nicht:** das Himmels-HDRI trägt bereits Wolkenstruktur. Gemessen über die
+ * Himmelspixel (alles ausgeblendet, was Geometrie ist):
+ *
+ * | Blickpunkt | Himmelsanteil | Ø Helligkeit | Streuung | Spanne |
+ * |---|---|---|---|---|
+ * | `start`      | 46,1 % | 185,4 | 13,2 | 151…210 |
+ * | `pass`       | 46,4 % | 191,2 | 10,6 | 147…211 |
+ * | `stadt-fern` | 36,2 % | 184,4 | 14,9 | 145…209 |
+ *
+ * Eine Streuung von 13 auf einem Mittelwert von 185 ist dünne, hohe Bewölkung —
+ * vorhanden, aber ruhig. Was der Himmel nicht hat, ist **Bewegung**: das HDRI
+ * steht still. Seit die Bodenschatten wandern, ist das ein sichtbarer
+ * Widerspruch — unten zieht der Schatten, oben rührt sich nichts.
+ *
+ * Die Ebene ist deshalb bewusst **zurückhaltend** ausgelegt. Sie soll die
+ * vorhandene Bewölkung nicht ersetzen und nicht überdecken, sondern ihr eine
+ * zweite, ziehende Lage hinzufügen. Wer hier die Deckkraft hochdreht, bekommt
+ * Matsch: zwei Wolkenfelder übereinander, von denen eines perspektivisch falsch
+ * steht, weil es aus einem Panorama kommt.
+ *
+ * ## Warum eine projizierte Ebene und kein Volumen
+ *
+ * Volumetrische Wolken kosten einen Vollbilddurchgang mit Dutzenden
+ * Abtastungen. Die Kamera kommt in dieser Karte auf 420 m (`stadt-luft`), eine
+ * Wolkenschicht läge bei 1500 m — man flöge nie hindurch. Bezahlt würde also
+ * ein Volumen, von dem nur die Unterseite je zu sehen ist. Die Projektion
+ * liefert genau diese Unterseite, perspektivisch richtig, für einen Draw-Call.
+ */
+export const CLOUD_DOME = {
+  /** Höhe der Schicht über Meereshöhe, in Metern. */
+  height: 1500,
+
+  /**
+   * Kantenlänge einer Kachel in Metern, je Lage — deutlich größer als beim
+   * Bodenschatten, weil die Schicht aus 1500 m Entfernung gesehen wird.
+   */
+  tileMeters: [4200, 2600] as const,
+  speed: [11, 17] as const,
+
+  /** Deckungsgrad und Randweichheit, wie beim Bodenschatten. */
+  coverage: 0.58,
+  softness: 0.24,
+
+  /**
+   * Höchste Deckkraft, 0…1.
+   *
+   * 0,35 und nicht mehr: die gemessene Streuung des vorhandenen Himmels liegt
+   * bei 13 von 255. Eine Lage, die deutlich darüber hinausgeht, ersetzt das
+   * HDRI, statt es zu ergänzen.
+   */
+  opacity: 0.35,
+
+  /**
+   * Ab welchem Sinus der Blickrichtung die Ebene ausgeblendet wird.
+   *
+   * Am Horizont läuft die Projektion `t = h / d.y` gegen unendlich: eine Kachel
+   * deckt dort beliebig viele Pixel ab, und aus Wolken wird ein waagerechter
+   * Streifen. Unterhalb von `fadeStart` wird deshalb ausgeblendet — dort steht
+   * ohnehin die Luftperspektive.
+   */
+  fadeStart: 0.02,
+  fadeEnd: 0.16,
+} as const;
+
 export const SHADE = {
   /**
    * Halbschatten-Breite in Grad, als Funktion der Verdeckerentfernung.
