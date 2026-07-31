@@ -2601,12 +2601,54 @@ Effekt läuft, und der Zeichenpuffer, in den er läuft.
 > kostet sie ihre Vollbilddurchgänge, egal wie klein man sie stellt. Große
 > Titel führen diese Stufe deshalb als eigenen Pfad und nicht als Reglerstellung.
 
-**Messung.** Je Stufe: Zeichenpuffergröße, Draw-Calls, Dreiecke, Instanzen,
-Programme, und die rAF-Frameintervalle nach dem Protokoll aus `frameTiming.ts`
-(Streuung bis zur Stabilität vorgefüllt, sonst misst man den Füllvorgang). Die
-absoluten Zeiten bleiben Zahlen dieses Software-Rasterisierers; belastbar sind
-die Verhältnisse. Zusätzlich ein Bild je Stufe von `stadt-neon` — „Minimal" darf
-schlechter aussehen, aber nicht **kaputt**.
+**Messung.** Je Stufe: Zeichenpuffergröße, Draw-Calls, Dreiecke — und die
+**Durchgänge der Kette allein**, gemessen als Draw-Calls bei leerer Szene.
+Zusätzlich ein Bild je Stufe von `stadt-neon`: „Minimal" darf schlechter
+aussehen, aber nicht **kaputt**.
+
+> **Gebaut und gemessen.**
+>
+> | Stufe | Puffer | Draw-Calls | Dreiecke | Gelände | Durchgänge |
+> |---|---|---|---|---|---|
+> | Ultra   | 1280×720 | 96 | 605 486 | 264 192 | 28 |
+> | Hoch    | 1280×720 | 97 | 605 487 | 264 192 | 29 |
+> | Mittel  | 1088×612 | 61 | 212 763 | 148 608 | 22 |
+> | Niedrig |  896×503 | 49 | 130 191 |  66 048 | 10 |
+> | Minimal |  640×360 | 40 | 130 182 |  66 048 |  1 |
+>
+> Alle fünf liefern ein **vollständiges** Bild (`probe()` meldet
+> `anteilNichtSchwarz` = 1,000). Der Sprung von Niedrig auf Minimal ist die
+> Kette und sonst nichts: zehn Vollbilddurchgänge gegen einen, und ein Viertel
+> der Pixel.
+>
+> **Was Minimal im Bild verliert, ist gemessen und nicht geschätzt** — Maske aus
+> der Differenz gegen einen Frame mit ausgeblendeter Neongruppe, wie in P6:
+> die Neonfläche fällt von 5,62 % auf 1,98 % (Faktor 2,8). Die Sättigung fällt
+> dabei **nicht** (0,206 gegen 0,191). Mein erster Eindruck am Bild — „die
+> Schilder sind ausgewaschen" — war falsch: sie verlieren nicht ihre Farbe,
+> sondern ihr Streulicht.
+>
+> Nicht aufgeschlüsselt ist der Sprung 22 → 10 Durchgänge. Dort fallen AO,
+> SMAA und eine Bloom-Stufe **gleichzeitig** weg; welcher Anteil wie viel
+> trägt, bräuchte den A/B-Knopf und einen GPU-Timer, den diese Maschine nicht
+> hat. Und dass Ultra einen Durchgang *weniger* hat als Hoch (28 gegen 29),
+> liegt vermutlich am Aufwärtsfilter der halbauflösenden AO — **vermutet,
+> nicht isoliert gemessen.**
+
+> **Die Stufe hat einen Fehler gefunden, der älter ist als sie.** „Niedrig"
+> schaltet seit 8.2 SMAA ab, und danach war der Canvas **schwarz** — bei
+> unveränderten Draw-Calls, Dreiecken und Instanzen. Gefunden hat es `probe()`
+> mit `anteilNichtSchwarz` = 0,000.
+>
+> Ursache: `EffectComposer.addPass` setzt `renderToScreen` genau einmal, auf den
+> letzten Pass **im Array** — bei uns SMAA. `render()` überspringt abgeschaltete
+> Pässe dagegen vollständig. Wer SMAA abschaltet, nimmt der Kette damit ihren
+> einzigen Ausgang; das fertige Bild landet im Zwischenpuffer.
+>
+> **Der Schalter „SMAA" im Debug-Panel tat seit P2 genau dasselbe.** Aufgefallen
+> ist es nie, weil ihn niemand benutzt hat. Behoben in
+> `PostFXPipeline.#updateRenderToScreen()`: der letzte *aktive* Pass zeichnet auf
+> den Bildschirm, und der A/B-Profiler zieht das beim Umschalten mit nach.
 
 ---
 
@@ -2863,6 +2905,11 @@ nicht noch einmal zu gehen.
    Nebelrechnung leicht. Steht das Neon aus 1,2 km ungetrübt im Bild, sitzt die
    Stadt **vor** der Atmosphäre statt darin — und das ist genau der Eindruck
    „aufgeklebt". *Zuerst prüfen, ob es so ist*, dann beheben.
+
+   > **Die Maskenmessung dafür steht schon**, gebaut in 8.2: Differenz gegen
+   > einen Frame mit ausgeblendeter Neongruppe, daraus Fläche, Sättigung und
+   > Helligkeit. Auf Ultra deckt das Neon an `stadt-neon` 5,62 % des Bildes bei
+   > Sättigung 0,191. Das ist der Bezugswert, gegen den hier gemessen wird.
 2. **Den Rand ausfransen.** Kein Hochhaus mehr, sondern das, was am Rand einer
    japanischen Kleinstadt steht: niedrige Hallen, Lagerplätze, Parkflächen,
    Gewächshäuser, ein Kanal, Strommasten. Der Distrikt bleibt bei 360 m; das
@@ -2957,23 +3004,31 @@ dieses Durchgangs, und er steht in der P1-Nachbesserung bereits so.
       Stufe gemessen, Verhältnis Minimal:Ultra ≤ 0,4 — und die Lochzählung
       bleibt bei allen fünf bei höchstens 1.
 
-      **Vier von fünf sind gemessen** (8.1 gebaut, „Minimal" kommt mit 8.2).
-      Blickpunkt `stadt-neon`, Streuung bis zur Stabilität vorgefüllt:
+      **Erfüllt.** Blickpunkt `stadt-neon`, Streuung bis zur Stabilität
+      vorgefüllt; Lochzählung über zehn Blickpunkte:
 
       | Stufe | Gitter | Dreiecke gesamt | davon Gelände | Knoten | Löcher |
       |---|---|---|---|---|---|
       | Ultra   | 33² | 605 486 | 264 192 | 129 | 0 |
       | Hoch    | 33² | 605 487 | 264 192 | 129 | 0 |
-      | Mittel  | 25² | 212 769 | 148 608 | 129 | 0 |
-      | Niedrig | 17² | 130 202 |  66 048 | 129 | 0 |
+      | Mittel  | 25² | 212 763 | 148 608 | 129 | 0 |
+      | Niedrig | 17² | 130 191 |  66 048 | 129 | 0 |
+      | Minimal | 17² | 130 182 |  66 048 | 129 | 0 |
 
-      Niedrig:Ultra ist damit **0,215** gesamt und **0,25** im Gelände. Die
-      Lochzählung läuft über zehn Blickpunkte und meldet auf allen vier Stufen
-      null — gegengeprüft mit absichtlich falschem Morph, der 1496 Löcher
-      erzeugt. Vorher standen Mittel und Niedrig bei 329 823 gegen 329 118
-      Dreiecke, unterschieden sich also um nichts.
-- [ ] **Stufe „Minimal" umgeht die PostFX-Kette nachweislich.** Gemessen an der
-      Zahl der Vollbilddurchgänge, nicht an der Bildrate.
+      Minimal:Ultra ist **0,215** gesamt und **0,25** im Gelände — beides unter
+      der geforderten 0,4. Die Lochzählung meldet auf allen fünf Stufen null,
+      gegengeprüft mit absichtlich falschem Morph, der 1496 Löcher erzeugt.
+      Vorher standen Mittel und Niedrig bei 329 823 gegen 329 118 Dreiecke,
+      unterschieden sich also um nichts.
+
+      > Minimal und Niedrig trennen an *diesem* Blickpunkt fast nur Kette und
+      > Puffer: in einer Geschäftsstraße steht kaum Bewuchs, den die niedrigere
+      > Sichtweite und Dichte wegnehmen könnten. An `start` oder `reisfeld`
+      > **nicht neu abgelesen.**
+- [x] **Stufe „Minimal" umgeht die PostFX-Kette nachweislich.** Gemessen an der
+      Zahl der Vollbilddurchgänge, nicht an der Bildrate: **1 gegen 28** auf
+      Ultra, gezählt als Draw-Calls bei leerer Szene. Der Zeichenpuffer geht
+      dabei von 921 600 auf 230 400 Pixel.
 - [ ] **Die Ersteinstufung startet nicht auf Ultra**, wenn die Vorabschätzung ein
       schwaches Gerät meldet — auf dieser Maschine also bei „Minimal".
 - [ ] **Wolkenschatten wandern über das Gelände**, gemessen mit Maske gegen ein
