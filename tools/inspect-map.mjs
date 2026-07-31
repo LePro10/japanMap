@@ -312,6 +312,87 @@ function earthwork(field, clean, box, width) {
   return { buffer: png(width, height, buf), width, height };
 }
 
+// ── Höhenprofil ─────────────────────────────────────────────────────────────
+
+/**
+ * Profil entlang einer Geraden — P8.5a.
+ *
+ * Die P1-Nachbesserung verlangt „eine längere, flachere Flanke, rund 25 % statt
+ * 45 % über etwa 1,5 km". Beide Zahlen standen bisher **nirgends gemessen** in
+ * diesem Projekt: 45 % stammt aus einer Betrachtung am Bergpass, 25 % ist ein
+ * Zielwert. Bevor am Höhenfeld gedreht wird, gehört der Ist-Zustand abgelesen.
+ *
+ * Ausgegeben wird beides — der Verlauf **und** die Verteilung. Ein Mittelwert
+ * über die Neigung verschweigt genau das, worauf es hier ankommt: eine Flanke
+ * mit 25 % im Mittel kann aus 10 % Vorland und 60 % Steilstufe bestehen, und
+ * darauf ließe sich keine Serpentine bauen (CLAUDE.md: „Mittelwerte verstecken
+ * Formen").
+ */
+function profile(field, x0, z0, x1, z1, step = 25) {
+  const total = Math.hypot(x1 - x0, z1 - z0);
+  const n = Math.max(2, Math.round(total / step) + 1);
+  const points = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const x = x0 + (x1 - x0) * t;
+    const z = z0 + (z1 - z0) * t;
+    points.push({ d: total * t, x, z, y: field.at(x, z) });
+  }
+
+  const slopes = [];
+  for (let i = 1; i < points.length; i++) {
+    const dy = points[i].y - points[i - 1].y;
+    const dd = points[i].d - points[i - 1].d;
+    slopes.push(Math.abs(dy / dd));
+  }
+  const sorted = [...slopes].sort((a, b) => a - b);
+  const q = (p) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] ?? 0;
+
+  return {
+    points,
+    length: total,
+    minY: Math.min(...points.map((p) => p.y)),
+    maxY: Math.max(...points.map((p) => p.y)),
+    slopeMedian: q(0.5),
+    slope95: q(0.95),
+    slopeMax: sorted[sorted.length - 1] ?? 0,
+    /** Anteil der Abschnitte über 30 % — die Stufen, an denen eine Kehre scheitert. */
+    steepFraction: slopes.filter((s) => s > 0.3).length / (slopes.length || 1),
+  };
+}
+
+function printProfile(title, p) {
+  console.log(c.bold(`\n  ${title}`));
+  console.log(
+    c.dim(
+      `    ${p.length.toFixed(0)} m lang · ${p.minY.toFixed(0)}…${p.maxY.toFixed(0)} m ` +
+        `(${(p.maxY - p.minY).toFixed(0)} m Hub) · mittleres Gefälle über die Strecke ` +
+        `${(((p.maxY - p.minY) / p.length) * 100).toFixed(0)} %`,
+    ),
+  );
+  const steep = p.slopeMedian > 0.3 ? c.red : c.dim;
+  console.log(
+    steep(
+      `    Neigung je 25 m: Median ${(p.slopeMedian * 100).toFixed(0)} % · ` +
+        `95 % ${(p.slope95 * 100).toFixed(0)} % · Maximum ${(p.slopeMax * 100).toFixed(0)} % · ` +
+        `über 30 % auf ${(p.steepFraction * 100).toFixed(0)} % der Strecke`,
+    ),
+  );
+
+  // Ein Bild, auch auf der Konsole: 24 Zeilen ASCII sagen mehr über die Form
+  // als drei Quantile.
+  const rows = 14;
+  const cols = Math.min(96, p.points.length);
+  const span = Math.max(1, p.maxY - p.minY);
+  const grid = Array.from({ length: rows }, () => new Array(cols).fill(' '));
+  for (let i = 0; i < cols; i++) {
+    const pt = p.points[Math.round((i / (cols - 1)) * (p.points.length - 1))];
+    const level = Math.round(((pt.y - p.minY) / span) * (rows - 1));
+    for (let r = 0; r <= level; r++) grid[rows - 1 - r][i] = r === level ? '▀' : '░';
+  }
+  for (const row of grid) console.log(c.dim(`    ${row.join('')}`));
+}
+
 // ── CLI ─────────────────────────────────────────────────────────────────────
 
 function parseArgs(argv) {
@@ -375,6 +456,22 @@ async function main() {
         c.red(`      ${Math.round(r.outside)} m außerhalb der Welt, bis zu ${r.worstOutside.toFixed(1)} m weit`),
       );
     }
+  }
+
+  // Höhenprofile — `--profile x0,z0,x1,z1` oder mehrfach mit `;` getrennt.
+  if (typeof opts.profile === 'string') {
+    for (const spec of opts.profile.split(';')) {
+      const v = spec.split(',').map(Number);
+      if (v.length !== 4 || v.some(Number.isNaN)) {
+        console.log(c.red(`  --profile braucht x0,z0,x1,z1 — bekommen: „${spec}"`));
+        continue;
+      }
+      printProfile(
+        `Profil (${v[0]}, ${v[1]}) → (${v[2]}, ${v[3]})`,
+        profile(field, v[0], v[1], v[2], v[3]),
+      );
+    }
+    console.log('');
   }
 
   // Bildausschnitt: die ganze Welt, oder eng um eine Strecke.
