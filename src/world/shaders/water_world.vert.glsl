@@ -6,3 +6,7 @@
 // mit, statt im Wasser stehen zu bleiben.
 
 vWaterWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;
+
+// Weltnormale der Fläche. Für das Meer ist das (0,1,0); der Fluss braucht sie,
+// weil sein Band mit dem Bett kippt und an einer Stufe fast senkrecht steht.
+vWaterSurfaceN = normalize(mat3(modelMatrix) * objectNormal);

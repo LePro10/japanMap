@@ -28,7 +28,11 @@ uniform vec4 uWaterWaves[3];
 /** Neigung je Lage. */
 uniform vec3 uWaterSteepness;
 
+/** 0 = Meer, 1 = Fluss. Siehe water_surface.frag.glsl. */
+uniform float uWaterRiver;
+
 varying vec3 vWaterWorld;
+varying vec3 vWaterSurfaceN;
 
 vec3 gWaterNormal;
 float gWaterRoughness;

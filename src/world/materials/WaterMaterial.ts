@@ -30,6 +30,8 @@ export interface WaterUniforms {
   /** Je Lage: xy = Einheitsrichtung, z = Wellenzahl, w = Kreisfrequenz. */
   readonly uWaterWaves: IUniform<Vector4[]>;
   readonly uWaterSteepness: IUniform<Vector3>;
+  /** 0 = Meer, 1 = Fluss. Schaltet Flächennormale und Stufenschaum. */
+  readonly uWaterRiver: IUniform<number>;
 }
 
 const toRadians = (degrees: number): number => (degrees * Math.PI) / 180;
@@ -64,6 +66,7 @@ export function createWaterUniforms(): WaterUniforms {
     },
     uWaterWaves: { value: waves },
     uWaterSteepness: { value: new Vector3(a, b, c) },
+    uWaterRiver: { value: 0 },
   };
 }
 
@@ -111,7 +114,10 @@ export class WaterMaterial extends MeshStandardMaterial {
     }
 
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vWaterWorld;')
+      .replace(
+        '#include <common>',
+        '#include <common>\nvarying vec3 vWaterWorld;\nvarying vec3 vWaterSurfaceN;',
+      )
       .replace('#include <begin_vertex>', `#include <begin_vertex>\n${waterWorld}`);
 
     // Die Heightmap-Abfrage läuft hier im **Fragment**-Shader: die Wassertiefe
@@ -132,7 +138,10 @@ export class WaterMaterial extends MeshStandardMaterial {
       .replace(
         '#include <normal_fragment_begin>',
         '#include <normal_fragment_begin>\n' +
-          'nonPerturbedNormal = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);\n' +
+          // War bis P8.6 fest (0,1,0). Für das Meer ist `vWaterSurfaceN` exakt
+          // das — die Ebene ist waagerecht —, für das Flussband die Neigung des
+          // Bettes.
+          'nonPerturbedNormal = normalize((viewMatrix * vec4(vWaterSurfaceN, 0.0)).xyz);\n' +
           'normal = normalize((viewMatrix * vec4(gWaterNormal, 0.0)).xyz);',
       )
       .replace(

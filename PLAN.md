@@ -3350,6 +3350,53 @@ sichtbare Teil steht in 8.8.
 **8.6 — Fluss und Wasserfälle** → `src/world/WaterSystem.ts`,
 `src/world/materials/WaterMaterial.ts`, `src/config/water.config.ts`
 
+> ### Gebaut, gemessen — und zur Hälfte nicht im Bild
+>
+> `buildRiverGeometry()` baut aus `river.json` ein Band aus zwei Knotenreihen;
+> `WaterSystem` hängt es mit **demselben Material** wie das Meer ein, nur mit
+> `uWaterRiver = 1`. Kosten: **0 zusätzliche Shaderprogramme** (31 vor wie
+> nach), weil beide sich den Cache-Key teilen und die zwei Unterschiede —
+> Flächennormale und Stufenschaum — an einer Uniform hängen.
+>
+> Eine Zeile im Shader war dabei eine stille Altlast: die Wassertiefe wurde als
+> `-terrainSurface(xz)` gerechnet, also gegen y = 0. Für das Meer stimmt das;
+> der Fluss wäre auf ganzer Länge „80 m tief" gewesen. Jetzt
+> `vWaterWorld.y - terrainSurface(xz)` — für das Meer bitgleich, weil sein y
+> exakt 0 ist.
+>
+> **Zwei Fehllesungen am Bild, beide von der Differenzmessung korrigiert:**
+>
+>  1. Das graue Band in der Schlucht hielt ich für den Fluss, der „wie Asphalt
+>     aussieht". Es **ist** Asphalt — die Passstraße. Im Bild ohne Fluss steht
+>     es unverändert da.
+>  2. Der Fluss war das **helle Band, das frei in der Luft hängt**: er spannt
+>     sich als Aquädukt über den Straßengraben. Das passt exakt zur Messung aus
+>     8.5b (19 von 422 Knoten in einem Kolk tiefer als 5 m, alle an einer
+>     Straße) — die Zahl war da, sie zeigte nur in die andere Richtung.
+>     Notmaßnahme im Shader: die Fläche blendet über 6…14 m Tiefe aus, statt zu
+>     schweben. Richtig wäre eine Brücke, und die ist Geometrie.
+>
+> **Der Mittelwert taugte als Messgröße nicht.** `probe()` meldete an drei
+> Standpunkten eine Helligkeitsdifferenz von −0,001, −0,013 und 0,000 — also
+> „kein Fluss". Ein Band von wenigen Pixeln Breite geht im Mittel über 921 600
+> Pixel unter; genau die Falle, die CLAUDE.md unter „über das ganze Bild
+> gemittelt" führt. Gezählt gehört die **Fläche**, aus der Differenz zweier
+> Bilder:
+>
+> | Standpunkt | geänderte Pixel | Anteil | stärkste Änderung |
+> |---|---|---|---|
+> | Oberlauf (Stufe) | 4308 | **0,467 %** | 304 |
+> | Mündung | 643 | 0,070 % | 48 |
+> | Unterlauf (Terrassen) | **2** | **0,000 %** | 11 |
+>
+> **Am Unterlauf ist der Fluss nicht im Bild — und er ist trotzdem da.** 151
+> von 422 Knoten liegen im Sichtvolumen, einer projiziert auf Pixel (1238, 543).
+> Er wird also **verdeckt**. Wahrscheinlichster Grund, nicht bewiesen: die
+> Reisfeld-Terrassen laufen im Baker **nach** dem Flussbett und tragen bis
+> 3,4 m auf; ihr Abstand zur Flussachse ist 16 m, das Wasserband ist an dieser
+> Stelle aber breiter. Das ist der nächste Schritt und steht ausdrücklich als
+> **offen**, nicht als vermutete Ursache in einem Kommentar.
+
 **Befund.** `WaterSystem` kennt nur das Meer — eine Ebene auf Y = 0. Ein Fluss
 liegt auf wechselnder Höhe entlang eines Splines und passt nicht in dieses
 Modell.
