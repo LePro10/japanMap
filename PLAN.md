@@ -3081,10 +3081,16 @@ Das ist die geometrische Seite von „die Stadt steht als Block in der Natur": u
 sie herum liegt eine große, planierte, leere Fläche, und der Übergang von dort
 ins Gelände ist eine 300-m-Feder ohne irgendetwas darauf.
 
-> *Gerechnet, nicht am Bild geprüft.* Ob die Platte im Bild als leer **liest**,
-> ist eine Bildfrage — die Vegetationsstreuung kann sie zuwachsen lassen. Erster
-> Schritt dieser Aufgabe ist deshalb ein Blick von `stadt-luft` und `stadt-fern`
-> mit eingeblendeter Zonenmaske.
+> ~~*Gerechnet, nicht am Bild geprüft.*~~ **Am Bild geprüft und bestätigt**
+> (`.cache/shots/p8_vorfeld_stadt_luft.png`). Von oben steht der Distrikt als
+> hartkantiges Rechteck auf einer großen, vollständig ebenen, **kahlen** Platte:
+> keine Vegetation, keine Bauten, kein Relief, und der Übergang ins Gelände ist
+> eine merkmallose Schräge. Die Streuung wächst die Fläche **nicht** zu — die
+> Vermutung, sie könnte es, war der Grund für diese Prüfung und ist widerlegt.
+>
+> Der Eindruck ist damit stärker als die Zahl: die 20 % beschreiben den Anteil,
+> das Bild zeigt, dass das leere Vorfeld die Wahrnehmung aus der Luft
+> **dominiert**.
 
 **Fix.** Im Baker nur die Vorbereitung: das Plateau bekommt eine **abgestufte**
 statt einer glatten Einebnung — Kernfläche eben, Vorfeld mit leichter Neigung und
