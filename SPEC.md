@@ -58,8 +58,9 @@ Stichstraße mit Serpentinen (Drift-Strecke). Ein Küstenhighway läuft im Süde
 Der Höhenunterschied von 450 m ist der stärkste Hebel, damit 3 km groß wirken.
 
 > **Die Serpentinen sind baubar, aber nicht bezahlbar (Stand P3, abgeschlossen).**
-> Der Bergpass hat **2 Kehren** auf 2983 m, Mindestradius 20,1 m, Steigung 10,5 %,
-> und steigt von 41 auf 264 m.
+> Der Bergpass hat **3 Kehren** auf 3003 m, Mindestradius 20,22 m, Steigung
+> 10,66 %, und steigt um 209 m (2026-07-31 aus `roads.json` neu abgelesen; hier
+> standen 2 Kehren auf 2983 m aus einem älteren Lauf).
 >
 > Hier stand bis zum 2026-07-26, die Vorgabe widerspreche sich selbst und das
 > Höhenfeld gebe keine Kehren her. Beides war falsch: die Trassierung fand die
