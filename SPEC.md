@@ -57,10 +57,20 @@ für einen echten Ortswechsel.
 Stichstraße mit Serpentinen (Drift-Strecke). Ein Küstenhighway läuft im Süden.
 Der Höhenunterschied von 450 m ist der stärkste Hebel, damit 3 km groß wirken.
 
-> **Die Serpentinen sind baubar, aber nicht bezahlbar (Stand P3, abgeschlossen).**
-> Der Bergpass hat **3 Kehren** auf 3003 m, Mindestradius 20,22 m, Steigung
-> 10,66 %, und steigt um 209 m (2026-07-31 aus `roads.json` neu abgelesen; hier
-> standen 2 Kehren auf 2983 m aus einem älteren Lauf).
+> **Stand P8.5, gemessen.** Der Bergpass hat **7 Kehren** auf 2408 m,
+> Mindestradius 19,25 m, Steigung 10,6 %, kleinster Achsabstand 17,2 m, keine
+> Selbstschnitte. Der Graben 24 m seitlich liegt im Median bei 21,1 m, im
+> 95. Perzentil bei 58,0 m, und überschreitet 50 m auf 290 m Strecke.
+>
+> Vorher standen hier 3 Kehren auf 3003 m (2026-07-31 aus `roads.json`
+> abgelesen), davor 2 auf 2983 m aus einem noch älteren Lauf. Die Zahl ist im
+> Terrain-Durchgang P8.5 gestiegen — **welcher der drei Eingriffe sie bewirkt
+> hat, ist nicht zuzuordnen**: die Erosion koppelt jede Geländeänderung über
+> die ganze Karte (Messung in PLAN.md 8.5). Gemessen ist nur, dass ohne das
+> Flussbett 5 Kehren entstehen.
+>
+> **Damit fehlt weiterhin eine Kehre auf „≥ 8".** Der Abstand ist 7 zu 8, nicht
+> mehr 3 zu 8.
 >
 > Hier stand bis zum 2026-07-26, die Vorgabe widerspreche sich selbst und das
 > Höhenfeld gebe keine Kehren her. Beides war falsch: die Trassierung fand die
@@ -70,12 +80,23 @@ Der Höhenunterschied von 450 m ist der stärkste Hebel, damit 3 km groß wirken
 >
 > Der Grund ist Geometrie: auf einem 45-%-Hang liegen zwei Serpentinenschenkel
 > horizontal weiter auseinander, als die Fahrbahnhöhen es bei 11 % zulassen; die
-> Differenz muss das Gelände tragen. **Die Vorgabe braucht eine längere, flachere
-> Flanke** — eine Änderung am Terrain (P1) und zugleich eine
-> Art-Direction-Entscheidung. Sie ist als **P1-Nachbesserung** notiert und
-> gehört vor P4 erledigt, weil danach Vegetation und Verschattung darauf
-> aufbauen. Messwerte und die vier verworfenen Gegenmittel in PLAN.md,
-> „Wie der Bergpass zu seinen Kehren kam".
+> Differenz muss das Gelände tragen. ~~**Die Vorgabe braucht eine längere,
+> flachere Flanke.**~~
+>
+> **Das war die Diagnose bis P8.5a, und sie ist widerlegt.** Gemessen liegt das
+> mittlere Gefälle der Südflanke bereits bei 25 % — genau dem Zielwert. Die
+> „45 %" waren eine Beobachtung an *einem* Hang. Was Serpentinen verhindert, ist
+> die **Traverse** quer zur Falllinie: Median 104 %, auf 84 % ihrer Länge über
+> 30 %. Eine Variantenserie über Gratamplitude und Reiszonenlage erreichte
+> bestenfalls 44 % / 61 % und kostete dafür 38 % der Gipfelhöhe. Die Flanke
+> flacher zu machen löst das Problem also nicht.
+>
+> Gebaut wurde stattdessen eine **Bank** entlang der Trasse (P8.5a): sie kappt
+> im Korridor, was über dem Querschnittsmedian steht. Der Anschnitt über der
+> Fahrbahn fällt damit von 41,5 auf 23,7 m im Median, der Extremwert von 185,4
+> auf 90,7 m, und der Anteil über 50 m von 42 auf 15 %. Der Steinbruch ist damit
+> kleiner, aber nicht weg. Messwerte und die vier verworfenen Gegenmittel in
+> PLAN.md, „Wie der Bergpass zu seinen Kehren kam" und P8.5a.
 
 ### 2.2 Terrain
 

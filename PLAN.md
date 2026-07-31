@@ -2912,6 +2912,40 @@ Prop-Höhen nach. CLAUDE.md führt dazu bereits einen Fall: die Einebnungsschwel
 der Reisfelder hat über eine **Kehre am Bergpass** entschieden. Ein zweiter
 Durchgang später kostet die vollständige Neumessung ein zweites Mal.
 
+> ### Und die Fernwirkung ist schlimmer als dort beschrieben — gemessen
+>
+> Der Fall in CLAUDE.md klingt nach einem unglücklichen Parameter. Er ist die
+> Regel. Gemessen mit `--flat-city` gegen den Normalfall, sonst identischer
+> Lauf — ein Eingriff, der **ausschließlich die Stadtzone** anfasst:
+>
+> | | abweichende Texel | westlichste Abweichung |
+> |---|---|---|
+> | vor der Erosion  | 17,28 % (x 28…1522) | x = 28 |
+> | nach der Erosion | **66,82 %** | **x = −1536** |
+>
+> Der Eingriff selbst ist also sauber lokal; die Erosion trägt ihn über die
+> ganze Karte. 2 Mio. Tropfen auf einem gemeinsam beschriebenen Feld sind ein
+> chaotisches System.
+>
+> **Eine naheliegende Ursache wurde geprüft und ist es nicht.** Die
+> Startpunktsuche der Tropfen verbraucht den Zufallsstrom ungleichmäßig — sie
+> bricht bei Landtreffer ab. Ein Versuchsstand, der immer das volle Kontingent
+> zieht, änderte an der Ausbreitung **nichts** (66,82 % mit wie ohne). Er ist
+> deshalb nicht eingebaut worden: er hätte das Höhenfeld vollständig neu
+> gewürfelt für einen Nutzen, der nachweislich ausbleibt.
+>
+> **Zwei Regeln folgen daraus, und sie gelten ab hier für jede Geländearbeit:**
+>
+> 1. **Kein A/B am fertigen Höhenfeld ist örtlich.** Wer wissen will, was ein
+>    Eingriff *selbst* tut, misst mit `--erosion 0`.
+> 2. **Wer eine Wirkung dem Eingriff zuschreibt, muss sie getrennt haben.** Die
+>    7 Kehren am Pass nach diesem Durchgang sind deshalb ein *Ergebnis*, keine
+>    *Wirkung* der Bank oder des Flusses. Gemessen ist nur: ohne Flussbett sind
+>    es 5, vor dem Durchgang waren es 3.
+>
+> Die Kette bleibt dabei **deterministisch**: zwei Läufe mit gleichem Code
+> liefern bitgleiche Felder (geprüft, `5c7672ea…` und `66b77ac4…`).
+
 #### 8.5a — Die Flanke des Massivs
 
 **Befund.** Gerechnet aus `ZONES.mountain = { x: −820, z: −900, inner: 300,
@@ -3071,6 +3105,83 @@ anderen nötig sind:
    > Trasse, und die hat der Generator bereits auf geringen Erdbau optimiert.
    > Eine Linienführung mit acht Kehren läuft zwangsläufig durch schlechteres
    > Gelände.
+   >
+   > ### Gebaut — und die erste Messgröße war die falsche ✓
+   >
+   > `benchRoads()` in `tools/bake-terrain.mjs`, läuft vor dem
+   > Straßeneinschnitt. Kappt im Korridor alles über dem Querschnittsmedian
+   > plus Toleranz, Kosinus-Auslauf, **nur Abtrag**.
+   >
+   > Die naheliegende Messgröße — „Relief im Korridor" — bewegte sich kaum
+   > (45,1 → 42,7 m Median bei ±30 m), und beinahe wäre daraus „das Verfahren
+   > taugt nicht" geworden. Sie misst innerhalb ±20 m aber den
+   > **Straßeneinschnitt**, der danach läuft und den Korridor ohnehin planiert.
+   > Was am Pass stört, ist der **Anschnitt**: wie hoch das Gelände neben der
+   > Fahrbahn über ihr aufragt. Damit gemessen, `toge`, Band ±60 m:
+   >
+   > | Bank | Median | 95 % | Maximum | > 20 m | > 50 m | Abtrag |
+   > |---|---|---|---|---|---|---|
+   > | ohne              | 41,5 m | 97,4 m | 185,4 m | 90 % | 42 % | — |
+   > | ±30 m, Toleranz 8 | 38,7 m | 92,2 m | 185,4 m | 88 % | 37 % | 0,90 Mm³ |
+   > | ±30 m, Toleranz 2 | 37,8 m | 91,4 m | 185,4 m | 86 % | 36 % | 1,59 Mm³ |
+   > | ±45 m, Toleranz 4 | 33,4 m | 73,5 m | 134,5 m | 74 % | 28 % | 2,51 Mm³ |
+   > | **±60 m, Toleranz 8** | **23,7 m** | **65,9 m** | **90,7 m** | **59 %** | **15 %** | **3,30 Mm³** |
+   > | ±60 m, Toleranz 2 | 20,0 m | 61,5 m |  84,7 m | 50 % | 12 % | 4,89 Mm³ |
+   > | ±80 m, Toleranz 2 | 20,5 m | 59,9 m |  86,6 m | 51 % | 12 % | 8,00 Mm³ |
+   >
+   > Die **Breite** entscheidet, nicht die Toleranz — bei ±30 m bringt Toleranz
+   > 2 statt 8 fast nichts. ±80 m sättigt und ist verschenkt. Toleranz 8 spart
+   > ein Drittel Erdbau für 3,7 m Anschnitt und hält die Bank in der Ebene
+   > harmlos: `ring` bleibt bei 15,6 → 15,4 m Relief, `dorf` bei 2,0 → 2,0 m.
+   > Eine Beschränkung auf bestimmte Straßen ist deshalb nicht nötig.
+   >
+   > **Zwei Dinge tut sie nicht.** Den Graben unter der Fahrbahn nimmt sie nicht
+   > (⌀ 5,8 → 5,4 m über die Serie). Und sie bringt **keine Kehren**: die
+   > Trassierung läuft in `npm run world` auf dem sauberen Feld, die Bank erst
+   > im Bake danach — die Linienführung kennt sie nicht.
+   >
+   > ### Und dann sagte das Bild etwas anderes als die Tabelle
+   >
+   > Auf der Schummerung stand die Bank als **glatte Platte mit sauber
+   > gerundeter Außenkante** um den ganzen Kehrenbündel — bei sieben Kehren auf
+   > 150 m Breite verschmelzen die Bänder benachbarter Schenkel. Zwei Ursachen,
+   > beide behoben:
+   >
+   >  - **Konstante Toleranz kappt auf eine Ebene.** Sie wächst jetzt
+   >    quadratisch zur Bankkante (`spread`): an der Achse fällt der ganze Grat,
+   >    an der Kante fast nichts. Die Bank hat damit keinen sichtbaren Rand.
+   >  - **Die Kante lag als exakte Parallele zur Trasse.** Eine Randstörung
+   >    (`jitter`, 14 m) verschiebt den Abstand statt der Höhe — dieselbe Lösung
+   >    wie `edgeJitter` bei den Zonen.
+   >
+   > **Eine dritte Beobachtung war meine eigene Fehllesung.** Die große runde
+   > Kontur nördlich der Kehren hatte ich der Bank zugeschrieben. Im Bild
+   > *ohne* Bank (gleiche Trasse, `--no-bench`) steht sie unverändert da — sie
+   > gehört zum Massiv. Ohne den Gegenschuss wäre eine Ursache in die Doku
+   > gewandert, die es nicht gibt.
+   >
+   > **Was blieb: eine Knickkante.** Ein hartes `min(h, ceiling)` ist stetig,
+   > seine Normale nicht, und bei 2,2° Sonnenstand zeichnet jeder Knick eine
+   > Lichtkante — dieselbe Beobachtung wie beim Straßeneinschnitt. Auf dem Bild
+   > war das ein dichter **Kamm aus Schattenstreifen** entlang der Trasse,
+   > während Anschnitt und Erdbau sich verbesserten. Ersetzt durch ein weiches
+   > Minimum (`softness`, 12 m).
+   >
+   > **Endstand, A/B mit derselben Trasse (`--no-bench` gegen Normalfall):**
+   >
+   > | | Median | 95 % | Maximum | > 20 m | > 50 m | Abtrag |
+   > |---|---|---|---|---|---|---|
+   > | ohne Bank | 69,9 m | 187,3 m | 212,4 m | 85 % | 64 % | — |
+   > | mit Bank  | **54,4 m** | **104,2 m** | **141,0 m** | 80 % | **53 %** | 5,43 Mm³ |
+   >
+   > *Die Zahlen liegen höher als in der Serie oben, weil die Trasse eine andere
+   > ist: 7 Kehren auf 2408 m statt 3 auf 3003 m. Eine Linienführung mit mehr
+   > Kehren läuft durch schlechteres Gelände — genau wie oben vermutet.*
+   >
+   > **Offen und ehrlich: die Streifen sind schwächer, aber nicht weg.** Gegen
+   > das Bild ohne Bank bleibt entlang der Trasse eine sichtbare Textur. Ob das
+   > den Gewinn beim Anschnitt wert ist, ist eine Art-Direction-Frage;
+   > `--no-bench` nimmt die Bank in einem Schalter zurück.
 2. **Die Flanke anisotrop verlängern.** Radial geht es nicht: `outer` von 1080
    auf 1500 zu setzen schiebt den Massivrand mitten in die Reisfelder. Gebraucht
    wird eine **elliptische Maske**, die entlang der Passachse (nach Süden/
@@ -3088,11 +3199,16 @@ anderen nötig sind:
    unverändert scharfen Graten ist wieder steil, nur kleinteiliger.
 
 **Messung.** `npm run world` vollständig, dann:
-- **Traverse bei z = −550** (`--profile -1300,-550,-340,-550`): Median ≤ 25 %,
-  höchstens 20 % der Länge über 30 %. Ausgangswert: Median 104 %, 84 % über
-  30 %. Das ersetzt das ursprüngliche „Median ≤ 25 % über die Flanke" — der
-  Wert war an der Falllinie gemeint und dort schon erfüllt,
-- **Kehren am Pass** — Zielwert aus SPEC §2.1 ist ≥ 8,
+- ~~**Traverse bei z = −550**: Median ≤ 25 %, höchstens 20 % der Länge über
+  30 %.~~ **Hinfällig.** Dieses Kriterium misst eine feste Linie quer durchs
+  Massiv und weiß von der Trasse nichts — die gebaute Lösung ist aber eine
+  **örtliche** Bank am Korridor, keine Umformung der Flanke. Es zu erfüllen
+  hieße, das Massiv abzuflachen, und genau das ist oben als nicht erreichbar
+  gemessen (bestenfalls 44 % / 61 % bei 38 % Gipfelverlust). An seine Stelle
+  tritt der **Anschnitt über der Fahrbahn**: 41,5 → 23,7 m Median, 42 → 15 %
+  über 50 m,
+- **Kehren am Pass** — Zielwert aus SPEC §2.1 ist ≥ 8. **7 erreicht** (vorher
+  3). Nicht der Bank zuzuschreiben, siehe den Kopplungsbefund oben,
 - **Erdbau** über die Erdbau-Karte (`npm run inspect -- --road toge --clean
   .cache/clean.r16`). Die Zahl, die den Kompromiss von P3 erzwungen hat, war
   „300 × 250 m um 50…150 m abgetragen". Der Fix taugt nur, wenn die Kehren
@@ -3130,6 +3246,57 @@ denkbare Fehler), Bettbreite und -tiefe über die Länge, und die Erdbau-Karte f
 den Einschnitt. Dazu die Prüfung, dass die Reisterrassen **am** Fluss liegen und
 nicht 300 m daneben.
 
+> ### Gebaut ✓ — mit zwei verworfenen Verfahren und zwei offenen Punkten
+>
+> **Nicht als Straßentyp.** Der Plan oben sah den Fluss als weiteren Typ in
+> `roads.config.ts`. Das hätte die Zirkularität des Bake-Kreislaufs geerbt —
+> der Generator braucht ein Höhenfeld, der Baker die Trasse. Ein Fluss braucht
+> den Umweg nicht: er folgt dem steilsten Gefälle, und das Höhenfeld liegt an
+> dieser Stelle fertig vor. `carveRiver()` in `tools/bake-terrain.mjs`.
+>
+> **Zwei Verfahren gemessen verworfen.** Ein wachsender Suchring endete nach
+> **247 m auf 136 m Höhe**. „Füllen und überlaufen" je Mulde irrte **4949 m**
+> von Senke zu Senke und blieb auf 116 m stehen. Beide behandeln die Mulde als
+> Sonderfall; nach 2 Mio. Erosionstropfen ist sie der Normalfall. Gebaut ist
+> Priority-Flood auf 512² (6 m je Zelle, **Minimum** je Block, nicht Mittel),
+> danach kann der Abstieg nicht mehr steckenbleiben.
+>
+> **Nur der Südrand ist Vorflut.** Mit allen vier Kartenrändern als Senke lief
+> der Fluss nach Westen aus der Karte (Mündung x = −1526 auf 18 m). Eine
+> Südneigung bei der Richtungswahl half nicht — gemessen mit 0, 0,9 und 2,0
+> endete er jedes Mal am selben Westrand. Sie kann nur unter **Abwärts**nachbarn
+> wählen, und nach Süden ging es nicht abwärts. Der Regler steht auf 0 und
+> bleibt als dokumentierter Fehlversuch stehen.
+>
+> **Der Kopf wird abgeschnitten.** Der Abstieg startet am höchsten Punkt der
+> Flanke und stürzt dort senkrecht ab; die erste „Stufe" war gemessen **242 m**
+> hoch — das ist kein Wasserfall, das ist die Felswand.
+>
+> Abnahme auf dem ausgelieferten Feld:
+>
+> | | Ergebnis |
+> |---|---|
+> | Monotonie des Polygonzugs | **0 von 421** Abschnitten steigen an ✓ |
+> | Gelände über der Wasserlinie | **0 Knoten** ✓ |
+> | Lauf | 2643 m, 163 → 1 m, endet im **Meer** ✓ |
+> | Bettiefe | Median 2,68 m · 95 % 9,44 m |
+> | Bettbreite | 8,1 m an der Quelle → 33,9 m an der Mündung ✓ |
+> | Stufen | **2**: 11,2 m und 39,7 m ✓ (Vorgabe „zwei bis drei") |
+> | Erdbau | 0,23 Mm³ |
+>
+> **Offen 1 — der Fluss läuft durch die Straßengräben.** 19 von 422 Knoten
+> liegen in einem Kolk tiefer als 5 m, und **alle 19 innerhalb 40 m einer
+> Straße**. Der Straßeneinschnitt kreuzt das Bett; Brücken stehen nicht in P8.
+> Die Wasserlinie selbst bleibt monoton, es ist ein Bildproblem, kein
+> Strömungsproblem.
+>
+> **Offen 2 — die Terrassen liegen am Rand, nicht am Fluss.** Nächster Abstand
+> 20 m, aber Median **427 m**; 22 % der Terrassenfläche innerhalb 150 m, 47 %
+> innerhalb 400 m. Der Fluss streift die Reiszone westlich, statt sie zu
+> durchziehen. Ein Teil davon ist Geometrie — die Zone ist 800 m breit, ein
+> Fluss mittendurch käme auf ~200 m Median. Die Vorgabe „nicht 300 m daneben"
+> ist damit **nicht erfüllt**.
+
 #### 8.5c — Das Vorfeld der Stadt
 
 **Befund.** Der Baker ebnet für die Stadt ein Plateau von **800 × 800 m** ein
@@ -3156,6 +3323,27 @@ ins Gelände ist eine 300-m-Feder ohne irgendetwas darauf.
 statt einer glatten Einebnung — Kernfläche eben, Vorfeld mit leichter Neigung und
 Restrelief, damit dort etwas stehen kann, das nicht wie Stadt aussieht. Der
 sichtbare Teil steht in 8.8.
+
+> ### Gebaut ✓
+>
+> `CITY_CORE` deckt den Distrikt plus die 60-m-Feder von `padCity` plus 20 m
+> Reserve ab (360…880 / −140…380) und wird eingeebnet wie bisher. Außerhalb
+> davon zieht die Einebnung nur noch mit 0,62 statt 0,96, dazu Restrelief und
+> ein leichter Anstieg zum Zonenrand — die Stadt liegt danach in einer flachen
+> Mulde statt auf einem Tisch.
+>
+> | | Höhenspanne | Neigung Median | unter 2 % Neigung |
+> |---|---|---|---|
+> | vorher  | 34,0 m | 0,7 % | **91 %** der Fläche |
+> | nachher | 37,5 m | 3,7 % | **36 %** der Fläche |
+>
+> **Der Distrikt bleibt dabei exakt 29,00…29,00 m.** Das war die Bedingung, an
+> der P6 schon einmal gescheitert ist: die Bodenplatte liegt auf 30 m mit 23 cm
+> Luft, und ein Restrelief, das dorthin durchschlägt, stößt sie durch.
+> `padCity` meldet unverändert −0,94 m Abtrag / +0,10 m Auftrag im ersten Bake.
+>
+> `--flat-city` schaltet zurück auf die flächige Einebnung — der A/B-Schalter,
+> mit dem der Kopplungsbefund unten gemessen wurde.
 
 ---
 

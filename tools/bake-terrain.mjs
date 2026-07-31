@@ -693,8 +693,44 @@ const BENCH = {
   halfWidth: 60,
   /** Kosinus-Auslauf darüber hinaus, damit die Bank keine Kante bekommt. */
   feather: 25,
-  /** Was über dem Querschnittsmedian stehen bleiben darf, in Metern. */
+  /** Was über dem Querschnittsmedian **an der Achse** stehen bleiben darf. */
   tolerance: 8,
+  /**
+   * Wie stark die Toleranz zur Bankkante hin wächst, quadratisch.
+   *
+   * **Aus dem Bild, nicht aus einer Zahl.** Mit konstanter Toleranz kappt die
+   * Bank über ihre ganze Breite auf dieselbe Höhe und hinterlässt eine *ebene
+   * Fläche*. Bei sieben Kehren auf 150 m Breite verschmelzen die Bänder
+   * benachbarter Schenkel dabei zu **einer Platte** mit sauber gerundeter
+   * Außenkante — auf der Schummerung sofort als Werkzeugspur erkennbar,
+   * während Anschnitt, Erdbau und Relief allesamt gute Werte meldeten.
+   *
+   * Mit wachsender Toleranz fällt an der Achse noch der ganze Grat, an der
+   * Kante fast nichts mehr. Die Bank hat dann keinen Rand, den man sehen kann.
+   */
+  spread: 3.2,
+  /**
+   * Amplitude der Randstörung in Metern. Ohne sie liegt die Bankkante als
+   * exakte Parallele zur Trasse im Hang — dasselbe Problem, das `boxMask` bei
+   * den Zonen mit `edgeJitter` löst.
+   */
+  jitter: 14,
+  /**
+   * Weichheit der Kappung in Metern.
+   *
+   * **Aus dem Bildvergleich.** Ein hartes `min(h, ceiling)` legt dort, wo die
+   * Kappungshöhe einen Grat schneidet, eine **Knickkante** ins Gelände: die
+   * Fläche ist stetig, ihre Normale nicht. Bei 2,2° Sonnenstand zeichnet jeder
+   * Knick eine harte Lichtkante — dieselbe Beobachtung, die schon beim
+   * Straßeneinschnitt zum Kosinus statt zur linearen Rampe geführt hat. Auf
+   * der Schummerung stand die Bank deshalb als **dichter Kamm aus
+   * Schattenstreifen** entlang der Trasse, obwohl Anschnitt und Erdbau besser
+   * geworden waren.
+   *
+   * Ersetzt durch ein weiches Minimum. Es kostet etwas Wirkung — die Kappung
+   * setzt schon unterhalb der Schwelle ein —, dafür entsteht keine Kante.
+   */
+  softness: 12,
   /** Abtastschritt im Querschnitt beim Bilden des Medians, in Metern. */
   sampleStep: 3,
 };
@@ -777,7 +813,7 @@ const BENCH = {
  * meldet ⌀ 5,8 → 5,4 m und tiefsten Einschnitt −96,4 → −82,9 m über die ganze
  * Serie. Die Bank nimmt die Wand daneben weg, nicht den Graben darunter.
  */
-function benchRoads(height, res, spacing, roadFile) {
+function benchRoads(height, res, spacing, roadFile, seed) {
   const half = WORLD_SIZE / 2;
   const reach = BENCH.halfWidth + BENCH.feather;
   const last = res - 1;
@@ -874,9 +910,17 @@ function benchRoads(height, res, spacing, roadFile) {
   let deepest = 0;
   const cuts = [];
 
+  const nJitter = createNoise2D(stream(seed, 'bench'));
+
   for (let index = 0; index < height.length; index++) {
-    const distance = benchDistance[index];
-    if (!Number.isFinite(distance)) continue;
+    const raw = benchDistance[index];
+    if (!Number.isFinite(raw)) continue;
+
+    const wx = -half + (index % res) * spacing;
+    const wz = -half + ((index / res) | 0) * spacing;
+    // Die Störung wirkt auf den **Abstand**, nicht auf die Höhe: so wandert
+    // die Kante, statt dass die Fläche rau wird.
+    const distance = Math.max(0, raw + fbm(nJitter, wx / 130, wz / 130, 3) * BENCH.jitter);
 
     let weight;
     if (distance <= BENCH.halfWidth) {
@@ -888,10 +932,18 @@ function benchRoads(height, res, spacing, roadFile) {
     }
 
     const before = height[index];
-    const ceiling = benchLevel[index] + BENCH.tolerance;
-    if (before <= ceiling) continue;
+    const u = distance / BENCH.halfWidth;
+    const ceiling = benchLevel[index] + BENCH.tolerance * (1 + BENCH.spread * u * u);
 
-    const after = before + (ceiling - before) * weight;
+    // Weiches Minimum statt `min(before, ceiling)` — siehe BENCH.softness.
+    // `Math.log1p(Math.exp(t))` überläuft für großes t; ab t > 30 ist der
+    // Term auf float-Genauigkeit ohnehin gleich t.
+    const k = BENCH.softness;
+    const t = (ceiling - before) / k;
+    const soft = ceiling - k * (t > 30 ? t : Math.log1p(Math.exp(t)));
+    if (soft >= before - 1e-4) continue;
+
+    const after = before + (soft - before) * weight;
     height[index] = after;
 
     const cut = before - after;
@@ -2043,7 +2095,7 @@ async function main() {
       console.log(c.dim('  5a   --no-bench: Korridor ungeglättet.'));
     } else {
       process.stdout.write('  5a   Bank … ');
-      const benchReport = benchRoads(height, res, spacing, roadFile);
+      const benchReport = benchRoads(height, res, spacing, roadFile, seed);
       console.log(
         c.green('fertig') +
           c.dim(
