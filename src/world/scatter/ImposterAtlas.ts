@@ -10,6 +10,7 @@ import {
   type Material,
   SRGBColorSpace,
   Vector3,
+  Vector4,
   WebGLRenderTarget,
   type Texture,
   type WebGLRenderer,
@@ -148,6 +149,23 @@ export class ImposterAtlas {
     // der Himmel den Fehler vollständig ab.
     const previousClearColor = renderer.getClearColor(new Color());
     const previousClearAlpha = renderer.getClearAlpha();
+    /**
+     * **Und der Viewport ebenso.** Hier stand am Ende `setViewport(0, 0, size,
+     * size)` — also die Atlasgröße statt des vorherigen Werts. Das ist derselbe
+     * Fehler wie bei der Löschfarbe darüber, eine Zeile weiter unten, und er
+     * hatte eine sichtbarere Wirkung: `setRenderTarget(null)` nimmt in three den
+     * **Renderer-Viewport**, nicht die Canvas-Größe. Nach dem Backen zeichnete
+     * die ganze Kette deshalb in ein 1024er Quadrat, und bei 1280 × 720 blieb
+     * ein Fünftel des Bildes rechts **schwarz** — gemessen: `probe()` meldete
+     * 79,9 % nicht-schwarze Pixel, und 1024/1280 sind genau 0,8.
+     *
+     * Gesehen hat man es lange nicht, weil jede Größenänderung `setSize()`
+     * auslöst und den Viewport dabei mitzieht: ein Fensterwechsel, ein
+     * Wechsel der Qualitätsstufe, das Andocken der DevTools. Aufgefallen ist es
+     * erst, als P7.4 den ersten Frame in den Ladeabschnitt vorzog — davor lag
+     * zwischen Bake und erstem Bild fast immer ein Resize.
+     */
+    const previousViewport = renderer.getViewport(new Vector4());
     // Ohne das würde AgX die gebackene Farbe schon hier komprimieren, und zur
     // Laufzeit ein zweites Mal.
     renderer.toneMapping = NoToneMapping;
@@ -191,7 +209,7 @@ export class ImposterAtlas {
     }
 
     renderer.setScissorTest(false);
-    renderer.setViewport(0, 0, size, size);
+    renderer.setViewport(previousViewport);
     renderer.setRenderTarget(previousTarget);
     renderer.toneMapping = previousToneMapping;
     renderer.autoClear = previousAutoClear;
