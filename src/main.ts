@@ -249,7 +249,23 @@ function installFrameProbe(
 
       const base64 = flipped.toDataURL('image/png').split(',')[1] ?? '';
       const response = await fetch('/__shot', { method: 'POST', body: `${name}\n${base64}` });
-      return response.text();
+      // **Laut scheitern, nicht leer zurückkommen.** Der Endpunkt lebt nur im
+      // Dev-Server; antwortet er nicht, ist kein Bild entstanden. Vorher stand
+      // hier `return response.text()`, und ein 404 lieferte einen leeren
+      // String — in der Ausgabe sah das aus wie „geschrieben nach: ", und die
+      // Messung lief scheinbar durch. Aufgefallen ist es erst, als ein fremdes
+      // Projekt den Port übernommen hatte (CLAUDE.md, „Umgebung"): die Seite
+      // lief aus dem Speicher weiter, `probe()` meldete 1,000, und nur der
+      // fehlende Pfad verriet, dass niemand mehr zuhörte.
+      if (!response.ok) {
+        throw new Error(
+          `Bildschirmfoto fehlgeschlagen: /__shot antwortete mit ${response.status}. ` +
+            'Läuft der Dev-Server dieses Projekts auf diesem Port?',
+        );
+      }
+      const path = (await response.text()).trim();
+      if (!path) throw new Error('Bildschirmfoto fehlgeschlagen: leere Antwort von /__shot.');
+      return path;
     },
   };
 }
