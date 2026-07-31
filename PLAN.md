@@ -4,7 +4,13 @@
 > dieser Plan sagt **in welcher Reihenfolge, mit welchen Dateien und woran wir
 > merken, dass eine Phase fertig ist**.
 >
-> Stand: 2026-07-30 · **P0–P6 abgeschlossen** · Nächste Phase: **P7**
+> Stand: 2026-07-30 · **P0–P6 abgeschlossen, P7 gebaut und teilabgenommen**
+>
+> P7 ist vollständig gebaut. Zwei seiner fünf Akzeptanzkriterien lassen sich auf
+> dieser Maschine nicht prüfen (keine GTX-1660-Klasse, kein GPU-Timer), eines ist
+> **nachweislich verfehlt**: der Startdownload liegt bei 42,68 MB gegen 15 MB.
+> Die Einzelheiten stehen unten bei P7; das Wesentliche ist, dass die Lücke
+> beziffert und nicht behauptet ist.
 >
 > Die Serpentinenzahl am Bergpass bleibt hinter SPEC §2.1 zurück (2 statt ≥ 8).
 > Das ist **keine offene P3-Aufgabe**, sondern eine Anforderung an das Höhenfeld:
@@ -116,7 +122,7 @@ erfüllt sind. Ausnahmen werden hier dokumentiert, nicht mündlich vereinbart.
 | **P4** ✅ | LOD & Vegetation | Gefüllte Welt in Budget | P1, P3 |
 | **P5** ✅ | Asset-Pipeline & Landmarks | Zonen mit Identität | P4 |
 | **P6** ✅ | Stadt & Reflexionen | Der Money-Shot | P2, P5 |
-| **P7** | Optimierung & Auslieferung | Läuft auf Zielhardware | alle |
+| **P7** ◐ | Optimierung & Auslieferung | Läuft auf Zielhardware | alle |
 
 ---
 
@@ -779,7 +785,7 @@ RenderPass
 
 | Punkt | Zahl | Wohin |
 |---|---|---|
-| Startdownload | **44,1 MB** gegen 15 MB Budget (P1: 42,8 MB; +1,3 MB durch `shade.png`) | Himmel auf 2k ≈ −8 MB · KTX2 in P5 · `normal.png` streichen in P7 |
+| Startdownload | **44,1 MB** gegen 15 MB Budget (P1: 42,8 MB; +1,3 MB durch `shade.png`) | Himmel auf 2k ≈ −8 MB · KTX2 in P5 · `normal.png` streichen in P7 — **in P7.5 nachgemessen: 58,19 MB roh, 42,68 MB mit Brotli, und mit allen drei Hebeln blieben rund 18 MB. Der Punkt bleibt offen, siehe dort** |
 | Uferkante polygonal | 4 m pro Terrain-Quad | P4, LOD-Quadtree |
 | Kachelmuster auf beschatteter Ebene | sichtbar bei niedrigem Kontrast | P4/P7, Detailtextur-Varianz |
 | Debug-Ansichten laufen durch AgX | Graustufen erscheinen angehoben | kosmetisch, kein Fix geplant |
@@ -1851,7 +1857,7 @@ Bestand mit Blick nach unten.
 | Imposter mischen 2 von 4 Nachbarn | Winkelfehler bis 11° | offen; bilinear über alle vier wäre der doppelte Aufwand für die zweite Hälfte eines Fehlers, den man bei 180 m nicht sieht |
 | Imposter-Atlas ohne Mipmaps | Silhouette 6,5 % breiter als das Mesh | offen; Mipmaps über einen Atlas bluten zellenübergreifend, das braucht eine eigene Lösung |
 | Kein Echtzeitschatten | P2 hatte ihn „für P4, sobald es bewegliche Werfer gibt" angekündigt | verschoben: es gibt noch keine beweglichen Werfer. Vegetation wirft keinen — bei 50 000 Instanzen wäre das ein zweiter Geometriedurchlauf im dreistelligen Draw-Call-Bereich |
-| Streuung nicht im Worker | eingeschwungen 0,10 ms je Frame, Füllphase 0,40 ms — Spitze aber 26,2 ms, wenn ein Nahchunk mit Gräsern erzeugt wird | Ein Web Worker (P7.2) ist der einzige Weg, der die Spitze wirklich beseitigt statt sie zu verteilen |
+| ~~Streuung nicht im Worker~~ | eingeschwungen 0,10 ms je Frame, Füllphase 0,40 ms — Spitze aber 26,2 ms, wenn ein Nahchunk mit Gräsern erzeugt wird | **Erledigt in P7.2.** Die Spitze auf dem Hauptthread fällt auf 0,7–4,2 ms, einzelne Chunks kosten im Worker weiterhin bis 25,8 ms — nur eben dort. Der Rest ist nicht die Streuung, sondern das Einsortieren in die LOD-Puffer |
 
 ---
 
@@ -2244,10 +2250,18 @@ Entwicklungsmaschine.
 - Automatische Ersteinstufung über einen kurzen Benchmark beim ersten Start
 - Umschaltung zur Laufzeit ohne Neuladen
 
+> Die Spalte „Schatten" ist so nicht gebaut worden — Kaskaden gibt es keine,
+> und die Sichtweite wirkt nur auf die Vegetation. Beides mit Begründung unter
+> „Was gebaut wurde, und wo es vom Plan abweicht".
+
 **7.2 — Chunk-Streaming** → Erweiterung `ChunkManager`
 - Vegetations- und Prop-Daten pro Chunk asynchron erzeugen (Web Worker)
 - Prioritätswarteschlange nach Distanz und Blickrichtung
 - Zeitbudget von 2 ms pro Frame für Chunk-Arbeit, Rest wird vertagt
+
+> Gebaut wurde es nicht am `ChunkManager` (der verwaltet das **Terrain**-LOD und
+> erzeugt keine Chunk-Daten), sondern am `ScatterSystem`. Aus dem Zeitbudget ist
+> eine Auftragstiefe geworden; warum, steht bei `SCATTER.workerQueueDepth`.
 
 **7.3 — Ladebildschirm** → `src/ui/LoadingScreen.ts`
 - Echter Fortschritt aus `ResourceManager`, keine gefälschte Animation
@@ -2259,6 +2273,11 @@ Entwicklungsmaschine.
 - **Shader-Vorkompilierung** (`renderer.compile()`) vor dem ersten Frame —
   sonst ruckelt es beim ersten Sichtkontakt mit jedem neuen Material
 
+> ~~`renderer.compile()`~~ — nachgemessen erzeugt der Aufruf die **falschen**
+> Programm-Varianten (20 ungenutzte, die 30 echten entstehen trotzdem). Die
+> Begründung des Plans stimmt dagegen: der Ruckler beim ersten Sichtkontakt war
+> mit 106 ms real. Ausführlich in `Engine.#precompile`.
+
 **7.5 — Build & Auslieferung**
 - Vite-Build mit Code-Splitting, Assets über Hash-Namen
 - Alle Texturen KTX2, alle Modelle meshopt
@@ -2266,16 +2285,111 @@ Entwicklungsmaschine.
 - Ziel: **erstes Bild < 15 MB** (SPEC §4)
 
 ### Akzeptanzkriterien
-- [ ] Stufe „Mittel" hält 60 FPS auf einer GTX-1660-Klasse bei 1080p
-- [ ] Stufe „Niedrig" hält 30 FPS auf integrierter Grafik
-- [ ] Erster Frame nach < 5 s auf 50-Mbit-Verbindung
-- [ ] Kein Ruckler > 50 ms während einer 2-minütigen Flugroute über die ganze Map
-- [ ] Kein Speicherwachstum über 10 Minuten (Leak-Prüfung)
+
+- [ ] **Stufe „Mittel" hält 60 FPS auf einer GTX-1660-Klasse bei 1080p** —
+      *nicht prüfbar.* Diese Maschine rendert über ANGLE auf dem *Microsoft
+      Basic Render Driver*, also im Software-Rasterisierer, und
+      `EXT_disjoint_timer_query_webgl2` fehlt. Jede Zahl über GPU-Zeit wäre hier
+      erfunden. Was gemessen ist, steht in `quality.config.ts`: die Stufen
+      unterscheiden sich in Zeichenpuffer, Draw-Calls, Dreiecken und Instanzen
+      um die Faktoren, die sie versprechen.
+- [ ] **Stufe „Niedrig" hält 30 FPS auf integrierter Grafik** — dito.
+- [ ] **Erster Frame nach < 5 s auf 50-Mbit-Verbindung** — **verfehlt, gemessen.**
+      45 Dateien, 58,19 MB roh, 42,68 MB mit Brotli. Bei 50 Mbit sind das
+      **6,8 s allein für die Übertragung**. Die Aufschlüsselung und die Liste der
+      verbleibenden Hebel stehen unten.
+- [x] **Kein Ruckler > 50 ms während einer 2-minütigen Flugroute über die ganze
+      Map** — Flug über acht Blickpunkte (Massiv, Pass, Reisfeld, Küste, Tempel,
+      Stadt, Geschäftsstraße, Luftbild), 900 Frames, weiche Interpolation.
+      Gemessen wurde die **CPU-Zeit aller System-`update()`** zusammen; das ist
+      der Anteil, über den diese Maschine eine Aussage zulässt:
+
+      | | Median | 95 % | 99 % | Maximum | über 50 ms |
+      |---|---|---|---|---|---|
+      | CPU je Frame | 1,0 ms | 2,0 ms | 2,5 ms | **8,9 ms** | **0** |
+
+      Die Gesamtframezeit lag bei Median 178 ms — das ist der
+      Software-Rasterisierer und sagt über die Zielhardware nichts.
+- [x] **Kein Speicherwachstum über 10 Minuten (Leak-Prüfung)** — 500 weitere
+      Flugframes nach den 900 oben:
+
+      | | Texturen | Geometrien | Programme | JS-Heap |
+      |---|---|---|---|---|
+      | vorher | 61 | 116 | 30 | 218,9 MB |
+      | nachher | 61 | 116 | 30 | 229,7 MB |
+
+      GPU-seitig **kein** Wachstum. Der Heap wächst um 10,8 MB, und das ist der
+      Chunk-Cache der Streuung, der auf einer Route über die ganze Karte in
+      seine Obergrenze läuft (`SCATTER.cacheSize` = 512). Bewiesen ist damit
+      nicht „kein Leck", sondern „nichts, was über eine bekannte Schranke
+      hinauswächst" — ohne erzwungene Speicherbereinigung lässt `performance
+      .memory` mehr nicht zu, und das gehört dazugesagt.
+
+### Was gebaut wurde, und wo es vom Plan abweicht
+
+- **7.1 — die Stufen taten vorher nichts.** Gelesen wurde die Tabelle von zwei
+  Stellen, und beide über die Konstante `DEFAULT_QUALITY`. Jetzt hält ein
+  `QualitySystem` den Zustand und verteilt ihn; jedes System wendet seinen
+  Anteil selbst an. Messtabelle in `quality.config.ts`.
+  - `shadowCascades` ist **entfallen**: es gibt keine Kaskaden, P2 hat sie
+    ausgerechnet und verworfen. Ein Konfigurationsfeld, das nichts liest, ist
+    eine Zusage ohne Deckung.
+  - `ssr` heißt jetzt `reflections` und schaltet den planaren Durchgang aus
+    P6.5 — SSR ist dort gemessen verworfen worden.
+  - Die **Sichtweite** begrenzt nur die Streuung, nicht die Chunk-Auswahl. Das
+    Gelände bei 600 m zu schneiden nähme der Karte die Berge, und den LOD-Baum
+    gröber zu stellen verletzt die Rissfreiheit (Herleitung in `lod.config.ts`;
+    P4 hat den Fall mit 207 Löchern gegen 1 gemessen).
+- **7.2 — die Streuung läuft im Worker.** Die Spitze auf dem Hauptthread fällt
+  von 5,8–7,0 ms auf 0,7–4,2 ms; einzelne Chunks kosten im Worker bis 25,8 ms.
+  Was übrig bleibt, ist **nicht** die Streuung, sondern das Einsortieren der
+  Instanzen in die LOD-Puffer. Die Platzierung bleibt bitgleich (51 646
+  Instanzen mit und ohne Worker).
+- **7.3 — Ladebildschirm.** Der Balken kommt aus der Zahl initialisierter
+  Systeme, nicht aus `resources:progress`: dessen `total` wächst während des
+  Ladens, der Quotient liefe rückwärts. Ein Balken über **Bytes** wäre der
+  ehrlichste und braucht ein erzeugtes Größenmanifest — offen, siehe unten.
+- **7.4 — `renderer.compile()` erzeugt die falschen Programme.** Gemessen: 20
+  Varianten, die nie gezeichnet werden, und die 30 echten entstehen anschließend
+  trotzdem. Stattdessen ein vollständiger Frame durch dieselbe Kette, mit
+  abgeschaltetem Frustum-Culling. Danach: null zusätzliche Programme über sieben
+  Blickpunkte, und der Ruckler beim ersten Sichtkontakt mit der Stadt (274,4 ms
+  gegen 168 ms) ist weg.
+- **7.5 — der gebaute Stand startete nicht.** Ein Deadlock über Top-Level-await:
+  der Einstiegs-Chunk hielt sich selbst auf. Nur im Build, nie im Dev-Server.
+  Behoben über eigene Chunks für `three`/PostFX **und** eine `boot()`-Funktion.
+
+### Was offen bleibt — mit Zahlen
+
+Der Startdownload ist der eine verfehlte Punkt, und er ist auch mit den Mitteln
+aus dem Plan nicht ganz zu schließen:
+
+| Hebel | Ersparnis | Stand |
+|---|---|---|
+| Himmel-HDRI von 4k auf 2k | −4,8 MB | 2k liegt vor, braucht einen RGBE-Resampler |
+| `normal.png` streichen | −5,3 MB | Normale aus `height.r16` im Shader rechnen |
+| KTX2 für alle JPG/PNG | ≈ −15 MB | **geschätzt** — `toktx` ist hier nicht installiert |
+
+Bliebe rund **18 MB** gegen 15. Die dritte Zeile ist die einzige ungemessene in
+dieser Tabelle und deshalb ausdrücklich markiert.
+
+Ebenfalls offen und bewusst nicht angefangen:
+
+- **GPU-Timer je System** (7.4). Braucht die Erweiterung, die hier fehlt.
+- **Spector.js-Aufnahme** (7.4). Braucht ein Bild, vor dem jemand sitzt.
+- **Prop-Daten im Worker** (7.2 nennt sie neben der Vegetation). Die Props
+  entstehen einmalig beim Laden und nicht je Chunk; sie kosten im laufenden
+  Bild nichts und wären dort nur Umbau ohne Messwert dahinter.
 
 ### Risiken
 - **Zielhardware nicht verfügbar.** → GPU-Drosselung in den Chrome DevTools
   plus `WEBGL_debug_renderer_info`-Telemetrie. Ersetzt echtes Testen nicht;
-  falls möglich, auf einem zweiten Rechner gegenprüfen
+  falls möglich, auf einem zweiten Rechner gegenprüfen.
+  **Eingetreten.** Zwei Akzeptanzkriterien bleiben deshalb offen, und die
+  Gegenmaßnahme aus dieser Zeile hilft nicht: eine gedrosselte GPU ist immer
+  noch keine GTX 1660, und ohne Timer-Erweiterung gibt es auch gedrosselt keine
+  GPU-Zeit. Was blieb, war die Trennung der Messgrößen — exakte Zähler und
+  CPU-Zeit werden berichtet, GPU-Zeit gar nicht.
 
 ---
 
