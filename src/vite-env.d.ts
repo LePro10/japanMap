@@ -4,6 +4,7 @@
 import type { QualityLevel } from './config/quality.config';
 import type { Engine } from './core/Engine';
 import type { HoleReport } from './debug/lodHoles';
+import type { DeviceEstimate } from './render/deviceTier';
 import type { FrameTiming } from './render/frameTiming';
 
 declare global {
@@ -71,6 +72,8 @@ declare global {
        * Optional zuerst auf eine Stufe schalten.
        */
       lodHoles?: (level?: QualityLevel) => HoleReport;
+      /** Ergebnis der Gerätevorschätzung (P8.3). */
+      device?: () => DeviceEstimate | null;
     };
   }
 }

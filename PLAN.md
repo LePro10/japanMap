@@ -2707,10 +2707,59 @@ Minimal. Von dort läuft die bestehende Messung wie bisher weiter.
 > nicht auf der teuersten anzufangen.
 
 **Messung.** Die Schätzung muss auf dieser Maschine „Software-Rasterisierer"
-erkennen und mit Minimal starten; der Benchmark muss danach trotzdem laufen und
-sein Ergebnis speichern dürfen. Dazu die drei bekannten Sonderfälle aus P7 erneut
-prüfen: verdecktes Fenster (Abbruch), gespeicherte Wahl (kein Benchmark),
-manuelle Wahl im Panel (Benchmark stoppt).
+erkennen und mit Minimal starten; der Benchmark muss danach trotzdem laufen.
+
+> **Gebaut und gemessen** (`src/render/deviceTier.ts`, `japanMap.device()`).
+> Kaltstart auf dieser Maschine, gespeicherte Wahl vorher verworfen:
+>
+> | | |
+> |---|---|
+> | GPU | `ANGLE (Microsoft, Microsoft Basic Render Driver … D3D11)` |
+> | `hardwareConcurrency` | 16 |
+> | `deviceMemory` | 8 |
+> | `pointer: coarse` | nein |
+> | **Schätzung** | **Minimal** — „Software-Rasterisierer erkannt" |
+> | Stufe nach dem Start | Minimal |
+>
+> **Das ist genau der Fall, für den die Reihenfolge der Signale gilt.** Kerne,
+> Speicher und Zeigergerät sagen alle drei „starke Maschine" — und für die CPU
+> stimmt das sogar. Gerendert wird trotzdem im Software-Rasterisierer. Wer die
+> billigen Signale zuerst fragt, bekommt hier die teuerste Stufe auf dem
+> langsamsten Renderer. Die GPU-Zeichenkette schlägt deshalb alles andere.
+>
+> Nebenbei: `gl.getParameter(gl.RENDERER)` liefert `"WebKit WebGL"` — eine
+> Konstante ohne Informationsgehalt. Ohne
+> `WEBGL_debug_renderer_info.UNMASKED_RENDERER_WEBGL` gäbe es diese Messung
+> nicht, und wo die Erweiterung fehlt, fällt die Schätzung auf die übrigen
+> Signale zurück.
+
+**Was das kostet, und es ist nicht null.** Der Aufwärmframe läuft weiter auf
+Ultra — sonst fehlten die Programme der Kette, wenn jemand hochschaltet (P7.4).
+Gemessen beim Kaltstart:
+
+| | |
+|---|---|
+| Aufwärmframe | **30 Programme in 709,9 ms** (unverändert gegenüber P7) |
+| nach dem Umschalten auf Minimal | **43 Programme** |
+
+Die 13 zusätzlichen sind der Preis des Bypasses aus 8.2: `toneMapping` steht im
+Programm-Cache-Schlüssel von three, und im Bypass tonemappt der Renderer statt
+der Kette. **Ein Gerät, das Minimal nie verlässt, bezahlt damit 30 Programme,
+die es nicht benutzt, und danach noch 13, die es benutzt.**
+
+> **Offen, bewusst nicht nebenbei entschieden.** Naheliegend wäre, auf der
+> *geschätzten* Stufe aufzuwärmen. Dann fehlen aber die Programme für jedes
+> spätere Hochschalten, und P7.4 hat genau dafür den Aufwärmframe eingeführt
+> (der Ruckler beim ersten Sichtkontakt mit der Stadt lag bei 106 ms über
+> Budget). Die Abwägung braucht eine Zahl von echter Hardware, und die gibt es
+> hier nicht: der Wechselframe ist auf einem Software-Rasterisierer nicht
+> aussagekräftig zu messen. **Nicht geraten, sondern notiert.**
+
+Dazu die drei bekannten Sonderfälle aus P7, unverändert: verdecktes Fenster
+(Abbruch ohne Speichern), gespeicherte Wahl (kein Benchmark), manuelle Wahl im
+Panel (Benchmark stoppt und speichert). Der Knopf „Neu einstufen" beginnt jetzt
+ebenfalls bei der geschätzten Stufe — sonst wäre er der Blindstart auf Ultra,
+den diese Aufgabe abschafft.
 
 ---
 
@@ -3055,8 +3104,12 @@ dieses Durchgangs, und er steht in der P1-Nachbesserung bereits so.
       Zahl der Vollbilddurchgänge, nicht an der Bildrate: **1 gegen 28** auf
       Ultra, gezählt als Draw-Calls bei leerer Szene. Der Zeichenpuffer geht
       dabei von 921 600 auf 230 400 Pixel.
-- [ ] **Die Ersteinstufung startet nicht auf Ultra**, wenn die Vorabschätzung ein
+- [x] **Die Ersteinstufung startet nicht auf Ultra**, wenn die Vorabschätzung ein
       schwaches Gerät meldet — auf dieser Maschine also bei „Minimal".
+      Gemessen: `japanMap.device()` liefert `minimal` mit der Begründung
+      „Software-Rasterisierer erkannt", und die Stufe nach dem Start ist
+      Minimal. Die 90 Messframes laufen damit auf 640×360 mit einem
+      Vollbilddurchgang statt auf 1280×720 mit 28.
 - [ ] **Wolkenschatten wandern über das Gelände**, gemessen mit Maske gegen ein
       Bild ohne sie, nicht über das ganze Bild gemittelt.
 - [ ] **Der Bergpass hat ≥ 8 Kehren** (SPEC §2.1) **und** der Erdbau liegt unter
