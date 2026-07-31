@@ -16,6 +16,10 @@ import shadeUrl from '../../assets/generated/terrain/shade.png?url';
 // Schritt 5c, und liegt deshalb bei den Terrain-Assets und nicht bei den Props.
 import paddyUrl from '../../assets/generated/terrain/paddy.png?url';
 import shadeMetaUrl from '../../assets/generated/terrain/shade.json?url';
+// Flusstrasse (P8.5b). Entsteht im Terrain-Baker, Schritt 5b2 — der Fluss folgt
+// dem Gefälle des Höhenfelds und gehört deshalb zu den Terrain-Assets, nicht zu
+// den Straßen.
+import riverUrl from '../../assets/generated/terrain/river.json?url';
 
 import skyUrl from '../../assets/hdri/industrial_sunset_02_puresky_4k.hdr?url';
 import iblUrl from '../../assets/hdri/rooftop_night_2k.hdr?url';
@@ -46,6 +50,7 @@ export const TERRAIN_ASSETS = {
   shade: shadeUrl,
   paddy: paddyUrl,
   shadeMeta: shadeMetaUrl,
+  river: riverUrl,
 } as const;
 
 export const HDRI_ASSETS = {
