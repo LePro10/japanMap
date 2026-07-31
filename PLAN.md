@@ -3462,6 +3462,25 @@ ein Bild aus Augenhöhe auf dem Waldpfad.
 **8.8 — Der Stadtrand** → `src/world/city/CityGenerator.ts`,
 `src/config/city.mjs`, `assets/props.json`
 
+> ### Am Bild nachgesehen, bevor an einem Regler gedreht wurde
+>
+> Blickpunkt (620, 62, 620) auf den Distrikt, `.cache/shots/p88_stadt_vorher.png`.
+>
+> **Die Silhouette ist nicht das Problem.** Die Höhenstaffelung wirkt bereits:
+> `coreRadius` 60 → `edgeRadius` 220 lässt die Häuser nach außen von 17 auf 2
+> Geschosse fallen, und im Bild steht ein gestaffelter Umriss mit Türmen in der
+> Mitte und niedriger Randbebauung — kein Riegel. Der naheliegende Eingriff
+> (`randomFloors: 5` auch am Rand zulassen) wäre damit am falschen Regler
+> gewesen; dass er nicht gemacht wurde, ist das Ergebnis dieses Blicks.
+>
+> **Das Problem ist die Kante am Boden.** Die Bebauung hört abrupt auf, und
+> daneben liegt leere Fläche bis zum Horizont. Es fehlt nicht Abstufung *in*
+> der Stadt, sondern alles *um* sie herum — Mauern, Schuppen, Nebengebäude,
+> Bewuchs. Das ist Prop- und Streuungsarbeit (8.9) und nicht `CityGenerator`.
+>
+> Die Zahlen unten bleiben davon unberührt; sie betreffen die Helligkeit, nicht
+> die Form.
+
 **Befund.** Zwei Zahlen, eine gemessen, eine gerechnet:
 
 - **Gemessen (P6, nach dem Viewport-Fix):** die Stadt ist 1,21-mal so hell wie
