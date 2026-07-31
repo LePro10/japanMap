@@ -2915,6 +2915,54 @@ anderen nötig sind:
    Ebene, plus die Verteilung der Neigung über die Flanke — nicht den Mittelwert
    allein (CLAUDE.md: „Mittelwerte verstecken Formen"). Werkzeug: Erweiterung von
    `npm run inspect` um `--profile x0,z0,x1,z1`.
+
+   > **Gemessen — und der Befund kippt die Diagnose dieser Aufgabe.**
+   >
+   > *Falllinie*, vom Massivzentrum nach Süden über 1200 m:
+   >
+   > | | Hub | Ø Gefälle | Median | 95 % | Maximum | über 30 % |
+   > |---|---|---|---|---|---|---|
+   > | nach Süden    | 301 m | **25 %** | 12 % | 238 % | 276 % | 29 % |
+   > | nach Südosten | 353 m | 31 % |  8 % | 230 % | 516 % | 36 % |
+   > | nach Westen   | 137 m | 14 % |  7 % | 109 % | 174 % | 15 % |
+   >
+   > **Das mittlere Gefälle der Südflanke liegt bereits bei 25 % — genau dem
+   > Zielwert, den diese Aufgabe fordert.** Die „45 %" aus P3 waren eine
+   > Beobachtung an einem einzelnen Hang, kein Kennwert der Flanke. Flacher zu
+   > machen, was schon flach genug ist, hilft also nicht.
+   >
+   > Der Median liegt bei 12 %, das 95. Perzentil bei 238 %. Die Flanke ist
+   > **nicht gleichmäßig geneigt**, sondern überwiegend sanft mit senkrechten
+   > Stufen dazwischen. Genau die Form, vor der CLAUDE.md warnt.
+   >
+   > *Traverse* — quer zur Falllinie, also der Weg, den eine Serpentine
+   > tatsächlich nimmt, über 960 m:
+   >
+   > | Lage | Hub | Ø Gefälle | Median | 95 % | über 30 % |
+   > |---|---|---|---|---|---|
+   > | z = −550 (Mitte der Flanke) | 347 m | 36 % | **104 %** | 410 % | **84 %** |
+   > | z = −300 (Fuß) | 47 m | 5 % | 8 % | 62 % | 11 % |
+   > | z = −50 (Reisebene) | 3 m | 0 % | 1 % | 3 % | 0 % |
+   >
+   > **Auf 84 % ihrer Länge ist die Traverse steiler als 30 %.** Eine Kehre
+   > müsste dort Grat für Grat und Rinne für Rinne durchschneiden — daher der
+   > „Steinbruch" aus P3. Und bei z = −300 ist die Flanke schon vorbei: die
+   > nutzbare Höhe liegt zwischen etwa z = −600 und z = −300, also auf **rund
+   > 300 m**, nicht auf 1,5 km. Den Rest hat die Reisfeld-Einebnung.
+   >
+   > **Daraus folgt eine andere Reihenfolge als unten geplant.** Der Haupthebel
+   > ist nicht die Verlängerung der Maske, sondern:
+   >
+   >  1. die **Gratamplitude** in der Flanke dämpfen (Punkt 4) — sie macht die
+   >     Traverse zum Waschbrett,
+   >  2. den **Konflikt mit der Reiszone** auflösen (Punkt 3) — er kostet der
+   >     Flanke zwei Drittel ihrer Länge,
+   >  3. und erst dann, falls nötig, die Maske anisotrop verlängern (Punkt 2).
+   >
+   > **Und das Abnahmekriterium ändert sich mit.** „25 % mittlere Neigung" ist
+   > bereits erfüllt und sagt nichts; verbindlich wird stattdessen die
+   > **Traverse bei z = −550**: Median ≤ 25 % und höchstens 20 % der Länge über
+   > 30 %. Das ist die Größe, an der eine Serpentine wirklich hängt.
 2. **Die Flanke anisotrop verlängern.** Radial geht es nicht: `outer` von 1080
    auf 1500 zu setzen schiebt den Massivrand mitten in die Reisfelder. Gebraucht
    wird eine **elliptische Maske**, die entlang der Passachse (nach Süden/
@@ -2932,8 +2980,10 @@ anderen nötig sind:
    unverändert scharfen Graten ist wieder steil, nur kleinteiliger.
 
 **Messung.** `npm run world` vollständig, dann:
-- Neigungsverteilung über die Flanke (Ziel: Median ≤ 25 %, kein Extremwert über
-  40 % im Trassenkorridor),
+- **Traverse bei z = −550** (`--profile -1300,-550,-340,-550`): Median ≤ 25 %,
+  höchstens 20 % der Länge über 30 %. Ausgangswert: Median 104 %, 84 % über
+  30 %. Das ersetzt das ursprüngliche „Median ≤ 25 % über die Flanke" — der
+  Wert war an der Falllinie gemeint und dort schon erfüllt,
 - **Kehren am Pass** — Zielwert aus SPEC §2.1 ist ≥ 8,
 - **Erdbau** über die Erdbau-Karte (`npm run inspect -- --road toge --clean
   .cache/clean.r16`). Die Zahl, die den Kompromiss von P3 erzwungen hat, war
