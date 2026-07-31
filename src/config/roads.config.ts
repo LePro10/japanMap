@@ -6,7 +6,7 @@
  * die Ausschlusszonen der Vegetation. Was hier steht, gilt deshalb für alle drei.
  */
 
-export type RoadType = 'highway' | 'mountain' | 'village' | 'city' | 'dirt';
+export type RoadType = 'highway' | 'mountain' | 'village' | 'city' | 'dirt' | 'pfad';
 
 export interface RoadTypeSettings {
   readonly label: string;
@@ -68,7 +68,42 @@ export const ROAD_TYPES: Readonly<Record<RoadType, RoadTypeSettings>> = {
     minRadius: 12,
     textureLength: 5,
   },
+  /**
+   * Pfad — PLAN.md P8.7.
+   *
+   * Kein Fahrzeug. Die Karte hatte bis hierher nur Verkehrswege und keine
+   * Wege: Tempelaufgang, Feldwege zwischen den Terrassen und der Zugang zur
+   * Küste existierten nicht.
+   *
+   * `shoulder` ist **null**, und das ist kein Sparen an der Zahl: der
+   * Randstreifen ist im Mesh der Übergang zur Böschung, und ein Trampelpfad
+   * hat keine Böschung. Die Steigung darf dafür deutlich höher liegen — zu Fuß
+   * sind 24 % eine Treppe, kein Hindernis.
+   */
+  pfad: {
+    label: 'Pfad',
+    width: 1.8,
+    shoulder: 0,
+    maxGradient: 0.24,
+    minRadius: 8,
+    textureLength: 3,
+  },
 };
+
+/**
+ * Referenzbreite für die Freihaltezone der Vegetation — PLAN.md P8.7.
+ *
+ * `species.roadClearance` (7…22 m je Art) ist für eine **Fahrbahn** gedacht.
+ * Auf einen 1,8 m breiten Pfad angewandt ergäbe sie eine 40 m breite kahle
+ * Schneise durch den Wald, in der ein Trampelpfad liegt — genau das Bild, das
+ * P8.7 vermeiden soll.
+ *
+ * `RoadNetwork` skaliert die Freihaltung deshalb mit der Fahrbahnbreite, aber
+ * **nur nach unten**: `min(1, width / REFERENCE)`. Bei 5 m als Referenz haben
+ * alle bestehenden Strecken (5…9 m) den Faktor 1 und ändern sich nicht — die
+ * Instanzzahlen aus P4 bleiben damit vergleichbar. Nur der Pfad bekommt 0,36.
+ */
+export const ROAD_CLEARANCE_REFERENCE = 5;
 
 export const ROAD_MESH = {
   /**
