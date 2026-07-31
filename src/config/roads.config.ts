@@ -77,14 +77,20 @@ export const ROAD_TYPES: Readonly<Record<RoadType, RoadTypeSettings>> = {
    *
    * `shoulder` ist **null**, und das ist kein Sparen an der Zahl: der
    * Randstreifen ist im Mesh der Übergang zur Böschung, und ein Trampelpfad
-   * hat keine Böschung. Die Steigung darf dafür deutlich höher liegen — zu Fuß
-   * sind 24 % eine Treppe, kein Hindernis.
+   * hat keine Böschung.
+   *
+   * **45 % Steigung, und die Zahl kommt aus einem Bild.** Mit 24 % lag das
+   * Höhenprofil des Tempelaufgangs so weit unter dem Hang, dass der Pfad als
+   * **Schlucht mit Asphaltboden** dastand — die Begrenzung glättete ihn zu
+   * einer Rampe, und den Rest musste das Gelände tragen. Zu Fuß ist eine
+   * japanische *sandō* ohnehin eine Treppe; gemessen erreicht `sando` jetzt
+   * 43,0 % und folgt damit dem Hang, statt ihn aufzuschneiden.
    */
   pfad: {
     label: 'Pfad',
     width: 1.8,
     shoulder: 0,
-    maxGradient: 0.24,
+    maxGradient: 0.45,
     minRadius: 8,
     textureLength: 3,
   },

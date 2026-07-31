@@ -87,7 +87,7 @@ const TYPES = {
   // schlicht die Grenze, unterhalb derer der Polygonzug sich selbst schneidet.
   // `maxEarthwork` ist der eigentliche Unterschied — ein Trampelpfad, der einen
   // 20-m-Graben in den Hang schneidet, ist keiner. Er nimmt lieber den Umweg.
-  pfad: { width: 1.8, maxGradient: 0.24, minRadius: 8, maxEarthwork: 2.5 },
+  pfad: { width: 1.8, maxGradient: 0.45, minRadius: 8, maxEarthwork: 2.5 },
 };
 
 const SAMPLE_SPACING = 2;
@@ -230,7 +230,19 @@ function findSummit(terrain, region, maxHeight = Infinity, step = 20) {
  * nur in die richtige Richtung geschoben.
  */
 function fitElevation(terrain, points, options) {
-  const { maxGrade, closed, margin, pins = null, iterations = 400, level = null } = options;
+  const {
+    maxGrade,
+    closed,
+    margin,
+    pins = null,
+    iterations = 400,
+    level = null,
+    // Halbe Breite des Fußabdrucks, über den die Bezugshöhe gemittelt wird —
+    // P8.7. War fest 9 m, also die halbe Breite einer Fahrbahn samt Böschung.
+    // Für einen 1,8 m breiten Pfad mittelt das über das Fünffache seiner
+    // eigenen Breite und ebnet damit genau das Relief weg, dem er folgen soll.
+    footprint = 9,
+  } = options;
   const n = points.length;
 
   /**
@@ -246,7 +258,9 @@ function fitElevation(terrain, points, options) {
   const ground = points.map(([x, z]) => {
     let sum = terrain.at(x, z) * 2;
     let weight = 2;
-    for (const [dx, dz] of [[9, 0], [-9, 0], [0, 9], [0, -9], [6, 6], [-6, 6], [6, -6], [-6, -6]]) {
+    const f = footprint;
+    const d = footprint * 0.667;
+    for (const [dx, dz] of [[f, 0], [-f, 0], [0, f], [0, -f], [d, d], [-d, d], [d, -d], [-d, -d]]) {
       sum += terrain.at(x + dx, z + dz);
       weight++;
     }
@@ -1081,6 +1095,11 @@ function buildRoad(
       margin,
       pins,
       level,
+      // Der Fußabdruck folgt der Streckenbreite, damit ein Pfad das Relief
+      // sieht, dem er folgen soll. Nach oben auf die alten 9 m begrenzt —
+      // sonst mittelte der Ring über 9 m Halbbreite hinaus und alle Zahlen aus
+      // P3 wären neu.
+      footprint: Math.min(9, Math.max(2, settings.width)),
     });
     sampled = sampleSpline(toNodes(heights), { closed, spacing: SAMPLE_SPACING });
     const reached = maxGradient(sampled);
