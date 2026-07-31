@@ -1,5 +1,5 @@
 import type { RoadData, RoadFile } from '@/config/roads.config';
-import { ROAD_TYPES } from '@/config/roads.config';
+import { ROAD_CLEARANCE_REFERENCE, ROAD_TYPES } from '@/config/roads.config';
 import { WORLD } from '@/config/world.config';
 
 /**
@@ -38,6 +38,13 @@ interface Segment {
   readonly road: RoadData;
   /** Index des ersten Punkts des Segments. */
   readonly index: number;
+  /**
+   * Faktor auf die Freihaltezone der Vegetation, aus der Fahrbahnbreite —
+   * PLAN.md P8.7. Nur Strecken **schmaler** als `ROAD_CLEARANCE_REFERENCE`
+   * bekommen einen Wert unter 1; alles ab 5 m Breite bleibt bei 1 und ändert
+   * damit die Instanzzahlen aus P4 nicht.
+   */
+  readonly clearanceScale: number;
 }
 
 export class RoadNetwork {
@@ -105,7 +112,23 @@ export class RoadNetwork {
    * hier direkt mit Zahlen, und nur `closestPoint` baut am Ende ein Objekt.
    */
   distanceToNearestRoad(x: number, z: number, maxDistance = 120): number {
-    const found = this.#search(x, z, maxDistance);
+    const found = this.#search(x, z, maxDistance, false);
+    return found < 0 ? Infinity : Math.sqrt(found);
+  }
+
+  /**
+   * Abstand für die **Freihaltezone der Vegetation** — PLAN.md P8.7.
+   *
+   * Wie oben, aber mit der Fahrbahnbreite skaliert: ein schmaler Pfad wirkt
+   * entsprechend weiter entfernt und räumt damit weniger frei.
+   *
+   * Eigene Methode statt eines Schalters an der obigen, weil
+   * `distanceToNearestRoad` auch dort gerufen wird, wo der **echte** Abstand
+   * gemeint ist — ein skalierter Wert wäre dort still falsch, und „still
+   * falsch" ist in diesem Projekt die teuerste Fehlerart.
+   */
+  vegetationDistance(x: number, z: number, maxDistance = 120): number {
+    const found = this.#search(x, z, maxDistance, true);
     return found < 0 ? Infinity : Math.sqrt(found);
   }
 
@@ -114,7 +137,7 @@ export class RoadNetwork {
    * Strecke und ab P4 für die Vegetationsmaske.
    */
   closestPoint(x: number, z: number, maxDistance = 120): RoadHit | null {
-    const found = this.#search(x, z, maxDistance);
+    const found = this.#search(x, z, maxDistance, false);
     if (found < 0 || this.#bestSegment === null) return null;
 
     const segment = this.#bestSegment;
@@ -152,7 +175,7 @@ export class RoadNetwork {
    * Quadriert, weil die Wurzel nur einmal am Ende gebraucht wird und im
    * inneren Vergleich nichts beiträgt.
    */
-  #search(x: number, z: number, maxDistance: number): number {
+  #search(x: number, z: number, maxDistance: number, scaled: boolean): number {
     const rings = Math.max(1, Math.ceil(maxDistance / CELL_SIZE));
     const cellX = Math.floor((x + WORLD.half) / CELL_SIZE);
     const cellZ = Math.floor((z + WORLD.half) / CELL_SIZE);
@@ -198,7 +221,11 @@ export class RoadNetwork {
 
             const px = ax + ddx * t;
             const pz = az + ddz * t;
-            const squared = (x - px) * (x - px) + (z - pz) * (z - pz);
+            let squared = (x - px) * (x - px) + (z - pz) * (z - pz);
+            // Skaliert wird der **Abstand**, nicht die Schwelle: so bleibt der
+            // Vergleich gegen `species.roadClearance` unverändert, und ein Pfad
+            // mit Faktor 0,36 räumt einen 0,36-mal so breiten Streifen frei.
+            if (scaled) squared /= segment.clearanceScale * segment.clearanceScale;
 
             if (squared < bestSquared) {
               bestSquared = squared;
@@ -266,6 +293,10 @@ export class RoadNetwork {
     const last = road.closed ? count : count - 1;
     const settings = ROAD_TYPES[road.type];
     const reach = settings.width / 2 + settings.shoulder;
+    // Aus der **Typ**breite, nicht aus `road.widths[i]`: die Freihaltung soll
+    // eine Eigenschaft der Streckenart sein und nicht an einzelnen Knoten
+    // springen, an denen ein Editor die Breite verändert hat.
+    const clearanceScale = Math.min(1, settings.width / ROAD_CLEARANCE_REFERENCE);
 
     for (let i = 0; i < last; i++) {
       const j = road.closed ? (i + 1) % count : i + 1;
@@ -291,7 +322,7 @@ export class RoadNetwork {
             list = [];
             this.#cells[key] = list;
           }
-          list.push({ road, index: i });
+          list.push({ road, index: i, clearanceScale });
         }
       }
     }

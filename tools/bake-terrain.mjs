@@ -830,8 +830,22 @@ function benchRoads(height, res, spacing, roadFile, seed) {
   // Erst alle Mediane, dann anwenden: sonst hinge der Median eines Knotens
   // davon ab, ob sein Nachbar schon gekappt wurde, und das Ergebnis liefe mit
   // der Reihenfolge der Straßen in der Datei davon.
+  // **Pfade bekommen keine Bank** — P8.7.
+  //
+  // Die Bank ist für eine Fahrbahn gedacht: sie nimmt der Traverse das
+  // Waschbrett, damit ein Fahrzeug überhaupt hindurchkommt. Ein Fußweg braucht
+  // das nicht, und der Preis wäre absurd — gemessen gegen ein Feld ohne
+  // Straßen lag die Eingriffsbreite um den 1,8 m breiten `sando` bei **90 m**,
+  // genauso viel wie am 9 m breiten Ring. Ein Trampelpfad mit dem Erdbau einer
+  // Bundesstraße ist genau die kahle Schneise, die P8.7 vermeiden will.
+  //
+  // Aufgefallen ist das erst, weil die Messung für 8.7 gegen das saubere Feld
+  // lief statt gegen die Fahrbahnhöhe: gegen die Fahrbahn sah der Pfad
+  // unauffällig aus, weil die Bank *beide* Seiten gleichmäßig abträgt.
+  const benched = roadFile.roads.filter((road) => road.type !== 'pfad');
+
   const levels = new Map();
-  for (const road of roadFile.roads) {
+  for (const road of benched) {
     const line = road.centerline;
     const count = line.length / 3;
     const perNode = new Float32Array(count);
@@ -864,7 +878,7 @@ function benchRoads(height, res, spacing, roadFile, seed) {
   const benchLevel = new Float32Array(res * res);
   const benchDistance = new Float32Array(res * res).fill(Infinity);
 
-  for (const road of roadFile.roads) {
+  for (const road of benched) {
     const line = road.centerline;
     const perNode = levels.get(road.id);
     const count = line.length / 3;
@@ -993,6 +1007,7 @@ function carveRoads(height, res, spacing, roadFile) {
   const roadHeight = new Float32Array(res * res);
   const roadDistance = new Float32Array(res * res).fill(Infinity);
   const roadHalfWidth = new Float32Array(res * res);
+  const roadEmbankment = new Float32Array(res * res);
 
   for (const road of roadFile.roads) {
     const line = road.centerline;
@@ -1011,7 +1026,13 @@ function carveRoads(height, res, spacing, roadFile) {
       // Halbe Breite inklusive Bankett; die Straßendatei führt die Breite mit,
       // damit ein späterer Editor sie je Knoten verändern kann.
       const halfWidth = (road.widths[i] ?? 6) / 2 + 1.6;
-      const reach = halfWidth + EMBANKMENT;
+      // **Die Böschung skaliert mit der Breite** — P8.7. 15 m Auslauf an einem
+      // 1,8 m breiten Pfad wären ein 32 m breiter Eingriff für einen
+      // Trampelpfad: dieselbe Schneise, die die skalierte Freihaltezone der
+      // Vegetation gerade vermeiden soll. Nur nach unten skaliert, damit an
+      // allen Strecken ab 5 m Breite nichts anders wird als bisher.
+      const embankment = EMBANKMENT * Math.min(1, (road.widths[i] ?? 6) / 5);
+      const reach = halfWidth + embankment;
 
       const minX = Math.max(0, Math.floor((Math.min(ax, bx) - reach + half) / spacing));
       const maxX = Math.min(res - 1, Math.ceil((Math.max(ax, bx) + reach + half) / spacing));
@@ -1039,6 +1060,7 @@ function carveRoads(height, res, spacing, roadFile) {
           roadDistance[index] = distance;
           roadHeight[index] = ay + (by - ay) * t;
           roadHalfWidth[index] = halfWidth;
+          roadEmbankment[index] = embankment;
         }
       }
     }
@@ -1059,7 +1081,7 @@ function carveRoads(height, res, spacing, roadFile) {
     if (distance <= halfWidth) {
       weight = 1;
     } else {
-      const t = (distance - halfWidth) / EMBANKMENT;
+      const t = (distance - halfWidth) / roadEmbankment[index];
       if (t >= 1) continue;
       weight = 0.5 * (1 + Math.cos(Math.PI * t));
     }

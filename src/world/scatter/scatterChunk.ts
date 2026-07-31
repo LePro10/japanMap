@@ -202,7 +202,11 @@ export function scatterChunk(
 
         if (
           input.network !== null &&
-          input.network.distanceToNearestRoad(x, z, species.roadClearance) <
+          // `vegetationDistance`, nicht `distanceToNearestRoad`: die Freihaltung
+          // skaliert seit P8.7 mit der Fahrbahnbreite, damit ein 1,8 m breiter
+          // Pfad keine 40 m breite Schneise in den Wald schlägt. Für alles ab
+          // 5 m Breite ist der Wert identisch.
+          input.network.vegetationDistance(x, z, species.roadClearance) <
             species.roadClearance
         ) {
           continue;
