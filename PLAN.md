@@ -2830,7 +2830,54 @@ und ein Bild von `start` und `pass`.
 > geladen: 256², kachelbar über einen ganzzahligen Hash mit Modulo, vier
 > Oktaven. Kosten im Startdownload: **null Bytes**.
 >
-> Teil 2 (Wolkenebene) steht noch aus.
+> **Teil 2 (Wolkenebene) ist gebaut — und die Vorannahme des Plans war falsch.**
+> Oben steht „Wolken gibt es nicht". Nachgemessen über die Himmelspixel (alles
+> ausgeblendet, was Geometrie ist) trägt das HDRI sehr wohl Struktur:
+>
+> | Blickpunkt | Himmelsanteil | Ø Helligkeit | Streuung | Spanne |
+> |---|---|---|---|---|
+> | `start`      | 46,1 % | 185,4 | 13,2 | 151…210 |
+> | `pass`       | 46,4 % | 191,2 | 10,6 | 147…211 |
+> | `stadt-fern` | 36,2 % | 184,4 | 14,9 | 145…209 |
+>
+> Was fehlte, war also nicht Bewölkung, sondern **Bewegung** — und seit Teil 1
+> die Bodenschatten wandern, war der stillstehende Himmel ein sichtbarer
+> Widerspruch. Die Ebene ist deshalb bewusst schwächer ausgelegt als das, was
+> schon da ist: Deckkraft 0,35, gemessene mittlere Differenz 6,9 gegen eine
+> vorhandene Himmelsstreuung von 13.
+>
+> | Blickpunkt | betroffen | Anteil | Ø Differenz | Draw-Calls |
+> |---|---|---|---|---|
+> | `start`      |  84 285 Px |  9,15 % | 6,9 | 161 / 159 |
+> | `pass`       | 164 923 Px | 17,90 % | 6,9 |  39 / 38 |
+> | `stadt-fern` |  59 842 Px |  6,49 % | 7,9 | 157 / 155 |
+> | `stadt-luft` |     634 Px |  0,07 % | 5,5 | 111 / 109 |
+>
+> `stadt-luft` blickt senkrecht nach unten — dort steht kein Himmel im Bild, und
+> 0,07 % ist die richtige Antwort.
+>
+> **Die Kuppel kostet einen Draw-Call, an der Stadt aber zwei.** Der zweite ist
+> der planare Spiegeldurchgang aus P6.5, der die Szene ein weiteres Mal zeichnet
+> — Wolken im nassen Asphalt sind physikalisch richtig, kosten aber eben auch.
+> Der Plan oben nannte „+1"; gemessen sind es 1 bzw. 2.
+>
+> **Bewegung isoliert gemessen** (`pass`, jeweils der andere Anteil abgeschaltet):
+>
+> | | 10 s | 60 s |
+> |---|---|---|
+> | nur Wolkenebene | 12 021 Px (1,30 %) | 150 057 Px (16,28 %), Ø 6,6 |
+> | nur Bodenschatten | — | 134 998 Px (14,65 %), Ø 11,6 |
+>
+> Beide bewegen sich über vergleichbare Flächen, der Bodenschatten kräftiger je
+> Pixel. Genau so ist es gedacht.
+>
+> > **Ein Messfehler unterwegs, und er hätte fast ein falsches Ergebnis
+> > geliefert.** Der erste Versuch, die Kuppelbewegung zu isolieren, setzte
+> > `uTime` der Kuppel von Hand — und meldete 26 geänderte Pixel, also
+> > „bewegt sich nicht". `CloudDome.update()` schreibt den Wert aber jeden Frame
+> > aus der Atmosphärenzeit zurück, und `probe()` rendert einen Frame. Gemessen
+> > wurde damit eine Zuweisung, die sofort überschrieben wird. Richtig ist,
+> > **den jeweils anderen Anteil abzuschalten** statt die Zeit zu verbiegen.
 
 ---
 
@@ -3144,8 +3191,12 @@ dieses Durchgangs, und er steht in der P1-Nachbesserung bereits so.
       „Software-Rasterisierer erkannt", und die Stufe nach dem Start ist
       Minimal. Die 90 Messframes laufen damit auf 640×360 mit einem
       Vollbilddurchgang statt auf 1280×720 mit 28.
-- [ ] **Wolkenschatten wandern über das Gelände**, gemessen mit Maske gegen ein
-      Bild ohne sie, nicht über das ganze Bild gemittelt.
+- [x] **Wolkenschatten wandern über das Gelände**, gemessen mit Maske gegen ein
+      Bild ohne sie, nicht über das ganze Bild gemittelt. Bei `start` trifft der
+      Schatten 171 548 Pixel (18,61 % des Bildes, rund 40 % des sichtbaren
+      Bodens); nach 10 s Weltzeit ändern sich bei stehender Kamera 98 725 Pixel.
+      Die Wolkenebene darüber zieht mit derselben Zeit und Richtung: bei `pass`
+      isoliert 150 057 Pixel (16,28 %) über 60 s.
 - [ ] **Der Bergpass hat ≥ 8 Kehren** (SPEC §2.1) **und** der Erdbau liegt unter
       dem Stand, der P3 zum Kompromiss gezwungen hat. Beide Zahlen zusammen.
 - [ ] **Ein Fluss läuft vom Massiv bis ins Meer**, monoton fallend, mit

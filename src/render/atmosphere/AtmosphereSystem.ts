@@ -6,6 +6,7 @@ import type { EngineContext, System } from '@/core/System';
 import type { LookState } from '@/render/looks/lookState';
 import { HDRI_ASSETS, TERRAIN_ASSETS } from '@/world/terrainAssets';
 import { createAtmosphereUniforms, type AtmosphereUniforms } from './atmosphereUniforms';
+import { CloudDome } from './CloudDome';
 import { createCloudTexture } from './createCloudTexture';
 import { createSkyLut } from './createSkyLut';
 
@@ -27,6 +28,7 @@ export class AtmosphereSystem implements System {
   #context: EngineContext | null = null;
   #skyLut: Texture | null = null;
   #cloudMap: Texture | null = null;
+  #dome: CloudDome | null = null;
 
   readonly #readouts = {
     verschattung: '—',
@@ -75,6 +77,11 @@ export class AtmosphereSystem implements System {
     this.#cloudMap = context.resources.track(createCloudTexture());
     this.#uniforms.uAtmoCloudMap.value = this.#cloudMap;
 
+    // Dieselbe Rauschtextur wie der Bodenschatten. Nicht aus Sparsamkeit,
+    // sondern damit oben und unten dasselbe Wetter herrscht.
+    this.#dome = new CloudDome(this.#cloudMap, this.#skyLut);
+    this.#dome.add(context.scene);
+
     this.#readouts.verschattung =
       `${(shadeMeta.measured.litFraction * 100).toFixed(0)} % besonnt · ` +
       `${shadeMeta.res}² · Azimut ${shadeMeta.sun.azimuthDeg.toFixed(0)}°`;
@@ -114,6 +121,12 @@ export class AtmosphereSystem implements System {
   /** Die Wellen des Wassers hängen daran; sonst steht das Meer still. */
   update(dt: number): void {
     this.#uniforms.uAtmoTime.value += dt;
+    // **Dieselbe Zeit wie der Bodenschatten**, nicht eine eigene. Zwei Uhren
+    // liefen bei jeder Unterbrechung auseinander, und dann zöge die Wolke oben
+    // gegenüber ihrem Schatten unten.
+    if (this.#context) {
+      this.#dome?.update(this.#context.camera, this.#uniforms.uAtmoTime.value);
+    }
   }
 
   // ── Look ───────────────────────────────────────────────────────────────
@@ -283,9 +296,24 @@ export class AtmosphereSystem implements System {
       max: 60,
       step: 0.5,
     });
+
+    const dome = this.#dome;
+    if (dome) {
+      const state = { deckkraft: dome.opacity };
+      clouds.addBinding(state, 'deckkraft', {
+        label: 'Wolkenebene (0 = aus)',
+        min: 0,
+        max: 1,
+        step: 0.01,
+      }).on('change', (event) => {
+        dome.opacity = event.value;
+      });
+    }
   }
 
   dispose(): void {
+    this.#dome?.dispose();
+    this.#dome = null;
     this.#skyLut?.dispose();
     if (this.#skyLut) this.#context?.resources.untrack(this.#skyLut);
     this.#skyLut = null;
