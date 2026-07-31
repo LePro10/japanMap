@@ -176,6 +176,33 @@ function boxMask(x, z, zone, jitter = 0) {
 
 // ── Schritt 1–4: Höhenfeld ───────────────────────────────────────────────────
 
+/**
+ * Zwei Regler für den Terrain-Durchgang aus P8.5a.
+ *
+ * Sie stehen hier und nicht als feste Zahl im Code, weil die Entscheidung über
+ * die Form des Massivs eine **Art-Direction-Frage** ist und keine, die man
+ * nebenbei durch Umtippen einer Konstanten trifft. Mit `--out .cache/…` lassen
+ * sich damit Varianten backen, ohne `assets/generated/` anzufassen, und
+ * anschließend mit `inspect-map --profile` gegeneinander messen.
+ *
+ * Beide Vorgaben sind **1 bzw. 0**, also der ausgelieferte Stand. Wer sie
+ * ändert, ändert das Höhenfeld — und damit Straßen, Verschattung, Vegetation
+ * und Prop-Höhen.
+ */
+const EXPERIMENT = {
+  /**
+   * Faktor auf die Gratamplitude des Massivs.
+   *
+   * Gemessen ist er der **Haupthebel** für Serpentinen: die Traverse quer zur
+   * Falllinie liegt bei z = −550 auf 84 % ihrer Länge über 30 % Neigung, und
+   * das kommt von den Graten, nicht vom mittleren Gefälle (das mit 25 % bereits
+   * dem Zielwert entspricht).
+   */
+  ridge: 1,
+  /** Verschiebung der Reisfeldzone nach Süden, in Metern. Gibt der Flanke Länge. */
+  riceShift: 0,
+};
+
 function buildHeightField(res, seed, spacing) {
   const height = new Float32Array(res * res);
 
@@ -225,7 +252,7 @@ function buildHeightField(res, seed, spacing) {
         // Körper — von unten sähe man Klingen statt Bergen.
         const r = ridged(nRidge, wx / 880, wz / 880, 6);
         h += massif * massif * 130;
-        h += r * 645 * massif;
+        h += r * 645 * EXPERIMENT.ridge * massif;
       }
 
       // 3b — Waldhochebene im Nordosten. Bewusst weich: hier soll später ein
@@ -1086,6 +1113,22 @@ async function main() {
 
   if (!Number.isInteger(seed)) throw new Error('--seed muss eine ganze Zahl sein.');
   if (res < 64) throw new Error('--res ist zu klein.');
+
+  // P8.5a-Regler. Der Reisversatz wirkt über `ZONES` und damit an allen drei
+  // Stellen, die die Zone lesen (Einebnung, Zonenmaske, Reisfeld-Parzellen) —
+  // eine einzelne davon zu verschieben ergäbe eine Zone, die je nach Frage
+  // woanders liegt.
+  EXPERIMENT.ridge = Number(opts.ridge ?? 1);
+  EXPERIMENT.riceShift = Number(opts['rice-shift'] ?? 0);
+  ZONES.rice.z += EXPERIMENT.riceShift;
+  if (EXPERIMENT.ridge !== 1 || EXPERIMENT.riceShift !== 0) {
+    console.log(
+      c.yellow(
+        `  Versuchsaufbau: Gratamplitude ×${EXPERIMENT.ridge}, ` +
+          `Reiszone ${EXPERIMENT.riceShift >= 0 ? '+' : ''}${EXPERIMENT.riceShift} m nach Süden.`,
+      ),
+    );
+  }
 
   // Abstand zweier Abtastpunkte. Bewusst size/(res-1) und nicht size/res:
   // die Heightmap ist ein Gitter von Stützstellen, dessen äußerste Reihe genau

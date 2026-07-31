@@ -2963,6 +2963,54 @@ anderen nötig sind:
    > bereits erfüllt und sagt nichts; verbindlich wird stattdessen die
    > **Traverse bei z = −550**: Median ≤ 25 % und höchstens 20 % der Länge über
    > 30 %. Das ist die Größe, an der eine Serpentine wirklich hängt.
+
+   > **Variantenserie — und keine erreicht das Ziel.** `bake-terrain.mjs` hat
+   > dafür zwei Versuchsregler bekommen (`--ridge`, `--rice-shift`, beide mit
+   > Vorgabe = ausgelieferter Stand) und `--out`, sodass Varianten nach
+   > `.cache/` gehen, ohne `assets/generated/` anzufassen.
+   >
+   > | Variante | Traverse Median | über 30 % | Traverse-Hub | Gipfel |
+   > |---|---|---|---|---|
+   > | Ist-Zustand              | 89 % | 89 % | 320 m | 298 m |
+   > | Grate ×0,6               | 75 % | 89 % | 220 m | 228 m |
+   > | Grate ×0,35              | 66 % | 82 % | 158 m | 184 m |
+   > | Grate ×0,5, Reis +200 m  | 58 % | 71 % | 223 m | 210 m |
+   > | Grate ×0,35, Reis +200 m | **44 %** | **61 %** | 180 m | 184 m |
+   > | *Zielwert*               | *≤ 25 %* | *≤ 20 %* | — | — |
+   >
+   > *Gebacken mit `--res 1024 --erosion 500000` statt 2048/2 000 000, damit ein
+   > Durchgang 3 s statt 20 s dauert. Die Zahlen sind deshalb **untereinander**
+   > vergleichbar, nicht mit den Absolutwerten oben — derselbe Ist-Zustand misst
+   > hier 89 % statt 104 %.*
+   >
+   > Drei Dinge stehen damit fest:
+   >
+   >  - **Gratdämpfung allein reicht nicht.** Selbst ×0,35 — eine drastische
+   >    Reduktion, die den Gipfel von 298 auf 184 m drückt — landet bei 66 %
+   >    Median und 82 % über 30 %. Das ist mehr als das Doppelte des Ziels.
+   >  - **Der Reisversatz ist der wirksamere Hebel je Schaden.** Er kostet keine
+   >    Gipfelhöhe und bringt bei gleicher Gratdämpfung 66 % → 44 %.
+   >  - **Keine Kombination erreicht 25 % / 20 %.** Die beste Variante liegt bei
+   >    44 % / 61 % und hat dafür 38 % der Gipfelhöhe abgegeben. Das Massiv ist
+   >    dann kein Massiv mehr.
+   >
+   > **Damit ist die Aufgabe, wie sie dasteht, nicht lösbar** — und das ist ein
+   > Ergebnis, kein Zwischenstand. Wer weiter an diesen beiden Reglern dreht,
+   > verschlechtert die Silhouette weiter und kommt dem Ziel nicht nahe; genau
+   > die Regelschleife, die dieses Projekt zweimal ersatzlos entfernt hat.
+   >
+   > **Der dritte Weg, den die Messung nahelegt:** das Problem ist *lokal*. Nicht
+   > das Massiv ist zu schroff, sondern der Trassenkorridor. Statt den ganzen
+   > Berg abzuflachen, bekäme die Passtrasse ein **geglättetes Band** — eine
+   > Bank, entlang derer die Grate eingeebnet werden, 60…80 m breit. Das ist,
+   > was ein Geländebauer täte, und die Silhouette bliebe **vollständig
+   > erhalten**. Technisch ist es derselbe Vorgang wie das Straßen-Carving, nur
+   > breiter und ohne Fahrbahnprofil.
+   >
+   > Der Haken: die Bank braucht die Trasse, und die Trasse entsteht erst auf
+   > dem Gelände — dieselbe Zirkularität wie beim Bake-Kreislauf, und mit
+   > demselben Mittel zu lösen (zweimal backen). **Zu entscheiden ist das nicht
+   > hier, sondern von der Art Direction.**
 2. **Die Flanke anisotrop verlängern.** Radial geht es nicht: `outer` von 1080
    auf 1500 zu setzen schiebt den Massivrand mitten in die Reisfelder. Gebraucht
    wird eine **elliptische Maske**, die entlang der Passachse (nach Süden/
