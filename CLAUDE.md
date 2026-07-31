@@ -297,6 +297,14 @@ Kurzliste, damit es nicht wieder passiert:
   3. Ein **vergessener Versatz**: die Straßendecals lagen auf der Mittellinie
      aus `roads.json`, die Fahrbahn liegt seit P3 um 6 cm darüber. 3339
      Instanzen, alle korrekt, alle im Asphalt.
+  4. Ein **abgeschalteter Pass, der den Ausgang mitnahm** (P8.2).
+     `postprocessing` setzt `renderToScreen` beim Hinzufügen genau einmal, auf
+     den letzten Pass **im Array** — hier SMAA. `render()` überspringt
+     abgeschaltete Pässe aber vollständig. Wer SMAA abschaltet, nimmt der Kette
+     damit ihren einzigen Ausgang, und das fertige Bild landet im
+     Zwischenpuffer. Der Schalter im Debug-Panel tat das seit P2; aufgefallen
+     ist es erst, als eine *Qualitätsstufe* ihn umlegte. Merksatz: **wer einen
+     Pass abschalten kann, muss wissen, wer danach auf den Bildschirm zeichnet.**
 
   Daraus die Regel: **nach jeder Änderung an einem Material die Konsole
   ansehen**, und wenn etwas fehlt, nicht die Zahlen fragen, sondern eine

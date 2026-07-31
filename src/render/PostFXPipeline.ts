@@ -12,9 +12,15 @@ import {
   VignetteEffect,
   type LookupTexture,
 } from 'postprocessing';
-import { HalfFloatType, NoToneMapping, Vector2, type Material } from 'three';
+import { AgXToneMapping, HalfFloatType, NoToneMapping, Vector2, type Material } from 'three';
 
-import { GRADING, POSTFX, type GradingParams } from '@/config/postfx.config';
+import {
+  GRADING,
+  POSTFX,
+  POSTFX_QUALITY,
+  type GradingParams,
+  type PostFxSettings,
+} from '@/config/postfx.config';
 import {
   AO_QUALITY,
   BUDGETS,
@@ -74,6 +80,9 @@ export class PostFXPipeline implements System {
    */
   #lookWantsAo: boolean = POSTFX.ao.enabled;
   #aoLevel: AoSettings = AO_QUALITY[QUALITY[DEFAULT_QUALITY].ao];
+  /** Dieselbe Trennung wie bei der AO — Wunsch des Presets gegen Stufe. */
+  #lookWantsSmaa: boolean = POSTFX.smaa.enabled;
+  #postFxLevel: PostFxSettings = POSTFX_QUALITY[QUALITY[DEFAULT_QUALITY].postFx];
 
   readonly #readouts = {
     kette: '—',
@@ -132,11 +141,7 @@ export class PostFXPipeline implements System {
     composer.addPass(this.#smaaPass);
 
     this.#applyEnabled();
-    this.#readouts.kette = 'Render → AO → Bloom/AgX/LUT/Vignette → SMAA';
-
-    this.setPresenter(() => {
-      composer.render();
-    });
+    this.#refreshPostFx();
 
     context.bus.on('look:apply', ({ look }) => {
       this.#applyLook(look);
@@ -147,6 +152,8 @@ export class PostFXPipeline implements System {
     context.bus.on('quality:changed', ({ level }) => {
       this.#aoLevel = AO_QUALITY[QUALITY[level].ao];
       this.#refreshAo();
+      this.#postFxLevel = POSTFX_QUALITY[QUALITY[level].postFx];
+      this.#refreshPostFx();
     });
 
     this.#registerDebug(context);
@@ -203,7 +210,8 @@ export class PostFXPipeline implements System {
     }
     this.#lookWantsAo = look.postfx.aoEnabled;
     this.#refreshAo();
-    if (this.#smaaPass) this.#smaaPass.enabled = look.postfx.smaaEnabled;
+    this.#lookWantsSmaa = look.postfx.smaaEnabled;
+    this.#refreshPostFx();
 
     Object.assign(this.#grading, look.grading);
     this.#refreshLut();
@@ -230,9 +238,96 @@ export class PostFXPipeline implements System {
     // jemand auf „Niedrig" speichert, das Abschalten der AO dauerhaft fest — und
     // es wäre auf „Ultra" wieder da, ohne dass jemand den Schalter angefasst hat.
     target.postfx.aoEnabled = this.#lookWantsAo;
-    if (this.#smaaPass) target.postfx.smaaEnabled = this.#smaaPass.enabled;
+    // Ebenfalls der Wunsch, aus demselben Grund: sonst schriebe ein auf
+    // „Niedrig" gespeichertes Preset das Abschalten von SMAA dauerhaft fest.
+    target.postfx.smaaEnabled = this.#lookWantsSmaa;
 
     Object.assign(target.grading, this.#grading);
+  }
+
+  /**
+   * Die Kette an die Qualitätsstufe anpassen — P8.2.
+   *
+   * ## Der Bypass
+   *
+   * Bei `composer: false` wird der Präsentierer ausgetauscht: gerendert wird
+   * direkt in den Canvas, die Kette läuft **gar nicht**. Das ist der einzige
+   * Weg, ihre Kosten wirklich loszuwerden — jeder Effekt, der „aus" ist, kostet
+   * immer noch seinen Durchgang, sobald der Composer läuft.
+   *
+   * Dabei muss das **Tonemapping mitwandern**. Die Kette tonemappt mit einem
+   * Effekt, und `init()` stellt den Renderer deshalb auf `NoToneMapping`; ohne
+   * den Tausch stünde im Bypass rohes HDR im Bild, also ein ausgebranntes
+   * Weiß. Der Renderer bekommt AgX, damit die Helligkeit dieselbe bleibt.
+   *
+   * > **Der Wechsel kostet eine Shader-Übersetzung, und zwar aller Materialien.**
+   * > `toneMapping` steht im Programm-Cache-Schlüssel von three (eines der 53
+   * > Felder, die P7.4 beim Aufwärmframe durchgezählt hat). Beim Umschalten auf
+   * > oder von „Minimal" werden deshalb alle Programme neu gebaut. Das ist
+   * > hinnehmbar, weil die Stufe im Regelfall **vor** dem ersten Bild feststeht
+   * > (gespeicherte Wahl oder Ersteinstufung) und nicht mitten im Flug gewählt
+   * > wird — gemessen und beziffert gehört es trotzdem, siehe PLAN.md P8.2.
+   */
+  #refreshPostFx(): void {
+    const level = this.#postFxLevel;
+
+    if (this.#bloom) this.#bloom.mipmapBlurPass.levels = Math.max(1, level.bloomLevels);
+    if (this.#smaaPass) this.#smaaPass.enabled = this.#lookWantsSmaa && level.smaa;
+
+    const context = this.#context;
+    const composer = this.#composer;
+    if (!context || !composer) return;
+
+    const { renderer, scene, camera } = context;
+    if (level.composer) {
+      renderer.toneMapping = NoToneMapping;
+      this.setPresenter(() => {
+        composer.render();
+      });
+      this.#readouts.kette =
+        `Render → AO → Bloom(${level.bloomLevels})/AgX/LUT/Vignette` +
+        (this.#smaaPass?.enabled ? ' → SMAA' : '');
+    } else {
+      renderer.toneMapping = AgXToneMapping;
+      this.setPresenter(() => {
+        // Ausdrücklich auf den Canvas: der letzte Lauf der Kette hinterlässt
+        // sonst sein Zwischenziel, und dann zeichnet die Anwendung in einen
+        // Puffer, den niemand mehr anzeigt.
+        renderer.setRenderTarget(null);
+        renderer.render(scene, camera);
+      });
+      this.#readouts.kette = 'Kette umgangen — direkt in den Canvas (AgX im Renderer)';
+    }
+
+    this.#updateRenderToScreen();
+  }
+
+  /**
+   * Den letzten **aktiven** Pass auf den Bildschirm zeichnen lassen.
+   *
+   * ## Ein Schwarzbild, das es schon vor P8.2 gab
+   *
+   * `EffectComposer.addPass` setzt `renderToScreen` genau einmal, und zwar auf
+   * den letzten Pass **im Array** — bei uns ist das SMAA. `render()` überspringt
+   * abgeschaltete Pässe dagegen vollständig (`if (!pass.enabled) continue`).
+   * Wer SMAA abschaltet, nimmt der Kette damit ihren einzigen Ausgang: das
+   * fertige Bild landet im Zwischenpuffer, und der Canvas bleibt schwarz.
+   *
+   * Gefunden hat es die Stufe „Niedrig", die SMAA seit 8.2 abschaltet — aber
+   * **der Fehler ist älter**: der Schalter „SMAA" im Debug-Panel tat seit P2
+   * genau dasselbe. Aufgefallen ist es nie, weil niemand ihn benutzt hat.
+   *
+   * Gemessen wurde es nicht am Bild, sondern an `probe()`: `anteilNichtSchwarz`
+   * stand bei 0,000, während Draw-Calls, Dreiecke und Instanzen unverändert
+   * plausibel aussahen. Genau der Fall aus CLAUDE.md, „Etwas ist nicht im Bild —
+   * und jede Zahl sagt, es sei alles in Ordnung".
+   */
+  #updateRenderToScreen(): void {
+    const composer = this.#composer;
+    if (!composer) return;
+    let last: (typeof composer.passes)[number] | null = null;
+    for (const pass of composer.passes) if (pass.enabled) last = pass;
+    for (const pass of composer.passes) pass.renderToScreen = pass === last;
   }
 
   /** Qualitätsstufe und Look-Wunsch in den einen Schalter zusammenführen. */
@@ -251,7 +346,7 @@ export class PostFXPipeline implements System {
     this.#refreshAo();
     if (this.#bloom) this.#bloom.blendMode.opacity.value = POSTFX.bloom.enabled ? 1 : 0;
     if (this.#vignette) this.#vignette.blendMode.opacity.value = POSTFX.vignette.enabled ? 1 : 0;
-    if (this.#smaaPass) this.#smaaPass.enabled = POSTFX.smaa.enabled;
+    this.#lookWantsSmaa = POSTFX.smaa.enabled;
   }
 
   #refreshLut(): void {
@@ -304,7 +399,11 @@ export class PostFXPipeline implements System {
       if (this.#vignette) this.#vignette.blendMode.opacity.value = event.value ? 1 : 0;
     });
     effects.addBinding(toggles, 'smaa', { label: 'SMAA' }).on('change', (event) => {
-      if (this.#smaaPass) this.#smaaPass.enabled = event.value;
+      // Über den Wunsch, nicht über den Pass — sonst hebt der Schalter die
+      // Qualitätsstufe auf, und der nächste Stufenwechsel nimmt es wortlos
+      // zurück. Dieselbe Trennung wie beim AO-Schalter darüber.
+      this.#lookWantsSmaa = event.value;
+      this.#refreshPostFx();
     });
 
     const bloom = folder.addFolder({ title: 'Bloom', expanded: false });
@@ -393,6 +492,13 @@ export class PostFXPipeline implements System {
       this.#readouts.kosten = 'GPU-Timer nicht verfügbar — keine Messung möglich.';
       return;
     }
+    // Ohne laufende Kette misst die A/B-Differenz nichts: die Schalter unten
+    // stellen Effekte um, die gar nicht ausgeführt werden. Eine Messung, die
+    // in diesem Fall Zahlen lieferte, wäre schlimmer als keine.
+    if (!this.#postFxLevel.composer) {
+      this.#readouts.kosten = 'Kette ist auf dieser Stufe umgangen — nichts zu messen.';
+      return;
+    }
 
     const steps: ProfileStep[] = [];
     if (this.#ao) {
@@ -405,13 +511,28 @@ export class PostFXPipeline implements System {
         set: (on) => void (bloom.blendMode.opacity.value = on ? 1 : 0),
       });
     }
+    // Beide schalten **hintere** Pässe ab, und der hinterste aktive ist der, der
+    // auf den Bildschirm zeichnet. Ohne das Nachziehen misst die A/B-Differenz
+    // die Kosten eines schwarzen Bildes — siehe `#updateRenderToScreen`.
     if (this.#smaaPass) {
       const pass = this.#smaaPass;
-      steps.push({ label: 'SMAA', set: (on) => void (pass.enabled = on) });
+      steps.push({
+        label: 'SMAA',
+        set: (on) => {
+          pass.enabled = on;
+          this.#updateRenderToScreen();
+        },
+      });
     }
     if (this.#mainPass) {
       const pass = this.#mainPass;
-      steps.push({ label: 'AgX+LUT+Vignette', set: (on) => void (pass.enabled = on) });
+      steps.push({
+        label: 'AgX+LUT+Vignette',
+        set: (on) => {
+          pass.enabled = on;
+          this.#updateRenderToScreen();
+        },
+      });
     }
 
     this.#readouts.kosten = 'messe …';
