@@ -1,8 +1,10 @@
 /**
- * Wasser — PLAN.md P2 / 2.4.
+ * Wasser — PLAN.md P2 / 2.4 (Meer) und P8.6 (Fluss).
  *
- * Nur das Meer. Der Fluss läuft entlang eines Splines und wartet deshalb auf
- * das Spline-System aus P3.
+ * ~~Nur das Meer. Der Fluss läuft entlang eines Splines und wartet deshalb auf
+ * das Spline-System aus P3.~~ Der Fluss ist seit P8.6 da — und er brauchte das
+ * Spline-System nie. Seine Trasse entsteht im Baker, indem sie dem Gefälle
+ * folgt (`carveRiver`), und liegt als `river.json` neben der Heightmap.
  */
 
 export const WATER = {
@@ -76,6 +78,43 @@ export const WATER = {
    * Ein weiter Verlauf sähe aus wie ein Filter über dem Strand.
    */
   edgeFade: 0.8,
+} as const;
+
+/**
+ * Der Fluss — PLAN.md P8.6.
+ *
+ * Das Band liest seine Mittellinie aus `assets/generated/terrain/river.json`;
+ * hier steht nur, wie der Wasserspiegel darauf sitzt.
+ */
+export const RIVER = {
+  /**
+   * Wie hoch der Spiegel über der Bettsohle liegt, in Metern.
+   *
+   * `river.json` führt die **Sohle**. Läge das Band exakt darauf, wäre die
+   * Wassertiefe null — und Farbe, Schaum und Uferblende kommen im Shader
+   * allesamt aus der Tiefe; der Fluss wäre unsichtbar. Gemessen liegt die
+   * Sohle im Median 2,68 m unter dem Ufer, ein Spiegel 0,9 m darüber bleibt
+   * also mit Abstand im Bett.
+   */
+  surfaceRise: 0.9,
+
+  /**
+   * Anteil der Bettbreite, den der Spiegel einnimmt.
+   *
+   * Das Bett läuft als V aus. Ein Spiegel bis zur Bettkante stünde am Ufer
+   * über dem Gelände — sichtbar als Wasser, das den Hang hinaufläuft.
+   */
+  widthFactor: 0.78,
+
+  /**
+   * Ab dieser Neigung der Wasserfläche schäumt es (Δh je Meter Lauf).
+   *
+   * Der Wert entscheidet, ob die beiden Stufen (11,2 m und 39,7 m) als
+   * Wasserfall lesbar sind oder nur als steiles Band. Der Shader blendet
+   * zwischen 0,10 und 0,45 auf; dieser Wert ist die Zählschwelle für die
+   * Messung und muss dazu passen.
+   */
+  foamSlope: 0.1,
 } as const;
 
 // ── Bekannte Grenze der Küstenlinie in P2 ───────────────────────────────────

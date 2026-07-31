@@ -17,11 +17,44 @@ vec3 waveFade = vec3(
 // auf einen festen Wert gesetzt.
 vec2 insideWorld = step(abs(vWaterWorld.xz), vec2(uWorldSize.y));
 float outside = 1.0 - insideWorld.x * insideWorld.y;
-float depth = max(-terrainSurface(vWaterWorld.xz), 0.0);
+// **Gegen die Höhe dieser Fläche, nicht gegen null.** Bis P8.6 stand hier
+// `-terrainSurface(...)`, weil es nur das Meer gab und das auf y = 0 liegt.
+// Der Fluss liegt auf jeder Höhe zwischen 163 m und dem Meer; mit der alten
+// Formel wäre er auf ganzer Länge „80 m tief" gewesen. Für das Meer ändert
+// sich nichts: dort ist `vWaterWorld.y` exakt 0.
+float depth = max(vWaterWorld.y - terrainSurface(vWaterWorld.xz), 0.0);
 depth = mix(depth, 80.0, outside);
 
 gWaterNormal = waterNormal(vWaterWorld.xz, uAtmoTime, waveFade);
 gWaterShade = atmoShade(vWaterWorld);
+
+// Fließendes Wasser steht schief. Die Wellennormale oben ist um die Senkrechte
+// gebaut — auf einem Bett mit Gefälle und erst recht auf einer Wasserfallstufe
+// gehört ihre Störung auf die **tatsächliche** Flächennormale gedreht, sonst
+// wird eine 40-m-Stufe beleuchtet wie ein Teich.
+//
+// Der Zweig hängt an einer Uniform statt an einem eigenen Programm: beide
+// Materialien teilen sich den Shader (`customProgramCacheKey`), und ein
+// zweites Programm für zwei Zeilen wäre 30 zusätzliche Übersetzungen wert.
+float riverFoam = 0.0;
+float riverVoid = 0.0;
+if (uWaterRiver > 0.5) {
+  gWaterNormal = normalize(vWaterSurfaceN + (gWaterNormal - vec3(0.0, 1.0, 0.0)));
+  // Schaum, wo die Fläche steil steht: Stromschnelle und Wasserfall.
+  riverFoam = smoothstep(0.10, 0.45, 1.0 - clamp(vWaterSurfaceN.y, 0.0, 1.0));
+
+  // **Wo kein Bett ist, ist auch kein Wasser.** Der Straßeneinschnitt kreuzt
+  // das Flussbett an 19 von 422 Knoten und schneidet dort bis 35 m tief — die
+  // Wasserfläche spannte sich als **Aquädukt** über den Graben. Im Bild war
+  // das ein helles Band, das frei in der Luft steht; gefunden hat es die
+  // Differenz gegen ein Bild ohne Fluss, nicht die Zahlen (die Wasserlinie ist
+  // an keinem Knoten unter dem Gelände, das war nie das Problem).
+  //
+  // Das hier ist eine **Notmaßnahme, keine Lösung**: der Fluss blendet über
+  // dem Graben aus, statt darüber zu schweben. Richtig wäre eine Brücke oder
+  // ein Durchlass — beides Geometrie, beides nicht in P8.
+  riverVoid = smoothstep(6.0, 14.0, depth);
+}
 
 // Grundfarbe: flach ist heller und leicht grünlich, tief fast schwarz. Bei
 // blauer Stunde trägt die Spiegelung das Bild, nicht die Eigenfarbe.
@@ -36,6 +69,7 @@ float foam = 1.0 - smoothstep(
   uWaterFoam.x + uWaterFoam.y,
   depth + waveOffset
 );
+foam = max(foam, riverFoam);
 foam *= uWaterFoam.z * (1.0 - outside);
 diffuseColor.rgb += vec3(foam);
 
@@ -57,3 +91,4 @@ gWaterRoughness = mix(gWaterRoughness, 0.55, foam);
 // überstimmen dürfen.
 float edge = smoothstep(0.0, uWaterEdgeFade, depth);
 diffuseColor.a *= max(edge, foam);
+diffuseColor.a *= 1.0 - riverVoid;
