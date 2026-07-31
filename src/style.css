@@ -77,6 +77,85 @@ body {
   color: var(--status-warn);
 }
 
+/* ── Ladebildschirm (P7 / 7.3) ─────────────────────────────────────────────
+ *
+ * Deckt das Canvas vollständig ab, bis der Aufwärmframe durch ist. Vorher steht
+ * dort nur die Hintergrundfarbe, und die ist von „lädt noch" nicht zu
+ * unterscheiden — genau die Verwechslung, die in P0 schon einmal eine
+ * Viertelstunde gekostet hat. */
+
+.loading {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-content: center;
+  background: var(--bg);
+  transition: opacity 320ms ease-out;
+}
+
+.loading--done {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading__box {
+  width: min(420px, 80vw);
+}
+
+.loading__title {
+  margin: 0 0 14px;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+.loading__track {
+  height: 2px;
+  background: var(--panel-border);
+  overflow: hidden;
+}
+
+.loading__bar {
+  width: 0;
+  height: 100%;
+  background: var(--fg);
+  /* Nur so lang, dass der Sprung nicht hart wirkt. Länger sähe nach einer
+   * Animation aus, die etwas über den Fortschritt behauptet. */
+  transition: width 140ms linear;
+}
+
+.loading__step {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 10px 0 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--fg);
+}
+
+.loading__percent {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-dim);
+}
+
+.loading__detail {
+  margin: 4px 0 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.loading__detail--error {
+  color: var(--status-over);
+}
+
 /* ── Statistik-Overlay ─────────────────────────────────────────────────── */
 
 .stats {
