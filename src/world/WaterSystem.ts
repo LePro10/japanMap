@@ -23,8 +23,10 @@ import {
  * Eine einzige Ebene auf y = 0, die der Kamera folgt. Zwei Dreiecke; alles
  * Übrige passiert im Fragment-Shader.
  *
- * Der Fluss aus dem Plan fehlt hier bewusst: er läuft entlang eines Splines und
- * kann erst gebaut werden, wenn das Spline-System aus P3 steht.
+ * ~~Der Fluss aus dem Plan fehlt hier bewusst: er läuft entlang eines Splines
+ * und kann erst gebaut werden, wenn das Spline-System aus P3 steht.~~ Seit P8.6
+ * ist er da — und er brauchte das Spline-System nie: seine Trasse entsteht im
+ * Baker, indem sie dem Gefälle folgt, und liegt als river.json vor.
  *
  * Wird **vor** dem TerrainSystem registriert — es wartet auf `terrain:ready`,
  * und dieses Ereignis kommt genau einmal, während das Terrain initialisiert.
@@ -104,7 +106,7 @@ export class WaterSystem implements System {
    * Tiefenfarbe, Schaum, Uferblende und die Atmosphärenanbindung sind
    * dieselbe Rechnung; verschieden sind nur die Flächennormale (das Band kippt
    * mit dem Bett) und der Schaum an steilen Abschnitten. Ein zweites Material
-   * hieße ein zweites Shaderprogramm für zwei Zeilen — und two Programme mehr
+   * hieße ein zweites Shaderprogramm für zwei Zeilen — und zwei Programme mehr
    * kosten hier messbar Übersetzungszeit beim Stufenwechsel (P8.2).
    *
    * **Mit `depthWrite`, anders als das Meer.** Die Meeresebene schreibt keine

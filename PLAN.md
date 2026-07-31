@@ -3389,13 +3389,33 @@ sichtbare Teil steht in 8.8.
 > | Mündung | 643 | 0,070 % | 48 |
 > | Unterlauf (Terrassen) | **2** | **0,000 %** | 11 |
 >
-> **Am Unterlauf ist der Fluss nicht im Bild — und er ist trotzdem da.** 151
-> von 422 Knoten liegen im Sichtvolumen, einer projiziert auf Pixel (1238, 543).
-> Er wird also **verdeckt**. Wahrscheinlichster Grund, nicht bewiesen: die
-> Reisfeld-Terrassen laufen im Baker **nach** dem Flussbett und tragen bis
-> 3,4 m auf; ihr Abstand zur Flussachse ist 16 m, das Wasserband ist an dieser
-> Stelle aber breiter. Das ist der nächste Schritt und steht ausdrücklich als
-> **offen**, nicht als vermutete Ursache in einem Kommentar.
+> ~~**Am Unterlauf ist der Fluss nicht im Bild.** … Wahrscheinlichster Grund:
+> die Reisfeld-Terrassen laufen nach dem Flussbett und tragen bis 3,4 m auf.~~
+>
+> **Beides falsch, und drei Messungen haben es nacheinander widerlegt.** Die
+> Vermutung stand keine Stunde, was für sie spricht: sie war als Vermutung
+> markiert.
+>
+> | geprüft | Ergebnis |
+> |---|---|
+> | von den Terrassen vergraben? | **nein** — freier Bandanteil 100 %, 0 von 160 Knoten unter Gelände |
+> | durch die Uferblende transparent? | **nein** — Wassertiefe Median 3,00 m, Deckkraft 100 % |
+> | außerhalb des Bildes? | **nein** — 151 von 422 Knoten im Sichtvolumen, einer auf Pixel (1238, 543) |
+>
+> **Er wird gezeichnet.** Bei Differenzschwelle **0** sind es **0,869 % der
+> Pixel**, bei Schwelle 2 nur noch 0,002 %. Der Fluss ist also *farblich nicht
+> von den gefluteten Reisfeldern zu unterscheiden*, durch die er läuft — kein
+> Geometrie- und kein Shaderfehler, sondern eine Look-Frage. Und die
+> ursprüngliche Zahl „2 Pixel" war nicht falsch gemessen, sondern **mit einer
+> Schwelle gemessen, die größer war als der Effekt**.
+>
+> **Ein Rauheitsaufschlag (+0,085) war der naheliegende Versuch und ist
+> gemessen wirkungslos** (0,002 % bei Schwelle 2, vorher wie nachher). Wieder
+> ausgebaut — dieselbe Regel, an der in 8.5 schon eine „offensichtlich
+> richtige" Erosionsreparatur gescheitert ist. Was den Fluss dort lesbar macht,
+> muss eine andere Größe sein: Ufer, Böschungsbewuchs oder eine
+> Strömungsstruktur, die ein stehendes Feld nicht hat. **Offen**, und damit ein
+> Fall für 8.7/8.9, nicht für den Wasser-Shader.
 
 **Befund.** `WaterSystem` kennt nur das Meer — eine Ebene auf Y = 0. Ein Fluss
 liegt auf wechselnder Höhe entlang eines Splines und passt nicht in dieses
