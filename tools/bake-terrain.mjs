@@ -227,6 +227,8 @@ const EXPERIMENT = {
   ridge: 1,
   /** Verschiebung der Reisfeldzone nach Süden, in Metern. Gibt der Flanke Länge. */
   riceShift: 0,
+  /** A/B-Schalter für P8.5c: 1 = abgestuftes Vorfeld, 0 = flächige Einebnung wie vor P8. */
+  cityApron: 1,
 };
 
 function buildHeightField(res, seed, spacing) {
@@ -316,7 +318,7 @@ function buildHeightField(res, seed, spacing) {
       const city = ZONES.city;
       const cityMask = boxMask(x, z, city, edgeJitter * 0.5);
       if (cityMask > 0.001) {
-        const core = boxMask(x, z, CITY_CORE, edgeJitter * 0.3);
+        const core = EXPERIMENT.cityApron ? boxMask(x, z, CITY_CORE, edgeJitter * 0.3) : 1;
         const apron = 1 - core;
         const target =
           city.height +
@@ -387,6 +389,36 @@ function erode(height, res, droplets, seed, onProgress) {
 
   // Tropfen starten nur über Land. Im Meer erodiert nichts, und jeder dort
   // verbrauchte Tropfen fehlt am Hang.
+  //
+  // **Diese Schleife verbraucht den Zufallsstrom ungleichmäßig**: sie bricht
+  // bei Landtreffer ab, und wie viele Versuche das braucht, hängt vom Gelände
+  // ab. Ein Treffer mehr oder weniger verschiebt den Strom für alle folgenden
+  // Tropfen. Das sieht nach der Ursache dafür aus, dass ein **örtlicher**
+  // Geländeeingriff die **ganze** Karte verändert — ist es aber nicht, und das
+  // ist gemessen:
+  //
+  // | | abweichende Texel | westlichste Abweichung |
+  // |---|---|---|
+  // | vor der Erosion            | 17,28 % (x 28…1522) | x = 28 |
+  // | nach der Erosion           | 66,82 % | x = −1536 |
+  // | nach der Erosion, Strom stabilisiert | **66,82 %** | x = −1536 |
+  //
+  // Gemessen mit `--flat-city` gegen den Normalfall, sonst identisch. Der
+  // Eingriff selbst ist sauber lokal — vor der Erosion endet er bei x = 28.
+  // Ein Versuchsstand, der immer das volle Kontingent zieht (2 × 24 Ziehungen
+  // je Tropfen), änderte an der Ausbreitung **nichts**. Die Kopplung entsteht
+  // also nicht am Strom, sondern in der Erosion selbst: 2 Mio. Tropfen auf
+  // einem gemeinsam beschriebenen Feld sind ein chaotisches System, und eine
+  // Störung wandert darin über die ganze Karte.
+  //
+  // Der Versuchsstand ist deshalb **nicht** eingebaut worden. Er hätte das
+  // Höhenfeld vollständig neu gewürfelt — mit neuen Straßen, neuer Vegetation
+  // und neuen Prop-Höhen — für einen Nutzen, der nachweislich nicht eintritt.
+  //
+  // Die praktische Folge steht in PLAN.md unter 8.5: **kein A/B am fertigen
+  // Höhenfeld ist örtlich.** Wer wissen will, was ein Eingriff *selbst* tut,
+  // misst mit `--erosion 0`; wer wissen will, was am Ende herauskommt, misst
+  // das Ganze und schreibt keine Ursache dazu, die er nicht getrennt hat.
   const spawnLimit = 24;
   const report = Math.max(1, Math.floor(droplets / 40));
 
@@ -1010,6 +1042,527 @@ function carveRoads(height, res, spacing, roadFile) {
   };
 }
 
+// ── Schritt 5b2: Flussbett ───────────────────────────────────────────────────
+
+const RIVER = {
+  /** Gitter, auf dem Senken gefüllt und der Abstieg verfolgt wird. 6 m je Zelle. */
+  coarseRes: 512,
+  /**
+   * Vorzug für Wege nach Süden bei gleich starkem Gefälle.
+   *
+   * **Steht auf 0, und das ist ein Messergebnis.** Der Regler war der Versuch,
+   * den Fluss zur Südküste zu lenken, statt ihn nach Westen aus der Karte
+   * laufen zu lassen; gemessen mit 0, 0,9 und 2,0 endete er jedes Mal am selben
+   * Westrand (x ≈ −1530). Er kann nur unter Nachbarn wählen, die **abwärts**
+   * führen, und nach Süden ging es schlicht nicht abwärts. Gelöst hat es erst
+   * die Vorflut (siehe `fillDepressions`). Der Regler bleibt als
+   * dokumentierter Fehlversuch stehen — wer ihn wieder aufdreht, soll wissen,
+   * dass er das Problem nicht löst.
+   */
+  southBias: 0,
+  /** Notbremse. Die Diagonale sind 724 Zellen; alles darüber wäre ein Irrweg. */
+  maxSteps: 2400,
+  /** Fensterbreite der Glättung in Knoten — auf 6 m Raster sind ±6 rund 72 m. */
+  smoothing: 6,
+  /**
+   * Ab diesem Gefälle gilt der Kopf der Trasse als Felswand und wird
+   * abgeschnitten. Ohne das beginnt der Fluss am Gipfel und seine erste
+   * „Stufe" ist gemessen **242 m** hoch — das ist kein Wasserfall, das ist die
+   * Flanke des Massivs.
+   */
+  headCliff: 0.6,
+  /** Halbe Bettbreite an Quelle und Mündung, in Metern. */
+  halfWidthSource: 4,
+  halfWidthMouth: 17,
+  /** Bettiefe unter dem Ufer an Quelle und Mündung, in Metern. */
+  depthSource: 1.4,
+  depthMouth: 3.6,
+  /** Auslauf der Uferböschung über die Bettkante hinaus. */
+  bank: 12,
+  /** Ab diesem Gefälle gilt ein Abschnitt als Stufe und wird kaum eingeschnitten. */
+  fallSlope: 0.28,
+  /** Wo das Bett endet: Höhe unter diesem Wert ist Meer. */
+  seaLevel: 0.5,
+};
+
+/**
+ * Ein Flussbett vom Massiv zur Südküste — PLAN.md P8.5b.
+ *
+ * **Warum die Trasse hier entsteht und nicht in `gen-roads.mjs`.** Der Plan
+ * sah den Fluss als weiteren Straßentyp: dieselbe Spline-Maschinerie, nur mit
+ * V-Profil. Das hätte funktioniert und die Zirkularität des Bake-Kreislaufs
+ * geerbt — der Generator braucht ein Höhenfeld, der Baker die Trasse. Ein Fluss
+ * braucht diesen Umweg nicht: **er folgt dem steilsten Gefälle**, und das
+ * Höhenfeld liegt an dieser Stelle bereits fertig vor. Die Trasse wird also
+ * verfolgt statt geplant, und es gibt nichts zweimal zu backen.
+ *
+ * Der Preis: die Straßen kennen den Fluss nicht und können ihn kreuzen, ohne
+ * eine Brücke zu setzen. Das ist bewusst offen — Brücken stehen nicht in P8.
+ *
+ * ## Verfolgung
+ *
+ * Steilster Abstieg allein zickzackt: das Höhenfeld hat nach der Erosion auf
+ * jedem Meter eine andere lokale Steilrichtung, und der Weg sähe aus wie eine
+ * Säge. Deshalb `momentum` — die neue Richtung ist eine Mischung aus der
+ * gefundenen und der bisherigen. Dieselbe Größe, die einen Fluss in der Natur
+ * geradeaus durch eine flache Stelle trägt.
+ *
+ * Senken sind der zweite Fall, und der erste Anlauf hat ihn nicht gelöst. Die
+ * hydraulische Erosion hinterlässt abflusslose Mulden; steilster Abstieg bleibt
+ * darin stehen. Ein wachsender Suchring (bis 143 m) sollte darüber hinweghelfen
+ * und tat es nicht: **der Fluss endete nach 247 m auf 136 m Höhe.** Eine Mulde
+ * kann größer sein als jeder feste Radius, und ein Ring findet ohnehin nur
+ * einen tieferen *Punkt*, keinen begehbaren *Weg* dorthin.
+ *
+ * Ersetzt durch `spill()` — füllen und überlaufen lassen. Das Verfahren steigt
+ * vom Standpunkt aus flutend an, immer die niedrigste Randzelle zuerst, und
+ * hört auf, sobald eine Zelle unter dem Startniveau erreicht ist. Das ist der
+ * Überlauf, und die Elternkette dorthin ist der Weg über den Seeboden. Kosten:
+ * ein Binärheap über die besuchten Zellen, in der Praxis einige Tausend.
+ *
+ * ## Bettniveau
+ *
+ * Nach der Verfolgung läuft ein **laufendes Minimum** über die Höhen. Ein
+ * Fluss, der bergauf fließt, ist der sichtbarste denkbare Fehler, und die
+ * Verfolgung allein garantiert das nicht: über eine Mulde hinweg steigt sie.
+ * Das laufende Minimum macht daraus einen Abschnitt mit Gefälle null — einen
+ * Stausee — statt eines Anstiegs.
+ *
+ * ## Stufen
+ *
+ * Wo das Bett steiler als `fallSlope` fällt, wird **nicht** eingeschnitten.
+ * Ein Einschnitt würde die Kante zur Rampe glätten, und genau die Kante ist
+ * der Wasserfall. Die betroffenen Abschnitte stehen in `river.json`, damit
+ * `WaterSystem` sie in P8.6 anders rendern kann als das Bett.
+ */
+/**
+ * Senken auffüllen — Priority-Flood (Barnes u. a. 2014).
+ *
+ * Flutet vom **Kartenrand** her nach innen, immer die niedrigste Randzelle
+ * zuerst, und hebt jede Zelle mindestens auf das Niveau, über das sie erreicht
+ * wurde. Ergebnis: ein Feld ohne abflusslose Mulden, auf dem steilster Abstieg
+ * von jedem Punkt aus garantiert den Kartenrand erreicht.
+ *
+ * **Warum überhaupt.** Zwei Anläufe ohne dieses Feld sind gescheitert, und
+ * beide Male hat die Messung es gezeigt statt einer Vermutung: ein wachsender
+ * Suchring endete nach 247 m, ein „füllen und überlaufen" je Mulde irrte 4949 m
+ * lang von Senke zu Senke und blieb auf 116 m Höhe stehen. Beide behandeln die
+ * Mulde als Sonderfall. Sie ist keiner — nach 2 000 000 Erosionstropfen ist das
+ * halbe Feld voller Mulden, und der Sonderfall ist der Normalfall.
+ *
+ * **Auf grobem Gitter.** Über die vollen 2048² wären das 4,2 Mio. Heap-
+ * Operationen; auf 512² sind es 262 144 und der Schritt bleibt unter einer
+ * Sekunde. Bei 6 m je Zelle ist das für eine Flusstrasse reichlich — sie wird
+ * anschließend ohnehin geglättet, und die Bettsohle kommt aus dem vollen Feld.
+ * Verkleinert wird mit dem **Minimum** je Block, nicht dem Mittel: ein Fluss
+ * sucht die tiefste Rinne, und ein Mittelwert würde sie zuschütten.
+ */
+function fillDepressions(field, res, coarseRes) {
+  const block = Math.floor(res / coarseRes);
+  const coarse = new Float32Array(coarseRes * coarseRes);
+  for (let cz = 0; cz < coarseRes; cz++) {
+    for (let cx = 0; cx < coarseRes; cx++) {
+      let low = Infinity;
+      for (let dz = 0; dz < block; dz++) {
+        const iz = Math.min(res - 1, cz * block + dz);
+        for (let dx = 0; dx < block; dx++) {
+          const ix = Math.min(res - 1, cx * block + dx);
+          const v = field[iz * res + ix];
+          if (v < low) low = v;
+        }
+      }
+      coarse[cz * coarseRes + cx] = low;
+    }
+  }
+
+  const filled = Float32Array.from(coarse);
+  const done = new Uint8Array(coarseRes * coarseRes);
+  const heapKey = [];
+  const heapValue = [];
+
+  const push = (key, value) => {
+    heapKey.push(key);
+    heapValue.push(value);
+    let i = heapKey.length - 1;
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (heapKey[p] <= heapKey[i]) break;
+      [heapKey[p], heapKey[i]] = [heapKey[i], heapKey[p]];
+      [heapValue[p], heapValue[i]] = [heapValue[i], heapValue[p]];
+      i = p;
+    }
+  };
+
+  const pop = () => {
+    const value = heapValue[0];
+    const lastKey = heapKey.pop();
+    const lastValue = heapValue.pop();
+    if (heapKey.length > 0) {
+      heapKey[0] = lastKey;
+      heapValue[0] = lastValue;
+      let i = 0;
+      for (;;) {
+        const l = i * 2 + 1;
+        const r = l + 1;
+        let s = i;
+        if (l < heapKey.length && heapKey[l] < heapKey[s]) s = l;
+        if (r < heapKey.length && heapKey[r] < heapKey[s]) s = r;
+        if (s === i) break;
+        [heapKey[s], heapKey[i]] = [heapKey[i], heapKey[s]];
+        [heapValue[s], heapValue[i]] = [heapValue[i], heapValue[s]];
+        i = s;
+      }
+    }
+    return value;
+  };
+
+  // **Nur der Südrand ist Abfluss.** Der erste Entwurf hat alle vier
+  // Kartenränder als Senke geimpft — das ist die Lehrbuchvariante und hier
+  // falsch: der Fluss lief dann gemessen nach **Westen aus der Karte** (Mündung
+  // x = −1526 auf 18 m), weil der Westrand tiefer liegt als der Weg zur Küste.
+  // Eine Südneigung bei der Richtungswahl half nicht, auch nicht in doppelter
+  // Stärke — sie kann nur unter den Abwärtsnachbarn wählen, und nach Süden ging
+  // es schlicht nicht abwärts.
+  //
+  // Richtig ist die Ursache statt des Symptoms: das Meer liegt im Süden
+  // (`COAST`), und ein Gewässer hat genau eine Vorflut. Werden die anderen drei
+  // Ränder als Wand behandelt, füllt das Verfahren die Karte gegen sie auf und
+  // jeder Abstieg endet zwangsläufig an der Küste.
+  const edge = coarseRes - 1;
+  for (let i = 0; i < coarseRes; i++) {
+    const index = edge * coarseRes + i;
+    if (done[index]) continue;
+    done[index] = 1;
+    push(filled[index], index);
+  }
+
+  while (heapKey.length > 0) {
+    const index = pop();
+    const level = filled[index];
+    const cx = index % coarseRes;
+    const cz = (index / coarseRes) | 0;
+    for (const [dx, dz] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]) {
+      const nx = cx + dx;
+      const nz = cz + dz;
+      if (nx < 0 || nz < 0 || nx > edge || nz > edge) continue;
+      const n = nz * coarseRes + nx;
+      if (done[n]) continue;
+      done[n] = 1;
+      // Das eigentliche Auffüllen: eine Zelle unter dem Niveau, über das sie
+      // erreicht wurde, ist eine Mulde und wird angehoben. Die winzige Stufe
+      // hält den Abstieg in Bewegung, statt ihn auf einer exakten Ebene
+      // stehenzulassen.
+      if (filled[n] <= level) filled[n] = level + 1e-3;
+      push(filled[n], n);
+    }
+  }
+
+  return { filled, coarseRes, block };
+}
+
+function carveRiver(height, res, spacing, traceField) {
+  const half = WORLD_SIZE / 2;
+  const last = res - 1;
+  const field = traceField ?? height;
+
+  const at = (x, z) => {
+    const gx = clamp((x + half) / spacing, 0, last);
+    const gz = clamp((z + half) / spacing, 0, last);
+    const ix = gx | 0;
+    const iz = gz | 0;
+    const jx = ix < last ? ix + 1 : last;
+    const jz = iz < last ? iz + 1 : last;
+    const fx = gx - ix;
+    const fz = gz - iz;
+    const h = (a, b) => field[b * res + a];
+    return (
+      (h(ix, iz) + (h(jx, iz) - h(ix, iz)) * fx) * (1 - fz) +
+      (h(ix, jz) + (h(jx, jz) - h(ix, jz)) * fx) * fz
+    );
+  };
+
+
+  // ── 1. Quelle: der höchste Punkt der Südflanke des Massivs.
+  // Nicht der Gipfel selbst — von dort liefe der Abstieg mit gleicher
+  // Wahrscheinlichkeit nach Norden aus der Karte heraus.
+  const m = ZONES.mountain;
+  let source = null;
+  let best = -Infinity;
+  for (let iz = 0; iz < res; iz += 2) {
+    const z = -half + iz * spacing;
+    if (z < m.z || z > m.z + 420) continue;
+    for (let ix = 0; ix < res; ix += 2) {
+      const x = -half + ix * spacing;
+      if (Math.hypot(x - m.x, z - m.z) > m.inner + 120) continue;
+      const h = field[iz * res + ix];
+      if (h > best) {
+        best = h;
+        source = { x, z };
+      }
+    }
+  }
+  if (!source) return null;
+
+  // ── 2. Verfolgung auf dem muldenfreien Feld.
+  const { filled, coarseRes } = fillDepressions(field, res, RIVER.coarseRes);
+  const coarseSpacing = WORLD_SIZE / coarseRes;
+  const coarseEdge = coarseRes - 1;
+  const toCoarse = (v) => clamp(Math.round((v + half) / coarseSpacing), 0, coarseEdge);
+
+  let cx = toCoarse(source.x);
+  let cz = toCoarse(source.z);
+  const path = [{ x: source.x, y: best, z: source.z }];
+  const seen = new Uint8Array(coarseRes * coarseRes);
+  let stopped = 'maxSteps';
+
+  for (let s = 0; s < RIVER.maxSteps; s++) {
+    const index = cz * coarseRes + cx;
+    // Auf dem aufgefüllten Feld kann ein Weg nicht im Kreis laufen — die
+    // Prüfung steht trotzdem hier, weil ein Kreis der einzige Fehler wäre,
+    // den man dem fertigen Bild nicht ansieht.
+    if (seen[index]) {
+      stopped = 'Schleife';
+      break;
+    }
+    seen[index] = 1;
+
+    const worldX = -half + cx * coarseSpacing;
+    const worldZ = -half + cz * coarseSpacing;
+    const y = at(worldX, worldZ);
+    // Der Quellknoten steht schon in `path`; ab dem zweiten Schritt anhängen.
+    if (s > 0) path.push({ x: worldX, y, z: worldZ });
+
+    if (y <= RIVER.seaLevel) {
+      stopped = 'Meer';
+      break;
+    }
+    if (cx === 0 || cz === 0 || cx === coarseEdge || cz === coarseEdge) {
+      stopped = 'Kartenrand';
+      break;
+    }
+
+    // D8: unter den acht Nachbarn zählt nur, wer **echt tiefer** liegt — auf
+    // dem aufgefüllten Feld gibt es davon immer mindestens einen. Welcher es
+    // wird, entscheidet ein Punktwert aus Gefälle und Südneigung.
+    //
+    // **Warum überhaupt eine Neigung.** Ohne sie läuft der Fluss gemessen nach
+    // **Westen aus der Karte** (Mündung bei x = −1526, z = −11, auf 18 m) — die
+    // natürliche Entwässerung des Massivs geht dorthin, und SPEC §2.1 will ihn
+    // über die Terrassen zur Südküste. Die Neigung wählt nur **unter den
+    // Abwärtsnachbarn** aus; jeder Schritt bleibt damit echtes Gefälle, und ein
+    // Fluss, der bergauf fließt, ist weiterhin ausgeschlossen.
+    let bestIndex = -1;
+    let bestScore = -Infinity;
+    const here = filled[index];
+    for (let dz = -1; dz <= 1; dz++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dz === 0) continue;
+        const nx = cx + dx;
+        const nz = cz + dz;
+        if (nx < 0 || nz < 0 || nx > coarseEdge || nz > coarseEdge) continue;
+        const n = nz * coarseRes + nx;
+        if (filled[n] >= here) continue;
+        // Auf die Diagonale normiert, sonst bevorzugt D8 sie systematisch.
+        const run = Math.hypot(dx, dz);
+        const score = (here - filled[n]) / run + (dz / run) * RIVER.southBias;
+        if (score > bestScore) {
+          bestScore = score;
+          bestIndex = n;
+        }
+      }
+    }
+    if (bestIndex < 0) {
+      stopped = 'kein Gefälle';
+      break;
+    }
+    cx = bestIndex % coarseRes;
+    cz = (bestIndex / coarseRes) | 0;
+  }
+
+  // Den Kopf abschneiden, solange er Felswand ist. Der Abstieg startet am
+  // höchsten Punkt der Flanke; die ersten Zellen stürzen dort senkrecht ab.
+  let head = 0;
+  while (head < path.length - 24) {
+    const a = path[head];
+    const b = path[head + 1];
+    const run = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+    if ((a.y - b.y) / run < RIVER.headCliff) break;
+    head++;
+  }
+  if (head > 0) path.splice(0, head);
+
+  if (path.length < 12) return null;
+
+  // ── 3. Glätten in XZ, dann laufendes Minimum in Y.
+  const smooth = path.map((p, i) => {
+    let sx = 0;
+    let sz = 0;
+    let n = 0;
+    for (let k = -RIVER.smoothing; k <= RIVER.smoothing; k++) {
+      const q = path[clamp(i + k, 0, path.length - 1)];
+      sx += q.x;
+      sz += q.z;
+      n++;
+    }
+    return { x: sx / n, z: sz / n };
+  });
+
+  const nodes = [];
+  let running = Infinity;
+  for (let i = 0; i < smooth.length; i++) {
+    const y = Math.min(running, at(smooth[i].x, smooth[i].z));
+    running = y;
+    nodes.push({ x: smooth[i].x, y, z: smooth[i].z });
+  }
+
+  // ── 4. Kennwerte je Knoten: Breite und Tiefe wachsen flussabwärts, das
+  // Gefälle entscheidet über Stufen.
+  const total = nodes.length - 1;
+  const halfWidths = new Float32Array(nodes.length);
+  const depths = new Float32Array(nodes.length);
+  const falls = new Float32Array(nodes.length);
+  for (let i = 0; i < nodes.length; i++) {
+    const t = i / Math.max(total, 1);
+    halfWidths[i] = lerp(RIVER.halfWidthSource, RIVER.halfWidthMouth, t);
+    depths[i] = lerp(RIVER.depthSource, RIVER.depthMouth, t);
+    const a = nodes[Math.max(0, i - 1)];
+    const b = nodes[Math.min(nodes.length - 1, i + 1)];
+    const run = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+    falls[i] = smoothstep(RIVER.fallSlope, RIVER.fallSlope * 2, (a.y - b.y) / run);
+  }
+
+  // ── 5. Einschneiden. „Nächster gewinnt" wie bei Straßen und Bank.
+  const bedY = new Float32Array(res * res);
+  const bedDist = new Float32Array(res * res).fill(Infinity);
+  const bedHalf = new Float32Array(res * res);
+  const bedDepth = new Float32Array(res * res);
+  const bedFall = new Float32Array(res * res);
+  const riverDistance = new Float32Array(res * res).fill(Infinity);
+
+  for (let i = 0; i < total; i++) {
+    const a = nodes[i];
+    const b = nodes[i + 1];
+    const reach = Math.max(halfWidths[i], halfWidths[i + 1]) + RIVER.bank;
+
+    const minX = Math.max(0, Math.floor((Math.min(a.x, b.x) - reach + half) / spacing));
+    const maxX = Math.min(last, Math.ceil((Math.max(a.x, b.x) + reach + half) / spacing));
+    const minZ = Math.max(0, Math.floor((Math.min(a.z, b.z) - reach + half) / spacing));
+    const maxZ = Math.min(last, Math.ceil((Math.max(a.z, b.z) + reach + half) / spacing));
+
+    const dx = b.x - a.x;
+    const dz = b.z - a.z;
+    const lengthSquared = dx * dx + dz * dz;
+    if (lengthSquared < 1e-8) continue;
+
+    for (let iz = minZ; iz <= maxZ; iz++) {
+      const wz = -half + iz * spacing;
+      for (let ix = minX; ix <= maxX; ix++) {
+        const wx = -half + ix * spacing;
+        const t = clamp(((wx - a.x) * dx + (wz - a.z) * dz) / lengthSquared, 0, 1);
+        const distance = Math.hypot(wx - (a.x + dx * t), wz - (a.z + dz * t));
+        if (distance >= reach) continue;
+
+        const index = iz * res + ix;
+        if (distance < riverDistance[index]) riverDistance[index] = distance;
+        if (distance >= bedDist[index]) continue;
+        bedDist[index] = distance;
+        bedY[index] = a.y + (b.y - a.y) * t;
+        bedHalf[index] = lerp(halfWidths[i], halfWidths[i + 1], t);
+        bedDepth[index] = lerp(depths[i], depths[i + 1], t);
+        bedFall[index] = lerp(falls[i], falls[i + 1], t);
+      }
+    }
+  }
+
+  let carved = 0;
+  let volume = 0;
+  let deepest = 0;
+
+  for (let index = 0; index < height.length; index++) {
+    const distance = bedDist[index];
+    if (!Number.isFinite(distance)) continue;
+
+    const halfWidth = bedHalf[index];
+    const depth = bedDepth[index];
+
+    // V-Profil: in der Mitte am tiefsten, quadratisch zur Bettkante hin
+    // auslaufend. Ein Rechteckprofil ergäbe einen Kanal mit senkrechten Wänden.
+    let target;
+    let weight;
+    if (distance <= halfWidth) {
+      const u = distance / halfWidth;
+      target = bedY[index] - depth * (1 - u * u);
+      weight = 1;
+    } else {
+      const t = (distance - halfWidth) / RIVER.bank;
+      if (t >= 1) continue;
+      target = bedY[index];
+      weight = 0.5 * (1 + Math.cos(Math.PI * t));
+    }
+
+    // An einer Stufe wird kaum eingeschnitten: der Einschnitt würde die Kante
+    // zur Rampe glätten, und die Kante ist der Wasserfall.
+    weight *= 1 - bedFall[index] * 0.9;
+
+    const before = height[index];
+    // Nur abtragen. Ein Fluss baut keinen Damm; wo das Gelände unter dem Bett
+    // liegt, entsteht ein Kolk, und das ist richtig so.
+    if (target >= before) continue;
+
+    const after = before + (target - before) * weight;
+    height[index] = after;
+    const cut = before - after;
+    volume += cut * spacing * spacing;
+    if (cut > deepest) deepest = cut;
+    carved++;
+  }
+
+  // ── 6. Kennwerte für die Ausgabe.
+  let ascending = 0;
+  let drop = 0;
+  const fallSections = [];
+  let open = null;
+  for (let i = 0; i < total; i++) {
+    if (nodes[i + 1].y > nodes[i].y + 1e-4) ascending++;
+    drop += Math.max(0, nodes[i].y - nodes[i + 1].y);
+    const isFall = falls[i] > 0.5;
+    if (isFall && !open) open = { from: i, top: nodes[i].y };
+    if (!isFall && open) {
+      const fall = open.top - nodes[i].y;
+      // Unter 4 m ist es eine Stromschnelle, kein Wasserfall — und ein
+      // Wasserfall, den man nicht sieht, ist eine Zeile in einer Datei.
+      if (fall >= 4) fallSections.push({ from: open.from, to: i, drop: fall });
+      open = null;
+    }
+  }
+
+  let length = 0;
+  for (let i = 0; i < total; i++) {
+    length += Math.hypot(nodes[i + 1].x - nodes[i].x, nodes[i + 1].z - nodes[i].z);
+  }
+
+  return {
+    nodes,
+    halfWidths,
+    fallSections,
+    riverDistance,
+    stopped,
+    carved,
+    volume,
+    deepest,
+    length,
+    drop,
+    ascending,
+    sourceY: nodes[0].y,
+    mouthY: nodes[nodes.length - 1].y,
+  };
+}
+
 // ── Schritt 5d: Stadtplateau ─────────────────────────────────────────────────
 
 /**
@@ -1395,6 +1948,7 @@ async function main() {
   // woanders liegt.
   EXPERIMENT.ridge = Number(opts.ridge ?? 1);
   EXPERIMENT.riceShift = Number(opts['rice-shift'] ?? 0);
+  EXPERIMENT.cityApron = opts['flat-city'] ? 0 : 1;
   BENCH.halfWidth = Number(opts['bench-width'] ?? BENCH.halfWidth);
   BENCH.tolerance = Number(opts['bench-tolerance'] ?? BENCH.tolerance);
   ZONES.rice.z += EXPERIMENT.riceShift;
@@ -1469,6 +2023,12 @@ async function main() {
   // Einschnitte, und das Ergebnis wanderte bei jedem Lauf weiter. Sichtbar
   // wurde es an der Dorfstraße: ihr Mindestradius fiel von 21,8 m auf 8,1 m,
   // ohne dass sich an ihrem Quelltext etwas geändert hätte.
+  // Das Feld **vor** Bank und Straßeneinschnitt. Der Fluss verfolgt darauf
+  // seine Trasse: er war vor der Straße da, und ohne diese Kopie fällt er in
+  // den bis zu 86 m tiefen Straßengraben und endet dort als abflussloser See.
+  // Gemessen genau so — der erste Lauf brach nach 247 m ab.
+  const naturalHeight = Float32Array.from(height);
+
   const roadPath = join(outDir, '..', 'roads', 'roads.json');
   let roadReport = null;
   try {
@@ -1528,11 +2088,53 @@ async function main() {
     );
   }
 
+  // Flussbett. **Nach** dem Straßeneinschnitt, sonst füllen die
+  // Straßenböschungen es wieder auf — derselbe Fehler, den `CITY_PAD_Y` für die
+  // Stadtplatte dokumentiert. Und **vor** den Reisterrassen, damit die
+  // Parzellen sich am Fluss ausrichten statt ihn zuzuplanieren; ihren Abstand
+  // hält der Fluss über dasselbe Distanzfeld wie die Straßen.
+  let riverReport = null;
+  if (opts['no-river']) {
+    console.log(c.dim('  5b2  --no-river: kein Flussbett.'));
+  } else {
+    process.stdout.write('  5b2  Flussbett … ');
+    riverReport = carveRiver(height, res, spacing, naturalHeight);
+    if (riverReport) {
+      console.log(
+        c.green('fertig') +
+          c.dim(
+            ` ${riverReport.nodes.length} Knoten · ` +
+              `${riverReport.length.toFixed(0)} m · ` +
+              `${riverReport.sourceY.toFixed(0)} → ${riverReport.mouthY.toFixed(0)} m · ` +
+              `${riverReport.fallSections.length} Stufen · ` +
+              `Ende: ${riverReport.stopped} · ` +
+              `${(riverReport.volume / 1e6).toFixed(2)} Mm³`,
+          ),
+      );
+      if (riverReport.ascending > 0) {
+        console.log(c.yellow(`  ⚠ Flussbett steigt an ${riverReport.ascending} Knoten an.`));
+      }
+    } else {
+      console.log(c.yellow('keine Trasse gefunden.'));
+    }
+  }
+
   // Reisfeld-Terrassen. **Nach** dem Straßeneinschnitt, damit die Parzellen um
   // die Fahrbahn herum aufhören statt sie mit anzuheben — und vor der
   // Zonenmaske, damit die eingeebnete Fläche als Reisfeld texturiert wird.
+  let clearance = roadReport?.roadDistance ?? null;
+  if (riverReport) {
+    const river = riverReport.riverDistance;
+    if (clearance) {
+      const merged = new Float32Array(clearance.length);
+      for (let i = 0; i < merged.length; i++) merged[i] = Math.min(clearance[i], river[i]);
+      clearance = merged;
+    } else {
+      clearance = river;
+    }
+  }
   process.stdout.write('  5c   Reisfeld-Terrassen … ');
-  const paddyReport = terracePaddies(height, res, spacing, seed, roadReport?.roadDistance ?? null);
+  const paddyReport = terracePaddies(height, res, spacing, seed, clearance);
   if (paddyReport) {
     console.log(
       c.green('fertig') +
@@ -1596,6 +2198,35 @@ async function main() {
   const paddyBuffer = paddyReport ? writePng(paddyReport.mask, paddyReport.maskRes, paddyReport.maskRes, 0) : null;
   console.log(c.green('fertig'));
 
+  // Flusstrasse für die Laufzeit. Flache Zahlenfolge wie `roads.json`: die
+  // Datei wird einmal geladen und direkt in ein Attribut geschoben, ein Array
+  // aus Objekten müsste dafür erst wieder auseinandergenommen werden.
+  const riverJson = riverReport
+    ? JSON.stringify(
+        {
+          generator: 'tools/bake-terrain.mjs',
+          seed,
+          length: Math.round(riverReport.length * 100) / 100,
+          drop: Math.round(riverReport.drop * 100) / 100,
+          endedBy: riverReport.stopped,
+          centerline: riverReport.nodes.flatMap((n) => [
+            Math.round(n.x * 100) / 100,
+            Math.round(n.y * 100) / 100,
+            Math.round(n.z * 100) / 100,
+          ]),
+          halfWidths: Array.from(riverReport.halfWidths, (w) => Math.round(w * 100) / 100),
+          /** Abschnitte, die als Stufe stehen geblieben sind — P8.6 rendert sie anders. */
+          falls: riverReport.fallSections.map((f) => ({
+            from: f.from,
+            to: f.to,
+            drop: Math.round(f.drop * 100) / 100,
+          })),
+        },
+        null,
+        1,
+      )
+    : null;
+
   const meta = {
     generator: 'tools/bake-terrain.mjs',
     seed,
@@ -1644,6 +2275,18 @@ async function main() {
           levelRange: [paddyReport.minLevel, paddyReport.maxLevel],
         }
       : null,
+    river: riverReport
+      ? {
+          file: 'river.json',
+          checksum: sha256(Buffer.from(riverJson, 'utf8')),
+          nodes: riverReport.nodes.length,
+          length: Math.round(riverReport.length),
+          sourceY: Math.round(riverReport.sourceY * 100) / 100,
+          mouthY: Math.round(riverReport.mouthY * 100) / 100,
+          falls: riverReport.fallSections.length,
+          endedBy: riverReport.stopped,
+        }
+      : null,
     measured: {
       minHeight: Math.round(actualMin * 100) / 100,
       maxHeight: Math.round(actualMax * 100) / 100,
@@ -1669,6 +2312,7 @@ async function main() {
     writeFile(join(outDir, 'normal.png'), normalBuffer),
     writeFile(join(outDir, 'zones.png'), zoneBuffer),
     ...(paddyBuffer ? [writeFile(join(outDir, 'paddy.png'), paddyBuffer)] : []),
+    ...(riverReport ? [writeFile(join(outDir, 'river.json'), `${riverJson}\n`)] : []),
     writeFile(join(outDir, 'meta.json'), `${JSON.stringify(meta, null, 2)}\n`),
   ]);
 
