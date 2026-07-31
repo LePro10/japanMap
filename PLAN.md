@@ -2095,6 +2095,20 @@ Weg und in Rennspielen weit verbreitet.
       | `stadt-neon` | 7779 | 0,84 % | **111,6** | 382 |
       | `stadt-strasse` | 170 467 | 18,5 % | 38,8 | 290 |
 
+      > **Nach P8.1 und P8.2 nachgeprüft, nicht angenommen.** Beide Phasen
+      > fassen die Qualitätsstufen an, und die P6-Zahlen liegen alle auf Ultra.
+      > Nachgemessen mit demselben Verfahren:
+      >
+      > | Blickpunkt | Pixel | Anteil | Ø Differenz | Spitze |
+      > |---|---|---|---|---|
+      > | `stadt-neon` | 7671 | 0,83 % | 113,1 | 382 |
+      > | `stadt-strasse` | 170 437 | 18,49 % | 38,8 | 293 |
+      >
+      > Der Rest­unterschied (1,4 % am Money-Shot) kommt aus dem Schalter: die
+      > erste Messung nahm den Debug-Umschalter (`plane.y = 0`), die
+      > Nachprüfung `uReflectStrength = 0`. Beides bedeutet „keine Spiegelung",
+      > der Weg dorthin ist ein anderer.
+
       Das Kriterium ist damit erfüllt: 111,6 mittlere Differenz auf knapp einem
       Prozent des Bildes ist kein Rauschen, das ist der Neonschriftzug in der
       Pfütze. Und im Straßenzug, wo die Kamera zwischen den Pfützen steht, ist
@@ -2170,6 +2184,18 @@ Weg und in Rennspielen weit verbreitet.
       > stärker als der Rest —, der Faktor fällt von 1,8 auf 1,41. Was sich
       > nicht ändern kann, ist die Richtung: unter 1 wäre die Spiegelung
       > geometrisch falsch.
+
+      > **Nach P8.1 und P8.2 nachgeprüft:** Standbild **0 geänderte Pixel**,
+      > Maske 7644 Pixel, Bewegung 61,0 gegen 42,6 — Faktor **1,43**. Der
+      > Außenwert ist auf die Nachkommastelle derselbe, der Innenwert 1,5 %
+      > höher (andere Maskendefinition, siehe oben).
+      >
+      > Das Standbild ist von 133 Pixeln auf **0** gefallen, und das ist keine
+      > Verbesserung durch P8: die Nachprüfung hat 60 Frames vorgefüllt, bevor
+      > sie gemessen hat. Die 133 stammen also mit einiger Wahrscheinlichkeit
+      > aus der noch nachlaufenden Streuung und nicht vom Neon-Flackern, wie es
+      > oben steht. **Nicht bewiesen** — dafür müsste man die Streuung
+      > gezielt anhalten und erneut messen.
 - [x] **Screenshot vorzeigbar** — `japanMap.view('stadt-neon')`, Bild in
       `.cache/shots/p6_nach_viewportfix_stadt_neon.png`: Geschäftsstraße mit
       hochkanten Kanban über der Fahrbahn, nasser Asphalt mit Pfützen, Neon
