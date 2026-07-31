@@ -6,6 +6,12 @@
       "runtimeExecutable": "C:\\Users\\User\\AppData\\Local\\Programs\\kimi-desktop\\resources\\resources\\runtime\\node.exe",
       "runtimeArgs": ["node_modules/vite/bin/vite.js"],
       "port": 5173
+    },
+    {
+      "name": "japanmap-preview",
+      "runtimeExecutable": "C:\\Users\\User\\AppData\\Local\\Programs\\kimi-desktop\\resources\\resources\\runtime\\node.exe",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "preview", "--port", "4173"],
+      "port": 4173
     }
   ]
 }

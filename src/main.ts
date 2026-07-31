@@ -36,9 +36,14 @@ function fatal(message: string, detail?: string): never {
   throw new Error(message);
 }
 
-const canvas = document.querySelector<HTMLCanvasElement>('#viewport');
-const overlay = document.querySelector<HTMLElement>('#overlay');
-if (!canvas || !overlay) fatal('Grundgerüst der Seite fehlt (#viewport / #overlay).');
+const canvasOrNull = document.querySelector<HTMLCanvasElement>('#viewport');
+const overlayOrNull = document.querySelector<HTMLElement>('#overlay');
+if (!canvasOrNull || !overlayOrNull) fatal('Grundgerüst der Seite fehlt (#viewport / #overlay).');
+// Festgeschrieben, weil die Verengung aus der Zeile darüber innerhalb von
+// `boot()` nicht mehr gilt — TypeScript führt Kontrollfluss nicht über eine
+// Funktionsgrenze hinweg fort, auch nicht für Konstanten.
+const canvas: HTMLCanvasElement = canvasOrNull;
+const overlay: HTMLElement = overlayOrNull;
 
 let engine: Engine;
 try {
@@ -57,31 +62,33 @@ try {
 // initialisiert wird — sonst zeigt er den Fortschritt erst ab der Hälfte.
 loading = new LoadingScreen(engine.bus, document.body);
 
-// Die Debug-UI wird dynamisch geladen: so landen Tweakpane und stats-gl nicht
-// im Produktions-Bundle (SPEC §4 — erstes Bild unter 15 MB).
-if (import.meta.env.DEV) {
+/**
+ * Die Debug-UI wird dynamisch geladen: so landen Tweakpane und stats-gl nicht
+ * im Produktions-Bundle (SPEC §4 — erstes Bild unter 15 MB).
+ */
+async function attachDebugUi(target: Engine, container: HTMLElement): Promise<void> {
   const [{ DebugPanel }, { SceneScaffold }] = await Promise.all([
     import('./debug/DebugPanel'),
     import('./debug/SceneScaffold'),
   ]);
 
-  engine.setDebugHost(
+  target.setDebugHost(
     await DebugPanel.create({
-      renderer: engine.renderer,
-      scene: engine.scene,
-      camera: engine.camera,
-      bus: engine.bus,
-      container: overlay,
-      extraTextures: () => engine.resources.tracked,
+      renderer: target.renderer,
+      scene: target.scene,
+      camera: target.camera,
+      bus: target.bus,
+      container,
+      extraTextures: () => target.resources.tracked,
       onDispose: () => {
-        engine.dispose();
+        target.dispose();
       },
     }),
   );
 
-  engine.add(new SceneScaffold());
+  target.add(new SceneScaffold());
 
-  window.japanMap = { engine };
+  window.japanMap = { engine: target };
 }
 
 /**
@@ -216,89 +223,111 @@ function installFrameProbe(
   };
 }
 
-// Die Reihenfolge ist dreifach bedeutsam, deshalb steht sie hier und nicht
-// verstreut in den Systemen:
-//
-//  1. init() läuft nacheinander. Das TerrainSystem sendet `terrain:ready`
-//     während seiner Initialisierung — wer den Sampler oder die Höhen-Uniforms
-//     will, muss vorher angemeldet sein. Deshalb stehen Kamera und Wasser
-//     **vor** dem Terrain.
-//  2. Der Atmosphären-Block wird dagegen beim Konstruieren weitergereicht, nicht
-//     per Ereignis. Terrain und Wasser brauchen ihn schon beim Bauen ihrer
-//     Materialien, also *nach* der Initialisierung der Atmosphäre — und für
-//     diese Richtung taugt das Ereignismuster nicht (siehe TerrainSystem).
-//  3. update() läuft in derselben Reihenfolge. Die Kamera bewegt sich zuerst,
-//     danach richten Sonne, Wasserebene und Bodenmarkierung sich daran aus;
-//     sonst hinkten alle drei einen Frame hinterher.
-const atmosphere = new AtmosphereSystem();
-const reflection = new PlanarReflection();
-const controller = new FreeFlyController();
+/**
+ * Hochfahren.
+ *
+ * **Warum das eine Funktion ist und kein Top-Level-await.** Der gebaute Stand
+ * hing genau daran: `await engine.init()` auf oberster Ebene hält den
+ * Einstiegs-Chunk „am Auswerten", und ein `import()` auf einen Chunk, der von
+ * ihm abhängt, kann dann nie fertig werden. Der Ladebildschirm blieb bei 31 %
+ * stehen, alle Dateien kamen mit 200 zurück, und keine Fehlermeldung nirgends.
+ * Ausführlich in `vite.config.ts` bei `manualChunks`.
+ *
+ * Innerhalb einer Funktion ist die Auswertung des Moduls längst durch, wenn
+ * gewartet wird — der Kreis kann sich gar nicht erst schließen. Das ist die
+ * strukturelle Hälfte der Absicherung; die andere ist der eigene Chunk für
+ * three.
+ */
+async function boot(): Promise<void> {
+  // Die Reihenfolge ist dreifach bedeutsam, deshalb steht sie hier und nicht
+  // verstreut in den Systemen:
+  //
+  //  1. init() läuft nacheinander. Das TerrainSystem sendet `terrain:ready`
+  //     während seiner Initialisierung — wer den Sampler oder die Höhen-Uniforms
+  //     will, muss vorher angemeldet sein. Deshalb stehen Kamera und Wasser
+  //     **vor** dem Terrain.
+  //  2. Der Atmosphären-Block wird dagegen beim Konstruieren weitergereicht, nicht
+  //     per Ereignis. Terrain und Wasser brauchen ihn schon beim Bauen ihrer
+  //     Materialien, also *nach* der Initialisierung der Atmosphäre — und für
+  //     diese Richtung taugt das Ereignismuster nicht (siehe TerrainSystem).
+  //  3. update() läuft in derselben Reihenfolge. Die Kamera bewegt sich zuerst,
+  //     danach richten Sonne, Wasserebene und Bodenmarkierung sich daran aus;
+  //     sonst hinkten alle drei einen Frame hinterher.
+  const atmosphere = new AtmosphereSystem();
+  const reflection = new PlanarReflection();
+  const controller = new FreeFlyController();
 
-engine.add(controller);
-engine.add(atmosphere);
-engine.add(new LightingRig(atmosphere.uniforms));
-engine.add(new WaterSystem(atmosphere.uniforms));
-// Vor Terrain **und** Straßen: die Streuung hört auf `terrain:ready` und
-// `roads:ready`, und beide werden genau einmal gesendet, während sich jene
-// Systeme initialisieren.
-engine.add(new ScatterSystem(atmosphere.uniforms));
-// Ebenfalls vor dem Terrain: die Props holen ihre Höhe aus dem Sampler, damit
-// sie einen neuen Terrain-Bake überleben, statt eine Zahl aus der Datei zu
-// glauben.
-engine.add(new PropSystem(atmosphere.uniforms));
-// Ebenso: die Wasserflächen der Reisfelder holen ihre Höhe aus dem Sampler,
-// weil das Gelände die Parzellen bereits trägt (Baker, Schritt 5c).
-engine.add(new RicePaddy(atmosphere.uniforms));
-// Und ebenso die Stadt: sie braucht den Sampler für die Schürze am
-// Distriktrand und das Straßennetz, damit die Blöcke der Stadtstraße
-// ausweichen. Beides kommt als Ereignis aus Systemen, die danach kommen.
-engine.add(new CitySystem(atmosphere.uniforms));
-// Nach der Stadt: das Neon hört auf `city:ready` und hat vorher nichts zu tun.
-engine.add(new NeonSystem(atmosphere.uniforms));
-engine.add(new TerrainSystem(atmosphere.uniforms));
-engine.add(new RoadSystem(atmosphere.uniforms, reflection.uniforms));
-// **Nach** allen Systemen, die Geometrie in die Szene bringen, und **vor** der
-// PostFX-Kette: der Spiegeldurchgang rendert die fertige Szene ein zweites Mal
-// aus der gespiegelten Kamera, und er muss das tun, bevor der Composer den
-// eigentlichen Frame zeichnet.
-engine.add(reflection);
-engine.add(
-  new PostFXPipeline((present) => {
-    engine.setPresenter(present);
-  }),
-);
-// Zuletzt: `look:apply` beim Start erreicht nur Systeme, die bereits angemeldet
-// sind. Ein Preset, das die Hälfte der Werte setzt, wäre schlimmer als keins.
-engine.add(new LookController());
-// Und danach die Qualitätsstufe, aus demselben Grund und noch eine Stufe
-// strenger: sie sendet ihre Stufe beim Start genau einmal, und wer sie hört,
-// muss vorher registriert sein. Nach dem Look, weil beide auf die
-// Umgebungsverdeckung zeigen — dass die Reihenfolge trotzdem egal ist, stellt
-// die UND-Verknüpfung in der PostFX-Kette sicher, nicht diese Zeile.
-const quality = new QualitySystem();
-engine.add(quality);
+  // Vor allen anderen Systemen, weil sie sich sonst nicht mehr anmelden lassen.
+  if (import.meta.env.DEV) await attachDebugUi(engine, overlay);
 
-// Erste Größe setzen, bevor der ResizeObserver das erste Mal feuert — sonst
-// rendert der erste Frame mit 1×1 Pixeln.
-engine.resize(canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight);
+  engine.add(controller);
+  engine.add(atmosphere);
+  engine.add(new LightingRig(atmosphere.uniforms));
+  engine.add(new WaterSystem(atmosphere.uniforms));
+  // Vor Terrain **und** Straßen: die Streuung hört auf `terrain:ready` und
+  // `roads:ready`, und beide werden genau einmal gesendet, während sich jene
+  // Systeme initialisieren.
+  engine.add(new ScatterSystem(atmosphere.uniforms));
+  // Ebenfalls vor dem Terrain: die Props holen ihre Höhe aus dem Sampler, damit
+  // sie einen neuen Terrain-Bake überleben, statt eine Zahl aus der Datei zu
+  // glauben.
+  engine.add(new PropSystem(atmosphere.uniforms));
+  // Ebenso: die Wasserflächen der Reisfelder holen ihre Höhe aus dem Sampler,
+  // weil das Gelände die Parzellen bereits trägt (Baker, Schritt 5c).
+  engine.add(new RicePaddy(atmosphere.uniforms));
+  // Und ebenso die Stadt: sie braucht den Sampler für die Schürze am
+  // Distriktrand und das Straßennetz, damit die Blöcke der Stadtstraße
+  // ausweichen. Beides kommt als Ereignis aus Systemen, die danach kommen.
+  engine.add(new CitySystem(atmosphere.uniforms));
+  // Nach der Stadt: das Neon hört auf `city:ready` und hat vorher nichts zu tun.
+  engine.add(new NeonSystem(atmosphere.uniforms));
+  engine.add(new TerrainSystem(atmosphere.uniforms));
+  engine.add(new RoadSystem(atmosphere.uniforms, reflection.uniforms));
+  // **Nach** allen Systemen, die Geometrie in die Szene bringen, und **vor** der
+  // PostFX-Kette: der Spiegeldurchgang rendert die fertige Szene ein zweites Mal
+  // aus der gespiegelten Kamera, und er muss das tun, bevor der Composer den
+  // eigentlichen Frame zeichnet.
+  engine.add(reflection);
+  engine.add(
+    new PostFXPipeline((present) => {
+      engine.setPresenter(present);
+    }),
+  );
+  // Zuletzt: `look:apply` beim Start erreicht nur Systeme, die bereits angemeldet
+  // sind. Ein Preset, das die Hälfte der Werte setzt, wäre schlimmer als keins.
+  engine.add(new LookController());
+  // Und danach die Qualitätsstufe, aus demselben Grund und noch eine Stufe
+  // strenger: sie sendet ihre Stufe beim Start genau einmal, und wer sie hört,
+  // muss vorher registriert sein. Nach dem Look, weil beide auf die
+  // Umgebungsverdeckung zeigen — dass die Reihenfolge trotzdem egal ist, stellt
+  // die UND-Verknüpfung in der PostFX-Kette sicher, nicht diese Zeile.
+  const quality = new QualitySystem();
+  engine.add(quality);
 
-try {
-  await engine.init();
-} catch (error) {
-  if (error instanceof TerrainDataError) {
-    fatal('Das gebackene Terrain passt nicht zur Konfiguration.', error.message);
+  // Erste Größe setzen, bevor der ResizeObserver das erste Mal feuert — sonst
+  // rendert der erste Frame mit 1×1 Pixeln.
+  engine.resize(canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight);
+
+  try {
+    await engine.init();
+  } catch (error) {
+    if (error instanceof TerrainDataError) {
+      fatal('Das gebackene Terrain passt nicht zur Konfiguration.', error.message);
+    }
+    // **Jeder andere Fehler wird ebenfalls angezeigt, nicht nur geworfen.**
+    // Vorher lief er als unbehandelte Zusage ins Nichts: die Seite blieb bei
+    // halb aufgebautem Debug-Panel stehen, ohne Meldung, und der Grund stand
+    // ausschließlich in der Konsole. Genau so ist beim Bau der Vegetation eine
+    // fehlgeschlagene Geometrie-Zusammenführung eine Viertelstunde lang als
+    // „lädt eben langsam" durchgegangen.
+    fatal('Ein System ist beim Initialisieren gescheitert.', String(error));
   }
-  // **Jeder andere Fehler wird ebenfalls angezeigt, nicht nur geworfen.**
-  // Vorher lief er als unbehandelte Zusage ins Nichts: die Seite blieb bei
-  // halb aufgebautem Debug-Panel stehen, ohne Meldung, und der Grund stand
-  // ausschließlich in der Konsole. Genau so ist beim Bau der Vegetation eine
-  // fehlgeschlagene Geometrie-Zusammenführung eine Viertelstunde lang als
-  // „lädt eben langsam" durchgegangen.
-  fatal('Ein System ist beim Initialisieren gescheitert.', String(error));
-}
-engine.start();
+  engine.start();
 
-if (import.meta.env.DEV) installFrameProbe(engine, controller, quality);
+  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality);
+}
+
+void boot();
 
 // Vite führt dieses Modul bei einem Hot-Update erneut aus, ohne die Seite neu
 // zu laden. Ohne diesen Haken entsteht dabei eine **zweite** Engine im selben
