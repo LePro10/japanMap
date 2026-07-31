@@ -2798,6 +2798,40 @@ ihn im Himmelsanteil ertränken; genau dieser Fehler hat in P6 fünf Anläufe
 gekostet. Dazu: Draw-Calls +1 für die Kuppel, Dreiecke unverändert im Gelände,
 und ein Bild von `start` und `pass`.
 
+> **Teil 1 (Wolkenschatten) ist gebaut und gemessen.** Maske aus der Differenz
+> gegen `strength = 0`, Ultra, 1280 × 720:
+>
+> | Blickpunkt | betroffen | Anteil | Ø Differenz | Spitze |
+> |---|---|---|---|---|
+> | `start`    | 171 548 Px | 18,61 % | 15,1 | 130 |
+> | `pass`     | 147 459 Px | 16,00 % |  9,5 | 114 |
+> | `reisfeld` | 146 925 Px | 15,94 % | **18,0** | 142 |
+> | `kueste`   |   4 131 Px |  0,45 % |  4,8 |  15 |
+>
+> Bei `start` bedeckt das Gelände 45,67 % des Bildes — der Schatten trifft dort
+> also rund **40 % des sichtbaren Bodens**. Und er wandert: bei stehender Kamera
+> ändern sich nach 2 s Weltzeit 12 448 Pixel, nach 10 s 98 725.
+>
+> **`kueste` fällt mit 0,45 % aus der Reihe, und das ist kein Fehler.** Dort
+> steht fast nur Meer im Bild, und eine Wasserfläche bei 2,23° Sonnenstand lebt
+> von der Spiegelung des Himmels, nicht vom direkten Sonnenlicht. Wo keine Sonne
+> ankommt, kann eine Wolke keine wegnehmen. Am stärksten wirkt es umgekehrt auf
+> den Reisterrassen — flach, offen, besonnt. Dass die Zahlen so *unterschiedlich*
+> ausfallen, ist damit die Bestätigung, dass der Schatten am richtigen Anteil
+> ansetzt.
+>
+> Eingehängt ist er in `atmoShade()`, also an der **einen** Stelle, an der der
+> Sonnenanteil entsteht. Sieben Materialien lesen sie (Terrain, Wasser, Straßen,
+> Decals, Props, Vegetation, Imposter, Fassaden); jedes einzeln zu bedienen wäre
+> der Fehler aus P4, wo der Wind nur im Mesh-Material hing und drei Viertel der
+> sichtbaren Instanzen stillstanden.
+>
+> Das Rauschen wird beim Start **gerechnet** (`createCloudTexture.ts`), nicht
+> geladen: 256², kachelbar über einen ganzzahligen Hash mit Modulo, vier
+> Oktaven. Kosten im Startdownload: **null Bytes**.
+>
+> Teil 2 (Wolkenebene) steht noch aus.
+
 ---
 
 **8.5 — Der Terrain-Durchgang** → `tools/bake-terrain.mjs`

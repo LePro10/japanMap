@@ -1,6 +1,6 @@
-import { Color, Vector2, Vector3, type IUniform, type Texture } from 'three';
+import { Color, Vector2, Vector3, Vector4, type IUniform, type Texture } from 'three';
 
-import { FOG, SHADE } from '@/config/atmosphere.config';
+import { CLOUDS, FOG, SHADE } from '@/config/atmosphere.config';
 import { WORLD } from '@/config/world.config';
 
 import atmospherePars from './atmosphere_pars.glsl';
@@ -39,6 +39,13 @@ export interface AtmosphereUniforms {
   readonly uAtmoShadeSoftness: IUniform<Vector2>;
   readonly uAtmoShadeAmbient: IUniform<number>;
   readonly uAtmoSkyOcclusion: IUniform<Vector2>;
+
+  /** Wolkenschatten (P8.4). */
+  readonly uAtmoCloudMap: IUniform<Texture | null>;
+  /** x = Deckung, y = Weichheit, z = Stärke. `z = 0` schaltet ab. */
+  readonly uAtmoCloud: IUniform<Vector3>;
+  readonly uAtmoCloudTile: IUniform<Vector4>;
+  readonly uAtmoCloudDirection: IUniform<Vector2>;
 }
 
 export function createAtmosphereUniforms(): AtmosphereUniforms {
@@ -72,6 +79,23 @@ export function createAtmosphereUniforms(): AtmosphereUniforms {
     uAtmoShadeAmbient: { value: SHADE.ambientFloor },
     uAtmoSkyOcclusion: {
       value: new Vector2(SHADE.skyOcclusionDiffuse, SHADE.skyOcclusionSpecular),
+    },
+
+    uAtmoCloudMap: { value: null },
+    uAtmoCloud: { value: new Vector3(CLOUDS.coverage, CLOUDS.softness, CLOUDS.strength) },
+    uAtmoCloudTile: {
+      value: new Vector4(
+        CLOUDS.tileMeters[0],
+        CLOUDS.tileMeters[1],
+        CLOUDS.speed[0],
+        CLOUDS.speed[1],
+      ),
+    },
+    // Normiert beim Anlegen: die Konfiguration nennt eine Richtung, keine
+    // Geschwindigkeit — die steht in `uAtmoCloudTile.zw`. Wäre der Vektor nicht
+    // normiert, hinge das Tempo an der Schreibweise der Richtung.
+    uAtmoCloudDirection: {
+      value: new Vector2(CLOUDS.direction[0], CLOUDS.direction[1]).normalize(),
     },
   };
 }

@@ -6,6 +6,7 @@ import type { EngineContext, System } from '@/core/System';
 import type { LookState } from '@/render/looks/lookState';
 import { HDRI_ASSETS, TERRAIN_ASSETS } from '@/world/terrainAssets';
 import { createAtmosphereUniforms, type AtmosphereUniforms } from './atmosphereUniforms';
+import { createCloudTexture } from './createCloudTexture';
 import { createSkyLut } from './createSkyLut';
 
 /**
@@ -25,6 +26,7 @@ export class AtmosphereSystem implements System {
 
   #context: EngineContext | null = null;
   #skyLut: Texture | null = null;
+  #cloudMap: Texture | null = null;
 
   readonly #readouts = {
     verschattung: '—',
@@ -68,6 +70,10 @@ export class AtmosphereSystem implements System {
 
     this.#skyLut = context.resources.track(createSkyLut(sky));
     this.#uniforms.uAtmoSkyLut.value = this.#skyLut;
+
+    // Gerechnet statt geladen — Begründung in createCloudTexture.ts.
+    this.#cloudMap = context.resources.track(createCloudTexture());
+    this.#uniforms.uAtmoCloudMap.value = this.#cloudMap;
 
     this.#readouts.verschattung =
       `${(shadeMeta.measured.litFraction * 100).toFixed(0)} % besonnt · ` +
@@ -241,13 +247,53 @@ export class AtmosphereSystem implements System {
       max: 1,
       step: 0.01,
     });
+
+    // Der Stärke-Regler ist zugleich der Ausschalter (0 = aus). Er ist der
+    // Bezugspunkt jeder Messung an diesem Effekt: die Wirkung wird als
+    // Differenz gegen ein Bild mit Stärke 0 gemessen, nicht am Mittelwert
+    // über das ganze Bild — der Effekt ist lokal (CLAUDE.md, P6).
+    const clouds = folder.addFolder({ title: 'Wolkenschatten', expanded: false });
+    clouds.addBinding(u.uAtmoCloud.value, 'z', {
+      label: 'Stärke (0 = aus)',
+      min: 0,
+      max: 1,
+      step: 0.01,
+    });
+    clouds.addBinding(u.uAtmoCloud.value, 'x', {
+      label: 'Deckung',
+      min: 0,
+      max: 1,
+      step: 0.01,
+    });
+    clouds.addBinding(u.uAtmoCloud.value, 'y', {
+      label: 'Weichheit der Ränder',
+      min: 0.01,
+      max: 0.5,
+      step: 0.01,
+    });
+    clouds.addBinding(u.uAtmoCloudTile.value, 'z', {
+      label: 'Tempo grobe Lage (m/s)',
+      min: 0,
+      max: 60,
+      step: 0.5,
+    });
+    clouds.addBinding(u.uAtmoCloudTile.value, 'w', {
+      label: 'Tempo feine Lage (m/s)',
+      min: 0,
+      max: 60,
+      step: 0.5,
+    });
   }
 
   dispose(): void {
     this.#skyLut?.dispose();
     if (this.#skyLut) this.#context?.resources.untrack(this.#skyLut);
     this.#skyLut = null;
+    this.#cloudMap?.dispose();
+    if (this.#cloudMap) this.#context?.resources.untrack(this.#cloudMap);
+    this.#cloudMap = null;
     this.#uniforms.uAtmoSkyLut.value = null;
+    this.#uniforms.uAtmoCloudMap.value = null;
     this.#uniforms.uAtmoShade.value = null;
     this.#context = null;
   }
