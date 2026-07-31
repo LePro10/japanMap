@@ -83,6 +83,94 @@ export const POSTFX = {
 } as const;
 
 /**
+ * Was eine Qualitätsstufe an der Kette ändert — P8.1 / 8.2.
+ *
+ * ## Warum es diese Tabelle überhaupt gibt
+ *
+ * Bis P8 war von der ganzen Kette genau **ein** Effekt an die Stufe gebunden:
+ * die Umgebungsverdeckung. Bloom, SMAA, Vignette, LUT und AgX liefen auf
+ * „Niedrig" in derselben Auflösung wie auf Ultra. Das ist der ungünstigste
+ * Posten, den man so stehenlassen kann, denn er ist der einzige, der **nicht**
+ * mit `renderScale` schrumpft: das Ziel der Kette ist der Canvas, nicht der
+ * Szenenpuffer.
+ *
+ * ## Die Stufen
+ *
+ * `bloomLevels` ist die Zahl der MIP-Stufen im Unschärfebaum. Der Baum
+ * halbiert je Stufe die Kantenlänge, eine Stufe kostet also ein Viertel der
+ * vorherigen — an **Fläche** ist zwischen 8 und 4 Stufen kaum etwas zu holen
+ * (1,333 gegen 1,328 Vollbilder). **Das wird hier deshalb nicht als Ersparnis
+ * verkauft**; was zählt, ist die Zahl der *Durchgänge*: jede MIP-Stufe ist ein
+ * eigener Draw-Call mit eigenem Zustandswechsel, im Abstieg wie im Aufstieg.
+ *
+ * `composer: false` ist der eigentliche Hebel und der Grund für eine eigene
+ * Stufe: die Kette läuft **gar nicht**, gerendert wird direkt in den Canvas.
+ * Solange sie läuft, kostet sie ihre Vollbilddurchgänge, egal wie klein man
+ * ihre Regler stellt.
+ *
+ * ## Gemessen
+ *
+ * Draw-Calls bei **leerer Szene** — was übrig bleibt, ist die Kette selbst:
+ *
+ * | Stufe | postFx | Durchgänge |
+ * |---|---|---|
+ * | Ultra   | `full`    | 28 |
+ * | Hoch    | `full`    | 29 |
+ * | Mittel  | `reduced` | 22 |
+ * | Niedrig | `lean`    | 10 |
+ * | Minimal | `off`     |  1 |
+ *
+ * Zwei Dinge stehen absichtlich **nicht** in dieser Tabelle:
+ *
+ *  - **Ultra hat einen Durchgang weniger als Hoch.** Der Unterschied ist die
+ *    AO in voller statt halber Auflösung, also vermutlich ein Aufwärtsfilter,
+ *    der dort entfällt. *Vermutet, nicht isoliert gemessen.*
+ *  - **Der Sprung 22 → 10 bündelt drei Änderungen**: die AO fällt ganz weg
+ *    (`ao: 'off'`), SMAA fällt weg, und der Bloom-Baum geht von 5 auf 4 Stufen.
+ *    Welcher Anteil wie viel trägt, ist damit **nicht** gemessen — die
+ *    Aufschlüsselung bräuchte den A/B-Knopf im Panel und einen GPU-Timer, den
+ *    diese Maschine nicht hat.
+ *
+ * > **Was `off` kostet, gehört dazugesagt:** ohne Composer gibt es kein Bloom,
+ * > kein SMAA, keine Vignette und **keine Grading-LUT**. Das Tonemapping
+ * > übernimmt der Renderer selbst (AgX), damit die Helligkeit stimmt; der
+ * > Farbstich aus `GRADING` fehlt.
+ * >
+ * > **Was das im Bild heißt, ist gemessen — und anders, als es aussah.** Am
+ * > Blickpunkt `stadt-neon`, Maske aus der Differenz gegen einen Frame mit
+ * > ausgeblendeter Neongruppe (das Verfahren aus P6):
+ * >
+ * > | Stufe | Fläche der Maske | Sattheit | Helligkeit |
+ * > |---|---|---|---|
+ * > | Ultra   | 5,62 % | 0,191 | 142,3 |
+ * > | Niedrig | 6,90 % | 0,182 | 144,0 |
+ * > | Minimal | 1,98 % | 0,206 | 157,0 |
+ * >
+ * > Der erste Eindruck am Bild war „die Schilder sind ausgewaschen". Das ist
+ * > **falsch**: sie sind in ihrem Kern sogar gesättigter (0,206) und heller
+ * > (157,0). Was fehlt, ist die **Reichweite** — ohne Bloom leuchtet ein
+ * > Neonschild nur dort, wo seine Geometrie steht, und die Maske schrumpft um
+ * > den Faktor 2,8. Ein Neonschild ohne Streulicht liest sich als Aufkleber,
+ * > nicht als Lampe.
+ */
+export type PostFxQuality = 'full' | 'reduced' | 'lean' | 'off';
+
+export interface PostFxSettings {
+  /** Läuft die Kette überhaupt? `false` rendert direkt in den Canvas. */
+  readonly composer: boolean;
+  /** MIP-Stufen im Bloom-Unschärfebaum. 0, wenn die Kette nicht läuft. */
+  readonly bloomLevels: number;
+  readonly smaa: boolean;
+}
+
+export const POSTFX_QUALITY: Readonly<Record<PostFxQuality, PostFxSettings>> = {
+  full: { composer: true, bloomLevels: 8, smaa: true },
+  reduced: { composer: true, bloomLevels: 5, smaa: true },
+  lean: { composer: true, bloomLevels: 4, smaa: false },
+  off: { composer: false, bloomLevels: 0, smaa: false },
+};
+
+/**
  * Parameter des Color Gradings.
  *
  * Daraus wird zur Laufzeit eine 32³-LUT gerechnet (siehe grading.ts). PLAN.md

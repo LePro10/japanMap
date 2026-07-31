@@ -8,8 +8,9 @@
  */
 
 import type { GridVertices } from './lod.config';
+import type { PostFxQuality } from './postfx.config';
 
-export type QualityLevel = 'ultra' | 'high' | 'medium' | 'low';
+export type QualityLevel = 'ultra' | 'high' | 'medium' | 'low' | 'minimal';
 
 export type AoQuality = 'high' | 'medium' | 'low' | 'off';
 
@@ -76,6 +77,14 @@ export interface QualitySettings {
    * verletzt: `GRID_VERTICES_ALLOWED` in `lod.config.ts`.
    */
   readonly terrainGridVertices: GridVertices;
+  /**
+   * Was die Postprocessing-Kette auf dieser Stufe tut (ab P8.2).
+   *
+   * Tabelle und Begründung: `POSTFX_QUALITY` in `postfx.config.ts`. Der Wert
+   * `'off'` ist kein Regler, sondern ein **anderer Renderpfad** — die Kette
+   * läuft dann gar nicht.
+   */
+  readonly postFx: PostFxQuality;
 }
 
 /**
@@ -106,12 +115,17 @@ export const AO_QUALITY: Readonly<Record<AoQuality, AoSettings>> = {
  * Stabilität vorgefüllt (sonst misst man den Füllvorgang, siehe
  * `frameTiming.ts`), danach 12 Frames, Median:
  *
- * | Stufe | Zeichenpuffer | Draw-Calls | Dreiecke | davon Gelände | Knoten |
+ * | Stufe | Zeichenpuffer | Draw-Calls | Dreiecke | davon Gelände | Durchgänge |
  * |---|---|---|---|---|---|
- * | Ultra   | 1280×720 | 96 | 605 486 | 264 192 | 129 |
- * | Hoch    | 1280×720 | 97 | 605 487 | 264 192 | 129 |
- * | Mittel  | 1088×612 | 67 | 212 769 | 148 608 | 129 |
- * | Niedrig |  896×503 | 60 | 130 202 |  66 048 | 129 |
+ * | Ultra   | 1280×720 | 96 | 605 486 | 264 192 | 28 |
+ * | Hoch    | 1280×720 | 97 | 605 487 | 264 192 | 29 |
+ * | Mittel  | 1088×612 | 61 | 212 763 | 148 608 | 22 |
+ * | Niedrig |  896×503 | 49 | 130 191 |  66 048 | 10 |
+ * | Minimal |  640×360 | 40 | 130 182 |  66 048 |  1 |
+ *
+ * „Durchgänge" ist die Zahl der Draw-Calls bei **leerer Szene** — also das,
+ * was die Postprocessing-Kette allein kostet. Anders ist sie nicht zu
+ * beziffern, solange kein GPU-Timer da ist.
  *
  * Zu lesen ist das so:
  *
@@ -123,10 +137,20 @@ export const AO_QUALITY: Readonly<Record<AoQuality, AoSettings>> = {
  *    82 567. Der Unterschied kommt vollständig aus dem Gitter; die
  *    ~~Sichtweite~~ und die Vegetationsdichte wirken auf die Instanzen, nicht
  *    auf das Gelände.
- *  - **Die Knotenzahl ist auf allen Stufen gleich**, und das ist Absicht:
- *    `ranges` und `morphStart` bleiben unangetastet, weil sie die Rissfreiheit
- *    tragen. Verstellt wird allein die Auflösung *innerhalb* eines Knotens.
- *    Herleitung und Lochzählung stehen bei `GRID_VERTICES_ALLOWED`.
+ *  - **Die Knotenzahl ist auf allen Stufen gleich** (129 an diesem Blickpunkt),
+ *    und das ist Absicht: `ranges` und `morphStart` bleiben unangetastet, weil
+ *    sie die Rissfreiheit tragen. Verstellt wird allein die Auflösung
+ *    *innerhalb* eines Knotens. Herleitung und Lochzählung stehen bei
+ *    `GRID_VERTICES_ALLOWED`.
+ *  - **Minimal und Niedrig trennen an diesem Blickpunkt fast nur Kette und
+ *    Puffer**: 130 182 gegen 130 191 Dreiecke. Sichtweite und
+ *    Vegetationsdichte gehen weiter herunter, aber in einer Geschäftsstraße
+ *    steht kaum Bewuchs. Wo der Unterschied wirklich zählt, ist `start` oder
+ *    `reisfeld` — **dort nicht neu abgelesen.**
+ *  - **Der Sprung von Niedrig auf Minimal ist die Kette**, und nur die: zehn
+ *    Vollbilddurchgänge gegen einen. Das ist der einzige Posten der Szene, der
+ *    **nicht** mit `renderScale` schrumpft, weil sein Ziel der Canvas ist und
+ *    nicht der Szenenpuffer.
  *  - **Die Shadow-Map steht in keiner Spalte.** Echtzeit-Schatten sind aus, also
  *    kostet ihre Auflösung nichts. Das ist kein Verdienst der Stufe.
  *
@@ -152,6 +176,7 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     vegetationDensity: 1,
     renderScale: 1,
     terrainGridVertices: 33,
+    postFx: 'full',
   },
   high: {
     label: 'Hoch',
@@ -166,6 +191,7 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     // sichtbare Verlust und gehört an den Anfang der *unteren* Hälfte der
     // Tabelle, nicht ans Ende der oberen.
     terrainGridVertices: 33,
+    postFx: 'full',
   },
   medium: {
     label: 'Mittel',
@@ -178,6 +204,7 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     // 2,0 m je Vertex auf dem Blattknoten. Über dem Texelabstand der Heightmap
     // (1,5 m), aber deutlich unter dem festen P1-Gitter (4,0 m).
     terrainGridVertices: 25,
+    postFx: 'reduced',
   },
   low: {
     label: 'Niedrig',
@@ -190,10 +217,42 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     // 3,0 m je Vertex — jede zweite Stützstelle der Heightmap wird nicht mehr
     // gelesen. Ein Viertel der Dreiecke von Ultra.
     terrainGridVertices: 17,
+    postFx: 'lean',
+  },
+  /**
+   * Die Stufe für Geräte, auf denen sonst gar nichts liefe — P8.2.
+   *
+   * **Kein „Niedrig mit weniger", sondern ein anderer Renderpfad.** Der
+   * Composer wird umgangen; damit fallen Bloom, SMAA, Vignette und die
+   * Grading-LUT weg, und das Tonemapping übernimmt der Renderer. Solange die
+   * Kette läuft, kostet sie ihre Vollbilddurchgänge — und die sind der einzige
+   * Posten der Szene, der nicht mit `renderScale` schrumpft.
+   *
+   * Die Sichtweite geht bewusst noch einmal deutlich herunter (450 m statt
+   * 600): auf einer integrierten Grafik ist die Füllrate knapper als die
+   * Dreieckszahl, und weniger Vegetation heißt vor allem weniger Überzeichnung
+   * durch halbtransparente Blätter.
+   */
+  minimal: {
+    label: 'Minimal',
+    shadowMapSize: 1024,
+    reflections: false,
+    ao: 'off',
+    viewDistance: 450,
+    vegetationDensity: 0.1,
+    renderScale: 0.5,
+    terrainGridVertices: 17,
+    postFx: 'off',
   },
 };
 
-export const QUALITY_LEVELS: readonly QualityLevel[] = ['ultra', 'high', 'medium', 'low'];
+export const QUALITY_LEVELS: readonly QualityLevel[] = [
+  'ultra',
+  'high',
+  'medium',
+  'low',
+  'minimal',
+];
 
 /**
  * Stufe, mit der die Einstufung beginnt — und die gilt, wenn sie nicht
@@ -216,7 +275,9 @@ export const DEFAULT_QUALITY: QualityLevel = 'ultra';
  * Frage (was kostet ein Zustand gegen einen anderen) und taugt dafür nicht:
  * es rendert ohne Vsync, so schnell es geht.
  *
- * Heruntergestuft wird höchstens dreimal — von Ultra nach Niedrig ist Schluss.
+ * Heruntergestuft wird höchstens viermal — von Ultra nach Minimal ist Schluss.
+ * (Bis P8.2 waren es drei; die Schleife liest die Zahl aus `QUALITY_LEVELS`,
+ * eine neue Stufe verlängert sie also von selbst.)
  */
 export const BENCHMARK = {
   /**

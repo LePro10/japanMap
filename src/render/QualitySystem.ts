@@ -224,7 +224,8 @@ export class QualitySystem implements System {
     const q = QUALITY[this.#level];
     this.#readouts.stufe = q.label;
     this.#readouts.wirkung =
-      `Auflösung ${(q.renderScale * 100).toFixed(0)} % · AO ${q.ao} · ` +
+      `Auflösung ${(q.renderScale * 100).toFixed(0)} % · Gitter ${q.terrainGridVertices}² · ` +
+      `AO ${q.ao} · PostFX ${q.postFx} · ` +
       `Spiegelung ${q.reflections ? 'an' : 'aus'} · Sicht ${q.viewDistance} m · ` +
       `Vegetation ${(q.vegetationDensity * 100).toFixed(0)} %`;
     this.#context?.debug?.refresh();
