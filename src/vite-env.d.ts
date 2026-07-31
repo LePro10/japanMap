@@ -3,6 +3,7 @@
 
 import type { QualityLevel } from './config/quality.config';
 import type { Engine } from './core/Engine';
+import type { HoleReport } from './debug/lodHoles';
 import type { FrameTiming } from './render/frameTiming';
 
 declare global {
@@ -65,6 +66,11 @@ declare global {
         ssrCoverage: number;
         meanHitHeight: number;
       };
+      /**
+       * Löcher im Terrain-Gitter zählen (P4 / 4.1, Abnahme von P8.1).
+       * Optional zuerst auf eine Stufe schalten.
+       */
+      lodHoles?: (level?: QualityLevel) => HoleReport;
     };
   }
 }
