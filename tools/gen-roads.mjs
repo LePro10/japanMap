@@ -82,6 +82,12 @@ const TYPES = {
   village: { width: 5, maxGradient: 0.09, minRadius: 18, maxEarthwork: 8 },
   city: { width: 8, maxGradient: 0.06, minRadius: 25, maxEarthwork: 10 },
   dirt: { width: 4, maxGradient: 0.14, minRadius: 12, maxEarthwork: 20 },
+  // Pfad — P8.7. Kein Fahrzeug, also keine Fahrbahnbreite und kein
+  // Kurvenradius, der von einer Geschwindigkeit käme: 12 m Radius sind hier
+  // schlicht die Grenze, unterhalb derer der Polygonzug sich selbst schneidet.
+  // `maxEarthwork` ist der eigentliche Unterschied — ein Trampelpfad, der einen
+  // 20-m-Graben in den Hang schneidet, ist keiner. Er nimmt lieber den Umweg.
+  pfad: { width: 1.8, maxGradient: 0.24, minRadius: 8, maxEarthwork: 2.5 },
 };
 
 const SAMPLE_SPACING = 2;
@@ -998,6 +1004,41 @@ function layout(terrain) {
       [800, 205],
       [742, 200],
     ],
+
+    /**
+     * Tempelaufgang — P8.7.
+     *
+     * Vom Ring in die Waldhochebene im Nordosten (`ZONES.forest`, Mittelpunkt
+     * 820 / −940). Der Ring läuft bei [880, −620] daran vorbei; von dort sind
+     * es rund 320 m nach Norden auf die Ebene.
+     *
+     * **Kein `corridor`.** Bei einer Straße zwingt er den Entwurf durch, weil
+     * die billigste Linie sonst zur Serpentine wird. Ein Aufgang *soll* dem
+     * Gelände folgen — und mit `maxEarthwork: 2.5` kann er es sich leisten,
+     * dem Hang auszuweichen statt ihn aufzuschneiden.
+     */
+    sando: [
+      [880, -620],
+      [872, -742],
+      [838, -858],
+      [820, -952],
+    ].map(([x, z]) => pushInland(terrain, x, z, 3)),
+
+    /**
+     * Feldweg zwischen den Reisterrassen — P8.7.
+     *
+     * Führt von der Dorfstraße nach Südwesten in die Reiszone. Er endet dort,
+     * wo der Fluss verläuft (rund −1200 / 130); ob das im Bild zusammenkommt,
+     * ist die offene Frage aus 8.6 — der Fluss ist dort von den Feldern nicht
+     * zu unterscheiden, und ein Weg an seinem Ufer ist genau die Art Kante,
+     * die ihn wieder lesbar machen könnte.
+     */
+    feldpfad: [
+      [-760, 60],
+      [-880, 96],
+      [-1010, 118],
+      [-1140, 128],
+    ].map(([x, z]) => pushInland(terrain, x, z, 3)),
   };
 }
 
@@ -1327,6 +1368,24 @@ async function main() {
       banking: 0,
       level: CITY_ROAD_LEVEL,
       corridor: 70,
+    },
+    {
+      id: 'sando',
+      type: 'pfad',
+      closed: false,
+      tags: ['pfad', 'tempel'],
+      waypoints: plan.sando,
+      banking: 0,
+      startsOn: { road: 'ring', near: plan.sando[0] },
+    },
+    {
+      id: 'feldpfad',
+      type: 'pfad',
+      closed: false,
+      tags: ['pfad', 'reisfeld'],
+      waypoints: plan.feldpfad,
+      banking: 0,
+      startsOn: { road: 'dorf', near: plan.feldpfad[0] },
     },
   ];
 
