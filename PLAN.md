@@ -2080,15 +2080,33 @@ Weg und in Rennspielen weit verbreitet.
 
 ### Akzeptanzkriterien
 - [x] **Neon spiegelt sichtbar im nassen Asphalt.** Gemessen mit einer Maske:
-      Spiegelung an gegen aus ändert am Blickpunkt `stadt-neon` **8113 Pixel
-      (0,88 % des Bildes)** bei mittlerer Differenz **120,5**, auf der
-      Stadtschleife **336 578 Pixel (36,5 %)** bei mittlerer Differenz 42,5 —
-      dort steht die Kamera zwischen den Pfützen. Das Neon allein (direkt +
-      gespiegelt) trägt am Money-Shot 49 430 Pixel (5,36 %).
+      Spiegelung an gegen aus, gezählt werden Pixel mit einer Summendifferenz
+      über 3.
 
-      > Die Zahl für `stadt-neon` stand zuerst bei 9981 Pixeln. Sie ist im
-      > Polish-Durchgang mit der Nässe nachgezogen worden — wer einen Parameter
-      > ändert, von dem eine Abnahmezahl abhängt, misst sie neu.
+      | Blickpunkt | Pixel | Anteil | Ø Differenz | Spitze |
+      |---|---|---|---|---|
+      | `stadt-neon` | 7779 | 0,84 % | **111,6** | 382 |
+      | `stadt-strasse` | 170 467 | 18,5 % | 38,8 | 290 |
+
+      Das Kriterium ist damit erfüllt: 111,6 mittlere Differenz auf knapp einem
+      Prozent des Bildes ist kein Rauschen, das ist der Neonschriftzug in der
+      Pfütze. Und im Straßenzug, wo die Kamera zwischen den Pfützen steht, ist
+      fast ein Fünftel des Bildes betroffen.
+
+      > **Diese Zahlen sind neu gemessen, und die alten standen daneben.** Die
+      > erste Abnahme nannte 8113 Pixel (0,88 %) bei Ø 120,5 sowie 336 578 Pixel
+      > (36,5 %) bei Ø 42,5. Am Money-Shot ist der Unterschied klein — die
+      > Pfützen liegen im unteren Bildteil, den der Viewport-Fehler aus P7
+      > stehen ließ. Im Straßenzug halbiert sich der Anteil (36,5 % → 18,5 %),
+      > und das passt genau zum Mechanismus: das damalige Bild zeigte nur die
+      > unteren 70 % des Frames, also überproportional **Fahrbahn**. Ein
+      > Flächenanteil, gemessen auf einem beschnittenen Bild, ist ein
+      > Flächenanteil an etwas anderem.
+      >
+      > Die Zahl für `stadt-neon` stand davor schon einmal bei 9981 Pixeln und
+      > wurde im Polish-Durchgang mit der Nässe nachgezogen. Dreimal dieselbe
+      > Zeile, dreimal ein anderer Wert — jedes Mal, weil sich etwas geändert
+      > hat, von dem sie abhängt. Genau dafür wird sie neu gemessen.
 - [x] **Stadt bleibt in Budget.** 25 Blöcke + Bürgersteige + Bodenplatte = 27,
       dazu 1 Aufruf für alle 297 Neonschilder: **28 von 300.** Die 3373
       Straßendecals zählen nicht dazu — sie liegen auf dem ganzen Netz, nicht in
@@ -2120,19 +2138,46 @@ Weg und in Rennspielen weit verbreitet.
       > das sind die 34 Decals der vier Fußgängerüberwege aus dem
       > Polish-Durchgang. Die Draw-Calls sind unverändert — sie liegen im
       > selben instanzierten Mesh.
+      >
+      > **Vom Viewport-Fehler aus P7 sind diese Zahlen nicht betroffen**, und
+      > das ist geprüft und nicht angenommen: Draw-Calls, Dreiecke und
+      > Texturspeicher sind CPU-Zähler aus `renderer.info`. Der Viewport
+      > entscheidet, **wohin** gezeichnet wird, nicht **ob**. Betroffen war
+      > alles, was am fertigen Bild gemessen wurde — davon steht eine Messung
+      > in dieser Phase, siehe „Ein Befund aus dem Polish-Durchgang".
 - [x] **Reflexionsansatz ist entschieden und dokumentiert** — siehe unten und
       `src/render/PlanarReflection.ts`. **B + C**, entschieden durch Messung.
 - [x] **Keine flimmernden Reflexionen bei Kamerabewegung.** Zweimal derselbe
-      Frame: 90 geänderte Pixel (0,01 %), und die stammen vom Neon-Flackern,
-      nicht von der Spiegelung — sie hat keinen zeitlichen Anteil. Bei 0,25 m
-      Kamerafahrt ändert sich das Bild **innerhalb der Spiegelmaske** im Mittel
-      um 45,3, im übrigen Bild um 25,3; Spitze 283 gegen 448. Der Faktor 1,8 ist
-      das, was ein Spiegelbild geometrisch tun **muss** — die virtuelle Quelle
-      liegt hinter der Ebene, die Parallaxe ist doppelt.
+      Frame: **133 geänderte Pixel (0,014 %)**, und die stammen vom
+      Neon-Flackern, nicht von der Spiegelung — sie hat keinen zeitlichen
+      Anteil. Bei 0,25 m Kamerafahrt ändert sich das Bild **innerhalb der
+      Spiegelmaske** (7866 Pixel) im Mittel um **60,1**, im übrigen Bild um
+      **42,6**; Spitze 359 gegen 489. Der Faktor **1,41** ist das, was ein
+      Spiegelbild geometrisch tun **muss** — die virtuelle Quelle liegt hinter
+      der Ebene, die Parallaxe ist doppelt.
+
+      > Auch hier stehen neue Zahlen: die erste Abnahme nannte 90 Pixel, 45,3
+      > gegen 25,3 und Faktor 1,8. Sie wurden am beschnittenen Bild abgelesen
+      > (siehe Viewport-Fehler unten). Die **Aussage** ist dieselbe geblieben —
+      > ein ruhiger Frame bleibt ruhig, und die Spiegelmaske bewegt sich
+      > stärker als der Rest —, der Faktor fällt von 1,8 auf 1,41. Was sich
+      > nicht ändern kann, ist die Richtung: unter 1 wäre die Spiegelung
+      > geometrisch falsch.
 - [x] **Screenshot vorzeigbar** — `japanMap.view('stadt-neon')`, Bild in
-      `.cache/shots/p6_abnahme_moneyshot.png`: Geschäftsstraße mit hochkanten
-      Kanban über der Fahrbahn, nasser Asphalt mit Pfützen, Neon darin, das
-      Massiv am Ende der Straße.
+      `.cache/shots/p6_nach_viewportfix_stadt_neon.png`: Geschäftsstraße mit
+      hochkanten Kanban über der Fahrbahn, nasser Asphalt mit Pfützen, Neon
+      darin, das Massiv am Ende der Straße.
+
+      > Das alte Abnahmebild `p6_abnahme_moneyshot.png` ist **beschnitten** —
+      > wie alle 64 P6-Bilder. Es bleibt liegen, weil es zur Geschichte des
+      > Fehlers gehört; vorzeigbar ist das neue.
+
+> **Nachtrag aus P7: alle Bildmessungen dieser Phase sind nachgezogen.** Ein
+> Viewport-Fehler im Imposter-Bake ließ die Postprocessing-Kette in ein 1024er
+> Quadrat blitten — der Canvas zeigte damit die unteren 70 % des Frames,
+> waagerecht auf 80 % gestaucht. Betroffen war jede Zahl, die aus Pixeln kam;
+> nicht betroffen war jede Zahl aus `renderer.info`. Beide Gruppen sind oben
+> gekennzeichnet. Der Fehler selbst steht in `ImposterAtlas.bake`.
 
 > **Die Kette ist reproduzierbar.** Zwei Läufe `npm run world` liefern
 > bitgleiche `height.r16`, `zones.png`, `roads.json` und `paddy.png`.
@@ -2196,18 +2241,45 @@ mittlere Helligkeit der Stadtpixel gegen einen 60-px-Rahmen ringsum:
 
 | Zustand | Stadt | Umgebung | Verhältnis |
 |---|---|---|---|
-| wie gebaut | 141,8 | 99,3 | **1,43** |
-| ohne Fenster- und Neonlicht | 63,2 | 76,4 | **0,83** |
+| ~~wie gebaut~~ | ~~141,8~~ | ~~99,3~~ | ~~**1,43**~~ |
+| ~~ohne Fenster- und Neonlicht~~ | ~~63,2~~ | ~~76,4~~ | ~~**0,83**~~ |
 
-Ohne ihr Eigenlicht ist die Stadt **dunkler als die Landschaft**. Der Fleck
-besteht also aus brennenden Fenstern — aus genau dem, was SPEC §3.1 als
-„dominante urbane Lichtquelle" fordert, und nicht aus zu hellem Beton. Der Hebel
-wäre `windowEmissive`, und der ist gegen den Bloom-Halo bereits eingemessen
-(Tabelle in `city.config.ts`).
+**Diese vier Zahlen sind falsch, und der Grund ist in P7 aufgefallen.** Alle
+64 Bildschirmfotos aus P6 enden bei x = 1024 von 1280 — jedes andere Bild im
+Archiv ist vollständig. Der Imposter-Bake ließ den Renderer-Viewport auf
+Atlasgröße stehen (1024²), und `setRenderTarget(null)` nimmt genau den. Der
+fertige 1280 × 720-Frame wurde damit in ein 1024er Quadrat geblittet: rechts
+20 % abgeschnitten, und von der 1024 hohen Fläche zeigt der Canvas nur die
+unteren 720 — also **das untere Siebzigstel-Bild, waagerecht gestaucht**.
 
-Damit ist der Punkt geschlossen, ohne dass etwas geändert wurde. Er steht hier,
-weil eine widerlegte Annahme mehr wert ist als eine glatte Doku — dieselbe Regel
-wie bei den Serpentinen des Bergpasses in P3.
+Genau deshalb war die *Umgebung* zu dunkel: der Rahmen um die Stadt lag im
+gestauchten Bild auf Gelände statt auf Himmel.
+
+Frisch gemessen, mit richtigem Viewport, gleiche Kamera, Maske als Differenz
+gegen ein Bild mit ausgeblendeter Stadt (9417 Stadtpixel, 1,0 % des Bildes):
+
+| Zustand | Stadt | Umgebung | Verhältnis |
+|---|---|---|---|
+| wie gebaut | 145,3 | 119,7 | **1,21** |
+| ohne Fenster- und Neonlicht | 116,3 | 119,7 | **0,97** |
+
+Gegengeprüft mit einem Rahmen, der nur außerhalb der Hüllbox liegt: 1,18 und
+0,95 — die Rahmendefinition ist es also nicht.
+
+**Der Schluss hält, die Schärfe nicht.** Ohne ihr Eigenlicht ist die Stadt nicht
+heller als die Landschaft (0,97 statt der behaupteten 0,83), und der helle Fleck
+kommt weiterhin aus brennenden Fenstern — aus genau dem, was SPEC §3.1 als
+„dominante urbane Lichtquelle" fordert, und nicht aus zu hellem Beton. Nur ist
+der Abstand kleiner, als er dastand: das Verhältnis fällt von 1,21 auf 0,97 und
+nicht von 1,43 auf 0,83.
+
+Damit ist der Punkt weiterhin geschlossen, ohne dass etwas geändert wurde. Und
+er trägt jetzt zwei Lehren statt einer: eine widerlegte Annahme ist mehr wert
+als eine glatte Doku — und **eine Messung am Bild ist nur so gut wie das Bild.**
+Die Zahlen von damals waren nicht falsch abgelesen; sie waren an einem Frame
+abgelesen, der etwas anderes zeigte als das, was gerendert wurde. Dieselbe
+Fehlerfamilie wie dreimal in P6, nur andersherum: nicht „etwas fehlt im Bild",
+sondern „ein Teil des Bildes fehlt".
 
 ### Abweichungen vom Plan, mit Begründung
 
