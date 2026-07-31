@@ -135,11 +135,33 @@ export class Engine {
     const context = this.context;
     // Bewusst sequenziell: Systeme dürfen auf Ergebnissen ihrer Vorgänger
     // aufbauen (das TerrainSystem braucht ab P1 den geladenen Sampler).
-    for (const system of this.#systems) {
+    // +1 für den Aufwärmframe: er ist der letzte Schritt vor dem ersten Bild
+    // und mit rund 0,7 s auch nicht der kürzeste.
+    const total = this.#systems.length + 1;
+    for (let i = 0; i < this.#systems.length; i++) {
+      const system = this.#systems[i];
+      if (!system) continue;
+      this.bus.emit('engine:loading', { step: i, total, label: system.name });
+      // Einen Makrotask abwarten, damit der Browser den Ladebildschirm auch
+      // zeichnet. Ohne das liefe ein System mit rein synchroner Initialisierung
+      // unter der Beschriftung seines Vorgängers — der Balken wäre dann keine
+      // Anzeige, sondern eine Nacherzählung. Bewusst `setTimeout` und nicht
+      // `requestAnimationFrame`: letzteres feuert in einem verdeckten Tab gar
+      // nicht, und das Laden bliebe stehen.
+      await new Promise((resolve) => setTimeout(resolve, 0));
       await system.init?.(context);
     }
     this.#initialized = true;
+
+    this.bus.emit('engine:loading', { step: total - 1, total, label: 'Shader übersetzen' });
+    // Hier zählt der Makrotask am meisten: der Aufwärmframe ist der längste
+    // einzelne Schritt (rund 0,7 s) und blockiert den Haupt-Thread vollständig.
+    // Ohne einen Punkt zum Zeichnen davor stünde währenddessen die Beschriftung
+    // des *vorherigen* Schritts im Bild — im gemessenen Ladeverlauf sprang es
+    // von 76 % direkt auf 100 %.
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await this.#precompile();
+    this.bus.emit('engine:loading', { step: total, total, label: 'fertig' });
   }
 
   /**

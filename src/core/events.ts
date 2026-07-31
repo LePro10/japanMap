@@ -42,9 +42,23 @@ export type AppEvents = {
    */
   'engine:warmedup': void;
 
-  /** Fortschritt des ResourceManagers — speist ab P7 den Ladebildschirm. */
+  /** Fortschritt des ResourceManagers — Detailzeile des Ladebildschirms. */
   'resources:progress': { loaded: number; total: number; url: string };
   'resources:error': { url: string; error: unknown };
+
+  /**
+   * Fortschritt des Hochfahrens — der Balken des Ladebildschirms (P7 / 7.3).
+   *
+   * **Nicht** aus `resources:progress` gebildet. Dessen `total` wächst, während
+   * geladen wird: jedes System fordert seine Dateien erst an, wenn es dran ist.
+   * Ein Balken darauf liefe rückwärts, und ein Balken, der rückwärts läuft, ist
+   * schlimmer als eine Zahl ohne Balken.
+   *
+   * Die Systeme dagegen stehen von Anfang an fest und werden der Reihe nach
+   * initialisiert. `step / total` ist damit echt und monoton — genau das, was
+   * PLAN.md mit „echter Fortschritt, keine gefälschte Animation" meint.
+   */
+  'engine:loading': { step: number; total: number; label: string };
 
   /**
    * Das gebackene Terrain ist geladen und geprüft.

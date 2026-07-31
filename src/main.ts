@@ -21,8 +21,13 @@ import { RicePaddy } from './world/props/RicePaddy';
 import { ScatterSystem } from './world/scatter/ScatterSystem';
 import { TerrainSystem } from './world/TerrainSystem';
 import { WaterSystem } from './world/WaterSystem';
+import { LoadingScreen } from './ui/LoadingScreen';
+
+let loading: LoadingScreen | null = null;
 
 function fatal(message: string, detail?: string): never {
+  // Zuerst weg: eine Fehlermeldung hinter dem Ladebildschirm ist keine.
+  loading?.dispose();
   document.body.innerHTML = `
     <div class="fatal">
       <p>${message}</p>
@@ -47,6 +52,10 @@ try {
   }
   throw error;
 }
+
+// Vor allem anderen: der Ladebildschirm muss stehen, bevor das erste System
+// initialisiert wird — sonst zeigt er den Fortschritt erst ab der Hälfte.
+loading = new LoadingScreen(engine.bus, document.body);
 
 // Die Debug-UI wird dynamisch geladen: so landen Tweakpane und stats-gl nicht
 // im Produktions-Bundle (SPEC §4 — erstes Bild unter 15 MB).
