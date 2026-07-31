@@ -2537,11 +2537,36 @@ werden weicher. Für eine Stufe, die auf integrierter Grafik laufen soll, ist da
 der richtige Tausch — für Ultra wäre es einer der falschen, deshalb bleibt sie
 auf 33.
 
-**Messung.** Lochzählung nach dem Verfahren aus P4: alles außer dem Gelände aus,
-Himmel auf Magenta, Kamera ohne Himmel im Bild, Himmelspixel *unterhalb* des
-obersten Geländepixels je Spalte zählen. **Pro Stufe** über dieselben sieben
-Blickpunkte. Grenzwert ist der Stand von P4: höchstens 1 Loch. Dazu Dreiecke und
-Knotenzahl je Stufe neu in die Tabelle in `quality.config.ts`.
+**Messung.** Lochzählung nach dem Verfahren aus P4, gebaut als
+`japanMap.lodHoles()` in `src/debug/lodHoles.ts`. Grenzwert ist der Stand von
+P4: höchstens 1 Loch.
+
+> **Gebaut und gemessen — mit zwei Korrekturen am Messverfahren selbst.** Der
+> erste Anlauf meldete 2 921 783 Löcher auf Ultra, wo P4 eines gemessen hatte.
+> Gefunden hat den Fehler nicht die Zahl, sondern **das Bild**: es zeigte ein
+> halb leeres Frame mit Treppenkanten, und die Treppen waren Knotengrenzen.
+>
+>  1. **Die Auswahl war veraltet.** Der Quadtree wählt seine Knoten im
+>     `update()` des `TerrainSystem`, nicht beim Zeichnen. Ein direktes
+>     `renderer.render()` nach einem Kamerasprung zeichnet deshalb die Auswahl
+>     der *vorherigen* Kamera, samt deren Frustum-Culling. Die Messung ruft
+>     jetzt einen vollständigen Frame der Anwendung auf, bevor sie selbst
+>     rendert.
+>  2. **Die Definition war zu weit.** „Alles unterhalb des obersten
+>     Geländepixels" zählt den **Rand der Welt** mit — von `start` oder `kueste`
+>     schaut man über die 3072 m hinaus, und dort steht Hintergrund bis zum
+>     unteren Bildrand. Gezählt wird jetzt Himmel *eingeschlossen zwischen*
+>     Gelände; das trennt Riss von Weltende, ohne von der Kameraführung
+>     abzuhängen.
+>
+> Und weil eine Messung, die nie etwas findet, von einem kaputten Filter nicht
+> zu unterscheiden ist (CLAUDE.md: „Ein Filter, der nie gefiltert hat"), ist der
+> Zähler **gegengeprüft**: mit absichtlich falschem `uLodGridQuads` meldet er
+> 1496 Löcher, zurückgestellt wieder 0.
+
+Dazu Dreiecke und Knotenzahl je Stufe neu in der Tabelle in `quality.config.ts`,
+und je ein Bild von `pass` auf 33² und 17² — die Grate werden bei 3 m/Vertex
+weicher, das ist der gewollte Preis und keine Überraschung.
 
 ---
 
@@ -2931,6 +2956,22 @@ dieses Durchgangs, und er steht in der P1-Nachbesserung bereits so.
 - [ ] **Die fünf Stufen unterscheiden sich in der Geländelast.** Dreiecke je
       Stufe gemessen, Verhältnis Minimal:Ultra ≤ 0,4 — und die Lochzählung
       bleibt bei allen fünf bei höchstens 1.
+
+      **Vier von fünf sind gemessen** (8.1 gebaut, „Minimal" kommt mit 8.2).
+      Blickpunkt `stadt-neon`, Streuung bis zur Stabilität vorgefüllt:
+
+      | Stufe | Gitter | Dreiecke gesamt | davon Gelände | Knoten | Löcher |
+      |---|---|---|---|---|---|
+      | Ultra   | 33² | 605 486 | 264 192 | 129 | 0 |
+      | Hoch    | 33² | 605 487 | 264 192 | 129 | 0 |
+      | Mittel  | 25² | 212 769 | 148 608 | 129 | 0 |
+      | Niedrig | 17² | 130 202 |  66 048 | 129 | 0 |
+
+      Niedrig:Ultra ist damit **0,215** gesamt und **0,25** im Gelände. Die
+      Lochzählung läuft über zehn Blickpunkte und meldet auf allen vier Stufen
+      null — gegengeprüft mit absichtlich falschem Morph, der 1496 Löcher
+      erzeugt. Vorher standen Mittel und Niedrig bei 329 823 gegen 329 118
+      Dreiecke, unterschieden sich also um nichts.
 - [ ] **Stufe „Minimal" umgeht die PostFX-Kette nachweislich.** Gemessen an der
       Zahl der Vollbilddurchgänge, nicht an der Bildrate.
 - [ ] **Die Ersteinstufung startet nicht auf Ultra**, wenn die Vorabschätzung ein

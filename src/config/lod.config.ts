@@ -106,6 +106,9 @@ export const LOD = {
    * Bei 48 m Blattgröße sind das **1,5 m pro Vertex** — genau der Texelabstand
    * der Heightmap (1,5007 m). Feiner abzutasten brächte nichts, gröber ließe
    * Information liegen; das feste Gitter aus P1 lag mit 4,0 m deutlich darüber.
+   *
+   * **Seit P8.1 ist das der Wert der höchsten Stufe, nicht der einzige.** Die
+   * Herleitung dafür steht unten bei `gridVerticesAllowed`.
    */
   gridVertices: GRID_VERTICES,
   /** Quads pro Achse. */
@@ -145,5 +148,87 @@ export const LOD = {
   maxNodes: 2048,
 } as const;
 
-/** Dreiecke, die ein einzelner Knoten kostet. */
-export const LOD_TRIANGLES_PER_NODE = LOD.gridQuads * LOD.gridQuads * 2;
+/** Dreiecke, die ein Knoten bei dieser Gitterauflösung kostet. */
+export function lodTrianglesPerNode(gridVertices: number): number {
+  const quads = gridVertices - 1;
+  return quads * quads * 2;
+}
+
+/**
+ * Zulässige Gitterauflösungen — die Stufentabelle in `quality.config.ts` wählt
+ * daraus. Der Zusammenhang ist der Kern von P8.1, deshalb steht er hier und
+ * nicht dort.
+ *
+ * ## Warum die Auflösung je Stufe verstellt werden darf
+ *
+ * P7 hat einen naheliegenden Weg gemessen und **verworfen**: alle `ranges` mit
+ * einem Faktor k < 1 zu skalieren. Das wirkt wie f' = k·f, und die Ungleichung
+ * bei `SPLIT_FACTOR` verlangt dann `morphStart ≥ 0,5 + √2/f'` — bei k = 0,7
+ * wären das 0,837 gegen die eingestellten 0,78. P4 hat genau diesen Fall
+ * gemessen: **207 Löcher gegen 1**. Der Regler ist nicht „etwas gröber",
+ * sondern kaputt.
+ *
+ * Die Gitterauflösung *innerhalb* eines Knotens ist ein anderer Regler, und der
+ * Unterschied steckt in der Ungleichung selbst: darin kommen `ranges`,
+ * Knotengröße und `morphStart` vor — die Zahl der Stützstellen kommt **nicht**
+ * vor. Sie kann es auch nicht, denn die Herleitung argumentiert über Abstände
+ * zwischen Knotenquadern, nicht über deren Inhalt.
+ *
+ * Zwei Bedingungen müssen trotzdem eingehalten werden, und beide sind der Grund
+ * für diese Liste statt einer freien Zahl:
+ *
+ *  1. **Alle Knoten müssen dieselbe Auflösung haben.** Sie teilen sich eine
+ *     einzige Geometrie, also ist das automatisch erfüllt — solange die
+ *     Umschaltung die Geometrie *ersetzt* und nicht zwei Stände nebeneinander
+ *     stehen lässt.
+ *  2. **`gridQuads` muss gerade sein.** Der Morph in `terrain_displace.vert.glsl`
+ *     zieht ungerade Stützstellen auf ihre geraden Nachbarn; bei ungerader
+ *     Quadzahl läge der Rand (g = 1) auf einer ungeraden Stelle und wanderte
+ *     mit — genau an der Naht, die das Verfahren schließen soll. 32, 24 und 16
+ *     sind gerade.
+ *
+ * ## Was es kostet
+ *
+ * Die Auflösung am Boden, und zwar messbar: 33 Stützstellen auf 48 m Blattgröße
+ * sind 1,5 m je Vertex und damit genau der Texelabstand der Heightmap. 17 sind
+ * 3,0 m — jede zweite Stützstelle der Karte wird dann nicht mehr gelesen, Grate
+ * werden weicher. Für eine Stufe, die auf integrierter Grafik laufen soll, ist
+ * das der richtige Tausch; für Ultra wäre es einer der falschen.
+ *
+ * ## Nachgemessen
+ *
+ * Das Argument oben ist eine Herleitung, und die kann falsch sein. Verbindlich
+ * ist `japanMap.lodHoles()` — zehn Blickpunkte, alles außer dem Gelände
+ * ausgeblendet, Himmel auf Magenta, Himmelspixel eingeschlossen zwischen
+ * Gelände gezählt:
+ *
+ * | Gitter | m/Vertex | Löcher (10 Blickpunkte) | Dreiecke @ stadt-neon |
+ * |---|---|---|---|
+ * | 33² | 1,5 | **0** | 264 192 |
+ * | 25² | 2,0 | **0** | 148 608 |
+ * | 17² | 3,0 | **0** | 66 048 |
+ *
+ * Die Knotenzahl bleibt bei allen dreien gleich (129 bei `stadt-neon`) — genau
+ * das sagt die Herleitung voraus, denn `ranges` und `morphStart` sind
+ * unangetastet. Die Dreiecksverhältnisse sind 24²/32² = 0,5625 und
+ * 16²/32² = 0,25, also exakt und nicht ungefähr.
+ *
+ * **Und der Zähler wurde gegengeprüft**, sonst wäre „0" wertlos: mit
+ * absichtlich falschem `uLodGridQuads` (16 statt 32, der Morph zieht dann auf
+ * den falschen Nachbarn) meldet dieselbe Messung **1496 Löcher**, schlimmster
+ * Blick `pass` mit 364 — zurückgestellt wieder 0. Eine Messung, die nie etwas
+ * findet, ist sonst nicht von einem kaputten Filter zu unterscheiden; genau
+ * dieser Fall steht in CLAUDE.md unter „Ein Filter, der nie gefiltert hat".
+ *
+ * > Sollte eine spätere Änderung hier doch Risse zeigen, fällt dieser Hebel
+ * > **ersatzlos** weg. `morphStart` wird dafür nicht nachgeregelt — das ist die
+ * > Regelschleife, die dieses Projekt zweimal ersatzlos entfernt hat.
+ */
+export const GRID_VERTICES_ALLOWED = [33, 25, 17] as const;
+
+export type GridVertices = (typeof GRID_VERTICES_ALLOWED)[number];
+
+/** Metrischer Stützstellenabstand auf einem Blattknoten, in Metern. */
+export function lodMetersPerVertex(gridVertices: number): number {
+  return LEAF_SIZE / (gridVertices - 1);
+}
