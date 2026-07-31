@@ -36,6 +36,28 @@ export class PropClearance {
   readonly #columns: number;
   #count = 0;
 
+  /**
+   * Alle Kreise als `x, z, radius` — für den Streu-Worker (P7 / 7.2).
+   *
+   * Das Raster selbst lässt sich nicht verschicken: eine `Map` mit geteilten
+   * Objekten in mehreren Zellen käme als Kopie mit **vervielfachten** Kreisen
+   * an. Die Rohliste ist die kleinere und ehrlichere Übertragung; der Worker
+   * baut das Raster mit demselben `add()` wieder auf und hat damit garantiert
+   * dieselbe Struktur.
+   */
+  get circles(): Float32Array {
+    const seen = new Set<ClearanceCircle>();
+    const out: number[] = [];
+    for (const list of this.#cells.values()) {
+      for (const circle of list) {
+        if (seen.has(circle)) continue;
+        seen.add(circle);
+        out.push(circle.x, circle.z, Math.sqrt(circle.radiusSq));
+      }
+    }
+    return new Float32Array(out);
+  }
+
   constructor() {
     this.#columns = Math.ceil(WORLD.size / CELL) + 1;
   }

@@ -333,6 +333,45 @@ export const SCATTER = {
   newChunkBudgetMs: 2,
 
   /**
+   * Gleichzeitig offene Aufträge an den Streu-Worker (P7 / 7.2).
+   *
+   * Der Worker ersetzt das Zeitbudget oben nicht, er macht es gegenstandslos:
+   * gestreut wird auf einem anderen Thread, der Hauptthread packt nur noch die
+   * Antwort aus. Übrig bleibt eine andere Grenze, und die hat einen anderen
+   * Grund als die Rechenzeit.
+   *
+   * Ein Worker arbeitet seine Nachrichten **in Ankunftsreihenfolge** ab. Schickt
+   * man ihm den ganzen Durchlauf auf einmal — im Nahbereich sind das mehrere
+   * hundert Chunks —, steht die dringendste Anfrage am Ende einer Schlange von
+   * Sekunden. Die Prioritätssortierung wäre dann eine Sortierung, die niemand
+   * mehr sieht. Wenige offene Aufträge heißen: die Reihenfolge wird bei jedem
+   * Nachschub neu entschieden, also mit der aktuellen Kameraposition.
+   *
+   * 4 ist der Kompromiss: genug, dass der Worker nie leerläuft (eine Antwort
+   * braucht einen Umlauf über die Ereignisschleife), wenig genug, dass eine
+   * Kameradrehung nach höchstens vier Chunks berücksichtigt wird.
+   */
+  workerQueueDepth: 4,
+
+  /**
+   * Wie stark die Blickrichtung die Reihenfolge des Durchlaufs verschiebt.
+   *
+   * Der Plan verlangt „Prioritätswarteschlange nach Distanz **und
+   * Blickrichtung**". Bis P6 sortierte allein die Entfernung, und der
+   * Frustum-Test entschied binär, ob ein Chunk überhaupt drankommt. Innerhalb
+   * des Bildes ist ein Chunk in der Mitte trotzdem wichtiger als einer am Rand:
+   * dorthin fliegt man.
+   *
+   * 0,5 heißt, dass ein Chunk quer zur Blickrichtung wie einer in der
+   * 1,22-fachen Entfernung behandelt wird (√1,5). Bewusst so klein: die
+   * Reihenfolge soll verschoben, nicht umgekehrt werden. Ein großer Wert ließe
+   * einen Chunk direkt vor der Kamera hinter einem in 300 m Entfernung zurück,
+   * sobald man den Kopf dreht — und Vegetation, die beim Drehen verschwindet,
+   * ist schlimmer als Vegetation, die spät kommt.
+   */
+  viewBias: 0.5,
+
+  /**
    * Zwischengespeicherte Chunks. Darüber wird der am längsten unbenutzte
    * verworfen.
    *

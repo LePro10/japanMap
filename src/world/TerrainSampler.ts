@@ -67,6 +67,21 @@ export class TerrainSampler {
   }
 
   /**
+   * Aus bereits geladenen Daten — für den Streu-Worker (P7 / 7.2).
+   *
+   * Der Worker bekommt eine **Kopie** von `height.r16` überreicht, statt sie ein
+   * zweites Mal zu laden: der Hauptthread braucht dieselben Daten weiter
+   * (Kamera-Kollision, Props), also lässt sich der Puffer nicht übergeben,
+   * sondern nur kopieren. 8 MB einmal sind billiger als ein zweiter Download
+   * plus zweite Prüfung — und vor allem ist es **dasselbe** Feld, was hier die
+   * eigentliche Anforderung ist: streute der Worker gegen ein anders geladenes
+   * Höhenfeld, wäre die Platzierung nicht mehr bitgleich.
+   */
+  static fromRaw(meta: TerrainMeta, raw: Uint16Array): TerrainSampler {
+    return new TerrainSampler(meta, raw);
+  }
+
+  /**
    * Prüft meta.json gegen world.config.ts.
    *
    * Der Baker ist ein eigenes Programm mit eigenen Konstanten. Laufen die

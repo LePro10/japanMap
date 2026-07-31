@@ -27,6 +27,7 @@ import type { TerrainSampler } from '../TerrainSampler';
 import { ImposterAtlas } from './ImposterAtlas';
 import { InstancedLOD, LOD_COUNT, type LodStage } from './InstancedLOD';
 import { INSTANCE_STRIDE, scatterChunk, type ScatterChunk } from './scatterChunk';
+import { ScatterWorkerClient } from './ScatterWorkerClient';
 import {
   createImposterQuad,
   createVegetationMeshes,
@@ -92,6 +93,14 @@ export class ScatterSystem implements System {
   readonly #cache = new Map<number, ScatterChunk>();
   #clock = 0;
 
+  /**
+   * Die Streuung auf einem eigenen Thread (P7 / 7.2). `null`, wenn sie dort
+   * nicht läuft — dann streut dieses System selbst weiter, mit derselben
+   * Funktion und demselben Ergebnis.
+   */
+  #worker: ScatterWorkerClient | null = null;
+  #workerNote = 'wird gestartet';
+
   /** Kandidatenliste des laufenden Durchlaufs, als Chunk-Schlüssel. */
   #pass: number[] = [];
   /** Quadrierter XZ-Abstand je Kandidat — nur zum Sortieren des Durchlaufs. */
@@ -99,6 +108,7 @@ export class ScatterSystem implements System {
   #cursor = 0;
   #passOpen = false;
   #newThisFrame = 0;
+  #requestedThisFrame = 0;
   #frameStart = 0;
 
   #quality: QualityLevel = DEFAULT_QUALITY;
@@ -109,6 +119,7 @@ export class ScatterSystem implements System {
   readonly #viewProjection = new Matrix4();
   readonly #box = new Box3();
   readonly #cameraPosition = new Vector3();
+  readonly #forward = new Vector3();
 
   readonly #readouts = {
     instanzen: '—',
@@ -116,6 +127,7 @@ export class ScatterSystem implements System {
     flecken: '—',
     chunks: '—',
     aufwand: '—',
+    worker: '—',
   };
 
   constructor(private readonly atmosphere: AtmosphereUniforms) {}
@@ -123,8 +135,24 @@ export class ScatterSystem implements System {
   async init(context: EngineContext): Promise<void> {
     this.#context = context;
 
+    this.#worker = new ScatterWorkerClient(
+      (key, chunk) => {
+        this.#receive(key, chunk);
+      },
+      (reason) => {
+        // Kein Abbruch: ohne Worker streut dieses System selbst weiter. Gemeldet
+        // wird es trotzdem, denn der Unterschied ist messbar — die Spitze beim
+        // Erzeugen eines Nahchunks kommt damit zurück.
+        console.warn(`Streu-Worker nicht verfügbar, es wird im Hauptthread gestreut. ${reason}`);
+        this.#worker = null;
+        this.#workerNote = `aus: ${reason}`;
+        this.#context?.debug?.refresh();
+      },
+    );
+
     context.bus.on('terrain:ready', ({ sampler, height }) => {
       this.#sampler = sampler;
+      this.#worker?.init(sampler, null, null);
       // Erst hier, nicht in `init()`: die Höhen-Uniforms entstehen im
       // TerrainSystem, und das wird **nach** diesem System initialisiert. Der
       // Fleck-Shader tastet dieselbe Heightmap ab wie das Gelände selbst, und
@@ -138,16 +166,16 @@ export class ScatterSystem implements System {
     // Rechenzeit und keine Genauigkeit.
     context.bus.on('props:ready', ({ clearance }) => {
       this.#clearance = clearance;
-      this.#cache.clear();
-      this.#passOpen = false;
+      this.#worker?.update(null, clearance);
+      this.#reset();
     });
     context.bus.on('roads:ready', ({ network }) => {
       this.#network = network;
       // Straßen kommen als letzte. Alles, was ohne sie gestreut wurde, hätte
       // Bäume auf der Fahrbahn — deshalb wird der Cache verworfen statt
       // nachträglich gefiltert.
-      this.#cache.clear();
-      this.#passOpen = false;
+      this.#worker?.update(network.file, null);
+      this.#reset();
     });
     // Look-Anbindung nach dem Muster aus P2 / 2.6: der Controller kennt dieses
     // System nicht, es trägt seinen Abschnitt selbst ein und liest ihn selbst
@@ -168,8 +196,7 @@ export class ScatterSystem implements System {
     context.bus.on('quality:changed', ({ level }) => {
       if (level === this.#quality) return;
       this.#quality = level;
-      this.#cache.clear();
-      this.#passOpen = false;
+      this.#reset();
     });
 
     this.#zones = await ZoneMap.load();
@@ -242,6 +269,29 @@ export class ScatterSystem implements System {
   }
 
   /**
+   * Alles Gestreute verwerfen und neu anfangen.
+   *
+   * Die drei Auslöser — Straßen, Freiflächen, Qualitätsstufe — ändern jeweils
+   * das Ergebnis der Streuung. Ein Chunk aus der Zeit davor hätte Bäume auf der
+   * Fahrbahn oder eine andere Dichte als sein Nachbar, und eine Antwort, die
+   * noch unterwegs ist, brächte genau das nachträglich ins Bild. Nachträglich
+   * zu filtern statt zu verwerfen wäre der falsche Tausch: neu zu streuen kostet
+   * Rechenzeit, nachträglich zu filtern kostet Richtigkeit.
+   */
+  #reset(): void {
+    this.#cache.clear();
+    this.#worker?.discard();
+    this.#passOpen = false;
+  }
+
+  /** Ein fertig gestreuter Chunk aus dem Worker. */
+  #receive(key: number, chunk: ScatterChunk): void {
+    chunk.lastUsed = this.#clock;
+    this.#cache.set(key, chunk);
+    this.#evict();
+  }
+
+  /**
    * Bodenverdeckung einstellen — Fleck **und** Pflanzenfuß in einem Zug.
    *
    * Es ist dieselbe Verdeckung, nur an zwei Orten: der Fleck erreicht die
@@ -299,6 +349,7 @@ export class ScatterSystem implements System {
     const started = performance.now();
     this.#frameStart = started;
     this.#newThisFrame = 0;
+    this.#requestedThisFrame = 0;
 
     if (!this.#passOpen) this.#beginPass(camera);
     this.#advancePass(camera);
@@ -327,6 +378,14 @@ export class ScatterSystem implements System {
     const centerZ = Math.floor((camera.position.z + WORLD.half) / cell);
     const reach = Math.ceil(range / cell);
 
+    // Blickrichtung in der XZ-Ebene. Senkrecht nach unten gibt es keine, dann
+    // steht `alignment` unten überall auf demselben Wert und die Reihenfolge
+    // bleibt die reine Entfernung — was für einen Blick von oben richtig ist.
+    camera.getWorldDirection(this.#forward);
+    const forwardLength = Math.hypot(this.#forward.x, this.#forward.z);
+    const forwardX = forwardLength > 1e-3 ? this.#forward.x / forwardLength : 0;
+    const forwardZ = forwardLength > 1e-3 ? this.#forward.z / forwardLength : 0;
+
     this.#pass.length = 0;
     this.#passDistance.clear();
     for (let cz = centerZ - reach; cz <= centerZ + reach; cz++) {
@@ -344,8 +403,21 @@ export class ScatterSystem implements System {
         const distanceSq = dx * dx + dz * dz;
         if (distanceSq > range * range) continue;
 
+        // **Blickrichtung geht in die Reihenfolge ein** (P7 / 7.2). Der
+        // Frustum-Test unten entscheidet nur „drin oder draußen"; innerhalb des
+        // Bildes ist ein Chunk in der Mitte trotzdem wichtiger als einer am
+        // Rand, weil man dorthin fliegt. Der Faktor wächst von 1 in
+        // Blickrichtung auf 1 + `SCATTER.viewBias` quer dazu — er verschiebt
+        // die Reihenfolge, kehrt sie aber nicht um: ein Chunk in 50 m bleibt
+        // vor einem in 300 m, egal wohin die Kamera sieht.
+        const toX = x0 + cell * 0.5 - camera.position.x;
+        const toZ = z0 + cell * 0.5 - camera.position.z;
+        const length = Math.sqrt(toX * toX + toZ * toZ);
+        const alignment = length > 1e-3 ? (toX * forwardX + toZ * forwardZ) / length : 1;
+        const priority = distanceSq * (1 + SCATTER.viewBias * (1 - alignment) * 0.5);
+
         this.#pass.push(cz * CHUNKS_PER_AXIS + cx);
-        this.#passDistance.set(cz * CHUNKS_PER_AXIS + cx, distanceSq);
+        this.#passDistance.set(cz * CHUNKS_PER_AXIS + cx, priority);
       }
     }
 
@@ -479,6 +551,30 @@ export class ScatterSystem implements System {
       cached.lastUsed = this.#clock;
       return cached;
     }
+
+    // Was schon gestreut war, bleibt drin: die Maske wird vereinigt, nicht
+    // ersetzt. Sonst verlöre ein Chunk beim Wegfliegen seine Gräser und bekäme
+    // sie beim Zurückkommen erneut gestreut — dieselbe Arbeit zweimal.
+    const wanted = mask | (cached?.generated ?? 0);
+
+    const worker = this.#worker;
+    if (worker && worker.ready) {
+      if (this.#requestedThisFrame < worker.slots) {
+        worker.request(key, cx, cz, wanted, QUALITY[this.#quality].vegetationDensity);
+        this.#requestedThisFrame++;
+      }
+      // **Der unvollständige Chunk bleibt derweil im Bild.** Er trägt vielleicht
+      // nur die Bäume und noch kein Gras; ihn bis zur Antwort auszublenden hieße,
+      // beim Näherkommen kurz einen kahlen Fleck zu zeigen — genau dort, wo man
+      // gerade hinschaut. Der synchrone Weg unten hatte das Problem nicht, weil
+      // er sofort nachstreute.
+      if (cached) {
+        cached.lastUsed = this.#clock;
+        return cached;
+      }
+      return null;
+    }
+
     if (
       this.#newThisFrame > 0 &&
       performance.now() - this.#frameStart >= SCATTER.newChunkBudgetMs
@@ -488,10 +584,6 @@ export class ScatterSystem implements System {
     if (!this.#sampler || !this.#zones) return null;
 
     this.#newThisFrame++;
-    // Was schon gestreut war, bleibt drin: die Maske wird vereinigt, nicht
-    // ersetzt. Sonst verlöre ein Chunk beim Wegfliegen seine Gräser und bekäme
-    // sie beim Zurückkommen erneut gestreut — dieselbe Arbeit zweimal.
-    const wanted = mask | (cached?.generated ?? 0);
     const chunk = scatterChunk(cx, cz, wanted, {
       sampler: this.#sampler,
       zones: this.#zones,
@@ -559,6 +651,14 @@ export class ScatterSystem implements System {
       : '—';
     this.#readouts.chunks = `${this.#cache.size} im Cache · ${this.#pass.length} im Durchlauf`;
     this.#readouts.aufwand = `${ms.toFixed(2)} ms`;
+
+    const worker = this.#worker;
+    this.#readouts.worker = worker
+      ? worker.ready
+        ? `an · ${worker.delivered} Chunks · ${worker.pending} offen · ` +
+          `zuletzt ${worker.lastCostMs.toFixed(1)} ms dort`
+        : 'startet …'
+      : this.#workerNote;
   }
 
   #registerDebug(context: EngineContext): void {
@@ -590,6 +690,13 @@ export class ScatterSystem implements System {
       readonly: true,
       label: 'CPU je Frame',
       interval: 200,
+    });
+    folder.addBinding(this.#readouts, 'worker', {
+      readonly: true,
+      label: 'Worker',
+      interval: 300,
+      multiline: true,
+      rows: 2,
     });
     folder.addBinding({ bake: `${this.#bakeMs.toFixed(0)} ms` }, 'bake', {
       readonly: true,
@@ -681,6 +788,8 @@ export class ScatterSystem implements System {
       this.#meshes = null;
     }
     this.#cache.clear();
+    this.#worker?.dispose();
+    this.#worker = null;
     this.#context = null;
   }
 }
