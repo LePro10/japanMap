@@ -1,6 +1,8 @@
 import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { brotliCompressSync, constants } from 'node:zlib';
 import { defineConfig, type Plugin } from 'vite';
 import glsl from 'vite-plugin-glsl';
 
@@ -70,9 +72,71 @@ function screenshotEndpoint(): Plugin {
   };
 }
 
+/**
+ * Brotli-Vorkompression — PLAN.md P7 / 7.5.
+ *
+ * Zur Bauzeit statt beim Ausliefern: Brotli auf Stufe 11 kostet für die
+ * Heightmap Sekunden, und das kann kein Server pro Anfrage tun. Web-Server
+ * liefern eine `.br`-Datei neben dem Original aus, wenn der Browser
+ * `Accept-Encoding: br` schickt (nginx `brotli_static`, Caddy und die üblichen
+ * CDNs von Haus aus).
+ *
+ * **Komprimiert wird nur, was sich lohnt.** JPEG, PNG und glTF-Binärdaten sind
+ * bereits komprimiert; Brotli darüber kostet Bauzeit und Speicherplatz und
+ * bringt einstellige Promille. Gemessen wird trotzdem jede Datei — geschrieben
+ * nur die, bei denen wenigstens 5 % herauskommen. Der Bericht am Ende sagt, was
+ * es gebracht hat, statt es zu behaupten.
+ */
+function brotliAssets(): Plugin {
+  const MIN_BYTES = 4096;
+  const MIN_GAIN = 0.05;
+  return {
+    name: 'japanmap-brotli',
+    apply: 'build',
+    enforce: 'post',
+    async closeBundle() {
+      const outDir = join(projectRoot, 'dist');
+      const files = await readdir(outDir, { recursive: true, withFileTypes: true });
+      let originalTotal = 0;
+      let compressedTotal = 0;
+      let written = 0;
+
+      for (const entry of files) {
+        if (!entry.isFile() || entry.name.endsWith('.br') || entry.name.endsWith('.map')) continue;
+        const file = join(entry.parentPath, entry.name);
+        const source = await readFile(file);
+        if (source.byteLength < MIN_BYTES) continue;
+
+        const packed = brotliCompressSync(source, {
+          params: {
+            [constants.BROTLI_PARAM_QUALITY]: 11,
+            [constants.BROTLI_PARAM_SIZE_HINT]: source.byteLength,
+          },
+        });
+        originalTotal += source.byteLength;
+        if (packed.byteLength <= source.byteLength * (1 - MIN_GAIN)) {
+          await writeFile(`${file}.br`, packed);
+          compressedTotal += packed.byteLength;
+          written++;
+        } else {
+          compressedTotal += source.byteLength;
+        }
+      }
+
+      const mb = (bytes: number): string => (bytes / 1048576).toFixed(2);
+      console.log(
+        `\nBrotli: ${written} Dateien vorkomprimiert — ` +
+          `${mb(originalTotal)} MB → ${mb(compressedTotal)} MB ` +
+          `(${(100 - (compressedTotal / originalTotal) * 100).toFixed(1)} % weniger).`,
+      );
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     screenshotEndpoint(),
+    brotliAssets(),
     // Shader liegen als .glsl/.vert/.frag im Baum und werden importiert, nicht
     // als Template-String eingebettet — sonst gibt es kein Syntax-Highlighting
     // und #include funktioniert nicht (PLAN.md, Codebasis-Regeln).
@@ -144,6 +208,48 @@ export default defineConfig({
     // Assets werden inline nie sinnvoll — Heightmaps und HDRIs sind zu groß,
     // und base64 kostet 33 % Übertragung gegen das 15-MB-Budget aus SPEC §4.
     assetsInlineLimit: 0,
+
+    rollupOptions: {
+      output: {
+        /**
+         * **Die Fremdbibliotheken müssen aus dem Einstiegs-Chunk heraus, und
+         * zwar nicht der Dateigrößen wegen.**
+         *
+         * Der gebaute Stand hing beim Start. Reproduzierbar, ohne jede
+         * Fehlermeldung: der Ladebildschirm blieb bei 31 % („PropSystem")
+         * stehen, alle 15 bis dahin angeforderten Dateien kamen mit 200 zurück,
+         * und die erste `.glb` wurde nie angefordert.
+         *
+         * Die Ursache ist ein **Deadlock über Top-Level-await**:
+         *
+         *  1. `main.ts` wartet auf oberster Ebene auf `engine.init()`. Der
+         *     Einstiegs-Chunk ist damit so lange „am Auswerten".
+         *  2. Rollup legt den geteilten three-Code in genau diesen Chunk.
+         *  3. `GLTFLoader` wird per `import()` nachgeladen — und der gebaute
+         *     Chunk beginnt mit `import{…}from"./index-….js"`.
+         *  4. Ein Modul darf erst laufen, wenn seine Abhängigkeiten fertig
+         *     ausgewertet sind. Der Einstiegs-Chunk wird das aber erst, wenn
+         *     `init()` durch ist — und das wartet auf diesen Import.
+         *
+         * Im Dev-Server passiert das nicht: dort ist jede Quelldatei ihr eigenes
+         * Modul, `GLTFLoader` hängt an `three` statt an `main.ts`, und der Kreis
+         * schließt sich nicht. **Der Fehler existiert ausschließlich im Build**
+         * — und war damit genau die Sorte, für die es diesen Schritt gibt.
+         *
+         * Mit eigenem Chunk hängen Einstieg *und* Nachladung beide an `three`,
+         * das vor beiden fertig ausgewertet ist. Der Kreis ist aufgetrennt.
+         *
+         * Die zweite Hälfte der Absicherung steht in `main.ts`: die
+         * Startsequenz läuft dort inzwischen in einer async-Funktion statt auf
+         * oberster Ebene. Beides zusammen, weil hier jede für sich reicht und
+         * keine für sich offensichtlich ist.
+         */
+        manualChunks: {
+          three: ['three'],
+          postfx: ['postprocessing', 'n8ao'],
+        },
+      },
+    },
   },
 
   // .r16 ist die rohe 16-bit-Heightmap aus tools/bake-terrain.mjs (ab P1).
