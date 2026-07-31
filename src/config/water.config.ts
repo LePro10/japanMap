@@ -117,6 +117,31 @@ export const RIVER = {
   foamSlope: 0.1,
 } as const;
 
+// ── Was der Fluss am Unterlauf ist, und was er nicht ist ────────────────────
+//
+// Die Abnahme von P8.6 meldete am Unterlauf **2 geänderte Pixel** in der
+// Differenz gegen ein Bild ohne Fluss. Daraus wurde zuerst „der Fluss ist nicht
+// im Bild". Das war falsch, und drei Messungen haben es nacheinander widerlegt:
+//
+//   · vergraben von den Reisterrassen?  Nein — freier Bandanteil 100 %,
+//     0 von 160 Knoten unter Gelände.
+//   · durch die Uferblende transparent? Nein — Wassertiefe im Median 3,00 m,
+//     Deckkraft 100 %.
+//   · außerhalb des Bildes?             Nein — 151 von 422 Knoten im
+//     Sichtvolumen, einer auf Pixel (1238, 543).
+//
+// Er wird gezeichnet: bei Differenzschwelle **0** sind es **0,869 % der
+// Pixel**, bei Schwelle 2 nur noch 0,002 %. Er ist also **farblich nicht von
+// den gefluteten Reisfeldern zu unterscheiden**, durch die er läuft. Das ist
+// kein Fehler in der Geometrie und keiner im Shader, sondern eine Look-Frage.
+//
+// **Ein Rauheitsaufschlag (+0,085) war der naheliegende Versuch und ist
+// gemessen wirkungslos**: 0,002 % bei Schwelle 2, vorher wie nachher. Er ist
+// deshalb wieder ausgebaut — nach derselben Regel, an der in P8.5 schon eine
+// „offensichtlich richtige" Erosionsreparatur gescheitert ist. Was den Fluss
+// dort lesbar macht, muss eine andere Größe sein: Ufer, Böschungsbewuchs oder
+// eine Strömungsstruktur, die ein stehendes Feld nicht hat. Offen.
+
 // ── Bekannte Grenze der Küstenlinie in P2 ───────────────────────────────────
 //
 // Schaumsaum und Transparenzverlauf werden aus der Heightmap gerechnet und sind
