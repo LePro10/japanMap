@@ -289,6 +289,24 @@ Kurzliste, damit es nicht wieder passiert:
 - **Außerhalb des Gitters extrapoliert.** Bilineare Interpolation braucht die
   Klemmung auf der Gitterkoordinate, nicht auf dem Index — sonst entstehen
   Messwerte, die es nicht gibt.
+- **Ein A/B am Höhenfeld, das gar keines war.** Der Punkt oben („ein Parameter
+  mit Fernwirkung") beschreibt einen Einzelfall. Gemessen ist es die Regel:
+  ein Eingriff, der ausschließlich die **Stadtzone** anfasst, verändert vor der
+  Erosion 17,28 % der Texel und **danach 66,82 %** — bis ans andere Ende der
+  Karte (x = −1536). Die Erosion ist ein chaotisches System, und sie trägt jede
+  Störung überallhin. Die Kette bleibt dabei deterministisch; zwei Läufe mit
+  gleichem Code sind bitgleich.
+  Eine plausible Ursache wurde geprüft und **verworfen**: die Startpunktsuche
+  der Tropfen verbraucht den Zufallsstrom ungleichmäßig. Ein Versuchsstand mit
+  gleichmäßigem Verbrauch änderte an der Ausbreitung nichts (66,82 % mit wie
+  ohne) — und wurde deshalb nicht eingebaut, obwohl er „offensichtlich richtig"
+  aussah. **Eine Reparatur, deren Wirkung ausbleibt, ist keine Reparatur,
+  sondern ein neu gewürfeltes Höhenfeld.**
+  Daraus zwei Regeln: wer wissen will, was ein Geländeeingriff *selbst* tut,
+  misst mit `--erosion 0`; und wer eine Wirkung dem Eingriff zuschreibt, muss
+  sie getrennt haben. Nach P8.5 hat der Bergpass 7 Kehren statt 3 — **welcher
+  der drei Eingriffe das bewirkt hat, ist nicht bekannt**, und genau so steht
+  es in der Doku.
 - **Etwas ist nicht im Bild — und jede Zahl sagt, es sei alles in Ordnung.**
   Dreimal in P6, mit drei verschiedenen Ursachen und **demselben Messbild**:
   Draw-Calls stimmen, Instanzzahlen stimmen, die Geometrie liegt an der
