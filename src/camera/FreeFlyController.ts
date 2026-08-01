@@ -1,6 +1,6 @@
 import { Euler, Vector3, type PerspectiveCamera } from 'three';
 
-import { WORLD } from '@/config/world.config';
+import { WORLD, CAMERA } from '@/config/world.config';
 import type { EngineContext, System } from '@/core/System';
 import type { TerrainSampler } from '@/world/TerrainSampler';
 
@@ -15,7 +15,25 @@ const START = {
 
 const SPEED = { min: 1, max: 500, default: 45, boost: 5 } as const;
 const LOOK_SENSITIVITY = 0.0022;
-const PITCH_LIMIT = Math.PI / 2 - 0.01;
+/**
+ * Nick-Grenze — Wert und Begründung in `CAMERA.pitchLimitDeg`.
+ *
+ * Früher stand hier hart `Math.PI / 2 - 0.01` (89,43°). Am Pol wird jede
+ * horizontale Mausbewegung zur Vollbild-Drehung im Kreis statt zum Schwenk
+ * (gemessen: 12,8° Bildrotation pro 100 px bei 12,61° Gierdelta — siehe
+ * world.config.ts), und der Clamp schluckt das senkrechte `movementY`. Das
+ * Limit kommt deshalb aus der Konfiguration, und auch `placeAt()` und
+ * `#restore()` halten es ein — sonst steht die Kamera nach einem
+ * Blickpunkt-Sprung oder einem alten Save außerhalb des Bereichs, den die
+ * Maus bedient, und der erste Mauszug macht einen Sprung.
+ *
+ * **Das Limit allein reicht nicht.** Die Drehung um die Blickachse skaliert
+ * mit `sin(Nick)`: bei 75° sind das noch 97 % des Maus-Tempos, der Wirbel
+ * bleibt. Deshalb kappt `#yawFactor()` die Bildrotation global — siehe
+ * `CAMERA.yawSpinCap`.
+ */
+const PITCH_LIMIT = (CAMERA.pitchLimitDeg * Math.PI) / 180;
+const YAW_SPIN_CAP = CAMERA.yawSpinCap;
 /** Abstand über Grund, wenn die Kollision aktiv ist. */
 const GROUND_CLEARANCE = 2;
 /**
@@ -65,16 +83,26 @@ export class FreeFlyController implements System {
   #speed: number = SPEED.default;
   #collision = false;
   #pointerLocked = false;
+  #skipNextMove = false;
   #lastSave = 0;
 
   readonly #readouts = {
     geschwindigkeit: '—',
     zeiger: 'Klick ins Bild',
+    blick: '—',
+    gierfaktor: '—',
   };
 
   init(context: EngineContext): void {
     this.#camera = context.camera;
     this.#canvas = context.renderer.domElement;
+
+    // Marker für die Abnahme: Wer „die Kamera dreht am Pol 5× zu schnell"
+    // erlebt, läuft eine alte Version — dieser Eintrag steht nur hier.
+    console.info(
+      `[Kamera] Nick-Limit ±${CAMERA.pitchLimitDeg}°, Gier-Spin-Cap ${CAMERA.yawSpinCap} — ` +
+        'am Limit ist horizontale Mausbewegung gedeckelt (F1 zeigt den Faktor).',
+    );
 
     // Für eine Blickkamera ist die Reihenfolge YXZ Pflicht: erst Gieren um die
     // Welt-Y-Achse, dann Nicken um die lokale X-Achse. Mit der Standardordnung
@@ -155,6 +183,11 @@ export class FreeFlyController implements System {
     this.#readouts.geschwindigkeit = `${(this.#speed * boost).toFixed(0)} m/s${
       boost > 1 ? ' (Boost)' : ''
     }`;
+    // Live-Ablese der Pol-Reparatur: Nick in Grad und der aktive Gier-Faktor.
+    // Am Limit müssen 0,31 (bzw. `yawSpinCap / sin(Nick)`) stehen — steht dort
+    // 1,00, läuft eine alte Version ohne Spin-Cap.
+    this.#readouts.blick = `${(this.#pitch * (180 / Math.PI)).toFixed(0)}°`;
+    this.#readouts.gierfaktor = this.#yawFactor(this.#pitch).toFixed(2);
 
     const now = performance.now();
     if (now - this.#lastSave > SAVE_INTERVAL_MS) {
@@ -190,14 +223,48 @@ export class FreeFlyController implements System {
     this.#pointerLocked = document.pointerLockElement === this.#canvas;
     this.#readouts.zeiger = this.#pointerLocked ? 'gefangen (Esc löst)' : 'Klick ins Bild';
     if (!this.#pointerLocked) this.#keys.clear();
+    // Beim (Neu-)Erwerben des Locks liefert der Browser einen ersten
+    // Maus-Event mit dem gesamten Weg vom Klickpunkt bis zur Mitte des
+    // Elements als `movementX/Y` — Hunderte Pixel auf einmal. Ohne den
+    // Übersprung würde der als schlagartige Blickdrehung gewertet; am Pol
+    // ist das ein heftiger Vollbild-Wirbel, „auf einmal ist die DPI 5× so
+    // schnell". Dieser Weg war aber Bewegung **vor** dem Klick und gehört
+    // dem Klick, nicht dem Blick.
+    if (this.#pointerLocked) this.#skipNextMove = true;
   };
 
   readonly #onMouseMove = (event: MouseEvent): void => {
     if (!this.#pointerLocked) return;
-    this.#yaw -= event.movementX * LOOK_SENSITIVITY;
+    if (this.#skipNextMove) {
+      this.#skipNextMove = false;
+      return;
+    }
+    this.#yaw -= event.movementX * LOOK_SENSITIVITY * this.#yawFactor(this.#pitch);
     this.#pitch -= event.movementY * LOOK_SENSITIVITY;
     this.#pitch = Math.min(Math.max(this.#pitch, -PITCH_LIMIT), PITCH_LIMIT);
   };
+
+  /**
+   * Gier-Faktor, der die Drehung um die Blickachse kappt.
+   *
+   * Warum: das Gieren dreht um die Welt-Senkrechte. Schaut die Kamera um `θ`
+   * nach oben oder unten, erscheint der Anteil `sin(θ)` dieser Drehung als
+   * Drehung der ganzen Welt um den Bildmittelpunkt statt als Schwenk —
+   * gemessen am alten Limit 89,43°: 12,8° Bildrotation pro 100 px statt
+   * 2,4° Schwenk, gefühlt „die DPI wird 5× so schnell".
+   *
+   * Die erste Reparatur dämpfte erst ab 55° Nick — gemessen drehte die Welt
+   * bei 55–60° weiterhin mit 76–82 % des Maus-Tempos, der Wirbel „kam auf
+   * einmal wieder", sobald man über die Schwelle kippte. Dieser Faktor greift
+   * deshalb von ~18° an und hält `Faktor × sin(θ)` bei **jedem** Nick auf
+   * höchstens `CAMERA.yawSpinCap` (0,3): die Bildrotation ist überall
+   * Schwenk-Tempo. Unterhalb der Schwelle ist die Maus unverändert direkt.
+   * Preis: wer steil schaut, dreht sich entsprechend langsamer.
+   */
+  #yawFactor(pitch: number): number {
+    const s = Math.abs(Math.sin(pitch));
+    return Math.min(1, YAW_SPIN_CAP / Math.max(s, 1e-6));
+  }
 
   readonly #onWheel = (event: WheelEvent): void => {
     if (!this.#pointerLocked) return;
@@ -258,6 +325,12 @@ export class FreeFlyController implements System {
    * nur die Quaternion gesetzt: `update()` baut die Ausrichtung jeden Frame aus
    * diesen beiden Zahlen neu auf, eine gesetzte Quaternion wäre nach einem
    * Frame wieder weg.
+   *
+   * Der zurückgelesene Nick wird ins `PITCH_LIMIT` geklemmt. Ohne das kann ein
+   * fast senkrechter Blickpunkt (`pass-kehren` blickt 89,9° nach unten) die
+   * Kamera außerhalb des Bereichs parken, den die Maus bedient — der erste
+   * Mauszug danach würde mit einem Sprung von fast 20° einsetzen, weil der
+   * Clamp erst beim nächsten `mousemove` greift.
    */
   placeAt(position: Vector3, lookAt: Vector3): void {
     const camera = this.#camera;
@@ -265,7 +338,7 @@ export class FreeFlyController implements System {
     camera.position.copy(position);
     camera.lookAt(lookAt);
     this.#yaw = camera.rotation.y;
-    this.#pitch = camera.rotation.x;
+    this.#pitch = Math.min(Math.max(camera.rotation.x, -PITCH_LIMIT), PITCH_LIMIT);
     this.#velocity.set(0, 0, 0);
     this.#persist();
   }
@@ -289,11 +362,25 @@ export class FreeFlyController implements System {
     try {
       const stored = JSON.parse(raw) as StoredCamera;
       camera.position.fromArray(stored.position);
+      // Nur die Position zu prüfen hat einen kaputten Zustand durchgelassen:
+      // ein nicht-endlicher Gier- oder Nick-Wert (alter Save, korrupter
+      // Eintrag) baut die Kamera still zusammen — `setFromEuler` mit NaN macht
+      // eine Quaternion aus lauter NaN, und der erste Mauszug „repariert" das
+      // nicht, weil NaN jede Operation ansteckt.
+      if (
+        !Number.isFinite(stored.yaw) ||
+        !Number.isFinite(stored.pitch) ||
+        !Number.isFinite(camera.position.lengthSq())
+      ) {
+        throw new Error('ungültiger Kamerazustand');
+      }
       this.#yaw = stored.yaw;
-      this.#pitch = stored.pitch;
+      // Saves aus der Zeit mit dem fast-senkrechten Limit (89,43°) dürfen
+      // weiter zeigen: einschleusen statt verwerfen. Sonst spränge die Kamera
+      // beim ersten Mauszug um die Differenz zum neuen Limit.
+      this.#pitch = Math.min(Math.max(stored.pitch, -PITCH_LIMIT), PITCH_LIMIT);
       this.#speed = Math.min(Math.max(stored.speed, SPEED.min), SPEED.max);
       this.#collision = stored.collision;
-      if (!Number.isFinite(camera.position.lengthSq())) throw new Error('ungültige Position');
     } catch {
       // Beschädigter oder veralteter Eintrag darf den Start nicht verhindern.
       localStorage.removeItem(STORAGE_KEY);
@@ -328,6 +415,16 @@ export class FreeFlyController implements System {
       interval: 150,
     });
     folder.addBinding(this.#readouts, 'zeiger', { readonly: true, label: 'Maus' });
+    folder.addBinding(this.#readouts, 'blick', {
+      readonly: true,
+      label: 'Nick',
+      interval: 100,
+    });
+    folder.addBinding(this.#readouts, 'gierfaktor', {
+      readonly: true,
+      label: 'Gier-Faktor',
+      interval: 100,
+    });
     folder.addButton({ title: 'Zurück zum Start (R)' }).on('click', () => {
       this.#reset();
     });
