@@ -3,6 +3,7 @@ import './style.css';
 import { FreeFlyController } from './camera/FreeFlyController';
 import { Engine } from './core/Engine';
 import { countLodHoles } from './debug/lodHoles';
+import { checkWinding } from './debug/winding';
 import { reflectionProbe } from './debug/reflectionProbe';
 import { QUALITY } from './config/quality.config';
 import { applyViewpoint, type Viewpoint } from './debug/viewpoints';
@@ -183,6 +184,21 @@ function installFrameProbe(
           target.loop.tick();
         },
       });
+    },
+
+    /**
+     * Wickelrichtung aller Meshes prüfen — `japanMap.winding()`.
+     *
+     * Ohne Argument nur die Auffälligen; `winding(true)` gibt alles aus. Die
+     * Prüfung liest nur Attribute und rendert nichts — sie ist damit unabhängig
+     * von Kamera, Stufe und Streuung.
+     *
+     * Sie hat in P8.11 zwei unsichtbare Flächen gefunden, die jede Zahl vorher
+     * für in Ordnung erklärt hatte. Siehe `debug/winding.ts`.
+     */
+    winding: (alle) => {
+      const rows = checkWinding(target.scene);
+      return alle ? rows : rows.filter((r) => r.suspicious);
     },
 
     probe: () => {
