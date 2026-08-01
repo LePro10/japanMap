@@ -1053,6 +1053,30 @@ function layout(terrain) {
       [-1010, 118],
       [-1140, 128],
     ].map(([x, z]) => pushInland(terrain, x, z, 3)),
+
+    /**
+     * Küstenpfad zum Fischerdorf — P8.9.
+     *
+     * **Er ist nachgereicht, weil eine Abnahmezeile ihn verlangt und eine
+     * Behauptung ihn nicht ersetzt.** Die Zeile lautet „Fischerdorf und Sandō
+     * stehen und sind erreichbar — ein Pfad führt hin". Für den Sandō stimmte
+     * das ab 8.9 per Konstruktion; für das Dorf stand im Entwurf der Doku, die
+     * Ringstraße laufe 40 m daran vorbei. Nachgemessen sind es über alle neun
+     * Hütten **340…429 m** — das Dorf war nicht angebunden.
+     *
+     * Die Trasse ist gemessen und nicht geschätzt: vom Ring bei (533, 710)
+     * hinunter zur Uferzeile bei (760, 1000), also 11,9 m auf 0,5 m über
+     * 370 m. Die Zwischenpunkte liegen auf flachem Boden (1,1…8,0°); die eine
+     * steile Stelle bei (578, 768) mit 21,3° wird umgangen, indem der zweite
+     * Wegpunkt weiter westlich liegt.
+     */
+    kuestenpfad: [
+      [533, 712],
+      [590, 800],
+      [648, 872],
+      [706, 940],
+      [758, 998],
+    ].map(([x, z]) => pushInland(terrain, x, z, 3)),
   };
 }
 
@@ -1405,6 +1429,15 @@ async function main() {
       waypoints: plan.feldpfad,
       banking: 0,
       startsOn: { road: 'dorf', near: plan.feldpfad[0] },
+    },
+    {
+      id: 'kuestenpfad',
+      type: 'pfad',
+      closed: false,
+      tags: ['pfad', 'kueste'],
+      waypoints: plan.kuestenpfad,
+      banking: 0,
+      startsOn: { road: 'ring', near: plan.kuestenpfad[0] },
     },
   ];
 

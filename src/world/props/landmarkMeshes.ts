@@ -52,7 +52,18 @@ export type LandmarkId =
   | 'tetrapod'
   | 'lighthouse'
   | 'boat'
-  | 'delineator';
+  | 'delineator'
+  // ── P8.9 ──────────────────────────────────────────────────────────────────
+  | 'chozuya'
+  | 'bellTower'
+  | 'fishHut'
+  | 'netRack'
+  | 'boatRamp'
+  | 'crateStack'
+  | 'jetty'
+  | 'concreteWall'
+  | 'greenhouse'
+  | 'warehouse';
 
 const matrix = new Matrix4();
 const color = new Color();
@@ -484,6 +495,360 @@ function delineator(): BufferGeometry {
   return finish(parts, 'delineator');
 }
 
+// ── Sandō — P8.9 ─────────────────────────────────────────────────────────────
+//
+// Vier Torii und zwölf Laternen ergeben keinen Tempelaufgang. Was fehlt, sind
+// die beiden Bauten, ohne die kein Schrein auskommt: das Wasserbecken, an dem
+// man sich vor dem Betreten die Hände wäscht, und der Glockenturm. Beide sind
+// klein, beide sind unverwechselbar, und beide kosten zusammen weniger
+// Dreiecke als die Tempelhalle allein.
+
+/**
+ * Chōzuya — das überdachte Wasserbecken am Aufgang, gemessen 3,25 × 2,90 × 3,25 m.
+ *
+ * Vier Pfosten, ein Walmdach, darunter ein steinernes Becken mit Schöpfkellen.
+ * Das Merkmal ist das **Verhältnis**: ein sehr kleiner Grundriss unter einem
+ * verhältnismäßig großen Dach. Ein Pavillon mit bündigem Dach liest sich als
+ * Bushaltestelle.
+ */
+function chozuya(): BufferGeometry {
+  const parts: BufferGeometry[] = [];
+  const postH = 2.05;
+  for (const x of [-1.1, 1.1]) {
+    for (const z of [-1.1, 1.1]) {
+      parts.push(at(pillar(0.11, 0.13, postH, 6, 'wood'), x, 0, z));
+      // Fundamentstein wie beim Torii: sonst schneidet jede Bodenwelle den Pfosten an.
+      parts.push(at(pillar(0.2, 0.24, 0.16, 6, 'stone'), x, 0, z));
+    }
+  }
+  // Querriegel oben, auf denen das Dach sitzt.
+  for (const z of [-1.1, 1.1]) parts.push(at(box(2.6, 0.16, 0.14, 'wood'), 0, postH - 0.08, z));
+
+  // Das Becken: ein flacher Steintrog, randvoll. Kein Wasser-Mesh — bei 1,4 m
+  // Kantenlänge wäre eine eigene Wasserfläche ein Draw-Call für sechs Pixel.
+  // Die Palettenfarbe `steel` liest sich bei 2,2° Sonnenstand als Spiegelung.
+  parts.push(at(box(1.5, 0.52, 1.0, 'stone'), 0, 0.26, 0));
+  parts.push(at(box(1.26, 0.06, 0.78, 'steel'), 0, 0.53, 0));
+  // Schöpfkellen liegen quer über dem Rand.
+  for (const x of [-0.4, 0.15]) parts.push(at(box(0.5, 0.05, 0.07, 'wood'), x, 0.57, -0.4));
+
+  // Walmdach, 1,6 m über die Pfosten hinaus — derselbe Griff wie bei der Halle.
+  const roof = rotY(cone(2.3, 0.85, 4, 'roofTile'), Math.PI / 4);
+  parts.push(at(roof, 0, postH, 0));
+  return finish(parts, 'chozuya');
+}
+
+/**
+ * Shōrō — der Glockenturm, gemessen 3,54 × 4,23 × 3,54 m.
+ *
+ * Die vier Pfosten stehen **nach außen geneigt** (4°), und das ist nicht
+ * Zierde: ein Glockenturm trägt eine Tonne Bronze auf halber Höhe, und die
+ * Spreizung ist das, was ihn von einem Gartenpavillon unterscheidet. Bei einem
+ * senkrechten Turm sieht die Silhouette aus wie ein Vogelhaus auf Stelzen.
+ */
+function bellTower(): BufferGeometry {
+  const parts: BufferGeometry[] = [];
+  const postH = 3.1;
+  const spread = (4 * Math.PI) / 180;
+  const foot = 1.35;
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      const post = pillar(0.15, 0.19, postH, 6, 'wood');
+      // Neigung um beide waagerechten Achsen: der Fuß steht weiter außen als
+      // der Kopf. rotZ kippt in X, rotX kippt in Z — die Reihenfolge ist bei
+      // 4° ohne messbaren Unterschied.
+      rotZ(post, -sx * spread);
+      rotX(post, sz * spread);
+      parts.push(at(post, sx * foot, 0, sz * foot));
+      parts.push(at(pillar(0.28, 0.32, 0.2, 6, 'stone'), sx * (foot + 0.05), 0, sz * (foot + 0.05)));
+    }
+  }
+  // Rähm, auf dem das Dach ruht, und der Querbalken, an dem die Glocke hängt.
+  for (const z of [-1.2, 1.2]) parts.push(at(box(2.8, 0.2, 0.18, 'wood'), 0, postH - 0.1, z));
+  parts.push(at(box(0.2, 0.22, 2.6, 'wood'), 0, postH - 0.1, 0));
+
+  // Bonshō: eine japanische Tempelglocke ist ein fast zylindrischer Topf mit
+  // gewölbtem Scheitel, keine europäische Kelchglocke. Deshalb Zylinder plus
+  // Kugelkalotte statt eines Kegelstumpfs.
+  parts.push(at(pillar(0.52, 0.56, 1.25, 10, 'steel'), 0, postH - 1.95, 0));
+  parts.push(at(paint(new SphereGeometry(0.52, 10, 5), 'steel'), 0, postH - 0.7, 0));
+  parts.push(at(pillar(0.09, 0.09, 0.28, 6, 'steel'), 0, postH - 0.34, 0));
+  // Shumoku — der waagerecht aufgehängte Rammbalken. Das Stück, an dem man die
+  // Glocke als japanische erkennt.
+  parts.push(at(rotZ(pillar(0.09, 0.11, 1.5, 6, 'wood'), Math.PI / 2), 1.5, postH - 1.35, 0));
+
+  const roof = rotY(cone(2.5, 1.0, 4, 'roofTile'), Math.PI / 4);
+  parts.push(at(roof, 0, postH, 0));
+  parts.push(at(box(1.0, 0.22, 0.3, 'roofTile'), 0, postH + 1.0, 0));
+  return finish(parts, 'bellTower');
+}
+
+// ── Fischerdorf — P8.9 ───────────────────────────────────────────────────────
+//
+// Der Befund aus PLAN 8.9: es gibt Leuchtturm, Steg, vier Boote und 372
+// Tetrapoden — „die Zutaten eines Hafens ohne den Hafen". Was einen Hafen
+// ausmacht, ist nicht ein weiteres großes Bauwerk, sondern **Kleinkram in
+// Gebrauch**: Gestelle, Kisten, eine Rampe. Deshalb sind vier der fünf Stücke
+// hier unter 30 Dreiecken.
+
+/**
+ * Fischerhütte, gemessen 6,20 × 3,77 × 4,92 m.
+ *
+ * Bewusst **nicht** das Bauernhaus mit anderer Skalierung: ein Minka hat ein
+ * Reetdach mit 45°, eine Hütte am Wasser hat Wellblech mit 12°. Der Unterschied
+ * ist aus 100 m die ganze Unterscheidung zwischen Dorf und Hof — und der Grund,
+ * warum das Fischerdorf sonst wie ein zweites Reisfeld aussähe.
+ *
+ * Sie steht auf niedrigen Pfählen. An einer Flachküste, deren Uferlinie im
+ * Median auf 0,02 m liegt (gemessen in `gen-props.mjs`), ist das kein Zierrat.
+ */
+function fishHut(): BufferGeometry {
+  const parts: BufferGeometry[] = [];
+  const wallH = 2.4;
+  const y0 = 0.45;
+  for (const x of [-2.4, 0, 2.4]) {
+    for (const z of [-1.7, 1.7]) parts.push(at(pillar(0.13, 0.15, y0 + 0.1, 5, 'wood'), x, 0, z));
+  }
+  parts.push(at(box(5.6, 0.18, 4.0, 'wood'), 0, y0, 0));
+  parts.push(at(box(5.4, wallH, 3.8, 'wood'), 0, y0 + wallH / 2, 0));
+  // Rahmen und Öffnungen — ohne sie ist es eine Kiste.
+  parts.push(at(box(5.6, 0.16, 4.0, 'wood'), 0, y0 + wallH, 0));
+  parts.push(at(box(1.3, 1.95, 0.09, 'plaster'), -1.2, y0 + 0.98, 1.92));
+  parts.push(at(box(1.0, 0.8, 0.09, 'steel'), 1.3, y0 + 1.5, 1.92));
+  // Wellblechdach, flach geneigt und mit deutlichem Überstand nach vorn.
+  const roof = box(6.2, 0.12, 5.0, 'steel');
+  parts.push(at(rotX(roof, 0.21), 0, y0 + wallH + 0.34, -0.1));
+  return finish(parts, 'fishHut');
+}
+
+/**
+ * Netztrockengestell, gemessen 2,91 × 2,47 × 4,60 m.
+ *
+ * Zwei A-Böcke, eine Firstlatte, darüber hängende Netzbahnen. Die Bahnen sind
+ * dünne Quader und **keine** Alphaflächen: ein transparentes Material bräuchte
+ * Sortierung, und dafür sind es zu wenige Pixel (PROPS-Klasse `klein`, ab 220 m
+ * verschwindet das Stück ohnehin).
+ */
+function netRack(): BufferGeometry {
+  const parts: BufferGeometry[] = [];
+  const h = 2.4;
+  const lean = 0.28;
+  // Die beiden A-Böcke stehen an den **Enden** (z = ±2,1); ihre Beine spreizen
+  // quer dazu, also in X. `rotZ` kippt in der XY-Ebene und ist damit die
+  // richtige Achse — mit `rotX` spreizten sie längs und die Firstlatte stünde
+  // auf nichts.
+  for (const z of [-2.1, 2.1]) {
+    for (const side of [-1, 1]) {
+      const leg = pillar(0.07, 0.09, h / Math.cos(lean), 5, 'wood');
+      parts.push(at(rotZ(leg, side * lean), -side * 0.7, 0, z));
+    }
+  }
+  // Firstlatte **längs**, also entlang Z, und aus einem **zentrierten**
+  // Zylinder. Zwei Messungen liegen dazwischen:
+  //   `rotZ(pillar(…), π/2)`  → 6,00 × 2,48 × 4,16 — die Latte lag quer.
+  //   `rotX(pillar(…), π/2)`  → 2,91 × 2,47 × 6,77 — richtige Achse, aber
+  //                             `pillar` setzt den Fuß auf y = 0, und die
+  //                             Drehung nimmt diesen Versatz mit: die Latte
+  //                             begann am Bock und endete 4,6 m dahinter.
+  // Deshalb hier die rohe `CylinderGeometry` (um den Ursprung zentriert),
+  // wie es `boat` für seinen Rumpf schon tut.
+  const ridge = paint(new CylinderGeometry(0.06, 0.06, 4.6, 5), 'wood');
+  parts.push(at(rotX(ridge, Math.PI / 2), 0, h, 0));
+  // Netzbahnen, unterschiedlich tief herabhängend — gleich lange sähen wie ein
+  // Zaun aus. Feste Werte statt Zufall: die Geometrie wird einmal gebaut und
+  // von allen Instanzen geteilt.
+  const drops = [1.5, 1.05, 1.35, 0.85, 1.2];
+  drops.forEach((drop, i) => {
+    const z = -1.7 + i * 0.85;
+    parts.push(at(box(0.62, drop, 0.05, 'thatch'), 0, h - drop / 2, z));
+  });
+  return finish(parts, 'netRack');
+}
+
+/**
+ * Bootsrampe, gemessen 5,25 × 2,53 × 11,58 m.
+ *
+ * Eine geneigte Betonplatte mit zwei Bordsteinen, die ins Wasser läuft. Der
+ * Pivot liegt am **oberen** Ende, weil dort das Land ist: die Platzierung
+ * setzt das Prop auf die Uferlinie, und alles darunter darf im Wasser
+ * verschwinden. Umgekehrt stünde die Rampe auf dem Meer.
+ *
+ * Neigung 8° — flach genug, um einen Kahn hinaufzuziehen, steil genug, dass
+ * die Platte im Bild als Rampe und nicht als Weg gelesen wird.
+ */
+function boatRamp(): BufferGeometry {
+  const parts: BufferGeometry[] = [];
+  const length = 11;
+  const tilt = (8 * Math.PI) / 180;
+  const slab = box(4.4, 0.4, length, 'concrete');
+  parts.push(at(rotX(slab, -tilt), 0, -Math.sin(tilt) * length * 0.5 - 0.1, length / 2));
+  for (const side of [-1, 1]) {
+    const kerb = box(0.35, 0.55, length, 'concrete');
+    parts.push(at(rotX(kerb, -tilt), side * 2.2, -Math.sin(tilt) * length * 0.5 + 0.1, length / 2));
+  }
+  // Poller am Kopf der Rampe. Ohne ihn fehlt der Maßstab.
+  parts.push(at(pillar(0.16, 0.2, 0.7, 6, 'steel'), -2.7, 0, -0.4));
+  return finish(parts, 'boatRamp');
+}
+
+/**
+ * Kisten- und Reusenstapel, gemessen 2,11 × 1,23 × 1,49 m.
+ *
+ * Eines der billigsten Stücke im Satz (72 Dreiecke) und das, was den Unterschied
+ * zwischen „Häuser am Wasser" und „hier wird gearbeitet" macht. Zwei
+ * Kistenstapel und eine liegende Reuse.
+ */
+function crateStack(): BufferGeometry {
+  const parts: BufferGeometry[] = [];
+  parts.push(at(box(0.9, 0.42, 0.68, 'wood'), -0.6, 0.21, 0));
+  parts.push(at(box(0.86, 0.4, 0.64, 'plaster'), -0.55, 0.62, 0.08));
+  parts.push(at(box(0.88, 0.42, 0.66, 'wood'), -0.62, 1.02, -0.05));
+  parts.push(at(box(0.94, 0.44, 0.7, 'wood'), 0.55, 0.22, 0.3));
+  // Reuse: ein liegender Sechskantzylinder, wie sie zu Dutzenden am Kai stehen.
+  const trap = paint(new CylinderGeometry(0.34, 0.34, 1.1, 6, 1), 'thatch');
+  rotZ(trap, Math.PI / 2);
+  parts.push(at(trap, 0.5, 0.34, -0.5));
+  return finish(parts, 'crateStack');
+}
+
+/**
+ * Kleiner Holzsteg, gemessen 2,59 × 2,60 × 14,00 m.
+ *
+ * Der zweite Steg aus PLAN 8.9. Prozedural und **nicht** ein zweites
+ * `modular_wooden_pier`: das Fremdmodell ist 24 m lang und trägt seine eigene
+ * Höhenlage (`y: seaLevel − 2,2`, gemessen in `gen-props.mjs`). Ein Dorfsteg
+ * soll daneben klein aussehen, und ein hochskaliertes Modell zweimal im selben
+ * Bild liest sich als Wiederholung.
+ *
+ * Der Pivot liegt auf der **Deckoberkante**, damit die Platzierung ihn direkt
+ * auf die gewünschte Höhe über der Wasserlinie setzen kann; die Pfähle hängen
+ * 1,6 m darunter und dürfen im Wasser stehen.
+ */
+function jetty(): BufferGeometry {
+  const parts: BufferGeometry[] = [];
+  const length = 14;
+  parts.push(at(box(2.2, 0.14, length, 'wood'), 0, -0.07, 0));
+  // Bohlen quer: fünf schmale Leisten reichen, damit die Richtung ablesbar ist.
+  for (let i = 0; i < 7; i++) {
+    parts.push(at(box(2.3, 0.06, 0.18, 'wood'), 0, 0.03, -length / 2 + 1 + i * 2));
+  }
+  for (let i = 0; i < 5; i++) {
+    const z = -length / 2 + 1.4 + i * 3;
+    for (const x of [-0.9, 0.9]) parts.push(at(pillar(0.13, 0.16, 1.6, 5, 'wood'), x, -1.74, z));
+  }
+  // Zwei Dalben am Kopf, an denen ein Boot festmacht.
+  for (const x of [-1.15, 1.15]) parts.push(at(pillar(0.12, 0.15, 2.6, 5, 'wood'), x, -1.74, length / 2 - 0.6));
+  return finish(parts, 'jetty');
+}
+
+// ── Stadtrand — P8.9, aus dem Befund von 8.8 ─────────────────────────────────
+//
+// 8.8 hat am Bild geprüft, dass die **Silhouette** bereits abgestuft ist, und
+// den naheliegenden Regler (`randomFloors` am Rand) deshalb nicht angefasst.
+// Was dort im Bild stand, war eine Kante **am Boden**: die Bebauung hört auf,
+// daneben liegt leere Fläche. Diese drei Stücke sind die Antwort darauf, und
+// sie sind absichtlich das Unauffälligste im ganzen Satz — was den Rand einer
+// Kleinstadt ausmacht, ist nichts, was man ansieht.
+
+/**
+ * Mauerabschnitt, gemessen 8,42 × 2,05 × 0,44 m.
+ *
+ * Betonfertigteile auf einem Sockel, wie sie in Japan jedes Grundstück
+ * begrenzen. In Reihen gesetzt ergibt sich daraus die Gliederung, die einem
+ * Stadtrand sonst fehlt: nicht Gebäude, sondern **Parzellen**.
+ *
+ * Ein Abschnitt ist 8 m lang, weil die Reihe damit einer Blockkante folgen kann,
+ * ohne dass jede Ecke ein eigenes Prop braucht — und weil 8 m bei 20 Instanzen
+ * 160 m Mauer sind und damit die Breite des Vorfelds aus 8.5c abdecken.
+ */
+function concreteWall(): BufferGeometry {
+  const parts: BufferGeometry[] = [];
+  parts.push(at(box(8.0, 0.3, 0.42, 'stone'), 0, 0.15, 0));
+  parts.push(at(box(7.9, 1.6, 0.26, 'concrete'), 0, 1.1, 0));
+  // Abdeckung und Pfeiler. Die Pfeiler sind das, was eine Betonwand von einer
+  // Mauer unterscheidet — ohne sie liest sich die Reihe als Lärmschutzwand.
+  parts.push(at(box(8.0, 0.14, 0.36, 'concrete'), 0, 1.97, 0));
+  for (const x of [-4.0, 0, 4.0]) parts.push(at(box(0.42, 2.05, 0.44, 'concrete'), x, 1.02, 0));
+  return finish(parts, 'concreteWall');
+}
+
+/**
+ * Foliengewächshaus, gemessen 7,10 × 3,60 × 14,30 m.
+ *
+ * Ein halber Zylinder auf einem Sockel. Am Rand japanischer Kleinstädte stehen
+ * sie zu Dutzenden zwischen den letzten Häusern und dem Feld — genau die Zone,
+ * die hier fehlt.
+ *
+ * `plaster` als Material und nicht durchscheinend: ein Tunnel aus Folie ist bei
+ * 2,2° Sonnenstand von außen ohnehin milchig weiß, und ein transparentes
+ * Material kostet Sortierung für ein Prop, das ab 650 m verschwindet.
+ */
+function greenhouse(): BufferGeometry {
+  const parts: BufferGeometry[] = [];
+  const length = 14;
+  const radius = 3.4;
+  // Echte Halbschale über `thetaStart`/`thetaLength`, nicht ein ganzer Zylinder
+  // mit versenkter Unterhälfte. Der ganze Zylinder war der erste Versuch, und
+  // die Messung hat ihn verworfen: er reichte **3,20 m unter den Boden** und
+  // die Hüllbox meldete 6,80 m Höhe für einen 2,8 m hohen Tunnel. Das ist keine
+  // Kosmetik — `PROP_CLASSES` staffelt nach Silhouettenhöhe, und eine doppelt
+  // so hohe Box hätte das Gewächshaus in die falsche Größenklasse gezogen.
+  //
+  // `thetaStart = π/2` ist gemessen und nicht hergeleitet: von den vier
+  // Vielfachen liefert nur dieses nach `rotX(π/2)` die **obere** Hälfte
+  // (y 0…3,40); bei 0 und π steht die Schale hochkant, bei −π/2 unter Grund.
+  const shell = paint(
+    new CylinderGeometry(radius, radius, length, 12, 1, true, Math.PI / 2, Math.PI),
+    'plaster',
+  );
+  rotX(shell, Math.PI / 2);
+  parts.push(at(shell, 0, 0.2, 0));
+  parts.push(at(box(radius * 2 + 0.3, 0.5, length + 0.3, 'concrete'), 0, 0.25, 0));
+  // Giebel und Tür an der Stirnseite.
+  for (const side of [-1, 1]) {
+    parts.push(at(box(radius * 1.7, 2.4, 0.1, 'plaster'), 0, 1.4, side * length * 0.5));
+  }
+  parts.push(at(box(1.6, 2.0, 0.14, 'steel'), 0, 1.2, length * 0.5 + 0.03));
+  return finish(parts, 'greenhouse');
+}
+
+/**
+ * Lagerhalle, gemessen 21,52 × 6,42 × 13,30 m.
+ *
+ * Der größte der drei Stadtrand-Bauten und trotzdem niedriger als jedes
+ * Wohnhaus im Distrikt (dort 2…17 Geschosse). Das ist der Punkt: eine flache
+ * Halle zwischen Hochhaus und Feld ist die Stufe, die 8.8 im Bild gefehlt hat.
+ *
+ * Satteldach mit 9° — Wellblech, kein Ziegel. Ein Rolltor an der Giebelseite
+ * gibt den Maßstab.
+ */
+function warehouse(): BufferGeometry {
+  const parts: BufferGeometry[] = [];
+  const w = 21;
+  const d = 12.4;
+  const wallH = 4.6;
+  parts.push(at(box(w, wallH, d, 'plaster'), 0, wallH / 2, 0));
+  // Sockel und Stützenraster, damit die Wand nicht als eine Fläche liest.
+  parts.push(at(box(w + 0.4, 0.6, d + 0.4, 'concrete'), 0, 0.3, 0));
+  for (const x of [-8.4, -4.2, 0, 4.2, 8.4]) {
+    for (const z of [-d / 2, d / 2]) parts.push(at(box(0.32, wallH, 0.3, 'steel'), x, wallH / 2, z));
+  }
+  parts.push(at(box(5.2, 4.0, 0.16, 'steel'), -3.0, 2.05, d / 2 + 0.16));
+
+  // Satteldach aus zwei Platten plus Firstblech.
+  const roofH = 1.7;
+  const slope = Math.atan2(roofH, w / 2);
+  const slabLength = Math.hypot(roofH, w / 2) + 0.5;
+  for (const side of [-1, 1]) {
+    const slab = box(slabLength, 0.16, d + 0.9, 'steel');
+    parts.push(at(rotZ(slab, side * slope), side * (w / 4), wallH + roofH / 2, 0));
+  }
+  parts.push(at(box(0.7, 0.2, d + 0.9, 'steel'), 0, wallH + roofH, 0));
+  // Giebeldreiecke als schmale Quader — von vorn sieht man sonst unters Dach.
+  for (const z of [-d / 2, d / 2]) parts.push(at(box(1.2, roofH * 0.8, 0.3, 'plaster'), 0, wallH + roofH * 0.4, z));
+  return finish(parts, 'warehouse');
+}
+
 const BUILDERS: Readonly<Record<LandmarkId, () => BufferGeometry>> = {
   torii,
   stoneLantern,
@@ -497,6 +862,16 @@ const BUILDERS: Readonly<Record<LandmarkId, () => BufferGeometry>> = {
   lighthouse,
   boat,
   delineator,
+  chozuya,
+  bellTower,
+  fishHut,
+  netRack,
+  boatRamp,
+  crateStack,
+  jetty,
+  concreteWall,
+  greenhouse,
+  warehouse,
 };
 
 export const LANDMARK_IDS = Object.keys(BUILDERS) as readonly LandmarkId[];
@@ -505,16 +880,29 @@ export const LANDMARK_IDS = Object.keys(BUILDERS) as readonly LandmarkId[];
  * Alle Landmark-Geometrien bauen.
  *
  * **Keine reduzierte Stufe.** PLAN.md 5.5 verlangt sie ab 500 Dreiecken.
- * Gemessen (Summe 2104 Dreiecke über alle zwölf):
+ * Gemessen (Summe **3972** Dreiecke über alle 22; die zehn aus P8.9 sind
+ * eingerückt):
  *
  * | Landmark | Δ | | Landmark | Δ |
  * |---|---|---|---|---|
- * | templeHall | **504** | | templeStairs | 168 |
- * | lighthouse | 264 | | stoneLantern | 156 |
- * | farmhouse | 204 | | hokora | 84 |
- * | torii | 200 | | boat | 80 |
- * | powerPole | 200 | | shed | 36 |
- * | tetrapod | 176 | | delineator | 32 |
+ * | templeHall | **504** | | tetrapod | 176 |
+ * | bellTower | 416 | | templeStairs | 168 |
+ * | jetty | 336 | | netRack | 160 |
+ * | chozuya | 272 | | stoneLantern | 156 |
+ * | lighthouse | 264 | | hokora | 84 |
+ * | warehouse | 216 | | boat | 80 |
+ * | farmhouse | 204 | | crateStack | 72 |
+ * | torii | 200 | | concreteWall | 72 |
+ * | powerPole | 200 | | greenhouse | 72 |
+ * | fishHut | 192 | | boatRamp | 60 |
+ * | — | | | shed | 36 |
+ * | — | | | delineator | 32 |
+ *
+ * P8.9 hat den Satz von 12 auf 22 Stück und von 2104 auf 3972 Dreiecke
+ * gebracht — **1868 Dreiecke für ein Fischerdorf, einen Tempelaufgang und
+ * einen Stadtrand**, gegen ein Budget von 3 000 000. Die Geometrie ist hier
+ * nie der Engpass; die Zahl, auf die es ankommt, steht in `PROPS.capacity`
+ * und wird in `gen-props.mjs` geprüft.
  *
  * Die Tempelhalle reißt die Schwelle — um **vier Dreiecke**. Sie bekommt
  * trotzdem keine zweite Stufe: die Schwelle ist für Fremdmodelle gedacht, die

@@ -27,6 +27,9 @@ import {
 import { TERRAIN_ASSETS, LAYER_TEXTURES } from './terrainAssets';
 import { TerrainSampler } from './TerrainSampler';
 
+/** Radius der Bodenmarkierung in Metern. Siehe `update()` — sie blendet sich aus, sobald die Kamera darin steht. */
+const MARKER_RADIUS = 2;
+
 const DEBUG_VIEWS = {
   Aus: 0,
   'Splat-Gewichte': 1,
@@ -54,6 +57,14 @@ export class TerrainSystem implements System {
   #chunks: ChunkManager | null = null;
   #mesh: Mesh | null = null;
   #marker: Mesh | null = null;
+  /**
+   * Was im Debug-Panel gewählt ist — **nicht** `marker.visible`.
+   *
+   * `update()` schreibt die tatsächliche Sichtbarkeit jeden Frame; wäre das
+   * Panel direkt daran gebunden, überschriebe der nächste Frame die Wahl.
+   * Ein eigenes Objekt trennt Wunsch und Zustand.
+   */
+  readonly #markerOptions = { sichtbar: true };
   #uniforms: TerrainUniforms | null = null;
   #material: TerrainMaterial | null = null;
   #camera: PerspectiveCamera | null = null;
@@ -245,6 +256,19 @@ export class TerrainSystem implements System {
     if (this.#marker) {
       this.#marker.position.set(camera.position.x, ground, camera.position.z);
       this.#marker.updateMatrix();
+      // **Von innen zeigt die Kugel nichts.** Sie hat 2 m Radius und sitzt auf
+      // dem Boden unter der Kamera; auf Augenhöhe (1,7…1,9 m) steht die Kamera
+      // also darin und sieht ein rotes Drahtnetz über dem halben Bild. In
+      // P8.9 hat das die ersten Abnahmebilder von Sandō und Fischerdorf
+      // verdorben — und der Fehler wäre ohne einen Blick aufs Bild nicht
+      // aufgefallen, weil jede Zahl daneben stimmte.
+      //
+      // Ausgeblendet statt kleiner gemacht: ihr Zweck ist der Nachweis, dass
+      // `getHeightAt()` und die gerenderte Oberfläche übereinstimmen, und den
+      // liest man aus der Distanz ab. Innerhalb des eigenen Radius kann sie ihn
+      // gar nicht erbringen.
+      const dy = camera.position.y - ground;
+      this.#marker.visible = this.#markerOptions.sichtbar && dy > MARKER_RADIUS * 1.15;
     }
 
     // Die Anzeigen kosten nur dann etwas, wenn die Debug-UI existiert.
@@ -362,7 +386,7 @@ export class TerrainSystem implements System {
     // Beleg für das P1-Kriterium "Sampler stimmt mit gerenderter Oberfläche
     // überein" — schwebt oder versinkt sie, laufen CPU und Shader auseinander.
     const marker = new Mesh(
-      new SphereGeometry(2, 16, 12),
+      new SphereGeometry(MARKER_RADIUS, 16, 12),
       new MeshBasicMaterial({ color: 0xff4d6d, wireframe: true }),
     );
     marker.name = 'Bodenmarkierung';
@@ -370,7 +394,9 @@ export class TerrainSystem implements System {
     marker.frustumCulled = false;
     this.#marker = marker;
     context.scene.add(marker);
-    folder.addBinding(marker, 'visible', { label: 'Bodenmarkierung' });
+    // Gebunden wird der **Wunsch**, nicht  — sonst schriebe
+    // update() jeden Frame über die Wahl im Panel zurück.
+    folder.addBinding(this.#markerOptions, 'sichtbar', { label: 'Bodenmarkierung' });
   }
 
   dispose(): void {
