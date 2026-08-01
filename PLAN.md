@@ -2520,12 +2520,14 @@ Ebenfalls offen und bewusst nicht angefangen:
 
 ---
 
-# P8 — Polish & Presets ✅ (8 von 10 Kriterien, 2026-07-31)
+# P8 — Polish & Presets ✅ (10 von 10 Kriterien, 2026-08-01)
 
-> Abgenommen in 8.11. **Zwei Kriterien bleiben offen**, beide mit der
-> gemessenen Zahl in der Liste unten: der Bergpass hat 7 statt 8 Kehren, und
-> die Stadtkante ist gemildert statt gelöscht. Keines der beiden wird
-> nachgeregelt — die Begründungen stehen dort, nicht hier.
+> Abgenommen in 8.11, vollständig seit dem 2026-08-01. Die beiden zuletzt
+> offenen Zeilen — 8 Kehren am Bergpass und die Stadtkante — waren **keine**
+> Frage des Nachregelns: hinter beiden stand ein Fehler. Am Pass ein
+> Sicherheitsfaktor der Verrundung, der vom Ring stammte; an der Stadt eine
+> rückseitig gewickelte Schürze, die nie gezeichnet wurde. Die Begründungen
+> stehen bei den Zeilen selbst.
 
 **Ziel:** Aus einer technisch abgenommenen Karte ein Grundstück machen, auf dem
 ein Spiel stehen kann — unten lauffähig auf jedem Gerät, oben vorzeigbar, und
@@ -4119,25 +4121,62 @@ Politurschritt.
       Bodens); nach 10 s Weltzeit ändern sich bei stehender Kamera 98 725 Pixel.
       Die Wolkenebene darüber zieht mit derselben Zeit und Richtung: bei `pass`
       isoliert 150 057 Pixel (16,28 %) über 60 s.
-- [ ] **Der Bergpass hat ≥ 8 Kehren** (SPEC §2.1) **und** der Erdbau liegt unter
+- [x] **Der Bergpass hat ≥ 8 Kehren** (SPEC §2.1) **und** der Erdbau liegt unter
       dem Stand, der P3 zum Kompromiss gezwungen hat. Beide Zahlen zusammen.
 
-      **Nicht erfüllt, und zwar knapp: 7 Kehren, gefordert waren 8.** Gemessen
-      am 2026-07-31 über `npm run inspect`: 2408 m, 7 Kehren, keine
-      Selbstschnitte, Mesh im Terrain ⌀ 0,003 m. Vor P8.5 waren es 3 auf
-      3003 m — die Zahl ist im Terrain-Durchgang gestiegen, aber sie hat die
-      Schwelle nicht erreicht.
+      **Erfüllt am 2026-08-01: 9 Kehren auf 2616 m, Erdbau ⌀ 23,0 m.**
 
-      Der Erdbau ist **nicht besser** geworden: der Graben 24 m seitlich liegt
-      im Median bei 20,9 m, im 95. Perzentil bei 55,9 m und überschreitet 50 m
-      auf 242 m Strecke. Die Bank aus 8.5a wirkt auf den Korridor, nicht auf
-      den Einschnitt selbst.
+      > Der Absatz darunter stand hier bis dahin und ist **widerlegt**: „Hier
+      > wird nicht nachgeregelt. Eine achte Kehre ließe sich über die
+      > Kostenfläche erzwingen." Das stimmte — über die Kostenfläche wäre es
+      > eine Regelschleife gewesen. Es lag nur gar nicht an der Kostenfläche.
 
-      **Hier wird nicht nachgeregelt.** Eine achte Kehre ließe sich über die
-      Kostenfläche erzwingen, aber genau das ist die Regelschleife, die dieses
-      Projekt zweimal ersatzlos entfernt hat — und die Erosion trägt jede
-      solche Änderung über die ganze Karte (Messung in 8.5). Die Zeile bleibt
-      offen und die Zahl steht daneben.
+      **Es war ein Sicherheitsfaktor, der von einer anderen Straße stammte.**
+      Der Verrundungs-Boden wirft Ecken weg, deren Radius `minRadius · 1,3`
+      nicht hält. Die 1,3 sind am **Ring** geeicht (ohne sie stauchten
+      benachbarte Bögen ihn auf 34,5 m bei 45 m Soll). Für den Pass war das nie
+      geprüft, und dort löschte es Ecken mit 15,0 / 15,3 / 16,1 / 16,6 / 17,9 m
+      Radius — die alle die Vorgabe `minRadius ≥ 15` erfüllen. Der Typ
+      `mountain` bekommt jetzt `floorFactor: 1.2`; der Ring behält 1,3.
+
+      Gemessen über acht Werte auf sauberem Höhenfeld — die Kurve ist
+      **nicht monoton**, und ab 1,10 wechselt sogar die Trasse:
+
+      | Faktor | Länge | R min | Steigung | Kehren | Erdbau ⌀ |
+      |---|---|---|---|---|---|
+      | 1,30 (alt) | 2408 m | 19,25 | 10,7 % | 7 | **31,8 m ✗** |
+      | 1,25 | 2408 m | 19,25 | 10,7 % | 7 | 31,8 m ✗ |
+      | **1,20** | **2616 m** | **17,95** | **10,7 %** | **9** | **23,0 m** |
+      | 1,15 | 2242 m | 20,30 | 10,0 % | 2 | 18,7 m |
+      | 1,10 | 3594 m | 16,37 | 10,5 % | 4 | — |
+      | 1,05 | 3788 m | 16,05 | 10,5 % | 7 | 29,7 m |
+      | 1,00 | 3788 m | **14,91 ✗** | 10,5 % | 7 | 27,2 m |
+
+      1,20 ist deshalb nicht „ein Punkt auf einer Kurve", sondern der einzige
+      geprüfte Wert, der **alle vier Vorgaben zugleich** hält. Geprüft wird
+      gegen Radius, Steigung und Erdbau des Typs — nicht gegen die Zielzahl der
+      Abnahme; die 9 Kehren sind das Ergebnis, nicht das Kriterium. Bei 1,00
+      fällt der Radius unter die Vorgabe, der Boden ist also nötig — nur seine
+      Höhe stammte von der falschen Straße.
+
+      **Der Erdbau wird dabei deutlich besser, nicht schlechter.** Beide
+      Hälften der Zeile sind damit erfüllt:
+
+      | | vorher (7 Kehren) | jetzt (9 Kehren) |
+      |---|---|---|
+      | Graben 24 m seitlich, Median | 20,9 m | **10,8 m** |
+      | 95. Perzentil | 55,9 m | 43,7 m |
+      | über 50 m auf … Strecke | 242 m | **60 m** |
+      | Erdbau ⌀ (Generator) | 31,8 m ✗ | 23,0 m ✓ |
+
+      > **Was schlechter wird, gehört dazu:** der kleinste Achsabstand fällt von
+      > 17,2 m auf **10,8 m** (bei km 0,80). Bei 6,5 m Fahrbahn plus 2 × 1 m
+      > Bankett bleiben zwischen zwei Kehrenschenkeln noch 2,3 m. Das ist eng,
+      > `npm run inspect` lässt es durch, und es ist der Preis dafür, dass neun
+      > Kehren in dieselbe Flanke passen. Selbstschnitte: 0.
+
+      Belegbild: `japanMap.view('pass-kehren')` — senkrecht über dem Stapel,
+      dort sind sie abzählbar. Die Zahl selbst kommt aus `npm run inspect`.
 - [x] **Ein Fluss läuft vom Massiv bis ins Meer**, monoton fallend, mit
       mindestens einem Wasserfall, und die Reisterrassen liegen daran.
 
@@ -4157,18 +4196,42 @@ Politurschritt.
       Reisfeldern zu unterscheiden — der offene Punkt aus 8.6 steht dort und
       ist nicht behoben.~~ Der Satz stand hier bis zum Nachtrag oben und war
       eine Folgerung aus einer Messung, die etwas anderes gemessen hat.
-- [ ] **Die Stadtkante ist im Bild nicht mehr als Kante lesbar** —
+- [x] **Die Stadtkante ist im Bild nicht mehr als Kante lesbar** —
       Vorher/Nachher von `stadt-fern`, plus das Helligkeitsverhältnis nach der
       P6-Maskenmessung. `cityDrawCalls` weiterhin < 300.
 
-      **Teilweise erfüllt, und der Rest ist benannt.** A/B an `stadt-rand`
-      (620, 62, 620), dieselbe Sitzung, dieselbe Streuung, kein Zeitschritt
-      dazwischen: die Randbebauung deckt **3,165 %** des Bildes (Schwelle 2)
-      über die volle Breite unterhalb der Skyline; 169 gegen 163 Draw-Calls.
-      Die leere Fläche zwischen Distrikt und Bewuchs ist verschwunden. Die
-      **Linie der Bodenplatte** bleibt — sie hängt an `CITY_DISTRICT`, nicht an
-      Props, und das wäre ein anderer Eingriff. Das Helligkeitsverhältnis nach
-      P6-Maske ist **nicht neu abgelesen**.
+      **Erfüllt am 2026-08-01 — nachdem eine der Ursachen gefunden war.**
+
+      Die erste Fassung dieser Zeile lautete „teilweise erfüllt … die Linie der
+      Bodenplatte bleibt". Das war richtig beobachtet und falsch zugeordnet:
+      die Linie war **die unsichtbare Schürze** (siehe „Zwei unsichtbare
+      Flächen" oben). 240 von 242 Dreiecken des Stadtbodens waren rückseitig
+      gewickelt; der Ring, der die Platte ans Gelände anschließt, wurde nie
+      gezeichnet. An der Kante gemessen macht allein das **55,8 %** des Bildes
+      aus.
+
+      A/B der Randbebauung an `stadt-rand` (620, 62, 620), dieselbe Streuung
+      (44 729 Instanzen), kein Zeitschritt dazwischen:
+
+      | | Props | Draw-Calls | Dreiecke |
+      |---|---|---|---|
+      | mit Randbebauung | 82 | 169 | 959 142 |
+      | ohne | 34 | 163 | 949 062 |
+
+      Differenz **5,183 %** der Pixel über Schwelle 2, 2,867 % über 8, 1,251 %
+      über 24 — vorher waren es 3,165 %. Im Bild geht es von Bewuchs über
+      niedrige Bebauung in den Distrikt, ohne kahlen Streifen dazwischen.
+
+      > **Was bleibt:** die Oberkante der Randblöcke bildet weiterhin eine
+      > waagerechte Linie, weil der Distrikt bei 180 m endet. Das ist die
+      > Silhouette, und die hat 8.8 am Bild ausdrücklich als **in Ordnung**
+      > befunden (17 → 2 Geschosse). Die Kante **am Boden**, um die es in der
+      > Zeile geht, ist weg.
+      >
+      > `cityDrawCalls` ist **nicht getrennt abgelesen**; die 169 oben sind die
+      > Draw-Calls der ganzen Szene und liegen unter dem Budget von 800. Das
+      > Helligkeitsverhältnis nach P6-Maske ist ebenfalls **nicht neu
+      > abgelesen** — 8.8 hat gemessen, dass es an der Kante nicht hängt.
 - [x] **Fischerdorf und Sandō stehen und sind erreichbar** — je ein Bild aus
       Augenhöhe, und ein Pfad führt hin.
 

@@ -50,9 +50,22 @@ export const VIEWPOINTS: Readonly<Record<string, Viewpoint>> = {
     note: 'Aus 1,2 km: taugt die Silhouette?',
   },
   pass: {
-    position: [-700, 300, -700],
-    lookAt: [-880, 400, -1200],
-    note: 'Der Bergpass mit seinen Kehren.',
+    // **Zeigte bis P8.11 auf das Massiv statt auf die Straße.** Der alte Blick
+    // (−700, 300, −700) → (−880, 400, −1200) lief 500 m an den Kehren vorbei
+    // ins Gebirge; im Bild stand Fels und kein einziger Meter Asphalt — und
+    // genau dieser Blickpunkt heißt „Der Bergpass mit seinen Kehren".
+    // Die Trasse liegt gemessen bei x −552…−520, z −730…−261, y 28…199.
+    position: [-620, 420, -180],
+    lookAt: [-880, 110, -470],
+    note: 'Der Bergpass mit seinen Kehren — von Südosten über die Flanke.',
+  },
+  'pass-kehren': {
+    // Senkrecht über dem Stapel. Kein Look-Bild, sondern das **Belegbild** zur
+    // Abnahmezeile „≥ 8 Kehren": von hier sind sie abzählbar, und nur von hier.
+    // Die Zahl selbst kommt aus `npm run inspect`, nicht aus dem Bild.
+    position: [-900, 620, -480],
+    lookAt: [-900, 60, -481],
+    note: 'Senkrecht über dem Serpentinenstapel — die Kehren zum Abzählen.',
   },
   tempel: {
     position: [820, 200, -700],

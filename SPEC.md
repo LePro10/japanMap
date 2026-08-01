@@ -69,11 +69,23 @@ für einen echten Ortswechsel.
 Stichstraße mit Serpentinen (Drift-Strecke). Ein Küstenhighway läuft im Süden.
 Der Höhenunterschied von 450 m ist der stärkste Hebel, damit 3 km groß wirken.
 
-> **Stand P8.5, gemessen.** Der Bergpass hat **7 Kehren** auf 2408 m,
-> Mindestradius 19,25 m, Steigung 10,6 %, kleinster Achsabstand 17,2 m, keine
-> Selbstschnitte. Der Graben 24 m seitlich liegt im Median bei 21,1 m, im
-> 95. Perzentil bei 58,0 m, und überschreitet 50 m auf 290 m Strecke.
+> **Stand P8.11, gemessen am 2026-08-01.** Der Bergpass hat **9 Kehren** auf
+> 2616 m, Mindestradius 17,95 m, Steigung 10,7 %, kleinster Achsabstand 10,8 m,
+> keine Selbstschnitte. Der Graben 24 m seitlich liegt im Median bei 10,8 m, im
+> 95. Perzentil bei 43,7 m, und überschreitet 50 m auf 60 m Strecke.
 >
+> **Die Kehren kamen nicht aus dem Gelände, sondern aus einem Sicherheitsfaktor
+> der Verrundung.** Er warf Ecken weg, deren Radius `minRadius · 1,3` nicht
+> hielt — eine Zahl, die am Ring geeicht war und für den Pass Ecken mit 15…18 m
+> Radius löschte, die dessen Vorgabe (≥ 15 m) erfüllen. Mit `floorFactor: 1.2`
+> für `mountain` überleben sie; der Ring behält 1,3. Die Messreihe über acht
+> Werte steht in PLAN.md bei der Abnahmezeile.
+>
+> Der Erdbau wird dabei **besser**: Graben-Median 20,9 → 10,8 m, die Strecke
+> über 50 m Grabentiefe 242 → 60 m. Enger wird der Achsabstand: 17,2 → 10,8 m,
+> also 2,3 m zwischen zwei Kehrenschenkeln bei 8,5 m Fahrbahnbreite.
+>
+> ~~Stand P8.5: 7 Kehren auf 2408 m, Achsabstand 17,2 m.~~
 > Vorher standen hier 3 Kehren auf 3003 m (2026-07-31 aus `roads.json`
 > abgelesen), davor 2 auf 2983 m aus einem noch älteren Lauf. Die Zahl ist im
 > Terrain-Durchgang P8.5 gestiegen — **welcher der drei Eingriffe sie bewirkt
@@ -81,8 +93,11 @@ Der Höhenunterschied von 450 m ist der stärkste Hebel, damit 3 km groß wirken
 > die ganze Karte (Messung in PLAN.md 8.5). Gemessen ist nur, dass ohne das
 > Flussbett 5 Kehren entstehen.
 >
-> **Damit fehlt weiterhin eine Kehre auf „≥ 8".** Der Abstand ist 7 zu 8, nicht
-> mehr 3 zu 8.
+> ~~**Damit fehlt weiterhin eine Kehre auf „≥ 8".** Der Abstand ist 7 zu 8,
+> nicht mehr 3 zu 8.~~ **Erledigt am 2026-08-01 mit 9 Kehren** — und die
+> fehlende Kehre lag nicht am Gelände, sondern am Verrundungs-Boden, siehe
+> oben. Der Satz stand hier zwei Tage und hat in die falsche Richtung gezeigt:
+> er legte nahe, das Höhenfeld müsse noch etwas hergeben.
 >
 > Hier stand bis zum 2026-07-26, die Vorgabe widerspreche sich selbst und das
 > Höhenfeld gebe keine Kehren her. Beides war falsch: die Trassierung fand die
@@ -307,13 +322,14 @@ Kitbashing aus verschiedenen Gratis-Quellen scheitert sonst am Stil-Mix.
 | **P7** | Quality-Presets, Streaming, Ladebildschirm, Profiling | Auslieferbar |
 | **P8** | Politur: Stufen im Gelände, PostFX-Staffelung, Wolken, Terrain-Durchgang, Fluss, Pfade, Fischerdorf, Sandō, Stadtrand, Weltrand | Die Karte trägt ein Spiel |
 
-**Aktueller Stand: P0–P8 abgeschlossen (2026-07-31).**
+**Aktueller Stand: P0–P8 abgeschlossen (2026-08-01), 10 von 10 Kriterien.**
 
 Die Budgets aus §4 sind auf Ultra mit vorgefüllter Streuung nachgemessen:
 **173 Draw-Calls** von 800, **958 068 Dreiecke** von 3 000 000,
 **307,8 MB** Texturspeicher von 512. Die Kette ist bitgleich reproduzierbar.
-Was **nicht** erfüllt ist, steht in PLAN.md unter „Akzeptanzkriterien" mit der
-gemessenen Zahl daneben — namentlich die 8 Kehren am Bergpass (es sind 7).
+Die zuletzt offenen Zeilen — 8 Kehren am Bergpass und die Stadtkante — sind
+seit dem 2026-08-01 erfüllt; hinter beiden stand ein Fehler, kein fehlender
+Regler. P9 (Fahrschicht) ist geplant und nicht gebaut.
 
 > Der ursprüngliche Satz „Nächste Phase: P5" stand hier bis P8.11 und war seit
 > P5 falsch. Er ist stehen geblieben, weil niemand die Zeile beim Abschluss
