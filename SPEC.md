@@ -50,6 +50,18 @@ und die einzige, die ohne Asset-Budget funktioniert.
          S
 ```
 
+> **Stand P8.9, gemessen.** Der Hafen liegt bei x = 790 und hat seit P8.9 ein
+> **Fischerdorf**: neun Hütten 25…81 m vom Wasser, Netzgestelle, Bootsrampe,
+> zweiter Steg, sechs Boote an zwei Anlegern. Erschlossen über den
+> `kuestenpfad` (317 m ab Ringstraße); die Hütten liegen 25…131 m von seiner
+> Achse. Der Leuchtturm bleibt ein eigener Fixpunkt bei x = −180, also
+> **977 m** entfernt — die beiden sind nie im selben Bild.
+>
+> Der **Torii-Pfad** im Nordosten ist seit P8.9 ein vollständiger Sandō: neun
+> Torii im 16-m-Raster über 150 m, zwanzig Laternen, Chōzuya und Glockenturm,
+> und die Tempelhalle steht 2 m hinter dem letzten Wegpunkt. Bis dahin lag sie
+> 300 m neben dem Weg.
+
 Jede Zone ~1,5 km Kantenlänge → bei 120 km/h ca. 45 s Durchfahrt. Das reicht
 für einen echten Ortswechsel.
 
@@ -293,8 +305,20 @@ Kitbashing aus verschiedenen Gratis-Quellen scheitert sonst am Stil-Mix.
 | **P5** | Asset-Pipeline, Landmarks: Tempel, Torii, Dorf, Reisfelder | Zonen bekommen Identität |
 | **P6** | Stadt-Generator, Emissive-Neon, nasser Asphalt, Reflexions-Entscheidung | Der Money-Shot |
 | **P7** | Quality-Presets, Streaming, Ladebildschirm, Profiling | Auslieferbar |
+| **P8** | Politur: Stufen im Gelände, PostFX-Staffelung, Wolken, Terrain-Durchgang, Fluss, Pfade, Fischerdorf, Sandō, Stadtrand, Weltrand | Die Karte trägt ein Spiel |
 
-**Aktueller Stand: P0–P4 abgeschlossen (2026-07-27). Nächste Phase: P5.**
+**Aktueller Stand: P0–P8 abgeschlossen (2026-07-31).**
+
+Die Budgets aus §4 sind auf Ultra mit vorgefüllter Streuung nachgemessen:
+**173 Draw-Calls** von 800, **958 068 Dreiecke** von 3 000 000,
+**307,8 MB** Texturspeicher von 512. Die Kette ist bitgleich reproduzierbar.
+Was **nicht** erfüllt ist, steht in PLAN.md unter „Akzeptanzkriterien" mit der
+gemessenen Zahl daneben — namentlich die 8 Kehren am Bergpass (es sind 7).
+
+> Der ursprüngliche Satz „Nächste Phase: P5" stand hier bis P8.11 und war seit
+> P5 falsch. Er ist stehen geblieben, weil niemand die Zeile beim Abschluss
+> einer Phase mitgeführt hat — dieselbe Sorte Fehler wie die Zahlen aus einem
+> Lauf, den es nicht mehr gibt.
 
 Die **P1-Nachbesserung am Höhenfeld** war für „vor P4" vorgemerkt und ist nicht
 erfolgt: die Flanke abzuflachen ändert die Silhouette des Massivs, und das
