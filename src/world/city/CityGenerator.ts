@@ -891,12 +891,30 @@ function buildGround(sampleTerrain: (x: number, z: number) => number): {
     const [ox1, oz1] = outer[j]!;
     const oy0 = Math.min(y, sampleTerrain(ox0, oz0));
     const oy1 = Math.min(y, sampleTerrain(ox1, oz1));
+    // **Ecken innen → innen → außen → außen, nicht innen → außen → außen → innen.**
+    //
+    // Bis P8.11 stand hier die zweite Reihenfolge, und sie ist im Uhrzeigersinn
+    // von oben: für die Nordkante ergab (P1−P0) × (P2−P0) die y-Komponente
+    // −s·dx. Die **ganze Schürze** — 240 der 242 Dreiecke des Stadtbodens —
+    // zeigte nach unten und fiel ins Backface-Culling. Die Platte selbst war
+    // richtig gewickelt (+129 600), deshalb sah der Distrikt normal aus; was
+    // fehlte, war genau der Übergang, für den es die Schürze gibt.
+    //
+    // Der Kommentar an `quad()` warnt wörtlich davor („Wer sie falsch herum
+    // übergibt, sieht das sofort"). Hier hat es niemand gesehen: die Schürze
+    // ist flach, liegt am Boden und ist von oben von der Platte kaum zu
+    // unterscheiden — der Absatz, den sie verdecken soll, ist 20…100 cm hoch.
+    // Gefunden hat es erst eine systematische Wickelprüfung über alle Meshes,
+    // nachdem derselbe Fehler beim Fluss aufgefallen war.
+    //
+    // Die UV-Reihenfolge zieht mit; sonst wäre die Belagstextur auf der
+    // Schürze verdreht.
     const q0 = uvOf(ix0, iz0);
-    const q1 = uvOf(ox0, oz0);
+    const q1 = uvOf(ix1, iz1);
     const q2 = uvOf(ox1, oz1);
-    const q3 = uvOf(ix1, iz1);
+    const q3 = uvOf(ox0, oz0);
     mesh.quad(
-      [ix0, y, iz0, ox0, oy0, oz0, ox1, oy1, oz1, ix1, y, iz1],
+      [ix0, y, iz0, ix1, y, iz1, ox1, oy1, oz1, ox0, oy0, oz0],
       [0, 1, 0],
       [q0[0], q0[1], q1[0], q1[1], q2[0], q2[1], q3[0], q3[1]],
       PUDDLE_SKIRT,

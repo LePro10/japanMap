@@ -119,6 +119,7 @@ Dazu, je nach Änderung:
 | `japanMap.view('name')` | Kamera auf einen benannten Blickpunkt (P6). Seit P8.9 auch `sando`, `dorf`, `stadt-rand` |
 | `japanMap.quality('ultra')` | Stufe setzen. Gültig sind **nur** `ultra`, `high`, `medium`, `low`, `minimal` — ein deutscher Name wirft seit P8.9, statt still eine kaputte Stufe zu setzen |
 | `japanMap.reflectionProbe()` | Wie viel einer Spiegelung stünde im Bildschirmraum? Die Messung, die in P6/6.5 gegen SSR entschieden hat |
+| `japanMap.winding()` | Wickelrichtung aller Meshes gegen ihr Normal-Attribut. Leere Liste = in Ordnung. Hat in P8.11 zwei unsichtbare Flächen gefunden, die jede andere Zahl für gesund hielt |
 
 **Erdbau-Karte erzeugen** (braucht ein Referenzfeld ohne Einschnitte):
 
@@ -433,6 +434,21 @@ Kurzliste, damit es nicht wieder passiert:
      Wickelrichtung falsch. Der Test kostet eine Zeile.
   Dieselbe Falle steht oben schon für das Straßen-Mesh — dort ist sie beim
   Bauen aufgefallen, hier erst Phasen später.
+- **Einen Fehler behoben und nicht gefragt, wo er noch steckt.** Nachdem der
+  Fluss repariert war, hat eine systematische Prüfung über alle 132 Meshes
+  einen **zweiten** Fall gefunden: die **Schürze des Stadtbodens**, 240 von 242
+  Dreiecken rückseitig. Sie ist der Übergang zwischen der 360-m-Platte des
+  Distrikts und dem Gelände — genau das Stück, das laut Kommentar im Code
+  verhindern soll, dass „die Stadt auf einem 20 bis 100 cm hohen Absatz mit
+  senkrechter Kante steht". Sie war nie gezeichnet. Gemessen an der Kante
+  ändert die Reparatur **55,8 % des Bildes**.
+  Das erklärt einen Teil des Befunds aus 8.8 („die Bebauung hört abrupt auf"),
+  gegen den 8.9 mit Props angebaut hat — die Diagnose war richtig, eine ihrer
+  Ursachen lag aber woanders.
+  Lehre: **ein Fehlerbild ist eine Klasse, kein Einzelfall.** Wer einen findet,
+  prüft denselben Test über den ganzen Bestand, bevor er weitergeht. Der Test
+  steht seitdem als `japanMap.winding()` im Bestand statt in einem
+  Konsolenfenster — er kostet nichts und läuft ohne Kamera, Stufe und Streuung.
 - **Eine lebende Referenz für eine Momentaufnahme gehalten.** In P8.11 meldete
   die Stufentabelle auf Ultra 909 338 Dreiecke statt 623 628 — ein halbes
   Budget zu viel. Der Code las `renderer.info.render` in eine Variable und

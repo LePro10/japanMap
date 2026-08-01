@@ -4,6 +4,7 @@
 import type { QualityLevel } from './config/quality.config';
 import type { Engine } from './core/Engine';
 import type { HoleReport } from './debug/lodHoles';
+import type { WindingRow } from './debug/winding';
 import type { DeviceEstimate } from './render/deviceTier';
 import type { FrameTiming } from './render/frameTiming';
 
@@ -72,6 +73,13 @@ declare global {
        * Optional zuerst auf eine Stufe schalten.
        */
       lodHoles?: (level?: QualityLevel) => HoleReport;
+      /**
+       * Wickelrichtung aller Meshes gegen ihr Normal-Attribut prüfen (P8.11).
+       *
+       * Ohne Argument nur die auffälligen — einseitige Flächen, die zu über
+       * 50 % gegenläufig gewickelt sind und damit unsichtbar bleiben.
+       */
+      winding?: (alle?: boolean) => WindingRow[];
       /** Ergebnis der Gerätevorschätzung (P8.3). */
       device?: () => DeviceEstimate | null;
     };

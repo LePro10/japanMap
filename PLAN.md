@@ -3957,6 +3957,55 @@ eine Geschäftsstraße. Der Wert steht hier, weil er beim Lesen der Tabelle sons
 wie ein Ausfall der Streuung aussieht; P8.1 hat dieselbe Beobachtung schon
 notiert.
 
+### Nachtrag 2026-08-01: zwei unsichtbare Flächen
+
+Nachdem der Fluss als rückseitig gewickelt aufgefallen war (siehe den
+widerlegten Block unter 8.6), ist derselbe Test über **alle 132 Meshes** der
+Szene gelaufen — Wickelrichtung gegen Normal-Attribut. Er hat einen zweiten
+Fall gefunden.
+
+| Mesh | gegenläufig | `side` | Folge |
+|---|---|---|---|
+| **Stadtboden** | **99,2 %** | FrontSide | 240 von 242 Dreiecken unsichtbar |
+| Leitplanken:Band | 45,5 % | DoubleSide | folgenlos, wird beidseitig gezeichnet |
+| prop:coastal_cliff_04:lod1 | 5,6 % | FrontSide | geglättete Normalen, normal |
+| übrige 128 Meshes | ≤ 4,4 % | | |
+
+Beim `Stadtboden` ist die **Platte** richtig gewickelt (Flächennormale
++129 600) und die **Schürze** falsch (−288 … −864). Die Schürze ist der 24 m
+breite Ring, der die 360-m-Platte des Distrikts ans Gelände anschließt; der
+Kommentar an `buildGround` sagt, ohne ihn stünde die Stadt „auf einem 20 bis
+100 cm hohen Absatz mit senkrechter Kante". Genau so war es: gemessen liegt
+das Gelände am Außenring in **118 von 120 Proben unter der Platte**, Median
+−0,88 m, tiefstens −2,38 m.
+
+**Wirkung, an der Kante gemessen** — Kamera (620, 36, 318), Blick auf (620,
+29,5, 302), Wickelrichtung zur Laufzeit umgeschaltet und der Zustand vor
+**jeder** Aufnahme nachgezählt (0 bzw. 236 nach unten):
+
+| | Bild |
+|---|---|
+| gedreht (wie bis P8.11) | untere Bildhälfte ist nackte Erde, die Platte endet an einer Kante |
+| repariert | dieselbe Fläche ist Asphalt mit Pfützenspiegelung |
+
+**55,768 %** der Pixel über Schwelle 2, 53,825 % über 8, 25,587 % über 24.
+
+> **Aus der Ferne war davon nichts zu messen.** Dieselbe Umschaltung von
+> (620, 52, 400) aus ergab 3,895 % / 0,907 %, und das Differenzbild zeigte nur
+> Sprenkel über dem Bewuchs — die Antwort der Spiegelung auf eine geänderte
+> Szene, nicht die Schürze. Wo der Effekt hinwirkt, muss die Messung hinsehen;
+> bei einem 24-m-Band heißt das: an die Kante fahren.
+>
+> Das erklärt einen Teil des Befunds aus **8.8** („die Bebauung hört abrupt
+> auf, daneben liegt leere Fläche"), gegen den 8.9 mit Randbebauung angebaut
+> hat. Die Diagnose war richtig; eine ihrer Ursachen lag im Mesh, nicht im
+> fehlenden Bestand. Die Props aus 8.9 bleiben trotzdem richtig — sie füllen
+> die 115 m **außerhalb** der Schürze.
+
+Der Test steht seitdem als `japanMap.winding()` im Bestand
+(`src/debug/winding.ts`) und meldet über alle 132 Meshes **keine
+Auffälligkeit** mehr.
+
 ### Die Übergabefläche zum Spiel — geprüft, nicht angenommen
 
 SPEC §7 verspricht: „P3 exportiert bereits Ideallinie, Spawnpunkte und
