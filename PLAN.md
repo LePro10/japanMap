@@ -3741,6 +3741,69 @@ wirkt.
 ob eine Kante sichtbar ist. Ist sie es nicht, entfällt die Aufgabe — und dann
 gehört das hier notiert, nicht stillschweigend gestrichen.
 
+> ### Die Kante ist da — aber es ist nicht die, die hier steht
+>
+> Drei Bilder, Ultra, 1280 × 720:
+>
+> | Blickpunkt | Kante sichtbar? |
+> |---|---|
+> | `start` (620, 330, 1010) | **ja** — ein schnurgerader Strich über der Landsilhouette |
+> | `stadt-luft` (620, 420, 620) | nein, das Gelände füllt das Bild |
+> | `pass` (−700, 300, −700) | nein, das Massiv füllt das Bild |
+>
+> **Der Kulissenring wäre am falschen Ort gewesen.** Er soll fehlende
+> *Landmasse* vortäuschen; in Blickrichtung von `start` liegt jenseits der Welt
+> aber Meer, und Silhouettenberge dort hätten Land behauptet, wo die Karte
+> Ozean sagt.
+>
+> Die Ursache ist eine andere. Die Wasserebene misst 12 288 m — viermal die
+> Welt, weit über `CAMERA.far` (6000 m) hinaus; ihr eigener Rand ist nie im
+> Bild. Der Strich ist ihr **Schnitt an der fernen Clipping-Ebene**. Dass man
+> ihn sieht, liegt am Nebel: `FOG.aerial.density` ist 0,00021 je Meter, auf
+> 6000 m bleibt also eine Deckung von 1 − e^(−1,26) = **0,716**. Fast ein
+> Drittel der Meeresfarbe steht dort noch gegen den Himmel.
+>
+> Am Nebel zu drehen schied aus, und zwar aus einem Grund, der schon in
+> `atmosphere.config.ts` steht: `FOG.maxOpacity` = 0,94 existiert, damit die
+> Kammlinie der Berge lesbar bleibt. Die für volle Deckung auf 6 km nötige
+> Dichte wäre 4,7 · 10⁻⁴ — mehr als das Doppelte — und hätte das Massiv auf
+> 2 km mitverschluckt.
+>
+> **Gebaut ist deshalb ein Ausblenden nur für das Meer** (`WATER.horizonFade`,
+> 3200 → 5600 m): die Wasserfläche mischt zur Himmelsfarbe in Blickrichtung und
+> ist vor dem Schnitt ununterscheidbar. Am leeren Meer gibt es keine Silhouette
+> zu erhalten; der Grund für die Kappung trifft dort nicht zu. Der Fluss ist
+> ausgenommen (`uWaterRiver`).
+>
+> **Messung, und die ersten zwei waren falsch.** Ein Differenzvergleich der
+> beiden Läufe meldete 23,1 % geänderte Pixel — wertlos, weil zwischen den
+> Aufnahmen Wolken gezogen sind. Zwei Versuche, die „Geradheit" der Kante über
+> Helligkeitsgradienten zu messen, fanden beide die **Landsilhouette** statt des
+> gesuchten Striches und meldeten die Verschlechterung eines Wertes, der gar
+> nicht gemeint war.
+>
+> Was zählt, ist eine Größe **innerhalb eines Bildes**: wie stark sich der
+> Streifen unmittelbar über der Landoberkante vom Himmel darüber abhebt. Beide
+> Proben stammen aus demselben Frame, Wolkenzug spielt keine Rolle. Über 445
+> Spalten der rechten Bildhälfte:
+>
+> | | Streifen gegen Himmel | Median | 90. Perzentil |
+> |---|---|---|---|
+> | vorher | **44,49** Stufen | 47,23 | 48,62 |
+> | nachher | **4,28** Stufen | 1,14 | 10,47 |
+>
+> Die Landoberkante liegt in beiden Bildern bei Zeile 357 — es ist derselbe
+> Ausschnitt, gemessen wurde nur, was darüber steht.
+>
+> **Was der Eingriff ausdrücklich nicht tut:** den Seehorizont wegmachen. Am
+> Blickpunkt `kueste`, wo nur Wasser im Bild ist, steht weiterhin ein Sprung
+> von ⌀ 21,26 Stufen zwischen Himmel und See. Das ist richtig — ein Seehorizont
+> **ist** eine Linie. Falsch war sie nur dort, wo sie **über Land** stand und
+> damit behauptete, hinter dem Land höre die Welt auf.
+>
+> **Kosten:** null Dreiecke, null Draw-Calls, ein `smoothstep` und eine
+> Texturabfrage je Wasserpixel jenseits von 3,2 km.
+
 ---
 
 **8.11 — Abnahme und Neumessung**
