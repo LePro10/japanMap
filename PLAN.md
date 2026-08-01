@@ -423,6 +423,21 @@ Material und Shader bleiben unverändert.
 - Kollision (optional): hält 2 m über `TerrainSampler.getHeightAt()`
 - Position/Rotation in `localStorage` — Reload landet, wo man war.
   Klingt nach Kleinigkeit, spart über Monate Stunden
+- Nickbereich ±75° (`CAMERA.pitchLimitDeg`) plus Gier-Spin-Cap
+  (`CAMERA.yawSpinCap = 0,3`). Das alte Limit von 89,43° machte den Pol
+  erreichbar, an dem horizontale Mausbewegung die ganze Welt im Kreis dreht
+  statt zu schwenken — gemessen 12,8° Bildrotation pro 100 px bei 12,61°
+  Gierdelta („die DPI wird 5× so schnell"). Ein Nick-Limit allein reicht
+  nicht, weil die Drehung mit `sin(Nick)` skaliert; ein Fade ab 55° begann zu
+  spät (bei 55–60° drehte die Welt noch mit 76–82 % des Maus-Tempos — „auf
+  einmal kommt es wieder"). Das Cap hält `Faktor × sin(Nick) ≤ 0,3` bei
+  **jedem** Nick fest: die Bildrotation ist überall Schwenk-Tempo.
+  Messtabelle in `world.config.ts`. `placeAt()` und `#restore()` halten
+  dasselbe Limit ein, damit kein Blickpunkt und kein alter Save die Kamera
+  außerhalb des Maus-Bereichs parkt. Zusätzlich wird der erste Maus-Event
+  nach dem (Neu-)Erwerben des Pointer-Locks übersprungen — er trägt den
+  gesamten Weg vom Klickpunkt zur Elementmitte und wäre sonst ein
+  schlagartiger Blickruck („auf einmal").
 
 **1.6 — Beleuchtung** → `src/render/LightingRig.ts`
 ```ts

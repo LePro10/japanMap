@@ -60,12 +60,18 @@ export const VIEWPOINTS: Readonly<Record<string, Viewpoint>> = {
     note: 'Der Bergpass mit seinen Kehren — von Südosten über die Flanke.',
   },
   'pass-kehren': {
-    // Senkrecht über dem Stapel. Kein Look-Bild, sondern das **Belegbild** zur
-    // Abnahmezeile „≥ 8 Kehren": von hier sind sie abzählbar, und nur von hier.
-    // Die Zahl selbst kommt aus `npm run inspect`, nicht aus dem Bild.
-    position: [-900, 620, -480],
-    lookAt: [-900, 60, -481],
-    note: 'Senkrecht über dem Serpentinenstapel — die Kehren zum Abzählen.',
+    // **Blick seit der Pol-Reparatur: 15° statt 0° von der Senkrechten.** Der
+    // alte Blick (−900, 620, −480) → (−900, 60, −481) schaute mit 89,9° fast
+    // senkrecht nach unten. Das kann der Maus-Controller nicht mehr bedienen:
+    // `CAMERA.pitchLimitDeg = 75°` ist das Maximum, und ein Blickpunkt
+    // außerhalb des Bereichs spränge beim ersten Mauszug. Neu steht die
+    // Kamera westlich des Stapels und blickt mit exakt −75° auf sein Zentrum
+    // (x −552…−520, z −730…−261, y 28…199) — alle vier Ecken liegen gemessen
+    // im 16:9-Bild. Der Zweck („die Kehren zum Abzählen") bleibt; die Zahl
+    // selbst kommt aus `npm run inspect`.
+    position: [-672, 620, -495],
+    lookAt: [-536, 113, -495],
+    note: '15° über dem Serpentinenstapel — die Kehren zum Abzählen.',
   },
   tempel: {
     position: [820, 200, -700],
