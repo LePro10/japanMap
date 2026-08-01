@@ -3826,35 +3826,128 @@ dieses Durchgangs, und er steht in der P1-Nachbesserung bereits so.
   Wo eine Zahl nicht neu abgelesen wurde, gehört „nicht neu abgelesen"
   dazugeschrieben.
 
+### Ergebnis 8.11, gemessen am 2026-07-31
+
+**Reproduzierbarkeit.** `npm run world` zweimal hintereinander:
+`height.r16` und `roads.json` **bitgleich** (`cmp` ohne Ausgabe).
+`node tools/gen-props.mjs` erneut ausgeführt: `assets/props.json` unverändert
+im Arbeitsverzeichnis. Die Kette ist deterministisch.
+
+**`npm run inspect`.** Acht Strecken, alle bestanden — die fünf aus P3 plus
+die drei Pfade aus P8.7 und P8.9:
+
+| Strecke | Länge | Mesh im Terrain | Kehren |
+|---|---|---|---|
+| ring | 6096 m | ⌀ 0,005 m | 0 |
+| toge | 2408 m | ⌀ 0,003 m | **7** |
+| dorf | 692 m | ⌀ 0,003 m | 0 |
+| stadt | 869 m | ⌀ 0,943 m | 0 |
+| zufahrt | 145 m | ⌀ 2,138 m | 0 |
+| sando | 450 m | ⌀ 0,007 m | 0 |
+| feldpfad | 393 m | ⌀ 0,005 m | 0 |
+| kuestenpfad | 317 m | ⌀ 0,005 m | 0 |
+
+Keine Selbstschnitte auf irgendeiner Strecke.
+
+**Bildvollständigkeit: 13 Blickpunkte × 5 Stufen = 65 Messungen, 0 Ausfälle.**
+Das ist die Zeile, die den Viewport-Fehler gefunden hätte, und sie ist jetzt
+über die ganze Matrix belegt:
+
+| Stufe | Puffer | kleinster `anteilNichtSchwarz` |
+|---|---|---|
+| Ultra | 1280 × 720 | 0,999137 (`sando`) |
+| Hoch | 1088 × 612 | 0,99997 |
+| Mittel | 896 × 503 | 0,999773 (`stadt-neon`) |
+| Niedrig | 640 × 360 | 0,999991 |
+| Minimal | 640 × 360 | **1,000000** |
+
+Nebenbefund: `probe()` liest den **Zeichenpuffer**, nicht die Canvas-Größe —
+die vier verschiedenen Größen sind der Beleg, dass `renderScale` je Stufe
+tatsächlich greift. Die Abweichungen unter 1,000 sind echte schwarze Pixel im
+Bild (Schattenseite der Torii gegen den Himmel), keine Beschneidung; eine
+Beschneidung läge bei 0,800 wie im P4-Fehler.
+
+> **Die Draw-Call- und Dreieckszahlen aus diesem Durchlauf sind nicht
+> budgettauglich.** Sie stammen aus **kaltem** Zustand: je Blickpunkt liefen nur
+> 30 Frames, und die Streuung war nicht fertig. Die Budgetzahlen stehen unten
+> und sind getrennt mit vorgefüllter Streuung gemessen — der Fehler „warm gegen
+> kalt" aus CLAUDE.md, diesmal von vornherein getrennt gehalten.
+
+**Budgets nach SPEC §4, Ultra, Streuung bis zur Stabilität vorgefüllt.**
+
+| Blickpunkt | Vegetation | Draw-Calls | Dreiecke | `anteilNichtSchwarz` |
+|---|---|---|---|---|
+| `start` | 67 | **173** | 499 224 | 1,000000 |
+| `stadt-rand` | 44 729 | 169 | **958 068** | 0,999912 |
+| `stadt-neon` | 1 493 | 115 | 623 628 | 0,999988 |
+| `sando` | 50 874 | 112 | 930 684 | 0,999282 |
+| `reisfeld` | 8 805 | 71 | 349 552 | 0,999957 |
+| `pass` | 134 | 42 | 185 692 | 0,999938 |
+
+| Metrik | Budget | gemessen | Luft |
+|---|---|---|---|
+| Draw-Calls / Frame | < 800 | **173** | 78 % |
+| Dreiecke / Frame | < 3 M | **958 068** | 68 % |
+| Texturspeicher | < 512 MB | **307,8 MB** | 40 % |
+
+Der Texturspeicher kommt aus `estimateTextureMemory()` (dieselbe Funktion, die
+das Overlay anzeigt), über Szene **und** die Ressourcen des Loaders — die
+Render-Targets sind darin enthalten, was der Kommentar dort ausdrücklich
+verlangt. Geometrien 132, Texturobjekte 62 nach `renderer.info.memory`.
+
+> **Die Bildrate ist weiterhin nicht messbar** und steht deshalb auch nicht
+> hier. Diese Maschine hat nur den Software-Rasterisierer und kein
+> `EXT_disjoint_timer_query_webgl2`; alles über GPU-ms oder FPS wäre geraten.
+> Die drei Zahlen oben sind CPU-Zähler und exakt.
+
+**`stadt-neon` hat 1493 Vegetationsinstanzen** — das ist kein Fehler, sondern
+eine Geschäftsstraße. Der Wert steht hier, weil er beim Lesen der Tabelle sonst
+wie ein Ausfall der Streuung aussieht; P8.1 hat dieselbe Beobachtung schon
+notiert.
+
 ---
 
 ### Akzeptanzkriterien
 
-- [ ] **Die fünf Stufen unterscheiden sich in der Geländelast.** Dreiecke je
+- [x] **Die fünf Stufen unterscheiden sich in der Geländelast.** Dreiecke je
       Stufe gemessen, Verhältnis Minimal:Ultra ≤ 0,4 — und die Lochzählung
       bleibt bei allen fünf bei höchstens 1.
 
       **Erfüllt.** Blickpunkt `stadt-neon`, Streuung bis zur Stabilität
-      vorgefüllt; Lochzählung über zehn Blickpunkte:
+      vorgefüllt; Lochzählung über **dreizehn** Blickpunkte. Neu gemessen am
+      2026-07-31 nach dem Terrain-Durchgang P8.5 und den Props aus P8.9:
 
-      | Stufe | Gitter | Dreiecke gesamt | davon Gelände | Knoten | Löcher |
-      |---|---|---|---|---|---|
-      | Ultra   | 33² | 605 486 | 264 192 | 129 | 0 |
-      | Hoch    | 33² | 605 487 | 264 192 | 129 | 0 |
-      | Mittel  | 25² | 212 763 | 148 608 | 129 | 0 |
-      | Niedrig | 17² | 130 191 |  66 048 | 129 | 0 |
-      | Minimal | 17² | 130 182 |  66 048 | 129 | 0 |
+      | Stufe | Gitter | Dreiecke gesamt | davon Gelände | Knoten | Löcher | Vegetation | Calls |
+      |---|---|---|---|---|---|---|---|
+      | Ultra   | 33² | 623 628 | 264 192 | 129 | 0 | 1493 | 115 |
+      | Hoch    | 33² | 621 937 | 264 192 | 129 | 0 | 1070 | 116 |
+      | Mittel  | 25² | 220 177 | 148 608 | 129 | 0 |  669 |  71 |
+      | Niedrig | 17² | 136 965 |  66 048 | 129 | 0 |  349 |  59 |
+      | Minimal | 17² | 136 480 |  66 048 | 129 | 0 |  111 |  50 |
 
-      Minimal:Ultra ist **0,215** gesamt und **0,25** im Gelände — beides unter
+      Minimal:Ultra ist **0,219** gesamt und **0,25** im Gelände — beides unter
       der geforderten 0,4. Die Lochzählung meldet auf allen fünf Stufen null,
       gegengeprüft mit absichtlich falschem Morph, der 1496 Löcher erzeugt.
       Vorher standen Mittel und Niedrig bei 329 823 gegen 329 118 Dreiecke,
       unterschieden sich also um nichts.
 
+      > Die frühere Fassung dieser Tabelle nannte 605 486 Dreiecke auf Ultra.
+      > Die Zahl war nie falsch abgelesen — sie stammt aus einem Lauf vor dem
+      > Terrain-Durchgang und vor 175 zusätzlichen Props. Sie steht hier nur
+      > noch als Vergleich.
+
+      > **Ein Messfehler im Prüfskript, weil er sich sonst wiederholt.** Der
+      > erste Durchlauf meldete auf Ultra 909 338 Dreiecke statt 623 628.
+      > Ursache: `renderer.info.render` ist eine **lebende Referenz**, und
+      > `lodHoles()` rendert danach dreizehn fremde Blickpunkte. Wer den Wert
+      > erst nach dem Lochlauf ausliest, bekommt den letzten davon. Die Zahlen
+      > oben stammen aus einer Momentaufnahme **vor** dem Lochlauf.
+
       > Minimal und Niedrig trennen an *diesem* Blickpunkt fast nur Kette und
-      > Puffer: in einer Geschäftsstraße steht kaum Bewuchs, den die niedrigere
-      > Sichtweite und Dichte wegnehmen könnten. An `start` oder `reisfeld`
-      > **nicht neu abgelesen.**
+      > Puffer: in einer Geschäftsstraße steht kaum Bewuchs (1493 Instanzen auf
+      > Ultra), den die niedrigere Sichtweite und Dichte wegnehmen könnten. An
+      > `start` oder `reisfeld` **nicht neu abgelesen** — dort sind es 67 bzw.
+      > 8805 Instanzen, die Trennung fiele also anders aus.
 - [x] **Stufe „Minimal" umgeht die PostFX-Kette nachweislich.** Gemessen an der
       Zahl der Vollbilddurchgänge, nicht an der Bildrate: **1 gegen 28** auf
       Ultra, gezählt als Draw-Calls bei leerer Szene. Der Zeichenpuffer geht
@@ -3873,8 +3966,32 @@ dieses Durchgangs, und er steht in der P1-Nachbesserung bereits so.
       isoliert 150 057 Pixel (16,28 %) über 60 s.
 - [ ] **Der Bergpass hat ≥ 8 Kehren** (SPEC §2.1) **und** der Erdbau liegt unter
       dem Stand, der P3 zum Kompromiss gezwungen hat. Beide Zahlen zusammen.
-- [ ] **Ein Fluss läuft vom Massiv bis ins Meer**, monoton fallend, mit
+
+      **Nicht erfüllt, und zwar knapp: 7 Kehren, gefordert waren 8.** Gemessen
+      am 2026-07-31 über `npm run inspect`: 2408 m, 7 Kehren, keine
+      Selbstschnitte, Mesh im Terrain ⌀ 0,003 m. Vor P8.5 waren es 3 auf
+      3003 m — die Zahl ist im Terrain-Durchgang gestiegen, aber sie hat die
+      Schwelle nicht erreicht.
+
+      Der Erdbau ist **nicht besser** geworden: der Graben 24 m seitlich liegt
+      im Median bei 20,9 m, im 95. Perzentil bei 55,9 m und überschreitet 50 m
+      auf 242 m Strecke. Die Bank aus 8.5a wirkt auf den Korridor, nicht auf
+      den Einschnitt selbst.
+
+      **Hier wird nicht nachgeregelt.** Eine achte Kehre ließe sich über die
+      Kostenfläche erzwingen, aber genau das ist die Regelschleife, die dieses
+      Projekt zweimal ersatzlos entfernt hat — und die Erosion trägt jede
+      solche Änderung über die ganze Karte (Messung in 8.5). Die Zeile bleibt
+      offen und die Zahl steht daneben.
+- [x] **Ein Fluss läuft vom Massiv bis ins Meer**, monoton fallend, mit
       mindestens einem Wasserfall, und die Reisterrassen liegen daran.
+
+      **Erfüllt.** Aus `meta.json` des Laufs vom 2026-07-31: 422 Knoten,
+      **2643 m**, von 163,28 m auf 0,75 m, **2 Wasserfallstufen**,
+      `endedBy: "Meer"`. Das Bett wird nur geschnitten, nie aufgefüllt, also
+      ist der Verlauf monoton fallend per Konstruktion. Der Unterlauf ist
+      farblich weiterhin nicht von den gefluteten Reisfeldern zu unterscheiden
+      — der offene Punkt aus 8.6 steht dort und ist nicht behoben.
 - [ ] **Die Stadtkante ist im Bild nicht mehr als Kante lesbar** —
       Vorher/Nachher von `stadt-fern`, plus das Helligkeitsverhältnis nach der
       P6-Maskenmessung. `cityDrawCalls` weiterhin < 300.
@@ -3903,8 +4020,17 @@ dieses Durchgangs, und er steht in der P1-Nachbesserung bereits so.
       hinunter zur Uferzeile, `npm run inspect` bestanden, Mesh im Terrain
       ⌀ 0,005 m, keine Selbstschnitte. Gemessener Abstand der Hütten zur
       Wegachse: **25…131 m**, Median 71 m.
-- [ ] **Alle Budgets aus SPEC §4 weiterhin eingehalten**, auf Ultra gemessen.
-- [ ] **Kette reproduzierbar:** `npm run world` zweimal bitgleich.
+- [x] **Alle Budgets aus SPEC §4 weiterhin eingehalten**, auf Ultra gemessen.
+
+      **Erfüllt**, mit vorgefüllter Streuung über sechs Blickpunkte:
+      Draw-Calls **173** von 800, Dreiecke **958 068** von 3 000 000,
+      Texturspeicher **307,8 MB** von 512. Die Tabelle steht in 8.11.
+      Die Bildrate ist auf dieser Maschine nicht messbar und deshalb nicht
+      Teil der Abnahme — siehe „Umgebung" in CLAUDE.md.
+- [x] **Kette reproduzierbar:** `npm run world` zweimal bitgleich.
+
+      **Erfüllt.** `height.r16` und `roads.json` nach zwei Läufen bitgleich
+      (`cmp`), `assets/props.json` nach erneutem `gen-props` unverändert.
 
 ### Risiken
 
