@@ -2520,7 +2520,12 @@ Ebenfalls offen und bewusst nicht angefangen:
 
 ---
 
-# P8 — Polish & Presets ○
+# P8 — Polish & Presets ✅ (8 von 10 Kriterien, 2026-07-31)
+
+> Abgenommen in 8.11. **Zwei Kriterien bleiben offen**, beide mit der
+> gemessenen Zahl in der Liste unten: der Bergpass hat 7 statt 8 Kehren, und
+> die Stadtkante ist gemildert statt gelöscht. Keines der beiden wird
+> nachgeregelt — die Begründungen stehen dort, nicht hier.
 
 **Ziel:** Aus einer technisch abgenommenen Karte ein Grundstück machen, auf dem
 ein Spiel stehen kann — unten lauffähig auf jedem Gerät, oben vorzeigbar, und
