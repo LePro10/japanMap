@@ -5,7 +5,7 @@ import {
   type WebGLProgramParametersWithUniforms,
 } from 'three';
 
-import { ROAD_WET } from '@/config/roads.config';
+import { ROAD_GRAVEL_COLOR, ROAD_WET } from '@/config/roads.config';
 import {
   injectAtmosphere,
   type AtmosphereUniforms,
@@ -37,6 +37,23 @@ export function createRoadUniforms(): RoadUniforms {
     uWetness: { value: ROAD_WET.wetness },
     uPuddleEdge: { value: ROAD_WET.edge },
   };
+}
+
+/**
+ * Kiesfarbe als GLSL-Literal, in **linearem** Raum — P8.9.
+ *
+ * three rechnet Uniform-Farben mit `Color.setHex(wert, 'srgb')` um; hier steht
+ * die Zahl fest im Shadertext, also muss die Umrechnung an dieser Stelle
+ * passieren. Ohne sie läge der Pfad um den Faktor der sRGB-Kurve zu hell —
+ * derselbe Fehler, den `paint()` in `landmarkMeshes.ts` mit dem ausdrücklichen
+ * Quellraum vermeidet.
+ */
+function gravelGlsl(): string {
+  const kanal = (v: number): number => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  const r = kanal(((ROAD_GRAVEL_COLOR >> 16) & 255) / 255);
+  const g = kanal(((ROAD_GRAVEL_COLOR >> 8) & 255) / 255);
+  const b = kanal((ROAD_GRAVEL_COLOR & 255) / 255);
+  return `vec3(${r.toFixed(4)}, ${g.toFixed(4)}, ${b.toFixed(4)})`;
 }
 
 /**
@@ -121,6 +138,7 @@ export class RoadMaterial extends MeshStandardMaterial {
           'uniform mat4 uReflectMatrix;\n' +
           'varying vec3 vRoadWorld;\n' +
           'varying float vRoadPuddle;\n' +
+          'varying float vRoadGravel;\n' +
           'varying vec4 vRoadReflect;',
       )
       .replace(
@@ -128,6 +146,7 @@ export class RoadMaterial extends MeshStandardMaterial {
         '#include <begin_vertex>\n' +
           'vRoadWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\n' +
           'vRoadPuddle = color.r;\n' +
+          'vRoadGravel = color.b;\n' +
           // Projektive Koordinate ins Spiegelbild. Sie muss im Vertex-Shader
           // entstehen und **unperspektivisch** interpoliert werden — die
           // Division durch w gehört ans Ende, sonst krümmt sich das Spiegelbild
@@ -145,6 +164,7 @@ export class RoadMaterial extends MeshStandardMaterial {
         'uniform vec3 uReflectPlane;\n' +
         'varying vec3 vRoadWorld;\n' +
         'varying float vRoadPuddle;\n' +
+        'varying float vRoadGravel;\n' +
         'varying vec4 vRoadReflect;\n' +
         'vec2 gRoadShade;\n' +
         'float gRoadWet;\n' +
@@ -164,12 +184,30 @@ export class RoadMaterial extends MeshStandardMaterial {
         '#include <map_fragment>',
         '#include <map_fragment>\n' +
           'gRoadShade = atmoShade(vRoadWorld);\n' +
-          'gRoadWet = roadPuddleMask(vRoadWorld.xz, vRoadPuddle, uWetness, uPuddleEdge);\n' +
+          // Kiesbelag — P8.9. Der B-Kanal der Vertex-Farbe sagt, ob diese
+          // Strecke ein Pfad ist; die UV-Verschiebung im Mesh hat den
+          // Fahrbahnriss schon entfernt. Hier kommen Farbe und Körnung dazu:
+          // die Helligkeit des Belags wird auf einen Erdton umgesetzt, und ein
+          // Weltrauschen legt Kies darüber. Über die **Helligkeit** und nicht
+          // als flacher Anstrich, damit die Struktur der Textur erhalten
+          // bleibt — ein einfarbiger Pfad sieht aus wie ein Aufkleber.
+          'if (vRoadGravel > 0.5) {\n' +
+          '  float lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));\n' +
+          '  float korn = puddleNoise(vRoadWorld.xz * 2.7) * 0.5 + puddleNoise(vRoadWorld.xz * 9.1) * 0.5;\n' +
+          `  vec3 erde = ${gravelGlsl()};\n` +
+          '  diffuseColor.rgb = erde * (0.62 + lum * 1.9) * (0.82 + korn * 0.36);\n' +
+          '}\n' +
+          'gRoadWet = roadPuddleMask(vRoadWorld.xz, vRoadPuddle, uWetness, uPuddleEdge) * (1.0 - vRoadGravel);\n' +
           `diffuseColor.rgb *= mix(1.0, ${ROAD_WET.darken.toFixed(3)}, gRoadWet);`,
       )
       .replace(
         '#include <roughnessmap_fragment>',
         '#include <roughnessmap_fragment>\n' +
+          // Kies ist matt. Ohne diese Zeile spiegelte der Pfad bei 2,2°
+          // Sonnenstand wie frischer Asphalt, und die Umfärbung darüber wäre
+          // wirkungslos geblieben: bei streifendem Licht macht die **Rauheit**
+          // den Belag aus, nicht das Albedo.
+          'roughnessFactor = mix(roughnessFactor, 1.0, vRoadGravel * 0.85);\n' +
           `roughnessFactor = mix(roughnessFactor, ${ROAD_WET.roughness.toFixed(3)}, gRoadWet);`,
       )
       .replace(

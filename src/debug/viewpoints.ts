@@ -59,6 +59,37 @@ export const VIEWPOINTS: Readonly<Record<string, Viewpoint>> = {
     lookAt: [820, 150, -940],
     note: 'Die Tempelanlage im Nordosten.',
   },
+  // ── P8.9 ───────────────────────────────────────────────────────────────────
+  //
+  // Drei Blickpunkte auf Augenhöhe. Die Abnahmezeile von 8.9 verlangt sie
+  // wörtlich („je ein Bild aus Augenhöhe"), und sie sind der Grund, warum in
+  // 8.9 überhaupt etwas gefunden wurde: aus 200 m Höhe sieht ein Dorf immer
+  // richtig aus.
+  sando: {
+    // Zwischen dem siebten und achten Torii, nicht **auf** einem: bei (843, −820)
+    // steht das achte 1 m vor der Linse und füllt ein Drittel des Bildes.
+    position: [842, 133.8, -830],
+    lookAt: [822, 152, -945],
+    note: 'Auf dem Tempelaufgang, Augenhöhe, Blick bergauf durch die Torii-Reihe.',
+  },
+  dorf: {
+    // **Zwischen den Hütten, nicht im Wasser.** Der erste Versuch stand auf
+    // (793, 1075) — das liegt 38 m vor der Uferlinie, mitten zwischen den
+    // Booten, und im Bild füllte ein Kahn die untere Bildhälfte, während das
+    // Dorf als Streifen am Horizont lag. Augenhöhe heißt: auf dem Boden, den
+    // die Hütten teilen (0,17 m + 1,7 m).
+    // Zweite Korrektur: (700, 1052) stand 11,5 m neben der Hütte bei (706, 1042),
+    // und die füllte die halbe Bildbreite. Hier ist die nächste Hütte 28 m
+    // entfernt — die Zeile ist ganz im Bild, der Steg auch.
+    position: [745, 1.7, 1048],
+    lookAt: [806, 5, 998],
+    note: 'Im Fischerdorf, Augenhöhe am Wasser, Blick über die Zeile zum Steg.',
+  },
+  'stadt-rand': {
+    position: [620, 62, 620],
+    lookAt: [620, 40, 120],
+    note: 'Der Blick von 8.8 auf die Südkante des Distrikts. Vorher/Nachher der Stadtrandbebauung.',
+  },
   reisfeld: {
     position: [-760, 120, 400],
     lookAt: [-760, 22, 60],
