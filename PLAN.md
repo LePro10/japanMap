@@ -3726,6 +3726,11 @@ Tempel stand im Wald") gehört ein Bild dazu, kein Zahlenblick.
 Alle Zahlen aus einem Lauf am 2026-07-31, Ultra, 1280 × 720, Streuung bis zur
 Stabilität vorgefüllt (`loop.tick()` von Hand, siehe CLAUDE.md).
 
+> Sie bleiben stehen — es sind die Zahlen, mit denen 8.9 abgenommen wurde. Am
+> 2026-08-01 hat die Kehren-Reparatur das Höhenfeld neu gebacken; die
+> **aktuellen** Werte stehen in 8.11 unter „Budgets nach SPEC §4". Was sich
+> verschoben hat, ist klein: `stadt-rand` von 958 068 auf 959 142 Dreiecke.
+
 | Blickpunkt | Vegetation | Props | Draw-Calls | Dreiecke | `anteilNichtSchwarz` |
 |---|---|---|---|---|---|
 | `dorf` | 11 730 | 37 | 64 | 298 668 | 1,000 |
@@ -3773,7 +3778,7 @@ unterhalb der Skyline. Zum Vergleich: das Neon deckt an `stadt-neon` 5,62 %.
 > Lücke in den Bewuchs über. Wer die Linie ganz auflösen will, muss an
 > `CITY_DISTRICT` und die Platte, nicht an Props — das ist kein P8-Umfang.
 
-**Kosten.** 861 Platzierungen (vorher 686), 26 Assets, kein Asset über
+**Kosten.** 895 Platzierungen (vorher 686; 861 vor der Kehren-Reparatur), 26 Assets, kein Asset über
 `PROPS.capacity` (512) — das dichteste ist `tetrapod` mit 372. Der
 Landmark-Satz wuchs von 2104 auf 3972 Dreiecke.
 
@@ -3929,20 +3934,33 @@ Beschneidung läge bei 0,800 wie im P4-Fehler.
 
 **Budgets nach SPEC §4, Ultra, Streuung bis zur Stabilität vorgefüllt.**
 
+> **Am 2026-08-01 nachgemessen.** Die Kehren-Reparatur am Bergpass hat das
+> Höhenfeld neu gebacken (Pass 2408 → 2616 m, Props 861 → 895). Die Zahlen
+> unten stammen aus dem Lauf **danach**; die vier Blickpunkte, die dabei nicht
+> wiederholt wurden, sind als solche gekennzeichnet.
+
 | Blickpunkt | Vegetation | Draw-Calls | Dreiecke | `anteilNichtSchwarz` |
 |---|---|---|---|---|
-| `start` | 67 | **173** | 499 224 | 1,000000 |
-| `stadt-rand` | 44 729 | 169 | **958 068** | 0,999912 |
-| `stadt-neon` | 1 493 | 115 | 623 628 | 0,999988 |
-| `sando` | 50 874 | 112 | 930 684 | 0,999282 |
-| `reisfeld` | 8 805 | 71 | 349 552 | 0,999957 |
-| `pass` | 134 | 42 | 185 692 | 0,999938 |
+| `start` | 67 | **173** | 500 298 | 1,000000 |
+| `stadt-rand` | 44 729 | 169 | **959 142** | 0,999858 |
+| `sando` | 50 874 | 112 | 931 200 | 0,999167 |
+| `pass` | 171 | 71 | 415 422 | 0,999998 |
+| `stadt-neon` | 1 493 | 115 | 623 628 | 0,999988 · *nicht neu abgelesen* |
+| `reisfeld` | 8 805 | 71 | 349 552 | 0,999957 · *nicht neu abgelesen* |
+
+`pass` steigt von 42 auf 71 Draw-Calls und von 185 692 auf 415 422 Dreiecke —
+der Blickpunkt zeigt seit P8.11 die Serpentinen statt einer Felswand, also
+mehr Straße, mehr Leitplanke und mehr Bewuchs. Das ist ein anderer Ausschnitt,
+kein Mehrverbrauch am selben Ort.
 
 | Metrik | Budget | gemessen | Luft |
 |---|---|---|---|
 | Draw-Calls / Frame | < 800 | **173** | 78 % |
-| Dreiecke / Frame | < 3 M | **958 068** | 68 % |
+| Dreiecke / Frame | < 3 M | **959 142** | 68 % |
 | Texturspeicher | < 512 MB | **307,8 MB** | 40 % |
+| `PROPS.capacity` je Asset | < 512 | **372** (`tetrapod`) | 27 % |
+
+895 Platzierungen über 26 Assets (vor der Kehren-Reparatur 861).
 
 Der Texturspeicher kommt aus `estimateTextureMemory()` (dieselbe Funktion, die
 das Overlay anzeigt), über Szene **und** die Ressourcen des Loaders — die
@@ -4251,7 +4269,7 @@ Politurschritt.
 - [x] **Alle Budgets aus SPEC §4 weiterhin eingehalten**, auf Ultra gemessen.
 
       **Erfüllt**, mit vorgefüllter Streuung über sechs Blickpunkte:
-      Draw-Calls **173** von 800, Dreiecke **958 068** von 3 000 000,
+      Draw-Calls **173** von 800, Dreiecke **959 142** von 3 000 000,
       Texturspeicher **307,8 MB** von 512. Die Tabelle steht in 8.11.
       Die Bildrate ist auf dieser Maschine nicht messbar und deshalb nicht
       Teil der Abnahme — siehe „Umgebung" in CLAUDE.md.
