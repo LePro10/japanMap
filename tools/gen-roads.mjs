@@ -76,9 +76,66 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
  * die gebaute Strecke (28,8 m) sauber von der kaputten, die er finden soll
  * (49,2 m, siehe oben).
  */
+/**
+ * Überschreibt den Verrundungs-Boden für eine Messreihe — P8.11.
+ *
+ * `node tools/gen-roads.mjs --floor 1.05`. Ohne die Angabe gilt `floorFactor`
+ * je Typ. Der Schalter existiert, damit eine Reihe über mehrere Werte laufen
+ * kann, ohne die Datei zwischen den Läufen zu ändern — verbindlich ist immer
+ * der eingetragene Wert, nicht der Schalter.
+ */
+const floorOverride = (() => {
+  const i = process.argv.indexOf('--floor');
+  if (i < 0) return null;
+  const value = Number(process.argv[i + 1]);
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error('--floor braucht eine positive Zahl.');
+  }
+  return value;
+})();
+
 const TYPES = {
   highway: { width: 9, maxGradient: 0.07, minRadius: 45, maxEarthwork: 12 },
-  mountain: { width: 6.5, maxGradient: 0.11, minRadius: 15, maxEarthwork: 30 },
+  /**
+   * `floorFactor: 1.2` statt der allgemeinen 1,3 — P8.11.
+   *
+   * Der Verrundungs-Boden (`minRadius · Faktor`) wirft Ecken weg, deren Radius
+   * ihn nicht hält. Die 1,3 sind am **Ring** geeicht: ohne sie stauchten
+   * benachbarte Bögen ihn auf 34,5 m bei 45 m Soll. Für den Pass war das nie
+   * geprüft, und dort kostete es die Kehren, um die es in der Abnahme geht — in
+   * der Ausschussliste standen Ecken mit 15,0 / 15,3 / 16,1 / 16,6 / 17,9 m
+   * Radius, die alle die Vorgabe `minRadius ≥ 15` erfüllen.
+   *
+   * Gemessen über acht Werte, alle auf sauberem Höhenfeld (`bake:clean`):
+   *
+   * | Faktor | Länge | R min | Steigung | Kehren | Erdbau ⌀ |
+   * |---|---|---|---|---|---|
+   * | 1,30 | 2408 m | 19,25 | 10,7 % | 7 | **31,8 m ✗** |
+   * | 1,25 | 2408 m | 19,25 | 10,7 % | 7 | 31,8 m ✗ |
+   * | **1,20** | **2616 m** | **17,95** | **10,7 %** | **9** | **23,0 m** |
+   * | 1,15 | 2242 m | 20,30 | 10,0 % | 2 | 18,7 m |
+   * | 1,10 | 3594 m | 16,37 | 10,5 % | 4 | — |
+   * | 1,05 | 3788 m | 16,05 | 10,5 % | 7 | 29,7 m |
+   * | 1,02 | 3788 m | 16,05 | 10,5 % | 7 | — |
+   * | 1,00 | 3788 m | **14,91 ✗** | 10,5 % | 7 | 27,2 m |
+   *
+   * **Die Kurve ist nicht monoton, und das gehört dazugesagt.** Zwischen 1,25
+   * und 1,05 springt die Kehrenzahl 7 → 9 → 2 → 4 → 7; ab 1,10 wechselt sogar
+   * die Trasse (Luftlinie 387 m → 1014 m), weil andere Ecken überleben und die
+   * Suche einen anderen Anlauf nimmt. 1,20 ist deshalb **nicht** „der Punkt auf
+   * einer Kurve", sondern der einzige geprüfte Wert, der alle vier Vorgaben
+   * zugleich hält — und er tut es mit Abstand: Erdbau 23,0 gegen 30 m Soll.
+   *
+   * Bei 1,00 fällt der Radius unter die Vorgabe. Der Boden ist also nötig; nur
+   * die Höhe stammte von einer anderen Straße.
+   *
+   * **Das ist kein Nachregeln auf die Kehrenzahl.** Geprüft wird gegen die
+   * Vorgaben des Typs (Radius, Steigung, Erdbau), nicht gegen die Zielzahl aus
+   * der Abnahme; dass dabei 9 Kehren herauskommen, ist das Ergebnis und nicht
+   * das Kriterium. Der Ring behält seine 1,3 — die Messung, die sie begründet,
+   * gilt weiter für ihn.
+   */
+  mountain: { width: 6.5, maxGradient: 0.11, minRadius: 15, maxEarthwork: 30, floorFactor: 1.2 },
   village: { width: 5, maxGradient: 0.09, minRadius: 18, maxEarthwork: 8 },
   city: { width: 8, maxGradient: 0.06, minRadius: 25, maxEarthwork: 10 },
   dirt: { width: 4, maxGradient: 0.14, minRadius: 12, maxEarthwork: 20 },
@@ -561,7 +618,15 @@ function traceRoute(
     // Ecken, die den Grenzwert nicht halten können, fallen weg statt
     // durchzurutschen. Ohne diese Untergrenze staucht die gegenseitige
     // Verkleinerung benachbarter Bögen den Ring auf 34,5 m bei 45 m Soll.
-    floor: settings.minRadius * 1.3,
+    //
+    // **Die Zahl 1,3 stammt vom Ring, und sie gilt weiter für ihn.** Ob ein
+    // Bergpass sie braucht, war nie geprüft: dort ist `minRadius` 15 m, die
+    // Untergrenze also 19,5 m — und in der Ausschussliste stehen Ecken mit
+    // 15,0 / 15,3 / 16,1 / 16,6 / 17,9 m Radius. Die erfüllen die Vorgabe und
+    // fallen trotzdem weg, und mit ihnen die Kehren, um die es in der Abnahme
+    // geht. `floorFactor` je Typ macht das prüfbar statt gleich zu verstellen;
+    // `--floor <zahl>` überschreibt ihn für eine Messreihe.
+    floor: settings.minRadius * (floorOverride ?? settings.floorFactor ?? 1.3),
     closed,
   });
 
