@@ -102,6 +102,32 @@ export const PROP_CLEARANCE: Readonly<Record<string, number>> = {
   boulder_01: 2.5,
   rock_moss_set_02: 3.5,
   coastal_cliff_04: 20,
+
+  // ── P8.9 ───────────────────────────────────────────────────────────────────
+  //
+  // Sandō. Chōzuya und Glockenturm stehen am Weg, dessen Korridor die
+  // Torii-Kette (8 m alle 16 m) bereits räumt; sie brauchen nur ihren eigenen
+  // Vorplatz und nicht mehr, sonst frisst der Aufgang eine Lichtung in den
+  // Wald, durch den er führen soll.
+  chozuya: 6,
+  bellTower: 7,
+
+  // Fischerdorf. Die Hütten stehen **dicht** — ein Dorf ist keine Streusiedlung,
+  // und 15 m wie beim Gehöft würden hier genau den Eindruck erzeugen, den 8.9
+  // beheben soll. 8 m lassen die Gasse zwischen zwei Hütten frei, ohne aus
+  // sechs Häusern sechs Einzelgehöfte zu machen.
+  fishHut: 8,
+  netRack: 4,
+  boatRamp: 6,
+  crateStack: 2,
+  jetty: 8,
+
+  // Stadtrand. Die Mauer ist 8,42 m lang; ihr Radius muss die halbe Länge
+  // decken, sonst wächst Bewuchs mitten durch die Reihe. 6 m ist etwas mehr
+  // und hält die Reihe beidseitig frei.
+  concreteWall: 6,
+  greenhouse: 10,
+  warehouse: 16,
 };
 
 /**

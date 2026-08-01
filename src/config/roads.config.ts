@@ -23,6 +23,20 @@ export interface RoadTypeSettings {
   readonly minRadius: number;
   /** Kachelung der Belagstextur längs, in Metern. */
   readonly textureLength: number;
+  /**
+   * Belagsart — P8.9.
+   *
+   * Es gibt **eine** Belagstextur und **ein** Material für alle Strecken; das
+   * ist die Zusage aus P3 (ein Draw-Call je Strecke, ein geteilter
+   * Nässe-Uniformblock). Ein zweiter Satz Texturen für 843 m Pfad wäre ein
+   * schlechtes Geschäft.
+   *
+   * Stattdessen trägt der **B-Kanal der Vertex-Farbe** die Belagsart. Der
+   * RoadMeshBuilder legt ihn an, das Material liest ihn und färbt um. Die
+   * Kanäle R und G sind seit P3 mit Pfützenneigung und Krümmung belegt, B war
+   * frei.
+   */
+  readonly surface: 'asphalt' | 'kies';
 }
 
 export const ROAD_TYPES: Readonly<Record<RoadType, RoadTypeSettings>> = {
@@ -33,6 +47,7 @@ export const ROAD_TYPES: Readonly<Record<RoadType, RoadTypeSettings>> = {
     maxGradient: 0.07,
     minRadius: 45,
     textureLength: 8,
+    surface: 'asphalt',
   },
   mountain: {
     label: 'Bergpass',
@@ -43,6 +58,7 @@ export const ROAD_TYPES: Readonly<Record<RoadType, RoadTypeSettings>> = {
     maxGradient: 0.11,
     minRadius: 15,
     textureLength: 7,
+    surface: 'asphalt',
   },
   village: {
     label: 'Dorfstraße',
@@ -51,6 +67,7 @@ export const ROAD_TYPES: Readonly<Record<RoadType, RoadTypeSettings>> = {
     maxGradient: 0.09,
     minRadius: 18,
     textureLength: 6,
+    surface: 'asphalt',
   },
   city: {
     label: 'Stadtstraße',
@@ -59,6 +76,7 @@ export const ROAD_TYPES: Readonly<Record<RoadType, RoadTypeSettings>> = {
     maxGradient: 0.06,
     minRadius: 25,
     textureLength: 8,
+    surface: 'asphalt',
   },
   dirt: {
     label: 'Feldweg',
@@ -67,6 +85,7 @@ export const ROAD_TYPES: Readonly<Record<RoadType, RoadTypeSettings>> = {
     maxGradient: 0.14,
     minRadius: 12,
     textureLength: 5,
+    surface: 'asphalt',
   },
   /**
    * Pfad — PLAN.md P8.7.
@@ -93,8 +112,23 @@ export const ROAD_TYPES: Readonly<Record<RoadType, RoadTypeSettings>> = {
     maxGradient: 0.45,
     minRadius: 8,
     textureLength: 3,
+    surface: 'kies',
   },
 };
+
+/**
+ * Grundton des Kiesbelags — P8.9.
+ *
+ * Ein warmes, entsättigtes Braun: verdichteter Kies mit Lehm darin, wie ihn ein
+ * Tempelaufgang und ein Feldweg haben. Nicht Grau — grauer Kies wäre von dem
+ * Asphalt, den er ersetzen soll, bei 2,2° Sonnenstand kaum zu unterscheiden.
+ *
+ * Der Wert ist **sRGB**, so wie man ihn im Farbwähler wählt; das Material
+ * rechnet ihn beim Zusammenbau des Shaders nach linear um. Diese Umrechnung
+ * ist derselbe Punkt wie bei den Landmark-Vertexfarben in
+ * `landmarkMeshes.ts` — ohne sie liegt der Pfad sichtbar zu hell.
+ */
+export const ROAD_GRAVEL_COLOR = 0x6f6049;
 
 /**
  * Referenzbreite für die Freihaltezone der Vegetation — PLAN.md P8.7.

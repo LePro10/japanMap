@@ -3545,10 +3545,183 @@ Konkret fehlen zwei Orte, die SPEC §2.1 nennt oder voraussetzt:
   paarweise am Weg, ein Chōzuya (Wasserbecken), eine Glocke. Alle Meshes sind
   prozedural — Varianten kosten hier fast nichts (12 Landmarks = 2104 Dreiecke).
 
+> **Abweichung: die Hütten sind kein skaliertes `farmhouse`.** Der Plan schlägt
+> die vorhandenen Meshes „mit Varianz in Maß und Dach" vor. Gebaut ist
+> stattdessen ein eigenes `fishHut` (192 Dreiecke), und der Grund ist das Dach:
+> ein Minka trägt Reet mit 45°, eine Hütte am Wasser trägt Wellblech mit 12°.
+> Aus 100 m ist genau dieser Unterschied die ganze Unterscheidung zwischen Dorf
+> und Hof — mit skalierten Bauernhäusern hätte das Fischerdorf wie ein zweites
+> Reisfeld ausgesehen. Der Satz wuchs dadurch von 12 auf 22 Landmarks und von
+> 2104 auf **3972** Dreiecke; das Budget sind 3 000 000.
+
 **Messung.** Draw-Calls und Dreiecke der Prop-Systeme, `PROPS.capacity` (512 je
 Asset und Stufe) darf nicht überlaufen — ein Überlauf verwirft Props still.
 Freihalteradien nach `PROP_CLEARANCE` prüfen: nach dem Fehler aus P5 („der
 Tempel stand im Wald") gehört ein Bild dazu, kein Zahlenblick.
+
+> ### Was 8.9 zuerst gefunden hat: der Pfad führte nirgendwohin
+>
+> `assets/props.json` stammte aus P5.4 — **vor** dem Terrain-Umbau in 8.5. Alle
+> suchbasierten Platzierungen bezogen sich damit auf ein Höhenfeld, das es nicht
+> mehr gibt. Gemessen gegen das aktuelle Feld:
+>
+> | Asset | n | Neigung Median / Max |
+> |---|---|---|
+> | delineator | 158 | 34,5° / **82,5°** |
+> | torii | 4 | 32,3° / 39,6° |
+> | stoneLantern | 12 | 26,1° / 38,5° |
+> | templeStairs | 1 | 15,5° |
+> | farmhouse | 7 | 3,2° / 20,6° |
+>
+> Die Leitpfosten der Passstraße standen an 82° steilen Wänden — die Straße hat
+> seit 8.5 sieben Kehren statt drei und liegt woanders. Der Tempel selbst hatte
+> Glück: 0,71° und Ecken innerhalb der Toleranz.
+>
+> **Der eigentliche Befund lag daneben.** 8.7 hat einen Sandō gebaut, der auf
+> der Waldhochebene bei (820, −952) endet. Der Tempel stand bei (519, −689),
+> also **300 m neben dem Weg, der zu ihm führen sollte**; der Blickpunkt
+> `tempel` zeigte auf das Pfadende, mithin auf leeren Wald. Beide Werkzeuge
+> waren für sich richtig und wussten nichts voneinander.
+>
+> Die Abnahmezeile lautet „Fischerdorf und Sandō stehen und sind **erreichbar**
+> — ein Pfad führt hin". Erreichbarkeit lässt sich nicht nachträglich prüfen,
+> wenn beide Enden unabhängig gesucht werden; sie muss aus der Konstruktion
+> folgen. `gen-props.mjs` sucht die Tempelfläche deshalb jetzt in einem Kreis um
+> das **Pfadende**, und die Torii-Reihe läuft auf der Achse *Pfad + Verlängerung
+> zum Tempel*, nicht auf dem Pfad allein.
+>
+> Ein erster Versuch, der nur den Abstand bestrafte, wählte (799,8, −992,8) —
+> breite ebene Fläche, aber 45 m **neben** der Flucht. Getrennte Strafen für
+> quer (×2,2) und längs (×0,1) lösen das: der Tempel steht jetzt auf (820, −954)
+> mit 1,82° Neigung, **2 m** hinter dem letzten Pfadknoten.
+>
+> Nebenbefund zur Suche selbst: `findSpot` jittert die Rasterpunkte um ±0,8 m.
+> Das ist bei groben Schritten richtig und bei einer **seltenen** Bedingung
+> falsch — die Tempelfläche trifft 1 von 709 Rasterpunkten, und der Jitter ging
+> daran vorbei. `jitter: 0` macht die Suche vollständig.
+
+> ### Zwei Messfehler, die im Werkzeug steckten
+>
+> **1. Der Kreis maß die falsche Richtung.** Props sitzen auf der Geländehöhe
+> ihres Mittelpunkts; ein 6,92 m breites Torii am Hang bekommt dadurch eine
+> schwebende Säule. Die erste Abhilfe suchte den tiefsten Punkt auf einem Kreis
+> mit 2,4 m Radius und senkte bis zu **1,00 m** ab. Nachgemessen war der Ring
+> antisymmetrisch — −1,00 m in +Z, +0,87 m in −Z: die Absenkung kam **längs**
+> des Weges, wo der Sandō steigt. Quer, wo das Torii tatsächlich ausladet, misst
+> die größte Differenz über die volle Spannweite **0,54 m (4,4°)**. Mit einem
+> gerichteten Grundriss (0,44 m längs × 3,46 m quer) liegt die größte Absenkung
+> über alle Sandō-Bauten bei **0,63 m**, bei den Torii zwischen 0,00 und 0,41 m.
+>
+> **2. Die Hüttenschwelle stand gegen das Küstenprofil.** 1,4 m Mindesthöhe
+> schob die Fischerhütten 70…130 m ins Hinterland. Gemessen ist diese Bucht ein
+> Flachstrand mit rund 2 % Gefälle (bei x = 790: 0,02 m nach 10 m, 0,18 m nach
+> 30 m, 1,49 m nach 70 m). 0,25 m sind nach 25…35 m erreicht, und die Hütte
+> steht auf 0,45 m hohen Pfählen. Ergebnis: acht Hütten, 25…81 m vom Wasser.
+
+> ### Das Dorf steht am Hafen, nicht am Leuchtturm
+>
+> Der Plan oben schreibt „an der Südküste beim Leuchtturm", begründet es aber
+> mit einem Satz, der woanders hinzeigt: „Die Boote bekommen einen Ort, an den
+> sie gehören." Gemessen liegen zwischen Hafen (x = 790) und Leuchtturm
+> (x = −180) **977 m** — die beiden sind nicht einmal im selben Bild. Ein Dorf
+> am Leuchtturm ließe Steg, Mole und vier Boote unbewohnt, also genau den
+> Befund, den 8.9 beheben soll. Der Leuchtturm bleibt, was er ist: ein einzelner
+> Fixpunkt auf einer Landzunge.
+
+> ### Der Stadtrand: eine Zahl aus 8.8 war eine Falle
+>
+> Der Ring beginnt bei **215 m** vom Distriktmittelpunkt, nicht bei 195. Die
+> Bodenplatte endet zwar bei 180 m, aber `CITY.ground.skirt` legt eine 24 m
+> breite Schürze darum, die auf Geländehöhe ausläuft — bis 204 m. Ein Prop dort
+> stünde auf dem Höhenfeld und damit **unter** der Schürze: Fall 2 aus der
+> Fehlerliste in CLAUDE.md, „eine Fläche unter einer anderen".
+>
+> Der erste Wurf verteilte 74 Props gleichmäßig über den Ring. Im Bild sah das
+> aus wie verstreute Kisten auf leerem Feld — die Ringfläche wächst quadratisch
+> nach außen, die Dichte fällt also von selbst. Mit `depth^1.8` liegt die Hälfte
+> der Plätze in den inneren 30 m; die Zahl stieg auf **140**.
+
+> ### Zwei Werkzeugfehler, die die Bilder verdorben haben
+>
+> **1. Ein Vorher/Nachher, das keines war.** Der erste Vergleich stellte das
+> neue `stadt-rand` neben das Referenzbild aus 8.8. Im alten Bild steht **keine
+> einzige Pflanze**, im neuen steht überall Bewuchs — ein Unterschied, der
+> nichts mit der Stadtrandbebauung zu tun hat. Das ist „warm gegen kalt" aus
+> CLAUDE.md, nur an der Streuung statt an der Bildrate.
+>
+> Der gültige Vergleich läuft **in derselben Sitzung, an derselben Kamera, mit
+> derselben Streuung**: `warehouse`, `greenhouse` und `concreteWall` werden
+> ausgeblendet, sonst nichts. `shed` und `powerPole` bleiben sichtbar, weil es
+> sie auch an den Höfen und über den Reisfeldern gibt — die gemessene Differenz
+> ist damit eine **Untergrenze**.
+>
+> **2. Die Bodenmarkierung hat zwei Abnahmebilder unbrauchbar gemacht.** Der
+> P1-Beleg für „Sampler stimmt mit gerenderter Oberfläche überein" ist eine
+> Drahtkugel mit 2 m Radius auf der Geländehöhe **unter der Kamera**. Auf
+> Augenhöhe (1,7…1,9 m) steht die Kamera darin und sieht ein rotes Netz über dem
+> halben Bild. Aus der Vogelperspektive war das nie aufgefallen, weil dort alle
+> bisherigen Blickpunkte lagen.
+>
+> Sie blendet sich jetzt aus, sobald die Kamera näher als 2,3 m über dem Boden
+> steht — innerhalb ihres eigenen Radius kann sie ihren Nachweis ohnehin nicht
+> erbringen. Aufgefallen ist es **nur am Bild**; `probe()` meldete
+> `anteilNichtSchwarz = 1` und die Instanzzahlen stimmten.
+
+### Ergebnis 8.9, gemessen
+
+Alle Zahlen aus einem Lauf am 2026-07-31, Ultra, 1280 × 720, Streuung bis zur
+Stabilität vorgefüllt (`loop.tick()` von Hand, siehe CLAUDE.md).
+
+| Blickpunkt | Vegetation | Props | Draw-Calls | Dreiecke | `anteilNichtSchwarz` |
+|---|---|---|---|---|---|
+| `dorf` | 11 730 | 37 | 64 | 298 668 | 1,000 |
+| `sando` | 50 874 | 27 | 112 | 930 684 | 0,9992 |
+| `tempel` | 47 851 | 33 | 102 | 728 240 | 0,9998 |
+| `stadt-rand` | 44 729 | 82 | 169 | 958 068 | 0,9999 |
+
+`sando` und `tempel` liegen knapp unter 1,000, weil an beiden Blickpunkten
+schwarze Pixel **im Bild** stehen (Schattenseite der Torii gegen den Himmel);
+bei `dorf` mit freiem Horizont steht die 1,000 exakt.
+
+**Das Fischerdorf.** 9 Hütten zwischen x = 706 und 842, 25…81 m vom Wasser,
+dazu 9 Netzgestelle, 6 Kisten-/Reusenstapel, eine Bootsrampe, ein zweiter Steg
+und zwei zusätzliche Boote. Die 4 vorhandenen Boote liegen weiterhin an der
+Mole — sie haben jetzt einen Ort.
+
+**Der Sandō.** 9 Torii im 16-m-Raster über 150 m, 20 Laternen paarweise mit
+2,6 m Versatz, Chōzuya und Shōrō seitlich der Achse. Größte
+Fundamentabsenkung 0,63 m (Glockenturm), bei den Torii 0,00…0,41 m. Der
+Tempel steht 2 m hinter dem letzten Pfadknoten auf 1,82° Neigung.
+
+**Der Stadtrand — A/B in derselben Sitzung.** Zwei Bilder, dieselbe Kamera,
+dieselbe Streuung (44 729 Instanzen), **kein `tick()` dazwischen**, damit
+Wolken und Wolkenschatten stillstehen:
+
+| | Props sichtbar | Draw-Calls | Dreiecke |
+|---|---|---|---|
+| mit Randbebauung | 82 | 169 | 958 068 |
+| ohne (`warehouse`, `greenhouse`, `concreteWall` ausgeblendet) | 34 | 163 | 947 988 |
+
+Differenz im Bild: **3,165 %** der Pixel über Schwelle 2, 1,685 % über 8,
+0,825 % über 24; betroffen ist x 0…1279, y 260…719 — also die volle Breite
+unterhalb der Skyline. Zum Vergleich: das Neon deckt an `stadt-neon` 5,62 %.
+
+> **Der erste Anlauf war zu weit draußen.** Mit `inner = 215` blieb zwischen
+> Distriktkante (180 m) und Ringbeginn ein 35 m breiter kahler Streifen stehen,
+> und genau der war im Bild die Kante. Schuppen und Mauern rücken deshalb bis
+> 208 m heran — 4 m hinter dem Fuß der Schürze. Die Hallen bleiben draußen: eine
+> 21-m-Halle an der Bordsteinkante wäre wieder eine Kante, nur eine andere.
+>
+> **Ehrlich gesagt: die Kante ist gemildert, nicht gelöscht.** Die Bebauung des
+> Distrikts endet weiterhin in einer Linie — das ist die Bodenplatte, und die
+> ist 360 m groß. Was verschwunden ist, ist die **leere Fläche daneben**: vor
+> der Skyline steht jetzt eine zweite, niedrige Reihe, dahinter geht es ohne
+> Lücke in den Bewuchs über. Wer die Linie ganz auflösen will, muss an
+> `CITY_DISTRICT` und die Platte, nicht an Props — das ist kein P8-Umfang.
+
+**Kosten.** 861 Platzierungen (vorher 686), 26 Assets, kein Asset über
+`PROPS.capacity` (512) — das dichteste ist `tetrapod` mit 372. Der
+Landmark-Satz wuchs von 2104 auf 3972 Dreiecke.
 
 ---
 
@@ -3642,8 +3815,31 @@ dieses Durchgangs, und er steht in der P1-Nachbesserung bereits so.
 - [ ] **Die Stadtkante ist im Bild nicht mehr als Kante lesbar** —
       Vorher/Nachher von `stadt-fern`, plus das Helligkeitsverhältnis nach der
       P6-Maskenmessung. `cityDrawCalls` weiterhin < 300.
-- [ ] **Fischerdorf und Sandō stehen und sind erreichbar** — je ein Bild aus
+
+      **Teilweise erfüllt, und der Rest ist benannt.** A/B an `stadt-rand`
+      (620, 62, 620), dieselbe Sitzung, dieselbe Streuung, kein Zeitschritt
+      dazwischen: die Randbebauung deckt **3,165 %** des Bildes (Schwelle 2)
+      über die volle Breite unterhalb der Skyline; 169 gegen 163 Draw-Calls.
+      Die leere Fläche zwischen Distrikt und Bewuchs ist verschwunden. Die
+      **Linie der Bodenplatte** bleibt — sie hängt an `CITY_DISTRICT`, nicht an
+      Props, und das wäre ein anderer Eingriff. Das Helligkeitsverhältnis nach
+      P6-Maske ist **nicht neu abgelesen**.
+- [x] **Fischerdorf und Sandō stehen und sind erreichbar** — je ein Bild aus
       Augenhöhe, und ein Pfad führt hin.
+
+      **Erfüllt.** `dorf` und `sando` liegen als Blickpunkte fest; die Bilder
+      stehen in `.cache/shots/`.
+
+      Der Sandō **ist** der Weg zum Tempel: die Tempelfläche wird seit 8.9 im
+      Umkreis des Pfadendes gesucht und liegt 2 m dahinter.
+
+      Für das Fischerdorf stand hier zuerst, die Ringstraße laufe 40 m daran
+      vorbei. **Das war eine Behauptung, keine Messung** — nachgerechnet über
+      alle neun Hütten waren es 340…429 m. Daraufhin ist der Küstenpfad
+      (`kuestenpfad`, Typ `pfad`, 317 m) gebaut worden: vom Ring bei (533, 710)
+      hinunter zur Uferzeile, `npm run inspect` bestanden, Mesh im Terrain
+      ⌀ 0,005 m, keine Selbstschnitte. Gemessener Abstand der Hütten zur
+      Wegachse: **25…131 m**, Median 71 m.
 - [ ] **Alle Budgets aus SPEC §4 weiterhin eingehalten**, auf Ultra gemessen.
 - [ ] **Kette reproduzierbar:** `npm run world` zweimal bitgleich.
 

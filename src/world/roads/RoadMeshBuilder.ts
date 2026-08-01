@@ -123,6 +123,7 @@ export function buildRoadGeometry(road: RoadData): RoadGeometryResult {
   const worldUp = new Vector3(0, 1, 0);
 
   const totalWidth = settings.width + 2 * settings.shoulder;
+  const gravel = settings.surface === 'kies';
 
   for (let s = 0; s < stations; s++) {
     // Bei einer geschlossenen Strecke wird die erste Station am Ende
@@ -175,16 +176,23 @@ export function buildRoadGeometry(road: RoadData): RoadGeometryResult {
         center.z + right.z * lateral * cosBank + roadUp.z * (lateral * sinBank + vertical);
 
       const uvBase = (s * lanes + k) * 2;
-      uvs[uvBase] = (lateral + totalWidth / 2) / totalWidth;
+      const across = (lateral + totalWidth / 2) / totalWidth;
+      // **Ein Pfad tastet nicht die Fahrbahnmitte ab.** Die Belagstextur trägt
+      // bei u ≈ 0,5 den Längsriss einer Fahrbahn; auf einem 1,8 m breiten
+      // Trampelpfad lief der als durchgehende schwarze Naht mit — im Bild von
+      // 8.9 das auffälligste Merkmal des Aufgangs. Die u-Koordinate wird
+      // deshalb in ein schmales Band am linken Rand gelegt, wo der Belag glatt
+      // ist. Das kostet zur Laufzeit nichts: es steht schon im Mesh.
+      uvs[uvBase] = gravel ? 0.08 + across * 0.3 : across;
       uvs[uvBase + 1] = v;
 
-      // Vertex-Farbe als Datenkanal für P6: R = Pfützenneigung (an den
-      // Fahrbahnkanten und auf flachen Abschnitten sammelt sich Wasser),
-      // G = Krümmung. Das Material liest sie noch nicht.
+      // Vertex-Farbe als Datenkanal: R = Pfützenneigung (an den Fahrbahnkanten
+      // und auf flachen Abschnitten sammelt sich Wasser), G = Krümmung,
+      // B = Belagsart (0 Asphalt, 1 Kies/Erde, seit P8.9).
       const edge = Math.abs(lateral) / (totalWidth / 2);
       colors[base] = Math.min(1, edge * 0.8 + (1 - Math.min(1, Math.abs(curvature) * 40)) * 0.3);
       colors[base + 1] = Math.min(1, Math.abs(curvature) * 40);
-      colors[base + 2] = 0;
+      colors[base + 2] = gravel ? 1 : 0;
     }
   }
 

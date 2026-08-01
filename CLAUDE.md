@@ -116,7 +116,8 @@ Dazu, je nach Änderung:
 | `npm run models` | Fremdmodelle aus `assets/source/models` durch die Pipeline (P5.1) |
 | `node tools/gen-props.mjs` | Landmarks neu platzieren → `assets/props.json` |
 | `npm run dev` | Dev-Server. Debug-Overlay mit `F1` |
-| `japanMap.view('name')` | Kamera auf einen benannten Blickpunkt (P6) |
+| `japanMap.view('name')` | Kamera auf einen benannten Blickpunkt (P6). Seit P8.9 auch `sando`, `dorf`, `stadt-rand` |
+| `japanMap.quality('ultra')` | Stufe setzen. Gültig sind **nur** `ultra`, `high`, `medium`, `low`, `minimal` — ein deutscher Name wirft seit P8.9, statt still eine kaputte Stufe zu setzen |
 | `japanMap.reflectionProbe()` | Wie viel einer Spiegelung stünde im Bildschirmraum? Die Messung, die in P6/6.5 gegen SSR entschieden hat |
 
 **Erdbau-Karte erzeugen** (braucht ein Referenzfeld ohne Einschnitte):
@@ -388,6 +389,24 @@ Kurzliste, damit es nicht wieder passiert:
      Anteil an etwas anderem. Wer am Bild misst, prüft **zuerst**, dass das Bild
      vollständig ist — `probe()` liefert dafür `anteilNichtSchwarz`, und der
      muss bei einer Szene mit Himmel 1,000 sein.
+- **Ein vollständiges Bild einer halb geladenen Welt.** In P8.9 stand die
+  Vegetation auf Ultra bei **0 Instanzen**, und zwar reproduzierbar über
+  Neuladen und Stufenwechsel hinweg. Die naheliegende Erklärung („ein
+  Stufenwechsel setzt die Streuung zurück") war falsch und wurde gemessen
+  widerlegt: die Ursache lag außerhalb der Anwendung. **Die Vorschau war
+  ausgeblendet** (`document.hidden === true`), der Browser rief kein `rAF` mehr
+  auf, die Frameschleife stand — und die Streuung streamt in der Schleife.
+  `japanMap.shot()` rendert trotzdem einen Frame von Hand, `probe()` meldete
+  `anteilNichtSchwarz = 1`, und im Bild fehlte schlicht der halbe Bewuchs.
+  Zwei Lehren:
+  1. **`probe()` prüft, ob das Bild vollständig ist — nicht, ob die Welt es
+     ist.** Wer am Bild misst, prüft zusätzlich einen Inhaltszähler
+     (Instanzzahl, Chunk-Zahl) und wartet, bis er **steht**.
+  2. Wenn die Vorschau nicht angezeigt werden kann, lässt sich die Schleife von
+     Hand treiben: `engine.loop.tick()` in Stapeln, dazwischen ein Makrotask,
+     damit der Worker antworten kann. **Nicht `setTimeout`** — der wird im
+     Hintergrund auf ≥ 1 s gedrosselt und macht aus jedem Worker-Umlauf eine
+     Sekunde. Ein `MessageChannel`-Port hat diese Klemmung nicht.
 - **Am Ergebnis eingehängt statt an der Eingabe.** Die planare Spiegelung
   überschrieb zuerst `reflectedLight.indirectSpecular` — also den bereits mit
   der Fresnel-Gewichtung multiplizierten Wert — mit der **rohen**

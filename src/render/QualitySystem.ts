@@ -161,8 +161,26 @@ export class QualitySystem implements System {
     this.#emit(this.#level);
   }
 
-  /** Umschalten aus Code — `japanMap.quality('low')`. Zählt als Wahl von Hand. */
+  /**
+   * Umschalten aus Code — `japanMap.quality('low')`. Zählt als Wahl von Hand.
+   *
+   * **Der Name wird geprüft, und zwar laut.** In P8.9 ist `quality('hoch')`
+   * durchgelaufen: TypeScript sieht den Aufruf aus der Browser-Konsole nicht,
+   * der Wert landete unbesehen im Ereignis, und danach warfen fünf Systeme
+   * nacheinander `Cannot read properties of undefined` — `renderScale`,
+   * `shadowMapSize`, `terrainGridVertices`, `reflections`, `ao`. Der Renderer
+   * lief weiter und **sah normal aus**; nur die Konsole wusste Bescheid.
+   *
+   * Der Schaden war nicht der Absturz, sondern die Messung darauf: eine
+   * Instanzzahl wurde einer Stufe zugeschrieben, die es nicht gab. Genau die
+   * Art Zahl, vor der CLAUDE.md warnt — richtig abgelesen, an einem System
+   * gemessen, das etwas anderes tat als beschrieben.
+   */
   set(level: QualityLevel): void {
+    if (!(level in QUALITY)) {
+      const bekannt = Object.keys(QUALITY).join(', ');
+      throw new Error(`Unbekannte Qualitätsstufe „${String(level)}". Bekannt: ${bekannt}.`);
+    }
     if (level === this.#level) return;
     this.#context?.bus.emit('quality:changed', { level });
   }

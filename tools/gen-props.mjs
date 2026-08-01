@@ -150,7 +150,94 @@ async function loadWorld() {
     return Math.sqrt(best);
   };
 
-  return { meta, half, heightAt, slopeAt, zoneAt, roadPoints, roadDistance, seaLevel: meta.world.seaLevel };
+  /**
+   * Tiefster Geländepunkt unter dem **Grundriss** eines Props — P8.9.
+   *
+   * Props stehen mit ihrem Pivot auf der Geländehöhe *ihres Mittelpunkts*. Bei
+   * einem Torii von 6,92 m Spannweite auf einem Hang heißt das: eine Säule
+   * schwebt, die andere steckt im Boden. Ein negativer `yOffset` in Höhe der
+   * größten Absenkung behebt das — das Bauwerk sinkt so weit ein, dass kein Fuß
+   * mehr in der Luft steht. Auf der Bergseite sitzt es dann tiefer, und genau so
+   * gräbt man ein Fundament in einen Hang.
+   *
+   * **Der Grundriss ist gerichtet, und das ist hier der ganze Punkt.** Der
+   * erste Versuch tastete einen Kreis mit 2,4 m Radius ab und lieferte bis zu
+   * **1,00 m** Absenkung. Nachgemessen war der Ring antisymmetrisch — −1,00 m
+   * in +Z, +0,87 m in −Z —, die Absenkung kam also **längs** des Weges, wo der
+   * Sandō steigt. Quer gemessen, wo das Torii tatsächlich breit ist, beträgt
+   * die größte Differenz über die volle Spannweite **0,54 m (4,4°)**.
+   *
+   * Ein Torii ist 6,92 m breit und 0,88 m tief. Es 1 m einzugraben, weil der
+   * Weg vor ihm steigt, hätte ihm ein Fünftel seiner Höhe genommen — für ein
+   * Problem, das es nicht hat.
+   */
+  const groundFootprint = (x, z, dirX, dirZ, halfAlong, halfAcross) => {
+    const nx = dirZ;
+    const nz = -dirX;
+    let lowest = heightAt(x, z);
+    for (const a of [-1, 0, 1]) {
+      for (const b of [-1, 0, 1]) {
+        if (a === 0 && b === 0) continue;
+        const px = x + dirX * a * halfAlong + nx * b * halfAcross;
+        const pz = z + dirZ * a * halfAlong + nz * b * halfAcross;
+        const h = heightAt(px, pz);
+        if (h < lowest) lowest = h;
+      }
+    }
+    return lowest;
+  };
+
+  return {
+    meta,
+    half,
+    heightAt,
+    slopeAt,
+    zoneAt,
+    groundFootprint,
+    roadPoints,
+    roadDistance,
+    seaLevel: meta.world.seaLevel,
+  };
+}
+
+/**
+ * Bogenlänge entlang einer abgetasteten Strecke, vom Ende her.
+ *
+ * Der Sandō ist mit 4 m Schrittweite abgetastet, aber nicht gleichmäßig — die
+ * Spline-Abtastung liefert kürzere Schritte in den Kurven. Wer Torii „alle
+ * 16 m" setzen will, muss deshalb die tatsächliche Länge aufsummieren und darf
+ * nicht jeden vierten Stützpunkt nehmen.
+ */
+function arcFromEnd(points) {
+  const out = new Array(points.length).fill(0);
+  for (let i = points.length - 2; i >= 0; i--) {
+    const a = points[i];
+    const b = points[i + 1];
+    out[i] = out[i + 1] + Math.hypot(b[0] - a[0], b[2] - a[2]);
+  }
+  return out;
+}
+
+/** Punkt und Richtung auf einer Strecke, `distance` Meter vor dem Ende. */
+function alongFromEnd(points, arc, distance) {
+  for (let i = points.length - 2; i >= 0; i--) {
+    if (arc[i] < distance) continue;
+    const span = arc[i] - arc[i + 1] || 1;
+    const t = (arc[i] - distance) / span;
+    const a = points[i];
+    const b = points[i + 1];
+    const x = a[0] + (b[0] - a[0]) * t;
+    const z = a[2] + (b[2] - a[2]) * t;
+    // Richtung **bergauf**, also zum Tempel hin.
+    const dx = b[0] - a[0];
+    const dz = b[2] - a[2];
+    const len = Math.hypot(dx, dz) || 1;
+    return { x, z, dx: dx / len, dz: dz / len };
+  }
+  const a = points[0];
+  const b = points[Math.min(1, points.length - 1)];
+  const len = Math.hypot(b[0] - a[0], b[2] - a[2]) || 1;
+  return { x: a[0], z: a[2], dx: (b[0] - a[0]) / len, dz: (b[2] - a[2]) / len };
 }
 
 /**
@@ -166,11 +253,17 @@ async function loadWorld() {
  */
 function findSpot(world, area, rules, rng) {
   const step = rules.step ?? 12;
+  // Der Jitter bricht das Raster auf und ist bei groben Schritten richtig. Bei
+  // einer **seltenen** Bedingung ist er es nicht: die Tempelfläche am Sandō
+  // trifft 1 von 709 Rasterpunkten, und ±0,8 m Versatz gehen daran vorbei.
+  // `jitter: 0` schaltet ihn ab — dann ist die Suche vollständig und
+  // deterministisch (siehe P8.9).
+  const jitter = rules.jitter ?? 0.8;
   let best = null;
   for (let z = area.z0; z <= area.z1; z += step) {
     for (let x = area.x0; x <= area.x1; x += step) {
-      const px = x + (rng() - 0.5) * step * 0.8;
-      const pz = z + (rng() - 0.5) * step * 0.8;
+      const px = x + (rng() - 0.5) * step * jitter;
+      const pz = z + (rng() - 0.5) * step * jitter;
       const height = world.heightAt(px, pz);
       if (height < (rules.minHeight ?? -Infinity) || height > (rules.maxHeight ?? Infinity)) continue;
       const slope = world.slopeAt(px, pz);
@@ -213,65 +306,157 @@ async function main() {
 
   // ── Wald / Tempel ─────────────────────────────────────────────────────────
   //
-  // Der Tempel ist die aufwendigste Suche, weil er als einziger eine **Fläche**
-  // braucht und nicht nur einen Punkt: 14 × 12 m unter 6° Neigung. Geprüft wird
-  // deshalb nicht der Mittelpunkt, sondern die vier Ecken mit.
+  // **Der Pfad bestimmt den Ort, nicht die freie Suche.** Bis P8.9 stand hier
+  // eine Suche über die halbe Karte (x −200…1300, z −700…500). Sie war nicht
+  // falsch, aber sie kannte den Sandō nicht, den 8.7 gebaut hat — und der
+  // endet auf der Waldhochebene bei (820, −952). Gemessen lag der Tempel bei
+  // (519, −689): **300 m neben dem Weg, der zu ihm führen sollte.** Der
+  // Blickpunkt `tempel` zeigte derweil auf das Pfadende, also auf leeren Wald.
+  //
+  // Die Abnahmezeile von 8.9 lautet „Fischerdorf und Sandō stehen und sind
+  // erreichbar — ein Pfad führt hin". Erreichbarkeit lässt sich nicht
+  // nachträglich prüfen, wenn beide Enden unabhängig gesucht werden; sie muss
+  // aus der Konstruktion folgen. Deshalb ist das Suchgebiet jetzt ein Kreis um
+  // das Pfadende.
+  //
+  // Gemessen im Umkreis von 30 m: **1 von 709** Rasterpunkten trägt eine
+  // Tempelfläche, nämlich (820, −954) mit 1,82° — 2 m vom letzten Knoten. Der
+  // Aufgang endet also genau auf der einzigen ebenen Stelle, die er erreicht.
+  const sandoPoints = world.roadPoints.get('sando') ?? [];
+  if (sandoPoints.length < 4) throw new Error('Der Sandō fehlt in roads.json — erst `npm run roads`.');
+  const sandoEnd = sandoPoints[sandoPoints.length - 1];
+
+  // Richtung, in der der Pfad ausläuft — über die letzten 12 m gemittelt, damit
+  // ein einzelner Knoten die Achse nicht verdreht.
+  const endArc = arcFromEnd(sandoPoints);
+  const endDir = alongFromEnd(sandoPoints, endArc, 12);
+
+  /**
+   * Erster Versuch, verworfen: `score = −slope − Abstand × 0,35`.
+   *
+   * Er wählte (799,8, −992,8) — eine breite ebene Fläche, aber **45 m neben
+   * der Achse** des Aufgangs. Im Bild hieße das: man geht die Torii-Reihe
+   * hinauf, sie hört auf, und der Tempel steht seitlich daneben. Der Abstand
+   * allein ist das falsche Maß; entscheidend ist, ob der Bau **in der Flucht**
+   * liegt.
+   *
+   * Deshalb getrennte Strafen: quer zur Achse teuer (×2,2), längs billig
+   * (×0,10), und rückwärts den Pfad hinunter sehr teuer (×0,8) — ein Tempel
+   * unterhalb seines eigenen Aufgangs wäre keiner.
+   */
   const temple = findSpot(
     world,
-    { x0: -200, x1: 1300, z0: -700, z1: 500 },
+    { x0: sandoEnd[0] - 45, x1: sandoEnd[0] + 45, z0: sandoEnd[2] - 45, z1: sandoEnd[2] + 45 },
     {
-      step: 16,
-      zone: 1,
-      zoneMin: 0.55,
-      minHeight: 25,
-      maxHeight: 180,
+      step: 1,
+      jitter: 0,
       maxSlope: 6,
-      minRoad: 60,
-      maxRoad: 400,
       score: (x, z, height, slope) => {
         for (const [dx, dz] of [[-7, -6], [7, -6], [-7, 6], [7, 6]]) {
           if (Math.abs(world.heightAt(x + dx, z + dz) - height) > 1.2) return -1000;
         }
-        // Höher gelegen ist besser: ein Tempel steht über dem Weg, nicht daneben.
-        return height * 0.05 - slope;
+        const ox = x - sandoEnd[0];
+        const oz = z - sandoEnd[2];
+        const along = ox * endDir.dx + oz * endDir.dz;
+        const lateral = Math.abs(ox * endDir.dz - oz * endDir.dx);
+        return -slope - lateral * 2.2 - (along >= 0 ? along * 0.1 : -along * 0.8);
       },
     },
     rng,
   );
-  if (!temple) throw new Error('Keine Tempelfläche gefunden — die Regeln sind zu eng.');
+  if (!temple) throw new Error('Keine Tempelfläche am Sandō-Ende — die Regeln sind zu eng.');
 
-  // Der Zugang zeigt nach Süden (+Z): dort liegt die Küste, von dort kommt man.
-  const approach = Math.PI;
-  const dirX = Math.sin(approach);
-  const dirZ = Math.cos(approach);
-  place(props, 'templeHall', temple.x, temple.z, (approach * 180) / Math.PI, 1);
-  notes.push(`Tempel auf ${round(temple.height, 1)} m, Neigung ${round(temple.slope, 1)}°`);
+  /**
+   * Die Achse des Aufgangs ist der Pfad **plus die Verlängerung zum Tempel**.
+   *
+   * Ohne sie liefen die Torii dem Pfad nach und der Tempel stünde am Ende
+   * daneben — und das ist genau der Fehler, den 8.9 behebt. Mit ihr sind alle
+   * Abstände unten Meter **vom Tempel** aus gemessen, und die Reihe endet dort,
+   * wo sie hinführt.
+   *
+   * Die Verlängerung ist kein Weg: sie ist der Vorplatz. Wie lang sie ist,
+   * steht unten in der Ausgabe — wird sie groß, gehört ein Wegpunkt in
+   * `gen-roads.mjs`, und dann ist es dort zu sehen statt hier zu ahnen.
+   */
+  const sandoAxis = [...sandoPoints, [temple.x, temple.height, temple.z]];
+  const sandoArc = arcFromEnd(sandoAxis);
+  const forecourt = Math.hypot(temple.x - sandoEnd[0], temple.z - sandoEnd[2]);
 
-  // Treppe unmittelbar vor dem Podest, dann die Torii-Reihe den Hang hinunter.
-  place(props, 'templeStairs', temple.x - dirX * 11, temple.z - dirZ * 11, 180, 1);
-  // **Das Tor steht quer zum Weg, nicht längs.** Hier stand zuerst 90°, und im
-  // Bild war davon nur ein roter Pfosten zu sehen: die Öffnung des Torii liegt
-  // im Modell auf der Z-Achse, es muss also dieselbe Drehung bekommen wie die
-  // Zugangsachse. Ein Torii von der Seite ist kein Torii.
-  const toriiRot = (approach * 180) / Math.PI;
-  for (let i = 0; i < 4; i++) {
-    const d = 20 + i * 16;
-    place(props, 'torii', temple.x - dirX * d, temple.z - dirZ * d, toriiRot, 1 - i * 0.04);
+  // Die Zugangsachse zeigt **vom Tempel weg**, den Aufgang hinunter.
+  const uphill = alongFromEnd(sandoAxis, sandoArc, Math.min(12, forecourt * 0.9));
+  const dirX = -uphill.dx;
+  const dirZ = -uphill.dz;
+  const approachDeg = (Math.atan2(dirX, dirZ) * 180) / Math.PI;
+  place(props, 'templeHall', temple.x, temple.z, approachDeg, 1);
+  notes.push(
+    `Tempel auf ${round(temple.height, 1)} m, Neigung ${round(temple.slope, 1)}°, ` +
+      `Vorplatz ${round(forecourt, 1)} m ab letztem Pfadknoten`,
+  );
+
+  // Treppe unmittelbar vor dem Podest.
+  place(props, 'templeStairs', temple.x + dirX * 11, temple.z + dirZ * 11, approachDeg, 1);
+
+  /**
+   * Ein Prop auf den Sandō setzen — P8.9.
+   *
+   * `offset` ist der Versatz **quer** zum Weg (rechts positiv), `half` das
+   * Paar [längs, quer] des halben Grundrisses. Alles, was breiter als der
+   * 1,8 m schmale Pfad ist, bekommt damit ein eingegrabenes Fundament statt
+   * eines schwebenden Fußes — und zwar nur so tief, wie es quer wirklich
+   * ausladet (siehe `groundFootprint`).
+   *
+   * **Das Tor steht quer zum Weg, nicht längs.** Hier stand vor P5 einmal 90°,
+   * und im Bild war davon nur ein roter Pfosten zu sehen: die Öffnung des
+   * Torii liegt im Modell auf der Z-Achse, es bekommt also dieselbe Drehung
+   * wie die Wegrichtung. Ein Torii von der Seite ist kein Torii.
+   */
+  let maxSink = 0;
+  const onSando = (id, distance, offset, scale, half, rot = null) => {
+    const p = alongFromEnd(sandoAxis, sandoArc, distance);
+    // Normale in der Ebene: (dz, −dx) zeigt nach rechts, wenn (dx, dz) vorwärts zeigt.
+    const x = p.x + p.dz * offset;
+    const z = p.z - p.dx * offset;
+    const heading = (Math.atan2(-p.dx, -p.dz) * 180) / Math.PI;
+    const extra = {};
+    if (half) {
+      const [along, across] = half;
+      const drop =
+        world.groundFootprint(x, z, p.dx, p.dz, along * scale, across * scale) - world.heightAt(x, z);
+      if (drop < -0.03) {
+        extra.yOffset = round(drop, 2);
+        if (-drop > maxSink) maxSink = -drop;
+      }
+    }
+    place(props, id, x, z, rot ?? heading, scale, extra);
+  };
+
+  // Torii im 16-m-Raster, für das `PROP_CLEARANCE.torii` (8 m) ausgelegt ist:
+  // die Kreise überlappen sich zu einem durchgehend freien Korridor statt zu
+  // einer Kette von Lichtungen. Neun statt vier — der Aufgang misst 450 m, und
+  // vier Tore auf 48 m sind eine Gruppe am Ende, keine Reihe.
+  const toriiCount = 9;
+  for (let i = 0; i < toriiCount; i++) {
+    const d = 22 + i * 16;
+    // Halber Grundriss: 0,44 m längs, 3,46 m quer — die gemessenen 6,92 × 0,88 m.
+    onSando('torii', d, 0, 1 - i * 0.015, [0.44, 3.46]);
   }
-  // Laternenpaare flankieren den Weg — der Versatz ist quer zur Zugangsachse.
-  for (let i = 0; i < 6; i++) {
-    const d = 26 + i * 11;
+  notes.push(`Sandō: ${toriiCount} Torii im 16-m-Raster über ${22 + (toriiCount - 1) * 16} m`);
+
+  // Laternenpaare flankieren den Weg. 2,6 m Versatz und nicht 4,5 wie vor 8.9:
+  // der Pfad ist 1,8 m breit, und Laternen 9 m auseinander stehen nicht mehr
+  // an einem Weg, sondern auf einer Wiese.
+  for (let i = 0; i < 10; i++) {
+    const d = 28 + i * 13;
     for (const side of [-1, 1]) {
-      place(
-        props,
-        'stoneLantern',
-        temple.x - dirX * d + side * dirZ * 4.5,
-        temple.z - dirZ * d - side * dirX * 4.5,
-        rng() * 360,
-        0.9 + rng() * 0.2,
-      );
+      onSando('stoneLantern', d, side * 2.6, 0.9 + rng() * 0.2, [0.52, 0.45], rng() * 360);
     }
   }
+
+  // Chōzuya und Glocke stehen **nicht** in der Achse, sondern seitlich davon —
+  // in einer echten Anlage stehen sie neben dem Weg, kurz vor dem Bezirk.
+  onSando('chozuya', 20, -9, 1, [1.63, 1.63]);
+  onSando('bellTower', 30, 11, 1, [1.77, 1.77]);
+  notes.push(`Sandō: Chōzuya und Shōrō gesetzt, größte Fundamentabsenkung ${round(maxSink, 2)} m`);
 
   // ── Berg / Tōge ───────────────────────────────────────────────────────────
   //
@@ -513,7 +698,251 @@ async function main() {
       yOffset: -3,
     });
     notes.push(`Hafen bei x=${round(harbour.x, 0)}`);
+
+    // ── Fischerdorf — P8.9 ──────────────────────────────────────────────────
+    //
+    // **Es steht am Hafen, nicht am Leuchtturm.** PLAN 8.9 schreibt „an der
+    // Südküste beim Leuchtturm", begründet es aber mit einem Satz, der woanders
+    // hinzeigt: „Die Boote bekommen einen Ort, an den sie gehören." Die Boote
+    // liegen am Hafen, und zwischen Hafen (x = 790) und Leuchtturm (x = −180)
+    // liegen **gemessene 977 m** — die beiden sind nicht einmal im selben Bild.
+    // Ein Dorf am Leuchtturm ließe Steg, Mole und vier Boote unbewohnt, also
+    // genau den Befund, den 8.9 beheben soll.
+    //
+    // Der Leuchtturm bleibt, was er ist: ein einzelner Fixpunkt auf einer
+    // Landzunge. Das ist kein Versehen der Karte, sondern der Normalfall.
+    //
+    // Gebaut wird **entlang der gemessenen Uferlinie**, nicht auf einem
+    // Rechteck: die Bucht verläuft schräg, und Hütten in Reih und Glied auf
+    // gleichem z stünden teils im Wasser, teils 40 m im Land.
+    const village = shoreline
+      // ±90 m statt ±130: acht Hütten über 195 m sind eine Streusiedlung. Auf
+      // 145 m stehen sie in Rufweite, und genau das unterscheidet ein Dorf von
+      // acht Häusern am selben Strand.
+      .filter((s) => Math.abs(s.x - harbour.x) < 90)
+      .sort((a, b) => a.x - b.x);
+
+    /**
+     * Vom Ufer aus landeinwärts gehen, bis der Boden trägt.
+     *
+     * „Landeinwärts" heißt hier −Z, weil die Uferlinie von Süden gesucht wurde.
+     * Abgebrochen wird nach 90 m: wo in 90 m die Schwelle nicht erreicht ist,
+     * ist die Bucht zu flach für ein Haus, und der Platz entfällt ersatzlos
+     * statt an einer schlechteren Stelle besetzt zu werden.
+     *
+     * **Die Schwelle ist gemessen, nicht gewählt.** Der erste Versuch verlangte
+     * 1,4 m, und das schob die Hütten 70…130 m ins Hinterland — ein Fischerdorf
+     * ohne Blick aufs Wasser. Das Profil dieser Bucht erklärt es:
+     *
+     * | x | Ufer z | +10 m | +30 m | +50 m | +70 m | +90 m |
+     * |---|---|---|---|---|---|---|
+     * | 700 | 1090 | 0,00 | 0,04 | 0,36 | 0,89 | 1,72 |
+     * | 790 | 1037 | 0,02 | 0,18 | 0,67 | 1,49 | 2,93 |
+     * | 870 | 1055 | 0,03 | 0,41 | 0,78 | 1,16 | 1,72 |
+     *
+     * Ein Flachstrand mit rund 2 % Gefälle; 1,4 m liegen dort erst nach 70…90 m.
+     * 0,25 m sind nach 25…35 m erreicht, und die Hütte steht ohnehin auf
+     * Pfählen (0,45 m, siehe `landmarkMeshes.ts`) — der Fußboden liegt damit
+     * 0,7 m über der Wasserlinie. So stehen Fischerhäuser an einer Flachküste.
+     */
+    const inland = (x, z0, minHeight, maxSlope) => {
+      for (let d = 8; d <= 90; d += 3) {
+        const z = z0 - d;
+        if (world.heightAt(x, z) < minHeight) continue;
+        if (world.slopeAt(x, z) > maxSlope) continue;
+        return { x, z, d, height: world.heightAt(x, z) };
+      }
+      return null;
+    };
+
+    const huts = [];
+    // Zwei versetzte Reihen: die vordere am Wasser, die hintere dahinter. Eine
+    // einzelne Reihe liest sich als Straßenzeile, zwei als Ort.
+    for (let i = 0; i < 11 && huts.length < 9; i++) {
+      const anchor = village[Math.floor((i / 11) * village.length)];
+      if (!anchor) continue;
+      const back = i % 3 === 2;
+      const spot = inland(anchor.x + (rng() - 0.5) * 9, anchor.z, back ? 0.55 : 0.25, 12);
+      if (!spot) continue;
+      const z = spot.z - (back ? 26 : 0);
+      if (world.slopeAt(spot.x, z) > 14) continue;
+      if (nearest(huts, spot.x, z) < 12) continue;
+      huts.push({ x: spot.x, z });
+      // Die Hütten sehen aufs Wasser, also nach +Z, mit etwas Streuung.
+      const rot = 180 + (rng() - 0.5) * 26;
+      place(props, 'fishHut', spot.x, z, rot, 0.92 + rng() * 0.2);
+      // Beiwerk am Haus: Netzgestell und Kisten wechseln sich ab. Ohne sie
+      // stehen acht Hütten in der Landschaft, und das ist eine Siedlung, kein
+      // Fischerdorf.
+      const a = ((rot + 90) * Math.PI) / 180;
+      if (i % 2 === 0) {
+        place(props, 'netRack', spot.x + Math.sin(a) * 8, z + Math.cos(a) * 8, rot + 90, 1);
+      } else {
+        place(props, 'crateStack', spot.x + Math.sin(a) * 7, z + Math.cos(a) * 7, rng() * 360, 1);
+      }
+    }
+    notes.push(`Fischerdorf: ${huts.length} Hütten um x=${round(harbour.x, 0)}`);
+
+    // Netzgestelle **am Wasser**, quer zur Uferlinie — dort trocknen sie, nicht
+    // zwischen den Häusern.
+    let racks = 0;
+    for (let i = 1; i < 6; i++) {
+      const anchor = village[Math.floor((i / 6) * village.length)];
+      if (!anchor) continue;
+      const spot = inland(anchor.x, anchor.z, 0.12, 16);
+      if (!spot) continue;
+      place(props, 'netRack', spot.x, spot.z - 2, 90 + (rng() - 0.5) * 20, 0.95 + rng() * 0.15);
+      racks++;
+    }
+
+    // Bootsrampe: dort, wo das Ufer am flachsten ist — sonst steht die Platte
+    // schräg im Hang statt im Wasser. Der Pivot der Rampe sitzt oben, das
+    // untere Ende darf untergehen.
+    const rampSpot = village
+      .map((s) => ({ s, slope: world.slopeAt(s.x, s.z - 6) }))
+      .sort((a, b) => a.slope - b.slope)[0];
+    if (rampSpot) {
+      place(props, 'boatRamp', rampSpot.s.x, rampSpot.s.z - 4, 0, 1);
+      place(props, 'crateStack', rampSpot.s.x + 7, rampSpot.s.z - 9, rng() * 360, 1);
+    }
+
+    // Der zweite, kleine Steg — 70 m neben der Mole, damit beide ins selbe Bild
+    // passen, ohne sich zu decken. Deckoberkante 0,9 m über der Wasserlinie:
+    // der Pivot liegt beim `jetty` auf dem Deck (siehe `landmarkMeshes.ts`),
+    // anders als beim 24-m-Fremdmodell, dessen Pivot am Pfahlfuß sitzt.
+    const jettyX = harbour.x + 70;
+    const jettyShore = village.reduce(
+      (best, s) => (best && Math.abs(best.x - jettyX) <= Math.abs(s.x - jettyX) ? best : s),
+      null,
+    );
+    if (jettyShore) {
+      place(props, 'jetty', jettyShore.x, jettyShore.z + 7, 0, 1, {
+        y: round(world.seaLevel + 0.9, 2),
+      });
+      place(props, 'crateStack', jettyShore.x - 4, jettyShore.z - 4, rng() * 360, 1);
+      // Zwei weitere Boote am neuen Steg. Vier Boote an einer Mole waren die
+      // „Zutaten ohne den Hafen"; sechs an zwei Anlegern sind eine Flotte.
+      for (let i = 0; i < 2; i++) {
+        place(props, 'boat', jettyShore.x + (i ? 3.2 : -3.2), jettyShore.z + 9 + rng() * 4, 8 + rng() * 14, 0.9 + rng() * 0.2, {
+          y: round(world.seaLevel - 0.35, 2),
+        });
+      }
+    }
+    notes.push(`Fischerdorf: ${racks} Netzgestelle am Wasser, Rampe und zweiter Steg`);
   }
+
+  // ── Stadtrand — P8.9, aus dem Befund von 8.8 ──────────────────────────────
+  //
+  // 8.8 hat am Bild geprüft, dass die Silhouette bereits abgestuft ist (17 → 2
+  // Geschosse von `coreRadius` 60 nach `edgeRadius` 220), und den naheliegenden
+  // Regler deshalb **nicht** angefasst. Was dort im Bild stand, war eine Kante
+  // **am Boden**: die Bebauung hört auf, daneben liegt leere Fläche.
+  //
+  // Der Distrikt misst 360 m um (620, 120), also x 440…800 und z −60…300. Das
+  // Vorfeld aus 8.5c ebnet ±260 m mit 200 m Auslauf.
+  //
+  // **Der Ring beginnt bei 215 m, nicht bei 195.** Die Bodenplatte endet zwar
+  // bei 180 m, aber `CITY.ground.skirt` legt eine 24 m breite Schürze darum,
+  // die auf Geländehöhe ausläuft — bis 204 m. Ein Prop dort stünde auf dem
+  // Höhenfeld und damit **unter** der Schürze. Das ist Fall 2 aus der
+  // Fehlerliste in CLAUDE.md („eine Fläche unter einer anderen"), und er kostet
+  // dort jedes Mal einen halben Tag, weil alle Zahlen richtig aussehen.
+  // 215 m lassen 11 m Luft.
+  //
+  // Bebaut wird also 215…330 m: rund 115 m Tiefe — dieselbe Größenordnung,
+  // über die große Titel eine Stadt verjüngen.
+  //
+  // **Was hier steht, ist absichtlich unauffällig.** Der Rand einer japanischen
+  // Kleinstadt ist Lagerhalle, Gewächshaus und Grundstücksmauer, nicht ein
+  // kleineres Hochhaus. Ein weiteres Gebäude vom Typ des Distrikts würde die
+  // Kante nur verschieben.
+  const CITY = { x: 620, z: 120, inner: 215, outer: 330 };
+  const fringe = [];
+  const cityRing = (x, z) => Math.max(Math.abs(x - CITY.x), Math.abs(z - CITY.z));
+
+  const fringePlace = (id, minGap, rules) => {
+    for (let attempt = 0; attempt < 900; attempt++) {
+      const side = Math.floor(rng() * 4);
+      // **Nach innen gewichtet.** Gleichverteilt über 115 m Tiefe sah der Ring
+      // im Bild aus wie verstreute Kisten auf leerem Feld — die Fläche wächst
+      // quadratisch nach außen, die Dichte fällt also von selbst. `^1.8` dreht
+      // das um: rund die Hälfte aller Plätze liegt in den inneren 30 m, wo die
+      // Bebauung an den Distrikt anschließen soll.
+      const von = rules.inner ?? CITY.inner;
+      const depth = von + Math.pow(rng(), 1.8) * (CITY.outer - von);
+      const along = (rng() - 0.5) * 2 * depth;
+      const x = CITY.x + (side === 0 ? depth : side === 1 ? -depth : along);
+      const z = CITY.z + (side === 2 ? depth : side === 3 ? -depth : along);
+      if (cityRing(x, z) < von || cityRing(x, z) > CITY.outer) continue;
+      const height = world.heightAt(x, z);
+      if (height < 6) continue; // nicht in die Bucht bauen
+      if (world.slopeAt(x, z) > (rules.maxSlope ?? 7)) continue;
+      // Abstand zur Fahrbahn: die Zufahrt und die Ringstraße laufen durch den
+      // Ring, und ein Gewächshaus auf der Straße ist schlimmer als eine Kante.
+      const road = world.roadDistance(x, z);
+      if (road < (rules.minRoad ?? 16) || road > (rules.maxRoad ?? Infinity)) continue;
+      if (nearest(fringe, x, z) < minGap) continue;
+      fringe.push({ x, z });
+      return { x, z, height };
+    }
+    return null;
+  };
+
+  const fringeCounts = {};
+  const fringeAdd = (id, count, minGap, rules, extra = () => ({})) => {
+    let done = 0;
+    for (let i = 0; i < count; i++) {
+      const spot = fringePlace(id, minGap, rules);
+      if (!spot) continue;
+      const { rot = rng() * 360, scale = 1, ...rest } = extra(spot, i);
+      place(props, id, spot.x, spot.z, rot, scale, rest);
+      done++;
+    }
+    fringeCounts[id] = done;
+    return done;
+  };
+
+  // Reihenfolge nach Größe: die Hallen belegen zuerst die guten Plätze, der
+  // Kleinkram füllt auf. Umgekehrt fände die Halle am Ende keinen Platz mehr.
+  //
+  // Die Ausrichtung folgt dem Blockraster der Stadt (0°/90°) mit wenigen Grad
+  // Streuung. Zufällig gedrehte Hallen sehen aus wie hingefallen — ein
+  // Gewerbegebiet ist das Gegenteil davon.
+  const gridRot = (spot, i) => ({ rot: round((i % 2 ? 90 : 0) + (rng() - 0.5) * 8, 1) });
+  fringeAdd('warehouse', 11, 48, { maxSlope: 5, minRoad: 30 }, gridRot);
+  fringeAdd('greenhouse', 26, 20, { maxSlope: 6, minRoad: 22 }, gridRot);
+  // **Schuppen und Mauern rücken bis 208 m heran.** Gemessen war die Kante im
+  // Bild nicht der Ring, sondern der 35 m breite kahle Streifen zwischen
+  // Distriktkante (180 m) und Ringbeginn (215 m). Die Schürze endet bei 204 m;
+  // 208 m lassen 4 m Luft und schließen den Streifen mit dem Kleinkram, für den
+  // er groß genug ist. Die Hallen bleiben draußen — eine 21-m-Halle direkt an
+  // der Bordsteinkante wäre wieder eine Kante, nur eine andere.
+  fringeAdd('shed', 34, 12, { maxSlope: 9, inner: 208 }, gridRot);
+  // Mauern in kurzen Reihen zu dritt: eine einzelne 8-m-Mauer ist ein Fragment,
+  // drei in einer Flucht sind eine Parzellengrenze.
+  let walls = 0;
+  for (let i = 0; i < 18; i++) {
+    const spot = fringePlace('concreteWall', 24, { maxSlope: 8, minRoad: 12, inner: 208 });
+    if (!spot) continue;
+    const rot = (i % 2 ? 90 : 0) + (rng() - 0.5) * 6;
+    const a = (rot * Math.PI) / 180;
+    const run = 2 + Math.floor(rng() * 3);
+    for (let k = 0; k < run; k++) {
+      const t = k - (run - 1) / 2;
+      place(props, 'concreteWall', spot.x + Math.cos(a) * t * 8.4, spot.z - Math.sin(a) * t * 8.4, round(rot, 1), 1);
+      walls++;
+    }
+  }
+  fringeCounts.concreteWall = walls;
+  // Strommasten in den Ring: sie ziehen die Blicklinie über die Kante hinweg.
+  fringeAdd('powerPole', 16, 28, { maxSlope: 12, minRoad: 10 }, () => ({ rot: round(rng() * 360, 1) }));
+
+  notes.push(
+    'Stadtrand: ' +
+      Object.entries(fringeCounts)
+        .map(([id, n]) => `${n}× ${id}`)
+        .join(', '),
+  );
 
   const file = { version: 1, seed: world.meta.seed, props };
   const byId = {};
@@ -521,10 +950,33 @@ async function main() {
 
   for (const note of notes) console.log(c.dim(`  · ${note}`));
   console.log();
+  /**
+   * Pufferprüfung — P8.9.
+   *
+   * `PROPS.capacity` ist 512 **je Asset und Stufe**, und ein Überlauf verwirft
+   * Props **still**: es fehlt dann ein Stück Mole oder eine Hütte, ohne dass
+   * irgendwo etwas gemeldet wird. Genau die Art Fehler, die dieses Projekt
+   * zweimal erst nach Monaten gefunden hat. Deshalb prüft das Werkzeug hier und
+   * nicht der Renderer — hier gibt es die Zahl umsonst.
+   *
+   * Die Zahl steht hart in `src/config/props.config.ts`; ein Import scheidet
+   * aus, weil `tools/*.mjs` reines Node-ESM ohne TypeScript ist (CLAUDE.md,
+   * „Codebasis-Regeln"). Wer sie dort ändert, muss sie hier nachziehen — der
+   * Kommentar dort sagt das ebenfalls.
+   */
+  const CAPACITY = 512;
+  let overflow = 0;
   for (const [id, count] of Object.entries(byId).sort((a, b) => b[1] - a[1])) {
-    console.log(`  ${c.green('✓')} ${id.padEnd(22)} ${String(count).padStart(4)}`);
+    const mark = count > CAPACITY ? c.yellow('✗') : c.green('✓');
+    const hint = count > CAPACITY ? c.yellow(`  > PROPS.capacity (${CAPACITY})`) : '';
+    if (count > CAPACITY) overflow++;
+    console.log(`  ${mark} ${id.padEnd(22)} ${String(count).padStart(4)}${hint}`);
   }
-  console.log(c.bold(`\n  ${props.length} Platzierungen`));
+  console.log(c.bold(`\n  ${props.length} Platzierungen`) + c.dim(`, ${Object.keys(byId).length} Assets`));
+  if (overflow > 0) {
+    console.log(c.yellow(`  ${overflow} Asset(s) über der Kapazität — Props würden still verworfen.\n`));
+    process.exitCode = 1;
+  }
 
   if (dry) {
     console.log(c.yellow('  --dry: nichts geschrieben\n'));
