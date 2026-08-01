@@ -4246,6 +4246,124 @@ Spawnpunkte und Streckenabschnitte. P1 liefert mit `TerrainSampler` die
 Höhenabfrage, die jede Fahrphysik braucht. Diese Schnittstellen existieren
 früh, damit der Übergang keine Umbauten erzwingt.
 
+> **Am 2026-08-01 nachgeprüft, nicht geglaubt.** Der Absatz darüber war zu zwei
+> Dritteln richtig: `getRacingLine` und `getSpawnPoints` gab es,
+> **Streckenabschnitte nicht** — niemand hatte die Zusage je aufgerufen.
+> `RoadNetwork.getSectors()` schließt die Lücke seit P8.11. Der gemessene Stand
+> der Übergabefläche steht in 8.11; er ist die Grundlage des Plans unten.
+
+---
+
+# P9 — Die Fahrschicht ○ (Plan, nicht gebaut)
+
+> **Dies ist ein Plan und keine Umsetzung.** Er steht hier, weil in diesem
+> Projekt keine Phase ohne Akzeptanzkriterien begonnen wurde und weil die
+> Übergabefläche jetzt gemessen ist — nicht, weil P9 beauftragt wäre. Ohne
+> ausdrückliche Freigabe wird davon nichts gebaut.
+
+**Ziel:** Aus einem Grundstück eine befahrbare Strecke machen. Nicht ein Spiel
+— ein **Fahrzeug, das auf dieser Karte steht, fährt und anhält**, und die
+Messungen, an denen man das nachweist.
+
+**Was P8 dafür hinterlässt** (gemessen am 2026-08-01, siehe 8.11):
+
+| Baustein | Stand |
+|---|---|
+| `TerrainSampler.getHeightAt(x, z)` | da, zeichengleich mit dem Shader |
+| `RoadNetwork.getRacingLine(id)` | da — ring 3048 Punkte, toge 1245 |
+| `RoadNetwork.getSpawnPoints()` | da — 4 Punkte, alle auf der Fahrbahn, ≤ 3 cm über Grund |
+| `RoadNetwork.getSectors(id, n)` | da seit P8.11 — Tor aus Punkt, Richtung, halber Breite |
+| `RoadNetwork.isOnRoad` / `distanceToNearestRoad` | da, gitterbeschleunigt |
+| `three-mesh-bvh` | installiert (0.9.13), **nicht benutzt** |
+| Physik-Engine | offene Entscheidung Nr. 3 |
+
+## Aufgaben
+
+**9.1 — Kollision gegen das Gelände** → neu, `src/game/`
+
+**Befund.** Es gibt zwei Höhenquellen: `TerrainSampler` (CPU, bilinear aus dem
+Höhenfeld) und das gerenderte CDLOD-Gitter (Sehne zwischen Stützstellen). Sie
+sind **nicht identisch** — das ist in CLAUDE.md zweimal als Fehlerquelle
+verzeichnet (Stadtplatte, Uferlinie), und ein Fahrzeug, das auf der einen fährt
+und die andere sieht, schwebt oder versinkt sichtbar.
+
+**Fix.** Das Fahrzeug fährt auf dem **Sampler**, nicht auf dem Mesh. Der
+Sampler ist die Quelle, das Gitter die Näherung. Wo beide auseinanderlaufen,
+wird der Fehler gemessen und begrenzt, nicht ausgemittelt.
+
+**Messung.** Über 1000 Punkte entlang jeder der acht Strecken: Differenz
+zwischen `getHeightAt` und der Höhe der Straßenmittellinie aus `roads.json`.
+Der Median muss unter 5 cm liegen — `npm run inspect` misst heute schon
+„Mesh im Terrain ⌀ 0,003…2,138 m" und liefert damit die Vergleichszahl.
+
+---
+
+**9.2 — Fahrzeugkörper und Radaufhängung**
+
+**Befund.** Offene Entscheidung Nr. 3 nennt Rapier als Tendenz. Sie ist seit
+P0 offen und wird hier fällig.
+
+**Fix.** Erst die Entscheidung **messen**, dann bauen — dieselbe Regel wie bei
+der Reflexion in P6, wo eine Messung eine monatelange Tendenz gekippt hat. Zwei
+Kandidaten, ein Prüfstand: eine Kugel auf dem Bergpass, 60 s, gleiche
+Startbedingung.
+
+| geprüft | Rapier (WASM) | eigene Arcade-Physik |
+|---|---|---|
+| Startdownload | ? | 0 |
+| CPU je Frame bei 1 Fahrzeug | ? | ? |
+| Verhalten an der 17,2-m-Kehre | ? | ? |
+
+**Messung.** Die Zahlen oben, plus: keine Durchdringung der Leitplanken über
+60 s. Was gewinnt, steht danach in „Offene Entscheidungen" mit den Zahlen
+daneben — nicht mit einer Begründung.
+
+---
+
+**9.3 — Rundenlogik auf den Toren aus 8.11**
+
+**Befund.** `getSectors()` liefert Tore; niemand wertet sie aus.
+
+**Fix.** Ein Zähler, der Vorzeichenwechsel des Skalarprodukts gegen die
+Torrichtung mitschreibt, in der richtigen Reihenfolge. Kein Volumen, keine
+Kollision — das war der Grund, die Abschnitte als Tore zu bauen.
+
+**Messung.** Eine Runde auf dem Ring abfahren lassen (Ideallinie als
+Steuervorgabe), Zwischenzeiten an drei Toren. Abkürzen muss auffallen: ein Lauf
+quer über die Wiese darf keine gültige Runde ergeben.
+
+---
+
+**9.4 — Was ausdrücklich nicht in P9 gehört**
+
+KI-Gegner, Menüs, Fortschritt, Audio, Mehrspieler. P9 endet, wenn **ein**
+Fahrzeug **eine** Runde fährt und die Zeit stimmt. Alles darüber ist P10 und
+bekommt wieder einen eigenen Plan — aus demselben Grund, aus dem P8 nicht
+angefangen hat, bevor P7 abgenommen war.
+
+## Akzeptanzkriterien
+
+- [ ] **Ein Fahrzeug steht auf allen acht Strecken auf dem Boden.** Median der
+      Höhendifferenz zum Sampler unter 5 cm, größter Ausreißer benannt.
+- [ ] **Der Bergpass ist befahrbar**, ohne dass das Fahrzeug die Leitplanke
+      durchdringt — 60 s, gemessen, nicht gefahren-und-für-gut-befunden.
+- [ ] **Eine Runde auf dem Ring wird als Runde gezählt**, eine Abkürzung nicht.
+- [ ] **Die Budgets aus SPEC §4 halten weiterhin**, mit Fahrzeug im Bild.
+- [ ] **Die Physik-Entscheidung steht mit Zahlen** in „Offene Entscheidungen".
+
+## Risiken
+
+- **Die zwei Höhenquellen.** Sie haben in P6 und P8 je einen halben Tag
+  gekostet. Wer sie in P9 verwechselt, merkt es an einem schwebenden Fahrzeug —
+  und das ist der freundliche Fall. → 9.1 misst sie gegeneinander, bevor
+  irgendetwas fährt.
+- **Rapier bringt WASM in den Startdownload.** Der liegt mit 51,95 MB schon
+  über den 15 MB aus SPEC §4. → Die Größe gehört in die Messtabelle von 9.2,
+  nicht in eine Fußnote danach.
+- **Ein Fahrmodell lädt zum Nachregeln ein.** Genau davor warnt dieses Projekt
+  an drei Stellen. → Jeder Parameter bekommt eine Messung, oder er bekommt
+  keinen Wert.
+
 ---
 
 ## Offene Entscheidungen
@@ -4254,6 +4372,6 @@ früh, damit der Übergang keine Umbauten erzwingt.
 |---|---|---|---|
 | ~~1~~ | ~~SSR oder planare Reflexion + Probes~~ | ~~P6~~ | **Entschieden: B + C.** Nicht nach Tuning-Tagen, sondern gemessen — gegen die Neonschilder sind nur 19,3 % der Spiegelungen im Bildschirmraum überhaupt vorhanden, am wichtigsten Standpunkt 4,2 %. Siehe P6, „Die Reflexions-Entscheidung" |
 | ~~2~~ | ~~Kreuzungen prozedural oder handmodelliert~~ | ~~P3~~ | **Entschieden:** prozedural im Generator — Einrasten in XZ, Höhe festnageln, Rücksprung statt Verschneidung |
-| 3 | Physik-Engine | nach P7 | Rapier (WASM, bewährt) |
+| 3 | Physik-Engine | **P9.2** | Rapier (WASM, bewährt) — **weiterhin offen und ausdrücklich ungemessen.** P9.2 prüft sie gegen eine eigene Arcade-Physik an einem Prüfstand; die Tendenz steht seit P0 ohne eine einzige Zahl daneben |
 | 4 | Imposter-Baking headless oder in-app | P4 | In-app, falls headless zickt |
 | ~~5~~ | ~~Carving vor oder nach der Erosion~~ | ~~P3~~ | **Entschieden:** nachher. Die Erosionsrinnen laufen dadurch bis an die Böschung heran, statt überschrieben zu werden |
