@@ -102,10 +102,35 @@ export function buildRiverGeometry(file: RiverFile): {
     }
   }
 
+  /**
+   * Wickelrichtung — **hier lag der Fluss ein ganzes Kapitel lang falsch.**
+   *
+   * Bis P8.11 stand hier `[a, a+2, a+1, a+1, a+2, a+3]`. Das ist im Uhrzeigersinn
+   * von oben gesehen, und three zeichnet Vorderseiten gegen den Uhrzeigersinn:
+   * das Band zeigte mit seiner **Vorderseite nach unten** und verschwand von
+   * oben vollständig im Backface-Culling.
+   *
+   * Nachgerechnet für Fließrichtung +Z (`side` = (−t.z, 0, t.x) zeigt dann
+   * nach −X, also liegt Vertex `a` auf +X und `a+1` auf −X):
+   *
+   *   alt  [a, a+2, a+1]:  (P1−P0) × (P2−P0) = (0, −2·hw·d, 0)   → nach unten
+   *   neu  [a, a+1, a+2]:  (P1−P0) × (P2−P0) = (0, +2·hw·d, 0)   → nach oben
+   *
+   * Für das zweite Dreieck genauso. Die Vorzeichen hängen nicht an der
+   * Fließrichtung: `side` ist immer die um −90° gedrehte Tangente, links und
+   * rechts sind also relativ zur Strömung fest.
+   *
+   * **Warum es niemandem auffiel:** das `normal`-Attribut oben wird
+   * ausdrücklich nach oben gedreht (`if (normal.y < 0) normal.negate()`). Die
+   * Beleuchtung war damit rechnerisch richtig, die Fläche nur unsichtbar —
+   * und P8.6 hat den fehlenden Fluss am Bild gesucht und als „farblich nicht
+   * von den Reisfeldern zu unterscheiden" abgelegt. Er war nie gezeichnet.
+   * Dieselbe Falle steht in CLAUDE.md schon für das Straßen-Mesh.
+   */
   const indices = new Uint32Array((count - 1) * 6);
   for (let i = 0; i < count - 1; i++) {
     const a = i * 2;
-    indices.set([a, a + 2, a + 1, a + 1, a + 2, a + 3], i * 6);
+    indices.set([a, a + 1, a + 2, a + 1, a + 3, a + 2], i * 6);
   }
 
   const geometry = new BufferGeometry();
