@@ -407,6 +407,32 @@ Kurzliste, damit es nicht wieder passiert:
      damit der Worker antworten kann. **Nicht `setTimeout`** — der wird im
      Hintergrund auf ≥ 1 s gedrosselt und macht aus jedem Worker-Umlauf eine
      Sekunde. Ein `MessageChannel`-Port hat diese Klemmung nicht.
+- **Eine Differenz*zahl* statt eines Differenz*bildes* gelesen — und daraus die
+  falsche Ursache geschlossen.** Der Fluss aus P8.6 war ein halbes Jahr lang
+  unsichtbar: sein Band war im Uhrzeigersinn gewickelt und fiel vollständig ins
+  Backface-Culling. P8.6 hatte das untersucht, drei Vermutungen sauber
+  widerlegt (vergraben, transparent, außerhalb des Bildes) und dann geschlossen
+  „er wird gezeichnet, er ist nur farblich nicht von den Reisfeldern zu
+  unterscheiden". Die Belegzahl dafür waren **0,869 % geänderte Pixel bei
+  Schwelle 0**.
+  Diese Pixel waren nicht der Fluss. Ein Mesh ein- und auszublenden ändert
+  Spiegelung und Umgebungsverdeckung im ganzen Bild; im **Differenzbild** ist
+  das sofort zu sehen — Sprenkel über dem gesamten Bewuchs, nirgends ein Band.
+  Drei Lehren:
+  1. **Wer eine Differenz misst, sieht sie sich an.** Eine Prozentzahl sagt
+     *wie viel*, nicht *wo*. Ein 8-zeiliges Skript, das die Differenz als Bild
+     schreibt, hätte die Fehldeutung in einem Schritt verhindert.
+  2. **Ein A/B über `visible` ist nicht sauber.** Es verändert alles, was von
+     der Szene abhängt. Erst ein **Rauschband** messen (dasselbe Bild zweimal),
+     dann nur Effekte darüber ernst nehmen — hier 2,098 % / 0,241 %.
+  3. **Geometrie, Uniforms und Sichtvolumen zu prüfen beantwortet die Frage
+     nicht, ob ein Dreieck den Rasterizer erreicht.** Das `normal`-Attribut
+     zeigte ausdrücklich nach oben, die Beleuchtung war rechnerisch richtig,
+     die Fläche unsichtbar. Wenn etwas fehlt und alle Zahlen stimmen:
+     **einmal `side = DoubleSide` setzen.** Zeigt sich das Ding, ist die
+     Wickelrichtung falsch. Der Test kostet eine Zeile.
+  Dieselbe Falle steht oben schon für das Straßen-Mesh — dort ist sie beim
+  Bauen aufgefallen, hier erst Phasen später.
 - **Eine lebende Referenz für eine Momentaufnahme gehalten.** In P8.11 meldete
   die Stufentabelle auf Ultra 909 338 Dreiecke statt 623 628 — ein halbes
   Budget zu viel. Der Code las `renderer.info.render` in eine Variable und

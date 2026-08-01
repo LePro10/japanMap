@@ -3422,6 +3422,53 @@ sichtbare Teil steht in 8.8.
 > Strömungsstruktur, die ein stehendes Feld nicht hat. **Offen**, und damit ein
 > Fall für 8.7/8.9, nicht für den Wasser-Shader.
 
+> ### ✗ Widerlegt am 2026-08-01: der Fluss wurde nie gezeichnet
+>
+> Der Absatz darüber sagt „**Er wird gezeichnet**" und schließt daraus auf eine
+> Look-Frage. **Beides war falsch.** Die Dreiecke des Flussbandes waren im
+> Uhrzeigersinn gewickelt; three zeichnet Vorderseiten gegen den Uhrzeigersinn.
+> Das Band zeigte mit seiner Vorderseite **nach unten** und fiel vollständig
+> ins Backface-Culling.
+>
+> Gefunden mit einer Isolationsreihe am Material — vier Eigenschaften, die ein
+> erster Sichttest gemeinsam verändert hatte, einzeln zurückgenommen. Gegen ein
+> Rauschband von 2,098 % / 0,241 % (Referenzbild gegen sich selbst, ein Frame
+> später):
+>
+> | isoliert geändert | Δ Schwelle 2 | Δ Schwelle 24 |
+> |---|---|---|
+> | **doppelseitig** | **5,614 %** | **2,963 %** |
+> | ohne Tiefentest | 1,510 % | 0,187 % |
+> | undurchsichtig | 1,727 % | 0,223 % |
+>
+> Nur die Seitigkeit liegt über dem Rauschen. Nachgerechnet für Fließrichtung
+> +Z: `[a, a+2, a+1]` ergibt (P1−P0) × (P2−P0) = (0, −2·hw·d, 0) — nach unten.
+>
+> **Wirkung der Reparatur**, Fluss sichtbar gegen Fluss ausgeblendet, dieselbe
+> Kamera, kein Zeitschritt dazwischen:
+>
+> | Blickpunkt | vorher (Schwelle 24) | nachher |
+> |---|---|---|
+> | senkrecht über dem Unterlauf | 0,033 % | **2,844 %** |
+> | schräg auf den Unterlauf | — | **2,162 %** (17,758 % bei Schwelle 2) |
+>
+> Am Blickpunkt `reisfeld` steht der Fluss jetzt als glänzendes Band links im
+> Bild und ist von den eckigen Parzellen ohne Weiteres zu unterscheiden.
+>
+> **Warum die Messungen darüber daran vorbeigingen.** Sie waren alle richtig
+> und keine davon konnte die Frage beantworten: der Bandanteil, die Wassertiefe
+> und die Knoten im Sichtvolumen prüfen *Geometrie und Uniforms*, nicht ob ein
+> Dreieck den Rasterizer erreicht. Und die 0,869 % bei Schwelle 0 waren nicht
+> der Fluss, sondern das, was das Ein- und Ausblenden eines Meshes an
+> **Spiegelung und Umgebungsverdeckung** ändert — im Differenzbild sichtbar als
+> Sprenkel über dem ganzen Bewuchs, nirgends als Band. Ein Differenzbild statt
+> einer Differenz*zahl* hätte das in einem Schritt gezeigt.
+>
+> Das `normal`-Attribut wird in `riverGeometry.ts` ausdrücklich nach oben
+> gedreht (`if (normal.y < 0) normal.negate()`). Die Beleuchtung war damit
+> rechnerisch richtig — nur die Fläche unsichtbar. Genau deshalb sah jede Zahl
+> in Ordnung aus.
+
 **Befund.** `WaterSystem` kennt nur das Meer — eine Ebene auf Y = 0. Ein Fluss
 liegt auf wechselnder Höhe entlang eines Splines und passt nicht in dieses
 Modell.
@@ -3910,6 +3957,60 @@ eine Geschäftsstraße. Der Wert steht hier, weil er beim Lesen der Tabelle sons
 wie ein Ausfall der Streuung aussieht; P8.1 hat dieselbe Beobachtung schon
 notiert.
 
+### Die Übergabefläche zum Spiel — geprüft, nicht angenommen
+
+SPEC §7 verspricht: „P3 exportiert bereits Ideallinie, Spawnpunkte und
+Streckenabschnitte. P1 liefert mit `TerrainSampler` die Höhenabfrage." Beim
+Abschluss von P8 nachgesehen und am laufenden Renderer gemessen:
+
+| Zusage | Stand |
+|---|---|
+| `getRacingLine(id)` | **da** — ring 3048 Punkte, toge 1245; unbekannte Id liefert `null` |
+| `getSpawnPoints()` | **da** — 4 Punkte aus dem Tag `startlinie` (nur `ring` trägt ihn) |
+| `TerrainSampler.getHeightAt` | **da** |
+| `distanceToNearestRoad` | **da** (P4 benutzt sie ohnehin je Pflanze) |
+| Streckenabschnitte | **fehlten** |
+| `three-mesh-bvh` als Kollisionsgrundlage | installiert (0.9.13) |
+
+**Alle vier Startpunkte liegen auf der Fahrbahn** (`isOnRoad` = true) und
+höchstens **3 cm** über dem Sampler-Boden. Die Zusage war also zu zwei Dritteln
+eingelöst und zu einem Drittel nicht — niemand hatte sie je aufgerufen.
+
+`getSectors(roadId, count)` schließt die Lücke. Ein Abschnitt ist ein **Tor**:
+Punkt, Fahrtrichtung, halbe Breite; ob es passiert wurde, ist ein
+Vorzeichenwechsel. Verteilt wird über die Bogenlänge, nicht über den
+Punktindex. Gemessen auf `ring`: 3 Tore auf 6096 m, Abstände 2029 / 2029 /
+2038 m, alle auf der Fahrbahn, Richtungsvektoren normiert (1,000);
+`getSectors('toge', 8)` liefert 8, unbekannte Id und Anzahl 0 liefern `null`.
+
+### Offen und gemessen: die Uferlinie ist eine Treppe
+
+Am Blickpunkt `dorf` steht die Wasserkante als **Treppe aus Dreieckskanten**
+im Bild. Die Ursache ist nicht das Wasser: Uferblende (`edgeFade` 0,8 m) und
+Schaumsaum (0,9 ± 0,9 m) arbeiten, und bei 2 % Strandgefälle ist der Saum
+40…90 m breit. Es ist dieselbe Sache, die in CLAUDE.md für die Stadtplatte
+steht — **zwischen zwei CDLOD-Gitterpunkten liegt eine Gerade über der
+Kurve**, und der Wasser-Shader rechnet seine Tiefe gegen das *Höhenfeld*,
+während im Bild die *Sehne* steht.
+
+Zwei Messungen, beide am Bild, weil es anders nicht geht:
+
+- **A/B über die Gitterauflösung.** Derselbe Blickpunkt, 33² gegen 17²: die
+  Uferlinie steht an sichtbar anderer Stelle. Wäre es ein Wasserfehler, dürfte
+  die Gitterweite daran nichts ändern.
+- **Ein CPU-Raycast gegen das Gelände trifft nichts.** Die Auslenkung passiert
+  im Vertex-Shader; die Geometrie auf der CPU ist das flache Einheitsgitter.
+  Die Sehnenabweichung ist deshalb **nicht aus einem Skript messbar** — nur
+  sichtbar. Über 40 Rasterpunkte am Strand (x 700…880, z 1000…1060) liegt das
+  Höhenfeld ausnahmslos **unter** dem Meeresspiegel, im Bild steht dort Land.
+
+**Nicht behoben, und die naheliegenden Wege taugen nicht.** Alpha oder Schaum
+können auftauchendes Land nicht verdecken. Bliebe, das Gitter nahe null feiner
+zu machen (kostet Dreiecke entlang der ganzen Küste) oder den Strand steiler
+zu backen (verschiebt das Fischerdorf und läuft über die Erosion durch die
+ganze Karte). Beides ist ein eigener Eingriff mit eigener Messung, kein
+Politurschritt.
+
 ---
 
 ### Akzeptanzkriterien
@@ -3994,9 +4095,19 @@ notiert.
       **Erfüllt.** Aus `meta.json` des Laufs vom 2026-07-31: 422 Knoten,
       **2643 m**, von 163,28 m auf 0,75 m, **2 Wasserfallstufen**,
       `endedBy: "Meer"`. Das Bett wird nur geschnitten, nie aufgefüllt, also
-      ist der Verlauf monoton fallend per Konstruktion. Der Unterlauf ist
-      farblich weiterhin nicht von den gefluteten Reisfeldern zu unterscheiden
-      — der offene Punkt aus 8.6 steht dort und ist nicht behoben.
+      ist der Verlauf monoton fallend per Konstruktion.
+
+      **Nachtrag 2026-08-01: er ist jetzt auch zu sehen.** Bis dahin war das
+      Flussband rückseitig gewickelt und fiel vollständig ins Backface-Culling
+      — die Zeile war formal erfüllt und im Bild nicht. Nach der Reparatur der
+      Wickelrichtung ändert das Ausblenden des Flusses senkrecht über dem
+      Unterlauf **2,844 %** der Pixel (Schwelle 24) statt 0,033 %, schräg
+      2,162 %. Details im widerlegten Block unter 8.6.
+
+      ~~Der Unterlauf ist farblich weiterhin nicht von den gefluteten
+      Reisfeldern zu unterscheiden — der offene Punkt aus 8.6 steht dort und
+      ist nicht behoben.~~ Der Satz stand hier bis zum Nachtrag oben und war
+      eine Folgerung aus einer Messung, die etwas anderes gemessen hat.
 - [ ] **Die Stadtkante ist im Bild nicht mehr als Kante lesbar** —
       Vorher/Nachher von `stadt-fern`, plus das Helligkeitsverhältnis nach der
       P6-Maskenmessung. `cityDrawCalls` weiterhin < 300.

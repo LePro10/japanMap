@@ -259,6 +259,71 @@ export class RoadNetwork {
     return road ? Float32Array.from(road.centerline) : null;
   }
 
+  /**
+   * Streckenabschnitte als Torfolge — die dritte Zusage aus PLAN.md.
+   *
+   * > „P3 exportiert bereits Ideallinie, Spawnpunkte und Streckenabschnitte."
+   *
+   * Zwei davon stimmten. Beim Abschluss von P8 nachgesehen: `getRacingLine`
+   * und `getSpawnPoints` gab es, **Abschnitte nicht** — weder als Export in
+   * `roads.json` noch als Abfrage. Eine Runde ohne Abschnitte ist nicht
+   * messbar: es gibt keinen Ort, an dem eine Zwischenzeit fällt, und keinen
+   * Anhaltspunkt, ob ein Fahrzeug die Strecke abkürzt.
+   *
+   * Ein Abschnitt ist hier kein Volumen, sondern ein **Tor**: Punkt auf der
+   * Mittellinie, Fahrtrichtung, halbe Breite. Ob ein Fahrzeug es passiert hat,
+   * ist ein Vorzeichenwechsel des Skalarprodukts — das braucht keine Geometrie
+   * und keine Kollisionsbibliothek. Was daraus ein Rennen macht, gehört ins
+   * Fahrmodell und nicht hierher.
+   *
+   * Verteilt wird über die **Bogenlänge**, nicht über den Punktindex. Die
+   * Mittellinie ist zwar gleichmäßig abgetastet (`sampleSpacing`), aber das
+   * gilt nur innerhalb einer Strecke; wer über den Index verteilt, bekommt bei
+   * unterschiedlich langen Strecken unterschiedlich lange Abschnitte.
+   */
+  getSectors(
+    roadId: string,
+    count = 3,
+  ): { index: number; arc: number; position: [number, number, number]; forward: [number, number]; halfWidth: number }[] | null {
+    const road = this.roads.find((r) => r.id === roadId);
+    if (!road || count < 1) return null;
+    const line = road.centerline;
+    const points = line.length / 3;
+    if (points < 2) return null;
+
+    // Bogenlänge je Stützstelle, einmal aufsummiert.
+    const arc = new Float64Array(points);
+    for (let i = 1; i < points; i++) {
+      const dx = line[i * 3]! - line[(i - 1) * 3]!;
+      const dz = line[i * 3 + 2]! - line[(i - 1) * 3 + 2]!;
+      arc[i] = arc[i - 1]! + Math.hypot(dx, dz);
+    }
+    const total = arc[points - 1]!;
+
+    const settings = ROAD_TYPES[road.type];
+    const halfWidth = (settings.width + 2 * settings.shoulder) / 2;
+
+    const out = [];
+    for (let k = 0; k < count; k++) {
+      const ziel = (total * k) / count;
+      // Erste Stützstelle, deren Bogenlänge das Ziel erreicht.
+      let i = 0;
+      while (i < points - 1 && arc[i + 1]! < ziel) i++;
+      const j = Math.min(i + 1, points - 1);
+      const dx = line[j * 3]! - line[i * 3]!;
+      const dz = line[j * 3 + 2]! - line[i * 3 + 2]!;
+      const len = Math.hypot(dx, dz) || 1;
+      out.push({
+        index: k,
+        arc: ziel,
+        position: [line[i * 3]!, line[i * 3 + 1]!, line[i * 3 + 2]!] as [number, number, number],
+        forward: [dx / len, dz / len] as [number, number],
+        halfWidth,
+      });
+    }
+    return out;
+  }
+
   /** Startpunkte aus getaggten Strecken — Position plus Blickrichtung. */
   getSpawnPoints(): { position: [number, number, number]; heading: number }[] {
     const spawns: { position: [number, number, number]; heading: number }[] = [];
