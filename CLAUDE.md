@@ -407,6 +407,13 @@ Kurzliste, damit es nicht wieder passiert:
      damit der Worker antworten kann. **Nicht `setTimeout`** — der wird im
      Hintergrund auf ≥ 1 s gedrosselt und macht aus jedem Worker-Umlauf eine
      Sekunde. Ein `MessageChannel`-Port hat diese Klemmung nicht.
+- **Eine lebende Referenz für eine Momentaufnahme gehalten.** In P8.11 meldete
+  die Stufentabelle auf Ultra 909 338 Dreiecke statt 623 628 — ein halbes
+  Budget zu viel. Der Code las `renderer.info.render` in eine Variable und
+  benutzte sie *nach* `japanMap.lodHoles()`, und das rendert dreizehn fremde
+  Blickpunkte. Die Zahl war die des letzten davon. **`renderer.info.render` ist
+  ein Objekt, das three jeden Frame überschreibt** — wer es aufhebt, hebt einen
+  Zeiger auf, keinen Wert. Erst kopieren, dann weiterarbeiten.
 - **Am Ergebnis eingehängt statt an der Eingabe.** Die planare Spiegelung
   überschrieb zuerst `reflectedLight.indirectSpecular` — also den bereits mit
   der Fresnel-Gewichtung multiplizierten Wert — mit der **rohen**
