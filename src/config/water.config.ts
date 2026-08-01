@@ -18,6 +18,33 @@ export const WATER = {
   extent: 12288,
 
   /**
+   * Ausblenden zum Himmel am Horizont — P8.10.
+   *
+   * **Die Begründung über `extent` war richtig und trotzdem nicht genug.** Die
+   * Ebene ist mit 12 288 m viermal so breit wie die Welt und reicht weit über
+   * `CAMERA.far` (6000 m) hinaus; ihr eigener Rand ist also nie im Bild. Vom
+   * Blickpunkt `start` stand am Horizont trotzdem eine schnurgerade Linie —
+   * nicht der Rand der Ebene, sondern ihr **Schnitt an der fernen
+   * Clipping-Ebene**.
+   *
+   * Gerechnet: der Distanznebel hat `density` 0,00021 je Meter, also bleibt auf
+   * 6000 m eine Deckung von 1 − e^(−1,26) = **0,716**. Ein knappes Drittel der
+   * Meeresfarbe steht dort noch gegen den Himmel, und weil die Schnittkante
+   * schnurgerade ist, liest sie sich als Weltrand.
+   *
+   * Am Nebel selbst zu drehen wäre falsch gewesen: `FOG.maxOpacity` = 0,94
+   * existiert ausdrücklich, damit die Kammlinie der Berge lesbar bleibt, und
+   * die nötige Dichte (4,7 · 10⁻⁴) hätte das Massiv auf 2 km mitverschluckt.
+   *
+   * Das Wasser bekommt deshalb ein **eigenes** Ausblenden: ab `start` mischt es
+   * zur Himmelsfarbe in Blickrichtung, ab `ende` ist es ununterscheidbar. Am
+   * leeren Meer gibt es keine Silhouette zu erhalten — der Grund für die
+   * Kappung trifft hier nicht zu. `ende` liegt unter `CAMERA.far`, damit die
+   * Mischung **vor** dem Schnitt fertig ist.
+   */
+  horizonFade: { start: 3200, ende: 5600 },
+
+  /**
    * Farbe des tiefen Wassers und der Flachzone.
    *
    * Beide bewusst dunkel: bei blauer Stunde ist Wasser fast ausschließlich

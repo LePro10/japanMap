@@ -129,6 +129,34 @@ export class WaterMaterial extends MeshStandardMaterial {
 
     injectAtmosphere(shader, this.#atmosphere, 'vWaterWorld');
 
+    /**
+     * Horizontausblendung — P8.10.
+     *
+     * Sie hängt sich **hinter** `atmoApplyFog`, nicht davor: der Nebel arbeitet
+     * in linearem HDR vor dem Tonemapping (siehe `injectAtmosphere`), und diese
+     * Mischung soll denselben Raum benutzen. Deshalb wird die vom Nebel selbst
+     * eingesetzte Zeile als Anker verwendet statt eines `#include`-Hakens —
+     * ein zweiter Haken hinter `<opaque_fragment>` gibt es nicht.
+     *
+     * Nur das **Meer**, nicht der Fluss: `uWaterRiver` ist beim Fluss 1, und
+     * ein Flussstück in 4 km Entfernung ist ohnehin gecullt. Die Bedingung
+     * spart die Texturabfrage, wo sie nichts ändern kann.
+     */
+    const fogLine = 'gl_FragColor.rgb = atmoApplyFog(gl_FragColor.rgb, vWaterWorld);';
+    shader.fragmentShader = shader.fragmentShader.replace(
+      fogLine,
+      `${fogLine}
+if (uWaterRiver < 0.5) {
+  vec3 zumAuge = vWaterWorld - cameraPosition;
+  float weite = length(zumAuge);
+  float t = smoothstep(${WATER.horizonFade.start.toFixed(1)}, ${WATER.horizonFade.ende.toFixed(1)}, weite);
+  if (t > 0.0) {
+    vec3 himmel = texture(uAtmoSkyLut, atmoEquirectUv(zumAuge / weite)).rgb;
+    gl_FragColor.rgb = mix(gl_FragColor.rgb, himmel, t);
+  }
+}`,
+    );
+
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <map_fragment>', waterSurface)
       .replace(
