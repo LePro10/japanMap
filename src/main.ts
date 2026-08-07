@@ -261,6 +261,7 @@ function installFrameProbe(
           timing: target.context.debug,
           extraTextures: () => target.resources.tracked,
           streaming: () => scatter.streaming,
+          dropped: () => scatter.dropped,
         },
         options,
       ),

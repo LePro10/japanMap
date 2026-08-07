@@ -41,25 +41,93 @@ export interface QualitySettings {
   readonly reflections: boolean;
   readonly ao: AoQuality;
   /**
-   * Sichtweite der **Streuung** in Metern (ab P4).
+   * **Faktor** auf die Ferngrenze jeder Vegetationsart (`lodDistances[2]`).
    *
-   * PLAN.md schreibt „begrenzt Chunk-Auswahl und Vegetation". Die Chunk-Auswahl
-   * steht bewusst nicht dran, und dafür gibt es zwei gemessene Gründe:
+   * ## Warum ein Faktor und nicht mehr eine Sichtweite in Metern
    *
-   *  - **Gelände:** ein Schnitt bei 600 m nähme der Karte ihre Berge. Und den
-   *    LOD-Baum stattdessen gröber zu stellen — alle `LOD.ranges` mit einem
-   *    Faktor k < 1 — verletzt die Rissfreiheit: der Aufteilungsfaktor wirkt
-   *    dabei wie f' = k·f, und die Herleitung in `lod.config.ts` verlangt
-   *    `morphStart ≥ 0,5 + √2/f'`. Bei k = 0,7 wären das 0,837 gegen die
-   *    eingestellten 0,78. Genau diesen Fall hat P4 gemessen: 207 Löcher gegen
-   *    1. Der Regler ist also nicht „etwas gröber", sondern „kaputt".
-   *  - **Landmarks:** die Props tragen ihre Cull-Distanz je Modell, und ein
-   *    Torii, das bei 600 m verschwindet, ist keine Landmarke mehr.
+   * Bis P10.1 stand hier `viewDistance` in Metern (2000 / 1500 / 1000 / 600 /
+   * 450) und wurde als **Deckel** auf den Sammelradius angewandt:
+   * `range = min(max(lodDistances[2]), viewDistance)`. Die größte
+   * Artenreichweite ist 520 m — der Deckel lag also auf vier von fünf Stufen
+   * darüber und tat schlicht **nichts**:
    *
-   * Übrig bleibt die Vegetation — und die ist auch der Posten, an dem es hängt:
-   * sie stellt den Großteil der Instanzen und den ganzen Füllaufwand.
+   * | Stufe | `viewDistance` alt | wirksamer Sammelradius |
+   * |---|---|---|
+   * | Ultra | 2000 | 520 |
+   * | Hoch | 1500 | 520 |
+   * | Mittel | 1000 | 520 |
+   * | Niedrig | 600 | 520 |
+   * | Minimal | 450 | 450 |
+   *
+   * Der Kommentar an der Anwendungsstelle behauptete sogar das Gegenteil („auf
+   * ‚Niedrig' sind das 600 m und damit weniger als die 520 m der Bäume") — 600
+   * ist mehr als 520. Ein Feld, das auf vier Fünfteln seiner Werte wirkungslos
+   * ist, ist eine Zusage ohne Deckung; dasselbe Urteil hat P7.1 über
+   * `shadowCascades` gefällt.
+   *
+   * Als Faktor kann der Wert **über 1** liegen, und genau das ist der Punkt: die
+   * Karte lebt laut SPEC §2.1 von der Fernsicht, und der kahle Ring bei 520 m
+   * steht heute auf *jeder* Stufe.
+   *
+   * ## Warum hier fünfmal 1,0 steht
+   *
+   * Weil P10.1 die **Kopplung** baut und nicht die Entscheidung trifft. Wie weit
+   * die Vegetation reichen soll, ist P10.3 („erst messen, dann entscheiden").
+   * Nach unten wird der Regler ausdrücklich *nicht* gedreht: eine niedrigere
+   * Stufe kürzer sehen zu lassen wäre der billige Weg zu Rechenzeit und genau
+   * die Verschlechterung, die dieser Plan ausschließt.
+   *
+   * **Auch Minimal steht auf 1,0 — nachgemessen.** Der erste Versuch stand auf
+   * 0,87, um dessen alte 450 m nachzubilden. Das war eine Fehldeutung der alten
+   * Semantik: der Deckel wirkte allein auf den **Sammelradius der Chunks**,
+   * während `#speciesMask` und die LOD-Zuordnung die ungeskalierte Ferngrenze
+   * je Art benutzten. Gras lief also weiterhin bis 160 m und Büsche bis 190 m;
+   * nur die Bäume waren bei rund 450 m abgeschnitten. Ein Faktor auf *alle*
+   * Arten kürzt Gras und Büsche mit, und das kostet gemessen genau das, was hier
+   * nicht passieren darf:
+   *
+   * | Blickpunkt | mit 0,87 | mit 1,0 |
+   * |---|---|---|
+   * | reisfeld | 217 | **854** |
+   * | wald-fern | 503 | **1144** |
+   * | wald | 3104 | **3934** |
+   *
+   * Mit 1,0 gewinnt Minimal stattdessen 70 m Baumreichweite gegen vorher
+   * (450 → 520). Seine Ersparnis kommt vollständig aus `lodBias`,
+   * `vegetationDensity`, `renderScale` und `postFx` — und das ist die richtige
+   * Reihenfolge: erst billiger zeichnen, dann weniger zeichnen, und *zuletzt*
+   * kürzer sehen.
    */
-  readonly viewDistance: number;
+  readonly vegetationRange: number;
+
+  /**
+   * **Faktor** auf die beiden *inneren* LOD-Grenzen einer Art
+   * (`lodDistances[0]` und `[1]`) — also darauf, wann vom vollen Mesh auf die
+   * reduzierte Stufe und wann von dort auf den Imposter gewechselt wird.
+   *
+   * **Der einzige Hebel im ganzen Plan, für den eine Messung in beide Richtungen
+   * spricht.** P4 hat an 229 Kiefern zwischen 180 und 240 m nachgezählt, wie
+   * viele Pixel Mesh und Imposter jeweils decken (Tabelle bei
+   * `IMPOSTER.alphaTest`): der Imposter deckt **34 bis 38 % mehr**, und der
+   * Grund ist nicht weiches Alpha, sondern Abtastung. Ein 5,4-m-Baum ist auf
+   * 180 m rund 19 Pixel hoch; das Mesh besteht dort aus Dreiecken unterhalb der
+   * Pixelgröße und fällt in Lücken, während der Imposter eine gefilterte Textur
+   * ist. **Er ist an dieser Stelle nicht schlechter, sondern besser
+   * abgetastet.**
+   *
+   * Früher umzuschalten spart also Dreiecke, ohne Silhouette zu verlieren — bis
+   * zu einer Entfernung, an der das Mesh wieder gewinnt. Wo die liegt, ist
+   * nicht gemessen, und deshalb bleibt die Leiter flach: 0,65 auf Minimal heißt
+   * Imposter ab 117 m statt 180 m, und dort ist ein Baum immer noch rund
+   * 29 Pixel hoch.
+   *
+   * **Ultra und Hoch bleiben bei 1,0.** Der erste `live`-Lauf hat gemessen, dass
+   * Ultra→Hoch mit 16 % die schwächste Sprosse der Leiter ist — die
+   * naheliegende Antwort wäre, Hoch zu verschlechtern. Das ist die falsche
+   * Richtung: den Abstand macht P10.3, indem **Ultra weiter sieht**, nicht indem
+   * Hoch weniger scharf wird.
+   */
+  readonly lodBias: number;
   /** Anteil der gestreuten Vegetations-Instanzen, 0..1 (ab P4). */
   readonly vegetationDensity: number;
   /** Auflösungsfaktor des Render-Targets gegenüber der Canvas-Größe. */
@@ -161,6 +229,42 @@ export const AO_QUALITY: Readonly<Record<AoQuality, AoSettings>> = {
  * > ±10 % — der Abstand Ultra↔Hoch lag darunter. Was unter dem Rauschen liegt,
  * > wird hier nicht behauptet; belastbar sind die exakten Zähler.
  *
+ * > **Der vorletzte Punkt ist seit P10.0 gemessen und war zu vorsichtig
+ * > formuliert.** „Wo der Unterschied wirklich zählt, ist `start` oder
+ * > `reisfeld`" — nachgezählt trägt `start` **67** Vegetationsinstanzen auf
+ * > Ultra und `reisfeld` 8804. `start` taugt dafür also gar nicht: es steht auf
+ * > 330 m Höhe, und bei 520 m Streureichweite liegt von dort fast alles
+ * > außerhalb. Die Blickpunkte mit Bewuchs heißen seitdem `wald` (38 948) und
+ * > `wald-fern` (11 068).
+ *
+ * ## Was P10.1 daran geändert hat
+ *
+ * Zwei Regler statt einem wirkungslosen (`vegetationRange`, `lodBias` — beide
+ * oben hergeleitet). Gemessen im Messlauf aus P10.0, Betriebsart `driven`,
+ * dieselbe Matrix vorher und nachher:
+ *
+ * | Stufe | Blickpunkt | Dreiecke vorher | nachher | Δ |
+ * |---|---|---|---|---|
+ * | Ultra | wald | 681 120 | 681 120 | **±0** |
+ * | Hoch | wald | 579 813 | 579 813 | **±0** |
+ * | Mittel | wald | 204 057 | 194 789 | −4,5 % |
+ * | Niedrig | wald | 126 855 | 117 833 | **−7,1 %** |
+ * | Minimal | wald | 100 542 | 95 394 | −5,1 % |
+ *
+ * **Und keine einzige Zelle verliert Vegetation.** Über alle 20 Zellen (fünf
+ * Stufen × vier Blickpunkte) ist die Instanzzahl gleich oder höher; Minimal
+ * gewinnt sogar (+22 / +17 / +15), weil seine Bäume jetzt 520 statt 450 m weit
+ * stehen. Verworfene Instanzen: **0** in jeder Zelle — die Puffergrößen halten
+ * den kleineren `lodBias` aus, siehe `LOD_BIAS_MIN`.
+ *
+ * Am Bild geprüft, weil Dreiecke keine Aussage über das Aussehen sind:
+ * `lodBias` 1,0 gegen 0,75 auf „Niedrig" am Blickpunkt `wald`, 896 × 503. Die
+ * beiden Bilder sind in Baumbestand, Grasverteilung, Silhouette und Baumgrenze
+ * nicht zu unterscheiden. **Die Differenzzahl allein hätte das nicht
+ * hergegeben** — sie liegt bei Schwelle 24 auf 2,77 %, das Rauschband aus
+ * zwei Aufnahmen *desselben* Zustands aber schon bei 2,36 % (Wind und ziehende
+ * Wolken). Wer hier nur die Prozentzahl liest, misst das Wetter.
+ *
  * Die Instanzzahlen aus dem P7-Lauf (1622 / 1166 / 735 / 386 = 1,00 / 0,719 /
  * 0,453 / 0,238 gegen die eingestellten 1 / 0,7 / 0,45 / 0,25) sind **nicht neu
  * abgelesen**; sie hängen an `vegetationDensity`, und daran hat P8.1 nichts
@@ -172,7 +276,8 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     shadowMapSize: 2048,
     reflections: true,
     ao: 'high',
-    viewDistance: 2000,
+    vegetationRange: 1,
+    lodBias: 1,
     vegetationDensity: 1,
     renderScale: 1,
     terrainGridVertices: 33,
@@ -183,7 +288,8 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     shadowMapSize: 1024,
     reflections: true,
     ao: 'medium',
-    viewDistance: 1500,
+    vegetationRange: 1,
+    lodBias: 1,
     vegetationDensity: 0.7,
     renderScale: 1,
     // Bewusst wie Ultra. „Hoch" unterscheidet sich von Ultra allein in AO und
@@ -198,7 +304,8 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     shadowMapSize: 1024,
     reflections: false,
     ao: 'low',
-    viewDistance: 1000,
+    vegetationRange: 1,
+    lodBias: 0.85,
     vegetationDensity: 0.45,
     renderScale: 0.85,
     // 2,0 m je Vertex auf dem Blattknoten. Über dem Texelabstand der Heightmap
@@ -211,7 +318,8 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     shadowMapSize: 1024,
     reflections: false,
     ao: 'off',
-    viewDistance: 600,
+    vegetationRange: 1,
+    lodBias: 0.75,
     vegetationDensity: 0.25,
     renderScale: 0.7,
     // 3,0 m je Vertex — jede zweite Stützstelle der Heightmap wird nicht mehr
@@ -238,7 +346,8 @@ export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
     shadowMapSize: 1024,
     reflections: false,
     ao: 'off',
-    viewDistance: 450,
+    vegetationRange: 1,
+    lodBias: 0.65,
     vegetationDensity: 0.1,
     renderScale: 0.5,
     terrainGridVertices: 17,
@@ -253,6 +362,30 @@ export const QUALITY_LEVELS: readonly QualityLevel[] = [
   'low',
   'minimal',
 ];
+
+/**
+ * Ungünstigster `lodBias` und größter `vegetationRange` über **alle** Stufen.
+ *
+ * Wofür: `ScatterSystem` legt seine Instanzpuffer **einmal** beim Start an, die
+ * LOD-Grenzen ändern sich aber mit der Stufe. Ein kleinerer `lodBias` schiebt
+ * Instanzen aus den beiden Mesh-Stufen in die Imposter-Stufe — deren Ring wächst
+ * also, während die anderen schrumpfen. Ein Puffer, der für Ultra bemessen ist,
+ * liefe auf Minimal über, und ein Überlauf in `InstancedLOD.push()` **verwirft
+ * Instanzen stillschweigend** (er zählt sie nur in `#dropped`). Das wäre exakt
+ * die Verschlechterung, die P10.1 ausschließt — und sie wäre unsichtbar, weil
+ * die Zahl bis P10.1 nirgends in einer Abnahme stand.
+ *
+ * Bemessen wird deshalb über den ungünstigsten Fall: innere Grenzen mit dem
+ * kleinsten Bias, äußere mit der größten Reichweite.
+ *
+ * **Abgeleitet und nicht abgeschrieben.** Eine sechste Stufe mit einem noch
+ * kleineren Bias verändert diese Konstanten von selbst; eine handgepflegte Zahl
+ * daneben wäre der nächste Wert, der irgendwann nicht mehr stimmt.
+ */
+export const LOD_BIAS_MIN: number = Math.min(...QUALITY_LEVELS.map((l) => QUALITY[l].lodBias));
+export const VEGETATION_RANGE_MAX: number = Math.max(
+  ...QUALITY_LEVELS.map((l) => QUALITY[l].vegetationRange),
+);
 
 /**
  * Stufe, mit der die Einstufung beginnt — und die gilt, wenn sie nicht
