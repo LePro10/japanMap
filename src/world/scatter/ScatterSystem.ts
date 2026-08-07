@@ -107,6 +107,10 @@ export class ScatterSystem implements System {
   readonly #passDistance = new Map<number, number>();
   #cursor = 0;
   #passOpen = false;
+  /** Fehlstellen im laufenden Durchlauf — siehe `streaming`. */
+  #missesThisPass = 0;
+  /** Dieselbe Zahl des letzten **vollständigen** Durchlaufs. */
+  #lastPassMisses = Number.POSITIVE_INFINITY;
   #newThisFrame = 0;
   #requestedThisFrame = 0;
   #frameStart = 0;
@@ -282,6 +286,34 @@ export class ScatterSystem implements System {
     this.#cache.clear();
     this.#worker?.discard();
     this.#passOpen = false;
+    // Nach einem Verwerfen ist wieder nichts bekannt. Ohne diese Zeile meldete
+    // `streaming` unmittelbar nach einem Stufenwechsel „fertig", obwohl der
+    // Cache gerade geleert wurde — und ein Messlauf hätte den leeren Zustand
+    // für den fertigen gehalten.
+    this.#lastPassMisses = Number.POSITIVE_INFINITY;
+  }
+
+  /**
+   * Strömt gerade noch etwas nach?
+   *
+   * **Gebaut für den Messlauf aus P10.0, und zwar nachdem der ohne dieses
+   * Signal danebengegriffen hat.** Er wartete, bis die Instanzzahl über acht
+   * Frames unverändert blieb — und bekam am Blickpunkt `reisfeld` auf Ultra
+   * **0 Vegetationsinstanzen** gemeldet, mit `stable: true`. Der Grund ist
+   * einfach und gemein: *unverändert bei null* sieht genauso aus wie *fertig*.
+   * Der Worker hatte in 267 ms noch keine einzige Antwort geliefert.
+   *
+   * Das ist dieselbe Fehlerklasse wie P8.9 („ein vollständiges Bild einer halb
+   * geladenen Welt"), nur eine Ebene höher: dort log das Bild, hier log der
+   * Zähler. Die Antwort ist beide Male dieselbe — **nicht das Ergebnis
+   * beobachten, sondern die Arbeit fragen.**
+   *
+   * Wahr, solange (a) noch nie ein Durchlauf vollständig durchgekommen ist,
+   * (b) der letzte vollständige Durchlauf Chunks angetroffen hat, die noch
+   * fehlten oder unvollständig waren, oder (c) Aufträge beim Worker offen sind.
+   */
+  get streaming(): boolean {
+    return this.#lastPassMisses > 0 || (this.#worker?.inFlight ?? 0) > 0;
   }
 
   /** Ein fertig gestreuter Chunk aus dem Worker. */
@@ -433,6 +465,7 @@ export class ScatterSystem implements System {
 
     this.#cursor = 0;
     this.#passOpen = true;
+    this.#missesThisPass = 0;
     for (const lod of this.#lods) lod.beginPass();
     this.#decals?.beginPass();
   }
@@ -460,8 +493,17 @@ export class ScatterSystem implements System {
 
       // Nur die Arten streuen, die auf dieser Entfernung überhaupt gezeichnet
       // werden. Gras endet bei 160 m, Bäume bei 520 m — siehe `ScatterChunk.generated`.
-      const chunk = this.#chunk(cx, cz, this.#speciesMask(x0, z0, camera));
-      if (!chunk) continue;
+      const mask = this.#speciesMask(x0, z0, camera);
+      const chunk = this.#chunk(cx, cz, mask);
+      // Zwei Arten von „noch nicht da", und beide zählen: gar kein Chunk (die
+      // Antwort des Workers steht aus), oder ein Chunk, dem noch Arten fehlen
+      // (er trägt die Bäume, das Gras kommt nach). Ohne den zweiten Fall meldete
+      // `streaming` fertig, sobald der erste Baum stand.
+      if (!chunk) {
+        this.#missesThisPass++;
+        continue;
+      }
+      if ((chunk.generated & mask) !== mask) this.#missesThisPass++;
 
       // Jetzt die knappe Hülle. Oben Luft für das höchste Modell der größten
       // Art — sonst schneidet das Frustum die Kronen der Bäume ab, deren Fuß
@@ -477,6 +519,10 @@ export class ScatterSystem implements System {
       for (const lod of this.#lods) lod.endPass();
       this.#decals?.endPass();
       this.#passOpen = false;
+      // Erst hier, nicht je Frame: `streaming` soll eine Aussage über einen
+      // **vollständigen** Durchlauf sein. Ein Zwischenstand mitten im Durchlauf
+      // hat naturgemäß Fehlstellen vor sich und sagt über den Zustand nichts.
+      this.#lastPassMisses = this.#missesThisPass;
     }
   }
 

@@ -4,6 +4,7 @@
 import type { QualityLevel } from './config/quality.config';
 import type { Engine } from './core/Engine';
 import type { HoleReport } from './debug/lodHoles';
+import type { Report, ReportOptions } from './debug/report';
 import type { WindingRow } from './debug/winding';
 import type { DeviceEstimate } from './render/deviceTier';
 import type { FrameTiming } from './render/frameTiming';
@@ -82,6 +83,15 @@ declare global {
       winding?: (alle?: boolean) => WindingRow[];
       /** Ergebnis der Gerätevorschätzung (P8.3). */
       device?: () => DeviceEstimate | null;
+      /**
+       * Der Messlauf (P10 / 10.0) — Blickpunkte × Qualitätsstufen, mit
+       * JSON-Bericht und je einem PNG in `.cache/`.
+       *
+       * Auf einer Maschine mit `EXT_disjoint_timer_query_webgl2` trägt der
+       * Bericht GPU-Zeit; ohne sie steht dort `null` **mit Begründung** statt
+       * einer 0, die nach „kostet nichts" aussieht.
+       */
+      report?: (options?: ReportOptions) => Promise<Report>;
     };
   }
 }
