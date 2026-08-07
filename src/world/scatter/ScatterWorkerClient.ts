@@ -127,6 +127,11 @@ export class ScatterWorkerClient {
     return this.#inFlight.has(key);
   }
 
+  /** Wie viele Aufträge noch unbeantwortet sind — für `ScatterSystem.streaming`. */
+  get inFlight(): number {
+    return this.#inFlight.size;
+  }
+
   request(key: number, cx: number, cz: number, mask: number, density: number): void {
     const worker = this.#worker;
     if (!worker || !this.#ready) return;

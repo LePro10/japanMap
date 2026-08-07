@@ -68,6 +68,20 @@ export class QualitySystem implements System {
     return this.#estimate;
   }
 
+  /**
+   * Läuft die Ersteinstufung gerade?
+   *
+   * **Für den Messlauf aus P10.0, und der Grund ist ein Wettlauf.** Die
+   * Einstufung stuft selbsttätig herunter, solange sie misst; ein Messlauf, der
+   * währenddessen `set()` ruft, bekommt die Stufe nach 60 Frames wieder
+   * weggezogen — und schreibt dann Zahlen in eine Datei, die einer anderen
+   * Stufe gehören. Genau die Sorte Zahl, vor der CLAUDE.md warnt: richtig
+   * abgelesen, an einem Zustand gemessen, der nicht der berichtete war.
+   */
+  get classifying(): boolean {
+    return this.#run !== null;
+  }
+
   constructor(level: QualityLevel = DEFAULT_QUALITY) {
     this.#level = level;
   }

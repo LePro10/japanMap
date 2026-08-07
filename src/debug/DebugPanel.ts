@@ -99,6 +99,10 @@ export class DebugPanel implements DebugHost {
     return this.#overlay.lastGpuMs;
   }
 
+  get lastCpuMs(): number | null {
+    return this.#overlay.lastCpuMs;
+  }
+
   folder(title: string): FolderApi {
     const existing = this.#folders.get(title);
     if (existing) return existing;

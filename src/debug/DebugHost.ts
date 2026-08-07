@@ -29,6 +29,15 @@ export interface DebugHost {
   readonly lastGpuMs: number | null;
 
   /**
+   * JS-Arbeit des zuletzt gemessenen Frames, oder null ohne Messwerk.
+   *
+   * Zusammen mit `lastGpuMs` das Paar, aus dem der Messlauf (P10.0) seine
+   * Trennung zieht: der rAF-Abstand sagt, ob die Bildrate hält, und diese beiden
+   * sagen, **welche Seite** sie hält oder verfehlt.
+   */
+  readonly lastCpuMs: number | null;
+
+  /**
    * Alle Anzeigen neu aus ihren gebundenen Objekten lesen.
    *
    * Nötig, wenn ein Wert von außen geändert wurde statt über den Regler — beim

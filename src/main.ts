@@ -2,7 +2,9 @@ import './style.css';
 
 import { FreeFlyController } from './camera/FreeFlyController';
 import { Engine } from './core/Engine';
+import { captureShot, probeFrame, type CaptureTarget } from './debug/capture';
 import { countLodHoles } from './debug/lodHoles';
+import { runReport } from './debug/report';
 import { checkWinding } from './debug/winding';
 import { reflectionProbe } from './debug/reflectionProbe';
 import { QUALITY } from './config/quality.config';
@@ -108,7 +110,17 @@ function installFrameProbe(
   target: Engine,
   camera: FreeFlyController,
   qualitySystem: QualitySystem,
+  scatter: ScatterSystem,
 ): void {
+  // Der gemeinsame Nenner von `probe()`, `shot()` und dem Messlauf: rendern und
+  // im selben Aufruf auslesen. Siehe `debug/capture.ts`.
+  const capture: CaptureTarget = {
+    renderer: target.renderer,
+    tick: () => {
+      target.loop.tick();
+    },
+  };
+
   window.japanMap = {
     ...window.japanMap,
     engine: target,
@@ -201,88 +213,57 @@ function installFrameProbe(
       return alle ? rows : rows.filter((r) => r.suspicious);
     },
 
-    probe: () => {
-      target.loop.tick();
-      const gl = target.renderer.getContext();
-      const width = gl.drawingBufferWidth;
-      const height = gl.drawingBufferHeight;
-      const pixels = new Uint8Array(width * height * 4);
-      gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-
-      let sum = 0;
-      let maximum = 0;
-      let nonBlack = 0;
-      for (let i = 0; i < pixels.length; i += 4) {
-        const luma = (pixels[i] ?? 0) * 0.2126 + (pixels[i + 1] ?? 0) * 0.7152 + (pixels[i + 2] ?? 0) * 0.0722;
-        sum += luma;
-        if (luma > maximum) maximum = luma;
-        if (luma > 2) nonBlack++;
-      }
-      const count = pixels.length / 4;
-      return {
-        width,
-        height,
-        mittlereHelligkeit: sum / count,
-        maximum,
-        anteilNichtSchwarz: nonBlack / count,
-      };
-    },
+    probe: () => probeFrame(capture),
 
     /**
      * Denselben Frame als PNG in `.cache/shots/` legen.
      *
      * `probe()` beantwortet „wurde überhaupt etwas gezeichnet"; für „sieht es
-     * richtig aus" braucht es ein Bild. Die Kette ist bewusst kurz gehalten:
-     * readPixels → Canvas → toDataURL → POST an den Dev-Server. Ein
-     * Bildschirmfoto über das Fenster scheidet aus, weil der Browser im
-     * Hintergrund gar keine Frames mehr komponiert.
-     *
-     * `readPixels` liefert die unterste Zeile zuerst — deshalb wird beim
-     * Zeichnen auf den Canvas gespiegelt. Ohne das steht das Gelände auf dem
-     * Kopf, und zwar plausibel genug, um es zu übersehen.
+     * richtig aus" braucht es ein Bild. Beides steht seit P10.0 in
+     * `debug/capture.ts`, weil der Messlauf dieselbe Kette braucht.
      */
-    shot: async (name = 'shot') => {
-      target.loop.tick();
-      const gl = target.renderer.getContext();
-      const width = gl.drawingBufferWidth;
-      const height = gl.drawingBufferHeight;
-      const pixels = new Uint8ClampedArray(width * height * 4);
-      gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    shot: (name = 'shot') => captureShot(capture, name),
 
-      const source = document.createElement('canvas');
-      source.width = width;
-      source.height = height;
-      source.getContext('2d')?.putImageData(new ImageData(pixels, width, height), 0, 0);
-
-      const flipped = document.createElement('canvas');
-      flipped.width = width;
-      flipped.height = height;
-      const context = flipped.getContext('2d');
-      if (!context) throw new Error('Kein 2D-Kontext für das Bildschirmfoto.');
-      context.translate(0, height);
-      context.scale(1, -1);
-      context.drawImage(source, 0, 0);
-
-      const base64 = flipped.toDataURL('image/png').split(',')[1] ?? '';
-      const response = await fetch('/__shot', { method: 'POST', body: `${name}\n${base64}` });
-      // **Laut scheitern, nicht leer zurückkommen.** Der Endpunkt lebt nur im
-      // Dev-Server; antwortet er nicht, ist kein Bild entstanden. Vorher stand
-      // hier `return response.text()`, und ein 404 lieferte einen leeren
-      // String — in der Ausgabe sah das aus wie „geschrieben nach: ", und die
-      // Messung lief scheinbar durch. Aufgefallen ist es erst, als ein fremdes
-      // Projekt den Port übernommen hatte (CLAUDE.md, „Umgebung"): die Seite
-      // lief aus dem Speicher weiter, `probe()` meldete 1,000, und nur der
-      // fehlende Pfad verriet, dass niemand mehr zuhörte.
-      if (!response.ok) {
-        throw new Error(
-          `Bildschirmfoto fehlgeschlagen: /__shot antwortete mit ${response.status}. ` +
-            'Läuft der Dev-Server dieses Projekts auf diesem Port?',
-        );
-      }
-      const path = (await response.text()).trim();
-      if (!path) throw new Error('Bildschirmfoto fehlgeschlagen: leere Antwort von /__shot.');
-      return path;
-    },
+    /**
+     * Der Messlauf — `japanMap.report()`, PLAN.md P10 / 10.0.
+     *
+     * Fährt Blickpunkte × Qualitätsstufen ab und legt einen JSON-Bericht plus
+     * je ein PNG in `.cache/`. **Das Werkzeug für die Maschine, die dieses
+     * Projekt nicht hat:** hier fehlt `EXT_disjoint_timer_query_webgl2`, dort
+     * nicht — und der Bericht sagt in beiden Fällen ausdrücklich, was er messen
+     * konnte und was nicht.
+     *
+     * Ein voller Lauf sind 25 Zellen und dauert Minuten. Kleiner geht es über
+     * die Optionen, etwa
+     * `japanMap.report({ levels: ['ultra'], viewpoints: ['reisfeld'] })`.
+     */
+    report: (options) =>
+      runReport(
+        {
+          renderer: target.renderer,
+          scene: target.scene,
+          camera,
+          capture,
+          quality: {
+            get level() {
+              return qualitySystem.level;
+            },
+            get estimate() {
+              return qualitySystem.estimate;
+            },
+            get classifying() {
+              return qualitySystem.classifying;
+            },
+            set: (level) => {
+              qualitySystem.set(level);
+            },
+          },
+          timing: target.context.debug,
+          extraTextures: () => target.resources.tracked,
+          streaming: () => scatter.streaming,
+        },
+        options,
+      ),
   };
 }
 
@@ -330,7 +311,10 @@ async function boot(): Promise<void> {
   // Vor Terrain **und** Straßen: die Streuung hört auf `terrain:ready` und
   // `roads:ready`, und beide werden genau einmal gesendet, während sich jene
   // Systeme initialisieren.
-  engine.add(new ScatterSystem(atmosphere.uniforms));
+  // Festgehalten statt nur angemeldet: der Messlauf (P10.0) fragt sie, ob sie
+  // noch arbeitet — ohne dieses Signal hält er eine leere Welt für eine fertige.
+  const scatter = new ScatterSystem(atmosphere.uniforms);
+  engine.add(scatter);
   // Ebenfalls vor dem Terrain: die Props holen ihre Höhe aus dem Sampler, damit
   // sie einen neuen Terrain-Bake überleben, statt eine Zahl aus der Datei zu
   // glauben.
@@ -387,7 +371,7 @@ async function boot(): Promise<void> {
   }
   engine.start();
 
-  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality);
+  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter);
 }
 
 void boot();

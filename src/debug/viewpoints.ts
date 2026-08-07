@@ -114,6 +114,41 @@ export const VIEWPOINTS: Readonly<Record<string, Viewpoint>> = {
     lookAt: [-760, 22, 60],
     note: 'Die Reisfeld-Terrassen im Westen.',
   },
+  // ── P10.0 ──────────────────────────────────────────────────────────────────
+  //
+  // **Zwei Blickpunkte, weil der erste Messlauf gezeigt hat, dass vier von fünf
+  // alten für die Stufenfrage blind sind.** Gemessen am 2026-08-07 über
+  // `scene.byGroup.Vegetation`, Ultra gegen Minimal:
+  //
+  // | Blickpunkt | Ultra | Minimal |
+  // |---|---|---|
+  // | reisfeld | 8804 | 856 |
+  // | stadt-neon | 1363 | 98 |
+  // | pass | 171 | 16 |
+  // | start | 67 | 9 |
+  // | kueste | **0** | **0** |
+  //
+  // Der Grund ist Geometrie, nicht Bewuchs: `start` steht auf 330 m, `pass` auf
+  // 420 m, und die Vegetation reicht 520 m weit — aus der Luft liegt fast alles
+  // davon außerhalb. Wer die Vegetationsstufen an einem Luftbild abliest, misst
+  // das Gelände. Die beiden hier stehen deshalb **auf dem Boden bzw. knapp
+  // darüber**, und zwar dort, wo gemessen am meisten wächst: um (768, −730)
+  // stehen 391 Instanzen je 64-m-Zelle, Boden bei y ≈ 132…136.
+  wald: {
+    position: [742, 133.7, -690],
+    lookAt: [800, 138, -800],
+    note: 'Im Wald östlich des Tempels, Augenhöhe. Nahfeld-Meshes, Mittelfeld, Baumgrenze.',
+  },
+  'wald-fern': {
+    // **Der Blickpunkt, an dem der kahle Ring bei 520 m im Bild steht.** Vorne
+    // bewaldete Hänge, dahinter ein vollständig kahler Kamm — nicht, weil dort
+    // nichts wächst, sondern weil die Streuung dort endet. Er ist die
+    // Vorher-Aufnahme für P10.3 und der Ort, an dem dessen drei Kandidaten
+    // gegeneinander zu sehen sind.
+    position: [700, 205, -540],
+    lookAt: [790, 150, -900],
+    note: 'Über dem Waldrücken nach Nordwesten — hier ist die 520-m-Kante der Streuung sichtbar.',
+  },
   kueste: {
     position: [200, 90, 1100],
     lookAt: [100, 0, 1400],
