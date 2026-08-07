@@ -106,6 +106,7 @@ export class StatsOverlay {
   #lastFlush = 0;
   #lastMemoryScan = 0;
   #lastGpuMs: number | null = null;
+  #lastCpuMs: number | null = null;
   #textureMemoryMb = 0;
   #cpuPeakMs = 0;
   #gpuPeakMs = 0;
@@ -147,6 +148,16 @@ export class StatsOverlay {
     return this.#lastGpuMs;
   }
 
+  /**
+   * JS-Arbeit des letzten Frames — dieselbe Quelle wie `lastGpuMs`.
+   *
+   * Symmetrisch durchgereicht und aus demselben Grund: `sample()` darf pro Frame
+   * genau einmal laufen, sonst verdoppelt sich der Null-Zähler des GPU-Timers.
+   */
+  get lastCpuMs(): number | null {
+    return this.#lastCpuMs;
+  }
+
   set visible(value: boolean) {
     this.#root.hidden = !value;
   }
@@ -161,6 +172,7 @@ export class StatsOverlay {
   update(): void {
     const sample = this.#timer.sample();
     this.#lastGpuMs = sample.gpuMs;
+    this.#lastCpuMs = sample.cpuMs;
     this.#cpuPeakMs = Math.max(this.#cpuPeakMs, sample.cpuMs);
     if (sample.gpuMs !== null) this.#gpuPeakMs = Math.max(this.#gpuPeakMs, sample.gpuMs);
 

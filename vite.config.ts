@@ -73,6 +73,55 @@ function screenshotEndpoint(): Plugin {
 }
 
 /**
+ * Messlauf-Berichte auf die Platte — PLAN.md P10 / 10.0, nur im Dev-Server.
+ *
+ * Der Zwilling von `/__shot`, und er existiert aus demselben Grund: die Zahlen,
+ * die dieses Projekt braucht, entstehen in einem laufenden Renderer, und auf der
+ * Entwicklungsmaschine gibt es keine GPU-Zeit (CLAUDE.md, „Umgebung"). Wer eine
+ * echte GPU hat, startet den Dev-Server, ruft `japanMap.report()` und schickt
+ * die Datei zurück — sie liegt danach in `.cache/reports/` und lässt sich lesen,
+ * ohne dass jemand vor dem Bild sitzen muss.
+ *
+ * Kein Produktionscode: `apply: 'serve'`, und `.cache/` steht in `.gitignore`.
+ */
+function reportEndpoint(): Plugin {
+  const dir = join(projectRoot, '.cache', 'reports');
+  return {
+    name: 'japanmap-report',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/__report', (request, response) => {
+        if (request.method !== 'POST') {
+          response.statusCode = 405;
+          response.end();
+          return;
+        }
+        const chunks: Buffer[] = [];
+        request.on('data', (chunk: Buffer) => chunks.push(chunk));
+        request.on('end', () => {
+          const body = Buffer.concat(chunks).toString('utf8');
+          // Nur am **ersten** Zeilenumbruch trennen: der Bericht ist eingerücktes
+          // JSON und enthält selbst welche. `split('\n')` wie bei `/__shot` würde
+          // ihn nach der ersten Zeile abschneiden — dort ist der Rumpf Base64 und
+          // damit einzeilig, hier nicht.
+          const cut = body.indexOf('\n');
+          const name = cut < 0 ? 'report' : body.slice(0, cut);
+          const json = cut < 0 ? '' : body.slice(cut + 1);
+          mkdirSync(dir, { recursive: true });
+          // Wie bei `/__shot`: der Name kommt aus dem Browser und wird auf einen
+          // Dateinamen ohne Pfadanteile zurechtgestutzt.
+          const safe = name.replace(/[^a-z0-9_-]/gi, '').slice(0, 60) || 'report';
+          const file = join(dir, `${safe}.json`);
+          writeFileSync(file, json);
+          response.statusCode = 200;
+          response.end(file);
+        });
+      });
+    },
+  };
+}
+
+/**
  * Brotli-Vorkompression — PLAN.md P7 / 7.5.
  *
  * Zur Bauzeit statt beim Ausliefern: Brotli auf Stufe 11 kostet für die
@@ -136,6 +185,7 @@ function brotliAssets(): Plugin {
 export default defineConfig({
   plugins: [
     screenshotEndpoint(),
+    reportEndpoint(),
     brotliAssets(),
     // Shader liegen als .glsl/.vert/.frag im Baum und werden importiert, nicht
     // als Template-String eingebettet — sonst gibt es kein Syntax-Highlighting
