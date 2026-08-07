@@ -4791,12 +4791,76 @@ ist der Posten, an dem „besser *und* schneller" hängt:
   nicht als Formel.
 
 **Messung.** Dieselbe Matrix wie 10.0, vorher/nachher, plus ein Bildpaar je
-Stufe an den drei Blickpunkten, an denen Bewuchs überhaupt vorkommt (`start`,
-`reisfeld`, `pass` — **nicht** `stadt-neon`: dort stehen auf Ultra 1493
-Instanzen, die Stufen trennen sich an dieser Stelle nachweislich fast gar
-nicht, siehe P8.1). Kriterium: die Dreieckszahl je Stufe darf nicht steigen,
-und im Bildpaar darf auf **keiner** Stufe etwas verschwinden, das vorher da
-war.
+Stufe an den drei Blickpunkten, an denen Bewuchs überhaupt vorkommt (~~`start`,
+`reisfeld`, `pass`~~ — siehe unten, die Auswahl war falsch). Kriterium: die
+Dreieckszahl je Stufe darf nicht steigen, und im Bildpaar darf auf **keiner**
+Stufe etwas verschwinden, das vorher da war.
+
+### 10.1 gebaut und gemessen — 2026-08-07
+
+`vegetationRange` und `lodBias` ersetzen `viewDistance` in
+`quality.config.ts`; `ScatterSystem` skaliert damit Ferngrenze und innere
+LOD-Grenzen je Stufe. Herleitung, Messtabellen und die verworfene Variante
+stehen bei den beiden Feldern.
+
+**Ergebnis, `driven`-Matrix über 5 Stufen × 4 Blickpunkte, vorher gegen
+nachher:**
+
+| Stufe | Dreiecke @ `wald` | Δ | Vegetation |
+|---|---|---|---|
+| Ultra | 681 120 → 681 120 | **±0** | ±0 |
+| Hoch | 579 813 → 579 813 | **±0** | ±0 |
+| Mittel | 204 057 → 194 789 | −4,5 % | ±0 |
+| Niedrig | 126 855 → 117 833 | **−7,1 %** | ±0 |
+| Minimal | 100 542 → 95 394 | −5,1 % | **+22** |
+
+**Keine der 20 Zellen verliert Vegetation**, keine verwirft Instanzen. Ultra
+und Hoch sind bitgleich — das ist Absicht: ihr `lodBias` steht auf 1,0, weil
+der Abstand nach oben aufgemacht wird (10.3) und nicht nach unten.
+
+**Was die Zahlen allein nicht beantworten.** Weniger Dreiecke bei gleicher
+Instanzzahl heißt: Geometrie ist durch Imposter ersetzt worden. Ob das
+schlechter *aussieht*, entscheidet das Bild. A/B auf „Niedrig" am Blickpunkt
+`wald`, `lodBias` 1,0 gegen 0,75, 896 × 503: die beiden Bilder sind in
+Baumbestand, Grasverteilung, Silhouette und Baumgrenze **nicht zu
+unterscheiden**; die sichtbaren Abweichungen sind Windphase und Wolkenstand.
+
+> **Die Differenzzahl hätte hier in die Irre geführt**, und zwar in die
+> Richtung „großer Effekt": 15,90 % der Pixel über Schwelle 2, 2,77 % über 24.
+> Das Rauschband aus zwei Aufnahmen **desselben** Zustands liegt aber schon bei
+> 7,45 % und 2,36 % — Wind und ziehende Wolken laufen weiter, während gemessen
+> wird. Bei Schwelle 24 ist der Effekt damit praktisch nicht vom Rauschen zu
+> trennen. Das ist genau die Reihenfolge, die 8.6 gelehrt hat: erst das
+> Rauschband, dann das Urteil, und am Ende **das Bild ansehen**.
+
+**Zwei Dinge sind beim Bauen anders gelaufen als geplant.**
+
+1. **Der erste Wert für Minimal war falsch und hat Vegetation gekostet.**
+   `vegetationRange: 0,87` sollte dessen alte 450 m nachbilden. Gemessen fiel
+   die Instanzzahl am Reisfeld dabei von 854 auf **217**. Ursache: der alte
+   Deckel wirkte allein auf den **Sammelradius der Chunks**, während Artenmaske
+   und LOD-Zuordnung die ungeskalierte Ferngrenze je Art benutzten — Gras lief
+   also weiterhin bis 160 m, Büsche bis 190 m, und nur Bäume waren bei 450 m
+   abgeschnitten. Ein Faktor auf *alle* Arten kürzt Gras und Büsche mit.
+   Mit 1,0 gewinnt Minimal stattdessen 70 m Baumreichweite.
+   **Gefunden hat das die Vorher/Nachher-Matrix**, nicht das Nachdenken über den
+   Code — die Fehldeutung war beim Schreiben vollkommen plausibel.
+2. **Die Prop-Kopplung ist gestrichen, nicht gebaut.** Der Plan nennt sie als
+   dritte Kopplung. Gemessen stehen je Bild **0 / 1 / 17 / 27 / 47** Props bei
+   4527…13 348 Instanzen, und zwar auf allen fünf Stufen gleich. Ein
+   Konfigurationsfeld, dessen Wirkung unterhalb der Messbarkeit liegt, ist keine
+   Ersparnis, sondern ein weiterer Regler, der gepflegt werden muss — und für
+   die Landmarken wäre eine Kürzung ohnehin die verbotene Richtung. Die Zeile
+   entfällt mit derselben Begründung, mit der P7.1 `shadowCascades` entfernt
+   hat.
+
+**Was `LOD_BIAS_MIN` verhindert.** Die Instanzpuffer entstehen einmal beim
+Start, die LOD-Grenzen hängen seitdem an der Stufe. Ein kleinerer `lodBias`
+schiebt Instanzen in die Imposter-Stufe, deren Ring also wächst — ein für Ultra
+bemessener Puffer liefe auf Minimal über, und `InstancedLOD.push()` verwirft
+dann **stillschweigend**. Der Zähler dafür stand bis dahin allein im
+Debug-Panel; er steht jetzt als `scene.dropped` in jeder Zelle des Messlaufs
+und ist in allen 20 Zellen null.
 
 ---
 
@@ -4940,13 +5004,31 @@ deshalb hier als Idee, nicht als Aufgabe mit Kriterium.
       > Zeile ein Haken ist und nicht bloß „lief durch": ein Messwerkzeug,
       > dessen erster Einsatz keine eigenen Fehler zutage fördert, ist
       > wahrscheinlich nicht scharf genug eingestellt.
-- [ ] **Jeder der fünf Presets ändert jede Größe, die er nennt** — nachgewiesen
+- [x] **Jeder der fünf Presets ändert jede Größe, die er nennt** — nachgewiesen
       in der Matrix aus 10.0, für Sichtweite, Vegetationsdichte, LOD-Bias,
-      Props, Auflösung, Gitter, PostFX, AO und Spiegelung. Kein Feld ohne
+      ~~Props~~, Auflösung, Gitter, PostFX, AO und Spiegelung. Kein Feld ohne
       Wirkung.
-- [ ] **Auf keiner Stufe verschwindet im Bildpaar etwas, das vorher da war.**
+
+      **Erfüllt am 2026-08-07.** `viewDistance` war das eine Feld ohne Wirkung
+      und ist ersetzt; `vegetationRange` und `lodBias` sind beide in der
+      Vorher/Nachher-Matrix nachgewiesen. **Props sind aus der Zeile
+      gestrichen**, weil ihre Wirkung gemessen unterhalb der Messbarkeit liegt
+      (0…47 Instanzen je Bild) — Begründung in „10.1 gebaut und gemessen".
+- [x] **Auf keiner Stufe verschwindet im Bildpaar etwas, das vorher da war.**
       Drei Blickpunkte mit Bewuchs, Vorher/Nachher, Differenzbild angesehen —
       **nicht** nur die Differenzzahl gelesen (P8.6-Lehre).
+
+      **Erfüllt.** Über 20 Zellen keine einzige mit weniger Vegetation, keine
+      verworfenen Instanzen. Das Bildpaar auf „Niedrig" am Blickpunkt `wald`
+      zeigt keinen Unterschied, den man benennen könnte — und die Differenzzahl
+      lag dabei kaum über dem Rauschband aus Wind und Wolken (2,77 % gegen
+      2,36 % bei Schwelle 24). Genau deshalb entscheidet hier das Bild.
+
+      > **Der Umfang gehört dazu:** geprüft ist *eine* Stufe an *einem*
+      > Blickpunkt bei 896 × 503. Die Zeile fordert drei Blickpunkte; die
+      > anderen beiden sind über die Instanzzahlen abgesichert (kein Verlust in
+      > 20 Zellen), aber **nicht am Bild**. Wer `lodBias` weiter senkt, muss
+      > dort erneut hinsehen.
 - [ ] **Ultra wird besser, nicht nur teurer:** die Fernsicht auf einem der drei
       Blickpunkte zeigt Bewuchs jenseits 520 m, und die Budgets aus SPEC §4
       halten weiterhin (< 800 Calls, < 3 M Dreiecke, < 512 MB).

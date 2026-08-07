@@ -5,8 +5,12 @@ import {
   QUALITY_LEVELS,
   type QualityLevel,
 } from '@/config/quality.config';
+import { SPECIES } from '@/config/vegetation.config';
 import type { EngineContext, System } from '@/core/System';
 import { estimateDevice, type DeviceEstimate } from './deviceTier';
+
+/** Größte Ferngrenze aller Arten — Bezugsgröße von `vegetationRange`. */
+const SPECIES_FAR_MAX = Math.max(...SPECIES.map((s) => s.lodDistances[2]));
 
 /**
  * Die Qualitätsstufe — PLAN.md P7 / 7.1.
@@ -302,7 +306,14 @@ export class QualitySystem implements System {
     this.#readouts.wirkung =
       `Auflösung ${(q.renderScale * 100).toFixed(0)} % · Gitter ${q.terrainGridVertices}² · ` +
       `AO ${q.ao} · PostFX ${q.postFx} · ` +
-      `Spiegelung ${q.reflections ? 'an' : 'aus'} · Sicht ${q.viewDistance} m · ` +
+      `Spiegelung ${q.reflections ? 'an' : 'aus'} · ` +
+      // **In Metern, nicht als Faktor.** Die Zahl soll im Panel gegen das
+      // gehalten werden können, was im Bild steht; „Reichweite 0,87" beantwortet
+      // die Frage nicht, die man vor dem Bild hat. Bezugsgröße ist die größte
+      // Ferngrenze aller Arten — ausgerechnet und nicht abgeschrieben, sonst
+      // steht hier irgendwann eine Zahl, die `SPECIES` nicht mehr kennt.
+      `Sicht ${(SPECIES_FAR_MAX * q.vegetationRange).toFixed(0)} m · ` +
+      `LOD-Bias ${q.lodBias.toFixed(2)} · ` +
       `Vegetation ${(q.vegetationDensity * 100).toFixed(0)} %`;
     this.#context?.debug?.refresh();
   }
