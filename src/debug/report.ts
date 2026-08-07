@@ -180,6 +180,14 @@ export interface ReportCell {
     readonly instances: number;
     readonly drawableMeshes: number;
     readonly byGroup: Readonly<Record<string, number>>;
+    /**
+     * Instanzen ohne Pufferplatz — **muss null sein**.
+     *
+     * `null`, wenn die Anwendung den Zähler nicht liefert. Siehe
+     * `ScatterSystem.dropped`: ein Überlauf verwirft stillschweigend und sieht
+     * im Bild aus wie eine Lichtung, die es nicht gibt.
+     */
+    readonly dropped: number | null;
   };
   readonly drawingBuffer: { readonly width: number; readonly height: number };
   readonly textureMemoryMb: number;
@@ -295,6 +303,8 @@ export interface ReportDeps {
    * fertige. Siehe `settle()`.
    */
   readonly streaming?: () => boolean;
+  /** Verworfene Instanzen der Streuung — siehe `ScatterSystem.dropped`. */
+  readonly dropped?: () => number;
 }
 
 class HiddenWindowError extends Error {
@@ -573,7 +583,7 @@ async function measureCell(
 
   const gl = deps.renderer.getContext();
   const drawingBuffer = { width: gl.drawingBufferWidth, height: gl.drawingBufferHeight };
-  const scene = countScene(deps.scene);
+  const scene = { ...countScene(deps.scene), dropped: deps.dropped?.() ?? null };
   const textureMemoryMb =
     estimateTextureMemory(deps.scene, deps.extraTextures?.() ?? []) / (1024 * 1024);
 
@@ -715,6 +725,18 @@ export async function runReport(deps: ReportDeps, options: ReportOptions = {}): 
                 'gesetzt werden. Ungeklärt, und deshalb hier benannt statt weggemittelt.',
             );
           }
+        }
+
+        // Ein Überlauf ist kein Messfehler, sondern ein Bildfehler: die
+        // verworfenen Instanzen fehlen im Bild, und zwar bevorzugt dort, wo es
+        // dicht ist. Die Zahl gehört deshalb nach ganz oben in die Warnliste.
+        if (cell.scene.dropped !== null && cell.scene.dropped > 0) {
+          warnings.push(
+            `${level} @ ${viewpoint}: ${cell.scene.dropped} Instanzen ohne Pufferplatz ` +
+              'VERWORFEN. Die Puffer werden einmal beim Start bemessen, die LOD-Grenzen hängen ' +
+              'an der Stufe — siehe `ScatterSystem.#capacity` und `LOD_BIAS_MIN`. Im Bild fehlt ' +
+              'Bewuchs, den es geben müsste.',
+          );
         }
 
         // Die Instanzzahl beim Warten gegen die beim Zählen. Laufen sie

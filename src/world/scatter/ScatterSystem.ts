@@ -8,8 +8,20 @@ import {
   type PerspectiveCamera,
 } from 'three';
 
-import { DEFAULT_QUALITY, QUALITY, type QualityLevel } from '@/config/quality.config';
-import { GROUND_AO, SCATTER, SPECIES, VEGETATION_LOOK } from '@/config/vegetation.config';
+import {
+  DEFAULT_QUALITY,
+  LOD_BIAS_MIN,
+  QUALITY,
+  VEGETATION_RANGE_MAX,
+  type QualityLevel,
+} from '@/config/quality.config';
+import {
+  GROUND_AO,
+  SCATTER,
+  SPECIES,
+  VEGETATION_LOOK,
+  type SpeciesSettings,
+} from '@/config/vegetation.config';
 import { WORLD } from '@/config/world.config';
 import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
@@ -316,6 +328,25 @@ export class ScatterSystem implements System {
     return this.#lastPassMisses > 0 || (this.#worker?.inFlight ?? 0) > 0;
   }
 
+  /**
+   * Instanzen, die im letzten Durchlauf **keinen Pufferplatz** bekommen haben.
+   *
+   * Muss null sein. `InstancedLOD.push()` verwirft bei vollem Puffer
+   * stillschweigend und zählt nur mit; im Bild sieht das aus wie Popping oder
+   * wie eine Lichtung, die es nicht gibt.
+   *
+   * Bis P10.1 stand die Zahl allein im Debug-Panel. Dort ist sie wertlos für
+   * genau den Fall, in dem sie gebraucht wird: die LOD-Grenzen hängen seitdem an
+   * der Stufe, die Puffergrößen aber nicht — ein zu knapp bemessener
+   * Imposter-Ring fiele erst auf, wenn jemand auf Minimal ins Panel sieht.
+   * Deshalb steht sie jetzt in jeder Zelle des Messlaufs.
+   */
+  get dropped(): number {
+    let sum = 0;
+    for (const lod of this.#lods) sum += lod.dropped;
+    return sum + (this.#decals?.dropped ?? 0);
+  }
+
   /** Ein fertig gestreuter Chunk aus dem Worker. */
   #receive(key: number, chunk: ScatterChunk): void {
     chunk.lastUsed = this.#clock;
@@ -361,15 +392,32 @@ export class ScatterSystem implements System {
    * das sieht aus wie Popping — der falsche Ort, um Speicher zu sparen. Gemessen
    * kostet die Vollauslegung über alle vier Arten rund 21 MB, je zur Hälfte
    * Zwischenpuffer und Instanzmatrizen.
+   *
+   * **Bemessen wird über alle Stufen zugleich, nicht über die eingestellte**
+   * (ab P10.1). Die Puffer entstehen einmal beim Start, die LOD-Grenzen hängen
+   * seitdem an der Stufe: ein kleinerer `lodBias` schiebt Instanzen aus den
+   * Mesh-Stufen in die Imposter-Stufe, deren Ring also **wächst**. Ein für
+   * Ultra bemessener Puffer liefe auf Minimal über — und `InstancedLOD.push()`
+   * verwirft dann stillschweigend, es zählt nur in `#dropped`. Der ungünstigste
+   * Fall ist deshalb: innere Grenzen mit dem kleinsten Bias, äußere mit der
+   * größten Reichweite.
    */
   static #capacity(distances: readonly [number, number, number], cellSize: number): number[] {
     const area = cellSize * cellSize;
     const ring = (outer: number, inner: number): number =>
       Math.ceil((Math.PI * (outer * outer - inner * inner)) / area) + 64;
+    const d1 = distances[1] * LOD_BIAS_MIN;
+    const d2 = distances[2] * VEGETATION_RANGE_MAX;
     return [
+      // Die beiden inneren Ringe bekommen ihre Größe aus den **ungeschrumpften**
+      // Grenzen: sie sind auf hohen Stufen am größten, und die müssen auch
+      // hineinpassen.
       ring(distances[0], 0),
       ring(distances[1], distances[0]),
-      ring(distances[2], distances[1]),
+      // Der äußere aus den geschrumpften — sein Innenrand rückt nach innen,
+      // sein Außenrand nach außen, er ist also auf der niedrigsten Stufe mit der
+      // weitesten Reichweite am größten.
+      ring(d2, Math.min(d1, d2)),
     ];
   }
 
@@ -396,14 +444,15 @@ export class ScatterSystem implements System {
     this.#viewProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     this.#frustum.setFromProjectionMatrix(this.#viewProjection);
 
-    // Reichweite ist die größte Ferngrenze aller Arten. Die Sichtweite der
-    // Qualitätsstufe deckelt sie zusätzlich — auf „Niedrig" sind das 600 m und
-    // damit weniger als die 520 m der Bäume ohnehin brauchen, aber die Kopplung
-    // gehört hin, sonst hätte die Stufe auf Vegetation nur über die Dichte
-    // Einfluss.
+    // Reichweite ist die größte Ferngrenze aller Arten, skaliert mit der Stufe.
+    //
+    // **Bis P10.1 stand hier ein Deckel statt eines Faktors** — `Math.min(520,
+    // viewDistance)` — und der lag auf vier von fünf Stufen über der größten
+    // Artenreichweite. Der Kommentar behauptete dabei, 600 m seien „weniger als
+    // die 520 m der Bäume". Herleitung und Messtabelle stehen jetzt bei
+    // `QualitySettings.vegetationRange`.
     let range = 0;
-    for (const species of SPECIES) range = Math.max(range, species.lodDistances[2]);
-    range = Math.min(range, QUALITY[this.#quality].viewDistance);
+    for (const species of SPECIES) range = Math.max(range, this.#far(species));
 
     const cell = SCATTER.chunkSize;
     const centerX = Math.floor((camera.position.x + WORLD.half) / cell);
@@ -547,9 +596,10 @@ export class ScatterSystem implements System {
 
       // Quadrierte Grenzen: die Wurzel je Instanz wäre bei 60 000 Instanzen
       // 60 000 unnötige Rechnungen, und verglichen wird ohnehin nur.
-      const near = species.lodDistances[0] * species.lodDistances[0];
-      const mid = species.lodDistances[1] * species.lodDistances[1];
-      const far = species.lodDistances[2] * species.lodDistances[2];
+      const d = this.#distances(species);
+      const near = d[0] * d[0];
+      const mid = d[1] * d[1];
+      const far = d[2] * d[2];
 
       for (let i = 0; i < data.length; i += INSTANCE_STRIDE) {
         const x = data[i]!;
@@ -658,10 +708,46 @@ export class ScatterSystem implements System {
 
     let mask = 0;
     for (let s = 0; s < SPECIES.length; s++) {
-      const far = SPECIES[s]!.lodDistances[2];
+      const far = this.#far(SPECIES[s]!);
       if (distanceSq <= far * far) mask |= 1 << s;
     }
     return mask;
+  }
+
+  /**
+   * Ferngrenze einer Art auf der eingestellten Stufe.
+   *
+   * Getrennt von `#distances()`, weil sie an zwei Stellen ohne die inneren
+   * Grenzen gebraucht wird: für die Reichweite des Durchlaufs und für die
+   * Artenmaske je Chunk. Beide müssen **dieselbe** Zahl benutzen — läge die
+   * Maske über der Reichweite, würde für Chunks gestreut, die nie gezeichnet
+   * werden.
+   */
+  #far(species: SpeciesSettings): number {
+    return species.lodDistances[2] * QUALITY[this.#quality].vegetationRange;
+  }
+
+  /**
+   * Die drei LOD-Grenzen einer Art auf der eingestellten Stufe.
+   *
+   * Die beiden inneren skalieren mit `lodBias` (wann wird billiger gezeichnet),
+   * die äußere mit `vegetationRange` (wie weit wird überhaupt gezeichnet). Das
+   * sind zwei verschiedene Fragen und deshalb zwei Regler — bis P10.1 war es
+   * ein Feld, das keine von beiden beantwortet hat.
+   *
+   * Die Klemmung am Ende ist Notwehr gegen eine Kombination, die es heute nicht
+   * gibt: ein hoher `lodBias` mit einer kurzen `vegetationRange` schöbe die
+   * mittlere Grenze über die äußere, und dann bekäme die Imposter-Stufe einen
+   * Ring negativer Breite.
+   */
+  #distances(species: SpeciesSettings): [number, number, number] {
+    const q = QUALITY[this.#quality];
+    const far = species.lodDistances[2] * q.vegetationRange;
+    return [
+      Math.min(species.lodDistances[0] * q.lodBias, far),
+      Math.min(species.lodDistances[1] * q.lodBias, far),
+      far,
+    ];
   }
 
   /** Ältesten Chunk verwerfen, wenn der Cache überläuft. */
