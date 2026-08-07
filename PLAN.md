@@ -129,7 +129,16 @@ erfüllt sind. Ausnahmen werden hier dokumentiert, nicht mündlich vereinbart.
 | **P5** ✅ | Asset-Pipeline & Landmarks | Zonen mit Identität | P4 |
 | **P6** ✅ | Stadt & Reflexionen | Der Money-Shot | P2, P5 |
 | **P7** ◐ | Optimierung & Auslieferung | Läuft auf Zielhardware | alle |
-| **P8** ○ | Polish & Presets | Die Karte trägt ein Spiel | P7 |
+| **P8** ✅ | Polish & Presets | Die Karte trägt ein Spiel | P7 |
+| **P9** ○ | Die Fahrschicht | Ein Auto fährt eine Runde | P8 |
+| **P10** ○ | Stufen, Regler, Auslieferung | Die Stufen tun, was sie versprechen | P8 |
+
+> **Diese Tabelle stand bis zum 2026-08-07 auf „P7 ◐ / P8 ○"** — also zwei
+> Phasen hinter dem Rest der Datei, sechs Tage nach der P8-Abnahme. Dieselbe
+> Fehlerklasse wie der Satz „Nächste Phase: P5" in SPEC.md, der dort seit P5
+> falsch stand: **eine Kurzfassung, die beim Phasenabschluss niemand
+> mitgeführt hat.** P7 bleibt bewusst auf ◐, das ist kein Versäumnis — zwei
+> seiner Kriterien sind auf dieser Maschine nicht prüfbar, siehe dort.
 
 ---
 
@@ -4462,6 +4471,515 @@ angefangen hat, bevor P7 abgenommen war.
 
 ---
 
+# P10 — Stufen, Regler, Auslieferung ○ (Plan, nicht gebaut)
+
+> **Auch dies ist ein Plan und keine Umsetzung.** Er entsteht aus einem
+> Durchgang durch das ganze Projekt am 2026-08-07 und aus vier Entscheidungen
+> des Auftraggebers. Ohne ausdrückliche Freigabe wird davon nichts gebaut.
+>
+> **Die Vorgabe lautet ausdrücklich: nichts darf sichtbar schlechter werden.**
+> Das Ziel ist *besser und schneller zugleich*, nicht „billiger". Wo ein Hebel
+> nur tauscht, gehört der Tausch benannt — und wo er beides zugleich bringt,
+> gehört gemessen, dass er es tut.
+
+**Ziel:** Die fünf Qualitätsstufen halten, was ihre Namen versprechen; der
+Spieler kann sie einstellen; und der Startdownload kommt in die Nähe der
+15 MB aus SPEC §4.
+
+## Der Befund, aus dem dieser Plan entsteht
+
+Vier Dinge, alle am 2026-08-07 aus dem Code bzw. aus `dist/` gelesen — **nicht
+am Bild gemessen**, und genau das ist Aufgabe 10.0:
+
+**1. `viewDistance` wirkt auf vier von fünf Stufen überhaupt nicht.**
+`ScatterSystem.#beginPass` rechnet `range = min(max(species.lodDistances[2]),
+viewDistance)`. Die größte Artenreichweite ist 520 m, die Stufen bieten 2000 /
+1500 / 1000 / 600 / 450:
+
+| Stufe | `viewDistance` | tatsächliche Reichweite |
+|---|---|---|
+| Ultra | 2000 | **520** |
+| Hoch | 1500 | **520** |
+| Mittel | 1000 | **520** |
+| Niedrig | 600 | **520** |
+| Minimal | 450 | 450 |
+
+Der Kommentar an der Stelle behauptet, auf „Niedrig" seien 600 m *weniger* als
+die 520 m der Bäume. 600 ist mehr als 520 — die Kopplung greift dort nicht, und
+der Kommentar hat das seit P4 verdeckt.
+
+**2. Der kahle Ring bei 520 m steht auf jeder Stufe, auch auf Ultra.** Das
+Gelände wird bis `CAMERA.far` = 6000 m gezeichnet, die Vegetation endet bei
+520 m. Auf einer Karte, deren stärkster Hebel laut SPEC §2.1 der
+Höhenunterschied von 450 m ist — also die Fernsicht aufs Massiv — ist das die
+auffälligste Kante, die es gibt. Sie ist keine Qualitätsstufe, sondern eine
+Konstante in `vegetation.config.ts`.
+
+**3. Was „Niedrig" wirklich ändert, ist die Dichte, nicht die Distanz.**
+`vegetationDensity: 0.25` dünnt gleichmäßig über die ganze Fläche aus.
+Gleichmäßiges Ausdünnen fällt **in der Ferne zuerst auf**: nah wachsen die
+Lücken zu, ab einigen hundert Metern wird aus einem Bestand ein Streufeld. Das
+liest sich als „weniger Sichtweite" und ist Dichte. Die Beobachtung des
+Auftraggebers ist damit richtig und ihre naheliegende Erklärung falsch — genau
+der Fall, den CLAUDE.md unter „Eine Ursache benannt, ohne sie zu trennen"
+führt.
+
+**4. Props und LOD-Umschaltpunkte sind von der Stufe vollständig entkoppelt.**
+`PROP_CLASSES` trägt feste Cull-Distanzen (220 / 650 / 1600 m), `lodDistances`
+feste Umschaltpunkte (Imposter ab 180 m). Beides ist auf Minimal identisch mit
+Ultra. Für die Landmarks ist das begründet (ein Torii, das bei 600 m
+verschwindet, ist keine Landmarke) — für die 158 Streckenmarkierungen am
+Bergpass ist es keine Begründung, sondern eine fehlende Zeile.
+
+**Was daraus folgt:** die Stufen skalieren heute Auflösung, Terrain-Gitter,
+PostFX, AO, Spiegelung und Instanzdichte. Sie skalieren **nicht** Sichtweite,
+nicht LOD-Umschaltung, nicht Props. Und ein Regler, mit dem jemand Bildschärfe
+gegen Weitsicht tauschen könnte, existiert nicht.
+
+---
+
+## Aufgaben
+
+**10.0 — Der Messlauf** → `src/debug/report.ts`, Endpunkt `/__report`
+
+**Befund.** Diese Maschine rendert über ANGLE auf dem *Microsoft Basic Render
+Driver* und hat kein `EXT_disjoint_timer_query_webgl2`. Zwei P7-Kriterien sind
+deshalb seit Monaten offen, und **jede** Aussage über Bildrate oder GPU-Zeit
+wäre hier erfunden. Der Auftraggeber hat eine Maschine mit echter GPU; der
+Entwickler hat sie nicht. Das ist keine Wissenslücke, sondern eine
+Werkzeuglücke.
+
+**Fix.** Nicht raten, sondern ein Werkzeug bauen, das **anderswo** läuft und
+eine Datei hinterlässt. `japanMap.report()` fährt eine Matrix ab —
+Blickpunkte × Qualitätsstufen — und schreibt **eine JSON-Datei plus je ein
+PNG** nach `.cache/reports/`. Der Weg ist derselbe wie bei `shot()`: POST an
+den Dev-Server. Wer die GPU hat, startet `npm run dev`, tippt einen Aufruf und
+schickt den Ordner zurück.
+
+Je Zelle der Matrix erhoben:
+
+| Größe | woher | hier messbar? |
+|---|---|---|
+| Draw-Calls, Dreiecke, Programme | `renderer.info` (**kopiert**, nicht referenziert) | ja |
+| Instanzen je System, Chunks im Cache | Systeme | ja |
+| Texturspeicher | `textureMemory.ts` | ja |
+| CPU je Frame (Summe aller `update()`) | `FrameTimer` | ja |
+| rAF-Abstand: Median / 95 % / 99 % | Schleife | **nein** (Software-Rasterisierer) |
+| **GPU-ms je Frame** | `EXT_disjoint_timer_query_webgl2` | **nein** (Erweiterung fehlt) |
+
+Drei Fallen sind einzubauen, weil dieses Projekt in jede schon einmal getreten
+ist:
+
+- **`renderer.info.render` ist eine lebende Referenz** (P8.11: 909 338 statt
+  623 628 Dreiecke). Werte werden kopiert, bevor irgendetwas anderes rendert.
+- **Ein vollständiges Bild ist kein vollständiger Zustand** (P8.9). Vor jeder
+  Messung wird gewartet, bis die **Instanzzahl steht** — nicht bis
+  `probe().anteilNichtSchwarz` 1,000 meldet.
+- **Ein verdecktes Fenster liefert rAF im Sekundentakt** (P8.9, P8.3). Der Lauf
+  **verweigert** bei `document.hidden` den Dienst, statt eine Zahl zu melden.
+  Fehlt die Timer-Erweiterung, stehen die GPU-Spalten als „nicht messbar" in
+  der Datei — nicht als leer und schon gar nicht als 0.
+
+**Messung.** Der Lauf ist erst fertig, wenn er auf **dieser** Maschine
+durchläuft und die GPU-Spalten korrekt als „nicht messbar" ausweist. Das ist
+sein eigener Selbsttest: ein Messwerkzeug, das seine eigene Blindheit nicht
+meldet, ist gefährlicher als keines.
+
+> **Dies ist die Voraussetzung für 10.1 und 10.3.** Ohne Vorher-Zahlen aus
+> derselben Matrix ist jede Änderung an den Stufen ein Vorher/Nachher gegen die
+> Erinnerung.
+
+### 10.0 gebaut und gemessen — 2026-08-07
+
+`src/debug/report.ts`, `src/debug/capture.ts`, Endpunkt `/__report` in
+`vite.config.ts`, `japanMap.report()`. Typecheck und Build sauber; die Datei
+wird aus dem Produktions-Bundle wegoptimiert (geprüft: `anteilNichtSchwarz`
+kommt in `dist/assets/index-*.js` **null**mal vor), das 15-MB-Budget ist also
+nicht berührt.
+
+**Was der erste Lauf über sich selbst herausgefunden hat.** Er meldete am
+Blickpunkt `reisfeld` auf Ultra `settle.stable: true` nach 267 ms — bei
+**0 Vegetationsinstanzen**. Der Grund ist einfach und gemein: das
+Stabilitätskriterium war „Instanzzahl über acht Frames unverändert", und
+*unverändert bei null* sieht genauso aus wie *fertig*. Der Streu-Worker hatte
+noch keine einzige Antwort geliefert.
+
+Das ist dieselbe Fehlerklasse wie P8.9 („ein vollständiges Bild einer halb
+geladenen Welt"), nur eine Ebene höher: dort log das Bild, hier log der Zähler.
+Die Antwort ist beide Male dieselbe — **nicht das Ergebnis beobachten, sondern
+die Arbeit fragen.** `ScatterSystem.streaming` ist neu und wahr, solange noch
+nie ein Durchlauf vollständig durchkam, der letzte vollständige Durchlauf
+Fehlstellen antraf, oder Aufträge beim Worker offen sind. `settle()` wartet
+seitdem auf **beides**.
+
+Der Unterschied in Zahlen, derselbe Blickpunkt, dieselbe Stufe:
+
+| | Instanzen gesamt | davon Vegetation | Dauer bis „stabil" |
+|---|---|---|---|
+| nur Zähler (falsch) | 4548 | **0** | 267 ms |
+| Zähler **und** `streaming` | 13 353 | **8805** | 29,8 s |
+
+Die 8805 sind unabhängig bestätigt: dieselbe Zahl nennt die Abnahme von P8.1
+für `reisfeld`. Das Werkzeug stimmt damit an einem Punkt mit der Doku überein,
+den es nicht kannte.
+
+**Nebenbefund, und er gehört 10.1:** auf „Niedrig" sind es an derselben Stelle
+**2203** Vegetationsinstanzen. 2203 / 8805 = **0,2502** gegen die eingestellten
+`vegetationDensity: 0.25`. Die Dichte wirkt also auf drei Stellen genau — die
+Stufe tut hier genau das, was sie verspricht. Das ist das Vorher-Bild, gegen
+das 10.1 antritt.
+
+**Was ausdrücklich nicht geprüft ist.** Die Betriebsart `live` ist auf dieser
+Maschine **nicht lauffähig und deshalb ungetestet** — die eingebettete Vorschau
+liefert kein `rAF` (nachgemessen: fünf angeforderte Frames kamen in 30 s nicht
+zustande). Geprüft ist allein, dass ihre Schutzabfrage greift: bei
+`document.hidden` bricht sie mit `HiddenWindowError` ab, statt eine Zahl aus
+einem gedrosselten Tab zu melden. Der erste echte `live`-Lauf findet auf der
+GPU-Maschine statt, und **er ist zugleich der erste Test dieses Pfades** — das
+gehört dazugesagt, statt es als erledigt zu führen.
+
+Ebenfalls unbestätigt bleibt jede GPU-Zahl: `gpuTiming.available` steht hier auf
+`false` mit der Begründung „EXT_disjoint_timer_query_webgl2 fehlt". Dass der
+Lauf das korrekt meldet, ist der bestandene Selbsttest — dass er auf einer
+Maschine mit Timer *richtige* Werte liefert, ist es nicht.
+
+### Der erste `live`-Lauf — 2026-08-07, RX 7900 XTX
+
+Vollständige Matrix, 25 Zellen, `EXT_disjoint_timer_query_webgl2` vorhanden.
+Damit ist der `live`-Pfad einmal gelaufen und die zweite Hälfte des
+Akzeptanzkriteriums eingelöst.
+
+**Die Maschine ist die, vor der SPEC §4 ausdrücklich warnt.**
+`machine.renderer` meldet eine **RX 7900 XTX** — wörtlich die Karte, zu der dort
+steht: „auf der läuft praktisch alles flüssig. Sie ist als Maßstab unbrauchbar."
+Jede Zelle hält 16,7 ms / 60 FPS, die teuerste GPU-Zeit liegt bei 4,67 ms gegen
+ein 16,6-ms-Budget.
+
+> **Daraus folgt ausdrücklich *nicht*, dass Kopfraum für die Zielhardware da
+> ist.** Genau diese Schlussfolgerung ist hier beim ersten Lesen gezogen und
+> danach verworfen worden. Belastbar sind zwei Dinge: das **Verhältnis der
+> Stufen untereinander** und, künftig, der **prozentuale Aufschlag** eines
+> Eingriffs. Absolutwerte gegen SPEC §4 gehören auf eine GTX 1660 und nirgends
+> sonst.
+
+**Die Stufenleiter in GPU-Zeit**, Median, ohne die zwei verdorbenen Zellen:
+
+| Blickpunkt | Ultra | Hoch | Mittel | Niedrig | Minimal |
+|---|---|---|---|---|---|
+| start | 2,413 | 2,174 | 1,446 | 0,836 | 0,493 |
+| reisfeld | 3,816 | 3,265 | 2,351 | 1,355 | 0,767 |
+| pass | 4,669 | 4,217 | ✗ | 1,698 | 0,953 |
+| kueste | 2,103 | 1,760 | 1,267 | 0,685 | 0,353 |
+| stadt-neon | 3,280 | 2,317 | ✗ | 0,790 | 0,432 |
+
+Ersparnis je Sprosse (Mittel über die sauberen Zellen): Ultra→Hoch **16 %**,
+Hoch→Mittel **30 %**, Mittel→Niedrig **43 %**, Niedrig→Minimal **45 %**.
+Ultra→Minimal insgesamt Faktor **5 bis 7,6**.
+
+**Ultra gegen Hoch ist die schwächste Sprosse der Leiter** — 16 % für ein
+sichtbar schlechteres Bild. Das deckt sich mit dem, was in
+`quality.config.ts` bei `high.terrainGridVertices` schon als Vermutung stand;
+jetzt steht eine Zahl daneben. Ein Kandidat für 10.1.
+
+**Vegetation je Stufe**, aus `scene.byGroup` — die Spalte „Instanzen" der
+Konsolentabelle taugt dafür **nicht**, weil rund 4500 konstante
+Straßeninstanzen darin stecken:
+
+| Blickpunkt | Ultra | Hoch | Mittel | Niedrig | Minimal |
+|---|---|---|---|---|---|
+| reisfeld | 8804 | 6058 | 3874 | 2201 | 856 |
+| stadt-neon | 1363 | 975 | 613 | 320 | 98 |
+| pass | 171 | 122 | ✗ | 51 | 16 |
+| start | 67 | 49 | 36 | 22 | 9 |
+| kueste | **0** | **0** | **0** | **0** | **0** |
+
+Am Reisfeld sind das 1,000 / 0,688 / 0,440 / 0,250 / 0,097 gegen die
+eingestellten 1 / 0,7 / 0,45 / 0,25 / 0,1. **Der eine Regler, den die Stufen
+heute wirklich haben, arbeitet auf drei Stellen genau.**
+
+**Vier von fünf Blickpunkten sind für die Stufenfrage blind** — und das war eine
+Fehlannahme dieses Plans. Oben stand „`start`, `reisfeld` und `pass` tragen den
+Bewuchs (8805 Instanzen am Reisfeld)". Gemessen tragen `pass` 171 und `start`
+67; `kueste` liegt im Sandkanal und hat auf **allen** Stufen exakt null. Der
+Grund ist Geometrie, nicht Bewuchs: `start` steht auf 330 m, `pass` auf 420 m,
+und die Streuung reicht 520 m weit — aus der Luft liegt fast alles davon
+außerhalb.
+
+Daraufhin sind zwei Blickpunkte auf Augenhöhe angelegt worden, gefunden über
+eine Auswertung der Instanzmatrizen statt über eine Vermutung (dichteste Stelle:
+391 Instanzen je 64-m-Zelle um (768, −730), Boden y ≈ 132…136). Gemessen im
+`driven`-Lauf am selben Tag:
+
+| Blickpunkt | Ultra | Niedrig | Verhältnis | Dreiecke (Ultra) |
+|---|---|---|---|---|
+| **wald** | **38 948** | 9860 | 0,253 | **681 120** |
+| **wald-fern** | 11 068 | 2797 | 0,253 | 378 124 |
+
+`wald` trägt damit das 4,4-fache des Reisfelds und ist mit 681 120 Dreiecken
+zugleich schwerer als jede Zelle des `live`-Laufs (dort höchstens 580 188).
+`wald-fern` ist der Blickpunkt, an dem der **520-m-Ring im Bild steht**: vorn
+bewaldete Hänge, dahinter ein vollständig kahler Kamm. Er ist die
+Vorher-Aufnahme für 10.3.
+
+**Drei Fehler im Werkzeug, die dieser Lauf aufgedeckt hat.** Alle drei sind
+behoben:
+
+1. **Die Warnung nannte zweimal die falsche Ursache.** `medium @ pass` und
+   `medium @ stadt-neon` blieben unfertig, und die Meldung lautete „die Welt
+   war nicht fertig geladen". Nachgerechnet aus `frames` und `ms`: 16 Frames in
+   24,8 s und 99 Frames in 114,9 s — also **1550 bzw. 1160 ms je Frame**, gegen
+   16,7 ms in jeder Messschleife desselben Laufs. Der Browser hat schlicht
+   nicht gezeichnet. `document.hidden` blieb dabei **falsch**; die Schutzabfrage
+   greift also nicht bei einem verdeckten, sondern nur bei einem
+   *unsichtbaren* Fenster. `SettleResult.frameIntervalMs` ist neu, und die
+   Warnung unterscheidet jetzt drei Ursachen statt eine zu behaupten.
+   Die Zahl stand die ganze Zeit in der Datei — nur ungeteilt.
+2. **Zähler und Bild gehörten in einer Zelle nicht zusammen.** `medium @ pass`
+   meldete `settle.instances: 8409` und `scene.instances: 4580`. Beim
+   Kamerasprung vom Reisfeld zum Pass räumen sich die LOD-Puffer über einen
+   ganzen Durchlauf, und bei 16 Frames war das mittendrin. Der Lauf warnt jetzt,
+   wenn beide Zahlen um mehr als 5 % auseinanderliegen.
+3. **Die Bildprüfung schlug falsch an.** `anteilNichtSchwarz` stand auf einer
+   Schwelle von 0,999; am Blickpunkt `wald` kommen 0,993 heraus, weil auf
+   Augenhöhe im Gegenlicht 0,7 % der Pixel unter Luma 2 fallen. Das Bild war
+   vollständig — nachgesehen. Der Fehler, gegen den die Zeile wacht, ergab in
+   P8.2 **0,800**; die Schwelle liegt jetzt bei 0,95 und trennt beide Fälle mit
+   weitem Abstand.
+
+Dazu zwei Beobachtungen ohne Handlungsbedarf, aber mit Folgen für später:
+
+- **Der Wechsel auf „Minimal" übersetzt 17 zusätzliche Shader.** `programs`
+  steht auf 31/32/32/33 und springt auf Minimal auf **50**. Das ist die Folge
+  des anderen Renderpfads (der Composer wird umgangen, also andere
+  Ausgabevarianten) und genau der Ruckler, den P7.4 für den normalen Pfad
+  beseitigt hat. **Für 10.2 relevant:** ein Stufenregler im Spiel wird beim
+  Sprung auf Minimal hängen.
+- **`textureMemoryMb` steht auf allen 25 Zellen auf 307,78**, während
+  `renderer.info.memory.textures` von 62 auf 33 fällt. Der Schätzer läuft über
+  die Szene und zählt alles Erreichbare, unabhängig davon, was gerade auf der
+  GPU liegt. Das ist so dokumentiert („Schätzung"), heißt aber: **die Stufen
+  senken den Texturspeicher messbar, und diese Zahl zeigt es nicht.**
+- `lines: 1056` in jeder Zelle sind der `SceneScaffold` aus dem Debug-Aufbau.
+  Nur im Dev-Build, über alle Zellen konstant, für den Vergleich also
+  unschädlich.
+
+---
+
+**10.1 — Die Stufen an das koppeln, was sie versprechen**
+
+**Befund.** Siehe oben, Punkte 1 und 4.
+
+**Fix.** Drei Kopplungen, jede mit einer eigenen Begründung — und die zweite
+ist der Posten, an dem „besser *und* schneller" hängt:
+
+- **Sichtweite als Faktor auf die Artenreichweite**, nicht als Deckel darauf.
+  `range = species.lodDistances[2] · viewDistanceFactor`. Auf Ultra darf der
+  Faktor **über 1** liegen: Imposter sind der billigste Instanztyp im Projekt,
+  und die Karte ist auf Fernsicht gebaut. Was das kostet, misst 10.3.
+- **LOD-Bias je Stufe.** Der Umschaltpunkt Mesh → Imposter (heute fest 180 m)
+  wird mit einem Faktor je Stufe multipliziert. Das ist der einzige Hebel im
+  ganzen Plan, bei dem die Messung *jetzt schon* für „kostet nichts an
+  Bildqualität" spricht: P4 hat bei 180 m gemessen, dass das Mesh dort in
+  Lücken fällt und der **Imposter besser abgetastet ist** (Tabelle bei
+  `IMPOSTER.alphaTest`). Ein Baum ist dort 19 Pixel hoch. Früher umzuschalten
+  spart Dreiecke, ohne Silhouette zu verlieren — **wenn** die Messung das an
+  einem Bild bestätigt. Sie muss es bestätigen, sonst fällt der Hebel weg.
+- **Props folgen der Stufe, mit einem Boden.** Klasse `klein` skaliert voll
+  mit, `gross` bekommt eine Untergrenze (Vorschlag: nie unter 1200 m), weil
+  Landmarken ihre Funktion sonst verlieren. Der Boden ist eine
+  Art-Direction-Entscheidung und steht deshalb als Zahl in der Konfiguration,
+  nicht als Formel.
+
+**Messung.** Dieselbe Matrix wie 10.0, vorher/nachher, plus ein Bildpaar je
+Stufe an den drei Blickpunkten, an denen Bewuchs überhaupt vorkommt (`start`,
+`reisfeld`, `pass` — **nicht** `stadt-neon`: dort stehen auf Ultra 1493
+Instanzen, die Stufen trennen sich an dieser Stelle nachweislich fast gar
+nicht, siehe P8.1). Kriterium: die Dreieckszahl je Stufe darf nicht steigen,
+und im Bildpaar darf auf **keiner** Stufe etwas verschwinden, das vorher da
+war.
+
+---
+
+**10.2 — Presets plus Einzelregler** → `src/ui/SettingsPanel.ts`
+
+**Befund.** Im ausgelieferten Build gibt es **keine Benutzeroberfläche**. Das
+Debug-Panel (`main.ts:324`) und `window.japanMap` (`main.ts:390`) hängen beide
+an `import.meta.env.DEV`. Ein Besucher der gebauten Seite bekommt einen
+Ladebildschirm und danach einen Canvas — ohne Steuerungshinweis, ohne
+Einstellungen, ohne Pause, ohne Orientierung. Die Qualitätsstufe wird beim
+ersten Start einmal automatisch bestimmt, in `localStorage` geschrieben und ist
+danach **nicht mehr änderbar**.
+
+Dazu eine Eigenschaft der Einstufung, die im Betrieb weh tut: sie stuft **nur
+herunter, nie herauf**, und speichert das dauerhaft. Wer einmal unter Fremdlast
+startet, sitzt für immer auf Minimal — 640 × 360, ohne PostFX. Die Absicherung
+gegen ein verdecktes Fenster (`implausibleMs`) fängt das nicht.
+
+**Fix.** Ein Einstellungsfenster im Produktionsbuild, erreichbar über Escape,
+das zugleich der Pausezustand ist (Pointer-Lock ist ohnehin verlassen). Aufbau:
+
+- **Oben die fünf Presets.** Ein Klick setzt alle Werte darunter.
+- **Darunter die Einzelregler**, aufklappbar: Sichtweite, Vegetationsdichte,
+  LOD-Bias, Auflösung, PostFX, AO, Spiegelung, Terrain-Gitter. Wer einen
+  anfasst, bekommt das Preset als „Angepasst" markiert — kein stilles Preset,
+  das nicht mehr stimmt.
+- **Steuerungshinweis** und die benannten Blickpunkte aus `viewpoints.ts` als
+  Sprungliste. Die gibt es längst; sie sind nur bisher der Konsole vorbehalten.
+- **Ein Knopf „Neu einstufen".** `QualitySystem.reclassify()` existiert bereits
+  und hängt heute nur am Debug-Panel.
+
+**Zwei Grenzen sind Pflicht, keine Politur.** `terrainGridVertices` darf nur
+Werte aus `GRID_VERTICES_ALLOWED` annehmen — P4 hat den freien Fall mit **207
+Löchern gegen 1** gemessen. Und `japanMap.quality()` wirft seit P8.9 bei einem
+ungültigen Namen, statt still eine kaputte Stufe zu setzen; der Regler muss
+dieselbe Strenge haben.
+
+**Messung.** Jeder Regler wird einzeln umgelegt und im Messlauf aus 10.0
+nachgewiesen: er ändert die Zahl, die er ändern soll, und **keine andere**. Ein
+Regler ohne nachgewiesene Wirkung ist eine Zusage ohne Deckung — dieselbe
+Formulierung wie bei `shadowCascades` in P7.1, das genau deshalb entfallen ist.
+
+---
+
+**10.3 — Der 520-m-Ring: erst messen, dann entscheiden**
+
+**Befund.** Punkt 2 oben. Wie teuer die Kante zu verschieben ist, ist
+**unbekannt** — Imposter sind billig, aber 520 → 1500 m vervierfacht die
+Fläche und damit grob die Chunk- und Instanzzahl.
+
+**Fix — ausdrücklich noch keiner.** Diese Aufgabe misst zuerst und entscheidet
+danach. Drei Kandidaten stehen zur Wahl und werden gegeneinander gemessen,
+nicht gegeneinander argumentiert:
+
+| Kandidat | was er kostet | was er bringt |
+|---|---|---|
+| A: Reichweite hoch, nur Imposter jenseits 520 m | Instanzen, Füllrate, Chunk-Erzeugung | echte Fernsicht mit Bewuchs |
+| B: Kante im Dunst verstecken | fast nichts | nimmt der Karte die Fernsicht aufs Massiv — der stärkste Hebel laut SPEC §2.1 |
+| C: eine grobe Fernstufe (Streuung mit großer Zellgröße jenseits 520 m) | wenige Instanzen | Silhouette statt Einzelbäume |
+
+**Messung.** Für jeden Kandidaten: Instanzzahl, Draw-Calls, Dreiecke,
+Chunk-Erzeugungszeit **im kalten Zustand** (P4-Lehre: warm 0,70 ms gegen kalt
+12,7 ms) — und ein Bild vom selben Blickpunkt. Was gewinnt, steht danach mit
+den Zahlen daneben in „Offene Entscheidungen", nicht mit einer Begründung.
+
+> **B ist der Kandidat, vor dem dieses Projekt sich selbst warnt.** Nebel über
+> ein Problem zu legen ist der „erstbeste plausible Regler" aus dem
+> Stadt-Helligkeits-Befund. Er steht trotzdem in der Tabelle, weil eine
+> Messreihe ohne den billigen Kandidaten unvollständig ist.
+
+---
+
+**10.4 — Der Startdownload: 43,5 MB → 15 MB**
+
+**Befund, frisch gemessen am 2026-08-07** aus `dist/` (Brotli, wo vorhanden;
+Sourcemaps nicht mitgezählt, weil der Browser sie nicht lädt):
+
+**53 Dateien, 43,48 MB.** Die Doku aus P7 nannte 45 Dateien und 42,68 MB — die
+Zahl ist nicht falsch gewesen, sie stammt aus einem Lauf vor den 175 Props aus
+P8.9.
+
+Die Hälfte steckt in **fünf** Dateien:
+
+| Datei | über die Leitung | Hebel |
+|---|---|---|
+| `industrial_sunset_02_puresky_4k.hdr` | 7,01 MB (br) | auf 2k: **−4,8 MB** (P7 nennt es, braucht einen RGBE-Resampler) |
+| `normal.png` | 5,49 MB (roh) | **streichen** — Normale aus `height.r16` im Shader rechnen: −5,49 MB, exakt |
+| `nor_gl.jpg` (Asphalt 2k) | 4,71 MB (roh) | KTX2/UASTC |
+| `height.r16` | 4,40 MB (br) | offen — 16-bit-PNG statt roh+Brotli erst messen |
+| `rooftop_night_2k.hdr` | 4,13 MB (br) | bleibt: 2k ist bereits die kleine Fassung, und dieses HDRI trägt den Look |
+
+Dazu rund **9,1 MB Normalmaps als JPEG** (4,71 + 1,33 + 1,09 + 1,09 + 0,86).
+Das ist nicht nur groß: **JPEG-Chromasubsampling zerstört Normalen.** Sie
+liegen im falschen Format, unabhängig von der Größe.
+
+**Fix.** In dieser Reihenfolge, weil die ersten beiden gemessen sind und der
+dritte einen Blocker hat:
+
+1. **`normal.png` streichen** (−5,49 MB). Die Normale aus dem Höhenfeld zu
+   rechnen ist im Shader drei Abtastungen; das Feld liegt ohnehin als Textur
+   dort. Risiko: die Normale ist danach an die Texelauflösung gebunden statt an
+   eine eigene Karte — muss am Bild geprüft werden, nicht nur an der Zahl.
+2. **Himmel-HDRI auf 2k** (−4,8 MB). Braucht einen RGBE-Resampler in
+   `tools/`; RGBE lässt sich nicht naiv mitteln, der Exponent muss vorher raus.
+3. **KTX2 für alle Texturen** (P7 schätzt −15 MB, **ungemessen**). Der Blocker
+   seit P5 ist immer derselbe: `toktx` ist ein natives Programm und hier nicht
+   installiert. **Der Blocker ist zu prüfen, nicht zu wiederholen** — es gibt
+   WASM-/JS-Encoder für Basis Universal im npm-Ökosystem. Erste Aufgabe ist
+   deshalb nicht „KTX2 einbauen", sondern „einen Encoder finden, der ohne
+   Systeminstallation läuft", und wenn es keinen gibt, steht **das** hier als
+   Ergebnis.
+
+Bleiben rechnerisch rund **18 MB gegen 15**, mit einer geschätzten Zeile darin.
+Die 15 MB sind mit diesen drei Hebeln **wahrscheinlich nicht erreichbar**, und
+das gehört vorher gesagt statt hinterher entschuldigt.
+
+**Der vierte Hebel ist keiner an den Bytes.** Der Ladebildschirm wartet heute
+auf **alle** Systeme, bevor das erste Bild steht. Terrain und Himmel allein
+sind ein Bild; Vegetation, Props und Stadt könnten danach hereinströmen. Das
+senkt die **Zeit bis zum ersten Bild** auch ohne ein einziges eingespartes
+Byte — und das ist die Größe, die SPEC §4 eigentlich meint („erster Frame nach
+< 5 s"). Es ist zugleich der Hebel mit dem größten Umbaurisiko und steht
+deshalb hier als Idee, nicht als Aufgabe mit Kriterium.
+
+---
+
+## Akzeptanzkriterien
+
+- [x] **Der Messlauf läuft auf beiden Maschinen** und weist auf dieser die
+      GPU-Spalten als „nicht messbar" aus, statt sie leer oder null zu melden.
+
+      **Erfüllt am 2026-08-07.** Auf der Entwicklungsmaschine läuft er in der
+      Betriebsart `driven` durch und meldet `gpuTiming.available: false` mit
+      Begründung; auf der GPU-Maschine (RX 7900 XTX) in `live` über alle 25
+      Zellen mit vorhandenem Timer. Beide Berichte liegen vor.
+
+      > **Der Lauf hat dabei drei Fehler in sich selbst gefunden** — eine
+      > falsch zugeordnete Warnung, eine unbemerkte Divergenz zwischen Zähler
+      > und Bild, und eine zu scharfe Bildprüfung. Alle drei sind behoben und
+      > in „Der erste `live`-Lauf" beschrieben. Das ist der Grund, warum diese
+      > Zeile ein Haken ist und nicht bloß „lief durch": ein Messwerkzeug,
+      > dessen erster Einsatz keine eigenen Fehler zutage fördert, ist
+      > wahrscheinlich nicht scharf genug eingestellt.
+- [ ] **Jeder der fünf Presets ändert jede Größe, die er nennt** — nachgewiesen
+      in der Matrix aus 10.0, für Sichtweite, Vegetationsdichte, LOD-Bias,
+      Props, Auflösung, Gitter, PostFX, AO und Spiegelung. Kein Feld ohne
+      Wirkung.
+- [ ] **Auf keiner Stufe verschwindet im Bildpaar etwas, das vorher da war.**
+      Drei Blickpunkte mit Bewuchs, Vorher/Nachher, Differenzbild angesehen —
+      **nicht** nur die Differenzzahl gelesen (P8.6-Lehre).
+- [ ] **Ultra wird besser, nicht nur teurer:** die Fernsicht auf einem der drei
+      Blickpunkte zeigt Bewuchs jenseits 520 m, und die Budgets aus SPEC §4
+      halten weiterhin (< 800 Calls, < 3 M Dreiecke, < 512 MB).
+- [ ] **Die Einstellungen sind im gebauten Stand erreichbar** — nicht nur im
+      Dev-Server. Geprüft an `npm run preview`, nicht an `npm run dev`.
+- [ ] **Der Startdownload ist gemessen und beziffert**, mit jedem Hebel einzeln
+      nachgewiesen. Wird die 15-MB-Zeile verfehlt, steht die erreichte Zahl
+      hier — so wie P7 es vorgemacht hat.
+- [ ] **Kette weiterhin bitgleich reproduzierbar.** `npm run world` zweimal.
+
+## Risiken
+
+- **„Nichts darf schlechter werden" und „schneller" ziehen gegeneinander.** Der
+  einzige Hebel, für den heute schon eine Messung in beide Richtungen spricht,
+  ist der LOD-Bias. → Wenn die Bildprüfung ihn nicht trägt, fällt er weg, und
+  dann ist 10.1 ein reines Kopplungs-Update ohne Gewinn. Das wäre ein
+  ehrliches Ergebnis, kein Scheitern.
+- **Ein Regler lädt zum Nachregeln ein.** Acht Einzelregler sind acht
+  Gelegenheiten für die Regelschleife, vor der dieses Projekt an drei Stellen
+  warnt. → Jeder Regler bekommt seinen Nachweis in der Matrix, oder er bekommt
+  keinen Regler.
+- **Die Sichtweite anzuheben trifft die Erzeugungskosten im kalten Zustand,
+  nicht im warmen.** → In 10.3 wird kalt gemessen. Warm gegen kalt zu
+  vergleichen hat in P4 den Faktor 18 verschluckt.
+- **`normal.png` zu streichen ist eine Bildänderung, keine Größenänderung.**
+  → Vorher/Nachher am selben Blickpunkt, bevor die eingesparten 5,49 MB
+  irgendwo als Erfolg auftauchen.
+- **Der KTX2-Blocker könnte echt sein.** → Dann steht die Zahl ohne ihn hier,
+  und die 15 MB bleiben offen. Eine dritte Wiederholung von „kommt in der
+  nächsten Phase" wäre die schlechtere Antwort.
+
+---
+
 ## Offene Entscheidungen
 
 | # | Frage | Spätestens in | Vorläufige Tendenz |
@@ -4471,3 +4989,5 @@ angefangen hat, bevor P7 abgenommen war.
 | 3 | Physik-Engine | **P9.2** | Rapier (WASM, bewährt) — **weiterhin offen und ausdrücklich ungemessen.** P9.2 prüft sie gegen eine eigene Arcade-Physik an einem Prüfstand; die Tendenz steht seit P0 ohne eine einzige Zahl daneben |
 | 4 | Imposter-Baking headless oder in-app | P4 | In-app, falls headless zickt |
 | ~~5~~ | ~~Carving vor oder nach der Erosion~~ | ~~P3~~ | **Entschieden:** nachher. Die Erosionsrinnen laufen dadurch bis an die Böschung heran, statt überschrieben zu werden |
+| 6 | Der kahle Ring bei 520 m — Reichweite anheben, im Dunst verstecken oder eine grobe Fernstufe | **P10.3** | **Keine.** Ausdrücklich offen gelassen: erst messen, dann entscheiden. Die drei Kandidaten und ihre Messgrößen stehen in P10.3 |
+| 7 | KTX2 ohne Systeminstallation — gibt es einen WASM-/JS-Encoder für Basis Universal? | **P10.4** | Ungeprüft. Der Blocker „`toktx` ist hier nicht installiert" steht seit P5 unverändert in der Doku und ist **nie gegen das npm-Ökosystem geprüft** worden |

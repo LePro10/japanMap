@@ -120,6 +120,58 @@ Dazu, je nach Änderung:
 | `japanMap.quality('ultra')` | Stufe setzen. Gültig sind **nur** `ultra`, `high`, `medium`, `low`, `minimal` — ein deutscher Name wirft seit P8.9, statt still eine kaputte Stufe zu setzen |
 | `japanMap.reflectionProbe()` | Wie viel einer Spiegelung stünde im Bildschirmraum? Die Messung, die in P6/6.5 gegen SSR entschieden hat |
 | `japanMap.winding()` | Wickelrichtung aller Meshes gegen ihr Normal-Attribut. Leere Liste = in Ordnung. Hat in P8.11 zwei unsichtbare Flächen gefunden, die jede andere Zahl für gesund hielt |
+| `japanMap.report()` | **Der Messlauf (P10.0).** Blickpunkte × Qualitätsstufen, JSON nach `.cache/reports/` plus je ein PNG. Siehe unten |
+
+**Der Messlauf — und wofür er gebaut ist.**
+
+`japanMap.report()` fährt eine Matrix ab und schreibt eine Datei. Er existiert,
+weil GPU-Zeit auf dieser Maschine nicht messbar ist und die Zahlen trotzdem
+gebraucht werden: wer eine echte GPU hat, startet `npm run dev`, ruft den Lauf
+und schickt `.cache/reports/` samt `.cache/shots/` zurück.
+
+Zwei Betriebsarten, und die Unterscheidung ist die halbe Miete:
+
+| | `live` (Standard) | `driven` |
+|---|---|---|
+| Frames | normale Schleife, rAF | `loop.tick()` von Hand |
+| Bildrate / `pacing` | gemessen | **`null`** — ohne Vsync gibt es keine |
+| Draw-Calls, Dreiecke, Instanzen, Texturspeicher, Bild | gemessen | gemessen |
+| Braucht | **sichtbares** Fenster | nichts |
+
+`live` verweigert bei `document.hidden` den Dienst, statt eine Zahl aus einem
+gedrosselten Tab zu melden. **In der eingebetteten Vorschau kommt gar kein rAF**
+(nachgemessen: fünf angeforderte Frames in 30 s nicht zustande gekommen) — dort
+ist `driven` der einzige Weg, und `pacing`/`fps` stehen dann als `null` in der
+Datei. Fehlt der GPU-Timer, steht `gpuTiming.available: false` **mit
+Begründung** da; jede Einschränkung landet zusätzlich in `warnings`.
+
+```js
+japanMap.report({ mode: 'driven', levels: ['ultra','low'], viewpoints: ['reisfeld'] })
+```
+
+> **Das Warten auf die fertige Welt ist der heikle Teil.** Der Lauf wartet auf
+> zwei Dinge zugleich: unveränderte Instanzzahl **und** `ScatterSystem.streaming
+> === false`. Die erste Bedingung allein hat beim ersten Lauf am Blickpunkt
+> `reisfeld` auf Ultra **0 Vegetationsinstanzen** als „stabil" gemeldet —
+> *unverändert bei null* ist von *fertig* nicht zu unterscheiden. Mit dem
+> Signal aus dem Streusystem sind es 8805, und das ist die Zahl, die auch in
+> PLAN.md steht.
+
+> **`document.hidden` ist keine ausreichende Absicherung.** Im ersten
+> `live`-Lauf blieben zwei Zellen unfertig, und die Meldung nannte die falsche
+> Ursache. Nachgerechnet lag der Frame-Abstand während des Wartens bei **1550
+> bzw. 1160 ms** gegen 16,7 ms in derselben Messschleife — der Browser war
+> gedrosselt, `document.hidden` stand dabei auf `false`. Ein *verdecktes*
+> Fenster meldet nicht dasselbe wie ein *unsichtbares*. Der Bericht führt
+> deshalb `settle.frameIntervalMs`, und die Warnung unterscheidet Drosselung,
+> nachströmende Streuung und schwankende Puffer voneinander.
+
+**Blickpunkte für Vegetationsmessungen.** Aus der Luft ist die Streuung nicht
+messbar: bei 520 m Reichweite tragen `start` (330 m hoch) gemessen **67**
+Instanzen und `pass` (420 m) **171**, `kueste` auf allen Stufen **null**. Wer
+Vegetation misst, nimmt `wald` (38 948 auf Ultra), `reisfeld` (8804) oder
+`wald-fern` (11 068). `wald-fern` ist zugleich der Ort, an dem die 520-m-Kante
+der Streuung im Bild steht.
 
 **Erdbau-Karte erzeugen** (braucht ein Referenzfeld ohne Einschnitte):
 
