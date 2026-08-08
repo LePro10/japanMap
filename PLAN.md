@@ -5060,11 +5060,34 @@ dritte einen Blocker hat:
    `tools/`; RGBE lässt sich nicht naiv mitteln, der Exponent muss vorher raus.
 3. **KTX2 für alle Texturen** (P7 schätzt −15 MB, **ungemessen**). Der Blocker
    seit P5 ist immer derselbe: `toktx` ist ein natives Programm und hier nicht
-   installiert. **Der Blocker ist zu prüfen, nicht zu wiederholen** — es gibt
-   WASM-/JS-Encoder für Basis Universal im npm-Ökosystem. Erste Aufgabe ist
-   deshalb nicht „KTX2 einbauen", sondern „einen Encoder finden, der ohne
-   Systeminstallation läuft", und wenn es keinen gibt, steht **das** hier als
-   Ergebnis.
+   installiert. **Der Blocker ist zu prüfen, nicht zu wiederholen.**
+
+   > **Am 2026-08-08 zum ersten Mal geprüft — und er ist so nicht haltbar.**
+   > Der Satz „der Basis-Encoder liegt nicht als Bibliothek vor, sondern als
+   > externes Programm" steht seit P5 in der Doku und ist **nie gegen die
+   > Paketquelle geprüft** worden. Abfrage der npm-Registry:
+   >
+   > | Paket | Version | Art |
+   > |---|---|---|
+   > | `ktx2-encoder` | 0.6.0 | „KTX2 encoder for browser applications", hängt an `ktx-parse` — also WASM im Paket |
+   > | `basis_universal` | 1.16.4-1 | „runs the basis_universal executable" — Hülle um eine Binärdatei |
+   > | `ktx-parse` | 1.1.0 | nur Container lesen/schreiben, **kein** Encoder |
+   >
+   > `ktx2-encoder` ist der aussichtsreiche Kandidat: er bringt den Encoder als
+   > WASM mit und braucht keine Systeminstallation. `basis_universal` löst den
+   > Blocker vermutlich auch, holt sich dafür aber eine ausführbare Datei — das
+   > ist eine Entscheidung, die der Auftraggeber trifft und nicht ein
+   > Nebeneffekt eines `npm install`.
+   >
+   > **Was damit gemessen ist:** dass es Kandidaten gibt. **Was nicht:** ob
+   > `ktx2-encoder` außerhalb eines Browsers läuft, ob er UASTC für Normalmaps
+   > kann, und was er tatsächlich einspart. Die −15 MB bleiben eine Schätzung
+   > und sind weiter als solche markiert.
+
+   Erste Aufgabe bleibt deshalb nicht „KTX2 einbauen", sondern `ktx2-encoder`
+   an **einer** Textur zu erproben — der 4,71-MB-`nor_gl` des Asphalts ist der
+   richtige Prüfstein, weil er zugleich der größte Posten und als JPEG ohnehin
+   im falschen Format ist.
 
 Bleiben rechnerisch rund **18 MB gegen 15**, mit einer geschätzten Zeile darin.
 Die 15 MB sind mit diesen drei Hebeln **wahrscheinlich nicht erreichbar**, und
