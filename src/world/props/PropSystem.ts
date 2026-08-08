@@ -26,6 +26,8 @@ import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
 import { PropMaterial } from '../materials/PropMaterial';
 import type { TerrainSampler } from '../TerrainSampler';
+import { TERRAIN_ASSETS } from '../terrainAssets';
+import type { RiverFile } from '../water/riverGeometry';
 import { createLandmarkMeshes, type LandmarkId } from './landmarkMeshes';
 import { PropClearance } from './PropClearance';
 import { modelUrl, PROP_ASSETS, type ModelManifest } from './propAssets';
@@ -189,7 +191,10 @@ export class PropSystem implements System {
       const radius = PROP_CLEARANCE[placement.id];
       if (radius) clearance.add(placement.x, placement.z, radius * placement.scale);
     }
-    this.#readouts.freiflaechen = `${clearance.count} Kreise`;
+    const props = clearance.count;
+    await this.#addRiverClearance(context, clearance);
+    this.#readouts.freiflaechen =
+      `${clearance.count} Kreise (${props} Props, ${clearance.count - props} Fluss)`;
     context.bus.emit('props:ready', { clearance });
 
     context.scene.add(group);
@@ -209,6 +214,64 @@ export class PropSystem implements System {
         file.seed,
       );
       this.#editor.registerDebug(context.debug);
+    }
+  }
+
+  /**
+   * Den Flusslauf als Freifläche eintragen — gefunden am 2026-08-08.
+   *
+   * **Im Bild standen Bäume im Wasser.** Der Blickpunkt an der oberen
+   * Wasserfallstufe zeigt Kiefern und Laubbäume, deren Stamm mitten im
+   * Flussband steht. Nachgesehen kennt `scatterChunk` genau zwei Ausschlüsse:
+   * das Straßennetz (`roadClearance`, P4) und die Freihaltekreise der Props
+   * (`PropClearance`, P5). Der Fluss ist in **P8.6** dazugekommen — die
+   * Freihaltung nicht. Niemand hat danach gefragt.
+   *
+   * Das ist wörtlich dieselbe Fehlerklasse wie „Bäume wuchsen durch die
+   * Tempelhalle" aus P5 und „Wald mitten im Wasser" bei den Reisfeldern aus P4:
+   * ein neues Stück Welt entsteht, und der Filter, der es freihalten müsste,
+   * erfährt nichts davon.
+   *
+   * **Warum hier und nicht in einem eigenen System.** Ein Fluss ist kein Prop,
+   * aber `PropClearance` ist auch kein Prop-Register — es ist die Liste der
+   * Flächen, auf denen nicht gestreut wird, samt Raster, Worker-Übertragung und
+   * Cache-Verwerfung. Ein zweiter Mechanismus daneben wäre eine zweite Antwort
+   * auf dieselbe Frage.
+   *
+   * **Kein Sicherheitsabstand.** Der Radius ist genau die halbe Flussbreite
+   * plus die halbe Schrittweite (damit die Kette lückenlos ist). Ein Zuschlag
+   * darüber hinaus räumte einen kahlen Streifen am Ufer frei, und der sähe
+   * genauso gemacht aus wie die Bäume im Wasser — nur andersherum. Gras darf
+   * bis an die Kante.
+   */
+  async #addRiverClearance(context: EngineContext, clearance: PropClearance): Promise<void> {
+    let river: RiverFile;
+    try {
+      river = await context.resources.json<RiverFile>(TERRAIN_ASSETS.river);
+    } catch (error) {
+      // Kein Abbruch: ohne Fluss steht die Karte, nur ohne seine Freihaltung.
+      console.warn('PropSystem: river.json nicht lesbar, der Fluss hält nichts frei.', error);
+      return;
+    }
+    const line = river.centerline;
+    const widths = river.halfWidths;
+    if (!line || line.length < 6 || !widths || widths.length === 0) return;
+
+    const nodes = Math.floor(line.length / 3);
+    // Die Knoten liegen rund 2 m auseinander; jeden zu nehmen hieße 1266 Kreise
+    // mit fast vollständiger Überdeckung. Jeder dritte reicht, wenn die
+    // Schrittweite in den Radius eingeht.
+    const stride = 3;
+    let step = 0;
+    for (let i = stride; i < nodes; i += stride) {
+      const dx = line[i * 3]! - line[(i - stride) * 3]!;
+      const dz = line[i * 3 + 2]! - line[(i - stride) * 3 + 2]!;
+      step = Math.max(step, Math.hypot(dx, dz));
+    }
+
+    for (let i = 0; i < nodes; i += stride) {
+      const half = widths[i] ?? widths[widths.length - 1] ?? 0;
+      clearance.add(line[i * 3]!, line[i * 3 + 2]!, half + step / 2);
     }
   }
 
