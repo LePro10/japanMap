@@ -2,7 +2,9 @@
 
 Diese Datei sagt, **wie** in diesem Projekt gearbeitet wird. Was gebaut wird,
 steht in [SPEC.md](SPEC.md); in welcher Reihenfolge und woran man merkt, dass es
-fertig ist, in [PLAN.md](PLAN.md). **Bei Widersprüchen gilt PLAN.md.**
+fertig ist, in [PLAN.md](PLAN.md); wo etwas im Quelltext steht und was mit was
+redet, in [ARCHITECTURE.md](ARCHITECTURE.md). **Bei Widersprüchen gilt PLAN.md**,
+und über den Aufbau die Quelldatei selbst.
 
 ---
 
