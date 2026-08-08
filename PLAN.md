@@ -5070,7 +5070,21 @@ Kante.
 > der nichts wachsen soll, trägt sie in `PropClearance` ein — im selben
 > Arbeitsgang.** Das gehört geprüft, bevor die nächste Fläche entsteht.
 
-**Offen und gemessen: Gebäude schweben am Hang.** Props bekommen **eine** Höhe
+**Behoben: zwei Dächer waren verkehrt herum — seit P5.** Beim Nachsehen des
+Sockels stand das Bauernhaus mit einer nach oben offenen **Rinne** statt eines
+Firsts da; der Firstbalken stak mitten hindurch. Ursache ist ein Vorzeichen:
+`rotZ(slab, side * slope)` hebt das **äußere** Ende jeder Dachplatte an. Nach
+dem Fund wurde derselbe Ausdruck im ganzen Bestand gesucht — die
+**Lagerhalle** hatte ihn auch, und davon stehen **elf** auf der Karte.
+
+> **Warum das sieben Monate überlebt hat.** Die P5-Abnahme hat die Reisfelder
+> aus **120 m Höhe** fotografiert, und dort ist ein Bauernhausdach ein paar
+> Pixel groß. Es ist dieselbe Lehre wie bei den Vegetations-Blickpunkten aus
+> P10.0: **aus der Luft ist das meiste nicht prüfbar.** Und es ist der zweite
+> Beleg für die P8.11-Regel „ein Fehlerbild ist eine Klasse, kein Einzelfall" —
+> der erste Fund war das Bauernhaus, gesucht wurde danach im ganzen Bestand.
+
+**Behoben: Gebäude schweben am Hang.** Props bekommen **eine** Höhe
 aus dem `TerrainSampler`, gemessen an ihrem Mittelpunkt. Steht das Gebäude auf
 einer Neigung, klafft auf der Talseite die volle Geländespanne als Lücke.
 Gemessen über die Grundfläche (3 × 3 Proben) der 99 Gebäude-Props:
@@ -5099,8 +5113,18 @@ Drei Wege, keiner davon nebenbei:
    er greift in die Bake-Kette ein — und die koppelt über die Erosion auf die
    ganze Karte (P8.5).
 
-Zu entscheiden, nicht zu raten. **Wahrscheinlich 3 für die vier großen Bauten
-und 2 für den Rest**, aber das ist eine Vermutung und steht hier als solche.
+**Entschieden: Weg 2, der Sockel.** Weg 3 greift in die Bake-Kette, und die
+koppelt über die Erosion auf die ganze Karte — er kann die Kehrenzahl am
+Bergpass mitnehmen und ist keine Nebenbei-Änderung. Der Sockel steckt dagegen
+in der Modellgeometrie, kostet **12 Dreiecke je Bauart statt je Instanz**,
+braucht keinen neuen Bake und ist architektonisch richtig: ein Bau am Hang
+steht auf einem Fundament. Auf ebenem Grund ist er vollständig vergraben.
+
+Eingebaut bei sieben Bauarten, Tiefe je aus der gemessenen Lücke plus Rand:
+`farmhouse` 3,2 m · `templeHall` 2,0 · `templeStairs` 1,8 · `bellTower` 1,2 ·
+`warehouse` 1,2 · `chozuya` 1,0 · `shed` 0,9. Am Bild geprüft an der
+Tempelhalle und am Bauernhaus bei (−1244, 409), dem größten Fall der Karte —
+beide stehen auf dem Boden, kein Spalt.
 
 ---
 
