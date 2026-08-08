@@ -4998,6 +4998,65 @@ diese Aufgabe.
 
 ---
 
+**10.5 — Bildfehlersuche auf Augenhöhe** (laufend)
+
+Der Befund an den Reisfeldern kam nicht aus einer Zahl, sondern daraus, dass
+jemand auf Augenhöhe hingesehen hat. Diese Aufgabe wiederholt das planmäßig:
+bodennahe Standpunkte abfahren und das Bild ansehen. Was dabei gefunden wird,
+steht hier — **auch das, was sich als in Ordnung herausstellt**, denn sonst
+untersucht es der Nächste noch einmal.
+
+**Runde 1, 2026-08-08.** Vier Standpunkte: Bergpass und Ringstraße je auf der
+Fahrbahn (Position aus `roads.json` gerechnet), Fischerdorf und Sandō.
+
+| Standpunkt | Befund |
+|---|---|
+| `ring` auf der Fahrbahn | **in Ordnung** — Mittellinie, Randmarkierung, Risse im Belag, Bewuchs auf der Böschung |
+| `sando` | **in Ordnung** — Torii-Reihe, Laternenpaare, Tempel am Ende |
+| `toge` auf der Fahrbahn | keine Leitplanke am Abbruch — **untersucht und widerlegt**, siehe unten |
+| `dorf` | eckige Wasserkante — **bekanntes Thema**, siehe unten |
+
+> **Die fehlende Leitplanke am Bergpass ist kein Fehler.** Sie sah nach einem
+> aus: die Planken decken 508 m von 2616 m, und zwischen Meter 512 und 2124
+> gibt es auf **keiner** Seite eine — also 1,6 km mitsamt aller neun Kehren.
+> Der Verdacht lag nahe, dass `planGuardrails()` das Gelände **vor** dem
+> Einschneiden misst (so steht es dort ausdrücklich) und deshalb genau die
+> Abgründe verpasst, die der Erdbau selbst schafft.
+>
+> Nachgemessen am **fertigen** Höhenfeld ist das falsch. Der seitliche Abfall,
+> Median je 200-m-Abschnitt, größere der beiden Seiten:
+>
+> | km | 8 m | 12 m | 19 m | 28 m seitlich |
+> |---|---|---|---|---|
+> | 600 | −3,3 | −6,4 | −8,4 | −1,4 |
+> | 1200 | −9,7 | −14,6 | −14,5 | −2,9 |
+> | 1400 | −10,5 | −18,3 | −21,7 | −19,3 |
+> | 1600 | −12,9 | −18,4 | −19,9 | −17,4 |
+>
+> **Negativ heißt: das Gelände steht dort höher als die Straße.** Der Pass
+> läuft in diesem Abschnitt in einem *Einschnitt*, auf beiden Seiten von Wänden
+> begleitet, nicht auf einem Sims über einem Abgrund. Es gibt nichts zu sichern,
+> und die Regel ist korrekt. Über das ganze Band sind am fertigen Gelände 15 %
+> der Punktseiten exponiert gegen 10 % verplankt — der Rest fällt an `minRun`
+> und `maxGap`, also an der Regel gegen Vier-Meter-Planken.
+>
+> Was der Befund **stattdessen** zeigt, ist der dokumentierte Steinbruch aus
+> P3 / P8.5a, und zwar aus der Fahrerperspektive: 1,6 km Trasse zwischen zwei
+> kahlen Wänden. Dasselbe Muster steht im Bild der Ringstraße. Das ist eine
+> Art-Direction-Frage am Erdbau, keine fehlende Geometrie — und P8.5a hat
+> bereits eine Variantenserie dazu verworfen.
+
+> **Die eckige Wasserkante am Fischerdorf kommt nicht vom Wasser.** Gemessen
+> hat das Mesh `Meer` genau **2 Dreiecke** — ein einziges Quad über die ganze
+> Welt. Eine Facettierung kann daraus nicht entstehen. Was im Bild eckig ist,
+> ist das **Gelände**, das die Wasserebene durchstößt: die dokumentierte
+> Sehnenabweichung des CDLOD-Gitters („Offen und gemessen: die Uferlinie ist
+> eine Treppe", P8). Der Verdacht „das Wassermesh ist zu grob" ist damit
+> ausgeschlossen; die Ursache bleibt die bekannte und die Gegenmittel bleiben
+> die dort genannten.
+
+---
+
 **10.3 — Der 520-m-Ring: erst messen, dann entscheiden**
 
 **Befund.** Punkt 2 oben. Wie teuer die Kante zu verschieben ist, ist
