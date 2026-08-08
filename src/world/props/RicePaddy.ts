@@ -15,6 +15,19 @@ import { PropMaterial } from '../materials/PropMaterial';
 import type { TerrainSampler } from '../TerrainSampler';
 import { TERRAIN_ASSETS } from '../terrainAssets';
 
+/**
+ * Die vier Ecken einer Rasterzelle, im Umlauf.
+ *
+ * **Die Reihenfolge ist nicht beliebig — sie trägt die Wickelrichtung.** Ein
+ * Dreiecksfächer über (0,0) → (0,1) → (1,1) → (1,0) hat die Normale +Y; in der
+ * Gegenrichtung wäre die Wasserfläche rückseitig gewickelt und fiele
+ * vollständig ins Backface-Culling. Genau das ist dem Fluss in P8.6 passiert,
+ * und es hat ein halbes Jahr gedauert, bis es jemand gesehen hat — jede Zahl
+ * hielt ihn für gesund. Nachprüfbar mit `japanMap.winding()`.
+ */
+const CORNER_DX = [0, 0, 1, 1] as const;
+const CORNER_DZ = [0, 1, 1, 0] as const;
+
 /** Der Teil von meta.json, den dieses System braucht. */
 interface PaddyMeta {
   readonly paddies: {
@@ -133,6 +146,13 @@ export class RicePaddy implements System {
     const tiles = Math.ceil(WORLD.size / tile);
     let triangles = 0;
 
+    // Kratzpuffer außerhalb der Schleifen: bei 6 m Raster über 101 ha sind das
+    // rund 28 000 Zellen, und vier neue Felder je Zelle wären 112 000
+    // kurzlebige Objekte für nichts.
+    const wet = [false, false, false, false];
+    const polyX: number[] = [];
+    const polyZ: number[] = [];
+
     for (let tz = 0; tz < tiles; tz++) {
       for (let tx = 0; tx < tiles; tx++) {
         const x0 = -WORLD.half + tx * tile;
@@ -141,27 +161,80 @@ export class RicePaddy implements System {
 
         for (let z = z0; z < z0 + tile; z += step) {
           for (let x = x0; x < x0 + tile; x += step) {
-            // Alle vier Ecken müssen nass sein. Ein Quad, das halb auf einem
-            // Damm liegt, wäre eine Wasserfläche, die über ihn hinwegläuft.
-            if (!this.#wet(x, z) || !this.#wet(x + step, z)) continue;
-            if (!this.#wet(x, z + step) || !this.#wet(x + step, z + step)) continue;
+            let wetCount = 0;
+            let lowest = Number.POSITIVE_INFINITY;
+            let highest = Number.NEGATIVE_INFINITY;
+            for (let i = 0; i < 4; i++) {
+              const px = x + CORNER_DX[i]! * step;
+              const pz = z + CORNER_DZ[i]! * step;
+              const w = this.#wet(px, pz);
+              wet[i] = w;
+              if (!w) continue;
+              wetCount++;
+              // **Nur nasse Ecken zählen für die Höhe.** Vorher ging die Höhe
+              // einer trockenen Ecke mit ein, und die steht auf dem Damm —
+              // die Zelle fiel dann durch die Toleranz und das Wasser blieb
+              // eine ganze Zellbreite vor seinem eigenen Rand stehen.
+              const h = sampler.getHeightAt(px, pz);
+              if (h < lowest) lowest = h;
+              if (h > highest) highest = h;
+            }
+            if (wetCount === 0) continue;
 
-            const h00 = sampler.getHeightAt(x, z);
-            const h10 = sampler.getHeightAt(x + step, z);
-            const h01 = sampler.getHeightAt(x, z + step);
-            const h11 = sampler.getHeightAt(x + step, z + step);
-            // **Und alle vier auf derselben Höhe.** Zwei Parzellen können ohne
-            // sichtbaren Damm aneinanderstoßen, wenn ihr Niveau um eine
-            // Terrassenstufe springt; ein Quad darüber wäre eine schiefe
-            // Wasserfläche. Der Grenzwert ist knapp gewählt, weil das Gelände
-            // innerhalb einer Parzelle exakt eben ist — jede Abweichung ist
-            // also bereits eine Kante.
-            const lowest = Math.min(h00, h10, h01, h11);
-            if (Math.max(h00, h10, h01, h11) - lowest > PADDY_WATER.levelTolerance) continue;
+            // Zwei Parzellen können ohne sichtbaren Damm aneinanderstoßen, wenn
+            // ihr Niveau um eine Terrassenstufe springt; eine Fläche darüber
+            // wäre schief. Der Grenzwert ist knapp, weil das Gelände innerhalb
+            // einer Parzelle exakt eben ist — jede Abweichung ist bereits eine
+            // Kante.
+            if (highest - lowest > PADDY_WATER.levelTolerance) continue;
 
             const y = lowest + this.#waterDepth;
-            position.push(x, y, z, x, y, z + step, x + step, y, z);
-            position.push(x + step, y, z, x, y, z + step, x + step, y, z + step);
+
+            // **Sattelfall:** zwei diagonal gegenüberliegende nasse Ecken. Der
+            // Randzug unten ergäbe dort ein sich selbst schneidendes Polygon
+            // und der Fächer darüber inverse Dreiecke. Solche Zellen werden
+            // voll gefüllt — sie sind selten, und ein Zuviel von einer halben
+            // Zelle an einer Sattelstelle sieht niemand.
+            const saddle = wetCount === 2 && wet[0] === wet[2] && wet[1] === wet[3];
+
+            polyX.length = 0;
+            polyZ.length = 0;
+            if (wetCount === 4 || saddle) {
+              for (let i = 0; i < 4; i++) {
+                polyX.push(x + CORNER_DX[i]! * step);
+                polyZ.push(z + CORNER_DZ[i]! * step);
+              }
+            } else {
+              // Marching Squares: den Zellrand einmal umlaufen, nasse Ecken
+              // mitnehmen und dort, wo die Nässe wechselt, den Kantenmittelpunkt
+              // einsetzen. Für alle Fälle außer dem Sattel ist das Ergebnis
+              // konvex und damit fächertauglich.
+              for (let i = 0; i < 4; i++) {
+                const j = (i + 1) & 3;
+                const ix = x + CORNER_DX[i]! * step;
+                const iz = z + CORNER_DZ[i]! * step;
+                const jx = x + CORNER_DX[j]! * step;
+                const jz = z + CORNER_DZ[j]! * step;
+                if (wet[i]) {
+                  polyX.push(ix);
+                  polyZ.push(iz);
+                }
+                if (wet[i] !== wet[j]) {
+                  polyX.push((ix + jx) / 2);
+                  polyZ.push((iz + jz) / 2);
+                }
+              }
+            }
+
+            // Fächer vom ersten Punkt. Die Umlaufrichtung von `CORNER_*` trägt
+            // die Wickelrichtung — siehe dort.
+            for (let i = 1; i + 1 < polyX.length; i++) {
+              position.push(
+                polyX[0]!, y, polyZ[0]!,
+                polyX[i]!, y, polyZ[i]!,
+                polyX[i + 1]!, y, polyZ[i + 1]!,
+              );
+            }
           }
         }
 
