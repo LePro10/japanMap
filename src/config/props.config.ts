@@ -138,13 +138,36 @@ export const PROP_CLEARANCE: Readonly<Record<string, number>> = {
  */
 export const PADDY_WATER = {
   /**
-   * Kantenlänge eines Wasserquads in Metern.
+   * Kantenlänge einer Wasserzelle in Metern.
    *
    * Die Maske liegt mit 3 m je Texel vor; 6 m ist doppelt so grob und damit
-   * ein Kompromiss zugunsten der Dreieckszahl. Die Reisfelder bedecken 101 ha
-   * — bei 3 m wären das rund 224 000 Dreiecke, bei 6 m ein Viertel davon.
-   * Sichtbar ist der Unterschied nur an der Kante zum Damm, und dort steht
-   * ohnehin ein 3,4 m breiter Rücken.
+   * ein Kompromiss zugunsten der Dreieckszahl. Die Reisfelder bedecken 101 ha.
+   *
+   * > ~~Sichtbar ist der Unterschied nur an der Kante zum Damm, und dort steht
+   * > ohnehin ein 3,4 m breiter Rücken.~~
+   * >
+   * > **Das war eine Annahme und sie ist am Bild widerlegt (2026-08-08).** Auf
+   * > Augenhöhe im Reisfeld stand das Wasser als harte, achsparallele Treppe im
+   * > Bild, und von oben lagen die Parzellen als Klötze in breiten
+   * > Schlammrändern — obwohl die Parzellen im *Gelände* unregelmäßige
+   * > Voronoi-Zellen sind.
+   * >
+   * > Die Ursache war **nicht** die Zellgröße allein, sondern der Aufbau: eine
+   * > Zelle wurde nur gesetzt, wenn **alle vier** Ecken nass waren *und* auf
+   * > gleicher Höhe lagen. Eine trockene Ecke steht aber auf dem Damm, also
+   * > höher — jede Randzelle fiel durch beide Prüfungen, und das Wasser blieb
+   * > eine volle Zellbreite vor seinem eigenen Rand stehen. Bei 3,4 m Damm auf
+   * > 6 m Raster traf das die Mehrheit der Randzellen.
+   * >
+   * > `RicePaddy.#build()` schneidet den Rand seitdem mit Marching Squares und
+   * > rechnet die Höhe nur über die **nassen** Ecken. Gemessen: 18 608 → 41 283
+   * > Dreiecke über die ganze Karte, am Blickpunkt `reisfeld` +4,9 % der
+   * > Szenendreiecke auf Ultra und +10,9 % auf Niedrig, bei **gleicher**
+   * > Draw-Call-Zahl. Der Zuwachs ist das Wasser, das vorher gefehlt hat.
+   *
+   * Die Zellgröße bleibt bei 6 m: der Rand liegt mit Marching Squares jetzt auf
+   * halber Zellbreite genau, also bei rund 3 m — und damit auf der Auflösung
+   * der Maske. Feiner zu rastern brächte keine Genauigkeit dazu, nur Dreiecke.
    */
   grid: 6,
 
