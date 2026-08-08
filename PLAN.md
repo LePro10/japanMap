@@ -5046,6 +5046,64 @@ Fahrbahn (Position aus `roads.json` gerechnet), Fischerdorf und Sandō.
 > Art-Direction-Frage am Erdbau, keine fehlende Geometrie — und P8.5a hat
 > bereits eine Variantenserie dazu verworfen.
 
+**Runde 2, 2026-08-08.** Vier Standpunkte: Wasserfallstufe, Tempelhalle,
+Küste, Stadtrand. **Zwei Fehler gefunden, einer davon behoben.**
+
+| Standpunkt | Befund |
+|---|---|
+| `stadt-rand` von unten | **in Ordnung** — Neon in der nassen Platte, die Randbebauung aus 8.9 trägt |
+| Wasserfallstufe | **Bäume standen im Fluss** — behoben, siehe unten |
+| Tempelhalle | **Gebäude schweben am Hang** — gemessen, offen |
+| Küste | Wellen-Normalmap kachelt sichtbar zum Horizont — offen, gering |
+
+**Behoben: Bäume im Fluss.** `scatterChunk` kannte genau zwei Ausschlüsse — das
+Straßennetz (P4) und die Freihaltekreise der Props (P5). Der Fluss kam in
+**P8.6** dazu, die Freihaltung nicht. Das ist wörtlich dieselbe Fehlerklasse wie
+„Bäume wuchsen durch die Tempelhalle" (P5) und „Wald mitten im Wasser" bei den
+Reisfeldern (P4) — **dreimal derselbe Mechanismus, dreimal beim Bauen
+übersehen.** Der Flusslauf wandert jetzt als Kette von Freihaltekreisen in
+dieselbe `PropClearance`; im Bild ist das Band frei und Gras wächst bis an die
+Kante.
+
+> Wenn dieselbe Lücke dreimal auftritt, ist sie keine Unachtsamkeit mehr,
+> sondern eine fehlende Regel. **Wer der Welt eine neue Fläche hinzufügt, auf
+> der nichts wachsen soll, trägt sie in `PropClearance` ein — im selben
+> Arbeitsgang.** Das gehört geprüft, bevor die nächste Fläche entsteht.
+
+**Offen und gemessen: Gebäude schweben am Hang.** Props bekommen **eine** Höhe
+aus dem `TerrainSampler`, gemessen an ihrem Mittelpunkt. Steht das Gebäude auf
+einer Neigung, klafft auf der Talseite die volle Geländespanne als Lücke.
+Gemessen über die Grundfläche (3 × 3 Proben) der 99 Gebäude-Props:
+
+| Prop | Spanne unter der Grundfläche |
+|---|---|
+| `farmhouse` (−1244, 409) | **3,64 m** |
+| `templeHall` | **2,98 m** |
+| `shed` (−1375, 192) | 2,11 m |
+| `templeStairs` | 2,04 m |
+| `bellTower` | 1,71 m |
+
+**9 von 99** liegen über 1 m. Im Bild der Tempelhalle ist die Lücke unter der
+linken Vorderkante deutlich zu sehen, und die Steintreppe davor hängt frei.
+
+Drei Wege, keiner davon nebenbei:
+
+1. **Auf das Minimum der Grundfläche setzen** — dann klafft nirgends etwas, das
+   Gebäude gräbt sich aber auf der Bergseite bis zur vollen Spanne ein. Bei
+   3,64 m unter einem Bauernhaus ist das kein Tausch, sondern ein anderer
+   Fehler.
+2. **Sockel oder Schürze**, wie sie die Stadtplatte seit P8.11 hat. Löst es
+   richtig und kostet Geometrie je Gebäude.
+3. **Das Gelände unter der Grundfläche einebnen**, wie es der Baker für die
+   Reisfelder (5c) und den Distrikt (5d) längst tut. Der sauberste Weg, aber
+   er greift in die Bake-Kette ein — und die koppelt über die Erosion auf die
+   ganze Karte (P8.5).
+
+Zu entscheiden, nicht zu raten. **Wahrscheinlich 3 für die vier großen Bauten
+und 2 für den Rest**, aber das ist eine Vermutung und steht hier als solche.
+
+---
+
 **Versuch, die Einschnitte zu begrünen — gemessen und verworfen.**
 
 Der naheliegende billige Ausweg gegen die kahlen Wände: Bewuchs darauf zulassen,
