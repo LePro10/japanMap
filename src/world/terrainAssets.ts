@@ -25,21 +25,21 @@ import skyUrl from '../../assets/hdri/industrial_sunset_02_puresky_4k.hdr?url';
 import iblUrl from '../../assets/hdri/rooftop_night_2k.hdr?url';
 import sunUrl from '../../assets/generated/lighting/industrial_sunset_02_puresky_4k.sun.json?url';
 
-import rockAlbedo from '../../assets/textures/rock_face_03/Diffuse.jpg?url';
-import rockNormal from '../../assets/textures/rock_face_03/nor_gl.jpg?url';
-import rockArm from '../../assets/textures/rock_face_03/arm.jpg?url';
+import rockAlbedo from '../../assets/generated/textures/rock_face_03/Diffuse.jpg?url';
+import rockNormal from '../../assets/generated/textures/rock_face_03/nor_gl.jpg?url';
+import rockArm from '../../assets/generated/textures/rock_face_03/arm.jpg?url';
 
-import grassAlbedo from '../../assets/textures/aerial_grass_rock/Diffuse.jpg?url';
-import grassNormal from '../../assets/textures/aerial_grass_rock/nor_gl.jpg?url';
-import grassArm from '../../assets/textures/aerial_grass_rock/arm.jpg?url';
+import grassAlbedo from '../../assets/generated/textures/aerial_grass_rock/Diffuse.jpg?url';
+import grassNormal from '../../assets/generated/textures/aerial_grass_rock/nor_gl.jpg?url';
+import grassArm from '../../assets/generated/textures/aerial_grass_rock/arm.jpg?url';
 
-import sandAlbedo from '../../assets/textures/coast_sand_01/Diffuse.jpg?url';
-import sandNormal from '../../assets/textures/coast_sand_01/nor_gl.jpg?url';
-import sandArm from '../../assets/textures/coast_sand_01/arm.jpg?url';
+import sandAlbedo from '../../assets/generated/textures/coast_sand_01/Diffuse.jpg?url';
+import sandNormal from '../../assets/generated/textures/coast_sand_01/nor_gl.jpg?url';
+import sandArm from '../../assets/generated/textures/coast_sand_01/arm.jpg?url';
 
-import paddyAlbedo from '../../assets/textures/brown_mud_02/Diffuse.jpg?url';
-import paddyNormal from '../../assets/textures/brown_mud_02/nor_gl.jpg?url';
-import paddyArm from '../../assets/textures/brown_mud_02/arm.jpg?url';
+import paddyAlbedo from '../../assets/generated/textures/brown_mud_02/Diffuse.jpg?url';
+import paddyNormal from '../../assets/generated/textures/brown_mud_02/nor_gl.jpg?url';
+import paddyArm from '../../assets/generated/textures/brown_mud_02/arm.jpg?url';
 
 export const TERRAIN_ASSETS = {
   height: heightUrl,

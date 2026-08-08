@@ -5049,6 +5049,72 @@ Dazu rund **9,1 MB Normalmaps als JPEG** (4,71 + 1,33 + 1,09 + 1,09 + 0,86).
 Das ist nicht nur groß: **JPEG-Chromasubsampling zerstört Normalen.** Sie
 liegen im falschen Format, unabhängig von der Größe.
 
+### 10.4 erster Schritt gebaut und gemessen — 2026-08-08
+
+**Vor allen geplanten Hebeln stand ein ungeprüfter Posten: die Bitrate.** Ein
+Audit über alle 15 Quelltexturen:
+
+| Datei | Auflösung | bit/px |
+|---|---|---|
+| `asphalt_02/nor_gl.jpg` | 2048² | **9,43** |
+| `asphalt_02/Diffuse.jpg` | 2048² | 5,87 |
+| `brown_mud_02/nor_gl.jpg` | 1024² | 10,66 |
+
+Üblich für eine gut aussehende JPEG-Textur sind 1 bis 3 bit/px. Neun ist
+Qualität 98+ — praktisch verlustfrei gespeichertes, ohnehin schon
+verlustbehaftetes Material, wie Poly Haven es ausliefert. **Das hatte niemand
+nachgesehen**, und es war der billigste Hebel im ganzen Plan.
+
+`tools/optimize-textures.mjs` kodiert neu mit **Qualität 90 und vollem Chroma
+(4:4:4)**, Ausgang `assets/generated/textures/`. Gemessen:
+
+| | vorher | nachher |
+|---|---|---|
+| Texturen | 18,05 MB | **11,19 MB** (−38,0 %) |
+| **Startdownload** | 43,48 MB | **36,62 MB** (−15,8 %) |
+
+`4:4:4` ist nicht verhandelbar: Chromasubsampling mittelt die Farbkanäle über
+2 × 2 Pixel, und bei einer Normalmap sind das die X- und Y-Anteile der Normale.
+**Drei Dateien werden unverändert übernommen** — die `arm.jpg` wachsen bei
+Neukodierung um 54 bis 63 %, weil sie wenig Struktur tragen und ihr flacher
+Farbanteil ohne Subsampling mehr kostet als die Qualität einspart. Größer wird
+nie geschrieben; eine Optimierung, die einzelne Posten verschlechtert und im
+Mittel gewinnt, ist eine Optimierung mit einer Ausrede.
+
+**Am Bild geprüft, Blickpunkt `stadt-strasse`** (dort füllt Asphalt die halbe
+Fläche), gegen ein Rauschband aus zwei Aufnahmen desselben Zustands:
+
+| Schwelle | Rauschband | Effekt |
+|---|---|---|
+| 2 | 42,70 % | **16,20 %** |
+| 8 | 27,75 % | **0,36 %** |
+| 24 | 0,022 % | 0,055 % |
+
+Der Effekt liegt bei 2 und 8 **weit unter** dem Rauschen. Bei 24 liegt er knapp
+darüber — 0,055 % sind rund 280 Pixel von 921 600. Im Differenzbild sitzen sie
+auf den **Fassaden**, und die sind prozedural und benutzen keine der geänderten
+Texturen; der Asphalt selbst ist dort praktisch schwarz.
+
+> **Die Texturzahl allein hätte hier zu einer falschen Entscheidung geführt.**
+> Das schlechteste PSNR der Neukodierung liegt bei 31,8 dB, und das liest sich
+> nach „spürbar". Gerendert ist davon nichts übrig: die Texturen werden
+> gekachelt, über vier Splat-Kanäle gemischt, bei 2,2° Sonnenstand streifend
+> beleuchtet und danach tonemappt. Gemessen wurde deshalb, was im Bild steht,
+> nicht was in der Datei steht.
+
+Der Vollständigkeit halber die verworfenen Alternativen, beide gemessen:
+Qualität 95 spart nur 3,23 statt 6,86 MB, und **`normal.png` im Shader zu
+rechnen** (der Hebel unten, −5,49 MB) kostet rund **16 Texel-Zugriffe je
+Terrain-Pixel** statt einer Textur-Abfrage — der Baker nutzt einen Sobel-Filter
+und die Karte wird bilinear abgetastet, beides müsste nachgebildet werden. Das
+ist mehr GPU-Last für weniger Download und damit die verbotene Richtung.
+
+**Nebenbefund:** `sharp` fehlte in `package.json`, obwohl
+`tools/process-assets.mjs` es seit P5 importiert. Ein frisches `npm ci` hätte
+`npm run models` gebrochen. Eingetragen.
+
+---
+
 **Fix.** In dieser Reihenfolge, weil die ersten beiden gemessen sind und der
 dritte einen Blocker hat:
 
