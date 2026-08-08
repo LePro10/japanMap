@@ -302,6 +302,20 @@ async function boot(): Promise<void> {
   const reflection = new PlanarReflection();
   const controller = new FreeFlyController();
 
+  // **Hier und nicht im System selbst.** `roads:ready` wird gesendet, während
+  // sich das RoadSystem initialisiert; wer es hören will, muss vorher
+  // registriert sein. `PlanarReflection` wird aber bewusst **danach**
+  // hinzugefügt — es muss nach allem aktualisieren, was Geometrie einbringt.
+  // Ein Zuhörer in seinem `init()` löst deshalb nie aus, und der Sichttest, der
+  // daran hängt, wäre von totem Code nicht zu unterscheiden (gemessen: fünf
+  // Blickpunkte, Draw-Calls in beiden Fassungen bitgleich).
+  //
+  // `engine.bus` gibt es schon vor `engine.init()`, und die Verdrahtung
+  // zwischen Systemen liegt ohnehin in dieser Datei.
+  engine.bus.on('roads:ready', ({ network }) => {
+    reflection.setRoadNetwork(network.file);
+  });
+
   // Vor allen anderen Systemen, weil sie sich sonst nicht mehr anmelden lassen.
   if (import.meta.env.DEV) await attachDebugUi(engine, overlay);
 

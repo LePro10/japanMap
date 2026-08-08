@@ -1,4 +1,6 @@
 import {
+  Box3,
+  Frustum,
   HalfFloatType,
   LinearFilter,
   Matrix4,
@@ -14,7 +16,17 @@ import {
 
 import { CITY_DISTRICT, CITY_GROUND_Y, REFLECTION } from '@/config/city.config';
 import { DEFAULT_QUALITY, QUALITY } from '@/config/quality.config';
+import type { RoadFile } from '@/config/roads.config';
 import type { EngineContext, System } from '@/core/System';
+
+/**
+ * Rand um den spiegelnden Kasten, in Metern.
+ *
+ * Ein zu knapper Kasten spart einen Frame und laesst die Pfuetze aufblitzen,
+ * ein zu weiter kostet nur den Test. Bei einer Optimierung, die nichts sichtbar
+ * veraendern darf, ist die Richtung des Fehlers vorgegeben.
+ */
+const REFLECTIVE_BOX_MARGIN = 20;
 
 /**
  * Planare Spiegelung der Stadtebene — PLAN.md P6 / 6.5, **die Entscheidung**.
@@ -122,6 +134,12 @@ export class PlanarReflection implements System {
   readonly #normal = new Vector3(0, 1, 0);
   readonly #reflectorPosition = new Vector3(0, CITY_GROUND_Y, 0);
   readonly #textureMatrix = new Matrix4();
+  /** Für den Sichttest in `update()` — siehe dort. */
+  readonly #frustum = new Frustum();
+  readonly #viewProjection = new Matrix4();
+  readonly #reflectiveBox = new Box3();
+  readonly #scratch = new Vector3();
+  #boxReady = false;
   readonly #clipPlane = new Vector4();
   readonly #q = new Vector4();
   readonly #view = new Vector3();
@@ -133,6 +151,8 @@ export class PlanarReflection implements System {
   readonly #readouts = {
     status: 'aus',
     ziel: '—',
+    /** Ausdehnung des spiegelnden Bereichs — der Sichttest hängt daran. */
+    kasten: '—',
   };
 
   /** Der Schalter im Panel. */
@@ -179,6 +199,84 @@ export class PlanarReflection implements System {
     this.#resizeTarget();
   }
 
+  /**
+   * Den Kasten bestimmen, in dem eine Spiegelung überhaupt sichtbar werden kann.
+   *
+   * **Warum das von außen gerufen wird und nicht aus einem eigenen
+   * `roads:ready`-Zuhörer.** Der erste Entwurf hatte den Zuhörer hier drin und
+   * er hat **nie** ausgelöst: `roads:ready` wird gesendet, *während* sich das
+   * RoadSystem initialisiert, und dieses System wird bewusst **danach**
+   * registriert (es muss nach allem aktualisieren, was Geometrie einbringt).
+   * Wer zuhören will, muss vorher registriert sein — genau die
+   * Reihenfolgenbedingung, die in ARCHITECTURE.md §2 steht, und der Autor
+   * dieser Zeilen ist zuerst hineingelaufen.
+   *
+   * Gemessen sah das so aus: Draw-Calls und Dreiecke über fünf Blickpunkte in
+   * beiden Fassungen **bitgleich**. Ein Sichttest, der nie greift, ist von
+   * totem Code nicht zu unterscheiden.
+   *
+   * `main.ts` hängt sich deshalb vor `engine.init()` an das Ereignis und reicht
+   * die Datei herein — dort liegt die Verdrahtung ohnehin, und dort ist der Bus
+   * früh genug da.
+   *
+   * **Abgeleitet aus den Straßendaten, nicht geschätzt.** Der erste Versuch nahm
+   * dafür `REFLECTION.range` — also 2800 × 2800 m um den Distrikt — und der Test
+   * hat **nie** gegriffen: die Kamera steht bei jedem Stadtblick mitten in diesem
+   * Kasten, und ein Sichtvolumen schneidet einen Kasten, der es enthält, immer.
+   * Gemessen war der Unterschied null Draw-Calls, in beiden Fassungen identisch.
+   *
+   * Was wirklich spiegeln kann, steht im Shader: `RoadMaterial` blendet über
+   * `planeFalloff` (3 m) Höhendifferenz zur Ebene aus. Sichtbar wird die
+   * Spiegelung also nur auf Fahrbahn, die in diesem dünnen Band liegt — plus
+   * der Bodenplatte des Distrikts, die per Konstruktion darin liegt.
+   *
+   * Aus `roads.json` gerechnet: von 5794 Stützpunkten liegen **730** im Band und
+   * in Reichweite (ring 157, toge 57, dorf 49, stadt 434, zufahrt 33), und ihre
+   * Hülle misst **1580 × 755 m** statt 2800 × 2800. Damit greift der Test: über
+   * die sechzehn benannten Blickpunkte läuft der Durchgang heute an dreizehn,
+   * und an **fünf** davon (`tempel`, `sando`, `kueste`, `wald`, `wald-fern`)
+   * entfällt er — dort ist von der Stadt kein Pixel im Bild.
+   *
+   * Der Rand von 20 m ist Absicht: ein zu knapper Kasten spart einen Frame und
+   * lässt die Pfütze aufblitzen, ein zu weiter kostet nur den Test. Bei einer
+   * Optimierung, die nichts sichtbar verändern darf, ist die Richtung des
+   * Fehlers vorgegeben.
+   */
+  setRoadNetwork(file: RoadFile): void {
+    const band = REFLECTION.planeFalloff;
+    const range = REFLECTION.range;
+
+    // Die Bodenplatte liegt per Konstruktion in der Ebene und ist immer dabei.
+    this.#reflectiveBox.makeEmpty();
+    this.#scratch.set(CITY_DISTRICT.minX, CITY_GROUND_Y - band, CITY_DISTRICT.minZ);
+    this.#reflectiveBox.expandByPoint(this.#scratch);
+    this.#scratch.set(CITY_DISTRICT.maxX, CITY_GROUND_Y + band, CITY_DISTRICT.maxZ);
+    this.#reflectiveBox.expandByPoint(this.#scratch);
+
+    for (const road of file.roads) {
+      const line = road.centerline;
+      for (let i = 0; i + 2 < line.length; i += 3) {
+        const x = line[i]!;
+        const y = line[i + 1]!;
+        const z = line[i + 2]!;
+        if (y < CITY_GROUND_Y - band || y > CITY_GROUND_Y + band) continue;
+        // Jenseits der Reichweite entfällt der Durchgang ohnehin — solche
+        // Punkte dürfen den Kasten nicht aufblähen.
+        const dx = x - CITY_DISTRICT.centerX;
+        const dz = z - CITY_DISTRICT.centerZ;
+        if (dx * dx + dz * dz > range * range) continue;
+        this.#scratch.set(x, y, z);
+        this.#reflectiveBox.expandByPoint(this.#scratch);
+      }
+    }
+
+    this.#reflectiveBox.expandByScalar(REFLECTIVE_BOX_MARGIN);
+    this.#boxReady = true;
+    const size = this.#reflectiveBox.getSize(this.#scratch);
+    this.#readouts.kasten = `${size.x.toFixed(0)} × ${size.z.toFixed(0)} m`;
+    this.#context?.debug?.refresh();
+  }
+
   #resizeTarget(): void {
     const context = this.#context;
     if (!context) return;
@@ -220,16 +318,44 @@ export class PlanarReflection implements System {
     const camera = context.camera;
     const plane = this.uniforms.uReflectPlane.value;
 
-    // Übersprungen wird aus drei Gründen, und jeder spart einen ganzen
+    // Übersprungen wird aus **vier** Gründen, und jeder spart einen ganzen
     // Szenendurchgang: abgeschaltet, unter der Ebene (dann sieht man die
-    // Unterseite), oder zu weit weg — außerhalb des Distrikts plus Reichweite
-    // gibt es nichts, was sich in dieser Ebene spiegeln könnte.
+    // Unterseite), zu weit weg, oder — seit P10.5 — **außer Sicht**.
     const dx = camera.position.x - CITY_DISTRICT.centerX;
     const dz = camera.position.z - CITY_DISTRICT.centerZ;
     const tooFar = dx * dx + dz * dz > REFLECTION.range * REFLECTION.range;
 
     const on = this.#enabled && this.#allowed;
-    if (!on || camera.position.y <= CITY_GROUND_Y + 0.05 || tooFar) {
+    const below = camera.position.y <= CITY_GROUND_Y + 0.05;
+
+    // **Der Sichttest.** Die drei Bedingungen darüber fragen alle nur, *wo die
+    // Kamera steht* — nicht, *wohin sie schaut*. Wer 200 m neben dem Distrikt
+    // steht und wegblickt, hat die Szene bis P10.5 trotzdem ein zweites Mal
+    // gezeichnet, für eine Spiegelung, von der kein einziges Pixel im Bild
+    // stand.
+    //
+    // Der spiegelnde Bereich ist scharf begrenzt, und zwar **im Shader**:
+    // `RoadMaterial` blendet die Spiegelung über `planeFalloff` (3 m)
+    // Höhendifferenz zur Ebene aus. Was die Spiegelung überhaupt zeigen kann,
+    // liegt also in einer dünnen Scheibe um `CITY_GROUND_Y`, begrenzt auf
+    // `REFLECTION.range` um den Distriktmittelpunkt. Steht diese Scheibe nicht
+    // im Sichtvolumen, kann kein Fragment die Spiegelkarte sichtbar abtasten.
+    //
+    // Der Kasten ist bewusst **großzügig**: volle Reichweite in XZ statt der
+    // Distriktgröße, und in Y das Doppelte des Ausblendbandes. Ein zu knapper
+    // Kasten spart einen Frame und lässt die Pfütze aufblitzen — ein zu weiter
+    // kostet nur den Test. Bei einer Optimierung, die nichts sichtbar
+    // verändern darf, ist die Richtung des Fehlers vorgegeben.
+    // Solange der Kasten nicht steht (vor `roads:ready`), wird **nicht**
+    // übersprungen. Ein Sichttest gegen einen leeren Kasten verwürfe alles.
+    let outOfSight = false;
+    if (on && !below && !tooFar && this.#boxReady) {
+      this.#viewProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      this.#frustum.setFromProjectionMatrix(this.#viewProjection);
+      outOfSight = !this.#frustum.intersectsBox(this.#reflectiveBox);
+    }
+
+    if (!on || below || tooFar || outOfSight) {
       plane.y = 0;
       this.#readouts.status = !this.#allowed
         ? 'von der Qualitätsstufe abgeschaltet'
@@ -237,7 +363,9 @@ export class PlanarReflection implements System {
           ? 'aus'
           : tooFar
             ? 'außer Reichweite — übersprungen'
-            : 'unter der Ebene — übersprungen';
+            : below
+              ? 'unter der Ebene — übersprungen'
+              : 'außer Sicht — übersprungen';
       return;
     }
     plane.y = 1;
