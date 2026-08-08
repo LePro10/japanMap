@@ -20,7 +20,8 @@
     "inspect": "node tools/inspect-map.mjs",
     "roads": "node tools/gen-roads.mjs",
     "bake:clean": "node tools/bake-terrain.mjs --seed 20260725 --res 2048 --erosion 2000000 --no-roads",
-    "world": "npm run bake:clean && npm run sun && npm run roads && npm run bake && npm run shade"
+    "world": "npm run textures && npm run bake:clean && npm run sun && npm run roads && npm run bake && npm run shade",
+    "textures": "node tools/optimize-textures.mjs"
   },
   "dependencies": {
     "n8ao": "^2.0.0",
@@ -38,6 +39,7 @@
     "@types/three": "^0.185.0",
     "meshoptimizer": "^1.2.0",
     "pngjs": "^7.0.0",
+    "sharp": "^0.34.2",
     "stats-gl": "^4.2.3",
     "tweakpane": "^4.0.5",
     "typescript": "^5.9.3",
