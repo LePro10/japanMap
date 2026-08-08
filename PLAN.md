@@ -5046,6 +5046,40 @@ Fahrbahn (Position aus `roads.json` gerechnet), Fischerdorf und Sandō.
 > Art-Direction-Frage am Erdbau, keine fehlende Geometrie — und P8.5a hat
 > bereits eine Variantenserie dazu verworfen.
 
+**Versuch, die Einschnitte zu begrünen — gemessen und verworfen.**
+
+Der naheliegende billige Ausweg gegen die kahlen Wände: Bewuchs darauf zulassen,
+statt am Erdbau zu arbeiten. Warum dort nichts steht, ist zweiteilig gemessen:
+
+| | 6 m | 10 m | 14 m | 18 m | 22 m seitlich |
+|---|---|---|---|---|---|
+| `toge` Neigung | 21° | **53°** | **55°** | 45° | 39° |
+| `ring` Neigung | 4° | 23° | 30° | 19° | 9° |
+
+Die Artengrenzen liegen bei Gras 45°, Busch 42°, Kiefer 38°, Laubbaum 27°. Am
+Ring ist die Böschung flach genug — dort steht auch Bewuchs, im Bild sichtbar.
+Am Pass liegt sie bei 53…55° und damit über **jeder** Grenze. Die Zonenmaske ist
+dort zusätzlich zu 69…75 % Fels (Gras hätte nur rund 30 % Annahmequote).
+
+Probiert: Gras 45° → 55°, Busch 42° → 52°. Das Band zwischen 45° und 57° mit
+brauchbarem Grasgewicht ist nur **1,0 %** der Kartenfläche, der Eingriff wäre
+also zielgenau. **Am Bild ist er trotzdem wirkungslos:** der Standpunkt auf der
+Passfahrbahn ist vorher und nachher nicht zu unterscheiden, und die
+Vegetationszahl dort steigt um **11 Instanzen**. Die kahle Fläche in diesem Bild
+ist nicht die Straßenböschung, sondern die Felswand dahinter — über 57° und in
+der Felszone, also von beiden Grenzen unabhängig.
+
+Zurückgenommen. Eine Änderung, die Instanzen kostet und im Bild nichts ändert,
+ist das Gegenteil dessen, was P10 tut.
+
+> **Ein Messfehler dabei, weil er sich sonst wiederholt.** Der Vorher/Nachher-
+> Lauf verglich zwei Berichte mit **verschiedener Canvas-Größe** (1280 × 720
+> gegen 529 × 597). Ein breiteres Bild zeigt mehr Gelände, also mehr Dreiecke
+> und mehr Instanzen — die Differenzen von +29 bis +44 % gehören dem
+> Seitenverhältnis, nicht dem Eingriff. Entschieden hat deshalb das Bild.
+> **Wer zwei Berichte vergleicht, muss vorher `engine.resize()` auf denselben
+> Wert setzen**; der Messlauf tut das nicht von selbst.
+
 > **Die eckige Wasserkante am Fischerdorf kommt nicht vom Wasser.** Gemessen
 > hat das Mesh `Meer` genau **2 Dreiecke** — ein einziges Quad über die ganze
 > Welt. Eine Facettierung kann daraus nicht entstehen. Was im Bild eckig ist,
