@@ -112,6 +112,53 @@ function box(w: number, h: number, d: number, material: string): BufferGeometry 
   return paint(new BoxGeometry(w, h, d), material);
 }
 
+/**
+ * Sockel unter einem Gebäude — ein Kasten von `−depth` bis `0`.
+ *
+ * ## Wogegen
+ *
+ * **Gebäude schwebten am Hang.** Ein Prop bekommt genau *eine* Höhe aus dem
+ * `TerrainSampler`, und die wird an seinem **Mittelpunkt** abgetastet. Steht es
+ * auf einer Neigung, liegt die Talseite tiefer als dieser eine Wert, und dort
+ * klafft die Differenz als Lücke unter der Wand. Im Bild der Tempelhalle
+ * (2026-08-08) war sie unter der linken Vorderkante deutlich zu sehen, die
+ * Steintreppe davor hing frei in der Luft.
+ *
+ * Gemessen über alle Platzierungen, jeweils der größte Fall je Bauart —
+ * Mittelpunkthöhe minus niedrigster Geländehöhe unter der Grundfläche:
+ *
+ * | Bauart | Stück | größte Lücke |
+ * |---|---|---|
+ * | `farmhouse` | 7 | **2,57 m** |
+ * | `templeHall` | 1 | 1,34 m |
+ * | `templeStairs` | 1 | 1,31 m |
+ * | `bellTower` | 1 | 0,73 m |
+ * | `warehouse` | 11 | 0,68 m |
+ * | `chozuya` | 1 | 0,48 m |
+ * | `shed` | 41 | 0,40 m |
+ *
+ * ## Warum ein Sockel und nicht die anderen zwei Wege
+ *
+ * - **Auf das Minimum der Grundfläche setzen** hätte nirgends eine Lücke, aber
+ *   das Bauernhaus gräbt sich dann bergseitig bis zu 3,64 m ein. Das ist kein
+ *   Tausch, sondern ein anderer Fehler.
+ * - **Im Baker einebnen**, wie es für Reisfelder (5c) und Distrikt (5d) längst
+ *   geschieht, wäre der sauberste Weg — er greift aber in die Bake-Kette, und
+ *   die koppelt über die Erosion auf die **ganze Karte** (P8.5: ein Eingriff
+ *   allein in der Stadtzone verändert danach 66,82 % der Texel). Das kann die
+ *   Kehrenzahl am Bergpass mitnehmen und ist keine Nebenbei-Änderung.
+ *
+ * Der Sockel dagegen steckt in der Modellgeometrie, kostet **12 Dreiecke** je
+ * Bauart statt je Instanz, braucht keinen neuen Bake und ist obendrein
+ * architektonisch richtig: ein Bau am Hang steht auf einem Fundament.
+ *
+ * Auf ebenem Grund ist er vollständig vergraben und damit unsichtbar — er
+ * zeigt sich genau dort, wo sonst die Lücke wäre.
+ */
+function plinth(w: number, d: number, depth: number, material: string): BufferGeometry {
+  return at(box(w, depth, d, material), 0, -depth / 2, 0);
+}
+
 /** Zylinder, Fuß auf y = 0. */
 function pillar(
   radiusTop: number,
@@ -265,6 +312,8 @@ function hokora(): BufferGeometry {
  */
 function templeHall(): BufferGeometry {
   const parts: BufferGeometry[] = [];
+  // Sockel gegen die Hanglücke — Messung und Begründung bei `plinth()`.
+  parts.push(plinth(13.2, 10.6, 2.0, 'stone'));
   const platformY = 0.9;
   parts.push(at(box(13.2, platformY, 10.6, 'stone'), 0, platformY / 2, 0));
   parts.push(at(box(10.4, 3.4, 7.6, 'plaster'), 0, platformY + 1.7, 0));
@@ -308,6 +357,7 @@ function templeHall(): BufferGeometry {
  */
 function templeStairs(): BufferGeometry {
   const parts: BufferGeometry[] = [];
+  parts.push(plinth(3.6, 4.2, 1.8, 'stone'));
   const steps = 12;
   const rise = 0.18;
   const tread = 0.3;
@@ -339,6 +389,8 @@ function templeStairs(): BufferGeometry {
  */
 function farmhouse(): BufferGeometry {
   const parts: BufferGeometry[] = [];
+  // Der größte gemessene Fall der ganzen Karte: 2,57 m Lücke. Siehe `plinth()`.
+  parts.push(plinth(11, 8, 3.2, 'stone'));
   const wallH = 2.9;
   parts.push(at(box(11, wallH, 8, 'plaster'), 0, wallH / 2, 0));
   // Rahmenhölzer: Schwelle, Rähm und vier Pfosten.
@@ -358,7 +410,17 @@ function farmhouse(): BufferGeometry {
   const slabLength = Math.hypot(roofH, 5.5) + 0.8;
   for (const side of [-1, 1]) {
     const slab = box(slabLength, 0.42, 9.6, 'thatch');
-    parts.push(at(rotZ(slab, side * slope), side * 2.75, wallH + roofH / 2, 0));
+    // **Das Vorzeichen ist die Firstrichtung.** Hier stand `side * slope`, und
+    // damit hob `rotZ` das **äußere** Ende jeder Platte an: das Dach war eine
+    // nach oben offene Rinne, der Firstbalken stak mitten hindurch. So stand es
+    // seit P5 in der Karte.
+    //
+    // Aufgefallen ist es erst am 2026-08-08 aus Augenhöhe. Die P5-Abnahme hat
+    // die Reisfelder aus **120 m Höhe** fotografiert, und dort ist ein
+    // Bauernhausdach ein paar Pixel groß — dieselbe Lehre wie bei den
+    // Blickpunkten für die Vegetation: aus der Luft ist das meiste nicht
+    // prüfbar, und sieben Häuser tragen den Fehler mit.
+    parts.push(at(rotZ(slab, -side * slope), side * 2.75, wallH + roofH / 2, 0));
   }
   for (const z of [-4.5, 4.5]) {
     const gable = box(0.5, roofH * 0.72, 0.4, 'thatch');
@@ -371,6 +433,7 @@ function farmhouse(): BufferGeometry {
 /** Geräteschuppen, gemessen 4,6 × 2,9 × 3,6 m — das Beiwerk, das einen Hof ausmacht. */
 function shed(): BufferGeometry {
   const parts: BufferGeometry[] = [];
+  parts.push(plinth(4, 3, 0.9, 'stone'));
   parts.push(at(box(4, 2.3, 3, 'wood'), 0, 1.15, 0));
   parts.push(at(box(1.4, 1.9, 0.08, 'plaster'), 0.6, 0.95, 1.52));
   // Pultdach, zur Rückseite geneigt.
@@ -513,6 +576,7 @@ function delineator(): BufferGeometry {
  */
 function chozuya(): BufferGeometry {
   const parts: BufferGeometry[] = [];
+  parts.push(plinth(2.6, 2.6, 1.0, 'stone'));
   const postH = 2.05;
   for (const x of [-1.1, 1.1]) {
     for (const z of [-1.1, 1.1]) {
@@ -548,6 +612,7 @@ function chozuya(): BufferGeometry {
  */
 function bellTower(): BufferGeometry {
   const parts: BufferGeometry[] = [];
+  parts.push(plinth(3.2, 3.2, 1.2, 'stone'));
   const postH = 3.1;
   const spread = (4 * Math.PI) / 180;
   const foot = 1.35;
@@ -824,6 +889,7 @@ function greenhouse(): BufferGeometry {
  */
 function warehouse(): BufferGeometry {
   const parts: BufferGeometry[] = [];
+  parts.push(plinth(21, 12.4, 1.2, 'concrete'));
   const w = 21;
   const d = 12.4;
   const wallH = 4.6;
@@ -841,7 +907,12 @@ function warehouse(): BufferGeometry {
   const slabLength = Math.hypot(roofH, w / 2) + 0.5;
   for (const side of [-1, 1]) {
     const slab = box(slabLength, 0.16, d + 0.9, 'steel');
-    parts.push(at(rotZ(slab, side * slope), side * (w / 4), wallH + roofH / 2, 0));
+    // Dasselbe verkehrte Vorzeichen wie beim Bauernhaus, und aus demselben
+    // Muster kopiert — elf Lagerhallen mit einer Rinne statt eines Satteldachs.
+    // Gefunden, weil P8.11 die Regel hinterlassen hat: **ein Fehlerbild ist eine
+    // Klasse, kein Einzelfall.** Nach dem ersten Fund wurde derselbe Ausdruck
+    // im ganzen Bestand gesucht.
+    parts.push(at(rotZ(slab, -side * slope), side * (w / 4), wallH + roofH / 2, 0));
   }
   parts.push(at(box(0.7, 0.2, d + 0.9, 'steel'), 0, wallH + roofH, 0));
   // Giebeldreiecke als schmale Quader — von vorn sieht man sonst unters Dach.
