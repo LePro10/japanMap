@@ -5128,6 +5128,35 @@ beide stehen auf dem Boden, kein Spalt.
 
 ---
 
+**Runde 3, 2026-08-08.** Hafen, Leuchtturm, Geschäftsstraße, Fuß des Sandō.
+**Kein neuer Fehler.**
+
+| Standpunkt | Befund |
+|---|---|
+| Geschäftsstraße | **das stärkste Bild des Projekts** — Neon mit Kanji, Pfütze mit Spiegelung, leuchtende Ladenfronten. Der Money-Shot aus P6 trägt |
+| Fuß des Sandō | in Ordnung — Pfad, Einschnitt, Bewuchs auf der Böschung |
+| Hafen | die **eckige Wasserkante** wieder, wie am Fischerdorf |
+| Leuchtturm | dito |
+
+Damit steht die Uferlinie an drei von drei Küstenstandpunkten im Bild. Sie ist
+das auffälligste, was noch offen ist — und die Ursache ist bekannt (die
+CDLOD-Sehne, siehe P8 „Offen und gemessen: die Uferlinie ist eine Treppe").
+
+> **Ein Fehlalarm gehört dazu.** Im Bild vom Sandō-Fuß standen zwei weiße
+> Striche auf der Böschung, die nach einem verrutschten Fahrbahn-Decal aussahen.
+> Der Nachfass-Blickpunkt war **unbrauchbar**: die Kamera steckte im Hang, das
+> Bild kam gekippt heraus und zeigte Himmel statt Gelände. Daraus ließ sich
+> nichts schließen, und der Verdacht ist damit weder bestätigt noch widerlegt —
+> nur, dass Decals bauartbedingt auf der Mittellinie sitzen und gar nicht
+> danebenliegen können. Wahrscheinlich war es die Ringstraße hinter dem Rücken,
+> streifend gesehen.
+>
+> Die Lehre ist dieselbe wie bei den Blickpunkten aus P10.0: **ein geratener
+> Standpunkt ist keine Messung.** Wer nachfasst, holt die Koordinate aus den
+> Daten, so wie es bei `wald` und den Straßenstandpunkten gemacht wurde.
+
+---
+
 **Versuch, die Einschnitte zu begrünen — gemessen und verworfen.**
 
 Der naheliegende billige Ausweg gegen die kahlen Wände: Bewuchs darauf zulassen,
