@@ -231,9 +231,25 @@ unten, abgelesen im Debug-Overlay, nicht das Bauchgefühl beim Fliegen.
 | Initialer Download | < 15 MB (KTX2 + meshopt) |
 | Frame-Time-Budget | 16,6 ms → davon max. 5 ms Postprocessing |
 
-**Quality-Presets** (Ultra / High / Medium / Low) skalieren: Schattenauflösung,
-SSR an/aus, N8AO-Samples, Sichtweite, Vegetationsdichte, Render-Scale.
-Von Anfang an eingebaut — nachträglich einzuziehen ist teuer.
+**Quality-Presets** skalieren: ~~Schattenauflösung, SSR an/aus,~~ N8AO-Stufe,
+~~Sichtweite~~, Vegetationsdichte, Render-Scale. Von Anfang an eingebaut —
+nachträglich einzuziehen ist teuer.
+
+> **Stand P10.1, gemessen.** Es sind **fünf** Stufen (Minimal kam in P8.2 dazu),
+> und drei Posten dieser Aufzählung stimmen so nicht mehr:
+>
+> - **Schattenauflösung** wirkt nur im Vergleichsfall — Echtzeitschatten sind
+>   seit P2 aus, die gebackene Geländeverschattung hat sie ersetzt.
+> - **SSR** heißt `reflections` und schaltet den planaren Durchgang aus P6.5;
+>   SSR selbst ist gemessen verworfen (offene Entscheidung 1).
+> - **Sichtweite** war bis P10.1 ein Deckel in Metern und damit auf vier von
+>   fünf Stufen **wirkungslos** — die größte Artenreichweite ist 520 m, der
+>   Deckel lag darüber. Ersetzt durch zwei Faktoren: `vegetationRange` (wie weit
+>   wird gezeichnet) und `lodBias` (wie teuer). Herleitung in `quality.config.ts`.
+>
+> Dazugekommen sind `terrainGridVertices` (P8.1 — der einzige Hebel an der
+> Geländelast) und `postFx` (P8.2 — auf „Minimal" ein anderer Renderpfad, kein
+> Regler).
 
 ---
 
@@ -317,24 +333,37 @@ Kitbashing aus verschiedenen Gratis-Quellen scheitert sonst am Stil-Mix.
 | **P2** | Postprocessing-Pipeline, Höhennebel, gebackene Verschattung, Wasser, Color-Grading | Die Stimmung sitzt |
 | **P3** | Spline-System, Spline-Editor, Terrain-Carving, Straßen-Meshes | Befahrbares Straßennetz |
 | **P4** ✅ | CDLOD-Quadtree, Vegetations-Streuung, Instancing, Imposter | Welt füllt sich, Budgets greifen |
-| **P5** | Asset-Pipeline, Landmarks: Tempel, Torii, Dorf, Reisfelder | Zonen bekommen Identität |
-| **P6** | Stadt-Generator, Emissive-Neon, nasser Asphalt, Reflexions-Entscheidung | Der Money-Shot |
-| **P7** | Quality-Presets, Streaming, Ladebildschirm, Profiling | Auslieferbar |
-| **P8** | Politur: Stufen im Gelände, PostFX-Staffelung, Wolken, Terrain-Durchgang, Fluss, Pfade, Fischerdorf, Sandō, Stadtrand, Weltrand | Die Karte trägt ein Spiel |
+| **P5** ✅ | Asset-Pipeline, Landmarks: Tempel, Torii, Dorf, Reisfelder | Zonen bekommen Identität |
+| **P6** ✅ | Stadt-Generator, Emissive-Neon, nasser Asphalt, Reflexions-Entscheidung | Der Money-Shot |
+| **P7** ◐ | Quality-Presets, Streaming, Ladebildschirm, Profiling | Auslieferbar |
+| **P8** ✅ | Politur: Stufen im Gelände, PostFX-Staffelung, Wolken, Terrain-Durchgang, Fluss, Pfade, Fischerdorf, Sandō, Stadtrand, Weltrand | Die Karte trägt ein Spiel |
+| **P9** ○ | Die Fahrschicht — Kollision, Fahrzeug, Rundenlogik | Ein Auto fährt eine Runde |
+| **P10** ◐ | Stufen, Regler, Auslieferung | Die Stufen tun, was sie versprechen |
 
-**Aktueller Stand: P0–P8 abgeschlossen (2026-08-01), 10 von 10 Kriterien.**
+**Aktueller Stand (2026-08-08): P0–P6 und P8 abgeschlossen. P7 bleibt auf ◐**
+— zwei seiner Kriterien sind ohne Zielhardware nicht prüfbar, eines
+(Startdownload) ist gemessen verfehlt. **P10 ist zu zwei Aufgaben von vier
+gebaut** (10.0 Messlauf, 10.1 Stufenkopplung); 10.2 (Spieler-Oberfläche) und
+10.3/10.4 stehen aus. **P9 ist geplant und nicht gebaut.**
 
 Die Budgets aus §4 sind auf Ultra mit vorgefüllter Streuung nachgemessen:
 **173 Draw-Calls** von 800, **958 068 Dreiecke** von 3 000 000,
 **307,8 MB** Texturspeicher von 512. Die Kette ist bitgleich reproduzierbar.
-Die zuletzt offenen Zeilen — 8 Kehren am Bergpass und die Stadtkante — sind
-seit dem 2026-08-01 erfüllt; hinter beiden stand ein Fehler, kein fehlender
-Regler. P9 (Fahrschicht) ist geplant und nicht gebaut.
+
+> **Zu den drei Zahlen gehört ihr Datum: sie stammen aus der P8-Abnahme vom
+> 2026-08-01** und sind seitdem **nicht neu abgelesen**. Der Messlauf vom
+> 2026-08-07 nennt für dieselben Budgets an anderen Blickpunkten bis zu
+> 681 120 Dreiecke und 165 Draw-Calls — beides weiterhin weit im Budget, aber
+> es sind andere Zahlen an anderen Orten, und sie ersetzen die obigen nicht.
 
 > Der ursprüngliche Satz „Nächste Phase: P5" stand hier bis P8.11 und war seit
 > P5 falsch. Er ist stehen geblieben, weil niemand die Zeile beim Abschluss
 > einer Phase mitgeführt hat — dieselbe Sorte Fehler wie die Zahlen aus einem
-> Lauf, den es nicht mehr gibt.
+> Lauf, den es nicht mehr gibt. **Am 2026-08-08 ist derselbe Fehler ein zweites
+> Mal gefunden worden**, diesmal in der Tabelle darüber: sie trug bei P5 bis P8
+> keine Haken, obwohl alle vier abgenommen waren. Deshalb steht die Statuszeile
+> jetzt ausgeschrieben darunter — eine Tabelle mit Häkchen wird beim
+> Phasenabschluss übersehen, ein Satz nicht.
 
 Die **P1-Nachbesserung am Höhenfeld** war für „vor P4" vorgemerkt und ist nicht
 erfolgt: die Flanke abzuflachen ändert die Silhouette des Massivs, und das
@@ -343,29 +372,68 @@ die nicht nebenbei mitgetroffen wird. Technisch kostet die Verschiebung nichts,
 weil die Vegetations-Streuung zur Laufzeit aus Seed und Chunk-Koordinate
 gerechnet wird und einem geänderten Höhenfeld von selbst folgt.
 
-Drei bekannte offene Punkte:
+Bekannte offene Punkte, Stand 2026-08-08:
 
-- **Startdownload 51,95 MB** gegen die 15 MB aus §4 — die dafür vorgesehene
-  KTX2-Pipeline ist P5.1. Aufschlüsselung und Reduktionspfad in
-  [PLAN.md](PLAN.md), Risiken zu P1 und „Offene Punkte aus P3".
-- **Bergpass: 2 Serpentinen statt ≥ 8, Gipfelhöhe 264 m statt 450 m.** Beides
-  hängt am Höhenfeld, nicht am Straßengenerator — als P1-Nachbesserung notiert.
-  Siehe §2.1 und PLAN.md, „Wie der Bergpass zu seinen Kehren kam".
-- **GPU-Zeit ist auf dieser Maschine nicht messbar.** Der eingebaute Browser
-  bekommt einen WebGL2-Kontext (ANGLE über den Microsoft Basic Render Driver),
-  aber keine `EXT_disjoint_timer_query_webgl2`. Draw-Calls, Dreiecke,
+- **Startdownload 43,48 MB** gegen die 15 MB aus §4 — frisch gemessen aus
+  `dist/` (53 Dateien, Brotli wo vorhanden, Sourcemaps nicht mitgezählt).
+  ~~51,95 MB~~ stand hier bis P10 und stammte aus einem Lauf vor den Props aus
+  P8.9. **Die Hälfte steckt in fünf Dateien:** Himmels-HDRI 7,01 · `normal.png`
+  5,49 · `nor_gl.jpg` 4,71 · `height.r16` 4,40 · IBL-HDRI 4,13 MB. Rund 9,1 MB
+  sind Normalmaps im **JPEG**-Format, was sie nicht nur groß, sondern falsch
+  macht — Chromasubsampling zerstört Normalen. Reduktionspfad in
+  [PLAN.md](PLAN.md) unter P10.4.
+- ~~**Bergpass: 2 Serpentinen statt ≥ 8, Gipfelhöhe 264 m statt 450 m.**~~
+  **Erledigt am 2026-08-01: 9 Kehren auf 2616 m.** Die Ursache lag nicht am
+  Höhenfeld, sondern an einem Sicherheitsfaktor der Verrundung, der am Ring
+  geeicht war — siehe §2.1. Die Gipfelhöhe bleibt unter der Vorgabe und ist
+  eine Art-Direction-Frage, keine Messlücke.
+- **GPU-Zeit ist auf der Entwicklungsmaschine nicht messbar.** Der eingebaute
+  Browser bekommt einen WebGL2-Kontext (ANGLE über den Microsoft Basic Render
+  Driver), aber keine `EXT_disjoint_timer_query_webgl2`. Draw-Calls, Dreiecke,
   Texturspeicher und Instanzzahlen sind CPU-seitige Zähler und damit exakt; die
-  Bildrate sagt über die Zielhardware nichts. Frame-Time-Budgets gehören
-  deshalb nach P7, auf Hardware mit Timer.
+  Bildrate sagt dort über die Zielhardware nichts.
+
+  > **Seit P10.0 gibt es dafür ein Werkzeug statt einer Ausrede.**
+  > `japanMap.report()` fährt Blickpunkte × Stufen ab und schreibt eine Datei;
+  > wer eine echte GPU hat, lässt ihn dort laufen. Der erste solche Lauf
+  > (2026-08-07) liegt vor. **Er lief allerdings auf einer RX 7900 XTX — genau
+  > der Karte, die dieser Abschnitt oben als „unbrauchbar als Maßstab" führt.**
+  > Belastbar sind daraus das Verhältnis der Stufen untereinander und der
+  > prozentuale Aufschlag eines Eingriffs, **nicht** Absolutwerte gegen die
+  > Budgets. Eine Messung auf GTX-1660-Klasse fehlt weiterhin.
+- **Es gibt keine Benutzeroberfläche im gebauten Stand.** Debug-Panel und
+  `window.japanMap` hängen an `import.meta.env.DEV`; ein Besucher bekommt einen
+  Canvas ohne Steuerungshinweis, ohne Einstellungen, ohne Pause. Die Stufe ist
+  nach dem ersten Start nicht mehr änderbar. Vollständiger Durchgang in
+  [PLAN.md](PLAN.md) unter P10.2, Aufgabenliste ebenda.
 
 Ausführungsdetails, Dateilisten und Akzeptanzkriterien pro Phase: **[PLAN.md](PLAN.md)**.
 Diese Tabelle ist die Kurzfassung — bei Widersprüchen gilt PLAN.md.
+Wo etwas im Quelltext steht und was mit was redet: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
 ---
 
 ## 8. Offene Punkte
 
-- **SSR-Qualität** — Entscheidung in M6 (siehe 3.2)
-- **Physik-Engine** — noch offen (Rapier vs. eigene Arcade-Physik). Erst relevant
-  wenn gefahren wird; `three-mesh-bvh` liefert die Kollisionsgeometrie unabhängig davon
-- **Stadt-Geometrie** — prozeduraler Generator vs. handplatzierte Blöcke. Entscheidung in M6
+- ~~**SSR-Qualität** — Entscheidung in M6 (siehe 3.2)~~
+  **Entschieden in P6, und zwar gemessen statt nach Tuning-Tagen:** gegen die
+  Neonschilder stehen nur **19,3 %** der Spiegelungen überhaupt im
+  Bildschirmraum, am wichtigsten Standpunkt **4,2 %**. SSR ist damit für diese
+  Blickgeometrie strukturell ungeeignet; gebaut wurde eine **planare
+  Spiegelung** für die Straßenebene. Das Konfigurationsfeld heißt seitdem
+  `reflections`. Messung: `japanMap.reflectionProbe()`.
+- ~~**Stadt-Geometrie** — prozeduraler Generator vs. handplatzierte Blöcke~~
+  **Entschieden in P6: prozeduraler Generator.** Gebäude werden **je Block**
+  zusammengefasst, nicht je Haus — sonst wären es bei 135 Gebäuden allein dafür
+  135 Draw-Calls. Das Teilbudget `cityDrawCalls` (< 300) hält das nach.
+- **Physik-Engine** — weiterhin offen (Rapier vs. eigene Arcade-Physik). Erst
+  relevant wenn gefahren wird; `three-mesh-bvh` liefert die Kollisionsgeometrie
+  unabhängig davon.
+  > **Offen *und* ausdrücklich ungemessen.** Die Tendenz „Rapier" steht seit P0
+  > ohne eine einzige Zahl daneben. P9.2 prüft sie an einem Prüfstand gegen eine
+  > eigene Arcade-Physik, bevor irgendetwas gebaut wird — dieselbe Regel, die in
+  > P6 eine monatelange Tendenz zu SSR gekippt hat.
+- **Ton** — es gibt keinen, und das ist nirgends als Entscheidung vermerkt. Für
+  eine Stimmung, die „blaue Stunde nach Regen" heißt, ist das ein großer
+  fehlender Anteil. Gehört nach P10 entschieden: bewusst weglassen oder
+  einplanen.

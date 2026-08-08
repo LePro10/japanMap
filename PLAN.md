@@ -2,14 +2,27 @@
 
 > Ausführungsplan zu [SPEC.md](SPEC.md). Die Spec sagt **was** gebaut wird,
 > dieser Plan sagt **in welcher Reihenfolge, mit welchen Dateien und woran wir
-> merken, dass eine Phase fertig ist**.
+> merken, dass eine Phase fertig ist**. Wo etwas im Quelltext steht und was mit
+> was redet, sagt [ARCHITECTURE.md](ARCHITECTURE.md).
 >
-> Stand: 2026-07-30 · **P0–P6 abgeschlossen, P7 gebaut und teilabgenommen,
-> P8 geplant**
+> **Stand: 2026-08-08 · P0–P6 und P8 abgenommen · P7 ◐ · P9 geplant ·
+> P10 zu zwei von vier Aufgaben gebaut**
 >
 > P7 ist vollständig gebaut. Zwei seiner fünf Akzeptanzkriterien lassen sich auf
-> dieser Maschine nicht prüfen (keine GTX-1660-Klasse, kein GPU-Timer), eines ist
-> **nachweislich verfehlt**: der Startdownload liegt bei 42,68 MB gegen 15 MB.
+> der Entwicklungsmaschine nicht prüfen (keine GTX-1660-Klasse, kein GPU-Timer),
+> eines ist **nachweislich verfehlt**: der Startdownload liegt bei **43,48 MB**
+> gegen 15 MB (frisch gemessen am 2026-08-07; ~~42,68~~ stammte aus einem Lauf
+> vor den Props aus P8.9).
+>
+> Aus P10 sind **10.0** (der Messlauf) und **10.1** (Stufenkopplung) gebaut und
+> gemessen. Offen: **10.2** die Spieler-Oberfläche — im gebauten Stand gibt es
+> heute *keine*, der vollständige Durchgang steht dort —, **10.3** der kahle
+> Ring bei 520 m und **10.4** der Startdownload.
+>
+> Der Kopf dieser Datei stand bis zum 2026-08-08 auf „Stand 2026-07-30, P8
+> geplant" — acht Tage und zwei Phasen hinterher. Dass diese Zeile schon zweimal
+> veraltet war (hier und in SPEC §7), ist der Grund, warum sie jetzt ein Datum
+> trägt statt nur einen Zustand.
 > Die Einzelheiten stehen unten bei P7; das Wesentliche ist, dass die Lücke
 > beziffert und nicht behauptet ist.
 >
@@ -4902,6 +4915,86 @@ dieselbe Strenge haben.
 nachgewiesen: er ändert die Zahl, die er ändern soll, und **keine andere**. Ein
 Regler ohne nachgewiesene Wirkung ist eine Zusage ohne Deckung — dieselbe
 Formulierung wie bei `shadowCascades` in P7.1, das genau deshalb entfallen ist.
+
+### Der Durchgang von A bis Z — am gebauten Stand, nicht am Dev-Server
+
+Aufgenommen am 2026-08-08 gegen `npm run preview` (Port 4180). **Das ist der
+Unterschied, auf den es ankommt:** im Dev-Server verdeckt das Debug-Panel jede
+Lücke, weil dort Stufenwahl, Blickpunkte und Zahlen greifbar sind. Gemessen am
+gebauten Stand:
+
+```js
+{ japanMap: "undefined",
+  bodyKinder: ["CANVAS#viewport", "DIV#overlay", "NOSCRIPT"],
+  overlayInhalt: "(leer)" }
+```
+
+Ein Canvas und ein leeres `div`. Das ist die ganze Anwendung.
+
+**Der Weg eines Besuchers, Schritt für Schritt:**
+
+| # | Was passiert | Befund |
+|---|---|---|
+| 1 | Seite wird geladen, 43,48 MB über die Leitung | 6,8 s allein Übertragung bei 50 Mbit — verfehltes Kriterium aus P7 |
+| 2 | Ladebildschirm, Balken aus initialisierten Systemen | **ehrlich und gut** — der eine Teil der UX, der stimmt |
+| 3 | Ladebildschirm verschwindet, Bild steht | kein Hinweis, dass jetzt etwas zu tun wäre |
+| 4 | Nutzer sieht die Karte, bewegt die Maus | **nichts passiert** — Pointer-Lock verlangt einen Klick, das steht nirgends |
+| 5 | Nutzer klickt | Zeiger wird gefangen, Blick folgt der Maus |
+| 6 | Nutzer will sich bewegen | WASD, Leertaste, Strg, Shift, Mausrad, F, R — **nichts davon steht irgendwo** |
+| 7 | Nutzer drückt Escape | Zeiger frei, **und sonst nichts**. Kein Menü, keine Pause, kein Zurück |
+| 8 | Nutzer will die Qualität ändern | **geht nicht.** Kein Regler existiert im Build |
+| 9 | Nutzer verirrt sich | keine Karte, kein Kompass, keine Ortsnamen, keine Rücksprungliste |
+| 10 | Nutzer lädt neu | Kameraposition ist gespeichert (`japanmap.camera`) — **das funktioniert** |
+
+**Zehn Befunde, nach Gewicht:**
+
+1. **Es gibt keinen Steuerungshinweis.** Sechs Tasten, ein Mausrad und ein
+   Pflichtklick, und keine einzige Stelle, an der sie stehen. Die Tabelle
+   existiert — als Kommentar über `FreeFlyController`, den kein Nutzer sieht.
+2. **Die Qualität ist nach dem ersten Start festgenagelt.** Die Einstufung läuft
+   einmal, schreibt nach `localStorage` und **stuft nur herunter, nie herauf**.
+   Wer beim ersten Besuch unter Fremdlast startet, sitzt dauerhaft auf Minimal —
+   640 × 360 ohne PostFX — und hat keine Möglichkeit, das zu ändern.
+   `QualitySystem.reclassify()` existiert und hängt nur am Debug-Panel.
+3. **Escape führt ins Leere.** Der Zustand „Zeiger frei" ist der natürliche Ort
+   für ein Menü und ist heute ein Nichts.
+4. **Auf einem Touch-Gerät ist die Anwendung unbedienbar — und sagt es nicht.**
+   `deviceTier` erkennt `(pointer: coarse)` und stuft vorsorglich auf „Mittel"
+   herunter; der `FreeFlyController` kennt aber ausschließlich `mousemove`,
+   `wheel`, `pointerdown` und `keydown`. Es lädt, es rendert, und man kann sich
+   **keinen Meter** bewegen. SPEC §1 schließt Mobil ausdrücklich aus — das ist
+   eine legitime Entscheidung, aber sie gehört dem Nutzer gesagt statt ihn
+   raten zu lassen.
+5. **Keine Orientierung auf 9,4 km².** Dreizehn benannte Blickpunkte liegen in
+   `viewpoints.ts` und sind der Konsole vorbehalten. Für eine Karte, deren
+   Inhalt das Erkunden *ist*, ist das der größte verschenkte Posten.
+6. **Kein Ton.** Für eine Stimmung, die „blaue Stunde nach Regen" heißt, fehlt
+   damit die halbe Wirkung. Nicht im Plan, und das ist eine bewusste
+   Entscheidung — sie steht nur nirgends.
+7. **Jeder Initialisierungsfehler ersetzt die ganze Seite.** `fatal()` setzt
+   `document.body.innerHTML` und wirft. Kein Weg zurück, kein Neuversuch, und
+   der WebGL2-Fall ist die einzige Meldung mit einem verwertbaren Rat.
+8. **Der Ladebildschirm zeigt keinen Inhalt.** Balken und Dateiname, aber kein
+   Bild, kein Titel, kein Hinweis darauf, was man gleich sieht — und dahinter
+   liegen 43,5 MB.
+9. **Der Wechsel auf „Minimal" ruckelt**, gemessen: 17 zusätzliche
+   Shader-Übersetzungen (31 → 50 Programme). Ein Stufenregler ohne Gegenmittel
+   baut sich damit einen sichtbaren Hänger ein.
+10. **Es gibt keinen Fotomodus.** `shot()` existiert im Dev-Build; für eine
+    Karte, die auf ihren Look gebaut ist, wäre das die naheliegendste Geste,
+    die ein Besucher machen will.
+
+**Was ausdrücklich gut ist** — damit die Liste nicht nur Mängel zählt: der
+Ladebalken ist echt statt animiert; die Kameraposition überlebt einen Neustart;
+Pointer-Lock hat den Sprung beim Einfangen abgefangen; `blur` räumt die
+Tastenmenge auf, sodass die Kamera bei einem Fensterwechsel nicht davonfliegt;
+und die Ersteinstufung verweigert eine Messung aus einem verdeckten Fenster,
+statt sie zu speichern.
+
+**Reihenfolge für 10.2**, nach Wirkung je Aufwand: Steuerungshinweis (1) und
+Escape-Menü (3) zusammen, darin die Stufenwahl (2), dann die Blickpunktliste (5)
+und der Touch-Hinweis (4). Alles Weitere ist eigenständig und gehört nicht in
+diese Aufgabe.
 
 ---
 
