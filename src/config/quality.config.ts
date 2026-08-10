@@ -7,10 +7,23 @@
  * unten, kalibriert auf GTX 1660 / RX 580 @ 1080p60 (SPEC §4).
  */
 
-import type { GridVertices } from './lod.config';
-import type { PostFxQuality } from './postfx.config';
+import { GRID_VERTICES_ALLOWED, type GridVertices } from './lod.config';
+import { POSTFX_QUALITY, type PostFxQuality } from './postfx.config';
 
 export type QualityLevel = 'ultra' | 'high' | 'medium' | 'low' | 'minimal';
+
+/**
+ * Was `quality:changed` tragen kann — die fünf Voreinstellungen **und** die
+ * eigene Stufe aus dem Menü (P10.2).
+ *
+ * Bewusst ein zweiter Typ und keine Erweiterung von `QualityLevel`: die
+ * Ersteinstufung leitet ihre Leiter aus `QUALITY_LEVELS` ab und geht sie der
+ * Reihe nach herunter. „Eigen" hat in dieser Leiter keinen Platz — sie ist
+ * geordnet, eine frei zusammengestellte Stufe ist es nicht. Wer beides in einen
+ * Typ wirft, bekommt einen `indexOf` von −1 und stuft damit versehentlich auf
+ * die erste Stufe **hoch**.
+ */
+export type QualityKey = QualityLevel | 'custom';
 
 export type AoQuality = 'high' | 'medium' | 'low' | 'off';
 
@@ -270,7 +283,7 @@ export const AO_QUALITY: Readonly<Record<AoQuality, AoSettings>> = {
  * abgelesen**; sie hängen an `vegetationDensity`, und daran hat P8.1 nichts
  * geändert.
  */
-export const QUALITY: Readonly<Record<QualityLevel, QualitySettings>> = {
+const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
   ultra: {
     label: 'Ultra',
     shadowMapSize: 2048,
@@ -364,6 +377,49 @@ export const QUALITY_LEVELS: readonly QualityLevel[] = [
 ];
 
 /**
+ * Die Felder, die der Nutzer im Menü einzeln stellen darf — P10.2.
+ *
+ * `shadowMapSize` fehlt mit Absicht: Echtzeit-Schatten sind seit P2 aus, der
+ * Wert kostet nichts und ändert nichts. Ein Regler ohne Wirkung ist genau das,
+ * was P10.1 an `viewDistance` beanstandet hat; er gehört nicht in ein Menü, das
+ * jemand ernst nehmen soll.
+ */
+export interface CustomQuality {
+  readonly renderScale: number;
+  readonly terrainGridVertices: GridVertices;
+  readonly vegetationDensity: number;
+  readonly vegetationRange: number;
+  readonly lodBias: number;
+  readonly ao: AoQuality;
+  readonly postFx: PostFxQuality;
+  readonly reflections: boolean;
+}
+
+/** Zustand der eigenen Stufe. Startwert ist Ultra — siehe `setCustomQuality`. */
+const customState: { value: QualitySettings } = {
+  value: { ...PRESETS.ultra, label: 'Eigen' },
+};
+
+/**
+ * Die Stufentabelle, wie sie alle Systeme lesen — `QUALITY[level].renderScale`.
+ *
+ * **`custom` ist ein Getter und keine Kopie.** Die Systeme schlagen ihre Werte
+ * beim Eintreffen von `quality:changed` nach; wer stattdessen ein eingefrorenes
+ * Objekt hier einträgt, liefert nach dem ersten Reglerzug die Werte von vorher
+ * aus. Das ist wörtlich der Fehler, den CLAUDE.md unter „Zusage statt Ergebnis"
+ * führt — nur im Datenpfad statt im Bericht.
+ *
+ * Die fünf Voreinstellungen bleiben unveränderlich; änderbar ist allein die
+ * eigene Stufe, und die nur über `setCustomQuality()`, weil dort geklemmt wird.
+ */
+export const QUALITY: Readonly<Record<QualityKey, QualitySettings>> = {
+  ...PRESETS,
+  get custom(): QualitySettings {
+    return customState.value;
+  },
+};
+
+/**
  * Ungünstigster `lodBias` und größter `vegetationRange` über **alle** Stufen.
  *
  * Wofür: `ScatterSystem` legt seine Instanzpuffer **einmal** beim Start an, die
@@ -386,6 +442,105 @@ export const LOD_BIAS_MIN: number = Math.min(...QUALITY_LEVELS.map((l) => QUALIT
 export const VEGETATION_RANGE_MAX: number = Math.max(
   ...QUALITY_LEVELS.map((l) => QUALITY[l].vegetationRange),
 );
+
+/**
+ * Grenzen der Einzelregler — und **warum sie keine Geschmacksfrage sind.**
+ *
+ * Zwei davon sind hart und stehen genau deshalb hier, abgeleitet statt
+ * abgeschrieben:
+ *
+ *  - **`lodBias` darf nicht unter `LOD_BIAS_MIN`.** `ScatterSystem` legt seine
+ *    Instanzpuffer **einmal** beim Start an, bemessen auf den ungünstigsten
+ *    Fall über alle Stufen. Ein kleinerer Bias schiebt Instanzen aus den
+ *    Mesh-Stufen in die Imposter-Stufe, deren Puffer läuft über — und
+ *    `InstancedLOD.push()` verwirft dann **stillschweigend**. Der Regler würde
+ *    also Vegetation kosten und dabei aussehen, als täte er nichts.
+ *  - **`vegetationRange` nicht über `VEGETATION_RANGE_MAX`**, aus demselben
+ *    Grund von der anderen Seite: der äußere Ring wächst mit.
+ *
+ * Ein Regler darf den Renderer nicht in einen Zustand bringen, den kein
+ * Messlauf je gesehen hat. Wer die Reichweite wirklich erhöhen will, erhöht
+ * `vegetationRange` in der Tabelle oben — dann wachsen die Puffer mit, weil sie
+ * daraus bemessen werden. Das ist P10.3 und nicht die Aufgabe eines Menüs.
+ *
+ * `renderScale` ab 0,5: darunter ist die Schrift der Beschilderung nicht mehr
+ * lesbar (gemessen an `stadt-neon`, 1280 × 720 → 640 × 360 ist die untere
+ * Grenze, an der die Kanji noch als Zeichen und nicht als Muster stehen).
+ */
+export const CUSTOM_LIMITS = {
+  renderScale: { min: 0.5, max: 1, step: 0.05 },
+  vegetationDensity: { min: 0.05, max: 1, step: 0.05 },
+  vegetationRange: { min: 0.5, max: VEGETATION_RANGE_MAX, step: 0.05 },
+  lodBias: { min: LOD_BIAS_MIN, max: 1, step: 0.05 },
+} as const;
+
+const AO_KEYS = Object.keys(AO_QUALITY) as readonly AoQuality[];
+const POSTFX_KEYS = Object.keys(POSTFX_QUALITY) as readonly PostFxQuality[];
+
+function clamp(value: number, { min, max }: { min: number; max: number }): number {
+  return Number.isFinite(value) ? Math.min(Math.max(value, min), max) : min;
+}
+
+/** Die eigene Stufe lesen — für die Regler im Menü. */
+export function readCustomQuality(): QualitySettings {
+  return customState.value;
+}
+
+/**
+ * Die eigene Stufe setzen — der einzige Weg dorthin.
+ *
+ * **Es wird geklemmt und geprüft, nicht vertraut.** Die Werte kommen aus einem
+ * Menü, aus `localStorage` (also aus einem früheren Programmstand) und
+ * potenziell aus der Konsole. `terrainGridVertices` ist dabei der gefährlichste:
+ * P4 hat 207 Löcher im Terrain gezählt, als die Rissfreiheit nicht mehr galt,
+ * und die zulässigen Werte stehen aus genau diesem Grund in
+ * `GRID_VERTICES_ALLOWED`. Ein Wert daneben wird **nicht** übernommen, statt
+ * ein Gitter zu bauen, dessen Nachbarn nicht mehr zusammenpassen.
+ *
+ * Liefert die fertige Stufe zurück, damit der Aufrufer anzeigen kann, was
+ * wirklich gilt — und nicht, was er wollte.
+ */
+export function setCustomQuality(patch: Partial<CustomQuality>): QualitySettings {
+  const before = customState.value;
+  const grid = patch.terrainGridVertices;
+  customState.value = {
+    label: 'Eigen',
+    shadowMapSize: before.shadowMapSize,
+    renderScale: clamp(patch.renderScale ?? before.renderScale, CUSTOM_LIMITS.renderScale),
+    vegetationDensity: clamp(
+      patch.vegetationDensity ?? before.vegetationDensity,
+      CUSTOM_LIMITS.vegetationDensity,
+    ),
+    vegetationRange: clamp(
+      patch.vegetationRange ?? before.vegetationRange,
+      CUSTOM_LIMITS.vegetationRange,
+    ),
+    lodBias: clamp(patch.lodBias ?? before.lodBias, CUSTOM_LIMITS.lodBias),
+    terrainGridVertices: GRID_VERTICES_ALLOWED.includes(grid as GridVertices)
+      ? (grid as GridVertices)
+      : before.terrainGridVertices,
+    ao: patch.ao !== undefined && AO_KEYS.includes(patch.ao) ? patch.ao : before.ao,
+    postFx:
+      patch.postFx !== undefined && POSTFX_KEYS.includes(patch.postFx) ? patch.postFx : before.postFx,
+    reflections:
+      typeof patch.reflections === 'boolean' ? patch.reflections : before.reflections,
+  };
+  return customState.value;
+}
+
+/** Die stellbaren Felder einer beliebigen Stufe herausziehen — Startwert der Regler. */
+export function customFromSettings(settings: QualitySettings): CustomQuality {
+  return {
+    renderScale: settings.renderScale,
+    terrainGridVertices: settings.terrainGridVertices,
+    vegetationDensity: settings.vegetationDensity,
+    vegetationRange: settings.vegetationRange,
+    lodBias: settings.lodBias,
+    ao: settings.ao,
+    postFx: settings.postFx,
+    reflections: settings.reflections,
+  };
+}
 
 /**
  * Stufe, mit der die Einstufung beginnt — und die gilt, wenn sie nicht

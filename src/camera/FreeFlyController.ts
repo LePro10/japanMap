@@ -63,6 +63,9 @@ interface StoredCamera {
  * | Mausrad | Grundgeschwindigkeit 1–500 m/s, logarithmisch |
  * | F | Terrain-Kollision an/aus |
  * | R | zurück zur Startposition |
+ * | Esc | löst den Pointer Lock — seit P10.2 öffnet das das Pausenmenü |
+ *
+ * **Alle Tasten wirken nur bei gefangenem Zeiger.** Siehe `#onKeyDown`.
  */
 export class FreeFlyController implements System {
   readonly name = 'FreeFlyController';
@@ -278,6 +281,16 @@ export class FreeFlyController implements System {
 
   readonly #onKeyDown = (event: KeyboardEvent): void => {
     if (isTyping()) return;
+    // **Ohne Pointer Lock keine Steuerung** — seit P10.2, und der Grund steht
+    // im Spielermenü: das liegt über dem Canvas, und wer dort einen Regler mit
+    // der Tastatur bedient oder auch nur „W" streift, ließ die Kamera bis dahin
+    // losfliegen. Beim Zurückkehren stand sie irgendwo, ohne dass jemand
+    // geflogen wäre. `#onPointerLockChange` leert die gedrückten Tasten bereits;
+    // was fehlte, war die Sperre für neue.
+    //
+    // Der umgekehrte Fall ist keiner: Umsehen braucht den Lock ohnehin, eine
+    // Bewegung ohne Blick gibt es also nicht zu verlieren.
+    if (!this.#pointerLocked) return;
 
     const code = event.code.toLowerCase();
     if (code === 'keyf') {

@@ -3,6 +3,11 @@ import {
   DEFAULT_QUALITY,
   QUALITY,
   QUALITY_LEVELS,
+  customFromSettings,
+  readCustomQuality,
+  setCustomQuality,
+  type CustomQuality,
+  type QualityKey,
   type QualityLevel,
 } from '@/config/quality.config';
 import { SPECIES } from '@/config/vegetation.config';
@@ -50,7 +55,7 @@ export class QualitySystem implements System {
   readonly name = 'Qualität';
 
   #context: EngineContext | null = null;
-  #level: QualityLevel;
+  #level: QualityKey;
 
   /** Läuft eine Einstufung? `null`, wenn nicht. */
   #run: BenchmarkRun | null = null;
@@ -86,11 +91,11 @@ export class QualitySystem implements System {
     return this.#run !== null;
   }
 
-  constructor(level: QualityLevel = DEFAULT_QUALITY) {
+  constructor(level: QualityKey = DEFAULT_QUALITY) {
     this.#level = level;
   }
 
-  get level(): QualityLevel {
+  get level(): QualityKey {
     return this.#level;
   }
 
@@ -194,7 +199,7 @@ export class QualitySystem implements System {
    * Art Zahl, vor der CLAUDE.md warnt — richtig abgelesen, an einem System
    * gemessen, das etwas anderes tat als beschrieben.
    */
-  set(level: QualityLevel): void {
+  set(level: QualityKey): void {
     if (!(level in QUALITY)) {
       const bekannt = Object.keys(QUALITY).join(', ');
       throw new Error(`Unbekannte Qualitätsstufe „${String(level)}". Bekannt: ${bekannt}.`);
@@ -203,8 +208,36 @@ export class QualitySystem implements System {
     this.#context?.bus.emit('quality:changed', { level });
   }
 
+  /**
+   * Einen oder mehrere Einzelregler stellen und auf „Eigen" umschalten — P10.2.
+   *
+   * **Warum das nicht über `set('custom')` läuft.** `set()` bricht ab, wenn die
+   * Stufe schon gilt — richtig für eine Stufenwahl, fatal für einen Regler: wer
+   * auf „Eigen" steht und die Auflösung verschiebt, sendet dann **nichts**, und
+   * die Systeme behalten ihre alten Werte. Der Regler bewegte sich, das Bild
+   * nicht. Genau die Sorte Fehler, die dieses Projekt schon zweimal als
+   * „wirkungsloser Regler" gefunden hat (`viewDistance`, `shadowCascades`).
+   *
+   * Deshalb wird hier **immer** gesendet. Die Stufe hat sich inhaltlich
+   * geändert, auch wenn ihr Name derselbe geblieben ist.
+   */
+  setCustom(patch: Partial<CustomQuality>): void {
+    setCustomQuality(patch);
+    this.#level = 'custom';
+    this.#run = null;
+    this.#readouts.einstufung = 'von Hand zusammengestellt';
+    storeLevel('custom');
+    this.#context?.bus.emit('quality:changed', { level: 'custom' });
+    this.#updateReadouts();
+  }
+
+  /** Die eigene Stufe mit den Werten einer Voreinstellung füllen — Startpunkt der Regler. */
+  seedCustomFrom(level: QualityKey): void {
+    setCustomQuality(customFromSettings(QUALITY[level]));
+  }
+
   /** Eine Stufe, die aus diesem System kommt — keine Wahl von Hand. */
-  #emit(level: QualityLevel): void {
+  #emit(level: QualityKey): void {
     this.#internal = true;
     try {
       this.#context?.bus.emit('quality:changed', { level });
@@ -259,7 +292,17 @@ export class QualitySystem implements System {
       return;
     }
 
-    const index = QUALITY_LEVELS.indexOf(this.#level);
+    // **„Eigen" steht in dieser Leiter nicht** — `indexOf` gäbe −1, und
+    // `QUALITY_LEVELS[0]` wäre Ultra: die Einstufung würde bei schlechter
+    // Bildrate ausgerechnet **hoch**stufen. Erreichbar ist der Fall zwar nicht
+    // (eine eigene Stufe beendet die Einstufung), aber ein Vorzeichenfehler,
+    // der nur durch eine Bedingung anderswo unschädlich bleibt, ist kein
+    // Zustand, den man stehen lässt.
+    const index = QUALITY_LEVELS.indexOf(this.#level as QualityLevel);
+    if (index < 0) {
+      this.#finish('abgebrochen — eigene Stufe, keine Leiter');
+      return;
+    }
     const next = QUALITY_LEVELS[index + 1];
     if (median <= BENCHMARK.stepDownMs || !next) {
       const grund = median <= BENCHMARK.stepDownMs ? 'reicht' : 'niedrigste Stufe';
@@ -350,7 +393,8 @@ export class QualitySystem implements System {
     // Stufen am selben Blickpunkt, und dafür ist ein Knopf schneller als ein
     // Aufklappmenü.
     folder.addButton({ title: 'Nächste Stufe' }).on('click', () => {
-      const index = QUALITY_LEVELS.indexOf(this.#level);
+      // `indexOf` gibt bei ‚Eigen‘ −1 — dann beginnt der Durchlauf bei Ultra.
+      const index = QUALITY_LEVELS.indexOf(this.#level as QualityLevel);
       const next = QUALITY_LEVELS[(index + 1) % QUALITY_LEVELS.length];
       if (next) this.set(next);
     });
@@ -377,25 +421,50 @@ interface BenchmarkRun {
  * wäre eine schlechte Bilanz für eine Bequemlichkeitsfunktion; deshalb ist jeder
  * Zugriff eingepackt und der Fehlerfall schlicht „nichts gespeichert".
  */
-function readStoredLevel(): QualityLevel | null {
+function readStoredLevel(): QualityKey | null {
   try {
     const raw = localStorage.getItem(BENCHMARK.storageKey);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== 'object' || parsed === null) return null;
-    const { level, version } = parsed as { level?: unknown; version?: unknown };
+    const { level, version, custom } = parsed as {
+      level?: unknown;
+      version?: unknown;
+      custom?: unknown;
+    };
     if (version !== BENCHMARK.storageVersion) return null;
+    if (level === 'custom') {
+      // **Die gespeicherten Werte gehen durch dieselbe Klemmung wie frische.**
+      // Sie stammen aus einem früheren Programmstand, und dessen Grenzen sind
+      // nicht die von heute — ein `terrainGridVertices`, das inzwischen nicht
+      // mehr in `GRID_VERTICES_ALLOWED` steht, brächte die 207 Löcher aus P4
+      // zurück, und zwar beim **Start**, ohne dass jemand einen Regler angefasst
+      // hätte. `setCustomQuality` verwirft solche Felder einzeln und behält für
+      // sie den Vorgabewert.
+      if (typeof custom === 'object' && custom !== null) {
+        setCustomQuality(custom as Partial<CustomQuality>);
+        return 'custom';
+      }
+      return null;
+    }
     return QUALITY_LEVELS.find((candidate) => candidate === level) ?? null;
   } catch {
     return null;
   }
 }
 
-function storeLevel(level: QualityLevel): void {
+function storeLevel(level: QualityKey): void {
   try {
     localStorage.setItem(
       BENCHMARK.storageKey,
-      JSON.stringify({ level, version: BENCHMARK.storageVersion }),
+      JSON.stringify({
+        level,
+        version: BENCHMARK.storageVersion,
+        // Nur bei „Eigen" — sonst stünde neben einer Voreinstellung eine
+        // Werteliste, die niemand liest und die beim nächsten Tabellenwechsel
+        // still veraltet.
+        ...(level === 'custom' ? { custom: customFromSettings(readCustomQuality()) } : {}),
+      }),
     );
   } catch {
     // Ohne Speicher wird beim nächsten Start neu eingestuft. Das ist der

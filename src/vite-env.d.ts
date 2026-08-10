@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 /// <reference types="vite-plugin-glsl/ext" />
 
-import type { QualityLevel } from './config/quality.config';
+import type { QualityKey, QualityLevel } from './config/quality.config';
 import type { Engine } from './core/Engine';
 import type { HoleReport } from './debug/lodHoles';
 import type { Report, ReportOptions } from './debug/report';
@@ -49,7 +49,7 @@ declare global {
       /**
        * Qualitätsstufe setzen oder abfragen (P7 / 7.1).
        */
-      quality?: (level?: QualityLevel) => QualityLevel;
+      quality?: (level?: QualityKey) => QualityKey;
       /**
        * Frame-Zeit messen, unabhängig von der Bildwiederholrate — siehe
        * `src/render/frameTiming.ts`.
