@@ -1,7 +1,12 @@
 import { Pane, type FolderApi } from 'tweakpane';
 import { Vector2, type PerspectiveCamera, type Scene, type WebGLRenderer } from 'three';
 
-import { DEFAULT_QUALITY, QUALITY, QUALITY_LEVELS, type QualityLevel } from '@/config/quality.config';
+import {
+  DEFAULT_QUALITY,
+  QUALITY,
+  QUALITY_LEVELS,
+  type QualityKey,
+} from '@/config/quality.config';
 import type { AppBus } from '@/core/events';
 import type { DebugHost } from './DebugHost';
 import { FrameTimer } from './FrameTimer';
@@ -41,14 +46,14 @@ export class DebugPanel implements DebugHost {
 
   #visible: boolean;
   /** Letzte gesendete Stufe — verhindert die Rückkopplung Menü → Bus → Menü. */
-  #quality: QualityLevel = DEFAULT_QUALITY;
+  #quality: QualityKey = DEFAULT_QUALITY;
 
   /** Tweakpane bindet an Objekt-Properties, nicht an Rückgabewerte. */
   readonly #readouts = {
     position: '—',
     blick: '—',
     aufloesung: '—',
-    qualitaet: DEFAULT_QUALITY as QualityLevel,
+    qualitaet: DEFAULT_QUALITY as QualityKey,
   };
 
   private constructor(options: DebugPanelOptions, timer: FrameTimer) {
@@ -169,8 +174,13 @@ export class DebugPanel implements DebugHost {
       step: 0.01,
     });
 
-    const qualityOptions: Record<string, QualityLevel> = {};
-    for (const level of QUALITY_LEVELS) qualityOptions[QUALITY[level].label] = level;
+    // Einschließlich ‚Eigen‘ (P10.2): das Aufklappmenü muss anzeigen können, was
+    // wirklich gilt. Fehlt der Eintrag, steht dort nach einem Reglerzug im
+    // Spielermenü ein leeres Feld — eine Anzeige, die lügt.
+    const qualityOptions: Record<string, QualityKey> = {};
+    for (const level of [...QUALITY_LEVELS, 'custom' as const]) {
+      qualityOptions[QUALITY[level].label] = level;
+    }
 
     folder
       .addBinding(this.#readouts, 'qualitaet', { label: 'Qualität', options: qualityOptions })

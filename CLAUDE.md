@@ -510,6 +510,28 @@ Kurzliste, damit es nicht wieder passiert:
   Blickpunkte. Die Zahl war die des letzten davon. **`renderer.info.render` ist
   ein Objekt, das three jeden Frame überschreibt** — wer es aufhebt, hebt einen
   Zeiger auf, keinen Wert. Erst kopieren, dann weiterarbeiten.
+- **Auf den Namen geprüft statt auf den Wert.** Seit P10.2 gibt es die
+  Qualitätsstufe „Eigen": ein Regler ändert ihren **Inhalt**, ohne ihren
+  **Namen** zu ändern. Zwei Stellen prüften auf den Namen und hätten jeden
+  weiteren Reglerzug verschluckt — `QualitySystem.set()` („gilt schon") und
+  `ScatterSystem` (`level === this.#quality`). Das Menü hätte sich bewegt, das
+  Bild nicht: exakt die wirkungslosen Regler, die dieses Projekt schon zweimal
+  ausgebaut hat (`viewDistance`, `shadowCascades`). `TerrainSystem` hatte es von
+  Anfang an richtig — es vergleicht seine Gitterweite, nicht die Stufe.
+  Nachsatz mit eigener Falle: der Vergleichswert muss der zuletzt **angewandte**
+  sein. `QUALITY.custom` ist ein Getter auf den aktuellen Zustand; ein
+  Vorher/Nachher darüber vergleicht zweimal dasselbe und meldet immer
+  „unverändert".
+- **Eine CSS-Eigenschaft geschrieben und nicht nachgesehen, ob sie gilt.** Der
+  Hinweiskasten „Klick ins Bild" trug `pointer-events: none`, weil der Klick dem
+  Canvas darunter gehört. Der berechnete Wert stand trotzdem auf `auto`: die
+  Regel `#overlay > *` darüber trägt einen **ID-Selektor** und schlägt jede
+  Klassenregel. Ausgerechnet der Kasten mit der Aufschrift „Klick ins Bild"
+  hätte den Klick verschluckt, den er verlangt. Im Bild wäre nichts zu sehen
+  gewesen — der Kasten sah richtig aus, er verhielt sich falsch. Gefunden hat es
+  ein `getComputedStyle` im laufenden Stand. **Wo Verhalten an einer
+  CSS-Eigenschaft hängt, wird der berechnete Wert geprüft, nicht der
+  geschriebene.**
 - **Am Ergebnis eingehängt statt an der Eingabe.** Die planare Spiegelung
   überschrieb zuerst `reflectedLight.indirectSpecular` — also den bereits mit
   der Fresnel-Gewichtung multiplizierten Wert — mit der **rohen**

@@ -1,7 +1,14 @@
 import { Vector3 } from 'three';
 
 /**
- * Benannte Blickpunkte — nur im Dev-Build.
+ * Benannte Blickpunkte.
+ *
+ * > **Seit P10.2 nicht mehr „nur im Dev-Build".** Hier stand dieser Satz, und er
+ * > stimmte, solange nur `japanMap.view()` daran hing. Das Spielermenü listet
+ * > die Tabelle jetzt als Sprungziele auf — sie ist damit Teil des gebauten
+ * > Stands, und ihre Notizen sind Text, den ein Nutzer liest. Die Datei liegt
+ * > trotzdem weiter unter `debug/`: ihr Zweck ist unverändert die
+ * > Reproduzierbarkeit von Messungen, das Menü ist der Zweitverwerter.
  *
  * Die Abnahme dieses Projekts läuft über Bilder und Zahlen, die aus einem
  * laufenden Renderer kommen (CLAUDE.md, „Bevor etwas fertig heißt"). Beides ist

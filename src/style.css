@@ -300,3 +300,224 @@ body {
 .debug-pane[hidden] {
   display: none;
 }
+
+/* ── Spieler-Oberfläche (P10.2) ────────────────────────────────────────────
+ *
+ * Ohne `import.meta.env.DEV` — im Gegensatz zu allem darüber. Das Debug-Panel
+ * ist Werkzeug, das hier ist Produkt: bis P10 hatte der gebaute Stand keinen
+ * Hinweis auf die Steuerung, keine Einstellungen und keine Pause.
+ *
+ * Beide Flächen liegen im `#overlay` und erben dessen `pointer-events: auto`.
+ * Der Hinweis nimmt es ausdrücklich zurück — der Klick, der den Pointer Lock
+ * holt, gehört dem Canvas darunter. */
+
+/* **`#overlay > .hint` und nicht `.hint`** — nachgemessen. Die Regel darüber
+ * (`#overlay > *`) trägt einen ID-Selektor und schlägt jede Klassenregel: ein
+ * schlichtes `.hint { pointer-events: none }` blieb wirkungslos, der berechnete
+ * Wert stand weiter auf `auto`. Damit hätte ausgerechnet der Kasten mit der
+ * Aufschrift „Klick ins Bild" den Klick verschluckt, der den Pointer Lock holt
+ * — die Anwendung hätte auf ihre eigene Anweisung nicht reagiert. Gefunden hat
+ * das nicht der Augenschein, sondern ein `getComputedStyle` im laufenden
+ * Bild. */
+#overlay > .hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.hint[hidden],
+.menu[hidden] {
+  display: none;
+}
+
+.hint__box {
+  padding: 18px 24px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(6px);
+  text-align: center;
+}
+
+.hint__call {
+  margin: 0 0 12px;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
+.hint__keys,
+.menu__keys {
+  margin: 0 auto;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.hint__keys th,
+.menu__keys th {
+  padding-right: 14px;
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--fg);
+}
+
+.hint__keys td,
+.menu__keys td {
+  text-align: left;
+  color: var(--fg-dim);
+}
+
+.hint__touch {
+  margin: 12px 0 0;
+  max-width: 32ch;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--status-warn);
+}
+
+.menu {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  padding: 24px;
+  background: rgba(4, 6, 9, 0.72);
+  backdrop-filter: blur(3px);
+  overflow-y: auto;
+}
+
+.menu__box {
+  width: min(560px, 92vw);
+  padding: 20px 24px 24px;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: var(--panel-bg);
+}
+
+.menu__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.menu__title {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+.menu__section {
+  margin-top: 20px;
+}
+
+.menu__section h2 {
+  margin: 0 0 8px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+.menu button {
+  padding: 5px 11px;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.menu button:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.menu button.is-active {
+  border-color: var(--fg);
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.menu__resume {
+  font-weight: 600;
+}
+
+.menu__levels,
+.menu__views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Die Wirkung der geltenden Stufe in Zahlen. Steht **über** den Reglern, weil
+ * es die Frage beantwortet, die man vor dem Menü hat: was tut „Mittel"? */
+.menu__effect {
+  margin: 10px 0 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--fg-dim);
+}
+
+.menu__sliders {
+  margin: 12px 0;
+  display: grid;
+  gap: 6px;
+}
+
+.menu__row {
+  display: grid;
+  grid-template-columns: 1fr 150px 52px;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-dim);
+}
+
+.menu__row input[type='range'] {
+  width: 100%;
+  accent-color: var(--fg);
+}
+
+.menu__row input[type='checkbox'] {
+  justify-self: start;
+  accent-color: var(--fg);
+}
+
+.menu__row select {
+  width: 100%;
+  padding: 3px 6px;
+  border: 1px solid var(--panel-border);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.menu__value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--fg);
+}
+
+.menu__keys {
+  margin: 0;
+}

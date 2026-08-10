@@ -302,6 +302,29 @@ Zwei Regeln, die hier teuer erkauft sind:
   seitdem an der Stufe. Deshalb werden sie über den ungünstigsten Fall bemessen
   (`LOD_BIAS_MIN`) — sonst verwirft `InstancedLOD.push()` stillschweigend.
 
+### Die sechste Stufe: „Eigen" (ab P10.2)
+
+`QualityKey = QualityLevel | 'custom'`. Die fünf Voreinstellungen sind
+unveränderlich, `QUALITY.custom` ist ein **Getter** auf einen Zustand, den nur
+`setCustomQuality()` schreibt — dort wird geklemmt und geprüft, und zwar gegen
+die beiden Grenzen oben.
+
+Daraus folgt eine Regel für **jeden** Zuhörer von `quality:changed`:
+
+> **Auf Werte prüfen, nicht auf den Namen der Stufe.** Ein Regler ändert den
+> Inhalt von „Eigen", ohne dass der Name sich ändert. `if (level ===
+> this.#quality) return;` verschluckt dann jeden weiteren Zug. `TerrainSystem`
+> macht es richtig (es vergleicht seine Gitterweite), `ScatterSystem` musste in
+> P10.2 nachgezogen werden.
+>
+> Und der Vergleichswert muss der zuletzt **angewandte** sein, kein Nachschlagen
+> in der Tabelle: `QUALITY.custom` trägt zum Zeitpunkt des Ereignisses längst
+> die neuen Werte, ein Vorher/Nachher darüber vergliche zweimal dasselbe.
+
+`QUALITY_LEVELS` enthält „Eigen" bewusst **nicht** — es ist die Leiter der
+Ersteinstufung, und die ist geordnet. `indexOf` gäbe −1, und `QUALITY_LEVELS[0]`
+wäre Ultra: eine schlechte Bildrate stufte damit **hoch**.
+
 ---
 
 ## 7. Was nur im Dev-Build existiert
@@ -316,7 +339,16 @@ Der Unterschied ist groß und für die UX entscheidend (siehe PLAN.md P10.2):
 | Editoren (Straßen, Props) | ja | **nein** |
 | `SceneScaffold` (1056 Linien) | ja | **nein** |
 | Endpunkte `/__shot`, `/__report` | ja (Vite-Plugin) | **nein** |
-| Benutzeroberfläche | — | **es gibt keine** |
+| Ladebildschirm `src/ui/LoadingScreen.ts` | ja | **ja** |
+| Spieler-Oberfläche `src/ui/PlayerUi.ts` | ja | **ja** (seit P10.2) |
+
+Die letzten beiden Zeilen sind der Grund, warum `src/ui/` von `src/debug/`
+getrennt ist: **alles unter `src/ui/` steht ohne `import.meta.env.DEV`.** Bis
+P10.2 stand in dieser Zeile „Benutzeroberfläche — es gibt keine"; der gebaute
+Stand war ein Canvas und ein leeres `div`. Die Blickpunkte aus
+`src/debug/viewpoints.ts` sind seitdem die eine Ausnahme in die andere Richtung:
+sie liegen weiter unter `debug/`, weil ihr Zweck die Reproduzierbarkeit von
+Messungen ist, werden aber vom Menü mit ausgeliefert.
 
 Beide Zweige hängen an `import.meta.env.DEV` und werden im Build
 wegoptimiert — geprüft am 2026-08-07: `anteilNichtSchwarz` aus `debug/capture.ts`

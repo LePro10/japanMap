@@ -13,7 +13,7 @@ import {
   LOD_BIAS_MIN,
   QUALITY,
   VEGETATION_RANGE_MAX,
-  type QualityLevel,
+  type QualityKey,
 } from '@/config/quality.config';
 import {
   GROUND_AO,
@@ -127,7 +127,13 @@ export class ScatterSystem implements System {
   #requestedThisFrame = 0;
   #frameStart = 0;
 
-  #quality: QualityLevel = DEFAULT_QUALITY;
+  #quality: QualityKey = DEFAULT_QUALITY;
+  /** Die zuletzt **angewandten** Streuparameter — Vergleichswert, siehe `init()`. */
+  #applied = {
+    density: QUALITY[DEFAULT_QUALITY].vegetationDensity,
+    range: QUALITY[DEFAULT_QUALITY].vegetationRange,
+    bias: QUALITY[DEFAULT_QUALITY].lodBias,
+  };
   /** Look-Stärke der Bodenverdeckung, gepuffert bis die Flecken existieren. */
   #lookGroundAo: number = VEGETATION_LOOK.groundAo;
 
@@ -210,8 +216,34 @@ export class ScatterSystem implements System {
     });
 
     context.bus.on('quality:changed', ({ level }) => {
-      if (level === this.#quality) return;
+      // **Verglichen werden die Werte, nicht der Name der Stufe.** Seit P10.2
+      // gibt es „Eigen", und dort ändern sich Dichte, Reichweite und
+      // Umschaltpunkt, **ohne** dass der Name sich ändert. Ein Abgleich auf den
+      // Namen hätte jeden Reglerzug verschluckt: das Menü hätte sich bewegt,
+      // die Streuung nicht — genau die Sorte wirkungsloser Regler, die P10.1
+      // an `viewDistance` beanstandet hat. `TerrainSystem` prüft aus demselben
+      // Grund seine Gitterweite und nicht die Stufe.
+      //
+      // **Und gemerkt, nicht nachgeschlagen.** `QUALITY.custom` ist ein Getter
+      // auf den *aktuellen* Zustand — zum Zeitpunkt dieses Ereignisses stehen
+      // dort längst die neuen Werte. Ein Vorher/Nachher über die Tabelle
+      // vergliche also zweimal dasselbe und käme immer auf „unverändert". Der
+      // Vergleichswert muss der zuletzt **angewandte** sein.
+      const after = QUALITY[level];
+      const before = this.#applied;
       this.#quality = level;
+      this.#applied = {
+        density: after.vegetationDensity,
+        range: after.vegetationRange,
+        bias: after.lodBias,
+      };
+      if (
+        after.vegetationDensity === before.density &&
+        after.vegetationRange === before.range &&
+        after.lodBias === before.bias
+      ) {
+        return;
+      }
       this.#reset();
     });
 
