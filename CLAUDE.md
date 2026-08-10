@@ -105,6 +105,66 @@ Dazu, je nach Änderung:
   Messung als Zahlen (mittlere Helligkeit, Anteil nicht-schwarz), unabhängig von
   der Bildrate.
 
+- **Was die Oberfläche angeht, wird am gebauten Stand gemessen — Port 4180.**
+  Seit P10.2 gibt es eine Spieler-Oberfläche (`src/ui/PlayerUi.ts`), und sie ist
+  das einzige DOM, das **ohne** `import.meta.env.DEV` ausgeliefert wird. Im
+  Dev-Server verdeckt das Debug-Panel jede Lücke: dort sind Stufenwahl,
+  Blickpunkte und Zahlen greifbar, im Build ist nichts davon da. Der A-bis-Z-
+  Durchgang in PLAN.md hing genau an dieser Unterscheidung.
+
+  ```bash
+  node node_modules/vite/bin/vite.js build   # danach Port 4180 neu laden
+  ```
+
+---
+
+## Die Oberfläche prüfen — sie ist DOM, kein Bild
+
+Für alles unter `src/ui/` versagen **beide** üblichen Wege, und das kostet
+sonst jedes Mal eine halbe Stunde:
+
+- **`japanMap.shot()` hilft nicht.** Es liest den WebGL-Puffer mit `readPixels`
+  aus — das DOM darüber ist darin nicht enthalten. Ein Menü ist auf einem
+  `shot()` grundsätzlich unsichtbar, auch wenn es einwandfrei steht.
+- **Ein Bildschirmfoto hilft meistens auch nicht.** Die eingebettete Vorschau
+  komponiert keine Frames, der Aufruf läuft in eine Zeitüberschreitung.
+
+Gemessen wird deshalb **strukturell**: `getComputedStyle`, `elementFromPoint`,
+`querySelectorAll`, die Ereignisse von Hand auslösen. Ein Knopf lässt sich mit
+`element.click()` betätigen, auch wenn er unsichtbar ist; ein Regler mit
+`el.value = …; el.dispatchEvent(new Event('change', {bubbles:true}))`. Das ist
+kein Ersatz für ein Bild, aber es beantwortet die Fragen, die bei einer
+Oberfläche zählen — steht das Element da, ist es klickbar, wirkt der Regler.
+
+> **Der berechnete Wert entscheidet, nicht der geschriebene.** In P10.2 stand
+> `pointer-events: none` in der Datei und `auto` im Browser, weil eine Regel mit
+> ID-Selektor darüber lag. Der Kasten sah richtig aus und verhielt sich falsch.
+
+**Pointer Lock ist in der eingebetteten Vorschau unmöglich.** `requestPointerLock()`
+wirft dort `WrongDocumentError: The root document of this element is not valid
+for pointer lock`, und `document.hasFocus()` ist `false`. Alles, was am Lock
+hängt — Menü öffnen mit Escape, „Weiter", die Kamerasteuerung überhaupt —, ist
+hier **nicht prüfbar**. Das gehört dann so in die Doku geschrieben und nicht als
+erledigt abgehakt. Prüfbar ist immerhin der **Fehlerzweig**: eine abgelehnte
+Anforderung darf keinen toten Zustand hinterlassen.
+
+**Vegetation von Hand messen — die Beruhigung ist der heikle Teil.** Dieselbe
+Falle wie im Messlauf, und sie ist mir in P10.2 prompt wieder passiert: die
+erste Ablesung am Blickpunkt `wald` lautete 17 623 Instanzen, die richtige ist
+**38 948**. Der Zähler stand nur gerade still, weil das Nachströmen eine Pause
+machte. Wer ohne `japanMap.report()` misst, treibt die Schleife von Hand und
+verlangt ein **langes** Stabilitätsfenster:
+
+```js
+const mc = () => new Promise(r => { const c = new MessageChannel();
+  c.port1.onmessage = () => r(); c.port2.postMessage(0); });
+// … loop.tick(); await mc(); … bis der Zähler ~90 Frames lang steht
+```
+
+`MessageChannel` und **nicht** `setTimeout` — der wird im Hintergrund auf ≥ 1 s
+gedrosselt. Referenzwerte zum Gegenhalten: `wald` auf Ultra **38 948**, mit
+Dichte 25 % **9 860**.
+
 ---
 
 ## Werkzeuge
@@ -119,7 +179,7 @@ Dazu, je nach Änderung:
 | `node tools/gen-props.mjs` | Landmarks neu platzieren → `assets/props.json` |
 | `npm run dev` | Dev-Server. Debug-Overlay mit `F1` |
 | `japanMap.view('name')` | Kamera auf einen benannten Blickpunkt (P6). Seit P8.9 auch `sando`, `dorf`, `stadt-rand` |
-| `japanMap.quality('ultra')` | Stufe setzen. Gültig sind **nur** `ultra`, `high`, `medium`, `low`, `minimal` — ein deutscher Name wirft seit P8.9, statt still eine kaputte Stufe zu setzen |
+| `japanMap.quality('ultra')` | Stufe setzen. Gültig sind **nur** `ultra`, `high`, `medium`, `low`, `minimal` und seit P10.2 `custom` — ein deutscher Name wirft seit P8.9, statt still eine kaputte Stufe zu setzen |
 | `japanMap.reflectionProbe()` | Wie viel einer Spiegelung stünde im Bildschirmraum? Die Messung, die in P6/6.5 gegen SSR entschieden hat |
 | `japanMap.winding()` | Wickelrichtung aller Meshes gegen ihr Normal-Attribut. Leere Liste = in Ordnung. Hat in P8.11 zwei unsichtbare Flächen gefunden, die jede andere Zahl für gesund hielt |
 | `japanMap.report()` | **Der Messlauf (P10.0).** Blickpunkte × Qualitätsstufen, JSON nach `.cache/reports/` plus je ein PNG. Siehe unten |

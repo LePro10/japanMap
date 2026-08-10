@@ -4879,7 +4879,15 @@ und ist in allen 20 Zellen null.
 
 ---
 
-**10.2 — Presets plus Einzelregler** → `src/ui/SettingsPanel.ts`
+**10.2 — Presets plus Einzelregler** → ~~`src/ui/SettingsPanel.ts`~~
+`src/ui/PlayerUi.ts`
+
+> **Gebaut am 2026-08-10.** Alles zwischen hier und der Überschrift „10.2 gebaut"
+> weiter unten beschreibt den Stand **davor** — Befund, Entwurf und der
+> vollständige Durchgang von A bis Z. Es steht absichtlich im Präsens und
+> absichtlich noch da: der Durchgang ist die Begründung für alles, was gebaut
+> wurde, und fünf seiner zehn Befunde sind weiterhin offen. Was erledigt ist,
+> steht am Ende des Abschnitts mit seinen Zahlen.
 
 **Befund.** Im ausgelieferten Build gibt es **keine Benutzeroberfläche**. Das
 Debug-Panel (`main.ts:324`) und `window.japanMap` (`main.ts:390`) hängen beide
