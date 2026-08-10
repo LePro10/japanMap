@@ -1,6 +1,11 @@
 import { InstancedMesh, Mesh, Vector2, type Object3D, type Scene, type WebGLRenderer } from 'three';
 
-import { QUALITY, QUALITY_LEVELS, type QualityLevel } from '@/config/quality.config';
+import {
+  QUALITY,
+  QUALITY_LEVELS,
+  type QualityKey,
+  type QualityLevel,
+} from '@/config/quality.config';
 import type { DeviceEstimate } from '@/render/deviceTier';
 import { estimateTextureMemory } from './textureMemory';
 import { postToDevServer, probeFrame, captureFramePng, type CaptureTarget, type FrameProbe } from './capture';
@@ -285,10 +290,17 @@ export interface ReportDeps {
   readonly camera: CameraPlacer;
   readonly capture: CaptureTarget;
   readonly quality: {
-    readonly level: QualityLevel;
+    /**
+     * `QualityKey`, nicht `QualityLevel`: seit P10.2 kann eine eigene Stufe
+     * eingestellt sein. Der Lauf **misst** sie nicht — seine Matrix sind die
+     * fünf Voreinstellungen —, aber er muss sie am Ende wiederherstellen
+     * können. Ein Messlauf, der dem Nutzer seine Einstellungen wegnimmt, wäre
+     * ein Werkzeug mit Nebenwirkung.
+     */
+    readonly level: QualityKey;
     readonly estimate: DeviceEstimate | null;
     readonly classifying: boolean;
-    set(level: QualityLevel): void;
+    set(level: QualityKey): void;
   };
   /** Die Debug-UI liefert CPU- und GPU-Zeit. Ohne sie bleiben beide `null`. */
   readonly timing: {

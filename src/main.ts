@@ -27,6 +27,7 @@ import { ScatterSystem } from './world/scatter/ScatterSystem';
 import { TerrainSystem } from './world/TerrainSystem';
 import { WaterSystem } from './world/WaterSystem';
 import { LoadingScreen } from './ui/LoadingScreen';
+import { PlayerUi } from './ui/PlayerUi';
 
 let loading: LoadingScreen | null = null;
 
@@ -385,6 +386,36 @@ async function boot(): Promise<void> {
     fatal('Ein System ist beim Initialisieren gescheitert.', String(error));
   }
   engine.start();
+
+  // **Nicht hinter `import.meta.env.DEV`** — anders als alles darunter. Das ist
+  // der ganze Zweck von P10.2: bis hierher hing jede Bedienung am Debug-Panel,
+  // und im gebauten Stand gab es damit weder Steuerungshinweis noch
+  // Qualitätswahl noch Pause. Nach `start()`, weil das Menü auf
+  // `engine:warmedup` wartet, um sich nicht hinter dem Ladebildschirm zu
+  // zeigen.
+  new PlayerUi({
+    bus: engine.bus,
+    canvas,
+    container: overlay,
+    camera: controller,
+    quality: {
+      get level() {
+        return quality.level;
+      },
+      set: (level) => {
+        quality.set(level);
+      },
+      setCustom: (patch) => {
+        quality.setCustom(patch);
+      },
+      seedCustomFrom: (level) => {
+        quality.seedCustomFrom(level);
+      },
+      reclassify: () => {
+        quality.reclassify();
+      },
+    },
+  });
 
   if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter);
 }

@@ -14,10 +14,12 @@
 > gegen 15 MB (frisch gemessen am 2026-08-07; ~~42,68~~ stammte aus einem Lauf
 > vor den Props aus P8.9).
 >
-> Aus P10 sind **10.0** (der Messlauf) und **10.1** (Stufenkopplung) gebaut und
-> gemessen. Offen: **10.2** die Spieler-Oberfläche — im gebauten Stand gibt es
-> heute *keine*, der vollständige Durchgang steht dort —, **10.3** der kahle
-> Ring bei 520 m und **10.4** der Startdownload.
+> Aus P10 sind **10.0** (der Messlauf), **10.1** (Stufenkopplung) und **10.2**
+> (die Spieler-Oberfläche) gebaut und gemessen. Der gebaute Stand hat seit dem
+> 2026-08-10 einen Steuerungshinweis, ein Pausenmenü mit fünf Voreinstellungen
+> plus acht Einzelreglern und die sechzehn Blickpunkte als Sprungliste — vorher
+> war dort ein Canvas und ein leeres `div`. Offen: **10.3** der kahle Ring bei
+> 520 m und **10.4** der Startdownload (36,61 MB gegen 15 MB).
 >
 > Der Kopf dieser Datei stand bis zum 2026-08-08 auf „Stand 2026-07-30, P8
 > geplant" — acht Tage und zwei Phasen hinterher. Dass diese Zeile schon zweimal
@@ -4995,6 +4997,108 @@ statt sie zu speichern.
 Escape-Menü (3) zusammen, darin die Stufenwahl (2), dann die Blickpunktliste (5)
 und der Touch-Hinweis (4). Alles Weitere ist eigenständig und gehört nicht in
 diese Aufgabe.
+
+### 10.2 gebaut — `src/ui/PlayerUi.ts` (2026-08-10)
+
+Die Datei heißt `PlayerUi.ts` und nicht `SettingsPanel.ts` wie oben geplant: sie
+ist mehr als Einstellungen (Hinweis, Pause, Blickpunkte), und ein Name, der die
+Hälfte beschreibt, wird beim nächsten Lesen zur falschen Erwartung.
+
+**Der Zustand hängt am Pointer Lock, nicht an einem eigenen Zähler.** Drei
+Zustände: gefangen → nichts; frei und noch nie gefangen → Hinweis „Klick ins
+Bild" samt Tastentabelle; frei und schon einmal gefangen → Pausenmenü. Escape
+löst den Lock **selbst**, das kann keine Anwendung abfangen; ebenso Alt-Tab und
+der Vollbildwechsel. Zugehört wird deshalb `pointerlockchange`.
+
+**Was am gebauten Stand gemessen ist** (Port 4180, also der Build, nicht der
+Dev-Server — genau die Unterscheidung, an der der Durchgang oben hing):
+
+```js
+{ debugApi: "undefined", debugPane: false, stats: false,
+  hint: true, hintPointer: "none", menu: true,
+  stufen: ["Ultra","Hoch","Mittel","Niedrig","Minimal","Eigen"],
+  regler: ["renderScale","vegetationDensity","vegetationRange","lodBias",
+           "terrainGridVertices","ao","postFx","reflections"],
+  blickpunkte: 16, tasten: 8 }
+```
+
+Kein Debug-Panel, keine `window.japanMap` — und trotzdem sechs Stufen, acht
+Regler, sechzehn Sprungziele und acht Tastenzeilen. Das ist der Punkt der
+Aufgabe.
+
+**Die Regler wirken, und das ist gemessen statt behauptet.**
+
+| Handlung | gemessen |
+|---|---|
+| „Mittel" → Pixelverhältnis | 1,000 → 0,850 |
+| „Eigen", Auflösung 0,50 / 0,75 / 1,00 nacheinander | 0,500 → 0,750 → 1,000 |
+| Gitter 17² / 33² | 81 699 → 201 507 Dreiecke |
+| Vegetationsdichte 100 % / 25 % @ `wald` | 38 948 → 9 860 Instanzen |
+
+Die zweite Zeile ist die wichtigste, und sie war beinahe der Fehler dieser
+Aufgabe. **Ein Regler ändert die Werte einer Stufe, ohne ihren Namen zu
+ändern.** Zwei Stellen prüfen aber auf den Namen, und beide hätten jeden
+weiteren Reglerzug verschluckt:
+
+- `QualitySystem.set()` bricht ab, wenn die Stufe schon gilt. Deshalb gibt es
+  `setCustom()`, das **immer** sendet — die Stufe hat sich inhaltlich geändert.
+- `ScatterSystem` verglich `level === this.#quality`. Es vergleicht jetzt die
+  drei Werte, die es angehen, und merkt sich den zuletzt **angewandten** Satz.
+  Ein Nachschlagen in der Tabelle hätte nichts genützt: `QUALITY.custom` ist ein
+  Getter auf den aktuellen Zustand, ein Vorher/Nachher darüber vergliche zweimal
+  dasselbe. `TerrainSystem` hatte es von Anfang an richtig (es prüft seine
+  Gitterweite, nicht die Stufe) — das war die Vorlage.
+
+**Die beiden Pflichtgrenzen, geprüft auf dem realistischen Weg.** Nicht über den
+Regler (der bietet nur gültige Werte an), sondern über einen präparierten
+`localStorage`-Eintrag — der Fall, der beim **Start** zuschlägt, aus einem
+früheren Programmstand, ohne dass jemand etwas anfasst:
+
+| Feld | eingeschleust | angewandt |
+|---|---|---|
+| `terrainGridVertices` | 9 | **33** (abgewiesen) |
+| `lodBias` | 0,1 | **0,65** (`LOD_BIAS_MIN`) |
+| `vegetationRange` | 5 | **1** (`VEGETATION_RANGE_MAX`) |
+| `renderScale` | 99 | **1** |
+| `vegetationDensity` | −3 | **0,05** |
+| `ao` | `'ultra'` | **`'high'`** (abgewiesen) |
+| `postFx` | `'nope'` | **`'full'`** (abgewiesen) |
+| `reflections` | `'ja'` | **`true`** (kein String) |
+
+Acht von acht. Dahinter steht die Abnahme von P8.1: `japanMap.lodHoles()` über
+16 Blickpunkte auf allen drei zulässigen Gittern (33² / 25² / 17²) auf der
+eigenen Stufe — **0 Löcher, 0 Spalten** in jeder der 48 Zellen.
+
+**Ein Fehler, den nur die Messung gefunden hat.** Der Hinweiskasten trug
+`pointer-events: none`, weil der Klick dem Canvas darunter gehört. Der berechnete
+Wert stand trotzdem auf `auto`: die Regel `#overlay > *` darüber trägt einen
+ID-Selektor und schlägt jede Klassenregel. Ausgerechnet der Kasten mit der
+Aufschrift „Klick ins Bild" hätte den Klick verschluckt, den er verlangt — die
+Anwendung hätte auf ihre eigene Anweisung nicht reagiert. Im Bild wäre das nicht
+zu sehen gewesen; gefunden hat es ein `getComputedStyle` im laufenden Stand.
+Lehre in der Reihe der bisherigen: **eine CSS-Eigenschaft, auf der Verhalten
+beruht, wird am berechneten Wert geprüft, nicht am geschriebenen.**
+
+**Nebenbefund, mitrepariert.** `FreeFlyController` nahm Tastendrücke auch **ohne**
+Pointer Lock an. Mit einem Menü über dem Canvas heißt das: wer dort einen Regler
+mit der Tastatur bedient oder „W" streift, lässt die Kamera losfliegen und findet
+sie beim Zurückkehren woanders. `#onPointerLockChange` leerte die gedrückten
+Tasten bereits; was fehlte, war die Sperre für neue. Umsehen braucht den Lock
+ohnehin — eine Bewegung ohne Blick gibt es also nicht zu verlieren.
+
+**Was ausdrücklich nicht gemessen ist.** Der Ablauf Lock → Escape → Menü →
+„Weiter" → Lock ist **nicht am laufenden Bild geprüft**. In der eingebetteten
+Vorschau ist Pointer Lock strukturell unmöglich (`WrongDocumentError: The root
+document of this element is not valid for pointer lock`, dazu `hasFocus() ===
+false`). Geprüft ist immerhin der Fehlerzweig: eine abgelehnte Anforderung
+hinterlässt keinen toten Zustand, der Hinweis steht danach weiter. Der Rest
+gehört auf eine Maschine mit sichtbarem Fenster, zusammen mit dem `live`-Lauf
+aus 10.0 — und steht bis dahin hier als offen, nicht als erledigt.
+
+Aus der Liste der zehn Befunde sind damit **1, 2, 3, 4 und 5** erledigt. Offen
+bleiben 6 (Ton), 7 (`fatal()` ohne Rückweg), 8 (Ladebildschirm ohne Inhalt),
+9 (Ruckler beim Stufenwechsel) und 10 (Fotomodus) — alle eigenständig und
+bewusst nicht in dieser Aufgabe.
 
 ---
 

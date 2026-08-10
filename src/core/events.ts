@@ -1,4 +1,4 @@
-import type { QualityLevel } from '@/config/quality.config';
+import type { QualityKey } from '@/config/quality.config';
 import type { LookState } from '@/render/looks/lookState';
 import type { SignAnchor } from '@/world/city/CityGenerator';
 import type { CityUniforms } from '@/world/materials/FacadeMaterial';
@@ -128,7 +128,7 @@ export type AppEvents = {
   'look:apply': { look: LookState };
   'look:collect': { target: LookState };
 
-  'quality:changed': { level: QualityLevel };
+  'quality:changed': { level: QualityKey };
 
   'debug:visibility': { visible: boolean };
 };
