@@ -401,11 +401,18 @@ Bekannte offene Punkte, Stand 2026-08-08:
   > Belastbar sind daraus das Verhältnis der Stufen untereinander und der
   > prozentuale Aufschlag eines Eingriffs, **nicht** Absolutwerte gegen die
   > Budgets. Eine Messung auf GTX-1660-Klasse fehlt weiterhin.
-- **Es gibt keine Benutzeroberfläche im gebauten Stand.** Debug-Panel und
+- ~~**Es gibt keine Benutzeroberfläche im gebauten Stand.** Debug-Panel und
   `window.japanMap` hängen an `import.meta.env.DEV`; ein Besucher bekommt einen
   Canvas ohne Steuerungshinweis, ohne Einstellungen, ohne Pause. Die Stufe ist
-  nach dem ersten Start nicht mehr änderbar. Vollständiger Durchgang in
-  [PLAN.md](PLAN.md) unter P10.2, Aufgabenliste ebenda.
+  nach dem ersten Start nicht mehr änderbar.~~
+  **Erledigt in P10.2** (2026-08-10) mit `src/ui/PlayerUi.ts` — ohne
+  `import.meta.env.DEV`. Steuerungshinweis, Pausenmenü an Escape, fünf
+  Voreinstellungen plus acht Einzelreglern, „Neu einstufen" und die sechzehn
+  Blickpunkte als Sprungliste; am Build gemessen, nicht am Dev-Server.
+  **Fünf der zehn Befunde des Durchgangs bleiben offen**: Ton, `fatal()` ohne
+  Rückweg, inhaltsloser Ladebildschirm, Ruckler beim Stufenwechsel (17
+  zusätzliche Shader-Übersetzungen), kein Fotomodus. Vollständiger Durchgang und
+  Abnahme in [PLAN.md](PLAN.md) unter P10.2.
 
 Ausführungsdetails, Dateilisten und Akzeptanzkriterien pro Phase: **[PLAN.md](PLAN.md)**.
 Diese Tabelle ist die Kurzfassung — bei Widersprüchen gilt PLAN.md.
