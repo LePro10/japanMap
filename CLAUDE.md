@@ -162,8 +162,20 @@ const mc = () => new Promise(r => { const c = new MessageChannel();
 ```
 
 `MessageChannel` und **nicht** `setTimeout` — der wird im Hintergrund auf ≥ 1 s
-gedrosselt. Referenzwerte zum Gegenhalten: `wald` auf Ultra **38 948**, mit
-Dichte 25 % **9 860**.
+gedrosselt. ~~Referenzwerte zum Gegenhalten: `wald` auf Ultra 38 948, mit Dichte
+25 % 9 860.~~
+
+> **Diese Referenzwerte gelten seit P11 nicht mehr**, und zwar aus zwei Gründen
+> zugleich: `vegetationDensity` gibt es nicht mehr (ausgedünnt wird mit der
+> Entfernung, nicht über die Fläche), und die Baumreichweite ist von 520 auf
+> 1200 m gestiegen. Neu gemessen bei 1280 × 720: `wald` auf Ultra **53 116**,
+> auf Minimal **12 684**; `wald-fern` auf Ultra **15 478**.
+>
+> **Und das Warten dauert seitdem deutlich länger.** `wald-fern` auf Ultra
+> brauchte gemessen **1101** getriebene Frames, bis `streaming` auf `false` ging
+> — bei 1200 m Reichweite sind rund 1100 Chunks zu füllen, und
+> `SCATTER.workerQueueDepth` lässt vier je Frame zu. Wer hier mit 90 Frames
+> Stabilitätsfenster misst, misst einen Zwischenstand.
 
 ---
 
@@ -228,12 +240,22 @@ japanMap.report({ mode: 'driven', levels: ['ultra','low'], viewpoints: ['reisfel
 > deshalb `settle.frameIntervalMs`, und die Warnung unterscheidet Drosselung,
 > nachströmende Streuung und schwankende Puffer voneinander.
 
-**Blickpunkte für Vegetationsmessungen.** Aus der Luft ist die Streuung nicht
-messbar: bei 520 m Reichweite tragen `start` (330 m hoch) gemessen **67**
-Instanzen und `pass` (420 m) **171**, `kueste` auf allen Stufen **null**. Wer
-Vegetation misst, nimmt `wald` (38 948 auf Ultra), `reisfeld` (8804) oder
-`wald-fern` (11 068). `wald-fern` ist zugleich der Ort, an dem die 520-m-Kante
-der Streuung im Bild steht.
+**Blickpunkte für Vegetationsmessungen.** ~~Aus der Luft ist die Streuung nicht
+messbar: bei 520 m Reichweite tragen `start` (330 m hoch) gemessen 67 Instanzen
+und `pass` (420 m) 171, `kueste` auf allen Stufen null.~~
+
+> **Das galt für die 520-m-Reichweite und ist mit P11.5 hinfällig.** Die Bäume
+> reichen jetzt 1200 m weit, und damit ist der Übersichtsblick nicht mehr leer:
+> `start` trägt gemessen **2 492** Instanzen statt 67. Er ist seitdem der
+> *nützlichste* Blickpunkt für die Frage „wirkt die Karte vollständig", weil man
+> von dort das halbe Massiv sieht.
+>
+> `kueste` bleibt bei **null** — der Blickpunkt zeigt offenes Meer.
+
+Wer Vegetation misst, nimmt `wald` (53 116 auf Ultra), `wald-fern` (15 478) oder
+`reisfeld`. ~~`wald-fern` ist zugleich der Ort, an dem die 520-m-Kante der
+Streuung im Bild steht.~~ Die Kante gibt es nicht mehr; `wald-fern` ist jetzt der
+Ort, an dem man prüft, **dass** sie weg ist.
 
 **Erdbau-Karte erzeugen** (braucht ein Referenzfeld ohne Einschnitte):
 
@@ -592,6 +614,35 @@ Kurzliste, damit es nicht wieder passiert:
   ein `getComputedStyle` im laufenden Stand. **Wo Verhalten an einer
   CSS-Eigenschaft hängt, wird der berechnete Wert geprüft, nicht der
   geschriebene.**
+- **Ein Befund, der reproduzierbar, isoliert und bildbelegt war — und trotzdem
+  der Maschine gehörte, nicht dem Projekt.** In P11.0 rendert die gesamte
+  Vegetation im `postFx: 'off'`-Pfad als flache, himmelsfarbene Fläche. Der
+  Befund war so sauber, wie ein Befund nur sein kann: frisch geladene Seite,
+  isoliert auf ein einziges Feld (`full`/`reduced`/`lean` grün, `off` weiß),
+  Gegenprobe mit getauschter Kette, Bilder dazu. Er wurde als „echter Fehler,
+  kein Kompromiss" berichtet.
+  **Auf einer echten GPU steht die Vegetation grün.** Es war der
+  Software-Rasterisierer dieser Maschine (ANGLE / Microsoft Basic Render
+  Driver): der Composer-Pfad schreibt am Ende jedes Pixel über einen
+  Vollbild-Durchgang neu und verdeckt das, der `off`-Pfad geht direkt in den
+  Canvas.
+  Vorher waren **sieben** Vermutungen gemessen und widerlegt worden —
+  Tonemapping, gesättigte Werte/NaN, Alphakanal, Nebel, Imposter-Atlas,
+  Umgebungskarte, planare Spiegelung, Himmelskuppel. Alle sieben umsonst.
+  Drei Lehren:
+  1. **Was den Befund verraten hat, war die Fehlerform, nicht die Ursache.** Die
+     hellen Flächen überdeckten *auch das Gelände*, ihre Ränder schnitten *quer
+     durch einzelne Bäume*, und der Anteil **schwankte zwischen
+     aufeinanderfolgenden Frames** desselben eingeschwungenen Zustands
+     (38,4…45,2 %). Ein Shading-Fehler ist stabil und objektgebunden. Wer eine
+     Ursache sucht, prüft **zuerst**, ob der Fehler überhaupt die Form hat, die
+     zu seiner Klasse gehört.
+  2. **Diese Maschine kann `postFx: 'off'` nicht messen.** Jede Aussage über den
+     Renderpfad ohne Composer braucht die GPU-Maschine — so, wie es für GPU-ms
+     und Bildrate längst dasteht. Das ist eine dritte Zeile in derselben Spalte.
+  3. **Zwei Minuten Fremdprüfung schlagen zwei Stunden Eigendiagnose.** Die Frage
+     „schau bitte einmal hin" hätte an jeder Stelle der sieben Messungen gestellt
+     werden können.
 - **Am Ergebnis eingehängt statt an der Eingabe.** Die planare Spiegelung
   überschrieb zuerst `reflectedLight.indirectSpecular` — also den bereits mit
   der Fresnel-Gewichtung multiplizierten Wert — mit der **rohen**
