@@ -5569,5 +5569,591 @@ deshalb hier als Idee, nicht als Aufgabe mit Kriterium.
 | 3 | Physik-Engine | **P9.2** | Rapier (WASM, bewährt) — **weiterhin offen und ausdrücklich ungemessen.** P9.2 prüft sie gegen eine eigene Arcade-Physik an einem Prüfstand; die Tendenz steht seit P0 ohne eine einzige Zahl daneben |
 | 4 | Imposter-Baking headless oder in-app | P4 | In-app, falls headless zickt |
 | ~~5~~ | ~~Carving vor oder nach der Erosion~~ | ~~P3~~ | **Entschieden:** nachher. Die Erosionsrinnen laufen dadurch bis an die Böschung heran, statt überschrieben zu werden |
-| 6 | Der kahle Ring bei 520 m — Reichweite anheben, im Dunst verstecken oder eine grobe Fernstufe | **P10.3** | **Keine.** Ausdrücklich offen gelassen: erst messen, dann entscheiden. Die drei Kandidaten und ihre Messgrößen stehen in P10.3 |
+| ~~6~~ | ~~Der kahle Ring bei 520 m~~ | ~~P10.3~~ → ~~P11.5~~ | **Entschieden am 2026-08-11: Kandidat A, aber nur für die Bäume.** Reichweite 520 → 1200 m für Kiefer und Laubbaum, Gras und Büsche unverändert. Gemessen kostet das am Blickpunkt `wald-fern` auf Ultra **2,3 % mehr Dreiecke** (279 268 → 285 809) für einen Wald bis zum Horizont — weil von 50 711 Instanzen nur rund 2 000 Bäume sind und ein Imposter zwei Dreiecke hat. Kandidat B (Dunst) blieb draußen, Kandidat C ist im Ausdünnungsgesetz `keep = max(keepFar, (R/d)²)` aufgegangen. Siehe P11.5 |
 | 7 | KTX2 ohne Systeminstallation — gibt es einen WASM-/JS-Encoder für Basis Universal? | **P10.4** | Ungeprüft. Der Blocker „`toktx` ist hier nicht installiert" steht seit P5 unverändert in der Doku und ist **nie gegen das npm-Ökosystem geprüft** worden |
+
+---
+
+# P11 — Sichtbarkeit & Dichte ○ (Messdurchgang gemacht, Umbau nicht gebaut)
+
+> **Stand: der Messdurchgang ist gefahren, entschieden ist nichts.** Diese Phase
+> beginnt ausdrücklich mit Zahlen und Bildern und nicht mit einem Fix — auf
+> Wunsch des Auftraggebers („erst messen, dann entscheiden"). Was unten unter
+> „Vorschläge" steht, ist eine Auswahl mit Messgrößen daneben, keine
+> beschlossene Aufgabe.
+
+**Der Auftrag, in seinen Worten:** eine Stufe, die „wirklich auf jedem Toaster
+läuft, aber keine wirklich großen sichtbaren Kompromisse eingeht" — volle
+Auflösung, Licht und Reflexionen bleiben, Wind darf weg. Dazu die Beobachtung,
+die den Anstoß gab: „jetzt zum Beispiel spawnen gefühlt jede 3 m ein Grashalm
+und dadurch sieht alles braun aus. Auf Ultra sieht die Map an sich anders aus."
+Und die Zielvorstellung für die Fernsicht: nur das rendern, was wirklich zu
+sehen ist, und dort sparen, wo man den Unterschied kaum findet.
+
+**Zielhardware ist damit festgelegt:** ein Laptop mit integrierter Grafik der
+Klasse Intel UHD 620. Das entscheidet die Richtung, denn dort ist **Füllrate und
+Speicherbandbreite** der Engpass und nicht die Dreieckszahl.
+
+---
+
+## 11.0 Der Messdurchgang — 2026-08-10
+
+**Aufbau.** Zwei Läufe, beide in Betriebsart `driven` (in der eingebetteten
+Vorschau kommt kein rAF, siehe CLAUDE.md). Zuerst `japanMap.report()` über
+`wald`, `wald-fern`, `reisfeld` × Ultra/Minimal (`.cache/reports/p11-ist.json`).
+Danach ein **Isolationslauf**: jeder Anteil der Stufe einzeln verstellt, alles
+andere auf Ultra, **alles bei 1280 × 720** — sonst vergleicht man das
+Seitenverhältnis statt den Eingriff (die Lehre aus dem Böschungs-Lauf in P10).
+
+Die eigene Stufe („Eigen") ist dafür das richtige Werkzeug: `setCustom()` sendet
+immer, auch wenn der Name gleich bleibt.
+
+### Befund 1 — ~~Die Vegetation ist auf „Minimal" **weiß**~~ — **widerlegt am 2026-08-11**
+
+> **Auf der GPU-Maschine steht die Vegetation grün.** Der Auftraggeber hat den
+> Test gefahren (`japanMap.quality('minimal'); japanMap.view('wald')`, RX 7900
+> XTX): Gras und Büsche korrekt gefärbt, kein einziger weißer Scherenschnitt.
+> Der Verdacht aus dem Abschnitt unten ist damit **bestätigt** — es war ein
+> Artefakt des Software-Rasterisierers dieser Entwicklungsmaschine (ANGLE /
+> Microsoft Basic Render Driver), nicht des Projekts. **Aufgabe 11.1 entfällt
+> ersatzlos**, am Renderpfad wird nichts repariert.
+>
+> Der ganze Abschnitt bleibt trotzdem stehen. Er ist der Beleg dafür, dass ein
+> reproduzierbarer, isolierter, bildbelegter Befund auf *einer* Maschine
+> trotzdem nichts über das Projekt aussagen muss — und er enthält acht
+> Messungen, die niemand zweimal machen muss.
+>
+> **Die eigentliche Lehre ist eine über das Werkzeug, nicht über den Shader:**
+> jede Aussage dieses Projekts, die an einem Bild aus dem `off`-Pfad hängt, ist
+> auf dieser Maschine wertlos. Der Composer-Pfad schreibt am Ende jedes Pixel
+> neu und verdeckt das. Bei künftigen Messungen an `postFx: 'off'` gehört das
+> dazugesagt.
+>
+> **Ein zweiter Wert aus demselben Bild, und er ist der wichtigere:** Minimal
+> kostet dort **0,79 ms GPU** bei 43 Draw-Calls und 111 166 Dreiecken, gegen ein
+> Budget von 16,6 ms. Die Steppe aus Befund 2 ist also **nicht der Preis für
+> Leistung** — sie ist verschenkt. Das ist das stärkste Argument dafür, den
+> Dichteregler ganz zu ersetzen statt ihn vorsichtig nachzujustieren.
+>
+> *(Die Zahl gilt für eine RX 7900 XTX und sagt über die Zielhardware — eine
+> Intel-iGPU — unmittelbar nichts. Sie sagt aber, dass die heutige Sparsamkeit
+> keinen Gegenwert im Bild hat.)*
+
+#### Der widerlegte Stand, zur Dokumentation
+
+Am Blickpunkt `wald`, Preset `minimal`, frisch geladene Seite: **jeder Baum,
+jeder Busch und jeder Grashalm rendert als reinweißer Scherenschnitt.** Das
+Gelände ist normal beleuchtet, die Silhouetten stimmen, die Farbe ist weg.
+Bild: `.cache/shots/p11_check_minimal_frisch.png`.
+
+Isoliert, an derselben Stelle, alles auf Ultra und **nur** `postFx` verstellt:
+
+| `postFx` | Composer | Vegetation im Bild | Draw-Calls |
+|---|---|---|---|
+| `full` / `reduced` / `lean` | läuft | **korrekt grün** | 57 (reduced) / 52 (lean) |
+| `off` | umgangen | **weiß** | 43 |
+
+Gegengeprüft mit den *Minimal*-Werten und nur getauschter Kette (`p11_kette_off`
+gegen `p11_kette_lean`): dasselbe Bild, einmal weiß, einmal grün. **Der Fehler
+sitzt allein im Renderpfad ohne Composer** und trifft ausschließlich die
+Vegetationsmaterialien — Gelände, Stadt und Himmel sind unauffällig.
+
+> **Damit ist „auf Ultra sieht die Map anders aus" zum größten Teil erklärt, und
+> zwar anders als vermutet.** Die naheliegende Erklärung war die fehlende
+> Grading-LUT (so steht sie seit P8.2 in `postfx.config.ts`, dort am Neonlicht
+> gemessen). Die LUT fehlt auch — aber sie ist ein Farbstich, und hier steht ein
+> **Bildfehler**. Genau der Fall aus CLAUDE.md, „eine Ursache benannt, ohne sie
+> zu trennen": ohne den Isolationslauf wäre am Grading gedreht worden.
+
+**Die Ursache ist gesucht worden und ist noch nicht gefunden.** Der Verlauf
+gehört hierher, weil sieben Vermutungen gemessen und **alle sieben widerlegt**
+wurden — jede davon hätte sonst als „wahrscheinliche Ursache" in der Doku
+gelandet:
+
+| Vermutung | Test | Ergebnis |
+|---|---|---|
+| Tonemapping fehlt / falsch | `#define TONE_MAPPING` im übersetzten Shader, `renderer.toneMapping` | **widerlegt** — beides korrekt (AgX), Shader-Text auf beiden Pfaden strukturell gleich |
+| Werte gesättigt / NaN | Belichtung 0,03 · 1 · 4 | **widerlegt** — die Flächen dunkeln normal mit ab, also ein Wert und kein NaN |
+| Alphakanal / transparentes PNG | Alpha-Histogramm des Framebuffers | **widerlegt** — Alpha ist auf beiden Pfaden zu 100 % 255 |
+| Nebel / Luftperspektive voll aufgedreht | `uAtmoFogMaxOpacity = 0` | **widerlegt** — 59,95 % → 60,48 % |
+| Imposter ohne Atlas (Grundfarbe ist weiß) | Imposter-Stufe ausgeblendet | **widerlegt** — 61,44 % → 61,56 % |
+| Umgebungskarte / IBL spiegelt den Himmel | `envMapIntensity = 0`, dazu roughness 0,85 / metalness 0 abgelesen | **widerlegt** — 61,83 % → 59,47 % |
+| Planare Spiegelung hängt sich ein | `reflections: false` | **widerlegt** — 61,83 % → 62,23 % |
+| Himmels-/Wolkenkuppel wird darübergezeichnet | `Wolken` ausgeblendet, `scene.background = null` | **widerlegt** — 60,10 % → 58,53 % |
+
+**Was das Bild stattdessen zeigt** (`p11_diag_off_ohne_himmel.png`, Ultra-Dichte,
+Kette aus): die hellen Flächen überdecken **auch das Gelände**, ihre Ränder
+schneiden **quer durch einzelne Bäume**, und einzelne Bäume stehen völlig
+korrekt da. Das ist kein Material-, Instanz- oder Beleuchtungsfehler — das ist
+ein **fleckiges Bild im Bildschirmraum**.
+
+Dazu kommt ein Befund, der die Richtung dreht: der Anteil **schwankt zwischen
+aufeinanderfolgenden Frames** desselben, eingeschwungenen Zustands — 38,4 /
+43,8 / 44,5 / 45,2 %. Ein Shading-Fehler wäre stabil.
+
+> **Neuer, ausdrücklich ungeprüfter Verdacht: das ist ein Artefakt dieser
+> Maschine, nicht des Projekts.** Diese Entwicklungsmaschine rendert über ANGLE
+> auf dem *Microsoft Basic Render Driver*. Im Composer-Pfad schreibt ein
+> Vollbild-Durchgang am Ende **jedes** Pixel neu; im `off`-Pfad geht die Szene
+> direkt in den Canvas, und genau dort stehen die Flecken. Ein halb aufgelöster
+> Kachelpuffer beim Auslesen würde alle drei Beobachtungen zugleich erklären:
+> Flecken quer über Objektgrenzen, Gelände mitbetroffen, Schwanken je Frame.
+>
+> **Das ist zu prüfen, bevor irgendetwas repariert wird.** Wer eine echte GPU
+> hat, setzt `japanMap.quality('minimal')`, fliegt `japanMap.view('wald')` an
+> und sieht nach — steht die Vegetation dort grün, ist der Fehler ein
+> Messartefakt und `off` als Renderpfad unauffällig. Steht sie weiß, ist er
+> echt, und dann ist die Suche oben um sieben Sackgassen kürzer.
+
+Das ist eine eigene Aufgabe und steht unten als 11.1.
+
+> **Ein Messfehler dabei, damit er sich nicht wiederholt.** Auf der Suche nach
+> der Ursache wurde `look:apply` von Hand mit einem Ereignis gesendet, das
+> **nur** den Abschnitt `vegetation` trug. Alle anderen Zuhörer lesen ihre
+> Abschnitte aus demselben Objekt, bekamen `undefined` und stellten sich auf
+> Null — das Bild war danach schwarz. `look:apply` trägt den **ganzen** Look;
+> ein Teilobjekt ist kein Teil-Look, sondern ein kaputter.
+
+### Befund 2 — „Alles sieht braun aus" ist die Dichte, isoliert nachgewiesen
+
+Blickpunkt `wald`, 1280 × 720, identische Kette, identische Auflösung,
+identisches Gelände. Geändert wurde **nur** `vegetationDensity` von 1,0 auf 0,1:
+
+| untere Bildhälfte | Ultra | nur Dichte 0,1 |
+|---|---|---|
+| **Grünanteil** | **44,22 %** | **5,71 %** |
+| Braunanteil | 46,07 % | **87,82 %** |
+| mittleres RGB | 27,5 / 28,5 / 18,8 | 33,9 / 27,9 / 23,9 |
+| sichtbare Instanzen | 51 187 | 5 216 |
+
+Der Grünanteil bricht auf **ein Achtel** ein, und der Boden kippt von
+grün-dominant auf **rot-dominant** (R steigt, G fällt). Im Bild
+(`p11_wald_b-nur-dichte.png`) ist aus dem Wald eine Steppe geworden: brauner
+Hang, vereinzelte Grasbüschel, ein paar übriggebliebene Bäume. Das ist wörtlich
+die Beschreibung des Auftraggebers, und sie stammt **allein** aus einem Regler.
+
+Der Grund ist die Bauart des Reglers: `scatterChunk` verwirft über
+`roll >= suitability * density`, also **gleichmäßig über die ganze Fläche** —
+auch direkt vor der Kamera. Es ist derselbe Befund wie in P10 („was ‚Niedrig'
+wirklich ändert, ist die Dichte, nicht die Distanz"), jetzt mit einem Bild und
+einer Zahl statt einer Herleitung.
+
+### Befund 3 — Der Boden ist **schon auf Ultra** braun
+
+Das gehört dazu, weil es die Erwartung an einen Fix verschiebt: auf Ultra sind
+44 % der unteren Bildhälfte grün und **46 % braun**. Die Grasbüschel schließen
+also auch bei voller Dichte keine Decke; zwischen ihnen steht der Splat-Kanal
+`grass` — die Fototextur `aerial_grass_rock`, die selbst Fels enthält. Im Bild
+`p11_wald_a-ultra.png` ist das gut zu sehen.
+
+**Daraus folgt: die Dichte allein zurückzudrehen löst das Problem nicht.** Wer
+Minimal auf Ultra-Dichte hebt, bekommt Ultras 46 % Braun — nicht mehr die
+Steppe, aber auch keinen geschlossenen Bewuchs.
+
+### Befund 4 — Wo die Dreiecke wirklich liegen
+
+Blickpunkt `wald`, alle Zellen mit 51 187 Instanzen außer b und g:
+
+| Zustand | Dreiecke | Δ gegen Ultra | Draw-Calls |
+|---|---|---|---|
+| a — Ultra | 481 410 | — | 74 |
+| f — nur `lodBias` 0,65 | 414 750 | −13,8 % | 74 |
+| d — nur Gitter 17² | 330 882 | −31,3 % | 74 |
+| e — nur AO aus | 481 404 | ±0 | 68 |
+| c — nur PostFX aus | 481 384 | ±0 | 48 |
+| b — nur Dichte 0,1 | 274 354 | −43,0 % | 70 |
+| g — Minimal komplett | 116 242 | −75,9 % | 43 |
+
+Und dieselbe Frage am Reisfeld:
+
+| Zustand | Instanzen | Dreiecke | Draw-Calls |
+|---|---|---|---|
+| Ultra | 8 805 | 367 409 | 71 |
+| nur Dichte 0,1 | 857 | 351 307 | 67 |
+
+> **Am Reisfeld kostet die Dichte 90 % der Vegetation und spart 4,4 % der
+> Dreiecke.** Das ist das schlechteste Tauschgeschäft der ganzen Tabelle. Am
+> Wald sind es 43 % — dort trägt der Regler etwas, aber um den Preis aus
+> Befund 2.
+
+### Was dieser Durchgang **nicht** gemessen hat
+
+- **Keine GPU-Zeit, keine Bildrate.** Diese Maschine hat kein
+  `EXT_disjoint_timer_query_webgl2` und rendert über den Microsoft Basic Render
+  Driver; `pacing` und `fps` stehen als `null` in der Datei. Alle Zahlen oben
+  sind **exakte Zähler und Bildstatistiken**, keine Kostenaussagen.
+- **Die Auflösung wurde absichtlich herausgerechnet** (überall 1280 × 720). Was
+  `renderScale: 0.5` auf Minimal wirklich anrichtet, ist damit offen.
+- **Der 520-m-Ring** ist in diesem Durchgang nicht angefasst worden; die offene
+  Entscheidung 6 bleibt offen.
+
+---
+
+## Vorschläge — mit der Messung daneben, ohne Beschluss
+
+Sortiert nach Wirkung je Aufwand, wie sie sich aus 11.0 ergibt.
+
+**11.1 — Den Weiß-Fehler finden und beheben.** Blocker für alles andere: solange
+`postFx: 'off'` das Bild zerlegt, ist jede Aussage über „Minimal sieht aus wie
+Ultra" gegenstandslos. Zwei Wege, und der erste ist zu prüfen, bevor der zweite
+gebaut wird:
+
+1. **Die Ursache im Shader finden.** Sie ist nicht bekannt, siehe Befund 1.
+2. **Minimal behält die Kette** — statt „Composer aus" ein einziger kombinierter
+   Durchgang (AgX + LUT + Vignette, kein Bloom, kein SMAA, keine AO). Gemessen
+   kostet die schlankste laufende Kette (`lean`) heute **52 gegen 43**
+   Draw-Calls; ein eigener Minimal-Pass läge darunter. Das repariert den Fehler
+   als Nebenwirkung **und** holt die Grading-LUT zurück, also auch den
+   Farbstich, der auf Minimal heute fehlt.
+
+   > Weg 2 ist kein Ersatz für Weg 1. Ein Fehler, der nur deshalb nicht mehr
+   > auftritt, weil der betroffene Pfad nicht mehr benutzt wird, ist nicht
+   > behoben — er wartet.
+
+**11.2 — Ausdünnen mit der Entfernung statt über die Fläche.** Der Kern. Heute
+ist die Dichte ein Weltmaß, das die Stufe global multipliziert; richtig wäre,
+die Zahl der Instanzen **pro Bildschirmfläche** konstant zu halten. Ein Grashalm
+auf 5 m ist 100 px hoch, derselbe auf 150 m ein Viertelpixel — beide kosten
+gleich viel, nur einer ist zu sehen.
+
+Bauform: weiter mit voller Dichte streuen, aber beim Einsortieren
+(`ScatterSystem.#pushChunk`) je Instanz über einen **stabilen Hash** gegen eine
+entfernungsabhängige Behaltewahrscheinlichkeit verwerfen. Je Stufe zwei Werte
+statt eines Faktors: ab welcher Entfernung ausgedünnt wird und wie schnell.
+
+Was das bringt, und warum es zur Zielhardware passt: auf einer integrierten
+Grafik sind **unterpixelige Dreiecke** der teuerste Fall überhaupt — jedes wird
+als 2 × 2-Quad schattiert, ein 0,25-px-Halm kostet also vier Pixel. Genau die
+verschwinden hier.
+
+Messgrößen: Instanzen je Stufe **und** Grün-/Braunanteil im Nahfeld (der darf
+sich nicht ändern), Dreiecke, kalte Chunk-Erzeugungszeit.
+
+> **Ein Kostenpunkt, der dazugehört:** bei voller Streuung laufen die teuren
+> Filter (Neigung, Straßenabstand) für *alle* angenommenen Kandidaten, nicht
+> mehr nur für ein Zehntel. Das ist Arbeit im Worker, sie ist
+> zwischengespeichert — und sie ist **kalt** zu messen, nicht warm (P4: 0,70 ms
+> warm gegen 12,7 ms kalt).
+
+### 11.2 gebaut und gemessen — 2026-08-11
+
+**`vegetationDensity` ist ersatzlos gestrichen.** An seiner Stelle stehen zwei
+Werte je Stufe: `vegetationFullRadius` (bis hierhin wird **nichts** ausgedünnt)
+und `vegetationFarKeep` (so viel bleibt an der Ferngrenze). Dazwischen linear.
+
+| Stufe | voll bis | fern |
+|---|---|---|
+| Ultra | 160 m | 60 % |
+| Hoch | 120 m | 45 % |
+| Mittel | 90 m | 30 % |
+| Niedrig | 55 m | 20 % |
+| Minimal | 30 m | 14 % |
+
+Vier Eingriffe:
+
+1. **`scatterChunk` streut immer voll.** Der Dichtefaktor ist aus `ScatterInputs`
+   und aus dem Worker-Protokoll entfernt, nicht nur auf 1 gesetzt — ein
+   Parameter, der immer denselben Wert trägt, ist der nächste, dem irgendwann
+   jemand eine Bedeutung andichtet.
+2. **Ausgedünnt wird beim Einsortieren** (`ScatterSystem.#pushChunk`), über einen
+   **ortsfesten Hash je Instanz**. Ortsfest ist die entscheidende Eigenschaft:
+   dieselbe Pflanze fällt bei derselben Entfernung immer weg, und sie fallen in
+   fester Reihenfolge — wer bei 200 m steht, steht bei 100 m erst recht. Ein
+   laufender Zähler oder die Pufferreihenfolge ließe den Bestand bei jeder
+   Kamerabewegung flackern.
+3. **Deckungserhalt**: was übrig bleibt, wächst waagerecht um 1/√Anteil,
+   gedeckelt auf `SCATTER.thinBoostMax` = 1,7. Ohne das wäre jedes Ausdünnen
+   sofort als Lücke zu sehen — das ist die Rechnung hinter der Steppe aus
+   Befund 2. Die **Höhe** bleibt unangetastet: eine doppelt so hohe Kiefer fiele
+   in der Silhouette auf, eine breitere Grasbüschelbasis nicht.
+4. **Der Regler „Vegetationsdichte" im Spielermenü ist durch zwei ersetzt.** Ein
+   einzelner Prozentwert kann die Frage nicht mehr beantworten, seit nah und
+   fern getrennt behandelt werden.
+
+**Gemessen**, Blickpunkt `wald`, 1280 × 720, untere Bildhälfte:
+
+| Zustand | Instanzen | Dreiecke | verworfen | grün | braun |
+|---|---|---|---|---|---|
+| Minimal **vor P11** | 5 216 | 116 242 | 0 | 5,71 % | 88,26 % |
+| Ultra jetzt | 50 711 | 480 458 | 0 | 77,75 % | 6,63 % |
+| **Minimal jetzt** | **32 376** | 225 583 | **0** | **82,85 %** | **8,22 %** |
+
+Minimal trägt jetzt **6,2-mal so viele Instanzen** wie vorher und liegt im
+Grünanteil sogar knapp **über** Ultra — der Deckungserhalt überzeichnet in der
+Ferne leicht. Im Bildpaar sind die beiden Stufen an diesem Blickpunkt nicht mehr
+auseinanderzuhalten.
+
+**`verworfen: 0` auf beiden Stufen**, und das war vorhergesagt statt gehofft:
+der Anteil ist nie über 1, es kann also nie mehr gestreut werden als bei der
+alten Dichte 1,0 — und für diesen Fall waren die Puffer schon bemessen. Die
+Obergrenze des neuen Verfahrens ist bauartbedingt das alte Ultra.
+
+> **Ultra verliert dabei 476 Instanzen** (51 187 → 50 711), weil auch seine
+> Ferne jetzt auf 60 % ausdünnt. Im Bild ist davon nichts zu sehen, und im
+> Grünanteil sind es 0,07 Prozentpunkte. Das ist der einzige Posten dieser
+> Aufgabe, der in die falsche Richtung zeigt, und er gehört benannt.
+
+### Was 11.2 **nicht** belegt
+
+- **Keine Kostenaussage.** Minimal ist jetzt *teurer* als vorher: 225 583 statt
+  116 242 Dreiecke. Ob das auf der Zielhardware trägt, ist auf dieser Maschine
+  nicht messbar. Der Anhaltspunkt spricht dafür — auf der GPU-Maschine kostete
+  das *alte* Minimal 0,79 ms bei einem Budget von 16,6 ms —, aber das ist eine
+  RX 7900 XTX und keine Intel-iGPU. **Das ist die nächste Zahl, die von außen
+  kommen muss.**
+- **Die Streuung ist teurer geworden.** Die Filter für Neigung und
+  Straßenabstand laufen jetzt für alle zonentauglichen Kandidaten statt für
+  einen Bruchteil. Das läuft im Worker und ist zwischengespeichert — aber
+  **kalt** ist es nicht nachgemessen, und P4 hat für genau diese Verwechslung
+  den Faktor 18 kassiert.
+- **Ein Blickpunkt, eine Kamerahöhe.** Die Zusage „von jedem Winkel" ist damit
+  nicht eingelöst; `wald-fern`, der Gipfel und die Stadtferne stehen aus.
+- **Der 520-m-Ring steht noch** — das ist 11.5 und der Grund, warum die Karte
+  vom Gipfel weiterhin einen kahlen Saum hat.
+
+**11.3 — Deckungserhaltendes Ausdünnen.** Wer den Anteil p behält, skaliert die
+Verbliebenen um 1/√p in XZ (gedeckelt, etwa ≤ 1,6×) — die Bodendeckung bleibt
+dann konstant, statt mit p zu fallen. Kostet nichts, der Wert steht in der
+Instanzmatrix, die ohnehin geschrieben wird.
+
+> **Ehrlich dazu: das spart keine Füllrate.** Dieselbe Fläche grün zu decken
+> kostet dieselben Pixel. Gespart werden CPU, Vertex-Arbeit und Draw-Setup;
+> gekauft wird Aussehen. Die Füllrate spart 11.2.
+
+**11.4 — Den Boden unter dem Bewuchs einfärben.** Aus Befund 3: wo die
+Zonenmaske Gras sagt, das Splat-Albedo Richtung Vegetationsfarbe ziehen. Der
+Splat-Shader hat alles dafür schon zur Hand (`splat`, `viewDistance` je Pixel,
+`terrain_splat.frag.glsl`). Wirkt auf **jeder** Stufe, auch jenseits der 160 m
+Grasreichweite, und kostet eine Mischung.
+
+### 11.4 gebaut und gemessen — 2026-08-11
+
+**Der Boden bekommt die Farbe dessen, was auf ihm wächst.** `GROUND_TINT` in
+`vegetation.config.ts`, drei Uniforms in `TerrainMaterial`, acht Zeilen in
+`terrain_splat.frag.glsl`, ein Regler im Terrain-Ordner des Debug-Panels.
+**Kein neues Erzeugnis, kein Bake-Schritt, kein Byte Download.**
+
+Gezogen wird über die **Splat-Gewichte**: Fels 0, Gras 0,85, Sand 0, Reisfeld
+0,25. Die Zielfarbe ist die Grundfarbe des Grasbüschels aus `SPECIES` —
+abgeleitet und nicht danebengeschrieben, damit Boden und Pflanze nicht
+auseinanderlaufen.
+
+**Der entscheidende Teil ist der Helligkeitserhalt.** Ein glattes `mix()` zur
+Zielfarbe zieht auch die Helligkeit mit und macht aus dem Hang eine grüne Pappe:
+Felsbrocken, Erosionsrinnen und die Makro-Variation aus `TERRAIN.macroStrength`
+verschwinden. Stattdessen wird die Zielfarbe auf die Leuchtdichte **des
+jeweiligen Texels** normiert — der Farbton wandert, das Muster bleibt.
+
+Gemessen am Blickpunkt `wald`, 1280 × 720, untere Bildhälfte:
+
+| Zustand | grün | braun | mittleres RGB unten |
+|---|---|---|---|
+| Ultra vorher | 44,22 % | 46,07 % | 27,5 / 28,5 / 18,8 |
+| **Ultra jetzt** | **77,82 %** | **6,63 %** | 24,7 / 29,4 / 18,8 |
+| Minimal vorher | 5,71 % | 88,26 % | 35,3 / 29,2 / 25,0 |
+| **Minimal jetzt** | **75,22 %** | **10,44 %** | 28,2 / 29,9 / 24,4 |
+
+Zwei Dinge daran zählen:
+
+1. **Der Abstand zwischen Ultra und Minimal ist von 38,5 Prozentpunkten auf 2,6
+   gefallen.** Das ist die Größe, um die es dem Auftraggeber geht („Low und
+   Ultra fast gleich").
+2. **Die Helligkeit ist praktisch unverändert.** Der Helligkeitserhalt tut, was
+   er soll; es ist ein Farbtonwechsel und keine Übermalung. Wäre die mittlere
+   Helligkeit mitgewandert, stünde hier eine Look-Änderung statt einer
+   Korrektur.
+
+**Und es ist zuerst eine Ultra-Verbesserung.** Der Braunanteil auf Ultra fällt
+von 46,07 auf 6,63 % — der Befund 3 war nie ein Problem der niedrigen Stufen.
+
+> **Was damit ausdrücklich noch nicht gelöst ist:** die Karte wirkt auf Minimal
+> weiterhin leer, weil die Bäume fehlen. Das ist die Dichte (Befund 2) und
+> Aufgabe 11.2 — der Boden ist die *Voraussetzung* dafür, dass sie unauffällig
+> gelöst werden kann, nicht die Lösung.
+
+> **Offen und am Bild zu prüfen, bevor es als fertig gilt:** ob Grün dort steht,
+> wo nichts wächst. Die Zonenkarte weiß nichts von der 38°-Neigungsgrenze der
+> Kiefer, von der Straßenfreihaltung und von den Freiflächen um Props. Geprüft
+> ist bisher **ein** Blickpunkt. Die Standpunkte, an denen es auffallen müsste,
+> sind `pass` (Steinbruchwände sollen grau bleiben), `kueste` (kein grüner
+> Strand) und der Gipfel (soll kahl bleiben). Fällt das durch, ist die gerechnete
+> Bewuchskarte der nächste Schritt — dieselben Filter wie `scatterChunk`, je
+> Texel aggregiert.
+
+**11.5 — Der 520-m-Ring** (das ist die offene Entscheidung 6 aus P10.3). Nach
+11.2 ist Kandidat C — grobe Fernstufe mit vervielfachter Zellgröße und
+hochskalierten Instanzen — nicht mehr ein Kandidat neben anderen, sondern
+derselbe Mechanismus wie 11.2/11.3 einen Schritt weitergedacht. Dazu, aus
+derselben Ecke wie 11.4: jenseits der letzten Instanz die **Baum**-Eignungsmaske
+ins Gelände einfärben. Der Nebel (Kandidat B) bleibt draußen.
+
+### 11.5 gebaut und gemessen — 2026-08-11 · offene Entscheidung 6 ist entschieden
+
+**Die Baumreichweite geht von 520 auf 1200 m. Gras und Büsche bleiben, wo sie
+waren.** Damit ist der kahle Ring weg, und die offene Entscheidung 6 aus P10.3
+ist beantwortet: es wurde **Kandidat A** (Reichweite hoch), und zwar nur für die
+Bäume — nicht Kandidat B (Dunst) und nicht C als eigene Fernstufe.
+
+**Warum das geht, steht in einer Zahl aus 11.0:** von den 50 711 sichtbaren
+Instanzen am Blickpunkt `wald` sind rund **2 000 Bäume**, der Rest ist Gras
+(allein 34 986 Gras-Imposter). Die Baumreichweite zu vervielfachen kostet
+deshalb einen Bruchteil dessen, was dieselbe Änderung am Gras kosten würde — und
+ab 180 m ist ein Baum ein Imposter, also zwei Dreiecke. Die Artenmaske aus P4
+(`ScatterChunk.generated`) sorgt dabei von selbst dafür, dass ein Chunk auf
+900 m gar keine Gras-Kandidaten erzeugt.
+
+#### Das Ausdünnungsgesetz musste dafür geschärft werden
+
+P11.2 hatte eine lineare Rampe vom Vollbereich bis zur **Ferngrenze der Art**.
+Genau daran lag eine Kopplung, die erst hier auffiel: die Grenze von 520 auf
+1200 m zu ziehen hätte die Dichte **bei 300 m** mitverändert — eine
+Reichweitenänderung, die als Dichteänderung im Nahfeld ankommt. Dieselbe Sorte
+Fernwirkung wie bei der Einebnungsschwelle der Reisfelder (P8.5).
+
+Neu:
+
+    keep(d) = 1                       für d ≤ R
+    keep(d) = max(keepFar, (R/d)²)    für d > R
+
+Das hängt **nur** vom Vollbereich ab, nicht von der Reichweite. Und es hält die
+Zahl der Instanzen je Bildschirmfläche ungefähr konstant: die Ringfläche wächst
+mit d, die Behaltequote fällt mit d² — die Instanzzahl über die zusätzliche
+Strecke wächst damit **logarithmisch** statt quadratisch. Das ist der Grund,
+warum 1200 m überhaupt bezahlbar sind.
+
+#### Die Puffer werden integriert, nicht überschlagen
+
+Geometrisch wären es bei 1200 m rund **95 530** Plätze je Baumart. Gebraucht
+werden nur die, die das Gesetz übrig lässt, und das Integral hat eine
+geschlossene Lösung (`ScatterSystem.#thinnedRingSlots`) — abgeleitet aus
+demselben Gesetz, das `#pushChunk` anwendet, statt daneben geschätzt. Der
+mittlere Term ist der logarithmische.
+
+#### Zwei Fehler, die dabei aufgefallen sind
+
+1. **Der Chunk-Cache war zu klein.** 512 Plätze bei 520 m Reichweite waren
+   dreifach überdimensioniert; bei 1200 m liegen **π · 1200² / 64² ≈ 1104**
+   Chunks im Umkreis, und der Cache warf in jedem Durchlauf weg, was er im
+   nächsten wieder brauchte. Jetzt 2560.
+
+   > **Gefunden hat es nicht ein Bild, sondern das Streaming-Signal aus P10.0:**
+   > `streaming` ging nie mehr auf `false`, die Instanzzahl kroch und kam nicht
+   > zur Ruhe. Ohne dieses Signal wäre eine Zahl aus einer halb gefüllten Welt
+   > in dieser Doku gelandet — genau der Fall, für den es gebaut wurde.
+
+2. **Die Zeitscheibe zählte die falschen Chunks.** Jeder Kandidat verbrauchte
+   eine Scheibe des Etats, auch einer, den das Frustum sofort verwirft. Bei 361
+   Kandidaten (520 m) war das egal, bei **1521** (1200 m) hätte ein Durchlauf 95
+   Frames gedauert — 1,6 s Nachlauf. Der Etat ist gegen die *Umsortierkosten*
+   gesetzt, und ein verworfener Chunk kostet davon nichts; er zählt seitdem nicht
+   mehr mit. Die Arbeit je Frame ist dadurch unverändert.
+
+#### Gemessen, 1280 × 720, Kette auf `lean` (der `off`-Pfad ist hier nicht auswertbar)
+
+| Blickpunkt | Stufe | Instanzen | Dreiecke | Draw-Calls | verworfen | eingeschwungen |
+|---|---|---|---|---|---|---|
+| `wald-fern` | Ultra | 15 478 | 285 809 | 44 | 0 | ja, nach 1101 Frames |
+| `wald` | Ultra | 53 116 | 484 735 | 63 | 0 | ja, nach 115 |
+| `wald-fern` | Minimal | 2 326 | 102 907 | 32 | 0 | **nein** (Zeitlimit) |
+| `wald` | Minimal | 12 684 | 165 783 | 57 | 0 | ja, nach 302 |
+
+**Der Vergleich mit P11.0 ist der Punkt der ganzen Aufgabe:**
+
+| `wald-fern`, Ultra | vorher | nachher |
+|---|---|---|
+| Instanzen | 12 046 | **15 478** |
+| Dreiecke | 279 268 | **285 809** |
+
+**Ein Wald bis zum Horizont für 2,3 % mehr Dreiecke.** Am Bild
+(`p11_ring_wald-fern_ultra.png`) reicht der Bestand über die gesamte sichtbare
+Landschaft; die Kante bei 520 m ist nicht mehr auffindbar.
+
+#### Der Korrektheits-Check: steht Grün, wo nichts wächst?
+
+Das war der offene Punkt aus 11.4, und er ist am Bild geprüft — Ultra, drei
+Standpunkte, an denen der Splat-Ansatz danebengreifen müsste, wenn er es tut:
+
+| Standpunkt | erwartet | gemessen |
+|---|---|---|
+| `pass` — Steinbruchwände und Massiv | Fels bleibt grau/braun | **in Ordnung.** Die Felsflanken sind unverändert braun, Grün steht nur im Graszonen-Band darunter |
+| `start` — Übersicht aus 330 m | Talboden bewachsen, Gipfel kahl | **in Ordnung.** Der Talboden trägt Bewuchs bis zum Horizont, das Massiv bleibt Fels, die Kuppe kahl |
+| `kueste` | kein grüner Strand | **nicht beantwortet** — der Blickpunkt zeigt offenes Meer, kein Ufer. Strukturell ausgeschlossen (Sand-Gewicht 0), aber **nicht am Bild belegt** |
+
+Der Übersichtsblick ist zugleich der stärkste Beleg für die ganze Phase: laut
+P10.0 trug `start` **67** Vegetationsinstanzen, weil bei 330 m Kamerahöhe fast
+alles jenseits der 520 m lag. Jetzt sind es 2 492 — und das Gelände darunter
+trägt die Farbe, wo keine Instanz mehr steht.
+
+#### Was offen bleibt, und zwar ausdrücklich
+
+- **Das kalte Füllen dauert.** `wald-fern` auf Ultra brauchte 1101 Frames bis zur
+  Ruhe, Minimal lief bei 614 ins Zeitlimit. Begrenzt wird das von
+  `SCATTER.workerQueueDepth: 4` — vier Chunks je Frame, und bei 1200 m sind rund
+  1100 zu füllen. Auf 60 Hz wären das rund 18 s Kaltstart. **Das ist der nächste
+  Kandidat zum Nachstellen**, und die Begründung für die 4 (Prioritätsordnung
+  bei jedem Nachschub, siehe dort) ist gegen diesen neuen Fall nicht geprüft.
+- **Minimal ist im Mittelfeld deutlich dünner als Ultra** (12 684 gegen 53 116 am
+  `wald`). Am Bild liest es sich als bewaldete Landschaft und nicht als Steppe —
+  aber es ist ein sichtbarer Unterschied, und er ist gewollt („Minimal darf
+  weniger Details haben"). Wer ihn anders gewichten will, hat dafür die zwei
+  Regler aus 11.2 und muss keinen Code anfassen.
+- **Zwei Blickpunkte.** Gipfel, Küste, Stadt und Bergpass sind nicht angesehen.
+  Die Zusage „von jedem Winkel" ist damit **nicht** eingelöst.
+- **Keine Kostenaussage.** Weder GPU-Zeit noch Bildrate noch der kalte
+  Streuaufwand sind auf dieser Maschine messbar.
+
+**11.6 — Occlusion-Culling über die `HeightPyramid`.** Sie führt Min/Max je
+Quadtree-Knoten; ein Ray-March gegen die Max-Höhen beantwortet „liegt ein Grat
+dazwischen" in wenigen Schritten.
+
+> **Wichtige Einordnung, damit die Erwartung stimmt:** im Tal und im Wald spart
+> das viel, **auf dem Gipfel nichts** — dort ist alles im Frustum und nichts
+> verdeckt. Für den Blick von oben, den der Auftraggeber ausdrücklich nennt,
+> hilft nur LOD (11.2/11.5), nicht Culling. Deshalb steht 11.6 hinten.
+
+**11.7 — `renderScale` 0,5 zurücknehmen.** Die Vorgabe lautet volle Auflösung.
+Die Ersparnis müsste dann aus 11.2/11.5 kommen. **Ungemessen**, ob das trägt —
+das ist eine Frage an die GPU-Maschine und nicht an diese hier.
+
+**11.8 — Was auf Minimal wirklich weg darf.** Wind (vom Auftraggeber
+freigegeben). SSAO — die Bodenflecken sind ein eigenes System und bleiben, der
+Kontakt am Stammfuß geht also nicht verloren. Nicht weg: Blattstreulicht (trägt
+den Look bei 2,2° Sonnenstand) und die planare Spiegelung — die eher
+viertelauflösend und ohne Vegetation im Spiegeldurchgang als ganz aus.
+
+---
+
+## Akzeptanzkriterien (Entwurf)
+
+- [ ] **Auf keiner Stufe rendert etwas in der falschen Farbe.** Befund 1 ist
+      behoben, und zwar mit benannter Ursache — nicht dadurch, dass der
+      betroffene Pfad umgangen wird.
+- [ ] **Der Grünanteil im Nahfeld ist auf Minimal nicht kleiner als auf Ultra.**
+      Gemessen wie in 11.0, untere Bildhälfte, drei bewachsene Blickpunkte.
+      Heute: 44,22 % gegen 5,71 %.
+- [ ] **Ein einzelner Baum aus der Nähe ist auf Minimal von Ultra nicht zu
+      unterscheiden.** Bildpaar, nicht nur Differenzzahl (P8.6-Lehre).
+- [ ] **Die Instanzzahl im Fernfeld sinkt messbar**, während die im Nahfeld
+      gleich bleibt — sonst ist 11.2 nur ein umbenannter Dichteregler.
+- [ ] **Volle Auflösung auf jeder Stufe**, oder die Abweichung steht hier mit
+      der Zahl, die sie erzwingt.
+- [ ] **Auf der GPU-Maschine gemessen**, in Betriebsart `live`, mit Bildrate.
+      Diese Maschine kann die Frage nicht beantworten.
+- [ ] **Kette weiterhin bitgleich reproduzierbar.** `npm run world` zweimal.
+
+## Risiken
+
+- **„Nichts darf schlechter werden" und „läuft auf jedem Toaster" ziehen
+  gegeneinander**, und 11.7 zieht am stärksten. → Wenn die volle Auflösung nicht
+  trägt, steht die erreichte Zahl hier, so wie P7 es vorgemacht hat.
+- **11.2 verschiebt Arbeit vom Worker auf den Hauptthread** (je Instanz ein
+  Hash-Vergleich beim Einsortieren, statt einmal beim Streuen). → Die CPU-Zeit
+  des Streusystems je Frame ist eine bestehende Messgröße im Debug-Panel; sie
+  gehört vorher und nachher abgelesen.
+- **Zwei neue Regler je Stufe sind zwei neue Gelegenheiten für die
+  Regelschleife**, vor der dieses Projekt an drei Stellen warnt. → Jeder bekommt
+  seinen Nachweis in der Matrix, oder er bekommt keinen Regler.
+- **11.4 und 11.5 färben Gelände ein, das keine Vegetation trägt.** Das ist eine
+  Look-Änderung an einer Stelle, an der bisher eine Fototextur stand. → Am Bild
+  prüfen, und zwar auch dort, wo *kein* Bewuchs stehen soll: der Gipfel soll kahl
+  bleiben, der Steinbruch am Bergpass grau.
