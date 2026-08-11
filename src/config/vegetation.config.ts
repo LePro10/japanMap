@@ -144,7 +144,23 @@ export const SPECIES: readonly SpeciesSettings[] = [
     id: 'pine',
     label: 'Nadelbaum',
     cellSize: 8,
-    lodDistances: [80, 180, 520],
+    // **1200 m statt 520 — P11.5, der kahle Ring.** Die Ferngrenze war seit P4
+    // auf jeder Stufe dieselbe Konstante, und PLAN.md P10 nennt sie „die
+    // auffälligste Kante, die es gibt" auf einer Karte, die von der Fernsicht
+    // lebt.
+    //
+    // **Warum das bezahlbar ist, und zwar gerade bei Bäumen:** von den 50 711
+    // sichtbaren Instanzen am Blickpunkt `wald` sind rund 2 000 Bäume, der Rest
+    // ist Gras (34 986 Gras-Imposter allein). Die Baumreichweite zu vervielfachen
+    // kostet deshalb einen Bruchteil dessen, was dieselbe Änderung am Gras
+    // kosten würde — und ab 180 m ist ein Baum ohnehin ein Imposter, also zwei
+    // Dreiecke.
+    //
+    // Zusammen mit dem Ausdünnungsgesetz aus P11.2 (`keep = (R/d)²` jenseits
+    // des Vollbereichs) wächst die Instanzzahl über die zusätzliche Strecke
+    // **logarithmisch** statt mit dem Quadrat: die Zahl der Instanzen je
+    // Bildschirmfläche bleibt gleich, es kommen nur weiter entfernte dazu.
+    lodDistances: [80, 180, 1200],
     minScale: 0.75,
     maxScale: 1.45,
     variants: 3,
@@ -168,7 +184,9 @@ export const SPECIES: readonly SpeciesSettings[] = [
     id: 'broadleaf',
     label: 'Laubbaum',
     cellSize: 11,
-    lodDistances: [80, 180, 520],
+    // Wie bei der Kiefer — Begründung dort. Der Laubbaum endet zusätzlich schon
+    // bei 190 m Geländehöhe, seine Fernsicht betrifft also vor allem die Ebene.
+    lodDistances: [80, 180, 1200],
     minScale: 0.8,
     maxScale: 1.5,
     variants: 3,
@@ -293,6 +311,13 @@ export const SCATTER = {
    * Nachlauf — bei 30 m/s Kamerafahrt 6,5 m Versatz an einer LOD-Grenze, deren
    * nächste bei 30 m liegt.
    *
+   * > **Die 207 gelten seit P11.5 nicht mehr** — mit 1200 m Baumreichweite sind
+   * > **1521** Chunks im Umkreis. Der Etat zählt seitdem nur noch Chunks, die
+   * > tatsächlich einsortiert werden; die vom Frustum verworfenen kosten nichts
+   * > und werden nicht mehr mitgezählt (Begründung in
+   * > `ScatterSystem.#advancePass`). Die Arbeit je Frame ist damit dieselbe
+   * > geblieben, die Zahl oben beschreibt nur nicht mehr die Kandidatenmenge.
+   *
    * **Der Wert war nicht die Ursache des Problems, das ihn geändert hat.** Die
    * Füllphase kostete 12,7 ms im Median, und die Senkung von 48 auf 16 hat daran
    * *nichts* geändert — die Ursache lag in der Chunk-Erzeugung, nicht im
@@ -379,8 +404,43 @@ export const SCATTER = {
    * Chunk entsteht beim nächsten Betreten identisch neu. Ohne diese Eigenschaft
    * bräuchte es entweder unbegrenzten Speicher oder eine Persistenz, und die
    * Karte hat 2304 Chunks.
+   *
+   * **512 war zu klein, sobald die Bäume 1200 m weit reichen — P11.5.** Bei
+   * 520 m lagen rund 210 Chunks im Umkreis, der Cache war also dreifach
+   * überdimensioniert. Bei 1200 m sind es **π · 1200² / 64² ≈ 1104**, und ein
+   * Cache mit 512 Plätzen wirft dann in jedem Durchlauf weg, was er im nächsten
+   * wieder braucht.
+   *
+   * Aufgefallen ist es nicht an einem Bild, sondern daran, dass `streaming`
+   * **nie mehr auf `false` ging**: der Messlauf lief in sein Zeitlimit, die
+   * Instanzzahl kroch und kam nicht zur Ruhe. Genau die Sorte Zustand, für die
+   * P10.0 das Streaming-Signal überhaupt gebaut hat — ohne das hätte hier eine
+   * Zahl aus einer halb gefüllten Welt in der Doku gestanden.
+   *
+   * 2560 deckt den Umkreis mit Reserve für die Randchunks und die Bewegung.
+   * **Die Größe ist nicht frei wählbar, sie folgt aus der Reichweite** — wer die
+   * Baumreichweite wieder ändert, muss diese Zahl mitziehen.
    */
-  cacheSize: 512,
+  cacheSize: 2560,
+
+  /**
+   * Obergrenze für das Hochskalieren beim Ausdünnen — P11.2.
+   *
+   * Wer nur noch den Anteil p behält, müsste die Verbliebenen um 1/√p
+   * verbreitern, damit die **gedeckte Bodenfläche** gleich bleibt. Ohne das ist
+   * jedes Ausdünnen sofort als Lücke zu sehen; das ist die Rechnung hinter der
+   * Steppe aus Befund 2.
+   *
+   * Der Deckel ist trotzdem nötig: bei p = 0,14 wären es 2,67× und ein
+   * Grasbüschel würde zum Strauch. 1,7 entspricht p ≈ 0,35 — darunter wird die
+   * Deckung nicht mehr vollständig gehalten, und das ist der ehrlichere Tausch
+   * als sichtbar aufgeblasene Einzelpflanzen.
+   *
+   * **Nur waagerecht.** Die Höhe bleibt unangetastet: eine doppelt so hohe
+   * Kiefer fällt in der Silhouette gegen den Himmel sofort auf, eine doppelt so
+   * breite Grasbüschelbasis nicht.
+   */
+  thinBoostMax: 1.7,
 } as const;
 
 /**
@@ -474,6 +534,98 @@ export const GROUND_AO = {
 
   /** Pufferplätze. Überlauf wird gezählt und muss null bleiben. */
   capacity: 4096,
+} as const;
+
+/**
+ * Der Boden unter dem Bewuchs — PLAN.md P11, Befund 3.
+ *
+ * ## Warum es das gibt
+ *
+ * Gemessen am Blickpunkt `wald`, untere Bildhälfte, **auf Ultra bei voller
+ * Dichte**: 44,22 % grün und **46,07 % braun**. Die Grasbüschel schließen also
+ * auch dann keine Decke, wenn keine einzige Instanz eingespart wird — zwischen
+ * ihnen steht der Splat-Kanal `grass`, und dessen Fototextur heißt nicht ohne
+ * Grund `aerial_grass_rock`. Auf Minimal fällt der Grünanteil auf 5,71 % und
+ * der Braunanteil steigt auf 87,82 %; aus dem Wald wird eine Steppe.
+ *
+ * **Beides ist dasselbe Problem.** Die Dichte macht es sichtbar, verursacht hat
+ * es der Boden. Ein Bewuchs, dessen Untergrund dieselbe Farbe hat, verträgt es,
+ * wenn Instanzen fehlen — einer über braunem Grund nicht. Deshalb steht dieser
+ * Abschnitt **vor** jedem Eingriff an Dichte und Sichtweite: er ist die
+ * Voraussetzung dafür, dass die späteren Einsparungen unsichtbar bleiben.
+ *
+ * ## Was hier *nicht* passiert
+ *
+ * Das ist **kein Nebel und kein Weichzeichner über einem Problem** — der
+ * Kandidat, vor dem P10.3 ausdrücklich warnt. Es wird nichts verdeckt, sondern
+ * eine falsche Farbe korrigiert: unter einem Wald ist der Boden nicht
+ * graubraun, sondern beschattet, bemoost und voller Nadelstreu. Die
+ * Fototexturen sind aus der Luft aufgenommen und zeigen den Boden **ohne** den
+ * Bewuchs, der laut Zonenkarte darauf steht.
+ *
+ * ## Warum über die Splat-Gewichte und nicht über eine eigene Karte
+ *
+ * Der erste Entwurf war eine gerechnete Bewuchskarte: dieselben Filter wie
+ * `scatterChunk` (Zone, Höhe, Neigung, Straßenabstand, Freiflächen), aggregiert
+ * je Texel. Sie wäre genauer — sie wüsste von Straßenschneisen und von der
+ * 38°-Grenze der Kiefer. Sie kostet aber ein neues Erzeugnis, einen Bake-Schritt
+ * und Download-Budget, und **die Zonenkarte trägt den größten Teil der Antwort
+ * schon**: Fels ist ein eigener Kanal, Reisfeld auch, und die kahle Kuppe liegt
+ * in der Felszone.
+ *
+ * Angefangen wird deshalb hier. Wenn am Bild Grün dort steht, wo nichts wächst,
+ * ist die gerechnete Karte der nächste Schritt — und **das ist am Bild zu
+ * prüfen, nicht anzunehmen.**
+ */
+export const GROUND_TINT = {
+  /**
+   * Wie stark ein Splat-Kanal Richtung Bewuchsfarbe gezogen wird, 0…1.
+   *
+   * Reihenfolge wie `TERRAIN_LAYERS`: Fels, Gras, Sand, Reisfeld.
+   *
+   *  - **Fels bleibt auf 0.** Auf Fels wächst nichts, der Gipfel soll kahl sein,
+   *    und die Steinbruchwände am Bergpass sollen grau bleiben (P8.5a).
+   *  - **Gras trägt den Effekt.** Dort steht der Bewuchs, dort ist der Boden
+   *    heute grau-braun.
+   *  - **Sand bleibt auf 0.** Ein grüner Strand wäre genau der Fehler, den
+   *    dieser Regler vermeiden soll.
+   *  - **Reisfeld nur schwach.** Die Parzellen stehen unter Wasser und haben
+   *    ihre eigene Farbe; sie sind aber auch keine Wüste, und Reis *ist* ein
+   *    Gras.
+   */
+  weights: [0, 0.85, 0, 0.25] as const,
+
+  /**
+   * Die Farbe, zu der gezogen wird.
+   *
+   * **Abgeleitet und nicht abgeschrieben:** es ist die Grundfarbe des
+   * Grasbüschels aus `SPECIES`. Eine handgepflegte zweite Farbe daneben wäre
+   * der nächste Wert, der irgendwann nicht mehr zum Bewuchs passt — und die
+   * Fuge zwischen Boden und Pflanze ist genau das, was hier stimmen muss.
+   */
+  color: 0x5a6b35,
+
+  /**
+   * Gesamtstärke, 0…1 — der Regler im Debug-Panel.
+   *
+   * **Bewusst unter 1.** Bei 1,0 verschwände die Struktur der Bodentextur
+   * vollständig, und aus dem Hang würde eine grüne Fläche. Was hier gebraucht
+   * wird, ist ein Farbstich mit erhaltener Zeichnung.
+   */
+  strength: 0.8,
+
+  /**
+   * Erhält die Helligkeit der Bodentextur, statt sie zu übermalen.
+   *
+   * Ein glattes `mix(albedo, farbe, t)` zieht auch die Helligkeit zur
+   * Zielfarbe und plättet damit jede Struktur — Felsbrocken, Erosionsrinnen und
+   * die Makro-Variation aus `TERRAIN.macroStrength` gingen mit. Stattdessen
+   * wird die Zielfarbe auf die **Leuchtdichte des jeweiligen Texels** normiert:
+   * der Farbton wandert, das Muster bleibt.
+   *
+   * 0 = übermalen, 1 = reiner Farbtonwechsel.
+   */
+  preserveLuminance: 0.85,
 } as const;
 
 export const IMPOSTER = {

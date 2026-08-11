@@ -28,6 +28,13 @@ uniform vec2 uTriplanar;
 uniform float uDetailNormalStrength;
 /** x = Beginn, y = Ende des Detail-Ausblendens in Metern. */
 uniform vec2 uDetailFade;
+
+// Bewuchsfarbe des Bodens (P11). `uGroundTint.x` ist die Gesamtstärke,
+// `uGroundTint.y` der Anteil Helligkeitserhalt — Herleitung bei `GROUND_TINT`.
+uniform vec3 uGroundTintColor;
+uniform vec4 uGroundTintWeights;
+uniform vec2 uGroundTint;
+
 uniform int uDebugMode;
 
 varying vec3 vTerrainWorld;

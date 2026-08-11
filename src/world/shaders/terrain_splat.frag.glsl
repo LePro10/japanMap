@@ -68,6 +68,31 @@ for (int i = 0; i < 4; i++) {
 float macro = dot(texture(uAlbedoArray, vec3(vTerrainWorld.xz / uMacroTile, 1.0)).rgb, vec3(0.3333));
 terrainAlbedo *= 1.0 + (macro - 0.5) * 2.0 * uMacroStrength;
 
+// **Der Boden bekommt die Farbe dessen, was auf ihm wächst** — P11.
+//
+// Die Detailtexturen sind Luftaufnahmen und zeigen den Boden *ohne* den
+// Bewuchs, der laut Zonenkarte darauf steht; `aerial_grass_rock` ist zu einem
+// guten Teil Fels. Gemessen war die untere Bildhälfte am Blickpunkt `wald`
+// selbst auf Ultra zu 46,07 % braun. Das ist keine Frage der Instanzzahl,
+// sondern der Untergrundfarbe — und es ist die Voraussetzung dafür, dass
+// fehlende Instanzen auf niedrigen Stufen nicht auffallen.
+//
+// **Steht nach der Makro-Variation**, nicht davor: die Helligkeitsmodulation
+// aus `uMacroStrength` soll durch den Farbtonwechsel hindurch erhalten bleiben,
+// nicht von ihm überschrieben werden.
+float groundTint = dot(splat, uGroundTintWeights) * uGroundTint.x;
+if (groundTint > 0.001) {
+  const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+  float texelLuma = dot(terrainAlbedo, LUMA);
+  // Die Zielfarbe auf die Helligkeit *dieses* Texels normiert: der Farbton
+  // wandert, das Muster bleibt. Ein glattes mix() zöge auch die Helligkeit zur
+  // Zielfarbe und plättete Felsbrocken, Erosionsrinnen und die Makro-Variation
+  // zu einer einfarbigen Fläche — genau die grüne Pappe, die hier nicht
+  // entstehen soll.
+  vec3 shaped = clamp(uGroundTintColor * (texelLuma / max(dot(uGroundTintColor, LUMA), 1e-4)), 0.0, 1.0);
+  terrainAlbedo = mix(terrainAlbedo, mix(uGroundTintColor, shaped, uGroundTint.y), groundTint);
+}
+
 diffuseColor.rgb *= terrainAlbedo;
 gTerrainArm = clamp(terrainArm, 0.0, 1.0);
 gTerrainNormal = terrainPerturbNormal(

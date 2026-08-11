@@ -95,7 +95,6 @@ scope.onmessage = (event: MessageEvent<ScatterToWorker>): void => {
     zones,
     network,
     clearance,
-    density: message.density,
   });
 
   // `subarray` liefert Sichten auf **einen** Puffer je Art. Übertragen wird
