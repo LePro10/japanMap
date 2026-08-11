@@ -37,7 +37,6 @@ export interface ScatterRequestMessage {
   readonly cx: number;
   readonly cz: number;
   readonly mask: number;
-  readonly density: number;
 }
 
 export type ScatterToWorker = ScatterInitMessage | ScatterUpdateMessage | ScatterRequestMessage;

@@ -112,8 +112,6 @@ export interface ScatterInputs {
   readonly network: RoadNetwork | null;
   /** Freiflächen um Props (P5). `null`, solange sie noch nicht bekannt sind. */
   readonly clearance: PropClearance | null;
-  /** Dichtefaktor aus der Qualitätsstufe, 0…1. */
-  readonly density: number;
 }
 
 export function scatterChunk(
@@ -195,7 +193,21 @@ export function scatterChunk(
             input.zones.weight(x, z, 2) * species.zones.sand +
             input.zones.weight(x, z, 3) * species.zones.paddy) *
           (1 - town);
-        if (roll >= suitability * input.density) continue;
+        // **Kein Dichtefaktor mehr.** Bis P11 stand hier
+        // `roll >= suitability * input.density`, und das dünnte gleichmäßig
+        // über die ganze Fläche aus — auch einen Meter vor der Kamera. Gemessen
+        // wurde daraus eine Steppe (Tabelle bei `vegetationFullRadius`).
+        // Gestreut wird jetzt immer voll; ausgedünnt wird **mit der Entfernung**
+        // und erst beim Einsortieren, in `ScatterSystem.#pushChunk`.
+        //
+        // Ein Nebeneffekt gehört hierher, weil er Rechenzeit kostet: die teuren
+        // Filter darunter (Neigung, Straßenabstand) laufen jetzt für **alle**
+        // zonentauglichen Kandidaten statt für einen Bruchteil davon. Auf
+        // niedrigen Stufen ist die Streuung damit teurer als vorher. Sie läuft
+        // im Worker und ist zwischengespeichert — aber das ist ein Argument,
+        // kein Messwert, und gehört **kalt** nachgemessen (P4: warm 0,70 ms
+        // gegen kalt 12,7 ms).
+        if (roll >= suitability) continue;
 
         const slope = input.sampler.getSlopeAt(x, z);
         if (slope > species.maxSlopeDeg * RAD_PER_DEG) continue;

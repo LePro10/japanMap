@@ -12,6 +12,7 @@ import {
   DEFAULT_QUALITY,
   LOD_BIAS_MIN,
   QUALITY,
+  QUALITY_LEVELS,
   VEGETATION_RANGE_MAX,
   type QualityKey,
 } from '@/config/quality.config';
@@ -130,7 +131,6 @@ export class ScatterSystem implements System {
   #quality: QualityKey = DEFAULT_QUALITY;
   /** Die zuletzt **angewandten** Streuparameter — Vergleichswert, siehe `init()`. */
   #applied = {
-    density: QUALITY[DEFAULT_QUALITY].vegetationDensity,
     range: QUALITY[DEFAULT_QUALITY].vegetationRange,
     bias: QUALITY[DEFAULT_QUALITY].lodBias,
   };
@@ -233,15 +233,20 @@ export class ScatterSystem implements System {
       const before = this.#applied;
       this.#quality = level;
       this.#applied = {
-        density: after.vegetationDensity,
         range: after.vegetationRange,
         bias: after.lodBias,
       };
-      if (
-        after.vegetationDensity === before.density &&
-        after.vegetationRange === before.range &&
-        after.lodBias === before.bias
-      ) {
+      // **Ausdünnung und Deckungserhalt stehen absichtlich nicht in dieser
+      // Liste.** Sie wirken seit P11.2 beim *Einsortieren* und nicht mehr beim
+      // Streuen — ein gestreuter Chunk ist von ihnen unabhängig, und der
+      // nächste Durchlauf trägt die neuen Werte ohnehin. Sie hier aufzuführen
+      // hieße, bei jedem Zug am Regler die ganze Streuung zu verwerfen und neu
+      // zu rechnen, ohne dass sich ein einziger Kandidat änderte.
+      //
+      // Reichweite und LOD-Bias bleiben drin: die erste bestimmt, *welche*
+      // Chunks überhaupt gestreut werden (`#speciesMask`), und beide sind in
+      // den Puffergrößen verbaut.
+      if (after.vegetationRange === before.range && after.lodBias === before.bias) {
         return;
       }
       this.#reset();
@@ -443,14 +448,62 @@ export class ScatterSystem implements System {
     return [
       // Die beiden inneren Ringe bekommen ihre Größe aus den **ungeschrumpften**
       // Grenzen: sie sind auf hohen Stufen am größten, und die müssen auch
-      // hineinpassen.
+      // hineinpassen. Ausgedünnt wird dort nicht — der Vollbereich der
+      // niedrigsten Stufe (30 m) liegt zwar darunter, aber ein zu großer Puffer
+      // kostet nur Speicher, ein zu kleiner verwirft still.
       ring(distances[0], 0),
       ring(distances[1], distances[0]),
-      // Der äußere aus den geschrumpften — sein Innenrand rückt nach innen,
-      // sein Außenrand nach außen, er ist also auf der niedrigsten Stufe mit der
-      // weitesten Reichweite am größten.
-      ring(d2, Math.min(d1, d2)),
+      // **Der äußere Ring wird integriert, nicht überschlagen** — P11.5.
+      //
+      // Geometrisch wären es bei 1200 m Baumreichweite 95 530 Plätze je Art;
+      // gebraucht werden davon nur die, die das Ausdünnungsgesetz übrig lässt.
+      // Die Rechnung steht in `#thinnedRingSlots` und ist aus demselben Gesetz
+      // abgeleitet, das `#pushChunk` anwendet — nicht daneben geschätzt. Eine
+      // handgepflegte Zahl hier wäre der nächste Wert, der nach der nächsten
+      // Änderung am Gesetz nicht mehr stimmt.
+      ScatterSystem.#thinnedRingSlots(Math.min(d1, d2), d2, area),
     ];
+  }
+
+  /**
+   * Pufferplätze im äußeren Ring, aus dem Ausdünnungsgesetz **integriert**.
+   *
+   * Gebraucht wird ∫ 2πd · keep(d) / A dd über den Ring, mit
+   * `keep(d) = 1` für d ≤ R und `max(keepFar, (R/d)²)` darüber. Das Integral
+   * zerfällt in drei Stücke mit geschlossener Lösung:
+   *
+   *  - `keep = 1`      → ∫ d dd     = (b² − a²) / 2
+   *  - `keep = (R/d)²` → ∫ R²/d dd  = R² · ln(b/a)
+   *  - `keep = keepFar`→ keepFar · (b² − a²) / 2
+   *
+   * Der mittlere Term ist der Grund, warum die Verlängerung auf 1200 m
+   * überhaupt geht: er wächst **logarithmisch**.
+   *
+   * Bemessen wird über den ungünstigsten Fall aller Stufen, nicht über die
+   * eingestellte — die Puffer entstehen einmal beim Start, die Stufe wechselt
+   * danach. Denselben Fehler hat P10.1 an dieser Methode schon einmal
+   * korrigiert.
+   */
+  static #thinnedRingSlots(inner: number, outer: number, area: number): number {
+    let worst = 0;
+    for (const level of QUALITY_LEVELS) {
+      const q = QUALITY[level];
+      const r = q.vegetationFullRadius;
+      const keepFar = q.vegetationFarKeep;
+      // Ab hier greift der Boden `keepFar` statt des Abfalls.
+      const floorStart = keepFar >= 1 ? r : r / Math.sqrt(keepFar);
+      const clamp = (v: number): number => Math.min(Math.max(v, inner), outer);
+
+      const fullTo = clamp(r);
+      const fadeTo = clamp(floorStart);
+      let sum = (fullTo * fullTo - inner * inner) / 2;
+      if (fadeTo > fullTo) sum += r * r * Math.log(fadeTo / fullTo);
+      if (outer > fadeTo) sum += (keepFar * (outer * outer - fadeTo * fadeTo)) / 2;
+      worst = Math.max(worst, sum);
+    }
+    // Derselbe Zuschlag wie bei `ring()`: die Randchunks eines Durchlaufs
+    // reichen über die Grenze hinaus, und ein Überlauf verwirft still.
+    return Math.ceil((2 * Math.PI * worst) / area) + 64;
   }
 
   update(dt: number): void {
@@ -553,9 +606,25 @@ export class ScatterSystem implements System {
 
   #advancePass(camera: PerspectiveCamera): void {
     const cell = SCATTER.chunkSize;
-    const end = Math.min(this.#cursor + SCATTER.chunksPerFrame, this.#pass.length);
 
-    for (; this.#cursor < end; this.#cursor++) {
+    // **Gezählt wird, was Arbeit macht — nicht, was betrachtet wird** (P11.5).
+    //
+    // Bis dahin verbrauchte jeder Kandidat eine Scheibe des Etats, auch einer,
+    // den der Frustum-Test sofort verwirft. Mit 520 m Reichweite lagen rund 361
+    // Kandidaten im Umkreis, ein Durchlauf dauerte also gut 20 Frames. Mit den
+    // 1200 m aus P11.5 sind es **1521**, und derselbe Etat hätte daraus 95
+    // Frames gemacht — 1,6 s Nachlauf an einer LOD-Grenze, deren nächste bei
+    // 30 m liegt.
+    //
+    // Der Etat ist aber gegen die **Umsortierkosten** gesetzt (bei 50 211
+    // Instanzen rund 10 ms für einen vollständigen Durchlauf, siehe
+    // `SCATTER.chunksPerFrame`), und ein verworfener Chunk kostet davon nichts:
+    // ein Box-Frustum-Test sind sechs Ebenengleichungen. Er zählt deshalb nicht
+    // mehr mit. Die Obergrenze der Arbeit je Frame bleibt damit exakt dieselbe
+    // wie vorher, der Durchlauf ist nur nicht mehr an der Kartengröße gemessen.
+    let budget = SCATTER.chunksPerFrame;
+
+    for (; this.#cursor < this.#pass.length && budget > 0; this.#cursor++) {
       const key = this.#pass[this.#cursor]!;
       const cx = key % CHUNKS_PER_AXIS;
       const cz = (key - cx) / CHUNKS_PER_AXIS;
@@ -573,7 +642,11 @@ export class ScatterSystem implements System {
       if (!this.#frustum.intersectsBox(this.#box)) continue;
 
       // Nur die Arten streuen, die auf dieser Entfernung überhaupt gezeichnet
-      // werden. Gras endet bei 160 m, Bäume bei 520 m — siehe `ScatterChunk.generated`.
+      // werden. Gras endet bei 160 m, Bäume seit P11.5 bei 1200 m — siehe
+      // `ScatterChunk.generated`. **Diese Maske ist der Grund, warum die
+      // Verlängerung der Baumreichweite das Gras nicht mitzieht:** ein Chunk auf
+      // 900 m bekommt nur das Baum-Bit gesetzt und erzeugt keine 6400
+      // Gras-Kandidaten, von denen keiner je gezeichnet würde.
       const mask = this.#speciesMask(x0, z0, camera);
       const chunk = this.#chunk(cx, cz, mask);
       // Zwei Arten von „noch nicht da", und beide zählen: gar kein Chunk (die
@@ -593,6 +666,9 @@ export class ScatterSystem implements System {
       this.#box.max.set(x0 + cell, chunk.maxY + 9, z0 + cell);
       if (!this.#frustum.intersectsBox(this.#box)) continue;
 
+      // Erst hier abgezogen: das Einsortieren ist die Arbeit, gegen die der
+      // Etat gesetzt ist.
+      budget--;
       this.#pushChunk(chunk, camera);
     }
 
@@ -605,6 +681,34 @@ export class ScatterSystem implements System {
       // hat naturgemäß Fehlstellen vor sich und sagt über den Zustand nichts.
       this.#lastPassMisses = this.#missesThisPass;
     }
+  }
+
+  /**
+   * Ortsfester Wurf je Instanz, 0…1 — P11.2.
+   *
+   * **Ortsfest und nicht laufend**: die Entscheidung, ob eine Instanz beim
+   * Ausdünnen wegfällt, muss allein an ihrer Position hängen. Ein laufender
+   * Zähler oder die Reihenfolge im Puffer täte es nicht — dann fiele bei jeder
+   * Kamerabewegung eine andere Pflanze weg, und der Bestand flackerte. So
+   * verschwindet immer dieselbe, und weil der Wert mit der Entfernung
+   * verglichen wird, verschwinden sie **in fester Reihenfolge**: wer bei 200 m
+   * noch steht, steht bei 100 m erst recht.
+   *
+   * Ganzzahlig gerechnet, mit den Bitmustern der Koordinaten. **Nicht** über
+   * `fract(sin(...))` — dieselbe Falle steht in CLAUDE.md für die Fassaden, und
+   * sie kostet dort ein Kapitel: bei großen Argumenten ist der Sinus gegen
+   * kleine Eingabeunterschiede nicht robust.
+   */
+  static #instanceRoll(x: number, z: number): number {
+    // Zentimeter-Raster: die Positionen sind Fließkomma, der Hash braucht
+    // Ganzzahlen. 100 ist fein genug, dass zwei verschiedene Pflanzen nie
+    // denselben Schlüssel bekommen, und grob genug, dass die letzten Bits der
+    // Fließkommadarstellung keine Rolle spielen.
+    let h = Math.imul(Math.round(x * 100) | 0, 0x27d4eb2d) ^ 0x9e3779b9;
+    h = Math.imul(h ^ (Math.round(z * 100) | 0), 0x85ebca6b);
+    h ^= h >>> 13;
+    h = Math.imul(h, 0xc2b2ae35);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
   }
 
   #pushChunk(chunk: ScatterChunk, camera: PerspectiveCamera): void {
@@ -633,6 +737,34 @@ export class ScatterSystem implements System {
       const mid = d[1] * d[1];
       const far = d[2] * d[2];
 
+      // **Das Ausdünnungsgesetz** — P11.2, in P11.5 geschärft.
+      //
+      //     keep(d) = 1                    für d ≤ R
+      //     keep(d) = max(keepFar, (R/d)²) für d > R
+      //
+      // **Warum `(R/d)²` und nicht mehr eine lineare Rampe bis zur Ferngrenze.**
+      // Die Rampe hatte eine Kopplung, die erst mit P11.5 auffiel: sie bezieht
+      // sich auf die *Ferngrenze der Art*. Diese von 520 auf 1200 m zu
+      // verlängern hätte damit die Dichte bei 300 m mitverändert — eine
+      // Reichweitenänderung, die als Dichteänderung im Nahfeld ankommt. Genau
+      // die Sorte Fernwirkung, die dieses Projekt schon bei der
+      // Einebnungsschwelle der Reisfelder eingefangen hat.
+      //
+      // `(R/d)²` hängt dagegen **nur** vom Vollbereich ab. Es hält außerdem die
+      // Zahl der Instanzen je Bildschirmfläche ungefähr konstant: die Fläche
+      // eines Rings wächst mit d, die Behaltequote fällt mit d² — die
+      // Instanzzahl über die Strecke wächst damit logarithmisch statt
+      // quadratisch. Genau deshalb ist die Verlängerung auf 1200 m überhaupt
+      // bezahlbar.
+      //
+      // Quadriert gerechnet, weil unten mit quadrierten Abständen verglichen
+      // wird: `(R/d)² = R²/d²`, und beides liegt bereits quadriert vor. Die
+      // Wurzel je Instanz wären bei 50 000 Instanzen 50 000 Wurzeln.
+      const quality = QUALITY[this.#quality];
+      const full = Math.min(quality.vegetationFullRadius, d[2]);
+      const fullSq = full * full;
+      const keepFar = quality.vegetationFarKeep;
+
       for (let i = 0; i < data.length; i += INSTANCE_STRIDE) {
         const x = data[i]!;
         const y = data[i + 1]!;
@@ -643,8 +775,22 @@ export class ScatterSystem implements System {
         const distance = dx * dx + dy * dy + dz * dz;
         if (distance > far) continue;
 
+        // Ausdünnen mit der Entfernung, ortsfest gewürfelt. Der Nahbereich
+        // bleibt auf **jeder** Stufe unangetastet — das ist der ganze Zweck der
+        // Umstellung, siehe `vegetationFullRadius`.
+        let boost = 1;
+        if (distance > fullSq && keepFar < 1) {
+          const falloff = fullSq / distance;
+          const keep = falloff > keepFar ? falloff : keepFar;
+          if (ScatterSystem.#instanceRoll(x, z) >= keep) continue;
+          // Deckungserhalt: 1/√keep, gedeckelt. Nur waagerecht — eine doppelt
+          // so hohe Kiefer fiele in der Silhouette auf, eine breitere
+          // Grasbüschelbasis nicht.
+          boost = Math.min(SCATTER.thinBoostMax, 1 / Math.sqrt(keep));
+        }
+
         if (decals && ao && distance < aoFar) {
-          decals.push(x, z, aoRadius * data[i + 3]!, ao.strength);
+          decals.push(x, z, aoRadius * data[i + 3]! * boost, ao.strength);
         }
 
         const stage = distance < near ? 0 : distance < mid ? 1 : 2;
@@ -654,7 +800,7 @@ export class ScatterSystem implements System {
           x,
           y,
           z,
-          data[i + 3]!,
+          data[i + 3]! * boost,
           data[i + 4]!,
           data[i + 5]!,
           data[i + 6]!,
@@ -688,7 +834,7 @@ export class ScatterSystem implements System {
     const worker = this.#worker;
     if (worker && worker.ready) {
       if (this.#requestedThisFrame < worker.slots) {
-        worker.request(key, cx, cz, wanted, QUALITY[this.#quality].vegetationDensity);
+        worker.request(key, cx, cz, wanted);
         this.#requestedThisFrame++;
       }
       // **Der unvollständige Chunk bleibt derweil im Bild.** Er trägt vielleicht
@@ -717,7 +863,6 @@ export class ScatterSystem implements System {
       zones: this.#zones,
       network: this.#network,
       clearance: this.#clearance,
-      density: QUALITY[this.#quality].vegetationDensity,
     });
     chunk.lastUsed = this.#clock;
     this.#cache.set(key, chunk);

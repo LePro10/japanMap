@@ -372,6 +372,17 @@ export class TerrainSystem implements System {
       step: 0.01,
     });
 
+    // Bewuchsfarbe des Bodens (P11). Zwei Regler und nicht einer: die Stärke
+    // beantwortet „wie grün", der Helligkeitserhalt „wie flach". Zusammen in
+    // einen Wert gelegt wären sie nicht mehr gegeneinander einstellbar, und
+    // genau das braucht die Bildprüfung — ein zu kleiner Helligkeitserhalt
+    // macht aus dem Hang eine grüne Pappe, ein zu großer wirkt gar nicht.
+    folder.addBinding(uniforms.uGroundTint, 'value', {
+      label: 'Bewuchsfarbe Boden',
+      x: { min: 0, max: 1, step: 0.01 },
+      y: { min: 0, max: 1, step: 0.01 },
+    });
+
     // Splat-Ebenen einzeln zuschaltbar — das ist die einzige Möglichkeit zu
     // sehen, wo eine Ebene tatsächlich liegt, statt es aus der Mischung zu raten.
     const mask = uniforms.uLayerMask.value;

@@ -132,7 +132,7 @@ export class ScatterWorkerClient {
     return this.#inFlight.size;
   }
 
-  request(key: number, cx: number, cz: number, mask: number, density: number): void {
+  request(key: number, cx: number, cz: number, mask: number): void {
     const worker = this.#worker;
     if (!worker || !this.#ready) return;
     // Eine bereits laufende Anfrage wird **nicht** ersetzt. Sie könnte eine
@@ -143,7 +143,7 @@ export class ScatterWorkerClient {
 
     const id = this.#nextId++;
     this.#inFlight.set(key, id);
-    const message: ScatterToWorker = { type: 'scatter', id, cx, cz, mask, density };
+    const message: ScatterToWorker = { type: 'scatter', id, cx, cz, mask };
     worker.postMessage(message);
   }
 

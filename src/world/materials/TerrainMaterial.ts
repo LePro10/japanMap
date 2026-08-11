@@ -1,4 +1,5 @@
 import {
+  Color,
   FrontSide,
   MeshDepthMaterial,
   MeshStandardMaterial,
@@ -15,6 +16,7 @@ import {
 
 import { LOD } from '@/config/lod.config';
 import { TERRAIN, TERRAIN_LAYERS } from '@/config/terrain.config';
+import { GROUND_TINT } from '@/config/vegetation.config';
 import { WORLD } from '@/config/world.config';
 import {
   injectAtmosphere,
@@ -49,6 +51,19 @@ export interface TerrainUniforms {
   readonly uTriplanar: IUniform<Vector2>;
   readonly uDetailNormalStrength: IUniform<number>;
   readonly uDetailFade: IUniform<Vector2>;
+  /**
+   * Bewuchsfarbe des Bodens — `GROUND_TINT`, P11.
+   *
+   * Die Farbe liegt **linear** vor, nicht in sRGB: sie wird mit `terrainAlbedo`
+   * verrechnet, und das kommt aus `terrainSampleLayer` bereits linearisiert
+   * heraus. Eine sRGB-Zahl an dieser Stelle wäre um rund den Faktor 2 zu hell
+   * und der Hang leuchtend giftgrün.
+   */
+  readonly uGroundTintColor: IUniform<Vector3>;
+  /** Je Splat-Kanal die Neigung zur Bewuchsfarbe, mal Gesamtstärke. */
+  readonly uGroundTintWeights: IUniform<Vector4>;
+  /** x = Gesamtstärke, y = Anteil Helligkeitserhalt. */
+  readonly uGroundTint: IUniform<Vector2>;
   readonly uDebugMode: IUniform<number>;
   /** Quads pro Achse im Einheitsgitter des Quadtrees (P4 / 4.1). */
   readonly uLodGridQuads: IUniform<number>;
@@ -122,6 +137,24 @@ export function createTerrainUniforms(textures: TerrainTextures): TerrainUniform
     },
     uDetailNormalStrength: { value: TERRAIN.detailNormalStrength },
     uDetailFade: { value: new Vector2(TERRAIN.detailFadeStart, TERRAIN.detailFadeEnd) },
+    // `convertSRGBToLinear()` ist der Grund, warum hier ein `Color` steht und
+    // keine drei Zahlen: die Konfiguration nennt die Farbe als Hex, wie ein
+    // Mensch sie liest, der Shader braucht sie linear. Siehe `uGroundTintColor`.
+    uGroundTintColor: {
+      value: (() => {
+        const c = new Color(GROUND_TINT.color).convertSRGBToLinear();
+        return new Vector3(c.r, c.g, c.b);
+      })(),
+    },
+    uGroundTintWeights: {
+      value: new Vector4(
+        GROUND_TINT.weights[0],
+        GROUND_TINT.weights[1],
+        GROUND_TINT.weights[2],
+        GROUND_TINT.weights[3],
+      ),
+    },
+    uGroundTint: { value: new Vector2(GROUND_TINT.strength, GROUND_TINT.preserveLuminance) },
     uDebugMode: { value: 0 },
     uLodGridQuads: { value: LOD.gridQuads },
     uLodCamera: { value: new Vector3() },

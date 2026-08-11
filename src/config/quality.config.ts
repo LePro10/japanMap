@@ -141,8 +141,68 @@ export interface QualitySettings {
    * Hoch weniger scharf wird.
    */
   readonly lodBias: number;
-  /** Anteil der gestreuten Vegetations-Instanzen, 0..1 (ab P4). */
-  readonly vegetationDensity: number;
+  /**
+   * Entfernung in Metern, innerhalb derer **nichts** ausgedünnt wird — P11.2.
+   *
+   * ## Was hier vorher stand, und warum es weg ist
+   *
+   * Bis P11 stand hier `vegetationDensity`: ein Anteil von 0…1, mit dem
+   * `scatterChunk` seine Kandidaten verwarf — `roll >= suitability * density`.
+   * Das dünnt **gleichmäßig über die ganze Fläche** aus, auch einen Meter vor
+   * der Kamera. Gemessen am Blickpunkt `wald`, alles andere auf Ultra, nur
+   * dieser eine Wert von 1,0 auf 0,1:
+   *
+   * | untere Bildhälfte | Dichte 1,0 | Dichte 0,1 |
+   * |---|---|---|
+   * | Grünanteil | 44,22 % | **5,71 %** |
+   * | Braunanteil | 46,07 % | **87,82 %** |
+   * | Instanzen | 51 187 | 5 216 |
+   *
+   * Aus dem Wald wurde eine Steppe. Der Regler hat genau dort gespart, wo man
+   * es am besten sieht — und am Reisfeld kostete er 90 % der Vegetation für
+   * 4,4 % der Dreiecke, das schlechteste Tauschgeschäft der ganzen Messreihe.
+   *
+   * ## Was stattdessen gilt
+   *
+   * Ausgedünnt wird **mit der Entfernung**, nicht über die Fläche: bis
+   * `vegetationFullRadius` bleibt jede Instanz stehen, danach fällt der Anteil
+   * bis auf `vegetationFarKeep` an der Ferngrenze. Der Gedanke dahinter ist,
+   * die Zahl der Instanzen **pro Bildschirmfläche** ungefähr konstant zu halten
+   * statt pro Quadratmeter Welt: ein Grashalm auf 5 m ist 100 px hoch, derselbe
+   * auf 150 m ein Viertelpixel — beide kosten gleich viel, nur einer ist zu
+   * sehen. Auf der Zielhardware (Intel-iGPU) ist der unterpixelige Halm sogar
+   * der teurere Fall, weil jedes Dreieck als 2 × 2-Quad schattiert wird.
+   *
+   * Folge, und sie ist der eigentliche Zweck: **im Nahbereich unterscheidet
+   * sich keine Stufe mehr von Ultra.** Ein einzelner Baum aus der Nähe sieht
+   * auf Minimal aus wie auf Ultra.
+   *
+   * Die Leiter ist deshalb nach unten kurz und nicht null: 30 m auf Minimal ist
+   * immer noch der ganze Vordergrund.
+   */
+  readonly vegetationFullRadius: number;
+  /**
+   * Anteil der Instanzen, der an der **Ferngrenze** übrig bleibt, 0…1 — P11.2.
+   *
+   * Zwischen `vegetationFullRadius` und der Ferngrenze der Art wird linear
+   * dahin überblendet. Was wegfällt, wird über einen **ortsfesten Hash je
+   * Instanz** entschieden und nicht über die Reihenfolge im Puffer: dieselbe
+   * Instanz fällt bei derselben Entfernung immer weg, sonst flackerte der
+   * Bestand bei jeder Kamerabewegung.
+   *
+   * **Die Deckung bleibt trotzdem erhalten** — was übrig bleibt, wächst um
+   * 1/√Anteil (gedeckelt, siehe `SCATTER.thinBoostMax`). Das ist der Grund,
+   * warum ein kleiner Wert hier nicht wieder zur Steppe führt: die gedeckte
+   * Bodenfläche ist dieselbe, es sind nur weniger und größere Büschel.
+   *
+   * **Obergrenze ist bauartbedingt das heutige Ultra.** Der Anteil ist nie über
+   * 1, es kann also nie mehr gestreut werden als bei `vegetationDensity: 1` —
+   * und für diesen Fall sind die Instanzpuffer gemessen ausreichend (0
+   * verworfene Instanzen über 20 Zellen des P10.1-Laufs). Ein Überlauf in
+   * `InstancedLOD.push()`, der stillschweigend verwirft, ist damit
+   * ausgeschlossen und muss nicht bewacht werden.
+   */
+  readonly vegetationFarKeep: number;
   /** Auflösungsfaktor des Render-Targets gegenüber der Canvas-Größe. */
   readonly renderScale: number;
   /**
@@ -291,7 +351,9 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     ao: 'high',
     vegetationRange: 1,
     lodBias: 1,
-    vegetationDensity: 1,
+    // Ultra dünnt bis zur Ferngrenze nur wenig aus.
+    vegetationFullRadius: 160,
+    vegetationFarKeep: 0.6,
     renderScale: 1,
     terrainGridVertices: 33,
     postFx: 'full',
@@ -303,7 +365,8 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     ao: 'medium',
     vegetationRange: 1,
     lodBias: 1,
-    vegetationDensity: 0.7,
+    vegetationFullRadius: 120,
+    vegetationFarKeep: 0.45,
     renderScale: 1,
     // Bewusst wie Ultra. „Hoch" unterscheidet sich von Ultra allein in AO und
     // Vegetationsdichte; das Gelände gröber zu stellen, wäre der erste
@@ -319,7 +382,8 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     ao: 'low',
     vegetationRange: 1,
     lodBias: 0.85,
-    vegetationDensity: 0.45,
+    vegetationFullRadius: 90,
+    vegetationFarKeep: 0.3,
     renderScale: 0.85,
     // 2,0 m je Vertex auf dem Blattknoten. Über dem Texelabstand der Heightmap
     // (1,5 m), aber deutlich unter dem festen P1-Gitter (4,0 m).
@@ -333,7 +397,8 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     ao: 'off',
     vegetationRange: 1,
     lodBias: 0.75,
-    vegetationDensity: 0.25,
+    vegetationFullRadius: 55,
+    vegetationFarKeep: 0.2,
     renderScale: 0.7,
     // 3,0 m je Vertex — jede zweite Stützstelle der Heightmap wird nicht mehr
     // gelesen. Ein Viertel der Dreiecke von Ultra.
@@ -361,7 +426,8 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     ao: 'off',
     vegetationRange: 1,
     lodBias: 0.65,
-    vegetationDensity: 0.1,
+    vegetationFullRadius: 30,
+    vegetationFarKeep: 0.14,
     renderScale: 0.5,
     terrainGridVertices: 17,
     postFx: 'off',
@@ -387,7 +453,8 @@ export const QUALITY_LEVELS: readonly QualityLevel[] = [
 export interface CustomQuality {
   readonly renderScale: number;
   readonly terrainGridVertices: GridVertices;
-  readonly vegetationDensity: number;
+  readonly vegetationFullRadius: number;
+  readonly vegetationFarKeep: number;
   readonly vegetationRange: number;
   readonly lodBias: number;
   readonly ao: AoQuality;
@@ -469,7 +536,8 @@ export const VEGETATION_RANGE_MAX: number = Math.max(
  */
 export const CUSTOM_LIMITS = {
   renderScale: { min: 0.5, max: 1, step: 0.05 },
-  vegetationDensity: { min: 0.05, max: 1, step: 0.05 },
+  vegetationFullRadius: { min: 10, max: 260, step: 5 },
+  vegetationFarKeep: { min: 0.05, max: 1, step: 0.05 },
   vegetationRange: { min: 0.5, max: VEGETATION_RANGE_MAX, step: 0.05 },
   lodBias: { min: LOD_BIAS_MIN, max: 1, step: 0.05 },
 } as const;
@@ -507,9 +575,13 @@ export function setCustomQuality(patch: Partial<CustomQuality>): QualitySettings
     label: 'Eigen',
     shadowMapSize: before.shadowMapSize,
     renderScale: clamp(patch.renderScale ?? before.renderScale, CUSTOM_LIMITS.renderScale),
-    vegetationDensity: clamp(
-      patch.vegetationDensity ?? before.vegetationDensity,
-      CUSTOM_LIMITS.vegetationDensity,
+    vegetationFullRadius: clamp(
+      patch.vegetationFullRadius ?? before.vegetationFullRadius,
+      CUSTOM_LIMITS.vegetationFullRadius,
+    ),
+    vegetationFarKeep: clamp(
+      patch.vegetationFarKeep ?? before.vegetationFarKeep,
+      CUSTOM_LIMITS.vegetationFarKeep,
     ),
     vegetationRange: clamp(
       patch.vegetationRange ?? before.vegetationRange,
@@ -533,7 +605,8 @@ export function customFromSettings(settings: QualitySettings): CustomQuality {
   return {
     renderScale: settings.renderScale,
     terrainGridVertices: settings.terrainGridVertices,
-    vegetationDensity: settings.vegetationDensity,
+    vegetationFullRadius: settings.vegetationFullRadius,
+    vegetationFarKeep: settings.vegetationFarKeep,
     vegetationRange: settings.vegetationRange,
     lodBias: settings.lodBias,
     ao: settings.ao,

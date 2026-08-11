@@ -337,12 +337,24 @@ export class PlayerUi {
     this.#slider('Auflösung', 'renderScale', CUSTOM_LIMITS.renderScale, percent, (v) => ({
       renderScale: v,
     }));
+    // **Zwei Regler statt eines Prozentwerts** — P11.2. „Vegetationsdichte" gab
+    // es bis dahin als einen Anteil über die ganze Fläche, und der hat gemessen
+    // den Vordergrund leergeräumt (Tabelle bei `vegetationFullRadius`). Ein
+    // einzelner Prozentwert kann die Frage nicht mehr beantworten, seit nah und
+    // fern getrennt behandelt werden.
     this.#slider(
-      'Vegetationsdichte',
-      'vegetationDensity',
-      CUSTOM_LIMITS.vegetationDensity,
+      'Volle Dichte bis',
+      'vegetationFullRadius',
+      CUSTOM_LIMITS.vegetationFullRadius,
+      (v) => `${v.toFixed(0)} m`,
+      (v) => ({ vegetationFullRadius: v }),
+    );
+    this.#slider(
+      'Dichte in der Ferne',
+      'vegetationFarKeep',
+      CUSTOM_LIMITS.vegetationFarKeep,
       percent,
-      (v) => ({ vegetationDensity: v }),
+      (v) => ({ vegetationFarKeep: v }),
     );
     this.#slider(
       'Vegetationsreichweite',
@@ -378,7 +390,12 @@ export class PlayerUi {
 
   #slider(
     label: string,
-    field: 'renderScale' | 'vegetationDensity' | 'vegetationRange' | 'lodBias',
+    field:
+      | 'renderScale'
+      | 'vegetationFullRadius'
+      | 'vegetationFarKeep'
+      | 'vegetationRange'
+      | 'lodBias',
     limits: { readonly min: number; readonly max: number; readonly step: number },
     format: (value: number) => string,
     apply: (value: number) => Partial<CustomQuality>,
@@ -492,7 +509,8 @@ export class PlayerUi {
       `Gitter ${settings.terrainGridVertices}² (${lodMetersPerVertex(settings.terrainGridVertices).toFixed(1)} m) · ` +
       `AO ${AO_LABELS[settings.ao]} · Bildeffekte ${POSTFX_LABELS[settings.postFx]} · ` +
       `Spiegelung ${settings.reflections ? 'an' : 'aus'} · ` +
-      `Vegetation ${(settings.vegetationDensity * 100).toFixed(0)} %`;
+      `Vegetation voll bis ${settings.vegetationFullRadius} m, fern ` +
+      `${(settings.vegetationFarKeep * 100).toFixed(0)} %`;
 
     // Die Regler zeigen **immer** die geltenden Werte, auch auf einer
     // Voreinstellung. Sonst müsste man erst „Eigen" wählen, um zu sehen, was
