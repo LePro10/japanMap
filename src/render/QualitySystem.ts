@@ -357,7 +357,7 @@ export class QualitySystem implements System {
       // steht hier irgendwann eine Zahl, die `SPECIES` nicht mehr kennt.
       `Sicht ${(SPECIES_FAR_MAX * q.vegetationRange).toFixed(0)} m · ` +
       `LOD-Bias ${q.lodBias.toFixed(2)} · ` +
-      `Vegetation ${(q.vegetationDensity * 100).toFixed(0)} %`;
+      `Vegetation voll bis ${q.vegetationFullRadius} m, fern ${(q.vegetationFarKeep * 100).toFixed(0)} %`;
     this.#context?.debug?.refresh();
   }
 

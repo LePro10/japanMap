@@ -152,6 +152,49 @@ export const POSTFX = {
  * > Neonschild nur dort, wo seine Geometrie steht, und die Maske schrumpft um
  * > den Faktor 2,8. Ein Neonschild ohne Streulicht liest sich als Aufkleber,
  * > nicht als Lampe.
+ *
+ * > ## ⚠ Vorsicht beim Messen von `off` — P11.0, 2026-08-10/11
+ * >
+ * > **Zuerst das Ergebnis: mit `off` ist alles in Ordnung.** Auf einer echten
+ * > GPU (RX 7900 XTX) steht die Vegetation auf „Minimal" korrekt grün, bei
+ * > 0,79 ms GPU und 43 Draw-Calls. Der Absatz unten beschreibt einen Fehler,
+ * > den es **nicht gibt** — er blieb stehen, weil die Falle darin lehrreich ist.
+ * >
+ * > **Auf einer Maschine ohne GPU-Treiber ist der `off`-Pfad nicht messbar.**
+ * > Hier (ANGLE / Microsoft Basic Render Driver) rendert er fleckig: die
+ * > Vegetation kommt in großen Teilen als flache, himmelsfarbene Fläche heraus.
+ * > Der Composer-Pfad zeigt das nicht, weil an seinem Ende ein Vollbild-Durchgang
+ * > jedes Pixel neu schreibt. Wer hier ein Bild aus `off` auswertet, misst den
+ * > Rasterisierer.
+ * >
+ * > ### Was das gekostet hat, und die acht Messungen, die niemand wiederholen muss
+ * >
+ * > Der Befund sah hier so aus: im `off`-Pfad rendert die **gesamte Vegetation
+ * > als reinweißer Scherenschnitt** — jeder Baum, jeder Busch, jeder Grashalm.
+ * > Gelände, Stadt und Himmel sind unauffällig.
+ * >
+ * > Isoliert nachgewiesen am Blickpunkt `wald`, alles auf Ultra und **nur**
+ * > dieses Feld verstellt: `full`/`reduced`/`lean` liefern korrektes Grün,
+ * > `off` liefert Weiß. Gegenprobe mit den Minimal-Werten und nur getauschter
+ * > Kette: dasselbe Bild, einmal weiß, einmal grün.
+ * >
+ * > Die Ursache ist **nicht gefunden**, und sieben Vermutungen sind gemessen
+ * > **widerlegt**: Tonemapping, gesättigte Werte/NaN, Alphakanal, Nebel,
+ * > Imposter-Atlas, Umgebungskarte und die planare Spiegelung. Tabelle mit den
+ * > Zahlen in PLAN.md unter P11.0, „Befund 1".
+ * >
+ * > **Der Verdacht zeigt inzwischen woandershin.** Die hellen Flächen
+ * > überdecken auch das *Gelände*, ihre Ränder schneiden quer durch einzelne
+ * > Bäume, und der Anteil schwankt zwischen aufeinanderfolgenden Frames
+ * > desselben Zustands (38,4…45,2 %). Ein Shading-Fehler wäre stabil und
+ * > objektgebunden. Wahrscheinlicher ist ein **Artefakt des
+ * > Software-Rasterisierers** dieser Entwicklungsmaschine: im Composer-Pfad
+ * > schreibt ein Vollbild-Durchgang am Ende jedes Pixel neu, im `off`-Pfad geht
+ * > die Szene direkt in den Canvas.
+ * >
+ * > **Auf einer echten GPU ist das noch nicht nachgesehen.** Bis dahin gilt
+ * > `off` als *verdächtig* und nicht als kaputt — und ein Fix wird nicht
+ * > gebaut, bevor die Frage entschieden ist.
  */
 export type PostFxQuality = 'full' | 'reduced' | 'lean' | 'off';
 
