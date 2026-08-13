@@ -21,6 +21,7 @@ import { createLayerArray } from './materials/createLayerArray';
 import {
   createTerrainDepthMaterial,
   createTerrainUniforms,
+  GRASS_FAR,
   TerrainMaterial,
   type TerrainUniforms,
 } from './materials/TerrainMaterial';
@@ -199,6 +200,28 @@ export class TerrainSystem implements System {
     // das Gitter reißt genau dort auf, wo es dicht sein soll) — und die
     // Hülle des Tiefen-Materials teilt sich die Uniforms ohnehin.
     context.bus.on('quality:changed', ({ level }) => {
+      // **Erst das Bewuchsgesetz, dann der Rückzieher aufs Gitter** — P11.6.
+      // Der Farbstich des Bodens hängt an denselben zwei Werten wie die
+      // Ausdünnung der Vegetation, und die ändern sich mit der Stufe. Stünde
+      // das unter dem `return` weiter unten, würde es genau dann übersprungen,
+      // wenn die Gitterweite gleich bleibt — also bei jedem Wechsel zwischen
+      // Ultra und Hoch, und bei jedem Zug an den beiden Reglern der eigenen
+      // Stufe. Der Boden zöge dann nicht nach, und zwischen Bewuchsende und
+      // Farbstich stünde wieder der braune Ring.
+      //
+      // Genau diese Fehlerklasse führt PLAN.md unter „auf den Namen geprüft
+      // statt auf den Wert" — hier wäre es „hinter einem fremden Rückzieher
+      // gelandet".
+      const law = uniforms.uGroundTintLaw.value;
+      law.x = QUALITY[level].vegetationFullRadius;
+      law.y = QUALITY[level].vegetationFarKeep;
+      // **Die wirksame Grasreichweite, nicht die aus der Artentabelle.** Seit
+      // P11.6 kürzt `vegetationGroundRange` sie je Stufe — auf Minimal auf die
+      // Hälfte. Stünde hier die ungekürzte Zahl, bliebe der Boden zwischen dem
+      // tatsächlichen Ende des Grases und 160 m ungefärbt, und der braune Ring
+      // käme genau in dem Band zurück, das diese Aufgabe beseitigen soll.
+      law.z = GRASS_FAR * QUALITY[level].vegetationGroundRange;
+
       const vertices = QUALITY[level].terrainGridVertices;
       if (vertices === chunks.gridVertices) return;
       chunks.setGridVertices(vertices);
@@ -377,10 +400,16 @@ export class TerrainSystem implements System {
     // einen Wert gelegt wären sie nicht mehr gegeneinander einstellbar, und
     // genau das braucht die Bildprüfung — ein zu kleiner Helligkeitserhalt
     // macht aus dem Hang eine grüne Pappe, ein zu großer wirkt gar nicht.
+    // Drei Regler: „nah" ist die Stärke dort, wo echtes Gras steht, „fern" die
+    // dort, wo keines mehr gezeichnet wird, und der dritte entscheidet, wie viel
+    // Zeichnung der Bodentextur den Farbtonwechsel überlebt. Getrennt, weil ein
+    // zu kleiner Helligkeitserhalt aus dem Hang eine grüne Pappe macht und ein
+    // zu großer gar nicht wirkt — das ist am Bild gegeneinander einzustellen.
     folder.addBinding(uniforms.uGroundTint, 'value', {
-      label: 'Bewuchsfarbe Boden',
+      label: 'Bewuchsfarbe (nah / fern / Zeichnung)',
       x: { min: 0, max: 1, step: 0.01 },
       y: { min: 0, max: 1, step: 0.01 },
+      z: { min: 0, max: 1, step: 0.01 },
     });
 
     // Splat-Ebenen einzeln zuschaltbar — das ist die einzige Möglichkeit zu
