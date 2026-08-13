@@ -35,11 +35,44 @@ export interface PropClassSettings {
  * rund zwei Pixel und ist damit nicht mehr als Pfosten erkennbar, sondern nur
  * noch als Flimmern. Ein 14-m-Leuchtturm ist auf 1500 m immer noch vier Pixel
  * breit — und als einziger Fixpunkt der Küste soll man ihn von weitem sehen.
+ *
+ * ## Was P11.6 daran geändert hat, und warum nur die eine Spalte
+ *
+ * Der Auftraggeber vom Berg aus: „bei den Häusern, dass man sie sieht, dass man
+ * sieht, dass da was ist, aber nicht jedes Detail gerendert wird". Genau
+ * dagegen stand `mittel: cullDistance 650` — ein Bauernhaus verschwand auf
+ * 650 m **vollständig**, und vom Übersichtsblick aus (`start`, 330 m Höhe, gut
+ * 2 km Sicht) war damit das halbe Dorf nicht da. Nicht grob gezeichnet:
+ * abwesend.
+ *
+ * **Angehoben wurde deshalb nur `cullDistance`, nicht `lodDistance`.** Das ist
+ * die ganze Antwort auf den Auftrag: *ob* etwas da ist, entscheidet die
+ * Cull-Grenze; *wie genau* es gezeichnet wird, die LOD-Grenze. Die erste geht
+ * weit hinaus, die zweite bleibt, wo sie war — ein Haus auf 1,5 km steht dann
+ * als grober Block da, und genau das war gefordert.
+ *
+ * **Und es ist praktisch umsonst.** Auf der ganzen Karte stehen rund 175 Props.
+ * Selbst wenn *kein einziges* gecullt würde, sind das 175 Instanzen gegen die
+ * 53 116 der Vegetation — P10.1 hat die Wirkung der Props auf die Stufen
+ * ausdrücklich als „unterhalb der Messbarkeit" (0…47 Instanzen je Bild)
+ * gemessen und sie deshalb aus der Qualitätskopplung gestrichen. Dieselbe
+ * Messung heißt hier gelesen: die Sichtbarkeit kostet nichts, sie war nur nie
+ * eingestellt.
+ *
+ * `klein` bleibt bei 220 m. Die Herleitung darüber gilt unverändert — ein
+ * 1-m-Pfosten auf 250 m ist Flimmern und kein Pfosten, und ihn weiter zu
+ * zeichnen macht das Bild schlechter, nicht besser.
  */
 export const PROP_CLASSES: Readonly<Record<PropScale, PropClassSettings>> = {
   klein: { lodDistance: 60, cullDistance: 220 },
-  mittel: { lodDistance: 140, cullDistance: 650 },
-  gross: { lodDistance: 320, cullDistance: 1600 },
+  // 650 → 2200: ein Bauernhaus ist rund 8 m breit und misst auf 2,2 km bei 60°
+  // Blickfeld noch etwa drei Pixel — als Fleck erkennbar, und mehr soll es dort
+  // nicht sein.
+  mittel: { lodDistance: 140, cullDistance: 2200 },
+  // 1600 → 3600. Die Karte ist 3072 m breit, ihre Diagonale 4344 m; ein Torii
+  // oder ein Leuchtturm ist damit von praktisch jedem Standpunkt aus zu sehen.
+  // Das ist der Sinn einer Landmarke.
+  gross: { lodDistance: 320, cullDistance: 3600 },
 };
 
 export const PROPS = {

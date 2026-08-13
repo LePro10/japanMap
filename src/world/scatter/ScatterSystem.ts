@@ -13,6 +13,7 @@ import {
   LOD_BIAS_MIN,
   QUALITY,
   QUALITY_LEVELS,
+  VEGETATION_GROUND_RANGE_MAX,
   VEGETATION_RANGE_MAX,
   type QualityKey,
 } from '@/config/quality.config';
@@ -132,6 +133,7 @@ export class ScatterSystem implements System {
   /** Die zuletzt **angewandten** Streuparameter — Vergleichswert, siehe `init()`. */
   #applied = {
     range: QUALITY[DEFAULT_QUALITY].vegetationRange,
+    groundRange: QUALITY[DEFAULT_QUALITY].vegetationGroundRange,
     bias: QUALITY[DEFAULT_QUALITY].lodBias,
   };
   /** Look-Stärke der Bodenverdeckung, gepuffert bis die Flecken existieren. */
@@ -234,6 +236,7 @@ export class ScatterSystem implements System {
       this.#quality = level;
       this.#applied = {
         range: after.vegetationRange,
+        groundRange: after.vegetationGroundRange,
         bias: after.lodBias,
       };
       // **Ausdünnung und Deckungserhalt stehen absichtlich nicht in dieser
@@ -246,7 +249,11 @@ export class ScatterSystem implements System {
       // Reichweite und LOD-Bias bleiben drin: die erste bestimmt, *welche*
       // Chunks überhaupt gestreut werden (`#speciesMask`), und beide sind in
       // den Puffergrößen verbaut.
-      if (after.vegetationRange === before.range && after.lodBias === before.bias) {
+      if (
+        after.vegetationRange === before.range &&
+        after.vegetationGroundRange === before.groundRange &&
+        after.lodBias === before.bias
+      ) {
         return;
       }
       this.#reset();
@@ -310,7 +317,7 @@ export class ScatterSystem implements System {
       const lod = new InstancedLOD(
         species,
         stages,
-        ScatterSystem.#capacity(species.lodDistances, species.cellSize),
+        ScatterSystem.#capacity(species.lodDistances, species.cellSize, species.layer),
       );
       this.#lods.push(lod);
       for (const mesh of lod.meshes) group.add(mesh);
@@ -439,12 +446,19 @@ export class ScatterSystem implements System {
    * Fall ist deshalb: innere Grenzen mit dem kleinsten Bias, äußere mit der
    * größten Reichweite.
    */
-  static #capacity(distances: readonly [number, number, number], cellSize: number): number[] {
+  static #capacity(
+    distances: readonly [number, number, number],
+    cellSize: number,
+    layer: SpeciesSettings['layer'],
+  ): number[] {
     const area = cellSize * cellSize;
     const ring = (outer: number, inner: number): number =>
       Math.ceil((Math.PI * (outer * outer - inner * inner)) / area) + 64;
     const d1 = distances[1] * LOD_BIAS_MIN;
-    const d2 = distances[2] * VEGETATION_RANGE_MAX;
+    // Je Schicht der eigene größte Faktor: ein Grasspuffer, der für die
+    // Baumreichweite bemessen wäre, kostete das Hundertfache an Speicher.
+    const d2 =
+      distances[2] * (layer === 'ground' ? VEGETATION_GROUND_RANGE_MAX : VEGETATION_RANGE_MAX);
     return [
       // Die beiden inneren Ringe bekommen ihre Größe aus den **ungeschrumpften**
       // Grenzen: sie sind auf hohen Stufen am größten, und die müssen auch
@@ -901,7 +915,20 @@ export class ScatterSystem implements System {
    * werden.
    */
   #far(species: SpeciesSettings): number {
-    return species.lodDistances[2] * QUALITY[this.#quality].vegetationRange;
+    return species.lodDistances[2] * ScatterSystem.#rangeFactor(this.#quality, species);
+  }
+
+  /**
+   * Welcher Reichweiten-Faktor für diese Art gilt — P11.6.
+   *
+   * Bäume und Bodendecker haben seitdem **getrennte** Faktoren, weil sie
+   * verschiedene Aufgaben im Bild haben: die Silhouette eines Grats kann kein
+   * Bodenanstrich ersetzen, die Farbe einer Wiese sehr wohl. Herleitung bei
+   * `SpeciesLayer` und `QualitySettings.vegetationGroundRange`.
+   */
+  static #rangeFactor(level: QualityKey, species: SpeciesSettings): number {
+    const q = QUALITY[level];
+    return species.layer === 'ground' ? q.vegetationGroundRange : q.vegetationRange;
   }
 
   /**
@@ -919,7 +946,7 @@ export class ScatterSystem implements System {
    */
   #distances(species: SpeciesSettings): [number, number, number] {
     const q = QUALITY[this.#quality];
-    const far = species.lodDistances[2] * q.vegetationRange;
+    const far = species.lodDistances[2] * ScatterSystem.#rangeFactor(this.#quality, species);
     return [
       Math.min(species.lodDistances[0] * q.lodBias, far),
       Math.min(species.lodDistances[1] * q.lodBias, far),

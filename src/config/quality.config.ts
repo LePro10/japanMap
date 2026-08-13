@@ -114,6 +114,25 @@ export interface QualitySettings {
   readonly vegetationRange: number;
 
   /**
+   * **Faktor auf die Ferngrenze der Bodendecker** (Gras, Busch) — P11.6.
+   *
+   * Getrennt von `vegetationRange`, weil die beiden Schichten verschiedene
+   * Fragen beantworten (siehe `SpeciesLayer`): Bäume tragen die Silhouette
+   * gegen den Himmel und müssen weit reichen, Gras gibt dem Boden Farbe — und
+   * **die kann der Boden seit P11.4/11.6 selbst tragen**.
+   *
+   * Genau deshalb ist das der billigste Hebel im ganzen System. Am Blickpunkt
+   * `wald` waren 34 986 der 50 711 sichtbaren Instanzen Gras-Imposter; die
+   * Grasreichweite zu halbieren nimmt also aus dem größten Posten heraus, und
+   * der Farbstich schließt die Lücke im selben Zug, weil er an **dasselbe**
+   * Ausdünnungsgesetz gekoppelt ist (`uGroundTintLaw` in TerrainMaterial).
+   *
+   * Eine gemeinsame Reichweite für beide Schichten könnte das nicht: sie würde
+   * entweder die Grate kahl machen oder das Gras unnötig weit tragen.
+   */
+  readonly vegetationGroundRange: number;
+
+  /**
    * **Faktor** auf die beiden *inneren* LOD-Grenzen einer Art
    * (`lodDistances[0]` und `[1]`) — also darauf, wann vom vollen Mesh auf die
    * reduzierte Stufe und wann von dort auf den Imposter gewechselt wird.
@@ -352,6 +371,7 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     vegetationRange: 1,
     lodBias: 1,
     // Ultra dünnt bis zur Ferngrenze nur wenig aus.
+    vegetationGroundRange: 1,
     vegetationFullRadius: 160,
     vegetationFarKeep: 0.6,
     renderScale: 1,
@@ -365,8 +385,9 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     ao: 'medium',
     vegetationRange: 1,
     lodBias: 1,
-    vegetationFullRadius: 120,
-    vegetationFarKeep: 0.45,
+    vegetationGroundRange: 0.9,
+    vegetationFullRadius: 130,
+    vegetationFarKeep: 0.5,
     renderScale: 1,
     // Bewusst wie Ultra. „Hoch" unterscheidet sich von Ultra allein in AO und
     // Vegetationsdichte; das Gelände gröber zu stellen, wäre der erste
@@ -382,8 +403,9 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     ao: 'low',
     vegetationRange: 1,
     lodBias: 0.85,
-    vegetationFullRadius: 90,
-    vegetationFarKeep: 0.3,
+    vegetationGroundRange: 0.75,
+    vegetationFullRadius: 105,
+    vegetationFarKeep: 0.4,
     renderScale: 0.85,
     // 2,0 m je Vertex auf dem Blattknoten. Über dem Texelabstand der Heightmap
     // (1,5 m), aber deutlich unter dem festen P1-Gitter (4,0 m).
@@ -397,8 +419,9 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     ao: 'off',
     vegetationRange: 1,
     lodBias: 0.75,
-    vegetationFullRadius: 55,
-    vegetationFarKeep: 0.2,
+    vegetationGroundRange: 0.62,
+    vegetationFullRadius: 80,
+    vegetationFarKeep: 0.3,
     renderScale: 0.7,
     // 3,0 m je Vertex — jede zweite Stützstelle der Heightmap wird nicht mehr
     // gelesen. Ein Viertel der Dreiecke von Ultra.
@@ -426,8 +449,9 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     ao: 'off',
     vegetationRange: 1,
     lodBias: 0.65,
-    vegetationFullRadius: 30,
-    vegetationFarKeep: 0.14,
+    vegetationGroundRange: 0.5,
+    vegetationFullRadius: 55,
+    vegetationFarKeep: 0.22,
     renderScale: 0.5,
     terrainGridVertices: 17,
     postFx: 'off',
@@ -453,6 +477,7 @@ export const QUALITY_LEVELS: readonly QualityLevel[] = [
 export interface CustomQuality {
   readonly renderScale: number;
   readonly terrainGridVertices: GridVertices;
+  readonly vegetationGroundRange: number;
   readonly vegetationFullRadius: number;
   readonly vegetationFarKeep: number;
   readonly vegetationRange: number;
@@ -509,6 +534,10 @@ export const LOD_BIAS_MIN: number = Math.min(...QUALITY_LEVELS.map((l) => QUALIT
 export const VEGETATION_RANGE_MAX: number = Math.max(
   ...QUALITY_LEVELS.map((l) => QUALITY[l].vegetationRange),
 );
+/** Dasselbe für die Bodendecker — siehe `vegetationGroundRange`. */
+export const VEGETATION_GROUND_RANGE_MAX: number = Math.max(
+  ...QUALITY_LEVELS.map((l) => QUALITY[l].vegetationGroundRange),
+);
 
 /**
  * Grenzen der Einzelregler — und **warum sie keine Geschmacksfrage sind.**
@@ -536,6 +565,7 @@ export const VEGETATION_RANGE_MAX: number = Math.max(
  */
 export const CUSTOM_LIMITS = {
   renderScale: { min: 0.5, max: 1, step: 0.05 },
+  vegetationGroundRange: { min: 0.25, max: VEGETATION_GROUND_RANGE_MAX, step: 0.05 },
   vegetationFullRadius: { min: 10, max: 260, step: 5 },
   vegetationFarKeep: { min: 0.05, max: 1, step: 0.05 },
   vegetationRange: { min: 0.5, max: VEGETATION_RANGE_MAX, step: 0.05 },
@@ -575,6 +605,10 @@ export function setCustomQuality(patch: Partial<CustomQuality>): QualitySettings
     label: 'Eigen',
     shadowMapSize: before.shadowMapSize,
     renderScale: clamp(patch.renderScale ?? before.renderScale, CUSTOM_LIMITS.renderScale),
+    vegetationGroundRange: clamp(
+      patch.vegetationGroundRange ?? before.vegetationGroundRange,
+      CUSTOM_LIMITS.vegetationGroundRange,
+    ),
     vegetationFullRadius: clamp(
       patch.vegetationFullRadius ?? before.vegetationFullRadius,
       CUSTOM_LIMITS.vegetationFullRadius,
@@ -605,6 +639,7 @@ export function customFromSettings(settings: QualitySettings): CustomQuality {
   return {
     renderScale: settings.renderScale,
     terrainGridVertices: settings.terrainGridVertices,
+    vegetationGroundRange: settings.vegetationGroundRange,
     vegetationFullRadius: settings.vegetationFullRadius,
     vegetationFarKeep: settings.vegetationFarKeep,
     vegetationRange: settings.vegetationRange,

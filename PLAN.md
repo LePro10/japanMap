@@ -6102,7 +6102,124 @@ trägt die Farbe, wo keine Instanz mehr steht.
 - **Keine Kostenaussage.** Weder GPU-Zeit noch Bildrate noch der kalte
   Streuaufwand sind auf dieser Maschine messbar.
 
-**11.6 — Occlusion-Culling über die `HeightPyramid`.** Sie führt Min/Max je
+### 11.6 gebaut und gemessen — 2026-08-11
+
+**Der Auftrag:** „wenn das Gras nicht mehr gerendert wird, wenn es zu weit ist,
+dass der Boden einfach grün ist … es können ganz weit weg auch nur ein grüner
+Block sein … auch bei den Häusern, wenn man auf dem Berg ist, dass man sieht,
+dass da was ist, aber nicht jedes Detail gerendert wird."
+
+Drei Eingriffe, und der erste korrigiert einen Fehler in 11.4.
+
+#### 1. Der Farbstich folgt der Ausdünnung, statt überall gleich zu sein
+
+11.4 hat den Boden eingefärbt, aber mit **einer Konstante über die ganze
+Karte**. Das war die falsche Form: gebraucht wird die Farbe **genau dort, wo die
+Halme fehlen**, und das ist eine Funktion der Entfernung.
+
+Der Verlauf ist deshalb an **dasselbe Gesetz** gekoppelt, das
+`ScatterSystem.#pushChunk` anwendet — dieselben vier Zahlen, über
+`uGroundTintLaw` in den Terrain-Shader gereicht:
+
+    keep(d)     = 1 für d ≤ R, sonst max(keepFar, (R/d)²)
+    Deckung(d)  = min(1, boostMax² · keep(d))        · 0 jenseits der Grasreichweite
+    Stärke(d)   = mix(strengthNear, strengthFar, 1 − Deckung(d))
+
+Damit ist die Kante **bauartbedingt** unsichtbar: beide Seiten rechnen aus
+denselben Werten, und wenn die Stufe sie ändert, wandern beide zusammen.
+`TerrainSystem` zieht sie bei `quality:changed` nach — und zwar **vor** dem
+Rückzieher auf die Gitterweite, sonst würde der Nachzug bei jedem Wechsel
+übersprungen, bei dem das Gitter gleich bleibt (Ultra↔Hoch, jeder Reglerzug der
+eigenen Stufe).
+
+> **Ein Rückschritt dabei, gemessen und zurückgenommen.** `strengthNear` stand
+> zuerst auf 0,5 — mit der Überlegung, dort, wo echte Halme stehen, brauche der
+> Boden weniger Farbe. Am Blickpunkt `wald` auf Ultra fiel der Grünanteil damit
+> von **77,82 auf 52,69 %**, der Braunanteil stieg von 5,95 auf 28,78 %. Bei
+> 2,2° Sonnenstand deckt das Gras eben nicht so viel, wie die Überlegung annahm.
+> Zurück auf 0,8, `strengthFar` auf 0,97 — **die Rampe darf nur hinzufügen, nie
+> wegnehmen.** Nachgemessen: 77,94 % gegen 77,82 %, also unverändert im Nahfeld
+> und besser in der Ferne (`wald-fern` 18,71 → 22,72 % grün).
+
+#### 2. Zwei Reichweiten statt einer: Kronen und Bodendecker
+
+Jede Art trägt jetzt eine `layer`-Angabe, und die Stufe hat neben
+`vegetationRange` (Bäume) ein `vegetationGroundRange` (Gras, Busch).
+
+Der Grund steht in einer Zahl aus 11.0: **34 986 der 50 711 sichtbaren
+Instanzen am Blickpunkt `wald` waren Gras-Imposter.** Gras ist der teuerste
+Posten des Systems — und der einzige, den der Bodenfarbstich vollständig
+ersetzen kann. Bäume kann er nicht ersetzen: sie stehen gegen den Himmel und
+tragen die Silhouette eines Grats.
+
+| Stufe | voll bis | fern | Gras-Reichweite |
+|---|---|---|---|
+| Ultra | 160 m | 60 % | 100 % (160 m) |
+| Hoch | 130 m | 50 % | 90 % |
+| Mittel | 105 m | 40 % | 75 % |
+| Niedrig | 80 m | 30 % | 62 % |
+| Minimal | 55 m | 22 % | 50 % (80 m) |
+
+Die Leiter ist damit in **beide** Richtungen bewegt worden: der Nahbereich der
+unteren Stufen wurde deutlich großzügiger (Minimal 30 → 55 m voll, 14 → 22 %
+fern), die Grasreichweite dafür halbiert. Das ist genau der Tausch, den der
+Auftrag verlangt — mehr Dichte da, wo man hinsieht, weniger da, wo der Boden
+einspringt.
+
+#### 3. Häuser bleiben sichtbar, ihr Detail nicht
+
+`PROP_CLASSES.mittel.cullDistance` stand auf **650 m**: ein Bauernhaus
+verschwand dort **vollständig**, und vom Übersichtsblick aus war das halbe Dorf
+nicht da — nicht grob gezeichnet, abwesend. Neu: `mittel` 2200 m, `gross`
+3600 m (die Kartendiagonale ist 4344 m).
+
+**Angehoben wurde nur `cullDistance`, nicht `lodDistance`.** Das ist die ganze
+Antwort auf den Auftrag: *ob* etwas da ist, entscheidet die Cull-Grenze, *wie
+genau* die LOD-Grenze. Ein Haus auf 1,5 km steht als grober Block da.
+
+Und es ist praktisch umsonst: auf der Karte stehen rund 175 Props gegen 53 116
+Vegetationsinstanzen. P10.1 hat die Wirkung der Props auf die Stufen als
+„unterhalb der Messbarkeit" gemessen — dieselbe Messung heißt hier gelesen: die
+Sichtbarkeit kostet nichts, sie war nur nie eingestellt.
+
+#### Gemessen, 1280 × 720, Kette auf `lean`, alle Zellen `verworfen: 0`
+
+| Blickpunkt | Stufe | Instanzen | Dreiecke | Draw-Calls | grün | braun |
+|---|---|---|---|---|---|---|
+| `wald` | Ultra | 53 116 | 484 735 | 63 | 77,94 % | 5,94 % |
+| `wald` | **Minimal** | **15 728** | **187 553** | 57 | **82,24 %** | 8,61 % |
+| `wald-fern` | Ultra | 15 478 | 285 809 | 44 | 22,72 % | 9,04 % |
+| `wald-fern` | **Minimal** | 2 056 | 102 395 | 31 | 17,81 % | 11,72 % |
+| `start` | Ultra | 3 866 | 592 689 | 180 | 4,20 % | 3,83 % |
+| `start` | **Minimal** | 1 424 | 181 662 | 98 | 2,46 % | 3,39 % |
+
+Minimal steht damit am `wald` bei **30 % der Instanzen und 39 % der Dreiecke**
+von Ultra — und hat im Grünanteil der unteren Bildhälfte **mehr** als Ultra
+(82,24 gegen 77,94 %), weil der Deckungserhalt in der Ferne leicht
+überzeichnet. Im Bildpaar ist der Unterschied ein anderer Detailgrad, keine
+andere Welt.
+
+Am Übersichtsblick `start` liegen beide Stufen bei rund 3 % Grünanteil und
+3…4 % Braun: aus 330 m Höhe trägt fast alles der **Boden**, nicht die Instanz —
+genau das war der Auftrag.
+
+#### Was offen bleibt
+
+- **Minimal ist gegen P11.5 teurer geworden**, nicht billiger: 187 553 statt
+  165 783 Dreiecke am `wald`. Der Nahbereich wurde absichtlich dichter, die
+  Ferne dafür dünner. Ob der Tausch auf einer Intel-iGPU aufgeht, ist auf dieser
+  Maschine **nicht messbar**.
+- **`start` auf Ultra braucht 180 Draw-Calls** (gegen 63 am `wald`), weil die
+  Props jetzt bis 2200 bzw. 3600 m gezeichnet werden. Das Budget liegt bei 800,
+  ist also weit weg — aber es ist der einzige Posten, der durch diese Aufgabe
+  spürbar gewachsen ist, und er gehört im Auge behalten.
+- **`start` auf Ultra kam nicht zur Ruhe** (Zeitlimit bei 200 s). Der kalte
+  Aufbau der 1200-m-Ferne bleibt der offene Punkt aus 11.5;
+  `SCATTER.workerQueueDepth` ist weiter der Begrenzer.
+- **Drei Blickpunkte.** Stadt, Pass und Küste sind in dieser Runde nicht neu
+  gemessen worden.
+
+**11.7 — Occlusion-Culling über die `HeightPyramid`.** Sie führt Min/Max je
 Quadtree-Knoten; ein Ray-March gegen die Max-Höhen beantwortet „liegt ein Grat
 dazwischen" in wenigen Schritten.
 

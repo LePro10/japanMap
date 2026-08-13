@@ -33,7 +33,8 @@ uniform vec2 uDetailFade;
 // `uGroundTint.y` der Anteil Helligkeitserhalt — Herleitung bei `GROUND_TINT`.
 uniform vec3 uGroundTintColor;
 uniform vec4 uGroundTintWeights;
-uniform vec2 uGroundTint;
+uniform vec3 uGroundTint;
+uniform vec4 uGroundTintLaw;
 
 uniform int uDebugMode;
 

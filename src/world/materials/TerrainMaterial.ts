@@ -16,7 +16,9 @@ import {
 
 import { LOD } from '@/config/lod.config';
 import { TERRAIN, TERRAIN_LAYERS } from '@/config/terrain.config';
-import { GROUND_TINT } from '@/config/vegetation.config';
+import { DEFAULT_QUALITY, QUALITY } from '@/config/quality.config';
+import { GROUND_TINT, SCATTER, SPECIES } from '@/config/vegetation.config';
+
 import { WORLD } from '@/config/world.config';
 import {
   injectAtmosphere,
@@ -28,6 +30,16 @@ import parsVertex from '../shaders/terrain_pars.vert.glsl';
 import displaceVertex from '../shaders/terrain_displace.vert.glsl';
 import parsFragment from '../shaders/terrain_pars.frag.glsl';
 import splatFragment from '../shaders/terrain_splat.frag.glsl';
+/**
+ * Reichweite der Grasart, in Metern.
+ *
+ * Aus `SPECIES` gelesen statt danebengeschrieben: es ist genau die Entfernung,
+ * ab der die Streuung kein Gras mehr zeichnet, und der Boden muss dort
+ * übernehmen. Zwei Zahlen für dieselbe Grenze wären die nächste, die
+ * auseinanderläuft.
+ */
+export const GRASS_FAR: number = SPECIES.find((s) => s.id === 'grass')?.lodDistances[2] ?? 160;
+
 
 export interface TerrainUniforms {
   readonly uHeightmap: IUniform<DataTexture>;
@@ -62,8 +74,22 @@ export interface TerrainUniforms {
   readonly uGroundTintColor: IUniform<Vector3>;
   /** Je Splat-Kanal die Neigung zur Bewuchsfarbe, mal Gesamtstärke. */
   readonly uGroundTintWeights: IUniform<Vector4>;
-  /** x = Gesamtstärke, y = Anteil Helligkeitserhalt. */
-  readonly uGroundTint: IUniform<Vector2>;
+  /** x = Stärke im Nahbereich, y = Stärke ohne Bewuchs, z = Helligkeitserhalt. */
+  readonly uGroundTint: IUniform<Vector3>;
+  /**
+   * Das Ausdünnungsgesetz, wie der Boden es sieht — P11.6.
+   *
+   * `x` = Vollbereich R, `y` = `keepFar`, `z` = Grasreichweite, `w` = das
+   * Quadrat des Deckungserhalt-Deckels. Dieselben vier Zahlen, aus denen
+   * `ScatterSystem.#pushChunk` entscheidet, ob eine Instanz stehenbleibt —
+   * deshalb trifft der Farbstich exakt dort ein, wo die Halme ausbleiben.
+   *
+   * **Hängt an der Qualitätsstufe** und wird von `TerrainSystem` bei
+   * `quality:changed` nachgezogen. Ein eingefrorener Wert hier hieße: Minimal
+   * dünnt früher aus, der Boden zöge aber erst so spät nach wie auf Ultra — und
+   * genau dazwischen stünde wieder der braune Ring.
+   */
+  readonly uGroundTintLaw: IUniform<Vector4>;
   readonly uDebugMode: IUniform<number>;
   /** Quads pro Achse im Einheitsgitter des Quadtrees (P4 / 4.1). */
   readonly uLodGridQuads: IUniform<number>;
@@ -154,7 +180,25 @@ export function createTerrainUniforms(textures: TerrainTextures): TerrainUniform
         GROUND_TINT.weights[3],
       ),
     },
-    uGroundTint: { value: new Vector2(GROUND_TINT.strength, GROUND_TINT.preserveLuminance) },
+    uGroundTint: {
+      value: new Vector3(
+        GROUND_TINT.strengthNear,
+        GROUND_TINT.strengthFar,
+        GROUND_TINT.preserveLuminance,
+      ),
+    },
+    // Startwert ist die Vorgabestufe; `TerrainSystem` zieht ihn bei jedem
+    // `quality:changed` nach. Die Grasreichweite kommt aus `SPECIES` und ist
+    // nicht danebengeschrieben — sie ist dieselbe Zahl, an der die Streuung
+    // aufhört.
+    uGroundTintLaw: {
+      value: new Vector4(
+        QUALITY[DEFAULT_QUALITY].vegetationFullRadius,
+        QUALITY[DEFAULT_QUALITY].vegetationFarKeep,
+        GRASS_FAR,
+        SCATTER.thinBoostMax * SCATTER.thinBoostMax,
+      ),
+    },
     uDebugMode: { value: 0 },
     uLodGridQuads: { value: LOD.gridQuads },
     uLodCamera: { value: new Vector3() },

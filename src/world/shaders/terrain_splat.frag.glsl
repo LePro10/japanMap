@@ -80,7 +80,35 @@ terrainAlbedo *= 1.0 + (macro - 0.5) * 2.0 * uMacroStrength;
 // **Steht nach der Makro-Variation**, nicht davor: die Helligkeitsmodulation
 // aus `uMacroStrength` soll durch den Farbtonwechsel hindurch erhalten bleiben,
 // nicht von ihm überschrieben werden.
-float groundTint = dot(splat, uGroundTintWeights) * uGroundTint.x;
+// **Der Farbstich folgt der Ausdünnung** — P11.6, und das ist der Kern.
+//
+// Gerechnet wird dieselbe Behaltequote wie in `ScatterSystem.#pushChunk`:
+//
+//     keep(d) = 1                        für d ≤ R
+//     keep(d) = max(keepFar, (R/d)²)     darüber
+//
+// Daraus die **Deckung**: was übrig bleibt, wird um 1/√keep verbreitert
+// (gedeckelt), die gedeckte Fläche ist also `boostMax² · keep`, nach oben auf 1
+// begrenzt. Jenseits der Grasreichweite steht gar nichts mehr, dort ist sie
+// null.
+//
+// Der Boden springt genau in dem Maße ein, in dem die Deckung fehlt. Damit ist
+// die Kante bauartbedingt unsichtbar — und zwar auf jeder Stufe, weil beide
+// Seiten aus **denselben** vier Zahlen rechnen. Auf Ultra greift es bei 160 m
+// (Ende des Grases), auf Minimal deutlich früher.
+float tintR = uGroundTintLaw.x;
+float tintKeepFar = uGroundTintLaw.y;
+float grassFar = uGroundTintLaw.z;
+float keep = viewDistance <= tintR
+  ? 1.0
+  : max(tintKeepFar, (tintR * tintR) / max(viewDistance * viewDistance, 1e-4));
+// Auslaufen über das letzte Viertel der Grasreichweite statt an einer Kante:
+// die Streuung hört dort hart auf, der Farbstich soll es nicht.
+keep *= 1.0 - smoothstep(grassFar * 0.75, grassFar, viewDistance);
+float bewuchsDeckung = clamp(uGroundTintLaw.w * keep, 0.0, 1.0);
+float tintStrength = mix(uGroundTint.x, uGroundTint.y, 1.0 - bewuchsDeckung);
+
+float groundTint = dot(splat, uGroundTintWeights) * tintStrength;
 if (groundTint > 0.001) {
   const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
   float texelLuma = dot(terrainAlbedo, LUMA);
@@ -90,7 +118,7 @@ if (groundTint > 0.001) {
   // zu einer einfarbigen Fläche — genau die grüne Pappe, die hier nicht
   // entstehen soll.
   vec3 shaped = clamp(uGroundTintColor * (texelLuma / max(dot(uGroundTintColor, LUMA), 1e-4)), 0.0, 1.0);
-  terrainAlbedo = mix(terrainAlbedo, mix(uGroundTintColor, shaped, uGroundTint.y), groundTint);
+  terrainAlbedo = mix(terrainAlbedo, mix(uGroundTintColor, shaped, uGroundTint.z), groundTint);
 }
 
 diffuseColor.rgb *= terrainAlbedo;
