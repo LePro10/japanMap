@@ -356,8 +356,19 @@ export class PlayerUi {
       percent,
       (v) => ({ vegetationFarKeep: v }),
     );
+    // Zwei Reichweiten, weil Bäume und Bodendecker im Bild Verschiedenes tun —
+    // Herleitung bei `SpeciesLayer`. Die zweite ist der wirksamste Regler des
+    // ganzen Menüs: Gras stellt den größten Teil aller Instanzen, und der
+    // Bodenfarbstich springt für es ein.
     this.#slider(
-      'Vegetationsreichweite',
+      'Gras- und Buschreichweite',
+      'vegetationGroundRange',
+      CUSTOM_LIMITS.vegetationGroundRange,
+      percent,
+      (v) => ({ vegetationGroundRange: v }),
+    );
+    this.#slider(
+      'Baumreichweite',
       'vegetationRange',
       CUSTOM_LIMITS.vegetationRange,
       percent,
@@ -395,6 +406,7 @@ export class PlayerUi {
       | 'vegetationFullRadius'
       | 'vegetationFarKeep'
       | 'vegetationRange'
+      | 'vegetationGroundRange'
       | 'lodBias',
     limits: { readonly min: number; readonly max: number; readonly step: number },
     format: (value: number) => string,
@@ -510,7 +522,8 @@ export class PlayerUi {
       `AO ${AO_LABELS[settings.ao]} · Bildeffekte ${POSTFX_LABELS[settings.postFx]} · ` +
       `Spiegelung ${settings.reflections ? 'an' : 'aus'} · ` +
       `Vegetation voll bis ${settings.vegetationFullRadius} m, fern ` +
-      `${(settings.vegetationFarKeep * 100).toFixed(0)} %`;
+      `${(settings.vegetationFarKeep * 100).toFixed(0)} % · ` +
+      `Gras ${(settings.vegetationGroundRange * 100).toFixed(0)} %`;
 
     // Die Regler zeigen **immer** die geltenden Werte, auch auf einer
     // Voreinstellung. Sonst müsste man erst „Eigen" wählen, um zu sehen, was

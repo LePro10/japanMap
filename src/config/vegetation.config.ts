@@ -24,9 +24,29 @@ export interface ZoneWeights {
   readonly paddy: number;
 }
 
+/**
+ * Wozu eine Art im Bild dient — P11.6.
+ *
+ * `canopy` steht **gegen den Himmel**: Bäume tragen die Silhouette eines Grats,
+ * und die kann kein Bodenanstrich ersetzen. Sie müssen deshalb weit reichen.
+ *
+ * `ground` liegt **auf dem Boden**: Gras und Büsche geben ihm Farbe und Textur,
+ * und genau das kann der Splat-Farbstich aus `GROUND_TINT` übernehmen, sobald
+ * die einzelne Pflanze unter die Pixelgröße fällt. Ihre Reichweite ist deshalb
+ * der billigste Hebel im ganzen System — 34 986 der 50 711 sichtbaren Instanzen
+ * am Blickpunkt `wald` waren Gras-Imposter.
+ *
+ * Die Unterscheidung ist der Grund, warum die Stufen **zwei** Reichweiten haben
+ * statt einer: eine gemeinsame würde entweder die Grate kahl machen oder das
+ * Gras unnötig weit tragen.
+ */
+export type SpeciesLayer = 'canopy' | 'ground';
+
 export interface SpeciesSettings {
   readonly id: string;
   readonly label: string;
+  /** Siehe `SpeciesLayer` — entscheidet, welche Reichweite der Stufe gilt. */
+  readonly layer: SpeciesLayer;
 
   /**
    * Kantenlänge einer Streuzelle in Metern. Je Zelle **ein** Kandidat, zufällig
@@ -143,6 +163,7 @@ export const SPECIES: readonly SpeciesSettings[] = [
   {
     id: 'pine',
     label: 'Nadelbaum',
+    layer: 'canopy',
     cellSize: 8,
     // **1200 m statt 520 — P11.5, der kahle Ring.** Die Ferngrenze war seit P4
     // auf jeder Stufe dieselbe Konstante, und PLAN.md P10 nennt sie „die
@@ -183,6 +204,7 @@ export const SPECIES: readonly SpeciesSettings[] = [
   {
     id: 'broadleaf',
     label: 'Laubbaum',
+    layer: 'canopy',
     cellSize: 11,
     // Wie bei der Kiefer — Begründung dort. Der Laubbaum endet zusätzlich schon
     // bei 190 m Geländehöhe, seine Fernsicht betrifft also vor allem die Ebene.
@@ -205,6 +227,7 @@ export const SPECIES: readonly SpeciesSettings[] = [
   {
     id: 'bush',
     label: 'Busch',
+    layer: 'ground',
     cellSize: 5,
     lodDistances: [45, 100, 190],
     minScale: 0.6,
@@ -225,6 +248,7 @@ export const SPECIES: readonly SpeciesSettings[] = [
   {
     id: 'grass',
     label: 'Grasbüschel',
+    layer: 'ground',
     // Die dichteste Zelle im Projekt, und der Grund, warum das Kriterium
     // „≥ 50 000 sichtbare Instanzen" überhaupt erreichbar ist. Bäume dafür zu
     // verdichten ergäbe dieselbe Zahl bei zwanzigfachen Dreieckskosten.
@@ -606,13 +630,51 @@ export const GROUND_TINT = {
   color: 0x5a6b35,
 
   /**
-   * Gesamtstärke, 0…1 — der Regler im Debug-Panel.
+   * Stärke **im Nahbereich**, wo echtes Gras steht, 0…1.
    *
-   * **Bewusst unter 1.** Bei 1,0 verschwände die Struktur der Bodentextur
-   * vollständig, und aus dem Hang würde eine grüne Fläche. Was hier gebraucht
-   * wird, ist ein Farbstich mit erhaltener Zeichnung.
+   * **Bewusst unter 1**, damit die Zeichnung der Bodentextur den Detailgrad
+   * weiter trägt: bei 1,0 verschwände sie vollständig.
+   *
+   * > **Der erste Entwurf stand auf 0,5** — mit der Überlegung, dort, wo die
+   * > Halme wirklich stehen, brauche der Boden weniger Farbe. Am Bild gemessen
+   * > war das ein Rückschritt: am Blickpunkt `wald` auf Ultra fiel der
+   * > Grünanteil der unteren Bildhälfte von **77,82 auf 52,69 %** und der
+   * > Braunanteil stieg von 5,95 auf 28,78 %. Bei 2,2° Sonnenstand deckt das
+   * > Gras eben *nicht* so viel, wie die Überlegung annahm.
+   * >
+   * > Daraus die Regel für diesen Regler: **die Entfernungsrampe darf nur
+   * > hinzufügen, nie wegnehmen.** Der Nahwert bleibt deshalb auf dem
+   * > gemessenen Stand von P11.4, und `strengthFar` liegt darüber.
    */
-  strength: 0.8,
+  strengthNear: 0.8,
+
+  /**
+   * Stärke dort, wo **keine** Vegetation mehr gezeichnet wird, 0…1.
+   *
+   * ## Der eigentliche Gedanke hinter P11.6
+   *
+   * Bis dahin war die Stärke eine Konstante über die ganze Karte. Das war die
+   * falsche Form: gebraucht wird der Farbstich **genau dort, wo die Halme
+   * fehlen** — und das ist eine Funktion der Entfernung, nicht der Fläche.
+   *
+   * Der Verlauf ist deshalb **an dasselbe Ausdünnungsgesetz gekoppelt**, das
+   * `ScatterSystem.#pushChunk` anwendet. Der Boden springt genau in dem Maße
+   * ein, in dem die Vegetation verschwindet:
+   *
+   *     Deckung(d) = min(1, boostMax² · keep(d))
+   *     Stärke(d)  = mix(strengthNear, strengthFar, 1 − Deckung(d))
+   *
+   * Jenseits der Grasreichweite ist die Deckung null und die Stärke voll. Das
+   * gilt **auf jeder Stufe**, auch auf Ultra: dort endet das Gras bei 160 m,
+   * und alles dahinter ist heute nackter Boden. Genau das war der Auftrag —
+   * „wenn das Gras nicht mehr gerendert wird, soll der Boden einfach grün
+   * sein".
+   *
+   * Und es löst zugleich das Stufenproblem von selbst: Minimal dünnt früher aus,
+   * also greift dort auch der Farbstich früher. Kein zweiter Satz Werte je
+   * Stufe, keine zweite Stelle, die nachgezogen werden muss.
+   */
+  strengthFar: 0.97,
 
   /**
    * Erhält die Helligkeit der Bodentextur, statt sie zu übermalen.
