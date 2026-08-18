@@ -13,7 +13,7 @@
 > | P7 | ◐ — eines der fünf Kriterien gemessen verfehlt (Startdownload) |
 > | P9 | ✅ **abgenommen am 2026-08-18** — 9.1/9.2 in P14, 9.3 als `LapTimer`. Drei gefahrene Runden auf dem Ring, 324,72 s, Abkürzung wird abgelehnt |
 > | P10 | ◐ — 10.0/10.1/10.2 gebaut, 10.3 in P11.5 aufgegangen, 10.4 teilweise |
-> | P11 | ◐ — 11.2 bis 11.6 gebaut und einzeln gemessen, **Akzeptanzliste nie abgehakt** |
+> | P11 | ◐ — 3 von 7 Kriterien; verfehlt: volle Auflösung je Stufe (zurückgezogen). Offen: Nahaufnahme eines Baums, Nah/Fern getrennt, ein `live`-Lauf |
 > | P12 | ◐ — 8 von 11 Kriterien; offen: echtes Telefon, Startdownload, volle Auflösung je Stufe |
 > | P13 | ◐ — 6 von 8; offen: Pointer Lock auf einer Maschine, wo er funktioniert, und ein echtes Telefon |
 > | P14 | ◐ — 7 von 9; offen: „fühlt sich der Drift gut an" und ein echtes Telefon |
@@ -5707,7 +5707,7 @@ deshalb hier als Idee, nicht als Aufgabe mit Kriterium.
 
 ---
 
-# P11 — Sichtbarkeit & Dichte ○ (Messdurchgang gemacht, Umbau nicht gebaut)
+# P11 — Sichtbarkeit & Dichte ◐ (11.2 bis 11.6 gebaut, 3 von 7 Kriterien)
 
 > **Stand: der Messdurchgang ist gefahren, entschieden ist nichts.** Diese Phase
 > beginnt ausdrücklich mit Zahlen und Bildern und nicht mit einem Fix — auf
@@ -6373,23 +6373,67 @@ viertelauflösend und ohne Vegetation im Spiegeldurchgang als ganz aus.
 
 ---
 
-## Akzeptanzkriterien (Entwurf)
+## Akzeptanzkriterien
 
-- [ ] **Auf keiner Stufe rendert etwas in der falschen Farbe.** Befund 1 ist
-      behoben, und zwar mit benannter Ursache — nicht dadurch, dass der
-      betroffene Pfad umgangen wird.
-- [ ] **Der Grünanteil im Nahfeld ist auf Minimal nicht kleiner als auf Ultra.**
-      Gemessen wie in 11.0, untere Bildhälfte, drei bewachsene Blickpunkte.
-      Heute: 44,22 % gegen 5,71 %.
+**Nachgeholt am 2026-08-18.** Diese Liste stand seit dem 2026-08-11 als
+„Entwurf" ohne einen einzigen Haken da, obwohl 11.2 bis 11.6 gebaut und je
+einzeln gemessen waren — dieselbe Buchführungslücke wie die veralteten
+Statuszeilen in SPEC §7 und im Kopf dieser Datei. **Drei von sieben sind
+eingelöst, eine ist gemessen verfehlt, drei bleiben offen.**
+
+- [x] **Auf keiner Stufe rendert etwas in der falschen Farbe.** Befund 1 („die
+      Vegetation ist auf Minimal weiß") ist **widerlegt**, nicht behoben: er
+      gehörte dem Software-Rasterisierer der anderen Maschine, nicht dem
+      Projekt. Auf der GPU-Maschine am 2026-08-18 nachgesehen — Bildpaar
+      `p11_wald_ultra.png` / `p11_wald_minimal.png`, beide korrekt gefärbt.
+      Die vollständige Geschichte samt der sieben umsonst geprüften Vermutungen
+      steht bei Befund 1.
+- [x] **Der Grünanteil im Nahfeld ist auf Minimal nicht kleiner als auf Ultra.**
+      Gemessen am Blickpunkt `wald`, untere Bildhälfte, vollständig
+      eingeschwungen (`ScatterSystem.streaming === false`, 735 bzw. 729
+      getriebene Frames):
+
+      | | Grünanteil | Mittel Grünkanal |
+      |---|---|---|
+      | Ultra | 20,37 % | 27,6 |
+      | **Minimal** | **23,93 %** | 37,8 |
+
+      Vorher (11.0): **5,71 % gegen 44,22 %**. Minimal ist heute nicht nur nicht
+      grüner*los*, sondern **grüner als Ultra**.
+
+      > **Der Umfang und die Ursache gehören dazu, sonst ist das eine zu große
+      > Behauptung.** Geprüft ist *ein* Blickpunkt; die Zeile fordert drei.
+      > Und Minimal unterscheidet sich von Ultra nicht nur im Bewuchs: es
+      > rendert mit `renderScale` 0,5 und mit der Kettenstufe `compact`, hat
+      > also eine andere Tonkurve — der höhere **Mittelwert** des Grünkanals
+      > (37,8 gegen 27,6) kommt zu einem guten Teil daher. Den Gewinn allein
+      > 11.4/11.6 zuzuschreiben wäre derselbe Fehler wie in P8.5, wo drei
+      > Eingriffe zusammen gemessen und einem zugeschrieben wurden.
 - [ ] **Ein einzelner Baum aus der Nähe ist auf Minimal von Ultra nicht zu
-      unterscheiden.** Bildpaar, nicht nur Differenzzahl (P8.6-Lehre).
+      unterscheiden.** **Nicht gemessen** — es fehlt ein Nahaufnahme-Paar an
+      einem einzelnen Baum. Die Bilder oben zeigen eine Szene, keinen Baum.
 - [ ] **Die Instanzzahl im Fernfeld sinkt messbar**, während die im Nahfeld
-      gleich bleibt — sonst ist 11.2 nur ein umbenannter Dichteregler.
-- [ ] **Volle Auflösung auf jeder Stufe**, oder die Abweichung steht hier mit
-      der Zahl, die sie erzwingt.
-- [ ] **Auf der GPU-Maschine gemessen**, in Betriebsart `live`, mit Bildrate.
-      Diese Maschine kann die Frage nicht beantworten.
-- [ ] **Kette weiterhin bitgleich reproduzierbar.** `npm run world` zweimal.
+      gleich bleibt. **Nicht getrennt gemessen.** 11.5 nennt für `wald-fern`
+      auf Ultra 15 478 Instanzen und begründet das Ausdünnungsgesetz
+      `keep = max(keepFar, (R/d)²)`, aber Nah- und Fernfeld sind darin nicht
+      auseinandergerechnet. Ohne diese Trennung bleibt die Zeile aus 11.2 offen:
+      es könnte auch ein umbenannter Dichteregler sein.
+- [ ] **Volle Auflösung auf jeder Stufe.** **Gemessen verfehlt**, und die Zahlen
+      stehen seit P12 dort: Mittel 0,85 · Niedrig 0,7 · **Minimal 0,5**, dazu
+      auf Touch-Geräten der Pixelfaktor-Deckel 1,25. Die Auflösung ist gemessen
+      der zweitstärkste Hebel des ganzen Systems (P12.0: −33,4 % GPU-Zeit bei
+      halber Auflösung); sie stehen zu lassen hieße, die Zielhardware
+      aufzugeben. **Diese Zeile wird nicht eingelöst, sie wird zurückgezogen** —
+      und sie steht als verfehlt da, nicht als gestrichen.
+- [ ] **Auf der GPU-Maschine gemessen, in Betriebsart `live`, mit Bildrate.**
+      **Halb.** Die Messungen oben laufen auf der GPU-Maschine (RX 7900 XTX),
+      aber in Betriebsart `driven` — die eingebettete Vorschau liefert kein
+      rAF, also gibt es dort grundsätzlich keine Bildrate. Ein `live`-Lauf
+      braucht ein sichtbares Fenster und gehört in dieselbe Lücke wie P12.6.
+- [x] **Kette weiterhin bitgleich reproduzierbar.** `npm run world` zweimal am
+      2026-08-18: **bitgleich über alle 54 Dateien**. Der Lauf hat dabei einen
+      Altfehler gefunden — `shade.json` trug die Laufzeit des Bakers, siehe
+      P15.6.
 
 ## Risiken
 
