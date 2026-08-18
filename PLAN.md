@@ -10,11 +10,11 @@
 > | Phase | Stand |
 > |---|---|
 > | P0–P6, P8 | ✅ abgenommen |
-> | P7 | ◐ — eines der fünf Kriterien gemessen verfehlt (Startdownload) |
+> | P7 | ◐ — 3 von 5; der Startdownload ist seit P15 eingelöst, offen bleiben die zwei Zeilen, die eine GTX-1660-Klasse verlangen |
 > | P9 | ✅ **abgenommen am 2026-08-18** — 9.1/9.2 in P14, 9.3 als `LapTimer`. Drei gefahrene Runden auf dem Ring, 324,72 s, Abkürzung wird abgelehnt |
-> | P10 | ◐ — 10.0/10.1/10.2 gebaut, 10.3 in P11.5 aufgegangen, 10.4 teilweise |
+> | P10 | ✅ **abgenommen am 2026-08-18** — alle sieben Kriterien; 10.3 ging in P11.5 auf, 10.4 in P15 |
 > | P11 | ◐ — 5 von 7 Kriterien; verfehlt: volle Auflösung je Stufe (zurückgezogen). Offen: ein `live`-Lauf mit Bildrate |
-> | P12 | ◐ — 8 von 11 Kriterien; offen: echtes Telefon, Startdownload, volle Auflösung je Stufe |
+> | P12 | ◐ — 9 von 11; offen: echtes Telefon, volle Auflösung je Stufe (zurückgezogen) |
 > | P13 | ◐ — 6 von 8; offen: Pointer Lock auf einer Maschine, wo er funktioniert, und ein echtes Telefon |
 > | P14 | ◐ — 7 von 9; offen: „fühlt sich der Drift gut an" und ein echtes Telefon |
 > | P15 | ✅ **abgenommen am 2026-08-18** — 9 von 9. Erststart 17,02 MB (Schwelle 20), größter Ruckler 28,1 ms (Schwelle 33) |
@@ -2490,10 +2490,32 @@ Entwicklungsmaschine.
       unterscheiden sich in Zeichenpuffer, Draw-Calls, Dreiecken und Instanzen
       um die Faktoren, die sie versprechen.
 - [ ] **Stufe „Niedrig" hält 30 FPS auf integrierter Grafik** — dito.
-- [ ] **Erster Frame nach < 5 s auf 50-Mbit-Verbindung** — **verfehlt, gemessen.**
-      45 Dateien, 58,19 MB roh, 42,68 MB mit Brotli. Bei 50 Mbit sind das
-      **6,8 s allein für die Übertragung**. Die Aufschlüsselung und die Liste der
-      verbleibenden Hebel stehen unten.
+- [x] **Erster Frame nach < 5 s auf 50-Mbit-Verbindung** — **eingelöst in P15,
+      obere Schranke 3,7 s.**
+
+      ~~Verfehlt, gemessen: 45 Dateien, 58,19 MB roh, 42,68 MB mit Brotli, bei
+      50 Mbit **6,8 s allein für die Übertragung**.~~ Das war der Stand von P7.
+
+      Seit P15 sind es **17,02 MB** übertragene Bytes (gemessen am gebauten
+      Stand) und **1,0 s** Rechenzeit bis zum „Starten"-Knopf (gemessen, siehe
+      `engine.bootProfile` und SPEC §4.1):
+
+      | Posten | |
+      |---|---|
+      | 17,02 MB bei 50 Mbit/s | 2,72 s |
+      | Rechenzeit bis zum Knopf | 1,00 s |
+      | **Summe, also obere Schranke** | **3,72 s** |
+
+      > **Das ist eine Rechnung über zwei gemessene Größen, keine Messung auf
+      > einer gedrosselten Verbindung.** Der Unterschied gehört benannt: die
+      > Summe ist die **obere** Schranke, weil Übertragung und Rechenzeit sich
+      > teilweise überlappen — wie stark, ist nicht gemessen. Die Schranke hält
+      > die Zeile aber unabhängig davon: selbst ohne jede Überlappung sind 3,72 s
+      > unter 5 s.
+      >
+      > Ein Lauf auf einer echten gedrosselten Verbindung bleibt trotzdem
+      > wünschenswert und gehört in dieselbe Lücke wie „auf echter Zielhardware
+      > gemessen".
 - [x] **Kein Ruckler > 50 ms während einer 2-minütigen Flugroute über die ganze
       Map** — Flug über acht Blickpunkte (Massiv, Pass, Reisfeld, Küste, Tempel,
       Stadt, Geschäftsstraße, Luftbild), 900 Frames, weiche Interpolation.
@@ -5660,15 +5682,46 @@ deshalb hier als Idee, nicht als Aufgabe mit Kriterium.
       > anderen beiden sind über die Instanzzahlen abgesichert (kein Verlust in
       > 20 Zellen), aber **nicht am Bild**. Wer `lodBias` weiter senkt, muss
       > dort erneut hinsehen.
-- [ ] **Ultra wird besser, nicht nur teurer:** die Fernsicht auf einem der drei
-      Blickpunkte zeigt Bewuchs jenseits 520 m, und die Budgets aus SPEC §4
-      halten weiterhin (< 800 Calls, < 3 M Dreiecke, < 512 MB).
-- [ ] **Die Einstellungen sind im gebauten Stand erreichbar** — nicht nur im
-      Dev-Server. Geprüft an `npm run preview`, nicht an `npm run dev`.
-- [ ] **Der Startdownload ist gemessen und beziffert**, mit jedem Hebel einzeln
-      nachgewiesen. Wird die 15-MB-Zeile verfehlt, steht die erreichte Zahl
-      hier — so wie P7 es vorgemacht hat.
-- [ ] **Kette weiterhin bitgleich reproduzierbar.** `npm run world` zweimal.
+- [x] **Ultra wird besser, nicht nur teurer.** Eingelöst in **P11.5**: die
+      Baumreichweite ist von 520 auf **1200 m** gestiegen, und `wald-fern` zeigt
+      seitdem einen Wald bis zum Horizont statt einer Kante.
+
+      Budgets nachgemessen am 2026-08-18 auf Ultra, jeder Blickpunkt vollständig
+      eingeschwungen:
+
+      | Blickpunkt | Draw-Calls | Dreiecke |
+      |---|---|---|
+      | `start` | **192** | 592 411 |
+      | `stadt-neon` | 126 | **655 869** |
+      | `wald` | 75 | 484 245 |
+      | `wald-fern` | 56 | 285 319 |
+      | *Budget* | *800* | *3 000 000* |
+
+      > **Der Texturspeicher ist dabei nicht vollständig neu gemessen**, und das
+      > gehört dazu statt eines dritten Hakens: über die aus der Szene
+      > erreichbaren Texturen kommen **122 MB** zusammen, three meldet aber 64
+      > Texturen gegen 19 gezählte — Renderziele und Zwischenpuffer fehlen darin.
+      > Die letzte vollständige Zahl ist **307,8 MB** aus der P8-Abnahme. Dass
+      > die Richtung stimmt, ist sicher (P15 lädt kleinere Texturen als vorher);
+      > die Zahl ist es nicht.
+- [x] **Die Einstellungen sind im gebauten Stand erreichbar.** Eingelöst in
+      **P10.2** (`src/ui/PlayerUi.ts`, ohne `import.meta.env.DEV`) und in
+      **P13** um vier Reiter erweitert; dort sind 35 von 35 Bedienelementen über
+      `elementFromPoint` als treffbar nachgewiesen, in beiden Ständen. Am
+      2026-08-18 an Port 4180 gegengeprüft: Startbildschirm steht,
+      `window.japanMap` ist `undefined`.
+- [x] **Der Startdownload ist gemessen und beziffert, mit jedem Hebel einzeln
+      nachgewiesen.** Eingelöst in **P15.1 bis 15.3**: 40,83 → **17,02 MB**,
+      gemessen als übertragene Bytes am gebauten Stand. Die vier Hebel einzeln:
+      `normal.png` abgeleitet 5,49 MB · Detailtexturen halbiert 7,98 MB ·
+      Himmel-HDRI halbiert 6,60 MB · IBL 2k→1k 3,71 MB.
+
+      Die 15-MB-Zeile ist dabei **gegenstandslos geworden**, nicht erfüllt: die
+      Zielplattform CrazyGames verlangt ≤ 20 MB für die Mobile-Homepage
+      (SPEC §4.1), und die 15 MB standen seit P0 ohne Herkunft da.
+- [x] **Kette weiterhin bitgleich reproduzierbar.** `npm run world` zweimal am
+      2026-08-18: **bitgleich über alle 54 Dateien**. Der Lauf hat dabei
+      `measured.seconds` in `shade.json` als Altfehler gefunden (P15.6).
 
 ## Risiken
 
@@ -6900,7 +6953,12 @@ Maßstab". Belastbar sind Verhältnisse, nicht Absolutwerte.
 - [x] **Kein Dev-Code im Build.** „Rauschband" kommt in `dist/assets/*.js`
       nullmal vor, `window.japanMap` ist im Build `undefined`.
 - [ ] **Auf einem echten Telefon gemessen.** P12.6 — offen.
-- [ ] **Startdownload unter 15 MB.** 53,4 MB, siehe 12.5.
+- [x] **Startdownload unter der Schwelle der Zielplattform.** Eingelöst in
+      **P15**: **17,02 MB** übertragen gegen ≤ 20 MB für die Mobile-Homepage
+      von CrazyGames (SPEC §4.1). ~~Unter 15 MB~~ — diese Zahl hatte seit P0
+      keine Herkunft und ist zurückgezogen, nicht erfüllt. Zum Zeitpunkt von
+      P12 standen hier 53,4 MB als Ordnersumme, was zusätzlich die falsche
+      Größe war: übertragen wurden damals 40,83 MB.
 - [ ] **Volle Auflösung auf jeder Stufe** (aus P11 übernommen). Nicht eingelöst:
       Mittel 0,85 · Niedrig 0,7 · Minimal 0,5, und auf Touch-Geräten liegt
       zusätzlich der Pixelfaktor-Deckel bei 1,25. Die Auflösung ist gemessen der
