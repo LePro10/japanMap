@@ -7686,8 +7686,8 @@ gemessen**. Sie stehen als offene Zeile in den Akzeptanzkriterien.
 
 ## Akzeptanzkriterien
 
-**Stand 2026-08-18: sechs von neun eingelöst, zwei verfehlt mit Zahl, eine
-offen.**
+**Stand 2026-08-18: sieben von neun eingelöst, zwei verfehlt — beide mit der
+erreichten Zahl statt einer umgeschriebenen Vorgabe.**
 
 - [ ] **Der Erststart auf der mittleren Stufe liegt unter 15 MB.**
       **Verfehlt: 17,02 MB** gegen 40,83 MB vorher (−58,3 %). Gemessen am
@@ -7724,13 +7724,28 @@ offen.**
       1,2 ms; die 90,4 ms sind der GPU-Upload einer 2048²-Textur mit Mipmaps.
       Die erste Fassung lag bei 177,8 ms — Herleitung und die verworfene
       Begründung stehen in 15.4.
-- [ ] **Der Wächter pendelt nicht.**
-      **Nicht gemessen.** Die getriebene Schleife dieser Maschine liefert 3,3 ms
-      je Frame; damit ist der Herunterstufungszweig nie gelaufen. Was gemessen
-      ist: der Hochstufungszweig und die Schwellen. Was fehlt: synthetische
-      Last, Herunterstufen, Entlasten, und der Nachweis, dass er unten bleibt.
-      **Das ist die wichtigste offene Zeile dieser Phase** — die Sperrklinke ist
-      genau der Teil, der die Entscheidung aus P7 aufhebt.
+- [x] **Der Wächter pendelt nicht.** Gemessen mit synthetischer Last: 24 ms
+      Leerlauf je Frame, also der Frame-Abstand einer Maschine, die 40 Hz
+      schafft.
+
+      | Frame | Ereignis |
+      |---|---|
+      | 179 | Ultra → **Hoch** (60 Beruhigung + 120 Fenster = 180) |
+      | 359 | Hoch → **Mittel** |
+      | 360…1959 | Last weg, **1600 schnelle Frames** — kein Hochstufen |
+
+      Das ist der Nachweis, um den es geht. Nach der Entlastung liegt der
+      Frame-Abstand bei rund 3 ms, also weit unter `stepUpMs` = 14, und 1600
+      Frames sind **dreizehn** gute Fenster bei fünf erforderlichen. Ohne die
+      Sitzungsobergrenze wäre der Stand zweimal wieder hochgegangen und damit in
+      genau der Schleife gelandet, die dieses Projekt zweimal ausgebaut hat.
+      Endstand: **Mittel**, und dabei bleibt es bis „Neu einstufen".
+
+      > **Was diese Messung nicht ist: ein Beweis, dass Herunterstufen hilft.**
+      > Gefüttert wurde der *Frame-Abstand*, nicht die GPU — geprüft ist damit
+      > die Entscheidungslogik und die Sperrklinke, nicht ob „Mittel" auf einer
+      > überlasteten Maschine wirklich 60 Bilder liefert. Diese Frage gehört zu
+      > der Lücke, die P12.6, P13 und P14 ebenfalls offenlassen.
 - [x] **Das Bild auf der vollen Stufe ist von heute nicht zu unterscheiden.**
       Am `pass`: mittlere Helligkeit 67,19 gegen 67,12 auf der mittleren Stufe,
       `anteilNichtSchwarz` 0,99999 auf beiden. Die Texturauflösung ist im Bild
