@@ -19,7 +19,7 @@ import { createRoadUniforms, RoadMaterial, type RoadUniforms } from './materials
 import { buildDecalAtlas, buildDecals } from './roads/Decals';
 import { buildGuardrails } from './roads/GuardrailBuilder';
 import { ROAD_ASSETS } from './roads/roadAssets';
-import { AssetUpgrader, transferredBytes } from '@/core/AssetUpgrader';
+import { AssetUpgrader, loadTextureViaBitmap, transferredBytes } from '@/core/AssetUpgrader';
 import { ROAD_TEXTURE_SETS } from '@/core/AssetManifest';
 import { buildRoadGeometry } from './roads/RoadMeshBuilder';
 import { RoadNetwork } from './roads/RoadNetwork';
@@ -111,12 +111,30 @@ export class RoadSystem implements System {
       name: 'Asphalt',
       build: async () => {
         const voll = ROAD_TEXTURE_SETS.voll;
+        // **Über `createImageBitmap`, nicht über `resources.texture()`** — P15.7.
+        //
+        // Der `TextureLoader` reicht die Dekodierung an den Upload durch, und
+        // der steht dann in dem Frame, in dem `initTexture()` läuft. Dieselbe
+        // Datei über beide Wege, je drei Läufe:
+        //
+        //   ImageBitmap     dekodieren 82,7…87,8 ms   initTexture  5,8…7,2 ms
+        //   TextureLoader   dekodieren  9,5…12,2 ms   initTexture 82,1…92,5 ms
+        //
+        // Beide kosten dasselbe; der Unterschied ist, **wo** es anfällt. Für
+        // den Nachlader ist das der ganze Unterschied zwischen einem
+        // 90-ms-Ruckler und einem, den man nicht sieht.
         const [neuAlbedo, neuNormal, neuArm] = await Promise.all([
-          context.resources.texture(voll.albedo, { srgb: true, anisotropy }),
-          context.resources.texture(voll.normal, { srgb: false, anisotropy }),
-          context.resources.texture(voll.arm, { srgb: false, anisotropy }),
+          loadTextureViaBitmap(voll.albedo, { srgb: true, anisotropy }),
+          loadTextureViaBitmap(voll.normal, { srgb: false, anisotropy }),
+          loadTextureViaBitmap(voll.arm, { srgb: false, anisotropy }),
         ]);
-        for (const texture of [neuAlbedo, neuNormal, neuArm]) this.#prepare(texture);
+        // In die Buchhaltung des `ResourceManager`, sonst überleben sie ein
+        // `engine.dispose()` — dieser Weg legt sie selbst an, statt sie über
+        // `resources.texture()` zu beziehen.
+        for (const texture of [neuAlbedo, neuNormal, neuArm]) {
+          this.#prepare(texture);
+          context.resources.track(texture);
+        }
         const bytes = [voll.albedo, voll.normal, voll.arm].reduce(
           (sum, url) => sum + transferredBytes(url),
           0,
