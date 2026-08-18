@@ -412,7 +412,7 @@ Kitbashing aus verschiedenen Gratis-Quellen scheitert sonst am Stil-Mix.
 | **P12** ◐ | Handy, Touch und die echten Kosten | Fingersteuerung, A/B-Messstand, Stufenleiter spannt 4,4× statt 1,6× |
 | **P13** ◐ | Startbildschirm, Reiter, Debug im Menü | Im laufenden Bild steht nichts von der Oberfläche |
 | **P14** ◐ | Die Fahrschicht: Freeride | Ein Auto fährt alle acht Strecken, 0 cm Durchdringung |
-| **P15** ◐ | Der gestufte Start | Erststart 40,83 → **17,02 MB**, Wächter über der Bildrate, Nachladen im Hintergrund |
+| **P15** ✅ | Der gestufte Start | Erststart 40,83 → **17,02 MB** (Mobile-Schwelle 20), Wächter über der Bildrate, Nachladen im Hintergrund |
 
 **Aktueller Stand (2026-08-18): P0–P6 und P8 abgeschlossen; P7 und P10–P15 auf
 ◐.** Die Karte trägt seit P14 ein Spiel — ein Auto fährt alle acht Strecken mit
