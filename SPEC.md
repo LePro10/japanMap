@@ -337,14 +337,29 @@ Kitbashing aus verschiedenen Gratis-Quellen scheitert sonst am Stil-Mix.
 | **P6** ✅ | Stadt-Generator, Emissive-Neon, nasser Asphalt, Reflexions-Entscheidung | Der Money-Shot |
 | **P7** ◐ | Quality-Presets, Streaming, Ladebildschirm, Profiling | Auslieferbar |
 | **P8** ✅ | Politur: Stufen im Gelände, PostFX-Staffelung, Wolken, Terrain-Durchgang, Fluss, Pfade, Fischerdorf, Sandō, Stadtrand, Weltrand | Die Karte trägt ein Spiel |
-| **P9** ○ | Die Fahrschicht — Kollision, Fahrzeug, Rundenlogik | Ein Auto fährt eine Runde |
+| **P9** ◐ | Die Fahrschicht — Kollision, Fahrzeug, Rundenlogik | 9.1 und 9.2 in P14 eingelöst; **9.3 Rundenlogik ungebaut** |
 | **P10** ◐ | Stufen, Regler, Auslieferung | Die Stufen tun, was sie versprechen |
+| **P11** ◐ | Sichtbarkeit & Dichte | Bäume bis 1200 m, Ausdünnung nach Entfernung statt Fläche, Boden trägt seine Farbe |
+| **P12** ◐ | Handy, Touch und die echten Kosten | Fingersteuerung, A/B-Messstand, Stufenleiter spannt 4,4× statt 1,6× |
+| **P13** ◐ | Startbildschirm, Reiter, Debug im Menü | Im laufenden Bild steht nichts von der Oberfläche |
+| **P14** ◐ | Die Fahrschicht: Freeride | Ein Auto fährt alle acht Strecken, 0 cm Durchdringung |
+| **P15** ◐ | Der gestufte Start | Erststart 40,83 → **17,02 MB**, Wächter über der Bildrate, Nachladen im Hintergrund |
 
-**Aktueller Stand (2026-08-08): P0–P6 und P8 abgeschlossen. P7 bleibt auf ◐**
-— zwei seiner Kriterien sind ohne Zielhardware nicht prüfbar, eines
-(Startdownload) ist gemessen verfehlt. **P10 ist zu zwei Aufgaben von vier
-gebaut** (10.0 Messlauf, 10.1 Stufenkopplung); 10.2 (Spieler-Oberfläche) und
-10.3/10.4 stehen aus. **P9 ist geplant und nicht gebaut.**
+**Aktueller Stand (2026-08-18): P0–P6 und P8 abgeschlossen; P7 und P10–P15 auf
+◐.** Die Karte trägt seit P14 ein Spiel — ein Auto fährt alle acht Strecken mit
+0 cm Durchdringung —, und seit P15 lädt der Erststart **17,02 MB** statt 40,83.
+Was in den ◐-Phasen offen ist, steht als Tabelle im Kopf von
+[PLAN.md](PLAN.md); die Kurzfassung: **9.3 Rundenlogik ist ungebaut**, es gibt
+**keinen Ton**, und vier Phasen in Folge lassen dieselbe Zeile offen — „auf
+echter Zielhardware gemessen".
+
+> ~~Aktueller Stand (2026-08-08)~~ stand hier bis zum 2026-08-18, also zehn Tage
+> und fünf Phasen zu lange. Es ist **das dritte Mal**, dass eine Statuszeile
+> dieses Projekts veraltet gefunden wird (siehe den Absatz darunter über
+> „Nächste Phase: P5" und die Tabelle ohne Haken). Der Grund ist jedes Mal
+> derselbe: die Zeile gehört keiner Phase, also zieht sie beim Phasenabschluss
+> niemand nach. Die Tabelle darüber hat seit heute für **jede** Phase eine
+> Zeile — eine fehlende fällt damit auf, eine veraltete Prosazeile nicht.
 
 Die Budgets aus §4 sind auf Ultra mit vorgefüllter Streuung nachgemessen:
 **173 Draw-Calls** von 800, **958 068 Dreiecke** von 3 000 000,
