@@ -39,7 +39,7 @@
  * **Stufe**, nicht die Dateien.
  */
 
-import type { Texture } from 'three';
+import { NoColorSpace, RepeatWrapping, SRGBColorSpace, Texture } from 'three';
 
 import type { AssetTier } from './AssetManifest';
 import type { EngineContext, System } from './System';
@@ -217,6 +217,64 @@ export class AssetUpgrader implements System {
  * der Eintrag (andere Herkunft, zu früh gefragt), kommt 0 zurück statt einer
  * geschätzten Zahl. Eine Anzeige, die rät, ist schlimmer als eine, die schweigt.
  */
+/**
+ * Eine Textur über `createImageBitmap` laden statt über `TextureLoader` — P15.7.
+ *
+ * ## Der Unterschied ist gemessen, nicht vermutet
+ *
+ * Dieselbe Datei (`asphalt_02/nor_gl.jpg`, 2048², 3,21 MB), beide Wege, je drei
+ * Läufe, auf einer RX 7900 XTX:
+ *
+ * | Weg | Dekodieren | `initTexture` |
+ * |---|---|---|
+ * | **ImageBitmap** | 82,7…87,8 ms | **5,8…7,2 ms** |
+ * | `TextureLoader` | 9,5…12,2 ms | **82,1…92,5 ms** |
+ *
+ * **Beide kosten dasselbe.** Der Unterschied ist, *wo* es anfällt: ein
+ * `HTMLImageElement` reicht die Dekodierung an den Upload durch, und der läuft
+ * in dem Frame, in dem `initTexture()` steht. `createImageBitmap` erledigt sie
+ * vorher, in einem `await` neben dem Frame.
+ *
+ * Für den Nachlader ist das der ganze Unterschied zwischen einem 90-ms-Ruckler
+ * und einem, den man nicht sieht — die Zahl steht als verfehltes Kriterium in
+ * PLAN.md P15.
+ *
+ * ## Warum `imageOrientation: 'flipY'` und dann `texture.flipY = false`
+ *
+ * Das ist die Stelle, an der ein stiller Fehler entstünde. Ein
+ * `HTMLImageElement` kommt in three mit `flipY = true` an und wird beim Upload
+ * über `UNPACK_FLIP_Y_WEBGL` gespiegelt. Für eine `ImageBitmap` gilt das
+ * **nicht** zuverlässig — deshalb wird hier schon beim Erzeugen gespiegelt und
+ * die Textur danach auf `flipY = false` gesetzt. Ergebnis: dieselbe
+ * Zeilenreihenfolge wie auf dem alten Weg.
+ *
+ * Dieselbe Falle steht seit P1 in `createLayerArray`, dort für `texImage3D`
+ * gelöst („eine Array-Textur kann sich nicht wie eine normale Textur verhalten,
+ * wenn man es ihr nicht selbst beibringt"). Eine verkehrt herum geladene
+ * Normalmap sieht fast richtig aus — das Licht kommt nur von der falschen
+ * Seite, und das fällt an einer nassen Fahrbahn erst im Vergleich auf.
+ */
+export async function loadTextureViaBitmap(
+  url: string,
+  options: { srgb: boolean; anisotropy: number },
+): Promise<Texture> {
+  const response = await fetch(url, { priority: 'low' } as RequestInit);
+  if (!response.ok) {
+    throw new Error(`Textur nicht ladbar: ${url} → ${response.status} ${response.statusText}`);
+  }
+  const bitmap = await createImageBitmap(await response.blob(), { imageOrientation: 'flipY' });
+
+  const texture = new Texture(bitmap);
+  texture.flipY = false; // schon in der Bitmap gespiegelt, siehe oben
+  texture.colorSpace = options.srgb ? SRGBColorSpace : NoColorSpace;
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.anisotropy = options.anisotropy;
+  texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 export function transferredBytes(url: string): number {
   const absolute = new URL(url, location.href).href;
   const entries = performance.getEntriesByName(absolute, 'resource');

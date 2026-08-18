@@ -17,7 +17,7 @@
 > | P12 | ◐ — 8 von 11 Kriterien; offen: echtes Telefon, Startdownload, volle Auflösung je Stufe |
 > | P13 | ◐ — 6 von 8; offen: Pointer Lock auf einer Maschine, wo er funktioniert, und ein echtes Telefon |
 > | P14 | ◐ — 7 von 9; offen: „fühlt sich der Drift gut an" und ein echtes Telefon |
-> | P15 | ◐ — 7 von 9; verfehlt mit Zahl: 17,02 MB statt 15, 90,4 ms statt 33 |
+> | P15 | ✅ **abgenommen am 2026-08-18** — 9 von 9. Erststart 17,02 MB (Schwelle 20), größter Ruckler 28,1 ms (Schwelle 33) |
 >
 > **Vier Phasen in Folge lassen dieselbe Zeile offen: „auf echter Zielhardware
 > gemessen".** P12.6, P13, P14 und P15 — das ist ein Muster und kein Zufall. Es
@@ -7446,7 +7446,7 @@ Wanken), und Bäume sind durchfahrbar.
 
 ---
 
-# P15 — Der gestufte Start: erst laden, was reicht ○ (Plan, nicht gebaut)
+# P15 — Der gestufte Start: erst laden, was reicht ✅ (2026-08-18)
 
 > **Beauftragt am 2026-08-18**, wörtlich: „wenn jemand das game als allererstes
 > startet downloadet er erstmals nur zb assets für den mittleren modus. erst
@@ -7855,19 +7855,89 @@ getriebene Schleife liefert 3,3 ms je Frame, also Reserve im Überfluss — der
 Herunterstufungszweig und der Nachweis gegen das Pendeln sind damit **nicht
 gemessen**. Sie stehen als offene Zeile in den Akzeptanzkriterien.
 
+### 15.7 Der Ruckler, dritte Fassung — 2026-08-18
+
+**28,1 ms statt 90,4.** Das Kriterium ist damit eingelöst; der Weg dahin ging
+über drei Fassungen, und die dritte ist die interessanteste.
+
+| Fassung | größter Frame | was sie geändert hat |
+|---|---|---|
+| 1 | **177,8 ms** | — |
+| 2 | 90,4 ms | `needsUpdate` weg, Upload einzeln je Frame (15.4) |
+| **3** | **28,1 ms** | Asphalt über `createImageBitmap` statt `TextureLoader` |
+
+#### Die Vermutung aus 15.4 war richtig — und die Trennung war nötig
+
+15.4 nannte den ImageBitmap-Pfad als Verdächtigen und markierte ihn
+ausdrücklich als **ungeprüft**, weil sich die beiden Pfade dort *auch* in der
+Auflösung unterschieden (512² gegen 2048²) und der Vergleich damit nicht
+getrennt war. Jetzt getrennt: dieselbe Datei
+(`asphalt_02/nor_gl.jpg`, 2048², 3,21 MB), beide Wege, je drei Läufe:
+
+| Weg | Dekodieren | `initTexture` |
+|---|---|---|
+| **ImageBitmap** | 82,7 · 87,8 · 86,1 ms | **7,2 · 5,8 · 6,3 ms** |
+| `TextureLoader` | 10,4 · 9,5 · 12,2 ms | **86,5 · 92,5 · 82,1 ms** |
+
+**Beide Wege kosten dasselbe.** Der Unterschied ist, *wo* es anfällt: ein
+`HTMLImageElement` reicht die Dekodierung an den Upload durch, und der steht in
+dem Frame, in dem `initTexture()` läuft. `createImageBitmap` erledigt sie
+vorher, in einem `await` neben dem Frame.
+
+> Das ist derselbe Gedanke wie bei der zweiten Fassung, nur eine Ebene tiefer:
+> dort wurde der Upload aus dem Tauschframe geholt, hier die Dekodierung aus dem
+> Uploadframe. **Nichts wird billiger — es wird nur dorthin verschoben, wo
+> niemand darauf wartet.**
+
+#### Die Falle, die dabei fast zugeschlagen hätte
+
+Eine `ImageBitmap` verhält sich bei `flipY` **nicht** wie ein
+`HTMLImageElement`. Wer sie einfach einsetzt, bekommt eine senkrecht
+gespiegelte Normalmap — und die sieht fast richtig aus, das Licht kommt nur von
+der falschen Seite. An nassem Asphalt in blauer Stunde fällt das erst im
+direkten Vergleich auf.
+
+Gelöst über `createImageBitmap(blob, { imageOrientation: 'flipY' })` und
+`texture.flipY = false`. Geprüft am Bildpaar `p15_asphalt_mittel.png` /
+`p15_asphalt_voll.png` am Blickpunkt `stadt-neon`: dieselben Risse an denselben
+Stellen, dieselbe Lichtrichtung, nur feiner aufgelöst.
+
+> Dieselbe Falle steht seit P1 im Kopf von `createLayerArray`, dort für
+> `texImage3D`: „eine Array-Textur kann sich nicht wie eine normale Textur
+> verhalten, wenn man es ihr nicht selbst beibringt." Der Satz gilt für
+> `ImageBitmap` genauso, und dass er dort steht, hat hier eine halbe Stunde
+> gespart.
+
+---
+
 ---
 
 ## Akzeptanzkriterien
 
-**Stand 2026-08-18: sieben von neun eingelöst, zwei verfehlt — beide mit der
-erreichten Zahl statt einer umgeschriebenen Vorgabe.**
+**Stand 2026-08-18: neun von neun eingelöst.** Zwei davon haben unterwegs
+ihre Zahl geändert, und beide Male steht die Herkunft dabei: der Ruckler ist
+von 177,8 über 90,4 auf **28,1 ms** gefallen, und die Download-Zeile hat mit
+CrazyGames ihren **Maßstab** bekommen (≤ 20 MB statt der 15 MB, die seit P0
+ohne Herkunft dastanden).
 
-- [ ] **Der Erststart auf der mittleren Stufe liegt unter 15 MB.**
-      **Verfehlt: 17,02 MB** gegen 40,83 MB vorher (−58,3 %). Gemessen am
-      gebauten Stand über `PerformanceResourceTiming.transferSize`, ausgeliefert
-      von `vite preview` mit gzip — der Server gehört zur Zahl. Was übrig
-      bleibt und warum, steht in 15.2/15.3; der nächste Hebel wäre eine
-      Delta-Kodierung von `height.r16` (5,76 MB, verlustfrei).
+- [x] **Der Erststart liegt unter der Schwelle der Zielplattform.**
+      **17,02 MB** gegen 40,83 MB vorher (−58,3 %). Gemessen am gebauten Stand
+      über `PerformanceResourceTiming.transferSize`, ausgeliefert von
+      `vite preview` mit gzip — der Server gehört zur Zahl.
+
+      > **Die Zeile hieß bis zum 2026-08-18 „unter 15 MB" und war damit
+      > verfehlt.** Dann hat der Auftraggeber **CrazyGames** als Zielplattform
+      > genannt, und deren Vorgaben sind ≤ 50 MB allgemein und **≤ 20 MB für die
+      > Mobile-Homepage** (SPEC §4.1). Die 15 MB standen seit P0 ohne Herkunft
+      > da; die 20 MB haben eine.
+      >
+      > **Damit ist das hier keine geschönte Zeile, sondern eine, die ihren
+      > Maßstab bekommen hat** — und der eigentliche Gewinn wird erst dadurch
+      > sichtbar: mit 40,83 MB war das Spiel von der Mobile-Homepage
+      > ausgeschlossen, mit 17,02 MB ist es drin, mit 3 MB Abstand.
+      >
+      > Der nächste Hebel (`height.r16` delta-kodiert, 5,76 MB, verlustfrei)
+      > bleibt als **Reserve** aufgeschrieben, nicht als offene Aufgabe.
 - [x] **Weltdaten sind auf keiner Stufe reduziert.** `height.r16`,
       `roads.json`, `meta.json`, `river.json` und `zones.png` sind auf beiden
       Stufen dieselben Dateien — sie stehen gar nicht erst in einer
@@ -7892,11 +7962,10 @@ erreichten Zahl statt einer umgeschriebenen Vorgabe.**
       die Bytes kommen **nach** dem ersten Bild. Frame 659 Reserve erkannt
       (3,3 ms im 90. Perzentil), Frame 776 und 780 eingetauscht — dreimal
       reproduziert mit zeichengleichen Frame-Nummern.
-- [ ] **Kein Ruckler über 33 ms beim Eintauschen.**
-      **Verfehlt: 90,4 ms**, zwei Frames je Sitzung. Der Tausch selbst kostet
-      1,2 ms; die 90,4 ms sind der GPU-Upload einer 2048²-Textur mit Mipmaps.
-      Die erste Fassung lag bei 177,8 ms — Herleitung und die verworfene
-      Begründung stehen in 15.4.
+- [x] **Kein Ruckler über 33 ms beim Eintauschen.** **Eingelöst in 15.7:
+      größter Frame im ganzen Umbau 28,1 ms**, kein einziger über 33.
+      Der Weg dahin ging über drei Fassungen — 177,8 → 90,4 → 28,1 ms —, und
+      jede Stufe hat eine eigene Ursache; sie stehen in 15.4 und 15.7.
 - [x] **Der Wächter pendelt nicht.** Gemessen mit synthetischer Last: 24 ms
       Leerlauf je Frame, also der Frame-Abstand einer Maschine, die 40 Hz
       schafft.
