@@ -18,6 +18,7 @@ import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
 import { ChunkManager } from './ChunkManager';
 import { createLayerArray } from './materials/createLayerArray';
+import { deriveNormalMap } from './deriveNormalMap';
 import {
   createTerrainDepthMaterial,
   createTerrainUniforms,
@@ -88,6 +89,14 @@ export class TerrainSystem implements System {
      * dass „Mittel" und „Niedrig" am Gelände gar nichts sparen.
      */
     gitter: '—',
+    /**
+     * Woher die Geländenormalen kommen und was sie gekostet haben — P15.3.
+     *
+     * Seit die Karte gerechnet statt geladen wird, ist das der einzige Ort, an
+     * dem der Tausch sichtbar ist: 5,49 MB weniger Startdownload gegen
+     * Rechenzeit beim Laden.
+     */
+    normalen: '—',
   };
 
   /**
@@ -114,17 +123,26 @@ export class TerrainSystem implements System {
     this.#sampler = sampler;
 
     const anisotropy = context.renderer.capabilities.getMaxAnisotropy();
-    const [normal, zones, albedoArray, normalArray, armArray] = await Promise.all([
+
+    // **`normal.png` wird nicht mehr geladen, sondern gerechnet — P15.3.**
+    // 5,49 MB des Startdownloads für Daten, die vollständig in `height.r16`
+    // stecken; und `height.r16` liegt an dieser Stelle bereits im Speicher, weil
+    // `TerrainSampler.load()` eine Zeile darüber gelaufen ist. Die Begründung
+    // samt gemessenem Quantisierungsfehler steht im Kopf von `deriveNormalMap`.
+    const derived = deriveNormalMap(sampler, anisotropy);
+    const normal = context.resources.track(derived.texture);
+    // Die Rechenzeit steht in den Ablesewerten und nicht nur in einem
+    // Konsolenlauf: sie ist der Preis dieses Tauschs (5,49 MB gegen ein paar
+    // Millisekunden), und ein Preis, den niemand ablesen kann, wird beim
+    // nächsten Umbau stillschweigend teurer.
+    this.#readouts.normalen = `abgeleitet · ${derived.millis.toFixed(1)} ms`;
+
+    const [zones, albedoArray, normalArray, armArray] = await Promise.all([
       // flipY: false ist hier keine Kosmetik. Die gebackenen Karten sind
       // zeilenweise von Nord (-Z) nach Süd (+Z) gespeichert, und der Shader
       // liest sie mit v = (z + half) / size. Mit dem Standard flipY = true
       // stünde die Zonenmaske spiegelverkehrt zur Höhe: Strandtextur im
       // Gebirge, Fels am Wasser.
-      context.resources.texture(TERRAIN_ASSETS.normal, {
-        srgb: false,
-        wrap: 'clamp',
-        flipY: false,
-      }),
       context.resources.texture(TERRAIN_ASSETS.zones, {
         srgb: false,
         wrap: 'clamp',
@@ -362,6 +380,13 @@ export class TerrainSystem implements System {
       readonly: true,
       label: 'Knotengitter',
       interval: 200,
+    });
+    folder.addBinding(this.#readouts, 'normalen', {
+      readonly: true,
+      label: 'Normalenkarte',
+      // Sie ändert sich nach dem Laden nicht mehr — ein enges Intervall wäre
+      // 300-mal je Minute dieselbe Zeichenkette.
+      interval: 2000,
     });
 
     // Auswahl einfrieren und dann weiterfliegen: das ist die einzige Art, die
