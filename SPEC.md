@@ -243,7 +243,7 @@ seit P0 standen, hatten nie eine Herkunft; die Zahlen unten haben eine.
 | **Startdownload für die Mobile-Homepage** | **≤ 20 MB** | **17,02 MB** | ✅ |
 | Gesamtgröße | ≤ 250 MB | 61,15 MB | ✅ |
 | Dateizahl | ≤ 1500 | 46 Anfragen | ✅ |
-| Zeit bis zum Spielen | ≤ 20 s | **8,61 s** ⚠ warm | siehe unten |
+| Zeit bis zum Spielen | ≤ 20 s | **0,9 s** ⚠ warm, localhost | siehe unten |
 | Browser | Chrome, Edge | ✅ | |
 | Eingabe | Maus, Tastatur, Touch | ✅ seit P12.4 | |
 | Chromebook, 4 GB RAM | muss flüssig laufen | **nicht geprüft** | ⚠ |
@@ -259,26 +259,46 @@ seit P0 standen, hatten nie eine Herkunft; die Zahlen unten haben eine.
 > aufgeschrieben — als Reserve für den Fall, dass die Schwelle sinkt oder
 > Inhalt dazukommt, nicht als offene Aufgabe.
 
-**Die Zeit bis zum Spielen ist die Zeile, die Sorgen macht — nicht der
-Download.** Gemessen am gebauten Stand: alle 46 Anfragen sind nach **0,71 s**
-durch, der „Starten"-Knopf steht nach **8,61 s**. Die Differenz ist reine
-Rechenzeit — HDRI-Faltung (PMREM), Imposter-Atlas, Stadtgenerator, Streuung,
-Shader-Übersetzung.
+**Die Zeit bis zum Spielen: 0,9 s** am gebauten Stand, warm und über localhost.
+Alle 46 Anfragen sind nach 0,71 s durch, der „Starten"-Knopf steht nach 0,9 s.
+Aufgeschlüsselt über `engine.bootProfile` sind die Rechenkosten **1006 ms**:
 
-Drei Einschränkungen, und alle drei zeigen in dieselbe Richtung:
+| Schritt | ms |
+|---|---|
+| Shader übersetzen | 299 |
+| RoadSystem | 209 |
+| AtmosphereSystem | 162 |
+| TerrainSystem | 135 |
+| PropSystem | 67 |
+| ScatterSystem | 52 |
+| LightingRig | 46 |
+| die übrigen elf zusammen | 36 |
 
-1. **Warm gemessen.** Der Lauf übertrug 0,01 MB; die 17,02 MB kamen aus dem
-   Cache. Auf einer echten Verbindung kommt die Ladezeit obendrauf — bei
-   10 Mbit/s rund 14 s für 17 MB, und dann sind die 20 s **überschritten**.
-2. **Auf einer RX 7900 XTX gemessen.** Auf einem Chromebook mit 4 GB RAM,
-   das CrazyGames ausdrücklich als Zielgerät nennt, ist die Rechenzeit ein
-   Vielfaches.
-3. **Der Download lädt nebenher**, die Rechenzeit nicht — die beiden addieren
-   sich nicht vollständig, aber auch nicht gar nicht. Wie stark sie sich
-   überlappen, ist **nicht gemessen**.
+> **Hier stand bis zum 2026-08-18 „8,61 s", und die Zahl war falsch gemessen.**
+> Sie stammte aus einem Konsolenlauf, der nach dem Erscheinen des Knopfes
+> pollte — gemessen hat er damit, **wann jemand hingesehen hat**, nicht wann der
+> Knopf kam. Der richtige Wert stand die ganze Zeit in der Konsole: der
+> Ladebildschirm schreibt seine eigene Dauer seit P13 (`Ladebildschirm: 0.9 s`).
+>
+> Daraus folgte auch eine falsche **Schlussfolgerung**, und die ist der teurere
+> Teil: „Zeit bis zum Spielen ist die Zeile, die Sorgen macht — nicht der
+> Download." Genau umgekehrt. Die Rechenzeit ist mit 1,0 s unauffällig; was auf
+> einer langsamen Verbindung zählt, ist der Download.
+>
+> Lehre in einem Satz, und es ist dieselbe wie an sechs anderen Stellen dieser
+> Doku: **wer eine Zeit misst, muss den Startpunkt besitzen.** Ein Beobachter,
+> der von außen nachschaut, misst seinen eigenen Aufruf mit.
 
-Damit ist „Zeit bis zum Spielen" die nächste offene Messung dieses Projekts,
-und sie ist wichtiger als jedes weitere Megabyte.
+Was damit **weiterhin offen** ist, jetzt aber richtig eingeordnet:
+
+1. **Der Download auf einer echten Verbindung.** 17,02 MB sind bei 10 Mbit/s
+   rund 14 s, bei 5 Mbit/s rund 27 s — und dann sind die 20 s überschritten.
+   Das ist der Posten, der die Zeile reißen kann, nicht die Rechenzeit.
+2. **Ein Chromebook mit 4 GB RAM**, das CrazyGames ausdrücklich als Zielgerät
+   nennt. Die 1006 ms sind auf einer RX 7900 XTX gemessen; dort ist es ein
+   Vielfaches. `engine.bootProfile` steht genau dafür im Auslieferungsbau und
+   nicht nur im Dev-Build — die Aufschlüsselung ist auf dem fremden Gerät
+   ablesbar.
 
 **Quality-Presets** skalieren: ~~Schattenauflösung, SSR an/aus,~~ N8AO-Stufe,
 ~~Sichtweite~~, Vegetationsdichte, Render-Scale. Von Anfang an eingebaut —

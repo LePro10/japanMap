@@ -27,6 +27,8 @@ export class Engine {
   #debug: DebugHost | null = null;
   #present: Presenter;
   #initialized = false;
+  /** Dauer jedes Startschritts in ms — siehe `bootProfile`. */
+  readonly #bootProfile: { label: string; ms: number }[] = [];
   #disposed = false;
   #width = 1;
   #height = 1;
@@ -149,7 +151,9 @@ export class Engine {
       // `requestAnimationFrame`: letzteres feuert in einem verdeckten Tab gar
       // nicht, und das Laden bliebe stehen.
       await new Promise((resolve) => setTimeout(resolve, 0));
+      const begonnen = performance.now();
       await system.init?.(context);
+      this.#bootProfile.push({ label: system.name, ms: performance.now() - begonnen });
     }
     this.#initialized = true;
 
@@ -160,8 +164,30 @@ export class Engine {
     // des *vorherigen* Schritts im Bild — im gemessenen Ladeverlauf sprang es
     // von 76 % direkt auf 100 %.
     await new Promise((resolve) => setTimeout(resolve, 0));
+    const vorUebersetzung = performance.now();
     await this.#precompile();
+    this.#bootProfile.push({ label: 'Shader übersetzen', ms: performance.now() - vorUebersetzung });
     this.bus.emit('engine:loading', { step: total, total, label: 'fertig' });
+  }
+
+  /**
+   * Wie lange jeder Schritt des Starts gedauert hat — P15.7.
+   *
+   * ## Wofür das gebraucht wird
+   *
+   * CrazyGames prüft die **Zeit bis zum Spielen** und lässt dafür 20 s zu
+   * (SPEC §4.1). Gemessen am 2026-08-18: alle Netzanfragen sind nach 0,71 s
+   * durch, der „Starten"-Knopf steht nach **8,61 s**. Die Differenz ist reine
+   * Rechenzeit, und ohne diese Aufschlüsselung war nicht zu sagen, welche.
+   *
+   * Der Wert ist **kein Debug-Werkzeug** und hängt deshalb nicht an
+   * `import.meta.env.DEV`: er kostet ein Feld und zwei `performance.now()` je
+   * System, und er ist die einzige Möglichkeit, dieselbe Frage auf einem
+   * fremden Gerät zu stellen — genau dort, wo sie zählt. Wer ihn im Build
+   * abliest, ruft ihn über den Ladebildschirm ab.
+   */
+  get bootProfile(): readonly { label: string; ms: number }[] {
+    return this.#bootProfile;
   }
 
   /**
