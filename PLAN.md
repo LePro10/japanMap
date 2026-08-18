@@ -5,8 +5,35 @@
 > merken, dass eine Phase fertig ist**. Wo etwas im Quelltext steht und was mit
 > was redet, sagt [ARCHITECTURE.md](ARCHITECTURE.md).
 >
-> **Stand: 2026-08-08 · P0–P6 und P8 abgenommen · P7 ◐ · P9 geplant ·
-> P10 zu zwei von vier Aufgaben gebaut**
+> **Stand: 2026-08-18 · P0–P6 und P8 abgenommen · P7, P10–P15 ◐ ·
+> P9 durch P14 zu zwei Dritteln eingelöst (9.3 Rundenlogik offen)**
+>
+> | Phase | Stand |
+> |---|---|
+> | P0–P6, P8 | ✅ abgenommen |
+> | P7 | ◐ — eines der fünf Kriterien gemessen verfehlt (Startdownload) |
+> | P9 | ◐ — 9.1 und 9.2 in P14 gebaut; **9.3 Rundenlogik ungebaut**, die Tore aus 8.11 wertet weiterhin niemand aus |
+> | P10 | ◐ — 10.0/10.1/10.2 gebaut, 10.3 in P11.5 aufgegangen, 10.4 teilweise |
+> | P11 | ◐ — 11.2 bis 11.6 gebaut und einzeln gemessen, **Akzeptanzliste nie abgehakt** |
+> | P12 | ◐ — 8 von 11 Kriterien; offen: echtes Telefon, Startdownload, volle Auflösung je Stufe |
+> | P13 | ◐ — 6 von 8; offen: Pointer Lock auf einer Maschine, wo er funktioniert, und ein echtes Telefon |
+> | P14 | ◐ — 7 von 9; offen: „fühlt sich der Drift gut an" und ein echtes Telefon |
+> | P15 | ◐ — 7 von 9; verfehlt mit Zahl: 17,02 MB statt 15, 90,4 ms statt 33 |
+>
+> **Vier Phasen in Folge lassen dieselbe Zeile offen: „auf echter Zielhardware
+> gemessen".** P12.6, P13, P14 und P15 — das ist ein Muster und kein Zufall. Es
+> gehört einmal benannt statt viermal neu entschuldigt: diese Entwicklungskette
+> hat kein Telefon und keine GTX-1660-Klasse, und alles, was daran hängt
+> (Bildrate als Aussage über Zielhardware, Pointer Lock, Fingersteuerung am
+> Gerät), ist hier **nicht prüfbar**. Der Weg dorthin steht gebaut bereit:
+> `npm run dev:lan`, und das Telefon fährt `japanMap.report({mode:'live'})`
+> selbst.
+>
+> Diese Kopfzeile stand bis zum 2026-08-18 auf „2026-08-08" und war damit zehn
+> Tage und fünf Phasen hinterher — **zum dritten Mal derselbe Fehler** (siehe
+> unten und SPEC §7). Deshalb steht der Stand jetzt als Tabelle da: eine Zeile
+> Prosa wird beim Phasenabschluss übersehen, eine Zeile in einer Tabelle, die
+> für jede Phase eine hat, fällt als fehlend auf.
 >
 > P7 ist vollständig gebaut. Zwei seiner fünf Akzeptanzkriterien lassen sich auf
 > der Entwicklungsmaschine nicht prüfen (keine GTX-1660-Klasse, kein GPU-Timer),

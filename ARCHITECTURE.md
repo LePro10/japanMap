@@ -388,6 +388,56 @@ Daraus folgt eine Regel für **jeden** Zuhörer von `quality:changed`:
 Ersteinstufung, und die ist geordnet. `indexOf` gäbe −1, und `QUALITY_LEVELS[0]`
 wäre Ultra: eine schlechte Bildrate stufte damit **hoch**.
 
+### Die zweite Leiter: Asset-Stufen (ab P15)
+
+Seit P15 gibt es **zwei** Leitern, und sie sind verschiedener Natur:
+
+| | Qualitätsstufe | Asset-Stufe |
+|---|---|---|
+| Werte | ultra … minimal, plus „Eigen" | `mittel`, `voll` |
+| ändert | Renderzustand (Auflösung, Reichweite, Kette) | welche **Dateien** geladen sind |
+| Richtung | beides, unter der Sperrklinke | **nur aufwärts** |
+| wohnt in | `QualitySystem` | `core/AssetUpgrader.ts` |
+| Tabelle | `config/quality.config.ts` | `core/AssetManifest.ts` |
+
+Die Asset-Stufe kann von Natur aus nicht zurück: heruntergeladene Bytes sind
+ausgegeben, und die kleine Textur wieder einzuhängen kostete ein schlechteres
+Bild für null Ersparnis. Wird die Bildrate nach dem Hochstufen knapp, ist das
+Sache der **Qualitätsstufe**.
+
+**Drei Klassen im Manifest, und die Trennung ist die tragende Zeile:**
+
+| Klasse | Bedeutung | Beispiele |
+|---|---|---|
+| `welt` | bestimmt die **Form** der Welt — nie gestuft | `height.r16`, `roads.json`, `meta.json`, `river.json`, `zones.png` |
+| `bild` | bestimmt die **Güte** — gestuft, nachladbar | Himmel, IBL, Detailtexturen |
+| `abgeleitet` | wird gerechnet statt geladen | `normal.png` → `world/deriveNormalMap.ts` |
+
+`height.r16` halbiert spräche 2,9 MB und verschöbe den Boden unter dem
+Fahrzeug — P14 misst dort 0,00 cm Standhöhenfehler, und das wäre danach eine
+andere Zahl. Die Gegenprobe dazu ist `japanMap.driveProbe()`, und sie gehört
+nach jeder Änderung am Manifest gefahren.
+
+### Der Wächter — wer die Bildrate wachhält
+
+`QualitySystem.update()` hat zwei Betriebsarten hintereinander:
+
+1. **Ersteinstufung** (P7.1) — misst von der Gerätevorschätzung aus und stuft
+   herunter, bis es hält. Endet mit einem Ergebnis.
+2. **Wächter** (P15.5) — läuft danach dauerhaft, in Fenstern von 120 Frames,
+   und entscheidet am **90. Perzentil** des Frame-Abstands.
+
+Der Wächter stuft in beide Richtungen und ist trotzdem keine Regelung, weil drei
+Dinge zusammenkommen: die Sitzungsobergrenze wandert nur nach unten, zwischen
+`stepDownMs` (20) und `stepUpMs` (14) liegt eine Lücke, und herauf geht es erst
+nach fünf guten Fenstern gegen ein schlechtes zum Herunterstufen. Gemessener
+Nachweis in PLAN.md P15.5: nach zwei erzwungenen Herunterstufungen bleibt der
+Stand über 1600 schnelle Frames unten.
+
+Eine Stufe **von Hand** zu wählen beendet den Wächter — dieselbe Regel wie bei
+der Ersteinstufung: eine Messung, die dem Nutzer seine Wahl nach zehn Sekunden
+wegnimmt, ist schlimmer als keine Messung. Zurück holt ihn „Neu einstufen".
+
 ---
 
 ## 7. Was nur im Dev-Build existiert
