@@ -7271,3 +7271,376 @@ Schaden, Motorgeräusch, Scheinwerfer mit Lichtkegel, Kollision zwischen zwei
 Fahrzeugen. Der Wagen kann sich nicht überschlagen (kinematisches Nicken und
 Wanken), und Bäume sind durchfahrbar.
 
+---
+
+# P15 — Der gestufte Start: erst laden, was reicht ○ (Plan, nicht gebaut)
+
+> **Beauftragt am 2026-08-18**, wörtlich: „wenn jemand das game als allererstes
+> startet downloadet er erstmals nur zb assets für den mittleren modus. erst
+> wenn die hardware gut genug ist wird automatisch hochgeschalten. wichtig ist
+> das man immer mind 60 fps hat. und wenn man hochschaltet wird on the go im
+> hintergrund den rest runtergeladen."
+
+**Ziel:** Der Startdownload trägt nur, was die mittlere Stufe braucht. Was
+darüber hinausgeht, kommt im Hintergrund nach — und zwar erst, wenn die Maschine
+gezeigt hat, dass sie es tragen kann. Die 60 Bilder je Sekunde sind dabei die
+Bedingung, nicht das Ziel.
+
+---
+
+## Der Befund, aus dem diese Phase entsteht
+
+### Was heute wirklich übertragen wird — gemessen am 2026-08-18
+
+Am **gebauten** Stand (Port 4180), `PerformanceResourceTiming.transferSize`,
+frisch geladen, bis alle Anfragen durch sind:
+
+| Kategorie | übertragen | Anteil |
+|---|---|---|
+| **Texturen** | **18,70 MB** | 46 % |
+| HDRIs | 14,30 MB | 35 % |
+| Weltdaten | 5,86 MB | 14 % |
+| Modelle | 1,50 MB | 4 % |
+| Code | 0,43 MB | 1 % |
+| **Summe, 47 Anfragen** | **40,83 MB** | |
+
+> **Diese Zahl ist nicht die 53,4 MB aus P12.5, und beide sind richtig.** Die
+> 53,4 MB sind eine **Ordnersumme** über `dist/` (roh, Brotli wo vorhanden), die
+> 40,83 MB sind **übertragene Bytes** — Vite legt gzip drüber, wo der Client es
+> anbietet. Die Einzelposten: Himmel 15,34 → 9,19 · `height.r16` 8,00 → 5,76 ·
+> IBL 6,21 → 5,11. `normal.png` (5,49) und `shade.png` (1,33) sind schon
+> deflatiert und schrumpfen nicht weiter.
+>
+> **Und die 29 `.br`-Dateien in `dist/` werden von `vite preview` gar nicht
+> ausgeliefert** — gemessen `content-encoding: gzip` bei `height.r16`. Auf einem
+> Host, der sie ausliefert, liegt die Summe niedriger. Wer die Zahl zitiert,
+> zitiert deshalb den Server dazu.
+
+**Der größte Block sind die Texturen, nicht die HDRIs.** Das steht so an keiner
+Stelle der bisherigen Doku, und es dreht die Rangfolge der Hebel um: P12.5 hat
+das IBL halbiert (der zweitgrößte *Einzelposten*) und dabei den größten *Block*
+nicht angefasst.
+
+### Was es dafür schon gibt
+
+Diese Phase fängt nicht bei null an — drei von fünf Bausteinen stehen:
+
+| Baustein | Stand |
+|---|---|
+| `estimateDevice()` (`render/deviceTier.ts`) | da seit P8.3 — GPU-Zeichenkette schlägt Kerne und Speicher, Software-Rasterisierer wird erkannt |
+| Ersteinstufung (`QualitySystem.update()`) | da seit P7.1 — misst rAF-Abstand, stuft **herunter**, speichert das Ergebnis |
+| Fünf Stufen mit gemessener Wirkung | da seit P10.1/P12.3 — jede Stufe ändert jede Größe, die sie nennt |
+| **Stufenabhängige Assets** | **gibt es nicht** — jede Stufe lädt dieselben 40,83 MB |
+| **Nachladen im Hintergrund** | **gibt es nicht** |
+
+### Die Stelle, an der dieser Auftrag gegen eine Entscheidung des Projekts läuft
+
+Im Kopf von `QualitySystem.update()` steht wörtlich:
+
+> „Hochgestuft wird nie. Eine Regelung in beide Richtungen ist genau das, was in
+> diesem Projekt zweimal davongelaufen ist und beide Male ersatzlos entfernt
+> wurde: sie pendelt zwischen zwei Stufen, deren Kosten sich beim Umschalten
+> gegenseitig bedingen."
+
+**Der Auftrag verlangt jetzt genau das Hochstufen.** Das ist kein Grund, ihn
+abzulehnen, aber ein Grund, ihn anders zu bauen als eine Regelung. Der
+Unterschied, an dem diese Phase hängt:
+
+- Eine **Regelung** vergleicht laufend Soll und Ist und stellt in beide
+  Richtungen nach. Das ist die Schleife, die zweimal davongelaufen ist.
+- Ein **Sperrklinkenwerk** stuft herunter, wann immer die Bildrate es verlangt,
+  und herauf **nur** auf ein diskretes Ereignis: eine Stufe ist fertig geladen.
+  Die Obergrenze wandert dabei ausschließlich nach unten — wer einmal von „Hoch"
+  heruntergestuft wurde, bekommt „Hoch" in dieser Sitzung nicht wieder
+  angeboten.
+
+Damit kann das System nicht pendeln: jedes Hochstufen verbraucht ein Ereignis,
+das es nur einmal gibt, und jedes Herunterstufen verkleinert die Menge der
+erreichbaren Stufen dauerhaft. Das gehört in den Kopf der Datei, nicht in diesen
+Plan allein — der alte Absatz wird **als überholt markiert, nicht gelöscht**.
+
+---
+
+## Aufgaben
+
+**15.1 — Der Ist-Zustand ist gemessen** ✅ (oben, 2026-08-18)
+
+Erledigt, weil ohne diese Zahl jede Ersparnis eine Meinung wäre. Die Doku trug
+bis heute nur die Ordnersumme.
+
+---
+
+**15.2 — Ein Manifest mit Stufen statt einer Liste mit URLs**
+→ `src/world/terrainAssets.ts`, neu `src/core/AssetManifest.ts`
+
+**Befund.** `terrainAssets.ts` ist heute eine flache Abbildung Name → URL, alle
+über Vites `?url`. Das ist richtig gebaut (Inhalts-Hash, Tippfehler fallen beim
+Bauen auf) und trägt nur keine zweite Auflösung. Genau **eine** Ausnahme gibt es
+schon: `iblForDevice()` wählt zwischen 2k und 1k nach `pointer: coarse`. Das ist
+der Prototyp dieser Aufgabe, einmal von Hand hingeschrieben.
+
+**Fix.** Jeder Posten bekommt Varianten und eine **Klasse**:
+
+| Klasse | Bedeutung | Beispiele |
+|---|---|---|
+| `welt` | bestimmt die **Form** der Welt — nie reduzierbar, sonst fährt das Auto woanders als das Bild steht | `height.r16`, `roads.json`, `meta.json`, `river.json`, `zones.png` |
+| `bild` | bestimmt die **Güte** — reduzierbar, nachladbar | Himmel, IBL, Detailtexturen, `shade.png` |
+| `abgeleitet` | wird gar nicht geladen, sondern gerechnet | `normal.png` |
+
+Die Unterscheidung ist die wichtigste Zeile dieser Phase. `height.r16` in halber
+Auflösung zu laden spart 2,9 MB und verschiebt den Boden unter dem Fahrzeug —
+P14 hat 0,00 cm Standhöhenfehler gemessen, und das wäre danach eine andere Zahl.
+**Weltdaten werden nicht gestuft.**
+
+---
+
+**15.3 — Die Varianten erzeugen** → `tools/`, `npm run world`
+
+Vier Posten, drei Werkzeuge, jeder mit seiner eigenen Ersparnis:
+
+| Posten | heute | Ziel | Weg |
+|---|---|---|---|
+| `normal.png` | 5,49 MB | **0** | aus `height.r16` beim Laden rechnen — dieselben Sobel-Ableitungen, die der Baker anwendet |
+| Himmel-HDRI | 9,19 MB | ~2,5 MB | `tools/optimize-hdri.mjs --half`, das Werkzeug steht seit P12.5 und prüft seine eigene Ausgabe |
+| Detail-Normalmaps | 5,75 MB | ~1,5 MB | halbe Auflösung; **JPEG ist hier ohnehin falsch** — Chromasubsampling zerstört Normalen (SPEC §7) |
+| Diffuse + ARM | 5,45 MB | ~1,4 MB | halbe Auflösung, `sharp` ist schon Abhängigkeit |
+
+`normal.png` ist der beste Posten der ganzen Liste: 5,49 MB für Daten, die
+vollständig in einer Datei stecken, die ohnehin geladen wird. **Und es ist eine
+Bildänderung, keine Größenänderung** — P10 führt das ausdrücklich als Risiko.
+Also Vorher/Nachher am selben Blickpunkt gegen ein Rauschband, bevor die Zahl
+irgendwo als Erfolg auftaucht.
+
+### 15.2 und 15.3 gebaut und gemessen — 2026-08-18
+
+**Der Startdownload liegt bei 17,02 MB gegen 40,83 MB vorher.** Gemessen am
+gebauten Stand (Port 4180, `vite preview`, gzip), `transferSize` über alle
+Anfragen, frisch geladen:
+
+| Kategorie | vorher | nachher | Δ |
+|---|---|---|---|
+| Texturen | 18,70 MB | **5,23 MB** | −13,47 |
+| HDRIs | 14,30 MB | **3,99 MB** | −10,31 |
+| Weltdaten | 5,86 MB | **5,86 MB** | **±0** |
+| Modelle | 1,50 MB | 1,50 MB | ±0 |
+| Code | 0,43 MB | 0,43 MB | ±0 |
+| **Summe** | **40,83 MB** | **17,02 MB** | **−58,3 %** |
+
+Die Zeile, auf die es ankommt, ist die **dritte**: Weltdaten ±0. `height.r16`,
+`roads.json`, `meta.json`, `river.json` und `zones.png` kommen unverändert an —
+sie tragen den Boden, auf dem P14 0,00 cm Standhöhenfehler gemessen hat, und
+eine Ladeoptimierung, die den verschiebt, hätte diese Zahl still kaputtgemacht.
+
+Anfragen 47 → 46, `responseStatus ≥ 400` in **null** Fällen, Konsole ohne
+Fehler, `anteilNichtSchwarz` 0,99999.
+
+#### Was die drei Hebel einzeln gebracht haben
+
+| Hebel | Ersparnis | Preis |
+|---|---|---|
+| `normal.png` abgeleitet statt geladen | **5,49 MB** | 42,9 ms Rechenzeit beim Laden |
+| Himmel-HDRI 4096×2048 → 2048×1024 | 6,60 MB | halbe Auflösung hinter Nebel und Wolken |
+| IBL 2k → 1k (jetzt stufen-, nicht gerätegesteuert) | 3,71 MB | die 2,3 % aus P12.5, bis der Nachlader kommt |
+| Detailtexturen auf halbe Kantenlänge | 7,98 MB | 512² statt 1024², Asphalt 1024² statt 2048² |
+
+#### `normal.png` — der einzige Hebel ohne Bildverlust, und er ist nachgerechnet
+
+Die abgeleitete Karte wurde **Texel für Texel** gegen die gebackene Datei
+gehalten, alle 4 194 304, im laufenden Stand:
+
+| | |
+|---|---|
+| größte Abweichung je Kanal | **1 von 255** |
+| Texel mit Abweichung > 1 | **0 %** |
+| mittlere Abweichung je Kanal | 0,1151 |
+| mittlerer Winkelfehler | **0,0495°** |
+| größter Winkelfehler | 0,778° |
+
+Der Kopf von `deriveNormalMap.ts` sagt vorher, der Quantisierungsfehler des
+16-bit-Höhenfelds liege „knapp 0,3° im ungünstigsten Fall". Gemessen sind es
+0,778° am schlechtesten Texel und 0,0495° im Mittel — die Vorhersage war der
+Größenordnung nach richtig und im Extremwert um Faktor 2,6 zu optimistisch.
+**Beides gehört hier hin**, weil eine Vorhersage, die man nach der Messung
+stillschweigend anpasst, keine Vorhersage war.
+
+> **Diese Messung ersetzt kein Bild, und sie war trotzdem die richtige.** Ein
+> Differenzbild hätte „sieht gleich aus" gesagt; die Frage war aber, *wie weit*
+> die gerechnete Karte von der gebackenen abweicht, und darauf antwortet eine
+> Verteilung über alle Texel und kein Blick. Das Bild ist zusätzlich gemacht
+> (`.cache/shots/p15_pass_mittel.png`) — die Erosionsstruktur der Südflanke
+> steht darin, und genau die bräche als Erstes zusammen, wenn die Ableitung
+> falsch wäre.
+
+Rechenzeit über fünf Läufe: 39,2 · 40,5 · **42,9** · 64,4 · 64,6 ms (Median
+42,9). Die zwei langsamen Läufe sind derselbe Prozess mit derselben Eingabe —
+was sie unterscheidet, ist nicht gemessen, und die obere Schranke gehört
+deshalb genannt statt der Median allein.
+
+#### Was `iblForDevice()` ersetzt hat, und warum das keine Kosmetik ist
+
+P12.5 wählte das kleine IBL über `matchMedia('(pointer: coarse)')`. Die Messung
+dahinter gilt unverändert (42,97 % geänderte Pixel am `stadt-neon`, −2,3 %
+mittlere Helligkeit); falsch war der **Auslöser**. Ein Zeigegerät ist ein
+Hinweis auf die Hardware, keine Messung an ihr: ein Tablet mit starker GPU bekam
+die kleine Datei, ein zehn Jahre alter Laptop mit Maus die große — in beiden
+Fällen das Gegenteil der Absicht. Seit 15.2 entscheidet die Stufe.
+
+#### Was offen bleibt — und die 15-MB-Zeile ist knapp verfehlt
+
+**17,02 MB gegen 15 MB.** Die Zahl steht hier, statt gerundet zu werden. Was
+noch drinsteckt:
+
+| Posten | MB | Klasse |
+|---|---|---|
+| `height.r16` | 5,76 | **welt** — wird nicht angefasst |
+| Himmel 2k | 2,59 | bild |
+| `modular_wooden_pier.glb` | 1,47 | Modell, lädt bereits nach dem ersten Bild |
+| `shade.png` | 1,33 | bild — ungeprüft, ob halbierbar |
+| `zones.png` | 0,67 | welt (Splat-Gewichte) |
+
+Der nächste ehrliche Hebel ist `height.r16`: 8,00 MB roh, 5,76 MB gzip, und ein
+Höhenfeld ist die denkbar günstigste Datenart für eine **Delta**-Kodierung —
+benachbarte Texel unterscheiden sich um wenige Stufen. Das ist verlustfrei und
+rührt die Weltform nicht an, im Gegensatz zu einer geringeren Auflösung. Nicht
+gebaut, nicht gemessen, deshalb steht hier keine Zahl.
+
+**15.4 (Nachlader) und 15.5 (Wächter) sind nicht gebaut.** Damit ist von den
+drei Teilen des Auftrags einer eingelöst — der Erststart lädt die mittlere
+Stufe. Automatisch hochgeschaltet wird noch nicht, und die 60-Bilder-Zusage
+gilt weiterhin nur für die ersten 90 Frames nach dem Start.
+
+---
+
+**15.4 — Der Nachlader** → neu `src/core/AssetUpgrader.ts`
+
+**Fix.** Nach dem ersten Bild lädt er die Varianten der nächsthöheren Stufe im
+Hintergrund und tauscht sie ein. Drei Eigenschaften, jede gegen eine bekannte
+Falle dieses Projekts:
+
+1. **Dekodiert wird neben dem Hauptthread** (`createImageBitmap` auf dem
+   Antwort-`Blob`). Ein 4k-JPEG im Hauptthread zu dekodieren ist ein Ruckler,
+   und ein Ruckler ist genau das, was diese Phase verhindern soll.
+2. **Hochgeladen wird über Frames verteilt**, eine Textur je Frame, mit
+   `renderer.initTexture()` vor dem Einhängen. Sonst steht die Übersetzung im
+   Frame, in dem das Material sie zum ersten Mal sieht — dieselbe Klasse wie die
+   17 zusätzlichen Shader-Übersetzungen beim Stufenwechsel aus P10.2.
+3. **Geladen wird mit niedriger Priorität** (`fetch(…, { priority: 'low' })`),
+   damit das Nachladen dem Streusystem keine Bandbreite wegnimmt.
+
+**Und er lädt nichts, was niemand sehen wird.** Die Reihenfolge folgt der
+gemessenen Wirkung, nicht der Dateigröße: das IBL zuerst (P12.5 hat 42,97 %
+geänderte Pixel am `stadt-neon` gemessen), der Himmel zuletzt (er steht hinter
+Nebel und Wolken).
+
+---
+
+**15.5 — Der Wächter** → `src/render/QualitySystem.ts`
+
+**Befund.** Die Ersteinstufung endet, sobald sie ein Ergebnis hat. Danach sieht
+**niemand** mehr auf die Bildrate. Ein Gerät, das beim Start kühl ist und nach
+zehn Minuten drosselt, fährt den Rest der Sitzung unter 60 Bildern, ohne dass
+etwas passiert. Die Zusage „immer mindestens 60" ist heute eine Zusage über die
+ersten 90 Frames.
+
+**Fix.** Die Messung läuft weiter, als **Wächter** statt als Einstufung:
+
+- **Herunter** — wenn der Frame-Abstand über ein Fenster von 120 Frames im
+  90. Perzentil über `stepDownMs` liegt. Perzentil und nicht Median: ein
+  einzelner Ruckler ist keine Überlastung, aber jeder zehnte Frame zu spät ist
+  eine. Nach dem Herunterstufen: Aufwärmpause, dann neu messen — die Regel aus
+  CLAUDE.md.
+- **Herauf** — nur wenn *alle vier* zutreffen: (a) der Nachlader meldet eine
+  Stufe als vollständig, (b) das 90. Perzentil liegt über mindestens 600 Frames
+  unter `stepUpMs`, (c) die Stufe liegt unter der Sitzungsobergrenze, (d) es hat
+  in dieser Sitzung noch kein Herunterstufen von dieser Stufe gegeben.
+- **`stepUpMs` liegt deutlich unter `stepDownMs`** (Vorschlag 14 gegen 20 ms).
+  Das ist die Hysterese: zwischen „reicht nicht mehr" und „reicht wieder" liegt
+  eine Lücke, in der nichts passiert.
+- **Die Sitzungsobergrenze wandert nur nach unten.** Ein Herunterstufen von
+  „Hoch" streicht „Hoch" für den Rest der Sitzung.
+
+> Bei fünf Stufen und einer nur fallenden Obergrenze sind höchstens vier
+> Hochstufungen je Sitzung überhaupt möglich, und jede kostet ein
+> Ladeereignis. Das ist der Grund, warum das kein Regelkreis ist.
+
+---
+
+**15.6 — Die Messung**
+
+Ohne diese Aufgabe ist der Rest eine Behauptung:
+
+1. **Kalter Erststart je Stufe**, übertragene Bytes bis zum ersten Bild, über
+   `PerformanceResourceTiming` wie in 15.1 — mit geleertem Cache, nicht warm.
+   Warm gegen kalt hat in P4 den Faktor 18 verschluckt.
+2. **Der Ruckler beim Eintauschen**, als Zeitreihe der Frame-Abstände über das
+   Umschalten hinweg. Ein Mittelwert versteckt genau die Spitze, um die es geht.
+3. **Der Wächter unter Last.** Synthetisch belasten (Auflösung hochsetzen), bis
+   er heruntersteuert, dann entlasten — und nachweisen, dass er **nicht** wieder
+   hochgeht, weil kein Ladeereignis vorliegt. Das ist der Nachweis gegen das
+   Pendeln, und er gehört als Zahlenreihe hierher.
+4. **Das Bild auf der vollen Stufe ist von heute nicht zu unterscheiden.**
+   Differenzbild gegen das Wind- und Wolken-Rauschband, bei fester Frame-Zahl
+   auf beiden Seiten (die Lehre aus P12.5).
+
+---
+
+## Akzeptanzkriterien
+
+- [ ] **Der Erststart auf der mittleren Stufe liegt unter 15 MB** übertragener
+      Bytes bis zum ersten Bild — gemessen kalt, am gebauten Stand, mit dem
+      ausliefernden Server benannt. Wird die Zahl verfehlt, steht die erreichte
+      hier, so wie P7 es vorgemacht hat.
+- [ ] **Weltdaten sind auf keiner Stufe reduziert.** `height.r16`, `roads.json`,
+      `meta.json` und `river.json` kommen auf allen fünf Stufen bitgleich an —
+      nachgewiesen über den Inhalts-Hash, nicht über die Absicht.
+- [ ] **Die Standhöhe des Fahrzeugs bleibt 0,00 cm auf allen acht Strecken.**
+      `japanMap.driveProbe()` vor und nach dem Umbau. Das ist die Zeile, die
+      beweist, dass 15.2 die Klassen richtig getrennt hat.
+- [ ] **Auf einer Maschine mit Luft schaltet der Stand selbsttätig hoch**, und
+      die dafür nötigen Bytes kommen **nach** dem ersten Bild — als Zeitreihe
+      aus `PerformanceResourceTiming`, nicht als Behauptung.
+- [ ] **Kein Ruckler über 33 ms beim Eintauschen.** Zeitreihe der
+      Frame-Abstände über das Umschalten, größter Einzelwert genannt.
+- [ ] **Der Wächter pendelt nicht.** Unter synthetischer Last stuft er herunter;
+      nach dem Entlasten bleibt er unten, weil kein Ladeereignis vorliegt.
+      Zahlenreihe über mindestens 3000 Frames.
+- [ ] **Das Bild auf der vollen Stufe ist von heute nicht zu unterscheiden.**
+      Differenzbild gegen das gemessene Rauschband, drei Blickpunkte.
+- [ ] **`normal.png` abzuleiten ändert das Bild nicht** über das Rauschband
+      hinaus — oder es bleibt geladen und die 5,49 MB stehen weiter hier.
+- [ ] **`typecheck` und `build` laufen sauber durch**, kein Dev-Code im Build,
+      `npm run world` weiterhin bitgleich reproduzierbar.
+
+---
+
+## Risiken
+
+- **„Immer 60 FPS" ist auf dieser Maschine nicht prüfbar.** Eine RX 7900 XTX
+  hält sie überall; ein Gerät, das sie verfehlt, gibt es hier nicht. → Der
+  Wächter wird gegen **synthetische** Last geprüft (Auflösung hochsetzen), und
+  die Zeile „auf Zielhardware gemessen" bleibt offen wie in P12.6, P13 und P14.
+  Vier Phasen mit derselben Lücke sind ein Muster, kein Zufall — es gehört
+  benannt und nicht viermal neu entschuldigt.
+- **Ein zweiter Satz Texturen verdoppelt `dist/`.** Es wird immer nur einer
+  geladen, aber die Ordnersumme wächst — genau die Verwechslung, vor der P12.5
+  schon einmal warnen musste. → Die Kennzahl dieser Phase sind **übertragene
+  Bytes**, und das steht in jeder Tabelle dabei.
+- **Der Nachlader tauscht Texturen unter laufenden Materialien aus.** Wer eine
+  Ressource freigibt, von der noch jemand etwas will, baut den `ZoneMap`-Fehler
+  aus P4 nach (`bitmap.close()` vor der Abfrage → Auflösung 0 → `NaN`). → Erst
+  einhängen, dann die alte freigeben, und nie in der Mitte eines Frames.
+- **Halbe Auflösung ist eine Bildänderung.** Auf der mittleren Stufe ist sie
+  gewollt; sie darf aber nicht auf der vollen Stufe hängen bleiben, weil der
+  Nachlader stillschweigend nicht durchgekommen ist. → Der Zustand des
+  Nachladers ist im Debug-Panel ablesbar, und ein Fehlschlag ist eine
+  Konsolenzeile, kein Schweigen.
+- **Das Sperrklinkenwerk kann eine Maschine unter Wert verkaufen.** Wer beim
+  Start ein Fenster verdeckt hat, wird heruntergestuft und kommt in dieser
+  Sitzung nicht mehr hoch. → Das ist gewollt (lieber zu niedrig als pendelnd),
+  und der Ausweg ist der Knopf „Neu einstufen", den P10.2 schon gebaut hat.
+
+## Was P15 ausdrücklich **nicht** enthält
+
+Kein Service-Worker, kein Offline-Betrieb, kein KTX2 (offene Entscheidung 7
+bleibt offen — sie ist ein eigener Durchgang und hängt an einem Encoder, den
+dieses Projekt noch nicht geprüft hat). Keine Rundenlogik, kein Ton.

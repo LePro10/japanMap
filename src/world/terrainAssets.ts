@@ -8,7 +8,6 @@
  */
 
 import heightUrl from '../../assets/generated/terrain/height.r16?url';
-import normalUrl from '../../assets/generated/terrain/normal.png?url';
 import zonesUrl from '../../assets/generated/terrain/zones.png?url';
 import metaUrl from '../../assets/generated/terrain/meta.json?url';
 import shadeUrl from '../../assets/generated/terrain/shade.png?url';
@@ -21,30 +20,26 @@ import shadeMetaUrl from '../../assets/generated/terrain/shade.json?url';
 // den Straßen.
 import riverUrl from '../../assets/generated/terrain/river.json?url';
 
-import skyUrl from '../../assets/hdri/industrial_sunset_02_puresky_4k.hdr?url';
-import iblUrl from '../../assets/hdri/rooftop_night_2k.hdr?url';
-import iblSmallUrl from '../../assets/generated/hdri/rooftop_night_1k.hdr?url';
 import sunUrl from '../../assets/generated/lighting/industrial_sunset_02_puresky_4k.sun.json?url';
 
-import rockAlbedo from '../../assets/generated/textures/rock_face_03/Diffuse.jpg?url';
-import rockNormal from '../../assets/generated/textures/rock_face_03/nor_gl.jpg?url';
-import rockArm from '../../assets/generated/textures/rock_face_03/arm.jpg?url';
-
-import grassAlbedo from '../../assets/generated/textures/aerial_grass_rock/Diffuse.jpg?url';
-import grassNormal from '../../assets/generated/textures/aerial_grass_rock/nor_gl.jpg?url';
-import grassArm from '../../assets/generated/textures/aerial_grass_rock/arm.jpg?url';
-
-import sandAlbedo from '../../assets/generated/textures/coast_sand_01/Diffuse.jpg?url';
-import sandNormal from '../../assets/generated/textures/coast_sand_01/nor_gl.jpg?url';
-import sandArm from '../../assets/generated/textures/coast_sand_01/arm.jpg?url';
-
-import paddyAlbedo from '../../assets/generated/textures/brown_mud_02/Diffuse.jpg?url';
-import paddyNormal from '../../assets/generated/textures/brown_mud_02/nor_gl.jpg?url';
-import paddyArm from '../../assets/generated/textures/brown_mud_02/arm.jpg?url';
+import { IBL_SETS, LAYER_TEXTURE_SETS, SKY_SETS, START_TIER } from '@/core/AssetManifest';
 
 export const TERRAIN_ASSETS = {
   height: heightUrl,
-  normal: normalUrl,
+  /*
+   * ~~`normal: normalUrl` — die gebackenen Geländenormalen.~~
+   * **Seit P15.3 kein Feld mehr.**
+   *
+   * Die Datei kostete 5,49 MB übertragen und war der zweitgrößte Posten des
+   * Startdownloads. Ihr Inhalt steckt vollständig in `height.r16`, das ohnehin
+   * geladen wird — `src/world/deriveNormalMap.ts` rechnet sie beim Start aus
+   * denselben Daten mit derselben Sobel-Formel wie der Baker.
+   *
+   * Dass der Import oben **weg** ist, ist der eigentliche Punkt: solange ihn
+   * jemand hält, gibt Vite die Datei mit aus, und die Ersparnis stünde nur in
+   * der Absicht. Der Baker schreibt `normal.png` weiterhin — `npm run inspect`
+   * liest sie, und sie ist die Vergleichsgrundlage der Messung in P15.6.
+   */
   zones: zonesUrl,
   meta: metaUrl,
   /** Gebackene Verschattung aus tools/bake-shadows.mjs — PLAN.md P2 / 2.3. */
@@ -97,18 +92,30 @@ export const TERRAIN_ASSETS = {
  *
  * **Es wird nur eine der beiden geladen.** Beide liegen im Build (Vite gibt
  * beide aus), geholt wird die, die hier zurückkommt.
+ *
+ * ---
+ *
+ * > **Seit P15.2 entscheidet nicht mehr das Zeigegerät, sondern die Stufe.**
+ * > Der Text oben bleibt stehen, weil seine *Messung* unverändert gilt — 42,97 %
+ * > geänderte Pixel am `stadt-neon`, mittlere Helligkeit −2,3 %. Falsch war
+ * > nicht die Messung, sondern der **Auslöser**: `pointer: coarse` ist ein
+ * > Hinweis auf die Hardware, keine Messung an ihr. Ein Tablet mit starker GPU
+ * > bekam die kleine Datei, ein zehn Jahre alter Laptop mit Maus die große —
+ * > also in beiden Fällen das Gegenteil der Absicht.
+ * >
+ * > `iblForDevice()` ist damit ersatzlos entfallen; die Tabelle steht in
+ * > `core/AssetManifest.ts` unter `IBL_SETS`, und die Stufe entsteht aus einer
+ * > gemessenen Bildrate statt aus einem Medienmerkmal.
  */
-function iblForDevice(): string {
-  const coarse =
-    typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
-  return coarse ? iblSmallUrl : iblUrl;
-}
 
 export const HDRI_ASSETS = {
-  /** Sichtbarer Himmel — scene.background. */
-  sky: skyUrl,
-  /** Beleuchtung — PMREM → scene.environment. Geräteabhängig, siehe oben. */
-  ibl: iblForDevice(),
+  /**
+   * Sichtbarer Himmel — scene.background. Gestuft seit P15.2, siehe
+   * `SKY_SETS`: 4096 × 2048 auf `voll`, 2048 × 1024 auf `mittel`.
+   */
+  sky: SKY_SETS[START_TIER],
+  /** Beleuchtung — PMREM → scene.environment. Gestuft, siehe oben. */
+  ibl: IBL_SETS[START_TIER],
   /** Ausgabe von tools/hdri-sun.mjs für `sky`. */
   sun: sunUrl,
 } as const;
@@ -118,9 +125,10 @@ export const HDRI_ASSETS = {
  *
  * `nor_gl` ist die OpenGL-Normalmap (WebGL braucht die, nicht `nor_dx`), `arm`
  * packt AO/Roughness/Metalness in eine Textur — ein Sampler statt drei.
+ *
+ * **Seit P15.2 ist das die Startstufe, nicht die einzige.** Die Tabelle beider
+ * Stufen steht in `core/AssetManifest.ts`; wer hochstuft, holt sie sich dort
+ * und baut die Array-Textur neu. Diese Konstante bleibt, weil sie an sechs
+ * Stellen gelesen wird und der Erststart genau einen Satz braucht.
  */
-export const LAYER_TEXTURES = {
-  albedo: [rockAlbedo, grassAlbedo, sandAlbedo, paddyAlbedo],
-  normal: [rockNormal, grassNormal, sandNormal, paddyNormal],
-  arm: [rockArm, grassArm, sandArm, paddyArm],
-} as const;
+export const LAYER_TEXTURES = LAYER_TEXTURE_SETS[START_TIER];
