@@ -250,9 +250,48 @@ export interface QualitySettings {
 /**
  * Was eine AO-Stufe für N8AO bedeutet.
  *
- * Die Grundwerte stehen in `postfx.config.ts` und sind dort eingemessen; hier
- * steht nur, was die Stufe daran ändert. `halfRes` ist der große Hebel (rund
- * ein Drittel der AO-Kosten), die Abtastzahl der kleinere.
+ * ## `halfRes` steht seit P12.2 auf **jeder** Stufe auf `true`
+ *
+ * Bis dahin fuhr Ultra die Umgebungsverdeckung in **voller** Auflösung, und das
+ * war der teuerste einzelne Posten des ganzen Frames. Gemessen am 2026-08-16,
+ * Blickpunkt `wald`, 3840 × 2160, interleavt gegen Ultra (Rauschband ±0,23 ms
+ * bei 4,54 ms Basis, also 5 %):
+ *
+ * | Eingriff | GPU | Δ gegen Ultra |
+ * |---|---|---|
+ * | AO **ganz aus** | 2,27 ms | **−48,6 %** |
+ * | AO auf **halbe Auflösung** | 2,72 ms | **−38,3 %** |
+ * | AO halb + 8 Abtastungen | 2,64 ms | −41,8 % |
+ * | *(ganze PostFX-Kette aus)* | *0,91 ms* | *−77,9 %* |
+ *
+ * **Die AO allein war 62 % der gesamten Postprocessing-Kette**, und der Schritt
+ * von voller auf halbe Auflösung holt allein 38 % des Frames.
+ *
+ * ## Und er ist am Bild nicht zu sehen — nachgesehen, nicht angenommen
+ *
+ * Bildpaare bei 1280 × 720, dazu das Rauschband aus zwei Aufnahmen **desselben**
+ * Zustands (Wind bewegt Vegetation, das gehört abgezogen):
+ *
+ * | Blickpunkt | Rauschband | halbe Auflösung | AO ganz aus |
+ * |---|---|---|---|
+ * | `pass` | 0,09 % der Pixel | **2,76 %** (Mittel 0,94/255) | 55,72 % (Mittel 4,06) |
+ * | `stadt-neon` | 0,37 % | **4,13 %** (Mittel 0,72/255) | 50,12 % (Mittel 7,53) |
+ *
+ * Die mittlere Abweichung liegt bei **unter einem Wert von 255** — 0,4 %
+ * Helligkeit. Im achtfach verstärkten Differenzbild
+ * (`.cache/shots/p12ao_*_diff8x.png`) ist die Fläche schwarz; sichtbar sind nur
+ * Ränder an Vegetationssilhouetten, und die stehen zum Teil schon im
+ * Rauschband. Zum Vergleich: AO *auszuschalten* verändert die Hälfte des
+ * Bildes.
+ *
+ * Der Kommentar in `postfx.config.ts` sagte das seit P2 voraus („niederfrequentes
+ * Signal, der depth-aware Upsampler holt die Kanten zurück, kostet rund ein
+ * Drittel") — er stand nur bei der Konstante und nicht bei der Stufe, und
+ * deshalb hat Ultra vier Phasen lang dafür bezahlt.
+ *
+ * Was die Stufen jetzt noch unterscheidet, ist die **Abtastzahl** — der kleinere
+ * Hebel, und der einzige, der bei diesem Effekt überhaupt noch Körnung gegen
+ * Kosten tauscht.
  */
 export interface AoSettings {
   readonly enabled: boolean;
@@ -262,10 +301,10 @@ export interface AoSettings {
 }
 
 export const AO_QUALITY: Readonly<Record<AoQuality, AoSettings>> = {
-  high: { enabled: true, aoSamples: 16, denoiseSamples: 8, halfRes: false },
-  medium: { enabled: true, aoSamples: 16, denoiseSamples: 8, halfRes: true },
-  low: { enabled: true, aoSamples: 8, denoiseSamples: 4, halfRes: true },
-  off: { enabled: false, aoSamples: 8, denoiseSamples: 4, halfRes: true },
+  high: { enabled: true, aoSamples: 16, denoiseSamples: 8, halfRes: true },
+  medium: { enabled: true, aoSamples: 12, denoiseSamples: 4, halfRes: true },
+  low: { enabled: true, aoSamples: 8, denoiseSamples: 2, halfRes: true },
+  off: { enabled: false, aoSamples: 8, denoiseSamples: 2, halfRes: true },
 };
 
 /**
@@ -378,10 +417,51 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     terrainGridVertices: 33,
     postFx: 'full',
   },
+  /**
+   * ## „Hoch" war bis P12.3 **teurer als Ultra**
+   *
+   * Gemessen am 2026-08-16 über vier Blickpunkte, 1280 × 720, GPU-Zeit:
+   *
+   * | Blickpunkt | Ultra | Hoch |
+   * |---|---|---|
+   * | `wald` | 2,32 ms | **2,81 ms** |
+   * | `stadt-neon` | 3,21 ms | **3,32 ms** |
+   * | `reisfeld` | 2,51 ms | 2,44 ms |
+   * | `start` | 3,28 ms | 2,62 ms |
+   *
+   * An drei von vier Stellen kostete die *niedrigere* Stufe mehr. Der Grund
+   * steht in `AO_QUALITY`: Ultras `ao: 'high'` lief in voller Auflösung, Hochs
+   * `'medium'` in halber — und der Aufwärtsfilter der halben Auflösung ist
+   * offenbar teurer als der Unterschied, den er einspart. Ein Stufenwechsel,
+   * der nichts spart und trotzdem Vegetation kostet, ist keine Stufe.
+   *
+   * Seit P12.2 rechnen **alle** Stufen die AO in halber Auflösung. Was „Hoch"
+   * jetzt von Ultra trennt, ist der Bloom-Baum (5 statt 8 MIP-Stufen), vier
+   * AO-Abtastungen weniger und etwas Vegetation — alles gemessen unauffällig im
+   * Bild.
+   *
+   * ## Und das bleibt die schwächste Sprosse — mit Absicht benannt
+   *
+   * Gemessen am `stadt-neon`, 3840 × 2160, interleavt gegen Ultra (Rauschband
+   * 1,2 %): Bloom 5 statt 8 bringt **−1,2 % (im Rauschen)**, AO 12 statt 16
+   * bringt **−2,9 %**. Zusammen liegt „Hoch" also rund 4 % unter Ultra, während
+   * „Mittel" 39 % darunter liegt.
+   *
+   * Das ist keine Nachlässigkeit, sondern der ehrliche Befund: **zwischen
+   * „alles an" und „ohne Kantenglättung bei 85 % Auflösung" liegt nichts von
+   * Gewicht.** Die großen Hebel dieses Renderers sind die Kette und die
+   * Auflösung, und beide anzufassen ist bereits „Mittel". Wer „Hoch" größer
+   * machen will, muss ihm etwas Sichtbares wegnehmen — und genau das schließt
+   * die Vorgabe aus P12 aus.
+   */
   high: {
     label: 'Hoch',
     shadowMapSize: 1024,
     reflections: true,
+    // 12 statt 16 Abtastungen — gemessen −2,9 % am `stadt-neon` bei 4K, und im
+    // Bild nicht zu finden. Zusammen mit dem kürzeren Bloom-Baum ist das der
+    // ganze Abstand zu Ultra; mehr gibt diese Sprosse ehrlicherweise nicht her,
+    // siehe die Anmerkung unten.
     ao: 'medium',
     vegetationRange: 1,
     lodBias: 1,
@@ -389,18 +469,17 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     vegetationFullRadius: 130,
     vegetationFarKeep: 0.5,
     renderScale: 1,
-    // Bewusst wie Ultra. „Hoch" unterscheidet sich von Ultra allein in AO und
-    // Vegetationsdichte; das Gelände gröber zu stellen, wäre der erste
-    // sichtbare Verlust und gehört an den Anfang der *unteren* Hälfte der
-    // Tabelle, nicht ans Ende der oberen.
+    // Bewusst wie Ultra. Das Gelände gröber zu stellen wäre der erste sichtbare
+    // Verlust und gehört an den Anfang der *unteren* Hälfte der Tabelle, nicht
+    // ans Ende der oberen — und gemessen bringt es ohnehin 3,5 % (im Rauschen).
     terrainGridVertices: 33,
-    postFx: 'full',
+    postFx: 'reduced',
   },
   medium: {
     label: 'Mittel',
     shadowMapSize: 1024,
     reflections: false,
-    ao: 'low',
+    ao: 'medium',
     vegetationRange: 1,
     lodBias: 0.85,
     vegetationGroundRange: 0.75,
@@ -410,13 +489,21 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     // 2,0 m je Vertex auf dem Blattknoten. Über dem Texelabstand der Heightmap
     // (1,5 m), aber deutlich unter dem festen P1-Gitter (4,0 m).
     terrainGridVertices: 25,
-    postFx: 'reduced',
+    postFx: 'lean',
   },
+  /**
+   * Ab hier läuft die **kompakte** Kette statt der vollen — P12.1.
+   *
+   * Bis P12 sprang „Niedrig" auf `lean` (volle Kette ohne SMAA) und „Minimal"
+   * auf `off` (gar keine Kette, und damit **ohne Grading-LUT**). Der Sprung war
+   * ein Look-Bruch mitten in der Leiter. `compact` schließt ihn: Bloom und
+   * Kantenglättung fallen weg, der Farbstich bleibt.
+   */
   low: {
     label: 'Niedrig',
     shadowMapSize: 1024,
     reflections: false,
-    ao: 'off',
+    ao: 'low',
     vegetationRange: 1,
     lodBias: 0.75,
     vegetationGroundRange: 0.62,
@@ -426,21 +513,35 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     // 3,0 m je Vertex — jede zweite Stützstelle der Heightmap wird nicht mehr
     // gelesen. Ein Viertel der Dreiecke von Ultra.
     terrainGridVertices: 17,
-    postFx: 'lean',
+    postFx: 'compact',
   },
   /**
-   * Die Stufe für Geräte, auf denen sonst gar nichts liefe — P8.2.
+   * Die Stufe für Geräte, auf denen sonst gar nichts liefe — P8.2, umgebaut in
+   * P12.1.
    *
-   * **Kein „Niedrig mit weniger", sondern ein anderer Renderpfad.** Der
+   * ## Was sich geändert hat, und warum
+   *
+   * ~~**Kein „Niedrig mit weniger", sondern ein anderer Renderpfad.** Der
    * Composer wird umgangen; damit fallen Bloom, SMAA, Vignette und die
-   * Grading-LUT weg, und das Tonemapping übernimmt der Renderer. Solange die
-   * Kette läuft, kostet sie ihre Vollbilddurchgänge — und die sind der einzige
-   * Posten der Szene, der nicht mit `renderScale` schrumpft.
+   * Grading-LUT weg.~~ Der Composer läuft jetzt wieder — in der **kompakten**
+   * Form aus P12.1. Der Grund ist der Auftrag aus P12: „Minimal darf weniger
+   * Details haben, muss aber gut aussehen." Der `off`-Pfad nahm ihm dafür
+   * ausgerechnet den **Farbstich**, also den Anteil, der am wenigsten kostet
+   * und am meisten trägt — ein Vollbild-Durchgang gegen die ganze Stimmung.
    *
-   * Die Sichtweite geht bewusst noch einmal deutlich herunter (450 m statt
-   * 600): auf einer integrierten Grafik ist die Füllrate knapper als die
-   * Dreieckszahl, und weniger Vegetation heißt vor allem weniger Überzeichnung
-   * durch halbtransparente Blätter.
+   * Bloom fällt weiterhin weg, und das ist der teure Teil: acht MIP-Stufen sind
+   * gemessen **17 Draw-Calls** (1 Luminanz + 8 ab + 8 auf).
+   *
+   * ~~Die Sichtweite geht bewusst noch einmal deutlich herunter (450 m statt
+   * 600).~~ Die Reichweite ist seit P10.1 kein Deckel mehr, sondern ein Faktor,
+   * und sie steht auf allen Stufen auf 1 — ausgedünnt wird mit der Entfernung
+   * (P11.2), und wo Halme fehlen, trägt der Boden ihre Farbe (P11.4/11.6).
+   *
+   * **`ao: 'off'` bleibt hier als einzige Stufe.** Die Umgebungsverdeckung ist
+   * auch in halber Auflösung der zweitteuerste Posten der Kette (gemessen
+   * 2,21 ms von 4,54 ms bei 4K), und auf der Zielhardware ist die Füllrate der
+   * Engpass. Der Kontakt am Stammfuß geht dabei **nicht** verloren: die
+   * Bodenverdeckungs-Flecken aus P4 sind ein eigenes System und bleiben.
    */
   minimal: {
     label: 'Minimal',
@@ -454,7 +555,7 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     vegetationFarKeep: 0.22,
     renderScale: 0.5,
     terrainGridVertices: 17,
-    postFx: 'off',
+    postFx: 'compact',
   },
 };
 
@@ -708,8 +809,14 @@ export const BENCHMARK = {
   /**
    * Erhöhen, wenn sich die Bedeutung der Stufen ändert. Eine gespeicherte
    * Einstufung aus einer anderen Tabelle ist keine Einstufung.
+   *
+   * **2 seit P12.3.** Die AO rechnet auf jeder Stufe in halber Auflösung, es
+   * gibt die Kettenstufe `compact`, und „Hoch" bedeutet etwas anderes als
+   * vorher. Eine gespeicherte „Niedrig" aus Version 1 stünde damit für Werte,
+   * die es nicht mehr gibt — und eine gespeicherte *eigene* Stufe für einen
+   * `postFx`-Namen, den `setCustomQuality()` heute stillschweigend verwürfe.
    */
-  storageVersion: 1,
+  storageVersion: 2,
 } as const;
 
 /**

@@ -105,4 +105,44 @@ export const CAMERA = {
 export const RENDER = {
   /** Über 2 wird Supersampling sinnlos teuer, ohne sichtbar besser zu werden. */
   maxPixelRatio: 2,
+
+  /**
+   * Derselbe Deckel für Geräte mit grobem Zeiger — also Telefone und Tablets.
+   *
+   * **Der größte einzelne Hebel für Mobilgeräte, und er kostet fast nichts am
+   * Bild.** Ein Telefon meldet `devicePixelRatio` 2,6 bis 3,5. Mit dem
+   * Desktop-Deckel von 2 rendert ein 412 CSS-Pixel breites Gerät also
+   * 824 × 1783 ≈ 1,47 Mpix — mehr als 720p, auf einer GPU, die einen Bruchteil
+   * einer Desktop-Karte leistet. Der Rechenaufwand wächst dabei **quadratisch**
+   * mit dem Faktor.
+   *
+   * Warum 1,25 trotzdem scharf aussieht: der Deckel ist kein absolutes Maß,
+   * sondern ein Verhältnis zur *physischen* Pixeldichte. Ein Telefonschirm hat
+   * 400 bis 500 ppi, ein üblicher Monitor 96 bis 140. Bei Faktor 1 hat das
+   * Telefon damit immer noch die drei- bis vierfache Winkelauflösung eines
+   * Desktop-Bildes bei Faktor 1 — und Letzteres gilt seit P0 als scharf.
+   *
+   * 1,25 statt 1,0, weil die Schrift der Beschilderung und die Kanten der
+   * Leitplanken bei glatten Faktoren aliasen; ein Viertel darüber fängt das ab,
+   * ohne die Fläche zu verdoppeln (1,25² = 1,56 gegen 4,0 bei Faktor 2).
+   *
+   * > **Ungemessen auf echter Zielhardware.** Die Herleitung ist Geometrie,
+   * > kein Messwert. Was der Faktor auf einem Telefon *bringt*, steht erst
+   * > fest, wenn dort ein `report()` gelaufen ist — P12.6.
+   */
+  maxPixelRatioCoarse: 1.25,
 } as const;
+
+/**
+ * Der geltende Deckel für dieses Gerät.
+ *
+ * **Eine Funktion und keine Konstante**, weil `matchMedia` erst im Browser
+ * antwortet und sich sogar ändern kann (Tablet mit angesteckter Maus). Gelesen
+ * wird sie bei jedem `resize` — das ist selten genug, um nichts zu kosten, und
+ * oft genug, um einem Gerätewechsel zu folgen.
+ */
+export function maxPixelRatio(): number {
+  const coarse =
+    typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+  return coarse ? RENDER.maxPixelRatioCoarse : RENDER.maxPixelRatio;
+}

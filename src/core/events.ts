@@ -1,6 +1,7 @@
+import type { PropPlacement } from '@/config/props.config';
 import type { QualityKey } from '@/config/quality.config';
 import type { LookState } from '@/render/looks/lookState';
-import type { SignAnchor } from '@/world/city/CityGenerator';
+import type { CityCollider, CityCurb, SignAnchor } from '@/world/city/CityGenerator';
 import type { CityUniforms } from '@/world/materials/FacadeMaterial';
 import type { RoadMaterial } from '@/world/materials/RoadMaterial';
 import type { TerrainHeightUniforms } from '@/world/materials/TerrainMaterial';
@@ -103,7 +104,15 @@ export type AppEvents = {
    * einer Achse. Dieselbe Reihenfolgenbedingung gilt auch: wer zuhört, muss
    * **vor** dem PropSystem registriert sein.
    */
-  'props:ready': { clearance: PropClearance };
+  /**
+   * **Trägt seit P14 zusätzlich die Platzierungen.** Das Fahrmodell braucht
+   * Hindernisse, und ein Prop ist eines. Es sind dieselben Einträge, aus denen
+   * die Freihaltekreise entstehen — aber nicht dieselben *Kreise*:
+   * `PROP_CLEARANCE` enthält den Vorplatz („18 m lassen einen Hof frei"),
+   * `PROP_COLLIDERS` den Bauwerksradius. Wer die Freihaltekreise als Kollision
+   * benutzt, stößt gegen den Hof.
+   */
+  'props:ready': { clearance: PropClearance; placements: readonly PropPlacement[] };
 
   /**
    * Die Stadt steht — mit ihr die Wandflächen, an die Neonschilder gehören.
@@ -113,7 +122,18 @@ export type AppEvents = {
    * nichts zu tun. Es trägt trotzdem denselben Namen wie die anderen, weil es
    * dieselbe Rolle spielt — „ab jetzt gibt es das".
    */
-  'city:ready': { signs: readonly SignAnchor[]; uniforms: CityUniforms };
+  /**
+   * **Trägt seit P14 die Kollisionskästen mit.** Sie entstehen im Generator und
+   * können nachträglich nicht mehr aus der Szene gelesen werden: die Häuser eines
+   * Blocks sind zu einer Geometrie zusammengeführt, und darin gibt es keine
+   * Objektgrenzen. Begründung bei `CityCollider`.
+   */
+  'city:ready': {
+    signs: readonly SignAnchor[];
+    uniforms: CityUniforms;
+    colliders: readonly CityCollider[];
+    curbs: readonly CityCurb[];
+  };
 
   /**
    * Look-Presets (PLAN.md P2 / 2.6). Zwei Richtungen, bewusst getrennt:
@@ -129,6 +149,17 @@ export type AppEvents = {
   'look:collect': { target: LookState };
 
   'quality:changed': { level: QualityKey };
+
+  /**
+   * Fahrmodus an oder aus — P14.
+   *
+   * Der Zustand selbst wohnt im `DriveSystem`; dieses Ereignis ist für die
+   * Oberfläche. Sie darf ihn nicht von der Taste ableiten: `V`, der Knopf im
+   * Debug-Panel und `japanMap.drive()` schalten dasselbe um, und ein Menü, das
+   * seinen eigenen letzten Klick anzeigt statt den Zustand, ist die Anzeige, die
+   * lügt — dieselbe Begründung wie bei `quality:changed`.
+   */
+  'drive:mode': { active: boolean };
 
   'debug:visibility': { visible: boolean };
 };

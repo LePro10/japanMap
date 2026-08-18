@@ -67,6 +67,39 @@ export interface SignAnchor {
   readonly floors: number;
 }
 
+/**
+ * Ein Baukörper als Kollisionskasten — PLAN.md P14.
+ *
+ * **Achsparallel, und das ist keine Vereinfachung, sondern die Wahrheit über
+ * diese Stadt:** die Parzellenteilung arbeitet ausschließlich mit `Rect`, und
+ * jedes Haus wird aus seinem Rechteck extrudiert. Der Kasten hier ist damit die
+ * exakte Grundfläche und nicht eine Näherung an sie.
+ *
+ * Er entsteht **beim Erzeugen** und nicht später aus dem Mesh. Aus dem Mesh
+ * ginge es nicht mehr: die Häuser eines Blocks sind zu *einer* Geometrie
+ * zusammengeführt (3 Draw-Calls für die ganze Stadt), und darin gibt es keine
+ * Objektgrenzen mehr.
+ */
+export interface CityCollider {
+  readonly minX: number;
+  readonly maxX: number;
+  readonly minZ: number;
+  readonly maxZ: number;
+  /** Unterkante in Weltkoordinaten — die Bürgersteigoberkante. */
+  readonly bottom: number;
+  /** Oberkante inklusive Brüstung. */
+  readonly top: number;
+}
+
+/** Ein Bürgersteig: befahrbare erhöhte Fläche, kein Hindernis. */
+export interface CityCurb {
+  readonly minX: number;
+  readonly maxX: number;
+  readonly minZ: number;
+  readonly maxZ: number;
+  readonly top: number;
+}
+
 export interface CityBlockMesh {
   readonly geometry: BufferGeometry;
 }
@@ -79,6 +112,10 @@ export interface CityResult {
   /** Die Asphaltebene samt Schürze zum Gelände. */
   readonly ground: BufferGeometry;
   readonly signs: readonly SignAnchor[];
+  /** Kollisionskästen aller Baukörper — siehe `CityCollider`. */
+  readonly colliders: readonly CityCollider[];
+  /** Bürgersteige als befahrbare Plateaus. */
+  readonly curbs: readonly CityCurb[];
   readonly stats: {
     readonly blocks: number;
     readonly parcels: number;
@@ -533,6 +570,8 @@ export function generateCity(input: CityInput): CityResult {
   const sidewalkMesh = new MeshBuilder();
   const blockMeshes: CityBlockMesh[] = [];
   const signs: SignAnchor[] = [];
+  const colliders: CityCollider[] = [];
+  const curbs: CityCurb[] = [];
   const sidewalkTop = CITY_GROUND_Y + CITY.sidewalk.height;
 
   let parcelCount = 0;
@@ -572,6 +611,15 @@ export function generateCity(input: CityInput): CityResult {
 
       const built = extrudeBuilding(mesh, footprint, block, sidewalkTop, random, signs);
       buildings++;
+      // `built.height` ist die Höhe **über** `sidewalkTop`, inklusive Brüstung.
+      colliders.push({
+        minX: footprint.minX,
+        maxX: footprint.maxX,
+        minZ: footprint.minZ,
+        maxZ: footprint.maxZ,
+        bottom: sidewalkTop,
+        top: sidewalkTop + built.height,
+      });
       floorsMax = Math.max(floorsMax, built.floors);
       heightMax = Math.max(heightMax, built.height);
     }
@@ -592,6 +640,15 @@ export function generateCity(input: CityInput): CityResult {
       0,
       KIND_FLAT,
     );
+    // Derselbe Block als Plateau: der Bürgersteig ist eine Kante, über die man
+    // fährt, keine Mauer. Deshalb steht er nicht bei den Kollisionskästen.
+    curbs.push({
+      minX: block.minX,
+      maxX: block.maxX,
+      minZ: block.minZ,
+      maxZ: block.maxZ,
+      top: sidewalkTop,
+    });
 
     buildingCount += buildings;
     triangles += mesh.triangles;
@@ -606,6 +663,8 @@ export function generateCity(input: CityInput): CityResult {
     sidewalks: sidewalkMesh.build('Bürgersteige'),
     ground: ground.geometry,
     signs,
+    colliders,
+    curbs,
     stats: {
       blocks: blockMeshes.length,
       parcels: parcelCount,

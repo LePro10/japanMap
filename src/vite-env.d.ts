@@ -3,6 +3,8 @@
 
 import type { QualityKey, QualityLevel } from './config/quality.config';
 import type { Engine } from './core/Engine';
+import type { AbOptions, AbReport } from './debug/abMeasure';
+import type { DriveProbeOptions, DriveProbeReport } from './debug/driveProbe';
 import type { HoleReport } from './debug/lodHoles';
 import type { Report, ReportOptions } from './debug/report';
 import type { WindingRow } from './debug/winding';
@@ -92,6 +94,28 @@ declare global {
        * einer 0, die nach „kostet nichts" aussieht.
        */
       report?: (options?: ReportOptions) => Promise<Report>;
+      /**
+       * Interleavte A/B-Messung der GPU-Zeit (P12 / 12.0).
+       *
+       * Misst **Eingriffe** gegen eine Basis statt Zustände gegeneinander, und
+       * setzt jede Variante zwischen zwei Basiswerte — sonst misst eine
+       * mitbenutzte GPU mit. Liefert je Eingriff ein Δ **und** die Aussage, ob
+       * es über dem gemessenen Rauschband liegt.
+       */
+      ab?: (options: AbOptions) => Promise<AbReport>;
+      /**
+       * Fahrmodus schalten oder abfragen (P14).
+       *
+       * Der einzige Weg dorthin, wenn es keinen Pointer Lock gibt — die Taste `V`
+       * verlangt einen, die eingebettete Vorschau gibt keinen.
+       */
+      drive?: (on?: boolean) => boolean;
+      /**
+       * Der Messstand des Fahrmodus (P14): jede Strecke abfahren, Durchdringung,
+       * Spurtreue, Tempo und CPU je Schritt mitschreiben — plus die
+       * Höhendifferenz zwischen Sampler und Straßenmittellinie aus PLAN.md 9.1.
+       */
+      driveProbe?: (options?: DriveProbeOptions) => DriveProbeReport;
     };
   }
 }

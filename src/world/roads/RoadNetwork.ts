@@ -32,6 +32,18 @@ export interface RoadHit {
   readonly distance: number;
   /** Fahrbahnbreite an dieser Stelle. */
   readonly width: number;
+  /**
+   * Fahrtrichtung des Segments, normiert in XZ — seit P14.
+   *
+   * Gebraucht vom Fahrmodus: „setz das Auto auf die nächste Straße" braucht eine
+   * Blickrichtung, sonst steht es quer zur Fahrbahn. Die Richtung fällt in der
+   * Suche ohnehin an; sie hier mitzugeben ist billiger, als sie draußen aus zwei
+   * Abfragen zu rekonstruieren.
+   */
+  readonly forwardX: number;
+  readonly forwardZ: number;
+  /** Belagsart der getroffenen Strecke — Asphalt oder Kies. */
+  readonly surface: 'asphalt' | 'kies';
 }
 
 interface Segment {
@@ -151,6 +163,10 @@ export class RoadNetwork {
     const by = line[j * 3 + 1]!;
     const spacing = road.length / (road.closed ? count : count - 1);
 
+    const dx = line[j * 3]! - line[segment.index * 3]!;
+    const dz = line[j * 3 + 2]! - line[segment.index * 3 + 2]!;
+    const length = Math.hypot(dx, dz) || 1;
+
     return {
       roadId: road.id,
       x: this.#bestX,
@@ -159,6 +175,9 @@ export class RoadNetwork {
       distanceAlong: (segment.index + t) * spacing,
       distance: Math.sqrt(found),
       width: road.widths[segment.index] ?? ROAD_TYPES[road.type].width,
+      forwardX: dx / length,
+      forwardZ: dz / length,
+      surface: ROAD_TYPES[road.type].surface,
     };
   }
 
