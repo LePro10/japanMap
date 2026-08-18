@@ -386,7 +386,7 @@ Kitbashing aus verschiedenen Gratis-Quellen scheitert sonst am Stil-Mix.
 | **P6** ✅ | Stadt-Generator, Emissive-Neon, nasser Asphalt, Reflexions-Entscheidung | Der Money-Shot |
 | **P7** ◐ | Quality-Presets, Streaming, Ladebildschirm, Profiling | Auslieferbar |
 | **P8** ✅ | Politur: Stufen im Gelände, PostFX-Staffelung, Wolken, Terrain-Durchgang, Fluss, Pfade, Fischerdorf, Sandō, Stadtrand, Weltrand | Die Karte trägt ein Spiel |
-| **P9** ◐ | Die Fahrschicht — Kollision, Fahrzeug, Rundenlogik | 9.1 und 9.2 in P14 eingelöst; **9.3 Rundenlogik ungebaut** |
+| **P9** ✅ | Die Fahrschicht — Kollision, Fahrzeug, Rundenlogik | Vollständig: 9.1/9.2 in P14, 9.3 am 2026-08-18. **Ein Auto fährt eine Runde**, 324,72 s auf dem Ring |
 | **P10** ◐ | Stufen, Regler, Auslieferung | Die Stufen tun, was sie versprechen |
 | **P11** ◐ | Sichtbarkeit & Dichte | Bäume bis 1200 m, Ausdünnung nach Entfernung statt Fläche, Boden trägt seine Farbe |
 | **P12** ◐ | Handy, Touch und die echten Kosten | Fingersteuerung, A/B-Messstand, Stufenleiter spannt 4,4× statt 1,6× |
@@ -398,8 +398,7 @@ Kitbashing aus verschiedenen Gratis-Quellen scheitert sonst am Stil-Mix.
 ◐.** Die Karte trägt seit P14 ein Spiel — ein Auto fährt alle acht Strecken mit
 0 cm Durchdringung —, und seit P15 lädt der Erststart **17,02 MB** statt 40,83.
 Was in den ◐-Phasen offen ist, steht als Tabelle im Kopf von
-[PLAN.md](PLAN.md); die Kurzfassung: **9.3 Rundenlogik ist ungebaut**, es gibt
-**keinen Ton**, und vier Phasen in Folge lassen dieselbe Zeile offen — „auf
+[PLAN.md](PLAN.md); die Kurzfassung: es gibt **keinen Ton**, und vier Phasen in Folge lassen dieselbe Zeile offen — „auf
 echter Zielhardware gemessen".
 
 > ~~Aktueller Stand (2026-08-08)~~ stand hier bis zum 2026-08-18, also zehn Tage
