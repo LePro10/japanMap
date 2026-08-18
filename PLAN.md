@@ -6512,10 +6512,18 @@ Bildrate, dieselbe Lücke wie P12.6).
       aufzugeben. **Diese Zeile wird nicht eingelöst, sie wird zurückgezogen** —
       und sie steht als verfehlt da, nicht als gestrichen.
 - [ ] **Auf der GPU-Maschine gemessen, in Betriebsart `live`, mit Bildrate.**
-      **Halb.** Die Messungen oben laufen auf der GPU-Maschine (RX 7900 XTX),
-      aber in Betriebsart `driven` — die eingebettete Vorschau liefert kein
-      rAF, also gibt es dort grundsätzlich keine Bildrate. Ein `live`-Lauf
-      braucht ein sichtbares Fenster und gehört in dieselbe Lücke wie P12.6.
+      **Halb, und der Rest ist hier nachweislich unmöglich.** Die Messungen
+      oben laufen auf der GPU-Maschine (RX 7900 XTX), aber in Betriebsart
+      `driven`. Ein `live`-Lauf braucht rAF, und den gibt es in der
+      eingebetteten Vorschau nicht — am 2026-08-18 noch einmal nachgeprüft:
+      **30 angeforderte Frames sind in 30 s nicht zustande gekommen**, der
+      Aufruf lief in die Zeitüberschreitung. CLAUDE.md führt das seit P10.0,
+      und es gilt unverändert.
+
+      > Damit ist diese Zeile keine Nachlässigkeit, sondern dieselbe Lücke wie
+      > P12.6, P13 und P14: sie braucht ein **sichtbares Fenster** auf einer
+      > Maschine mit GPU. `npm run dev:lan` steht dafür bereit.
+
 - [x] **Kette weiterhin bitgleich reproduzierbar.** `npm run world` zweimal am
       2026-08-18: **bitgleich über alle 54 Dateien**. Der Lauf hat dabei einen
       Altfehler gefunden — `shade.json` trug die Laufzeit des Bakers, siehe
