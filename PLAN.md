@@ -13,7 +13,7 @@
 > | P7 | ◐ — eines der fünf Kriterien gemessen verfehlt (Startdownload) |
 > | P9 | ✅ **abgenommen am 2026-08-18** — 9.1/9.2 in P14, 9.3 als `LapTimer`. Drei gefahrene Runden auf dem Ring, 324,72 s, Abkürzung wird abgelehnt |
 > | P10 | ◐ — 10.0/10.1/10.2 gebaut, 10.3 in P11.5 aufgegangen, 10.4 teilweise |
-> | P11 | ◐ — 3 von 7 Kriterien; verfehlt: volle Auflösung je Stufe (zurückgezogen). Offen: Nahaufnahme eines Baums, Nah/Fern getrennt, ein `live`-Lauf |
+> | P11 | ◐ — 5 von 7 Kriterien; verfehlt: volle Auflösung je Stufe (zurückgezogen). Offen: ein `live`-Lauf mit Bildrate |
 > | P12 | ◐ — 8 von 11 Kriterien; offen: echtes Telefon, Startdownload, volle Auflösung je Stufe |
 > | P13 | ◐ — 6 von 8; offen: Pointer Lock auf einer Maschine, wo er funktioniert, und ein echtes Telefon |
 > | P14 | ◐ — 7 von 9; offen: „fühlt sich der Drift gut an" und ein echtes Telefon |
@@ -5707,7 +5707,7 @@ deshalb hier als Idee, nicht als Aufgabe mit Kriterium.
 
 ---
 
-# P11 — Sichtbarkeit & Dichte ◐ (11.2 bis 11.6 gebaut, 3 von 7 Kriterien)
+# P11 — Sichtbarkeit & Dichte ◐ (11.2 bis 11.6 gebaut, 5 von 7 Kriterien)
 
 > **Stand: der Messdurchgang ist gefahren, entschieden ist nichts.** Diese Phase
 > beginnt ausdrücklich mit Zahlen und Bildern und nicht mit einem Fix — auf
@@ -6378,8 +6378,9 @@ viertelauflösend und ohne Vegetation im Spiegeldurchgang als ganz aus.
 **Nachgeholt am 2026-08-18.** Diese Liste stand seit dem 2026-08-11 als
 „Entwurf" ohne einen einzigen Haken da, obwohl 11.2 bis 11.6 gebaut und je
 einzeln gemessen waren — dieselbe Buchführungslücke wie die veralteten
-Statuszeilen in SPEC §7 und im Kopf dieser Datei. **Drei von sieben sind
-eingelöst, eine ist gemessen verfehlt, drei bleiben offen.**
+Statuszeilen in SPEC §7 und im Kopf dieser Datei. **Fünf von sieben sind eingelöst, eine ist
+gemessen verfehlt und zurückgezogen, eine bleibt offen** (ein `live`-Lauf mit
+Bildrate, dieselbe Lücke wie P12.6).
 
 - [x] **Auf keiner Stufe rendert etwas in der falschen Farbe.** Befund 1 („die
       Vegetation ist auf Minimal weiß") ist **widerlegt**, nicht behoben: er
@@ -6409,15 +6410,47 @@ eingelöst, eine ist gemessen verfehlt, drei bleiben offen.**
       > (37,8 gegen 27,6) kommt zu einem guten Teil daher. Den Gewinn allein
       > 11.4/11.6 zuzuschreiben wäre derselbe Fehler wie in P8.5, wo drei
       > Eingriffe zusammen gemessen und einem zugeschrieben wurden.
-- [ ] **Ein einzelner Baum aus der Nähe ist auf Minimal von Ultra nicht zu
-      unterscheiden.** **Nicht gemessen** — es fehlt ein Nahaufnahme-Paar an
-      einem einzelnen Baum. Die Bilder oben zeigen eine Szene, keinen Baum.
-- [ ] **Die Instanzzahl im Fernfeld sinkt messbar**, während die im Nahfeld
-      gleich bleibt. **Nicht getrennt gemessen.** 11.5 nennt für `wald-fern`
-      auf Ultra 15 478 Instanzen und begründet das Ausdünnungsgesetz
-      `keep = max(keepFar, (R/d)²)`, aber Nah- und Fernfeld sind darin nicht
-      auseinandergerechnet. Ohne diese Trennung bleibt die Zeile aus 11.2 offen:
-      es könnte auch ein umbenannter Dichteregler sein.
+- [x] **Ein einzelner Baum aus der Nähe ist auf Minimal von Ultra nicht zu
+      unterscheiden.** Bildpaar `p11_baum_ultra.png` / `p11_baum_minimal.png`:
+      Kamera 9 m vor der nächstgelegenen Kiefer in voller Auflösung
+      (`pine:v0:lod0` bei 739 / 126 / −709), beide Stufen vollständig
+      eingeschwungen.
+
+      **Der Baum selbst ist identisch** — dieselbe Geometrie, dieselben
+      Facetten, dieselbe Schattierung, und das ist auch zu erwarten: es ist
+      dasselbe LOD0-Mesh mit demselben Material, und das Nahfeld wird gemessen
+      nur um 1,4 % ausgedünnt (siehe Zeile darunter).
+
+      > **Was sich trotzdem unterscheidet, gehört dazugesagt — sonst ist der
+      > Haken zu groß.** Die beiden *Bilder* sind unterscheidbar: Minimal ist
+      > heller (mittlere Helligkeit 112,97 gegen 101,76) und rendert mit
+      > 1280 × 720 statt 2560 × 1440. Beides sind **gewollte Kosten der Stufe**
+      > — Kettenstufe `compact` ohne AO und `renderScale` 0,5 — und nicht die
+      > Frage, die diese Zeile stellt. Sie fragt, ob die *Vegetation* nah
+      > schlechter wird, und das tut sie nicht.
+- [x] **Die Instanzzahl im Fernfeld sinkt messbar**, während die im Nahfeld
+      gleich bleibt. Gemessen am Blickpunkt `wald`, alle Instanzmatrizen nach
+      Entfernung von der Kamera einsortiert, beide Stufen eingeschwungen
+      (735 bzw. 741 getriebene Frames):
+
+      | Entfernung | Ultra | Minimal | Δ |
+      |---|---|---|---|
+      | **nah, 0…60 m** | 9 976 | **9 840** | **−1,4 %** |
+      | mittel, 60…300 m | 39 396 | 4 500 | −88,6 % |
+      | fern, über 300 m | 3 744 | 1 388 | −62,9 % |
+      | **gesamt** | **53 116** | 15 728 | −70,4 % |
+
+      **Damit ist 11.2 kein umbenannter Dichteregler.** Ein Dichteregler hätte
+      alle drei Zeilen um denselben Faktor gesenkt; hier bleibt das Nahfeld
+      stehen und das Mittelfeld bricht weg.
+
+      > **Eine Gegenprobe, die nicht aus dieser Messung stammt:** die 53 116 auf
+      > Ultra stehen zeichengleich in CLAUDE.md, gemessen am 2026-08-11 mit einem
+      > anderen Werkzeug. Zwei Wege zur selben Zahl.
+      >
+      > Und ein Blickpunkt, der die Frage **nicht** beantworten kann, gehört
+      > auch dazu: `wald-fern` hat in beiden Stufen **null** Instanzen unter
+      > 100 m. Wer dort nach dem Nahfeld sucht, misst eine leere Menge.
 - [ ] **Volle Auflösung auf jeder Stufe.** **Gemessen verfehlt**, und die Zahlen
       stehen seit P12 dort: Mittel 0,85 · Niedrig 0,7 · **Minimal 0,5**, dazu
       auf Touch-Geräten der Pixelfaktor-Deckel 1,25. Die Auflösung ist gemessen
