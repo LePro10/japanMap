@@ -369,7 +369,23 @@ async function main() {
     measured: {
       litFraction: litTexels / (res * res),
       minSkyVisibility: minVisibility,
-      seconds: Number(seconds),
+      /*
+       * ~~`seconds: Number(seconds)`~~ — **entfernt am 2026-08-18 (P15.6).**
+       *
+       * Hier stand die **Laufzeit** des Bakers, und damit war `shade.json` die
+       * einzige Datei der ganzen Kette, die sich zwischen zwei Läufen ändert:
+       * 5,7 gegen 5,8 Sekunden, also 46 von 47 erzeugten Dateien bitgleich und
+       * eine nicht.
+       *
+       * Gefunden hat es die Reproduzierbarkeitsprobe zu P15, die über **alle**
+       * erzeugten Dateien lief. Die Regel in CLAUDE.md nennt namentlich nur
+       * `roads.json` und `height.r16` — die beiden waren und sind bitgleich,
+       * und deshalb ist das hier nie aufgefallen.
+       *
+       * Eine Laufzeit gehört in die Konsolenausgabe, nicht in ein Artefakt: sie
+       * beschreibt den Rechner, nicht das Ergebnis. Ausgegeben wird sie
+       * weiterhin, ein paar Zeilen weiter unten.
+       */
     },
     checksums: { 'shade.png': sha256(buffer) },
   };
