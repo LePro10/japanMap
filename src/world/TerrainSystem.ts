@@ -19,6 +19,8 @@ import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms'
 import { ChunkManager } from './ChunkManager';
 import { createLayerArray } from './materials/createLayerArray';
 import { deriveNormalMap } from './deriveNormalMap';
+import { AssetUpgrader, transferredBytes } from '@/core/AssetUpgrader';
+import { LAYER_TEXTURE_SETS } from '@/core/AssetManifest';
 import {
   createTerrainDepthMaterial,
   createTerrainUniforms,
@@ -109,7 +111,20 @@ export class TerrainSystem implements System {
    * Registrierungsstelle sichtbar zu machen ist ehrlicher, als das Ereignis
    * nachträglich zwischenzuspeichern.
    */
-  constructor(private readonly atmosphere: AtmosphereUniforms) {}
+  constructor(
+    private readonly atmosphere: AtmosphereUniforms,
+    /**
+     * Der Nachlader aus P15.4 — aus demselben Grund im Konstruktor wie der
+     * Atmosphärenblock darüber: eine Abhängigkeit an der Registrierungsstelle
+     * sichtbar zu machen ist ehrlicher, als sie über ein Ereignis einzusammeln.
+     *
+     * Optional, weil `report.ts` und der Prüfstand dieses System auch einzeln
+     * bauen — dort gibt es keinen Nachlader, und dann bleibt es bei der
+     * mittleren Stufe. Ein fehlender Nachlader ist ein schlechteres Bild, kein
+     * Fehler.
+     */
+    private readonly upgrader?: AssetUpgrader,
+  ) {}
 
   get sampler(): TerrainSampler | null {
     return this.#sampler;
@@ -202,6 +217,47 @@ export class TerrainSystem implements System {
     mesh.customDepthMaterial = createTerrainDepthMaterial(uniforms);
     mesh.matrixAutoUpdate = false;
     this.#mesh = mesh;
+
+    // ── Die volle Texturstufe anmelden — P15.4 ──────────────────────────
+    //
+    // Was hier passiert, ist bewusst dasselbe wie oben: `createLayerArray` mit
+    // den vollen URLs. Kein zweiter Aufbauweg, keine Sonderbehandlung — sonst
+    // hätte die nachgeladene Textur andere Filter oder eine andere
+    // Zeilenreihenfolge als die geladene, und der Unterschied fiele erst als
+    // spiegelverkehrtes Gelände auf.
+    //
+    // Der Tausch selbst ist eine Zuweisung ins Uniform. **Erst einhängen, dann
+    // freigeben** — der `ZoneMap`-Fehler aus P4 ist genau andersherum passiert.
+    this.upgrader?.register({
+      name: 'Gelände-Detailtexturen',
+      build: async () => {
+        const voll = LAYER_TEXTURE_SETS.voll;
+        const [albedo, normalTex, arm] = await Promise.all([
+          createLayerArray(voll.albedo, { srgb: true, anisotropy, label: 'albedo' }),
+          createLayerArray(voll.normal, { srgb: false, anisotropy, label: 'normal' }),
+          createLayerArray(voll.arm, { srgb: false, anisotropy, label: 'arm' }),
+        ]);
+        const bytes = [...voll.albedo, ...voll.normal, ...voll.arm].reduce(
+          (sum, url) => sum + transferredBytes(url),
+          0,
+        );
+        return {
+          bytes,
+          textures: [albedo, normalTex, arm],
+          apply: () => {
+            const alt = [
+              uniforms.uAlbedoArray.value,
+              uniforms.uNormalArray.value,
+              uniforms.uArmArray.value,
+            ];
+            uniforms.uAlbedoArray.value = context.resources.track(albedo);
+            uniforms.uNormalArray.value = context.resources.track(normalTex);
+            uniforms.uArmArray.value = context.resources.track(arm);
+            for (const texture of alt) texture.dispose();
+          },
+        };
+      },
+    });
 
     context.scene.add(mesh);
     context.bus.emit('terrain:ready', {

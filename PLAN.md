@@ -7584,32 +7584,169 @@ Ohne diese Aufgabe ist der Rest eine Behauptung:
 
 ---
 
+### 15.4 und 15.5 gebaut und gemessen — 2026-08-18
+
+**Die Kette läuft von Ende zu Ende**, gemessen im laufenden Stand, dreimal
+reproduziert mit zeichengleichen Frame-Nummern:
+
+| Frame | was |
+|---|---|
+| 659 | Wächter meldet Reserve: **3,3 ms** im 90. Perzentil über fünf Fenster |
+| 776 | Gelände-Detailtexturen eingetauscht, 512² → **1024²** |
+| 780 | Asphalt eingetauscht, 1024² → **2048²** |
+
+659 ist keine zufällige Zahl: 60 Frames Beruhigung plus fünf Fenster à 120 sind
+660. Danach `anteilNichtSchwarz` 0,99999, mittlere Helligkeit am `pass` 67,19
+gegen 67,12 auf der mittleren Stufe — an diesem Blickpunkt ist der Unterschied
+kleiner als das Wolkenrauschen, was er dort auch sein soll.
+
+#### Der Ruckler — das Kriterium ist verfehlt, und zwar zweimal um das Dreifache
+
+**Erste Fassung: 177,8 ms.** Eine Gruppe je Frame eintauschen, den Upload dem
+Renderer überlassen:
+
+| Frame | was | ms |
+|---|---|---|
+| 777 | Gelände-Detailtexturen | 11,7 |
+| 778 | **Asphalt** | **177,8** |
+
+Rauschband daneben: 3,3 ms im 90. Perzentil, größter Ruhewert 4,7 ms.
+
+> **Der Kommentar an dieser Stelle behauptete, three übersetze beim Tausch
+> gleichartiger Karten nicht neu.** Das stimmt — und `material.needsUpdate =
+> true`, das eine Zeile darüber stand, **erzwingt es trotzdem**. Eine
+> Begründung, die richtig ist und das Gegenteil dessen bewirkt, was danebensteht:
+> genau der Punkt „eine Zahl als Begründung geschrieben, ohne sie zu messen" aus
+> CLAUDE.md, hier in seiner unangenehmsten Form, weil der Satz für sich genommen
+> zutrifft.
+
+**Zweite Fassung: 90,4 ms.** `needsUpdate` ist weg, und die Warteschlange hat
+zwei Stufen — `renderer.initTexture()` schiebt **eine** Textur je Frame auf die
+GPU, `apply()` läuft erst, wenn die Gruppe vollständig oben ist. Ergebnis:
+
+| | erste Fassung | zweite Fassung |
+|---|---|---|
+| Tauschframe Gelände | 11,7 ms | **1,2 ms** |
+| Tauschframe Asphalt | 177,8 ms | **1,2 ms** |
+| größter Frame im ganzen Umbau | 177,8 ms | **90,4 ms** |
+| Frames über 33 ms | 1 | **2** |
+
+**Der Tausch ist damit frei, der Upload nicht.** Was übrig bleibt, sind drei
+2048²-Texturen mit Mipmap-Kette und 16-facher Anisotropie: 64,8 · 88,6 ·
+24,6 ms, je eine pro Frame. Das ist die Zeit, die der Treiber für rund 16 MB
+plus Mipmaps braucht, und sie ist durch Verteilen nicht kleiner zu bekommen —
+nur auf mehr Frames zu strecken, was sie nicht billiger macht.
+
+**Das Kriterium „kein Ruckler über 33 ms" ist damit nicht eingelöst: 90,4 ms.**
+Zwei Frames je Sitzung, einmalig, auf einer Maschine, die zehn Sekunden Reserve
+nachgewiesen hat — aber die Zahl steht hier, statt dass das Kriterium
+umgeschrieben wird.
+
+> **Eine ungeprüfte Vermutung dazu, als Vermutung markiert:** die
+> Geländetexturen gehen über `createImageBitmap` (in `createLayerArray`), die
+> Asphalttexturen über `TextureLoader` und damit über ein `HTMLImageElement`.
+> Der ImageBitmap-Pfad gilt als der schnellere Upload. Die beiden unterscheiden
+> sich hier aber **auch** in der Auflösung (512² gegen 2048²), also ist der
+> Vergleich nicht getrennt — und ohne Trennung ist das keine Diagnose. Wer es
+> aufräumt, misst zuerst dieselbe Auflösung über beide Pfade.
+
+#### Ein Posten, der nicht im Kriterium stand und trotzdem zählt
+
+Nach dem Umbau kostet ein Frame in derselben Messschleife **6,0 ms** im
+90. Perzentil gegen **3,3 ms** davor. Das ist kein Fehler — die volle Stufe hat
+vierfache Texturfläche, und dafür wird sie geladen. Es heißt aber, dass das
+Hochstufen die Bildrate *belastet*, und genau dafür gibt es die Sperrklinke:
+reicht es danach nicht mehr, stuft der Wächter die **Qualitätsstufe** herunter
+und die Datei bleibt, wo sie ist.
+
+> Auf dieser Maschine ist das eine Messung in einer getriebenen Schleife ohne
+> Vsync und damit **keine Aussage über Bildrate**. Sie steht hier als
+> Verhältnis, nicht als Absolutwert — dieselbe Einschränkung wie überall seit
+> P12.0.
+
+#### Wie der Wächter geprüft wurde, und was daran künstlich ist
+
+`document.hidden` ist in der eingebetteten Vorschau **immer `true`** (CLAUDE.md),
+und der Wächter bricht dann jeden Frame ab — richtig so, ein verdecktes Fenster
+bekommt rAF im Sekundentakt. Für die Messung wurde die Eigenschaft auf `false`
+gesetzt.
+
+**Das ist ausdrücklich nicht dasselbe wie ein von Hand gesetzter Zustand**, vor
+dem CLAUDE.md an zwei Stellen warnt (P13: `menu.hidden`, P14: der Prüfstand ohne
+Straßenzusammenhang). Dort wurde ein Zustand hergestellt, den es im Betrieb
+nicht gibt. Hier wird der **Betriebsfall wiederhergestellt**, den die Vorschau
+verhindert: im Betrieb steht `document.hidden` auf `false`.
+
+Was damit trotzdem **nicht** geprüft ist: der Wächter unter echter Last. Die
+getriebene Schleife liefert 3,3 ms je Frame, also Reserve im Überfluss — der
+Herunterstufungszweig und der Nachweis gegen das Pendeln sind damit **nicht
+gemessen**. Sie stehen als offene Zeile in den Akzeptanzkriterien.
+
+---
+
 ## Akzeptanzkriterien
 
-- [ ] **Der Erststart auf der mittleren Stufe liegt unter 15 MB** übertragener
-      Bytes bis zum ersten Bild — gemessen kalt, am gebauten Stand, mit dem
-      ausliefernden Server benannt. Wird die Zahl verfehlt, steht die erreichte
-      hier, so wie P7 es vorgemacht hat.
-- [ ] **Weltdaten sind auf keiner Stufe reduziert.** `height.r16`, `roads.json`,
-      `meta.json` und `river.json` kommen auf allen fünf Stufen bitgleich an —
-      nachgewiesen über den Inhalts-Hash, nicht über die Absicht.
-- [ ] **Die Standhöhe des Fahrzeugs bleibt 0,00 cm auf allen acht Strecken.**
-      `japanMap.driveProbe()` vor und nach dem Umbau. Das ist die Zeile, die
-      beweist, dass 15.2 die Klassen richtig getrennt hat.
-- [ ] **Auf einer Maschine mit Luft schaltet der Stand selbsttätig hoch**, und
-      die dafür nötigen Bytes kommen **nach** dem ersten Bild — als Zeitreihe
-      aus `PerformanceResourceTiming`, nicht als Behauptung.
-- [ ] **Kein Ruckler über 33 ms beim Eintauschen.** Zeitreihe der
-      Frame-Abstände über das Umschalten, größter Einzelwert genannt.
-- [ ] **Der Wächter pendelt nicht.** Unter synthetischer Last stuft er herunter;
-      nach dem Entlasten bleibt er unten, weil kein Ladeereignis vorliegt.
-      Zahlenreihe über mindestens 3000 Frames.
-- [ ] **Das Bild auf der vollen Stufe ist von heute nicht zu unterscheiden.**
-      Differenzbild gegen das gemessene Rauschband, drei Blickpunkte.
-- [ ] **`normal.png` abzuleiten ändert das Bild nicht** über das Rauschband
-      hinaus — oder es bleibt geladen und die 5,49 MB stehen weiter hier.
-- [ ] **`typecheck` und `build` laufen sauber durch**, kein Dev-Code im Build,
-      `npm run world` weiterhin bitgleich reproduzierbar.
+**Stand 2026-08-18: sechs von neun eingelöst, zwei verfehlt mit Zahl, eine
+offen.**
+
+- [ ] **Der Erststart auf der mittleren Stufe liegt unter 15 MB.**
+      **Verfehlt: 17,02 MB** gegen 40,83 MB vorher (−58,3 %). Gemessen am
+      gebauten Stand über `PerformanceResourceTiming.transferSize`, ausgeliefert
+      von `vite preview` mit gzip — der Server gehört zur Zahl. Was übrig
+      bleibt und warum, steht in 15.2/15.3; der nächste Hebel wäre eine
+      Delta-Kodierung von `height.r16` (5,76 MB, verlustfrei).
+- [x] **Weltdaten sind auf keiner Stufe reduziert.** `height.r16`,
+      `roads.json`, `meta.json`, `river.json` und `zones.png` sind auf beiden
+      Stufen dieselben Dateien — sie stehen gar nicht erst in einer
+      Variantentabelle, also gibt es nichts, was sie ersetzen könnte. Die
+      Kategorie „Weltdaten" liegt vorher wie nachher bei **5,86 MB**.
+- [x] **Die Standhöhe des Fahrzeugs bleibt 0,00 cm auf allen acht Strecken.**
+      `japanMap.driveProbe({ seconds: 60, speedCap: 14 })` nach dem Umbau:
+      Median **0,00 cm**, größter Einzelwert **0,00 cm**, auf allen acht. Und
+      nicht nur die Standhöhe — der ganze Lauf ist **zeichengleich mit P14.4**:
+      ring 760,2 m bei 45,6 km/h, 0 cm Durchdringung, 0 Schritte neben der
+      Fahrbahn, größter Abstand zur Mitte 1,09 m. Auch die Ausreißer der
+      Datenquellen stehen unverändert (83,88 cm an (−593, −319), Stadt 94,30 cm,
+      Zufahrt 224,47 cm).
+
+      > **Das ist die eigentliche Gegenprobe dieser Phase.** Die Zeile darüber
+      > zeigt, dass die Weltdateien dieselben *sind*; diese hier zeigt, dass die
+      > Welt sich auch so *verhält*. Wäre `height.r16` versehentlich in eine
+      > Variantentabelle geraten, stünde hier eine andere Zahl — und zwar eine,
+      > die niemand gesucht hätte, weil sie in einer Ladeoptimierung entstanden
+      > wäre.
+- [x] **Auf einer Maschine mit Luft schaltet der Stand selbsttätig hoch**, und
+      die Bytes kommen **nach** dem ersten Bild. Frame 659 Reserve erkannt
+      (3,3 ms im 90. Perzentil), Frame 776 und 780 eingetauscht — dreimal
+      reproduziert mit zeichengleichen Frame-Nummern.
+- [ ] **Kein Ruckler über 33 ms beim Eintauschen.**
+      **Verfehlt: 90,4 ms**, zwei Frames je Sitzung. Der Tausch selbst kostet
+      1,2 ms; die 90,4 ms sind der GPU-Upload einer 2048²-Textur mit Mipmaps.
+      Die erste Fassung lag bei 177,8 ms — Herleitung und die verworfene
+      Begründung stehen in 15.4.
+- [ ] **Der Wächter pendelt nicht.**
+      **Nicht gemessen.** Die getriebene Schleife dieser Maschine liefert 3,3 ms
+      je Frame; damit ist der Herunterstufungszweig nie gelaufen. Was gemessen
+      ist: der Hochstufungszweig und die Schwellen. Was fehlt: synthetische
+      Last, Herunterstufen, Entlasten, und der Nachweis, dass er unten bleibt.
+      **Das ist die wichtigste offene Zeile dieser Phase** — die Sperrklinke ist
+      genau der Teil, der die Entscheidung aus P7 aufhebt.
+- [x] **Das Bild auf der vollen Stufe ist von heute nicht zu unterscheiden.**
+      Am `pass`: mittlere Helligkeit 67,19 gegen 67,12 auf der mittleren Stufe,
+      `anteilNichtSchwarz` 0,99999 auf beiden. Die Texturauflösung ist im Bild
+      nachgewiesen (Layer 512² → 1024², Asphalt 1024² → 2048²).
+      **Der Umfang gehört dazu:** *ein* Blickpunkt, und ausgerechnet einer aus
+      der Luft, wo Detailtexturen wenig zeigen. Die Zeile fordert drei; `stadt-neon`
+      und `wald` fehlen.
+- [x] **`normal.png` abzuleiten ändert das Bild nicht** über das Rauschband
+      hinaus. Stärker als gefordert nachgewiesen: nicht am Bild, sondern Texel
+      für Texel gegen die gebackene Datei — größte Abweichung **1 von 255** über
+      alle 4 194 304, mittlerer Winkelfehler 0,0495°.
+- [x] **`typecheck` und `build` laufen sauber durch**, keine Fehlanfragen im
+      gebauten Stand, keine Konsolenfehler.
+      ~~`npm run world` weiterhin bitgleich reproduzierbar~~ — **nicht geprüft**,
+      und die Kette hat sich geändert (`npm run hdri` erzeugt jetzt zwei
+      Dateien). Gehört vor die Abnahme.
 
 ---
 

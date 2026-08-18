@@ -19,6 +19,8 @@ import { createRoadUniforms, RoadMaterial, type RoadUniforms } from './materials
 import { buildDecalAtlas, buildDecals } from './roads/Decals';
 import { buildGuardrails } from './roads/GuardrailBuilder';
 import { ROAD_ASSETS } from './roads/roadAssets';
+import { AssetUpgrader, transferredBytes } from '@/core/AssetUpgrader';
+import { ROAD_TEXTURE_SETS } from '@/core/AssetManifest';
 import { buildRoadGeometry } from './roads/RoadMeshBuilder';
 import { RoadNetwork } from './roads/RoadNetwork';
 import type { RoadEditor } from './roads/RoadEditor';
@@ -63,6 +65,8 @@ export class RoadSystem implements System {
   constructor(
     private readonly atmosphere: AtmosphereUniforms,
     private readonly reflection: ReflectionUniforms,
+    /** Der Nachlader aus P15.4 — optional, siehe `TerrainSystem`. */
+    private readonly upgrader?: AssetUpgrader,
   ) {}
 
   get network(): RoadNetwork | null {
@@ -88,6 +92,64 @@ export class RoadSystem implements System {
       this.#surface,
       this.reflection,
     );
+    // ── Die volle Asphaltstufe anmelden — P15.4 ─────────────────────────
+    //
+    // `asphalt_02` ist mit 6,31 MB der **größte Textursatz der Karte**: die
+    // Fahrbahn steht im Bild näher an der Kamera als alles andere, deshalb
+    // liegt sie als einzige bei 2048². Auf der mittleren Stufe sind es 1024².
+    //
+    // Der Tausch setzt fünf Felder, weil `arm` dreimal hängt (AO, Rauheit,
+    // Metallanteil — ein Sampler statt drei, siehe `terrainAssets.ts`). Ein
+    // vergessenes Feld wäre eine Fahrbahn, die in der Rauheit scharf und im
+    // Albedo weich ist; das sieht man nicht, es sei denn, man sucht danach.
+    //
+    // Der Tausch selbst ist billig; teuer ist der **Upload**. Drei 2048²-
+    // Texturen sind rund 48 MB, und die wandern beim ersten Gebrauch auf die
+    // GPU — deshalb reicht der Nachlader sie als `textures` heraus und schiebt
+    // sie einzeln je Frame hoch, bevor `apply()` läuft.
+    this.upgrader?.register({
+      name: 'Asphalt',
+      build: async () => {
+        const voll = ROAD_TEXTURE_SETS.voll;
+        const [neuAlbedo, neuNormal, neuArm] = await Promise.all([
+          context.resources.texture(voll.albedo, { srgb: true, anisotropy }),
+          context.resources.texture(voll.normal, { srgb: false, anisotropy }),
+          context.resources.texture(voll.arm, { srgb: false, anisotropy }),
+        ]);
+        for (const texture of [neuAlbedo, neuNormal, neuArm]) this.#prepare(texture);
+        const bytes = [voll.albedo, voll.normal, voll.arm].reduce(
+          (sum, url) => sum + transferredBytes(url),
+          0,
+        );
+        return {
+          bytes,
+          textures: [neuAlbedo, neuNormal, neuArm],
+          apply: () => {
+            const material = this.#material;
+            if (!material) return;
+            material.map = neuAlbedo;
+            material.normalMap = neuNormal;
+            material.aoMap = neuArm;
+            material.roughnessMap = neuArm;
+            material.metalnessMap = neuArm;
+            // **Kein `needsUpdate`.** Es stand hier, mit der Begründung, three
+            // übersetze beim Tausch gleichartiger Karten ohnehin nicht neu —
+            // was stimmt, das Flag aber gerade *erzwingt*. Gemessen kostete
+            // dieser Frame damit 177,8 ms gegen 3,3 ms Rauschband. Der
+            // Programmschlüssel hängt daran, **ob** eine Karte da ist, nicht
+            // welche; beide sind `Texture` mit gleichem Farbraum, also bleibt
+            // das Programm dasselbe und die Uniforms werden je Frame neu
+            // gesetzt.
+            // Die alten **nicht** von Hand freigeben: sie liegen im
+            // `ResourceManager`, der sie beim `dispose()` der Engine einsammelt.
+            // Sie hier zu verwerfen hieße, eine Ressource freizugeben, die ein
+            // anderer noch verwaltet — die Umkehrung des P4-Fehlers, und
+            // genauso falsch.
+          },
+        };
+      },
+    });
+
     this.#decalAtlas = context.resources.track(buildDecalAtlas());
     this.#decalMaterial = new DecalMaterial(this.#decalAtlas, this.atmosphere);
 
