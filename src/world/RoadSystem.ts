@@ -170,7 +170,19 @@ export class RoadSystem implements System {
       group.add(mesh);
     }
 
-    const guardrails = buildGuardrails(roads);
+    const totalLength = roads.reduce((sum, road) => sum + road.length, 0);
+
+    // **Das Abfragenetz entsteht vor den Planken**, seit diese wissen müssen, wo
+    // eine Fahrbahn liegt: an Einmündungen läuft die Planke der Hauptstrecke sonst
+    // quer über die Mündung. Begründung und Messung bei `RailBlocked`.
+    this.#network = new RoadNetwork({
+      seed: 0,
+      sampleSpacing: 2,
+      roads,
+      measured: { totalLength, count: roads.length },
+    });
+    const netz = this.#network;
+    const guardrails = buildGuardrails(roads, (x, z) => netz.isOnRoad(x, z));
     if (guardrails.geometry) {
       const band = new Mesh(guardrails.geometry, this.#railMaterial);
       band.name = 'Leitplanken:Band';
@@ -221,7 +233,6 @@ export class RoadSystem implements System {
       }
     }
 
-    const totalLength = roads.reduce((sum, road) => sum + road.length, 0);
     this.#readouts.netz =
       `${roads.length} Strecken · ${(totalLength / 1000).toFixed(2)} km · ` +
       `${triangles.toLocaleString('de-DE')} Dreiecke`;
@@ -229,12 +240,6 @@ export class RoadSystem implements System {
       `${Math.round(guardrails.length)} m · ${guardrails.posts.length} Pfosten ` +
       `(2 Draw-Calls)`;
 
-    this.#network = new RoadNetwork({
-      seed: 0,
-      sampleSpacing: 2,
-      roads,
-      measured: { totalLength, count: roads.length },
-    });
   }
 
   #prepare(texture: Texture): void {

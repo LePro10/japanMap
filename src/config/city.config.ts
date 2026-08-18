@@ -42,9 +42,25 @@ export const CITY = {
      * `near = 0,5` beträgt rund z²/(near · 2²⁴): in 50 m sind das 0,3 mm, in
      * 200 m 4,8 mm, in 400 m 19 mm. Bei 3 cm Versatz trägt der Abstand also
      * bis etwa 500 m — weit über die Entfernung hinaus, aus der man den Bordstein
-     * noch als Fläche sieht. Nach unten begrenzt ihn die Platte selbst: das
+     * noch als Fläche sieht. ~~Nach unten begrenzt ihn die Platte selbst: das
      * eingeschnittene Gelände steht im Distrikt bis 29,939 m hoch (gemessen,
-     * 14 641 Proben), die Platte liegt bei 29,97 m und damit knapp darüber.
+     * 14 641 Proben), die Platte liegt bei 29,97 m und damit knapp darüber.~~
+     *
+     * > **Der letzte Satz ist widerlegt (2026-08-18, P14).** Dieselbe Messung mit
+     * > derselben Probenzahl: das eingeschnittene Gelände steht im Distrikt bei
+     * > **28,997 m** — 14 632 der 14 641 Proben liegen exakt auf diesem Wert, das
+     * > Maximum ist 29,001 m. Die Platte liegt damit nicht „knapp darüber",
+     * > sondern **97,3 cm** darüber.
+     * >
+     * > Für den Tiefenstreit ändert das nichts (mehr Abstand ist mehr Reserve),
+     * > und die Schürze deckt den Absatz ab — sie ist genau dafür da. Für das
+     * > **Fahren** war es dagegen entscheidend: ein Auto auf der Sampler-Höhe
+     * > stünde in der Stadt bis zur Fensterlinie im Asphalt. Wie der Fahrmodus
+     * > damit umgeht, steht im Kopf von `DriveSystem`.
+     * >
+     * > Warum die alte Zahl einmal gestimmt hat, ist nicht mehr feststellbar —
+     * > seitdem wurde mehrfach neu gebacken, und P8.5 hält fest, dass die Erosion
+     * > jede Änderung über die ganze Karte trägt.
      */
     dropBelowRoad: 0.03,
     /** Wie weit die Schürze über den Distrikt hinausreicht, in Metern. */

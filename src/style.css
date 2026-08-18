@@ -31,10 +31,20 @@ body {
   padding: 0;
   width: 100%;
   height: 100%;
+  /* **`dvh` für mobile Browser.** `100%` bezieht sich auf das *große*
+   * Ansichtsfenster — also auf die Höhe **ohne** eingeblendete Adressleiste.
+   * Auf iOS und Android steht die Leiste beim Laden aber da, und der Canvas
+   * ragt dann unter sie: das Bedienfeld am unteren Rand liegt außerhalb des
+   * Sichtbaren, und weil `overflow: hidden` gilt, kommt man auch nicht hin.
+   * `dvh` folgt der *dynamischen* Höhe. Die `100%`-Zeile darüber bleibt als
+   * Rückfall für Browser ohne `dvh` stehen. */
+  height: 100dvh;
   overflow: hidden;
   background: var(--bg);
   color: var(--fg);
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Kein Gummiband-Scrollen und keine Zoom-Gesten auf dem Dokument. */
+  overscroll-behavior: none;
 }
 
 #viewport {
@@ -77,48 +87,85 @@ body {
   color: var(--status-warn);
 }
 
-/* ── Ladebildschirm (P7 / 7.3) ─────────────────────────────────────────────
+/* ── Lade- und Startbildschirm (P7 / 7.3, umgebaut in P13) ─────────────────
  *
  * Deckt das Canvas vollständig ab, bis der Aufwärmframe durch ist. Vorher steht
  * dort nur die Hintergrundfarbe, und die ist von „lädt noch" nicht zu
  * unterscheiden — genau die Verwechslung, die in P0 schon einmal eine
- * Viertelstunde gekostet hat. */
+ * Viertelstunde gekostet hat.
+ *
+ * Danach bleibt die Fläche stehen und wird **durchsichtig**: der Ladebalken
+ * weicht einem „Starten"-Knopf, und dahinter steht die fertige Karte. Das ist
+ * kein Effekt, sondern die Antwort auf zwei Fragen zugleich — „ist das schon
+ * das Bild?" und „wohin muss ich klicken?".
+ *
+ * Die zwei Zustände hängen an `data-phase` und **nicht** an zwei Klassen: so
+ * kann keiner der beiden Blöcke versehentlich gleichzeitig stehen. */
 
-.loading {
+.start {
   position: fixed;
   inset: 0;
   z-index: 50;
   display: grid;
-  place-content: center;
+  place-items: center;
+  padding: 24px;
+  overflow-y: auto;
   background: var(--bg);
-  transition: opacity 320ms ease-out;
+  transition:
+    opacity 280ms ease-out,
+    background-color 420ms ease-out;
 }
 
-.loading--done {
+.start[data-phase='bereit'] {
+  background: rgba(4, 6, 9, 0.62);
+  backdrop-filter: blur(3px);
+}
+
+.start--done {
   opacity: 0;
   pointer-events: none;
 }
 
-.loading__box {
-  width: min(420px, 80vw);
+.start__box {
+  width: min(440px, 100%);
+  margin: auto;
+  text-align: center;
 }
 
-.loading__title {
-  margin: 0 0 14px;
+.start__title {
+  margin: 0;
   font-family: var(--mono);
-  font-size: 13px;
-  letter-spacing: 0.22em;
+  font-size: 22px;
+  letter-spacing: 0.3em;
+  /* Das Sperren schiebt jedes Zeichen nach rechts, auch das letzte — ohne diesen
+   * Ausgleich steht der Titel sichtbar links von der Mitte. */
+  text-indent: 0.3em;
   text-transform: uppercase;
+  color: var(--fg);
+}
+
+.start__subtitle {
+  margin: 8px 0 26px;
+  font-size: 12px;
+  line-height: 1.6;
   color: var(--fg-dim);
 }
 
-.loading__track {
+/* Nur einer der beiden Blöcke steht je Zustand. `display: none` und nicht
+ * `visibility`, damit der jeweils andere keine Höhe belegt — der Kasten würde
+ * sonst beim Wechsel springen. */
+.start[data-phase='laden'] .start__ready,
+.start[data-phase='bereit'] .start__progress {
+  display: none;
+}
+
+.start__track {
   height: 2px;
   background: var(--panel-border);
   overflow: hidden;
 }
 
-.loading__bar {
+.start__bar {
   width: 0;
   height: 100%;
   background: var(--fg);
@@ -127,7 +174,7 @@ body {
   transition: width 140ms linear;
 }
 
-.loading__step {
+.start__step {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
@@ -137,12 +184,12 @@ body {
   color: var(--fg);
 }
 
-.loading__percent {
+.start__percent {
   font-variant-numeric: tabular-nums;
   color: var(--fg-dim);
 }
 
-.loading__detail {
+.start__detail {
   margin: 4px 0 0;
   font-family: var(--mono);
   font-size: 11px;
@@ -152,8 +199,72 @@ body {
   text-overflow: ellipsis;
 }
 
-.loading__detail--error {
+.start__detail--error {
   color: var(--status-over);
+}
+
+/* **56 px hoch, wie die Touch-Knöpfe.** Er ist auf einem Telefon das erste und
+ * für einen Moment einzige Bedienelement der Anwendung; Apple verlangt 44 pt,
+ * Android 48 dp. */
+.start__button {
+  min-width: 200px;
+  min-height: 56px;
+  padding: 0 32px;
+  border: 1px solid var(--fg);
+  border-radius: 6px;
+  background: var(--fg);
+  color: var(--bg);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.start__button:hover {
+  background: #fff;
+  border-color: #fff;
+}
+
+.start__button:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 3px;
+}
+
+.start__keys {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 32px;
+  margin-top: 24px;
+}
+
+/* ── Tastentabelle ────────────────────────────────────────────────────────
+ *
+ * Eine Klasse für alle drei Stellen, an denen die Belegung steht
+ * (Startbildschirm, Reiter „Steuerung", und was noch kommt). Der Text dazu
+ * liegt in `src/ui/controls.ts` — eine Quelle, drei Ausgaben. */
+
+.keytable {
+  margin: 0;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.keytable th {
+  padding-right: 14px;
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--fg);
+}
+
+.keytable td {
+  text-align: left;
+  color: var(--fg-dim);
 }
 
 /* ── Statistik-Overlay ─────────────────────────────────────────────────── */
@@ -301,113 +412,86 @@ body {
   display: none;
 }
 
-/* ── Spieler-Oberfläche (P10.2) ────────────────────────────────────────────
+/* ── Spieler-Oberfläche (P10.2, Reiter seit P13) ───────────────────────────
  *
  * Ohne `import.meta.env.DEV` — im Gegensatz zu allem darüber. Das Debug-Panel
  * ist Werkzeug, das hier ist Produkt: bis P10 hatte der gebaute Stand keinen
  * Hinweis auf die Steuerung, keine Einstellungen und keine Pause.
  *
- * Beide Flächen liegen im `#overlay` und erben dessen `pointer-events: auto`.
- * Der Hinweis nimmt es ausdrücklich zurück — der Klick, der den Pointer Lock
- * holt, gehört dem Canvas darunter. */
+ * > **Der Hinweiskasten `.hint` ist in P13 entfallen.** Hier stand die
+ * > ausführlichste Notiz dieser Datei, und sie ist es wert, dass ihre Lehre
+ * > bleibt: `#overlay > *` setzt `pointer-events: auto` mit einem
+ * > **ID-Selektor** und schlägt jede Klassenregel. Ein schlichtes
+ * > `.hint { pointer-events: none }` blieb deshalb wirkungslos — der berechnete
+ * > Wert stand weiter auf `auto`, und ausgerechnet der Kasten mit der Aufschrift
+ * > „Klick ins Bild" hätte den Klick verschluckt, den er verlangt. Gefunden hat
+ * > das nicht der Augenschein, sondern ein `getComputedStyle` im laufenden
+ * > Bild. Wo Verhalten an einer CSS-Eigenschaft hängt, wird der **berechnete**
+ * > Wert geprüft. Die Regel gilt unverändert für `#overlay > .touch` weiter
+ * > unten.
+ * >
+ * > Weg ist er, weil die Geste jetzt einen Knopf hat: der Startbildschirm
+ * > endet in „Starten", und damit gibt es keinen Kasten mehr, der im fertigen
+ * > Bild steht und etwas erklärt. */
 
-/* **`#overlay > .hint` und nicht `.hint`** — nachgemessen. Die Regel darüber
- * (`#overlay > *`) trägt einen ID-Selektor und schlägt jede Klassenregel: ein
- * schlichtes `.hint { pointer-events: none }` blieb wirkungslos, der berechnete
- * Wert stand weiter auf `auto`. Damit hätte ausgerechnet der Kasten mit der
- * Aufschrift „Klick ins Bild" den Klick verschluckt, der den Pointer Lock holt
- * — die Anwendung hätte auf ihre eigene Anweisung nicht reagiert. Gefunden hat
- * das nicht der Augenschein, sondern ein `getComputedStyle` im laufenden
- * Bild. */
-#overlay > .hint {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-content: center;
-  pointer-events: none;
-  user-select: none;
-}
-
-.hint[hidden],
 .menu[hidden] {
   display: none;
 }
 
-.hint__box {
-  padding: 18px 24px;
-  border: 1px solid var(--panel-border);
-  border-radius: 8px;
-  background: var(--panel-bg);
-  backdrop-filter: blur(6px);
-  text-align: center;
-}
-
-.hint__call {
-  margin: 0 0 12px;
-  font-family: var(--mono);
-  font-size: 13px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--fg);
-}
-
-.hint__keys,
-.menu__keys {
-  margin: 0 auto;
-  border-collapse: collapse;
-  font-family: var(--mono);
-  font-size: 11px;
-  line-height: 1.7;
-}
-
-.hint__keys th,
-.menu__keys th {
-  padding-right: 14px;
-  font-weight: 500;
-  text-align: right;
-  white-space: nowrap;
-  color: var(--fg);
-}
-
-.hint__keys td,
-.menu__keys td {
-  text-align: left;
-  color: var(--fg-dim);
-}
-
-.hint__touch {
-  margin: 12px 0 0;
-  max-width: 32ch;
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--status-warn);
-}
-
+/* **Gescrollt wird im Kasten, nicht auf der Fläche darunter** — P13, und das
+ * ist die Ablösung einer älteren Reparatur, deren Messung hier stehen bleibt:
+ *
+ * > **`place-items` statt `place-content` — gemessen, nicht überlegt** (P12.4).
+ * > Mit `place-content: center` zentriert das Grid seine *Spuren* im Container.
+ * > Ist der Inhalt höher als der Container, wandert er nach **oben aus dem
+ * > Scroll-Bereich heraus**, und dorthin führt kein Scrollweg: Overflow nach
+ * > oben ist nicht erreichbar. Gemessen am gebauten Stand bei 375 × 812 —
+ * > Kastenhöhe 944,5 px, `scrollTop = 0`, und der Kasten begann bei
+ * > **−66,25 px**. Betroffen war ausgerechnet die Kopfzeile mit dem
+ * > „Weiter"-Knopf.
+ *
+ * Die Zentrierung über `place-items` bleibt (sie ist weiter richtig), der
+ * Scroll-Bereich wandert aber **in den Kasten**: `max-height: 100%` deckelt ihn
+ * auf die Fläche minus Innenabstand, Kopfzeile und Reiterreihe stehen fest, und
+ * allein der Reiterinhalt rollt. Damit kann die Kopfzeile gar nicht mehr
+ * weglaufen — weder nach oben noch aus dem Blick.
+ *
+ * Nötig wurde das, weil ein Reiter für sich schon zu hoch werden kann: gemessen
+ * bei 375 × 812 ist „Grafik" allein **1082 px** hoch (sechs Stufenknöpfe, neun
+ * Reglerzeilen im zweizeiligen Schmalraster). `min-height: 0` am Reiter ist die
+ * Zeile, ohne die das nicht wirkt — ein Flex-Kind schrumpft sonst nicht unter
+ * seinen Inhalt und der Deckel bliebe folgenlos. */
 .menu {
   position: absolute;
   inset: 0;
   display: grid;
-  place-content: center;
+  place-items: center;
   padding: 24px;
   background: rgba(4, 6, 9, 0.72);
   backdrop-filter: blur(3px);
-  overflow-y: auto;
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .menu__box {
+  display: flex;
+  flex-direction: column;
   width: min(560px, 92vw);
+  max-height: 100%;
+  margin: auto;
   padding: 20px 24px 24px;
   border: 1px solid var(--panel-border);
   border-radius: 10px;
   background: var(--panel-bg);
+  overflow: hidden;
 }
 
 .menu__head {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
 }
 
 .menu__title {
@@ -419,17 +503,82 @@ body {
   color: var(--fg-dim);
 }
 
-.menu__section {
-  margin-top: 20px;
+/* ── Reiter (P13) ──────────────────────────────────────────────────────────
+ *
+ * Vorher waren es vier Abschnitte untereinander. Gemessen an einem Telefonbild
+ * (375 × 812) war der Kasten 944 px hoch — mehr als der Schirm —, und die
+ * Kopfzeile mit „Weiter" wanderte dabei aus dem Scroll-Bereich heraus (die
+ * Notiz dazu steht oben bei `.menu`). Reiter lösen beides: jeder Reiter ist für
+ * sich kurz, und die Kopfzeile steht fest.
+ *
+ * Der unsichtbare Rahmen am inaktiven Reiter hält die Grundlinie ruhig; ohne
+ * ihn springt die Reihe beim Umschalten um einen Pixel. */
+.menu__tabs {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 16px 0 18px;
+  border-bottom: 1px solid var(--panel-border);
 }
 
-.menu__section h2 {
-  margin: 0 0 8px;
+.menu button.menu__tab {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  padding: 7px 12px;
+  color: var(--fg-dim);
+}
+
+.menu button.menu__tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--fg);
+}
+
+.menu button.menu__tab.is-active {
+  border-bottom-color: var(--fg);
+  background: none;
+  color: var(--fg);
+}
+
+/* `min-height: 0` — siehe die Notiz bei `.menu`. Der rechte Innenabstand hält
+ * den Text von der Rollleiste weg, sobald eine erscheint. */
+.menu__panel {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 4px;
+}
+
+.menu__panel[hidden] {
+  display: none;
+}
+
+.menu__subhead {
+  margin: 0 0 6px;
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--fg-dim);
+}
+
+.menu__subhead + .keytable {
+  margin-bottom: 16px;
+}
+
+.menu__note {
+  margin: 12px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--fg-dim);
+}
+
+.menu__note strong {
+  color: var(--fg);
+  font-family: var(--mono);
 }
 
 .menu button {
@@ -518,6 +667,166 @@ body {
   color: var(--fg);
 }
 
-.menu__keys {
+/* ── Fingersteuerung (P12.4) ───────────────────────────────────────────────
+ *
+ * Zwei Sorten Element mit **entgegengesetzter** Zeigerbehandlung, und die
+ * Unterscheidung ist der ganze Trick: Stick-Anzeige und Tempo dürfen keine
+ * Berührung fangen (die gehört dem Canvas darunter, dort hängen die
+ * Pointer-Handler), die Knöpfe müssen sie fangen.
+ *
+ * **Der Selektor trägt die ID.** `#overlay > *` setzt `pointer-events: auto`
+ * mit einem ID-Selektor; eine schlichte Klassenregel dagegen bliebe wirkungslos
+ * — der berechnete Wert stünde weiter auf `auto`. Genau dieser Fehler ist in
+ * P10.2 am Hinweiskasten gemessen worden. */
+#overlay > .touch {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  /* Doppeltipp-Zoom und Textauswahl haben auf einer Steuerfläche nichts zu
+   * suchen; `touch-action: none` steht am Canvas schon, hier gilt es für die
+   * Knöpfe darüber. */
+  touch-action: none;
+}
+
+.touch[hidden] {
+  display: none;
+}
+
+.touch__stick {
+  position: absolute;
+  width: 112px;
+  height: 112px;
+  margin: -56px 0 0 -56px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  background: rgba(10, 13, 18, 0.28);
+}
+
+.touch__stick[hidden] {
+  display: none;
+}
+
+.touch__stickKnob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  border-radius: 50%;
+  background: rgba(216, 222, 233, 0.5);
+}
+
+.touch__buttons,
+.touch__side {
+  position: absolute;
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.touch__buttons {
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  flex-direction: column;
+}
+
+.touch__side {
+  right: max(14px, env(safe-area-inset-right));
+  top: max(14px, env(safe-area-inset-top));
+  flex-direction: row;
+}
+
+/* **56 px und nicht 25.** Die Knöpfe des Menüs waren gemessen 25 px hoch; Apple
+ * verlangt 44 pt, Android 48 dp. Ein Steuerknopf, den man im Flug treffen muss,
+ * bekommt den größeren Wert. */
+.touch__btn {
+  width: 56px;
+  height: 56px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  background: rgba(10, 13, 18, 0.55);
+  color: var(--fg);
+  font-size: 20px;
+  line-height: 1;
+  backdrop-filter: blur(4px);
+}
+
+.touch__btn:active,
+.touch__btn.is-active {
+  background: rgba(216, 222, 233, 0.28);
+}
+
+.touch__speed {
+  position: absolute;
+  left: max(14px, env(safe-area-inset-left));
+  bottom: max(14px, env(safe-area-inset-bottom));
   margin: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+
+/* ── Schmale Schirme (P12.4) ───────────────────────────────────────────────
+ *
+ * Gemessen bei 375 × 812: die Reglerzeile ist ein festes Raster aus
+ * `1fr 150px 52px`, und für die Beschriftung blieben 122 px bei 11 px Schrift —
+ * „Gras- und Buschreichweite" bricht dort auf drei Zeilen. Untereinander statt
+ * nebeneinander ist auf dieser Breite die einzige Anordnung, die trägt. */
+@media (max-width: 560px) {
+  .menu {
+    padding: 12px;
+  }
+
+  .menu__box {
+    width: 100%;
+    padding: 16px;
+  }
+
+  .menu__row {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: 'label wert' 'regler regler';
+    gap: 4px 10px;
+    padding: 6px 0;
+    font-size: 12px;
+  }
+
+  .menu__rowLabel {
+    grid-area: label;
+  }
+
+  .menu__value {
+    grid-area: wert;
+  }
+
+  .menu__row input[type='range'],
+  .menu__row select {
+    grid-area: regler;
+    width: 100%;
+  }
+
+  /* Der Schieber selbst muss greifbar sein, nicht nur seine Zeile. */
+  .menu__row input[type='range'] {
+    height: 32px;
+  }
+
+  .menu__row input[type='checkbox'] {
+    grid-area: wert;
+    width: 24px;
+    height: 24px;
+    justify-self: end;
+  }
+
+  .menu button {
+    min-height: 44px;
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  .menu__levels,
+  .menu__views {
+    gap: 8px;
+  }
 }

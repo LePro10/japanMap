@@ -195,7 +195,7 @@ export class PropSystem implements System {
     await this.#addRiverClearance(context, clearance);
     this.#readouts.freiflaechen =
       `${clearance.count} Kreise (${props} Props, ${clearance.count - props} Fluss)`;
-    context.bus.emit('props:ready', { clearance });
+    context.bus.emit('props:ready', { clearance, placements: file.props });
 
     context.scene.add(group);
     this.#registerDebug(context);
@@ -533,13 +533,29 @@ export class PropSystem implements System {
   refreshClearance(): void {
     if (!this.#context) return;
     const clearance = new PropClearance();
+    // Die Platzierungen werden **mitgesendet**, seit das Fahrmodell sie als
+    // Hindernisse braucht (P14). Zusammengestellt aus dem laufenden Bestand und
+    // nicht aus der Datei: der Editor hat sie gerade verschoben, und eine
+    // Kollision am alten Ort wäre eine unsichtbare Wand.
+    const placements: PropPlacement[] = [];
     for (const asset of this.#assets) {
       const radius = PROP_CLEARANCE[asset.id];
-      if (!radius) continue;
-      for (const prop of asset.placements) clearance.add(prop.x, prop.z, radius * prop.scale);
+      for (const prop of asset.placements) {
+        if (radius) clearance.add(prop.x, prop.z, radius * prop.scale);
+        // `rot` in **Grad**, wie im Dateiformat — `PlacedProp.rot` führt Radiant.
+        // Für einen Zylinder ist die Drehung belanglos; falsch wäre sie trotzdem,
+        // und dieselbe Umrechnung steht in `toFile()` schon einmal.
+        placements.push({
+          id: asset.id,
+          x: prop.x,
+          z: prop.z,
+          rot: (prop.rot * 180) / Math.PI,
+          scale: prop.scale,
+        });
+      }
     }
     this.#readouts.freiflaechen = `${clearance.count} Kreise`;
-    this.#context.bus.emit('props:ready', { clearance });
+    this.#context.bus.emit('props:ready', { clearance, placements });
   }
 
   /** Aktueller Stand als Dateiformat — für den Export des Editors. */

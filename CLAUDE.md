@@ -105,6 +105,24 @@ Dazu, je nach Änderung:
   Messung als Zahlen (mittlere Helligkeit, Anteil nicht-schwarz), unabhängig von
   der Bildrate.
 
+- **Die Fingersteuerung wird mit synthetischen Zeigerereignissen geprüft** (P12.4).
+  `japanMap.shot()` zeigt sie nicht (DOM), ein Bildschirmfoto geht in der
+  Vorschau nicht. Was geht:
+
+  ```js
+  const cv = document.getElementById('viewport');
+  const pe = (t, id, x, y) => cv.dispatchEvent(new PointerEvent(t, {
+    pointerId: id, pointerType: 'touch', clientX: x, clientY: y, bubbles: true, cancelable: true }));
+  pe('pointerdown', 1, 200, 500); pe('pointermove', 1, 200, 444);   // Stick voll vorwärts
+  ```
+
+  **Und dann die Kamera fragen, nicht das DOM.** Ob der Stick *wirkt*, steht in
+  `engine.camera.position` nach ein paar `loop.tick()` — nicht darin, dass sich
+  der Knopf bewegt hat. Zwei Fallen, beide gemessen:
+  `setPointerCapture` wirft bei synthetischen Ereignissen (`NotFoundError`), und
+  ein Knopf, der von `elementFromPoint` **nicht** getroffen wird, ist trotz
+  korrekter Größe unbedienbar.
+
 - **Was die Oberfläche angeht, wird am gebauten Stand gemessen — Port 4180.**
   Seit P10.2 gibt es eine Spieler-Oberfläche (`src/ui/PlayerUi.ts`), und sie ist
   das einzige DOM, das **ohne** `import.meta.env.DEV` ausgeliefert wird. Im
@@ -140,6 +158,25 @@ Oberfläche zählen — steht das Element da, ist es klickbar, wirkt der Regler.
 > `pointer-events: none` in der Datei und `auto` im Browser, weil eine Regel mit
 > ID-Selektor darüber lag. Der Kasten sah richtig aus und verhielt sich falsch.
 
+> **Und die Oberfläche wird über ihre eigenen Wege geöffnet, nicht von Hand.**
+> In P13 meldete ein Prüfstand den „Weiter"-Knopf als unerreichbar — darüber lag
+> der ☰-Knopf der Fingersteuerung. Ursache war der Prüfstand selbst: er hatte
+> `menu.hidden = false` gesetzt und damit `#render()` übersprungen, das das
+> Bedienfeld ausblendet. Über den echten Weg (☰ drücken) stimmt alles. Ein von
+> Hand gesetzter Zustand ist ein Zustand, den es im Betrieb nicht gibt.
+
+**Seit P13 startet das Debug-Werkzeug ausgeschaltet.** Zahlenblock (`.stats`)
+und Tweakpane-Leiste (`.debug-pane`) hängen an `japanmap.debug.stats` bzw.
+`japanmap.debug.pane` im `localStorage`, Voreinstellung **aus**. Angeschaltet
+wird im Reiter „Debug" des Pausenmenüs oder mit `F1` (das schaltet beides
+zugleich). Wer in einer frischen Sitzung Zahlen ablesen will, muss also erst
+einschalten — ein leerer Bildschirmrand heißt nicht mehr „das Panel ist kaputt".
+
+```js
+localStorage.setItem('japanmap.debug.stats', '1');
+localStorage.setItem('japanmap.debug.pane', '1');   // danach neu laden
+```
+
 **Pointer Lock ist in der eingebetteten Vorschau unmöglich.** `requestPointerLock()`
 wirft dort `WrongDocumentError: The root document of this element is not valid
 for pointer lock`, und `document.hasFocus()` ist `false`. Alles, was am Lock
@@ -147,6 +184,13 @@ hängt — Menü öffnen mit Escape, „Weiter", die Kamerasteuerung überhaupt 
 hier **nicht prüfbar**. Das gehört dann so in die Doku geschrieben und nicht als
 erledigt abgehakt. Prüfbar ist immerhin der **Fehlerzweig**: eine abgelehnte
 Anforderung darf keinen toten Zustand hinterlassen.
+
+> **Und genau daraus zieht P13 seinen Nutzen aus dieser Einschränkung.** Weil
+> der Lock hier *immer* scheitert, ist der Fehlerzweig hier der Normalfall und
+> damit gut messbar: nach „Starten", nach „Weiter", nach einem Blickpunkt und
+> nach Escape steht jedes Mal 250 ms später wieder das Menü. Seit `.hint` weg
+> ist, wäre ein geschlossenes Menü nach einem abgelehnten Lock ein Bild **ganz
+> ohne Bedienelement**.
 
 **Vegetation von Hand messen — die Beruhigung ist der heikle Teil.** Dieselbe
 Falle wie im Messlauf, und sie ist mir in P10.2 prompt wieder passiert: die
@@ -195,6 +239,11 @@ gedrosselt. ~~Referenzwerte zum Gegenhalten: `wald` auf Ultra 38 948, mit Dichte
 | `japanMap.reflectionProbe()` | Wie viel einer Spiegelung stünde im Bildschirmraum? Die Messung, die in P6/6.5 gegen SSR entschieden hat |
 | `japanMap.winding()` | Wickelrichtung aller Meshes gegen ihr Normal-Attribut. Leere Liste = in Ordnung. Hat in P8.11 zwei unsichtbare Flächen gefunden, die jede andere Zahl für gesund hielt |
 | `japanMap.report()` | **Der Messlauf (P10.0).** Blickpunkte × Qualitätsstufen, JSON nach `.cache/reports/` plus je ein PNG. Siehe unten |
+| `japanMap.ab({variants})` | **Die A/B-Messung (P12.0).** Misst *Eingriffe* gegen eine Basis statt Zustände gegeneinander — und sagt dazu, ob das Ergebnis über dem **gemessenen** Rauschband liegt. Siehe „Wie GPU-Zeit hier gemessen wird" |
+| `npm run dev:lan` | Dev-Server im WLAN (P12.6). Das **Telefon** ruft ihn auf und fährt `japanMap.report({mode:'live'})` selbst — mit echter Bildrate und, unter Android Chrome, echter GPU-Zeit. Der Lauf fliegt die Blickpunkte selbst an und braucht keine Fingersteuerung |
+| `npm run hdri` | IBL-HDRI halbieren (P12.5). Teil von `npm run world` |
+| `japanMap.drive(true)` | **Fahrmodus an/aus (P14).** Der einzige Weg dorthin ohne Pointer Lock — die Taste `V` verlangt einen, die eingebettete Vorschau gibt keinen |
+| `japanMap.driveProbe()` | **Der Messstand des Fahrmodus (P14).** Fährt jede Strecke ab und schreibt Durchdringung, Spurlage, Tempo und CPU je Schritt mit; dazu Standhöhe und Höhendifferenz Sampler ↔ Mittellinie. Läuft **ohne zu rendern** — 3600 Schritte in ~50 ms |
 
 **Der Messlauf — und wofür er gebaut ist.**
 
@@ -257,6 +306,102 @@ Wer Vegetation misst, nimmt `wald` (53 116 auf Ultra), `wald-fern` (15 478) oder
 Streuung im Bild steht.~~ Die Kante gibt es nicht mehr; `wald-fern` ist jetzt der
 Ort, an dem man prüft, **dass** sie weg ist.
 
+---
+
+## Den Fahrmodus prüfen — P14
+
+**Er braucht keinen laufenden Renderer und keinen Pointer Lock.** Das ist der
+Grund, warum er auf dieser Maschine überhaupt abnehmbar war:
+
+```js
+japanMap.drive(true);            // Fahrmodus an — die Taste V verlangt Pointer Lock, das hier nicht
+japanMap.driveProbe({ seconds: 60, speedCap: 14 });   // fährt alle acht Strecken ab
+```
+
+Der Messstand treibt die Physik in einer eigenen Schleife: 3600 Schritte (eine
+Minute Fahrt) kosten rund 50 ms. Er misst Durchdringung, Abstand zur
+Fahrbahnmitte, Tempo, Schwimmwinkel und CPU je Schritt, dazu die **Standhöhe**
+des Fahrzeugs gegen die Fahrbahnoberkante.
+
+**Für das Fahrmodell selbst gibt es einen kürzeren Weg — einen idealen Boden.**
+Er isoliert die Physik vollständig von Gelände und Kollision, und genau so wurde
+der Energiefehler oben gefunden:
+
+```js
+const drive = japanMap.engine.systems.find(s => s.name === 'DriveSystem');
+const flat = { height: () => 0, normal: (x,z,t) => t.set(0,1,0), surface: () => 'asphalt' };
+drive.vehicle.respawn(0, 0, 0, flat);
+for (let i = 0; i < 600; i++) drive.vehicle.step(1/60, {throttle:1,brake:0,steer:0,handbrake:false}, flat, null);
+```
+
+Referenzwerte auf diesem Boden (Stand P14): 0–100 km/h in **4,70 s**, Endtempo
+nach 60 s **255,8 km/h**, seitlicher Versatz **0,00 m**, Gierwinkel **0,000°**.
+Ein Drift aus 58° Schwimmwinkel bei 89 km/h fängt sich **ohne jede Eingabe** in
+1,5 s, und das Tempo fällt dabei monoton — steigt es, ist der Energiefehler
+zurück.
+
+> **Was der Prüfstand nicht kann: sagen, ob es sich gut anfühlt.** Er fährt mit
+> einem Regler, nicht mit einer Absicht. „Ist der Drift kontrollierbar" braucht
+> eine Hand an der Tastatur, und diese Antwort steht in PLAN.md P14
+> ausdrücklich **aus**.
+
+**Und ein Bild gehört auch hier dazu.** Das Fahrzeug ist DOM-frei, also greift
+`japanMap.shot()` — anders als bei der Oberfläche. Beim ersten Bild fehlten die
+Räder, obwohl jede Zahl stimmte (siehe unten).
+
+---
+
+## Wie GPU-Zeit hier gemessen wird — P12.0, 2026-08-16
+
+**Auf dieser Maschine ist GPU-Zeit messbar.** Der Satz „diese Maschine hat kein
+`EXT_disjoint_timer_query_webgl2`" steht an einem halben Dutzend Stellen im
+Projekt und ist **maschinengebunden, nicht projektgebunden** — er galt für den
+ANGLE-Pfad über den *Microsoft Basic Render Driver*. Gemessen am 2026-08-16:
+
+```
+renderer: ANGLE (AMD, AMD Radeon RX 7900 XTX (0x0000744C) Direct3D11, D3D11)
+EXT_disjoint_timer_query_webgl2: vorhanden, liefert Werte
+```
+
+**Das macht die Karte trotzdem nicht zum Maßstab** — SPEC §4 nennt sie
+ausdrücklich als unbrauchbar dafür, und bei 1,7 ms auf 720p misst man
+Treiber-Overhead statt Last. Belastbar sind **Verhältnisse**, nicht Absolutwerte
+gegen die Budgets.
+
+### Zwei Störungen, und beide addieren nur
+
+1. **Die GPU gehört nicht uns allein.** Läuft nebenher etwas anderes darauf (in
+   diesem Fall LM Studio), stimmt eine sequenzielle Messreihe nicht mehr:
+   gemessen stieg eine Serie aus acht Eingriffen bei 3840 × 2160 **monoton an**,
+   unabhängig davon, was abgeschaltet wurde — „nur Gitter 17²" kam auf 19,5 ms
+   gegen 12,5 ms der Basis davor. Dieselbe Basis, 21-mal verteilt gemessen,
+   streute **3,75…11,98 ms**.
+2. **`lastGpuMs` ist nicht immer *ein* Frame.** `StatsProfiler.update()` ruft je
+   Frame `processGpuQueries()`, und das **summiert alle Abfragen, die gerade
+   fertig geworden sind**. Eine Abfrage wird ein bis drei Frames später fertig —
+   im eingeschwungenen Zustand ist das eine je Frame, es sind aber auch null
+   (dann steht 0 da) oder zwei (dann die doppelte Frame-Zeit). Gemessen am
+   Blickpunkt `wald`: Median **1,89 ms**, 10. Perzentil **0,91 ms** — Faktor 2,1,
+   also genau eine doppelt gezählte Abfrage.
+
+Daraus die drei Regeln, die `japanMap.ab()` als Code umsetzt:
+
+- **Interleaven.** Jede Variante steht zwischen zwei Basiswerten und wird gegen
+  deren Mittel gerechnet. Ein linearer Drift kürzt sich heraus.
+- **Niedriges Perzentil statt Median.** Beide Störungen können einen Messwert
+  nur *vergrößern* — es gibt keinen Mechanismus, der ihn zu klein macht.
+  Nullwerte werden verworfen, nicht mitgemittelt.
+- **Das Rauschband messen, nicht schätzen.** Aus den Abständen benachbarter
+  Basiswerte, 90. Perzentil. Was darunter liegt, heißt **„nicht auflösbar"** und
+  nicht „kein Effekt".
+
+Der Selbsttest des Werkzeugs ist eine **Nullprobe** — eine Variante, die nichts
+ändert. Sie muss `significant: false` liefern; gemessen Δ = +0,04 ms.
+
+> **Was das Rauschband kostet:** mit LM Studio auf derselben Karte lag es bei
+> **±0,40 ms gegen 1,66 ms Basis (24 %)**. Alles darunter ist in so einem Lauf
+> nicht messbar. Wer die kleinen Posten auflösen will, muss die GPU frei haben.
+
 **Erdbau-Karte erzeugen** (braucht ein Referenzfeld ohne Einschnitte):
 
 ```bash
@@ -285,12 +430,28 @@ mit `@/` muss man dafür vorher auf relative umschreiben).
   (`node node_modules/vite/bin/vite.js`). Und git meldet **alle** Dateien als
   geändert, weil der Mount jede Datei als 0755 zeigt: `git config core.fileMode
   false`. Auf lokaler Platte (auch unter Windows) tritt beides nicht auf.
+- **Die Maschine wechselt — die Sätze über sie gelten deshalb nicht ewig.**
+  Dieses Projekt ist auf mindestens zwei Rechnern entstanden, und ein guter Teil
+  seiner Doku beschreibt *einen* davon. Vor der ersten Messung einer Sitzung
+  gehört deshalb geprüft, worauf man gerade sitzt:
+  ```js
+  const gl = document.createElement('canvas').getContext('webgl2');
+  const d = gl.getExtension('WEBGL_debug_renderer_info');
+  ({ gpu: gl.getParameter(d.UNMASKED_RENDERER_WEBGL),
+     timer: !!gl.getExtension('EXT_disjoint_timer_query_webgl2') });
+  ```
 - **WebGL prüfen, bevor eine visuelle Phase beginnt** — aber genau hinsehen.
   Hier stand, ohne GPU-Zugriff gebe es „unter Umständen gar keinen
   WebGL2-Kontext" und P4 sei damit blockiert. **Das war zu pessimistisch:** auf
-  dieser Maschine liefert ANGLE über den *Microsoft Basic Render Driver* einen
-  vollwertigen WebGL2-Kontext. Was fehlt, ist allein
+  ~~dieser~~ *der ANGLE-/Basic-Render-Driver-*Maschine liefert ANGLE einen
+  vollwertigen WebGL2-Kontext. Was dort fehlt, ist allein
   `EXT_disjoint_timer_query_webgl2`.
+
+  > **Auf der GPU-Maschine (RX 7900 XTX) fehlt auch die nicht mehr** —
+  > gemessen am 2026-08-16. Jede Stelle im Projekt, die „GPU-Zeit ist hier nicht
+  > messbar" sagt, meint die *andere* Maschine. Wie unter diesen Umständen
+  > richtig gemessen wird, steht oben unter „Wie GPU-Zeit hier gemessen wird" —
+  > eine vorhandene Zeitabfrage allein reicht nämlich nicht.
   Die Unterscheidung ist wichtig, weil sie über eine ganze Phase entscheidet:
 
   | messbar | nicht messbar |
@@ -643,6 +804,63 @@ Kurzliste, damit es nicht wieder passiert:
   3. **Zwei Minuten Fremdprüfung schlagen zwei Stunden Eigendiagnose.** Die Frage
      „schau bitte einmal hin" hätte an jeder Stelle der sieben Messungen gestellt
      werden können.
+- **Eine richtige Gleichung, explizit integriert — und das Modell erzeugt
+  Energie.** Das Fahrmodell aus P14 führte Längs- und Quergeschwindigkeit im
+  mitrotierenden Fahrzeugsystem fort und trug die Zentripetalterme nach
+  (`v̇_long = ΣFx/m + ω·v_lat`). Die Gleichung stimmt. Mit explizitem Euler
+  stimmt sie nicht: die beiden Terme sind eine **Drehung** des
+  Geschwindigkeitsvektors um `ω·dt`, und explizit integriert wird daraus ihre
+  **Tangente** — um `√(1+(ω·dt)²)` länger. Bei 60 Hz und ω = 15 rad/s sind das
+  3 % je Schritt, das Sechsfache je Sekunde. Gemessen: ein Drift bei 93 km/h
+  stand nach 2,75 s bei **1622 km/h**.
+  **An der Bahn war nichts zu sehen** — das Auto fuhr. Aufgefallen ist es nur,
+  weil eine Messreihe das Tempo mitschrieb. Zwei Lehren: wer in einem
+  **rotierenden** Bezugssystem integriert, muss die Drehung als Drehung
+  behandeln und nicht als Beschleunigung (hier gelöst, indem der Zustand in
+  Weltkoordinaten wanderte — dort gibt es den Term gar nicht); und bei allem,
+  was Energie hat, gehört **eine Zeitreihe der Energie** zur Prüfung, nicht nur
+  ein Blick auf das Ergebnis.
+- **Ein Fehler, den keine Kennzahl meldet, weil keine Kennzahl die Frage
+  stellt.** Seit P3 laufen die Leitplanken der Hauptstrecken durchgehend — auch
+  quer über die Mündung jeder abzweigenden Straße. Gemessen: **67 von 1608
+  Plankenpunkten (4,2 %) stehen auf einer Fahrbahn**, 43 auf dem Ring, 20 auf
+  dem Bergpass, 4 auf der Zufahrt. Im Bild ist das eine Planke, die eine Straße
+  absperrt; ein halbes Jahr lang hat es niemand gesehen, **weil niemand gefahren
+  ist**. Gefunden hat es der erste Messlauf des Fahrmodus: der Prüfstand kam auf
+  der Zufahrt 48 m weit und hing dann 3081 von 3600 Schritten fest.
+  Dieselbe Klasse wie die rückseitig gewickelten Flächen aus P8.11. Lehre: **eine
+  neue Nutzungsart ist ein Prüfstand für alles, was vorher gebaut wurde.** Wer
+  eine baut, sollte damit rechnen, dass sie Altes findet — und die Zeit dafür
+  einplanen.
+- **Ein Prüfstand, der den Zustand misst, den er selbst versäumt hat
+  herzustellen.** Die Standhöhen des Fahrzeugs kamen durchweg als exakt
+  −6,00 cm heraus — genau `ROAD_MESH.surfaceOffset`, also der Wert für „die
+  Höhenkorrektur ist null". Der Prüfstand setzte das Auto ab, ohne vorher den
+  Straßenzusammenhang zu bilden, den der Betrieb je Schritt bildet. Die Zahl war
+  reproduzierbar, plausibel und falsch.
+  Das ist die Umkehrung des P13-Falls (dort setzte ein Prüfstand `menu.hidden`
+  von Hand und übersprang `#render()`). **Beide Male war die Ursache derselbe
+  Satz:** ein von Hand gesetzter Zustand ist ein Zustand, den es im Betrieb nicht
+  gibt. Ein Verdachtsmoment war da und wurde fast überlesen — *exakt* −6,00 cm
+  auf **allen acht** Strecken ist kein Messergebnis, das ist eine Konstante.
+- **Alles war richtig, und das Auto hatte keine Räder.** Draw-Calls, Instanzzahl,
+  Instanzmatrizen, Position: alle vier Werte stimmten. Im Bild war die Karosserie
+  ein Kasten ohne Räder. Ursache: das Blech nahm die **Kollisionsbreite**
+  (1,62 m), die Spurweite ist 1,48 m, ein Rad 0,21 m breit — die Radaußenkante
+  lag 3,5 cm außerhalb der Blechkante, und von hinten deckte der Stoßfänger den
+  Rest. Gesehen hat es das **erste Bild**, das je vom Fahrzeug gemacht wurde.
+  Reihung in dieselbe Liste wie die vier Fälle aus P6: wenn etwas nicht im Bild
+  ist, fragt man nicht die Zahlen. Neu ist hier nur, dass das Ding *sichtbar*
+  war — nur eben ohne den Teil, der es zum Auto macht.
+- **Zwei Bilder von zwei Standpunkten verglichen und die Kamera gemessen.** Der
+  erste Versuch, die Kosten des Fahrzeugs zu beziffern, ergab **+52 Draw-Calls
+  und +165 672 Dreiecke**. Das Fahrzeug hat 2 Meshes. Ursache: „mit Auto" stand
+  hinter dem Auto (Verfolgerkamera), „ohne Auto" am Blickpunkt `stadt-neon` —
+  zwei Bilder, zwei Orte. Richtig gemessen (Kamera steht, nur `visible`
+  umgeschaltet): **+4 Draw-Calls, +1024 Dreiecke**, und die 4 statt 2 sind der
+  Spiegeldurchgang. Der Merksatz steht seit P5 in dieser Datei und war trotzdem
+  wieder fällig: **ein Vorher/Nachher an zwei verschiedenen Stellen misst die
+  Kamera statt die Änderung.**
 - **Am Ergebnis eingehängt statt an der Eingabe.** Die planare Spiegelung
   überschrieb zuerst `reflectedLight.indirectSpecular` — also den bereits mit
   der Fresnel-Gewichtung multiplizierten Wert — mit der **rohen**

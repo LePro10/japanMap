@@ -11,29 +11,29 @@ import { GRID_VERTICES_ALLOWED, lodMetersPerVertex, type GridVertices } from '@/
 import type { PostFxQuality } from '@/config/postfx.config';
 import type { AppBus } from '@/core/events';
 import { VIEWPOINTS, applyViewpoint, type CameraPlacer } from '@/debug/viewpoints';
+import { CONTROLS, DRIVE_CONTROLS, TOUCH_CONTROLS, controlTable, hasTouch } from './controls';
+import { TouchControls, type TouchCameraTarget } from './TouchControls';
 
 /**
- * Die Oberfläche für den Spieler — PLAN.md P10.2.
+ * Die Oberfläche für den Spieler — PLAN.md P10.2, umgebaut in P13.
  *
  * ## Warum es sie bis P10 nicht gab, und warum das ein Loch war
  *
- * Alles Bedienbare dieses Projekts hing bis hierher am Debug-Panel, und das
- * steckt hinter `import.meta.env.DEV`. Im **gebauten** Stand gab es damit:
- * keinen Hinweis auf die Steuerung (WASD, Maus, Shift muss man raten), keine
+ * Alles Bedienbare dieses Projekts hing bis dahin am Debug-Panel, und das steckt
+ * hinter `import.meta.env.DEV`. Im **gebauten** Stand gab es damit: keinen
+ * Hinweis auf die Steuerung (WASD, Maus, Shift muss man raten), keine
  * Möglichkeit, die Qualitätsstufe zu ändern, keine Pause und keinen Weg zu den
- * Blickpunkten. Der Durchgang „von A bis Z" in PLAN.md hat das als den einzigen
- * Punkt geführt, an dem der gebaute Stand hinter dem zurückbleibt, was ein
- * Nutzer erwartet — kein Bildfehler, sondern ein fehlendes Stück Produkt.
+ * Blickpunkten.
  *
  * ## Der Zustand ist der Pointer Lock, nicht ein eigenes Flag
  *
- * Es gibt genau drei Zustände, und sie hängen an einer Größe, die der **Browser**
- * führt:
+ * Es gibt genau drei Zustände, und zwei davon hängen an einer Größe, die der
+ * **Browser** führt:
  *
- * | Pointer Lock | schon einmal gehabt | Anzeige |
+ * | Pointer Lock | schon gestartet | Anzeige |
  * |---|---|---|
  * | ja | — | nichts (man fliegt) |
- * | nein | nein | Hinweis „Klick ins Bild" |
+ * | nein | nein | Startbildschirm (`StartScreen`, liegt darüber) |
  * | nein | ja | Pausenmenü |
  *
  * Das ist Absicht und spart die übliche Fehlerquelle: Escape löst den Lock
@@ -42,9 +42,18 @@ import { VIEWPOINTS, applyViewpoint, type CameraPlacer } from '@/debug/viewpoint
  * Alt-Tab und der Vollbildwechsel lösen den Lock ebenfalls, ohne dass eine
  * Taste gedrückt wurde. Zugehört wird deshalb dem `pointerlockchange`.
  *
- * Die Unterscheidung „schon einmal gehabt" ist der Grund, warum beim ersten
- * Laden der Hinweis steht und nicht das Menü: wer die Karte noch nie gesehen
- * hat, hat nichts zu pausieren.
+ * ## Was P13 geändert hat
+ *
+ * 1. **Der Hinweiskasten ist weg.** Die mittlere Bildfläche gehört im Flug der
+ *    Karte und sonst niemandem. Die Steuerungstabelle steht jetzt auf dem
+ *    Startbildschirm und im Reiter „Steuerung"; die Geste, die den Pointer Lock
+ *    holt, ist der „Starten"-Knopf statt eines Klicks ins Bild.
+ * 2. **Das Menü hat Reiter.** Vorher war es eine Seite mit vier Abschnitten
+ *    untereinander, und die Reglerliste allein war länger als ein Telefonbild.
+ * 3. **Debug wohnt im Menü.** Zahlenblock und Werkzeugleiste starten
+ *    **ausgeschaltet** und werden im Reiter „Debug" eingeschaltet — den es nur
+ *    gibt, wenn eine Debug-Steuerung übergeben wurde, also nur im Dev-Build.
+ *    Tweakpane und stats-gl bleiben damit aus dem Produktions-Bundle (SPEC §4).
  */
 export interface QualityControl {
   readonly level: QualityKey;
@@ -54,25 +63,36 @@ export interface QualityControl {
   reclassify(): void;
 }
 
+/**
+ * Was das Menü von der Debug-UI braucht — bewusst vier Zeilen und kein `import`.
+ *
+ * `PlayerUi` liegt unter `src/ui/` und wird **ohne** `import.meta.env.DEV`
+ * ausgeliefert. Ein Typ-Import auf `DebugPanel` wäre folgenlos (Typen werden
+ * gelöscht), ein Wert-Import zöge Tweakpane ins Bundle. Diese Schnittstelle
+ * hält beides auseinander: im Dev-Build reicht `main.ts` eine Implementierung
+ * herein, im Build ist das Feld schlicht nicht gesetzt.
+ */
+export interface DebugControl {
+  /** Der Zahlenblock oben links (Draw-Calls, Dreiecke, GPU-ms). */
+  statsVisible: boolean;
+  /** Die Tweakpane-Werkzeugleiste oben rechts. */
+  paneVisible: boolean;
+}
+
 export interface PlayerUiOptions {
   readonly bus: AppBus;
   readonly canvas: HTMLCanvasElement;
   readonly container: HTMLElement;
   readonly quality: QualityControl;
-  readonly camera: CameraPlacer;
+  /**
+   * Die Kamera. `CameraPlacer` für die Blickpunkte, `TouchCameraTarget` für die
+   * Fingersteuerung — `FreeFlyController` erfüllt beides, und die Oberfläche
+   * kennt trotzdem nur die beiden schmalen Schnittstellen und nicht das System.
+   */
+  readonly camera: CameraPlacer & TouchCameraTarget;
+  /** Nur im Dev-Build gesetzt. Fehlt sie, gibt es den Reiter „Debug" nicht. */
+  readonly debug?: DebugControl;
 }
-
-/** Die Steuerungstabelle — dieselbe wie im Kopf von `FreeFlyController`. */
-const CONTROLS: readonly (readonly [string, string])[] = [
-  ['W A S D', 'bewegen'],
-  ['Maus', 'umsehen'],
-  ['Leertaste / Strg', 'hoch / runter'],
-  ['Umschalt', 'fünffaches Tempo'],
-  ['Mausrad', 'Grundtempo 1–500 m/s'],
-  ['F', 'Bodenkollision an / aus'],
-  ['R', 'zurück zum Start'],
-  ['Esc', 'Menü'],
-];
 
 const AO_LABELS: Readonly<Record<AoQuality, string>> = {
   high: 'hoch',
@@ -85,35 +105,63 @@ const POSTFX_LABELS: Readonly<Record<PostFxQuality, string>> = {
   full: 'voll',
   reduced: 'reduziert',
   lean: 'sparsam',
+  // „kompakt" und nicht „minimal": die Stufe *behält* den Farbstich und die
+  // Vignette und lässt nur Bloom und Kantenglättung weg. Wer „minimal" liest,
+  // erwartet weniger, als sie liefert.
+  compact: 'kompakt',
   off: 'aus',
 };
+
+type TabKey = 'grafik' | 'steuerung' | 'blick' | 'debug';
 
 export class PlayerUi {
   readonly #bus: AppBus;
   readonly #canvas: HTMLCanvasElement;
   readonly #quality: QualityControl;
   readonly #camera: CameraPlacer;
+  readonly #debug: DebugControl | null;
 
-  readonly #hint: HTMLElement;
   readonly #menu: HTMLElement;
   readonly #levelRow: HTMLElement;
   readonly #effect: HTMLElement;
   readonly #sliders: HTMLElement;
 
   #menuOpen = false;
-  #everLocked = false;
+  /**
+   * Hat der Nutzer schon einmal angefangen zu fliegen?
+   *
+   * **Hieß bis P12.4 `#everLocked` und hing allein am Pointer Lock.** Das war
+   * der Grund, warum auf einem Telefon nie ein Menü aufging: der Lock kommt
+   * dort nicht zustande (iOS Safari kennt ihn nicht, Android lehnt ihn bei
+   * Fingereingabe ab), also blieb das Flag für immer falsch — und mit ihm der
+   * einzige Weg ins Pausenmenü verschlossen. Der Zustand heißt jetzt, was er
+   * bedeutet; seit P13 setzt ihn der „Starten"-Knopf, unabhängig vom Zeigegerät.
+   */
+  #started = false;
   /** Wahr, solange die Regler aus dem Zustand gefüllt werden — verhindert Rückkopplung. */
   #syncing = false;
+  #tab: TabKey = 'grafik';
+  #touch: TouchControls | null = null;
 
   constructor(options: PlayerUiOptions) {
     this.#bus = options.bus;
     this.#canvas = options.canvas;
     this.#quality = options.quality;
     this.#camera = options.camera;
+    this.#debug = options.debug ?? null;
 
-    this.#hint = this.#buildHint();
     this.#menu = this.#buildMenu();
-    options.container.append(this.#hint, this.#menu);
+    options.container.append(this.#menu);
+
+    this.#touch = new TouchControls({
+      canvas: options.canvas,
+      container: options.container,
+      camera: options.camera,
+      onMenu: () => {
+        this.#menuOpen = true;
+        this.#render();
+      },
+    });
 
     this.#levelRow = this.#must(this.#menu, '.menu__levels');
     this.#effect = this.#must(this.#menu, '.menu__effect');
@@ -122,29 +170,53 @@ export class PlayerUi {
     this.#fillLevels();
     this.#fillSliders();
     this.#fillViewpoints();
+    this.#fillDebug();
 
-    // Der Ladebildschirm liegt über allem; vorher wäre der Hinweis unsichtbar
-    // und würde beim Auftauchen der Karte schon wieder verschwinden.
-    this.#bus.on('engine:warmedup', () => {
-      this.#render();
-    });
     this.#bus.on('quality:changed', () => {
       this.#syncQuality();
+    });
+    // F1 schaltet dieselben zwei Sachen wie die Kästchen im Reiter „Debug".
+    // Ohne diesen Weg zeigte das Menü nach einem Tastendruck den alten Stand —
+    // die Anzeige, die lügt, gegen die dieses Projekt schon zweimal angetreten
+    // ist.
+    this.#bus.on('debug:visibility', () => {
+      this.#syncDebug();
     });
 
     document.addEventListener('pointerlockchange', this.#onPointerLockChange);
     document.addEventListener('pointerlockerror', this.#onPointerLockError);
     window.addEventListener('keydown', this.#onKeyDown);
+    // Auf Touch schließt die erste Berührung nichts mehr auf — der
+    // Startbildschirm hat das übernommen —, sie zählt aber weiter als „gestartet":
+    // wer über den Rückfallpfad (Startbildschirm entsorgt) hier landet, soll
+    // trotzdem ein Menü öffnen können.
+    this.#canvas.addEventListener('pointerdown', this.#onCanvasPointerDown);
 
     this.#syncQuality();
+    this.#syncDebug();
     this.#render();
+  }
+
+  /**
+   * Der Startbildschirm ist bedient worden — ab hier fliegt der Nutzer.
+   *
+   * Wird **synchron im Klick** des „Starten"-Knopfes gerufen; `requestPointerLock`
+   * verlangt die Nutzergeste, und die überlebt kein `await`.
+   */
+  begin(): void {
+    this.#started = true;
+    this.#menuOpen = false;
+    this.#render();
+    if (!this.#touchMode) this.#requestLock();
   }
 
   dispose(): void {
     document.removeEventListener('pointerlockchange', this.#onPointerLockChange);
     document.removeEventListener('pointerlockerror', this.#onPointerLockError);
     window.removeEventListener('keydown', this.#onKeyDown);
-    this.#hint.remove();
+    this.#canvas.removeEventListener('pointerdown', this.#onCanvasPointerDown);
+    this.#touch?.dispose();
+    this.#touch = null;
     this.#menu.remove();
   }
 
@@ -154,11 +226,21 @@ export class PlayerUi {
     return document.pointerLockElement === this.#canvas;
   }
 
+  /** Steuert der Nutzer mit dem Finger? Dann gibt es keinen Pointer Lock. */
+  get #touchMode(): boolean {
+    return this.#touch?.enabled ?? false;
+  }
+
+  readonly #onCanvasPointerDown = (event: PointerEvent): void => {
+    if (event.pointerType === 'mouse') return;
+    this.#started = true;
+  };
+
   readonly #onPointerLockChange = (): void => {
     if (this.#locked) {
-      this.#everLocked = true;
+      this.#started = true;
       this.#menuOpen = false;
-    } else if (this.#everLocked) {
+    } else if (this.#started && !this.#touchMode) {
       // Lock verloren, ohne dass jemand „Weiter" gedrückt hat: Escape,
       // Fensterwechsel, Vollbildwechsel. In allen Fällen will der Nutzer nicht
       // mehr fliegen — also Menü, nicht stiller Stillstand.
@@ -172,13 +254,17 @@ export class PlayerUi {
    *
    * Chrome sperrt eine neue Anforderung für rund 1,25 s, nachdem der Nutzer
    * selbst mit Escape ausgestiegen ist — wer zweimal schnell hintereinander
-   * Escape drückt und „Weiter" wählt, landet genau darin. Ohne diesen Zweig
-   * schlösse sich das Menü und die Anwendung reagierte auf nichts mehr: der
-   * Hinweis stünde nicht, der Lock käme nicht, und der einzige Ausweg wäre ein
-   * Klick ins Bild, den niemand angesagt hat.
+   * Escape drückt und „Weiter" wählt, landet genau darin.
+   *
+   * **Bis P13 wurde hier das Menü geschlossen**, weil dann der Hinweiskasten
+   * „Klick ins Bild" übernahm. Den gibt es nicht mehr, und ohne ihn wäre ein
+   * geschlossenes Menü nach einer abgelehnten Anforderung ein Bild ganz ohne
+   * Bedienelement: der Lock kam nicht, also reagiert auch keine Taste. Das Menü
+   * bleibt deshalb **offen** — sein „Weiter" ist der Wiederholversuch, und die
+   * Sperre ist nach gut einer Sekunde von selbst vorbei.
    */
   readonly #onPointerLockError = (): void => {
-    this.#menuOpen = false;
+    this.#menuOpen = this.#started;
     this.#render();
   };
 
@@ -188,9 +274,10 @@ export class PlayerUi {
     // Browser löst den Lock und wir hören `pointerlockchange`. Hier geht es nur
     // um den Weg zurück.
     if (this.#locked) return;
+    if (!this.#started) return;
     event.preventDefault();
     if (this.#menuOpen) this.#resume();
-    else if (this.#everLocked) {
+    else {
       this.#menuOpen = true;
       this.#render();
     }
@@ -199,66 +286,50 @@ export class PlayerUi {
   #resume(): void {
     this.#menuOpen = false;
     this.#render();
-    this.#requestLock();
+    // **Auf Touch wird kein Lock angefordert.** Er käme nicht zustande, und der
+    // abgelehnte Versuch wirft auf iOS Safari (`requestPointerLock` fehlt dort
+    // ganz) einen Fehler, der die Fortsetzung des Menüs mitnähme.
+    if (!this.#touchMode) this.#requestLock();
   }
 
   #requestLock(): void {
     // `requestPointerLock()` liefert in neueren Browsern eine Zusage, in
-    // älteren `undefined`. Beides muss hier durchgehen, und eine abgelehnte
-    // Zusage darf nicht als unbehandelter Fehler in der Konsole landen —
+    // älteren `undefined`, und auf iOS Safari gibt es die Funktion **gar
+    // nicht**. Alle drei müssen hier durchgehen, und eine abgelehnte Zusage
+    // darf nicht als unbehandelter Fehler in der Konsole landen —
     // `pointerlockerror` fängt denselben Fall für die alten.
+    if (typeof this.#canvas.requestPointerLock !== 'function') return;
     const result: unknown = this.#canvas.requestPointerLock();
     if (result instanceof Promise) {
       result.catch(() => {
-        this.#render();
+        this.#onPointerLockError();
       });
     }
   }
 
   #render(): void {
-    const locked = this.#locked;
-    this.#menu.hidden = !this.#menuOpen || locked;
-    this.#hint.hidden = locked || this.#menuOpen;
+    this.#menu.hidden = !this.#menuOpen || (!this.#touchMode && this.#locked);
+    // Das Bedienfeld gehört nicht über das offene Menü.
+    this.#touch?.setVisible(!this.#menuOpen);
   }
 
   // ── Aufbau ─────────────────────────────────────────────────────────────
-
-  #buildHint(): HTMLElement {
-    const hint = document.createElement('div');
-    // **Keine Zeigerereignisse.** Der Hinweis liegt über dem Canvas, und der
-    // Klick, der den Lock holt, gehört dem Canvas — `FreeFlyController` hört
-    // dort auf `pointerdown`. Fängt der Hinweis den Klick ab, passiert beim
-    // ersten Versuch nichts, und der Nutzer klickt in eine Anwendung, die
-    // ausdrücklich „Klick ins Bild" sagt.
-    hint.className = 'hint';
-    hint.hidden = true;
-
-    const rows = CONTROLS.map(
-      ([key, what]) => `<tr><th>${key}</th><td>${what}</td></tr>`,
-    ).join('');
-
-    // Touch-Hinweis: `pointer: coarse` heißt Finger statt Maus. Ohne Pointer
-    // Lock gibt es keine Blicksteuerung, und ohne Tastatur keine Bewegung —
-    // das gehört gesagt, statt den Nutzer tippen zu lassen, bis er aufgibt.
-    const coarse = window.matchMedia('(pointer: coarse)').matches;
-    const touch = coarse
-      ? '<p class="hint__touch">Für Touch-Geräte ist diese Ansicht nicht ausgelegt: ' +
-        'Umsehen braucht eine Maus, Bewegen eine Tastatur.</p>'
-      : '';
-
-    hint.innerHTML = `
-      <div class="hint__box">
-        <p class="hint__call">Klick ins Bild</p>
-        <table class="hint__keys">${rows}</table>
-        ${touch}
-      </div>`;
-    return hint;
-  }
 
   #buildMenu(): HTMLElement {
     const menu = document.createElement('div');
     menu.className = 'menu';
     menu.hidden = true;
+
+    // Der Reiter „Debug" existiert nur, wenn eine Steuerung dafür hereingereicht
+    // wurde. Im gebauten Stand ist das nie der Fall — und das ist die einzige
+    // Stelle, an der über seine Existenz entschieden wird.
+    const tabs: readonly (readonly [TabKey, string])[] = [
+      ['grafik', 'Grafik'],
+      ['steuerung', 'Steuerung'],
+      ['blick', 'Blickpunkte'],
+      ...(this.#debug ? ([['debug', 'Debug']] as const) : []),
+    ];
+
     menu.innerHTML = `
       <div class="menu__box">
         <header class="menu__head">
@@ -266,25 +337,50 @@ export class PlayerUi {
           <button type="button" class="menu__resume">Weiter</button>
         </header>
 
-        <section class="menu__section">
-          <h2>Qualität</h2>
+        <nav class="menu__tabs">
+          ${tabs
+            .map(
+              ([key, label]) =>
+                `<button type="button" class="menu__tab" data-tab="${key}">${label}</button>`,
+            )
+            .join('')}
+        </nav>
+
+        <section class="menu__panel" data-panel="grafik">
           <div class="menu__levels"></div>
           <p class="menu__effect"></p>
           <div class="menu__sliders"></div>
           <button type="button" class="menu__reclassify">Neu einstufen</button>
         </section>
 
-        <section class="menu__section">
-          <h2>Blickpunkte</h2>
-          <div class="menu__views"></div>
+        <section class="menu__panel" data-panel="steuerung">
+          ${hasTouch() ? `<h3 class="menu__subhead">Finger</h3>${controlTable(TOUCH_CONTROLS, 'keytable')}<h3 class="menu__subhead">Tastatur und Maus</h3>` : ''}
+          ${controlTable(CONTROLS, 'keytable')}
+          <h3 class="menu__subhead">Im Auto</h3>
+          ${controlTable(DRIVE_CONTROLS, 'keytable')}
         </section>
 
-        <section class="menu__section">
-          <h2>Steuerung</h2>
-          <table class="menu__keys">
-            ${CONTROLS.map(([key, what]) => `<tr><th>${key}</th><td>${what}</td></tr>`).join('')}
-          </table>
+        <section class="menu__panel" data-panel="blick">
+          <div class="menu__views"></div>
+          <p class="menu__note">
+            Ein Sprung an einen benannten Standpunkt; das Menü schließt dabei. Die Tabelle ist
+            dieselbe, an der die Messungen dieses Projekts hängen — ein Bild oder eine
+            Draw-Call-Zahl gilt an einem Ort, nicht auf der Karte.
+          </p>
         </section>
+
+        ${
+          this.#debug
+            ? `<section class="menu__panel" data-panel="debug">
+                 <div class="menu__sliders menu__sliders--debug"></div>
+                 <p class="menu__note">
+                   <strong>F1</strong> schaltet beides zugleich. Diese Werkzeuge gibt es nur im
+                   Dev-Server — im gebauten Stand fehlt der Reiter, und Tweakpane und stats-gl
+                   liegen gar nicht erst im Bundle.
+                 </p>
+               </section>`
+            : ''
+        }
       </div>`;
 
     this.#must(menu, '.menu__resume').addEventListener('click', () => {
@@ -293,12 +389,29 @@ export class PlayerUi {
     this.#must(menu, '.menu__reclassify').addEventListener('click', () => {
       this.#quality.reclassify();
     });
+    for (const button of menu.querySelectorAll<HTMLElement>('.menu__tab')) {
+      button.addEventListener('click', () => {
+        this.#tab = button.dataset.tab as TabKey;
+        this.#syncTabs(menu);
+      });
+    }
     // Klick neben den Kasten schließt — dieselbe Geste wie „Weiter". Der Klick
     // darf dabei **nicht** vom Kasten selbst kommen.
     menu.addEventListener('click', (event) => {
       if (event.target === menu) this.#resume();
     });
+
+    this.#syncTabs(menu);
     return menu;
+  }
+
+  #syncTabs(menu: HTMLElement): void {
+    for (const button of menu.querySelectorAll<HTMLElement>('.menu__tab')) {
+      button.classList.toggle('is-active', button.dataset.tab === this.#tab);
+    }
+    for (const panel of menu.querySelectorAll<HTMLElement>('.menu__panel')) {
+      panel.hidden = panel.dataset.panel !== this.#tab;
+    }
   }
 
   #fillLevels(): void {
@@ -397,6 +510,60 @@ export class PlayerUi {
       (raw) => ({ postFx: raw as PostFxQuality }),
     );
     this.#toggle('Spiegelung auf nassem Asphalt');
+  }
+
+  /**
+   * Der Reiter „Debug" — zwei Kästchen, sonst nichts.
+   *
+   * **Warum das Werkzeug jetzt ausgeschaltet startet.** Bis P13 stand der
+   * Zahlenblock beim Laden im Bild und die Tweakpane-Leiste daneben; wer den
+   * Dev-Server für einen Blick auf die Landschaft benutzte, sah zuerst
+   * Draw-Calls. Der Schalter merkt sich seinen Zustand (`localStorage`), die
+   * Voreinstellung ist aber „aus" — Werkzeug holt man sich, es liegt einem nicht
+   * im Weg.
+   */
+  #fillDebug(): void {
+    const debug = this.#debug;
+    if (!debug) return;
+    const host = this.#must(this.#menu, '.menu__sliders--debug');
+
+    const kasten = (label: string, read: () => boolean, write: (v: boolean) => void): void => {
+      const row = this.#row(label, 'debug');
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.dataset.debug = label;
+      input.checked = read();
+      input.addEventListener('change', () => {
+        write(input.checked);
+      });
+      row.appendChild(input);
+      host.appendChild(row);
+    };
+
+    kasten(
+      'Zahlenblock (Draw-Calls, GPU)',
+      () => debug.statsVisible,
+      (v) => {
+        debug.statsVisible = v;
+      },
+    );
+    kasten(
+      'Werkzeugleiste (Tweakpane)',
+      () => debug.paneVisible,
+      (v) => {
+        debug.paneVisible = v;
+      },
+    );
+  }
+
+  #syncDebug(): void {
+    const debug = this.#debug;
+    if (!debug) return;
+    const boxes = this.#menu.querySelectorAll<HTMLInputElement>('[data-debug]');
+    const state = [debug.statsVisible, debug.paneVisible];
+    boxes.forEach((box, index) => {
+      box.checked = state[index] ?? false;
+    });
   }
 
   #slider(

@@ -64,6 +64,24 @@ export class PostFXPipeline implements System {
   #vignette: VignetteEffect | null = null;
   #mainPass: EffectPass | null = null;
   #smaaPass: EffectPass | null = null;
+  /**
+   * Der Pass für `postFx: 'compact'` — LUT und Vignette **ohne** Bloom und ohne
+   * Tonemapping-Effekt, weil dort der Renderer tonemappt (P12.1).
+   *
+   * **Ein zweiter Pass und nicht ein umgebauter erster.** `EffectPass` backt
+   * seine Effekte beim Bauen in *einen* Shader; die Effektliste nachträglich zu
+   * ändern hieße, den Pass zu ersetzen — mitten im Bild, mit
+   * Shader-Übersetzung. Zwei Pässe, von denen immer genau einer läuft, kosten
+   * dagegen ein zusätzliches Programm im Aufwärmframe und danach nichts.
+   *
+   * Der abgeschaltete Pass wird von `EffectComposer.render()` vollständig
+   * übersprungen (`if (!pass.enabled) continue`) — deshalb muss
+   * `#updateRenderToScreen()` danach laufen, sonst zeichnet niemand mehr auf
+   * den Bildschirm. Das ist der Fehler aus P8.2, und er wartet hier an genau
+   * derselben Stelle wieder.
+   */
+  #compactPass: EffectPass | null = null;
+  #compactVignette: VignetteEffect | null = null;
 
   readonly #grading: GradingParams = { ...GRADING };
   #profiler: CostProfiler | null = null;
@@ -137,6 +155,20 @@ export class PostFXPipeline implements System {
     this.#mainPass = new EffectPass(camera, this.#bloom, toneMapping, this.#lut, this.#vignette);
     composer.addPass(this.#mainPass);
 
+    // Der schlanke Zwilling für `compact`. **Eigene Effekt-Instanzen**, weil ein
+    // Effekt genau einem `EffectPass` gehört — die *Textur* der LUT ist dagegen
+    // dieselbe, also wirkt jede Grading-Änderung sofort auf beide Pässe.
+    this.#compactVignette = new VignetteEffect({
+      offset: POSTFX.vignette.offset,
+      darkness: POSTFX.vignette.darkness,
+    });
+    this.#compactPass = new EffectPass(
+      camera,
+      new LUT3DEffect(this.#lutTexture, { tetrahedralInterpolation: true }),
+      this.#compactVignette,
+    );
+    composer.addPass(this.#compactPass);
+
     this.#smaaPass = new EffectPass(camera, new SMAAEffect({ preset: SMAAPreset.HIGH }));
     composer.addPass(this.#smaaPass);
 
@@ -200,9 +232,15 @@ export class PostFXPipeline implements System {
       this.#bloom.luminanceMaterial.threshold = look.postfx.bloomThreshold;
       this.#bloom.luminanceMaterial.smoothing = look.postfx.bloomSmoothing;
     }
-    if (this.#vignette) {
-      this.#vignette.offset = look.postfx.vignetteOffset;
-      this.#vignette.darkness = look.postfx.vignetteDarkness;
+    // **Beide Vignetten.** Der kompakte Pass hat eine eigene Instanz (siehe
+    // `#compactPass`); wer nur die erste setzt, bekommt auf den unteren Stufen
+    // stillschweigend die Startwerte statt des Presets — ein Regler, der auf
+    // vier von fünf Stufen wirkt, ist genau die Sorte halbe Zusage, die dieses
+    // Projekt zweimal ausgebaut hat.
+    for (const vignette of [this.#vignette, this.#compactVignette]) {
+      if (!vignette) continue;
+      vignette.offset = look.postfx.vignetteOffset;
+      vignette.darkness = look.postfx.vignetteDarkness;
     }
     if (this.#ao) {
       this.#ao.configuration.intensity = look.postfx.aoIntensity;
@@ -270,9 +308,14 @@ export class PostFXPipeline implements System {
    */
   #refreshPostFx(): void {
     const level = this.#postFxLevel;
+    // Wer tonemappt, entscheidet zugleich, welcher der beiden Effekt-Pässe
+    // läuft: der volle bringt den `ToneMappingEffect` mit, der kompakte nicht.
+    const chain = level.toneMapping === 'chain';
 
     if (this.#bloom) this.#bloom.mipmapBlurPass.levels = Math.max(1, level.bloomLevels);
     if (this.#smaaPass) this.#smaaPass.enabled = this.#lookWantsSmaa && level.smaa;
+    if (this.#mainPass) this.#mainPass.enabled = chain;
+    if (this.#compactPass) this.#compactPass.enabled = !chain;
 
     const context = this.#context;
     const composer = this.#composer;
@@ -280,13 +323,18 @@ export class PostFXPipeline implements System {
 
     const { renderer, scene, camera } = context;
     if (level.composer) {
-      renderer.toneMapping = NoToneMapping;
+      // **Das Tonemapping wandert, nicht die Helligkeit.** Bei `compact`
+      // tonemappt three schon im Materialshader; ab dem Puffer stehen
+      // Anzeigewerte, und LUT und Vignette arbeiten genau darauf — dieselbe
+      // Reihenfolge wie in der vollen Kette, nur ohne eigenen Durchgang dafür.
+      renderer.toneMapping = chain ? NoToneMapping : AgXToneMapping;
       this.setPresenter(() => {
         composer.render();
       });
-      this.#readouts.kette =
-        `Render → AO → Bloom(${level.bloomLevels})/AgX/LUT/Vignette` +
-        (this.#smaaPass?.enabled ? ' → SMAA' : '');
+      this.#readouts.kette = chain
+        ? `Render → AO → Bloom(${level.bloomLevels})/AgX/LUT/Vignette` +
+          (this.#smaaPass?.enabled ? ' → SMAA' : '')
+        : 'Render (AgX im Renderer) → AO → LUT/Vignette — kompakt, ein Durchgang';
     } else {
       renderer.toneMapping = AgXToneMapping;
       this.setPresenter(() => {
@@ -345,7 +393,9 @@ export class PostFXPipeline implements System {
     this.#lookWantsAo = POSTFX.ao.enabled;
     this.#refreshAo();
     if (this.#bloom) this.#bloom.blendMode.opacity.value = POSTFX.bloom.enabled ? 1 : 0;
-    if (this.#vignette) this.#vignette.blendMode.opacity.value = POSTFX.vignette.enabled ? 1 : 0;
+    for (const vignette of [this.#vignette, this.#compactVignette]) {
+      if (vignette) vignette.blendMode.opacity.value = POSTFX.vignette.enabled ? 1 : 0;
+    }
     this.#lookWantsSmaa = POSTFX.smaa.enabled;
   }
 
@@ -396,7 +446,9 @@ export class PostFXPipeline implements System {
       if (this.#lut) this.#lut.blendMode.opacity.value = event.value ? 1 : 0;
     });
     effects.addBinding(toggles, 'vignette', { label: 'Vignette' }).on('change', (event) => {
-      if (this.#vignette) this.#vignette.blendMode.opacity.value = event.value ? 1 : 0;
+      for (const vignette of [this.#vignette, this.#compactVignette]) {
+        if (vignette) vignette.blendMode.opacity.value = event.value ? 1 : 0;
+      }
     });
     effects.addBinding(toggles, 'smaa', { label: 'SMAA' }).on('change', (event) => {
       // Über den Wunsch, nicht über den Pass — sonst hebt der Schalter die
@@ -499,6 +551,15 @@ export class PostFXPipeline implements System {
       this.#readouts.kosten = 'Kette ist auf dieser Stufe umgangen — nichts zu messen.';
       return;
     }
+    // Auf `compact` laufen Bloom, SMAA und der volle Effekt-Pass gar nicht; die
+    // Schalter unten schalteten dann Pässe um, die ohnehin übersprungen werden,
+    // und die A/B-Differenz meldete Nullen als Ergebnis.
+    if (this.#postFxLevel.toneMapping !== 'chain') {
+      this.#readouts.kosten =
+        'Kompakte Kette — Bloom und SMAA laufen hier nicht. Für die Aufschlüsselung ' +
+        'auf eine Stufe mit voller Kette wechseln.';
+      return;
+    }
 
     const steps: ProfileStep[] = [];
     if (this.#ao) {
@@ -553,6 +614,8 @@ export class PostFXPipeline implements System {
     this.#vignette = null;
     this.#mainPass = null;
     this.#smaaPass = null;
+    this.#compactPass = null;
+    this.#compactVignette = null;
     this.#profiler = null;
     this.#context = null;
   }

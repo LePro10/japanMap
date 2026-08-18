@@ -23,6 +23,7 @@ import riverUrl from '../../assets/generated/terrain/river.json?url';
 
 import skyUrl from '../../assets/hdri/industrial_sunset_02_puresky_4k.hdr?url';
 import iblUrl from '../../assets/hdri/rooftop_night_2k.hdr?url';
+import iblSmallUrl from '../../assets/generated/hdri/rooftop_night_1k.hdr?url';
 import sunUrl from '../../assets/generated/lighting/industrial_sunset_02_puresky_4k.sun.json?url';
 
 import rockAlbedo from '../../assets/generated/textures/rock_face_03/Diffuse.jpg?url';
@@ -53,11 +54,61 @@ export const TERRAIN_ASSETS = {
   river: riverUrl,
 } as const;
 
+/**
+ * Das Beleuchtungs-HDRI in der Auflösung, die zum Gerät passt — P12.5.
+ *
+ * ## Warum überhaupt zwei
+ *
+ * Das IBL ist mit 6,21 MB der zweitgrößte Posten des Startdownloads (53,4 MB
+ * gegen 15 MB aus SPEC §4). `tools/optimize-hdri.mjs` halbiert es auf **2,00
+ * MB**; die Kodierung ist dabei geprüft, die mittlere Leuchtdichte weicht um
+ * 0,0445 % ab.
+ *
+ * ## Warum es trotzdem nicht überall genommen wird — gemessen
+ *
+ * Die naheliegende Begründung wäre: „es wird ohnehin von `PMREMGenerator`
+ * gefaltet, also ist die Quellauflösung egal." **Das stimmt für den diffusen
+ * Anteil und nicht für den spiegelnden.** Ein weichgezeichnetes Umgebungsbild
+ * hat flachere Glanzlichter, und nasser Asphalt hat genau die niedrige Rauheit,
+ * bei der das auffällt.
+ *
+ * Bildvergleich bei 1280 × 720, Ultra, vollständig eingeschwungen (identische
+ * Instanzzahlen in beiden Läufen), Rauschband aus zwei Aufnahmen desselben
+ * Zustands:
+ *
+ * | Blickpunkt | Rauschband | 2k gegen 1k | mittlere Helligkeit |
+ * |---|---|---|---|
+ * | `stadt-neon` | 0,42 % der Pixel | **42,97 %**, Mittel 3,06/255 | 91,79 → 89,65 (**−2,3 %**) |
+ * | `pass` | 0,14 % | 40,49 %, Mittel 3,67/255 | 68,68 → 67,98 (−1,0 %) |
+ * | `kueste` | 0,65 % | 4,45 %, Mittel 0,56/255 | 104,74 → 104,73 (±0) |
+ *
+ * Im zehnfach verstärkten Differenzbild (`p12ibl_stadtneon_diff10x.png`) ist es
+ * eine **gleichmäßige** Verschiebung über alle umgebungsbeleuchteten Flächen —
+ * kein Artefakt, sondern die erwartete Folge. Sichtbar ist sie im Nebeneinander
+ * nicht; **messbar ist sie**, und damit gehört sie nicht stillschweigend auf
+ * jede Stufe.
+ *
+ * ## Die Auflösung
+ *
+ * Der Auftrag aus P12 lautet: auf einem 4K-Monitor darf man den Unterschied
+ * sehen, auf einem schwachen Gerät nicht. Also bekommt das Telefon die kleine
+ * Datei — dort sind 2 % Glanzlichtunterschied bei 1,25 Pixelfaktor ohnehin
+ * jenseits des Sichtbaren, und 4,21 MB über Mobilfunk sind es nicht.
+ *
+ * **Es wird nur eine der beiden geladen.** Beide liegen im Build (Vite gibt
+ * beide aus), geholt wird die, die hier zurückkommt.
+ */
+function iblForDevice(): string {
+  const coarse =
+    typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+  return coarse ? iblSmallUrl : iblUrl;
+}
+
 export const HDRI_ASSETS = {
   /** Sichtbarer Himmel — scene.background. */
   sky: skyUrl,
-  /** Beleuchtung — PMREM → scene.environment. */
-  ibl: iblUrl,
+  /** Beleuchtung — PMREM → scene.environment. Geräteabhängig, siehe oben. */
+  ibl: iblForDevice(),
   /** Ausgabe von tools/hdri-sun.mjs für `sky`. */
   sun: sunUrl,
 } as const;

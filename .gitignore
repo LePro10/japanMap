@@ -29,3 +29,7 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+.harness/
+
+# Lokale Einstellungen dieser Maschine — nicht geteilt.
+.claude/settings.local.json

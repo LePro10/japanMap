@@ -13,7 +13,22 @@ import { FrameTimer } from './FrameTimer';
 import { BudgetGuard } from './BudgetGuard';
 import { StatsOverlay } from './StatsOverlay';
 
-const VISIBILITY_KEY = 'japanmap.debug.visible';
+/**
+ * Zwei Schalter statt einem — seit P13.
+ *
+ * Vorher lag beides unter `japanmap.debug.visible` und wurde gemeinsam
+ * geschaltet. Getrennt, weil man die zwei Dinge unterschiedlich oft braucht:
+ * der Zahlenblock ist eine Messung, die Werkzeugleiste ist ein Eingriff. Wer
+ * eine Draw-Call-Zahl ablesen will, will nicht 280 px Regler daneben.
+ *
+ * **Und beide starten ausgeschaltet.** Der alte Schlüssel las
+ * `!== '0'`, war also standardmäßig *an*: eine frisch geöffnete Seite zeigte
+ * zuerst Werkzeug und dann die Landschaft. Ein fehlender Eintrag heißt jetzt
+ * „aus"; ein- und ausgeschaltet wird im Reiter „Debug" des Spielermenüs oder
+ * mit F1.
+ */
+const STATS_KEY = 'japanmap.debug.stats';
+const PANE_KEY = 'japanmap.debug.pane';
 
 export interface DebugPanelOptions {
   readonly renderer: WebGLRenderer;
@@ -44,7 +59,8 @@ export class DebugPanel implements DebugHost {
   readonly #bus: AppBus;
   readonly #sizeScratch = new Vector2();
 
-  #visible: boolean;
+  #statsOn: boolean;
+  #paneOn: boolean;
   /** Letzte gesendete Stufe — verhindert die Rückkopplung Menü → Bus → Menü. */
   #quality: QualityKey = DEFAULT_QUALITY;
 
@@ -85,7 +101,8 @@ export class DebugPanel implements DebugHost {
     this.#buildEngineFolder(options.renderer);
     this.#buildSystemFolder(options.renderer, options.onDispose);
 
-    this.#visible = localStorage.getItem(VISIBILITY_KEY) !== '0';
+    this.#statsOn = localStorage.getItem(STATS_KEY) === '1';
+    this.#paneOn = localStorage.getItem(PANE_KEY) === '1';
     this.#applyVisibility();
 
     window.addEventListener('keydown', this.#onKeyDown);
@@ -96,8 +113,33 @@ export class DebugPanel implements DebugHost {
     return new DebugPanel(options, timer);
   }
 
+  /** Für `DebugHost`: sichtbar heißt „irgendetwas davon steht im Bild". */
   get visible(): boolean {
-    return this.#visible;
+    return this.#statsOn || this.#paneOn;
+  }
+
+  get statsVisible(): boolean {
+    return this.#statsOn;
+  }
+
+  set statsVisible(value: boolean) {
+    if (value === this.#statsOn) return;
+    this.#statsOn = value;
+    localStorage.setItem(STATS_KEY, value ? '1' : '0');
+    this.#applyVisibility();
+    this.#bus.emit('debug:visibility', { visible: this.visible });
+  }
+
+  get paneVisible(): boolean {
+    return this.#paneOn;
+  }
+
+  set paneVisible(value: boolean) {
+    if (value === this.#paneOn) return;
+    this.#paneOn = value;
+    localStorage.setItem(PANE_KEY, value ? '1' : '0');
+    this.#applyVisibility();
+    this.#bus.emit('debug:visibility', { visible: this.visible });
   }
 
   get lastGpuMs(): number | null {
@@ -134,11 +176,23 @@ export class DebugPanel implements DebugHost {
     this.#pane.refresh();
   }
 
+  /**
+   * F1 — beides zugleich.
+   *
+   * Steht **eines** von beiden im Bild, macht F1 alles aus; steht nichts da,
+   * macht es alles an. Der Zwischenzustand („nur der Zahlenblock") bleibt damit
+   * dem Menü vorbehalten, und die Taste tut, was eine Taste tun soll: eine
+   * Sache, ohne dass man sich merken muss, in welchem Takt man sie gerade
+   * drückt.
+   */
   toggle(): void {
-    this.#visible = !this.#visible;
-    localStorage.setItem(VISIBILITY_KEY, this.#visible ? '1' : '0');
+    const next = !this.visible;
+    this.#statsOn = next;
+    this.#paneOn = next;
+    localStorage.setItem(STATS_KEY, next ? '1' : '0');
+    localStorage.setItem(PANE_KEY, next ? '1' : '0');
     this.#applyVisibility();
-    this.#bus.emit('debug:visibility', { visible: this.#visible });
+    this.#bus.emit('debug:visibility', { visible: next });
   }
 
   dispose(): void {
@@ -245,8 +299,8 @@ export class DebugPanel implements DebugHost {
   }
 
   #applyVisibility(): void {
-    this.#overlay.visible = this.#visible;
-    this.#paneElement.hidden = !this.#visible;
+    this.#overlay.visible = this.#statsOn;
+    this.#paneElement.hidden = !this.#paneOn;
   }
 
   readonly #onKeyDown = (event: KeyboardEvent): void => {

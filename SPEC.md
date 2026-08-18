@@ -11,7 +11,7 @@
 |---|---|
 | **Stack** | Vanilla Three.js + TypeScript + Vite |
 | **Renderer** | WebGL2 + `pmndrs/postprocessing` |
-| **Zielplattform** | Desktop, maximale Qualität. Kein Tablet/Mobile-Support (v1) |
+| **Zielplattform** | ~~Desktop, maximale Qualität. Kein Tablet/Mobile-Support (v1)~~ **Seit P12: Desktop *und* Touch.** Fingersteuerung, geräteabhängiger Pixelfaktor und eine Stufenleiter, die 4,4× spannt statt 1,6× |
 | **Map-Größe** | 3072 × 3072 m (~9,4 km²) |
 | **Art-Direction** | Low-Poly-Geometrie + PBR-Shading. Licht > Texturen |
 | **Beleuchtung** | Eine feste Stimmung: **Blaue Stunde nach Regen** |
@@ -387,11 +387,20 @@ Bekannte offene Punkte, Stand 2026-08-08:
   Höhenfeld, sondern an einem Sicherheitsfaktor der Verrundung, der am Ring
   geeicht war — siehe §2.1. Die Gipfelhöhe bleibt unter der Vorgabe und ist
   eine Art-Direction-Frage, keine Messlücke.
-- **GPU-Zeit ist auf der Entwicklungsmaschine nicht messbar.** Der eingebaute
+- ~~**GPU-Zeit ist auf der Entwicklungsmaschine nicht messbar.**~~ Der eingebaute
   Browser bekommt einen WebGL2-Kontext (ANGLE über den Microsoft Basic Render
   Driver), aber keine `EXT_disjoint_timer_query_webgl2`. Draw-Calls, Dreiecke,
   Texturspeicher und Instanzzahlen sind CPU-seitige Zähler und damit exakt; die
   Bildrate sagt dort über die Zielhardware nichts.
+
+  > **Der Satz gilt für *eine* der Maschinen dieses Projekts, nicht für das
+  > Projekt.** Am 2026-08-16 ist die Arbeit auf einen Rechner mit **RX 7900 XTX**
+  > gewechselt; dort ist die Zeitabfrage vorhanden und liefert Werte. Eine
+  > vorhandene Zeitabfrage ist allerdings noch keine Messung — wie unter diesen
+  > Umständen richtig gemessen wird (interleavt, niedriges Perzentil, gemessenes
+  > Rauschband), steht in CLAUDE.md und als Werkzeug in `japanMap.ab()`. Die
+  > Karte bleibt als **Maßstab** unbrauchbar, siehe §4: belastbar sind
+  > Verhältnisse, nicht Absolutwerte gegen die Budgets.
 
   > **Seit P10.0 gibt es dafür ein Werkzeug statt einer Ausrede.**
   > `japanMap.report()` fährt Blickpunkte × Stufen ab und schreibt eine Datei;
@@ -433,13 +442,28 @@ Wo etwas im Quelltext steht und was mit was redet: **[ARCHITECTURE.md](ARCHITECT
   **Entschieden in P6: prozeduraler Generator.** Gebäude werden **je Block**
   zusammengefasst, nicht je Haus — sonst wären es bei 135 Gebäuden allein dafür
   135 Draw-Calls. Das Teilbudget `cityDrawCalls` (< 300) hält das nach.
-- **Physik-Engine** — weiterhin offen (Rapier vs. eigene Arcade-Physik). Erst
-  relevant wenn gefahren wird; `three-mesh-bvh` liefert die Kollisionsgeometrie
-  unabhängig davon.
-  > **Offen *und* ausdrücklich ungemessen.** Die Tendenz „Rapier" steht seit P0
-  > ohne eine einzige Zahl daneben. P9.2 prüft sie an einem Prüfstand gegen eine
-  > eigene Arcade-Physik, bevor irgendetwas gebaut wird — dieselbe Regel, die in
-  > P6 eine monatelange Tendenz zu SSR gekippt hat.
+- ~~**Physik-Engine** — weiterhin offen (Rapier vs. eigene Arcade-Physik).~~
+  **Entschieden in P14: eigene Arcade-Physik.** Die Tendenz „Rapier" stand seit
+  P0 ohne eine einzige Zahl daneben; entschieden hat am Ende nicht ein
+  Prüfstandsvergleich, sondern die Anforderung. Verlangt war Arcade-Drift im
+  Touge-Stil — „der Hinterwagen bricht auf Gasstoß aus und lässt sich mit
+  Gegenlenken halten". Das ist eine Eigenschaft der **Reifenkennlinie**, und die
+  schreibt man in drei Zeilen hin, statt sie einem Solver abzuringen.
+
+  Was die Entscheidung an Zahlen trägt: **16,11 kB** minifiziert für Fahrmodell,
+  Kollision, Kamera und Fahrzeuggeometrie zusammen (Rapier bringt WASM in einen
+  Startdownload, der mit 51,95 MB schon weit über den 15 MB dieses Kapitels
+  liegt), **0,003…0,022 ms** CPU je Simulationsschritt, **4 Draw-Calls und 1024
+  Dreiecke** für das Fahrzeug im Bild. Der fixe Zeitschritt, den eine zweite
+  Engine mitgebracht hätte, existiert seit P0 in `RenderLoop`.
+
+  `three-mesh-bvh` bleibt **unbenutzt**, und auch das ist jetzt eine
+  Entscheidung mit Begründung statt einer offenen Zeile: die Hindernisse dieser
+  Karte sind achsparallele Rechtecke (Gebäude), Polygonzüge (Leitplanken) und
+  Kreise (Props). Für jede dieser Formen gibt es eine geschlossene
+  Distanzfunktion — und genau die braucht eine Kollisionsauflösung, während ein
+  BVH einen Dreiecks*treffer* liefert. Ausführlich im Kopf von
+  `src/game/CollisionWorld.ts`.
 - **Ton** — es gibt keinen, und das ist nirgends als Entscheidung vermerkt. Für
   eine Stimmung, die „blaue Stunde nach Regen" heißt, ist das ein großer
   fehlender Anteil. Gehört nach P10 entschieden: bewusst weglassen oder

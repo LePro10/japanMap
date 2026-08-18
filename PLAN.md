@@ -147,6 +147,10 @@ erfüllt sind. Ausnahmen werden hier dokumentiert, nicht mündlich vereinbart.
 | **P8** ✅ | Polish & Presets | Die Karte trägt ein Spiel | P7 |
 | **P9** ○ | Die Fahrschicht | Ein Auto fährt eine Runde | P8 |
 | **P10** ○ | Stufen, Regler, Auslieferung | Die Stufen tun, was sie versprechen | P8 |
+| **P11** ◐ | Bewuchs nach Entfernung, Boden trägt Farbe | Minimal sieht aus wie Ultra, nur dünner | P10 |
+| **P12** ◐ | Handy, Touch und die echten Kosten | Läuft auf einem Telefon, ohne schlechter auszusehen | P11 |
+| **P13** ◐ | Startbildschirm, Reiter, Debug im Menü | Die Oberfläche steht nicht mehr im Bild | P12 |
+| **P14** ◐ | Die Fahrschicht — Freeride | Ein Auto fährt, stößt an und bleibt auf der Straße | P8, P13 |
 
 > **Diese Tabelle stand bis zum 2026-08-07 auf „P7 ◐ / P8 ○"** — also zwei
 > Phasen hinter dem Rest der Datei, sechs Tage nach der P8-Abnahme. Dieselbe
@@ -5566,7 +5570,7 @@ deshalb hier als Idee, nicht als Aufgabe mit Kriterium.
 |---|---|---|---|
 | ~~1~~ | ~~SSR oder planare Reflexion + Probes~~ | ~~P6~~ | **Entschieden: B + C.** Nicht nach Tuning-Tagen, sondern gemessen — gegen die Neonschilder sind nur 19,3 % der Spiegelungen im Bildschirmraum überhaupt vorhanden, am wichtigsten Standpunkt 4,2 %. Siehe P6, „Die Reflexions-Entscheidung" |
 | ~~2~~ | ~~Kreuzungen prozedural oder handmodelliert~~ | ~~P3~~ | **Entschieden:** prozedural im Generator — Einrasten in XZ, Höhe festnageln, Rücksprung statt Verschneidung |
-| 3 | Physik-Engine | **P9.2** | Rapier (WASM, bewährt) — **weiterhin offen und ausdrücklich ungemessen.** P9.2 prüft sie gegen eine eigene Arcade-Physik an einem Prüfstand; die Tendenz steht seit P0 ohne eine einzige Zahl daneben |
+| ~~3~~ | ~~Physik-Engine~~ | ~~P9.2~~ → **P14** | **Entschieden am 2026-08-18: eigene Arcade-Physik.** Nicht durch einen Prüfstandsvergleich — durch die Anforderung. „Arcade-Drift, Touge-Stil" ist eine Eigenschaft der Reifenkennlinie (`TIRE.peakSlip*`, `rearGripFactor`) und nicht des Solvers. Zahlen daneben: **16,11 kB** minifiziert für die ganze Fahrschicht gegen Rapiers WASM in einem Startdownload, der mit 51,95 MB ohnehin über Budget liegt; **0,003…0,022 ms** CPU je Schritt; **4 Draw-Calls / 1024 Dreiecke** für das Fahrzeug. `three-mesh-bvh` bleibt unbenutzt, Begründung im Kopf von `CollisionWorld.ts`. Siehe P14 |
 | 4 | Imposter-Baking headless oder in-app | P4 | In-app, falls headless zickt |
 | ~~5~~ | ~~Carving vor oder nach der Erosion~~ | ~~P3~~ | **Entschieden:** nachher. Die Erosionsrinnen laufen dadurch bis an die Böschung heran, statt überschrieben zu werden |
 | ~~6~~ | ~~Der kahle Ring bei 520 m~~ | ~~P10.3~~ → ~~P11.5~~ | **Entschieden am 2026-08-11: Kandidat A, aber nur für die Bäume.** Reichweite 520 → 1200 m für Kiefer und Laubbaum, Gras und Büsche unverändert. Gemessen kostet das am Blickpunkt `wald-fern` auf Ultra **2,3 % mehr Dreiecke** (279 268 → 285 809) für einen Wald bis zum Horizont — weil von 50 711 Instanzen nur rund 2 000 Bäume sind und ein Imposter zwei Dreiecke hat. Kandidat B (Dunst) blieb draußen, Kandidat C ist im Ausdünnungsgesetz `keep = max(keepFar, (R/d)²)` aufgegangen. Siehe P11.5 |
@@ -6274,3 +6278,996 @@ viertelauflösend und ohne Vegetation im Spiegeldurchgang als ganz aus.
   Look-Änderung an einer Stelle, an der bisher eine Fototextur stand. → Am Bild
   prüfen, und zwar auch dort, wo *kein* Bewuchs stehen soll: der Gipfel soll kahl
   bleiben, der Steinbruch am Bergpass grau.
+
+---
+
+# P12 — Handy, Touch und die echten Kosten ◐
+
+> **Der Auftrag, wörtlich:** das Spiel soll „auch auf einem Handy oder einem sehr
+> alten schlechten Laptop" laufen, dabei „nicht viel schlechter aussehen", Ultra
+> soll „fast nicht bis nur sehr minimal schlechtere Grafik" bekommen und
+> deutlich besser optimiert werden, und auf Minimal darf Detail fehlen, solange
+> es ausgeglichen wird — „wenn du Gras entfernst, einfach den Boden grün machen".
+> Dazu: Touch, Tablet und Mobile überhaupt erst unterstützen.
+
+**Die Ausgangslage, gemessen am 2026-08-16** (RX 7900 XTX, siehe unten):
+
+| Befund | Zahl |
+|---|---|
+| Spanne der ganzen Stufenleiter Ultra→Minimal | **1,6× bis 3,0×** GPU-Zeit |
+| „Hoch" gegen Ultra | an **3 von 4** Blickpunkten **teurer** |
+| Touch-Handler im gesamten Projekt | **0** |
+| Startdownload aus `dist/` (ohne `.br`/`.map`) | **53,4 MB** gegen 15 MB Budget |
+
+## 12.0 Der Messstand — gebaut und gemessen, 2026-08-16
+
+**Warum das die erste Aufgabe war.** Diese Sitzung läuft auf einer Maschine mit
+echter GPU, und `EXT_disjoint_timer_query_webgl2` ist da — die Werkzeuglücke aus
+P10.0 ist zu. Der erste Lauf damit hat aber sofort gezeigt, dass eine vorhandene
+Zeitabfrage noch keine Messung ist. Einzelheiten und die Regeln stehen in
+CLAUDE.md unter „Wie GPU-Zeit hier gemessen wird"; die zwei Befunde:
+
+1. **Eine sequenzielle Messreihe ist wertlos, solange etwas anderes dieselbe GPU
+   benutzt.** Acht Eingriffe bei 3840 × 2160, der Reihe nach: die Kosten stiegen
+   **monoton**, unabhängig vom Eingriff. „Nur Gitter 17²" (−31 % Dreiecke) kam
+   auf 19,5 ms gegen 12,5 ms der Basis davor. Dieselbe Basis, 21-mal über einen
+   Lauf verteilt: **3,75…11,98 ms**.
+2. **`lastGpuMs` ist nicht immer *ein* Frame.** `StatsProfiler.update()`
+   summiert je Frame **alle** Zeitabfragen, die gerade fertig geworden sind —
+   das sind null, eine oder zwei. Am `wald` gemessen: Median 1,89 ms,
+   10. Perzentil **0,91 ms**. Faktor 2,1, also genau eine doppelt gezählte
+   Abfrage.
+
+**Gebaut:** `src/debug/abMeasure.ts` mit `japanMap.ab({ variants })`, dazu
+`src/debug/measureCommon.ts` — `countScene`, `settle`, `advancer`, `macrotask`
+und `statsOf` liegen jetzt einmal statt zweimal im Baum, `report.ts` liest sie
+von dort. Drei Eigenschaften, und jede ist die Antwort auf einen der Befunde:
+
+- **Interleavt.** Jede Variante steht zwischen zwei Basiswerten und wird gegen
+  deren **Mittel** gerechnet, nicht gegen einen Wert vom Anfang des Laufs.
+- **10. Perzentil statt Median**, Nullwerte verworfen. Beide Störungen können
+  einen Messwert nur *vergrößern*; es gibt keinen Mechanismus, der ihn zu klein
+  macht.
+- **Das Rauschband wird gemessen**, aus den Abständen benachbarter Basiswerte
+  (90. Perzentil). Was darunter liegt, meldet das Werkzeug als **„im Rauschen"**
+  und nicht als Ergebnis.
+
+**Selbsttest:** eine **Nullprobe** — eine Variante, die nichts ändert. Gemessen
+Δ = **+0,04 ms**, `significant: false`. Ein Messstand, der seinen eigenen
+Nullfall nicht als Null erkennt, ist gefährlicher als keiner.
+
+### Der erste ehrliche Lauf — `wald`, 1280 × 720, Basis Ultra
+
+2 Runden, 60 Frames je Zustand, Rauschband **±0,40 ms** bei **1,66 ms** Basis
+(24 % — LM Studio lief auf derselben Karte):
+
+| Eingriff | Δ ms | Δ % | Dreiecke | Calls |
+|---|---|---|---|---|
+| **Kette aus** (`postFx: 'off'`) | **−0,62** | **−37,6 %** | ±0 | 74→48 |
+| **Auflösung 50 %** | **−0,55** | **−33,4 %** | ±0 | 74 |
+| **PostFX `lean`** | **−0,44** | **−26,6 %** | ±0 | 74→63 |
+| AO halbe Auflösung | −0,22 | im Rauschen | ±0 | 75 |
+| AO aus | −0,19 | im Rauschen | ±0 | 68 |
+| Spiegelung aus | −0,05 | im Rauschen | ±0 | 74 |
+| PostFX `reduced` | −0,03 | im Rauschen | ±0 | 68 |
+| Gitter 17² statt 33² | +0,29 | im Rauschen | **−31 %** | 74 |
+
+**Zwei Dinge stehen damit fest, und ein drittes ausdrücklich nicht:**
+
+- **Die Postprocessing-Kette und die Auflösung sind die beiden Hebel.** Zusammen
+  tragen sie mehr als alles andere zusammen, und beide sind bisher nur als
+  Alles-oder-nichts verdrahtet: die Kette fällt erst auf „Minimal" weg, und dann
+  mitsamt Grading-LUT und Bloom.
+- **Ein Drittel weniger Gelände-Dreiecke ist nicht messbar.** Das ist der
+  Hebel, an dem P8.1 die Stufen aufgehängt hat.
+- **Was unter dem Rauschband liegt, ist nicht „wirkungslos", sondern
+  ungemessen.** Mit freier GPU wäre das Band kleiner. Diese Zeile ist keine
+  Ausrede — sie ist der Unterschied zwischen einem Messwert und einer Meinung,
+  und P11 hat zweimal knapp daneben gestanden.
+
+> **Eine eigene Korrektur gehört hierher.** Vor dem Bau dieses Werkzeugs hatte
+> ich die Kette am selben Blickpunkt mit **83 %** beziffert — gemessen über den
+> **Median** und auf einer mitbenutzten GPU. Mit dem richtigen Schätzer sind es
+> **37,6 %**. Die Schlussfolgerung (Kette und Auflösung sind die Hebel, die
+> Vegetations- und Geländeregler sind es nicht) trägt beide Zahlen; die Größe
+> war überzogen. Genau dafür ist 12.0 gebaut worden.
+
+**Nicht in der Produktion:** `abMeasure.ts` hängt wie alles unter `debug/` an
+`import.meta.env.DEV`. Geprüft wie in P10.0 — der Text „Rauschband" kommt in
+`dist/assets/*.js` **null**mal vor.
+
+### Ein Fehler, den 12.0 im Messlauf aus P10.0 gefunden hat
+
+Der erste Probelauf von `report()` nach dem Umbau schrieb **`gpu.medianMs: 0`**
+in die Datei — also genau die Null, die `readGpuTiming()` seit P10.0
+ausdrücklich vermeiden will, weil sie sich wie „kostet nichts" liest. Der Timer
+war dabei in Ordnung; `gpuTiming.available` stand korrekt auf `true`.
+
+Die Ursache ist derselbe stats-gl-Befund: von 20 gemessenen Frames trugen nur
+**4** eine fertig gewordene Zeitabfrage, die übrigen 16 lieferten 0 — und der
+Median von 20 Werten, die zu 80 % null sind, ist null. `measureCell()` sammelte
+die Nullen mit ein.
+
+Behoben in zwei Schritten, und der zweite ist der wichtigere:
+
+1. Nullen werden verworfen statt gemittelt.
+2. **Der Lauf warnt**, wenn weniger als ein Viertel der Frames eine Abfrage
+   trug. Nachgemessen meldet er jetzt 2,241 ms bei 4 von 20 Frames — *mit* der
+   Warnung, dass die Zelle so keine belastbare GPU-Spalte hat.
+
+Der Punkt ist nicht der Zahlendreher, sondern dass er seit P10.0 in jedem Lauf
+auf einer Maschine mit Timer aufgetreten wäre — und der erste solche Lauf
+(2026-08-07, RX 7900 XTX) hat mit 60 Frames je Zelle offenbar knapp genug
+Abfragen erwischt, dass es niemandem auffiel. **Eine Messgröße braucht neben
+ihrem Wert die Zahl ihrer Stichproben**, sonst ist nicht zu sehen, ob sie eine
+ist.
+
+## 12.1 Die kompakte Kette — gebaut und gemessen, 2026-08-16
+
+**Der Befund aus dem ersten sauberen Lauf.** Blickpunkt `wald`, **3840 × 2160**
+(bei 720p ist die Arbeit für diese Karte zu klein — das Rauschband lag dort bei
+27 %, hier bei **5,1 %**), interleavt gegen Ultra:
+
+| Eingriff | GPU | Δ |
+|---|---|---|
+| Basis Ultra | 4,54 ms | — |
+| **Kette aus** | 0,91 ms | **−77,9 %** |
+| **AO aus** | 2,27 ms | **−48,6 %** |
+| AO auf halbe Auflösung | 2,72 ms | −38,3 % |
+| PostFX `lean` | 4,04 ms | −9,6 % |
+| Gras halbe Reichweite | 4,13 ms | −8,2 % |
+| PostFX `reduced` | 4,31 ms | −4,6 % *(im Rauschen)* |
+| Gitter 17² statt 33² | 4,31 ms | −3,5 % *(im Rauschen)* |
+| Spiegelung aus | 4,40 ms | −1,6 % *(im Rauschen)* |
+
+**Die Umgebungsverdeckung allein war 62 % der ganzen Kette**, und Ultra fuhr sie
+in *voller* Auflösung. Das ist der teuerste einzelne Posten des Projekts
+gewesen — und der Kommentar bei `POSTFX.ao.halfRes` sagt seit P2 voraus, dass
+halbe Auflösung „rund ein Drittel" spart und kaum zu sehen ist. Er stand nur bei
+der Konstante und nicht bei der Stufe.
+
+### Was gebaut wurde
+
+**1. `postFx: 'compact'`** — eine Kettenstufe zwischen `lean` und `off`.
+`toneMapping` wandert in den Renderer (dort kostet es nichts, three rechnet es
+ohnehin im Materialshader), Bloom und SMAA entfallen, **LUT und Vignette
+bleiben** als ein einziger Durchgang. Umgesetzt als **zweiter EffectPass**, von
+dem immer genau einer läuft: die Effektliste eines `EffectPass` ist beim Bauen
+in seinen Shader gebacken, ein Umbau zur Laufzeit wäre ein Passtausch mitten im
+Bild.
+
+> **Die Falle aus P8.2 steht hier wieder.** Ein abgeschalteter Pass wird von
+> `EffectComposer.render()` vollständig übersprungen, und `renderToScreen` ist
+> beim Hinzufügen genau einmal gesetzt worden. `#updateRenderToScreen()` läuft
+> deshalb nach **jedem** Umschalten. Geprüft: `anteilNichtSchwarz = 1,000` auf
+> allen fünf Stufen.
+
+**2. Die AO rechnet auf jeder Stufe in halber Auflösung** (P12.2). Belegt am
+Bild, nicht an der Zahl — Bildpaare bei 1280 × 720 gegen das Rauschband aus zwei
+Aufnahmen desselben Zustands:
+
+| Blickpunkt | Rauschband | halbe Auflösung | AO ganz aus |
+|---|---|---|---|
+| `pass` | 0,09 % der Pixel | **2,76 %**, Mittel 0,94/255 | 55,72 %, Mittel 4,06 |
+| `stadt-neon` | 0,37 % | **4,13 %**, Mittel 0,72/255 | 50,12 %, Mittel 7,53 |
+
+Im achtfach verstärkten Differenzbild (`.cache/shots/p12ao_*_diff8x.png`) ist die
+Fläche schwarz; sichtbar sind nur Ränder an Vegetationssilhouetten, und die
+stehen teils schon im Rauschband. AO *auszuschalten* verändert dagegen die Hälfte
+des Bildes.
+
+**3. Der Pixelfaktor hängt am Gerät** (P12.3, `RENDER.maxPixelRatioCoarse`).
+Ein Telefon meldet `devicePixelRatio` 2,6…3,5; mit dem Desktop-Deckel von 2
+rendert ein 412-CSS-Pixel-Gerät 824 × 1783 ≈ 1,47 Mpix. Der Deckel liegt auf
+Touch-Geräten bei **1,25** — bei 400…500 ppi immer noch die drei- bis vierfache
+Winkelauflösung eines Desktop-Bildes bei Faktor 1. Gemessen am gebauten Stand
+bei 375 × 812: Zeichenpuffer **398 × 862** statt vorher 637 × 1380.
+
+### Die Leiter danach — `wald`, 3840 × 2160, Rauschband 0,6 %
+
+| Stufe | GPU | Δ gegen Ultra | Puffer | Draw-Calls |
+|---|---|---|---|---|
+| **Ultra** | **2,71 ms** | — | 3840×2160 | 75 |
+| Hoch | 2,63 ms | −2,5 % | 3840×2160 | 69 |
+| Mittel | 1,64 ms | −39,2 % | 3264×1836 | 64 |
+| Niedrig | 1,04 ms | −61,4 % | 2688×1512 | 56 |
+| **Minimal** | **0,61 ms** | **−77,5 %** | 1920×1080 | 49 |
+
+**Ultra ist von 4,54 auf 2,71 ms gefallen — 40 % billiger, ohne sichtbare
+Änderung.** Die Spanne der Leiter geht von **1,6×** (P11-Stand am `wald`) auf
+**4,4×**. Und „Hoch" ist zum ersten Mal billiger als Ultra statt teurer.
+
+### Was `compact` kostet — der Tausch, benannt
+
+Basis Ultra ohne AO bei 4K (2,047 ms), damit die Kette allein dasteht:
+
+| Kette | GPU | Δ |
+|---|---|---|
+| `full` | 2,047 ms | — |
+| `lean` | 1,722 ms | −15,9 % |
+| **`compact`** | **1,538 ms** | **−24,8 %** |
+| `off` | 0,740 ms | −64,3 % |
+
+Und in der wirklichen Stufenbelegung: **Minimal mit `compact` 0,595 ms gegen
+0,369 ms mit `off`.** Der Farbstich kostet also **0,23 ms**, und dafür sieht
+Minimal aus wie Ultra statt wie ein anderes Spiel. Das ist eine bewusste
+Entscheidung gegen die billigere Zahl, und sie steht hier mit ihr.
+
+> **Der Rest der kompakten Kette ist nicht der Effekt-Pass, sondern der Puffer.**
+> `compact` kostet gegen `off` 0,80 ms, und darin steckt vor allem, dass die
+> Szene in ein **HalfFloat**-Ziel gerendert wird statt direkt in den Canvas: bei
+> 4K sind das 66 MB Schreiben, danach dasselbe wieder Lesen. Ein 8-bit-Puffer
+> wäre für `compact` ausreichend (der Renderer tonemappt vorher, es stehen nur
+> Anzeigewerte darin) und halbierte den Verkehr. `EffectComposer` legt seinen
+> Puffertyp aber beim Bauen fest; ihn zur Laufzeit zu tauschen hieße, den
+> Composer neu aufzubauen — mit dem Risiko, dass die Effekt-Pässe für den
+> falschen Farbraum initialisiert bleiben. **Nicht gebaut, beziffert:** der
+> nächste Kandidat mit rund 0,3 ms bei 4K.
+
+
+## 12.4 Touch, Tablet und Handy — gebaut und geprüft, 2026-08-16
+
+**Der Befund.** Es gab keinen einzigen Touch-Handler im Projekt, und das war
+nicht der schlimmste Teil. Der Zustand der Oberfläche hing vollständig am
+**Pointer Lock**: `PlayerUi.#everLocked` wurde nur in `pointerlockchange`
+gesetzt. Auf einem Telefon kommt der Lock nie zustande — iOS Safari kennt
+`requestPointerLock` gar nicht, Android lehnt ihn bei Fingereingabe ab. Also
+blieb das Flag für immer falsch, und mit ihm war **das Pausenmenü unerreichbar**:
+kein Weg zur Qualitätsstufe, keine Blickpunkte, keine Steuerung. Ein Besucher mit
+Telefon bekam ein Standbild und einen Kasten mit der Aufschrift „Für Touch-Geräte
+ist diese Ansicht nicht ausgelegt".
+
+Dazu, alles am **gebauten** Stand bei 375 × 812 gemessen (Port 4180 — im
+Dev-Server verdeckt das Debug-Panel jede Lücke):
+
+- **Der Menükasten war oben abgeschnitten und nicht scrollbar.** Höhe 944,5 px
+  in 812 px Ansichtsfenster, `place-content: center` + `overflow-y: auto` →
+  `boxTop = −66,25` bei `scrollTop = 0`, und `scrollHeight` (902) war kleiner als
+  der Kasten. Dauerhaft außerhalb lag ausgerechnet die Kopfzeile mit dem
+  **„Weiter"-Knopf**.
+- **24 Knöpfe, der kleinste 25 px hoch** (Apple verlangt 44 pt, Android 48 dp).
+- Reglerzeilen als festes Raster `1fr 150px 52px` — für die Beschriftung blieben
+  122 px bei 11 px Schrift.
+
+### Was gebaut wurde
+
+**`src/ui/TouchControls.ts`** — Stick links, Ziehen rechts, zwei Finger rechts
+fürs Tempo, ▲/▼ für steigen und sinken, ☰ ⟲ ⇩ als Knöpfe. Der Stick erscheint
+**dort, wo der Finger aufsetzt**; ein fester Stick ist im Querformat mit dem
+Daumen kaum zu erreichen.
+
+Drei Entscheidungen, die begründet gehören:
+
+1. **Pointer Events statt Touch Events.** `setPointerCapture` hält die Bewegung
+   fest, auch wenn der Finger den Canvas verlässt — sonst bleibt eine Achse
+   stehen und die Kamera fliegt weiter. `pointercancel` fängt zusätzlich den
+   Anruf, die Wischgeste von der Kante und den App-Wechsel.
+2. **Die Achsen werden zur Tastatur *addiert*, nicht gegen sie getauscht.** Ein
+   Tablet mit Tastatur darf nicht die eine Quelle verschlucken. Geklemmt wird auf
+   Länge 1 statt normiert — sonst wäre jeder angetippte Stick Vollgas.
+3. **`look()` ist öffentlich am `FreeFlyController`**, statt die Blickmathematik
+   ein zweites Mal zu schreiben. Dort steckt der Gier-Faktor gegen den
+   Pol-Wirbel, den P8 einmal gemessen und behoben hat; ein eigener Touch-Pfad
+   brächte ihn stillschweigend zurück.
+
+**`PlayerUi`** hängt nicht mehr am Lock: `#everLocked` heißt jetzt `#started` und
+wird auf Touch von der ersten Berührung gesetzt. `#resume()` fordert auf Touch
+gar keinen Lock an — er käme nicht, und auf iOS Safari wirft der Aufruf.
+
+**Das CSS** bekommt `place-items` statt `place-content` (Overflow nach oben ist
+nicht erreichbar), ein Schmalformat-Raster untereinander, 44-px-Knöpfe,
+`height: 100dvh` gegen die einblendende Adressleiste und `env(safe-area-inset-*)`
+für Notch und Home-Indicator.
+
+### Gemessen am gebauten Stand, 375 × 812, `pointer: coarse`
+
+| | vorher | nachher |
+|---|---|---|
+| `window.japanMap` | undefined | undefined ✓ *(Dev-Code weiterhin entfernt)* |
+| Kastenoberkante bei `scrollTop = 0` | **−66,25 px** | **+12 px** |
+| „Weiter"-Knopf | 25 px hoch, unerreichbar | 44 px, `elementFromPoint` trifft ✓ |
+| Steuerknöpfe | — | 5 × 56 × 56 px, alle getroffen ✓ |
+| Zeichenpuffer | 637 × 1380 | **398 × 862** |
+
+Und die Gesten treiben die Kamera wirklich — im Dev-Stand nachgemessen, nicht
+aus dem DOM geschlossen:
+
+| Geste | Wirkung |
+|---|---|
+| Stick 56 px nach oben, 30 Frames | Kamera **7,70 m** weiter |
+| danach loslassen, 30 Frames | 3,23 m Auslauf *(die Dämpfung, keine hängende Achse)* |
+| rechts 100 px ziehen | Blick **27,7°** gedreht |
+| ▲ halten, 30 Frames | **+2,76 m** Höhe |
+
+> **Ein Fehler, den erst der Prüfstand gefunden hat.** `setPointerCapture` stand
+> **vor** dem Zeichnen des Sticks und wirft `NotFoundError`, sobald die Zeiger-ID
+> nicht mehr aktiv ist. Ergebnis: die Bewegung wirkte, der Stick blieb
+> **unsichtbar** — eine Steuerung ohne Anzeige. Jetzt wird zuerst gezeichnet und
+> danach eingefangen, und das Einfangen darf scheitern: es ist eine
+> Verbesserung, keine Voraussetzung. Zusätzlich räumt `blur` einen hängenden
+> Stick auf (nachgemessen).
+
+### Was ausdrücklich offen bleibt
+
+- **Auf keinem echten Telefon geprüft.** Alle Zahlen oben stammen aus einem
+  Chromium mit gesetztem Ansichtsfenster und synthetischen Zeigerereignissen.
+  Ob sich der Stick *anfühlt*, ist damit nicht beantwortet — das ist P12.6.
+- **Keine Bildrate von Zielhardware.** Siehe P12.6.
+- **Kein Gamepad.** Die Achsenschnittstelle ist dafür gebaut, benutzt wird sie
+  nicht.
+
+## 12.5 Der Startdownload — teilweise, 2026-08-16
+
+`tools/optimize-hdri.mjs` liest Radiance-RGBE (RLE und flach), mittelt **linear**
+herunter und schreibt flach zurück. Linear ist der Punkt: RGBE hat einen
+gemeinsamen Exponenten, ein Mittel darüber wäre ein Mittel über Logarithmen, und
+Sonnenrand und Wolke stünden im selben Texel systematisch zu dunkel.
+
+Das Werkzeug **liest seine eigene Ausgabe wieder ein** und hält sie gegen die
+Eingabe; ein Kodierer, der das nicht tut, ist ungeprüft. Für das IBL:
+6,21 MB → **2,00 MB**, mittlere Leuchtdichte weicht um **0,0445 %** ab, größter
+Pixelfehler 0,83 %.
+
+**Eingebaut wird es aber nur auf Touch-Geräten**, und der Grund ist gemessen. Die
+naheliegende Begründung — „es wird ohnehin von `PMREMGenerator` gefaltet, die
+Quellauflösung ist egal" — stimmt für den diffusen Anteil und **nicht für den
+spiegelnden**. Bildvergleich bei 1280 × 720, vollständig eingeschwungen
+(identische Instanzzahlen in beiden Läufen):
+
+| Blickpunkt | Rauschband | 2k gegen 1k | mittlere Helligkeit |
+|---|---|---|---|
+| `stadt-neon` | 0,42 % der Pixel | **42,97 %**, Mittel 3,06/255 | 91,79 → 89,65 (**−2,3 %**) |
+| `pass` | 0,14 % | 40,49 %, Mittel 3,67/255 | 68,68 → 67,98 (−1,0 %) |
+| `kueste` | 0,65 % | 4,45 %, Mittel 0,56/255 | 104,74 → 104,73 (±0) |
+
+Im zehnfach verstärkten Differenzbild ist es eine **gleichmäßige** Verschiebung
+über alle umgebungsbeleuchteten Flächen — kein Artefakt, sondern die erwartete
+Folge: ein weichgezeichnetes Umgebungsbild hat flachere Glanzlichter, und nasser
+Asphalt hat genau die niedrige Rauheit, bei der das auffällt. `kueste` zeigt
+offenes Meer und ändert sich nicht.
+
+Sichtbar ist die Verschiebung im Nebeneinander nicht; **messbar ist sie**. Also
+bekommt das Telefon die kleine Datei (dort sind 2 % Glanzlichtunterschied bei
+Pixelfaktor 1,25 jenseits des Sichtbaren, 4,21 MB über Mobilfunk nicht) und der
+Desktop die große. Es wird immer nur **eine** geladen.
+
+### Und ein Posten, der nichts kostet und trotzdem gespart wird
+
+Die Detail-Normalen des Geländes blenden zwischen 100 und 420 m aus — die
+Normalmap wurde jenseits davon aber **weiter abgefragt** und das Ergebnis mit
+null multipliziert. Das ist ein Drittel aller Texturabfragen des Splat-Blocks.
+Seit P12.5 überspringt der Shader die Abfrage, sobald die Ausblendung durch ist.
+
+Gemessen bei 3840 × 2160, interleavt, Rauschband 0,007…0,039 ms:
+
+| Blickpunkt | nachher | was das Abfragen kostete | Ersparnis |
+|---|---|---|---|
+| `pass` | 4,779 ms | 1,224 ms | **−20,4 %** |
+| `start` | 2,683 ms | 0,427 ms | **−13,7 %** |
+| `wald` | 2,707 ms | 0,004 ms | im Rauschen — dort ist die Abfrage nötig |
+
+Und das Bild ändert sich nicht: alte gegen neue Fassung unter zeitkontrollierten
+Bedingungen (feste Frame-Zahl statt „bis stabil", damit Wolken und Wind gleich
+weit gelaufen sind) — `pass` 0,62 % der Pixel über Schwelle 2 bei Mittel
+0,21/255, `stadt-neon` 0,36 % bei 0,29. Das Wind- und Wolken-Rauschband über
+dieselbe Frame-Zahl liegt bei **0,465**.
+
+> **Der erste Vergleich dazu war falsch, und der Fehler gehört hierher.** Er
+> meldete +2,25 mittlere Helligkeit und damit eine klare Änderung. Verglichen
+> wurden aber eine Aufnahme nach 1816 Einschwing-Frames und eine nach 90 — bei
+> warmem Chunk-Cache. Gleiche Instanzzahl am Ende, **verschiedene
+> Zwischenstände** in Spiegelung und Streuung. Erst der Lauf mit *fester*
+> Frame-Zahl auf beiden Seiten war ein A/B. Dieselbe Lehre wie in P10.0: ein
+> Zustand ist nicht fertig, weil eine Zahl stillsteht.
+
+**Was am Download offen bleibt:** der sichtbare Himmel (16,1 MB), `height.r16`
+(8,4 MB), `normal.png` (5,8 MB — aus dem Höhenfeld ableitbar) und die
+JPEG-Normalmaps. Der Stand ist damit **53,4 MB** gegen 15 MB aus SPEC §4; auf
+Touch-Geräten 4,21 MB weniger.
+
+## 12.6 Auf echter Zielhardware messen — offen
+
+Der Dev-Server steht auf `127.0.0.1`. Mit `--host` im LAN erreichbar gemacht,
+ruft ein Telefon `japanMap.report({ mode: 'live' })` selbst auf und legt JSON und
+PNGs in `.cache/reports/` ab — **ohne** Touch-Steuerung, denn der Lauf fliegt die
+Blickpunkte selbst an. Android Chrome hat `EXT_disjoint_timer_query_webgl2`, also
+kommt dort GPU-Zeit **und** Bildrate heraus.
+
+Das ist die einzige Zahl, die von außen kommen muss. Alles oben ist auf einer
+RX 7900 XTX gemessen, und SPEC §4 führt genau diese Karte als „unbrauchbar als
+Maßstab". Belastbar sind Verhältnisse, nicht Absolutwerte.
+
+## Akzeptanzkriterien P12
+
+- [x] **Die Stufenleiter spannt mehr als 3×.** Gemessen 4,4× am `wald` (vorher
+      1,6×).
+- [x] **Ultra ist billiger geworden, ohne sichtbar schlechter zu werden.**
+      4,54 → 2,71 ms bei 4K; die AO-Änderung ist am Bild gegen ein Rauschband
+      geprüft.
+- [x] **„Hoch" ist nicht mehr teurer als Ultra.** 2,63 gegen 2,71 ms.
+- [x] **Minimal behält den Farbstich.** `postFx: 'compact'` statt `off`; der
+      Preis steht mit 0,23 ms in 12.1.
+- [x] **Auf keiner Stufe ist das Bild unvollständig.** `anteilNichtSchwarz`
+      1,000 auf allen fünf.
+- [x] **Touch steuert Bewegung, Blick, Höhe und Tempo**, und das Menü ist ohne
+      Pointer Lock erreichbar — am gebauten Stand gemessen.
+- [x] **Kein Dev-Code im Build.** „Rauschband" kommt in `dist/assets/*.js`
+      nullmal vor, `window.japanMap` ist im Build `undefined`.
+- [ ] **Auf einem echten Telefon gemessen.** P12.6 — offen.
+- [ ] **Startdownload unter 15 MB.** 53,4 MB, siehe 12.5.
+- [ ] **Volle Auflösung auf jeder Stufe** (aus P11 übernommen). Nicht eingelöst:
+      Mittel 0,85 · Niedrig 0,7 · Minimal 0,5, und auf Touch-Geräten liegt
+      zusätzlich der Pixelfaktor-Deckel bei 1,25. Die Auflösung ist gemessen der
+      zweitstärkste Hebel des Systems; sie stehen zu lassen hieße, die
+      Zielhardware aufzugeben.
+
+## 12.7 Der Abschlusslauf — 2026-08-16
+
+### Am `stadt-neon`, wo die Spiegelung wirklich läuft
+
+3840 × 2160, interleavt gegen Ultra, Rauschband **1,2 %** (0,044 ms bei 3,561 ms):
+
+| Eingriff | GPU | Δ | Dreiecke | Draw-Calls |
+|---|---|---|---|---|
+| Basis Ultra | 3,561 ms | — | 656 371 | 126 |
+| **AO aus** | 2,779 | **−21,9 %** | ±0 | 119 |
+| **PostFX `compact`** | 3,095 | **−12,7 %** | ±0 | 107 |
+| PostFX `lean` | 3,188 | −10,3 % | ±0 | 115 |
+| AO mit 8 Abtastungen | 3,325 | −6,6 % | ±0 | 126 |
+| AO mit 12 Abtastungen | 3,458 | −2,9 % | ±0 | 126 |
+| **Spiegelung aus** | 3,479 | **−2,3 %** | **354 323 (−46 %)** | **82 (−44)** |
+| PostFX `reduced` | 3,524 | −1,2 % *(im Rauschen)* | ±0 | 120 |
+| **Gitter 17² statt 33²** | 3,521 | **−0,9 %** *(im Rauschen)* | **260 083 (−60 %)** | 126 |
+
+> **Die zwei letzten Zeilen sind das Ergebnis dieser ganzen Phase.** Die
+> Spiegelung halbiert die Dreiecke und spart 44 Draw-Calls für **2,3 %**; das
+> gröbere Geländegitter wirft 60 % aller Dreiecke weg und ist **nicht messbar**.
+> Auf dieser Karte sind Dreiecke praktisch umsonst — und genau daran hat dieses
+> Projekt seine Stufen von P8.1 bis P11 aufgehängt.
+>
+> **Und dieser Satz überträgt sich ausdrücklich *nicht* auf die Zielhardware.**
+> Auf einer Kachel-GPU (Adreno, Mali, PowerVR — also jedem Telefon) kostet ein
+> zweiter Szenendurchgang seinen eigenen Tile-Resolve, und 44 zusätzliche
+> Draw-Calls sind dort ein anderer Posten als hier. Was diese Messung belegt,
+> ist die Rangfolge **auf einer Desktop-GPU**. Die Rangfolge auf einem Telefon
+> ist P12.6 und steht aus.
+
+### Die Leiter bei 1280 × 720 — die Auflösung, die wirklich gespielt wird
+
+Nicht interleavt (je eine p10-Messung über ~100 Stichproben), also mit dem
+720p-Rauschband von rund 25 % zu lesen:
+
+| Blickpunkt | Ultra | Hoch | Mittel | Niedrig | Minimal | Spanne |
+|---|---|---|---|---|---|---|
+| `wald` | 0,664 ms | 0,780 | 0,559 | 0,373 | **0,216** | **3,1×** |
+| `stadt-neon` | 0,901 | 0,858 | 0,533 | 0,491 | **0,320** | **2,8×** |
+| `start` | 0,864 | 0,947 | 0,644 | 0,390 | **0,323** | **2,7×** |
+
+**Bei 720p ist die Spanne kleiner als bei 4K (2,7…3,1× gegen 4,4×)**, und das ist
+kein Widerspruch: Bei einer Frame-Zeit von 0,7 ms misst diese Karte überwiegend
+ihren eigenen festen Aufwand, nicht die Arbeit. Auf einer schwachen GPU liegt
+der Anteil umgekehrt — dort zählt die 4K-Zahl mehr, weil sie den
+füllratenbegrenzten Zustand beschreibt.
+
+Alle 15 Zellen: `verworfen: 0`, `anteilNichtSchwarz` 1,000 (am `wald` 0,995 —
+Baumsilhouetten im Gegenlicht, seit P10.0 als normal vermerkt).
+
+### Was diese Phase am Bild verändert hat, zusammengefasst
+
+| | vorher | nachher |
+|---|---|---|
+| Ultra, `wald`, 4K | 4,54 ms | **2,71 ms** (−40 %) |
+| Spanne der Leiter, `wald`, 4K | 1,6× | **4,4×** |
+| „Hoch" gegen Ultra | **teurer** an 3 von 4 Blickpunkten | 2,5…4 % billiger |
+| Minimal | ohne Grading-LUT (anderer Look) | mit — Preis 0,23 ms |
+| Zeichenpuffer auf dem Telefon | 637 × 1380 | **398 × 862** |
+| Pausenmenü auf dem Telefon | **unerreichbar** | ☰, Knöpfe 56 px |
+| Startdownload auf Touch-Geräten | 53,4 MB | 49,2 MB |
+
+> **`dist/` ist seit 12.5 **größer** als der Download — das ist Absicht und
+> gehört dazugesagt.** Der Ordner enthält **beide** IBL-Auflösungen (55,45 MB),
+> geladen wird aber genau eine: 6,21 MB auf dem Desktop, 2,00 MB auf einem
+> Touch-Gerät. Wer die Ordnergröße für den Startdownload hält, liest 2 MB zu
+> viel — die Zahl in SPEC §4 meint übertragene Bytes bis zum ersten Bild.
+
+---
+
+# P13 — Startbildschirm, Reiter und Debug im Menü ◐
+
+**Der Befund, aus dem diese Phase entsteht**, in einem Satz: im laufenden Bild
+stand Bedienung, die dort nicht hingehört. Gemessen am Dev-Stand (5180)
+unmittelbar nach dem Laden — also in dem Zustand, in dem jemand die Karte zum
+ersten Mal sieht:
+
+| Element | vorher | Bemerkung |
+|---|---|---|
+| `.hint` — Kasten in der Bildmitte | **sichtbar** | „Klick ins Bild" plus achtzeilige Tastentabelle |
+| `.stats` — Zahlenblock oben links | **sichtbar** | Draw-Calls, Dreiecke, GPU-ms |
+| `.debug-pane` — Tweakpane oben rechts | **sichtbar** | 280 px Regler |
+| `.menu` | versteckt | richtig |
+
+Drei von vier Flächen lagen im Bild, bevor der Nutzer irgendetwas getan hatte.
+Zwei davon sind Werkzeug (die `localStorage`-Voreinstellung war *an*), die
+dritte war ein Erklärkasten für eine Geste, die man auch an einen Knopf hätte
+hängen können.
+
+## 13.1 Der Startbildschirm — gebaut und gemessen, 2026-08-17
+
+`src/ui/LoadingScreen.ts` → **`src/ui/StartScreen.ts`**. Die Mechanik des
+Fortschritts ist unverändert (Balken aus `engine:loading`, Text aus beidem — die
+Begründung steht seit P7.3 im Kopf der Datei und gilt weiter). Neu ist das Ende:
+statt sich auszublenden, wechselt die Fläche auf `data-phase="bereit"`, wird
+halbdurchsichtig — die fertige Karte steht dahinter — und zeigt einen
+**„Starten"-Knopf** mit der Steuerungstabelle darunter.
+
+**Der Knopf ist nicht Kosmetik.** `requestPointerLock()` verlangt eine
+Nutzergeste. Solange die Geste „irgendwohin ins Bild klicken" war, brauchte es
+einen Kasten, der das erklärt — und der durfte den Klick dann nicht selbst
+verschlucken. Genau daran ist P10.2 einmal hängengeblieben (`pointer-events:
+none` stand in der Datei, `auto` im Browser, weil `#overlay > *` einen
+ID-Selektor trägt). Ein Knopf **ist** das Ziel des Klicks; die Frage stellt sich
+nicht mehr, und `.hint` ist ersatzlos entfallen.
+
+Gemessen am gebauten Stand (4180) und im Dev-Stand (5180):
+
+| | 1280 × 720 | 375 × 812 |
+|---|---|---|
+| Kasten passt ohne Rollen | ja (198…522 px) | ja (178…634 px) |
+| Knopf | 200 × 56 px, `elementFromPoint` trifft ihn | ebenso |
+| Tastentabellen | 1 (nur Tastatur) | **2** (Finger + Tastatur) |
+| Fokus nach `ready()` | `start__button` | ebenso |
+| Fortschrittsblock im Zustand „bereit" | `display: none` | ebenso |
+
+> **Eine Reihenfolgenfalle, und sie ist echt.** `Engine.start()` sendet
+> `engine:warmedup` noch **in seinem eigenen Aufruf**; `PlayerUi` — der Abnehmer
+> des Knopfes — entsteht erst danach. Der Knopf steht also einen Wimpernschlag
+> lang da, ohne dass ein Handler hängt. `StartScreen` merkt sich einen Druck in
+> `#pending` und holt ihn nach, sobald `onStart()` gesetzt wird. Ein
+> abgeschalteter Knopf wäre die naheliegende Alternative gewesen und hätte einen
+> vierten Zustand gekostet.
+
+## 13.2 Das Pausenmenü bekommt Reiter — gebaut und gemessen, 2026-08-17
+
+Vorher vier Abschnitte untereinander, jetzt vier Reiter: **Grafik · Steuerung ·
+Blickpunkte · Debug**. Der letzte existiert nur, wenn `PlayerUi` eine
+`DebugControl` bekommen hat — also nur im Dev-Build.
+
+Der Grund ist gemessen und nicht ästhetisch. Bei 375 × 812 ist allein der Reiter
+„Grafik" **1082 px** hoch (sechs Stufenknöpfe, neun Reglerzeilen im
+zweizeiligen Schmalraster) — mehr als der Schirm. Mit allen vier Abschnitten
+untereinander war es entsprechend mehr, und P12.4 hatte dafür bereits einmal die
+Zentrierung reparieren müssen (`place-items` statt `place-content`, weil der
+Kasten sonst bei −66,25 px begann und die Kopfzeile mit „Weiter" unerreichbar
+war).
+
+**Gescrollt wird jetzt im Kasten statt auf der Fläche darunter.** `.menu__box`
+ist eine Flex-Spalte mit `max-height: 100%`, Kopfzeile und Reiterreihe stehen
+fest (`flex: none`), allein `.menu__panel` rollt (`min-height: 0` — ohne diese
+Zeile schrumpft ein Flex-Kind nicht unter seinen Inhalt und der Deckel bliebe
+folgenlos).
+
+Gemessen bei 375 × 812, jeder Reiter über den echten Weg geöffnet (☰):
+
+| Reiter | Kastenhöhe | Kopfzeile im Bild | Reiter rollt | Fläche rollt |
+|---|---|---|---|---|
+| Grafik | 788 px *(gedeckelt von 1082)* | ja | ja | **nein** |
+| Steuerung | 563 | ja | nein | nein |
+| Blickpunkte | 591 | ja | nein | nein |
+| Debug | 381 | ja | nein | nein |
+
+Und die Prüfung, die in diesem Projekt zählt: **alle 35 Bedienelemente werden
+von `elementFromPoint` getroffen** (Grafik 17, Blickpunkte 16, Debug 2), bei
+375 × 812 wie bei 1280 × 720, im Dev-Stand wie im Build.
+
+> **Ein Fehlalarm, der dem Prüfstand gehörte und nicht dem Code.** Ein erster
+> Lauf meldete den „Weiter"-Knopf als **nicht treffbar** — darüber lag der
+> ☰-Knopf der Fingersteuerung. Ursache war der Prüfstand: er hatte
+> `menu.hidden = false` von Hand gesetzt und damit `#render()` übersprungen, das
+> das Bedienfeld ausblendet. Über den echten Weg (☰ drücken) ist der Knopf
+> getroffen. **Wer eine Oberfläche prüft, muss sie über ihre eigenen Wege
+> öffnen** — ein von Hand gesetzter Zustand ist ein Zustand, den es im Betrieb
+> nicht gibt.
+
+## 13.3 Debug startet aus und wohnt im Menü — gebaut und gemessen, 2026-08-17
+
+`japanmap.debug.visible` (ein Schlüssel, Voreinstellung **an**) wird zu
+`japanmap.debug.stats` und `japanmap.debug.pane` (zwei Schlüssel, Voreinstellung
+**aus**). Getrennt, weil man die beiden unterschiedlich oft braucht: der
+Zahlenblock ist eine Messung, die Werkzeugleiste ist ein Eingriff.
+
+F1 bleibt und schaltet beides zugleich — steht *eines* im Bild, macht F1 alles
+aus. Der Zwischenzustand gehört dem Menü.
+
+Gemessene Schaltmatrix (Dev-Stand, frisch geladen, `localStorage` leer):
+
+| Schritt | `.stats` | `.debug-pane` | Kästchen | `localStorage` |
+|---|---|---|---|---|
+| frisch geladen | versteckt | versteckt | ☐ ☐ | `null` `null` |
+| Kästchen „Zahlenblock" | **sichtbar** | versteckt | ☑ ☐ | `1` `null` |
+| Kästchen „Werkzeugleiste" | sichtbar | **sichtbar** | ☑ ☑ | `1` `1` |
+| **F1** | versteckt | versteckt | ☐ ☐ | `0` `0` |
+| **F1** | sichtbar | sichtbar | ☑ ☑ | `1` `1` |
+
+Die Kästchen folgen F1, weil `DebugPanel` `debug:visibility` sendet und
+`PlayerUi` darauf `#syncDebug()` fährt. Ohne diesen Weg zeigte das Menü nach
+einem Tastendruck den alten Stand — die Anzeige, die lügt, gegen die dieses
+Projekt schon zweimal angetreten ist (`viewDistance`, `shadowCascades`).
+
+**Der `BudgetGuard` bleibt unangetastet und ungeschaltet.** Er steht nicht
+dauerhaft im Bild, sondern nur bei einer Überschreitung, und genau das ist sein
+Zweck seit P4.6: „eine Budget-Überschreitung, die niemand bemerkt, fällt Wochen
+später auf". Ein Schalter dafür wäre ein Schalter gegen die eigene Absicherung.
+
+## 13.4 Der Weg zurück, wenn der Pointer Lock scheitert
+
+Bis P13 schloss `pointerlockerror` das Menü, weil danach `.hint` übernahm. Ohne
+`.hint` wäre das ein Bild **ganz ohne Bedienelement** gewesen: der Lock kam
+nicht, also reagiert auch keine Taste. Das Menü bleibt jetzt **offen** — sein
+„Weiter" ist der Wiederholversuch, und Chromes Sperre nach einem Escape ist nach
+gut einer Sekunde von selbst vorbei.
+
+Prüfbar ist das ausgerechnet hier, wo der Lock grundsätzlich scheitert (die
+eingebettete Vorschau wirft `WrongDocumentError`, siehe CLAUDE.md). Gemessen:
+
+| Handlung | Menü unmittelbar danach | nach 250 ms |
+|---|---|---|
+| „Starten" (Desktop) | zu | **offen** |
+| Blickpunkt „wald" gewählt | zu, Kamera bei 742/134/−690 | **offen** |
+| „Weiter" | zu | **offen** |
+| Escape bei offenem Menü | zu | **offen** |
+
+Kein Zustand ohne Ausweg. Auf einer Maschine mit funktionierendem Lock ist die
+rechte Spalte jeweils „fliegt" — das ist der **nicht** prüfbare Teil und steht
+deshalb als solcher hier.
+
+## Akzeptanzkriterien P13
+
+- [x] **Im laufenden Bild steht nach dem Start nichts von der Oberfläche.**
+      `.hint` gibt es nicht mehr, `.stats` und `.debug-pane` starten versteckt.
+- [x] **Der Ladebildschirm endet in einem Knopf**, und der Knopf holt den
+      Pointer Lock synchron im Klick.
+- [x] **Das Menü hat Reiter, und jeder passt.** Kopfzeile bei allen vier
+      Reitern im Bild, bei 375 × 812 wie bei 1280 × 720.
+- [x] **Alle Bedienelemente sind treffbar** — 35 von 35 über `elementFromPoint`,
+      in beiden Ständen.
+- [x] **Debug ist im Build nicht vorhanden.** Der Reiter fehlt (`grafik`,
+      `steuerung`, `blick`), `.stats` und `.debug-pane` fehlen im DOM,
+      `window.japanMap` ist `undefined`, `tweakpane` kommt in `dist/assets/*.js`
+      **null**mal vor.
+- [x] **`typecheck` und `build` laufen sauber durch**, das Bild bleibt
+      vollständig (`anteilNichtSchwarz` 1,000).
+- [ ] **Auf einer Maschine mit funktionierendem Pointer Lock geprüft.** Hier
+      nicht möglich — die eingebettete Vorschau wirft `WrongDocumentError`.
+      Betrifft: „Starten" führt wirklich ins Fliegen, Escape öffnet das Menü aus
+      dem Flug, „Weiter" kehrt zurück.
+- [ ] **Auf einem echten Telefon geprüft.** Die Zahlen oben stammen aus der
+      Geräteemulation bei 375 × 812, nicht von Hardware — dieselbe Lücke wie
+      P12.6.
+
+---
+
+# P14 — Die Fahrschicht: Freeride ◐
+
+> **Beauftragt am 2026-08-18**, mit vier Vorgaben des Auftraggebers: eigene
+> Arcade-Physik statt Rapier, Fahrgefühl „Arcade-Drift, Touge-Stil", Kollision
+> gegen Gelände + Leitplanken + Gebäude und Props, Umschalten per Taste mit
+> Verfolgerkamera. Kein Rennen, keine Rundenlogik, keine KI — **Freeride**.
+>
+> Diese Phase ersetzt den Plan aus P9 nicht, sie löst seinen Teil 9.1 und 9.2
+> ein. 9.3 (Rundenlogik auf den Toren aus 8.11) bleibt ungebaut.
+
+**Was gebaut wurde** — `src/game/`, fünf Dateien:
+
+| Datei | Aufgabe |
+|---|---|
+| `Vehicle.ts` | Fahrmodell: Reifenkräfte, Gieren, Federung, Kollisionsauflösung |
+| `CollisionWorld.ts` | Hindernisse als analytische Körper in einem Raster |
+| `ChaseCamera.ts` | Verfolger- und Haubenkamera |
+| `carMesh.ts` | Fahrzeuggeometrie, prozedural |
+| `DriveSystem.ts` | Eingabe, Moduswechsel, Boden, Szene, Messwerte |
+
+Dazu `src/config/vehicle.config.ts` (alle Zahlen) und `src/debug/driveProbe.ts`
+(der Messstand).
+
+---
+
+## Das Fahrmodell in einem Absatz
+
+Ein Einspurmodell mit Reifenkennlinie `f(n) = 2n/(1+n²)`, `n = α/α_peak`. Das
+Maximum liegt bei `n = 1`, danach **fällt** die Kraft wie `2/n` — dieser Abfall
+ist der Ausbruchpunkt und damit die halbe Anforderung. Die andere Hälfte ist
+`rearGripFactor = 0,94`: die Hinterachse verliert zuerst, der Wagen übersteuert
+statt zu schieben. Vollgas verlangt 8,6 % mehr Antriebskraft, als die
+Hinterachse überträgt (`maxDriveForce` 7200 N gegen 6627 N Haftgrenze) — deshalb
+lässt sich ein Drift mit dem Gas einleiten und nicht nur mit der Handbremse.
+
+Höhe und Federung sind dynamisch (eine Feder gegen die Ebene durch die vier
+Radaufstandspunkte), **Nicken und Wanken sind kinematisch**. Damit kann sich das
+Auto nicht überschlagen. Das ist eine Entscheidung und kein Zufall; sie steht im
+Kopf von `Vehicle.ts`.
+
+---
+
+## 14.1 — Was der Messstand am Fahrzeug gefunden hat
+
+Der Prüfstand (`japanMap.driveProbe()`) treibt die Physik ohne zu rendern —
+3600 Schritte für eine Minute Fahrt in rund 50 ms. Er hat drei Fehler gefunden,
+die alle drei am Bild nicht zu sehen waren.
+
+### Der teuerste: das Modell erzeugte Energie
+
+**Befund.** Ein eingeleiteter Drift bei 93 km/h stand nach 2,75 s bei
+**1622 km/h**. An der Bahn war nichts zu sehen — das Auto fuhr ja; die Zahlenreihe
+zeigte es sofort.
+
+**Ursache.** Die erste Fassung führte Längs- und Quergeschwindigkeit als
+*Zustand* im mitrotierenden Fahrzeugsystem fort und trug die Zentripetalterme
+nach (`v̇_long = ΣFx/m + ω·v_lat`). Die Gleichung ist richtig; mit explizitem
+Euler ist sie es nicht. Die beiden Terme sind eine **Drehung** des
+Geschwindigkeitsvektors um `ω·dt`, und explizit integriert wird daraus ihre
+Tangente — die um `√(1 + (ω·dt)²)` länger ist. Bei 60 Hz und ω = 15 rad/s sind
+das 3 % Zuwachs je Schritt, also das Sechsfache je Sekunde.
+
+**Fix.** In **Weltkoordinaten** integrieren. Dort dreht sich der
+Geschwindigkeitsvektor gar nicht, wenn sich das Fahrzeug dreht; die
+Zentripetalterme verschwinden ersatzlos, weil sie ein Artefakt des Bezugssystems
+waren und keine Kraft. Gerechnet wird weiter in Fahrzeugachsen, nur einmal je
+Schritt neu projiziert statt fortgeschrieben.
+
+**Gegenprobe.** Drift bei 89 km/h einleiten, dann **nichts** tun:
+
+| | 0,0 s | 0,5 s | 1,0 s | 1,5 s | 2,0 s | 3,5 s |
+|---|---|---|---|---|---|---|
+| Tempo (km/h) | 89 | 84 | 79 | 75 | 74 | 73 |
+| Schwimmwinkel | −58° | −73° | −33° | 2° | 0° | 0° |
+
+Monoton fallendes Tempo, und der Wagen fängt sich **ohne jede Eingabe** in 1,5 s.
+
+> **Nebenbefund, der die Abstimmung mitbestimmt hat:** volles Gegenlenken
+> (bang-bang, wie es eine Tastatur nur kann) machte es *schlechter* —
+> −38° → −81° → −69° → −88°, ein klassischer Aufschaukler. Ein Modell, das sich
+> selbst fängt, braucht keinen Helden am Lenkrad, sondern jemanden, der das Gas
+> loslässt. Deshalb ist die einzige Fahrhilfe im Fahrzeug (`driftDamping`)
+> schwach und greift erst hinter dem Kennlinienscheitel.
+
+### Geradeauslauf und Beschleunigung
+
+Auf idealem Boden (eben, Asphalt, keine Hindernisse), Vollgas aus dem Stand:
+
+| Größe | gemessen | Auslegung |
+|---|---|---|
+| 0–60 km/h | 2,73 s | — |
+| 0–100 km/h | **4,70 s** | 4,4 s (kraftbegrenzt, ohne Schlupfverluste) |
+| nach 10 s | 162 km/h | — |
+| Endtempo (60 s) | **255,8 km/h** | 264 km/h (`(P/c_drag)^⅓`, noch nicht ganz eingeschwungen) |
+| seitlicher Versatz nach 60 s | **0,00 m** | 0 — das Modell ist symmetrisch |
+| Gierwinkel nach 60 s | **0,000°** | 0 |
+
+---
+
+## 14.2 — Was der Messstand an der **Karte** gefunden hat
+
+Das ist der eigentliche Ertrag dieser Phase: ein Fahrmodus prüft die Karte an
+Stellen, an die eine Kamera nie kommt.
+
+### Die Stadtplatte steht 97 cm über dem Gelände
+
+**Befund.** Höhendifferenz zwischen `TerrainSampler` und der Mittellinie aus
+`roads.json`, 1000 Proben je Strecke — die Messung, die PLAN.md 9.1 verlangt:
+
+| Strecke | Median | 95 % | größter Ausreißer | wo |
+|---|---|---|---|---|
+| ring | 0,13 cm | 0,33 cm | 83,88 cm | (−593, −319) |
+| toge | 0,12 cm | 0,44 cm | 52,94 cm | (−596, −317) |
+| dorf | 0,18 cm | 0,91 cm | 2,75 cm | (−193, 87) |
+| **stadt** | **94,30 cm** | 94,30 cm | 94,30 cm | konstant |
+| **zufahrt** | **224,47 cm** | 425,98 cm | 429,70 cm | (807, 207) |
+| sando | 0,22 cm | 2,65 cm | 7,89 cm | (836, −523) |
+| feldpfad | 0,16 cm | 1,86 cm | 7,69 cm | (−762, 61) |
+| kuestenpfad | 0,30 cm | 1,82 cm | 3,73 cm | (533, 710) |
+
+Sechs Strecken liegen auf 1…3 mm. Zwei nicht — und die Ursache ist dieselbe:
+der Baker ebnet den Stadtdistrikt auf **28,997 m** ein (14 641 Proben, 14 632
+davon exakt auf diesem Wert, Maximum 29,001 m), die Stadtstraße liegt per
+Konstruktion auf `CITY_ROAD_LEVEL` = 29,94 m. Dazwischen liegen 97,3 cm, die im
+Bild die Schürze der Platte verdeckt.
+
+> **Damit ist ein Kommentar in `city.config.ts` widerlegt.** Dort stand „das
+> eingeschnittene Gelände steht im Distrikt bis 29,939 m hoch (gemessen, 14 641
+> Proben), die Platte liegt bei 29,97 m und damit knapp darüber". Dieselbe
+> Messung mit derselben Probenzahl sagt heute 28,997 m. Warum die alte Zahl
+> einmal gestimmt hat, ist nicht feststellbar — seitdem wurde mehrfach neu
+> gebacken, und P8.5 hält fest, dass die Erosion jede Änderung über die ganze
+> Karte trägt. Der alte Text steht als widerlegt markiert dort weiter.
+
+Für das Bild ist der Absatz harmlos (die Schürze ist genau dafür da). Für das
+Fahren war er entscheidend: ein Auto auf der reinen Sampler-Höhe stünde in der
+Stadt bis zur Fensterlinie im Asphalt.
+
+**Fix.** Das Auto fährt auf einer **Grundlage aus Gelände plus Stadtplatte**
+(dieselbe `districtBlend`-Funktion, die Baker und Straßengenerator benutzen) und
+darauf eine **Fahrbahnkorrektur**, die je Schritt aus der Differenz zwischen
+Mittellinie und ebendieser Grundlage gebildet wird. Auf den sechs unauffälligen
+Strecken ist die Korrektur 1…3 mm groß und damit wirkungslos — es ist kein
+Sonderweg für die Stadt, sondern derselbe Weg für alle.
+
+**Gegenprobe** (Standhöhe des Fahrzeugs gegen die Oberkante des Fahrbahn-Meshes,
+200 Proben je Strecke):
+
+| | vor dem Fix | nach dem Fix |
+|---|---|---|
+| ring, toge, dorf, sando, feldpfad, kuestenpfad | −6,00 cm | **0,00 cm** (max 0,00) |
+| stadt | −94,30 cm | **0,00 cm** |
+| zufahrt | −157 cm (max −411) | **0,00 cm** |
+
+> **Und ein Fehler im Messstand selbst.** Die erste Ablesung meldete durchweg
+> exakt −6,00 cm, also genau `surfaceOffset` — der Wert, der herauskommt, wenn
+> die Korrektur **null** ist. Der Prüfstand setzte das Auto ab, ohne vorher den
+> Straßenzusammenhang zu bilden, und maß damit einen Zustand, den er selbst
+> versäumt hatte herzustellen. Genau davor warnt CLAUDE.md mit „ein von Hand
+> gesetzter Zustand ist ein Zustand, den es im Betrieb nicht gibt". Seitdem
+> bildet `DriveSystem.placeAt()` den Zusammenhang selbst, und das ist auch im
+> Betrieb richtig: ein Respawn in der Stadt setzte den Wagen sonst einen Meter
+> unter den Asphalt.
+
+Ein zweiter Fehler steckte darunter: die Korrektur wurde gegen das **rohe**
+Gelände gebildet und auf die schon angehobene Grundlage addiert. Das Auto stand
+danach 97,3 cm zu **hoch** — dieselbe Zahl, einmal von der Platte und einmal von
+der Korrektur.
+
+### 67 Leitplanken-Punkte stehen auf einer Fahrbahn
+
+**Befund.** Der Prüfstand kam auf der `zufahrt` **48 m** weit und hing dann
+**3081 von 3600 Schritten** in einem Hindernis fest. Kein Prop in 25 m Umkreis;
+ein Rasterabtrag der Kollisionswelt zeigte ein diagonales Band quer über die
+Straße.
+
+Systematisch nachgezählt: **67 von 1608 Plankenpunkten (4,2 %) stehen auf einer
+Fahrbahn** — 43 auf dem Ring, 20 auf dem Bergpass, 4 auf der Zufahrt. Es sind
+die Einmündungen: der Generator setzt die Planke der Hauptstrecke durchgehend,
+und wo eine andere Straße abzweigt, läuft sie quer über deren Mündung. **Im Bild
+ist das eine Planke, die eine Straße absperrt.** Sie steht dort seit P3.
+
+**Fix.** In `GuardrailBuilder`, also dort, wo die Planke entsteht — damit Bild
+und Kollision dieselbe Planke meinen. Eine gesperrte Stützstelle **teilt** den
+Lauf, statt übersprungen zu werden; übersprungen ergäbe ein Viereck über die
+Lücke hinweg, also genau die Planke quer über der Mündung mit weniger
+Stützstellen.
+
+| | vorher | nachher |
+|---|---|---|
+| Plankenläufe | 15 | 19 (vier geteilt) |
+| Stützstellen | 1608 | 1541 |
+| davon auf einer Fahrbahn | **67** | **0** |
+| Kollisionskörper gesamt | 2425 | 2354 |
+
+> **Ein halbes Jahr lang hat das niemand gesehen, weil niemand gefahren ist.**
+> Dieselbe Klasse wie die rückseitig gewickelten Flächen aus P8.11: ein Fehler,
+> den keine Kennzahl meldet, weil keine Kennzahl die Frage stellt.
+
+### Ein Bodensprung von 1,36 m an der Kreuzung Ring × Bergpass
+
+**Befund.** Bei 49 km/h flog das Auto an (−593, −318) **8 m hoch** und landete
+60 m weiter im Hang. Der Boden springt dort in **einem** Schritt um 1,36 m.
+
+**Ursache.** Dort laufen zwei Strecken auf verschiedener Höhe zusammen, das
+Gelände trägt die Einschnitte beider, und `closestPoint()` wechselt beim
+Vorbeifahren von der einen Mittellinie auf die andere. Für die Federung ist ein
+Bodensprung von 1,36 m ein Rammbock.
+
+**Fix.** Die Fahrbahnkorrektur folgt ihrem Ziel mit begrenzter Rate (3 m/s, also
+5 cm je Schritt). Der Sprung ist damit nach 0,45 s abgebaut; solange steht das
+Auto einige Zentimeter neben der Fahrbahnoberkante. Ein Sprung der Korrektur ist
+ein Artefakt der Höhenquelle und keine Geometrie — im Bild gibt es an der
+Kreuzung keine Stufe, also darf er auch nicht wie eine wirken.
+
+---
+
+## 14.3 — Der Messstand und seine eigenen drei Fehler
+
+`driveRoad()` fährt eine Strecke mit einem Regler ab. Er ist ein Werkzeug und
+kein Fahrer, und er hat dreimal das Falsche gemessen, bevor er das Richtige
+maß:
+
+1. **Lenkgesetz.** Erst `δ ∝ α` (Proportionalregler ohne Bezug zur
+   Fahrzeuggeometrie) — schaukelte sich auf und lag nach 331 m im Graben. Jetzt
+   Pure Pursuit, `δ = atan(2 L sin α / l_d)`.
+2. **Bremspunkt.** Erst die Krümmung am Vorausschaupunkt (bei 40 m/s rund 30 m
+   voraus). Bremsen aus 48 m/s auf 15 m/s braucht bei 1,25 g aber **84 m** — der
+   Regler kam mit 174 km/h an einer Kurve an, für die er 68 km/h gebraucht
+   hätte. Jetzt ein Geschwindigkeitsprofil über 200 m Vorausschau.
+3. **Maßgeblicher Reibwert.** Er plante mit `TIRE.gripAsphalt` — dem Wert der
+   *Vorderachse*. Ausbrechen tut die Hinterachse. 6 % Unterschied, genug um von
+   „am Limit" nach „darüber" zu kippen.
+
+> **Was dieser Prüfstand grundsätzlich nicht kann: sagen, ob es sich gut
+> anfühlt.** Er fährt mit einem Regler, nicht mit einer Absicht. Ob der Drift
+> kontrollierbar ist, braucht eine Hand an der Tastatur — und diese Antwort
+> steht hier ausdrücklich **aus**.
+
+---
+
+## 14.4 — Die Fahrten
+
+`japanMap.driveProbe({ seconds: 60, speedCap: 14 })` — gemäßigtes Tempo, weil
+die Frage der **Strecke** gilt und nicht der Kunst des Reglers:
+
+| Strecke | Weg | ⌀ | Durchdringung | Abstand zur Mitte | Schritte daneben | ms/Schritt | Ende |
+|---|---|---|---|---|---|---|---|
+| ring | 760,2 m | 45,6 km/h | **0 cm** | 1,09 m | 0 | 0,013 | auf der Strecke |
+| **toge** | 742,2 m | 44,5 km/h | **0 cm** | 2,00 m | **0** | 0,012 | auf der Strecke |
+| dorf | 683,8 m | 45,9 km/h | **0 cm** | 1,34 m | 0 | 0,008 | Streckenende |
+| stadt | 774,1 m | 46,4 km/h | **0 cm** | 1,21 m | 0 | 0,011 | auf der Strecke |
+| zufahrt | 138,4 m | 43,3 km/h | **0 cm** | 0,99 m | 0 | 0,012 | Streckenende |
+| sando | 431,8 m | 31,4 km/h | **0 cm** | 1,77 m | 721 | 0,008 | Streckenende |
+| feldpfad | 385,1 m | 44,2 km/h | **0 cm** | 1,37 m | 245 | 0,008 | Streckenende |
+| kuestenpfad | 323,6 m | 21,6 km/h | **0 cm** | 15,35 m | 2323 | 0,009 | Streckenende |
+
+**Keine Durchdringung auf keiner Strecke.** Alle acht kommen bis zum Ende oder
+fahren die vollen 60 s.
+
+**Die drei Pfade sind keine Straßen**, und das erklärt die einzigen auffälligen
+Zahlen. `ROAD_TYPES.pfad` sagt es selbst: „Kein Fahrzeug." Sie sind 1,80 m
+breit, das Auto ist 1,62 m — rechnerisch 9 cm je Seite. Dass alle drei bis zum
+Ende kommen, ist mehr, als zu erwarten war; dass der Regler dabei auf dem
+Küstenpfad 15 m neben die Mittellinie gerät, ist keine Aussage über die
+Fahrschicht.
+
+### Die Läufe sind reproduzierbar — nach zwei Reparaturen
+
+Drei aufeinanderfolgende Läufe liefern **zeichengleiche** Zahlen. Bis dahin
+wichen sie um wenige Zentimeter ab, und die Ursache war zweimal dieselbe: ein
+Zustand, der `respawn()` überlebt hat.
+
+1. **`#lastLongAccel`** (die Lastverlagerung des letzten Schritts) ging in die
+   Radlasten des ersten neuen Schritts ein — 742,26 m gegen 742,20 m.
+2. **Die Telemetrie.** Sie ist eine Anzeige, aber der Regler des Messstands
+   *liest* sie, bevor der erste Schritt gerechnet ist. Ein Lauf begann damit mit
+   dem Tempo des vorigen.
+
+Beides ist behoben; die Kette dieses Projekts ist deterministisch, und wo sie es
+nicht ist, ist etwas kaputt.
+
+---
+
+## Akzeptanzkriterien
+
+- [x] **Ein Fahrzeug steht auf allen acht Strecken auf dem Boden.** Median der
+      Höhendifferenz zur Fahrbahnoberkante **0,00 cm auf allen acht**, größter
+      Einzelwert ebenfalls 0,00 cm. (PLAN.md 9.1 verlangt „unter 5 cm".) Der
+      größte Ausreißer der zugrundeliegenden *Datenquellen* ist benannt: 83,88 cm
+      an der Kreuzung ring × toge, (−593, −319).
+- [x] **Der Bergpass ist befahrbar, ohne dass das Fahrzeug die Leitplanke
+      durchdringt** — 60 s, 742,2 m, **0 cm Durchdringung**, **0 Schritte** neben
+      der Fahrbahn, größter Abstand zur Mitte 2,00 m bei 3,25 m halber
+      Fahrbahnbreite. Gemessen, nicht gefahren-und-für-gut-befunden.
+- [x] **Die Budgets aus SPEC §4 halten weiterhin, mit Fahrzeug im Bild.**
+      Gemessen bei stehender Kamera am Blickpunkt `stadt-neon`, nur die
+      Sichtbarkeit des Fahrzeugs umgeschaltet: **+4 Draw-Calls, +1024 Dreiecke**
+      (184 gegen 180 Draw-Calls bei einem Budget von 800). Vier statt zwei, weil
+      der Spiegeldurchgang das Fahrzeug ein zweites Mal zeichnet.
+- [x] **Die Physik-Entscheidung steht mit Zahlen** in „Offene Entscheidungen".
+- [x] **Der Messlauf ist reproduzierbar** — drei aufeinanderfolgende Läufe
+      liefern zeichengleiche Zahlen auf allen acht Strecken.
+- [x] **Der Moduswechsel gibt die Flugkamera unverändert zurück** — Versatz
+      **0,0000 m**, Blickfehler **0,000°**, Blickfeld zurück auf 60,0° (die
+      Verfolgerkamera zieht es mit dem Tempo auf 68°).
+- [x] **`typecheck` und `build` laufen sauber durch**, keine Konsolenfehler,
+      32 Shaderprogramme im Aufwärmframe (vorher 30 — das Fahrzeugmaterial im
+      Haupt- und im Spiegeldurchgang).
+- [ ] **Ob sich der Drift gut anfährt, ist nicht gemessen.** Der Prüfstand kann
+      diese Frage nicht beantworten (14.3), und Pointer Lock — und damit die
+      Tastatursteuerung überhaupt — ist in der eingebetteten Vorschau nicht
+      prüfbar. Es fehlt: eine Runde von Hand auf dem Bergpass.
+- [ ] **Auf einem Telefon nicht geprüft.** Der Touch-Stick ist verdrahtet
+      (`FreeFlyController` leitet Blick und Achsen an den Fahrmodus weiter, wenn
+      der Freiflug aus ist), aber nie auf Hardware bedient worden. Dieselbe Lücke
+      wie P12.6 und P13.
+
+## Was P14 ausdrücklich **nicht** enthält
+
+Rundenlogik (P9.3 — die Tore aus 8.11 wertet weiterhin niemand aus), KI-Gegner,
+Schaden, Motorgeräusch, Scheinwerfer mit Lichtkegel, Kollision zwischen zwei
+Fahrzeugen. Der Wagen kann sich nicht überschlagen (kinematisches Nicken und
+Wanken), und Bäume sind durchfahrbar.
+

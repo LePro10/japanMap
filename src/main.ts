@@ -2,6 +2,9 @@ import './style.css';
 
 import { FreeFlyController } from './camera/FreeFlyController';
 import { Engine } from './core/Engine';
+import { DriveSystem } from './game/DriveSystem';
+import { runAb } from './debug/abMeasure';
+import { runDriveProbe } from './debug/driveProbe';
 import { captureShot, probeFrame, type CaptureTarget } from './debug/capture';
 import { countLodHoles } from './debug/lodHoles';
 import { runReport } from './debug/report';
@@ -26,10 +29,10 @@ import { RicePaddy } from './world/props/RicePaddy';
 import { ScatterSystem } from './world/scatter/ScatterSystem';
 import { TerrainSystem } from './world/TerrainSystem';
 import { WaterSystem } from './world/WaterSystem';
-import { LoadingScreen } from './ui/LoadingScreen';
-import { PlayerUi } from './ui/PlayerUi';
+import { StartScreen } from './ui/StartScreen';
+import { PlayerUi, type DebugControl } from './ui/PlayerUi';
 
-let loading: LoadingScreen | null = null;
+let loading: StartScreen | null = null;
 
 function fatal(message: string, detail?: string): never {
   // Zuerst weg: eine Fehlermeldung hinter dem Ladebildschirm ist keine.
@@ -66,35 +69,58 @@ try {
 
 // Vor allem anderen: der Ladebildschirm muss stehen, bevor das erste System
 // initialisiert wird — sonst zeigt er den Fortschritt erst ab der Hälfte.
-loading = new LoadingScreen(engine.bus, document.body);
+loading = new StartScreen(engine.bus, document.body);
 
 /**
  * Die Debug-UI wird dynamisch geladen: so landen Tweakpane und stats-gl nicht
  * im Produktions-Bundle (SPEC §4 — erstes Bild unter 15 MB).
+ *
+ * **Gibt seit P13 eine Steuerung zurück.** Der Reiter „Debug" im Spielermenü
+ * schaltet Zahlenblock und Werkzeugleiste, und `PlayerUi` darf dafür nichts aus
+ * `src/debug/` importieren — es wird ohne `import.meta.env.DEV` ausgeliefert.
+ * Die Brücke ist deshalb dieses Objekt: hier gebaut, dort nur als
+ * `DebugControl` bekannt. Im Build wird diese Funktion nie gerufen, das Feld
+ * bleibt leer, und der Reiter existiert nicht.
  */
-async function attachDebugUi(target: Engine, container: HTMLElement): Promise<void> {
+async function attachDebugUi(target: Engine, container: HTMLElement): Promise<DebugControl> {
   const [{ DebugPanel }, { SceneScaffold }] = await Promise.all([
     import('./debug/DebugPanel'),
     import('./debug/SceneScaffold'),
   ]);
 
-  target.setDebugHost(
-    await DebugPanel.create({
-      renderer: target.renderer,
-      scene: target.scene,
-      camera: target.camera,
-      bus: target.bus,
-      container,
-      extraTextures: () => target.resources.tracked,
-      onDispose: () => {
-        target.dispose();
-      },
-    }),
-  );
+  const panel = await DebugPanel.create({
+    renderer: target.renderer,
+    scene: target.scene,
+    camera: target.camera,
+    bus: target.bus,
+    container,
+    extraTextures: () => target.resources.tracked,
+    onDispose: () => {
+      target.dispose();
+    },
+  });
+  target.setDebugHost(panel);
 
   target.add(new SceneScaffold());
 
   window.japanMap = { engine: target };
+
+  // Durchgereicht statt kopiert: `panel` führt den Zustand und schreibt ihn nach
+  // `localStorage`. Ein zweites Feld hier wäre eine zweite Wahrheit.
+  return {
+    get statsVisible() {
+      return panel.statsVisible;
+    },
+    set statsVisible(value: boolean) {
+      panel.statsVisible = value;
+    },
+    get paneVisible() {
+      return panel.paneVisible;
+    },
+    set paneVisible(value: boolean) {
+      panel.paneVisible = value;
+    },
+  };
 }
 
 /**
@@ -112,6 +138,7 @@ function installFrameProbe(
   camera: FreeFlyController,
   qualitySystem: QualitySystem,
   scatter: ScatterSystem,
+  drive: DriveSystem,
 ): void {
   // Der gemeinsame Nenner von `probe()`, `shot()` und dem Messlauf: rendern und
   // im selben Aufruf auslesen. Siehe `debug/capture.ts`.
@@ -214,6 +241,37 @@ function installFrameProbe(
       return alle ? rows : rows.filter((r) => r.suspicious);
     },
 
+    /**
+     * Fahrmodus schalten oder abfragen — `japanMap.drive(true)`, P14.
+     *
+     * Der Weg für Messungen und für die Konsole: die Taste `V` verlangt einen
+     * gefangenen Zeiger, und den gibt es in der eingebetteten Vorschau nicht
+     * (CLAUDE.md, „Pointer Lock ist in der eingebetteten Vorschau unmöglich").
+     * Ohne diesen Aufruf wäre der Fahrmodus dort **überhaupt nicht** prüfbar.
+     */
+    drive: (on) => {
+      if (on === true) drive.enter();
+      else if (on === false) drive.exit();
+      return drive.active;
+    },
+
+    /**
+     * Der Messstand des Fahrmodus (P14) — siehe `debug/driveProbe.ts`.
+     *
+     * Fährt jede Strecke mit einem Regler ab und schreibt mit, was dabei
+     * passiert: Durchdringung, Abstand zur Mittellinie, Tempo, CPU je Schritt.
+     * Dazu die Höhendifferenz zwischen Sampler und Mittellinie — die Messung, die
+     * PLAN.md 9.1 verlangt.
+     */
+    driveProbe: (options) => {
+      const sampler = drive.terrain;
+      const network = drive.roads;
+      if (!sampler || !network) {
+        throw new Error('Fahr-Messstand: Terrain oder Straßennetz sind noch nicht geladen.');
+      }
+      return runDriveProbe({ drive, sampler, network }, options);
+    },
+
     probe: () => probeFrame(capture),
 
     /**
@@ -238,6 +296,45 @@ function installFrameProbe(
      * die Optionen, etwa
      * `japanMap.report({ levels: ['ultra'], viewpoints: ['reisfeld'] })`.
      */
+    /**
+     * Interleavte A/B-Messung der GPU-Zeit — PLAN.md P12 / 12.0.
+     *
+     * Der Unterschied zu `report()`: der misst **Zustände** (Blickpunkt ×
+     * Stufe) und schreibt Bilder dazu; dieser hier misst **Eingriffe** gegen
+     * eine Basis, und zwar so, dass eine driftende oder mitbenutzte GPU das
+     * Ergebnis nicht mehr bestimmt. Warum das nötig ist, steht im Kopf von
+     * `abMeasure.ts` — die Kurzfassung: eine sequenzielle Messreihe stieg dort
+     * um 56 %, ohne dass ein Eingriff das erklärt hätte.
+     *
+     * ```js
+     * japanMap.view('wald');
+     * await japanMap.ab({ variants: { 'Kette aus': { postFx: 'off' }, 'AO aus': { ao: 'off' } } });
+     * ```
+     */
+    ab: (options) =>
+      runAb(
+        {
+          renderer: target.renderer,
+          scene: target.scene,
+          capture,
+          timing: target.context.debug,
+          quality: {
+            get level() {
+              return qualitySystem.level;
+            },
+            setCustom: (patch) => {
+              qualitySystem.setCustom(patch);
+            },
+            set: (level) => {
+              qualitySystem.set(level);
+            },
+          },
+          streaming: () => scatter.streaming,
+          dropped: () => scatter.dropped,
+        },
+        options,
+      ),
+
     report: (options) =>
       runReport(
         {
@@ -302,6 +399,10 @@ async function boot(): Promise<void> {
   const atmosphere = new AtmosphereSystem();
   const reflection = new PlanarReflection();
   const controller = new FreeFlyController();
+  // **Vor dem Terrain, den Straßen, der Stadt und den Props**, weil er auf alle
+  // vier Ereignisse hört und jedes genau einmal gesendet wird. Der Freiflug wird
+  // ihm hereingereicht statt gesucht — Begründung im Kopf von `DriveSystem`.
+  const drive = new DriveSystem(atmosphere.uniforms, controller);
 
   // **Hier und nicht im System selbst.** `roads:ready` wird gesendet, während
   // sich das RoadSystem initialisiert; wer es hören will, muss vorher
@@ -318,9 +419,15 @@ async function boot(): Promise<void> {
   });
 
   // Vor allen anderen Systemen, weil sie sich sonst nicht mehr anmelden lassen.
-  if (import.meta.env.DEV) await attachDebugUi(engine, overlay);
+  const debug = import.meta.env.DEV ? await attachDebugUi(engine, overlay) : null;
 
   engine.add(controller);
+  // **Direkt nach der Kamera**, und das ist zweimal wichtig: `init()` läuft in
+  // dieser Reihenfolge (er muss sich vor Terrain, Straßen, Stadt und Props
+  // anmelden), und `update()` ebenfalls — die Verfolgerkamera muss nach der
+  // Fahrphysik und vor allem laufen, was sich an der Kamera ausrichtet (Sonne,
+  // Wasserebene, Spiegelung).
+  engine.add(drive);
   engine.add(atmosphere);
   engine.add(new LightingRig(atmosphere.uniforms));
   engine.add(new WaterSystem(atmosphere.uniforms));
@@ -390,14 +497,20 @@ async function boot(): Promise<void> {
   // **Nicht hinter `import.meta.env.DEV`** — anders als alles darunter. Das ist
   // der ganze Zweck von P10.2: bis hierher hing jede Bedienung am Debug-Panel,
   // und im gebauten Stand gab es damit weder Steuerungshinweis noch
-  // Qualitätswahl noch Pause. Nach `start()`, weil das Menü auf
-  // `engine:warmedup` wartet, um sich nicht hinter dem Ladebildschirm zu
-  // zeigen.
-  new PlayerUi({
+  // Qualitätswahl noch Pause.
+  //
+  // **Nach `start()`, und das ist seit P13 keine Kosmetik mehr.** `start()`
+  // sendet `engine:warmedup` noch in seinem eigenen Aufruf; genau dieses
+  // Ereignis macht aus dem Ladebildschirm den Startbildschirm mit dem
+  // „Starten"-Knopf. Der Knopf steht also, bevor die Zeile darunter läuft —
+  // deshalb merkt sich `StartScreen` einen Druck, für den noch niemand
+  // zuständig war, statt ihn fallen zu lassen.
+  const ui = new PlayerUi({
     bus: engine.bus,
     canvas,
     container: overlay,
     camera: controller,
+    ...(debug ? { debug } : {}),
     quality: {
       get level() {
         return quality.level;
@@ -417,7 +530,13 @@ async function boot(): Promise<void> {
     },
   });
 
-  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter);
+  // Der „Starten"-Knopf holt den Pointer Lock — **synchron im Klick**, sonst ist
+  // die Nutzergeste verbraucht und der Browser lehnt ab.
+  loading?.onStart(() => {
+    ui.begin();
+  });
+
+  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive);
 }
 
 void boot();

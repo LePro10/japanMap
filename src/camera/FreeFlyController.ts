@@ -43,6 +43,21 @@ const GROUND_CLEARANCE = 2;
  */
 const DAMPING = 9;
 
+/**
+ * Wohin Blick und Bewegungsachsen gehen, solange der Freiflug **aus** ist.
+ *
+ * Der Fahrmodus (P14) übernimmt die Kamera; die Fingersteuerung kennt aber nur
+ * diesen Controller (`TouchControls` bekommt ihn als `TouchCameraTarget`). Ohne
+ * diese Weiterleitung wäre der Stick auf einem Telefon im Fahrmodus **tot** —
+ * und ein Bedienelement, das sich bewegt und nichts tut, ist schlimmer als
+ * keines. Zweitens: eine Blickdrehung, die im Fahrmodus still den Gierwinkel des
+ * Freiflugs verstellt, springt beim Zurückschalten.
+ */
+export interface FlyInputDelegate {
+  look(dx: number, dy: number): void;
+  setAxes(forward: number, right: number, up: number): void;
+}
+
 interface StoredCamera {
   readonly position: [number, number, number];
   readonly yaw: number;
@@ -85,9 +100,23 @@ export class FreeFlyController implements System {
   #pitch = 0;
   #speed: number = SPEED.default;
   #collision = false;
+  /** Fliegt der Nutzer? Im Fahrmodus (P14) nicht — dann gehört die Kamera dem Auto. */
+  #enabled = true;
+  #delegate: FlyInputDelegate | null = null;
   #pointerLocked = false;
   #skipNextMove = false;
   #lastSave = 0;
+
+  /**
+   * Bewegungsachsen aus einer **anderen** Eingabequelle als der Tastatur —
+   * heute der Touch-Stick (P12.4), morgen ein Gamepad.
+   *
+   * Sie werden zu den Tasten **addiert** und nicht gegen sie getauscht: auf
+   * einem Tablet mit angesteckter Tastatur wäre jede andere Regel eine
+   * Überraschung, und ein Gerät, das beides kann, darf nicht eine der beiden
+   * Quellen stillschweigend verschlucken.
+   */
+  readonly #axes = { forward: 0, right: 0, up: 0 };
 
   readonly #readouts = {
     geschwindigkeit: '—',
@@ -129,9 +158,41 @@ export class FreeFlyController implements System {
     this.#registerDebug(context);
   }
 
+  /**
+   * Freiflug an- oder abschalten — P14.
+   *
+   * Ausgeschaltet schreibt dieses System **nichts** mehr an die Kamera und
+   * sichert auch nichts: der gesicherte Stand bleibt damit der letzte
+   * *geflogene*, und ein Reload mitten im Fahren landet nicht an der Position der
+   * Verfolgerkamera. Wer zurückschaltet, muss die Kamera selbst wieder setzen
+   * (`placeAt`) — `update()` rechnet aus der aktuellen Position weiter, und die
+   * gehörte in der Zwischenzeit dem Auto.
+   */
+  setEnabled(value: boolean): void {
+    if (this.#enabled === value) return;
+    this.#enabled = value;
+    // Gedrückte Tasten und aufgebaute Geschwindigkeit gehören dem alten Modus.
+    // Ohne das fliegt die Kamera beim Zurückschalten mit dem Tempo weiter, das
+    // sie beim Umschalten hatte.
+    this.#keys.clear();
+    this.#velocity.set(0, 0, 0);
+    this.#axes.forward = 0;
+    this.#axes.right = 0;
+    this.#axes.up = 0;
+  }
+
+  get enabled(): boolean {
+    return this.#enabled;
+  }
+
+  /** Wohin Blick und Achsen gehen, solange der Freiflug aus ist. */
+  setInputDelegate(delegate: FlyInputDelegate | null): void {
+    this.#delegate = delegate;
+  }
+
   update(dt: number): void {
     const camera = this.#camera;
-    if (!camera) return;
+    if (!camera || !this.#enabled) return;
 
     this.#euler.set(this.#pitch, this.#yaw, 0);
     camera.quaternion.setFromEuler(this.#euler);
@@ -154,7 +215,19 @@ export class FreeFlyController implements System {
     if (this.#keys.has('space')) target.y += 1;
     if (this.#keys.has('controlleft') || this.#keys.has('controlright')) target.y -= 1;
 
-    if (target.lengthSq() > 0) target.normalize().multiplyScalar(this.#speed * boost);
+    // Touch/Gamepad dazu — siehe `#axes`.
+    if (this.#axes.forward !== 0) target.addScaledVector(this.#forward, this.#axes.forward);
+    if (this.#axes.right !== 0) target.addScaledVector(this.#right, this.#axes.right);
+    target.y += this.#axes.up;
+
+    // **Geklemmt statt normiert.** Die Tastatur kennt nur 0 und 1, ein Stick
+    // aber auch 0,3 — wer hier bedingungslos normiert, macht aus jedem
+    // angetippten Stick Vollgas und nimmt dem Analogstick genau die
+    // Eigenschaft, für die es ihn gibt. Über Länge 1 wird trotzdem geklemmt,
+    // sonst wäre Diagonale schneller als Geradeaus.
+    const länge = target.length();
+    if (länge > 1) target.multiplyScalar(1 / länge);
+    target.multiplyScalar(this.#speed * boost);
 
     // Rahmenratenunabhängige exponentielle Annäherung. `1 - e^(-k·dt)` liefert
     // bei 30 wie bei 240 FPS dieselbe Kurve; ein festes `lerp(…, 0.1)` nicht.
@@ -242,10 +315,71 @@ export class FreeFlyController implements System {
       this.#skipNextMove = false;
       return;
     }
-    this.#yaw -= event.movementX * LOOK_SENSITIVITY * this.#yawFactor(this.#pitch);
-    this.#pitch -= event.movementY * LOOK_SENSITIVITY;
-    this.#pitch = Math.min(Math.max(this.#pitch, -PITCH_LIMIT), PITCH_LIMIT);
+    this.look(event.movementX, event.movementY);
   };
+
+  // ── Eingabe von außen (Touch, später Gamepad) — P12.4 ──────────────────
+
+  /**
+   * Blick um einen Wegbetrag in Pixeln drehen.
+   *
+   * **Öffentlich, damit der Touch-Regler dieselbe Mathematik benutzt wie die
+   * Maus** — Empfindlichkeit, Nick-Grenze und vor allem der Gier-Faktor gegen
+   * den Pol-Wirbel. Eine zweite Implementierung daneben wäre eine zweite
+   * Kamera: dieses Projekt hat den Pol-Wirbel einmal gemessen und behoben, und
+   * ein eigener Touch-Pfad brächte ihn stillschweigend zurück.
+   */
+  look(dx: number, dy: number): void {
+    // Im Fahrmodus gehört der Blick der Verfolgerkamera — Begründung bei
+    // `FlyInputDelegate`.
+    if (!this.#enabled) {
+      this.#delegate?.look(dx, dy);
+      return;
+    }
+    this.#yaw -= dx * LOOK_SENSITIVITY * this.#yawFactor(this.#pitch);
+    this.#pitch -= dy * LOOK_SENSITIVITY;
+    this.#pitch = Math.min(Math.max(this.#pitch, -PITCH_LIMIT), PITCH_LIMIT);
+  }
+
+  /**
+   * Bewegungsachsen einer zweiten Eingabequelle setzen, jeweils −1…1.
+   *
+   * Wird **jeden Frame** gesetzt, solange die Quelle aktiv ist, und auf null,
+   * wenn sie es nicht mehr ist. Ein Zustand, der nur beim Loslassen
+   * zurückgesetzt wird, fliegt weiter, wenn das Loslassen verlorengeht — und
+   * genau das passiert auf einem Touchscreen dauernd (`touchcancel` beim
+   * Anruf, beim Wischen von der Kante, beim Wechsel in eine andere App).
+   */
+  setAxes(forward: number, right: number, up: number): void {
+    if (!this.#enabled) {
+      this.#delegate?.setAxes(clamp1(forward), clamp1(right), clamp1(up));
+      return;
+    }
+    this.#axes.forward = clamp1(forward);
+    this.#axes.right = clamp1(right);
+    this.#axes.up = clamp1(up);
+  }
+
+  /** Grundtempo multiplikativ ändern — Pinch am Touchscreen, Rad an der Maus. */
+  scaleSpeed(factor: number): void {
+    this.#speed = Math.min(Math.max(this.#speed * factor, SPEED.min), SPEED.max);
+  }
+
+  /** Grundtempo in m/s — für die Anzeige im Touch-Bedienfeld. */
+  get speed(): number {
+    return this.#speed;
+  }
+
+  /** Bodenkollision an/aus — der Touch-Knopf hat kein „F". */
+  toggleCollision(): boolean {
+    this.#collision = !this.#collision;
+    return this.#collision;
+  }
+
+  /** Zurück zum Startpunkt — der Touch-Knopf hat kein „R". */
+  resetToStart(): void {
+    this.#reset();
+  }
 
   /**
    * Gier-Faktor, der die Drehung um die Blickachse kappt.
@@ -291,6 +425,10 @@ export class FreeFlyController implements System {
     // Der umgekehrte Fall ist keiner: Umsehen braucht den Lock ohnehin, eine
     // Bewegung ohne Blick gibt es also nicht zu verlieren.
     if (!this.#pointerLocked) return;
+    // Und im Fahrmodus gar nichts: `R` bedeutet dort „Auto zurücksetzen", und
+    // beide Bedeutungen gleichzeitig hieße, dass ein Respawn nebenbei die
+    // Flugkamera an den Startpunkt legt — unsichtbar, bis man zurückschaltet.
+    if (!this.#enabled) return;
 
     const code = event.code.toLowerCase();
     if (code === 'keyf') {
@@ -442,6 +580,11 @@ export class FreeFlyController implements System {
       this.#reset();
     });
   }
+}
+
+/** Auf −1…1 klemmen, NaN wird zu 0 — ein NaN steckt die ganze Kamera an. */
+function clamp1(value: number): number {
+  return Number.isFinite(value) ? Math.min(Math.max(value, -1), 1) : 0;
 }
 
 /** Tastendrücke in Eingabefeldern gehören dem Feld, nicht der Kamera. */

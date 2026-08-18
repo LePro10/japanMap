@@ -6,7 +6,7 @@ import {
   type WebGLRendererParameters,
 } from 'three';
 
-import { RENDER } from '@/config/world.config';
+import { maxPixelRatio } from '@/config/world.config';
 
 export class WebGLUnsupportedError extends Error {
   constructor(cause?: unknown) {
@@ -55,7 +55,7 @@ export function createRenderer(canvas: HTMLCanvasElement): WebGLRenderer {
   // Kanten kommen ab P2 aus den Kaskaden, nicht aus dem Filtertyp.
   renderer.shadowMap.type = PCFShadowMap;
 
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, RENDER.maxPixelRatio));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio()));
 
   // Wichtig für das Debug-Overlay: standardmäßig setzt three die Zähler bei
   // jedem render()-Aufruf zurück. Sobald der PostFX-Composer in P2 mehrere
@@ -86,7 +86,7 @@ export function observeCanvasSize(
     // Rundungsfehler bei fraktionalem DPI (z. B. 125 % Skalierung).
     const exact = entry.devicePixelContentBoxSize?.[0];
     if (exact) {
-      const ratio = Math.min(window.devicePixelRatio, RENDER.maxPixelRatio);
+      const ratio = Math.min(window.devicePixelRatio, maxPixelRatio());
       onResize(Math.round(exact.inlineSize / ratio), Math.round(exact.blockSize / ratio));
       return;
     }
