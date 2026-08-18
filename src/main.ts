@@ -27,6 +27,7 @@ import { RoadSystem } from './world/RoadSystem';
 import { PropSystem } from './world/props/PropSystem';
 import { RicePaddy } from './world/props/RicePaddy';
 import { ScatterSystem } from './world/scatter/ScatterSystem';
+import { AssetUpgrader } from './core/AssetUpgrader';
 import { TerrainSystem } from './world/TerrainSystem';
 import { WaterSystem } from './world/WaterSystem';
 import { StartScreen } from './ui/StartScreen';
@@ -451,8 +452,20 @@ async function boot(): Promise<void> {
   engine.add(new CitySystem(atmosphere.uniforms));
   // Nach der Stadt: das Neon hört auf `city:ready` und hat vorher nichts zu tun.
   engine.add(new NeonSystem(atmosphere.uniforms));
-  engine.add(new TerrainSystem(atmosphere.uniforms));
-  engine.add(new RoadSystem(atmosphere.uniforms, reflection.uniforms));
+  // Der Nachlader (P15.4) wird **vor** seinen Nutzern angelegt und **nach**
+  // ihnen angemeldet. Beides ist nötig und aus verschiedenen Gründen:
+  //
+  //  - vorher angelegt, weil Terrain und Straße ihn im Konstruktor bekommen —
+  //    dieselbe Entscheidung wie beim Atmosphärenblock. Eine Abhängigkeit an
+  //    der Registrierungsstelle sichtbar zu machen ist ehrlicher, als sie
+  //    nachträglich über ein Ereignis einzusammeln.
+  //  - nachher angemeldet, weil sein `update()` die fertig geladenen Gruppen
+  //    eintauscht, und das soll nach dem passieren, was in diesem Frame ohnehin
+  //    schon zeichnet.
+  const upgrader = new AssetUpgrader();
+  engine.add(new TerrainSystem(atmosphere.uniforms, upgrader));
+  engine.add(new RoadSystem(atmosphere.uniforms, reflection.uniforms, upgrader));
+  engine.add(upgrader);
   // **Nach** allen Systemen, die Geometrie in die Szene bringen, und **vor** der
   // PostFX-Kette: der Spiegeldurchgang rendert die fertige Szene ein zweites Mal
   // aus der gespiegelten Kamera, und er muss das tun, bevor der Composer den

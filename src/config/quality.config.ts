@@ -804,6 +804,87 @@ export const BENCHMARK = {
    * und speicherte das Ergebnis auch noch.
    */
   implausibleMs: 400,
+  /**
+   * ── Der Wächter — P15.5 ───────────────────────────────────────────────
+   *
+   * Die Ersteinstufung darüber endet, sobald sie ein Ergebnis hat. Danach sah
+   * **niemand** mehr auf die Bildrate: ein Gerät, das beim Start kühl ist und
+   * nach zehn Minuten drosselt, fuhr den Rest der Sitzung unter 60 Bildern,
+   * ohne dass etwas passierte. Die Zusage „immer mindestens 60" war damit eine
+   * Zusage über die ersten 90 Frames.
+   *
+   * ## Warum das trotzdem keine Regelung ist
+   *
+   * Im Kopf von `QualitySystem.update()` stand seit P7: „Hochgestuft wird nie.
+   * Eine Regelung in beide Richtungen ist genau das, was in diesem Projekt
+   * zweimal davongelaufen ist." Der Satz bleibt richtig — deshalb ist das hier
+   * ein **Sperrklinkenwerk** und keine Regelung:
+   *
+   *  - Die Sitzungsobergrenze wandert **ausschließlich nach unten**. Wer einmal
+   *    von „Hoch" heruntergestuft wurde, bekommt „Hoch" in dieser Sitzung nicht
+   *    wieder angeboten.
+   *  - Zwischen „reicht nicht mehr" (`stepDownMs`) und „reicht wieder"
+   *    (`stepUpMs`) liegt eine Lücke, in der nichts passiert.
+   *  - Hochgestuft wird über ein **fünfmal längeres** Fenster als
+   *    heruntergestuft.
+   *
+   * Bei fünf Stufen und einer nur fallenden Obergrenze sind höchstens vier
+   * Hochstufungen je Sitzung überhaupt möglich, und jede verkleinert die Menge
+   * der später noch erreichbaren Stufen. Ein Pendeln ist damit nicht
+   * unwahrscheinlich, sondern **unmöglich**.
+   */
+  guard: {
+    /**
+     * Frames je Beobachtungsfenster.
+     *
+     * 120 bei 60 Hz sind zwei Sekunden. Kürzer wäre nervös: ein Nachladen von
+     * Vegetation oder ein Stufenwechsel kostet einzelne Frames, und darauf soll
+     * der Wächter gerade **nicht** anspringen.
+     */
+    window: 120,
+    /**
+     * Perzentil statt Median — und das ist der Kern der Sache.
+     *
+     * Ein einzelner Ruckler ist keine Überlastung; jeder zehnte Frame zu spät
+     * ist eine. Der Median sähe beides als gesund an, weil er die schlechte
+     * Hälfte gar nicht ansieht. Dieselbe Überlegung wie beim 10. Perzentil in
+     * `abMeasure.ts`, nur am anderen Ende der Verteilung: dort sollen Störungen
+     * heraus, hier sollen sie gerade **hinein**.
+     */
+    percentile: 0.9,
+    /**
+     * Ab hier gilt „reicht wieder" — deutlich unter `stepDownMs`.
+     *
+     * 14 gegen 20 ms. Die Lücke dazwischen ist die Hysterese; ohne sie stünde
+     * ein Gerät, das bei 19,9 ms herunterstuft und danach 19,1 ms liefert,
+     * unmittelbar vor der Rückkehr — und das ist die Schleife, die dieses
+     * Projekt zweimal ausgebaut hat.
+     *
+     * 14 ms sind bei 60 Hz kein „schafft es knapp", sondern 16 % Luft auf ein
+     * Vsync-Fenster. Wer nur 16,7 ms trifft, hat keine Reserve für die nächste
+     * Kurve mit mehr Bewuchs im Bild.
+     */
+    stepUpMs: 14,
+    /**
+     * Wie viele **aufeinanderfolgende** gute Fenster eine Hochstufung braucht.
+     *
+     * Fünf Fenster à 120 Frames sind zehn Sekunden ununterbrochener Reserve.
+     * Heruntergestuft wird nach **einem** Fenster: eine zu langsame Anwendung
+     * ist sofort ein Problem, eine zu schnelle nie. Diese Asymmetrie ist
+     * Absicht und der zweite Grund, warum das Werk nicht pendeln kann.
+     */
+    goodWindows: 5,
+    /**
+     * Frames, die nach einem Stufenwechsel verworfen werden.
+     *
+     * Ein Wechsel übersetzt Shader neu (P10.2 hat 17 zusätzliche Übersetzungen
+     * gemessen) und wirft Texturen um. Wer die Frames unmittelbar danach als
+     * Messung nimmt, misst den Wechsel und stuft daraufhin weiter — genau die
+     * davonlaufende Schleife. Doppelt so lang wie `warmupFrames`, weil hier
+     * zusätzlich der Nachlader im Hintergrund arbeiten kann.
+     */
+    settleFrames: 60,
+  },
   /** Schlüssel im localStorage. */
   storageKey: 'japanMap.quality',
   /**

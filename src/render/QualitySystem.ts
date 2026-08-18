@@ -59,6 +59,35 @@ export class QualitySystem implements System {
 
   /** Läuft eine Einstufung? `null`, wenn nicht. */
   #run: BenchmarkRun | null = null;
+
+  /**
+   * Der Wächter — P15.5. `null`, solange er nicht laufen soll.
+   *
+   * Er beginnt erst, wenn die Ersteinstufung fertig ist, und **endet
+   * endgültig**, sobald jemand eine Stufe von Hand wählt. Letzteres ist keine
+   * Bequemlichkeit, sondern dieselbe Regel wie eine Zeile weiter oben in
+   * `init()`: eine Messung, die dem Nutzer seine Wahl nach ein paar Sekunden
+   * wieder wegnimmt, ist schlimmer als eine fehlende Messung.
+   */
+  #guard: GuardRun | null = null;
+
+  /**
+   * Bester Index in `QUALITY_LEVELS`, den diese Sitzung noch erreichen darf.
+   *
+   * **Wandert ausschließlich nach oben im Index, also nach unten in der
+   * Güte.** 0 ist Ultra. Das ist die Sperrklinke, ohne die der Wächter eine
+   * gewöhnliche Regelung wäre; die Begründung steht in `BENCHMARK.guard`.
+   */
+  #ceiling = 0;
+
+  /**
+   * Ist `quality:headroom` schon gesendet worden?
+   *
+   * Das Ereignis kommt je Sitzung höchstens **einmal**. Ein Nachlader, der bei
+   * jedem guten Fenster erneut anspringt, wäre eine Regelschleife mit
+   * Netzverkehr daran — und die Dateien sind nach dem ersten Mal ohnehin da.
+   */
+  #headroomAnnounced = false;
   #lastFrame = 0;
   /** Wahr, solange dieses System selbst eine Stufe sendet. */
   #internal = false;
@@ -71,6 +100,15 @@ export class QualitySystem implements System {
     wirkung: '—',
     einstufung: '—',
     geraet: '—',
+    /**
+     * Was der Wächter zuletzt gemessen hat — P15.5.
+     *
+     * Ohne diese Zeile ist er unsichtbar: er greift selten ein, und wenn er es
+     * tut, sieht man eine Stufenänderung ohne Grund. Genau die Sorte Anzeige,
+     * gegen die dieses Projekt bei `viewDistance` und `shadowCascades` schon
+     * zweimal angetreten ist — nur andersherum, hier fehlte sie ganz.
+     */
+    waechter: '—',
   };
 
   get estimate(): DeviceEstimate | null {
@@ -113,7 +151,13 @@ export class QualitySystem implements System {
       // wieder weg, und zwar unbemerkt.
       if (!this.#internal) {
         this.#run = null;
+        // **Und der Wächter endet mit.** Dieselbe Begründung wie zwei Zeilen
+        // darüber, nur über eine längere Frist: eine Stufe, die sich nach zehn
+        // Sekunden von selbst wieder ändert, ist keine Wahl. Wer den Wächter
+        // zurückwill, drückt „Neu einstufen".
+        this.#guard = null;
         this.#readouts.einstufung = 'von Hand gewählt';
+        this.#readouts.waechter = 'aus — Stufe von Hand gewählt';
         storeLevel(level);
       }
       this.#updateReadouts();
@@ -130,6 +174,20 @@ export class QualitySystem implements System {
     const gespeichert = readStoredLevel();
     if (gespeichert) {
       this.#readouts.einstufung = 'aus einem früheren Start übernommen';
+      // **Der Wächter läuft auch dann** — und das ist der ganze Sinn von P15.5.
+      // Eine gespeicherte Stufe stammt aus einer Messung von *damals*; ob die
+      // Maschine heute noch so schnell ist (anderer Browser, andere Last, ein
+      // Akku im Sparmodus), sagt sie nicht.
+      //
+      // Die Obergrenze erbt die gespeicherte Stufe: sie ist das Ergebnis einer
+      // früheren Messung auf **dieser** Maschine, und die jede Sitzung neu
+      // aufzurollen hieße, jedes Mal einmal hoch- und wieder herunterzustufen.
+      // Wer das aufheben will, drückt „Neu einstufen".
+      const index = QUALITY_LEVELS.indexOf(gespeichert as QualityLevel);
+      if (index >= 0) {
+        this.#ceiling = index;
+        this.#guard = { samples: [], gut: 0, rest: BENCHMARK.guard.settleFrames };
+      }
     } else {
       this.#run = { rest: BENCHMARK.warmupFrames, samples: [], runde: 1 };
       this.#readouts.einstufung = 'läuft …';
@@ -236,6 +294,120 @@ export class QualitySystem implements System {
     setCustomQuality(customFromSettings(QUALITY[level]));
   }
 
+  /**
+   * Der Wächter — P15.5. Läuft, wenn die Ersteinstufung fertig ist.
+   *
+   * Er beantwortet die Frage, die die Ersteinstufung offenlässt: **hält die
+   * Maschine die Bildrate auch in zehn Minuten noch?** Ein Gerät, das beim
+   * Start kühl ist und dann drosselt, fuhr bis P15 den Rest der Sitzung unter
+   * 60 Bildern, ohne dass etwas geschah.
+   *
+   * Die drei Regeln gegen die davongelaufene Schleife stehen in
+   * `BENCHMARK.guard`. Hier ist die vierte, die nur im Code stehen kann: der
+   * Wächter arbeitet mit **Fensterabschlüssen**, nicht mit gleitenden Mitteln.
+   * Ein gleitendes Mittel entscheidet nach jedem Frame neu und damit 60-mal je
+   * Sekunde; ein Fenster entscheidet einmal und wirft danach seine Werte weg.
+   */
+  #guardStep(delta: number): void {
+    const guard = this.#guard;
+    if (!guard) return;
+
+    // Ein verdecktes Fenster bekommt rAF im Sekundentakt — dieselbe Absicherung
+    // wie in der Ersteinstufung. Ohne sie stufte ein weggeklickter Tab die
+    // Maschine herunter, und zwar dauerhaft, weil die Obergrenze mitwandert.
+    if (document.hidden) {
+      guard.samples.length = 0;
+      guard.gut = 0;
+      guard.rest = BENCHMARK.guard.settleFrames;
+      return;
+    }
+
+    if (guard.rest > 0) {
+      guard.rest--;
+      return;
+    }
+
+    guard.samples.push(delta);
+    if (guard.samples.length < BENCHMARK.guard.window) return;
+
+    const sorted = [...guard.samples].sort((a, b) => a - b);
+    guard.samples.length = 0;
+    const p90 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * BENCHMARK.guard.percentile))] ?? 0;
+
+    // Unbrauchbar statt schlecht — dieselbe Grenze und derselbe Grund wie oben.
+    if (p90 > BENCHMARK.implausibleMs) {
+      guard.gut = 0;
+      return;
+    }
+
+    const index = QUALITY_LEVELS.indexOf(this.#level as QualityLevel);
+    if (index < 0) {
+      // Eine eigene Stufe steht in keiner Leiter. Der Wächter hält still,
+      // statt zu raten — dieselbe Entscheidung wie in der Ersteinstufung.
+      return;
+    }
+
+    this.#readouts.waechter =
+      `${p90.toFixed(1)} ms (90. Perzentil) · Obergrenze ` +
+      `${QUALITY[QUALITY_LEVELS[this.#ceiling] as QualityKey].label}`;
+
+    if (p90 > BENCHMARK.stepDownMs) {
+      guard.gut = 0;
+      const next = QUALITY_LEVELS[index + 1];
+      if (!next) return; // Auf „Minimal" gibt es nichts mehr zu tun.
+
+      // **Die Obergrenze wandert mit — das ist die Sperrklinke.** Ab hier ist
+      // die Stufe, von der wir kommen, für diese Sitzung erledigt. Ohne diese
+      // Zeile wäre alles Übrige eine gewöhnliche Regelung mit Hysterese, und
+      // die pendelt bei genügend langer Laufzeit trotzdem.
+      this.#ceiling = index + 1;
+      console.info(
+        `Wächter: ${p90.toFixed(1)} ms je Frame (> ${BENCHMARK.stepDownMs}) — herunter auf ` +
+          `„${QUALITY[next].label}". „${QUALITY[this.#level].label}" ist für diese Sitzung erledigt.`,
+      );
+      guard.rest = BENCHMARK.guard.settleFrames;
+      this.#emit(next);
+      return;
+    }
+
+    if (p90 > BENCHMARK.guard.stepUpMs) {
+      // Die Lücke zwischen den Schwellen. Hier passiert mit Absicht nichts —
+      // weder herunter noch herauf. Die guten Fenster laufen aber auch nicht
+      // weiter: „reicht gerade so" ist keine Reserve.
+      guard.gut = 0;
+      return;
+    }
+
+    guard.gut++;
+    if (guard.gut < BENCHMARK.guard.goodWindows) return;
+    guard.gut = 0;
+
+    // Reserve steht fest. Zwei Dinge folgen daraus, und sie sind unabhängig
+    // voneinander:
+    //
+    //  1. Der Nachlader darf loslegen — **einmal je Sitzung**.
+    //  2. Wenn die Obergrenze es zulässt, geht eine Stufe herauf.
+    if (!this.#headroomAnnounced) {
+      this.#headroomAnnounced = true;
+      this.#context?.bus.emit('quality:headroom', { p90Ms: p90, level: this.#level });
+    }
+
+    const better = QUALITY_LEVELS[index - 1];
+    if (!better || index - 1 < this.#ceiling) {
+      this.#readouts.waechter =
+        `${p90.toFixed(1)} ms — Reserve, aber ` +
+        (better ? 'Obergrenze erreicht' : 'schon auf Ultra');
+      return;
+    }
+
+    console.info(
+      `Wächter: ${p90.toFixed(1)} ms je Frame über ${BENCHMARK.guard.goodWindows} Fenster ` +
+        `(< ${BENCHMARK.guard.stepUpMs}) — herauf auf „${QUALITY[better].label}".`,
+    );
+    guard.rest = BENCHMARK.guard.settleFrames;
+    this.#emit(better);
+  }
+
   /** Eine Stufe, die aus diesem System kommt — keine Wahl von Hand. */
   #emit(level: QualityKey): void {
     this.#internal = true;
@@ -256,7 +428,16 @@ export class QualitySystem implements System {
    * Auflösung und Instanzzahl, die alte Messung gilt danach nicht mehr. Das ist
    * die Regel aus CLAUDE.md, hier als Schleife.
    *
-   * Hochgestuft wird nie. Eine Regelung in beide Richtungen ist genau das, was
+   * ~~Hochgestuft wird nie.~~ **Für die Ersteinstufung gilt der Satz weiter;
+   * seit P15.5 gibt es daneben den Wächter in `#guardStep()`, und der stuft
+   * auch herauf.** Der Grund, warum das keine Rückkehr zur davongelaufenen
+   * Schleife ist, steht in `BENCHMARK.guard`: die Sitzungsobergrenze wandert
+   * nur nach unten, zwischen den Schwellen liegt eine Lücke, und eine
+   * Hochstufung braucht das Fünffache an ununterbrochener Reserve. Der
+   * ursprüngliche Absatz bleibt hier stehen, weil seine Begründung richtig war
+   * und die neue Lösung sich an ihr messen lassen muss.
+   *
+   * Eine Regelung in beide Richtungen ist genau das, was
    * in diesem Projekt zweimal davongelaufen ist und beide Male ersatzlos
    * entfernt wurde: sie pendelt zwischen zwei Stufen, deren Kosten sich beim
    * Umschalten gegenseitig bedingen.
@@ -266,7 +447,10 @@ export class QualitySystem implements System {
     const now = performance.now();
     const delta = now - this.#lastFrame;
     this.#lastFrame = now;
-    if (!run) return;
+    if (!run) {
+      this.#guardStep(delta);
+      return;
+    }
 
     // Ein verdecktes Fenster bekommt rAF im Sekundentakt. Wer währenddessen
     // einstuft, misst den Browser und nicht die Maschine.
@@ -331,15 +515,45 @@ export class QualitySystem implements System {
    */
   reclassify(): void {
     clearStoredLevel();
+    // **Die Sperrklinke wird gelöst — und nur hier.** Das ist der Ausweg aus
+    // dem Fall, den P15.5 unter „Risiken" nennt: wer beim Start ein Fenster
+    // verdeckt hatte, wurde heruntergestuft und kam in dieser Sitzung nicht
+    // mehr hoch. Dass es einen Knopf dafür gibt, ist der Grund, warum die
+    // Obergrenze sonst hart bleiben darf.
+    this.#ceiling = 0;
+    this.#guard = null;
+    this.#readouts.waechter = '—';
     this.#run = { rest: BENCHMARK.warmupFrames, samples: [], runde: 1 };
     this.#readouts.einstufung = 'läuft …';
     this.#emit(this.#estimate?.level ?? DEFAULT_QUALITY);
     this.#updateReadouts();
   }
 
+  /**
+   * Die Einstufung ist durch — und der Wächter übernimmt (P15.5).
+   *
+   * **Die Obergrenze erbt das Ergebnis, aber nur wenn es eines gibt.** Hat die
+   * Einstufung heruntergestuft (`runde > 1`), dann ist bewiesen, dass die
+   * Stufen darüber nicht halten — die aktuelle wird zur Obergrenze. Ist sie
+   * dagegen sofort durchgekommen, hat sie über die Stufen *darüber* nichts
+   * gemessen, und der Wächter darf sie erkunden. Genau das ist der Fall, den
+   * der Auftrag meint: die Gerätevorschätzung startet vorsichtig, und eine
+   * starke Maschine soll trotzdem oben ankommen.
+   */
   #finish(text: string): void {
+    const runde = this.#run?.runde ?? 1;
     this.#run = null;
     this.#readouts.einstufung = text;
+
+    const index = QUALITY_LEVELS.indexOf(this.#level as QualityLevel);
+    if (index >= 0) {
+      if (runde > 1) this.#ceiling = index;
+      this.#guard = { samples: [], gut: 0, rest: BENCHMARK.guard.settleFrames };
+    } else {
+      // Eigene Stufe: kein Wächter. Sie steht in keiner Leiter, und über eine
+      // von Hand zusammengestellte Stufe hat niemand das Recht zu entscheiden.
+      this.#readouts.waechter = 'aus — eigene Stufe';
+    }
     this.#updateReadouts();
   }
 
@@ -378,6 +592,15 @@ export class QualitySystem implements System {
       multiline: true,
       rows: 2,
     });
+    folder.addBinding(this.#readouts, 'waechter', {
+      readonly: true,
+      label: 'Wächter',
+      multiline: true,
+      rows: 2,
+      // Er schließt ein Fenster alle zwei Sekunden; häufiger abzulesen zeigt
+      // 60-mal dieselbe Zeichenkette.
+      interval: 1000,
+    });
     folder.addBinding(this.#readouts, 'geraet', {
       readonly: true,
       label: 'Gerät',
@@ -411,6 +634,23 @@ interface BenchmarkRun {
   rest: number;
   samples: number[];
   runde: number;
+}
+
+/**
+ * Der laufende Wächter — P15.5.
+ *
+ * Kein `runde`-Feld: der Wächter zählt keine Runden, sondern **aufeinander­
+ * folgende gute Fenster**, und die setzt jedes schlechte Fenster auf null
+ * zurück. Der Unterschied ist der Grund, warum er nicht driften kann — eine
+ * Zählung, die nie zurückgesetzt wird, erreicht ihre Schwelle irgendwann von
+ * selbst.
+ */
+interface GuardRun {
+  /** Noch zu verwerfende Frames nach einem Wechsel. */
+  rest: number;
+  samples: number[];
+  /** Wie viele gute Fenster **hintereinander**. */
+  gut: number;
 }
 
 /**
