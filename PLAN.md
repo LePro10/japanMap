@@ -7758,10 +7758,22 @@ erreichten Zahl statt einer umgeschriebenen Vorgabe.**
       für Texel gegen die gebackene Datei — größte Abweichung **1 von 255** über
       alle 4 194 304, mittlerer Winkelfehler 0,0495°.
 - [x] **`typecheck` und `build` laufen sauber durch**, keine Fehlanfragen im
-      gebauten Stand, keine Konsolenfehler.
-      ~~`npm run world` weiterhin bitgleich reproduzierbar~~ — **nicht geprüft**,
-      und die Kette hat sich geändert (`npm run hdri` erzeugt jetzt zwei
-      Dateien). Gehört vor die Abnahme.
+      gebauten Stand, keine Konsolenfehler. **`npm run world` zweimal:
+      bitgleich über alle 54 Dateien.**
+
+      > **Und diese Probe hat einen Altfehler gefunden.** Beim ersten Durchgang
+      > waren **46 von 47** erzeugten Dateien bitgleich — `shade.json` nicht.
+      > Darin stand `measured.seconds`, also die **Laufzeit des Bakers**: 5,7
+      > gegen 5,8 Sekunden. Eine Zahl, die den Rechner beschreibt, nicht das
+      > Ergebnis, in einem Artefakt, dessen Zweck Reproduzierbarkeit ist.
+      >
+      > Aufgefallen ist es nie, weil CLAUDE.md die Probe namentlich auf
+      > `roads.json` und `height.r16` festlegt — beide waren immer bitgleich.
+      > Der Fund gehört damit in dieselbe Klasse wie die rückseitig gewickelten
+      > Flächen aus P8.11 und die 67 Leitplanken aus P14.2: **kein Messwert war
+      > falsch, es hat nur nie jemand die Frage über den ganzen Bestand
+      > gestellt.** Das Feld ist entfernt, die Laufzeit steht weiter in der
+      > Konsolenausgabe.
 
 ---
 

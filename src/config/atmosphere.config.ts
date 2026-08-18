@@ -300,6 +300,11 @@ export interface ShadeMeta {
   readonly measured: {
     readonly litFraction: number;
     readonly minSkyVisibility: number;
-    readonly seconds: number;
+    /*
+     * ~~`readonly seconds: number`~~ — **entfernt in P15.6.** Es war die
+     * Laufzeit des Bakers und damit die einzige Zahl der ganzen Kette, die sich
+     * zwischen zwei Läufen ändert; `shade.json` war dadurch als einzige von 47
+     * erzeugten Dateien nicht bitgleich. Begründung im Baker.
+     */
   };
 }
