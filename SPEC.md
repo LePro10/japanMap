@@ -228,8 +228,57 @@ unten, abgelesen im Debug-Overlay, nicht das Bauchgefühl beim Fliegen.
 | Draw-Calls / Frame | < 800 |
 | Dreiecke / Frame | < 3 M |
 | Texturspeicher | < 512 MB |
-| Initialer Download | < 15 MB (KTX2 + meshopt) |
+| ~~Initialer Download~~ | ~~< 15 MB (KTX2 + meshopt)~~ → siehe 4.1 |
 | Frame-Time-Budget | 16,6 ms → davon max. 5 ms Postprocessing |
+
+### 4.1 Die Zielplattform ist CrazyGames — und sie hat eigene Zahlen
+
+**Beauftragt am 2026-08-18.** Damit ist die Download-Zeile nicht mehr ein
+selbstgesetztes Ziel, sondern eine **Annahmebedingung**. Die 15 MB, die hier
+seit P0 standen, hatten nie eine Herkunft; die Zahlen unten haben eine.
+
+| Vorgabe (Stand 2026-08-18) | CrazyGames | japanMap | |
+|---|---|---|---|
+| Startdownload | ≤ 50 MB | **17,02 MB** | ✅ |
+| **Startdownload für die Mobile-Homepage** | **≤ 20 MB** | **17,02 MB** | ✅ |
+| Gesamtgröße | ≤ 250 MB | 61,15 MB | ✅ |
+| Dateizahl | ≤ 1500 | 46 Anfragen | ✅ |
+| Zeit bis zum Spielen | ≤ 20 s | **8,61 s** ⚠ warm | siehe unten |
+| Browser | Chrome, Edge | ✅ | |
+| Eingabe | Maus, Tastatur, Touch | ✅ seit P12.4 | |
+| Chromebook, 4 GB RAM | muss flüssig laufen | **nicht geprüft** | ⚠ |
+
+> **Der eigentliche Gewinn von P15 steht in der zweiten Zeile.** Mit 40,83 MB
+> war das Spiel über der 20-MB-Schwelle und damit von der **Mobile-Homepage
+> ausgeschlossen** — die 50-MB-Grenze war nie das Problem. Der gestufte Start
+> holt genau diese Schwelle, und zwar mit 3 MB Abstand.
+>
+> Was daraus folgt: **die 15-MB-Zeile ist gegenstandslos.** Sie weiter zu
+> verfolgen hieße, gegen eine Zahl zu optimieren, die niemand verlangt. Der
+> nächste Hebel (`height.r16` delta-kodiert, 5,76 MB) bleibt trotzdem
+> aufgeschrieben — als Reserve für den Fall, dass die Schwelle sinkt oder
+> Inhalt dazukommt, nicht als offene Aufgabe.
+
+**Die Zeit bis zum Spielen ist die Zeile, die Sorgen macht — nicht der
+Download.** Gemessen am gebauten Stand: alle 46 Anfragen sind nach **0,71 s**
+durch, der „Starten"-Knopf steht nach **8,61 s**. Die Differenz ist reine
+Rechenzeit — HDRI-Faltung (PMREM), Imposter-Atlas, Stadtgenerator, Streuung,
+Shader-Übersetzung.
+
+Drei Einschränkungen, und alle drei zeigen in dieselbe Richtung:
+
+1. **Warm gemessen.** Der Lauf übertrug 0,01 MB; die 17,02 MB kamen aus dem
+   Cache. Auf einer echten Verbindung kommt die Ladezeit obendrauf — bei
+   10 Mbit/s rund 14 s für 17 MB, und dann sind die 20 s **überschritten**.
+2. **Auf einer RX 7900 XTX gemessen.** Auf einem Chromebook mit 4 GB RAM,
+   das CrazyGames ausdrücklich als Zielgerät nennt, ist die Rechenzeit ein
+   Vielfaches.
+3. **Der Download lädt nebenher**, die Rechenzeit nicht — die beiden addieren
+   sich nicht vollständig, aber auch nicht gar nicht. Wie stark sie sich
+   überlappen, ist **nicht gemessen**.
+
+Damit ist „Zeit bis zum Spielen" die nächste offene Messung dieses Projekts,
+und sie ist wichtiger als jedes weitere Megabyte.
 
 **Quality-Presets** skalieren: ~~Schattenauflösung, SSR an/aus,~~ N8AO-Stufe,
 ~~Sichtweite~~, Vegetationsdichte, Render-Scale. Von Anfang an eingebaut —
