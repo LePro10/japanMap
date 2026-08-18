@@ -56,6 +56,33 @@ import sharp from 'sharp';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const sourceDir = join(root, 'assets', 'textures');
 const outDir = join(root, 'assets', 'generated', 'textures');
+/**
+ * Halbe Auflösung für die mittlere Stufe — P15.3.
+ *
+ * ## Warum ein zweiter Ordner und kein Suffix
+ *
+ * `terrainAssets.ts` importiert jede Datei über Vites `?url`, damit sie einen
+ * Inhalts-Hash bekommt und ein Tippfehler im Pfad beim **Bauen** auffällt statt
+ * im Browser mit einem 404. Das setzt statische Pfade voraus. Ein
+ * Parallelordner mit identischer Struktur lässt beide Sätze über denselben
+ * relativen Pfad ansprechen; ein Suffix mitten im Dateinamen bräuchte eine
+ * zweite Importliste von Hand.
+ *
+ * ## Was das Verkleinern mit einer Normalmap macht
+ *
+ * Es mittelt Vektoren, und ein Mittel aus zwei Einheitsvektoren ist keiner
+ * mehr — die Normale wird kürzer, die Fläche wirkt flacher. Das ist hier
+ * **kein neuer** Fehler: genau das tut die Mipmap-Kette zur Laufzeit auf jeder
+ * Stufe, und der Shader normiert nach dem Abtasten ohnehin. Was die halbe
+ * Auflösung wirklich kostet, ist Detail im Nahfeld — und das ist der Tausch,
+ * um den P15 bittet. Gemessen wird er am Bild, nicht hier behauptet.
+ *
+ * Chroma bleibt **4:4:4**, aus demselben Grund wie oben: eine Normalmap ist
+ * kein Bild. Und die Qualität bleibt bei `QUALITY` — die halbe Auflösung ist
+ * die *eine* Änderung dieses Durchgangs. Zwei Regler gleichzeitig zu drehen
+ * heißt, hinterher nicht zu wissen, welcher gewirkt hat.
+ */
+const halfDir = join(root, 'assets', 'generated', 'textures-half');
 
 /**
  * Qualität und Chroma.
@@ -94,10 +121,11 @@ async function main() {
   }
 
   console.log(`Texturen optimieren — Qualität ${QUALITY}, Chroma 4:4:4, ${files.length} Dateien\n`);
-  console.log('Datei                             Quelle    Ergebnis   Ersparnis');
+  console.log('Datei                             Quelle    Ergebnis   Ersparnis      halbe Stufe');
 
   let sourceTotal = 0;
   let outTotal = 0;
+  let halfTotal = 0;
   let kept = 0;
 
   for (const file of files) {
@@ -106,6 +134,22 @@ async function main() {
     const encoded = await sharp(file)
       .jpeg({ quality: QUALITY, chromaSubsampling: '4:4:4', mozjpeg: true })
       .toBuffer();
+
+    // Halbe Auflösung für die mittlere Stufe — siehe `halfDir` oben.
+    // Aus der **Quelle** verkleinert, nicht aus `encoded`: sonst läge über dem
+    // Ergebnis zweimal dieselbe JPEG-Kodierung, und die Artefakte des ersten
+    // Durchgangs würden mitskaliert. Dieselbe Überlegung wie bei QUALITY = 90.
+    const meta = await sharp(file).metadata();
+    const halfWidth = Math.max(1, Math.round((meta.width ?? 2) / 2));
+    const halfHeight = Math.max(1, Math.round((meta.height ?? 2) / 2));
+    const half = await sharp(file)
+      .resize(halfWidth, halfHeight, { kernel: 'lanczos3' })
+      .jpeg({ quality: QUALITY, chromaSubsampling: '4:4:4', mozjpeg: true })
+      .toBuffer();
+    const halfTarget = join(halfDir, rel);
+    mkdirSync(join(halfTarget, '..'), { recursive: true });
+    writeFileSync(halfTarget, half);
+    halfTotal += half.length;
 
     const target = join(outDir, rel);
     mkdirSync(join(target, '..'), { recursive: true });
@@ -129,6 +173,7 @@ async function main() {
       useSource
         ? '   Quelle behalten'
         : `${(((sourceSize - finalSize) / sourceSize) * 100).toFixed(0)} %`.padStart(10),
+      `${mb(half.length).padStart(9)} (${halfWidth}²)`,
     );
   }
 
@@ -140,6 +185,10 @@ async function main() {
   if (kept > 0) {
     console.log(`${kept} Datei(en) unverändert übernommen, weil die Neukodierung größer war.`);
   }
+  console.log(
+    `Halbe Stufe (P15.3): ${mb(halfTotal)} gegen ${mb(outTotal)} — ` +
+      `${(((outTotal - halfTotal) / outTotal) * 100).toFixed(1)} % weniger für den Erststart.`,
+  );
 }
 
 await main();
