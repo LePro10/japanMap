@@ -257,6 +257,33 @@ function installFrameProbe(
     },
 
     /**
+     * Die Rundenzählung — P9.3.
+     *
+     * Ohne Argument: der aktuelle Stand. Mit einer Strecken-Kennung: die Tore
+     * werden auf diese Strecke gesetzt und die Zählung beginnt von vorn.
+     *
+     * **Ablesbar ohne Renderer**, weil der `LapTimer` seinen Zustand selbst
+     * hält — der Messstand aus P14 treibt ihn im selben Schritt wie die Physik,
+     * also liefert `japanMap.driveProbe()` gefahrene Runden gleich mit.
+     */
+    laps: (roadId) => {
+      if (roadId !== undefined) {
+        const network = drive.roads;
+        if (!network) throw new Error('Rundenzählung: das Straßennetz ist noch nicht geladen.');
+        if (!drive.laps.setRoad(network, roadId)) {
+          throw new Error(`Rundenzählung: Strecke „${roadId}" gibt es nicht.`);
+        }
+      }
+      return {
+        strecke: drive.laps.roadId,
+        tore: drive.laps.gates.length,
+        laufend: drive.laps.running,
+        verstrichen: drive.laps.elapsed,
+        runden: drive.laps.laps,
+      };
+    },
+
+    /**
      * Der Messstand des Fahrmodus (P14) — siehe `debug/driveProbe.ts`.
      *
      * Fährt jede Strecke mit einem Regler ab und schreibt mit, was dabei

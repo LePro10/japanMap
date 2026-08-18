@@ -25,6 +25,7 @@ import type { CityCollider, CityCurb } from '@/world/city/CityGenerator';
 import { createCarBody, createCarWheel } from './carMesh';
 import { ChaseCamera } from './ChaseCamera';
 import { CollisionWorld } from './CollisionWorld';
+import { LapTimer } from './LapTimer';
 import { Vehicle, type DriveInput, type Ground, type Surface } from './Vehicle';
 
 /**
@@ -95,6 +96,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   readonly name = 'DriveSystem';
 
   readonly vehicle = new Vehicle();
+  /** Rundenzählung auf den Toren aus P8.11 — P9.3. */
+  readonly laps = new LapTimer();
   readonly camera = new ChaseCamera();
   readonly collision = new CollisionWorld();
 
@@ -244,6 +247,11 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     });
     context.bus.on('roads:ready', ({ network }) => {
       this.#network = network;
+      // Die Tore des Rings — P9.3. Der Ring ist die einzige geschlossene
+      // Strecke der Karte; auf einer Stichstraße wie dem Bergpass gibt es keine
+      // Runde, sondern eine Fahrt. `setRoad()` lässt sich später auf jede
+      // Strecke umstellen, die Voreinstellung ist die, die eine Runde hat.
+      this.laps.setRoad(network, 'ring');
       this.#rebuild();
     });
     context.bus.on('city:ready', ({ colliders, curbs }) => {
@@ -589,6 +597,12 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#refreshRoadContext();
     this.#followRoadCorrection(dt);
     this.vehicle.step(dt, input, this, this.collision);
+    // **Nach dem Schritt, nicht davor** — P9.3. Die Rundenlogik prüft den
+    // Vorzeichenwechsel zwischen zwei *aufeinanderfolgenden* Positionen; sie
+    // muss deshalb die Position **nach** der Integration sehen, sonst hinkt sie
+    // um einen Schritt hinterher und meldet die Torüberquerung 16 ms zu spät.
+    // Bei 250 km/h wären das 1,16 m Bahn.
+    this.laps.step(this.vehicle.position.x, this.vehicle.position.z, dt);
     // Gleitendes Mittel über rund 30 Schritte. Ein Einzelwert aus
     // `performance.now()` liegt bei einer halben Mikrosekunde Auflösung im
     // Rauschen; das Mittel ist die Zahl, die in die Abnahme gehört.
@@ -827,6 +841,27 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       interval: 100,
     });
     folder.addBinding(this.#readouts, 'belag', { readonly: true, label: 'Belag', interval: 200 });
+
+    // Rundenzählung — P9.3. Die Ablesewerte wohnen im `LapTimer` selbst, nicht
+    // hier: er ist ohne Renderer und ohne Bus benutzbar (der Messstand aus P14
+    // treibt ihn direkt), und eine Anzeige, die nur im Debug-Panel entsteht,
+    // wäre dort nicht abzulesen.
+    const runden = context.debug?.folder('Runden (P9.3)');
+    if (runden) {
+      runden.addBinding(this.laps.readouts, 'strecke', { readonly: true, label: 'Strecke' });
+      runden.addBinding(this.laps.readouts, 'runde', {
+        readonly: true,
+        label: 'Runde',
+        interval: 200,
+      });
+      runden.addBinding(this.laps.readouts, 'naechstesTor', {
+        readonly: true,
+        label: 'nächstes Tor',
+        interval: 200,
+      });
+      runden.addBinding(this.laps.readouts, 'letzteZeit', { readonly: true, label: 'letzte', interval: 500 });
+      runden.addBinding(this.laps.readouts, 'beste', { readonly: true, label: 'beste', interval: 500 });
+    }
     folder.addBinding(this.#readouts, 'federweg', {
       readonly: true,
       label: 'Federweg',
