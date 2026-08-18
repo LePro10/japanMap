@@ -5,14 +5,13 @@
 > merken, dass eine Phase fertig ist**. Wo etwas im Quelltext steht und was mit
 > was redet, sagt [ARCHITECTURE.md](ARCHITECTURE.md).
 >
-> **Stand: 2026-08-18 · P0–P6 und P8 abgenommen · P7, P10–P15 ◐ ·
-> P9 durch P14 zu zwei Dritteln eingelöst (9.3 Rundenlogik offen)**
+> **Stand: 2026-08-18 · P0–P6, P8 und P9 abgenommen · P7, P10–P15 ◐**
 >
 > | Phase | Stand |
 > |---|---|
 > | P0–P6, P8 | ✅ abgenommen |
 > | P7 | ◐ — eines der fünf Kriterien gemessen verfehlt (Startdownload) |
-> | P9 | ◐ — 9.1 und 9.2 in P14 gebaut; **9.3 Rundenlogik ungebaut**, die Tore aus 8.11 wertet weiterhin niemand aus |
+> | P9 | ✅ **abgenommen am 2026-08-18** — 9.1/9.2 in P14, 9.3 als `LapTimer`. Drei gefahrene Runden auf dem Ring, 324,72 s, Abkürzung wird abgelehnt |
 > | P10 | ◐ — 10.0/10.1/10.2 gebaut, 10.3 in P11.5 aufgegangen, 10.4 teilweise |
 > | P11 | ◐ — 11.2 bis 11.6 gebaut und einzeln gemessen, **Akzeptanzliste nie abgehakt** |
 > | P12 | ◐ — 8 von 11 Kriterien; offen: echtes Telefon, Startdownload, volle Auflösung je Stufe |
@@ -4405,8 +4404,13 @@ früh, damit der Übergang keine Umbauten erzwingt.
 
 ---
 
-# P9 — Die Fahrschicht ○ (Plan, nicht gebaut)
+# P9 — Die Fahrschicht ✅ (9.1 und 9.2 in P14, 9.3 am 2026-08-18)
 
+> ~~**Dies ist ein Plan und keine Umsetzung.**~~ **Seit dem 2026-08-18 ist er
+> vollständig eingelöst** — 9.1 und 9.2 in P14, 9.3 als `src/game/LapTimer.ts`.
+> Der ursprüngliche Absatz bleibt stehen, weil er die Bedingung nennt, unter der
+> hier überhaupt gebaut werden durfte:
+>
 > **Dies ist ein Plan und keine Umsetzung.** Er steht hier, weil in diesem
 > Projekt keine Phase ohne Akzeptanzkriterien begonnen wurde und weil die
 > Übergabefläche jetzt gemessen ist — nicht, weil P9 beauftragt wäre. Ohne
@@ -4492,15 +4496,113 @@ Fahrzeug **eine** Runde fährt und die Zeit stimmt. Alles darüber ist P10 und
 bekommt wieder einen eigenen Plan — aus demselben Grund, aus dem P8 nicht
 angefangen hat, bevor P7 abgenommen war.
 
+### 9.3 gebaut und gemessen — 2026-08-18
+
+**Der letzte ungebaute Punkt der Fahrschicht.** `getSectors()` liefert seit
+P8.11 Tore; ausgewertet hat sie bis heute niemand, und P14 hat das ausdrücklich
+ausgeklammert.
+
+Gebaut als `src/game/LapTimer.ts` — ohne Renderer und ohne Bus benutzbar, weil
+der Messstand aus P14 die Physik in einer eigenen Schleife treibt. Die
+Schnittstelle ist deshalb der **Rückgabewert** von `step()` und kein Ereignis.
+
+#### Drei Runden auf dem Ring, gefahren statt behauptet
+
+`japanMap.driveProbe({ roads: ['ring'], seconds: 1400, speedCap: 20 })` —
+26 176 m Fahrt, 0 cm Durchdringung, 0 Schritte neben der Fahrbahn:
+
+| Runde | Zeit | Tor 1 | Tor 2 |
+|---|---|---|---|
+| 1 | **324,72 s** | 109,63 | 216,47 |
+| 2 | 324,72 s | 109,65 | 216,48 |
+| 3 | 324,73 s | 109,65 | 216,48 |
+
+Über 5,4 Minuten Fahrt streuen die Läufe um **10 ms**. Die Tore liegen bei 0,
+2029 und 4058 m Bogenlänge; der Ring ist 6086 m lang.
+
+> **Eine Gegenprobe, die nicht aus derselben Quelle stammt:** 6086 m / 324,72 s
+> sind **67,5 km/h**, und der Prüfstand meldet unabhängig davon ein mittleres
+> Tempo von **67,31 km/h**. Zwei Wege zur selben Zahl, 0,3 % auseinander. Ohne
+> das wäre „324,72 s" nur eine Zahl, die das Werkzeug über sich selbst sagt.
+
+#### Was eine Abkürzung ausschließt — beide Bedingungen einzeln geprüft
+
+Gefahren auf der echten Mittellinie, lückenlos in Schritten unter einem Meter,
+mit einem seitlichen Versatz um Tor 1 herum:
+
+| Fall | seitlicher Versatz | Runden |
+|---|---|---|
+| saubere Fahrt | 0 | **gezählt** |
+| dauerhaft am Fahrbahnrand | 5,9 m (halbe Breite 6,1) | **gezählt** |
+| knapp daneben | 6,4 m | **0** |
+| Umfahrung von Tor 1 | 25 m | **0** |
+| quer über die Wiese | 200 m | **0** |
+
+Die beiden mittleren Zeilen sind die wichtigen: bei 5,9 m zählt es noch, bei
+6,4 m nicht mehr. Die Grenze liegt also **da, wo die Fahrbahn aufhört**, und
+nicht bei einem gegriffenen Wert.
+
+#### Ein Fund, der aus einem falschen Prüffall kam
+
+Ein Prüffall fuhr zweimal **rückwärts** durchs Start-Ziel und meldete trotzdem
+eine laufende Runde. Der Fehler lag im Prüfstand — zwischen den beiden
+Durchfahrten sprang die Position quer über die Karte zurück, und dieser Sprung
+kreuzte das Tor vorwärts.
+
+**Die Lücke im Zähler war aber echt.** `DriveSystem.placeAt()` versetzt das Auto
+ohne Bahn dazwischen: Respawn, Einsteigen, ein Blickpunkt aus dem Menü — und
+setzt es dabei **auf die Fahrbahn**, also genau dorthin, wo die Tore stehen. Ein
+Respawn hätte je nach Stelle eine Torüberquerung gezählt.
+
+Seitdem gilt ein Schritt über **10 m** als Versetzen und nicht als Fahrt; die
+laufende Runde wird dabei ungültig, gezählte bleiben stehen. Die Zahl ist
+hergeleitet und nicht geraten: 10 m bei 60 Hz wären 2160 km/h, das Fahrmodell
+erreicht auf idealem Boden gemessen 255,8 km/h (1,18 m je Schritt) — Faktor 8,5
+Abstand.
+
+> Dieselbe Klasse wie die drei Fehler, die der Messstand in P14.3 an sich selbst
+> gefunden hat, und wie der `menu.hidden`-Fall aus P13: **ein Prüfstand, der
+> einen Zustand herstellt, den es im Betrieb nicht gibt.** Neu ist hier nur, dass
+> der falsche Prüffall trotzdem etwas Richtiges gefunden hat.
+
+#### Was 9.3 nicht enthält
+
+Keine Bestenliste, keine Speicherung über die Sitzung hinaus, keine Anzeige im
+Spielermenü — die Rundenzeit steht im Debug-Panel unter „Runden (P9.3)" und in
+`japanMap.laps()`. Und **kein Rennen**: Gegner, Startampel und Wertung sind
+Spielentwicklung und bekommen einen eigenen Plan, so wie P9 es für die
+Fahrschicht vorgemacht hat.
+
+---
+
 ## Akzeptanzkriterien
 
-- [ ] **Ein Fahrzeug steht auf allen acht Strecken auf dem Boden.** Median der
-      Höhendifferenz zum Sampler unter 5 cm, größter Ausreißer benannt.
-- [ ] **Der Bergpass ist befahrbar**, ohne dass das Fahrzeug die Leitplanke
-      durchdringt — 60 s, gemessen, nicht gefahren-und-für-gut-befunden.
-- [ ] **Eine Runde auf dem Ring wird als Runde gezählt**, eine Abkürzung nicht.
-- [ ] **Die Budgets aus SPEC §4 halten weiterhin**, mit Fahrzeug im Bild.
-- [ ] **Die Physik-Entscheidung steht mit Zahlen** in „Offene Entscheidungen".
+- [x] **Ein Fahrzeug steht auf allen acht Strecken auf dem Boden.**
+      Eingelöst in P14.2: Median **0,00 cm**, größter Einzelwert 0,00 cm auf
+      allen acht; die Vorgabe lautete „unter 5 cm". Der größte Ausreißer der
+      zugrundeliegenden Datenquellen ist benannt (83,88 cm an der Kreuzung
+      ring × toge), und die zwei Strecken mit systematischem Versatz — Stadt
+      94,30 cm, Zufahrt 224,47 cm — haben dort ihre eigene Erklärung.
+- [x] **Der Bergpass ist befahrbar**, ohne dass das Fahrzeug die Leitplanke
+      durchdringt. Eingelöst in P14.4: 60 s, 742,2 m, **0 cm Durchdringung**,
+      **0 Schritte** neben der Fahrbahn. Der Lauf hat dabei gefunden, dass 67
+      von 1608 Leitplanken-Punkten seit P3 **auf einer Fahrbahn** standen.
+- [x] **Eine Runde auf dem Ring wird als Runde gezählt**, eine Abkürzung nicht.
+      Gebaut am 2026-08-18 als `src/game/LapTimer.ts`; Messung unten in „9.3
+      gebaut und gemessen".
+- [x] **Die Budgets aus SPEC §4 halten weiterhin**, mit Fahrzeug im Bild.
+      Eingelöst in P14: **+4 Draw-Calls, +1024 Dreiecke** bei stehender Kamera
+      und umgeschalteter Sichtbarkeit (184 gegen 180 bei einem Budget von 800).
+      Vier statt zwei, weil der Spiegeldurchgang das Fahrzeug ein zweites Mal
+      zeichnet.
+- [x] **Die Physik-Entscheidung steht mit Zahlen** in „Offene Entscheidungen".
+      Entschieden am 2026-08-18: eigene Arcade-Physik, 16,11 kB minifiziert
+      gegen Rapiers WASM, 0,003…0,022 ms CPU je Schritt.
+
+> **Damit ist P9 vollständig** — als einzige Phase dieses Projekts allerdings
+> nicht in einem Stück: 9.1 und 9.2 sind in P14 entstanden, 9.3 am 2026-08-18
+> nachgezogen. Der Plan von P9 stand seit dem 2026-08-01 und war ausdrücklich
+> keine Freigabe; gebaut wurde er auf Auftrag und in anderer Reihenfolge.
 
 ## Risiken
 

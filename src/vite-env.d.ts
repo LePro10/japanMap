@@ -5,6 +5,7 @@ import type { QualityKey, QualityLevel } from './config/quality.config';
 import type { Engine } from './core/Engine';
 import type { AbOptions, AbReport } from './debug/abMeasure';
 import type { DriveProbeOptions, DriveProbeReport } from './debug/driveProbe';
+import type { LapResult } from './game/LapTimer';
 import type { HoleReport } from './debug/lodHoles';
 import type { Report, ReportOptions } from './debug/report';
 import type { WindingRow } from './debug/winding';
@@ -116,6 +117,20 @@ declare global {
        * Höhendifferenz zwischen Sampler und Straßenmittellinie aus PLAN.md 9.1.
        */
       driveProbe?: (options?: DriveProbeOptions) => DriveProbeReport;
+
+      /**
+       * Die Rundenzählung auf den Toren aus P8.11 — P9.3.
+       *
+       * Ohne Argument der aktuelle Stand; mit einer Strecken-Kennung wird auf
+       * diese Strecke umgestellt und neu begonnen.
+       */
+      laps?: (roadId?: string) => {
+        strecke: string | null;
+        tore: number;
+        laufend: boolean;
+        verstrichen: number;
+        runden: readonly LapResult[];
+      };
     };
   }
 }
