@@ -151,6 +151,32 @@ export type AppEvents = {
   'quality:changed': { level: QualityKey };
 
   /**
+   * Die Maschine hat über längere Zeit Reserve gezeigt — P15.5.
+   *
+   * Der Auslöser für den Nachlader: erst wenn die Hardware sich bewährt hat,
+   * werden die vollen Texturen geholt. Genau diese Reihenfolge steht im
+   * Auftrag — „erst wenn die Hardware gut genug ist wird automatisch
+   * hochgeschalten, und dann wird im Hintergrund der Rest runtergeladen".
+   *
+   * **Das Ereignis kommt je Sitzung höchstens einmal.** Es ist kein
+   * fortlaufender Bericht über die Bildrate, sondern eine einmalige
+   * Feststellung — ein Nachlader, der bei jedem guten Fenster erneut anspringt,
+   * wäre eine Regelschleife mit Netzverkehr daran.
+   *
+   * `p90Ms` ist der gemessene Wert, der die Feststellung getragen hat; er steht
+   * hier, damit die Konsolenzeile und der Messlauf dieselbe Zahl nennen.
+   */
+  'quality:headroom': { p90Ms: number; level: QualityKey };
+
+  /**
+   * Der Nachlader hat eine Gruppe eingetauscht — P15.4.
+   *
+   * `gruppe` ist der Name für die Anzeige, `bytes` das, was dafür übertragen
+   * wurde. Beides für das Debug-Panel und die Messung; niemand steuert daran.
+   */
+  'assets:upgraded': { gruppe: string; bytes: number };
+
+  /**
    * Fahrmodus an oder aus — P14.
    *
    * Der Zustand selbst wohnt im `DriveSystem`; dieses Ereignis ist für die
