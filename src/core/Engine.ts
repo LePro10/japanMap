@@ -1,7 +1,7 @@
 import { Color, PerspectiveCamera, Scene, type Object3D, type WebGLRenderer } from 'three';
 
 import { QUALITY } from '@/config/quality.config';
-import { CAMERA, RENDER } from '@/config/world.config';
+import { CAMERA, maxPixelRatio } from '@/config/world.config';
 import type { DebugHost } from '@/debug/DebugHost';
 import { createRenderer, observeCanvasSize, observeContextLoss } from './createRenderer';
 import { EventBus } from './EventBus';
@@ -268,7 +268,11 @@ export class Engine {
    * es sieht.
    */
   #pixelRatio(): number {
-    return Math.min(window.devicePixelRatio, RENDER.maxPixelRatio) * this.#renderScale;
+    // Der Deckel hängt seit P12.3 am Gerät: auf einem Telefon ist er deutlich
+    // niedriger, weil dort die *physische* Pixeldichte drei- bis viermal höher
+    // ist und der Aufwand mit dem Quadrat des Faktors wächst. Herleitung bei
+    // `RENDER.maxPixelRatioCoarse`.
+    return Math.min(window.devicePixelRatio, maxPixelRatio()) * this.#renderScale;
   }
 
   #applyPixelRatio(): void {

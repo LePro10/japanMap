@@ -196,21 +196,78 @@ export const POSTFX = {
  * > `off` als *verdächtig* und nicht als kaputt — und ein Fix wird nicht
  * > gebaut, bevor die Frage entschieden ist.
  */
-export type PostFxQuality = 'full' | 'reduced' | 'lean' | 'off';
+export type PostFxQuality = 'full' | 'reduced' | 'lean' | 'compact' | 'off';
 
 export interface PostFxSettings {
   /** Läuft die Kette überhaupt? `false` rendert direkt in den Canvas. */
   readonly composer: boolean;
-  /** MIP-Stufen im Bloom-Unschärfebaum. 0, wenn die Kette nicht läuft. */
+  /**
+   * Wer tonemappt — und damit zugleich, ob Bloom überhaupt möglich ist.
+   *
+   * `'chain'`: der `ToneMappingEffect` in der Kette. Die Szene landet als
+   * **HDR** im Puffer, Bloom kann Werte über 1 herausfiltern.
+   *
+   * `'renderer'`: three tonemappt schon im Materialshader. Ab dem Puffer stehen
+   * nur noch Anzeigewerte ≤ 1 — **Bloom ist damit bauartbedingt unmöglich**,
+   * denn seine Schwelle liegt bei 1,05. Die Felder hängen also zusammen und
+   * werden nicht unabhängig gesetzt; `bloomLevels` ist bei `'renderer'` immer 0.
+   */
+  readonly toneMapping: 'chain' | 'renderer';
+  /** MIP-Stufen im Bloom-Unschärfebaum. 0 = kein Bloom-Pass. */
   readonly bloomLevels: number;
   readonly smaa: boolean;
 }
 
+/**
+ * Die Stufen der Kette.
+ *
+ * ## `compact` — die Stufe, die P12.1 dazwischengeschoben hat
+ *
+ * Zwischen `lean` (volle Kette, nur schlanker) und `off` (gar keine Kette) klaffte
+ * eine Lücke, und `off` hat sie mit dem **Look** bezahlt: kein Bloom, kein SMAA,
+ * keine Vignette und **keine Grading-LUT**. „Minimal" sah deshalb nicht nur
+ * ärmer aus, sondern *anders* — ein Farbstich fehlte, der zum Bild gehört.
+ *
+ * `compact` trennt die beiden Dinge, die `off` zusammengeworfen hat:
+ *
+ * | | teuer | trägt den Look |
+ * |---|---|---|
+ * | Bloom (Luminanz + 2 × N MIP-Durchgänge) | **ja** — 17 Draw-Calls bei 8 Stufen | am Neon, sonst wenig |
+ * | SMAA (3 Durchgänge) | ja | Kanten |
+ * | AgX + LUT + Vignette | **ein** Durchgang | **ja — das ist der Farbstich** |
+ *
+ * Also: das Tonemapping wandert in den Renderer (kostet dort nichts, three
+ * rechnet es ohnehin im Materialshader), Bloom und SMAA entfallen, und **LUT
+ * und Vignette bleiben** — als ein einziger Vollbild-Durchgang über einem
+ * LDR-Puffer.
+ *
+ * Gemessen wird der Unterschied unten; die Zahl gehört an diese Stelle, sobald
+ * sie da ist.
+ *
+ * ## Gemessen — Draw-Calls bei **leerer** Szene (was die Kette allein kostet)
+ *
+ * | Stufe | postFx | Durchgänge |
+ * |---|---|---|
+ * | Ultra   | `full`    | 28 |
+ * | Hoch    | `full`    | 29 |
+ * | Mittel  | `reduced` | 22 |
+ * | Niedrig | `lean`    | 10 |
+ * | Minimal | `off`     |  1 |
+ *
+ * > **Diese Tabelle stammt aus P8.2 und beschreibt die alte Stufenzuordnung.**
+ * > Sie bleibt als Aufschlüsselung der Kette gültig — was welche Stufe *benutzt*,
+ * > steht seit P12 in `quality.config.ts`.
+ *
+ * Aufgeschlüsselt aus den Draw-Call-Differenzen am Blickpunkt `wald` (P12.1):
+ * Bloom mit 8 Stufen sind **17** Durchgänge (1 Luminanz + 8 ab + 8 auf), SMAA
+ * **3**, N8AO **6**, der kombinierte Effekt-Pass **1**.
+ */
 export const POSTFX_QUALITY: Readonly<Record<PostFxQuality, PostFxSettings>> = {
-  full: { composer: true, bloomLevels: 8, smaa: true },
-  reduced: { composer: true, bloomLevels: 5, smaa: true },
-  lean: { composer: true, bloomLevels: 4, smaa: false },
-  off: { composer: false, bloomLevels: 0, smaa: false },
+  full: { composer: true, toneMapping: 'chain', bloomLevels: 8, smaa: true },
+  reduced: { composer: true, toneMapping: 'chain', bloomLevels: 5, smaa: true },
+  lean: { composer: true, toneMapping: 'chain', bloomLevels: 4, smaa: false },
+  compact: { composer: true, toneMapping: 'renderer', bloomLevels: 0, smaa: false },
+  off: { composer: false, toneMapping: 'renderer', bloomLevels: 0, smaa: false },
 };
 
 /**

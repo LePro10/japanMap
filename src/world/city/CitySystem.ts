@@ -161,7 +161,12 @@ export class CitySystem implements System {
     }
 
     this.#context?.debug?.refresh();
-    this.#context?.bus.emit('city:ready', { signs: result.signs, uniforms: this.#shared });
+    this.#context?.bus.emit('city:ready', {
+      signs: result.signs,
+      uniforms: this.#shared,
+      colliders: result.colliders,
+      curbs: result.curbs,
+    });
   }
 
   #registerDebug(context: EngineContext): void {

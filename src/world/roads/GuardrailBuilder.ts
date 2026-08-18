@@ -85,7 +85,96 @@ function stationsFor(road: RoadData, side: number, from: number, to: number): St
   return stations;
 }
 
-export function buildGuardrails(roads: readonly RoadData[]): GuardrailResult {
+/**
+ * Die Bandmitte jeder Leitplanke als Polygonzug — PLAN.md P14.
+ *
+ * Gebraucht von der Kollision im Fahrmodus. **Bewusst hier und nicht dort**: der
+ * seitliche Versatz `width/2 + shoulder + RAIL.offset` und die Auswahl der
+ * Stützstellen aus einer Bogenlängenangabe sind dieselbe Rechnung, die
+ * `buildGuardrails` für das Mesh macht. Zweimal implementiert wären es zwei
+ * Plankenreihen: eine, die man sieht, und eine, gegen die man fährt. Die Regel
+ * steht in CLAUDE.md unter „Kurvenmathematik […] **nicht** doppelt
+ * implementieren" — dort für `splineSampler.mjs`, hier aus demselben Grund.
+ *
+ * Die Punkte tragen `y` der **Mittellinie**. Wie hoch das Hindernis daraus wird,
+ * entscheidet der Aufrufer; für das Mesh ist es `RAIL.bottom…RAIL.top`, für ein
+ * Auto muss es am Boden anfangen (der Pfosten hält genauso wie das Band).
+ */
+export function railPolylines(roads: readonly RoadData[], blocked?: RailBlocked): Float32Array[] {
+  const out: Float32Array[] = [];
+
+  for (const road of roads) {
+    const settings = ROAD_TYPES[road.type];
+    const edge = settings.width / 2 + settings.shoulder + RAIL.offset;
+
+    for (const rail of road.rails) {
+      const alle = stationsFor(road, rail.side, rail.from, rail.to);
+      if (alle.length < 2) continue;
+
+      // **Dieselbe Zerlegung wie beim Mesh.** Wer hier anders filtert als dort,
+      // baut eine Planke, die man sieht und durch die man fährt — oder eine, die
+      // man nicht sieht und gegen die man fährt.
+      for (const stations of runsOf(alle, blocked, edge)) {
+        const points = new Float32Array(stations.length * 3);
+        for (let i = 0; i < stations.length; i++) {
+          const s = stations[i]!;
+          points[i * 3] = s.x + s.nx * edge;
+          points[i * 3 + 1] = s.y;
+          points[i * 3 + 2] = s.z + s.nz * edge;
+        }
+        out.push(points);
+      }
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Prüft, ob an dieser Stelle **keine** Planke stehen darf.
+ *
+ * Gebraucht wird das an Einmündungen: der Generator setzt die Planke der
+ * Hauptstrecke durchgehend, und wo eine andere Straße abzweigt, läuft sie quer
+ * über deren Mündung. Im Bild ist das eine Planke, die eine Straße absperrt; beim
+ * Fahren ist es eine Wand.
+ *
+ * **Gemessen am 2026-08-18, bevor es repariert war:** 67 von 1608 Plankenpunkten
+ * (4,2 %) standen auf einer Fahrbahn — 43 auf dem Ring, 20 auf dem Bergpass, 4 auf
+ * der Zufahrt. Aufgefallen ist es erst mit dem Fahrmodus: der Prüfstand kam auf
+ * der Zufahrt 48 m weit und hing dann **3081 von 3600 Schritten** in einem
+ * Hindernis fest. Ein halbes Jahr lang hat das niemand gesehen, weil niemand
+ * gefahren ist.
+ *
+ * Der Aufrufer reicht die Prüfung herein, statt dass sie hier entsteht: sie
+ * braucht das Abfragenetz (`RoadNetwork.isOnRoad`), und das kennt dieser Baustein
+ * nicht — er bekommt nur die rohen Streckendaten.
+ */
+export type RailBlocked = (x: number, z: number) => boolean;
+
+/**
+ * Stationen in zusammenhängende Läufe zerlegen.
+ *
+ * Eine gesperrte Station **teilt** den Lauf, sie wird nicht einfach übersprungen.
+ * Übersprungen ergäbe ein Viereck, das über die Lücke hinweg spannt — also genau
+ * die Planke quer über die Mündung, nur mit weniger Stützstellen.
+ */
+function runsOf(stations: readonly Station[], blocked: RailBlocked | undefined, edge: number): Station[][] {
+  if (!blocked) return stations.length >= 2 ? [stations as Station[]] : [];
+  const runs: Station[][] = [];
+  let current: Station[] = [];
+  for (const s of stations) {
+    if (blocked(s.x + s.nx * edge, s.z + s.nz * edge)) {
+      if (current.length >= 2) runs.push(current);
+      current = [];
+    } else {
+      current.push(s);
+    }
+  }
+  if (current.length >= 2) runs.push(current);
+  return runs;
+}
+
+export function buildGuardrails(roads: readonly RoadData[], blocked?: RailBlocked): GuardrailResult {
   const vertices: number[] = [];
   const normals: number[] = [];
   const uvs: number[] = [];
@@ -104,9 +193,17 @@ export function buildGuardrails(roads: readonly RoadData[]): GuardrailResult {
     const edge = settings.width / 2 + settings.shoulder + RAIL.offset;
 
     for (const rail of road.rails) {
-      const stations = stationsFor(road, rail.side, rail.from, rail.to);
-      if (stations.length < 2) continue;
-      totalLength += rail.to - rail.from;
+      const alle = stationsFor(road, rail.side, rail.from, rail.to);
+      if (alle.length < 2) continue;
+
+      for (const stations of runsOf(alle, blocked, edge)) {
+      // Gezählt wird, was **gebaut** wurde, nicht was geplant war. Der
+      // Unterschied ist die Länge, die an Einmündungen entfällt — und eine
+      // Kennzahl, die den Sollwert meldet statt das Ergebnis, ist in diesem
+      // Projekt der erste Eintrag unter „was schon schiefgegangen ist".
+      const first = stations[0]!;
+      const last = stations[stations.length - 1]!;
+      totalLength += last.distance - first.distance;
 
       const base = vertices.length / 3;
 
@@ -136,10 +233,10 @@ export function buildGuardrails(roads: readonly RoadData[]): GuardrailResult {
       }
 
       // Pfosten in festem Abstand, unabhängig von der Stützstellendichte.
-      const railLength = rail.to - rail.from;
+      const railLength = last.distance - first.distance;
       const postCount = Math.max(2, Math.round(railLength / RAIL.postSpacing));
       for (let k = 0; k <= postCount; k++) {
-        const target = rail.from + (railLength * k) / postCount;
+        const target = first.distance + (railLength * k) / postCount;
         // Nächste Station zu dieser Streckenangabe.
         let best = stations[0]!;
         for (const s of stations) {
@@ -154,6 +251,7 @@ export function buildGuardrails(roads: readonly RoadData[]): GuardrailResult {
         forward.set(-best.nz, 0, best.nx);
         quaternion.setFromUnitVectors(new Vector3(0, 0, 1), forward.normalize());
         posts.push(new Matrix4().compose(position, quaternion, scale));
+      }
       }
     }
   }

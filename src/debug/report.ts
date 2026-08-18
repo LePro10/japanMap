@@ -1,4 +1,4 @@
-import { InstancedMesh, Mesh, Vector2, type Object3D, type Scene, type WebGLRenderer } from 'three';
+import { Vector2, type Scene, type WebGLRenderer } from 'three';
 
 import {
   QUALITY,
@@ -9,6 +9,16 @@ import {
 import type { DeviceEstimate } from '@/render/deviceTier';
 import { estimateTextureMemory } from './textureMemory';
 import { postToDevServer, probeFrame, captureFramePng, type CaptureTarget, type FrameProbe } from './capture';
+import {
+  advancer,
+  countScene,
+  HiddenWindowError,
+  settle,
+  statsOf,
+  type AdvanceMode,
+  type SettleResult,
+  type Stats,
+} from './measureCommon';
 import { applyViewpoint, VIEWPOINTS } from './viewpoints';
 import type { CameraPlacer } from './viewpoints';
 
@@ -89,7 +99,7 @@ import type { CameraPlacer } from './viewpoints';
  * > Das ist der Anteil, über den diese Entwicklungsmaschine eine Aussage
  * > zulässt — und für die Stufenarbeit aus P10.1 genau der richtige.
  */
-export type ReportMode = 'live' | 'driven';
+export type ReportMode = AdvanceMode;
 
 /** Was ein Lauf über die Maschine festhält, auf der er entstanden ist. */
 export interface ReportMachine {
@@ -109,57 +119,6 @@ export interface GpuTimingState {
   readonly reason: string;
 }
 
-export interface Stats {
-  readonly medianMs: number;
-  readonly p95Ms: number;
-  readonly p99Ms: number;
-  readonly worstMs: number;
-  readonly samples: number;
-}
-
-export interface SettleResult {
-  /** Falsch, wenn die Welt bis zum Zeitlimit nicht fertig geladen war. */
-  readonly stable: boolean;
-  readonly frames: number;
-  readonly ms: number;
-  readonly instances: number;
-  /**
-   * Strömte am Ende noch etwas nach?
-   *
-   * Getrennt von `stable` ausgewiesen, weil die beiden verschiedene Fragen
-   * beantworten: `streaming` kommt aus dem Streusystem selbst, `stable` aus der
-   * beobachteten Instanzzahl. Solange beide zusammenpassen, ist alles gut — und
-   * wo sie auseinanderlaufen, will man es sehen und nicht wegmitteln.
-   */
-  readonly streaming: boolean;
-  /**
-   * Mittlerer Frame-Abstand **während des Wartens**, in Millisekunden.
-   *
-   * **Nachgetragen, weil das Werkzeug ohne diesen Wert die falsche Ursache
-   * gemeldet hat.** Im ersten `live`-Lauf auf der GPU-Maschine (2026-08-07)
-   * blieben zwei Zellen unfertig, und die Warnung sagte „die Welt war nicht
-   * fertig geladen". Nachgerechnet aus `frames` und `ms` stand da aber etwas
-   * ganz anderes:
-   *
-   * | Zelle | Frames | Dauer | je Frame |
-   * |---|---|---|---|
-   * | `medium @ pass` | 16 | 24 803 ms | **1550 ms** |
-   * | `medium @ stadt-neon` | 99 | 114 863 ms | **1160 ms** |
-   * | jede Messschleife desselben Laufs | 60 | ~1000 ms | 16,7 ms |
-   *
-   * Der Browser hat während dieser Wartephasen schlicht nicht gezeichnet —
-   * rund 0,7 Hz, also die rAF-Drosselung. `document.hidden` blieb dabei
-   * **falsch**, die Schutzabfrage griff also nicht: ein verdecktes oder
-   * weggeklicktes Fenster meldet nicht zuverlässig `hidden`, wird aber sehr
-   * wohl gedrosselt.
-   *
-   * Die Zahl stand die ganze Zeit in der Datei, nur ungeteilt — `frames` und
-   * `ms` nebeneinander, und niemand hat dividiert. Sie steht jetzt ausgerechnet
-   * da, und die Warnung nennt die Ursache, die dazu passt.
-   */
-  readonly frameIntervalMs: number;
-}
-
 export interface ReportCell {
   readonly viewpoint: string;
   readonly level: QualityLevel;
@@ -168,7 +127,17 @@ export interface ReportCell {
   readonly pacing: Stats | null;
   /** Aus `pacing` gerechnet — `null`, wo es keinen Frame-Abstand gibt. */
   readonly fps: number | null;
-  /** `null`, wenn `EXT_disjoint_timer_query_webgl2` fehlt. */
+  /**
+   * `null`, wenn `EXT_disjoint_timer_query_webgl2` fehlt **oder** in keinem
+   * gemessenen Frame eine Zeitabfrage fertig geworden ist.
+   *
+   * **Der Median ist hier eine Obergrenze, kein Erwartungswert** — P12.0.
+   * `stats-gl` summiert je Frame alle gerade fertig gewordenen Abfragen, und das
+   * sind null, eine oder zwei. Am Blickpunkt `wald` gemessen: Median 1,89 ms,
+   * 10. Perzentil 0,91 ms, also Faktor 2,1. Wer den Unterschied *zweier*
+   * Zustände wissen will, nimmt `japanMap.ab()` — das rechnet mit dem
+   * niedrigen Perzentil und weist sein Rauschband aus.
+   */
   readonly gpu: Stats | null;
   /** JS-Arbeit je Frame aus stats-gl. `null` ohne Debug-Host. */
   readonly cpu: Stats | null;
@@ -251,7 +220,20 @@ export interface ReportOptions {
 const DEFAULT_VIEWPOINTS = ['start', 'reisfeld', 'pass', 'kueste', 'stadt-neon'] as const;
 
 const DEFAULTS = {
-  frames: 60,
+  /**
+   * **120 und nicht mehr 60 — P12.0.**
+   *
+   * Nicht jeder gemessene Frame trägt eine fertige GPU-Zeitabfrage: `stats-gl`
+   * sammelt sie asynchron ein, und der Treiber gibt sie ein bis drei Frames
+   * später frei. Nachgemessen in Betriebsart `driven` lieferten **4 von 20**
+   * Frames einen Wert; der Rest stand auf 0 und wurde (seit P12.0) verworfen.
+   * Mit 60 Frames bleiben davon rund ein Dutzend Stichproben übrig — zu wenig
+   * für ein Perzentil, und in einem Fall wenig genug für einen Median von 0.
+   *
+   * Der Preis sind längere Läufe. Der ist es wert: eine GPU-Spalte aus vier
+   * Stichproben ist keine.
+   */
+  frames: 120,
   settleFrames: 20,
   /**
    * Zeitlimit für das Warten je Zelle.
@@ -319,120 +301,6 @@ export interface ReportDeps {
   readonly dropped?: () => number;
 }
 
-class HiddenWindowError extends Error {
-  constructor(when: string) {
-    super(
-      `Messlauf ${when}: das Fenster ist verdeckt (document.hidden). ` +
-        'Der Browser drosselt requestAnimationFrame dann auf wenige Hertz — ' +
-        'jede Zahl daraus wäre die Drosselung, nicht die Maschine. ' +
-        'Fenster in den Vordergrund holen und erneut starten.',
-    );
-    this.name = 'HiddenWindowError';
-  }
-}
-
-/** Ein Frame auf der laufenden Schleife abwarten. */
-function nextFrame(): Promise<number> {
-  return new Promise((resolve) => requestAnimationFrame(resolve));
-}
-
-/**
- * Ein Makrotask über `MessageChannel`.
- *
- * **Nicht `setTimeout`** — der wird in einem verdeckten Fenster auf ≥ 1 s
- * gedrosselt und machte aus jedem Worker-Umlauf eine Sekunde. Ein
- * `MessageChannel`-Port hat diese Klemmung nicht (CLAUDE.md, P8.9).
- */
-function macrotask(): Promise<void> {
-  return new Promise((resolve) => {
-    const channel = new MessageChannel();
-    channel.port1.onmessage = (): void => {
-      channel.port1.close();
-      resolve();
-    };
-    channel.port2.postMessage(null);
-  });
-}
-
-/**
- * Der Frame-Vorschub der jeweiligen Betriebsart.
- *
- * In `live` wird gewartet, in `driven` wird gerendert. Der Makrotask dazwischen
- * ist Pflicht und nicht Höflichkeit: die Streuung antwortet aus einem Worker,
- * und ohne Rückkehr in die Ereignisschleife käme keine einzige Antwort an — die
- * Instanzzahl käme nie zur Ruhe, und `settle()` liefe in sein Zeitlimit.
- */
-function advancer(mode: ReportMode, capture: CaptureTarget): () => Promise<number> {
-  if (mode === 'live') return nextFrame;
-  return async (): Promise<number> => {
-    capture.tick();
-    await macrotask();
-    return performance.now();
-  };
-}
-
-function statsOf(samples: readonly number[]): Stats {
-  const sorted = [...samples].sort((a, b) => a - b);
-  const at = (fraction: number): number =>
-    sorted[Math.min(sorted.length - 1, Math.floor(fraction * sorted.length))] ?? 0;
-  return {
-    medianMs: at(0.5),
-    p95Ms: at(0.95),
-    p99Ms: at(0.99),
-    worstMs: sorted[sorted.length - 1] ?? 0,
-    samples: sorted.length,
-  };
-}
-
-/**
- * Instanzen und zeichenbare Meshes aus der Szene, nach oberster Gruppe getrennt.
- *
- * Bewusst über die Szene und nicht über die Systeme: kein System muss dafür eine
- * Schnittstelle bekommen, und gezählt wird, was **wirklich in der Szene hängt**
- * — nicht, was ein System über sich selbst berichtet. Genau diese Trennung hat
- * in P8.11 die zwei rückseitig gewickelten Flächen sichtbar gemacht, die jede
- * System-Auskunft für gesund hielt.
- *
- * `InstancedMesh.count` ist die Zahl, die gezeichnet wird — nicht die
- * Puffergröße. Unsichtbare Zweige werden übersprungen, samt Kindern.
- */
-function countScene(scene: Scene): {
-  instances: number;
-  drawableMeshes: number;
-  byGroup: Record<string, number>;
-} {
-  let instances = 0;
-  let drawableMeshes = 0;
-  const byGroup: Record<string, number> = {};
-
-  const groupOf = (object: Object3D): string => {
-    let node: Object3D | null = object;
-    let name = object.name || object.type;
-    while (node && node.parent && node.parent !== scene) {
-      node = node.parent;
-      if (node.name) name = node.name;
-    }
-    if (node?.parent === scene && node.name) name = node.name;
-    return name || '(ohne Namen)';
-  };
-
-  const walk = (object: Object3D): void => {
-    if (!object.visible) return;
-    if (object instanceof InstancedMesh) {
-      instances += object.count;
-      drawableMeshes++;
-      const key = groupOf(object);
-      byGroup[key] = (byGroup[key] ?? 0) + object.count;
-    } else if (object instanceof Mesh) {
-      drawableMeshes++;
-    }
-    for (const child of object.children) walk(child);
-  };
-
-  for (const child of scene.children) walk(child);
-  return { instances, drawableMeshes, byGroup };
-}
-
 function readGpuTiming(renderer: WebGLRenderer, timing: ReportDeps['timing']): GpuTimingState {
   const gl = renderer.getContext();
   const ext = gl.getExtension('EXT_disjoint_timer_query_webgl2') as object | null;
@@ -482,59 +350,6 @@ function readMachine(renderer: WebGLRenderer): ReportMachine {
   };
 }
 
-/**
- * Warten, bis die Welt fertig geladen ist.
- *
- * Die Streuung strömt in der Frameschleife nach; direkt nach einem Sprung an
- * einen neuen Blickpunkt ist die Welt halb gefüllt. Wer da misst, misst den
- * Füllvorgang — und bekommt eine Draw-Call-Zahl, die zu keinem Bild gehört.
- *
- * **Zwei Bedingungen, und die erste allein hat nicht gereicht.** Der erste
- * Entwurf wartete nur darauf, dass die Instanzzahl über N Frames unverändert
- * bleibt. Am 2026-08-07 meldete er am Blickpunkt `reisfeld` auf Ultra
- * `stable: true` bei **0 Vegetationsinstanzen**: der Worker hatte in 267 ms
- * noch nichts geliefert, und *unverändert bei null* ist von *fertig* nicht zu
- * unterscheiden. Gefunden hat das kein Argument, sondern der erste Lauf des
- * Werkzeugs gegen sich selbst.
- *
- * Deshalb wird zusätzlich das Streusystem **gefragt**, ob es noch arbeitet
- * (`ScatterSystem.streaming`). Der Zähler beobachtet das Ergebnis, das Signal
- * kennt die Arbeit — und nur zusammen beantworten sie die Frage.
- */
-async function settle(
-  scene: Scene,
-  streamingOf: (() => boolean) | undefined,
-  advance: () => Promise<number>,
-  live: boolean,
-  settleFrames: number,
-  timeoutMs: number,
-): Promise<SettleResult> {
-  const started = performance.now();
-  let previous = -1;
-  let stable = 0;
-  let frames = 0;
-
-  for (;;) {
-    await advance();
-    if (live && document.hidden) throw new HiddenWindowError('abgebrochen');
-    frames++;
-
-    const { instances } = countScene(scene);
-    const streaming = streamingOf?.() ?? false;
-    stable = instances === previous && !streaming ? stable + 1 : 0;
-    previous = instances;
-
-    const ms = performance.now() - started;
-    const frameIntervalMs = ms / frames;
-    if (stable >= settleFrames) {
-      return { stable: true, frames, ms, instances, streaming, frameIntervalMs };
-    }
-    if (ms > timeoutMs) {
-      return { stable: false, frames, ms, instances, streaming, frameIntervalMs };
-    }
-  }
-}
-
 async function measureCell(
   deps: ReportDeps,
   viewpoint: string,
@@ -573,8 +388,21 @@ async function measureCell(
     if (live) pacing.push(now - last);
     last = now;
 
+    // **Nullen gehören verworfen, nicht gemittelt** — P12.0.
+    //
+    // `StatsProfiler.update()` ruft je Frame `processGpuQueries()`, und das
+    // summiert **alle Zeitabfragen, die gerade fertig geworden sind**. Eine
+    // Abfrage wird ein bis drei Frames später fertig; es sind also je Frame
+    // null, eine oder zwei. Eine 0 heißt „in diesem Frame ist keine fertig
+    // geworden" und **nicht** „hat nichts gekostet".
+    //
+    // Aufgefallen ist das an einem Lauf über 20 Frames, der `gpu.medianMs: 0`
+    // in die Datei geschrieben hat — genau die Null, die `readGpuTiming()`
+    // weiter oben ausdrücklich vermeiden will, weil sie sich wie „kostenlos"
+    // liest. Sie kam nicht von einem fehlenden Timer, sondern von zu wenigen
+    // Frames: über die Hälfte trug keine fertige Abfrage.
     const gpuMs = deps.timing?.lastGpuMs ?? null;
-    if (gpuMs !== null) gpu.push(gpuMs);
+    if (gpuMs !== null && gpuMs > 0) gpu.push(gpuMs);
     const cpuMs = deps.timing?.lastCpuMs ?? null;
     if (cpuMs !== null) cpu.push(cpuMs);
   }
@@ -737,6 +565,17 @@ export async function runReport(deps: ReportDeps, options: ReportOptions = {}): 
                 'gesetzt werden. Ungeklärt, und deshalb hier benannt statt weggemittelt.',
             );
           }
+        }
+
+        // Zu wenige fertige Zeitabfragen — siehe die Begründung im Messblock
+        // von `measureCell()`. Ohne diese Warnung stünde eine GPU-Zahl aus
+        // zwei oder drei Frames in der Datei, und nichts sagte es dazu.
+        if (gpuTiming.available && (cell.gpu === null || cell.gpu.samples < settings.frames / 4)) {
+          warnings.push(
+            `${level} @ ${viewpoint}: nur ${cell.gpu?.samples ?? 0} von ${settings.frames} Frames ` +
+              'trugen eine fertige GPU-Zeitabfrage. Der Treiber liefert sie verzögert — ' +
+              'mehr Frames je Zelle messen, sonst ist die GPU-Spalte dieser Zelle wertlos.',
+          );
         }
 
         // Ein Überlauf ist kein Messfehler, sondern ein Bildfehler: die

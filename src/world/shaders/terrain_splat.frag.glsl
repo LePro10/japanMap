@@ -42,6 +42,19 @@ triBlend /= max(triBlend.x + triBlend.z, 1e-4);
 float viewDistance = length(vTerrainWorld - cameraPosition);
 float detailFade = 1.0 - smoothstep(uDetailFade.x, uDetailFade.y, viewDistance);
 
+// **Ist die Ausblendung durch, wird die Normalmap gar nicht erst gelesen** —
+// P12.5. Bis dahin fragte die Schleife unten `uNormalArray` für **jedes** Pixel
+// ab, auch jenseits von `uDetailFade.y`, und multiplizierte das Ergebnis
+// anschließend mit null. Das ist ein Drittel aller Texturabfragen des
+// Splat-Blocks, und es war schon vorher wirkungslos: der Zweig ändert am Bild
+// **bauartbedingt nichts**, er spart nur die Arbeit, deren Ergebnis ohnehin
+// verworfen wurde.
+//
+// Der Zweig ist über große Bildflächen gleich (er hängt allein an der
+// Entfernung) und damit auf jeder GPU sprungfreundlich — die Warps laufen
+// nicht auseinander.
+bool detailNormals = detailFade > 0.002;
+
 vec3 terrainAlbedo = vec3(0.0);
 vec3 terrainArm = vec3(0.0);
 vec3 terrainTangentNormal = vec3(0.0);
@@ -58,8 +71,10 @@ for (int i = 0; i < 4; i++) {
 
   terrainAlbedo += terrainSampleLayer(uAlbedoArray, layer, scale, triplanar, triBlend).rgb * weight;
   terrainArm += terrainSampleLayer(uArmArray, layer, scale, triplanar, triBlend).rgb * weight;
-  terrainTangentNormal +=
-    (terrainSampleLayer(uNormalArray, layer, scale, triplanar, triBlend).xyz * 2.0 - 1.0) * weight;
+  if (detailNormals) {
+    terrainTangentNormal +=
+      (terrainSampleLayer(uNormalArray, layer, scale, triplanar, triBlend).xyz * 2.0 - 1.0) * weight;
+  }
 }
 
 // Großskalige Helligkeitsvariation gegen die sichtbare Kachelung. Als Quelle
@@ -123,8 +138,10 @@ if (groundTint > 0.001) {
 
 diffuseColor.rgb *= terrainAlbedo;
 gTerrainArm = clamp(terrainArm, 0.0, 1.0);
-gTerrainNormal = terrainPerturbNormal(
-  baseNormal,
-  normalize(terrainTangentNormal),
-  uDetailNormalStrength * detailFade
-);
+// **Ohne Abfrage keine Störung** — und vor allem kein `normalize(vec3(0.0))`.
+// Das wäre NaN, und ein NaN in der Normale steckt Beleuchtung, Spiegelung und
+// Nebel gleich mit an; im Bild stünde ein schwarzes Loch, das nach einem
+// Materialfehler aussieht und keiner ist.
+gTerrainNormal = detailNormals
+  ? terrainPerturbNormal(baseNormal, normalize(terrainTangentNormal), uDetailNormalStrength * detailFade)
+  : baseNormal;

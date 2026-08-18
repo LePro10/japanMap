@@ -221,8 +221,17 @@ PlanarReflection   zeichnet die Szene ein zweites Mal (nur wenn Stufe ≥ Hoch)
         ↓
 Engine.#present    ← von PostFXPipeline gesetzt
         ↓
-EffectPass(Bloom, AgX, LUT, Vignette) → EffectPass(SMAA) → Canvas
+RenderPass → N8AO → ┬─ EffectPass(Bloom, AgX, LUT, Vignette) ─┬→ [EffectPass(SMAA)] → Canvas
+                    └─ EffectPass(LUT, Vignette) ─────────────┘
+                       „compact": der Renderer tonemappt (P12.1)
 ```
+
+**Von den beiden mittleren Pässen läuft immer genau einer.** Welcher, entscheidet
+`POSTFX_QUALITY[stufe].toneMapping`: `'chain'` nimmt den vollen (mit Bloom und
+`ToneMappingEffect`), `'renderer'` den kompakten — dort tonemappt three schon im
+Materialshader, im Puffer stehen Anzeigewerte, und Bloom ist damit bauartbedingt
+unmöglich. Der kompakte Pass ist der Grund, warum „Minimal" seit P12 seinen
+Farbstich behält, statt die Kette ganz zu umgehen.
 
 Vier Dinge, an denen dieses Projekt sich schon geschnitten hat:
 
@@ -274,6 +283,59 @@ Versatz. Wer prüft, ob es richtig liegt, muss das **gerenderte** Gitter meinen 
 und das geht nur am Bild, nicht im Skript. Für P9 ist entschieden: das Fahrzeug
 fährt auf dem Sampler, das Gitter ist die Näherung.
 
+> **Seit P14 sind es nicht zwei Quellen, sondern vier.** Der Fahrmodus musste sie
+> alle vier zusammenbringen, und dabei kam heraus, dass die Überschrift dieses
+> Kapitels zu klein gedacht war:
+>
+> | Quelle | wo | Abweichung vom Sampler |
+> |---|---|---|
+> | `TerrainSampler` | CPU | — (die Bezugsgröße) |
+> | CDLOD-Gitter | GPU | Sehne statt Kurve |
+> | **Fahrbahn-Mesh** | `roads.json` + `ROAD_MESH.surfaceOffset` | 6 cm auf sechs Strecken, **94 cm** auf der Stadtstraße, bis **4,30 m** auf der Zufahrt |
+> | **Stadtplatte + Bürgersteig** | `CITY_SLAB_Y`, `CITY.sidewalk.height` | **97,3 cm** über dem eingeebneten Distrikt, plus 15 cm Bordstein |
+>
+> `DriveSystem` bildet daraus **eine** befahrbare Höhe: Gelände → Stadtplatte
+> (über `districtBlend`, dieselbe Funktion wie im Baker) → Fahrbahnkorrektur →
+> Plateaus. Die Zahlen und wie sie gefunden wurden, stehen in PLAN.md P14 / 14.2.
+
+---
+
+## 5a. Die Fahrschicht — `src/game/`
+
+Seit P14. Sie hängt an vier Ereignissen (`terrain:ready`, `roads:ready`,
+`city:ready`, `props:ready`) und ist damit das System, das **am meisten von der
+Welt weiß** — deshalb steht `DriveSystem` in `main.ts` direkt hinter der Kamera
+und vor allem, was diese Ereignisse sendet.
+
+```
+DriveSystem ──┬── Vehicle           Kräfte, Gieren, Federung   (fixedUpdate, 60 Hz)
+              ├── CollisionWorld    Hindernisse im Raster
+              ├── ChaseCamera       Verfolger / Haube          (update, Bildrate)
+              └── carMesh           Geometrie, prozedural
+```
+
+**Die Aufteilung auf die zwei Schrittarten ist die eigentliche Struktur.** Die
+Physik läuft im **fixen** Schritt (deterministisch — dafür hat `RenderLoop` ihn
+seit P0), die Kamera im **variablen** (sie ist Darstellung und darf mit der
+Bildrate laufen; gefedert im 60-Hz-Schritt würde sie bei 144 FPS ruckeln).
+
+**Der Freiflug wird abgeschaltet, nicht überlagert.** `FreeFlyController.setEnabled(false)`
+lässt ihn die Kamera nicht mehr anfassen und **auch nicht mehr sichern** — der
+gespeicherte Stand bleibt damit der letzte geflogene. Blick und Achsen einer
+zweiten Eingabequelle (Touch-Stick) leitet er über `FlyInputDelegate` an den
+Fahrmodus weiter, statt sie zu verschlucken.
+
+**Kollision ohne `three-mesh-bvh`.** Gebäude sind achsparallele Rechtecke,
+Leitplanken Polygonzüge, Props Kreise — für jede Form eine geschlossene
+Distanzfunktion. Ein BVH beantwortet „welches Dreieck", gebraucht wird „wie weit
+heraus". Ausführlich im Kopf von `CollisionWorld.ts`.
+
+**Was der Fahrmodus die Welt gekostet hat:** `CityGenerator` gibt seine
+Baukörper jetzt als `CityCollider` mit heraus (aus dem zusammengeführten
+Block-Mesh sind sie nicht mehr zu gewinnen), `PropSystem` sendet seine
+Platzierungen mit, und `GuardrailBuilder` bekommt eine Prüfung, die Planken an
+Einmündungen weglässt. Die drei Änderungen sind in PLAN.md P14 begründet.
+
 ---
 
 ## 6. Qualitätsstufen — wer was liest
@@ -291,6 +353,7 @@ Pixelfaktor.
 | `vegetationDensity` | `ScatterSystem` → Worker | Annahmequote der Streuung |
 | `reflections` | `PlanarReflection` | zweiter Szenendurchgang an/aus |
 | `ao`, `postFx` | `PostFXPipeline` | Kette und ihre Stufen |
+| *(kein Feld)* `maxPixelRatio()` | `Engine`, `createRenderer` | Deckel des Pixelfaktors — hängt am **Gerät**, nicht an der Stufe (P12.3) |
 | `shadowMapSize` | — | **wirkt nur im Vergleichsfall**, Echtzeitschatten sind seit P2 aus |
 
 Zwei Regeln, die hier teuer erkauft sind:
@@ -333,14 +396,25 @@ Der Unterschied ist groß und für die UX entscheidend (siehe PLAN.md P10.2):
 
 | | Dev (`npm run dev`) | Build (`npm run preview`) |
 |---|---|---|
-| Debug-Panel `F1`, Overlay | ja | **nein** |
+| Debug-Panel `F1`, Overlay | ja, **startet aus** (P13) | **nein** |
+| Reiter „Debug" im Spielermenü | ja | **nein** — der Reiter wird gar nicht erst gebaut |
 | `window.japanMap.*` | ja | **nein** |
 | Blickpunkte, `shot()`, `report()` | ja | **nein** |
 | Editoren (Straßen, Props) | ja | **nein** |
 | `SceneScaffold` (1056 Linien) | ja | **nein** |
-| Endpunkte `/__shot`, `/__report` | ja (Vite-Plugin) | **nein** |
-| Ladebildschirm `src/ui/LoadingScreen.ts` | ja | **ja** |
+| Start- und Ladebildschirm `src/ui/StartScreen.ts` | ja | **ja** |
 | Spieler-Oberfläche `src/ui/PlayerUi.ts` | ja | **ja** (seit P10.2) |
+| Fingersteuerung `src/ui/TouchControls.ts` | ja | **ja** (seit P12.4) |
+| Steuerungstabellen `src/ui/controls.ts` | ja | **ja** (seit P13) |
+
+**Wie der Reiter „Debug" die Grenze überquert, ohne sie einzureißen** (P13):
+`PlayerUi` darf nichts aus `src/debug/` importieren — es wird ohne
+`import.meta.env.DEV` ausgeliefert, und ein Wert-Import zöge Tweakpane ins
+Bundle. Die Brücke ist ein vierzeiliges Interface `DebugControl` in `PlayerUi`,
+das `main.ts` im Dev-Zweig aus dem `DebugPanel` zusammensetzt und hereinreicht.
+Ist das Feld nicht gesetzt — im Build immer —, existiert weder der Reiter noch
+sein Inhalt. Geprüft am gebauten Stand: `.menu__tab` liefert dort `grafik`,
+`steuerung`, `blick`, und `.stats` wie `.debug-pane` gibt es im DOM nicht.
 
 Die letzten beiden Zeilen sind der Grund, warum `src/ui/` von `src/debug/`
 getrennt ist: **alles unter `src/ui/` steht ohne `import.meta.env.DEV`.** Bis

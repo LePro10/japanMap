@@ -2,8 +2,22 @@
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--
+      `viewport-fit=cover` lässt die Seite unter Notch und Home-Indicator
+      laufen; das Bedienfeld hält mit `env(safe-area-inset-*)` selbst Abstand.
+      `maximum-scale=1` unterbindet den Doppeltipp-Zoom — auf einer Fläche, auf
+      der man zum Umsehen wischt, ist er ausschließlich ein Ärgernis.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+    />
     <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#06080c" />
+    <!-- Vollbild ohne Browserleisten, wenn jemand die Seite zum Startbildschirm legt. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>japanMap</title>
   </head>
   <body>
