@@ -861,6 +861,23 @@ Kurzliste, damit es nicht wieder passiert:
   Spiegeldurchgang. Der Merksatz steht seit P5 in dieser Datei und war trotzdem
   wieder fällig: **ein Vorher/Nachher an zwei verschiedenen Stellen misst die
   Kamera statt die Änderung.**
+- **Eine Zeit von außen gemessen — und den eigenen Aufruf mitgemessen.** Die
+  Frage war, wie lange der gebaute Stand bis zum „Starten"-Knopf braucht;
+  CrazyGames lässt dafür 20 s zu. Gemessen wurde mit einer Schleife in der
+  Browser-Konsole, die alle 50 ms nachsah, ob der Knopf da ist, und beim ersten
+  Treffer `performance.now()` ablas. Ergebnis: **8,61 s**.
+  Der Knopf stand längst. Die Schleife hat gemessen, **wann jemand hingesehen
+  hat** — der Aufruf über das Werkzeug kam erst 8,6 s nach dem Laden an. Der
+  richtige Wert ist **0,9 s** und stand die ganze Zeit in der Konsole: der
+  Ladebildschirm schreibt seine eigene Dauer seit P13.
+  Teurer als die Zahl war die **Schlussfolgerung**, die schon in SPEC §4.1
+  stand: „Zeit bis zum Spielen ist die Zeile, die Sorgen macht — nicht der
+  Download." Genau umgekehrt.
+  Zwei Regeln: **wer eine Zeit misst, muss den Startpunkt besitzen** — eine
+  Messung von außen enthält immer die Latenz des Beobachters. Und: **erst
+  nachsehen, ob die Anwendung die Zahl schon führt.** Sie tat es, an genau der
+  Stelle, an der sie entsteht.
+
 - **Am Ergebnis eingehängt statt an der Eingabe.** Die planare Spiegelung
   überschrieb zuerst `reflectedLight.indirectSpecular` — also den bereits mit
   der Fresnel-Gewichtung multiplizierten Wert — mit der **rohen**
