@@ -1,5 +1,6 @@
 import type { PropPlacement } from '@/config/props.config';
 import type { QualityKey } from '@/config/quality.config';
+import type { VehicleId } from '@/config/vehicles.config';
 import type { LapResult } from '@/game/LapTimer';
 import type { LookState } from '@/render/looks/lookState';
 import type { CityCollider, CityCurb, SignAnchor } from '@/world/city/CityGenerator';
@@ -187,6 +188,19 @@ export type AppEvents = {
    * lügt — dieselbe Begründung wie bei `quality:changed`.
    */
   'drive:mode': { active: boolean };
+
+  /**
+   * Das gefahrene Fahrzeug hat gewechselt — P18.
+   *
+   * Aus demselben Grund ein Ereignis wie `drive:mode`: gewechselt wird aus dem
+   * Pausenmenü, aus dem Debug-Panel und (im Dev-Bau) über `japanMap.vehicle()`,
+   * und drei Wege auf einen Zustand vertragen keine Anzeige, die sich ihren
+   * letzten Klick merkt.
+   *
+   * Zuhörer sind das HUD (es zeigt den Namen) und die Tonschicht (jedes Fahrzeug
+   * hat seine eigene Motorkennlinie).
+   */
+  'drive:vehicle': { id: VehicleId };
 
   /**
    * Ein zerbrechliches Hindernis ist nachgegeben — Leitplanke oder Baum.

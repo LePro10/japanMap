@@ -9,6 +9,7 @@ import {
 } from '@/config/quality.config';
 import { GRID_VERTICES_ALLOWED, lodMetersPerVertex, type GridVertices } from '@/config/lod.config';
 import type { PostFxQuality } from '@/config/postfx.config';
+import { VEHICLES, VEHICLE_ORDER, type VehicleId } from '@/config/vehicles.config';
 import type { AppBus } from '@/core/events';
 import { VIEWPOINTS, applyViewpoint, type CameraPlacer } from '@/debug/viewpoints';
 import {
@@ -102,7 +103,19 @@ export interface DebugControl {
  * Telefon** — gab es überhaupt keinen Weg ins Auto. Der Menüeintrag ist der
  * zeigergeräteunabhängige, der Knopf in `TouchControls` der schnelle.
  */
-export type DriveControl = TouchDriveTarget;
+export interface DriveControl extends TouchDriveTarget {
+  /**
+   * Die Fahrzeugwahl — P18.
+   *
+   * **Nicht in `TouchDriveTarget`**, und das ist die Grenze zwischen den beiden:
+   * das Bedienfeld hat vier Knöpfe für Sachen, die man **während der Fahrt**
+   * braucht (Gas, Handbremse, Zurücksetzen, Menü). Ein Fahrzeugwechsel gehört
+   * dorthin nicht — er passiert einmal, mit Bedenkzeit, und braucht Namen und
+   * Kennzahlen daneben. Das ist ein Menü und kein Daumenknopf.
+   */
+  readonly vehicleId: VehicleId;
+  setVehicle(id: VehicleId): void;
+}
 
 /**
  * Was das Menü von der Tonschicht braucht.
@@ -159,7 +172,7 @@ const POSTFX_LABELS: Readonly<Record<PostFxQuality, string>> = {
   off: 'aus',
 };
 
-type TabKey = 'grafik' | 'steuerung' | 'blick' | 'debug';
+type TabKey = 'grafik' | 'fahrzeug' | 'steuerung' | 'blick' | 'debug';
 
 export class PlayerUi {
   readonly #bus: AppBus;
@@ -223,6 +236,7 @@ export class PlayerUi {
 
     this.#fillLevels();
     this.#fillSliders();
+    this.#fillVehicles();
     this.#fillViewpoints();
     this.#fillDebug();
 
@@ -242,6 +256,11 @@ export class PlayerUi {
     // pflegen.
     this.#bus.on('drive:mode', () => {
       this.#syncDrive();
+    });
+    // Und derselbe Weg für die Fahrzeugwahl: der Wechsel kann auch aus dem
+    // Debug-Panel kommen.
+    this.#bus.on('drive:vehicle', () => {
+      this.#syncVehicles();
     });
 
     document.addEventListener('pointerlockchange', this.#onPointerLockChange);
@@ -391,6 +410,10 @@ export class PlayerUi {
     // Stelle, an der über seine Existenz entschieden wird.
     const tabs: readonly (readonly [TabKey, string])[] = [
       ['grafik', 'Grafik'],
+      // **Der Reiter existiert nur mit Fahrmodus** — dieselbe Regel wie bei
+      // „Debug". Ein Reiter, hinter dem eine Auswahl liegt, die nichts steuern
+      // kann, ist eine Anzeige, die lügt.
+      ...(this.#drive ? ([['fahrzeug', 'Fahrzeug']] as const) : []),
       ['steuerung', 'Steuerung'],
       ['blick', 'Blickpunkte'],
       ...(this.#debug ? ([['debug', 'Debug']] as const) : []),
@@ -434,6 +457,19 @@ export class PlayerUi {
           <div class="menu__sliders"></div>
           <button type="button" class="menu__reclassify">Neu einstufen</button>
         </section>
+
+        ${
+          this.#drive
+            ? `<section class="menu__panel" data-panel="fahrzeug">
+                 <div class="menu__cars"></div>
+                 <p class="menu__note">
+                   Die Wahl wirkt sofort und behält den Standort. Jedes Fahrzeug hat eigene
+                   Masse, Reifen, Federung und Antriebsart — die Zahlen dazu stehen in
+                   <code>vehicles.config.ts</code>, jede mit ihrer Messung.
+                 </p>
+               </section>`
+            : ''
+        }
 
         <section class="menu__panel" data-panel="steuerung">
           ${hasTouch() ? `<h3 class="menu__subhead">Finger</h3>${controlTable(TOUCH_CONTROLS, 'keytable')}<h3 class="menu__subhead">Tastatur und Maus</h3>` : ''}
@@ -782,6 +818,69 @@ export class PlayerUi {
     text.textContent = label;
     row.appendChild(text);
     return row;
+  }
+
+  /**
+   * Die Fahrzeugwahl — P18.
+   *
+   * Vier Karten mit Name, Kurzbeschreibung und den drei Zahlen, an denen man
+   * ein Fahrzeug vor der ersten Fahrt einschätzt: Masse, Antriebsart und
+   * Höchstgeschwindigkeit. Die letzte ist **gerechnet und nicht getippt** —
+   * `v = ∛(P/c)` aus dem Gleichgewicht mit dem Luftwiderstand, also genau die
+   * Größe, die das Fahrmodell auch fährt. Eine von Hand gepflegte Zahl daneben
+   * wäre beim nächsten Reglerzug falsch, ohne dass es jemand merkt.
+   *
+   * **Kein `select`, sondern Knöpfe.** Auf einem Telefon öffnet ein `select`
+   * das systemeigene Auswahlrad; das ist bedienbar, verdeckt aber das Bild und
+   * lässt keine zweite Zeile je Eintrag zu. Vier Karten passen bei 375 px
+   * untereinander.
+   */
+  #fillVehicles(): void {
+    const drive = this.#drive;
+    if (!drive) return;
+    const list = this.#menu.querySelector<HTMLElement>('.menu__cars');
+    if (!list) return;
+
+    for (const id of VEHICLE_ORDER) {
+      const spec = VEHICLES[id];
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'menu__car';
+      button.dataset.vehicle = id;
+      const top = Math.cbrt(spec.drivetrain.power / spec.drivetrain.drag) * 3.6;
+      const layout =
+        spec.drivetrain.layout === 'awd'
+          ? 'Allrad'
+          : spec.drivetrain.layout === 'fwd'
+            ? 'Frontantrieb'
+            : 'Heckantrieb';
+      button.innerHTML =
+        `<span class="menu__carName">${spec.name}</span>` +
+        `<span class="menu__carFacts">${spec.chassis.mass} kg · ${layout} · ${top.toFixed(0)} km/h</span>` +
+        `<span class="menu__carBlurb">${spec.blurb}</span>`;
+      button.addEventListener('click', () => {
+        drive.setVehicle(id);
+        this.#syncVehicles();
+      });
+      list.appendChild(button);
+    }
+    this.#syncVehicles();
+  }
+
+  /**
+   * Die Auswahl auf den geltenden Zustand setzen.
+   *
+   * Gefragt wird `drive.vehicleId`, nicht ein hier mitgeführter letzter Klick —
+   * dieselbe Begründung wie bei `#syncQuality` und `#syncDrive`. Im Dev-Bau
+   * schaltet auch das Debug-Panel um, und ein Menü, das seinen eigenen letzten
+   * Klick anzeigt, ist die Anzeige, die lügt.
+   */
+  #syncVehicles(): void {
+    const drive = this.#drive;
+    if (!drive) return;
+    for (const button of this.#menu.querySelectorAll<HTMLElement>('.menu__car')) {
+      button.classList.toggle('is-active', button.dataset.vehicle === drive.vehicleId);
+    }
   }
 
   #fillViewpoints(): void {

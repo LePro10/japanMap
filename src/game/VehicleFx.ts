@@ -2,6 +2,7 @@ import {
   AdditiveBlending,
   CanvasTexture,
   Color,
+  CustomBlending,
   DoubleSide,
   DynamicDrawUsage,
   Group,
@@ -11,12 +12,14 @@ import {
   MeshBasicMaterial,
   PlaneGeometry,
   Quaternion,
+  SrcColorFactor,
   Vector3,
+  ZeroFactor,
   type Camera,
   type WebGLProgramParametersWithUniforms,
 } from 'three';
 
-import { CHASSIS, TIRE, WATER_PHYS } from '@/config/vehicle.config';
+import { WATER_PHYS } from '@/config/vehicle.config';
 import {
   FX_SKID_CAPACITY,
   FX_SPLASH_CAPACITY,
@@ -27,7 +30,7 @@ import {
 } from '@/config/vehicleFx.config';
 import type { QualityKey } from '@/config/quality.config';
 import type { EngineContext } from '@/core/System';
-import type { Ground, Vehicle } from './Vehicle';
+import type { Ground, Surface, Vehicle } from './Vehicle';
 
 /**
  * Driftspuren und Wasserspritzer — PLAN.md P14, die fehlende Rückmeldung.
@@ -53,6 +56,24 @@ import type { Ground, Vehicle } from './Vehicle';
  * Beim Fahren ohne Drift sind das zwei leere Aufrufe, und die sind billiger
  * als jedes Frame 256 Matrizen umzusortieren. Sobald die Gruppe unsichtbar
  * ist (kein Drift, kein Wasser), fallen auch die.
+ *
+ * ## Was P18 daran geändert hat
+ *
+ * **Die Sichtbarkeit**, gemessen und nicht geraten: die alte Spurfarbe für lose
+ * Böden hatte gegen die Belagstexturen ein Helligkeitsverhältnis von 1,22 : 1,
+ * und der Kommentar daneben behauptete das Gegenteil. Die ganze Rechnung steht
+ * bei `SKID.asphalt`. Gezeichnet wird seitdem **multiplikativ** — die Spur
+ * dämpft, was unter ihr liegt, statt darüber zu malen, und ist damit von der
+ * Tageszeit unabhängig.
+ *
+ * **Die Kosten je Frame.** Der Grundgedanke oben („eine Spur bewegt sich nicht")
+ * war richtig aufgeschrieben und nicht zu Ende geführt: `#writeSkids` setzte
+ * `instanceMatrix.needsUpdate` und `instanceColor.needsUpdate` trotzdem in
+ * **jedem** Frame, in dem der Fahrmodus lief. Das sind 256 × 16 Floats plus
+ * 256 × 3 Floats — 19 KB über den Bus, sechzigmal je Sekunde, für Daten, die
+ * sich nur beim Setzen eines Stempels ändern. Seit P18 hängen beide an
+ * `#skidDirty`, und `count` folgt der höchsten je belegten Instanz statt dem
+ * Budget.
  */
 
 export class VehicleFx {
@@ -95,7 +116,13 @@ export class VehicleFx {
   readonly #look = new Vector3();
   readonly #color = new Color();
   readonly #asphalt = new Color(SKID.asphalt);
-  readonly #dirt = new Color(SKID.dirt);
+  readonly #gravel = new Color(SKID.gravel);
+  readonly #terrain = new Color(SKID.terrain);
+
+  /** Ist seit dem letzten Upload ein Stempel dazugekommen? Siehe `#writeSkids`. */
+  #skidDirty = false;
+  /** Höchste je belegte Spur-Instanz + 1 — die Obergrenze für `count`. */
+  #skidTop = 0;
 
   #skidStamp: CanvasTexture | null = null;
   #splashStamp: CanvasTexture | null = null;
@@ -136,7 +163,21 @@ export class VehicleFx {
       polygonOffset: true,
       polygonOffsetFactor: -3,
       polygonOffsetUnits: -6,
-      toneMapped: true,
+      // **Multiplikativ statt darübermalen — P18.** `dst = dst · src`. Die
+      // Begründung steht ausführlich bei `SKID.asphalt`; die Kurzfassung: ein
+      // `MeshBasicMaterial` wird nicht beleuchtet, und eine unbeleuchtete Spur
+      // mit fester Farbe ist in der blauen Stunde mal heller und mal dunkler als
+      // die Fahrbahn, auf der sie liegt. Eine Dämpfung ist es immer.
+      //
+      // `MultiplyBlending` von three tut genau das (`ZeroFactor`/`SrcColorFactor`);
+      // es ausdrücklich hinzuschreiben spart beim nächsten Lesen einen Blick in
+      // die three-Quelle.
+      blending: CustomBlending,
+      blendSrc: ZeroFactor,
+      blendDst: SrcColorFactor,
+      // **Kein Tonemapping.** Der Wert ist ein Faktor und keine Leuchtdichte;
+      // durch eine Tonwertkurve gedreht wäre 0,38 nicht mehr 0,38.
+      toneMapped: false,
     });
     skidMat.name = 'DriftspurMaterial';
     injectFade(skidMat);
@@ -196,8 +237,17 @@ export class VehicleFx {
     // Slots oberhalb des Budgets sterben sofort — sonst lägen nach einem
     // Wechsel auf Minimal 256 Spuren weiter in der Welt, nur unsichtbar
     // gezählt. Der Puffer bleibt; leben dürfen nur die ersten N.
-    for (let i = this.#budget.skids; i < FX_SKID_CAPACITY; i++) this.#skidLife[i] = 0;
+    for (let i = this.#budget.skids; i < FX_SKID_CAPACITY; i++) {
+      this.#skidLife[i] = 0;
+      if (this.#skidFade) this.#skidFade[i] = 0;
+    }
     for (let i = this.#budget.splash; i < FX_SPLASH_CAPACITY; i++) this.#splashLife[i] = 0;
+    // Der gezeichnete Bereich darf das neue Budget nicht überragen — sonst
+    // zeichnet ein Wechsel auf Minimal weiter 256 Instanzen, von denen 224 nichts
+    // tun. Sie wären zwar wirkungslos (Alterung null heißt Faktor 1, also keine
+    // Dämpfung), aber bezahlt werden sie trotzdem.
+    if (this.#skidTop > this.#budget.skids) this.#skidTop = this.#budget.skids;
+    this.#skidDirty = true;
   }
 
   show(): void {
@@ -213,10 +263,21 @@ export class VehicleFx {
   reset(): void {
     this.#skidLife.fill(0);
     this.#splashLife.fill(0);
+    this.#skidFade?.fill(0);
     this.#skidLive = 0;
     this.#splashLive = 0;
+    this.#skidTop = 0;
+    this.#skidDirty = false;
     this.#spawnAcc.fill(0);
     this.#prevDepth.fill(0);
+    // **Auch die letzte Stempelstelle je Rad.** Sie steuert den Mindestabstand
+    // (`SKID.spacing`); blieb sie stehen, unterdrückte sie nach einem Respawn am
+    // anderen Ende der Karte genau einen Stempel — oder, schlimmer, keinen,
+    // weil `#lastX === 0` als „noch nie gesetzt" gilt. Ein Zustand, der ein
+    // Reset überlebt, tarnt sich als „nicht ganz reproduzierbar" (siehe
+    // `Vehicle.respawn`).
+    this.#lastX.fill(0);
+    this.#lastZ.fill(0);
     if (this.#skid) this.#skid.count = 0;
     if (this.#splash) this.#splash.count = 0;
   }
@@ -274,7 +335,7 @@ export class VehicleFx {
     const wheels = vehicle.wheelPositions;
     const speed = t.speed;
     const slipMark =
-      Math.abs(t.slipRear) > TIRE.peakSlipRear * SKID.slipStart ||
+      Math.abs(t.slipRear) > vehicle.spec.tire.peakSlipRear * SKID.slipStart ||
       t.wheelspin > SKID.spinStart ||
       (handbrake && speed > 3);
 
@@ -296,12 +357,12 @@ export class VehicleFx {
       }
 
       if (slipMark && depth < WATER_PHYS.wetThreshold && speed > 4) {
-        this.#emitSkid(i, wheel, solidY, vehicle, surf === 'asphalt');
+        this.#emitSkid(i, wheel, solidY, vehicle, surf);
       }
     }
   }
 
-  #emitSkid(wheel: number, at: Vector3, groundY: number, vehicle: Vehicle, asphalt: boolean): void {
+  #emitSkid(wheel: number, at: Vector3, groundY: number, vehicle: Vehicle, surface: Surface): void {
     const dx = at.x - this.#lastX[wheel]!;
     const dz = at.z - this.#lastZ[wheel]!;
     if (dx * dx + dz * dz < SKID.spacing * SKID.spacing && this.#lastX[wheel] !== 0) return;
@@ -327,14 +388,43 @@ export class VehicleFx {
     this.#up.set(0, 1, 0);
     this.#matrix.makeBasis(this.#right, this.#up, this.#forward);
     this.#pos.set(at.x, groundY + SKID.lift, at.z);
-    this.#scale.set(SKID.width, 1, SKID.length);
+    // **Die Breite kommt aus dem Fahrzeug, nicht aus einer Konstanten.** Der
+    // Lastwagen hat 0,30 m breite Räder gegen 0,21 m beim Coupé; eine feste
+    // Stempelbreite ließe ihn eine Spur ziehen, die schmaler ist als sein Reifen.
+    this.#scale.set(vehicle.spec.chassis.wheelWidth * SKID.widthPerTire, 1, SKID.length);
     this.#matrix.setPosition(this.#pos);
     this.#matrix.scale(this.#scale);
     mesh.setMatrixAt(slot, this.#matrix);
-    mesh.setColorAt(slot, asphalt ? this.#asphalt : this.#dirt);
+    // Drei Beläge, drei Dämpfungen — Herleitung und Messtabelle bei `SKID.asphalt`.
+    // Wasser kommt hier nie an: der Aufrufer lässt eine Spur nur unterhalb
+    // `WATER_PHYS.wetThreshold` zu, und darüber gibt es Spritzer statt Abrieb.
+    mesh.setColorAt(
+      slot,
+      surface === 'asphalt' ? this.#asphalt : surface === 'kies' ? this.#gravel : this.#terrain,
+    );
 
+    // **Einen neu belegten Slot sofort als lebend zählen.** Ohne diese Zeile
+    // steht der Zähler still: `#skidLive` wird nur in `#ageSkids` gebildet, und
+    // `#ageSkids` steigt bei `#skidLive === 0` sofort aus. Einmal auf null, für
+    // immer auf null — und `#writeSkids` schaltet das Mesh dann unsichtbar,
+    // obwohl Stempel gesetzt werden.
+    //
+    // Gemessen im laufenden Bild, Handbremsdrift auf dem Ring: **32 lebende
+    // Alterungswerte, `count` 0, `visible` false.** Kein Typfehler, keine
+    // Ausnahme, kein Konsoleneintrag — die Spuren waren einfach weg. Genau die
+    // Fehlerform aus CLAUDE.md („etwas ist nicht im Bild, und jede Zahl sagt, es
+    // sei alles in Ordnung"), diesmal beim Einbau der Sparmaßnahme selbst
+    // entstanden.
+    if (this.#skidLife[slot]! <= 0) this.#skidLive++;
     this.#skidLife[slot] = SKID.life;
     fade[slot] = 1;
+    // **Die Puffer werden nur hochgeladen, wenn sie sich geändert haben.** Vor
+    // P18 stand `needsUpdate = true` bedingungslos in `#writeSkids`, also in
+    // jedem Frame des Fahrmodus — 256 Matrizen (16 KB) plus 256 Farben (3 KB)
+    // über den Bus, auch wenn niemand driftet. Matrix und Farbe eines Stempels
+    // ändern sich **genau einmal**, nämlich hier.
+    this.#skidDirty = true;
+    if (slot >= this.#skidTop) this.#skidTop = slot + 1;
   }
 
   /**
@@ -381,7 +471,7 @@ export class VehicleFx {
     const backX = vLen > 0.2 ? -vx / vLen : -Math.sin(vehicle.yaw);
     const backZ = vLen > 0.2 ? -vz / vLen : -Math.cos(vehicle.yaw);
 
-    const contactY = at.y - CHASSIS.wheelRadius * 0.42;
+    const contactY = at.y - vehicle.spec.chassis.wheelRadius * 0.42;
 
     while (this.#spawnAcc[wheel]! >= 1 || burst > 0) {
       if (this.#spawnAcc[wheel]! >= 1) this.#spawnAcc[wheel]! -= 1;
@@ -406,6 +496,9 @@ export class VehicleFx {
         vehicle.velocity.z * SPLASH.inherit + onz * out * (0.55 + j2) + backZ * back * (0.5 + j);
 
       const life = SPLASH.life + (hash3(slot + 7) - 0.5) * 2 * SPLASH.lifeJitter;
+      // Dieselbe Buchführung wie bei der Spur, und aus demselben Grund —
+      // `#ageSplash` steigt bei null aus und käme sonst nie wieder hoch.
+      if (this.#splashLife[slot]! <= 0) this.#splashLive++;
       this.#splashLife[slot] = life;
       this.#splashMax[slot] = life;
       this.#ssize[slot] = SPLASH.width + hash3(slot + 11) * SPLASH.widthJitter;
@@ -420,8 +513,13 @@ export class VehicleFx {
   #ageSkids(dt: number): void {
     const fade = this.#skidFade;
     if (!fade) return;
+    // Nichts am Leben heißt nichts zu tun. Der häufigste Fall beim Fahren ist
+    // „keine Spur", und der kostet seit P18 einen Vergleich statt 256 Schleifen-
+    // durchläufen plus einen Pufferupload.
+    if (this.#skidLive === 0) return;
     let live = 0;
-    const cap = this.#budget.skids;
+    // Nur bis zur höchsten je belegten Instanz — der Rest war nie beschrieben.
+    const cap = Math.min(this.#skidTop, this.#budget.skids);
     for (let i = 0; i < cap; i++) {
       const life = this.#skidLife[i]!;
       if (life <= 0) {
@@ -445,6 +543,7 @@ export class VehicleFx {
   }
 
   #ageSplash(dt: number): void {
+    if (this.#splashLive === 0) return;
     let live = 0;
     const cap = this.#budget.splash;
     for (let i = 0; i < cap; i++) {
@@ -465,21 +564,50 @@ export class VehicleFx {
     this.#splashLive = live;
   }
 
+  /**
+   * Die Spuren zeichnen — und dabei so wenig wie möglich hochladen.
+   *
+   * Drei Sparmaßnahmen aus P18, alle an derselben Beobachtung: **eine Driftspur
+   * bewegt sich nicht.** Sie entsteht einmal, altert und verschwindet. Alles,
+   * was je Frame über den Bus musste, war der Alterungswert — 256 Floats.
+   *
+   *  1. `instanceMatrix` und `instanceColor` gehen nur nach einem neuen Stempel
+   *     hoch (`#skidDirty`), nicht in jedem Frame. Vor P18 waren das 16 KB + 3 KB
+   *     je Frame, im Freiflug wie beim Geradeausfahren.
+   *  2. `count` ist die höchste je belegte Instanz und nicht das Budget. Beim
+   *     ersten Drift stehen drei Stempel und nicht 256; three verwirft die
+   *     leeren zwar über die Nullskalierung, aber erst nach dem Vertex-Shader.
+   *  3. Steht keine Spur, ist das Mesh unsichtbar und `count` null.
+   *
+   * `count` muss die höchste **je belegte** Instanz + 1 sein und nicht die
+   * Anzahl der lebenden: der Ring schreibt in beliebige Slots, und ein zu
+   * kleines `count` schnitte ihn ab.
+   */
   #writeSkids(): void {
     const mesh = this.#skid;
     if (!mesh) return;
-    // count muss die höchste lebende Instanz+1 sein, nicht die Anzahl: der
-    // Ring schreibt in beliebige Slots. Ein zu kleines count schnitte den
-    // Ring ab. Budget ist die Obergrenze der lebenden Slots.
-    mesh.count = this.#skidLive > 0 ? this.#budget.skids : 0;
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.count = this.#skidLive > 0 ? this.#skidTop : 0;
+    if (this.#skidDirty) {
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      this.#skidDirty = false;
+    }
     mesh.visible = this.#skidLive > 0;
   }
 
   #writeSplash(camera: Camera): void {
     const mesh = this.#splash;
     if (!mesh) return;
+    // Ein Spritzer **fliegt** — anders als die Spur muss seine Matrix je Frame
+    // neu, solange er lebt. Was sich sparen lässt, ist der Durchgang, wenn
+    // keiner lebt: das ist beim Fahren auf trockenem Asphalt immer.
+    if (this.#splashLive === 0) {
+      if (mesh.count !== 0) {
+        mesh.count = 0;
+        mesh.visible = false;
+      }
+      return;
+    }
     const cap = this.#budget.splash;
     const cx = camera.position.x;
     const cy = camera.position.y;
@@ -531,6 +659,35 @@ export class VehicleFx {
   }
 }
 
+/**
+ * Alterung und Stempelmaske in die Dämpfung einrechnen.
+ *
+ * **Bei multiplikativer Mischung ist „unsichtbar" nicht Alpha null, sondern
+ * Weiß.** Die alte Fassung schrieb `diffuseColor.a *= vFade` — mit
+ * `dst = dst · src` wird Alpha aber gar nicht ausgewertet, und eine verblasste
+ * Spur bliebe genauso dunkel wie eine frische. Ebenso die Stempeltextur: ihr
+ * Alphakanal trägt die Form des Abdrucks, und außerhalb der Form muss der Faktor
+ * **1** herauskommen und nicht 0 (0 wäre schwarz).
+ *
+ * Beides ist dieselbe Rechnung: `mix(weiß, farbe, maske · alterung)`.
+ *
+ * > **Und sie muss nach `<color_fragment>` stehen, nicht nach `<map_fragment>`.**
+ * > Der erste Versuch hing an `<map_fragment>` — dort ist die Instanzfarbe (also
+ * > die Dämpfung selbst) noch gar nicht eingerechnet; three multipliziert sie
+ * > erst einen Baustein später in `<color_fragment>`. Das Ergebnis wäre gewesen:
+ * > erst nach Weiß mischen, dann wieder abdunkeln, und eine ausgeblendete Spur
+ * > bliebe für immer sichtbar.
+ *
+ * Nach `<color_fragment>` steht in `diffuseColor` genau das Richtige: `rgb` ist
+ * der Dämpfungsfaktor aus `setColorAt`, `a` die Form aus dem Stempel.
+ *
+ * **`setColorAt` schreibt linear.** `new Color(0x635f66)` rechnet den Wert von
+ * sRGB nach linear um (0,388 → 0,126), und die Mischung findet im linearen
+ * Zielpuffer statt. Das ist genau richtig und kein Zufall: ein Faktor von 0,126
+ * im Linearen ist ein *wahrgenommener* Helligkeitsanteil von 0,388. Die
+ * Verhältnisse in `SKID` sind damit perzeptuell zu lesen — so, wie man eine
+ * Farbe im Farbwähler auch wählt.
+ */
 function injectFade(material: MeshBasicMaterial): void {
   material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms) => {
     shader.vertexShader = shader.vertexShader
@@ -538,7 +695,12 @@ function injectFade(material: MeshBasicMaterial): void {
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFade = aFade;');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', '#include <common>\nvarying float vFade;')
-      .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.a *= vFade;');
+      .replace(
+        '#include <color_fragment>',
+        '#include <color_fragment>\n' +
+          'diffuseColor.rgb = mix(vec3(1.0), diffuseColor.rgb, diffuseColor.a * vFade);\n' +
+          'diffuseColor.a = 1.0;',
+      );
   };
 }
 

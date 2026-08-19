@@ -8520,3 +8520,451 @@ Ebenfalls nicht: Leistungsmessung auf Zielhardware (P12.6 bleibt offen),
 Umgebungsgeräusche mit Charakter (Zikaden, Stadt — die kosten Download und
 gehören dann gegen die 20-MB-Schwelle gerechnet), Gegner, Schaden, Bestenliste
 über das Netz.
+
+---
+
+# P18 — Vier Fahrzeuge, und eine Physik, die das trägt ✅ (2026-08-19)
+
+## Der Auftrag
+
+> „fixe die physics des autos und füge einen super sportcar ein ein ofroad und
+> noch lastwagen alle mit eigenen physics und so. bitte wirklich alles
+> optimieren auch drift spuren am boden das farb angepasst besser sichtbar und
+> performance optimiert"
+
+Vier Teile: die Physik reparieren, drei Fahrzeuge dazu, die Driftspuren sichtbar
+machen, und das alles nicht teurer werden lassen.
+
+---
+
+## 18.0 — Was am Fahrmodell wirklich kaputt war
+
+Gemessen **vor** jeder Änderung, mit einem neuen Prüfstand (`tools/bench/`, läuft
+unter Node ohne Browser und führt denselben `Vehicle`-Code aus, den das Spiel
+fährt — keine zweite, abgeschriebene Physik).
+
+### Die Hinterachse konnte auf Asphalt nicht durchdrehen
+
+Der Kopf von `vehicle.config.ts` nennt seit P9.2 als Kernanforderung: *„der
+Hinterwagen soll auf Gasstoß ausbrechen und sich mit Gegenlenken halten lassen."*
+Gemessen war das **rechnerisch unmöglich**.
+
+`DRIVETRAIN.maxDriveForce = 7200` trug den Kommentar „liegt 8,6 % über der
+Haftgrenze der Hinterachse". Die Rechnung dahinter setzt die **statische**
+Hinterachslast an und lässt die Lastverlagerung beim Beschleunigen weg. Richtig
+ist
+
+```
+F > mu_h · m · g · w_h / (1 − mu_h · h / L)
+  = 1,25 · 1150 · 9,81 · 0,47 / (1 − 1,25 · 0,52 / 2,4)
+  = 6627 / 0,7292 = 9088 N
+```
+
+7200 N liegen damit nicht 8,6 % darüber, sondern **16,1 % darunter**. Gemessener
+höchster Durchdrehfaktor auf Asphalt: **0,857 ×**, beim Anfahren wie beim Gasstoß
+in der Kurve. Auf Kies und im Gelände ging es (1,93 / 2,07) — deshalb war der
+Fehler nie aufgefallen.
+
+> Dieselbe Fehlerform wie bei `tailGrip` und `minSpinGrip` in P17: **ein
+> Kommentar, der rechnet, ist eine Abhängigkeit wie ein Import.** Die Herleitung
+> war schlüssig und ließ einen Term weg.
+
+### `DRIVETRAIN.downforce` wurde nie gelesen
+
+`grep -c 'DRIVETRAIN\.downforce' src/` ergab **0**. Die vierte tote Stellschraube
+dieses Projekts nach `viewDistance`, `shadowCascades` und `minSpinGrip` — und die
+erste, die nicht falsch angewandt war, sondern gar nicht. `CHASSIS.bodyHeight`
+ebenso (0 Fundstellen).
+
+### Es gab keine Motorbremse
+
+Ohne Gas wirkten allein Luftwiderstand und Rollreibung. Gemessen brauchte das
+Coupé aus 195 km/h **39,4 s** bis auf die Hälfte — ein Segelflug.
+
+### Was **nicht** kaputt war
+
+Zwei Verdachtsmomente wurden gemessen und verworfen, und das gehört
+dazugeschrieben:
+
+- **Energieerhaltung.** Der erste Ausrolllauf meldete 11 Anstiege mit bis zu
+  3,9 · 10⁻² m/s. Nachgesehen war das die **Gasrampe**: `throttleRate = 4`
+  braucht 15 Schritte von voll auf null, und in denen beschleunigt der Wagen
+  weiter. Wartet man sie ab, sind es **0 Anstiege** über 1200 Schritte. Der Fehler
+  lag im Prüfstand, nicht im Modell.
+- **Die Lenkantwort.** Sie fällt hinter ihrem Höchstwert um 6…10 % ab, und das
+  sah nach dem P17-Befund „nicht monoton" aus. Nachgerechnet ist es die
+  Haftgrenze: die größte stationäre Gierrate ist `a_lat/v`, und `a_lat` ist durch
+  mu gedeckelt. Bei 80 km/h sind das `1,25 · 9,81 / 22,2 = 0,55 rad/s = 31,7 °/s`;
+  gemessen 31,0. Das Auto ist am Limit, nicht kaputt. Der Prüfstand meldet
+  seitdem den **Abfall in Prozent** statt „monoton ja/nein".
+
+---
+
+## 18.1 — Eine Physik, vier Datensätze
+
+`Vehicle.ts` las bis P17 `CHASSIS.mass` und `TIRE.gripAsphalt` als
+**Modulkonstanten**. Für vier Fahrzeuge geht das nicht, und die naheliegende
+Abkürzung (eine zweite `Vehicle`-Klasse) wäre der Fehler, den dieses Projekt
+zweimal gemacht hat: zwei Implementierungen derselben Sache.
+
+Neu ist `src/config/vehicles.config.ts` mit `VehicleSpec`. `Vehicle` bekommt eine
+Spec und liest alles aus ihr.
+
+**Sieben Modulkonstanten mussten mit.** `STATIC_COMPRESSION`, `SPRING_REST`,
+`SLIP_SPEED_FLOOR`, `STATIC_HOLD_SPEED`, `MAX_YAW_RATE`, `WHEEL_MAX_DROP` und
+`WHEEL_MIN_DROP` waren aus `CHASSIS`/`SUSPENSION` gerechnet, also aus den Maßen
+**eines** Fahrzeugs. Hätte man sie stehen lassen, führe der Lastwagen mit der
+Federruhelage des Coupés — und **keine Kennzahl hätte das gemeldet**, weil das
+Auto ja fährt. Sie stehen jetzt in `VehicleSpec.derived` bzw. `.limits`.
+
+`Vehicle` behält beim Wechsel seine **Instanz** und tauscht nur die Spec. Das ist
+keine Stilfrage: `main.ts` reicht `drive.vehicle.telemetry` **als Objekt** an die
+Tonschicht weiter, und eine neue Instanz hätte eine neue Telemetrie — der Motor
+wäre nach dem ersten Fahrzeugwechsel stumm geblieben.
+
+---
+
+## 18.2 — Die drei Reparaturen am Fahrmodell
+
+### 1. Der erste Gang (`launchBoost`)
+
+`F = min(F_max, P/v)` mit konstantem `F_max` ist ein Auto mit **einem Gang**. Ein
+echtes Getriebe vervielfacht das Motormoment im ersten Gang, und genau deshalb
+kann man an der Ampel die Räder durchdrehen lassen — nicht wegen mehr Leistung.
+Neu: `F_max · (1 + launchBoost · e^(−v/launchSpeed))`.
+
+Sechs Kombinationen gemessen; gewählt ist die, die die Anforderung erfüllt und am
+wenigsten an der Beschleunigung dreht:
+
+| F_max | Boost | v_boost | 0–100 | Durchdrehen Anfahrt |
+|---:|---:|---:|---:|---:|
+| 8200 | 0,42 | 7,0 | 4,15 s | 1,234 × |
+| 7600 | 0,42 | 4,0 | 4,42 s | 1,116 × |
+| **7200** | **0,55** | **3,0** | **4,62 s** | **1,108 ×** |
+
+`maxDriveForce` bleibt bei 7200 N. 8200 hätten 0–100 auf 4,15 s gedrückt — eine
+andere Fahrzeugklasse, die niemand bestellt hat.
+
+### 2. Antrieb auf beide Achsen
+
+`driveForce` ging vollständig in die Hinterachse; `usedFront` kannte nur die
+Bremse. Das Modell konnte gar nichts anderes als Heckantrieb. Neu:
+`DrivetrainSpec.layout` (`rwd`/`fwd`/`awd`) mit festem `frontShare`.
+
+Was das im Bild bedeutet, steht in 18.5: der Allradler ist das einzige Fahrzeug,
+das den Tempelaufgang hochkommt.
+
+### 3. Motorbremse — und der Fehler, den sie zuerst gemacht hat
+
+Der erste Versuch schrieb sie einfach in die Längskraft der angetriebenen Achse.
+Physikalisch die richtige Stelle, und **das Auto war unfahrbar**. Gemessen,
+Lastwechsel im Bogen bei 68 km/h auf idealem Asphalt, Gas ganz weg
+(Schwimmwinkel Spitze / nach 2,5 s):
+
+| Motorbremse | Lenkung 0,35 | 0,55 | 0,80 |
+|---:|---:|---:|---:|
+| 0 N   | 20,3° / **1,7°** | 21,9° / **1,7°** | 16,4° / 11,9° |
+| 300 N | 26,9° / **0,9°** | 29,3° / **6,7°** | 19,3° / 4,4° |
+| 400 N | 30,8° / 17,3° | 37,1° / 6,2° | 20,7° / 1,7° |
+| 800 N | 64,4° / **60,1°** | **89,7°** / 0,0° | 69,9° / **69,9°** |
+
+Zwischen 300 und 400 N kippt es. Und 800 N sind nicht viel — 12 % der
+Hinterachshaftung.
+
+**Die Ursache ist eine Lücke im Modell, keine zu große Zahl.** Dieses Fahrmodell
+führt keine Raddrehzahlen. In einem echten Antriebsstrang bricht das
+Schleppmoment zusammen, sobald das Rad gegenüber der Fahrbahn rutscht — Rad und
+Motor hängen über die Kupplung zusammen. Hier bleibt es stehen und schiebt die
+Achse immer weiter über ihre Kennlinie. Eine Mitkopplung, wie die, gegen die
+`slipSpeedFloor` eingeführt wurde.
+
+Nachgebildet als **Deckel auf den Anteil der Achshaftung**
+(`ENGINE_BRAKE_SHARE = 0,06`) — dieselbe Aussage, die eine
+Motorschleppmomentregelung im Steuergerät macht. Der Deckel gilt **je Achse**;
+der erste Versuch rechnete beim Allradler mit der Summe, und der Offroader stand
+danach bei jedem Lastwechsel quer (89,8° Spitze, 83,5° nach 2,5 s).
+
+Der Unterschied zur Betriebsbremse ist beabsichtigt: die **darf** die Lenkbarkeit
+überfahren, die Motorbremse nicht.
+
+---
+
+## 18.3 — Die vier Fahrzeuge
+
+Alle Zahlen aus `tools/bench/fleet.mts`, idealer Boden, 2026-08-19.
+
+| | Touge-Coupé | GT | Offroad 4×4 | Lastwagen |
+|---|---:|---:|---:|---:|
+| Masse | 1150 kg | 1450 kg | 2100 kg | 7800 kg |
+| Antrieb | Heck | Heck | **Allrad** (40 % v) | Heck |
+| Radstand | 2,40 m | 2,70 m | 2,85 m | 4,60 m |
+| Schwerpunkt | 0,52 m | **0,40 m** | 0,78 m | **1,10 m** |
+| Federweg | 26 cm | **14 cm** | **42 cm** | 22 cm |
+| 0–100 km/h | 4,62 s | **2,52 s** | 5,15 s | **21,55 s** |
+| Endtempo | 257 km/h | **331 km/h** | 193 km/h | 115 km/h |
+| Bremsweg 100→0 | 31,5 m | **27,1 m** | 39,6 m | **45,7 m** |
+| Haftung Asphalt | 1,25 | **1,55** | 1,02 | 0,95 |
+| Haftung Gelände | 0,52 | **0,30** | **0,82** | 0,42 |
+| 10 s Vollgas im Gelände | 50 km/h | **30 km/h** | **102 km/h** | 31 km/h |
+| Abtrieb | 0,08 | **0,42** | 0 | 0 |
+| Stabilitätsreserve | 1,33 | 1,32 | 1,32 | **1,41** |
+
+Die vorletzte Zeile ist die, an der man die Liste versteht: der Supersportler ist
+auf Asphalt 80 km/h schneller als das Coupé und im Gelände 20 km/h **langsamer**.
+
+### Der Offroader war gierinstabil, und der Prüfstand hat es gefunden
+
+Mit `rearGripFactor = 1,02` stand er beim Lastwechsel im Bogen bei **71,9°
+Schwimmwinkel und blieb dort** — quer, ohne dass der Fahrer mehr getan hätte als
+den Fuß zu heben. Ursache ist die Bauart: 0,78 m Schwerpunkthöhe auf 2,85 m
+Radstand verlagern beim Verzögern viel Last nach vorn.
+
+Fünf Eingriffe gemessen (Spitze → nach 2,5 s, Lenkung 0,55):
+
+| Eingriff | Ergebnis |
+|---|---|
+| wie gebaut | 71,9° → **71,9°** |
+| Motorbremse aus | 33,3° → 12,7° |
+| Schwerpunkt 0,78 → 0,66 m | 39,1° → 21,9° |
+| `driftDamping` 0,6 → 1,1 | 25,5° → 3,9° |
+| **`rearGripFactor` 1,02 → 1,12** | **23,6° → 4,2°** |
+
+Gewählt ist die letzte, obwohl die vierte ähnlich wirkt: `driftDamping` ist eine
+**Fahrhilfe** und greift in ein Moment ein, das es physikalisch nicht gibt; die
+Reifenbreite ist ein **Bauteil**. Ein Geländewagen mit Starrachse und Ladefläche
+hat hinten mehr Aufstandsfläche.
+
+### Bekannte Abweichung: der Lastwagen kann nicht umkippen
+
+Bei 1,10 m Schwerpunkt und 2,0 m Spur kippt ein echter Lastwagen bei
+`a_lat > g·(t/2)/h = 8,9 m/s²`, und das liegt **unter** der Haftgrenze seiner
+Reifen (9,3 m/s²). Ein echter Lastwagen fällt in der Vollkurve also um, bevor er
+rutscht. Dieser rutscht. Das Fahrmodell kennt keinen Überschlag (Kopf von
+`Vehicle.ts`) — bekannte Abweichung, keine Nachlässigkeit.
+
+---
+
+## 18.4 — Die Karosserien
+
+Vier prozedurale Formen in `carMesh.ts`, aus `BodySpec` gerechnet: **null
+zusätzliche Bytes Download**. 128…176 Dreiecke Blech plus ~170…220 für vier
+Räder; `DriveSystem` legt beim Wechsel die alte Geometrie weg.
+
+| | Dreiecke Blech | B × H × L | Radüberstand | Blech ab |
+|---|---:|---|---:|---:|
+| Coupé | 128 | 1,74 × 1,14 × 4,34 m | 12,5 cm | 0,34 m |
+| GT | 176 | 1,94 × 1,11 × 4,85 m | 13,0 cm | **0,12 m** |
+| Offroad | 152 | 2,18 × 1,66 × 5,09 m | 10,0 cm | **0,39 m** |
+| Lastwagen | 168 | 2,78 × 2,70 × 7,67 m | 6,0 cm | 0,47 m |
+
+**`assertWheelsVisible` wirft beim Bauen**, wenn das Rad weniger als 5 cm über die
+Blechkante steht. Das ist die Prüfung, die es in P14 nicht gab und die dort ein
+Auto ohne Räder gekostet hat: Draw-Calls, Instanzzahl und Matrizen waren alle
+richtig, gesehen hat es erst das erste Bild. Bilder sieht sich niemand für vier
+Fahrzeuge jedes Mal an — die Prüfung schon.
+
+Gegenprobe gefahren: eine Spec mit `hullWidth 1,8` wirft mit „die Räder stehen
+nur −5,5 cm über die Blechkante hinaus".
+
+### Was die drei Fahrzeuge im Startdownload kosten
+
+Gemessen gegen einen Bau aus `HEAD` in einem eigenen Worktree — also derselbe
+Vite, dieselben Abhängigkeiten, nur der Quelltext von vorher:
+
+| | roh | gzip |
+|---|---:|---:|
+| vor P18 | 327,34 kB | 115,02 kB |
+| nach P18 | 339,15 kB | 119,01 kB |
+| **Delta** | **+11,81 kB** | **+3,99 kB (3,5 %)** |
+
+Darin stecken drei Fahrzeuge samt Karosserien, die Fahrzeugwahl im Menü und die
+Umbauten am Fahrmodell. Kein einziges Byte davon ist ein Modell oder eine
+Textur — die Geometrie wird gerechnet (P5.2, dieselbe Rechnung wie bei den
+Landmarks). Gegen die 15 MB aus SPEC §4 ist das nicht messbar.
+
+---
+
+## 18.5 — Der Messlauf auf der Karte
+
+`japanMap.driveProbe({ seconds: 45, speedCap: 16 })` je Fahrzeug, alle acht
+Strecken. **Durchdringung 0,0 cm bei allen vier auf sieben von acht Strecken**
+(Lastwagen auf dem Ring: ein Kontakt, 3,4 cm). CPU 0,020…0,045 ms je Schritt.
+
+Der Tempelaufgang (`sando`, Kies, 43 % Steigung) ist die Zeile, für die es den
+Allradler gibt:
+
+| Fahrzeug | zurückgelegt | Schnitt |
+|---|---:|---:|
+| Touge-Coupé | 29 m | 2 km/h |
+| GT | 18 m | 1 km/h |
+| **Offroad 4×4** | **394 m** | **31 km/h** |
+| Lastwagen | 21 m | 2 km/h |
+
+Der Lastwagen hält die Spur deutlich schlechter (bis 8,7 m Abweichung in der
+Stadt, 13,1 m auf dem Sando gegen 1,0…3,1 m der anderen). Das ist seine Bauart —
+4,6 m Radstand, `STEERING.rate` 1,6 gegen 3,2 — und zugleich die Grenze des
+Prüfstands, dessen Spurregler für ein Coupé ausgelegt ist.
+
+---
+
+## 18.6 — Driftspuren: gemessen unsichtbar, jetzt gemessen sichtbar
+
+### Der Befund
+
+Die alte Spurfarbe für lose Böden trug den Kommentar „**heller als der Boden,
+sonst verschwindet sie**". Diese Begründung war falsch. Mittelwerte der
+tatsächlich verlegten Belagstexturen (`tools/bench/surfcolor.mjs`, Helligkeit
+nach Rec. 709 auf 0…255):
+
+| Fläche | Helligkeit | alte Spur | Verhältnis |
+|---|---:|---:|---:|
+| Asphalt | 89,6 | 35,3 | 2,54 : 1 |
+| Gras / Gelände | 96,3 | 79,1 | **1,22 : 1** |
+| Kiesbelag | 97,5 | 79,1 | **1,23 : 1** |
+
+Die „hellere" Spur war auf beiden losen Belägen **dunkler als der Boden** und
+dabei so nah an ihm, dass 22 % blieben — auf einer texturierten Fläche mit Korn
+ist das nichts.
+
+### Die Reparatur ist nicht nur eine andere Zahl
+
+Die Spur ist ein `MeshBasicMaterial`, wird also **nicht beleuchtet**. In der
+blauen Stunde ist die *beleuchtete* Fahrbahn viel dunkler als ihre Albedo, und
+eine unbeleuchtete Spur mit fester Farbe ist je nach Tageszeit heller oder
+dunkler als der Boden. **Eine Farbe, die gegen die Albedo stimmt, stimmt gegen
+das Bild noch lange nicht.**
+
+Gezeichnet wird deshalb **multiplikativ**: die Spur *dämpft*, was unter ihr liegt.
+Das ist zugleich das physikalisch richtige Modell (Abrieb ist eine Schicht, kein
+Leuchten) und von der Beleuchtung unabhängig. Drei Beläge, drei Dämpfungen
+(0,38 / 0,42 / 0,34 perzeptuell), und die Breite kommt aus `chassis.wheelWidth`
+statt aus einer Konstanten — der Lastwagen zog sonst eine Spur, die schmaler ist
+als sein Reifen.
+
+**Gemessen am laufenden Bild** (Handbremsdrift auf dem Ring, Draufsicht,
+Differenz gegen dasselbe Bild ohne Spurmaterial): 1356 abgedunkelte Pixel,
+Verhältnis im Mittel **1,70 : 1**, an der stärksten Stelle **9,15 : 1**. Das
+Differenzbild zeigt die zwei Reifenbahnen (`.cache/shots/kurz-diff.png`).
+
+> **Und eine Falle beim Messen, die eine halbe Stunde gekostet hat.** Die ersten
+> Aufnahmen zeigten fast nichts, obwohl 32 Spuren lebten. Ursache: zwischen zwei
+> Werkzeugaufrufen läuft die rAF-Schleife weiter, und `VehicleFx` altert im
+> **variablen** Schritt mit bis zu 50 ms je Frame. Die Spuren waren beim
+> Auslösen der Aufnahme fast abgelaufen (`aFade` 0,01…0,11 statt 1,00). Erzeugen
+> und Fotografieren müssen in **einem** Aufruf passieren. Dieselbe Klasse wie
+> „warm gegen kalt verglichen".
+
+### Kosten je Frame — die Sparmaßnahme, die nie zu Ende geführt war
+
+Im Kopf von `VehicleFx.ts` stand seit P14 richtig, dass eine Driftspur sich nicht
+bewegt. `#writeSkids` setzte `instanceMatrix.needsUpdate` und
+`instanceColor.needsUpdate` trotzdem in **jedem** Frame — 256 × 16 plus 256 × 3
+Floats, also 19 KB, sechzigmal je Sekunde, für Daten, die sich nur beim Setzen
+eines Stempels ändern.
+
+Gemessen im laufenden Bild (Pufferupload-Zähler über `BufferAttribute.version`):
+
+| | vorher (je Frame) | nachher | Ersparnis |
+|---|---:|---:|---:|
+| 600 Frames Geradeausfahrt | 600 + 600 | **17 + 17** | 97 % |
+| 300 Frames Drift | 300 + 300 | **42 + 42** | 86 % |
+| gezeichnete Instanzen | 256 | **32** | 87 % |
+
+### Und der Fehler, den der Einbau selbst erzeugt hat
+
+`#skidLive` wird nur in `#ageSkids` gebildet, und die neue Sparmaßnahme steigt
+bei `#skidLive === 0` sofort aus. Einmal auf null, für immer auf null — und
+`#writeSkids` schaltet das Mesh dann unsichtbar, **obwohl Stempel gesetzt
+werden**.
+
+Gemessen: **32 lebende Alterungswerte, `count` 0, `visible` false.** Kein
+Typfehler, keine Ausnahme, kein Konsoleneintrag. Genau die Fehlerform aus
+CLAUDE.md („etwas ist nicht im Bild, und jede Zahl sagt, es sei alles in
+Ordnung") — diesmal beim Einbau der Optimierung selbst entstanden und nur
+deshalb gefunden, weil danach am laufenden Bild gemessen wurde und nicht nur
+typgeprüft.
+
+---
+
+## 18.7 — Die Fahrzeugwahl
+
+Ein Reiter „Fahrzeug" im Pausenmenü, vier Karten mit Name, Kennzahlen und
+Charakter. Die Höchstgeschwindigkeit darin ist **gerechnet** (`v = ∛(P/c)`) und
+nicht getippt — eine von Hand gepflegte Zahl wäre beim nächsten Reglerzug falsch.
+
+Der Reiter existiert nur, wenn ein Fahrmodus hereingereicht wurde — dieselbe
+Regel wie bei „Debug".
+
+Strukturell geprüft (CLAUDE.md, „Die Oberfläche prüfen — sie ist DOM, kein Bild"),
+und zwar **am gebauten Stand auf Port 4180**:
+
+- `window.japanMap` ist dort `undefined`, der Reiter „Debug" fehlt, „Fahrzeug"
+  ist da.
+- Alle vier Karten: `pointer-events: auto` (berechneter Wert), von
+  `elementFromPoint` in der Mitte getroffen, von nichts verdeckt.
+- Ein `click()` auf eine Karte wechselt Spec, Geometrie (andere UUID, andere
+  Dreieckszahl), Radhalbmesser und Markierung — über den echten Weg, nicht über
+  einen von Hand gesetzten Zustand.
+- Bei 375 × 812 passen alle vier Karten ohne Scrollen ins Bild und sind
+  erreichbar.
+
+---
+
+## Akzeptanzkriterien P18
+
+- [x] **Die angetriebene Achse kann auf Asphalt durchdrehen.** Gemessen 1,11 ×
+      beim Anfahren (vorher 0,857 ×). Die Grenze ist ausgerechnet und steht als
+      Zahl im Prüfstand: 9,1 kN.
+- [x] **Kein Energiezuwachs.** 0 Anstiege über 1200 Ausrollschritte, bei allen
+      vier Fahrzeugen.
+- [x] **Der Lastwechsel im Bogen klingt ab** — bei allen vier und bei drei
+      Lenkwinkeln. Schlechtester Wert 11,2° nach 2,5 s.
+- [x] **Gierstabilität `b·C_h > a·C_v` bei allen vier**: 1,33 / 1,32 / 1,32 / 1,41.
+- [x] **Lenkung spiegelsymmetrisch**, Abweichung exakt 0 bei allen vier.
+- [x] **Geradeauslauf** 0,0000 m Versatz auf 60 s bei allen vier.
+- [x] **Der Abfall der Lenkantwort hinter der Spitze bleibt unter 15 %**
+      (gemessen 0…10 %).
+- [x] **Vier unterscheidbare Fahrzeuge**, jedes mit eigener Karosserie und
+      sichtbaren Rädern (vier Bilder in `.cache/shots/fahrzeug-*.png`).
+- [x] **Alle vier fahren alle acht Strecken** mit 0,0 cm Durchdringung
+      (Ausnahme: Lastwagen auf dem Ring, ein Kontakt, 3,4 cm).
+- [x] **Der Allradler kommt den Tempelaufgang hoch** — 394 m gegen 18…29 m der
+      anderen.
+- [x] **Driftspuren sind messbar sichtbar**: 9,15 : 1 an der stärksten Stelle,
+      mit Differenzbild.
+- [x] **Die Spuren kosten weniger als vorher**: 97 % weniger Pufferuploads bei
+      Geradeausfahrt, 87 % weniger gezeichnete Instanzen.
+- [x] **Die Fahrzeugwahl ist im gebauten Stand erreichbar** und braucht kein
+      `window.japanMap`.
+- [x] **`typecheck` und `build` laufen sauber durch**, keine Konsolenfehler im
+      Auslieferungsbau.
+- [ ] **Ob sich die vier gut anfahren, ist nicht geprüft.** Der Prüfstand fährt
+      mit einem Regler, nicht mit einer Absicht. „Ist der Drift des GT
+      kontrollierbar", „fühlt sich der Lastwagen schwer an" — das braucht eine
+      Hand an der Tastatur. Dieselbe offene Zeile wie in P14, und sie bleibt
+      offen.
+- [ ] **Auf einem echten Telefon nicht geprüft.** Dieselbe Lücke wie P12.6, P13,
+      P14 und P16. Alle Zahlen aus der Geräteemulation bei 375 × 812.
+- [ ] **GPU-Kosten nicht gemessen.** Diese Maschine ist der
+      Software-Rasterisierer (ANGLE / Microsoft Basic Render Driver), kein
+      `EXT_disjoint_timer_query_webgl2`. Die Ersparnis an den Driftspuren ist an
+      **Pufferuploads** gemessen, nicht an GPU-Millisekunden.
+
+## Was P18 ausdrücklich **nicht** enthält
+
+**Kein Getriebe mit Gängen.** `launchBoost` bildet die Übersetzung des ersten
+Gangs als glatte Kurve nach. Schaltvorgänge, Drehzahl und ein Schaltton wären
+eine eigene Aufgabe mit eigener Messung — und das HUD hat bereits ein Gangfeld,
+das dann etwas anzeigen könnte.
+
+**Kein Mittendifferential.** Der Allradantrieb verteilt einen **festen** Anteil.
+Sperrwirkung und Momentenverschiebung nach Schlupf brauchen Raddrehzahlen je
+Achse, und die führt dieses Modell ausdrücklich nicht. Bekannte Näherung: die
+Kraft kann nicht von der durchdrehenden auf die haftende Achse wandern.
+
+**Kein Überschlag.** Unverändert seit P14 — beim Lastwagen ist das jetzt eine
+sichtbare Abweichung (18.3), keine Fußnote mehr.
+
+**Keine Kollision zwischen Fahrzeugen**, kein Schaden, keine eigenen Motorklänge
+je Fahrzeug (die Tonschicht bekommt `drive:vehicle` gemeldet und wertet es noch
+nicht aus).

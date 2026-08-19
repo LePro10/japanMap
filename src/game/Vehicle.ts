@@ -1,17 +1,13 @@
 import { Euler, Quaternion, Vector3 } from 'three';
 
+import { GRAVITY, SURFACE_FEEL } from '@/config/vehicle.config';
 import {
-  CG_TO_FRONT,
-  CG_TO_REAR,
-  CHASSIS,
-  DRIVETRAIN,
-  GRAVITY,
-  STEERING,
-  SUSPENSION,
-  SURFACE_FEEL,
-  TIRE,
-  VEHICLE_COLLISION,
-} from '@/config/vehicle.config';
+  ENGINE_BRAKE_FLOOR,
+  ENGINE_BRAKE_SHARE,
+  TOUGE,
+  type TireSpec,
+  type VehicleSpec,
+} from '@/config/vehicles.config';
 import {
   RAIL_BREAK_ENERGY,
   RAIL_BREAK_SPEED,
@@ -151,9 +147,22 @@ export interface VehicleTelemetry {
   skid: number;
 }
 
-/** Statische Federlänge, sodass `k · x = m · g` bei Ruhehöhe `cgHeight` gilt. */
-const STATIC_COMPRESSION = (CHASSIS.mass * GRAVITY) / SUSPENSION.stiffness;
-const SPRING_REST = CHASSIS.cgHeight + STATIC_COMPRESSION;
+/**
+ * > **Sieben Modulkonstanten standen hier bis P17, und sie mussten alle weg.**
+ * >
+ * > `STATIC_COMPRESSION`, `SPRING_REST`, `SLIP_SPEED_FLOOR`,
+ * > `STATIC_HOLD_SPEED`, `MAX_YAW_RATE`, `WHEEL_MAX_DROP` und `WHEEL_MIN_DROP`
+ * > waren aus `CHASSIS` und `SUSPENSION` gerechnet — also aus den Maßen **eines**
+ * > Fahrzeugs. Sobald `Vehicle` eine Spec bekommt, sind sie eine Falle: die
+ * > Physik rechnet mit den Zahlen des Lastwagens, die Federruhelage bleibt die
+ * > des Coupés. Nichts davon würde eine Kennzahl melden — das Auto führe, nur
+ * > eben falsch, und der Fehler säße 47 cm tief im Boden.
+ * >
+ * > Die fünf gerechneten stehen jetzt in `VehicleSpec.derived`
+ * > (`vehicles.config.ts`, Funktion `derive`), die zwei gewählten in
+ * > `VehicleSpec.limits`. Ihre Herleitungen sind mitgewandert; was hier folgt,
+ * > ist die Begründung, die an dieser Stelle gebraucht wird.
+ */
 
 /**
  * Bezugsgeschwindigkeit im Nenner des Schräglaufwinkels, in m/s.
@@ -202,49 +211,12 @@ const SPRING_REST = CHASSIS.cgHeight + STATIC_COMPRESSION;
  * > **wirkungslos geworden** — und wird genau deshalb nicht angefasst: eine
  * > Änderung ohne messbaren Unterschied ist keine Verbesserung, sondern ein
  * > weiterer Wert ohne Messung daneben.
- */
-const SLIP_SPEED_FLOOR = 6;
-
-/**
- * Unter diesem Tempo hält die Haftreibung das Auto **statisch** (m/s).
  *
- * Ohne diesen Term hat das Modell keine Kraft, die ein stehendes Auto an einem
- * Hang hält: der Rollwiderstand ist proportional zur Geschwindigkeit gedacht und
- * verschwindet mit ihr, der Hangabtrieb nicht. Ein Wagen ohne Gas würde jede
- * Böschung hinunterrollen und unten in einer gedämpften Schwingung liegen. Der
- * Term ersetzt kein Reifenmodell — er ist die Haftreibung, die ein rollendes
- * Modell ohne Raddrehzahl nicht von selbst hat.
+ * > Der Wert steht seit P18 als `limits.slipSpeedFloor` in der Spec. Er ist bei
+ * > allen vier Fahrzeugen gleich (6 m/s) — und bleibt trotzdem je Fahrzeug
+ * > einstellbar, weil die Größe, gegen die er schützt (die Gierrate bei
+ * > Schrittgeschwindigkeit), von Radstand und Gierträgheit abhängt.
  */
-const STATIC_HOLD_SPEED = 0.8;
-
-/** Größte Gierrate in rad/s. Begründung an der Stelle, an der sie greift. */
-const MAX_YAW_RATE = 8;
-
-/**
- * Wie tief die Radmitte im **Ruhezustand** unter dem Schwerpunkt hängt.
- *
- * Der Schwerpunkt steht `cgHeight` über der Aufstandsfläche, die Radmitte
- * `wheelRadius` darüber — die Differenz ist der Ruhehub. Aus ihm und dem
- * Federweg folgen die beiden Anschläge, und damit ist die Radstellung
- * vollständig aus vorhandenen Maßen bestimmt: es gibt hier **keine gewählte
- * Zahl**.
- */
-const WHEEL_REST_DROP = CHASSIS.cgHeight - CHASSIS.wheelRadius;
-/**
- * Unterer Anschlag der Radstellung — der volle Federweg unter dem Hub.
- *
- * Früher `rest + STATIC_COMPRESSION` (ausgefederte Feder, 35 cm). Die
- * Stützebene ignoriert seitdem Extremwerte; ohne den extra Weg würde ein Rad
- * über einem Loch in der Luft hängen, obwohl der Aufbau auf den anderen drei
- * sitzt. 47 cm sind der Ruhehub plus der ganze Federweg — Arcade-Nachlauf,
- * nicht der physikalische Anschlag.
- */
-const WHEEL_MAX_DROP = WHEEL_REST_DROP + SUSPENSION.travel;
-/** Am Anschlag: der Rest des Federwegs oberhalb der statischen Lage. */
-const WHEEL_MIN_DROP = Math.max(
-  0,
-  WHEEL_REST_DROP - Math.max(0, SUSPENSION.travel - STATIC_COMPRESSION),
-);
 
 export class Vehicle {
   /** Schwerpunkt in Weltkoordinaten. */
@@ -259,6 +231,19 @@ export class Vehicle {
    */
   readonly velocity = new Vector3();
   readonly quaternion = new Quaternion();
+
+  /**
+   * Welches Fahrzeug gerade gerechnet wird.
+   *
+   * **Kein `readonly` und kein Konstruktorargument allein**, weil der Wechsel im
+   * Betrieb passiert: `DriveSystem` tauscht die Spec und behält die Instanz. Das
+   * ist kein Geschmack, sondern eine Notwendigkeit — `main.ts` reicht
+   * `drive.vehicle.telemetry` **als Objekt** an die Tonschicht weiter, und eine
+   * neue `Vehicle`-Instanz hätte eine neue Telemetrie. Der Motor wäre nach dem
+   * ersten Fahrzeugwechsel stumm geblieben, ohne dass irgendetwas gemeldet
+   * hätte.
+   */
+  #spec: VehicleSpec = TOUGE;
 
   #yaw = 0;
   #yawRate = 0;
@@ -311,6 +296,30 @@ export class Vehicle {
     skid: 0,
   };
 
+  constructor(spec: VehicleSpec = TOUGE) {
+    this.#spec = spec;
+  }
+
+  /** Die gerechnete Spec. Lesen darf jeder, ändern nur über `setSpec`. */
+  get spec(): VehicleSpec {
+    return this.#spec;
+  }
+
+  /**
+   * Fahrzeug wechseln.
+   *
+   * **Setzt keinen Zustand zurück** — das macht der Aufrufer über `respawn`, und
+   * zwar zwingend: die Federruhelage, die Radanschläge und der Schwerpunkt sind
+   * andere geworden, und ein Wagen, der mit der Höhe des Coupés und den Maßen
+   * des Lastwagens weiterrechnet, steht 58 cm im Boden. Zwei getrennte Aufrufe
+   * und nicht einer, weil `respawn` einen `Ground` braucht und die Spec ihn
+   * nicht kennt; `DriveSystem.setVehicle()` ist die Stelle, die beides in der
+   * richtigen Reihenfolge tut.
+   */
+  setSpec(spec: VehicleSpec): void {
+    this.#spec = spec;
+  }
+
   get yaw(): number {
     return this.#yaw;
   }
@@ -355,7 +364,7 @@ export class Vehicle {
     // **91,9 % der Zeit in der Luft, längste Flugphase 7,7 s**.
     ground.normal(x, z, this.#normal);
     const aufrecht = Math.max(0.35, this.#normal.y);
-    this.position.set(x, groundY + CHASSIS.cgHeight / aufrecht, z);
+    this.position.set(x, groundY + this.#spec.chassis.cgHeight / aufrecht, z);
     this.#yaw = heading;
     this.#yawRate = 0;
     this.#pitch = 0;
@@ -394,7 +403,7 @@ export class Vehicle {
     t.slipRear = 0;
     t.wheelspin = 0;
     t.steerAngle = 0;
-    t.compression = STATIC_COMPRESSION / SUSPENSION.travel;
+    t.compression = this.#spec.derived.staticCompression / this.#spec.suspension.travel;
     t.airborne = false;
     t.lastPenetration = 0;
     t.contacts = 0;
@@ -411,6 +420,12 @@ export class Vehicle {
    * verschiedenen Stellen an.
    */
   step(dt: number, input: DriveInput, ground: Ground, collision: CollisionWorld | null): void {
+    // **Einmal auspacken statt fünfzigmal durchgreifen.** Nicht aus
+    // Geschwindigkeitsgründen — `this.#spec.chassis.mass` ist billig —, sondern
+    // damit unten dasselbe steht wie vor P18: `chassis.mass` liest sich wie
+    // `CHASSIS.mass`, und die Herleitungen in den Kommentaren bleiben lesbar.
+    const { chassis, suspension, tire, drivetrain, steering, limits, derived } = this.#spec;
+
     this.#updateBasis();
     this.#steer(dt, input.steer);
     // **Das Gas läuft ein, es springt nicht.** Eine Taste kennt nur 0 und 1; ein
@@ -419,7 +434,7 @@ export class Vehicle {
     // das der Unterschied zwischen „beschleunigen" und „quer stehen" — dieselbe
     // Begründung wie bei `STEERING.rate` für den Lenkeinschlag.
     const gasZiel = clamp(input.throttle, 0, 1);
-    const gasSchritt = DRIVETRAIN.throttleRate * dt;
+    const gasSchritt = drivetrain.throttleRate * dt;
     this.#throttle += clamp(gasZiel - this.#throttle, -gasSchritt, gasSchritt);
     this.#sampleWheels(ground);
 
@@ -447,20 +462,20 @@ export class Vehicle {
     // Boden; `resolveTerrainFollow` schiebt in XZ.
     const contactY = this.#contactHeight();
     const gap = this.position.y - contactY;
-    let compression = steep ? 0 : SPRING_REST - gap * this.#normal.y;
+    let compression = steep ? 0 : derived.springRest - gap * this.#normal.y;
     this.#airborne = steep || compression <= 0;
 
     let springForce = 0;
     if (!this.#airborne) {
-      const travelOver = compression - SUSPENSION.travel;
+      const travelOver = compression - suspension.travel;
       // Anschlag: jenseits des Federwegs sitzt der Aufbau auf dem Gummipuffer,
       // und der ist ein Vielfaches härter. Ohne ihn schluckt eine Bordsteinkante
       // den ganzen Federweg und der Aufbau taucht durch den Boden.
       const stiffness =
         travelOver > 0
-          ? SUSPENSION.stiffness * compression +
-            SUSPENSION.stiffness * SUSPENSION.bumpStopFactor * travelOver
-          : SUSPENSION.stiffness * compression;
+          ? suspension.stiffness * compression +
+            suspension.stiffness * suspension.bumpStopFactor * travelOver
+          : suspension.stiffness * compression;
       // **Und ein Deckel darauf — die wichtigste Zeile für das Fahren im
       // Gelände.** Der Anschlag ist eine Feder, deren Kraft mit dem Weg linear
       // wächst. Auf einem Höhenfeld mit 1,5 m Texelabstand findet ein Rad bei
@@ -471,34 +486,49 @@ export class Vehicle {
       // Rad verformt sich an einer Kante und rutscht daran hoch, statt den
       // Aufbau mit 9 g zu beschleunigen. Herleitung des Werts bei
       // `SUSPENSION.maxLoadFactor`.
-      const deckel = CHASSIS.mass * GRAVITY * SUSPENSION.maxLoadFactor;
       springForce = Math.min(
-        deckel,
-        Math.max(0, stiffness - SUSPENSION.damping * this.#vY * this.#normal.y),
+        derived.springCap,
+        Math.max(0, stiffness - suspension.damping * this.#vY * this.#normal.y),
       );
     } else {
       compression = 0;
     }
 
-    this.#vY += (springForce / CHASSIS.mass - GRAVITY) * dt;
+    this.#vY += (springForce / chassis.mass - GRAVITY) * dt;
 
     // ── Radlasten ─────────────────────────────────────────────────────────
     //
     // Grundlast aus der Federkraft, mit `cosθ` auf die Hangnormale bezogen.
     // In der Luft ist sie null, und damit sind alle Reifenkräfte null — genau
     // richtig, ein Rad ohne Boden überträgt nichts.
-    const load = this.#airborne ? 0 : springForce * this.#normal.y;
+    //
+    // **Abtrieb kommt hinzu, seit P18 zum ersten Mal.** `Fz += c · v²`, und zwar
+    // auf die **Radlast** und nicht auf die Federkraft: aerodynamischer Abtrieb
+    // drückt den Wagen auf die Straße, ohne dass die Feder ihn zurückschiebt —
+    // ein Auto mit Flügel steht bei 300 km/h tiefer, aber es steht nicht auf dem
+    // Anschlag. Über die Feder gerechnet wäre er außerdem vom Deckel
+    // `derived.springCap` abgeschnitten worden und hätte oberhalb von 3,5 g gar
+    // nichts mehr getan.
+    //
+    // > Bis P17 stand `DRIVETRAIN.downforce` mit 0,55 in der Konfiguration und
+    // > wurde von **keiner** Zeile gelesen. Siehe die Begründung an der
+    // > Konstanten selbst; die Zahlen sind mit dem ersten Gebrauch neu bemessen
+    // > worden, weil eine nie angewandte Zahl auch nie geprüft war.
+    const aero = this.#airborne
+      ? 0
+      : drivetrain.downforce * (this.#vLong * this.#vLong + this.#vLat * this.#vLat);
+    const load = this.#airborne ? 0 : springForce * this.#normal.y + aero;
     // Längs-Lastverlagerung: ΔFz = m · a_x · h / L. Verwendet wird die
     // Beschleunigung des **letzten** Schritts (in `#lastLongAccel`), weil die des
     // aktuellen erst am Ende feststeht — ein Schritt Verzug bei 60 Hz ist 17 ms
     // und nicht spürbar, eine Iteration darüber wäre der Aufwand nicht wert.
-    const transfer = (CHASSIS.mass * this.#lastLongAccel * CHASSIS.cgHeight) / CHASSIS.wheelbase;
-    const loadFront = Math.max(0, load * CHASSIS.frontWeight - transfer);
-    const loadRear = Math.max(0, load * (1 - CHASSIS.frontWeight) + transfer);
+    const transfer = (chassis.mass * this.#lastLongAccel * chassis.cgHeight) / chassis.wheelbase;
+    const loadFront = Math.max(0, load * chassis.frontWeight - transfer);
+    const loadRear = Math.max(0, load * (1 - chassis.frontWeight) + transfer);
 
-    const gripFactor = surfaceGrip(surface);
-    let muFront = TIRE.gripAsphalt * gripFactor;
-    let muRear = TIRE.gripAsphalt * gripFactor * TIRE.rearGripFactor;
+    const gripFactor = surfaceGrip(surface, tire);
+    let muFront = tire.gripAsphalt * gripFactor;
+    let muRear = tire.gripAsphalt * gripFactor * tire.rearGripFactor;
     const speedNow = Math.hypot(this.#vLong, this.#vLat);
     // Aquaplaning und lockerer Kies — Asphalt bleibt die gemessene Referenz.
     if (surface === 'wasser' && speedNow > SURFACE_FEEL.hydroStart) {
@@ -514,7 +544,7 @@ export class Vehicle {
     }
 
     // ── Schräglaufwinkel ──────────────────────────────────────────────────
-    const speedRef = Math.max(Math.abs(this.#vLong), SLIP_SPEED_FLOOR);
+    const speedRef = Math.max(Math.abs(this.#vLong), limits.slipSpeedFloor);
     // Rückwärts ist das Vorzeichen der Lenkwirkung umgekehrt; das ergibt sich von
     // selbst, wenn man mit der **vorzeichenbehafteten** Längsgeschwindigkeit
     // rechnet. Deshalb `vLong` und nicht `|vLong|` im Zähler des Nenners.
@@ -536,8 +566,8 @@ export class Vehicle {
     // einem Reifen- oder Geländeproblem aus, weil es sich auf losem Boden zuerst
     // zeigte.
     const slipFront =
-      Math.atan2(this.#vLat - this.#yawRate * CG_TO_FRONT, speedRef) - this.#steerAngle * direction;
-    const slipRear = Math.atan2(this.#vLat + this.#yawRate * CG_TO_REAR, speedRef);
+      Math.atan2(this.#vLat - this.#yawRate * derived.cgToFront, speedRef) - this.#steerAngle * direction;
+    const slipRear = Math.atan2(this.#vLat + this.#yawRate * derived.cgToRear, speedRef);
 
     // ── Längskräfte ───────────────────────────────────────────────────────
     let throttle = this.#throttle;
@@ -557,34 +587,168 @@ export class Vehicle {
     if (throttle > 0) {
       if (reverse) {
         driveForce =
-          this.#vLong > -DRIVETRAIN.reverseMaxSpeed
-            ? -throttle * DRIVETRAIN.maxDriveForce * DRIVETRAIN.reverseForceFactor
+          this.#vLong > -drivetrain.reverseMaxSpeed
+            ? -throttle * drivetrain.maxDriveForce * drivetrain.reverseForceFactor
             : 0;
       } else {
         // Kraftbegrenzt bei niedrigem, leistungsbegrenzt bei hohem Tempo:
         // `F = min(F_max, P / v)`. Die Endgeschwindigkeit ergibt sich damit aus
         // dem Gleichgewicht mit dem Luftwiderstand und wird nicht gesetzt.
+        //
+        // **`F_max` ist seit P18 nicht mehr konstant** — der erste Gang steckt
+        // darin. Begründung und Herleitung bei `DrivetrainSpec.launchBoost`; die
+        // Kurzfassung: mit konstantem `F_max` ist das ein Auto mit *einem* Gang,
+        // und ein Auto mit einem Gang kann an der Ampel die Räder nicht
+        // durchdrehen lassen. Gemessen war das der Grund, warum der
+        // Durchdrehfaktor auf Asphalt nie über **0,857** kam, obwohl die
+        // Anforderung „der Hinterwagen bricht auf Gasstoß aus" seit P9.2 im
+        // Kopf von `vehicle.config.ts` steht.
         const speedForPower = Math.max(Math.abs(this.#vLong), 4);
-        driveForce = throttle * Math.min(DRIVETRAIN.maxDriveForce, DRIVETRAIN.power / speedForPower);
+        const gear =
+          1 +
+          drivetrain.launchBoost * Math.exp(-Math.abs(this.#vLong) / drivetrain.launchSpeed);
+        driveForce =
+          throttle *
+          Math.min(drivetrain.maxDriveForce * gear, drivetrain.power / speedForPower);
       }
     }
 
-    const brakeTotal = brake * DRIVETRAIN.brakeForce;
+    /**
+     * **Motorbremse — bis P17 gab es sie nicht.**
+     *
+     * Ohne Gas wirkten allein Luftwiderstand und Rollreibung; gemessen brauchte
+     * das Coupé aus 195 km/h **39,4 s**, um auf die Hälfte zu kommen. Ein
+     * Verbrenner im Schub schleppt sein eigenes Reibmoment mit, und für den
+     * Lastwagen ist die Motorstaubremse sogar das Bauteil, mit dem er überhaupt
+     * einen Pass hinunterkommt.
+     *
+     * Sie läuft unterhalb `ENGINE_BRAKE_FLOOR` linear aus (die Kupplung trennt
+     * vor dem Stillstand) und geht auf die **angetriebenen** Achsen — dorthin,
+     * wo sie herkommt.
+     *
+     * Der Betrag steht nicht hier, sondern unten: er hängt von der Haftung ab.
+     * Warum, steht bei `ENGINE_BRAKE_SHARE`.
+     */
+    const engineDragWanted =
+      throttle > 0 || this.#airborne || Math.abs(this.#vLong) <= 0.05
+        ? 0
+        : -Math.sign(this.#vLong) *
+          drivetrain.engineBrake *
+          Math.min(1, Math.abs(this.#vLong) / ENGINE_BRAKE_FLOOR);
+
+    const brakeTotal = brake * drivetrain.brakeForce;
     const brakeSign = this.#vLong > 0 ? -1 : this.#vLong < 0 ? 1 : 0;
-    const brakeFront = brakeTotal * DRIVETRAIN.brakeBias * brakeSign;
-    let brakeRear = brakeTotal * (1 - DRIVETRAIN.brakeBias) * brakeSign;
-    if (input.handbrake) brakeRear += DRIVETRAIN.handbrakeForce * (brakeSign !== 0 ? brakeSign : -1);
+    const brakeFront = brakeTotal * drivetrain.brakeBias * brakeSign;
+    let brakeRear = brakeTotal * (1 - drivetrain.brakeBias) * brakeSign;
+    if (input.handbrake) brakeRear += drivetrain.handbrakeForce * (brakeSign !== 0 ? brakeSign : -1);
+
+    // ── Antrieb auf die Achsen verteilen ──────────────────────────────────
+    //
+    // **Bis P17 gab es diese vier Zeilen nicht.** `driveForce` ging vollständig
+    // in `requestedRear`, und `usedFront` kannte nur die Bremse — das Modell
+    // konnte gar nichts anderes als Heckantrieb. Für den Allradler ist das kein
+    // Detail: er zieht sich mit der Vorderachse aus einer Furche, in der ein
+    // Hecktriebler sich eingräbt.
+    //
+    // Die Aufteilung ist ein **fester Anteil** und kein Mittendifferential.
+    // Sperrwirkung, Momentenverteilung nach Schlupf, Viscokupplung — all das
+    // wäre je Achse eine eigene Drehzahl, und Raddrehzahlen führt dieses Modell
+    // ausdrücklich nicht (siehe Tabelle im Kopf). Was ein fester Anteil nicht
+    // kann: die Kraft von der durchdrehenden auf die haftende Achse verschieben.
+    // Das ist eine bekannte Näherung.
+    const gripRear = muRear * loadRear;
+    const gripFront = muFront * loadFront;
+
+    /**
+     * **Die Motorbremse weicht dem Reibkreis, statt ihn zu sprengen.**
+     *
+     * Der erste Versuch schrieb sie einfach in die Längskraft der angetriebenen
+     * Achse — physikalisch die richtige Stelle, und das Auto war unfahrbar.
+     * Gemessen, Lastwechsel im Bogen bei 68 km/h auf idealem Asphalt, Gas ganz
+     * weg (Schwimmwinkel Spitze / nach 2,5 s):
+     *
+     * | Motorbremse | Lenkung 0,35 | 0,55 | 0,80 |
+     * |---:|---:|---:|---:|
+     * | 0 N   | 20,3° / **1,7°** | 21,9° / **1,7°** | 16,4° / 11,9° |
+     * | 300 N | 26,9° / **0,9°** | 29,3° / **6,7°** | 19,3° / 4,4° |
+     * | 400 N | 30,8° / 17,3° | 37,1° / 6,2° | 20,7° / 1,7° |
+     * | 800 N | 64,4° / **60,1°** | **89,7°** / 0,0° | 69,9° / **69,9°** |
+     *
+     * Zwischen 300 und 400 N kippt es: der Wagen kommt aus dem Lastwechsel nicht
+     * mehr zurück, bei 800 N steht er quer. Und 800 N sind nicht viel — 12 % der
+     * Hinterachshaftung.
+     *
+     * **Die Ursache ist eine Lücke im Modell, keine zu große Zahl.** Dieses
+     * Fahrmodell führt keine Raddrehzahlen (siehe Tabelle im Kopf). In einem
+     * echten Antriebsstrang bricht das Schleppmoment zusammen, sobald das Rad
+     * gegenüber der Fahrbahn zu rutschen beginnt: Rad und Motor hängen über die
+     * Kupplung zusammen, das Rad wird langsamer, die Schleppkraft fällt. Hier
+     * bleibt sie stehen — und schiebt die Achse immer weiter über ihre
+     * Kennlinie hinaus. Das ist eine Mitkopplung, genau wie die, gegen die
+     * `slipSpeedFloor` eingeführt wurde.
+     *
+     * Nachgebildet wird das Fehlende als **Deckel auf den Anteil der
+     * Achshaftung**. Er sagt: Schleppmoment ist begrenzt und gibt nach, statt
+     * die Seitenführung zu überfahren — das ist dieselbe Aussage, die eine
+     * Motorschleppmomentregelung im Steuergerät macht.
+     *
+     * Der Unterschied zur Betriebsbremse ist beabsichtigt: die **darf** die
+     * Lenkbarkeit überfahren (deshalb bremst man in einer Kurve nicht voll), die
+     * Motorbremse nicht.
+     */
+    // **Der Deckel gilt je Achse und nicht für die Summe.** Die erste Fassung
+    // rechnete beim Allradler mit `gripFront + gripRear` — und der Offroader
+    // stand danach bei jedem Lastwechsel quer (gemessen: 89,8° Spitze, 83,5°
+    // nach 2,5 s, bei Lenkung 0,55). Der Grund ist die Lastverlagerung: beim
+    // Verzögern entlastet sich die Hinterachse, und was den Wagen umbringt, ist
+    // der Anteil, der **auf ihr** landet — nicht die Summe über beide. Bei einem
+    // Fahrzeug mit 0,78 m Schwerpunkthöhe ist der Unterschied groß.
+    //
+    // Formal: gesucht ist das größte `F` mit `F·(1−s) ≤ share·gripHinten` und
+    // `F·s ≤ share·gripVorn`. Der Deckel ist das Minimum der beiden.
+    const share = drivetrain.frontShare;
+    const capRear = share >= 1 ? Infinity : (ENGINE_BRAKE_SHARE * gripRear) / (1 - share);
+    const capFront = share <= 0 ? Infinity : (ENGINE_BRAKE_SHARE * gripFront) / share;
+    const engineDrag =
+      engineDragWanted === 0
+        ? 0
+        : Math.sign(engineDragWanted) *
+          Math.min(Math.abs(engineDragWanted), capRear, capFront);
+
+    const axleForce = driveForce + engineDrag;
+    const driveFront = axleForce * share;
+    const driveRear = axleForce - driveFront;
 
     // Reibkreis hinten: was die Längsrichtung nimmt, fehlt der Querführung.
-    const gripRear = muRear * loadRear;
-    const requestedRear = driveForce + brakeRear;
+    const requestedRear = driveRear + brakeRear;
     const usedRear = clamp(requestedRear, -gripRear, gripRear);
-    // **Der Durchdrehfaktor ist der Drift-Schalter.** Vollgas verlangt mehr, als
-    // die Hinterachse hergibt (`maxDriveForce` liegt 8,6 % über der Haftgrenze —
-    // Herleitung dort); der Überschuss bleibt nicht als Kraft übrig, sondern
-    // frisst die Seitenführung. Genau das macht am Kurvenausgang aus Gas einen
-    // Übersteuerimpuls.
-    const wheelspin = gripRear > 1 ? Math.abs(requestedRear) / gripRear : 0;
+    const requestedFront = driveFront + brakeFront;
+    const usedFront = clamp(requestedFront, -gripFront, gripFront);
+
+    // **Der Durchdrehfaktor ist der Drift-Schalter.** Der Überschuss über die
+    // Haftgrenze bleibt nicht als Kraft übrig, sondern frisst die Seitenführung.
+    // Genau das macht am Kurvenausgang aus Gas einen Übersteuerimpuls.
+    //
+    // > **Er hat auf Asphalt nie über 1 gestanden, und das war ein Fehler.** Der
+    // > Kommentar hier behauptete, `maxDriveForce` liege „8,6 % über der
+    // > Haftgrenze der Hinterachse" — die Rechnung dahinter setzte die
+    // > **statische** Hinterachslast an und ließ die Lastverlagerung beim
+    // > Beschleunigen weg. Mit ihr braucht es 9088 N statt 6627, und 7200 lagen
+    // > damit 16,1 % **darunter**. Gemessen: höchster Durchdrehfaktor auf
+    // > Asphalt 0,857 × — beim Anfahren wie beim Gasstoß in der Kurve. Die
+    // > Reparatur steht bei `DrivetrainSpec.launchBoost`.
+    //
+    // **Gemessen wird die angetriebene Achse**, nicht pauschal die hintere: bei
+    // Frontantrieb wäre die hintere Zahl konstant null und die Anzeige (und mit
+    // ihr die Driftspur) blind für das, was tatsächlich passiert.
+    const spinRear = gripRear > 1 ? Math.abs(requestedRear) / gripRear : 0;
+    const spinFront = gripFront > 1 ? Math.abs(requestedFront) / gripFront : 0;
+    const wheelspin =
+      drivetrain.frontShare >= 1
+        ? spinFront
+        : drivetrain.frontShare <= 0
+          ? spinRear
+          : Math.max(spinFront, spinRear);
     // **Hier stand `spinLoss`, und es war die dritte tote Stellschraube dieses
     // Projekts.** `clamp(1/wheelspin, minSpinGrip, 1)` hat die Querkraft
     // multipliziert — *nachdem* der Reibkreis in `tireLateral` sie längst auf
@@ -603,39 +767,38 @@ export class Vehicle {
     // bei `tailGrip` — ein richtiger Wert an der falschen Stelle in derselben
     // Funktion, zweimal.
 
-    const gripFront = muFront * loadFront;
-    const usedFront = clamp(brakeFront, -gripFront, gripFront);
-
     // ── Querkräfte ────────────────────────────────────────────────────────
     const lateralFront = tireLateral(
       slipFront,
-      TIRE.peakSlipFront,
-      TIRE.falloffSlipFront,
+      tire.peakSlipFront,
+      tire.falloffSlipFront,
       gripFront,
       usedFront,
+      tire,
     );
     let lateralRear = tireLateral(
       slipRear,
-      TIRE.peakSlipRear,
-      TIRE.falloffSlipRear,
+      tire.peakSlipRear,
+      tire.falloffSlipRear,
       gripRear,
       usedRear,
+      tire,
     );
     // Handbremse: das Hinterrad steht, im Reibkreis bleibt fast nichts für die
     // Querführung. Nicht null — sonst ist der Handbremsdrift nicht lenkbar.
-    if (input.handbrake) lateralRear *= TIRE.lockedLateralFactor;
+    if (input.handbrake) lateralRear *= tire.lockedLateralFactor;
 
     // ── Widerstände ───────────────────────────────────────────────────────
     const speed = Math.hypot(this.#vLong, this.#vLat);
-    const drag = -DRIVETRAIN.drag * this.#vLong * Math.abs(this.#vLong);
+    const drag = -drivetrain.drag * this.#vLong * Math.abs(this.#vLong);
     const rollingCoefficient =
       surface === 'asphalt'
-        ? DRIVETRAIN.rollingResistance
+        ? drivetrain.rollingResistance
         : surface === 'kies'
-          ? (DRIVETRAIN.rollingResistance + DRIVETRAIN.rollingResistanceTerrain) / 2
+          ? (drivetrain.rollingResistance + drivetrain.rollingResistanceTerrain) / 2
           : surface === 'wasser'
-            ? DRIVETRAIN.rollingResistanceWater
-            : DRIVETRAIN.rollingResistanceTerrain;
+            ? drivetrain.rollingResistanceWater
+            : drivetrain.rollingResistanceTerrain;
     const rolling = this.#airborne
       ? 0
       : -Math.sign(this.#vLong) * rollingCoefficient * load * Math.min(1, Math.abs(this.#vLong) / 0.5);
@@ -677,12 +840,12 @@ export class Vehicle {
       usedFront + usedRear + drag + rolling - lateralFront * Math.sin(this.#steerAngle);
     const forceLat = lateralFront * Math.cos(this.#steerAngle) + lateralRear;
 
-    let accelLong = forceLong / CHASSIS.mass;
-    const accelLat = forceLat / CHASSIS.mass;
+    let accelLong = forceLong / chassis.mass;
+    const accelLat = forceLat / chassis.mass;
 
     // Haftreibung im Stand — Begründung bei `STATIC_HOLD_SPEED`.
-    if (!this.#airborne && throttle <= 0 && speed < STATIC_HOLD_SPEED) {
-      const holdLimit = (muFront * loadFront + gripRear) / CHASSIS.mass;
+    if (!this.#airborne && throttle <= 0 && speed < limits.staticHoldSpeed) {
+      const holdLimit = (muFront * loadFront + gripRear) / chassis.mass;
       const needed = -this.#vLong / dt - accelLong;
       accelLong += clamp(needed, -holdLimit, holdLimit);
     }
@@ -700,16 +863,16 @@ export class Vehicle {
       const wet = Math.min(1, waterDepth / 0.7);
       const horiz = Math.hypot(this.velocity.x, this.velocity.z);
       if (horiz > 1e-4) {
-        const damp = (DRIVETRAIN.waterDrag * wet * horiz * dt) / CHASSIS.mass;
+        const damp = (drivetrain.waterDrag * wet * horiz * dt) / chassis.mass;
         this.velocity.x -= this.velocity.x * damp;
         this.velocity.z -= this.velocity.z * damp;
       }
     } else if (!this.#airborne && surface !== 'asphalt') {
       const k =
         surface === 'gelaende'
-          ? DRIVETRAIN.terrainDrag
+          ? drivetrain.terrainDrag
           : surface === 'kies'
-            ? DRIVETRAIN.gravelDrag
+            ? drivetrain.gravelDrag
             : 0;
       if (k > 0) {
         this.velocity.x -= this.velocity.x * k * dt;
@@ -729,28 +892,28 @@ export class Vehicle {
     // fehlte es — und hob den Achsenfehler oben gerade wieder auf, weshalb das
     // Auto überhaupt fuhr und nur in die falsche Richtung lenkte.
     let yawTorque = -(
-      lateralFront * Math.cos(this.#steerAngle) * CG_TO_FRONT -
-      lateralRear * CG_TO_REAR
+      lateralFront * Math.cos(this.#steerAngle) * derived.cgToFront -
+      lateralRear * derived.cgToRear
     );
     // Die einzige Fahrhilfe: Dämpfung **hinter** dem Ausbruchpunkt. Bei normalem
     // Schräglauf ist der Term exakt null (siehe `STEERING.driftDamping`).
-    const excess = Math.abs(slipRear) - TIRE.peakSlipRear;
+    const excess = Math.abs(slipRear) - tire.peakSlipRear;
     if (excess > 0 && !this.#airborne) {
       yawTorque -=
         this.#yawRate *
-        STEERING.driftDamping *
-        Math.min(1, excess / TIRE.peakSlipRear) *
-        CHASSIS.yawInertia;
+        steering.driftDamping *
+        Math.min(1, excess / tire.peakSlipRear) *
+        chassis.yawInertia;
       // Loslassen fängt — Begründung bei `STEERING.releaseDamping`.
       if (Math.abs(input.steer) < 0.25 && !input.handbrake) {
         yawTorque -=
           this.#yawRate *
-          STEERING.releaseDamping *
-          Math.min(1, excess / TIRE.peakSlipRear) *
-          CHASSIS.yawInertia;
+          steering.releaseDamping *
+          Math.min(1, excess / tire.peakSlipRear) *
+          chassis.yawInertia;
       }
     }
-    this.#yawRate += (yawTorque / CHASSIS.yawInertia) * dt;
+    this.#yawRate += (yawTorque / chassis.yawInertia) * dt;
     // In der Luft dreht sich nichts weiter auf: ohne Reifen gibt es kein
     // Giermoment, und die vorhandene Drehung läuft nur aus.
     if (this.#airborne) this.#yawRate *= Math.exp(-0.6 * dt);
@@ -758,7 +921,7 @@ export class Vehicle {
     // Anschlag. 8 rad/s sind 1,3 Umdrehungen je Sekunde — mehr dreht sich ein
     // Auto auf Asphalt nicht, und oberhalb davon wird `ω·dt` so groß, dass die
     // Winkelintegration selbst ungenau wird (bei 8 rad/s sind es 7,6° je Schritt).
-    this.#yawRate = clamp(this.#yawRate, -MAX_YAW_RATE, MAX_YAW_RATE);
+    this.#yawRate = clamp(this.#yawRate, -limits.maxYawRate, limits.maxYawRate);
     this.#yaw += this.#yawRate * dt;
 
     // ── Lage integrieren ──────────────────────────────────────────────────
@@ -782,8 +945,8 @@ export class Vehicle {
       this.#normal.x,
       this.#normal.y,
       this.#normal.z,
-      CHASSIS.wheelRadius * 0.5,
-      VEHICLE_COLLISION.maxPushPerStep,
+      chassis.wheelRadius * 0.5,
+      this.#spec.collision.maxPushPerStep,
     );
     this.position.set(follow.x, follow.y, follow.z);
     this.velocity.x = follow.vx;
@@ -794,7 +957,7 @@ export class Vehicle {
     if (collision) this.#resolveCollision(collision);
 
     this.#updateAttitude(dt, accelLat, accelLong);
-    this.#wheelSpin += (this.#vLong / CHASSIS.wheelRadius) * dt;
+    this.#wheelSpin += (this.#vLong / chassis.wheelRadius) * dt;
     this.#updateTransform();
     this.#placeWheels();
 
@@ -807,7 +970,7 @@ export class Vehicle {
     t.slipRear = slipRear;
     t.wheelspin = wheelspin;
     t.steerAngle = this.#steerAngle;
-    t.compression = clamp(compression / SUSPENSION.travel, 0, 1.5);
+    t.compression = clamp(compression / suspension.travel, 0, 1.5);
     t.airborne = this.#airborne;
     t.surface = surface;
     t.waterDepth = waterDepth;
@@ -816,7 +979,7 @@ export class Vehicle {
       Math.min(
         1,
         Math.max(
-          (Math.abs(slipRear) / TIRE.peakSlipRear - 0.7) / 0.3,
+          (Math.abs(slipRear) / tire.peakSlipRear - 0.7) / 0.3,
           t.wheelspin > 1 ? (t.wheelspin - 1) / 0.5 : 0,
           input.handbrake && speed > 3 ? 0.55 : 0,
         ),
@@ -866,9 +1029,9 @@ export class Vehicle {
    */
   #steer(dt: number, request: number): void {
     const speed = Math.abs(this.#vLong);
-    const limit = STEERING.maxAngle / (1 + speed / STEERING.speedFalloff);
+    const limit = this.#spec.steering.maxAngle / (1 + speed / this.#spec.steering.speedFalloff);
     const target = clamp(request, -1, 1) * limit;
-    const rate = Math.abs(target) < Math.abs(this.#steerAngle) ? STEERING.centerRate : STEERING.rate;
+    const rate = Math.abs(target) < Math.abs(this.#steerAngle) ? this.#spec.steering.centerRate : this.#spec.steering.rate;
     const step = rate * dt;
     const delta = target - this.#steerAngle;
     this.#steerAngle += clamp(delta, -step, step);
@@ -876,12 +1039,12 @@ export class Vehicle {
 
   /** Radaufstandspunkte und ihre Bodenhöhen. */
   #sampleWheels(ground: Ground): void {
-    const halfTrack = CHASSIS.track / 2;
+    const halfTrack = this.#spec.chassis.track / 2;
     const offsets: readonly (readonly [number, number])[] = [
-      [-halfTrack, CG_TO_FRONT],
-      [halfTrack, CG_TO_FRONT],
-      [-halfTrack, -CG_TO_REAR],
-      [halfTrack, -CG_TO_REAR],
+      [-halfTrack, this.#spec.derived.cgToFront],
+      [halfTrack, this.#spec.derived.cgToFront],
+      [-halfTrack, -this.#spec.derived.cgToRear],
+      [halfTrack, -this.#spec.derived.cgToRear],
     ];
 
     // **Ein Rad ist kein Punkt.** Das Höhenfeld hat 1,5 m Texelabstand; auf der
@@ -898,7 +1061,7 @@ export class Vehicle {
     // Kostet dreimal so viele Höhenabfragen (12 statt 4 je Schritt) und ist damit
     // der teuerste Posten dieser Schleife. Gemessen bleibt der Schritt trotzdem
     // unter 0,03 ms.
-    const reach = CHASSIS.wheelRadius;
+    const reach = this.#spec.chassis.wheelRadius;
     for (let i = 0; i < 4; i++) {
       const [side, ahead] = offsets[i]!;
       const x = this.position.x + this.#right.x * side + this.#forward.x * ahead;
@@ -948,7 +1111,7 @@ export class Vehicle {
    * Läuft **nach** `#updateAttitude`, weil sie die frische Lage braucht.
    */
   #placeWheels(): void {
-    const halfTrack = CHASSIS.track / 2;
+    const halfTrack = this.#spec.chassis.track / 2;
     this.#up.set(0, 1, 0).applyQuaternion(this.quaternion);
     // Fast waagerechter Aufbau ist der Normalfall; der Schutz greift erst, wenn
     // das Auto so schief steht, dass die Division unbrauchbar würde.
@@ -956,13 +1119,13 @@ export class Vehicle {
 
     for (let i = 0; i < 4; i++) {
       const side = i % 2 === 0 ? -halfTrack : halfTrack;
-      const ahead = i < 2 ? CG_TO_FRONT : -CG_TO_REAR;
+      const ahead = i < 2 ? this.#spec.derived.cgToFront : -this.#spec.derived.cgToRear;
       // Aufnahmepunkt in Weltkoordinaten — über die **volle** Lage, also
       // einschließlich Nicken und Wanken.
       this.#scratch.set(side, 0, ahead).applyQuaternion(this.quaternion).add(this.position);
       // Wie weit müsste das Rad längs −up wandern, bis es den Boden berührt?
-      const ziel = this.#wheelGround[i]! + CHASSIS.wheelRadius;
-      const hub = clamp((this.#scratch.y - ziel) / aufrecht, WHEEL_MIN_DROP, WHEEL_MAX_DROP);
+      const ziel = this.#wheelGround[i]! + this.#spec.chassis.wheelRadius;
+      const hub = clamp((this.#scratch.y - ziel) / aufrecht, this.#spec.derived.wheelMinDrop, this.#spec.derived.wheelMaxDrop);
       this.#wheelPos[i]!.copy(this.#scratch).addScaledVector(this.#up, -hub);
     }
   }
@@ -981,8 +1144,8 @@ export class Vehicle {
       this.#wheelGround[1]!,
       this.#wheelGround[2]!,
       this.#wheelGround[3]!,
-      this.position.y - CHASSIS.cgHeight,
-      SUSPENSION.travel + 0.28,
+      this.position.y - this.#spec.chassis.cgHeight,
+      this.#spec.suspension.travel + 0.28,
     );
   }
 
@@ -998,27 +1161,27 @@ export class Vehicle {
    * linke Seite senken — dasselbe Vorzeichen.
    */
   #updateAttitude(dt: number, accelLat: number, accelLong: number): void {
-    const expected = this.position.y - CHASSIS.cgHeight;
-    const reach = SUSPENSION.travel + 0.28;
+    const expected = this.position.y - this.#spec.chassis.cgHeight;
+    const reach = this.#spec.suspension.travel + 0.28;
     const h0 = reachableWheel(this.#wheelGround[0]!, expected, reach);
     const h1 = reachableWheel(this.#wheelGround[1]!, expected, reach);
     const h2 = reachableWheel(this.#wheelGround[2]!, expected, reach);
     const h3 = reachableWheel(this.#wheelGround[3]!, expected, reach);
-    const groundPitch = -Math.atan2((h0 + h1) / 2 - (h2 + h3) / 2, CHASSIS.wheelbase);
-    const groundRoll = Math.atan2((h1 + h3) / 2 - (h0 + h2) / 2, CHASSIS.track);
+    const groundPitch = -Math.atan2((h0 + h1) / 2 - (h2 + h3) / 2, this.#spec.chassis.wheelbase);
+    const groundRoll = Math.atan2((h1 + h3) / 2 - (h0 + h2) / 2, this.#spec.chassis.track);
 
     const targetPitch = clamp(
-      groundPitch - SUSPENSION.pitchPerLongitudinalG * accelLong,
-      -SUSPENSION.maxPitch - Math.abs(groundPitch),
-      SUSPENSION.maxPitch + Math.abs(groundPitch),
+      groundPitch - this.#spec.suspension.pitchPerLongitudinalG * accelLong,
+      -this.#spec.suspension.maxPitch - Math.abs(groundPitch),
+      this.#spec.suspension.maxPitch + Math.abs(groundPitch),
     );
     const targetRoll = clamp(
-      groundRoll + SUSPENSION.rollPerLateralG * accelLat,
-      -SUSPENSION.maxRoll - Math.abs(groundRoll),
-      SUSPENSION.maxRoll + Math.abs(groundRoll),
+      groundRoll + this.#spec.suspension.rollPerLateralG * accelLat,
+      -this.#spec.suspension.maxRoll - Math.abs(groundRoll),
+      this.#spec.suspension.maxRoll + Math.abs(groundRoll),
     );
 
-    const blend = 1 - Math.exp(-SUSPENSION.attitudeRate * dt);
+    const blend = 1 - Math.exp(-this.#spec.suspension.attitudeRate * dt);
     this.#pitch += (targetPitch - this.#pitch) * blend;
     this.#roll += (targetRoll - this.#roll) * blend;
   }
@@ -1046,8 +1209,8 @@ export class Vehicle {
    *     und das ist die Bewegung, an der jede Kollision unecht aussieht.
    */
   #resolveCollision(collision: CollisionWorld): void {
-    const halfLength = CHASSIS.bodyLength / 2;
-    const halfWidth = CHASSIS.bodyWidth / 2;
+    const halfLength = this.#spec.chassis.bodyLength / 2;
+    const halfWidth = this.#spec.chassis.bodyWidth / 2;
     const corners: readonly (readonly [number, number])[] = [
       [-halfWidth, halfLength],
       [halfWidth, halfLength],
@@ -1077,12 +1240,12 @@ export class Vehicle {
       let hitId = -1;
       let hitSource = 0;
       let hitBreakable = false;
-      for (const h of VEHICLE_COLLISION.probeHeights) {
+      for (const h of this.#spec.collision.probeHeights) {
         const hit = collision.query(
           x,
-          this.position.y - CHASSIS.cgHeight + h,
+          this.position.y - this.#spec.chassis.cgHeight + h,
           z,
-          VEHICLE_COLLISION.cornerRadius,
+          this.#spec.collision.cornerRadius,
         );
         if (hit.depth > depth) {
           depth = hit.depth;
@@ -1102,7 +1265,7 @@ export class Vehicle {
         const tree = hitSource === HIT_TREE;
         if (
           shouldBreak(
-            CHASSIS.mass,
+            this.#spec.chassis.mass,
             approach,
             tree ? TREE_BREAK_SPEED : RAIL_BREAK_SPEED,
             tree ? TREE_BREAK_ENERGY : RAIL_BREAK_ENERGY,
@@ -1148,7 +1311,7 @@ export class Vehicle {
       const approach = cornerVX * nx + cornerVZ * nz;
       if (approach < 0) {
         // Impuls längs der Normalen; `(r × F)_y = r_z F_x − r_x F_z`.
-        const impulse = -approach * (1 + VEHICLE_COLLISION.restitution) * CHASSIS.mass;
+        const impulse = -approach * (1 + this.#spec.collision.restitution) * this.#spec.chassis.mass;
         torque += (rz * nx - rx * nz) * impulse;
       }
     }
@@ -1161,8 +1324,8 @@ export class Vehicle {
     pushX *= inv;
     pushZ *= inv;
     const pushLength = Math.hypot(pushX, pushZ);
-    if (pushLength > VEHICLE_COLLISION.maxPushPerStep) {
-      const scale = VEHICLE_COLLISION.maxPushPerStep / pushLength;
+    if (pushLength > this.#spec.collision.maxPushPerStep) {
+      const scale = this.#spec.collision.maxPushPerStep / pushLength;
       pushX *= scale;
       pushZ *= scale;
     }
@@ -1176,13 +1339,13 @@ export class Vehicle {
 
     const along = this.velocity.x * normalX + this.velocity.z * normalZ;
     if (along < 0) {
-      const change = -along * (1 + VEHICLE_COLLISION.restitution);
+      const change = -along * (1 + this.#spec.collision.restitution);
       this.velocity.x += normalX * change;
       this.velocity.z += normalZ * change;
     }
     // Schrammen: Tangentialanteil abschwächen. Das Auto verliert an der Planke
     // Tempo, wird aber nicht gestoppt.
-    const tangential = 1 - VEHICLE_COLLISION.wallFriction;
+    const tangential = 1 - this.#spec.collision.wallFriction;
     const vAlongN = this.velocity.x * normalX + this.velocity.z * normalZ;
     const tx = this.velocity.x - normalX * vAlongN;
     const tz = this.velocity.z - normalZ * vAlongN;
@@ -1194,10 +1357,10 @@ export class Vehicle {
     // noch Zustand waren, stand hier die Umrechnung — und sie zu vergessen hätte
     // geheißen, dass eine Kollision die Geschwindigkeit ändert und das Fahrmodell
     // es nicht merkt.
-    this.#yawRate += (torque * VEHICLE_COLLISION.yawTransfer * inv) / CHASSIS.yawInertia;
+    this.#yawRate += (torque * this.#spec.collision.yawTransfer * inv) / this.#spec.chassis.yawInertia;
     // Ein Frontalanschlag mit 70 m/s ergibt sonst eine Drehung, bei der das Bild
     // nicht mehr lesbar ist.
-    this.#yawRate = clamp(this.#yawRate, -MAX_YAW_RATE, MAX_YAW_RATE);
+    this.#yawRate = clamp(this.#yawRate, -this.#spec.limits.maxYawRate, this.#spec.limits.maxYawRate);
   }
 }
 
@@ -1251,6 +1414,7 @@ function tireLateral(
   falloff: number,
   grip: number,
   usedLongitudinal: number,
+  tire: TireSpec,
 ): number {
   if (grip <= 0) return 0;
   // Reibkreis — **mit einem Boden**. Die Wurzel allein geht bei voller
@@ -1258,10 +1422,10 @@ function tireLateral(
   // „am Limit", sondern von der Fahrbahn abgemeldet. Herleitung des Werts bei
   // `TIRE.lateralReserve`.
   const budget = Math.max(
-    grip * TIRE.lateralReserve,
+    grip * tire.lateralReserve,
     Math.sqrt(Math.max(0, grip * grip - usedLongitudinal * usedLongitudinal)),
   );
-  const force = -Math.sign(slip) * gripCurve(Math.abs(slip), peak, falloff) * grip;
+  const force = -Math.sign(slip) * gripCurve(Math.abs(slip), peak, falloff, tire) * grip;
   return clamp(force, -budget, budget);
 }
 
@@ -1272,7 +1436,7 @@ function tireLateral(
  * das Vorzeichen erst danach draufkommt. Die alte Fassung hat genau diese
  * Trennung nicht gemacht — und deshalb an der falschen Größe geklemmt.
  */
-function gripCurve(absSlip: number, peak: number, falloff: number): number {
+function gripCurve(absSlip: number, peak: number, falloff: number, tire: TireSpec): number {
   if (absSlip <= 0) return 0;
 
   // 1. Anstieg. `x(2−x)` hat bei x = 0 die Steigung 2 — über dem Winkel also
@@ -1287,7 +1451,7 @@ function gripCurve(absSlip: number, peak: number, falloff: number): number {
 
   // 2. Plateau — volle Kraft, während der Schräglauf schon wächst. Das ist der
   //    Bereich, in dem ein Fahrer die Grenze spürt, bevor sie ihn kostet.
-  const plateauEnde = peak * (1 + TIRE.plateauWidth);
+  const plateauEnde = peak * (1 + tire.plateauWidth);
   if (absSlip < plateauEnde) return 1;
 
   // 3. Abfall auf den Rest. Glättung statt Gerade: sie läuft an **beiden** Enden
@@ -1295,18 +1459,18 @@ function gripCurve(absSlip: number, peak: number, falloff: number): number {
   const ende = Math.max(falloff, plateauEnde + 1e-6);
   if (absSlip < ende) {
     const t = (absSlip - plateauEnde) / (ende - plateauEnde);
-    return 1 + (TIRE.tailGrip - 1) * t * t * (3 - 2 * t);
+    return 1 + (tire.tailGrip - 1) * t * t * (3 - 2 * t);
   }
 
   // 4. Rest. Gleitreibung — sie verschwindet nicht, nur weil das Rad quer steht.
-  return TIRE.tailGrip;
+  return tire.tailGrip;
 }
 
-function surfaceGrip(surface: Surface): number {
+function surfaceGrip(surface: Surface, tire: TireSpec): number {
   if (surface === 'asphalt') return 1;
-  if (surface === 'kies') return TIRE.gripGravel;
-  if (surface === 'wasser') return TIRE.gripWater;
-  return TIRE.gripTerrain;
+  if (surface === 'kies') return tire.gripGravel;
+  if (surface === 'wasser') return tire.gripWater;
+  return tire.gripTerrain;
 }
 
 function rumbleFor(surface: Surface): number {
