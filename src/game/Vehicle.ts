@@ -12,7 +12,23 @@ import {
   TIRE,
   VEHICLE_COLLISION,
 } from '@/config/vehicle.config';
-import type { CollisionWorld } from './CollisionWorld';
+import {
+  RAIL_BREAK_ENERGY,
+  RAIL_BREAK_SPEED,
+  TREE_BREAK_ENERGY,
+  TREE_BREAK_SPEED,
+  MAX_BREAKS_PER_STEP,
+  shouldBreak,
+  type BreakEvent,
+} from './breakables';
+import { HIT_TREE, type CollisionWorld } from './CollisionWorld';
+import {
+  isSteep,
+  reachableSupport,
+  reachableWheel,
+  resolveTerrainFollow,
+  type FollowState,
+} from './supportPlane';
 
 /**
  * Das Fahrmodell — PLAN.md P14, Umsetzung der Entscheidung aus P9.2.
@@ -214,8 +230,16 @@ const MAX_YAW_RATE = 8;
  * Zahl**.
  */
 const WHEEL_REST_DROP = CHASSIS.cgHeight - CHASSIS.wheelRadius;
-/** Voll ausgefedert: die Feder gibt genau ihre statische Einfederung wieder her. */
-const WHEEL_MAX_DROP = WHEEL_REST_DROP + STATIC_COMPRESSION;
+/**
+ * Unterer Anschlag der Radstellung — der volle Federweg unter dem Hub.
+ *
+ * Früher `rest + STATIC_COMPRESSION` (ausgefederte Feder, 35 cm). Die
+ * Stützebene ignoriert seitdem Extremwerte; ohne den extra Weg würde ein Rad
+ * über einem Loch in der Luft hängen, obwohl der Aufbau auf den anderen drei
+ * sitzt. 47 cm sind der Ruhehub plus der ganze Federweg — Arcade-Nachlauf,
+ * nicht der physikalische Anschlag.
+ */
+const WHEEL_MAX_DROP = WHEEL_REST_DROP + SUSPENSION.travel;
 /** Am Anschlag: der Rest des Federwegs oberhalb der statischen Lage. */
 const WHEEL_MIN_DROP = Math.max(
   0,
@@ -257,6 +281,9 @@ export class Vehicle {
   readonly #up = new Vector3(0, 1, 0);
   readonly #scratch = new Vector3();
   readonly #euler = new Euler(0, 0, 0, 'YXZ');
+  readonly #follow: FollowState = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };
+  #breaks: BreakEvent[] = [];
+  #brokeThisStep = 0;
 
   /** Radaufstandshöhen: vorn links, vorn rechts, hinten links, hinten rechts. */
   readonly #wheelGround = [0, 0, 0, 0];
@@ -298,6 +325,17 @@ export class Vehicle {
   }
 
   /**
+   * Brüche des letzten Schritts. Der Aufrufer nimmt das Array und macht etwas
+   * damit (Trümmer, Shader-Loch, Streuung überspringen) — stehen lassen hieße,
+   * dass ein Messlauf ohne Verbraucher die Liste unbegrenzt füllt.
+   */
+  consumeBreaks(): BreakEvent[] {
+    const out = this.#breaks;
+    this.#breaks = [];
+    return out;
+  }
+
+  /**
    * Auf eine Stelle setzen und allen Bewegungszustand verwerfen.
    *
    * Alles wird zurückgesetzt, auch Gierrate und Federweg: ein Respawn mitten im
@@ -336,6 +374,7 @@ export class Vehicle {
     // deterministisch; wenn nicht, ist etwas kaputt.
     this.#lastLongAccel = 0;
     this.#wheelSpin = 0;
+    this.#breaks = [];
     this.velocity.set(0, 0, 0);
     this.#updateBasis();
     this.#sampleWheels(ground);
@@ -391,8 +430,8 @@ export class Vehicle {
     this.#vLong = this.velocity.x * this.#forward.x + this.velocity.z * this.#forward.z;
     this.#vLat = this.velocity.x * this.#right.x + this.velocity.z * this.#right.z;
 
-    const contactY = this.#contactHeight();
     ground.normal(this.position.x, this.position.z, this.#normal);
+    const steep = isSteep(this.#normal.y);
     const surface = ground.surface(this.position.x, this.position.z);
     const waterDepth = ground.waterDepth?.(this.position.x, this.position.z) ?? 0;
 
@@ -401,9 +440,15 @@ export class Vehicle {
     // Der Federweg wird **längs der Normalen** gemessen: der senkrechte Abstand
     // mal `n_y`. Sonst federte ein Auto auf einer 20°-Rampe um 6 % zu weit ein
     // und wäre dort messbar tiefer eingestellt als in der Ebene.
+    //
+    // Steilwand: keine Feder. `contactY = y − SPRING_REST` war falsch — die
+    // Kompression rechnet `gap · n_y`, und bei n_y = 0,3 bleibt sie positiv
+    // (gemessen 150 %, y = 94 m in 4 s). Die Fläche ist eine Wand, nicht ein
+    // Boden; `resolveTerrainFollow` schiebt in XZ.
+    const contactY = this.#contactHeight();
     const gap = this.position.y - contactY;
-    let compression = SPRING_REST - gap * this.#normal.y;
-    this.#airborne = compression <= 0;
+    let compression = steep ? 0 : SPRING_REST - gap * this.#normal.y;
+    this.#airborne = steep || compression <= 0;
 
     let springForce = 0;
     if (!this.#airborne) {
@@ -721,13 +766,30 @@ export class Vehicle {
     this.velocity.y = this.#vY;
     this.position.addScaledVector(this.velocity, dt);
 
-    // Boden nicht durchfallen. Der Fall tritt bei einem harten Aufschlag auf, wo
-    // die Feder in einem Schritt mehr Weg braucht, als sie hat.
-    const floor = ground.height(this.position.x, this.position.z) + CHASSIS.wheelRadius * 0.5;
-    if (this.position.y < floor) {
-      this.position.y = floor;
-      if (this.#vY < 0) this.#vY = 0;
-    }
+    // Bodenfang. Früher ein reines `y = max(y, terrain)` — auf einem Steilhang
+    // die Rampe, die aus einem Clip eine Bergauffahrt macht. Begründung und
+    // Messung bei `resolveTerrainFollow`.
+    const follow = this.#follow;
+    follow.x = this.position.x;
+    follow.y = this.position.y;
+    follow.z = this.position.z;
+    follow.vx = this.velocity.x;
+    follow.vy = this.#vY;
+    follow.vz = this.velocity.z;
+    resolveTerrainFollow(
+      follow,
+      ground.height(this.position.x, this.position.z),
+      this.#normal.x,
+      this.#normal.y,
+      this.#normal.z,
+      CHASSIS.wheelRadius * 0.5,
+      VEHICLE_COLLISION.maxPushPerStep,
+    );
+    this.position.set(follow.x, follow.y, follow.z);
+    this.velocity.x = follow.vx;
+    this.velocity.y = follow.vy;
+    this.velocity.z = follow.vz;
+    this.#vY = follow.vy;
 
     if (collision) this.#resolveCollision(collision);
 
@@ -905,11 +967,22 @@ export class Vehicle {
     }
   }
 
-  /** Höhe der Stützebene am Schwerpunkt: Mittel der vier Aufstandspunkte. */
+  /**
+   * Höhe der Stützebene am Schwerpunkt.
+   *
+   * Nur Räder in Reichweite der Feder. Mittel aller vier hebt bei einer
+   * Spitze drei Räder in die Luft; Mittel der zwei mittleren hebt immer
+   * noch an einem Absatz, sobald zwei Räder oben sind. Begründung und
+   * Messung (y = 67 m in 3 s) in `reachableSupport`.
+   */
   #contactHeight(): number {
-    return (
-      (this.#wheelGround[0]! + this.#wheelGround[1]! + this.#wheelGround[2]! + this.#wheelGround[3]!) /
-      4
+    return reachableSupport(
+      this.#wheelGround[0]!,
+      this.#wheelGround[1]!,
+      this.#wheelGround[2]!,
+      this.#wheelGround[3]!,
+      this.position.y - CHASSIS.cgHeight,
+      SUSPENSION.travel + 0.28,
     );
   }
 
@@ -925,16 +998,14 @@ export class Vehicle {
    * linke Seite senken — dasselbe Vorzeichen.
    */
   #updateAttitude(dt: number, accelLat: number, accelLong: number): void {
-    const groundPitch = -Math.atan2(
-      (this.#wheelGround[0]! + this.#wheelGround[1]!) / 2 -
-        (this.#wheelGround[2]! + this.#wheelGround[3]!) / 2,
-      CHASSIS.wheelbase,
-    );
-    const groundRoll = Math.atan2(
-      (this.#wheelGround[1]! + this.#wheelGround[3]!) / 2 -
-        (this.#wheelGround[0]! + this.#wheelGround[2]!) / 2,
-      CHASSIS.track,
-    );
+    const expected = this.position.y - CHASSIS.cgHeight;
+    const reach = SUSPENSION.travel + 0.28;
+    const h0 = reachableWheel(this.#wheelGround[0]!, expected, reach);
+    const h1 = reachableWheel(this.#wheelGround[1]!, expected, reach);
+    const h2 = reachableWheel(this.#wheelGround[2]!, expected, reach);
+    const h3 = reachableWheel(this.#wheelGround[3]!, expected, reach);
+    const groundPitch = -Math.atan2((h0 + h1) / 2 - (h2 + h3) / 2, CHASSIS.wheelbase);
+    const groundRoll = Math.atan2((h1 + h3) / 2 - (h0 + h2) / 2, CHASSIS.track);
 
     const targetPitch = clamp(
       groundPitch - SUSPENSION.pitchPerLongitudinalG * accelLong,
@@ -991,6 +1062,7 @@ export class Vehicle {
     let normalZ = 0;
     let contacts = 0;
     let deepest = 0;
+    this.#brokeThisStep = 0;
 
     for (const [side, ahead] of corners) {
       const rx = this.#right.x * side + this.#forward.x * ahead;
@@ -1002,6 +1074,9 @@ export class Vehicle {
       let depth = 0;
       let nx = 0;
       let nz = 0;
+      let hitId = -1;
+      let hitSource = 0;
+      let hitBreakable = false;
       for (const h of VEHICLE_COLLISION.probeHeights) {
         const hit = collision.query(
           x,
@@ -1013,9 +1088,50 @@ export class Vehicle {
           depth = hit.depth;
           nx = hit.nx;
           nz = hit.nz;
+          hitId = hit.id;
+          hitSource = hit.source;
+          hitBreakable = hit.breakable;
         }
       }
       if (depth <= 0) continue;
+
+      if (hitBreakable && hitId >= 0 && this.#brokeThisStep < MAX_BREAKS_PER_STEP) {
+        const cornerVX = this.velocity.x + this.#yawRate * rz;
+        const cornerVZ = this.velocity.z - this.#yawRate * rx;
+        const approach = cornerVX * nx + cornerVZ * nz;
+        const tree = hitSource === HIT_TREE;
+        if (
+          shouldBreak(
+            CHASSIS.mass,
+            approach,
+            tree ? TREE_BREAK_SPEED : RAIL_BREAK_SPEED,
+            tree ? TREE_BREAK_ENERGY : RAIL_BREAK_ENERGY,
+          )
+        ) {
+          collision.disableHit(hitId, hitSource);
+          this.#brokeThisStep++;
+          this.#breaks.push({
+            kind: tree ? 'tree' : 'rail',
+            id: hitId,
+            x,
+            y: this.position.y,
+            z,
+            vx: this.velocity.x,
+            vz: this.velocity.z,
+          });
+          // Durchbrechen, nicht abprallen: 45 % der Normalkomponente weg,
+          // der Rest trägt durch das Loch. Forza-Arcade, nicht ein zweiter
+          // Anschlag an Luft.
+          const into = this.velocity.x * nx + this.velocity.z * nz;
+          if (into < 0) {
+            this.velocity.x -= nx * into * 0.45;
+            this.velocity.z -= nz * into * 0.45;
+          }
+          contacts++;
+          deepest = Math.max(deepest, depth);
+          continue;
+        }
+      }
 
       contacts++;
       deepest = Math.max(deepest, depth);

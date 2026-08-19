@@ -189,6 +189,24 @@ export type AppEvents = {
   'drive:mode': { active: boolean };
 
   /**
+   * Ein zerbrechliches Hindernis ist nachgegeben — Leitplanke oder Baum.
+   *
+   * Die Kollision hat den Körper in demselben Schritt abgemeldet. Das Ereignis
+   * ist für das Bild: das Band bekommt ein Shader-Loch, die Streuung
+   * überspringt den Stamm, Trümmer fliegen. Drei Zuhörer, ein Auslöser —
+   * dieselbe Begründung wie bei `drive:lap`.
+   */
+  'drive:broke': {
+    kind: 'rail' | 'tree';
+    id: number;
+    x: number;
+    y: number;
+    z: number;
+    vx: number;
+    vz: number;
+  };
+
+  /**
    * Eine Runde ist zu Ende — P16.
    *
    * `LapTimer.step()` gibt dasselbe Ergebnis auch **zurück**, und der Rückgabe­

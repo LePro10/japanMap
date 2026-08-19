@@ -35,6 +35,11 @@ export interface GuardrailResult {
   readonly geometry: BufferGeometry | null;
   /** Eine Matrix je Pfosten, fertig für `InstancedMesh.setMatrixAt`. */
   readonly posts: readonly Matrix4[];
+  /**
+   * `aBreakId` je Pfosten — derselbe Zähler wie an den Bandvertices.
+   * Damit ein Loch im Band den Pfosten mitnimmt, ohne ein zweites Raster.
+   */
+  readonly postBreakIds: readonly number[];
   readonly triangles: number;
   readonly length: number;
 }
@@ -100,9 +105,21 @@ function stationsFor(road: RoadData, side: number, from: number, to: number): St
  * entscheidet der Aufrufer; für das Mesh ist es `RAIL.bottom…RAIL.top`, für ein
  * Auto muss es am Boden anfangen (der Pfosten hält genauso wie das Band).
  */
-export function railPolylines(roads: readonly RoadData[], blocked?: RailBlocked): Float32Array[] {
-  const out: Float32Array[] = [];
-
+/**
+ * Jeden zusammenhängenden Plankenlauf genau einmal anfassen.
+ *
+ * Kollision (`railPolylines`) und Mesh (`buildGuardrails`) müssen dieselbe
+ * Reihenfolge sehen: die `aBreakId` der Vertices ist der Index der Wand in
+ * der `CollisionWorld`, und der entsteht, indem DriveSystem diese Läufe
+ * in aufeinanderfolgende Paare zerlegt. Zwei Schleifen, die sich in der
+ * Filterung unterscheiden, wären eine Planke, die man sieht und durch die
+ * man fährt.
+ */
+function eachRun(
+  roads: readonly RoadData[],
+  blocked: RailBlocked | undefined,
+  visit: (stations: Station[], edge: number) => void,
+): void {
   for (const road of roads) {
     const settings = ROAD_TYPES[road.type];
     const edge = settings.width / 2 + settings.shoulder + RAIL.offset;
@@ -110,22 +127,24 @@ export function railPolylines(roads: readonly RoadData[], blocked?: RailBlocked)
     for (const rail of road.rails) {
       const alle = stationsFor(road, rail.side, rail.from, rail.to);
       if (alle.length < 2) continue;
-
-      // **Dieselbe Zerlegung wie beim Mesh.** Wer hier anders filtert als dort,
-      // baut eine Planke, die man sieht und durch die man fährt — oder eine, die
-      // man nicht sieht und gegen die man fährt.
-      for (const stations of runsOf(alle, blocked, edge)) {
-        const points = new Float32Array(stations.length * 3);
-        for (let i = 0; i < stations.length; i++) {
-          const s = stations[i]!;
-          points[i * 3] = s.x + s.nx * edge;
-          points[i * 3 + 1] = s.y;
-          points[i * 3 + 2] = s.z + s.nz * edge;
-        }
-        out.push(points);
-      }
+      for (const stations of runsOf(alle, blocked, edge)) visit(stations, edge);
     }
   }
+}
+
+export function railPolylines(roads: readonly RoadData[], blocked?: RailBlocked): Float32Array[] {
+  const out: Float32Array[] = [];
+
+  eachRun(roads, blocked, (stations, edge) => {
+    const points = new Float32Array(stations.length * 3);
+    for (let i = 0; i < stations.length; i++) {
+      const s = stations[i]!;
+      points[i * 3] = s.x + s.nx * edge;
+      points[i * 3 + 1] = s.y;
+      points[i * 3 + 2] = s.z + s.nz * edge;
+    }
+    out.push(points);
+  });
 
   return out;
 }
@@ -178,8 +197,11 @@ export function buildGuardrails(roads: readonly RoadData[], blocked?: RailBlocke
   const vertices: number[] = [];
   const normals: number[] = [];
   const uvs: number[] = [];
+  const breakIds: number[] = [];
   const indices: number[] = [];
   const posts: Matrix4[] = [];
+  const postBreakIds: number[] = [];
+  let breakId = 0;
 
   const forward = new Vector3();
   const quaternion = new Quaternion();
@@ -188,82 +210,86 @@ export function buildGuardrails(roads: readonly RoadData[], blocked?: RailBlocke
 
   let totalLength = 0;
 
-  for (const road of roads) {
-    const settings = ROAD_TYPES[road.type];
-    const edge = settings.width / 2 + settings.shoulder + RAIL.offset;
+  eachRun(roads, blocked, (stations, edge) => {
+    // Gezählt wird, was **gebaut** wurde, nicht was geplant war. Der
+    // Unterschied ist die Länge, die an Einmündungen entfällt — und eine
+    // Kennzahl, die den Sollwert meldet statt das Ergebnis, ist in diesem
+    // Projekt der erste Eintrag unter „was schon schiefgegangen ist".
+    const first = stations[0]!;
+    const last = stations[stations.length - 1]!;
+    totalLength += last.distance - first.distance;
 
-    for (const rail of road.rails) {
-      const alle = stationsFor(road, rail.side, rail.from, rail.to);
-      if (alle.length < 2) continue;
+    const base = vertices.length / 3;
+    const firstId = breakId;
 
-      for (const stations of runsOf(alle, blocked, edge)) {
-      // Gezählt wird, was **gebaut** wurde, nicht was geplant war. Der
-      // Unterschied ist die Länge, die an Einmündungen entfällt — und eine
-      // Kennzahl, die den Sollwert meldet statt das Ergebnis, ist in diesem
-      // Projekt der erste Eintrag unter „was schon schiefgegangen ist".
-      const first = stations[0]!;
-      const last = stations[stations.length - 1]!;
-      totalLength += last.distance - first.distance;
+    for (let i = 0; i < stations.length; i++) {
+      const s = stations[i]!;
+      const px = s.x + s.nx * edge;
+      const pz = s.z + s.nz * edge;
+      const id = i + 1 < stations.length ? firstId + i : firstId + Math.max(0, stations.length - 2);
 
-      const base = vertices.length / 3;
+      // Zwei Punkte je Station: Unter- und Oberkante des Bandes.
+      vertices.push(px, s.y + RAIL.bottom, pz, px, s.y + RAIL.top, pz);
+      // Die Normale zeigt zur Fahrbahn — von dort wird die Planke gesehen.
+      normals.push(-s.nx, 0, -s.nz, -s.nx, 0, -s.nz);
+      const u = (s.distance - first.distance) / 4;
+      uvs.push(u, 0, u, 1);
+      breakIds.push(id, id);
 
-      for (let i = 0; i < stations.length; i++) {
-        const s = stations[i]!;
-        const px = s.x + s.nx * edge;
-        const pz = s.z + s.nz * edge;
-
-        // Zwei Punkte je Station: Unter- und Oberkante des Bandes.
-        vertices.push(px, s.y + RAIL.bottom, pz, px, s.y + RAIL.top, pz);
-        // Die Normale zeigt zur Fahrbahn — von dort wird die Planke gesehen.
-        normals.push(-s.nx, 0, -s.nz, -s.nx, 0, -s.nz);
-        const u = (s.distance - rail.from) / 4;
-        uvs.push(u, 0, u, 1);
-
-        if (i + 1 < stations.length) {
-          const a = base + i * 2;
-          const b = a + 1;
-          const c = a + 2;
-          const d = a + 3;
-          // Wickelrichtung wie beim Straßen-Mesh: (a, b, c) ergibt die Normale
-          // zur Fahrbahn hin. Andersherum verschwindet das Band im
-          // Backface-Culling, und zwar ohne dass eine einzige Kennzahl
-          // auffällig würde — derselbe Fehler wie in `RoadMeshBuilder`.
-          indices.push(a, b, c, b, d, c);
-        }
-      }
-
-      // Pfosten in festem Abstand, unabhängig von der Stützstellendichte.
-      const railLength = last.distance - first.distance;
-      const postCount = Math.max(2, Math.round(railLength / RAIL.postSpacing));
-      for (let k = 0; k <= postCount; k++) {
-        const target = first.distance + (railLength * k) / postCount;
-        // Nächste Station zu dieser Streckenangabe.
-        let best = stations[0]!;
-        for (const s of stations) {
-          if (Math.abs(s.distance - target) < Math.abs(best.distance - target)) best = s;
-        }
-
-        position.set(
-          best.x + best.nx * edge,
-          best.y + (RAIL.top + 0.1) / 2 - 0.1,
-          best.z + best.nz * edge,
-        );
-        forward.set(-best.nz, 0, best.nx);
-        quaternion.setFromUnitVectors(new Vector3(0, 0, 1), forward.normalize());
-        posts.push(new Matrix4().compose(position, quaternion, scale));
-      }
+      if (i + 1 < stations.length) {
+        const a = base + i * 2;
+        const b = a + 1;
+        const c = a + 2;
+        const d = a + 3;
+        // Wickelrichtung wie beim Straßen-Mesh: (a, b, c) ergibt die Normale
+        // zur Fahrbahn hin. Andersherum verschwindet das Band im
+        // Backface-Culling, und zwar ohne dass eine einzige Kennzahl
+        // auffällig würde — derselbe Fehler wie in `RoadMeshBuilder`.
+        indices.push(a, b, c, b, d, c);
+        breakId++;
       }
     }
-  }
+
+    // Pfosten in festem Abstand, unabhängig von der Stützstellendichte.
+    const railLength = last.distance - first.distance;
+    const postCount = Math.max(2, Math.round(railLength / RAIL.postSpacing));
+    const lastSeg = Math.max(0, stations.length - 2);
+    for (let k = 0; k <= postCount; k++) {
+      const target = first.distance + (railLength * k) / postCount;
+      // Nächste Station zu dieser Streckenangabe.
+      let best = 0;
+      for (let i = 1; i < stations.length; i++) {
+        const s = stations[i]!;
+        if (
+          Math.abs(s.distance - target) < Math.abs(stations[best]!.distance - target)
+        ) {
+          best = i;
+        }
+      }
+      const s = stations[best]!;
+      const postId = firstId + Math.min(best, lastSeg);
+
+      position.set(
+        s.x + s.nx * edge,
+        s.y + (RAIL.top + 0.1) / 2 - 0.1,
+        s.z + s.nz * edge,
+      );
+      forward.set(-s.nz, 0, s.nx);
+      quaternion.setFromUnitVectors(new Vector3(0, 0, 1), forward.normalize());
+      posts.push(new Matrix4().compose(position, quaternion, scale));
+      postBreakIds.push(postId);
+    }
+  });
 
   if (indices.length === 0) {
-    return { geometry: null, posts, triangles: 0, length: 0 };
+    return { geometry: null, posts, postBreakIds, triangles: 0, length: 0 };
   }
 
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new BufferAttribute(new Float32Array(vertices), 3));
   geometry.setAttribute('normal', new BufferAttribute(new Float32Array(normals), 3));
   geometry.setAttribute('uv', new BufferAttribute(new Float32Array(uvs), 2));
+  geometry.setAttribute('aBreakId', new BufferAttribute(new Float32Array(breakIds), 1));
   geometry.setIndex(new BufferAttribute(new Uint32Array(indices), 1));
   geometry.computeBoundingSphere();
   geometry.name = 'Leitplanken';
@@ -271,6 +297,7 @@ export function buildGuardrails(roads: readonly RoadData[], blocked?: RailBlocke
   return {
     geometry,
     posts,
+    postBreakIds,
     triangles: indices.length / 3,
     length: totalLength,
   };

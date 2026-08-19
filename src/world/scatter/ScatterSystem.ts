@@ -40,6 +40,7 @@ import type { RoadNetwork } from '../roads/RoadNetwork';
 import type { TerrainSampler } from '../TerrainSampler';
 import { ImposterAtlas } from './ImposterAtlas';
 import { InstancedLOD, LOD_COUNT, type LodStage } from './InstancedLOD';
+import { treeKey } from '@/game/breakables';
 import { INSTANCE_STRIDE, scatterChunk, type ScatterChunk } from './scatterChunk';
 import { ScatterWorkerClient } from './ScatterWorkerClient';
 import {
@@ -50,6 +51,21 @@ import {
 import { ZoneMap } from './ZoneMap';
 
 const CHUNKS_PER_AXIS = WORLD.size / SCATTER.chunkSize;
+
+/** Ein Stamm in Reichweite des Autos — ohne Mesh, ohne BVH. */
+export interface CanopyHit {
+  x: number;
+  y: number;
+  z: number;
+  radius: number;
+  height: number;
+  key: number;
+}
+
+export interface CanopySource {
+  queryCanopy(x: number, z: number, radius: number, out: CanopyHit[]): number;
+  breakTree(key: number): boolean;
+}
 
 /**
  * Vegetation — PLAN.md P4 / 4.2 und 4.3.
@@ -106,6 +122,13 @@ export class ScatterSystem implements System {
   /** Chunk-Cache. Schlüssel ist `cz * CHUNKS_PER_AXIS + cx`. */
   readonly #cache = new Map<number, ScatterChunk>();
   #clock = 0;
+  /**
+   * Gebrochene Bäume, als `treeKey`. Der Chunk-Cache speichert Instanzen
+   * nicht — beim nächsten Streuen stünde der Stamm wieder. Deshalb filtert
+   * `#pushChunk` gegen diese Menge, statt 50 000 Zylinder in die
+   * CollisionWorld zu legen.
+   */
+  readonly #broken = new Set<number>();
 
   /**
    * Die Streuung auf einem eigenen Thread (P7 / 7.2). `null`, wenn sie dort
@@ -370,6 +393,70 @@ export class ScatterSystem implements System {
    */
   get streaming(): boolean {
     return this.#lastPassMisses > 0 || (this.#worker?.inFlight ?? 0) > 0;
+  }
+
+  /**
+   * Stämme (Kiefer, Laub) im Umkreis. Schreibt in vorbereitete Slots von
+   * `out` und liefert, wie viele getroffen wurden. Gras und Busch fehlen
+   * absichtlich: die fährt man um, und 30 000 Gräser als Zylinder wären
+   * genau das Budget, das diese Abfrage vermeiden soll.
+   */
+  queryCanopy(x: number, z: number, radius: number, out: CanopyHit[]): number {
+    const cap = out.length;
+    if (cap === 0 || this.#cache.size === 0) return 0;
+    const size = SCATTER.chunkSize;
+    const half = WORLD.half;
+    const cx0 = Math.floor((x + half) / size);
+    const cz0 = Math.floor((z + half) / size);
+    const r2 = radius * radius;
+    let n = 0;
+
+    for (let dz = -1; dz <= 1; dz++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const chunk = this.#cache.get((cz0 + dz) * CHUNKS_PER_AXIS + (cx0 + dx));
+        if (!chunk) continue;
+        for (let s = 0; s < SPECIES.length; s++) {
+          const species = SPECIES[s]!;
+          if (species.layer !== 'canopy') continue;
+          const data = chunk.instances[s];
+          if (!data) continue;
+          // Etwas dicker als der sichtbare Stamm (0,10…0,26 m): sonst fährt
+          // man durch die Rinde, weil die Karosserie abgerundete Ecken hat.
+          const trunk = species.id === 'pine' ? 0.32 : 0.4;
+          const tall = species.id === 'pine' ? 5.5 : 7;
+          for (let i = 0; i < data.length; i += INSTANCE_STRIDE) {
+            const tx = data[i]!;
+            const tz = data[i + 2]!;
+            const ddx = tx - x;
+            const ddz = tz - z;
+            if (ddx * ddx + ddz * ddz > r2) continue;
+            const key = treeKey(tx, tz);
+            if (this.#broken.has(key)) continue;
+            const slot = out[n];
+            if (!slot) return n;
+            slot.x = tx;
+            slot.y = data[i + 1]!;
+            slot.z = tz;
+            slot.radius = trunk * data[i + 3]!;
+            slot.height = tall * data[i + 4]!;
+            slot.key = key;
+            n++;
+            if (n >= cap) return n;
+          }
+        }
+      }
+    }
+    return n;
+  }
+
+  breakTree(key: number): boolean {
+    if (this.#broken.has(key)) return false;
+    this.#broken.add(key);
+    return true;
+  }
+
+  get brokenTrees(): number {
+    return this.#broken.size;
   }
 
   /**
@@ -783,6 +870,9 @@ export class ScatterSystem implements System {
         const x = data[i]!;
         const y = data[i + 1]!;
         const z = data[i + 2]!;
+        if (species.layer === 'canopy' && this.#broken.size > 0 && this.#broken.has(treeKey(x, z))) {
+          continue;
+        }
         const dx = x - cameraX;
         const dy = y - cameraY;
         const dz = z - cameraZ;

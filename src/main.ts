@@ -534,6 +534,7 @@ async function boot(): Promise<void> {
   // noch arbeitet — ohne dieses Signal hält er eine leere Welt für eine fertige.
   const scatter = new ScatterSystem(atmosphere.uniforms);
   engine.add(scatter);
+  drive.setCanopy(scatter);
   // Ebenfalls vor dem Terrain: die Props holen ihre Höhe aus dem Sampler, damit
   // sie einen neuen Terrain-Bake überleben, statt eine Zahl aus der Datei zu
   // glauben.
