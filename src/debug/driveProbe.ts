@@ -372,7 +372,10 @@ export function driveRoad(
     // Auf die Reglerskala: die Eingabe ist −1…1 **des gerade möglichen**
     // Einschlags, und der schrumpft mit dem Tempo (`STEERING.speedFalloff`).
     const available = STEERING.maxAngle / (1 + speed / STEERING.speedFalloff);
-    input.steer = clamp(wanted / available, -1, 1);
+    // **Negativ.** `error > 0` heißt „der Gierwinkel muss wachsen, damit die Nase
+    // aufs Ziel zeigt", und ein wachsender Gierwinkel ist eine **Links**kurve.
+    // Die Eingabe für links ist −1.
+    input.steer = clamp(-wanted / available, -1, 1);
 
     // ── Sollgeschwindigkeit über den Bremsweg ─────────────────────────
     const limit = Math.min(speedLimit(line, points, index, road, pace), speedCap);
@@ -414,7 +417,10 @@ export function driveRoad(
       const over = Math.min(1, (rear - TIRE.peakSlipRear) / TIRE.peakSlipRear);
       input.throttle = 0;
       input.brake = 0;
-      const fangen = clamp(vehicle.telemetry.slip * 0.8, -1, 1);
+      // Gegenlenken heißt: in die Richtung lenken, in die das Heck wegläuft.
+      // `slip > 0` bedeutet seit der Vorzeichenreparatur „die Fahrtrichtung zeigt
+      // nach rechts an der Nase vorbei", also muss nach links gelenkt werden.
+      const fangen = clamp(-vehicle.telemetry.slip * 0.8, -1, 1);
       input.steer = clamp(input.steer * (1 - over) + fangen * over, -1, 1);
     }
 
