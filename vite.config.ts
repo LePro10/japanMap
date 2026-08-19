@@ -145,7 +145,15 @@ function brotliAssets(): Plugin {
     enforce: 'post',
     async closeBundle() {
       const outDir = join(projectRoot, 'dist');
-      const files = await readdir(outDir, { recursive: true, withFileTypes: true });
+      let files;
+      try {
+        files = await readdir(outDir, { recursive: true, withFileTypes: true });
+      } catch (error) {
+        // Some CI runners clean the output directory before Vite's post-build
+        // hooks run. Brotli is optional, so let the build succeed in that case.
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+        throw error;
+      }
       let originalTotal = 0;
       let compressedTotal = 0;
       let written = 0;
