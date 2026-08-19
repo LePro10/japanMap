@@ -183,6 +183,9 @@ function brotliAssets(): Plugin {
 }
 
 export default defineConfig({
+  // GitHub Pages serves this repository below /japanMap/.
+  base: '/japanMap/',
+
   plugins: [
     screenshotEndpoint(),
     reportEndpoint(),
