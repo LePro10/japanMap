@@ -4,7 +4,6 @@ import {
   InstancedBufferAttribute,
   InstancedMesh,
   Mesh,
-  MeshStandardMaterial,
   PlaneGeometry,
   RepeatWrapping,
   type Texture,
@@ -15,6 +14,7 @@ import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
 import type { ReflectionUniforms } from '@/render/PlanarReflection';
 import { DecalMaterial } from './materials/DecalMaterial';
+import { RailMaterial } from './materials/RailMaterial';
 import { createRoadUniforms, RoadMaterial, type RoadUniforms } from './materials/RoadMaterial';
 import { buildDecalAtlas, buildDecals } from './roads/Decals';
 import { buildGuardrails } from './roads/GuardrailBuilder';
@@ -40,7 +40,7 @@ export class RoadSystem implements System {
   #group: Group | null = null;
   #rails: Group | null = null;
   #material: RoadMaterial | null = null;
-  #railMaterial: MeshStandardMaterial | null = null;
+  #railMaterial: RailMaterial | null = null;
   #network: RoadNetwork | null = null;
   #editor: RoadEditor | null = null;
 
@@ -184,12 +184,9 @@ export class RoadSystem implements System {
 
     // Ein Material für Band und Pfosten: beide sind verzinktes Blech, und zwei
     // Materialien wären zwei Programme im Budget für exakt denselben Look.
-    this.#railMaterial = new MeshStandardMaterial({
-      color: 0x9aa3a8,
-      roughness: 0.55,
-      metalness: 0.85,
-      side: 2,
-    });
+    // `RailMaterial` hängt die Bruch-Kennung daran — ohne zweites Programm für
+    // die Pfosten, `aBreakId` sitzt dort als Instanzattribut.
+    this.#railMaterial = new RailMaterial();
 
     this.#build(file.roads);
     context.scene.add(group);
@@ -200,6 +197,9 @@ export class RoadSystem implements System {
       context.bus.emit('roads:ready', { network: this.#network, surface: this.#material });
     }
 
+    context.bus.on('drive:broke', ({ kind, id }) => {
+      if (kind === 'rail') this.#railMaterial?.breakId(id);
+    });
     context.bus.on('look:apply', ({ look }) => {
       this.#surface.uWetness.value = look.road.wetness;
       this.#context?.debug?.refresh();
@@ -262,6 +262,7 @@ export class RoadSystem implements System {
       measured: { totalLength, count: roads.length },
     });
     const netz = this.#network;
+    this.#railMaterial.resetBroken();
     const guardrails = buildGuardrails(roads, (x, z) => netz.isOnRoad(x, z));
     if (guardrails.geometry) {
       const band = new Mesh(guardrails.geometry, this.#railMaterial);
@@ -278,9 +279,12 @@ export class RoadSystem implements System {
       );
       posts.name = 'Leitplanken:Pfosten';
       posts.frustumCulled = false;
+      const ids = new Float32Array(guardrails.posts.length);
       for (let i = 0; i < guardrails.posts.length; i++) {
         posts.setMatrixAt(i, guardrails.posts[i]!);
+        ids[i] = guardrails.postBreakIds[i] ?? 0;
       }
+      posts.geometry.setAttribute('aBreakId', new InstancedBufferAttribute(ids, 1));
       posts.instanceMatrix.needsUpdate = true;
       rails.add(posts);
       triangles += guardrails.posts.length * 12;

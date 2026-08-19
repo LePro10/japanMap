@@ -71,7 +71,23 @@ export interface Pushout {
   /** Normale, aus dem Körper heraus, normiert, XZ-Ebene. */
   nx: number;
   nz: number;
+  /**
+   * Index des Körpers, oder der Baum-Schlüssel bei `source === HIT_TREE`.
+   * −1, wenn nichts getroffen wurde.
+   */
+  id: number;
+  /** 0 = statischer Körper, 1 = Baum aus der Nahabfrage. */
+  source: number;
+  breakable: boolean;
 }
+
+/** `Pushout.source`: statischer Eintrag in `#shapes`. */
+export const HIT_STATIC = 0;
+/** `Pushout.source`: dynamischer Zylinder (Baum). */
+export const HIT_TREE = 1;
+
+/** Höchstens so viele Bäume je Schritt — die Suche liefert die nächsten. */
+const DYNAMIC_CAP = 48;
 
 /** Ein flaches Feld mit vier Zahlen je Körper plus Höhenband. */
 interface Shapes {
@@ -104,9 +120,28 @@ export class CollisionWorld {
   /** Dasselbe Raster für die Plateaus. */
   readonly #plateauCells: (number[] | undefined)[];
 
-  readonly #hit: Pushout = { depth: 0, nx: 0, nz: 0 };
+  readonly #hit: Pushout = { depth: 0, nx: 0, nz: 0, id: -1, source: HIT_STATIC, breakable: false };
 
   #shapeCount = 0;
+  readonly #alive: number[] = [];
+  readonly #breakable: number[] = [];
+
+  /**
+   * Bäume der Umgebung — jedes Simulationsschritt neu, nicht im Raster.
+   *
+   * 50 000 Kronen als Zylinder ins Gitter zu legen würde die Abfrage der
+   * *Häuser* mitbezahlen. Ein Auto sieht in 12 m höchstens ein paar Dutzend
+   * Stämme; die stehen hier, und `query` prüft sie nach den statischen
+   * Körpern mit derselben Distanzfunktion.
+   */
+  #dynCount = 0;
+  readonly #dynX = new Float32Array(DYNAMIC_CAP);
+  readonly #dynZ = new Float32Array(DYNAMIC_CAP);
+  readonly #dynR = new Float32Array(DYNAMIC_CAP);
+  readonly #dynY0 = new Float32Array(DYNAMIC_CAP);
+  readonly #dynY1 = new Float32Array(DYNAMIC_CAP);
+  readonly #dynKey = new Uint32Array(DYNAMIC_CAP);
+  readonly #dynAlive = new Uint8Array(DYNAMIC_CAP);
 
   constructor() {
     this.#columns = Math.ceil(WORLD.size / CELL) + 2;
@@ -133,6 +168,66 @@ export class CollisionWorld {
     this.#plateauCells.fill(undefined);
     this.#plateaus.length = 0;
     this.#shapeCount = 0;
+    this.#alive.length = 0;
+    this.#breakable.length = 0;
+    this.#dynCount = 0;
+  }
+
+  /** Neue Runde Nahbäume — vor dem Eintragen, einmal je Simulationsschritt. */
+  beginDynamic(): void {
+    this.#dynCount = 0;
+  }
+
+  /**
+   * Einen Stamm der Umgebung eintragen. Liefert false, wenn der Puffer voll
+   * ist — dann bleiben weiter entfernte Bäume durchfahrbar, und das ist die
+   * richtige Priorität: wer 48 Stämme in 12 m hat, steht im Dickicht.
+   */
+  addDynamicCylinder(
+    x: number,
+    z: number,
+    radius: number,
+    y0: number,
+    y1: number,
+    key: number,
+  ): boolean {
+    const i = this.#dynCount;
+    if (i >= DYNAMIC_CAP) return false;
+    this.#dynX[i] = x;
+    this.#dynZ[i] = z;
+    this.#dynR[i] = radius;
+    this.#dynY0[i] = y0;
+    this.#dynY1[i] = y1;
+    this.#dynKey[i] = key >>> 0;
+    this.#dynAlive[i] = 1;
+    this.#dynCount = i + 1;
+    return true;
+  }
+
+  isAlive(id: number, source = HIT_STATIC): boolean {
+    if (source === HIT_TREE) {
+      for (let i = 0; i < this.#dynCount; i++) {
+        if (this.#dynKey[i] === id) return this.#dynAlive[i] === 1;
+      }
+      return false;
+    }
+    return this.#alive[id] === 1;
+  }
+
+  isBreakable(id: number, source = HIT_STATIC): boolean {
+    if (source === HIT_TREE) return true;
+    return this.#breakable[id] === 1;
+  }
+
+  /** Körper (oder Stamm) für den Rest der Sitzung abmelden. */
+  disableHit(id: number, source: number): void {
+    if (source === HIT_TREE) {
+      for (let i = 0; i < this.#dynCount; i++) {
+        if (this.#dynKey[i] === id) this.#dynAlive[i] = 0;
+      }
+      return;
+    }
+    if (id >= 0 && id < this.#alive.length) this.#alive[id] = 0;
   }
 
   // ── Eintragen ──────────────────────────────────────────────────────────
@@ -145,13 +240,13 @@ export class CollisionWorld {
     maxZ: number,
     y0: number,
     y1: number,
-  ): void {
-    this.#push(KIND_BOX, minX, maxX, minZ, maxZ, y0, y1, minX, maxX, minZ, maxZ);
+  ): number {
+    return this.#push(KIND_BOX, minX, maxX, minZ, maxZ, y0, y1, minX, maxX, minZ, maxZ);
   }
 
   /** Kreiszylinder — Props, Pfosten. */
-  addCylinder(x: number, z: number, radius: number, y0: number, y1: number): void {
-    this.#push(KIND_CYLINDER, x, z, radius, 0, y0, y1, x - radius, x + radius, z - radius, z + radius);
+  addCylinder(x: number, z: number, radius: number, y0: number, y1: number): number {
+    return this.#push(KIND_CYLINDER, x, z, radius, 0, y0, y1, x - radius, x + radius, z - radius, z + radius);
   }
 
   /**
@@ -170,12 +265,27 @@ export class CollisionWorld {
     halfThickness: number,
     y0: number,
     y1: number,
-  ): void {
+    breakable = false,
+  ): number {
     const minX = Math.min(ax, bx) - halfThickness;
     const maxX = Math.max(ax, bx) + halfThickness;
     const minZ = Math.min(az, bz) - halfThickness;
     const maxZ = Math.max(az, bz) + halfThickness;
-    this.#push(KIND_WALL, ax, az, bx, bz, y0, y1, minX, maxX, minZ, maxZ, halfThickness);
+    return this.#push(
+      KIND_WALL,
+      ax,
+      az,
+      bx,
+      bz,
+      y0,
+      y1,
+      minX,
+      maxX,
+      minZ,
+      maxZ,
+      halfThickness,
+      breakable,
+    );
   }
 
   /**
@@ -204,7 +314,8 @@ export class CollisionWorld {
     minZ: number,
     maxZ: number,
     extra = 0,
-  ): void {
+    breakable = false,
+  ): number {
     const index = this.#shapeCount++;
     this.#shapes.kind.push(kind);
     // Fünf Werte je Körper: die vier Formparameter plus die Zusatzzahl, die
@@ -213,7 +324,10 @@ export class CollisionWorld {
     this.#shapes.p.push(p0, p1, p2, p3, extra);
     this.#shapes.y0.push(y0);
     this.#shapes.y1.push(y1);
+    this.#alive.push(1);
+    this.#breakable.push(breakable ? 1 : 0);
     this.#insert(this.#cells, index, minX, maxX, minZ, maxZ);
+    return index;
   }
 
   /**
@@ -268,6 +382,9 @@ export class CollisionWorld {
     hit.depth = 0;
     hit.nx = 0;
     hit.nz = 0;
+    hit.id = -1;
+    hit.source = HIT_STATIC;
+    hit.breakable = false;
 
     const cx = Math.floor((x + WORLD.half) / CELL);
     const cz = Math.floor((z + WORLD.half) / CELL);
@@ -291,6 +408,7 @@ export class CollisionWorld {
 
         for (let i = 0; i < list.length; i++) {
           const s = list[i]!;
+          if (this.#alive[s] !== 1) continue;
           // Höhenband zuerst: es verwirft die meisten Kandidaten mit zwei
           // Vergleichen, bevor irgendeine Wurzel gerechnet wird.
           if (y > y1s[s]! || y < y0s[s]!) continue;
@@ -405,12 +523,46 @@ export class CollisionWorld {
             hit.depth = depth;
             hit.nx = dirX;
             hit.nz = dirZ;
+            hit.id = s;
+            hit.source = HIT_STATIC;
+            hit.breakable = this.#breakable[s] === 1;
           }
         }
       }
     }
 
+    this.#queryDynamic(x, y, z, radius, hit);
     return hit;
+  }
+
+  #queryDynamic(x: number, y: number, z: number, radius: number, hit: Pushout): void {
+    const n = this.#dynCount;
+    if (n === 0) return;
+    for (let i = 0; i < n; i++) {
+      if (this.#dynAlive[i] !== 1) continue;
+      if (y > this.#dynY1[i]! || y < this.#dynY0[i]!) continue;
+      let dirX = x - this.#dynX[i]!;
+      let dirZ = z - this.#dynZ[i]!;
+      const length = Math.hypot(dirX, dirZ);
+      const distance = length - this.#dynR[i]!;
+      if (distance >= radius) continue;
+      if (length < 1e-9) {
+        dirX = 1;
+        dirZ = 0;
+      } else {
+        dirX /= length;
+        dirZ /= length;
+      }
+      const depth = radius - distance;
+      if (depth > hit.depth) {
+        hit.depth = depth;
+        hit.nx = dirX;
+        hit.nz = dirZ;
+        hit.id = this.#dynKey[i]!;
+        hit.source = HIT_TREE;
+        hit.breakable = true;
+      }
+    }
   }
 
   /**

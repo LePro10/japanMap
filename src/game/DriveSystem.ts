@@ -24,11 +24,18 @@ import type { TerrainSampler } from '@/world/TerrainSampler';
 import type { CityCollider, CityCurb } from '@/world/city/CityGenerator';
 import { createCarBody, createCarWheel } from './carMesh';
 import { ChaseCamera } from './ChaseCamera';
+import {
+  TREE_QUERY_CAP,
+  TREE_QUERY_RADIUS,
+  type BreakEvent,
+} from './breakables';
 import { CollisionWorld } from './CollisionWorld';
+import { DebrisFx } from './DebrisFx';
 import { LapTimer } from './LapTimer';
 import { Vehicle, type DriveInput, type Ground, type Surface } from './Vehicle';
 import { VehicleFx } from './VehicleFx';
 import { WaterField } from './WaterField';
+import type { CanopyHit, CanopySource } from '@/world/scatter/ScatterSystem';
 
 /**
  * Der Fahrmodus — PLAN.md P14.
@@ -104,6 +111,16 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   readonly collision = new CollisionWorld();
   readonly #water = new WaterField();
   #fx: VehicleFx | null = null;
+  #debris: DebrisFx | null = null;
+  #canopy: CanopySource | null = null;
+  readonly #treeBuf: CanopyHit[] = Array.from({ length: TREE_QUERY_CAP }, () => ({
+    x: 0,
+    y: 0,
+    z: 0,
+    radius: 0,
+    height: 0,
+    key: 0,
+  }));
   #wake: WakeSink | null = null;
 
   #context: EngineContext | null = null;
@@ -243,6 +260,14 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   }
 
   /**
+   * Bäume der Streuung — hereingereicht aus `main.ts`, weil DriveSystem das
+   * ScatterSystem nicht importiert. Dieselbe Regel wie beim Freiflug.
+   */
+  setCanopy(source: CanopySource | null): void {
+    this.#canopy = source;
+  }
+
+  /**
    * Die Quellen, auf denen gefahren wird — für den Messstand.
    *
    * Absichtlich **dieselben Objekte** und keine Kopien: ein Prüfstand, der gegen
@@ -288,6 +313,9 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     const fx = new VehicleFx();
     fx.attach(context);
     this.#fx = fx;
+    const debris = new DebrisFx();
+    debris.attach(context);
+    this.#debris = debris;
     context.bus.on('quality:changed', ({ level }) => {
       fx.setQuality(level);
     });
@@ -386,6 +414,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
             0.12,
             Math.min(ay, by) - 0.4,
             Math.max(ay, by) + RAIL.top,
+            true,
           );
           segments++;
         }
@@ -455,6 +484,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#spawnNear(context.camera.position.x, context.camera.position.z);
     if (this.#group) this.#group.visible = true;
     this.#fx?.show();
+    this.#debris?.show();
     this.camera.reset(this.vehicle);
     this.#readouts.modus = 'Fahren';
     context.bus.emit('drive:mode', { active: true });
@@ -468,6 +498,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#active = false;
     if (this.#group) this.#group.visible = false;
     this.#fx?.hide();
+    this.#debris?.hide();
     this.#wake?.(0, 0, 0, 0, 0, false);
 
     this.fly.setEnabled(true);
@@ -643,7 +674,9 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     const started = performance.now();
     this.#refreshRoadContext();
     this.#followRoadCorrection(dt);
+    this.#fillTrees();
     this.vehicle.step(dt, input, this, this.collision);
+    this.#flushBreaks();
     // **Nach dem Schritt, nicht davor** — P9.3. Die Rundenlogik prüft den
     // Vorzeichenwechsel zwischen zwei *aufeinanderfolgenden* Positionen; sie
     // muss deshalb die Position **nach** der Integration sehen, sonst hinkt sie
@@ -659,6 +692,46 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     // `performance.now()` liegt bei einer halben Mikrosekunde Auflösung im
     // Rauschen; das Mittel ist die Zahl, die in die Abnahme gehört.
     this.#stepMs += (performance.now() - started - this.#stepMs) * 0.03;
+  }
+
+  /**
+   * Stämme der Umgebung in die Kollision legen — jedes Schritt neu.
+   *
+   * Nicht im `#rebuild`: die Vegetation streamt, und 50 000 Zylinder im
+   * Raster würden die Häuserabfrage mitbezahlen. 12 m um das Auto sind
+   * 1–4 Chunks, gedeckelt auf 48 Stämme.
+   */
+  #fillTrees(): void {
+    this.collision.beginDynamic();
+    const canopy = this.#canopy;
+    if (!canopy) return;
+    const n = canopy.queryCanopy(
+      this.vehicle.position.x,
+      this.vehicle.position.z,
+      TREE_QUERY_RADIUS,
+      this.#treeBuf,
+    );
+    for (let i = 0; i < n; i++) {
+      const tree = this.#treeBuf[i]!;
+      this.collision.addDynamicCylinder(
+        tree.x,
+        tree.z,
+        tree.radius,
+        tree.y - 0.4,
+        tree.y + tree.height,
+        tree.key,
+      );
+    }
+  }
+
+  #flushBreaks(): void {
+    const events: readonly BreakEvent[] = this.vehicle.consumeBreaks();
+    if (events.length === 0) return;
+    for (const event of events) {
+      if (event.kind === 'tree') this.#canopy?.breakTree(event.id);
+      this.#debris?.burst(event);
+      this.#context?.bus.emit('drive:broke', event);
+    }
   }
 
   /**
@@ -692,6 +765,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.camera.update(dt, this.vehicle, this, this.#context.camera);
     this.#syncMeshes();
     this.#fx?.update(dt, this.vehicle, this, this.#context.camera, this.#input.handbrake);
+    this.#debris?.update(dt);
     const t = this.vehicle.telemetry;
     const yaw = this.vehicle.yaw;
     this.#wake?.(
@@ -1011,6 +1085,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#material = null;
     this.#fx?.dispose();
     this.#fx = null;
+    this.#debris?.dispose();
+    this.#debris = null;
     this.collision.clear();
     this.#sampler = null;
     this.#network = null;
