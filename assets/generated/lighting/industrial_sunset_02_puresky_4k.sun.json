@@ -1,0 +1,31 @@
+{
+  "generator": "tools/hdri-sun.mjs",
+  "source": "assets/hdri/industrial_sunset_02_puresky_4k.hdr",
+  "resolution": [
+    4096,
+    2048
+  ],
+  "direction": [
+    0.80865,
+    0.03897,
+    0.58699
+  ],
+  "elevationDeg": 2.23,
+  "azimuthDeg": 125.98,
+  "color": [
+    1,
+    0.1183,
+    0.0006
+  ],
+  "colorHex": "#ff1e00",
+  "intensity": 4.71,
+  "diagnostics": {
+    "peakLuminance": 3360.909,
+    "meanLuminance": 0.4327,
+    "discPixels": 12,
+    "pixel": [
+      2456.8,
+      998.1
+    ]
+  }
+}

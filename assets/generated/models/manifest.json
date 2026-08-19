@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "erzeugt": "2026-07-28T17:50:16.553Z",
+  "assets": {
+    "boulder_01": {
+      "quelle": "polyhaven:boulder_01",
+      "material": "rock",
+      "dreieckeQuelle": 66122,
+      "groesse": [
+        2.028,
+        1.6,
+        2.917
+      ],
+      "groesseQuelle": [
+        1.272,
+        1.004,
+        1.83
+      ],
+      "massstab": 1.5939,
+      "radius": 1.776,
+      "stufen": [
+        {
+          "datei": "boulder_01.glb",
+          "dreiecke": 1198,
+          "bytes": 8140
+        },
+        {
+          "datei": "boulder_01.lod1.glb",
+          "dreiecke": 296,
+          "bytes": 3628
+        }
+      ]
+    },
+    "coastal_cliff_04": {
+      "quelle": "polyhaven:coastal_cliff_04",
+      "material": "rock",
+      "dreieckeQuelle": 1537926,
+      "groesse": [
+        86.772,
+        11,
+        24.247
+      ],
+      "groesseQuelle": [
+        86.772,
+        11,
+        24.247
+      ],
+      "massstab": 1,
+      "radius": 45.048,
+      "stufen": [
+        {
+          "datei": "coastal_cliff_04.glb",
+          "dreiecke": 2499,
+          "bytes": 13992
+        },
+        {
+          "datei": "coastal_cliff_04.lod1.glb",
+          "dreiecke": 498,
+          "bytes": 4788
+        }
+      ]
+    },
+    "rock_moss_set_02": {
+      "quelle": "polyhaven:rock_moss_set_02",
+      "material": "rock",
+      "dreieckeQuelle": 57647,
+      "groesse": [
+        8.278,
+        1.368,
+        3.41
+      ],
+      "groesseQuelle": [
+        8.278,
+        1.368,
+        3.41
+      ],
+      "massstab": 1,
+      "radius": 4.477,
+      "stufen": [
+        {
+          "datei": "rock_moss_set_02.glb",
+          "dreiecke": 900,
+          "bytes": 6428
+        },
+        {
+          "datei": "rock_moss_set_02.lod1.glb",
+          "dreiecke": 270,
+          "bytes": 3516
+        }
+      ]
+    },
+    "modular_wooden_pier": {
+      "quelle": "polyhaven:modular_wooden_pier",
+      "material": "keep",
+      "dreieckeQuelle": 84780,
+      "groesse": [
+        3.102,
+        7.516,
+        19.026
+      ],
+      "groesseQuelle": [
+        3.102,
+        7.516,
+        19.026
+      ],
+      "massstab": 1,
+      "radius": 9.639,
+      "stufen": [
+        {
+          "datei": "modular_wooden_pier.glb",
+          "dreiecke": 2982,
+          "bytes": 1545740
+        }
+      ]
+    }
+  }
+}
