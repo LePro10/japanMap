@@ -32,6 +32,13 @@ export interface WaterUniforms {
   readonly uWaterSteepness: IUniform<Vector3>;
   /** 0 = Meer, 1 = Fluss. Schaltet Flächennormale und Stufenschaum. */
   readonly uWaterRiver: IUniform<number>;
+  /**
+   * Kielwelle: xy = Fahrzeug-XZ, w = Tempo (m/s).
+   * Siehe `uVehicleWake` in water_pars.frag.glsl.
+   */
+  readonly uVehicleWake: IUniform<Vector4>;
+  /** xy = Fahrtrichtung XZ, z = 1 wenn das Auto im Wasser ist. */
+  readonly uVehicleFwd: IUniform<Vector4>;
 }
 
 const toRadians = (degrees: number): number => (degrees * Math.PI) / 180;
@@ -67,6 +74,8 @@ export function createWaterUniforms(): WaterUniforms {
     uWaterWaves: { value: waves },
     uWaterSteepness: { value: new Vector3(a, b, c) },
     uWaterRiver: { value: 0 },
+    uVehicleWake: { value: new Vector4() },
+    uVehicleFwd: { value: new Vector4() },
   };
 }
 

@@ -71,6 +71,36 @@ float foam = 1.0 - smoothstep(
 );
 foam = max(foam, riverFoam);
 foam *= uWaterFoam.z * (1.0 - outside);
+
+// ── Kielwelle ────────────────────────────────────────────────────────────
+//
+// Forza-Look: ein V hinter dem Auto (Schaum wird nach hinten breiter) plus
+// ein Bugwulst um die Karosserie. Nur wenn `uVehicleFwd.z` an ist — sonst
+// bleibt das Meer, was es war. Die Geometrie ist ein Quad, also lebt das
+// hier im Fragment, nicht in den Vertices.
+float wakeFoam = 0.0;
+if (uVehicleFwd.z > 0.5) {
+  vec2 toCar = vWaterWorld.xz - uVehicleWake.xy;
+  float along = -dot(toCar, uVehicleFwd.xy);
+  float across = toCar.x * (-uVehicleFwd.y) + toCar.y * uVehicleFwd.x;
+  float dist = length(toCar);
+  float pace = smoothstep(1.5, 14.0, uVehicleWake.w);
+
+  float halfW = 0.85 + along * 0.42;
+  float inV = smoothstep(0.2, 2.2, along)
+    * (1.0 - smoothstep(halfW, halfW + 2.4, abs(across)))
+    * exp(-along * 0.055);
+  float bow = exp(-dist * dist * 0.085) * (1.0 - smoothstep(4.5, 7.0, dist));
+  wakeFoam = pace * clamp(inV * 0.95 + bow * 0.55, 0.0, 1.0);
+
+  gWaterNormal = normalize(gWaterNormal + vec3(
+    across * 0.08,
+    0.0,
+    -along * 0.05
+  ) * wakeFoam);
+}
+
+foam = max(foam, wakeFoam);
 diffuseColor.rgb += vec3(foam);
 
 // Rauheit wächst mit der Entfernung. Was in der Nähe eine spiegelnde Fläche

@@ -31,6 +31,19 @@ uniform vec3 uWaterSteepness;
 /** 0 = Meer, 1 = Fluss. Siehe water_surface.frag.glsl. */
 uniform float uWaterRiver;
 
+/**
+ * Kielwelle des Fahrzeugs. Null, solange niemand im Wasser fährt.
+ *
+ *  xy = Weltposition XZ, w = Tempo in m/s
+ *  uVehicleFwd.xy = Fahrtrichtung XZ, z = 1 wenn aktiv
+ *
+ * Die Geometrie der Ebene ist ein einziges Quad — Auslenkung im Vertex
+ * ginge verloren. Deshalb lebt die Spur im Fragment: Schaum, Rauheit,
+ * eine kleine Normalenstörung. Ein paar ALUs je Wasserpixel, kein Draw-Call.
+ */
+uniform vec4 uVehicleWake;
+uniform vec4 uVehicleFwd;
+
 varying vec3 vWaterWorld;
 varying vec3 vWaterSurfaceN;
 
