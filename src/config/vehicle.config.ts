@@ -118,25 +118,64 @@ export const CG_TO_REAR = CHASSIS.wheelbase * CHASSIS.frontWeight;
  * Nick und Wank sind deshalb kinematisch, nicht dynamisch.
  */
 export const SUSPENSION = {
-  /** Federweg von voll ausgefedert bis Anschlag. */
-  travel: 0.18,
+  /**
+   * Federweg von voll ausgefedert bis Anschlag.
+   *
+   * **0,18 → 0,26 m nach der ersten Geländefahrt.** Das Höhenfeld dieser Karte
+   * hat 1,5 m Texelabstand; bei 30 km/h findet ein Rad darauf regelmäßig Stufen
+   * von 15…25 cm. Mit 18 cm Weg saß der Aufbau dabei ständig auf dem Anschlag
+   * (gemessen: Ausnutzung bis **150 %**), und der schoss ihn in die Luft. 26 cm
+   * ist der Federweg eines Fahrzeugs, das auch Feldwege fährt — und genau das
+   * tut dieses hier.
+   */
+  travel: 0.26,
 
   /**
    * Federrate der Gesamtachse in N/m, aus der **Aufbaufrequenz** gerechnet.
    *
-   * 1,6 Hz ist ein straff abgestimmtes Straßenfahrwerk (Serienlimousine 1,1…1,3,
-   * Rennwagen 2,5+). `k = m · (2π f)² = 1150 × (10,053)² = 116 200 N/m`.
+   * ~~1,6 Hz ist ein straff abgestimmtes Straßenfahrwerk.~~ **Auf 1,35 Hz
+   * gesenkt**, aus demselben Grund wie der größere Federweg: 1,6 Hz ist eine
+   * Rennstreckenabstimmung, und die Hälfte dieser Karte ist Wiese.
+   * Serienlimousine 1,1…1,3, Rennwagen 2,5+; 1,35 liegt am straffen Ende des
+   * Zivilen. `k = m · (2π f)² = 1150 × (8,482)² = 82 730 N/m`.
    */
-  stiffness: 116_200,
+  stiffness: 82_730,
 
   /**
    * Dämpfung in N·s/m, aus dem **Dämpfungsgrad** gerechnet.
    *
-   * ζ = 0,45 — unterkritisch, der Aufbau schwingt nach einer Bodenwelle einmal
-   * nach und steht dann. `c = 2 ζ √(k m) = 2 × 0,45 × √(116200 × 1150) =
-   * 10 390 N·s/m`.
+   * ζ = 0,55 — deutlich unterkritisch, der Aufbau kommt nach einer Bodenwelle
+   * ohne Nachschwingen zur Ruhe. Angehoben von 0,45: mit dem weicheren Federbein
+   * schwingt er sonst länger nach, und im Gelände ist jede Nachschwingung ein
+   * Rad, das beim nächsten Hügel schon oben ist. `c = 2 ζ √(k m) =
+   * 2 × 0,55 × √(82730 × 1150) = 10 720 N·s/m`.
    */
-  damping: 10_390,
+  damping: 10_720,
+
+  /**
+   * Wie viel härter der Gummipuffer jenseits des Federwegs ist.
+   *
+   * War 9 und bleibt 9 — dieser Wert war nicht das Problem, die **fehlende
+   * Obergrenze** war es. Siehe `maxLoadFactor`.
+   */
+  bumpStopFactor: 9,
+
+  /**
+   * Obergrenze der Federkraft, als Vielfaches des Fahrzeuggewichts.
+   *
+   * **Die Reparatur des schwersten Fehlers dieser Phase.** Ohne Deckel rechnet
+   * der Anschlag bei einer 40-cm-Stufe eine Kraft aus, die den Aufbau mit 9 g
+   * senkrecht wegschießt. Gemessen am Hang unter dem Massiv, 20 s Vollgas:
+   * **91,9 % der Zeit in der Luft, längste Flugphase 7,7 s.** Auf der Wiese
+   * waren es 5,8 % mit 0,78 s. Das Auto ist dort nicht gefahren, es ist gehüpft.
+   *
+   * Der Deckel ist kein Kunstgriff, sondern die fehlende Physik: ein echtes Rad,
+   * das eine Kante trifft, **verformt sich und rutscht daran hoch**, statt den
+   * Aufbau zu katapultieren. 3,5 g ist die Größenordnung, die eine
+   * Radaufhängung bei hartem Einschlag tatsächlich überträgt — genug, dass eine
+   * Landung sich nach Landung anfühlt, zu wenig für einen Katapultstart.
+   */
+  maxLoadFactor: 3.5,
 
   /**
    * Zeitkonstante, mit der Nick und Wank der Stützebene folgen (1/s).
@@ -183,13 +222,36 @@ export const TIRE = {
   /**
    * Schräglaufwinkel des Kraftmaximums, in Radiant.
    *
-   * 8,0° vorn / 9,2° hinten. Straßenreifen erreichen ihr Maximum zwischen 6°
-   * und 10°; der Unterschied zwischen den Achsen ist hier kein Reifen, sondern
-   * die **Abstimmung**: die weichere Hinterachse steigt langsamer an und hält
-   * länger, was das Auto beim Einlenken willig macht, ohne es nervös zu machen.
+   * **9,2° vorn / 6,9° hinten — und die erste Fassung hatte es genau
+   * andersherum.** Straßenreifen erreichen ihr Maximum zwischen 6° und 10°;
+   * welche Achse den kleineren Wert hat, entscheidet aber nicht über „willig",
+   * sondern über **Stabilität**.
+   *
+   * Die Schräglaufsteifigkeit einer Achse ist `C = 2 μ F_z / α_peak`. Ein
+   * Einspurmodell ist gierstabil, solange `b · C_hinten > a · C_vorn` — sonst
+   * dreht sich der Wagen bei der kleinsten Störung **aus** der Fahrtrichtung
+   * heraus, und der Schwimmwinkel wächst mit sich selbst.
+   *
+   * | Abstimmung | Asphalt | Gelände, Vollgas |
+   * |---|---|---|
+   * | 0,14 / 0,16 / f = 1,02 · erste Fassung | **0,89 — instabil** | **0,74 — instabil** |
+   * | **0,16 / 0,12 / f = 1,08** | **1,44** | **1,19** |
+   *
+   * Reserve = `b · C_hinten / a · C_vorn`; über 1 ist stabil.
+   *
+   * Die erste Fassung war damit **auf jedem Belag instabil**. Gemessen auf der
+   * Wiese bei Vollgas und Lenkung **null**: die Gierrate wuchs von 0,02 auf
+   * 1,90 rad/s in zwei Sekunden, und der Wagen stand quer, ohne dass jemand
+   * gelenkt hätte. Sie war obendrein kein Drift-Setup — mit 8,0° vorn gegen
+   * 9,2° hinten sättigte die **Vorderachse zuerst**, das Auto schob also am
+   * Limit, statt auszubrechen.
+   *
+   * Jetzt stimmt beides: unterhalb des Scheitels stabil, am Scheitel bricht die
+   * **Hinterachse** zuerst aus (6,9° gegen 9,2°) — Übersteuern auf Wunsch statt
+   * Übersteuern von allein.
    */
-  peakSlipFront: 0.14,
-  peakSlipRear: 0.16,
+  peakSlipFront: 0.16,
+  peakSlipRear: 0.12,
 
   /**
    * Kraftbeiwert (μ) auf Asphalt.
@@ -202,14 +264,158 @@ export const TIRE = {
   gripAsphalt: 1.25,
 
   /**
-   * Beiwert der Hinterachse als **Anteil** des vorderen.
+   * Was der Reifen **jenseits** seines Scheitels mindestens noch trägt, als
+   * Anteil des Maximums.
    *
-   * 0,94 — die Hinterachse verliert zuerst. Das ist die Ursache dafür, dass das
-   * Auto übersteuernd ausbricht statt untersteuernd zu schieben, und damit die
-   * zweite Hälfte der Drift-Anforderung. Über 1,0 gesetzt fährt derselbe Wagen
-   * sicher und langweilig.
+   * Ein echter Reifen verliert jenseits des Scheitels 10…25 % und behält den
+   * Rest: die Gleitreibung des Gummis verschwindet nicht, nur weil das Rad quer
+   * steht. Ohne diesen Boden gibt es hinter dem Ausbruchpunkt **negative
+   * Dämpfung** — je weiter der Wagen quer geht, desto weniger hält ihn.
+   *
+   * 0,75 ist der Wert, an dem ein Drift **haltbar** wird: das Heck rutscht, aber
+   * die Reifen tragen noch genug, dass Gegenlenken und Gaswegnehmen wirken.
+   *
+   * > **Dieser Wert war richtig und stand an der falschen Stelle.** Bis P17 war
+   * > er als Betragsklemme über die *ganze* Kennlinie gelegt — auch über den
+   * > **ansteigenden** Ast. Damit lieferte der Reifen schon bei 0,01°
+   * > Schräglauf **75 % seiner Spitzenkraft**: eine Sprungfunktion bei null
+   * > statt eines Anstiegs. Die Folgen sind unter `plateauWidth` gemessen. Seit
+   * > P17 greift der Boden dort, wofür er gedacht war — **hinter** dem Abfall.
    */
-  rearGripFactor: 0.94,
+  tailGrip: 0.75,
+
+  /**
+   * Breite des Kraftmaximums, als Vielfaches von `peakSlip`.
+   *
+   * **Der Regler, an dem „fährt sich gut" hängt** — und der Grund, warum die
+   * Kennlinie seit P17 vier Abschnitte hat statt einer geschlossenen Formel:
+   *
+   * ```
+   *   1. Anstieg     α < p            x(2−x), x = α/p   → f(0)=0, f'(p)=0
+   *   2. Plateau     p ≤ α < p(1+w)   1
+   *   3. Abfall      … < falloffSlip  Glättung auf tailGrip
+   *   4. Rest        darüber          tailGrip
+   * ```
+   *
+   * An jedem Übergang ist die Ableitung stetig — das Plateau grenzt beidseitig
+   * an Stellen mit Steigung null, und der Abfall benutzt eine Glättung, die an
+   * beiden Enden waagerecht ausläuft. Die Kennlinie hat also nirgends eine
+   * Kante. Die Anfangssteigung ist `2/p` und damit **dieselbe**, mit der die
+   * Stabilitätsrechnung bei `peakSlipFront` rechnet (`C = 2 μ F_z / α_peak`):
+   * jene Rechnung war immer richtig, nur hat die alte Kennlinie sie nie
+   * eingelöst.
+   *
+   * Ein **Plateau** ist das, was ein Auto verzeihlich macht: am Limit passiert
+   * nicht plötzlich etwas anderes, es gibt einen Bereich, in dem der Reifen
+   * seine Höchstkraft *hält*, während der Schräglauf schon wächst. Der Fahrer
+   * spürt die Grenze, bevor sie ihn kostet. 0,55 heißt: vorn trägt der Reifen
+   * von 9,2° bis 14,2° volle Kraft.
+   *
+   * ## Was der fehlende Anstieg gekostet hat — gemessen am 2026-08-19
+   *
+   * Dieselbe Messreihe vor und nach der Reparatur, auf ebenem bzw. leicht
+   * welligem Asphalt:
+   *
+   * | Messung | vorher | nachher |
+   * |---|---|---|
+   * | Vorzeichenwechsel Schräglauf, ruhige Geradeausfahrt (300 Schritte) | **295** | **1** |
+   * | größter Schwimmwinkel, 10 s Vollgas geradeaus, Lenkung null | 3,72° | **1,07°** |
+   * | Gierrate bei Lenkeingabe 0,10 / 0,50 / 1,00 | 18,9 / 29,0 / **25,1** °/s | 10,5 / 33,4 / 31,1 °/s |
+   * | Endtempo Wiese, 10 s Vollgas | 11,7 km/h bei **89,4°** Schwimmwinkel | 144,4 km/h bei 2,3° |
+   *
+   * Die erste Zeile ist der Befund selbst: die Reifenkraft kehrte ihre Richtung
+   * **in 295 von 300 Schritten** um. Das ist kein Fahrverhalten, das ist ein
+   * Zweipunktregler.
+   *
+   * Die dritte Zeile ist die eigentliche Antwort auf „schwer zu steuern": die
+   * Lenkung war **nicht monoton**. Mehr Einschlag ergab weniger Drehung, und
+   * zwischen 0,10 und 0,35 ergab er gar nichts. Kein Fahrer kann ein Auto
+   * lernen, dessen Antwort nicht mit der Eingabe wächst.
+   */
+  plateauWidth: 0.55,
+
+  /**
+   * Schräglaufwinkel, ab dem nur noch `tailGrip` übrig ist, in Radiant.
+   *
+   * Der Abschnitt zwischen Plateauende und diesem Wert ist der **Abfall**, und
+   * seine Länge bestimmt, wie schnell ein Ausbruch geht: kurz = schnappt, lang
+   * = rutscht sanft weg.
+   *
+   * Hinten länger als vorn (40° gegen 30°). Das Heck soll beim Ausbrechen Zeit
+   * lassen, damit Gegenlenken überhaupt ankommt; vorn darf es früher fertig
+   * sein, denn Untersteuern soll man merken.
+   */
+  falloffSlipFront: 0.524,
+  falloffSlipRear: 0.698,
+
+  /**
+   * Beiwert der Hinterachse als **Anteil** des vorderen — der Übersteuer-Regler.
+   *
+   * ## Die Rechnung, und warum die alte falsch war
+   *
+   * In der stationären Kurve gilt Momentengleichgewicht um die Hochachse,
+   * `a · F_vorn = b · F_hinten`. Zusammen mit `F_vorn + F_hinten = F_gesamt`
+   * folgt daraus, dass jede Achse **genau ihren Lastanteil** an Seitenkraft
+   * aufbringen muss: vorn `b/(a+b) = 0,53`, hinten `0,47`.
+   *
+   * Damit ist die Ausnutzung jeder Achse ihr Kraftbedarf geteilt durch ihre
+   * Kapazität:
+   *
+   * ```
+   *   vorn:   0,53 F / (μ · 0,53 · L)       = F / (μ L)
+   *   hinten: 0,47 F / (μ · f · 0,47 · L)   = F / (f · μ L)
+   * ```
+   *
+   * Das Verhältnis hinten/vorn ist also schlicht **1/f**. Neutral ist `f = 1,00`;
+   * `f < 1` heißt Übersteuern, `f > 1` heißt Untersteuern. Die Lastverteilung
+   * kürzt sich vollständig heraus — sie steht auf beiden Seiten.
+   *
+   * > **Die alte Tabelle nannte `f = 1,128` „neutral", und das war ein
+   * > Rechenfehler.** Verglichen wurde dort die Achs*kapazität* (`μ·0,53` gegen
+   * > `μ·f·0,47`) mit sich selbst statt mit dem Kraft*bedarf*. Gleiche absolute
+   * > Kapazität bedeutet aber nicht Gleichgewicht: die Hinterachse muss nur 47 %
+   * > tragen, bei gleicher Kapazität ist sie also überversorgt. Aus dem Fehler
+   * > folgte die Zeile „1,02 lässt 10 % Übersteuertendenz stehen" — in
+   * > Wirklichkeit untersteuerte der Wagen dort um 2 %.
+   *
+   * ## Warum 1,00 und nicht weniger
+   *
+   * `f` war zuletzt **1,08** — 8 % Untersteuern, und in P14.5 aus einem
+   * Stabilitätsgrund so gesetzt worden. Dieser Grund ist entfallen: die
+   * Gierstabilitätsreserve `b·C_h / a·C_v` ist mit den heutigen Scheitelwinkeln
+   * `1,272 · f · 0,47/0,12 / (1,128 · 0,53/0,16) = 1,3335 · f` und liegt bei
+   * `f = 1,00` immer noch bei **1,33**. Getragen wird sie von der Asymmetrie der
+   * Scheitelwinkel (16 vorn gegen 12 hinten), nicht von `f`.
+   *
+   * Gemessen am 2026-08-19, jeweils dieselben vier Fahrmanöver:
+   *
+   * | `f` | Gasstoß in der Kurve | Lastwechsel | Gegenlenken nach Handbremse | 0–100 |
+   * |---|---|---|---|---|
+   * | 1,08 (bisher) | **5,4°** — kein Drift möglich | 12,4° | fängt sich nach 3 s | 4,85 s |
+   * | **1,00** | **19,7°** | 22,1° | fängt sich nach 3 s | 4,85 s |
+   * | 0,96 | 23,3° | **59,0°** | fängt sich nach 4 s | 4,85 s |
+   * | 0,92 | 24,7° | **89,6°** | pendelt bis 5 s | 4,85 s |
+   * | 0,88 | 33,4° | **89,9°** | pendelt bis 5 s | 4,85 s |
+   *
+   * Die Spalte **Lastwechsel** entscheidet. Sie misst den Schwimmwinkel, wenn
+   * man in einer schnellen Kurve das Gas wegnimmt — die häufigste unabsichtliche
+   * Eingabe eines Gelegenheitsspielers. Ab `f = 0,96` wird daraus ein Dreher um
+   * 59°, ab 0,92 ein voller. Ein Auto, das für Gaswegnehmen mit einem Dreher
+   * bestraft, ist auf CrazyGames nach zwei Runden weg.
+   *
+   * Bei 1,00 steht beides zugleich: Gasstoß, Handbremse und Lenkimpuls stellen
+   * den Wagen auf 20…25° quer, ein Lastwechsel bleibt mit 22° beherrschbar.
+   *
+   * > **Nebenbei heilt 1,00 die Herleitung von `maxDriveForce`.** Die rechnet
+   * > die Haftgrenze der Hinterachse als `μ · m · g · 0,47 = 6627 N` und setzt
+   * > 7200 N mit „8,6 % darüber" dagegen — eine Rechnung, die `f = 1`
+   * > **voraussetzt**. Mit `f = 1,08` lag die Grenze bei 7157 N und unter
+   * > Lastverlagerung beim Beschleunigen bei rund 8800 N; Vollgas kam nie
+   * > darüber, und genau deshalb war Gasstoß-Übersteuern nicht bloß schwach,
+   * > sondern **rechnerisch unmöglich**. Der Wert 7200 stimmt wieder, ohne dass
+   * > er angefasst werden musste.
+   */
+  rearGripFactor: 1.0,
 
   /**
    * Beiwerte der übrigen Beläge, als Anteil von `gripAsphalt`.
@@ -218,9 +424,82 @@ export const TIRE = {
    * `gelaende` alles neben der Straße. Die Karte hat 101 ha Reisfelder und
    * Waldboden — ohne diesen Unterschied wäre Abkürzen quer über die Wiese
    * schneller als die Straße, und die Strecke damit bedeutungslos.
+   *
+   * > **`gelaende` von 0,55 auf 0,72 angehoben.** 0,55 war als „Wiese ist
+   * > rutschig" gedacht und hat „Wiese ist unfahrbar" ergeben: bei μ = 0,69
+   * > rutscht der Wagen schon unterhalb von Schrittgeschwindigkeit weg, sobald
+   * > man lenkt. 0,72 entspricht μ = 0,90 — festem Erdboden mit Gras, und das
+   * > ist es, was auf dieser Karte neben der Straße liegt. Der Unterschied zur
+   * > Straße bleibt mit 20 % deutlich spürbar und wird zusätzlich vom höheren
+   * > Rollwiderstand getragen.
    */
-  gripGravel: 0.72,
-  gripTerrain: 0.55,
+  gripGravel: 0.78,
+  gripTerrain: 0.72,
+
+  /**
+   * Der **Boden unter dem Reibkreis**: welcher Anteil der Querkraft einer Achse
+   * auch dann noch zur Verfügung steht, wenn die Längsrichtung das ganze
+   * Kraftbudget verlangt.
+   *
+   * ## Warum es diesen Boden geben muss
+   *
+   * Der Reibkreis lässt der Querführung `√(grip² − Fx²)`. Das ist richtig
+   * gerechnet und geht bei voller Längsausnutzung auf **null** — und eine Achse
+   * ohne jede Seitenführung ist nicht „am Limit", sie ist von der Fahrbahn
+   * abgemeldet. Gemessen auf Gras, Vollgas: das Querbudget der Hinterachse lag
+   * **vier Sekunden lang exakt bei 0,000**, weil `maxDriveForce` dort das
+   * 1,13-fache der Haftgrenze verlangt.
+   *
+   * Die Folge ist nicht Übersteuern, sondern ein **Wagen ohne Rückstellung**:
+   * die Vorderachse hält voll, die Hinterachse gar nicht, und jede Bodenwelle
+   * dreht ihn weg. Gemessen 10 s Vollgas geradeaus über die Wiese, Lenkung
+   * **null**: 89,95° Schwimmwinkel und 25,8 km/h. Das ist „im Dreck
+   * unspielbar", und es ist kein Reifen-, sondern ein Buchhaltungsfehler.
+   *
+   * ## Warum 0,55
+   *
+   * Der Wert entscheidet über die Gierstabilität am Limit. Die Achsmomente
+   * müssen sich die Waage halten: `b · F_hinten ≳ a · F_vorn`. Mit
+   * `a = 1,128`, `b = 1,272`, `rearGripFactor = 1,08` und der Lastverteilung
+   * 53/47 braucht die Hinterachse dafür `0,5978 / 0,6457 = 0,926` ihrer
+   * Querkapazität. Das ist die Grenze zum **neutralen** Auto — und dieses hier
+   * soll übersteuern, wenn man es darum bittet.
+   *
+   * Gemessen wurde deshalb der Bereich darunter (Wiese, 10 s Vollgas, Lenkung
+   * null / Asphalt, Lenkimpuls 0,3 s bei 145 km/h):
+   *
+   * | `lateralReserve` | Wiese: Endtempo | max. Schwimmwinkel | Handbremsdrift nach 2 s | Gegenlenken fängt nach |
+   * |---|---|---|---|---|
+   * | 0,00 (der Zustand vor P17) | **7,8 km/h** | **89,97°** | — | — |
+   * | 0,25 | 144,4 km/h | 2,25° | 64,5° | 3,6 s |
+   * | 0,35 | 144,4 km/h | 2,25° | 69,1° | 3,6 s |
+   * | **0,55** | 144,4 km/h | 2,25° | 77,6° | 3,5 s |
+   * | 0,65 | 144,4 km/h | 2,25° | 81,5° | 3,4 s |
+   * | 0,75 | 144,4 km/h | 2,25° | **89,5°** | 2,8 s |
+   *
+   * **Die Klippe liegt vollständig zwischen 0,00 und 0,25**; darüber sind die
+   * beiden Geländespalten bis auf die letzte Stelle identisch. Der Wert ist
+   * innerhalb dieses Bandes also **gewählt und nicht gemessen** — und das gehört
+   * hierhin, statt eine Genauigkeit vorzutäuschen, die die Messung nicht hergibt.
+   *
+   * Gewählt wurde nach der vierten Spalte. Sie misst, wie viel Schwimmwinkel
+   * zwei Sekunden nach einem Handbremsanriss noch steht, und ist das einzige
+   * Kriterium, das innerhalb des Bandes überhaupt unterscheidet: bei 0,75 hält
+   * der Wagen 89,5° — er dreht sich also weiter statt zu driften. 0,55 lässt
+   * 77,6° stehen und liegt damit im haltbaren Bereich, ohne dass die Reserve so
+   * groß wird, dass sie den Reibkreis aushebelt.
+   *
+   * > **Der Vorgänger dieser Zahl war wirkungslos.** Bis P17 stand hier
+   * > `minSpinGrip: 0.8` mit einer ausführlichen Begründung und zwei
+   * > Messreihen. Der Wert wurde als **Faktor auf das Ergebnis** von
+   * > `tireLateral` angewandt — also *nachdem* der Reibkreis die Kraft auf null
+   * > geklemmt hatte. `0 · 0,8` ist 0. Gegenprobe: derselbe Lauf mit 0,80,
+   * > 0,55, 0,25 und 0,00 endet **auf vier Nachkommastellen an derselben
+   * > Stelle** (−5,9617 | 27,6956). Er ist die dritte tote Stellschraube dieses
+   * > Projekts nach `viewDistance` und `shadowCascades` — und die erste, die
+   * > eine erfundene Messung im Kommentar trug.
+   */
+  lateralReserve: 0.55,
 
   /**
    * Anteil der Seitenkraft, der bei **blockiertem** Rad übrig bleibt.
@@ -281,6 +560,20 @@ export const DRIVETRAIN = {
   /** Bremskraft der Handbremse, nur Hinterachse. Blockiert sie sicher. */
   handbrakeForce: 9000,
 
+  /**
+   * Wie schnell die Gasstellung der Eingabe folgt, in 1/s.
+   *
+   * 4,0 heißt: von null auf Vollgas in 0,25 s. Das ist die Zeit, die ein Fuß
+   * für den Pedalweg braucht — und der Grund, warum es diesen Wert überhaupt
+   * gibt, ist die Tastatur: sie kennt nur 0 und 1. Ohne Rampe steht bei jedem
+   * Antippen sofort die volle Antriebskraft an, und auf losem Boden ist das der
+   * Unterschied zwischen Beschleunigen und Querstehen.
+   *
+   * Die Beschleunigung kostet das fast nichts: 0,25 s Aufbauzeit gegen 4,7 s auf
+   * 100 km/h.
+   */
+  throttleRate: 4,
+
   /** Höchstgeschwindigkeit im Rückwärtsgang, in m/s. */
   reverseMaxSpeed: 12,
   /** Anteil der Antriebskraft im Rückwärtsgang. */
@@ -298,12 +591,17 @@ export const DRIVETRAIN = {
    * Rollwiderstandsbeiwert auf Asphalt und im Gelände.
    *
    * 0,014 ist der Lehrbuchwert für Gürtelreifen auf Asphalt (→ 158 N bei
-   * 1150 kg). Im Gelände das Vierfache: 0,058. Das ist die zweite Hälfte davon,
-   * warum die Wiese langsamer ist als die Straße — der niedrigere Reibwert
-   * allein bremst nicht, er lässt nur früher rutschen.
+   * 1150 kg). Im Gelände rund das Dreifache: 0,040. Das ist die zweite Hälfte
+   * davon, warum die Wiese langsamer ist als die Straße — der niedrigere
+   * Reibwert allein bremst nicht, er lässt nur früher rutschen.
+   *
+   * > Von 0,058 auf 0,040 gesenkt, zusammen mit dem angehobenen Geländebeiwert:
+   * > 0,058 kostete bei 1150 kg 654 N und damit ein Zehntel der Antriebskraft
+   * > allein fürs Rollen. Zusammen mit dem alten Reibwert kam das Auto im
+   * > Gelände nach 20 s Vollgas auf **11 km/h**.
    */
   rollingResistance: 0.014,
-  rollingResistanceTerrain: 0.058,
+  rollingResistanceTerrain: 0.04,
 
   /**
    * Abtrieb als `F = c · v²`, c in N/(m/s)².

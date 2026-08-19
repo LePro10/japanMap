@@ -46,7 +46,24 @@ export const TOUCH_CONTROLS: readonly (readonly [string, string])[] = [
   ['Rechts ziehen', 'umsehen'],
   ['Zwei Finger rechts', 'Tempo'],
   ['▲ / ▼', 'steigen / sinken'],
+  ['🚗', 'ins Auto steigen'],
   ['⟲ / ⇩', 'Start / Bodenkollision'],
+  ['☰', 'Menü'],
+];
+
+/**
+ * Der Fahrmodus am Finger.
+ *
+ * Das Bedienfeld **tauscht** im Auto seine Knöpfe: ▲/▼ und ⇩ sind dort ohne
+ * Bedeutung, dafür kommt die Handbremse. `⟲` bleibt stehen und bedeutet
+ * weiterhin „zurück auf Anfang" — im Auto heißt das „auf die nächste Straße".
+ */
+export const TOUCH_DRIVE_CONTROLS: readonly (readonly [string, string])[] = [
+  ['Links ziehen', 'Gas / Bremse / lenken'],
+  ['Rechts ziehen', 'umsehen'],
+  ['✋', 'Handbremse'],
+  ['⟲', 'auf die nächste Straße'],
+  ['🚗', 'zurück zum Freiflug'],
   ['☰', 'Menü'],
 ];
 

@@ -1,5 +1,6 @@
 import type { PropPlacement } from '@/config/props.config';
 import type { QualityKey } from '@/config/quality.config';
+import type { LapResult } from '@/game/LapTimer';
 import type { LookState } from '@/render/looks/lookState';
 import type { CityCollider, CityCurb, SignAnchor } from '@/world/city/CityGenerator';
 import type { CityUniforms } from '@/world/materials/FacadeMaterial';
@@ -186,6 +187,17 @@ export type AppEvents = {
    * lügt — dieselbe Begründung wie bei `quality:changed`.
    */
   'drive:mode': { active: boolean };
+
+  /**
+   * Eine Runde ist zu Ende — P16.
+   *
+   * `LapTimer.step()` gibt dasselbe Ergebnis auch **zurück**, und der Rückgabe­
+   * weg bleibt der maßgebliche: der Messstand aus P14 treibt die Physik ohne
+   * Bus und ohne Renderer. Das Ereignis ist für die zwei Zuhörer, die es im
+   * Betrieb gibt — das Rundensignal der Tonschicht und das HUD. Ohne Bus
+   * bräuchte `DriveSystem` beide als Rückrufe und damit Kenntnis von ihnen.
+   */
+  'drive:lap': LapResult;
 
   'debug:visibility': { visible: boolean };
 };

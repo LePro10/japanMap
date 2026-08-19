@@ -607,6 +607,62 @@ body {
   font-weight: 600;
 }
 
+/* Kopfzeilenknöpfe. `flex: none` an beiden, damit „Weiter" seine Breite behält,
+ * wenn der Stummschalter danebentritt — der Knopf, der das Menü schließt, darf
+ * auf einem schmalen Schirm nicht schrumpfen. */
+.menu__headButtons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.menu__mute {
+  /* Quadratisch und mindestens 44 px: derselbe Grund wie überall sonst hier —
+   * auf einem Telefon wird das mit dem Daumen getroffen. */
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Stumm ist ein **Zustand**, kein Druck — er bleibt sichtbar, solange er gilt. */
+.menu button.menu__mute.is-muted {
+  border-color: var(--fg-dim);
+  opacity: 0.55;
+}
+
+/* ── Der Moduswechsel ──────────────────────────────────────────────────────
+ *
+ * **Er steht über den Reitern und nicht in einem**, und das ist der ganze Punkt
+ * der Zeile: Fliegen und Fahren sind die zwei Arten, dieses Spiel zu spielen —
+ * Grafik, Steuerung und Blickpunkte sind Einstellungen. Ein Umschalter, der in
+ * einem Reiter läge, wäre einen Klick tiefer als die Dinge, die man seltener
+ * braucht.
+ *
+ * Bis hierher gab es ihn überhaupt nicht: der Fahrmodus hing allein an der
+ * Taste `V`, und die verlangt einen Pointer Lock, den kein Telefon hergibt. */
+.menu__drive {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 16px;
+  /* 48 px: dieselbe Untergrenze wie bei den Touch-Knöpfen (Android 48 dp,
+   * Apple 44 pt). Der Eintrag wird auf einem Telefon mit dem Daumen getroffen. */
+  min-height: 48px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.menu__driveIcon {
+  font-size: 20px;
+  line-height: 1;
+}
+
 .menu__levels,
 .menu__views {
   display: flex;
@@ -828,5 +884,160 @@ body {
   .menu__levels,
   .menu__views {
     gap: 8px;
+  }
+}
+
+/* ── Das HUD im Fahrmodus (P16) ────────────────────────────────────────────
+ *
+ * Die Rundenzählung aus P9.3 war vollständig gebaut und für einen Spieler
+ * unsichtbar — sie hing im Tweakpane-Ordner „Runden", und Tweakpane liegt im
+ * gebauten Stand gar nicht im Bundle. Dasselbe galt fürs Tempo.
+ *
+ * **Der Selektor trägt die ID, und das ist hier keine Kosmetik.** `#overlay > *`
+ * setzt `pointer-events: auto` mit einem ID-Selektor. Bliebe das stehen, finge
+ * dieser Streifen die Wischgeste, mit der man sich im Auto umsieht — und zwar
+ * genau auf der rechten Bildhälfte, wo `TouchControls` sie erwartet. Eine
+ * schlichte Klassenregel `.hud { pointer-events: none }` wäre wirkungslos; der
+ * berechnete Wert stünde weiter auf `auto`. Derselbe Fehler ist in P10.2 am
+ * Hinweiskasten gemessen worden und steht oben ausführlich. */
+#overlay > .hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.hud[hidden] {
+  display: none;
+}
+
+/* Oben links, unter dem Zahlenblock des Debug-Werkzeugs — der steht im Build
+ * ohnehin nicht da, im Dev-Server sollen sie sich aber nicht überlagern. */
+.hud__lap {
+  position: absolute;
+  left: max(14px, env(safe-area-inset-left));
+  top: max(64px, env(safe-area-inset-top));
+  min-width: 152px;
+  padding: 10px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(4px);
+}
+
+.hud__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+}
+
+.hud__row + .hud__row {
+  margin-top: 2px;
+}
+
+.hud__label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+/* `tabular-nums` ist der Punkt: ohne sie tanzt die Zeile bei jeder Hundertstel,
+ * weil eine „1" schmaler ist als eine „8". */
+.hud__time,
+.hud__best {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.hud__best {
+  color: var(--fg-dim);
+}
+
+.hud__gate {
+  margin: 6px 0 0;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+/* Unten rechts — die Ecke, die im Querformat am wenigsten vom Daumen verdeckt
+ * wird. Links unten liegt der Stick. */
+.hud__speedo {
+  position: absolute;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(78px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--mono);
+}
+
+.hud__speed {
+  font-size: 40px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--fg);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
+}
+
+.hud__unit {
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+
+.hud__gearLabel {
+  min-width: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent, #e0b25a);
+}
+
+/* Die Rundenmeldung. Mittig oben, weil dort im Fahrbild nichts liegt — der
+ * Horizont steht in der Bildmitte, die Ecken gehören dem HUD. */
+.hud__flash {
+  position: absolute;
+  left: 50%;
+  top: max(18%, calc(env(safe-area-inset-top) + 56px));
+  transform: translateX(-50%);
+  padding: 10px 18px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(4px);
+  font-family: var(--mono);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--fg);
+}
+
+.hud__flash[hidden] {
+  display: none;
+}
+
+.hud__flash--best {
+  border-color: var(--accent, #e0b25a);
+  color: var(--accent, #e0b25a);
+}
+
+/* Auf einem schmalen Schirm ist der Tacho kleiner und der Rundenkasten rutscht
+ * nach oben — bei 375 px Breite steht er sonst im Weg des linken Daumens. */
+@media (max-width: 560px) {
+  .hud__lap {
+    top: max(14px, env(safe-area-inset-top));
+    min-width: 128px;
+    padding: 8px 10px;
+  }
+
+  .hud__speed {
+    font-size: 30px;
   }
 }

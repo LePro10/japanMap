@@ -165,6 +165,28 @@ Oberfläche zählen — steht das Element da, ist es klickbar, wirkt der Regler.
 > Bedienfeld ausblendet. Über den echten Weg (☰ drücken) stimmt alles. Ein von
 > Hand gesetzter Zustand ist ein Zustand, den es im Betrieb nicht gibt.
 
+**Das Fahr-HUD und der Ton sind seit P16 Teil der Oberfläche — und beide sind
+so zu prüfen wie alles unter `src/ui/`, nämlich strukturell.** Zwei Fallen, die
+beim Messen Zeit kosten:
+
+- **Das HUD aktualisiert nicht, während es versteckt ist.** `DriveHud.update()`
+  kehrt bei `!visible` sofort zurück. Ein Tacho, der „stehenbleibt", ist deshalb
+  meist ein offenes Pausenmenü und keine kaputte Anzeige — erst
+  `document.querySelector('.hud').hidden` ansehen, dann suchen.
+- **Der Ton braucht eine echte Nutzergeste.** Ein `element.click()` aus der
+  Konsole ist keine; der `AudioContext` bleibt dann `suspended`, und es kommt
+  nichts. `AudioSystem.armAutoUnlock()` fängt die nächste **echte** Geste ab.
+  Ob der Ton *gut klingt*, ist hier grundsätzlich nicht messbar — das ist eine
+  Frage für einen Menschen mit Kopfhörern, so wie „fährt sich der Drift gut".
+
+```js
+// Fahrmodus ohne Tastatur und ohne Pointer Lock — der Weg, den ein Telefon geht:
+document.querySelector('[data-touch="drive"]').click();
+// Und dann das Fahrzeug fragen, nicht das DOM:
+const drive = japanMap.engine.systems.find(s => s.name === 'DriveSystem');
+drive.vehicle.telemetry.speed * 3.6;   // km/h
+```
+
 **Seit P13 startet das Debug-Werkzeug ausgeschaltet.** Zahlenblock (`.stats`)
 und Tweakpane-Leiste (`.debug-pane`) hängen an `japanmap.debug.stats` bzw.
 `japanmap.debug.pane` im `localStorage`, Voreinstellung **aus**. Angeschaltet
@@ -243,6 +265,7 @@ gedrosselt. ~~Referenzwerte zum Gegenhalten: `wald` auf Ultra 38 948, mit Dichte
 | `npm run dev:lan` | Dev-Server im WLAN (P12.6). Das **Telefon** ruft ihn auf und fährt `japanMap.report({mode:'live'})` selbst — mit echter Bildrate und, unter Android Chrome, echter GPU-Zeit. Der Lauf fliegt die Blickpunkte selbst an und braucht keine Fingersteuerung |
 | `npm run hdri` | IBL-HDRI halbieren (P12.5). Teil von `npm run world` |
 | `japanMap.drive(true)` | **Fahrmodus an/aus (P14).** Der einzige Weg dorthin ohne Pointer Lock — die Taste `V` verlangt einen, die eingebettete Vorschau gibt keinen |
+| 🚗-Knopf / Menüzeile „Auto fahren" | **Der Weg ins Auto ohne Tastatur (P16).** Auf Touch der einzige — `V` verlangt einen Pointer Lock, den kein Telefon gibt, und `japanMap` fehlt im Build. Beide Wege schalten denselben Zustand und melden über `drive:mode` |
 | `japanMap.driveProbe()` | **Der Messstand des Fahrmodus (P14).** Fährt jede Strecke ab und schreibt Durchdringung, Spurlage, Tempo und CPU je Schritt mit; dazu Standhöhe und Höhendifferenz Sampler ↔ Mittellinie. Läuft **ohne zu rendern** — 3600 Schritte in ~50 ms |
 
 **Der Messlauf — und wofür er gebaut ist.**
@@ -334,11 +357,39 @@ drive.vehicle.respawn(0, 0, 0, flat);
 for (let i = 0; i < 600; i++) drive.vehicle.step(1/60, {throttle:1,brake:0,steer:0,handbrake:false}, flat, null);
 ```
 
-Referenzwerte auf diesem Boden (Stand P14): 0–100 km/h in **4,70 s**, Endtempo
-nach 60 s **255,8 km/h**, seitlicher Versatz **0,00 m**, Gierwinkel **0,000°**.
-Ein Drift aus 58° Schwimmwinkel bei 89 km/h fängt sich **ohne jede Eingabe** in
-1,5 s, und das Tempo fällt dabei monoton — steigt es, ist der Energiefehler
-zurück.
+Referenzwerte auf diesem Boden (Stand **P17**, 2026-08-19): 0–100 km/h in
+**4,85 s**, Endtempo nach 60 s **256 km/h**, seitlicher Versatz **0,00 m**,
+Gierwinkel **0,000°**. Das Tempo muss beim Ausrollen monoton fallen — steigt es,
+ist der Energiefehler zurück.
+
+> Ausnahme, die **kein** Energiefehler ist: der **erste** Schritt nach dem
+> Gaswegnehmen steigt um 6,2 · 10⁻⁴ m/s. Der Wert ist vor P17 derselbe (6,15 ·
+> 10⁻⁴), stammt also nicht aus der neuen Kennlinie, und mit 0,04 m/s² ist er drei
+> Größenordnungen von dem entfernt, was 2026-08-18 aus 93 km/h 1622 km/h gemacht
+> hat. Wer prüft, prüft auf **anhaltendes** Wachstum.
+
+**Zwei Proben, die jede für sich eine ganze Fehlerklasse abdecken.** Beide haben
+in P14.5 Fehler gefunden, die acht grüne Abnahmezahlen nicht gezeigt hatten:
+
+```js
+// 1. Lenkrichtung — muss spiegelsymmetrisch sein, sonst stimmt eine Achse nicht.
+//    Versatz im Anfangs-Fahrzeugsystem: rechts = (−cos ψ₀, 0, sin ψ₀).
+//    Geprüft wird die **Symmetrie**, nicht der Betrag: 5 s Vollgas, dann 3 s
+//    Volleinschlag. Gemessen richtig: steer +1 → +40,65 m, steer −1 → −40,65 m.
+
+// 2. Gierstabilität — 0,3 s Lenkimpuls, dann Lenkrad loslassen.
+//    Der Schwimmwinkel muss abklingen. Gemessen (P17): Spitze 19,2°, nach 3 s
+//    0,2°. Pendelt er oder wächst er, ist die Abstimmung instabil —
+//    die Bedingung dafür ist `b·C_hinten > a·C_vorn` mit `C = 2 μ F_z / α_peak`,
+//    und die rechnet man aus, statt sie zu erfahren.
+```
+
+> **Die Beträge beider Proben sind mit P17 andere geworden, ihre Aussage nicht.**
+> P14.5 maß 8,73 m Versatz und 0,7° Spitze — an einer Kennlinie, die bei jedem
+> Schräglauf über 0° schon 75 % ihrer Kraft lieferte und deshalb kaum Winkel
+> zuließ. Die neuen Werte (40,65 m, 19,2°) sind nicht „schlechter": das Auto
+> lenkt und rutscht jetzt überhaupt. Geprüft wird bei Probe 1 die **Symmetrie**
+> und bei Probe 2 das **Abklingen** — beide Kriterien sind unverändert erfüllt.
 
 > **Was der Prüfstand nicht kann: sagen, ob es sich gut anfühlt.** Er fährt mit
 > einem Regler, nicht mit einer Absicht. „Ist der Drift kontrollierbar" braucht
@@ -804,6 +855,48 @@ Kurzliste, damit es nicht wieder passiert:
   3. **Zwei Minuten Fremdprüfung schlagen zwei Stunden Eigendiagnose.** Die Frage
      „schau bitte einmal hin" hätte an jeder Stelle der sieben Messungen gestellt
      werden können.
+- **Drei Vorzeichen in einer Kette, und alle Abnahmezahlen waren grün.** Der
+  Fahrmodus aus P14 bestand acht Abnahmekriterien — null Durchdringung, 0,00 cm
+  Standhöhe, Spurlage unter 3 m, Läufe zeichengleich reproduzierbar — und war
+  trotzdem unfahrbar. Der Auftraggeber fuhr eine Runde und sagte in einem Satz,
+  was keine Messung gezeigt hatte: „Lenkung ist verkehrt, Physik ist schlecht, im
+  Dreck unspielbar."
+  Dahinter steckten **drei unabhängige Vorzeichenfehler** in derselben Kette:
+  1. `#right` war mit `(cos, 0, −sin)` besetzt — das ist bei `forward = +Z` die
+     **linke** Seite. Rechtshändig gilt `right = forward × up = (−cos, 0, sin)`.
+  2. Das Giermoment stand als `a·F_v − b·F_h` da statt als `−(a·F_v − b·F_h)`;
+     aus `(r × F)_y` folgt für eine Kraft nach rechts ein **negatives** Moment.
+  3. Die Querbewegung der Achsen (`ω × r`) hatte an beiden Achsen das falsche
+     Vorzeichen — die Reifen **verstärkten** damit jede Drehung, statt sie zu
+     dämpfen. Gemessen auf ebenem Asphalt, Lenkung null, ohne Kontakt: die
+     Gierrate wuchs monoton von −0,14 auf −2,48 rad/s in 0,4 s.
+  Die ersten beiden hoben sich gegenseitig auf — deshalb *fuhr* das Auto und
+  lenkte nur verkehrt herum. Der dritte lag darunter und wurde durch die
+  Reparatur der ersten beiden erst sichtbar.
+  Drei Lehren:
+  1. **Eine Achse ist kein Name, sondern ein Kreuzprodukt.** Wer `right` schreibt,
+     rechnet `forward × up` aus — einmal — und nicht, was bei Gierwinkel 0
+     plausibel aussieht.
+  2. **Wo ein Vorzeichen aus einer Konvention folgt, gehört die Rechnung in den
+     Kommentar.** Alle drei Stellen tragen jetzt die Herleitung; ohne sie ist beim
+     nächsten Achsentausch dieselbe Kette wieder fällig.
+  3. **Ein Prüfstand, der „bestanden" meldet, hat nur das geprüft, wonach er
+     fragt.** In `driveProbe.ts` stand von Anfang an „Was dieser Prüfstand nicht
+     kann: aussagen, ob es sich gut anfühlt". Das war richtig aufgeschrieben und
+     trotzdem nicht ernst genug genommen: **eine offene Abnahmezeile ist kein
+     Restrisiko, sondern ein Loch in der Abnahme.**
+- **Ein Fahrwerk, das gierinstabil ist, und niemand hat die Bedingung
+  ausgerechnet.** Dieselbe Phase, unabhängig von den Vorzeichen: die
+  Reifenabstimmung (Scheitel 8,0° vorn / 9,2° hinten) verletzte die
+  Stabilitätsbedingung des Einspurmodells `b·C_h > a·C_v` — auf Asphalt mit
+  Reserve **0,89**, im Gelände mit **0,74**. Ein solcher Wagen dreht sich bei
+  jeder Störung von selbst aus der Fahrtrichtung. Obendrein sättigte damit die
+  **Vorderachse zuerst**, es war also nicht einmal das Drift-Setup, als das es im
+  Kommentar stand. Mit 9,2° / 6,9° und `rearGripFactor` 1,08 liegt die Reserve bei
+  1,44 bzw. 1,19, und das Heck bricht zuerst aus.
+  Lehre: **für ein Fahrmodell gibt es eine geschlossene Stabilitätsbedingung —
+  sie kostet fünf Zeilen Rechnung und beantwortet, was sonst zwanzig Testfahrten
+  nicht klären.**
 - **Eine richtige Gleichung, explizit integriert — und das Modell erzeugt
   Energie.** Das Fahrmodell aus P14 führte Längs- und Quergeschwindigkeit im
   mitrotierenden Fahrzeugsystem fort und trug die Zentripetalterme nach
@@ -886,3 +979,93 @@ Kurzliste, damit es nicht wieder passiert:
   Umgebungskarte einsetzt; alles Weitere macht dann dieselbe BRDF. Wer einen
   Wert in eine fremde Beleuchtungskette schiebt, muss wissen, **welche
   Multiplikationen dahinter noch kommen**.
+
+- **Ein fertiges System hinter einem fehlenden Knopf.** Der Fahrmodus aus P14 —
+  sechs Dateien, rund 110 KB — war auf einem Telefon **über alle drei Wege
+  unerreichbar**: `DriveSystem.#onKeyDown` steigt ohne Pointer Lock aus (auf
+  Touch gibt es nie einen), `window.japanMap` ist im Auslieferungsbau entfernt,
+  und einen Knopf gab es nicht. Der Stick war dabei längst verdrahtet; es fehlte
+  allein der Umschalter.
+  Keine Kennzahl hat das gemeldet, weil keine die Frage stellte. P14 trug sogar
+  die Zeile „auf einem Telefon nicht geprüft" — die meinte aber das
+  **Fahrgefühl**, nicht die **Erreichbarkeit**. Lehre: eine offene Abnahmezeile
+  deckt genau das ab, was sie sagt. Wer „auf Gerät X nicht geprüft" schreibt,
+  sollte dazuschreiben, ob das Ding auf Gerät X überhaupt *aufrufbar* ist.
+- **Eine neue Nutzungsart findet Altes — zum zweiten Mal.** Derselbe Satz stand
+  schon nach P14 hier (die Leitplanken quer über jede Straßenmündung). In P16
+  hat der neu erreichbare Fahrmodus auf Touch einen Fehler in
+  `FreeFlyController.#onPointerDown` freigelegt: der forderte bei **jedem**
+  `pointerdown` den Pointer Lock an, auch bei einer Berührung. Auf iOS wirft das
+  (die Methode fehlt dort, und `?.` sichert nur das Canvas gegen `null`, nicht
+  die Methode gegen ihr Fehlen), auf Android wird abgelehnt — und die Ablehnung
+  reißt über `PlayerUi` das Pausenmenü auf.
+  Gemessen: während einer Fahrt mit dem Stick ging das Menü **bei Frame 101**
+  von selbst auf, reproduzierbar. Das Auto kam dadurch nur auf 20,5 km/h statt
+  49,1. **Das Fahrmodell sah dabei wie das Problem aus und war es nicht.**
+  `PlayerUi` hatte dieselbe Stelle in P12.4 bereits richtig abgesichert —
+  `FreeFlyController` war die übersehene zweite. Wieder: **ein Fehlerbild ist
+  eine Klasse, kein Einzelfall.**
+- **Eine Anzeige, die nicht aktualisiert, weil sie versteckt ist — und wie das
+  nach einem Fehler aussieht.** Beim Messen des HUD stand der Tacho auf „10",
+  während das Fahrzeug 14,2 km/h fuhr. Das sah nach einer kaputten Anzeige aus.
+  Ursache war das offene Pausenmenü: `DriveHud` überspringt seine
+  Aktualisierung, solange es versteckt ist (das spart Layout je Frame und ist
+  richtig so). **Erst prüfen, in welchem Zustand gemessen wird**, bevor eine
+  Abweichung ein Fehler heißt — sonst repariert man eine Anzeige, die stimmt.
+- **Der richtige Wert an der falschen Stelle — zweimal in derselben Funktion.**
+  P17 hat das Fahrmodell fahrbar gemacht, und die beiden Fehler dahinter waren
+  keine falschen Zahlen, sondern falsch **angewandte**:
+  1. `TIRE.tailGrip = 0,75` sollte den Abfall der Kennlinie *hinter* dem
+     Scheitel abfangen. Geschrieben war es als Klemme auf den **Betrag** des
+     Funktionswerts — und der ist auch am **Anfang** klein. Ergebnis: der Reifen
+     lieferte bei 0,01° Schräglauf bereits 75 % seiner Höchstkraft. Eine
+     Sprungfunktion statt eines Anstiegs.
+  2. `TIRE.minSpinGrip = 0,8` sollte der Hinterachse bei durchdrehenden Rädern
+     Seitenführung lassen. Geschrieben war es als Faktor auf das **Ergebnis** von
+     `tireLateral` — also *nachdem* der Reibkreis die Kraft schon auf null
+     geklemmt hatte. `0 · 0,8 = 0`.
+  Beide trugen ausführliche Kommentare mit Messreihen, und beide Begründungen
+  waren in sich schlüssig. Nachgemessen: derselbe Geländelauf mit
+  `minSpinGrip` 0,80 / 0,55 / 0,25 / 0,00 endet **auf vier Nachkommastellen an
+  derselben Stelle**. Es war die dritte tote Stellschraube dieses Projekts nach
+  `viewDistance` und `shadowCascades` — und die erste mit einer erfundenen
+  Messung daneben.
+  Was die Fehler kosteten, in Zahlen: die Reifenkraft wechselte bei ruhiger
+  Geradeausfahrt in **295 von 300 Schritten** ihr Vorzeichen; die Lenkantwort war
+  **nicht monoton** (Lenkeingabe 0,50 → 29,0 °/s, Lenkeingabe 1,00 → 25,1 °/s);
+  auf der Wiese kam der Wagen bei Vollgas und Lenkung null nach 10 s auf
+  **11,7 km/h bei 89,4° Schwimmwinkel**. Genau die drei Sätze des Auftraggebers
+  („schwer zu steuern", „im Dreck unspielbar").
+  Drei Lehren:
+  1. **Eine Klemme auf einen Betrag trifft beide Enden des Wertebereichs.**
+     Gemeint war ein Abschnitt — und ein Abschnitt gehört über seine
+     **Variable** abgegrenzt, nicht über den Funktionswert.
+  2. **Eine Kennlinie wird tabelliert, bevor man ihr glaubt.** Siebzehn Zeilen
+     Ausgabe über `f(α)` hätten beide Fehler in einem Schritt gezeigt. Das ist
+     derselbe Satz wie „Mittelwerte verstecken Formen", nur eine Ebene tiefer:
+     hier war nicht einmal die Form angesehen worden.
+  3. **Ein Regler, dessen Wirkung nie gemessen wurde, ist keine Einstellung,
+     sondern eine Behauptung.** Der Test kostet einen Lauf: Wert verdoppeln,
+     Wert auf null, Endzustand vergleichen. Sind die Zahlen gleich, ist der
+     Regler tot — egal, wie gut der Kommentar klingt.
+- **Eine Herleitung, die still falsch wurde, weil sich eine andere Zahl
+  bewegte.** `DRIVETRAIN.maxDriveForce = 7200` trug die Rechnung „liegt 8,6 %
+  über der Haftgrenze der Hinterachse, also kann man die Räder durchdrehen
+  lassen". Die Rechnung setzt `rearGripFactor = 1` voraus. Als der Faktor in
+  P14.5 aus einem Stabilitätsgrund auf 1,08 stieg, wurde aus den +8,6 % ein
+  Minus — unter Lastverlagerung beim Beschleunigen lag die Haftgrenze bei rund
+  8800 N gegen 7200 N Antrieb. **Gasstoß-Übersteuern war damit rechnerisch
+  unmöglich**, und niemand hat es gemerkt, weil die kaputte Kennlinie ohnehin
+  jede Drift-Frage überdeckte. Lehre: wer eine Zahl ändert, sucht die
+  **Herleitungen**, die sie zitieren. Ein Kommentar, der rechnet, ist eine
+  Abhängigkeit wie ein Import.
+- **Ein Rad, das nie am Auto hing.** `#sampleWheels` setzte die Radmitte auf
+  `Bodenhöhe + Radradius` — unabhängig davon, wo das Fahrzeug war. Beim Sprung
+  blieben die vier Räder am Boden liegen und die Karosserie flog allein weiter.
+  Ein halbes Jahr lang unbemerkt, **weil vor P16 niemand mit dem Auto gesprungen
+  ist**: derselbe Satz wie bei den Leitplanken quer über jede Straßenmündung und
+  dem Pointer-Lock in `FreeFlyController` — *eine neue Nutzungsart ist ein
+  Prüfstand für alles, was vorher gebaut wurde*, jetzt zum dritten Mal.
+  Die Räder folgten obendrein nur dem **Gierwinkel** und ließen Nicken und Wanken
+  aus. Beide Hälften sind dieselbe Ursache: die Radstellung wurde aus dem
+  **Boden** abgeleitet statt aus dem **Aufbau**.

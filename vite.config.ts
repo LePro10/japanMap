@@ -254,7 +254,23 @@ export default defineConfig({
 
   build: {
     target: 'es2022',
-    sourcemap: true,
+    /**
+     * **Keine Sourcemaps im Auslieferungsbau.**
+     *
+     * Sie standen hier seit P0 auf `true` und haben zwei Kosten, die beide erst
+     * mit der Zielplattform CrazyGames zählen: 5,82 MB `.map` in `dist/` (davon
+     * allein 2,75 MB für `three`) und der **vollständige Quelltext** samt
+     * Kommentaren im Auslieferungsbau — dieses Projekt trägt seine Messungen im
+     * Code, das ist nichts, was auf ein Spieleportal gehört.
+     *
+     * Auf den Startdownload wirkt es **nicht**: eine `.map` wird nur geladen,
+     * wenn jemand die DevTools öffnet. Was sie verändert, ist die Ordnergröße
+     * (Gesamtbudget ≤ 250 MB) und die Dateizahl (≤ 1500) — beide sind hier
+     * unkritisch, der Quelltext ist der eigentliche Grund.
+     *
+     * Zum Debuggen eines Auslieferungsbaus vorübergehend auf `true` setzen.
+     */
+    sourcemap: false,
     // Assets werden inline nie sinnvoll — Heightmaps und HDRIs sind zu groß,
     // und base64 kostet 33 % Übertragung gegen das 15-MB-Budget aus SPEC §4.
     assetsInlineLimit: 0,

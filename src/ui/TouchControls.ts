@@ -50,12 +50,37 @@ export interface TouchCameraTarget {
   readonly speed: number;
 }
 
+/**
+ * Was die Fingersteuerung vom Fahrmodus braucht.
+ *
+ * **Der Grund, warum es diese Schnittstelle überhaupt gibt.** Bis hierher war
+ * der Fahrmodus auf einem Telefon *vollständig unerreichbar*, und zwar über
+ * alle drei Wege gleichzeitig: `DriveSystem.#onKeyDown` steigt bei
+ * `document.pointerLockElement === null` sofort aus (auf Touch gibt es nie
+ * einen Lock), `window.japanMap` wird aus dem Auslieferungsbau entfernt, und
+ * ein Knopf dafür existierte nicht. Damit waren sechs Dateien Fahrschicht für
+ * genau die Zielgruppe unsichtbar, für die P15 den Startdownload unter die
+ * 20-MB-Schwelle der CrazyGames-Mobile-Homepage gedrückt hat.
+ *
+ * Der Stick selbst war schon verdrahtet — `FreeFlyController.setAxes()` reicht
+ * an den Fahrmodus weiter, sobald der Freiflug aus ist. Es fehlte allein der
+ * **Umschalter**.
+ */
+export interface TouchDriveTarget {
+  readonly active: boolean;
+  toggle(): void;
+  respawn(): void;
+  setHandbrake(down: boolean): void;
+}
+
 export interface TouchControlsOptions {
   readonly canvas: HTMLCanvasElement;
   readonly container: HTMLElement;
   readonly camera: TouchCameraTarget;
   /** Öffnet das Pausenmenü — auf Touch der einzige Weg dorthin. */
   readonly onMenu: () => void;
+  /** Der Fahrmodus. Fehlt er, bleibt das Bedienfeld reines Flugwerkzeug. */
+  readonly drive?: TouchDriveTarget;
 }
 
 interface StickState {
@@ -75,6 +100,7 @@ interface LookState {
 export class TouchControls {
   readonly #canvas: HTMLCanvasElement;
   readonly #camera: TouchCameraTarget;
+  readonly #drive: TouchDriveTarget | null;
   readonly #root: HTMLElement;
   readonly #stickBase: HTMLElement;
   readonly #stickKnob: HTMLElement;
@@ -90,6 +116,7 @@ export class TouchControls {
   constructor(options: TouchControlsOptions) {
     this.#canvas = options.canvas;
     this.#camera = options.camera;
+    this.#drive = options.drive ?? null;
 
     this.#root = document.createElement('div');
     this.#root.className = 'touch';
@@ -101,11 +128,13 @@ export class TouchControls {
       <div class="touch__buttons">
         <button type="button" class="touch__btn" data-touch="up" aria-label="steigen">▲</button>
         <button type="button" class="touch__btn" data-touch="down" aria-label="sinken">▼</button>
+        <button type="button" class="touch__btn" data-touch="handbrake" aria-label="Handbremse">✋</button>
       </div>
       <div class="touch__side">
-        <button type="button" class="touch__btn touch__btn--wide" data-touch="menu">☰</button>
-        <button type="button" class="touch__btn touch__btn--wide" data-touch="reset">⟲</button>
-        <button type="button" class="touch__btn touch__btn--wide" data-touch="collision">⇩</button>
+        <button type="button" class="touch__btn touch__btn--wide" data-touch="menu" aria-label="Menü">☰</button>
+        <button type="button" class="touch__btn touch__btn--wide" data-touch="drive" aria-label="Auto">🚗</button>
+        <button type="button" class="touch__btn touch__btn--wide" data-touch="reset" aria-label="zurücksetzen">⟲</button>
+        <button type="button" class="touch__btn touch__btn--wide" data-touch="collision" aria-label="Bodenkollision">⇩</button>
       </div>
       <p class="touch__speed">—</p>`;
     options.container.appendChild(this.#root);
@@ -172,18 +201,31 @@ export class TouchControls {
   }
 
   #wireButtons(onMenu: () => void): void {
-    const halten = (element: HTMLElement, richtung: number): void => {
+    const halten = (
+      element: HTMLElement,
+      richtung: number,
+      // Optionaler zweiter Empfänger für Knöpfe, die keine Höhenachse stellen —
+      // die Handbremse. Sie teilt sich mit ▲/▼ die **Loslass-Logik**, und genau
+      // die ist der schwierige Teil: `pointercancel` und `lostpointercapture`
+      // fangen den Anruf, die Kantengeste und den App-Wechsel. Ein zweiter
+      // eigener Handler hätte diese drei Zeilen irgendwann nicht mehr gehabt.
+      halteSignal?: (down: boolean) => void,
+    ): void => {
       // **`pointerdown`/`pointerup` und nicht `click`.** Ein Knopf zum Steigen
       // muss halten, solange der Finger liegt; `click` feuert erst beim
       // Loslassen und wäre ein Tippen für einen Meter.
       element.addEventListener('pointerdown', (event) => {
         event.preventDefault();
         this.#vertical = richtung;
+        halteSignal?.(true);
+        element.classList.add('is-active');
         this.#pushAxes();
         capture(element, event.pointerId);
       });
       const los = (): void => {
         this.#vertical = 0;
+        halteSignal?.(false);
+        element.classList.remove('is-active');
         this.#pushAxes();
       };
       element.addEventListener('pointerup', los);
@@ -198,7 +240,15 @@ export class TouchControls {
       this.#releaseAll();
       onMenu();
     });
+    // ⟲ bedeutet in beiden Modi „zurück auf Anfang", meint aber zwei
+    // verschiedene Dinge: im Flug den Startblickpunkt, im Auto die nächste
+    // Straße. Ein zweiter Knopf dafür wäre auf 375 px Breite verschwendeter
+    // Platz — und im jeweils anderen Modus ohne Wirkung.
     this.#must('[data-touch="reset"]').addEventListener('click', () => {
+      if (this.#drive?.active) {
+        this.#drive.respawn();
+        return;
+      }
       this.#camera.resetToStart();
       this.#updateSpeedLabel();
     });
@@ -206,6 +256,48 @@ export class TouchControls {
     kollision.addEventListener('click', () => {
       kollision.classList.toggle('is-active', this.#camera.toggleCollision());
     });
+
+    // ── Fahrmodus ────────────────────────────────────────────────────────
+    const auto = this.#must('[data-touch="drive"]');
+    if (this.#drive) {
+      auto.addEventListener('click', () => {
+        // **Erst loslassen, dann umschalten.** Ein Stick, der beim Wechsel
+        // ausgelenkt steht, schiebt seine Achsen sonst in das andere System
+        // hinüber — im Auto wäre das Vollgas beim Einsteigen.
+        this.#releaseAll();
+        this.#drive?.toggle();
+        this.setDriveMode(this.#drive?.active ?? false);
+      });
+      halten(this.#must('[data-touch="handbrake"]'), 0, (down) => {
+        this.#drive?.setHandbrake(down);
+      });
+    } else {
+      auto.hidden = true;
+    }
+    this.setDriveMode(this.#drive?.active ?? false);
+  }
+
+  /**
+   * Bedienfeld auf Flug oder Fahrt umstellen.
+   *
+   * Öffentlich, weil der Modus auch **ohne** diesen Knopf wechseln kann: die
+   * Taste `V` am Rechner und der Eintrag im Pausenmenü führen auf denselben
+   * Zustand. Ein Bedienfeld, das seinen Modus nur beim eigenen Knopfdruck
+   * nachführt, zeigt nach jedem anderen Weg das Falsche — dieselbe Klasse
+   * „Anzeige, die lügt", gegen die dieses Projekt schon bei `F1` und der
+   * Stufenwahl angetreten ist.
+   */
+  setDriveMode(active: boolean): void {
+    this.#root.classList.toggle('touch--drive', active);
+    // ▲/▼ steigen und sinken, ⇩ schaltet die Bodenkollision: alle drei sind im
+    // Auto sinnlos. Die Handbremse ist es umgekehrt im Flug.
+    this.#must('[data-touch="up"]').hidden = active;
+    this.#must('[data-touch="down"]').hidden = active;
+    this.#must('[data-touch="collision"]').hidden = active;
+    this.#must('[data-touch="handbrake"]').hidden = !active;
+    this.#must('[data-touch="drive"]').classList.toggle('is-active', active);
+    if (!active) this.#drive?.setHandbrake(false);
+    this.#updateSpeedLabel();
   }
 
   // ── Zeiger ─────────────────────────────────────────────────────────────
@@ -306,6 +398,10 @@ export class TouchControls {
     this.#pinch = null;
     this.#vertical = 0;
     this.#stickBase.hidden = true;
+    // Die Handbremse gehört dazu: sie hängt an einem gehaltenen Finger, und ein
+    // App-Wechsel mit liegendem Daumen ließe sie sonst für immer angezogen.
+    this.#drive?.setHandbrake(false);
+    this.#root.querySelector('[data-touch="handbrake"]')?.classList.remove('is-active');
     this.#pushAxes();
   };
 
@@ -329,6 +425,12 @@ export class TouchControls {
   }
 
   #updateSpeedLabel(): void {
+    // Im Auto zeigt das HUD das Tempo — und zwar je Frame und in km/h. Diese
+    // Anzeige hier ist das **Grundtempo des Flugs** (der Pinch stellt es) und
+    // wird nur bei einer Eingabe nachgeführt; im Fahrmodus stünde sie also
+    // daneben und wäre dazu noch veraltet. Zwei Tempoanzeigen nebeneinander,
+    // von denen eine falsch ist, sind schlechter als eine.
+    this.#speedLabel.hidden = this.#drive?.active ?? false;
     this.#speedLabel.textContent = `${this.#camera.speed.toFixed(0)} m/s`;
   }
 

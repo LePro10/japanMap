@@ -1,8 +1,11 @@
 import './style.css';
 
+import { AudioSystem } from './audio/AudioSystem';
 import { FreeFlyController } from './camera/FreeFlyController';
 import { Engine } from './core/Engine';
+import { BestTimes } from './game/BestTimes';
 import { DriveSystem } from './game/DriveSystem';
+import { DriveHud } from './ui/DriveHud';
 import { runAb } from './debug/abMeasure';
 import { runDriveProbe } from './debug/driveProbe';
 import { captureShot, probeFrame, type CaptureTarget } from './debug/capture';
@@ -456,6 +459,67 @@ async function boot(): Promise<void> {
   // Fahrphysik und vor allem laufen, was sich an der Kamera ausrichtet (Sonne,
   // Wasserebene, Spiegelung).
   engine.add(drive);
+  // **Nach dem Fahrmodus**, damit `update()` in dieser Reihenfolge läuft: der
+  // Ton liest die Telemetrie desselben Frames und nicht die des vorigen. Die
+  // Telemetrie wird als Objekt übergeben und nicht je Frame abgefragt — die
+  // Physik schreibt sie ohnehin fort, und ein zweiter Weg dorthin wäre eine
+  // zweite Gelegenheit, ihn zu vergessen.
+  const audio = new AudioSystem();
+  audio.setTelemetry(drive.vehicle.telemetry);
+  engine.add(audio);
+
+  // ── Zeitfahren (P16) ──────────────────────────────────────────────────
+  //
+  // `LapTimer` zählt seit P9.3 Runden, und **kein Spieler hat je eine Zeit
+  // gesehen**: die Ablesewerte hingen im Tweakpane-Ordner „Runden", und
+  // Tweakpane liegt im gebauten Stand nicht im Bundle. Hier bekommen sie ein
+  // HUD und eine Bestzeit, die das Neuladen überlebt.
+  //
+  // **Hier oben und nicht unten bei `PlayerUi`**, obwohl es Oberfläche ist:
+  // `Engine.add()` wirft, sobald `init()` gelaufen ist („Systeme müssen vor
+  // Engine.init() registriert werden"), und die Aktualisierung je Frame ist ein
+  // System. Der Fehler wäre erst zur Laufzeit aufgefallen — `typecheck` sieht
+  // ihn nicht.
+  const hud = new DriveHud(overlay);
+  const bestTimes = new BestTimes();
+
+  engine.bus.on('drive:mode', ({ active }) => {
+    hud.setDriveActive(active);
+    if (active) hud.setGate(drive.laps.readouts.naechstesTor);
+  });
+
+  engine.bus.on('drive:lap', (result) => {
+    const strecke = drive.laps.roadId;
+    // **Ein Vergleich, nicht zwei.** `submit()` entscheidet, ob es eine
+    // Bestzeit ist, und Ton wie Anzeige übernehmen die Antwort. Zwei getrennte
+    // Vergleiche wären zwei Gelegenheiten, sie auseinanderlaufen zu lassen —
+    // und der Ton feierte dann eine Bestzeit, die die Anzeige nicht kennt.
+    const best = strecke !== null && bestTimes.submit(strecke, result.seconds);
+    hud.showLap(result, best);
+    audio.lap(best);
+  });
+
+  // Die Aktualisierung je Frame als eigenes kleines System — **nach** `drive`
+  // registriert, damit sie die Telemetrie desselben Frames liest und nicht die
+  // des vorigen. `System` ist eine Schnittstelle, kein Basistyp; für diese paar
+  // Zeilen lohnt keine Klasse in einer eigenen Datei.
+  engine.add({
+    name: 'DriveHudUpdate',
+    update: () => {
+      if (!hud.visible) return;
+      hud.update(
+        drive.vehicle.telemetry,
+        drive.laps.elapsed,
+        drive.laps.running,
+        drive.laps.roadId === null ? null : bestTimes.get(drive.laps.roadId),
+      );
+      hud.setGate(drive.laps.readouts.naechstesTor);
+    },
+    dispose: () => {
+      hud.dispose();
+    },
+  });
+
   engine.add(atmosphere);
   engine.add(new LightingRig(atmosphere.uniforms));
   engine.add(new WaterSystem(atmosphere.uniforms));
@@ -550,7 +614,37 @@ async function boot(): Promise<void> {
     canvas,
     container: overlay,
     camera: controller,
+    hud,
     ...(debug ? { debug } : {}),
+    // Der Fahrmodus als schmale Schnittstelle statt als System — dieselbe
+    // Bauart wie `quality` darunter. `PlayerUi` reicht sie unverändert an
+    // `TouchControls` weiter; beide Oberflächen bedienen damit **denselben**
+    // Zustand, und die Taste `V` meldet sich über `drive:mode` bei beiden.
+    audio: {
+      get muted() {
+        return audio.muted;
+      },
+      setMuted: (muted) => {
+        audio.setMuted(muted);
+      },
+      click: () => {
+        audio.click();
+      },
+    },
+    drive: {
+      get active() {
+        return drive.active;
+      },
+      toggle: () => {
+        drive.toggle();
+      },
+      respawn: () => {
+        drive.respawn();
+      },
+      setHandbrake: (down) => {
+        drive.setTouchHandbrake(down);
+      },
+    },
     quality: {
       get level() {
         return quality.level;
@@ -573,8 +667,15 @@ async function boot(): Promise<void> {
   // Der „Starten"-Knopf holt den Pointer Lock — **synchron im Klick**, sonst ist
   // die Nutzergeste verbraucht und der Browser lehnt ab.
   loading?.onStart(() => {
+    // **Im Klick selbst**, nicht danach: ein `AudioContext` bleibt für immer
+    // suspendiert, wenn sein `resume()` nicht aus einer Nutzergeste kommt.
+    // Genau deshalb kommt in vielen Web-Spielen der Ton erst nach einem
+    // Tab-Wechsel. `armAutoUnlock()` unten deckt den Fall ab, in dem dieser
+    // Rückruf nachgeholt wird und damit außerhalb der Geste liegt.
+    audio.unlock();
     ui.begin();
   });
+  audio.armAutoUnlock();
 
   if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive);
 }

@@ -131,10 +131,48 @@ const SPRING_REST = CHASSIS.cgHeight + STATIC_COMPRESSION;
  * Querbewegung von 1 cm/s im Stand ergäbe 90° Schräglauf und damit die volle
  * Reifenkraft aus dem Nichts. Mit einem Mindestwert im Nenner werden die Reifen
  * bei Schrittgeschwindigkeit zu **viskosen Dämpfern** — sie bremsen die
- * Querbewegung proportional zu ihr, statt einen Winkel zu melden. 2 m/s ist
- * knapp über Schrittgeschwindigkeit; darüber ist der Winkel unverfälscht.
+ * Querbewegung proportional zu ihr, statt einen Winkel zu melden.
+ *
+ * ~~2 m/s ist knapp über Schrittgeschwindigkeit.~~ **Zu wenig, und das war die
+ * Ursache dafür, dass im Gelände nichts fahrbar war.** Bei 2 m/s Bezugstempo
+ * ergibt schon eine Gierrate von 1 rad/s einen hinteren Schräglaufwinkel von
+ * 32° — tief im **abfallenden** Ast der Kennlinie. Der Reifen antwortet dort mit
+ * *weniger* Kraft, je weiter er wegrutscht, und das ist eine Mitkopplung.
+ *
+ * Gemessen auf der Wiese, Vollgas geradeaus, **Lenkung null**: nach 0,5 s stand
+ * der hintere Schräglauf bei −5,6°, nach 1,0 s bei −19,7°, nach 2,0 s war der
+ * Wagen mit 63° Schwimmwinkel quer. Auf ideal ebenem Asphalt passierte das
+ * nicht, weil dort nichts die Querbewegung anstößt — die Mikroneigung des
+ * Höhenfelds (15 cm Stufen auf 1,5 m) genügte als Anstoß.
+ *
+ * 6 m/s (22 km/h) hält die Winkel bei Schrittgeschwindigkeit klein genug, dass
+ * die Reifen im **ansteigenden** Ast bleiben und rückstellend wirken. Oberhalb
+ * davon ist der Winkel unverfälscht, das Fahrverhalten also unverändert.
+ *
+ * > **Die Begründung oben ist mit P17 hinfällig, der Wert bleibt trotzdem.** Sie
+ * > stützt sich darauf, dass 32° Schräglauf „tief im abfallenden Ast" liegen —
+ * > das galt für die alte Kennlinie. Die heutige trägt bis 14,2° volle Kraft und
+ * > fällt erst bei 30…40° auf `tailGrip`; die Mitkopplung, gegen die 6 m/s
+ * > eingeführt wurden, gibt es nicht mehr. Und die eigentliche Ursache jener
+ * > Geländefahrten war ohnehin eine andere, siehe `TIRE.lateralReserve`.
+ * >
+ * > Gemessen wurde deshalb, ob der Wert überhaupt noch etwas tut — 1,5 / 2,5 /
+ * > 4 / 6 m/s gegen vier Manöver:
+ * >
+ * > | Wert | Kehrenradius bei 30 km/h | Rangieren, max. Schwimmwinkel | Wiese, 10 s Vollgas | Halten am 25-%-Hang, 5 s |
+ * > |---|---|---|---|---|
+ * > | 1,5 | 5,3 m | 25,6° | 144 km/h / 0,6° | 0,19 m |
+ * > | 2,5 | 5,3 m | 31,3° | 144 km/h / 0,9° | 0,19 m |
+ * > | 4,0 | 5,3 m | 33,6° | 144 km/h / 1,5° | 0,19 m |
+ * > | 6,0 | 5,3 m | 31,9° | 144 km/h / 2,3° | 0,19 m |
+ * >
+ * > Der Wendekreis ist über den Lenkeinschlag begrenzt und nicht über die
+ * > Reifen, das Halten am Hang macht `STATIC_HOLD_SPEED`. Der Wert ist damit
+ * > **wirkungslos geworden** — und wird genau deshalb nicht angefasst: eine
+ * > Änderung ohne messbaren Unterschied ist keine Verbesserung, sondern ein
+ * > weiterer Wert ohne Messung daneben.
  */
-const SLIP_SPEED_FLOOR = 2;
+const SLIP_SPEED_FLOOR = 6;
 
 /**
  * Unter diesem Tempo hält die Haftreibung das Auto **statisch** (m/s).
@@ -150,6 +188,24 @@ const STATIC_HOLD_SPEED = 0.8;
 
 /** Größte Gierrate in rad/s. Begründung an der Stelle, an der sie greift. */
 const MAX_YAW_RATE = 8;
+
+/**
+ * Wie tief die Radmitte im **Ruhezustand** unter dem Schwerpunkt hängt.
+ *
+ * Der Schwerpunkt steht `cgHeight` über der Aufstandsfläche, die Radmitte
+ * `wheelRadius` darüber — die Differenz ist der Ruhehub. Aus ihm und dem
+ * Federweg folgen die beiden Anschläge, und damit ist die Radstellung
+ * vollständig aus vorhandenen Maßen bestimmt: es gibt hier **keine gewählte
+ * Zahl**.
+ */
+const WHEEL_REST_DROP = CHASSIS.cgHeight - CHASSIS.wheelRadius;
+/** Voll ausgefedert: die Feder gibt genau ihre statische Einfederung wieder her. */
+const WHEEL_MAX_DROP = WHEEL_REST_DROP + STATIC_COMPRESSION;
+/** Am Anschlag: der Rest des Federwegs oberhalb der statischen Lage. */
+const WHEEL_MIN_DROP = Math.max(
+  0,
+  WHEEL_REST_DROP - Math.max(0, SUSPENSION.travel - STATIC_COMPRESSION),
+);
 
 export class Vehicle {
   /** Schwerpunkt in Weltkoordinaten. */
@@ -173,6 +229,8 @@ export class Vehicle {
   #vLat = 0;
   #vY = 0;
   #steerAngle = 0;
+  /** Eingelaufene Gasstellung — siehe `DRIVETRAIN.throttleRate`. */
+  #throttle = 0;
   #airborne = false;
   /** Drehwinkel der Räder, nur fürs Bild. */
   #wheelSpin = 0;
@@ -180,6 +238,9 @@ export class Vehicle {
   readonly #forward = new Vector3();
   readonly #right = new Vector3();
   readonly #normal = new Vector3(0, 1, 0);
+  /** Hochachse des Aufbaus und ein Rechenplatz — nur für `#placeWheels`. */
+  readonly #up = new Vector3(0, 1, 0);
+  readonly #scratch = new Vector3();
   readonly #euler = new Euler(0, 0, 0, 'YXZ');
 
   /** Radaufstandshöhen: vorn links, vorn rechts, hinten links, hinten rechts. */
@@ -228,7 +289,18 @@ export class Vehicle {
    */
   respawn(x: number, z: number, heading: number, ground: Ground): void {
     const groundY = ground.height(x, z);
-    this.position.set(x, groundY + CHASSIS.cgHeight, z);
+    // **Die Ruhehöhe hängt von der Neigung ab, und das ist keine Feinheit.** Der
+    // Federweg wird senkrecht zur Fläche gemessen (`gap · n_y`); die Ruhelage
+    // liegt deshalb `cgHeight / n_y` **senkrecht** über dem Boden, nicht
+    // `cgHeight`. An einem 45°-Hang sind das 0,74 m statt 0,52 m.
+    //
+    // Wurde das Auto auf `cgHeight` abgesetzt, war die Feder sofort 0,25 m
+    // eingedrückt — mehr als ihr Federweg. Der Anschlag mit seiner neunfachen
+    // Rate schoss es dann in die Luft: gemessen am Hang unter dem Massiv
+    // **91,9 % der Zeit in der Luft, längste Flugphase 7,7 s**.
+    ground.normal(x, z, this.#normal);
+    const aufrecht = Math.max(0.35, this.#normal.y);
+    this.position.set(x, groundY + CHASSIS.cgHeight / aufrecht, z);
     this.#yaw = heading;
     this.#yawRate = 0;
     this.#pitch = 0;
@@ -237,6 +309,7 @@ export class Vehicle {
     this.#vLat = 0;
     this.#vY = 0;
     this.#steerAngle = 0;
+    this.#throttle = 0;
     this.#airborne = false;
     // **Auch die Lastverlagerung des letzten Schritts und der Raddrehwinkel.**
     // Erstere geht in die Radlasten des ersten neuen Schritts ein; blieb sie
@@ -250,6 +323,7 @@ export class Vehicle {
     this.#updateBasis();
     this.#sampleWheels(ground);
     this.#updateTransform();
+    this.#placeWheels();
 
     // **Und die Telemetrie.** Sie ist eine Anzeige — aber sie wird gelesen, und
     // zwar vom Regler des Messstands, bevor der erste Schritt gerechnet ist.
@@ -281,6 +355,14 @@ export class Vehicle {
   step(dt: number, input: DriveInput, ground: Ground, collision: CollisionWorld | null): void {
     this.#updateBasis();
     this.#steer(dt, input.steer);
+    // **Das Gas läuft ein, es springt nicht.** Eine Taste kennt nur 0 und 1; ein
+    // Fahrer tritt in rund einer Viertelsekunde durch. Ohne diese Rate steht bei
+    // jedem Antippen sofort die volle Antriebskraft an, und auf losem Boden ist
+    // das der Unterschied zwischen „beschleunigen" und „quer stehen" — dieselbe
+    // Begründung wie bei `STEERING.rate` für den Lenkeinschlag.
+    const gasZiel = clamp(input.throttle, 0, 1);
+    const gasSchritt = DRIVETRAIN.throttleRate * dt;
+    this.#throttle += clamp(gasZiel - this.#throttle, -gasSchritt, gasSchritt);
     this.#sampleWheels(ground);
 
     // **Längs- und Quergeschwindigkeit werden abgeleitet, nicht fortgeschrieben.**
@@ -307,13 +389,28 @@ export class Vehicle {
     if (!this.#airborne) {
       const travelOver = compression - SUSPENSION.travel;
       // Anschlag: jenseits des Federwegs sitzt der Aufbau auf dem Gummipuffer,
-      // und der ist zehnmal härter. Ohne ihn schluckt eine Bordsteinkante den
-      // ganzen Federweg und der Aufbau taucht durch den Boden.
+      // und der ist ein Vielfaches härter. Ohne ihn schluckt eine Bordsteinkante
+      // den ganzen Federweg und der Aufbau taucht durch den Boden.
       const stiffness =
         travelOver > 0
-          ? SUSPENSION.stiffness * compression + SUSPENSION.stiffness * 9 * travelOver
+          ? SUSPENSION.stiffness * compression +
+            SUSPENSION.stiffness * SUSPENSION.bumpStopFactor * travelOver
           : SUSPENSION.stiffness * compression;
-      springForce = Math.max(0, stiffness - SUSPENSION.damping * this.#vY * this.#normal.y);
+      // **Und ein Deckel darauf — die wichtigste Zeile für das Fahren im
+      // Gelände.** Der Anschlag ist eine Feder, deren Kraft mit dem Weg linear
+      // wächst. Auf einem Höhenfeld mit 1,5 m Texelabstand findet ein Rad bei
+      // Tempo regelmäßig 20…40 cm Stufe, und dann rechnet der Anschlag eine
+      // Kraft aus, die den Aufbau senkrecht wegschießt.
+      //
+      // Der Deckel ist kein Kunstgriff, sondern die fehlende Physik: ein echtes
+      // Rad verformt sich an einer Kante und rutscht daran hoch, statt den
+      // Aufbau mit 9 g zu beschleunigen. Herleitung des Werts bei
+      // `SUSPENSION.maxLoadFactor`.
+      const deckel = CHASSIS.mass * GRAVITY * SUSPENSION.maxLoadFactor;
+      springForce = Math.min(
+        deckel,
+        Math.max(0, stiffness - SUSPENSION.damping * this.#vY * this.#normal.y),
+      );
     } else {
       compression = 0;
     }
@@ -344,12 +441,28 @@ export class Vehicle {
     // selbst, wenn man mit der **vorzeichenbehafteten** Längsgeschwindigkeit
     // rechnet. Deshalb `vLong` und nicht `|vLong|` im Zähler des Nenners.
     const direction = this.#vLong < 0 ? -1 : 1;
+    // **Die Querbewegung einer Achse ist `ω × r`, und ihr Vorzeichen hängt daran,
+    // wohin `right` zeigt.** Für eine Drehung mit `ω` um `+Y` hat ein Punkt bei
+    // `r = a · forward` die Zusatzgeschwindigkeit `ω · (ŷ × forward) = −ω · a · right`;
+    // die Vorderachse bekommt also **minus** `ω · a`, die Hinterachse **plus**
+    // `ω · b`.
+    //
+    // Solange `#right` fälschlich nach links zeigte, stimmten die umgekehrten
+    // Vorzeichen — und als die Achse repariert wurde, blieb hier der Rest des
+    // Fehlers stehen. Ergebnis: die Reifen **verstärkten** jede Drehung, statt sie
+    // zu dämpfen. Gemessen auf spiegelglattem Stadtasphalt, Vollgas, Lenkung null,
+    // ohne einen einzigen Kollisionskontakt: die Gierrate wuchs monoton von
+    // −0,14 auf −2,48 rad/s in 0,4 s, und der Wagen drehte sich im Kreis.
+    //
+    // Das ist der Kern von „die Physik ist schlecht" gewesen — und es sah nach
+    // einem Reifen- oder Geländeproblem aus, weil es sich auf losem Boden zuerst
+    // zeigte.
     const slipFront =
-      Math.atan2(this.#vLat + this.#yawRate * CG_TO_FRONT, speedRef) - this.#steerAngle * direction;
-    const slipRear = Math.atan2(this.#vLat - this.#yawRate * CG_TO_REAR, speedRef);
+      Math.atan2(this.#vLat - this.#yawRate * CG_TO_FRONT, speedRef) - this.#steerAngle * direction;
+    const slipRear = Math.atan2(this.#vLat + this.#yawRate * CG_TO_REAR, speedRef);
 
     // ── Längskräfte ───────────────────────────────────────────────────────
-    let throttle = input.throttle;
+    let throttle = this.#throttle;
     let brake = input.brake;
     // Bremse bei Stillstand = Rückwärtsgang. Kein Getriebe, keine Taste dafür:
     // in einem Arcade-Spiel erwartet niemand einen Gangwahlschalter, und ein
@@ -394,14 +507,42 @@ export class Vehicle {
     // frisst die Seitenführung. Genau das macht am Kurvenausgang aus Gas einen
     // Übersteuerimpuls.
     const wheelspin = gripRear > 1 ? Math.abs(requestedRear) / gripRear : 0;
-    const spinLoss = wheelspin > 1 ? clamp(1 / wheelspin, 0.25, 1) : 1;
+    // **Hier stand `spinLoss`, und es war die dritte tote Stellschraube dieses
+    // Projekts.** `clamp(1/wheelspin, minSpinGrip, 1)` hat die Querkraft
+    // multipliziert — *nachdem* der Reibkreis in `tireLateral` sie längst auf
+    // null geklemmt hatte. Denn `usedRear` ist auf `gripRear` geklemmt, und bei
+    // Vollgas auf losem Boden liegt es genau dort; das Budget
+    // `√(grip² − Fx²)` ist dann exakt **0**, und `0 · spinLoss` ist 0.
+    //
+    // Gemessen auf der Wiese, 10 s Vollgas, `minSpinGrip` von 0,80 auf 0,00:
+    // Endtempo 25,84 km/h und Endposition (−5,9617 | 27,6956) — **auf vier
+    // Nachkommastellen identisch, für alle vier Werte**. Der lange Kommentar an
+    // der Konstanten beschrieb eine Wirkung, die es nicht gab.
+    //
+    // Der Gedanke dahinter war richtig, nur die Stelle falsch: die Reserve
+    // gehört auf das **Budget**, nicht als Faktor auf das Ergebnis. Sie steht
+    // jetzt in `tireLateral` als `TIRE.lateralReserve`. Dieselbe Fehlerform wie
+    // bei `tailGrip` — ein richtiger Wert an der falschen Stelle in derselben
+    // Funktion, zweimal.
 
     const gripFront = muFront * loadFront;
     const usedFront = clamp(brakeFront, -gripFront, gripFront);
 
     // ── Querkräfte ────────────────────────────────────────────────────────
-    const lateralFront = tireLateral(slipFront, TIRE.peakSlipFront, gripFront, usedFront);
-    let lateralRear = tireLateral(slipRear, TIRE.peakSlipRear, gripRear, usedRear) * spinLoss;
+    const lateralFront = tireLateral(
+      slipFront,
+      TIRE.peakSlipFront,
+      TIRE.falloffSlipFront,
+      gripFront,
+      usedFront,
+    );
+    let lateralRear = tireLateral(
+      slipRear,
+      TIRE.peakSlipRear,
+      TIRE.falloffSlipRear,
+      gripRear,
+      usedRear,
+    );
     // Handbremse: das Hinterrad steht, im Reibkreis bleibt fast nichts für die
     // Querführung. Nicht null — sonst ist der Handbremsdrift nicht lenkbar.
     if (input.handbrake) lateralRear *= TIRE.lockedLateralFactor;
@@ -473,8 +614,20 @@ export class Vehicle {
       (this.#forward.z * accelLong + this.#right.z * accelLat + slopeZ) * dt;
 
     // ── Gieren ────────────────────────────────────────────────────────────
-    let yawTorque =
-      lateralFront * Math.cos(this.#steerAngle) * CG_TO_FRONT - lateralRear * CG_TO_REAR;
+    // **Das Vorzeichen kommt aus dem Kreuzprodukt, nicht aus einer Annahme.**
+    // Der Gierwinkel ist der Drehwinkel um `+Y` (`forward = (sin ψ, 0, cos ψ)`
+    // ist `R_y(ψ)·(0,0,1)`), also gilt `I_zz ψ̈ = (r × F)_y`. Für eine Seitenkraft
+    // `F = F_y · right` an der Stelle `r = a · forward` ergibt das
+    // `(a cos)(−F cos) − (a sin)(F sin) = −a · F`: eine Kraft nach **rechts**
+    // dreht den Gierwinkel **negativ**.
+    //
+    // Seit `#right` wirklich rechts zeigt, muss dieses Minus hier stehen. Vorher
+    // fehlte es — und hob den Achsenfehler oben gerade wieder auf, weshalb das
+    // Auto überhaupt fuhr und nur in die falsche Richtung lenkte.
+    let yawTorque = -(
+      lateralFront * Math.cos(this.#steerAngle) * CG_TO_FRONT -
+      lateralRear * CG_TO_REAR
+    );
     // Die einzige Fahrhilfe: Dämpfung **hinter** dem Ausbruchpunkt. Bei normalem
     // Schräglauf ist der Term exakt null (siehe `STEERING.driftDamping`).
     const excess = Math.abs(slipRear) - TIRE.peakSlipRear;
@@ -514,6 +667,7 @@ export class Vehicle {
     this.#updateAttitude(dt, accelLat, accelLong);
     this.#wheelSpin += (this.#vLong / CHASSIS.wheelRadius) * dt;
     this.#updateTransform();
+    this.#placeWheels();
 
     // ── Ablesbares ────────────────────────────────────────────────────────
     const t = this.telemetry;
@@ -533,11 +687,32 @@ export class Vehicle {
 
   // ── Teilschritte ────────────────────────────────────────────────────────
 
+  /**
+   * Fahrzeugachsen aus dem Gierwinkel.
+   *
+   * **Hier stand ein Vorzeichenfehler, und er hat die Lenkung verkehrt herum
+   * gemacht.** `#right` war mit `(cos, 0, −sin)` besetzt — bei Gierwinkel 0 also
+   * `+X`, während das Fahrzeug nach `+Z` zeigt. In einem rechtshändigen System
+   * mit `up = +Y` ist die Rechtsachse aber `forward × up = (−cos, 0, sin)`, bei
+   * Gierwinkel 0 also `−X`. Der alte Wert war die **linke** Seite.
+   *
+   * Das Modell war in sich stimmig — es rechnete durchgehend in der
+   * SAE-Konvention mit y nach links —, nur hieß die Achse falsch, und über die
+   * Kette „Lenkeinschlag → Schräglauf → Seitenkraft → Giermoment" kam ein
+   * Rechtseinschlag als Linkskurve heraus. Gemessen gegen den Rechtsvektor der
+   * Kamera: Taste `D` versetzte das Auto **9,42 m nach links**, Taste `A`
+   * 9,77 m nach rechts.
+   *
+   * Seitdem ist `#right` wirklich rechts, und alles, was daran hängt, bedeutet
+   * das, was sein Name sagt: `vLat` ist die Geschwindigkeit nach rechts, ein
+   * positiver Schwimmwinkel heißt „die Fahrtrichtung zeigt rechts an der Nase
+   * vorbei", ein positiver Lenkwinkel heißt rechts.
+   */
   #updateBasis(): void {
     const sin = Math.sin(this.#yaw);
     const cos = Math.cos(this.#yaw);
     this.#forward.set(sin, 0, cos);
-    this.#right.set(cos, 0, -sin);
+    this.#right.set(-cos, 0, sin);
   }
 
   /**
@@ -568,13 +743,78 @@ export class Vehicle {
       [halfTrack, -CG_TO_REAR],
     ];
 
+    // **Ein Rad ist kein Punkt.** Das Höhenfeld hat 1,5 m Texelabstand; auf der
+    // Wiese stehen darin Stufen bis 15 cm, im Reisfeldgelände bis 23 cm. Ein
+    // punktförmig abgetastetes Rad fällt in jede dieser Kerben und wird von jeder
+    // Kante angehoben — die Federung sieht ein Rechtecksignal und antwortet mit
+    // Sprüngen.
+    //
+    // Ein echtes Rad kann das nicht: es hat 31 cm Radius und **überbrückt**, was
+    // schmaler ist als es selbst. Nachgebildet wird das als Hüllkurve — die Höhe
+    // ist das **Maximum** über drei Proben im Radabstand längs der Fahrtrichtung.
+    // Über eine Kuppe rollt das Rad oben, über eine Kerbe spannt es hinweg.
+    //
+    // Kostet dreimal so viele Höhenabfragen (12 statt 4 je Schritt) und ist damit
+    // der teuerste Posten dieser Schleife. Gemessen bleibt der Schritt trotzdem
+    // unter 0,03 ms.
+    const reach = CHASSIS.wheelRadius;
     for (let i = 0; i < 4; i++) {
       const [side, ahead] = offsets[i]!;
       const x = this.position.x + this.#right.x * side + this.#forward.x * ahead;
       const z = this.position.z + this.#right.z * side + this.#forward.z * ahead;
-      const h = ground.height(x, z);
+      const h = Math.max(
+        ground.height(x, z),
+        ground.height(x + this.#forward.x * reach, z + this.#forward.z * reach),
+        ground.height(x - this.#forward.x * reach, z - this.#forward.z * reach),
+      );
       this.#wheelGround[i] = h;
-      this.#wheelPos[i]!.set(x, h + CHASSIS.wheelRadius, z);
+    }
+  }
+
+  /**
+   * Die vier Räder ans **Fahrzeug** hängen — für das Bild.
+   *
+   * > **Hier stand bis P17 eine Zeile in `#sampleWheels`:**
+   * > `this.#wheelPos[i].set(x, h + CHASSIS.wheelRadius, z)`. Die Radmitte lag
+   * > damit *immer* einen Radradius über dem Boden — unabhängig davon, wo das
+   * > Auto war. Sprang es über eine Kuppe, blieben die vier Räder am Boden
+   * > liegen und die Karosserie flog allein davon. Genau so hat es der
+   * > Auftraggeber beschrieben („die Räder trennen sich vom Auto"), und es war
+   * > kein Fehler der Federung, sondern der Umstand, dass die Räder überhaupt
+   * > nie am Aufbau hingen.
+   * >
+   * > Zweiter, kleinerer Teil desselben Fehlers: die Radposition folgte nur dem
+   * > **Gierwinkel**. Nicken und Wanken des Aufbaus ließen sie unberührt, die
+   * > Räder standen also auch bei 9° Nickwinkel senkrecht in der Landschaft.
+   *
+   * Jetzt hängt jedes Rad an seinem Aufnahmepunkt und federt **längs der
+   * Hochachse des Aufbaus** — nicht längs der Weltachse. Das ist der Unterschied,
+   * der am Hang und beim Bremsnicken sichtbar ist: ein Rad, das senkrecht zur
+   * Welt federt, wandert bei geneigtem Aufbau aus dem Radkasten.
+   *
+   * Der Hub ist beidseitig begrenzt (`WHEEL_MIN_DROP`…`WHEEL_MAX_DROP`). Die
+   * obere Grenze verhindert, dass ein Rad bei einem harten Einschlag durch das
+   * Blech fährt; die untere ist die, die das Auto in der Luft zusammenhält.
+   *
+   * Läuft **nach** `#updateAttitude`, weil sie die frische Lage braucht.
+   */
+  #placeWheels(): void {
+    const halfTrack = CHASSIS.track / 2;
+    this.#up.set(0, 1, 0).applyQuaternion(this.quaternion);
+    // Fast waagerechter Aufbau ist der Normalfall; der Schutz greift erst, wenn
+    // das Auto so schief steht, dass die Division unbrauchbar würde.
+    const aufrecht = Math.max(0.2, this.#up.y);
+
+    for (let i = 0; i < 4; i++) {
+      const side = i % 2 === 0 ? -halfTrack : halfTrack;
+      const ahead = i < 2 ? CG_TO_FRONT : -CG_TO_REAR;
+      // Aufnahmepunkt in Weltkoordinaten — über die **volle** Lage, also
+      // einschließlich Nicken und Wanken.
+      this.#scratch.set(side, 0, ahead).applyQuaternion(this.quaternion).add(this.position);
+      // Wie weit müsste das Rad längs −up wandern, bis es den Boden berührt?
+      const ziel = this.#wheelGround[i]! + CHASSIS.wheelRadius;
+      const hub = clamp((this.#scratch.y - ziel) / aufrecht, WHEEL_MIN_DROP, WHEEL_MAX_DROP);
+      this.#wheelPos[i]!.copy(this.#scratch).addScaledVector(this.#up, -hub);
     }
   }
 
@@ -698,8 +938,10 @@ export class Vehicle {
       normalZ += nz;
 
       // Geschwindigkeit **an der Ecke**, inklusive Drehanteil ω × r.
-      const cornerVX = this.velocity.x - this.#yawRate * rz;
-      const cornerVZ = this.velocity.z + this.#yawRate * rx;
+      // `v = v_Schwerpunkt + ω ŷ × r`, und `ŷ × (r_x, 0, r_z) = (r_z, 0, −r_x)`.
+      // Dieselbe Vorzeichenkette wie beim Schräglauf oben — und derselbe Fehler.
+      const cornerVX = this.velocity.x + this.#yawRate * rz;
+      const cornerVZ = this.velocity.z - this.#yawRate * rx;
       const approach = cornerVX * nx + cornerVZ * nz;
       if (approach < 0) {
         // Impuls längs der Normalen; `(r × F)_y = r_z F_x − r_x F_z`.
@@ -759,26 +1001,102 @@ export class Vehicle {
 /**
  * Reifenseitenkraft aus dem Schräglaufwinkel.
  *
- * `f(n) = 2n / (1 + n²)` mit `n = α / α_peak` — Maximum 1 bei `n = 1`, danach
- * Abfall wie `2/n`. Warum der Abfall nicht verhandelbar ist, steht bei `TIRE`.
+ * Die Kennlinie hat vier Abschnitte; ihre Form, die Begründung und die Messung,
+ * die zu ihr geführt hat, stehen bei `TIRE.plateauWidth`. Hier steht nur, was
+ * der Code tut und warum er es *so* tut.
  *
  * `usedLongitudinal` ist die bereits verbrauchte Längskraft: der Reibkreis lässt
  * nur `√(grip² − Fx²)` für die Seitenführung übrig. Deshalb geht bei Vollbremsung
  * die Lenkbarkeit verloren, und deshalb wird ein Wagen mit durchdrehenden Rädern
  * hinten los.
+ *
+ * > **Was hier bis P17 stand, und warum es das Auto unfahrbar gemacht hat.** Die
+ * > alte Fassung rechnete `f(n) = 2n/(1+n²)` und legte `TIRE.tailGrip` als
+ * > **Betragsklemme** darüber:
+ * >
+ * > ```ts
+ * > if (curve > -boden && curve < boden) curve = n > 0 ? boden : -boden;
+ * > ```
+ * >
+ * > Gedacht war das gegen den Abfall wie `2/n` **hinter** dem Scheitel. Die
+ * > Bedingung trifft aber jeden kleinen Betrag — und der kleinste Betrag der
+ * > Kennlinie liegt bei `n = 0`. `2n/(1+n²) < 0,75` gilt für `n < 0,451`
+ * > **und** für `n > 2,215`; geklemmt wurden also beide Enden. Gemessen:
+ * >
+ * > | Schräglauf | Kraftanteil alt | neu |
+ * > |---:|---:|---:|
+ * > | 0,01° | **0,750** | 0,001 |
+ * > | 1,00° | **0,750** | 0,206 |
+ * > | 5,00° | 0,841 | 0,846 |
+ * >
+ * > Der Reifen war damit ein **Schalter**: null bei exakt null Schräglauf, drei
+ * > Viertel der Höchstkraft bei jedem Wert darüber. Die Folgen — Zittern mit
+ * > 295 Vorzeichenwechseln in 300 Schritten, eine nicht monotone Lenkantwort und
+ * > 10 m Versatz auf 10 s Geradeausfahrt — sind bei `TIRE.plateauWidth`
+ * > tabelliert.
+ * >
+ * > **Zwei Lehren.** Eine Klemme auf einen *Betrag* trifft beide Enden des
+ * > Wertebereichs; gemeint war ein Abschnitt, und ein Abschnitt gehört über
+ * > seine **Variable** abgegrenzt (hier `n`), nicht über den Funktionswert. Und:
+ * > die Kennlinie war nie tabelliert worden. Siebzehn Zeilen Ausgabe hätten den
+ * > Fehler in einem Schritt gezeigt — genau der Punkt, den CLAUDE.md unter
+ * > „Mittelwerte verstecken Formen" führt.
  */
 function tireLateral(
   slip: number,
   peak: number,
+  falloff: number,
   grip: number,
   usedLongitudinal: number,
 ): number {
   if (grip <= 0) return 0;
-  const n = slip / peak;
-  const curve = (2 * n) / (1 + n * n);
-  const budget = Math.sqrt(Math.max(0, grip * grip - usedLongitudinal * usedLongitudinal));
-  const force = -curve * grip;
+  // Reibkreis — **mit einem Boden**. Die Wurzel allein geht bei voller
+  // Längsausnutzung auf null, und eine Achse ohne jede Seitenführung ist nicht
+  // „am Limit", sondern von der Fahrbahn abgemeldet. Herleitung des Werts bei
+  // `TIRE.lateralReserve`.
+  const budget = Math.max(
+    grip * TIRE.lateralReserve,
+    Math.sqrt(Math.max(0, grip * grip - usedLongitudinal * usedLongitudinal)),
+  );
+  const force = -Math.sign(slip) * gripCurve(Math.abs(slip), peak, falloff) * grip;
   return clamp(force, -budget, budget);
+}
+
+/**
+ * Der Kraftanteil 0…1 über dem **Betrag** des Schräglaufwinkels.
+ *
+ * Getrennt von `tireLateral`, weil die Form über dem Betrag definiert ist und
+ * das Vorzeichen erst danach draufkommt. Die alte Fassung hat genau diese
+ * Trennung nicht gemacht — und deshalb an der falschen Größe geklemmt.
+ */
+function gripCurve(absSlip: number, peak: number, falloff: number): number {
+  if (absSlip <= 0) return 0;
+
+  // 1. Anstieg. `x(2−x)` hat bei x = 0 die Steigung 2 — über dem Winkel also
+  //    `2/peak`, und das ist genau die Schräglaufsteifigkeit `C = 2 μ F_z /
+  //    α_peak`, mit der die Stabilitätsrechnung bei `TIRE.peakSlipFront`
+  //    argumentiert. Bei x = 1 ist die Steigung **null**, der Scheitel schließt
+  //    also knickfrei an das Plateau an.
+  if (absSlip < peak) {
+    const x = absSlip / peak;
+    return x * (2 - x);
+  }
+
+  // 2. Plateau — volle Kraft, während der Schräglauf schon wächst. Das ist der
+  //    Bereich, in dem ein Fahrer die Grenze spürt, bevor sie ihn kostet.
+  const plateauEnde = peak * (1 + TIRE.plateauWidth);
+  if (absSlip < plateauEnde) return 1;
+
+  // 3. Abfall auf den Rest. Glättung statt Gerade: sie läuft an **beiden** Enden
+  //    waagerecht aus, der Übergang ist also auch hier knickfrei.
+  const ende = Math.max(falloff, plateauEnde + 1e-6);
+  if (absSlip < ende) {
+    const t = (absSlip - plateauEnde) / (ende - plateauEnde);
+    return 1 + (TIRE.tailGrip - 1) * t * t * (3 - 2 * t);
+  }
+
+  // 4. Rest. Gleitreibung — sie verschwindet nicht, nur weil das Rad quer steht.
+  return TIRE.tailGrip;
 }
 
 function surfaceGrip(surface: Surface): number {
