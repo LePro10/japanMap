@@ -267,6 +267,7 @@ gedrosselt. ~~Referenzwerte zum Gegenhalten: `wald` auf Ultra 38 948, mit Dichte
 | `japanMap.drive(true)` | **Fahrmodus an/aus (P14).** Der einzige Weg dorthin ohne Pointer Lock — die Taste `V` verlangt einen, die eingebettete Vorschau gibt keinen |
 | 🚗-Knopf / Menüzeile „Auto fahren" | **Der Weg ins Auto ohne Tastatur (P16).** Auf Touch der einzige — `V` verlangt einen Pointer Lock, den kein Telefon gibt, und `japanMap` fehlt im Build. Beide Wege schalten denselben Zustand und melden über `drive:mode` |
 | `japanMap.driveProbe()` | **Der Messstand des Fahrmodus (P14).** Fährt jede Strecke ab und schreibt Durchdringung, Spurlage, Tempo und CPU je Schritt mit; dazu Standhöhe und Höhendifferenz Sampler ↔ Mittellinie. Läuft **ohne zu rendern** — 3600 Schritte in ~50 ms |
+| `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/fleet.mts` | **Der Fahrzeug-Prüfstand (P18).** Alle vier Fahrzeuge durch dieselben acht Proben, ohne Browser. Siehe unten |
 
 **Der Messlauf — und wofür er gebaut ist.**
 
@@ -1069,3 +1070,157 @@ Kurzliste, damit es nicht wieder passiert:
   Die Räder folgten obendrein nur dem **Gierwinkel** und ließen Nicken und Wanken
   aus. Beide Hälften sind dieselbe Ursache: die Radstellung wurde aus dem
   **Boden** abgeleitet statt aus dem **Aufbau**.
+
+---
+
+## Das Fahrmodell ohne Browser messen — P18
+
+Seit P18 gibt es `tools/bench/`. Es führt **denselben** `Vehicle`-Code aus, den
+das Spiel fährt — über einen Auflöser-Hook, der `@/…` und Importe ohne Endung auf
+die Platte abbildet. Eine zweite, für den Prüfstand abgeschriebene Physik wäre
+wertlos: sie misst dann sich selbst.
+
+```bash
+node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/fleet.mts
+```
+
+`fleet.mts` fährt **alle vier Fahrzeuge** durch dieselben acht Proben und gibt
+eine Tabelle aus. Das ist der Punkt: die Zahlen einer Spec sagen für sich
+genommen nichts, erst der Vergleich sagt, ob ein Lastwagen sich wie ein
+Lastwagen verhält. Ein voller Lauf dauert rund zwei Minuten.
+
+Die Proben, und wofür jede da ist:
+
+| Probe | findet |
+|---|---|
+| 0–100, Endtempo, Bremsweg | falsche Antriebs- und Widerstandszahlen |
+| Geradeauslauf, Lenksymmetrie | Vorzeichenfehler in den Achsen (die P14-Klasse) |
+| Ausrollen, monoton fallend | Energieerzeugung durch den Integrator (die P14-Klasse) |
+| **Lastwechsel im Bogen** | Gierinstabilität, die kein anderer Lauf zeigt |
+| Durchdrehen Anfahrt / Bogen | ob die Kernanforderung „Heck bricht aus" überhaupt erfüllbar ist |
+| Lenkantwort über der Eingabe | Untersteuern und tote Bereiche |
+| Stabilitätsreserve `b·C_h / (a·C_v)` | gerechnet, kein Lauf nötig |
+
+Drei Fallen, alle in P18 einmal zugeschlagen:
+
+1. **Die Gasrampe gehört abgewartet.** Ein Ausrolltest, der direkt nach
+   `throttle: 0` misst, sieht das Auto noch beschleunigen — `throttleRate` braucht
+   15 Schritte. Der erste Lauf meldete deshalb „11 Anstiege, Energiefehler". Es
+   war keiner.
+2. **Ein Lenktest ohne Tempohaltung misst das Tempo.** Mehr Lenkeinschlag heißt
+   mehr Querbeschleunigung heißt weniger Tempo, und die Gierrate ist `a_lat/v`.
+   `fleet.mts` regelt das Tempo, bevor es die Gierrate abliest.
+3. **Eine fallende Lenkantwort ist nicht automatisch ein Fehler.** Die größte
+   stationäre Gierrate ist `a_lat/v` mit `a_lat ≤ μ·g`; jenseits davon **muss**
+   mehr Lenkung weniger Gierrate bringen. Geprüft wird deshalb der **Abfall in
+   Prozent** hinter der Spitze (Grenze 15 %), nicht Monotonie.
+
+**Was der Prüfstand nicht kann**, und das steht auch in `fleet.mts`: sagen, ob
+sich etwas gut anfühlt, und sagen, ob ein Fahrzeug durch die Kehren des Bergpasses
+passt. Das erste ist eine Frage für einen Menschen, das zweite für
+`japanMap.driveProbe()` im laufenden Bild — und das gehört bei jeder Änderung am
+Fahrmodell **für alle vier Fahrzeuge** gefahren, nicht nur für das, das gerade
+eingestellt ist.
+
+### Zwei Werkzeuge daneben
+
+```bash
+node tools/bench/surfcolor.mjs                       # Mittelwerte der Belagstexturen
+node tools/bench/imgdiff.mjs a.png b.png diff.png    # Differenzbild, 8× verstärkt
+node tools/bench/contrast.mjs a.png b.png            # Helligkeitsverhältnis auf der Änderung
+```
+
+`imgdiff.mjs` ist die Antwort auf „**Wer eine Differenz misst, sieht sie sich
+an**" weiter oben. Eine Prozentzahl sagt *wie viel*, nicht *wo*; das Werkzeug
+schreibt beides und nennt zusätzlich das Rechteck, in dem sich etwas geändert
+hat.
+
+---
+
+## Ein Bild vom Fahrzeug oder von der Fahrbahn machen — die drei Stolpersteine
+
+Alle drei haben in P18 Zeit gekostet, und keiner davon steht im Code.
+
+1. **`japanMap.shot()` tickt die Schleife**, bevor es liest (`readFrame` ruft
+   `target.tick()`). Der Fahrmodus setzt dabei die Kamera über `ChaseCamera` neu
+   — jede von Hand gesetzte Kamerastellung ist danach weg. Der Weg, der wirkt:
+
+   ```js
+   const echt = drive.camera.update.bind(drive.camera);
+   drive.camera.update = () => {};          // Verfolgerkamera stilllegen
+   engine.camera.position.set(x, y + 20, z);
+   engine.camera.lookAt(x, y, z - 3);
+   engine.camera.updateMatrixWorld(true);
+   await japanMap.shot('name');
+   drive.camera.update = echt;
+   ```
+
+   `engine.systems.splice()` hilft **nicht** — die Schleife iteriert nicht über
+   diese Liste.
+
+2. **Driftspuren altern zwischen zwei Werkzeugaufrufen weg.** `VehicleFx` läuft im
+   **variablen** Schritt mit bis zu 50 ms je Frame, und zwischen zwei
+   `javascript_exec` vergehen Sekunden Echtzeit. Die ersten Aufnahmen zeigten
+   fast nichts, obwohl 32 Spuren „lebten": `aFade` stand bei 0,01…0,11 statt
+   1,00. **Erzeugen und Fotografieren müssen in einem Aufruf passieren.** Und wer
+   auf Tempo bringen will, ohne dabei zu altern, nimmt `drive.simulateStep()` —
+   das rechnet nur Physik.
+
+3. **Ein rotes Drahtgewirr auf der Fahrbahn ist die `Bodenmarkierung`**, nicht der
+   Fehler, den man gerade sucht. Sie ist eine Debug-Kugel des `TerrainSystem`
+   (Farbe `0xff4d6d`, Drahtgitter), klebt unter der Kamera auf `getHeightAt()` und
+   sieht von oben aus wie ein Knäuel. Vor jeder Bodenaufnahme ausschalten:
+   `scene.getObjectByName('Bodenmarkierung').material.visible = false`.
+
+> **Und `material.visible` ist der Schalter, der hält.** `mesh.visible` setzt
+> `VehicleFx.update()` in jedem Frame neu; ein von Hand gesetztes `false` ist nach
+> dem nächsten Tick wieder `true`. `material.visible` fasst niemand an.
+
+---
+
+## Was in diesem Projekt schon schiefgegangen ist — Nachträge aus P18
+
+- **Eine Optimierung, die das Ding unsichtbar macht, und keine einzige
+  Fehlermeldung.** Die neue Sparmaßnahme in `VehicleFx.#ageSkids` steigt bei
+  `#skidLive === 0` sofort aus — und `#skidLive` wurde **nur dort** gebildet.
+  Einmal auf null, für immer auf null; `#writeSkids` schaltete das Mesh dann
+  unsichtbar, obwohl Stempel gesetzt wurden. Gemessen: **32 lebende
+  Alterungswerte, `count` 0, `visible` false.** Kein Typfehler, keine Ausnahme,
+  kein Konsoleneintrag, `typecheck` und `build` sauber.
+  Lehre: **wer einen Zähler mit einem Frühausstieg schützt, muss prüfen, wer ihn
+  wieder hochzählt.** Und: eine Sparmaßnahme am Bild ist erst geprüft, wenn danach
+  ein Bild gemacht wurde — nicht, wenn der Compiler schweigt.
+
+- **Ein Kommentar, der rechnet, ist eine Abhängigkeit wie ein Import — zum
+  zweiten Mal.** Nach `DRIVETRAIN.maxDriveForce` in P17 (die Herleitung zitierte
+  `rearGripFactor = 1`, das inzwischen 1,08 war) jetzt dieselbe Konstante noch
+  einmal: „liegt 8,6 % über der Haftgrenze der Hinterachse" ließ die
+  **Lastverlagerung** weg. Mit ihr braucht es 9088 N statt 6627, und 7200 lagen
+  16,1 % darunter statt 8,6 % darüber. Die Kernanforderung des Fahrmodells war
+  damit rechnerisch unerfüllbar, und drei Jahre Kommentar darüber sagten das
+  Gegenteil.
+  Lehre: **eine Herleitung im Kommentar gehört in den Prüfstand.** `fleet.mts`
+  rechnet die Durchdrehgrenze jetzt selbst aus und stellt sie neben den gemessenen
+  Durchdrehfaktor — beide in derselben Zeile, jeden Lauf neu.
+
+- **Eine Reparatur, die eine neue Instabilität einführt, und der Prüfstand hatte
+  die Probe dafür nicht.** Die Motorbremse (physikalisch an der richtigen Stelle,
+  Betrag realistisch) machte das Auto beim Lastwechsel im Bogen unfahrbar: 89,7°
+  Schwimmwinkel, und er blieb dort. Acht grüne Abnahmezahlen — Beschleunigung,
+  Bremsweg, Symmetrie, Ausrollen, Gierstabilität, Durchdrehen, Lenkantwort,
+  Geradeauslauf — meldeten nichts, weil **keine von ihnen das Gas wegnimmt,
+  während der Wagen im Bogen steht**.
+  Lehre: dieselbe wie nach P14 („ein Prüfstand, der ‚bestanden' meldet, hat nur
+  das geprüft, wonach er fragt"), nur diesmal beim Bauen bemerkt. Die Probe
+  `Lastwechsel im Bogen` steht seitdem im Prüfstand, und sie hat unmittelbar
+  danach einen **zweiten**, unabhängigen Fehler gefunden: der Offroader war mit
+  seiner ursprünglichen Reifenabstimmung ebenfalls nicht zu halten.
+
+- **Modulkonstanten, die aus den Maßen eines Fahrzeugs gerechnet sind.** Bei der
+  Umstellung auf vier Fahrzeuge waren sieben davon in `Vehicle.ts`
+  (`SPRING_REST`, `WHEEL_MAX_DROP`, `MAX_YAW_RATE`, …). Wären sie stehen
+  geblieben, führe der Lastwagen mit der Federruhelage des Coupés — 58 cm im
+  Boden — und **keine Kennzahl hätte das gemeldet**, weil das Auto ja fährt.
+  Lehre: **wer eine Konstante parametriert, sucht zuerst die Konstanten, die aus
+  ihr gerechnet sind.** `grep` auf den Namen findet die Verwendungen; die
+  Ableitungen findet man nur, indem man die Datei liest.

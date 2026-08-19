@@ -309,10 +309,25 @@ und vor allem, was diese Ereignisse sendet.
 
 ```
 DriveSystem ──┬── Vehicle           Kräfte, Gieren, Federung   (fixedUpdate, 60 Hz)
+              │     └── VehicleSpec  vier Datensätze, eine Physik   (P18)
               ├── CollisionWorld    Hindernisse im Raster
               ├── ChaseCamera       Verfolger / Haube          (update, Bildrate)
-              └── carMesh           Geometrie, prozedural
+              ├── VehicleFx         Driftspuren, Spritzer      (update, Bildrate)
+              └── carMesh           Geometrie, prozedural, vier Bauformen
 ```
+
+**Vier Fahrzeuge, eine Physik — P18.** `Vehicle` liest seine Zahlen aus einer
+`VehicleSpec` (`config/vehicles.config.ts`) statt aus Modulkonstanten. Eine
+zweite `Vehicle`-Klasse je Fahrzeug wäre die naheliegende Abkürzung und der
+Fehler, den dieses Projekt zweimal gemacht hat: zwei Implementierungen derselben
+Sache, die auseinanderlaufen, sobald jemand nur eine repariert.
+
+Der Wechsel tauscht die **Spec an derselben Instanz** und rechnet die Geometrie
+neu; die beiden Meshes bleiben dieselben Objekte. Beides ist notwendig und nicht
+Geschmack: `main.ts` reicht `drive.vehicle.telemetry` als **Objekt** an die
+Tonschicht weiter, und die Ausschlussliste der planaren Spiegelung merkt sich
+**Mesh-Verweise**. Eine neue Instanz oder ein neues Mesh hätte beides still
+gekappt.
 
 **Die Aufteilung auf die zwei Schrittarten ist die eigentliche Struktur.** Die
 Physik läuft im **fixen** Schritt (deterministisch — dafür hat `RenderLoop` ihn

@@ -649,6 +649,12 @@ async function boot(): Promise<void> {
       setHandbrake: (down) => {
         drive.setTouchHandbrake(down);
       },
+      get vehicleId() {
+        return drive.vehicleId;
+      },
+      setVehicle: (id) => {
+        drive.setVehicle(id);
+      },
     },
     quality: {
       get level() {
