@@ -291,8 +291,38 @@ export class FreeFlyController implements System {
 
   // ── Eingabe ────────────────────────────────────────────────────────────
 
-  readonly #onPointerDown = (): void => {
-    void this.#canvas?.requestPointerLock();
+  /**
+   * Klick ins Bild fängt den Zeiger — **aber nur, wenn es ein Zeiger ist.**
+   *
+   * Bis P16 stand hier ein bedingungsloses `requestPointerLock()`, und das war
+   * auf einem Telefon gleich zweifach falsch:
+   *
+   * 1. **iOS Safari kennt `requestPointerLock` nicht.** Das `?.` davor sichert
+   *    nur `#canvas` gegen `null` ab, nicht die *Methode* gegen ihr Fehlen —
+   *    der Aufruf wirft dort also einen `TypeError`, und zwar bei **jeder**
+   *    Berührung des Bildes.
+   * 2. **Android lehnt den Lock bei Fingereingabe ab.** Die Ablehnung ist kein
+   *    stiller Fehlschlag: `PlayerUi` hört auf `pointerlockerror` und reißt
+   *    daraufhin das Pausenmenü auf (der Rückfallpfad aus P13.4, dort richtig).
+   *
+   * Gemessen am 2026-08-18 in der Geräteemulation: während einer Fahrt mit dem
+   * Touch-Stick ging das Menü **nach 101 Frames von selbst auf** — Kette
+   * `pointerdown → requestPointerLock → pointerlockerror → Menü`. Auf einem
+   * echten Telefon hieße das: das Menü springt beim Lenken auf.
+   *
+   * Aufgefallen ist es erst, als der Fahrmodus auf Touch überhaupt erreichbar
+   * wurde (P16). Vorher konnte niemand mit dem Finger fahren, und im Freiflug
+   * fällt ein Menü, das beim Antippen aufgeht, kaum als Fehler auf.
+   */
+  readonly #onPointerDown = (event: PointerEvent): void => {
+    if (event.pointerType === 'touch') return;
+    const canvas = this.#canvas;
+    if (typeof canvas?.requestPointerLock !== 'function') return;
+    // Der Rückgabewert ist in neueren Browsern ein Promise, in älteren
+    // `undefined` — beides muss hier durchgehen, und eine Ablehnung darf keine
+    // unbehandelte Zurückweisung in der Konsole hinterlassen.
+    const ergebnis: unknown = canvas.requestPointerLock();
+    if (ergebnis instanceof Promise) void ergebnis.catch(() => undefined);
   };
 
   readonly #onPointerLockChange = (): void => {

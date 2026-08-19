@@ -177,6 +177,8 @@ erfüllt sind. Ausnahmen werden hier dokumentiert, nicht mündlich vereinbart.
 | **P12** ◐ | Handy, Touch und die echten Kosten | Läuft auf einem Telefon, ohne schlechter auszusehen | P11 |
 | **P13** ◐ | Startbildschirm, Reiter, Debug im Menü | Die Oberfläche steht nicht mehr im Bild | P12 |
 | **P14** ◐ | Die Fahrschicht — Freeride | Ein Auto fährt, stößt an und bleibt auf der Straße | P8, P13 |
+| **P15** ✅ | Der gestufte Start | Startdownload 17,02 MB — unter der Mobile-Schwelle | P12 |
+| **P16** ✅ | Ton, Ziel und der Weg ins Auto | Ton, Zeitfahren, und das Auto ist auf dem Handy erreichbar | P14, P15 |
 
 > **Diese Tabelle stand bis zum 2026-08-07 auf „P7 ◐ / P8 ○"** — also zwei
 > Phasen hinter dem Rest der Datei, sechs Tage nach der P8-Abnahme. Dieselbe
@@ -7527,21 +7529,190 @@ nicht ist, ist etwas kaputt.
 - [x] **`typecheck` und `build` laufen sauber durch**, keine Konsolenfehler,
       32 Shaderprogramme im Aufwärmframe (vorher 30 — das Fahrzeugmaterial im
       Haupt- und im Spiegeldurchgang).
-- [ ] **Ob sich der Drift gut anfährt, ist nicht gemessen.** Der Prüfstand kann
-      diese Frage nicht beantworten (14.3), und Pointer Lock — und damit die
-      Tastatursteuerung überhaupt — ist in der eingebetteten Vorschau nicht
-      prüfbar. Es fehlt: eine Runde von Hand auf dem Bergpass.
+- [ ] **Ob sich der Drift gut anfährt, ist weiterhin ein Urteil und keine
+      Messung.** Der erste Fahrversuch des Auftraggebers hat vier Fehler
+      freigelegt, die keine Abnahmezahl zeigte (14.5) — messbar sind seitdem
+      Lenkrichtung, Gierstabilität und Fangbarkeit eines Drifts, und die drei
+      stimmen. **Nicht** messbar bleibt, ob es Spaß macht. Es fehlt weiterhin:
+      eine Runde von Hand auf dem Bergpass.
 - [ ] **Auf einem Telefon nicht geprüft.** Der Touch-Stick ist verdrahtet
       (`FreeFlyController` leitet Blick und Achsen an den Fahrmodus weiter, wenn
       der Freiflug aus ist), aber nie auf Hardware bedient worden. Dieselbe Lücke
       wie P12.6 und P13.
 
+
+---
+
+## 14.5 — Die zweite Runde: was beim ersten Fahren herauskam
+
+> **Der Auftraggeber ist gefahren, und das Urteil war eindeutig:** *„Lenkung ist
+> verkehrt und Physik ist schlecht, im Dreck ist es unspielbar."* Alle drei
+> Punkte waren berechtigt, und alle drei ließen sich messen. Der Prüfstand aus
+> 14.3 hatte sie nicht gefunden — er misst Durchdringung und Spurlage, nicht
+> Fahrbarkeit, und **genau davor steht dort die Warnung**.
+>
+> Der eigentliche Ertrag: hinter „die Physik ist schlecht" steckten **drei
+> unabhängige Vorzeichenfehler und eine falsche Fahrwerksabstimmung**. Keiner
+> davon war an einer der Abnahmezahlen aus 14.4 zu sehen.
+
+### Fehler 1: Die Querachse zeigte nach links
+
+`Vehicle.#updateBasis()` besetzte `#right` mit `(cos, 0, −sin)` — bei
+Gierwinkel 0 also `+X`, während das Fahrzeug nach `+Z` zeigt. Rechtshändig mit
+`up = +Y` ist die Rechtsachse aber `forward × up = (−cos, 0, sin)`. Der alte
+Wert war die **linke** Seite.
+
+Gemessen gegen den Rechtsvektor der Kameramatrix: Taste `D` versetzte das Auto
+**9,42 m nach links**, Taste `A` **9,77 m nach rechts**.
+
+Das Modell war dabei in sich stimmig — es rechnete durchgehend in der
+SAE-Konvention mit y nach links. Nur hieß die Achse falsch, und die Kette
+„Lenkeinschlag → Schräglauf → Seitenkraft → Giermoment" drehte das Vorzeichen
+einmal zu oft.
+
+### Fehler 2: Das Giermoment hatte kein Vorzeichen, sondern eine Annahme
+
+Nach der Reparatur von Fehler 1 musste `I_zz ψ̈ = (r × F)_y` neu ausgerechnet
+werden: für `F = F_y · right` an `r = a · forward` ergibt das `−a · F`. Eine
+Kraft nach rechts dreht den Gierwinkel **negativ**. Das Minus fehlte — und hob
+Fehler 1 gerade wieder auf, weshalb das Auto überhaupt fuhr und nur verkehrt
+lenkte.
+
+### Fehler 3: Die Achsgeschwindigkeiten — der teuerste
+
+**Das war die Ursache von „die Physik ist schlecht".** Die Querbewegung einer
+Achse ist `ω × r`. Für eine Drehung um `+Y` hat ein Punkt bei `r = a · forward`
+die Zusatzgeschwindigkeit `−ω · a · right`; die Vorderachse bekommt also
+**minus** `ω·a`, die Hinterachse **plus** `ω·b`. Im Code stand beides umgekehrt.
+
+Folge: **die Reifen verstärkten jede Drehung, statt sie zu dämpfen.** Gemessen
+auf spiegelglattem Stadtasphalt, Vollgas, Lenkung null, ohne einen einzigen
+Kollisionskontakt, alle vier Räder auf exakt 30,31 m:
+
+| Schritt | 4 | 8 | 12 | 16 | 20 | 23 |
+|---|---|---|---|---|---|---|
+| Gierrate (rad/s) | −0,14 | −0,72 | −1,31 | −1,76 | −2,18 | −2,48 |
+
+Monoton wachsend aus dem Nichts. Solange `#right` nach links zeigte, stimmten
+die umgekehrten Vorzeichen; die Reparatur von Fehler 1 hat diesen hier
+**freigelegt**, nicht verursacht.
+
+> **Warum es nach einem Gelände- oder Reifenproblem aussah:** auf ideal ebenem
+> Boden ohne jede Störung bleibt der Anstoß aus, und das Auto fährt exakt
+> geradeaus (gemessen: 0,00 m Versatz über 60 s). Erst eine Bodenwelle stößt die
+> Drehung an — und dann läuft sie weg. Deshalb zeigte sich der Fehler zuerst
+> „im Dreck".
+
+### Fehler 4: Die Abstimmung war gierinstabil, und zwar überall
+
+Ein Einspurmodell ist stabil, solange `b · C_hinten > a · C_vorn` mit
+`C = 2 μ F_z / α_peak`. Nachgerechnet mit den Werten der ersten Fassung
+(`peakSlipFront` 0,14, `peakSlipRear` 0,16, `rearGripFactor` 0,94→1,02):
+
+| Abstimmung | Asphalt | Gelände, Vollgas |
+|---|---|---|
+| erste Fassung | **0,89 — instabil** | **0,74 — instabil** |
+| jetzt (0,16 / 0,12 / 1,08) | **1,44** | **1,19** |
+
+Und sie war nicht einmal ein Drift-Setup: mit 8,0° Scheitel vorn gegen 9,2°
+hinten sättigte die **Vorderachse zuerst**, das Auto schob also am Limit. Jetzt
+ist es umgekehrt (9,2° vorn, 6,9° hinten): unterhalb des Scheitels stabil, am
+Scheitel bricht das Heck aus.
+
+### Dazu vier Änderungen am Fahrwerk und an den Reifen
+
+| Was | vorher | jetzt | warum |
+|---|---|---|---|
+| `SUSPENSION.travel` | 0,18 m | 0,26 m | Höhenfeld hat 1,5 m Texel; auf der Wiese stehen 15 cm Stufen darin |
+| `SUSPENSION.maxLoadFactor` | — | 3,5 g | ohne Deckel schoss der Anschlag den Aufbau mit 9 g weg |
+| Radabtastung | ein Punkt | **Hüllkurve** aus 3 Proben im Radabstand | ein Rad mit 31 cm Radius fällt nicht in eine 20-cm-Kerbe |
+| `TIRE.tailGrip` | — | 0,75 | die Kennlinie fiel hinter dem Scheitel wie `2/n` gegen null — das ist kein Reifen, das ist Eis |
+| `TIRE.gripTerrain` | 0,55 | 0,72 | „Wiese ist rutschig" war „Wiese ist unfahrbar" |
+| `DRIVETRAIN.throttleRate` | — | 4/s | eine Taste kennt nur 0 und 1; ein Fuß braucht 0,25 s |
+
+Dazu die Ruhehöhe beim Absetzen: sie liegt `cgHeight / n_y` **senkrecht** über
+dem Boden, nicht `cgHeight`. An einem Hang war die Feder sonst sofort über ihren
+Anschlag hinaus eingedrückt.
+
+### Was die Reparaturen gebracht haben
+
+Alles auf idealem Boden, damit Gelände und Kollision die Messung nicht färben:
+
+| Messung | vorher | nachher |
+|---|---|---|
+| `D` / `A` seitlicher Versatz | −9,42 m / +9,77 m (**verkehrt**) | **+8,73 m / −8,73 m** |
+| Lenkimpuls 0,3 s, dann loslassen: Spitze | 14,0° | **0,7°** |
+| … Schwimmwinkel nach 3 s | 9,8° (pendelt) | **0,2°** |
+| Reisfeld, 20 s Vollgas: Mittel | 25 km/h, 59 % quer | **98 km/h, 0 % quer** |
+| Kurvenbeschleunigung stationär | — | 0,91…1,19 g |
+
+Und der Drift, der die eigentliche Anforderung war: Handbremse bei 90 km/h
+leitet **−64°** Schwimmwinkel ein, Gegenlenken plus Gas holt ihn in **2,0 s**
+auf −2° zurück, das Tempo fällt dabei monoton von 78 auf 45 km/h.
+
+### Der Streckenlauf danach
+
+`japanMap.driveProbe({ seconds: 60, speedCap: 14 })`:
+
+| Strecke | Weg | ⌀ | Durchdringung | max. Abstand zur Mitte | Ende |
+|---|---|---|---|---|---|
+| ring | 759,1 m | 45,5 km/h | **0 cm** | 1,10 m | auf der Strecke |
+| toge | 752,4 m | 45,1 km/h | **0 cm** | 2,16 m | auf der Strecke |
+| dorf | 683,8 m | 45,9 km/h | **0 cm** | 1,50 m | Streckenende |
+| stadt | 773,5 m | 46,4 km/h | **0 cm** | 1,33 m | auf der Strecke |
+| zufahrt | 138,3 m | 42,9 km/h | **0 cm** | 1,00 m | Streckenende |
+| sando | 430,2 m | 40,3 km/h | **0 cm** | 1,05 m | Streckenende |
+| feldpfad | 385,0 m | 44,9 km/h | **0 cm** | 1,52 m | Streckenende |
+| kuestenpfad | 308,3 m | 44,6 km/h | **0 cm** | **1,29 m** | Streckenende |
+
+Der Küstenpfad kommt jetzt bis zum Ende und bleibt dabei 1,29 m statt 15,35 m
+neben der Mittellinie — die Strecke war nie das Problem.
+
+**Standhöhe** über der Fahrbahnoberkante: Median 0,00…0,63 cm, größter Einzelwert
+**4,44 cm** (Tempelaufgang). Das Kriterium aus PLAN.md 9.1 („Median unter 5 cm")
+hält weiterhin; der Zuwachs gegenüber den vorherigen 0,00 cm ist die Radhüllkurve,
+die auf einer 43-%-Rampe bauartbedingt anhebt.
+
+## Die Lehre, und sie ist die teuerste dieser Phase
+
+**Vier Vorzeichen- und Abstimmungsfehler, und keine einzige der acht
+Abnahmezahlen aus 14.4 hat einen davon angezeigt.** Durchdringung 0 cm,
+Standhöhe 0,00 cm, Spurlage unter 3 m, Reproduzierbarkeit zeichengleich — alles
+richtig gemessen, alles bestanden, und das Auto war trotzdem unfahrbar.
+
+Der Grund steht als Warnung schon in `driveProbe.ts`: *„Was dieser Prüfstand
+nicht kann: aussagen, ob es sich gut anfühlt."* Das war richtig aufgeschrieben
+und trotzdem nicht ernst genug genommen — **eine offene Abnahmezeile ist kein
+Restrisiko, sondern ein Loch in der Abnahme.** Wo „nicht gemessen" steht, muss
+jemand fahren, bevor etwas „fertig" heißt.
+
+Zwei Werkzeuge, die es seitdem gibt und die diese Klasse Fehler künftig fangen:
+
+```js
+// Lenkrichtung — muss +x / −x symmetrisch sein
+const flat = { height: () => 0, normal: (x,z,t) => t.set(0,1,0), surface: () => 'asphalt' };
+drive.vehicle.respawn(0,0,0,flat);   // dann steer +1 gegen −1 vergleichen
+
+// Gierstabilität — Lenkimpuls, loslassen, Schwimmwinkel muss abklingen
+```
+
 ## Was P14 ausdrücklich **nicht** enthält
 
-Rundenlogik (P9.3 — die Tore aus 8.11 wertet weiterhin niemand aus), KI-Gegner,
-Schaden, Motorgeräusch, Scheinwerfer mit Lichtkegel, Kollision zwischen zwei
+~~Rundenlogik (P9.3 — die Tore aus 8.11 wertet weiterhin niemand aus)~~, KI-Gegner,
+Schaden, ~~Motorgeräusch~~, Scheinwerfer mit Lichtkegel, Kollision zwischen zwei
 Fahrzeugen. Der Wagen kann sich nicht überschlagen (kinematisches Nicken und
 Wanken), und Bäume sind durchfahrbar.
+
+> **Zwei davon sind eingelöst.** Die Rundenlogik kam mit P9.3 am 2026-08-18
+> (`LapTimer`), sichtbar wurde sie erst mit dem HUD aus **P16** — dazwischen lag
+> sie ein paar Stunden fertig und unsichtbar im Debug-Panel. Das Motorgeräusch
+> ist in P16 dazugekommen, synthetisiert und ohne Download.
+>
+> **Und P16 hat an dieser Fahrschicht einen Fehler gefunden, den P14 nicht
+> finden konnte:** der Fahrmodus war auf einem Telefon über *alle drei* Wege
+> unerreichbar. P14 hat das nicht gemerkt, weil es die Frage nicht gestellt hat —
+> die Abnahmezeile „auf einem Telefon nicht geprüft" stand da und meinte das
+> Fahrgefühl, nicht die Erreichbarkeit.
 
 ---
 
@@ -8149,3 +8320,203 @@ ohne Herkunft dastanden).
 Kein Service-Worker, kein Offline-Betrieb, kein KTX2 (offene Entscheidung 7
 bleibt offen — sie ist ein eigener Durchgang und hängt an einem Encoder, den
 dieses Projekt noch nicht geprüft hat). Keine Rundenlogik, kein Ton.
+
+---
+
+# P16 — Ton, Ziel und der Weg ins Auto ✅ (2026-08-18)
+
+> **Beauftragt am 2026-08-18**, nach einer Bestandsaufnahme gegen die
+> Zielplattform CrazyGames. Der Auftrag lautete sinngemäß: alles autonom
+> umsetzen **außer** dem CrazyGames-SDK und der Leistungsmessung; „einfach
+> optimieren", darauf achten, „dass es immer gut lädt, alles optimized und
+> clean", und „Ton und mobile und so auch alles".
+
+## Der Befund, aus dem diese Phase entsteht
+
+Vier Sachen, und die erste ist die teuerste:
+
+| Befund | Zahl |
+|---|---|
+| **Fahrmodus auf einem Telefon erreichbar?** | **nein — über alle drei Wege gesperrt** |
+| Töne im gesamten Projekt | **0** (`grep -rli "audio\|sound\|AudioContext"` über `src/`) |
+| Sichtbare Rundenzeit für einen Spieler | **keine** — `LapTimer` meldete nur ins Debug-Panel |
+| Sourcemaps im Auslieferungsbau | **5,82 MB** `.map`, vollständiger Quelltext |
+
+## 16.0 — Das Auto war auf dem Handy nicht erreichbar
+
+Der Fund, der diese Phase ausgelöst hat. Sechs Dateien und rund 110 KB
+Fahrschicht aus P14 waren für die **gesamte** Mobile-Zielgruppe unsichtbar — und
+zwar für genau die Gruppe, für die P15 den Startdownload mit 3 MB Abstand unter
+die 20-MB-Schwelle der CrazyGames-Mobile-Homepage gedrückt hat.
+
+Drei Wege hinein, alle drei zu:
+
+1. `DriveSystem.#onKeyDown` steigt bei `document.pointerLockElement === null`
+   sofort aus. Auf Touch gibt es nie einen Lock, also wirkt `V` dort nie.
+2. `window.japanMap` wird aus dem Auslieferungsbau entfernt (P12/P13 haben das
+   ausdrücklich als Qualitätsmerkmal gemessen) — `japanMap.drive()` fällt weg.
+3. Einen Knopf gab es nicht: `TouchControls` trug ☰ ⟲ ⇩ ▲ ▼, `PlayerUi` keinen
+   Eintrag (`grep -n "drive|Fahr"` in beiden: null Treffer).
+
+Der **Stick war längst verdrahtet** — `FreeFlyController.setAxes()` reicht an
+den Fahrmodus weiter, sobald der Freiflug aus ist. Es fehlte allein der
+Umschalter. Das ist die unangenehme Sorte Lücke: nicht ein fehlendes System,
+sondern ein fehlender Knopf vor einem fertigen.
+
+**Gebaut:** ein 🚗-Knopf in `TouchControls` und eine Modus-Zeile im Pausenmenü
+(über den Reitern, nicht darin — Fliegen und Fahren sind die zwei Arten zu
+spielen, alles andere sind Einstellungen). Dazu tauscht das Bedienfeld im Auto
+seine Knöpfe: ▲/▼ und ⇩ sind dort ohne Bedeutung, die Handbremse ✋ kommt dazu,
+⟲ heißt jetzt „auf die nächste Straße". Alle drei Wege (Knopf, Menü, `V`) laufen
+über `drive:mode` durch **einen** Zuhörer — eine Anzeige, die nur ihren eigenen
+Weg kennt, steht nach den beiden anderen falsch.
+
+## 16.1 — Der Fehler, den erst der neue Weg sichtbar gemacht hat
+
+**`FreeFlyController.#onPointerDown` forderte bedingungslos den Pointer Lock an**
+— bei *jedem* `pointerdown` auf dem Canvas, also auch bei jeder Berührung. Zwei
+Folgen, beide auf einem Telefon:
+
+- **iOS Safari kennt `requestPointerLock` nicht.** Das `?.` davor sicherte nur
+  `#canvas` gegen `null` ab, nicht die Methode gegen ihr Fehlen — der Aufruf
+  wirft dort einen `TypeError`, bei jeder Berührung.
+- **Android lehnt den Lock bei Fingereingabe ab**, und die Ablehnung ist nicht
+  still: `PlayerUi` hört auf `pointerlockerror` und reißt das Pausenmenü auf
+  (der Rückfallpfad aus P13.4 — dort richtig, hier verheerend).
+
+Gemessen in der Geräteemulation, 375 × 812, Stick auf Vollgas:
+
+| | vorher | nachher |
+|---|---|---|
+| Menü geht während der Fahrt von selbst auf | **bei Frame 101** (reproduzierbar 151/101) | **nie** (900 Frames) |
+| Erreichtes Tempo nach 900 Frames | 20,5 km/h | **49,1 km/h** |
+
+Die zweite Zeile ist der eigentliche Beleg: das Menü unterbrach die Eingabe, das
+Auto kam nicht auf Tempo. **Das Fahrmodell war nie das Problem.**
+
+> **`PlayerUi` hatte dieselbe Stelle in P12.4 schon richtig abgesichert**
+> (`typeof this.#canvas.requestPointerLock !== 'function'`). `FreeFlyController`
+> war die übersehene zweite. Dieselbe Lehre wie bei den rückseitig gewickelten
+> Flächen aus P8.11 und den Leitplanken aus P14: **ein Fehlerbild ist eine
+> Klasse, kein Einzelfall** — wer einen findet, prüft den ganzen Bestand.
+>
+> Und: aufgefallen ist er erst, als der Fahrmodus auf Touch **erreichbar** wurde.
+> Solange niemand mit dem Finger fahren konnte, fiel ein Menü, das beim Antippen
+> aufgeht, nicht als Fehler auf. **Eine neue Nutzungsart ist ein Prüfstand für
+> alles, was vorher gebaut wurde** — derselbe Satz steht seit P14 in CLAUDE.md.
+
+## 16.2 — Ton, und zwar ohne ein einziges Byte Download
+
+`src/audio/AudioSystem.ts` plus `src/config/audio.config.ts`. **Vollständig
+synthetisiert** — kein Asset, keine Schleife, kein Download. Die Begründung ist
+die Zielplattform: ein brauchbarer Motorenteppich aus Aufnahmen kostet 1 bis
+3 MB, und das ist genau der Abstand, den P15 zur 20-MB-Schwelle erkämpft hat.
+
+Was klingt: Motor (zwei verstimmte Sägezähne durch einen tempoabhängigen
+Tiefpass, mit **Scheingetriebe** — eine Tonhöhe, die nur monoton steigt, klingt
+nach Sirene), Roll- und Fahrtwind (gefiltertes Rauschen), Aufprall (Rauschstoß
+auf der *Flanke* der Durchdringung, nicht auf ihrem Zustand), Rundensignal und
+ein Klick für die Oberfläche.
+
+Drei Fallen der Web Audio API, alle im Kopf der Datei begründet: der Kontext
+muss aus einer **Nutzergeste** entstehen (sonst bleibt er für immer
+`suspended` — deshalb `unlock()` im Klick des „Starten"-Knopfes, plus
+`armAutoUnlock()` als Auffangnetz); fortlaufende Werte laufen über
+`setTargetAtTime` statt über Zuweisung (sonst knackt es je Frame); und
+Oszillatoren laufen **durchgehend** und werden auf null geregelt, weil `stop()`
+endgültig ist.
+
+**Der Stummschalter ist zweigeteilt** (`#userMuted` gegen `#externallyMuted`),
+und das ist Vorarbeit mit Absicht: CrazyGames verlangt einen `muteAudio`-Rückruf,
+der **Vorrang vor der Spieleinstellung** hat. Wenn das SDK dazukommt, hängt es
+sich an `setExternallyMuted()` und muss an dieser Datei nichts ändern. Ein
+gemeinsames Feld hätte beim Zurückschalten die Nutzereinstellung überschrieben.
+
+## 16.3 — Aus der Karte wird ein Zeitfahren
+
+`LapTimer` war seit P9.3 **fertig gebaut und für Spieler unsichtbar**: seine
+Ablesewerte hingen im Tweakpane-Ordner „Runden", und P13 hat ausdrücklich
+gemessen, dass Tweakpane im gebauten Stand **null**mal vorkommt. Wer das Spiel
+auf einem Portal öffnete, konnte eine perfekte Runde fahren, ohne es je zu
+erfahren.
+
+Dazu kamen `src/game/BestTimes.ts` (Bestzeit je Strecke im `localStorage`, mit
+geprüftem statt geglaubtem Inhalt) und `src/ui/DriveHud.ts` (Tacho, laufende
+Zeit, Bestzeit, nächstes Tor, Rundenmeldung).
+
+Gemessen am **gebauten** Stand, 375 × 812, und am Dev-Stand mit getriebener
+Schleife:
+
+| Prüfung | Ergebnis |
+|---|---|
+| Bestzeit 92,50 s → gespeichert | `{"ring":92.5}`, Meldung „Bestzeit! 1:32.50" ✓ |
+| schnellere Runde 88,25 s | ersetzt, Meldung „Bestzeit!" ✓ |
+| langsamere Runde 95,00 s | **nicht** ersetzt, Meldung „Runde 3 · 1:35.00" ✓ |
+| nach Neuladen | „Beste 1:28.25" steht sofort ✓ |
+| HUD-Tacho gegen Fahrzeug | **26 gegen 25,7 km/h**, **49 gegen 49,1 km/h** ✓ |
+
+> **Das HUD aktualisiert sich nicht, während es versteckt ist**, und das hat
+> beim Messen kurz nach einem Fehler ausgesehen: der Tacho stand auf „10",
+> während das Fahrzeug 14,2 km/h fuhr. Ursache war das offene Menü (die
+> Frührückkehr in `update()`), nicht die Anzeige. Der Fall gehört
+> aufgeschrieben, weil er die Regel aus CLAUDE.md bestätigt: **erst prüfen, in
+> welchem Zustand gemessen wird**, bevor eine Abweichung ein Fehler heißt.
+
+## 16.4 — Sauberer Auslieferungsbau
+
+`sourcemap: false`. Der Startdownload ändert sich dadurch **nicht** (eine `.map`
+wird nur geladen, wenn jemand die DevTools öffnet) — was sich ändert, ist, dass
+der vollständige Quelltext samt aller Messkommentare dieses Projekts nicht mehr
+auf einem Spieleportal liegt. `dist/` fällt von 107 auf 99 Dateien, 87 auf 81 MB.
+
+## Akzeptanzkriterien P16
+
+- [x] **Der Fahrmodus ist auf einem Touch-Gerät ohne Pointer Lock erreichbar.**
+      Am gebauten Stand bei 375 × 812: 🚗-Knopf 56 × 56, `elementFromPoint`
+      trifft, nach dem Druck steht „Aussteigen" im Menü und das HUD im Bild.
+- [x] **Das Bedienfeld wechselt mit dem Modus.** Im Auto sichtbar:
+      `handbrake · menu · drive · reset`, alle 56 × 56 und alle getroffen; ▲/▼
+      und ⇩ verschwinden.
+- [x] **Alle drei Wege in den Fahrmodus zeigen denselben Zustand.** Knopf, Menü
+      und `V` laufen über `drive:mode`; die Anzeige fragt `drive.active`, nicht
+      ihren letzten Klick.
+- [x] **Die Handbremse erreicht die Physik**, nicht nur das DOM. Gemessen über
+      2 s Ausrollen: ohne −0,3 km/h (rollt weiter), mit **1,4 km/h**
+      Verzögerung, Schwimmwinkel ändert sich von 0,00° auf −0,33°.
+- [x] **Das Menü geht während der Fahrt nicht mehr von selbst auf.** 900 Frames
+      mit Vollgas, `menuAufBei: null` (vorher: Frame 101).
+- [x] **Ton ohne Download.** `dist/` enthält keine Audiodatei; der Startdownload
+      ist unverändert.
+- [x] **Der Stummschalter hält über das Neuladen.** `japanmap.audio.muted` 1/0,
+      Knopf zeigt 🔇/🔊 nach dem **Zustand**.
+- [x] **Bestzeit überlebt das Neuladen** und wird nur von einer schnelleren
+      Runde ersetzt. Tabelle in 16.3.
+- [x] **Das HUD fängt keine Berührung.** Berechneter Wert `pointer-events: none`
+      — mit ID-Selektor (`#overlay > .hud`), weil `#overlay > *` sonst gewinnt.
+      Genau der Fehler aus P10.2.
+- [x] **Kein Dev-Code im Build.** `tweakpane` 0, `window.japanMap` undefined,
+      `.map`-Dateien 0.
+- [x] **`typecheck` und `build` laufen sauber durch.**
+- [ ] **Auf einem echten Telefon geprüft.** Nicht eingelöst — dieselbe Lücke wie
+      P12.6, P13 und P14. Alle Zahlen oben stammen aus der Geräteemulation bei
+      375 × 812 mit synthetischen Zeigerereignissen.
+- [ ] **Der Ton ist nie gehört worden.** Der Graph ist gebaut und ein Kontext
+      läuft, aber diese Umgebung gibt kein Audio aus. Ob der Motor *gut klingt*,
+      ist eine Frage für einen Menschen mit Kopfhörern — so, wie „ob sich der
+      Drift gut anfährt" es in P14 ist und geblieben ist.
+- [ ] **Eine vollständige Runde ist nie gefahren worden.** Die Rundenkette ist
+      über das Ereignis `drive:lap` geprüft (also über genau den Weg, den
+      `DriveSystem` geht), nicht über 3,4 km Fahrt auf dem Ring.
+
+## Was P16 ausdrücklich **nicht** enthält
+
+**Das CrazyGames-SDK** — ausdrücklich ausgenommen. Es bleibt der eine harte
+Blocker vor einem Upload: `loadingStart/Stop`, `gameplayStart/Stop` und der
+`muteAudio`-Rückruf sind Pflicht für einen Full Launch, und ohne SDK fällt das
+Gesamtbudget von 250 MB auf 50 MB. `AudioSystem.setExternallyMuted()` steht als
+Anschlussstelle bereit.
+
+Ebenfalls nicht: Leistungsmessung auf Zielhardware (P12.6 bleibt offen),
+Umgebungsgeräusche mit Charakter (Zikaden, Stadt — die kosten Download und
+gehören dann gegen die 20-MB-Schwelle gerechnet), Gegner, Schaden, Bestenliste
+über das Netz.

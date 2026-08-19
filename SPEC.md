@@ -246,7 +246,24 @@ seit P0 standen, hatten nie eine Herkunft; die Zahlen unten haben eine.
 | Zeit bis zum Spielen | ≤ 20 s | **0,9 s** ⚠ warm, localhost | siehe unten |
 | Browser | Chrome, Edge | ✅ | |
 | Eingabe | Maus, Tastatur, Touch | ✅ seit P12.4 | |
+| **CrazyGames-SDK** | **Pflicht für Full Launch** | **nicht integriert** | ⛔ |
+| Ton, `muteAudio`-fähig | Pflicht für HTML5 | ✅ seit P16 | Anschluss steht |
 | Chromebook, 4 GB RAM | muss flüssig laufen | **nicht geprüft** | ⚠ |
+
+> **Der eine harte Blocker vor einem Upload ist das SDK.** Ohne es gibt es
+> keinen Full Launch und keine Monetarisierung, und das Gesamtbudget fällt von
+> 250 MB auf 50 MB (japanMap läge mit 61,15 MB dann **darüber**). Verlangt sind
+> `loadingStart`/`loadingStop`, `gameplayStart`/`gameplayStop` und ein
+> `muteAudio`-Rückruf, der Vorrang vor der Toneinstellung im Spiel hat.
+>
+> P16 hat die Tonschicht gebaut und dafür bereits geteilt: `AudioSystem`
+> unterscheidet `#userMuted` (Menü) von `#externallyMuted` (SDK), und
+> `setExternallyMuted()` ist die Anschlussstelle. Es fehlt nur noch das SDK
+> selbst — bewusst, es war vom Auftrag für P16 ausgenommen.
+>
+> Zwei weitere QA-Punkte sind offen und billig: „Land directly in gameplay"
+> (der Ablauf ist Ladebildschirm → „Starten" → Freiflug) und ein Lauf mit
+> aktivem AdBlock.
 
 > **Der eigentliche Gewinn von P15 steht in der zweiten Zeile.** Mit 40,83 MB
 > war das Spiel über der 20-MB-Schwelle und damit von der **Mobile-Homepage

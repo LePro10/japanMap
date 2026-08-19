@@ -122,6 +122,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   readonly #keys = new Set<string>();
   /** Achsen aus der Fingersteuerung, weitergeleitet vom `FreeFlyController`. */
   readonly #axes = { forward: 0, right: 0 };
+  /** Handbremsknopf der Fingersteuerung — siehe `setTouchHandbrake()`. */
+  #touchHandbrake = false;
   /** Eingabe aus einem Messlauf. Gesetzt = Tastatur und Finger sind stumm. */
   #scripted: DriveInput | null = null;
 
@@ -134,6 +136,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   readonly #matrix = new Matrix4();
   readonly #wheelQuat = new Quaternion();
   readonly #spinQuat = new Quaternion();
+  readonly #steerQuat = new Quaternion();
   readonly #wheelAxis = new Vector3(1, 0, 0);
   readonly #yAxis = new Vector3(0, 1, 0);
   readonly #scale = new Vector3(1, 1, 1);
@@ -423,6 +426,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#keys.clear();
     this.#axes.forward = 0;
     this.#axes.right = 0;
+    this.#touchHandbrake = false;
 
     this.#spawnNear(context.camera.position.x, context.camera.position.z);
     if (this.#group) this.#group.visible = true;
@@ -498,6 +502,21 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   }
 
   /**
+   * Handbremse aus der Fingersteuerung — die Leertaste hat auf einem Telefon
+   * keine Entsprechung.
+   *
+   * **Ein eigenes Feld und nicht `#keys.add('space')`.** Der Tastensatz wird von
+   * `#onKeyDown` gefüllt und von `#onBlur` geleert; ein Finger, der beim
+   * App-Wechsel liegen bleibt, käme über `pointercancel` zurück, nicht über
+   * `blur`. Zwei Quellen in einem Behälter hätten genau die Klasse hängender
+   * Zustände erzeugt, gegen die P12.4 den Stick schon einmal reparieren musste.
+   * Verodert wird unten in `#collectInput()`, wie bei Stick und Tastatur auch.
+   */
+  setTouchHandbrake(down: boolean): void {
+    this.#touchHandbrake = down;
+  }
+
+  /**
    * Eingabe aus einem Messlauf setzen — `null` gibt die Steuerung zurück.
    *
    * Damit ist eine Fahrt reproduzierbar: derselbe Eingabeverlauf über dieselbe
@@ -550,6 +569,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#keys.clear();
     this.#axes.forward = 0;
     this.#axes.right = 0;
+    this.#touchHandbrake = false;
   };
 
   #collectInput(): DriveInput {
@@ -569,7 +589,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     input.throttle = clamp01(forward + Math.max(0, stick));
     input.brake = clamp01(back + Math.max(0, -stick));
     input.steer = clamp(right - left + this.#axes.right, -1, 1);
-    input.handbrake = keys.has('space');
+    input.handbrake = keys.has('space') || this.#touchHandbrake;
     return input;
   }
 
@@ -602,7 +622,12 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     // muss deshalb die Position **nach** der Integration sehen, sonst hinkt sie
     // um einen Schritt hinterher und meldet die Torüberquerung 16 ms zu spät.
     // Bei 250 km/h wären das 1,16 m Bahn.
-    this.laps.step(this.vehicle.position.x, this.vehicle.position.z, dt);
+    const runde = this.laps.step(this.vehicle.position.x, this.vehicle.position.z, dt);
+    // **Über den Bus und nicht über einen Rückruf**, obwohl `step()` das
+    // Ergebnis schon zurückgibt. Zwei Zuhörer brauchen es (Ton und HUD), und der
+    // Rückgabewert bleibt, was er war: der Weg für den Messstand aus P14, der
+    // ohne Bus läuft. `#context` ist dort null, also kostet die Zeile ihn nichts.
+    if (runde) this.#context?.bus.emit('drive:lap', runde);
     // Gleitendes Mittel über rund 30 Schritte. Ein Einzelwert aus
     // `performance.now()` liegt bei einer halben Mikrosekunde Auflösung im
     // Rauschen; das Mittel ist die Zahl, die in die Abnahme gehört.
@@ -659,8 +684,22 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     for (let i = 0; i < 4; i++) {
       // Vorne lenkt mit, hinten nicht. Reihenfolge wie in `Vehicle`:
       // vorn links, vorn rechts, hinten links, hinten rechts.
-      const yaw = this.vehicle.yaw + (i < 2 ? steer : 0);
-      this.#wheelQuat.setFromAxisAngle(this.#yAxis, yaw);
+      // **Die volle Lage des Aufbaus, nicht nur sein Gierwinkel.** Bis P17 stand
+      // hier `setFromAxisAngle(yAxis, yaw - steer)`; die Räder standen damit
+      // immer senkrecht in der Welt, auch wenn die Karosserie beim Bremsen 7°
+      // nickte oder in der Kurve 9° wankte. Zusammen mit den Rädern, die am
+      // Boden klebten (siehe `Vehicle.#placeWheels`), war das die zweite Hälfte
+      // von „die Räder trennen sich vom Auto".
+      this.#wheelQuat.copy(this.vehicle.quaternion);
+      if (i < 2) {
+        // Lenkung um die **lokale** Hochachse, also nachmultipliziert.
+        // **Minus, nicht plus.** Ein positiver Lenkwinkel heißt rechts, und rechts
+        // heißt ein *kleinerer* Gierwinkel (`forward = (sin ψ, 0, cos ψ)` dreht bei
+        // wachsendem ψ nach links). Mit einem Plus zeigten die Vorderräder in die
+        // Gegenrichtung der Kurve — dieselbe Vorzeichenkette wie bei `#right`.
+        this.#steerQuat.setFromAxisAngle(this.#yAxis, -steer);
+        this.#wheelQuat.multiply(this.#steerQuat);
+      }
       // Raddrehung **nach** der Gierung und um die **lokale** Radachse: als
       // zweiter Faktor multipliziert wirkt sie im gedrehten System. Andersherum
       // multipliziert dreht das Rad um die Weltachse X und steht bei jeder

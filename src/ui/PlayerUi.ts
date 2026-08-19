@@ -11,8 +11,19 @@ import { GRID_VERTICES_ALLOWED, lodMetersPerVertex, type GridVertices } from '@/
 import type { PostFxQuality } from '@/config/postfx.config';
 import type { AppBus } from '@/core/events';
 import { VIEWPOINTS, applyViewpoint, type CameraPlacer } from '@/debug/viewpoints';
-import { CONTROLS, DRIVE_CONTROLS, TOUCH_CONTROLS, controlTable, hasTouch } from './controls';
-import { TouchControls, type TouchCameraTarget } from './TouchControls';
+import {
+  CONTROLS,
+  DRIVE_CONTROLS,
+  TOUCH_CONTROLS,
+  TOUCH_DRIVE_CONTROLS,
+  controlTable,
+  hasTouch,
+} from './controls';
+import {
+  TouchControls,
+  type TouchCameraTarget,
+  type TouchDriveTarget,
+} from './TouchControls';
 
 /**
  * Die Oberfläche für den Spieler — PLAN.md P10.2, umgebaut in P13.
@@ -79,11 +90,47 @@ export interface DebugControl {
   paneVisible: boolean;
 }
 
+/**
+ * Was das Menü vom Fahrmodus braucht — dieselbe schmale Bauart wie
+ * `QualityControl` und `DebugControl`, und aus demselben Grund: `PlayerUi` soll
+ * kein System importieren.
+ *
+ * **Warum der Umschalter ins Menü gehört und nicht nur auf die Taste `V`.**
+ * `DriveSystem.#onKeyDown` steigt ohne Pointer Lock aus. Das ist dort richtig
+ * (ohne gefangenen Zeiger liegt das Menü über dem Bild, und eine Taste gehört
+ * dann dem Menü), heißt aber: auf jedem Gerät ohne Lock — also **jedem
+ * Telefon** — gab es überhaupt keinen Weg ins Auto. Der Menüeintrag ist der
+ * zeigergeräteunabhängige, der Knopf in `TouchControls` der schnelle.
+ */
+export type DriveControl = TouchDriveTarget;
+
+/**
+ * Was das Menü von der Tonschicht braucht.
+ *
+ * `click()` gehört dazu, weil die Oberfläche ihre eigenen Geräusche macht — und
+ * weil ein Klick auf den Stummschalter selbst **keinen** machen darf, sonst
+ * klingt Ausschalten nach Einschalten.
+ */
+export interface AudioControl {
+  readonly muted: boolean;
+  setMuted(muted: boolean): void;
+  click(): void;
+}
+
 export interface PlayerUiOptions {
   readonly bus: AppBus;
   readonly canvas: HTMLCanvasElement;
   readonly container: HTMLElement;
   readonly quality: QualityControl;
+  /** Der Fahrmodus. Fehlt er, gibt es die Modus-Zeile im Menü nicht. */
+  readonly drive?: DriveControl;
+  /** Die Tonschicht. Fehlt sie, gibt es den Stummschalter nicht. */
+  readonly audio?: AudioControl;
+  /**
+   * Das Fahr-HUD. Es gehört `main.ts` (dort läuft die Aktualisierung je Frame);
+   * das Menü sagt ihm nur, wann es im Weg steht — genau wie dem Bedienfeld.
+   */
+  readonly hud?: { setMenuOpen(open: boolean): void };
   /**
    * Die Kamera. `CameraPlacer` für die Blickpunkte, `TouchCameraTarget` für die
    * Fingersteuerung — `FreeFlyController` erfüllt beides, und die Oberfläche
@@ -120,6 +167,9 @@ export class PlayerUi {
   readonly #quality: QualityControl;
   readonly #camera: CameraPlacer;
   readonly #debug: DebugControl | null;
+  readonly #drive: DriveControl | null;
+  readonly #audio: AudioControl | null;
+  readonly #hud: { setMenuOpen(open: boolean): void } | null;
 
   readonly #menu: HTMLElement;
   readonly #levelRow: HTMLElement;
@@ -149,6 +199,9 @@ export class PlayerUi {
     this.#quality = options.quality;
     this.#camera = options.camera;
     this.#debug = options.debug ?? null;
+    this.#drive = options.drive ?? null;
+    this.#audio = options.audio ?? null;
+    this.#hud = options.hud ?? null;
 
     this.#menu = this.#buildMenu();
     options.container.append(this.#menu);
@@ -161,6 +214,7 @@ export class PlayerUi {
         this.#menuOpen = true;
         this.#render();
       },
+      ...(options.drive ? { drive: options.drive } : {}),
     });
 
     this.#levelRow = this.#must(this.#menu, '.menu__levels');
@@ -182,6 +236,13 @@ export class PlayerUi {
     this.#bus.on('debug:visibility', () => {
       this.#syncDebug();
     });
+    // Der dritte Weg in den Fahrmodus ist die Taste `V`, und die geht am Menü
+    // vorbei. `DriveSystem` sendet bei **jedem** Wechsel — also führen alle drei
+    // Wege durch diesen einen Zuhörer, statt jeder seine eigene Anzeige zu
+    // pflegen.
+    this.#bus.on('drive:mode', () => {
+      this.#syncDrive();
+    });
 
     document.addEventListener('pointerlockchange', this.#onPointerLockChange);
     document.addEventListener('pointerlockerror', this.#onPointerLockError);
@@ -194,6 +255,8 @@ export class PlayerUi {
 
     this.#syncQuality();
     this.#syncDebug();
+    this.#syncDrive();
+    this.#syncAudio();
     this.#render();
   }
 
@@ -311,6 +374,9 @@ export class PlayerUi {
     this.#menu.hidden = !this.#menuOpen || (!this.#touchMode && this.#locked);
     // Das Bedienfeld gehört nicht über das offene Menü.
     this.#touch?.setVisible(!this.#menuOpen);
+    // Und das HUD ebenso wenig: bei 375 × 812 liegt der Rundenkasten sonst
+    // genau auf der Kopfzeile des Menüs, also auf dem „Weiter"-Knopf.
+    this.#hud?.setMenuOpen(this.#menuOpen);
   }
 
   // ── Aufbau ─────────────────────────────────────────────────────────────
@@ -334,8 +400,24 @@ export class PlayerUi {
       <div class="menu__box">
         <header class="menu__head">
           <p class="menu__title">japanMap</p>
-          <button type="button" class="menu__resume">Weiter</button>
+          <div class="menu__headButtons">
+            ${
+              this.#audio
+                ? `<button type="button" class="menu__mute" aria-label="Ton an oder aus">🔊</button>`
+                : ''
+            }
+            <button type="button" class="menu__resume">Weiter</button>
+          </div>
         </header>
+
+        ${
+          this.#drive
+            ? `<button type="button" class="menu__drive">
+                 <span class="menu__driveIcon">🚗</span>
+                 <span class="menu__driveLabel">Auto fahren</span>
+               </button>`
+            : ''
+        }
 
         <nav class="menu__tabs">
           ${tabs
@@ -357,6 +439,7 @@ export class PlayerUi {
           ${hasTouch() ? `<h3 class="menu__subhead">Finger</h3>${controlTable(TOUCH_CONTROLS, 'keytable')}<h3 class="menu__subhead">Tastatur und Maus</h3>` : ''}
           ${controlTable(CONTROLS, 'keytable')}
           <h3 class="menu__subhead">Im Auto</h3>
+          ${hasTouch() ? controlTable(TOUCH_DRIVE_CONTROLS, 'keytable') : ''}
           ${controlTable(DRIVE_CONTROLS, 'keytable')}
         </section>
 
@@ -386,6 +469,30 @@ export class PlayerUi {
     this.#must(menu, '.menu__resume').addEventListener('click', () => {
       this.#resume();
     });
+    if (this.#audio) {
+      this.#must(menu, '.menu__mute').addEventListener('click', () => {
+        const audio = this.#audio;
+        if (!audio) return;
+        const neu = !audio.muted;
+        audio.setMuted(neu);
+        // Der Klick wird **nach** dem Umschalten gespielt und nur beim
+        // Einschalten. Andersherum wäre der letzte Ton vor der Stille ein
+        // Bestätigungston für „aus" — verwirrend genau in dem Moment, in dem
+        // jemand Ruhe will.
+        if (!neu) audio.click();
+        this.#syncAudio();
+      });
+    }
+    if (this.#drive) {
+      // **Umschalten und gleich weiterspielen.** Ein Moduswechsel, nach dem das
+      // Menü offen bleibt, verlangt zwei Handlungen für eine Absicht — und auf
+      // einem Telefon liegt der „Weiter"-Knopf am anderen Rand des Kastens.
+      this.#must(menu, '.menu__drive').addEventListener('click', () => {
+        this.#drive?.toggle();
+        this.#syncDrive();
+        this.#resume();
+      });
+    }
     this.#must(menu, '.menu__reclassify').addEventListener('click', () => {
       this.#quality.reclassify();
     });
@@ -554,6 +661,34 @@ export class PlayerUi {
         debug.paneVisible = v;
       },
     );
+  }
+
+  /**
+   * Modus-Zeile und Touch-Bedienfeld auf den **tatsächlichen** Zustand bringen.
+   *
+   * Gefragt wird `drive.active`, nicht ein hier mitgeführtes Kästchen. Der Modus
+   * hat drei Wege — Menü, Touch-Knopf, Taste `V` —, und eine Anzeige, die nur
+   * ihren eigenen Weg kennt, steht nach den beiden anderen falsch. Genau diese
+   * Klasse Fehler hat P10.2 schon einmal bei der Stufenwahl gekostet („auf den
+   * Namen geprüft statt auf den Wert").
+   */
+  /** Der Stummschalter zeigt den **Zustand**, nicht den letzten Klick. */
+  #syncAudio(): void {
+    const audio = this.#audio;
+    if (!audio) return;
+    const button = this.#menu.querySelector<HTMLElement>('.menu__mute');
+    if (!button) return;
+    button.textContent = audio.muted ? '🔇' : '🔊';
+    button.classList.toggle('is-muted', audio.muted);
+  }
+
+  #syncDrive(): void {
+    const drive = this.#drive;
+    if (!drive) return;
+    const label = this.#menu.querySelector<HTMLElement>('.menu__driveLabel');
+    if (label) label.textContent = drive.active ? 'Aussteigen' : 'Auto fahren';
+    this.#menu.querySelector('.menu__drive')?.classList.toggle('is-active', drive.active);
+    this.#touch?.setDriveMode(drive.active);
   }
 
   #syncDebug(): void {
