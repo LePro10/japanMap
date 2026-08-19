@@ -144,6 +144,10 @@ function brotliAssets(): Plugin {
     apply: 'build',
     enforce: 'post',
     async closeBundle() {
+      // GitHub Pages compresses the uploaded artifact itself. Avoid doing the
+      // optional local Brotli pass in CI, where it can block the deploy job.
+      if (process.env.GITHUB_ACTIONS === 'true') return;
+
       const outDir = join(projectRoot, 'dist');
       let files;
       try {
