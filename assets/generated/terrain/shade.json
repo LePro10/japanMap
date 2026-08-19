@@ -1,0 +1,33 @@
+{
+  "file": "shade.png",
+  "res": 1024,
+  "spacing": 3.002932551319648,
+  "channels": [
+    "horizon",
+    "occluderDistance",
+    "skyVisibility"
+  ],
+  "encoding": {
+    "horizon": "sqrt(deg / 90)",
+    "occluderDistance": "sqrt(m / 2000)",
+    "skyVisibility": "linear 0..1"
+  },
+  "maxHorizonDeg": 90,
+  "maxOccluderDistance": 2000,
+  "sun": {
+    "direction": [
+      0.80865,
+      0.03897,
+      0.58699
+    ],
+    "elevationDeg": 2.23,
+    "azimuthDeg": 125.98
+  },
+  "measured": {
+    "litFraction": 0.5150766372680664,
+    "minSkyVisibility": 0.05530013538841963
+  },
+  "checksums": {
+    "shade.png": "d003b99564f312b9801fd67b964d2a13f47abda19febc4beab54c182a9fd6a72"
+  }
+}
