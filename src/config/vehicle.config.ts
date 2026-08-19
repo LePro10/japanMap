@@ -433,8 +433,32 @@ export const TIRE = {
    * > Straße bleibt mit 20 % deutlich spürbar und wird zusätzlich vom höheren
    * > Rollwiderstand getragen.
    */
-  gripGravel: 0.78,
-  gripTerrain: 0.72,
+  /**
+   * Kies (Feldweg, Tempelaufgang). 0,62 statt 0,78: der Weg soll sich von
+   * Asphalt **unterscheiden**, nicht nur 20 % langsamer sein. Hinterachse
+   * zusätzlich über `gravelRear` — auf Kies bricht das Heck zuerst aus.
+   */
+  gripGravel: 0.62,
+  /**
+   * Wiese, Waldboden, Reisterrasse. 0,52: festes Gras, aber deutlich langsamer
+   * und rutschiger als die Straße. Zusammen mit `terrainDrag` und der Rüttel-
+   * höhe in `SURFACE` merkt man den Belag, ohne dass er unfahrbar wird
+   * (P17: 0,55 war „im Dreck unspielbar" — das war die tote Kennlinie).
+   */
+  gripTerrain: 0.52,
+
+  /**
+   * Beiwert auf Wasser, als Anteil von `gripAsphalt`.
+   *
+   * μ = 1,25 × 0,42 = **0,53**. Das ist nasses Moos, kein Eis: lenkbar, aber
+   * jeder Impuls rutscht. Ohne diesen eigenen Belag fährt das Auto auf dem
+   * **Meeresboden** (Terrain bis −40 m), und das ist kein Fahrverhalten, das
+   * ist ein Fall durch die Welt.
+   *
+   * Die Endgeschwindigkeit im Wasser trägt `DRIVETRAIN.waterDrag`, nicht
+   * dieser Wert — der Reibwert entscheidet, ob man noch lenken kann.
+   */
+  gripWater: 0.42,
 
   /**
    * Der **Boden unter dem Reibkreis**: welcher Anteil der Querkraft einer Achse
@@ -604,6 +628,35 @@ export const DRIVETRAIN = {
   rollingResistanceTerrain: 0.04,
 
   /**
+   * Rollwiderstand im Wasser. 0,09 ist das Sechsfache von Asphalt — das Auto
+   * watet, es schwimmt nicht frei. Zusammen mit `waterDrag` die Bremse, die
+   * aus 256 km/h auf der Küstenstraße eine Fahrt durch die Brandung macht.
+   */
+  rollingResistanceWater: 0.09,
+
+  /**
+   * Extra-Quadratwiderstand im Wasser, `F = c · v²`, c in N/(m/s)².
+   *
+   * Auslegung auf **72 km/h** Endtempo bei Vollgas im tiefen Wasser:
+   * `7200 = c · 20² + m g · 0,09` → `c = (7200 − 1015) / 400 ≈ 15,5`.
+   * 16 ist die nächste runde Zahl. Gemessen aus dem Stand, 8 s Vollgas im
+   * Meer (2026-08-19): **33,7 km/h**, y bleibt 0,34 m (nicht −37 m Sohle).
+   * Flaches Wasser (Reisfeld 0,3 m) skaliert über die Tiefe herunter, sonst
+   * wären 101 ha Reisfeld eine Schlammpiste, auf der niemand mehr fährt.
+   *
+   * Das wirkt **zusätzlich** zum Luftwiderstand — im Wasser zählt beides.
+   */
+  waterDrag: 18,
+
+  /**
+   * Extra-Dämpfung `v ← v · (1 − k·dt)` auf Gelände / Kies. Asphalt sieht
+   * den Term nicht. 0,18 auf der Wiese heißt: bei 20 m/s zusätzlich rund
+   * 3,6 m/s² — merkt man, reicht nicht zum Stehenbleiben.
+   */
+  terrainDrag: 0.18,
+  gravelDrag: 0.07,
+
+  /**
    * Abtrieb als `F = c · v²`, c in N/(m/s)².
    *
    * 0,55 ergibt bei 50 m/s 1375 N zusätzliche Radlast, also +12 % Reibkraft.
@@ -653,6 +706,63 @@ export const STEERING = {
    * anders wäre.
    */
   driftDamping: 0.55,
+
+  /**
+   * Extra-Gierdämpfung, wenn der Spieler das Lenkrad **loslässt**.
+   *
+   * `driftDamping` greift hinter dem Scheitel immer, auch bei Volleinschlag —
+   * das hält einen gehaltenen Drift. Was ein CrazyGames-Spieler tut, wenn es
+   * zu schnell wird: **Tasten los**. Ohne diesen Term dreht sich der Wagen
+   * dann weiter, und das nächste, was er sieht, ist die Welt rückwärts.
+   *
+   * Null bei |Lenkeingabe| ≥ 0,25, also nicht in einer gehaltenen Kurve.
+   * Die Geradeausfahrt (Schräglauf unter dem Scheitel) sieht ihn nie.
+   */
+  releaseDamping: 0.4,
+} as const;
+
+/**
+ * Was den Belag **fühlbar** macht, jenseits von μ.
+ *
+ * Asphalt bleibt die gemessene Referenz (0–100, Endtempo). Alles andere
+ * darf sich davon unterscheiden — und muss es, sonst ist die Karte eine
+ * Textur auf derselben Physik.
+ */
+export const SURFACE_FEEL = {
+  /**
+   * Rüttelamplitude in Metern, auf die Radhöhe addiert. Deterministisch
+   * aus der Position, also reproduzierbar. Asphalt und Wasser: 0.
+   */
+  rumbleGravel: 0.016,
+  rumbleTerrain: 0.034,
+  /** Tempo, ab dem die volle Rüttelhöhe anliegt (m/s). */
+  rumbleSpeed: 9,
+  /**
+   * Hinterachs-Beiwert auf Kies als Anteil. 0,86: das Heck gibt zuerst nach,
+   * der Feldweg ist ein Driftbelag, nicht nur ein langsamer Asphalt.
+   */
+  gravelRear: 0.86,
+  /**
+   * Aquaplaning: ab 3 m/s fällt μ, bei 19 m/s auf den Rest. Hinten stärker —
+   * Vollgas im Wasser stellt das Heck quer, statt nur zu schieben.
+   */
+  hydroStart: 3,
+  hydroFull: 19,
+  hydroFront: 0.38,
+  hydroRear: 0.52,
+} as const;
+
+/**
+ * Wasser als Fahrfläche. Y = 0 ist Meeresspiegel; ohne diese Zahlen folgt
+ * das Auto der Sohle (−40 m). Arcade: ab `floatDepth` trägt die Fläche.
+ */
+export const WATER_PHYS = {
+  /** Ab dieser Tiefe trägt die Wasserfläche statt des Grundes, in Metern. */
+  floatDepth: 0.55,
+  /** Wie tief das Auto im Wasser sitzt, wenn es trägt, in Metern. */
+  draft: 0.18,
+  /** Unter dieser Tiefe gilt der Boden als trocken, in Metern. */
+  wetThreshold: 0.08,
 } as const;
 
 /**

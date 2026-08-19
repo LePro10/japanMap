@@ -522,7 +522,11 @@ async function boot(): Promise<void> {
 
   engine.add(atmosphere);
   engine.add(new LightingRig(atmosphere.uniforms));
-  engine.add(new WaterSystem(atmosphere.uniforms));
+  const water = new WaterSystem(atmosphere.uniforms);
+  engine.add(water);
+  drive.setWake((x, z, dirX, dirZ, speed, active) => {
+    water.setVehicleWake(x, z, dirX, dirZ, speed, active);
+  });
   // Vor Terrain **und** Straßen: die Streuung hört auf `terrain:ready` und
   // `roads:ready`, und beide werden genau einmal gesendet, während sich jene
   // Systeme initialisieren.

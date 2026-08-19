@@ -8,6 +8,7 @@ import {
   GRAVITY,
   STEERING,
   SUSPENSION,
+  SURFACE_FEEL,
   TIRE,
   VEHICLE_COLLISION,
 } from '@/config/vehicle.config';
@@ -76,7 +77,7 @@ export interface DriveInput {
  * eingesetzt, hier zu einem Objekt). Der Bestand kommt ohne ein einziges `enum`
  * aus; das bleibt so.
  */
-export type Surface = 'asphalt' | 'kies' | 'gelaende';
+export type Surface = 'asphalt' | 'kies' | 'gelaende' | 'wasser';
 
 /**
  * Was das Fahrzeug über den Boden wissen muss.
@@ -93,6 +94,13 @@ export interface Ground {
   /** Flächennormale, in `target` geschrieben. */
   normal(x: number, z: number, target: Vector3): Vector3;
   surface(x: number, z: number): Surface;
+  /**
+   * Wassertiefe über dem festen Boden, in Metern. 0 = trocken.
+   *
+   * Optional, weil der Messstand und der ebene Prüfstand kein Wasser kennen.
+   * Fehlt die Methode, ist die Tiefe null — Asphalt-Zahlen bleiben bitgleich.
+   */
+  waterDepth?(x: number, z: number): number;
 }
 
 /** Ablesbarer Zustand — für Anzeige, Debug-Panel und Messläufe. */
@@ -118,6 +126,13 @@ export interface VehicleTelemetry {
   lastPenetration: number;
   /** Zahl der Kontaktpunkte im letzten Schritt. */
   contacts: number;
+  /** Wassertiefe am Schwerpunkt, in Metern. */
+  waterDepth: number;
+  /**
+   * 0…1, wie stark die Hinterachse markiert. Für Spur und HUD, nicht für Kräfte.
+   * Gebildet aus hinterem Schräglauf, Durchdrehen und Handbremse.
+   */
+  skid: number;
 }
 
 /** Statische Federlänge, sodass `k · x = m · g` bei Ruhehöhe `cgHeight` gilt. */
@@ -265,6 +280,8 @@ export class Vehicle {
     surface: 'asphalt',
     lastPenetration: 0,
     contacts: 0,
+    waterDepth: 0,
+    skid: 0,
   };
 
   get yaw(): number {
@@ -342,6 +359,8 @@ export class Vehicle {
     t.airborne = false;
     t.lastPenetration = 0;
     t.contacts = 0;
+    t.waterDepth = 0;
+    t.skid = 0;
   }
 
   /**
@@ -375,6 +394,7 @@ export class Vehicle {
     const contactY = this.#contactHeight();
     ground.normal(this.position.x, this.position.z, this.#normal);
     const surface = ground.surface(this.position.x, this.position.z);
+    const waterDepth = ground.waterDepth?.(this.position.x, this.position.z) ?? 0;
 
     // ── Aufbau und Federweg ───────────────────────────────────────────────
     //
@@ -432,8 +452,21 @@ export class Vehicle {
     const loadRear = Math.max(0, load * (1 - CHASSIS.frontWeight) + transfer);
 
     const gripFactor = surfaceGrip(surface);
-    const muFront = TIRE.gripAsphalt * gripFactor;
-    const muRear = TIRE.gripAsphalt * gripFactor * TIRE.rearGripFactor;
+    let muFront = TIRE.gripAsphalt * gripFactor;
+    let muRear = TIRE.gripAsphalt * gripFactor * TIRE.rearGripFactor;
+    const speedNow = Math.hypot(this.#vLong, this.#vLat);
+    // Aquaplaning und lockerer Kies — Asphalt bleibt die gemessene Referenz.
+    if (surface === 'wasser' && speedNow > SURFACE_FEEL.hydroStart) {
+      const hydro = Math.min(
+        1,
+        (speedNow - SURFACE_FEEL.hydroStart) /
+          (SURFACE_FEEL.hydroFull - SURFACE_FEEL.hydroStart),
+      );
+      muFront *= 1 - SURFACE_FEEL.hydroFront * hydro;
+      muRear *= 1 - SURFACE_FEEL.hydroRear * hydro;
+    } else if (surface === 'kies') {
+      muRear *= SURFACE_FEEL.gravelRear;
+    }
 
     // ── Schräglaufwinkel ──────────────────────────────────────────────────
     const speedRef = Math.max(Math.abs(this.#vLong), SLIP_SPEED_FLOOR);
@@ -555,7 +588,9 @@ export class Vehicle {
         ? DRIVETRAIN.rollingResistance
         : surface === 'kies'
           ? (DRIVETRAIN.rollingResistance + DRIVETRAIN.rollingResistanceTerrain) / 2
-          : DRIVETRAIN.rollingResistanceTerrain;
+          : surface === 'wasser'
+            ? DRIVETRAIN.rollingResistanceWater
+            : DRIVETRAIN.rollingResistanceTerrain;
     const rolling = this.#airborne
       ? 0
       : -Math.sign(this.#vLong) * rollingCoefficient * load * Math.min(1, Math.abs(this.#vLong) / 0.5);
@@ -613,6 +648,30 @@ export class Vehicle {
     this.velocity.z +=
       (this.#forward.z * accelLong + this.#right.z * accelLat + slopeZ) * dt;
 
+    // Wasserwiderstand — `F = −c · v · |v|`, skaliert mit der Tiefe. Auf
+    // Asphalt ist `waterDepth` null, der Term also exakt null: die gemessenen
+    // 0–100-Zahlen bleiben dieselben.
+    if (!this.#airborne && waterDepth > 0) {
+      const wet = Math.min(1, waterDepth / 0.7);
+      const horiz = Math.hypot(this.velocity.x, this.velocity.z);
+      if (horiz > 1e-4) {
+        const damp = (DRIVETRAIN.waterDrag * wet * horiz * dt) / CHASSIS.mass;
+        this.velocity.x -= this.velocity.x * damp;
+        this.velocity.z -= this.velocity.z * damp;
+      }
+    } else if (!this.#airborne && surface !== 'asphalt') {
+      const k =
+        surface === 'gelaende'
+          ? DRIVETRAIN.terrainDrag
+          : surface === 'kies'
+            ? DRIVETRAIN.gravelDrag
+            : 0;
+      if (k > 0) {
+        this.velocity.x -= this.velocity.x * k * dt;
+        this.velocity.z -= this.velocity.z * k * dt;
+      }
+    }
+
     // ── Gieren ────────────────────────────────────────────────────────────
     // **Das Vorzeichen kommt aus dem Kreuzprodukt, nicht aus einer Annahme.**
     // Der Gierwinkel ist der Drehwinkel um `+Y` (`forward = (sin ψ, 0, cos ψ)`
@@ -637,6 +696,14 @@ export class Vehicle {
         STEERING.driftDamping *
         Math.min(1, excess / TIRE.peakSlipRear) *
         CHASSIS.yawInertia;
+      // Loslassen fängt — Begründung bei `STEERING.releaseDamping`.
+      if (Math.abs(input.steer) < 0.25 && !input.handbrake) {
+        yawTorque -=
+          this.#yawRate *
+          STEERING.releaseDamping *
+          Math.min(1, excess / TIRE.peakSlipRear) *
+          CHASSIS.yawInertia;
+      }
     }
     this.#yawRate += (yawTorque / CHASSIS.yawInertia) * dt;
     // In der Luft dreht sich nichts weiter auf: ohne Reifen gibt es kein
@@ -681,6 +748,18 @@ export class Vehicle {
     t.compression = clamp(compression / SUSPENSION.travel, 0, 1.5);
     t.airborne = this.#airborne;
     t.surface = surface;
+    t.waterDepth = waterDepth;
+    t.skid = Math.max(
+      0,
+      Math.min(
+        1,
+        Math.max(
+          (Math.abs(slipRear) / TIRE.peakSlipRear - 0.7) / 0.3,
+          t.wheelspin > 1 ? (t.wheelspin - 1) / 0.5 : 0,
+          input.handbrake && speed > 3 ? 0.55 : 0,
+        ),
+      ),
+    );
   }
 
   #lastLongAccel = 0;
@@ -762,11 +841,19 @@ export class Vehicle {
       const [side, ahead] = offsets[i]!;
       const x = this.position.x + this.#right.x * side + this.#forward.x * ahead;
       const z = this.position.z + this.#right.z * side + this.#forward.z * ahead;
-      const h = Math.max(
+      let h = Math.max(
         ground.height(x, z),
         ground.height(x + this.#forward.x * reach, z + this.#forward.z * reach),
         ground.height(x - this.#forward.x * reach, z - this.#forward.z * reach),
       );
+      // Belagsrütteln — Asphalt und Wasser bleiben glatt. Die Amplitude ist
+      // klein gegen den Federweg, groß genug, dass die Karosserie und die
+      // Kamera den Untergrund mitmachen. Deterministisch aus der Position.
+      const rumbleAmp = rumbleFor(ground.surface(x, z));
+      if (rumbleAmp > 0) {
+        const pace = Math.min(1, Math.hypot(this.velocity.x, this.velocity.z) / SURFACE_FEEL.rumbleSpeed);
+        h += rumbleAmp * pace * surfaceRumble(x, z);
+      }
       this.#wheelGround[i] = h;
     }
   }
@@ -1100,7 +1187,26 @@ function gripCurve(absSlip: number, peak: number, falloff: number): number {
 }
 
 function surfaceGrip(surface: Surface): number {
-  return surface === 'asphalt' ? 1 : surface === 'kies' ? TIRE.gripGravel : TIRE.gripTerrain;
+  if (surface === 'asphalt') return 1;
+  if (surface === 'kies') return TIRE.gripGravel;
+  if (surface === 'wasser') return TIRE.gripWater;
+  return TIRE.gripTerrain;
+}
+
+function rumbleFor(surface: Surface): number {
+  if (surface === 'kies') return SURFACE_FEEL.rumbleGravel;
+  if (surface === 'gelaende') return SURFACE_FEEL.rumbleTerrain;
+  return 0;
+}
+
+/** Zwei Oktaven, −1…1, ortsfest. */
+function surfaceRumble(x: number, z: number): number {
+  return hash2(x * 4.1, z * 4.3) * 1.4 + hash2(x * 11.0, z * 9.7) * 0.6 - 1;
+}
+
+function hash2(x: number, z: number): number {
+  const n = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
+  return n - Math.floor(n);
 }
 
 function clamp(value: number, min: number, max: number): number {

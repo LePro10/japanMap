@@ -100,6 +100,29 @@ export class WaterSystem implements System {
   }
 
   /**
+   * Kielwelle des Fahrzeugs in beide Wassermaterialien schreiben.
+   *
+   * Zwei Uniform-Blöcke (Meer und Fluss), dieselbe Zahl — sonst stünde die
+   * Spur nur auf dem Meer und der Fluss bliebe glatt. `active === false`
+   * schaltet den Shader-Zweig aus; die Kosten dort sind ein Vergleich.
+   */
+  setVehicleWake(
+    x: number,
+    z: number,
+    dirX: number,
+    dirZ: number,
+    speed: number,
+    active: boolean,
+  ): void {
+    const write = (uniforms: WaterUniforms): void => {
+      uniforms.uVehicleWake.value.set(x, z, 0, speed);
+      uniforms.uVehicleFwd.value.set(dirX, dirZ, active ? 1 : 0, 0);
+    };
+    if (this.#uniforms) write(this.#uniforms);
+    if (this.#riverUniforms) write(this.#riverUniforms);
+  }
+
+  /**
    * Das Flussband — PLAN.md P8.6.
    *
    * **Dasselbe Material wie das Meer, nur mit `uWaterRiver = 1`.** Wellen,

@@ -175,7 +175,7 @@ export class PlanarReflection implements System {
    * oder ein Z-Fighting-Fest. Das Wasser ebenso — es hat seine eigene
    * Spiegelung und läge im Stadtbild ohnehin unter dem Horizont.
    */
-  static readonly EXCLUDED = ['Stadtboden', 'Straßen', 'Meer', 'Bodenmarkierung'];
+  static readonly EXCLUDED = ['Stadtboden', 'Straßen', 'Meer', 'Bodenmarkierung', 'FahrzeugFX'];
 
   init(context: EngineContext): void {
     this.#context = context;

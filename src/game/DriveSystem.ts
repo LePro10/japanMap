@@ -8,7 +8,7 @@ import {
   type BufferGeometry,
 } from 'three';
 
-import { PROP_COLLIDERS } from '@/config/vehicle.config';
+import { PROP_COLLIDERS, WATER_PHYS } from '@/config/vehicle.config';
 import type { PropPlacement } from '@/config/props.config';
 import { CITY, CITY_SLAB_Y } from '@/config/city.config';
 import { districtBlend } from '@/config/city.mjs';
@@ -27,6 +27,8 @@ import { ChaseCamera } from './ChaseCamera';
 import { CollisionWorld } from './CollisionWorld';
 import { LapTimer } from './LapTimer';
 import { Vehicle, type DriveInput, type Ground, type Surface } from './Vehicle';
+import { VehicleFx } from './VehicleFx';
+import { WaterField } from './WaterField';
 
 /**
  * Der Fahrmodus — PLAN.md P14.
@@ -100,6 +102,9 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   readonly laps = new LapTimer();
   readonly camera = new ChaseCamera();
   readonly collision = new CollisionWorld();
+  readonly #water = new WaterField();
+  #fx: VehicleFx | null = null;
+  #wake: WakeSink | null = null;
 
   #context: EngineContext | null = null;
   #sampler: TerrainSampler | null = null;
@@ -194,6 +199,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     kontakt: '—',
     aufwand: '—',
     ansicht: 'Verfolger',
+    wasser: '—',
+    spuren: '—',
   };
 
   /**
@@ -224,6 +231,15 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   /** CPU-Kosten eines Simulationsschritts in Millisekunden (gleitendes Mittel). */
   get stepMs(): number {
     return this.#stepMs;
+  }
+
+  /**
+   * Kielwelle in die Wassershader schreiben. Hereingereicht aus `main.ts`,
+   * weil DriveSystem das WaterSystem nicht importiert — dieselbe Regel wie
+   * beim Freiflug.
+   */
+  setWake(wake: WakeSink | null): void {
+    this.#wake = wake;
   }
 
   /**
@@ -268,6 +284,14 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     });
 
     this.#build(context);
+
+    const fx = new VehicleFx();
+    fx.attach(context);
+    this.#fx = fx;
+    context.bus.on('quality:changed', ({ level }) => {
+      fx.setQuality(level);
+    });
+    void this.#water.load(context.resources);
 
     window.addEventListener('keydown', this.#onKeyDown);
     window.addEventListener('keyup', this.#onKeyUp);
@@ -430,6 +454,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
     this.#spawnNear(context.camera.position.x, context.camera.position.z);
     if (this.#group) this.#group.visible = true;
+    this.#fx?.show();
     this.camera.reset(this.vehicle);
     this.#readouts.modus = 'Fahren';
     context.bus.emit('drive:mode', { active: true });
@@ -442,6 +467,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     const context = this.#context;
     this.#active = false;
     if (this.#group) this.#group.visible = false;
+    this.#fx?.hide();
+    this.#wake?.(0, 0, 0, 0, 0, false);
 
     this.fly.setEnabled(true);
     this.fly.setInputDelegate(null);
@@ -664,6 +691,17 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     if (!this.#active || !this.#context) return;
     this.camera.update(dt, this.vehicle, this, this.#context.camera);
     this.#syncMeshes();
+    this.#fx?.update(dt, this.vehicle, this, this.#context.camera, this.#input.handbrake);
+    const t = this.vehicle.telemetry;
+    const yaw = this.vehicle.yaw;
+    this.#wake?.(
+      this.vehicle.position.x,
+      this.vehicle.position.z,
+      Math.sin(yaw),
+      Math.cos(yaw),
+      t.speed,
+      t.surface === 'wasser' || t.waterDepth > 0.05,
+    );
     this.#syncReadouts();
   }
 
@@ -720,7 +758,17 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#readouts.schraeglauf = `v ${deg(t.slipFront)} · h ${deg(t.slipRear)}`;
     this.#readouts.durchdrehen = t.wheelspin > 1 ? `${t.wheelspin.toFixed(2)} ×` : '—';
     this.#readouts.belag =
-      t.surface === 'asphalt' ? 'Asphalt' : t.surface === 'kies' ? 'Kies' : 'Gelände';
+      t.surface === 'asphalt'
+        ? 'Asphalt'
+        : t.surface === 'kies'
+          ? 'Kies'
+          : t.surface === 'wasser'
+            ? 'Wasser'
+            : 'Gelände';
+    this.#readouts.wasser =
+      t.waterDepth > 0.01 ? `${t.waterDepth.toFixed(2)} m · ${t.skid.toFixed(2)}` : '—';
+    const fx = this.#fx;
+    this.#readouts.spuren = fx ? `${fx.liveSkids} Spuren · ${fx.liveSplash} Spritzer` : '—';
     this.#readouts.federweg = t.airborne ? 'in der Luft' : `${(t.compression * 100).toFixed(0)} %`;
     this.#readouts.kontakt =
       t.contacts > 0 ? `${t.contacts} · ${(t.lastPenetration * 100).toFixed(1)} cm` : '—';
@@ -834,12 +882,23 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     }
 
     const plateau = this.collision.plateauTop(x, z);
-    return plateau > y ? plateau : y;
+    if (plateau > y) y = plateau;
+
+    // Wasserfläche — Meer, Fluss, Reisfeld. Hebt nur, wenn der Spiegel über
+    // dem festen Boden liegt: eine Küstenstraße über dem Meer bleibt Straße.
+    if (this.#water.ready && this.#sampler) {
+      y = applyWaterSurface(y, this.#water.at(x, z, this.#groundBase(x, z)));
+    }
+    return y;
   }
 
   normal(x: number, z: number, target: Vector3): Vector3 {
     const sampler = this.#sampler;
     if (!sampler) return target.set(0, 1, 0);
+    if (this.#water.ready) {
+      const water = this.#water.at(x, z, this.#groundBase(x, z));
+      if (water.depth > WATER_PHYS.floatDepth) return target.set(0, 1, 0);
+    }
     // **Die Gelände-Normale, auch auf einem Plateau.** Ein Bürgersteig ist
     // waagerecht, das Gelände darunter im Distrikt ebenfalls (der Baker ebnet ihn
     // ein, Schritt 5d) — der Unterschied ist damit auf dieser Karte nicht
@@ -849,10 +908,21 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   }
 
   surface(x: number, z: number): Surface {
-    if (this.#roadHalfWidth <= 0 || !this.#network) return 'gelaende';
-    const reach = this.#roadHalfWidth + this.#roadShoulder;
-    const distance = this.#network.distanceToNearestRoad(x, z, reach + 2);
-    return distance <= reach ? this.#roadSurface : 'gelaende';
+    if (this.#roadHalfWidth > 0 && this.#network) {
+      const reach = this.#roadHalfWidth + this.#roadShoulder;
+      const distance = this.#network.distanceToNearestRoad(x, z, reach + 2);
+      if (distance <= reach) return this.#roadSurface;
+    }
+    if (this.#water.ready && this.#sampler) {
+      const depth = this.#water.at(x, z, this.#groundBase(x, z)).depth;
+      if (depth > WATER_PHYS.wetThreshold) return 'wasser';
+    }
+    return 'gelaende';
+  }
+
+  waterDepth(x: number, z: number): number {
+    if (!this.#water.ready || !this.#sampler) return 0;
+    return this.#water.at(x, z, this.#groundBase(x, z)).depth;
   }
 
   // ── Debug ───────────────────────────────────────────────────────────────
@@ -880,6 +950,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       interval: 100,
     });
     folder.addBinding(this.#readouts, 'belag', { readonly: true, label: 'Belag', interval: 200 });
+    folder.addBinding(this.#readouts, 'wasser', { readonly: true, label: 'Wasser', interval: 150 });
+    folder.addBinding(this.#readouts, 'spuren', { readonly: true, label: 'Spuren', interval: 200 });
 
     // Rundenzählung — P9.3. Die Ablesewerte wohnen im `LapTimer` selbst, nicht
     // hier: er ist ohne Renderer und ohne Bus benutzbar (der Messstand aus P14
@@ -937,6 +1009,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#geometries.length = 0;
     this.#material?.dispose();
     this.#material = null;
+    this.#fx?.dispose();
+    this.#fx = null;
     this.collision.clear();
     this.#sampler = null;
     this.#network = null;
@@ -952,6 +1026,15 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 const CORRECTION_RATE = 3;
 
 /** Der Teil des `FreeFlyController`, den dieses System braucht. */
+type WakeSink = (
+  x: number,
+  z: number,
+  dirX: number,
+  dirZ: number,
+  speed: number,
+  active: boolean,
+) => void;
+
 interface FlyController {
   setEnabled(value: boolean): void;
   setInputDelegate(delegate: FlyInputDelegate | null): void;
@@ -970,6 +1053,24 @@ function clamp01(value: number): number {
 
 function clamp(value: number, min: number, max: number): number {
   return value < min ? min : value > max ? max : value;
+}
+
+/**
+ * Fester Boden gegen Wasserfläche. Hebt nur, wenn der Spiegel über dem Boden
+ * liegt — eine Straße über dem Meer bleibt Straße. Tiefe unter `floatDepth`
+ * blendet, damit die Strandkante keine Stufe ist.
+ */
+function applyWaterSurface(
+  solidY: number,
+  water: { depth: number; surfaceY: number; kind: string },
+): number {
+  if (water.kind === 'trocken' || water.depth <= WATER_PHYS.wetThreshold) return solidY;
+  const floated = water.surfaceY - WATER_PHYS.draft;
+  if (floated <= solidY) return solidY;
+  if (water.depth >= WATER_PHYS.floatDepth) return floated;
+  const t = water.depth / WATER_PHYS.floatDepth;
+  const s = t * t * (3 - 2 * t);
+  return solidY + (floated - solidY) * s;
 }
 
 /** Tastendrücke in Eingabefeldern gehören dem Feld. Wie im `FreeFlyController`. */
