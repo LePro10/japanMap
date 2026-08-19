@@ -9,6 +9,7 @@ import {
 } from 'three';
 
 import { PROP_COLLIDERS, WATER_PHYS } from '@/config/vehicle.config';
+import { DEFAULT_VEHICLE, vehicleSpec, type VehicleId } from '@/config/vehicles.config';
 import type { PropPlacement } from '@/config/props.config';
 import { CITY, CITY_SLAB_Y } from '@/config/city.config';
 import { districtBlend } from '@/config/city.mjs';
@@ -132,7 +133,16 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #body: Mesh | null = null;
   #wheels: InstancedMesh | null = null;
   #material: PropMaterial | null = null;
+  /**
+   * Die Geometrien **des gerade gebauten Fahrzeugs**, nicht aller.
+   *
+   * Bis P17 wuchs die Liste nur, weil es nichts zu wechseln gab. Mit vier
+   * Fahrzeugen wäre ein Wechsel sonst ein Leck: jedes Umschalten legte zwei neue
+   * `BufferGeometry` an, und die alten blieben bis `dispose()` auf der GPU. Wer
+   * zehnmal durchschaltet, hätte zwanzig tote Puffer.
+   */
   readonly #geometries: BufferGeometry[] = [];
+  #vehicleId: VehicleId = DEFAULT_VEHICLE;
 
   /** Rohdaten der Hindernisse. Gesammelt, bis der Sampler da ist — siehe `#rebuild`. */
   #cityColliders: readonly CityCollider[] = [];
@@ -215,6 +225,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     kollision: '—',
     kontakt: '—',
     aufwand: '—',
+    fahrzeug: '—',
     ansicht: 'Verfolger',
     wasser: '—',
     spuren: '—',
@@ -346,17 +357,13 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     material.metalness = 0.15;
     this.#material = material;
 
-    const bodyGeometry = createCarBody();
-    const wheelGeometry = createCarWheel();
-    this.#geometries.push(bodyGeometry, wheelGeometry);
-
-    const body = new Mesh(bodyGeometry, material);
+    const body = new Mesh(undefined, material);
     body.name = 'Fahrzeug:Karosserie';
     body.matrixAutoUpdate = false;
     this.#body = body;
     group.add(body);
 
-    const wheels = new InstancedMesh(wheelGeometry, material, 4);
+    const wheels = new InstancedMesh(undefined, material, 4);
     wheels.name = 'Fahrzeug:Räder';
     wheels.matrixAutoUpdate = false;
     // Vier Räder in einem Draw-Call, jedes mit eigener Matrix (Lenkeinschlag
@@ -367,6 +374,14 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     wheels.frustumCulled = false;
     this.#wheels = wheels;
     group.add(wheels);
+
+    // Die Geometrie kommt erst hier — **die beiden Meshes bleiben über einen
+    // Fahrzeugwechsel hinweg dieselben Objekte**, nur ihre Geometrie wird
+    // getauscht. Neu angelegte Meshes müssten aus der Szene genommen und wieder
+    // eingehängt werden, und jeder, der sich einen Verweis gemerkt hat (die
+    // Ausschlussliste der planaren Spiegelung tut genau das), hielte danach den
+    // alten.
+    this.#applyVehicleGeometry();
 
     context.scene.add(group);
   }
@@ -383,6 +398,63 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    * er da ist, und danach bei jeder neuen Quelle noch einmal. Gemessen kostet ein
    * voller Aufbau wenige Millisekunden und passiert höchstens vier Mal.
    */
+  /** Welches Fahrzeug gerade gefahren wird. */
+  get vehicleId(): VehicleId {
+    return this.#vehicleId;
+  }
+
+  /**
+   * Fahrzeug wechseln.
+   *
+   * Die Reihenfolge ist verbindlich und nicht bloß hübsch:
+   *
+   *  1. **Spec setzen**, denn alles Folgende hängt daran;
+   *  2. **Geometrie tauschen**, weil sie aus der Spec gerechnet wird;
+   *  3. **Absetzen** — und zwar zwingend. Federruhelage, Radanschläge und
+   *     Schwerpunkthöhe sind andere geworden. Ein Lastwagen, der die Höhe des
+   *     Coupés behält, steht 58 cm im Boden, und der erste Simulationsschritt
+   *     schießt ihn heraus. `Vehicle.setSpec()` setzt ausdrücklich **keinen**
+   *     Zustand zurück, damit diese Stelle die einzige ist, die es tut.
+   *
+   * Der Wagen bleibt stehen, wo er stand — gewechselt wird meist aus dem Menü
+   * heraus, und dann will niemand plötzlich am anderen Ende der Karte sein.
+   */
+  setVehicle(id: VehicleId): void {
+    if (id === this.#vehicleId) return;
+    this.#vehicleId = id;
+    this.vehicle.setSpec(vehicleSpec(id));
+    this.#applyVehicleGeometry();
+    if (this.#sampler) {
+      this.placeAt(this.vehicle.position.x, this.vehicle.position.z, this.vehicle.yaw);
+      this.camera.reset(this.vehicle);
+    }
+    this.#fx?.reset();
+    this.#readouts.fahrzeug = this.vehicle.spec.name;
+    this.#context?.bus.emit('drive:vehicle', { id });
+    this.#context?.debug?.refresh();
+  }
+
+  /**
+   * Karosserie und Rad aus der aktuellen Spec rechnen und die alten freigeben.
+   *
+   * **Die alten werden weggeworfen und nicht aufgehoben.** Ein Zwischenspeicher
+   * über alle vier Fahrzeuge wäre schneller (die Rechnung kostet gemessen unter
+   * einer Millisekunde) und hielte dafür dauerhaft acht Puffer auf der GPU, von
+   * denen sechs niemand ansieht. Bei ~350 Dreiecken je Fahrzeug ist das kein
+   * großer Posten — der Punkt ist die Regel: dieses Projekt gibt frei, was es
+   * nicht mehr braucht (`ResourceManager`, jedes `dispose()`).
+   */
+  #applyVehicleGeometry(): void {
+    const spec = this.vehicle.spec;
+    const bodyGeometry = createCarBody(spec);
+    const wheelGeometry = createCarWheel(spec);
+    if (this.#body) this.#body.geometry = bodyGeometry;
+    if (this.#wheels) this.#wheels.geometry = wheelGeometry;
+    for (const old of this.#geometries) old.dispose();
+    this.#geometries.length = 0;
+    this.#geometries.push(bodyGeometry, wheelGeometry);
+  }
+
   #rebuild(): void {
     const sampler = this.#sampler;
     if (!sampler) return;

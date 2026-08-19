@@ -25,7 +25,8 @@
     "hdri": "npm run hdri:ibl && npm run hdri:sky",
     "hdri:ibl": "node tools/optimize-hdri.mjs assets/hdri/rooftop_night_2k.hdr --half --out assets/generated/hdri",
     "hdri:sky": "node tools/optimize-hdri.mjs assets/hdri/industrial_sunset_02_puresky_4k.hdr --half --out assets/generated/hdri",
-    "dev:lan": "vite --host 0.0.0.0 --port 5180 --strictPort"
+    "dev:lan": "vite --host 0.0.0.0 --port 5180 --strictPort",
+    "fleet": "node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/fleet.mts"
   },
   "dependencies": {
     "n8ao": "^2.0.0",

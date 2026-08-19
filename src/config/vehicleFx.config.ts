@@ -75,8 +75,16 @@ export const SKID = {
    */
   spacing: 0.42,
 
-  /** Breite eines Stempels, etwas über der Reifenbreite (0,21 m). */
-  width: 0.28,
+  /**
+   * Breite eines Stempels als Vielfaches der **Reifenbreite** des Fahrzeugs.
+   *
+   * Bis P17 stand hier eine feste Zahl (0,28 m, „etwas über der Reifenbreite von
+   * 0,21 m"). Mit vier Fahrzeugen ist das falsch: der Lastwagen hat 0,30 m
+   * breite Räder und zöge eine Spur, die schmaler ist als sein Reifen, der
+   * Supersportler mit 0,31 m ebenso. 1,33 ist genau das alte Verhältnis
+   * (0,28 / 0,21) — für das Coupé ändert sich damit nichts.
+   */
+  widthPerTire: 1.33,
   /** Länge längs der Bahn. */
   length: 0.72,
 
@@ -98,10 +106,58 @@ export const SKID = {
   /** Anheben über den Boden, zusätzlich zum polygonOffset. */
   lift: 0.045,
 
-  /** Farbe auf Asphalt — fast schwarz, etwas warm, zur nassen Fahrbahn. */
-  asphalt: 0x2a221c,
-  /** Farbe auf Kies und Gelände. Heller als der Boden, sonst verschwindet sie. */
-  dirt: 0x6a4a32,
+  /**
+   * ## Die Spurfarben — P18, und warum sie neu bemessen sind
+   *
+   * Bis P17 gab es zwei: `asphalt: 0x2a221c` und `dirt: 0x6a4a32`, und an der
+   * zweiten stand „**heller als der Boden, sonst verschwindet sie**". Diese
+   * Begründung war falsch, und zwar messbar. Mittelwerte der tatsächlich
+   * verlegten Belagstexturen (`tools/bench/surfcolor.mjs`, Helligkeit nach
+   * Rec. 709 auf 0…255):
+   *
+   * | Fläche | Textur | Helligkeit | alte Spur | Verhältnis |
+   * |---|---|---:|---:|---:|
+   * | Asphalt | `asphalt_02/Diffuse` | 89,6 | 35,3 | 2,54 : 1 |
+   * | Gras / Gelände | `aerial_grass_rock/Diffuse` | 96,3 | 79,1 | **1,22 : 1** |
+   * | Kiesbelag | `ROAD_GRAVEL_COLOR` | 97,5 | 79,1 | **1,23 : 1** |
+   *
+   * Die „hellere" Spur war auf beiden losen Belägen **dunkler als der Boden**
+   * und dabei so nah an ihm, dass 22 % Helligkeitsunterschied blieben — auf
+   * einer texturierten Fläche mit Korn ist das nichts. Genau das ist der Befund
+   * „die Driftspuren sieht man kaum".
+   *
+   * ## Was sich geändert hat, und warum es nicht nur andere Zahlen sind
+   *
+   * Eine hellere oder dunklere Farbe allein hätte das Problem nur halb gelöst.
+   * Die Spur ist ein `MeshBasicMaterial` — sie wird **nicht beleuchtet**. Auf
+   * einer Karte in der blauen Stunde (Sonnenstand 2,23°) ist die *beleuchtete*
+   * Fahrbahn viel dunkler als ihre Albedo von 89,6, und eine unbeleuchtete Spur
+   * mit fester Farbe kann je nach Tageszeit heller oder dunkler als der Boden
+   * sein. Eine Farbe, die gegen die Albedo stimmt, stimmt gegen das Bild noch
+   * lange nicht.
+   *
+   * Deshalb zeichnet die Spur seit P18 **multiplikativ**: sie *dämpft*, was
+   * unter ihr liegt, statt darüber zu malen. Das ist zugleich das physikalisch
+   * richtige Modell — ein Reifenabrieb ist eine Schicht auf der Fahrbahn, kein
+   * Leuchten — und es macht die Spur von der Beleuchtung unabhängig: 0,45
+   * heißt „hier ist es 45 % so hell wie daneben", bei Tag wie in der Dämmerung.
+   *
+   * Die Werte unten sind damit **Dämpfungsfaktoren**, keine Farben im üblichen
+   * Sinn. Sie tragen einen leichten Farbstich, weil ein Abrieb nicht neutral
+   * grau ist.
+   */
+  /** Gummi auf Asphalt: dunkel und leicht kühl. 0,38 ≙ Verhältnis 2,6 : 1. */
+  asphalt: 0x635f66,
+  /**
+   * Aufgerissener Kies: die feuchte Unterlage kommt hoch, warm und dunkler.
+   * 0,42 ≙ 2,4 : 1.
+   */
+  gravel: 0x7a6a58,
+  /**
+   * Furche im Gras: nasse Erde, der dunkelste der drei. 0,34 ≙ 2,9 : 1 — die
+   * Grasnarbe hat das stärkste Korn und braucht den größten Abstand.
+   */
+  terrain: 0x5c5044,
 } as const;
 
 export const SPLASH = {

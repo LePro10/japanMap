@@ -670,6 +670,49 @@ body {
   gap: 6px;
 }
 
+/* Die Fahrzeugwahl — P18.
+ *
+ * Untereinander und nicht nebeneinander: jede Karte trägt drei Zeilen (Name,
+ * Kennzahlen, Charakter), und drei Zeilen in vier Spalten sind bei 375 px
+ * Bildbreite unlesbar. Die Höhe von 44 px ergibt sich ohnehin aus dem Inhalt —
+ * die Karte ist bequem mit dem Daumen zu treffen, ohne dass es dasteht. */
+.menu__cars {
+  display: grid;
+  gap: 8px;
+}
+
+.menu button.menu__car {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.menu__carName {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Die Kennzahlen bleiben auch auf der gewählten Karte lesbar: dort dreht sich
+ * der Kontrast um (heller Grund, dunkle Schrift), und ein fest gesetztes
+ * `--fg-dim` wäre dann Grau auf Weiß. `currentColor` mit Deckkraft folgt der
+ * Umkehrung — dieselbe Falle wie bei jeder Farbe, die zweimal gilt. */
+.menu__carFacts {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: currentColor;
+  opacity: 0.72;
+}
+
+.menu__carBlurb {
+  font-size: 11px;
+  line-height: 1.5;
+  color: currentColor;
+  opacity: 0.62;
+}
+
 /* Die Wirkung der geltenden Stufe in Zahlen. Steht **über** den Reglern, weil
  * es die Frage beantwortet, die man vor dem Menü hat: was tut „Mittel"? */
 .menu__effect {
