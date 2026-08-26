@@ -42,6 +42,20 @@ export interface RoadHit {
    */
   readonly forwardX: number;
   readonly forwardZ: number;
+  /**
+   * Längsneigung des Segments als `dy/ds` über die **waagerechte** Bogenlänge —
+   * seit P21.
+   *
+   * Gebraucht von `DriveSystem.height()`: die Fahrbahn ist dort seitdem eine
+   * **Ebene durch diesen Treffer** und nicht mehr „Gelände plus ein Skalar".
+   * Ohne die Neigung wäre die Ebene waagerecht, und ein Wagen führe auf jeder
+   * Steigung gegen eine unsichtbare Stufe.
+   *
+   * Fällt in der Suche ohnehin an (die beiden Stützpunkte des Segments stehen
+   * hier bereits) — sie draußen aus zwei Abfragen zu rekonstruieren wäre
+   * teurer und eine zweite Implementierung derselben Rechnung.
+   */
+  readonly slopeAlong: number;
   /** Belagsart der getroffenen Strecke — Asphalt oder Kies. */
   readonly surface: 'asphalt' | 'kies';
 }
@@ -177,6 +191,10 @@ export class RoadNetwork {
       width: road.widths[segment.index] ?? ROAD_TYPES[road.type].width,
       forwardX: dx / length,
       forwardZ: dz / length,
+      // `length` ist die **waagerechte** Segmentlänge (`hypot(dx, dz)`), also
+      // ist das die Steigung als Höhe je Meter Grundriss — dieselbe Größe, mit
+      // der `npm run inspect` die Strecken bemisst.
+      slopeAlong: (by - ay) / length,
       surface: ROAD_TYPES[road.type].surface,
     };
   }

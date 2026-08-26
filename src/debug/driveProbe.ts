@@ -241,7 +241,16 @@ export function measureStandingHeight(
       const y = line[i * 3 + 1]!;
       const z = line[i * 3 + 2]!;
       deps.drive.placeAt(x, z, 0);
-      const wheelPlane = deps.drive.vehicle.position.y - CHASSIS.cgHeight;
+      // **Die Schwerpunkthöhe des gefahrenen Fahrzeugs, nicht die aus der
+      // Basis-Konfiguration** — P21. `CHASSIS.cgHeight` ist die des Coupés
+      // (0,52 m); mit dem Offroader (0,78) hätte diese Messung jede Standhöhe um
+      // 26 cm danebengelegt, und zwar still. Seit P18 gibt es vier Fahrzeuge,
+      // und seitdem war die Zeile falsch — sie ist nur nie mit einem anderen
+      // gelaufen. Dieselbe Klasse wie die sieben Modulkonstanten, die in P17 aus
+      // `Vehicle.ts` mussten: eine Zahl, die aus den Maßen **eines** Fahrzeugs
+      // stammt und für alle gilt.
+      const wheelPlane =
+        deps.drive.vehicle.position.y - deps.drive.vehicle.spec.chassis.cgHeight;
       const delta = wheelPlane - (y + ROAD_MESH.surfaceOffset);
       deltas.push(Math.abs(delta));
       if (Math.abs(delta) > maxAbs) {

@@ -25,6 +25,8 @@ export interface WaterUniforms {
   readonly uWaterDepthFade: IUniform<number>;
   readonly uWaterRoughness: IUniform<number>;
   readonly uWaterEdgeFade: IUniform<number>;
+  /** Nahkräuselung, 0…1. Siehe `uWaterDetail` in water_pars.frag.glsl. */
+  readonly uWaterDetail: IUniform<number>;
   /** x = Tiefe, y = Breite, z = Stärke, w = Wellenanteil. */
   readonly uWaterFoam: IUniform<Vector4>;
   /** Je Lage: xy = Einheitsrichtung, z = Wellenzahl, w = Kreisfrequenz. */
@@ -63,6 +65,7 @@ export function createWaterUniforms(): WaterUniforms {
     uWaterDepthFade: { value: WATER.depthFade },
     uWaterRoughness: { value: WATER.roughness },
     uWaterEdgeFade: { value: WATER.edgeFade },
+    uWaterDetail: { value: 1 },
     uWaterFoam: {
       value: new Vector4(
         WATER.foam.depth,

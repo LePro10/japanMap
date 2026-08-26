@@ -5,11 +5,12 @@
 > merken, dass eine Phase fertig ist**. Wo etwas im Quelltext steht und was mit
 > was redet, sagt [ARCHITECTURE.md](ARCHITECTURE.md).
 >
-> **Stand: 2026-08-18 · P0–P6, P8 und P9 abgenommen · P7, P10–P15 ◐**
+> **Stand: 2026-08-21 · P0–P6, P8, P9, P15, P18 und P19 abgenommen · P7, P10–P14, P16 ◐**
 >
 > | Phase | Stand |
 > |---|---|
 > | P0–P6, P8 | ✅ abgenommen |
+> | P19 | ✅ **abgenommen am 2026-08-21** — Gelände und Kollision (Felswand, Baum, Klemmen), Partikel und Wasser. Zehn von zehn Kriterien; offen bleiben `driveProbe()` über alle acht Strecken, ein echtes Telefon und die GPU-Zeit der Partikel |
 > | P7 | ◐ — 3 von 5; der Startdownload ist seit P15 eingelöst, offen bleiben die zwei Zeilen, die eine GTX-1660-Klasse verlangen |
 > | P9 | ✅ **abgenommen am 2026-08-18** — 9.1/9.2 in P14, 9.3 als `LapTimer`. Drei gefahrene Runden auf dem Ring, 324,72 s, Abkürzung wird abgelehnt |
 > | P10 | ✅ **abgenommen am 2026-08-18** — alle sieben Kriterien; 10.3 ging in P11.5 auf, 10.4 in P15 |
@@ -8968,3 +8969,1025 @@ sichtbare Abweichung (18.3), keine Fußnote mehr.
 **Keine Kollision zwischen Fahrzeugen**, kein Schaden, keine eigenen Motorklänge
 je Fahrzeug (die Tonschicht bekommt `drive:vehicle` gemeldet und wertet es noch
 nicht aus).
+
+---
+
+# P19 — Was der Fahrer meldet: steckenbleiben, Stäbchen, Lackwasser ✅ (2026-08-21)
+
+> **Auslöser waren vier Bilder, keine Kennzahl.** Ein Auto, das in einer
+> Felswand klebt; „die Kollisionen … man verbuggt relativ schnell irgendwo";
+> gelbe Stäbchen im Dreck; weiße Stäbchen im Wasser, das aussieht wie Lack.
+>
+> Jeder einzelne dieser Befunde stand hinter grünen Zahlen. `fleet.mts` meldete
+> für alle vier Fahrzeuge acht saubere Proben, und es hatte recht: **die Fehler
+> lagen nicht im Fahrmodell**, sondern eine Schicht darunter (Bodenfang,
+> Kollisionsauflösung) und eine Schicht daneben (Darstellung). Ein Prüfstand,
+> der auf einem idealen Boden fährt, kann Gelände nicht prüfen — das ist keine
+> Schwäche, sondern seine Bauart. Die Folgerung ist ein **zweiter** Prüfstand.
+
+## Was gebaut wurde
+
+### 19.1 Der Prüfstand für Gelände und Kollision
+
+`tools/bench/world.mts`, sechs Proben über alle vier Fahrzeuge, rund 20 s:
+
+```bash
+node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/world.mts
+```
+
+| Probe | findet |
+|---|---|
+| Felswand 55°, abgesetzt und losgelassen | ein Auto, das an einer Wand klebt |
+| Baum auf der Fahrlinie, drei seitliche Versätze | Lücken zwischen den Prüfpunkten |
+| Innenecke, hinein und rückwärts heraus | Klemmen in einer Ecke |
+| Planke im Streifschuss | Durchschlagen und Festkleben |
+| Fall aus 6 m | Ratschen nach oben, Einsinken nach der Landung |
+| Kosten je Schritt, mit gegen ohne Kollision | was die Auflösung wirklich kostet |
+
+### 19.2 Vier Fehler, alle im ersten Lauf gefunden
+
+**1. Die Felswand hielt fest, statt fallen zu lassen.** `resolveTerrainFollow`
+setzte im Wandzweig `vy = 0` in **jedem** Schritt. Gedacht war das gegen den
+alten Berg-Clip; gewirkt hat es umgekehrt — es verbot das **Fallen** und ließ
+das **Klettern** zu. Gemessen: das Coupé fiel in 8 s **2,00 m**, und diese zwei
+Meter waren nicht einmal ein Fall, sondern exakt `UNSUPPORTED_DROP`.
+
+Neu wird die Geschwindigkeit in der Hangebene zerlegt: hinein → weg,
+hangaufwärts → 15 % (`WALL_CLIMB_KEEP`, der eigentliche Anti-Raketen-Schutz),
+hangabwärts und quer → bleibt, gedämpft mit `WALL_SLIDE_DAMPING`.
+
+| Fahrzeug | Fall in 8 s, vorher | nachher | Endhöhe (Sollruhelage) |
+|---|---:|---:|---|
+| Coupé | 2,00 m | **28,95 m** | 0,52 m (0,52) |
+| GT | 2,47 m | **28,86 m** | 0,40 m (0,40) |
+| Offroad | 2,43 m | **28,79 m** | 1,13 m (Hangfuß) |
+| Lastwagen | 2,98 m | **29,38 m** | 1,10 m (1,10) |
+
+**2. Ein Baum auf der Mittellinie wurde nicht gesehen.** Die Karosserie prüfte
+an vier Eckpunkten mit 34 cm Radius; zwischen Vorder- und Hinterecke liegen
+4,2 m. Gemessen mit einem Stamm von 40 cm Radius:
+
+| Versatz | Kontakte vorher | Ergebnis vorher | Kontakte nachher |
+|---:|---:|---|---:|
+| 0,00 m | **0** | **durchgefahren** | 633 |
+| 0,50 m | 2 | 12 m **rückwärts** geschleudert | 630 |
+| 0,90 m | 4 | vorbei | 619 |
+
+Aufgelöst wird seitdem gegen das **orientierte Rechteck** der Karosserie
+(`CollisionWorld.queryBody`): Kreis-gegen-Rechteck für Zylinder, SAT über vier
+Achsen für Kästen und Wände. `cornerRadius` (0,34 m) ist zu `skin` (0,06 m)
+geworden, `probeHeights` zu `band` — beide Namen tragen jetzt, was sie tun.
+
+Die Auflösung mittelt nicht mehr über die Normalen (das löst jeden
+Mehrfachkontakt zu **schwach** auf), sondern rechnet Kontakt für Kontakt an, was
+schon herausgeschoben wurde.
+
+**3. Der Lastwagen versank dauerhaft im Boden.** Nach einer harten Landung
+federte er 0,74 m ein — mehr als `supportReach` (0,50 m). Damit erklärte
+`reachableSupport` seine eigenen Räder für unerreichbar, die Federkraft wurde
+null, und er fiel bis auf den Bodenfang bei `Geländehöhe + r/2` durch. Ruhelage
+gemessen: **0,26 m statt 1,10 m**, dauerhaft, und keine Kennzahl meldete es — er
+*fuhr* ja. Neu: `bodyFloorGap`, die geometrische Schranke „ein Rad kann nicht
+durch den Kotflügel".
+
+**4. Die Wandreibung war eine Zeitschrittgröße.** `wallFriction = 0,12` als
+Anteil je Schritt war harmlos, solange nur gelegentlich ein Eckpunkt anlag. Mit
+dem Rechteck liegt das Blech in **jedem** Schritt an: 0,88^60 = 0,0004 je
+Sekunde. Gemessen klebte das Coupé mit **10,3 km/h** bei Vollgas an der Planke.
+Neu ist es ein Reibbeiwert am Normalimpuls (`|J_t| <= mu*|J_n|`, mu = 0,45) —
+damit selbstbegrenzend: derselbe Lauf endet jetzt bei **152 km/h**.
+
+Dazu ein **Klemmschutz**, ausdrücklich keine Physik: wer unter 0,6 m/s länger
+als 0,5 s in einem Hindernis steckt und dabei eine **Restdurchdringung** über
+2 cm behält, bekommt eine mitwachsende Trenngeschwindigkeit bis 2,5 m/s. Die
+Bedingung an der Restdurchdringung ist der heikle Teil — der erste Versuch
+(„langsam und irgendein Kontakt") ließ den Wagen beim Andrücken gegen einen Baum
+im Sekundentakt zurückhüpfen.
+
+### 19.3 Was das kostet — die Kollision ist **billiger** geworden
+
+Acht Punktabfragen gegen dieselben Kandidaten kosten acht Distanzfunktionen, ein
+Rechteck-Test kostet eine. Gemessen je Simulationsschritt (Stadtlage: ein
+Häuserblock, eine Planke, 12 Props, 24 Bäume):
+
+| Fahrzeug | vorher | nachher |
+|---|---:|---:|
+| Coupé | +0,0057 ms | **+0,0009 ms** |
+| GT | +0,0036 ms | +0,0014 ms |
+| Offroad | +0,0086 ms | +0,0014 ms |
+| Lastwagen | +0,0076 ms | +0,0015 ms |
+
+### 19.4 Die Partikel: eine Sorte war zu wenig
+
+Bis P19 gab es **einen** langgezogenen, additiv gemischten Streifen für Wasser
+*und* Staub. Der Fehler war nicht die Farbe, sondern die **Form**: ein Streifen
+ist die Silhouette eines schnellen Tropfens, und alles andere, was ein Rad
+aufwirft, hat sie nicht. Additiv gemischt wird auf einer nachtblauen Karte
+zudem jeder Stapel weiß, egal welche Instanzfarbe daransteht.
+
+Neu sind fünf Sorten in **einem** Draw-Call (2 × 2-Atlas, Instanzattribut
+`aTile`): Tropfen, Fächer am Reifen, Dunst, Staubfahne, Erdbrocken. Gemischt
+wird mit Alpha, die Deckkraft je Instanz liegt in `aAlpha`, und die Streckung
+hängt am **Tempo** statt an einer Konstanten.
+
+Gemessen im laufenden Bild (RX 7900 XTX, 1280 × 720, Ultra, Reisfeld bei
+46 km/h): **+4 Draw-Calls, +2700 Dreiecke** — zwei Meshes über zwei Durchgänge.
+
+### 19.5 Das Wasser war ein Spiegel
+
+Die drei Wellenlagen von Meer und Fluss sind 37 m, 13 m und 4,6 m lang. Neben
+dem Auto ist die kürzeste davon fünf Wagenlängen — dazwischen liegt Lack. Neu
+sind drei Kräuselungslagen, die jenseits von 42 m ausblenden und an
+`QUALITY[…].waterDetail` hängen (Ultra 1,0 … Minimal **0**, dort fällt der Zweig
+ganz weg).
+
+Die **Reisfelder** hatten weder Wellen noch Kielwelle — 101 ha spiegelglatte
+Fläche mitten auf der Karte, und genau dort fährt man. Sie haben seit P19 ein
+eigenes Material (`PaddyWaterMaterial`) mit drei kurzen Wellenlagen, Ringen um
+das Auto und einer Kielwelle.
+
+## Akzeptanz
+
+- [x] Ein Auto auf einer 55°-Wand rutscht herunter, statt zu kleben (28,95 m in
+      8 s gegen vorher 2,00 m).
+- [x] Ein Baum auf der Fahrlinie wird getroffen (633 Kontakte gegen vorher 0).
+- [x] Kein Kontakt schleudert den Wagen mehr rückwärts (z = 15,5 m statt −12,0 m).
+- [x] Alle vier Fahrzeuge stehen nach einer harten Landung wieder auf ihrer
+      Ruhelage (0,52 / 0,40 / 0,78 / 1,10 m — Sollwerte exakt getroffen).
+- [x] Ein Streifschuss an der Planke kostet Tempo, klebt aber nicht (152 km/h
+      statt 10,3).
+- [x] Die Kollision ist billiger als vorher (+0,0009 ms statt +0,0057 ms je
+      Schritt beim Coupé).
+- [x] `fleet.mts` liefert nach dem Umbau **zeichengleich** dieselben Zahlen —
+      das Fahrmodell selbst ist unberührt.
+- [x] Fünf Partikelsorten in einem Draw-Call, gemessen +4 Calls / +2700 Dreiecke.
+- [x] Die Stufenleiter greift: lebende Partikel Ultra 74 → Mittel 40 → Minimal
+      16, Dunst auf Minimal **0**, `waterDetail` auf Minimal **0**.
+- [x] Bilder vorhanden: `.cache/shots/p19-wasser5.png`, `p19-staub5.png`.
+
+## Was offen bleibt
+
+- [ ] **„Fühlt es sich jetzt gut an" ist weiter nicht gemessen.** Dieselbe
+      offene Zeile wie P14 und P18. Der Prüfstand fährt mit einem Regler, nicht
+      mit einer Absicht.
+- [ ] **`japanMap.driveProbe()` über alle acht Strecken und vier Fahrzeuge
+      nicht neu gefahren.** Der Umbau der Kollision betrifft sie unmittelbar;
+      die Zahlen aus P14/P18 gelten bis dahin als **nicht neu abgelesen**.
+- [ ] **Auf einem echten Telefon nicht geprüft** — dieselbe Lücke wie P12.6,
+      P13, P14, P16 und P18.
+- [ ] **GPU-Zeit der Partikel nicht gegen das Rauschband gemessen.** Gezählt
+      sind Draw-Calls und Dreiecke; ob die Füllrate des Dunstes auf einer
+      GTX-1660-Klasse zählt, ist damit nicht beantwortet.
+
+### 19.6 Nachtrag: zwei Fehler, die erst der Messstand des Fahrmodus gefunden hat
+
+Nach dem Umbau meldete der Auftraggeber, es klemme weiter. `japanMap.driveProbe()`
+über alle acht Strecken hat das bestätigt und zwei **weitere** Ursachen gezeigt,
+die mit den ersten vier nichts zu tun haben.
+
+**5. Zwei Räder einer Achse trugen den ganzen Wagen.** `reachableSupport` mittelt
+über alle Räder in Reichweite und ist damit gegen das *Anheben* abgesichert
+(P14). Gegen das **Schweben** war sie es nicht: steht die Hinterachse auf einer
+Kante und hängt die Vorderachse über einem Absatz, trug der Mittelwert den
+Aufbau waagerecht in der Luft — unbegrenzt lange. Gemessen am Bergpass bei
+(−1085, −512):
+
+| | Boden unter dem Rad |
+|---|---|
+| Vorderachse | 113,79 m |
+| Hinterachse | 116,76 m |
+| Schwerpunkt stand bei | **117,28 m** |
+
+`airborne: false`, Einfederung 0,52, Durchdringung 0, **null Kontakte**. Jede
+Kennzahl gesund. Der Messstand hat an derselben Stelle eine Standhöhe von
+**18,05 m** mitgeschrieben.
+
+Neu ist `axleSupport`: *zwei Räder einer Achse tragen keinen Wagen.* Ist eine
+ganze Achse außer Reichweite, wird die Stützhöhe auf `Boden der freien Achse +
+reach` gedeckelt — der Aufbau sinkt der Kante nach. Der Deckel wirkt nur nach
+unten und hebt den Schutz aus P14 damit nicht auf.
+
+**6. Die Nische: zwei Steinlaternen mit einem Zentimeter Luft.** Am Tempelaufgang
+stehen zwei `stoneLantern` bei (834,1 | −888,5) und (829,0 | −887,6), also
+**5,18 m** auseinander. Ihre Kollisionsradien sind 0,43 m — die Lücke ist
+**4,33 m**, das Coupé mit Blechzuschlag **4,32 m** lang. Es passt auf den
+Zentimeter hinein und kommt weder vor noch zurück.
+
+Gemessen im laufenden Bild, jeweils volle Eingabe:
+
+| | vorher | nachher |
+|---|---:|---:|
+| Vollgas, 3 s | 0,06 m | 0,09 m (**soll so bleiben**) |
+| Rückwärts, 4 s | 0,19 m | — |
+| Vor und zurück wippen, 15 s | — | **4,54 m — frei** |
+| Mit beiden Props abgemeldet (Gegenprobe) | 16,17 m | — |
+
+Der Klemmschutz aus 19.2 hat hier **vier** Anläufe gebraucht, und jeder ist an
+einer anderen falschen Annahme gescheitert. Alle vier stehen als Begründung im
+Code, weil jede für sich eine Falle beschreibt:
+
+1. *Restdurchdringung als Bedingung* — es gibt keine; beide Schübe lösen sauber
+   auf (0,0006 m).
+2. *Gegenläufige Normalen im selben Schritt* — gibt es nicht; mit Gas berührt
+   der Wagen nur die vordere Laterne, mit Rückwärtsgang nur die hintere.
+3. *Zähler bei kontaktfreien Schritten zurücksetzen* — der Kontakt besteht nur in
+   **jedem zehnten** Schritt; der Zähler lief netto rückwärts.
+4. *Tempo als Abbruchbedingung* — die Trennhilfe hob das Tempo über die Schwelle
+   und schaltete sich damit selbst ab (0,15 m in 5 s, dabei zeitweise 2,3 km/h).
+
+Ausgelöst wird jetzt über den **zurückgelegten Weg** (unter 1,5 m), ein
+**Kontaktgedächtnis** (0,4 s) und die Bedingung, dass der Wagen aus zwei
+**entgegengesetzten** Richtungen blockiert wurde. Die letzte ist die wichtigste:
+ohne sie schob sich der Wagen nach 1,5 s an einem **Baum** vorbei, den er
+respektieren muss (im Prüfstand als Regression aufgefallen und dort auch
+festgehalten). Wer nur in eine Richtung blockiert ist, kommt in die andere weg —
+das ist eine Wand und keine Klemme.
+
+## Was offen bleibt — Nachtrag
+
+- [ ] **Der Tempelaufgang (`sando`) bleibt für den Messstand unbefahrbar**:
+      44 m, 3 km/h, 2027 von 2700 Schritten neben der Strecke. Die Ursache ist
+      **nicht** die Physik, sondern die Karte: zwei Steinlaternen mit 4,33 m
+      Lücke auf der Fahrlinie. Ein Spieler kommt durch Wippen heraus (gemessen,
+      siehe oben), der Messstand kann das nicht — er fährt mit einem Regler,
+      nicht mit einer Absicht. Die saubere Lösung liegt in `gen-props.mjs` /
+      `PropClearance` (Laternen aus dem befahrbaren Korridor halten) und
+      bedeutet einen neuen Prop-Lauf; das ist eine Entscheidung über die Karte
+      und nicht über die Physik, deshalb steht sie hier und ist nicht
+      nebenbei getroffen.
+- [ ] **`toge` meldet in `measureStandingHeight` weiter 1804,7 cm an einer
+      Stelle.** Diese Messung setzt das Auto statisch auf Punkte der
+      Mittellinie und vergleicht mit `Mittellinie + surfaceOffset`; sie hängt
+      **nicht** an der Stützebene, sondern an der Straßenkorrektur. Median
+      0,2 cm — ein einzelner Punkt. Nicht untersucht.
+
+---
+
+# P20 — Die Karosserie kannte das Gelände nicht ✅ (2026-08-21)
+
+> **Auslöser war wieder ein Bild, keine Kennzahl.** Ein Auto, das bis zur
+> Fensterkante im Hang steckt, mit Gras, das durch das Blech wächst. Dazu ein
+> Satz: *„Ich will nie wieder irgendwo drin buggen."*
+>
+> P19 hatte die Kollision gegen **Hindernisse** auf ein orientiertes Rechteck
+> umgestellt und dabei vier Fehler gefunden. Das Bild oben zeigt keinen davon:
+> es zeigt das **Gelände**, und gegen das hat die Karosserie nie geprüft.
+
+## Der Befund
+
+Bis P20 kannte das Fahrzeug das Höhenfeld an genau **fünf** Stellen: unter den
+vier Rädern (Federung) und unter dem Schwerpunkt (`resolveTerrainFollow`). Die
+Karosserie ist 4,0 bis 7,6 m lang. Alles, was zwischen und **vor** diesen fünf
+Punkten liegt, gab es für die Physik nicht.
+
+Gemessen mit einer neuen Probe (Vollgas gegen einen Hang, tiefstes Eintauchen
+der Blechunterkante unter die Geländeoberfläche, Lage aus dem Quaternion):
+
+| Hang | Coupé | Offroad 4×4 |
+|---:|---:|---:|
+| 20° | **0,78 m** | 1,13 m |
+| 35° | 1,26 m | 1,73 m |
+| 45° | 2,22 m | 2,89 m |
+| 65° | **4,45 m** | **5,58 m** |
+
+Schon auf einem **befahrbaren** 20°-Hang lag die Nase 78 cm im Berg. Keine
+einzige Kennzahl hat das gemeldet, und zwar aus einem klaren Grund: es gab keine.
+`lastPenetration` zählt Hindernisse, `contacts` zählt Hindernisse, `airborne` war
+`false`, die Standhöhe stimmte. **Der Wagen fuhr.** Dieselbe Fehlerform wie beim
+Lastwagen in P19 („er fuhr ja") — nur andersherum als die vier Fälle aus P6: es
+war im Bild und in keiner Zahl.
+
+## Was gebaut wurde
+
+### 20.1 `hullTerrain.ts` — die Karosserie gegen das Höhenfeld
+
+Zehn bis dreizehn Prüfpunkte auf der Blechunterkante, im Fahrzeugsystem einmal je
+Spec gerechnet (`VehicleDerived.hullSamples`), im Schritt über das Quaternion in
+die Welt gedreht. Der Abstand der Punkte ist kleiner als der Texelabstand des
+Höhenfelds (1,4 m gegen 1,5 m) — die Lehre aus P19, eine Ebene höher: *eine
+Abtastung ist erst dann eine Form, wenn ihr Abstand kleiner ist als das Kleinste,
+was sie treffen soll.*
+
+Aufgelöst wird über **eine** Formel für flach und steil zugleich:
+
+```
+dist = über · n_y / (d · n)
+```
+
+`d` ist die Normale, solange die Fläche befahrbar ist, und ihr **waagerechter**
+Anteil, sobald sie eine Wand ist. Der zweite Zweig ist der Schutz gegen die
+Berg-Rakete: waagerecht geschoben kann kein Wagen an einer Wand hochratschen.
+
+**Kein Anlaufwinkel als neue Konstante.** Er ergibt sich aus dem, was schon
+dasteht: `atan(band[0] / Überhang)` sind 19,0° beim Coupé und 17,2° / 10,9° beim
+GT — für einen Straßenwagen und einen Supersportler die richtigen
+Größenordnungen. Eine zusätzliche Zahl hätte eine bereits gemessene Geometrie
+überschrieben.
+
+### 20.2 Vier Fallen, und jede hat einen eigenen Fehler erzeugt
+
+Die Auflösung selbst war schnell geschrieben. Was danach kam, sind vier
+Grenzzyklen, die alle dieselbe Wurzel haben: **die Hülle darf den Aufbau nicht
+tragen, das ist die Aufgabe der Federung.**
+
+**1. Der Lastwagen, der 15 s in der Luft parkte.** Hüllkontakt an der Heckkante,
+8 mm tief; der Schub hob den Aufbau 18 cm **über seine Ruhelage**, damit war die
+Federung ausgefedert, `airborne = true`, die Radlast null — und ein Auto ohne
+Radlast hat keinen Antrieb. Es fiel zurück, wurde wieder gehoben, und stand nach
+15 s noch bei z = 17,1 m mit **0,0 km/h**. Neu: ein Deckel auf die Standhöhe
+(`Stützebene + cgHeight / n_y`).
+
+**2. Derselbe Deckel ließ drei Fahrzeuge durch die Welt fallen.** Er stand als
+`s.y = ceiling` ohne Richtung. Im Flug gibt es keine Stützebene, `axleSupport`
+liefert dann `expected − UNSUPPORTED_DROP`, der Deckel lag 1,8 m **unter** dem
+Wagen — und zog ihn dorthin. Gemessen an der 3-m-Klippenkante: **y = −582 m**.
+Dieselbe Lehre wie bei `TIRE.tailGrip` (P17) und dem Wandzweig (P19): eine Klemme
+trifft beide Vorzeichen, wenn man sie nicht über ihre Richtung abgrenzt.
+
+**3. Die Geschwindigkeit senkrecht abzuweisen war falsch.** Die naheliegende
+Lösung war `blockIntoSurface` — dieselbe Abweisung, die der Bodenfang benutzt.
+Anteil der Zeit **ohne Radlast**, 90 s Zufallsgelände:
+
+| | ohne Hülle | volle Abweisung | nur waagerecht |
+|---|---:|---:|---:|
+| Coupé | 17,8 % | 49,8 % | **8,1 %** |
+| GT | 13,4 % | 55,2 % | **10,3 %** |
+| Offroad | 22,7 % | 57,2 % | **16,5 %** |
+| Lastwagen | 4,8 % | 29,0 % | **1,4 %** |
+
+Die mittlere Spalte ist ein Auto, das die halbe Zeit auf seinem Bodenblech
+schwebt. Seitdem gilt: **senkrecht trägt die Federung, waagerecht das Blech.**
+
+**4. Die Stützebene war ein Mittelwert, keine Ebene.** Die Federreichweite wurde
+gegen eine **waagerechte** Ebene geprüft. Auf 20 % Steigung liegen die Vorderräder
+`halber Radstand · tanθ` über dem Schwerpunktsniveau — beim Coupé 0,44 m gegen
+0,54 m Reichweite. Ein Stück Lastverlagerung, und die ganze Vorderachse galt als
+unerreichbar: Stützhöhe gedeckelt, Federkraft null, `airborne`, kein Antrieb.
+Gemessen an einer 20°-Rampe: 344 von 900 Schritten in der Luft, über z = 19 m kam
+der Wagen nicht hinaus.
+
+Neu wird jede Radhöhe auf die **Hangebene durch den Schwerpunkt**
+zurückgerechnet (`−(n_x·dx + n_z·dz) / n_y`). Auf gleichmäßigem Hang ist die
+Abweichung damit exakt null, an einer Felswand so groß wie zuvor — der Schutz aus
+P14 gegen das Anheben ist unberührt. Die Datei heißt `supportPlane.ts`, und bis
+hierher war ihre „Ebene" ein Mittelwert.
+
+### 20.3 Die Lage in der Luft folgt dem Gelände, nicht der Waagerechten
+
+`reachableWheel` bildet ein unerreichbares Rad auf `expected` ab. Im Flug sind
+alle vier unerreichbar, alle vier werden `expected`, die Differenzen null — und
+der Aufbau dreht sich **waagerecht**, egal über welchem Hang er fliegt. Solange
+Nicken reine Optik war, ein Schönheitsfehler; seit die Karosserie prüft, ein
+Fahrfehler: die Nase klappte am Übergang einer 20°-Rampe binnen 0,3 s von −15,9°
+auf −5,6° und grub sich 0,42 m in den Hang.
+
+Stehenlassen war der erste Versuch und ist **gemessen schlechter** (das Heck des
+GT stand dann 1,16 m unter der Oberfläche, über 6,3 s). Richtig ist: die Lage
+zielt in der Luft auf die **Flächennormale darunter**. Über einem 20°-Hang also
+auf −20° und nicht auf null — der Wagen landet flach.
+
+### 20.4 Die Fahrbahn ist kein Hindernis
+
+Auf dem synthetischen Prüfstand war nach 20.1–20.3 alles grün. Auf der **echten
+Karte** blieb der GT auf dem Bergpass nach 95 m stehen — auf Asphalt, mit null
+Hinderniskontakten, bei Vollgas, für den Rest des Laufs. Die elf Prüfpunkte bei
+(−588 | −322):
+
+| quer | Fahrbahnhöhe |
+|---:|---:|
+| −0,98 m | 37,371 m |
+| 0,00 m | 36,688 m |
+| +0,98 m | 36,396 m |
+
+**0,98 m Verwindung auf 1,96 m Breite** — 26 % Querneigung mitten auf einer
+Straße mit 10,7 % Längsneigung. Das ist keine Aussage über die Physik, sondern
+über die **Karte** (verwandt mit dem offenen Punkt aus P19: `measureStandingHeight`
+meldet auf `toge` an einer Stelle 1804,7 cm).
+
+Sie zu erben wäre trotzdem falsch gewesen: die Fahrbahnhöhe ist keine gemessene
+Geländehöhe, sondern eine **gerechnete Mischung** aus Sampler und Mittellinie,
+dazu Plateaus und Wasserspiegel. Ein Blech, das gegen eine synthetisierte Fläche
+stößt, stößt gegen eine Rechnung. Seitdem gilt: die Räder fahren auf allem, die
+**Karosserie** kollidiert nur mit `gelaende`. Die Abfrage steht hinter
+`über > 0` und kostet im Normalfall nichts.
+
+### 20.5 Die Klemmwache — die Zusicherung, die keine Physik geben kann
+
+`DriveSystem.#watchStuck`: wer fünf Sekunden lang Gas oder Bremse gibt und dabei
+keine drei Meter zurücklegt, wird auf die nächste Straße gesetzt — dasselbe, was
+`R` und der ⟲-Knopf tun, plus ein Hinweis im HUD.
+
+Sie ist bewusst **nicht** geometrisch. Der Beleg dafür ist P19.6: zwei
+Steinlaternen mit 4,33 m Lücke, ein Coupé mit 4,32 m Blechlänge. Kein
+Kollisionsmodell macht daraus etwas anderes als „steckt fest". Die Wache misst
+die einzige Größe, die der Fahrer auch sieht: *ist er von der Stelle gekommen.*
+
+Sie läuft in `fixedUpdate`, **nicht** in `simulateStep` — der Messstand fährt über
+`simulateStep`, und ein Prüfstand, der sich selbst freisetzt, meldete jede Karte
+als befahrbar.
+
+## Gemessen
+
+### Der Prüfstand (`tools/bench/world.mts`, zwei neue Proben)
+
+| Fahrzeug | Hang 20° | Hang 35° | Hang 55° | Zufallsgelände 90 s, **gehalten** |
+|---|---:|---:|---:|---:|
+| Coupé | 0,000 m | 0,000 m | 0,016 m | 0,117 m über 0,30 s |
+| GT | 0,000 m | 0,164 m | 0,102 m | 0,249 m über 7,27 s |
+| Offroad | 0,000 m | 0,016 m | 0,000 m | 0,158 m über 1,67 s |
+| Lastwagen | 0,000 m | 0,097 m | 0,051 m | 0,272 m über 2,23 s |
+
+Vorher: 0,78 bis 4,45 m, und auf dem Zufallsgelände bis **2,41 m**. Der Rest, der
+stehen bleibt, ist der gewollte: der Deckel lässt das Blech aufsitzen, statt den
+Wagen von seinen Rädern zu heben.
+
+Die Probe **Zufallsgelände** ist die eigentliche Antwort auf „nie wieder
+irgendwo drin": sie bildet keine bekannte Lage nach, sondern würfelt 90 Sekunden
+Gelände (sechs Sinuslagen, bis 48° steil) und Eingaben und prüft Zusicherungen —
+Blech nicht im Berg, Wagen nicht festgefahren, keine Rakete, keine NaN. Fester
+Seed, zwei Läufe sind bitgleich.
+
+### Die echte Karte (`japanMap.driveProbe`, 45 s, `speedCap` 16, alle vier)
+
+| Strecke | Coupé | GT | Offroad | Lastwagen |
+|---|---:|---:|---:|---:|
+| ring | 643 m | 659 m | 634 m | 574 m |
+| toge | 625 m | 634 m | 623 m | 588 m |
+| dorf | 651 m | 663 m | 647 m | 604 m |
+| stadt | 655 m | 666 m | 650 m | 580 m |
+| zufahrt | 138 m ✓Ende | 138 m ✓ | 138 m ✓ | 138 m ✓ |
+| **sando** | 28 m | 10 m | **431 m ✓Ende** | 25 m |
+| feldpfad | 385 m ✓ | 385 m ✓ | 385 m ✓ | 386 m ✓ |
+| kuestenpfad | 308 m ✓ | 308 m ✓ | 308 m ✓ | 308 m ✓ |
+
+Durchdringung **0,0 cm auf allen acht Strecken und bei allen vier Fahrzeugen**.
+`sando` bleibt die bekannte Zeile aus P18.5/P19.6 — die zwei Steinlaternen; der
+Offroader kommt seit P20 bis zum Ende (431 m gegen 394 m in P18).
+
+Vor der Reparatur aus 20.4 standen GT und Lastwagen auf dem **Bergpass** nach
+95 bzw. 90 m; das war die Verwindung der Fahrbahn und ist der Grund, warum diese
+Zeile in der Tabelle steht.
+
+### Kosten
+
+Zehn zusätzliche Höhenabfragen je Schritt. Auf der echten Karte gemessen
+(AMD Radeon iGPU, 200 000 Abfragen): **0,001223 ms** je Höhenabfrage, also
+**0,0122 ms** je Simulationsschritt für die ganze Hülle. Bei 60 Hz sind das
+0,73 ms je Sekunde — 0,07 % eines Frames.
+
+Im Prüfstand (synthetischer Boden, ganze Kollision gegen keine): +0,0009 bis
++0,0015 ms je Schritt, also unverändert gegenüber P19.
+
+## Akzeptanz
+
+- [x] Ein Auto steckt nicht mehr im Hang: 0,00…0,16 m statt 0,78…4,45 m.
+- [x] Auf 90 s Zufallsgelände bleibt das Blech höchstens 0,27 m im Boden, und
+      das nur für Sekunden — vorher bis 2,41 m.
+- [x] Alle vier Fahrzeuge fahren alle acht Strecken der Karte, Durchdringung
+      0,0 cm; `sando` bleibt die dokumentierte Ausnahme der **Karte**.
+- [x] Der Offroader fährt den Tempelaufgang zu Ende (431 m).
+- [x] `fleet.mts` liefert **zeichengleich** die Zahlen aus P18 — das Fahrmodell
+      auf ebenem Boden ist unberührt (0–100: 4,62 / 2,52 / 5,15 / 21,55 s).
+- [x] Alle Proben aus P19 bleiben grün (Felswand, Baum, Klippenkante,
+      Innenecke, Schraubstock, Planke, Landung).
+- [x] Die Klemmwache greift nach 5,02 s und setzt den Wagen auf Asphalt; das HUD
+      zeigt „Festgefahren — zurück auf die Straße (R)" (berechnete Deckkraft 1).
+- [x] Bild vorhanden: `.cache/shots/p20-hang-seitlich.png` — Coupé an einem
+      32°-Hang, alle vier Räder auf dem Boden, Blech frei.
+- [x] `typecheck` und `build` sauber.
+
+## Was offen bleibt
+
+- [ ] **„Fühlt es sich jetzt gut an" ist weiter nicht gemessen.** Dieselbe Zeile
+      wie P14, P18 und P19. Der Prüfstand fährt mit einem Regler, nicht mit einer
+      Absicht.
+- [ ] **Die Verwindung der Fahrbahn auf `toge` bei (−588 | −322) ist nicht
+      behoben, nur umgangen.** 0,98 m auf 1,96 m Breite sind eine Aussage über
+      den Baker oder über `#followRoadCorrection`, und beides gehört gemessen,
+      bevor jemand daran dreht. Zusammen mit den 1804,7 cm aus P19 ist das **eine**
+      offene Frage und nicht zwei.
+- [ ] **`STEEP_NY` = 0,78 (38,7°) ist weiter ein harter Schalter.** Darüber
+      verliert der Wagen schlagartig jede Radlast. Die Hülle macht den Übergang
+      nicht mehr gefährlich, aber eine stetige Kennlinie wäre ehrlicher.
+- [ ] **Die Klemmwache ist mit stillgelegter Physik geprüft**, also an einem von
+      Hand gesetzten Zustand — genau die Falle aus CLAUDE.md. Sie ist damit als
+      *Uhr* gemessen (5,02 s, ein Auslösen, Ziel auf Asphalt), nicht als
+      Rettung aus einer echten Klemme. Im Nischenfall am Tempelaufgang kam der
+      Wagen ohne sie frei (11,5 m in 3 s), sie war dort also gar nicht fällig.
+- [ ] **Auf einem echten Telefon nicht geprüft** — dieselbe Lücke wie seit P12.6.
+
+---
+
+# P21 — Vier Ursachen statt einem Symptom ✅ (2026-08-21)
+
+> **Auslöser war ein Satz mit zwei Beschwerden darin:** *„warum bugge ich zum
+> Teil immer noch? Oder kann mit dem Default-Car nicht einen leichten Hügel
+> hoch."*
+>
+> P20 hatte an einem **Symptom** gemessen (Blech im Berg) und es behoben. Der
+> Rest blieb, weil ein Hang, der nicht befahrbar ist, **vier** verschiedene
+> Ursachen haben kann — und sie sehen im Spiel identisch aus.
+
+## Der Prüfstand, der zuerst gebaut werden musste
+
+`tools/bench/hill.mts` fährt die Matrix Fahrzeug × Belag × Steigung ab und
+schreibt neben jedes Ergebnis, **welche** Ursache greift:
+
+| Ursache | woran man sie erkennt |
+|---|---|
+| **Traktion** | der gerechnete Grenzwinkel ist überschritten — Physik, kein Fehler |
+| **Wand** | `STEEP_NY` erklärt den Hang zur Wand, Radlast schlagartig null |
+| **Blech** | die Karosserie sitzt auf (P20) |
+| **Flattern** | die Federung verliert immer wieder den Boden |
+
+Der Grenzwinkel wird **ausgerechnet**, nicht gefahren:
+
+```
+sinθ ≤ Σ_Achse μ_Achse · Lastanteil · Antriebsanteil
+```
+
+Damit ist jede rote Zelle entscheidbar — reparieren oder nicht. Ohne diese
+Trennung hätte P21 wieder an einem Symptom gedreht.
+
+## Drei echte Fehler, jeder einzeln gemessen
+
+### 21.1 `respawn` setzte Nick und Wank auf null
+
+Auf einem Hang ist das schlicht falsch: der Wagen stand für die Einschwingzeit
+(~0,3 s) **waagerecht auf einer schiefen Ebene**. Bis P20 ein Schönheitsfehler —
+seit die Karosserie gegen das Gelände prüft, gräbt sich dabei das Heck ein.
+
+| Hang | Blech im Boden, vorher | nachher |
+|---:|---:|---:|
+| 10° | 0,043 m | 0,000 m |
+| 20° | **0,369 m** | 0,000 m |
+| 30° | **0,664 m** | 0,000 m |
+
+Betrifft im Betrieb **jedes** Absetzen: Taste `R`, Einsteigen, Fahrzeugwechsel
+und die Klemmwache aus P20 — also ausgerechnet die Wege, die einen
+festgefahrenen Wagen befreien sollen. Die Lage kommt jetzt aus der
+Flächennormalen, dieselbe Rechnung wie im Luftzweig von `#updateAttitude`.
+
+> Und es ist zugleich eine Falle für den **Prüfstand**: die Zahlen oben hat
+> `hill.mts` als „Aufsitzen" gemeldet, und es war in Wahrheit der erste
+> Zehntelsekunde-Zustand des Laufs. Eine Messung, die sich ihren eigenen
+> Anfangszustand kaputtsetzt — dieselbe Klasse wie die exakt −6,00 cm Standhöhe
+> in P14.
+
+### 21.2 `respawn` nahm die Höhe vom Boden unter dem Schwerpunkt
+
+Der Aufbau steht auf **vier Rädern**, und auf welligem Grund liegen die
+woanders. Gemessen bei (−1328 | −517): Räder auf 76,43…76,86 m, Boden unter dem
+Schwerpunkt 76,87 m — **43 cm** Unterschied. Der Wagen wurde beim Absetzen in
+den Gummipuffer gedrückt (Einfederung **1,29**), das Blech 0,37 m in den Boden,
+und er blieb liegen: **1,3 m in sieben Sekunden Vollgas**.
+
+Die Höhe kommt jetzt aus der Stützebene, zweimal gerechnet (`#contactHeight`
+hängt über `expected` von der Höhe ab, die sie bestimmt).
+
+### 21.3 Die Hülle konnte bremsen, aber nicht tragen
+
+**Der teuerste der drei, und der mit der schönsten Ursache.** Der Deckel aus P20
+verbot der Karosserie jeden Schub über die Standhöhe — aus gutem Grund, sonst
+hebt sie den Wagen von seinen eigenen Rädern. Damit fehlte ihr aber die Hälfte
+der Wirklichkeit: **ein Auto, das über eine Bodenwelle fährt, steigt darüber.**
+Dieses pflügte hindurch, und `BELLY_DRAG` nahm ihm dabei 95 % des Tempos je
+Sekunde.
+
+Gemessen auf der echten Karte, 53 zufällige Stellen, Coupé, 7 s Vollgas: drei
+blieben liegen — alle auf 11…14° Hang, also weit **unter** der Traktionsgrenze
+von 17,8°, ohne einen einzigen Hinderniskontakt, mit 0,21…0,35 m Blech im Boden.
+Das Gelände dort steigt und fällt um 0,3…0,6 m je Meter.
+
+Neu ist `hullSupport`: statt den Wagen von außen hochzuschieben, hebt das Blech
+seine **Stützebene**. Die Feder trägt ihn dann selbst darüber, die Radlast bleibt
+erhalten, die Reifen greifen weiter. *Der Aufbau liegt auf dem Höchsten, was
+unter ihm ist — den Reifen oder dem Blech.*
+
+| Zufallsgelände 90 s, **gehaltene** Durchdringung | P20 | P21 |
+|---|---:|---:|
+| Coupé | 0,117 m über 0,30 s | **0,000 m** |
+| GT | 0,249 m über 7,27 s | 0,113 m über 0,07 s |
+| Offroad | 0,158 m über 1,67 s | **0,000 m** |
+| Lastwagen | 0,272 m über 2,23 s | **0,000 m** |
+
+## Zwei Entscheidungen, keine Fehler
+
+### 21.4 Die Kriechhilfe im Gelände
+
+Das Default-Coupé kam gerechnet **17,8°** hoch — Heckantrieb, 47 % Last hinten,
+μ 0,65 auf Gras. Ein echter Hecktriebler kommt eine Wiese auch nicht hoch, und
+mehr Gas hilft nicht (gemessen: bei 20° endet der Wagen mit Gas 0,5 / 0,7 / 1,0
+**auf dieselbe Nachkommastelle** bei 0,4 km/h — oberhalb der Haftgrenze ist die
+übertragene Kraft geklemmt).
+
+Trotzdem war das auf der Karte die **häufigste** Ursache fürs Steckenbleiben: von
+14 gescheiterten Versuchen, aus 12 m auf die Straße zurückzukommen, scheiterten
+**12 daran** — und keiner an der Kollision.
+
+`CRAWL_ASSIST`: unter 8 m/s bekommt die Vorderachse auf losem Boden einen
+Antriebsanteil dazu, linear ausgeblendet mit dem Tempo. Auf Asphalt ist sie
+**null**, und das ist die Bedingung selbst und kein Zufall — sämtliche
+P18-Zahlen bleiben zeichengleich.
+
+| Steigfähigkeit Gelände | ohne | mit Kriechhilfe |
+|---|---:|---:|
+| Touge-Coupé | 17,8° | **37,7°** |
+| GT | 16,3° | 23,0° |
+| Offroad 4×4 | 61,8° | 57,5° * |
+| Lastwagen | 16,0° | 18,6° |
+
+\* Der Offroader *verliert* rechnerisch etwas, weil die Formel für Allrad
+korrigiert wurde: übertragbar ist `min(gripVorn/s, gripHinten/(1−s))` und nicht
+die Summe — eine Achse, die durchdreht, kann ihre Kraft nicht abgeben. Gefahren
+ändert sich bei ihm nichts (10 s Vollgas im Gelände: 102 km/h, wie in P18).
+
+Die Rangfolge bleibt: Offroad ≫ Coupé > Lastwagen ≈ GT.
+
+### 21.5 Die Steilhang-Kante ist eine Kennlinie geworden
+
+`isSteep` war ein **Schalter** mitten im Fahrbereich: bei 38,6° volle Radlast,
+bei 38,8° gar keine. In einem Simulationsschritt wurde aus voller Kontrolle ein
+Rutschen ohne Lenkung, Antrieb und Bremse.
+
+`slopeSupport` blendet die Radlast jetzt zwischen **34,9° und 50,2°** mit
+`smoothstep` aus. Die Grenzen liegen so, dass der alte Schalter mitten im Band
+steht: unter 35° ändert sich nichts (der gesamte befahrbare Teil der Karte,
+einschließlich des steilsten Wegs mit 23,3°, liegt darunter), über 50° ebenfalls
+nichts (die 55°-Felswand aus P19 trägt weiter null). Neu ist der Bereich
+dazwischen — ein 45°-Hang trägt 28 % statt 0 %.
+
+**Die Geometrie bleibt ein Schalter.** Ob eine Fläche Boden oder Wand ist,
+entscheiden `resolveTerrainFollow` und `hullTerrain` weiter über `STEEP_NY`;
+beide Zweige sind seit P19 gemessen sicher, und ein „halbes" Ausschieben gibt es
+nicht. Ausgelaufen ist die **Kraft**, nicht die Form.
+
+### 21.6 Nachtrag: der Zufallslauf hat einen Fehler von P20 gefunden — meinen
+
+Nach 21.1–21.5 wurden GT und Lastwagen zum ersten Mal gefuzzt (die Abnahme hatte
+bis dahin nur Coupé und Offroader). Beide blieben an derselben Stelle stehen:
+**(−881 | 129), Hang 0,7°** — praktisch eben — mit **0,75 m** (GT) bzw.
+**1,86 m** (Lastwagen) Blech im Boden.
+
+Die Stelle ist eine **Reisfeld-Terrasse**: eine flache Wanne mit 30 cm Wasser und
+einer 2,4…2,8 m hohen Wand daneben. Und die Wand war für die Karosserie nicht
+vorhanden.
+
+Ursache ist die Zeile aus P20.4, mit der die **Fahrbahn** aus der Hüllkollision
+genommen wurde:
+
+```ts
+if (ground.surface(px, pz) !== 'gelaende') continue;
+```
+
+Die Begründung galt der Fahrbahn — eine gerechnete Mischung aus Sampler,
+Mittellinie, Plateaus und Wasserspiegel ist kein Blechhindernis. Die
+**Bedingung** traf zusätzlich `'wasser'`, und darunter liegt echter Boden: die
+Terrassenwände der Reisfelder, 7,6 % der Karte. Seitdem heißt sie
+`istFahrbahn(belag)` und prüft `'asphalt' || 'kies'` — genau die zwei Werte, die
+`DriveSystem.surface()` **ausschließlich** für Straßen liefert.
+
+Gegenprobe am Meer (Küste bis 37 m Tiefe, beide Fahrzeuge, 15 s): Blech
+**0,00 m**, das Auto schwimmt. Dass die Wasser*fläche* kein Hindernis wird,
+erledigt die Geometrie von allein — die Räder liegen auf ihr, das Blech steht
+`band[0]` darüber.
+
+Zwei Lehren:
+
+1. **Eine Ausnahme gehört so eng formuliert, wie sie begründet ist.** Begründet
+   war „Fahrbahn", geschrieben war „alles außer Gelände". Der Unterschied ist
+   eine ganze Zone der Karte.
+2. **Der Zufallslauf findet, was ein Nachbau nicht findet** — er würfelt nach
+   *Stellen* und nicht nach Fällen, die jemand schon kennt. Und er ist nur so
+   gut wie die Zahl der Fahrzeuge, über die er läuft: zwei Phasen lang lief er
+   über zwei von vier.
+
+> **Und er hatte eine eigene Falle.** Die 1,86 m des Lastwagens waren zur Hälfte
+> ein **Absetz**-Zustand: der Lauf setzt das Auto an eine gewürfelte Stelle, und
+> steht die in einer Terrassenwand, misst der erste Meter das Absetzen. Nach 0,7 s
+> war die Durchdringung 0,00. Der Lauf lässt seitdem **eine Sekunde einschwingen**,
+> bevor er den Startpunkt nimmt. Dieselbe Falle wie bei den Respawn-Fehlern in
+> 21.1/21.2 — zum dritten Mal in einer Phase.
+
+### 21.7 Nachtrag: die Fahrbahn ist eine Ebene, und der Phantom-See ist weg
+
+Zwei offene Punkte aus P19/P20, beide auf dem Bergpass, beide erledigt — und
+sie hatten **nichts** miteinander zu tun, obwohl sie 20 m auseinanderlagen.
+
+#### Die Verwindung: die Physik fuhr nicht auf dem Fahrbahnband
+
+`DriveSystem.height()` bildete die Fahrbahn als `Gelände(x,z) + Korrektur`, und
+die Korrektur war ein **Skalar**, gebildet am nächsten Punkt der Mittellinie.
+Damit erbt die Fahrbahn jede Verwindung des Geländes unter ihr. Der Baker bekommt
+eine Kehre aber nicht flach, wo zwei Trassen übereinander liegen — und das Bild
+zeigt trotzdem ein glattes Band.
+
+Gemessen über 684 Punkte aller acht Strecken, größte Höhenabweichung quer zur
+Fahrbahn innerhalb ±3 m:
+
+| | vorher | nachher |
+|---|---:|---:|
+| Median | 0,06 m | 0,05 m |
+| 90. Perzentil | 0,16 m | 0,11 m |
+| 99. Perzentil | 1,05 m | **0,39 m** |
+| Maximum | **1,66 m** | **0,85 m** |
+| über 30 cm | 37 von 684 | **16 von 683** |
+
+Die schlimmsten acht lagen alle in **einer** Kehre um (−600 | −312) — dort blieb
+der GT vor P20.4 nach 95 m stehen. Nach dem Umbau ist dieselbe Stelle ein
+sauberer linearer Anstieg (−0,29 / −0,21 / −0,14 / −0,07 / 0 / +0,07 / … über
+±4 m).
+
+Neu ist die Sollhöhe eine **Ebene durch den Straßentreffer**, mit der
+Längsneigung des Segments (`RoadHit.slopeAlong`, neu) und ohne Querneigung. Die
+Verwindung quer ist damit per Konstruktion null: die Fahrbahn ist flach, weil sie
+als flach gerechnet wird, und nicht, weil das Gelände darunter zufällig flach
+ist.
+
+Die 16 verbliebenen Fälle über 30 cm sind **keine** Fahrbahn: sie liegen alle auf
+den 1,8 m breiten Kiespfaden, wo ±3 m längst im Gelände sind. Nachgemessen bei
+(836 | −525): ab 2 m seitlich meldet `surface` `gelaende`.
+
+> **Ohne Querneigung, und das ist gemessen und nicht vergessen.** Das Band im
+> Bild ist überhöht, aber nur `ring` (2,0°) und `toge` (3,0°) tragen überhaupt
+> einen Wert — 0,157 m bzw. 0,170 m über die halbe Breite, und nur in der
+> engsten Kehre. Das liegt eine Größenordnung unter dem Fehler, den die Ebene
+> behebt. Sie nachzubilden hieße, `signedCurvature` und `BANK_GAIN` ein zweites
+> Mal zu implementieren.
+
+#### Die 1804,7 cm: ein Wasserfall, der eine Felswand flutet
+
+Die zweite offene Zeile aus P19 war keine Frage der Straße. An (−1085 | −512)
+meldete das Wasserfeld **21,24 m Tiefe** — auf dem Bergpass, 95 m über dem Meer.
+Das Auto schwamm dort auf einem Phantom-See, und die Standhöhe gegen die
+Mittellinie war entsprechend 18 m daneben.
+
+`WaterField.#inRiver` sucht den nächsten Flussknoten **in XZ** und nimmt dessen
+Spiegelhöhe; über die Höhendifferenz stand nichts darin. Dieser Fluss hat zwei
+**Wasserfälle** (`river.json`, `falls`: 11,2 m und 39,7 m). Am Kopf des großen
+liegt Knoten 113 auf 116,00 m mit 7,5 m Halbbreite — und war damit für jeden
+Punkt der Felswand 21 m darunter der nächste.
+
+Neu ist `RIVER.maxDepth` = 6 m, gewählt aus der gemessenen Verteilung (13 229
+Proben im Kanal gegen `height.r16`): Median 3,11 m, p90 4,29 m, p99 15,77 m — und
+zwischen 6 und 10 m liegt genau **1,07 %**, der Knick zwischen Bett und Fall.
+Der Satz dahinter ist kein Grenzwert, sondern eine Aussage: *ein Flussknoten
+beschreibt ein Bett, keinen Wasserfall.*
+
+| | vorher | nachher |
+|---|---:|---:|
+| Wassertiefe bei (−1085 \| −512) | 21,24 m | **0 m** |
+| Standhöhe `toge`, Maximum | **1804,7 cm** | **6,05 cm** |
+| Rasterpunkte der Karte mit unmöglicher Tiefe (12…25 m) | 10 | **0** |
+| dieselben, 6…12 m | 4 | **0** |
+| dieselben, 3…6 m | 216 | 216 (im gemessenen Bettbereich) |
+
+#### Und noch ein Messwerkzeug, das lügen konnte
+
+`measureStandingHeight` rechnete mit `CHASSIS.cgHeight` — der Höhe des **Coupés**
+(0,52 m) — für jedes Fahrzeug. Mit dem Offroader (0,78 m) hätte jede Standhöhe um
+26 cm danebengelegen, still. Seit P18 gibt es vier Fahrzeuge, und seitdem war die
+Zeile falsch; sie ist nur nie mit einem anderen gelaufen. Dieselbe Klasse wie die
+sieben Modulkonstanten, die in P17 aus `Vehicle.ts` mussten.
+
+Mit der Reparatur, alle vier Fahrzeuge, Standhöhe **Maximum** je Strecke:
+
+| | Coupé | GT | Offroad | Lastwagen |
+|---|---:|---:|---:|---:|
+| ring | 26,5 cm | 2,7 | 34,2 | 5,2 |
+| toge | **6,1 cm** | 3,4 | 10,0 | 71,8 |
+| dorf | 2,3 | 2,8 | 3,3 | 6,1 |
+| stadt | 0,0 | 0,0 | 0,0 | 0,0 |
+| zufahrt | 1,8 | 2,0 | 2,4 | 3,0 |
+| sando | 17,2 | 16,9 | 23,0 | 36,6 |
+| feldpfad | 3,0 | 7,1 | 5,5 | 18,8 |
+| kuestenpfad | 6,6 | 7,1 | 9,4 | 11,9 |
+
+Die verbliebenen Ausreißer sind Bauart und nicht Fehler: der Lastwagen ist 7,6 m
+lang und stellt in einer 6,5-m-Kehre zwei Räder ins Gelände; `sando` ist 1,8 m
+breit. Beides sind **statische** Absetzungen auf Mittellinienpunkten, keine
+Fahrten — die Fahrten melden auf allen acht Strecken 0,0 cm Durchdringung.
+
+
+### 21.8 Das schwebende Becken — gemessen, eingegrenzt, **nicht** repariert
+
+Die Reparatur aus 21.7 (`RIVER.maxDepth`) nimmt der Physik den Phantom-See. Sie
+nimmt ihn dem **Bild** nicht, und deshalb gehört hierher, was die Ursache
+wirklich ist und warum sie stehen bleibt.
+
+#### Was gemessen wurde
+
+`river.json` führt die Sohle als Mittellinie. Gegen `height.r16` gerechnet
+(422 Knoten):
+
+| Sohle über dem Gelände | |
+|---|---:|
+| Median | 2,64 m |
+| 90. Perzentil | 3,47 m |
+| 99. Perzentil | 14,16 m |
+| Maximum | **20,49 m** |
+
+Der Median ist **Absicht**: der Baker schneidet das Bett tiefer ein, als die
+Linie liegt, und `RIVER.surfaceRise` = 0,9 m ist genau darauf geeicht (der
+Kommentar dort nennt 2,68 m — meine Messung sagt 2,64 m, dieselbe Zahl).
+
+Der Schwanz ist es nicht. **17 Knoten von 422** schweben über 5,1 m, in genau
+zwei zusammenhängenden Abschnitten, beide am Bergpass:
+
+| Abschnitt | von | bis | Lauflänge |
+|---|---|---|---:|
+| Knoten 98–107 | (−1068 \| −606) | (−1073 \| −552) | ~57 m |
+| Knoten 112–118 | (−1083 \| −522) | (−1097 \| −486) | ~38 m |
+
+Die Sohle steht dort auf **konstant 116,7 m**, während das Gelände darunter von
+105 auf 96 m abfällt. Das ist kein Bett, das ist ein **Becken, das das Gelände
+nicht trägt** — der Flussgenerator hat vor dem Einschneiden einen Stausee
+getraced, und die Erosion hat den Hang darunter weggenommen. Der Fall darauf
+steht als solcher in der Datei (`falls`: Knoten 114→124, 39,68 m).
+
+Dass Fluss und Straße sich überlagern, ist eine Folge davon: **17 Flussknoten
+liegen im Korridor von `toge`**, und der Fluss steht dabei 0,3 bis 21,0 m
+**über** der Fahrbahn. Es ist also nicht „die Straße quert den Fluss", sondern
+„das schwebende Becken hängt über der Straße".
+
+#### Warum es nicht repariert wird
+
+**Weil man es beim Spielen nicht sieht.** Drei Blickpunkte auf der Passstraße,
+alle auf Fahrerhöhe, alle mit vollem Bild (`anteilNichtSchwarz` ≥ 0,999):
+
+| Bild | Standort | Wasser im Bild |
+|---|---|---|
+| `p21-blick-von-der-strasse.png` | (−1085 \| −512), Blick den Hang hinauf | nein |
+| `p21-becken-ueber-der-strasse.png` | (−1068 \| −580), Becken 9,6 m senkrecht darüber | nein |
+| `p21-blick-von-oben-am-pass.png` | (−867 \| −630), 149 m hoch, Blick auf das Becken | nein |
+
+Der Pass läuft dort im Einschnitt; der Fels steht zwischen Fahrer und Becken.
+Sichtbar wird es erst aus der Vogelperspektive — `p21-wasserfall-kreuzt-strasse.png`
+ist aus 40 m Höhe aufgenommen, und diese Höhe hat im Fahrmodus keine Kamera
+(Verfolger 2,35 m, Haube darunter).
+
+**Und weil die Reparatur die Karte neu würfelt.** Die Ursache liegt in
+`bake-terrain.mjs`; sie zu beheben heißt `npm run world`. CLAUDE.md hält dazu
+eine gemessene Warnung bereit: die Erosion ist ein chaotisches System, ein
+Eingriff in **einer** Zone ändert danach 66,82 % der Texel bis ans andere Ende
+der Karte — und die Straßen entstehen aus dem Höhenfeld. Der Bergpass wäre danach
+ein anderer, und jede Zahl aus P14 bis P21 wäre neu abzulesen.
+
+Das ist ein schlechter Tausch für einen Fehler, den kein Fahrer sieht, und es ist
+eine Entscheidung über die **Karte** — die gehört nicht in eine Physikphase.
+
+> **Der Fehler, den ich hier fast gemacht hätte**, steht in CLAUDE.md schon
+> zweimal: am erstbesten plausiblen Regler drehen. Der naheliegende Griff war,
+> das Flussband dort abzuschneiden, wo es schwebt — dieselbe Regel wie in der
+> Physik, eine Konstante, zehn Zeilen. Er hätte 95 m Fluss aus dem Bild genommen,
+> um etwas zu beheben, das im Bild gar nicht vorkommt.
+
+#### Was zu tun wäre, wenn es angefasst wird
+
+1. Im Flussgenerator: ein Becken nur dort zulassen, wo das Gelände es **nach**
+   der Erosion noch trägt — oder die Mittellinie nach dem Einschneiden neu auf
+   das Höhenfeld setzen. Die zweite Variante ist die billigere und macht
+   `RIVER.surfaceRise` gleich ehrlich (es müsste dann die echte Bettiefe sein).
+2. `npm run world` und **alles** neu messen: `world.mts`, `hill.mts`,
+   `driveProbe` über acht Strecken × vier Fahrzeuge, dazu die Bilder.
+3. Erst dann entscheiden, ob der Pass an der Stelle eine Brücke braucht.
+
+
+## Gemessen — Endstand P21
+
+### Zufallslauf über die ganze Karte, alle vier Fahrzeuge
+
+200 Stellen je Fahrzeug, 1 s einschwingen, dann 7 s Vollgas mit Lenkeinschlag;
+festgefahren = unter 8 m Weg.
+
+| | fest | Ursache der verbliebenen |
+|---|---:|---|
+| Touge-Coupé | **2 von 103** | 33,7° Hang; ein Bachlauf im Graben |
+| GT | **3 von 103** | 29,1° und 35,4° Hang; Reisfeld gegen die Terrassenwand |
+| Offroad 4×4 | **1 von 103** | 8,7° — kroch 7,4 m, knapp unter der Schwelle |
+| Lastwagen | **5 von 103** | zwei knapp unter seiner Grenze (18,6°), zwei über 28°, eins gegen die Terrassenwand |
+
+**In keinem einzigen verbliebenen Fall ist die Kollision die Ursache**: das Blech
+lag überall bei ≤ 0,07 m.
+
+### Ist tiefes Blech noch möglich? Ja — im Fall, für Millisekunden
+
+Der schlechteste Wert der ganzen Karte ist der Lastwagen bei (−211 | −1020): er
+**stürzt** einen 63°-Hang hinunter (95 % der Zeit ohne Radlast, 134 m Weg). Dort
+misst der Lauf kurzzeitig 4,71 m. Nachgemessen an derselben Stelle:
+
+| | |
+|---|---:|
+| Schritte über 0,5 m Durchdringung | 17 von 420 |
+| längste **zusammenhängende** Strecke über 0,1 m | **0,07 s** (4 Bilder) |
+| Tiefe dabei | 0,45 m |
+
+Das ist die gewollte Seite des Entwurfs: **die Hülle hält einen fallenden Wagen
+nicht** (sonst parkt er auf seinem Stoßfänger in der Luft, P20.2). Ein Flackern
+über vier Bilder im freien Fall ist der Preis dafür.
+
+### Reisfelder
+
+21,6 % der Karte sind nass; davon 1897 Punkte Meer (schwimmt), **1039 Punkte
+Reisfeld mit 20…40 cm**. Zwanzig Absetzungen mitten im Feld, beide Fahrzeuge:
+**0 festgefahren**. Das Coupé watet mit 14…21 km/h, der Offroader mit 45…66.
+
+> **Die Wassergrip-Kante bleibt und ist bewusst nicht angefasst.** `surface`
+> meldet ab 8 cm Wasser, und dort fällt μ von 0,65 auf 0,325 — ein Schalter
+> derselben Bauart wie `STEEP_NY` vor 21.5. Auf der Karte greift er nur an
+> wenigen Stellen (10 von 13 689 Rasterpunkten liegen im Band 8…20 cm), und
+> gemessen verursacht er keinen einzigen Steckenbleiber. Eine Kennlinie ohne
+> gemessenen Anlass wäre eine Behauptung.
+
+
+## Gemessen
+
+### Auf der Karte: der Zufallslauf
+
+200 zufällige Stellen, 7 s Vollgas mit Lenkeinschlag nach 3 s, festgefahren =
+unter 8 m Weg:
+
+| | vor P21 | nach P21 |
+|---|---:|---:|
+| Touge-Coupé | 10 von 103 | **2 von 103** (38,7° und 42,4° Hang) |
+| Offroad 4×4 | 0 von 103 | 0 von 103 |
+
+### Auf der Karte: zurück auf die Straße
+
+Aus 12 m Entfernung, Kurs auf die Fahrbahn, 8 s Vollgas:
+
+| | vor P21 | nach P21 |
+|---|---:|---:|
+| zurück auf der Straße | 16 von 30 | **20 von 30** |
+| davon wirklich fest (< 8 m Weg) | 14 | **3** — zwei auf 40°+, einer gegen einen Baum |
+
+### Der Messstand über alle acht Strecken
+
+**Alle vier Fahrzeuge fahren jetzt alle acht Strecken.** Der Tempelaufgang war
+seit P18 für drei von vier blockiert:
+
+| `sando` | P18 | P21 |
+|---|---:|---:|
+| Touge-Coupé | 29 m | **430 m ✓ Ende** |
+| GT | 18 m | **415 m** |
+| Offroad 4×4 | 394 m | 431 m ✓ Ende |
+| Lastwagen | 21 m | **215 m** |
+
+Durchdringung **0,0 cm** auf allen acht Strecken und bei allen vier Fahrzeugen.
+
+### Der Steigungs-Prüfstand
+
+Coupé auf Gelände, Endtempo nach 20 s Vollgas:
+
+| Hang | vor P21 | nach P21 |
+|---:|---:|---:|
+| 15° | 9,3 km/h | 23 km/h |
+| 20° | 0,4 km/h | **19 km/h** |
+| 25° | −3,6 (rutscht) | **15 km/h** |
+| 30° | −8,1 (rutscht) | **12 km/h** |
+| 35° | −8,1 (rutscht) | **6 km/h** |
+| 40° | −14 (Wand) | −14 (Wand) |
+
+Auf **rauem** Gelände liegt das Blech jetzt bei 0,00…0,04 m statt 0,07…0,66 m.
+
+## Akzeptanz
+
+- [x] `fleet.mts` **zeichengleich** zu P18 auf Asphalt: 0–100 4,62 / 2,52 / 5,15
+      / 21,55 s, Endtempo 257 / 331 / 193 / 115 km/h, Bremsweg, Gierstabilität,
+      Ausrollen, Einfederung — alles unverändert.
+- [x] Alle Proben aus P19/P20 grün (Felswand, Baum, Klippenkante, Innenecke,
+      Schraubstock, Planke, Landung, Hang, Zufallsgelände).
+- [x] Zufallsgelände: gehaltene Durchdringung 0,000 m bei drei von vier
+      Fahrzeugen, 0,113 m über 0,07 s beim GT.
+- [x] Zufallslauf auf der Karte, **alle vier** Fahrzeuge: 2 / 3 / 1 / 5 von je
+      103 fest — und in **keinem** verbliebenen Fall ist die Kollision die
+      Ursache (Blech überall ≤ 0,07 m).
+- [x] Alle vier Fahrzeuge auf allen acht Strecken, Durchdringung 0,0 cm.
+- [x] Bild: `.cache/shots/p21-hang-29grad.png` — Coupé fährt mit 26,8 km/h über
+      einen 29°-Hang, Räder auf dem Boden, Staubfahne, `anteilNichtSchwarz` 1,000.
+- [x] `typecheck` und `build` sauber.
+
+## Was offen bleibt
+
+- [ ] **„Fühlt es sich jetzt gut an" ist weiter nicht gemessen.** Vierte Phase
+      mit derselben Zeile. Die Kriechhilfe ist eine **Fahrhilfe** — ob sie sich
+      wie Traktion anfühlt oder wie ein Magnet, entscheidet eine Hand an der
+      Tastatur.
+- [ ] **In flachem Wasser gibt es die Kriechhilfe nicht**, und die Wassergrip-
+      Kante bei 8 cm bleibt ein Schalter derselben Bauart wie `STEEP_NY` vor
+      21.5 (μ fällt dort von 0,65 auf 0,325). Gemessen verursacht beides keinen
+      einzigen Steckenbleiber — Reisfelder 0 von 20, und nur 10 von 13 689
+      Rasterpunkten der Karte liegen überhaupt im Band 8…20 cm. Angefasst wird
+      es, wenn es einen gemessenen Anlass gibt; eine Kennlinie ohne den wäre
+      eine Behauptung. Was bleibt: der Wagen watet, statt zu fahren
+      (14…21 km/h im Reisfeld), und einen Bachlauf im Graben kommt er nicht
+      hinauf.
+- [x] ~~**Die Verwindung der Fahrbahn auf `toge` bei (−588 | −322)**~~ und
+      ~~**die 1804,7 cm Standhöhe aus P19**~~ — beide in 21.7 erledigt, und sie
+      hatten nichts miteinander zu tun: die eine war ein Skalar statt einer
+      Ebene, die andere ein Wasserfall, der eine Felswand flutete.
+- [ ] **Ein Becken des Flusses schwebt über dem Berghang — Sache des Generators,
+      nicht der Physik.** Siehe 21.8: gemessen, eingegrenzt, mit Bildern belegt,
+      und bewusst **nicht** repariert. Die Reparatur gehört in `bake-terrain.mjs`
+      und kostet einen `npm run world`-Lauf, der das ganze Höhenfeld neu würfelt.
+- [ ] **Auf einem echten Telefon nicht geprüft** — dieselbe Lücke wie seit P12.6.

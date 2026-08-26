@@ -185,6 +185,10 @@ export class WaterField {
     const surfaceY = ys[bestI]! + RIVER.surfaceRise;
     const depth = surfaceY - groundY;
     if (depth <= WATER_PHYS.wetThreshold) return false;
+    // **Und nicht tiefer als ein Bett** — P21. Die Suche oben kennt nur XZ; am
+    // Kopf eines Wasserfalls ist ein Knoten damit auch für die Felswand 21 m
+    // unter ihm der nächste. Begründung und Messung bei `RIVER.maxDepth`.
+    if (depth > RIVER.maxDepth) return false;
 
     out.kind = 'fluss';
     out.surfaceY = surfaceY;

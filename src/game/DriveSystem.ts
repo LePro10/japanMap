@@ -39,6 +39,26 @@ import { WaterField } from './WaterField';
 import type { CanopyHit, CanopySource } from '@/world/scatter/ScatterSystem';
 
 /**
+ * So lange darf ein Fahrer drücken, ohne von der Stelle zu kommen, in Sekunden.
+ *
+ * Fünf. Lang genug, dass niemand aus Versehen gerettet wird, der gerade an einer
+ * Mauer rangiert oder mit dem Fuß auf der Bremse steht; kurz genug, dass das
+ * Steckenbleiben nicht zum Ereignis wird. Gemessen am Tempelaufgang aus P19.6
+ * kam ein Spieler durch Wippen in **15 s** frei — wer nach fünf noch steht, hat
+ * es dreimal versucht.
+ */
+const RESCUE_DELAY = 5;
+
+/**
+ * So weit muss er dabei kommen, damit es kein Steckenbleiben ist, in Metern.
+ *
+ * Drei. Die Zahl trennt „festgefahren" von „rangiert": am Tempelaufgang legte
+ * das eingeklemmte Coupé in fünf Sekunden Vollgas **0,15 m** zurück, mit Wippen
+ * über 15 s dann 4,54 m. Wer in fünf Sekunden drei Meter schafft, fährt.
+ */
+const RESCUE_FREE = 3;
+
+/**
  * Der Fahrmodus — PLAN.md P14.
  *
  * ## Was dieses System zusammenhält
@@ -195,6 +215,13 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    * Höhenquellen, nicht der Abstand des Autos zur Straßenmitte.
    */
   #roadCorrection = 0;
+  /** Die Fahrbahnebene des letzten Schritts — P21, Begruendung in #refreshRoadContext. */
+  #roadHitX = 0;
+  #roadHitZ = 0;
+  #roadForwardX = 0;
+  #roadForwardZ = 1;
+  #roadSlopeAlong = 0;
+  #roadBaseAtHit = 0;
   /**
    * Wohin die Korrektur strebt. Sie folgt mit begrenzter Rate — und das ist keine
    * Kosmetik, sondern die Reparatur eines gemessenen Fehlers.
@@ -213,6 +240,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #roadCorrectionTarget = 0;
 
   #stepMs = 0;
+  /** Die Klemmwache — P20. Begründung bei `#watchStuck`. */
+  #stuckTime = 0;
+  #stuckX = 0;
+  #stuckZ = 0;
 
   readonly #readouts = {
     modus: 'Freiflug',
@@ -727,7 +758,62 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
   fixedUpdate(dt: number): void {
     if (!this.#active) return;
-    this.simulateStep(dt, this.#collectInput());
+    const input = this.#collectInput();
+    this.simulateStep(dt, input);
+    this.#watchStuck(dt, input);
+  }
+
+  /**
+   * Die letzte Zusicherung: **wer fahren will, kommt weiter** — P20.
+   *
+   * ## Warum es sie geben muss, obwohl die Physik repariert ist
+   *
+   * P20 hat den Grund beseitigt, aus dem ein Wagen im Gelände steckenblieb (die
+   * Karosserie kannte das Höhenfeld nicht). Das ist die richtige Reparatur, und
+   * sie ist gemessen. Sie kann trotzdem nicht *alles* abdecken, und der Beleg
+   * dafür steht in PLAN.md P19.6: am Tempelaufgang stehen zwei Steinlaternen mit
+   * **4,33 m** Lücke, das Coupé ist mit Blechzuschlag **4,32 m** lang. Es passt
+   * auf den Zentimeter hinein. Kein Kollisionsmodell der Welt macht daraus etwas
+   * anderes als „steckt fest" — das ist eine Aussage über die **Karte**.
+   *
+   * Der Klemmschutz in `Vehicle` (P19) ist der physiknahe Teil der Antwort: er
+   * schiebt einen eingeklemmten Wagen mit wachsender Trenngeschwindigkeit
+   * heraus. Er hat vier Anläufe gebraucht, weil jede seiner Bedingungen
+   * geometrisch ist — und Geometrie kann diesen Fall nicht immer entscheiden.
+   *
+   * Diese Zusicherung ist deshalb bewusst **nicht** geometrisch, sondern misst
+   * die einzige Größe, die der Fahrer auch sieht: *ist er von der Stelle
+   * gekommen.* Fünf Sekunden Eingabe ohne `RESCUE_FREE` Meter Weg heißt
+   * festgefahren, und dann setzt sie den Wagen auf die nächste Straße — genau
+   * das, was die Taste `R` und der ⟲-Knopf ohnehin tun.
+   *
+   * ## Warum sie in `fixedUpdate` steht und nicht in `simulateStep`
+   *
+   * Weil der Messstand (`japanMap.driveProbe()`) über `simulateStep` fährt. Ein
+   * Prüfstand, der sich selbst freisetzt, misst die Rettung statt die Physik und
+   * meldete jede Karte als befahrbar. Dieselbe Trennung wie bei `#scripted`.
+   */
+  #watchStuck(dt: number, input: DriveInput): void {
+    const willFahren = input.throttle > 0.15 || input.brake > 0.15;
+    const weg = Math.hypot(
+      this.vehicle.position.x - this.#stuckX,
+      this.vehicle.position.z - this.#stuckZ,
+    );
+    if (!willFahren || weg > RESCUE_FREE) {
+      this.#stuckTime = 0;
+      this.#stuckX = this.vehicle.position.x;
+      this.#stuckZ = this.vehicle.position.z;
+      return;
+    }
+
+    this.#stuckTime += dt;
+    if (this.#stuckTime < RESCUE_DELAY) return;
+
+    this.respawn();
+    this.#stuckTime = 0;
+    this.#stuckX = this.vehicle.position.x;
+    this.#stuckZ = this.vehicle.position.z;
+    this.#context?.bus.emit('drive:rescued', { seconds: RESCUE_DELAY });
   }
 
   /**
@@ -958,6 +1044,52 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       -6,
       6,
     );
+    // ── Die Fahrbahn als **Ebene**, nicht als Skalar — P21 ────────────────
+    //
+    // Bis P21 war die Fahrbahnhöhe `Gelände(x,z) + Korrektur`, mit einer
+    // Korrektur, die am **Treffer** gebildet wurde und dann überall galt. Damit
+    // erbt die Fahrbahn jede Verwindung des Geländes unter ihr — und der Baker
+    // bekommt eine Kehre nicht flach, wo zwei Trassen übereinander liegen.
+    //
+    // Gemessen über 684 Punkte aller acht Strecken, größte Höhenabweichung quer
+    // zur Fahrbahn innerhalb ±3 m:
+    //
+    // | | |
+    // |---|---:|
+    // | Median | 0,06 m |
+    // | 90. Perzentil | 0,16 m |
+    // | 99. Perzentil | 1,05 m |
+    // | Maximum | **1,66 m** |
+    // | über 30 cm | 37 von 684 (5,4 %) |
+    //
+    // Die schlimmsten acht liegen alle in **einer** Kehre des Bergpasses um
+    // (−600 | −312) — dort blieb der GT vor P20.4 nach 95 m stehen, und dort
+    // steht auch die 1804,7-cm-Standhöhe aus P19.
+    //
+    // Seitdem ist die Sollhöhe eine Ebene durch den Treffer, mit der
+    // **Längsneigung** des Segments und ohne Querneigung. Damit ist die
+    // Verwindung quer per Konstruktion null — die Fahrbahn ist flach, weil sie
+    // als flach gerechnet wird, und nicht, weil das Gelände darunter zufällig
+    // flach ist.
+    //
+    // > **Ohne Querneigung, und das ist gemessen und nicht vergessen.** Das Band
+    // > im Bild ist überhöht (`RoadMeshBuilder`, aus Krümmung × `banking`), aber
+    // > nur zwei Strecken tragen überhaupt einen Wert: `ring` 2,0° und `toge`
+    // > 3,0°, das sind 0,157 m bzw. 0,170 m über die halbe Breite — und nur in
+    // > der engsten Kehre, sonst weniger. Das liegt eine Größenordnung unter dem
+    // > Fehler, den diese Ebene behebt, und in derselben Größenordnung wie ihr
+    // > Restfehler. Sie hier nachzubilden hieße, `signedCurvature` und
+    // > `BANK_GAIN` ein zweites Mal zu implementieren — genau die Doppelung, die
+    // > dieses Projekt an anderer Stelle schon zweimal auseinanderlaufen ließ.
+    this.#roadHitX = hit.x;
+    this.#roadHitZ = hit.z;
+    this.#roadForwardX = hit.forwardX;
+    this.#roadForwardZ = hit.forwardZ;
+    this.#roadSlopeAlong = hit.slopeAlong;
+    // Einmal je Schritt statt einmal je Höhenabfrage: `height()` läuft rund
+    // 25-mal je Simulationsschritt (Räder, Hülle, Schwerpunkt), und ein
+    // Sampler-Aufruf ist der teuerste Posten darin.
+    this.#roadBaseAtHit = this.#groundBase(hit.x, hit.z);
     this.#roadHalfWidth = hit.width / 2;
     // Die Bankettbreite steckt nicht im Treffer, wohl aber der Streckentyp — und
     // die Straßen der Karte haben ihre Bankettbreite je Typ.
@@ -1017,13 +1149,24 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     // ── Fahrbahn ──────────────────────────────────────────────────────────
     //
     // Über die Fahrbahnkante geblendet (Begründung im Kopf, Punkt 2).
-    if (this.#roadCorrection !== 0 && this.#roadHalfWidth > 0 && this.#network) {
+    // **Der Prüfwert ist die Breite und nicht mehr die Korrektur.** Die Ebene
+    // trägt seit P21 auch dann eine Neigung, wenn der Höhenversatz gerade null
+    // ist; `#roadCorrection !== 0` hätte sie in genau diesem Fall verworfen.
+    if (this.#roadHalfWidth > 0 && this.#network) {
       const distance = this.#network.distanceToNearestRoad(x, z, this.#roadHalfWidth + 4);
       if (distance < Infinity) {
         // Volle Korrektur bis zur halben Fahrbahnbreite, dann über einen halben
         // Meter auslaufend.
         const fade = 1 - clamp01((distance - this.#roadHalfWidth) / 0.5);
-        y += this.#roadCorrection * fade;
+        // Sollhöhe der Fahrbahn **an dieser Stelle**: die Ebene durch den
+        // Treffer, geneigt mit der Längsneigung des Segments. Am Treffer selbst
+        // ist `s = 0`, und dann steht hier `hit.y + surfaceOffset` — genau der
+        // Wert, den die alte Fassung dort auch lieferte. Der Unterschied ist
+        // alles **daneben**. Begründung und Messung in `#refreshRoadContext`.
+        const s =
+          (x - this.#roadHitX) * this.#roadForwardX + (z - this.#roadHitZ) * this.#roadForwardZ;
+        const soll = this.#roadBaseAtHit + this.#roadCorrection + this.#roadSlopeAlong * s;
+        y += (soll - y) * fade;
       }
     }
 

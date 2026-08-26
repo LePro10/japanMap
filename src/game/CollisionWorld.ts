@@ -86,6 +86,265 @@ export const HIT_STATIC = 0;
 /** `Pushout.source`: dynamischer Zylinder (Baum). */
 export const HIT_TREE = 1;
 
+/**
+ * Ein Kontakt zwischen der **Karosserie als Ganzes** und einem Hindernis — P19.
+ *
+ * ## Warum das die Punktabfrage ablöst
+ *
+ * Bis P19 prüfte `Vehicle` an **vier Ecken × zwei Höhen** mit je einem Radius
+ * von 34 cm. Das ist eine Karosserie, die an den Ecken dick ist und an den
+ * Seiten aus nichts besteht: zwischen Vorder- und Hinterecke liegen beim Coupé
+ * **4,2 m**, und alles, was dort hineinpasst, wird nicht gesehen.
+ *
+ * Gemessen mit `tools/bench/world.mts`, Stamm mit 40 cm Radius auf der
+ * Fahrlinie:
+ *
+ * | Seitlicher Versatz | Kontakte in 15 s | Ergebnis |
+ * |---:|---:|---|
+ * | 0,00 m (Mittellinie) | **0** | **durchgefahren** |
+ * | 0,50 m | 2 | 12 m **rückwärts** geschleudert |
+ * | 0,90 m (Ecke) | 4 | vorbei |
+ *
+ * Die erste Zeile ist der Fehler aus dem Bild: ein Baum, der genau vor der
+ * Motorhaube steht, liegt *im* Auto und berührt keinen einzigen Prüfpunkt. Die
+ * zweite ist der zweite Fehler: streift eine Ecke den Stamm doch, löst der alte
+ * Weg über den **Mittelwert** der Normalen so schlecht auf, dass der Wagen
+ * zurückgeworfen wird.
+ *
+ * ## Was stattdessen gerechnet wird
+ *
+ * Die Karosserie ist ein **orientiertes Rechteck**, und für jede der drei
+ * Hindernisformen dieser Karte gibt es dagegen eine geschlossene Lösung:
+ *
+ * | Hindernis | Test | Kosten |
+ * |---|---|---|
+ * | Zylinder (Baum, Prop) | nächster Punkt auf dem Rechteck ↔ Kreis | ~15 Flops |
+ * | Kasten (Gebäude) | SAT über 4 Achsen | ~40 Flops |
+ * | Wand (Planke) | dasselbe SAT — eine Wand *ist* ein Rechteck | ~40 Flops |
+ *
+ * Das ist **billiger** als vorher, nicht teurer: acht Punktabfragen gegen
+ * dieselben Kandidaten kosten acht Distanzfunktionen, hier ist es eine. Gemessen
+ * steht die Zahl im Kopf von `tools/bench/world.mts`.
+ *
+ * Geliefert wird nicht *ein* Kontakt, sondern eine Liste — eine Innenecke hat
+ * zwei, und wer nur den tiefsten auflöst, schiebt in der nächsten Iteration in
+ * den anderen hinein. Die Liste ist nach Tiefe absteigend sortiert.
+ */
+export interface BodyContact {
+  /** Überdeckung längs der Normalen, in Metern. */
+  depth: number;
+  /** Normale, aus dem Hindernis heraus zum Fahrzeug, normiert, XZ. */
+  nx: number;
+  nz: number;
+  /** Berührpunkt in Weltkoordinaten — für das Giermoment. */
+  px: number;
+  pz: number;
+  id: number;
+  source: number;
+  breakable: boolean;
+}
+
+/**
+ * Wie viele Kontakte je Schritt höchstens gemeldet werden.
+ *
+ * Acht: ein Rechteck kann an vier Seiten anliegen, und eine Innenecke aus zwei
+ * Wänden plus zwei Bäumen ist die dichteste Lage, die diese Karte hergibt. Wer
+ * mehr hat, steht im Dickicht — und dort entscheidet der tiefste Kontakt, nicht
+ * der neunte.
+ */
+export const BODY_CONTACT_CAP = 8;
+
+/** Ein wiederverwendbarer Puffer für `queryBody`. Allokationsfrei je Schritt. */
+export function createBodyContacts(): BodyContact[] {
+  return Array.from({ length: BODY_CONTACT_CAP }, () => ({
+    depth: 0,
+    nx: 0,
+    nz: 0,
+    px: 0,
+    pz: 0,
+    id: -1,
+    source: HIT_STATIC,
+    breakable: false,
+  }));
+}
+
+// ── Formtests ──────────────────────────────────────────────────────────────
+//
+// Die Ergebnisse landen in modulweiten Zahlen statt in einem Objekt. Der Grund
+// ist derselbe wie beim wiederverwendeten `Pushout`: diese Funktionen laufen im
+// festen Zeitschritt gegen ein paar Dutzend Kandidaten, und ein neues Objekt je
+// Kandidat wären ein paar Tausend kurzlebige Objekte je Sekunde.
+
+let mDepth = 0;
+let mNx = 0;
+let mNz = 0;
+let mPx = 0;
+let mPz = 0;
+
+/** Nächster Punkt auf einem orientierten Rechteck, in `cpX`/`cpZ`. */
+let cpX = 0;
+let cpZ = 0;
+
+function closestOnBox(
+  cx: number,
+  cz: number,
+  ux: number,
+  uz: number,
+  vx: number,
+  vz: number,
+  hu: number,
+  hv: number,
+  px: number,
+  pz: number,
+): void {
+  const dx = px - cx;
+  const dz = pz - cz;
+  let lu = dx * ux + dz * uz;
+  let lv = dx * vx + dz * vz;
+  lu = lu < -hu ? -hu : lu > hu ? hu : lu;
+  lv = lv < -hv ? -hv : lv > hv ? hv : lv;
+  cpX = cx + lu * ux + lv * vx;
+  cpZ = cz + lu * uz + lv * vz;
+}
+
+/**
+ * Kreis gegen orientiertes Rechteck.
+ *
+ * Zwei Fälle, und der zweite ist der, den die Punktabfrage nie hatte: liegt der
+ * Kreismittelpunkt **im** Rechteck, gibt es keinen nächsten Punkt auf dem Rand,
+ * der eine Richtung hergäbe. Dann entscheidet die kürzeste der vier
+ * Seitenüberdeckungen — genau wie beim Kasten in `query()`, nur im
+ * Fahrzeugsystem statt in Weltachsen.
+ */
+function circleVsBody(
+  px: number,
+  pz: number,
+  r: number,
+  cx: number,
+  cz: number,
+  ux: number,
+  uz: number,
+  vx: number,
+  vz: number,
+  hl: number,
+  hw: number,
+): boolean {
+  const dx = px - cx;
+  const dz = pz - cz;
+  const lu = dx * ux + dz * uz;
+  const lv = dx * vx + dz * vz;
+  const qu = lu < -hl ? -hl : lu > hl ? hl : lu;
+  const qv = lv < -hw ? -hw : lv > hw ? hw : lv;
+  const du = lu - qu;
+  const dv = lv - qv;
+  const d2 = du * du + dv * dv;
+
+  if (d2 > 1e-12) {
+    const d = Math.sqrt(d2);
+    if (d >= r) return false;
+    mDepth = r - d;
+    // `(du,dv)` zeigt vom Blech zum Stamm. Heraus muss das Blech in die
+    // Gegenrichtung.
+    const nu = -du / d;
+    const nv = -dv / d;
+    mNx = nu * ux + nv * vx;
+    mNz = nu * uz + nv * vz;
+    mPx = cx + qu * ux + qv * vx;
+    mPz = cz + qu * uz + qv * vz;
+    return true;
+  }
+
+  // Mittelpunkt im Rechteck. Der Wagen muss **weg** vom Stamm, also entgegen
+  // dem Vorzeichen der lokalen Koordinate: steht der Stamm vorn (`lu > 0`),
+  // geht es nach hinten heraus, und der Weg ist `hl + r − lu`.
+  const overU = hl + r - Math.abs(lu);
+  const overV = hw + r - Math.abs(lv);
+  if (overU < overV) {
+    mDepth = overU;
+    const s = lu >= 0 ? -1 : 1;
+    mNx = s * ux;
+    mNz = s * uz;
+  } else {
+    mDepth = overV;
+    const s = lv >= 0 ? -1 : 1;
+    mNx = s * vx;
+    mNz = s * vz;
+  }
+  mPx = px;
+  mPz = pz;
+  return true;
+}
+
+/**
+ * Rechteck gegen Rechteck — Separating Axis Theorem über vier Achsen.
+ *
+ * In 2D genügen die vier Kantennormalen der beiden Rechtecke. Findet sich eine
+ * Achse ohne Überdeckung, berühren sie sich nicht; sonst ist die Achse mit der
+ * **kleinsten** Überdeckung die Richtung, in die man am billigsten
+ * auseinanderkommt (Minimum Translation Vector).
+ *
+ * Ein Gebäude ist ein Rechteck mit den Achsen (1,0) und (0,1), ein
+ * Leitplankenabschnitt eines mit der Achse längs des Bandes — derselbe Test für
+ * beide, und deshalb steht er nur einmal da.
+ */
+function boxVsBody(
+  bcx: number,
+  bcz: number,
+  bux: number,
+  buz: number,
+  bhl: number,
+  bhw: number,
+  cx: number,
+  cz: number,
+  ux: number,
+  uz: number,
+  vx: number,
+  vz: number,
+  hl: number,
+  hw: number,
+): boolean {
+  const bvx = -buz;
+  const bvz = bux;
+  const dx = bcx - cx;
+  const dz = bcz - cz;
+
+  let best = Infinity;
+  let bnx = 0;
+  let bnz = 0;
+
+  for (let axis = 0; axis < 4; axis++) {
+    const lx = axis === 0 ? ux : axis === 1 ? vx : axis === 2 ? bux : bvx;
+    const lz = axis === 0 ? uz : axis === 1 ? vz : axis === 2 ? buz : bvz;
+    const centre = dx * lx + dz * lz;
+    const ra = hl * Math.abs(ux * lx + uz * lz) + hw * Math.abs(vx * lx + vz * lz);
+    const rb = bhl * Math.abs(bux * lx + buz * lz) + bhw * Math.abs(bvx * lx + bvz * lz);
+    const overlap = ra + rb - Math.abs(centre);
+    if (overlap <= 0) return false;
+    if (overlap < best) {
+      best = overlap;
+      // Die Normale zeigt vom Hindernis zum Fahrzeug: liegt B in Richtung `+L`,
+      // muss A nach `−L`.
+      const s = centre > 0 ? -1 : 1;
+      bnx = s * lx;
+      bnz = s * lz;
+    }
+  }
+
+  mDepth = best;
+  mNx = bnx;
+  mNz = bnz;
+  // Berührpunkt in zwei Schritten: erst der Punkt auf dem Hindernis, der dem
+  // Fahrzeugmittelpunkt am nächsten liegt, dann dessen Projektion auf das
+  // Blech. Bei einer 40 m langen Planke ist ihr Mittelpunkt weit weg — ohne den
+  // ersten Schritt läge der „Kontakt" dort und nicht neben dem Auto, und das
+  // Giermoment hätte das falsche Vorzeichen.
+  closestOnBox(bcx, bcz, bux, buz, bvx, bvz, bhl, bhw, cx, cz);
+  closestOnBox(cx, cz, ux, uz, vx, vz, hl, hw, cpX, cpZ);
+  mPx = cpX;
+  mPz = cpZ;
+  return true;
+}
+
 /** Höchstens so viele Bäume je Schritt — die Suche liefert die nächsten. */
 const DYNAMIC_CAP = 48;
 
@@ -98,6 +357,50 @@ interface Shapes {
   /** Unter- und Oberkante in Weltkoordinaten je Körper. */
   readonly y0: number[];
   readonly y1: number[];
+}
+
+/**
+ * Den zuletzt gerechneten Kontakt einsortieren — absteigend nach Tiefe.
+ *
+ * Einfügesortierung und keine Sortierung am Ende: bei acht Plätzen sind das im
+ * Schnitt zwei Vergleiche, und eine `sort()`-Zeile legte je Schritt einen
+ * Vergleichs-Callback und ein Zwischenfeld an.
+ */
+function insertContact(
+  out: BodyContact[],
+  n: number,
+  cap: number,
+  id: number,
+  source: number,
+  breakable: boolean,
+): number {
+  let at = n;
+  while (at > 0 && out[at - 1]!.depth < mDepth) at--;
+  if (at >= cap) return n;
+
+  for (let k = Math.min(n, cap - 1); k > at; k--) {
+    const dst = out[k]!;
+    const src = out[k - 1]!;
+    dst.depth = src.depth;
+    dst.nx = src.nx;
+    dst.nz = src.nz;
+    dst.px = src.px;
+    dst.pz = src.pz;
+    dst.id = src.id;
+    dst.source = src.source;
+    dst.breakable = src.breakable;
+  }
+
+  const slot = out[at]!;
+  slot.depth = mDepth;
+  slot.nx = mNx;
+  slot.nz = mNz;
+  slot.px = mPx;
+  slot.pz = mPz;
+  slot.id = id;
+  slot.source = source;
+  slot.breakable = breakable;
+  return n < cap ? n + 1 : cap;
 }
 
 export class CollisionWorld {
@@ -125,6 +428,22 @@ export class CollisionWorld {
   #shapeCount = 0;
   readonly #alive: number[] = [];
   readonly #breakable: number[] = [];
+
+  /**
+   * Welcher Körper in **dieser** Abfrage schon behandelt wurde.
+   *
+   * Ein Gebäude von 40 m Kantenlänge steht in bis zu neun der Zellen, die eine
+   * Abfrage abläuft (`#insert` legt es in jede, die seine Hülle berührt — das
+   * muss es, siehe dort). Die alte Punktabfrage nahm das Maximum und kam damit
+   * ohne diese Buchführung aus; `queryBody` sammelt eine **Liste**, und dort
+   * stünde dasselbe Haus dann bis zu neunmal drin. Aufgelöst würde es dann
+   * neunmal — ein Auto, das eine Hauswand berührt, flöge quer über die Straße.
+   *
+   * Ein Zählerstand statt eines `fill(0)` je Abfrage: bei 900 Gebäudekörpern
+   * wäre das Leeren teurer als die Abfrage selbst.
+   */
+  #visited = new Int32Array(0);
+  #visitTick = 0;
 
   /**
    * Bäume der Umgebung — jedes Simulationsschritt neu, nicht im Raster.
@@ -171,6 +490,10 @@ export class CollisionWorld {
     this.#alive.length = 0;
     this.#breakable.length = 0;
     this.#dynCount = 0;
+    // Die Indizes fangen wieder bei 0 an; ein stehen gebliebener Stempel wäre
+    // sonst ein Körper, den die nächste Abfrage für schon behandelt hält.
+    this.#visited.fill(0);
+    this.#visitTick = 0;
   }
 
   /** Neue Runde Nahbäume — vor dem Eintragen, einmal je Simulationsschritt. */
@@ -326,6 +649,12 @@ export class CollisionWorld {
     this.#shapes.y1.push(y1);
     this.#alive.push(1);
     this.#breakable.push(breakable ? 1 : 0);
+    if (index >= this.#visited.length) {
+      // In Blöcken wachsen und nicht je Körper: der Aufbau legt ~1600 Körper an.
+      const grown = new Int32Array(Math.max(1024, (index + 1) * 2));
+      grown.set(this.#visited);
+      this.#visited = grown;
+    }
     this.#insert(this.#cells, index, minX, maxX, minZ, maxZ);
     return index;
   }
@@ -533,6 +862,171 @@ export class CollisionWorld {
 
     this.#queryDynamic(x, y, z, radius, hit);
     return hit;
+  }
+
+  /**
+   * Die **ganze Karosserie** gegen alles, was sie berührt — P19.
+   *
+   * `cx, cz` ist der Schwerpunkt in XZ, `(ux, uz)` die Fahrtrichtung (normiert),
+   * `hl`/`hw` die halbe Länge und Breite **einschließlich** Blechzuschlag.
+   * `y0`/`y1` ist das Höhenband der Karosserie in Weltkoordinaten; ein Körper
+   * zählt, wenn sich beide Bänder überschneiden.
+   *
+   * Liefert die Zahl der gefüllten Einträge in `out`, absteigend nach Tiefe. Das
+   * Feld gehört dem Aufrufer und wird nur beschrieben — `createBodyContacts()`
+   * legt eines an.
+   *
+   * Warum absteigend sortiert: die Auflösung in `Vehicle` arbeitet die Kontakte
+   * der Reihe nach ab und rechnet jeweils an, was schon herausgeschoben wurde.
+   * Beim tiefsten anzufangen ist die Reihenfolge, bei der die flachen Kontakte
+   * danach meistens schon erledigt sind.
+   */
+  queryBody(
+    cx: number,
+    cz: number,
+    ux: number,
+    uz: number,
+    hl: number,
+    hw: number,
+    y0: number,
+    y1: number,
+    out: BodyContact[],
+  ): number {
+    const vx = -uz;
+    const vz = ux;
+    const cap = out.length;
+    if (cap === 0) return 0;
+    let n = 0;
+
+    const tick = ++this.#visitTick;
+    const visited = this.#visited;
+    const kinds = this.#shapes.kind;
+    const p = this.#shapes.p;
+    const y0s = this.#shapes.y0;
+    const y1s = this.#shapes.y1;
+
+    // Ein Ring von Zellen um die Mittelzelle. Die halbe Diagonale der größten
+    // Karosserie (Lastwagen, 7,1 × 2,5 m) ist 3,8 m gegen 24 m Zellweite — ein
+    // Körper, der das Rechteck berührt, liegt zwingend in einer dieser neun
+    // Zellen, und dort steht er auch drin (siehe `#insert`).
+    const gx = Math.floor((cx + WORLD.half) / CELL);
+    const gz = Math.floor((cz + WORLD.half) / CELL);
+
+    for (let dz = -1; dz <= 1; dz++) {
+      const zz = gz + dz;
+      if (zz < 0 || zz >= this.#rows) continue;
+      for (let dx = -1; dx <= 1; dx++) {
+        const xx = gx + dx;
+        if (xx < 0 || xx >= this.#columns) continue;
+        const list = this.#cells[zz * this.#columns + xx];
+        if (list === undefined) continue;
+
+        for (let i = 0; i < list.length; i++) {
+          const s = list[i]!;
+          if (visited[s] === tick) continue;
+          visited[s] = tick;
+          if (this.#alive[s] !== 1) continue;
+          // Höhenbänder müssen sich überschneiden. Zwei Vergleiche, bevor
+          // irgendeine Wurzel gerechnet wird — dieselbe Reihenfolge wie in
+          // `query()`.
+          if (y0 > y1s[s]! || y1 < y0s[s]!) continue;
+
+          const base = s * 5;
+          let touched = false;
+
+          switch (kinds[s]!) {
+            case KIND_BOX: {
+              const minX = p[base]!;
+              const maxX = p[base + 1]!;
+              const minZ = p[base + 2]!;
+              const maxZ = p[base + 3]!;
+              touched = boxVsBody(
+                (minX + maxX) * 0.5,
+                (minZ + maxZ) * 0.5,
+                1,
+                0,
+                (maxX - minX) * 0.5,
+                (maxZ - minZ) * 0.5,
+                cx,
+                cz,
+                ux,
+                uz,
+                vx,
+                vz,
+                hl,
+                hw,
+              );
+              break;
+            }
+
+            case KIND_CYLINDER: {
+              touched = circleVsBody(
+                p[base]!,
+                p[base + 1]!,
+                p[base + 2]!,
+                cx,
+                cz,
+                ux,
+                uz,
+                vx,
+                vz,
+                hl,
+                hw,
+              );
+              break;
+            }
+
+            default: {
+              const ax = p[base]!;
+              const az = p[base + 1]!;
+              const bx = p[base + 2]!;
+              const bz = p[base + 3]!;
+              const half = p[base + 4]!;
+              const ex = bx - ax;
+              const ez = bz - az;
+              const length = Math.hypot(ex, ez);
+              if (length < 1e-6) break;
+              touched = boxVsBody(
+                (ax + bx) * 0.5,
+                (az + bz) * 0.5,
+                ex / length,
+                ez / length,
+                length * 0.5,
+                half,
+                cx,
+                cz,
+                ux,
+                uz,
+                vx,
+                vz,
+                hl,
+                hw,
+              );
+              break;
+            }
+          }
+
+          if (!touched || mDepth <= 0) continue;
+          n = insertContact(out, n, cap, s, HIT_STATIC, this.#breakable[s] === 1);
+        }
+      }
+    }
+
+    // Bäume: dieselbe Kreis-Rechteck-Rechnung, nur aus dem Nahpuffer statt aus
+    // dem Raster. Kein Stempel nötig — dort steht jeder Stamm genau einmal.
+    for (let i = 0; i < this.#dynCount; i++) {
+      if (this.#dynAlive[i] !== 1) continue;
+      if (y0 > this.#dynY1[i]! || y1 < this.#dynY0[i]!) continue;
+      if (
+        !circleVsBody(this.#dynX[i]!, this.#dynZ[i]!, this.#dynR[i]!, cx, cz, ux, uz, vx, vz, hl, hw)
+      ) {
+        continue;
+      }
+      if (mDepth <= 0) continue;
+      n = insertContact(out, n, cap, this.#dynKey[i]!, HIT_TREE, true);
+    }
+
+    return n;
   }
 
   #queryDynamic(x: number, y: number, z: number, radius: number, hit: Pushout): void {

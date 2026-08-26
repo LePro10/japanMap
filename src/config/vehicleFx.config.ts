@@ -1,7 +1,7 @@
 import type { QualityKey, QualityLevel } from './quality.config';
 
 /**
- * Driftspuren und Wasserspritzer — die sichtbare Hälfte des Fahrgefühls.
+ * Driftspuren, Gischt und Staub — die sichtbare Hälfte des Fahrgefühls.
  *
  * ## Warum das kein Partikelsystem aus dem Regal ist
  *
@@ -16,24 +16,35 @@ import type { QualityKey, QualityLevel } from './quality.config';
  * | | Ultra | Minimal |
  * |---|---|---|
  * | Driftspuren (Quads) | 256 | 32 |
- * | Spritzer (Quads) | 240 | 28 |
+ * | Partikel (Quads) | 420 | 40 |
  * | Draw-Calls | 2 | 2 |
- * | Dreiecke | ~1000 | 120 |
+ * | Dreiecke | ~1350 | 145 |
  *
  * Das ist weniger als ein einziges Baum-Mesh. Die Puffer werden **einmal** auf
  * Ultra-Größe angelegt (derselbe Satz wie bei der Vegetation: ein späterer
  * Stufenwechsel darf nicht reallokieren). Weniger Stufe heißt weniger
  * *lebende* Instanzen, nicht ein kleinerer Puffer.
  *
+ * ## Warum fünf Partikelsorten trotzdem **ein** Draw-Call sind — P19
+ *
+ * Bis P19 gab es genau eine Sorte: einen langgezogenen, additiv gemischten
+ * Streifen. Er stand für Wasser **und** Staub, und im Bild ergab das die
+ * gemeldete Beanstandung — weiße Stäbchen im Wasser, gelbe Stäbchen im Dreck.
+ * Der Grund war nicht die Farbe, sondern die **Form**: ein Streifen ist die
+ * Silhouette eines *schnellen Tropfens*, und alles andere, was ein Rad aufwirft
+ * (Dunst, Staubwolke, Erdbrocken), hat sie nicht.
+ *
+ * Fünf Formen bräuchten normalerweise fünf Texturen und damit fünf Materialien.
+ * Hier liegen sie als **2 × 2-Atlas** in einer einzigen Textur, und ein
+ * Instanzattribut (`aTile`) wählt das Feld im Vertex-Shader aus. Kosten: ein
+ * Float je Instanz und zwei Zeilen Shader. Draw-Calls: unverändert **einer**.
+ *
  * ## Was hier bewusst nicht steht
  *
- *  - **Kein Reifenschwelbrand.** Derselbe Mesh könnte Staub tragen; der
- *    Auftrag ist Driftspur plus Wasserspritzer. Eine dritte Sorte wäre ein
- *    dritter Draw-Call für ein Bild, das die Spur schon trägt.
+ *  - **Keine Kollision der Partikel.** Ein Tropfen, der von der Karosserie
+ *    abprallt, wäre je Partikel eine Abfrage in der `CollisionWorld`.
  *  - **Keine Spiegelung.** Der planare Durchgang zeichnet die Szene ein
- *    zweites Mal. Spuren auf der Stadtebene wären dort sichtbar — und würden
- *    den Durchgang um zwei Calls teurer machen, für ein Detail, das in der
- *    Pfütze untergeht. Deshalb steht `FahrzeugFX` auf der Ausschlussliste.
+ *    zweites Mal; `FahrzeugFX` steht auf seiner Ausschlussliste.
  *  - **Kein Download.** Die Stempel entstehen in einem Canvas. CrazyGames
  *    zählt jedes Byte bis zum ersten Bild.
  */
@@ -41,18 +52,27 @@ import type { QualityKey, QualityLevel } from './quality.config';
 export interface FxBudget {
   /** Lebende Driftspuren, Ringpuffer. */
   readonly skids: number;
-  /** Lebende Spritzer. */
+  /** Lebende Partikel (Gischt, Dunst, Staub, Brocken zusammen). */
   readonly splash: number;
-  /** Faktor auf die Spawnrate der Spritzer, 0…1. */
+  /** Faktor auf die Spawnrate aller Partikel, 0…1. */
   readonly splashRate: number;
+  /**
+   * Wie viel **Dunst** entstehen darf, 0…1.
+   *
+   * Eine eigene Zahl und kein Anteil von `splashRate`, weil Dunst der teuerste
+   * Posten je Partikel ist: er lebt am längsten, wird am größten und ist damit
+   * das, was auf einer schwachen GPU Füllrate frisst. Auf Minimal steht er auf
+   * 0 — dort gibt es Tropfen und Staubfahne, aber keine Wolke.
+   */
+  readonly mist: number;
 }
 
 export const FX_BUDGET: Readonly<Record<QualityLevel, FxBudget>> = {
-  ultra: { skids: 256, splash: 240, splashRate: 1 },
-  high: { skids: 192, splash: 170, splashRate: 0.85 },
-  medium: { skids: 128, splash: 110, splashRate: 0.6 },
-  low: { skids: 64, splash: 56, splashRate: 0.4 },
-  minimal: { skids: 32, splash: 28, splashRate: 0.25 },
+  ultra: { skids: 256, splash: 420, splashRate: 1, mist: 1 },
+  high: { skids: 192, splash: 300, splashRate: 0.85, mist: 0.8 },
+  medium: { skids: 128, splash: 180, splashRate: 0.6, mist: 0.5 },
+  low: { skids: 64, splash: 90, splashRate: 0.4, mist: 0.25 },
+  minimal: { skids: 32, splash: 40, splashRate: 0.25, mist: 0 },
 };
 
 /** Puffergröße — das Maximum über die Leiter, einmal angelegt. */
@@ -89,6 +109,12 @@ export const SKID = {
   length: 0.72,
 
   /**
+   * Auf losem Boden ist die Spur breiter als der Reifen — er wirft Material
+   * zur Seite, statt Gummi abzureiben. Faktor auf Breite und Länge.
+   */
+  looseSpread: 1.55,
+
+  /**
    * Schräglauf, ab dem eine Spur entsteht, als Vielfaches von `peakSlipRear`.
    *
    * 0,70 heißt: erst im Plateau, nicht schon beim Einlenken. Sonst läge auf
@@ -102,6 +128,15 @@ export const SKID = {
 
   /** Lebensdauer in Sekunden. Länger = dichtere Bahn, früherer Überlauf. */
   life: 6.5,
+  /**
+   * Auf losem Boden hält die Furche länger als Gummi auf Asphalt.
+   *
+   * Faktor auf `life`. Eine Fahrspur im Acker ist am nächsten Tag noch da; eine
+   * Bremsspur auf Asphalt verweht. 1,8 ist so viel mehr, wie der Ringpuffer
+   * hergibt, ohne dass die Spur vorn abreißt, während hinten noch gestempelt
+   * wird.
+   */
+  looseLife: 1.8,
 
   /** Anheben über den Boden, zusätzlich zum polygonOffset. */
   lift: 0.045,
@@ -160,52 +195,182 @@ export const SKID = {
   terrain: 0x5c5044,
 } as const;
 
-export const SPLASH = {
+/**
+ * Die Partikel — P19.
+ *
+ * ## Die fünf Sorten und was jede leistet
+ *
+ * | Sorte | Feld im Atlas | wofür |
+ * |---|---|---|
+ * | `DROP` | Tropfen | die einzelnen Spritzer, die aus dem Wasser fliegen |
+ * | `SHEET` | Streifen | der Fächer direkt am Reifen — die „Wand" aus Wasser |
+ * | `MIST` | Wolke | der Dunst, der hinter dem Wagen stehen bleibt |
+ * | `DUST` | Wolke | dasselbe in Erdfarbe: die Staubfahne |
+ * | `CLOD` | Korn | Erdbrocken, die beim Durchdrehen wegfliegen |
+ *
+ * Die Zerlegung ist der eigentliche Punkt und nicht die Zahlen. Ein Rad im
+ * Wasser erzeugt **drei** Dinge gleichzeitig, die sich in Lebensdauer,
+ * Geschwindigkeit und Größe um mehr als eine Größenordnung unterscheiden: einen
+ * Fächer (0,15 s, schnell, klein), Tropfen (0,5 s, ballistisch) und Dunst (1,4 s,
+ * fast stehend, groß und wachsend). Mit *einer* Sorte kann man höchstens eines
+ * davon treffen — und die alte Fassung traf den Tropfen und zeichnete ihn dann
+ * so lang und so hell, dass er wie ein Leuchtstab aussah.
+ *
+ * ## Warum nicht mehr additiv gemischt wird
+ *
+ * Additiv heißt: die Partikel **addieren** Licht auf das Bild. Bei einer Karte
+ * in der blauen Stunde ist der Hintergrund fast schwarz, und alles Additive wird
+ * dort zu reinem Weiß — auch wenn die Instanzfarbe (0,82 / 0,90 / 0,96) das gar
+ * nicht ist. Überlappen sich zwei Partikel, sind es 1,64 / 1,80 / 1,92, und nach
+ * dem Tonemapping ist das Papierweiß. Genau so sahen die Streifen im Bild aus.
+ *
+ * Wasser ist keine Lichtquelle. Es ist ein Streuer: es **verdeckt**, was
+ * dahinter liegt, mit seiner eigenen Helligkeit. Das ist normale
+ * Alpha-Mischung, und mit ihr kann kein Stapel Partikel heller werden als das
+ * hellste Einzelstück.
+ */
+export const PARTICLES = {
+  // ── Wasser ──────────────────────────────────────────────────────────────
   /**
-   * Lebensdauer. Kurz: das ist ein Strahl unter dem Rad, keine Fontäne.
-   * Forza-Spritzer leben unter einer Sekunde und bilden den Bogen, weil
-   * sie schnell fallen, nicht weil sie lange stehen.
-   */
-  life: 0.42,
-  lifeJitter: 0.12,
-
-  /** Breite des Streifens quer zur Flugbahn. */
-  width: 0.09,
-  widthJitter: 0.07,
-  /** Länge längs der Flugbahn — das macht den Strahl, nicht den Kreis. */
-  length: 0.48,
-  lengthJitter: 0.28,
-
-  /**
-   * Spawnrate je Rad bei 20 m/s in tiefem Wasser.
+   * Tropfen je Sekunde und Rad bei 20 m/s in tiefem Wasser.
    *
-   * Hinten 1,7× (Antrieb). 42 · (2 + 2·1,7) ≈ 226/s. Bei 0,42 s Leben
-   * rund 95 gleichzeitig — unter dem Ultra-Puffer von 240.
+   * Hinten 1,7× (Antrieb). 70 · (2 + 2·1,7) ≈ 308/s; bei 0,50 s Leben sind rund
+   * 154 gleichzeitig unterwegs — unter dem Ultra-Puffer von 420, in den auch
+   * noch Fächer und Dunst passen müssen.
    */
-  rateAt20: 58,
-  rearBoost: 1.7,
+  dropRateAt20: 70,
+  dropLife: 0.5,
+  dropLifeJitter: 0.16,
+  /** Halbmesser eines Tropfens am Anfang und am Ende, in Metern. */
+  dropSize: 0.07,
+  dropSizeEnd: 0.035,
+  /**
+   * Streckung längs der Flugbahn, als Sekunden Flugweg.
+   *
+   * Ein Tropfen mit 8 m/s wird bei 0,022 s um 18 cm gestreckt — das ist die
+   * Bewegungsunschärfe, die ihn als *fliegend* lesbar macht. Der alte Streifen
+   * war mit 0,48 m fest und damit bei jedem Tempo gleich lang; er sah deshalb
+   * bei langsamer Fahrt aus wie ein hingelegter Strohhalm.
+   */
+  dropStretch: 0.022,
+  /** Höchste Streckung als Vielfaches der Breite — sonst wird der Tropfen zum Stab. */
+  dropStretchMax: 5,
 
-  /** Extra-Instanzen, wenn ein Rad eintaucht. */
-  entryBurst: 16,
+  /** Fächer am Reifen: kurz, breit, schnell wachsend. */
+  sheetRateAt20: 22,
+  sheetLife: 0.17,
+  sheetSize: 0.14,
+  sheetSizeEnd: 0.42,
+
+  /** Dunst hinter dem Wagen. */
+  mistRateAt20: 5,
+  mistLife: 1.35,
+  mistLifeJitter: 0.4,
+  mistSize: 0.22,
+  mistSizeEnd: 0.8,
+
+  /** Extra-Tropfen, wenn ein Rad eintaucht. */
+  entryBurst: 22,
 
   /** Aufwärts (m/s) plus Anteil des Tempos. */
   up: 2.4,
-  upFromSpeed: 0.28,
+  upFromSpeed: 0.26,
   /** Nach außen, weg von der Fahrzeugmitte. */
-  out: 3.6,
-  outFromSpeed: 0.62,
+  out: 3.0,
+  outFromSpeed: 0.5,
   /** Nach hinten, gegen die Fahrtrichtung. */
-  back: 2.2,
-  backFromSpeed: 0.48,
-  /** Wie viel der Wagengeschwindigkeit der Tropfen mitnimmt. Klein: sonst klebt der Strahl am Auto. */
-  inherit: 0.22,
+  back: 2.0,
+  backFromSpeed: 0.42,
+  /** Wie viel der Wagengeschwindigkeit ein Tropfen mitnimmt. */
+  inherit: 0.2,
 
-  gravity: 18,
+  /**
+   * Luftwiderstand je Sorte, als Abklingrate in 1/s.
+   *
+   * **Der Unterschied zwischen Tropfen und Dunst steckt fast vollständig hier.**
+   * Ein 2-mm-Tropfen fliegt ballistisch (0,9/s — die Luft bremst ihn kaum), ein
+   * 20-µm-Nebeltröpfchen steht nach einer Zehntelsekunde praktisch still (3,4/s).
+   * Beides folgt aus demselben Gesetz, nur mit tausendfach anderem
+   * Verhältnis von Oberfläche zu Masse. Ohne diesen Unterschied fliegt die
+   * Staubwolke mit derselben Bahn wie der Erdbrocken, und dann ist es keine
+   * Wolke.
+   */
+  dropDrag: 0.9,
+  sheetDrag: 3.0,
+  mistDrag: 3.4,
+  clodDrag: 0.2,
 
+  /** Schwere je Sorte, m/s². Dunst schwebt fast — er sinkt nur langsam. */
+  dropGravity: 15,
+  sheetGravity: 9,
+  mistGravity: 0.5,
+  clodGravity: 19,
+  /**
+   * Auftrieb des Dunstes, m/s².
+   *
+   * Aufgewirbeltes Wasser und Staub steigen — sie werden von der Luft
+   * mitgenommen, die das Rad vor sich herschiebt. Ohne diesen Term liegt die
+   * Fahne am Boden und sieht aus wie ein Teppich.
+   */
+  mistLift: 0.9,
+
+  // ── Loser Boden ─────────────────────────────────────────────────────────
+  /** Staubfahne je Sekunde und Rad bei 20 m/s. */
+  dustRateAt20: 18,
+  /** Ab diesem Tempo staubt es beim einfachen Fahren (m/s). */
+  dustMinSpeed: 5,
+  /** Vielfaches der Staubrate, wenn das Rad durchdreht oder quer steht. */
+  dustSlipBoost: 3.2,
+  dustLife: 1.15,
+  dustLifeJitter: 0.45,
+  dustSize: 0.26,
+  dustSizeEnd: 1.05,
+
+  /** Erdbrocken — nur beim Durchdrehen. */
+  clodRateAt20: 20,
+  clodLife: 0.85,
+  clodSize: 0.062,
+  clodSizeEnd: 0.05,
+
+  /** Ab dieser Wassertiefe gilt ein Rad als im Wasser (m). */
   minDepth: 0.04,
+  /** Unter diesem Tempo spritzt nichts (m/s). */
   minSpeed: 1.2,
 
-  /** Staub auf Kies/Gelände — dieselbe Mesh, andere Farbe. */
-  dustRateAt20: 14,
-  dustMinSpeed: 6,
+  // ── Farben ──────────────────────────────────────────────────────────────
+  //
+  // Alle als lineare RGB-Tripel und nicht als Hex: sie gehen unverändert in
+  // `setColorAt`, und `Color.setHex` würde sie von sRGB nach linear drehen.
+  // Was hier steht, ist die Helligkeit, die im Bild ankommt.
+  //
+  // Bemessen für die blaue Stunde dieser Karte (Sonnenstand 2,23°). Die Karte
+  // hat **eine** Tageszeit — deshalb ist eine feste Farbe hier zulässig, wo sie
+  // es bei der Driftspur nicht war (die liegt auf beliebig beleuchtetem Boden;
+  // ein Partikel steht in der Luft und bekommt nur Himmelslicht).
+  /** Gischt: blasses Blaugrau, nicht Weiß. Weiß gibt es im Bild sonst nirgends. */
+  waterColor: [0.62, 0.70, 0.78] as readonly [number, number, number],
+  waterAlpha: 0.8,
+  sheetAlpha: 0.5,
+  /** Dunst über Wasser: kühler und deutlich schwächer. */
+  mistColor: [0.5, 0.58, 0.66] as readonly [number, number, number],
+  mistAlpha: 0.2,
+  /** Staub über Erde: warmes Grau. Staub streut Himmelslicht, er leuchtet nicht. */
+  dustColor: [0.55, 0.49, 0.4] as readonly [number, number, number],
+  /** Staub über Kies: derselbe Wert, nur ohne den warmen Stich. */
+  gravelColor: [0.54, 0.53, 0.5] as readonly [number, number, number],
+  dustAlpha: 0.32,
+  /** Erdbrocken: fast schwarz, sie sind nasse Erde im Gegenlicht. */
+  clodColor: [0.15, 0.12, 0.09] as readonly [number, number, number],
+  clodAlpha: 0.95,
+} as const;
+
+/**
+ * Felder des Partikel-Atlas. Die Reihenfolge ist die Anordnung in der Textur:
+ * `x = tile % 2`, `y = floor(tile / 2)`, jedes Feld eine halbe Kantenlänge.
+ */
+export const FX_TILE = {
+  drop: 0,
+  streak: 1,
+  cloud: 2,
+  grain: 3,
 } as const;

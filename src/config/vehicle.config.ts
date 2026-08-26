@@ -768,13 +768,89 @@ export const WATER_PHYS = {
 /**
  * Kollision der Karosserie.
  *
- * Aufgelöst wird an **vier Punkten** (den Ecken der Karosserie), jeder mit einem
- * Radius. Warum nicht ein Rechteck: eine spitze Ecke hakt an jeder Kante, und
- * warum nicht ein Kreis: dann dreht sich das Auto an einer Wand nicht ein.
+ * > **Bis P19 stand hier: „aufgelöst wird an vier Punkten (den Ecken der
+ * > Karosserie), jeder mit einem Radius. Warum nicht ein Rechteck: eine spitze
+ * > Ecke hakt an jeder Kante."**
+ * >
+ * > Die Begründung war falsch, und der Preis dafür stand nicht dabei: zwischen
+ * > zwei Eckpunkten liegen beim Coupé 4,2 m, und **alles, was dort hineinpasst,
+ * > wurde nicht gesehen**. Gemessen mit `tools/bench/world.mts`: ein Baumstamm
+ * > mit 40 cm Radius genau auf der Fahrlinie ergab in fünfzehn Sekunden
+ * > **null Kontakte** — das Auto fuhr durch ihn hindurch. Genau dieses Bild
+ * > („das Auto steckt im Baum") hat P19 ausgelöst.
+ * >
+ * > Die Sorge vor der hakenden Ecke war zudem unbegründet: sie stammt aus
+ * > Verfahren, die Ecke gegen Ecke testen. Das SAT liefert die Richtung mit der
+ * > **kleinsten** Überdeckung, und die ist an einer Wand die Wandnormale — eine
+ * > Ecke, die sich an einer Kante verhakt, kann dabei gar nicht entstehen.
+ *
+ * Aufgelöst wird seit P19 gegen das **orientierte Rechteck** der Karosserie;
+ * die Rechnung steht in `CollisionWorld.queryBody`.
  */
+/**
+ * Die Gelände-Kriechhilfe — P21.
+ *
+ * ## Der Befund, aus dem sie entsteht
+ *
+ * Das Default-Coupé kommt im Gelände gerechnet **17,8°** hoch, und das ist keine
+ * Fehlfunktion, sondern eine geschlossene Rechnung:
+ *
+ * ```
+ * sinθ ≤ Σ_Achse μ_Achse · Lastanteil · Antriebsanteil
+ *      = 1,25 · 0,52 · 0,47 · 1     (Heckantrieb, 47 % Last hinten)
+ *      = 0,306   →   17,8°
+ * ```
+ *
+ * Ein echter Hecktriebler kommt eine Wiese auch nicht hoch. Gemessen auf der
+ * Karte war das trotzdem die **häufigste** Ursache für „ich stecke fest": von
+ * 14 Versuchen, aus 12 m Entfernung auf die Straße zurückzukommen, scheiterten
+ * **12 an genau dieser Grenze** — und keiner an der Kollision.
+ *
+ * Mehr Gas hilft nicht, und das ist gemessen: bei 20° Hang endet der Wagen mit
+ * Gas 0,5 / 0,7 / 1,0 **auf dieselbe Nachkommastelle** bei 0,4 km/h. Oberhalb
+ * der Haftgrenze ist die übertragene Kraft geklemmt, egal was der Fuß tut.
+ *
+ * ## Was die Hilfe tut — und was ausdrücklich nicht
+ *
+ * Unter `speed` bekommt die **Vorderachse** einen Antriebsanteil dazu, linear
+ * ausgeblendet mit dem Tempo. Damit ziehen im Kriechgang beide Achsen, und die
+ * Grenze steigt auf `asin(2 · min(μ_v·w_v, μ_h·w_h))` ≈ 38°.
+ *
+ *  · **Nur auf losem Boden.** Auf Asphalt ist sie null — die Zahlen aus P18
+ *    (0–100, Endtempo, Bremsweg, Drift) bleiben damit unberührt, und das ist
+ *    nachgemessen und kein Vorsatz.
+ *  · **Nur beim Kriechen.** Ab `speed` ist sie weg. Der Wagen bleibt im
+ *    Renntempo ein Hecktriebler, das Heck bricht weiter aus, der Drift bleibt.
+ *  · **Sie ist eine Fahrhilfe und keine Physik**, so wie `driftDamping`. Ein
+ *    Hecktriebler mit Sperre und Geländeuntersetzung ist damit *nicht*
+ *    nachgebildet — er ist ersetzt.
+ *
+ * `share` = 0,5 ist nicht gegriffen, sondern das Optimum: die übertragbare
+ * Summe ist `min(gripVorn/s, gripHinten/(1−s))`, und die wird maximal, wo beide
+ * Achsen gleichzeitig an ihrer Grenze liegen. Bei Lastanteilen um 50/50 ist das
+ * die Hälfte.
+ */
+export const CRAWL_ASSIST = {
+  /** Antriebsanteil der Vorderachse im Stand, auf losem Boden. */
+  share: 0.5,
+  /** Ab diesem Tempo ist die Hilfe vollständig weg, m/s. 8 m/s ≙ 29 km/h. */
+  speed: 8,
+} as const;
+
 export const VEHICLE_COLLISION = {
-  /** Radius der Eckpunkte. Rundet die Karosserie ab. */
-  cornerRadius: 0.34,
+  /**
+   * Blechzuschlag ringsum, in Metern.
+   *
+   * Der Nachfolger von `cornerRadius` (0,34 m) — und er ist um eine
+   * Größenordnung kleiner, weil er eine andere Aufgabe hat. Der Eckradius musste
+   * an vier Punkten eine ganze Karosserie **darstellen**; ein Rechteck ist die
+   * Karosserie schon. Übrig bleibt der Stoßfänger, der über dem Blech steht: 6 cm.
+   *
+   * Nebenwirkung, die gemessen und gewollt ist: an einer Leitplanke kommt das
+   * Auto seitlich 28 cm näher heran als vorher. Die alte Zahl machte den Wagen
+   * an den Ecken 2,3 m breit bei 1,62 m Blech.
+   */
+  skin: 0.06,
 
   /**
    * Rückprall — Anteil der Einschlaggeschwindigkeit, der zurückkommt.
@@ -785,13 +861,23 @@ export const VEHICLE_COLLISION = {
   restitution: 0.2,
 
   /**
-   * Reibung längs der Wand, als Anteil der Tangentialgeschwindigkeit je Kontakt.
+   * Reibbeiwert zwischen Blech und Hindernis — **μ, nicht ein Anteil je Schritt**.
    *
-   * Das ist das Schrammen an der Planke: man verliert Tempo, wird aber nicht
-   * gestoppt. Bei 0,12 kostet ein Streifschuss über 20 m rund ein Viertel des
-   * Tempos.
+   * > **Bis P19 stand hier 0,12 mit der Bedeutung „Anteil der
+   * > Tangentialgeschwindigkeit, der je Kontakt verschwindet"** und der Rechnung
+   * > „ein Streifschuss über 20 m kostet rund ein Viertel des Tempos". Die
+   * > Rechnung stimmte für eine Karosserie, die nur an vier Punkten prüft und
+   * > deshalb nur gelegentlich anliegt. Mit dem Rechteck aus P19 liegt sie in
+   * > **jedem** Schritt an, und derselbe Faktor lässt nach einer Sekunde 0,04 %
+   * > des Tempos übrig. Gemessen: 10 km/h an der Planke, bei Vollgas.
+   *
+   * Der Reibimpuls ist seitdem an den **Normalimpuls** gekoppelt
+   * (`|J_t| ≤ μ · |J_n|`, Umsetzung in `Vehicle.#resolveCollision`). 0,45 ist
+   * Stahl auf lackiertem Blech mit einem Abschlag dafür, dass eine W-Planke zum
+   * Ableiten gebaut ist. Der Wert ist damit eine Materialgröße und keine
+   * Zeitschrittgröße — er hängt nicht mehr davon ab, wie oft geprüft wird.
    */
-  wallFriction: 0.12,
+  wallFriction: 0.45,
 
   /**
    * Wie stark ein außermittiger Anschlag den Wagen dreht.
@@ -804,16 +890,22 @@ export const VEHICLE_COLLISION = {
   yawTransfer: 0.55,
 
   /**
-   * Höhen über der Radaufstandsebene, in denen die Karosserie prüft.
+   * Höhenband der Karosserie über der Radaufstandsebene: Unter- und Oberkante.
    *
-   * Zwei Ebenen: Stoßfänger (0,30 m) und Türunterkante (0,80 m). **Beide liegen
-   * bewusst innerhalb des Leitplankenbands**, das von der Fahrbahn bis
-   * `RAIL.top` = 0,85 m reicht — mit einer Prüfhöhe von 0,95 m hätte der obere
-   * Punkt jede Planke der Karte überstrichen, ohne sie zu berühren, und die
-   * Auflösung hinge an einem einzigen Kontakt. Zwei Kontakte an einer Wand geben
-   * dem Ausschieben eine Richtung; einer gibt ihm nur einen Betrag.
+   * > **Bis P19 waren das *Prüfhöhen*** — eine Liste von Ebenen, in denen die
+   * > vier Eckpunkte einzeln abfragten, mit der Begründung „zwei Kontakte an
+   * > einer Wand geben dem Ausschieben eine Richtung; einer gibt ihm nur einen
+   * > Betrag". Mit einem Rechteck stellt sich die Frage nicht mehr: die Richtung
+   * > kommt aus dem SAT, nicht aus der Zahl der Prüfpunkte. Geblieben ist die
+   * > Frage, **welchen Höhenbereich** die Karosserie überhaupt abdeckt — und die
+   * > beantworten genau zwei Zahlen.
+   *
+   * 0,30 m ist der Stoßfänger, 0,80 m die Türunterkante. Beide liegen bewusst
+   * innerhalb des Leitplankenbands, das von der Fahrbahn bis `RAIL.top` = 0,85 m
+   * reicht: ein Band, das erst über der Oberkante anfinge, wäre eine Planke, die
+   * man unterfährt.
    */
-  probeHeights: [0.3, 0.8] as readonly number[],
+  band: [0.3, 0.8] as readonly [number, number],
 
   /**
    * Wie weit eine Kollision höchstens je Schritt auflöst, in Metern.
@@ -825,6 +917,71 @@ export const VEHICLE_COLLISION = {
    */
   maxPushPerStep: 0.25,
 } as const;
+
+/**
+ * Größter Abstand zweier Prüfpunkte der Karosserie, in Metern.
+ *
+ * **Die Lehre aus P19, eine Ebene höher.** Dort stand: *eine Abtastung ist erst
+ * dann eine Form, wenn ihr Abstand kleiner ist als das Kleinste, was sie treffen
+ * soll.* Vier Eckpunkte über 4,2 m Karosserie ließen einen 40-cm-Stamm
+ * hindurch.
+ *
+ * Das Kleinste, was das Gelände hier zu bieten hat, ist sein **Texelabstand**:
+ * das Höhenfeld dieser Karte hat 1,5 m Raster (3072 m auf 2048 Texel), und
+ * schmaler als ein Texel kann eine Geländeform nicht sein. 1,4 m liegt darunter
+ * und ist damit die Grenze, ab der die Abtastung eine Form ist.
+ */
+export const HULL_SAMPLE_SPACING = 1.4;
+
+/**
+ * Prüfpunkte der Blechunterkante im Fahrzeugsystem bilden — einmal je Spec.
+ *
+ * Flach als `x, y, z` je Punkt, damit im Schritt weder eine Schleife über
+ * Objekte noch eine Allokation nötig ist.
+ *
+ * **Die Reihen an den Enden und in der Mitte tragen drei Punkte, die dazwischen
+ * einen.** Die Enden sind der Überhang — das Stück, das über die Achse hinaus
+ * ins Gelände ragt und den ganzen Fehler oben erzeugt hat. Die Mitte ist das
+ * Aufsitzen auf einer Kuppe. Dazwischen liegen die **Räder** (`#sampleWheels`
+ * prüft dort ohnehin, und zwar mit Hüllkurve), weshalb dort die Mittellinie
+ * genügt.
+ *
+ * Die Unterkante ist `collision.band[0]` über der Radaufstandsebene und damit
+ * dieselbe Zahl, mit der die Karosserie gegen Hindernisse prüft. Ein zweiter
+ * Wert dafür wäre eine zweite Gelegenheit, sie auseinanderlaufen zu lassen.
+ *
+ * > **Kein Anlaufwinkel, und das ist eine Messung und keine Auslassung.** Eine
+ * > abgeschrägte Unterseite (vorn und hinten ansteigend) war der erste Entwurf.
+ * > Sie ist überflüssig: der Anlaufwinkel **ergibt sich** aus dem, was schon
+ * > dasteht — `atan(band[0] / Überhang)`. Gerechnet aus den vorhandenen Maßen
+ * > sind das 19,0° beim Coupé, 17,2° beim GT (vorn) und 10,9° hinten, und das
+ * > sind für einen Straßenwagen und einen Supersportler genau die richtigen
+ * > Größenordnungen. Eine zusätzliche Konstante hätte eine bereits gemessene
+ * > Geometrie überschrieben.
+ */
+export function hullSamplePoints(
+  bodyLength: number,
+  bodyWidth: number,
+  underside: number,
+): Float64Array {
+  const rows = Math.min(7, Math.max(3, Math.ceil(bodyLength / HULL_SAMPLE_SPACING) + 1));
+  const middle = (rows - 1) >> 1;
+  const hl = bodyLength * 0.5;
+  const hw = bodyWidth * 0.5;
+  const out: number[] = [];
+  for (let r = 0; r < rows; r++) {
+    const l = -hl + (r * bodyLength) / (rows - 1);
+    const breit = r === 0 || r === rows - 1 || r === middle;
+    if (breit) {
+      out.push(-hw, underside, l, 0, underside, l, hw, underside, l);
+    } else {
+      out.push(0, underside, l);
+    }
+  }
+  return Float64Array.from(out);
+}
+
+
 
 /**
  * Die Verfolgerkamera.

@@ -420,9 +420,17 @@ export class ScatterSystem implements System {
           if (species.layer !== 'canopy') continue;
           const data = chunk.instances[s];
           if (!data) continue;
-          // Etwas dicker als der sichtbare Stamm (0,10…0,26 m): sonst fährt
-          // man durch die Rinde, weil die Karosserie abgerundete Ecken hat.
-          const trunk = species.id === 'pine' ? 0.32 : 0.4;
+          // **Der Radius des sichtbaren Stammes, nicht mehr.** Bis P19 stand
+          // hier das Doppelte (0,32 / 0,40) mit der Begründung „sonst fährt man
+          // durch die Rinde, weil die Karosserie abgerundete Ecken hat". Die
+          // Ecken sind weg — die Kollision rechnet seitdem mit dem
+          // Karosserie-**Rechteck** (`CollisionWorld.queryBody`), und ein
+          // Zuschlag gegen ein Loch, das es nicht mehr gibt, ist nur noch ein
+          // Auto, das einen halben Meter neben einem Baum stehenbleibt.
+          //
+          // Die Zahlen sind die Fußradien aus `vegetationMeshes.ts`: die Kiefer
+          // ist unten 0,17 m stark, der Laubbaum 0,26 m.
+          const trunk = species.id === 'pine' ? 0.17 : 0.26;
           const tall = species.id === 'pine' ? 5.5 : 7;
           for (let i = 0; i < data.length; i += INSTANCE_STRIDE) {
             const tx = data[i]!;

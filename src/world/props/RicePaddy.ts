@@ -4,14 +4,13 @@ import {
   Float32BufferAttribute,
   Group,
   Mesh,
-  type Material,
 } from 'three';
 
 import { PADDY_WATER } from '@/config/props.config';
 import type { EngineContext, System } from '@/core/System';
 import { WORLD } from '@/config/world.config';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
-import { PropMaterial } from '../materials/PropMaterial';
+import { PaddyWaterMaterial } from '../materials/PaddyWaterMaterial';
 import type { TerrainSampler } from '../TerrainSampler';
 import { TERRAIN_ASSETS } from '../terrainAssets';
 
@@ -64,12 +63,14 @@ export class RicePaddy implements System {
 
   #context: EngineContext | null = null;
   #group: Group | null = null;
-  #material: Material | null = null;
+  #material: PaddyWaterMaterial | null = null;
   #meshes: Mesh[] = [];
   #sampler: TerrainSampler | null = null;
   #mask: Uint8ClampedArray | null = null;
   #maskRes = 0;
   #waterDepth = 0.3;
+  /** Nahdetail aus der Qualitätsstufe — siehe `setDetail`. */
+  #detail = 1;
 
   readonly #readouts = { kacheln: '—', dreiecke: '—' };
 
@@ -132,14 +133,22 @@ export class RicePaddy implements System {
     const sampler = this.#sampler;
     if (!group || !sampler || !this.#mask || this.#meshes.length) return;
 
-    const material = new PropMaterial(this.atmosphere);
+    // **Seit P19 ein eigenes Material statt `PropMaterial`.** Die Begründung
+    // steht dort ausführlich; die Kurzfassung: eine Fläche mit Rauheit 0,06 und
+    // ohne jede Bewegung ist ein Spiegel, und 101 ha Spiegel mitten auf der
+    // Karte sehen aus wie Lack. Wellen und Kielwelle sind dieselbe Rechnung wie
+    // beim Meer, Tiefenfarbe und Schaumsaum ausdrücklich nicht — bei 30 cm
+    // Wassertiefe bestünde die ganze Fläche aus Uferschaum.
+    const material = new PaddyWaterMaterial(this.atmosphere);
     material.vertexColors = false;
     material.flatShading = false;
     material.color = new Color().setHex(PADDY_WATER.color, 'srgb');
     material.roughness = PADDY_WATER.roughness;
     material.metalness = PADDY_WATER.metalness;
-    material.name = 'PaddyWaterMaterial';
     this.#material = material;
+    // Eine Stufe, die vor dem Bauen gesetzt wurde, gilt trotzdem: `#detail`
+    // überlebt, bis es ein Material gibt, das den Wert tragen kann.
+    material.uPaddyDetail.value = this.#detail;
 
     const step = PADDY_WATER.grid;
     const tile = PADDY_WATER.tile;
@@ -263,6 +272,33 @@ export class RicePaddy implements System {
 
   update(): void {
     // Nichts je Frame: die Flächen stehen fest, three cullt sie selbst.
+  }
+
+  // ── Was das WaterSystem hereinreicht (P19) ────────────────────────────────
+  //
+  // Die Umsetzung von `PaddySink`. Das Nahdetail wird **gemerkt** und nicht nur
+  // durchgereicht: `quality:changed` kommt beim Start, bevor `terrain:ready` die
+  // Flächen gebaut hat, und ein Wert, der nur ankommt, wenn die Ladereihenfolge
+  // stimmt, ist ein Wert, der irgendwann fehlt. Die Kielwelle braucht das nicht
+  // — sie kommt je Frame, und ein verlorener Frame ist keiner.
+
+  setDetail(detail: number): void {
+    this.#detail = detail;
+    if (this.#material) this.#material.uPaddyDetail.value = detail;
+  }
+
+  setVehicleWake(
+    x: number,
+    z: number,
+    dirX: number,
+    dirZ: number,
+    speed: number,
+    active: boolean,
+  ): void {
+    const material = this.#material;
+    if (!material) return;
+    material.uPaddyWake.value.set(x, z, 0, speed);
+    material.uPaddyFwd.value.set(dirX, dirZ, active ? 1 : 0, 0);
   }
 
   #registerDebug(context: EngineContext): void {

@@ -309,10 +309,12 @@ und vor allem, was diese Ereignisse sendet.
 
 ```
 DriveSystem ──┬── Vehicle           Kräfte, Gieren, Federung   (fixedUpdate, 60 Hz)
-              │     └── VehicleSpec  vier Datensätze, eine Physik   (P18)
+              │     ├── VehicleSpec  vier Datensätze, eine Physik   (P18)
+              │     ├── supportPlane Stützebene, Bodenfang, Steilhang
+              │     └── hullTerrain  Karosserie gegen das Höhenfeld  (P20)
               ├── CollisionWorld    Hindernisse im Raster
               ├── ChaseCamera       Verfolger / Haube          (update, Bildrate)
-              ├── VehicleFx         Driftspuren, Spritzer      (update, Bildrate)
+              ├── VehicleFx         Spuren + 5 Partikelsorten  (update, Bildrate)
               └── carMesh           Geometrie, prozedural, vier Bauformen
 ```
 
@@ -344,6 +346,79 @@ Fahrmodus weiter, statt sie zu verschlucken.
 Leitplanken Polygonzüge, Props Kreise — für jede Form eine geschlossene
 Distanzfunktion. Ein BVH beantwortet „welches Dreieck", gebraucht wird „wie weit
 heraus". Ausführlich im Kopf von `CollisionWorld.ts`.
+
+**Die Karosserie ist ein Rechteck, keine vier Punkte — P19.** Bis dahin prüfte
+`Vehicle` an vier Ecken mit je 34 cm Radius; zwischen Vorder- und Hinterecke
+liegen 4,2 m, und ein Baumstamm darin wurde **nicht gesehen** (gemessen: null
+Kontakte auf der Mittellinie, das Auto fuhr hindurch). `CollisionWorld.queryBody`
+testet seitdem das orientierte Rechteck gegen alle drei Formen — Kreis-Rechteck
+für Zylinder, SAT über vier Achsen für Kästen und Wände — und liefert eine
+**Liste** von Kontakten statt eines einzigen. Das ist zugleich billiger:
++0,0009 ms je Schritt gegen vorher +0,0057 ms.
+
+**Und sie prüft seit P20 auch gegen das *Gelände* — `hullTerrain.ts`.** Bis dahin
+kannte das Fahrzeug das Höhenfeld an fünf Punkten (vier Räder, Schwerpunkt); der
+Aufbau dazwischen und davor gab es für die Physik nicht. Gemessen stand die Nase
+auf einem befahrbaren 20°-Hang **0,78 m im Berg**, auf 65° waren es 4,45 m — und
+keine Kennzahl meldete es, weil `lastPenetration` Hindernisse zählt und nicht das
+Höhenfeld.
+
+Zehn bis dreizehn Prüfpunkte auf der Blechunterkante (einmal je Spec gerechnet,
+`VehicleDerived.hullSamples`), aufgelöst längs der Flächennormalen — waagerecht,
+sobald die Fläche eine Wand ist, damit kein Wagen daran hochratscht. Zwei Regeln
+tragen die Lösung, und beide sind gemessen erzwungen:
+
+ - **Senkrecht trägt die Federung, waagerecht das Blech.** Die Hülle weist nur
+   die waagerechte Geschwindigkeit ab und hebt den Aufbau nie über seine
+   Standhöhe. Mit voller Abweisung schwebte der Wagen die halbe Zeit ohne Radlast
+   (49,8 % gegen 8,1 %).
+ - **Die Fahrbahn ist kein Hindernis.** Ihre Höhe ist eine gerechnete Mischung
+   aus Sampler, Mittellinie, Plateaus und Wasserspiegel; die Räder fahren darauf,
+   die Karosserie kollidiert nur mit `gelaende`.
+
+Dazu wurde die **Stützebene** endlich eine: `Vehicle` rechnet jede Radhöhe auf
+die Hangebene durch den Schwerpunkt zurück, bevor sie gegen die Federreichweite
+geprüft wird. Vorher war der Bezug waagerecht — auf 20 % Steigung galt damit die
+ganze Vorderachse als unerreichbar, und der Wagen verlor seine Radlast.
+
+**Und das Blech trägt, statt zu pflügen — P21.** Die erste Fassung schob den
+Wagen von außen aus dem Boden und durfte ihn dabei nicht über seine Standhöhe
+heben (sonst verliert er die Radlast). Damit konnte sie bremsen, aber nicht
+tragen: über jede Bodenwelle pflügte der Wagen hindurch, statt darüber zu
+steigen. `hullSupport` hebt seitdem die **Stützebene** statt den Aufbau — die
+Feder trägt ihn dann selbst darüber, und die Reifen behalten ihre Last.
+
+**Die Fahrbahn ist eine Ebene, kein Offset — P21.** `DriveSystem.height()` bildete
+bis dahin `Gelände(x,z) + Skalar`, mit einem Skalar vom nächsten
+Mittellinienpunkt. Damit erbte die Fahrbahn jede Verwindung des Geländes unter
+ihr — gemessen bis 1,66 m quer in einer Kehre des Bergpasses, während das Bild
+ein glattes Band zeigt. Seitdem ist die Sollhöhe die **Ebene durch den
+Straßentreffer** mit `RoadHit.slopeAlong`; quer ist sie flach, weil sie als flach
+gerechnet wird.
+
+**Zwei Zahlen für zwei Fragen am Steilhang.** `STEEP_NY` (38,7°) entscheidet die
+**Geometrie** — Boden oder Wand, ausschieben senkrecht oder waagerecht. Die
+**Kraft** läuft seit P21 stetig aus (`slopeSupport`, 34,9°…50,2°): eine einzige
+Konstante für beides war ein Schalter mitten im Fahrbereich, an dem ein Wagen in
+einem Simulationsschritt von voller Kontrolle auf null fiel.
+
+**Die Kriechhilfe ist eine Fahrhilfe und steht als solche da.** Unter 8 m/s auf
+losem Boden bekommt die Vorderachse einen Antriebsanteil (`CRAWL_ASSIST`); auf
+Asphalt ist sie null. Sie hebt die Steigfähigkeit des Coupés im Gelände von 17,8°
+auf 37,7° und lässt Fahrverhalten und Drift bei Tempo unberührt — dieselbe
+Kategorie wie `STEERING.driftDamping`, und aus demselben Grund benannt.
+
+**Die letzte Zusicherung liegt im `DriveSystem`, nicht in der Physik.**
+`#watchStuck` setzt einen Wagen, der fünf Sekunden lang fahren will und keine
+drei Meter zurücklegt, auf die nächste Straße. Sie steht in `fixedUpdate` und
+nicht in `simulateStep`, damit der Messstand sie nicht mitfährt.
+
+**Die Darstellungsschicht des Fahrmodus ist zweigeteilt.** `VehicleFx` hält zwei
+`InstancedMesh` — Spuren (multiplikativ, unbewegt) und Partikel (Alpha, bewegt).
+Fünf Partikelsorten teilen sich **ein** Material über einen 2 × 2-Atlas und ein
+Instanzattribut; das ist der Grund, warum aus Tropfen, Fächer, Dunst, Staub und
+Brocken kein zweiter Draw-Call wird. Gemessen kostet die ganze Schicht +4 Calls
+und +2700 Dreiecke.
 
 **Was der Fahrmodus die Welt gekostet hat:** `CityGenerator` gibt seine
 Baukörper jetzt als `CityCollider` mit heraus (aus dem zusammengeführten
