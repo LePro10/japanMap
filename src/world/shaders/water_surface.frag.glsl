@@ -26,6 +26,33 @@ float depth = max(vWaterWorld.y - terrainSurface(vWaterWorld.xz), 0.0);
 depth = mix(depth, 80.0, outside);
 
 gWaterNormal = waterNormal(vWaterWorld.xz, uAtmoTime, waveFade);
+
+// ── Kräuselung im Nahbereich — P19 ────────────────────────────────────────
+//
+// Die drei Wellenlagen oben sind 37 m, 13 m und 4,6 m lang. Aus der Ferne ist
+// das genau richtig; **direkt neben dem Auto** ist die kürzeste davon immer
+// noch fünf Wagenlängen, und die Fläche dazwischen ist spiegelglatt. Genau das
+// ist die gemeldete Beanstandung: das Wasser sieht aus wie Lack.
+//
+// Zwei zusätzliche Lagen mit 1,1 m und 0,42 m schließen die Lücke. Sie blenden
+// **vor** der kürzesten der drei aus (40 m bzw. 14 m), aus demselben Grund, der
+// oben bei `fade` steht: sobald eine Wellenlänge unter wenige Pixel fällt,
+// bleibt vom Muster nur Moiré. Der Aufwand liegt bei zwei Sinus und zwei
+// Kosinus je Wasserpixel und **nur dort, wo sie sichtbar sind** — jenseits von
+// 40 m überspringt der Zweig sie ganz.
+float nahFade = 1.0 - smoothstep(12.0, 42.0, viewDistance);
+if (nahFade > 0.004 && uWaterDetail > 0.004) {
+  float t = uAtmoTime;
+  vec2 p = vWaterWorld.xz;
+  // Zwei gekreuzte Lagen je Maßstab; die zweite läuft schräg dazu, damit kein
+  // Streifenmuster entsteht (dieselbe Falle wie bei den drei Hauptlagen).
+  vec2 kraus = vec2(0.0);
+  kraus += vec2(0.62, 0.79) * (0.030 * cos(dot(vec2(0.62, 0.79), p) * 5.7 + t * 2.9));
+  kraus += vec2(-0.83, 0.56) * (0.024 * cos(dot(vec2(-0.83, 0.56), p) * 8.1 - t * 3.6));
+  kraus += vec2(0.29, -0.96) * (0.018 * cos(dot(vec2(0.29, -0.96), p) * 15.0 + t * 5.2));
+  gWaterNormal = normalize(gWaterNormal + vec3(-kraus.x, 0.0, -kraus.y) * nahFade * uWaterDetail);
+}
+
 gWaterShade = atmoShade(vWaterWorld);
 
 // Fließendes Wasser steht schief. Die Wellennormale oben ist um die Senkrechte

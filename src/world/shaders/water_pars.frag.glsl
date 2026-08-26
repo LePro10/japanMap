@@ -130,3 +130,16 @@ float waterWaveHeight(vec2 position, float time, vec3 fade) {
 
   return height;
 }
+
+/**
+ * Wie viel Nahdetail das Wasser bekommt, 0…1 — P19.
+ *
+ * Gesetzt aus der Qualitätsstufe (`WaterSystem`). Auf Minimal steht sie auf 0
+ * und der Zweig in `water_surface.frag.glsl` fällt ganz weg; die Fläche ist dann
+ * wieder so glatt wie vor P19, kostet dafür aber auch nichts.
+ *
+ * Eine Uniform und **kein** `#define`: das Wasser teilt sich ein Programm
+ * zwischen Meer und Fluss (`customProgramCacheKey`), und ein Define je Stufe
+ * wäre eine neue Übersetzung bei jedem Reglerzug im Menü.
+ */
+uniform float uWaterDetail;

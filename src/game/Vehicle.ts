@@ -1,6 +1,6 @@
 import { Euler, Quaternion, Vector3 } from 'three';
 
-import { GRAVITY, SURFACE_FEEL } from '@/config/vehicle.config';
+import { CRAWL_ASSIST, GRAVITY, SURFACE_FEEL } from '@/config/vehicle.config';
 import {
   ENGINE_BRAKE_FLOOR,
   ENGINE_BRAKE_SHARE,
@@ -17,10 +17,17 @@ import {
   shouldBreak,
   type BreakEvent,
 } from './breakables';
-import { HIT_TREE, type CollisionWorld } from './CollisionWorld';
 import {
-  isSteep,
-  reachableSupport,
+  HIT_TREE,
+  createBodyContacts,
+  type BodyContact,
+  type CollisionWorld,
+} from './CollisionWorld';
+import { NO_HULL_CONTACT, hullSupport, resolveHullTerrain } from './hullTerrain';
+import {
+  axleSupport,
+  hasReachableWheel,
+  slopeSupport,
   reachableWheel,
   resolveTerrainFollow,
   type FollowState,
@@ -138,6 +145,15 @@ export interface VehicleTelemetry {
   lastPenetration: number;
   /** Zahl der Kontaktpunkte im letzten Schritt. */
   contacts: number;
+  /**
+   * Tiefstes Eintauchen der Karosserie in das **Gelaende**, in Metern — P20.
+   *
+   * Getrennt von lastPenetration, weil es eine andere Frage beantwortet: die
+   * zaehlt Hindernisse (Baum, Planke, Haus), diese das Hoehenfeld. Bis P20 gab
+   * es fuer das Gelaende ueberhaupt keine Zahl, und genau deshalb konnte ein
+   * Auto bis zur Fensterkante im Hang stecken, ohne dass eine Kennzahl anschlug.
+   */
+  hullDepth: number;
   /** Wassertiefe am Schwerpunkt, in Metern. */
   waterDepth: number;
   /**
@@ -163,6 +179,108 @@ export interface VehicleTelemetry {
  * > `VehicleSpec.limits`. Ihre Herleitungen sind mitgewandert; was hier folgt,
  * > ist die Begründung, die an dieser Stelle gebraucht wird.
  */
+
+/**
+ * Der Klemmschutz — P19, und ausdrücklich **keine** Physik.
+ *
+ * Sechs Zahlen, die zusammen einen Satz ergeben: *steckt der Wagen in etwas,
+ * will der Fahrer fahren, und kommt der Wagen dabei nicht `WEDGE_FREE_DISTANCE`
+ * von der Stelle, dann wächst ihm nach `WEDGE_DELAY` eine Trenngeschwindigkeit
+ * mit `WEDGE_ESCAPE_RATE` bis höchstens `WEDGE_ESCAPE_MAX`.*
+ *
+ * Sie stehen als Modulkonstanten und nicht in der Spec, weil sie **nicht** aus
+ * den Maßen eines Fahrzeugs folgen — genau die Prüfung, an der in P17 sieben
+ * andere Konstanten hier gescheitert sind. Ein Lastwagen, der sich festfährt,
+ * soll sich genauso freischieben wie ein Coupé; das ist eine Frage der
+ * Bedienbarkeit und keine der Masse.
+ *
+ * > **`WEDGE_SPEED` gab es bis zur dritten Fassung und ist ersatzlos weg.** Sie
+ * > war die Bedingung „langsamer als 0,6 m/s" — und hat den Schutz abgeschaltet,
+ * > sobald er wirkte: die Trennhilfe hob das Tempo über die Schwelle, der Zähler
+ * > fiel auf null, die Hilfe hörte auf. Ersetzt durch den **Weg**; Begründung
+ * > und Messung bei `#updateWedge`.
+ */
+const WEDGE_DELAY = 1.2;
+const WEDGE_ESCAPE_RATE = 2.0;
+const WEDGE_ESCAPE_MAX = 2.5;
+/**
+ * Ab dieser **nach** dem Schritt verbliebenen Überdeckung gilt der Wagen als
+ * geklemmt, in Metern.
+ *
+ * 2 cm. Die Zahl trennt zwei Lagen, die sich in jeder anderen Kennzahl gleichen:
+ * gegen einen Baum drücken (Überdeckung wird jeden Schritt vollständig gelöst,
+ * `rest = 0`) und zwischen zwei Dingen klemmen (`rest` bleibt stehen). Ohne
+ * diese Trennung sprang die Trennhilfe beim Anfahren gegen jeden Baum an —
+ * gemessen im Prüfstand, siehe die Begründung an der Fundstelle.
+ */
+const WEDGE_RESIDUAL = 0.02;
+/**
+ * Ab diesem Wert gilt der Wagen als **eingeklemmt** statt als angedrückt.
+ *
+ * `squeeze = 1 − |Σn| / n` über die Kontaktnormalen: 0 bei einem einzelnen
+ * Kontakt (gegen eine Wand drücken — kein Fehler, da will man nichts tun), 1 bei
+ * zwei exakt gegenüberliegenden. 0,45 liegt über allem, was ein Kontakt mit
+ * einer Innenecke ergibt (zwei Wände im rechten Winkel: 1 − √2/2 = 0,29), und
+ * unter dem, was zwei sich gegenüberstehende Hindernisse ergeben.
+ */
+const WEDGE_SQUEEZE = 0.45;
+/**
+ * Gedächtnis des Normalen-Mittelwerts, in Sekunden.
+ *
+ * 0,2 s ist lang genug, dass ein Wechsel vorn/hinten (der im Klemmfall je
+ * Schritt passiert) sich aufhebt, und kurz genug, dass ein Wagen, der eine Kurve
+ * an der Planke entlangschrammt, nicht als geklemmt gilt — dort dreht sich die
+ * Normale langsam, und der Mittelwert folgt ihr.
+ */
+const WEDGE_MEMORY = 0.2;
+/**
+ * Wie schnell der Klemmzähler in kontaktfreien Schritten abklingt, als
+ * Vielfaches seiner Aufbaurate.
+ *
+ * **Er wird abgebaut und nicht gelöscht**, und das ist der Unterschied zwischen
+ * einem Klemmschutz, der greift, und einem, der es nicht tut: der eingeklemmte
+ * Wagen am Tempelaufgang hatte nur in **jedem zehnten Schritt** einen Kontakt —
+ * die Auflösung schiebt ihn frei, im nächsten Schritt drückt der Antrieb ihn
+ * zurück. Mit Löschen kam die halbe Sekunde nie zusammen, und der Schutz feuerte
+ * nie. Mit Faktor 2 ist ein wirklich freier Wagen nach einer Viertelsekunde bei
+ * null.
+ */
+const WEDGE_RELEASE = 2;
+/**
+ * Wie viel **quer** in der Trennrichtung steckt, als Verhältnis zur Normalen.
+ *
+ * 0,8 heißt rund 39° schräg. Senkrecht allein genügt in einer Nische nicht: der
+ * Wagen weicht dem vorderen Hindernis nach hinten aus, stößt ans hintere und
+ * pendelt. Erst der Querweg führt hinaus — und weil er quer ist, kämpft er auch
+ * nicht gegen den Fahrer, der geradeaus drückt.
+ */
+const WEDGE_SIDESTEP = 0.8;
+/**
+ * Wie lange ein Kontakt „noch zählt", in Sekunden.
+ *
+ * 0,4 s. Ein eingeklemmter Wagen berührt sein Hindernis **nicht in jedem
+ * Schritt**: die Auflösung schiebt ihn frei, der Antrieb drückt ihn zurück,
+ * dazwischen liegen kontaktfreie Schritte. Am Tempelaufgang war es einer von
+ * zehn — ohne Gedächtnis lief der Klemmzähler netto rückwärts und erreichte
+ * seine Schwelle nie.
+ */
+const WEDGE_CONTACT_MEMORY = 0.4;
+/**
+ * Ab diesem zurückgelegten Weg gilt eine Klemme als überstanden, in Metern.
+ *
+ * 1,5 m — knapp eine halbe Wagenlänge. Die Zahl trennt „von der Stelle gekommen"
+ * von „zappelt". Sie ersetzt die Tempobedingung des ersten Versuchs, die sich
+ * selbst ausgeschaltet hat (Begründung bei `#updateWedge`).
+ */
+const WEDGE_FREE_DISTANCE = 1.5;
+/**
+ * Ab diesem Skalarprodukt gelten zwei Kontaktnormalen als **entgegengesetzt**.
+ *
+ * −0,3 ≙ mehr als 107° auseinander. Erst dann ist der Wagen aus zwei Richtungen
+ * blockiert und damit gefangen; ein einzelnes Hindernis (Baum, Mauer) erzeugt
+ * das nie, und wer nur dagegen drückt, soll auch dagegen gedrückt bleiben.
+ */
+const WEDGE_OPPOSED_DOT = -0.3;
 
 /**
  * Bezugsgeschwindigkeit im Nenner des Schräglaufwinkels, in m/s.
@@ -262,16 +380,52 @@ export class Vehicle {
   readonly #forward = new Vector3();
   readonly #right = new Vector3();
   readonly #normal = new Vector3(0, 1, 0);
+  /** Flächennormale an der Stelle **nach** der Integration — nur für den Bodenfang. */
+  readonly #followNormal = new Vector3(0, 1, 0);
   /** Hochachse des Aufbaus und ein Rechenplatz — nur für `#placeWheels`. */
   readonly #up = new Vector3(0, 1, 0);
   readonly #scratch = new Vector3();
+  /** Kratzplatz für  — Prüfpunkt und Flächennormale. */
+  readonly #hullPoint = new Vector3();
+  readonly #hullNormal = new Vector3();
   readonly #euler = new Euler(0, 0, 0, 'YXZ');
   readonly #follow: FollowState = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };
+  /** Kontaktpuffer der Kollisionsauflösung — einmal angelegt, je Schritt neu gefüllt. */
+  readonly #contacts: BodyContact[] = createBodyContacts();
+  /** Wie lange der Wagen schon steht und dabei in etwas steckt, in Sekunden. */
+  #wedgeTime = 0;
+  /** Gleitender Mittelwert der Kontaktnormalen — siehe `squeeze` in `#resolveCollision`. */
+  #wedgeNormX = 0;
+  #wedgeNormZ = 0;
+  /** Gemerkte Ausweichrichtung — bei Kontakt gebildet, auch ohne Kontakt angewandt. */
+  #wedgeEscX = 0;
+  #wedgeEscZ = 0;
+  /** Wie lange der letzte Kontakt her ist, in Sekunden. Siehe `#resolveCollision`. */
+  #contactAge = 99;
+  /**
+   * Ausweichseite einer Klemme, +1 oder −1 — **einmal je Episode** festgelegt.
+   *
+   * Ohne diese Sperre kippt sie: die Kontaktnormale wechselt in einer Nische von
+   * Schritt zu Schritt zwischen vorn und hinten, und mit ihr die berechnete
+   * Querrichtung. Der Wagen weicht dann abwechselnd nach links und rechts aus und
+   * bleibt netto stehen. Gemessen am Tempelaufgang: 0,09 m in fünf Sekunden bei
+   * 2,3 km/h — er *bewegte* sich, er kam nur nicht weg.
+   */
+  #wedgeSide = 0;
+  /** Wo die laufende Klemm-Episode begonnen hat — der Bezug für den Weg. */
+  #wedgeStartX = 0;
+  #wedgeStartZ = 0;
+  /** Erste Kontaktnormale der Episode, und ob je eine entgegengesetzte kam. */
+  #wedgeFirstNX = 0;
+  #wedgeFirstNZ = 0;
+  #wedgeOpposed = false;
   #breaks: BreakEvent[] = [];
   #brokeThisStep = 0;
 
   /** Radaufstandshöhen: vorn links, vorn rechts, hinten links, hinten rechts. */
   readonly #wheelGround = [0, 0, 0, 0];
+  /** Hoehe der Hangebene unter jedem Rad, relativ zum Schwerpunktsniveau — P20. */
+  readonly #wheelTilt = [0, 0, 0, 0];
   readonly #wheelPos = [
     new Vector3(),
     new Vector3(),
@@ -292,6 +446,7 @@ export class Vehicle {
     surface: 'asphalt',
     lastPenetration: 0,
     contacts: 0,
+    hullDepth: 0,
     waterDepth: 0,
     skid: 0,
   };
@@ -367,8 +522,35 @@ export class Vehicle {
     this.position.set(x, groundY + this.#spec.chassis.cgHeight / aufrecht, z);
     this.#yaw = heading;
     this.#yawRate = 0;
-    this.#pitch = 0;
-    this.#roll = 0;
+    // ── Und die Lage kommt vom Hang, nicht aus der Waagerechten — P21 ─────
+    //
+    // **Bis P21 stand hier `pitch = 0; roll = 0`**, und das ist auf einem Hang
+    // schlicht falsch: der Wagen stand für die Einschwingzeit von
+    // `attitudeRate` (rund 0,3 s) waagerecht auf einer schiefen Ebene. Bis P20
+    // war das ein Schönheitsfehler — seit die Karosserie gegen das Gelände
+    // prüft, gräbt sich das Heck dabei ein.
+    //
+    // Gemessen auf einem glatten 20°-Hang, Coupé, direkt nach dem Absetzen:
+    // **0,369 m** Blech im Boden. Auf 30° waren es 0,664 m. Der Prüfstand hat
+    // das als „Aufsitzen" gemeldet, und es war in Wahrheit der erste
+    // Zehntelsekunde-Zustand des Laufs — eine Zahl, die *entsteht*, weil die
+    // Messung sich ihren eigenen Anfangszustand kaputtgesetzt hat. Dieselbe
+    // Falle wie bei den exakt −6,00 cm Standhöhe in P14.
+    //
+    // Betrifft im Betrieb jedes Absetzen: Taste `R`, Einsteigen, Fahrzeugwechsel
+    // und die Klemmwache aus P20 — also ausgerechnet die Wege, die einen
+    // festgefahrenen Wagen befreien sollen.
+    //
+    // Die Rechnung ist dieselbe wie im Luftzweig von `#updateAttitude`: der
+    // Höhengradient längs einer Fahrzeugachse ist `−(n·d) / n_y`.
+    this.#forward.set(Math.sin(heading), 0, Math.cos(heading));
+    this.#right.set(-Math.cos(heading), 0, Math.sin(heading));
+    this.#pitch = Math.atan(
+      (this.#normal.x * this.#forward.x + this.#normal.z * this.#forward.z) / aufrecht,
+    );
+    this.#roll = Math.atan(
+      -(this.#normal.x * this.#right.x + this.#normal.z * this.#right.z) / aufrecht,
+    );
     this.#vLong = 0;
     this.#vLat = 0;
     this.#vY = 0;
@@ -386,7 +568,31 @@ export class Vehicle {
     this.#breaks = [];
     this.velocity.set(0, 0, 0);
     this.#updateBasis();
+    this.#hullSupport = -Infinity;
     this.#sampleWheels(ground);
+    // ── Die Höhe kommt von der **Stützebene**, nicht vom Boden unter dem
+    //    Schwerpunkt — P21 ──────────────────────────────────────────────────
+    //
+    // Die Zeile oben setzt `groundY + cgHeight / n_y` aus **einer** Probe. Der
+    // Aufbau steht aber auf vier Rädern, und auf welligem Grund liegen die
+    // woanders: gemessen bei (−1328 | −517) auf 76,43…76,86 m, während der Boden
+    // unter dem Schwerpunkt bei 76,87 m liegt — **43 cm** Unterschied.
+    //
+    // Die Folge ist kein Schweben, sondern das Gegenteil: der Wagen wird beim
+    // Absetzen in den Boden gedrückt. Gemessen an derselben Stelle Einfederung
+    // **1,29** (der Federweg ist 1,0, darüber liegt der Gummipuffer) und
+    // **0,37 m** Blech im Boden — und weil die Stützebene den Aufbau dort nicht
+    // wieder heraushebt, blieb der Wagen liegen: 1,3 m in sieben Sekunden
+    // Vollgas.
+    //
+    // Zweimal gerechnet, weil `#contactHeight` über `expected` von der Höhe
+    // abhängt, die sie gerade bestimmt. Die Radproben selbst hängen **nicht** an
+    // der Höhe (nur an x, z, Gierwinkel und Normale), sie müssen also nicht neu
+    // genommen werden. Nach dem zweiten Durchgang liegt der Rest unter einem
+    // Millimeter.
+    for (let i = 0; i < 2; i++) {
+      this.position.y = this.#contactHeight() + this.#spec.chassis.cgHeight / aufrecht;
+    }
     this.#updateTransform();
     this.#placeWheels();
 
@@ -407,6 +613,7 @@ export class Vehicle {
     t.airborne = false;
     t.lastPenetration = 0;
     t.contacts = 0;
+    t.hullDepth = 0;
     t.waterDepth = 0;
     t.skid = 0;
   }
@@ -436,7 +643,25 @@ export class Vehicle {
     const gasZiel = clamp(input.throttle, 0, 1);
     const gasSchritt = drivetrain.throttleRate * dt;
     this.#throttle += clamp(gasZiel - this.#throttle, -gasSchritt, gasSchritt);
+    // **Die Normale wird vor den Radproben geholt, seit P20.** Sie definiert die
+    // Hangebene, gegen die `#sampleWheels` seine Reichweitenkorrektur bildet —
+    // mit der Normalen des *vorigen* Schritts wäre die Korrektur einen Schritt
+    // alt, und genau an der Stelle, an der sie gebraucht wird (Übergang in einen
+    // Hang), ändert sie sich am schnellsten.
+    ground.normal(this.position.x, this.position.z, this.#normal);
     this.#sampleWheels(ground);
+    // Das Blech als Stütze — **vor** den Kräften, weil es in die Federkraft
+    // eingeht. Siehe `hullSupport`.
+    this.#hullSupport = hullSupport(
+      this.position.x,
+      this.position.y,
+      this.position.z,
+      this.quaternion,
+      derived.hullSamples,
+      ground,
+      this.#hullPoint,
+      this.#hullNormal,
+    );
 
     // **Längs- und Quergeschwindigkeit werden abgeleitet, nicht fortgeschrieben.**
     // Der Zustand ist `velocity` in Weltkoordinaten; siehe den Block „Warum in
@@ -445,8 +670,24 @@ export class Vehicle {
     this.#vLong = this.velocity.x * this.#forward.x + this.velocity.z * this.#forward.z;
     this.#vLat = this.velocity.x * this.#right.x + this.velocity.z * this.#right.z;
 
-    ground.normal(this.position.x, this.position.z, this.#normal);
-    const steep = isSteep(this.#normal.y);
+    // ── Wie viel Radlast der Hang noch trägt — P21 ────────────────────────
+    //
+    // **Bis P21 stand hier ein Schalter** (`isSteep`), und er saß mitten im
+    // Fahrbereich: bei 38,6° volle Radlast, bei 38,8° gar keine. In einem
+    // Simulationsschritt wurde aus voller Kontrolle ein Rutschen ohne Lenkung,
+    // Antrieb und Bremse. Die Kennlinie und die Wahl ihrer Grenzen stehen bei
+    // `slopeSupport`; hier zählt die Aufteilung:
+    //
+    //  · **Geometrie bleibt ein Schalter.** Ob eine Fläche Boden oder Wand ist,
+    //    entscheiden `resolveTerrainFollow` und `hullTerrain` weiter über
+    //    `STEEP_NY`. Beide Zweige sind seit P19 gemessen sicher, und ein
+    //    „halb"-Ausschieben gibt es nicht.
+    //  · **Die Kraft läuft aus.** Haftung fällt nicht vom Tisch.
+    //
+    // `steep` heißt seitdem „echte Wand" (steiler als 50°) und nicht mehr
+    // „steiler als 38,7°".
+    const halt = slopeSupport(this.#normal.y);
+    const steep = halt <= 0;
     const surface = ground.surface(this.position.x, this.position.z);
     const waterDepth = ground.waterDepth?.(this.position.x, this.position.z) ?? 0;
 
@@ -517,7 +758,13 @@ export class Vehicle {
     const aero = this.#airborne
       ? 0
       : drivetrain.downforce * (this.#vLong * this.#vLong + this.#vLat * this.#vLat);
-    const load = this.#airborne ? 0 : springForce * this.#normal.y + aero;
+    // **`halt` ist der stetige Ersatz für den alten Steilhang-Schalter.** Er
+    // sitzt auf der **Radlast** und nicht auf der Federkraft: die Feder hält den
+    // Aufbau auch an einer Wand auf seiner Höhe (das ist Geometrie), aber die
+    // Reifen übertragen dort immer weniger (das ist Haftung). Der `cosθ`-Anteil
+    // steckt schon in `springForce · n_y` — `halt` ist das, was darüber hinaus
+    // ausläuft. Begründung bei `slopeSupport`.
+    const load = this.#airborne ? 0 : (springForce * this.#normal.y + aero) * halt;
     // Längs-Lastverlagerung: ΔFz = m · a_x · h / L. Verwendet wird die
     // Beschleunigung des **letzten** Schritts (in `#lastLongAccel`), weil die des
     // aktuellen erst am Ende feststeht — ein Schritt Verzug bei 60 Hz ist 17 ms
@@ -706,7 +953,17 @@ export class Vehicle {
     //
     // Formal: gesucht ist das größte `F` mit `F·(1−s) ≤ share·gripHinten` und
     // `F·s ≤ share·gripVorn`. Der Deckel ist das Minimum der beiden.
-    const share = drivetrain.frontShare;
+    // **Die Kriechhilfe greift hier und nirgends sonst** — sie verschiebt einen
+    // Antriebsanteil nach vorn, mehr nicht. Begründung, Herleitung und die
+    // Messung, aus der sie entstanden ist, stehen bei `CRAWL_ASSIST`.
+    //
+    // Auf Asphalt und Wasser ist `hilfe` null; damit sind alle Zahlen aus P18
+    // unberührt, und zwar durch die Bedingung selbst und nicht durch Zufall.
+    const hilfe =
+      surface === 'asphalt' || surface === 'wasser'
+        ? 0
+        : CRAWL_ASSIST.share * Math.max(0, 1 - Math.abs(this.#vLong) / CRAWL_ASSIST.speed);
+    const share = Math.max(drivetrain.frontShare, hilfe);
     const capRear = share >= 1 ? Infinity : (ENGINE_BRAKE_SHARE * gripRear) / (1 - share);
     const capFront = share <= 0 ? Infinity : (ENGINE_BRAKE_SHARE * gripFront) / share;
     const engineDrag =
@@ -743,12 +1000,12 @@ export class Vehicle {
     // ihr die Driftspur) blind für das, was tatsächlich passiert.
     const spinRear = gripRear > 1 ? Math.abs(requestedRear) / gripRear : 0;
     const spinFront = gripFront > 1 ? Math.abs(requestedFront) / gripFront : 0;
+    // **Auf den wirksamen Anteil bezogen, nicht auf den der Spec.** Mit der
+    // Kriechhilfe zieht auch ein Hecktriebler zeitweise vorn mit; ein Zaehler,
+    // der das ignoriert, meldete den Drift einer Achse, die gerade gar nicht
+    // allein arbeitet.
     const wheelspin =
-      drivetrain.frontShare >= 1
-        ? spinFront
-        : drivetrain.frontShare <= 0
-          ? spinRear
-          : Math.max(spinFront, spinRear);
+      share >= 1 ? spinFront : share <= 0 ? spinRear : Math.max(spinFront, spinRear);
     // **Hier stand `spinLoss`, und es war die dritte tote Stellschraube dieses
     // Projekts.** `clamp(1/wheelspin, minSpinGrip, 1)` hat die Querkraft
     // multipliziert — *nachdem* der Reibkreis in `tireLateral` sie längst auf
@@ -939,14 +1196,24 @@ export class Vehicle {
     follow.vx = this.velocity.x;
     follow.vy = this.#vY;
     follow.vz = this.velocity.z;
+    // **Die Normale wird hier neu geholt, und zwar an der Stelle, an der das
+    // Auto nach der Integration steht.** `this.#normal` stammt vom Anfang des
+    // Schritts und gehört zu den Kräften, die dort gewirkt haben; die Höhe
+    // daneben (`ground.height`) wird längst an der **neuen** Stelle abgefragt.
+    // Eine Wand, in die man mit 40 m/s hineinfährt, liegt 67 cm weiter — und mit
+    // der alten Normalen schob der Wandzweig in eine Richtung, die zum Hang von
+    // vorhin gehörte. Bei 60 Hz ist das der Unterschied zwischen „abgewiesen"
+    // und „hineingerutscht".
+    const followNormal = ground.normal(this.position.x, this.position.z, this.#followNormal);
     resolveTerrainFollow(
       follow,
       ground.height(this.position.x, this.position.z),
-      this.#normal.x,
-      this.#normal.y,
-      this.#normal.z,
+      followNormal.x,
+      followNormal.y,
+      followNormal.z,
       chassis.wheelRadius * 0.5,
       this.#spec.collision.maxPushPerStep,
+      dt,
     );
     this.position.set(follow.x, follow.y, follow.z);
     this.velocity.x = follow.vx;
@@ -954,7 +1221,107 @@ export class Vehicle {
     this.velocity.z = follow.vz;
     this.#vY = follow.vy;
 
-    if (collision) this.#resolveCollision(collision);
+    // ── Der Aufbau kann nicht durch die Räder fallen ───────────────────────
+    //
+    // Eine geometrische Schranke, und die einzige Stelle, an der die Höhe ohne
+    // eine Kraft dahinter gesetzt wird. Die vollständige Begründung samt der
+    // Messung, die sie erzwungen hat, steht bei `VehicleDerived.bodyFloorGap`;
+    // die Kurzfassung: die gedeckelte Federkraft lässt eine harte Landung tiefer
+    // einfedern, als die Stützebene noch reicht, und danach gibt es keinen Weg
+    // zurück — der Lastwagen stand mit dem Schwerpunkt 84 cm zu tief, dauerhaft.
+    //
+    // **Gegen den *tiefsten* Radaufstandspunkt, nicht gegen den mittleren.** Ein
+    // Mittelwert hübe den Wagen an, sobald ein Rad auf einer Kante steht — genau
+    // der Fehler, gegen den `reachableSupport` gebaut wurde. Das Minimum kann das
+    // nicht: es hebt nie über die Lage, die der Wagen mit allen Rädern auf dem
+    // *niedrigsten* Boden hätte.
+    //
+    // Nicht am Steilhang: dort gibt es keine Radaufstandspunkte im Sinne dieser
+    // Rechnung (der Aufbau ist `#airborne`), und die Radproben liegen über
+    // mehrere Meter Höhenunterschied verteilt.
+    if (!steep) {
+      let lowest = this.#wheelGround[0]!;
+      for (let i = 1; i < 4; i++) {
+        const h = this.#wheelGround[i]!;
+        if (h < lowest) lowest = h;
+      }
+      const floor = lowest + derived.bodyFloorGap;
+      if (this.position.y < floor) {
+        this.position.y = floor;
+        if (this.#vY < 0) {
+          this.#vY = 0;
+          this.velocity.y = 0;
+        }
+      }
+    }
+
+    // ── Die Karosserie gegen das Gelände — P20 ────────────────────────────
+    //
+    // Bis hierher kennt der Schritt das Gelände an fünf Punkten: den vier Rädern
+    // und dem Schwerpunkt. Der Aufbau ist 4 bis 7,6 m lang, und was zwischen und
+    // **vor** diesen Punkten liegt, gab es für die Physik nicht — die Nase stand
+    // auf einem befahrbaren 20°-Hang gemessen 78 cm im Berg. Begründung, Messung
+    // und Auflösung stehen im Kopf von `hullTerrain.ts`.
+    //
+    // **Nach** dem Bodenfang, weil der die grobe Lage setzt (und im tiefen Clip
+    // zurückschiebt); **vor** den Hindernissen, damit deren Auflösung das letzte
+    // Wort behält — ein Baum gibt nicht nach, ein Hang schon.
+    //
+    // Gerechnet wird mit der Lage des **vorigen** Schritts (`quaternion` wird
+    // erst unten neu gesetzt). Ein Schritt Verzug ist bei 60 Hz 17 ms; dieselbe
+    // Näherung wie bei `#lastLongAccel`, und aus demselben Grund: die Lage dieses
+    // Schritts steht erst fest, wenn die Höhe feststeht, und die hängt von der
+    // Lage ab.
+    follow.x = this.position.x;
+    follow.y = this.position.y;
+    follow.z = this.position.z;
+    follow.vx = this.velocity.x;
+    follow.vy = this.#vY;
+    follow.vz = this.velocity.z;
+    // **Und nur, solange die Räder tragen.** Ein frei hängender Wagen wird von
+    // seinem Blech nicht gehalten — er kippt, und dieses Modell kann nicht
+    // kippen. Ohne diese Bedingung stand der Lastwagen im Prüfstand mit dem Heck
+    // auf einer 3-m-Kante und schwebte **2,91 m** über dem Boden, dauerhaft.
+    // Vollständige Begründung bei `hasReachableWheel`.
+    //
+    // Der zweite Parameter ist der Deckel: die voll ausgefederte Lage über der
+    // Stützebene. Begründung samt Messung (ein Lastwagen, der 15 s lang in der
+    // Luft parkte) bei der Zeile, die ihn anwendet.
+    const traegt = hasReachableWheel(
+      this.#flatWheel(0),
+      this.#flatWheel(1),
+      this.#flatWheel(2),
+      this.#flatWheel(3),
+      this.position.y - chassis.cgHeight,
+      derived.supportReach,
+    );
+    const hull = traegt
+      ? resolveHullTerrain(
+          follow,
+          this.quaternion,
+          derived.hullSamples,
+          ground,
+          this.#spec.collision.maxPushPerStep,
+          contactY + chassis.cgHeight / Math.max(0.35, this.#normal.y),
+          dt,
+          this.#hullPoint,
+          this.#hullNormal,
+        )
+      : NO_HULL_CONTACT;
+    this.telemetry.hullDepth = hull.depth;
+    if (hull.contacts > 0) {
+      this.position.set(follow.x, follow.y, follow.z);
+      this.velocity.x = follow.vx;
+      this.velocity.y = follow.vy;
+      this.velocity.z = follow.vz;
+      this.#vY = follow.vy;
+    }
+
+    // **Die Fahrerabsicht geht mit in die Kollision.** Der Klemmschutz braucht
+    // sie: „steht und will nicht stehen" ist die einzige Beobachtung, die eine
+    // Nische von einer Wand unterscheidet, gegen die jemand absichtlich drückt.
+    const willFahren = input.throttle > 0.1 || input.brake > 0.1;
+    if (collision) this.#resolveCollision(collision, dt, willFahren);
 
     this.#updateAttitude(dt, accelLat, accelLong);
     this.#wheelSpin += (this.#vLong / chassis.wheelRadius) * dt;
@@ -1080,6 +1447,32 @@ export class Vehicle {
         h += rumbleAmp * pace * surfaceRumble(x, z);
       }
       this.#wheelGround[i] = h;
+      // ── Die Hangebene unter dem Rad — P20 ──────────────────────────────
+      //
+      // **Bis P20 verglich die Federreichweite gegen eine *waagerechte* Ebene**,
+      // und das ist auf einem Hang schlicht der falsche Bezug. Ein Wagen auf
+      // 20 % Steigung hat seine Vorderräder `halber Radstand · tanθ` über dem
+      // Schwerpunktsniveau — beim Coupé 0,44 m gegen `supportReach` = 0,54 m.
+      // Ein Stück Lastverlagerung oder ein Schub aus der Karosserie, und die
+      // ganze Vorderachse galt als **unerreichbar**: `axleSupport` deckelte die
+      // Stützhöhe, die Federkraft fiel auf null, `airborne` wurde wahr, und ein
+      // Auto ohne Radlast hat keinen Antrieb.
+      //
+      // Gemessen an einer 20°-Rampe, Coupé bei Vollgas: Vorderräder 2,36 m,
+      // Hinterräder 1,51 m, Schwerpunktsebene 1,78 m — Abweichung vorn 0,58 m
+      // gegen 0,54 m Reichweite. Der Wagen hing 344 von 900 Schritten in der
+      // Luft und kam über z = 19 m nicht hinaus. Die Datei heißt
+      // `supportPlane.ts`, und bis hierher war ihre „Ebene" ein Mittelwert.
+      //
+      // Der Versatz ist die Höhe der Ebene durch den Schwerpunkt mit der
+      // **Geländenormalen** an der Stelle des Rades: `−(n_x·dx + n_z·dz) / n_y`.
+      // Auf einem gleichmäßigen Hang ist die Abweichung damit exakt null, an
+      // einer Felswand bleibt sie so groß wie zuvor — der Schutz aus P14 gegen
+      // das Anheben ist unberührt.
+      const dx = this.#right.x * side + this.#forward.x * ahead;
+      const dz = this.#right.z * side + this.#forward.z * ahead;
+      this.#wheelTilt[i] =
+        -(this.#normal.x * dx + this.#normal.z * dz) / Math.max(0.35, this.#normal.y);
     }
   }
 
@@ -1138,15 +1531,49 @@ export class Vehicle {
    * noch an einem Absatz, sobald zwei Räder oben sind. Begründung und
    * Messung (y = 67 m in 3 s) in `reachableSupport`.
    */
+  /**
+   * Radboden auf die Hangebene durch den Schwerpunkt zurückgerechnet — P20.
+   *
+   * `#wheelTilt[i]` ist die Höhe, die der Boden unter Rad `i` hätte, wenn er auf
+   * dieser Ebene läge. Wer sie abzieht, misst die **Abweichung vom Hang** statt
+   * der Abweichung von der Waagerechten — und nur die sagt etwas darüber, ob die
+   * Feder das Rad noch erreicht. Begründung samt Messung in `#sampleWheels`.
+   */
+  #flatWheel(i: number): number {
+    return this.#wheelGround[i]! - this.#wheelTilt[i]!;
+  }
+
+  /**
+   * Wie hoch das Blech den Aufbau trägt — P21.
+   *
+   * Schwerpunktshöhe, `−Infinity` wenn nichts trägt. Wird zusammen mit den
+   * Radproben gebildet, weil sie **vor** den Kräften gebraucht wird: die
+   * Stützebene entscheidet über die Federkraft, und die Federkraft ist der Weg,
+   * auf dem der Wagen über eine Bodenwelle steigt statt hindurchzupflügen.
+   * Begründung samt Messung bei `hullSupport`.
+   */
+  #hullSupport = -Infinity;
+
   #contactHeight(): number {
-    return reachableSupport(
-      this.#wheelGround[0]!,
-      this.#wheelGround[1]!,
-      this.#wheelGround[2]!,
-      this.#wheelGround[3]!,
+    // **`axleSupport` und nicht `reachableSupport` — seit P19.** Der Unterschied
+    // ist genau ein Fall, und der stand am Bergpass im Bild: zwei Räder auf einer
+    // Kante, die andere Achse über einem 3-m-Absatz, und der Aufbau schwebte
+    // waagerecht darüber. Die Begründung samt Messung steht bei `axleSupport`.
+    const raeder = axleSupport(
+      this.#flatWheel(0),
+      this.#flatWheel(1),
+      this.#flatWheel(2),
+      this.#flatWheel(3),
       this.position.y - this.#spec.chassis.cgHeight,
-      this.#spec.suspension.travel + 0.28,
+      this.#spec.derived.supportReach,
     );
+    if (this.#hullSupport === -Infinity) return raeder;
+    // **Der Aufbau liegt auf dem Höchsten, was unter ihm ist.** Das Blech ist
+    // dabei gleichberechtigt mit den Reifen — nur eben eine Stütze, die weh tut
+    // (`BELLY_DRAG`). Die Umrechnung von der Schwerpunktshöhe auf die
+    // Stützebene ist dieselbe wie in der Ruhelage: `gap = cgHeight / n_y`.
+    const blech = this.#hullSupport - this.#spec.chassis.cgHeight / Math.max(0.35, this.#normal.y);
+    return Math.max(raeder, blech);
   }
 
   /**
@@ -1161,12 +1588,63 @@ export class Vehicle {
    * linke Seite senken — dasselbe Vorzeichen.
    */
   #updateAttitude(dt: number, accelLat: number, accelLong: number): void {
+    // ── In der Luft bleibt die Lage stehen — P20 ──────────────────────────
+    //
+    // `reachableWheel` bildet ein Rad, das die Feder nicht erreicht, auf
+    // `expected` ab. Das ist für den Normalfall richtig (ein Rad über einem Loch
+    // ist keine Klippe), hat aber eine Nebenwirkung, die niemand gewollt hat:
+    // **im Flug sind alle vier unerreichbar**, alle vier werden `expected`, die
+    // Differenzen werden null — und der Aufbau dreht sich waagerecht, egal über
+    // welchem Hang er gerade fliegt.
+    //
+    // Solange Nicken und Wanken reine Optik waren, war das ein Schönheitsfehler.
+    // Seit die Karosserie gegen das Gelände prüft (`resolveHullTerrain`), ist es
+    // ein Fahrfehler: gemessen an einer 20°-Rampe federte das Coupé am Übergang
+    // aus, die Nase klappte binnen 0,3 s von −15,9° auf −5,6°, und die so
+    // waagerecht gestellte Front grub sich **0,42 m** in den Hang. Danach bremste
+    // das schleifende Blech den Wagen auf 0,2 km/h, er rutschte zurück, nahm
+    // Anlauf — und wiederholte das bis zum Ende des Laufs. Ein Grenzzyklus, den
+    // die Lage selbst erzeugt hat.
+    //
+    // Die Lage folgt in der Luft deshalb dem **Gelände darunter** statt den
+    // Radproben: dieselbe Rechnung, nur aus der Flächennormalen statt aus vier
+    // Höhen. Über einem 20°-Hang zielt sie auf −20° und nicht auf null, und
+    // damit landet der Wagen flach statt mit der Nase voran.
+    //
+    // > **Stehenlassen war der erste Versuch und ist gemessen schlechter.** Ein
+    // > Auto im Flug behält seine Lage — physikalisch richtig, aber dieses
+    // > Modell kennt keine Nickdynamik, und eine beim Absprung eingefrorene Lage
+    // > passt zum Hang, auf dem man **landet**, nur zufällig. Gemessen auf 90 s
+    // > Zufallsgelände: das Heck des GT stand bei eingefrorener Lage **1,16 m**
+    // > unter der Geländeoberfläche, über 6,3 s hinweg — der Wagen sprang mit
+    // > der Nase hoch ab und pflügte mit dem Heck durch den halben Hang.
+    if (this.#airborne) {
+      const n = this.#followNormal;
+      const ny = Math.max(0.2, n.y);
+      // Gefälle längs der Fahrzeugachsen aus der Normalen: der Höhengradient in
+      // Richtung `d` ist `−(n·d) / n_y`. Vorzeichen wie unten aus den Radhöhen —
+      // die Rechnung ist dieselbe, nur die Quelle eine andere.
+      const luftPitch = Math.atan(
+        (n.x * this.#forward.x + n.z * this.#forward.z) / ny,
+      );
+      const luftRoll = Math.atan(-(n.x * this.#right.x + n.z * this.#right.z) / ny);
+      const blend = 1 - Math.exp(-this.#spec.suspension.attitudeRate * dt);
+      this.#pitch += (luftPitch - this.#pitch) * blend;
+      this.#roll += (luftRoll - this.#roll) * blend;
+      return;
+    }
+
     const expected = this.position.y - this.#spec.chassis.cgHeight;
-    const reach = this.#spec.suspension.travel + 0.28;
-    const h0 = reachableWheel(this.#wheelGround[0]!, expected, reach);
-    const h1 = reachableWheel(this.#wheelGround[1]!, expected, reach);
-    const h2 = reachableWheel(this.#wheelGround[2]!, expected, reach);
-    const h3 = reachableWheel(this.#wheelGround[3]!, expected, reach);
+    const reach = this.#spec.derived.supportReach;
+    // Geprüft wird gegen die **Hangebene** (`#flatWheel`), zurückgerechnet wird
+    // in die Welt (`+ #wheelTilt`). Ein Rad außer Reichweite zählt damit als
+    // „liegt auf dem Hang" statt als „liegt waagerecht neben dem Wagen" — auf
+    // einer 20°-Rampe ist das ein Unterschied von 0,44 m je Achse. Begründung
+    // bei `#sampleWheels`.
+    const h0 = reachableWheel(this.#flatWheel(0), expected, reach) + this.#wheelTilt[0]!;
+    const h1 = reachableWheel(this.#flatWheel(1), expected, reach) + this.#wheelTilt[1]!;
+    const h2 = reachableWheel(this.#flatWheel(2), expected, reach) + this.#wheelTilt[2]!;
+    const h3 = reachableWheel(this.#flatWheel(3), expected, reach) + this.#wheelTilt[3]!;
     const groundPitch = -Math.atan2((h0 + h1) / 2 - (h2 + h3) / 2, this.#spec.chassis.wheelbase);
     const groundRoll = Math.atan2((h1 + h3) / 2 - (h0 + h2) / 2, this.#spec.chassis.track);
 
@@ -1192,175 +1670,445 @@ export class Vehicle {
   }
 
   /**
-   * Karosserie gegen die statischen Hindernisse.
+   * Karosserie gegen die Hindernisse — seit P19 als **Rechteck**, nicht als vier
+   * Punkte.
    *
-   * Geprüft wird an **vier Ecken × zwei Höhen** (Begründung bei
-   * `VEHICLE_COLLISION.probeHeights`). Aufgelöst wird über den **Mittelwert** der
-   * gefundenen Normalen und nicht über deren Summe: in einer Innenecke ergäbe
-   * die Summe den doppelten Weg und schleuderte das Auto heraus.
+   * ## Was sich geändert hat, und warum es nötig war
    *
-   * Die Reaktion hat drei Teile, und alle drei sind nötig:
+   * Die alte Fassung prüfte an vier Eckpunkten mit je 34 cm Radius. Zwischen
+   * Vorder- und Hinterecke liegen beim Coupé 4,2 m — ein Baumstamm passte
+   * mühelos hindurch, ohne einen einzigen Prüfpunkt zu berühren. Die Messtabelle
+   * dazu steht bei `BodyContact` in `CollisionWorld.ts`; die Kurzfassung: ein
+   * Stamm auf der Mittellinie ergab **null Kontakte**, und einer 50 cm daneben
+   * warf das Auto zwölf Meter **rückwärts**.
    *
-   *  1. **Herausschieben**, damit nichts steckt.
-   *  2. **Geschwindigkeit senkrecht zur Wand** wegnehmen (mit kleinem Rückprall),
-   *     damit das Auto nicht in der Wand weiterdrückt.
-   *  3. **Giermoment** aus dem Versatz des Kontakts zum Schwerpunkt. Ohne diesen
-   *     Teil prallt ein Auto, das mit der linken Ecke anschlägt, gerade zurück —
-   *     und das ist die Bewegung, an der jede Kollision unecht aussieht.
+   * Der zweite Fehler saß in der Auflösung. Sie mittelte über die gefundenen
+   * Normalen — gedacht gegen die doppelte Verschiebung in einer Innenecke, in
+   * Wirklichkeit eine Auflösung, die *jeden* Mehrfachkontakt zu **schwach**
+   * löst: zwei Kontakte mit 20 cm Tiefe ergeben gemittelt nur dann 20 cm, wenn
+   * beide Normalen gleich sind; stehen sie im rechten Winkel, bleiben 14 cm
+   * übrig, und der Rest der Durchdringung bleibt bis zum nächsten Schritt stehen.
+   *
+   * ## Wie jetzt aufgelöst wird
+   *
+   * Kontakt für Kontakt, absteigend nach Tiefe, und jeder rechnet an, was die
+   * vorherigen schon geschafft haben:
+   *
+   * ```
+   * schon = versatz · n           // wie weit dieser Kontakt bereits gelöst ist
+   * fehlt = tiefe − schon
+   * wenn fehlt > 0: versatz += n · fehlt
+   * ```
+   *
+   * Das ist die übliche Projektionsauflösung, und sie ist in beiden Grenzfällen
+   * richtig: zwei gleichgerichtete Kontakte lösen einmal (kein Doppelweg — das
+   * war die Sorge hinter dem Mittelwert), zwei rechtwinklige lösen beide voll.
+   *
+   * Die Geschwindigkeit läuft durch dieselbe Schleife; sie ist derselbe Vorgang,
+   * nur eine Ableitung höher.
    */
-  #resolveCollision(collision: CollisionWorld): void {
-    const halfLength = this.#spec.chassis.bodyLength / 2;
-    const halfWidth = this.#spec.chassis.bodyWidth / 2;
-    const corners: readonly (readonly [number, number])[] = [
-      [-halfWidth, halfLength],
-      [halfWidth, halfLength],
-      [-halfWidth, -halfLength],
-      [halfWidth, -halfLength],
-    ];
+  #resolveCollision(collision: CollisionWorld, dt: number, willFahren: boolean): void {
+    const spec = this.#spec;
+    // Das Blech plus einen Zuschlag. Der Zuschlag ist klein und ersetzt den
+    // alten Eckradius: der war 34 cm groß, weil er an vier *Punkten* eine ganze
+    // Karosserie darstellen musste. Ein Rechteck braucht das nicht — es **ist**
+    // die Karosserie.
+    const hl = spec.chassis.bodyLength * 0.5 + spec.collision.skin;
+    const hw = spec.chassis.bodyWidth * 0.5 + spec.collision.skin;
+    // Das Höhenband der Karosserie in Weltkoordinaten. `band` ist über der
+    // Radaufstandsebene gemessen, der Schwerpunkt liegt `cgHeight` darüber.
+    const base = this.position.y - spec.chassis.cgHeight;
+    const bandLow = base + spec.collision.band[0];
+    const bandHigh = base + spec.collision.band[1];
+
+    const count = collision.queryBody(
+      this.position.x,
+      this.position.z,
+      this.#forward.x,
+      this.#forward.z,
+      hl,
+      hw,
+      bandLow,
+      bandHigh,
+      this.#contacts,
+    );
+
+    this.telemetry.contacts = count;
+    this.telemetry.lastPenetration = count > 0 ? this.#contacts[0]!.depth : 0;
+    this.#brokeThisStep = 0;
+
+    // **Wie lange ist der letzte Kontakt her.** Ohne dieses Gedächtnis ist der
+    // Klemmschutz wirkungslos, und zwar rechnerisch: der eingeklemmte Wagen am
+    // Tempelaufgang hatte in **einem von zehn** Schritten einen Kontakt. Der
+    // Zähler wuchs also mit 0,1·dt und klang mit 0,9·2·dt ab — er lief netto
+    // rückwärts und erreichte die Schwelle nie. Gemessen: 0,14 m in fünf
+    // Sekunden Vollgas, mit Klemmschutz „an".
+    if (count > 0) this.#contactAge = 0;
+    else this.#contactAge += dt;
+    const kuerzlichKontakt = this.#contactAge < WEDGE_CONTACT_MEMORY;
+
+    if (count === 0) {
+      // **Nicht zurücksetzen, sondern abklingen lassen — und das ist der
+      // Unterschied zwischen einem Klemmschutz, der greift, und einem, der es
+      // nicht tut.**
+      //
+      // Der erste Versuch setzte hier auf null. Gemessen am Tempelaufgang hatte
+      // der eingeklemmte Wagen aber nur in **jedem zehnten Schritt** einen
+      // Kontakt: die Auflösung schiebt ihn frei, im nächsten Schritt drückt der
+      // Antrieb ihn zurück. Jeder freie Schritt löschte den Zähler, und die
+      // halbe Sekunde kam nie zusammen — der Wagen stand vier Sekunden lang
+      // 33 cm weit rückwärts, bei Vollbremsung und Volleinschlag.
+      //
+      // Abklingen statt löschen: doppelt so schnell, wie er aufbaut. Wer wirklich
+      // frei ist, hat den Zähler nach einer Viertelsekunde bei null; wer alle
+      // paar Schritte anstößt, behält ihn.
+      this.#updateWedge(dt, kuerzlichKontakt && willFahren);
+      if (this.#wedgeTime > WEDGE_DELAY && this.#wedgeOpposed) this.#applyWedgeEscape(dt);
+      return;
+    }
 
     let pushX = 0;
     let pushZ = 0;
     let torque = 0;
-    let normalX = 0;
-    let normalZ = 0;
-    let contacts = 0;
-    let deepest = 0;
-    this.#brokeThisStep = 0;
+    let resolved = 0;
+    // Summe der Kontaktnormalen — sie sagt, ob der Wagen **gegen** etwas drückt
+    // oder **zwischen** zwei Dingen steckt. Siehe `#wedgeTime` unten.
+    let normalSumX = 0;
+    let normalSumZ = 0;
 
-    for (const [side, ahead] of corners) {
-      const rx = this.#right.x * side + this.#forward.x * ahead;
-      const rz = this.#right.z * side + this.#forward.z * ahead;
-      const x = this.position.x + rx;
-      const z = this.position.z + rz;
+    for (let i = 0; i < count; i++) {
+      const c = this.#contacts[i]!;
+      const rx = c.px - this.position.x;
+      const rz = c.pz - this.position.z;
+      // Geschwindigkeit **am Berührpunkt**, inklusive Drehanteil ω × r.
+      // `ŷ × (r_x, 0, r_z) = (r_z, 0, −r_x)` — dieselbe Vorzeichenkette wie beim
+      // Schräglauf, und dort saß in P14 derselbe Fehler.
+      const contactVX = this.velocity.x + this.#yawRate * rz;
+      const contactVZ = this.velocity.z - this.#yawRate * rx;
+      const approach = contactVX * c.nx + contactVZ * c.nz;
 
-      // Tiefster Kontakt dieser Ecke über beide Prüfhöhen.
-      let depth = 0;
-      let nx = 0;
-      let nz = 0;
-      let hitId = -1;
-      let hitSource = 0;
-      let hitBreakable = false;
-      for (const h of this.#spec.collision.probeHeights) {
-        const hit = collision.query(
-          x,
-          this.position.y - this.#spec.chassis.cgHeight + h,
-          z,
-          this.#spec.collision.cornerRadius,
-        );
-        if (hit.depth > depth) {
-          depth = hit.depth;
-          nx = hit.nx;
-          nz = hit.nz;
-          hitId = hit.id;
-          hitSource = hit.source;
-          hitBreakable = hit.breakable;
-        }
-      }
-      if (depth <= 0) continue;
-
-      if (hitBreakable && hitId >= 0 && this.#brokeThisStep < MAX_BREAKS_PER_STEP) {
-        const cornerVX = this.velocity.x + this.#yawRate * rz;
-        const cornerVZ = this.velocity.z - this.#yawRate * rx;
-        const approach = cornerVX * nx + cornerVZ * nz;
-        const tree = hitSource === HIT_TREE;
+      if (c.breakable && c.id >= 0 && this.#brokeThisStep < MAX_BREAKS_PER_STEP) {
+        const tree = c.source === HIT_TREE;
         if (
           shouldBreak(
-            this.#spec.chassis.mass,
+            spec.chassis.mass,
             approach,
             tree ? TREE_BREAK_SPEED : RAIL_BREAK_SPEED,
             tree ? TREE_BREAK_ENERGY : RAIL_BREAK_ENERGY,
           )
         ) {
-          collision.disableHit(hitId, hitSource);
+          collision.disableHit(c.id, c.source);
           this.#brokeThisStep++;
           this.#breaks.push({
             kind: tree ? 'tree' : 'rail',
-            id: hitId,
-            x,
+            id: c.id,
+            x: c.px,
             y: this.position.y,
-            z,
+            z: c.pz,
             vx: this.velocity.x,
             vz: this.velocity.z,
           });
-          // Durchbrechen, nicht abprallen: 45 % der Normalkomponente weg,
-          // der Rest trägt durch das Loch. Forza-Arcade, nicht ein zweiter
-          // Anschlag an Luft.
-          const into = this.velocity.x * nx + this.velocity.z * nz;
+          // Durchbrechen, nicht abprallen: 45 % der Normalkomponente weg, der
+          // Rest trägt durch das Loch. Forza-Arcade, nicht ein zweiter Anschlag
+          // an Luft.
+          const into = this.velocity.x * c.nx + this.velocity.z * c.nz;
           if (into < 0) {
-            this.velocity.x -= nx * into * 0.45;
-            this.velocity.z -= nz * into * 0.45;
+            this.velocity.x -= c.nx * into * 0.45;
+            this.velocity.z -= c.nz * into * 0.45;
           }
-          contacts++;
-          deepest = Math.max(deepest, depth);
           continue;
         }
       }
 
-      contacts++;
-      deepest = Math.max(deepest, depth);
-      pushX += nx * depth;
-      pushZ += nz * depth;
-      normalX += nx;
-      normalZ += nz;
+      normalSumX += c.nx;
+      normalSumZ += c.nz;
 
-      // Geschwindigkeit **an der Ecke**, inklusive Drehanteil ω × r.
-      // `v = v_Schwerpunkt + ω ŷ × r`, und `ŷ × (r_x, 0, r_z) = (r_z, 0, −r_x)`.
-      // Dieselbe Vorzeichenkette wie beim Schräglauf oben — und derselbe Fehler.
-      const cornerVX = this.velocity.x + this.#yawRate * rz;
-      const cornerVZ = this.velocity.z - this.#yawRate * rx;
-      const approach = cornerVX * nx + cornerVZ * nz;
-      if (approach < 0) {
-        // Impuls längs der Normalen; `(r × F)_y = r_z F_x − r_x F_z`.
-        const impulse = -approach * (1 + this.#spec.collision.restitution) * this.#spec.chassis.mass;
-        torque += (rz * nx - rx * nz) * impulse;
+      // ── 1. Herausschieben, mit Anrechnung des schon Erreichten ──────────
+      const already = pushX * c.nx + pushZ * c.nz;
+      const missing = c.depth - already;
+      if (missing > 0) {
+        pushX += c.nx * missing;
+        pushZ += c.nz * missing;
       }
+
+      // ── 2. Geschwindigkeit senkrecht zur Fläche ─────────────────────────
+      if (approach < 0) {
+        const change = -approach * (1 + spec.collision.restitution);
+        this.velocity.x += c.nx * change;
+        this.velocity.z += c.nz * change;
+        // ── 3. Giermoment aus dem Versatz zum Schwerpunkt ────────────────
+        // `(r × F)_y = r_z F_x − r_x F_z`, mit `F ∥ n`.
+        const impulse = change * spec.chassis.mass;
+        torque += (rz * c.nx - rx * c.nz) * impulse;
+
+        // ── Schrammen, und zwar als **Coulomb-Reibung** ──────────────────
+        //
+        // > **Bis P19 war das ein fester Anteil je Schritt** (`v_t *= 1 −
+        // > 0,12`). Solange die Karosserie nur an vier Punkten prüfte, war das
+        // > harmlos: ein Streifschuss ergab zwei, drei Kontakte, und der
+        // > Kommentar an `wallFriction` rechnete mit „rund ein Viertel des
+        // > Tempos über 20 m".
+        // >
+        // > Mit einem Rechteck liegt das Blech **jeden Schritt** an, und dann
+        // > ist derselbe Faktor 0,88⁶⁰ je Sekunde — also 0,0004. Gemessen im
+        // > Prüfstand: der Wagen klebte mit 10 km/h an der Planke fest, bei
+        // > Vollgas. Aus einer Schramme wurde eine Bremse.
+        //
+        // Richtig ist die Reibung am **Normalimpuls**: `|J_t| ≤ μ · |J_n|`. Sie
+        // ist selbstbegrenzend — beim ersten Anschlag ist `J_n` groß und kostet
+        // Tempo, danach ist die Normalgeschwindigkeit weg, `J_n` klein, und das
+        // Auto rutscht die Planke entlang statt an ihr zu kleben. Genau das tut
+        // ein echtes Blech an einer Leitplanke, und es ist zugleich der Grund,
+        // warum ein Frontalanschlag mehr kostet als ein flacher.
+        const alongN = this.velocity.x * c.nx + this.velocity.z * c.nz;
+        const tx = this.velocity.x - c.nx * alongN;
+        const tz = this.velocity.z - c.nz * alongN;
+        const tSpeed = Math.hypot(tx, tz);
+        if (tSpeed > 1e-4) {
+          const loss = Math.min(tSpeed, spec.collision.wallFriction * change);
+          this.velocity.x -= (tx / tSpeed) * loss;
+          this.velocity.z -= (tz / tSpeed) * loss;
+        }
+      }
+      resolved++;
     }
 
-    this.telemetry.contacts = contacts;
-    this.telemetry.lastPenetration = deepest;
-    if (contacts === 0) return;
+    if (resolved === 0) return;
 
-    const inv = 1 / contacts;
-    pushX *= inv;
-    pushZ *= inv;
-    const pushLength = Math.hypot(pushX, pushZ);
-    if (pushLength > this.#spec.collision.maxPushPerStep) {
-      const scale = this.#spec.collision.maxPushPerStep / pushLength;
+    // ── Der Deckel auf den Weg je Schritt ────────────────────────────────
+    //
+    // Ohne ihn schleudert ein Wagen, der mit 70 m/s in eine Hausecke fährt, in
+    // einem Schritt durch die halbe Stadt.
+    let pushLength = Math.hypot(pushX, pushZ);
+    if (pushLength > spec.collision.maxPushPerStep) {
+      const scale = spec.collision.maxPushPerStep / pushLength;
       pushX *= scale;
       pushZ *= scale;
+      pushLength = spec.collision.maxPushPerStep;
     }
+
+    // ── Der Klemmzähler ──────────────────────────────────────────────────
+    //
+    // **Ein Auto, das steht und trotzdem in etwas steckt, kommt allein nicht
+    // wieder heraus.** Das ist der Rest des Fehlerbilds „man verbuggt sich":
+    // die Auflösung schiebt, das Gas drückt zurück, und beides hält sich die
+    // Waage. Physikalisch ist der Zustand echt (ein Auto *kann* sich festfahren)
+    // — spielbar ist er nicht.
+    //
+    // Deshalb ein zweiter Weg heraus, und zwar ein **zeitabhängiger**: wer eine
+    // halbe Sekunde in einem Hindernis steckt, bekommt zusätzlich zum
+    // Herausschieben eine Trenngeschwindigkeit, die mit der Klemmdauer wächst
+    // und bei `WEDGE_ESCAPE_MAX` aufhört. Das ist kein Katapult (der alte Fehler
+    // warf zwölf Meter weit) und keine Teleportation, sondern die
+    // Geschwindigkeit, mit der man einen festgefahrenen Wagen von Hand
+    // herausschiebt.
+    //
+    // > **Die Bedingung ist der heikle Teil, und der erste Versuch war falsch.**
+    // > Er lautete „langsam **und** irgendein Kontakt" — und das trifft auch den
+    // > Fall, der gar kein Fehler ist: mit Vollgas gegen einen Baum drücken.
+    // > Gemessen im Prüfstand hüpfte der Wagen dort im Sekundentakt zurück, weil
+    // > die Trennhilfe gegen den Antrieb arbeitete.
+    // >
+    // > Der Unterschied zwischen beiden Lagen ist **nicht** das Tempo, sondern
+    // > die **Restdurchdringung**: gegen einen Baum wird jede Überdeckung in
+    // > diesem Schritt vollständig aufgelöst (`rest ≈ 0`), im geklemmten Fall
+    // > bleibt sie stehen — weil der Deckel greift oder weil zwei Kontakte
+    // > gegeneinander schieben. Nur dann ist die Trennhilfe fällig.
+    let rest = 0;
+    for (let i = 0; i < count; i++) {
+      const c = this.#contacts[i]!;
+      const missing = c.depth - (pushX * c.nx + pushZ * c.nz);
+      if (missing > rest) rest = missing;
+    }
+
+    // **Eingeklemmt ist etwas anderes als angedrückt**, und die Zahl, die beide
+    // trennt, ist die Summe der Kontaktnormalen. Bei *einem* Kontakt (gegen eine
+    // Wand drücken) hat sie die Länge 1; bei zwei gegenüberliegenden hebt sie
+    // sich auf und wird 0. `squeeze = 1 − |Σn| / n` ist damit 0 beim Andrücken
+    // und 1 im Schraubstock.
+    //
+    // > **Das war der Fehler des ersten Versuchs, und er stand im laufenden Bild.**
+    // > Die Bedingung hieß nur „Restdurchdringung über 2 cm" — und im echten
+    // > Klemmfall gibt es **keine** Restdurchdringung: das Auto steckte am
+    // > Tempelaufgang zwischen zwei Props mit 4,3 m Abstand, beide Schübe hoben
+    // > sich exakt auf, `lastPenetration` war 0,0006 m. Gemessen: bei Vollgas
+    // > **0,09 m in drei Sekunden**, rückwärts **0,19 m**, mit Volleinschlag
+    // > 0,09 m. Die Position stand über zwölf Schritte auf die letzte Stelle
+    // > still. Genau das meldet der Auftraggeber als „man verbuggt sich".
+    // **Über ein kurzes Gedächtnis, nicht über einen Schritt.** Der Klemmfall der
+    // echten Karte hatte in *jedem* Schritt nur **einen** Kontakt — vorn, dann
+    // hinten, dann wieder vorn. Eine Momentaufnahme sieht dort `squeeze = 0` und
+    // hält den Schraubstock für ein Andrücken. Erst der gleitende Mittelwert über
+    // rund 200 ms trennt beides: gegen eine Wand zeigt die Normale immer in
+    // dieselbe Richtung und der Mittelwert behält die Länge 1; zwischen zwei
+    // Hindernissen wechselt sie das Vorzeichen und er läuft gegen 0.
+    const invLen = 1 / Math.max(1e-6, Math.hypot(normalSumX, normalSumZ));
+    const nx = normalSumX * invLen;
+    const nz = normalSumZ * invLen;
+    if (this.#wedgeTime <= 0) {
+      // Erster Kontakt nach freier Fahrt: mit der aktuellen Normalen anfangen,
+      // sonst zählte die Einschwingzeit des Mittelwerts selbst als Klemmen.
+      this.#wedgeNormX = nx;
+      this.#wedgeNormZ = nz;
+    } else {
+      const k = 1 - Math.exp(-dt / WEDGE_MEMORY);
+      this.#wedgeNormX += (nx - this.#wedgeNormX) * k;
+      this.#wedgeNormZ += (nz - this.#wedgeNormZ) * k;
+    }
+    // ── Wann gilt der Wagen als geklemmt ────────────────────────────────
+    //
+    // Drei Kennzeichen, und **jedes für sich** genügt. Sie decken drei Lagen ab,
+    // die alle gleich aussehen (Auto steht, Kontakt da) und sich in der Geometrie
+    // nicht auf einen Nenner bringen lassen:
+    //
+    //  1. **Restdurchdringung** — der Deckel `maxPushPerStep` kommt nicht nach,
+    //     oder zwei Kontakte schieben gegeneinander.
+    //  2. **Schraubstock** — die Kontaktnormalen heben sich über ein kurzes
+    //     Gedächtnis auf (zwei Hindernisse gleichzeitig, links und rechts).
+    //  3. **Die Nische** — und die ist der Fall, an dem die ersten beiden
+    //     Fassungen gescheitert sind. Am Tempelaufgang steht vorn ein Prop und
+    //     hinten eins, aber **nie beide gleichzeitig in Kontakt**: mit Gas
+    //     berührt der Wagen nur das vordere, mit Rückwärtsgang nur das hintere.
+    //     Die Normale ist in jeder Phase konstant, `squeeze` bleibt bei 0, die
+    //     Durchdringung bei 0,0006 m — und trotzdem kommt der Wagen nicht weg.
+    //     Gemessen: Vollgas 0,06 m in 3 s, rückwärts mit Volleinschlag 0,33 m in
+    //     4 s. Mit beiden Props abgemeldet: **16,17 m**.
+    //
+    // Für den dritten Fall hilft keine Geometrie, sondern nur die Beobachtung,
+    // die auch der Fahrer macht: *er will fahren und kommt nicht weg.* Deshalb
+    // geht `willFahren` in diese Bedingung ein — ohne sie träfe sie auch den
+    // Wagen, der einfach nur geparkt an einer Mauer steht.
+    const squeeze = 1 - Math.hypot(this.#wedgeNormX, this.#wedgeNormZ);
+    const geklemmt =
+      rest > WEDGE_RESIDUAL || squeeze > WEDGE_SQUEEZE || (willFahren && resolved > 0);
+    this.#updateWedge(dt, geklemmt);
+    // Die Seite wird **einmal** je Episode gewählt und dann gehalten.
+    if (this.#wedgeSide === 0 && this.#wedgeTime > 0) {
+      const c = this.#contacts[0]!;
+      this.#wedgeSide = -c.nz * this.#right.x + c.nx * this.#right.z >= 0 ? 1 : -1;
+      this.#wedgeFirstNX = c.nx;
+      this.#wedgeFirstNZ = c.nz;
+    }
+
+    // **Erst wenn der Wagen aus zwei entgegengesetzten Richtungen blockiert
+    // wurde, ist er gefangen.** Ohne diese Bedingung feuert die Trennhilfe auch
+    // gegen einen einzelnen Baum, in den jemand mit Vollgas drückt — gemessen im
+    // Prüfstand: der Wagen schob sich nach 1,5 s an einem Stamm vorbei, den er
+    // hätte respektieren müssen. Wer nur eine Richtung blockiert hat, kommt in
+    // die andere weg; das ist keine Klemme, sondern eine Wand.
+    if (nx * this.#wedgeFirstNX + nz * this.#wedgeFirstNZ < WEDGE_OPPOSED_DOT) {
+      this.#wedgeOpposed = true;
+    }
+    // Zwei gleichzeitige Gegenkontakte oder eine stehende Restdurchdringung sind
+    // ebenso eindeutig — dort braucht es keinen Richtungswechsel.
+    if (rest > WEDGE_RESIDUAL || squeeze > WEDGE_SQUEEZE) this.#wedgeOpposed = true;
+
+    // Die Ausweichrichtung wird **hier** bestimmt und gemerkt, weil sie Kontakte
+    // braucht — angewandt wird sie auch in Schritten ohne welche (siehe oben).
+    if (squeeze > WEDGE_SQUEEZE) {
+      // **Quer heraus, nicht längs.** Im Schraubstock zeigt der Schub nirgends
+      // hin (er ist ja aufgehoben) — der freie Weg liegt **senkrecht** zur
+      // Klemmachse. Die gibt der tiefste Kontakt vor; welche der beiden
+      // Senkrechten es wird, entscheidet die Fahrzeugquerachse, damit der Wagen
+      // dorthin ausweicht, wohin er ohnehin steht, statt zufällig zu springen.
+      const c = this.#contacts[0]!;
+      const seite = this.#wedgeSide || 1;
+      this.#wedgeEscX = -c.nz * seite;
+      this.#wedgeEscZ = c.nx * seite;
+    } else if (pushLength > 1e-6) {
+      // **Heraus **und** zur Seite.** Rein senkrecht aus dem Hindernis heraus
+      // löst die Nische nicht: der Wagen weicht dem vorderen Prop nach hinten
+      // aus, stößt ans hintere, weicht wieder vor — er pendelt und bleibt drin.
+      // Der Weg aus einer Nische führt seitlich hinaus, und deshalb bekommt die
+      // Trennrichtung eine Querkomponente in derselben Größenordnung.
+      const seite = this.#wedgeSide || 1;
+      const ex = pushX / pushLength - (pushZ / pushLength) * WEDGE_SIDESTEP * seite;
+      const ez = pushZ / pushLength + (pushX / pushLength) * WEDGE_SIDESTEP * seite;
+      const el = Math.hypot(ex, ez) || 1;
+      this.#wedgeEscX = ex / el;
+      this.#wedgeEscZ = ez / el;
+    }
+
+    if (this.#wedgeTime > WEDGE_DELAY && this.#wedgeOpposed) this.#applyWedgeEscape(dt);
+
     this.position.x += pushX;
     this.position.z += pushZ;
 
-    const nLength = Math.hypot(normalX, normalZ);
-    if (nLength < 1e-6) return;
-    normalX /= nLength;
-    normalZ /= nLength;
-
-    const along = this.velocity.x * normalX + this.velocity.z * normalZ;
-    if (along < 0) {
-      const change = -along * (1 + this.#spec.collision.restitution);
-      this.velocity.x += normalX * change;
-      this.velocity.z += normalZ * change;
-    }
-    // Schrammen: Tangentialanteil abschwächen. Das Auto verliert an der Planke
-    // Tempo, wird aber nicht gestoppt.
-    const tangential = 1 - this.#spec.collision.wallFriction;
-    const vAlongN = this.velocity.x * normalX + this.velocity.z * normalZ;
-    const tx = this.velocity.x - normalX * vAlongN;
-    const tz = this.velocity.z - normalZ * vAlongN;
-    this.velocity.x = normalX * vAlongN + tx * tangential;
-    this.velocity.z = normalZ * vAlongN + tz * tangential;
-
-    // **Kein Zurückschreiben nach `#vLong` / `#vLat` nötig.** Der Zustand ist
-    // `velocity`; der nächste Schritt projiziert sie ohnehin neu. Als die beiden
-    // noch Zustand waren, stand hier die Umrechnung — und sie zu vergessen hätte
-    // geheißen, dass eine Kollision die Geschwindigkeit ändert und das Fahrmodell
-    // es nicht merkt.
-    this.#yawRate += (torque * this.#spec.collision.yawTransfer * inv) / this.#spec.chassis.yawInertia;
+    this.#yawRate += (torque * spec.collision.yawTransfer) / spec.chassis.yawInertia;
     // Ein Frontalanschlag mit 70 m/s ergibt sonst eine Drehung, bei der das Bild
     // nicht mehr lesbar ist.
-    this.#yawRate = clamp(this.#yawRate, -this.#spec.limits.maxYawRate, this.#spec.limits.maxYawRate);
+    this.#yawRate = clamp(this.#yawRate, -spec.limits.maxYawRate, spec.limits.maxYawRate);
+
+    // **Kein Zurückschreiben nach `#vLong` / `#vLat` nötig.** Der Zustand ist
+    // `velocity`; der nächste Schritt projiziert sie ohnehin neu.
+  }
+
+  /**
+   * Den Klemmzähler fortschreiben.
+   *
+   * ## Warum das über den **Weg** geht und nicht über das Tempo
+   *
+   * Der erste Versuch setzte den Zähler zurück, sobald der Wagen schneller als
+   * `WEDGE_SPEED` war — und hat sich damit selbst ausgeschaltet: die Trennhilfe
+   * gibt genau so viel Geschwindigkeit, dass die Schwelle überschritten wird,
+   * der Zähler fällt auf null, die Hilfe hört auf, der Wagen bleibt stehen.
+   * Gemessen am Tempelaufgang: **0,15 m in fünf Sekunden**, dabei zeitweise
+   * 2,3 km/h. Er *bewegte* sich, er kam nur nicht weg.
+   *
+   * Die Frage ist nicht „fährt er gerade", sondern „**ist er von der Stelle
+   * gekommen**". Deshalb merkt sich eine Episode ihren Anfangspunkt und endet,
+   * wenn der Wagen `WEDGE_FREE_DISTANCE` davon entfernt ist.
+   *
+   * Das erledigt zugleich den Fall, der eine reine Zeitbedingung unbrauchbar
+   * machen würde: ein Wagen, der eine Leitplanke entlangschrammt, hat
+   * dauerhaft Kontakt und will fahren — er legt dabei aber Meter zurück und
+   * verlässt die Episode nach dem ersten.
+   */
+  #updateWedge(dt: number, geklemmt: boolean): void {
+    if (this.#wedgeTime <= 0) {
+      if (!geklemmt) return;
+      this.#wedgeStartX = this.position.x;
+      this.#wedgeStartZ = this.position.z;
+      this.#wedgeTime = dt;
+      return;
+    }
+
+    const weg = Math.hypot(
+      this.position.x - this.#wedgeStartX,
+      this.position.z - this.#wedgeStartZ,
+    );
+    if (weg > WEDGE_FREE_DISTANCE) {
+      this.#wedgeTime = 0;
+      this.#wedgeSide = 0;
+      this.#wedgeOpposed = false;
+      return;
+    }
+
+    if (geklemmt) this.#wedgeTime += dt;
+    else {
+      this.#wedgeTime = Math.max(0, this.#wedgeTime - dt * WEDGE_RELEASE);
+      if (this.#wedgeTime <= 0) {
+        this.#wedgeSide = 0;
+        this.#wedgeOpposed = false;
+      }
+    }
+  }
+
+  /**
+   * Die Trenngeschwindigkeit aufbringen — ausdrücklich **keine** Physik.
+   *
+   * Getrennt von `#resolveCollision`, weil sie auch in Schritten **ohne**
+   * Kontakt gebraucht wird: ein eingeklemmter Wagen berührt sein Hindernis nicht
+   * in jedem Schritt (die Auflösung schiebt ihn frei, der Antrieb drückt ihn
+   * zurück), und ein Schutz, der nur bei Kontakt wirkt, wirkt dort nie.
+   */
+  #applyWedgeEscape(dt: number): void {
+    const escape = Math.min(
+      WEDGE_ESCAPE_MAX,
+      (this.#wedgeTime - WEDGE_DELAY) * WEDGE_ESCAPE_RATE,
+    );
+    this.velocity.x += this.#wedgeEscX * escape * Math.min(1, dt * 60);
+    this.velocity.z += this.#wedgeEscZ * escape * Math.min(1, dt * 60);
   }
 }
 

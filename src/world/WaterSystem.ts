@@ -1,6 +1,7 @@
 import { Mesh, PlaneGeometry, type PerspectiveCamera } from 'three';
 
 import { WATER } from '@/config/water.config';
+import { QUALITY } from '@/config/quality.config';
 import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
 import type { LookState } from '@/render/looks/lookState';
@@ -43,8 +44,38 @@ export class WaterSystem implements System {
   #riverMaterial: WaterMaterial | null = null;
   #riverUniforms: WaterUniforms | null = null;
   #riverReport: RiverGeometryReport | null = null;
+  #paddy: PaddySink | null = null;
+  /** Nahkräuselung der aktuellen Stufe. Voreinstellung wie Ultra — siehe `#applyDetail`. */
+  #detail = 1;
 
   constructor(private readonly atmosphere: AtmosphereUniforms) {}
+
+  /**
+   * Die Nahkräuselung auf alles schreiben, was schon existiert.
+   *
+   * Zweimal gerufen: bei jedem Stufenwechsel und nach dem Anlegen der beiden
+   * Uniformblöcke. Der zweite Aufruf ist der wichtige — `quality:changed` kommt
+   * beim Start **vor** `terrain:ready`, und ohne das Nachziehen bliebe das
+   * Meer auf dem Ultra-Wert stehen, egal was im Menü steht.
+   */
+  #applyDetail(): void {
+    if (this.#uniforms) this.#uniforms.uWaterDetail.value = this.#detail;
+    if (this.#riverUniforms) this.#riverUniforms.uWaterDetail.value = this.#detail;
+    this.#paddy?.setDetail(this.#detail);
+  }
+
+  /**
+   * Die Reisfelder melden sich hier an — P19.
+   *
+   * `RicePaddy` ist ein eigenes System und zeichnet seine Flächen selbst; was es
+   * **nicht** selbst hat, ist die Stufe und die Kielwelle. Beides läuft hier
+   * ohnehin durch, und zwei Zuhörer für dieselben zwei Zahlen wären zwei
+   * Gelegenheiten, einen davon zu vergessen.
+   */
+  setPaddy(paddy: PaddySink | null): void {
+    this.#paddy = paddy;
+    this.#paddy?.setDetail(this.#detail);
+  }
 
   init(context: EngineContext): void {
     this.#context = context;
@@ -71,8 +102,21 @@ export class WaterSystem implements System {
       this.#mesh = mesh;
 
       context.scene.add(mesh);
+      this.#applyDetail();
       this.#registerDebug(context);
       void this.#addRiver(context, height);
+    });
+
+    // **Die Nahkräuselung hängt an der Stufe und wird beim Anlegen nachgezogen.**
+    // Das Ereignis `quality:changed` kommt beim Start genau einmal — und
+    // möglicherweise **bevor** `terrain:ready` die Uniformblöcke überhaupt
+    // angelegt hat. Deshalb wird der Wert gemerkt und in `#applyDetail` auf
+    // alles geschrieben, was gerade existiert; dieselbe Stelle ruft `#addRiver`
+    // nach dem Anlegen noch einmal auf. Ein Regler, der nur wirkt, wenn die
+    // Ladereihenfolge stimmt, ist ein Regler, der irgendwann nicht mehr wirkt.
+    context.bus.on('quality:changed', ({ level }) => {
+      this.#detail = QUALITY[level].waterDetail;
+      this.#applyDetail();
     });
 
     context.bus.on('look:apply', ({ look }) => {
@@ -120,6 +164,11 @@ export class WaterSystem implements System {
     };
     if (this.#uniforms) write(this.#uniforms);
     if (this.#riverUniforms) write(this.#riverUniforms);
+    // **Und die Reisfelder — seit P19.** Sie waren bis dahin die einzige
+    // Wasserfläche ohne Kielwelle, und ausgerechnet in ihnen fährt man: 101 ha
+    // stehendes Wasser mitten auf der Karte. Im Bild lag das Auto auf einer
+    // spiegelglatten Platte, während Meer und Fluss eine Spur zogen.
+    this.#paddy?.setVehicleWake(x, z, dirX, dirZ, speed, active);
   }
 
   /**
@@ -170,6 +219,7 @@ export class WaterSystem implements System {
     this.#riverMesh = mesh;
     this.#riverMaterial = material;
     this.#riverUniforms = uniforms;
+    this.#applyDetail();
     context.scene.add(mesh);
 
     const folder = context.debug?.folder('Wasser');
@@ -311,4 +361,24 @@ export class WaterSystem implements System {
     this.#camera = null;
     this.#context = null;
   }
+}
+
+/**
+ * Was das WaterSystem von den Reisfeldern braucht — P19.
+ *
+ * Eine Schnittstelle und kein Import von `RicePaddy`: die Abhängigkeit läuft
+ * über `main.ts` herein, wie beim Fahrmodus (`setCanopy`, `setWake`) auch.
+ * Andersherum kennte das Meer die Props, und das ist eine Kante, die dieses
+ * Projekt bewusst nicht zieht.
+ */
+export interface PaddySink {
+  setDetail(detail: number): void;
+  setVehicleWake(
+    x: number,
+    z: number,
+    dirX: number,
+    dirZ: number,
+    speed: number,
+    active: boolean,
+  ): void;
 }

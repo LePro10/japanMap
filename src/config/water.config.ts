@@ -126,6 +126,46 @@ export const RIVER = {
   surfaceRise: 0.9,
 
   /**
+   * Wie tief ein Flussknoten das Gelände unter sich höchstens flutet, in Metern
+   * — P21.
+   *
+   * ## Der Fehler, gegen den diese Zahl steht
+   *
+   * `WaterField.#inRiver` sucht den nächsten Knoten **in XZ** und nimmt dessen
+   * Spiegelhöhe. Über die Höhe stand nichts darin — und dieser Fluss hat zwei
+   * **Wasserfälle** (`river.json`, `falls`: 11,2 m und 39,7 m). Am Kopf eines
+   * Falls liegt ein Knoten mit 7,5 m Halbbreite direkt über einer Felswand; für
+   * jeden Punkt dort unten war er der nächste.
+   *
+   * Gemessen am Bergpass bei (−1085 | −512): Gelände 95,70 m, nächster Knoten
+   * (Index 113) auf 116,00 m, 4,1 m entfernt. Die Abfrage meldete **21,24 m
+   * Wassertiefe** — mitten im Berg, auf der Fahrbahn. Der Wagen schwamm dort
+   * auf einem Phantom-See, und genau das ist die Zeile „`toge` meldet
+   * 1804,7 cm Standhöhe", die seit P19 als offener Punkt in PLAN.md stand.
+   *
+   * ## Warum 6 m
+   *
+   * Gemessen über 13 229 Proben im Kanal (alle 422 Knoten, acht Richtungen bis
+   * zur Halbbreite, gegen `height.r16`):
+   *
+   * | | Tiefe |
+   * |---|---:|
+   * | Median | 3,11 m |
+   * | 90. Perzentil | 4,29 m |
+   * | 99. Perzentil | 15,77 m |
+   * | Maximum | 22,05 m |
+   *
+   * Zwischen 6 m und 10 m liegt genau **1,07 %** der Proben — das ist der
+   * Knick zwischen „Bett" und „Fall". 6 m lässt 95,9 % des Kanals nass und
+   * schneidet den Schwanz ab.
+   *
+   * Der Satz dahinter ist kein Grenzwert, sondern eine Aussage: **ein
+   * Flussknoten beschreibt ein Bett, keinen Wasserfall.** Wo das Wasser fällt,
+   * steht keines.
+   */
+  maxDepth: 6,
+
+  /**
    * Anteil der Bettbreite, den der Spiegel einnimmt.
    *
    * Das Bett läuft als V aus. Ein Spiegel bis zur Bettkante stünde am Ufer

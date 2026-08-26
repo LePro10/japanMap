@@ -488,6 +488,10 @@ async function boot(): Promise<void> {
     if (active) hud.setGate(drive.laps.readouts.naechstesTor);
   });
 
+  engine.bus.on('drive:rescued', () => {
+    hud.showRescue();
+  });
+
   engine.bus.on('drive:lap', (result) => {
     const strecke = drive.laps.roadId;
     // **Ein Vergleich, nicht zwei.** `submit()` entscheidet, ob es eine
@@ -541,7 +545,15 @@ async function boot(): Promise<void> {
   engine.add(new PropSystem(atmosphere.uniforms));
   // Ebenso: die Wasserflächen der Reisfelder holen ihre Höhe aus dem Sampler,
   // weil das Gelände die Parzellen bereits trägt (Baker, Schritt 5c).
-  engine.add(new RicePaddy(atmosphere.uniforms));
+  const paddy = new RicePaddy(atmosphere.uniforms);
+  engine.add(paddy);
+  // **Die Reisfelder hängen am WaterSystem und nicht am Fahrmodus** — P19. Sie
+  // brauchen dieselben zwei Zahlen wie Meer und Fluss (Nahdetail aus der Stufe,
+  // Kielwelle aus dem Auto), und die laufen dort ohnehin durch. Zwei Zuhörer für
+  // dieselbe Sache wären zwei Gelegenheiten, einen davon zu vergessen — genau
+  // das ist der Grund, warum die Reisfelder bis P19 die einzige Wasserfläche
+  // ohne Kielwelle waren.
+  water.setPaddy(paddy);
   // Und ebenso die Stadt: sie braucht den Sampler für die Schürze am
   // Distriktrand und das Straßennetz, damit die Blöcke der Stadtstraße
   // ausweichen. Beides kommt als Ereignis aus Systemen, die danach kommen.

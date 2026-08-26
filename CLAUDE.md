@@ -268,6 +268,8 @@ gedrosselt. ~~Referenzwerte zum Gegenhalten: `wald` auf Ultra 38 948, mit Dichte
 | 🚗-Knopf / Menüzeile „Auto fahren" | **Der Weg ins Auto ohne Tastatur (P16).** Auf Touch der einzige — `V` verlangt einen Pointer Lock, den kein Telefon gibt, und `japanMap` fehlt im Build. Beide Wege schalten denselben Zustand und melden über `drive:mode` |
 | `japanMap.driveProbe()` | **Der Messstand des Fahrmodus (P14).** Fährt jede Strecke ab und schreibt Durchdringung, Spurlage, Tempo und CPU je Schritt mit; dazu Standhöhe und Höhendifferenz Sampler ↔ Mittellinie. Läuft **ohne zu rendern** — 3600 Schritte in ~50 ms |
 | `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/fleet.mts` | **Der Fahrzeug-Prüfstand (P18).** Alle vier Fahrzeuge durch dieselben acht Proben, ohne Browser. Siehe unten |
+| `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/hill.mts` | **Der Steigungs-Prüfstand (P21).** Fahrzeug × Belag × Steigung, und neben jeder Zelle steht, **welche** der vier Ursachen greift (Traktion, Wand, Blech, Flattern). Der Grenzwinkel wird geschlossen ausgerechnet — die einzige Zahl im Projekt, die ohne einen Simulationsschritt entsteht |
+| `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/world.mts` | **Der Prüfstand für Gelände und Kollision (P19/P20).** Felswand, Baum, Innenecke, Planke, Landung, Kosten — dazu seit P20 **Hang** (steckt das Blech im Berg?) und **Zufallsgelände** (90 s gewürfelt, geprüft werden Zusicherungen statt Zahlen). Die Schicht, die `fleet.mts` auf seinem idealen Boden ausdrücklich *nicht* sieht |
 
 **Der Messlauf — und wofür er gebaut ist.**
 
@@ -1224,3 +1226,483 @@ Alle drei haben in P18 Zeit gekostet, und keiner davon steht im Code.
   Lehre: **wer eine Konstante parametriert, sucht zuerst die Konstanten, die aus
   ihr gerechnet sind.** `grep` auf den Namen findet die Verwendungen; die
   Ableitungen findet man nur, indem man die Datei liest.
+
+---
+
+## Gelände und Kollision ohne Browser messen — P19
+
+`fleet.mts` fährt auf einem **idealen** Boden und isoliert damit das Fahrmodell.
+Genau deshalb hat es die Fehler aus P19 nie gesehen: die lagen eine Schicht
+darunter. Dafür gibt es den zweiten Prüfstand:
+
+```bash
+node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/world.mts
+```
+
+Sechs Proben über alle vier Fahrzeuge, rund 20 s. Er baut ein synthetisches
+Gelände (Felswand, Ebene) und eine `CollisionWorld` von Hand — echte Karte
+braucht er nicht, und die Proben sind dadurch reproduzierbar bis auf die letzte
+Stelle.
+
+| Probe | findet |
+|---|---|
+| Felswand 55°, absetzen und loslassen | ein Auto, das an einer Wand klebt |
+| Baum auf der Fahrlinie, drei seitliche Versätze | Lücken zwischen Prüfpunkten |
+| Innenecke, hinein und rückwärts heraus | Klemmen in einer Ecke |
+| Planke im Streifschuss | Durchschlagen **und** Festkleben |
+| Fall aus 6 m | Ratschen nach oben, Einsinken nach der Landung |
+| Kosten je Schritt, mit gegen ohne Kollision | was die Auflösung wirklich kostet |
+
+**Was er nicht kann**, und das steht auch in der Datei: sagen, ob es sich gut
+anfühlt, und die echte Karte prüfen. Für Letzteres bleibt `japanMap.driveProbe()`
+im laufenden Bild zuständig — und das gehört nach jedem Eingriff in die
+Kollision **für alle vier Fahrzeuge** gefahren.
+
+---
+
+## Was in diesem Projekt schon schiefgegangen ist — Nachträge aus P19
+
+- **Eine Klemme, die das Gegenteil dessen verbot, was sie sollte.** Der
+  Wandzweig von `resolveTerrainFollow` setzte `vy = 0` in jedem Schritt, mit dem
+  Kommentar „damit aus einem Clip kein Skilift wird". Gemeint war: *nicht die
+  Wand hochklettern*. Getan hat die Zeile: *nicht herunterfallen*. Ein Auto, das
+  einmal an einer Felswand hing, hing für immer — und genau das stand auf dem
+  Bild, mit dem P19 gemeldet wurde.
+  Gemessen fiel das Coupé in acht Sekunden **2,00 m**, und diese zwei Meter
+  waren nicht einmal ein Fall: es ist exakt `UNSUPPORTED_DROP` aus der
+  Stützebene. Eine Zahl, die auf den Zentimeter genau einer Konstanten
+  entspricht, ist nie ein Messergebnis — derselbe Verdachtsmoment wie bei den
+  exakt −6,00 cm Standhöhe in P14, und wieder wäre er fast überlesen worden.
+  Lehre: **eine Klemme auf einen Zustand trifft beide Vorzeichen.** Wer einen
+  Anteil meint, grenzt ihn über seine **Richtung** ab — hier über die Zerlegung
+  in die Hangebene. Das ist dieselbe Lehre wie bei `TIRE.tailGrip` in P17
+  („eine Klemme auf einen Betrag trifft beide Enden des Wertebereichs"), nur
+  eine Ebene höher.
+
+- **Vier Prüfpunkte für eine 4,2 m lange Karosserie.** Die Kollision prüfte an
+  den vier Ecken mit je 34 cm Radius. Zwischen Vorder- und Hinterecke liegen
+  über vier Meter, und alles, was dort hineinpasst, wurde **nicht gesehen**:
+  ein Stamm mit 40 cm Radius genau auf der Fahrlinie ergab in fünfzehn Sekunden
+  **null Kontakte**. Das Auto fuhr durch den Baum hindurch; streifte eine Ecke
+  ihn doch, warf die gemittelte Auflösung es **zwölf Meter rückwärts**.
+  Der Kommentar daneben begründete die vier Punkte ausdrücklich („warum nicht
+  ein Rechteck: eine spitze Ecke hakt an jeder Kante") — und diese Begründung
+  war falsch: das SAT liefert die Richtung mit der **kleinsten** Überdeckung,
+  und die ist an einer Wand die Wandnormale. Eine hakende Ecke kann dabei gar
+  nicht entstehen.
+  Lehre: **eine Abtastung ist erst dann eine Form, wenn ihr Abstand kleiner ist
+  als das Kleinste, was sie treffen soll.** Und: ein Kommentar, der eine
+  Alternative ausschließt, gehört genauso gemessen wie eine Zahl.
+
+- **Ein Reibungswert, der in Wahrheit eine Zeitschrittgröße war.**
+  `wallFriction = 0,12` stand als „Anteil der Tangentialgeschwindigkeit je
+  Kontakt" da, mit der Rechnung „ein Streifschuss über 20 m kostet rund ein
+  Viertel des Tempos". Die stimmte, solange nur gelegentlich ein Eckpunkt anlag.
+  Mit dem Rechteck liegt das Blech in **jedem** Schritt an, und derselbe Faktor
+  ist 0,88^60 je Sekunde — also 0,0004. Gemessen klebte das Coupé mit **10,3
+  km/h** bei Vollgas an der Planke.
+  Lehre: **ein Wert, dessen Wirkung von der Abtastrate abhängt, ist keine
+  Materialgröße.** Reibung gehört an den **Impuls** (`|J_t| ≤ μ·|J_n|`), nicht
+  an den Frame. Und: wer die Abtastung ändert, muss jede Zahl suchen, die
+  stillschweigend an ihr hing — dieselbe Regel wie „ein Kommentar, der rechnet,
+  ist eine Abhängigkeit wie ein Import", nur dass hier nicht einmal ein
+  Kommentar davon wusste.
+
+- **Ein Lastwagen, der dauerhaft im Boden stand — und fuhr.** Nach einer harten
+  Landung federte er 0,74 m ein (die Federkraft ist auf 3 · m · g gedeckelt, und
+  das ist richtig so). `supportReach` reicht aber nur 0,50 m: `reachableSupport`
+  erklärte damit seine **eigenen Räder für unerreichbar**, gab
+  `expected − UNSUPPORTED_DROP` zurück, die Federkraft wurde null, und er fiel
+  bis auf den Bodenfang durch. Ruhelage **0,26 m statt 1,10 m**, dauerhaft.
+  Keine einzige Kennzahl hat es gemeldet: er fuhr, er lenkte, er bremste.
+  Gefunden hat es eine Probe, die schlicht **die Ruhelage abliest** — und die
+  gab es vorher nicht, weil niemand auf die Idee kam, dass ein Auto nach einer
+  Landung woanders steht als davor.
+  Lehre: **wenn zwei Größen dieselbe Strecke begrenzen, muss die eine die andere
+  kennen.** Hier begrenzt der Kraftdeckel den Einfederweg, und die Stützreichweite
+  wusste nichts davon. Die Reparatur ist eine geometrische Schranke („ein Rad
+  kann nicht durch den Kotflügel"), keine größere Reichweite — eine größere
+  Reichweite hätte die 40-m-Felswand wieder tragen lassen.
+
+- **Ein Bild hat den Fehler in einer Sekunde gezeigt, den keine Zahl hatte.**
+  Der neue Partikel-Atlas legt vier Formen als 2 × 2 in eine Textur; ein
+  Instanzattribut wählt das Feld. Three dreht eine Textur beim Hochladen
+  senkrecht um (`flipY`), und damit war die Zuordnung **paarweise vertauscht**:
+  aus jedem Wasserspritzer wurde eine **fünfblättrige Blüte** — das Korn-Feld,
+  dessen Rand mit `sin(5φ)` moduliert ist.
+  Jede Zahl stimmte: 420 lebende Instanzen, Wassertiefe 0,30 m, 46 km/h, voller
+  Frame (`anteilNichtSchwarz` = 0,9993). Kein Typfehler, keine Ausnahme, kein
+  Konsoleneintrag.
+  Lehre: die bekannte Fehlerform aus dieser Liste, diesmal andersherum — **es
+  war im Bild, nur als etwas anderes.** Ein Atlas ohne Bildprobe ist eine
+  Behauptung über eine Reihenfolge.
+
+- **Am erstbesten plausiblen Regler gedreht, und der falsche war es.** Im ersten
+  Wasserbild lag ein weißer Teppich über der halben unteren Bildhälfte. Die
+  naheliegende Ursache war der neue Dunst — also wurde er von 0,26 auf 0,12
+  Deckkraft und von 15 auf 5 Partikeln je Sekunde heruntergedreht.
+  Der Teppich war die **Kielwelle der Reisfelder**. Isoliert mit
+  `tools/bench/imgdiff.mjs`: Welle an gegen aus **44,7 % der Pixel, mittlere
+  Differenz 29,6**; Partikel an gegen aus **21,8 % und 6,5**. Die Ursache lag um
+  den Faktor fünf über dem, was gedimmt worden war — und die Dimmung machte den
+  Staub anschließend unsichtbar (mittlere Differenz **2,4**), was einen zweiten
+  Lauf gekostet hat.
+  Lehre: **erst den Anteil ausschalten, dann messen, dann drehen.** Steht schon
+  seit P8.8 in dieser Liste (die Stadt als heller Fleck), und es ist trotzdem
+  wieder passiert. Der Unterschied: diesmal hat `imgdiff.mjs` die Frage in einem
+  einzigen Lauf beantwortet.
+
+- **Ein Effekt, der aus der Ferne stimmt, stimmt aus der Nähe nicht.** Die
+  Kielwelle des Reisfelds übernahm die Geometrie des Meeres unverändert. Auf dem
+  Meer steht die Kamera weit weg und der Keil ist ein Strich im Bild; im
+  Reisfeld klebt sie sechs Meter hinter dem Auto, und derselbe Keil füllt den
+  Vordergrund. Dieselbe Formel, dieselben Zahlen, ein völlig anderes Bild.
+
+- **Backticks in einem GLSL-Kommentar, der in einem Template-Literal steht.**
+  Zweimal in derselben Sitzung: ein `` `water_surface.frag.glsl` `` in einem
+  Shader-Kommentar beendet das Template-Literal, und der Dev-Server antwortet
+  mit **HTTP 500** statt mit einer Anwendung. Im Browser sieht das aus wie
+  nichts — `window.japanMap` fehlt, die Seite bleibt leer. Die Spur steht im
+  **Server**-Log, genau wie bei der `realpath`-Falle aus P6.
+  Lehre: nach **jeder** Änderung an einer Datei mit eingebettetem GLSL erst
+  `node node_modules/typescript/bin/tsc --noEmit`, dann messen. Beim ersten Mal
+  hat der Typecheck es gefunden, beim zweiten Mal wurde er übersprungen — und
+  das hat drei Werkzeugaufrufe gekostet.
+
+- **Der eingebettete Vorschau-Tab wird nach einem `navigate` nicht mehr
+  ausgelegt.** `window.innerWidth` steht dann auf **0**, der Canvas ist 0 × 0,
+  und `japanMap.shot()` schreibt eine 88-Byte-PNG. `probe()` meldet es
+  unmissverständlich (`width: 1, height: 1`), aber nur, wenn man hinsieht.
+  Der Weg, der wirkt: `engine.resize(1280, 720)` von Hand — **nicht**
+  `renderer.setSize`, das lässt Composer und Kamera stehen und rendert schwarz.
+
+- **Die Frameschleife von Hand zu treiben bewegt die Physik nicht.**
+  `loop.tick()` liest `performance.now()`; in einer engen JS-Schleife ist `dt`
+  praktisch null, der Akkumulator füllt sich nie, und kein einziger fester
+  Schritt läuft. Für die Streuung genügt das (sie arbeitet je Frame), für alles
+  Zeitabhängige nicht. Der Weg, der wirkt, ist die Schleife der Engine von Hand
+  nachzubilden:
+
+  ```js
+  const dt = 1 / 60;
+  for (let i = 0; i < 220; i++) { drive.simulateStep(dt, EINGABE); drive.update(dt); }
+  ```
+
+  `simulateStep` ist die Physik, `update` die Darstellung (Kamera **und** FX) —
+  und nur wer beide interleavt aufruft, misst, was das Spiel zeigt.
+
+- **Ein Prüfstand, der nicht wippt, findet die Klemme nicht — und ein Prüfstand,
+  der wippt, ist kein Prüfstand.** Der Fahrmodus-Messstand fährt mit einem
+  Regler: Gas, Bremse, Lenkung nach Sollkurs. Ein Spieler, der feststeckt, wippt
+  vor und zurück. Am Tempelaufgang klemmt das Coupé zwischen zwei Steinlaternen
+  (Lücke 4,33 m, Auto 4,32 m); mit Wippen kommt es in 15 s frei, der Messstand
+  meldet dieselbe Stelle als unbefahrbar. **Beide Aussagen sind richtig**, und
+  sie gehören beide in die Doku — die eine sagt etwas über die Spielbarkeit, die
+  andere über die Karte.
+
+- **Vier Anläufe an einer Heuristik, und jeder scheiterte an einer anderen
+  falschen Annahme.** Der Klemmschutz sollte einen festsitzenden Wagen
+  freischieben. Der Reihe nach angenommen und gemessen widerlegt:
+  *Restdurchdringung* (es gibt keine, 0,0006 m), *gegenläufige Normalen im selben
+  Schritt* (gibt es nicht — vorn **oder** hinten, nie beides), *Zähler bei
+  kontaktfreien Schritten zurücksetzen* (Kontakt nur in jedem zehnten Schritt,
+  der Zähler lief netto rückwärts), *Tempo als Abbruch* (die Hilfe hob das Tempo
+  über die Schwelle und schaltete sich selbst ab).
+  Lehre: **bei einer Heuristik ist die Abbruchbedingung so wichtig wie die
+  Auslösebedingung** — und beide gehören gemessen, nicht plausibel gefunden. Was
+  am Ende trägt, ist die Größe, die der Fahrer auch sieht: **ist er von der
+  Stelle gekommen.**
+
+- **Eine Trennhilfe, die einen Baum durchbricht.** Dieselbe Heuristik hat, kaum
+  dass sie griff, den Prüfstand woanders rot gemacht: der Wagen schob sich nach
+  1,5 s Vollgas an einem Stamm vorbei, den er respektieren muss. Die Bedingung
+  fehlte, dass er aus **zwei entgegengesetzten Richtungen** blockiert sein muss —
+  wer nur eine Wand vor sich hat, kommt rückwärts weg und ist nicht gefangen.
+  Lehre: dieselbe wie bei `removeSpurs` in P3 („eine Stufe repariert, eine
+  Anforderung zerstört"). Wer eine Hilfe einbaut, prüft, **was sie sonst noch
+  trifft** — und zwar im selben Lauf.
+
+---
+
+## Was in diesem Projekt schon schiefgegangen ist — Nachträge aus P20
+
+- **Die Karosserie kannte das Gelände nicht — und keine Kennzahl konnte es
+  melden, weil es keine gab.** Bis P20 prüfte das Fahrzeug das Höhenfeld an fünf
+  Punkten: vier Räder und der Schwerpunkt. Der Aufbau ist 4,0 bis 7,6 m lang.
+  Gemessen bei Vollgas gegen einen Hang, tiefstes Eintauchen der Blechunterkante:
+  **0,78 m auf einem befahrbaren 20°-Hang**, 4,45 m auf 65°. Dabei war
+  `lastPenetration` 0, `contacts` 0, `airborne` false, die Standhöhe richtig.
+  Der Wagen *fuhr*.
+  Das ist die Umkehrung der vier Fälle aus P6 („alle Zahlen stimmen, im Bild ist
+  nichts"): hier war es **im Bild und in keiner Zahl**. Lehre: wenn ein Bild
+  etwas zeigt, wofür es keine Kennzahl gibt, ist das Fehlen der Kennzahl der
+  erste Befund. Die Zahl heißt jetzt `telemetry.hullDepth`.
+
+- **Vier Grenzzyklen in Folge, und alle vier hatten dieselbe Wurzel.** Die neue
+  Hüllkollision war schnell geschrieben; was danach kam, war die eigentliche
+  Arbeit. Der Reihe nach gemessen:
+  1. Ein Lastwagen, den ein 8-mm-Streifkontakt 18 cm über seine Ruhelage hob —
+     Federung ausgefedert, Radlast null, **kein Antrieb**, 15 s lang 0,0 km/h.
+  2. Der Deckel dagegen, unbedingt gesetzt, zog drei Fahrzeuge im Flug auf
+     **y = −582 m** (im Flug liegt die Stützebene 1,8 m *unter* dem Wagen).
+  3. Die Geschwindigkeit senkrecht abzuweisen verdreifachte die Zeit ohne
+     Radlast (49,8 % gegen 17,8 % ohne Hülle).
+  4. Ein Auto, das nur auf seinem Stoßfänger auf einer 3-m-Kante lag, **schwebte
+     dort 2,91 m über dem Boden** — dieses Modell kann nicht kippen.
+  Die Wurzel ist ein Satz: **den Aufbau trägt die Federung, nicht das Blech.**
+  Senkrecht gehört der Feder, waagerecht dem Blech; wer beide dieselbe Achse
+  regeln lässt, bekommt zwei Systeme, die gegeneinander arbeiten.
+
+- **Eine Datei hieß seit P14 `supportPlane.ts` und hatte keine Ebene.** Die
+  Federreichweite wurde gegen eine **waagerechte** Ebene geprüft. Auf 20 %
+  Steigung liegen die Vorderräder `halber Radstand · tanθ` über dem
+  Schwerpunktsniveau — beim Coupé 0,44 m gegen 0,54 m Reichweite. Ein Stück
+  Lastverlagerung, und die ganze Vorderachse galt als unerreichbar: Stützhöhe
+  gedeckelt, Federkraft null, `airborne`, kein Antrieb. Gemessen: 344 von 900
+  Schritten in der Luft auf einer 20°-Rampe.
+  Der Fehler war zwei Phasen lang unsichtbar, weil die Straßen dieser Karte
+  höchstens 10,7 % steigen. Erst das Gelände hat ihn gezeigt. Lehre: **ein
+  Bezugssystem, das auf der Karte nie schräg wird, ist nicht geprüft, sondern
+  ungenutzt.**
+
+- **Der Prüfstand war grün und die Karte nicht.** Nach der Reparatur meldete
+  `tools/bench/world.mts` alle Proben grün. Auf der echten Karte blieb der GT auf
+  dem **Bergpass** nach 95 m stehen — auf Asphalt, null Hinderniskontakte,
+  Vollgas, für den Rest des Laufs. Ursache: die Fahrbahn ist dort um **0,98 m auf
+  1,96 m Breite verwunden**, und die Hülle stieß dagegen.
+  Zwei Lehren. Erstens: ein synthetischer Prüfstand prüft, was jemand gebaut hat
+  — die Karte prüft, was **entstanden** ist. Beide Läufe gehören zu einer
+  Abnahme, und der auf der Karte ist der, der zuletzt kommt.
+  Zweitens: **die Fahrbahn ist keine gemessene Fläche, sondern eine gerechnete.**
+  Ihre Höhe mischt Sampler, Mittellinie, Plateaus und Wasserspiegel. Ein Blech,
+  das dagegen stößt, stößt gegen eine Rechnung. Die Räder fahren auf allem, die
+  Karosserie kollidiert nur mit `gelaende`.
+
+- **Eine Klemme trifft beide Vorzeichen — zum vierten Mal.** Nach `TIRE.tailGrip`
+  (P17, Klemme auf einen Betrag), dem Wandzweig (P19, `vy = 0` verbot das Fallen)
+  und der `vy`-Klemme in `blockIntoSurface` (P20, verbot das Absetzen) jetzt der
+  Standhöhendeckel der Hülle. Vier Fälle, ein Muster: **wer einen Abschnitt
+  meint, grenzt ihn über seine Richtung ab, nicht über seinen Betrag.**
+
+- **In der Luft war der Aufbau waagerecht, egal über welchem Hang.**
+  `reachableWheel` bildet ein unerreichbares Rad auf `expected` ab; im Flug sind
+  alle vier unerreichbar, alle Differenzen werden null, und die Lage zielt auf
+  0°. Solange Nicken reine Optik war, ein Schönheitsfehler. Seit die Karosserie
+  gegen das Gelände prüft, ein Fahrfehler: die Nase klappte am Übergang einer
+  20°-Rampe binnen 0,3 s von −15,9° auf −5,6° und grub sich 0,42 m in den Hang.
+  Die Lage stehen zu lassen war der naheliegende Ersatz und ist **gemessen
+  schlechter** (Heck 1,16 m unter der Oberfläche, 6,3 s lang). Sie folgt jetzt
+  der Flächennormalen darunter. Lehre: **eine kosmetische Größe hört auf,
+  kosmetisch zu sein, sobald jemand sie ausliest.**
+
+---
+
+## Zufallsgelände statt Nachbau — was in P20 dazugekommen ist
+
+Alle Proben dieses Projekts bilden eine Lage nach, die schon einmal schiefging.
+Das ist richtig und findet **Rückfälle**. Es findet keine neuen Fälle.
+
+`terrainFuzz` in `tools/bench/world.mts` macht es andersherum: 90 Sekunden
+gewürfeltes Gelände (sechs Sinuslagen, bis 48° steil) und gewürfelte Eingaben,
+fester Seed, und geprüft werden **Zusicherungen** statt Zahlen —
+
+- das Blech steckt nicht im Berg (kurz und **gehalten**, getrennt gemessen: ein
+  Streifen im Landeanflug ist kein Steckenbleiben),
+- der Wagen kommt bei Gas von der Stelle (schlechtestes 4-s-Fenster),
+- die Höhe bleibt in der Nähe des Geländes,
+- keine NaN.
+
+Sie hat in P20 zwei Fehler gefunden, die keine der sechs nachgebauten Proben
+gezeigt hat. Wer eine neue Fehlerklasse vermutet, aber keinen Fall dafür hat,
+baut so eine Probe und nicht noch einen Nachbau.
+
+---
+
+## Erst die Ursachen trennen, dann messen — die Lehre aus P21
+
+P20 hat an einem **Symptom** gemessen („das Blech steckt im Berg") und es
+behoben. Die Beschwerde blieb, weil ein Hang, der nicht befahrbar ist, **vier**
+Ursachen haben kann, die im Spiel identisch aussehen:
+
+| Ursache | woran man sie erkennt |
+|---|---|
+| **Traktion** | der gerechnete Grenzwinkel ist überschritten — Physik, kein Fehler |
+| **Wand** | `STEEP_NY`, Radlast schlagartig null |
+| **Blech** | die Karosserie sitzt auf |
+| **Flattern** | die Federung verliert immer wieder den Boden |
+
+`tools/bench/hill.mts` schreibt neben jede Zelle, welche greift, und rechnet den
+Grenzwinkel **geschlossen** aus:
+
+```
+sinθ ≤ Σ_Achse μ_Achse · Lastanteil · Antriebsanteil
+```
+
+Erst damit ist eine rote Zelle entscheidbar: reparieren oder nicht. Ohne diese
+Trennung hätte P21 wieder am erstbesten Regler gedreht — derselbe Fehler wie „die
+Stadt als heller Fleck" (P8.8) und „der weiße Teppich war die Kielwelle" (P19),
+nur eine Ebene höher: dort war die **Ursache** unklar, hier die **Fehlerklasse**.
+
+**Merksatz: wenn eine Beschwerde nach zwei Reparaturen bleibt, ist nicht die
+Reparatur falsch, sondern die Klasseneinteilung fehlt.**
+
+---
+
+## Was in diesem Projekt schon schiefgegangen ist — Nachträge aus P21
+
+- **`respawn` setzte Nick und Wank auf null — und das trifft ausgerechnet die
+  Rettungswege.** Auf einem Hang stand der Wagen für die Einschwingzeit (~0,3 s)
+  waagerecht auf einer schiefen Ebene; gemessen grub sich das Heck dabei auf 20°
+  **0,369 m** und auf 30° **0,664 m** in den Boden. Betroffen ist jedes
+  Absetzen: Taste `R`, Einsteigen, Fahrzeugwechsel — und die Klemmwache aus P20,
+  also genau der Weg, der einen festgefahrenen Wagen befreien soll.
+  Zwei Lehren. Erstens: **ein Anfangszustand ist ein Zustand und gehört
+  hergestellt, nicht genullt.** Zweitens, und die ist teurer: der Prüfstand hat
+  diese Zahlen als „Aufsitzen" gemeldet, und es war der erste Zehntelsekunde-
+  Zustand seines eigenen Laufs. Eine Messung, die sich ihren Anfangszustand
+  kaputtsetzt, misst sich selbst — dieselbe Klasse wie die exakt −6,00 cm
+  Standhöhe in P14 und das von Hand gesetzte `menu.hidden` in P13.
+
+- **Dieselbe Funktion, zweiter Fehler: die Höhe kam vom Boden unter dem
+  Schwerpunkt.** Der Aufbau steht auf **vier Rädern**. Gemessen bei
+  (−1328 | −517) lagen die auf 76,43…76,86 m, der Boden unter dem Schwerpunkt auf
+  76,87 m — **43 cm** Unterschied. Der Wagen wurde beim Absetzen bis in den
+  Gummipuffer gedrückt (Einfederung 1,29) und kam nicht mehr weg: 1,3 m in sieben
+  Sekunden Vollgas. Lehre: **wer eine Höhe setzt, muss sie aus derselben Größe
+  bilden, aus der das Modell sie später liest.**
+
+- **Eine Stütze, die bremsen kann und nicht tragen.** Der Deckel aus P20 verbot
+  der Karosserie jeden Schub über die Standhöhe — richtig, sonst hebt sie den
+  Wagen von seinen eigenen Rädern. Damit fehlte ihr aber die Hälfte der
+  Wirklichkeit: **ein Auto, das über eine Bodenwelle fährt, steigt darüber.**
+  Dieses pflügte hindurch, und die Bremse des schleifenden Blechs nahm ihm 95 %
+  des Tempos je Sekunde. Gemessen auf der Karte: drei von 53 Stellen fest, alle
+  auf 11…14° Hang — weit unter der Traktionsgrenze, ohne einen Kontakt.
+  Die Reparatur ist ein Vorzeichenwechsel im Denken: das Blech schiebt den Wagen
+  nicht **hoch**, es hebt seine **Stützebene**. Dann trägt ihn die Feder darüber,
+  die Radlast bleibt, und die Reifen greifen weiter. Lehre: **wenn eine
+  Zusatzkraft mit einem bestehenden System um dieselbe Achse streitet, gehört sie
+  in dessen Eingang und nicht neben dessen Ausgang** — derselbe Satz wie bei der
+  planaren Spiegelung („am Ergebnis eingehängt statt an der Eingabe").
+
+- **`drive.surface()` von außen abgefragt lügt.** Der Straßenkontext
+  (`#roadHalfWidth`, `#roadSurface`, `#roadCorrection`) wird von
+  `#refreshRoadContext()` je Schritt für die **Fahrzeugposition** gebildet. Wer
+  `surface(x, z)` für einen weit entfernten Punkt aufruft, bekommt die Antwort
+  für die Straße, neben der das Auto gerade steht. Ein ganzer Prüflauf („kommt
+  der Wagen aus 12 m Entfernung auf die Straße zurück") hat damit Unsinn
+  gemessen, bis es auffiel: die Straße selbst meldete sich als `gelaende`.
+  Lehre: **eine Abfrage, die einen zwischengespeicherten Kontext liest, ist an
+  den Ort gebunden, für den der Kontext gebildet wurde.** Der Weg, der stimmt:
+  `placeAt` an die Stelle, *dann* fragen — oder gleich `telemetry.surface` lesen,
+  das aus dem Schritt selbst stammt.
+
+- **Ein Schalter mitten im Fahrbereich.** `isSteep` (38,7°) hat die Radlast von
+  voll auf null geschaltet: ein Simulationsschritt zwischen voller Kontrolle und
+  Rutschen ohne Lenkung, Antrieb und Bremse. Für die **Geometrie** ist ein
+  Schalter richtig — eine Fläche ist Boden oder Wand, ein halbes Ausschieben gibt
+  es nicht. Für die **Kraft** ist er falsch: Haftung fällt nicht vom Tisch, sie
+  läuft aus. Seit P21 sind das zwei getrennte Entscheidungen mit zwei getrennten
+  Zahlen (`STEEP_NY` für die Form, `slopeSupport` für die Kraft).
+  Lehre: **prüfen, ob eine Konstante zwei Fragen zugleich beantwortet.** Wenn ja,
+  beantwortet sie mindestens eine davon falsch.
+
+- **Eine Formel für Allrad, die eine Summe war und ein Minimum sein musste.**
+  Der Grenzwinkel des Offroaders stand mit `μ_v·w_v + μ_h·w_h` in der Rechnung —
+  das ist die Traktion, die er hätte, wenn sich die Kraft frei zwischen den
+  Achsen verschieben ließe. Ein fester Antriebsanteil kann das nicht (steht so
+  auch im Code): übertragbar ist `min(gripVorn/s, gripHinten/(1−s))`. Auf
+  Asphalt waren das 90,0° statt 59,0°. Gefahren ändert sich nichts — die Zahl war
+  nur nie gefahren worden. Lehre: **eine Herleitung, die neben der Messung steht,
+  gehört genauso geprüft wie die Messung.**
+
+- **Eine Ausnahme so weit formuliert, wie sie *nicht* begründet war — und eine
+  ganze Zone der Karte verloren.** P20 nahm die **Fahrbahn** aus der
+  Hüllkollision (eine gerechnete Fläche ist kein Blechhindernis; die Begründung
+  steht und gilt). Geschrieben war die Bedingung als `surface !== 'gelaende'` —
+  und die trifft zusätzlich `'wasser'`. Darunter liegen die **Terrassenwände der
+  Reisfelder**, 2,4…2,8 m hoch, 7,6 % der Karte: für die Karosserie gab es sie
+  nicht mehr.
+  Gefunden hat es der Zufallslauf, und zwar erst, als er zum ersten Mal über
+  **alle vier** Fahrzeuge lief — zwei Phasen lang lief er über zwei.
+  Drei Lehren:
+  1. **Eine Ausnahme gehört so eng formuliert, wie sie begründet ist.** Begründet
+     war „Fahrbahn", geschrieben war „alles außer Gelände". Der Unterschied ist
+     eine Zone.
+  2. **Ein Zufallslauf ist nur so gut wie die Zahl der Fahrzeuge, über die er
+     läuft.** Dieselbe Klasse wie „eine Eigenschaft für *alle* an einem Teil
+     geprüft" weiter oben — dort war es die Vegetation, hier die Flotte.
+  3. Der Lauf hatte selbst eine Falle: er setzt das Auto an eine gewürfelte
+     Stelle, und steht die in einer Wand, misst der erste Meter das **Absetzen**.
+     Er lässt seitdem eine Sekunde einschwingen. Dritter Fall dieser Art in
+     derselben Phase — siehe die beiden `respawn`-Fehler darüber.
+
+- **Die Physik fuhr nicht auf dem Fahrbahnband, sondern auf dem Gelände plus
+  einem Skalar.** `DriveSystem.height()` bildete die Korrektur am nächsten
+  Mittellinienpunkt und wandte sie in der ganzen Nachbarschaft an — damit erbt
+  die Fahrbahn jede Verwindung des Geländes unter ihr, während das Bild ein
+  glattes Band zeigt. Gemessen über 684 Punkte aller acht Strecken: Median 6 cm,
+  aber **37 Punkte (5,4 %) über 30 cm** und im Maximum **1,66 m**, geballt in
+  einer Kehre des Bergpasses. Dort blieb der GT stehen.
+  Seit P21 ist die Sollhöhe eine **Ebene durch den Straßentreffer** mit der
+  Längsneigung des Segments. Die Verwindung quer ist damit per Konstruktion
+  null — die Fahrbahn ist flach, **weil sie als flach gerechnet wird**, und
+  nicht, weil das Gelände zufällig flach ist. Lehre: wo Bild und Physik
+  dieselbe Fläche meinen, muss die Physik sie aus derselben Quelle bilden; ein
+  Offset auf eine fremde Fläche erbt deren Fehler.
+
+- **Eine Nachbarschaftssuche in XZ ohne Schranke in der Höhe.**
+  `WaterField.#inRiver` nimmt den nächsten Flussknoten in XZ und dessen
+  Spiegelhöhe. Dieser Fluss hat zwei **Wasserfälle** (11,2 m und 39,7 m), und am
+  Kopf des großen war ein Knoten mit 7,5 m Halbbreite für jeden Punkt der
+  Felswand 21 m darunter der nächste. Ergebnis: **21,24 m Wassertiefe auf dem
+  Bergpass**, 95 m über dem Meer, mitten auf der Fahrbahn. Das Auto schwamm dort.
+  Genau das war die Zeile „`toge` meldet 1804,7 cm Standhöhe", die zwei Phasen
+  lang als offener Punkt dastand — und sie sah wie ein Fehler der **Straße** aus,
+  weil sie an einer Straße gemessen wurde.
+  Zwei Lehren: **eine Suche in zwei Dimensionen braucht eine Schranke in der
+  dritten**, wenn das Ergebnis dreidimensional gemeint ist. Und: wo eine
+  auffällige Zahl gemessen wird, sagt nichts darüber, wo sie **herkommt** —
+  hier lagen Ursache und Symptom in verschiedenen Systemen.
+
+- **Ein Messwerkzeug, das seit P18 falsch rechnete und nie auffiel.**
+  `measureStandingHeight` nahm `CHASSIS.cgHeight` — die Höhe des **Coupés** —
+  für jedes Fahrzeug. Mit dem Offroader wäre jede Standhöhe um 26 cm daneben
+  gewesen, still. Der Grund, warum es nie auffiel: das Werkzeug ist nie mit einem
+  anderen Fahrzeug gelaufen. Dieselbe Klasse wie die sieben Modulkonstanten aus
+  P17 — eine Zahl aus den Maßen **eines** Fahrzeugs, die für alle gilt.
+  Lehre: **ein Werkzeug, das eine Flotte messen soll, gehört einmal über die
+  ganze Flotte gefahren** — nicht, weil man dort etwas erwartet, sondern weil
+  genau dort seine eigenen Annahmen sichtbar werden.
+
+---
+
+## Bevor ein **Bild** repariert wird: nachsehen, ob man es sieht — P21
+
+Ein Fehler im Bild ist erst dann einer, wenn er dort auftaucht, wo jemand
+hinsieht. Das klingt selbstverständlich und ist es nicht: P21 hätte beinahe 95 m
+Flussband abgeschnitten, um ein schwebendes Becken zu beheben, das aus der
+**Vogelperspektive** unübersehbar ist — und von der Straße aus an drei geprüften
+Blickpunkten überhaupt nicht vorkommt (der Pass läuft dort im Einschnitt).
+
+Der Prüfweg dauert drei Aufrufe und steht als Muster in P21.8:
+
+1. **Auf Fahrerhöhe stellen**, nicht darüber. Die Verfolgerkamera sitzt 2,35 m
+   hoch, die Haubenkamera darunter — ein Bild aus 40 m ist kein Bild aus dem
+   Spiel.
+2. **Mehrere Standorte**, und zwar die, an denen der Fehler am ehesten zu sehen
+   wäre (hier: senkrecht darunter, den Hang hinauf, von oberhalb am Pass).
+3. `probe()` mitlesen: `anteilNichtSchwarz` muss 1,000 sein, sonst misst man ein
+   beschnittenes Bild (die Falle aus P8.9).
+
+Und wenn er dort nicht vorkommt: **aufschreiben statt reparieren.** Eine
+Reparatur, die etwas Sichtbares gegen etwas Unsichtbares eintauscht, ist ein
+Rückschritt mit Aufwand.
+
+- **Zusatz aus derselben Phase: eine Reparatur kann teurer sein als der Fehler.**
+  Das schwebende Becken gehört in `bake-terrain.mjs`. Es dort anzufassen heißt
+  `npm run world`, und die Erosion trägt jede Störung über die ganze Karte
+  (gemessen 66,82 % geänderte Texel bei einem Eingriff in **einer** Zone). Die
+  Straßen entstehen aus dem Höhenfeld — der Bergpass wäre danach ein anderer, und
+  jede Zahl aus P14 bis P21 wäre neu abzulesen. Wer den Aufwand nicht neben den
+  Fehler stellt, repariert am Ende die Karte, um ein Pixel zu retten.

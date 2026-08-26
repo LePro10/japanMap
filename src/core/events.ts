@@ -231,6 +231,20 @@ export type AppEvents = {
    */
   'drive:lap': LapResult;
 
+  /**
+   * Der Wagen ist von selbst auf die Straße zurückgesetzt worden — P20.
+   *
+   * Die letzte Zusicherung der Fahrschicht: *wer fahren will und nicht von der
+   * Stelle kommt, kommt trotzdem weiter.* Physik kann das nicht garantieren —
+   * eine Lücke von 4,33 m zwischen zwei Steinlaternen bei 4,32 m Fahrzeuglänge
+   * ist kein Fehler im Modell, sondern eine Aussage über die Karte (P19.6).
+   *
+   * Das Ereignis ist für die **Anzeige**: ein Wagen, der ohne Erklärung an einer
+   * anderen Stelle steht, sieht aus wie ein Fehler. Ein Hinweis im HUD macht
+   * daraus eine Hilfe.
+   */
+  'drive:rescued': { seconds: number };
+
   'debug:visibility': { visible: boolean };
 };
 

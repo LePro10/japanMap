@@ -245,6 +245,25 @@ export interface QualitySettings {
    * läuft dann gar nicht.
    */
   readonly postFx: PostFxQuality;
+  /**
+   * Nahdetail der Wasseroberflächen, 0…1 (ab P19).
+   *
+   * Meer, Fluss und Reisfeld tragen drei Wellenlagen mit 37 m, 13 m und 4,6 m
+   * Länge. Aus der Ferne stimmt das; **neben dem Auto** ist die kürzeste davon
+   * fünf Wagenlängen lang, und die Fläche dazwischen ist ein Spiegel. Zwei
+   * zusätzliche Lagen (1,1 m und 0,42 m) schließen die Lücke, blenden aber
+   * jenseits von 42 m aus — darüber hinaus wären sie kleiner als ein Pixel und
+   * ergäben Moiré statt Struktur.
+   *
+   * Der Wert ist ein **Faktor auf die Stärke** und kein Schalter, damit die
+   * mittleren Stufen ihn abschwächen können, statt ihn zu verlieren. Bei 0 fällt
+   * der ganze Zweig im Shader weg — auf Minimal kostet er dann auch nichts.
+   *
+   * Kosten: drei Kosinus je Wasserpixel, und nur innerhalb von 42 m. Auf einer
+   * Karte, deren Wasserflächen meist weiter weg sind, ist das der billigste
+   * sichtbare Posten, den diese Leiter hat.
+   */
+  readonly waterDetail: number;
 }
 
 /**
@@ -416,6 +435,7 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     renderScale: 1,
     terrainGridVertices: 33,
     postFx: 'full',
+    waterDetail: 1,
   },
   /**
    * ## „Hoch" war bis P12.3 **teurer als Ultra**
@@ -474,6 +494,7 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     // ans Ende der oberen — und gemessen bringt es ohnehin 3,5 % (im Rauschen).
     terrainGridVertices: 33,
     postFx: 'reduced',
+    waterDetail: 0.85,
   },
   medium: {
     label: 'Mittel',
@@ -490,6 +511,7 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     // (1,5 m), aber deutlich unter dem festen P1-Gitter (4,0 m).
     terrainGridVertices: 25,
     postFx: 'lean',
+    waterDetail: 0.6,
   },
   /**
    * Ab hier läuft die **kompakte** Kette statt der vollen — P12.1.
@@ -514,6 +536,7 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     // gelesen. Ein Viertel der Dreiecke von Ultra.
     terrainGridVertices: 17,
     postFx: 'compact',
+    waterDetail: 0.35,
   },
   /**
    * Die Stufe für Geräte, auf denen sonst gar nichts liefe — P8.2, umgebaut in
@@ -556,6 +579,8 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     renderScale: 0.5,
     terrainGridVertices: 17,
     postFx: 'compact',
+    // Null heißt: der Zweig im Shader fällt ganz weg. Siehe `waterDetail`.
+    waterDetail: 0,
   },
 };
 
@@ -731,6 +756,11 @@ export function setCustomQuality(patch: Partial<CustomQuality>): QualitySettings
       patch.postFx !== undefined && POSTFX_KEYS.includes(patch.postFx) ? patch.postFx : before.postFx,
     reflections:
       typeof patch.reflections === 'boolean' ? patch.reflections : before.reflections,
+    // **Kein eigener Regler im Menü** (`CustomQuality` führt ihn nicht), aber
+    // auch keine Konstante: die eigene Stufe erbt ihn von der Kette, die sie
+    // fährt. Wer auf `compact` stellt, will keine zusätzliche Kräuselung — und
+    // wer die volle Kette wählt, will sie.
+    waterDetail: before.waterDetail,
   };
   return customState.value;
 }

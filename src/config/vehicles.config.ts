@@ -6,6 +6,7 @@ import {
   SUSPENSION,
   TIRE,
   VEHICLE_COLLISION,
+  hullSamplePoints,
 } from './vehicle.config';
 
 /**
@@ -213,11 +214,11 @@ export interface LimitsSpec {
 }
 
 export interface CollisionSpec {
-  readonly cornerRadius: number;
+  readonly skin: number;
   readonly restitution: number;
   readonly wallFriction: number;
   readonly yawTransfer: number;
-  readonly probeHeights: readonly number[];
+  readonly band: readonly [number, number];
   readonly maxPushPerStep: number;
 }
 
@@ -289,9 +290,49 @@ export interface VehicleDerived {
   readonly supportReach: number;
   /** Deckel auf die Federkraft, N. `mass · g · maxLoadFactor`, einmal gerechnet. */
   readonly springCap: number;
+  /**
+   * Kleinster Abstand des Schwerpunkts über dem **tiefsten** Radaufstandspunkt,
+   * in Metern — P19.
+   *
+   * Das ist eine geometrische Schranke und keine Federeigenschaft: **ein Rad
+   * kann nicht durch den Kotflügel.** Bei voll eingefederter Achse ist der
+   * Abstand `springRest − travel`; die 30 % darüber sind der Gummipuffer, der
+   * sich noch zusammendrücken lässt.
+   *
+   * > **Warum es diese Schranke braucht — der Lastwagen, der im Boden versinkt.**
+   * > Die Federkraft ist auf `springCap` = 3 · m · g gedeckelt (Begründung bei
+   * > `SUSPENSION.maxLoadFactor`, und der Deckel ist richtig). Aus 1,5 m Fallhöhe
+   * > sind das 0,74 m Einfederweg — mehr als `supportReach` = 0,50 m. Und damit
+   * > schnappt die Falle zu: `reachableSupport` erklärt die vier Räder für
+   * > **unerreichbar**, weil sie zu weit *über* dem Aufbau liegen, gibt
+   * > `expected − UNSUPPORTED_DROP` zurück, die Federkraft wird null, und der
+   * > Wagen fällt weiter — bis ihn der Bodenfang bei `Geländehöhe + r/2` auffängt.
+   * > Dort liegt er dann für immer: zu tief, als dass seine eigenen Räder den
+   * > Boden je wieder erreichen könnten.
+   * >
+   * > Gemessen mit `tools/bench/world.mts` vor P19: Ruhelage **0,26 m** statt
+   * > 1,10 m. Der Aufbau eines 3,1 m hohen Lastwagens stand mit dem Schwerpunkt
+   * > auf Kniehöhe, und keine einzige Kennzahl hat es gemeldet — er *fuhr* ja.
+   */
+  readonly bodyFloorGap: number;
+  /**
+   * Prüfpunkte der Blechunterkante im Fahrzeugsystem, flach als `x, y, z` — P20.
+   *
+   * Gebildet von `hullSamplePoints`; die Begründung für Zahl und Lage der Punkte
+   * steht dort. Hier liegen sie, weil sie aus `chassis` und `collision`
+   * **gerechnet** sind und damit unter dieselbe Regel fallen wie die sieben
+   * Konstanten, die in P17 aus `Vehicle.ts` hierher mussten: eine Ableitung, die
+   * beim Fahrzeugwechsel stehen bliebe, ließe den Lastwagen mit dem Umriss des
+   * Coupés gegen das Gelände prüfen.
+   */
+  readonly hullSamples: Float64Array;
 }
 
-function derive(chassis: ChassisSpec, suspension: SuspensionSpec): VehicleDerived {
+function derive(
+  chassis: ChassisSpec,
+  suspension: SuspensionSpec,
+  collision: CollisionSpec,
+): VehicleDerived {
   const staticCompression = (chassis.mass * GRAVITY) / suspension.stiffness;
   const restDrop = chassis.cgHeight - chassis.wheelRadius;
   return {
@@ -305,6 +346,17 @@ function derive(chassis: ChassisSpec, suspension: SuspensionSpec): VehicleDerive
     wheelMinDrop: Math.max(0, restDrop - Math.max(0, suspension.travel - staticCompression)),
     supportReach: suspension.travel + 0.28,
     springCap: chassis.mass * GRAVITY * suspension.maxLoadFactor,
+    bodyFloorGap: Math.max(
+      chassis.wheelRadius * 0.5,
+      chassis.cgHeight + staticCompression - suspension.travel * 1.3,
+    ),
+    // Die Unterkante liegt `band[0]` über der Radaufstandsebene; im
+    // Fahrzeugsystem ist der Ursprung der Schwerpunkt, also `band[0] − cgHeight`.
+    hullSamples: hullSamplePoints(
+      chassis.bodyLength,
+      chassis.bodyWidth,
+      collision.band[0] - chassis.cgHeight,
+    ),
   };
 }
 
@@ -322,7 +374,7 @@ function makeSpec(raw: RawSpec): VehicleSpec {
       // Widerspruch zum Namen — und ein Widerspruch, den niemand bemerkt.
       frontShare: layout === 'fwd' ? 1 : layout === 'rwd' ? 0 : (raw.drivetrain.frontShare ?? 0.4),
     },
-    derived: derive(raw.chassis, raw.suspension),
+    derived: derive(raw.chassis, raw.suspension, raw.collision),
   };
 }
 
@@ -564,7 +616,7 @@ export const GT: VehicleSpec = makeSpec({
     releaseDamping: 0.35,
   },
   limits: { maxYawRate: 8, slipSpeedFloor: 6, staticHoldSpeed: 0.8 },
-  collision: { ...VEHICLE_COLLISION, cornerRadius: 0.36, probeHeights: [0.25, 0.75] },
+  collision: { ...VEHICLE_COLLISION, skin: 0.05, band: [0.22, 0.72] },
   drivetrain: {
     layout: 'rwd',
     // 500 kW ≙ 680 PS.
@@ -756,10 +808,10 @@ export const OFFROAD: VehicleSpec = makeSpec({
   limits: { maxYawRate: 6, slipSpeedFloor: 6, staticHoldSpeed: 0.9 },
   collision: {
     ...VEHICLE_COLLISION,
-    cornerRadius: 0.4,
-    // Drei Höhen statt zwei: der Aufbau ist 1,95 m hoch, und eine Prüfung bei
-    // 0,3 und 0,8 m ließe eine Leitplanke auf Kabinenhöhe durchfahren.
-    probeHeights: [0.35, 1.0, 1.7],
+    skin: 0.07,
+    // Höher als beim Coupé: der Aufbau ist 1,95 m hoch, und ein Band, das bei
+    // 0,8 m endet, ließe alles über Türhöhe durch die Kabine gehen.
+    band: [0.35, 1.7],
   },
   drivetrain: {
     layout: 'awd',
@@ -926,10 +978,10 @@ export const TRUCK: VehicleSpec = makeSpec({
   limits: { maxYawRate: 3.2, slipSpeedFloor: 6, staticHoldSpeed: 1.1 },
   collision: {
     ...VEHICLE_COLLISION,
-    cornerRadius: 0.45,
-    // Drei Höhen über 3,1 m Aufbau. Die oberste liegt über der Leitplanke und
-    // unter dem Dach — sie ist die, die an einem Torii anstößt.
-    probeHeights: [0.45, 1.4, 2.4],
+    skin: 0.08,
+    // 3,1 m Aufbau: die Oberkante liegt weit über der Leitplanke und unter dem
+    // Dach — sie ist die, die an einem Torii anstößt.
+    band: [0.45, 2.4],
     maxPushPerStep: 0.3,
   },
   drivetrain: {

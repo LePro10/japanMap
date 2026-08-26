@@ -71,27 +71,57 @@ check('Straße 23° ist kein Steilhang', !isSteep(Math.cos((23.3 * Math.PI) / 18
 check('40° ist eine Wand', isSteep(Math.cos((40 * Math.PI) / 180)));
 
 const gentle = { x: 0, y: -0.4, z: 0, vx: 8, vy: -2, vz: 0 };
-const g = resolveTerrainFollow(gentle, 0, 0, 1, 0, 0.155, 0.25);
+const g = resolveTerrainFollow(gentle, 0, 0, 1, 0, 0.155, 0.25, 1 / 60);
 check('flach: Y auf Boden', near(gentle.y, 0.155), `y=${gentle.y.toFixed(3)}`);
 check('flach: kein Wandmodus', g.wall === false && g.snapped === true);
 check('flach: Sinken weg', near(gentle.vy, 0));
 
+// **Diese Zeilen haben sich mit P19 geändert, und die Begründung gehört
+// dazu.** Bis dahin stand hier `check('steil: Tempo in die Wand weg', cliff.vx
+// >= -1e-6)` — geprüft wurde also der **waagerechte** Anteil, weil der alte
+// Code auch nur den zerlegt hat. Er ist die falsche Größe: „in die Wand" ist
+// die Richtung der Flächennormalen, nicht die X-Achse. Auf einer 72°-Wand darf
+// `vx` sehr wohl negativ bleiben — das ist dann die Bewegung *längs* der Wand,
+// und die soll es geben, sonst rutscht nie ein Auto herunter.
+const wandNx = 0.954;
+const wandNy = 0.3;
 const cliff = { x: 0, y: 49.8, z: 0, vx: -20, vy: 0, vz: 0 };
-const c = resolveTerrainFollow(cliff, 50, 0.954, 0.3, 0, 0.155, 0.25);
+const c = resolveTerrainFollow(cliff, 50, wandNx, wandNy, 0, 0.155, 0.25, 1 / 60);
 check('steil: kein Y-Teleport auf den Grat', cliff.y < 50.2, `y=${cliff.y.toFixed(3)}`);
 check('steil: Wandmodus', c.wall === true);
 check('steil: XZ-Schub gegen die Wand', cliff.x > 0, `x=${cliff.x.toFixed(3)}`);
-check('steil: Tempo in die Wand weg', cliff.vx >= -1e-6, `vx=${cliff.vx.toFixed(3)}`);
+const cliffInto = cliff.vx * wandNx + cliff.vy * wandNy;
+check(
+  'steil: Tempo in die Fläche hinein weg',
+  // Toleranz relativ zum Anprall (20 m/s): die Zerlegung rechnet mit drei
+  // Wurzeln, und ein Rest von 10⁻⁶ ist Gleitkomma, kein Eindringen.
+  cliffInto >= -1e-4,
+  `vn=${cliffInto.toExponential(2)}`,
+);
+check(
+  'steil: klettert nicht — 20 m/s Anprall werden nicht zu 5,7 m/s aufwärts',
+  cliff.vy < 1.2,
+  `vy=${cliff.vy.toFixed(3)}`,
+);
+
+// Der Fehler aus dem Bild: ein Auto, das auf einer Wand **steht**, muss fallen.
+const kleber = { x: 0, y: 0, z: 0, vx: 0, vy: -3, vz: 0 };
+resolveTerrainFollow(kleber, 0.2, wandNx, wandNy, 0, 0.155, 0.25, 1 / 60);
+check(
+  'steil: Sinken bleibt erhalten (kein Kleben an der Wand)',
+  kleber.vy < -0.5,
+  `vy=${kleber.vy.toFixed(3)}`,
+);
 
 const ski = { x: 0, y: 0, z: 0, vx: 15, vy: -1, vz: 0 };
 const slopeNy = Math.cos((30 * Math.PI) / 180);
 const slopeNx = Math.sin((30 * Math.PI) / 180);
-resolveTerrainFollow(ski, 0.2, slopeNx, slopeNy, 0, 0.155, 0.25);
+resolveTerrainFollow(ski, 0.2, slopeNx, slopeNy, 0, 0.155, 0.25, 1 / 60);
 const into = ski.vx * slopeNx + ski.vy * slopeNy;
 check('30°-Hang: Geschwindigkeit in die Fläche nicht mehr negativ', into >= -1e-6, `vn=${into.toFixed(4)}`);
 
 const dive = { x: 0, y: 0, z: 0, vx: -8, vy: -4, vz: 0 };
-resolveTerrainFollow(dive, 0.2, slopeNx, slopeNy, 0, 0.155, 0.25);
+resolveTerrainFollow(dive, 0.2, slopeNx, slopeNy, 0, 0.155, 0.25, 1 / 60);
 const vnDive = dive.vx * slopeNx + dive.vy * slopeNy;
 check(
   '30°-Hang: Anfahrt in die Fläche wird gestrichen (kein Skilift)',
@@ -100,7 +130,7 @@ check(
 );
 
 const mesa = { x: 5, y: 0.5, z: 0, vx: 20, vy: 0, vz: 0 };
-const deep = resolveTerrainFollow(mesa, 40, 0, 1, 0, 0.155, 0.25);
+const deep = resolveTerrainFollow(mesa, 40, 0, 1, 0, 0.155, 0.25, 1 / 60);
 check('Hochebene, 40 m drin: kein Y-Teleport', mesa.y < 2, `y=${mesa.y.toFixed(3)}`);
 check('Hochebene, 40 m drin: Wandmodus', deep.wall === true);
 check('Hochebene, 40 m drin: zurück', mesa.x < 5, `x=${mesa.x.toFixed(3)}`);
