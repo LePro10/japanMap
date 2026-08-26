@@ -143,9 +143,31 @@ export class DriveHud {
    * erleben, dass der erste Zeitgeber die zweite Meldung wegräumt.
    */
   showLap(result: LapResult, best: boolean): void {
-    this.#flash.textContent = best
-      ? `Bestzeit! ${formatTime(result.seconds)}`
-      : `Runde ${result.lap} · ${formatTime(result.seconds)}`;
+    this.#showFlash(
+      best ? `Bestzeit! ${formatTime(result.seconds)}` : `Runde ${result.lap} · ${formatTime(result.seconds)}`,
+      best,
+    );
+  }
+
+  /**
+   * Der Wagen wurde von selbst auf die Straße gesetzt — P20.
+   *
+   * **Ohne diese Zeile sähe die Rettung wie ein Fehler aus.** Ein Auto, das
+   * plötzlich woanders steht, ist genau das Bild, das dieses Projekt als „man
+   * verbuggt sich" gemeldet bekommen hat. Mit Hinweis ist es eine Hilfe, und der
+   * Fahrer weiß, dass es die Taste `R` auch von Hand gibt.
+   */
+  showRescue(): void {
+    this.#showFlash('Festgefahren — zurück auf die Straße (R)', false);
+  }
+
+  /**
+   * Der Kasten bleibt drei Sekunden stehen. Ein bestehender Zeitgeber wird dabei
+   * **abgeräumt** — wer zwei Meldungen in kurzem Abstand auslöst, soll nicht
+   * erleben, dass der erste Zeitgeber die zweite wegräumt.
+   */
+  #showFlash(text: string, best: boolean): void {
+    this.#flash.textContent = text;
     this.#flash.classList.toggle('hud__flash--best', best);
     this.#flash.hidden = false;
 
