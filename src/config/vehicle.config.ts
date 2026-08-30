@@ -995,6 +995,15 @@ export function hullSamplePoints(
 export const CHASE_CAMERA = {
   /** Abstand hinter dem Fahrzeug in Metern. */
   distance: 6.4,
+  /**
+   * Wie weit die Kamera bei `fovSpeed` zusätzlich zurückfällt, in Metern.
+   *
+   * Zusammen mit dem Bildwinkel die zweite Hälfte des Tempoeindrucks — und die
+   * subtilere: der Wagen wird im Bild kleiner, während die Landschaft schneller
+   * vorbeizieht. Gegenläufig wäre falsch; eine Kamera, die bei Tempo *näher*
+   * kommt, nimmt die Übersicht weg, die man dann am dringendsten braucht.
+   */
+  distanceFast: 1.6,
   /** Höhe der Kamera über dem Fahrzeugschwerpunkt. */
   height: 2.35,
   /** Höhe des Blickziels über dem Schwerpunkt. */
@@ -1019,10 +1028,33 @@ export const CHASE_CAMERA = {
   /** Mindestabstand über dem Gelände, damit die Kamera nicht im Hang steckt. */
   groundClearance: 0.9,
 
-  /** Blickfeld bei Stillstand und bei `fovSpeed`. Der Zug bei Tempo. */
-  fov: 60,
-  fovFast: 68,
-  fovSpeed: 70,
+  /**
+   * Blickfeld bei Stillstand, bei `fovSpeed` und im Nitro. Der Zug bei Tempo.
+   *
+   * > **60 → 68 über 70 m/s war die Einstellung bis P22, und sie war zu brav.**
+   * > Tempo entsteht auf einem Bildschirm fast vollständig aus dem
+   * > **Bildwinkel** und der Bewegung am Bildrand — nicht aus der Zahl im Tacho.
+   * > 8° über einen Bereich, den man auf dieser Karte kaum ausfährt (70 m/s sind
+   * > 252 km/h), sind praktisch nichts: bei den 90 km/h, mit denen man den
+   * > Bergpass fährt, standen davon 2,9°.
+   * >
+   * > Jetzt 62 → 82 über 45 m/s (162 km/h). Bei 90 km/h sind das 69,3° statt
+   * > 62,9°, und der Unterschied ist der zwischen „fährt" und „rast".
+   */
+  fov: 62,
+  fovFast: 82,
+  fovSpeed: 45,
+  /**
+   * Zusätzlicher Bildwinkel im Nitro, in Grad.
+   *
+   * Er ist die **Anzeige** des Nitro, nicht seine Wirkung — und die wichtigere
+   * Hälfte davon. Ein Boost, der nur die Zahl im Tacho hebt, fühlt sich nicht
+   * schnell an; einer, der das Bild aufreißt, schon.
+   */
+  fovBoost: 9,
+  /** Zeitkonstante, mit der das Blickfeld folgt (1/s). Hoch beim Nitro, damit er *schlägt*. */
+  fovRate: 3.5,
+  fovBoostRate: 9,
 
   /** Mausempfindlichkeit im Fahrmodus (rad/px) und Nickgrenzen. */
   lookSensitivity: 0.0026,
