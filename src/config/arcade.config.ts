@@ -285,17 +285,32 @@ export const ARCADE_SURFACE = {
 } as const;
 
 /**
- * Zusätzliche Verzögerung durch den Untergrund, in m/s².
+ * Zusätzliche Dämpfung durch den Untergrund, in 1/s: `a = −k · v`.
  *
  * Der zweite Grund, warum Abkürzen über die Wiese nicht lohnt (der erste ist
  * der geringere Grip). Ohne ihn wäre die Straße auf einer Karte mit 101 ha
  * Reisfeld bedeutungslos.
+ *
+ * > **Der erste Entwurf stand hier als konstante Verzögerung in m/s²** (Wiese
+ * > 3,2). Das ist bei Tempo richtig und im Kriechgang eine Katastrophe: eine
+ * > Verzögerung, die *unabhängig vom Tempo* wirkt, frisst genau die Kraft, mit
+ * > der ein stehender Wagen sich in Bewegung setzt.
+ * >
+ * > Gemessen mit `tools/bench/world.mts` auf 90 s Zufallsgelände, schlechtestes
+ * > Vier-Sekunden-Fenster mit Gas: Lastwagen **0,58 m**, Offroader 0,96 m — der
+ * > Prüfstand meldete „kommt von der Stelle" als knapp bestanden, tatsächlich
+ * > stand der Wagen. Mit einer geschwindigkeitsproportionalen Dämpfung (wie sie
+ * > das Einspurmodell als `terrainDrag` hatte) ist der Term bei null Tempo
+ * > exakt null und bei 20 m/s so groß wie zuvor.
+ *
+ * 0,22/s auf der Wiese sind bei 20 m/s 4,4 m/s² — mehr als der alte
+ * Festbetrag —, bei 2 m/s aber nur 0,44 m/s².
  */
 export const ARCADE_SURFACE_DRAG = {
   asphalt: 0,
-  kies: 1.6,
-  gelaende: 3.2,
-  wasser: 6.0,
+  kies: 0.09,
+  gelaende: 0.22,
+  wasser: 0.55,
 } as const;
 
 /**

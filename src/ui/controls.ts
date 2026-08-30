@@ -11,15 +11,15 @@
 
 /** Tastatur und Maus — dieselbe Belegung wie im Kopf von `FreeFlyController`. */
 export const CONTROLS: readonly (readonly [string, string])[] = [
-  ['W A S D', 'bewegen'],
-  ['Maus', 'umsehen'],
-  ['Leertaste / Strg', 'hoch / runter'],
-  ['Umschalt', 'fünffaches Tempo'],
-  ['Mausrad', 'Grundtempo 1–500 m/s'],
-  ['F', 'Bodenkollision an / aus'],
-  ['R', 'zurück zum Start'],
-  ['V', 'ins Auto steigen'],
-  ['Esc', 'Menü'],
+  ['W A S D', 'move'],
+  ['Mouse', 'look around'],
+  ['Space / Ctrl', 'up / down'],
+  ['Shift', 'five times faster'],
+  ['Wheel', 'base speed 1–500 m/s'],
+  ['F', 'ground collision on / off'],
+  ['R', 'back to start'],
+  ['V', 'get in the car'],
+  ['Esc', 'menu'],
 ];
 
 /**
@@ -30,25 +30,25 @@ export const CONTROLS: readonly (readonly [string, string])[] = [
  * Zwei Spalten in einer Tabelle wären die Sorte Anleitung, die niemand liest.
  */
 export const DRIVE_CONTROLS: readonly (readonly [string, string])[] = [
-  ['W / S', 'Gas / Bremse (im Stand: Rückwärtsgang)'],
-  ['A / D', 'lenken'],
-  ['Leertaste', 'Handbremse'],
-  ['Maus', 'umsehen'],
-  ['C', 'Ansicht: Verfolger / Haube'],
-  ['R', 'auf die nächste Straße setzen'],
-  ['V', 'zurück zum Freiflug'],
-  ['Esc', 'Menü'],
+  ['W / S', 'throttle / brake (reverse when stopped)'],
+  ['A / D', 'steer'],
+  ['Space', 'handbrake'],
+  ['Mouse', 'look around'],
+  ['C', 'view: chase / hood'],
+  ['R', 'respawn on the nearest road'],
+  ['V', 'back to free camera'],
+  ['Esc', 'menu'],
 ];
 
 /** Dieselbe Tabelle für Finger — die Belegung steht in `TouchControls`. */
 export const TOUCH_CONTROLS: readonly (readonly [string, string])[] = [
-  ['Links ziehen', 'bewegen (Stick)'],
-  ['Rechts ziehen', 'umsehen'],
-  ['Zwei Finger rechts', 'Tempo'],
+  ['Drag left', 'move (stick)'],
+  ['Drag right', 'look around'],
+  ['Two fingers, right', 'speed'],
   ['▲ / ▼', 'steigen / sinken'],
   ['🚗', 'ins Auto steigen'],
-  ['⟲ / ⇩', 'Start / Bodenkollision'],
-  ['☰', 'Menü'],
+  ['⟲ / ⇩', 'restart / ground collision'],
+  ['☰', 'menu'],
 ];
 
 /**
@@ -59,12 +59,12 @@ export const TOUCH_CONTROLS: readonly (readonly [string, string])[] = [
  * weiterhin „zurück auf Anfang" — im Auto heißt das „auf die nächste Straße".
  */
 export const TOUCH_DRIVE_CONTROLS: readonly (readonly [string, string])[] = [
-  ['Links ziehen', 'Gas / Bremse / lenken'],
-  ['Rechts ziehen', 'umsehen'],
-  ['✋', 'Handbremse'],
+  ['Drag left', 'throttle / brake / steer'],
+  ['Drag right', 'look around'],
+  ['✋', 'handbrake'],
   ['⟲', 'auf die nächste Straße'],
   ['🚗', 'zurück zum Freiflug'],
-  ['☰', 'Menü'],
+  ['☰', 'menu'],
 ];
 
 /**

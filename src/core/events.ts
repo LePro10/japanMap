@@ -246,6 +246,40 @@ export type AppEvents = {
   'drive:rescued': { seconds: number };
 
   'debug:visibility': { visible: boolean };
+
+  /**
+   * Der Zustand einer Veranstaltung — P23.
+   *
+   * Über den Bus und nicht als Rückgabewert, weil **drei** Zuhörer ihn brauchen
+   * (HUD, Spielermenü, Tonschicht) und keiner von ihnen den Rennleiter
+   * importieren soll. Dieselbe Bauart wie `drive:mode`.
+   */
+  'race:state': { state: 'idle' | 'countdown' | 'running' | 'finished'; event: string | null };
+
+  /** Ein Kontrollpunkt ist gefallen — Ton und Anzeige. */
+  'race:checkpoint': { index: number; total: number };
+
+  /** Eine Runde einer Veranstaltung ist voll. */
+  'race:lap': { lap: number; seconds: number };
+
+  /** Zieleinlauf mit Abrechnung. */
+  'race:finished': {
+    event: string;
+    place: number;
+    seconds: number;
+    driftScore: number;
+    yen: number;
+  };
+
+  /**
+   * Ein Sammelstück ist eingesammelt — P23.
+   *
+   * Trägt den Kontostand mit, damit die Anzeige ihn nicht selbst führen muss:
+   * zwei Zähler für dieselbe Größe sind zwei Gelegenheiten, sie auseinander
+   * laufen zu lassen.
+   */
+  'pickup:collected': { kind: 'coin' | 'boost'; total: number; yen: number };
 };
+
 
 export type AppBus = EventBus<AppEvents>;

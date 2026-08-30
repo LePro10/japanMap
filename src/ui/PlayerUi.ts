@@ -10,6 +10,8 @@ import {
 import { GRID_VERTICES_ALLOWED, lodMetersPerVertex, type GridVertices } from '@/config/lod.config';
 import type { PostFxQuality } from '@/config/postfx.config';
 import { VEHICLES, VEHICLE_ORDER, type VehicleId } from '@/config/vehicles.config';
+import { formatTime } from '@/game/BestTimes';
+import type { RaceEvent } from '@/config/events.config';
 import type { AppBus } from '@/core/events';
 import { VIEWPOINTS, applyViewpoint, type CameraPlacer } from '@/debug/viewpoints';
 import {
@@ -152,27 +154,57 @@ export interface PlayerUiOptions {
   readonly camera: CameraPlacer & TouchCameraTarget;
   /** Nur im Dev-Build gesetzt. Fehlt sie, gibt es den Reiter „Debug" nicht. */
   readonly debug?: DebugControl;
+  /**
+   * Die Veranstaltungen — P23.
+   *
+   * Dieselbe schmale Bauart wie `DriveControl` und `QualityControl`, und aus
+   * demselben Grund: `PlayerUi` importiert kein System. Fehlt sie, gibt es den
+   * Reiter „Events" nicht — und damit auch keine Anzeige, die etwas anbietet,
+   * das niemand starten kann.
+   */
+  readonly events?: EventsControl;
+}
+
+/** Was das Menü über Veranstaltungen und Fortschritt wissen muss. */
+export interface EventsControl {
+  readonly list: readonly RaceEvent[];
+  /** Kontostand in ¥. */
+  readonly yen: number;
+  /** Bestzeit einer Veranstaltung in Sekunden, oder `null`. */
+  bestOf(eventId: string): number | null;
+  /** Höchste Driftpunktzahl einer Veranstaltung. */
+  driftBestOf(eventId: string): number;
+  /** Läuft gerade eine? Dann steht dort „Abort" statt „Start". */
+  readonly runningEvent: string | null;
+  start(eventId: string): void;
+  abort(): void;
+  /** Gehört dem Spieler dieses Fahrzeug schon? */
+  owns(id: VehicleId): boolean;
+  price(id: VehicleId): number;
+  buy(id: VehicleId): boolean;
+  /** Ein Rückruf, der bei jeder Änderung des Kontostands feuert. */
+  onChange(fn: () => void): void;
 }
 
 const AO_LABELS: Readonly<Record<AoQuality, string>> = {
-  high: 'hoch',
-  medium: 'mittel',
-  low: 'niedrig',
-  off: 'aus',
+  high: 'high',
+  medium: 'medium',
+  low: 'low',
+  off: 'off',
 };
 
 const POSTFX_LABELS: Readonly<Record<PostFxQuality, string>> = {
-  full: 'voll',
-  reduced: 'reduziert',
-  lean: 'sparsam',
+  full: 'full',
+  reduced: 'reduced',
+  lean: 'lean',
   // „kompakt" und nicht „minimal": die Stufe *behält* den Farbstich und die
   // Vignette und lässt nur Bloom und Kantenglättung weg. Wer „minimal" liest,
   // erwartet weniger, als sie liefert.
-  compact: 'kompakt',
-  off: 'aus',
+  compact: 'compact',
+  off: 'off',
 };
 
-type TabKey = 'grafik' | 'fahrzeug' | 'steuerung' | 'blick' | 'debug';
+type TabKey = 'events' | 'garage' | 'grafik' | 'steuerung' | 'blick' | 'debug';
 
 export class PlayerUi {
   readonly #bus: AppBus;
@@ -183,6 +215,7 @@ export class PlayerUi {
   readonly #drive: DriveControl | null;
   readonly #audio: AudioControl | null;
   readonly #hud: { setMenuOpen(open: boolean): void } | null;
+  readonly #events: EventsControl | null;
 
   readonly #menu: HTMLElement;
   readonly #levelRow: HTMLElement;
@@ -203,7 +236,7 @@ export class PlayerUi {
   #started = false;
   /** Wahr, solange die Regler aus dem Zustand gefüllt werden — verhindert Rückkopplung. */
   #syncing = false;
-  #tab: TabKey = 'grafik';
+  #tab: TabKey = 'events';
   #touch: TouchControls | null = null;
 
   constructor(options: PlayerUiOptions) {
@@ -215,6 +248,10 @@ export class PlayerUi {
     this.#drive = options.drive ?? null;
     this.#audio = options.audio ?? null;
     this.#hud = options.hud ?? null;
+    this.#events = options.events ?? null;
+    this.#events?.onChange(() => {
+      this.#syncGarage();
+    });
 
     this.#menu = this.#buildMenu();
     options.container.append(this.#menu);
@@ -237,6 +274,7 @@ export class PlayerUi {
     this.#fillLevels();
     this.#fillSliders();
     this.#fillVehicles();
+    this.#fillEvents();
     this.#fillViewpoints();
     this.#fillDebug();
 
@@ -390,6 +428,9 @@ export class PlayerUi {
   }
 
   #render(): void {
+    // Beim Öffnen die Liste neu beschriften — Bestzeiten und Kontostand haben
+    // sich seit dem letzten Mal geändert. Begründung bei `#fillEventList`.
+    if (this.#menuOpen) this.#syncGarage();
     this.#menu.hidden = !this.#menuOpen || (!this.#touchMode && this.#locked);
     // Das Bedienfeld gehört nicht über das offene Menü.
     this.#touch?.setVisible(!this.#menuOpen);
@@ -409,13 +450,20 @@ export class PlayerUi {
     // wurde. Im gebauten Stand ist das nie der Fall — und das ist die einzige
     // Stelle, an der über seine Existenz entschieden wird.
     const tabs: readonly (readonly [TabKey, string])[] = [
-      ['grafik', 'Grafik'],
-      // **Der Reiter existiert nur mit Fahrmodus** — dieselbe Regel wie bei
+      // **Die Reiter existieren nur mit Fahrmodus** — dieselbe Regel wie bei
       // „Debug". Ein Reiter, hinter dem eine Auswahl liegt, die nichts steuern
       // kann, ist eine Anzeige, die lügt.
-      ...(this.#drive ? ([['fahrzeug', 'Fahrzeug']] as const) : []),
-      ['steuerung', 'Steuerung'],
-      ['blick', 'Blickpunkte'],
+      //
+      // „Events" steht **vorn und ist die Voreinstellung**. Das ist keine
+      // Geschmacksfrage: wer auf einem Portal ein Menü öffnet, sucht etwas zu
+      // tun und nicht einen Grafikregler. Bis P22 stand „Grafik" an erster
+      // Stelle — für ein Projekt, das eine Landschaft zeigen wollte, war das
+      // richtig; für ein Spiel ist es die falsche erste Seite.
+      ...(this.#events ? ([['events', 'Events']] as const) : []),
+      ...(this.#drive ? ([['garage', 'Garage']] as const) : []),
+      ['grafik', 'Graphics'],
+      ['steuerung', 'Controls'],
+      ['blick', 'Views'],
       ...(this.#debug ? ([['debug', 'Debug']] as const) : []),
     ];
 
@@ -426,10 +474,10 @@ export class PlayerUi {
           <div class="menu__headButtons">
             ${
               this.#audio
-                ? `<button type="button" class="menu__mute" aria-label="Ton an oder aus">🔊</button>`
+                ? `<button type="button" class="menu__mute" aria-label="Sound on or off">🔊</button>`
                 : ''
             }
-            <button type="button" class="menu__resume">Weiter</button>
+            <button type="button" class="menu__resume">Resume</button>
           </div>
         </header>
 
@@ -437,7 +485,7 @@ export class PlayerUi {
           this.#drive
             ? `<button type="button" class="menu__drive">
                  <span class="menu__driveIcon">🚗</span>
-                 <span class="menu__driveLabel">Auto fahren</span>
+                 <span class="menu__driveLabel">Drive</span>
                </button>`
             : ''
         }
@@ -451,30 +499,42 @@ export class PlayerUi {
             .join('')}
         </nav>
 
-        <section class="menu__panel" data-panel="grafik">
-          <div class="menu__levels"></div>
-          <p class="menu__effect"></p>
-          <div class="menu__sliders"></div>
-          <button type="button" class="menu__reclassify">Neu einstufen</button>
-        </section>
-
         ${
-          this.#drive
-            ? `<section class="menu__panel" data-panel="fahrzeug">
-                 <div class="menu__cars"></div>
+          this.#events
+            ? `<section class="menu__panel" data-panel="events">
+                 <div class="menu__events"></div>
                  <p class="menu__note">
-                   Die Wahl wirkt sofort und behält den Standort. Jedes Fahrzeug hat eigene
-                   Masse, Reifen, Federung und Antriebsart — die Zahlen dazu stehen in
-                   <code>vehicles.config.ts</code>, jede mit ihrer Messung.
+                   Pick an event to start it — the car is placed on the grid for you.
+                   Finish to earn ¥, then spend it in the Garage.
                  </p>
                </section>`
             : ''
         }
 
+        ${
+          this.#drive
+            ? `<section class="menu__panel" data-panel="garage">
+                 <p class="menu__wallet"></p>
+                 <div class="menu__cars"></div>
+                 <p class="menu__note">
+                   Every car has its own mass, tyres, suspension and drivetrain. Switching
+                   keeps your position on the map.
+                 </p>
+               </section>`
+            : ''
+        }
+
+        <section class="menu__panel" data-panel="grafik">
+          <div class="menu__levels"></div>
+          <p class="menu__effect"></p>
+          <div class="menu__sliders"></div>
+          <button type="button" class="menu__reclassify">Auto-detect again</button>
+        </section>
+
         <section class="menu__panel" data-panel="steuerung">
-          ${hasTouch() ? `<h3 class="menu__subhead">Finger</h3>${controlTable(TOUCH_CONTROLS, 'keytable')}<h3 class="menu__subhead">Tastatur und Maus</h3>` : ''}
+          ${hasTouch() ? `<h3 class="menu__subhead">Touch</h3>${controlTable(TOUCH_CONTROLS, 'keytable')}<h3 class="menu__subhead">Keyboard and mouse</h3>` : ''}
           ${controlTable(CONTROLS, 'keytable')}
-          <h3 class="menu__subhead">Im Auto</h3>
+          <h3 class="menu__subhead">In the car</h3>
           ${hasTouch() ? controlTable(TOUCH_DRIVE_CONTROLS, 'keytable') : ''}
           ${controlTable(DRIVE_CONTROLS, 'keytable')}
         </section>
@@ -482,9 +542,7 @@ export class PlayerUi {
         <section class="menu__panel" data-panel="blick">
           <div class="menu__views"></div>
           <p class="menu__note">
-            Ein Sprung an einen benannten Standpunkt; das Menü schließt dabei. Die Tabelle ist
-            dieselbe, an der die Messungen dieses Projekts hängen — ein Bild oder eine
-            Draw-Call-Zahl gilt an einem Ort, nicht auf der Karte.
+            Jump to a named spot on the map. The menu closes when you do.
           </p>
         </section>
 
@@ -493,9 +551,8 @@ export class PlayerUi {
             ? `<section class="menu__panel" data-panel="debug">
                  <div class="menu__sliders menu__sliders--debug"></div>
                  <p class="menu__note">
-                   <strong>F1</strong> schaltet beides zugleich. Diese Werkzeuge gibt es nur im
-                   Dev-Server — im gebauten Stand fehlt der Reiter, und Tweakpane und stats-gl
-                   liegen gar nicht erst im Bundle.
+                   <strong>F1</strong> toggles both. Dev server only — the built game has
+                   neither this tab nor Tweakpane and stats-gl in its bundle.
                  </p>
                </section>`
             : ''
@@ -599,14 +656,14 @@ export class PlayerUi {
     // einzelner Prozentwert kann die Frage nicht mehr beantworten, seit nah und
     // fern getrennt behandelt werden.
     this.#slider(
-      'Volle Dichte bis',
+      'Full density up to',
       'vegetationFullRadius',
       CUSTOM_LIMITS.vegetationFullRadius,
       (v) => `${v.toFixed(0)} m`,
       (v) => ({ vegetationFullRadius: v }),
     );
     this.#slider(
-      'Dichte in der Ferne',
+      'Density at distance',
       'vegetationFarKeep',
       CUSTOM_LIMITS.vegetationFarKeep,
       percent,
@@ -617,42 +674,42 @@ export class PlayerUi {
     // ganzen Menüs: Gras stellt den größten Teil aller Instanzen, und der
     // Bodenfarbstich springt für es ein.
     this.#slider(
-      'Gras- und Buschreichweite',
+      'Grass and shrub range',
       'vegetationGroundRange',
       CUSTOM_LIMITS.vegetationGroundRange,
       percent,
       (v) => ({ vegetationGroundRange: v }),
     );
     this.#slider(
-      'Baumreichweite',
+      'Tree range',
       'vegetationRange',
       CUSTOM_LIMITS.vegetationRange,
       percent,
       (v) => ({ vegetationRange: v }),
     );
-    this.#slider('LOD-Umschaltpunkt', 'lodBias', CUSTOM_LIMITS.lodBias, (v) => v.toFixed(2), (v) => ({
+    this.#slider('LOD switch point', 'lodBias', CUSTOM_LIMITS.lodBias, (v) => v.toFixed(2), (v) => ({
       lodBias: v,
     }));
 
     this.#select(
-      'Geländegitter',
+      'Terrain grid',
       'terrainGridVertices',
       GRID_VERTICES_ALLOWED.map((v) => [String(v), `${v}² · ${lodMetersPerVertex(v).toFixed(1)} m`]),
       (raw) => ({ terrainGridVertices: Number(raw) as GridVertices }),
     );
     this.#select(
-      'Umgebungsverdeckung',
+      'Ambient occlusion',
       'ao',
       (Object.keys(AO_LABELS) as AoQuality[]).map((k) => [k, AO_LABELS[k]]),
       (raw) => ({ ao: raw as AoQuality }),
     );
     this.#select(
-      'Bildeffekte',
+      'Post effects',
       'postFx',
       (Object.keys(POSTFX_LABELS) as PostFxQuality[]).map((k) => [k, POSTFX_LABELS[k]]),
       (raw) => ({ postFx: raw as PostFxQuality }),
     );
-    this.#toggle('Spiegelung auf nassem Asphalt');
+    this.#toggle('Reflections on wet asphalt');
   }
 
   /**
@@ -684,14 +741,14 @@ export class PlayerUi {
     };
 
     kasten(
-      'Zahlenblock (Draw-Calls, GPU)',
+      'Stats overlay (draw calls, GPU)',
       () => debug.statsVisible,
       (v) => {
         debug.statsVisible = v;
       },
     );
     kasten(
-      'Werkzeugleiste (Tweakpane)',
+      'Tweakpane toolbar',
       () => debug.paneVisible,
       (v) => {
         debug.paneVisible = v;
@@ -722,7 +779,7 @@ export class PlayerUi {
     const drive = this.#drive;
     if (!drive) return;
     const label = this.#menu.querySelector<HTMLElement>('.menu__driveLabel');
-    if (label) label.textContent = drive.active ? 'Aussteigen' : 'Auto fahren';
+    if (label) label.textContent = drive.active ? 'Leave the car' : 'Drive';
     this.#menu.querySelector('.menu__drive')?.classList.toggle('is-active', drive.active);
     this.#touch?.setDriveMode(drive.active);
   }
@@ -850,21 +907,108 @@ export class PlayerUi {
       const top = Math.cbrt(spec.drivetrain.power / spec.drivetrain.drag) * 3.6;
       const layout =
         spec.drivetrain.layout === 'awd'
-          ? 'Allrad'
+          ? 'AWD'
           : spec.drivetrain.layout === 'fwd'
-            ? 'Frontantrieb'
-            : 'Heckantrieb';
+            ? 'FWD'
+            : 'RWD';
       button.innerHTML =
         `<span class="menu__carName">${spec.name}</span>` +
         `<span class="menu__carFacts">${spec.chassis.mass} kg · ${layout} · ${top.toFixed(0)} km/h</span>` +
-        `<span class="menu__carBlurb">${spec.blurb}</span>`;
+        `<span class="menu__carBlurb">${spec.blurb}</span>` +
+        `<span class="menu__carPrice" data-price="${id}"></span>`;
+      // **Ein Knopf, zwei Bedeutungen** — kaufen, wenn es noch nicht gehört,
+      // sonst wechseln. Zwei Knöpfe nebeneinander wären auf einem Telefon zwei
+      // Trefferflächen für eine Absicht, und die falsche davon kostet Geld.
       button.addEventListener('click', () => {
+        const events = this.#events;
+        if (events && !events.owns(id)) {
+          if (!events.buy(id)) return;
+        }
         drive.setVehicle(id);
         this.#syncVehicles();
+        this.#syncGarage();
       });
       list.appendChild(button);
     }
     this.#syncVehicles();
+    this.#syncGarage();
+  }
+
+  /**
+   * Preise, Sperren und Kontostand nachziehen.
+   *
+   * Gefragt wird der **Fortschritt**, nicht ein hier mitgeführter Stand —
+   * dieselbe Begründung wie bei `#syncQuality`: ein Menü, das seinen eigenen
+   * letzten Klick anzeigt, ist die Anzeige, die lügt.
+   */
+  #syncGarage(): void {
+    const events = this.#events;
+    if (!events) return;
+    const wallet = this.#menu.querySelector<HTMLElement>('.menu__wallet');
+    if (wallet) wallet.textContent = `Wallet: ¥${events.yen.toLocaleString('en-US')}`;
+    for (const tag of this.#menu.querySelectorAll<HTMLElement>('[data-price]')) {
+      const id = tag.dataset.price as VehicleId;
+      const owned = events.owns(id);
+      const price = events.price(id);
+      tag.textContent = owned ? 'Owned' : `¥${price.toLocaleString('en-US')}`;
+      tag.classList.toggle('menu__carPrice--locked', !owned && events.yen < price);
+      tag.closest('.menu__car')?.classList.toggle('is-locked', !owned && events.yen < price);
+    }
+    this.#fillEventList();
+  }
+
+  /**
+   * Der Reiter „Events".
+   *
+   * Er wird bei jedem Öffnen neu gefüllt (`#fillEventList`), und das ist
+   * Absicht: Bestzeiten und der laufende Zustand ändern sich zwischen zwei
+   * Menüöffnungen, und eine Liste, die beim Bauen einmal beschriftet wurde,
+   * zeigte die Bestzeit von vor drei Rennen.
+   */
+  #fillEvents(): void {
+    if (!this.#events) return;
+    this.#fillEventList();
+  }
+
+  #fillEventList(): void {
+    const events = this.#events;
+    const list = this.#menu.querySelector<HTMLElement>('.menu__events');
+    if (!events || !list) return;
+    list.textContent = '';
+    for (const event of events.list) {
+      const best = events.bestOf(event.id);
+      const driftBest = events.driftBestOf(event.id);
+      const running = events.runningEvent === event.id;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'menu__event';
+      if (running) button.classList.add('is-active');
+      const kind =
+        event.kind === 'race'
+          ? `${event.rivals} rivals`
+          : event.kind === 'drift'
+            ? 'drift run'
+            : 'time trial';
+      const record =
+        event.kind === 'drift'
+          ? driftBest > 0
+            ? `Best ${driftBest.toLocaleString('en-US')} pts`
+            : 'No score yet'
+          : best !== null
+            ? `Best ${formatTime(best)}`
+            : 'Not driven yet';
+      button.innerHTML =
+        `<span class="menu__eventName">${event.name}</span>` +
+        `<span class="menu__eventFacts">${kind} · ${event.laps} lap${event.laps > 1 ? 's' : ''} · ${record}</span>` +
+        `<span class="menu__carBlurb">${event.blurb}</span>` +
+        `<span class="menu__eventGo">${running ? 'Abort' : 'Start'}</span>`;
+      button.addEventListener('click', () => {
+        if (running) events.abort();
+        else events.start(event.id);
+        this.#resume();
+      });
+      list.appendChild(button);
+    }
   }
 
   /**
@@ -918,13 +1062,13 @@ export class PlayerUi {
     }
 
     this.#effect.textContent =
-      `Auflösung ${(settings.renderScale * 100).toFixed(0)} % · ` +
-      `Gitter ${settings.terrainGridVertices}² (${lodMetersPerVertex(settings.terrainGridVertices).toFixed(1)} m) · ` +
-      `AO ${AO_LABELS[settings.ao]} · Bildeffekte ${POSTFX_LABELS[settings.postFx]} · ` +
-      `Spiegelung ${settings.reflections ? 'an' : 'aus'} · ` +
-      `Vegetation voll bis ${settings.vegetationFullRadius} m, fern ` +
+      `Resolution ${(settings.renderScale * 100).toFixed(0)} % · ` +
+      `Grid ${settings.terrainGridVertices}² (${lodMetersPerVertex(settings.terrainGridVertices).toFixed(1)} m) · ` +
+      `AO ${AO_LABELS[settings.ao]} · Post FX ${POSTFX_LABELS[settings.postFx]} · ` +
+      `Reflections ${settings.reflections ? 'on' : 'off'} · ` +
+      `Trees full to ${settings.vegetationFullRadius} m, far ` +
       `${(settings.vegetationFarKeep * 100).toFixed(0)} % · ` +
-      `Gras ${(settings.vegetationGroundRange * 100).toFixed(0)} %`;
+      `Grass ${(settings.vegetationGroundRange * 100).toFixed(0)} %`;
 
     // Die Regler zeigen **immer** die geltenden Werte, auch auf einer
     // Voreinstellung. Sonst müsste man erst „Eigen" wählen, um zu sehen, was

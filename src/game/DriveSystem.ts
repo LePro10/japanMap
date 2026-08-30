@@ -8,12 +8,9 @@ import {
   type BufferGeometry,
 } from 'three';
 
-import { PROP_COLLIDERS, WATER_PHYS } from '@/config/vehicle.config';
+import { PROP_COLLIDERS } from '@/config/vehicle.config';
 import { DEFAULT_VEHICLE, vehicleSpec, type VehicleId } from '@/config/vehicles.config';
 import type { PropPlacement } from '@/config/props.config';
-import { CITY, CITY_SLAB_Y } from '@/config/city.config';
-import { districtBlend } from '@/config/city.mjs';
-import { ROAD_MESH, ROAD_TYPES } from '@/config/roads.config';
 import { CAMERA } from '@/config/world.config';
 import type { FlyInputDelegate } from '@/camera/FreeFlyController';
 import type { EngineContext, System } from '@/core/System';
@@ -21,6 +18,7 @@ import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms'
 import { PropMaterial } from '@/world/materials/PropMaterial';
 import { railPolylines, RAIL } from '@/world/roads/GuardrailBuilder';
 import type { RoadNetwork } from '@/world/roads/RoadNetwork';
+import type { RaceEvent } from '@/config/events.config';
 import type { TerrainSampler } from '@/world/TerrainSampler';
 import type { CityCollider, CityCurb } from '@/world/city/CityGenerator';
 import { createCarBody, createCarWheel } from './carMesh';
@@ -31,6 +29,8 @@ import {
   type BreakEvent,
 } from './breakables';
 import { CollisionWorld } from './CollisionWorld';
+import { RoadGround } from './RoadGround';
+import { RaceDirector } from './RaceDirector';
 import { DebrisFx } from './DebrisFx';
 import { LapTimer } from './LapTimer';
 import { Vehicle, type DriveInput, type Ground, type Surface } from './Vehicle';
@@ -129,6 +129,17 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   /** Rundenzählung auf den Toren aus P8.11 — P9.3. */
   readonly laps = new LapTimer();
   readonly camera = new ChaseCamera();
+  /**
+   * Der Rennleiter — P23.
+   *
+   * **Hier und nicht als eigenes System in `main.ts`**, und das hat einen
+   * Grund, den die Reihenfolge sonst kaputt macht: er braucht den festen
+   * Schritt *nach* der Fahrphysik (sein Fortschritt liest die Position nach der
+   * Integration, wie der `LapTimer` seit P9.3), er braucht dieselbe
+   * Kollisionswelt, und er setzt beim Start das Fahrzeug ab. Als eigenes System
+   * wären das drei Verweise zurück auf dieses hier.
+   */
+  readonly race = new RaceDirector();
   readonly collision = new CollisionWorld();
   readonly #water = new WaterField();
   #fx: VehicleFx | null = null;
@@ -195,49 +206,15 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   readonly #scratch = new Vector3();
 
   /**
-   * Straßentreffer am Fahrzeugschwerpunkt, **einmal je Simulationsschritt**.
+   * Der Boden — seit P23 eine eigene Klasse.
    *
-   * `RoadNetwork.closestPoint()` legt ein Objekt an; vier Räder plus Karosserie
-   * wären fünf davon je Schritt, also 300 je Sekunde. Die Breite und die Belagsart
-   * ändern sich über 4 m Fahrzeuglänge nicht, also genügt eine Abfrage — die
-   * *Entfernung* je Rad kommt danach aus `distanceToNearestRoad()`, und die legt
-   * nichts an.
+   * Bis P22 stand der Straßenzusammenhang als sechs Felder hier, und dieses
+   * System *war* der `Ground`. Mit den KI-Gegnern gibt es vier Fahrzeuge an vier
+   * Orten, und ein gemeinsamer Kontext hieße: alle vier fahren auf der
+   * Fahrbahnebene, die am **Spieler** gebildet wurde. Begründung samt der
+   * Messung, die dahintersteht, im Kopf von `RoadGround`.
    */
-  #roadHalfWidth = 0;
-  #roadSurface: Surface = 'gelaende';
-  #roadShoulder = 0;
-  /**
-   * Höhenunterschied zwischen Fahrbahn-Mesh und Sampler an der Fahrzeugstelle.
-   *
-   * Enthält `ROAD_MESH.surfaceOffset` **und** die Abweichung, die der Messlauf
-   * gefunden hat (Punkt 2 im Kopf). Sie wird an der **Mittellinie** gebildet und
-   * nicht an der Fahrzeugposition: gesucht ist der Unterschied zwischen den beiden
-   * Höhenquellen, nicht der Abstand des Autos zur Straßenmitte.
-   */
-  #roadCorrection = 0;
-  /** Die Fahrbahnebene des letzten Schritts — P21, Begruendung in #refreshRoadContext. */
-  #roadHitX = 0;
-  #roadHitZ = 0;
-  #roadForwardX = 0;
-  #roadForwardZ = 1;
-  #roadSlopeAlong = 0;
-  #roadBaseAtHit = 0;
-  /**
-   * Wohin die Korrektur strebt. Sie folgt mit begrenzter Rate — und das ist keine
-   * Kosmetik, sondern die Reparatur eines gemessenen Fehlers.
-   *
-   * **An der Kreuzung Ring × Bergpass (−593, −318) springt die Korrektur in einem
-   * einzigen Schritt um 1,36 m.** Ursache: dort laufen zwei Strecken auf
-   * verschiedener Höhe zusammen, das Gelände trägt die Einschnitte beider, und
-   * `closestPoint()` wechselt beim Vorbeifahren von der einen Mittellinie auf die
-   * andere. Für die Federung ist ein Bodensprung von 1,36 m ein Rammbock: gemessen
-   * flog das Auto bei 49 km/h **8 m hoch** und landete 60 m weiter im Hang.
-   *
-   * Ein Sprung der Korrektur ist ein Artefakt der Höhenquelle und keine Geometrie
-   * — im Bild gibt es an der Kreuzung keine Stufe. Also darf er auch nicht wie
-   * eine wirken.
-   */
-  #roadCorrectionTarget = 0;
+  readonly ground = new RoadGround();
 
   #stepMs = 0;
   /** Die Klemmwache — P20. Begründung bei `#watchStuck`. */
@@ -329,15 +306,18 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
     context.bus.on('terrain:ready', ({ sampler }) => {
       this.#sampler = sampler;
+      this.#syncGround();
       this.#rebuild();
     });
     context.bus.on('roads:ready', ({ network }) => {
       this.#network = network;
+      this.race.setNetwork(network);
       // Die Tore des Rings — P9.3. Der Ring ist die einzige geschlossene
       // Strecke der Karte; auf einer Stichstraße wie dem Bergpass gibt es keine
       // Runde, sondern eine Fahrt. `setRoad()` lässt sich später auf jede
       // Strecke umstellen, die Voreinstellung ist die, die eine Runde hat.
       this.laps.setRoad(network, 'ring');
+      this.#syncGround();
       this.#rebuild();
     });
     context.bus.on('city:ready', ({ colliders, curbs }) => {
@@ -358,16 +338,32 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     const debris = new DebrisFx();
     debris.attach(context);
     this.#debris = debris;
+    this.race.attach(context.scene, context.bus, this.atmosphere);
     context.bus.on('quality:changed', ({ level }) => {
       fx.setQuality(level);
     });
-    void this.#water.load(context.resources);
+    void this.#water.load(context.resources).then(() => {
+      this.#syncGround();
+    });
+    this.#syncGround();
 
     window.addEventListener('keydown', this.#onKeyDown);
     window.addEventListener('keyup', this.#onKeyUp);
     window.addEventListener('blur', this.#onBlur);
 
     this.#registerDebug(context);
+  }
+
+  /**
+   * Die geteilten Quellen an den Boden reichen.
+   *
+   * **An einer Stelle und nicht an vieren.** Die vier Ereignisse kommen in einer
+   * Reihenfolge, die in `main.ts` steht und dort geändert werden kann; ein
+   * System, das auf „das dritte Ereignis" baut, ist beim nächsten Umsortieren
+   * still kaputt. Dieselbe Begründung wie bei `#rebuild`.
+   */
+  #syncGround(): void {
+    this.ground.setSources(this.#sampler, this.#network, this.#water, this.collision);
   }
 
   #build(context: EngineContext): void {
@@ -760,7 +756,40 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     if (!this.#active) return;
     const input = this.#collectInput();
     this.simulateStep(dt, input);
+    // **Nach dem Schritt und nach der Rundenzählung.** Der Rennleiter liest die
+    // Position *nach* der Integration; ein Kontrollpunkt, der davor geprüft
+    // wird, fällt einen Schritt zu spät — bei 250 km/h sind das 1,16 m.
+    this.race.step(dt, this.vehicle, this.collision);
     this.#watchStuck(dt, input);
+  }
+
+  /**
+   * Eine Veranstaltung starten — der Weg aus dem Menü.
+   *
+   * Steigt bei Bedarf selbst ins Auto: wer im Menü ein Rennen wählt, will
+   * fahren und nicht erst noch einen zweiten Knopf suchen. Das ist dieselbe
+   * Lehre wie aus P16 („ein fertiges System hinter einem fehlenden Knopf").
+   */
+  startEvent(event: RaceEvent): boolean {
+    const sampler = this.#sampler;
+    if (!sampler) return false;
+    if (!this.#active) this.enter();
+    const start = this.race.start(
+      event,
+      this.#vehicleId,
+      sampler,
+      this.#water,
+      this.collision,
+    );
+    if (!start) return false;
+    this.placeAt(start.x, start.z, start.heading);
+    this.#fx?.reset();
+    return true;
+  }
+
+  /** Laufende Veranstaltung abbrechen. */
+  abortEvent(): void {
+    this.race.abort();
   }
 
   /**
@@ -830,8 +859,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   simulateStep(dt: number, input: DriveInput): void {
     if (!this.#sampler) return;
     const started = performance.now();
-    this.#refreshRoadContext();
-    this.#followRoadCorrection(dt);
+    this.ground.refresh(this.vehicle.position.x, this.vehicle.position.z, dt);
     this.#fillTrees();
     this.vehicle.step(dt, input, this, this.collision);
     this.#flushBreaks();
@@ -912,8 +940,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   placeAt(x: number, z: number, heading: number): void {
     this.vehicle.position.x = x;
     this.vehicle.position.z = z;
-    this.#refreshRoadContext();
-    this.#followRoadCorrection(0);
+    this.ground.refresh(x, z, 0);
     this.vehicle.respawn(x, z, heading, this);
     this.camera.reset(this.vehicle);
   }
@@ -934,6 +961,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       t.speed,
       t.surface === 'wasser' || t.waterDepth > 0.05,
     );
+    this.race.render();
     this.#syncReadouts();
   }
 
@@ -1010,208 +1038,27 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   // ── Ground ──────────────────────────────────────────────────────────────
 
   /**
-   * Straßenzusammenhang am Fahrzeug — einmal je Schritt, Begründung oben.
+   * `Ground` weiterreichen — das System bleibt die Schnittstelle nach außen.
+   *
+   * Vier Zeilen Durchreichung statt eines Umbaus aller Aufrufer: `Vehicle`,
+   * `ChaseCamera`, `driveProbe` und `VehicleFx` bekommen `this` als `Ground`,
+   * und das soll so bleiben. Was sich geändert hat, ist **wo** die Antwort
+   * herkommt, nicht wer sie beantwortet.
    */
-  #refreshRoadContext(): void {
-    const network = this.#network;
-    const sampler = this.#sampler;
-    if (!network || !sampler) {
-      this.#roadHalfWidth = 0;
-      this.#roadSurface = 'gelaende';
-      this.#roadCorrectionTarget = 0;
-      return;
-    }
-    const hit = network.closestPoint(this.vehicle.position.x, this.vehicle.position.z, 40);
-    if (!hit) {
-      this.#roadHalfWidth = 0;
-      this.#roadShoulder = 0;
-      this.#roadSurface = 'gelaende';
-      this.#roadCorrectionTarget = 0;
-      return;
-    }
-    // **Gegen `#groundBase` und nicht gegen den rohen Sampler.** Die Korrektur
-    // wird später auf genau diese Grundlage addiert; bildet man sie gegen eine
-    // andere, wird die Differenz doppelt gezählt. Gemessen stand das Auto damit
-    // in der Stadt **97,3 cm zu hoch** — exakt die Höhe der Stadtplatte, einmal
-    // von der Platte und einmal von der Korrektur.
-    //
-    // Gedeckelt, weil ein Treffer 40 m entfernt an einem Steilhang eine Korrektur
-    // von zig Metern ergäbe — und die Blendung unten wendet sie ohnehin nur in
-    // Fahrbahnnähe an. 6 m ist mehr als der größte gemessene Wert (4,30 m auf
-    // `zufahrt`) und weniger als jeder Betrag, der aus einem Fehler stammt.
-    this.#roadCorrectionTarget = clamp(
-      hit.y + ROAD_MESH.surfaceOffset - this.#groundBase(hit.x, hit.z),
-      -6,
-      6,
-    );
-    // ── Die Fahrbahn als **Ebene**, nicht als Skalar — P21 ────────────────
-    //
-    // Bis P21 war die Fahrbahnhöhe `Gelände(x,z) + Korrektur`, mit einer
-    // Korrektur, die am **Treffer** gebildet wurde und dann überall galt. Damit
-    // erbt die Fahrbahn jede Verwindung des Geländes unter ihr — und der Baker
-    // bekommt eine Kehre nicht flach, wo zwei Trassen übereinander liegen.
-    //
-    // Gemessen über 684 Punkte aller acht Strecken, größte Höhenabweichung quer
-    // zur Fahrbahn innerhalb ±3 m:
-    //
-    // | | |
-    // |---|---:|
-    // | Median | 0,06 m |
-    // | 90. Perzentil | 0,16 m |
-    // | 99. Perzentil | 1,05 m |
-    // | Maximum | **1,66 m** |
-    // | über 30 cm | 37 von 684 (5,4 %) |
-    //
-    // Die schlimmsten acht liegen alle in **einer** Kehre des Bergpasses um
-    // (−600 | −312) — dort blieb der GT vor P20.4 nach 95 m stehen, und dort
-    // steht auch die 1804,7-cm-Standhöhe aus P19.
-    //
-    // Seitdem ist die Sollhöhe eine Ebene durch den Treffer, mit der
-    // **Längsneigung** des Segments und ohne Querneigung. Damit ist die
-    // Verwindung quer per Konstruktion null — die Fahrbahn ist flach, weil sie
-    // als flach gerechnet wird, und nicht, weil das Gelände darunter zufällig
-    // flach ist.
-    //
-    // > **Ohne Querneigung, und das ist gemessen und nicht vergessen.** Das Band
-    // > im Bild ist überhöht (`RoadMeshBuilder`, aus Krümmung × `banking`), aber
-    // > nur zwei Strecken tragen überhaupt einen Wert: `ring` 2,0° und `toge`
-    // > 3,0°, das sind 0,157 m bzw. 0,170 m über die halbe Breite — und nur in
-    // > der engsten Kehre, sonst weniger. Das liegt eine Größenordnung unter dem
-    // > Fehler, den diese Ebene behebt, und in derselben Größenordnung wie ihr
-    // > Restfehler. Sie hier nachzubilden hieße, `signedCurvature` und
-    // > `BANK_GAIN` ein zweites Mal zu implementieren — genau die Doppelung, die
-    // > dieses Projekt an anderer Stelle schon zweimal auseinanderlaufen ließ.
-    this.#roadHitX = hit.x;
-    this.#roadHitZ = hit.z;
-    this.#roadForwardX = hit.forwardX;
-    this.#roadForwardZ = hit.forwardZ;
-    this.#roadSlopeAlong = hit.slopeAlong;
-    // Einmal je Schritt statt einmal je Höhenabfrage: `height()` läuft rund
-    // 25-mal je Simulationsschritt (Räder, Hülle, Schwerpunkt), und ein
-    // Sampler-Aufruf ist der teuerste Posten darin.
-    this.#roadBaseAtHit = this.#groundBase(hit.x, hit.z);
-    this.#roadHalfWidth = hit.width / 2;
-    // Die Bankettbreite steckt nicht im Treffer, wohl aber der Streckentyp — und
-    // die Straßen der Karte haben ihre Bankettbreite je Typ.
-    this.#roadShoulder = shoulderFor(hit.roadId, network);
-    this.#roadSurface = hit.surface === 'kies' ? 'kies' : 'asphalt';
-  }
-
-  /**
-   * Die Korrektur ihrem Ziel nachführen, mit begrenzter Rate.
-   *
-   * `dt <= 0` heißt „sofort" — das braucht das Absetzen des Autos (`placeAt`),
-   * denn dort gibt es keine Vorgeschichte, an die man sich anschmiegen könnte.
-   *
-   * 3 m/s sind bei 60 Hz 5 cm je Schritt. Der gemessene Sprung von 1,36 m ist
-   * damit nach 0,45 s abgebaut; solange steht das Auto einige Zentimeter neben
-   * der Fahrbahnoberkante, und das ist die Sorte Fehler, die man nicht sieht.
-   */
-  #followRoadCorrection(dt: number): void {
-    if (dt <= 0) {
-      this.#roadCorrection = this.#roadCorrectionTarget;
-      return;
-    }
-    const step = CORRECTION_RATE * dt;
-    const delta = this.#roadCorrectionTarget - this.#roadCorrection;
-    this.#roadCorrection += clamp(delta, -step, step);
-  }
-
-  /**
-   * Gelände plus Stadtplatte — die Grundlage, auf die die Fahrbahnkorrektur kommt.
-   *
-   * `districtBlend` ist **dieselbe** Funktion, mit der der Baker den Distrikt
-   * einebnet und der Straßengenerator die Stadtstraße auf Stadthöhe hebt. Sie hier
-   * ein zweites Mal hinzuschreiben hieße, dass die Fahrbahn und der Boden, auf dem
-   * das Auto steht, verschiedenen Rampen folgen.
-   *
-   * Als Auslaufweite die **Schürzenbreite** und nicht `CITY_PAD_FEATHER`: die
-   * Schürze ist das, was man sieht. Sie ist im Mesh eine Gerade und hier eine
-   * Smoothstep-Kurve — über 24 m und 97 cm Höhenunterschied liegen dazwischen
-   * höchstens 12 cm, und zwar nur auf halber Rampe.
-   *
-   * Eine eigene Methode, weil sie an **zwei** Stellen gebraucht wird: hier und
-   * beim Bilden der Korrektur. Genau dort ist der Fehler entstanden, gegen den der
-   * Kommentar in `#refreshRoadContext` steht.
-   */
-  #groundBase(x: number, z: number): number {
-    const sampler = this.#sampler;
-    if (!sampler) return 0;
-    const y = sampler.getHeightAt(x, z);
-    const district = districtBlend(x, z, CITY.ground.skirt);
-    return district > 0 && CITY_SLAB_Y > y ? y + (CITY_SLAB_Y - y) * district : y;
-  }
-
   height(x: number, z: number): number {
-    if (!this.#sampler) return 0;
-    let y = this.#groundBase(x, z);
-
-    // ── Fahrbahn ──────────────────────────────────────────────────────────
-    //
-    // Über die Fahrbahnkante geblendet (Begründung im Kopf, Punkt 2).
-    // **Der Prüfwert ist die Breite und nicht mehr die Korrektur.** Die Ebene
-    // trägt seit P21 auch dann eine Neigung, wenn der Höhenversatz gerade null
-    // ist; `#roadCorrection !== 0` hätte sie in genau diesem Fall verworfen.
-    if (this.#roadHalfWidth > 0 && this.#network) {
-      const distance = this.#network.distanceToNearestRoad(x, z, this.#roadHalfWidth + 4);
-      if (distance < Infinity) {
-        // Volle Korrektur bis zur halben Fahrbahnbreite, dann über einen halben
-        // Meter auslaufend.
-        const fade = 1 - clamp01((distance - this.#roadHalfWidth) / 0.5);
-        // Sollhöhe der Fahrbahn **an dieser Stelle**: die Ebene durch den
-        // Treffer, geneigt mit der Längsneigung des Segments. Am Treffer selbst
-        // ist `s = 0`, und dann steht hier `hit.y + surfaceOffset` — genau der
-        // Wert, den die alte Fassung dort auch lieferte. Der Unterschied ist
-        // alles **daneben**. Begründung und Messung in `#refreshRoadContext`.
-        const s =
-          (x - this.#roadHitX) * this.#roadForwardX + (z - this.#roadHitZ) * this.#roadForwardZ;
-        const soll = this.#roadBaseAtHit + this.#roadCorrection + this.#roadSlopeAlong * s;
-        y += (soll - y) * fade;
-      }
-    }
-
-    const plateau = this.collision.plateauTop(x, z);
-    if (plateau > y) y = plateau;
-
-    // Wasserfläche — Meer, Fluss, Reisfeld. Hebt nur, wenn der Spiegel über
-    // dem festen Boden liegt: eine Küstenstraße über dem Meer bleibt Straße.
-    if (this.#water.ready && this.#sampler) {
-      y = applyWaterSurface(y, this.#water.at(x, z, this.#groundBase(x, z)));
-    }
-    return y;
+    return this.ground.height(x, z);
   }
 
   normal(x: number, z: number, target: Vector3): Vector3 {
-    const sampler = this.#sampler;
-    if (!sampler) return target.set(0, 1, 0);
-    if (this.#water.ready) {
-      const water = this.#water.at(x, z, this.#groundBase(x, z));
-      if (water.depth > WATER_PHYS.floatDepth) return target.set(0, 1, 0);
-    }
-    // **Die Gelände-Normale, auch auf einem Plateau.** Ein Bürgersteig ist
-    // waagerecht, das Gelände darunter im Distrikt ebenfalls (der Baker ebnet ihn
-    // ein, Schritt 5d) — der Unterschied ist damit auf dieser Karte nicht
-    // messbar. Auf einer Plattform an einem Hang wäre er es, und dann gehört hier
-    // eine Abfrage der Plateau-Neigung hin.
-    return sampler.getNormalAt(x, z, target);
+    return this.ground.normal(x, z, target);
   }
 
   surface(x: number, z: number): Surface {
-    if (this.#roadHalfWidth > 0 && this.#network) {
-      const reach = this.#roadHalfWidth + this.#roadShoulder;
-      const distance = this.#network.distanceToNearestRoad(x, z, reach + 2);
-      if (distance <= reach) return this.#roadSurface;
-    }
-    if (this.#water.ready && this.#sampler) {
-      const depth = this.#water.at(x, z, this.#groundBase(x, z)).depth;
-      if (depth > WATER_PHYS.wetThreshold) return 'wasser';
-    }
-    return 'gelaende';
+    return this.ground.surface(x, z);
   }
 
   waterDepth(x: number, z: number): number {
-    if (!this.#water.ready || !this.#sampler) return 0;
-    return this.#water.at(x, z, this.#groundBase(x, z)).depth;
+    return this.ground.waterDepth(x, z);
   }
 
   // ── Debug ───────────────────────────────────────────────────────────────
@@ -1302,19 +1149,13 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#fx = null;
     this.#debris?.dispose();
     this.#debris = null;
+    this.race.dispose();
     this.collision.clear();
     this.#sampler = null;
     this.#network = null;
     this.#context = null;
   }
 }
-
-/**
- * Wie schnell die Fahrbahnkorrektur ihrem Ziel folgen darf, in m/s.
- *
- * Herleitung bei `#roadCorrectionTarget`.
- */
-const CORRECTION_RATE = 3;
 
 /** Der Teil des `FreeFlyController`, den dieses System braucht. */
 type WakeSink = (
@@ -1332,36 +1173,12 @@ interface FlyController {
   placeAt(position: Vector3, lookAt: Vector3): void;
 }
 
-/** Bankettbreite der Strecke, zu der ein Treffer gehört. */
-function shoulderFor(roadId: string, network: RoadNetwork): number {
-  const road = network.roads.find((r) => r.id === roadId);
-  return road ? ROAD_TYPES[road.type].shoulder : 0;
-}
-
 function clamp01(value: number): number {
   return value < 0 ? 0 : value > 1 ? 1 : value;
 }
 
 function clamp(value: number, min: number, max: number): number {
   return value < min ? min : value > max ? max : value;
-}
-
-/**
- * Fester Boden gegen Wasserfläche. Hebt nur, wenn der Spiegel über dem Boden
- * liegt — eine Straße über dem Meer bleibt Straße. Tiefe unter `floatDepth`
- * blendet, damit die Strandkante keine Stufe ist.
- */
-function applyWaterSurface(
-  solidY: number,
-  water: { depth: number; surfaceY: number; kind: string },
-): number {
-  if (water.kind === 'trocken' || water.depth <= WATER_PHYS.wetThreshold) return solidY;
-  const floated = water.surfaceY - WATER_PHYS.draft;
-  if (floated <= solidY) return solidY;
-  if (water.depth >= WATER_PHYS.floatDepth) return floated;
-  const t = water.depth / WATER_PHYS.floatDepth;
-  const s = t * t * (3 - 2 * t);
-  return solidY + (floated - solidY) * s;
 }
 
 /** Tastendrücke in Eingabefeldern gehören dem Feld. Wie im `FreeFlyController`. */

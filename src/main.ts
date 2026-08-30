@@ -3,7 +3,9 @@ import './style.css';
 import { AudioSystem } from './audio/AudioSystem';
 import { FreeFlyController } from './camera/FreeFlyController';
 import { Engine } from './core/Engine';
-import { BestTimes } from './game/BestTimes';
+import { BestTimes, formatTime } from './game/BestTimes';
+import { Profile, VEHICLE_PRICE } from './game/Profile';
+import { EVENTS, findEvent } from './config/events.config';
 import { DriveSystem } from './game/DriveSystem';
 import { DriveHud } from './ui/DriveHud';
 import { runAb } from './debug/abMeasure';
@@ -482,6 +484,11 @@ async function boot(): Promise<void> {
   // ihn nicht.
   const hud = new DriveHud(overlay);
   const bestTimes = new BestTimes();
+  const profile = new Profile();
+  hud.setMoney(profile.yen);
+  profile.onChange(() => {
+    hud.setMoney(profile.yen);
+  });
 
   engine.bus.on('drive:mode', ({ active }) => {
     hud.setDriveActive(active);
@@ -498,9 +505,63 @@ async function boot(): Promise<void> {
     // Bestzeit ist, und Ton wie Anzeige übernehmen die Antwort. Zwei getrennte
     // Vergleiche wären zwei Gelegenheiten, sie auseinanderlaufen zu lassen —
     // und der Ton feierte dann eine Bestzeit, die die Anzeige nicht kennt.
+    //
+    // **Nur außerhalb eines Rennens.** In einem Rennen zählt der Rennleiter, und
+    // zwei Rundenzähler auf demselben Bild sind zwei Zahlen, von denen eine
+    // falsch aussieht.
+    if (drive.race.state !== 'idle') return;
     const best = strecke !== null && bestTimes.submit(strecke, result.seconds);
     hud.showLap(result, best);
     audio.lap(best);
+  });
+
+  // ── Die Veranstaltung — P23 ───────────────────────────────────────────
+  engine.bus.on('race:checkpoint', () => {
+    audio.click();
+  });
+
+  engine.bus.on('race:lap', ({ lap }) => {
+    hud.flash(`LAP ${lap}`, false);
+  });
+
+  engine.bus.on('race:finished', (result) => {
+    const event = findEvent(result.event);
+    if (!event) return;
+    profile.earn(result.yen);
+    const bestBefore = profile.bestOf(event.id);
+    const isBest = profile.submitTime(event.id, result.seconds);
+    const driftBest = event.kind === 'drift' && profile.submitDrift(event.id, result.driftScore);
+    audio.lap(isBest || driftBest || result.place === 1);
+
+    const title =
+      event.kind === 'race'
+        ? result.place === 1
+          ? 'WINNER'
+          : 'FINISHED'
+        : event.kind === 'drift'
+          ? 'DRIFT RUN'
+          : 'TIME TRIAL';
+    const headline =
+      event.kind === 'race' ? `P${result.place}` : formatTime(result.seconds);
+    const rows: string[] = [];
+    if (event.kind === 'race') {
+      rows.push(row('Time', formatTime(result.seconds)));
+    }
+    if (bestBefore !== null) rows.push(row('Previous best', formatTime(bestBefore)));
+    if (isBest) rows.push(row('New record', '✓'));
+    if (result.driftScore > 0) rows.push(row('Drift score', String(result.driftScore)));
+    rows.push(row('Earned', `¥${result.yen.toLocaleString('en-US')}`));
+
+    hud.showResult(
+      `<p class="hud__resultTitle">${title}</p>` +
+        `<p class="hud__resultPlace">${headline}</p>` +
+        rows.join('') +
+        `<button class="hud__resultButton" data-close type="button">Continue</button>`,
+      () => {
+        drive.race.clear();
+        hud.hideRace();
+      },
+    );
   });
 
   // Die Aktualisierung je Frame als eigenes kleines System — **nach** `drive`
@@ -511,13 +572,35 @@ async function boot(): Promise<void> {
     name: 'DriveHudUpdate',
     update: () => {
       if (!hud.visible) return;
+      const race = drive.race;
       hud.update(
         drive.vehicle.telemetry,
-        drive.laps.elapsed,
-        drive.laps.running,
-        drive.laps.roadId === null ? null : bestTimes.get(drive.laps.roadId),
+        race.state === 'running' ? race.elapsed : drive.laps.elapsed,
+        race.state === 'running' || drive.laps.running,
+        race.state === 'idle'
+          ? drive.laps.roadId === null
+            ? null
+            : bestTimes.get(drive.laps.roadId)
+          : race.event
+            ? profile.bestOf(race.event.id)
+            : null,
       );
-      hud.setGate(drive.laps.readouts.naechstesTor);
+      hud.setDrift(race.drift.state);
+      if (race.state === 'countdown') hud.setCountdown(race.countdown);
+      else if (race.state === 'running') {
+        hud.setCountdown(0);
+        const event = race.event;
+        hud.setRace(
+          race.standings(),
+          race.lap,
+          event?.laps ?? 1,
+          race.distanceToNext(drive.vehicle.position.x, drive.vehicle.position.z),
+          race.checkpointsLeft,
+        );
+      } else if (!hud.resultOpen) {
+        hud.hideRace();
+      }
+      if (race.state === 'idle') hud.setGate(drive.laps.readouts.naechstesTor);
     },
     dispose: () => {
       hud.dispose();
@@ -668,6 +751,37 @@ async function boot(): Promise<void> {
         drive.setVehicle(id);
       },
     },
+    // ── Die Veranstaltungen — P23 ────────────────────────────────────────
+    //
+    // Dieselbe schmale Bauart wie `drive` und `quality` darüber: das Menü
+    // bekommt Getter und drei Methoden, kein System. Verdrahtet ist es hier,
+    // weil hier ohnehin alles zusammenläuft, was mehr als ein System braucht —
+    // Fortschritt, Rennleiter und Fahrmodus.
+    events: {
+      list: EVENTS,
+      get yen() {
+        return profile.yen;
+      },
+      bestOf: (id) => profile.bestOf(id),
+      driftBestOf: (id) => profile.driftBestOf(id),
+      get runningEvent() {
+        return drive.race.state === 'idle' ? null : (drive.race.event?.id ?? null);
+      },
+      start: (id) => {
+        const event = findEvent(id);
+        if (event) drive.startEvent(event);
+      },
+      abort: () => {
+        drive.abortEvent();
+        hud.hideRace();
+      },
+      owns: (id) => profile.owns(id),
+      price: (id) => VEHICLE_PRICE[id],
+      buy: (id) => profile.buy(id),
+      onChange: (fn) => {
+        profile.onChange(fn);
+      },
+    },
     quality: {
       get level() {
         return quality.level;
@@ -701,6 +815,11 @@ async function boot(): Promise<void> {
   audio.armAutoUnlock();
 
   if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive);
+}
+
+/** Eine Zeile der Zieltafel. Englisch, wie alles im DOM. */
+function row(label: string, value: string): string {
+  return `<p class="hud__resultRow"><span>${label}</span><span>${value}</span></p>`;
 }
 
 void boot();

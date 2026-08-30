@@ -128,13 +128,13 @@ export class TouchControls {
       <div class="touch__buttons">
         <button type="button" class="touch__btn" data-touch="up" aria-label="steigen">▲</button>
         <button type="button" class="touch__btn" data-touch="down" aria-label="sinken">▼</button>
-        <button type="button" class="touch__btn" data-touch="handbrake" aria-label="Handbremse">✋</button>
+        <button type="button" class="touch__btn" data-touch="handbrake" aria-label="Handbrake">✋</button>
       </div>
       <div class="touch__side">
-        <button type="button" class="touch__btn touch__btn--wide" data-touch="menu" aria-label="Menü">☰</button>
-        <button type="button" class="touch__btn touch__btn--wide" data-touch="drive" aria-label="Auto">🚗</button>
+        <button type="button" class="touch__btn touch__btn--wide" data-touch="menu" aria-label="Menu">☰</button>
+        <button type="button" class="touch__btn touch__btn--wide" data-touch="drive" aria-label="Car">🚗</button>
         <button type="button" class="touch__btn touch__btn--wide" data-touch="reset" aria-label="zurücksetzen">⟲</button>
-        <button type="button" class="touch__btn touch__btn--wide" data-touch="collision" aria-label="Bodenkollision">⇩</button>
+        <button type="button" class="touch__btn touch__btn--wide" data-touch="collision" aria-label="Ground collision">⇩</button>
       </div>
       <p class="touch__speed">—</p>`;
     options.container.appendChild(this.#root);
