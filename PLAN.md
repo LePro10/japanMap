@@ -9991,3 +9991,221 @@ Auf **rauem** Gelände liegt das Blech jetzt bei 0,00…0,04 m statt 0,07…0,66
       und bewusst **nicht** repariert. Die Reparatur gehört in `bake-terrain.mjs`
       und kostet einen `npm run world`-Lauf, der das ganze Höhenfeld neu würfelt.
 - [ ] **Auf einem echten Telefon nicht geprüft** — dieselbe Lücke wie seit P12.6.
+
+
+---
+
+# P22 — Das Arcade-Fahrmodell
+
+> **Abgenommen am 2026-08-30.** Das Einspurmodell aus P14…P21 ist ersetzt; alles
+> darum herum (Federung, Stützebene, Blech gegen Gelände, Kollision,
+> Klemmschutz) läuft unverändert weiter.
+
+## Der Anlass
+
+Der Auftraggeber: *„Aktuell sind die Physics noch ganz grausam. Es ist nicht
+lustig."* Das ist die vierte Phase in Folge, in der die Zeile „fühlt es sich gut
+an" offen stand — und diesmal lag die Antwort im **eigenen Prüfstand**, man
+musste nur die richtige Zeile lesen:
+
+```
+Lenkantwort 90 km/h:  21.8  27.3  26.2  26.3  25.7 °/s   (Lenkung 0,2…1,0)
+asphalt  Durchdrehen: Anfahrt 1.11×  Bogen 0.88×
+```
+
+Zwischen 20 % und 100 % Lenkeinschlag liegen bei Reisetempo **3,9 °/s**: die
+Lenkung ist oberhalb eines Fünftels ihres Wegs ein Schalter, und zwar genau in
+dem Tempobereich, in dem das Spiel stattfindet. Und auf Asphalt bricht das Heck
+im Bogen nicht aus (0,88 < 1) — ein Touge-Drift-Spiel, in dem man auf der Straße
+nicht driften kann.
+
+**Beides sind Eigenschaften des Modells, keine Fehler darin.** Ein Fahrzeug,
+dessen Querkraft aus Schräglaufwinkeln entsteht, sättigt bei hohem Tempo; ein
+Serienauto mit 165 kW dreht auf trockenem Asphalt nicht durch. Wer das ändern
+will, muss die Zahlen so weit verbiegen, bis das Modell keines mehr ist.
+
+## Was gebaut wurde
+
+| Datei | Inhalt |
+|---|---|
+| `src/config/arcade.config.ts` | Kennzahlen je Fahrzeug, jede mit Herleitung |
+| `src/game/arcadeDynamics.ts` | Gieren und die beiden waagerechten Geschwindigkeiten |
+| `tools/bench/arcade.mts` | sieben Proben, darunter „Drift ohne Absicht" |
+
+Die Umkehrung gegenüber dem Einspurmodell: dort erzeugen Reifenkräfte ein
+Giermoment, und die Drehung ist ihr Ergebnis. Hier ist die **Drehung die
+Eingabe** und die Seitenkraft ihre Folge. Der Schwimmwinkel entsteht dabei nicht
+im Code, sondern aus der Wahl des Bezugssystems: die Geschwindigkeit steht in
+Weltkoordinaten, die Nase dreht sich, und die Querkomponente folgt geschlossen
+als `β ≈ ω/k`.
+
+## Zwei verworfene Fassungen, beide mit Zahl
+
+1. **Drift als feste Zusatz-Gierrate.** Kein Gleichgewichtspunkt — im
+   stationären Drift ist die Gierrate die Bahnkrümmung, und die ist durch
+   `a_lat/v` gedeckelt. Gemessen 111 °/s bei 40 km/h, also ein Kreisel.
+   Ersetzt durch eine Regelung auf den **Winkel**.
+2. **Kinematische Soll-Gierrate mit Grip-Deckel.** Schon 20 % Einschlag
+   erreichten bei 90 km/h die Haftgrenze; darüber war die Lenkung wieder ein
+   Schalter (33,4 °/s über den ganzen Rest des Wegs). Ersetzt durch den
+   **Anteil** an dem, was das Fahrzeug bei diesem Tempo kann.
+
+## Akzeptanz
+
+- [x] Lenkantwort **streng monoton** bei jedem Tempo und jedem Fahrzeug.
+      Coupé bei 90 km/h: 6,6 / 13,3 / 19,9 / 26,6 / 33,4 °/s (vorher
+      21,8 / 27,3 / 26,2 / 26,3 / 25,7). Bei 40 km/h: 14,8 / 29,7 / 44,8 /
+      60,1 / 75,8.
+- [x] **Handbremsdrift** bei 80 km/h: Spitze 38,9°, gehalten 21,8°, fängt sich
+      nach 0,20 s ohne Eingabe. Kein Dreher bei keinem der vier Fahrzeuge.
+- [x] **Gasstoß im Bogen** löst einen Drift aus: Coupé 33,3° und stabil
+      gehalten — die Kernanforderung aus P9.2, die das Einspurmodell nie
+      erfüllt hat.
+- [x] **Drift ohne Absicht bleibt aus.** Halbe Lenkung, Reisetempo: 1,9…2,0°
+      Schwimmwinkel bei allen vier Fahrzeugen. Diese Probe hat die erste
+      Fassung gestoppt.
+- [x] 0–100 / Endtempo / Bremsweg neu gemessen und je Fahrzeug unterscheidbar:
+      3,17 s / 271 km/h / 20,6 m (Coupé) bis 9,30 s / 160 km/h / 31,5 m
+      (Lastwagen).
+- [x] Alle Proben aus P19/P20 (`tools/bench/world.mts`) grün, alle vier
+      Fahrzeuge; Zufallsgelände „kommt von der Stelle" 6,3…8,3 m im
+      schlechtesten Vier-Sekunden-Fenster.
+- [x] Nitro, Luftsteuerung, Blickwinkel- und Kamerazug bei Tempo gebaut und
+      gemessen: aus 120 km/h **+97…+188 km/h** je Fahrzeug.
+      Der Prüfstand meldet dabei „6,7 s Brenndauer" über ein 10-s-Fenster,
+      obwohl der Vorrat 3,2…4,0 s trägt — die Differenz ist die
+      Grundnachfüllung (`boostRefill`), die ihn zwischendurch wieder anspringen
+      lässt. Das ist gewollt und gehört hierhin, damit die Zahl nicht als
+      Widerspruch gelesen wird.
+- [x] `typecheck` und `build` sauber, Rauchprobe grün.
+
+## Was offen bleibt
+
+- [ ] **„Fühlt es sich gut an" ist weiter nicht gemessen** — fünfte Phase mit
+      derselben Zeile, und sie wird es bleiben: ein Prüfstand fährt mit einem
+      Regler, nicht mit einer Absicht.
+- [ ] Auf einem echten Telefon nicht geprüft.
+
+---
+
+# P23 — Rennen, Gegner, Wertung, Fortschritt
+
+> **Abgenommen am 2026-08-30.**
+
+## Der Anlass
+
+Bis P22 konnte man auf dieser Karte **fahren**, und mehr nicht. Es gab einen
+Rundenzähler (P9.3) und eine Bestzeit (P16) — und keinen Grund, eine zweite
+Runde zu fahren.
+
+## Was gebaut wurde
+
+Sechs Veranstaltungen (`src/config/events.config.ts`), drei KI-Gegner mit
+**derselben** Physik und derselben Kollisionswelt wie der Spieler,
+Kontrollpunkte mit sichtbaren Toren, Driftwertung mit Kette und Multiplikator,
+Nitro, Geld und Fahrzeuge zum Freischalten. Die Spieler-Oberfläche ist auf
+**Englisch** umgestellt; Code, Kommentare und diese Doku bleiben deutsch.
+
+Herausgelöst wurde dabei `RoadGround`: der Straßenzusammenhang wird je Schritt
+für *eine* Position gebildet, und vier Fahrzeuge brauchen vier davon. Mit einem
+gemeinsamen führen drei Gegner in der Stadt einen Meter unter dem Asphalt.
+
+## Vier Fehler, vier Messungen
+
+1. **Die Bremse legt im Stand den Rückwärtsgang ein.** Das Feld fuhr den
+   Countdown über rückwärts aus der Startaufstellung — 5 m neben die Straße,
+   124° quer dazu. Die Handbremse hebt den Rückwärtsgang jetzt auf.
+2. **„Runde × Länge + Bogenlänge" ist an der Naht einer geschlossenen Strecke
+   nicht der gefahrene Weg.** AOKI stand nach 60 s bei 7474 m — 448 km/h.
+3. **Pure Pursuit sieht den Querabstand nicht.** Die Gegner fuhren 12 m neben
+   der Straße parallel zu ihr, mit 6° Winkelfehler und 0,23 Lenkeinschlag.
+   Ersetzt durch Stanley plus Krümmungs-Vorsteuerung; für „weit daneben"
+   blendet der Bezugswinkel auf die Peilung zur Linie.
+4. **Die Ideallinie kannte nur Kurven, keine Kuppen.** Bei 108 km/h über eine
+   *gerade* Kuppe hob der Wagen ab und landete 13 m neben der Fahrbahn. Die
+   senkrechte Krümmung deckelt das jetzt geschlossen: `v²·|κ_v| ≤ 0,5 g`.
+
+## Akzeptanz
+
+- [x] Ringstraße, 180 s, Führender: **597 m → 3900 m**, Anteil neben der
+      Fahrbahn **97 % → 26 %**. Bergpass hinauf und hinunter werden vollständig
+      abgefahren (2630 m von 2616 m Streckenlänge).
+- [x] Countdown, Kontrollpunkte, Platzierung, Zieltafel und Abrechnung laufen
+      (Rauchprobe: `countdown → running`, 12 → 10 Kontrollpunkte, P4 bei
+      stehendem Spieler).
+- [x] Driftwertung mit Kette, Multiplikator bis ×5 und drei Abbruchgründen
+      (Zeit, Anschlag, Dreher); sie läuft **auch außerhalb** einer
+      Veranstaltung.
+- [x] Fortschritt überlebt das Neuladen (`localStorage`, jeder Wert geprüft
+      statt geglaubt).
+- [x] `tools/smoke.mjs` — lädt die Seite in Chromium, prüft Bild, Fahrmodus,
+      Lenkung, Schanzen, Rennen, HUD und Menü und **liest die Konsole mit**.
+      Die drei teuersten Fehler dieses Projekts standen ausschließlich dort.
+
+## Was offen bleibt
+
+- [ ] **Die Gegner sind 26 % der Zeit neben der Fahrbahn.** Sie kommen zurück
+      (die Rettungswache setzt sie nach fünf Sekunden ohne Fortschritt auf die
+      Linie), aber sauber ist das nicht. Was fehlt, ist eine Ideallinie, die
+      **quer** optimiert — die heutige ist die Mittellinie.
+- [ ] **Gegner haben keine Kollision untereinander und mit dem Spieler.**
+      Begründung im Kopf von `RivalField`: die `CollisionWorld` ist ein
+      statisches Raster, und vier bewegte Rechtecke darin hießen, die
+      Auflösung anzufassen, die P19…P21 stabil bekommen haben.
+- [ ] Zielzeiten für Medaillen (`RaceEvent.medals`) sind vorgesehen und nicht
+      gesetzt — sie gehören gefahren, nicht geschätzt.
+
+---
+
+# P24 — Schanzen, Driftzonen, Sammelstücke
+
+> **Abgenommen am 2026-08-30.**
+
+## Was gebaut wurde
+
+Sechs Sprungschanzen, zwei Driftzonen mit Kirschbaumring, Fahnen und fallenden
+Blüten, 90 wiederkehrende Sammelstücke entlang der Straßen.
+
+Die Schanzen sind eine **Funktion** und kein Mesh mit Kollisionskörper daneben:
+`RampField.surfaceAt()` liefert die Fläche, `RoadGround.height()` nimmt das
+Maximum daraus, und `StuntSystem` baut sein Mesh aus derselben Funktion. Bild
+und Physik können damit nicht auseinanderlaufen.
+
+## Drei Fehler, drei Messungen
+
+1. **Additiv war falsch.** `Gelände + Auflage` macht die Schanze so wellig wie
+   ihren Untergrund; ein 24 m langes Stück Böschung mit unter 1,2 m Höhenband
+   gibt es auf einer erodierten Karte fast nirgends — das Suchwerkzeug fand auf
+   11 km Straße **einen** Platz. Seitdem steht die Schanze auf einem Fundament.
+2. **Von Hand gesetzte Koordinaten waren unbrauchbar.** Vier von fünf: 7,22 s
+   Flugzeit (die Anfahrt endete an einer Klippe), 0,02 s bei +21 m Höhe (die
+   Anfahrt ging bergauf). `tools/find-ramps.mjs` sucht sie jetzt aus Höhenfeld
+   und Straßennetz.
+3. **Die „flachste Stelle der Karte" war ein geflutetes Reisfeld.** Ein Bild
+   hat es gezeigt, keine Zahl. Der Rasterlauf prüft seitdem `paddy.png` mit.
+
+## Akzeptanz
+
+- [x] Fünf von sechs Schanzen heben ab (0,7…5,3 s Flugzeit, gemessen aus 150 m
+      Anlauf). Die sechste ist ausdrücklich eine **Kuppe** und soll es nicht.
+- [x] Schanzen-Mesh und Fahrfläche stammen aus **einer** Funktion.
+- [x] Driftzonen auf gemessen flachem, trockenem Boden (3,9 m bzw. 8,4 m
+      Höhenunterschied auf 124 m Durchmesser, kein Reisfeld, 93…128 m von der
+      nächsten Straße).
+- [x] Zone verdoppelt die Driftwertung; Kirschbäume und Fahnen markieren sie
+      sichtbar.
+- [x] 900 fallende Blüten in **einem** Draw-Call, ohne CPU-Arbeit je Frame.
+- [x] 88 Sammelstücke am Ring, wiederkehrend nach 45 s, ¥120 und 20 % Nitro je
+      Stück.
+- [x] Draw-Calls an der Driftzone: **31** (Budget 250), 122 914 Dreiecke.
+- [x] Bilder: `.cache/shots/driftzone.png`, `rampe.png`.
+
+## Was offen bleibt
+
+- [ ] **Die Schanzen liegen alle an der Ringstraße und der Dorfstraße.** Der
+      Bergpass hat keinen Platz, der die drei Bedingungen erfüllt — dort ist
+      jede Gerade kürzer als 130 m. Eine Schanze dort bräuchte eine kürzere
+      Anlaufbedingung und damit eine andere Auslegung.
+- [ ] **Die Sammelstücke stehen ohne Ton und ohne Partikel.** Ein Klick ist zu
+      wenig; was fehlt, ist ein sichtbarer Aufsammel-Effekt.
+- [ ] Auf einem echten Telefon nicht geprüft.
