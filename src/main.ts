@@ -5,7 +5,7 @@ import { FreeFlyController } from './camera/FreeFlyController';
 import { Engine } from './core/Engine';
 import { BestTimes, formatTime } from './game/BestTimes';
 import { Profile, VEHICLE_PRICE } from './game/Profile';
-import { EVENTS, findEvent } from './config/events.config';
+import { DRIFT_YEN_PER_POINT, EVENTS, findEvent } from './config/events.config';
 import { DriveSystem } from './game/DriveSystem';
 import { DriveHud } from './ui/DriveHud';
 import { runAb } from './debug/abMeasure';
@@ -32,6 +32,7 @@ import { RoadSystem } from './world/RoadSystem';
 import { PropSystem } from './world/props/PropSystem';
 import { RicePaddy } from './world/props/RicePaddy';
 import { ScatterSystem } from './world/scatter/ScatterSystem';
+import { StuntSystem } from './world/stunt/StuntSystem';
 import { AssetUpgrader } from './core/AssetUpgrader';
 import { TerrainSystem } from './world/TerrainSystem';
 import { WaterSystem } from './world/WaterSystem';
@@ -499,6 +500,12 @@ async function boot(): Promise<void> {
     hud.showRescue();
   });
 
+  engine.bus.on('pickup:collected', ({ yen }) => {
+    profile.earn(yen);
+    audio.click();
+    hud.flash(`+¥${yen}`, true);
+  });
+
   engine.bus.on('drive:lap', (result) => {
     const strecke = drive.laps.roadId;
     // **Ein Vergleich, nicht zwei.** `submit()` entscheidet, ob es eine
@@ -568,6 +575,11 @@ async function boot(): Promise<void> {
   // registriert, damit sie die Telemetrie desselben Frames liest und nicht die
   // des vorigen. `System` ist eine Schnittstelle, kein Basistyp; für diese paar
   // Zeilen lohnt keine Klasse in einer eigenen Datei.
+  // Zwei Zähler für die Abrechnung der Driftketten. Sie stehen hier und nicht
+  // im HUD: das HUD zeigt an, es rechnet nicht.
+  let lastChain = 0;
+  let lastBanked = 0;
+
   engine.add({
     name: 'DriveHudUpdate',
     update: () => {
@@ -585,7 +597,28 @@ async function boot(): Promise<void> {
             ? profile.bestOf(race.event.id)
             : null,
       );
-      hud.setDrift(race.drift.state);
+      const drift = race.drift.state;
+      hud.setDrift(drift);
+      // ── Eine beendete Kette abrechnen — P24 ──────────────────────────
+      //
+      // **Hier und nicht in `DriftScore`**, weil nur diese Stelle beides kennt:
+      // den Fortschritt (das Geld) und das HUD (die Meldung). Die Wertung selbst
+      // soll ohne beides laufen — ein Prüfstand treibt sie ohne Bus und ohne
+      // Konto.
+      if (drift.lastChain !== lastChain) {
+        lastChain = drift.lastChain;
+        hud.driftEnded(drift);
+      }
+      if (drift.banked > lastBanked) {
+        // Außerhalb einer Veranstaltung wird sofort gutgeschrieben; in einer
+        // rechnet der Zieleinlauf ab, sonst gäbe es die Punkte zweimal.
+        if (race.state === 'idle') {
+          profile.earn((drift.banked - lastBanked) * DRIFT_YEN_PER_POINT);
+        }
+        lastBanked = drift.banked;
+      } else if (drift.banked < lastBanked) {
+        lastBanked = drift.banked;
+      }
       if (race.state === 'countdown') hud.setCountdown(race.countdown);
       else if (race.state === 'running') {
         hud.setCountdown(0);
@@ -626,6 +659,12 @@ async function boot(): Promise<void> {
   // sie einen neuen Terrain-Bake überleben, statt eine Zahl aus der Datei zu
   // glauben.
   engine.add(new PropSystem(atmosphere.uniforms));
+  // Schanzen, Kirschbäume, Fahnen und Sammelstücke — P24. **Vor dem Terrain**,
+  // weil das System auf `terrain:ready` und `roads:ready` hört und beide genau
+  // einmal gesendet werden, während sich jene Systeme initialisieren.
+  const stunt = new StuntSystem(atmosphere.uniforms, drive.ramps);
+  engine.add(stunt);
+  drive.setStunt(stunt);
   // Ebenso: die Wasserflächen der Reisfelder holen ihre Höhe aus dem Sampler,
   // weil das Gelände die Parzellen bereits trägt (Baker, Schritt 5c).
   const paddy = new RicePaddy(atmosphere.uniforms);

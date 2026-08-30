@@ -82,8 +82,25 @@ export class DriftScore {
   #lastChain = 0;
   /** Kontaktzähler des letzten Schritts — ein Anstieg ist ein Anschlag. */
   #contacts = 0;
+  /**
+   * Zonenfaktor — 2 in einer Driftzone, sonst 1 (P24).
+   *
+   * Er multipliziert die **Rate** und nicht den Multiplikator: eine Zone, die
+   * den Multiplikator hochsetzt, würde ihn beim Verlassen wieder abschneiden,
+   * und ein Multiplikator, der von allein fällt, sieht aus wie ein Fehler.
+   */
+  #bonus = 1;
+
+  setBonus(bonus: number): void {
+    this.#bonus = bonus;
+  }
+
+  get bonus(): number {
+    return this.#bonus;
+  }
 
   reset(): void {
+    this.#bonus = 1;
     this.#banked = 0;
     this.#pending = 0;
     this.#multiplier = 1;
@@ -146,7 +163,7 @@ export class DriftScore {
         (angle - DRIFT_SCORE_ANGLE) / (DRIFT_MAX_ANGLE * 0.6 - DRIFT_SCORE_ANGLE),
       );
       const speedShare = Math.min(1, t.speed / FULL_SPEED);
-      this.#pending += BASE_RATE * angleShare * speedShare * this.#multiplier * dt;
+      this.#pending += BASE_RATE * angleShare * speedShare * this.#multiplier * this.#bonus * dt;
       this.#multiplier = Math.min(MULT_MAX, this.#multiplier + MULT_RATE * dt);
       return;
     }

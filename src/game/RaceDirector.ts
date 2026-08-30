@@ -301,7 +301,6 @@ export class RaceDirector {
     }
 
     this.#elapsed += dt;
-    this.drift.step(dt, player.telemetry);
 
     // ── Fortschritt des Spielers ──────────────────────────────────────────
     //

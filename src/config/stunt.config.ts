@@ -1,0 +1,305 @@
+/**
+ * Sprungschanzen, Sammelstücke und die Driftzone — P24.
+ *
+ * ## Warum die Karte das braucht
+ *
+ * Die Welt dieses Projekts ist seit P8 fertig und schön: 9,4 km², neun Kehren,
+ * eine Stadt, ein Tempelbezirk, ein Hafen. Was ihr fehlt, ist **etwas zu tun,
+ * das nicht die Straße entlang geht.** Auf einem Portal ist das der Unterschied
+ * zwischen einer Landschaft, durch die man fährt, und einer, in der man spielt:
+ * niemand erzählt einem Freund von einer schönen Straße, aber jeder erzählt von
+ * einem Sprung.
+ *
+ * ## Warum die Schanzen hier stehen und nicht im Höhenfeld
+ *
+ * Sie könnten im Baker liegen — dort entsteht das Gelände. Sie liegen aus zwei
+ * Gründen nicht dort:
+ *
+ *  1. **Ein Terrain-Bake würfelt die Straßen neu.** Die Erosion trägt jede
+ *     Störung über die ganze Karte (gemessen: ein Eingriff in *einer* Zone
+ *     ändert 66,8 % der Texel), der Straßengenerator sucht danach andere Kehren,
+ *     und jede Zahl aus P14 bis P23 wäre neu abzulesen. Das steht als
+ *     ausdrückliche Warnung in CLAUDE.md.
+ *  2. **Eine Schanze ist Spielgerät und kein Gelände.** Sie soll sich anfassen,
+ *     verschieben und wieder wegnehmen lassen, ohne dass 40 Sekunden Bake
+ *     dazwischen liegen.
+ *
+ * Sie sind deshalb eine **analytische Fläche** über dem Höhenfeld: eine Funktion
+ * `surfaceAt(x, z)`, von der `RoadGround.height()` das Maximum nimmt. Das Mesh
+ * entsteht aus derselben Funktion (`StuntSystem`), also können Bild und Physik
+ * nicht auseinanderlaufen — genau die Klasse Fehler, die dieses Projekt bei der
+ * Fahrbahn zweimal gekostet hat.
+ *
+ * ## Die Zahlen sind Wurfweiten, keine Maße
+ *
+ * Eine Schanze wird nicht über ihre Höhe ausgelegt, sondern über den Sprung, den
+ * sie ergibt. Der schiefe Wurf sagt:
+ *
+ * ```
+ *   Weite  w = v² · sin(2α) / g
+ *   Höhe   h = v² · sin²(α) / (2g)
+ * ```
+ *
+ * Bei 120 km/h (33,3 m/s) und 12° Absprungwinkel sind das **46 m Weite und
+ * 2,4 m Scheitelhöhe**; bei 160 km/h 82 m und 4,3 m. Der Winkel ergibt sich aus
+ * `atan(height / rampLength)` — er ist die eigentliche Auslegungsgröße, und
+ * deshalb steht er bei jeder Schanze in Grad daneben.
+ *
+ * > **Über 20° wird ein Sprung unlustig.** Das Fahrzeug steht dann in der Luft
+ * > steil nach oben, landet auf dem Heck und überschlägt sich fast — was dieses
+ * > Modell nicht kann (siehe Kopf von `Vehicle.ts`), also klappt es stattdessen
+ * > flach und sieht falsch aus. 8…16° ist das Band, in dem eine Landung wie eine
+ * > Landung aussieht.
+ */
+
+export interface Ramp {
+  readonly id: string;
+  /** Mittelpunkt der **Absprungkante** in Weltkoordinaten. */
+  readonly x: number;
+  readonly z: number;
+  /** Anfahrtsrichtung in Radiant (0 = nach +Z, wie der Gierwinkel). */
+  readonly heading: number;
+  /** Länge der Auffahrt in Metern. */
+  readonly length: number;
+  /** Breite in Metern. */
+  readonly width: number;
+  /**
+   * Höhe der Absprungkante über dem **Fundament**, in Metern.
+   *
+   * Das Fundament ist die Geländehöhe am Fuß der Auffahrt, einmal gemessen
+   * (`RampField.prepare`). Nicht „über dem Gelände an dieser Stelle": eine
+   * Schanze ist ein Bauwerk und macht die Wellen unter sich nicht mit.
+   */
+  readonly height: number;
+  /**
+   * Wie weit hinter der Kante die Auflage wieder ausläuft, in Metern.
+   *
+   * **Null heißt Abrisskante**, und das ist bei einer Schanze richtig: dahinter
+   * beginnt der Flug. Ein Wert > 0 macht daraus eine Kuppe, über die man rollt —
+   * das ist die Bauform für eine Bodenwelle mitten auf der Strecke.
+   */
+  readonly tail: number;
+  /** Beschriftung in der Oberfläche, englisch. */
+  readonly name: string;
+}
+
+/**
+ * Wie weit die Schanzen seitlich auslaufen, als Anteil der halben Breite.
+ *
+ * 0,2 — die äußeren 20 % sind eine Schräge. Ohne sie steht am Rand eine
+ * senkrechte Wand, und wer sie streift, wird vom Bodenfang senkrecht
+ * hochgeschoben. Mit ihr rutscht er ab, und das ist die richtige Antwort auf
+ * „daneben getroffen".
+ */
+export const RAMP_EDGE_FADE = 0.2;
+
+/**
+ * Die Schanzen der Karte.
+ *
+ * **Alle Koordinaten stammen aus `node tools/find-ramps.mjs`** und sind nicht
+ * gegriffen. Das Werkzeug liest dieselben Dateien wie das Spiel und sucht
+ * Stellen mit 130 m geradem Anlauf, tragfähigem Fundament und freier
+ * Landefläche; es fand 14 Plätze, von denen hier sechs stehen.
+ *
+ * > **Die erste Fassung war von Hand gesetzt, und vier von fünf Plätzen waren
+ * > unbrauchbar** — auf eine Art, die man beim Hinschreiben nicht sieht:
+ * > `temple-hop` hatte 7,2 s Flugzeit (die Anfahrt endete an einer Klippe),
+ * > `coast-kicker` 0,02 s bei +21 m Höhe (die Anfahrt ging bergauf). Gemessen
+ * > hat das `tools/smoke.mjs`. Eine Koordinate auf einer erodierten 9,4-km²-Karte
+ * > ist eine Behauptung; erst ein Lauf macht eine Messung daraus.
+ *
+ * Sie stehen **neben** der Fahrbahn (11 m von der Mittellinie) und in
+ * Fahrtrichtung. Das ist Absicht: auf der Fahrbahn würden sie die Rennen
+ * kaputtmachen, weil die Ideallinie der KI von ihnen nichts weiß und drei
+ * Gegner in jeder Runde an derselben Stelle abhöben.
+ */
+export const RAMPS: readonly Ramp[] = [
+  {
+    id: 'paddy-launch',
+    name: 'Paddy Launch',
+    // Ringstraße West, über den Reisfeldern. Fundament 27,5 m, 5,1 m Gefälle
+    // dahinter — die weichste Landung der Karte.
+    x: -721.2,
+    z: 9.6,
+    heading: 2.776,
+    length: 24,
+    width: 13,
+    // atan(3,8 / 24) = 9,0°. Bei 140 km/h ergibt das 47 m Weite.
+    height: 3.8,
+    tail: 0,
+  },
+  {
+    id: 'ridge-kicker',
+    name: 'Ridge Kicker',
+    // Ringstraße Ost, auf dem Rücken über der Stadt. 12,1 m Gefälle dahinter —
+    // der Sprung, bei dem der Boden unter einem wegbleibt.
+    x: 951.2,
+    z: -268.7,
+    heading: 0.219,
+    length: 26,
+    width: 13,
+    // atan(4,6 / 26) = 10,0°.
+    height: 4.6,
+    tail: 0,
+  },
+  {
+    id: 'coast-kicker',
+    name: 'Coast Kicker',
+    // Küstenabschnitt der Ringstraße, Richtung Meer.
+    x: 335.9,
+    z: 819.1,
+    heading: -1.194,
+    length: 22,
+    width: 12,
+    // atan(4,2 / 22) = 10,8°.
+    height: 4.2,
+    tail: 0,
+  },
+  {
+    id: 'village-hop',
+    name: 'Village Hop',
+    // Die Dorfstraße. Kurz und steil — der Sprung, den man im Vorbeifahren
+    // mitnimmt, ohne die Strecke zu verlassen.
+    x: -442.8,
+    z: -90.9,
+    heading: 1.277,
+    length: 17,
+    width: 11,
+    // atan(4,0 / 17) = 13,2°, der steilste der Liste.
+    height: 4.0,
+    tail: 0,
+  },
+  {
+    id: 'harbour-jump',
+    name: 'Harbour Jump',
+    // Ringstraße Nordwest, oberhalb des Hafens.
+    x: -926.8,
+    z: 622.3,
+    heading: -2.705,
+    length: 24,
+    width: 13,
+    // atan(4,0 / 24) = 9,5°.
+    height: 4.0,
+    tail: 0,
+  },
+  {
+    id: 'south-crest',
+    name: 'South Crest',
+    // **Eine Kuppe und keine Schanze** (`tail` > 0): sie hebt den Wagen kurz aus
+    // der Straße, ohne ihn von ihr wegzuschicken. Der Unterschied ist der
+    // Auslauf — eine Abrisskante ist ein Absprung, eine Kuppe ist ein Moment.
+    x: 83.2,
+    z: 918.9,
+    heading: -1.194,
+    length: 28,
+    width: 15,
+    height: 2.4,
+    tail: 24,
+  },
+];
+
+/**
+ * Die Driftzone — P24.
+ *
+ * ## Warum sie ein Kreis ist und keine Strecke
+ *
+ * Eine Driftzone als Streckenabschnitt („von Bogenlänge A bis B") wäre die
+ * naheliegende Bauform und die falsche: sie verlangt, dass der Spieler die
+ * Strecke *kennt*, bevor er weiß, dass er gerade punktet. Ein Kreis mit einem
+ * Ring aus Kirschbäumen ist von 200 m Entfernung als „dort passiert etwas"
+ * lesbar, und das ist die ganze Anforderung.
+ *
+ * Innerhalb der Zone zählt die Driftwertung doppelt. Das ist der einzige Grund,
+ * warum jemand von der Ideallinie abbiegt — und damit der einzige Grund, warum
+ * es die Zone gibt.
+ *
+ * ## Die Standorte sind gemessen
+ *
+ * Eine Driftzone auf einem Hang ist keine. Beide Plätze stammen aus einem
+ * Rasterlauf über das Höhenfeld, der die flachsten Kreise mit 60…70 m Radius
+ * sucht — unter Ausschluss des Stadtdistrikts (dort ist es eben, aber voller
+ * Häuser) und der Reisterrassen (dort ist es eben, aber in Stufen von 2,4 m).
+ *
+ * > **Die erste Fassung stand bei (−120 | −180) und hatte 26,7 m
+ * > Höhenunterschied auf 156 m Durchmesser** — ein Hang, kein Platz. Die Zahl
+ * > stand nach zwei Minuten Rechnen da; hingeschrieben war sie mit „die Senke
+ * > zwischen Reisfeldern und Wald".
+ */
+export interface DriftZone {
+  readonly id: string;
+  readonly name: string;
+  readonly x: number;
+  readonly z: number;
+  readonly radius: number;
+  /** Punktemultiplikator innerhalb der Zone. */
+  readonly bonus: number;
+  /** Zahl der Kirschbäume auf dem Ring. */
+  readonly trees: number;
+}
+
+export const DRIFT_ZONES: readonly DriftZone[] = [
+  {
+    id: 'sakura-bowl',
+    name: 'Sakura Bowl',
+    // Die Ebene westlich der Reisterrassen, direkt an der Ringstraße.
+    // **Gemessen der flachste Platz der Karte außerhalb der Stadt**: über
+    // 140 m Durchmesser liegen 1,7 m Höhenunterschied (die Stadt selbst ist
+    // eingeebnet, aber voller Häuser).
+    x: -1020,
+    z: -20,
+    radius: 70,
+    bonus: 2,
+    trees: 24,
+  },
+  {
+    id: 'coast-pan',
+    name: 'Coast Pan',
+    // Zwischen Stadt und Küste. 1,9 m auf 120 m Durchmesser.
+    x: 540,
+    z: 500,
+    radius: 60,
+    bonus: 2,
+    trees: 18,
+  },
+];
+
+/**
+ * Sammelstücke — P24.
+ *
+ * ## Warum sie an den Straßen liegen und nicht in der Landschaft
+ *
+ * Ein Sammelstück im Nirgendwo ist eine Aufforderung, die Karte abzugrasen, und
+ * das ist bei 9,4 km² eine halbe Stunde Langeweile. An der Straße ist es eine
+ * Aufforderung, die **Linie** zu ändern: es liegt außen in der Kurve, wo man
+ * langsamer ist, oder auf der Innenseite, wo man den Bordstein mitnehmen muss.
+ * Das ist dieselbe Idee, mit der ein Rennspiel seit dreißig Jahren Boost-Pads
+ * platziert.
+ *
+ * Erzeugt werden sie aus dem Straßennetz (`StuntSystem`), nicht von Hand: bei
+ * 11 km Straße wären 90 Handkoordinaten eine Liste, die beim nächsten
+ * `npm run world` still falsch wird.
+ */
+export const PICKUPS = {
+  /** Wie viele Stücke insgesamt auf der Karte liegen. */
+  count: 90,
+  /** Abstand zur Fahrbahnmitte, als Anteil der halben Breite. */
+  offset: 0.55,
+  /** Aufsammelradius in Metern. Großzügig — ein verpasstes Stück ist Frust. */
+  radius: 4.5,
+  /** Höhe über der Fahrbahn, m. */
+  height: 1.1,
+  /** Wert in ¥. */
+  yen: 120,
+  /** Anteil des Nitro-Vorrats, den ein Stück auffüllt. */
+  boost: 0.2,
+  /**
+   * Wie lange ein eingesammeltes Stück wegbleibt, in Sekunden.
+   *
+   * **Es kommt wieder, und das ist eine Entscheidung.** Sammelstücke, die für
+   * immer weg sind, machen aus der Karte eine Checkliste, die einmal abgehakt
+   * wird; danach ist die Welt leerer als vorher. Wiederkehrende sind eine
+   * dauerhafte Belohnung fürs Fahren — und der Grund, warum die zwanzigste
+   * Runde auf dem Ring immer noch etwas einbringt.
+   */
+  respawn: 45,
+} as const;
