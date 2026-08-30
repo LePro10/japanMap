@@ -270,6 +270,9 @@ gedrosselt. ~~Referenzwerte zum Gegenhalten: `wald` auf Ultra 38 948, mit Dichte
 | `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/fleet.mts` | **Der Fahrzeug-Prüfstand (P18).** Alle vier Fahrzeuge durch dieselben acht Proben, ohne Browser. Siehe unten |
 | `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/hill.mts` | **Der Steigungs-Prüfstand (P21).** Fahrzeug × Belag × Steigung, und neben jeder Zelle steht, **welche** der vier Ursachen greift (Traktion, Wand, Blech, Flattern). Der Grenzwinkel wird geschlossen ausgerechnet — die einzige Zahl im Projekt, die ohne einen Simulationsschritt entsteht |
 | `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/world.mts` | **Der Prüfstand für Gelände und Kollision (P19/P20).** Felswand, Baum, Innenecke, Planke, Landung, Kosten — dazu seit P20 **Hang** (steckt das Blech im Berg?) und **Zufallsgelände** (90 s gewürfelt, geprüft werden Zusicherungen statt Zahlen). Die Schicht, die `fleet.mts` auf seinem idealen Boden ausdrücklich *nicht* sieht |
+| `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/arcade.mts` | **Der Prüfstand des Arcade-Modells (P22).** Handbremsdrift, Gasstoß im Bogen, Gegenlenken, Nitro, Belagsvergleich — und die Probe **„Drift ohne Absicht"**, die als einzige fragt, ob ein Drift *ausbleibt*, wenn niemand ihn will. Sie hat die erste Fassung des Modells gestoppt |
+| `node tools/smoke.mjs [url]` | **Die Rauchprobe (P23).** Lädt die Seite in Chromium, drückt „Play" und prüft: Bild vollständig, Fahrmodus fährt, Lenkung monoton, Schanzen heben ab, Rennen läuft, HUD steht, Menü trägt Veranstaltungen — **und liest die Konsole mit**. Braucht `npm i --no-save playwright-core` und einen laufenden Dev-Server |
+| `node tools/find-ramps.mjs` | **Schanzenplätze suchen (P24).** Liest Höhenfeld und Straßennetz und findet Stellen mit geradem Anlauf, tragfähigem Fundament und freier Landefläche. Vier von fünf handgesetzten Koordinaten waren unbrauchbar |
 
 **Der Messlauf — und wofür er gebaut ist.**
 
@@ -1515,6 +1518,156 @@ fester Seed, und geprüft werden **Zusicherungen** statt Zahlen —
 Sie hat in P20 zwei Fehler gefunden, die keine der sechs nachgebauten Proben
 gezeigt hat. Wer eine neue Fehlerklasse vermutet, aber keinen Fall dafür hat,
 baut so eine Probe und nicht noch einen Nachbau.
+
+---
+
+## Das Fahrmodell ist seit P22 ein Arcade-Modell — was das für Messungen heißt
+
+**Das Einspurmodell aus P14…P21 gibt es nicht mehr.** Getauscht ist ausschließlich
+die waagerechte Ebene (Gieren, Längs- und Quergeschwindigkeit); Federung,
+Stützebene, Blech gegen Gelände, Kollision und Klemmschutz laufen unverändert
+weiter. Wer wissen will, was P22 geändert hat, liest `src/game/arcadeDynamics.ts`
+und sonst nichts.
+
+Drei Folgen für jede Messung am Fahrverhalten:
+
+- **`TIRE` in `vehicle.config.ts` wird nicht mehr gelesen.** Die Spec steht dort
+  weiter, samt aller Herleitungen und Messreihen — sie ist die vollständige
+  Beschreibung dessen, was ein Fahrzeug an Reifen *hätte*, und zwei der drei
+  teuersten Fehler dieses Projekts sind Fehler jener Funktionen gewesen. Wer
+  heute am Grip dreht, dreht an `ARCADE[…].latG` und `latGrip`.
+- **Ein Drift ist ein Zustand, keine Folge.** `telemetry.drift` ist das, was der
+  Spieler *anfordert* (Handbremse, Gas in der Kurve), `telemetry.skid` das, was
+  dabei herauskommt. Wer die Wertung misst, meint das eine; wer die Spuren
+  misst, das andere.
+- **Die Gierrate wird gesetzt und nicht integriert.** Ein Vorzeichenfehler in
+  einer Achse kann sich damit nicht mehr über „Schräglauf → Seitenkraft →
+  Giermoment" fortpflanzen — die ganze Fehlerklasse aus P14 ist weg. Dafür ist
+  die Lenkung nur so gut wie ihre Kennlinie: **tabellieren, bevor man ihr
+  glaubt.** Genau daran sind zwei Fassungen gescheitert.
+
+**Die Rauchprobe ist neu und sollte vor jeder Abnahme laufen.**
+
+```bash
+node node_modules/vite/bin/vite.js --port 5180 --strictPort &
+node tools/smoke.mjs          # gegen den Dev-Server
+```
+
+Sie ersetzt keinen Prüfstand — sie beantwortet die Frage davor: *läuft die
+Seite überhaupt.* Die drei teuersten Fehler dieses Projekts (der `realpath`-Fall
+aus P6, die Backticks im GLSL-Kommentar aus P19, der abgeschaltete Pass aus P8.2)
+standen **ausschließlich in der Browser-Konsole**, und die liest sie mit.
+
+> **Sie läuft auf einem Software-Rasterisierer** (`--use-angle=swiftshader`).
+> Jede Aussage über Bildrate oder GPU-Zeit wäre daraus wertlos — dieselbe
+> Verwechslung, die in P11 sieben Messungen gekostet hat.
+
+---
+
+## Was in diesem Projekt schon schiefgegangen ist — Nachträge aus P22…P24
+
+- **Der eigene Prüfstand hatte den Befund seit P18 im Klartext, und niemand hat
+  ihn gelesen.** Die Beschwerde lautete „die Physik ist grausam", und in der
+  Ausgabe von `fleet.mts` stand:
+  `Lenkantwort 90 km/h: 21.8 27.3 26.2 26.3 25.7 °/s (Lenkung 0,2…1,0)`.
+  Zwischen einem Fünftel und vollem Ausschlag liegen **3,9 °/s** — die Lenkung
+  war ein Schalter, und zwar genau im Tempobereich des Spiels. Daneben:
+  `Durchdrehen Bogen 0.88×`, also kein Drift auf Asphalt in einem Drift-Spiel.
+  Lehre: **eine Prüfstandsausgabe ist erst gelesen, wenn jemand sie gegen die
+  Anforderung hält.** Beide Zeilen waren grün formatiert, weil der Prüfstand
+  nach Monotonie hinter der Spitze fragte — und nicht danach, ob die Antwort
+  überhaupt mit der Eingabe wächst.
+
+- **Eine Regelgröße ohne Gleichgewichtspunkt.** Der erste Entwurf des Drifts
+  addierte eine feste Gierrate. Im stationären Drift ist die Gierrate aber die
+  **Bahnkrümmung**, und die ist durch `a_lat/v` gedeckelt — ein Sollwert
+  darüber hat keinen Fixpunkt, der Schwimmwinkel wächst, bis der Wagen rückwärts
+  fährt. Gemessen 111 °/s bei 40 km/h. Lehre: **wer eine Größe regelt, rechnet
+  ihren Gleichgewichtspunkt aus, bevor er einen Sollwert dafür hinschreibt.**
+  Das ist derselbe Satz wie „für ein Fahrmodell gibt es eine geschlossene
+  Stabilitätsbedingung" aus P14, nur eine Ebene höher.
+
+- **Dieselbe Sättigung, an anderer Stelle wieder eingebaut.** Die zweite Fassung
+  bildete die Soll-Gierrate kinematisch (`ω = v·tanδ/L`) und deckelte sie mit
+  der Haftgrenze. Gemessen: schon **20 % Einschlag** erreichten bei 90 km/h die
+  Grenze, darüber war die Antwort wieder flach (33,4 °/s über den ganzen Rest).
+  Lehre: **ein Deckel ist keine Kennlinie.** Wer eine proportionale Antwort
+  will, muss den *Anteil* an dem regeln, was möglich ist — nicht den Absolutwert
+  abschneiden.
+
+- **Die Bremse war das Gas.** In einem Modell ohne Gangwahlschalter legt die
+  Bremse im Stand den Rückwärtsgang ein, und dabei wird `throttle = brake`. Die
+  Halte-Eingabe der KI-Gegner vor dem Start lautete „Bremse voll, Handbremse
+  gezogen" — das Feld fuhr den Countdown über **rückwärts** aus der
+  Startaufstellung heraus, 5 m neben die Straße und 124° quer dazu. Der Befund
+  sah drei Fassungen lang wie ein kaputter Regler aus.
+  Lehre: **wenn eine Eingabe zwei Bedeutungen hat, muss die Bedingung dazwischen
+  vollständig sein.** „Bremse im Stand" heißt Rückwärtsgang — außer, wenn
+  jemand zugleich die Handbremse zieht, denn das heißt *halten*.
+
+- **Eine Runde, die keine war.** Der Fortschritt der Gegner stand als
+  `Runde × Streckenlänge + Bogenlänge` da. An der Naht einer geschlossenen
+  Strecke springt die Bogenlänge von 6086 auf 0, die Suche pendelt darum herum,
+  und jede Pendelung zählte als Runde: AOKI stand nach 60 Sekunden bei
+  **7474 m** — 448 km/h. Lehre: **auf einem Kreis ist die Differenz zweier
+  Positionen nicht der Weg.** Aufsummieren, was zwischen zwei Schritten liegt,
+  und die Differenz vorher auf den kürzesten Weg bringen.
+
+- **Zwei Regelterme, die sich gegenseitig aufheben.** Der KI-Fahrer bekam einen
+  Winkelterm (gegen die Straßentangente) und einen Querterm (gegen den Abstand).
+  Beide sind für sich richtig — 20 m links der Linie, 67° verdreht, 5 km/h:
+  Querterm +1,57, Winkelterm −1,63, Summe **−0,06**. Der Gegner stand
+  140 Sekunden im Reisfeld.
+  Lehre: **zwei Regler auf dieselbe Stellgröße brauchen eine Aussage darüber,
+  wer wann gewinnt.** Nah an der Linie zählt „wie liegt die Straße", weit daneben
+  „wo ist die Straße"; geblendet wird der **Bezugswinkel** und nicht ein dritter
+  Term addiert.
+
+- **Ein Tempolimit, das nur Kurven kennt, kennt die halbe Strecke nicht.** Die
+  Ideallinie deckelte das Tempo über die waagerechte Krümmung. Bei 108 km/h über
+  eine **gerade** Kuppe hob der Wagen ab und landete 13 m neben der Fahrbahn.
+  Die senkrechte Krümmung war nie gerechnet worden. Lehre: eine Strecke hat zwei
+  Krümmungen, und für die zweite gibt es eine ebenso geschlossene Grenze —
+  `v²·|κ_v| ≤ g`.
+
+- **Eine Auflage auf einem erodierten Boden ist keine Schanze.** Der erste
+  Entwurf addierte die Schanzenform auf das Höhenfeld. Damit macht sie jede
+  Welle ihres Untergrunds mit, und ein 24 m langes Stück Straßenböschung mit
+  weniger als 1,2 m Höhenband gibt es auf dieser Karte fast nirgends: das
+  Suchwerkzeug fand auf **11 km Straße genau einen** brauchbaren Platz. Lehre:
+  **ein Bauwerk steht auf einem Fundament.** Eine absolute Fläche über einer
+  einmal gemessenen Fußhöhe ist robust gegen alles, was darunter passiert.
+
+- **Vier von fünf handgesetzten Koordinaten waren unbrauchbar — und keine davon
+  sah beim Hinschreiben falsch aus.** `temple-hop`: 7,22 s Flugzeit, weil die
+  Anfahrt an einer Klippe endet. `coast-kicker`: 0,02 s bei +21 m Höhe, weil
+  die Anfahrt bergauf geht. Lehre: **eine Koordinate auf einer erodierten
+  9,4-km²-Karte ist eine Behauptung.** Erst ein Lauf macht eine Messung daraus —
+  und wenn man fünf davon braucht, schreibt man das Werkzeug.
+
+- **Die flachste Stelle der Karte war ein geflutetes Reisfeld.** Der Rasterlauf
+  für die Driftzone suchte nach dem kleinsten Höhenband und fand (−1020 | −20)
+  mit **1,7 m auf 140 m Durchmesser**. Flach war dort das Wasser. Gefunden hat
+  es ein **Bild**, keine Zahl — und zwar sofort.
+  Lehre: dieselbe wie seit P4, und sie gilt für Koordinaten genauso wie für
+  Pixel: **zwei Zahlen beschreiben einen Ort nicht.** Wer einen Platz aussucht,
+  sieht ihn sich an.
+
+- **900 additive Partikel sind eine Lampe.** Die fallenden Kirschblüten waren
+  im ersten Entwurf additiv gemischt; überlagert addieren sie sich auf Weiß, und
+  der Bloom der PostFX-Kette macht daraus zwei Scheinwerfer mitten in der
+  Landschaft. Jede Zahl stimmte — 900 Instanzen, ein Draw-Call,
+  `anteilNichtSchwarz` 1,000. Lehre: die bekannte Form aus dieser Liste
+  („es war im Bild, nur als etwas anderes"), diesmal in zwei Minuten gefunden,
+  weil ein Bild zur Abnahme gehörte.
+
+- **Ein Prüfstand, der seine Anfahrt nicht besitzt.** Die erste Fassung der
+  Schanzenprobe setzte das Auto 150 m *in Luftlinie* vor die Kante und gab
+  Vollgas. Auf einer gekrümmten Straße führt das quer durchs Gelände, und die
+  Probe maß dann die Böschung statt die Schanze. Dritter Fall dieser Klasse nach
+  den exakt −6,00 cm Standhöhe (P14) und dem von Hand gesetzten `menu.hidden`
+  (P13): **eine Messung, die ihren Anfangszustand nicht herstellt, misst sich
+  selbst.**
 
 ---
 

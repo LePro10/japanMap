@@ -220,10 +220,17 @@ export const RAMPS: readonly Ramp[] = [
  * sucht — unter Ausschluss des Stadtdistrikts (dort ist es eben, aber voller
  * Häuser) und der Reisterrassen (dort ist es eben, aber in Stufen von 2,4 m).
  *
- * > **Die erste Fassung stand bei (−120 | −180) und hatte 26,7 m
- * > Höhenunterschied auf 156 m Durchmesser** — ein Hang, kein Platz. Die Zahl
- * > stand nach zwei Minuten Rechnen da; hingeschrieben war sie mit „die Senke
- * > zwischen Reisfeldern und Wald".
+ * > **Zwei Fassungen davor waren falsch, und beide sahen richtig aus.** Die
+ * > erste stand bei (−120 | −180) mit der Beschreibung „die Senke zwischen
+ * > Reisfeldern und Wald" — gemessen 26,7 m Höhenunterschied auf 156 m
+ * > Durchmesser, also ein Hang. Die zweite stand bei (−1020 | −20), dem
+ * > **flachsten** Platz der Karte (1,7 m) — und ein Bild zeigte, warum: es ist
+ * > eine gefluteter Reisterrasse. Flach ist dort das Wasser.
+ * >
+ * > Seitdem prüft der Rasterlauf zusätzlich `paddy.png`, und seitdem gehört ein
+ * > **Bild** zur Abnahme einer Koordinate. Zwei Zahlen (Höhenband, Abstand zur
+ * > Straße) beschreiben einen Platz nicht vollständig; das ist derselbe Satz,
+ * > mit dem CLAUDE.md seit P4 anfängt.
  */
 export interface DriftZone {
   readonly id: string;
@@ -241,25 +248,24 @@ export const DRIFT_ZONES: readonly DriftZone[] = [
   {
     id: 'sakura-bowl',
     name: 'Sakura Bowl',
-    // Die Ebene westlich der Reisterrassen, direkt an der Ringstraße.
-    // **Gemessen der flachste Platz der Karte außerhalb der Stadt**: über
-    // 140 m Durchmesser liegen 1,7 m Höhenunterschied (die Stadt selbst ist
-    // eingeebnet, aber voller Häuser).
-    x: -1020,
-    z: -20,
-    radius: 70,
+    // Die Wiese zwischen Stadt und Küste. Gemessen 3,9 m Höhenunterschied auf
+    // 124 m Durchmesser, kein Reisfeld, 128 m von der Ringstraße.
+    x: 550,
+    z: 510,
+    radius: 62,
     bonus: 2,
     trees: 24,
   },
   {
-    id: 'coast-pan',
-    name: 'Coast Pan',
-    // Zwischen Stadt und Küste. 1,9 m auf 120 m Durchmesser.
-    x: 540,
-    z: 500,
-    radius: 60,
+    id: 'harbour-pan',
+    name: 'Harbour Pan',
+    // Die Fläche oberhalb des Hafens. 8,4 m auf 124 m, 93 m von der Straße —
+    // der beste Platz der Westhälfte.
+    x: -810,
+    z: 630,
+    radius: 58,
     bonus: 2,
-    trees: 18,
+    trees: 20,
   },
 ];
 

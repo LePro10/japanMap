@@ -17,6 +17,7 @@ import type { EngineContext, System } from '@/core/System';
 import { liftLocal, type RampField } from '@/game/RampField';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
 import { PropMaterial } from '@/world/materials/PropMaterial';
+import { PetalFall } from './PetalFall';
 import type { RoadNetwork } from '@/world/roads/RoadNetwork';
 import type { TerrainSampler } from '@/world/TerrainSampler';
 
@@ -101,6 +102,7 @@ export class StuntSystem implements System {
   #trees: InstancedMesh | null = null;
   #flags: InstancedMesh | null = null;
   #pickups: InstancedMesh | null = null;
+  readonly #petals = new PetalFall();
 
   /** Weltpositionen der Sammelstücke und ihre Wiederkehr-Uhr. */
   readonly #pickupPos: { x: number; y: number; z: number; back: number }[] = [];
@@ -141,7 +143,8 @@ export class StuntSystem implements System {
     this.#buildRamps();
     this.#buildZones();
     this.#buildPickups();
-    void scene;
+    const sampler = this.#sampler;
+    this.#petals.build(scene, (x, z) => sampler.getHeightAt(x, z));
   }
 
   // ── Schanzen ────────────────────────────────────────────────────────────
@@ -424,6 +427,7 @@ export class StuntSystem implements System {
   }
 
   update(dt: number): void {
+    this.#petals.update(dt);
     if (!this.#pickups) return;
     // Die Stücke drehen sich. Das ist die billigste Art, ein Ding als
     // „einsammelbar" zu kennzeichnen — jedes Spiel seit 1991 macht es so, und
@@ -433,6 +437,7 @@ export class StuntSystem implements System {
   }
 
   dispose(): void {
+    this.#petals.dispose();
     this.#group.removeFromParent();
     for (const geometry of this.#geometries) geometry.dispose();
     this.#geometries.length = 0;
