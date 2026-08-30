@@ -31,6 +31,9 @@ import {
 import { CollisionWorld } from './CollisionWorld';
 import { RoadGround } from './RoadGround';
 import { RaceDirector } from './RaceDirector';
+import { RampField } from './RampField';
+import { PICKUPS } from '@/config/stunt.config';
+import type { StuntSystem } from '@/world/stunt/StuntSystem';
 import { DebrisFx } from './DebrisFx';
 import { LapTimer } from './LapTimer';
 import { Vehicle, type DriveInput, type Ground, type Surface } from './Vehicle';
@@ -140,6 +143,15 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    * wären das drei Verweise zurück auf dieses hier.
    */
   readonly race = new RaceDirector();
+  /**
+   * Die Schanzen — P24.
+   *
+   * Sie gehören zum **Boden** und nicht zur Szene: `RoadGround` addiert ihre
+   * Auflage, und das Mesh im `StuntSystem` entsteht aus derselben Funktion.
+   * Angelegt wird sie hier, weil hier der Boden wohnt.
+   */
+  readonly ramps = new RampField();
+  #stunt: StuntSystem | null = null;
   readonly collision = new CollisionWorld();
   readonly #water = new WaterField();
   #fx: VehicleFx | null = null;
@@ -306,6 +318,9 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
     context.bus.on('terrain:ready', ({ sampler }) => {
       this.#sampler = sampler;
+      // Die Schanzen brauchen ihre Fußhöhen, und zwar **bevor** jemand darauf
+      // fährt. Begründung bei `RampField.prepare`.
+      this.ramps.prepare((x, z) => sampler.getHeightAt(x, z));
       this.#syncGround();
       this.#rebuild();
     });
@@ -364,6 +379,18 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    */
   #syncGround(): void {
     this.ground.setSources(this.#sampler, this.#network, this.#water, this.collision);
+    this.ground.setRamps(this.ramps);
+  }
+
+  /**
+   * Das Stunt-System hereinreichen — Sammelstücke und Driftzonen.
+   *
+   * Wie `setCanopy` und `setWake`: `DriveSystem` importiert kein Weltsystem, und
+   * die Verdrahtung steht in `main.ts`. Der Unterschied zu einem Ereignis ist
+   * derselbe wie beim Freiflug — hier wird nichts gemeldet, sondern gefragt.
+   */
+  setStunt(stunt: StuntSystem | null): void {
+    this.#stunt = stunt;
   }
 
   #build(context: EngineContext): void {
@@ -760,7 +787,42 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     // Position *nach* der Integration; ein Kontrollpunkt, der davor geprüft
     // wird, fällt einen Schritt zu spät — bei 250 km/h sind das 1,16 m.
     this.race.step(dt, this.vehicle, this.collision);
+    this.#collectPickups(dt);
+    // **Die Driftwertung läuft immer, nicht nur im Rennen.** Sie war zuerst im
+    // Rennleiter, und damit brachte Driften außerhalb einer Veranstaltung nichts
+    // — auf einer offenen Karte ist das genau verkehrt herum: das Freifahren ist
+    // der Zustand, in dem ein Spieler die meiste Zeit verbringt.
+    this.race.drift.step(dt, this.vehicle.telemetry);
     this.#watchStuck(dt, input);
+  }
+
+  /**
+   * Sammelstücke einsammeln und die Driftzone anwenden — P24.
+   *
+   * **In `fixedUpdate` und nicht in `update`**, aus demselben Grund wie die
+   * Rundenzählung: bei 250 km/h legt der Wagen je Frame 1,16 m zurück, und ein
+   * Aufsammelradius von 4,5 m wäre bei 20 fps ein Stück, an dem man vorbeifährt.
+   * Der feste Schritt sieht jede Stelle.
+   */
+  #collectPickups(dt: number): void {
+    const stunt = this.#stunt;
+    if (!stunt) return;
+    const taken = stunt.collect(this.vehicle.position.x, this.vehicle.position.z, dt);
+    if (taken > 0) {
+      this.vehicle.addBoost(PICKUPS.boost * taken);
+      this.#context?.bus.emit('pickup:collected', {
+        kind: 'coin',
+        total: taken,
+        yen: PICKUPS.yen * taken,
+      });
+    }
+    // Die Driftzone verdoppelt die Wertung. Sie wird **je Schritt** gefragt und
+    // nicht beim Betreten gemerkt: eine Zone, die man beim Hineinfahren betritt
+    // und beim Herausfliegen nicht verlässt, ist ein Multiplikator, den man
+    // mitnimmt.
+    this.race.drift.setBonus(
+      stunt.driftBonusAt(this.vehicle.position.x, this.vehicle.position.z),
+    );
   }
 
   /**

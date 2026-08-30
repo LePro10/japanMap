@@ -189,6 +189,56 @@ try {
   if (monotone) ok('Lenkantwort wächst mit der Eingabe', `${steering.join(' / ')} °/s`);
   else bad('Lenkantwort nicht monoton', steering.join(' / '));
 
+  // ── 4b. Schanzen, Sammelstücke, Driftzone — P24 ───────────────────────
+  //
+  // Die Probe fährt eine Schanze **von ihrer Anfahrt aus** an und misst, ob das
+  // Auto fliegt. Ohne Anlauf wäre sie keine Probe: eine Schanze, die man aus dem
+  // Stand hochfährt, hebt niemanden ab, und ein Flug von 0,0 s wäre dann kein
+  // Befund über die Schanze, sondern über die Anfahrt.
+  const stunt = await page.evaluate(async () => {
+    const drive = window.japanMap.engine.systems.find((s) => s.name === 'DriveSystem');
+    const cfg = await import(`${window.__smokeBase}/src/config/stunt.config.ts`);
+    const out = { jumps: [], pickups: 0, zone: 0 };
+    for (const ramp of cfg.RAMPS) {
+      // 150 m vor der Kante, entgegen der Anfahrtsrichtung.
+      const back = 150;
+      const x = ramp.x - Math.sin(ramp.heading) * back;
+      const z = ramp.z - Math.cos(ramp.heading) * back;
+      drive.placeAt(x, z, ramp.heading);
+      let air = 0;
+      let peak = 0;
+      const y0 = drive.vehicle.position.y;
+      for (let i = 0; i < 60 * 14; i++) {
+        drive.simulateStep(1 / 60, { throttle: 1, brake: 0, steer: 0, handbrake: false });
+        if (drive.vehicle.telemetry.airborne) air += 1 / 60;
+        peak = Math.max(peak, drive.vehicle.position.y - y0);
+      }
+      out.jumps.push({ id: ramp.id, air: +air.toFixed(2), peak: +peak.toFixed(1) });
+    }
+    // Sammelstücke: einmal die Ringstraße entlang teleportieren und zählen.
+    const line = drive.roads.getRacingLine('ring');
+    const stuntSystem = window.japanMap.engine.systems.find((s) => s.name === 'StuntSystem');
+    for (let i = 0; i < line.length / 3; i += 5) {
+      out.pickups += stuntSystem.collect(line[i * 3], line[i * 3 + 2], 0);
+    }
+    const zone = cfg.DRIFT_ZONES[0];
+    out.zone = stuntSystem.driftBonusAt(zone.x, zone.z);
+    return out;
+  });
+  const flying = stunt.jumps.filter((j) => j.air > 0.35);
+  if (flying.length >= 3) {
+    ok(
+      'Schanzen heben ab',
+      stunt.jumps.map((j) => `${j.id} ${j.air}s/${j.peak}m`).join(' · '),
+    );
+  } else {
+    bad('zu wenige Schanzen heben ab', JSON.stringify(stunt.jumps));
+  }
+  if (stunt.pickups > 20) ok('Sammelstücke am Ring', String(stunt.pickups));
+  else bad('kaum Sammelstücke am Ring', String(stunt.pickups));
+  if (stunt.zone > 1) ok('Driftzone verdoppelt', `×${stunt.zone}`);
+  else bad('Driftzone ohne Wirkung', String(stunt.zone));
+
   // ── 5. Eine Veranstaltung ─────────────────────────────────────────────
   const race = await page.evaluate(async () => {
     const drive = window.japanMap.engine.systems.find((s) => s.name === 'DriveSystem');

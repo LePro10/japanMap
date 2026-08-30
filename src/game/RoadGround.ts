@@ -8,6 +8,7 @@ import type { RoadNetwork } from '@/world/roads/RoadNetwork';
 import type { TerrainSampler } from '@/world/TerrainSampler';
 import type { CollisionWorld } from './CollisionWorld';
 import type { Ground, Surface } from './Vehicle';
+import type { RampField } from './RampField';
 import type { WaterField } from './WaterField';
 
 /**
@@ -48,6 +49,7 @@ export class RoadGround implements Ground {
   #network: RoadNetwork | null = null;
   #water: WaterField | null = null;
   #collision: CollisionWorld | null = null;
+  #ramps: RampField | null = null;
 
   /**
    * Straßentreffer an der Fahrzeugstelle, **einmal je Simulationsschritt**.
@@ -80,6 +82,16 @@ export class RoadGround implements Ground {
     this.#network = network;
     this.#water = water;
     this.#collision = collision;
+  }
+
+  /**
+   * Die Schanzen — P24.
+   *
+   * Getrennt von `setSources`, weil sie nicht aus einem Ereignis kommen: sie
+   * stehen in einer Konfigurationsdatei und sind ab dem ersten Frame da.
+   */
+  setRamps(ramps: RampField | null): void {
+    this.#ramps = ramps;
   }
 
   get ready(): boolean {
@@ -231,6 +243,18 @@ export class RoadGround implements Ground {
     if (this.#water?.ready) {
       y = applyWaterSurface(y, this.#water.at(x, z, this.#groundBase(x, z)));
     }
+
+    // ── Schanzen — P24 ────────────────────────────────────────────────────
+    //
+    // **Ganz zuletzt und als Maximum.** Eine Schanze liegt *auf* allem, was
+    // darunter ist: Gelände, Fahrbahn, Bürgersteig, Wasserfläche. Und sie ist
+    // eine **absolute** Fläche über ihrem Fundament, keine Auflage — die
+    // Begründung samt der Messung, die den additiven Entwurf verworfen hat,
+    // steht bei `RampField.prepare`.
+    if (this.#ramps) {
+      const ramp = this.#ramps.surfaceAt(x, z);
+      if (ramp > y) y = ramp;
+    }
     return y;
   }
 
@@ -244,7 +268,19 @@ export class RoadGround implements Ground {
     // **Die Gelände-Normale, auch auf einem Plateau.** Ein Bürgersteig ist
     // waagerecht, das Gelände darunter im Distrikt ebenfalls (der Baker ebnet
     // ihn ein) — der Unterschied ist auf dieser Karte nicht messbar.
-    return sampler.getNormalAt(x, z, target);
+    sampler.getNormalAt(x, z, target);
+    // Und die Schanze darüber. Begründung samt der Messung, warum eine Schanze
+    // ohne Neigung das Auto anhält, bei `RampField.gradient`.
+    if (this.#ramps?.gradient(x, z, GRADIENT)) {
+      // Aus dem Höhengradienten `(∂y/∂x, ∂y/∂z)` wird die Normale
+      // `(−∂y/∂x, 1, −∂y/∂z)`, normiert. Sie ersetzt die Geländenormale, statt
+      // sie zu drehen: auf einer Schanze *ist* die Schanze der Boden.
+      const nx = -GRADIENT.x;
+      const nz = -GRADIENT.z;
+      const len = Math.hypot(nx, 1, nz);
+      target.set(nx / len, 1 / len, nz / len);
+    }
+    return target;
   }
 
   surface(x: number, z: number): Surface {
@@ -295,6 +331,9 @@ function applyWaterSurface(
   const s = t * t * (3 - 2 * t);
   return solidY + (floated - solidY) * s;
 }
+
+/** Ablage für den Schanzengradienten — einmal angelegt, wie überall hier. */
+const GRADIENT = { x: 0, z: 0 };
 
 function clamp01(value: number): number {
   return value < 0 ? 0 : value > 1 ? 1 : value;
