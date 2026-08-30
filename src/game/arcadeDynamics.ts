@@ -348,7 +348,29 @@ export class ArcadeDynamics {
     // Haftreibung im Stand: hält den Wagen am Hang, statt ihn rückwärts rollen
     // zu lassen. Dieselbe Konstruktion wie im Einspurmodell und aus demselben
     // Grund — ohne sie steht kein Auto an einer Steigung.
-    if (!env.airborne && this.#throttle <= 0.02 && input.brake > 0.5 && speed < STATIC_HOLD_SPEED) {
+    //
+    // > **`!reverse` ist die Reparatur eines gemessenen Fehlers.** Die Bremse
+    // > legt im Stand den Rückwärtsgang ein (es gibt keinen Gangwahlschalter),
+    // > und die Haltebedingung prüft ebenfalls auf „Bremse gedrückt, steht
+    // > fast". Ohne die Ausnahme greifen beide zugleich: die Haltekraft löscht
+    // > die Rückwärtsbeschleunigung punktgenau aus, und das Auto steht.
+    // >
+    // > Gemessen mit `tools/bench/world.mts`, Lastwagen: „Innenecke, rückwärts
+    // > heraus **0,00 m**" statt 9,40 m, und „Schraubstock: in 4 s heraus
+    // > 0,00 m" gegen ein Soll von 2 m. Ein Spieler, der sich in einer Ecke
+    // > festfährt, käme dort nie wieder heraus.
+    // >
+    // > Das Einspurmodell hatte den Fall zufällig richtig: dort war `throttle`
+    // > eine **lokale** Variable, die im Rückwärtsgang den Bremswert übernahm,
+    // > und die Haltebedingung prüfte genau sie. Beim Umbau ist daraus
+    // > `this.#throttle` geworden — derselbe Name, eine andere Größe.
+    if (
+      !env.airborne &&
+      !longitudinal.reverse &&
+      this.#throttle <= 0.02 &&
+      (input.brake > 0.5 || input.handbrake) &&
+      speed < STATIC_HOLD_SPEED
+    ) {
       const hold = grip * GRAVITY;
       accelLong += clamp(-env.vLong / dt - accelLong, -hold, hold);
     }
@@ -535,7 +557,7 @@ export class ArcadeDynamics {
     input: DriveCommand,
     env: PlanarEnv,
     grip: number,
-  ): { accel: number; wheelspin: number; boosting: boolean } {
+  ): { accel: number; wheelspin: number; boosting: boolean; reverse: boolean } {
     const spec = this.#spec;
     if (env.airborne) {
       // In der Luft nur Luftwiderstand — kein Rad, keine Kraft.
@@ -543,6 +565,7 @@ export class ArcadeDynamics {
         accel: (-spec.drag * env.vLong * Math.abs(env.vLong)) / this.#mass,
         wheelspin: 0,
         boosting: false,
+        reverse: false,
       };
     }
 
@@ -551,8 +574,21 @@ export class ArcadeDynamics {
     // Bremse im Stand = Rückwärtsgang. Kein Gangwahlschalter: in einem
     // Arcade-Spiel erwartet den niemand, und ein Auto, das nicht zurückstoßen
     // kann, steht nach der ersten verpassten Kehre endgültig.
+    //
+    // > **Die Handbremse hebt das auf, und das ist die Reparatur eines
+    // > gemessenen Fehlers.** Vor dem Start eines Rennens halten die Gegner mit
+    // > „Bremse voll, Handbremse gezogen" — die einzige Eingabe, die *stehen
+    // > bleiben* heißt. Ohne diese Bedingung legte sie den Rückwärtsgang ein,
+    // > und die Bremse wurde dabei zum **Gas**: gemessen mit `tools/smoke.mjs`
+    // > standen alle drei Gegner nach dem Countdown 5 m neben der Straße und
+    // > 124° quer zu ihr, danach fuhren sie ins Gelände und kamen nie zurück.
+    // > Der Befund sah aus wie ein kaputter KI-Regler und war ein Vorzeichen im
+    // > Getriebe.
+    // >
+    // > Die Regel gilt für den Spieler genauso und ist dort ebenfalls richtig:
+    // > wer Handbremse und Bremse zugleich hält, will halten.
     let reverse = false;
-    if (brake > 0 && env.vLong < 0.6 && throttle <= 0.02) {
+    if (brake > 0 && !input.handbrake && env.vLong < 0.6 && throttle <= 0.02) {
       reverse = true;
       throttle = brake;
       brake = 0;
@@ -582,11 +618,13 @@ export class ArcadeDynamics {
     // Widerstände.
     const drag = (-spec.drag * env.vLong * Math.abs(env.vLong)) / this.#mass;
     const rollSign = Math.sign(env.vLong) * Math.min(1, Math.abs(env.vLong) / 0.6);
-    const surfaceDrag =
+    // Der Untergrund dämpft **proportional zum Tempo** — Begründung samt der
+    // Messung, die den Festbetrag verworfen hat, bei `ARCADE_SURFACE_DRAG`.
+    const surfaceK =
       env.waterDepth > 0.05
         ? ARCADE_SURFACE_DRAG.wasser * Math.min(1, env.waterDepth / 0.5)
         : ARCADE_SURFACE_DRAG[env.surface];
-    const roll = -rollSign * (spec.rollDecel + surfaceDrag);
+    const roll = -rollSign * spec.rollDecel - env.vLong * surfaceK;
 
     // Antrieb, gedeckelt durch die Haftung. Der Überschuss ist der
     // Durchdrehfaktor — und der ist im Arcade-Modell nur noch eine **Anzeige**
@@ -601,6 +639,7 @@ export class ArcadeDynamics {
       accel: used + boostAccel + brakeDecel * brakeSign + drag + roll,
       wheelspin,
       boosting,
+      reverse,
     };
   }
 
