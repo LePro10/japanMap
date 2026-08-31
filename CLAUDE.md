@@ -2105,6 +2105,32 @@ Rückschritt mit Aufwand.
   Eine Zeile Rechnung gegen einen Regler, der Monate braucht, bis jemand merkt,
   dass er nichts tut.
 
+- **Was diese Maschine an der Qualitätsleiter messen kann und was nicht —
+  gemessen 2026-08-31.** Ein voller Durchlauf über fünf Stufen mit *fertig
+  eingeschwungener* Streuung ist auf dem Software-Rasterisierer nicht
+  bezahlbar, und das ist keine Schätzung: `ultra` braucht am Blickpunkt
+  `stadt-rand` **3,7 s je getriebenem Frame** (66,7 s für 18), `minimal`
+  0,72 s. Bis `ScatterSystem.streaming` auf `false` geht, sind es an einem
+  dichten Blickpunkt bis 1101 Frames — über eine Stunde für **eine** Zelle.
+  Zwei Läufe sind daran gestorben, ohne eine einzige Zeile auszugeben.
+  Was trotzdem geht, und wie:
+  1. **Die Hälfte ohne Browser zuerst.** Was `quality.config.ts` je Stufe
+     setzt, ist exakt und kostet keinen Frame. Nur die Zeilen ansehen, in
+     denen sich etwas ändert — eine Konstante über alle Stufen ist kein
+     Regler.
+  2. **Gleich viele Frames statt fertige Frames.** Fünf Stufen mit je 18
+     getriebenen Frames am selben Blickpunkt sind ein gültiger *Vergleich*,
+     auch wenn keine Zeile ein eingeschwungener Zustand ist. Was dann nicht
+     dasteht, gehört dazugeschrieben: die Instanzzahlen sind Untergrenzen.
+  3. **Von unten nach oben laufen lassen.** Die Stufen, um die es bei
+     schwacher Hardware geht, sind die billigen — sie kommen zuerst, und ein
+     Zeitablauf frisst dann `ultra` statt `minimal`.
+  Und die Sekunden bleiben, was sie waren: **keine Bildzeit.** Brauchbar ist
+  allein das Verhältnis (hier minimal rund 5,2-mal billiger als ultra), und
+  auch das nur, weil dieser Rasterisierer wie die Zielhardware
+  füllratengebunden ist. Dieselbe Verwechslung hat in P11 sieben Messungen
+  gekostet.
+
 - **Ein Befund, der nicht reproduzierbar war — und deshalb offen bleibt.** Auf
   einem Bild mit dreifach überhöhter Partikelhelligkeit standen rund sechs
   brettartige braune Flächen frei in der Luft in einem Waldstück
