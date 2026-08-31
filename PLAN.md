@@ -10916,6 +10916,56 @@ reparieren.** Und derselbe Grund, warum die erste Vermutung (Leitplanken)
 gemessen und nicht geglaubt wurde: pures Weiß (246 | 246 | 246) ist ein
 gesättigter Wert und kein Objekt, das man an seiner Farbe erkennt.
 
+## 11. „Das kann keine Zahl beantworten" — doch, sie kann
+
+`ridge-kicker` meldete **18,3 s bis zum ersten durchgehenden Bodenkontakt und
+639 m Weg**. Das war als offener Punkt abgelegt mit der Begründung, ein
+Prüfstand könne „fliegt noch" und „hoppelt bergab" nicht unterscheiden.
+
+Das war zu schnell aufgegeben. Die beiden Zustände unterscheiden sich in der
+**Höhe über dem Boden**, und die ist messbar. Jeder Bogen zwischen zwei
+Bodenkontakten, mit seiner größten Höhe über dem Gelände darunter:
+
+| # | Dauer | max. Höhe über Grund |
+|---|---|---|
+| 0 | **2,65 s** | **15,82 m** |
+| 1 | 0,45 s | 0,99 m |
+| 2…11 | 0,02…0,20 s | 0,67…0,78 m |
+
+Bogen 0 ist der Sprung. Alles danach ist **Radflattern**: Hopser unterhalb des
+Federwegs, wie sie auf jedem rauen Gefälle entstehen. `coast-kicker` zeigt
+dasselbe Muster (2,72 s / 12,52 m, dann Hopser bei rund 1,2 m) — der Unterschied
+war nie die Schanze, sondern dass `ridge-kicker` auf einem Gefälle landet, auf
+dem der Kontakt nie lange genug am Stück hält, um als Landung zu zählen.
+
+**`ridge-kicker` ist damit kein Fehler, sondern der größte Sprung der Karte:**
+2,65 s in der Luft, 15,8 m über dem Boden darunter.
+
+### Was das an der Rauchprobe geändert hat
+
+Sie zählte die Flugzeit über ein Zeitfenster und nahm das Flattern mit — für
+denselben Sprung je nach Lauf 4,9 s oder 18,3 s.
+
+Der erste Reparaturversuch war ein **Schwellenwert** („eine halbe Sekunde
+durchgehender Bodenkontakt beendet den Sprung") und griff genau dort nicht, wo
+es darauf ankommt: auf rauem Gefälle wird der Kontakt nie 0,5 s am Stück,
+`ridge-kicker` blieb bei 4,92 s. Ein Schwellenwert war überhaupt die falsche
+Bauform — **der erste Bodenkontakt ist die Landung, und dafür braucht es keine
+Zahl.**
+
+Danach melden alle sechs Schanzen ihren Bogen, und die Werte decken sich mit der
+unabhängigen Probe (`ridge-kicker` 2,63 s gegen 2,65 s):
+
+```
+paddy-launch 2.05s · ridge-kicker 2.63s · coast-kicker 2.7s
+village-hop  2.17s · harbour-jump 2.12s · south-crest  1.22s
+```
+
+> Die Höhenangabe der Rauchprobe (`ridge-kicker` 4 m) steht **über dem
+> Absprungpunkt**, die 15,82 m oben über dem Gelände *darunter*. Beide sind
+> richtig; die Schanze wirft den Wagen 4 m hoch, und der Boden fällt dabei um
+> weitere 12 m weg. Genau dafür ist sie gebaut.
+
 ## Akzeptanz
 
 - [x] Kronen ohne waagerechte Bänder, breit, tief angesetzt
@@ -10970,11 +11020,9 @@ gesättigter Wert und kein Objekt, das man an seiner Farbe erkennt.
       Repariert ist nur die Schanze, die es ausgelöst hat. Was fehlt, ist eine
       Zahl für die zulässige **Krümmung**: der Prüfstand hat für konstante
       Hänge eine Spalte und für Übergänge keine.
-- [ ] **`ridge-kicker` landet auf 12,1 m Gefälle und springt weiter.** Die
-      Probe misst dort 18,3 s bis zum ersten durchgehenden Bodenkontakt und
-      639 m Weg. Ob das ein Fehler ist oder der beste Sprung der Karte, kann
-      keine Zahl beantworten — die Probe kann „fliegt noch" und „hoppelt bergab"
-      nicht unterscheiden.
+- [x] ~~`ridge-kicker` landet auf 12,1 m Gefälle und springt weiter — ob das
+      ein Fehler ist oder der beste Sprung der Karte, kann keine Zahl
+      beantworten.~~ **Doch, sie kann** — siehe „11.".
 - [ ] **Die Leitertabelle ist ein Vergleich, kein eingeschwungener Zustand.**
       Sie steht jetzt unter „9." — aber `streaming` war auf allen fünf Stufen
       noch `true`, die Instanzzahlen sind also **Untergrenzen**. Was fehlt, ist
