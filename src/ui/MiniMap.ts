@@ -52,6 +52,8 @@ import type { RoadFile } from '@/config/roads.config';
 const SIZE = 168;
 /** Rand innen, damit eine Marke am Kartenrand nicht halb abgeschnitten ist. */
 const PAD = 8;
+/** Sekunden zwischen zwei Neuzeichnungen — Begründung in `update()`. */
+const REDRAW_INTERVAL = 1 / 15;
 
 const ROAD_COLOR = '#8d8f96';
 const ROAD_MAIN = '#c9ccd4';
@@ -74,6 +76,8 @@ export class MiniMap {
   #world = 2048;
   #dpr = 1;
   #roadsDrawn = 0;
+  /** Sekunden seit der letzten Neuzeichnung. */
+  #since = Number.POSITIVE_INFINITY;
 
   constructor(container: HTMLElement) {
     const canvas = document.createElement('canvas');
@@ -221,7 +225,29 @@ export class MiniMap {
     heading: number,
     rivals: readonly MiniMapMark[],
     target: MiniMapMark | null,
+    dt = 0,
   ): void {
+    // ── Nicht je Frame — P26 ───────────────────────────────────────────
+    //
+    // Ein Neuzeichnen kostet ein `clearRect` und ein `drawImage` über die volle
+    // Pufferfläche. Auf einem Telefon mit Gerätepixeldichte 3 sind das
+    // 504 × 504 = 254 016 Pixel, die 60-mal je Sekunde kopiert werden — für
+    // eine Anzeige, auf der sich bei 250 km/h in einer Sechzigstelsekunde
+    // **0,4 Pixel** bewegen.
+    //
+    // Bei 15 Hz sind es 6,8 Pixel je Aktualisierung. Das ist im Augenwinkel
+    // nicht von 60 Hz zu unterscheiden und ein Viertel der Arbeit. Der Zeiger
+    // ruckelt dabei nicht sichtbar: er ist ein Dreieck von 11 Pixeln, und
+    // 15 Hz ist die Rate, mit der Kartenanzeigen in Navigationsgeräten seit
+    // jeher laufen.
+    //
+    // **Der Puffer wird nicht kleiner, nur seltener beschrieben.** Die
+    // Auflösung gehört der Schärfe (siehe `#resize`), die Rate der Leistung —
+    // zwei Fragen, zwei Zahlen.
+    this.#since += dt;
+    if (dt > 0 && this.#since < REDRAW_INTERVAL) return;
+    this.#since = 0;
+
     const ctx = this.#ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.root.width, this.root.height);

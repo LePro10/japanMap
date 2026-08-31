@@ -600,7 +600,7 @@ async function boot(): Promise<void> {
 
   engine.add({
     name: 'DriveHudUpdate',
-    update: () => {
+    update: (dt: number) => {
       if (!hud.visible) return;
       const race = drive.race;
       hud.update(
@@ -678,6 +678,7 @@ async function boot(): Promise<void> {
         Math.atan2(NAV_DIR.x, NAV_DIR.z),
         navRivals,
         race.nextCheckpointPoint(),
+        dt,
       );
     },
     dispose: () => {

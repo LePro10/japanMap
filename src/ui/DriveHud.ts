@@ -177,9 +177,12 @@ export class DriveHud {
     cameraHeading: number,
     rivals: readonly MiniMapMark[],
     target: MiniMapMark | null,
+    dt: number,
   ): void {
     if (!this.#visible) return;
-    this.#map.update(x, z, heading, rivals, target);
+    // `dt` reicht bis in die Karte durch: sie zeichnet nicht je Frame neu,
+    // sondern mit 15 Hz — Begründung in `MiniMap.update()`.
+    this.#map.update(x, z, heading, rivals, target, dt);
 
     if (!target) {
       if (!this.#arrow.hidden) this.#arrow.hidden = true;
