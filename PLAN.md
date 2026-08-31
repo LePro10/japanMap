@@ -10807,6 +10807,70 @@ Drei Fehler, jeder mit seinem eigenen Gegenbeweis:
 Sie prüft jetzt zusätzlich, dass **keine Schanze die Anfahrt ausbremst** — genau
 die Zeile, die den Fehler gefunden hätte.
 
+## 9. Die Qualitätsleiter, gemessen — und was die Zahlen nicht sagen
+
+Zwei Hälften, und nur eine davon braucht einen Browser.
+
+**Exakt und ohne Lauf** — was `quality.config.ts` je Stufe setzt (nur die
+Zeilen, in denen sich überhaupt etwas ändert; eine Konstante über alle Stufen
+ist kein Regler):
+
+| | ultra | high | medium | low | minimal |
+|---|---|---|---|---|---|
+| `renderScale` | 1 | 1 | 0,85 | 0,7 | **0,5** |
+| `postFx` | full | reduced | lean | compact | compact |
+| `ao` | high | medium | medium | low | **off** |
+| `reflections` | ✓ | ✓ | — | — | — |
+| `shadowMapSize` | 2048 | 1024 | 1024 | 1024 | 1024 |
+| `terrainGridVertices` | 33 | 33 | 25 | 17 | 17 |
+| `vegetationFullRadius` | 160 | 130 | 105 | 80 | **55** |
+| `vegetationFarKeep` | 0,6 | 0,5 | 0,4 | 0,3 | 0,22 |
+| `waterDetail` | 1 | 0,85 | 0,6 | 0,35 | **0** |
+
+`renderScale` ist der größte Hebel und war es schon vor P26: 1,0 → 0,5 ist ein
+**Viertel der Pixel**, und Füllrate ist auf der Zielhardware der Engpass. Was
+P26 der Leiter hinzugefügt hat, sind die Blütenblätter (100 % → 15 %) — die
+stehen in `StuntSystem` und nicht in dieser Tabelle.
+
+**Gemessen**, Blickpunkt `stadt-rand`, Fenster 640 × 360, je Stufe **dieselben
+18** von Hand getriebenen Frames:
+
+| Stufe | Calls | Dreiecke | Instanzen | Texturen | Puffer | 18 Frames |
+|---|---|---|---|---|---|---|
+| minimal | 82 | 204 150 | 8 422 | 38 | 320 × 180 | 12,9 s |
+| low | 90 | 228 045 | 16 639 | 46 | 448 × 251 | 22,1 s |
+| medium | 102 | 349 599 | 27 038 | 54 | 544 × 306 | 33,0 s |
+| high | **192** | **996 017** | 38 997 | 59 | 640 × 360 | 63,8 s |
+| ultra | 198 | 1 040 131 | 49 252 | 65 | 640 × 360 | 66,7 s |
+
+Von minimal nach ultra: **2,4-mal so viele Draw-Calls, 5,1-mal so viele
+Dreiecke, 5,8-mal so viele Instanzen.** Die Pufferbreiten bestätigen
+`renderScale` unabhängig (320/640 = 0,5, 448/640 = 0,7, 544/640 = 0,85).
+
+**Der Sprung liegt zwischen medium und high**, und er ist ein einzelner
+Schalter: +88 Draw-Calls und 2,85-mal so viele Dreiecke in einem Schritt. Das
+ist `reflections`, das genau dort angeht — die planare Spiegelung zeichnet die
+Szene ein zweites Mal. Wer auf schwacher Hardware eine Stufe sucht, sucht
+**medium**, und der Grund dafür ist diese eine Zeile.
+
+### Drei Dinge, die diese Tabelle *nicht* sagt
+
+1. **Die Sekunden sind keine Bildzeit.** Sie stammen von einem
+   Software-Rasterisierer (`swiftshader`) — dieselbe Verwechslung hat in P11
+   sieben Messungen gekostet. Brauchbar ist allein das **Verhältnis** (minimal
+   rund 5,2-mal billiger als ultra), und auch das nur, weil dieser
+   Rasterisierer wie die Zielhardware füllratengebunden ist.
+2. **Keine Zeile ist ein eingeschwungener Zustand.** `streaming` stand auf
+   allen fünf Stufen noch auf `true`; die Instanzzahlen sind Untergrenzen. Der
+   Vergleich bleibt gültig, weil alle fünf **dieselbe** Zahl Frames am
+   **denselben** Ort bekommen haben — aber „ultra trägt 49 252 Instanzen" wäre
+   die falsche Lesart.
+3. **Warum nicht einfach länger warten:** `ultra` braucht auf dieser Maschine
+   rund **3,7 s je Frame** (66,7 s für 18). Bis `ScatterSystem.streaming` auf
+   `false` geht, sind es an einem dichten Blickpunkt bis 1101 Frames — über
+   eine Stunde für eine einzige Zelle. Zwei Läufe sind daran gestorben, ohne
+   eine Zeile auszugeben.
+
 ## Akzeptanz
 
 - [x] Kronen ohne waagerechte Bänder, breit, tief angesetzt
@@ -10825,6 +10889,12 @@ die Zeile, die den Fehler gefunden hätte.
 - [x] Alle sechs Schanzen fliegen, keine bremst die Anfahrt aus
       (min 111 km/h aus 140).
 - [x] `tools/smoke.mjs`: 19 Proben grün, Konsole sauber.
+- [x] `japanMap.winding()` leer über alle 153 Meshes — die Wickelrichtung der
+      neun von Hand hergeleiteten Blätter stimmt.
+- [x] Qualitätsleiter gemessen: minimal gegen ultra 82/198 Draw-Calls,
+      204 150/1 040 131 Dreiecke; der Sprung liegt bei `reflections` zwischen
+      medium und high.
+- [x] `fleet`, `arcade`, `world` und `hill` grün.
 - [x] `typecheck` sauber, `vite build` läuft durch.
 
 ## Was offen bleibt
@@ -10857,9 +10927,8 @@ die Zeile, die den Fehler gefunden hätte.
       639 m Weg. Ob das ein Fehler ist oder der beste Sprung der Karte, kann
       keine Zahl beantworten — die Probe kann „fliegt noch" und „hoppelt bergab"
       nicht unterscheiden.
-- [ ] **Die Qualitätsleiter ist nicht über die ganze Vegetation vermessen.**
-      Auf diesem Software-Rasterisierer braucht ein Blickpunkt bis 1101 von
-      Hand getriebene Frames, bis `ScatterSystem.streaming` auf `false` geht;
-      fünf Stufen dauern damit länger als eine Sitzung. Was in P26 an der Stufe
-      hängt (Blüten, Minikarte, Instanzmatrizen), ist einzeln begründet, aber
-      **eine gemessene Tabelle Stufe × Draw-Calls fehlt.**
+- [ ] **Die Leitertabelle ist ein Vergleich, kein eingeschwungener Zustand.**
+      Sie steht jetzt unter „9." — aber `streaming` war auf allen fünf Stufen
+      noch `true`, die Instanzzahlen sind also **Untergrenzen**. Was fehlt, ist
+      derselbe Lauf mit fertiger Streuung; auf diesem Software-Rasterisierer
+      ist er nicht bezahlbar (s. dort).
