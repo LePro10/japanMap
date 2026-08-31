@@ -1,5 +1,7 @@
 import './style.css';
 
+import { Vector3 } from 'three';
+
 import { AudioSystem } from './audio/AudioSystem';
 import { FreeFlyController } from './camera/FreeFlyController';
 import { Engine } from './core/Engine';
@@ -491,6 +493,16 @@ async function boot(): Promise<void> {
     hud.setMoney(profile.yen);
   });
 
+  // Das Straßennetz in die Minikarte — P25. **Hier und nicht oben** bei der
+  // Spiegelung, obwohl es dasselbe Ereignis ist: `hud` entsteht erst in dieser
+  // Zeile, und ein Zugriff darauf aus einem Abschluss weiter oben wäre nur
+  // deshalb erlaubt, weil `roads:ready` später kommt. Das ist eine Annahme über
+  // die Reihenfolge, und dieses Projekt hat für Annahmen über Reihenfolgen
+  // schon bezahlt.
+  engine.bus.on('roads:ready', ({ network }) => {
+    hud.setNetwork(network.file);
+  });
+
   engine.bus.on('drive:mode', ({ active }) => {
     hud.setDriveActive(active);
     if (active) hud.setGate(drive.laps.readouts.naechstesTor);
@@ -579,6 +591,12 @@ async function boot(): Promise<void> {
   // im HUD: das HUD zeigt an, es rechnet nicht.
   let lastChain = 0;
   let lastBanked = 0;
+  // Wiederverwendete Puffer für die Minikarte: der Richtungsvektor und die
+  // Gegnerliste entstehen **einmal** und werden je Frame überschrieben. Drei
+  // Einträge, deren Felder beschrieben statt neu angelegt werden — bei 60 Hz
+  // sind das 10 800 nicht angelegte Objekte je Minute.
+  const NAV_DIR = new Vector3();
+  const navRivals: { x: number; z: number }[] = [];
 
   engine.add({
     name: 'DriveHudUpdate',
@@ -634,6 +652,33 @@ async function boot(): Promise<void> {
         hud.hideRace();
       }
       if (race.state === 'idle') hud.setGate(drive.laps.readouts.naechstesTor);
+
+      // ── Minikarte und Richtungspfeil — P25 ───────────────────────────
+      //
+      // Die Kamerarichtung kommt aus der **Kamera** und nicht aus
+      // `ChaseCamera.#heading`: es gibt zwei Kameras (Verfolger und Haube), und
+      // eine Anzeige, die nur eine davon kennt, zeigt bei der anderen falsch.
+      // `getWorldDirection` ist die eine Quelle, die für beide stimmt.
+      engine.camera.getWorldDirection(NAV_DIR);
+      let marks = 0;
+      for (let i = 0; i < race.rivals.count; i++) {
+        const p = race.rivals.positionOf(i);
+        if (!p) continue;
+        // Den vorhandenen Eintrag beschreiben statt einen neuen anzulegen.
+        const slot = navRivals[marks] ?? (navRivals[marks] = { x: 0, z: 0 });
+        slot.x = p.x;
+        slot.z = p.z;
+        marks++;
+      }
+      navRivals.length = marks;
+      hud.updateNav(
+        drive.vehicle.position.x,
+        drive.vehicle.position.z,
+        drive.vehicle.yaw,
+        Math.atan2(NAV_DIR.x, NAV_DIR.z),
+        navRivals,
+        race.nextCheckpointPoint(),
+      );
     },
     dispose: () => {
       hud.dispose();

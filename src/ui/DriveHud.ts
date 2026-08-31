@@ -3,6 +3,8 @@ import type { DriftState } from '@/game/DriftScore';
 import type { LapResult } from '@/game/LapTimer';
 import type { RaceStanding } from '@/game/RaceDirector';
 import type { VehicleTelemetry } from '@/game/Vehicle';
+import type { RoadFile } from '@/config/roads.config';
+import { MiniMap, type MiniMapMark } from './MiniMap';
 
 /**
  * Die Anzeige im Fahrmodus — P16, in P23 auf das Spiel erweitert.
@@ -69,6 +71,9 @@ export class DriveHud {
   readonly #countdown: HTMLElement;
   readonly #result: HTMLElement;
   readonly #money: HTMLElement;
+  readonly #arrow: HTMLElement;
+  readonly #map: MiniMap;
+  #arrowDeg = 999;
 
   /** Zuletzt geschriebener Text je Feld — spart das Layout, s. o. */
   readonly #written = new Map<HTMLElement, string>();
@@ -108,6 +113,9 @@ export class DriveHud {
           <span class="hud__gearLabel" data-hud="gear"></span>
         </div>
       </div>
+      <div class="hud__nav">
+        <div class="hud__arrow" data-hud="arrow" hidden><i></i></div>
+      </div>
       <div class="hud__countdown" data-hud="countdown" hidden>3</div>
       <div class="hud__result" data-hud="result" hidden></div>
       <div class="hud__flash" data-hud="flash" hidden></div>`;
@@ -132,6 +140,63 @@ export class DriveHud {
     this.#countdown = this.#must('[data-hud="countdown"]');
     this.#result = this.#must('[data-hud="result"]');
     this.#money = this.#must('[data-hud="money"]');
+    this.#arrow = this.#must('[data-hud="arrow"]');
+    this.#map = new MiniMap(this.#must('.hud__nav'));
+  }
+
+  /**
+   * Das Straßennetz für die Minikarte — einmal, aus `roads:ready`.
+   *
+   * Hereingereicht und nicht selbst geholt: dieses HUD hat keinen Bus, und das
+   * ist Absicht. Es zeigt an, es sucht sich nichts.
+   */
+  setNetwork(file: RoadFile | null): void {
+    this.#map.setNetwork(file);
+  }
+
+  /**
+   * Minikarte und Richtungspfeil — P25.
+   *
+   * ## Warum der Pfeil relativ zur **Kamera** zeigt und nicht zum Fahrzeug
+   *
+   * Man sieht die Welt durch die Kamera, nicht durch die Motorhaube. Im Drift
+   * steht der Wagen bis zu 60° quer; ein Pfeil, der gegen den Gierwinkel
+   * gerechnet ist, schwenkt dann um 60°, ohne dass sich am Bild etwas geändert
+   * hätte. Er würde also den Schwimmwinkel anzeigen und nicht den Weg.
+   *
+   * ## Und warum er im Leerlauf verschwindet
+   *
+   * Ohne Veranstaltung gibt es kein Ziel. Ein Pfeil, der dann irgendwohin zeigt
+   * — auf den Startpunkt, auf die Streckenmitte —, ist schlimmer als keiner:
+   * er behauptet eine Aufgabe, die es nicht gibt.
+   */
+  updateNav(
+    x: number,
+    z: number,
+    heading: number,
+    cameraHeading: number,
+    rivals: readonly MiniMapMark[],
+    target: MiniMapMark | null,
+  ): void {
+    if (!this.#visible) return;
+    this.#map.update(x, z, heading, rivals, target);
+
+    if (!target) {
+      if (!this.#arrow.hidden) this.#arrow.hidden = true;
+      return;
+    }
+    if (this.#arrow.hidden) this.#arrow.hidden = false;
+    // Peilung in Weltkoordinaten, dieselbe Konvention wie überall:
+    // `forward = (sin ψ, 0, cos ψ)`, also `ψ = atan2(dx, dz)`.
+    const bearing = Math.atan2(target.x - x, target.z - z);
+    let rel = bearing - cameraHeading;
+    // Auf −π…π bringen — sonst dreht der Pfeil an der Naht einmal ganz herum.
+    rel = Math.atan2(Math.sin(rel), Math.cos(rel));
+    const deg = Math.round((rel * 180) / Math.PI);
+    if (deg !== this.#arrowDeg) {
+      this.#arrowDeg = deg;
+      this.#arrow.style.transform = `rotate(${deg}deg)`;
+    }
   }
 
   /**
@@ -380,6 +445,7 @@ export class DriveHud {
     if (this.#flashTimer !== null) window.clearTimeout(this.#flashTimer);
     this.#flashTimer = null;
     this.#written.clear();
+    this.#map.dispose();
     this.#root.remove();
   }
 }

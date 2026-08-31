@@ -10206,6 +10206,162 @@ und Physik können damit nicht auseinanderlaufen.
       Bergpass hat keinen Platz, der die drei Bedingungen erfüllt — dort ist
       jede Gerade kürzer als 130 m. Eine Schanze dort bräuchte eine kürzere
       Anlaufbedingung und damit eine andere Auslegung.
-- [ ] **Die Sammelstücke stehen ohne Ton und ohne Partikel.** Ein Klick ist zu
-      wenig; was fehlt, ist ein sichtbarer Aufsammel-Effekt.
+- [x] ~~**Die Sammelstücke stehen ohne Ton und ohne Partikel.**~~ In P25
+      nachgeholt: ein Meldeton (`AudioSystem.#chime`) und ein Aufsammel-Effekt
+      über dieselbe Instanzliste, also ohne zusätzlichen Draw-Call.
 - [ ] Auf einem echten Telefon nicht geprüft.
+
+---
+
+# P25 — Der Politur-Durchgang: was ein Bild zeigt und keine Zahl
+
+> **Anlass:** „alles top visuell, keine Bugs, alles polished — und mach noch
+> neue Sachen." Kein neues System, sondern ein Durchgang durch das, was P22 bis
+> P24 gebaut haben, mit einer Kamera in der Hand.
+
+## Der Befund, mit dem es anfing
+
+Ein einziges Bild (`.cache/shots/drift.png`) hat vier Fehler auf einmal gezeigt,
+und **keiner** davon stand in irgendeiner Kennzahl:
+
+| im Bild | in den Zahlen |
+|---|---|
+| Die Staubfahne war eine Kette weißer Scheiben | 300 lebende Instanzen, ein Draw-Call |
+| Die Blütenblätter waren weiße Rechtecke | 760 Instanzen, `anteilNichtSchwarz` 1,000 |
+| Die Kirschbäume waren rosa Schilder | 40 Instanzen, korrekte Matrizen |
+| Die Driftzone hatte am Boden **gar keine** Anzeige | `driftBonusAt()` lieferte 2 |
+
+Das ist die Fehlerform, die in CLAUDE.md unter *„es war im Bild, nur als etwas
+anderes"* steht — diesmal viermal nebeneinander in einem Frame.
+
+## 1. Die Staubfahne: eine Zahl, die dreißigmal zu groß war
+
+Ein Partikel ist ein `MeshBasicMaterial`. Was in `dustColor` steht, ist
+**direkt** die Helligkeit im Bild — ohne Licht, ohne Schatten, ohne
+Abschwächung. Dort stand `[0.55, 0.49, 0.4]`, und der Kommentar daneben sagte
+das Richtige: *Staub streut Himmelslicht, er leuchtet nicht.* Die Zahl sagte
+etwas anderes.
+
+Gemessen an `.cache/shots/drift.png`, alles linear:
+
+```
+  Boden neben dem Wagen        0,005
+  Boden, besonnt, in der Ferne 0,021
+  hellster Staubfleck          0,159   ← 31× der Boden, aus dem er aufgewirbelt wird
+  Himmel                       0,43…0,78
+```
+
+Dazu ein zweiter, unabhängiger Fehler in derselben Fahne: `puff()` benutzte
+`smoothstep`, und das ist ein **Plateau** — bei halbem Radius noch 89 %
+Deckkraft. Jeder Ballen war damit eine randscharfe Scheibe mit schmalem Saum,
+und bei 1,05 m Endgröße gegen gut 1 m Ballenabstand berührten sie sich gerade
+eben. Das ergibt eine Perlenkette und keine Fahne.
+
+**Und die erste Korrektur schoss über das Ziel hinaus** — sie drehte an *beiden*
+Reglern zugleich (Farbe auf 0,058 **und** Alpha halbiert, zusammen 1/19). Danach
+war überhaupt keine Fahne mehr da, auch nicht bei dreifacher Partikelhelligkeit
+im Lauf (`material.color.setScalar(3)`, `.cache/shots/staub-k3.png`): 300 lebende
+Instanzen, null Sichtbarkeit. Dieselbe Lehre wie „die Stadt als heller Fleck"
+(P8.8) und „der weiße Teppich war die Kielwelle" (P19), nur verschärft: **wer an
+zwei Reglern gleichzeitig dreht, weiß hinterher nicht, welcher es war.**
+
+Der endgültige Wert kommt aus der einen belastbaren Messung. Der Beitrag ist in
+Farbe und Alpha linear, also gilt `Spitze ≈ 0,159 · (Farbe/0,55) · (Alpha/0,32)`;
+mit 0,20 und 0,22 folgt 0,045 — das Achtfache des Bodens daneben.
+
+## 2. Die Blütenblätter waren Quadrate
+
+Im Fragment-Shader stand die Begründung, warum ein Blatt keine Form braucht:
+*„ein rosa Fleck von 18 cm ist auf 30 m Entfernung zwei Pixel groß."* Der Satz
+stimmt — und die Rechnung setzt **30 m** voraus. Über die Driftzone fährt man
+mitten hindurch; dort ist dasselbe Blatt neunzig Pixel breit, und dann ist es
+sichtbar das, was es ist: ein Quad ohne Alphamaske.
+
+Dazu dieselbe Pegelfrage wie beim Staub: `uColor` stand bei `(0.98, 0.78, 0.86)`
+— heller als der Himmel dahinter, in einem Material ohne Beleuchtung. Der neue
+Wert ist an der **Krone** bemessen, aus der die Blätter fallen (gemessen linear
+0,32 / 0,19 / 0,22).
+
+## 3. Die Kirschbäume waren Schilder — und die Ursache war nicht die Kastenform
+
+Der naheliegende Schluss aus dem Bild wäre: *drei achsenparallele Kästen sind zu
+wenig Geometrie.* Das ist die halbe Antwort. Die andere Hälfte ist das Licht:
+diese Karte hat **eine** Tageszeit, und die Sonne steht 2,23° über dem Horizont.
+Zwischen einer waagerechten und einer senkrechten Fläche liegt dann kaum ein
+Helligkeitsunterschied — und wenn alle Flächen dieselbe Farbe tragen, gibt es im
+Bild auch keinen.
+
+Eine Krone braucht ihre Tiefe deshalb **in der Farbe**: drei Blütentöne (oben
+hell, unten im Eigenschatten), neun statt drei Ballen, und jeder um 20…40° um
+die Hochachse gedreht. Die Drehung ist der eigentliche Punkt — ein Stapel
+achsenparalleler Kästen bleibt aus jeder Richtung ein Stapel Rechtecke, egal wie
+viele es sind.
+
+Dieselbe Rechnung bei den Fahnen: aus einer Platte wurden vier Segmente mit
+wachsendem Ausschlag in zwei Tönen, und die Instanzmatrix dreht sie im Wind
+(zwei Sinus mit teilerfremden Perioden plus ein Phasenversatz aus der Position —
+sonst schlagen alle im Gleichtakt, und das liest sich als Mechanik).
+
+## 4. Neu: Minikarte, Richtungspfeil, Zonenring, Meldetöne
+
+Vier Dinge, die dieselbe Lücke schließen — *der Spieler weiß nicht, was gerade
+passiert oder wo er ist.*
+
+- **Minikarte** (`src/ui/MiniMap.ts`). 9,4 km², acht Strecken, und bis P24 keine
+  einzige Möglichkeit, sich darauf zurechtzufinden. Nordfest, weil man dieselben
+  acht Strecken immer wieder fährt und Wiedererkennbarkeit dann mehr wert ist als
+  die bequemere Drehung. Zwei Ebenen: das Straßennetz **einmal** auf eine eigene
+  Leinwand, je Frame nur ein `drawImage` und höchstens fünf Kreise.
+- **Richtungspfeil** zum nächsten Kontrollpunkt, gerechnet gegen die
+  **Kamerarichtung** und nicht gegen den Gierwinkel: im Drift steht der Wagen bis
+  60° quer, und ein Pfeil gegen den Gierwinkel zeigte dann den Schwimmwinkel an
+  statt den Weg. Ohne Veranstaltung ist er weg — ein Pfeil, der irgendwohin
+  zeigt, behauptet eine Aufgabe, die es nicht gibt.
+- **Bodenring der Driftzone.** Der Kopf von `#buildZones` sagt, ein Kreis aus
+  rosa Kronen sei auf 200 m eindeutig und eine Bodenmarkierung nicht. Das stimmt
+  für *wo ist die Zone* — und ist die falsche Frage für den, der schon drin ist.
+  96 Stützpunkte, jeder auf dem Gelände abgetastet, 12 cm darüber.
+- **Meldetöne.** Sammelstück, Kontrollpunkt und Rundenende waren stumm. Ein
+  Dreieckoszillator je Ereignis, 90…160 ms, leicht steigend — ein fallender Ton
+  liest sich als „vorbei", ein steigender als „gut gemacht".
+
+## Akzeptanz
+
+- [x] Staubfahne: p99 der unteren Bildhälfte **0,0475** gegen Median 0,0137
+      (Faktor 3,5). Vorher 0,159 gegen 0,005 (Faktor 31). Im Bild eine
+      zusammenhängende Schwade statt getrennter Scheiben
+      (`.cache/shots/staub.png`).
+- [x] Blütenblätter mit Form (Ellipse mit Spitze, weicher Rand) und an der Krone
+      bemessener Farbe; zusätzlich Ausblenden unter 1,5 m Kameraabstand.
+- [x] Kirschbäume: 22 Kästen, drei Blütentöne, gedrehte Lagen. 264 Dreiecke je
+      Baum gegen vorher 48; bei 44 Bäumen 11 616 Dreiecke in **einem**
+      Draw-Call (Budget 3 Mio.).
+- [x] Fahnen: vier Tuchsegmente, zwei Töne, Wind über die Instanzmatrix.
+- [x] Bodenring je Driftzone, dem Gelände folgend.
+- [x] Aufsammel-Effekt: das Stück wächst 0,35 s lang auf das 2,6-fache, steigt
+      1,2 m und dreht viermal so schnell — über **dieselbe** Instanzliste, also
+      null zusätzliche Draw-Calls. Dazu ein Meldeton (¥ 784 Hz, Nitro 1046 Hz).
+- [x] Minikarte gezeichnet: Puffer 168 × 168, **6,4 %** der Pixel bemalt,
+      `pointer-events` berechnet `none`, `display` `block`.
+- [x] Auf 390 × 844 (Telefon): Minikarte überlappt weder den Zeitkasten noch den
+      Touch-Tacho — gemessen mit `getBoundingClientRect` an beiden Elementen,
+      nicht aus dem Stilblatt gelesen.
+- [x] `typecheck` sauber, `vite build` läuft durch, **`tools/smoke.mjs`: alle
+      16 Prüfungen grün**, darunter die neue „Minikarte gezeichnet"
+      (`bemalt 0.0677`, `display block`) und „Konsole sauber".
+- [x] Draw-Calls unverändert im Budget; die Minikarte kostet **null**, weil sie
+      nicht durch WebGL geht.
+
+## Was offen bleibt
+
+- [ ] **Braune Platten in der Luft, einmal gesehen und nicht erklärt.** Auf
+      `.cache/shots/staub-k3.png` stehen rund sechs brettartige braune Flächen
+      frei in einem Waldstück — bei dreifach überhöhter Partikelhelligkeit
+      aufgenommen, also möglicherweise ein Partikelfeld, möglicherweise
+      Vegetation. Am Blickpunkt der Driftzone tritt es nicht auf
+      (`.cache/shots/diag.png`, dieselbe Überhöhung, sauber). **Nicht
+      reproduziert und nicht zugeordnet** — das gehört so dokumentiert und nicht
+      als „behoben" abgehakt.
+- [ ] Auf einem echten Telefon nicht geprüft (nur im 390 × 844-Fenster).
+- [ ] Ob sich das Fahren *gut anfühlt*, ist weiterhin keine Frage für einen
+      Prüfstand.

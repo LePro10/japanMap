@@ -273,6 +273,7 @@ gedrosselt. ~~Referenzwerte zum Gegenhalten: `wald` auf Ultra 38 948, mit Dichte
 | `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/arcade.mts` | **Der Prüfstand des Arcade-Modells (P22).** Handbremsdrift, Gasstoß im Bogen, Gegenlenken, Nitro, Belagsvergleich — und die Probe **„Drift ohne Absicht"**, die als einzige fragt, ob ein Drift *ausbleibt*, wenn niemand ihn will. Sie hat die erste Fassung des Modells gestoppt |
 | `node tools/smoke.mjs [url]` | **Die Rauchprobe (P23).** Lädt die Seite in Chromium, drückt „Play" und prüft: Bild vollständig, Fahrmodus fährt, Lenkung monoton, Schanzen heben ab, Rennen läuft, HUD steht, Menü trägt Veranstaltungen — **und liest die Konsole mit**. Braucht `npm i --no-save playwright-core` und einen laufenden Dev-Server |
 | `node tools/find-ramps.mjs` | **Schanzenplätze suchen (P24).** Liest Höhenfeld und Straßennetz und findet Stellen mit geradem Anlauf, tragfähigem Fundament und freier Landefläche. Vier von fünf handgesetzten Koordinaten waren unbrauchbar |
+| `parts.material.color.setScalar(k)` | **Den Pegel eines Partikeleffekts im Lauf verstellen (P25).** `Fahrpartikel` ist ein `MeshBasicMaterial`; seine `color` multipliziert die Instanzfarbe. Damit lassen sich drei Helligkeiten in **einem** Browserlauf fotografieren, ohne die Datei anzufassen und ohne drei Neustarts |
 
 **Der Messlauf — und wofür er gebaut ist.**
 
@@ -1859,3 +1860,110 @@ Rückschritt mit Aufwand.
   Straßen entstehen aus dem Höhenfeld — der Bergpass wäre danach ein anderer, und
   jede Zahl aus P14 bis P21 wäre neu abzulesen. Wer den Aufwand nicht neben den
   Fehler stellt, repariert am Ende die Karte, um ein Pixel zu retten.
+
+---
+
+## Was in diesem Projekt schon schiefgegangen ist — Nachträge aus P25
+
+- **Ein unbeleuchtetes Material schreibt seine Zahl direkt ins Bild — und
+  niemand hatte diese Zahl je gegen das Bild gehalten.** `PARTICLES.dustColor`
+  stand bei `[0.55, 0.49, 0.4]`, mit dem Kommentar „Staub streut Himmelslicht,
+  er leuchtet nicht" daneben. Ein Partikel ist ein `MeshBasicMaterial`: was dort
+  steht, ist die fertige Helligkeit, ohne Licht, ohne Schatten, ohne
+  Abschwächung. Gemessen an `.cache/shots/drift.png`, linear: Boden neben dem
+  Wagen **0,005**, hellster Staubfleck **0,159** — Faktor **31**. Der Staub war
+  dreißigmal heller als die Erde, aus der er aufgewirbelt wurde, und ein Drittel
+  so hell wie der Himmel.
+  Dieselbe Zahl stand zweimal daneben noch einmal: `PetalFall` schrieb
+  `uColor = (0.98, 0.78, 0.86)` und `mistColor` `(0.5, 0.58, 0.66)`. Alle drei
+  sind Materialien ohne Beleuchtung, alle drei waren nach Gefühl gesetzt.
+  Lehre: **wo ein Material seine Farbe unbeleuchtet ins Bild schreibt, ist die
+  Zahl eine Bildgröße und keine Materialgröße** — sie gehört gegen einen
+  gemessenen Bezugspunkt gesetzt (hier: der besonnte Boden, 0,021), nicht gegen
+  eine Vorstellung von „staubfarben". Das ist derselbe Satz wie „ein Wert, dessen
+  Wirkung von der Abtastrate abhängt, ist keine Materialgröße" aus P19, nur eine
+  Achse weiter.
+
+- **An zwei Reglern gleichzeitig gedreht — und danach war nichts mehr da.** Die
+  Korrektur oben setzte die Farbe auf 0,058 **und** halbierte `dustAlpha`,
+  zusammen 1/19 des alten Beitrags. Ergebnis: gar keine Fahne mehr, auch nicht
+  bei dreifach überhöhter Partikelhelligkeit im Lauf (300 lebende Instanzen,
+  null Sichtbarkeit). Ein zweiter Bilderlauf war nötig, nur um zu erfahren,
+  welcher der beiden Regler zu weit stand.
+  Lehre: dieselbe wie „die Stadt als heller Fleck" (P8.8) und „der weiße Teppich
+  war die Kielwelle" (P19) — nur schärfer. **Ein Regler je Messung.** Und wo der
+  Beitrag linear ist, rechnet man den neuen Wert aus der einen belastbaren
+  Messung aus, statt ihn zu schätzen: `Spitze ≈ 0,159 · (Farbe/0,55) ·
+  (Alpha/0,32)`.
+
+- **Ein A/B, dessen Rauschband größer war als sein Signal — und der erste Lauf
+  hat das Rauschband gar nicht gemessen.** Um die Fahne zu isolieren, wurden
+  zwei Bilder gemacht (Partikelmaterial sichtbar / unsichtbar) und mit
+  `tools/bench/imgdiff.mjs` verglichen: **94,1 % geänderte Pixel, mittlere
+  Differenz 28,8.** Das ist nicht der Staub, das sind zwei verschiedene Frames —
+  zwischen den Aufnahmen lief die Fahrt weiter, die Verfolgerkamera setzte sich
+  neu, die Streuung strömte nach.
+  Mit stillgelegter Kamera und zwei Aufnahmen unmittelbar hintereinander lag das
+  **Rauschband** (dasselbe Bild zweimal) bei **70,8 % / 40,3** und das Signal bei
+  **7,2 % / 1,8**. Ein Signal unter dem Rauschband ist keine Messung.
+  Lehre: **„erst ein Rauschband messen, dann nur Effekte darüber ernst nehmen"
+  (P8.6) gilt auch dann, wenn die Änderung offensichtlich lokal ist.** Und: wenn
+  das Rauschband nicht zu drücken ist, misst man die Sache **innerhalb eines
+  Bildes** gegen ihre eigene Umgebung — hier Fahne gegen den Boden daneben —
+  statt zwei Bilder gegeneinander.
+
+- **Eine Begründung, die für einen Abstand gilt und für alle gelesen wurde.** Im
+  Fragment-Shader von `PetalFall` stand: *„ein rosa Fleck von 18 cm ist auf 30 m
+  Entfernung zwei Pixel groß, und zwei Pixel brauchen keine Blütenform."* Der
+  Satz stimmt — und seine Rechnung setzt 30 m voraus. Blüten fallen über der
+  Driftzone, und da fährt man mitten hindurch: auf 2 m ist dasselbe Blatt
+  neunzig Pixel breit, und dann steht es als scharfkantiges helles Rechteck im
+  Bild, weil es nie eine Alphamaske hatte.
+  Lehre: **eine Begründung, die eine Zahl voraussetzt, gehört mit dieser Zahl
+  aufgeschrieben — und geprüft, ob sie im ganzen Wertebereich gilt.** Dieselbe
+  Klasse wie „eine Eigenschaft für *alle* an einem Teil geprüft" weiter oben, nur
+  über die Entfernung statt über die Instanzen.
+
+- **Mehr Geometrie war die halbe Antwort; die andere Hälfte war die Farbe.** Die
+  Kirschbaumkronen standen als flache rosa Schilder in der Landschaft. Der
+  naheliegende Schluss — drei achsenparallele Kästen sind zu wenig — greift zu
+  kurz: diese Karte hat **eine** Tageszeit, und die Sonne steht 2,23° über dem
+  Horizont. Zwischen einer waagerechten und einer senkrechten Fläche liegt dann
+  kaum ein Helligkeitsunterschied, und wenn alle Flächen dieselbe Farbe tragen,
+  gibt es im Bild auch keinen. Erst drei Blütentöne **und** um 20…40° gedrehte
+  Lagen ergeben eine Krone; neun achsenparallele Kästen wären aus jeder Richtung
+  weiter ein Stapel Rechtecke gewesen.
+  Lehre: **in einer Szene mit streifendem Licht muss die Form ihre Tiefe in der
+  Farbe mitbringen.** Wer nur Dreiecke nachlegt, bezahlt Budget für ein Bild,
+  das sich nicht ändert.
+
+- **Eine Inline-Breite schlägt jede Medienabfrage.** Die Minikarte setzte ihre
+  Anzeigegröße in `#resize()` über `style.width`. Auf einem Telefon hätte sie
+  damit 168 px behalten, obwohl `style.css` unter `max-width: 720px`
+  ausdrücklich 116 px vorschreibt — eine Inline-Angabe steht über allem im
+  Stilblatt. Das ist die `pointer-events`-Falle aus P10.2 mit vertauschten
+  Rollen: dort schlug ein ID-Selektor die Klassenregel, hier eine
+  JavaScript-Zuweisung das ganze Stilblatt.
+  Lehre: **die Anzeigegröße gehört dem Stilblatt, die Pufferauflösung dem Code.**
+  Und geprüft wird, wie immer bei `src/ui/`, der **berechnete** Wert.
+
+- **Zwei HUD-Kästen, die sich auf dem Telefon überlagert hätten.** Die erste
+  Fassung stellte die Minikarte auf dem Telefon nach links oben (`top: 58px`) —
+  dorthin, wo `.hud__lap` steht (min-width 152 px, rund 84 px hoch, `top: 64px`).
+  Gefunden hat es kein Blick in die Datei, sondern ein `getBoundingClientRect` an
+  **beiden** Elementen in einem 390 × 844-Fenster.
+  Lehre: **zwei absolut positionierte Kästen sind erst dann nebeneinander, wenn
+  jemand ihre Rechtecke gegeneinander gerechnet hat.** Ein Stilblatt, in dem
+  beide Regeln plausibel aussehen, sagt darüber nichts.
+
+- **Ein Befund, der nicht reproduzierbar war — und deshalb offen bleibt.** Auf
+  einem Bild mit dreifach überhöhter Partikelhelligkeit standen rund sechs
+  brettartige braune Flächen frei in der Luft in einem Waldstück
+  (`.cache/shots/staub-k3.png`). Am Blickpunkt der Driftzone trat es bei
+  derselben Überhöhung nicht auf (`.cache/shots/diag.png`, sauber). Ob es ein
+  Partikelfeld war oder Vegetation, ist **nicht geklärt**.
+  Er steht als offener Punkt in PLAN.md P25 und nicht als behoben. Lehre — und
+  sie ist der Grund, warum dieses Kapitel existiert: **ein Befund, den man nicht
+  zuordnen kann, wird aufgeschrieben und nicht weggeräumt.** Die Alternative wäre
+  eine Reparatur auf Verdacht gewesen, und davon hat dieses Projekt schon zwei
+  gebaut, die nichts bewirkt haben.

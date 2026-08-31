@@ -313,6 +313,34 @@ try {
     bad('HUD fehlt oder fängt Klicks', JSON.stringify(hud));
   }
 
+  // ── 6b. Minikarte — P25 ───────────────────────────────────────────────
+  //
+  // **Gemessen wird, ob sie bemalt ist**, und nicht, ob das Element da ist. Ein
+  // leeres Canvas an der richtigen Stelle mit der richtigen Größe besteht jede
+  // Prüfung, die nur den DOM ansieht — und genau so wäre der Fehler „Netz nie
+  // angekommen" durchgerutscht. Der Anteil nicht-durchsichtiger Pixel ist die
+  // Zahl, die das beantwortet.
+  const karte = await page.evaluate(() => {
+    const map = document.querySelector('.hud__map');
+    if (!map) return null;
+    const ctx = map.getContext('2d');
+    const d = ctx.getImageData(0, 0, map.width, map.height).data;
+    let n = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] > 8) n++;
+    return {
+      breite: map.width,
+      hoehe: map.height,
+      bemalt: +(n / (d.length / 4)).toFixed(4),
+      // Der berechnete Wert, nicht der geschriebene (P10.2).
+      display: getComputedStyle(map).display,
+    };
+  });
+  if (karte && karte.bemalt > 0.01 && karte.display !== 'none') {
+    ok('Minikarte gezeichnet', JSON.stringify(karte));
+  } else {
+    bad('Minikarte leer oder fehlt', JSON.stringify(karte));
+  }
+
   // ── 7. Menü ───────────────────────────────────────────────────────────
   const menu = await page.evaluate(() => {
     const tabs = [...document.querySelectorAll('.menu__tab')].map((b) => b.dataset.tab);
