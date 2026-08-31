@@ -1579,6 +1579,17 @@ standen **ausschließlich in der Browser-Konsole**, und die liest sie mit.
   nach Monotonie hinter der Spitze fragte — und nicht danach, ob die Antwort
   überhaupt mit der Eingabe wächst.
 
+  > **Zum zweiten Mal, P25, und diesmal in der Browser-Konsole.** Bei jedem
+  > Laden dieser Karte steht dort seit P5.1:
+  > *„PropSystem: „modular_wooden_pier.glb" hat 3 Meshes; nur das erste wird
+  > instanziert."* Nachgezählt im glb: 86 / 2061 / 835 Dreiecke — gezeichnet
+  > wird das erste, also **2,9 %** des Modells. Der Steg am Hafen ist seit
+  > Monaten fast vollständig unsichtbar, und die Meldung dazu lief bei jedem
+  > Start durch. Sie ist nicht repariert (Begründung in PLAN.md P25: ein
+  > Exemplar auf der ganzen Karte), aber sie ist jetzt **gemessen** — und der
+  > Unterschied zwischen „steht in der Konsole" und „jemand hat es gelesen" ist
+  > derselbe wie oben.
+
 - **Eine Regelgröße ohne Gleichgewichtspunkt.** Der erste Entwurf des Drifts
   addierte eine feste Gierrate. Im stationären Drift ist die Gierrate aber die
   **Bahnkrümmung**, und die ist durch `a_lat/v` gedeckelt — ein Sollwert
