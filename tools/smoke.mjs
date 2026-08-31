@@ -239,6 +239,7 @@ try {
       let peak = 0;
       let kante = 0;
       let fliegt = false;
+      let fertig = false;
       let y0 = 0;
       for (let i = 0; i < 60 * 8; i++) {
         drive.simulateStep(1 / 60, { throttle: 1, brake: 0, steer: 0, handbrake: false });
@@ -250,9 +251,33 @@ try {
             y0 = pos.y;
             kante = t.speed * 3.6;
           }
-        } else {
-          if (t.airborne) air += 1 / 60;
-          peak = Math.max(peak, pos.y - y0);
+        } else if (!fertig) {
+          // **Der Sprung ist der erste Bogen, und er endet beim ersten
+          // Bodenkontakt.** Gemessen an `ridge-kicker` (landet auf 12,1 m
+          // Gefälle), Bögen zwischen zwei Kontakten mit ihrer größten Höhe
+          // über Grund:
+          //
+          //     #0   2,65 s   15,82 m   <- der Sprung
+          //     #1   0,45 s    0,99 m
+          //     #2…#11  0,02…0,20 s   0,67…0,78 m
+          //
+          // Alles ab #1 ist die Federung, die auf rauem Gefälle kurz den
+          // Kontakt verliert — Radflattern unterhalb des Federwegs, keine
+          // Flugzeit. `coast-kicker` zeigt dasselbe Muster (2,72 s / 12,52 m,
+          // dann Hopser bei 1,2 m).
+          //
+          // ~~Eine halbe Sekunde durchgehender Bodenkontakt beendet den
+          // Sprung.~~ Das war der erste Entwurf und griff genau dort nicht, wo
+          // es darauf ankommt: auf einem rauen Gefälle wird der Kontakt nie
+          // 0,5 s am Stück, `ridge-kicker` blieb bei 4,92 s statt 2,65 s. Ein
+          // Schwellenwert war hier überhaupt die falsche Bauform — der erste
+          // Kontakt ist die Landung, und dafür braucht es keine Zahl.
+          if (t.airborne) {
+            air += 1 / 60;
+            peak = Math.max(peak, pos.y - y0);
+          } else {
+            fertig = true;
+          }
         }
       }
       out.jumps.push({
