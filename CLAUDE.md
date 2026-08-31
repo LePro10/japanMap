@@ -1956,6 +1956,36 @@ Rückschritt mit Aufwand.
   jemand ihre Rechtecke gegeneinander gerechnet hat.** Ein Stilblatt, in dem
   beide Regeln plausibel aussehen, sagt darüber nichts.
 
+- **Eine Tonspur hat das ganze Spiel angehalten.** Die Web-Audio-API **wirft**
+  bei einem nicht-endlichen Wert an einem `AudioParam` — eine `TypeError`,
+  mitten im Frame. Sie läuft durch `AudioSystem.update` → `Engine.#update` →
+  `RenderLoop.#frame` und beendet die Schleife: Bild steht, Auto steht, Spiel
+  tot. Für eine Tonspur ist das ein absurd hoher Preis, und in einem
+  Portalspiel ist es der Unterschied zwischen „hakt kurz" und „ist kaputt".
+  Zwei Verstärker: die Drehzahlglättung `x += (ziel − x)·k` ist **klebrig** (ein
+  NaN bleibt für immer, auch wenn die Telemetrie sich erholt), und der Stapel
+  endet in der Browser-API, zeigt also nirgends auf die Ursache.
+  Gefunden hat es **kein Bild und keine Kennzahl**, sondern ein Prüflauf, der
+  aus einem ganz anderen Grund lief. Lehre: **eine Anzeige-Schicht darf die
+  Simulation nicht mitnehmen können** — sie liest Zahlen, die anderswo entstehen,
+  und muss mit jeder davon zurechtkommen. Wo eine fremde API bei schlechten
+  Eingaben wirft, gehört genau **ein** Ort davor, an dem geprüft wird (hier
+  `rampe()`), und nicht ein `if` je Aufrufstelle: sechs Stellen sind sechs
+  Gelegenheiten, eine zu vergessen, und die siebte baut jemand nächstes Jahr ein.
+
+- **Ein Zweig, der nie wahr werden kann — diesmal beim Hinschreiben bemerkt.**
+  Die Randstreifen der Schanze sollten auf den äußersten Spalten des Rasters
+  liegen (`c <= 0 || c >= ACROSS − 1`). Genau die liegen aber auf dem Saum
+  (`RAMP_SKIRT`), wo `lift` null ist — sie fallen also schon in den Zweig
+  darüber, und der Randstreifen wäre nie gezeichnet worden. Ein Bild hätte
+  gezeigt, dass die Streifen fehlen; *warum* sie fehlen, hätte es nicht gezeigt.
+  Lehre — und sie ist der billige Fall derselben Klasse wie die drei toten
+  Stellschrauben dieses Projekts (`viewDistance`, `shadowCascades`,
+  `minSpinGrip`): **wer eine Bedingung über einen Index schreibt, rechnet
+  nach, welche Indizes sie trifft und ob sie überhaupt bis dorthin kommt.**
+  Eine Zeile Rechnung gegen einen Regler, der Monate braucht, bis jemand merkt,
+  dass er nichts tut.
+
 - **Ein Befund, der nicht reproduzierbar war — und deshalb offen bleibt.** Auf
   einem Bild mit dreifach überhöhter Partikelhelligkeit standen rund sechs
   brettartige braune Flächen frei in der Luft in einem Waldstück

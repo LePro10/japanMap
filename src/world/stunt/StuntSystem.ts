@@ -63,6 +63,8 @@ const RAMP_GRID_ACROSS = 12;
 const RAMP_SKIRT = 0.6;
 
 const RAMP_COLOR = 0xb4462c;
+/** Der dunklere Ton der Querbalken. Begründung an der Stelle, die ihn setzt. */
+const RAMP_COLOR_DARK = 0x7d2f1e;
 const RAMP_EDGE_COLOR = 0xe6d8c0;
 const SAKURA_TRUNK = 0x4a3b30;
 /**
@@ -198,6 +200,7 @@ export class StuntSystem implements System {
     const color = new Color();
     const edge = new Color(RAMP_EDGE_COLOR);
     const body = new Color(RAMP_COLOR);
+    const bodyDark = new Color(RAMP_COLOR_DARK);
 
     for (const ramp of RAMPS) {
       const base = positions.length / 3;
@@ -225,7 +228,42 @@ export class StuntSystem implements System {
           // Die Absprungkante bekommt eine helle Leiste. Sie ist der einzige
           // Teil, den man aus 200 m sieht, und sie sagt „hier hört es auf".
           const isLip = ramp.tail === 0 && s > -1.6 && lift > 0.05;
-          color.copy(isLip ? edge : body);
+          if (isLip) {
+            color.copy(edge);
+          } else if (lift <= 0.05) {
+            // Der Saum im Gelände — er soll nicht mitleuchten.
+            color.copy(body);
+          } else {
+            // ── Randstreifen und Querbalken — P25 ────────────────────────
+            //
+            // Der erste Entwurf war eine einfarbige rote Fläche, und im Bild
+            // (`.cache/shots/rampe.png`) sah sie wie ein hingelegtes Tuch aus:
+            // eine Schräge ohne Struktur gibt dem Auge nichts, woran es die
+            // Neigung ablesen könnte. Zwei Muster beheben das, und beide
+            // kosten **nichts** — sie sind Vertexfarben auf dem Raster, das
+            // ohnehin da ist:
+            //
+            //  1. **Randstreifen** hell an beiden Seiten. Sie zeichnen die
+            //     Kante nach, an der man herunterfällt, wenn man schief
+            //     anfährt — die Angabe, die beim Zielen zählt.
+            //  2. **Querbalken** über die Auffahrt, abwechselnd dunkler. Sie
+            //     laufen mit der Perspektive zusammen und sagen damit im Bild,
+            //     wie steil es ist.
+            //
+            // Die Farben werden zwischen den Stützpunkten interpoliert, die
+            // Balken sind also weich. Das ist hier richtig: harte Kanten
+            // bräuchten die doppelte Zahl an Stützpunkten und ergäben ein
+            // Warnschild statt einer Schanze.
+            // **Spalte 1 und `ACROSS − 2`, nicht 0 und `ACROSS − 1`.** Die
+            // äußersten beiden Spalten liegen auf dem Saum (`RAMP_SKIRT`), und
+            // dort ist `lift` null — sie fallen also schon in den Zweig
+            // darüber. Ein Randstreifen auf ihnen wäre eine Bedingung, die nie
+            // wahr wird: dieselbe Klasse wie die drei toten Stellschrauben
+            // dieses Projekts, nur beim Hinschreiben bemerkt statt nach Monaten.
+            const randnah = c <= 1 || c >= RAMP_GRID_ACROSS - 2;
+            const balken = a % 4 < 2;
+            color.copy(randnah ? edge : balken ? bodyDark : body);
+          }
           colors.push(color.r, color.g, color.b);
         }
       }
@@ -663,10 +701,16 @@ function hash(x: number, z: number): number {
  *  3. **Drei Farbtöne.** Begründung bei `SAKURA_TOP` — in der blauen Stunde
  *     trennt das Licht die Flächen nicht, also muss die Farbe es tun.
  *
- * Kosten: 22 Kästen · 12 Dreiecke = 264 Dreiecke je Baum gegen vorher 48. Bei
- * 40 Bäumen sind das 10 560 Dreiecke in **einem** Draw-Call, gegen ein Budget
- * von 3 Mio. — das ist ein Drittel Prozent für das Ding, um das die halbe
- * Driftzone gebaut ist.
+ * Kosten, **nachgezählt** und nicht geschätzt (12 Kästen · 12 Dreiecke):
+ * 144 Dreiecke je Baum gegen vorher 48, bei 44 Bäumen (24 + 20, siehe
+ * `DRIFT_ZONES`) also **6336** in *einem* Draw-Call. Das Budget aus SPEC §4
+ * liegt bei 3 Mio.
+ *
+ * > Hier stand zuerst „22 Kästen … 10 560 Dreiecke". Beides war falsch: die
+ * > Funktion hat zwölf Kästen, und Bäume gibt es 44, nicht 40. Die Zahlen waren
+ * > beim Schreiben geschätzt statt gezählt — genau der Fehler, den CLAUDE.md
+ * > unter „eine Zahl als Begründung geschrieben, ohne sie zu messen" führt,
+ * > diesmal nur an einer Kostenangabe und nicht an einer Wirkung.
  */
 function createSakura(): BufferGeometry {
   return mergeBoxes([
