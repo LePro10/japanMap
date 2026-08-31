@@ -41,15 +41,48 @@
  * ```
  *
  * Bei 120 km/h (33,3 m/s) und 12° Absprungwinkel sind das **46 m Weite und
- * 2,4 m Scheitelhöhe**; bei 160 km/h 82 m und 4,3 m. Der Winkel ergibt sich aus
- * `atan(height / rampLength)` — er ist die eigentliche Auslegungsgröße, und
- * deshalb steht er bei jeder Schanze in Grad daneben.
+ * 2,4 m Scheitelhöhe**; bei 160 km/h 82 m und 4,3 m.
+ *
+ * ~~Der Winkel ergibt sich aus `atan(height / rampLength)`.~~
+ *
+ * ## Widerlegt, gemessen 2026-08-31: das ist die *mittlere* Neigung
+ *
+ * `liftLocal` legt die Auffahrt als **Smoothstep** an (`3t² − 2t³`), damit am
+ * Fuß kein Knick steht — die Begründung dafür ist richtig und bleibt. Die
+ * Ableitung `6t(1−t)` hat ihr Maximum bei `t = 0,5` und ist dort **1,5**. Die
+ * steilste Stelle jeder Schanze ist also `atan(1,5 · height / length)` und
+ * nicht `atan(height / length)`; jede Winkelangabe in dieser Datei stand um
+ * diesen Faktor zu niedrig.
+ *
+ * Das war keine Kosmetik. Gemessen über alle sechs Schanzen, Anfahrt 140 km/h,
+ * Tempo an der Absprungkante und tiefstes Eintauchen der Blechunterkante:
+ *
+ * | Schanze | Spitze | an der Kante | Blech |
+ * |---|---|---|---|
+ * | south-crest | 7,3° | 126 km/h | 0,040 m |
+ * | paddy-launch | 13,4° | 117 km/h | 0,073 m |
+ * | harbour-jump | 14,2° | 115 km/h | 0,073 m |
+ * | ridge-kicker | 14,9° | 114 km/h | 0,069 m |
+ * | coast-kicker | 16,0° | 120 km/h | 0,094 m |
+ * | village-hop (17 m) | **19,4°** | **41 km/h** | **0,193 m** |
+ *
+ * Zwischen 16,0° und 19,4° verdoppelt sich die Blechtiefe, und die Bremse des
+ * schleifenden Blechs nimmt dem Wagen zwei Drittel seines Tempos. Aus der
+ * steilsten Schanze der Karte wurde damit eine Bremsschwelle — und im
+ * Kommentar stand „13,2°", also mitten im erlaubten Band.
  *
  * > **Über 20° wird ein Sprung unlustig.** Das Fahrzeug steht dann in der Luft
  * > steil nach oben, landet auf dem Heck und überschlägt sich fast — was dieses
  * > Modell nicht kann (siehe Kopf von `Vehicle.ts`), also klappt es stattdessen
  * > flach und sieht falsch aus. 8…16° ist das Band, in dem eine Landung wie eine
- * > Landung aussieht.
+ * > Landung aussieht — **gemessen an der Spitze**, und die Tabelle oben sagt,
+ * > dass die Obergrenze dieses Bandes zugleich die Grenze der Karosserie ist.
+ *
+ * Die Grenze selbst ist **nicht** repariert: eine Karosserie, die ab knapp 20°
+ * Anstieg schleift, trifft jeden Hang dieser Steilheit. Auf der Karte fährt
+ * niemand dort (die Straßen steigen höchstens 10,7 %), im Gelände schon. Der
+ * Befund steht als offener Punkt in PLAN.md P26 — repariert ist hier nur die
+ * Schanze, die ihn ausgelöst hat.
  */
 
 export interface Ramp {
@@ -124,7 +157,8 @@ export const RAMPS: readonly Ramp[] = [
     heading: 2.776,
     length: 24,
     width: 13,
-    // atan(3,8 / 24) = 9,0°. Bei 140 km/h ergibt das 47 m Weite.
+    // Mittlere Neigung atan(3,8 / 24) = 9,0°, Spitze 13,4°. Bei 140 km/h
+    // gemessen 94 m Weite bei 3,2 s Flug.
     height: 3.8,
     tail: 0,
   },
@@ -138,7 +172,7 @@ export const RAMPS: readonly Ramp[] = [
     heading: 0.219,
     length: 26,
     width: 13,
-    // atan(4,6 / 26) = 10,0°.
+    // Mittlere Neigung atan(4,6 / 26) = 10,0°, Spitze 14,9°.
     height: 4.6,
     tail: 0,
   },
@@ -151,7 +185,8 @@ export const RAMPS: readonly Ramp[] = [
     heading: -1.194,
     length: 22,
     width: 12,
-    // atan(4,2 / 22) = 10,8°.
+    // Mittlere Neigung atan(4,2 / 22) = 10,8°, Spitze 16,0° — die steilste,
+    // die gemessen noch sauber trägt (120 km/h an der Kante aus 140).
     height: 4.2,
     tail: 0,
   },
@@ -163,9 +198,18 @@ export const RAMPS: readonly Ramp[] = [
     x: -442.8,
     z: -90.9,
     heading: 1.277,
-    length: 17,
+    // ~~17~~ — **gemessen verlängert, und der Grund steht in der Tabelle bei
+    // `RAMPS`.** Mit 17 m lag die Spitzenneigung bei 19,4°, und dort schleift
+    // die Karosserie: aus 140 km/h Anfahrt wurden **41 km/h an der Kante**,
+    // Blechtiefe 0,193 m. Die anderen fünf Schanzen liegen bei 7,3…16,0° und
+    // halten ihr Tempo (114…126 km/h, Blech 0,040…0,094 m).
+    //
+    // Verlängert und **nicht** abgeflacht: die Höhe ist das, was den Sprung
+    // ausmacht. 4,0 m auf 22 m ergibt 15,3° Spitze — knapp unter dem
+    // `coast-kicker`, der gemessen sauber trägt.
+    length: 22,
     width: 11,
-    // atan(4,0 / 17) = 13,2°, der steilste der Liste.
+    // Mittlere Neigung atan(4,0 / 22) = 10,3°, Spitze 15,3°.
     height: 4.0,
     tail: 0,
   },
@@ -178,7 +222,7 @@ export const RAMPS: readonly Ramp[] = [
     heading: -2.705,
     length: 24,
     width: 13,
-    // atan(4,0 / 24) = 9,5°.
+    // Mittlere Neigung atan(4,0 / 24) = 9,5°, Spitze 14,2°.
     height: 4.0,
     tail: 0,
   },

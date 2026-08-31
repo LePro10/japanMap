@@ -195,25 +195,72 @@ try {
   // Auto fliegt. Ohne Anlauf wäre sie keine Probe: eine Schanze, die man aus dem
   // Stand hochfährt, hebt niemanden ab, und ein Flug von 0,0 s wäre dann kein
   // Befund über die Schanze, sondern über die Anfahrt.
+  //
+  // ## Drei Dinge, die die erste Fassung falsch gemacht hat (P26)
+  //
+  // Sie setzte den Wagen **150 m** vor der Kante ab und gab Vollgas. Damit maß
+  // sie die Anfahrt mit, und die läuft geradeaus durchs Gelände statt der
+  // Straße nach: `harbour-jump` kam so auf **0,18 s Flug bei +16 m Höhe** —
+  // die Anfahrt geht bergauf, der Wagen kroch über die Kante. Dieselbe
+  // Schanze, mit besessener Anfahrt gemessen: **3,97 s und 129 m.** Die Zahl
+  // war nie falsch abgelesen, sie war ein Befund über etwas anderes.
+  //
+  //  1. **Anlauf 12 m statt 150 m, und das Tempo wird gesetzt statt erfahren.**
+  //     Damit ist getrennt, was getrennt gehört: *hebt die Schanze ab* ist
+  //     diese Probe, *kommt man dort mit Tempo an* ist eine andere Frage.
+  //  2. **Eine Sekunde einschwingen lassen, bevor das Tempo gesetzt wird.**
+  //     Ohne das misst die Probe ihr eigenes Absetzen: das Blech steckte in den
+  //     ersten zehn Schritten bis 0,18 m im Boden, und dessen Bremse machte aus
+  //     140 km/h in 0,17 s 40 km/h. Weil die Bremswirkung mit dem Tempo wächst,
+  //     kam an der Kante **dieselbe** Zahl heraus, egal ob mit 80, 110 oder 140
+  //     angefahren wurde — ein Wert, der von der Eingabe unabhängig ist, ist
+  //     eine Klemme und kein Verlust. Vierter Fall dieser Klasse im Projekt
+  //     (P13, P14, P21, P24), und er steht in CLAUDE.md.
+  //  3. **Nur ein Abheben *an der Schanze* zählt.** Sonst rastet die Probe auf
+  //     der ersten Bodenwelle ein, die sie findet, und meldet deren Flug als
+  //     den der Schanze: bei `village-hop` wurden so aus 139 km/h 0,78 s Flug
+  //     und aus 44 km/h 3,25 s — mehr Tempo, weniger Flug.
   const stunt = await page.evaluate(async () => {
     const drive = window.japanMap.engine.systems.find((s) => s.name === 'DriveSystem');
     const cfg = await import(`${window.__smokeBase}/src/config/stunt.config.ts`);
     const out = { jumps: [], pickups: 0, zone: 0 };
+    const KMH = 140;
     for (const ramp of cfg.RAMPS) {
-      // 150 m vor der Kante, entgegen der Anfahrtsrichtung.
-      const back = 150;
-      const x = ramp.x - Math.sin(ramp.heading) * back;
-      const z = ramp.z - Math.cos(ramp.heading) * back;
-      drive.placeAt(x, z, ramp.heading);
+      const sx = Math.sin(ramp.heading);
+      const sz = Math.cos(ramp.heading);
+      drive.placeAt(ramp.x - sx * 12, ramp.z - sz * 12, ramp.heading);
+      for (let k = 0; k < 60; k++) {
+        drive.simulateStep(1 / 60, { throttle: 0, brake: 0, steer: 0, handbrake: false });
+      }
+      const v = KMH / 3.6;
+      drive.vehicle.velocity.set(sx * v, 0, sz * v);
+
       let air = 0;
       let peak = 0;
-      const y0 = drive.vehicle.position.y;
-      for (let i = 0; i < 60 * 14; i++) {
+      let kante = 0;
+      let fliegt = false;
+      let y0 = 0;
+      for (let i = 0; i < 60 * 8; i++) {
         drive.simulateStep(1 / 60, { throttle: 1, brake: 0, steer: 0, handbrake: false });
-        if (drive.vehicle.telemetry.airborne) air += 1 / 60;
-        peak = Math.max(peak, drive.vehicle.position.y - y0);
+        const t = drive.vehicle.telemetry;
+        const pos = drive.vehicle.position;
+        if (!fliegt) {
+          if (t.airborne && Math.hypot(pos.x - ramp.x, pos.z - ramp.z) < 25) {
+            fliegt = true;
+            y0 = pos.y;
+            kante = t.speed * 3.6;
+          }
+        } else {
+          if (t.airborne) air += 1 / 60;
+          peak = Math.max(peak, pos.y - y0);
+        }
       }
-      out.jumps.push({ id: ramp.id, air: +air.toFixed(2), peak: +peak.toFixed(1) });
+      out.jumps.push({
+        id: ramp.id,
+        air: +air.toFixed(2),
+        peak: +peak.toFixed(1),
+        kante: Math.round(kante),
+      });
     }
     // Sammelstücke: einmal die Ringstraße entlang teleportieren und zählen.
     const line = drive.roads.getRacingLine('ring');
@@ -226,13 +273,27 @@ try {
     return out;
   });
   const flying = stunt.jumps.filter((j) => j.air > 0.35);
-  if (flying.length >= 3) {
-    ok(
-      'Schanzen heben ab',
-      stunt.jumps.map((j) => `${j.id} ${j.air}s/${j.peak}m`).join(' · '),
-    );
+  const zeile = stunt.jumps.map((j) => `${j.id} ${j.kante}km/h→${j.air}s/${j.peak}m`).join(' · ');
+  if (flying.length < stunt.jumps.length) {
+    bad('nicht jede Schanze hebt ab', JSON.stringify(stunt.jumps));
   } else {
-    bad('zu wenige Schanzen heben ab', JSON.stringify(stunt.jumps));
+    ok('Schanzen heben ab', zeile);
+  }
+  // **Die Prüfung, die den Fehler gefunden hat.** Ein Anlauf von 140 km/h muss
+  // an der Kante noch 90 km/h übrig haben. `village-hop` kam mit 19,4°
+  // Spitzenneigung auf **41 km/h** — die Karosserie schleifte auf der Auffahrt
+  // (Blechtiefe 0,193 m gegen 0,040…0,094 m bei den anderen fünf), und aus der
+  // steilsten Schanze der Karte war eine Bremsschwelle geworden. Keine der
+  // damaligen Abnahmezeilen hat das gemeldet, weil keine nach dem Tempo
+  // *an der Kante* gefragt hat: die Schanze hob ja ab.
+  const gebremst = stunt.jumps.filter((j) => j.kante < 90);
+  if (gebremst.length === 0) {
+    ok('keine Schanze bremst die Anfahrt', `min ${Math.min(...stunt.jumps.map((j) => j.kante))} km/h aus 140`);
+  } else {
+    bad(
+      'Schanze bremst die Anfahrt aus',
+      gebremst.map((j) => `${j.id} ${j.kante} km/h`).join(', '),
+    );
   }
   if (stunt.pickups > 20) ok('Sammelstücke am Ring', String(stunt.pickups));
   else bad('kaum Sammelstücke am Ring', String(stunt.pickups));
