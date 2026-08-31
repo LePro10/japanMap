@@ -57,13 +57,33 @@ const PER_ZONE = 380;
 const FALL_HEIGHT = 26;
 /** Sinkrate in m/s. Ein Kirschblütenblatt fällt gemächlich. */
 const SINK = 1.1;
-/** Kantenlänge eines Blattes, m. */
-const PETAL_SIZE = 0.18;
+/**
+ * Kantenlänge eines Blattes, m.
+ *
+ * Größer als die 0,18 von vorher, weil der Fragment-Shader seit P25 eine Form
+ * ausschneidet: von der Quadratfläche bleiben rund 45 % übrig, und ein Blatt
+ * mit 0,18 m Kante wäre danach kleiner als vorher gemeint.
+ */
+const PETAL_SIZE = 0.24;
+
+/**
+ * Farbe eines Blattes, **linear** — sie geht ohne Beleuchtung ins Bild.
+ *
+ * Bemessen an der Krone, aus der die Blätter fallen: die misst auf
+ * `.cache/shots/drift.png` linear 0,32 / 0,19 / 0,22. Ein Blatt ist ein Stück
+ * davon und darf nicht heller sein. Der erste Entwurf stand bei 0,98 / 0,78 /
+ * 0,86 — heller als der Himmel dahinter, und damit dieselbe Klasse Fehler wie
+ * die Staubfarbe in `vehicleFx.config.ts`: ein unbeleuchtetes Material schreibt
+ * seine Zahl direkt ins Bild.
+ */
+const PETAL_COLOR = [0.42, 0.26, 0.31] as const;
 
 const VERT = /* glsl */ `
 attribute vec3 seed;      // x: Startphase, y: Schwingung, z: Drehrate
 attribute vec3 anchor;    // Startpunkt in der Welt (Boden)
 varying float vFade;
+varying vec2 vLeaf;       // Blattkoordinate, −0,5…0,5 — für die Form im Fragment
+varying float vNear;      // 1 = dicht an der Kamera
 
 uniform float uTime;
 uniform float uFall;
@@ -96,9 +116,19 @@ void main() {
     position.x * s + position.y * c
   ) * uSize;
   center.xy += quad;
+  vLeaf = position.xy;
 
   // Am Boden ausblenden, damit kein Blatt im Gras verschwindet.
   vFade = smoothstep(0.0, 2.5, drop) * (1.0 - smoothstep(uFall - 3.0, uFall, drop));
+
+  // **Und dicht vor der Kamera auch.** Ein Blatt von 18 cm ist auf 2 m
+  // Entfernung 90 Pixel breit und steht als Fleck im Bild; gemessen in
+  // .cache/shots/drift.png (P25) hing eines davon oben im Himmel und war das
+  // hellste Ding im Frame. Dieselbe Begründung, aus der die Vegetation dieses
+  // Projekts ihre Imposter erst ab einer Entfernung einblendet — nur
+  // andersherum.
+  float dist = -center.z;
+  vNear = smoothstep(1.5, 6.0, dist);
   gl_Position = projectionMatrix * center;
 }
 `;
@@ -106,6 +136,8 @@ void main() {
 const FRAG = /* glsl */ `
 precision mediump float;
 varying float vFade;
+varying vec2 vLeaf;
+varying float vNear;
 uniform vec3 uColor;
 
 void main() {
@@ -120,7 +152,31 @@ void main() {
   // > Genau die Fehlerform, die CLAUDE.md unter „es war im Bild, nur als etwas
   // > anderes" führt: jede Zahl stimmte (900 Instanzen, ein Draw-Call, volles
   // > Bild), und im Bild standen zwei weiße Blasen.
-  gl_FragColor = vec4(uColor, vFade * 0.55);
+  //
+  // > **Und die zweite Fassung war ein Quadrat.** Der Satz oben („zwei Pixel
+  // > brauchen keine Blütenform") stimmt für ein fernes Blatt und **nur** für
+  // > eines: die Rechnung dahinter setzt 30 m Entfernung voraus, und über die
+  // > Driftzone fährt man mitten hindurch. Auf .cache/shots/drift.png (P25)
+  // > standen die nahen Blätter als scharfkantige helle Rechtecke auf dem
+  // > Boden — die Form eines Quads, nicht die eines Blütenblatts. Zwei Pixel
+  // > brauchen keine Form; neunzig schon.
+  //
+  // Ein Blütenblatt ist länglich und an einem Ende schmal. Das ist eine
+  // gestauchte Ellipse mit einer Spitze: r misst im Blattkoordinatensystem,
+  // quer doppelt gewichtet, und die Breite läuft zum unteren Ende hin aus.
+  //
+  // (Keine Backticks in diesem Kommentar: er steht in einem Template-Literal,
+  // und ein Backtick beendet es. Zweimal in P19 passiert, beide Male mit einer
+  // leeren Seite und HTTP 500 als einziger Spur.)
+  float taper = 0.55 + 0.45 * smoothstep(-0.5, 0.25, vLeaf.y);
+  vec2 p = vec2(vLeaf.x / (0.42 * taper), vLeaf.y / 0.5);
+  float r = dot(p, p);
+  // Weicher Rand: ohne ihn steht das Blatt mit Aliaskante da, und Mipmaps gibt
+  // es hier nicht (keine Textur).
+  float shape = 1.0 - smoothstep(0.55, 1.0, r);
+  if (shape <= 0.001) discard;
+
+  gl_FragColor = vec4(uColor, vFade * vNear * shape * 0.62);
 }
 `;
 
@@ -189,7 +245,7 @@ export class PetalFall {
         uFall: { value: FALL_HEIGHT },
         uSink: { value: SINK },
         uSize: { value: PETAL_SIZE },
-        uColor: { value: new Vector3(0.98, 0.78, 0.86) },
+        uColor: { value: new Vector3(PETAL_COLOR[0], PETAL_COLOR[1], PETAL_COLOR[2]) },
       },
       transparent: true,
       depthWrite: false,

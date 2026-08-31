@@ -170,6 +170,23 @@ export class RaceDirector {
   }
 
   /**
+   * Der nächste Kontrollpunkt als Weltpunkt — für Minikarte und Richtungspfeil.
+   *
+   * Getrennt von `distanceToNext`, obwohl beide dieselbe Stelle nachschlagen:
+   * das eine ist eine Zahl fürs HUD, das andere ein Ort für die Karte. Eine
+   * Funktion, die je nach Aufrufer das eine oder andere liefert, wäre die
+   * Doppeldeutigkeit, an der in P22 die Bremse gescheitert ist.
+   */
+  nextCheckpointPoint(): { x: number; z: number } | null {
+    const line = this.#line;
+    if (!line || this.#state !== 'running') return null;
+    const arc = this.#checkpoints[this.#next];
+    if (arc === undefined) return null;
+    line.pointAt(arc, POINT);
+    return { x: POINT.x, z: POINT.z };
+  }
+
+  /**
    * Die Platzierung — Spieler und Gegner nach gefahrener Strecke.
    *
    * Sortiert wird über `progress` (Runde × Streckenlänge + Bogenlänge), also

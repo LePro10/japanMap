@@ -35,6 +35,8 @@ Seit P22…P24 gibt es eine Antwort auf „und jetzt?":
 | **Wertung** | Driftkette mit Multiplikator bis ×5, verdoppelt in zwei Driftzonen |
 | **Fortschritt** | ¥ aus Rennen, Drift und 90 Sammelstücken; drei Fahrzeuge zum Freischalten |
 | **Spielgerät** | Sechs Sprungschanzen, zwei Kirschbaum-Driftzonen mit fallenden Blüten |
+| **Orientierung** | Nordfeste Minikarte mit Straßennetz, Driftzonen, Schanzen und Gegnern; ein Richtungspfeil zum nächsten Kontrollpunkt (P25) |
+| **Rückmeldung** | Meldetöne für Sammelstück, Kontrollpunkt und Rundenende; ein Aufsammel-Effekt am Stück selbst (P25) |
 | **Sprache** | Die Spieler-Oberfläche ist **englisch**. Code, Kommentare und Doku bleiben deutsch |
 
 Die letzte Zeile ist eine Entscheidung über die Reichweite und keine über den

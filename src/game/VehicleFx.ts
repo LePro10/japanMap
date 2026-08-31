@@ -1249,11 +1249,23 @@ function makeParticleAtlas(): CanvasTexture {
         // rotationssymmetrischer Fleck liest sich als Kugel und nicht als
         // Dunst. Die Versätze sind fest — bei 420 Instanzen mit gewürfelter
         // Drehung sieht man die Wiederholung nicht.
-        a = puff(u, v, 0, 0, 0.78) * 0.85;
-        a = Math.max(a, puff(u, v, 0.3, -0.22, 0.5) * 0.7);
-        a = Math.max(a, puff(u, v, -0.28, 0.24, 0.46) * 0.65);
+        //
+        // > **`puff` war `smoothstep`, und das ist ein Plateau.** `3t²−2t³` hat
+        // > bei halbem Radius noch 89 % Deckkraft und fällt erst ganz außen ab —
+        // > also eine fast randscharfe Scheibe mit einem schmalen weichen Saum.
+        // > Genau so stand sie im Bild (`.cache/shots/drift.png`, P25): eine
+        // > Kette getrennter Scheiben. `t³` fällt von Anfang an, bei halbem
+        // > Radius auf 12,5 %; damit hat der Ballen keinen Rand mehr, den man
+        // > als Kreis lesen könnte, und überlappende Ballen addieren sich zu
+        // > einer Fahne statt zu einer Perlenkette.
+        a = softPuff(u, v, 0, 0, 0.98) * 0.9;
+        a = Math.max(a, softPuff(u, v, 0.3, -0.22, 0.62) * 0.75);
+        a = Math.max(a, softPuff(u, v, -0.28, 0.24, 0.58) * 0.7);
         // Ein Korn darüber, damit die Fläche nicht wie ein Farbverlauf wirkt.
-        a *= 0.8 + 0.2 * Math.sin(u * 13.7 + v * 9.1) * Math.cos(v * 17.3 - u * 6.7);
+        // Schwächer als vorher: bei 2,3 m Endgröße steht ein Ballen nahe der
+        // Kamera 300 Pixel breit im Bild, und dort war das Korn als Muster zu
+        // sehen statt als Struktur.
+        a *= 0.88 + 0.12 * Math.sin(u * 13.7 + v * 9.1) * Math.cos(v * 17.3 - u * 6.7);
       } else {
         // **Korn.** Ein kleiner, kantiger Brocken: harter Rand, kein Hof.
         const wobble = 0.62 + 0.14 * Math.sin(Math.atan2(v, u) * 5);
@@ -1294,12 +1306,19 @@ function makeParticleAtlas(): CanvasTexture {
   return tex;
 }
 
-/** Ein weicher Ballen mit Mittelpunkt (cx, cz) und Radius r. */
-function puff(u: number, v: number, cx: number, cy: number, r: number): number {
+/**
+ * Ein weicher Ballen mit Mittelpunkt (cx, cy) und Radius r.
+ *
+ * `t³` und nicht `smoothstep`: Begründung an der Aufrufstelle. Kurz — ein
+ * `smoothstep`-Ballen hat einen Kern mit annähernd voller Deckkraft und liest
+ * sich damit als Scheibe; `t³` fällt vom Mittelpunkt an und liest sich als
+ * Dunst. Der Unterschied bei halbem Radius ist 0,89 gegen 0,125.
+ */
+function softPuff(u: number, v: number, cx: number, cy: number, r: number): number {
   const d = Math.hypot(u - cx, v - cy) / r;
   if (d >= 1) return 0;
   const t = 1 - d;
-  return t * t * (3 - 2 * t);
+  return t * t * t;
 }
 
 /** Deterministischer Jitter ohne `Math.random` — FX dürfen die Physik nicht anfassen. */

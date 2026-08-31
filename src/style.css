@@ -1414,3 +1414,85 @@ body {
     width: 92px;
   }
 }
+
+/* ── Minikarte und Richtungspfeil — P25 ──────────────────────────────────────
+ *
+ * Unten links, gegenüber dem Tacho. Der Platz ist bewusst der ruhigste Teil des
+ * Bildes: die Karte wird im Augenwinkel gelesen, und alles, was oben steht,
+ * konkurriert mit Zeit, Platz und Kontrollpunkt.
+ *
+ * **`pointer-events` bleibt aus.** `#overlay > .hud` setzt es auf `none`, und
+ * das gilt für alle Kinder — die Karte ist eine Anzeige und kein Bedienelement.
+ * Wer hier je einen Klick haben will, muss ihn **auf dem Kind** wieder
+ * einschalten und danach den **berechneten** Wert nachsehen; ein ID-Selektor
+ * darüber schlägt jede Klassenregel (P10.2). */
+.hud__nav {
+  position: absolute;
+  left: max(14px, env(safe-area-inset-left));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  width: 168px;
+  height: 168px;
+}
+
+.hud__map {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: rgba(12, 14, 20, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+/* Der Pfeil sitzt in der Mitte der Karte und dreht sich um sie. Er ist damit
+ * beides zugleich: die Richtung zum Ziel **und** die Mitte der Karte, an der
+ * das eigene Fahrzeug steht. Zwei Anzeigen, ein Ort — das ist billiger zu lesen
+ * als zwei getrennte. */
+.hud__arrow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+}
+
+.hud__arrow[hidden] {
+  display: none;
+}
+
+/* Das Dreieck sitzt 58 px vor dem Drehpunkt: außerhalb des Fahrzeugpfeils auf
+ * der Karte, innerhalb ihres Rahmens. */
+.hud__arrow > i {
+  position: absolute;
+  left: -9px;
+  top: -66px;
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-bottom: 15px solid #7dff9a;
+  filter: drop-shadow(0 0 4px rgba(125, 255, 154, 0.6));
+}
+
+@media (max-width: 720px) {
+  /* Auf einem Telefon ist unten links **belegt**: dort stehen der linke Stick
+   * der Fingersteuerung und `.touch__speed`. Die Karte weicht nach oben aus —
+   * aber nicht auf 58 px, denn dort steht `.hud__lap` (min-width 152 px, rund
+   * 84 px hoch, top 64 px). Der erste Entwurf tat genau das und hätte die beiden
+   * Kästen übereinandergelegt; gefunden hat es kein Blick auf die Datei,
+   * sondern ein `getBoundingClientRect` an beiden Elementen bei 390 × 844.
+   *
+   * 158 px ist die Unterkante des Zeitkastens plus 10 px Luft. */
+  .hud__nav {
+    width: 116px;
+    height: 116px;
+    bottom: auto;
+    top: 158px;
+  }
+
+  /* Der Pfeil sitzt in der Mitte der kleineren Karte, also näher am Drehpunkt. */
+  .hud__arrow > i {
+    top: -48px;
+  }
+}

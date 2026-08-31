@@ -323,8 +323,23 @@ export const PARTICLES = {
   dustSlipBoost: 3.2,
   dustLife: 1.15,
   dustLifeJitter: 0.45,
-  dustSize: 0.26,
-  dustSizeEnd: 1.05,
+  /**
+   * Anfangs- und Endgröße eines Staubballens, m.
+   *
+   * > **1,05 m Endgröße war zu klein, und das sah man nicht an der Zahl.** Bei
+   * > 20 m/s und 18 Stück/s je Rad liegt zwischen zwei Ballen desselben Rades
+   * > gut ein Meter — mit 1,05 m Durchmesser berühren sie sich gerade eben und
+   * > lesen sich als **Perlenkette** statt als Fahne. Gemessen an
+   * > `.cache/shots/drift.png` (P25): eine Reihe getrennter Scheiben hinter dem
+   * > Wagen, jede mit erkennbarem Rand.
+   * >
+   * > 1,8 m ist die Zahl, die aus derselben Rechnung folgt: knapp doppelter
+   * > Ballenabstand, also überlappen sich immer mindestens zwei. Die Rate zu
+   * > verdoppeln wäre der andere Weg gewesen und ist verworfen — 230 Partikel/s
+   * > sind schon 265 lebende, und der Puffer hält 420.
+   */
+  dustSize: 0.34,
+  dustSizeEnd: 1.8,
 
   /** Erdbrocken — nur beim Durchdrehen. */
   clodRateAt20: 20,
@@ -352,13 +367,70 @@ export const PARTICLES = {
   waterAlpha: 0.8,
   sheetAlpha: 0.5,
   /** Dunst über Wasser: kühler und deutlich schwächer. */
-  mistColor: [0.5, 0.58, 0.66] as readonly [number, number, number],
-  mistAlpha: 0.2,
-  /** Staub über Erde: warmes Grau. Staub streut Himmelslicht, er leuchtet nicht. */
-  dustColor: [0.55, 0.49, 0.4] as readonly [number, number, number],
-  /** Staub über Kies: derselbe Wert, nur ohne den warmen Stich. */
-  gravelColor: [0.54, 0.53, 0.5] as readonly [number, number, number],
-  dustAlpha: 0.32,
+  mistColor: [0.26, 0.3, 0.35] as readonly [number, number, number],
+  mistAlpha: 0.16,
+  /**
+   * Staub über Erde: warmes Grau. Staub streut Himmelslicht, er leuchtet nicht.
+   *
+   * ## Die Zahl stammt aus einem Bild, und die alte war um den Faktor zehn daneben
+   *
+   * Hier stand `[0.55, 0.49, 0.4]`, und der Kommentar daneben sagte genau das
+   * Richtige — *er leuchtet nicht*. Die Zahl sagte etwas anderes. Ein Partikel
+   * ist ein `MeshBasicMaterial`: was hier steht, ist **direkt** die Helligkeit,
+   * die im Bild ankommt, ohne Licht, ohne Schatten, ohne Abschwächung.
+   *
+   * Gemessen an `.cache/shots/drift.png` (P25, Werte linear):
+   *
+   * | | linear |
+   * |---|---|
+   * | Boden neben dem Wagen | 0,005 |
+   * | Boden, besonnt, in der Ferne | 0,021 |
+   * | hellster Staubfleck | **0,159** |
+   * | Himmel | 0,43…0,78 |
+   *
+   * Der Staub stand also **31-mal** über dem Boden, aus dem er aufgewirbelt
+   * wurde, und ein Drittel so hell wie der Himmel. Im Bild waren das weiße
+   * Punkte auf schwarzer Erde. Wieder die Fehlerform aus CLAUDE.md — *es war im
+   * Bild, nur als etwas anderes*.
+   *
+   * ## Und die erste Korrektur schoss über das Ziel hinaus
+   *
+   * Sie setzte 0,058 **und** halbierte zugleich `dustAlpha` — zwei Faktoren auf
+   * einmal, zusammen 1/19 des alten Beitrags. Nachgemessen war danach **gar
+   * keine** Fahne mehr im Bild, und zwar auch dann nicht, wenn man die
+   * Partikelfarbe im Lauf verdreifachte (`material.color.setScalar(3)`,
+   * `.cache/shots/staub-k3.png`): 300 lebende Instanzen, null Sichtbarkeit.
+   *
+   * Das ist die Fehlerform „am erstbesten plausiblen Regler gedreht" aus
+   * CLAUDE.md, nur mit zwei Reglern gleichzeitig — und dann weiß man
+   * hinterher nicht, welcher es war.
+   *
+   * Der Wert unten kommt aus der einen Messung, die belastbar ist: mit
+   * `dustColor` 0,55 und `dustAlpha` 0,32 stand die Fahne bei **0,159** linear.
+   * Der Beitrag ist in beiden Faktoren linear, also gilt
+   *
+   * ```
+   *   Spitze ≈ 0,159 · (Farbe / 0,55) · (Alpha / 0,32)
+   * ```
+   *
+   * Gewollt sind rund 0,045 — das Achtfache des Bodens daneben (0,005), also
+   * deutlich sichtbar, und ein Viertel des Werts, der als weiße Punkte im Bild
+   * stand. Mit Alpha 0,22 folgt daraus Farbe 0,20.
+   *
+   * Das Farbverhältnis (warm, 1,00 : 0,90 : 0,76) ist über alle drei Fassungen
+   * unverändert; falsch war nie der Farbton, sondern der Pegel.
+   */
+  dustColor: [0.2, 0.18, 0.152] as readonly [number, number, number],
+  /** Staub über Kies: derselbe Pegel, nur ohne den warmen Stich. */
+  gravelColor: [0.19, 0.185, 0.176] as readonly [number, number, number],
+  /**
+   * Deckkraft eines einzelnen Staubballens.
+   *
+   * Aus demselben Bild: bei rund 265 lebenden Ballen liegen hinter dem Wagen
+   * drei bis vier übereinander, und 1 − 0,68⁴ = 0,79 ist eine Wand. Mit 0,22
+   * sind es 0,63 — eine Fahne, durch die man den Boden noch sieht.
+   */
+  dustAlpha: 0.22,
   /** Erdbrocken: fast schwarz, sie sind nasse Erde im Gegenlicht. */
   clodColor: [0.15, 0.12, 0.09] as readonly [number, number, number],
   clodAlpha: 0.95,

@@ -98,6 +98,23 @@ export class AudioSystem implements System {
   }
 
   init(context: EngineContext): void {
+    // ── Meldetöne — P25 ───────────────────────────────────────────────────
+    //
+    // Bis P24 war jede Belohnung dieses Spiels **stumm**: ein eingesammeltes
+    // Stück, ein Kontrollpunkt und ein Zieleinlauf klangen wie das Nichtstun
+    // daneben. Das ist keine Kleinigkeit — die Rückmeldung *„das hat gezählt"*
+    // ist der Grund, warum jemand ein zweites Mal danach fährt.
+    context.bus.on('pickup:collected', ({ kind }) => {
+      // Nitro höher als Geld: zwei Belohnungen, die man im Vorbeifahren nicht
+      // ansieht, müssen sich **hören** lassen wie zwei verschiedene Dinge.
+      this.#chime(kind === 'boost' ? 1046.5 : 784, 0.09);
+    });
+    context.bus.on('race:checkpoint', () => {
+      this.#chime(659.25, 0.11);
+    });
+    context.bus.on('race:lap', () => {
+      this.#chime(880, 0.16);
+    });
     context.bus.on('drive:mode', ({ active }) => {
       this.#driveActive = active;
       // Der Motor darf beim Aussteigen nicht ausklingen wie ein abgewürgter
@@ -231,6 +248,75 @@ export class AudioSystem implements System {
     noise.loop = true;
     noise.connect(noiseFilter);
     noise.start();
+  }
+
+  /**
+   * Ein kurzer Meldeton — P25.
+   *
+   * ## Warum ein Oszillator je Ton und kein Wiederverwenden
+   *
+   * Ein `OscillatorNode` ist in der Web-Audio-API ausdrücklich ein
+   * **Einmalobjekt**: nach `stop()` lässt er sich nicht wieder starten. Der
+   * übliche Reflex — einen Oszillator halten und seine Verstärkung auf- und
+   * zudrehen — hat einen Preis, den man hört: die Phase läuft weiter, und zwei
+   * schnell aufeinanderfolgende Töne setzen an zufälliger Stelle der Welle ein.
+   * Ein neuer Knoten beginnt immer bei null.
+   *
+   * > Was ein solcher Knoten **kostet**, ist hier nicht gemessen. Der Grund für
+   * > diese Bauart ist die Phase und nicht der Preis; eine Kostenzahl daneben
+   * > wäre eine Behauptung, und dieses Projekt hat für genau die schon einmal
+   * > bezahlt (die Imposter-Schwelle in P4). Wenn es je eng wird, ist die Zahl
+   * > messbar — bis dahin steht sie nicht da.
+   *
+   * ## Warum eine Exponentialrampe und kein `setValueAtTime`
+   *
+   * Ein Sprung der Verstärkung auf null ist ein Knacken — er ist im Signal eine
+   * Stufe, und eine Stufe hat unendlich viele Obertöne. `exponentialRampTo`
+   * kann dabei nicht auf 0 gehen (der Logarithmus), deshalb 0,0001 und danach
+   * `stop()`.
+   *
+   * ## Und warum es nicht spielt, wenn niemand fährt
+   *
+   * `#driveActive` ist die Bedingung: die Ereignisse, an denen das hier hängt,
+   * kann nur ein fahrendes Fahrzeug auslösen. Die Prüfung steht trotzdem da,
+   * weil ein Meldeton im Menü ein Fehler wäre, den niemand als Fehler meldet —
+   * er klingt nur seltsam.
+   */
+  #chime(hz: number, seconds: number): void {
+    const ctx = this.#ctx;
+    const master = this.#master;
+    if (!ctx || !master || this.muted || !this.#driveActive) return;
+    if (ctx.state !== 'running') return;
+
+    const now = ctx.currentTime;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    // 8 ms Anstieg: schnell genug, dass es als Anschlag wirkt, langsam genug,
+    // dass es kein Knacken ist.
+    gain.gain.exponentialRampToValueAtTime(AUDIO.masterVolume * 0.5, now + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + seconds);
+    gain.connect(master);
+
+    // Dreieck und nicht Sinus: ein reiner Sinus verschwindet unter dem
+    // Motorgeräusch (zwei Sägezähne durch einen Tiefpass, s. o.). Das Dreieck
+    // hat gerade genug ungerade Obertöne, um darüber zu stehen, ohne wie ein
+    // Fehlerton zu klingen.
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(hz, now);
+    // Ein Hauch aufwärts über die Dauer — ein fallender Ton liest sich als
+    // „vorbei", ein steigender als „gut gemacht".
+    osc.frequency.exponentialRampToValueAtTime(hz * 1.18, now + seconds);
+    osc.connect(gain);
+    osc.start(now);
+    osc.stop(now + seconds + 0.02);
+    // Aufräumen, sobald er verklungen ist. Ohne das sammeln sich bei 90
+    // Sammelstücken je Runde die Knoten im Graphen — sie sind zwar gestoppt,
+    // hängen aber weiter am Master.
+    osc.onended = () => {
+      osc.disconnect();
+      gain.disconnect();
+    };
   }
 
   /**
