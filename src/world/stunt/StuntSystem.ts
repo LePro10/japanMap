@@ -96,33 +96,37 @@ const ZONE_RING_LIFT = 0.12;
 /**
  * Die beiden Farben des Bandes.
  *
- * ## Gedämpft, nachdem ein Bild aus der Ferne dazukam
- *
- * Der erste Entwurf stand bei `0xf7c6d8` / `0xb84a72` — gewählt am Bild *aus*
- * der Zone, wo er richtig aussah. Vom Blickpunkt `stadt-rand` aus, also aus
- * einigen hundert Metern, war er dann das hellste Ding der Landschaft und las
- * sich als **rosa Straße**. Gemessen auf `.cache/shots/p25-stadt-rand.png`,
- * linear:
- *
- * | | linear |
- * |---|---|
- * | Boden | 0,028 |
- * | Asphaltstraße daneben | 0,058 |
- * | Zonenring | **0,372** |
- *
- * Also 6,5-mal die Straße und 13-mal der Boden. Das ist dieselbe Klasse wie die
- * Staubfarbe in `vehicleFx.config.ts` — eine Farbe, die am nahen Bild gewählt
- * und nie gegen das ferne gehalten wurde.
- *
- * **Um Faktor 2,2 gedämpft und nicht um 6.** Der Ring *soll* auffindbar sein;
- * er ist die Anzeige einer Veranstaltung, und ein Spiel, dessen Driftzone man
- * nicht von weitem sieht, hat eine Driftzone weniger. Ihn auf Straßenhelligkeit
- * zu ziehen wäre die Überkorrektur, die heute schon einmal passiert ist (Staub:
- * zwei Regler auf einmal, danach gar nichts mehr). Ziel ist rund 0,17 — dreimal
- * die Straße, also der hellste Bodenzug der Karte, aber keine Lampe.
+ * > **Hier stand eine Dämpfung mit einer widerlegten Begründung.** Auf dem
+ * > fernen Bild (`.cache/shots/p25-stadt-rand.png`) steht ein rosa Zug in der
+ * > Landschaft, gemessen **0,372 linear** gegen 0,058 Asphaltstraße und 0,028
+ * > Boden. Ich habe ihn für den Zonenring gehalten und die Farben um Faktor
+ * > 2,2 heruntergezogen.
+ * >
+ * > Das war falsch, und der Grund ist eine Farbkollision: `SAKURA_TOP` trägt
+ * > **denselben** Wert, den `ZONE_RING_INNER` trug (`0xf7c6d8`). Ein rosa Pixel
+ * > beweist damit gar nichts. Getrennt über das Objekt statt über die Farbe —
+ * > drei Aufnahmen unmittelbar hintereinander, dazwischen nur eine
+ * > Sichtbarkeit umgeschaltet:
+ * >
+ * > | Bild | derselbe Pixel, linear |
+ * > |---|---|
+ * > | alles sichtbar | 0,3701 |
+ * > | **ohne Ring** | 0,3723 — unverändert |
+ * > | **ohne Bäume** | 0,0468 — bricht auf Bodenniveau ein |
+ * >
+ * > Es war eine Kirschblütenkrone. Der Ring selbst trägt gemessen **3,7 % der
+ * > Pixel bei mittlerer Differenz 1,21** (die Bäume: 7,1 % / 2,77) — er
+ * > dominiert nichts. Die Dämpfung ist deshalb zurückgenommen; die Werte unten
+ * > sind die ursprünglichen, am nahen Bild gewählten, und dort stimmen sie
+ * > (`.cache/shots/zone-nah.png`, `drift.png`).
+ * >
+ * > Lehre, und sie steht so auch in CLAUDE.md: **wenn zwei Dinge im Bild
+ * > dieselbe Farbe tragen, ist die Farbe kein Beweis** — getrennt wird über das
+ * > Objekt. Und: eine Ursache benennen, ohne sie zu trennen, ist genau der
+ * > Fehler, den dieses Projekt seit P8.8 führt.
  */
-const ZONE_RING_INNER = 0xab8592;
-const ZONE_RING_OUTER = 0x7f2f4c;
+const ZONE_RING_INNER = 0xf7c6d8;
+const ZONE_RING_OUTER = 0xb84a72;
 
 /**
  * Wie lange der Aufsammel-Effekt dauert, s.

@@ -10392,6 +10392,40 @@ falsche: der siebte Regler, den jemand nächstes Jahr einbaut, ist der, an dem
 es wieder passiert. Ein Fehlerbild ist eine Klasse, und gegen eine Klasse hilft
 nur ein Ort — dieselbe Überlegung wie bei `japanMap.winding()`.
 
+## 6. Eine Ursache benannt, ohne sie zu trennen — und zwar meine eigene
+
+Auf dem fernen Bild (`.cache/shots/p25-stadt-rand.png`) steht ein rosa Zug in
+der Landschaft, gemessen **0,372 linear** gegen 0,058 Asphaltstraße und 0,028
+Boden. Ich habe ihn für den neuen Zonenring gehalten, das als „13-mal so hell
+wie der Boden" aufgeschrieben, die Ringfarben um Faktor 2,2 gedämpft — und
+beides gepusht.
+
+**Es war eine Kirschblütenkrone.** `SAKURA_TOP` trägt denselben Wert, den
+`ZONE_RING_INNER` trug (`0xf7c6d8`); ein rosa Pixel beweist damit gar nichts.
+Aufgefallen ist es erst, weil derselbe Pixel **nach** der Farbänderung
+unverändert 0,3723 maß — eine Zahl, die sich nicht bewegt, obwohl man an ihr
+gedreht hat, ist ein Verdachtsmoment und keine Bestätigung.
+
+Getrennt wurde es dann über das **Objekt** statt über die Farbe: drei Aufnahmen
+unmittelbar hintereinander, dazwischen nur eine Sichtbarkeit umgeschaltet.
+
+| Bild | derselbe Pixel, linear | Beitrag zum ganzen Bild |
+|---|---|---|
+| alles sichtbar | 0,3701 | — |
+| **ohne Ring** | 0,3723 (unverändert) | 3,7 % der Pixel, mittlere Differenz 1,21 |
+| **ohne Bäume** | 0,0468 (Bodenniveau) | 7,1 % der Pixel, mittlere Differenz 2,77 |
+
+Der Ring dominiert also nichts, und die Dämpfung ist zurückgenommen. Beim
+Schreiben des Trenntests lag noch eine zweite Falle: `material.visible` hätte
+Ring, Bäume, Fahnen, Schanzen und Sammelstücke **zugleich** ausgeblendet — sie
+teilen sich in `StuntSystem` ein einziges `PropMaterial`. Über `mesh.visible`
+geht es, weil dieses System die Sichtbarkeit nie je Frame schreibt.
+
+Dass die Kronen mit 0,372 gegen 0,028 Boden dastehen, ist damit **gemessen und
+nicht bewertet**: eine blühende Kirsche ist hell, und ob sie zu hell ist, ist
+eine Frage für einen Menschen. Die Zahl steht hier, damit der Nächste sie nicht
+noch einmal erheben muss.
+
 ## Was offen bleibt
 
 - [ ] **Woher das NaN kam, ist nicht bekannt.** Die Notbremse oben fängt es und
@@ -10456,12 +10490,6 @@ nur ein Ort — dieselbe Überlegung wie bei `japanMap.winding()`.
       Das gehört in dieselbe Spalte wie „GPU-ms und Bildrate sind hier nicht
       messbar" — mit dem Unterschied, dass es eine *Umgehung* gibt und die
       Bilder damit entstanden sind.
-- [ ] **Der gedämpfte Zonenring ist gerechnet, aber noch nicht fotografiert.**
-      Der neue Wert folgt aus der Messung am fernen Bild (0,372 linear gegen
-      0,058 Straße) über eine lineare Skalierung um 0,45; das Bestätigungsbild —
-      derselbe ferne Blick **und** einer aus der Zone heraus — steht aus, weil
-      der Lauf dafür zweimal ohne Ausgabe gestorben ist. Bis dahin gilt für
-      diese Zahl, was CLAUDE.md verlangt: **nicht neu abgelesen.**
 - [ ] **Braune Platten in der Luft, einmal gesehen und nicht erklärt.** Auf
       `.cache/shots/staub-k3.png` stehen rund sechs brettartige braune Flächen
       frei in einem Waldstück — bei dreifach überhöhter Partikelhelligkeit

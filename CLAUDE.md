@@ -1967,6 +1967,29 @@ Rückschritt mit Aufwand.
   jemand ihre Rechtecke gegeneinander gerechnet hat.** Ein Stilblatt, in dem
   beide Regeln plausibel aussehen, sagt darüber nichts.
 
+- **Zwei Dinge im Bild trugen dieselbe Farbe — und damit war der Pixel kein
+  Beweis.** Auf einem fernen Bild stand ein rosa Zug in der Landschaft, gemessen
+  0,372 linear gegen 0,058 Asphaltstraße und 0,028 Boden. Ich hielt ihn für den
+  neuen Bodenring der Driftzone, schrieb „13-mal so hell wie der Boden" auf,
+  dämpfte die Ringfarben um Faktor 2,2 — und pushte beides.
+  Es war eine **Kirschblütenkrone**: `SAKURA_TOP` trägt denselben Wert, den
+  `ZONE_RING_INNER` trug (`0xf7c6d8`). Aufgefallen ist es erst, weil derselbe
+  Pixel **nach** der Farbänderung unverändert 0,3723 maß — *eine Zahl, die sich
+  nicht bewegt, obwohl man an ihr gedreht hat, ist ein Verdachtsmoment und keine
+  Bestätigung.* Dieselbe Form wie die exakt −6,00 cm Standhöhe aus P14 und die
+  exakt 2,00 m Fall aus P19.
+  Getrennt wurde es dann über das **Objekt** statt über die Farbe: drei
+  Aufnahmen unmittelbar hintereinander, dazwischen nur eine Sichtbarkeit
+  umgeschaltet. Ohne Ring: 0,3723 (unverändert). Ohne Bäume: 0,0468, also
+  Bodenniveau. Der Ring trägt gemessen 3,7 % der Pixel bei mittlerer Differenz
+  1,21 und dominiert gar nichts; die Dämpfung ist zurückgenommen.
+  Zwei Lehren. **Wo zwei Dinge dieselbe Farbe tragen, trennt man über das
+  Objekt** — ein Farbwert identifiziert nichts. Und beim Bauen des Trenntests
+  lag gleich die nächste Falle: `material.visible` hätte Ring, Bäume, Fahnen,
+  Schanzen und Sammelstücke **zugleich** ausgeblendet, weil `StuntSystem` sich
+  ein einziges `PropMaterial` teilt. Wer etwas zum Vergleich ausblendet, muss
+  wissen, **wer sonst noch an diesem Schalter hängt**.
+
 - **„Zu langsam" war die falsche Diagnose; der Renderer ist abgestürzt.** Fünf
   Anläufe für einen Bilddurchgang über die Karte sind gescheitert, und die
   ersten vier hat niemand gelesen — sie starben in einem Hintergrundprozess ohne
