@@ -268,6 +268,7 @@ gedrosselt. ~~Referenzwerte zum Gegenhalten: `wald` auf Ultra 38 948, mit Dichte
 | 🚗-Knopf / Menüzeile „Auto fahren" | **Der Weg ins Auto ohne Tastatur (P16).** Auf Touch der einzige — `V` verlangt einen Pointer Lock, den kein Telefon gibt, und `japanMap` fehlt im Build. Beide Wege schalten denselben Zustand und melden über `drive:mode` |
 | `japanMap.driveProbe()` | **Der Messstand des Fahrmodus (P14).** Fährt jede Strecke ab und schreibt Durchdringung, Spurlage, Tempo und CPU je Schritt mit; dazu Standhöhe und Höhendifferenz Sampler ↔ Mittellinie. Läuft **ohne zu rendern** — 3600 Schritte in ~50 ms |
 | `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/fleet.mts` | **Der Fahrzeug-Prüfstand (P18).** Alle vier Fahrzeuge durch dieselben acht Proben, ohne Browser. Siehe unten |
+| `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/offroad.mts` | **Der Trenntest für den rauen Hang (P26).** Fährt Wellenlänge × Epsilon durch und beantwortet die eine Frage, an der `hill.mts` einmal einen Fehlalarm ausgelöst hat: gehört ein Einbruch dem Fahrzeug oder der Abtastung des Prüfstands |
 | `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/hill.mts` | **Der Steigungs-Prüfstand (P21).** Fahrzeug × Belag × Steigung, und neben jeder Zelle steht, **welche** der vier Ursachen greift (Traktion, Wand, Blech, Flattern). Der Grenzwinkel wird geschlossen ausgerechnet — die einzige Zahl im Projekt, die ohne einen Simulationsschritt entsteht |
 | `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/world.mts` | **Der Prüfstand für Gelände und Kollision (P19/P20).** Felswand, Baum, Innenecke, Planke, Landung, Kosten — dazu seit P20 **Hang** (steckt das Blech im Berg?) und **Zufallsgelände** (90 s gewürfelt, geprüft werden Zusicherungen statt Zahlen). Die Schicht, die `fleet.mts` auf seinem idealen Boden ausdrücklich *nicht* sieht |
 | `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/arcade.mts` | **Der Prüfstand des Arcade-Modells (P22).** Handbremsdrift, Gasstoß im Bogen, Gegenlenken, Nitro, Belagsvergleich — und die Probe **„Drift ohne Absicht"**, die als einzige fragt, ob ein Drift *ausbleibt*, wenn niemand ihn will. Sie hat die erste Fassung des Modells gestoppt |
@@ -1966,6 +1967,42 @@ Rückschritt mit Aufwand.
   Lehre: **zwei absolut positionierte Kästen sind erst dann nebeneinander, wenn
   jemand ihre Rechtecke gegeneinander gerechnet hat.** Ein Stilblatt, in dem
   beide Regeln plausibel aussehen, sagt darüber nichts.
+
+- **Ein Prüfstand würfelte feiner, als seine Quelle darstellen kann — und
+  meldete dafür einen schweren Fahrzeugfehler.** `hill.mts` fuhr jedes Fahrzeug
+  einen Hang hinauf, einmal glatt und einmal „rau". Der Offroader fiel als
+  einziges Fahrzeug von 64,5 auf **4,8 km/h** — ausgerechnet der, dessen ganze
+  Auslegung Gelände heißt. Das sieht nach einem Fahrwerksfehler aus, und um ein
+  Haar hätte ich einen repariert.
+  Die Rauheit war `sin(x · 8.3)`, also **0,76 m** Wellenlänge, und die Normale
+  wurde über eine zentrale Differenz mit ε = 0,5 m gerechnet. Beides zusammen
+  ist Aliasing. Auf der **Karte** gibt es diese Welle gar nicht: das Höhenfeld
+  ist bilinear über ein 1,5-m-Raster, kürzer als 3 m kann darin nichts stehen,
+  und `TerrainSampler.getNormalAt` rechnet folgerichtig mit dem Texelabstand.
+  Getrennt in vier Läufen (`tools/bench/offroad.mts`): mit kartenrealistischer
+  Welle und ε fährt der Offroader **64,3** km/h, also genau wie glatt.
+  Zwei Lehren. **Ein Prüfstand, der feiner abtastet als seine Quelle darstellen
+  kann, misst seine eigene Abtastung** — dieselbe Klasse wie „außerhalb des
+  Gitters extrapoliert" weiter oben, nur eine Ebene höher. Und: **wenn genau
+  ein Fahrzeug ausschert, ist das ein Hinweis auf die Messung, nicht auf das
+  Fahrzeug** — getroffen hat es den mit dem längsten Federweg, weil die
+  Stützebene aus der Normalen gebaut wird.
+
+- **Ein Auslöser an der Flanke, wo der Vorgang gemeint war.** Der Lastwechsel
+  in P26 sollte das Heck eindrehen, wenn der Fuß vom Gas geht. Der erste
+  Entwurf hing am **Abfall** des Gases je Schritt — und die Probe „Drift ohne
+  Absicht" schlug sofort an (29,1° statt 2,0°). Die Ursache stand im Prüfstand:
+  `holdSpeed` ist ein Zweipunktregler und hackt das Gas mit 10 Hz an und aus;
+  jede Flanke war ein Impuls, und zwischen zwei Flanken klang er nicht ab.
+  Der Fehler war nicht die Empfindlichkeit, sondern die **Größe**: eine Flanke
+  ist ein Zeitpunkt, ein Lastwechsel ist ein Vorgang. Die Last braucht eine
+  Zehntelsekunde, um nach vorn zu wandern. Ausgelöst wird jetzt über eine
+  **Dauer** (0,12 s Gas zu), und danach besteht die Probe wieder.
+  Lehre: **wer ein physikalisches Geschehen nachbildet, prüft, ob seine
+  Auslösegröße dieselbe Dimension hat wie das Geschehen.** Ein Zeitpunkt für
+  einen Vorgang ist derselbe Kategorienfehler wie eine Klemme auf einen Betrag,
+  wo ein Abschnitt gemeint war (P17, P19, P20) — nur in der Zeit statt im
+  Vorzeichen.
 
 - **Zwei Dinge im Bild trugen dieselbe Farbe — und damit war der Pixel kein
   Beweis.** Auf einem fernen Bild stand ein rosa Zug in der Landschaft, gemessen

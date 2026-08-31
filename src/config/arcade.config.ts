@@ -177,6 +177,51 @@ export interface ArcadeSpec {
   readonly powerOversteer: number;
 
   /**
+   * Wie stark **Gaswegnehmen** im Bogen das Heck eindreht, 0…1 — P26.
+   *
+   * ## Der Befund, der diese Zahl nötig gemacht hat
+   *
+   * `tools/bench/fleet.mts` fährt die Probe „Lastwechsel im Bogen": stationär
+   * durch eine Kurve, dann Gas weg. Bis P26 stand dort für **alle vier**
+   * Fahrzeuge dasselbe:
+   *
+   * ```
+   *   steer 0.35   1.9°→ 1.9°    steer 0.55   3.1°→ 3.1°    steer 0.80   4.9°→ 4.9°
+   * ```
+   *
+   * Der Schwimmwinkel ändert sich um **exakt null**. Der Grund steht in
+   * `arcadeDynamics`: `provocation = Gas · |Lenkung|`, und ohne Gas ist das
+   * Produkt null. Ein Modell, in dem Gaswegnehmen nichts tut, hat die
+   * wichtigste Nuance eines Driftspiels nicht — so dreht man ohne Handbremse
+   * ein, und es ist der Griff, den jeder kennt, der je ein Rennspiel gespielt
+   * hat.
+   *
+   * Die Zeile stand seit P22 grün formatiert im Prüfstand. Wieder derselbe
+   * Satz: *eine Prüfstandsausgabe ist erst gelesen, wenn jemand sie gegen die
+   * Anforderung hält.*
+   *
+   * ## Warum die **Änderung** des Gases und nicht sein Stand
+   *
+   * Ein Lastwechsel ist ein Vorgang, kein Zustand: Gewicht wandert nach vorn,
+   * die Hinterachse wird leicht, das Heck dreht ein — und danach ist es
+   * vorbei. Ausgelöst wird deshalb über den **Abfall** des Gases je Sekunde,
+   * und der Impuls klingt von selbst ab (`LIFT_DECAY`). Damit hat er einen
+   * Gleichgewichtspunkt bei null und kann nicht davonlaufen — die Lehre aus
+   * dem ersten Drift-Entwurf in P22, der eine feste Gierrate addierte und den
+   * Wagen bei 40 km/h auf 111 °/s hochdrehte.
+   *
+   * ## Warum das die Probe „Drift ohne Absicht" nicht bricht
+   *
+   * Die fährt mit **konstantem** Gas durch die Kurve. Konstant heißt Abfall
+   * null heißt Impuls null. Der Drift bleibt eine Entscheidung: Handbremse,
+   * Gas im Bogen — oder eben der Fuß vom Gas.
+   *
+   * Das Coupé ist der Drift-Wagen und bekommt am meisten; der Allradler am
+   * wenigsten, weil ein Allradler beim Lastwechsel eingräbt statt einzudrehen.
+   */
+  readonly liftOversteer: number;
+
+  /**
    * Wie schnell `drift` auf- und abgebaut wird, in 1/s (auf / ab).
    *
    * Getrennt, weil sie verschiedene Dinge beschreiben: der Aufbau ist der
@@ -411,6 +456,7 @@ export const ARCADE: Readonly<Record<VehicleId, ArcadeSpec>> = {
     driftAngle: 0.75,
     driftYawGain: 4.0,
     powerOversteer: 0.9,
+    liftOversteer: 0.85,
     driftRise: 7,
     driftFall: 2.6,
     catchAssist: 3.4,
@@ -447,6 +493,7 @@ export const ARCADE: Readonly<Record<VehicleId, ArcadeSpec>> = {
     driftAngle: 0.62,
     driftYawGain: 4.4,
     powerOversteer: 1.0,
+    liftOversteer: 0.75,
     driftRise: 8,
     driftFall: 2.2,
     catchAssist: 3.0,
@@ -480,6 +527,7 @@ export const ARCADE: Readonly<Record<VehicleId, ArcadeSpec>> = {
     driftYawGain: 3.4,
     // Allrad zieht am Kurvenausgang, statt auszubrechen.
     powerOversteer: 0.45,
+    liftOversteer: 0.3,
     driftRise: 6,
     driftFall: 3.0,
     catchAssist: 4.2,
@@ -512,6 +560,7 @@ export const ARCADE: Readonly<Record<VehicleId, ArcadeSpec>> = {
     driftAngle: 0.5,
     driftYawGain: 2.4,
     powerOversteer: 0.5,
+    liftOversteer: 0.35,
     driftRise: 4.5,
     driftFall: 2.4,
     catchAssist: 4.6,

@@ -10540,3 +10540,150 @@ Wasser."*
 - [ ] Auf einem echten Telefon nicht geprüft (nur im 390 × 844-Fenster).
 - [ ] Ob sich das Fahren *gut anfühlt*, ist weiterhin keine Frage für einen
       Prüfstand.
+
+
+---
+
+# P26 — „Die sehen tot aus mit diesem Streifen"
+
+> **Anlass:** vier Worte des Auftraggebers zu den Kirschbäumen, plus der Auftrag
+> „alles polishen, Performance auch für Low-End, Grafik cooler, Physik — denke
+> an jedes Detail."
+
+## 1. Der Streifen war meiner
+
+P25 hat die Kronen in drei Farbtonlagen **gestapelt** — hell oben, mauve unten.
+Die Diagnose dahinter stimmt und gilt weiter (bei 2,23° Sonnenstand trennt das
+Licht waagerechte und senkrechte Flächen nicht, also muss die Farbe es tun). Die
+**Reparatur** war falsch: gestapelte Töne sind waagerechte Bänder, und der
+tiefste Ton war ein staubiges Mauve — die Farbe welker Blüten. Auf
+`.cache/shots/baum-vorher.png` stehen rosa Sonnenschirme auf Stielen.
+
+Drei Änderungen, und alle drei sind nötig:
+
+| | vorher | jetzt |
+|---|---|---|
+| Ton hängt an | der **Höhe** (Lage) | der **Kennzahl des Ballens** |
+| Tonabstand | `0xf7c6d8` … `0xb06e8c` | eng und gesättigt |
+| Kronenform | 9 Kästen in 3 Lagen | 19 Ballen auf einer Fibonacci-Spirale |
+
+Die Spirale ist der eigentliche Punkt. Von Hand gesetzte Ballen werden
+unweigerlich zu Lagen — man schreibt sie zeilenweise hin, und genau das war der
+Streifen. Der goldene Winkel legt keine zwei auf dieselbe Höhe.
+
+Dazu breiter und tiefer angesetzt (RX 2,55 gegen RY 1,25, Mitte auf 3,5 m
+statt 4,1), damit die Krone den Stamm zur Hälfte verdeckt statt als Ball darauf
+zu sitzen. Beleg: `.cache/shots/baum-nah2.png`.
+
+## 2. Ein Prüfstands-Fehlalarm, der beinahe eine falsche Reparatur ausgelöst hätte
+
+`hill.mts` meldete: der Offroader bricht auf rauem Boden von 64,5 auf **4,8
+km/h** ein, als einziges Fahrzeug — ausgerechnet das, dessen ganze Auslegung
+Gelände heißt (42 cm Federweg, Allrad, Stollenreifen). Das sieht aus wie ein
+schwerer Fahrzeugfehler.
+
+Statt am Fahrwerk zu drehen, Wellenlänge und Abtastung getrennt
+(`tools/bench/offroad.mts`, neu). Endtempo am 20°-Hang nach 20 s:
+
+| Welle | ε | Coupé | Offroad | |
+|---|---|---|---|---|
+| 0,76 m | 0,50 | 78,0 | **4,5** | so hat `hill.mts` gemessen |
+| 0,76 m | 0,05 | 78,9 | 49,7 | |
+| 3,00 m | 0,50 | 78,0 | 61,6 | |
+| 3,00 m | 1,50 | 77,9 | **64,3** | wie die echte Karte |
+
+**Der Fehler lag im Prüfstand.** Er würfelte eine 0,76-m-Welle, die das
+bilineare 1,5-m-Höhenfeld gar nicht darstellen kann (Nyquist: kürzer als 3 m
+geht nicht), und tastete ihre Normale mit ε = 0,5 m ab — Aliasing. Getroffen hat
+es nur den Offroader, weil sein langer Federweg am empfindlichsten an der
+Normalen hängt: die Stützebene wird aus ihr gebaut.
+
+`hill.mts` rechnet jetzt mit 3 m Welle und ε = 1,5 m (dem Texelabstand, mit dem
+auch `TerrainSampler.getNormalAt` rechnet) und ist über die ganze Flotte sauber:
+glatt gegen rau überall innerhalb von 1 km/h.
+
+## 3. Gaswegnehmen tat nichts
+
+`fleet.mts` fährt die Probe „Lastwechsel im Bogen". Bis P26 stand dort für
+**alle vier** Fahrzeuge dasselbe:
+
+```
+   steer 0.35   1.9°→ 1.9°    steer 0.55   3.1°→ 3.1°    steer 0.80   4.9°→ 4.9°
+```
+
+Der Schwimmwinkel ändert sich um exakt null. Der Grund: `provocation = Gas ·
+|Lenkung|`, und ohne Gas ist das Produkt null. Ein Driftspiel ohne
+Lastwechsel-Übersteuern hat den Griff nicht, mit dem man ohne Handbremse
+eindreht — und die Zeile stand seit P22 grün formatiert im Prüfstand.
+
+**Der erste Entwurf hing an der Flanke und wurde von der Probe gestoppt.** Er
+addierte bei jedem Gasabfall; `arcade.mts` meldete daraufhin *„Saubere Kurve
+90 km/h: Schwimm 29,1° ⚠ driftet ungefragt"*. Die Ursache stand im Prüfstand
+selbst: `holdSpeed` ist ein **Zweipunktregler** (`speed < target ? 1 : 0`) und
+hackt das Gas mit rund 10 Hz an und aus.
+
+Der Fehler war nicht die Empfindlichkeit, sondern die **Größe**: eine Flanke ist
+ein Zeitpunkt, ein Lastwechsel ist ein Vorgang. Ausgelöst wird jetzt über eine
+**Dauer** — das Gas muss 0,12 s wirklich zu sein —, und es gibt genau einen
+Impuls je Lastwechsel, der von selbst abklingt und beim Wiederaufmachen des
+Gases neu scharf wird.
+
+| Fahrzeug | Lastwechsel steer 0,80 | vorher |
+|---|---|---|
+| Touge-Coupé | **14,4° → 6,0°** | 4,9° → 4,9° |
+| GT | **10,8° → 5,2°** | 4,9° → 4,9° |
+| Offroad 4×4 | 5,0° → 5,0° | 4,9° → 4,9° |
+| Lastwagen | 5,0° → 5,0° | 4,9° → 4,9° |
+
+Die beiden Hecktriebler drehen ein, Allrad und Lastwagen nicht — ein Allradler
+gräbt beim Lastwechsel ein statt einzudrehen. Gierstabilität (3,6°, nach 3 s
+0,0°) und Lenkantwort sind unverändert.
+
+Nebenbefund, der gefällt: ein Spieler an der **Tastatur** *ist* ein
+Zweipunktregler. Die Restwirkung von 8,5° Schwimmwinkel beim Antippen macht den
+Wagen lebendig und liegt unter der Wertungsschwelle (12,0°), gibt also keine
+Punkte für etwas, das man nicht gewollt hat.
+
+## 4. Drei Posten, die je Frame liefen und an keiner Stufe hingen
+
+Alle drei aus P25, alle drei reine Darstellung:
+
+| | vorher | jetzt |
+|---|---|---|
+| Minikarte | `drawImage` über 504 × 504 = 254 016 Pixel, 60 Hz | 15 Hz |
+| Fahnen + Sammelstücke | 110 `compose()` + 7 KB Matrixupload, 60 Hz | 20 Hz |
+| 760 Blütenblätter | an gar nichts gekoppelt | 100 % (Ultra) … 15 % (Minimal) |
+
+Die Rechnung für die Karte: bei 250 km/h bewegt sich der Zeiger in einer
+Sechzigstelsekunde **0,4 Pixel**. Bei 15 Hz sind es 6,8 — im Augenwinkel nicht
+zu unterscheiden, ein Viertel der Arbeit. Der Puffer wird dabei **nicht**
+kleiner: die Auflösung gehört der Schärfe, die Rate der Leistung.
+
+Die Blüten sind durchsichtig und schreiben keine Tiefe, sind also reine
+**Füllrate** — und Füllrate ist auf der Zielhardware der Engpass (dieselbe
+Begründung, aus der P8.2 die Umgebungsverdeckung auf Minimal ganz abgeschaltet
+hat). Ein Telefon auf „Minimal" zeichnete bis P26 dieselben 760 wie eine
+RX 7900 XTX auf Ultra.
+
+## Akzeptanz
+
+- [x] Kronen ohne waagerechte Bänder, breit, tief angesetzt
+      (`.cache/shots/baum-nah2.png`).
+- [x] `hill.mts` über die ganze Flotte sauber: glatt gegen rau innerhalb von
+      1 km/h, auch beim Offroader.
+- [x] Lastwechsel wirkt und ist nach Fahrzeug gestaffelt; „Saubere Kurve"
+      besteht bei allen vier weiterhin mit ✓.
+- [x] Gierstabilität, Lenkantwort, Ausrollen, Geradeauslauf und Lenksymmetrie
+      unverändert.
+- [x] `world.mts` unverändert grün.
+- [x] Blüten an der Qualitätsstufe; Minikarte 15 Hz; Instanzmatrizen 20 Hz.
+- [x] `typecheck` sauber, `vite build` läuft durch.
+
+## Was offen bleibt
+
+- [ ] **Die Rate von 20 Hz für die Instanzmatrizen ist eine Abwägung, keine
+      Messung.** Was sie spart, ist proportional und offensichtlich (zwei
+      Drittel der Aufrufe); was sie kostet, ist eine Frage fürs Auge und
+      gehört auf ein echtes Telefon.
+- [ ] Ob sich der Lastwechsel **gut anfühlt**, ist weiterhin keine Frage für
+      einen Prüfstand.
