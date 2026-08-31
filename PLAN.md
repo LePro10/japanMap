@@ -10404,6 +10404,36 @@ nur ein Ort — dieselbe Überlegung wie bei `japanMap.winding()`.
       und **ohne** die neue Meldung auszulösen. Das belegt die Wirkung der
       Reparatur (die Ausnahme nimmt die Schleife nicht mehr mit) und sagt über
       die Ursache nichts.
+- [ ] **Der Holzsteg am Hafen ist zu 97 % nicht da — gemessen, nicht repariert.**
+      `PropSystem.#geometryFor` nimmt `meshes[0]` und warnt, wenn ein Modell
+      mehr hat. `modular_wooden_pier.glb` hat **drei**:
+
+      ```
+        mesh 0 "mesh.013"    86 Dreiecke   Material 0   ← das einzige, das gezeichnet wird
+        mesh 1 "Plane.040" 2061 Dreiecke   Material 1
+        mesh 2 "Plane.052"  835 Dreiecke   Material 0
+        Summe              2982
+      ```
+
+      Von 2982 Dreiecken stehen also **86** im Bild, 2,9 %. Der Fehler ist seit
+      P5.1 drin, und die Warnung stand die ganze Zeit in der Konsole — gelesen
+      hat sie niemand. (Betroffen ist **nur** dieses eine Modell; alle anderen
+      führt die Pipeline mit `join()` auf ein Primitiv zusammen.)
+
+      **Nicht repariert, und das ist eine Entscheidung.** Der Steg steht
+      **einmal** auf der ganzen Karte (`assets/props.json`, 895 Einträge). Ihn
+      vollständig zu zeichnen hieße, eine Stufe zu einer *Liste von Teilen* zu
+      machen — `PropStage.mesh` würde `meshes[]`, und jede Stelle in `update()`,
+      die `count`, `scratch` und `instanceMatrix` schreibt, müsste eine Schleife
+      mehr fahren. Das ist ein Eingriff in das System, das 895 Instanzen trägt,
+      für **ein** Objekt in einer Ecke der Küste. Die Geometrien
+      zusammenzuführen wäre der billige Weg und der falsche: 2061 der 2982
+      Dreiecke hängen an Material 1, der ganze Steg bekäme also die Textur des
+      kleineren Teils.
+      Dieselbe Abwägung wie beim schwebenden Becken in P21.8: *eine Reparatur
+      kann teurer sein als der Fehler*, und *bevor ein Bild repariert wird,
+      nachsehen, ob man es sieht*. Was fehlt, ist ein Bild vom Hafen auf
+      Fahrerhöhe — dann ist die Frage entscheidbar.
 - [ ] **Braune Platten in der Luft, einmal gesehen und nicht erklärt.** Auf
       `.cache/shots/staub-k3.png` stehen rund sechs brettartige braune Flächen
       frei in einem Waldstück — bei dreifach überhöhter Partikelhelligkeit
