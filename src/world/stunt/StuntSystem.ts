@@ -7,8 +7,10 @@ import {
   InstancedMesh,
   Matrix4,
   Mesh,
+  MeshBasicMaterial,
   Quaternion,
   Vector3,
+  type Material,
   type Scene,
 } from 'three';
 
@@ -158,6 +160,46 @@ const POP_TIME = 0.35;
 /** Sekunden zwischen zwei Schreibvorgängen der Instanzmatrizen — s. `update`. */
 const TRANSFORM_INTERVAL = 1 / 20;
 
+/** Abstand zweier Laternen auf dem Ring, m. Bei 62 m Radius sind das 24. */
+const LANTERN_SPACING = 16;
+/** Wie weit innerhalb des Baumrings sie stehen, m. */
+const LANTERN_INSET = 5;
+const LANTERN_POST = 0x3c3630;
+
+/**
+ * Die Farbe des Laternenpapiers, als Hex — sie geht **unbeleuchtet** ins Bild.
+ *
+ * ## Gesetzt gegen die gemessene Szene und nicht gegen „warm"
+ *
+ * `MeshBasicMaterial` heißt: was hier steht, ist die fertige Helligkeit. Genau
+ * diese Zahl ist in P25 zweimal danebengegangen (Staub 31-mal zu hell, Blüten
+ * heller als der Himmel), und beide Male, weil sie nach Gefühl gewählt war.
+ *
+ * Der Rahmen dieser Szene, alles linear auf `.cache/shots/p25-stadt-rand.png`
+ * gemessen:
+ *
+ * | | linear |
+ * |---|---|
+ * | Boden | 0,028 |
+ * | Asphaltstraße | 0,058 |
+ * | Kirschblütenkrone | 0,372 |
+ * | hellste Pixel der Stadt | 0,52 |
+ * | Himmel | 0,62 |
+ *
+ * Eine Laterne ist eine **Lichtquelle**, und eine Lichtquelle gehört über den
+ * Himmel — sonst liest sie sich als angestrahlte Fläche. `0xffb45e` ergibt
+ * linear rund 1,00 / 0,44 / 0,10: heller als alles im Bild, warm gegen ein
+ * durchgehend kaltes Umfeld, und über der Bloom-Schwelle der PostFX-Kette,
+ * sodass sie einen Hof bekommt statt als flacher Fleck dazustehen.
+ */
+const LANTERN_PAPER = 0xffb45e;
+
+/** Gefallene Blüten je Zone. */
+const FALLEN_PER_ZONE = 150;
+/** Wie hoch die Flecken über dem Gelände liegen, m — Begründung an der Stelle. */
+const FALLEN_LIFT = 0.12;
+const FALLEN_COLOR = 0xe8a9c0;
+
 /**
  * Wie viele Blütenblätter je Stufe übrig bleiben, als Anteil.
  *
@@ -215,6 +257,16 @@ export class StuntSystem implements System {
 
   #ramps: Mesh | null = null;
   #rings: Mesh | null = null;
+  #lanternPosts: InstancedMesh | null = null;
+  #lanternGlow: InstancedMesh | null = null;
+  #fallen: InstancedMesh | null = null;
+  /**
+   * Das **unbeleuchtete** Material des Laternenpapiers.
+   *
+   * Getrennt vom `PropMaterial`, weil beleuchtet bei 2,23° Sonnenstand nichts
+   * leuchtet. Begründung ausführlich bei `#buildLanterns`.
+   */
+  #glow: MeshBasicMaterial | null = null;
   #trees: InstancedMesh | null = null;
   #flags: InstancedMesh | null = null;
   #pickups: InstancedMesh | null = null;
@@ -247,6 +299,13 @@ export class StuntSystem implements System {
     // sie hier von vornherein beantwortet.
     material.side = DoubleSide;
     this.#material = material;
+    const glow = new MeshBasicMaterial({ vertexColors: true });
+    glow.name = 'LaternenMaterial';
+    // Kein Nebel: eine Laterne, die im Dunst verschwindet, ist keine Laterne.
+    // (Der Nebel dieser Karte hängt an der Atmosphären-Injektion, die dieses
+    // Material bewusst nicht bekommt.)
+    glow.fog = false;
+    this.#glow = glow;
     context.scene.add(this.#group);
 
     // Die Blüten hängen seit P26 an der Qualitätsstufe — Begründung bei
@@ -272,7 +331,9 @@ export class StuntSystem implements System {
     if (!this.#sampler || !this.#network || this.#ramps) return;
     this.#buildRamps();
     this.#buildZoneRings();
+    this.#buildFallenPetals();
     this.#buildZones();
+    this.#buildLanterns();
     this.#buildPickups();
     const sampler = this.#sampler;
     this.#petals.build(scene, (x, z) => sampler.getHeightAt(x, z));
@@ -634,14 +695,142 @@ export class StuntSystem implements System {
     this.#writePickups();
   }
 
-  #instance(geometry: BufferGeometry, count: number, name: string): InstancedMesh {
+  #instance(
+    geometry: BufferGeometry,
+    count: number,
+    name: string,
+    material?: Material,
+  ): InstancedMesh {
     this.#geometries.push(geometry);
-    const mesh = new InstancedMesh(geometry, this.#material!, Math.max(1, count));
+    const mesh = new InstancedMesh(geometry, material ?? this.#material!, Math.max(1, count));
     mesh.name = name;
     mesh.count = count;
     mesh.castShadow = false;
     this.#group.add(mesh);
     return mesh;
+  }
+
+  // ── Laternen und Blütenteppich — P26 ────────────────────────────────────
+
+  /**
+   * Papierlaternen auf dem Zonenring und gefallene Blüten darunter.
+   *
+   * ## Warum ausgerechnet Laternen
+   *
+   * Diese Karte hat **eine** Tageszeit, und die Sonne steht 2,23° über dem
+   * Horizont. In so einem Bild ist warmes Eigenlicht gegen kaltes Himmelslicht
+   * der stärkste Kontrast, den es überhaupt zu haben gibt — die Stadt lebt seit
+   * P8 genau davon (`NeonSystem`), und ihre hellsten Pixel messen 0,52 linear
+   * gegen 0,028 Boden.
+   *
+   * Die Driftzone hatte nichts davon. Auf `.cache/shots/baum-nah2.png` ist ihr
+   * Boden eine große, dunkle, leere Fläche — und das ist der Ort, an dem der
+   * Spieler die meiste Zeit verbringen soll.
+   *
+   * ## Warum ein zweites Material sein muss
+   *
+   * `PropMaterial` ist beleuchtet, und beleuchtet gibt es bei 2,23° Sonnenstand
+   * kein Leuchten. Das Papier einer Laterne ist ein `MeshBasicMaterial`: was in
+   * seiner Vertexfarbe steht, ist die fertige Helligkeit im Bild — dieselbe
+   * Bauart wie die Partikel, und dieselbe Falle, die in P25 zweimal
+   * zugeschlagen hat. Die Zahl unten ist deshalb **gegen die gemessene Szene
+   * gesetzt** und nicht gegen eine Vorstellung von „warm".
+   *
+   * Der Mast bleibt im beleuchteten Material: ein unbeleuchteter Mast wäre eine
+   * schwarze Silhouette. Kosten: **zwei** zusätzliche Draw-Calls für beide
+   * Zonen zusammen, bei einem Budget von 250.
+   */
+  #buildLanterns(): void {
+    const sampler = this.#sampler;
+    const material = this.#material;
+    const glow = this.#glow;
+    if (!sampler || !material || !glow) return;
+
+    const stellen: { x: number; y: number; z: number; turn: number }[] = [];
+    for (const zone of DRIFT_ZONES) {
+      // Alle rund 16 m eine — bei 62 m Radius sind das 24. Dichter wäre eine
+      // Lichterkette, dünner verlöre der Ring seinen Zusammenhang.
+      const n = Math.max(8, Math.round((Math.PI * 2 * zone.radius) / LANTERN_SPACING));
+      for (let i = 0; i < n; i++) {
+        const a = (Math.PI * 2 * (i + 0.5)) / n;
+        // Ein Stück **innerhalb** des Baumrings: die Laternen sollen den Boden
+        // beleuchten, auf dem gefahren wird, nicht den Wald dahinter.
+        const r = zone.radius - LANTERN_INSET;
+        const x = zone.x + Math.cos(a) * r;
+        const z = zone.z + Math.sin(a) * r;
+        stellen.push({ x, y: sampler.getHeightAt(x, z), z, turn: a });
+      }
+    }
+
+    this.#lanternPosts = this.#instance(createLanternPost(), stellen.length, 'Laternenmasten');
+    this.#lanternGlow = this.#instance(
+      createLanternPaper(),
+      stellen.length,
+      'Laternenlicht',
+      glow,
+    );
+    for (let i = 0; i < stellen.length; i++) {
+      const s = stellen[i]!;
+      this.#quat.setFromAxisAngle(this.#up, s.turn);
+      this.#matrix.compose(POINT.set(s.x, s.y, s.z), this.#quat, this.#scale);
+      this.#lanternPosts.setMatrixAt(i, this.#matrix);
+      this.#lanternGlow.setMatrixAt(i, this.#matrix);
+    }
+    this.#lanternPosts.instanceMatrix.needsUpdate = true;
+    this.#lanternGlow.instanceMatrix.needsUpdate = true;
+  }
+
+  /**
+   * Gefallene Blüten auf dem Boden der Zone.
+   *
+   * **Sie schließen einen Kreis, der bisher offen war.** Über der Zone fallen
+   * seit P24 Blütenblätter; unten kamen sie nie an. Ein Boden, auf den es
+   * hundert Blätter je Sekunde schneit und der makellos bleibt, ist eine
+   * Behauptung, die das Bild widerlegt.
+   *
+   * Flache Vierecke, 12 cm über dem Gelände abgesetzt (die Straßendecals dieses
+   * Projekts liegen bei 6 cm, und das war in P6 einmal zu wenig — das gerenderte
+   * CDLOD-Gitter liegt zwischen zwei Stützstellen über dem Höhenfeld). Sie
+   * liegen **waagerecht** und folgen der Neigung nicht: bei 3,9 m Höhenunterschied
+   * auf 124 m ist der Hang unter 2°, und ein Fleck von 1,5 m steht damit
+   * höchstens 5 cm schräg.
+   */
+  #buildFallenPetals(): void {
+    const sampler = this.#sampler;
+    const material = this.#material;
+    if (!sampler || !material) return;
+
+    const flecken: { x: number; y: number; z: number; turn: number; scale: number }[] = [];
+    for (const zone of DRIFT_ZONES) {
+      for (let i = 0; i < FALLEN_PER_ZONE; i++) {
+        // Wurzel für Gleichverteilung in der Fläche — sonst drängt sich alles
+        // in der Mitte. Dieselbe Rechnung wie bei `PetalFall`.
+        const a = hash(i * 1.9, zone.x + 3) * Math.PI * 2;
+        // Nach außen gewichtet: unter den Bäumen liegt mehr als in der Mitte.
+        const t = Math.sqrt(hash(i * 4.3, zone.z - 5));
+        const r = zone.radius * (0.25 + 0.72 * t);
+        const x = zone.x + Math.cos(a) * r;
+        const z = zone.z + Math.sin(a) * r;
+        flecken.push({
+          x,
+          y: sampler.getHeightAt(x, z) + FALLEN_LIFT,
+          z,
+          turn: hash(i * 7.7, zone.x - zone.z) * Math.PI,
+          scale: 0.7 + hash(i * 2.9, zone.z + 11) * 0.9,
+        });
+      }
+    }
+
+    this.#fallen = this.#instance(createFallenPatch(), flecken.length, 'Blütenteppich');
+    for (let i = 0; i < flecken.length; i++) {
+      const f = flecken[i]!;
+      this.#quat.setFromAxisAngle(this.#up, f.turn);
+      this.#scale.set(f.scale, 1, f.scale);
+      this.#matrix.compose(POINT.set(f.x, f.y, f.z), this.#quat, this.#scale);
+      this.#fallen.setMatrixAt(i, this.#matrix);
+    }
+    this.#scale.set(1, 1, 1);
+    this.#fallen.instanceMatrix.needsUpdate = true;
   }
 
   #writePickups(): void {
@@ -777,6 +966,11 @@ export class StuntSystem implements System {
     for (const geometry of this.#geometries) geometry.dispose();
     this.#geometries.length = 0;
     this.#rings?.removeFromParent();
+    this.#lanternPosts?.dispose();
+    this.#lanternGlow?.dispose();
+    this.#fallen?.dispose();
+    this.#glow?.dispose();
+    this.#glow = null;
     this.#trees?.dispose();
     this.#flags?.dispose();
     this.#pickups?.dispose();
@@ -934,6 +1128,60 @@ function createFlag(): BufferGeometry {
     );
   }
   return mergeBoxes(parts);
+}
+
+/**
+ * Der Mast einer Laterne — beleuchtet, also im `PropMaterial`.
+ *
+ * Ein Holzpfosten mit einem kurzen Querarm, an dem die Laterne hängt. Der Arm
+ * ist der Grund, warum das Papier nicht am Pfosten klebt: eine Laterne hängt,
+ * sie ist nicht angeschraubt.
+ */
+function createLanternPost(): BufferGeometry {
+  return mergeBoxes([
+    box(0.16, 3.2, 0.16, 0, 1.6, 0, LANTERN_POST),
+    box(0.1, 0.1, 0.62, 0, 3.14, 0.28, LANTERN_POST),
+    // Der kurze Draht zwischen Arm und Papier.
+    box(0.04, 0.22, 0.04, 0, 3.0, 0.56, LANTERN_POST),
+  ]);
+}
+
+/**
+ * Das Papier — **unbeleuchtet**, im eigenen Material.
+ *
+ * Zwei gestapelte Kästen statt einem: eine Chōchin ist bauchig, und zwei
+ * Kästen mit unterschiedlicher Breite deuten das mit zwölf Dreiecken mehr an.
+ * Die Kappe oben trägt denselben hellen Ton — sie ist Teil des Papiers und
+ * nicht der Deckel.
+ */
+function createLanternPaper(): BufferGeometry {
+  return mergeBoxes([
+    box(0.34, 0.46, 0.34, 0, 2.66, 0.56, LANTERN_PAPER),
+    box(0.24, 0.12, 0.24, 0, 2.95, 0.56, LANTERN_PAPER),
+    box(0.24, 0.1, 0.24, 0, 2.4, 0.56, LANTERN_PAPER),
+  ]);
+}
+
+/**
+ * Ein Fleck gefallener Blüten — ein flaches Viereck, waagerecht.
+ *
+ * Zwei Dreiecke, nach oben gewickelt. Die Wickelrichtung ist hier keine
+ * Nebensache: `japanMap.winding()` prüft sie, und dieses Projekt hat zwei
+ * rückseitige Flächen teuer bezahlt (P8.11) — eine davon war ein Flussband,
+ * das ein halbes Jahr lang unsichtbar war.
+ */
+function createFallenPatch(): BufferGeometry {
+  const h = 0.75;
+  const positions = [-h, 0, -h, -h, 0, h, h, 0, h, -h, 0, -h, h, 0, h, h, 0, -h];
+  const c = new Color(FALLEN_COLOR);
+  const colors: number[] = [];
+  for (let i = 0; i < 6; i++) colors.push(c.r, c.g, c.b);
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new BufferAttribute(Float32Array.from(positions), 3));
+  geometry.setAttribute('color', new BufferAttribute(Float32Array.from(colors), 3));
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+  return geometry;
 }
 
 /**
