@@ -10871,6 +10871,51 @@ Szene ein zweites Mal. Wer auf schwacher Hardware eine Stufe sucht, sucht
    eine Stunde für eine einzige Zelle. Zwei Läufe sind daran gestorben, ohne
    eine Zeile auszugeben.
 
+## 10. Der Bilddurchgang — der erste dieser Sitzung, der hinzeigt, wo gefragt
+
+Fünf Aufnahmen auf Fahrerhöhe, Stufe `medium` (die Stufe, die die Leiter für
+schwache Geräte nahelegt), alle über `view({position, lookAt})` und damit zum
+ersten Mal in dieser Sitzung tatsächlich gezielt:
+
+| Bild | Befund |
+|---|---|
+| `p26-rampe-dorf.png` | Die verlängerte Schanze steht als rotes Trapez in der Landschaft, Sammelstück darüber |
+| `p26-rampe-reisfeld.png` | Querbalken und helle Absprungleiste lesbar, Bergmassiv dahinter |
+| `p26-zone-hafen.png` | Harbour Pan: Baumring auf dem Rücken, Verwehungen als rosa Sprenkel, Laterne am rechten Rand |
+| `p26-stadt.png` | Neonschilder, nasser Asphalt mit Rissen |
+| `p26-sando.png` | Torii-Reihe, Steinlaternen, Nadelwald |
+
+`anteilNichtSchwarz` liegt überall bei 0,9992…0,9999 — die Bilder sind
+vollständig (die Falle aus P8.9).
+
+### Drei weiße Flecken, die keine waren
+
+Auf beiden Schanzenbildern standen zwei bis drei ausgebrannte weiße Flecken
+nahe am Horizont, in den anderen drei Bildern nicht. Sie sahen nach einem
+Postprocessing-Artefakt aus. Getrennt wurde **über das Objekt**, nicht über die
+Farbe — vier Läufe, jedes Mal nur eine Sichtbarkeit umgeschaltet, hellster
+Pixel im selben Ausschnitt:
+
+| ausgeblendet | hellster |
+|---|---|
+| nichts | 0,9216 |
+| Leitplanken | 0,9301 |
+| Sammelstücke, Fahnen, Kontrollpunkte | 0,9244 |
+| **Sonne** | 0,9301 |
+| **Meer, Reisfelder, Fluss** | **0,1937** |
+
+Es ist der **Sonnenglanz auf dem Wasser**, nicht die Sonne selbst und kein
+Artefakt: bei 2,23° Sonnenstand wirft eine große flache Wasserfläche einen
+Glitzerpfad, und die Bloom-Kette zieht ihn zu Flecken zusammen.
+
+**Nicht repariert, und das ist die Entscheidung.** Der Effekt ist Inhalt und
+sieht nach Abendsonne aus; ihn zu dämpfen hieße, ein Bild gegen eine Vermutung
+einzutauschen. Er steht hier, damit niemand ihn später ein zweites Mal jagt —
+dieselbe Regel wie beim schwebenden Flussbecken aus P21: **aufschreiben statt
+reparieren.** Und derselbe Grund, warum die erste Vermutung (Leitplanken)
+gemessen und nicht geglaubt wurde: pures Weiß (246 | 246 | 246) ist ein
+gesättigter Wert und kein Objekt, das man an seiner Farbe erkennt.
+
 ## Akzeptanz
 
 - [x] Kronen ohne waagerechte Bänder, breit, tief angesetzt
@@ -10895,6 +10940,9 @@ Szene ein zweites Mal. Wer auf schwacher Hardware eine Stufe sucht, sucht
       204 150/1 040 131 Dreiecke; der Sprung liegt bei `reflections` zwischen
       medium und high.
 - [x] `fleet`, `arcade`, `world` und `hill` grün.
+- [x] Fünf Bilder auf Fahrerhöhe, korrekt gezielt, `anteilNichtSchwarz`
+      0,9992…0,9999 — keine offene Auffälligkeit außer dem Wasserglanz, und
+      der ist gemessen zugeordnet.
 - [x] `typecheck` sauber, `vite build` läuft durch.
 
 ## Was offen bleibt
