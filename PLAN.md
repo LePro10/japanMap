@@ -10333,11 +10333,14 @@ passiert oder wo er ist.*
       (`.cache/shots/staub.png`).
 - [x] Blütenblätter mit Form (Ellipse mit Spitze, weicher Rand) und an der Krone
       bemessener Farbe; zusätzlich Ausblenden unter 1,5 m Kameraabstand.
-- [x] Kirschbäume: 22 Kästen, drei Blütentöne, gedrehte Lagen. 264 Dreiecke je
-      Baum gegen vorher 48; bei 44 Bäumen 11 616 Dreiecke in **einem**
-      Draw-Call (Budget 3 Mio.).
+- [x] Kirschbäume: 12 Kästen, drei Blütentöne, gedrehte Lagen. **Nachgezählt**
+      (nicht geschätzt): 144 Dreiecke je Baum gegen vorher 48; bei 44 Bäumen
+      **6336** in *einem* Draw-Call (Budget 3 Mio.).
 - [x] Fahnen: vier Tuchsegmente, zwei Töne, Wind über die Instanzmatrix.
 - [x] Bodenring je Driftzone, dem Gelände folgend.
+- [x] Schanzen mit Randstreifen und Querbalken (Vertexfarben auf dem Raster,
+      das ohnehin da ist — null zusätzliche Dreiecke). Eine einfarbige Schräge
+      gibt dem Auge nichts, woran es die Neigung ablesen könnte.
 - [x] Aufsammel-Effekt: das Stück wächst 0,35 s lang auf das 2,6-fache, steigt
       1,2 m und dreht viermal so schnell — über **dieselbe** Instanzliste, also
       null zusätzliche Draw-Calls. Dazu ein Meldeton (¥ 784 Hz, Nitro 1046 Hz).
@@ -10352,8 +10355,55 @@ passiert oder wo er ist.*
 - [x] Draw-Calls unverändert im Budget; die Minikarte kostet **null**, weil sie
       nicht durch WebGL geht.
 
+## 5. Ein Fehler, der das ganze Spiel angehalten hat
+
+Gefunden hat ihn kein Bild und keine Kennzahl, sondern der **Prüflauf selbst**:
+eine getriebene Schleife am Blickpunkt `wald` starb mit
+
+```
+TypeError: Failed to execute 'setTargetAtTime' on 'AudioParam':
+           The provided float value is non-finite.
+  at AudioSystem.update → Engine.#update → RenderLoop.#frame
+```
+
+Die Web-Audio-API **wirft** bei einem nicht-endlichen Wert. Diese Ausnahme
+kommt aus `update()`, läuft durch die Engine und beendet die Frameschleife:
+das Bild steht, das Auto steht, das Spiel ist tot. Für eine Tonspur ist das
+der denkbar schlechteste Tausch — und in einem Portalspiel ist es der
+Unterschied zwischen „hakt kurz" und „ist kaputt".
+
+Zwei Dinge machen es schlimmer, als es klingt:
+
+1. **`#rpm` ist klebrig.** Die Glättung ist `x += (ziel − x)·k`; ist `x` einmal
+   NaN, bleibt es NaN, auch wenn die Telemetrie im nächsten Schritt wieder
+   gesund ist. Ein einziger schlechter Frame vergiftet die ganze Sitzung.
+2. **Der Stapel zeigt nicht auf die Ursache.** Er endet in der Web-Audio-API;
+   woher das NaN kommt, steht irgendwo in der Physik.
+
+Behoben ist die **Wirkung** und ausdrücklich nicht die Ursache: alle sechs
+Wege zu einem `AudioParam` gehen jetzt durch eine Funktion (`rampe`), die einen
+nicht-endlichen Wert überspringt statt ihn zu klemmen (eine geklemmte Frequenz
+wäre ein falscher Ton, ein übersprungener Frame ist keiner), und die Drehzahl
+setzt sich bei NaN auf Leerlauf zurück und meldet das **einmal** in die
+Konsole, mit `dt`, Zieldrehzahl und der ganzen Telemetrie daneben.
+
+Sechs `if` an sechs Aufrufstellen wären der naheliegende Weg gewesen und der
+falsche: der siebte Regler, den jemand nächstes Jahr einbaut, ist der, an dem
+es wieder passiert. Ein Fehlerbild ist eine Klasse, und gegen eine Klasse hilft
+nur ein Ort — dieselbe Überlegung wie bei `japanMap.winding()`.
+
 ## Was offen bleibt
 
+- [ ] **Woher das NaN kam, ist nicht bekannt.** Die Notbremse oben fängt es und
+      meldet es; ausgelöst wurde es in einer *getriebenen* Schleife, also unter
+      Bedingungen, die es im Betrieb so nicht gibt. Ob es dort auch auftritt,
+      ist offen — die Meldung in der Konsole ist der Haken, an dem der nächste
+      Fall hängen bleibt.
+      Nachgemessen: derselbe Lauf, der vorher binnen Sekunden an genau dieser
+      Stelle starb, hat danach **minutenlang** weitergetickt, ohne zu sterben
+      und **ohne** die neue Meldung auszulösen. Das belegt die Wirkung der
+      Reparatur (die Ausnahme nimmt die Schleife nicht mehr mit) und sagt über
+      die Ursache nichts.
 - [ ] **Braune Platten in der Luft, einmal gesehen und nicht erklärt.** Auf
       `.cache/shots/staub-k3.png` stehen rund sechs brettartige braune Flächen
       frei in einem Waldstück — bei dreifach überhöhter Partikelhelligkeit
