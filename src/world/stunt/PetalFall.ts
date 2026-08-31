@@ -184,6 +184,8 @@ export class PetalFall {
   #mesh: Mesh | null = null;
   #material: ShaderMaterial | null = null;
   #time = 0;
+  /** Wie viele Instanzen angelegt sind — die Obergrenze für `setDensity`. */
+  #count = 0;
 
   /**
    * Aufbauen. `heightAt` liefert den Boden — die Blüten fallen relativ dazu,
@@ -230,6 +232,7 @@ export class PetalFall {
     geometry.setAttribute('anchor', new InstancedBufferAttribute(anchors, 3));
     geometry.setAttribute('seed', new InstancedBufferAttribute(seeds, 3));
     geometry.instanceCount = count;
+    this.#count = count;
     // **Die Hüllkugel von Hand.** Der Vertex-Shader verschiebt jedes Blatt, und
     // three weiß davon nichts — eine gerechnete Hüllkugel wäre die der
     // Ankerpunkte und schnitte die fallenden Blätter oben ab. Dieselbe Falle
@@ -257,6 +260,27 @@ export class PetalFall {
     mesh.frustumCulled = false;
     this.#mesh = mesh;
     scene.add(mesh);
+  }
+
+  /**
+   * Wie viele der Blätter gezeichnet werden, als Anteil — P26.
+   *
+   * **Über `instanceCount` und nicht über einen neuen Puffer.** Die Instanzen
+   * liegen bereits auf der GPU; sie neu anzulegen kostet eine Übertragung und
+   * bringt nichts, denn Speicher ist hier nicht der Engpass, Füllrate ist es.
+   * `instanceCount` herunterzusetzen zeichnet schlicht weniger davon.
+   *
+   * Dass dabei immer die **ersten** n Blätter übrig bleiben, ist unauffällig
+   * und kein Zufall: sie sind über beide Zonen und über die Kreisfläche
+   * gleichverteilt vergeben (siehe `build`), die Reihenfolge trägt also keine
+   * Ortsinformation. Ein Ausdünnen „jedes zweite" wäre dasselbe Ergebnis mit
+   * mehr Code.
+   */
+  setDensity(anteil: number): void {
+    const geometry = this.#mesh?.geometry;
+    if (!geometry) return;
+    const n = Math.max(0, Math.min(this.#count, Math.round(this.#count * anteil)));
+    (geometry as InstancedBufferGeometry).instanceCount = n;
   }
 
   /**

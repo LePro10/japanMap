@@ -48,19 +48,58 @@ type Belag = 'asphalt' | 'kies' | 'gelaende';
  * gemessen), und wer beide in einer Probe mischt, kann hinterher nicht sagen,
  * welche gegriffen hat.
  */
+/**
+ * Der Prüfhang.
+ *
+ * ## Die Rauheit hat bis P26 eine Welle nachgebildet, die es nicht gibt
+ *
+ * Hier stand `sin(x · 8.3)`, also **0,76 m** Wellenlänge, und die Normale wurde
+ * mit einer zentralen Differenz über ε = 0,5 m gerechnet. Beides zusammen ist
+ * Aliasing: eine Differenz über 1,0 m auf einer 0,76-m-Welle liest die Steigung
+ * an der falschen Stelle ab, und die Normale zeigt irgendwohin.
+ *
+ * Der Preis war ein **Fehlalarm, der wie ein schwerer Fahrzeugfehler aussah**:
+ * der Offroader fiel als einziges Fahrzeug von 64,5 auf 4,8 km/h, und zwar
+ * ausgerechnet der, dessen ganze Auslegung Gelände heißt. Getrennt in
+ * `tools/bench/offroad.mts`, Endtempo am 20°-Hang nach 20 s:
+ *
+ * | Welle | ε | Coupé | Offroad |
+ * |---|---|---|---|
+ * | 0,76 m | 0,50 | 78,0 | **4,5** ← so hat es gemessen |
+ * | 0,76 m | 0,05 | 78,9 | 49,7 |
+ * | 3,00 m | 0,50 | 78,0 | 61,6 |
+ * | 3,00 m | 1,50 | 77,9 | **64,3** ← wie die Karte |
+ *
+ * Getroffen hat es nur den Offroader, weil sein 42-cm-Federweg am
+ * empfindlichsten an der Normalen hängt — die Stützebene wird aus ihr gebaut.
+ *
+ * ## Warum 3 m und ε = 1,5 m die richtigen Zahlen sind
+ *
+ * Das Höhenfeld dieser Karte ist bilinear über ein **1,5-m-Raster**. Kürzer als
+ * 3 m kann darin nichts stehen (Nyquist), und `TerrainSampler.getNormalAt`
+ * rechnet folgerichtig mit dem Texelabstand als ε. Ein Prüfstand, der feiner
+ * würfelt als seine Quelle darstellen kann, misst seine eigene Abtastung.
+ *
+ * Die Amplitude bleibt bei ±6 cm — die ist realistisch und war nie das Problem.
+ */
 function hang(grad: number, belag: Belag, rau: number) {
   const s = Math.tan(grad * DEG);
   const q = Math.hypot(s, 1);
-  // Rauheit als zwei kurze Sinuslagen — dieselbe Größenordnung wie das
-  // Höhenfeld der Karte zwischen zwei Texeln (2…20 cm auf 1,5 m).
+  // Zwei Lagen mit 3 m und 4,9 m Wellenlänge: die kürzeste, die das
+  // Höhenfeld tragen kann, und eine längere daneben.
+  const K2 = (2 * Math.PI) / 3.0;
+  const K1 = (2 * Math.PI) / 4.9;
   const rauheit = (x: number, z: number) =>
-    rau === 0 ? 0 : rau * (Math.sin(x * 3.7 + z * 1.9) * 0.6 + Math.sin(x * 8.3 - z * 6.1) * 0.4);
+    rau === 0
+      ? 0
+      : rau * (Math.sin(x * K1 + z * K1 * 0.51) * 0.6 + Math.sin(x * K2 - z * K2 * 0.73) * 0.4);
   const height = (x: number, z: number) => z * s + rauheit(x, z);
   return {
     height,
     normal: (x: number, z: number, t: Vector3) => {
       if (rau === 0) return t.set(0, 1 / q, -s / q);
-      const e = 0.5;
+      // Der Texelabstand der Karte, nicht ein kleinerer Wert — siehe oben.
+      const e = 1.5;
       const dx = (height(x + e, z) - height(x - e, z)) / (2 * e);
       const dz = (height(x, z + e) - height(x, z - e)) / (2 * e);
       return t.set(-dx, 1, -dz).normalize();

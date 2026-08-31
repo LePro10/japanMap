@@ -13,6 +13,7 @@ import {
 } from 'three';
 
 import { DRIFT_ZONES, PICKUPS, RAMPS } from '@/config/stunt.config';
+import { DEFAULT_QUALITY, type QualityKey } from '@/config/quality.config';
 import type { EngineContext, System } from '@/core/System';
 import { liftLocal, type RampField } from '@/game/RampField';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
@@ -66,22 +67,39 @@ const RAMP_COLOR = 0xb4462c;
 /** Der dunklere Ton der Querbalken. Begründung an der Stelle, die ihn setzt. */
 const RAMP_COLOR_DARK = 0x7d2f1e;
 const RAMP_EDGE_COLOR = 0xe6d8c0;
-const SAKURA_TRUNK = 0x4a3b30;
+const SAKURA_TRUNK = 0x5b483a;
+
 /**
- * Drei Blütentöne statt eines.
+ * Drei Blütentöne — **durchmischt und nicht gestapelt**.
  *
- * > **Ein Ton war der Grund, warum die Kronen wie Schilder aussahen.** Auf
- * > `.cache/shots/drift.png` (P25) stehen sie als flache rosa Platten in der
- * > Landschaft — und das lag nicht an der Kastenform, sondern daran, dass
- * > *alle* Flächen eines Baums dieselbe Farbe tragen. In der blauen Stunde
- * > steht die Sonne 2,23° über dem Horizont; zwischen einer waagerechten und
- * > einer senkrechten Fläche liegt dann kaum ein Helligkeitsunterschied, und
- * > ohne Farbunterschied auch keiner im Bild. Eine Krone braucht deshalb ihre
- * > Tiefe **in der Farbe**, nicht im Licht: oben hell, unten im Eigenschatten.
+ * ## Erst ein Ton, dann drei gestapelte, und beide Male sah es falsch aus
+ *
+ * Der erste Entwurf hatte einen Ton, und die Kronen lasen sich als flache rosa
+ * Schilder: in der blauen Stunde steht die Sonne 2,23° über dem Horizont, und
+ * zwischen einer waagerechten und einer senkrechten Fläche liegt dann kaum ein
+ * Helligkeitsunterschied. Ohne Farbunterschied gibt es im Bild auch keinen.
+ * Die Diagnose stimmt und gilt weiter.
+ *
+ * Die **Reparatur** war falsch. Sie legte die drei Töne als waagerechte Lagen
+ * übereinander — hell oben, mauve unten. Was dabei herauskommt, ist genau das,
+ * was ein Baum nicht ist: ein heller Streifen mit einem dunklen Band darunter.
+ * Der Auftraggeber hat es in vier Worten gesagt, *„sehen tot aus mit diesem
+ * Streifen"*, und `.cache/shots/baum-vorher.png` zeigt es: rosa Sonnenschirme
+ * auf Stielen.
+ *
+ * Zwei Änderungen, und beide sind nötig:
+ *
+ *  1. **Der Ton hängt nicht mehr an der Höhe**, sondern an einer Kennzahl des
+ *     Ballens. Damit stehen helle und tiefe Ballen nebeneinander statt
+ *     übereinander, und das liest sich als Blattwerk mit Tiefe statt als
+ *     Schichtkuchen. Eine kleine Aufhellung nach oben bleibt — sie ist richtig,
+ *     sie darf nur nicht die ganze Lage einfärben.
+ *  2. **Der Abstand der Töne ist viel enger und die Sättigung höher.** Vorher
+ *     lagen zwischen `0xf7c6d8` und `0xb06e8c` Welten, und der tiefste Ton war
+ *     ein staubiges Mauve — die Farbe welker Blüten. Eine blühende Kirsche ist
+ *     hell **und** gesättigt.
  */
-const SAKURA_TOP = 0xf7c6d8;
-const SAKURA_MID = 0xe49dba;
-const SAKURA_LOW = 0xb06e8c;
+const SAKURA_TONES = [0xffc9dd, 0xf7aecb, 0xe391b4] as const;
 const FLAG_POLE = 0xd8d4cc;
 const FLAG_CLOTH = 0xd83a3a;
 const FLAG_CLOTH_DARK = 0x9e2626;
@@ -137,6 +155,36 @@ const ZONE_RING_OUTER = 0xb84a72;
  */
 const POP_TIME = 0.35;
 
+/** Sekunden zwischen zwei Schreibvorgängen der Instanzmatrizen — s. `update`. */
+const TRANSFORM_INTERVAL = 1 / 20;
+
+/**
+ * Wie viele Blütenblätter je Stufe übrig bleiben, als Anteil.
+ *
+ * ## Warum die Blüten überhaupt an der Stufe hängen müssen
+ *
+ * 760 durchsichtige Vierecke ohne Tiefenschreiben sind reine **Füllrate**, und
+ * Füllrate ist auf der Zielhardware der Engpass — das steht seit P8.2 in
+ * `quality.config.ts` und war der Grund, die Umgebungsverdeckung auf Minimal
+ * ganz abzuschalten. Bis P26 hingen sie an gar nichts: ein Telefon auf
+ * „Minimal" zeichnete dieselben 760 wie eine RX 7900 XTX auf Ultra.
+ *
+ * Sie ganz zu streichen wäre falsch — sie sind die zweite Anzeige der
+ * Driftzone, und die Zone ohne sie ist ein Kreis aus Bäumen wie jeder andere.
+ * Ausgedünnt bleibt der Eindruck; er wird nur dünner.
+ *
+ * Umgesetzt über `geometry.instanceCount`, nicht über einen neuen Puffer: die
+ * Instanzen sind schon da, es werden schlicht weniger gezeichnet.
+ */
+const PETAL_DENSITY: Readonly<Record<QualityKey, number>> = {
+  ultra: 1,
+  high: 1,
+  custom: 0.75,
+  medium: 0.6,
+  low: 0.35,
+  minimal: 0.15,
+};
+
 export class StuntSystem implements System {
   readonly name = 'StuntSystem';
 
@@ -184,6 +232,9 @@ export class StuntSystem implements System {
   readonly #up = new Vector3(0, 1, 0);
   #spin = 0;
   #wind = 0;
+  /** Sekunden seit dem letzten Schreiben der Instanzmatrizen. */
+  #since = Number.POSITIVE_INFINITY;
+  #level: QualityKey = DEFAULT_QUALITY;
 
   init(context: EngineContext): void {
     this.#group.name = 'Stunt';
@@ -197,6 +248,14 @@ export class StuntSystem implements System {
     material.side = DoubleSide;
     this.#material = material;
     context.scene.add(this.#group);
+
+    // Die Blüten hängen seit P26 an der Qualitätsstufe — Begründung bei
+    // `PETAL_DENSITY`. Hereingereicht über den Bus wie bei jedem anderen
+    // System, das eine Stufe liest (ScatterSystem, TerrainSystem).
+    context.bus.on('quality:changed', ({ level }) => {
+      this.#level = level;
+      this.#petals.setDensity(PETAL_DENSITY[level]);
+    });
 
     context.bus.on('terrain:ready', ({ sampler }) => {
       this.#sampler = sampler;
@@ -217,6 +276,10 @@ export class StuntSystem implements System {
     this.#buildPickups();
     const sampler = this.#sampler;
     this.#petals.build(scene, (x, z) => sampler.getHeightAt(x, z));
+    // Die Stufe kann **vor** dem Bauen gekommen sein — `quality:changed` wird
+    // beim Start einmal gesendet, und ob das vor oder nach `terrain:ready`
+    // passiert, ist eine Reihenfolge, auf die sich niemand verlassen sollte.
+    this.#petals.setDensity(PETAL_DENSITY[this.#level]);
   }
 
   // ── Schanzen ────────────────────────────────────────────────────────────
@@ -678,13 +741,34 @@ export class StuntSystem implements System {
   update(dt: number): void {
     this.#petals.update(dt);
     this.#wind += dt;
+    this.#spin += dt * 1.8;
+
+    // ── Nicht je Frame — P26 ───────────────────────────────────────────
+    //
+    // Hier standen zwei volle Instanzpuffer je Frame: 20 Fahnen und 90
+    // Sammelstücke, jedes mit `compose()` und einem Hochladen der ganzen
+    // Matrixliste (110 × 16 Gleitkommazahlen = 7 KB, 60-mal je Sekunde). Für
+    // **Darstellung**, die niemand Frame für Frame prüft.
+    //
+    // Beides sind langsame Bewegungen: die Fahne schwingt mit 1,7 und 2,9 rad/s,
+    // das Stück dreht mit 1,8 rad/s. Bei 20 Hz liegen zwischen zwei Bildern
+    // 5,2° Drehung — das ist unterhalb dessen, was an einem 40 Pixel großen
+    // Oktaeder überhaupt zu sehen ist.
+    //
+    // **20 Hz und nicht 15 wie die Minikarte**, weil hier Geometrie in
+    // Bewegung ist und dort eine Zeichnung: eine ruckelnde Drehung fällt eher
+    // auf als eine ruckelnde Karte. Die Zahl ist eine Abwägung und keine
+    // Messung — was sie spart, ist proportional und offensichtlich (zwei
+    // Drittel der Aufrufe), was sie kostet, ist eine Frage fürs Auge.
+    this.#since += dt;
+    if (this.#since < TRANSFORM_INTERVAL) return;
+    this.#since = 0;
+
     this.#waveFlags();
-    if (!this.#pickups) return;
     // Die Stücke drehen sich. Das ist die billigste Art, ein Ding als
     // „einsammelbar" zu kennzeichnen — jedes Spiel seit 1991 macht es so, und
     // zwar weil es funktioniert: bewegte Dinge ziehen den Blick.
-    this.#spin += dt * 1.8;
-    this.#writePickups();
+    if (this.#pickups) this.#writePickups();
   }
 
   dispose(): void {
@@ -745,28 +829,71 @@ function hash(x: number, z: number): number {
  * > diesmal nur an einer Kostenangabe und nicht an einer Wirkung.
  */
 function createSakura(): BufferGeometry {
-  return mergeBoxes([
-    // Stamm, leicht geneigt: ein senkrechter Stab ist ein Mast, ein schiefer
-    // ein Baum.
-    box(0.42, 2.6, 0.42, 0, 1.3, 0, SAKURA_TRUNK),
-    boxY(0.3, 1.6, 0.3, 0.55, 2.7, -0.2, 0.5, SAKURA_TRUNK),
-    boxY(0.26, 1.4, 0.26, -0.5, 2.6, 0.35, -0.7, SAKURA_TRUNK),
+  const parts: BoxSpec[] = [
+    // ── Stamm und Äste ──────────────────────────────────────────────────
+    //
+    // Kräftiger und kürzer als vorher (0,52 statt 0,42 breit, Krone tiefer
+    // angesetzt). Der alte Baum war ein dünner Stiel mit einem Hut darauf, und
+    // zwischen beiden klaffte Luft — auf `.cache/shots/baum-vorher.png` liest
+    // sich das als Sonnenschirm. Die drei Äste greifen jetzt **in** die Krone
+    // hinein und schließen die Lücke.
+    box(0.52, 2.3, 0.52, 0, 1.15, 0, SAKURA_TRUNK),
+    boxY(0.34, 1.9, 0.34, 0.62, 2.5, -0.24, 0.55, SAKURA_TRUNK),
+    boxY(0.3, 1.7, 0.3, -0.56, 2.45, 0.42, -0.75, SAKURA_TRUNK),
+    boxY(0.26, 1.5, 0.26, 0.1, 2.7, 0.62, 0.2, SAKURA_TRUNK),
+  ];
 
-    // Untere Lage — im Eigenschatten der Krone, deshalb der dunkelste Ton.
-    boxY(3.9, 0.9, 3.4, 0, 3.15, 0, 0.0, SAKURA_LOW),
-    boxY(2.6, 0.8, 3.0, 1.1, 3.35, -0.6, 0.6, SAKURA_LOW),
-    boxY(2.4, 0.7, 2.6, -1.15, 3.3, 0.5, -0.5, SAKURA_LOW),
+  // ── Die Krone als Kuppel aus Ballen ───────────────────────────────────
+  //
+  // **Warum eine Spirale und keine Liste von Hand.** Von Hand gesetzte Ballen
+  // werden unweigerlich zu Lagen — man schreibt sie zeilenweise hin, und genau
+  // das war der Streifen. Eine Fibonacci-Spirale verteilt sie gleichmäßig über
+  // eine Halbkugel, ohne dass zwei je auf derselben Höhe landen; die Silhouette
+  // bekommt Beulen statt Stufen.
+  //
+  // `CROWN_*` beschreibt ein **Ellipsoid**, das breiter als hoch ist (eine
+  // Kirsche ist ausladend) — aber nicht so flach wie die 4,2 × 2,2 von vorher,
+  // die als Scheibe gelesen wurden.
+  // **Breit und tief angesetzt.** Der erste Entwurf dieser Spirale hatte
+  // `CROWN_Y 4,1` und `RX 1,95` — im Bild (`.cache/shots/baum-nah.png`) ein
+  // Ball auf einem Stiel, weil zwischen Kronenunterkante und Astansatz wieder
+  // Luft stand. Eine Zierkirsche ist **breiter als hoch** und hängt bis auf
+  // gut zwei Meter herunter; die Krone soll den Stamm zur Hälfte verdecken.
+  const CROWN_N = 19;
+  const CROWN_Y = 3.5;
+  const CROWN_RX = 2.55;
+  const CROWN_RY = 1.25;
+  // Der goldene Winkel. Er ist der einzige, bei dem keine zwei der ersten N
+  // Punkte annähernd übereinanderliegen — deshalb steht er in jedem
+  // Sonnenblumen-Modell.
+  const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 
-    // Mittlere Lage — die dickste, und um 30° gegen die untere gedreht.
-    boxY(4.2, 1.2, 3.8, 0.1, 4.0, 0.1, 0.52, SAKURA_MID),
-    boxY(2.8, 1.0, 2.6, -1.3, 4.15, -0.9, -0.35, SAKURA_MID),
-    boxY(2.6, 0.9, 3.0, 1.35, 4.05, 0.8, 0.25, SAKURA_MID),
+  for (let i = 0; i < CROWN_N; i++) {
+    // `t` läuft von 0 (unten am Ellipsoid) nach 1 (oben). Die Wurzel drückt
+    // mehr Ballen nach außen-unten, wo die Krone dicht ist.
+    const t = (i + 0.5) / CROWN_N;
+    const winkel = i * GOLDEN;
+    const hoehe = Math.cos(t * Math.PI * 0.72);
+    const ring = Math.sqrt(Math.max(0, 1 - hoehe * hoehe));
 
-    // Obere Lage — das, was Himmelslicht abbekommt.
-    boxY(3.0, 1.0, 2.8, -0.2, 4.95, -0.2, -0.2, SAKURA_TOP),
-    boxY(1.9, 0.8, 2.0, 0.95, 5.15, 0.6, 0.7, SAKURA_TOP),
-    boxY(1.7, 0.7, 1.7, -0.9, 5.3, 0.7, 0.35, SAKURA_TOP),
-  ]);
+    const x = Math.cos(winkel) * ring * CROWN_RX;
+    const z = Math.sin(winkel) * ring * CROWN_RX;
+    const y = CROWN_Y + hoehe * CROWN_RY;
+
+    // Ballen weiter außen sind kleiner — das rundet die Silhouette ab, statt
+    // sie mit gleich großen Klötzen zu bepflastern.
+    const groesse = 1.75 - ring * 0.4;
+
+    // **Der Ton kommt aus dem Index und nicht aus der Höhe.** Begründung bei
+    // `SAKURA_TONES`. Der Zuschlag `hoehe > 0.55` hellt nur die obersten
+    // Ballen auf und färbt keine ganze Lage ein.
+    const wahl = (i * 7 + (hoehe > 0.55 ? 2 : 0)) % SAKURA_TONES.length;
+    const ton = SAKURA_TONES[hoehe > 0.55 ? Math.min(wahl, 1) : wahl]!;
+
+    parts.push(boxY(groesse, groesse * 0.78, groesse * 0.92, x, y, z, winkel, ton));
+  }
+
+  return mergeBoxes(parts);
 }
 
 /**
