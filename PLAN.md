@@ -10665,6 +10665,148 @@ Begründung, aus der P8.2 die Umgebungsverdeckung auf Minimal ganz abgeschaltet
 hat). Ein Telefon auf „Minimal" zeichnete bis P26 dieselben 760 wie eine
 RX 7900 XTX auf Ultra.
 
+## 5. Laternen und ein Blütenteppich — und beide Zugaben waren falsch
+
+Die Driftzone bekam zwei Dinge, die sie zu einem **Ort** machen statt zu einem
+Kreis auf der Wiese: eine Kette Papierlaternen und gefallene Blüten auf dem
+Boden. Beide standen im ersten Bestätigungsbild als Fehler da, und beide
+Befunde waren messbar.
+
+### Der Teppich war eine Plane
+
+Ein flaches Viereck von 1,5 m, mit der Instanzskalierung bis 2,4 m, in
+`0xe8a9c0`. Im Bild waren das keine Blüten, sondern Planen: harte gerade
+Kanten, geschlossene Fläche, kein Boden dazwischen. Dazu gemessen an
+`.cache/shots/lat-mit.png`, linear:
+
+| | linear |
+|---|---|
+| Fleck, nah | 0,168 |
+| Boden direkt daneben | 0,0095 |
+
+**Faktor 17,7.** Beide Flächen liegen waagerecht und bekommen dasselbe Licht;
+der Unterschied ist reine Albedo. Dieselbe Fehlerklasse wie die Staubfahne aus
+P25 (31-mal heller als der Boden), nur eine Zone weiter.
+
+Jetzt neun kleine Blätter je Verwehung auf einer Goldwinkel-Spirale, nach außen
+kleiner werdend: 0,61 m² Blattfläche auf 1,54 m² Kreis, also rund 40 % Deckung —
+der Rest ist Wiese, und deshalb franst der Rand aus, statt zu schneiden.
+
+**Und dann ein Schritt zurück, weil zwei Regler zugleich bewegt wurden.** Form
+*und* Farbe wurden in einem Zug geändert. Danach lag der dunkelste Ton bei
+0,0359 und der Boden bei 0,0352 — ein Drittel der Blätter war vom Untergrund
+nicht zu unterscheiden, aus der Plane war Dreck geworden. Die Form allein hatte
+die Plane längst beseitigt; die Helligkeit war gar nicht das Problem.
+
+Der zweite Anlauf nahm einen Bezugspunkt, der physikalisch stimmt statt einer
+neuen Schätzung: gefallene Blüten sind **dieselbe Blüte wie am Baum**. Krone
+gemessen 0,151, Teppich jetzt **0,139**.
+
+### Die Laterne stand unter dem Himmel
+
+Der Kommentar rechnete: `0xffb45e` = linear 1,00, also heller als alles im
+Bild und über der Bloom-Schwelle. Die Rechnung stimmt, das Ergebnis nicht —
+gemessen steht die Laterne bei **0,401** und der Himmel bei **0,510**.
+
+Dazwischen liegt der **Tonemapper** der PostFX-Kette. Die P25-Lehre „ein
+unbeleuchtetes Material schreibt seine Zahl direkt ins Bild" gilt nur, solange
+nichts mehr dahinterkommt. Die Kurve, in *einem* Browserlauf über
+`material.color.setScalar(k)` aufgenommen:
+
+| Materialwert (Rot) | im Bild | sRGB | Rot ÷ Blau |
+|---|---|---|---|
+| 1,00 | 0,401 | 203 169 126 | 1,61 |
+| 2,50 | 0,581 | 230 202 162 | 1,42 |
+| 5,00 | 0,753 | 250 223 198 | 1,26 |
+
+Die dritte Spalte entscheidet: mit der Helligkeit **verliert die Laterne ihre
+Farbe**. Bei k = 5 ist sie fast weiß, und eine weiße Papierlaterne ist eine
+Glühbirne. `k = 2,5` ist der größte Wert, der die Farbe behält, und liegt über
+dem Himmel. Nachgemessen im Bild: **0,591 gegen Himmel 0,533.**
+
+## 6. Der Befund, der die halbe Sitzung entwertet hat
+
+Am Fadenkreuz einer Aufnahme stand Boden, wo gemessen eine Laterne steht. Also
+einmal die Kamera um die Aufnahme herum abgelesen:
+
+```
+vor  dem shot: dir = ( 0.991,  0.043,  0.130)   <- gesetzt
+nach dem shot: dir = (-0.604, -0.087, -0.792)   <- Controller
+```
+
+`japanMap.shot()` tickt die Schleife, und der `FreeFlyController` baut die
+Ausrichtung in **jedem** Frame aus seinem eigenen `#yaw`/`#pitch` neu auf. Die
+**Position** bleibt stehen, die **Blickrichtung** wird überschrieben. Jedes von
+Hand gezielte Bild dieser Sitzung ist so entstanden; die Bilder sahen nicht
+kaputt aus, sie zeigten nur woanders hin.
+
+Der Weg, der wirkt, lag seit P6 im Bestand: `japanMap.view({position, lookAt})`
+geht über `CameraPlacer.placeAt()` und rechnet Gieren und Nicken **zurück** —
+genau mit dieser Begründung im Kommentar. CLAUDE.md empfahl an dieser Stelle
+bis jetzt das Falsche und ist korrigiert.
+
+Vierte Auflage desselben Satzes nach P13 (`menu.hidden` von Hand), P14
+(Standhöhe ohne Straßenkontext) und P21 (`respawn` nullt die Lage): **ein von
+Hand gesetzter Zustand ist ein Zustand, den es im Betrieb nicht gibt.** Der
+Zusatz ist neu — wenn ein System einen Zustand jeden Frame aus *seinen*
+Variablen neu aufbaut, muss man diese Variablen setzen und nicht das Ergebnis.
+
+## 7. Die steilste Schanze war eine Bremsschwelle
+
+Gefunden hat sie kein Blick in den Code, sondern die Frage, die keine Abnahme
+gestellt hatte: **wie schnell ist man an der Kante?** Anfahrt 140 km/h,
+Blechtiefe = tiefstes Eintauchen der Karosserieunterkante:
+
+| Schanze | Spitze | an der Kante | Blech |
+|---|---|---|---|
+| south-crest | 7,3° | 126 km/h | 0,040 m |
+| paddy-launch | 13,4° | 117 km/h | 0,073 m |
+| harbour-jump | 14,2° | 115 km/h | 0,073 m |
+| ridge-kicker | 14,9° | 114 km/h | 0,069 m |
+| coast-kicker | 16,0° | 120 km/h | 0,094 m |
+| **village-hop (17 m)** | **19,4°** | **41 km/h** | **0,193 m** |
+
+Zwischen 16,0° und 19,4° verdoppelt sich die Blechtiefe, und die Bremse des
+schleifenden Blechs nimmt zwei Drittel des Tempos. Die Schanze *hob dabei ab* —
+jede bisherige Abnahmezeile war grün.
+
+**Warum die Winkel in der Datei alle zu niedrig standen.** `liftLocal` legt die
+Auffahrt als Smoothstep an (`3t² − 2t³`), damit am Fuß kein Knick steht — die
+Begründung dafür ist richtig und bleibt. Die Ableitung `6t(1−t)` hat ihr
+Maximum bei `t = 0,5` und ist dort **1,5**. Die steilste Stelle ist also
+`atan(1,5·h/L)` und nicht `atan(h/L)`; village-hop las sich als „13,2°, mitten
+im erlaubten Band 8…16°". Ein Kommentar, der rechnet, ist eine Abhängigkeit wie
+ein Import — dritter Fall nach `maxDriveForce` in P17 und derselben Konstante
+noch einmal in P18.
+
+village-hop ist von 17 auf 22 m **verlängert und nicht abgeflacht** (die Höhe
+ist das, was den Sprung ausmacht). Spitze 15,3°, nachgemessen **111 km/h** an
+der Kante, Blech 0,091 m, Weite 80 m statt 44.
+
+## 8. Die Rauchprobe maß bisher die Anfahrt
+
+Sie setzte den Wagen 150 m vor der Kante ab und gab Vollgas — geradeaus durchs
+Gelände statt der Straße nach. `harbour-jump` kam so auf **0,18 s Flug bei
++16 m Höhe**; dieselbe Schanze mit besessener Anfahrt: **3,97 s und 129 m.** Die
+Zahl war nie falsch abgelesen, sie war ein Befund über etwas anderes.
+
+Drei Fehler, jeder mit seinem eigenen Gegenbeweis:
+
+1. **Anlauf 12 m, Tempo gesetzt statt erfahren.** Damit ist getrennt, was
+   getrennt gehört: *hebt die Schanze ab* gegen *kommt man dort mit Tempo an*.
+2. **Eine Sekunde einschwingen lassen.** Ohne das maß die Probe ihr eigenes
+   Absetzen: das Blech steckte in den ersten zehn Schritten bis 0,18 m im
+   Boden, und dessen Bremse machte aus 140 km/h in 0,17 s 40 km/h. Weil die
+   Bremswirkung mit dem Tempo wächst, kam an der Kante **dieselbe** Zahl
+   heraus, egal ob mit 80, 110 oder 140 angefahren wurde — ein Wert, der von
+   der Eingabe unabhängig ist, ist eine Klemme und kein Verlust.
+3. **Nur ein Abheben an der Schanze zählt.** Sonst rastet die Probe auf der
+   ersten Bodenwelle ein: bei `village-hop` wurden aus 139 km/h 0,78 s Flug und
+   aus 44 km/h 3,25 s — mehr Tempo, weniger Flug.
+
+Sie prüft jetzt zusätzlich, dass **keine Schanze die Anfahrt ausbremst** — genau
+die Zeile, die den Fehler gefunden hätte.
+
 ## Akzeptanz
 
 - [x] Kronen ohne waagerechte Bänder, breit, tief angesetzt
@@ -10677,6 +10819,12 @@ RX 7900 XTX auf Ultra.
       unverändert.
 - [x] `world.mts` unverändert grün.
 - [x] Blüten an der Qualitätsstufe; Minikarte 15 Hz; Instanzmatrizen 20 Hz.
+- [x] Blütenteppich als Verwehung statt als Plane; Helligkeit am Bezugspunkt
+      „Blüte am Baum" (0,151) statt nach Gefühl — nachgemessen 0,139.
+- [x] Laternen über dem Himmel und **warm**: 0,591 gegen 0,533, Rot ÷ Blau 1,42.
+- [x] Alle sechs Schanzen fliegen, keine bremst die Anfahrt aus
+      (min 111 km/h aus 140).
+- [x] `tools/smoke.mjs`: 19 Proben grün, Konsole sauber.
 - [x] `typecheck` sauber, `vite build` läuft durch.
 
 ## Was offen bleibt
@@ -10687,3 +10835,20 @@ RX 7900 XTX auf Ultra.
       gehört auf ein echtes Telefon.
 - [ ] Ob sich der Lastwechsel **gut anfühlt**, ist weiterhin keine Frage für
       einen Prüfstand.
+- [ ] **Die Karosserie schleift ab knapp 20° Anstieg.** Gemessen an den
+      Schanzen: bis 16,0° bleibt die Blechtiefe unter 0,094 m, bei 19,4° sind
+      es 0,193 m und der Wagen verliert zwei Drittel seines Tempos. Repariert
+      ist nur die Schanze, die es ausgelöst hat — die Grenze selbst trifft
+      jeden Hang dieser Steilheit. Auf der Karte fährt dort niemand (die
+      Straßen steigen höchstens 10,7 %), im Gelände schon.
+- [ ] **`ridge-kicker` landet auf 12,1 m Gefälle und springt weiter.** Die
+      Probe misst dort 18,3 s bis zum ersten durchgehenden Bodenkontakt und
+      639 m Weg. Ob das ein Fehler ist oder der beste Sprung der Karte, kann
+      keine Zahl beantworten — die Probe kann „fliegt noch" und „hoppelt bergab"
+      nicht unterscheiden.
+- [ ] **Die Qualitätsleiter ist nicht über die ganze Vegetation vermessen.**
+      Auf diesem Software-Rasterisierer braucht ein Blickpunkt bis 1101 von
+      Hand getriebene Frames, bis `ScatterSystem.streaming` auf `false` geht;
+      fünf Stufen dauern damit länger als eine Sitzung. Was in P26 an der Stufe
+      hängt (Blüten, Minikarte, Instanzmatrizen), ist einzeln begründet, aber
+      **eine gemessene Tabelle Stufe × Draw-Calls fehlt.**
