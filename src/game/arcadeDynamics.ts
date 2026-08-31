@@ -154,6 +154,54 @@ const STATIC_HOLD_SPEED = 0.9;
  */
 const POWER_SPEED_FLOOR = 4;
 
+/**
+ * Ab welchem Einschlag ein Lastwechsel überhaupt zählt — P26.
+ *
+ * Unter 0,15 fährt man geradeaus, und geradeaus ist Gaswegnehmen kein
+ * Lastwechsel, sondern Ausrollen. Ohne diese Schwelle drehte jeder Bremspunkt
+ * auf der Geraden das Heck ein.
+ */
+const LIFT_MIN_STEER = 0.15;
+
+/**
+ * Ab welchem Gasstand das Pedal als „zu" gilt.
+ *
+ * 0,15 und nicht 0: die Rampe (`gasStep` = 9/s) braucht 0,11 s von voll auf
+ * null, und ein Spieler lässt selten ganz los. Was darüber liegt, ist noch
+ * Zug und kein Lastwechsel.
+ */
+const LIFT_OFF_THROTTLE = 0.15;
+
+/**
+ * Wie lange das Gas zu sein muss, bevor der Impuls kommt, s.
+ *
+ * **Die Zahl, die den Zweipunktregler aussperrt.** Sie ist zugleich die
+ * physikalische: die Last braucht etwa eine Zehntelsekunde, um nach vorn zu
+ * wandern und die Hinterachse leicht zu machen. Kürzer wäre ein Zucken, und
+ * ein Zucken kippt kein Auto.
+ */
+const LIFT_ONSET = 0.12;
+
+/**
+ * Ab welchem Gasstand ein neuer Lastwechsel wieder möglich ist.
+ *
+ * Ohne diese Schwelle könnte ein Pedal, das um `LIFT_OFF_THROTTLE` herum
+ * zittert, den Impuls beliebig oft neu setzen. Zwischen 0,15 und 0,5 liegt
+ * genug Weg, dass nur ein wirkliches Wiederaufnehmen des Gases scharf macht.
+ */
+const LIFT_REARM_THROTTLE = 0.5;
+
+/**
+ * Abklingrate des Lastwechsel-Impulses, 1/s.
+ *
+ * 2,2/s ≙ Halbwertszeit 0,32 s. Ein Lastwechsel ist ein Vorgang von etwa einer
+ * halben Sekunde — lang genug, dass die Nase eindreht und der Spieler
+ * gegenlenken kann, kurz genug, dass er nicht in einen gehaltenen Drift
+ * übergeht. Wer den halten will, gibt Gas oder zieht die Handbremse; dafür
+ * gibt es die beiden anderen Wege.
+ */
+const LIFT_DECAY = 2.2;
+
 export class ArcadeDynamics {
   #spec: ArcadeSpec;
   #looseBonus: number;
@@ -162,6 +210,12 @@ export class ArcadeDynamics {
   #steerInput = 0;
   #steerAngle = 0;
   #throttle = 0;
+  /** Der abklingende Lastwechsel-Impuls, 0…1 — siehe `step()`. */
+  #lift = 0;
+  /** Wie lange das Gas im Bogen schon zu ist, s. */
+  #offTime = 0;
+  /** Ist der Impuls für diesen Lastwechsel schon gesetzt? */
+  #liftArmed = false;
   #drift = 0;
   #boost = 1;
   #yawRate = 0;
@@ -184,6 +238,9 @@ export class ArcadeDynamics {
     this.#steerInput = 0;
     this.#steerAngle = 0;
     this.#throttle = 0;
+    this.#lift = 0;
+    this.#offTime = 0;
+    this.#liftArmed = false;
     this.#drift = 0;
     this.#yawRate = 0;
     this.#pitchRate = 0;
@@ -292,7 +349,65 @@ export class ArcadeDynamics {
           (env.surface === 'asphalt' ? 1 : 1.35)
         : 0;
     const powerSlide = clamp01((provocation - 0.45) / 0.45) * spec.powerOversteer;
-    const want = env.airborne ? 0 : Math.max(input.handbrake && fastEnough ? 1 : 0, powerSlide);
+
+    // ── Lastwechsel: der Fuß vom Gas — P26 ─────────────────────────────
+    //
+    // Bis P26 fehlte er ganz. `provocation` hängt an `Gas · |Lenkung|`, und
+    // ohne Gas ist das Produkt null; der Prüfstand meldete folgerichtig für
+    // alle vier Fahrzeuge „steer 0.80 4.9° → 4.9°" — Gaswegnehmen im Bogen
+    // änderte **exakt nichts**. Das ist der Griff, mit dem man ohne Handbremse
+    // eindreht, und er ist in einem Driftspiel nicht verhandelbar.
+    //
+    // **Ausgelöst über den Abfall und nicht über den Stand.** Ein Lastwechsel
+    // ist ein Vorgang: Gewicht wandert nach vorn, die Hinterachse wird leicht,
+    // das Heck dreht ein — und dann ist es vorbei. Ein Term am *Stand* des
+    // Gases („wenig Gas ⇒ Drift") wäre etwas ganz anderes: er stünde die ganze
+    // Kurve über an und machte jedes Ausrollen zum Drift.
+    //
+    // `#lift` ist deshalb ein Impuls, der von selbst abklingt. Sein
+    // Gleichgewichtspunkt liegt bei null, und er kann per Konstruktion nicht
+    // davonlaufen — die Lehre aus dem ersten Drift-Entwurf in P22, der eine
+    // feste Gierrate addierte und den Wagen bei 40 km/h auf 111 °/s hochdrehte.
+    //
+    // Die Probe „Drift ohne Absicht" bleibt heil: sie fährt mit **konstantem**
+    // Gas, und konstant heißt Abfall null heißt Impuls null.
+    // > **Der erste Entwurf hing an der Flanke, und die Probe hat ihn
+    // > gestoppt.** Er addierte bei jedem Gasabfall; damit meldete
+    // > `arcade.mts` „Saubere Kurve 90 km/h: Schwimm 29,1° ⚠ driftet
+    // > ungefragt". Die Ursache stand im Prüfstand: `holdSpeed` ist ein
+    // > **Zweipunktregler** (`speed < target ? 1 : 0`) und hackt das Gas mit
+    // > rund 10 Hz an und aus. Jede Flanke war ein Impuls, und zwischen zwei
+    // > Flanken klang er nicht ab.
+    // >
+    // > Der Fehler ist nicht die Empfindlichkeit, sondern die **Größe**: eine
+    // > Flanke ist ein Zeitpunkt, ein Lastwechsel ist ein Vorgang. Die Last
+    // > braucht Zeit, um nach vorn zu wandern; ein 30-ms-Zucken am Gaspedal
+    // > kippt kein Auto. Ausgelöst wird deshalb über eine **Dauer** — das Gas
+    // > muss `LIFT_ONSET` lang wirklich zu sein.
+    const cornering = fastEnough && env.vLong > 0 && Math.abs(input.steer) > LIFT_MIN_STEER;
+    if (cornering && !input.handbrake && this.#throttle < LIFT_OFF_THROTTLE) {
+      this.#offTime += dt;
+    } else {
+      this.#offTime = 0;
+    }
+    // Genau **ein** Impuls je Lastwechsel. Ohne die Sperre liefe er, solange
+    // der Fuß unten bleibt, und aus dem Vorgang würde ein Zustand: wer eine
+    // lange Kurve ausrollt, driftete dann dauerhaft.
+    if (this.#offTime >= LIFT_ONSET && !this.#liftArmed) {
+      this.#liftArmed = true;
+      this.#lift = Math.abs(input.steer);
+    }
+    // Wieder Gas geben schärft ihn neu — und beendet ihn zugleich über den
+    // Abfall unten. Das ist auch der Griff, mit dem man einen Lastwechsel
+    // einfängt: zurück aufs Gas.
+    if (this.#throttle > LIFT_REARM_THROTTLE) this.#liftArmed = false;
+    this.#lift *= Math.exp(-LIFT_DECAY * dt);
+    if (this.#lift < 1e-3) this.#lift = 0;
+    const liftSlide = this.#lift * spec.liftOversteer;
+
+    const want = env.airborne
+      ? 0
+      : Math.max(input.handbrake && fastEnough ? 1 : 0, powerSlide, liftSlide);
     const driftRate = want > this.#drift ? spec.driftRise : spec.driftFall;
     this.#drift += (want - this.#drift) * (1 - Math.exp(-driftRate * dt));
     if (this.#drift < 1e-3) this.#drift = 0;
