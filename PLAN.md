@@ -10434,6 +10434,17 @@ nur ein Ort — dieselbe Überlegung wie bei `japanMap.winding()`.
       kann teurer sein als der Fehler*, und *bevor ein Bild repariert wird,
       nachsehen, ob man es sieht*. Was fehlt, ist ein Bild vom Hafen auf
       Fahrerhöhe — dann ist die Frage entscheidbar.
+- [ ] **Ein Bilddurchgang über die ganze Karte war auf dieser Maschine nicht
+      zu fahren.** Geprüft sind die Driftzone (mehrfach) und eine Schanze; für
+      Wald, Dorf, Stadtrand und Küste sind vier Anläufe gescheitert. Der Grund
+      ist der Software-Rasterisierer: `japanMap.shot()` braucht eine getriebene
+      Schleife, und schon 120 Frames an **einem** bewachsenen Blickpunkt laufen
+      hier über Minuten; zwei Läufe sind dabei ohne Meldung gestorben.
+      Das ist dieselbe Spalte wie „GPU-ms und Bildrate sind hier nicht messbar"
+      in CLAUDE.md, nur eine Zeile tiefer: **ein Bilddurchgang über eine
+      bewachsene Karte gehört ebenfalls auf die GPU-Maschine.** Wer eine hat,
+      braucht dafür kein neues Werkzeug — `japanMap.report()` fährt die Matrix
+      aus Blickpunkten und Stufen und legt je Zelle ein PNG ab.
 - [ ] **Braune Platten in der Luft, einmal gesehen und nicht erklärt.** Auf
       `.cache/shots/staub-k3.png` stehen rund sechs brettartige braune Flächen
       frei in einem Waldstück — bei dreifach überhöhter Partikelhelligkeit
