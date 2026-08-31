@@ -1967,6 +1967,23 @@ Rückschritt mit Aufwand.
   jemand ihre Rechtecke gegeneinander gerechnet hat.** Ein Stilblatt, in dem
   beide Regeln plausibel aussehen, sagt darüber nichts.
 
+- **„Zu langsam" war die falsche Diagnose; der Renderer ist abgestürzt.** Fünf
+  Anläufe für einen Bilddurchgang über die Karte sind gescheitert, und die
+  ersten vier hat niemand gelesen — sie starben in einem Hintergrundprozess ohne
+  Ausgabe. Erst ein Lauf, der die Ausnahme abfing, nannte den Grund:
+  `Target crashed`. Der Renderer-Prozess *stirbt*, er trödelt nicht.
+  Getrennt wurde es in zwei Schritten, weil zwei Verdächtige zugleich im Spiel
+  waren: `japanMap.view()` und `engine.loop.tick()`. Ergebnis — `view()` +
+  `shot()` ohne Schleife geht, `view()` + **20** getriebene Frames geht,
+  **45** stürzen ab, und zwar auch am Blickpunkt `kueste` (offenes Meer), also
+  nicht wegen des Bewuchses.
+  Zwei Lehren. **Ein Hintergrundlauf ohne abgefangene Ausnahme ist keine
+  Messung** — vier Fehlschläge lang stand die Ursache im Prozess und nirgends
+  sonst. Und: **wer eine Vermutung („die Füllrate") hat, prüft sie, statt an ihr
+  zu drehen** — die Auflösung zu vierteln hat nichts gebracht, weil die Vermutung
+  falsch war. Die brauchbare Regel für diese Maschine lautet: höchstens rund
+  20 getriebene Frames je Seite, danach eine neue Seite.
+
 - **Eine Tonspur hat das ganze Spiel angehalten.** Die Web-Audio-API **wirft**
   bei einem nicht-endlichen Wert an einem `AudioParam` — eine `TypeError`,
   mitten im Frame. Sie läuft durch `AudioSystem.update` → `Engine.#update` →

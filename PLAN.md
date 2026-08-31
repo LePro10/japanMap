@@ -10434,17 +10434,34 @@ nur ein Ort — dieselbe Überlegung wie bei `japanMap.winding()`.
       kann teurer sein als der Fehler*, und *bevor ein Bild repariert wird,
       nachsehen, ob man es sieht*. Was fehlt, ist ein Bild vom Hafen auf
       Fahrerhöhe — dann ist die Frage entscheidbar.
-- [ ] **Ein Bilddurchgang über die ganze Karte war auf dieser Maschine nicht
-      zu fahren.** Geprüft sind die Driftzone (mehrfach) und eine Schanze; für
-      Wald, Dorf, Stadtrand und Küste sind vier Anläufe gescheitert. Der Grund
-      ist der Software-Rasterisierer: `japanMap.shot()` braucht eine getriebene
-      Schleife, und schon 120 Frames an **einem** bewachsenen Blickpunkt laufen
-      hier über Minuten; zwei Läufe sind dabei ohne Meldung gestorben.
-      Das ist dieselbe Spalte wie „GPU-ms und Bildrate sind hier nicht messbar"
-      in CLAUDE.md, nur eine Zeile tiefer: **ein Bilddurchgang über eine
-      bewachsene Karte gehört ebenfalls auf die GPU-Maschine.** Wer eine hat,
-      braucht dafür kein neues Werkzeug — `japanMap.report()` fährt die Matrix
-      aus Blickpunkten und Stufen und legt je Zelle ein PNG ab.
+- [x] ~~**Ein Bilddurchgang über die ganze Karte war nicht zu fahren.**~~
+      Fünf Anläufe sind gescheitert, und die Erklärung, die zuerst hier stand
+      („zu langsam"), war **falsch**. Playwright meldet `Target crashed`: der
+      Renderer-Prozess *stirbt*, er trödelt nicht.
+      Getrennt in zwei Schritten, weil zwei Verdächtige zugleich im Spiel waren
+      (`japanMap.view()` und `engine.loop.tick()`):
+
+      | Probe | Ergebnis |
+      |---|---|
+      | `view()` + `shot()`, **keine** getriebene Schleife | ✓ |
+      | `view()` + **20** getriebene Frames + `shot()` | ✓ |
+      | `view()` + **45** getriebene Frames | ✗ Target crashed |
+      | `view()` + 90…120 Frames | ✗ Target crashed |
+
+      Es liegt also an **keinem der beiden Aufrufe**, sondern an der *Zahl* der
+      von Hand getriebenen Frames — und auch nicht am Bewuchs: `kueste` (offenes
+      Meer) stürzt genauso ab wie `wald`. Die brauchbare Regel für diese
+      Maschine lautet damit: **höchstens rund 20 getriebene Frames je Seite**,
+      danach eine neue Seite.
+      Das gehört in dieselbe Spalte wie „GPU-ms und Bildrate sind hier nicht
+      messbar" — mit dem Unterschied, dass es eine *Umgehung* gibt und die
+      Bilder damit entstanden sind.
+- [ ] **Der gedämpfte Zonenring ist gerechnet, aber noch nicht fotografiert.**
+      Der neue Wert folgt aus der Messung am fernen Bild (0,372 linear gegen
+      0,058 Straße) über eine lineare Skalierung um 0,45; das Bestätigungsbild —
+      derselbe ferne Blick **und** einer aus der Zone heraus — steht aus, weil
+      der Lauf dafür zweimal ohne Ausgabe gestorben ist. Bis dahin gilt für
+      diese Zahl, was CLAUDE.md verlangt: **nicht neu abgelesen.**
 - [ ] **Braune Platten in der Luft, einmal gesehen und nicht erklärt.** Auf
       `.cache/shots/staub-k3.png` stehen rund sechs brettartige braune Flächen
       frei in einem Waldstück — bei dreifach überhöhter Partikelhelligkeit
