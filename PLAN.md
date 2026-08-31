@@ -10426,6 +10426,41 @@ nicht bewertet**: eine blühende Kirsche ist hell, und ob sie zu hell ist, ist
 eine Frage für einen Menschen. Die Zahl steht hier, damit der Nächste sie nicht
 noch einmal erheben muss.
 
+## 7. Der Bilddurchgang, nachgeholt — und was er ergeben hat
+
+Mit der Regel aus Abschnitt 5 (höchstens rund 20 getriebene Frames, danach eine
+frische Seite) ließ sich der Durchgang doch fahren. Fünf Orte auf Fahrerhöhe,
+dazu die Driftzone und eine Schanze aus den Abschnitten davor:
+
+| Ort | Draw-Calls | Dreiecke | `anteilNichtSchwarz` | Befund |
+|---|---|---|---|---|
+| `wald` | 66 | 322 378 | 0,993 | sauber |
+| `dorf` | 57 | 188 588 | 1,000 | sauber (siehe unten) |
+| `stadt-rand` | — | — | 1,000 | sauber |
+| `kueste` | — | — | 1,000 | sauber |
+
+**Die braunen Platten treten hier nicht auf.** Der Wald bei normaler
+Partikelhelligkeit ist frei davon. Das erklärt sie nicht, engt sie aber ein:
+sie hängen an der dreifachen Überhöhung und nicht am Blickpunkt.
+
+**Und einmal fast wieder dieselbe Falle.** Am Blickpunkt `dorf` füllt eine
+große, völlig strukturlose blassrosa Fläche zwei Drittel des Bildes. Das sieht
+nach einem kaputten Gelände aus. Getrennt über das Objekt statt über den
+Eindruck — zwei Aufnahmen hintereinander, dazwischen nur `Meer` ausgeblendet:
+
+```
+  geänderte Pixel 44,3 %   mittlere Differenz 20,8
+  Rechteck der Änderung: y 197…458  — also genau unterhalb der Horizontlinie
+```
+
+Es ist das **Meer**, und darunter liegt texturiertes Watt mit Gras und Tümpeln.
+Bei 1,7 m Augenhöhe steht alles jenseits weniger Meter im streifenden
+Blickwinkel, wo die Spiegelung über die Wellennormalen dominiert; deshalb sieht
+dieselbe Wasserfläche vom höheren `kueste` aus geriffelt aus und von hier wie
+ein Spiegel. Das ist physikalisch richtig und **kein** Fehler — hier wird
+nichts gedreht. Der Blickpunkt trägt seine eigene Notiz: *„Augenhöhe am
+Wasser."*
+
 ## Was offen bleibt
 
 - [ ] **Woher das NaN kam, ist nicht bekannt.** Die Notbremse oben fängt es und
@@ -10498,6 +10533,10 @@ noch einmal erheben muss.
       (`.cache/shots/diag.png`, dieselbe Überhöhung, sauber). **Nicht
       reproduziert und nicht zugeordnet** — das gehört so dokumentiert und nicht
       als „behoben" abgehakt.
+      Nachtrag: am Blickpunkt `wald` bei **normaler** Partikelhelligkeit treten
+      sie ebenfalls nicht auf (`.cache/shots/p25c-wald.png`, 66 Draw-Calls,
+      322 378 Dreiecke, sauber). Damit hängen sie an der Überhöhung und nicht am
+      Ort — erklärt ist damit nichts, aber die Zahl der Verdächtigen ist kleiner.
 - [ ] Auf einem echten Telefon nicht geprüft (nur im 390 × 844-Fenster).
 - [ ] Ob sich das Fahren *gut anfühlt*, ist weiterhin keine Frage für einen
       Prüfstand.
