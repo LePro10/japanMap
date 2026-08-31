@@ -78,11 +78,15 @@
  * > Landung aussieht — **gemessen an der Spitze**, und die Tabelle oben sagt,
  * > dass die Obergrenze dieses Bandes zugleich die Grenze der Karosserie ist.
  *
- * Die Grenze selbst ist **nicht** repariert: eine Karosserie, die ab knapp 20°
- * Anstieg schleift, trifft jeden Hang dieser Steilheit. Auf der Karte fährt
- * niemand dort (die Straßen steigen höchstens 10,7 %), im Gelände schon. Der
- * Befund steht als offener Punkt in PLAN.md P26 — repariert ist hier nur die
- * Schanze, die ihn ausgelöst hat.
+ * Die Grenze selbst ist **nicht** repariert. Sie ist aber auch nicht das, wonach
+ * sie aussieht: `tools/bench/world.mts` misst auf einem **konstanten** Hang
+ * 0,000 m Blechtiefe bei 20°, 0,048 m bei 35° und 0,050 m bei 55°. Ein Hang ist
+ * eine Ebene, auf die sich der Aufbau ausrichtet; eine Schanze ist ein
+ * **Übergang**, und dort überbrückt die 4,2 m lange Unterkante die konvexe
+ * Krümmung. Die maßgebliche Größe ist also nicht die Neigung, sondern ihre
+ * Änderung — und dafür hat der Prüfstand keine Spalte. Der Befund steht als
+ * offener Punkt in PLAN.md P26; repariert ist hier nur die Schanze, die ihn
+ * ausgelöst hat.
  */
 
 export interface Ramp {
