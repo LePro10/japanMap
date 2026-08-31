@@ -188,17 +188,101 @@ const LANTERN_POST = 0x3c3630;
  *
  * Eine Laterne ist eine **Lichtquelle**, und eine Lichtquelle gehört über den
  * Himmel — sonst liest sie sich als angestrahlte Fläche. `0xffb45e` ergibt
- * linear rund 1,00 / 0,44 / 0,10: heller als alles im Bild, warm gegen ein
- * durchgehend kaltes Umfeld, und über der Bloom-Schwelle der PostFX-Kette,
- * sodass sie einen Hof bekommt statt als flacher Fleck dazustehen.
+ * linear rund 1,00 / 0,44 / 0,10.
+ *
+ * ~~Damit ist sie heller als alles im Bild und über der Bloom-Schwelle.~~
+ *
+ * ## Widerlegt, gemessen 2026-08-31 — dazwischen liegt der Tonemapper
+ *
+ * Der Satz oben war der zweite Halbschritt derselben Falle: die P25-Lehre
+ * lautet „ein unbeleuchtetes Material schreibt seine Zahl direkt ins Bild",
+ * und **das stimmt nur ohne Tonemapper dahinter**. Diese Szene hat einen.
+ * Gemessen an einer Laterne der Sakura Bowl, alles linear:
+ *
+ * | Materialwert (Rot) | im fertigen Bild | sRGB |
+ * |---|---|---|
+ * | 1,00 | 0,401 | 203 169 126 |
+ * | 2,50 | 0,581 | 230 202 162 |
+ * | 5,00 | 0,753 | 250 223 198 |
+ *
+ * Im selben Bild: Himmel 0,510, Boden 0,035, Blütenkrone 0,169. Bei `k = 1`
+ * liegt die Laterne also **unter** dem Himmel — genau der flache Fleck, den
+ * der Kommentar ausschließen wollte.
+ *
+ * `k = 5` wäre heller und ist trotzdem falsch: das Verhältnis Rot zu Blau
+ * fällt von 1,61 über 1,42 auf 1,26, die Laterne wird weiß. Eine Papierlaterne
+ * ist warm, sonst ist sie eine Glühbirne. `k = 2,5` ist der größte der drei
+ * Werte, der die Farbe behält, und liegt mit 0,581 über dem Himmel.
+ *
+ * Angewandt wird er als `MeshBasicMaterial.color` — das multipliziert die
+ * Vertexfarben, ist also genau der Regler, an dem gemessen wurde, und nicht
+ * ein zweiter daneben.
  */
 const LANTERN_PAPER = 0xffb45e;
 
-/** Gefallene Blüten je Zone. */
-const FALLEN_PER_ZONE = 150;
+/** Faktor auf die Papierfarbe — Herleitung und Messtabelle bei `LANTERN_PAPER`. */
+const LANTERN_GAIN = 2.5;
+
+/** Gefallene Blüten je Zone — je Stück eine Verwehung aus `FALLEN_LEAVES` Blättern. */
+const FALLEN_PER_ZONE = 240;
 /** Wie hoch die Flecken über dem Gelände liegen, m — Begründung an der Stelle. */
 const FALLEN_LIFT = 0.12;
-const FALLEN_COLOR = 0xe8a9c0;
+
+/**
+ * Die drei Töne einer Verwehung — gemessen gesetzt, nicht gefühlt.
+ *
+ * ## Was die erste Fassung falsch machte, und woran man es gemessen hat
+ *
+ * Sie war **ein** flaches Viereck von 1,5 m Kantenlänge in `0xe8a9c0`, mit der
+ * Instanzskalierung bis 2,4 m. Im Bild (`.cache/shots/lat-mit.png`) waren das
+ * keine Blüten, sondern Planen: harte gerade Kanten, eine geschlossene Fläche,
+ * kein Boden dazwischen. Dazu die Helligkeit, linear gemessen:
+ *
+ * | | linear |
+ * |---|---|
+ * | Fleck, nah | 0,168 |
+ * | Boden direkt daneben | 0,0095 |
+ *
+ * Faktor **17,7**. Beide Flächen liegen waagerecht und bekommen dasselbe
+ * Licht — der Unterschied ist reine Albedo, und eine Albedo, die achtzehnmal
+ * über dem Untergrund liegt, ist keine Blüte auf Erde, sondern ein Anstrich.
+ * Das ist derselbe Fehler wie die Staubfahne aus P25 (31-mal heller als der
+ * Boden), nur eine Zone weiter.
+ *
+ * ## Woraus die neue Zahl kommt
+ *
+ * Bezugspunkt ist die **Asphaltstraße** dieser Karte, gemessen 0,058 linear:
+ * das ist die Helligkeit, mit der in dieser Szene eine gewöhnliche Fläche
+ * dasteht, die nicht leuchtet. Angepeilt waren rund fünf Boden-Helligkeiten,
+ * also 0,048 statt 0,168 — Faktor 0,283 auf die lineare Albedo
+ * (0,796 | 0,396 | 0,523), was `0x825e6b` ergibt. Die beiden anderen Töne
+ * lagen bei 0,6 und 1,5 davon.
+ *
+ * ## Und dann ein Schritt zurück, weil zwei Regler zugleich bewegt wurden
+ *
+ * Genau die Lehre aus P25 („ein Regler je Messung"), und sie war in einem
+ * Zug wieder fällig: geändert wurden **Form und Farbe zusammen**. Gemessen an
+ * `.cache/shots/p26-zone-nah.png` war danach der hellste Blattpixel 0,0897 und
+ * der dunkelste Ton rechnerisch 0,0359 — der Boden daneben lag bei 0,0352.
+ * Ein Drittel der Blätter war vom Untergrund **nicht zu unterscheiden**, und
+ * im Bild las sich die Verwehung als Dreck statt als Blüte.
+ *
+ * Die Form allein hatte die Plane schon beseitigt. Damit ist die Helligkeit
+ * frei geworden, und die Töne stehen jetzt bei 1,0 / 1,7 / 2,6 des
+ * Mittelwerts. Der hellste rendert damit rund 0,155 — praktisch dieselbe
+ * Helligkeit wie die Blüten **am Baum** (gemessen 0,151), und das ist der
+ * Bezug, der physikalisch stimmt: es ist dieselbe Blüte, nur unten.
+ *
+ * Drei Töne und nicht einer, weil bei 2,23° Sonnenstand zwischen einer
+ * waagerechten und einer senkrechten Fläche kaum ein Helligkeitsunterschied
+ * liegt — dieselbe Lehre wie bei den Kirschbaumkronen aus P25: die Form muss
+ * ihre Tiefe in der Farbe mitbringen.
+ */
+const FALLEN_TONES = [0x825e6b, 0xa67989, 0xc993a7] as const;
+/** Blätter je Verwehung. 9 × 2 Dreiecke × 480 Instanzen = 8640 Dreiecke. */
+const FALLEN_LEAVES = 9;
+/** Radius einer Verwehung bei Skalierung 1, m. */
+const FALLEN_SPREAD = 0.7;
 
 /**
  * Wie viele Blütenblätter je Stufe übrig bleiben, als Anteil.
@@ -305,6 +389,10 @@ export class StuntSystem implements System {
     // (Der Nebel dieser Karte hängt an der Atmosphären-Injektion, die dieses
     // Material bewusst nicht bekommt.)
     glow.fog = false;
+    // Über die Materialfarbe und nicht über die Vertexfarbe: `color`
+    // multipliziert sie, und ein Wert über 1 ist hier gewollt — er ist die
+    // Antwort auf den Tonemapper. Messtabelle bei `LANTERN_PAPER`.
+    glow.color.setScalar(LANTERN_GAIN);
     this.#glow = glow;
     context.scene.add(this.#group);
 
@@ -788,12 +876,15 @@ export class StuntSystem implements System {
    * hundert Blätter je Sekunde schneit und der makellos bleibt, ist eine
    * Behauptung, die das Bild widerlegt.
    *
-   * Flache Vierecke, 12 cm über dem Gelände abgesetzt (die Straßendecals dieses
-   * Projekts liegen bei 6 cm, und das war in P6 einmal zu wenig — das gerenderte
-   * CDLOD-Gitter liegt zwischen zwei Stützstellen über dem Höhenfeld). Sie
-   * liegen **waagerecht** und folgen der Neigung nicht: bei 3,9 m Höhenunterschied
-   * auf 124 m ist der Hang unter 2°, und ein Fleck von 1,5 m steht damit
-   * höchstens 5 cm schräg.
+   * Je Stück eine **Verwehung** aus neun kleinen Blättern (Form und die
+   * gemessene Begründung bei `createFallenPatch` und `FALLEN_TONES`), 12 cm
+   * über dem Gelände abgesetzt. Die Straßendecals dieses Projekts liegen bei
+   * 6 cm, und das war in P6 einmal zu wenig — das gerenderte CDLOD-Gitter
+   * liegt zwischen zwei Stützstellen über dem Höhenfeld.
+   *
+   * Sie liegen **waagerecht** und folgen der Neigung nicht: bei 3,9 m
+   * Höhenunterschied auf 124 m ist der Hang unter 2°, und eine Verwehung von
+   * 2 m steht damit höchstens 7 cm schräg.
    */
   #buildFallenPetals(): void {
     const sampler = this.#sampler;
@@ -816,7 +907,8 @@ export class StuntSystem implements System {
           y: sampler.getHeightAt(x, z) + FALLEN_LIFT,
           z,
           turn: hash(i * 7.7, zone.x - zone.z) * Math.PI,
-          scale: 0.7 + hash(i * 2.9, zone.z + 11) * 0.9,
+          // 0,6…1,4 auf 1,4 m Blobdurchmesser: 0,84…1,96 m je Verwehung.
+          scale: 0.6 + hash(i * 2.9, zone.z + 11) * 0.8,
         });
       }
     }
@@ -1163,19 +1255,67 @@ function createLanternPaper(): BufferGeometry {
 }
 
 /**
- * Ein Fleck gefallener Blüten — ein flaches Viereck, waagerecht.
+ * Eine Verwehung gefallener Blüten — neun kleine Blätter, nicht ein Viereck.
  *
- * Zwei Dreiecke, nach oben gewickelt. Die Wickelrichtung ist hier keine
- * Nebensache: `japanMap.winding()` prüft sie, und dieses Projekt hat zwei
- * rückseitige Flächen teuer bezahlt (P8.11) — eine davon war ein Flussband,
- * das ein halbes Jahr lang unsichtbar war.
+ * ## Warum neun statt einem
+ *
+ * Ein einzelnes Viereck ist eine **geschlossene Fläche mit vier geraden
+ * Kanten**, und genau so hat es im Bild ausgesehen: eine Plane auf der Wiese.
+ * Blüten liegen verstreut; was sie zur Verwehung macht, ist der Boden
+ * *zwischen* ihnen. Neun Blätter auf einer Goldwinkel-Spirale decken rund
+ * 40 % der Blobfläche ab (0,61 m² Blattfläche auf 1,54 m² Kreis) — der Rest
+ * ist Wiese, und deshalb franst der Rand aus, statt zu schneiden.
+ *
+ * Der Goldwinkel ist derselbe wie in der Baumkrone: er vermeidet, dass sich
+ * die Blätter in Ringen oder Speichen ordnen, was bei jedem festen Winkel
+ * passiert.
+ *
+ * Nach außen werden sie kleiner (0,34 → 0,18 m) — eine Verwehung hat keine
+ * Kante, sie läuft aus.
+ *
+ * ## Zwei Kleinigkeiten, die keine sind
+ *
+ * Die Wickelrichtung ist hier nicht nebensächlich: `japanMap.winding()` prüft
+ * sie, und dieses Projekt hat zwei rückseitige Flächen teuer bezahlt (P8.11) —
+ * eine davon war ein Flussband, das ein halbes Jahr lang unsichtbar war. Die
+ * Reihenfolge unten (−u/−v, −u/+v, +u/+v) ergibt über das Kreuzprodukt +Y.
+ *
+ * Und die 4 mm Höhenstaffelung je Blatt: zwei überlappende Blätter auf exakt
+ * derselben Höhe flimmern im Tiefenpuffer. 4 mm liegen weit unter dem, was
+ * bei 2,23° Sonnenstand einen Schattenversatz gäbe.
  */
 function createFallenPatch(): BufferGeometry {
-  const h = 0.75;
-  const positions = [-h, 0, -h, -h, 0, h, h, 0, h, -h, 0, -h, h, 0, h, h, 0, -h];
-  const c = new Color(FALLEN_COLOR);
+  const positions: number[] = [];
   const colors: number[] = [];
-  for (let i = 0; i < 6; i++) colors.push(c.r, c.g, c.b);
+  const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < FALLEN_LEAVES; i++) {
+    const t = (i + 0.5) / FALLEN_LEAVES;
+    // Wurzel für Gleichverteilung in der Fläche — dieselbe Rechnung wie bei
+    // der Streuung der Verwehungen selbst.
+    const r = Math.sqrt(t) * FALLEN_SPREAD;
+    const a = i * GOLDEN;
+    const ox = Math.cos(a) * r;
+    const oz = Math.sin(a) * r;
+    const s = (0.34 - 0.16 * t) / 2;
+    // Jedes Blatt eigen gedreht, sonst steht ein Raster im Bild. Der Faktor
+    // 2,3 ist teilerfremd genug zum Goldwinkel, dass sich die Drehungen nicht
+    // mit den Positionen ausrichten.
+    const cs = Math.cos(a * 2.3);
+    const sn = Math.sin(a * 2.3);
+    const y = i * 0.004;
+    const eck = (u: number, v: number): number[] => [
+      ox + u * cs - v * sn,
+      y,
+      oz + u * sn + v * cs,
+    ];
+    const p0 = eck(-s, -s);
+    const p1 = eck(-s, s);
+    const p2 = eck(s, s);
+    const p3 = eck(s, -s);
+    positions.push(...p0, ...p1, ...p2, ...p0, ...p2, ...p3);
+    const c = new Color(FALLEN_TONES[i % FALLEN_TONES.length]!);
+    for (let k = 0; k < 6; k++) colors.push(c.r, c.g, c.b);
+  }
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new BufferAttribute(Float32Array.from(positions), 3));
   geometry.setAttribute('color', new BufferAttribute(Float32Array.from(colors), 3));

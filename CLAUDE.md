@@ -1155,15 +1155,46 @@ Alle drei haben in P18 Zeit gekostet, und keiner davon steht im Code.
    ```js
    const echt = drive.camera.update.bind(drive.camera);
    drive.camera.update = () => {};          // Verfolgerkamera stilllegen
-   engine.camera.position.set(x, y + 20, z);
-   engine.camera.lookAt(x, y, z - 3);
-   engine.camera.updateMatrixWorld(true);
+   japanMap.view({ position: [x, y + 20, z], lookAt: [x, y, z - 3] });
    await japanMap.shot('name');
    drive.camera.update = echt;
    ```
 
    `engine.systems.splice()` hilft **nicht** — die Schleife iteriert nicht über
    diese Liste.
+
+   > **Der Block darüber stand bis P26 mit `camera.position.set()` und
+   > `camera.lookAt()` da, und das war zur Hälfte falsch.** Die Verfolgerkamera
+   > stillzulegen reicht nicht: der `FreeFlyController` baut die Ausrichtung in
+   > **jedem** Frame aus seinem eigenen `#yaw`/`#pitch` neu auf. Die
+   > **Position** bleibt deshalb stehen, die **Blickrichtung** wird
+   > überschrieben. Gemessen 2026-08-31 an einer Laterne der Driftzone, um die
+   > Aufnahme herum abgelesen:
+   >
+   > ```
+   > vor  dem shot: dir = ( 0.991,  0.043,  0.130)   <- gesetzt
+   > nach dem shot: dir = (-0.604, -0.087, -0.792)   <- Controller
+   > ```
+   >
+   > Das Bild zeigte am Fadenkreuz Boden statt der Laterne, obwohl die Laterne
+   > gemessen genau dort stand, wo sie hingerechnet war. Die Aufnahmen sahen
+   > dabei nicht kaputt aus — nur eben in eine andere Richtung, und
+   > **jedes** von Hand gezielte Bild einer ganzen Sitzung war so entstanden.
+   >
+   > Der Weg, der wirkt, ist der, den das Projekt selbst anbietet:
+   > `japanMap.view({position, lookAt})` geht über `CameraPlacer.placeAt()`,
+   > und das rechnet Gieren und Nicken **zurück** — genau mit der Begründung,
+   > die dort im Kommentar steht („eine gesetzte Quaternion wäre nach einem
+   > Frame wieder weg"). Die Antwort lag also seit P6 im Bestand.
+   >
+   > Lehre, und es ist die vierte Auflage desselben Satzes nach P13
+   > (`menu.hidden` von Hand), P14 (Standhöhe ohne Straßenkontext) und P21
+   > (`respawn` nullt die Lage): **ein von Hand gesetzter Zustand ist ein
+   > Zustand, den es im Betrieb nicht gibt.** Neu ist hier nur der Zusatz —
+   > wenn ein System einen Zustand jeden Frame aus *seinen* Variablen neu
+   > aufbaut, muss man diese Variablen setzen und nicht das Ergebnis. Wer eine
+   > Kamera von Hand stellt, prüft danach `camera.matrixWorld`, statt dem
+   > Aufruf zu glauben.
 
 2. **Driftspuren altern zwischen zwei Werkzeugaufrufen weg.** `VehicleFx` läuft im
    **variablen** Schritt mit bis zu 50 ms je Frame, und zwischen zwei
@@ -2085,3 +2116,62 @@ Rückschritt mit Aufwand.
   zuordnen kann, wird aufgeschrieben und nicht weggeräumt.** Die Alternative wäre
   eine Reparatur auf Verdacht gewesen, und davon hat dieses Projekt schon zwei
   gebaut, die nichts bewirkt haben.
+
+---
+
+## Was in diesem Projekt schon schiefgegangen ist — Nachträge aus P26
+
+- **„Ein unbeleuchtetes Material schreibt seine Zahl direkt ins Bild" — der
+  Satz aus P25 stimmt nur ohne Tonemapper dahinter.** Das Laternenpapier der
+  Driftzone bekam `0xffb45e` mit der Rechnung daneben: „linear rund 1,00 /
+  0,44 / 0,10, also heller als alles im Bild und über der Bloom-Schwelle". Die
+  Rechnung war richtig und das Ergebnis falsch. Gemessen im **fertigen** Bild
+  steht die Laterne bei **0,401** und der Himmel bei **0,510** — genau der
+  flache Fleck, den der Kommentar ausschließen wollte.
+  Dazwischen liegt der Tonemapper der PostFX-Kette. Ein Materialwert von 1,0
+  ist kein Bildwert von 1,0; er ist der Eingang einer Kurve, die zum
+  Weißpunkt hin sättigt. Aufgenommen wurde sie in **einem** Browserlauf über
+  `material.color.setScalar(k)`, wie es CLAUDE.md für Partikel schon
+  beschreibt:
+
+  | Materialwert (Rot) | im Bild | sRGB | Rot ÷ Blau |
+  |---|---|---|---|
+  | 1,00 | 0,401 | 203 169 126 | 1,61 |
+  | 2,50 | 0,581 | 230 202 162 | 1,42 |
+  | 5,00 | 0,753 | 250 223 198 | 1,26 |
+
+  Die dritte Spalte ist der Grund, warum die Antwort nicht „so hell wie
+  möglich" lautet: mit der Helligkeit **verliert die Laterne ihre Farbe**. Bei
+  k = 5 ist sie fast weiß, und eine weiße Papierlaterne ist eine Glühbirne.
+  Zwei Lehren:
+  1. **Die Zahl im Material ist erst dann eine Bildgröße, wenn nichts mehr
+     dahinterkommt.** Wo eine Kette dahinterhängt, wird die Kurve **gemessen**
+     statt gerechnet — drei Punkte genügen, und sie kosten einen Lauf.
+  2. **Sättigung ist ein Messwert wie Helligkeit.** Wer nur die Helligkeit
+     abliest, dreht eine warme Fläche unbemerkt nach Weiß.
+
+- **Zwei Regler in einem Zug — und die P25-Lehre war sofort wieder fällig.**
+  Der Blütenteppich der Driftzone las sich als **Planen auf der Wiese**: ein
+  flaches Viereck von bis zu 2,4 m, `0xe8a9c0`, gemessen **0,168 linear gegen
+  0,0095 Boden — Faktor 17,7**. Repariert wurden Form (ein Viereck → neun
+  kleine Blätter auf einer Goldwinkel-Spirale) und Farbe (auf 0,283) **in
+  einem Schritt**.
+  Danach lag der dunkelste der drei Töne rechnerisch bei 0,0359 und der Boden
+  bei 0,0352: ein Drittel der Blätter war vom Untergrund nicht zu
+  unterscheiden, und aus der Plane war Dreck geworden. Die **Form allein**
+  hatte die Plane längst beseitigt; die Helligkeit war also gar nicht das
+  Problem und wurde trotzdem mitgedreht.
+  Lehre: **ein Regler je Messung** — steht seit P25 hier, und der Rückfall
+  kostete einen zweiten Bilderlauf. Der Ausweg beim zweiten Mal war ein
+  Bezugspunkt, der physikalisch stimmt statt einer neuen Schätzung: gefallene
+  Blüten sind **dieselbe Blüte wie am Baum**, also gehört ihre Helligkeit an
+  die der Krone (gemessen 0,151) und nicht an eine Vorstellung von „gedämpft".
+  Nachgemessen 0,139.
+
+- **Eine Zahl, die auf den Zentimeter genau einer Konstanten entspricht —
+  diesmal war es der Boden.** Der dunkelste Blattton rendert 0,0359, der Boden
+  daneben 0,0352. Dieses Projekt führt zwei Fälle, in denen genau so eine
+  Übereinstimmung der Befund war (exakt −6,00 cm Standhöhe in P14, exakt
+  `UNSUPPORTED_DROP` in P19). Hier war sie kein Fehler, sondern das Ergebnis —
+  aber sie war auch hier der Punkt, an dem sich Hinsehen gelohnt hat, statt
+  eine plausible Zahl durchzuwinken.
