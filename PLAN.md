@@ -10835,12 +10835,23 @@ die Zeile, die den Fehler gefunden hätte.
       gehört auf ein echtes Telefon.
 - [ ] Ob sich der Lastwechsel **gut anfühlt**, ist weiterhin keine Frage für
       einen Prüfstand.
-- [ ] **Die Karosserie schleift ab knapp 20° Anstieg.** Gemessen an den
-      Schanzen: bis 16,0° bleibt die Blechtiefe unter 0,094 m, bei 19,4° sind
-      es 0,193 m und der Wagen verliert zwei Drittel seines Tempos. Repariert
-      ist nur die Schanze, die es ausgelöst hat — die Grenze selbst trifft
-      jeden Hang dieser Steilheit. Auf der Karte fährt dort niemand (die
-      Straßen steigen höchstens 10,7 %), im Gelände schon.
+- [ ] **Die Karosserie schleift am Übergang in eine Steigung, nicht an der
+      Steigung.** Gemessen an den Schanzen: bis 16,0° Spitzenneigung bleibt die
+      Blechtiefe unter 0,094 m, bei 19,4° sind es 0,193 m und der Wagen
+      verliert zwei Drittel seines Tempos.
+
+      > **Der naheliegende Schluss daraus wäre „ab knapp 20° schleift das
+      > Blech an jedem Hang", und `world.mts` widerlegt ihn im selben Lauf:**
+      > auf einem *konstanten* Hang misst er 0,000 m bei 20°, 0,048 m bei 35°
+      > und 0,050 m bei 55°. Ein Hang ist eine Ebene, auf die sich der Aufbau
+      > ausrichtet; eine Schanze ist ein **Übergang**, und dort überbrückt die
+      > 4,2 m lange Unterkante die konvexe Krümmung. Nicht die Neigung ist die
+      > Größe, sondern ihre Änderung — dieselbe Unterscheidung wie zwischen
+      > `STEEP_NY` (Form) und `slopeSupport` (Kraft) aus P21.
+
+      Repariert ist nur die Schanze, die es ausgelöst hat. Was fehlt, ist eine
+      Zahl für die zulässige **Krümmung**: der Prüfstand hat für konstante
+      Hänge eine Spalte und für Übergänge keine.
 - [ ] **`ridge-kicker` landet auf 12,1 m Gefälle und springt weiter.** Die
       Probe misst dort 18,3 s bis zum ersten durchgehenden Bodenkontakt und
       639 m Weg. Ob das ein Fehler ist oder der beste Sprung der Karte, kann
