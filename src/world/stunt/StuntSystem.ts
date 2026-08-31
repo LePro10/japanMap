@@ -93,8 +93,36 @@ const ZONE_RING_STEPS = 96;
 const ZONE_RING_WIDTH = 2.6;
 /** Wie hoch über dem Boden. Begründung bei `#buildZoneRings`. */
 const ZONE_RING_LIFT = 0.12;
-const ZONE_RING_INNER = 0xf7c6d8;
-const ZONE_RING_OUTER = 0xb84a72;
+/**
+ * Die beiden Farben des Bandes.
+ *
+ * ## Gedämpft, nachdem ein Bild aus der Ferne dazukam
+ *
+ * Der erste Entwurf stand bei `0xf7c6d8` / `0xb84a72` — gewählt am Bild *aus*
+ * der Zone, wo er richtig aussah. Vom Blickpunkt `stadt-rand` aus, also aus
+ * einigen hundert Metern, war er dann das hellste Ding der Landschaft und las
+ * sich als **rosa Straße**. Gemessen auf `.cache/shots/p25-stadt-rand.png`,
+ * linear:
+ *
+ * | | linear |
+ * |---|---|
+ * | Boden | 0,028 |
+ * | Asphaltstraße daneben | 0,058 |
+ * | Zonenring | **0,372** |
+ *
+ * Also 6,5-mal die Straße und 13-mal der Boden. Das ist dieselbe Klasse wie die
+ * Staubfarbe in `vehicleFx.config.ts` — eine Farbe, die am nahen Bild gewählt
+ * und nie gegen das ferne gehalten wurde.
+ *
+ * **Um Faktor 2,2 gedämpft und nicht um 6.** Der Ring *soll* auffindbar sein;
+ * er ist die Anzeige einer Veranstaltung, und ein Spiel, dessen Driftzone man
+ * nicht von weitem sieht, hat eine Driftzone weniger. Ihn auf Straßenhelligkeit
+ * zu ziehen wäre die Überkorrektur, die heute schon einmal passiert ist (Staub:
+ * zwei Regler auf einmal, danach gar nichts mehr). Ziel ist rund 0,17 — dreimal
+ * die Straße, also der hellste Bodenzug der Karte, aber keine Lampe.
+ */
+const ZONE_RING_INNER = 0xab8592;
+const ZONE_RING_OUTER = 0x7f2f4c;
 
 /**
  * Wie lange der Aufsammel-Effekt dauert, s.
