@@ -49,7 +49,34 @@ import { readFileSync } from 'node:fs';
  * derselben Stelle abheben, wären ein Fehler, den niemand als Feature liest.
  *
  * Sie stehen deshalb `SIDE_OFFSET` neben der Mittellinie, in Fahrtrichtung.
- * Wer sie nehmen will, lenkt einen Meter heraus; wer nicht, fährt vorbei.
+ * Wer sie nehmen will, lenkt ein Stück heraus; wer nicht, fährt vorbei.
+ *
+ * > **`SIDE_OFFSET` stand bis P26 auf 11 m, und die Zahl war als Abstand eines
+ * > *Punktes* hergeleitet — die Breite der Schanze kam in der Rechnung nicht
+ * > vor.** Eine Schanze ist aber 11 bis 15 m breit. Gemessen lag die
+ * > Innenkante damit bei 11 − 7,5 − 0,6 = **2,9 m** von der Mittellinie, und
+ * > die Ringstraße ist 9 m breit mit 1,6 m Bankett, reicht also bis **6,1 m**.
+ * > Fünf der sechs Schanzen ragten in die Fahrbahn; im Bild sieht das aus wie
+ * > eine Rampe mitten auf der Straße, und der Auftraggeber hat genau das
+ * > gemeldet.
+ * >
+ * > Dieselbe Fehlerklasse wie `maxDriveForce` (P17/P18) und die
+ * > Schanzenneigung weiter oben in P26: **ein Kommentar, der rechnet, ist eine
+ * > Abhängigkeit wie ein Import** — und diese Rechnung ließ einen Summanden
+ * > weg.
+ *
+ * Der Versatz wird jetzt **hergeleitet** statt gesetzt:
+ *
+ * ```
+ *   SIDE_OFFSET = Fahrbahnhälfte + Bankett + Sicherheit + Schanzenhälfte + Saum
+ *               = 4,5 + 1,6 + 1,5 + 7,5 + 0,6 = 15,7  ->  16 m
+ * ```
+ *
+ * Gerechnet für den **breitesten** Fall (15 m, `south-crest`) auf der
+ * **breitesten** Straße (Ring). Schmalere Schanzen stehen damit weiter weg als
+ * nötig, und das ist die richtige Richtung für den Fehler: eine Schanze, die
+ * man knapp verfehlt, ist ärgerlich; eine, die auf der Fahrbahn steht, ist ein
+ * Fehler.
  *
  * ```
  *   node tools/find-ramps.mjs
@@ -60,8 +87,16 @@ const HEIGHT = 'assets/generated/terrain/height.r16';
 const META = 'assets/generated/terrain/meta.json';
 const ROADS = 'assets/generated/roads/roads.json';
 
-/** Wie weit neben der Mittellinie, in Metern. */
-const SIDE_OFFSET = 11;
+/**
+ * Wie weit neben der Mittellinie, in Metern — **hergeleitet, nicht gesetzt.**
+ * Herleitung und die Messung, die sie ausgelöst hat, im Dateikopf.
+ */
+const ROAD_HALF = 4.5; // Ringstraße, `ROAD_TYPES.highway.width / 2`
+const ROAD_SHOULDER = 1.6; // `ROAD_TYPES.highway.shoulder`
+const CLEARANCE = 1.5; // Sicherheitsabstand Bankettkante ↔ Schanzensaum
+const RAMP_HALF_MAX = 7.5; // breiteste Schanze (`south-crest`, 15 m)
+const RAMP_SKIRT = 0.6; // `RAMP_SKIRT` in StuntSystem
+const SIDE_OFFSET = Math.ceil(ROAD_HALF + ROAD_SHOULDER + CLEARANCE + RAMP_HALF_MAX + RAMP_SKIRT);
 /** Länge des geforderten Anlaufs, m. */
 const RUN_UP = 130;
 /** Länge der Auffahrt, m. */

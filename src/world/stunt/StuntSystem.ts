@@ -1123,10 +1123,18 @@ function createSakura(): BufferGeometry {
     // zwischen beiden klaffte Luft — auf `.cache/shots/baum-vorher.png` liest
     // sich das als Sonnenschirm. Die drei Äste greifen jetzt **in** die Krone
     // hinein und schließen die Lücke.
-    box(0.52, 2.3, 0.52, 0, 1.15, 0, SAKURA_TRUNK),
-    boxY(0.34, 1.9, 0.34, 0.62, 2.5, -0.24, 0.55, SAKURA_TRUNK),
-    boxY(0.3, 1.7, 0.3, -0.56, 2.45, 0.42, -0.75, SAKURA_TRUNK),
-    boxY(0.26, 1.5, 0.26, 0.1, 2.7, 0.62, 0.2, SAKURA_TRUNK),
+    // **Ein Stamm, nicht vier Balken.** Die alten drei Äste standen mit 1,5 bis
+    // 1,9 m Länge zur Hälfte **neben** der Krone und lasen sich im Bild als
+    // einzelne dunkle Stangen (`.cache/shots/p26b-baum-nah.png`, beide Bäume).
+    // Sie sind jetzt kurz und stecken bis auf ihren Ansatz im Laub — was einen
+    // Baum ausmacht, ist der geschlossene Übergang von Stamm zu Krone, nicht
+    // sichtbares Geäst.
+    box(0.62, 1.9, 0.62, 0, 0.95, 0, SAKURA_TRUNK),
+    // Der Übergang: ein kürzeres, schmaleres Stück darüber. Zwei gestapelte
+    // Kästen mit unterschiedlicher Breite deuten die Verjüngung an.
+    box(0.46, 1.1, 0.46, 0, 2.3, 0, SAKURA_TRUNK),
+    boxY(0.3, 1.0, 0.3, 0.42, 2.55, -0.16, 0.55, SAKURA_TRUNK),
+    boxY(0.28, 0.9, 0.28, -0.38, 2.5, 0.28, -0.75, SAKURA_TRUNK),
   ];
 
   // ── Die Krone als Kuppel aus Ballen ───────────────────────────────────
@@ -1145,10 +1153,28 @@ function createSakura(): BufferGeometry {
   // Ball auf einem Stiel, weil zwischen Kronenunterkante und Astansatz wieder
   // Luft stand. Eine Zierkirsche ist **breiter als hoch** und hängt bis auf
   // gut zwei Meter herunter; die Krone soll den Stamm zur Hälfte verdecken.
-  const CROWN_N = 19;
-  const CROWN_Y = 3.5;
-  const CROWN_RX = 2.55;
-  const CROWN_RY = 1.25;
+  //
+  // **~~19 Kästen~~ — seit P26 neun Ikosaeder.** Aus 60 m sahen die Kästen gut
+  // aus, aus 10 m waren es Würfel: drei sichtbare Flächen, drei harte Kanten,
+  // und bei 2,23° Sonnenstand liegen alle drei fast gleich hell. Ein Ballen hat
+  // jetzt zwanzig verschieden geneigte Flächen statt sechs (siehe `blob`), und
+  // die Krone kostet dabei **weniger**: 9 × 20 = 180 Dreiecke gegen 19 × 12 =
+  // 228. Weniger, größere, rundere Ballen lesen sich als Laub; viele kleine
+  // Kästen lesen sich als Haufen.
+  //
+  // **Elf Ballen und enger gesetzt.** Mit neun auf RX 2,35 lag der Abstand
+  // zweier Nachbarn im weitesten Ring bei rund 2,5 m und ihr Durchmesser bei
+  // 2,4…3,0 m — sie stießen aneinander, statt sich zu überlappen, und auf
+  // `.cache/shots/p26b-baum-nah.png` steht zwischen ihnen Himmel. Eine Krone
+  // ist keine Perlenkette: die Ballen müssen sich **schneiden**, sonst ist die
+  // Silhouette gezackt und das Innere durchsichtig.
+  //
+  //   Umfang 2π · 2,1 = 13,2 m auf ~6 Ballen im weitesten Ring = 2,2 m Abstand
+  //   Durchmesser 2 · (1,72 − 0,25) = 2,9 m                   -> 0,7 m Überlappung
+  const CROWN_N = 11;
+  const CROWN_Y = 3.4;
+  const CROWN_RX = 2.1;
+  const CROWN_RY = 1.1;
   // Der goldene Winkel. Er ist der einzige, bei dem keine zwei der ersten N
   // Punkte annähernd übereinanderliegen — deshalb steht er in jedem
   // Sonnenblumen-Modell.
@@ -1167,8 +1193,9 @@ function createSakura(): BufferGeometry {
     const y = CROWN_Y + hoehe * CROWN_RY;
 
     // Ballen weiter außen sind kleiner — das rundet die Silhouette ab, statt
-    // sie mit gleich großen Klötzen zu bepflastern.
-    const groesse = 1.75 - ring * 0.4;
+    // sie mit gleich großen Klötzen zu bepflastern. Bei neun statt neunzehn
+    // Ballen muss jeder größer sein, sonst steht zwischen ihnen Himmel.
+    const groesse = 1.72 - ring * 0.25;
 
     // **Der Ton kommt aus dem Index und nicht aus der Höhe.** Begründung bei
     // `SAKURA_TONES`. Der Zuschlag `hoehe > 0.55` hellt nur die obersten
@@ -1176,7 +1203,8 @@ function createSakura(): BufferGeometry {
     const wahl = (i * 7 + (hoehe > 0.55 ? 2 : 0)) % SAKURA_TONES.length;
     const ton = SAKURA_TONES[hoehe > 0.55 ? Math.min(wahl, 1) : wahl]!;
 
-    parts.push(boxY(groesse, groesse * 0.78, groesse * 0.92, x, y, z, winkel, ton));
+    // Flach gedrückt (0,74 in der Höhe): Laub hängt, es ist keine Kugel.
+    parts.push(blob(groesse, groesse * 0.74, groesse * 0.94, x, y, z, ton));
   }
 
   return mergeBoxes(parts);
@@ -1442,6 +1470,94 @@ function boxY(
     p[i + 2] = x * s + z * c + oz;
   }
   return spec;
+}
+
+/**
+ * Ein Ikosaeder als Laubballen — 20 Dreiecke, rund statt eckig.
+ *
+ * ## Warum überhaupt eine zweite Grundform
+ *
+ * Die Krone bestand bis hier aus Kästen. Aus 60 m sah das gut aus, aus 10 m
+ * sind es **Würfel**: drei sichtbare Flächen, drei harte Kanten, und bei 2,23°
+ * Sonnenstand liegen alle drei fast gleich hell (dieselbe Beobachtung wie in
+ * P25 bei den Farbtönen). Der Auftraggeber hat es zweimal gemeldet.
+ *
+ * Ein Ikosaeder kostet **20 Dreiecke gegen 12** beim Kasten, hat aber
+ * **zwanzig** verschieden geneigte Flächen statt sechs. Genau das ist der
+ * Punkt: die Silhouette wird rund, und weil `computeVertexNormals` auf
+ * nicht-indizierter Geometrie flache Flächennormalen erzeugt, entsteht dabei
+ * von selbst die facettierte Schattierung, die einen Low-Poly-Baum ausmacht.
+ *
+ * Netto ist die Krone dadurch **billiger**: neun Ballen × 20 = 180 Dreiecke
+ * gegen vorher 19 Kästen × 12 = 228.
+ *
+ * ## Die Wickelrichtung wird gerechnet, nicht abgeschrieben
+ *
+ * Die 20 Flächenindizes eines Ikosaeders stehen in jedem Lehrbuch, und in
+ * jedem zweiten mit einer anderen Umlaufrichtung. Dieses Projekt hat zwei
+ * rückseitig gewickelte Flächen teuer bezahlt (P8.11) — deshalb wird hier
+ * **nachgerechnet**: zeigt die Flächennormale zum Mittelpunkt statt von ihm
+ * weg, werden zwei Ecken getauscht. Das kostet drei Zeilen und macht die
+ * Tabelle unten unkritisch.
+ */
+function blob(
+  rx: number,
+  ry: number,
+  rz: number,
+  ox: number,
+  oy: number,
+  oz: number,
+  hex: number,
+): BoxSpec {
+  const t = (1 + Math.sqrt(5)) / 2;
+  const roh: [number, number, number][] = [
+    [-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0],
+    [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t],
+    [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1],
+  ];
+  // Auf die Einheitskugel normieren, dann auf das Ellipsoid ziehen. Ein
+  // Kirschbaum ist breiter als hoch, also sind rx/rz > ry.
+  const v = roh.map(([x, y, z]) => {
+    const l = Math.hypot(x, y, z);
+    return [(x / l) * rx, (y / l) * ry, (z / l) * rz] as [number, number, number];
+  });
+  const flaechen: [number, number, number][] = [
+    [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
+    [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+    [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
+    [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1],
+  ];
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const c = new Color(hex);
+  for (const [ia, ib, ic] of flaechen) {
+    const a = v[ia]!;
+    let b = v[ib]!;
+    let d = v[ic]!;
+    // (b−a) × (d−a) muss vom Mittelpunkt weg zeigen. Der Mittelpunkt des
+    // Ellipsoids ist der Ursprung, also genügt das Skalarprodukt mit `a`.
+    const ux = b[0] - a[0];
+    const uy = b[1] - a[1];
+    const uz = b[2] - a[2];
+    const wx = d[0] - a[0];
+    const wy = d[1] - a[1];
+    const wz = d[2] - a[2];
+    const nx = uy * wz - uz * wy;
+    const ny = uz * wx - ux * wz;
+    const nz = ux * wy - uy * wx;
+    if (nx * a[0] + ny * a[1] + nz * a[2] < 0) {
+      const hilf = b;
+      b = d;
+      d = hilf;
+    }
+    positions.push(
+      a[0] + ox, a[1] + oy, a[2] + oz,
+      b[0] + ox, b[1] + oy, b[2] + oz,
+      d[0] + ox, d[1] + oy, d[2] + oz,
+    );
+    for (let k = 0; k < 3; k++) colors.push(c.r, c.g, c.b);
+  }
+  return { positions, colors };
 }
 
 function mergeBoxes(specs: BoxSpec[]): BufferGeometry {
