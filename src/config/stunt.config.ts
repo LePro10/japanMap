@@ -145,22 +145,41 @@ export const RAMP_EDGE_FADE = 0.2;
  * > hat das `tools/smoke.mjs`. Eine Koordinate auf einer erodierten 9,4-km²-Karte
  * > ist eine Behauptung; erst ein Lauf macht eine Messung daraus.
  *
- * Sie stehen **neben** der Fahrbahn (11 m von der Mittellinie) und in
+ * Sie stehen **neben** der Fahrbahn (16 m von der Mittellinie) und in
  * Fahrtrichtung. Das ist Absicht: auf der Fahrbahn würden sie die Rennen
  * kaputtmachen, weil die Ideallinie der KI von ihnen nichts weiß und drei
  * Gegner in jeder Runde an derselben Stelle abhöben.
+ *
+ * > **~~11 m~~ — und die 11 waren als Abstand eines *Punktes* gerechnet.**
+ * > Eine Schanze ist 11 bis 15 m breit; ihre Innenkante lag damit gemessen bei
+ * > 11 − 7,5 − 0,6 = **2,9 m** von der Mittellinie, während die Ringstraße mit
+ * > 9 m Breite und 1,6 m Bankett bis **6,1 m** reicht. Fünf der sechs Schanzen
+ * > ragten in die Fahrbahn — im Bild eine Rampe mitten auf der Straße, und
+ * > genau so ist es gemeldet worden.
+ * >
+ * > `SIDE_OFFSET` in `tools/find-ramps.mjs` wird seitdem aus der Geometrie
+ * > **hergeleitet** (Fahrbahnhälfte + Bankett + Sicherheit + Schanzenhälfte +
+ * > Saum = 16 m), und alle sechs Koordinaten stammen aus einem neuen Lauf des
+ * > Werkzeugs. Die Innenkante liegt jetzt bei mindestens 7,9 m, also 1,8 m
+ * > hinter der Bankettkante.
  */
 export const RAMPS: readonly Ramp[] = [
   {
     id: 'paddy-launch',
     name: 'Paddy Launch',
-    // Ringstraße West, über den Reisfeldern. Fundament 27,5 m, 5,1 m Gefälle
+    // Ringstraße West, über den Reisfeldern. Fundament 27,5 m, 7,3 m Gefälle
     // dahinter — die weichste Landung der Karte.
-    x: -721.2,
-    z: 9.6,
+    x: -716.6,
+    z: 11.3,
     heading: 2.776,
     length: 24,
-    width: 13,
+    // ~~13~~ — **schmaler, weil hier zwei Straßen nah beieinander liegen.**
+    // Der neue Platz hält 16 m zum Ring, aber gemessen nur 11,3 m zu einer
+    // Dorfstraße; mit 13 m Breite bliebe deren Bankettkante (3,3 m) nur 0,9 m
+    // von der Schanzeninnenkante entfernt. Mit 11 m sind es 1,9 m. Der Versatz
+    // allein reicht also nicht — er ist für die **breiteste** Straße gerechnet,
+    // nicht für die **nächste**.
+    width: 11,
     // Mittlere Neigung atan(3,8 / 24) = 9,0°, Spitze 13,4°. Bei 140 km/h
     // gemessen 94 m Weite bei 3,2 s Flug.
     height: 3.8,
@@ -169,11 +188,15 @@ export const RAMPS: readonly Ramp[] = [
   {
     id: 'ridge-kicker',
     name: 'Ridge Kicker',
-    // Ringstraße Ost, auf dem Rücken über der Stadt. 12,1 m Gefälle dahinter —
-    // der Sprung, bei dem der Boden unter einem wegbleibt.
-    x: 951.2,
-    z: -268.7,
-    heading: 0.219,
+    // Ringstraße Ost. **12,5 m Gefälle dahinter** — der Sprung, bei dem der
+    // Boden unter einem wegbleibt, und dafür wurde der Platz auch ausgesucht:
+    // beim Versetzen auf 16 m fiel der alte Standort (951 | −269) aus der
+    // Auswahl, und von den verbliebenen dreizehn trägt dieser das größte
+    // Gefälle. Gemessen fliegt der Wagen hier 2,63 s bei 15,8 m über dem
+    // Boden darunter — der größte Sprung der Karte.
+    x: 814.8,
+    z: -514,
+    heading: 1.1,
     length: 26,
     width: 13,
     // Mittlere Neigung atan(4,6 / 26) = 10,0°, Spitze 14,9°.
@@ -183,10 +206,10 @@ export const RAMPS: readonly Ramp[] = [
   {
     id: 'coast-kicker',
     name: 'Coast Kicker',
-    // Küstenabschnitt der Ringstraße, Richtung Meer.
-    x: 335.9,
-    z: 819.1,
-    heading: -1.194,
+    // Küstenabschnitt der Ringstraße, Richtung Meer. 5,8 m Gefälle dahinter.
+    x: 392.8,
+    z: 791,
+    heading: -1.149,
     length: 22,
     width: 12,
     // Mittlere Neigung atan(4,2 / 22) = 10,8°, Spitze 16,0° — die steilste,
@@ -199,8 +222,8 @@ export const RAMPS: readonly Ramp[] = [
     name: 'Village Hop',
     // Die Dorfstraße. Kurz und steil — der Sprung, den man im Vorbeifahren
     // mitnimmt, ohne die Strecke zu verlassen.
-    x: -442.8,
-    z: -90.9,
+    x: -444.3,
+    z: -86.1,
     heading: 1.277,
     // ~~17~~ — **gemessen verlängert, und der Grund steht in der Tabelle bei
     // `RAMPS`.** Mit 17 m lag die Spitzenneigung bei 19,4°, und dort schleift
@@ -220,10 +243,10 @@ export const RAMPS: readonly Ramp[] = [
   {
     id: 'harbour-jump',
     name: 'Harbour Jump',
-    // Ringstraße Nordwest, oberhalb des Hafens.
-    x: -926.8,
-    z: 622.3,
-    heading: -2.705,
+    // Ringstraße Nordwest, oberhalb des Hafens. 9,5 m Gefälle dahinter.
+    x: -931.3,
+    z: 592.3,
+    heading: -2.863,
     length: 24,
     width: 13,
     // Mittlere Neigung atan(4,0 / 24) = 9,5°, Spitze 14,2°.
@@ -236,8 +259,8 @@ export const RAMPS: readonly Ramp[] = [
     // **Eine Kuppe und keine Schanze** (`tail` > 0): sie hebt den Wagen kurz aus
     // der Straße, ohne ihn von ihr wegzuschicken. Der Unterschied ist der
     // Auslauf — eine Abrisskante ist ein Absprung, eine Kuppe ist ein Moment.
-    x: 83.2,
-    z: 918.9,
+    x: 66.5,
+    z: 920.1,
     heading: -1.194,
     length: 28,
     width: 15,
