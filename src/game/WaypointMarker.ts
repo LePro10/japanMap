@@ -102,8 +102,8 @@ export class WaypointMarker {
     ring.renderOrder = 1002;
 
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 128;
+    canvas.width = 768;
+    canvas.height = 192;
     const texture = new CanvasTexture(canvas);
     texture.colorSpace = SRGBColorSpace;
     texture.minFilter = LinearFilter;
@@ -166,11 +166,12 @@ export class WaypointMarker {
       this.#writeLabel(meters);
     }
 
-    // Bewusst deutlich größer als ein HUD-Label: Der Marker soll schon aus
-    // großer Entfernung sofort als Navigationsziel lesbar sein.
-    const width = clamp(meters * 0.14, 58, 180);
-    label.scale.set(width, width * 0.27, 1);
-    label.position.y = LABEL_Y + clamp(meters * 0.015, 0, 30);
+    // Ziel: das Schild behält auf mittlere/große Distanz fast dieselbe
+    // Bildschirmgröße. Die alte 0.14-Skalierung war in realen Spielszenen
+    // deutlich zu klein und aus ~1 km kaum lesbar.
+    const width = clamp(40 + meters * 0.28, 64, 420);
+    label.scale.set(width, width * 0.32, 1);
+    label.position.y = LABEL_Y + clamp(meters * 0.018, 0, 42);
   }
 
   clear(): void {
@@ -187,22 +188,22 @@ export class WaypointMarker {
     if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    roundedRect(ctx, 18, 18, 476, 92, 20);
-    ctx.fillStyle = 'rgba(3, 11, 18, 0.9)';
+    roundedRect(ctx, 24, 22, 720, 148, 28);
+    ctx.fillStyle = 'rgba(2, 8, 14, 0.96)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(72, 170, 255, 0.95)';
-    ctx.lineWidth = 5;
+    ctx.strokeStyle = 'rgba(76, 181, 255, 1)';
+    ctx.lineWidth = 8;
     ctx.stroke();
 
     ctx.fillStyle = '#168cff';
-    ctx.fillRect(18, 18, 13, 92);
-    ctx.fillStyle = '#eef8ff';
-    ctx.font = '800 40px system-ui, sans-serif';
+    ctx.fillRect(24, 22, 20, 148);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 62px system-ui, sans-serif';
     ctx.textBaseline = 'middle';
-    ctx.fillText('WAYPOINT', 53, 52);
-    ctx.fillStyle = '#9fd2ff';
-    ctx.font = '700 29px ui-monospace, monospace';
-    ctx.fillText(formatDistance(meters), 53, 89);
+    ctx.fillText('WAYPOINT', 78, 76);
+    ctx.fillStyle = '#b9e2ff';
+    ctx.font = '800 43px ui-monospace, monospace';
+    ctx.fillText(formatDistance(meters), 78, 132);
     texture.needsUpdate = true;
   }
 
