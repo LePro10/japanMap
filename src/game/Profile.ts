@@ -35,7 +35,8 @@ import { DEFAULT_VEHICLE, VEHICLE_ORDER, type VehicleId } from '@/config/vehicle
  * > Speicher hochsetzt, schaltet sich Autos frei. Der Sandkasten (`og123` über
  * > den Titel im Pausenmenü) ist derselbe Vertrag, nur von vorne: ein
  * > Einzelspieler-Spiel ohne Bestenliste braucht keine Absicherung, die einen
- * > Server kostet und niemanden vor irgendetwas schützt.
+ * > Server kostet und niemanden vor irgendetwas schützt. Seit der Weltkarte
+ * > hängt der Teleport an derselben Zeile — Waypoints bleiben frei.
  */
 
 const STORAGE_KEY = 'japanmap.profile';

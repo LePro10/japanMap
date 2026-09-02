@@ -3,7 +3,14 @@ import { ROAD_TYPES, type RoadData, type RoadType } from '@/config/roads.config'
 import { WORLD } from '@/config/world.config';
 import { NavigationMapBackdrop } from './NavigationMapBackdrop';
 import { MAP_LANDMARKS, formatMapDistance, type MapLandmarkIcon } from './navigationMapData';
-import { mapToWorld, worldToMap, type MapPoint } from './navigationMapMath';
+import {
+  clampMapView,
+  mapToWorld,
+  worldToMap,
+  zoomMapView,
+  type MapPoint,
+  type MapView,
+} from './navigationMapMath';
 import { NavigationPoiLayer } from './NavigationPoiLayer';
 import './navigationMap.css';
 import './navigationMapPolish.css';
@@ -20,15 +27,20 @@ export interface NavigationMapOptions {
   readonly isActive: () => boolean;
   readonly getPose: () => NavigationPose;
   readonly teleport: (x: number, z: number) => void;
+  readonly canTeleport: () => boolean;
   readonly setWaypoint: (x: number, z: number) => void;
   readonly getWaypoint: () => MapPoint | null;
   readonly onOpen: () => void;
+  readonly onClose: (resume: boolean) => void;
 }
 
 const BASE_SIZE = 1024;
 const MINI_SIZE = 384;
 const MINI_SPAN = 920;
 const UPDATE_INTERVAL = 0.1;
+/** Unter diesem Pixelabstand gilt ein Zeiger als Klick, darüber als Schwenk. */
+const PAN_THRESHOLD_PX = 8;
+const ZOOM_STEP = 1.28;
 const BOUNDS = {
   minX: -WORLD.half,
   maxX: WORLD.half,
@@ -49,18 +61,23 @@ export class NavigationMap {
   readonly #isActive: () => boolean;
   readonly #getPose: () => NavigationPose;
   readonly #teleport: (x: number, z: number) => void;
+  readonly #canTeleport: () => boolean;
   readonly #setWaypoint: (x: number, z: number) => void;
   readonly #getWaypoint: () => MapPoint | null;
   readonly #onOpen: () => void;
+  readonly #onClose: (resume: boolean) => void;
 
   readonly #base = document.createElement('canvas');
   readonly #mini: HTMLButtonElement;
   readonly #miniCanvas: HTMLCanvasElement;
   readonly #miniDistance: HTMLElement;
   readonly #root: HTMLElement;
+  readonly #view: HTMLElement;
+  readonly #stage: HTMLElement;
   readonly #fullCanvas: HTMLCanvasElement;
   readonly #actions: HTMLElement;
   readonly #selectionLabel: HTMLElement;
+  readonly #teleportButton: HTMLElement;
   readonly #backdrop: NavigationMapBackdrop;
   readonly #poiLayer: NavigationPoiLayer;
 
@@ -69,15 +86,20 @@ export class NavigationMap {
   #elapsed = UPDATE_INTERVAL;
   #openedWithMouse = true;
   #disposed = false;
+  #viewState: MapView = { scale: 1, tx: 0, ty: 0 };
+  #drag: { pointerId: number; x: number; y: number; tx: number; ty: number; moved: boolean } | null =
+    null;
 
   constructor(options: NavigationMapOptions) {
     this.#canvas = options.canvas;
     this.#isActive = options.isActive;
     this.#getPose = options.getPose;
     this.#teleport = options.teleport;
+    this.#canTeleport = options.canTeleport;
     this.#setWaypoint = options.setWaypoint;
     this.#getWaypoint = options.getWaypoint;
     this.#onOpen = options.onOpen;
+    this.#onClose = options.onClose;
 
     this.#base.width = BASE_SIZE;
     this.#base.height = BASE_SIZE;
@@ -104,49 +126,64 @@ export class NavigationMap {
     this.#root.className = 'navmap';
     this.#root.hidden = true;
     this.#root.innerHTML = `
-      <section class="navmap__panel" role="dialog" aria-modal="true" aria-label="Karte">
+      <section class="navmap__panel" role="dialog" aria-modal="true" aria-label="Map">
         <header class="navmap__head">
           <div>
             <p class="navmap__eyebrow">Navigation · Aerial</p>
             <h2 class="navmap__title">Japan Map</h2>
           </div>
           <div class="navmap__headActions">
-            <span class="navmap__hint">Ort anklicken</span>
-            <button type="button" class="navmap__close" aria-label="Karte schließen">×</button>
+            <span class="navmap__hint">Drag to pan · scroll to zoom · click to pin</span>
+            <button type="button" class="navmap__close" aria-label="Close map">×</button>
           </div>
         </header>
         <div class="navmap__stage">
-          <canvas class="navmap__canvas" width="${BASE_SIZE}" height="${BASE_SIZE}"></canvas>
+          <div class="navmap__view">
+            <canvas class="navmap__canvas" width="${BASE_SIZE}" height="${BASE_SIZE}"></canvas>
+          </div>
+          <div class="navmap__zoom">
+            <button type="button" data-map-zoom="in" aria-label="Zoom in">+</button>
+            <button type="button" data-map-zoom="out" aria-label="Zoom out">−</button>
+          </div>
           <div class="navmap__actions" hidden>
             <span class="navmap__selection"></span>
-            <button type="button" data-map-action="teleport">Teleportieren</button>
-            <button type="button" data-map-action="waypoint">Waypoint setzen</button>
+            <button type="button" data-map-action="teleport" hidden>Teleport</button>
+            <button type="button" data-map-action="waypoint">Set waypoint</button>
           </div>
         </div>
         <footer class="navmap__footer">
-          <span><i class="navmap__legend navmap__legend--player"></i>Du</span>
+          <span><i class="navmap__legend navmap__legend--player"></i>You</span>
           <span><i class="navmap__legend navmap__legend--waypoint"></i>Waypoint</span>
-          <span><i class="navmap__legend navmap__legend--poi"></i>Ort</span>
-          <span class="navmap__footerKey"><kbd>M</kbd> Karte</span>
+          <span><i class="navmap__legend navmap__legend--poi"></i>Place</span>
+          <span class="navmap__footerKey"><kbd>M</kbd> Map</span>
         </footer>
       </section>`;
     options.container.append(this.#root);
 
+    this.#view = this.#must('.navmap__view');
+    this.#stage = this.#must('.navmap__stage');
     this.#fullCanvas = this.#mustCanvas('.navmap__canvas');
     this.#actions = this.#must('.navmap__actions');
     this.#selectionLabel = this.#must('.navmap__selection');
-    this.#poiLayer = new NavigationPoiLayer(this.#must('.navmap__stage'), BOUNDS, BASE_SIZE);
+    this.#teleportButton = this.#must('[data-map-action="teleport"]');
+    this.#poiLayer = new NavigationPoiLayer(this.#view, BOUNDS, BASE_SIZE);
     this.#backdrop = new NavigationMapBackdrop(() => {
       this.#drawBase();
       this.#drawNow();
     });
 
     this.#mini.addEventListener('pointerup', this.#onMiniPointerUp);
-    this.#fullCanvas.addEventListener('pointerup', this.#onMapPointerUp);
+    this.#fullCanvas.addEventListener('pointerdown', this.#onMapPointerDown);
     this.#must('.navmap__close').addEventListener('click', this.#onCloseClick);
-    this.#must('[data-map-action="teleport"]').addEventListener('click', this.#onTeleport);
+    this.#teleportButton.addEventListener('click', this.#onTeleport);
     this.#must('[data-map-action="waypoint"]').addEventListener('click', this.#onWaypoint);
+    this.#must('[data-map-zoom="in"]').addEventListener('click', this.#onZoomIn);
+    this.#must('[data-map-zoom="out"]').addEventListener('click', this.#onZoomOut);
+    this.#stage.addEventListener('wheel', this.#onWheel, { passive: false });
     window.addEventListener('keydown', this.#onKeyDown);
+    window.addEventListener('pointermove', this.#onMapPointerMove);
+    window.addEventListener('pointerup', this.#onMapPointerUp);
+    window.addEventListener('pointercancel', this.#onMapPointerUp);
 
     this.#drawBase();
   }
@@ -164,8 +201,11 @@ export class NavigationMap {
   update(dt: number): void {
     if (this.#disposed) return;
     const active = this.#isActive();
-    const touch = isCoarsePointer();
-    const canShowMini = active && !this.open && (touch || document.pointerLockElement === this.#canvas);
+    // Mini nur am Desktop mit Lock: auf Touch ist die HUD-Minikarte der
+    // Öffner (sonst lägen zwei Karten übereinander, P25 hat die HUD-Karte
+    // auf dem Telefon nach oben gelegt).
+    const canShowMini =
+      active && !this.open && !isCoarsePointer() && document.pointerLockElement === this.#canvas;
     this.#mini.hidden = !canShowMini;
 
     this.#elapsed += dt;
@@ -178,11 +218,16 @@ export class NavigationMap {
   openMap(mouseLike = true): void {
     if (!this.#isActive() || this.open) return;
     this.#openedWithMouse = mouseLike;
+    // Erst das Ereignis, dann den Lock abgeben: `PlayerUi` liest den
+    // Lock-Verlust sonst als Pause und legt das Menü über die Karte.
     this.#onOpen();
     this.#selected = null;
     this.#actions.hidden = true;
+    this.#drag = null;
+    this.#viewState = { scale: 1, tx: 0, ty: 0 };
     this.#root.hidden = false;
     this.#mini.hidden = true;
+    this.#applyView();
     this.#drawFull();
     if (document.pointerLockElement === this.#canvas) document.exitPointerLock();
   }
@@ -192,7 +237,9 @@ export class NavigationMap {
     this.#root.hidden = true;
     this.#selected = null;
     this.#actions.hidden = true;
+    this.#drag = null;
     this.#elapsed = UPDATE_INTERVAL;
+    this.#onClose(resume);
     if (resume && this.#openedWithMouse && !isCoarsePointer()) this.#requestPointerLock();
   }
 
@@ -458,11 +505,41 @@ export class NavigationMap {
     this.openMap(event.pointerType !== 'touch');
   };
 
-  readonly #onMapPointerUp = (event: PointerEvent): void => {
-    if (event.button !== 0) return;
+  readonly #onMapPointerDown = (event: PointerEvent): void => {
+    if (event.button !== 0 || !this.open) return;
     event.preventDefault();
-    event.stopPropagation();
     this.#openedWithMouse = event.pointerType !== 'touch';
+    this.#drag = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      tx: this.#viewState.tx,
+      ty: this.#viewState.ty,
+      moved: false,
+    };
+  };
+
+  readonly #onMapPointerMove = (event: PointerEvent): void => {
+    const drag = this.#drag;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const dx = event.clientX - drag.x;
+    const dy = event.clientY - drag.y;
+    if (!drag.moved && dx * dx + dy * dy < PAN_THRESHOLD_PX * PAN_THRESHOLD_PX) return;
+    drag.moved = true;
+    const stage = this.#stageSize();
+    this.#viewState = clampMapView(
+      { scale: this.#viewState.scale, tx: drag.tx + dx, ty: drag.ty + dy },
+      stage.width,
+      stage.height,
+    );
+    this.#applyView();
+  };
+
+  readonly #onMapPointerUp = (event: PointerEvent): void => {
+    const drag = this.#drag;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    this.#drag = null;
+    if (drag.moved || !this.open) return;
     const rect = this.#fullCanvas.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
     const point = mapToWorld(
@@ -473,12 +550,13 @@ export class NavigationMap {
     this.#selected = point;
     this.#selectionLabel.textContent = selectionLabel(point);
     this.#actions.hidden = false;
+    this.#teleportButton.hidden = !this.#canTeleport();
     this.#drawFull();
   };
 
   readonly #onTeleport = (): void => {
     const selected = this.#selected;
-    if (!selected) return;
+    if (!selected || !this.#canTeleport()) return;
     this.#teleport(selected.x, selected.z);
     this.closeMap(true);
   };
@@ -494,6 +572,22 @@ export class NavigationMap {
     this.closeMap(true);
   };
 
+  readonly #onZoomIn = (): void => {
+    this.#zoomBy(ZOOM_STEP);
+  };
+
+  readonly #onZoomOut = (): void => {
+    this.#zoomBy(1 / ZOOM_STEP);
+  };
+
+  readonly #onWheel = (event: WheelEvent): void => {
+    if (!this.open) return;
+    event.preventDefault();
+    const stage = this.#stage.getBoundingClientRect();
+    const factor = event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
+    this.#zoomAt(factor, event.clientX - stage.left, event.clientY - stage.top);
+  };
+
   readonly #onKeyDown = (event: KeyboardEvent): void => {
     if (isTyping() || event.repeat) return;
     if (event.code === 'KeyM') {
@@ -504,13 +598,47 @@ export class NavigationMap {
       else this.openMap(true);
       return;
     }
-    if (event.code === 'Escape' && this.open) {
+    if (!this.open) return;
+    if (event.code === 'Escape') {
       event.preventDefault();
       event.stopImmediatePropagation();
       // Nach Escape blockiert Chrome eine sofortige neue Pointer-Lock-Anfrage.
       this.closeMap(false);
+      return;
+    }
+    if (event.code === 'Equal' || event.code === 'NumpadAdd') {
+      event.preventDefault();
+      this.#zoomBy(ZOOM_STEP);
+      return;
+    }
+    if (event.code === 'Minus' || event.code === 'NumpadSubtract') {
+      event.preventDefault();
+      this.#zoomBy(1 / ZOOM_STEP);
     }
   };
+
+  #zoomBy(factor: number): void {
+    const stage = this.#stageSize();
+    this.#zoomAt(factor, stage.width * 0.5, stage.height * 0.5);
+  }
+
+  #zoomAt(factor: number, focusX: number, focusY: number): void {
+    const stage = this.#stageSize();
+    this.#viewState = zoomMapView(this.#viewState, factor, focusX, focusY, stage.width, stage.height);
+    this.#applyView();
+  }
+
+  #stageSize(): { width: number; height: number } {
+    return {
+      width: Math.max(1, this.#stage.clientWidth),
+      height: Math.max(1, this.#stage.clientHeight),
+    };
+  }
+
+  #applyView(): void {
+    const { scale, tx, ty } = this.#viewState;
+    this.#view.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+  }
 
   #requestPointerLock(): void {
     if (!this.#isActive() || typeof this.#canvas.requestPointerLock !== 'function') return;
@@ -534,8 +662,12 @@ export class NavigationMap {
     if (this.#disposed) return;
     this.#disposed = true;
     window.removeEventListener('keydown', this.#onKeyDown);
+    window.removeEventListener('pointermove', this.#onMapPointerMove);
+    window.removeEventListener('pointerup', this.#onMapPointerUp);
+    window.removeEventListener('pointercancel', this.#onMapPointerUp);
     this.#mini.removeEventListener('pointerup', this.#onMiniPointerUp);
-    this.#fullCanvas.removeEventListener('pointerup', this.#onMapPointerUp);
+    this.#fullCanvas.removeEventListener('pointerdown', this.#onMapPointerDown);
+    this.#stage.removeEventListener('wheel', this.#onWheel);
     this.#poiLayer.dispose();
     this.#backdrop.dispose();
     this.#mini.remove();

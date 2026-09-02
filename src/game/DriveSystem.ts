@@ -27,6 +27,7 @@ import type { RoadNetwork } from '@/world/roads/RoadNetwork';
 import type { RaceEvent } from '@/config/events.config';
 import type { TerrainSampler } from '@/world/TerrainSampler';
 import type { CityCollider, CityCurb } from '@/world/city/CityGenerator';
+import { NavigationMap } from '@/ui/NavigationMap';
 import { createCarBody, createCarWheel } from './carMesh';
 import { ChaseCamera } from './ChaseCamera';
 import {
@@ -48,6 +49,7 @@ import { Walker, type WalkInput } from './Walker';
 import { WalkCamera } from './WalkCamera';
 import { createWalkerRig, type WalkerRig } from './walkerMesh';
 import { WaterField } from './WaterField';
+import { WaypointMarker } from './WaypointMarker';
 import type { CanopyHit, CanopySource } from '@/world/scatter/ScatterSystem';
 
 /**
@@ -177,6 +179,9 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     key: 0,
   }));
   #wake: WakeSink | null = null;
+  #navigation: NavigationMap | null = null;
+  readonly #waypoint = new WaypointMarker();
+  #canTeleport: () => boolean = () => false;
 
   #context: EngineContext | null = null;
   #sampler: TerrainSampler | null = null;
@@ -354,6 +359,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     });
     context.bus.on('roads:ready', ({ network }) => {
       this.#network = network;
+      this.#navigation?.setRoads(network.file.roads);
       this.race.setNetwork(network);
       // Die Tore des Rings — P9.3. Der Ring ist die einzige geschlossene
       // Strecke der Karte; auf einer Stichstraße wie dem Bergpass gibt es keine
@@ -374,6 +380,47 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     });
 
     this.#build(context);
+
+    // Spielerkarte — DOM/Canvas neben der 3D-Welt. Eine zweite Three-Kamera
+    // würde Gelände, LOD und Vegetation ein zweites Mal bezahlen. Der
+    // Weltmarker ist ein Mesh und damit genau die Draw-Calls, solange ein
+    // Waypoint steht.
+    this.#waypoint.attach(context);
+    const canvas = document.querySelector<HTMLCanvasElement>('#viewport');
+    const overlay = document.querySelector<HTMLElement>('#overlay');
+    if (canvas && overlay) {
+      this.#navigation = new NavigationMap({
+        canvas,
+        container: overlay,
+        isActive: () => this.#walking || this.#active,
+        getPose: () =>
+          this.#walking
+            ? { x: this.walker.position.x, z: this.walker.position.z, yaw: this.walker.yaw }
+            : { x: this.vehicle.position.x, z: this.vehicle.position.z, yaw: this.vehicle.yaw },
+        teleport: (x, z) => {
+          this.teleportTo(x, z);
+        },
+        canTeleport: () => this.#canTeleport(),
+        setWaypoint: (x, z) => {
+          const sampler = this.#sampler;
+          if (!sampler) return;
+          this.#waypoint.set(x, z, sampler.getHeightAt(x, z));
+        },
+        getWaypoint: () => this.#waypoint.waypoint,
+        onOpen: () => {
+          this.#keys.clear();
+          this.#axes.forward = 0;
+          this.#axes.right = 0;
+          this.#touchHandbrake = false;
+          this.#touchJump = false;
+          context.bus.emit('map:open');
+        },
+        onClose: (resume) => {
+          context.bus.emit('map:close', { resume });
+        },
+      });
+      if (this.#network) this.#navigation.setRoads(this.#network.file.roads);
+    }
 
     const fx = new VehicleFx();
     fx.attach(context);
@@ -419,6 +466,26 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    */
   setStunt(stunt: StuntSystem | null): void {
     this.#stunt = stunt;
+  }
+
+  /**
+   * Ob der Karten-Teleport frei ist. Hereingereicht aus `main.ts`, weil
+   * `DriveSystem` das Profil nicht importiert — dieselbe Regel wie beim
+   * Freiflug. Der Sandkasten (`og123`) ist die eine Frage; Waypoints bleiben
+   * frei, Teleport nicht.
+   */
+  setCanTeleport(query: () => boolean): void {
+    this.#canTeleport = query;
+  }
+
+  /** Vollkarte öffnen — Taste `M` und Klick auf die HUD-Minikarte. */
+  openMap(): void {
+    const mouseLike = !(typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
+    this.#navigation?.openMap(mouseLike);
+  }
+
+  get mapOpen(): boolean {
+    return this.#navigation?.open ?? false;
   }
 
   #build(context: EngineContext): void {
@@ -1216,6 +1283,31 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.camera.reset(this.vehicle);
   }
 
+  /**
+   * Karten-Teleport. Nur mit Sandkasten — dieselbe Sperre wie der Knopf,
+   * hier noch einmal, falls jemand den Button per Skript drückt.
+   *
+   * Zu Fuß auf den geklickten Punkt, im Auto nahe einer Straße auf deren
+   * Mittellinie. `placeAt` / `walker.respawn` sind absichtlich die einzigen
+   * Wege zum Absetzen.
+   */
+  teleportTo(x: number, z: number): void {
+    if (!this.#canTeleport() || !this.#sampler) return;
+    if (this.#walking) {
+      this.ground.refresh(x, z, 0);
+      this.walker.respawn(x, z, this.walker.yaw, this);
+      this.walkCamera.reset(this.walker);
+      return;
+    }
+    const hit = this.#network?.closestPoint(x, z, 90) ?? null;
+    if (hit) this.placeAt(hit.x, hit.z, Math.atan2(hit.forwardX, hit.forwardZ));
+    else this.placeAt(x, z, this.vehicle.yaw);
+    this.#fx?.reset();
+    this.#stuckTime = 0;
+    this.#stuckX = this.vehicle.position.x;
+    this.#stuckZ = this.vehicle.position.z;
+  }
+
   #stepWalk(dt: number): void {
     this.ground.refresh(this.walker.position.x, this.walker.position.z, dt);
     this.#fillTrees();
@@ -1249,6 +1341,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   }
 
   update(dt: number): void {
+    this.#navigation?.update(dt);
+    const px = this.#walking ? this.walker.position.x : this.vehicle.position.x;
+    const pz = this.#walking ? this.walker.position.z : this.vehicle.position.z;
+    this.#waypoint.update(px, pz);
     if (this.#walking && this.#context) {
       this.walkCamera.update(dt, this.walker, this, this.#context.camera);
       const rig = this.#rig;
@@ -1459,6 +1555,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     window.removeEventListener('keydown', this.#onKeyDown);
     window.removeEventListener('keyup', this.#onKeyUp);
     window.removeEventListener('blur', this.#onBlur);
+
+    this.#navigation?.dispose();
+    this.#navigation = null;
+    this.#waypoint.dispose();
 
     if (this.#group) {
       this.#context?.scene.remove(this.#group);

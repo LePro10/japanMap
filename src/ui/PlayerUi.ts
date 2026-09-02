@@ -232,6 +232,12 @@ export class PlayerUi {
 
   #menuOpen = false;
   /**
+   * Die Weltkarte ist offen. Eigenes Flag neben `#menuOpen`, sonst würde
+   * der Lock-Verlust beim Öffnen der Karte das Pausenmenü aufklappen —
+   * genau der Zustand, den `map:open` verhindern soll.
+   */
+  #mapOpen = false;
+  /**
    * Hat der Nutzer schon einmal angefangen zu fliegen?
    *
    * **Hieß bis P12.4 `#everLocked` und hing allein am Pointer Lock.** Das war
@@ -311,6 +317,18 @@ export class PlayerUi {
     this.#bus.on('drive:vehicle', () => {
       this.#syncVehicles();
     });
+    this.#bus.on('map:open', () => {
+      this.#mapOpen = true;
+      this.#menuOpen = false;
+      this.#render();
+    });
+    this.#bus.on('map:close', ({ resume }) => {
+      this.#mapOpen = false;
+      if (!resume && this.#started && !this.#touchMode && !this.#locked) {
+        this.#menuOpen = true;
+      }
+      this.#render();
+    });
 
     document.addEventListener('pointerlockchange', this.#onPointerLockChange);
     document.addEventListener('pointerlockerror', this.#onPointerLockError);
@@ -371,10 +389,11 @@ export class PlayerUi {
     if (this.#locked) {
       this.#started = true;
       this.#menuOpen = false;
-    } else if (this.#started && !this.#touchMode) {
+    } else if (this.#started && !this.#touchMode && !this.#mapOpen) {
       // Lock verloren, ohne dass jemand „Weiter" gedrückt hat: Escape,
       // Fensterwechsel, Vollbildwechsel. In allen Fällen will der Nutzer nicht
       // mehr fliegen — also Menü, nicht stiller Stillstand.
+      // Ausnahme: die Karte gibt den Lock selbst ab, damit man klicken kann.
       this.#menuOpen = true;
     }
     this.#render();
@@ -453,8 +472,8 @@ export class PlayerUi {
     if (this.#menuOpen) this.#syncGarage();
     else this.#hideCode();
     this.#menu.hidden = !this.#menuOpen || (!this.#touchMode && this.#locked);
-    // Das Bedienfeld gehört nicht über das offene Menü.
-    this.#touch?.setVisible(!this.#menuOpen);
+    // Das Bedienfeld gehört nicht über das offene Menü und nicht über die Karte.
+    this.#touch?.setVisible(!this.#menuOpen && !this.#mapOpen);
     // Und das HUD ebenso wenig: bei 375 × 812 liegt der Rundenkasten sonst
     // genau auf der Kopfzeile des Menüs, also auf dem „Weiter"-Knopf.
     this.#hud?.setMenuOpen(this.#menuOpen);
