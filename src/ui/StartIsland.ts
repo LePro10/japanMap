@@ -4,26 +4,24 @@ import { START_ZONES } from './startCopy';
 import { START_RING, START_UNLOCKS } from './startRing';
 
 /**
- * Radar-HUD auf dem Ladebildschirm — nicht die Hauptfläche.
+ * Die Insel in der Mitte des Ladebildschirms.
  *
- * Das Video trägt die Immersion. Hier liegt nur die Ringstraße als GPS:
- * der Spieler folgt dem echten Fortschritt, drei NPCs (Aoki, Kurose, Takami)
- * fahren **auf der Zeit**, damit das Pack lebt, auch wenn der Balken steht.
- *
- * Gezeichnet mit 30 Hz, ohne `shadowBlur` an den NPCs — der Ladebildschirm
- * darf den Hauptthread nicht stehlen, während die Systeme initialisieren.
+ * Ganze Karte, kein Follow-Zoom (der hat den Ring abgeschnitten). Der
+ * Fortschritt ist die Position des goldenen Autos auf der Ringstraße.
+ * Aoki, Kurose und Takami fahren daneben — auf der Zeit, nicht auf dem Balken.
  */
 
 const RING_COUNT = START_RING.length / 2;
 const GOLD = '#ffd257';
 const TRAIL = '#7ee7ff';
-const TRAIL_DIM = 'rgba(180, 198, 210, 0.28)';
+const TRAIL_DIM = 'rgba(180, 198, 210, 0.35)';
 const FRAME_MS = 33;
+const PAD = 0.06;
 
-const NPCS: readonly { name: string; color: string; offset: number; speed: number }[] = [
-  { name: 'Aoki', color: '#c8102e', offset: 0.22, speed: 0.062 },
-  { name: 'Kurose', color: '#1e8fd5', offset: 0.48, speed: 0.05 },
-  { name: 'Takami', color: '#e0b400', offset: 0.71, speed: 0.044 },
+const NPCS: readonly { color: string; offset: number; speed: number }[] = [
+  { color: '#c8102e', offset: 0.22, speed: 0.055 },
+  { color: '#1e8fd5', offset: 0.48, speed: 0.044 },
+  { color: '#e0b400', offset: 0.71, speed: 0.038 },
 ];
 
 export class StartIsland {
@@ -32,7 +30,6 @@ export class StartIsland {
   readonly #image = new Image();
   #imageReady = false;
   #progress = 0;
-  #ready = false;
   #gone = false;
   #raf = 0;
   #t0 = performance.now();
@@ -46,18 +43,13 @@ export class StartIsland {
     this.#onUnlock = onUnlock;
     this.#reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const wrap = document.createElement('div');
-    wrap.className = 'start__radar';
-    wrap.setAttribute('aria-hidden', 'true');
-    wrap.innerHTML = `<p class="start__radarLabel">Ring · live pack</p>`;
-
     const canvas = document.createElement('canvas');
     canvas.className = 'start__island';
-    wrap.append(canvas);
-    container.append(wrap);
+    canvas.setAttribute('aria-hidden', 'true');
+    container.append(canvas);
     this.canvas = canvas;
 
-    const ctx = canvas.getContext('2d', { alpha: false });
+    const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Startbildschirm: kein 2D-Kontext für die Insel.');
     this.#ctx = ctx;
 
@@ -88,7 +80,6 @@ export class StartIsland {
   }
 
   setReady(): void {
-    this.#ready = true;
     this.setProgress(1);
   }
 
@@ -96,7 +87,7 @@ export class StartIsland {
     this.#gone = true;
     cancelAnimationFrame(this.#raf);
     this.#ro.disconnect();
-    this.canvas.parentElement?.remove();
+    this.canvas.remove();
   }
 
   readonly #onResize = (): void => {
@@ -105,8 +96,8 @@ export class StartIsland {
   };
 
   #resize(): void {
-    const css = Math.max(120, Math.round(Math.min(this.canvas.clientWidth || 180, 280)));
-    const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+    const css = Math.max(180, Math.round(this.canvas.clientWidth || 420));
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
     this.canvas.width = Math.round(css * dpr);
     this.canvas.height = Math.round(css * dpr);
   }
@@ -125,84 +116,78 @@ export class StartIsland {
     const size = this.canvas.width;
     if (size < 2) return;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = '#081418';
-    ctx.fillRect(0, 0, size, size);
+    ctx.clearRect(0, 0, size, size);
 
+    const pad = size * PAD;
+    const inner = size - 2 * pad;
+    const view = { size, pad, inner };
     const pose = poseOnRing(this.#progress);
-    const follow = this.#ready ? 0.55 : smoothstep(0.4, 0.95, this.#progress) * 0.45;
-    const idleX = 0.5 + 0.01 * Math.sin(time * 0.11);
-    const idleY = 0.5 + 0.01 * Math.cos(time * 0.09);
-    const car = worldToUnit(pose.x, pose.z);
-    const zoom = lerp(1.04, 1.55, follow);
-    const cx = lerp(idleX, car.x, follow);
-    const cy = lerp(idleY, car.y, follow);
-    const view = { cx, cy, zoom, size };
 
     ctx.save();
-    roundClip(ctx, size, size * 0.04);
+    roundClip(ctx, size, size * 0.03);
 
     if (this.#imageReady) {
-      const img = this.#image;
-      const srcW = img.width / zoom;
-      const srcH = img.height / zoom;
-      const srcX = clamp((cx - 0.5 / zoom) * img.width, 0, Math.max(0, img.width - srcW));
-      const srcY = clamp((cy - 0.5 / zoom) * img.height, 0, Math.max(0, img.height - srcH));
-      ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, size, size);
+      ctx.drawImage(this.#image, 0, 0, this.#image.width, this.#image.height, pad, pad, inner, inner);
+    } else {
+      ctx.fillStyle = '#0a1418';
+      ctx.fillRect(pad, pad, inner, inner);
     }
 
-    ctx.fillStyle = `rgba(4, 10, 16, ${lerp(0.38, 0.22, this.#progress)})`;
+    ctx.fillStyle = `rgba(4, 10, 16, ${lerp(0.28, 0.12, this.#progress)})`;
     ctx.fillRect(0, 0, size, size);
 
     this.#drawRing(ctx, view, this.#progress);
-    this.#drawZones(ctx, view);
+    this.#drawZones(ctx, view, time);
     for (const npc of NPCS) {
-      const t = wrap01(npc.offset + time * npc.speed);
-      this.#drawChevron(ctx, view, poseOnRing(t), npc.color, 0.7);
+      this.#drawCar(ctx, view, poseOnRing(npc.offset + time * npc.speed), npc.color, 0.72);
     }
-    this.#drawChevron(ctx, view, pose, GOLD, 1);
-
+    this.#drawCar(ctx, view, pose, GOLD, 1);
     ctx.restore();
   }
 
   #drawRing(ctx: CanvasRenderingContext2D, view: View, progress: number): void {
-    const step = view.zoom < 1.25 ? 2 : 1;
     const drawn = Math.max(2, Math.floor(progress * (RING_COUNT - 1)));
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
     ctx.beginPath();
-    for (let i = 0; i < RING_COUNT; i += step) {
+    for (let i = 0; i < RING_COUNT; i++) {
       const p = project(START_RING[i * 2]!, START_RING[i * 2 + 1]!, view);
       if (i === 0) ctx.moveTo(p.x, p.y);
       else ctx.lineTo(p.x, p.y);
     }
+    ctx.closePath();
     ctx.strokeStyle = TRAIL_DIM;
-    ctx.lineWidth = Math.max(1.1, view.size * 0.01);
+    ctx.lineWidth = Math.max(1.4, view.size * 0.007);
     ctx.stroke();
 
     ctx.beginPath();
-    for (let i = 0; i <= drawn; i += step) {
+    for (let i = 0; i <= drawn; i++) {
       const p = project(START_RING[i * 2]!, START_RING[i * 2 + 1]!, view);
       if (i === 0) ctx.moveTo(p.x, p.y);
       else ctx.lineTo(p.x, p.y);
     }
     ctx.strokeStyle = TRAIL;
-    ctx.lineWidth = Math.max(1.8, view.size * 0.016);
+    ctx.shadowColor = 'rgba(110, 220, 255, 0.7)';
+    ctx.shadowBlur = view.size * 0.012;
+    ctx.lineWidth = Math.max(2.4, view.size * 0.011);
     ctx.stroke();
+    ctx.shadowBlur = 0;
   }
 
-  #drawZones(ctx: CanvasRenderingContext2D, view: View): void {
+  #drawZones(ctx: CanvasRenderingContext2D, view: View, time: number): void {
     for (const zone of START_ZONES) {
       const on = this.#unlocked.has(zone.id);
       const p = project(zone.x, zone.z, view);
+      const pulse = on ? 0.55 + 0.45 * Math.sin(time * 2.6 + p.x * 0.01) : 0;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, view.size * (on ? 0.016 : 0.01), 0, Math.PI * 2);
-      ctx.fillStyle = on ? 'rgba(255, 210, 87, 0.7)' : 'rgba(220, 230, 240, 0.2)';
+      ctx.arc(p.x, p.y, view.size * (on ? 0.012 : 0.008), 0, Math.PI * 2);
+      ctx.fillStyle = on ? `rgba(255, 210, 87, ${0.55 + 0.35 * pulse})` : 'rgba(220, 230, 240, 0.28)';
       ctx.fill();
     }
   }
 
-  #drawChevron(
+  #drawCar(
     ctx: CanvasRenderingContext2D,
     view: View,
     pose: Pose,
@@ -210,11 +195,15 @@ export class StartIsland {
     scale: number,
   ): void {
     const p = project(pose.x, pose.z, view);
-    const len = view.size * 0.038 * scale;
-    const wid = view.size * 0.02 * scale;
+    const len = view.size * 0.028 * scale;
+    const wid = view.size * 0.015 * scale;
     ctx.save();
     ctx.translate(p.x, p.y);
     ctx.rotate(pose.heading);
+    if (scale === 1) {
+      ctx.shadowColor = color;
+      ctx.shadowBlur = view.size * 0.02;
+    }
     ctx.beginPath();
     ctx.moveTo(0, -len);
     ctx.lineTo(wid, len * 0.7);
@@ -223,20 +212,14 @@ export class StartIsland {
     ctx.closePath();
     ctx.fillStyle = color;
     ctx.fill();
-    ctx.fillStyle = 'rgba(255, 244, 200, 0.85)';
-    ctx.beginPath();
-    ctx.arc(-wid * 0.35, -len * 0.15, Math.max(0.8, view.size * 0.006), 0, Math.PI * 2);
-    ctx.arc(wid * 0.35, -len * 0.15, Math.max(0.8, view.size * 0.006), 0, Math.PI * 2);
-    ctx.fill();
     ctx.restore();
   }
 }
 
 interface View {
-  readonly cx: number;
-  readonly cy: number;
-  readonly zoom: number;
   readonly size: number;
+  readonly pad: number;
+  readonly inner: number;
 }
 
 interface Pose {
@@ -254,9 +237,11 @@ function poseOnRing(t: number): Pose {
   const z0 = START_RING[i * 2 + 1]!;
   const x1 = START_RING[(i + 1) * 2]!;
   const z1 = START_RING[(i + 1) * 2 + 1]!;
-  const x = x0 + (x1 - x0) * a;
-  const z = z0 + (z1 - z0) * a;
-  return { x, z, heading: Math.atan2(x1 - x0, -(z1 - z0)) };
+  return {
+    x: x0 + (x1 - x0) * a,
+    z: z0 + (z1 - z0) * a,
+    heading: Math.atan2(x1 - x0, -(z1 - z0)),
+  };
 }
 
 function wrap01(value: number): number {
@@ -274,8 +259,8 @@ function worldToUnit(x: number, z: number): { x: number; y: number } {
 function project(x: number, z: number, view: View): { x: number; y: number } {
   const u = worldToUnit(x, z);
   return {
-    x: (u.x - (view.cx - 0.5 / view.zoom)) * view.zoom * view.size,
-    y: (u.y - (view.cy - 0.5 / view.zoom)) * view.zoom * view.size,
+    x: view.pad + u.x * view.inner,
+    y: view.pad + u.y * view.inner,
   };
 }
 
@@ -293,13 +278,4 @@ function roundClip(ctx: CanvasRenderingContext2D, size: number, radius: number):
 
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
-}
-
-function smoothstep(edge0: number, edge1: number, x: number): number {
-  const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
-  return t * t * (3 - 2 * t);
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return value < min ? min : value > max ? max : value;
 }
