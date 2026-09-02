@@ -23,8 +23,8 @@ jobs:
 
       - name: Apply integration patch
         run: |
-          git apply --check tools/apply-minimap.patch
-          git apply tools/apply-minimap.patch
+          git apply --recount --check tools/apply-minimap.patch
+          git apply --recount tools/apply-minimap.patch
           rm tools/apply-minimap.patch
 
       - name: Install dependencies
