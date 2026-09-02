@@ -1396,6 +1396,58 @@ body {
   color: var(--fg);
 }
 
+/* Ein-/Aussteigen. Unten mittig: links die Karte, rechts der Tacho, oben
+ * die Meldungen. Ein Chip in der Mitte ist der freie Streifen, und genau
+ * dort sucht der Blick nach „was kann ich jetzt tun". */
+.hud__prompt {
+  position: absolute;
+  left: 50%;
+  bottom: max(28px, calc(env(safe-area-inset-bottom) + 18px));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 12px 8px 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+
+.hud__prompt[hidden] {
+  display: none;
+}
+
+.hud__promptKey {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 7px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-bottom-width: 2px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  color: var(--fg);
+}
+
+.hud__promptAction {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
 .hud__flash[hidden] {
   display: none;
 }
@@ -1675,6 +1727,11 @@ body {
 
   .hud__boost {
     width: 92px;
+  }
+
+  /* Der Kontostand sitzt hier unten mittig — der Chip muss darüber bleiben. */
+  .hud__prompt {
+    bottom: max(52px, calc(env(safe-area-inset-bottom) + 42px));
   }
 }
 

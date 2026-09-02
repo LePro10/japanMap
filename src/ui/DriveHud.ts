@@ -72,8 +72,13 @@ export class DriveHud {
   readonly #result: HTMLElement;
   readonly #money: HTMLElement;
   readonly #arrow: HTMLElement;
+  readonly #prompt: HTMLElement;
+  readonly #promptKey: HTMLElement;
+  readonly #promptAction: HTMLElement;
   readonly #map: MiniMap;
   #arrowDeg = 999;
+  /** Zuletzt gesetzter Hinweis — sonst schreibt jeder Frame denselben Text. */
+  #promptKind: 'enter' | 'exit' | null = null;
 
   /** Zuletzt geschriebener Text je Feld — spart das Layout, s. o. */
   readonly #written = new Map<HTMLElement, string>();
@@ -117,6 +122,10 @@ export class DriveHud {
       <div class="hud__nav">
         <div class="hud__arrow" data-hud="arrow" hidden><i></i></div>
       </div>
+      <p class="hud__prompt" data-hud="prompt" hidden>
+        <kbd class="hud__promptKey" data-hud="promptKey">F</kbd>
+        <span class="hud__promptAction" data-hud="promptAction">Enter</span>
+      </p>
       <div class="hud__countdown" data-hud="countdown" hidden>3</div>
       <div class="hud__result" data-hud="result" hidden></div>
       <div class="hud__flash" data-hud="flash" hidden></div>`;
@@ -142,7 +151,15 @@ export class DriveHud {
     this.#result = this.#must('[data-hud="result"]');
     this.#money = this.#must('[data-hud="money"]');
     this.#arrow = this.#must('[data-hud="arrow"]');
+    this.#prompt = this.#must('[data-hud="prompt"]');
+    this.#promptKey = this.#must('[data-hud="promptKey"]');
+    this.#promptAction = this.#must('[data-hud="promptAction"]');
     this.#map = new MiniMap(this.#must('.hud__nav'));
+    // Grober Zeiger = Telefon: dort gibt es kein F, der 🚗-Knopf ist der Weg.
+    // Ein Laptop mit Touchscreen bleibt bei F — `maxTouchPoints > 0` allein
+    // würde dort die Tastatur-Taste durch ein Auto ersetzen, das es in der
+    // Tastaturzeile nicht gibt.
+    this.#promptKey.textContent = matchMedia('(pointer: coarse)').matches ? '🚗' : 'F';
   }
 
   /**
@@ -241,6 +258,25 @@ export class DriveHud {
     this.#visible = (this.#driveActive || this.#walking) && !this.#menuOpen;
     this.#root.hidden = !this.#visible;
     this.#root.classList.toggle('hud--on-foot', this.#walking && !this.#driveActive);
+    if (!this.#visible) this.setVehicleHint(null);
+  }
+
+  /**
+   * Ein-/Aussteigen-Hinweis.
+   *
+   * `enter` nur in Reichweite des Wagens, `exit` die ganze Fahrt über.
+   * `null` räumt den Chip weg — nicht Deckkraft 0: ein unsichtbarer Chip
+   * läge weiter im Layout und über dem „Continue"-Knopf der Zieltafel.
+   */
+  setVehicleHint(kind: 'enter' | 'exit' | null): void {
+    if (kind === this.#promptKind) return;
+    this.#promptKind = kind;
+    if (kind === null) {
+      this.#prompt.hidden = true;
+      return;
+    }
+    this.#setText(this.#promptAction, kind === 'enter' ? 'Enter' : 'Exit');
+    this.#prompt.hidden = false;
   }
 
   get visible(): boolean {

@@ -8,6 +8,7 @@ import { Engine } from './core/Engine';
 import { BestTimes, formatTime } from './game/BestTimes';
 import { Profile, VEHICLE_PRICE } from './game/Profile';
 import { DRIFT_YEN_PER_POINT, EVENTS, findEvent } from './config/events.config';
+import { WALK_BOARD_RANGE, WALK_PROMPT_SLACK } from './config/walker.config';
 import { DriveSystem } from './game/DriveSystem';
 import { DriveHud } from './ui/DriveHud';
 import { runAb } from './debug/abMeasure';
@@ -606,6 +607,8 @@ async function boot(): Promise<void> {
   // im HUD: das HUD zeigt an, es rechnet nicht.
   let lastChain = 0;
   let lastBanked = 0;
+  /** Hysterese des Einsteige-Hinweises — sonst flackert er an der Kante. */
+  let promptEnter = false;
   // Wiederverwendete Puffer für die Minikarte: der Richtungsvektor und die
   // Gegnerliste entstehen **einmal** und werden je Frame überschrieben. Drei
   // Einträge, deren Felder beschrieben statt neu angelegt werden — bei 60 Hz
@@ -686,6 +689,21 @@ async function boot(): Promise<void> {
         marks++;
       }
       navRivals.length = marks;
+      if (hud.resultOpen) {
+        promptEnter = false;
+        hud.setVehicleHint(null);
+      } else if (drive.active) {
+        promptEnter = false;
+        hud.setVehicleHint('exit');
+      } else if (drive.walking) {
+        const reach = WALK_BOARD_RANGE + (promptEnter ? WALK_PROMPT_SLACK : 0);
+        promptEnter = drive.vehicleRange() <= reach;
+        hud.setVehicleHint(promptEnter ? 'enter' : null);
+      } else {
+        promptEnter = false;
+        hud.setVehicleHint(null);
+      }
+
       const onFoot = drive.walking;
       hud.updateNav(
         onFoot ? drive.walker.position.x : drive.vehicle.position.x,

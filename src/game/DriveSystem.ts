@@ -689,12 +689,22 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    * HUD, und ein stilles Fehlschlagen ist die richtige Antwort auf „F neben
    * einem Baum, 200 m vom Auto".
    */
-  board(): boolean {
-    if (this.#active || !this.#walking || !this.#context) return false;
-    const range = Math.hypot(
+  /**
+   * Abstand Figur ↔ Wagen in der XZ-Ebene, in Metern.
+   *
+   * Für den Einsteige-Hinweis und für `board()`. Eine Zahl, zwei Abnehmer —
+   * wer sie zweimal rechnet, rechnet sie irgendwann auseinander.
+   */
+  vehicleRange(): number {
+    return Math.hypot(
       this.walker.position.x - this.vehicle.position.x,
       this.walker.position.z - this.vehicle.position.z,
     );
+  }
+
+  board(): boolean {
+    if (this.#active || !this.#walking || !this.#context) return false;
+    const range = this.vehicleRange();
     if (range > WALK_BOARD_RANGE) return false;
     this.#setWalking(false);
     this.#beginDrive();
