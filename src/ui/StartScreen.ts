@@ -83,19 +83,19 @@ export class StartScreen {
     this.#root.innerHTML = `
       <div class="start__box">
         <p class="start__title">japanMap</p>
-        <p class="start__subtitle">Eine erzeugte Landschaft — 4 × 4 km, ein Seed</p>
+        <p class="start__subtitle">Drift, race and jump across 9.4 km² of rural Japan</p>
 
         <div class="start__progress">
           <div class="start__track"><div class="start__bar"></div></div>
           <p class="start__step">
-            <span class="start__stepText">Motor startet</span>
+            <span class="start__stepText">Starting engine</span>
             <span class="start__percent">0 %</span>
           </p>
           <p class="start__detail">&nbsp;</p>
         </div>
 
         <div class="start__ready">
-          <button type="button" class="start__button">Starten</button>
+          <button type="button" class="start__button">Play</button>
           <div class="start__keys">
             ${touch ? controlTable(TOUCH_CONTROLS, 'keytable') : ''}
             ${controlTable(CONTROLS, 'keytable')}

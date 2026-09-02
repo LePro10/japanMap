@@ -1,9 +1,13 @@
 import './style.css';
 
+import { Vector3 } from 'three';
+
 import { AudioSystem } from './audio/AudioSystem';
 import { FreeFlyController } from './camera/FreeFlyController';
 import { Engine } from './core/Engine';
-import { BestTimes } from './game/BestTimes';
+import { BestTimes, formatTime } from './game/BestTimes';
+import { Profile, VEHICLE_PRICE } from './game/Profile';
+import { DRIFT_YEN_PER_POINT, EVENTS, findEvent } from './config/events.config';
 import { DriveSystem } from './game/DriveSystem';
 import { DriveHud } from './ui/DriveHud';
 import { runAb } from './debug/abMeasure';
@@ -30,6 +34,7 @@ import { RoadSystem } from './world/RoadSystem';
 import { PropSystem } from './world/props/PropSystem';
 import { RicePaddy } from './world/props/RicePaddy';
 import { ScatterSystem } from './world/scatter/ScatterSystem';
+import { StuntSystem } from './world/stunt/StuntSystem';
 import { AssetUpgrader } from './core/AssetUpgrader';
 import { TerrainSystem } from './world/TerrainSystem';
 import { WaterSystem } from './world/WaterSystem';
@@ -482,6 +487,21 @@ async function boot(): Promise<void> {
   // ihn nicht.
   const hud = new DriveHud(overlay);
   const bestTimes = new BestTimes();
+  const profile = new Profile();
+  hud.setMoney(profile.yen);
+  profile.onChange(() => {
+    hud.setMoney(profile.yen);
+  });
+
+  // Das Straßennetz in die Minikarte — P25. **Hier und nicht oben** bei der
+  // Spiegelung, obwohl es dasselbe Ereignis ist: `hud` entsteht erst in dieser
+  // Zeile, und ein Zugriff darauf aus einem Abschluss weiter oben wäre nur
+  // deshalb erlaubt, weil `roads:ready` später kommt. Das ist eine Annahme über
+  // die Reihenfolge, und dieses Projekt hat für Annahmen über Reihenfolgen
+  // schon bezahlt.
+  engine.bus.on('roads:ready', ({ network }) => {
+    hud.setNetwork(network.file);
+  });
 
   engine.bus.on('drive:mode', ({ active }) => {
     hud.setDriveActive(active);
@@ -492,32 +512,174 @@ async function boot(): Promise<void> {
     hud.showRescue();
   });
 
+  engine.bus.on('pickup:collected', ({ yen }) => {
+    profile.earn(yen);
+    audio.click();
+    hud.flash(`+¥${yen}`, true);
+  });
+
   engine.bus.on('drive:lap', (result) => {
     const strecke = drive.laps.roadId;
     // **Ein Vergleich, nicht zwei.** `submit()` entscheidet, ob es eine
     // Bestzeit ist, und Ton wie Anzeige übernehmen die Antwort. Zwei getrennte
     // Vergleiche wären zwei Gelegenheiten, sie auseinanderlaufen zu lassen —
     // und der Ton feierte dann eine Bestzeit, die die Anzeige nicht kennt.
+    //
+    // **Nur außerhalb eines Rennens.** In einem Rennen zählt der Rennleiter, und
+    // zwei Rundenzähler auf demselben Bild sind zwei Zahlen, von denen eine
+    // falsch aussieht.
+    if (drive.race.state !== 'idle') return;
     const best = strecke !== null && bestTimes.submit(strecke, result.seconds);
     hud.showLap(result, best);
     audio.lap(best);
+  });
+
+  // ── Die Veranstaltung — P23 ───────────────────────────────────────────
+  engine.bus.on('race:checkpoint', () => {
+    audio.click();
+  });
+
+  engine.bus.on('race:lap', ({ lap }) => {
+    hud.flash(`LAP ${lap}`, false);
+  });
+
+  engine.bus.on('race:finished', (result) => {
+    const event = findEvent(result.event);
+    if (!event) return;
+    profile.earn(result.yen);
+    const bestBefore = profile.bestOf(event.id);
+    const isBest = profile.submitTime(event.id, result.seconds);
+    const driftBest = event.kind === 'drift' && profile.submitDrift(event.id, result.driftScore);
+    audio.lap(isBest || driftBest || result.place === 1);
+
+    const title =
+      event.kind === 'race'
+        ? result.place === 1
+          ? 'WINNER'
+          : 'FINISHED'
+        : event.kind === 'drift'
+          ? 'DRIFT RUN'
+          : 'TIME TRIAL';
+    const headline =
+      event.kind === 'race' ? `P${result.place}` : formatTime(result.seconds);
+    const rows: string[] = [];
+    if (event.kind === 'race') {
+      rows.push(row('Time', formatTime(result.seconds)));
+    }
+    if (bestBefore !== null) rows.push(row('Previous best', formatTime(bestBefore)));
+    if (isBest) rows.push(row('New record', '✓'));
+    if (result.driftScore > 0) rows.push(row('Drift score', String(result.driftScore)));
+    rows.push(row('Earned', `¥${result.yen.toLocaleString('en-US')}`));
+
+    hud.showResult(
+      `<p class="hud__resultTitle">${title}</p>` +
+        `<p class="hud__resultPlace">${headline}</p>` +
+        rows.join('') +
+        `<button class="hud__resultButton" data-close type="button">Continue</button>`,
+      () => {
+        drive.race.clear();
+        hud.hideRace();
+      },
+    );
   });
 
   // Die Aktualisierung je Frame als eigenes kleines System — **nach** `drive`
   // registriert, damit sie die Telemetrie desselben Frames liest und nicht die
   // des vorigen. `System` ist eine Schnittstelle, kein Basistyp; für diese paar
   // Zeilen lohnt keine Klasse in einer eigenen Datei.
+  // Zwei Zähler für die Abrechnung der Driftketten. Sie stehen hier und nicht
+  // im HUD: das HUD zeigt an, es rechnet nicht.
+  let lastChain = 0;
+  let lastBanked = 0;
+  // Wiederverwendete Puffer für die Minikarte: der Richtungsvektor und die
+  // Gegnerliste entstehen **einmal** und werden je Frame überschrieben. Drei
+  // Einträge, deren Felder beschrieben statt neu angelegt werden — bei 60 Hz
+  // sind das 10 800 nicht angelegte Objekte je Minute.
+  const NAV_DIR = new Vector3();
+  const navRivals: { x: number; z: number }[] = [];
+
   engine.add({
     name: 'DriveHudUpdate',
-    update: () => {
+    update: (dt: number) => {
       if (!hud.visible) return;
+      const race = drive.race;
       hud.update(
         drive.vehicle.telemetry,
-        drive.laps.elapsed,
-        drive.laps.running,
-        drive.laps.roadId === null ? null : bestTimes.get(drive.laps.roadId),
+        race.state === 'running' ? race.elapsed : drive.laps.elapsed,
+        race.state === 'running' || drive.laps.running,
+        race.state === 'idle'
+          ? drive.laps.roadId === null
+            ? null
+            : bestTimes.get(drive.laps.roadId)
+          : race.event
+            ? profile.bestOf(race.event.id)
+            : null,
       );
-      hud.setGate(drive.laps.readouts.naechstesTor);
+      const drift = race.drift.state;
+      hud.setDrift(drift);
+      // ── Eine beendete Kette abrechnen — P24 ──────────────────────────
+      //
+      // **Hier und nicht in `DriftScore`**, weil nur diese Stelle beides kennt:
+      // den Fortschritt (das Geld) und das HUD (die Meldung). Die Wertung selbst
+      // soll ohne beides laufen — ein Prüfstand treibt sie ohne Bus und ohne
+      // Konto.
+      if (drift.lastChain !== lastChain) {
+        lastChain = drift.lastChain;
+        hud.driftEnded(drift);
+      }
+      if (drift.banked > lastBanked) {
+        // Außerhalb einer Veranstaltung wird sofort gutgeschrieben; in einer
+        // rechnet der Zieleinlauf ab, sonst gäbe es die Punkte zweimal.
+        if (race.state === 'idle') {
+          profile.earn((drift.banked - lastBanked) * DRIFT_YEN_PER_POINT);
+        }
+        lastBanked = drift.banked;
+      } else if (drift.banked < lastBanked) {
+        lastBanked = drift.banked;
+      }
+      if (race.state === 'countdown') hud.setCountdown(race.countdown);
+      else if (race.state === 'running') {
+        hud.setCountdown(0);
+        const event = race.event;
+        hud.setRace(
+          race.standings(),
+          race.lap,
+          event?.laps ?? 1,
+          race.distanceToNext(drive.vehicle.position.x, drive.vehicle.position.z),
+          race.checkpointsLeft,
+        );
+      } else if (!hud.resultOpen) {
+        hud.hideRace();
+      }
+      if (race.state === 'idle') hud.setGate(drive.laps.readouts.naechstesTor);
+
+      // ── Minikarte und Richtungspfeil — P25 ───────────────────────────
+      //
+      // Die Kamerarichtung kommt aus der **Kamera** und nicht aus
+      // `ChaseCamera.#heading`: es gibt zwei Kameras (Verfolger und Haube), und
+      // eine Anzeige, die nur eine davon kennt, zeigt bei der anderen falsch.
+      // `getWorldDirection` ist die eine Quelle, die für beide stimmt.
+      engine.camera.getWorldDirection(NAV_DIR);
+      let marks = 0;
+      for (let i = 0; i < race.rivals.count; i++) {
+        const p = race.rivals.positionOf(i);
+        if (!p) continue;
+        // Den vorhandenen Eintrag beschreiben statt einen neuen anzulegen.
+        const slot = navRivals[marks] ?? (navRivals[marks] = { x: 0, z: 0 });
+        slot.x = p.x;
+        slot.z = p.z;
+        marks++;
+      }
+      navRivals.length = marks;
+      hud.updateNav(
+        drive.vehicle.position.x,
+        drive.vehicle.position.z,
+        drive.vehicle.yaw,
+        Math.atan2(NAV_DIR.x, NAV_DIR.z),
+        navRivals,
+        race.nextCheckpointPoint(),
+        dt,
+      );
     },
     dispose: () => {
       hud.dispose();
@@ -543,6 +705,12 @@ async function boot(): Promise<void> {
   // sie einen neuen Terrain-Bake überleben, statt eine Zahl aus der Datei zu
   // glauben.
   engine.add(new PropSystem(atmosphere.uniforms));
+  // Schanzen, Kirschbäume, Fahnen und Sammelstücke — P24. **Vor dem Terrain**,
+  // weil das System auf `terrain:ready` und `roads:ready` hört und beide genau
+  // einmal gesendet werden, während sich jene Systeme initialisieren.
+  const stunt = new StuntSystem(atmosphere.uniforms, drive.ramps);
+  engine.add(stunt);
+  drive.setStunt(stunt);
   // Ebenso: die Wasserflächen der Reisfelder holen ihre Höhe aus dem Sampler,
   // weil das Gelände die Parzellen bereits trägt (Baker, Schritt 5c).
   const paddy = new RicePaddy(atmosphere.uniforms);
@@ -668,6 +836,37 @@ async function boot(): Promise<void> {
         drive.setVehicle(id);
       },
     },
+    // ── Die Veranstaltungen — P23 ────────────────────────────────────────
+    //
+    // Dieselbe schmale Bauart wie `drive` und `quality` darüber: das Menü
+    // bekommt Getter und drei Methoden, kein System. Verdrahtet ist es hier,
+    // weil hier ohnehin alles zusammenläuft, was mehr als ein System braucht —
+    // Fortschritt, Rennleiter und Fahrmodus.
+    events: {
+      list: EVENTS,
+      get yen() {
+        return profile.yen;
+      },
+      bestOf: (id) => profile.bestOf(id),
+      driftBestOf: (id) => profile.driftBestOf(id),
+      get runningEvent() {
+        return drive.race.state === 'idle' ? null : (drive.race.event?.id ?? null);
+      },
+      start: (id) => {
+        const event = findEvent(id);
+        if (event) drive.startEvent(event);
+      },
+      abort: () => {
+        drive.abortEvent();
+        hud.hideRace();
+      },
+      owns: (id) => profile.owns(id),
+      price: (id) => VEHICLE_PRICE[id],
+      buy: (id) => profile.buy(id),
+      onChange: (fn) => {
+        profile.onChange(fn);
+      },
+    },
     quality: {
       get level() {
         return quality.level;
@@ -701,6 +900,11 @@ async function boot(): Promise<void> {
   audio.armAutoUnlock();
 
   if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive);
+}
+
+/** Eine Zeile der Zieltafel. Englisch, wie alles im DOM. */
+function row(label: string, value: string): string {
+  return `<p class="hud__resultRow"><span>${label}</span><span>${value}</span></p>`;
 }
 
 void boot();

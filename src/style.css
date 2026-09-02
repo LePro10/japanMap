@@ -713,6 +713,77 @@ body {
   opacity: 0.62;
 }
 
+/* ── Garage und Events — P23 ────────────────────────────────────────────────
+ *
+ * Beide benutzen dieselbe Karte wie die Fahrzeugwahl aus P18. Das ist keine
+ * Sparsamkeit, sondern eine Entscheidung über die Bedienung: eine Liste, aus der
+ * man etwas auswählt, soll überall gleich aussehen, sonst muss man sie zweimal
+ * lernen. */
+.menu__carPrice {
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent, #e0b25a);
+}
+
+/* Ein Fahrzeug, für das das Geld nicht reicht, ist **gedimmt und trotzdem
+ * anklickbar**. Ein deaktivierter Knopf sagt nicht, warum — dieser hier zeigt
+ * den Preis und tut beim Klick nichts, und das ist die Antwort. */
+.menu button.menu__car.is-locked {
+  opacity: 0.55;
+}
+
+.menu__carPrice--locked {
+  color: var(--fg-dim);
+}
+
+.menu__wallet {
+  margin: 0 0 10px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent, #e0b25a);
+}
+
+.menu__events {
+  display: grid;
+  gap: 8px;
+}
+
+.menu button.menu__event {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.menu__eventName {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.menu__eventFacts {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: currentColor;
+  opacity: 0.72;
+}
+
+/* Der Startknopf ist keine eigene Trefferfläche, sondern eine Beschriftung auf
+ * der Karte — die ganze Karte ist der Knopf. Zwei Trefferflächen für eine
+ * Absicht sind auf einem Telefon eine Gelegenheit, danebenzutippen. */
+.menu__eventGo {
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent, #e0b25a);
+}
+
 /* Die Wirkung der geltenden Stufe in Zahlen. Steht **über** den Reglern, weil
  * es die Frage beantwortet, die man vor dem Menü hat: was tut „Mittel"? */
 .menu__effect {
@@ -1071,6 +1142,237 @@ body {
   color: var(--accent, #e0b25a);
 }
 
+/* ── Rennen, Drift, Nitro — P23 ─────────────────────────────────────────────
+ *
+ * Die Aufteilung des Bildes folgt einer Regel: **die Bildmitte bleibt frei.**
+ * Dort steht der Horizont, dort fährt man hin, und jede Anzeige dort ist eine
+ * Anzeige, die man wegdenken muss. Belegt sind die vier Ecken und ein schmaler
+ * Streifen oben, den nur Countdown und Meldungen benutzen — und beide sind kurz.
+ */
+
+/* Oben rechts: Platz, Runde, nächster Kontrollpunkt. */
+.hud__race {
+  position: absolute;
+  right: max(14px, env(safe-area-inset-right));
+  top: max(64px, env(safe-area-inset-top));
+  min-width: 132px;
+  padding: 8px 12px 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(4px);
+  text-align: right;
+}
+
+.hud__race[hidden] {
+  display: none;
+}
+
+.hud__place {
+  margin: 0 0 4px;
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--fg);
+}
+
+.hud__place--lead {
+  color: var(--accent, #e0b25a);
+}
+
+.hud__raceRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 2px 0 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+/* Der Kontostand. Oben rechts über dem Rennstreifen, damit er auch im
+ * Freifahren steht — er ist die einzige Zahl, die zwischen zwei Sitzungen
+ * überlebt, und deshalb die einzige, die immer sichtbar sein darf. */
+.hud__money {
+  position: absolute;
+  right: max(14px, env(safe-area-inset-right));
+  top: max(20px, env(safe-area-inset-top));
+  font-family: var(--mono);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent, #e0b25a);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+
+/* Die Driftwertung. Rechts über dem Tacho — sie gehört zum Fahren und nicht
+ * zur Rennleitung, und der Blick ist beim Driften ohnehin rechts unten. */
+.hud__drift {
+  position: absolute;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(150px, calc(env(safe-area-inset-bottom) + 72px));
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+}
+
+.hud__drift[hidden] {
+  display: none;
+}
+
+.hud__driftPoints {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.hud__driftMult {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accent, #e0b25a);
+}
+
+.hud__driftBanked {
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+
+/* Ab Multiplikator 2,5 wird die Zahl warm. Das ist die einzige Farbänderung im
+ * ganzen HUD und deshalb die einzige, die man im Augenwinkel bemerkt. */
+.hud__drift--hot .hud__driftPoints {
+  color: var(--accent, #e0b25a);
+}
+
+/* Der Nitro-Balken sitzt über dem Tacho und ist so breit wie er. */
+.hud__speedRow {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.hud__boost {
+  align-self: stretch;
+  height: 6px;
+  margin: 0 0 6px auto;
+  width: 120px;
+  border: 1px solid var(--panel-border);
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.hud__boostFill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--fg-dim);
+  transition: background-color 120ms linear;
+}
+
+.hud__boost--ready .hud__boostFill {
+  background: var(--accent, #e0b25a);
+}
+
+.hud__boost--live .hud__boostFill {
+  background: #7de3ff;
+}
+
+/* Der Countdown steht groß in der oberen Bildhälfte — nicht mittig, weil dort
+ * beim Start die Straße liegt und man sie sehen will. */
+.hud__countdown {
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 92px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--fg);
+  text-shadow: 0 4px 28px rgba(0, 0, 0, 0.9);
+}
+
+.hud__countdown[hidden] {
+  display: none;
+}
+
+/* Die Zieltafel. Sie ist das einzige Element des HUD, das Klicks annimmt —
+ * `#overlay > .hud` setzt `pointer-events: none`, und das gilt für alles
+ * darin. Ohne diese Zeile wäre der Knopf sichtbar und unbedienbar; genau
+ * dieser Fehler ist in P10.2 am Hinweiskasten gemessen worden. */
+.hud__result {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 280px;
+  padding: 22px 26px 18px;
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(10px);
+  pointer-events: auto;
+  text-align: center;
+}
+
+.hud__result[hidden] {
+  display: none;
+}
+
+.hud__resultTitle {
+  margin: 0 0 2px;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+.hud__resultPlace {
+  margin: 0 0 14px;
+  font-family: var(--mono);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--accent, #e0b25a);
+}
+
+.hud__resultRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 4px 0;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.hud__resultRow span:first-child {
+  color: var(--fg-dim);
+}
+
+.hud__resultButton {
+  margin-top: 16px;
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid var(--accent, #e0b25a);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent, #e0b25a);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.hud__resultButton:hover,
+.hud__resultButton:focus-visible {
+  background: rgba(224, 178, 90, 0.14);
+}
+
 /* Auf einem schmalen Schirm ist der Tacho kleiner und der Rundenkasten rutscht
  * nach oben — bei 375 px Breite steht er sonst im Weg des linken Daumens. */
 @media (max-width: 560px) {
@@ -1082,5 +1384,115 @@ body {
 
   .hud__speed {
     font-size: 30px;
+  }
+
+  .hud__race {
+    top: max(14px, env(safe-area-inset-top));
+    min-width: 112px;
+    padding: 6px 9px 8px;
+  }
+
+  .hud__money {
+    /* Auf schmalem Schirm liegt der Kontostand **unter** dem Rennstreifen —
+     * oben rechts ist dort der Menüknopf der Fingersteuerung. */
+    top: auto;
+    bottom: max(14px, env(safe-area-inset-bottom));
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .hud__countdown {
+    font-size: 64px;
+  }
+
+  .hud__driftPoints {
+    font-size: 22px;
+  }
+
+  .hud__boost {
+    width: 92px;
+  }
+}
+
+/* ── Minikarte und Richtungspfeil — P25 ──────────────────────────────────────
+ *
+ * Unten links, gegenüber dem Tacho. Der Platz ist bewusst der ruhigste Teil des
+ * Bildes: die Karte wird im Augenwinkel gelesen, und alles, was oben steht,
+ * konkurriert mit Zeit, Platz und Kontrollpunkt.
+ *
+ * **`pointer-events` bleibt aus.** `#overlay > .hud` setzt es auf `none`, und
+ * das gilt für alle Kinder — die Karte ist eine Anzeige und kein Bedienelement.
+ * Wer hier je einen Klick haben will, muss ihn **auf dem Kind** wieder
+ * einschalten und danach den **berechneten** Wert nachsehen; ein ID-Selektor
+ * darüber schlägt jede Klassenregel (P10.2). */
+.hud__nav {
+  position: absolute;
+  left: max(14px, env(safe-area-inset-left));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  width: 168px;
+  height: 168px;
+}
+
+.hud__map {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: rgba(12, 14, 20, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+/* Der Pfeil sitzt in der Mitte der Karte und dreht sich um sie. Er ist damit
+ * beides zugleich: die Richtung zum Ziel **und** die Mitte der Karte, an der
+ * das eigene Fahrzeug steht. Zwei Anzeigen, ein Ort — das ist billiger zu lesen
+ * als zwei getrennte. */
+.hud__arrow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+}
+
+.hud__arrow[hidden] {
+  display: none;
+}
+
+/* Das Dreieck sitzt 58 px vor dem Drehpunkt: außerhalb des Fahrzeugpfeils auf
+ * der Karte, innerhalb ihres Rahmens. */
+.hud__arrow > i {
+  position: absolute;
+  left: -9px;
+  top: -66px;
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-bottom: 15px solid #7dff9a;
+  filter: drop-shadow(0 0 4px rgba(125, 255, 154, 0.6));
+}
+
+@media (max-width: 720px) {
+  /* Auf einem Telefon ist unten links **belegt**: dort stehen der linke Stick
+   * der Fingersteuerung und `.touch__speed`. Die Karte weicht nach oben aus —
+   * aber nicht auf 58 px, denn dort steht `.hud__lap` (min-width 152 px, rund
+   * 84 px hoch, top 64 px). Der erste Entwurf tat genau das und hätte die beiden
+   * Kästen übereinandergelegt; gefunden hat es kein Blick auf die Datei,
+   * sondern ein `getBoundingClientRect` an beiden Elementen bei 390 × 844.
+   *
+   * 158 px ist die Unterkante des Zeitkastens plus 10 px Luft. */
+  .hud__nav {
+    width: 116px;
+    height: 116px;
+    bottom: auto;
+    top: 158px;
+  }
+
+  /* Der Pfeil sitzt in der Mitte der kleineren Karte, also näher am Drehpunkt. */
+  .hud__arrow > i {
+    top: -48px;
   }
 }

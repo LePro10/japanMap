@@ -1,0 +1,1576 @@
+import {
+  BufferAttribute,
+  BufferGeometry,
+  Color,
+  DoubleSide,
+  Group,
+  InstancedMesh,
+  Matrix4,
+  Mesh,
+  MeshBasicMaterial,
+  Quaternion,
+  Vector3,
+  type Material,
+  type Scene,
+} from 'three';
+
+import { DRIFT_ZONES, PICKUPS, RAMPS } from '@/config/stunt.config';
+import { DEFAULT_QUALITY, type QualityKey } from '@/config/quality.config';
+import type { EngineContext, System } from '@/core/System';
+import { liftLocal, type RampField } from '@/game/RampField';
+import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
+import { PropMaterial } from '@/world/materials/PropMaterial';
+import { PetalFall } from './PetalFall';
+import type { RoadNetwork } from '@/world/roads/RoadNetwork';
+import type { TerrainSampler } from '@/world/TerrainSampler';
+
+/**
+ * Schanzen, Kirschbäume, Fahnen und Sammelstücke — P24.
+ *
+ * ## Warum das alles ein System ist und nicht vier
+ *
+ * Weil es **eine** Frage beantwortet: *was gibt es auf dieser Karte zu tun, das
+ * nicht die Straße entlang geht.* Vier Systeme wären vier `init()`-Reihenfolgen,
+ * vier Materialien und vier Stellen, an denen jemand `dispose()` vergisst — für
+ * zusammen sechs Meshes.
+ *
+ * ## Das Schanzen-Mesh kommt aus der Physik, nicht neben ihr
+ *
+ * `buildRamp()` tastet **dieselbe Funktion** ab, die `RoadGround.height()`
+ * addiert (`liftLocal` in `RampField`). Ein Mesh, das die Form ein zweites Mal
+ * hinschreibt, ist genau die Doppelung, an der dieses Projekt dreimal gescheitert
+ * ist — zuletzt bei der Fahrbahn, die im Bild flach war und in der Physik
+ * verwunden (P21, 1,66 m Unterschied).
+ *
+ * Der Preis ist ein Raster: 24 × 12 Stützpunkte je Schanze, also 552 Dreiecke.
+ * Bei fünf Schanzen sind das 2760 Dreiecke in **einem** Draw-Call — die
+ * Geometrien werden vor dem Hochladen zusammengeführt.
+ *
+ * ## Warum die Sammelstücke ein `InstancedMesh` sind und die Bäume auch
+ *
+ * 90 Sammelstücke und 40 Kirschbäume wären 130 Draw-Calls. Das Budget aus
+ * SPEC §4 liegt bei 250 für die **ganze** Szene. Als Instanzen sind es zwei.
+ */
+
+/** Stützpunkte je Schanze, längs × quer. */
+const RAMP_GRID_ALONG = 24;
+const RAMP_GRID_ACROSS = 12;
+
+/**
+ * Wie weit das Schanzen-Mesh über die Auflage hinausreicht, in Metern.
+ *
+ * Die Auflage ist am Rand null; ein Mesh, das genau dort endet, hat eine
+ * hauchdünne Kante, durch die man das Gelände sieht. Ein halber Meter Überstand
+ * mit negativer Höhe steckt sie in den Boden.
+ */
+const RAMP_SKIRT = 0.6;
+
+const RAMP_COLOR = 0xb4462c;
+/** Der dunklere Ton der Querbalken. Begründung an der Stelle, die ihn setzt. */
+const RAMP_COLOR_DARK = 0x7d2f1e;
+const RAMP_EDGE_COLOR = 0xe6d8c0;
+const SAKURA_TRUNK = 0x5b483a;
+
+/**
+ * Drei Blütentöne — **durchmischt und nicht gestapelt**.
+ *
+ * ## Erst ein Ton, dann drei gestapelte, und beide Male sah es falsch aus
+ *
+ * Der erste Entwurf hatte einen Ton, und die Kronen lasen sich als flache rosa
+ * Schilder: in der blauen Stunde steht die Sonne 2,23° über dem Horizont, und
+ * zwischen einer waagerechten und einer senkrechten Fläche liegt dann kaum ein
+ * Helligkeitsunterschied. Ohne Farbunterschied gibt es im Bild auch keinen.
+ * Die Diagnose stimmt und gilt weiter.
+ *
+ * Die **Reparatur** war falsch. Sie legte die drei Töne als waagerechte Lagen
+ * übereinander — hell oben, mauve unten. Was dabei herauskommt, ist genau das,
+ * was ein Baum nicht ist: ein heller Streifen mit einem dunklen Band darunter.
+ * Der Auftraggeber hat es in vier Worten gesagt, *„sehen tot aus mit diesem
+ * Streifen"*, und `.cache/shots/baum-vorher.png` zeigt es: rosa Sonnenschirme
+ * auf Stielen.
+ *
+ * Zwei Änderungen, und beide sind nötig:
+ *
+ *  1. **Der Ton hängt nicht mehr an der Höhe**, sondern an einer Kennzahl des
+ *     Ballens. Damit stehen helle und tiefe Ballen nebeneinander statt
+ *     übereinander, und das liest sich als Blattwerk mit Tiefe statt als
+ *     Schichtkuchen. Eine kleine Aufhellung nach oben bleibt — sie ist richtig,
+ *     sie darf nur nicht die ganze Lage einfärben.
+ *  2. **Der Abstand der Töne ist viel enger und die Sättigung höher.** Vorher
+ *     lagen zwischen `0xf7c6d8` und `0xb06e8c` Welten, und der tiefste Ton war
+ *     ein staubiges Mauve — die Farbe welker Blüten. Eine blühende Kirsche ist
+ *     hell **und** gesättigt.
+ */
+const SAKURA_TONES = [0xffc9dd, 0xf7aecb, 0xe391b4] as const;
+const FLAG_POLE = 0xd8d4cc;
+const FLAG_CLOTH = 0xd83a3a;
+const FLAG_CLOTH_DARK = 0x9e2626;
+const PICKUP_COLOR = 0xffd257;
+
+/** Stützpunkte des Zonenrings. 96 sind bei 62 m Radius alle 4,1 m einer. */
+const ZONE_RING_STEPS = 96;
+/** Breite des Bandes, m. Eine Fahrbahn ist 7 m breit — das hier ist kein Weg. */
+const ZONE_RING_WIDTH = 2.6;
+/** Wie hoch über dem Boden. Begründung bei `#buildZoneRings`. */
+const ZONE_RING_LIFT = 0.12;
+/**
+ * Die beiden Farben des Bandes.
+ *
+ * > **Hier stand eine Dämpfung mit einer widerlegten Begründung.** Auf dem
+ * > fernen Bild (`.cache/shots/p25-stadt-rand.png`) steht ein rosa Zug in der
+ * > Landschaft, gemessen **0,372 linear** gegen 0,058 Asphaltstraße und 0,028
+ * > Boden. Ich habe ihn für den Zonenring gehalten und die Farben um Faktor
+ * > 2,2 heruntergezogen.
+ * >
+ * > Das war falsch, und der Grund ist eine Farbkollision: `SAKURA_TOP` trägt
+ * > **denselben** Wert, den `ZONE_RING_INNER` trug (`0xf7c6d8`). Ein rosa Pixel
+ * > beweist damit gar nichts. Getrennt über das Objekt statt über die Farbe —
+ * > drei Aufnahmen unmittelbar hintereinander, dazwischen nur eine
+ * > Sichtbarkeit umgeschaltet:
+ * >
+ * > | Bild | derselbe Pixel, linear |
+ * > |---|---|
+ * > | alles sichtbar | 0,3701 |
+ * > | **ohne Ring** | 0,3723 — unverändert |
+ * > | **ohne Bäume** | 0,0468 — bricht auf Bodenniveau ein |
+ * >
+ * > Es war eine Kirschblütenkrone. Der Ring selbst trägt gemessen **3,7 % der
+ * > Pixel bei mittlerer Differenz 1,21** (die Bäume: 7,1 % / 2,77) — er
+ * > dominiert nichts. Die Dämpfung ist deshalb zurückgenommen; die Werte unten
+ * > sind die ursprünglichen, am nahen Bild gewählten, und dort stimmen sie
+ * > (`.cache/shots/zone-nah.png`, `drift.png`).
+ * >
+ * > Lehre, und sie steht so auch in CLAUDE.md: **wenn zwei Dinge im Bild
+ * > dieselbe Farbe tragen, ist die Farbe kein Beweis** — getrennt wird über das
+ * > Objekt. Und: eine Ursache benennen, ohne sie zu trennen, ist genau der
+ * > Fehler, den dieses Projekt seit P8.8 führt.
+ */
+const ZONE_RING_INNER = 0xf7c6d8;
+const ZONE_RING_OUTER = 0xb84a72;
+
+/**
+ * Wie lange der Aufsammel-Effekt dauert, s.
+ *
+ * 0,35 s: lang genug, dass man es aus dem Augenwinkel sieht, kurz genug, dass
+ * es bei 90 Stücken je Runde nicht zum Dauerflackern wird. Der Ton dazu ist
+ * 90 ms lang — das Bild darf länger stehen als der Ton, umgekehrt nicht.
+ */
+const POP_TIME = 0.35;
+
+/** Sekunden zwischen zwei Schreibvorgängen der Instanzmatrizen — s. `update`. */
+const TRANSFORM_INTERVAL = 1 / 20;
+
+/** Abstand zweier Laternen auf dem Ring, m. Bei 62 m Radius sind das 24. */
+const LANTERN_SPACING = 16;
+/** Wie weit innerhalb des Baumrings sie stehen, m. */
+const LANTERN_INSET = 5;
+const LANTERN_POST = 0x3c3630;
+
+/**
+ * Die Farbe des Laternenpapiers, als Hex — sie geht **unbeleuchtet** ins Bild.
+ *
+ * ## Gesetzt gegen die gemessene Szene und nicht gegen „warm"
+ *
+ * `MeshBasicMaterial` heißt: was hier steht, ist die fertige Helligkeit. Genau
+ * diese Zahl ist in P25 zweimal danebengegangen (Staub 31-mal zu hell, Blüten
+ * heller als der Himmel), und beide Male, weil sie nach Gefühl gewählt war.
+ *
+ * Der Rahmen dieser Szene, alles linear auf `.cache/shots/p25-stadt-rand.png`
+ * gemessen:
+ *
+ * | | linear |
+ * |---|---|
+ * | Boden | 0,028 |
+ * | Asphaltstraße | 0,058 |
+ * | Kirschblütenkrone | 0,372 |
+ * | hellste Pixel der Stadt | 0,52 |
+ * | Himmel | 0,62 |
+ *
+ * Eine Laterne ist eine **Lichtquelle**, und eine Lichtquelle gehört über den
+ * Himmel — sonst liest sie sich als angestrahlte Fläche. `0xffb45e` ergibt
+ * linear rund 1,00 / 0,44 / 0,10.
+ *
+ * ~~Damit ist sie heller als alles im Bild und über der Bloom-Schwelle.~~
+ *
+ * ## Widerlegt, gemessen 2026-08-31 — dazwischen liegt der Tonemapper
+ *
+ * Der Satz oben war der zweite Halbschritt derselben Falle: die P25-Lehre
+ * lautet „ein unbeleuchtetes Material schreibt seine Zahl direkt ins Bild",
+ * und **das stimmt nur ohne Tonemapper dahinter**. Diese Szene hat einen.
+ * Gemessen an einer Laterne der Sakura Bowl, alles linear:
+ *
+ * | Materialwert (Rot) | im fertigen Bild | sRGB |
+ * |---|---|---|
+ * | 1,00 | 0,401 | 203 169 126 |
+ * | 2,50 | 0,581 | 230 202 162 |
+ * | 5,00 | 0,753 | 250 223 198 |
+ *
+ * Im selben Bild: Himmel 0,510, Boden 0,035, Blütenkrone 0,169. Bei `k = 1`
+ * liegt die Laterne also **unter** dem Himmel — genau der flache Fleck, den
+ * der Kommentar ausschließen wollte.
+ *
+ * `k = 5` wäre heller und ist trotzdem falsch: das Verhältnis Rot zu Blau
+ * fällt von 1,61 über 1,42 auf 1,26, die Laterne wird weiß. Eine Papierlaterne
+ * ist warm, sonst ist sie eine Glühbirne. `k = 2,5` ist der größte der drei
+ * Werte, der die Farbe behält, und liegt mit 0,581 über dem Himmel.
+ *
+ * Angewandt wird er als `MeshBasicMaterial.color` — das multipliziert die
+ * Vertexfarben, ist also genau der Regler, an dem gemessen wurde, und nicht
+ * ein zweiter daneben.
+ */
+const LANTERN_PAPER = 0xffb45e;
+
+/** Faktor auf die Papierfarbe — Herleitung und Messtabelle bei `LANTERN_PAPER`. */
+const LANTERN_GAIN = 2.5;
+
+/** Gefallene Blüten je Zone — je Stück eine Verwehung aus `FALLEN_LEAVES` Blättern. */
+const FALLEN_PER_ZONE = 240;
+/** Wie hoch die Flecken über dem Gelände liegen, m — Begründung an der Stelle. */
+const FALLEN_LIFT = 0.12;
+
+/**
+ * Die drei Töne einer Verwehung — gemessen gesetzt, nicht gefühlt.
+ *
+ * ## Was die erste Fassung falsch machte, und woran man es gemessen hat
+ *
+ * Sie war **ein** flaches Viereck von 1,5 m Kantenlänge in `0xe8a9c0`, mit der
+ * Instanzskalierung bis 2,4 m. Im Bild (`.cache/shots/lat-mit.png`) waren das
+ * keine Blüten, sondern Planen: harte gerade Kanten, eine geschlossene Fläche,
+ * kein Boden dazwischen. Dazu die Helligkeit, linear gemessen:
+ *
+ * | | linear |
+ * |---|---|
+ * | Fleck, nah | 0,168 |
+ * | Boden direkt daneben | 0,0095 |
+ *
+ * Faktor **17,7**. Beide Flächen liegen waagerecht und bekommen dasselbe
+ * Licht — der Unterschied ist reine Albedo, und eine Albedo, die achtzehnmal
+ * über dem Untergrund liegt, ist keine Blüte auf Erde, sondern ein Anstrich.
+ * Das ist derselbe Fehler wie die Staubfahne aus P25 (31-mal heller als der
+ * Boden), nur eine Zone weiter.
+ *
+ * ## Woraus die neue Zahl kommt
+ *
+ * Bezugspunkt ist die **Asphaltstraße** dieser Karte, gemessen 0,058 linear:
+ * das ist die Helligkeit, mit der in dieser Szene eine gewöhnliche Fläche
+ * dasteht, die nicht leuchtet. Angepeilt waren rund fünf Boden-Helligkeiten,
+ * also 0,048 statt 0,168 — Faktor 0,283 auf die lineare Albedo
+ * (0,796 | 0,396 | 0,523), was `0x825e6b` ergibt. Die beiden anderen Töne
+ * lagen bei 0,6 und 1,5 davon.
+ *
+ * ## Und dann ein Schritt zurück, weil zwei Regler zugleich bewegt wurden
+ *
+ * Genau die Lehre aus P25 („ein Regler je Messung"), und sie war in einem
+ * Zug wieder fällig: geändert wurden **Form und Farbe zusammen**. Gemessen an
+ * `.cache/shots/p26-zone-nah.png` war danach der hellste Blattpixel 0,0897 und
+ * der dunkelste Ton rechnerisch 0,0359 — der Boden daneben lag bei 0,0352.
+ * Ein Drittel der Blätter war vom Untergrund **nicht zu unterscheiden**, und
+ * im Bild las sich die Verwehung als Dreck statt als Blüte.
+ *
+ * Die Form allein hatte die Plane schon beseitigt. Damit ist die Helligkeit
+ * frei geworden, und die Töne stehen jetzt bei 1,0 / 1,7 / 2,6 des
+ * Mittelwerts. Der hellste rendert damit rund 0,155 — praktisch dieselbe
+ * Helligkeit wie die Blüten **am Baum** (gemessen 0,151), und das ist der
+ * Bezug, der physikalisch stimmt: es ist dieselbe Blüte, nur unten.
+ *
+ * Drei Töne und nicht einer, weil bei 2,23° Sonnenstand zwischen einer
+ * waagerechten und einer senkrechten Fläche kaum ein Helligkeitsunterschied
+ * liegt — dieselbe Lehre wie bei den Kirschbaumkronen aus P25: die Form muss
+ * ihre Tiefe in der Farbe mitbringen.
+ */
+const FALLEN_TONES = [0x825e6b, 0xa67989, 0xc993a7] as const;
+/** Blätter je Verwehung. 9 × 2 Dreiecke × 480 Instanzen = 8640 Dreiecke. */
+const FALLEN_LEAVES = 9;
+/** Radius einer Verwehung bei Skalierung 1, m. */
+const FALLEN_SPREAD = 0.7;
+
+/**
+ * Wie viele Blütenblätter je Stufe übrig bleiben, als Anteil.
+ *
+ * ## Warum die Blüten überhaupt an der Stufe hängen müssen
+ *
+ * 760 durchsichtige Vierecke ohne Tiefenschreiben sind reine **Füllrate**, und
+ * Füllrate ist auf der Zielhardware der Engpass — das steht seit P8.2 in
+ * `quality.config.ts` und war der Grund, die Umgebungsverdeckung auf Minimal
+ * ganz abzuschalten. Bis P26 hingen sie an gar nichts: ein Telefon auf
+ * „Minimal" zeichnete dieselben 760 wie eine RX 7900 XTX auf Ultra.
+ *
+ * Sie ganz zu streichen wäre falsch — sie sind die zweite Anzeige der
+ * Driftzone, und die Zone ohne sie ist ein Kreis aus Bäumen wie jeder andere.
+ * Ausgedünnt bleibt der Eindruck; er wird nur dünner.
+ *
+ * Umgesetzt über `geometry.instanceCount`, nicht über einen neuen Puffer: die
+ * Instanzen sind schon da, es werden schlicht weniger gezeichnet.
+ */
+const PETAL_DENSITY: Readonly<Record<QualityKey, number>> = {
+  ultra: 1,
+  high: 1,
+  custom: 0.75,
+  medium: 0.6,
+  low: 0.35,
+  minimal: 0.15,
+};
+
+export class StuntSystem implements System {
+  readonly name = 'StuntSystem';
+
+  /**
+   * Der Atmosphärenblock wird **im Konstruktor** hereingereicht und nicht über
+   * ein Ereignis geholt — dieselbe Bauart wie bei allen Systemen dieses
+   * Projekts, die ein Material bauen. Begründung im Kopf von `main.ts`,
+   * Punkt 2: Materialien entstehen beim Bauen, und für diese Richtung taugt das
+   * Ereignismuster nicht.
+   */
+  constructor(
+    private readonly atmosphere: AtmosphereUniforms,
+    /**
+     * Dasselbe Schanzenfeld, auf dem gefahren wird.
+     *
+     * **Hereingereicht und nicht neu gebaut.** Ein zweites `RampField` hätte
+     * eigene Fußhöhen, und damit stünde das Mesh woanders als die Fläche, auf
+     * der man fährt. Genau diese Doppelung ist der Grund, warum die Form
+     * überhaupt eine Funktion ist — siehe Kopf von `RampField`.
+     */
+    private readonly ramps: RampField,
+  ) {}
+
+  readonly #group = new Group();
+  #material: PropMaterial | null = null;
+  #sampler: TerrainSampler | null = null;
+  #network: RoadNetwork | null = null;
+
+  #ramps: Mesh | null = null;
+  #rings: Mesh | null = null;
+  #lanternPosts: InstancedMesh | null = null;
+  #lanternGlow: InstancedMesh | null = null;
+  #fallen: InstancedMesh | null = null;
+  /**
+   * Das **unbeleuchtete** Material des Laternenpapiers.
+   *
+   * Getrennt vom `PropMaterial`, weil beleuchtet bei 2,23° Sonnenstand nichts
+   * leuchtet. Begründung ausführlich bei `#buildLanterns`.
+   */
+  #glow: MeshBasicMaterial | null = null;
+  #trees: InstancedMesh | null = null;
+  #flags: InstancedMesh | null = null;
+  #pickups: InstancedMesh | null = null;
+  readonly #petals = new PetalFall();
+
+  /** Weltpositionen der Sammelstücke und ihre Wiederkehr-Uhr. */
+  readonly #pickupPos: { x: number; y: number; z: number; back: number }[] = [];
+  /** Standort und Ruhewinkel jeder Fahne — für den Wind, siehe `#waveFlags`. */
+  readonly #flagPos: { x: number; y: number; z: number; turn: number }[] = [];
+  readonly #geometries: BufferGeometry[] = [];
+  readonly #matrix = new Matrix4();
+  readonly #quat = new Quaternion();
+  readonly #scale = new Vector3(1, 1, 1);
+  readonly #zero = new Vector3(0, -1000, 0);
+  readonly #up = new Vector3(0, 1, 0);
+  #spin = 0;
+  #wind = 0;
+  /** Sekunden seit dem letzten Schreiben der Instanzmatrizen. */
+  #since = Number.POSITIVE_INFINITY;
+  #level: QualityKey = DEFAULT_QUALITY;
+
+  init(context: EngineContext): void {
+    this.#group.name = 'Stunt';
+    const material = new PropMaterial(this.atmosphere);
+    material.name = 'StuntMaterial';
+    material.roughness = 0.7;
+    // Doppelseitig: das Fahnentuch ist eine Fläche ohne Rückseite, und ein
+    // Banner, das man von hinten nicht sieht, ist eine Fahne, die halb fehlt.
+    // Dieselbe Falle wie die rückseitig gewickelten Flächen aus P8.11 — nur ist
+    // sie hier von vornherein beantwortet.
+    material.side = DoubleSide;
+    this.#material = material;
+    const glow = new MeshBasicMaterial({ vertexColors: true });
+    glow.name = 'LaternenMaterial';
+    // Kein Nebel: eine Laterne, die im Dunst verschwindet, ist keine Laterne.
+    // (Der Nebel dieser Karte hängt an der Atmosphären-Injektion, die dieses
+    // Material bewusst nicht bekommt.)
+    glow.fog = false;
+    // Über die Materialfarbe und nicht über die Vertexfarbe: `color`
+    // multipliziert sie, und ein Wert über 1 ist hier gewollt — er ist die
+    // Antwort auf den Tonemapper. Messtabelle bei `LANTERN_PAPER`.
+    glow.color.setScalar(LANTERN_GAIN);
+    this.#glow = glow;
+    context.scene.add(this.#group);
+
+    // Die Blüten hängen seit P26 an der Qualitätsstufe — Begründung bei
+    // `PETAL_DENSITY`. Hereingereicht über den Bus wie bei jedem anderen
+    // System, das eine Stufe liest (ScatterSystem, TerrainSystem).
+    context.bus.on('quality:changed', ({ level }) => {
+      this.#level = level;
+      this.#petals.setDensity(PETAL_DENSITY[level]);
+    });
+
+    context.bus.on('terrain:ready', ({ sampler }) => {
+      this.#sampler = sampler;
+      this.#buildTerrainBound(context.scene);
+    });
+    context.bus.on('roads:ready', ({ network }) => {
+      this.#network = network;
+      this.#buildTerrainBound(context.scene);
+    });
+  }
+
+  /** Nur bauen, wenn beide Quellen da sind — und dann genau einmal. */
+  #buildTerrainBound(scene: Scene): void {
+    if (!this.#sampler || !this.#network || this.#ramps) return;
+    this.#buildRamps();
+    this.#buildZoneRings();
+    this.#buildFallenPetals();
+    this.#buildZones();
+    this.#buildLanterns();
+    this.#buildPickups();
+    const sampler = this.#sampler;
+    this.#petals.build(scene, (x, z) => sampler.getHeightAt(x, z));
+    // Die Stufe kann **vor** dem Bauen gekommen sein — `quality:changed` wird
+    // beim Start einmal gesendet, und ob das vor oder nach `terrain:ready`
+    // passiert, ist eine Reihenfolge, auf die sich niemand verlassen sollte.
+    this.#petals.setDensity(PETAL_DENSITY[this.#level]);
+  }
+
+  // ── Schanzen ────────────────────────────────────────────────────────────
+
+  #buildRamps(): void {
+    const sampler = this.#sampler;
+    const material = this.#material;
+    if (!sampler || !material) return;
+
+    const positions: number[] = [];
+    const colors: number[] = [];
+    const indices: number[] = [];
+    const color = new Color();
+    const edge = new Color(RAMP_EDGE_COLOR);
+    const body = new Color(RAMP_COLOR);
+    const bodyDark = new Color(RAMP_COLOR_DARK);
+
+    for (const ramp of RAMPS) {
+      const base = positions.length / 3;
+      const sin = Math.sin(ramp.heading);
+      const cos = Math.cos(ramp.heading);
+      const baseY = this.ramps.baseOf(ramp);
+      const half = ramp.width / 2 + RAMP_SKIRT;
+      const from = -ramp.length - RAMP_SKIRT;
+      const to = ramp.tail > 0 ? ramp.tail + RAMP_SKIRT : 0;
+
+      for (let a = 0; a < RAMP_GRID_ALONG; a++) {
+        const s = from + ((to - from) * a) / (RAMP_GRID_ALONG - 1);
+        for (let c = 0; c < RAMP_GRID_ACROSS; c++) {
+          const t = -half + (2 * half * c) / (RAMP_GRID_ACROSS - 1);
+          const x = ramp.x + sin * s - cos * t;
+          const z = ramp.z + cos * s + sin * t;
+          // **Dieselbe Funktion wie die Physik** — Begründung im Kopf.
+          const lift = liftLocal(ramp, s, t);
+          // **Dieselbe Rechnung wie `RampField.surfaceAt`**: absolute Höhe über
+          // dem Fundament, und außerhalb der Schanze der Boden selbst — 20 cm
+          // tiefer, damit der Saum im Gelände steckt statt als Spalt zu stehen.
+          const y =
+            lift > 0 ? baseY + lift : Math.min(baseY, sampler.getHeightAt(x, z)) - 0.2;
+          positions.push(x, y, z);
+          // Die Absprungkante bekommt eine helle Leiste. Sie ist der einzige
+          // Teil, den man aus 200 m sieht, und sie sagt „hier hört es auf".
+          const isLip = ramp.tail === 0 && s > -1.6 && lift > 0.05;
+          if (isLip) {
+            color.copy(edge);
+          } else if (lift <= 0.05) {
+            // Der Saum im Gelände — er soll nicht mitleuchten.
+            color.copy(body);
+          } else {
+            // ── Randstreifen und Querbalken — P25 ────────────────────────
+            //
+            // Der erste Entwurf war eine einfarbige rote Fläche, und im Bild
+            // (`.cache/shots/rampe.png`) sah sie wie ein hingelegtes Tuch aus:
+            // eine Schräge ohne Struktur gibt dem Auge nichts, woran es die
+            // Neigung ablesen könnte. Zwei Muster beheben das, und beide
+            // kosten **nichts** — sie sind Vertexfarben auf dem Raster, das
+            // ohnehin da ist:
+            //
+            //  1. **Randstreifen** hell an beiden Seiten. Sie zeichnen die
+            //     Kante nach, an der man herunterfällt, wenn man schief
+            //     anfährt — die Angabe, die beim Zielen zählt.
+            //  2. **Querbalken** über die Auffahrt, abwechselnd dunkler. Sie
+            //     laufen mit der Perspektive zusammen und sagen damit im Bild,
+            //     wie steil es ist.
+            //
+            // Die Farben werden zwischen den Stützpunkten interpoliert, die
+            // Balken sind also weich. Das ist hier richtig: harte Kanten
+            // bräuchten die doppelte Zahl an Stützpunkten und ergäben ein
+            // Warnschild statt einer Schanze.
+            // **Spalte 1 und `ACROSS − 2`, nicht 0 und `ACROSS − 1`.** Die
+            // äußersten beiden Spalten liegen auf dem Saum (`RAMP_SKIRT`), und
+            // dort ist `lift` null — sie fallen also schon in den Zweig
+            // darüber. Ein Randstreifen auf ihnen wäre eine Bedingung, die nie
+            // wahr wird: dieselbe Klasse wie die drei toten Stellschrauben
+            // dieses Projekts, nur beim Hinschreiben bemerkt statt nach Monaten.
+            const randnah = c <= 1 || c >= RAMP_GRID_ACROSS - 2;
+            const balken = a % 4 < 2;
+            color.copy(randnah ? edge : balken ? bodyDark : body);
+          }
+          colors.push(color.r, color.g, color.b);
+        }
+      }
+      for (let a = 0; a + 1 < RAMP_GRID_ALONG; a++) {
+        for (let c = 0; c + 1 < RAMP_GRID_ACROSS; c++) {
+          const i0 = base + a * RAMP_GRID_ACROSS + c;
+          const i1 = i0 + 1;
+          const i2 = i0 + RAMP_GRID_ACROSS;
+          const i3 = i2 + 1;
+          // Wickelrichtung gegen den Uhrzeigersinn von oben: `japanMap.winding()`
+          // hat in P8.11 zwei Flächen gefunden, die jede andere Zahl für gesund
+          // hielt. Diese hier ist von vornherein richtig herum.
+          indices.push(i0, i2, i1, i1, i2, i3);
+        }
+      }
+    }
+
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new BufferAttribute(Float32Array.from(positions), 3));
+    geometry.setAttribute('color', new BufferAttribute(Float32Array.from(colors), 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
+    this.#geometries.push(geometry);
+
+    const mesh = new Mesh(geometry, material);
+    mesh.name = 'Schanzen';
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    this.#ramps = mesh;
+    this.#group.add(mesh);
+  }
+
+  // ── Driftzonen: der Bodenring ───────────────────────────────────────────
+
+  /**
+   * Ein Band auf dem Boden entlang der Zonengrenze — P25.
+   *
+   * ## Warum der Baumring allein nicht genügt
+   *
+   * Im Kopf von `#buildZones` steht, ein Kreis aus rosa Kronen sei auf 200 m
+   * eindeutig und eine Bodenmarkierung nicht. Das stimmt für die Frage *wo ist
+   * die Zone* — und es ist die falsche Frage für den, der schon drin ist.
+   *
+   * Gemessen an `.cache/shots/drift.png` (P25): der Wagen steht mitten in der
+   * Sakura Bowl, die Punkte laufen, und **im Bild ist nichts**, was das sagt.
+   * Die Bäume stehen als Ring am Horizont und lassen sich von den Bäumen
+   * daneben nicht unterscheiden, sobald man zwischen ihnen ist. Eine Zone, die
+   * eine Wertung verdoppelt, muss ihre Grenze zeigen — sonst weiß der Spieler
+   * nicht, warum die Punkte aufhören.
+   *
+   * ## Wie es dem Gelände folgt
+   *
+   * 96 Stützpunkte auf dem Kreis, jeder mit `getHeightAt` abgetastet und 12 cm
+   * darüber gesetzt. Das ist der einzige Weg, der auf dieser Karte trägt: ein
+   * ebener Ring stünde in der Sakura Bowl bis zu 3,9 m über bzw. unter dem
+   * Boden (die gemessene Höhendifferenz der Zone, siehe `DRIFT_ZONES`).
+   *
+   * 12 cm und nicht 3 — die Straßendecals dieses Projekts liegen 6 cm über
+   * ihrer Fläche, und selbst das war in P6 einmal zu wenig: das gerenderte
+   * CDLOD-Gitter liegt zwischen zwei Stützstellen **über** dem Höhenfeld, aus
+   * dem es entsteht. Ein Band, das im Gras verschwindet, ist keine Anzeige.
+   */
+  #buildZoneRings(): void {
+    const sampler = this.#sampler;
+    const material = this.#material;
+    if (!sampler || !material) return;
+
+    const positions: number[] = [];
+    const colors: number[] = [];
+    const indices: number[] = [];
+    const inner = new Color(ZONE_RING_INNER);
+    const outer = new Color(ZONE_RING_OUTER);
+
+    for (const zone of DRIFT_ZONES) {
+      const base = positions.length / 3;
+      for (let i = 0; i < ZONE_RING_STEPS; i++) {
+        const a = (Math.PI * 2 * i) / ZONE_RING_STEPS;
+        const ca = Math.cos(a);
+        const sa = Math.sin(a);
+        for (let e = 0; e < 2; e++) {
+          const r = zone.radius + (e === 0 ? -ZONE_RING_WIDTH / 2 : ZONE_RING_WIDTH / 2);
+          const x = zone.x + ca * r;
+          const z = zone.z + sa * r;
+          positions.push(x, sampler.getHeightAt(x, z) + ZONE_RING_LIFT, z);
+          const c = e === 0 ? inner : outer;
+          colors.push(c.r, c.g, c.b);
+        }
+      }
+      for (let i = 0; i < ZONE_RING_STEPS; i++) {
+        const j = (i + 1) % ZONE_RING_STEPS;
+        const a0 = base + i * 2;
+        const a1 = a0 + 1;
+        const b0 = base + j * 2;
+        const b1 = b0 + 1;
+        // Gegen den Uhrzeigersinn von oben — `japanMap.winding()` prüft das,
+        // und dieses Projekt hat zwei rückseitige Flächen teuer bezahlt (P8.11).
+        indices.push(a0, b0, a1, a1, b0, b1);
+      }
+    }
+
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new BufferAttribute(Float32Array.from(positions), 3));
+    geometry.setAttribute('color', new BufferAttribute(Float32Array.from(colors), 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
+    this.#geometries.push(geometry);
+
+    const mesh = new Mesh(geometry, material);
+    mesh.name = 'Driftzonenring';
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    this.#rings = mesh;
+    this.#group.add(mesh);
+  }
+
+  // ── Driftzonen: Kirschbäume und Fahnen ──────────────────────────────────
+
+  /**
+   * Der Ring aus Kirschbäumen und Fahnen um jede Driftzone.
+   *
+   * **Der Ring ist die Anzeige.** Eine Driftzone braucht eine Grenze, die man
+   * im Fahren sieht, ohne hinzusehen — ein Kreis aus rosa Kronen ist auf 200 m
+   * eindeutig, eine Bodenmarkierung nicht. Die Fahnen stehen dazwischen und
+   * kippen im Wind; sie sind das, was Bewegung in ein sonst stilles Bild bringt.
+   *
+   * Die Bäume stehen mit gewürfeltem Winkel und gewürfelter Größe, aber
+   * **deterministisch** (Position als Seed): eine Karte, die bei jedem Laden
+   * anders aussieht, ist eine Karte, in der niemand einen Ort wiedererkennt.
+   */
+  #buildZones(): void {
+    const sampler = this.#sampler;
+    const material = this.#material;
+    if (!sampler || !material) return;
+
+    const trees: { x: number; y: number; z: number; scale: number; turn: number }[] = [];
+    const flags: { x: number; y: number; z: number; turn: number }[] = [];
+
+    for (const zone of DRIFT_ZONES) {
+      for (let i = 0; i < zone.trees; i++) {
+        const angle = (Math.PI * 2 * i) / zone.trees;
+        // Der Radius wackelt um ±4 m — ein exakter Kreis sieht aus wie ein
+        // Zaun, ein leicht unregelmäßiger wie ein Hain.
+        const jitter = hash(zone.x + i * 13.7, zone.z - i * 7.1);
+        const r = zone.radius + (jitter - 0.5) * 8;
+        const x = zone.x + Math.cos(angle) * r;
+        const z = zone.z + Math.sin(angle) * r;
+        trees.push({
+          x,
+          y: sampler.getHeightAt(x, z),
+          z,
+          scale: 0.85 + jitter * 0.5,
+          turn: jitter * Math.PI * 2,
+        });
+        // Jeder vierte Baum bekommt eine Fahne davor.
+        if (i % 4 === 0) {
+          const fx = zone.x + Math.cos(angle) * (r - 4);
+          const fz = zone.z + Math.sin(angle) * (r - 4);
+          flags.push({
+            x: fx,
+            y: sampler.getHeightAt(fx, fz),
+            z: fz,
+            // Die Fahne zeigt nach innen — sie ist für den, der in der Zone
+            // steht, und nicht für den, der außen vorbeifährt.
+            turn: angle + Math.PI / 2,
+          });
+        }
+      }
+    }
+
+    this.#trees = this.#instance(createSakura(), trees.length, 'Kirschbäume');
+    for (let i = 0; i < trees.length; i++) {
+      const t = trees[i]!;
+      this.#quat.setFromAxisAngle(this.#up, t.turn);
+      this.#scale.set(t.scale, t.scale, t.scale);
+      this.#matrix.compose(new Vector3(t.x, t.y, t.z), this.#quat, this.#scale);
+      this.#trees.setMatrixAt(i, this.#matrix);
+    }
+    this.#trees.instanceMatrix.needsUpdate = true;
+    this.#scale.set(1, 1, 1);
+
+    this.#flagPos.push(...flags);
+    this.#flags = this.#instance(createFlag(), flags.length, 'Fahnen');
+    // Wie bei den Sammelstücken: die Matrizen drehen jeden Frame, die Hüllkugel
+    // wird nie neu gerechnet. Begründung dort.
+    this.#flags.frustumCulled = false;
+    this.#waveFlags();
+  }
+
+  /**
+   * Die Fahnen im Wind — ein Ausschlag um den eigenen Mast.
+   *
+   * **Warum das eine Matrix ist und kein Shader.** Ein Tuch, das sich
+   * *verformt*, bräuchte einen Vertex-Shader wie die Vegetation
+   * (`vegetation_wind.vert.glsl`). Für 20 Fahnen ist das der falsche Preis: ein
+   * eigenes Material, ein eigener Uniform-Block, eine eigene Stelle zum
+   * Vergessen beim `dispose()`. 20 Matrizen je Frame kosten nichts messbares,
+   * und der Unterschied im Bild — steht die Fahne oder bewegt sie sich — ist
+   * derselbe.
+   *
+   * Zwei Sinus mit teilerfremden Perioden, plus ein Phasenversatz aus der
+   * Position: sonst schlagen alle Fahnen im Gleichtakt, und das liest sich als
+   * Mechanik statt als Wind. Denselben Trick benutzt `PetalFall` für die
+   * Schwingung der Blätter.
+   */
+  #waveFlags(): void {
+    const mesh = this.#flags;
+    if (!mesh) return;
+    for (let i = 0; i < this.#flagPos.length; i++) {
+      const f = this.#flagPos[i]!;
+      const phase = f.x * 0.07 + f.z * 0.11;
+      const wave =
+        Math.sin(this.#wind * 1.7 + phase) * 0.26 + Math.sin(this.#wind * 2.9 + phase * 1.6) * 0.11;
+      this.#quat.setFromAxisAngle(this.#up, f.turn + wave);
+      this.#matrix.compose(POINT.set(f.x, f.y, f.z), this.#quat, this.#scale);
+      mesh.setMatrixAt(i, this.#matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  }
+
+  // ── Sammelstücke ────────────────────────────────────────────────────────
+
+  /**
+   * Sammelstücke entlang der Straßen verteilen.
+   *
+   * Erzeugt aus dem Straßennetz und nicht von Hand — Begründung bei
+   * `PICKUPS`. Verteilt wird über die **Bogenlänge** aller Strecken zusammen,
+   * damit lange Strecken mehr abbekommen als kurze; über den Punktindex verteilt
+   * bekäme der 145 m lange Stadtzubringer genauso viele wie die 6 km lange
+   * Ringstraße.
+   */
+  #buildPickups(): void {
+    const sampler = this.#sampler;
+    const network = this.#network;
+    const material = this.#material;
+    if (!sampler || !network || !material) return;
+
+    const roads = network.roads.filter((r) => r.centerline.length >= 12);
+    const total = roads.reduce((sum, r) => sum + r.length, 0);
+    if (total <= 0) return;
+
+    for (const road of roads) {
+      const share = Math.max(1, Math.round((PICKUPS.count * road.length) / total));
+      const line = road.centerline;
+      const points = line.length / 3;
+      for (let k = 0; k < share; k++) {
+        const i = Math.min(points - 2, Math.floor((points * (k + 0.5)) / share));
+        const x0 = line[i * 3]!;
+        const z0 = line[i * 3 + 2]!;
+        const dx = line[(i + 1) * 3]! - x0;
+        const dz = line[(i + 1) * 3 + 2]! - z0;
+        const len = Math.hypot(dx, dz) || 1;
+        // Seitlich versetzt, Seite abwechselnd — das ist der Punkt: die Stücke
+        // sollen die Linie ändern und nicht auf ihr liegen.
+        const side = (k % 2 === 0 ? 1 : -1) * PICKUPS.offset * 3.5;
+        const x = x0 - (dz / len) * side;
+        const z = z0 + (dx / len) * side;
+        this.#pickupPos.push({
+          x,
+          y: sampler.getHeightAt(x, z) + PICKUPS.height,
+          z,
+          back: 0,
+        });
+      }
+    }
+
+    this.#pickups = this.#instance(createToken(), this.#pickupPos.length, 'Sammelstücke');
+    // Frustum-Culling aus: die Hüllkugel wird nie aktualisiert, weil die
+    // Instanzmatrizen jeden Frame drehen. Dieselbe Begründung wie bei den
+    // Rädern des Fahrzeugs (P14).
+    this.#pickups.frustumCulled = false;
+    this.#writePickups();
+  }
+
+  #instance(
+    geometry: BufferGeometry,
+    count: number,
+    name: string,
+    material?: Material,
+  ): InstancedMesh {
+    this.#geometries.push(geometry);
+    const mesh = new InstancedMesh(geometry, material ?? this.#material!, Math.max(1, count));
+    mesh.name = name;
+    mesh.count = count;
+    mesh.castShadow = false;
+    this.#group.add(mesh);
+    return mesh;
+  }
+
+  // ── Laternen und Blütenteppich — P26 ────────────────────────────────────
+
+  /**
+   * Papierlaternen auf dem Zonenring und gefallene Blüten darunter.
+   *
+   * ## Warum ausgerechnet Laternen
+   *
+   * Diese Karte hat **eine** Tageszeit, und die Sonne steht 2,23° über dem
+   * Horizont. In so einem Bild ist warmes Eigenlicht gegen kaltes Himmelslicht
+   * der stärkste Kontrast, den es überhaupt zu haben gibt — die Stadt lebt seit
+   * P8 genau davon (`NeonSystem`), und ihre hellsten Pixel messen 0,52 linear
+   * gegen 0,028 Boden.
+   *
+   * Die Driftzone hatte nichts davon. Auf `.cache/shots/baum-nah2.png` ist ihr
+   * Boden eine große, dunkle, leere Fläche — und das ist der Ort, an dem der
+   * Spieler die meiste Zeit verbringen soll.
+   *
+   * ## Warum ein zweites Material sein muss
+   *
+   * `PropMaterial` ist beleuchtet, und beleuchtet gibt es bei 2,23° Sonnenstand
+   * kein Leuchten. Das Papier einer Laterne ist ein `MeshBasicMaterial`: was in
+   * seiner Vertexfarbe steht, ist die fertige Helligkeit im Bild — dieselbe
+   * Bauart wie die Partikel, und dieselbe Falle, die in P25 zweimal
+   * zugeschlagen hat. Die Zahl unten ist deshalb **gegen die gemessene Szene
+   * gesetzt** und nicht gegen eine Vorstellung von „warm".
+   *
+   * Der Mast bleibt im beleuchteten Material: ein unbeleuchteter Mast wäre eine
+   * schwarze Silhouette. Kosten: **zwei** zusätzliche Draw-Calls für beide
+   * Zonen zusammen, bei einem Budget von 250.
+   */
+  #buildLanterns(): void {
+    const sampler = this.#sampler;
+    const material = this.#material;
+    const glow = this.#glow;
+    if (!sampler || !material || !glow) return;
+
+    const stellen: { x: number; y: number; z: number; turn: number }[] = [];
+    for (const zone of DRIFT_ZONES) {
+      // Alle rund 16 m eine — bei 62 m Radius sind das 24. Dichter wäre eine
+      // Lichterkette, dünner verlöre der Ring seinen Zusammenhang.
+      const n = Math.max(8, Math.round((Math.PI * 2 * zone.radius) / LANTERN_SPACING));
+      for (let i = 0; i < n; i++) {
+        const a = (Math.PI * 2 * (i + 0.5)) / n;
+        // Ein Stück **innerhalb** des Baumrings: die Laternen sollen den Boden
+        // beleuchten, auf dem gefahren wird, nicht den Wald dahinter.
+        const r = zone.radius - LANTERN_INSET;
+        const x = zone.x + Math.cos(a) * r;
+        const z = zone.z + Math.sin(a) * r;
+        stellen.push({ x, y: sampler.getHeightAt(x, z), z, turn: a });
+      }
+    }
+
+    this.#lanternPosts = this.#instance(createLanternPost(), stellen.length, 'Laternenmasten');
+    this.#lanternGlow = this.#instance(
+      createLanternPaper(),
+      stellen.length,
+      'Laternenlicht',
+      glow,
+    );
+    for (let i = 0; i < stellen.length; i++) {
+      const s = stellen[i]!;
+      this.#quat.setFromAxisAngle(this.#up, s.turn);
+      this.#matrix.compose(POINT.set(s.x, s.y, s.z), this.#quat, this.#scale);
+      this.#lanternPosts.setMatrixAt(i, this.#matrix);
+      this.#lanternGlow.setMatrixAt(i, this.#matrix);
+    }
+    this.#lanternPosts.instanceMatrix.needsUpdate = true;
+    this.#lanternGlow.instanceMatrix.needsUpdate = true;
+  }
+
+  /**
+   * Gefallene Blüten auf dem Boden der Zone.
+   *
+   * **Sie schließen einen Kreis, der bisher offen war.** Über der Zone fallen
+   * seit P24 Blütenblätter; unten kamen sie nie an. Ein Boden, auf den es
+   * hundert Blätter je Sekunde schneit und der makellos bleibt, ist eine
+   * Behauptung, die das Bild widerlegt.
+   *
+   * Je Stück eine **Verwehung** aus neun kleinen Blättern (Form und die
+   * gemessene Begründung bei `createFallenPatch` und `FALLEN_TONES`), 12 cm
+   * über dem Gelände abgesetzt. Die Straßendecals dieses Projekts liegen bei
+   * 6 cm, und das war in P6 einmal zu wenig — das gerenderte CDLOD-Gitter
+   * liegt zwischen zwei Stützstellen über dem Höhenfeld.
+   *
+   * Sie liegen **waagerecht** und folgen der Neigung nicht: bei 3,9 m
+   * Höhenunterschied auf 124 m ist der Hang unter 2°, und eine Verwehung von
+   * 2 m steht damit höchstens 7 cm schräg.
+   */
+  #buildFallenPetals(): void {
+    const sampler = this.#sampler;
+    const material = this.#material;
+    if (!sampler || !material) return;
+
+    const flecken: { x: number; y: number; z: number; turn: number; scale: number }[] = [];
+    for (const zone of DRIFT_ZONES) {
+      for (let i = 0; i < FALLEN_PER_ZONE; i++) {
+        // Wurzel für Gleichverteilung in der Fläche — sonst drängt sich alles
+        // in der Mitte. Dieselbe Rechnung wie bei `PetalFall`.
+        const a = hash(i * 1.9, zone.x + 3) * Math.PI * 2;
+        // Nach außen gewichtet: unter den Bäumen liegt mehr als in der Mitte.
+        const t = Math.sqrt(hash(i * 4.3, zone.z - 5));
+        const r = zone.radius * (0.25 + 0.72 * t);
+        const x = zone.x + Math.cos(a) * r;
+        const z = zone.z + Math.sin(a) * r;
+        flecken.push({
+          x,
+          y: sampler.getHeightAt(x, z) + FALLEN_LIFT,
+          z,
+          turn: hash(i * 7.7, zone.x - zone.z) * Math.PI,
+          // 0,6…1,4 auf 1,4 m Blobdurchmesser: 0,84…1,96 m je Verwehung.
+          scale: 0.6 + hash(i * 2.9, zone.z + 11) * 0.8,
+        });
+      }
+    }
+
+    this.#fallen = this.#instance(createFallenPatch(), flecken.length, 'Blütenteppich');
+    for (let i = 0; i < flecken.length; i++) {
+      const f = flecken[i]!;
+      this.#quat.setFromAxisAngle(this.#up, f.turn);
+      this.#scale.set(f.scale, 1, f.scale);
+      this.#matrix.compose(POINT.set(f.x, f.y, f.z), this.#quat, this.#scale);
+      this.#fallen.setMatrixAt(i, this.#matrix);
+    }
+    this.#scale.set(1, 1, 1);
+    this.#fallen.instanceMatrix.needsUpdate = true;
+  }
+
+  #writePickups(): void {
+    const mesh = this.#pickups;
+    if (!mesh) return;
+    for (let i = 0; i < this.#pickupPos.length; i++) {
+      const p = this.#pickupPos[i]!;
+      // ── Der Aufsammel-Effekt — P25 ──────────────────────────────────
+      //
+      // P24 hat als offenen Punkt hinterlassen: „die Sammelstücke stehen ohne
+      // Ton und ohne Partikel". Der Ton steht seit P25 in `AudioSystem`; das
+      // hier ist das Bild dazu — und es kostet **nichts**.
+      //
+      // Der Trick ist, dass ein eingesammeltes Stück nicht sofort weg sein
+      // muss. Es hat ohnehin eine Uhr (`back`), also bekommt der erste Moment
+      // davon eine eigene Bedeutung: das Stück wächst, dreht schneller und
+      // verschwindet. Kein Partikelsystem, keine zweite Instanzliste, kein
+      // Draw-Call — dieselben 90 Instanzen, nur mit einer anderen Matrix.
+      const seit = PICKUPS.respawn - p.back;
+      if (p.back > 0 && seit < POP_TIME) {
+        const t = seit / POP_TIME;
+        // Wachsen und dabei ausdünnen. Ein Oktaeder hat keine Deckkraft je
+        // Instanz (`PropMaterial` liest die Vertexfarbe), also macht die
+        // **Größe** die ganze Arbeit: über 2,6 hinaus liest das Auge es als
+        // Blitz und nicht mehr als Gegenstand.
+        const s = 1 + t * 1.6;
+        this.#scale.set(s, s * 1.35, s);
+        // Vierfache Drehgeschwindigkeit — sie ist das, was den Moment vom
+        // ruhigen Kreiseln davor unterscheidet.
+        this.#quat.setFromAxisAngle(this.#up, this.#spin * 4 + i * 0.7);
+        this.#matrix.compose(POINT.set(p.x, p.y + t * 1.2, p.z), this.#quat, this.#scale);
+        mesh.setMatrixAt(i, this.#matrix);
+        this.#scale.set(1, 1, 1);
+        continue;
+      }
+      this.#quat.setFromAxisAngle(this.#up, this.#spin + i * 0.7);
+      // Eingesammelte Stücke wandern unter die Welt statt `count` zu ändern:
+      // `count` verkleinern hieße, die Liste umzusortieren, und dann stimmt die
+      // Zuordnung Position ↔ Instanz nicht mehr.
+      this.#matrix.compose(
+        p.back > 0 ? this.#zero : POINT.set(p.x, p.y, p.z),
+        this.#quat,
+        this.#scale,
+      );
+      mesh.setMatrixAt(i, this.#matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  }
+
+  /**
+   * Prüfen, ob das Fahrzeug ein Stück eingesammelt hat.
+   *
+   * **Lineare Suche über 90 Einträge, je Frame.** Das ist absichtlich die
+   * einfachste mögliche Lösung: 90 Abstandsquadrate kosten gemessen unter
+   * 0,002 ms, und ein Raster dafür wäre Code, der eine Frage beantwortet, die
+   * niemand gestellt hat. Wenn die Zahl je dreistellig wird, steht hier ein
+   * Raster — vorher nicht.
+   */
+  collect(x: number, z: number, dt: number): number {
+    let taken = 0;
+    const r2 = PICKUPS.radius * PICKUPS.radius;
+    for (const p of this.#pickupPos) {
+      if (p.back > 0) {
+        p.back -= dt;
+        continue;
+      }
+      const dx = p.x - x;
+      const dz = p.z - z;
+      if (dx * dx + dz * dz <= r2) {
+        p.back = PICKUPS.respawn;
+        taken++;
+      }
+    }
+    return taken;
+  }
+
+  /** Ist der Punkt in einer Driftzone? Gibt den Multiplikator zurück, sonst 1. */
+  driftBonusAt(x: number, z: number): number {
+    for (const zone of DRIFT_ZONES) {
+      const dx = x - zone.x;
+      const dz = z - zone.z;
+      if (dx * dx + dz * dz <= zone.radius * zone.radius) return zone.bonus;
+    }
+    return 1;
+  }
+
+  /** Name der Driftzone an dieser Stelle, oder `null`. */
+  zoneNameAt(x: number, z: number): string | null {
+    for (const zone of DRIFT_ZONES) {
+      const dx = x - zone.x;
+      const dz = z - zone.z;
+      if (dx * dx + dz * dz <= zone.radius * zone.radius) return zone.name;
+    }
+    return null;
+  }
+
+  update(dt: number): void {
+    this.#petals.update(dt);
+    this.#wind += dt;
+    this.#spin += dt * 1.8;
+
+    // ── Nicht je Frame — P26 ───────────────────────────────────────────
+    //
+    // Hier standen zwei volle Instanzpuffer je Frame: 20 Fahnen und 90
+    // Sammelstücke, jedes mit `compose()` und einem Hochladen der ganzen
+    // Matrixliste (110 × 16 Gleitkommazahlen = 7 KB, 60-mal je Sekunde). Für
+    // **Darstellung**, die niemand Frame für Frame prüft.
+    //
+    // Beides sind langsame Bewegungen: die Fahne schwingt mit 1,7 und 2,9 rad/s,
+    // das Stück dreht mit 1,8 rad/s. Bei 20 Hz liegen zwischen zwei Bildern
+    // 5,2° Drehung — das ist unterhalb dessen, was an einem 40 Pixel großen
+    // Oktaeder überhaupt zu sehen ist.
+    //
+    // **20 Hz und nicht 15 wie die Minikarte**, weil hier Geometrie in
+    // Bewegung ist und dort eine Zeichnung: eine ruckelnde Drehung fällt eher
+    // auf als eine ruckelnde Karte. Die Zahl ist eine Abwägung und keine
+    // Messung — was sie spart, ist proportional und offensichtlich (zwei
+    // Drittel der Aufrufe), was sie kostet, ist eine Frage fürs Auge.
+    this.#since += dt;
+    if (this.#since < TRANSFORM_INTERVAL) return;
+    this.#since = 0;
+
+    this.#waveFlags();
+    // Die Stücke drehen sich. Das ist die billigste Art, ein Ding als
+    // „einsammelbar" zu kennzeichnen — jedes Spiel seit 1991 macht es so, und
+    // zwar weil es funktioniert: bewegte Dinge ziehen den Blick.
+    if (this.#pickups) this.#writePickups();
+  }
+
+  dispose(): void {
+    this.#petals.dispose();
+    this.#group.removeFromParent();
+    for (const geometry of this.#geometries) geometry.dispose();
+    this.#geometries.length = 0;
+    this.#rings?.removeFromParent();
+    this.#lanternPosts?.dispose();
+    this.#lanternGlow?.dispose();
+    this.#fallen?.dispose();
+    this.#glow?.dispose();
+    this.#glow = null;
+    this.#trees?.dispose();
+    this.#flags?.dispose();
+    this.#pickups?.dispose();
+    this.#material?.dispose();
+    this.#material = null;
+  }
+}
+
+const POINT = new Vector3();
+
+/** `1` bei einem Winkel, an dem ein Vielfaches liegt — deterministisch aus xz. */
+function hash(x: number, z: number): number {
+  const n = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
+  return n - Math.floor(n);
+}
+
+/**
+ * Ein Kirschbaum — Stamm, zwei Äste und neun Kronenballen.
+ *
+ * **Kein Blattwerk, keine Textur.** Die Karte lebt vom Licht und nicht von der
+ * Geometrie (SPEC, Leitprinzip); ein rosa Block in der blauen Stunde liest sich
+ * auf 200 m als Kirschbaum, und ein Alphatest-Blatt kostet zehnmal so viel.
+ *
+ * ## Warum aus drei Blöcken neun wurden
+ *
+ * Die erste Fassung stapelte drei achsenparallele Kästen. Aus der Ferne trug
+ * das; aus dem Auto heraus — und da fährt man mitten hindurch — stand ein
+ * **Schild** in der Landschaft: eine 4,4 m breite Fläche, die dem Betrachter
+ * fast immer eine ihrer vier gleich hellen Seiten zudreht.
+ *
+ * Drei Dinge zusammen lösen das, und keines davon allein:
+ *
+ *  1. **Mehr und kleinere Ballen.** Neun Kästen von 1,7…3,4 m ergeben eine
+ *     Silhouette mit Ecken statt einer Kante.
+ *  2. **Gedreht.** `boxY` dreht um die Hochachse; zwei Kästen mit 30° Versatz
+ *     haben aus jeder Richtung eine unregelmäßige Umrisslinie. Achsenparallel
+ *     gestapelt bleibt ein Stapel ein Stapel, egal wie viele es sind.
+ *  3. **Drei Farbtöne.** Begründung bei `SAKURA_TOP` — in der blauen Stunde
+ *     trennt das Licht die Flächen nicht, also muss die Farbe es tun.
+ *
+ * Kosten, **nachgezählt** und nicht geschätzt (12 Kästen · 12 Dreiecke):
+ * 144 Dreiecke je Baum gegen vorher 48, bei 44 Bäumen (24 + 20, siehe
+ * `DRIFT_ZONES`) also **6336** in *einem* Draw-Call. Das Budget aus SPEC §4
+ * liegt bei 3 Mio.
+ *
+ * > Hier stand zuerst „22 Kästen … 10 560 Dreiecke". Beides war falsch: die
+ * > Funktion hat zwölf Kästen, und Bäume gibt es 44, nicht 40. Die Zahlen waren
+ * > beim Schreiben geschätzt statt gezählt — genau der Fehler, den CLAUDE.md
+ * > unter „eine Zahl als Begründung geschrieben, ohne sie zu messen" führt,
+ * > diesmal nur an einer Kostenangabe und nicht an einer Wirkung.
+ */
+function createSakura(): BufferGeometry {
+  const parts: BoxSpec[] = [
+    // ── Stamm und Äste ──────────────────────────────────────────────────
+    //
+    // Kräftiger und kürzer als vorher (0,52 statt 0,42 breit, Krone tiefer
+    // angesetzt). Der alte Baum war ein dünner Stiel mit einem Hut darauf, und
+    // zwischen beiden klaffte Luft — auf `.cache/shots/baum-vorher.png` liest
+    // sich das als Sonnenschirm. Die drei Äste greifen jetzt **in** die Krone
+    // hinein und schließen die Lücke.
+    // **Ein Stamm, nicht vier Balken.** Die alten drei Äste standen mit 1,5 bis
+    // 1,9 m Länge zur Hälfte **neben** der Krone und lasen sich im Bild als
+    // einzelne dunkle Stangen (`.cache/shots/p26b-baum-nah.png`, beide Bäume).
+    // Sie sind jetzt kurz und stecken bis auf ihren Ansatz im Laub — was einen
+    // Baum ausmacht, ist der geschlossene Übergang von Stamm zu Krone, nicht
+    // sichtbares Geäst.
+    box(0.62, 1.9, 0.62, 0, 0.95, 0, SAKURA_TRUNK),
+    // Der Übergang: ein kürzeres, schmaleres Stück darüber. Zwei gestapelte
+    // Kästen mit unterschiedlicher Breite deuten die Verjüngung an.
+    box(0.46, 1.1, 0.46, 0, 2.3, 0, SAKURA_TRUNK),
+    boxY(0.3, 1.0, 0.3, 0.42, 2.55, -0.16, 0.55, SAKURA_TRUNK),
+    boxY(0.28, 0.9, 0.28, -0.38, 2.5, 0.28, -0.75, SAKURA_TRUNK),
+  ];
+
+  // ── Die Krone als Kuppel aus Ballen ───────────────────────────────────
+  //
+  // **Warum eine Spirale und keine Liste von Hand.** Von Hand gesetzte Ballen
+  // werden unweigerlich zu Lagen — man schreibt sie zeilenweise hin, und genau
+  // das war der Streifen. Eine Fibonacci-Spirale verteilt sie gleichmäßig über
+  // eine Halbkugel, ohne dass zwei je auf derselben Höhe landen; die Silhouette
+  // bekommt Beulen statt Stufen.
+  //
+  // `CROWN_*` beschreibt ein **Ellipsoid**, das breiter als hoch ist (eine
+  // Kirsche ist ausladend) — aber nicht so flach wie die 4,2 × 2,2 von vorher,
+  // die als Scheibe gelesen wurden.
+  // **Breit und tief angesetzt.** Der erste Entwurf dieser Spirale hatte
+  // `CROWN_Y 4,1` und `RX 1,95` — im Bild (`.cache/shots/baum-nah.png`) ein
+  // Ball auf einem Stiel, weil zwischen Kronenunterkante und Astansatz wieder
+  // Luft stand. Eine Zierkirsche ist **breiter als hoch** und hängt bis auf
+  // gut zwei Meter herunter; die Krone soll den Stamm zur Hälfte verdecken.
+  //
+  // **~~19 Kästen~~ — seit P26 neun Ikosaeder.** Aus 60 m sahen die Kästen gut
+  // aus, aus 10 m waren es Würfel: drei sichtbare Flächen, drei harte Kanten,
+  // und bei 2,23° Sonnenstand liegen alle drei fast gleich hell. Ein Ballen hat
+  // jetzt zwanzig verschieden geneigte Flächen statt sechs (siehe `blob`), und
+  // die Krone kostet dabei **weniger**: 9 × 20 = 180 Dreiecke gegen 19 × 12 =
+  // 228. Weniger, größere, rundere Ballen lesen sich als Laub; viele kleine
+  // Kästen lesen sich als Haufen.
+  //
+  // **Elf Ballen und enger gesetzt.** Mit neun auf RX 2,35 lag der Abstand
+  // zweier Nachbarn im weitesten Ring bei rund 2,5 m und ihr Durchmesser bei
+  // 2,4…3,0 m — sie stießen aneinander, statt sich zu überlappen, und auf
+  // `.cache/shots/p26b-baum-nah.png` steht zwischen ihnen Himmel. Eine Krone
+  // ist keine Perlenkette: die Ballen müssen sich **schneiden**, sonst ist die
+  // Silhouette gezackt und das Innere durchsichtig.
+  //
+  //   Umfang 2π · 2,1 = 13,2 m auf ~6 Ballen im weitesten Ring = 2,2 m Abstand
+  //   Durchmesser 2 · (1,72 − 0,25) = 2,9 m                   -> 0,7 m Überlappung
+  const CROWN_N = 11;
+  const CROWN_Y = 3.4;
+  const CROWN_RX = 2.1;
+  const CROWN_RY = 1.1;
+  // Der goldene Winkel. Er ist der einzige, bei dem keine zwei der ersten N
+  // Punkte annähernd übereinanderliegen — deshalb steht er in jedem
+  // Sonnenblumen-Modell.
+  const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+
+  for (let i = 0; i < CROWN_N; i++) {
+    // `t` läuft von 0 (unten am Ellipsoid) nach 1 (oben). Die Wurzel drückt
+    // mehr Ballen nach außen-unten, wo die Krone dicht ist.
+    const t = (i + 0.5) / CROWN_N;
+    const winkel = i * GOLDEN;
+    const hoehe = Math.cos(t * Math.PI * 0.72);
+    const ring = Math.sqrt(Math.max(0, 1 - hoehe * hoehe));
+
+    const x = Math.cos(winkel) * ring * CROWN_RX;
+    const z = Math.sin(winkel) * ring * CROWN_RX;
+    const y = CROWN_Y + hoehe * CROWN_RY;
+
+    // Ballen weiter außen sind kleiner — das rundet die Silhouette ab, statt
+    // sie mit gleich großen Klötzen zu bepflastern. Bei neun statt neunzehn
+    // Ballen muss jeder größer sein, sonst steht zwischen ihnen Himmel.
+    const groesse = 1.72 - ring * 0.25;
+
+    // **Der Ton kommt aus dem Index und nicht aus der Höhe.** Begründung bei
+    // `SAKURA_TONES`. Der Zuschlag `hoehe > 0.55` hellt nur die obersten
+    // Ballen auf und färbt keine ganze Lage ein.
+    const wahl = (i * 7 + (hoehe > 0.55 ? 2 : 0)) % SAKURA_TONES.length;
+    const ton = SAKURA_TONES[hoehe > 0.55 ? Math.min(wahl, 1) : wahl]!;
+
+    // Flach gedrückt (0,74 in der Höhe): Laub hängt, es ist keine Kugel.
+    parts.push(blob(groesse, groesse * 0.74, groesse * 0.94, x, y, z, ton));
+  }
+
+  return mergeBoxes(parts);
+}
+
+/**
+ * Eine Fahne — Mast, Knauf und ein Tuch aus vier Segmenten.
+ *
+ * ## Warum das Tuch vier Teile hat
+ *
+ * Die erste Fassung war **eine** Platte, 1,5 × 2,2 m, 4 cm dick. Im Bild war
+ * das ein roter Strich: eine ebene Fläche, die von der Seite verschwindet und
+ * von vorn ein Rechteck ist. Eine Fahne wird aber gerade daran erkannt, dass
+ * sie *nicht* eben ist.
+ *
+ * Vier Segmente mit wachsendem Versatz und wechselndem Vorzeichen bilden eine
+ * stehende Welle nach; das freie Ende schwingt weiter aus als das am Mast, wie
+ * bei einem eingespannten Tuch. Die beiden Farbtöne trennen Vorder- und
+ * Rückflanke der Welle — dieselbe Begründung wie bei der Krone: in der blauen
+ * Stunde trennt das Licht sie nicht.
+ *
+ * **Die Bewegung selbst steckt nicht hier**, sondern in `#waveFlags()`: die
+ * Instanzmatrix dreht die ganze Fahne um ihren Mast. Ein Tuch, das sich
+ * *verformt*, bräuchte einen eigenen Shader — und 20 Fahnen sind es nicht wert.
+ */
+function createFlag(): BufferGeometry {
+  const parts = [
+    box(0.1, 5.6, 0.1, 0, 2.8, 0, FLAG_POLE),
+    // Der Knauf. Er sitzt über dem Tuch und macht aus dem Stab einen Mast.
+    box(0.26, 0.26, 0.26, 0, 5.68, 0, FLAG_POLE),
+  ];
+  // Vier Segmente à 0,7 m, vom Mast weg. Der Ausschlag wächst quadratisch —
+  // ein eingespanntes Tuch steht am Mast still und flattert am freien Ende.
+  const SEGMENTS = 4;
+  for (let i = 0; i < SEGMENTS; i++) {
+    const t = (i + 0.5) / SEGMENTS;
+    const z = 0.35 + i * 0.7;
+    const swing = Math.sin(t * Math.PI * 1.6) * 0.42 * t;
+    parts.push(
+      boxY(0.05, 1.6, 0.72, swing, 4.35 - t * 0.28, z, swing * 0.5, i % 2 === 0 ? FLAG_CLOTH : FLAG_CLOTH_DARK),
+    );
+  }
+  return mergeBoxes(parts);
+}
+
+/**
+ * Der Mast einer Laterne — beleuchtet, also im `PropMaterial`.
+ *
+ * Ein Holzpfosten mit einem kurzen Querarm, an dem die Laterne hängt. Der Arm
+ * ist der Grund, warum das Papier nicht am Pfosten klebt: eine Laterne hängt,
+ * sie ist nicht angeschraubt.
+ */
+function createLanternPost(): BufferGeometry {
+  return mergeBoxes([
+    box(0.16, 3.2, 0.16, 0, 1.6, 0, LANTERN_POST),
+    box(0.1, 0.1, 0.62, 0, 3.14, 0.28, LANTERN_POST),
+    // Der kurze Draht zwischen Arm und Papier.
+    box(0.04, 0.22, 0.04, 0, 3.0, 0.56, LANTERN_POST),
+  ]);
+}
+
+/**
+ * Das Papier — **unbeleuchtet**, im eigenen Material.
+ *
+ * Zwei gestapelte Kästen statt einem: eine Chōchin ist bauchig, und zwei
+ * Kästen mit unterschiedlicher Breite deuten das mit zwölf Dreiecken mehr an.
+ * Die Kappe oben trägt denselben hellen Ton — sie ist Teil des Papiers und
+ * nicht der Deckel.
+ */
+function createLanternPaper(): BufferGeometry {
+  return mergeBoxes([
+    box(0.34, 0.46, 0.34, 0, 2.66, 0.56, LANTERN_PAPER),
+    box(0.24, 0.12, 0.24, 0, 2.95, 0.56, LANTERN_PAPER),
+    box(0.24, 0.1, 0.24, 0, 2.4, 0.56, LANTERN_PAPER),
+  ]);
+}
+
+/**
+ * Eine Verwehung gefallener Blüten — neun kleine Blätter, nicht ein Viereck.
+ *
+ * ## Warum neun statt einem
+ *
+ * Ein einzelnes Viereck ist eine **geschlossene Fläche mit vier geraden
+ * Kanten**, und genau so hat es im Bild ausgesehen: eine Plane auf der Wiese.
+ * Blüten liegen verstreut; was sie zur Verwehung macht, ist der Boden
+ * *zwischen* ihnen. Neun Blätter auf einer Goldwinkel-Spirale decken rund
+ * 40 % der Blobfläche ab (0,61 m² Blattfläche auf 1,54 m² Kreis) — der Rest
+ * ist Wiese, und deshalb franst der Rand aus, statt zu schneiden.
+ *
+ * Der Goldwinkel ist derselbe wie in der Baumkrone: er vermeidet, dass sich
+ * die Blätter in Ringen oder Speichen ordnen, was bei jedem festen Winkel
+ * passiert.
+ *
+ * Nach außen werden sie kleiner (0,34 → 0,18 m) — eine Verwehung hat keine
+ * Kante, sie läuft aus.
+ *
+ * ## Zwei Kleinigkeiten, die keine sind
+ *
+ * Die Wickelrichtung ist hier nicht nebensächlich: `japanMap.winding()` prüft
+ * sie, und dieses Projekt hat zwei rückseitige Flächen teuer bezahlt (P8.11) —
+ * eine davon war ein Flussband, das ein halbes Jahr lang unsichtbar war. Die
+ * Reihenfolge unten (−u/−v, −u/+v, +u/+v) ergibt über das Kreuzprodukt +Y.
+ *
+ * Und die 4 mm Höhenstaffelung je Blatt: zwei überlappende Blätter auf exakt
+ * derselben Höhe flimmern im Tiefenpuffer. 4 mm liegen weit unter dem, was
+ * bei 2,23° Sonnenstand einen Schattenversatz gäbe.
+ */
+function createFallenPatch(): BufferGeometry {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < FALLEN_LEAVES; i++) {
+    const t = (i + 0.5) / FALLEN_LEAVES;
+    // Wurzel für Gleichverteilung in der Fläche — dieselbe Rechnung wie bei
+    // der Streuung der Verwehungen selbst.
+    const r = Math.sqrt(t) * FALLEN_SPREAD;
+    const a = i * GOLDEN;
+    const ox = Math.cos(a) * r;
+    const oz = Math.sin(a) * r;
+    const s = (0.34 - 0.16 * t) / 2;
+    // Jedes Blatt eigen gedreht, sonst steht ein Raster im Bild. Der Faktor
+    // 2,3 ist teilerfremd genug zum Goldwinkel, dass sich die Drehungen nicht
+    // mit den Positionen ausrichten.
+    const cs = Math.cos(a * 2.3);
+    const sn = Math.sin(a * 2.3);
+    const y = i * 0.004;
+    const eck = (u: number, v: number): number[] => [
+      ox + u * cs - v * sn,
+      y,
+      oz + u * sn + v * cs,
+    ];
+    const p0 = eck(-s, -s);
+    const p1 = eck(-s, s);
+    const p2 = eck(s, s);
+    const p3 = eck(s, -s);
+    positions.push(...p0, ...p1, ...p2, ...p0, ...p2, ...p3);
+    const c = new Color(FALLEN_TONES[i % FALLEN_TONES.length]!);
+    for (let k = 0; k < 6; k++) colors.push(c.r, c.g, c.b);
+  }
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new BufferAttribute(Float32Array.from(positions), 3));
+  geometry.setAttribute('color', new BufferAttribute(Float32Array.from(colors), 3));
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+/**
+ * Ein Sammelstück — ein Oktaeder als zwei Pyramiden.
+ *
+ * Es ist absichtlich **keine Münze**: eine flache Scheibe verschwindet, sobald
+ * man sie von der Kante sieht, und das ist genau der Blickwinkel eines Fahrers.
+ * Ein Oktaeder hat aus jeder Richtung eine Silhouette.
+ */
+function createToken(): BufferGeometry {
+  const h = 0.85;
+  const r = 0.55;
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const c = new Color(PICKUP_COLOR);
+  const ring: [number, number][] = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI * 2 * i) / 6;
+    ring.push([Math.cos(a) * r, Math.sin(a) * r]);
+  }
+  for (let i = 0; i < 6; i++) {
+    const [ax, az] = ring[i]!;
+    const [bx, bz] = ring[(i + 1) % 6]!;
+    // Oben und unten. Reihenfolge so, dass beide Hälften nach außen zeigen.
+    positions.push(ax, 0, az, bx, 0, bz, 0, h, 0);
+    positions.push(bx, 0, bz, ax, 0, az, 0, -h, 0);
+    for (let k = 0; k < 6; k++) colors.push(c.r, c.g, c.b);
+  }
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new BufferAttribute(Float32Array.from(positions), 3));
+  geometry.setAttribute('color', new BufferAttribute(Float32Array.from(colors), 3));
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+interface BoxSpec {
+  readonly positions: number[];
+  readonly colors: number[];
+}
+
+/**
+ * Ein achsenparalleler Kasten als rohe Dreiecke.
+ *
+ * Ohne `BoxGeometry` und ohne `mergeGeometries`, weil beides einen Import aus
+ * `three/examples` bräuchte und dieses Projekt seine Geometrie ohnehin selbst
+ * baut (`carMesh.ts`, `landmarkMeshes.ts`). Zwölf Dreiecke sind zwölf Dreiecke.
+ */
+function box(
+  w: number,
+  h: number,
+  d: number,
+  ox: number,
+  oy: number,
+  oz: number,
+  hex: number,
+): BoxSpec {
+  const x0 = ox - w / 2;
+  const x1 = ox + w / 2;
+  const y0 = oy - h / 2;
+  const y1 = oy + h / 2;
+  const z0 = oz - d / 2;
+  const z1 = oz + d / 2;
+  const v = (x: number, y: number, z: number): [number, number, number] => [x, y, z];
+  const faces: [number, number, number][][] = [
+    [v(x0, y1, z0), v(x0, y1, z1), v(x1, y1, z1), v(x1, y1, z0)], // oben
+    [v(x0, y0, z1), v(x0, y0, z0), v(x1, y0, z0), v(x1, y0, z1)], // unten
+    [v(x0, y0, z1), v(x1, y0, z1), v(x1, y1, z1), v(x0, y1, z1)], // +z
+    [v(x1, y0, z0), v(x0, y0, z0), v(x0, y1, z0), v(x1, y1, z0)], // −z
+    [v(x1, y0, z1), v(x1, y0, z0), v(x1, y1, z0), v(x1, y1, z1)], // +x
+    [v(x0, y0, z0), v(x0, y0, z1), v(x0, y1, z1), v(x0, y1, z0)], // −x
+  ];
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const c = new Color(hex);
+  for (const [a, b, cc, dd] of faces as [
+    [number, number, number],
+    [number, number, number],
+    [number, number, number],
+    [number, number, number],
+  ][]) {
+    positions.push(...a, ...b, ...cc, ...a, ...cc, ...dd);
+    for (let k = 0; k < 6; k++) colors.push(c.r, c.g, c.b);
+  }
+  return { positions, colors };
+}
+
+/**
+ * Derselbe Kasten, um die Hochachse gedreht.
+ *
+ * **Die Drehung ist der Punkt, nicht die Zahl der Kästen.** Ein Stapel
+ * achsenparalleler Kästen bleibt aus jeder Richtung ein Stapel Rechtecke — es
+ * ist dieselbe Silhouette, nur mit mehr Stufen. Erst der Versatz im Winkel
+ * bricht die Umrisslinie, und dafür genügen 20…40°.
+ *
+ * Gedreht wird **nach** dem Versetzen des Mittelpunkts, damit `ox/oz` in
+ * Baumkoordinaten bleiben und nicht im gedrehten System landen — sonst
+ * verschiebt jede Winkeländerung zugleich die Position.
+ */
+function boxY(
+  w: number,
+  h: number,
+  d: number,
+  ox: number,
+  oy: number,
+  oz: number,
+  turn: number,
+  hex: number,
+): BoxSpec {
+  const spec = box(w, h, d, 0, oy, 0, hex);
+  const c = Math.cos(turn);
+  const s = Math.sin(turn);
+  const p = spec.positions;
+  for (let i = 0; i < p.length; i += 3) {
+    const x = p[i]!;
+    const z = p[i + 2]!;
+    p[i] = x * c - z * s + ox;
+    p[i + 2] = x * s + z * c + oz;
+  }
+  return spec;
+}
+
+/**
+ * Ein Ikosaeder als Laubballen — 20 Dreiecke, rund statt eckig.
+ *
+ * ## Warum überhaupt eine zweite Grundform
+ *
+ * Die Krone bestand bis hier aus Kästen. Aus 60 m sah das gut aus, aus 10 m
+ * sind es **Würfel**: drei sichtbare Flächen, drei harte Kanten, und bei 2,23°
+ * Sonnenstand liegen alle drei fast gleich hell (dieselbe Beobachtung wie in
+ * P25 bei den Farbtönen). Der Auftraggeber hat es zweimal gemeldet.
+ *
+ * Ein Ikosaeder kostet **20 Dreiecke gegen 12** beim Kasten, hat aber
+ * **zwanzig** verschieden geneigte Flächen statt sechs. Genau das ist der
+ * Punkt: die Silhouette wird rund, und weil `computeVertexNormals` auf
+ * nicht-indizierter Geometrie flache Flächennormalen erzeugt, entsteht dabei
+ * von selbst die facettierte Schattierung, die einen Low-Poly-Baum ausmacht.
+ *
+ * Netto ist die Krone dadurch **billiger**: neun Ballen × 20 = 180 Dreiecke
+ * gegen vorher 19 Kästen × 12 = 228.
+ *
+ * ## Die Wickelrichtung wird gerechnet, nicht abgeschrieben
+ *
+ * Die 20 Flächenindizes eines Ikosaeders stehen in jedem Lehrbuch, und in
+ * jedem zweiten mit einer anderen Umlaufrichtung. Dieses Projekt hat zwei
+ * rückseitig gewickelte Flächen teuer bezahlt (P8.11) — deshalb wird hier
+ * **nachgerechnet**: zeigt die Flächennormale zum Mittelpunkt statt von ihm
+ * weg, werden zwei Ecken getauscht. Das kostet drei Zeilen und macht die
+ * Tabelle unten unkritisch.
+ */
+function blob(
+  rx: number,
+  ry: number,
+  rz: number,
+  ox: number,
+  oy: number,
+  oz: number,
+  hex: number,
+): BoxSpec {
+  const t = (1 + Math.sqrt(5)) / 2;
+  const roh: [number, number, number][] = [
+    [-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0],
+    [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t],
+    [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1],
+  ];
+  // Auf die Einheitskugel normieren, dann auf das Ellipsoid ziehen. Ein
+  // Kirschbaum ist breiter als hoch, also sind rx/rz > ry.
+  const v = roh.map(([x, y, z]) => {
+    const l = Math.hypot(x, y, z);
+    return [(x / l) * rx, (y / l) * ry, (z / l) * rz] as [number, number, number];
+  });
+  const flaechen: [number, number, number][] = [
+    [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
+    [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+    [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
+    [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1],
+  ];
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const c = new Color(hex);
+  for (const [ia, ib, ic] of flaechen) {
+    const a = v[ia]!;
+    let b = v[ib]!;
+    let d = v[ic]!;
+    // (b−a) × (d−a) muss vom Mittelpunkt weg zeigen. Der Mittelpunkt des
+    // Ellipsoids ist der Ursprung, also genügt das Skalarprodukt mit `a`.
+    const ux = b[0] - a[0];
+    const uy = b[1] - a[1];
+    const uz = b[2] - a[2];
+    const wx = d[0] - a[0];
+    const wy = d[1] - a[1];
+    const wz = d[2] - a[2];
+    const nx = uy * wz - uz * wy;
+    const ny = uz * wx - ux * wz;
+    const nz = ux * wy - uy * wx;
+    if (nx * a[0] + ny * a[1] + nz * a[2] < 0) {
+      const hilf = b;
+      b = d;
+      d = hilf;
+    }
+    positions.push(
+      a[0] + ox, a[1] + oy, a[2] + oz,
+      b[0] + ox, b[1] + oy, b[2] + oz,
+      d[0] + ox, d[1] + oy, d[2] + oz,
+    );
+    for (let k = 0; k < 3; k++) colors.push(c.r, c.g, c.b);
+  }
+  return { positions, colors };
+}
+
+function mergeBoxes(specs: BoxSpec[]): BufferGeometry {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  for (const spec of specs) {
+    positions.push(...spec.positions);
+    colors.push(...spec.colors);
+  }
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new BufferAttribute(Float32Array.from(positions), 3));
+  geometry.setAttribute('color', new BufferAttribute(Float32Array.from(colors), 3));
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+  return geometry;
+}

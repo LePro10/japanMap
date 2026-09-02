@@ -428,6 +428,48 @@ Einmündungen weglässt. Die drei Änderungen sind in PLAN.md P14 begründet.
 
 ---
 
+## 5b. Die Spielschicht — was seit P22 darüber liegt
+
+Bis P21 war das hier eine Karte mit einem Auto darauf. Seit P22…P25 liegt eine
+zweite Schicht darüber, und sie ist **absichtlich von der Fahrschicht getrennt**:
+`Vehicle` weiß nichts von Rennen, `RaceDirector` weiß nichts von Federung.
+
+```
+DriveSystem ──┬── ArcadeDynamics    die waagerechte Ebene       (P22)
+              │                     Gieren wird gesetzt, nicht integriert
+              ├── RoadGround        Boden je Fahrzeug: Gelände, Fahrbahn,
+              │                     Wasser, Schanzen — eine Quelle    (P23)
+              └── RaceDirector ──┬── RaceLine     Ideallinie, zwei Krümmungen
+                                 ├── RivalField ── RivalDriver  (Stanley + Vorsteuerung)
+                                 ├── DriftScore  Kette, Multiplikator, Bank
+                                 └── CheckpointGate
+
+StuntSystem ──┬── RampField        die Schanzen als **Funktion**    (P24)
+              └── PetalFall        Blüten, ganz im Vertex-Shader
+```
+
+**Was P22 getauscht hat und was nicht.** Ausschließlich die waagerechte Ebene
+(Gieren, Längs- und Quergeschwindigkeit). Federung, Stützebene, Blech gegen
+Gelände, Kollision und Klemmschutz aus P19…P21 laufen unverändert weiter. `TIRE`
+in `vehicle.config.ts` wird seitdem **nicht mehr gelesen** — die Spec steht dort
+als Beschreibung weiter, und zwei der teuersten Fehler dieses Projekts sind
+Fehler jener Funktionen gewesen.
+
+**Warum die Schanzen eine Funktion sind und kein Mesh.** Eine Schanze muss im
+Bild und in der Physik zugleich existieren. `RampField.surfaceAt()` liefert die
+Fläche, `RoadGround.height()` nimmt das Maximum daraus, und `StuntSystem` baut
+sein Mesh aus **derselben** Funktion. Das ist die Antwort auf die Fehlerklasse
+aus §5 („die zwei Höhenquellen"), nur eine Ebene höher.
+
+**Die Anzeigen hängen alle am Bus und rechnen nichts.** `DriveHud` (inklusive
+`MiniMap`) bekommt Zahlen hereingereicht; `AudioSystem` hört auf
+`pickup:collected`, `race:checkpoint` und `race:lap` und importiert **nichts**
+aus `src/game/`. Beide sind austauschbar, ohne dass die Spielschicht davon weiß —
+und genau deshalb konnte P25 einen Ton und eine Karte nachrüsten, ohne eine
+einzige Zeile Physik anzufassen.
+
+---
+
 ## 6. Qualitätsstufen — wer was liest
 
 `QualitySystem` hält den Zustand und sendet `quality:changed`. **Jedes System
@@ -546,6 +588,8 @@ Der Unterschied ist groß und für die UX entscheidend (siehe PLAN.md P10.2):
 | Spieler-Oberfläche `src/ui/PlayerUi.ts` | ja | **ja** (seit P10.2) |
 | Fingersteuerung `src/ui/TouchControls.ts` | ja | **ja** (seit P12.4) |
 | Steuerungstabellen `src/ui/controls.ts` | ja | **ja** (seit P13) |
+| Fahr-HUD `src/ui/DriveHud.ts` | ja | **ja** (seit P16) |
+| Minikarte `src/ui/MiniMap.ts` | ja | **ja** (seit P25) |
 
 **Wie der Reiter „Debug" die Grenze überquert, ohne sie einzureißen** (P13):
 `PlayerUi` darf nichts aus `src/debug/` importieren — es wird ohne
@@ -582,8 +626,12 @@ Zwei Betriebsarten, Einzelheiten in CLAUDE.md.
 | Neuer Regler am Bild | `LookState` + `look:apply`/`look:collect` | §2 |
 | Neuer Regler an der Leistung | `quality.config.ts`, Leser trägt ihn selbst ein | §6 |
 | Etwas auf dem Gelände platzieren | `TerrainSampler` + Versatz | **§5** |
-| Fahrzeug, Kollision, Rundenlogik | neu `src/game/` | §3 Straßen, **§5** |
+| Fahrzeug, Kollision, Rundenlogik | `src/game/` | §3 Straßen, **§5** |
+| Veranstaltung, Gegner, Wertung | `src/game/`, `config/events.config.ts` | **§5b** |
+| Etwas, worauf man fährt oder springt | `RampField` (eine Funktion), nie ein Mesh daneben | **§5**, §5b |
+| Eine Farbe in einem Material **ohne** Beleuchtung | gegen einen gemessenen Bezugspunkt im Bild setzen | CLAUDE.md, P25 |
 | Spieler-Oberfläche | `src/ui/`, **ohne** `import.meta.env.DEV` | §7 |
+| Anzeigegröße eines Oberflächen-Elements | ins Stilblatt, **nicht** als Inline-Stil | CLAUDE.md, P25 |
 | Magische Zahl | `src/config/` — nie im Code | CLAUDE.md |
 | Shader | `.glsl`-Datei, nie als Template-String | CLAUDE.md |
 
