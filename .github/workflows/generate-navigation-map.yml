@@ -1,0 +1,45 @@
+name: Generate navigation map
+
+on:
+  push:
+    branches: [feat/minimap-waypoints]
+    paths:
+      - tools/gen-navigation-map.mjs
+      - package.json
+      - .github/workflows/generate-navigation-map.yml
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate aerial basemap
+        run: npm run map
+
+      - name: Commit generated asset
+        run: |
+          if git diff --quiet -- assets/generated/terrain/navigation-map.webp; then
+            echo "navigation-map.webp already current"
+            exit 0
+          fi
+          git config user.name "Leandro Probst"
+          git config user.email "leandro.probst@bbzbl-it.ch"
+          git add assets/generated/terrain/navigation-map.webp
+          git commit -m "asset: bake aerial navigation basemap"
+          git push origin HEAD:feat/minimap-waypoints
