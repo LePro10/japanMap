@@ -1,8 +1,7 @@
-import { CITY_DISTRICT } from '@/config/city.config';
-import { ROAD_TYPES, type RoadData, type RoadType } from '@/config/roads.config';
+import { DRIFT_ZONES, RAMPS } from '@/config/stunt.config';
+import type { RoadData } from '@/config/roads.config';
 import { WORLD } from '@/config/world.config';
-import { NavigationMapBackdrop } from './NavigationMapBackdrop';
-import { MAP_LANDMARKS, formatMapDistance, type MapLandmarkIcon } from './navigationMapData';
+import { MAP_LANDMARKS, formatMapDistance } from './navigationMapData';
 import {
   clampMapView,
   mapToWorld,
@@ -35,12 +34,15 @@ export interface NavigationMapOptions {
 }
 
 const BASE_SIZE = 1024;
-const MINI_SIZE = 384;
-const MINI_SPAN = 920;
 const UPDATE_INTERVAL = 0.1;
 /** Unter diesem Pixelabstand gilt ein Zeiger als Klick, darüber als Schwenk. */
 const PAN_THRESHOLD_PX = 8;
 const ZOOM_STEP = 1.28;
+/** Dieselben Grautöne wie die HUD-Minikarte — P25. */
+const ROAD_COLOR = '#8d8f96';
+const ROAD_MAIN = '#c9ccd4';
+const PLAYER_COLOR = '#ffd257';
+const WAYPOINT_COLOR = '#d8dee9';
 const BOUNDS = {
   minX: -WORLD.half,
   maxX: WORLD.half,
@@ -49,12 +51,10 @@ const BOUNDS = {
 } as const;
 
 /**
- * Spielerkarte und Minimap ohne zweite 3D-Kamera.
+ * Vollkarte — dieselbe Zeichnung wie die HUD-Minikarte unten links, nur größer.
  *
- * Der Hintergrund ist eine kleine, offline aus dem echten Heightfield, den
- * Terrain-Zonen und dem Fluss gebackene Vogelperspektive. Straßen werden einmal
- * darüber gezeichnet; im Fahrbetrieb kopiert die Minimap nur einen Ausschnitt
- * dieses statischen Canvas. SVG-POIs liegen ausschließlich über der Vollkarte.
+ * Keine zweite Mini, keine Aerial-Textur. Die Minikarte aus P25 bleibt die
+ * einzige Mini; diese Overlay-Karte ist ihr vergrößerter, zoombarer Zustand.
  */
 export class NavigationMap {
   readonly #canvas: HTMLCanvasElement;
@@ -68,9 +68,6 @@ export class NavigationMap {
   readonly #onClose: (resume: boolean) => void;
 
   readonly #base = document.createElement('canvas');
-  readonly #mini: HTMLButtonElement;
-  readonly #miniCanvas: HTMLCanvasElement;
-  readonly #miniDistance: HTMLElement;
   readonly #root: HTMLElement;
   readonly #view: HTMLElement;
   readonly #stage: HTMLElement;
@@ -78,7 +75,6 @@ export class NavigationMap {
   readonly #actions: HTMLElement;
   readonly #selectionLabel: HTMLElement;
   readonly #teleportButton: HTMLElement;
-  readonly #backdrop: NavigationMapBackdrop;
   readonly #poiLayer: NavigationPoiLayer;
 
   #roads: readonly RoadData[] = [];
@@ -104,36 +100,15 @@ export class NavigationMap {
     this.#base.width = BASE_SIZE;
     this.#base.height = BASE_SIZE;
 
-    this.#mini = document.createElement('button');
-    this.#mini.type = 'button';
-    this.#mini.className = 'navmap-mini';
-    this.#mini.hidden = true;
-    this.#mini.setAttribute('aria-label', 'Karte öffnen (M)');
-    this.#mini.innerHTML = `
-      <span class="navmap-mini__distance" hidden></span>
-      <span class="navmap-mini__key">M</span>`;
-    this.#miniCanvas = document.createElement('canvas');
-    this.#miniCanvas.className = 'navmap-mini__canvas';
-    this.#miniCanvas.width = MINI_SIZE;
-    this.#miniCanvas.height = MINI_SIZE;
-    this.#mini.prepend(this.#miniCanvas);
-    options.container.append(this.#mini);
-    const miniDistance = this.#mini.querySelector<HTMLElement>('.navmap-mini__distance');
-    if (!miniDistance) throw new Error('NavigationMap: Minimap-Distanz fehlt.');
-    this.#miniDistance = miniDistance;
-
     this.#root = document.createElement('div');
     this.#root.className = 'navmap';
     this.#root.hidden = true;
     this.#root.innerHTML = `
       <section class="navmap__panel" role="dialog" aria-modal="true" aria-label="Map">
         <header class="navmap__head">
-          <div>
-            <p class="navmap__eyebrow">Navigation · Aerial</p>
-            <h2 class="navmap__title">Japan Map</h2>
-          </div>
+          <h2 class="navmap__title">Map</h2>
           <div class="navmap__headActions">
-            <span class="navmap__hint">Drag to pan · scroll to zoom · click to pin</span>
+            <span class="navmap__hint">Drag · scroll · click</span>
             <button type="button" class="navmap__close" aria-label="Close map">×</button>
           </div>
         </header>
@@ -167,12 +142,7 @@ export class NavigationMap {
     this.#selectionLabel = this.#must('.navmap__selection');
     this.#teleportButton = this.#must('[data-map-action="teleport"]');
     this.#poiLayer = new NavigationPoiLayer(this.#view, BOUNDS, BASE_SIZE);
-    this.#backdrop = new NavigationMapBackdrop(() => {
-      this.#drawBase();
-      this.#drawNow();
-    });
 
-    this.#mini.addEventListener('pointerup', this.#onMiniPointerUp);
     this.#fullCanvas.addEventListener('pointerdown', this.#onMapPointerDown);
     this.#must('.navmap__close').addEventListener('click', this.#onCloseClick);
     this.#teleportButton.addEventListener('click', this.#onTeleport);
@@ -199,20 +169,11 @@ export class NavigationMap {
   }
 
   update(dt: number): void {
-    if (this.#disposed) return;
-    const active = this.#isActive();
-    // Mini nur am Desktop mit Lock: auf Touch ist die HUD-Minikarte der
-    // Öffner (sonst lägen zwei Karten übereinander, P25 hat die HUD-Karte
-    // auf dem Telefon nach oben gelegt).
-    const canShowMini =
-      active && !this.open && !isCoarsePointer() && document.pointerLockElement === this.#canvas;
-    this.#mini.hidden = !canShowMini;
-
+    if (this.#disposed || !this.open) return;
     this.#elapsed += dt;
     if (this.#elapsed < UPDATE_INTERVAL) return;
     this.#elapsed = 0;
-    if (canShowMini) this.#drawMini();
-    if (this.open) this.#drawFull();
+    this.#drawFull();
   }
 
   openMap(mouseLike = true): void {
@@ -226,7 +187,6 @@ export class NavigationMap {
     this.#drag = null;
     this.#viewState = { scale: 1, tx: 0, ty: 0 };
     this.#root.hidden = false;
-    this.#mini.hidden = true;
     this.#applyView();
     this.#drawFull();
     if (document.pointerLockElement === this.#canvas) document.exitPointerLock();
@@ -245,123 +205,43 @@ export class NavigationMap {
 
   #drawBase(): void {
     const ctx = context2d(this.#base);
-    ctx.clearRect(0, 0, BASE_SIZE, BASE_SIZE);
-    this.#backdrop.draw(ctx, BASE_SIZE);
+    ctx.fillStyle = '#0a0d12';
+    ctx.fillRect(0, 0, BASE_SIZE, BASE_SIZE);
 
-    // Der echte 360 × 360-m-Stadtdistrikt bekommt einen sehr zurückhaltenden
-    // Rahmen. Die Aerial-Textur zeigt das Gelände; dieser Layer zeigt Struktur.
-    const cityNW = worldToMap(CITY_DISTRICT.minX, CITY_DISTRICT.minZ, BOUNDS);
-    const citySE = worldToMap(CITY_DISTRICT.maxX, CITY_DISTRICT.maxZ, BOUNDS);
-    ctx.save();
-    ctx.fillStyle = 'rgba(255, 173, 78, 0.055)';
-    ctx.strokeStyle = 'rgba(255, 183, 95, 0.34)';
+    ctx.strokeStyle = 'rgba(216, 222, 233, 0.16)';
     ctx.lineWidth = 2;
-    ctx.setLineDash([7, 7]);
-    const cityX = cityNW.x * BASE_SIZE;
-    const cityY = cityNW.y * BASE_SIZE;
-    const cityWidth = (citySE.x - cityNW.x) * BASE_SIZE;
-    const cityHeight = (citySE.y - cityNW.y) * BASE_SIZE;
-    ctx.fillRect(cityX, cityY, cityWidth, cityHeight);
-    ctx.strokeRect(cityX, cityY, cityWidth, cityHeight);
-    ctx.restore();
-
-    // Straßencasing zuerst für das ganze Netz, dann die farbige Fahrbahn. So
-    // bleiben Kreuzungen als zusammenhängendes Netz lesbar.
-    for (const road of this.#roads) this.#drawRoad(ctx, road, true);
-    for (const road of this.#roads) this.#drawRoad(ctx, road, false);
-
-    ctx.save();
-    ctx.strokeStyle = 'rgba(232, 245, 247, 0.12)';
-    ctx.lineWidth = 1;
-    for (let i = 1; i < 4; i++) {
-      const p = (i / 4) * BASE_SIZE;
+    for (const zone of DRIFT_ZONES) {
+      const p = worldToMap(zone.x, zone.z, BOUNDS);
       ctx.beginPath();
-      ctx.moveTo(p, 0);
-      ctx.lineTo(p, BASE_SIZE);
-      ctx.moveTo(0, p);
-      ctx.lineTo(BASE_SIZE, p);
+      ctx.arc(p.x * BASE_SIZE, p.y * BASE_SIZE, (zone.radius / WORLD.size) * BASE_SIZE, 0, Math.PI * 2);
       ctx.stroke();
     }
-    ctx.strokeStyle = 'rgba(225, 240, 246, 0.3)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(1, 1, BASE_SIZE - 2, BASE_SIZE - 2);
-    ctx.restore();
-  }
 
-  #drawRoad(ctx: CanvasRenderingContext2D, road: RoadData, casing: boolean): void {
-    if (road.centerline.length < 6) return;
-    const settings = ROAD_TYPES[road.type];
-    const width = Math.max(1.4, (settings.width / WORLD.size) * BASE_SIZE * 2.1);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = casing ? 'rgba(5, 11, 14, 0.72)' : roadColor(road.type);
-    ctx.lineWidth = casing ? width + 3.1 : width;
-    ctx.beginPath();
-    for (let i = 0; i + 2 < road.centerline.length; i += 3) {
-      const point = worldToMap(road.centerline[i]!, road.centerline[i + 2]!, BOUNDS);
-      const x = point.x * BASE_SIZE;
-      const y = point.y * BASE_SIZE;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    if (road.closed) ctx.closePath();
-    ctx.stroke();
-  }
-
-  #drawMini(): void {
-    const ctx = context2d(this.#miniCanvas);
-    const pose = this.#getPose();
-    const normalized = worldToMap(pose.x, pose.z, BOUNDS);
-    const crop = (MINI_SPAN / WORLD.size) * BASE_SIZE;
-    const maxOrigin = BASE_SIZE - crop;
-    const sx = clamp(normalized.x * BASE_SIZE - crop * 0.5, 0, maxOrigin);
-    const sy = clamp(normalized.y * BASE_SIZE - crop * 0.5, 0, maxOrigin);
-
-    ctx.clearRect(0, 0, MINI_SIZE, MINI_SIZE);
-    ctx.drawImage(this.#base, sx, sy, crop, crop, 0, 0, MINI_SIZE, MINI_SIZE);
-    this.#drawMiniLandmarks(ctx, sx, sy, crop);
-
-    const px = ((normalized.x * BASE_SIZE - sx) / crop) * MINI_SIZE;
-    const py = ((normalized.y * BASE_SIZE - sy) / crop) * MINI_SIZE;
-    this.#drawPlayer(ctx, px, py, pose.yaw, 12);
-
-    const waypoint = this.#getWaypoint();
-    if (waypoint) {
-      const wp = worldToMap(waypoint.x, waypoint.z, BOUNDS);
-      const rawX = ((wp.x * BASE_SIZE - sx) / crop) * MINI_SIZE;
-      const rawY = ((wp.y * BASE_SIZE - sy) / crop) * MINI_SIZE;
-      const margin = 20;
-      const markerX = clamp(rawX, margin, MINI_SIZE - margin);
-      const markerY = clamp(rawY, margin, MINI_SIZE - margin);
-      const edge = rawX !== markerX || rawY !== markerY;
-      this.#drawWaypoint(ctx, markerX, markerY, edge, 11);
-      this.#miniDistance.hidden = false;
-      this.#miniDistance.textContent = `WAYPOINT · ${formatMapDistance(distance(pose.x, pose.z, waypoint.x, waypoint.z))}`;
-    } else {
-      this.#miniDistance.hidden = true;
-      this.#miniDistance.textContent = '';
-    }
-
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(1, 1, MINI_SIZE - 2, MINI_SIZE - 2);
-  }
-
-  #drawMiniLandmarks(ctx: CanvasRenderingContext2D, sx: number, sy: number, crop: number): void {
-    for (const landmark of MAP_LANDMARKS) {
-      const point = worldToMap(landmark.x, landmark.z, BOUNDS);
-      const x = ((point.x * BASE_SIZE - sx) / crop) * MINI_SIZE;
-      const y = ((point.y * BASE_SIZE - sy) / crop) * MINI_SIZE;
-      if (x < 8 || y < 8 || x > MINI_SIZE - 8 || y > MINI_SIZE - 8) continue;
-      ctx.save();
-      ctx.fillStyle = landmarkColor(landmark.icon);
-      ctx.strokeStyle = 'rgba(3, 9, 12, 0.92)';
-      ctx.lineWidth = 3;
+    for (const road of this.#roads) {
+      if (road.centerline.length < 6) continue;
+      const main = road.length > 2000;
+      ctx.strokeStyle = main ? ROAD_MAIN : ROAD_COLOR;
+      ctx.lineWidth = main ? 5.5 : 3.2;
       ctx.beginPath();
-      ctx.arc(x, y, 5.5, 0, Math.PI * 2);
+      for (let i = 0; i < road.centerline.length; i += 12) {
+        const point = worldToMap(road.centerline[i]!, road.centerline[i + 2]!, BOUNDS);
+        const x = point.x * BASE_SIZE;
+        const y = point.y * BASE_SIZE;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      if (road.closed) ctx.closePath();
       ctx.stroke();
+    }
+
+    ctx.fillStyle = ROAD_MAIN;
+    for (const ramp of RAMPS) {
+      const p = worldToMap(ramp.x, ramp.z, BOUNDS);
+      ctx.beginPath();
+      ctx.arc(p.x * BASE_SIZE, p.y * BASE_SIZE, 4, 0, Math.PI * 2);
       ctx.fill();
-      ctx.restore();
     }
   }
 
@@ -404,11 +284,11 @@ export class NavigationMap {
     ctx.lineTo(0, radius * 0.48);
     ctx.lineTo(-radius * 0.72, radius * 0.75);
     ctx.closePath();
-    ctx.fillStyle = '#f6fbff';
-    ctx.strokeStyle = 'rgba(3, 8, 12, 0.96)';
-    ctx.lineWidth = 3;
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-    ctx.shadowBlur = radius * 0.7;
+    ctx.fillStyle = PLAYER_COLOR;
+    ctx.strokeStyle = 'rgba(6, 8, 12, 0.92)';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+    ctx.shadowBlur = radius * 0.4;
     ctx.stroke();
     ctx.fill();
     ctx.restore();
@@ -423,10 +303,10 @@ export class NavigationMap {
   ): void {
     ctx.save();
     ctx.translate(x, y);
-    ctx.shadowColor = '#168cff';
-    ctx.shadowBlur = radius * 2.3;
-    ctx.fillStyle = '#168cff';
-    ctx.strokeStyle = '#dff1ff';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+    ctx.shadowBlur = radius * 0.8;
+    ctx.fillStyle = WAYPOINT_COLOR;
+    ctx.strokeStyle = '#0a0d12';
     ctx.lineWidth = 2;
 
     ctx.beginPath();
@@ -438,14 +318,14 @@ export class NavigationMap {
     ctx.stroke();
 
     ctx.shadowBlur = 0;
-    ctx.fillStyle = '#e6f4ff';
+    ctx.fillStyle = '#0a0d12';
     ctx.beginPath();
     ctx.arc(0, -radius * 0.34, radius * 0.34, 0, Math.PI * 2);
     ctx.fill();
 
     if (edge) {
       ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = 'rgba(226, 242, 255, 0.95)';
+      ctx.strokeStyle = 'rgba(216, 222, 233, 0.7)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(0, 0, radius + 7, 0, Math.PI * 2);
@@ -466,12 +346,12 @@ export class NavigationMap {
     const top = clamp(y - height - 12, 12, BASE_SIZE - height - 12);
 
     roundedRect(ctx, left, top, width, height, 8);
-    ctx.fillStyle = 'rgba(4, 12, 18, 0.92)';
+    ctx.fillStyle = 'rgba(10, 13, 18, 0.92)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(70, 165, 255, 0.82)';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+    ctx.lineWidth = 1;
     ctx.stroke();
-    ctx.fillStyle = '#e4f3ff';
+    ctx.fillStyle = '#d8dee9';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, left + paddingX, top + height * 0.51);
     ctx.restore();
@@ -495,15 +375,8 @@ export class NavigationMap {
   }
 
   #drawNow(): void {
-    if (!this.#mini.hidden) this.#drawMini();
     if (this.open) this.#drawFull();
   }
-
-  readonly #onMiniPointerUp = (event: PointerEvent): void => {
-    event.preventDefault();
-    event.stopPropagation();
-    this.openMap(event.pointerType !== 'touch');
-  };
 
   readonly #onMapPointerDown = (event: PointerEvent): void => {
     if (event.button !== 0 || !this.open) return;
@@ -665,12 +538,9 @@ export class NavigationMap {
     window.removeEventListener('pointermove', this.#onMapPointerMove);
     window.removeEventListener('pointerup', this.#onMapPointerUp);
     window.removeEventListener('pointercancel', this.#onMapPointerUp);
-    this.#mini.removeEventListener('pointerup', this.#onMiniPointerUp);
     this.#fullCanvas.removeEventListener('pointerdown', this.#onMapPointerDown);
     this.#stage.removeEventListener('wheel', this.#onWheel);
     this.#poiLayer.dispose();
-    this.#backdrop.dispose();
-    this.#mini.remove();
     this.#root.remove();
     this.#roads = [];
     this.#selected = null;
@@ -681,42 +551,6 @@ function context2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const context = canvas.getContext('2d');
   if (!context) throw new Error('NavigationMap: Canvas 2D ist nicht verfügbar.');
   return context;
-}
-
-function roadColor(type: RoadType): string {
-  switch (type) {
-    case 'highway':
-      return 'rgba(255, 205, 122, 0.96)';
-    case 'city':
-      return 'rgba(238, 239, 226, 0.94)';
-    case 'mountain':
-      return 'rgba(220, 226, 218, 0.9)';
-    case 'village':
-      return 'rgba(219, 205, 168, 0.88)';
-    case 'dirt':
-      return 'rgba(187, 145, 91, 0.9)';
-    case 'pfad':
-      return 'rgba(159, 129, 88, 0.78)';
-  }
-}
-
-function landmarkColor(icon: MapLandmarkIcon): string {
-  switch (icon) {
-    case 'city':
-      return '#ffb75f';
-    case 'temple':
-      return '#ff6b66';
-    case 'mountain':
-      return '#e2e5df';
-    case 'paddy':
-      return '#8bd5a4';
-    case 'village':
-      return '#f3cf86';
-    case 'coast':
-      return '#78ccef';
-    case 'forest':
-      return '#77c995';
-  }
 }
 
 function selectionLabel(point: MapPoint): string {

@@ -226,6 +226,7 @@ export class MiniMap {
     rivals: readonly MiniMapMark[],
     target: MiniMapMark | null,
     dt = 0,
+    waypoint: MiniMapMark | null = null,
   ): void {
     // ── Nicht je Frame — P26 ───────────────────────────────────────────
     //
@@ -268,6 +269,18 @@ export class MiniMap {
       const p = this.#project(r.x, r.z);
       ctx.beginPath();
       ctx.arc(p.x, p.y, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (waypoint) {
+      const p = this.#project(waypoint.x, waypoint.z);
+      ctx.fillStyle = '#d8dee9';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#0a0d12';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 1.2, 0, Math.PI * 2);
       ctx.fill();
     }
 
