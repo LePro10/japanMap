@@ -105,6 +105,24 @@ export const CITY_PAD_Y = 29;
 export const CITY_PAD_FEATHER = 60;
 
 /**
+ * Harte Zugehörigkeit zum Distrikt — ja oder nein, ohne Auslauf.
+ *
+ * `districtBlend` ist für Höhen: der 60-m-Saum der Einebnung und der 24-m-Saum
+ * der Schürze müssen weich auslaufen, sonst knickt das Gelände. Die Belagsfrage
+ * ist binär. Die Bodenplatte (`RoadMaterial`, dieselbe Textur wie die Fahrbahn)
+ * liegt genau in diesem Kasten; der Saum der Schürze ist der Übergang ins
+ * Gelände und bleibt Gelände.
+ */
+export function inCityDistrict(x, z) {
+  return (
+    x >= CITY_DISTRICT.minX &&
+    x <= CITY_DISTRICT.maxX &&
+    z >= CITY_DISTRICT.minZ &&
+    z <= CITY_DISTRICT.maxZ
+  );
+}
+
+/**
  * Weiche Zugehörigkeit zum Distrikt, 1 innen und 0 weiter als `feather` außen.
  *
  * Die Höhenanpassung der Straße braucht keinen harten Rand: ein Sprung von
