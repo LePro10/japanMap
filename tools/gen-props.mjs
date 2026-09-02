@@ -44,6 +44,15 @@ const c = {
   yellow: (s) => `\x1b[33m${s}\x1b[0m`,
 };
 
+const ROAD_SHOULDERS = {
+  highway: 1.6,
+  mountain: 1,
+  village: 0.8,
+  city: 1.2,
+  dirt: 0.6,
+  pfad: 0,
+};
+
 /** Derselbe mulberry32 wie überall im Projekt — siehe vegetationMeshes.ts. */
 function mulberry32(seed) {
   let a = seed >>> 0;
@@ -130,6 +139,7 @@ async function loadWorld() {
   // ob ein Prop im Weg steht — dieselbe Frage, die die Streuung in P4 stellt.
   const roadPoints = new Map();
   const allRoadPoints = [];
+  const roadSegments = [];
   for (const road of roads.roads) {
     const sampled = sampleSpline(road.nodes, { closed: road.closed, spacing: 4 });
     const list = [];
@@ -139,6 +149,20 @@ async function loadWorld() {
       allRoadPoints.push(p);
     }
     roadPoints.set(road.id, list);
+
+    const line = road.centerline;
+    const count = line.length / 3;
+    const segmentCount = road.closed ? count : count - 1;
+    for (let i = 0; i < segmentCount; i++) {
+      const j = (i + 1) % count;
+      roadSegments.push({
+        ax: line[i * 3],
+        az: line[i * 3 + 2],
+        bx: line[j * 3],
+        bz: line[j * 3 + 2],
+        clearance: (road.widths[i] ?? 0) / 2 + (ROAD_SHOULDERS[road.type] ?? 0),
+      });
+    }
   }
 
   const roadDistance = (x, z) => {
@@ -148,6 +172,23 @@ async function loadWorld() {
       if (d < best) best = d;
     }
     return Math.sqrt(best);
+  };
+
+  /** Abstand zum Rand des naechsten Fahrkorridors; negativ = im Weg. */
+  const roadCorridorMargin = (x, z) => {
+    let best = Infinity;
+    for (const segment of roadSegments) {
+      const dx = segment.bx - segment.ax;
+      const dz = segment.bz - segment.az;
+      const lengthSquared = dx * dx + dz * dz;
+      const t = lengthSquared > 0
+        ? Math.max(0, Math.min(1, ((x - segment.ax) * dx + (z - segment.az) * dz) / lengthSquared))
+        : 0;
+      const px = segment.ax + dx * t;
+      const pz = segment.az + dz * t;
+      best = Math.min(best, Math.hypot(x - px, z - pz) - segment.clearance);
+    }
+    return best;
   };
 
   /**
@@ -196,6 +237,7 @@ async function loadWorld() {
     groundFootprint,
     roadPoints,
     roadDistance,
+    roadCorridorMargin,
     seaLevel: meta.world.seaLevel,
   };
 }
@@ -520,11 +562,14 @@ async function main() {
     const nx = -dz / len;
     const nz = dx / len;
     for (const side of [-1, 1]) {
+      const x = p[0] + nx * side * 5.5;
+      const z = p[2] + nz * side * 5.5;
+      if (world.roadCorridorMargin(x, z) < 0) continue;
       place(
         props,
         'delineator',
-        p[0] + nx * side * 5.5,
-        p[2] + nz * side * 5.5,
+        x,
+        z,
         (Math.atan2(dx, dz) * 180) / Math.PI,
         1,
       );
