@@ -72,6 +72,15 @@ export const WALK_ALIGHT_GAP = 1.55;
 /** So nah muss man am Auto stehen, um einzusteigen, in Metern. */
 export const WALK_BOARD_RANGE = 4.2;
 
+/**
+ * Extra-Meter, die der Einsteige-Hinweis nach dem Erscheinen noch hält.
+ *
+ * Ohne sie flackert der Chip an der 4,2-m-Kante: ein Schritt rein, ein
+ * Schritt raus, 60 Hz `hidden`. 0,8 m ist weniger als ein Schritt, also
+ * merkt man die Hysterese nicht als falsche Reichweite.
+ */
+export const WALK_PROMPT_SLACK = 0.8;
+
 export const WALKER = {
   /**
    * Augenhöhe / Körperhöhe. 1,72 m — etwas unter dem europäischen Mittel,
