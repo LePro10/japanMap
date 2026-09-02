@@ -1,0 +1,48 @@
+name: Apply minimap integration
+
+on:
+  push:
+    branches: [feat/minimap-waypoints]
+    paths: [tools/apply-minimap.patch]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Apply integration patch
+        run: |
+          git apply --check tools/apply-minimap.patch
+          git apply tools/apply-minimap.patch
+          rm tools/apply-minimap.patch
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Navigation map tests
+        run: node tools/navigation-map.test.mjs
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit verified integration
+        run: |
+          git config user.name "Leandro Probst"
+          git config user.email "leandro.probst@bbzbl-it.ch"
+          git add src/game/DriveSystem.ts tools/apply-minimap.patch
+          git commit -m "feat: integrate minimap teleport and waypoints"
+          git push origin HEAD:feat/minimap-waypoints
