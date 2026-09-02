@@ -167,12 +167,12 @@ export interface ArcadeSpec {
   readonly driftYawGain: number;
 
   /**
-   * Wie leicht Gas in der Kurve einen Drift auslöst, 0…1.
+   * Wie leicht Gas in der Kurve einen **offenen** Drift hält, 0…1.
    *
-   * Multipliziert mit `Gas × |Lenkung|`. 0,9 beim Coupé heißt: Vollgas bei
-   * halbem Einschlag ergibt 45 % Drift — spürbar, aber noch keine Pirouette.
-   * Beim Allradler steht hier weniger, weil ein Allradler am Kurvenausgang
-   * zieht statt auszubrechen.
+   * Multipliziert mit `Gas × |Lenkung|`, aber erst hinter `DRIFT_GATE`: ohne
+   * Space reißt es keinen Drift an. 0,9 beim Coupé heißt: Vollgas bei halbem
+   * Einschlag hält 45 % Drift. Beim Allradler steht hier weniger, weil ein
+   * Allradler am Kurvenausgang zieht statt auszubrechen.
    */
   readonly powerOversteer: number;
 
@@ -375,6 +375,34 @@ export const YAW_CAP_SPEED = 4;
  * dort anspringt, wäre in der ersten Minute kaputtgespielt.
  */
 export const DRIFT_MIN_SPEED = 6;
+
+/**
+ * Wann der Drift-Zustand aufgeht — und wann nicht.
+ *
+ * `want` war `Handbremse ∨ (Gas·|Lenkung|) ∨ Lastwechsel`. Damit war jede
+ * Tastaturkurve mit Gas schon ein Drift, und Space auf der Geraden übernahm
+ * `#driftSign` der letzten Kurve. Jetzt gilt:
+ *
+ *  1. **Anriss** nur hinter Space (gehalten oder `armWindow` nach Loslassen)
+ *     **und** aktueller Lenkeingabe.
+ *  2. **Halten** danach weiter über Gas·Lenkung und Lastwechsel — das ist
+ *     dieselbe Physik wie zuvor, nur nicht mehr der Auslöser.
+ *  3. Space ohne Lenkung setzt `want` nicht. Kein erfundenes Vorzeichen.
+ */
+export const DRIFT_GATE = {
+  /**
+   * Nach Loslassen der Handbremse bleibt der Anriss so lange scharf, in s.
+   * Gewählt: 0,32 s ≙ 19 Schritte. Tippen, dann sofort einlenken, muss greifen.
+   */
+  armWindow: 0.32,
+  /**
+   * |Lenkeingabe|, ab der Space einen Drift beginnt. Tastatur ist 0 oder 1;
+   * 0,22 ist die Totzone für den Stick. Nicht der Restwinkel der Räder.
+   */
+  enterSteer: 0.22,
+  /** `#drift`, ab dem Gas·Lenkung den Drift **halten** darf, nicht anreißen. */
+  sustainDrift: 0.12,
+} as const;
 
 /**
  * Schwimmwinkel, ab dem die Punktezählung einen Drift anerkennt, in Radiant.
