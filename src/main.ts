@@ -717,6 +717,7 @@ async function boot(): Promise<void> {
         navRivals,
         race.nextCheckpointPoint(),
         dt,
+        drive.waypoint,
       );
     },
     dispose: () => {

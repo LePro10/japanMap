@@ -211,11 +211,12 @@ export class DriveHud {
     rivals: readonly MiniMapMark[],
     target: MiniMapMark | null,
     dt: number,
+    waypoint: MiniMapMark | null = null,
   ): void {
     if (!this.#visible) return;
     // `dt` reicht bis in die Karte durch: sie zeichnet nicht je Frame neu,
     // sondern mit 15 Hz — Begründung in `MiniMap.update()`.
-    this.#map.update(x, z, heading, rivals, target, dt);
+    this.#map.update(x, z, heading, rivals, target, dt, waypoint);
 
     if (!target) {
       if (!this.#arrow.hidden) this.#arrow.hidden = true;

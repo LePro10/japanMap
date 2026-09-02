@@ -488,6 +488,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     return this.#navigation?.open ?? false;
   }
 
+  get waypoint(): { readonly x: number; readonly z: number } | null {
+    return this.#waypoint.waypoint;
+  }
+
   #build(context: EngineContext): void {
     const group = new Group();
     group.name = 'Fahrzeug';
