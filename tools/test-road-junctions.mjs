@@ -104,4 +104,37 @@ check(
   `Achsabstand ${hostAtDeparture.distance.toFixed(2)} m (Soll >= 10,35 m)`,
 );
 
+// Ein einzelner Messpunkt reicht nicht: Der Pass kann den Korridor verlassen
+// und ihn eine Kurve spaeter wieder kreuzen. Ab 60 m muss deshalb der gesamte
+// verbleibende Verlauf ausserhalb der beiden sichtbaren Fahrbahnkorridore
+// bleiben.
+let arc = 0;
+let closestReturn = { distance: Infinity, arc: 0, heightDelta: 0 };
+for (let i = 1; i < pass.centerline.length / 3; i++) {
+  const ax = pass.centerline[(i - 1) * 3];
+  const az = pass.centerline[(i - 1) * 3 + 2];
+  const point = {
+    x: pass.centerline[i * 3],
+    y: pass.centerline[i * 3 + 1],
+    z: pass.centerline[i * 3 + 2],
+  };
+  arc += Math.hypot(point.x - ax, point.z - az);
+  if (arc < 60) continue;
+
+  const host = nearestOnRoad(ring, point);
+  if (host.distance < closestReturn.distance) {
+    closestReturn = {
+      distance: host.distance,
+      arc,
+      heightDelta: point.y - host.y,
+    };
+  }
+}
+check(
+  'Bergpass kehrt nach dem Abzweig nicht in den Ringkorridor zurueck',
+  closestReturn.distance >= 10.35,
+  `Minimum ${closestReturn.distance.toFixed(2)} m bei km ${(closestReturn.arc / 1000).toFixed(3)}, ` +
+    `Hoehendifferenz ${closestReturn.heightDelta.toFixed(2)} m (Soll >= 10,35 m)`,
+);
+
 if (failed > 0) process.exitCode = 1;

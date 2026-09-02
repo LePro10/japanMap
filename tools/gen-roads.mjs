@@ -540,6 +540,7 @@ function traceRoute(
     corridors = null,
     headroom = 1,
     hairpins = false,
+    hairpinStartClearance = 0,
     skipApexes = new Set(),
     downhillBias = 0,
   },
@@ -613,7 +614,11 @@ function traceRoute(
     ? hairpinApexes(lean, 120, (x, z) => {
         const [ix, iz] = grid.toCell(x, z);
         return grid.height[grid.index(ix, iz)];
-      })
+      }).filter(
+        (apex) =>
+          Math.hypot(apex.x - waypoints[0][0], apex.z - waypoints[0][1]) >=
+          hairpinStartClearance,
+      )
     : [];
   // Querstück gut doppelt so lang wie der Sollradius: zwei Bögen à
   // `R·tan(42,5°)` ≈ 0,92 R brauchen zusammen 1,84 R, und die Stauchung
@@ -1046,7 +1051,7 @@ function layout(terrain) {
     // Ohne diesen Wegpunkt folgt die kostengünstigste Route der Ringtrasse
     // zunächst rund 80 m in Gegenrichtung und sinkt dabei unter sie: zwei
     // sichtbare Fahrbahnen liegen dann fast deckungsgleich uebereinander.
-    passDeparture: pushInland(terrain, -620, -250, 3),
+    passDeparture: pushInland(terrain, -620, -380, 3),
     passRegion: { minX: -1400, maxX: -200, minZ: -1450, maxZ: -500 },
     village: [
       [-760, 60],
@@ -1417,6 +1422,10 @@ async function main() {
       // Die einzige Strecke, die Kehren bekommt. SPEC §2.1 fordert sie für den
       // Bergpass; überall sonst wäre eine Haarnadel ein Fehler.
       hairpins: true,
+      // Am Netzanschluss braucht der Pass eine lesbare Einfahrt. Eine dort
+      // aufgeweitete Kehre kann den engen Abzweigkorridor nachtraeglich
+      // verlassen und die Ringstrasse auf anderer Hoehe erneut kreuzen.
+      hairpinStartClearance: 180,
       /**
        * **Der Regler zwischen Serpentinen und Erdbau. Bewusst auf 0.**
        *
@@ -1595,6 +1604,7 @@ async function main() {
           closed: definition.closed,
           headroom: definition.headroom ?? 0.8,
           hairpins: definition.hairpins === true,
+          hairpinStartClearance: definition.hairpinStartClearance ?? 0,
           downhillBias: definition.downhillBias ?? 0,
           skipApexes,
           ...(definition.corridor ? { corridor: definition.corridor } : {}),
