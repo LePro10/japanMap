@@ -100,9 +100,11 @@ export interface HullGround {
 /**
  * Ist dieser Belag eine **Fahrbahn**? — P21.
  *
- * `DriveSystem.surface()` liefert `'asphalt'` und `'kies'` **ausschließlich**
- * für Straßen (dort steht `#roadSurface`); alles andere ist `'wasser'` oder
- * `'gelaende'`. Die Frage „Fahrbahn?" ist damit genau diese Prüfung.
+ * `DriveSystem.surface()` liefert `'asphalt'` und `'kies'` für Straßen
+ * (dort steht `#roadSurface`) und seit der Stadtplatten-Korrektur auch für
+ * die Teerfläche des Distrikts — dieselbe gerechnete Fläche, nur ohne
+ * Mittellinie. Alles andere ist `'wasser'` oder `'gelaende'`. Die Frage
+ * „Fahrbahn?" ist damit genau diese Prüfung.
  *
  * > **Bis P21 stand hier `!== 'gelaende'`, und das war ein Fehler mit
  * > Zoneneffekt.** Die Begründung galt der Fahrbahn (eine gerechnete Fläche ist

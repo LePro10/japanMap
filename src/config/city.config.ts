@@ -1,6 +1,13 @@
-import { CITY_DISTRICT, CITY_GROUND_Y, CITY_ROAD_LEVEL, type CityDistrict } from './city.mjs';
+import {
+  CITY_DISTRICT,
+  CITY_GROUND_Y,
+  CITY_ROAD_LEVEL,
+  districtBlend,
+  inCityDistrict,
+  type CityDistrict,
+} from './city.mjs';
 
-export { CITY_DISTRICT, CITY_GROUND_Y, CITY_ROAD_LEVEL };
+export { CITY_DISTRICT, CITY_GROUND_Y, CITY_ROAD_LEVEL, districtBlend, inCityDistrict };
 export type { CityDistrict };
 
 /**

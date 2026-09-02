@@ -33,3 +33,6 @@ export declare const CITY_PAD_FEATHER: number;
 
 /** 1 im Distrikt, 0 weiter als `feather` außerhalb, dazwischen glatt. */
 export declare function districtBlend(x: number, z: number, feather?: number): number;
+
+/** Harte Zugehörigkeit zum Distriktkasten — ohne Auslauf. */
+export declare function inCityDistrict(x: number, z: number): boolean;

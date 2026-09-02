@@ -1,8 +1,7 @@
 import type { Vector3 } from 'three';
 
 import { WATER_PHYS } from '@/config/vehicle.config';
-import { CITY, CITY_SLAB_Y } from '@/config/city.config';
-import { districtBlend } from '@/config/city.mjs';
+import { CITY, CITY_SLAB_Y, districtBlend, inCityDistrict } from '@/config/city.config';
 import { ROAD_MESH, ROAD_TYPES } from '@/config/roads.config';
 import type { RoadNetwork } from '@/world/roads/RoadNetwork';
 import type { TerrainSampler } from '@/world/TerrainSampler';
@@ -293,6 +292,21 @@ export class RoadGround implements Ground {
       const depth = this.#water.at(x, z, this.#groundBase(x, z)).depth;
       if (depth > WATER_PHYS.wetThreshold) return 'wasser';
     }
+    // ── Stadtplatte = Asphalt — und nur die Stadtplatte ──────────────────
+    //
+    // Die Bodenplatte trägt dasselbe `RoadMaterial` wie die Fahrbahn
+    // (`CitySystem`, „nicht ein gleich aussehendes"). Das Straßennetz kennt
+    // davon aber nur die eine `city`-Strecke; die Gassen zwischen den Blöcken
+    // (5…20 m, `CITY.block.streetByDepth`) sind Lücken in der Bebauung auf
+    // derselben Teerfläche. Wer dort neben der Strecke fuhr, bekam
+    // `gelaende`: 0,70 Haftung, 0,22/s Dämpfung, Drift-Provokation ×1,35,
+    // Staub statt Spur — obwohl das Bild Asphalt zeigt.
+    //
+    // Der Kasten ist `CITY_DISTRICT` (360 × 360 m), nicht die 800-m-Stadtzone
+    // des Bakers. Außerhalb der Platte ist das Gelände Wiese, und die bleibt
+    // Gelände. Der 24-m-Saum der Schürze auch: er ist der Übergang, nicht die
+    // Stadt.
+    if (inCityDistrict(x, z)) return 'asphalt';
     return 'gelaende';
   }
 
