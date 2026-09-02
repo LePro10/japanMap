@@ -170,7 +170,10 @@ jobs:
           // Dev: 3D-Weltmarker und tatsächliche Fahrzeugbewegung direkt verifizieren.
           const dev = await browser.newPage({ viewport: { width: 1440, height: 900 } });
           await dev.goto('http://127.0.0.1:4179/', { waitUntil: 'domcontentloaded' });
-          await dev.waitForFunction(() => Boolean(window.japanMap?.engine), null, { timeout });
+          await dev.waitForFunction(() => (
+            Boolean(window.japanMap?.engine?.systems?.some((system) => system.name === 'DriveSystem')) &&
+            Boolean(document.querySelector('.navmap__canvas'))
+          ), null, { timeout });
           const mechanics = await dev.evaluate(async () => {
             const engine = window.japanMap.engine;
             const drive = engine.systems.find((system) => system.name === 'DriveSystem');
@@ -180,6 +183,7 @@ jobs:
             const choose = (nx, ny, action) => {
               window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyM', key: 'm', bubbles: true }));
               const canvas = document.querySelector('.navmap__canvas');
+              if (!canvas) throw new Error('Navigation canvas fehlt');
               const rect = canvas.getBoundingClientRect();
               canvas.dispatchEvent(new PointerEvent('pointerup', {
                 button: 0,
