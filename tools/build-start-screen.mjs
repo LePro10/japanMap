@@ -20,7 +20,6 @@ const STILLS = [
   { file: '05-bergpass.png', name: 'toge' },
   { file: '03-stadt-strasse.png', name: 'city' },
   { file: '09-fahren-ring.png', name: 'drive' },
-  { file: '06-tempelpfad.png', name: 'torii' },
 ];
 
 const LANDMARKS = [
@@ -133,7 +132,7 @@ function kenBurns(name, zoom, x, y) {
 
 function concatTrailer() {
   const list = join(outDir, 'concat.txt');
-  const names = ['aerial', 'toge', 'city', 'drive'];
+  const names = ['drive', 'city', 'toge', 'aerial'];
   writeFileSync(list, names.map((name) => `file '${name}.mp4'`).join('\n'));
   const output = join(outDir, 'trailer.mp4');
   execFileSync(
