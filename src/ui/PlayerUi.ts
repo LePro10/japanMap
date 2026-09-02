@@ -17,6 +17,7 @@ import { VIEWPOINTS, applyViewpoint, type CameraPlacer } from '@/debug/viewpoint
 import {
   CONTROLS,
   DRIVE_CONTROLS,
+  FLY_CONTROLS,
   TOUCH_CONTROLS,
   TOUCH_DRIVE_CONTROLS,
   controlTable,
@@ -182,6 +183,13 @@ export interface EventsControl {
   owns(id: VehicleId): boolean;
   price(id: VehicleId): number;
   buy(id: VehicleId): boolean;
+  /**
+   * Ein Code. Die Oberfläche kennt den Wortlaut nicht — sie reicht durch
+   * und schließt das Feld am Rückgabewert. Heute der Sandkasten (Autos,
+   * später Tunes und Upgrades); ein zweiter Code wäre eine zweite Zeile
+   * in `Profile`, nicht ein zweites Feld hier.
+   */
+  enterCode(code: string): boolean;
   /** Ein Rückruf, der bei jeder Änderung des Kontostands feuert. */
   onChange(fn: () => void): void;
 }
@@ -295,6 +303,9 @@ export class PlayerUi {
     this.#bus.on('drive:mode', () => {
       this.#syncDrive();
     });
+    this.#bus.on('walk:mode', () => {
+      this.#syncDrive();
+    });
     // Und derselbe Weg für die Fahrzeugwahl: der Wechsel kann auch aus dem
     // Debug-Panel kommen.
     this.#bus.on('drive:vehicle', () => {
@@ -396,6 +407,14 @@ export class PlayerUi {
     if (this.#locked) return;
     if (!this.#started) return;
     event.preventDefault();
+    // Code-Feld zuerst: Escape im leeren Feld darf nicht gleich das ganze
+    // Menü zumachen. Dasselbe Muster wie „ein von Hand gesetzter Zustand"
+    // umgekehrt — der sichtbare Zustand (Feld offen) ist der, den Escape
+    // zuerst meint.
+    if (this.#codeOpen()) {
+      this.#hideCode();
+      return;
+    }
     if (this.#menuOpen) this.#resume();
     else {
       this.#menuOpen = true;
@@ -404,6 +423,7 @@ export class PlayerUi {
   };
 
   #resume(): void {
+    this.#hideCode();
     this.#menuOpen = false;
     this.#render();
     // **Auf Touch wird kein Lock angefordert.** Er käme nicht zustande, und der
@@ -431,6 +451,7 @@ export class PlayerUi {
     // Beim Öffnen die Liste neu beschriften — Bestzeiten und Kontostand haben
     // sich seit dem letzten Mal geändert. Begründung bei `#fillEventList`.
     if (this.#menuOpen) this.#syncGarage();
+    else this.#hideCode();
     this.#menu.hidden = !this.#menuOpen || (!this.#touchMode && this.#locked);
     // Das Bedienfeld gehört nicht über das offene Menü.
     this.#touch?.setVisible(!this.#menuOpen);
@@ -470,7 +491,22 @@ export class PlayerUi {
     menu.innerHTML = `
       <div class="menu__box">
         <header class="menu__head">
-          <p class="menu__title">japanMap</p>
+          <div class="menu__brand">
+            <p class="menu__title">japanMap</p>
+            <form class="menu__code" hidden method="dialog">
+              <input
+                class="menu__codeInput"
+                type="text"
+                maxlength="12"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                name="k"
+                aria-label="Code"
+              />
+            </form>
+          </div>
           <div class="menu__headButtons">
             ${
               this.#audio
@@ -532,11 +568,13 @@ export class PlayerUi {
         </section>
 
         <section class="menu__panel" data-panel="steuerung">
-          ${hasTouch() ? `<h3 class="menu__subhead">Touch</h3>${controlTable(TOUCH_CONTROLS, 'keytable')}<h3 class="menu__subhead">Keyboard and mouse</h3>` : ''}
+          ${hasTouch() ? `<h3 class="menu__subhead">Touch</h3>${controlTable(TOUCH_CONTROLS, 'keytable')}<h3 class="menu__subhead">On foot</h3>` : '<h3 class="menu__subhead">On foot</h3>'}
           ${controlTable(CONTROLS, 'keytable')}
           <h3 class="menu__subhead">In the car</h3>
           ${hasTouch() ? controlTable(TOUCH_DRIVE_CONTROLS, 'keytable') : ''}
           ${controlTable(DRIVE_CONTROLS, 'keytable')}
+          <h3 class="menu__subhead">Free camera</h3>
+          ${controlTable(FLY_CONTROLS, 'keytable')}
         </section>
 
         <section class="menu__panel" data-panel="blick">
@@ -562,6 +600,7 @@ export class PlayerUi {
     this.#must(menu, '.menu__resume').addEventListener('click', () => {
       this.#resume();
     });
+    this.#wireCode(menu);
     if (this.#audio) {
       this.#must(menu, '.menu__mute').addEventListener('click', () => {
         const audio = this.#audio;
@@ -581,7 +620,7 @@ export class PlayerUi {
       // Menü offen bleibt, verlangt zwei Handlungen für eine Absicht — und auf
       // einem Telefon liegt der „Weiter"-Knopf am anderen Rand des Kastens.
       this.#must(menu, '.menu__drive').addEventListener('click', () => {
-        this.#drive?.toggle();
+        this.#drive?.toggleVehicle();
         this.#syncDrive();
         this.#resume();
       });
@@ -612,6 +651,78 @@ export class PlayerUi {
     for (const panel of menu.querySelectorAll<HTMLElement>('.menu__panel')) {
       panel.hidden = panel.dataset.panel !== this.#tab;
     }
+  }
+
+  /**
+   * Das Easter-Egg im Titel.
+   *
+   * **Klick auf „japanMap" öffnet ein leeres Feld**, Enter schickt den Inhalt
+   * an `Profile.enterCode`. Kein Platzhalter, keine Beschriftung — wer den
+   * Titel nicht extra antippt, sieht nichts, und das ist der Punkt. Der Code
+   * selbst steht in `Profile`, nicht hier: zwei Stellen wären zwei Gelegenheiten,
+   * sie auseinanderlaufen zu lassen.
+   *
+   * Ohne `events` gibt es den Sandkasten nicht, also bleibt der Titel tot.
+   * Ein Feld, das nichts freischalten kann, wäre die Anzeige, die lügt.
+   */
+  #wireCode(menu: HTMLElement): void {
+    if (!this.#events) return;
+    const title = this.#must(menu, '.menu__title');
+    const form = this.#must(menu, '.menu__code') as HTMLFormElement;
+    const input = this.#must(menu, '.menu__codeInput') as HTMLInputElement;
+
+    title.addEventListener('click', () => {
+      if (!form.hidden) this.#hideCode();
+      else this.#openCode();
+    });
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const events = this.#events;
+      if (!events) return;
+      if (events.enterCode(input.value)) {
+        this.#hideCode();
+        // In die Garage, damit man *sieht*, dass die Autos frei sind — nicht
+        // nur dass das Feld verschwunden ist. Eine Zahl ohne Bild hat in
+        // diesem Projekt schon zweimal einen Fehler durchgelassen.
+        if (this.#drive) {
+          this.#tab = 'garage';
+          this.#syncTabs(this.#menu);
+        }
+        this.#syncGarage();
+        return;
+      }
+      form.classList.remove('is-wrong');
+      void form.offsetWidth;
+      form.classList.add('is-wrong');
+      input.value = '';
+      input.focus();
+    });
+  }
+
+  #codeOpen(): boolean {
+    const form = this.#menu.querySelector<HTMLElement>('.menu__code');
+    return !!form && !form.hidden;
+  }
+
+  #openCode(): void {
+    const form = this.#menu.querySelector<HTMLFormElement>('.menu__code');
+    const input = this.#menu.querySelector<HTMLInputElement>('.menu__codeInput');
+    if (!form || !input) return;
+    form.hidden = false;
+    form.classList.remove('is-wrong');
+    input.value = '';
+    input.focus();
+  }
+
+  #hideCode(): void {
+    const form = this.#menu.querySelector<HTMLFormElement>('.menu__code');
+    const input = this.#menu.querySelector<HTMLInputElement>('.menu__codeInput');
+    if (!form || !input) return;
+    form.hidden = true;
+    form.classList.remove('is-wrong');
+    input.value = '';
+    input.blur();
   }
 
   #fillLevels(): void {
@@ -779,9 +890,11 @@ export class PlayerUi {
     const drive = this.#drive;
     if (!drive) return;
     const label = this.#menu.querySelector<HTMLElement>('.menu__driveLabel');
-    if (label) label.textContent = drive.active ? 'Leave the car' : 'Drive';
+    if (label) {
+      label.textContent = drive.active ? 'Get out' : 'Get in the car';
+    }
     this.#menu.querySelector('.menu__drive')?.classList.toggle('is-active', drive.active);
-    this.#touch?.setDriveMode(drive.active);
+    this.#touch?.setDriveMode(drive.active, drive.walking);
   }
 
   #syncDebug(): void {

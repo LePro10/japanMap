@@ -14,11 +14,13 @@ import { DEFAULT_VEHICLE, VEHICLE_ORDER, type VehicleId } from '@/config/vehicle
  *
  * ## Was gespeichert wird
  *
- * Vier Dinge, und mehr sollen es nicht werden: Kontostand, freigeschaltete
- * Fahrzeuge, Bestzeit je Veranstaltung, Höchstpunktzahl je Driftlauf. Alles
- * andere (Qualitätsstufe, Debug-Schalter, Bestzeit je *Straße*) hat schon einen
- * eigenen Schlüssel und behält ihn — ein Sammelobjekt, in das alles wandert,
- * ist beim nächsten Format-Wechsel ein Datenverlust.
+ * Fünf Dinge: Kontostand, freigeschaltete Fahrzeuge, Bestzeit je Veranstaltung,
+ * Höchstpunktzahl je Driftlauf, und der **Sandkasten**. Der letzte ist ein
+ * Flag, kein Katalog — Tunes und Upgrades, die es heute nicht gibt, fragen
+ * später dieselbe Zeile. Alles andere (Qualitätsstufe, Debug-Schalter, Bestzeit
+ * je *Straße*) hat schon einen eigenen Schlüssel und behält ihn — ein
+ * Sammelobjekt, in das alles wandert, ist beim nächsten Format-Wechsel ein
+ * Datenverlust.
  *
  * ## Gelesen wird vorsichtig
  *
@@ -30,9 +32,10 @@ import { DEFAULT_VEHICLE, VEHICLE_ORDER, type VehicleId } from '@/config/vehicle
  * Zonenmaske ein halbes Jahr lang wirkungslos gemacht hat.
  *
  * > **Und Schummeln ist ausdrücklich erlaubt.** Wer seinen Kontostand im
- * > Speicher hochsetzt, schaltet sich Autos frei. Das ist ein Einzelspieler-Spiel
- * > ohne Bestenliste; eine Absicherung dagegen kostet einen Server und schützt
- * > niemanden vor irgendetwas.
+ * > Speicher hochsetzt, schaltet sich Autos frei. Der Sandkasten (`og123` über
+ * > den Titel im Pausenmenü) ist derselbe Vertrag, nur von vorne: ein
+ * > Einzelspieler-Spiel ohne Bestenliste braucht keine Absicherung, die einen
+ * > Server kostet und niemanden vor irgendetwas schützt.
  */
 
 const STORAGE_KEY = 'japanmap.profile';
@@ -62,11 +65,20 @@ export const VEHICLE_PRICE: Readonly<Record<VehicleId, number>> = {
   truck: 15_000,
 };
 
+/**
+ * Der Sandkasten-Code. Lebt hier und nicht in der Oberfläche, damit das Menü
+ * den Wortlaut nicht kennt — wer den Titel anklickt, sieht ein leeres Feld,
+ * keine Beschriftung „Cheat".
+ */
+const SANDBOX_CODE = 'og123';
+
 interface Stored {
   yen: number;
   owned: string[];
   bestByEvent: Record<string, number>;
   driftByEvent: Record<string, number>;
+  /** Sandkasten — Autos, und später Tunes und Upgrades. */
+  sandbox: boolean;
 }
 
 export class Profile {
@@ -74,6 +86,20 @@ export class Profile {
   #owned = new Set<VehicleId>([DEFAULT_VEHICLE]);
   #best = new Map<string, number>();
   #drift = new Map<string, number>();
+  /**
+   * Der Sandkasten — ein Flag, kein Katalog.
+   *
+   * Wer später Tunes, Upgrades oder Strecken dahinterhängt, fragt `sandbox`
+   * (oder `owns()` für Fahrzeuge) und nicht eine Liste, die man jedes Mal
+   * nachziehen müsste. Das ist die Lehre aus den sieben Modulkonstanten in
+   * P17: eine Liste, die aus dem Bestand von *heute* gebaut ist, kennt den
+   * Bestand von morgen nicht.
+   *
+   * Beim Laden werden alle **aktuellen** Fahrzeuge nachgezogen. Ein fünftes
+   * Auto, das es beim Freischalten noch nicht gab, steht damit nach dem
+   * nächsten Start in der Garage — ohne dass jemand den Speicher anfasst.
+   */
+  #sandbox = false;
   #listeners: (() => void)[] = [];
 
   constructor() {
@@ -92,8 +118,18 @@ export class Profile {
     return this.#yen;
   }
 
+  /**
+   * Sandkasten offen? Die eine Frage, die ein künftiges Upgrade stellen muss.
+   *
+   * `owns()` deckt Fahrzeuge ab. Alles, was noch kein Fahrzeug ist — Tune,
+   * Lack, Triebwerk — hängt an dieser Zeile, nicht an einer zweiten Liste.
+   */
+  get sandbox(): boolean {
+    return this.#sandbox;
+  }
+
   owns(id: VehicleId): boolean {
-    return this.#owned.has(id);
+    return this.#sandbox || this.#owned.has(id);
   }
 
   get ownedCount(): number {
@@ -109,7 +145,7 @@ export class Profile {
 
   /** Ein Fahrzeug kaufen. Gibt zurück, ob es geklappt hat. */
   buy(id: VehicleId): boolean {
-    if (this.#owned.has(id)) return false;
+    if (this.owns(id)) return false;
     const price = VEHICLE_PRICE[id];
     if (this.#yen < price) return false;
     this.#yen -= price;
@@ -117,6 +153,37 @@ export class Profile {
     this.#save();
     this.#notify();
     return true;
+  }
+
+  /**
+   * Den Sandkasten-Code prüfen. Gibt zurück, ob der Code stimmte — auch dann,
+   * wenn schon alles frei war. Die Oberfläche schließt das Feld daran, nicht
+   * daran, ob sich der Bestand bewegt hat: ein zweites Mal denselben Code
+   * einzugeben darf nicht wie ein Tippfehler aussehen.
+   *
+   * Groß/klein ist egal. Auf einem Telefon setzt die erste Taste oft einen
+   * Großbuchstaben, und ein Code, der genau dann scheitert, wäre der Code,
+   * den niemand findet.
+   */
+  enterCode(raw: string): boolean {
+    const code = raw.trim().toLowerCase();
+    if (code !== SANDBOX_CODE) return false;
+    this.#unlockAll();
+    return true;
+  }
+
+  #unlockAll(): void {
+    let changed = !this.#sandbox;
+    this.#sandbox = true;
+    for (const id of VEHICLE_ORDER) {
+      if (!this.#owned.has(id)) {
+        this.#owned.add(id);
+        changed = true;
+      }
+    }
+    if (!changed) return;
+    this.#save();
+    this.#notify();
   }
 
   bestOf(eventId: string): number | null {
@@ -157,6 +224,7 @@ export class Profile {
   reset(): void {
     this.#yen = 0;
     this.#owned = new Set<VehicleId>([DEFAULT_VEHICLE]);
+    this.#sandbox = false;
     this.#best.clear();
     this.#drift.clear();
     try {
@@ -189,6 +257,10 @@ export class Profile {
           }
         }
       }
+      if (d.sandbox === true) {
+        this.#sandbox = true;
+        for (const id of VEHICLE_ORDER) this.#owned.add(id);
+      }
       readTimes(d.bestByEvent, this.#best, MAX_PLAUSIBLE_S);
       readTimes(d.driftByEvent, this.#drift, Number.MAX_SAFE_INTEGER);
     } catch {
@@ -202,6 +274,7 @@ export class Profile {
       owned: [...this.#owned],
       bestByEvent: Object.fromEntries(this.#best),
       driftByEvent: Object.fromEntries(this.#drift),
+      sandbox: this.#sandbox,
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));

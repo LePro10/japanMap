@@ -190,6 +190,17 @@ export type AppEvents = {
   'drive:mode': { active: boolean };
 
   /**
+   * Zu Fuß an oder aus.
+   *
+   * Eigenes Ereignis und nicht `drive:mode` mit einem dritten Wert: das HUD,
+   * der Motor und die Fingersteuerung fragen bisher `active` als „im Auto".
+   * Ein Enum an derselben Stelle hätte jeden Zuhörer umbauen müssen, und
+   * einer davon — der Motor — hätte im Unbekannten den Leerlauf verloren.
+   * Zwei Booleans, eine Bedeutung je Ereignis.
+   */
+  'walk:mode': { active: boolean };
+
+  /**
    * Das gefahrene Fahrzeug hat gewechselt — P18.
    *
    * Aus demselben Grund ein Ereignis wie `drive:mode`: gewechselt wird aus dem

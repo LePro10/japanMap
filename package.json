@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "start-screen": "node tools/build-start-screen.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

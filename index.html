@@ -19,10 +19,43 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>japanMap</title>
+    <link rel="preload" as="image" href="./start/aerial.webp" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #06080c;
+        color: #d8dee9;
+      }
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        font-family: ui-monospace, "Cascadia Code", monospace;
+      }
+      #boot strong {
+        position: absolute;
+        top: 22px;
+        left: 22px;
+        font-weight: 400;
+        font-size: 28px;
+        letter-spacing: 0.34em;
+        text-indent: 0.34em;
+        text-transform: uppercase;
+      }
+      #boot b {
+        position: absolute;
+        left: 22px;
+        bottom: 22px;
+        font-size: 64px;
+        letter-spacing: -0.04em;
+      }
+    </style>
   </head>
   <body>
     <canvas id="viewport"></canvas>
     <div id="overlay"></div>
+    <div id="boot" aria-hidden="true"><strong>japanMap</strong><b>0%</b></div>
 
     <noscript>
       <p class="fatal">japanMap braucht JavaScript und WebGL2.</p>

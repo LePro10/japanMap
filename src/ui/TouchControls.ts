@@ -68,9 +68,12 @@ export interface TouchCameraTarget {
  */
 export interface TouchDriveTarget {
   readonly active: boolean;
+  readonly walking: boolean;
   toggle(): void;
+  toggleVehicle(): void;
   respawn(): void;
   setHandbrake(down: boolean): void;
+  setJump(down: boolean): void;
 }
 
 export interface TouchControlsOptions {
@@ -129,6 +132,7 @@ export class TouchControls {
         <button type="button" class="touch__btn" data-touch="up" aria-label="steigen">▲</button>
         <button type="button" class="touch__btn" data-touch="down" aria-label="sinken">▼</button>
         <button type="button" class="touch__btn" data-touch="handbrake" aria-label="Handbrake">✋</button>
+        <button type="button" class="touch__btn" data-touch="jump" aria-label="Jump" hidden>↑</button>
       </div>
       <div class="touch__side">
         <button type="button" class="touch__btn touch__btn--wide" data-touch="menu" aria-label="Menu">☰</button>
@@ -265,38 +269,47 @@ export class TouchControls {
         // ausgelenkt steht, schiebt seine Achsen sonst in das andere System
         // hinüber — im Auto wäre das Vollgas beim Einsteigen.
         this.#releaseAll();
-        this.#drive?.toggle();
-        this.setDriveMode(this.#drive?.active ?? false);
+        this.#drive?.toggleVehicle();
+        this.setDriveMode(this.#drive?.active ?? false, this.#drive?.walking ?? false);
       });
       halten(this.#must('[data-touch="handbrake"]'), 0, (down) => {
         this.#drive?.setHandbrake(down);
       });
+      halten(this.#must('[data-touch="jump"]'), 0, (down) => {
+        this.#drive?.setJump(down);
+      });
     } else {
       auto.hidden = true;
     }
-    this.setDriveMode(this.#drive?.active ?? false);
+    this.setDriveMode(this.#drive?.active ?? false, this.#drive?.walking ?? false);
   }
 
   /**
-   * Bedienfeld auf Flug oder Fahrt umstellen.
+   * Bedienfeld auf Flug, Fahrt oder zu Fuß umstellen.
    *
    * Öffentlich, weil der Modus auch **ohne** diesen Knopf wechseln kann: die
-   * Taste `V` am Rechner und der Eintrag im Pausenmenü führen auf denselben
+   * Taste `F` am Rechner und der Eintrag im Pausenmenü führen auf denselben
    * Zustand. Ein Bedienfeld, das seinen Modus nur beim eigenen Knopfdruck
    * nachführt, zeigt nach jedem anderen Weg das Falsche — dieselbe Klasse
    * „Anzeige, die lügt", gegen die dieses Projekt schon bei `F1` und der
    * Stufenwahl angetreten ist.
    */
-  setDriveMode(active: boolean): void {
+  setDriveMode(active: boolean, walking = false): void {
+    const onFoot = walking && !active;
     this.#root.classList.toggle('touch--drive', active);
-    // ▲/▼ steigen und sinken, ⇩ schaltet die Bodenkollision: alle drei sind im
-    // Auto sinnlos. Die Handbremse ist es umgekehrt im Flug.
-    this.#must('[data-touch="up"]').hidden = active;
-    this.#must('[data-touch="down"]').hidden = active;
-    this.#must('[data-touch="collision"]').hidden = active;
+    this.#root.classList.toggle('touch--walk', onFoot);
+    // ▲/▼ steigen und sinken, ⇩ schaltet die Bodenkollision: Flugwerkzeug.
+    // Zu Fuß und im Auto sind sie sinnlos. Sprung und Handbremse teilen sich
+    // nicht denselben Knopf — Space bedeutet in den zwei Modi zwei Dinge, und
+    // ein Knopf, der beides tut, wäre die Bremse, die springt.
+    this.#must('[data-touch="up"]').hidden = active || onFoot;
+    this.#must('[data-touch="down"]').hidden = active || onFoot;
+    this.#must('[data-touch="collision"]').hidden = active || onFoot;
     this.#must('[data-touch="handbrake"]').hidden = !active;
+    this.#must('[data-touch="jump"]').hidden = !onFoot;
     this.#must('[data-touch="drive"]').classList.toggle('is-active', active);
     if (!active) this.#drive?.setHandbrake(false);
+    if (!onFoot) this.#drive?.setJump(false);
     this.#updateSpeedLabel();
   }
 
@@ -430,7 +443,7 @@ export class TouchControls {
     // wird nur bei einer Eingabe nachgeführt; im Fahrmodus stünde sie also
     // daneben und wäre dazu noch veraltet. Zwei Tempoanzeigen nebeneinander,
     // von denen eine falsch ist, sind schlechter als eine.
-    this.#speedLabel.hidden = this.#drive?.active ?? false;
+    this.#speedLabel.hidden = (this.#drive?.active ?? false) || (this.#drive?.walking ?? false);
     this.#speedLabel.textContent = `${this.#camera.speed.toFixed(0)} m/s`;
   }
 

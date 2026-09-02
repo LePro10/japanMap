@@ -111,6 +111,8 @@ declare global {
        * verlangt einen, die eingebettete Vorschau gibt keinen.
        */
       drive?: (on?: boolean) => boolean;
+      /** Zu Fuß schalten oder abfragen. */
+      walk?: (on?: boolean) => boolean;
       /**
        * Der Messstand des Fahrmodus (P14): jede Strecke abfahren, Durchdringung,
        * Spurtreue, Tempo und CPU je Schritt mitschreiben — plus die
