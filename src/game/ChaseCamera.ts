@@ -27,9 +27,9 @@ import type { Ground, Vehicle } from './Vehicle';
  * Arm, Bremse kürzt ihn; beides sind eigene Regler, absichtlich nicht derselbe
  * mit Vorzeichen (P25: ein Regler je Messung).
  *
- * Rütteln sitzt auf der **Position**, nicht auf der Quaternion. Rotation auf
- * einem Bildschirm ohne Fliehkraft ist Übelkeit — derselbe Satz, der der
- * Haube das Wanken verbietet.
+ * Querbewegung über Roll und Look-ahead, nicht über Positions-Rütteln.
+ * Ein Sinus auf der Kameraposition hat das Bild zittern lassen — das liest
+ * sich als Glitch. Übrig ist nur ein einmaliger Landestoß.
  *
  * ## Zwei Ansichten
  *
@@ -74,7 +74,6 @@ export class ChaseCamera {
   #roll = 0;
   /** 1 = voller Arm, `occludeMin` = am Blech. */
   #occlude = 1;
-  #clock = 0;
   #wasAirborne = false;
 
   /** Blick drehen — Wegbetrag in Pixeln, wie bei der Maus. */
@@ -121,7 +120,6 @@ export class ChaseCamera {
   update(dt: number, vehicle: Vehicle, ground: Ground, camera: PerspectiveCamera): void {
     const speed = vehicle.telemetry.speed;
     const t = vehicle.telemetry;
-    this.#clock += dt;
 
     const accelBlend = 1 - Math.exp(-CHASE_CAMERA.accelRate * dt);
     this.#accelLong += (t.accelLong - this.#accelLong) * accelBlend;
@@ -292,8 +290,6 @@ export class ChaseCamera {
       vehicle.position.y + CHASE_CAMERA.hoodHeight,
       vehicle.position.z + this.#normal.z * CHASE_CAMERA.hoodForward,
     );
-    camera.position.addScaledVector(this.#shake, CHASE_CAMERA.rumbleHood);
-
     const yaw = vehicle.yaw + this.#yawOffset;
     // Ein Drittel des Aufbau-Nickens, kein Wanken — Begründung im Kopf.
     // `vehicle.pitch` positiv senkt die Nase; die Haube blickt mit `sin(pitch)`
@@ -306,12 +302,14 @@ export class ChaseCamera {
       camera.position.z + Math.cos(yaw) * cosPitch * 20,
     );
     camera.lookAt(this.#target);
+    camera.position.add(this.#shake);
   }
 
   /**
-   * Stöße und Dauer-Rütteln. Landung und Kollision sind Impulse (klingen über
-   * `shakeDecay` aus); Belag, Drift und Bremse sind ein Sinusgemisch auf der
-   * Uhr, damit es nicht von Frame zu Frame würfelt.
+   * Nur Landung, kein Dauer-Rütteln. Ein Sinus auf der Position hat das
+   * ganze Bild zittern lassen — das liest sich als Glitch, nicht als Belag.
+   * Querbewegung bleibt Roll und Look-ahead, die hängen am Wagen und nicht
+   * am Pixel.
    */
   #updateShake(dt: number, vehicle: Vehicle): void {
     const t = vehicle.telemetry;
@@ -321,26 +319,6 @@ export class ChaseCamera {
       this.#shake.y -= CHASE_CAMERA.landImpulse * clamp(t.compression, 0, 1.4);
     }
     this.#wasAirborne = t.airborne;
-
-    if (t.lastPenetration > CHASE_CAMERA.hitThreshold) {
-      const mag = CHASE_CAMERA.hitImpulse * t.lastPenetration;
-      const phase = this.#clock * 17.3;
-      this.#shake.x += Math.sin(phase) * mag;
-      this.#shake.y += Math.abs(Math.sin(phase * 1.3)) * mag * 0.45;
-      this.#shake.z += Math.cos(phase * 0.7) * mag;
-    }
-
-    const loose = t.surface === 'asphalt' ? CHASE_CAMERA.rumbleAsphalt : CHASE_CAMERA.rumbleLoose;
-    let amp = loose * t.speed;
-    amp += CHASE_CAMERA.rumbleSkid * Math.max(t.skid, Math.min(t.wheelspin, 1) * 0.6);
-    if (this.#accelLong < -CHASE_CAMERA.rumbleBrakeAccel && t.speed > 6) {
-      amp += CHASE_CAMERA.rumbleBrake * Math.min(1, t.speed / 20) * (-this.#accelLong / 10);
-    }
-    if (amp < 1e-4) return;
-    const c = this.#clock;
-    this.#shake.x += amp * Math.sin(c * 37.1);
-    this.#shake.y += amp * 0.55 * Math.sin(c * 41.7);
-    this.#shake.z += amp * Math.sin(c * 29.3);
   }
 
   /**
