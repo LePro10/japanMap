@@ -10,6 +10,12 @@ import {
 
 import { PROP_COLLIDERS } from '@/config/vehicle.config';
 import { DEFAULT_VEHICLE, vehicleSpec, type VehicleId } from '@/config/vehicles.config';
+import {
+  WALK_ALIGHT_GAP,
+  WALK_BOARD_RANGE,
+  rollWalkSpawn,
+  type WalkSpawn,
+} from '@/config/walker.config';
 import type { PropPlacement } from '@/config/props.config';
 import { CAMERA } from '@/config/world.config';
 import type { FlyInputDelegate } from '@/camera/FreeFlyController';
@@ -38,6 +44,9 @@ import { DebrisFx } from './DebrisFx';
 import { LapTimer } from './LapTimer';
 import { Vehicle, type DriveInput, type Ground, type Surface } from './Vehicle';
 import { VehicleFx } from './VehicleFx';
+import { Walker, type WalkInput } from './Walker';
+import { WalkCamera } from './WalkCamera';
+import { createWalkerRig, type WalkerRig } from './walkerMesh';
 import { WaterField } from './WaterField';
 import type { CanopyHit, CanopySource } from '@/world/scatter/ScatterSystem';
 
@@ -132,6 +141,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   /** Rundenzählung auf den Toren aus P8.11 — P9.3. */
   readonly laps = new LapTimer();
   readonly camera = new ChaseCamera();
+  readonly walker = new Walker();
+  readonly walkCamera = new WalkCamera();
   /**
    * Der Rennleiter — P23.
    *
@@ -171,6 +182,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #sampler: TerrainSampler | null = null;
   #network: RoadNetwork | null = null;
   #active = false;
+  #walking = false;
+  #rig: WalkerRig | null = null;
+  #playStarted = false;
+  #spawn: WalkSpawn | null = null;
 
   #group: Group | null = null;
   #body: Mesh | null = null;
@@ -199,10 +214,13 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   readonly #axes = { forward: 0, right: 0 };
   /** Handbremsknopf der Fingersteuerung — siehe `setTouchHandbrake()`. */
   #touchHandbrake = false;
+  /** Sprung aus der Fingersteuerung — zu Fuß die Entsprechung der Leertaste. */
+  #touchJump = false;
   /** Eingabe aus einem Messlauf. Gesetzt = Tastatur und Finger sind stumm. */
   #scripted: DriveInput | null = null;
 
   readonly #input: DriveInput = { throttle: 0, brake: 0, steer: 0, handbrake: false };
+  readonly #walkInput: WalkInput = { forward: 0, right: 0, jump: false, sprint: false };
 
   /** Flugpose beim Einsteigen — beim Aussteigen wird genau sie wiederhergestellt. */
   readonly #flyPosition = new Vector3();
@@ -269,6 +287,16 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
   get active(): boolean {
     return this.#active;
+  }
+
+  /** Zu Fuß — der Zustand nach Play und nach dem Aussteigen. */
+  get walking(): boolean {
+    return this.#walking;
+  }
+
+  /** Der gewürfelte Start der Sitzung — für den Prüfstand. */
+  get spawn(): WalkSpawn | null {
+    return this.#spawn;
   }
 
   /** Zahl der eingetragenen Hindernisse — für die Abnahme. */
@@ -438,6 +466,11 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#applyVehicleGeometry();
 
     context.scene.add(group);
+
+    const rig = createWalkerRig(material);
+    rig.group.visible = false;
+    context.scene.add(rig.group);
+    this.#rig = rig;
   }
 
   /**
@@ -583,49 +616,122 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   // ── Moduswechsel ────────────────────────────────────────────────────────
 
   /**
+   * Die Sitzung beginnt zu Fuß, neben dem Auto, in der Sakura-Schale.
+   *
+   * Der Play-Knopf ruft das. Nicht `enter()`: wer das Spiel zum ersten Mal
+   * betritt, soll neben dem Wagen unter den Kirschbäumen stehen, nicht schon
+   * auf dem Sitz und nicht 300 m über der Küste. Der Seed kommt von außen
+   * (`Date.now()` im Klick, eine Zahl im Prüfstand), damit zwei Sitzungen
+   * nicht denselben Fleck treffen und der Prüfstand denselben Fleck
+   * reproduzieren kann.
+   */
+  startOnFoot(seed = Date.now()): void {
+    if (!this.#sampler || !this.#context) return;
+    const context = this.#context;
+
+    if (!this.#playStarted) {
+      context.camera.getWorldDirection(this.#flyForward);
+      this.#flyPosition.copy(context.camera.position);
+    }
+    this.#playStarted = true;
+
+    this.#leaveDrive();
+    this.#seizeCamera();
+
+    const spawn = rollWalkSpawn(seed >>> 0);
+    this.#spawn = spawn;
+    this.placeAt(spawn.x, spawn.z, spawn.heading);
+    this.#placeWalkerBesideCar();
+    this.#setWalking(true);
+    if (this.#group) this.#group.visible = true;
+    this.#readouts.modus = 'Zu Fuß';
+    context.debug?.refresh();
+  }
+
+  /**
    * Ins Auto steigen.
    *
-   * Der Wagen erscheint auf der **nächstgelegenen Straße**, nicht an einem der
-   * vier Startplätze aus `getSpawnPoints()`. Der Unterschied ist praktisch: wer
-   * gerade über den Bergpass fliegt und einsteigen will, will dort fahren und
-   * nicht auf dem Ring 2 km entfernt. Findet sich in 600 m keine Straße, steht
-   * das Auto unter der Kamera im Gelände — auf einer Karte mit 101 ha Reisfeldern
-   * ist das ein zulässiger Ort.
+   * Zwei Wege, und sie dürfen nicht denselben Spawn nehmen:
+   *
+   *  - **aus dem Freiflug** (Taste `V`, `japanMap.drive(true)`): der Wagen
+   *    erscheint auf der nächstgelegenen Straße. Wer über den Bergpass fliegt
+   *    und einsteigen will, will dort fahren, nicht 2 km entfernt auf dem Ring.
+   *  - **zu Fuß neben dem eigenen Wagen** (Taste `F`): der Wagen bleibt, wo er
+   *    steht. Ein Respawn auf die nächste Straße wäre genau dann ein Teleport,
+   *    wenn man aussteigt und wieder einsteigt.
+   *
+   * `startEvent` geht den zweiten Weg, falls man zu Fuß ist — das Rennen
+   * setzt danach `placeAt` auf den Startplatz, der Spawn hier wäre ohnehin
+   * überschrieben.
    */
   enter(): void {
     if (this.#active || !this.#sampler || !this.#context) return;
-    const context = this.#context;
 
+    if (this.#walking) {
+      this.board();
+      return;
+    }
+
+    const context = this.#context;
     context.camera.getWorldDirection(this.#flyForward);
     this.#flyPosition.copy(context.camera.position);
 
-    this.fly.setInputDelegate(this);
-    this.fly.setEnabled(false);
-    this.#active = true;
-    this.#keys.clear();
-    this.#axes.forward = 0;
-    this.#axes.right = 0;
-    this.#touchHandbrake = false;
-
+    this.#seizeCamera();
     this.#spawnNear(context.camera.position.x, context.camera.position.z);
-    if (this.#group) this.#group.visible = true;
-    this.#fx?.show();
-    this.#debris?.show();
-    this.camera.reset(this.vehicle);
-    this.#readouts.modus = 'Fahren';
-    context.bus.emit('drive:mode', { active: true });
-    this.#context?.debug?.refresh();
+    this.#beginDrive();
   }
 
-  /** Aussteigen — die Flugkamera steht danach genau da, wo sie stand. */
-  exit(): void {
+  /**
+   * Einsteigen in den Wagen, der schon da ist.
+   *
+   * Liefert false, wenn die Figur zu weit weg ist. Der Aufrufer (Taste, Menü,
+   * Touch) entscheidet, ob er das dem Spieler sagt — dieses System kennt kein
+   * HUD, und ein stilles Fehlschlagen ist die richtige Antwort auf „F neben
+   * einem Baum, 200 m vom Auto".
+   */
+  board(): boolean {
+    if (this.#active || !this.#walking || !this.#context) return false;
+    const range = Math.hypot(
+      this.walker.position.x - this.vehicle.position.x,
+      this.walker.position.z - this.vehicle.position.z,
+    );
+    if (range > WALK_BOARD_RANGE) return false;
+    this.#setWalking(false);
+    this.#beginDrive();
+    return true;
+  }
+
+  /**
+   * Aussteigen — die Figur steht an der Fahrertür, der Wagen bleibt stehen.
+   *
+   * Nicht `exit()`: das wäre zurück in den Freiflug, und der Wagen verschwände.
+   * Genau das war der alte `V`-Weg, und er bleibt für den Debug-Flug.
+   */
+  alight(): void {
     if (!this.#active || !this.#context) return;
+    this.#leaveDrive();
+    this.#placeWalkerBesideCar();
+    this.#setWalking(true);
+    if (this.#group) this.#group.visible = true;
+    this.#readouts.modus = 'Zu Fuß';
+    this.#context.debug?.refresh();
+  }
+
+  /** Auto ↔ zu Fuß. Dieselbe Taste in beide Richtungen — `F`. */
+  toggleVehicle(): void {
+    if (this.#active) this.alight();
+    else if (this.#walking) this.board();
+    else this.enter();
+  }
+
+  /** Freiflug — die Flugkamera steht danach genau da, wo sie stand. */
+  exit(): void {
+    if (!this.#active && !this.#walking) return;
+    if (!this.#context) return;
     const context = this.#context;
-    this.#active = false;
+    this.#leaveDrive();
+    this.#setWalking(false);
     if (this.#group) this.#group.visible = false;
-    this.#fx?.hide();
-    this.#debris?.hide();
-    this.#wake?.(0, 0, 0, 0, 0, false);
 
     this.fly.setEnabled(true);
     this.fly.setInputDelegate(null);
@@ -648,17 +754,76 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     }
 
     this.#readouts.modus = 'Freiflug';
-    context.bus.emit('drive:mode', { active: false });
-    this.#context?.debug?.refresh();
+    this.#context.debug?.refresh();
   }
 
   toggle(): void {
-    if (this.#active) this.exit();
+    if (this.#active || this.#walking) this.exit();
     else this.enter();
+  }
+
+  #seizeCamera(): void {
+    this.fly.setInputDelegate(this);
+    this.fly.setEnabled(false);
+    this.#keys.clear();
+    this.#axes.forward = 0;
+    this.#axes.right = 0;
+    this.#touchHandbrake = false;
+    this.#touchJump = false;
+  }
+
+  #beginDrive(): void {
+    if (!this.#context) return;
+    this.#active = true;
+    this.#playStarted = true;
+    if (this.#group) this.#group.visible = true;
+    this.#fx?.show();
+    this.#debris?.show();
+    this.camera.reset(this.vehicle);
+    this.#readouts.modus = 'Fahren';
+    this.#context.bus.emit('drive:mode', { active: true });
+    this.#context.debug?.refresh();
+  }
+
+  #leaveDrive(): void {
+    if (!this.#active) return;
+    this.#active = false;
+    this.#fx?.hide();
+    this.#debris?.hide();
+    this.#wake?.(0, 0, 0, 0, 0, false);
+    this.#context?.bus.emit('drive:mode', { active: false });
+  }
+
+  #setWalking(value: boolean): void {
+    if (this.#walking === value) return;
+    this.#walking = value;
+    if (this.#rig) this.#rig.group.visible = value;
+    if (value) {
+      this.walkCamera.reset(this.walker);
+      this.#readouts.modus = 'Zu Fuß';
+    }
+    this.#context?.bus.emit('walk:mode', { active: value });
+  }
+
+  #placeWalkerBesideCar(): void {
+    const yaw = this.vehicle.yaw;
+    // Fahrertür rechts: `right = (−cos ψ, 0, sin ψ)`. Begründung bei
+    // `WALK_ALIGHT_GAP` und im Kopf von `DriveSystem` (`#right`).
+    const rx = -Math.cos(yaw);
+    const rz = Math.sin(yaw);
+    const x = this.vehicle.position.x + rx * WALK_ALIGHT_GAP;
+    const z = this.vehicle.position.z + rz * WALK_ALIGHT_GAP;
+    this.ground.refresh(x, z, 0);
+    this.walker.respawn(x, z, yaw, this);
+    this.walkCamera.reset(this.walker);
   }
 
   /** Auto auf die nächste Straße setzen — Taste `R` und beim Einsteigen. */
   respawn(): void {
+    if (this.#walking) {
+      this.startOnFoot(this.#spawn?.seed ?? Date.now());
+      return;
+    }
     this.#spawnNear(this.vehicle.position.x, this.vehicle.position.z);
     this.camera.reset(this.vehicle);
   }
@@ -676,7 +841,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
   /** Blick aus der Fingersteuerung — weitergeleitet vom `FreeFlyController`. */
   look(dx: number, dy: number): void {
-    this.camera.look(dx, dy);
+    if (this.#walking) this.walkCamera.look(dx, dy);
+    else this.camera.look(dx, dy);
   }
 
   /** Stick aus der Fingersteuerung: vorwärts = Gas/Bremse, seitwärts = Lenken. */
@@ -698,6 +864,11 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    */
   setTouchHandbrake(down: boolean): void {
     this.#touchHandbrake = down;
+  }
+
+  /** Sprung aus der Fingersteuerung — zu Fuß. */
+  setTouchJump(down: boolean): void {
+    this.#touchJump = down;
   }
 
   /**
@@ -726,20 +897,25 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       this.toggle();
       return;
     }
-    if (!this.#active) return;
+    if (code === 'keyf') {
+      event.preventDefault();
+      this.toggleVehicle();
+      return;
+    }
+    if (!this.#active && !this.#walking) return;
 
     if (code === 'keyr') {
       event.preventDefault();
       this.respawn();
       return;
     }
-    if (code === 'keyc') {
+    if (code === 'keyc' && this.#active) {
       event.preventDefault();
       this.#readouts.ansicht = this.camera.toggleMode() === 'hood' ? 'Haube' : 'Verfolger';
       this.#context?.debug?.refresh();
       return;
     }
-    // Leertaste (Handbremse) und die Pfeiltasten scrollen sonst die Seite.
+    // Leertaste (Handbremse / Sprung) und die Pfeiltasten scrollen sonst die Seite.
     if (code === 'space' || code.startsWith('arrow')) event.preventDefault();
     this.#keys.add(code);
   };
@@ -754,6 +930,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#axes.forward = 0;
     this.#axes.right = 0;
     this.#touchHandbrake = false;
+    this.#touchJump = false;
   };
 
   #collectInput(): DriveInput {
@@ -777,9 +954,27 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     return input;
   }
 
+  #collectWalkInput(): WalkInput {
+    const input = this.#walkInput;
+    const keys = this.#keys;
+    const forward = keys.has('keyw') || keys.has('arrowup') ? 1 : 0;
+    const back = keys.has('keys') || keys.has('arrowdown') ? 1 : 0;
+    const left = keys.has('keya') || keys.has('arrowleft') ? 1 : 0;
+    const right = keys.has('keyd') || keys.has('arrowright') ? 1 : 0;
+    input.forward = clamp(forward - back + this.#axes.forward, -1, 1);
+    input.right = clamp(right - left + this.#axes.right, -1, 1);
+    input.jump = keys.has('space') || this.#touchJump;
+    input.sprint = keys.has('shiftleft') || keys.has('shiftright');
+    return input;
+  }
+
   // ── Schleife ────────────────────────────────────────────────────────────
 
   fixedUpdate(dt: number): void {
+    if (this.#walking) {
+      this.#stepWalk(dt);
+      return;
+    }
     if (!this.#active) return;
     const input = this.#collectInput();
     this.simulateStep(dt, input);
@@ -835,6 +1030,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   startEvent(event: RaceEvent): boolean {
     const sampler = this.#sampler;
     if (!sampler) return false;
+    if (this.#walking) this.#setWalking(false);
     if (!this.#active) this.enter();
     const start = this.race.start(
       event,
@@ -951,11 +1147,14 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    */
   #fillTrees(): void {
     this.collision.beginDynamic();
+    const px = this.#walking ? this.walker.position.x : this.vehicle.position.x;
+    const pz = this.#walking ? this.walker.position.z : this.vehicle.position.z;
+    if (this.#walking) this.#addParkedCarCollider();
     const canopy = this.#canopy;
     if (!canopy) return;
     const n = canopy.queryCanopy(
-      this.vehicle.position.x,
-      this.vehicle.position.z,
+      px,
+      pz,
       TREE_QUERY_RADIUS,
       this.#treeBuf,
     );
@@ -1007,7 +1206,59 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.camera.reset(this.vehicle);
   }
 
+  #stepWalk(dt: number): void {
+    this.ground.refresh(this.walker.position.x, this.walker.position.z, dt);
+    this.#fillTrees();
+    this.walker.step(dt, this.#collectWalkInput(), this, this.collision, this.walkCamera.heading);
+  }
+
+  /**
+   * Der parkende Wagen ist ein Hindernis, sonst läuft man durchs Blech.
+   *
+   * Zwei Zylinder an Vorder- und Hinterachse statt eines am Schwerpunkt:
+   * ein Zylinder von 1,4 m Radius in der Mitte lässt Nase und Heck frei, und
+   * genau dort steigt man aus. Dynamisch, weil der Wagen den Ort wechselt und
+   * `beginDynamic` die Liste ohnehin jede Schritt leert.
+   *
+   * Schlüssel `0xFFFFFF00` / `01`: Baumschlüssel kommen aus der Streuung und
+   * liegen weit darunter. Kein Bruch — das Auto gibt nicht nach.
+   */
+  #addParkedCarCollider(): void {
+    const spec = this.vehicle.spec.chassis;
+    const yaw = this.vehicle.yaw;
+    const fx = Math.sin(yaw);
+    const fz = Math.cos(yaw);
+    const front = spec.wheelbase * (1 - spec.frontWeight);
+    const rear = spec.wheelbase * spec.frontWeight;
+    const r = spec.bodyWidth * 0.52;
+    const y = this.vehicle.position.y;
+    const x = this.vehicle.position.x;
+    const z = this.vehicle.position.z;
+    this.collision.addDynamicCylinder(x + fx * front, z + fz * front, r, y - 1.2, y + 0.7, 0xffffff00);
+    this.collision.addDynamicCylinder(x - fx * rear, z - fz * rear, r, y - 1.2, y + 0.7, 0xffffff01);
+  }
+
   update(dt: number): void {
+    if (this.#walking && this.#context) {
+      this.walkCamera.update(dt, this.walker, this, this.#context.camera);
+      const rig = this.#rig;
+      if (rig) {
+        rig.group.position.copy(this.walker.position);
+        rig.group.rotation.y = this.walker.yaw;
+        rig.animate(
+          {
+            cycle: this.walker.cycle,
+            speed: this.walker.speed,
+            grounded: this.walker.grounded,
+            vy: this.walker.vy,
+            lean: this.walker.lean,
+          },
+          dt,
+        );
+      }
+      this.#syncMeshes();
+      return;
+    }
     if (!this.#active || !this.#context) return;
     this.camera.update(dt, this.vehicle, this, this.#context.camera);
     this.#syncMeshes();
@@ -1186,6 +1437,9 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     folder.addButton({ title: 'Fahren / Fliegen (V)' }).on('click', () => {
       this.toggle();
     });
+    folder.addButton({ title: 'Ein / Aussteigen (F)' }).on('click', () => {
+      this.toggleVehicle();
+    });
     folder.addButton({ title: 'Auf die Straße setzen (R)' }).on('click', () => {
       this.respawn();
     });
@@ -1205,6 +1459,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#body = null;
     for (const geometry of this.#geometries) geometry.dispose();
     this.#geometries.length = 0;
+    this.#rig?.dispose();
+    this.#rig = null;
     this.#material?.dispose();
     this.#material = null;
     this.#fx?.dispose();

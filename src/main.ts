@@ -265,6 +265,18 @@ function installFrameProbe(
     },
 
     /**
+     * Zu Fuß schalten oder abfragen — `japanMap.walk(true)`.
+     *
+     * Ohne Pointer Lock der einzige Weg in den Fußmodus, dieselbe Begründung
+     * wie bei `drive()`. `walk()` ohne Argument liefert den Zustand.
+     */
+    walk: (on) => {
+      if (on === true) drive.startOnFoot();
+      else if (on === false) drive.exit();
+      return drive.walking;
+    },
+
+    /**
      * Die Rundenzählung — P9.3.
      *
      * Ohne Argument: der aktuelle Stand. Mit einer Strecken-Kennung: die Tore
@@ -507,6 +519,9 @@ async function boot(): Promise<void> {
     hud.setDriveActive(active);
     if (active) hud.setGate(drive.laps.readouts.naechstesTor);
   });
+  engine.bus.on('walk:mode', ({ active }) => {
+    hud.setWalking(active);
+  });
 
   engine.bus.on('drive:rescued', () => {
     hud.showRescue();
@@ -671,10 +686,11 @@ async function boot(): Promise<void> {
         marks++;
       }
       navRivals.length = marks;
+      const onFoot = drive.walking;
       hud.updateNav(
-        drive.vehicle.position.x,
-        drive.vehicle.position.z,
-        drive.vehicle.yaw,
+        onFoot ? drive.walker.position.x : drive.vehicle.position.x,
+        onFoot ? drive.walker.position.z : drive.vehicle.position.z,
+        onFoot ? drive.walker.yaw : drive.vehicle.yaw,
         Math.atan2(NAV_DIR.x, NAV_DIR.z),
         navRivals,
         race.nextCheckpointPoint(),
@@ -820,14 +836,23 @@ async function boot(): Promise<void> {
       get active() {
         return drive.active;
       },
+      get walking() {
+        return drive.walking;
+      },
       toggle: () => {
         drive.toggle();
+      },
+      toggleVehicle: () => {
+        drive.toggleVehicle();
       },
       respawn: () => {
         drive.respawn();
       },
       setHandbrake: (down) => {
         drive.setTouchHandbrake(down);
+      },
+      setJump: (down) => {
+        drive.setTouchJump(down);
       },
       get vehicleId() {
         return drive.vehicleId;
@@ -863,6 +888,7 @@ async function boot(): Promise<void> {
       owns: (id) => profile.owns(id),
       price: (id) => VEHICLE_PRICE[id],
       buy: (id) => profile.buy(id),
+      enterCode: (code) => profile.enterCode(code),
       onChange: (fn) => {
         profile.onChange(fn);
       },
@@ -896,6 +922,10 @@ async function boot(): Promise<void> {
     // Rückruf nachgeholt wird und damit außerhalb der Geste liegt.
     audio.unlock();
     ui.begin();
+    // Zu Fuß in der Sakura-Schale, nicht im Freiflug und nicht schon im Auto.
+    // Der Seed aus `Date.now()` macht den Fleck je Sitzung ein anderer, immer
+    // in demselben Kreis — Begründung in `rollWalkSpawn`.
+    drive.startOnFoot();
   });
   audio.armAutoUnlock();
 

@@ -81,6 +81,7 @@ export class DriveHud {
   #flashTimer: number | null = null;
   #visible = false;
   #driveActive = false;
+  #walking = false;
   #menuOpen = false;
   #driftShown = false;
 
@@ -219,14 +220,27 @@ export class DriveHud {
     this.#apply();
   }
 
+  /**
+   * Zu Fuß: HUD an (Karte, Geld), Tacho aus.
+   *
+   * Eigenes Feld neben `#driveActive`, dieselbe Begründung wie bei Menü und
+   * Fahrmodus — ein gemeinsames `setVisible` verlöre den Fall „ausgestiegen,
+   * Menü auf, Menü zu".
+   */
+  setWalking(active: boolean): void {
+    this.#walking = active;
+    this.#apply();
+  }
+
   setMenuOpen(open: boolean): void {
     this.#menuOpen = open;
     this.#apply();
   }
 
   #apply(): void {
-    this.#visible = this.#driveActive && !this.#menuOpen;
+    this.#visible = (this.#driveActive || this.#walking) && !this.#menuOpen;
     this.#root.hidden = !this.#visible;
+    this.#root.classList.toggle('hud--on-foot', this.#walking && !this.#driveActive);
   }
 
   get visible(): boolean {

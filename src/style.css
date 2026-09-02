@@ -94,31 +94,18 @@ body {
  * unterscheiden — genau die Verwechslung, die in P0 schon einmal eine
  * Viertelstunde gekostet hat.
  *
- * Danach bleibt die Fläche stehen und wird **durchsichtig**: der Ladebalken
- * weicht einem „Starten"-Knopf, und dahinter steht die fertige Karte. Das ist
- * kein Effekt, sondern die Antwort auf zwei Fragen zugleich — „ist das schon
- * das Bild?" und „wohin muss ich klicken?".
- *
- * Die zwei Zustände hängen an `data-phase` und **nicht** an zwei Klassen: so
- * kann keiner der beiden Blöcke versehentlich gleichzeitig stehen. */
+ * Danach bleibt die Fläche stehen und wird **durchsichtig**: der Trailer weicht
+ * der fertigen Karte, der Ladebalken einem „Play"-Knopf. Die zwei Zustände
+ * hängen an `data-phase` und **nicht** an zwei Klassen. */
 
 .start {
   position: fixed;
   inset: 0;
   z-index: 50;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  overflow-y: auto;
+  overflow: hidden;
+  color: var(--fg);
   background: var(--bg);
-  transition:
-    opacity 280ms ease-out,
-    background-color 420ms ease-out;
-}
-
-.start[data-phase='bereit'] {
-  background: rgba(4, 6, 9, 0.62);
-  backdrop-filter: blur(3px);
+  transition: opacity 420ms ease-out;
 }
 
 .start--done {
@@ -126,110 +113,292 @@ body {
   pointer-events: none;
 }
 
-.start__box {
-  width: min(440px, 100%);
-  margin: auto;
-  text-align: center;
+.start__cine,
+.start__veil,
+.start__grain {
+  position: absolute;
+  inset: 0;
+}
+
+.start__cine {
+  z-index: 0;
+  overflow: hidden;
+  background: #070b10;
+}
+
+.start__video,
+.start__shot {
+  position: absolute;
+  inset: -8%;
+  width: 116%;
+  height: 116%;
+  object-fit: cover;
+}
+
+.start__video {
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+
+.start__cine--video .start__video {
+  opacity: 1;
+}
+
+.start__cine--video .start__shot {
+  opacity: 0;
+}
+
+.start__shot {
+  opacity: 0;
+  filter: saturate(1.08) contrast(1.06);
+  transition: opacity 720ms ease;
+  animation: start-ken 22s ease-in-out infinite alternate;
+}
+
+.start__shot.is-on {
+  opacity: 1;
+}
+
+@keyframes start-ken {
+  from {
+    transform: scale(1) translate(0, 0);
+  }
+  to {
+    transform: scale(1.14) translate(-2.4%, 1.6%);
+  }
+}
+
+.start__veil {
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(4, 8, 12, 0.62) 0%, rgba(4, 8, 12, 0.18) 38%, rgba(4, 8, 12, 0.78) 100%),
+    radial-gradient(ellipse at 50% 42%, rgba(4, 10, 16, 0.05), rgba(4, 10, 16, 0.55) 72%);
+  transition: background 480ms ease, opacity 480ms ease;
+}
+
+.start[data-phase='bereit'] .start__veil {
+  background: rgba(4, 6, 9, 0.48);
+  backdrop-filter: blur(3px);
+}
+
+.start[data-phase='bereit'] .start__cine {
+  opacity: 0.18;
+}
+
+.start__grain {
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0.11;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.55'/></svg>");
+}
+
+.start__island {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 46%;
+  width: min(72vmin, 560px);
+  height: min(72vmin, 560px);
+  display: block;
+  transform: translate(-50%, -50%);
+  border-radius: 18px;
+  box-shadow:
+    0 0 0 1px rgba(180, 220, 240, 0.16),
+    0 24px 80px rgba(0, 0, 0, 0.45),
+    0 0 48px rgba(80, 190, 230, 0.12);
+  transition:
+    transform 520ms ease,
+    opacity 520ms ease,
+    box-shadow 520ms ease;
+}
+
+.start[data-phase='bereit'] .start__island {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.start__brand {
+  position: absolute;
+  z-index: 4;
+  top: max(22px, env(safe-area-inset-top));
+  left: max(22px, env(safe-area-inset-left));
+}
+
+.start__eyebrow {
+  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(216, 230, 236, 0.62);
 }
 
 .start__title {
   margin: 0;
   font-family: var(--mono);
-  font-size: 22px;
-  letter-spacing: 0.3em;
-  /* Das Sperren schiebt jedes Zeichen nach rechts, auch das letzte — ohne diesen
-   * Ausgleich steht der Titel sichtbar links von der Mitte. */
-  text-indent: 0.3em;
+  font-size: clamp(22px, 3.4vw, 34px);
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
   text-transform: uppercase;
   color: var(--fg);
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
 }
 
-.start__subtitle {
-  margin: 8px 0 26px;
+.start__zones {
+  position: absolute;
+  z-index: 4;
+  left: max(22px, env(safe-area-inset-left));
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.start__zones li {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(200, 214, 222, 0.38);
+  transition: color 240ms ease, text-shadow 240ms ease;
+}
+
+.start__zones li.is-on {
+  color: #ffd257;
+  text-shadow: 0 0 16px rgba(255, 210, 87, 0.45);
+}
+
+.start__progress {
+  position: absolute;
+  z-index: 4;
+  left: max(22px, env(safe-area-inset-left));
+  right: max(22px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+}
+
+.start__percent {
+  margin: 0 0 4px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  line-height: 0.9;
+  color: #f4f7f8;
+  text-shadow: 0 0 28px rgba(126, 231, 255, 0.35);
+}
+
+.start__percentNum {
+  font-size: clamp(56px, 9vw, 112px);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+.start__percentMark {
+  margin-left: 6px;
+  font-size: clamp(16px, 2.2vw, 26px);
+  letter-spacing: 0.18em;
+  color: rgba(216, 230, 236, 0.7);
+}
+
+.start__step {
+  margin: 0 0 10px;
+  font-family: var(--mono);
   font-size: 12px;
-  line-height: 1.6;
-  color: var(--fg-dim);
-}
-
-/* Nur einer der beiden Blöcke steht je Zustand. `display: none` und nicht
- * `visibility`, damit der jeweils andere keine Höhe belegt — der Kasten würde
- * sonst beim Wechsel springen. */
-.start[data-phase='laden'] .start__ready,
-.start[data-phase='bereit'] .start__progress {
-  display: none;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(216, 230, 236, 0.78);
 }
 
 .start__track {
-  height: 2px;
-  background: var(--panel-border);
+  height: 3px;
+  background: rgba(255, 255, 255, 0.12);
   overflow: hidden;
 }
 
 .start__bar {
   width: 0;
   height: 100%;
-  background: var(--fg);
-  /* Nur so lang, dass der Sprung nicht hart wirkt. Länger sähe nach einer
-   * Animation aus, die etwas über den Fortschritt behauptet. */
+  background: linear-gradient(90deg, #7ee7ff, #ffd257);
+  box-shadow: 0 0 12px rgba(126, 231, 255, 0.55);
   transition: width 140ms linear;
 }
 
-.start__step {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  margin: 10px 0 0;
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--fg);
-}
-
-.start__percent {
-  font-variant-numeric: tabular-nums;
-  color: var(--fg-dim);
-}
-
 .start__detail {
-  margin: 4px 0 0;
+  margin: 0 0 8px;
   font-family: var(--mono);
   font-size: 11px;
   color: var(--fg-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .start__detail--error {
   color: var(--status-over);
 }
 
-/* **56 px hoch, wie die Touch-Knöpfe.** Er ist auf einem Telefon das erste und
- * für einen Moment einzige Bedienelement der Anwendung; Apple verlangt 44 pt,
- * Android 48 dp. */
+.start[data-phase='laden'] .start__ready,
+.start[data-phase='bereit'] .start__progress,
+.start[data-phase='bereit'] .start__zones {
+  display: none;
+}
+
+.start__ready {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 52%;
+  transform: translate(-50%, -50%);
+  width: min(440px, calc(100% - 32px));
+  text-align: center;
+}
+
 .start__button {
-  min-width: 200px;
+  min-width: 220px;
   min-height: 56px;
-  padding: 0 32px;
-  border: 1px solid var(--fg);
+  padding: 0 36px;
+  border: 1px solid #ffd257;
   border-radius: 6px;
-  background: var(--fg);
-  color: var(--bg);
+  background: #ffd257;
+  color: #14110a;
   font-family: var(--mono);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
   cursor: pointer;
+  box-shadow: 0 0 28px rgba(255, 210, 87, 0.35);
+  animation: start-play 1.8s ease-in-out infinite;
 }
 
 .start__button:hover {
-  background: #fff;
-  border-color: #fff;
+  background: #ffe58a;
+  border-color: #ffe58a;
 }
 
 .start__button:focus-visible {
-  outline: 2px solid var(--fg);
+  outline: 2px solid #fff;
   outline-offset: 3px;
+}
+
+@keyframes start-play {
+  0%,
+  100% {
+    box-shadow: 0 0 22px rgba(255, 210, 87, 0.28);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(255, 210, 87, 0.55);
+  }
+}
+
+.start__hint {
+  margin: 16px 0 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(216, 230, 236, 0.72);
 }
 
 .start__keys {
@@ -237,7 +406,39 @@ body {
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px 32px;
-  margin-top: 24px;
+  margin-top: 18px;
+}
+
+@media (max-width: 720px) {
+  .start__island {
+    width: min(78vmin, 420px);
+    height: min(78vmin, 420px);
+    top: 44%;
+  }
+
+  .start__zones {
+    top: auto;
+    bottom: 118px;
+    transform: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+  }
+
+  .start__percentNum {
+    font-size: 56px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .start__shot,
+  .start__button,
+  .start__island,
+  .start__veil,
+  .start__cine {
+    animation: none;
+    transition: none;
+  }
 }
 
 /* ── Tastentabelle ────────────────────────────────────────────────────────
@@ -494,6 +695,13 @@ body {
   gap: 16px;
 }
 
+.menu__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .menu__title {
   margin: 0;
   font-family: var(--mono);
@@ -501,6 +709,55 @@ body {
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--fg-dim);
+  /* Klickbar, ohne wie ein Knopf auszusehen — der Titel *ist* das Easter-Egg. */
+  cursor: pointer;
+  user-select: none;
+}
+
+.menu__code {
+  margin: 0;
+  flex: none;
+}
+
+.menu__code[hidden] {
+  display: none;
+}
+
+.menu__codeInput {
+  display: block;
+  width: 92px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.menu__codeInput:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.menu__code.is-wrong .menu__codeInput {
+  animation: menu-code-shake 0.28s ease;
+  border-color: var(--status-over);
+}
+
+@keyframes menu-code-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
 }
 
 /* ── Reiter (P13) ──────────────────────────────────────────────────────────
@@ -1083,6 +1340,12 @@ body {
 
 /* Unten rechts — die Ecke, die im Querformat am wenigsten vom Daumen verdeckt
  * wird. Links unten liegt der Stick. */
+.hud--on-foot .hud__speedo,
+.hud--on-foot .hud__lap,
+.hud--on-foot .hud__boost {
+  display: none;
+}
+
 .hud__speedo {
   position: absolute;
   right: max(14px, env(safe-area-inset-right));

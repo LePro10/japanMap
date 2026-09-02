@@ -11,6 +11,18 @@
 
 /** Tastatur und Maus — dieselbe Belegung wie im Kopf von `FreeFlyController`. */
 export const CONTROLS: readonly (readonly [string, string])[] = [
+  ['W A S D', 'walk'],
+  ['Mouse', 'look around'],
+  ['Space', 'jump'],
+  ['Shift', 'run'],
+  ['F', 'get in / out of the car'],
+  ['R', 'back to the sakura bowl'],
+  ['V', 'free camera'],
+  ['Esc', 'menu'],
+];
+
+/** Freiflug — nur noch Debug, der Play-Knopf startet zu Fuß. */
+export const FLY_CONTROLS: readonly (readonly [string, string])[] = [
   ['W A S D', 'move'],
   ['Mouse', 'look around'],
   ['Space / Ctrl', 'up / down'],
@@ -36,18 +48,18 @@ export const DRIVE_CONTROLS: readonly (readonly [string, string])[] = [
   ['Mouse', 'look around'],
   ['C', 'view: chase / hood'],
   ['R', 'respawn on the nearest road'],
-  ['V', 'back to free camera'],
+  ['F', 'get out'],
+  ['V', 'free camera'],
   ['Esc', 'menu'],
 ];
 
 /** Dieselbe Tabelle für Finger — die Belegung steht in `TouchControls`. */
 export const TOUCH_CONTROLS: readonly (readonly [string, string])[] = [
-  ['Drag left', 'move (stick)'],
+  ['Drag left', 'walk (stick)'],
   ['Drag right', 'look around'],
-  ['Two fingers, right', 'speed'],
-  ['▲ / ▼', 'steigen / sinken'],
-  ['🚗', 'ins Auto steigen'],
-  ['⟲ / ⇩', 'restart / ground collision'],
+  ['↑', 'jump'],
+  ['🚗', 'get in / out of the car'],
+  ['⟲', 'back to the sakura bowl'],
   ['☰', 'menu'],
 ];
 
@@ -63,7 +75,7 @@ export const TOUCH_DRIVE_CONTROLS: readonly (readonly [string, string])[] = [
   ['Drag right', 'look around'],
   ['✋', 'handbrake'],
   ['⟲', 'auf die nächste Straße'],
-  ['🚗', 'zurück zum Freiflug'],
+  ['🚗', 'get out'],
   ['☰', 'menu'],
 ];
 
