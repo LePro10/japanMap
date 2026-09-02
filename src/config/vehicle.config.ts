@@ -1143,20 +1143,12 @@ export const CHASE_CAMERA = {
   rollRate: 4,
 
   /**
-   * Rütteln. Erste Runde: 10 cm im Gelände bei 40 m/s, 3,5 cm im Drift,
-   * 18 cm Landestoß. Das Bild hat mitgefahren, die Hand nicht. Asphalt
-   * bei 40 m/s jetzt 4 mm; Gelände 2 cm; Drift 6 mm; Landung 4,5 cm.
+   * Kein Dauer-Rütteln. Ein Sinus auf der Kameraposition sah aus wie ein
+   * Glitch — das ganze Bild zuckte, nicht der Wagen. Links/rechts bleibt
+   * über Roll und Look-ahead. Übrig ist nur ein einmaliger Landestoß.
    */
-  rumbleAsphalt: 0.0001,
-  rumbleLoose: 0.0005,
-  rumbleSkid: 0.006,
-  rumbleBrake: 0.0004,
-  rumbleBrakeAccel: 8,
-  rumbleHood: 0.18,
   shakeDecay: 16,
   landImpulse: 0.045,
-  hitImpulse: 0.1,
-  hitThreshold: 0.06,
 
   /**
    * Boom-Kollision. `occludeMin` 0,28 setzte die Kamera auf 1,8 m —
