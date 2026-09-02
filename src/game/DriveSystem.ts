@@ -926,6 +926,12 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     else this.camera.look(dx, dy);
   }
 
+  /** Mausrad / Pinch — Boom näher oder weiter. */
+  zoom(factor: number): void {
+    if (this.#walking) this.walkCamera.zoom(factor);
+    else this.camera.zoom(factor);
+  }
+
   /** Stick aus der Fingersteuerung: vorwärts = Gas/Bremse, seitwärts = Lenken. */
   setAxes(forward: number, right: number): void {
     this.#axes.forward = forward;

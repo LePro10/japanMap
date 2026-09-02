@@ -23,6 +23,8 @@ export class WalkCamera {
   #heading = 0;
   /** Leicht nach unten auf die Figur — derselbe Startstand wie zuvor, nur mit der neuen Nick-Konvention. */
   #pitch = -0.18;
+  #zoom = 1;
+  #zoomApplied = 1;
   #initialized = false;
 
   readonly #position = new Vector3();
@@ -43,6 +45,12 @@ export class WalkCamera {
     this.#heading = wrapAngle(this.#heading);
   }
 
+  /** Boom näher/weiter. Faktor > 1 = weiter weg. */
+  zoom(factor: number): void {
+    if (!Number.isFinite(factor) || factor <= 0) return;
+    this.#zoom = clamp(this.#zoom * factor, WALK_CAMERA.zoomMin, WALK_CAMERA.zoomMax);
+  }
+
   reset(walker: Walker): void {
     this.#heading = walker.yaw;
     this.#pitch = -0.18;
@@ -50,10 +58,13 @@ export class WalkCamera {
   }
 
   update(dt: number, walker: Walker, ground: Ground, camera: PerspectiveCamera): void {
+    this.#zoomApplied +=
+      (this.#zoom - this.#zoomApplied) * (1 - Math.exp(-WALK_CAMERA.zoomRate * dt));
     const yaw = this.#heading;
     const pitch = this.#pitch;
-    const dist = WALK_CAMERA.distance * Math.cos(pitch);
-    const height = WALK_CAMERA.height - WALK_CAMERA.distance * Math.sin(pitch);
+    const arm = WALK_CAMERA.distance * this.#zoomApplied;
+    const dist = arm * Math.cos(pitch);
+    const height = WALK_CAMERA.height - arm * Math.sin(pitch);
 
     const bob =
       walker.grounded && walker.speed > 0.15

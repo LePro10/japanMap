@@ -13,6 +13,7 @@
 export const CONTROLS: readonly (readonly [string, string])[] = [
   ['W A S D', 'walk'],
   ['Mouse', 'look around'],
+  ['Wheel', 'zoom'],
   ['Space', 'jump'],
   ['Shift', 'run'],
   ['F', 'get in / out of the car'],
@@ -47,6 +48,7 @@ export const DRIVE_CONTROLS: readonly (readonly [string, string])[] = [
   ['A / D', 'steer'],
   ['Space', 'handbrake'],
   ['Mouse', 'look around'],
+  ['Wheel', 'zoom (closest = hood)'],
   ['C', 'view: chase / hood'],
   ['R', 'respawn on the nearest road'],
   ['F', 'get out'],
@@ -59,6 +61,7 @@ export const DRIVE_CONTROLS: readonly (readonly [string, string])[] = [
 export const TOUCH_CONTROLS: readonly (readonly [string, string])[] = [
   ['Drag left', 'walk (stick)'],
   ['Drag right', 'look around'],
+  ['Pinch', 'zoom'],
   ['↑', 'jump'],
   ['🚗', 'get in / out of the car'],
   ['⟲', 'back to the sakura bowl'],
@@ -76,6 +79,7 @@ export const TOUCH_CONTROLS: readonly (readonly [string, string])[] = [
 export const TOUCH_DRIVE_CONTROLS: readonly (readonly [string, string])[] = [
   ['Drag left', 'throttle / brake / steer'],
   ['Drag right', 'look around'],
+  ['Pinch', 'zoom'],
   ['✋', 'handbrake'],
   ['⟲', 'auf die nächste Straße'],
   ['🚗', 'get out'],

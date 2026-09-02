@@ -1119,6 +1119,15 @@ export const CHASE_CAMERA = {
   brakeArmMax: 0.32,
   /** Kürzester Arm als Anteil von `distance`. 0,55 lag im Kofferraum. */
   armMinFactor: 0.88,
+  /**
+   * Mausrad-Zoom auf den Boom. 1 = `distance`. 0,42 ≈ 2,7 m (Stoßstange),
+   * 2,4 ≈ 15 m. Logarithmisch über den Delegate, eine Rastung darunter
+   * bei Minimum wechselt in die Haube — weiter gibt es von hinten nicht.
+   */
+  zoomMin: 0.42,
+  zoomMax: 2.4,
+  /** Zeitkonstante, mit der der Boom dem Rad folgt (1/s). 12 ist eine Rastung, kein Sprung. */
+  zoomRate: 12,
   /** Blickfeld-Zug je m/s² Gas, in Grad. 8 m/s² → +0,5°. Das Tempo-FOV (62→82) trägt den Rest. */
   accelFov: 0.06,
   brakeFov: 0.03,

@@ -68,6 +68,10 @@ export class ChaseCamera {
 
   /** Geglätteter Nitro-Zustand, 0…1 — treibt Blickwinkel und Abstand. */
   #boost = 0;
+  /** Soll-Zoom, 1 = `CHASE_CAMERA.distance`. */
+  #zoom = 1;
+  /** Angewandter Zoom, folgt `#zoom` mit `zoomRate`. */
+  #zoomApplied = 1;
   /** Geglättete Beschleunigung, damit ein Physik-Spike kein Kameraruck ist. */
   #accelLong = 0;
   #accelLat = 0;
@@ -88,6 +92,32 @@ export class ChaseCamera {
     // ins Unendliche, und die Winkelinterpolation unten bekommt Argumente, bei
     // denen `Math.atan2` nichts mehr retten kann.
     this.#yawOffset = wrapAngle(this.#yawOffset);
+  }
+
+  /**
+   * Boom näher/weiter. Faktor > 1 = weiter weg.
+   *
+   * An der Haube ist der Arm schon null: eine Rastung weiter weg steigt in
+   * den Verfolger bei `zoomMin`, eine Rastung näher tut nichts. Umgekehrt
+   * wechselt der Verfolger an `zoomMin` in die Haube — das ist das Ende
+   * von „näher", nicht ein zweiter Modus daneben.
+   */
+  zoom(factor: number): void {
+    if (!Number.isFinite(factor) || factor <= 0) return;
+    if (this.mode === 'hood') {
+      if (factor > 1.002) {
+        this.mode = 'chase';
+        this.#zoom = CHASE_CAMERA.zoomMin;
+        this.#zoomApplied = CHASE_CAMERA.zoomMin;
+        this.#initialized = false;
+      }
+      return;
+    }
+    if (factor < 0.998 && this.#zoom <= CHASE_CAMERA.zoomMin + 1e-4) {
+      this.mode = 'hood';
+      return;
+    }
+    this.#zoom = clamp(this.#zoom * factor, CHASE_CAMERA.zoomMin, CHASE_CAMERA.zoomMax);
   }
 
   /** Nach einem Moduswechsel oder Respawn: hart hinter das Auto setzen. */
@@ -120,6 +150,9 @@ export class ChaseCamera {
   update(dt: number, vehicle: Vehicle, ground: Ground, camera: PerspectiveCamera): void {
     const speed = vehicle.telemetry.speed;
     const t = vehicle.telemetry;
+
+    this.#zoomApplied +=
+      (this.#zoom - this.#zoomApplied) * (1 - Math.exp(-CHASE_CAMERA.zoomRate * dt));
 
     const accelBlend = 1 - Math.exp(-CHASE_CAMERA.accelRate * dt);
     this.#accelLong += (t.accelLong - this.#accelLong) * accelBlend;
@@ -195,7 +228,9 @@ export class ChaseCamera {
     // `CHASE_CAMERA.distanceFast`. Gas und Bremse sitzen **darüber**, nicht
     // darin: Tempo sagt, wie weit man ist, Last sagt, ob gerade gezogen wird.
     const pace = Math.min(1, t.speed / CHASE_CAMERA.fovSpeed);
-    let arm = CHASE_CAMERA.distance + CHASE_CAMERA.distanceFast * (pace + this.#boost * 0.4);
+    let arm =
+      (CHASE_CAMERA.distance + CHASE_CAMERA.distanceFast * (pace + this.#boost * 0.4)) *
+      this.#zoomApplied;
     // Deckel, nicht linearer Spike: die Dynamik liefert leicht −19 m/s², und
     // genau damit ist die erste Fassung unspielbar geworden (Arm −3 m).
     const gasArm = Math.min(
@@ -207,7 +242,7 @@ export class ChaseCamera {
       CHASE_CAMERA.brakeArmMax,
     );
     arm += gasArm - brakeArm;
-    arm = Math.max(arm, CHASE_CAMERA.distance * CHASE_CAMERA.armMinFactor);
+    arm = Math.max(arm, CHASE_CAMERA.distance * CHASE_CAMERA.armMinFactor * this.#zoomApplied);
 
     const lookPitch = this.#pitchOffset;
     const distance = arm * Math.cos(lookPitch);

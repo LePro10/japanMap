@@ -56,6 +56,8 @@ const DAMPING = 9;
 export interface FlyInputDelegate {
   look(dx: number, dy: number): void;
   setAxes(forward: number, right: number, up: number): void;
+  /** Boom näher/weiter. Faktor > 1 = weiter weg. Pinch und Mausrad teilen sich den Weg. */
+  zoom(factor: number): void;
 }
 
 interface StoredCamera {
@@ -392,6 +394,10 @@ export class FreeFlyController implements System {
 
   /** Grundtempo multiplikativ ändern — Pinch am Touchscreen, Rad an der Maus. */
   scaleSpeed(factor: number): void {
+    if (!this.#enabled) {
+      this.#delegate?.zoom(factor);
+      return;
+    }
     this.#speed = Math.min(Math.max(this.#speed * factor, SPEED.min), SPEED.max);
   }
 
@@ -434,6 +440,16 @@ export class FreeFlyController implements System {
   }
 
   readonly #onWheel = (event: WheelEvent): void => {
+    // Im Auto / zu Fuß zoomt das Rad den Boom — auch ohne Lock, sonst ist die
+    // Geste tot, sobald `requestPointerLock` scheitert (eingebettete Vorschau,
+    // Telefon). preventDefault, damit die Seite dahinter nicht scrollt.
+    if (!this.#enabled) {
+      event.preventDefault();
+      // Vorzeichen umgekehrt zum Flugtempo: Rad nach vorn (deltaY < 0) = näher,
+      // wie in GTA / Fortnite. Tempo hoch ist „mehr", Zoom hoch wäre „weiter weg".
+      this.#delegate?.zoom(Math.exp(event.deltaY * 0.0012));
+      return;
+    }
     if (!this.#pointerLocked) return;
     event.preventDefault();
     // Logarithmisch: eine Radrastung ändert die Geschwindigkeit immer um
