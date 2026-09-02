@@ -1,0 +1,126 @@
+name: Verify navigation UI
+
+on:
+  push:
+    branches: [feat/minimap-waypoints]
+    paths: [.github/workflows/verify-navigation-ui.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  browser-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install project
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Install headless browser
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start production preview
+        run: |
+          node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4180 > /tmp/japanmap-vite.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4180/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/japanmap-vite.log
+          exit 1
+
+      - name: Exercise map, waypoint and teleport
+        run: |
+          cat > /tmp/navigation-ui.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          import assert from 'node:assert/strict';
+
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+          await page.goto('http://127.0.0.1:4180/', { waitUntil: 'domcontentloaded' });
+          await page.waitForFunction(() => Boolean(window.japanMap?.engine));
+          await page.waitForSelector('.navmap', { state: 'attached' });
+
+          await page.evaluate(() => {
+            const drive = window.japanMap.engine.systems.find((system) => system.name === 'DriveSystem');
+            if (!drive) throw new Error('DriveSystem fehlt');
+            drive.enter();
+            window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyM', bubbles: true }));
+          });
+
+          await page.waitForFunction(() => {
+            const map = document.querySelector('.navmap');
+            return map && !map.hidden && getComputedStyle(map).display !== 'none';
+          });
+
+          const canvas = page.locator('.navmap__canvas');
+          const box = await canvas.boundingBox();
+          assert.ok(box && box.width > 100 && box.height > 100, 'Karten-Canvas hat keine nutzbare Fläche');
+          await canvas.dispatchEvent('pointerup', {
+            button: 0,
+            pointerType: 'mouse',
+            clientX: box.x + box.width * 0.67,
+            clientY: box.y + box.height * 0.42,
+          });
+          await page.waitForFunction(() => {
+            const actions = document.querySelector('.navmap__actions');
+            return actions && !actions.hidden && getComputedStyle(actions).display !== 'none';
+          });
+
+          await page.locator('[data-map-action="waypoint"]').click();
+          await page.waitForFunction(() => {
+            const map = document.querySelector('.navmap');
+            const beam = window.japanMap.engine.scene.getObjectByName('Waypoint:Beam');
+            return map?.hidden === true && getComputedStyle(map).display === 'none' && beam?.visible === true;
+          });
+
+          await page.evaluate(() => {
+            window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyM', bubbles: true }));
+          });
+          await page.waitForFunction(() => document.querySelector('.navmap')?.hidden === false);
+
+          const before = await page.evaluate(() => {
+            const drive = window.japanMap.engine.systems.find((system) => system.name === 'DriveSystem');
+            return { x: drive.vehicle.position.x, z: drive.vehicle.position.z };
+          });
+          const box2 = await canvas.boundingBox();
+          assert.ok(box2, 'Karten-Canvas fehlt beim zweiten Öffnen');
+          await canvas.dispatchEvent('pointerup', {
+            button: 0,
+            pointerType: 'mouse',
+            clientX: box2.x + box2.width * 0.22,
+            clientY: box2.y + box2.height * 0.72,
+          });
+          await page.locator('[data-map-action="teleport"]').click();
+
+          const after = await page.evaluate(() => {
+            const drive = window.japanMap.engine.systems.find((system) => system.name === 'DriveSystem');
+            const map = document.querySelector('.navmap');
+            return {
+              x: drive.vehicle.position.x,
+              z: drive.vehicle.position.z,
+              hidden: map?.hidden,
+              display: map ? getComputedStyle(map).display : null,
+            };
+          });
+          assert.equal(after.hidden, true, 'Karte schließt nach Teleport nicht');
+          assert.equal(after.display, 'none', 'geschlossene Karte bleibt sichtbar');
+          assert.ok(Math.hypot(after.x - before.x, after.z - before.z) > 100, 'Teleport bewegt das Fahrzeug nicht sinnvoll');
+
+          await browser.close();
+          console.log('navigation UI: ok');
+          EOF
+          node /tmp/navigation-ui.mjs
