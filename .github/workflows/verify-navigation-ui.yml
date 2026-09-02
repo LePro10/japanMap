@@ -24,6 +24,11 @@ jobs:
       - name: Install project
         run: npm ci
 
+      - name: Rebuild and inspect world
+        run: |
+          npm run world
+          npm run inspect
+
       - name: Build production bundle
         run: npm run build
 
@@ -32,95 +37,170 @@ jobs:
           npm install --no-save --package-lock=false playwright@1.55.0
           npx playwright install --with-deps chromium
 
-      - name: Start production preview
+      - name: Start production and dev servers
         run: |
-          node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4180 > /tmp/japanmap-vite.log 2>&1 &
-          for i in {1..30}; do
-            if curl -fsS http://127.0.0.1:4180/ >/dev/null; then exit 0; fi
-            sleep 1
+          node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4180 > /tmp/japanmap-preview.log 2>&1 &
+          node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4179 > /tmp/japanmap-dev.log 2>&1 &
+          for port in 4179 4180; do
+            ready=0
+            for i in {1..30}; do
+              if curl -fsS "http://127.0.0.1:${port}/" >/dev/null; then ready=1; break; fi
+              sleep 1
+            done
+            if [ "$ready" != 1 ]; then
+              cat /tmp/japanmap-preview.log /tmp/japanmap-dev.log
+              exit 1
+            fi
           done
-          cat /tmp/japanmap-vite.log
-          exit 1
 
-      - name: Exercise map, waypoint and teleport
+      - name: Exercise production UI and navigation mechanics
         run: |
-          cat > /tmp/navigation-ui.mjs <<'EOF'
+          cat > .navigation-ui.mjs <<'EOF'
           import { chromium } from 'playwright';
           import assert from 'node:assert/strict';
 
+          const timeout = 120_000;
           const browser = await chromium.launch({ headless: true });
-          const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-          await page.goto('http://127.0.0.1:4180/', { waitUntil: 'domcontentloaded' });
-          await page.waitForFunction(() => Boolean(window.japanMap?.engine));
-          await page.waitForSelector('.navmap', { state: 'attached' });
 
-          await page.evaluate(() => {
-            const drive = window.japanMap.engine.systems.find((system) => system.name === 'DriveSystem');
-            if (!drive) throw new Error('DriveSystem fehlt');
-            drive.enter();
-            window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyM', bubbles: true }));
+          const signature = async (locator) => locator.evaluate((canvas) => {
+            const ctx = canvas.getContext('2d');
+            const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            let hash = 2166136261;
+            for (let i = 0; i < data.length; i += 32) {
+              hash ^= data[i] ?? 0;
+              hash = Math.imul(hash, 16777619);
+              hash ^= data[i + 1] ?? 0;
+              hash = Math.imul(hash, 16777619);
+              hash ^= data[i + 2] ?? 0;
+              hash = Math.imul(hash, 16777619);
+            }
+            return hash >>> 0;
           });
 
-          await page.waitForFunction(() => {
+          // Production: use the same touch-facing UI a player gets. No debug global.
+          const productContext = await browser.newContext({
+            viewport: { width: 390, height: 844 },
+            hasTouch: true,
+            isMobile: true,
+          });
+          const product = await productContext.newPage();
+          await product.goto('http://127.0.0.1:4180/', { waitUntil: 'domcontentloaded' });
+          await product.waitForFunction(
+            () => document.querySelector('.start')?.dataset.phase === 'bereit',
+            null,
+            { timeout },
+          );
+          await product.locator('.start__button').click();
+          await product.locator('[data-touch="drive"]').waitFor({ state: 'visible', timeout });
+          await product.locator('[data-touch="drive"]').click();
+          await product.waitForFunction(() => {
+            const mini = document.querySelector('.navmap-mini');
+            return mini && !mini.hidden && getComputedStyle(mini).display !== 'none';
+          }, null, { timeout });
+
+          const mini = product.locator('.navmap-mini__canvas');
+          await product.waitForTimeout(250);
+          const miniBeforeWaypoint = await signature(mini);
+
+          await product.keyboard.press('m');
+          await product.waitForFunction(() => {
             const map = document.querySelector('.navmap');
             return map && !map.hidden && getComputedStyle(map).display !== 'none';
-          });
+          }, null, { timeout });
 
-          const canvas = page.locator('.navmap__canvas');
-          const box = await canvas.boundingBox();
+          const full = product.locator('.navmap__canvas');
+          const box = await full.boundingBox();
           assert.ok(box && box.width > 100 && box.height > 100, 'Karten-Canvas hat keine nutzbare Fläche');
-          await canvas.dispatchEvent('pointerup', {
+          await full.dispatchEvent('pointerup', {
             button: 0,
-            pointerType: 'mouse',
+            pointerId: 11,
+            pointerType: 'touch',
             clientX: box.x + box.width * 0.67,
             clientY: box.y + box.height * 0.42,
           });
-          await page.waitForFunction(() => {
+          await product.waitForFunction(() => {
             const actions = document.querySelector('.navmap__actions');
             return actions && !actions.hidden && getComputedStyle(actions).display !== 'none';
           });
-
-          await page.locator('[data-map-action="waypoint"]').click();
-          await page.waitForFunction(() => {
+          await product.locator('[data-map-action="waypoint"]').click();
+          await product.waitForFunction(() => {
             const map = document.querySelector('.navmap');
-            const beam = window.japanMap.engine.scene.getObjectByName('Waypoint:Beam');
-            return map?.hidden === true && getComputedStyle(map).display === 'none' && beam?.visible === true;
+            return map?.hidden === true && getComputedStyle(map).display === 'none';
           });
+          await product.waitForTimeout(250);
+          const miniWithWaypoint = await signature(mini);
+          assert.notEqual(miniWithWaypoint, miniBeforeWaypoint, 'Waypoint erscheint nicht auf der Minimap');
 
-          await page.evaluate(() => {
-            window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyM', bubbles: true }));
-          });
-          await page.waitForFunction(() => document.querySelector('.navmap')?.hidden === false);
-
-          const before = await page.evaluate(() => {
-            const drive = window.japanMap.engine.systems.find((system) => system.name === 'DriveSystem');
-            return { x: drive.vehicle.position.x, z: drive.vehicle.position.z };
-          });
-          const box2 = await canvas.boundingBox();
+          await product.keyboard.press('m');
+          await product.waitForFunction(() => document.querySelector('.navmap')?.hidden === false);
+          const box2 = await full.boundingBox();
           assert.ok(box2, 'Karten-Canvas fehlt beim zweiten Öffnen');
-          await canvas.dispatchEvent('pointerup', {
+          await full.dispatchEvent('pointerup', {
             button: 0,
-            pointerType: 'mouse',
-            clientX: box2.x + box2.width * 0.22,
-            clientY: box2.y + box2.height * 0.72,
+            pointerId: 12,
+            pointerType: 'touch',
+            clientX: box2.x + box2.width * 0.20,
+            clientY: box2.y + box2.height * 0.78,
           });
-          await page.locator('[data-map-action="teleport"]').click();
-
-          const after = await page.evaluate(() => {
-            const drive = window.japanMap.engine.systems.find((system) => system.name === 'DriveSystem');
+          await product.locator('[data-map-action="teleport"]').click();
+          await product.waitForFunction(() => {
             const map = document.querySelector('.navmap');
+            return map?.hidden === true && getComputedStyle(map).display === 'none';
+          });
+          await product.waitForTimeout(300);
+          const miniAfterTeleport = await signature(mini);
+          assert.notEqual(miniAfterTeleport, miniWithWaypoint, 'Teleport verändert die Kartenposition nicht');
+          await productContext.close();
+
+          // Dev build exposes the engine probe: verify the 3D beam and actual vehicle displacement.
+          const dev = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+          await dev.goto('http://127.0.0.1:4179/', { waitUntil: 'domcontentloaded' });
+          await dev.waitForFunction(() => Boolean(window.japanMap?.engine), null, { timeout });
+          const mechanics = await dev.evaluate(async () => {
+            const engine = window.japanMap.engine;
+            const drive = engine.systems.find((system) => system.name === 'DriveSystem');
+            if (!drive) throw new Error('DriveSystem fehlt');
+            drive.enter();
+
+            const choose = (nx, ny, action) => {
+              window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyM', key: 'm', bubbles: true }));
+              const canvas = document.querySelector('.navmap__canvas');
+              const rect = canvas.getBoundingClientRect();
+              canvas.dispatchEvent(new PointerEvent('pointerup', {
+                button: 0,
+                pointerId: 21,
+                pointerType: 'touch',
+                clientX: rect.left + rect.width * nx,
+                clientY: rect.top + rect.height * ny,
+                bubbles: true,
+                cancelable: true,
+              }));
+              document.querySelector(`[data-map-action="${action}"]`).click();
+            };
+
+            choose(0.72, 0.34, 'waypoint');
+            const beam = engine.scene.getObjectByName('Waypoint:Beam');
+            const beamVisible = beam?.visible === true;
+            const mapClosedAfterWaypoint = document.querySelector('.navmap')?.hidden === true;
+
+            const before = { x: drive.vehicle.position.x, z: drive.vehicle.position.z };
+            choose(0.16, 0.82, 'teleport');
+            const after = { x: drive.vehicle.position.x, z: drive.vehicle.position.z };
+            const mapClosedAfterTeleport = document.querySelector('.navmap')?.hidden === true;
             return {
-              x: drive.vehicle.position.x,
-              z: drive.vehicle.position.z,
-              hidden: map?.hidden,
-              display: map ? getComputedStyle(map).display : null,
+              beamVisible,
+              mapClosedAfterWaypoint,
+              mapClosedAfterTeleport,
+              distance: Math.hypot(after.x - before.x, after.z - before.z),
             };
           });
-          assert.equal(after.hidden, true, 'Karte schließt nach Teleport nicht');
-          assert.equal(after.display, 'none', 'geschlossene Karte bleibt sichtbar');
-          assert.ok(Math.hypot(after.x - before.x, after.z - before.z) > 100, 'Teleport bewegt das Fahrzeug nicht sinnvoll');
+          assert.equal(mechanics.beamVisible, true, 'Blauer Welt-Pfosten ist nach Waypoint nicht sichtbar');
+          assert.equal(mechanics.mapClosedAfterWaypoint, true, 'Karte schließt nach Waypoint nicht');
+          assert.equal(mechanics.mapClosedAfterTeleport, true, 'Karte schließt nach Teleport nicht');
+          assert.ok(mechanics.distance > 100, `Teleport bewegt nur ${mechanics.distance.toFixed(1)} m`);
 
           await browser.close();
-          console.log('navigation UI: ok');
+          console.log('navigation UI + mechanics: ok');
           EOF
-          node /tmp/navigation-ui.mjs
+          node .navigation-ui.mjs
+          rm .navigation-ui.mjs
