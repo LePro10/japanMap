@@ -17,8 +17,11 @@
   touch-action: manipulation;
 }
 
-.navmap-mini[hidden],
-.navmap[hidden],
+/* `#overlay > *` bzw. die beiden Regeln unten tragen eine ID und gewinnen gegen
+ * eine normale `[hidden]`-Regel. Deshalb dieselbe Spezifität wie der sichtbare
+ * Zustand — sonst wäre `element.hidden = true` nur ein Attribut ohne Wirkung. */
+#overlay > .navmap-mini[hidden],
+#overlay > .navmap[hidden],
 .navmap__actions[hidden] {
   display: none;
 }
