@@ -3,6 +3,7 @@ import {
   ARCADE_SURFACE,
   ARCADE_SURFACE_DRAG,
   BOOST_EARN,
+  DRIFT_GATE,
   DRIFT_MAX_ANGLE,
   DRIFT_MIN_SPEED,
   DRIFT_SCORE_ANGLE,
@@ -34,7 +35,7 @@ import type { Surface } from './Vehicle';
  * ```
  *   δ    ← Lenkeingabe, ratenbegrenzt              (#steer)
  *   ω*   ← −v·tan(δ)/L,  gedeckelt auf a_lat/v      (Kinematik + Haftung)
- *   drift← Handbremse ∨ Gas·|Lenkung|               (eigener Zustand, 0…1)
+ *   drift← Space+Lenken, danach Gas·|Lenkung|        (eigener Zustand, 0…1)
  *   ω*   += drift · driftYaw · sign                 (das Heck kommt)
  *   ω    ← ω + (ω* − ω)·(1 − e^(−yawResponse·dt))   (die Nase folgt)
  *   a_lat← −v_quer · k(drift),  gedeckelt auf a_max (die Reifen fangen ein)
@@ -217,6 +218,8 @@ export class ArcadeDynamics {
   /** Ist der Impuls für diesen Lastwechsel schon gesetzt? */
   #liftArmed = false;
   #drift = 0;
+  /** Restzeit der Drift-Scharfschaltung nach Loslassen, in s. Siehe `DRIFT_GATE`. */
+  #driftArm = 0;
   #boost = 1;
   #yawRate = 0;
   #pitchRate = 0;
@@ -242,6 +245,7 @@ export class ArcadeDynamics {
     this.#offTime = 0;
     this.#liftArmed = false;
     this.#drift = 0;
+    this.#driftArm = 0;
     this.#yawRate = 0;
     this.#pitchRate = 0;
     this.#driftSign = 0;
@@ -327,10 +331,12 @@ export class ArcadeDynamics {
     // Er ist ein eigener Zustand und **kein** abgeleiteter Wert, und das ist die
     // wichtigste Entscheidung dieser Datei. Im Einspurmodell war „driftet" eine
     // Folge von Schräglaufwinkeln — also etwas, das dem Spieler *zustößt*. Hier
-    // ist es etwas, das er **auslöst**: Handbremse voll, Gas in der Kurve
-    // anteilig. Damit ist der Drift wiederholbar, und Wiederholbarkeit ist die
-    // Bedingung dafür, dass jemand ihn lernen will.
+    // ist es etwas, das er **auslöst**: Space plus Lenken. Gas in der Kurve
+    // hält ihn danach, reißt ihn aber nicht mehr an — sonst ist jede
+    // Tastaturkurve schon ein Drift.
     const fastEnough = speed > DRIFT_MIN_SPEED;
+    if (input.handbrake) this.#driftArm = DRIFT_GATE.armWindow;
+    else this.#driftArm = Math.max(0, this.#driftArm - dt);
     // **Mit Schwelle, und die ist gemessen und nicht gegriffen.** Ohne sie
     // (erster Entwurf: `Gas · |Lenkung| · powerOversteer` direkt) driftete das
     // Coupé in *jeder* Kurve, in der jemand das Gas stehen ließ — gemessen
@@ -405,9 +411,15 @@ export class ArcadeDynamics {
     if (this.#lift < 1e-3) this.#lift = 0;
     const liftSlide = this.#lift * spec.liftOversteer;
 
-    const want = env.airborne
-      ? 0
-      : Math.max(input.handbrake && fastEnough ? 1 : 0, powerSlide, liftSlide);
+    // Anriss nur hinter Space (gehalten oder kurz davor) **und** Lenkung.
+    // Space auf der Geraden allein darf `want` nicht auf 1 setzen — sonst
+    // übernimmt `#driftSign` die letzte Kurve. Halten danach: Gas·Lenkung und
+    // Lastwechsel, aber nur wenn der Drift schon offen ist.
+    const steering = Math.abs(input.steer) >= DRIFT_GATE.enterSteer;
+    const armed = input.handbrake || this.#driftArm > 0;
+    const initiate = !env.airborne && fastEnough && armed && steering;
+    const sustain = !env.airborne && fastEnough && this.#drift > DRIFT_GATE.sustainDrift;
+    const want = initiate ? 1 : sustain ? Math.max(powerSlide, liftSlide) : 0;
     const driftRate = want > this.#drift ? spec.driftRise : spec.driftFall;
     this.#drift += (want - this.#drift) * (1 - Math.exp(-driftRate * dt));
     if (this.#drift < 1e-3) this.#drift = 0;
@@ -559,7 +571,10 @@ export class ArcadeDynamics {
   #steer(dt: number, request: number): void {
     const spec = this.#spec;
     const target = clamp(request, -1, 1);
-    const rate = Math.abs(target) < Math.abs(this.#steerInput) ? spec.steerReturn : spec.steerRate;
+    let rate = Math.abs(target) < Math.abs(this.#steerInput) ? spec.steerReturn : spec.steerRate;
+    if (this.#drift < 0.05 && Math.abs(request) < DRIFT_GATE.enterSteer) {
+      rate = Math.max(rate, spec.steerReturn * 2.2);
+    }
     const step = rate * dt;
     this.#steerInput += clamp(target - this.#steerInput, -step, step);
   }
@@ -628,11 +643,13 @@ export class ArcadeDynamics {
     if (this.#drift > 0.01 && speed > DRIFT_MIN_SPEED) {
       // **Das Vorzeichen kommt aus der Lenkung, nicht aus der Gierrate.** Aus
       // der Gierrate gebildet wäre es eine Mitkopplung: ein Wagen, der sich
-      // dreht, drehte sich deshalb weiter. Wer nicht lenkt, driftet in die
-      // Richtung, in die er zuletzt gedriftet ist — sonst schnappt der Zuschlag
-      // in dem Moment auf null, in dem der Spieler gegenlenkt.
+      // dreht, drehte sich deshalb weiter. Ein gesetztes Vorzeichen bleibt
+      // stehen, solange der Drift offen ist — sonst schnappt der Zuschlag in
+      // dem Moment auf null, in dem der Spieler gegenlenkt.
+      //
+      // Nicht aus Restgieren erfinden: Space auf der Geraden ohne Lenkung
+      // hätte sonst die letzte Kurve fortgesetzt.
       if (Math.abs(input.steer) > 0.1) this.#driftSign = Math.sign(input.steer);
-      else if (this.#driftSign === 0) this.#driftSign = Math.sign(-this.#yawRate) || 1;
 
       // **Geregelt wird auf den Winkel, nicht auf die Rate.** Die vollständige
       // Begründung samt der Rechnung, warum eine feste Zusatzrate kein

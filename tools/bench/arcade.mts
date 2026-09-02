@@ -20,7 +20,7 @@ import { flatGround } from './flat.mjs';
  * | **Handbremsdrift** | kommt das Heck, und wie weit? |
  * | **Drift halten** | steht der Winkel, oder wächst er zum Dreher? |
  * | **Gegenlenken** | fängt sich der Wagen, und in welcher Zeit? |
- * | **Gasstoß im Bogen** | ist der Drift auch ohne Handbremse auslösbar? |
+ * | **Gasstoß im Bogen** | reißt Gas·Lenkung **ohne** Space keinen Drift an? |
  * | **Drift ohne Absicht** | bleibt der Wagen bei sauberer Fahrt sauber? |
  * | **Nitro** | wie viel Tempo bringt er, und wie lange hält er? |
  * | **Belagsvergleich** | ist der Offroader im Dreck wirklich der schnellste? |
@@ -148,6 +148,37 @@ function driftRun(
   return { peak, held, spun, speed: car.telemetry.speed * 3.6, catchTime };
 }
 
+/** Space tippen, dann sofort lenken — das Arming-Fenster muss den Drift öffnen. */
+function tapThenSteer(id: VehicleId, ground: Ground, kmh: number): number {
+  const car = new Vehicle(VEHICLES[id]);
+  car.respawn(0, 0, 0, ground as never);
+  accelerateTo(car, ground, kmh);
+  for (let i = 0; i < 6; i++) {
+    car.step(DT, cmd({ throttle: 0.6, handbrake: true }), ground as never, null);
+  }
+  let peak = 0;
+  for (let i = 0; i < 90; i++) {
+    car.step(DT, cmd({ throttle: 0.6, steer: 1 }), ground as never, null);
+    peak = Math.max(peak, Math.abs(car.telemetry.slip));
+  }
+  return peak;
+}
+
+/** Nach einer Kurve Space ohne Lenkung — darf nicht in die letzte Richtung drehen. */
+function spaceOnStraight(id: VehicleId, ground: Ground, kmh: number): number {
+  const car = new Vehicle(VEHICLES[id]);
+  car.respawn(0, 0, 0, ground as never);
+  accelerateTo(car, ground, kmh);
+  for (let i = 0; i < 45; i++) {
+    car.step(DT, cmd({ throttle: 0.5, steer: 1 }), ground as never, null);
+  }
+  const yaw0 = car.yaw;
+  for (let i = 0; i < 60; i++) {
+    car.step(DT, cmd({ throttle: 0.5, handbrake: true }), ground as never, null);
+  }
+  return (Math.abs(car.yaw - yaw0) * 180) / Math.PI;
+}
+
 /** Kommt der Wagen bei sauberer Fahrt ohne Drift aus? */
 function cleanCorner(id: VehicleId, ground: Ground, kmh: number, steer: number): number {
   const car = new Vehicle(VEHICLES[id]);
@@ -212,11 +243,22 @@ for (const id of VEHICLE_ORDER) {
   );
 
   const power = driftRun(id, asphalt, 70, { handbrake: false, steer: 0.85, throttle: 1 });
+  const powerOk = power.peak < DRIFT_SCORE_ANGLE * 1.4;
   console.log(
     `   Gasstoß im Bogen:        Spitze ${pad(deg(power.peak), 7)}  gehalten ${pad(deg(power.held), 7)}` +
-      `  Tempo ${pad(power.speed.toFixed(0), 4)} km/h` +
-      `  fängt nach ${power.catchTime < 0 ? '  nie' : `${power.catchTime.toFixed(2)} s`}` +
-      `${power.spun ? '   ⚠ DREHER' : ''}`,
+      `  ${powerOk ? '✓ kein Anriss ohne Space' : '⚠ driftet ohne Handbremse'}`,
+  );
+
+  const tap = tapThenSteer(id, asphalt, 80);
+  console.log(
+    `   Tippen, dann lenken:     Spitze ${pad(deg(tap), 7)}` +
+      `  ${tap > DRIFT_SCORE_ANGLE ? '✓ Fenster öffnet' : '⚠ Fenster tot'}`,
+  );
+
+  const kick = spaceOnStraight(id, asphalt, 80);
+  console.log(
+    `   Space auf der Geraden:   Restgier ${pad(kick.toFixed(1) + '°', 7)}` +
+      `  ${kick < 12 ? '✓ keine letzte Richtung' : '⚠ dreht ohne Lenkung'}`,
   );
 
   // **Die Probe, die die erste Fassung des Modells hätte stoppen müssen.**
