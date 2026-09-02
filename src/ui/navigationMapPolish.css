@@ -1,0 +1,158 @@
+/* Zusätzliche Art-Direction für die Aerial-Spielkarte. */
+#overlay > .navmap-mini {
+  border-color: rgba(225, 240, 246, 0.34);
+  background: rgba(4, 11, 14, 0.9);
+  box-shadow:
+    0 12px 34px rgba(0, 0, 0, 0.48),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.navmap-mini__distance {
+  position: absolute;
+  left: 8px;
+  bottom: 7px;
+  max-width: calc(100% - 46px);
+  padding: 4px 7px;
+  border: 1px solid rgba(76, 169, 255, 0.45);
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(3, 10, 16, 0.84);
+  color: #e3f2ff;
+  font: 600 10px/1 var(--mono);
+  letter-spacing: 0.03em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: 0 0 16px rgba(22, 140, 255, 0.17);
+}
+
+.navmap-mini__distance[hidden] {
+  display: none;
+}
+
+.navmap__stage {
+  isolation: isolate;
+  border-color: rgba(224, 238, 242, 0.2);
+  background: #071317;
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.3),
+    0 12px 36px rgba(0, 0, 0, 0.22);
+}
+
+.navmap__canvas {
+  position: relative;
+  z-index: 1;
+}
+
+.navmap__poiLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.navmap-poi {
+  color: #eaf3f5;
+}
+
+.navmap-poi__halo {
+  fill: currentColor;
+  opacity: 0.11;
+}
+
+.navmap-poi__disc {
+  fill: rgba(8, 18, 22, 0.88);
+  stroke: currentColor;
+  stroke-width: 2.2;
+}
+
+.navmap-poi__icon {
+  fill: currentColor;
+}
+
+.navmap-poi__label,
+.navmap-poi__detail {
+  paint-order: stroke fill;
+  stroke: rgba(3, 9, 12, 0.95);
+  stroke-linejoin: round;
+  text-anchor: start;
+  font-family: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, monospace;
+}
+
+.navmap-poi__label {
+  fill: #f2f7f8;
+  stroke-width: 5px;
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: 0.015em;
+}
+
+.navmap-poi__detail {
+  fill: rgba(222, 234, 235, 0.72);
+  stroke-width: 4px;
+  font-size: 10px;
+  font-weight: 550;
+}
+
+.navmap-poi--city {
+  color: #ffb75f;
+}
+
+.navmap-poi--temple {
+  color: #ff6b66;
+}
+
+.navmap-poi--mountain {
+  color: #e2e5df;
+}
+
+.navmap-poi--paddy {
+  color: #8bd5a4;
+}
+
+.navmap-poi--village {
+  color: #f3cf86;
+}
+
+.navmap-poi--coast {
+  color: #78ccef;
+}
+
+.navmap-poi--forest {
+  color: #77c995;
+}
+
+.navmap__actions {
+  z-index: 6;
+}
+
+.navmap__footer {
+  justify-content: flex-start;
+}
+
+.navmap__legend--poi {
+  border: 1px solid rgba(255, 183, 95, 0.8);
+  background: rgba(255, 183, 95, 0.26);
+}
+
+@media (max-width: 700px) {
+  .navmap-poi__detail {
+    display: none;
+  }
+
+  .navmap-poi__label {
+    font-size: 18px;
+    stroke-width: 6px;
+  }
+
+  .navmap-poi__halo {
+    opacity: 0.08;
+  }
+
+  .navmap-mini__distance {
+    font-size: 9px;
+  }
+}
