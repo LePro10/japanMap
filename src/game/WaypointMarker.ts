@@ -20,7 +20,7 @@ export interface WaypointPosition {
 }
 
 const BEAM_HEIGHT = 1200;
-const LABEL_Y = 62;
+const LABEL_Y = 72;
 
 /**
  * Weltmarker wie in einem Open-World-Spiel: ein weit sichtbarer Beam, heller
@@ -166,11 +166,11 @@ export class WaypointMarker {
       this.#writeLabel(meters);
     }
 
-    // Hält die Winkelausdehnung ungefähr stabil, ohne SpriteMaterial in einen
-    // Screen-Space-Sonderfall zu zwingen. Nah bleibt das Schild kompakt.
-    const width = clamp(meters * 0.1, 36, 120);
-    label.scale.set(width, width * 0.25, 1);
-    label.position.y = LABEL_Y + clamp(meters * 0.012, 0, 25);
+    // Bewusst deutlich größer als ein HUD-Label: Der Marker soll schon aus
+    // großer Entfernung sofort als Navigationsziel lesbar sein.
+    const width = clamp(meters * 0.14, 58, 180);
+    label.scale.set(width, width * 0.27, 1);
+    label.position.y = LABEL_Y + clamp(meters * 0.015, 0, 30);
   }
 
   clear(): void {
@@ -197,12 +197,12 @@ export class WaypointMarker {
     ctx.fillStyle = '#168cff';
     ctx.fillRect(18, 18, 13, 92);
     ctx.fillStyle = '#eef8ff';
-    ctx.font = '700 31px system-ui, sans-serif';
+    ctx.font = '800 40px system-ui, sans-serif';
     ctx.textBaseline = 'middle';
-    ctx.fillText('WAYPOINT', 53, 55);
+    ctx.fillText('WAYPOINT', 53, 52);
     ctx.fillStyle = '#9fd2ff';
-    ctx.font = '600 23px ui-monospace, monospace';
-    ctx.fillText(formatDistance(meters), 53, 88);
+    ctx.font = '700 29px ui-monospace, monospace';
+    ctx.fillText(formatDistance(meters), 53, 89);
     texture.needsUpdate = true;
   }
 
