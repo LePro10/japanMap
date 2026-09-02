@@ -198,9 +198,18 @@ export class ChaseCamera {
     // darin: Tempo sagt, wie weit man ist, Last sagt, ob gerade gezogen wird.
     const pace = Math.min(1, t.speed / CHASE_CAMERA.fovSpeed);
     let arm = CHASE_CAMERA.distance + CHASE_CAMERA.distanceFast * (pace + this.#boost * 0.4);
-    arm += Math.max(0, this.#accelLong) * CHASE_CAMERA.accelDistance;
-    arm -= Math.max(0, -this.#accelLong) * CHASE_CAMERA.brakeDistance;
-    arm = Math.max(arm, CHASE_CAMERA.distance * 0.55);
+    // Deckel, nicht linearer Spike: die Dynamik liefert leicht −19 m/s², und
+    // genau damit ist die erste Fassung unspielbar geworden (Arm −3 m).
+    const gasArm = Math.min(
+      Math.max(0, this.#accelLong) * CHASE_CAMERA.accelDistance,
+      CHASE_CAMERA.accelArmMax,
+    );
+    const brakeArm = Math.min(
+      Math.max(0, -this.#accelLong) * CHASE_CAMERA.brakeDistance,
+      CHASE_CAMERA.brakeArmMax,
+    );
+    arm += gasArm - brakeArm;
+    arm = Math.max(arm, CHASE_CAMERA.distance * CHASE_CAMERA.armMinFactor);
 
     const lookPitch = this.#pitchOffset;
     const distance = arm * Math.cos(lookPitch);
@@ -208,10 +217,10 @@ export class ChaseCamera {
 
     const ahead = clamp(
       t.speed * CHASE_CAMERA.lookAhead + this.#accelLong * CHASE_CAMERA.accelLook,
-      -1.2,
+      -0.4,
       CHASE_CAMERA.lookAheadMax,
     );
-    const lat = clamp(this.#accelLat * CHASE_CAMERA.lookLat, -1.6, 1.6);
+    const lat = clamp(this.#accelLat * CHASE_CAMERA.lookLat, -0.45, 0.45);
     const fx = Math.sin(this.#heading);
     const fz = Math.cos(this.#heading);
     // rechts = forward × up, dieselbe Konvention wie im Fahrmodell.
@@ -225,10 +234,13 @@ export class ChaseCamera {
       vehicle.position.z + fz * ahead + this.#right.z * lat,
     );
 
+    // Boom am **Wagen**, nicht am Blickziel. Die erste Fassung hat den Arm
+    // am Look-ahead aufgehängt — 3 m Blick nach vorn schoben die Kamera
+    // mit, und der Wagen saß im unteren Bilddrittel.
     this.#desired.set(
-      this.#lookAt.x - Math.sin(yaw) * distance,
+      vehicle.position.x - Math.sin(yaw) * distance,
       vehicle.position.y + height,
-      this.#lookAt.z - Math.cos(yaw) * distance,
+      vehicle.position.z - Math.cos(yaw) * distance,
     );
 
     const occlude = this.#sampleOcclude(ground);

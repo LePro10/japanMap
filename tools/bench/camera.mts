@@ -90,24 +90,25 @@ function ok(msg: string): void {
   const chase = new ChaseCamera();
   const cam = new PerspectiveCamera(CHASE_CAMERA.fov, 1, 0.5, 6000);
   chase.reset(v);
-  settle(() => {
-    v.step(DT, input({}), g, null);
+  const tick = (cmd: { throttle?: number; brake?: number }) => {
+    v.step(DT, input(cmd), g, null);
     chase.update(DT, v, g, cam);
-  }, 0.4);
-  const idle = dist(cam, v);
-
-  chase.reset(v);
-  v.respawn(0, 0, 0, g);
-  settle(() => {
-    v.step(DT, input({ throttle: 1 }), g, null);
-    chase.update(DT, v, g, cam);
-  }, 0.5);
+  };
+  // Auf Tempo, dann ausrollen bis die Last weg ist — sonst misst man
+  // `distanceFast` (Tempo) statt den Gas-Arm (Last).
+  settle(() => tick({ throttle: 1 }), 2);
+  settle(() => tick({}), 0.5);
+  const coast = dist(cam, v);
+  settle(() => tick({ throttle: 1 }), 0.4);
   const accel = dist(cam, v);
-  const a = v.telemetry.accelLong;
+  const extra = accel - coast;
   console.log(
-    `Arm still ${idle.toFixed(3)} m  Gas 0,5 s ${accel.toFixed(3)} m  accelLong=${a.toFixed(2)} m/s²`,
+    `Arm rollt ${coast.toFixed(3)} m  Gas 0,4 s ${accel.toFixed(3)} m  Δ=${extra.toFixed(3)}  accelLong=${v.telemetry.accelLong.toFixed(2)}`,
   );
-  if (!(accel > idle + 0.15)) fail(`Gas soll den Arm verlängern, ${accel.toFixed(3)} gegen ${idle.toFixed(3)}`);
+  if (!(extra > 0.05)) fail(`Gas soll den Arm verlängern, Δ=${extra.toFixed(3)}`);
+  if (extra > CHASE_CAMERA.accelArmMax + 0.12) {
+    fail(`Gas-Arm zu weit: +${extra.toFixed(3)} m (Deckel ${CHASE_CAMERA.accelArmMax})`);
+  }
   ok('Gas zieht die Kamera nach hinten');
 }
 
@@ -135,7 +136,8 @@ function ok(msg: string): void {
   console.log(
     `Arm rollt ${coast.toFixed(3)} m  Bremse 0,45 s ${braking.toFixed(3)} m  accelLong=${v.telemetry.accelLong.toFixed(2)}`,
   );
-  if (!(braking < coast - 0.15)) fail(`Bremse soll den Arm kürzen, ${braking.toFixed(3)} gegen ${coast.toFixed(3)}`);
+  if (!(braking < coast - 0.08)) fail(`Bremse soll den Arm kürzen, ${braking.toFixed(3)} gegen ${coast.toFixed(3)}`);
+  if (braking < 5.8) fail(`Bremse zu weit vorn: ${braking.toFixed(3)} m — erste Runde war 5,03 und unspielbar`);
   ok('Bremse holt die Kamera nach vorn');
 }
 
