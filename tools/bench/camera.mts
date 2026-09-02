@@ -141,4 +141,35 @@ function ok(msg: string): void {
   ok('Bremse holt die Kamera nach vorn');
 }
 
+{
+  const v = new Vehicle();
+  v.respawn(0, 0, 0, g);
+  const chase = new ChaseCamera();
+  const cam = new PerspectiveCamera(CHASE_CAMERA.fov, 1, 0.5, 6000);
+  chase.reset(v);
+  const tick = () => {
+    v.step(DT, input({}), g, null);
+    chase.update(DT, v, g, cam);
+  };
+  settle(tick, 0.5);
+  const mid = dist(cam, v);
+  chase.zoom(0.6);
+  settle(tick, 0.5);
+  const close = dist(cam, v);
+  chase.zoom(1 / 0.6);
+  chase.zoom(1.8);
+  settle(tick, 0.5);
+  const far = dist(cam, v);
+  console.log(`Zoom  mitten ${mid.toFixed(3)}  näher ${close.toFixed(3)}  weiter ${far.toFixed(3)}`);
+  if (!(close < mid * 0.75)) fail(`Rad näher soll den Arm kürzen, ${close.toFixed(3)} gegen ${mid.toFixed(3)}`);
+  if (!(far > mid * 1.4)) fail(`Rad weiter soll den Arm strecken, ${far.toFixed(3)} gegen ${mid.toFixed(3)}`);
+  ok('Mausrad zoomt den Boom');
+
+  for (let i = 0; i < 12; i++) chase.zoom(0.5);
+  if (chase.mode !== 'hood') fail(`Zoom unter Minimum soll in die Haube, war ${chase.mode}`);
+  chase.zoom(1.2);
+  if (chase.mode !== 'chase') fail(`Zoom aus der Haube soll in den Verfolger, war ${chase.mode}`);
+  ok('Nächste Rastung unter Minimum = Haube');
+}
+
 console.log('Kamera-Prüfstand: alle Proben grün');

@@ -174,6 +174,10 @@ export const WALK_CAMERA = {
   bob: 0.02,
   /** Bogenmaß je Meter Gang. 2π / 0,75 ≈ 8,4 — ein Nicken je Schritt. */
   bobFreq: 8.4,
+  /** Mausrad-Zoom. 0,5 ≈ 2 m hinter der Figur, 2,2 ≈ 9 m. */
+  zoomMin: 0.5,
+  zoomMax: 2.2,
+  zoomRate: 12,
 } as const;
 
 /**
