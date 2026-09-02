@@ -19,6 +19,31 @@
 | **Assets** | Ausschließlich CC0 / kostenlos |
 | **Ambition** | Ernstes Projekt — saubere Systeme vor schnellen Ergebnissen |
 
+### Was für ein Spiel das ist — seit P22
+
+> **Bis P21 war dieses Projekt eine Karte mit einem Auto darauf.** Die Spec hat
+> das nie anders behauptet („Open-World-Map … als Basis für ein späteres
+> Browser-Game"), und die Beschwerde, die P22 ausgelöst hat, war die logische
+> Folge davon: *„es ist nicht lustig."* Eine Basis ist kein Spiel.
+
+Seit P22…P24 gibt es eine Antwort auf „und jetzt?":
+
+| | |
+|---|---|
+| **Fahrmodell** | Arcade, kein Einspurmodell. Die Lenkung ist proportional, der Drift ist eine Entscheidung, es gibt Nitro und Luftsteuerung |
+| **Veranstaltungen** | Sechs — vier Rennen mit drei KI-Gegnern, ein Zeitfahren, ein Driftlauf |
+| **Wertung** | Driftkette mit Multiplikator bis ×5, verdoppelt in zwei Driftzonen |
+| **Fortschritt** | ¥ aus Rennen, Drift und 90 Sammelstücken; drei Fahrzeuge zum Freischalten |
+| **Spielgerät** | Sechs Sprungschanzen, zwei Kirschbaum-Driftzonen mit fallenden Blüten |
+| **Orientierung** | Nordfeste Minikarte mit Straßennetz, Driftzonen, Schanzen und Gegnern; ein Richtungspfeil zum nächsten Kontrollpunkt (P25) |
+| **Rückmeldung** | Meldetöne für Sammelstück, Kontrollpunkt und Rundenende; ein Aufsammel-Effekt am Stück selbst (P25) |
+| **Sprache** | Die Spieler-Oberfläche ist **englisch**. Code, Kommentare und Doku bleiben deutsch |
+
+Die letzte Zeile ist eine Entscheidung über die Reichweite und keine über den
+Stil: CrazyGames' Publikum ist global, und eine deutschsprachige Oberfläche
+kostet dort den größten Teil davon. Die Trennlinie verläuft am DOM — was in
+`src/ui/` landet, ist englisch, was in einem Kommentar steht, nicht.
+
 ### Leitprinzip
 
 > **Der Look entsteht im Renderer, nicht in der Geometrie.**

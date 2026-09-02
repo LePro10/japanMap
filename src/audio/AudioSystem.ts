@@ -60,6 +60,8 @@ export class AudioSystem implements System {
   readonly name = 'AudioSystem';
 
   #ctx: AudioContext | null = null;
+  /** Einmal melden und nicht je Frame — siehe die Notbremse in `update()`. */
+  #warnedNaN = false;
   #master: GainNode | null = null;
 
   // ── Motor ──────────────────────────────────────────────────────────────
@@ -98,6 +100,23 @@ export class AudioSystem implements System {
   }
 
   init(context: EngineContext): void {
+    // ── Meldetöne — P25 ───────────────────────────────────────────────────
+    //
+    // Bis P24 war jede Belohnung dieses Spiels **stumm**: ein eingesammeltes
+    // Stück, ein Kontrollpunkt und ein Zieleinlauf klangen wie das Nichtstun
+    // daneben. Das ist keine Kleinigkeit — die Rückmeldung *„das hat gezählt"*
+    // ist der Grund, warum jemand ein zweites Mal danach fährt.
+    context.bus.on('pickup:collected', ({ kind }) => {
+      // Nitro höher als Geld: zwei Belohnungen, die man im Vorbeifahren nicht
+      // ansieht, müssen sich **hören** lassen wie zwei verschiedene Dinge.
+      this.#chime(kind === 'boost' ? 1046.5 : 784, 0.09);
+    });
+    context.bus.on('race:checkpoint', () => {
+      this.#chime(659.25, 0.11);
+    });
+    context.bus.on('race:lap', () => {
+      this.#chime(880, 0.16);
+    });
     context.bus.on('drive:mode', ({ active }) => {
       this.#driveActive = active;
       // Der Motor darf beim Aussteigen nicht ausklingen wie ein abgewürgter
@@ -231,6 +250,75 @@ export class AudioSystem implements System {
     noise.loop = true;
     noise.connect(noiseFilter);
     noise.start();
+  }
+
+  /**
+   * Ein kurzer Meldeton — P25.
+   *
+   * ## Warum ein Oszillator je Ton und kein Wiederverwenden
+   *
+   * Ein `OscillatorNode` ist in der Web-Audio-API ausdrücklich ein
+   * **Einmalobjekt**: nach `stop()` lässt er sich nicht wieder starten. Der
+   * übliche Reflex — einen Oszillator halten und seine Verstärkung auf- und
+   * zudrehen — hat einen Preis, den man hört: die Phase läuft weiter, und zwei
+   * schnell aufeinanderfolgende Töne setzen an zufälliger Stelle der Welle ein.
+   * Ein neuer Knoten beginnt immer bei null.
+   *
+   * > Was ein solcher Knoten **kostet**, ist hier nicht gemessen. Der Grund für
+   * > diese Bauart ist die Phase und nicht der Preis; eine Kostenzahl daneben
+   * > wäre eine Behauptung, und dieses Projekt hat für genau die schon einmal
+   * > bezahlt (die Imposter-Schwelle in P4). Wenn es je eng wird, ist die Zahl
+   * > messbar — bis dahin steht sie nicht da.
+   *
+   * ## Warum eine Exponentialrampe und kein `setValueAtTime`
+   *
+   * Ein Sprung der Verstärkung auf null ist ein Knacken — er ist im Signal eine
+   * Stufe, und eine Stufe hat unendlich viele Obertöne. `exponentialRampTo`
+   * kann dabei nicht auf 0 gehen (der Logarithmus), deshalb 0,0001 und danach
+   * `stop()`.
+   *
+   * ## Und warum es nicht spielt, wenn niemand fährt
+   *
+   * `#driveActive` ist die Bedingung: die Ereignisse, an denen das hier hängt,
+   * kann nur ein fahrendes Fahrzeug auslösen. Die Prüfung steht trotzdem da,
+   * weil ein Meldeton im Menü ein Fehler wäre, den niemand als Fehler meldet —
+   * er klingt nur seltsam.
+   */
+  #chime(hz: number, seconds: number): void {
+    const ctx = this.#ctx;
+    const master = this.#master;
+    if (!ctx || !master || this.muted || !this.#driveActive) return;
+    if (ctx.state !== 'running') return;
+
+    const now = ctx.currentTime;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    // 8 ms Anstieg: schnell genug, dass es als Anschlag wirkt, langsam genug,
+    // dass es kein Knacken ist.
+    gain.gain.exponentialRampToValueAtTime(AUDIO.masterVolume * 0.5, now + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + seconds);
+    gain.connect(master);
+
+    // Dreieck und nicht Sinus: ein reiner Sinus verschwindet unter dem
+    // Motorgeräusch (zwei Sägezähne durch einen Tiefpass, s. o.). Das Dreieck
+    // hat gerade genug ungerade Obertöne, um darüber zu stehen, ohne wie ein
+    // Fehlerton zu klingen.
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(hz, now);
+    // Ein Hauch aufwärts über die Dauer — ein fallender Ton liest sich als
+    // „vorbei", ein steigender als „gut gemacht".
+    osc.frequency.exponentialRampToValueAtTime(hz * 1.18, now + seconds);
+    osc.connect(gain);
+    osc.start(now);
+    osc.stop(now + seconds + 0.02);
+    // Aufräumen, sobald er verklungen ist. Ohne das sammeln sich bei 90
+    // Sammelstücken je Runde die Knoten im Graphen — sie sind zwar gestoppt,
+    // hängen aber weiter am Master.
+    osc.onended = () => {
+      osc.disconnect();
+      gain.disconnect();
+    };
   }
 
   /**
@@ -405,6 +493,40 @@ export class AudioSystem implements System {
     // vor.
     this.#rpm += (zielRpm - this.#rpm) * (1 - Math.exp(-AUDIO.engine.rpmSmoothing * dt));
 
+    // ── Die Notbremse gegen NaN — P25 ────────────────────────────────────
+    //
+    // **Ein nicht-endlicher Wert an einem `AudioParam` wirft**, und zwar eine
+    // `TypeError` mitten im Frame. Gemessen (P25, getriebene Schleife am
+    // Blickpunkt `wald`): eine einzige solche Ausnahme aus `update()` reißt
+    // über `Engine.#update` → `RenderLoop.#frame` die **ganze Schleife** mit —
+    // das Bild steht, das Auto steht, das Spiel ist tot. Für eine Tonspur ist
+    // das der denkbar schlechteste Tausch.
+    //
+    // Zwei Dinge machen es schlimmer, als es klingt:
+    //
+    //  1. `#rpm` ist **klebrig**. Die Glättung oben ist `x += (ziel − x)·k`;
+    //     ist `x` einmal NaN, bleibt es NaN, auch wenn die Telemetrie im
+    //     nächsten Schritt wieder gesund ist. Ein einziger schlechter Frame
+    //     vergiftet die Sitzung.
+    //  2. Es gibt **keine** Meldung, die auf die Ursache zeigt. Der Stapel
+    //     endet in der Web-Audio-API, und die Quelle des NaN steht irgendwo in
+    //     der Physik.
+    //
+    // Deshalb hier zwei Zeilen: zurücksetzen statt weiterrechnen, und **einmal**
+    // melden. Das ist ausdrücklich kein Beheben der Ursache — woher das NaN
+    // kam, ist nicht bekannt und steht so in PLAN.md P25. Es ist die Zusage,
+    // dass die Tonspur das Spiel nicht mitnimmt.
+    if (!Number.isFinite(this.#rpm)) {
+      if (!this.#warnedNaN) {
+        this.#warnedNaN = true;
+        console.warn(
+          'AudioSystem: Drehzahl wurde nicht-endlich und ist zurückgesetzt worden.',
+          { dt, zielRpm, speed, telemetrie: t },
+        );
+      }
+      this.#rpm = AUDIO.engine.idleRpm;
+    }
+
     const rpmNorm =
       (this.#rpm - AUDIO.engine.idleRpm) / (AUDIO.engine.maxRpm - AUDIO.engine.idleRpm);
     const hz = AUDIO.engine.minHz + rpmNorm * (AUDIO.engine.maxHz - AUDIO.engine.minHz);
@@ -419,10 +541,14 @@ export class AudioSystem implements System {
       AUDIO.engine.filterMinHz + last * (AUDIO.engine.filterMaxHz - AUDIO.engine.filterMinHz);
 
     // `setTargetAtTime` und nicht `value =` — Begründung im Kopf, Falle 2.
-    this.#engineOsc?.frequency.setTargetAtTime(hz, now, 0.05);
-    this.#engineOsc2?.frequency.setTargetAtTime(hz, now, 0.05);
-    this.#engineFilter?.frequency.setTargetAtTime(filterHz, now, 0.08);
-    this.#engineGain?.gain.setTargetAtTime(engineTarget, now, 0.08);
+    // `rampe()` statt des nackten Aufrufs — Begründung bei der Funktion. Die
+    // Notbremse oben deckt **einen** Weg zum NaN ab (die Drehzahl); `t.speed`
+    // und `t.wheelspin` sind zwei weitere, und ein Fehlerbild ist eine Klasse
+    // und kein Einzelfall.
+    rampe(this.#engineOsc?.frequency, hz, now, 0.05);
+    rampe(this.#engineOsc2?.frequency, hz, now, 0.05);
+    rampe(this.#engineFilter?.frequency, filterHz, now, 0.08);
+    rampe(this.#engineGain?.gain, engineTarget, now, 0.08);
 
     // ── Rollen und Fahrtwind ─────────────────────────────────────────────
     //
@@ -439,8 +565,9 @@ export class AudioSystem implements System {
     // In der Luft gibt es kein Rollgeräusch — nur der Wind bleibt.
     if (fahrend && t.airborne) noiseTarget *= 0.35;
 
-    this.#noiseGain?.gain.setTargetAtTime(noiseTarget, now, 0.1);
-    this.#noiseFilter?.frequency.setTargetAtTime(
+    rampe(this.#noiseGain?.gain, noiseTarget, now, 0.1);
+    rampe(
+      this.#noiseFilter?.frequency,
       AUDIO.noise.minHz + norm * (AUDIO.noise.maxHz - AUDIO.noise.minHz),
       now,
       0.12,
@@ -499,6 +626,32 @@ export class AudioSystem implements System {
  * beim Gangwechsel fällt sie zurück. Genau dieser Sägezahn ist das, was ein Ohr
  * als Beschleunigung erkennt — Begründung bei `AUDIO.engine.gearTopSpeeds`.
  */
+/**
+ * Eine Rampe auf einem `AudioParam`, die nicht wirft — P25.
+ *
+ * ## Warum das eine eigene Funktion ist und kein `if` an jeder Stelle
+ *
+ * Die Web-Audio-API wirft bei einem nicht-endlichen Wert eine `TypeError`.
+ * Diese Ausnahme läuft durch `Engine.#update` und `RenderLoop.#frame` und
+ * **beendet die Frameschleife** — für eine Tonspur ein absurd hoher Preis.
+ * Gemessen in P25 an einer getriebenen Schleife: ein NaN, und das Spiel stand.
+ *
+ * Sechs Aufrufstellen, sechs `if`s wären sechs Gelegenheiten, eine zu
+ * vergessen. Der siebte Regler, den jemand nächstes Jahr einbaut, ist der, an
+ * dem es wieder passiert — deshalb geht der Weg zum `AudioParam` durch diese
+ * eine Tür. Dieselbe Überlegung wie bei `japanMap.winding()`: ein Fehlerbild
+ * ist eine Klasse, und gegen eine Klasse hilft nur ein Ort.
+ *
+ * Stillschweigend übersprungen und nicht geklemmt: eine geklemmte Frequenz
+ * wäre ein **falscher** Ton, ein übersprungener Frame ist keiner. Der Parameter
+ * behält, was er hatte, und der nächste gesunde Frame holt ihn nach.
+ */
+function rampe(param: AudioParam | undefined, wert: number, zeit: number, konstante: number): void {
+  if (!param) return;
+  if (!Number.isFinite(wert)) return;
+  param.setTargetAtTime(wert, zeit, konstante);
+}
+
 function gearedRpm(speed: number): number {
   const gears = AUDIO.engine.gearTopSpeeds;
   const { idleRpm, maxRpm } = AUDIO.engine;

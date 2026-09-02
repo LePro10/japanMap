@@ -1,13 +1,10 @@
 import { Euler, Quaternion, Vector3 } from 'three';
 
-import { CRAWL_ASSIST, GRAVITY, SURFACE_FEEL } from '@/config/vehicle.config';
-import {
-  ENGINE_BRAKE_FLOOR,
-  ENGINE_BRAKE_SHARE,
-  TOUGE,
-  type TireSpec,
-  type VehicleSpec,
-} from '@/config/vehicles.config';
+import { GRAVITY, SURFACE_FEEL } from '@/config/vehicle.config';
+import { AIR_CONTROL } from '@/config/arcade.config';
+import { ARCADE, LOOSE_BONUS } from '@/config/arcade.config';
+import { TOUGE, type VehicleSpec } from '@/config/vehicles.config';
+import { ArcadeDynamics, type DriveCommand, type PlanarEnv } from './arcadeDynamics';
 import {
   RAIL_BREAK_ENERGY,
   RAIL_BREAK_SPEED,
@@ -85,6 +82,15 @@ export interface DriveInput {
   /** −1…1, negativ = links. Der **Wunsch**, nicht der Einschlag. */
   steer: number;
   handbrake: boolean;
+  /**
+   * Nitro — P22.
+   *
+   * Optional, damit jeder Messlauf und jeder Prüfstand, der die Eingabe von Hand
+   * baut, unverändert weiterläuft. Ein Pflichtfeld hätte in `tools/bench/` und
+   * `debug/driveProbe.ts` zwei Dutzend Fundstellen gebraucht, ohne dass eine
+   * davon etwas anderes als `false` gemeint hätte.
+   */
+  boost?: boolean;
 }
 
 /**
@@ -161,6 +167,20 @@ export interface VehicleTelemetry {
    * Gebildet aus hinterem Schräglauf, Durchdrehen und Handbremse.
    */
   skid: number;
+  /**
+   * Wie weit der Drift-Zustand offen ist, 0…1 — P22.
+   *
+   * **Der Unterschied zu `skid` ist die Richtung der Ursache.** `drift` ist das,
+   * was der Spieler *anfordert* (Handbremse, Gas in der Kurve); `skid` ist das,
+   * was dabei *herauskommt* (Schwimmwinkel, durchdrehende Räder). Getrennt, weil
+   * die Punktezählung das eine und die Spuren das andere brauchen: ein Wagen,
+   * der auf Eis von allein rutscht, markiert — verdient aber nichts.
+   */
+  drift: number;
+  /** Nitro-Vorrat, 0…1 — P22. */
+  boost: number;
+  /** Läuft der Nitro gerade? */
+  boosting: boolean;
 }
 
 /**
@@ -371,9 +391,18 @@ export class Vehicle {
   #vLat = 0;
   #vY = 0;
   #steerAngle = 0;
-  /** Eingelaufene Gasstellung — siehe `DRIVETRAIN.throttleRate`. */
-  #throttle = 0;
   #airborne = false;
+
+  /**
+   * Die waagerechte Dynamik — P22.
+   *
+   * **Sie hält ihren eigenen Zustand** (Einschlag, Gas, Drift, Nitro, Gierrate),
+   * und `Vehicle` liest ihn nur ab. Die Alternative wäre gewesen, die Felder
+   * hier zu führen und der Funktion hereinzureichen; dann stünde derselbe
+   * Zustand an zwei Stellen, und die Erfahrung dieses Projekts mit zwei
+   * Wahrheiten für dieselbe Sache steht in CLAUDE.md gleich viermal.
+   */
+  readonly #planar = new ArcadeDynamics(ARCADE.touge, LOOSE_BONUS.touge);
   /** Drehwinkel der Räder, nur fürs Bild. */
   #wheelSpin = 0;
 
@@ -449,10 +478,29 @@ export class Vehicle {
     hullDepth: 0,
     waterDepth: 0,
     skid: 0,
+    drift: 0,
+    boost: 1,
+    boosting: false,
   };
 
   constructor(spec: VehicleSpec = TOUGE) {
     this.#spec = spec;
+    this.#syncPlanarSpec();
+  }
+
+  /**
+   * Radstand und Masse an die Dynamik reichen.
+   *
+   * Sie stehen bewusst **nicht** in `ArcadeSpec` — beides sind Maße der
+   * Karosserie und gehören in `chassis`. Ein zweiter Wert dafür wäre genau die
+   * Doppelung, an der in P17 sieben Modulkonstanten gescheitert sind: der
+   * Lastwagen führe dann mit dem Radstand des Coupés, und keine Kennzahl
+   * meldete es.
+   */
+  #syncPlanarSpec(): void {
+    this.#planar.setSpec(ARCADE[this.#spec.id], LOOSE_BONUS[this.#spec.id]);
+    this.#planar.setWheelbase(this.#spec.chassis.wheelbase);
+    this.#planar.setMass(this.#spec.chassis.mass);
   }
 
   /** Die gerechnete Spec. Lesen darf jeder, ändern nur über `setSpec`. */
@@ -473,6 +521,12 @@ export class Vehicle {
    */
   setSpec(spec: VehicleSpec): void {
     this.#spec = spec;
+    this.#syncPlanarSpec();
+  }
+
+  /** Nitro nachfüllen, 0…1 — für Sprünge, Brüche und Sammelstücke. */
+  addBoost(amount: number): void {
+    this.#planar.addBoost(amount);
   }
 
   get yaw(): number {
@@ -555,15 +609,18 @@ export class Vehicle {
     this.#vLat = 0;
     this.#vY = 0;
     this.#steerAngle = 0;
-    this.#throttle = 0;
+    this.#planar.reset();
     this.#airborne = false;
-    // **Auch die Lastverlagerung des letzten Schritts und der Raddrehwinkel.**
-    // Erstere geht in die Radlasten des ersten neuen Schritts ein; blieb sie
-    // stehen, hing das Ergebnis eines Messlaufs davon ab, was das Auto **davor**
-    // getan hatte. Gemessen: zwei Läufe derselben Strecke endeten 6 cm
-    // auseinander (742,26 m gegen 742,20 m). Die Ketten dieses Projekts sind
-    // deterministisch; wenn nicht, ist etwas kaputt.
-    this.#lastLongAccel = 0;
+    // **Und der Raddrehwinkel.** Jeder Zustand, der ein Reset überlebt, tarnt
+    // sich als „nicht ganz reproduzierbar": gemessen endeten zwei Läufe
+    // derselben Strecke 6 cm auseinander (742,26 m gegen 742,20 m), weil die
+    // Lastverlagerung des vorigen Laufs stehen geblieben war. Die Ketten dieses
+    // Projekts sind deterministisch; wenn nicht, ist etwas kaputt.
+    //
+    // > Die Lastverlagerung selbst (`#lastLongAccel`) ist mit P22 entfallen —
+    // > das Arcade-Modell hat keine Radlasten mehr, gegen die sie zu verrechnen
+    // > wäre. Der Satz darüber gilt trotzdem und ist der Grund, warum
+    // > `#planar.reset()` drei Zeilen höher steht.
     this.#wheelSpin = 0;
     this.#breaks = [];
     this.velocity.set(0, 0, 0);
@@ -631,18 +688,9 @@ export class Vehicle {
     // Geschwindigkeitsgründen — `this.#spec.chassis.mass` ist billig —, sondern
     // damit unten dasselbe steht wie vor P18: `chassis.mass` liest sich wie
     // `CHASSIS.mass`, und die Herleitungen in den Kommentaren bleiben lesbar.
-    const { chassis, suspension, tire, drivetrain, steering, limits, derived } = this.#spec;
+    const { chassis, suspension, derived } = this.#spec;
 
     this.#updateBasis();
-    this.#steer(dt, input.steer);
-    // **Das Gas läuft ein, es springt nicht.** Eine Taste kennt nur 0 und 1; ein
-    // Fahrer tritt in rund einer Viertelsekunde durch. Ohne diese Rate steht bei
-    // jedem Antippen sofort die volle Antriebskraft an, und auf losem Boden ist
-    // das der Unterschied zwischen „beschleunigen" und „quer stehen" — dieselbe
-    // Begründung wie bei `STEERING.rate` für den Lenkeinschlag.
-    const gasZiel = clamp(input.throttle, 0, 1);
-    const gasSchritt = drivetrain.throttleRate * dt;
-    this.#throttle += clamp(gasZiel - this.#throttle, -gasSchritt, gasSchritt);
     // **Die Normale wird vor den Radproben geholt, seit P20.** Sie definiert die
     // Hangebene, gegen die `#sampleWheels` seine Reichweitenkorrektur bildet —
     // mit der Normalen des *vorigen* Schritts wäre die Korrektur einen Schritt
@@ -672,25 +720,14 @@ export class Vehicle {
 
     // ── Wie viel Radlast der Hang noch trägt — P21 ────────────────────────
     //
-    // **Bis P21 stand hier ein Schalter** (`isSteep`), und er saß mitten im
-    // Fahrbereich: bei 38,6° volle Radlast, bei 38,8° gar keine. In einem
-    // Simulationsschritt wurde aus voller Kontrolle ein Rutschen ohne Lenkung,
-    // Antrieb und Bremse. Die Kennlinie und die Wahl ihrer Grenzen stehen bei
-    // `slopeSupport`; hier zählt die Aufteilung:
-    //
-    //  · **Geometrie bleibt ein Schalter.** Ob eine Fläche Boden oder Wand ist,
-    //    entscheiden `resolveTerrainFollow` und `hullTerrain` weiter über
-    //    `STEEP_NY`. Beide Zweige sind seit P19 gemessen sicher, und ein
-    //    „halb"-Ausschieben gibt es nicht.
-    //  · **Die Kraft läuft aus.** Haftung fällt nicht vom Tisch.
-    //
-    // `steep` heißt seitdem „echte Wand" (steiler als 50°) und nicht mehr
-    // „steiler als 38,7°".
+    // Unverändert aus P21 übernommen, und das ist der Punkt: das Arcade-Modell
+    // erbt die Steilhang-Kennlinie, statt sie ein zweites Mal zu erfinden.
+    // `halt` geht dort ein, wo früher die Radlast einging — als Faktor auf die
+    // Haftung (`PlanarEnv.support`).
     const halt = slopeSupport(this.#normal.y);
     const steep = halt <= 0;
     const surface = ground.surface(this.position.x, this.position.z);
     const waterDepth = ground.waterDepth?.(this.position.x, this.position.z) ?? 0;
-
     // ── Aufbau und Federweg ───────────────────────────────────────────────
     //
     // Der Federweg wird **längs der Normalen** gemessen: der senkrechte Abstand
@@ -737,449 +774,67 @@ export class Vehicle {
 
     this.#vY += (springForce / chassis.mass - GRAVITY) * dt;
 
-    // ── Radlasten ─────────────────────────────────────────────────────────
+    // ── Die waagerechte Dynamik — P22 ─────────────────────────────────────
     //
-    // Grundlast aus der Federkraft, mit `cosθ` auf die Hangnormale bezogen.
-    // In der Luft ist sie null, und damit sind alle Reifenkräfte null — genau
-    // richtig, ein Rad ohne Boden überträgt nichts.
-    //
-    // **Abtrieb kommt hinzu, seit P18 zum ersten Mal.** `Fz += c · v²`, und zwar
-    // auf die **Radlast** und nicht auf die Federkraft: aerodynamischer Abtrieb
-    // drückt den Wagen auf die Straße, ohne dass die Feder ihn zurückschiebt —
-    // ein Auto mit Flügel steht bei 300 km/h tiefer, aber es steht nicht auf dem
-    // Anschlag. Über die Feder gerechnet wäre er außerdem vom Deckel
-    // `derived.springCap` abgeschnitten worden und hätte oberhalb von 3,5 g gar
-    // nichts mehr getan.
-    //
-    // > Bis P17 stand `DRIVETRAIN.downforce` mit 0,55 in der Konfiguration und
-    // > wurde von **keiner** Zeile gelesen. Siehe die Begründung an der
-    // > Konstanten selbst; die Zahlen sind mit dem ersten Gebrauch neu bemessen
-    // > worden, weil eine nie angewandte Zahl auch nie geprüft war.
-    const aero = this.#airborne
-      ? 0
-      : drivetrain.downforce * (this.#vLong * this.#vLong + this.#vLat * this.#vLat);
-    // **`halt` ist der stetige Ersatz für den alten Steilhang-Schalter.** Er
-    // sitzt auf der **Radlast** und nicht auf der Federkraft: die Feder hält den
-    // Aufbau auch an einer Wand auf seiner Höhe (das ist Geometrie), aber die
-    // Reifen übertragen dort immer weniger (das ist Haftung). Der `cosθ`-Anteil
-    // steckt schon in `springForce · n_y` — `halt` ist das, was darüber hinaus
-    // ausläuft. Begründung bei `slopeSupport`.
-    const load = this.#airborne ? 0 : (springForce * this.#normal.y + aero) * halt;
-    // Längs-Lastverlagerung: ΔFz = m · a_x · h / L. Verwendet wird die
-    // Beschleunigung des **letzten** Schritts (in `#lastLongAccel`), weil die des
-    // aktuellen erst am Ende feststeht — ein Schritt Verzug bei 60 Hz ist 17 ms
-    // und nicht spürbar, eine Iteration darüber wäre der Aufwand nicht wert.
-    const transfer = (chassis.mass * this.#lastLongAccel * chassis.cgHeight) / chassis.wheelbase;
-    const loadFront = Math.max(0, load * chassis.frontWeight - transfer);
-    const loadRear = Math.max(0, load * (1 - chassis.frontWeight) + transfer);
+    // Alles, was oben steht, ist Federung und Gelände und stammt unverändert aus
+    // P19…P21. Alles, was hier steht, ist neu. Die Grenze zwischen beiden ist
+    // absichtlich diese eine Zeile: wer wissen will, was P22 am Fahrverhalten
+    // geändert hat, liest `arcadeDynamics.ts` und sonst nichts.
+    this.#planarInput.throttle = input.throttle;
+    this.#planarInput.brake = input.brake;
+    this.#planarInput.steer = input.steer;
+    this.#planarInput.handbrake = input.handbrake;
+    this.#planarInput.boost = input.boost === true;
 
-    const gripFactor = surfaceGrip(surface, tire);
-    let muFront = tire.gripAsphalt * gripFactor;
-    let muRear = tire.gripAsphalt * gripFactor * tire.rearGripFactor;
-    const speedNow = Math.hypot(this.#vLong, this.#vLat);
-    // Aquaplaning und lockerer Kies — Asphalt bleibt die gemessene Referenz.
-    if (surface === 'wasser' && speedNow > SURFACE_FEEL.hydroStart) {
-      const hydro = Math.min(
-        1,
-        (speedNow - SURFACE_FEEL.hydroStart) /
-          (SURFACE_FEEL.hydroFull - SURFACE_FEEL.hydroStart),
-      );
-      muFront *= 1 - SURFACE_FEEL.hydroFront * hydro;
-      muRear *= 1 - SURFACE_FEEL.hydroRear * hydro;
-    } else if (surface === 'kies') {
-      muRear *= SURFACE_FEEL.gravelRear;
-    }
+    this.#planarEnv.vLong = this.#vLong;
+    this.#planarEnv.vLat = this.#vLat;
+    this.#planarEnv.surface = surface;
+    this.#planarEnv.waterDepth = waterDepth;
+    this.#planarEnv.airborne = this.#airborne;
+    this.#planarEnv.support = halt;
 
-    // ── Schräglaufwinkel ──────────────────────────────────────────────────
-    const speedRef = Math.max(Math.abs(this.#vLong), limits.slipSpeedFloor);
-    // Rückwärts ist das Vorzeichen der Lenkwirkung umgekehrt; das ergibt sich von
-    // selbst, wenn man mit der **vorzeichenbehafteten** Längsgeschwindigkeit
-    // rechnet. Deshalb `vLong` und nicht `|vLong|` im Zähler des Nenners.
-    const direction = this.#vLong < 0 ? -1 : 1;
-    // **Die Querbewegung einer Achse ist `ω × r`, und ihr Vorzeichen hängt daran,
-    // wohin `right` zeigt.** Für eine Drehung mit `ω` um `+Y` hat ein Punkt bei
-    // `r = a · forward` die Zusatzgeschwindigkeit `ω · (ŷ × forward) = −ω · a · right`;
-    // die Vorderachse bekommt also **minus** `ω · a`, die Hinterachse **plus**
-    // `ω · b`.
-    //
-    // Solange `#right` fälschlich nach links zeigte, stimmten die umgekehrten
-    // Vorzeichen — und als die Achse repariert wurde, blieb hier der Rest des
-    // Fehlers stehen. Ergebnis: die Reifen **verstärkten** jede Drehung, statt sie
-    // zu dämpfen. Gemessen auf spiegelglattem Stadtasphalt, Vollgas, Lenkung null,
-    // ohne einen einzigen Kollisionskontakt: die Gierrate wuchs monoton von
-    // −0,14 auf −2,48 rad/s in 0,4 s, und der Wagen drehte sich im Kreis.
-    //
-    // Das ist der Kern von „die Physik ist schlecht" gewesen — und es sah nach
-    // einem Reifen- oder Geländeproblem aus, weil es sich auf losem Boden zuerst
-    // zeigte.
-    const slipFront =
-      Math.atan2(this.#vLat - this.#yawRate * derived.cgToFront, speedRef) - this.#steerAngle * direction;
-    const slipRear = Math.atan2(this.#vLat + this.#yawRate * derived.cgToRear, speedRef);
+    const planar = this.#planar.step(dt, this.#planarInput, this.#planarEnv);
+    const accelLong = planar.accelLong;
+    const accelLat = planar.accelLat;
+    this.#steerAngle = planar.steerAngle;
 
-    // ── Längskräfte ───────────────────────────────────────────────────────
-    let throttle = this.#throttle;
-    let brake = input.brake;
-    // Bremse bei Stillstand = Rückwärtsgang. Kein Getriebe, keine Taste dafür:
-    // in einem Arcade-Spiel erwartet niemand einen Gangwahlschalter, und ein
-    // Auto, das nicht zurückstoßen kann, steht nach der ersten verpassten Kehre
-    // endgültig.
-    let reverse = false;
-    if (brake > 0 && this.#vLong < 0.6 && throttle <= 0) {
-      reverse = true;
-      throttle = brake;
-      brake = 0;
-    }
-
-    let driveForce = 0;
-    if (throttle > 0) {
-      if (reverse) {
-        driveForce =
-          this.#vLong > -drivetrain.reverseMaxSpeed
-            ? -throttle * drivetrain.maxDriveForce * drivetrain.reverseForceFactor
-            : 0;
-      } else {
-        // Kraftbegrenzt bei niedrigem, leistungsbegrenzt bei hohem Tempo:
-        // `F = min(F_max, P / v)`. Die Endgeschwindigkeit ergibt sich damit aus
-        // dem Gleichgewicht mit dem Luftwiderstand und wird nicht gesetzt.
-        //
-        // **`F_max` ist seit P18 nicht mehr konstant** — der erste Gang steckt
-        // darin. Begründung und Herleitung bei `DrivetrainSpec.launchBoost`; die
-        // Kurzfassung: mit konstantem `F_max` ist das ein Auto mit *einem* Gang,
-        // und ein Auto mit einem Gang kann an der Ampel die Räder nicht
-        // durchdrehen lassen. Gemessen war das der Grund, warum der
-        // Durchdrehfaktor auf Asphalt nie über **0,857** kam, obwohl die
-        // Anforderung „der Hinterwagen bricht auf Gasstoß aus" seit P9.2 im
-        // Kopf von `vehicle.config.ts` steht.
-        const speedForPower = Math.max(Math.abs(this.#vLong), 4);
-        const gear =
-          1 +
-          drivetrain.launchBoost * Math.exp(-Math.abs(this.#vLong) / drivetrain.launchSpeed);
-        driveForce =
-          throttle *
-          Math.min(drivetrain.maxDriveForce * gear, drivetrain.power / speedForPower);
-      }
-    }
-
-    /**
-     * **Motorbremse — bis P17 gab es sie nicht.**
-     *
-     * Ohne Gas wirkten allein Luftwiderstand und Rollreibung; gemessen brauchte
-     * das Coupé aus 195 km/h **39,4 s**, um auf die Hälfte zu kommen. Ein
-     * Verbrenner im Schub schleppt sein eigenes Reibmoment mit, und für den
-     * Lastwagen ist die Motorstaubremse sogar das Bauteil, mit dem er überhaupt
-     * einen Pass hinunterkommt.
-     *
-     * Sie läuft unterhalb `ENGINE_BRAKE_FLOOR` linear aus (die Kupplung trennt
-     * vor dem Stillstand) und geht auf die **angetriebenen** Achsen — dorthin,
-     * wo sie herkommt.
-     *
-     * Der Betrag steht nicht hier, sondern unten: er hängt von der Haftung ab.
-     * Warum, steht bei `ENGINE_BRAKE_SHARE`.
-     */
-    const engineDragWanted =
-      throttle > 0 || this.#airborne || Math.abs(this.#vLong) <= 0.05
-        ? 0
-        : -Math.sign(this.#vLong) *
-          drivetrain.engineBrake *
-          Math.min(1, Math.abs(this.#vLong) / ENGINE_BRAKE_FLOOR);
-
-    const brakeTotal = brake * drivetrain.brakeForce;
-    const brakeSign = this.#vLong > 0 ? -1 : this.#vLong < 0 ? 1 : 0;
-    const brakeFront = brakeTotal * drivetrain.brakeBias * brakeSign;
-    let brakeRear = brakeTotal * (1 - drivetrain.brakeBias) * brakeSign;
-    if (input.handbrake) brakeRear += drivetrain.handbrakeForce * (brakeSign !== 0 ? brakeSign : -1);
-
-    // ── Antrieb auf die Achsen verteilen ──────────────────────────────────
-    //
-    // **Bis P17 gab es diese vier Zeilen nicht.** `driveForce` ging vollständig
-    // in `requestedRear`, und `usedFront` kannte nur die Bremse — das Modell
-    // konnte gar nichts anderes als Heckantrieb. Für den Allradler ist das kein
-    // Detail: er zieht sich mit der Vorderachse aus einer Furche, in der ein
-    // Hecktriebler sich eingräbt.
-    //
-    // Die Aufteilung ist ein **fester Anteil** und kein Mittendifferential.
-    // Sperrwirkung, Momentenverteilung nach Schlupf, Viscokupplung — all das
-    // wäre je Achse eine eigene Drehzahl, und Raddrehzahlen führt dieses Modell
-    // ausdrücklich nicht (siehe Tabelle im Kopf). Was ein fester Anteil nicht
-    // kann: die Kraft von der durchdrehenden auf die haftende Achse verschieben.
-    // Das ist eine bekannte Näherung.
-    const gripRear = muRear * loadRear;
-    const gripFront = muFront * loadFront;
-
-    /**
-     * **Die Motorbremse weicht dem Reibkreis, statt ihn zu sprengen.**
-     *
-     * Der erste Versuch schrieb sie einfach in die Längskraft der angetriebenen
-     * Achse — physikalisch die richtige Stelle, und das Auto war unfahrbar.
-     * Gemessen, Lastwechsel im Bogen bei 68 km/h auf idealem Asphalt, Gas ganz
-     * weg (Schwimmwinkel Spitze / nach 2,5 s):
-     *
-     * | Motorbremse | Lenkung 0,35 | 0,55 | 0,80 |
-     * |---:|---:|---:|---:|
-     * | 0 N   | 20,3° / **1,7°** | 21,9° / **1,7°** | 16,4° / 11,9° |
-     * | 300 N | 26,9° / **0,9°** | 29,3° / **6,7°** | 19,3° / 4,4° |
-     * | 400 N | 30,8° / 17,3° | 37,1° / 6,2° | 20,7° / 1,7° |
-     * | 800 N | 64,4° / **60,1°** | **89,7°** / 0,0° | 69,9° / **69,9°** |
-     *
-     * Zwischen 300 und 400 N kippt es: der Wagen kommt aus dem Lastwechsel nicht
-     * mehr zurück, bei 800 N steht er quer. Und 800 N sind nicht viel — 12 % der
-     * Hinterachshaftung.
-     *
-     * **Die Ursache ist eine Lücke im Modell, keine zu große Zahl.** Dieses
-     * Fahrmodell führt keine Raddrehzahlen (siehe Tabelle im Kopf). In einem
-     * echten Antriebsstrang bricht das Schleppmoment zusammen, sobald das Rad
-     * gegenüber der Fahrbahn zu rutschen beginnt: Rad und Motor hängen über die
-     * Kupplung zusammen, das Rad wird langsamer, die Schleppkraft fällt. Hier
-     * bleibt sie stehen — und schiebt die Achse immer weiter über ihre
-     * Kennlinie hinaus. Das ist eine Mitkopplung, genau wie die, gegen die
-     * `slipSpeedFloor` eingeführt wurde.
-     *
-     * Nachgebildet wird das Fehlende als **Deckel auf den Anteil der
-     * Achshaftung**. Er sagt: Schleppmoment ist begrenzt und gibt nach, statt
-     * die Seitenführung zu überfahren — das ist dieselbe Aussage, die eine
-     * Motorschleppmomentregelung im Steuergerät macht.
-     *
-     * Der Unterschied zur Betriebsbremse ist beabsichtigt: die **darf** die
-     * Lenkbarkeit überfahren (deshalb bremst man in einer Kurve nicht voll), die
-     * Motorbremse nicht.
-     */
-    // **Der Deckel gilt je Achse und nicht für die Summe.** Die erste Fassung
-    // rechnete beim Allradler mit `gripFront + gripRear` — und der Offroader
-    // stand danach bei jedem Lastwechsel quer (gemessen: 89,8° Spitze, 83,5°
-    // nach 2,5 s, bei Lenkung 0,55). Der Grund ist die Lastverlagerung: beim
-    // Verzögern entlastet sich die Hinterachse, und was den Wagen umbringt, ist
-    // der Anteil, der **auf ihr** landet — nicht die Summe über beide. Bei einem
-    // Fahrzeug mit 0,78 m Schwerpunkthöhe ist der Unterschied groß.
-    //
-    // Formal: gesucht ist das größte `F` mit `F·(1−s) ≤ share·gripHinten` und
-    // `F·s ≤ share·gripVorn`. Der Deckel ist das Minimum der beiden.
-    // **Die Kriechhilfe greift hier und nirgends sonst** — sie verschiebt einen
-    // Antriebsanteil nach vorn, mehr nicht. Begründung, Herleitung und die
-    // Messung, aus der sie entstanden ist, stehen bei `CRAWL_ASSIST`.
-    //
-    // Auf Asphalt und Wasser ist `hilfe` null; damit sind alle Zahlen aus P18
-    // unberührt, und zwar durch die Bedingung selbst und nicht durch Zufall.
-    const hilfe =
-      surface === 'asphalt' || surface === 'wasser'
-        ? 0
-        : CRAWL_ASSIST.share * Math.max(0, 1 - Math.abs(this.#vLong) / CRAWL_ASSIST.speed);
-    const share = Math.max(drivetrain.frontShare, hilfe);
-    const capRear = share >= 1 ? Infinity : (ENGINE_BRAKE_SHARE * gripRear) / (1 - share);
-    const capFront = share <= 0 ? Infinity : (ENGINE_BRAKE_SHARE * gripFront) / share;
-    const engineDrag =
-      engineDragWanted === 0
-        ? 0
-        : Math.sign(engineDragWanted) *
-          Math.min(Math.abs(engineDragWanted), capRear, capFront);
-
-    const axleForce = driveForce + engineDrag;
-    const driveFront = axleForce * share;
-    const driveRear = axleForce - driveFront;
-
-    // Reibkreis hinten: was die Längsrichtung nimmt, fehlt der Querführung.
-    const requestedRear = driveRear + brakeRear;
-    const usedRear = clamp(requestedRear, -gripRear, gripRear);
-    const requestedFront = driveFront + brakeFront;
-    const usedFront = clamp(requestedFront, -gripFront, gripFront);
-
-    // **Der Durchdrehfaktor ist der Drift-Schalter.** Der Überschuss über die
-    // Haftgrenze bleibt nicht als Kraft übrig, sondern frisst die Seitenführung.
-    // Genau das macht am Kurvenausgang aus Gas einen Übersteuerimpuls.
-    //
-    // > **Er hat auf Asphalt nie über 1 gestanden, und das war ein Fehler.** Der
-    // > Kommentar hier behauptete, `maxDriveForce` liege „8,6 % über der
-    // > Haftgrenze der Hinterachse" — die Rechnung dahinter setzte die
-    // > **statische** Hinterachslast an und ließ die Lastverlagerung beim
-    // > Beschleunigen weg. Mit ihr braucht es 9088 N statt 6627, und 7200 lagen
-    // > damit 16,1 % **darunter**. Gemessen: höchster Durchdrehfaktor auf
-    // > Asphalt 0,857 × — beim Anfahren wie beim Gasstoß in der Kurve. Die
-    // > Reparatur steht bei `DrivetrainSpec.launchBoost`.
-    //
-    // **Gemessen wird die angetriebene Achse**, nicht pauschal die hintere: bei
-    // Frontantrieb wäre die hintere Zahl konstant null und die Anzeige (und mit
-    // ihr die Driftspur) blind für das, was tatsächlich passiert.
-    const spinRear = gripRear > 1 ? Math.abs(requestedRear) / gripRear : 0;
-    const spinFront = gripFront > 1 ? Math.abs(requestedFront) / gripFront : 0;
-    // **Auf den wirksamen Anteil bezogen, nicht auf den der Spec.** Mit der
-    // Kriechhilfe zieht auch ein Hecktriebler zeitweise vorn mit; ein Zaehler,
-    // der das ignoriert, meldete den Drift einer Achse, die gerade gar nicht
-    // allein arbeitet.
-    const wheelspin =
-      share >= 1 ? spinFront : share <= 0 ? spinRear : Math.max(spinFront, spinRear);
-    // **Hier stand `spinLoss`, und es war die dritte tote Stellschraube dieses
-    // Projekts.** `clamp(1/wheelspin, minSpinGrip, 1)` hat die Querkraft
-    // multipliziert — *nachdem* der Reibkreis in `tireLateral` sie längst auf
-    // null geklemmt hatte. Denn `usedRear` ist auf `gripRear` geklemmt, und bei
-    // Vollgas auf losem Boden liegt es genau dort; das Budget
-    // `√(grip² − Fx²)` ist dann exakt **0**, und `0 · spinLoss` ist 0.
-    //
-    // Gemessen auf der Wiese, 10 s Vollgas, `minSpinGrip` von 0,80 auf 0,00:
-    // Endtempo 25,84 km/h und Endposition (−5,9617 | 27,6956) — **auf vier
-    // Nachkommastellen identisch, für alle vier Werte**. Der lange Kommentar an
-    // der Konstanten beschrieb eine Wirkung, die es nicht gab.
-    //
-    // Der Gedanke dahinter war richtig, nur die Stelle falsch: die Reserve
-    // gehört auf das **Budget**, nicht als Faktor auf das Ergebnis. Sie steht
-    // jetzt in `tireLateral` als `TIRE.lateralReserve`. Dieselbe Fehlerform wie
-    // bei `tailGrip` — ein richtiger Wert an der falschen Stelle in derselben
-    // Funktion, zweimal.
-
-    // ── Querkräfte ────────────────────────────────────────────────────────
-    const lateralFront = tireLateral(
-      slipFront,
-      tire.peakSlipFront,
-      tire.falloffSlipFront,
-      gripFront,
-      usedFront,
-      tire,
-    );
-    let lateralRear = tireLateral(
-      slipRear,
-      tire.peakSlipRear,
-      tire.falloffSlipRear,
-      gripRear,
-      usedRear,
-      tire,
-    );
-    // Handbremse: das Hinterrad steht, im Reibkreis bleibt fast nichts für die
-    // Querführung. Nicht null — sonst ist der Handbremsdrift nicht lenkbar.
-    if (input.handbrake) lateralRear *= tire.lockedLateralFactor;
-
-    // ── Widerstände ───────────────────────────────────────────────────────
-    const speed = Math.hypot(this.#vLong, this.#vLat);
-    const drag = -drivetrain.drag * this.#vLong * Math.abs(this.#vLong);
-    const rollingCoefficient =
-      surface === 'asphalt'
-        ? drivetrain.rollingResistance
-        : surface === 'kies'
-          ? (drivetrain.rollingResistance + drivetrain.rollingResistanceTerrain) / 2
-          : surface === 'wasser'
-            ? drivetrain.rollingResistanceWater
-            : drivetrain.rollingResistanceTerrain;
-    const rolling = this.#airborne
-      ? 0
-      : -Math.sign(this.#vLong) * rollingCoefficient * load * Math.min(1, Math.abs(this.#vLong) / 0.5);
-
-    // Hangabtrieb, waagerechte Komponente der Schwerkraft (Herleitung im Kopf).
-    // Er steht schon in Weltkoordinaten und wird deshalb unten direkt addiert —
-    // eine Projektion auf die Fahrzeugachsen und zurück wäre zweimal derselbe
-    // Kosinus.
+    // Hangabtrieb, waagerechte Komponente der Schwerkraft. Er steht schon in
+    // Weltkoordinaten und wird deshalb direkt addiert — eine Projektion auf die
+    // Fahrzeugachsen und zurück wäre zweimal derselbe Kosinus. Unverändert aus
+    // P14; er ist der Grund, warum ein Hang bergab zieht und bergauf bremst,
+    // ohne dass das Fahrmodell etwas davon wissen müsste.
     const slopeX = this.#airborne ? 0 : GRAVITY * this.#normal.y * this.#normal.x;
     const slopeZ = this.#airborne ? 0 : GRAVITY * this.#normal.y * this.#normal.z;
 
-    // ── Integration ───────────────────────────────────────────────────────
-    //
     // ## Warum in Weltkoordinaten integriert wird
     //
-    // Die erste Fassung führte `vLong` und `vLat` als **Zustand** fort und trug die
-    // Zentripetalterme des rotierenden Bezugssystems nach:
-    // `v̇_long = ΣFx/m + ω·v_lat` und `v̇_lat = ΣFy/m − ω·v_long`. Das ist die
-    // richtige Gleichung und war trotzdem falsch — **mit explizitem Euler erzeugt
-    // sie Energie.**
+    // Die Begründung stammt aus P14 und gilt im Arcade-Modell unverändert weiter
+    // — sie ist sogar sein Fundament. Die erste Fassung des Einspurmodells führte
+    // `vLong` und `vLat` als **Zustand** fort und trug die Zentripetalterme des
+    // rotierenden Bezugssystems nach. Das ist die richtige Gleichung und war
+    // trotzdem falsch: mit explizitem Euler ist die Drehung des
+    // Geschwindigkeitsvektors durch ihre **Tangente** ersetzt, und die ist um
+    // `√(1+(ω·dt)²)` länger. Gemessen wurde daraus aus einem Drift bei 93 km/h
+    // nach 2,75 s **1622 km/h**.
     //
-    // Der Grund ist Geometrie: die beiden Terme sind eine Drehung der
-    // Geschwindigkeit um `ω·dt`. Explizit integriert wird daraus statt der Drehung
-    // ihre **Tangente**, und die ist um den Faktor `√(1 + (ω·dt)²)` länger. Bei
-    // 60 Hz und ω = 15 rad/s (ein Kreisel nach einem Dreher) sind das 3 % Zuwachs
-    // **je Schritt**, also das Sechsfache je Sekunde.
-    //
-    // Gemessen, bevor es repariert war: ein eingeleiteter Drift bei 93 km/h stand
-    // nach 2,75 s bei **1622 km/h**. Der Fehler war an der Bahn nicht zu sehen —
-    // das Auto fuhr ja —, sondern nur an der Zahlenreihe.
-    //
-    // In Weltkoordinaten gibt es das Problem nicht: dort *dreht sich der
-    // Geschwindigkeitsvektor gar nicht*, wenn sich das Fahrzeug dreht. Die
-    // Zentripetalterme verschwinden ersatzlos, weil sie ein Artefakt des
-    // mitrotierenden Systems waren und keine Kraft. Gerechnet wird weiterhin in
-    // Fahrzeugachsen — nur eben einmal je Schritt neu projiziert statt
-    // fortgeschrieben.
-    const forceLong =
-      usedFront + usedRear + drag + rolling - lateralFront * Math.sin(this.#steerAngle);
-    const forceLat = lateralFront * Math.cos(this.#steerAngle) + lateralRear;
-
-    let accelLong = forceLong / chassis.mass;
-    const accelLat = forceLat / chassis.mass;
-
-    // Haftreibung im Stand — Begründung bei `STATIC_HOLD_SPEED`.
-    if (!this.#airborne && throttle <= 0 && speed < limits.staticHoldSpeed) {
-      const holdLimit = (muFront * loadFront + gripRear) / chassis.mass;
-      const needed = -this.#vLong / dt - accelLong;
-      accelLong += clamp(needed, -holdLimit, holdLimit);
-    }
-    this.#lastLongAccel = accelLong;
-
-    this.velocity.x +=
-      (this.#forward.x * accelLong + this.#right.x * accelLat + slopeX) * dt;
-    this.velocity.z +=
-      (this.#forward.z * accelLong + this.#right.z * accelLat + slopeZ) * dt;
-
-    // Wasserwiderstand — `F = −c · v · |v|`, skaliert mit der Tiefe. Auf
-    // Asphalt ist `waterDepth` null, der Term also exakt null: die gemessenen
-    // 0–100-Zahlen bleiben dieselben.
-    if (!this.#airborne && waterDepth > 0) {
-      const wet = Math.min(1, waterDepth / 0.7);
-      const horiz = Math.hypot(this.velocity.x, this.velocity.z);
-      if (horiz > 1e-4) {
-        const damp = (drivetrain.waterDrag * wet * horiz * dt) / chassis.mass;
-        this.velocity.x -= this.velocity.x * damp;
-        this.velocity.z -= this.velocity.z * damp;
-      }
-    } else if (!this.#airborne && surface !== 'asphalt') {
-      const k =
-        surface === 'gelaende'
-          ? drivetrain.terrainDrag
-          : surface === 'kies'
-            ? drivetrain.gravelDrag
-            : 0;
-      if (k > 0) {
-        this.velocity.x -= this.velocity.x * k * dt;
-        this.velocity.z -= this.velocity.z * k * dt;
-      }
-    }
+    // In Weltkoordinaten gibt es den Term gar nicht — und im Arcade-Modell ist er
+    // obendrein die Quelle des Schwimmwinkels: dreht sich die Nase, bleibt der
+    // Geschwindigkeitsvektor stehen, und die Querkomponente entsteht von selbst.
+    // Der Drift ist damit keine Zeile Code, sondern eine Folge der Wahl des
+    // Bezugssystems.
+    this.velocity.x += (this.#forward.x * accelLong + this.#right.x * accelLat + slopeX) * dt;
+    this.velocity.z += (this.#forward.z * accelLong + this.#right.z * accelLat + slopeZ) * dt;
 
     // ── Gieren ────────────────────────────────────────────────────────────
-    // **Das Vorzeichen kommt aus dem Kreuzprodukt, nicht aus einer Annahme.**
-    // Der Gierwinkel ist der Drehwinkel um `+Y` (`forward = (sin ψ, 0, cos ψ)`
-    // ist `R_y(ψ)·(0,0,1)`), also gilt `I_zz ψ̈ = (r × F)_y`. Für eine Seitenkraft
-    // `F = F_y · right` an der Stelle `r = a · forward` ergibt das
-    // `(a cos)(−F cos) − (a sin)(F sin) = −a · F`: eine Kraft nach **rechts**
-    // dreht den Gierwinkel **negativ**.
     //
-    // Seit `#right` wirklich rechts zeigt, muss dieses Minus hier stehen. Vorher
-    // fehlte es — und hob den Achsenfehler oben gerade wieder auf, weshalb das
-    // Auto überhaupt fuhr und nur in die falsche Richtung lenkte.
-    let yawTorque = -(
-      lateralFront * Math.cos(this.#steerAngle) * derived.cgToFront -
-      lateralRear * derived.cgToRear
-    );
-    // Die einzige Fahrhilfe: Dämpfung **hinter** dem Ausbruchpunkt. Bei normalem
-    // Schräglauf ist der Term exakt null (siehe `STEERING.driftDamping`).
-    const excess = Math.abs(slipRear) - tire.peakSlipRear;
-    if (excess > 0 && !this.#airborne) {
-      yawTorque -=
-        this.#yawRate *
-        steering.driftDamping *
-        Math.min(1, excess / tire.peakSlipRear) *
-        chassis.yawInertia;
-      // Loslassen fängt — Begründung bei `STEERING.releaseDamping`.
-      if (Math.abs(input.steer) < 0.25 && !input.handbrake) {
-        yawTorque -=
-          this.#yawRate *
-          steering.releaseDamping *
-          Math.min(1, excess / tire.peakSlipRear) *
-          chassis.yawInertia;
-      }
-    }
-    this.#yawRate += (yawTorque / chassis.yawInertia) * dt;
-    // In der Luft dreht sich nichts weiter auf: ohne Reifen gibt es kein
-    // Giermoment, und die vorhandene Drehung läuft nur aus.
-    if (this.#airborne) this.#yawRate *= Math.exp(-0.6 * dt);
-    // **Deckel auf die Gierrate**, und zwar immer und nicht nur nach einem
-    // Anschlag. 8 rad/s sind 1,3 Umdrehungen je Sekunde — mehr dreht sich ein
-    // Auto auf Asphalt nicht, und oberhalb davon wird `ω·dt` so groß, dass die
-    // Winkelintegration selbst ungenau wird (bei 8 rad/s sind es 7,6° je Schritt).
-    this.#yawRate = clamp(this.#yawRate, -limits.maxYawRate, limits.maxYawRate);
+    // Die Gierrate ist im Arcade-Modell **gesetzt und nicht integriert**: sie
+    // kommt aus `ArcadeDynamics`, die sie ihrer Sollrate nachführt. Das
+    // Giermoment aus Reifenkräften, das P14 bis P17 dreimal repariert haben
+    // (Vorzeichen der Rechtsachse, Vorzeichen des Moments, Vorzeichen von ω × r),
+    // gibt es nicht mehr — und mit ihm die ganze Fehlerklasse.
+    this.#yawRate = planar.yawRate;
     this.#yaw += this.#yawRate * dt;
+    this.#airPitchRate = planar.pitchRate;
 
     // ── Lage integrieren ──────────────────────────────────────────────────
     this.#updateBasis();
@@ -1332,29 +987,57 @@ export class Vehicle {
     const t = this.telemetry;
     t.speed = Math.hypot(this.#vLong, this.#vLat);
     t.forwardSpeed = this.#vLong;
-    t.slip = t.speed > 1 ? Math.atan2(this.#vLat, Math.abs(this.#vLong)) : 0;
-    t.slipFront = slipFront;
-    t.slipRear = slipRear;
-    t.wheelspin = wheelspin;
+    t.slip = planar.slip;
+    // **`slipFront`/`slipRear` gibt es weiter, und sie sind jetzt eine
+    // Ableitung.** Im Einspurmodell waren sie die *Ursache* der Reifenkräfte; im
+    // Arcade-Modell gibt es keine Achsschräglaufwinkel mehr. Sie hier
+    // ersatzlos zu streichen hätte drei Verbraucher zugleich getroffen
+    // (Debug-Panel, Spuren, Ton), und alle drei fragen in Wahrheit dasselbe:
+    // *wie quer steht der Wagen*. Also stehen sie als das da, was sie sind —
+    // der Schwimmwinkel, vorn um den Lenkeinschlag versetzt.
+    t.slipFront = planar.slip - this.#steerAngle * (this.#vLong < 0 ? -1 : 1);
+    t.slipRear = planar.slip;
+    t.wheelspin = planar.wheelspin;
     t.steerAngle = this.#steerAngle;
     t.compression = clamp(compression / suspension.travel, 0, 1.5);
     t.airborne = this.#airborne;
     t.surface = surface;
     t.waterDepth = waterDepth;
-    t.skid = Math.max(
-      0,
-      Math.min(
-        1,
-        Math.max(
-          (Math.abs(slipRear) / tire.peakSlipRear - 0.7) / 0.3,
-          t.wheelspin > 1 ? (t.wheelspin - 1) / 0.5 : 0,
-          input.handbrake && speed > 3 ? 0.55 : 0,
-        ),
-      ),
-    );
+    t.skid = planar.skid;
+    t.drift = planar.drift;
+    t.boost = planar.boost;
+    t.boosting = planar.boosting;
   }
 
-  #lastLongAccel = 0;
+  /**
+   * Eingabe- und Umgebungsobjekt der Dynamik, **einmal angelegt**.
+   *
+   * Ein frisches Objektpaar je Schritt wären 120 Allokationen je Sekunde, und in
+   * einer Schleife, die der Messstand 3600-mal in 50 ms treibt, ist das der
+   * Unterschied zwischen „kostet nichts" und „der Sammler läuft mit". Dieselbe
+   * Begründung wie bei `#contacts` und `#treeBuf`.
+   */
+  readonly #planarInput: { -readonly [K in keyof DriveCommand]: DriveCommand[K] } = {
+    throttle: 0,
+    brake: 0,
+    steer: 0,
+    handbrake: false,
+    boost: false,
+  };
+
+  readonly #planarEnv: { -readonly [K in keyof PlanarEnv]: PlanarEnv[K] } = {
+    vLong: 0,
+    vLat: 0,
+    surface: 'asphalt',
+    waterDepth: 0,
+    airborne: false,
+    support: 1,
+  };
+
+  /** Nickrate aus der Luftsteuerung, rad/s — null am Boden. */
+  #airPitchRate = 0;
+  /** Aufintegrierte Flugauslenkung des Nickwinkels, rad. */
+  #airPitch = 0;
 
   // ── Teilschritte ────────────────────────────────────────────────────────
 
@@ -1387,22 +1070,11 @@ export class Vehicle {
   }
 
   /**
-   * Radeinschlag der Eingabe nachführen.
-   *
-   * Ratenbegrenzt und mit Tempo skaliert — beide Begründungen stehen bei
-   * `STEERING.rate` bzw. `STEERING.speedFalloff`. Die Skalierung greift am
-   * **Ziel**, nicht am Weg: sonst hinge die Lenkgeschwindigkeit am Tempo, und
-   * bei 200 km/h reagierte das Lenkrad träge statt fein.
+   * > **Hier stand `#steer` bis P22.** Der Radeinschlag wird jetzt in
+   * > `ArcadeDynamics.#steer` geführt, weil er dort gebraucht wird — die
+   * > Soll-Gierrate ist eine Funktion von ihm. Ein Einschlag, der hier läuft und
+   * > dort gelesen wird, wäre ein Zustand über zwei Dateien.
    */
-  #steer(dt: number, request: number): void {
-    const speed = Math.abs(this.#vLong);
-    const limit = this.#spec.steering.maxAngle / (1 + speed / this.#spec.steering.speedFalloff);
-    const target = clamp(request, -1, 1) * limit;
-    const rate = Math.abs(target) < Math.abs(this.#steerAngle) ? this.#spec.steering.centerRate : this.#spec.steering.rate;
-    const step = rate * dt;
-    const delta = target - this.#steerAngle;
-    this.#steerAngle += clamp(delta, -step, step);
-  }
 
   /** Radaufstandspunkte und ihre Bodenhöhen. */
   #sampleWheels(ground: Ground): void {
@@ -1628,10 +1300,31 @@ export class Vehicle {
         (n.x * this.#forward.x + n.z * this.#forward.z) / ny,
       );
       const luftRoll = Math.atan(-(n.x * this.#right.x + n.z * this.#right.z) / ny);
+      // **Die Luftsteuerung wirkt hier und nirgends sonst — P22.** Sie ist der
+      // Unterschied zwischen einem Sprung, den man *nimmt*, und einem, der einem
+      // zustößt: mit Gas hebt sich die Nase, mit Bremse senkt sie sich, und man
+      // landet flach statt auf dem Stoßfänger. Ohne sie ist jede Rampe ein
+      // Glücksspiel, und ein Glücksspiel wiederholt niemand.
+      //
+      // Sie wird auf die Geländelage **addiert** und ersetzt sie nicht: der
+      // Wagen zielt weiter auf den Hang, über dem er fliegt (die Reparatur aus
+      // P20), und der Spieler verschiebt dieses Ziel um bis zu
+      // `AIR_CONTROL.maxPitch`.
+      this.#airPitch = clamp(
+        this.#airPitch + this.#airPitchRate * dt,
+        -AIR_CONTROL.maxPitch,
+        AIR_CONTROL.maxPitch,
+      );
       const blend = 1 - Math.exp(-this.#spec.suspension.attitudeRate * dt);
-      this.#pitch += (luftPitch - this.#pitch) * blend;
+      this.#pitch += (luftPitch + this.#airPitch - this.#pitch) * blend;
       this.#roll += (luftRoll - this.#roll) * blend;
       return;
+    }
+    // Am Boden läuft die Flugauslenkung aus — sonst stünde der Wagen nach einer
+    // Landung dauerhaft schief.
+    if (this.#airPitch !== 0) {
+      this.#airPitch *= Math.exp(-6 * dt);
+      if (Math.abs(this.#airPitch) < 1e-4) this.#airPitch = 0;
     }
 
     const expected = this.position.y - this.#spec.chassis.cgHeight;
@@ -2113,113 +1806,26 @@ export class Vehicle {
 }
 
 /**
- * Reifenseitenkraft aus dem Schräglaufwinkel.
- *
- * Die Kennlinie hat vier Abschnitte; ihre Form, die Begründung und die Messung,
- * die zu ihr geführt hat, stehen bei `TIRE.plateauWidth`. Hier steht nur, was
- * der Code tut und warum er es *so* tut.
- *
- * `usedLongitudinal` ist die bereits verbrauchte Längskraft: der Reibkreis lässt
- * nur `√(grip² − Fx²)` für die Seitenführung übrig. Deshalb geht bei Vollbremsung
- * die Lenkbarkeit verloren, und deshalb wird ein Wagen mit durchdrehenden Rädern
- * hinten los.
- *
- * > **Was hier bis P17 stand, und warum es das Auto unfahrbar gemacht hat.** Die
- * > alte Fassung rechnete `f(n) = 2n/(1+n²)` und legte `TIRE.tailGrip` als
- * > **Betragsklemme** darüber:
+ * > **Hier standen bis P22 die Reifenkennlinie und ihre drei Helfer**
+ * > (`tireLateral`, `gripCurve`, `surfaceGrip`) — rund 120 Zeilen, dazu die
+ * > ausführlichste Herleitung des ganzen Projekts. Sie sind mit dem
+ * > Einspurmodell entfallen; das Arcade-Modell hat keine Schräglaufwinkel mehr,
+ * > an denen sie ansetzen könnten.
  * >
- * > ```ts
- * > if (curve > -boden && curve < boden) curve = n > 0 ? boden : -boden;
- * > ```
+ * > **Gelöscht ist die Begründung nicht.** Sie steht vollständig in
+ * > `vehicle.config.ts` bei `TIRE.plateauWidth`, `TIRE.tailGrip` und
+ * > `TIRE.lateralReserve`, und sie ist dort mehr wert als der Code: zwei der
+ * > drei teuersten Fehler dieses Projekts (`tailGrip` als Betragsklemme,
+ * > `minSpinGrip` als Faktor auf das Ergebnis) sind Fehler dieser Funktionen
+ * > gewesen, und ihre Lehre — *ein richtiger Wert an der falschen Stelle in
+ * > derselben Funktion, zweimal* — gilt für jede Kennlinie, die noch kommt.
  * >
- * > Gedacht war das gegen den Abfall wie `2/n` **hinter** dem Scheitel. Die
- * > Bedingung trifft aber jeden kleinen Betrag — und der kleinste Betrag der
- * > Kennlinie liegt bei `n = 0`. `2n/(1+n²) < 0,75` gilt für `n < 0,451`
- * > **und** für `n > 2,215`; geklemmt wurden also beide Enden. Gemessen:
- * >
- * > | Schräglauf | Kraftanteil alt | neu |
- * > |---:|---:|---:|
- * > | 0,01° | **0,750** | 0,001 |
- * > | 1,00° | **0,750** | 0,206 |
- * > | 5,00° | 0,841 | 0,846 |
- * >
- * > Der Reifen war damit ein **Schalter**: null bei exakt null Schräglauf, drei
- * > Viertel der Höchstkraft bei jedem Wert darüber. Die Folgen — Zittern mit
- * > 295 Vorzeichenwechseln in 300 Schritten, eine nicht monotone Lenkantwort und
- * > 10 m Versatz auf 10 s Geradeausfahrt — sind bei `TIRE.plateauWidth`
- * > tabelliert.
- * >
- * > **Zwei Lehren.** Eine Klemme auf einen *Betrag* trifft beide Enden des
- * > Wertebereichs; gemeint war ein Abschnitt, und ein Abschnitt gehört über
- * > seine **Variable** abgegrenzt (hier `n`), nicht über den Funktionswert. Und:
- * > die Kennlinie war nie tabelliert worden. Siebzehn Zeilen Ausgabe hätten den
- * > Fehler in einem Schritt gezeigt — genau der Punkt, den CLAUDE.md unter
- * > „Mittelwerte verstecken Formen" führt.
+ * > `TireSpec` bleibt in `vehicles.config.ts` stehen, obwohl das Fahrmodell sie
+ * > nicht mehr liest. Sie ist die vollständige Beschreibung dessen, was ein
+ * > Fahrzeug an Reifen hätte, und der Prüfstand `tools/bench/fleet.mts` nennt
+ * > ihre Zahlen weiter im Vergleich. Eine Spec zu löschen, weil ein Modell sie
+ * > gerade nicht braucht, hieße die Messreihen von P14 bis P21 wegzuwerfen.
  */
-function tireLateral(
-  slip: number,
-  peak: number,
-  falloff: number,
-  grip: number,
-  usedLongitudinal: number,
-  tire: TireSpec,
-): number {
-  if (grip <= 0) return 0;
-  // Reibkreis — **mit einem Boden**. Die Wurzel allein geht bei voller
-  // Längsausnutzung auf null, und eine Achse ohne jede Seitenführung ist nicht
-  // „am Limit", sondern von der Fahrbahn abgemeldet. Herleitung des Werts bei
-  // `TIRE.lateralReserve`.
-  const budget = Math.max(
-    grip * tire.lateralReserve,
-    Math.sqrt(Math.max(0, grip * grip - usedLongitudinal * usedLongitudinal)),
-  );
-  const force = -Math.sign(slip) * gripCurve(Math.abs(slip), peak, falloff, tire) * grip;
-  return clamp(force, -budget, budget);
-}
-
-/**
- * Der Kraftanteil 0…1 über dem **Betrag** des Schräglaufwinkels.
- *
- * Getrennt von `tireLateral`, weil die Form über dem Betrag definiert ist und
- * das Vorzeichen erst danach draufkommt. Die alte Fassung hat genau diese
- * Trennung nicht gemacht — und deshalb an der falschen Größe geklemmt.
- */
-function gripCurve(absSlip: number, peak: number, falloff: number, tire: TireSpec): number {
-  if (absSlip <= 0) return 0;
-
-  // 1. Anstieg. `x(2−x)` hat bei x = 0 die Steigung 2 — über dem Winkel also
-  //    `2/peak`, und das ist genau die Schräglaufsteifigkeit `C = 2 μ F_z /
-  //    α_peak`, mit der die Stabilitätsrechnung bei `TIRE.peakSlipFront`
-  //    argumentiert. Bei x = 1 ist die Steigung **null**, der Scheitel schließt
-  //    also knickfrei an das Plateau an.
-  if (absSlip < peak) {
-    const x = absSlip / peak;
-    return x * (2 - x);
-  }
-
-  // 2. Plateau — volle Kraft, während der Schräglauf schon wächst. Das ist der
-  //    Bereich, in dem ein Fahrer die Grenze spürt, bevor sie ihn kostet.
-  const plateauEnde = peak * (1 + tire.plateauWidth);
-  if (absSlip < plateauEnde) return 1;
-
-  // 3. Abfall auf den Rest. Glättung statt Gerade: sie läuft an **beiden** Enden
-  //    waagerecht aus, der Übergang ist also auch hier knickfrei.
-  const ende = Math.max(falloff, plateauEnde + 1e-6);
-  if (absSlip < ende) {
-    const t = (absSlip - plateauEnde) / (ende - plateauEnde);
-    return 1 + (tire.tailGrip - 1) * t * t * (3 - 2 * t);
-  }
-
-  // 4. Rest. Gleitreibung — sie verschwindet nicht, nur weil das Rad quer steht.
-  return tire.tailGrip;
-}
-
-function surfaceGrip(surface: Surface, tire: TireSpec): number {
-  if (surface === 'asphalt') return 1;
-  if (surface === 'kies') return tire.gripGravel;
-  if (surface === 'wasser') return tire.gripWater;
-  return tire.gripTerrain;
-}
 
 function rumbleFor(surface: Surface): number {
   if (surface === 'kies') return SURFACE_FEEL.rumbleGravel;

@@ -9991,3 +9991,1040 @@ Auf **rauem** Gelände liegt das Blech jetzt bei 0,00…0,04 m statt 0,07…0,66
       und bewusst **nicht** repariert. Die Reparatur gehört in `bake-terrain.mjs`
       und kostet einen `npm run world`-Lauf, der das ganze Höhenfeld neu würfelt.
 - [ ] **Auf einem echten Telefon nicht geprüft** — dieselbe Lücke wie seit P12.6.
+
+
+---
+
+# P22 — Das Arcade-Fahrmodell
+
+> **Abgenommen am 2026-08-30.** Das Einspurmodell aus P14…P21 ist ersetzt; alles
+> darum herum (Federung, Stützebene, Blech gegen Gelände, Kollision,
+> Klemmschutz) läuft unverändert weiter.
+
+## Der Anlass
+
+Der Auftraggeber: *„Aktuell sind die Physics noch ganz grausam. Es ist nicht
+lustig."* Das ist die vierte Phase in Folge, in der die Zeile „fühlt es sich gut
+an" offen stand — und diesmal lag die Antwort im **eigenen Prüfstand**, man
+musste nur die richtige Zeile lesen:
+
+```
+Lenkantwort 90 km/h:  21.8  27.3  26.2  26.3  25.7 °/s   (Lenkung 0,2…1,0)
+asphalt  Durchdrehen: Anfahrt 1.11×  Bogen 0.88×
+```
+
+Zwischen 20 % und 100 % Lenkeinschlag liegen bei Reisetempo **3,9 °/s**: die
+Lenkung ist oberhalb eines Fünftels ihres Wegs ein Schalter, und zwar genau in
+dem Tempobereich, in dem das Spiel stattfindet. Und auf Asphalt bricht das Heck
+im Bogen nicht aus (0,88 < 1) — ein Touge-Drift-Spiel, in dem man auf der Straße
+nicht driften kann.
+
+**Beides sind Eigenschaften des Modells, keine Fehler darin.** Ein Fahrzeug,
+dessen Querkraft aus Schräglaufwinkeln entsteht, sättigt bei hohem Tempo; ein
+Serienauto mit 165 kW dreht auf trockenem Asphalt nicht durch. Wer das ändern
+will, muss die Zahlen so weit verbiegen, bis das Modell keines mehr ist.
+
+## Was gebaut wurde
+
+| Datei | Inhalt |
+|---|---|
+| `src/config/arcade.config.ts` | Kennzahlen je Fahrzeug, jede mit Herleitung |
+| `src/game/arcadeDynamics.ts` | Gieren und die beiden waagerechten Geschwindigkeiten |
+| `tools/bench/arcade.mts` | sieben Proben, darunter „Drift ohne Absicht" |
+
+Die Umkehrung gegenüber dem Einspurmodell: dort erzeugen Reifenkräfte ein
+Giermoment, und die Drehung ist ihr Ergebnis. Hier ist die **Drehung die
+Eingabe** und die Seitenkraft ihre Folge. Der Schwimmwinkel entsteht dabei nicht
+im Code, sondern aus der Wahl des Bezugssystems: die Geschwindigkeit steht in
+Weltkoordinaten, die Nase dreht sich, und die Querkomponente folgt geschlossen
+als `β ≈ ω/k`.
+
+## Zwei verworfene Fassungen, beide mit Zahl
+
+1. **Drift als feste Zusatz-Gierrate.** Kein Gleichgewichtspunkt — im
+   stationären Drift ist die Gierrate die Bahnkrümmung, und die ist durch
+   `a_lat/v` gedeckelt. Gemessen 111 °/s bei 40 km/h, also ein Kreisel.
+   Ersetzt durch eine Regelung auf den **Winkel**.
+2. **Kinematische Soll-Gierrate mit Grip-Deckel.** Schon 20 % Einschlag
+   erreichten bei 90 km/h die Haftgrenze; darüber war die Lenkung wieder ein
+   Schalter (33,4 °/s über den ganzen Rest des Wegs). Ersetzt durch den
+   **Anteil** an dem, was das Fahrzeug bei diesem Tempo kann.
+
+## Akzeptanz
+
+- [x] Lenkantwort **streng monoton** bei jedem Tempo und jedem Fahrzeug.
+      Coupé bei 90 km/h: 6,6 / 13,3 / 19,9 / 26,6 / 33,4 °/s (vorher
+      21,8 / 27,3 / 26,2 / 26,3 / 25,7). Bei 40 km/h: 14,8 / 29,7 / 44,8 /
+      60,1 / 75,8.
+- [x] **Handbremsdrift** bei 80 km/h: Spitze 38,9°, gehalten 21,8°, fängt sich
+      nach 0,20 s ohne Eingabe. Kein Dreher bei keinem der vier Fahrzeuge.
+- [x] **Gasstoß im Bogen** löst einen Drift aus: Coupé 33,3° und stabil
+      gehalten — die Kernanforderung aus P9.2, die das Einspurmodell nie
+      erfüllt hat.
+- [x] **Drift ohne Absicht bleibt aus.** Halbe Lenkung, Reisetempo: 1,9…2,0°
+      Schwimmwinkel bei allen vier Fahrzeugen. Diese Probe hat die erste
+      Fassung gestoppt.
+- [x] 0–100 / Endtempo / Bremsweg neu gemessen und je Fahrzeug unterscheidbar:
+      3,17 s / 271 km/h / 20,6 m (Coupé) bis 9,30 s / 160 km/h / 31,5 m
+      (Lastwagen).
+- [x] Alle Proben aus P19/P20 (`tools/bench/world.mts`) grün, alle vier
+      Fahrzeuge; Zufallsgelände „kommt von der Stelle" 6,3…8,3 m im
+      schlechtesten Vier-Sekunden-Fenster.
+- [x] Nitro, Luftsteuerung, Blickwinkel- und Kamerazug bei Tempo gebaut und
+      gemessen: aus 120 km/h **+97…+188 km/h** je Fahrzeug.
+      Der Prüfstand meldet dabei „6,7 s Brenndauer" über ein 10-s-Fenster,
+      obwohl der Vorrat 3,2…4,0 s trägt — die Differenz ist die
+      Grundnachfüllung (`boostRefill`), die ihn zwischendurch wieder anspringen
+      lässt. Das ist gewollt und gehört hierhin, damit die Zahl nicht als
+      Widerspruch gelesen wird.
+- [x] `typecheck` und `build` sauber, Rauchprobe grün.
+
+## Was offen bleibt
+
+- [ ] **„Fühlt es sich gut an" ist weiter nicht gemessen** — fünfte Phase mit
+      derselben Zeile, und sie wird es bleiben: ein Prüfstand fährt mit einem
+      Regler, nicht mit einer Absicht.
+- [ ] Auf einem echten Telefon nicht geprüft.
+
+---
+
+# P23 — Rennen, Gegner, Wertung, Fortschritt
+
+> **Abgenommen am 2026-08-30.**
+
+## Der Anlass
+
+Bis P22 konnte man auf dieser Karte **fahren**, und mehr nicht. Es gab einen
+Rundenzähler (P9.3) und eine Bestzeit (P16) — und keinen Grund, eine zweite
+Runde zu fahren.
+
+## Was gebaut wurde
+
+Sechs Veranstaltungen (`src/config/events.config.ts`), drei KI-Gegner mit
+**derselben** Physik und derselben Kollisionswelt wie der Spieler,
+Kontrollpunkte mit sichtbaren Toren, Driftwertung mit Kette und Multiplikator,
+Nitro, Geld und Fahrzeuge zum Freischalten. Die Spieler-Oberfläche ist auf
+**Englisch** umgestellt; Code, Kommentare und diese Doku bleiben deutsch.
+
+Herausgelöst wurde dabei `RoadGround`: der Straßenzusammenhang wird je Schritt
+für *eine* Position gebildet, und vier Fahrzeuge brauchen vier davon. Mit einem
+gemeinsamen führen drei Gegner in der Stadt einen Meter unter dem Asphalt.
+
+## Vier Fehler, vier Messungen
+
+1. **Die Bremse legt im Stand den Rückwärtsgang ein.** Das Feld fuhr den
+   Countdown über rückwärts aus der Startaufstellung — 5 m neben die Straße,
+   124° quer dazu. Die Handbremse hebt den Rückwärtsgang jetzt auf.
+2. **„Runde × Länge + Bogenlänge" ist an der Naht einer geschlossenen Strecke
+   nicht der gefahrene Weg.** AOKI stand nach 60 s bei 7474 m — 448 km/h.
+3. **Pure Pursuit sieht den Querabstand nicht.** Die Gegner fuhren 12 m neben
+   der Straße parallel zu ihr, mit 6° Winkelfehler und 0,23 Lenkeinschlag.
+   Ersetzt durch Stanley plus Krümmungs-Vorsteuerung; für „weit daneben"
+   blendet der Bezugswinkel auf die Peilung zur Linie.
+4. **Die Ideallinie kannte nur Kurven, keine Kuppen.** Bei 108 km/h über eine
+   *gerade* Kuppe hob der Wagen ab und landete 13 m neben der Fahrbahn. Die
+   senkrechte Krümmung deckelt das jetzt geschlossen: `v²·|κ_v| ≤ 0,5 g`.
+
+## Akzeptanz
+
+- [x] Ringstraße, 180 s, Führender: **597 m → 3900 m**, Anteil neben der
+      Fahrbahn **97 % → 26 %**. Bergpass hinauf und hinunter werden vollständig
+      abgefahren (2630 m von 2616 m Streckenlänge).
+- [x] Countdown, Kontrollpunkte, Platzierung, Zieltafel und Abrechnung laufen
+      (Rauchprobe: `countdown → running`, 12 → 10 Kontrollpunkte, P4 bei
+      stehendem Spieler).
+- [x] Driftwertung mit Kette, Multiplikator bis ×5 und drei Abbruchgründen
+      (Zeit, Anschlag, Dreher); sie läuft **auch außerhalb** einer
+      Veranstaltung.
+- [x] Fortschritt überlebt das Neuladen (`localStorage`, jeder Wert geprüft
+      statt geglaubt).
+- [x] `tools/smoke.mjs` — lädt die Seite in Chromium, prüft Bild, Fahrmodus,
+      Lenkung, Schanzen, Rennen, HUD und Menü und **liest die Konsole mit**.
+      Die drei teuersten Fehler dieses Projekts standen ausschließlich dort.
+
+## Was offen bleibt
+
+- [ ] **Die Gegner sind 26 % der Zeit neben der Fahrbahn.** Sie kommen zurück
+      (die Rettungswache setzt sie nach fünf Sekunden ohne Fortschritt auf die
+      Linie), aber sauber ist das nicht. Was fehlt, ist eine Ideallinie, die
+      **quer** optimiert — die heutige ist die Mittellinie.
+- [ ] **Gegner haben keine Kollision untereinander und mit dem Spieler.**
+      Begründung im Kopf von `RivalField`: die `CollisionWorld` ist ein
+      statisches Raster, und vier bewegte Rechtecke darin hießen, die
+      Auflösung anzufassen, die P19…P21 stabil bekommen haben.
+- [ ] Zielzeiten für Medaillen (`RaceEvent.medals`) sind vorgesehen und nicht
+      gesetzt — sie gehören gefahren, nicht geschätzt.
+
+---
+
+# P24 — Schanzen, Driftzonen, Sammelstücke
+
+> **Abgenommen am 2026-08-30.**
+
+## Was gebaut wurde
+
+Sechs Sprungschanzen, zwei Driftzonen mit Kirschbaumring, Fahnen und fallenden
+Blüten, 90 wiederkehrende Sammelstücke entlang der Straßen.
+
+Die Schanzen sind eine **Funktion** und kein Mesh mit Kollisionskörper daneben:
+`RampField.surfaceAt()` liefert die Fläche, `RoadGround.height()` nimmt das
+Maximum daraus, und `StuntSystem` baut sein Mesh aus derselben Funktion. Bild
+und Physik können damit nicht auseinanderlaufen.
+
+## Drei Fehler, drei Messungen
+
+1. **Additiv war falsch.** `Gelände + Auflage` macht die Schanze so wellig wie
+   ihren Untergrund; ein 24 m langes Stück Böschung mit unter 1,2 m Höhenband
+   gibt es auf einer erodierten Karte fast nirgends — das Suchwerkzeug fand auf
+   11 km Straße **einen** Platz. Seitdem steht die Schanze auf einem Fundament.
+2. **Von Hand gesetzte Koordinaten waren unbrauchbar.** Vier von fünf: 7,22 s
+   Flugzeit (die Anfahrt endete an einer Klippe), 0,02 s bei +21 m Höhe (die
+   Anfahrt ging bergauf). `tools/find-ramps.mjs` sucht sie jetzt aus Höhenfeld
+   und Straßennetz.
+3. **Die „flachste Stelle der Karte" war ein geflutetes Reisfeld.** Ein Bild
+   hat es gezeigt, keine Zahl. Der Rasterlauf prüft seitdem `paddy.png` mit.
+
+## Akzeptanz
+
+- [x] Fünf von sechs Schanzen heben ab (0,7…5,3 s Flugzeit, gemessen aus 150 m
+      Anlauf). Die sechste ist ausdrücklich eine **Kuppe** und soll es nicht.
+- [x] Schanzen-Mesh und Fahrfläche stammen aus **einer** Funktion.
+- [x] Driftzonen auf gemessen flachem, trockenem Boden (3,9 m bzw. 8,4 m
+      Höhenunterschied auf 124 m Durchmesser, kein Reisfeld, 93…128 m von der
+      nächsten Straße).
+- [x] Zone verdoppelt die Driftwertung; Kirschbäume und Fahnen markieren sie
+      sichtbar.
+- [x] 900 fallende Blüten in **einem** Draw-Call, ohne CPU-Arbeit je Frame.
+- [x] 88 Sammelstücke am Ring, wiederkehrend nach 45 s, ¥120 und 20 % Nitro je
+      Stück.
+- [x] Draw-Calls an der Driftzone: **31** (Budget 250), 122 914 Dreiecke.
+- [x] Bilder: `.cache/shots/driftzone.png`, `rampe.png`.
+
+## Was offen bleibt
+
+- [ ] **Die Schanzen liegen alle an der Ringstraße und der Dorfstraße.** Der
+      Bergpass hat keinen Platz, der die drei Bedingungen erfüllt — dort ist
+      jede Gerade kürzer als 130 m. Eine Schanze dort bräuchte eine kürzere
+      Anlaufbedingung und damit eine andere Auslegung.
+- [x] ~~**Die Sammelstücke stehen ohne Ton und ohne Partikel.**~~ In P25
+      nachgeholt: ein Meldeton (`AudioSystem.#chime`) und ein Aufsammel-Effekt
+      über dieselbe Instanzliste, also ohne zusätzlichen Draw-Call.
+- [ ] Auf einem echten Telefon nicht geprüft.
+
+---
+
+# P25 — Der Politur-Durchgang: was ein Bild zeigt und keine Zahl
+
+> **Anlass:** „alles top visuell, keine Bugs, alles polished — und mach noch
+> neue Sachen." Kein neues System, sondern ein Durchgang durch das, was P22 bis
+> P24 gebaut haben, mit einer Kamera in der Hand.
+
+## Der Befund, mit dem es anfing
+
+Ein einziges Bild (`.cache/shots/drift.png`) hat vier Fehler auf einmal gezeigt,
+und **keiner** davon stand in irgendeiner Kennzahl:
+
+| im Bild | in den Zahlen |
+|---|---|
+| Die Staubfahne war eine Kette weißer Scheiben | 300 lebende Instanzen, ein Draw-Call |
+| Die Blütenblätter waren weiße Rechtecke | 760 Instanzen, `anteilNichtSchwarz` 1,000 |
+| Die Kirschbäume waren rosa Schilder | 40 Instanzen, korrekte Matrizen |
+| Die Driftzone hatte am Boden **gar keine** Anzeige | `driftBonusAt()` lieferte 2 |
+
+Das ist die Fehlerform, die in CLAUDE.md unter *„es war im Bild, nur als etwas
+anderes"* steht — diesmal viermal nebeneinander in einem Frame.
+
+## 1. Die Staubfahne: eine Zahl, die dreißigmal zu groß war
+
+Ein Partikel ist ein `MeshBasicMaterial`. Was in `dustColor` steht, ist
+**direkt** die Helligkeit im Bild — ohne Licht, ohne Schatten, ohne
+Abschwächung. Dort stand `[0.55, 0.49, 0.4]`, und der Kommentar daneben sagte
+das Richtige: *Staub streut Himmelslicht, er leuchtet nicht.* Die Zahl sagte
+etwas anderes.
+
+Gemessen an `.cache/shots/drift.png`, alles linear:
+
+```
+  Boden neben dem Wagen        0,005
+  Boden, besonnt, in der Ferne 0,021
+  hellster Staubfleck          0,159   ← 31× der Boden, aus dem er aufgewirbelt wird
+  Himmel                       0,43…0,78
+```
+
+Dazu ein zweiter, unabhängiger Fehler in derselben Fahne: `puff()` benutzte
+`smoothstep`, und das ist ein **Plateau** — bei halbem Radius noch 89 %
+Deckkraft. Jeder Ballen war damit eine randscharfe Scheibe mit schmalem Saum,
+und bei 1,05 m Endgröße gegen gut 1 m Ballenabstand berührten sie sich gerade
+eben. Das ergibt eine Perlenkette und keine Fahne.
+
+**Und die erste Korrektur schoss über das Ziel hinaus** — sie drehte an *beiden*
+Reglern zugleich (Farbe auf 0,058 **und** Alpha halbiert, zusammen 1/19). Danach
+war überhaupt keine Fahne mehr da, auch nicht bei dreifacher Partikelhelligkeit
+im Lauf (`material.color.setScalar(3)`, `.cache/shots/staub-k3.png`): 300 lebende
+Instanzen, null Sichtbarkeit. Dieselbe Lehre wie „die Stadt als heller Fleck"
+(P8.8) und „der weiße Teppich war die Kielwelle" (P19), nur verschärft: **wer an
+zwei Reglern gleichzeitig dreht, weiß hinterher nicht, welcher es war.**
+
+Der endgültige Wert kommt aus der einen belastbaren Messung. Der Beitrag ist in
+Farbe und Alpha linear, also gilt `Spitze ≈ 0,159 · (Farbe/0,55) · (Alpha/0,32)`;
+mit 0,20 und 0,22 folgt 0,045 — das Achtfache des Bodens daneben.
+
+## 2. Die Blütenblätter waren Quadrate
+
+Im Fragment-Shader stand die Begründung, warum ein Blatt keine Form braucht:
+*„ein rosa Fleck von 18 cm ist auf 30 m Entfernung zwei Pixel groß."* Der Satz
+stimmt — und die Rechnung setzt **30 m** voraus. Über die Driftzone fährt man
+mitten hindurch; dort ist dasselbe Blatt neunzig Pixel breit, und dann ist es
+sichtbar das, was es ist: ein Quad ohne Alphamaske.
+
+Dazu dieselbe Pegelfrage wie beim Staub: `uColor` stand bei `(0.98, 0.78, 0.86)`
+— heller als der Himmel dahinter, in einem Material ohne Beleuchtung. Der neue
+Wert ist an der **Krone** bemessen, aus der die Blätter fallen (gemessen linear
+0,32 / 0,19 / 0,22).
+
+## 3. Die Kirschbäume waren Schilder — und die Ursache war nicht die Kastenform
+
+Der naheliegende Schluss aus dem Bild wäre: *drei achsenparallele Kästen sind zu
+wenig Geometrie.* Das ist die halbe Antwort. Die andere Hälfte ist das Licht:
+diese Karte hat **eine** Tageszeit, und die Sonne steht 2,23° über dem Horizont.
+Zwischen einer waagerechten und einer senkrechten Fläche liegt dann kaum ein
+Helligkeitsunterschied — und wenn alle Flächen dieselbe Farbe tragen, gibt es im
+Bild auch keinen.
+
+Eine Krone braucht ihre Tiefe deshalb **in der Farbe**: drei Blütentöne (oben
+hell, unten im Eigenschatten), neun statt drei Ballen, und jeder um 20…40° um
+die Hochachse gedreht. Die Drehung ist der eigentliche Punkt — ein Stapel
+achsenparalleler Kästen bleibt aus jeder Richtung ein Stapel Rechtecke, egal wie
+viele es sind.
+
+Dieselbe Rechnung bei den Fahnen: aus einer Platte wurden vier Segmente mit
+wachsendem Ausschlag in zwei Tönen, und die Instanzmatrix dreht sie im Wind
+(zwei Sinus mit teilerfremden Perioden plus ein Phasenversatz aus der Position —
+sonst schlagen alle im Gleichtakt, und das liest sich als Mechanik).
+
+## 4. Neu: Minikarte, Richtungspfeil, Zonenring, Meldetöne
+
+Vier Dinge, die dieselbe Lücke schließen — *der Spieler weiß nicht, was gerade
+passiert oder wo er ist.*
+
+- **Minikarte** (`src/ui/MiniMap.ts`). 9,4 km², acht Strecken, und bis P24 keine
+  einzige Möglichkeit, sich darauf zurechtzufinden. Nordfest, weil man dieselben
+  acht Strecken immer wieder fährt und Wiedererkennbarkeit dann mehr wert ist als
+  die bequemere Drehung. Zwei Ebenen: das Straßennetz **einmal** auf eine eigene
+  Leinwand, je Frame nur ein `drawImage` und höchstens fünf Kreise.
+- **Richtungspfeil** zum nächsten Kontrollpunkt, gerechnet gegen die
+  **Kamerarichtung** und nicht gegen den Gierwinkel: im Drift steht der Wagen bis
+  60° quer, und ein Pfeil gegen den Gierwinkel zeigte dann den Schwimmwinkel an
+  statt den Weg. Ohne Veranstaltung ist er weg — ein Pfeil, der irgendwohin
+  zeigt, behauptet eine Aufgabe, die es nicht gibt.
+- **Bodenring der Driftzone.** Der Kopf von `#buildZones` sagt, ein Kreis aus
+  rosa Kronen sei auf 200 m eindeutig und eine Bodenmarkierung nicht. Das stimmt
+  für *wo ist die Zone* — und ist die falsche Frage für den, der schon drin ist.
+  96 Stützpunkte, jeder auf dem Gelände abgetastet, 12 cm darüber.
+- **Meldetöne.** Sammelstück, Kontrollpunkt und Rundenende waren stumm. Ein
+  Dreieckoszillator je Ereignis, 90…160 ms, leicht steigend — ein fallender Ton
+  liest sich als „vorbei", ein steigender als „gut gemacht".
+
+## Akzeptanz
+
+- [x] Staubfahne: p99 der unteren Bildhälfte **0,0475** gegen Median 0,0137
+      (Faktor 3,5). Vorher 0,159 gegen 0,005 (Faktor 31). Im Bild eine
+      zusammenhängende Schwade statt getrennter Scheiben
+      (`.cache/shots/staub.png`).
+- [x] Blütenblätter mit Form (Ellipse mit Spitze, weicher Rand) und an der Krone
+      bemessener Farbe; zusätzlich Ausblenden unter 1,5 m Kameraabstand.
+- [x] Kirschbäume: 12 Kästen, drei Blütentöne, gedrehte Lagen. **Nachgezählt**
+      (nicht geschätzt): 144 Dreiecke je Baum gegen vorher 48; bei 44 Bäumen
+      **6336** in *einem* Draw-Call (Budget 3 Mio.).
+- [x] Fahnen: vier Tuchsegmente, zwei Töne, Wind über die Instanzmatrix.
+- [x] Bodenring je Driftzone, dem Gelände folgend.
+- [x] Schanzen mit Randstreifen und Querbalken (Vertexfarben auf dem Raster,
+      das ohnehin da ist — null zusätzliche Dreiecke). Eine einfarbige Schräge
+      gibt dem Auge nichts, woran es die Neigung ablesen könnte.
+- [x] Aufsammel-Effekt: das Stück wächst 0,35 s lang auf das 2,6-fache, steigt
+      1,2 m und dreht viermal so schnell — über **dieselbe** Instanzliste, also
+      null zusätzliche Draw-Calls. Dazu ein Meldeton (¥ 784 Hz, Nitro 1046 Hz).
+- [x] Minikarte gezeichnet: Puffer 168 × 168, **6,4 %** der Pixel bemalt,
+      `pointer-events` berechnet `none`, `display` `block`.
+- [x] Auf 390 × 844 (Telefon): Minikarte überlappt weder den Zeitkasten noch den
+      Touch-Tacho — gemessen mit `getBoundingClientRect` an beiden Elementen,
+      nicht aus dem Stilblatt gelesen.
+- [x] `typecheck` sauber, `vite build` läuft durch, **`tools/smoke.mjs`: alle
+      16 Prüfungen grün**, darunter die neue „Minikarte gezeichnet"
+      (`bemalt 0.0677`, `display block`) und „Konsole sauber".
+- [x] Draw-Calls unverändert im Budget; die Minikarte kostet **null**, weil sie
+      nicht durch WebGL geht.
+
+## 5. Ein Fehler, der das ganze Spiel angehalten hat
+
+Gefunden hat ihn kein Bild und keine Kennzahl, sondern der **Prüflauf selbst**:
+eine getriebene Schleife am Blickpunkt `wald` starb mit
+
+```
+TypeError: Failed to execute 'setTargetAtTime' on 'AudioParam':
+           The provided float value is non-finite.
+  at AudioSystem.update → Engine.#update → RenderLoop.#frame
+```
+
+Die Web-Audio-API **wirft** bei einem nicht-endlichen Wert. Diese Ausnahme
+kommt aus `update()`, läuft durch die Engine und beendet die Frameschleife:
+das Bild steht, das Auto steht, das Spiel ist tot. Für eine Tonspur ist das
+der denkbar schlechteste Tausch — und in einem Portalspiel ist es der
+Unterschied zwischen „hakt kurz" und „ist kaputt".
+
+Zwei Dinge machen es schlimmer, als es klingt:
+
+1. **`#rpm` ist klebrig.** Die Glättung ist `x += (ziel − x)·k`; ist `x` einmal
+   NaN, bleibt es NaN, auch wenn die Telemetrie im nächsten Schritt wieder
+   gesund ist. Ein einziger schlechter Frame vergiftet die ganze Sitzung.
+2. **Der Stapel zeigt nicht auf die Ursache.** Er endet in der Web-Audio-API;
+   woher das NaN kommt, steht irgendwo in der Physik.
+
+Behoben ist die **Wirkung** und ausdrücklich nicht die Ursache: alle sechs
+Wege zu einem `AudioParam` gehen jetzt durch eine Funktion (`rampe`), die einen
+nicht-endlichen Wert überspringt statt ihn zu klemmen (eine geklemmte Frequenz
+wäre ein falscher Ton, ein übersprungener Frame ist keiner), und die Drehzahl
+setzt sich bei NaN auf Leerlauf zurück und meldet das **einmal** in die
+Konsole, mit `dt`, Zieldrehzahl und der ganzen Telemetrie daneben.
+
+Sechs `if` an sechs Aufrufstellen wären der naheliegende Weg gewesen und der
+falsche: der siebte Regler, den jemand nächstes Jahr einbaut, ist der, an dem
+es wieder passiert. Ein Fehlerbild ist eine Klasse, und gegen eine Klasse hilft
+nur ein Ort — dieselbe Überlegung wie bei `japanMap.winding()`.
+
+## 6. Eine Ursache benannt, ohne sie zu trennen — und zwar meine eigene
+
+Auf dem fernen Bild (`.cache/shots/p25-stadt-rand.png`) steht ein rosa Zug in
+der Landschaft, gemessen **0,372 linear** gegen 0,058 Asphaltstraße und 0,028
+Boden. Ich habe ihn für den neuen Zonenring gehalten, das als „13-mal so hell
+wie der Boden" aufgeschrieben, die Ringfarben um Faktor 2,2 gedämpft — und
+beides gepusht.
+
+**Es war eine Kirschblütenkrone.** `SAKURA_TOP` trägt denselben Wert, den
+`ZONE_RING_INNER` trug (`0xf7c6d8`); ein rosa Pixel beweist damit gar nichts.
+Aufgefallen ist es erst, weil derselbe Pixel **nach** der Farbänderung
+unverändert 0,3723 maß — eine Zahl, die sich nicht bewegt, obwohl man an ihr
+gedreht hat, ist ein Verdachtsmoment und keine Bestätigung.
+
+Getrennt wurde es dann über das **Objekt** statt über die Farbe: drei Aufnahmen
+unmittelbar hintereinander, dazwischen nur eine Sichtbarkeit umgeschaltet.
+
+| Bild | derselbe Pixel, linear | Beitrag zum ganzen Bild |
+|---|---|---|
+| alles sichtbar | 0,3701 | — |
+| **ohne Ring** | 0,3723 (unverändert) | 3,7 % der Pixel, mittlere Differenz 1,21 |
+| **ohne Bäume** | 0,0468 (Bodenniveau) | 7,1 % der Pixel, mittlere Differenz 2,77 |
+
+Der Ring dominiert also nichts, und die Dämpfung ist zurückgenommen. Beim
+Schreiben des Trenntests lag noch eine zweite Falle: `material.visible` hätte
+Ring, Bäume, Fahnen, Schanzen und Sammelstücke **zugleich** ausgeblendet — sie
+teilen sich in `StuntSystem` ein einziges `PropMaterial`. Über `mesh.visible`
+geht es, weil dieses System die Sichtbarkeit nie je Frame schreibt.
+
+Dass die Kronen mit 0,372 gegen 0,028 Boden dastehen, ist damit **gemessen und
+nicht bewertet**: eine blühende Kirsche ist hell, und ob sie zu hell ist, ist
+eine Frage für einen Menschen. Die Zahl steht hier, damit der Nächste sie nicht
+noch einmal erheben muss.
+
+## 7. Der Bilddurchgang, nachgeholt — und was er ergeben hat
+
+Mit der Regel aus Abschnitt 5 (höchstens rund 20 getriebene Frames, danach eine
+frische Seite) ließ sich der Durchgang doch fahren. Fünf Orte auf Fahrerhöhe,
+dazu die Driftzone und eine Schanze aus den Abschnitten davor:
+
+| Ort | Draw-Calls | Dreiecke | `anteilNichtSchwarz` | Befund |
+|---|---|---|---|---|
+| `wald` | 66 | 322 378 | 0,993 | sauber |
+| `dorf` | 57 | 188 588 | 1,000 | sauber (siehe unten) |
+| `stadt-rand` | — | — | 1,000 | sauber |
+| `kueste` | — | — | 1,000 | sauber |
+
+**Die braunen Platten treten hier nicht auf.** Der Wald bei normaler
+Partikelhelligkeit ist frei davon. Das erklärt sie nicht, engt sie aber ein:
+sie hängen an der dreifachen Überhöhung und nicht am Blickpunkt.
+
+**Und einmal fast wieder dieselbe Falle.** Am Blickpunkt `dorf` füllt eine
+große, völlig strukturlose blassrosa Fläche zwei Drittel des Bildes. Das sieht
+nach einem kaputten Gelände aus. Getrennt über das Objekt statt über den
+Eindruck — zwei Aufnahmen hintereinander, dazwischen nur `Meer` ausgeblendet:
+
+```
+  geänderte Pixel 44,3 %   mittlere Differenz 20,8
+  Rechteck der Änderung: y 197…458  — also genau unterhalb der Horizontlinie
+```
+
+Es ist das **Meer**, und darunter liegt texturiertes Watt mit Gras und Tümpeln.
+Bei 1,7 m Augenhöhe steht alles jenseits weniger Meter im streifenden
+Blickwinkel, wo die Spiegelung über die Wellennormalen dominiert; deshalb sieht
+dieselbe Wasserfläche vom höheren `kueste` aus geriffelt aus und von hier wie
+ein Spiegel. Das ist physikalisch richtig und **kein** Fehler — hier wird
+nichts gedreht. Der Blickpunkt trägt seine eigene Notiz: *„Augenhöhe am
+Wasser."*
+
+## Was offen bleibt
+
+- [ ] **Woher das NaN kam, ist nicht bekannt.** Die Notbremse oben fängt es und
+      meldet es; ausgelöst wurde es in einer *getriebenen* Schleife, also unter
+      Bedingungen, die es im Betrieb so nicht gibt. Ob es dort auch auftritt,
+      ist offen — die Meldung in der Konsole ist der Haken, an dem der nächste
+      Fall hängen bleibt.
+      Nachgemessen: derselbe Lauf, der vorher binnen Sekunden an genau dieser
+      Stelle starb, hat danach **minutenlang** weitergetickt, ohne zu sterben
+      und **ohne** die neue Meldung auszulösen. Das belegt die Wirkung der
+      Reparatur (die Ausnahme nimmt die Schleife nicht mehr mit) und sagt über
+      die Ursache nichts.
+- [ ] **Der Holzsteg am Hafen ist zu 97 % nicht da — gemessen, nicht repariert.**
+      `PropSystem.#geometryFor` nimmt `meshes[0]` und warnt, wenn ein Modell
+      mehr hat. `modular_wooden_pier.glb` hat **drei**:
+
+      ```
+        mesh 0 "mesh.013"    86 Dreiecke   Material 0   ← das einzige, das gezeichnet wird
+        mesh 1 "Plane.040" 2061 Dreiecke   Material 1
+        mesh 2 "Plane.052"  835 Dreiecke   Material 0
+        Summe              2982
+      ```
+
+      Von 2982 Dreiecken stehen also **86** im Bild, 2,9 %. Der Fehler ist seit
+      P5.1 drin, und die Warnung stand die ganze Zeit in der Konsole — gelesen
+      hat sie niemand. (Betroffen ist **nur** dieses eine Modell; alle anderen
+      führt die Pipeline mit `join()` auf ein Primitiv zusammen.)
+
+      **Nicht repariert, und das ist eine Entscheidung.** Der Steg steht
+      **einmal** auf der ganzen Karte (`assets/props.json`, 895 Einträge). Ihn
+      vollständig zu zeichnen hieße, eine Stufe zu einer *Liste von Teilen* zu
+      machen — `PropStage.mesh` würde `meshes[]`, und jede Stelle in `update()`,
+      die `count`, `scratch` und `instanceMatrix` schreibt, müsste eine Schleife
+      mehr fahren. Das ist ein Eingriff in das System, das 895 Instanzen trägt,
+      für **ein** Objekt in einer Ecke der Küste. Die Geometrien
+      zusammenzuführen wäre der billige Weg und der falsche: 2061 der 2982
+      Dreiecke hängen an Material 1, der ganze Steg bekäme also die Textur des
+      kleineren Teils.
+      Dieselbe Abwägung wie beim schwebenden Becken in P21.8: *eine Reparatur
+      kann teurer sein als der Fehler*, und *bevor ein Bild repariert wird,
+      nachsehen, ob man es sieht*. Was fehlt, ist ein Bild vom Hafen auf
+      Fahrerhöhe — dann ist die Frage entscheidbar.
+- [x] ~~**Ein Bilddurchgang über die ganze Karte war nicht zu fahren.**~~
+      Fünf Anläufe sind gescheitert, und die Erklärung, die zuerst hier stand
+      („zu langsam"), war **falsch**. Playwright meldet `Target crashed`: der
+      Renderer-Prozess *stirbt*, er trödelt nicht.
+      Getrennt in zwei Schritten, weil zwei Verdächtige zugleich im Spiel waren
+      (`japanMap.view()` und `engine.loop.tick()`):
+
+      | Probe | Ergebnis |
+      |---|---|
+      | `view()` + `shot()`, **keine** getriebene Schleife | ✓ |
+      | `view()` + **20** getriebene Frames + `shot()` | ✓ |
+      | `view()` + **45** getriebene Frames | ✗ Target crashed |
+      | `view()` + 90…120 Frames | ✗ Target crashed |
+
+      Es liegt also an **keinem der beiden Aufrufe**, sondern an der *Zahl* der
+      von Hand getriebenen Frames — und auch nicht am Bewuchs: `kueste` (offenes
+      Meer) stürzt genauso ab wie `wald`. Die brauchbare Regel für diese
+      Maschine lautet damit: **höchstens rund 20 getriebene Frames je Seite**,
+      danach eine neue Seite.
+      Das gehört in dieselbe Spalte wie „GPU-ms und Bildrate sind hier nicht
+      messbar" — mit dem Unterschied, dass es eine *Umgehung* gibt und die
+      Bilder damit entstanden sind.
+- [ ] **Braune Platten in der Luft, einmal gesehen und nicht erklärt.** Auf
+      `.cache/shots/staub-k3.png` stehen rund sechs brettartige braune Flächen
+      frei in einem Waldstück — bei dreifach überhöhter Partikelhelligkeit
+      aufgenommen, also möglicherweise ein Partikelfeld, möglicherweise
+      Vegetation. Am Blickpunkt der Driftzone tritt es nicht auf
+      (`.cache/shots/diag.png`, dieselbe Überhöhung, sauber). **Nicht
+      reproduziert und nicht zugeordnet** — das gehört so dokumentiert und nicht
+      als „behoben" abgehakt.
+      Nachtrag: am Blickpunkt `wald` bei **normaler** Partikelhelligkeit treten
+      sie ebenfalls nicht auf (`.cache/shots/p25c-wald.png`, 66 Draw-Calls,
+      322 378 Dreiecke, sauber). Damit hängen sie an der Überhöhung und nicht am
+      Ort — erklärt ist damit nichts, aber die Zahl der Verdächtigen ist kleiner.
+- [ ] Auf einem echten Telefon nicht geprüft (nur im 390 × 844-Fenster).
+- [ ] Ob sich das Fahren *gut anfühlt*, ist weiterhin keine Frage für einen
+      Prüfstand.
+
+
+---
+
+# P26 — „Die sehen tot aus mit diesem Streifen"
+
+> **Anlass:** vier Worte des Auftraggebers zu den Kirschbäumen, plus der Auftrag
+> „alles polishen, Performance auch für Low-End, Grafik cooler, Physik — denke
+> an jedes Detail."
+
+## 1. Der Streifen war meiner
+
+P25 hat die Kronen in drei Farbtonlagen **gestapelt** — hell oben, mauve unten.
+Die Diagnose dahinter stimmt und gilt weiter (bei 2,23° Sonnenstand trennt das
+Licht waagerechte und senkrechte Flächen nicht, also muss die Farbe es tun). Die
+**Reparatur** war falsch: gestapelte Töne sind waagerechte Bänder, und der
+tiefste Ton war ein staubiges Mauve — die Farbe welker Blüten. Auf
+`.cache/shots/baum-vorher.png` stehen rosa Sonnenschirme auf Stielen.
+
+Drei Änderungen, und alle drei sind nötig:
+
+| | vorher | jetzt |
+|---|---|---|
+| Ton hängt an | der **Höhe** (Lage) | der **Kennzahl des Ballens** |
+| Tonabstand | `0xf7c6d8` … `0xb06e8c` | eng und gesättigt |
+| Kronenform | 9 Kästen in 3 Lagen | 19 Ballen auf einer Fibonacci-Spirale |
+
+Die Spirale ist der eigentliche Punkt. Von Hand gesetzte Ballen werden
+unweigerlich zu Lagen — man schreibt sie zeilenweise hin, und genau das war der
+Streifen. Der goldene Winkel legt keine zwei auf dieselbe Höhe.
+
+Dazu breiter und tiefer angesetzt (RX 2,55 gegen RY 1,25, Mitte auf 3,5 m
+statt 4,1), damit die Krone den Stamm zur Hälfte verdeckt statt als Ball darauf
+zu sitzen. Beleg: `.cache/shots/baum-nah2.png`.
+
+## 2. Ein Prüfstands-Fehlalarm, der beinahe eine falsche Reparatur ausgelöst hätte
+
+`hill.mts` meldete: der Offroader bricht auf rauem Boden von 64,5 auf **4,8
+km/h** ein, als einziges Fahrzeug — ausgerechnet das, dessen ganze Auslegung
+Gelände heißt (42 cm Federweg, Allrad, Stollenreifen). Das sieht aus wie ein
+schwerer Fahrzeugfehler.
+
+Statt am Fahrwerk zu drehen, Wellenlänge und Abtastung getrennt
+(`tools/bench/offroad.mts`, neu). Endtempo am 20°-Hang nach 20 s:
+
+| Welle | ε | Coupé | Offroad | |
+|---|---|---|---|---|
+| 0,76 m | 0,50 | 78,0 | **4,5** | so hat `hill.mts` gemessen |
+| 0,76 m | 0,05 | 78,9 | 49,7 | |
+| 3,00 m | 0,50 | 78,0 | 61,6 | |
+| 3,00 m | 1,50 | 77,9 | **64,3** | wie die echte Karte |
+
+**Der Fehler lag im Prüfstand.** Er würfelte eine 0,76-m-Welle, die das
+bilineare 1,5-m-Höhenfeld gar nicht darstellen kann (Nyquist: kürzer als 3 m
+geht nicht), und tastete ihre Normale mit ε = 0,5 m ab — Aliasing. Getroffen hat
+es nur den Offroader, weil sein langer Federweg am empfindlichsten an der
+Normalen hängt: die Stützebene wird aus ihr gebaut.
+
+`hill.mts` rechnet jetzt mit 3 m Welle und ε = 1,5 m (dem Texelabstand, mit dem
+auch `TerrainSampler.getNormalAt` rechnet) und ist über die ganze Flotte sauber:
+glatt gegen rau überall innerhalb von 1 km/h.
+
+## 3. Gaswegnehmen tat nichts
+
+`fleet.mts` fährt die Probe „Lastwechsel im Bogen". Bis P26 stand dort für
+**alle vier** Fahrzeuge dasselbe:
+
+```
+   steer 0.35   1.9°→ 1.9°    steer 0.55   3.1°→ 3.1°    steer 0.80   4.9°→ 4.9°
+```
+
+Der Schwimmwinkel ändert sich um exakt null. Der Grund: `provocation = Gas ·
+|Lenkung|`, und ohne Gas ist das Produkt null. Ein Driftspiel ohne
+Lastwechsel-Übersteuern hat den Griff nicht, mit dem man ohne Handbremse
+eindreht — und die Zeile stand seit P22 grün formatiert im Prüfstand.
+
+**Der erste Entwurf hing an der Flanke und wurde von der Probe gestoppt.** Er
+addierte bei jedem Gasabfall; `arcade.mts` meldete daraufhin *„Saubere Kurve
+90 km/h: Schwimm 29,1° ⚠ driftet ungefragt"*. Die Ursache stand im Prüfstand
+selbst: `holdSpeed` ist ein **Zweipunktregler** (`speed < target ? 1 : 0`) und
+hackt das Gas mit rund 10 Hz an und aus.
+
+Der Fehler war nicht die Empfindlichkeit, sondern die **Größe**: eine Flanke ist
+ein Zeitpunkt, ein Lastwechsel ist ein Vorgang. Ausgelöst wird jetzt über eine
+**Dauer** — das Gas muss 0,12 s wirklich zu sein —, und es gibt genau einen
+Impuls je Lastwechsel, der von selbst abklingt und beim Wiederaufmachen des
+Gases neu scharf wird.
+
+| Fahrzeug | Lastwechsel steer 0,80 | vorher |
+|---|---|---|
+| Touge-Coupé | **14,4° → 6,0°** | 4,9° → 4,9° |
+| GT | **10,8° → 5,2°** | 4,9° → 4,9° |
+| Offroad 4×4 | 5,0° → 5,0° | 4,9° → 4,9° |
+| Lastwagen | 5,0° → 5,0° | 4,9° → 4,9° |
+
+Die beiden Hecktriebler drehen ein, Allrad und Lastwagen nicht — ein Allradler
+gräbt beim Lastwechsel ein statt einzudrehen. Gierstabilität (3,6°, nach 3 s
+0,0°) und Lenkantwort sind unverändert.
+
+Nebenbefund, der gefällt: ein Spieler an der **Tastatur** *ist* ein
+Zweipunktregler. Die Restwirkung von 8,5° Schwimmwinkel beim Antippen macht den
+Wagen lebendig und liegt unter der Wertungsschwelle (12,0°), gibt also keine
+Punkte für etwas, das man nicht gewollt hat.
+
+## 4. Drei Posten, die je Frame liefen und an keiner Stufe hingen
+
+Alle drei aus P25, alle drei reine Darstellung:
+
+| | vorher | jetzt |
+|---|---|---|
+| Minikarte | `drawImage` über 504 × 504 = 254 016 Pixel, 60 Hz | 15 Hz |
+| Fahnen + Sammelstücke | 110 `compose()` + 7 KB Matrixupload, 60 Hz | 20 Hz |
+| 760 Blütenblätter | an gar nichts gekoppelt | 100 % (Ultra) … 15 % (Minimal) |
+
+Die Rechnung für die Karte: bei 250 km/h bewegt sich der Zeiger in einer
+Sechzigstelsekunde **0,4 Pixel**. Bei 15 Hz sind es 6,8 — im Augenwinkel nicht
+zu unterscheiden, ein Viertel der Arbeit. Der Puffer wird dabei **nicht**
+kleiner: die Auflösung gehört der Schärfe, die Rate der Leistung.
+
+Die Blüten sind durchsichtig und schreiben keine Tiefe, sind also reine
+**Füllrate** — und Füllrate ist auf der Zielhardware der Engpass (dieselbe
+Begründung, aus der P8.2 die Umgebungsverdeckung auf Minimal ganz abgeschaltet
+hat). Ein Telefon auf „Minimal" zeichnete bis P26 dieselben 760 wie eine
+RX 7900 XTX auf Ultra.
+
+## 5. Laternen und ein Blütenteppich — und beide Zugaben waren falsch
+
+Die Driftzone bekam zwei Dinge, die sie zu einem **Ort** machen statt zu einem
+Kreis auf der Wiese: eine Kette Papierlaternen und gefallene Blüten auf dem
+Boden. Beide standen im ersten Bestätigungsbild als Fehler da, und beide
+Befunde waren messbar.
+
+### Der Teppich war eine Plane
+
+Ein flaches Viereck von 1,5 m, mit der Instanzskalierung bis 2,4 m, in
+`0xe8a9c0`. Im Bild waren das keine Blüten, sondern Planen: harte gerade
+Kanten, geschlossene Fläche, kein Boden dazwischen. Dazu gemessen an
+`.cache/shots/lat-mit.png`, linear:
+
+| | linear |
+|---|---|
+| Fleck, nah | 0,168 |
+| Boden direkt daneben | 0,0095 |
+
+**Faktor 17,7.** Beide Flächen liegen waagerecht und bekommen dasselbe Licht;
+der Unterschied ist reine Albedo. Dieselbe Fehlerklasse wie die Staubfahne aus
+P25 (31-mal heller als der Boden), nur eine Zone weiter.
+
+Jetzt neun kleine Blätter je Verwehung auf einer Goldwinkel-Spirale, nach außen
+kleiner werdend: 0,61 m² Blattfläche auf 1,54 m² Kreis, also rund 40 % Deckung —
+der Rest ist Wiese, und deshalb franst der Rand aus, statt zu schneiden.
+
+**Und dann ein Schritt zurück, weil zwei Regler zugleich bewegt wurden.** Form
+*und* Farbe wurden in einem Zug geändert. Danach lag der dunkelste Ton bei
+0,0359 und der Boden bei 0,0352 — ein Drittel der Blätter war vom Untergrund
+nicht zu unterscheiden, aus der Plane war Dreck geworden. Die Form allein hatte
+die Plane längst beseitigt; die Helligkeit war gar nicht das Problem.
+
+Der zweite Anlauf nahm einen Bezugspunkt, der physikalisch stimmt statt einer
+neuen Schätzung: gefallene Blüten sind **dieselbe Blüte wie am Baum**. Krone
+gemessen 0,151, Teppich jetzt **0,139**.
+
+### Die Laterne stand unter dem Himmel
+
+Der Kommentar rechnete: `0xffb45e` = linear 1,00, also heller als alles im
+Bild und über der Bloom-Schwelle. Die Rechnung stimmt, das Ergebnis nicht —
+gemessen steht die Laterne bei **0,401** und der Himmel bei **0,510**.
+
+Dazwischen liegt der **Tonemapper** der PostFX-Kette. Die P25-Lehre „ein
+unbeleuchtetes Material schreibt seine Zahl direkt ins Bild" gilt nur, solange
+nichts mehr dahinterkommt. Die Kurve, in *einem* Browserlauf über
+`material.color.setScalar(k)` aufgenommen:
+
+| Materialwert (Rot) | im Bild | sRGB | Rot ÷ Blau |
+|---|---|---|---|
+| 1,00 | 0,401 | 203 169 126 | 1,61 |
+| 2,50 | 0,581 | 230 202 162 | 1,42 |
+| 5,00 | 0,753 | 250 223 198 | 1,26 |
+
+Die dritte Spalte entscheidet: mit der Helligkeit **verliert die Laterne ihre
+Farbe**. Bei k = 5 ist sie fast weiß, und eine weiße Papierlaterne ist eine
+Glühbirne. `k = 2,5` ist der größte Wert, der die Farbe behält, und liegt über
+dem Himmel. Nachgemessen im Bild: **0,591 gegen Himmel 0,533.**
+
+## 6. Der Befund, der die halbe Sitzung entwertet hat
+
+Am Fadenkreuz einer Aufnahme stand Boden, wo gemessen eine Laterne steht. Also
+einmal die Kamera um die Aufnahme herum abgelesen:
+
+```
+vor  dem shot: dir = ( 0.991,  0.043,  0.130)   <- gesetzt
+nach dem shot: dir = (-0.604, -0.087, -0.792)   <- Controller
+```
+
+`japanMap.shot()` tickt die Schleife, und der `FreeFlyController` baut die
+Ausrichtung in **jedem** Frame aus seinem eigenen `#yaw`/`#pitch` neu auf. Die
+**Position** bleibt stehen, die **Blickrichtung** wird überschrieben. Jedes von
+Hand gezielte Bild dieser Sitzung ist so entstanden; die Bilder sahen nicht
+kaputt aus, sie zeigten nur woanders hin.
+
+Der Weg, der wirkt, lag seit P6 im Bestand: `japanMap.view({position, lookAt})`
+geht über `CameraPlacer.placeAt()` und rechnet Gieren und Nicken **zurück** —
+genau mit dieser Begründung im Kommentar. CLAUDE.md empfahl an dieser Stelle
+bis jetzt das Falsche und ist korrigiert.
+
+Vierte Auflage desselben Satzes nach P13 (`menu.hidden` von Hand), P14
+(Standhöhe ohne Straßenkontext) und P21 (`respawn` nullt die Lage): **ein von
+Hand gesetzter Zustand ist ein Zustand, den es im Betrieb nicht gibt.** Der
+Zusatz ist neu — wenn ein System einen Zustand jeden Frame aus *seinen*
+Variablen neu aufbaut, muss man diese Variablen setzen und nicht das Ergebnis.
+
+## 7. Die steilste Schanze war eine Bremsschwelle
+
+Gefunden hat sie kein Blick in den Code, sondern die Frage, die keine Abnahme
+gestellt hatte: **wie schnell ist man an der Kante?** Anfahrt 140 km/h,
+Blechtiefe = tiefstes Eintauchen der Karosserieunterkante:
+
+| Schanze | Spitze | an der Kante | Blech |
+|---|---|---|---|
+| south-crest | 7,3° | 126 km/h | 0,040 m |
+| paddy-launch | 13,4° | 117 km/h | 0,073 m |
+| harbour-jump | 14,2° | 115 km/h | 0,073 m |
+| ridge-kicker | 14,9° | 114 km/h | 0,069 m |
+| coast-kicker | 16,0° | 120 km/h | 0,094 m |
+| **village-hop (17 m)** | **19,4°** | **41 km/h** | **0,193 m** |
+
+Zwischen 16,0° und 19,4° verdoppelt sich die Blechtiefe, und die Bremse des
+schleifenden Blechs nimmt zwei Drittel des Tempos. Die Schanze *hob dabei ab* —
+jede bisherige Abnahmezeile war grün.
+
+**Warum die Winkel in der Datei alle zu niedrig standen.** `liftLocal` legt die
+Auffahrt als Smoothstep an (`3t² − 2t³`), damit am Fuß kein Knick steht — die
+Begründung dafür ist richtig und bleibt. Die Ableitung `6t(1−t)` hat ihr
+Maximum bei `t = 0,5` und ist dort **1,5**. Die steilste Stelle ist also
+`atan(1,5·h/L)` und nicht `atan(h/L)`; village-hop las sich als „13,2°, mitten
+im erlaubten Band 8…16°". Ein Kommentar, der rechnet, ist eine Abhängigkeit wie
+ein Import — dritter Fall nach `maxDriveForce` in P17 und derselben Konstante
+noch einmal in P18.
+
+village-hop ist von 17 auf 22 m **verlängert und nicht abgeflacht** (die Höhe
+ist das, was den Sprung ausmacht). Spitze 15,3°, nachgemessen **111 km/h** an
+der Kante, Blech 0,091 m, Weite 80 m statt 44.
+
+## 8. Die Rauchprobe maß bisher die Anfahrt
+
+Sie setzte den Wagen 150 m vor der Kante ab und gab Vollgas — geradeaus durchs
+Gelände statt der Straße nach. `harbour-jump` kam so auf **0,18 s Flug bei
++16 m Höhe**; dieselbe Schanze mit besessener Anfahrt: **3,97 s und 129 m.** Die
+Zahl war nie falsch abgelesen, sie war ein Befund über etwas anderes.
+
+Drei Fehler, jeder mit seinem eigenen Gegenbeweis:
+
+1. **Anlauf 12 m, Tempo gesetzt statt erfahren.** Damit ist getrennt, was
+   getrennt gehört: *hebt die Schanze ab* gegen *kommt man dort mit Tempo an*.
+2. **Eine Sekunde einschwingen lassen.** Ohne das maß die Probe ihr eigenes
+   Absetzen: das Blech steckte in den ersten zehn Schritten bis 0,18 m im
+   Boden, und dessen Bremse machte aus 140 km/h in 0,17 s 40 km/h. Weil die
+   Bremswirkung mit dem Tempo wächst, kam an der Kante **dieselbe** Zahl
+   heraus, egal ob mit 80, 110 oder 140 angefahren wurde — ein Wert, der von
+   der Eingabe unabhängig ist, ist eine Klemme und kein Verlust.
+3. **Nur ein Abheben an der Schanze zählt.** Sonst rastet die Probe auf der
+   ersten Bodenwelle ein: bei `village-hop` wurden aus 139 km/h 0,78 s Flug und
+   aus 44 km/h 3,25 s — mehr Tempo, weniger Flug.
+
+Sie prüft jetzt zusätzlich, dass **keine Schanze die Anfahrt ausbremst** — genau
+die Zeile, die den Fehler gefunden hätte.
+
+## 9. Die Qualitätsleiter, gemessen — und was die Zahlen nicht sagen
+
+Zwei Hälften, und nur eine davon braucht einen Browser.
+
+**Exakt und ohne Lauf** — was `quality.config.ts` je Stufe setzt (nur die
+Zeilen, in denen sich überhaupt etwas ändert; eine Konstante über alle Stufen
+ist kein Regler):
+
+| | ultra | high | medium | low | minimal |
+|---|---|---|---|---|---|
+| `renderScale` | 1 | 1 | 0,85 | 0,7 | **0,5** |
+| `postFx` | full | reduced | lean | compact | compact |
+| `ao` | high | medium | medium | low | **off** |
+| `reflections` | ✓ | ✓ | — | — | — |
+| `shadowMapSize` | 2048 | 1024 | 1024 | 1024 | 1024 |
+| `terrainGridVertices` | 33 | 33 | 25 | 17 | 17 |
+| `vegetationFullRadius` | 160 | 130 | 105 | 80 | **55** |
+| `vegetationFarKeep` | 0,6 | 0,5 | 0,4 | 0,3 | 0,22 |
+| `waterDetail` | 1 | 0,85 | 0,6 | 0,35 | **0** |
+
+`renderScale` ist der größte Hebel und war es schon vor P26: 1,0 → 0,5 ist ein
+**Viertel der Pixel**, und Füllrate ist auf der Zielhardware der Engpass. Was
+P26 der Leiter hinzugefügt hat, sind die Blütenblätter (100 % → 15 %) — die
+stehen in `StuntSystem` und nicht in dieser Tabelle.
+
+**Gemessen**, Blickpunkt `stadt-rand`, Fenster 640 × 360, je Stufe **dieselben
+18** von Hand getriebenen Frames:
+
+| Stufe | Calls | Dreiecke | Instanzen | Texturen | Puffer | 18 Frames |
+|---|---|---|---|---|---|---|
+| minimal | 82 | 204 150 | 8 422 | 38 | 320 × 180 | 12,9 s |
+| low | 90 | 228 045 | 16 639 | 46 | 448 × 251 | 22,1 s |
+| medium | 102 | 349 599 | 27 038 | 54 | 544 × 306 | 33,0 s |
+| high | **192** | **996 017** | 38 997 | 59 | 640 × 360 | 63,8 s |
+| ultra | 198 | 1 040 131 | 49 252 | 65 | 640 × 360 | 66,7 s |
+
+Von minimal nach ultra: **2,4-mal so viele Draw-Calls, 5,1-mal so viele
+Dreiecke, 5,8-mal so viele Instanzen.** Die Pufferbreiten bestätigen
+`renderScale` unabhängig (320/640 = 0,5, 448/640 = 0,7, 544/640 = 0,85).
+
+**Der Sprung liegt zwischen medium und high**, und er ist ein einzelner
+Schalter: +88 Draw-Calls und 2,85-mal so viele Dreiecke in einem Schritt. Das
+ist `reflections`, das genau dort angeht — die planare Spiegelung zeichnet die
+Szene ein zweites Mal. Wer auf schwacher Hardware eine Stufe sucht, sucht
+**medium**, und der Grund dafür ist diese eine Zeile.
+
+### Drei Dinge, die diese Tabelle *nicht* sagt
+
+1. **Die Sekunden sind keine Bildzeit.** Sie stammen von einem
+   Software-Rasterisierer (`swiftshader`) — dieselbe Verwechslung hat in P11
+   sieben Messungen gekostet. Brauchbar ist allein das **Verhältnis** (minimal
+   rund 5,2-mal billiger als ultra), und auch das nur, weil dieser
+   Rasterisierer wie die Zielhardware füllratengebunden ist.
+2. **Keine Zeile ist ein eingeschwungener Zustand.** `streaming` stand auf
+   allen fünf Stufen noch auf `true`; die Instanzzahlen sind Untergrenzen. Der
+   Vergleich bleibt gültig, weil alle fünf **dieselbe** Zahl Frames am
+   **denselben** Ort bekommen haben — aber „ultra trägt 49 252 Instanzen" wäre
+   die falsche Lesart.
+3. **Warum nicht einfach länger warten:** `ultra` braucht auf dieser Maschine
+   rund **3,7 s je Frame** (66,7 s für 18). Bis `ScatterSystem.streaming` auf
+   `false` geht, sind es an einem dichten Blickpunkt bis 1101 Frames — über
+   eine Stunde für eine einzige Zelle. Zwei Läufe sind daran gestorben, ohne
+   eine Zeile auszugeben.
+
+## 10. Der Bilddurchgang — der erste dieser Sitzung, der hinzeigt, wo gefragt
+
+Fünf Aufnahmen auf Fahrerhöhe, Stufe `medium` (die Stufe, die die Leiter für
+schwache Geräte nahelegt), alle über `view({position, lookAt})` und damit zum
+ersten Mal in dieser Sitzung tatsächlich gezielt:
+
+| Bild | Befund |
+|---|---|
+| `p26-rampe-dorf.png` | Die verlängerte Schanze steht als rotes Trapez in der Landschaft, Sammelstück darüber |
+| `p26-rampe-reisfeld.png` | Querbalken und helle Absprungleiste lesbar, Bergmassiv dahinter |
+| `p26-zone-hafen.png` | Harbour Pan: Baumring auf dem Rücken, Verwehungen als rosa Sprenkel, Laterne am rechten Rand |
+| `p26-stadt.png` | Neonschilder, nasser Asphalt mit Rissen |
+| `p26-sando.png` | Torii-Reihe, Steinlaternen, Nadelwald |
+
+`anteilNichtSchwarz` liegt überall bei 0,9992…0,9999 — die Bilder sind
+vollständig (die Falle aus P8.9).
+
+### Drei weiße Flecken, die keine waren
+
+Auf beiden Schanzenbildern standen zwei bis drei ausgebrannte weiße Flecken
+nahe am Horizont, in den anderen drei Bildern nicht. Sie sahen nach einem
+Postprocessing-Artefakt aus. Getrennt wurde **über das Objekt**, nicht über die
+Farbe — vier Läufe, jedes Mal nur eine Sichtbarkeit umgeschaltet, hellster
+Pixel im selben Ausschnitt:
+
+| ausgeblendet | hellster |
+|---|---|
+| nichts | 0,9216 |
+| Leitplanken | 0,9301 |
+| Sammelstücke, Fahnen, Kontrollpunkte | 0,9244 |
+| **Sonne** | 0,9301 |
+| **Meer, Reisfelder, Fluss** | **0,1937** |
+
+Es ist der **Sonnenglanz auf dem Wasser**, nicht die Sonne selbst und kein
+Artefakt: bei 2,23° Sonnenstand wirft eine große flache Wasserfläche einen
+Glitzerpfad, und die Bloom-Kette zieht ihn zu Flecken zusammen.
+
+**Nicht repariert, und das ist die Entscheidung.** Der Effekt ist Inhalt und
+sieht nach Abendsonne aus; ihn zu dämpfen hieße, ein Bild gegen eine Vermutung
+einzutauschen. Er steht hier, damit niemand ihn später ein zweites Mal jagt —
+dieselbe Regel wie beim schwebenden Flussbecken aus P21: **aufschreiben statt
+reparieren.** Und derselbe Grund, warum die erste Vermutung (Leitplanken)
+gemessen und nicht geglaubt wurde: pures Weiß (246 | 246 | 246) ist ein
+gesättigter Wert und kein Objekt, das man an seiner Farbe erkennt.
+
+## 11. „Das kann keine Zahl beantworten" — doch, sie kann
+
+`ridge-kicker` meldete **18,3 s bis zum ersten durchgehenden Bodenkontakt und
+639 m Weg**. Das war als offener Punkt abgelegt mit der Begründung, ein
+Prüfstand könne „fliegt noch" und „hoppelt bergab" nicht unterscheiden.
+
+Das war zu schnell aufgegeben. Die beiden Zustände unterscheiden sich in der
+**Höhe über dem Boden**, und die ist messbar. Jeder Bogen zwischen zwei
+Bodenkontakten, mit seiner größten Höhe über dem Gelände darunter:
+
+| # | Dauer | max. Höhe über Grund |
+|---|---|---|
+| 0 | **2,65 s** | **15,82 m** |
+| 1 | 0,45 s | 0,99 m |
+| 2…11 | 0,02…0,20 s | 0,67…0,78 m |
+
+Bogen 0 ist der Sprung. Alles danach ist **Radflattern**: Hopser unterhalb des
+Federwegs, wie sie auf jedem rauen Gefälle entstehen. `coast-kicker` zeigt
+dasselbe Muster (2,72 s / 12,52 m, dann Hopser bei rund 1,2 m) — der Unterschied
+war nie die Schanze, sondern dass `ridge-kicker` auf einem Gefälle landet, auf
+dem der Kontakt nie lange genug am Stück hält, um als Landung zu zählen.
+
+**`ridge-kicker` ist damit kein Fehler, sondern der größte Sprung der Karte:**
+2,65 s in der Luft, 15,8 m über dem Boden darunter.
+
+### Was das an der Rauchprobe geändert hat
+
+Sie zählte die Flugzeit über ein Zeitfenster und nahm das Flattern mit — für
+denselben Sprung je nach Lauf 4,9 s oder 18,3 s.
+
+Der erste Reparaturversuch war ein **Schwellenwert** („eine halbe Sekunde
+durchgehender Bodenkontakt beendet den Sprung") und griff genau dort nicht, wo
+es darauf ankommt: auf rauem Gefälle wird der Kontakt nie 0,5 s am Stück,
+`ridge-kicker` blieb bei 4,92 s. Ein Schwellenwert war überhaupt die falsche
+Bauform — **der erste Bodenkontakt ist die Landung, und dafür braucht es keine
+Zahl.**
+
+Danach melden alle sechs Schanzen ihren Bogen, und die Werte decken sich mit der
+unabhängigen Probe (`ridge-kicker` 2,63 s gegen 2,65 s):
+
+```
+paddy-launch 2.05s · ridge-kicker 2.63s · coast-kicker 2.7s
+village-hop  2.17s · harbour-jump 2.12s · south-crest  1.22s
+```
+
+> Die Höhenangabe der Rauchprobe (`ridge-kicker` 4 m) steht **über dem
+> Absprungpunkt**, die 15,82 m oben über dem Gelände *darunter*. Beide sind
+> richtig; die Schanze wirft den Wagen 4 m hoch, und der Boden fällt dabei um
+> weitere 12 m weg. Genau dafür ist sie gebaut.
+
+## Akzeptanz
+
+- [x] Kronen ohne waagerechte Bänder, breit, tief angesetzt
+      (`.cache/shots/baum-nah2.png`).
+- [x] `hill.mts` über die ganze Flotte sauber: glatt gegen rau innerhalb von
+      1 km/h, auch beim Offroader.
+- [x] Lastwechsel wirkt und ist nach Fahrzeug gestaffelt; „Saubere Kurve"
+      besteht bei allen vier weiterhin mit ✓.
+- [x] Gierstabilität, Lenkantwort, Ausrollen, Geradeauslauf und Lenksymmetrie
+      unverändert.
+- [x] `world.mts` unverändert grün.
+- [x] Blüten an der Qualitätsstufe; Minikarte 15 Hz; Instanzmatrizen 20 Hz.
+- [x] Blütenteppich als Verwehung statt als Plane; Helligkeit am Bezugspunkt
+      „Blüte am Baum" (0,151) statt nach Gefühl — nachgemessen 0,139.
+- [x] Laternen über dem Himmel und **warm**: 0,591 gegen 0,533, Rot ÷ Blau 1,42.
+- [x] Alle sechs Schanzen fliegen, keine bremst die Anfahrt aus
+      (min 111 km/h aus 140).
+- [x] `tools/smoke.mjs`: 19 Proben grün, Konsole sauber.
+- [x] `japanMap.winding()` leer über alle 153 Meshes — die Wickelrichtung der
+      neun von Hand hergeleiteten Blätter stimmt.
+- [x] Qualitätsleiter gemessen: minimal gegen ultra 82/198 Draw-Calls,
+      204 150/1 040 131 Dreiecke; der Sprung liegt bei `reflections` zwischen
+      medium und high.
+- [x] `fleet`, `arcade`, `world` und `hill` grün.
+- [x] Fünf Bilder auf Fahrerhöhe, korrekt gezielt, `anteilNichtSchwarz`
+      0,9992…0,9999 — keine offene Auffälligkeit außer dem Wasserglanz, und
+      der ist gemessen zugeordnet.
+- [x] `typecheck` sauber, `vite build` läuft durch.
+
+## Was offen bleibt
+
+- [ ] **Die Rate von 20 Hz für die Instanzmatrizen ist eine Abwägung, keine
+      Messung.** Was sie spart, ist proportional und offensichtlich (zwei
+      Drittel der Aufrufe); was sie kostet, ist eine Frage fürs Auge und
+      gehört auf ein echtes Telefon.
+- [ ] Ob sich der Lastwechsel **gut anfühlt**, ist weiterhin keine Frage für
+      einen Prüfstand.
+- [ ] **Die Karosserie schleift am Übergang in eine Steigung, nicht an der
+      Steigung.** Gemessen an den Schanzen: bis 16,0° Spitzenneigung bleibt die
+      Blechtiefe unter 0,094 m, bei 19,4° sind es 0,193 m und der Wagen
+      verliert zwei Drittel seines Tempos.
+
+      > **Der naheliegende Schluss daraus wäre „ab knapp 20° schleift das
+      > Blech an jedem Hang", und `world.mts` widerlegt ihn im selben Lauf:**
+      > auf einem *konstanten* Hang misst er 0,000 m bei 20°, 0,048 m bei 35°
+      > und 0,050 m bei 55°. Ein Hang ist eine Ebene, auf die sich der Aufbau
+      > ausrichtet; eine Schanze ist ein **Übergang**, und dort überbrückt die
+      > 4,2 m lange Unterkante die konvexe Krümmung. Nicht die Neigung ist die
+      > Größe, sondern ihre Änderung — dieselbe Unterscheidung wie zwischen
+      > `STEEP_NY` (Form) und `slopeSupport` (Kraft) aus P21.
+
+      Repariert ist nur die Schanze, die es ausgelöst hat. Was fehlt, ist eine
+      Zahl für die zulässige **Krümmung**: der Prüfstand hat für konstante
+      Hänge eine Spalte und für Übergänge keine.
+- [x] ~~`ridge-kicker` landet auf 12,1 m Gefälle und springt weiter — ob das
+      ein Fehler ist oder der beste Sprung der Karte, kann keine Zahl
+      beantworten.~~ **Doch, sie kann** — siehe „11.".
+- [ ] **Die Leitertabelle ist ein Vergleich, kein eingeschwungener Zustand.**
+      Sie steht jetzt unter „9." — aber `streaming` war auf allen fünf Stufen
+      noch `true`, die Instanzzahlen sind also **Untergrenzen**. Was fehlt, ist
+      derselbe Lauf mit fertiger Streuung; auf diesem Software-Rasterisierer
+      ist er nicht bezahlbar (s. dort).

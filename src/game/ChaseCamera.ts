@@ -116,20 +116,39 @@ export class ChaseCamera {
     // Der Zug bei Tempo. Neu gesetzt wird die Projektionsmatrix nur bei
     // merklicher Änderung: sie hängt an der Kamera, und mehrere Systeme
     // (Spiegelung, PostFX) lesen sie je Frame.
+    //
+    // **Der Nitro läuft mit einer eigenen, viel schnelleren Zeitkonstanten** —
+    // und das ist keine Kosmetik, sondern der Unterschied zwischen einem Boost,
+    // den man *sieht*, und einem, den man nur im Tacho abliest. Der Tempo-Anteil
+    // darf träge sein (er folgt einer trägen Größe), der Nitro-Anteil nicht: er
+    // ist ein Knopfdruck, und ein Knopfdruck, dessen Wirkung eine halbe Sekunde
+    // braucht, fühlt sich nach nichts an.
+    const boost = vehicle.telemetry.boosting ? 1 : 0;
+    const boostRate = boost > this.#boost ? CHASE_CAMERA.fovBoostRate : CHASE_CAMERA.fovRate;
+    this.#boost += (boost - this.#boost) * (1 - Math.exp(-boostRate * dt));
+    const pace = Math.min(1, speed / CHASE_CAMERA.fovSpeed);
     const targetFov =
       CHASE_CAMERA.fov +
-      (CHASE_CAMERA.fovFast - CHASE_CAMERA.fov) * Math.min(1, speed / CHASE_CAMERA.fovSpeed);
-    this.#fov += (targetFov - this.#fov) * (1 - Math.exp(-3 * dt));
+      (CHASE_CAMERA.fovFast - CHASE_CAMERA.fov) * pace +
+      CHASE_CAMERA.fovBoost * this.#boost;
+    this.#fov += (targetFov - this.#fov) * (1 - Math.exp(-CHASE_CAMERA.fovRate * dt));
     if (Math.abs(camera.fov - this.#fov) > 0.05) {
       camera.fov = this.#fov;
       camera.updateProjectionMatrix();
     }
   }
 
+  /** Geglätteter Nitro-Zustand, 0…1 — treibt Blickwinkel und Abstand. */
+  #boost = 0;
+
   #updateChase(dt: number, vehicle: Vehicle, ground: Ground, camera: PerspectiveCamera): void {
     const yaw = this.#heading + this.#yawOffset;
-    const distance = CHASE_CAMERA.distance * Math.cos(this.#pitchOffset);
-    const height = CHASE_CAMERA.height + CHASE_CAMERA.distance * Math.sin(this.#pitchOffset);
+    // Der Arm wächst mit dem Tempo und noch einmal im Nitro — Begründung bei
+    // `CHASE_CAMERA.distanceFast`.
+    const pace = Math.min(1, vehicle.telemetry.speed / CHASE_CAMERA.fovSpeed);
+    const arm = CHASE_CAMERA.distance + CHASE_CAMERA.distanceFast * (pace + this.#boost * 0.4);
+    const distance = arm * Math.cos(this.#pitchOffset);
+    const height = CHASE_CAMERA.height + arm * Math.sin(this.#pitchOffset);
 
     this.#desired.set(
       vehicle.position.x - Math.sin(yaw) * distance,
