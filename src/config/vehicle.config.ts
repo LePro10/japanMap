@@ -1058,8 +1058,19 @@ export const CHASE_CAMERA = {
 
   /** Mausempfindlichkeit im Fahrmodus (rad/px) und Nickgrenzen. */
   lookSensitivity: 0.0026,
-  pitchMin: -0.5,
-  pitchMax: 1.05,
+  /**
+   * Nick des **Blicks**, nicht der Kamerahöhe. Positiv = Himmel.
+   *
+   * Bis hierher war `pitchOffset` an Verfolger und Haube dieselbe Zahl mit
+   * entgegengesetzter Bedeutung: `height + arm·sin(pitch)` hebt die Kamera
+   * (Blick auf den Boden), die Haube addiert `sin(pitch)` aufs Blickziel
+   * (Blick in den Himmel). Maus hoch drehte die Achse beim Umschalten um.
+   * Der Boom rechnet seitdem `height − arm·sin(pitch)`, und die Grenzen
+   * sind getauscht, damit der alte Bewegungsraum bleibt — mehr nach unten
+   * aufs Auto (−1,05) als in den Himmel (0,5).
+   */
+  pitchMin: -1.05,
+  pitchMax: 0.5,
 
   /**
    * Zeitkonstante, mit der der Mausschwenk zurück nach hinten wandert (1/s).
@@ -1073,6 +1084,94 @@ export const CHASE_CAMERA = {
   /** Höhe der Haubenkamera über dem Schwerpunkt und ihr Versatz nach vorn. */
   hoodHeight: 0.62,
   hoodForward: 0.15,
+  /**
+   * Anteil des Aufbau-Nickens an der Haube. Der Kommentar an der Kamera
+   * versprach ein Drittel seit P14 — der Code hat null genommen. Ein
+   * Drittel bleibt: volles Nicken auf einem Bildschirm ohne Fliehkraft
+   * ist Übelkeit, keines ist ein Auto, das nicht atmet.
+   */
+  hoodPitchBlend: 0.33,
+
+  /**
+   * Zeitkonstante, mit der die Kamera die Beschleunigung glättet (1/s).
+   *
+   * Die Dynamik liefert `accelLong` je 60-Hz-Schritt, die Kamera läuft im
+   * variablen Frame. Ohne Glättung wäre jeder Physik-Spike ein Kameraruck.
+   * 8 ist schnell genug, dass ein Gasstoß noch als Schlag ankommt, und
+   * langsam genug, dass ein einzelner Simulationszacken nicht durchschlägt.
+   */
+  accelRate: 8,
+  /**
+   * Extra-Arm je m/s² Gas, in Metern. Coupé-Spitze liegt um 8 m/s² —
+   * 0,14 × 8 = 1,1 m zusätzlich nach hinten. Zusammen mit dem Tempo-Arm
+   * (`distanceFast`) die Hälfte, die *Beschleunigung* zeigt statt Tempo.
+   */
+  accelDistance: 0.14,
+  /**
+   * Arm-Kürzung je m/s² Bremse. Härter als Gas: eine Vollbremsung soll
+   * den Wagen auf einen zukommen lassen, nicht nur weniger weit weg
+   * stehen. 0,16 × 10 ≈ 1,6 m, Boden bei `distance * 0,55`.
+   */
+  brakeDistance: 0.16,
+  /** Blickfeld-Zug je m/s² Gas, in Grad. 8 m/s² → +2,4°. Klein neben dem Tempo-FOV, spürbar als Schlag. */
+  accelFov: 0.3,
+  /** Blickfeld-Rücknahme je m/s² Bremse. Weniger als der Gas-Zug — Bremse arbeitet über den Arm. */
+  brakeFov: 0.12,
+  /** Blickziel nach vorn je m/s² Gas, in Metern. Der Wagen zieht aus dem Bildmittelpunkt weg. */
+  accelLook: 0.06,
+  /** Blickziel nach unten je m/s² Bremse, in Metern. */
+  brakeLookDown: 0.018,
+  /**
+   * Look-ahead in Sekunden Fahrtrichtung. 0,16 s bei 25 m/s = 4 m, gedeckelt
+   * durch `lookAheadMax`, damit eine Geradeausfahrt auf dem Ring nicht auf
+   * den Asphalt vor der Nase starrt.
+   */
+  lookAhead: 0.16,
+  lookAheadMax: 3.2,
+  /** Seitlicher Blick je m/s² Querbeschleunigung, in Metern — in die Kurve, nicht aus ihr heraus. */
+  lookLat: 0.05,
+
+  /**
+   * Kamerarollen je m/s² Quer, in Radiant. 10 m/s² × 0,006 = 3,4°.
+   * Darüber fängt Seekrankheit an; der Deckel sitzt bei 4°.
+   */
+  rollPerLat: 0.006,
+  maxRoll: 0.07,
+  /** Zeitkonstante des Rollens (1/s). Träger als die Position — Roll darf nachschwingen, nicht zittern. */
+  rollRate: 6,
+
+  /**
+   * Rütteln. Nur Position, nie Quaternion — Begründung im Kopf von
+   * `ChaseCamera`. Asphalt bei 40 m/s: 1,6 cm; Gelände dasselbe Tempo:
+   * 10 cm. Drift und Durchdrehen legen denselben Betrag noch einmal drauf.
+   */
+  rumbleAsphalt: 0.0004,
+  rumbleLoose: 0.0025,
+  rumbleSkid: 0.035,
+  rumbleBrake: 0.002,
+  /** Ab wie viel m/s² negativem `accelLong` die Bremse mitrüttelt. */
+  rumbleBrakeAccel: 5,
+  /** Haube bekommt diesen Bruchteil — näher am Kopf, sonst wird es ein Presslufthammer. */
+  rumbleHood: 0.35,
+  /** Abklingen eines Stoßes (1/s). 14 ≈ in 0,2 s auf 6 %. */
+  shakeDecay: 14,
+  /** Landestoß, Meter je Einfederung 0…1. Eine harte Landung (1,0) senkt die Kamera 18 cm. */
+  landImpulse: 0.18,
+  /** Kollisionsstoß, Meter je Meter Durchdringung. 20 cm Kontakt → 8 cm Ruck. */
+  hitImpulse: 0.4,
+  /** Unter dieser Durchdringung zählt ein Kontakt nicht als Schlag — Streifen an der Leitplanke. */
+  hitThreshold: 0.04,
+
+  /**
+   * Boom-Kollision. Entlang des Arms `occludeSamples` Höhenproben; liegt
+   * Gelände über der Sichtlinie, Arm einkürzen. Rein schnell, raus langsam —
+   * sonst pulsiert die Kamera an jeder Leitplankenkante des Bergpasses.
+   */
+  occludeSamples: 5,
+  occludeRateIn: 14,
+  occludeRateOut: 3.2,
+  /** Kürzester Arm als Anteil, damit die Kamera nicht in den Kofferraum fällt. */
+  occludeMin: 0.28,
 } as const;
 
 /**

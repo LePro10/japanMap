@@ -154,13 +154,25 @@ export const WALK_CAMERA = {
   height: 1.55,
   targetHeight: 1.28,
   lookSensitivity: 0.0026,
-  /** Nick: unten fast auf die Schuhe, oben nicht über den Pol. */
-  pitchMin: -0.45,
-  pitchMax: 0.85,
+  /**
+   * Nick des Blicks, positiv = Himmel. Dieselbe Konvention wie die
+   * Verfolgerkamera — Boom `height − distance·sin(pitch)`, Grenzen getauscht
+   * gegen die alte Kamerahöhen-Konvention, damit der Bewegungsraum bleibt.
+   */
+  pitchMin: -0.85,
+  pitchMax: 0.45,
   positionRate: 9,
   lookRate: 13,
   groundClearance: 0.45,
   fov: 58,
+  /**
+   * Kopf-Wippen, Meter bei Schrittgeschwindigkeit. `walker.cycle` ist
+   * gelaufene Strecke; eine Periode von 0,75 m ist ein Schritt. 3,5 cm sind
+   * auf Augenhöhe sichtbar und nicht seekrank.
+   */
+  bob: 0.035,
+  /** Bogenmaß je Meter Gang. 2π / 0,75 ≈ 8,4 — ein Nicken je Schritt. */
+  bobFreq: 8.4,
 } as const;
 
 /**

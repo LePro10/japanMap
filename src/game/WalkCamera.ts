@@ -15,10 +15,14 @@ import type { Walker } from './Walker';
  * Läuft im variablen Schritt. Begründung wie bei der Verfolgerkamera: eine
  * Federung im 60-Hz-Schritt würde bei 144 FPS dreimal denselben Stand
  * zeigen.
+ *
+ * Nick: positiv = Himmel, Boom `height − distance·sin(pitch)` — dieselbe
+ * Mausrichtung wie Freiflug und Haube. Vorher hob Maus-hoch die Kamera.
  */
 export class WalkCamera {
   #heading = 0;
-  #pitch = 0.18;
+  /** Leicht nach unten auf die Figur — derselbe Startstand wie zuvor, nur mit der neuen Nick-Konvention. */
+  #pitch = -0.18;
   #initialized = false;
 
   readonly #position = new Vector3();
@@ -41,7 +45,7 @@ export class WalkCamera {
 
   reset(walker: Walker): void {
     this.#heading = walker.yaw;
-    this.#pitch = 0.18;
+    this.#pitch = -0.18;
     this.#initialized = false;
   }
 
@@ -49,16 +53,23 @@ export class WalkCamera {
     const yaw = this.#heading;
     const pitch = this.#pitch;
     const dist = WALK_CAMERA.distance * Math.cos(pitch);
-    const height = WALK_CAMERA.height + WALK_CAMERA.distance * Math.sin(pitch);
+    const height = WALK_CAMERA.height - WALK_CAMERA.distance * Math.sin(pitch);
+
+    const bob =
+      walker.grounded && walker.speed > 0.15
+        ? Math.sin(walker.cycle * WALK_CAMERA.bobFreq) *
+          WALK_CAMERA.bob *
+          Math.min(1, walker.speed / 3.2)
+        : 0;
 
     this.#desired.set(
       walker.position.x - Math.sin(yaw) * dist,
-      walker.position.y + height,
+      walker.position.y + height + bob,
       walker.position.z - Math.cos(yaw) * dist,
     );
     this.#lookAt.set(
       walker.position.x,
-      walker.position.y + WALK_CAMERA.targetHeight,
+      walker.position.y + WALK_CAMERA.targetHeight + bob * 0.4,
       walker.position.z,
     );
 
