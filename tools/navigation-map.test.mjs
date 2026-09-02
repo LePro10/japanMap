@@ -2,17 +2,28 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import ts from 'typescript';
 
-const sourcePath = new URL('../src/ui/navigationMapMath.ts', import.meta.url);
-const source = await readFile(sourcePath, 'utf8');
-const { outputText } = ts.transpileModule(source, {
-  compilerOptions: {
-    module: ts.ModuleKind.ES2022,
-    target: ts.ScriptTarget.ES2022,
-  },
-  fileName: 'navigationMapMath.ts',
-});
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`;
-const { clampWorldPoint, mapToWorld, worldToMap } = await import(moduleUrl);
+async function importTypescript(path, fileName) {
+  const sourcePath = new URL(path, import.meta.url);
+  const source = await readFile(sourcePath, 'utf8');
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.ES2022,
+      target: ts.ScriptTarget.ES2022,
+    },
+    fileName,
+  });
+  const moduleUrl = `data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`;
+  return import(moduleUrl);
+}
+
+const { clampWorldPoint, mapToWorld, worldToMap } = await importTypescript(
+  '../src/ui/navigationMapMath.ts',
+  'navigationMapMath.ts',
+);
+const { MAP_LANDMARKS, formatMapDistance } = await importTypescript(
+  '../src/ui/navigationMapData.ts',
+  'navigationMapData.ts',
+);
 
 const bounds = { minX: -1536, maxX: 1536, minZ: -1536, maxZ: 1536 };
 
@@ -31,4 +42,20 @@ assert.ok(Math.abs(roundTrip.z + 420) < 1e-9);
 
 assert.deepEqual(clampWorldPoint(-9999, 9999, bounds), { x: -1536, z: 1536 });
 
-console.log('navigation map math: ok');
+assert.equal(formatMapDistance(428), '428 m');
+assert.equal(formatMapDistance(999.6), '1.0 km');
+assert.equal(formatMapDistance(1340), '1.3 km');
+
+assert.ok(MAP_LANDMARKS.length >= 7, 'Die Karte soll die wichtigen Regionen sichtbar machen.');
+const city = MAP_LANDMARKS.find((landmark) => landmark.id === 'stadt');
+assert.deepEqual(
+  city && { x: city.x, z: city.z, icon: city.icon },
+  { x: 620, z: 120, icon: 'city' },
+);
+const temple = MAP_LANDMARKS.find((landmark) => landmark.id === 'tempel');
+assert.deepEqual(
+  temple && { x: temple.x, z: temple.z, icon: temple.icon },
+  { x: 820, z: -940, icon: 'temple' },
+);
+
+console.log('navigation map math/data: ok');
