@@ -16,7 +16,7 @@ async function importTypescript(path, fileName) {
   return import(moduleUrl);
 }
 
-const { clampWorldPoint, mapToWorld, worldToMap } = await importTypescript(
+const { clampMapView, clampWorldPoint, mapToWorld, worldToMap, zoomMapView } = await importTypescript(
   '../src/ui/navigationMapMath.ts',
   'navigationMapMath.ts',
 );
@@ -41,6 +41,17 @@ assert.ok(Math.abs(roundTrip.x - 612) < 1e-9);
 assert.ok(Math.abs(roundTrip.z + 420) < 1e-9);
 
 assert.deepEqual(clampWorldPoint(-9999, 9999, bounds), { x: -1536, z: 1536 });
+
+const zoomed = zoomMapView({ scale: 1, tx: 0, ty: 0 }, 2, 200, 100, 400, 400);
+assert.equal(zoomed.scale, 2);
+assert.equal(zoomed.tx, -200);
+assert.equal(zoomed.ty, -100);
+const clamped = clampMapView({ scale: 2, tx: 50, ty: 50 }, 400, 400);
+assert.equal(clamped.tx, 0);
+assert.equal(clamped.ty, 0);
+const overPan = clampMapView({ scale: 2, tx: -999, ty: -999 }, 400, 400);
+assert.equal(overPan.tx, -400);
+assert.equal(overPan.ty, -400);
 
 assert.equal(formatMapDistance(428), '428 m');
 assert.equal(formatMapDistance(999.6), '1.0 km');

@@ -17,6 +17,7 @@ export const CONTROLS: readonly (readonly [string, string])[] = [
   ['Shift', 'run'],
   ['F', 'get in / out of the car'],
   ['R', 'back to the sakura bowl'],
+  ['M', 'map'],
   ['V', 'free camera'],
   ['Esc', 'menu'],
 ];
@@ -49,6 +50,7 @@ export const DRIVE_CONTROLS: readonly (readonly [string, string])[] = [
   ['C', 'view: chase / hood'],
   ['R', 'respawn on the nearest road'],
   ['F', 'get out'],
+  ['M', 'map'],
   ['V', 'free camera'],
   ['Esc', 'menu'],
 ];
@@ -60,6 +62,7 @@ export const TOUCH_CONTROLS: readonly (readonly [string, string])[] = [
   ['↑', 'jump'],
   ['🚗', 'get in / out of the car'],
   ['⟲', 'back to the sakura bowl'],
+  ['Minimap', 'open map'],
   ['☰', 'menu'],
 ];
 
@@ -76,6 +79,7 @@ export const TOUCH_DRIVE_CONTROLS: readonly (readonly [string, string])[] = [
   ['✋', 'handbrake'],
   ['⟲', 'auf die nächste Straße'],
   ['🚗', 'get out'],
+  ['Minimap', 'open map'],
   ['☰', 'menu'],
 ];
 

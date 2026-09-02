@@ -501,6 +501,10 @@ async function boot(): Promise<void> {
   const hud = new DriveHud(overlay);
   const bestTimes = new BestTimes();
   const profile = new Profile();
+  drive.setCanTeleport(() => profile.sandbox);
+  hud.setOnOpenMap(() => {
+    drive.openMap();
+  });
   hud.setMoney(profile.yen);
   profile.onChange(() => {
     hud.setMoney(profile.yen);

@@ -201,6 +201,20 @@ export type AppEvents = {
   'walk:mode': { active: boolean };
 
   /**
+   * Die Weltkarte ist auf oder zu.
+   *
+   * Eigenes Ereignis, weil das Öffnen den Pointer Lock abgibt — und
+   * `PlayerUi` genau diesen Verlust sonst als Pause liest. Ohne diese
+   * Meldung läge das Menü über der Karte, die man gerade aufgerufen hat.
+   *
+   * `resume` sagt, ob danach wieder ein Lock kommen soll (M, Waypoint,
+   * Teleport) oder nicht (Escape: Chrome sperrt eine sofortige neue
+   * Anfrage). Das Menü öffnet sich nur im zweiten Fall.
+   */
+  'map:open': void;
+  'map:close': { resume: boolean };
+
+  /**
    * Das gefahrene Fahrzeug hat gewechselt — P18.
    *
    * Aus demselben Grund ein Ereignis wie `drive:mode`: gewechselt wird aus dem

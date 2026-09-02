@@ -149,14 +149,53 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   background: #081018;
+  touch-action: none;
+}
+
+.navmap__view {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  will-change: transform;
 }
 
 .navmap__canvas {
   display: block;
   width: 100%;
   height: 100%;
-  cursor: crosshair;
+  cursor: grab;
   touch-action: none;
+}
+
+.navmap__canvas:active {
+  cursor: grabbing;
+}
+
+.navmap__zoom {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.navmap__zoom button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(4, 9, 14, 0.86);
+  color: var(--fg);
+  font: 20px/1 var(--mono);
+  cursor: pointer;
+}
+
+.navmap__zoom button:hover {
+  border-color: rgba(255, 255, 255, 0.36);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .navmap__actions {
@@ -195,6 +234,15 @@
 .navmap__actions button[data-map-action='waypoint'] {
   border-color: rgba(22, 140, 255, 0.66);
   background: rgba(22, 140, 255, 0.16);
+}
+
+.navmap__actions button[data-map-action='teleport'] {
+  border-color: rgba(255, 183, 95, 0.7);
+  background: rgba(255, 160, 60, 0.16);
+}
+
+.navmap__actions button[data-map-action='teleport'][hidden] {
+  display: none;
 }
 
 .navmap__footer {
@@ -241,15 +289,15 @@
 }
 
 @media (max-width: 700px) {
+  /* Auf Touch öffnet die HUD-Minikarte die Vollkarte. Eine zweite Mini
+   * oben links läge auf `.hud__lap` und `.hud__nav` (P25 hat die HUD-Karte
+   * dort hingesetzt). */
   #overlay > .navmap-mini {
-    top: max(14px, env(safe-area-inset-top));
-    width: 138px;
-    height: 138px;
-    border-radius: 12px;
+    display: none;
   }
 
   #overlay > .hud .hud__lap {
-    top: max(164px, calc(env(safe-area-inset-top) + 150px));
+    top: max(64px, env(safe-area-inset-top));
   }
 
   #overlay > .navmap {

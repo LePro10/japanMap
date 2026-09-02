@@ -76,9 +76,11 @@ export class DriveHud {
   readonly #promptKey: HTMLElement;
   readonly #promptAction: HTMLElement;
   readonly #map: MiniMap;
+  readonly #nav: HTMLElement;
   #arrowDeg = 999;
   /** Zuletzt gesetzter Hinweis — sonst schreibt jeder Frame denselben Text. */
   #promptKind: 'enter' | 'exit' | null = null;
+  #onOpenMap: (() => void) | null = null;
 
   /** Zuletzt geschriebener Text je Feld — spart das Layout, s. o. */
   readonly #written = new Map<HTMLElement, string>();
@@ -154,12 +156,25 @@ export class DriveHud {
     this.#prompt = this.#must('[data-hud="prompt"]');
     this.#promptKey = this.#must('[data-hud="promptKey"]');
     this.#promptAction = this.#must('[data-hud="promptAction"]');
-    this.#map = new MiniMap(this.#must('.hud__nav'));
+    this.#nav = this.#must('.hud__nav');
+    this.#map = new MiniMap(this.#nav);
+    this.#nav.setAttribute('role', 'button');
+    this.#nav.setAttribute('aria-label', 'Open map (M)');
+    this.#nav.addEventListener('click', this.#onNavClick);
     // Grober Zeiger = Telefon: dort gibt es kein F, der 🚗-Knopf ist der Weg.
     // Ein Laptop mit Touchscreen bleibt bei F — `maxTouchPoints > 0` allein
     // würde dort die Tastatur-Taste durch ein Auto ersetzen, das es in der
     // Tastaturzeile nicht gibt.
     this.#promptKey.textContent = matchMedia('(pointer: coarse)').matches ? '🚗' : 'F';
+  }
+
+  /**
+   * Klick auf die Minikarte öffnet die Vollkarte — der Weg ohne Taste `M`,
+   * den ein Telefon braucht. Hereingereicht und nicht selbst gesucht:
+   * dieses HUD hat keinen Bus.
+   */
+  setOnOpenMap(fn: (() => void) | null): void {
+    this.#onOpenMap = fn;
   }
 
   /**
@@ -488,6 +503,10 @@ export class DriveHud {
     element.textContent = text;
   }
 
+  readonly #onNavClick = (): void => {
+    this.#onOpenMap?.();
+  };
+
   #must(selector: string): HTMLElement {
     const element = this.#root.querySelector<HTMLElement>(selector);
     if (!element) throw new Error(`HUD: "${selector}" fehlt.`);
@@ -498,6 +517,8 @@ export class DriveHud {
     if (this.#flashTimer !== null) window.clearTimeout(this.#flashTimer);
     this.#flashTimer = null;
     this.#written.clear();
+    this.#nav.removeEventListener('click', this.#onNavClick);
+    this.#onOpenMap = null;
     this.#map.dispose();
     this.#root.remove();
   }
