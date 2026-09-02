@@ -34,7 +34,7 @@ jobs:
 
       - name: Commit generated asset
         run: |
-          git add assets/generated/terrain/navigation-map.webp
+          git add -f assets/generated/terrain/navigation-map.webp
           if git diff --cached --quiet; then
             echo "navigation-map.webp already current"
             exit 0
