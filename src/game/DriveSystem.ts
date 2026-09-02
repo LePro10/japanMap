@@ -978,6 +978,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
   update(dt: number): void {
     this.#navigation?.update(dt);
+    this.#waypoint.update(this.vehicle.position.x, this.vehicle.position.z);
     if (!this.#active || !this.#context) return;
     this.camera.update(dt, this.vehicle, this, this.#context.camera);
     this.#syncMeshes();
