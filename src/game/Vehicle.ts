@@ -181,6 +181,13 @@ export interface VehicleTelemetry {
   boost: number;
   /** Läuft der Nitro gerade? */
   boosting: boolean;
+  /**
+   * Längsbeschleunigung in m/s², positiv = Gas. Aus der Dynamik, nicht
+   * aus einem Kameradelta — ein Delta am variablen Frame ist Rauschen.
+   */
+  accelLong: number;
+  /** Querbeschleunigung in m/s², positiv = nach rechts. */
+  accelLat: number;
 }
 
 /**
@@ -481,6 +488,8 @@ export class Vehicle {
     drift: 0,
     boost: 1,
     boosting: false,
+    accelLong: 0,
+    accelLat: 0,
   };
 
   constructor(spec: VehicleSpec = TOUGE) {
@@ -531,6 +540,15 @@ export class Vehicle {
 
   get yaw(): number {
     return this.#yaw;
+  }
+
+  /**
+   * Aufbau-Nicken in Radiant. Positiv senkt die Nase — Vorzeichen und
+   * Begründung bei `#updateAttitude`. Die Haubenkamera liest das, die
+   * Physik nicht: Nicken bleibt kinematisch.
+   */
+  get pitch(): number {
+    return this.#pitch;
   }
 
   get wheelSpinAngle(): number {
@@ -673,6 +691,8 @@ export class Vehicle {
     t.hullDepth = 0;
     t.waterDepth = 0;
     t.skid = 0;
+    t.accelLong = 0;
+    t.accelLat = 0;
   }
 
   /**
@@ -1007,6 +1027,8 @@ export class Vehicle {
     t.drift = planar.drift;
     t.boost = planar.boost;
     t.boosting = planar.boosting;
+    t.accelLong = accelLong;
+    t.accelLat = accelLat;
   }
 
   /**
