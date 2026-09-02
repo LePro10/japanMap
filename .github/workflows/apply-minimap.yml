@@ -3,7 +3,9 @@ name: Apply minimap integration
 on:
   push:
     branches: [feat/minimap-waypoints]
-    paths: [tools/apply-minimap.patch]
+    paths:
+      - tools/apply-minimap.patch
+      - .github/workflows/apply-minimap.yml
 
 permissions:
   contents: write
