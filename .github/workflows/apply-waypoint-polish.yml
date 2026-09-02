@@ -1,0 +1,56 @@
+name: Apply waypoint polish
+
+on:
+  push:
+    branches: [feat/minimap-waypoints]
+    paths: [.github/workflows/apply-waypoint-polish.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Wire live waypoint distance
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/game/DriveSystem.ts')
+          text = path.read_text()
+          old = "  update(dt: number): void {\n    this.#navigation?.update(dt);\n    if (!this.#active || !this.#context) return;"
+          new = "  update(dt: number): void {\n    this.#navigation?.update(dt);\n    this.#waypoint.update(this.vehicle.position.x, this.vehicle.position.z);\n    if (!this.#active || !this.#context) return;"
+          if old not in text:
+              raise SystemExit('DriveSystem update anchor not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Navigation map tests
+        run: node tools/navigation-map.test.mjs
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit verified integration
+        run: |
+          rm .github/workflows/apply-waypoint-polish.yml
+          git config user.name "Leandro Probst"
+          git config user.email "leandro.probst@bbzbl-it.ch"
+          git add src/game/DriveSystem.ts .github/workflows/apply-waypoint-polish.yml
+          git commit -m "feat: update waypoint label distance while driving"
+          git push origin HEAD:feat/minimap-waypoints
