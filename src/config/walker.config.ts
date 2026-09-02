@@ -167,10 +167,11 @@ export const WALK_CAMERA = {
   fov: 58,
   /**
    * Kopf-Wippen, Meter bei Schrittgeschwindigkeit. `walker.cycle` ist
-   * gelaufene Strecke; eine Periode von 0,75 m ist ein Schritt. 3,5 cm sind
-   * auf Augenhöhe sichtbar und nicht seekrank.
+   * gelaufene Strecke; eine Periode von 0,75 m ist ein Schritt. 2 cm —
+   * die erste Runde mit 3,5 cm hat mit der Autokamera zusammen zu laut
+   * gelesen, und zu Fuß braucht man den Horizont ruhig.
    */
-  bob: 0.035,
+  bob: 0.02,
   /** Bogenmaß je Meter Gang. 2π / 0,75 ≈ 8,4 — ein Nicken je Schritt. */
   bobFreq: 8.4,
 } as const;

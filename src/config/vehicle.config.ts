@@ -1085,93 +1085,88 @@ export const CHASE_CAMERA = {
   hoodHeight: 0.62,
   hoodForward: 0.15,
   /**
-   * Anteil des Aufbau-Nickens an der Haube. Der Kommentar an der Kamera
-   * versprach ein Drittel seit P14 — der Code hat null genommen. Ein
-   * Drittel bleibt: volles Nicken auf einem Bildschirm ohne Fliehkraft
-   * ist Übelkeit, keines ist ein Auto, das nicht atmet.
+   * Anteil des Aufbau-Nickens an der Haube. Der Kommentar versprach ein
+   * Drittel — gemessen war das zusammen mit dem Karosserie-Nicken ein
+   * doppelter Nick, und die erste Feel-Runde war damit unspielbar. 0,12
+   * lässt die Nase atmen, ohne die Fahrbahn zu kippen.
    */
-  hoodPitchBlend: 0.33,
+  hoodPitchBlend: 0.12,
 
   /**
    * Zeitkonstante, mit der die Kamera die Beschleunigung glättet (1/s).
    *
-   * Die Dynamik liefert `accelLong` je 60-Hz-Schritt, die Kamera läuft im
-   * variablen Frame. Ohne Glättung wäre jeder Physik-Spike ein Kameraruck.
-   * 8 ist schnell genug, dass ein Gasstoß noch als Schlag ankommt, und
-   * langsam genug, dass ein einzelner Simulationszacken nicht durchschlägt.
+   * Die Dynamik spitzt auf −19 m/s² bei einer Vollbremsung. Ohne Glättung
+   * und ohne Deckel hat die erste Fassung den Arm in 0,45 s um **3 m**
+   * reingezogen (7,97 → 5,03 m) — das ist die Messung, nach der alles
+   * hier runtergesetzt wurde. 4 folgt der Last, ohne den Spike durchzureichen.
    */
-  accelRate: 8,
+  accelRate: 4,
   /**
-   * Extra-Arm je m/s² Gas, in Metern. Coupé-Spitze liegt um 8 m/s² —
-   * 0,14 × 8 = 1,1 m zusätzlich nach hinten. Zusammen mit dem Tempo-Arm
-   * (`distanceFast`) die Hälfte, die *Beschleunigung* zeigt statt Tempo.
+   * Extra-Arm je m/s² Gas, und harter Deckel in Metern.
+   *
+   * Erste Runde: 0,14 × 10 = 1,1 m, unfahrbar neben `distanceFast`.
+   * Jetzt 0,035 × 6 ≈ 21 cm, gedeckelt bei 28 cm.
    */
-  accelDistance: 0.14,
+  accelDistance: 0.035,
+  accelArmMax: 0.28,
   /**
-   * Arm-Kürzung je m/s² Bremse. Härter als Gas: eine Vollbremsung soll
-   * den Wagen auf einen zukommen lassen, nicht nur weniger weit weg
-   * stehen. 0,16 × 10 ≈ 1,6 m, Boden bei `distance * 0,55`.
+   * Arm-Kürzung je m/s² Bremse, plus Deckel. Die Bremse der Dynamik
+   * liefert leicht −19 m/s² — linear damit zu skalieren war der Fehler.
+   * 0,03 × 8 = 24 cm, nie mehr als 32 cm, und der Arm bleibt über
+   * `armMinFactor`.
    */
-  brakeDistance: 0.16,
-  /** Blickfeld-Zug je m/s² Gas, in Grad. 8 m/s² → +2,4°. Klein neben dem Tempo-FOV, spürbar als Schlag. */
-  accelFov: 0.3,
-  /** Blickfeld-Rücknahme je m/s² Bremse. Weniger als der Gas-Zug — Bremse arbeitet über den Arm. */
-  brakeFov: 0.12,
-  /** Blickziel nach vorn je m/s² Gas, in Metern. Der Wagen zieht aus dem Bildmittelpunkt weg. */
-  accelLook: 0.06,
-  /** Blickziel nach unten je m/s² Bremse, in Metern. */
-  brakeLookDown: 0.018,
+  brakeDistance: 0.03,
+  brakeArmMax: 0.32,
+  /** Kürzester Arm als Anteil von `distance`. 0,55 lag im Kofferraum. */
+  armMinFactor: 0.88,
+  /** Blickfeld-Zug je m/s² Gas, in Grad. 8 m/s² → +0,5°. Das Tempo-FOV (62→82) trägt den Rest. */
+  accelFov: 0.06,
+  brakeFov: 0.03,
+  /** Blickziel nach vorn je m/s² Gas, in Metern. */
+  accelLook: 0.012,
+  brakeLookDown: 0.003,
   /**
-   * Look-ahead in Sekunden Fahrtrichtung. 0,16 s bei 25 m/s = 4 m, gedeckelt
-   * durch `lookAheadMax`, damit eine Geradeausfahrt auf dem Ring nicht auf
-   * den Asphalt vor der Nase starrt.
+   * Look-ahead in Sekunden, gedeckelt. 0,16 s × 25 m/s war 4 m — der Wagen
+   * saß dann im unteren Bilddrittel, weil der Boom am Blickziel hing statt
+   * am Auto. 0,05 s / 1,1 m hält ihn im Rahmen.
    */
-  lookAhead: 0.16,
-  lookAheadMax: 3.2,
-  /** Seitlicher Blick je m/s² Querbeschleunigung, in Metern — in die Kurve, nicht aus ihr heraus. */
-  lookLat: 0.05,
+  lookAhead: 0.05,
+  lookAheadMax: 1.1,
+  lookLat: 0.012,
 
   /**
-   * Kamerarollen je m/s² Quer, in Radiant. 10 m/s² × 0,006 = 3,4°.
-   * Darüber fängt Seekrankheit an; der Deckel sitzt bei 4°.
+   * Kamerarollen je m/s² Quer. Erste Runde 3,4° bei 10 m/s², Deckel 4° —
+   * auf einem Bildschirm ohne Fliehkraft ist das Seekrankheit. Jetzt 1°.
    */
-  rollPerLat: 0.006,
-  maxRoll: 0.07,
-  /** Zeitkonstante des Rollens (1/s). Träger als die Position — Roll darf nachschwingen, nicht zittern. */
-  rollRate: 6,
+  rollPerLat: 0.0018,
+  maxRoll: 0.018,
+  rollRate: 4,
 
   /**
-   * Rütteln. Nur Position, nie Quaternion — Begründung im Kopf von
-   * `ChaseCamera`. Asphalt bei 40 m/s: 1,6 cm; Gelände dasselbe Tempo:
-   * 10 cm. Drift und Durchdrehen legen denselben Betrag noch einmal drauf.
+   * Rütteln. Erste Runde: 10 cm im Gelände bei 40 m/s, 3,5 cm im Drift,
+   * 18 cm Landestoß. Das Bild hat mitgefahren, die Hand nicht. Asphalt
+   * bei 40 m/s jetzt 4 mm; Gelände 2 cm; Drift 6 mm; Landung 4,5 cm.
    */
-  rumbleAsphalt: 0.0004,
-  rumbleLoose: 0.0025,
-  rumbleSkid: 0.035,
-  rumbleBrake: 0.002,
-  /** Ab wie viel m/s² negativem `accelLong` die Bremse mitrüttelt. */
-  rumbleBrakeAccel: 5,
-  /** Haube bekommt diesen Bruchteil — näher am Kopf, sonst wird es ein Presslufthammer. */
-  rumbleHood: 0.35,
-  /** Abklingen eines Stoßes (1/s). 14 ≈ in 0,2 s auf 6 %. */
-  shakeDecay: 14,
-  /** Landestoß, Meter je Einfederung 0…1. Eine harte Landung (1,0) senkt die Kamera 18 cm. */
-  landImpulse: 0.18,
-  /** Kollisionsstoß, Meter je Meter Durchdringung. 20 cm Kontakt → 8 cm Ruck. */
-  hitImpulse: 0.4,
-  /** Unter dieser Durchdringung zählt ein Kontakt nicht als Schlag — Streifen an der Leitplanke. */
-  hitThreshold: 0.04,
+  rumbleAsphalt: 0.0001,
+  rumbleLoose: 0.0005,
+  rumbleSkid: 0.006,
+  rumbleBrake: 0.0004,
+  rumbleBrakeAccel: 8,
+  rumbleHood: 0.18,
+  shakeDecay: 16,
+  landImpulse: 0.045,
+  hitImpulse: 0.1,
+  hitThreshold: 0.06,
 
   /**
-   * Boom-Kollision. Entlang des Arms `occludeSamples` Höhenproben; liegt
-   * Gelände über der Sichtlinie, Arm einkürzen. Rein schnell, raus langsam —
-   * sonst pulsiert die Kamera an jeder Leitplankenkante des Bergpasses.
+   * Boom-Kollision. `occludeMin` 0,28 setzte die Kamera auf 1,8 m —
+   * in die Karosserie. 0,72 hält sie hinter dem Heck. Rein langsamer
+   * als zuvor, sonst ein Ruck an jeder Passwand.
    */
   occludeSamples: 5,
-  occludeRateIn: 14,
-  occludeRateOut: 3.2,
-  /** Kürzester Arm als Anteil, damit die Kamera nicht in den Kofferraum fällt. */
-  occludeMin: 0.28,
+  occludeRateIn: 6,
+  occludeRateOut: 2.4,
+  occludeMin: 0.72,
 } as const;
 
 /**
