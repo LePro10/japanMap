@@ -34,12 +34,12 @@ jobs:
 
       - name: Commit generated asset
         run: |
-          if git diff --quiet -- assets/generated/terrain/navigation-map.webp; then
+          git add assets/generated/terrain/navigation-map.webp
+          if git diff --cached --quiet; then
             echo "navigation-map.webp already current"
             exit 0
           fi
           git config user.name "Leandro Probst"
           git config user.email "leandro.probst@bbzbl-it.ch"
-          git add assets/generated/terrain/navigation-map.webp
           git commit -m "asset: bake aerial navigation basemap"
           git push origin HEAD:feat/minimap-waypoints
