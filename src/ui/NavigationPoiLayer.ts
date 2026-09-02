@@ -1,5 +1,5 @@
 import { MAP_LANDMARKS, type MapLandmarkIcon } from './navigationMapData';
-import { worldToMap, type WorldBounds } from './navigationMapMath';
+import { worldToMap, type MapBounds } from './navigationMapMath';
 
 const NS = 'http://www.w3.org/2000/svg';
 
@@ -10,7 +10,7 @@ const NS = 'http://www.w3.org/2000/svg';
 export class NavigationPoiLayer {
   readonly #root: SVGSVGElement;
 
-  constructor(container: HTMLElement, bounds: WorldBounds, size: number) {
+  constructor(container: HTMLElement, bounds: MapBounds, size: number) {
     const svg = document.createElementNS(NS, 'svg');
     svg.classList.add('navmap__poiLayer');
     svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
