@@ -35,12 +35,12 @@
     "file": "paddy.png",
     "res": 1024,
     "encoding": "gray8-wassermaske",
-    "parcels": 737,
+    "parcels": 736,
     "waterDepth": 0.3,
     "damHeight": 0.55,
     "levelRange": [
       18.599999999999998,
-      46.8
+      46.199999999999996
     ]
   },
   "river": {
@@ -229,8 +229,8 @@
         207.97
       ],
       [
-        108.81,
-        300.79
+        108.62,
+        301.53
       ],
       [
         141.32,
@@ -273,15 +273,15 @@
         110.16
       ],
       [
-        24.4,
-        161.76
+        24,
+        161.92
       ],
       [
-        23.72,
-        258.74
+        23.29,
+        258.7
       ],
       [
-        20.88,
+        20.71,
         414.9
       ],
       [
@@ -326,11 +326,11 @@
       ],
       [
         21,
-        39.04
+        38.13
       ],
       [
         19.11,
-        33.38
+        33.35
       ],
       [
         19.03,
@@ -655,10 +655,10 @@
     ]
   },
   "checksums": {
-    "height.r16": "843cb5a7e07121580a7f5031ec4d0da269f8b41af646d8f6d7f56fc1b16a0fc5",
-    "height_preview.png": "08424f2bc03de4543c0b4f5188c560cb2c3815bb8cc60baabe4d3f3b37973c45",
-    "normal.png": "910b826767e3bca88d04cb047959144a9381206e465548c12ffe70395585b8f9",
-    "zones.png": "4285fcc7d6836a59f0835af7b3c11eec4b6d96a9f6e2deaa12a7562a06593eea",
-    "paddy.png": "6f382a34a19ea4ed317464a34b975a9c51a0dba5bfeee0440d6f03a1ebaae54f"
+    "height.r16": "69e4d494f1bf2fdc8becdc646a4ac665f6be8f5eda20d9f8d7c84e27bb8d6354",
+    "height_preview.png": "636275670a7fcd523a699bdf747a7677579f1665a2d251f93ad5b4c753a9a19d",
+    "normal.png": "7531e2ef044ddf5a1b8fe373e1be04dc25d6283e449287103312072b59e49775",
+    "zones.png": "1112f7695ad04c023eb8ce9550d6b2877c043cd3a8728f91a89f464f8689391e",
+    "paddy.png": "f6581ddf717c2d6bed6b4c971ea02889e1d3fa095a42a60fa0b0309bcbbae09c"
   }
 }

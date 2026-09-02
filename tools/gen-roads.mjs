@@ -532,7 +532,17 @@ function fitElevation(terrain, points, options) {
 function traceRoute(
   grid,
   waypoints,
-  { settings, closed, radiusFactor = 1.6, corridor, headroom = 1, hairpins = false, skipApexes = new Set(), downhillBias = 0 },
+  {
+    settings,
+    closed,
+    radiusFactor = 1.6,
+    corridor,
+    corridors = null,
+    headroom = 1,
+    hairpins = false,
+    skipApexes = new Set(),
+    downhillBias = 0,
+  },
 ) {
   const legs = waypoints.length - (closed ? 0 : 1);
   const raw = [];
@@ -541,6 +551,7 @@ function traceRoute(
   for (let i = 0; i < legs; i++) {
     const from = waypoints[i];
     const to = waypoints[(i + 1) % waypoints.length];
+    const legCorridor = corridors?.[i] ?? corridor;
     const leg = routePath(grid, from, to, {
       // Die Suche plant mit einer **strengeren** Steigung als der Grenzwert.
       //
@@ -555,7 +566,7 @@ function traceRoute(
       // hat; das weiß man vorher nicht. Deshalb setzt der Hauptlauf `headroom`
       // herab, bis die **fertige** Strecke misst, was sie soll.
       maxGradient: settings.maxGradient * headroom,
-      ...(corridor ? { corridorWidth: corridor } : {}),
+      ...(legCorridor ? { corridorWidth: legCorridor } : {}),
     });
     expanded += leg.expanded;
     // Der Startpunkt jedes Beins ist der Endpunkt des vorherigen.
@@ -1030,6 +1041,12 @@ function layout(terrain) {
   return {
     ring,
     passStart: ring[1],
+    // Der erste freie Punkt des Passes liegt quer zur Ringstraße auf der
+    // offenen Talseite; erst danach dreht die Route ins Massiv.
+    // Ohne diesen Wegpunkt folgt die kostengünstigste Route der Ringtrasse
+    // zunächst rund 80 m in Gegenrichtung und sinkt dabei unter sie: zwei
+    // sichtbare Fahrbahnen liegen dann fast deckungsgleich uebereinander.
+    passDeparture: pushInland(terrain, -620, -250, 3),
     passRegion: { minX: -1400, maxX: -200, minZ: -1450, maxZ: -500 },
     village: [
       [-760, 60],
@@ -1389,6 +1406,11 @@ async function main() {
       // 96 m Straße zu verschieben, nachdem ihr Höhenprofil feststand — die
       // gemessene Steigung sprang auf 32,3 %.
       startsOn: { road: 'ring', near: plan.passStart },
+      via: [plan.passDeparture],
+      // Die ersten 120 m sind der eigentliche Abzweig und folgen deshalb eng
+      // seiner Achse. Danach braucht die Passsuche den breiten Korridor für
+      // die Serpentinen.
+      corridors: [30, 700],
       summit: { region: plan.passRegion },
       // Gröberes Suchgitter als der Rest des Netzes — siehe `gridFor`.
       cellSize: 40,
@@ -1548,7 +1570,11 @@ async function main() {
         ? nearestOnRoad(roads, definition.startsOn.road, definition.startsOn.near)
         : null;
       const waypoints = definition.summit
-        ? [start ?? definition.waypoints[0], findSummit(terrain, definition.summit.region, summitCap)]
+        ? [
+            start ?? definition.waypoints[0],
+            ...(definition.via ?? []),
+            findSummit(terrain, definition.summit.region, summitCap),
+          ]
         : definition.waypoints;
 
       // **Eigenkollision an der fertigen Mittellinie prüfen, nicht früher.**
@@ -1572,6 +1598,7 @@ async function main() {
           downhillBias: definition.downhillBias ?? 0,
           skipApexes,
           ...(definition.corridor ? { corridor: definition.corridor } : {}),
+          ...(definition.corridors ? { corridors: definition.corridors } : {}),
         });
         const connection = connectToNetwork(route.points, roads, definition.closed);
         built = buildRoad(terrain, {
