@@ -77,7 +77,7 @@ jobs:
             return hash >>> 0;
           });
 
-          // Production: use the same touch-facing UI a player gets. No debug global.
+          // Production: derselbe Touch-Flow wie für einen echten Spieler, ohne Debug-Global.
           const productContext = await browser.newContext({
             viewport: { width: 390, height: 844 },
             hasTouch: true,
@@ -98,6 +98,10 @@ jobs:
             return mini && !mini.hidden && getComputedStyle(mini).display !== 'none';
           }, null, { timeout });
 
+          await product.waitForFunction(() => Array.from(performance.getEntriesByType('resource')).some(
+            (entry) => entry.name.includes('navigation-map') && entry.name.includes('.webp'),
+          ), null, { timeout });
+
           const mini = product.locator('.navmap-mini__canvas');
           await product.waitForTimeout(250);
           const miniBeforeWaypoint = await signature(mini);
@@ -107,6 +111,13 @@ jobs:
             const map = document.querySelector('.navmap');
             return map && !map.hidden && getComputedStyle(map).display !== 'none';
           }, null, { timeout });
+
+          assert.ok(await product.locator('.navmap-poi').count() >= 7, 'SVG-POIs fehlen auf der Vollkarte');
+          assert.equal(
+            await product.locator('.navmap__poiLayer').evaluate((node) => getComputedStyle(node).pointerEvents),
+            'none',
+            'POI-Layer darf Kartenklicks nicht abfangen',
+          );
 
           const full = product.locator('.navmap__canvas');
           const box = await full.boundingBox();
@@ -126,6 +137,10 @@ jobs:
           await product.waitForFunction(() => {
             const map = document.querySelector('.navmap');
             return map?.hidden === true && getComputedStyle(map).display === 'none';
+          });
+          await product.waitForFunction(() => {
+            const distance = document.querySelector('.navmap-mini__distance');
+            return distance && !distance.hidden && distance.textContent?.startsWith('WAYPOINT · ');
           });
           await product.waitForTimeout(250);
           const miniWithWaypoint = await signature(mini);
@@ -152,7 +167,7 @@ jobs:
           assert.notEqual(miniAfterTeleport, miniWithWaypoint, 'Teleport verändert die Kartenposition nicht');
           await productContext.close();
 
-          // Dev build exposes the engine probe: verify the 3D beam and actual vehicle displacement.
+          // Dev: 3D-Weltmarker und tatsächliche Fahrzeugbewegung direkt verifizieren.
           const dev = await browser.newPage({ viewport: { width: 1440, height: 900 } });
           await dev.goto('http://127.0.0.1:4179/', { waitUntil: 'domcontentloaded' });
           await dev.waitForFunction(() => Boolean(window.japanMap?.engine), null, { timeout });
@@ -179,8 +194,16 @@ jobs:
             };
 
             choose(0.72, 0.34, 'waypoint');
+            await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
             const beam = engine.scene.getObjectByName('Waypoint:Beam');
-            const beamVisible = beam?.visible === true;
+            const core = engine.scene.getObjectByName('Waypoint:Core');
+            const ring = engine.scene.getObjectByName('Waypoint:Ring');
+            const label = engine.scene.getObjectByName('Waypoint:Label');
+            const group = engine.scene.getObjectByName('Waypoint');
+            const markerVisible = Boolean(
+              group?.visible && beam?.visible && core?.visible && ring?.visible && label?.visible,
+            );
+            const labelScaled = Boolean(label && label.scale.x > 10 && label.scale.y > 2);
             const mapClosedAfterWaypoint = document.querySelector('.navmap')?.hidden === true;
 
             const before = { x: drive.vehicle.position.x, z: drive.vehicle.position.z };
@@ -188,19 +211,21 @@ jobs:
             const after = { x: drive.vehicle.position.x, z: drive.vehicle.position.z };
             const mapClosedAfterTeleport = document.querySelector('.navmap')?.hidden === true;
             return {
-              beamVisible,
+              markerVisible,
+              labelScaled,
               mapClosedAfterWaypoint,
               mapClosedAfterTeleport,
               distance: Math.hypot(after.x - before.x, after.z - before.z),
             };
           });
-          assert.equal(mechanics.beamVisible, true, 'Blauer Welt-Pfosten ist nach Waypoint nicht sichtbar');
+          assert.equal(mechanics.markerVisible, true, 'Beam/Core/Ring/Text des Weltmarkers sind nicht sichtbar');
+          assert.equal(mechanics.labelScaled, true, 'Waypoint-Text ist in der Welt nicht sinnvoll skaliert');
           assert.equal(mechanics.mapClosedAfterWaypoint, true, 'Karte schließt nach Waypoint nicht');
           assert.equal(mechanics.mapClosedAfterTeleport, true, 'Karte schließt nach Teleport nicht');
           assert.ok(mechanics.distance > 100, `Teleport bewegt nur ${mechanics.distance.toFixed(1)} m`);
 
           await browser.close();
-          console.log('navigation UI + mechanics: ok');
+          console.log('aerial navigation UI + waypoint mechanics: ok');
           EOF
           node .navigation-ui.mjs
           rm .navigation-ui.mjs
