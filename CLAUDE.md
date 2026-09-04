@@ -6,6 +6,23 @@ fertig ist, in [PLAN.md](PLAN.md); wo etwas im Quelltext steht und was mit was
 redet, in [ARCHITECTURE.md](ARCHITECTURE.md). **Bei Widersprüchen gilt PLAN.md**,
 und über den Aufbau die Quelldatei selbst.
 
+## Inhalt
+
+- [Die eine Regel](#die-eine-regel)
+- [Der Bake-Kreislauf — die wichtigste Falle](#der-bake-kreislauf--die-wichtigste-falle)
+- [Bevor etwas „fertig" heißt](#bevor-etwas-fertig-heißt)
+- [Die Oberfläche prüfen — sie ist DOM, kein Bild](#die-oberfläche-prüfen--sie-ist-dom-kein-bild)
+- [Werkzeuge](#werkzeuge)
+- [Den Fahrmodus prüfen — P14](#den-fahrmodus-prüfen--p14)
+- [Wie GPU-Zeit hier gemessen wird — P12.0, 2026-08-16](#wie-gpu-zeit-hier-gemessen-wird--p120-2026-08-16)
+- [Umgebung](#umgebung)
+- [Codebasis-Regeln](#codebasis-regeln)
+- [Kommentare](#kommentare)
+- [Was in diesem Projekt schon schiefgegangen ist](#was-in-diesem-projekt-schon-schiefgegangen-ist)
+- [Prüfstände ohne Browser (P18–P21)](#das-fahrmodell-ohne-browser-messen--p18)
+- [Bilder vom Fahrzeug und von der Fahrbahn](#ein-bild-vom-fahrzeug-oder-von-der-fahrbahn-machen--die-drei-stolpersteine)
+- [Das Arcade-Modell seit P22](#das-fahrmodell-ist-seit-p22-ein-arcade-modell--was-das-für-messungen-heißt)
+
 ---
 
 ## Die eine Regel
@@ -42,8 +59,13 @@ Die Kette ist zirkulär: der Straßengenerator braucht ein Höhenfeld, der Baker
 braucht die Straßen. Aufgelöst wird das durch **zweimaliges Backen**.
 
 ```bash
-npm run world     # bake:clean → sun → roads → bake → shade   (~40 s)
+npm run world     # textures → hdri → bake:clean → sun → roads → bake → shade → map
 ```
+
+Die Kurzform `bake:clean → sun → roads → bake → shade` (~40 s) nennt nur den
+Gelände-Kern. Vollständig gehören dazu: `textures` (Texturen optimieren),
+`hdri` (IBL- und Himmels-HDRI halbieren) und `map` (Navigationskarte erzeugen).
+Verbindlich ist die Kette in `package.json`, Skript `world`.
 
 **`npm run roads` allein ist keine gültige Messung.** Es läuft gegen das zuletzt
 gebackene, also bereits eingeschnittene Gelände; der Generator trassiert dann
@@ -249,7 +271,14 @@ gedrosselt. ~~Referenzwerte zum Gegenhalten: `wald` auf Ultra 38 948, mit Dichte
 
 | Befehl | Wofür |
 |---|---|
-| `npm run world` | Ganze Kette. Die einzige verbindliche Quelle für Zahlen |
+| `npm run world` | Ganze Kette (`textures → hdri → bake:clean → sun → roads → bake → shade → map`). Die einzige verbindliche Quelle für Zahlen |
+| `npm run bake:clean` | Terrain **ohne** Straßen — der saubere Stand, auf dem der Generator arbeiten darf |
+| `npm run bake` | Terrain **mit** eingeschnittenen Straßen — der Stand für das Spiel |
+| `npm run sun` | Sonnenrichtung aus dem Himmels-HDRI neu bestimmen |
+| `npm run roads` | Nur Straßennetz neu trassieren (gilt nur auf sauberem Feld, siehe „Bake-Kreislauf") |
+| `npm run shade` | Nur Verschattung (`shade.png`) neu backen |
+| `npm run map` | Nur Navigationskarte neu erzeugen |
+| `npm run textures` / `npm run hdri` | Texturen / HDRIs optimieren (Teil von `world`) |
 | `npm run inspect` | Selbstschnitte, Weltgrenzen, Achsabstände, Grabentiefe + Schummerung als PNG |
 | `npm run inspect -- --road toge --clean .cache/clean.r16` | Enger Ausschnitt plus Erdbau-Karte (rot = Abtrag, blau = Auftrag) |
 | `STAGES=1 npm run roads` | Zeigt, was jede Stufe der Trassierung mit Länge und Kehren macht |
@@ -267,7 +296,7 @@ gedrosselt. ~~Referenzwerte zum Gegenhalten: `wald` auf Ultra 38 948, mit Dichte
 | `japanMap.drive(true)` | **Fahrmodus an/aus (P14).** Der einzige Weg dorthin ohne Pointer Lock — die Taste `V` verlangt einen, die eingebettete Vorschau gibt keinen |
 | 🚗-Knopf / Menüzeile „Auto fahren" | **Der Weg ins Auto ohne Tastatur (P16).** Auf Touch der einzige — `V` verlangt einen Pointer Lock, den kein Telefon gibt, und `japanMap` fehlt im Build. Beide Wege schalten denselben Zustand und melden über `drive:mode` |
 | `japanMap.driveProbe()` | **Der Messstand des Fahrmodus (P14).** Fährt jede Strecke ab und schreibt Durchdringung, Spurlage, Tempo und CPU je Schritt mit; dazu Standhöhe und Höhendifferenz Sampler ↔ Mittellinie. Läuft **ohne zu rendern** — 3600 Schritte in ~50 ms |
-| `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/fleet.mts` | **Der Fahrzeug-Prüfstand (P18).** Alle vier Fahrzeuge durch dieselben acht Proben, ohne Browser. Siehe unten |
+| `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/fleet.mts` | **Der Fahrzeug-Prüfstand (P18).** Alle vier Fahrzeuge durch dieselben acht Proben, ohne Browser. Kurzform: `npm run fleet`. Siehe unten |
 | `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/offroad.mts` | **Der Trenntest für den rauen Hang (P26).** Fährt Wellenlänge × Epsilon durch und beantwortet die eine Frage, an der `hill.mts` einmal einen Fehlalarm ausgelöst hat: gehört ein Einbruch dem Fahrzeug oder der Abtastung des Prüfstands |
 | `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/hill.mts` | **Der Steigungs-Prüfstand (P21).** Fahrzeug × Belag × Steigung, und neben jeder Zelle steht, **welche** der vier Ursachen greift (Traktion, Wand, Blech, Flattern). Der Grenzwinkel wird geschlossen ausgerechnet — die einzige Zahl im Projekt, die ohne einen Simulationsschritt entsteht |
 | `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/world.mts` | **Der Prüfstand für Gelände und Kollision (P19/P20).** Felswand, Baum, Innenecke, Planke, Landung, Kosten — dazu seit P20 **Hang** (steckt das Blech im Berg?) und **Zufallsgelände** (90 s gewürfelt, geprüft werden Zusicherungen statt Zahlen). Die Schicht, die `fleet.mts` auf seinem idealen Boden ausdrücklich *nicht* sieht |
@@ -482,7 +511,9 @@ mit `@/` muss man dafür vorher auf relative umschreiben).
 ## Umgebung
 
 - **Node ≥ 22.** Der Plan verlangt es spätestens für P5 (`@gltf-transform/cli`),
-  und `--experimental-strip-types` hängt ebenfalls daran.
+  und `--experimental-strip-types` (Prüfstände unter `tools/bench/`) hängt
+  ebenfalls daran. Das `engines`-Feld in `package.json` nennt noch `>=18.17`
+  als Minimum und bleibt dahinter zurück — maßgeblich ist diese Zeile.
 - **Liegt das Projekt auf einem Netzlaufwerk (SMB/CIFS), gibt es zwei Fallen:**
   `npm ci` scheitert beim Anlegen der `node_modules/.bin`-Symlinks — dann
   `npm ci --no-bin-links` und `tsc`/`vite` über ihren Dateipfad aufrufen
@@ -530,11 +561,15 @@ mit `@/` muss man dafür vorher auf relative umschreiben).
   Sie gehören anderen Projekten (`ai/ds4b`, `ai/ds4w`) und starten mit
   `--strictPort`. japanMap liegt deshalb auf **5180** (dev) und **4180**
   (preview), fest eingetragen in `.claude/launch.json`.
+  `vite.config.ts` selbst nennt 5173 als Standard — das greift nur bei einem
+  direkten `npm run dev` ohne Port-Argument; die Startkonfigurationen geben
+  5180/4180 ausdrücklich mit `--strictPort` vor.
   Woran man es merkt, wenn es doch einmal kollidiert: die Seite lädt, aber
   `/__shot` antwortet mit **404** — dann redet der Browser mit einem fremden
   Vite. `window.japanMap` kann trotzdem noch funktionieren, weil die Anwendung
   aus dem Speicher weiterläuft; nur neue Netzanfragen gehen woandershin.
-  **Fremde Server nicht abschießen** — ausweichen.
+  **Fremde Server nicht abschießen** — ausweichen (Ausweichport 5181 steht in
+  `.claude/launch.json`).
 
 - **Zeigen zwei Laufwerksbuchstaben auf dieselbe Freigabe, findet Vite seine
   eigenen Dateien nicht mehr.** Vite löst Modul-IDs über `realpath` auf; unter

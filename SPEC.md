@@ -1,7 +1,30 @@
 # japanMap — Technische Spezifikation
 
-> Open-World-Map in Three.js als Basis für ein späteres Browser-Game
-> (Racing / Drifting / Erkundung). Stand: 2026-07-26.
+> Open-World-Map in Three.js als Basis für ein Browser-Game
+> (Racing / Drifting / Erkundung). Stand: 2026-08-21.
+>
+> **Dokumentenübersicht:**
+>
+> | Datei | Beantwortet | Bei Widersprüchen gilt |
+> |---|---|---|
+> | SPEC.md (diese Datei) | **Was** gebaut wird und warum | — |
+> | [PLAN.md](PLAN.md) | **In welcher Reihenfolge**, mit welchen Dateien, woran Fertigkeit erkennbar ist | PLAN.md |
+> | [ARCHITECTURE.md](ARCHITECTURE.md) | **Wo** etwas im Quelltext steht und was mit was kommuniziert | die Quelldatei |
+> | [CLAUDE.md](CLAUDE.md) | **Wie** hier gearbeitet und gemessen wird | — |
+>
+> Ausführungsdetails, Dateilisten und Akzeptanzkriterien pro Phase stehen in
+> [PLAN.md](PLAN.md). Diese Datei ist die Kurzfassung — bei Widersprüchen gilt PLAN.md.
+
+## Inhalt
+
+- [1. Kernentscheidungen](#1-kernentscheidungen)
+- [2. Die Welt](#2-die-welt)
+- [3. Rendering](#3-rendering)
+- [4. Performance-Budgets](#4-performance-budgets)
+- [5. Projektstruktur](#5-projektstruktur)
+- [6. Asset-Quellen (alle CC0)](#6-asset-quellen-alle-cc0)
+- [7. Meilensteine](#7-meilensteine)
+- [8. Offene Punkte](#8-offene-punkte)
 
 ---
 
@@ -11,7 +34,7 @@
 |---|---|
 | **Stack** | Vanilla Three.js + TypeScript + Vite |
 | **Renderer** | WebGL2 + `pmndrs/postprocessing` |
-| **Zielplattform** | ~~Desktop, maximale Qualität. Kein Tablet/Mobile-Support (v1)~~ **Seit P12: Desktop *und* Touch.** Fingersteuerung, geräteabhängiger Pixelfaktor und eine Stufenleiter, die 4,4× spannt statt 1,6× |
+| **Zielplattform** | Desktop **und** Touch (seit P12). Fingersteuerung, geräteabhängiger Pixelfaktor und eine Stufenleiter, die 4,4× spannt statt 1,6× |
 | **Map-Größe** | 3072 × 3072 m (~9,4 km²) |
 | **Art-Direction** | Low-Poly-Geometrie + PBR-Shading. Licht > Texturen |
 | **Beleuchtung** | Eine feste Stimmung: **Blaue Stunde nach Regen** |
@@ -24,11 +47,11 @@
 > **Bis P21 war dieses Projekt eine Karte mit einem Auto darauf.** Die Spec hat
 > das nie anders behauptet („Open-World-Map … als Basis für ein späteres
 > Browser-Game"), und die Beschwerde, die P22 ausgelöst hat, war die logische
-> Folge davon: *„es ist nicht lustig."* Eine Basis ist kein Spiel.
+> Folge davon: *„Es ist nicht lustig."* Eine Basis ist kein Spiel.
 
-Seit P22…P24 gibt es eine Antwort auf „und jetzt?":
+Seit P22–P24 gibt es eine Antwort auf „und jetzt?":
 
-| | |
+| Bereich | Stand |
 |---|---|
 | **Fahrmodell** | Arcade, kein Einspurmodell. Die Lenkung ist proportional, der Drift ist eine Entscheidung, es gibt Nitro und Luftsteuerung |
 | **Veranstaltungen** | Sechs — vier Rennen mit drei KI-Gegnern, ein Zeitfahren, ein Driftlauf |
@@ -40,9 +63,9 @@ Seit P22…P24 gibt es eine Antwort auf „und jetzt?":
 | **Sprache** | Die Spieler-Oberfläche ist **englisch**. Code, Kommentare und Doku bleiben deutsch |
 
 Die letzte Zeile ist eine Entscheidung über die Reichweite und keine über den
-Stil: CrazyGames' Publikum ist global, und eine deutschsprachige Oberfläche
-kostet dort den größten Teil davon. Die Trennlinie verläuft am DOM — was in
-`src/ui/` landet, ist englisch, was in einem Kommentar steht, nicht.
+Stil: Das Publikum von CrazyGames ist global, und eine deutschsprachige
+Oberfläche kostet dort den größten Teil davon. Die Trennlinie verläuft am DOM —
+was in `src/ui/` landet, ist englisch; was in einem Kommentar steht, nicht.
 
 ### Leitprinzip
 
@@ -87,7 +110,7 @@ und die einzige, die ohne Asset-Budget funktioniert.
 > und die Tempelhalle steht 2 m hinter dem letzten Wegpunkt. Bis dahin lag sie
 > 300 m neben dem Weg.
 
-Jede Zone ~1,5 km Kantenlänge → bei 120 km/h ca. 45 s Durchfahrt. Das reicht
+Jede Zone misst ~1,5 km Kantenlänge → bei 120 km/h ca. 45 s Durchfahrt. Das reicht
 für einen echten Ortswechsel.
 
 **Verbindungen:** Eine Ringstraße verbindet alle Zonen. Der Bergpass ist eine
@@ -114,7 +137,7 @@ Der Höhenunterschied von 450 m ist der stärkste Hebel, damit 3 km groß wirken
 > Vorher standen hier 3 Kehren auf 3003 m (2026-07-31 aus `roads.json`
 > abgelesen), davor 2 auf 2983 m aus einem noch älteren Lauf. Die Zahl ist im
 > Terrain-Durchgang P8.5 gestiegen — **welcher der drei Eingriffe sie bewirkt
-> hat, ist nicht zuzuordnen**: die Erosion koppelt jede Geländeänderung über
+> hat, ist nicht zuzuordnen**: Die Erosion koppelt jede Geländeänderung über
 > die ganze Karte (Messung in PLAN.md 8.5). Gemessen ist nur, dass ohne das
 > Flussbett 5 Kehren entstehen.
 >
@@ -122,18 +145,17 @@ Der Höhenunterschied von 450 m ist der stärkste Hebel, damit 3 km groß wirken
 > nicht mehr 3 zu 8.~~ **Erledigt am 2026-08-01 mit 9 Kehren** — und die
 > fehlende Kehre lag nicht am Gelände, sondern am Verrundungs-Boden, siehe
 > oben. Der Satz stand hier zwei Tage und hat in die falsche Richtung gezeigt:
-> er legte nahe, das Höhenfeld müsse noch etwas hergeben.
+> Er legte nahe, das Höhenfeld müsse noch etwas hergeben.
 >
 > Hier stand bis zum 2026-07-26, die Vorgabe widerspreche sich selbst und das
-> Höhenfeld gebe keine Kehren her. Beides war falsch: die Trassierung fand die
+> Höhenfeld gebe keine Kehren her. Beides war falsch: Die Trassierung fand die
 > Kehren die ganze Zeit, drei Stufen der Nachbearbeitung löschten sie, und nach
 > deren Reparatur sind **acht** Kehren gebaut worden. Sie legen dabei rund
 > 300 × 250 m Massiv um 50 bis 150 m tiefer — ein Steinbruch, kein Bergpass.
 >
-> Der Grund ist Geometrie: auf einem 45-%-Hang liegen zwei Serpentinenschenkel
+> Der Grund ist Geometrie: Auf einem 45-%-Hang liegen zwei Serpentinenschenkel
 > horizontal weiter auseinander, als die Fahrbahnhöhen es bei 11 % zulassen; die
-> Differenz muss das Gelände tragen. ~~**Die Vorgabe braucht eine längere,
-> flachere Flanke.**~~
+> Differenz muss das Gelände tragen.
 >
 > **Das war die Diagnose bis P8.5a, und sie ist widerlegt.** Gemessen liegt das
 > mittlere Gefälle der Südflanke bereits bei 25 % — genau dem Zielwert. Die
@@ -143,12 +165,12 @@ Der Höhenunterschied von 450 m ist der stärkste Hebel, damit 3 km groß wirken
 > bestenfalls 44 % / 61 % und kostete dafür 38 % der Gipfelhöhe. Die Flanke
 > flacher zu machen löst das Problem also nicht.
 >
-> Gebaut wurde stattdessen eine **Bank** entlang der Trasse (P8.5a): sie kappt
+> Gebaut wurde stattdessen eine **Bank** entlang der Trasse (P8.5a): Sie kappt
 > im Korridor, was über dem Querschnittsmedian steht. Der Anschnitt über der
 > Fahrbahn fällt damit von 41,5 auf 23,7 m im Median, der Extremwert von 185,4
 > auf 90,7 m, und der Anteil über 50 m von 42 auf 15 %. Der Steinbruch ist damit
-> kleiner, aber nicht weg. Messwerte und die vier verworfenen Gegenmittel in
-> PLAN.md, „Wie der Bergpass zu seinen Kehren kam" und P8.5a.
+> kleiner, aber nicht weg. Messwerte und die vier verworfenen Gegenmittel stehen
+> in PLAN.md („Wie der Bergpass zu seinen Kehren kam") und P8.5a.
 
 ### 2.2 Terrain
 
@@ -156,8 +178,7 @@ Der Höhenunterschied von 450 m ist der stärkste Hebel, damit 3 km groß wirken
   aber **einmalig gebacken** in eine 16-bit-Heightmap (2048², ≈1,5 m/px).
   Deterministisch, versionierbar, von Hand nacheditierbar.
 - **LOD:** CDLOD-Quadtree mit Vertex-Morphing zwischen den Stufen. Wurzel
-  3072 m, Blätter 48 m, sieben Stufen. ~~Chunk = 256 m, 12 × 12 = 144 Chunks,
-  LOD0 = 2 m/Vertex nah → LOD3 = 16 m/Vertex fern.~~ Gebaut ab P4: 33 × 33
+  3072 m, Blätter 48 m, sieben Stufen. Gebaut ab P4: 33 × 33
   Stützstellen je Knoten, also **1,5 m/Vertex** auf der feinsten Stufe — genau
   der Texelabstand der Heightmap — bis 96 m/Vertex auf der Wurzel. Die 256-m-
   Chunks bleiben als Einheit für die *Vegetations*-Streuung erhalten (dort 64 m),
@@ -178,14 +199,13 @@ Straßen sind **das wichtigste Datenmodell im Projekt** — sie werden dreifach 
 **Format:** Zentripetale Catmull-Rom-Splines in JSON (Kontrollpunkte + Breite +
 Bankwinkel + Typ), dazu die fertig abgetastete Mittellinie: Baker und Renderer
 sollen die Kurve **nicht beide auswerten**, sonst liegt die eingeschnittene
-Rinne im Terrain neben dem Mesh. Ein In-Browser-Spline-Editor kommt in M3 — von
-Hand JSON zu
-tippen skaliert nicht.
+Rinne im Terrain neben dem Mesh. Ein Spline-Editor läuft im Dev-Build
+(`src/world/roads/RoadEditor.ts`) — von Hand JSON zu tippen skaliert nicht.
 
 ### 2.4 Vegetation & Props
 
 - Poisson-Disk-Sampling mit Dichtekarten pro Biom, Ausschlusszone um Straßen
-- `InstancedMesh` gruppiert nach ~~(Chunk × Asset × LOD)~~ **(Asset × LOD)** —
+- `InstancedMesh` gruppiert nach **(Asset × LOD)** —
   je Chunk wären es rund 600 Draw-Calls gegen ein Teilbudget von 100, siehe
   PLAN.md P4 / 4.3
 - Billboard-Imposter ab ~150 m Distanz (gebaut: 180 m für Bäume, oktaedrischer
@@ -199,7 +219,7 @@ tippen skaliert nicht.
 
 ## 3. Rendering
 
-### 3.1 Beleuchtung — "Blaue Stunde nach Regen"
+### 3.1 Beleuchtung — „Blaue Stunde nach Regen"
 
 **Zwei HDRIs statt einem.** `scene.background` und `scene.environment` dürfen in
 Three.js unterschiedliche Texturen sein. Wir nutzen das: ein „PureSky"-HDRI als
@@ -214,9 +234,9 @@ Materialien den Look gibt. Ein reines Himmels-HDRI beleuchtet zu flach.
 | Ambient / IBL | `rooftop_night` 2k → `PMREMGenerator` → `scene.environment` |
 | Key-Light | 1 × `DirectionalLight`, sehr flach, kühl-blau. Wirft **keinen** Echtzeitschatten — siehe „Schatten" |
 | Neon / Laternen | Emissive-Materialien + Bloom. Echte `PointLight` nur an ~10 Schlüsselstellen |
-| Nasser Asphalt | Niedrige Roughness + Roughness-Variation-Map + SSR |
+| Nasser Asphalt | Niedrige Roughness + Roughness-Variation-Map + planare Reflexion (SSR in P6 gemessen verworfen) |
 | Nebel | Custom Height-Fog im Shader (dichter in den Tälern) |
-| Schatten | **Gebackene Geländeverschattung** (`shade.png`, 1024², Horizontwinkel + Verdeckerentfernung + Himmelssicht). ~~CSM 4 × 2048~~ — in P2 verworfen: vier Kaskaden kosten 5,88 Mio. Dreiecke gegen 3 Mio. Budget, und bei 2,2° Sonnenstand wirft ein 450-m-Gipfel 11,5 km Schatten, die keine Kaskadenaufteilung einfängt. Echtzeitschatten kommen in P4 zurück, sobald es bewegliche Werfer gibt |
+| Schatten | **Gebackene Geländeverschattung** (`shade.png`, 1024², Horizontwinkel + Verdeckerentfernung + Himmelssicht). CSM in P2 verworfen: Vier Kaskaden kosten 5,88 Mio. Dreiecke gegen 3 Mio. Budget, und bei 2,2° Sonnenstand wirft ein 450-m-Gipfel 11,5 km Schatten, die keine Kaskadenaufteilung einfängt. Echtzeitschatten kommen in P4 zurück, sobald es bewegliche Werfer gibt |
 
 **Kein Tag-Nacht-Zyklus.** Das erlaubt später gebackene Lightmaps und
 Reflexions-Probes — dort liegt der größte Qualitätssprung.
@@ -224,7 +244,7 @@ Reflexions-Probes — dort liegt der größte Qualitätssprung.
 ### 3.2 Postprocessing-Kette
 
 ```
-Render → N8AO → [SSR] → Bloom → AgX-Tonemapping → LUT → Vignette → SMAA
+Render → N8AO → [planare Reflexion] → Bloom → AgX-Tonemapping → LUT → Vignette → SMAA
 ```
 
 Gebaut ist das ab P2 in **zwei** Effekt-Pässen: `EffectPass(Bloom, AgX, LUT,
@@ -234,9 +254,12 @@ Kantenglättung vor dem Tonemapping funktioniert nicht. **N8AO statt GTAO**, wei
 `SSAOEffect` einen `NormalPass` und damit einen dritten Terrain-Durchlauf
 bräuchte. SSR und DoF sind vorgesehen, aber nicht gebaut.
 
-⚠️ **Risiko:** SSR ist in `pmndrs/postprocessing` der teuerste und zickigste
-Pass (Ghosting, Rauschen an Kanten). Fallback wenn es nicht trägt: planare
-Reflexion nur für die Straßenebene + Reflexions-Probes. Wird in M6 evaluiert.
+> **SSR ist entschieden (P6): verworfen, gemessen statt nach Tuning-Tagen.**
+> Gegen die Neonschilder stehen nur **19,3 %** der Spiegelungen überhaupt im
+> Bildschirmraum, am wichtigsten Standpunkt **4,2 %**. SSR ist damit für diese
+> Blickgeometrie strukturell ungeeignet; gebaut wurde eine **planare
+> Spiegelung** für die Straßenebene. Das Konfigurationsfeld heißt seitdem
+> `reflections`. Messung: `japanMap.reflectionProbe()`.
 
 ---
 
@@ -253,7 +276,7 @@ unten, abgelesen im Debug-Overlay, nicht das Bauchgefühl beim Fliegen.
 | Draw-Calls / Frame | < 800 |
 | Dreiecke / Frame | < 3 M |
 | Texturspeicher | < 512 MB |
-| ~~Initialer Download~~ | ~~< 15 MB (KTX2 + meshopt)~~ → siehe 4.1 |
+| ~~Initialer Download < 15 MB~~ | → ersetzt durch die CrazyGames-Vorgaben in §4.1 |
 | Frame-Time-Budget | 16,6 ms → davon max. 5 ms Postprocessing |
 
 ### 4.1 Die Zielplattform ist CrazyGames — und sie hat eigene Zahlen
@@ -268,7 +291,7 @@ seit P0 standen, hatten nie eine Herkunft; die Zahlen unten haben eine.
 | **Startdownload für die Mobile-Homepage** | **≤ 20 MB** | **17,02 MB** | ✅ |
 | Gesamtgröße | ≤ 250 MB | 61,15 MB | ✅ |
 | Dateizahl | ≤ 1500 | 46 Anfragen | ✅ |
-| Zeit bis zum Spielen | ≤ 20 s | **0,9 s** ⚠ warm, localhost | siehe unten |
+| Zeit bis zum Spielen | ≤ 20 s | **0,9 s** (warm, localhost) | siehe unten |
 | Browser | Chrome, Edge | ✅ | |
 | Eingabe | Maus, Tastatur, Touch | ✅ seit P12.4 | |
 | **CrazyGames-SDK** | **Pflicht für Full Launch** | **nicht integriert** | ⛔ |
@@ -295,7 +318,7 @@ seit P0 standen, hatten nie eine Herkunft; die Zahlen unten haben eine.
 > ausgeschlossen** — die 50-MB-Grenze war nie das Problem. Der gestufte Start
 > holt genau diese Schwelle, und zwar mit 3 MB Abstand.
 >
-> Was daraus folgt: **die 15-MB-Zeile ist gegenstandslos.** Sie weiter zu
+> Was daraus folgt: **Die 15-MB-Zeile ist gegenstandslos.** Sie weiter zu
 > verfolgen hieße, gegen eine Zahl zu optimieren, die niemand verlangt. Der
 > nächste Hebel (`height.r16` delta-kodiert, 5,76 MB) bleibt trotzdem
 > aufgeschrieben — als Reserve für den Fall, dass die Schwelle sinkt oder
@@ -319,7 +342,7 @@ Aufgeschlüsselt über `engine.bootProfile` sind die Rechenkosten **1006 ms**:
 > **Hier stand bis zum 2026-08-18 „8,61 s", und die Zahl war falsch gemessen.**
 > Sie stammte aus einem Konsolenlauf, der nach dem Erscheinen des Knopfes
 > pollte — gemessen hat er damit, **wann jemand hingesehen hat**, nicht wann der
-> Knopf kam. Der richtige Wert stand die ganze Zeit in der Konsole: der
+> Knopf kam. Der richtige Wert stand die ganze Zeit in der Konsole: Der
 > Ladebildschirm schreibt seine eigene Dauer seit P13 (`Ladebildschirm: 0.9 s`).
 >
 > Daraus folgte auch eine falsche **Schlussfolgerung**, und die ist der teurere
@@ -328,7 +351,7 @@ Aufgeschlüsselt über `engine.bootProfile` sind die Rechenkosten **1006 ms**:
 > einer langsamen Verbindung zählt, ist der Download.
 >
 > Lehre in einem Satz, und es ist dieselbe wie an sechs anderen Stellen dieser
-> Doku: **wer eine Zeit misst, muss den Startpunkt besitzen.** Ein Beobachter,
+> Doku: **Wer eine Zeit misst, muss den Startpunkt besitzen.** Ein Beobachter,
 > der von außen nachschaut, misst seinen eigenen Aufruf mit.
 
 Was damit **weiterhin offen** ist, jetzt aber richtig eingeordnet:
@@ -342,17 +365,18 @@ Was damit **weiterhin offen** ist, jetzt aber richtig eingeordnet:
    nicht nur im Dev-Build — die Aufschlüsselung ist auf dem fremden Gerät
    ablesbar.
 
-**Quality-Presets** skalieren: ~~Schattenauflösung, SSR an/aus,~~ N8AO-Stufe,
-~~Sichtweite~~, Vegetationsdichte, Render-Scale. Von Anfang an eingebaut —
+**Quality-Presets** skalieren: N8AO-Stufe, Vegetationsdichte und -reichweite,
+LOD-Bias, Render-Scale, Reflexionen, PostFX-Pfad. Von Anfang an eingebaut —
 nachträglich einzuziehen ist teuer.
 
-> **Stand P10.1, gemessen.** Es sind **fünf** Stufen (Minimal kam in P8.2 dazu),
-> und drei Posten dieser Aufzählung stimmen so nicht mehr:
+> **Stand P10.1, gemessen.** Es sind **fünf** Stufen (Minimal kam in P8.2 dazu,
+> „Eigen" in P10.2), und drei Posten der ursprünglichen Aufzählung stimmen so
+> nicht mehr:
 >
 > - **Schattenauflösung** wirkt nur im Vergleichsfall — Echtzeitschatten sind
 >   seit P2 aus, die gebackene Geländeverschattung hat sie ersetzt.
 > - **SSR** heißt `reflections` und schaltet den planaren Durchgang aus P6.5;
->   SSR selbst ist gemessen verworfen (offene Entscheidung 1).
+>   SSR selbst ist gemessen verworfen (siehe §3.2).
 > - **Sichtweite** war bis P10.1 ein Deckel in Metern und damit auf vier von
 >   fünf Stufen **wirkungslos** — die größte Artenreichweite ist 520 m, der
 >   Deckel lag darüber. Ersetzt durch zwei Faktoren: `vegetationRange` (wie weit
@@ -368,25 +392,57 @@ nachträglich einzuziehen ist teuer.
 
 ```
 src/
-├── core/          Engine, RenderLoop, ResourceManager, EventBus
-├── world/         TerrainSystem, ChunkManager, RoadSystem, Scatter, Water
-├── render/        PostFXPipeline, LightingRig, MaterialLibrary, QualityPresets
-├── camera/        FreeFlyController  (später: VehicleCamera, PhotoMode)
-├── debug/         StatsOverlay, Tweakpane-Panels, FreezeCulling-View
-└── config/        world.config.ts, quality.config.ts, roads.config.ts, …
+├── core/          Engine, RenderLoop, ResourceManager, EventBus, Events,
+│                  AssetUpgrader, AssetManifest
+├── world/         TerrainSystem, TerrainSampler, RoadSystem, WaterSystem,
+│                  ScatterSystem, PropSystem, CitySystem, NeonSystem,
+│                  StuntSystem, Materialien, Shader
+├── game/          DriveSystem, Vehicle, ArcadeDynamics, Kollision,
+│                  Gegner-KI, Rennen, Wertung, Kamera
+├── render/        PostFXPipeline, LightingRig, PlanarReflection,
+│                  QualitySystem, AtmosphereSystem, Looks
+├── audio/         AudioSystem
+├── camera/        FreeFlyController
+├── ui/            StartScreen, PlayerUi, DriveHud, MiniMap, TouchControls
+├── debug/         StatsOverlay, DebugPanel, Messläufe (nur Dev-Build)
+└── config/        world, quality, vehicle(s), city, roads, … (Magic Numbers)
 
-assets/            hdri/, textures/  — eingecheckte Quellen
+assets/            hdri/, textures/, props.json — eingecheckte Quellen
 assets/generated/  heightmap, Verschattung, roads.json — nie eingecheckt,
                    reproduzierbar aus Seed und tools/ (`npm run world`)
 
 tools/             Heightmap-Baker, Schatten-Baker, Straßen-Generator,
-                   Trassierung, Sonnenstand aus HDRI, Poly-Haven-Download
+                   Sonnenstand aus HDRI, Asset-Pipeline, Prüfstände (bench/),
+                   Rauchprobe (smoke.mjs), Bildvergleich (imgdiff.mjs)
 ```
+
+> **Nach einem frischen Clone erst backen, dann starten.** `assets/generated/`
+> steht in `.gitignore` — der Inhalt ist reproduzierbar aus Seed und Werkzeugen
+> und gehört deshalb nicht ins Repository. `src/world/terrainAssets.ts`
+> importiert die Dateien aber statisch, also schlagen `npm run dev` und
+> `npm run build` ohne sie mit einem Auflösungsfehler fehl:
+>
+> ```bash
+> npm install
+> npm run world   # backt alles der Reihe nach
+> npm run dev
+> ```
+>
+> Die vollständige Kette steht in `package.json` (`textures → hdri →
+> bake:clean → sun → roads → bake → shade → map`); die zirkuläre
+> Auflösung (zweimaliges Backen) ist in [CLAUDE.md](CLAUDE.md) unter
+> „Der Bake-Kreislauf" und in [PLAN.md](PLAN.md) unter „Konventionen" erklärt.
 
 ### Bibliotheken
 
-`three` · `postprocessing` (pmndrs) · `three-mesh-bvh` (Raycasting/Kollision) ·
-`simplex-noise` · `tweakpane` · `stats-gl` · `gltf-transform` (Build-Pipeline)
+Laufzeit: `three` · `postprocessing` (pmndrs) · `n8ao` · `simplex-noise`.
+
+Reine Werkzeug- und Build-Abhängigkeiten (nicht im Startbundle):
+`three-mesh-bvh` (evaluiert, **unbenutzt** — Begründung in §8),
+`@gltf-transform/*`, `meshoptimizer`, `sharp`, `pngjs`.
+
+Nur im Dev-Build (dynamisch importiert, nicht im Produktions-Bundle):
+`tweakpane` (+ `@tweakpane/core`) · `stats-gl`.
 
 ---
 
@@ -446,36 +502,41 @@ Kitbashing aus verschiedenen Gratis-Quellen scheitert sonst am Stil-Mix.
 | **P4** ✅ | CDLOD-Quadtree, Vegetations-Streuung, Instancing, Imposter | Welt füllt sich, Budgets greifen |
 | **P5** ✅ | Asset-Pipeline, Landmarks: Tempel, Torii, Dorf, Reisfelder | Zonen bekommen Identität |
 | **P6** ✅ | Stadt-Generator, Emissive-Neon, nasser Asphalt, Reflexions-Entscheidung | Der Money-Shot |
-| **P7** ◐ | Quality-Presets, Streaming, Ladebildschirm, Profiling | Auslieferbar |
+| **P7** ◐ | Quality-Presets, Streaming, Ladebildschirm, Profiling | Auslieferbar (2 Kriterien auf dieser Maschine nicht prüfbar) |
 | **P8** ✅ | Politur: Stufen im Gelände, PostFX-Staffelung, Wolken, Terrain-Durchgang, Fluss, Pfade, Fischerdorf, Sandō, Stadtrand, Weltrand | Die Karte trägt ein Spiel |
-| **P9** ✅ | Die Fahrschicht — Kollision, Fahrzeug, Rundenlogik | Vollständig: 9.1/9.2 in P14, 9.3 am 2026-08-18. **Ein Auto fährt eine Runde**, 324,72 s auf dem Ring |
-| **P10** ◐ | Stufen, Regler, Auslieferung | Die Stufen tun, was sie versprechen |
+| **P9** ✅ | Die Fahrschicht — Kollision, Fahrzeug, Rundenlogik (9.1/9.2 in P14, 9.3 am 2026-08-18) | **Ein Auto fährt eine Runde**, 324,72 s auf dem Ring |
+| **P10** ✅ | Stufen, Regler, Auslieferung (abgenommen 2026-08-18; 10.3 ging in P11.5 auf, 10.4 in P15) | Die Stufen tun, was sie versprechen |
 | **P11** ◐ | Sichtbarkeit & Dichte | Bäume bis 1200 m, Ausdünnung nach Entfernung statt Fläche, Boden trägt seine Farbe |
 | **P12** ◐ | Handy, Touch und die echten Kosten | Fingersteuerung, A/B-Messstand, Stufenleiter spannt 4,4× statt 1,6× |
 | **P13** ◐ | Startbildschirm, Reiter, Debug im Menü | Im laufenden Bild steht nichts von der Oberfläche |
 | **P14** ◐ | Die Fahrschicht: Freeride | Ein Auto fährt alle acht Strecken, 0 cm Durchdringung |
-| **P15** ✅ | Der gestufte Start | Erststart 40,83 → **17,02 MB** (Mobile-Schwelle 20), Wächter über der Bildrate, Nachladen im Hintergrund |
+| **P15** ✅ | Der gestufte Start (abgenommen 2026-08-18) | Erststart 40,83 → **17,02 MB** (Mobile-Schwelle 20), Wächter über der Bildrate, Nachladen im Hintergrund |
+| **P16** ✅ | Ton, Ziel und der Weg ins Auto (abgenommen 2026-08-18) | Ton, Zeitfahren, Auto auf dem Handy erreichbar |
+| **P18** ✅ | Vier Fahrzeuge, eine tragende Physik (abgenommen 2026-08-19) | Fahrzeug-Prüfstand `fleet.mts`, Specs statt Konstanten |
+| **P19** ✅ | Gelände-Kollision, Karosserie-Rechteck (abgenommen 2026-08-21) | Baum-Lücke geschlossen, Klemmschutz, Partikel, Wasser |
+| **P20** ✅ | Karosserie gegen Gelände, Stützebene (abgenommen 2026-08-21) | `hullTerrain`, keine 0,78-m-Durchdringung mehr |
+| **P21** ✅ | Vier Ursachen statt einem Symptom (abgenommen 2026-08-21) | Fahrbahn als Ebene, Steilhang-Kraft stetig, Blech trägt |
+| **P22–P26** | Arcade-Fahrmodell, Rennen/Gegner/Wertung, Schanzen/Sammelstücke, Politur | Spielschicht über der Fahrschicht (Details in PLAN.md) |
 
-**Aktueller Stand (2026-08-18): P0–P6 und P8 abgeschlossen; P7 und P10–P15 auf
-◐.** Die Karte trägt seit P14 ein Spiel — ein Auto fährt alle acht Strecken mit
-0 cm Durchdringung —, und seit P15 lädt der Erststart **17,02 MB** statt 40,83.
-Was in den ◐-Phasen offen ist, steht als Tabelle im Kopf von
-[PLAN.md](PLAN.md); die Kurzfassung: es gibt **keinen Ton**, und vier Phasen in Folge lassen dieselbe Zeile offen — „auf
-echter Zielhardware gemessen".
+**Aktueller Stand (2026-08-21): P0–P6, P8–P10 und P15–P21 abgenommen;
+P7 und P11–P14 auf ◐; P22–P26 gebaut.** Die Karte trägt seit P14 ein Spiel —
+ein Auto fährt alle acht Strecken mit 0 cm Durchdringung —, und seit P15 lädt
+der Erststart **17,02 MB** statt 40,83. Was in den ◐-Phasen offen ist, steht als
+Tabelle im Kopf von [PLAN.md](PLAN.md); die Kurzfassung: Vier Phasen in Folge
+lassen dieselbe Zeile offen — „auf echter Zielhardware gemessen".
 
 > ~~Aktueller Stand (2026-08-08)~~ stand hier bis zum 2026-08-18, also zehn Tage
 > und fünf Phasen zu lange. Es ist **das dritte Mal**, dass eine Statuszeile
-> dieses Projekts veraltet gefunden wird (siehe den Absatz darunter über
-> „Nächste Phase: P5" und die Tabelle ohne Haken). Der Grund ist jedes Mal
-> derselbe: die Zeile gehört keiner Phase, also zieht sie beim Phasenabschluss
-> niemand nach. Die Tabelle darüber hat seit heute für **jede** Phase eine
+> dieses Projekts veraltet gefunden wurde. Der Grund ist jedes Mal
+> derselbe: Die Zeile gehört keiner Phase, also zieht sie beim Phasenabschluss
+> niemand nach. Die Tabelle darüber hat für **jede** Phase eine
 > Zeile — eine fehlende fällt damit auf, eine veraltete Prosazeile nicht.
 
 Die Budgets aus §4 sind auf Ultra mit vorgefüllter Streuung nachgemessen:
 **173 Draw-Calls** von 800, **958 068 Dreiecke** von 3 000 000,
 **307,8 MB** Texturspeicher von 512. Die Kette ist bitgleich reproduzierbar.
 
-> **Zu den drei Zahlen gehört ihr Datum: sie stammen aus der P8-Abnahme vom
+> **Zu den drei Zahlen gehört ihr Datum: Sie stammen aus der P8-Abnahme vom
 > 2026-08-01** und sind seitdem **nicht neu abgelesen**. Der Messlauf vom
 > 2026-08-07 nennt für dieselben Budgets an anderen Blickpunkten bis zu
 > 681 120 Dreiecke und 165 Draw-Calls — beides weiterhin weit im Budget, aber
@@ -485,19 +546,19 @@ Die Budgets aus §4 sind auf Ultra mit vorgefüllter Streuung nachgemessen:
 > P5 falsch. Er ist stehen geblieben, weil niemand die Zeile beim Abschluss
 > einer Phase mitgeführt hat — dieselbe Sorte Fehler wie die Zahlen aus einem
 > Lauf, den es nicht mehr gibt. **Am 2026-08-08 ist derselbe Fehler ein zweites
-> Mal gefunden worden**, diesmal in der Tabelle darüber: sie trug bei P5 bis P8
+> Mal gefunden worden**, diesmal in der Tabelle darüber: Sie trug bei P5 bis P8
 > keine Haken, obwohl alle vier abgenommen waren. Deshalb steht die Statuszeile
 > jetzt ausgeschrieben darunter — eine Tabelle mit Häkchen wird beim
 > Phasenabschluss übersehen, ein Satz nicht.
 
 Die **P1-Nachbesserung am Höhenfeld** war für „vor P4" vorgemerkt und ist nicht
-erfolgt: die Flanke abzuflachen ändert die Silhouette des Massivs, und das
+erfolgt: Die Flanke abzuflachen ändert die Silhouette des Massivs, und das
 Massiv ist der Hintergrund der halben Karte — eine Art-Direction-Entscheidung,
 die nicht nebenbei mitgetroffen wird. Technisch kostet die Verschiebung nichts,
 weil die Vegetations-Streuung zur Laufzeit aus Seed und Chunk-Koordinate
 gerechnet wird und einem geänderten Höhenfeld von selbst folgt.
 
-Bekannte offene Punkte, Stand 2026-08-08:
+Bekannte offene Punkte, Stand 2026-08-08 (ergänzt 2026-08-18):
 
 - **Startdownload 43,48 MB** gegen die 15 MB aus §4 — frisch gemessen aus
   `dist/` (53 Dateien, Brotli wo vorhanden, Sourcemaps nicht mitgezählt).
@@ -506,7 +567,8 @@ Bekannte offene Punkte, Stand 2026-08-08:
   5,49 · `nor_gl.jpg` 4,71 · `height.r16` 4,40 · IBL-HDRI 4,13 MB. Rund 9,1 MB
   sind Normalmaps im **JPEG**-Format, was sie nicht nur groß, sondern falsch
   macht — Chromasubsampling zerstört Normalen. Reduktionspfad in
-  [PLAN.md](PLAN.md) unter P10.4.
+  [PLAN.md](PLAN.md) unter P10.4. **Seit P15 überholt:** Der gestufte Start
+  lädt 17,02 MB zuerst (siehe §4.1); die 15-MB-Zeile ist gegenstandslos.
 - ~~**Bergpass: 2 Serpentinen statt ≥ 8, Gipfelhöhe 264 m statt 450 m.**~~
   **Erledigt am 2026-08-01: 9 Kehren auf 2616 m.** Die Ursache lag nicht am
   Höhenfeld, sondern an einem Sicherheitsfaktor der Verrundung, der am Ring
@@ -524,7 +586,7 @@ Bekannte offene Punkte, Stand 2026-08-08:
   > vorhandene Zeitabfrage ist allerdings noch keine Messung — wie unter diesen
   > Umständen richtig gemessen wird (interleavt, niedriges Perzentil, gemessenes
   > Rauschband), steht in CLAUDE.md und als Werkzeug in `japanMap.ab()`. Die
-  > Karte bleibt als **Maßstab** unbrauchbar, siehe §4: belastbar sind
+  > Karte bleibt als **Maßstab** unbrauchbar, siehe §4: Belastbar sind
   > Verhältnisse, nicht Absolutwerte gegen die Budgets.
 
   > **Seit P10.0 gibt es dafür ein Werkzeug statt einer Ausrede.**
@@ -541,23 +603,19 @@ Bekannte offene Punkte, Stand 2026-08-08:
   nach dem ersten Start nicht mehr änderbar.~~
   **Erledigt in P10.2** (2026-08-10) mit `src/ui/PlayerUi.ts` — ohne
   `import.meta.env.DEV`. Steuerungshinweis, Pausenmenü an Escape, fünf
-  Voreinstellungen plus acht Einzelreglern, „Neu einstufen" und die sechzehn
+  Voreinstellungen plus acht Einzelregler, „Neu einstufen" und die sechzehn
   Blickpunkte als Sprungliste; am Build gemessen, nicht am Dev-Server.
-  **Fünf der zehn Befunde des Durchgangs bleiben offen**: Ton, `fatal()` ohne
-  Rückweg, inhaltsloser Ladebildschirm, Ruckler beim Stufenwechsel (17
-  zusätzliche Shader-Übersetzungen), kein Fotomodus. Vollständiger Durchgang und
-  Abnahme in [PLAN.md](PLAN.md) unter P10.2.
-
-Ausführungsdetails, Dateilisten und Akzeptanzkriterien pro Phase: **[PLAN.md](PLAN.md)**.
-Diese Tabelle ist die Kurzfassung — bei Widersprüchen gilt PLAN.md.
-Wo etwas im Quelltext steht und was mit was redet: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+  **Fünf der zehn Befunde des Durchgangs bleiben offen**: Ton (erledigt in P16),
+  `fatal()` ohne Rückweg, inhaltsloser Ladebildschirm, Ruckler beim Stufenwechsel
+  (17 zusätzliche Shader-Übersetzungen), kein Fotomodus. Vollständiger Durchgang
+  und Abnahme in [PLAN.md](PLAN.md) unter P10.2.
 
 ---
 
 ## 8. Offene Punkte
 
 - ~~**SSR-Qualität** — Entscheidung in M6 (siehe 3.2)~~
-  **Entschieden in P6, und zwar gemessen statt nach Tuning-Tagen:** gegen die
+  **Entschieden in P6, und zwar gemessen statt nach Tuning-Tagen:** Gegen die
   Neonschilder stehen nur **19,3 %** der Spiegelungen überhaupt im
   Bildschirmraum, am wichtigsten Standpunkt **4,2 %**. SSR ist damit für diese
   Blickgeometrie strukturell ungeeignet; gebaut wurde eine **planare
@@ -568,12 +626,13 @@ Wo etwas im Quelltext steht und was mit was redet: **[ARCHITECTURE.md](ARCHITECT
   zusammengefasst, nicht je Haus — sonst wären es bei 135 Gebäuden allein dafür
   135 Draw-Calls. Das Teilbudget `cityDrawCalls` (< 300) hält das nach.
 - ~~**Physik-Engine** — weiterhin offen (Rapier vs. eigene Arcade-Physik).~~
-  **Entschieden in P14: eigene Arcade-Physik.** Die Tendenz „Rapier" stand seit
-  P0 ohne eine einzige Zahl daneben; entschieden hat am Ende nicht ein
-  Prüfstandsvergleich, sondern die Anforderung. Verlangt war Arcade-Drift im
-  Touge-Stil — „der Hinterwagen bricht auf Gasstoß aus und lässt sich mit
-  Gegenlenken halten". Das ist eine Eigenschaft der **Reifenkennlinie**, und die
-  schreibt man in drei Zeilen hin, statt sie einem Solver abzuringen.
+  **Entschieden in P14: eigene Arcade-Physik** (seit P22 als Arcade-Modell
+  konkretisiert). Die Tendenz „Rapier" stand seit P0 ohne eine einzige Zahl
+  daneben; entschieden hat am Ende nicht ein Prüfstandsvergleich, sondern die
+  Anforderung. Verlangt war Arcade-Drift im Touge-Stil — „der Hinterwagen
+  bricht auf Gasstoß aus und lässt sich mit Gegenlenken halten". Das ist eine
+  Eigenschaft der **Reifenkennlinie**, und die schreibt man in drei Zeilen hin,
+  statt sie einem Solver abzuringen.
 
   Was die Entscheidung an Zahlen trägt: **16,11 kB** minifiziert für Fahrmodell,
   Kollision, Kamera und Fahrzeuggeometrie zusammen (Rapier bringt WASM in einen
@@ -583,13 +642,14 @@ Wo etwas im Quelltext steht und was mit was redet: **[ARCHITECTURE.md](ARCHITECT
   Engine mitgebracht hätte, existiert seit P0 in `RenderLoop`.
 
   `three-mesh-bvh` bleibt **unbenutzt**, und auch das ist jetzt eine
-  Entscheidung mit Begründung statt einer offenen Zeile: die Hindernisse dieser
+  Entscheidung mit Begründung statt einer offenen Zeile: Die Hindernisse dieser
   Karte sind achsparallele Rechtecke (Gebäude), Polygonzüge (Leitplanken) und
   Kreise (Props). Für jede dieser Formen gibt es eine geschlossene
   Distanzfunktion — und genau die braucht eine Kollisionsauflösung, während ein
   BVH einen Dreiecks*treffer* liefert. Ausführlich im Kopf von
   `src/game/CollisionWorld.ts`.
-- **Ton** — es gibt keinen, und das ist nirgends als Entscheidung vermerkt. Für
-  eine Stimmung, die „blaue Stunde nach Regen" heißt, ist das ein großer
-  fehlender Anteil. Gehört nach P10 entschieden: bewusst weglassen oder
-  einplanen.
+- ~~**Ton** — es gibt keinen, und das ist nirgends als Entscheidung vermerkt.~~
+  **Erledigt in P16:** Motorklang je Fahrzeug, Meldetöne für Sammelstück,
+  Kontrollpunkt und Rundenende, `muteAudio`-Anschluss für das CrazyGames-SDK
+  (`AudioSystem.setExternallyMuted()`). Für eine Stimmung, die „blaue Stunde
+  nach Regen" heißt, war das der größte fehlende Anteil.
