@@ -22,7 +22,7 @@
 > - [P7 — Optimierung & Auslieferung](#p7--optimierung--auslieferung)
 > - [P8 — Polish & Presets](#p8--polish--presets--10-von-10-kriterien-2026-08-01)
 > - [P9 — Die Fahrschicht](#p9--die-fahrschicht--91-und-92-in-p14-93-am-2026-08-18)
-> - [P10 — Stufen, Regler, Auslieferung](#p10--stufen-regler-auslieferung--plan-nicht-gebaut)
+> - [P10 — Stufen, Regler, Auslieferung](#p10--stufen-regler-auslieferung--abgenommen-am-2026-08-18)
 > - [P11 — Sichtbarkeit & Dichte](#p11--sichtbarkeit--dichte--112-bis-116-gebaut-5-von-7-kriterien)
 > - [P12 — Handy, Touch und die echten Kosten](#p12--handy-touch-und-die-echten-kosten-)
 > - [P13 — Startbildschirm, Reiter und Debug im Menü](#p13--startbildschirm-reiter-und-debug-im-menü-)
