@@ -5,20 +5,56 @@
 > merken, dass eine Phase fertig ist**. Wo etwas im Quelltext steht und was mit
 > was redet, sagt [ARCHITECTURE.md](ARCHITECTURE.md).
 >
-> **Stand: 2026-08-21 · P0–P6, P8, P9, P15, P18 und P19 abgenommen · P7, P10–P14, P16 ◐**
+> **Stand: 2026-08-21 · P0–P6, P8–P10, P15, P16, P18–P21 abgenommen · P7, P11–P14 ◐ · P22–P26 gebaut**
+>
+> ## Inhalt
+>
+> - [Wie dieser Plan zu lesen ist](#wie-dieser-plan-zu-lesen-ist)
+> - [Konventionen](#konventionen-gelten-global-ab-p0)
+> - [Phasenübersicht](#phasenübersicht)
+> - [P0 — Fundament & Toolchain](#p0--fundament--toolchain-)
+> - [P1 — Terrain & Freiflug](#p1--terrain--freiflug-)
+> - [P2 — Licht & Atmosphäre](#p2--licht--atmosphäre-)
+> - [P3 — Splines & Straßen](#p3--splines--straßen-)
+> - [P4 — LOD & Vegetation](#p4--lod--vegetation-)
+> - [P5 — Asset-Pipeline & Landmarks](#p5--asset-pipeline--landmarks)
+> - [P6 — Stadt & Reflexionen](#p6--stadt--reflexionen-)
+> - [P7 — Optimierung & Auslieferung](#p7--optimierung--auslieferung)
+> - [P8 — Polish & Presets](#p8--polish--presets--10-von-10-kriterien-2026-08-01)
+> - [P9 — Die Fahrschicht](#p9--die-fahrschicht--91-und-92-in-p14-93-am-2026-08-18)
+> - [P10 — Stufen, Regler, Auslieferung](#p10--stufen-regler-auslieferung--plan-nicht-gebaut)
+> - [P11 — Sichtbarkeit & Dichte](#p11--sichtbarkeit--dichte--112-bis-116-gebaut-5-von-7-kriterien)
+> - [P12 — Handy, Touch und die echten Kosten](#p12--handy-touch-und-die-echten-kosten-)
+> - [P13 — Startbildschirm, Reiter und Debug im Menü](#p13--startbildschirm-reiter-und-debug-im-menü-)
+> - [P14 — Die Fahrschicht: Freeride](#p14--die-fahrschicht-freeride-)
+> - [P15 — Der gestufte Start](#p15--der-gestufte-start-erst-laden-was-reicht--2026-08-18)
+> - [P16 — Ton, Ziel und der Weg ins Auto](#p16--ton-ziel-und-der-weg-ins-auto--2026-08-18)
+> - [P18 — Vier Fahrzeuge](#p18--vier-fahrzeuge-und-eine-physik-die-das-trägt--2026-08-19)
+> - [P19 — Gelände und Kollision](#p19--was-der-fahrer-meldet-steckenbleiben-stäbchen-lackwasser--2026-08-21)
+> - [P20 — Karosserie gegen Gelände](#p20--die-karosserie-kannte-das-gelände-nicht--2026-08-21)
+> - [P21 — Vier Ursachen](#p21--vier-ursachen-statt-einem-symptom--2026-08-21)
+> - [P22 — Das Arcade-Fahrmodell](#p22--das-arcade-fahrmodell)
+> - [P23 — Rennen, Gegner, Wertung](#p23--rennen-gegner-wertung-fortschritt)
+> - [P24 — Schanzen, Driftzonen](#p24--schanzen-driftzonen-sammelstücke)
+> - [P25 — Politur-Durchgang](#p25--der-politur-durchgang-was-ein-bild-zeigt-und-keine-zahl)
+> - [P26 — Streifen über den Fahrzeugen](#p26--die-sehen-tot-aus-mit-diesem-streifen)
 >
 > | Phase | Stand |
 > |---|---|
 > | P0–P6, P8 | ✅ abgenommen |
-> | P19 | ✅ **abgenommen am 2026-08-21** — Gelände und Kollision (Felswand, Baum, Klemmen), Partikel und Wasser. Zehn von zehn Kriterien; offen bleiben `driveProbe()` über alle acht Strecken, ein echtes Telefon und die GPU-Zeit der Partikel |
-> | P7 | ◐ — 3 von 5; der Startdownload ist seit P15 eingelöst, offen bleiben die zwei Zeilen, die eine GTX-1660-Klasse verlangen |
 > | P9 | ✅ **abgenommen am 2026-08-18** — 9.1/9.2 in P14, 9.3 als `LapTimer`. Drei gefahrene Runden auf dem Ring, 324,72 s, Abkürzung wird abgelehnt |
 > | P10 | ✅ **abgenommen am 2026-08-18** — alle sieben Kriterien; 10.3 ging in P11.5 auf, 10.4 in P15 |
+> | P15 | ✅ **abgenommen am 2026-08-18** — 9 von 9. Erststart 17,02 MB (Schwelle 20), größter Ruckler 28,1 ms (Schwelle 33) |
+> | P16 | ✅ **abgenommen am 2026-08-18** — Ton, Zeitfahren, Weg ins Auto auf Touch |
+> | P18 | ✅ **abgenommen am 2026-08-19** — vier Fahrzeuge, eine Physik (`fleet.mts`) |
+> | P19 | ✅ **abgenommen am 2026-08-21** — Gelände und Kollision (Felswand, Baum, Klemmen), Partikel und Wasser. Zehn von zehn Kriterien; offen bleiben `driveProbe()` über alle acht Strecken, ein echtes Telefon und die GPU-Zeit der Partikel |
+> | P20 | ✅ **abgenommen am 2026-08-21** — Karosserie gegen Gelände (`hullTerrain`), Stützebene als Ebene |
+> | P21 | ✅ **abgenommen am 2026-08-21** — Fahrbahn als Ebene, Steilhang-Kraft stetig, Blech trägt statt zu pflügen |
+> | P7 | ◐ — 3 von 5; der Startdownload ist seit P15 eingelöst, offen bleiben die zwei Zeilen, die eine GTX-1660-Klasse verlangen |
 > | P11 | ◐ — 5 von 7 Kriterien; verfehlt: volle Auflösung je Stufe (zurückgezogen). Offen: ein `live`-Lauf mit Bildrate |
 > | P12 | ◐ — 9 von 11; offen: echtes Telefon, volle Auflösung je Stufe (zurückgezogen) |
 > | P13 | ◐ — 6 von 8; offen: Pointer Lock auf einer Maschine, wo er funktioniert, und ein echtes Telefon |
 > | P14 | ◐ — 7 von 9; offen: „fühlt sich der Drift gut an" und ein echtes Telefon |
-> | P15 | ✅ **abgenommen am 2026-08-18** — 9 von 9. Erststart 17,02 MB (Schwelle 20), größter Ruckler 28,1 ms (Schwelle 33) |
 >
 > **Vier Phasen in Folge lassen dieselbe Zeile offen: „auf echter Zielhardware
 > gemessen".** P12.6, P13, P14 und P15 — das ist ein Muster und kein Zufall. Es
@@ -42,11 +78,11 @@
 > vor den Props aus P8.9).
 >
 > Aus P10 sind **10.0** (der Messlauf), **10.1** (Stufenkopplung) und **10.2**
-> (die Spieler-Oberfläche) gebaut und gemessen. Der gebaute Stand hat seit dem
-> 2026-08-10 einen Steuerungshinweis, ein Pausenmenü mit fünf Voreinstellungen
-> plus acht Einzelreglern und die sechzehn Blickpunkte als Sprungliste — vorher
-> war dort ein Canvas und ein leeres `div`. Offen: **10.3** der kahle Ring bei
-> 520 m und **10.4** der Startdownload (36,61 MB gegen 15 MB).
+> (die Spieler-Oberfläche) gebaut und gemessen, **10.3** ging in P11.5 auf und
+> **10.4** in P15 — die Phase ist seit dem 2026-08-18 abgenommen. Der gebaute
+> Stand hat seit dem 2026-08-10 einen Steuerungshinweis, ein Pausenmenü mit fünf
+> Voreinstellungen plus acht Einzelreglern und die sechzehn Blickpunkte als
+> Sprungliste — vorher war dort ein Canvas und ein leeres `div`.
 >
 > Der Kopf dieser Datei stand bis zum 2026-08-08 auf „Stand 2026-07-30, P8
 > geplant" — acht Tage und zwei Phasen hinterher. Dass diese Zeile schon zweimal
@@ -55,10 +91,12 @@
 > Die Einzelheiten stehen unten bei P7; das Wesentliche ist, dass die Lücke
 > beziffert und nicht behauptet ist.
 >
-> Die Serpentinenzahl am Bergpass bleibt hinter SPEC §2.1 zurück (2 statt ≥ 8).
+> ~~Die Serpentinenzahl am Bergpass bleibt hinter SPEC §2.1 zurück (2 statt ≥ 8).
 > Das ist **keine offene P3-Aufgabe**, sondern eine Anforderung an das Höhenfeld:
 > die Trassierung baut Kehren, das Massiv trägt sie nicht ohne sichtbaren
-> Geländeschaden. Verschoben als P1-Nachbesserung, siehe dort.
+> Geländeschaden. Verschoben als P1-Nachbesserung, siehe dort.~~
+> **Erledigt am 2026-08-01: 9 Kehren auf 2616 m** (SPEC §2.1, PLAN.md P8.11).
+> Die Ursache lag in der Verrundung, nicht im Höhenfeld — siehe dort.
 >
 > **Diese Nachbesserung war für „vor P4" vorgemerkt und ist nicht erfolgt.** Das
 > ist eine Entscheidung und keine Auslassung: die Flanke abzuflachen ändert die
@@ -118,19 +156,23 @@ erfüllt sind. Ausnahmen werden hier dokumentiert, nicht mündlich vereinbart.
 >
 > ```bash
 > npm install
-> npm run world   # backt alles der Reihe nach (gemessen 44,9 s)
+> npm run world   # backt alles der Reihe nach (Gelände-Kern gemessen ~40 s)
 > npm run dev
 > ```
 >
 > `npm run world` ist die Abkürzung für diese Kette — und die Reihenfolge darin
-> ist nicht beliebig, sondern zirkulär aufgelöst:
+> ist nicht beliebig, sondern zirkulär aufgelöst (verbindlich: `package.json`,
+> Skript `world`):
 >
 > ```bash
+> npm run textures    # Texturen optimieren
+> npm run hdri        # IBL- und Himmels-HDRI halbieren
 > npm run bake:clean  # Terrain OHNE Straßen — der Generator braucht ein Höhenfeld
 > npm run sun         # Sonnenrichtung aus dem Himmels-HDRI
 > npm run roads       # Straßennetz, an das Gelände angepasst
 > npm run bake        # noch einmal, jetzt mit eingeschnittenen Straßen
 > npm run shade       # Verschattung des fertigen Geländes
+> npm run map         # Navigationskarte erzeugen
 > ```
 >
 > **`bake:clean` ist nicht dasselbe wie `bake`, und der Unterschied ist der
@@ -172,14 +214,23 @@ erfüllt sind. Ausnahmen werden hier dokumentiert, nicht mündlich vereinbart.
 | **P6** ✅ | Stadt & Reflexionen | Der Money-Shot | P2, P5 |
 | **P7** ◐ | Optimierung & Auslieferung | Läuft auf Zielhardware | alle |
 | **P8** ✅ | Polish & Presets | Die Karte trägt ein Spiel | P7 |
-| **P9** ○ | Die Fahrschicht | Ein Auto fährt eine Runde | P8 |
-| **P10** ○ | Stufen, Regler, Auslieferung | Die Stufen tun, was sie versprechen | P8 |
+| **P9** ✅ | Die Fahrschicht | Ein Auto fährt eine Runde (9.1/9.2 in P14, 9.3 am 2026-08-18) | P8 |
+| **P10** ✅ | Stufen, Regler, Auslieferung | Die Stufen tun, was sie versprechen | P8 |
 | **P11** ◐ | Bewuchs nach Entfernung, Boden trägt Farbe | Minimal sieht aus wie Ultra, nur dünner | P10 |
 | **P12** ◐ | Handy, Touch und die echten Kosten | Läuft auf einem Telefon, ohne schlechter auszusehen | P11 |
 | **P13** ◐ | Startbildschirm, Reiter, Debug im Menü | Die Oberfläche steht nicht mehr im Bild | P12 |
 | **P14** ◐ | Die Fahrschicht — Freeride | Ein Auto fährt, stößt an und bleibt auf der Straße | P8, P13 |
 | **P15** ✅ | Der gestufte Start | Startdownload 17,02 MB — unter der Mobile-Schwelle | P12 |
 | **P16** ✅ | Ton, Ziel und der Weg ins Auto | Ton, Zeitfahren, und das Auto ist auf dem Handy erreichbar | P14, P15 |
+| **P18** ✅ | Vier Fahrzeuge, eine tragende Physik | Specs statt Konstanten, `fleet.mts`-Prüfstand | P14 |
+| **P19** ✅ | Gelände und Kollision | Rechteck-Karosserie, Klemmschutz, Partikel, Wasser | P18 |
+| **P20** ✅ | Karosserie gegen Gelände | `hullTerrain`, Stützebene als Ebene | P19 |
+| **P21** ✅ | Vier Ursachen statt einem Symptom | Fahrbahn als Ebene, Blech trägt | P20 |
+| **P22** | Arcade-Fahrmodell | Gieren wird gesetzt, nicht integriert | P21 |
+| **P23** | Rennen, Gegner, Wertung, Fortschritt | Sechs Veranstaltungen, Driftkette, ¥-Konto | P22 |
+| **P24** | Schanzen, Driftzonen, Sammelstücke | `RampField` als Funktion, Blüten, Pickups | P22 |
+| **P25** | Politur-Durchgang | Was ein Bild zeigt und keine Zahl | P23, P24 |
+| **P26** | Streifen über den Fahrzeugen | Offene Detailfrage am Fahrzeug-Look | P25 |
 
 > **Diese Tabelle stand bis zum 2026-08-07 auf „P7 ◐ / P8 ○"** — also zwei
 > Phasen hinter dem Rest der Datei, sechs Tage nach der P8-Abnahme. Dieselbe
@@ -1962,7 +2013,7 @@ Bestand mit Blick nach unten.
 
 ---
 
-# P5 — Asset-Pipeline & Landmarks
+# P5 — Asset-Pipeline & Landmarks ✅
 
 **Ziel:** Die Zonen bekommen Wiedererkennbarkeit. Und zwar über eine Pipeline,
 nicht über manuell zurechtgeschobene Dateien.
@@ -2430,7 +2481,7 @@ sondern „ein Teil des Bildes fehlt".
 
 ---
 
-# P7 — Optimierung & Auslieferung
+# P7 — Optimierung & Auslieferung ◐
 
 **Ziel:** Läuft auf der Zielhardware (GTX 1660 / RX 580), nicht nur auf der
 Entwicklungsmaschine.
@@ -4644,7 +4695,7 @@ Fahrschicht vorgemacht hat.
 
 ---
 
-# P10 — Stufen, Regler, Auslieferung ○ (Plan, nicht gebaut)
+# P10 — Stufen, Regler, Auslieferung ✅ (abgenommen am 2026-08-18)
 
 > **Auch dies ist ein Plan und keine Umsetzung.** Er entsteht aus einem
 > Durchgang durch das ganze Projekt am 2026-08-07 und aus vier Entscheidungen

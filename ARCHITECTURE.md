@@ -1,22 +1,31 @@
 # japanMap — Aufbau
 
-Diese Datei beantwortet **wo etwas steht und was mit was redet**. Sie ist die
-Übersicht, die es bis zum 2026-08-08 nicht gab: die Begründungen stehen
-ausführlich in den Dateien selbst, aber wer neu dazukommt, musste sich die Karte
-aus 126 Quelldateien selbst zeichnen.
-
-Abgrenzung zu den anderen Dokumenten — bei Widersprüchen gilt jeweils die
-speziellere Quelle:
-
-| Datei | beantwortet | gilt bei Widerspruch |
-|---|---|---|
-| [SPEC.md](SPEC.md) | **was** gebaut wird und warum so | — |
-| [PLAN.md](PLAN.md) | **in welcher Reihenfolge**, und woran man Fertigkeit erkennt | vor SPEC |
-| [CLAUDE.md](CLAUDE.md) | **wie** hier gearbeitet und gemessen wird | — |
-| ARCHITECTURE.md | **wo** etwas steht und **was mit was redet** | die Quelldatei |
-
+> Stand: 2026-08-21. Diese Datei beantwortet **wo etwas steht und was mit was
+> redet**. Die Begründungen stehen ausführlich in den Dateien selbst; wer neu
+> dazukommt, bekommt hier die Karte dazu.
+>
+> | Datei | Beantwortet | Bei Widersprüchen gilt |
+> |---|---|---|
+> | [SPEC.md](SPEC.md) | **Was** gebaut wird und warum | — |
+> | [PLAN.md](PLAN.md) | **In welcher Reihenfolge**, und woran Fertigkeit erkennbar ist | PLAN.md |
+> | [CLAUDE.md](CLAUDE.md) | **Wie** hier gearbeitet und gemessen wird | — |
+> | ARCHITECTURE.md (diese Datei) | **Wo** etwas steht und **was mit was redet** | die Quelldatei |
+>
 > **Zahlen in dieser Datei stammen aus Läufen** und tragen ihr Datum. Wo eine
 > Zahl nicht frisch ist, steht das dabei — dieselbe Regel wie überall sonst hier.
+
+## Inhalt
+
+- [1. Die zwei Hälften: Werkzeuge und Renderer](#1-die-zwei-hälften-werkzeuge-und-renderer)
+- [2. Der Kern: Engine, Systeme, Bus](#2-der-kern-engine-systeme-bus)
+- [3. Die Welt](#3-die-welt)
+- [4. Der Renderweg](#4-der-renderweg)
+- [5. Die Höhenquellen — der wichtigste Fallstrick](#5-die-höhenquellen--der-wichtigste-fallstrick)
+- [6. Die Fahrschicht — `src/game/`](#6-die-fahrschicht--srcgame)
+- [7. Die Spielschicht — was seit P22 darüber liegt](#7-die-spielschicht--was-seit-p22-darüber-liegt)
+- [8. Qualitätsstufen — wer was liest](#8-qualitätsstufen--wer-was-liest)
+- [9. Was nur im Dev-Build existiert](#9-was-nur-im-dev-build-existiert)
+- [10. Wo neue Arbeit hingehört](#10-wo-neue-arbeit-hingehört)
 
 ---
 
@@ -25,9 +34,9 @@ speziellere Quelle:
 Das Projekt zerfällt in zwei Programme, die sich nur über Dateien kennen.
 
 ```
- tools/*.mjs                assets/generated/            src/**
- reines Node-ESM      →     erzeugte Daten         →     Browser, TypeScript
- kein three-Rendering       nie eingecheckt              lädt nur, erzeugt nichts
+ tools/*.mjs + tools/bench/*.mts   assets/generated/            src/**
+ reines Node-ESM / TS-pruefstaende  erzeugte Daten         →     Browser, TypeScript
+ kein three-Rendering               nie eingecheckt              laedt nur, erzeugt nichts
 ```
 
 **Alles unter `assets/generated/` ist erzeugt** und steht in `.gitignore`. Es
@@ -42,10 +51,15 @@ verweigert in diesem Fall den Dienst.
 
 ```
 npm run world
- └─ bake:clean → sun → roads → bake → shade        (~40 s)
+ └─ textures → hdri → bake:clean → sun → roads → bake → shade → map
 ```
 
-| Werkzeug | erzeugt |
+Die Kurzform `bake:clean → sun → roads → bake → shade` nennt nur den
+Gelände-Kern. Vollständig (siehe `package.json`, Skript `world`) gehören dazu:
+`textures` (Texturen optimieren), `hdri` (IBL- und Himmels-HDRI halbieren) und
+`map` (Navigationskarte erzeugen).
+
+| Werkzeug | Erzeugt |
 |---|---|
 | `tools/bake-terrain.mjs` | `height.r16` (2048², 16 bit), `zones.png`, `normal.png`, `meta.json` |
 | `tools/hdri-sun.mjs` | Sonnenstand aus dem Himmels-HDRI |
@@ -53,7 +67,13 @@ npm run world
 | `tools/bake-shadows.mjs` | `shade.png` (Horizontwinkel, Verdeckerentfernung, Himmelssicht) |
 | `tools/gen-props.mjs` | `assets/props.json` |
 | `tools/process-assets.mjs` | `assets/generated/models/*.glb` aus `assets/source/models` |
+| `tools/optimize-textures.mjs` | optimierte Terrain-Texturen (Teil von `npm run world`) |
+| `tools/optimize-hdri.mjs` | halbierte HDRIs nach `assets/generated/hdri` (Teil von `npm run world`) |
+| `tools/gen-navigation-map.mjs` | Navigationskarte für Minikarte und Weltkarte |
 | `tools/inspect-map.mjs` | Prüfbericht + Schummerung als PNG, **erzeugt nichts für die Laufzeit** |
+| `tools/bench/*.mts` | Prüfstände ohne Browser (`fleet`, `world`, `hill`, `arcade`, `offroad`) — reiner TypeScript-Code, ausgeführt mit `node --experimental-strip-types` |
+| `tools/smoke.mjs` | Rauchprobe im echten Browser (liest die Konsole mit) |
+| `tools/bench/imgdiff.mjs` | Differenzbild, 8× verstärkt — „wer eine Differenz misst, sieht sie sich an" |
 
 **Geteilte Mathematik lebt in `.mjs` mit Typen daneben.** Kurvenauswertung
 brauchen Werkzeug *und* Renderer, und zwei Implementierungen wären zwei Kurven:
@@ -106,46 +126,65 @@ Geschmacksfrage:
 3. **`update()` läuft in derselben Reihenfolge.** Die Kamera bewegt sich zuerst,
    danach richten Sonne, Wasserebene und Bodenmarkierung sich daran aus.
 
-Daraus folgt die tatsächliche Registrierreihenfolge:
+Daraus folgt die tatsächliche Registrierreihenfolge in `src/main.ts`:
 
 ```
-FreeFlyController → AtmosphereSystem → LightingRig → WaterSystem
+FreeFlyController → DriveSystem → AudioSystem → DriveHudUpdate (inline)
+  → AtmosphereSystem → LightingRig → WaterSystem
   → ScatterSystem  ┐ vor Terrain und Straßen: hören auf terrain:ready / roads:ready
   → PropSystem     │
+  → StuntSystem    │ ebenfalls vor Terrain/Straßen (hört auf beide Ereignisse)
   → RicePaddy      │
-  → CitySystem     ┘
+  → CitySystem     ┘ braucht Sampler und Straßennetz aus den Ereignissen
   → NeonSystem       (hört auf city:ready, vorher nichts zu tun)
   → TerrainSystem    sendet terrain:ready
   → RoadSystem       sendet roads:ready
+  → AssetUpgrader    nach seinen Nutzern angemeldet, davor angelegt
   → PlanarReflection nach allem, was Geometrie einbringt, vor PostFX
   → PostFXPipeline   setzt den Presenter
   → LookController   zuletzt: look:apply erreicht nur Angemeldete
   → QualitySystem    danach: sendet die Stufe genau einmal beim Start
 ```
 
+`DriveSystem` steht direkt hinter der Kamera und vor allem, was Ereignisse
+sendet — es hängt an vier Ereignissen (`terrain:ready`, `roads:ready`,
+`city:ready`, `props:ready`) und ist damit das System, das **am meisten von der
+Welt weiß**. `AudioSystem` steht danach, damit es die Telemetrie desselben
+Frames liest. `DriveHudUpdate` ist kein eigenes Modul, sondern ein inline
+registriertes System, das HUD, Minikarte und Drift-Abrechnung je Frame
+aktualisiert.
+
 ### Der Ereignisvertrag
 
 Alle Ereignisse stehen an **einer** Stelle (`src/core/events.ts`), damit die
 Typprüfung zeigt, wer sendet und wer hört. Die wichtigsten:
 
-| Ereignis | trägt | Reihenfolge kritisch? |
+| Ereignis | Trägt | Reihenfolge kritisch? |
 |---|---|---|
 | `terrain:ready` | `TerrainSampler`, Höhen-Uniforms | **ja** — genau einmal, während `init()` |
 | `roads:ready` | `RoadNetwork`, Belagsmaterial | **ja** — dito |
-| `props:ready` | `PropClearance` | **ja** — dito |
-| `city:ready` | Schilder-Anker, Stadt-Uniforms | nein — Neon baut erst darauf hin |
+| `props:ready` | `PropClearance`, Platzierungen | **ja** — dito |
+| `city:ready` | Schilder-Anker, Stadt-Uniforms, Kollisionskästen, Bordsteine | nein — Neon baut erst darauf hin |
 | `engine:warmedup` | — | wer die Programmzahl **senkt**, wartet darauf |
-| `quality:changed` | Stufe | jedes System wendet seinen Anteil selbst an |
-| `look:apply` / `look:collect` | `LookState` | Controller kennt kein System |
 | `engine:loading` | Schritt/Gesamt/Beschriftung | Balken des Ladebildschirms |
+| `quality:changed` | Stufe | jedes System wendet seinen Anteil selbst an |
+| `quality:headroom` | p90-Wert, Stufe | höchstens einmal je Sitzung (Nachlader) |
+| `assets:upgraded` | Gruppe, Bytes | nur Anzeige und Messung |
+| `look:apply` / `look:collect` | `LookState` | Controller kennt kein System |
+| `drive:mode` / `walk:mode` | aktiv-Flag | Oberfläche zeigt den Zustand, nicht den letzten Klick |
+| `drive:vehicle` | Fahrzeug-Kennung | HUD und Tonschicht |
+| `drive:lap` / `drive:rescued` / `drive:broke` | Rundenresultat / Sekunden / Bruch-Info | HUD, Ton, Bild |
+| `race:state` / `race:checkpoint` / `race:lap` / `race:finished` | Zustand, Zeiten, Platz, Yen | HUD, Menü, Ton |
+| `pickup:collected` | Art, Gesamt, Yen | Konto und Anzeige |
+| `map:open` / `map:close` | — / resume-Flag | Menü vs. Karte (Pointer-Lock-Verlust) |
 
-**Warum die Systeme sich über den Bus finden und nicht über Importe:** die
+**Warum die Systeme sich über den Bus finden und nicht über Importe:** Die
 Streuung braucht `distanceToNearestRoad()` je Pflanze, soll aber das RoadSystem
 nicht kennen. Dasselbe für Sampler, Freihaltekreise und Stadt-Uniforms. Der Preis
 ist die Reihenfolgenbedingung oben, der Gewinn ist, dass jedes System einzeln
 entfernbar bleibt.
 
-**`look:collect` läuft rückwärts:** der Sender legt ein vorbefülltes Objekt bei,
+**`look:collect` läuft rückwärts:** Der Sender legt ein vorbefülltes Objekt bei,
 jedes System überschreibt **nur seinen eigenen Abschnitt**. So bringt ein neues
 System seinen Look-Anteil selbst mit.
 
@@ -158,11 +197,12 @@ src/world/
 ├── TerrainSystem      CDLOD-Quadtree, Vertex-Morphing        → ChunkManager, HeightPyramid
 ├── TerrainSampler     Höhenabfrage auf der CPU               ← die zweite Höhenquelle, siehe §5
 ├── RoadSystem         Mesh, Decals, Leitplanken              → RoadNetwork (Abfragen)
-├── WaterSystem        Meer + Fluss
+├── WaterSystem        Meer + Fluss (+ Kielwelle, Reisfeld-Anbindung)
 ├── scatter/           Vegetation: Worker, Chunks, LOD, Imposter
 ├── props/             Landmarks, Reisfelder, Freihaltekreise
 ├── city/              Generator, Blöcke, Neon
-└── materials/         alle Materialien, alle mit `declaredTextures`
+├── stunt/             Schanzen, Blütenblätter, Sammelstücke
+└── materials/         alle Materialien
 ```
 
 ### Vegetation — der aufwändigste Teilbaum
@@ -208,7 +248,9 @@ neben dem Mesh.
 | `getSectors(id, n)` | da seit P8.11 — Tor aus Punkt, Richtung, halber Breite |
 | `isOnRoad` / `distanceToNearestRoad` | da, gitterbeschleunigt |
 
-**Niemand ruft sie auf.** Das ist der Ausgangspunkt von P9.
+**Niemand rief sie auf — das war der Ausgangspunkt von P9.** Seit P14 fährt der
+Messstand `driveProbe()` alle Strecken damit ab; seit P22–P23 nutzen
+`RaceLine`, `RivalField` und der Rennleiter sie im Spiel.
 
 ---
 
@@ -258,19 +300,21 @@ Frustum-Culling (`Engine.#precompile`).
 
 ---
 
-## 5. Die zwei Höhenquellen — der wichtigste Fallstrick
+## 5. Die Höhenquellen — der wichtigste Fallstrick
 
-Es gibt **zwei** Antworten auf „wie hoch ist das Gelände hier", und sie sind
+Es gibt **mehrere** Antworten auf „wie hoch ist das Gelände hier", und sie sind
 nicht identisch:
 
-| | `TerrainSampler.getHeightAt(x, z)` | das gerenderte CDLOD-Gitter |
+| Quelle | Wo | Abweichung vom Sampler |
 |---|---|---|
-| wo | CPU, bilinear aus `height.r16` | GPU, Auslenkung im Vertex-Shader |
-| Genauigkeit | exakt am Texel | **Sehne** zwischen zwei Stützstellen |
-| aus einem Skript messbar | ja | **nein** — die CPU-Geometrie ist das flache Einheitsgitter |
+| `TerrainSampler` | CPU, bilinear aus `height.r16` | — (die Bezugsgröße) |
+| CDLOD-Gitter | GPU, Auslenkung im Vertex-Shader | Sehne statt Kurve |
+| **Fahrbahn-Mesh** | `roads.json` + `ROAD_MESH.surfaceOffset` | 6 cm auf sechs Strecken, **94 cm** auf der Stadtstraße, bis **4,30 m** auf der Zufahrt |
+| **Stadtplatte + Bürgersteig** | `CITY_SLAB_Y`, `CITY.sidewalk.height` | **97,3 cm** über dem eingeebneten Distrikt, plus 15 cm Bordstein |
 
-Zwischen zwei Gitterpunkten liegt eine Gerade über der Kurve. Das hat bereits
-dreimal Zeit gekostet:
+Die ersten beiden Zeilen sind der ursprüngliche Fallstrick (§5 in älteren
+Fassungen: „zwei Höhenquellen"); seit P14 sind es vier. Der Fahrmodus musste sie
+alle vier zusammenbringen:
 
 - Die **Stadtplatte** lag 3 cm über dem Höhenfeld — sauber aus 14 641 Proben
   gerechnet — und trotzdem unter dem *gerenderten* Gelände.
@@ -280,27 +324,16 @@ dreimal Zeit gekostet:
 
 **Regel:** Wer etwas auf das Gelände setzt, benutzt den Sampler *und* einen
 Versatz. Wer prüft, ob es richtig liegt, muss das **gerenderte** Gitter meinen —
-und das geht nur am Bild, nicht im Skript. Für P9 ist entschieden: das Fahrzeug
+und das geht nur am Bild, nicht im Skript. Für P9 ist entschieden: Das Fahrzeug
 fährt auf dem Sampler, das Gitter ist die Näherung.
 
-> **Seit P14 sind es nicht zwei Quellen, sondern vier.** Der Fahrmodus musste sie
-> alle vier zusammenbringen, und dabei kam heraus, dass die Überschrift dieses
-> Kapitels zu klein gedacht war:
->
-> | Quelle | wo | Abweichung vom Sampler |
-> |---|---|---|
-> | `TerrainSampler` | CPU | — (die Bezugsgröße) |
-> | CDLOD-Gitter | GPU | Sehne statt Kurve |
-> | **Fahrbahn-Mesh** | `roads.json` + `ROAD_MESH.surfaceOffset` | 6 cm auf sechs Strecken, **94 cm** auf der Stadtstraße, bis **4,30 m** auf der Zufahrt |
-> | **Stadtplatte + Bürgersteig** | `CITY_SLAB_Y`, `CITY.sidewalk.height` | **97,3 cm** über dem eingeebneten Distrikt, plus 15 cm Bordstein |
->
 > `DriveSystem` bildet daraus **eine** befahrbare Höhe: Gelände → Stadtplatte
 > (über `districtBlend`, dieselbe Funktion wie im Baker) → Fahrbahnkorrektur →
 > Plateaus. Die Zahlen und wie sie gefunden wurden, stehen in PLAN.md P14 / 14.2.
 
 ---
 
-## 5a. Die Fahrschicht — `src/game/`
+## 6. Die Fahrschicht — `src/game/`
 
 Seit P14. Sie hängt an vier Ereignissen (`terrain:ready`, `roads:ready`,
 `city:ready`, `props:ready`) und ist damit das System, das **am meisten von der
@@ -368,13 +401,13 @@ Zehn bis dreizehn Prüfpunkte auf der Blechunterkante (einmal je Spec gerechnet,
 sobald die Fläche eine Wand ist, damit kein Wagen daran hochratscht. Zwei Regeln
 tragen die Lösung, und beide sind gemessen erzwungen:
 
- - **Senkrecht trägt die Federung, waagerecht das Blech.** Die Hülle weist nur
-   die waagerechte Geschwindigkeit ab und hebt den Aufbau nie über seine
-   Standhöhe. Mit voller Abweisung schwebte der Wagen die halbe Zeit ohne Radlast
-   (49,8 % gegen 8,1 %).
- - **Die Fahrbahn ist kein Hindernis.** Ihre Höhe ist eine gerechnete Mischung
-   aus Sampler, Mittellinie, Plateaus und Wasserspiegel; die Räder fahren darauf,
-   die Karosserie kollidiert nur mit `gelaende`.
+- **Senkrecht trägt die Federung, waagerecht das Blech.** Die Hülle weist nur
+  die waagerechte Geschwindigkeit ab und hebt den Aufbau nie über seine
+  Standhöhe. Mit voller Abweisung schwebte der Wagen die halbe Zeit ohne Radlast
+  (49,8 % gegen 8,1 %).
+- **Die Fahrbahn ist kein Hindernis.** Ihre Höhe ist eine gerechnete Mischung
+  aus Sampler, Mittellinie, Plateaus und Wasserspiegel; die Räder fahren darauf,
+  die Karosserie kollidiert nur mit `gelaende`.
 
 Dazu wurde die **Stützebene** endlich eine: `Vehicle` rechnet jede Radhöhe auf
 die Hangebene durch den Schwerpunkt zurück, bevor sie gegen die Federreichweite
@@ -384,7 +417,7 @@ ganze Vorderachse als unerreichbar, und der Wagen verlor seine Radlast.
 **Und das Blech trägt, statt zu pflügen — P21.** Die erste Fassung schob den
 Wagen von außen aus dem Boden und durfte ihn dabei nicht über seine Standhöhe
 heben (sonst verliert er die Radlast). Damit konnte sie bremsen, aber nicht
-tragen: über jede Bodenwelle pflügte der Wagen hindurch, statt darüber zu
+tragen: Über jede Bodenwelle pflügte der Wagen hindurch, statt darüber zu
 steigen. `hullSupport` hebt seitdem die **Stützebene** statt den Aufbau — die
 Feder trägt ihn dann selbst darüber, und die Reifen behalten ihre Last.
 
@@ -398,7 +431,7 @@ gerechnet wird.
 
 **Zwei Zahlen für zwei Fragen am Steilhang.** `STEEP_NY` (38,7°) entscheidet die
 **Geometrie** — Boden oder Wand, ausschieben senkrecht oder waagerecht. Die
-**Kraft** läuft seit P21 stetig aus (`slopeSupport`, 34,9°…50,2°): eine einzige
+**Kraft** läuft seit P21 stetig aus (`slopeSupport`, 34,9°…50,2°): Eine einzige
 Konstante für beides war ein Schalter mitten im Fahrbereich, an dem ein Wagen in
 einem Simulationsschritt von voller Kontrolle auf null fiel.
 
@@ -428,9 +461,9 @@ Einmündungen weglässt. Die drei Änderungen sind in PLAN.md P14 begründet.
 
 ---
 
-## 5b. Die Spielschicht — was seit P22 darüber liegt
+## 7. Die Spielschicht — was seit P22 darüber liegt
 
-Bis P21 war das hier eine Karte mit einem Auto darauf. Seit P22…P25 liegt eine
+Bis P21 war das hier eine Karte mit einem Auto darauf. Seit P22–P25 liegt eine
 zweite Schicht darüber, und sie ist **absichtlich von der Fahrschicht getrennt**:
 `Vehicle` weiß nichts von Rennen, `RaceDirector` weiß nichts von Federung.
 
@@ -450,7 +483,7 @@ StuntSystem ──┬── RampField        die Schanzen als **Funktion**    (P
 
 **Was P22 getauscht hat und was nicht.** Ausschließlich die waagerechte Ebene
 (Gieren, Längs- und Quergeschwindigkeit). Federung, Stützebene, Blech gegen
-Gelände, Kollision und Klemmschutz aus P19…P21 laufen unverändert weiter. `TIRE`
+Gelände, Kollision und Klemmschutz aus P19–P21 laufen unverändert weiter. `TIRE`
 in `vehicle.config.ts` wird seitdem **nicht mehr gelesen** — die Spec steht dort
 als Beschreibung weiter, und zwei der teuersten Fehler dieses Projekts sind
 Fehler jener Funktionen gewesen.
@@ -459,7 +492,7 @@ Fehler jener Funktionen gewesen.
 Bild und in der Physik zugleich existieren. `RampField.surfaceAt()` liefert die
 Fläche, `RoadGround.height()` nimmt das Maximum daraus, und `StuntSystem` baut
 sein Mesh aus **derselben** Funktion. Das ist die Antwort auf die Fehlerklasse
-aus §5 („die zwei Höhenquellen"), nur eine Ebene höher.
+aus §5 („die Höhenquellen"), nur eine Ebene höher.
 
 **Die Anzeigen hängen alle am Bus und rechnen nichts.** `DriveHud` (inklusive
 `MiniMap`) bekommt Zahlen hereingereicht; `AudioSystem` hört auf
@@ -470,13 +503,13 @@ einzige Zeile Physik anzufassen.
 
 ---
 
-## 6. Qualitätsstufen — wer was liest
+## 8. Qualitätsstufen — wer was liest
 
 `QualitySystem` hält den Zustand und sendet `quality:changed`. **Jedes System
 wendet seinen Anteil selbst an**; die Engine kennt die Tabelle nur für den
 Pixelfaktor.
 
-| Feld | wer liest es | Wirkung |
+| Feld | Wer liest es | Wirkung |
 |---|---|---|
 | `renderScale` | `Engine` | Größe des Zeichenpuffers |
 | `terrainGridVertices` | `TerrainSystem` | Stützstellen je Knoten — der einzige Hebel an der Geländelast |
@@ -518,7 +551,7 @@ Daraus folgt eine Regel für **jeden** Zuhörer von `quality:changed`:
 
 `QUALITY_LEVELS` enthält „Eigen" bewusst **nicht** — es ist die Leiter der
 Ersteinstufung, und die ist geordnet. `indexOf` gäbe −1, und `QUALITY_LEVELS[0]`
-wäre Ultra: eine schlechte Bildrate stufte damit **hoch**.
+wäre Ultra: Eine schlechte Bildrate stufte damit **hoch**.
 
 ### Die zweite Leiter: Asset-Stufen (ab P15)
 
@@ -527,12 +560,12 @@ Seit P15 gibt es **zwei** Leitern, und sie sind verschiedener Natur:
 | | Qualitätsstufe | Asset-Stufe |
 |---|---|---|
 | Werte | ultra … minimal, plus „Eigen" | `mittel`, `voll` |
-| ändert | Renderzustand (Auflösung, Reichweite, Kette) | welche **Dateien** geladen sind |
+| Ändert | Renderzustand (Auflösung, Reichweite, Kette) | welche **Dateien** geladen sind |
 | Richtung | beides, unter der Sperrklinke | **nur aufwärts** |
-| wohnt in | `QualitySystem` | `core/AssetUpgrader.ts` |
+| Wohnt in | `QualitySystem` | `core/AssetUpgrader.ts` |
 | Tabelle | `config/quality.config.ts` | `core/AssetManifest.ts` |
 
-Die Asset-Stufe kann von Natur aus nicht zurück: heruntergeladene Bytes sind
+Die Asset-Stufe kann von Natur aus nicht zurück: Heruntergeladene Bytes sind
 ausgegeben, und die kleine Textur wieder einzuhängen kostete ein schlechteres
 Bild für null Ersparnis. Wird die Bildrate nach dem Hochstufen knapp, ist das
 Sache der **Qualitätsstufe**.
@@ -545,7 +578,7 @@ Sache der **Qualitätsstufe**.
 | `bild` | bestimmt die **Güte** — gestuft, nachladbar | Himmel, IBL, Detailtexturen |
 | `abgeleitet` | wird gerechnet statt geladen | `normal.png` → `world/deriveNormalMap.ts` |
 
-`height.r16` halbiert spräche 2,9 MB und verschöbe den Boden unter dem
+`height.r16` zu halbieren spräche 2,9 MB und verschöbe den Boden unter dem
 Fahrzeug — P14 misst dort 0,00 cm Standhöhenfehler, und das wäre danach eine
 andere Zahl. Die Gegenprobe dazu ist `japanMap.driveProbe()`, und sie gehört
 nach jeder Änderung am Manifest gefahren.
@@ -560,19 +593,19 @@ nach jeder Änderung am Manifest gefahren.
    und entscheidet am **90. Perzentil** des Frame-Abstands.
 
 Der Wächter stuft in beide Richtungen und ist trotzdem keine Regelung, weil drei
-Dinge zusammenkommen: die Sitzungsobergrenze wandert nur nach unten, zwischen
+Dinge zusammenkommen: Die Sitzungsobergrenze wandert nur nach unten, zwischen
 `stepDownMs` (20) und `stepUpMs` (14) liegt eine Lücke, und herauf geht es erst
 nach fünf guten Fenstern gegen ein schlechtes zum Herunterstufen. Gemessener
-Nachweis in PLAN.md P15.5: nach zwei erzwungenen Herunterstufungen bleibt der
+Nachweis in PLAN.md P15.5: Nach zwei erzwungenen Herunterstufungen bleibt der
 Stand über 1600 schnelle Frames unten.
 
 Eine Stufe **von Hand** zu wählen beendet den Wächter — dieselbe Regel wie bei
-der Ersteinstufung: eine Messung, die dem Nutzer seine Wahl nach zehn Sekunden
+der Ersteinstufung: Eine Messung, die dem Nutzer seine Wahl nach zehn Sekunden
 wegnimmt, ist schlimmer als keine Messung. Zurück holt ihn „Neu einstufen".
 
 ---
 
-## 7. Was nur im Dev-Build existiert
+## 9. Was nur im Dev-Build existiert
 
 Der Unterschied ist groß und für die UX entscheidend (siehe PLAN.md P10.2):
 
@@ -583,7 +616,7 @@ Der Unterschied ist groß und für die UX entscheidend (siehe PLAN.md P10.2):
 | `window.japanMap.*` | ja | **nein** |
 | Blickpunkte, `shot()`, `report()` | ja | **nein** |
 | Editoren (Straßen, Props) | ja | **nein** |
-| `SceneScaffold` (1056 Linien) | ja | **nein** |
+| `SceneScaffold` | ja | **nein** |
 | Start- und Ladebildschirm `src/ui/StartScreen.ts` | ja | **ja** |
 | Spieler-Oberfläche `src/ui/PlayerUi.ts` | ja | **ja** (seit P10.2) |
 | Fingersteuerung `src/ui/TouchControls.ts` | ja | **ja** (seit P12.4) |
@@ -600,12 +633,12 @@ Ist das Feld nicht gesetzt — im Build immer —, existiert weder der Reiter no
 sein Inhalt. Geprüft am gebauten Stand: `.menu__tab` liefert dort `grafik`,
 `steuerung`, `blick`, und `.stats` wie `.debug-pane` gibt es im DOM nicht.
 
-Die letzten beiden Zeilen sind der Grund, warum `src/ui/` von `src/debug/`
-getrennt ist: **alles unter `src/ui/` steht ohne `import.meta.env.DEV`.** Bis
+Die letzten Zeilen sind der Grund, warum `src/ui/` von `src/debug/`
+getrennt ist: **Alles unter `src/ui/` steht ohne `import.meta.env.DEV`.** Bis
 P10.2 stand in dieser Zeile „Benutzeroberfläche — es gibt keine"; der gebaute
 Stand war ein Canvas und ein leeres `div`. Die Blickpunkte aus
 `src/debug/viewpoints.ts` sind seitdem die eine Ausnahme in die andere Richtung:
-sie liegen weiter unter `debug/`, weil ihr Zweck die Reproduzierbarkeit von
+Sie liegen weiter unter `debug/`, weil ihr Zweck die Reproduzierbarkeit von
 Messungen ist, werden aber vom Menü mit ausgeliefert.
 
 Beide Zweige hängen an `import.meta.env.DEV` und werden im Build
@@ -618,22 +651,22 @@ Zwei Betriebsarten, Einzelheiten in CLAUDE.md.
 
 ---
 
-## 8. Wo neue Arbeit hingehört
+## 10. Wo neue Arbeit hingehört
 
 | Vorhaben | Ort | Vorher lesen |
 |---|---|---|
 | Neues Weltsystem | `src/world/`, in `boot()` an der richtigen Stelle registrieren | §2, Reihenfolge |
 | Neuer Regler am Bild | `LookState` + `look:apply`/`look:collect` | §2 |
-| Neuer Regler an der Leistung | `quality.config.ts`, Leser trägt ihn selbst ein | §6 |
+| Neuer Regler an der Leistung | `quality.config.ts`, Leser trägt ihn selbst ein | §8 |
 | Etwas auf dem Gelände platzieren | `TerrainSampler` + Versatz | **§5** |
 | Fahrzeug, Kollision, Rundenlogik | `src/game/` | §3 Straßen, **§5** |
-| Veranstaltung, Gegner, Wertung | `src/game/`, `config/events.config.ts` | **§5b** |
-| Etwas, worauf man fährt oder springt | `RampField` (eine Funktion), nie ein Mesh daneben | **§5**, §5b |
+| Veranstaltung, Gegner, Wertung | `src/game/`, `config/events.config.ts` | **§7** |
+| Etwas, worauf man fährt oder springt | `RampField` (eine Funktion), nie ein Mesh daneben | **§5**, §7 |
 | Eine Farbe in einem Material **ohne** Beleuchtung | gegen einen gemessenen Bezugspunkt im Bild setzen | CLAUDE.md, P25 |
-| Spieler-Oberfläche | `src/ui/`, **ohne** `import.meta.env.DEV` | §7 |
+| Spieler-Oberfläche | `src/ui/`, **ohne** `import.meta.env.DEV` | §9 |
 | Anzeigegröße eines Oberflächen-Elements | ins Stilblatt, **nicht** als Inline-Stil | CLAUDE.md, P25 |
 | Magische Zahl | `src/config/` — nie im Code | CLAUDE.md |
 | Shader | `.glsl`-Datei, nie als Template-String | CLAUDE.md |
 
-**Und die Regel, die über allem steht:** was nicht gemessen wurde, gilt als
+**Und die Regel, die über allem steht:** Was nicht gemessen wurde, gilt als
 nicht erledigt. Wie hier gemessen wird, steht in [CLAUDE.md](CLAUDE.md).
