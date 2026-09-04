@@ -42,10 +42,19 @@ just desktops.
 - **Drift scoring** with chain multiplier up to ×5, doubled in two drift zones
 - **6 jump ramps**, 90 pickups, minimap with rivals and checkpoint arrow
 
-![Drift on the mountain pass](screenshots/10-drift-oben.png)
 ![Neon city street](screenshots/03-stadt-strasse.png)
+![Sunset drive over the paddies](screenshots/11-drift-hinten.png)
 
-More screenshots in [`screenshots/`](screenshots/).
+## Screenshots
+
+| | |
+|---|---|
+| ![Serpentines of the mountain pass](screenshots/05-bergpass.png) | ![Torii path to the temple](screenshots/06-tempelpfad.png) |
+| ![On the ring road, mountain ahead](screenshots/09-fahren-ring.png) | ![City below the massif](screenshots/02-stadt-aussen.png) |
+| ![Spray on the water at sunset](screenshots/12-wasser-spritzer.png) | ![Coast run with lighthouse](screenshots/14-wasser-spritzer-seite.png) |
+
+All 15 shots live in [`screenshots/`](screenshots/) — including rice fields,
+fishing village, open sea and the water-particle test series.
 
 ---
 
