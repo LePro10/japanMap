@@ -33,3 +33,6 @@ Thumbs.db
 
 # Lokale Einstellungen dieser Maschine — nicht geteilt.
 .claude/settings.local.json
+
+# Forza / photo refs for the Astra design pass — do not commit third-party stills.
+docs/astra-refs/
