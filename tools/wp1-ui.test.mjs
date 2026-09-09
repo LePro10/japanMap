@@ -148,10 +148,10 @@ try {
     "Opening the menu must not freeze the renderer immediately",
   );
   const frost = await page.locator(".player-menu").evaluate((el) => {
-    const before = getComputedStyle(el, "::before");
+    const style = getComputedStyle(el);
     return {
-      blur: before.backdropFilter || before.webkitBackdropFilter,
-      bg: before.backgroundColor,
+      blur: style.backdropFilter || style.webkitBackdropFilter,
+      bg: style.backgroundColor,
     };
   });
   assert.match(frost.blur, /blur\(/, "Pause menu uses a compositor frost layer");

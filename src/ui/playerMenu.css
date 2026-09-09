@@ -2,7 +2,7 @@
  * An Forza-Hubs angelehnt (Kacheln, Slash, Tab-Leiste), Farben und
  * Ziele sind die dieser Karte. Die Welt bleibt hinter der Fläche lesbar. */
 
-.player-menu {
+.menu.player-menu {
   --ink: #06141a;
   --ink-2: #0a242c;
   --teal: #1a6b76;
@@ -20,29 +20,16 @@
   padding: 0;
   color: var(--paper);
   font-family: var(--display);
-  isolation: isolate;
-  background: transparent;
-  backdrop-filter: none;
+  background: color-mix(in srgb, var(--ink) 28%, transparent);
+  /* Frost am Menü selbst: hinter den Kacheln liegt die Welt, nicht eine
+     isolierte Leerfläche. 28px ist milchig-unscharf; der Compositor cached
+     das, sobald die Frameschleife schläft. */
+  backdrop-filter: blur(36px) saturate(1.4) brightness(1.06);
+  -webkit-backdrop-filter: blur(36px) saturate(1.4) brightness(1.06);
 }
 
-/*
- * Frost sitzt in einer eigenen Schicht, nicht auf den Kacheln.
- * Kleiner Blur (12px): der Compositor cached das, sobald die Welt schläft.
- * Ein 40px-Kernel über einem live gerenderten Frame wäre die teure Variante.
- */
-.player-menu::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: color-mix(in srgb, var(--ink) 40%, transparent);
-  backdrop-filter: blur(12px) saturate(1.15);
-  -webkit-backdrop-filter: blur(12px) saturate(1.15);
-}
-
-.player-menu.is-sleeping::before {
-  background: color-mix(in srgb, var(--ink) 52%, transparent);
+.menu.player-menu.is-sleeping {
+  background: color-mix(in srgb, var(--ink) 38%, transparent);
 }
 
 .player-menu .menu__box {
@@ -74,11 +61,12 @@
 
 .player-menu .menu__wash {
   position: absolute;
-  inset: 0;
+  inset: -24px;
   z-index: 0;
   pointer-events: none;
   background: url("./menuWash.svg") center / cover no-repeat;
-  opacity: 0.22;
+  opacity: 0.18;
+  filter: blur(22px);
   mix-blend-mode: soft-light;
 }
 
@@ -701,17 +689,26 @@
   filter: none;
 }
 
-.reduce-motion .player-menu::before {
+.reduce-motion .player-menu {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  background: color-mix(in srgb, var(--ink) 62%, transparent);
+  background: color-mix(in srgb, var(--ink) 72%, transparent);
+}
+
+.reduce-motion .player-menu .menu__wash {
+  filter: none;
+  opacity: 0.08;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .player-menu::before {
+  .player-menu {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    background: color-mix(in srgb, var(--ink) 62%, transparent);
+    background: color-mix(in srgb, var(--ink) 72%, transparent);
+  }
+  .player-menu .menu__wash {
+    filter: none;
+    opacity: 0.08;
   }
 }
 
