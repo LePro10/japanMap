@@ -1,5 +1,6 @@
 import {
   AIR_CONTROL,
+  ARCADE_CRAWL,
   ARCADE_SURFACE,
   ARCADE_SURFACE_DRAG,
   BOOST_EARN,
@@ -8,6 +9,8 @@ import {
   DRIFT_MAX_ANGLE,
   DRIFT_MIN_SPEED,
   DRIFT_SCORE_ANGLE,
+  DRIVE_RETAIN_SPEED,
+  GRIP_BLEND,
   YAW_CAP_SPEED,
   type ArcadeSpec,
 } from '@/config/arcade.config';
@@ -214,6 +217,13 @@ const LIFT_DECAY = 2.2;
 export class ArcadeDynamics {
   #spec: ArcadeSpec;
   #looseBonus: number;
+  #crawlShare: number = ARCADE_CRAWL.share;
+  #driveRetain = 0.65;
+  /** Geglätteter Belags-Beiwert. `NaN` = noch kein Sample, nächster Schritt setzt. */
+  #gripSmoothed = Number.NaN;
+  #wasAirborne = false;
+  /** Nach einer Landung: Gierrate nicht an die Sollrate schnappen. */
+  #landTimer = 0;
 
   /** Die **Eingabe** −1…1, ratenbegrenzt. Der Winkel ist eine Anzeige davon. */
   #steerInput = 0;
@@ -244,6 +254,19 @@ export class ArcadeDynamics {
     this.#looseBonus = looseBonus;
   }
 
+  setCrawl(share: number): void {
+    this.#crawlShare = share;
+  }
+
+  setDriveRetain(fraction: number): void {
+    this.#driveRetain = fraction;
+  }
+
+  /** Geglätteter Belags-Beiwert nach dem letzten Schritt — für Messungen. */
+  get grip(): number {
+    return this.#gripSmoothed;
+  }
+
   /** Alles auf Anfang — beim Absetzen des Fahrzeugs. */
   reset(): void {
     this.#steerInput = 0;
@@ -257,6 +280,9 @@ export class ArcadeDynamics {
     this.#yawRate = 0;
     this.#pitchRate = 0;
     this.#driftSign = 0;
+    this.#gripSmoothed = Number.NaN;
+    this.#wasAirborne = false;
+    this.#landTimer = 0;
     // **Der Nitro-Vorrat bleibt stehen.** Ein Respawn nach einem Fehler soll
     // nicht auch noch den Boost verschenken — das bestraft den Fehler zweimal.
   }
@@ -310,16 +336,26 @@ export class ArcadeDynamics {
 
     // ── Belag ─────────────────────────────────────────────────────────────
     //
-    // `looseBonus` wirkt **nur auf losem Boden** und nicht auf Asphalt: sonst
-    // wäre er ein zweiter Grip-Regler neben `latG`, und zwei Regler für dieselbe
-    // Größe sind in diesem Projekt schon dreimal als tote Stellschraube geendet.
-    const surfaceGrip =
-      env.surface === 'asphalt'
-        ? ARCADE_SURFACE.asphalt
-        : ARCADE_SURFACE[env.surface] * this.#looseBonus;
-    // Aquaplaning: nasser Asphalt zählt anteilig als Wasser.
-    const wet = Math.min(1, env.waterDepth / 0.35);
-    const grip = Math.max(0.05, surfaceGrip * (1 - wet * 0.45)) * env.support;
+    // Dirt (`kies`) trägt den fahrzeugspezifischen Faktor; Wiese und Wasser
+    // sind global. Begründung und die Messung, die den alten 0,78×-Bonus
+    // verworfen hat, bei `ARCADE_SURFACE`.
+    let surfaceGrip: number = ARCADE_SURFACE[env.surface];
+    if (env.surface === 'kies') surfaceGrip *= this.#looseBonus;
+    // Aquaplaning nur auf Asphalt. Im Wasser *ist* der Belag schon `wasser`;
+    // denselben Faktor noch einmal draufzurechnen würde Shallow Run von 0,75
+    // auf ~0,63 drücken.
+    if (env.surface === 'asphalt') {
+      const wet = Math.min(1, env.waterDepth / 0.35);
+      surfaceGrip *= 1 - wet * 0.45;
+    }
+    surfaceGrip = Math.max(0.05, surfaceGrip);
+    // Erster Sample nach Respawn setzt, danach 0,25 s Zeitkonstante.
+    if (!Number.isFinite(this.#gripSmoothed)) this.#gripSmoothed = surfaceGrip;
+    else {
+      const blend = 1 - Math.exp(-dt / GRIP_BLEND);
+      this.#gripSmoothed += (surfaceGrip - this.#gripSmoothed) * blend;
+    }
+    const grip = Math.max(0.05, this.#gripSmoothed) * env.support;
     // Prepared Circuit: Quer und Bremse getrennt — Begründung bei CIRCUIT_PREP.
     const prepared = env.circuit ?? 0;
     const latMul = 1 + (CIRCUIT_PREP.lateral - 1) * prepared;
@@ -440,6 +476,7 @@ export class ArcadeDynamics {
     let yawTarget = this.#yawTarget(env.vLong, env.vLat, speed, aLatMax, input);
 
     if (env.airborne) {
+      this.#wasAirborne = true;
       // Luftsteuerung. Sie ist Winkel*beschleunigung* und keine Sollrate — in der
       // Luft gibt es nichts, was eine Rate erzwänge, und ein Wagen, der im Flug
       // sofort auf eine Sollrate springt, sieht aus wie ein Modellflugzeug.
@@ -449,19 +486,28 @@ export class ArcadeDynamics {
         (clamp01(input.brake) - clamp01(input.throttle)) * AIR_CONTROL.pitch * dt;
       this.#pitchRate *= Math.exp(-AIR_CONTROL.damping * dt);
     } else {
+      if (this.#wasAirborne) this.#landTimer = GRIP_BLEND;
+      this.#wasAirborne = false;
+      this.#landTimer = Math.max(0, this.#landTimer - dt);
       this.#pitchRate *= Math.exp(-8 * dt);
       // **Die Fangleine.** Ohne Lenkeingabe zieht sie die Nase in die
       // Fahrtrichtung — genau das, was ein Fahrer mit Gegenlenken täte und was
       // mit einer Taste nicht dosierbar ist. Sie ist null, sobald jemand lenkt,
       // kann also nichts verfälschen, was der Spieler selbst tut. Begründung bei
       // `ArcadeSpec.catchAssist`.
-      if (Math.abs(input.steer) < 0.2 && speed > 2 && !input.handbrake) {
+      //
+      // Nach einer Kuppe aus: sonst schnappt die Nase in die alte Sollrate, und
+      // das liest sich als Gierkick genau dann, wenn die Räder den Boden
+      // wiederfinden. ASTRA_PLAN §5 verlangt das Gegenteil.
+      const landing = this.#landTimer > 0;
+      if (!landing && Math.abs(input.steer) < 0.2 && speed > 2 && !input.handbrake) {
         const slip = Math.atan2(env.vLat, Math.abs(env.vLong));
         // Ein Schwimmwinkel nach rechts (positiv) heißt: die Nase muss nach
         // rechts, also ψ fallen. Daher das Minus — dieselbe Kette wie oben.
         yawTarget += -slip * spec.catchAssist * Math.min(1, speed / 8);
       }
-      const blend = 1 - Math.exp(-spec.yawResponse * dt);
+      const yawFollow = landing ? spec.yawResponse * 0.25 : spec.yawResponse;
+      const blend = 1 - Math.exp(-yawFollow * dt);
       this.#yawRate += (yawTarget - this.#yawRate) * blend;
     }
     this.#yawRate = clamp(this.#yawRate, -spec.maxYawRate, spec.maxYawRate);
@@ -751,8 +797,11 @@ export class ArcadeDynamics {
     }
 
     // ── Nitro ─────────────────────────────────────────────────────────────
+    // `support` skaliert den Schub: an einer Wand (support = 0) darf Nitro
+    // nichts mehr tun. Sonst klebt ein Coupé mit gehaltenem Boost an der
+    // Felswand — ASTRA_PLAN §5, „do not let nitro glue a coupe to a cliff".
     const boosting = input.boost && this.#boost > 0 && !reverse && env.vLong > -0.5;
-    const boostAccel = boosting ? spec.boostAccel : 0;
+    const boostAccel = boosting ? spec.boostAccel * env.support : 0;
 
     // Bremse. Sie darf die Haftgrenze überschreiten — das ist Arcade und
     // ausdrücklich gewollt: ein Spieler, der bremst, will stehenbleiben.
@@ -776,12 +825,36 @@ export class ArcadeDynamics {
     // (Rauch, Ton, Spur), keine Kraft mehr. Im Einspurmodell aß er die
     // Seitenführung; hier macht das `drift`, und zwar dosierbar.
     const driveAccel = force / this.#mass;
-    const tractionLimit = grip * GRAVITY * 1.35;
+    const speed = Math.hypot(env.vLong, env.vLat);
+    let tractionLimit = grip * GRAVITY * 1.35;
+    // Unter 50 km/h auf losem Boden: Straßenautos behalten 65 % der
+    // Asphalt-Antriebskraft, Utility 85 %. Der Boden *darf* nicht härter
+    // klemmen als dieser Boden — sonst bleibt ein Kite in der Wiese stehen,
+    // obwohl der Plan ihn dort durchlässt.
+    if (env.surface !== 'asphalt' && speed < DRIVE_RETAIN_SPEED) {
+      const floor = GRAVITY * 1.35 * this.#driveRetain * env.support;
+      if (floor > tractionLimit) tractionLimit = floor;
+    }
     const wheelspin = tractionLimit > 0.1 ? Math.abs(driveAccel) / tractionLimit : 0;
     const used = clamp(driveAccel, -tractionLimit, tractionLimit);
 
+    // Kriechhilfe. Extra *nach* der Haftklemme, aber mal `support`: sie holt
+    // Ember/Needle aus einer Wiese, nicht eine Wand hoch. Auf Asphalt null,
+    // damit die P18-Zahlen stehen bleiben.
+    let crawlAccel = 0;
+    if (env.surface !== 'asphalt' && !reverse && throttle > 0) {
+      const crawlT = 1 - Math.min(1, speed / ARCADE_CRAWL.speed);
+      crawlAccel =
+        throttle *
+        (spec.launchForce / this.#mass) *
+        this.#crawlShare *
+        ARCADE_CRAWL.extra *
+        crawlT *
+        env.support;
+    }
+
     return {
-      accel: used + boostAccel + brakeDecel * brakeSign + drag + roll,
+      accel: used + crawlAccel + boostAccel + brakeDecel * brakeSign + drag + roll,
       wheelspin,
       boosting,
       reverse,

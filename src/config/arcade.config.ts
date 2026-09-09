@@ -315,19 +315,52 @@ export interface ArcadeSpec {
 /**
  * Beiwerte der Beläge, als Anteil von `latG` und der Längshaftung.
  *
- * **Vier Zahlen statt zwölf.** Das Einspurmodell hatte je Fahrzeug einen eigenen
- * Wert für Kies, Gelände und Wasser — 12 Zahlen für einen Effekt, den man in
- * einem Satz beschreiben kann. Der Unterschied *zwischen* Fahrzeugen auf losem
- * Boden steckt jetzt in `looseBonus`; das ist eine Zahl je Fahrzeug statt drei.
+ * ASTRA_PLAN §5: loser Boden ist **fahrzeugspezifisch** (0,65…0,85), Wiese und
+ * flaches Wasser sind **global**. `kies` steht deshalb hier auf 1,0 und wird
+ * mit `DIRT_GRIP` multipliziert; Wiese und Wasser gelten wie geschrieben.
+ *
+ * Die alte Tabelle (`kies` 0,78 × Bonus, `gelaende` 0,70 × Bonus, `wasser`
+ * 0,45 × Bonus) machte Cairns Dirt *höher* als seine Identität (0,95 statt
+ * 0,85) und ersäufte jedes Auto im Wasser. Gegen die Tabelle gemessen.
  */
 export const ARCADE_SURFACE = {
   asphalt: 1.0,
-  /** Feldweg, Tempelaufgang. Rutschig genug, dass man es merkt. */
-  kies: 0.78,
-  /** Wiese, Waldboden, Reisterrasse. */
-  gelaende: 0.7,
-  /** Wasser. Lenkbar, aber jeder Impuls rutscht. */
-  wasser: 0.45,
+  /** Fester Feldweg / Terrace Track. Mal `DIRT_GRIP`. */
+  kies: 1.0,
+  /** Feuchte Wiese, Rain, Reisterrasse. Global — kein zweiter Dirt-Bonus. */
+  gelaende: 0.65,
+  /** Flaches Wasser (vorbereitete Furt, nasses Ufer). */
+  wasser: 0.75,
+} as const;
+
+/**
+ * Wie lange ein Belagswechsel dauern darf, in Sekunden.
+ *
+ * Ein Sprung in der Haftung liest sich als Teleport. 0,25 s ist der Planwert
+ * und eine Zeitkonstante: 63 % des Schritts nach 0,25 s. Das erste Sample
+ * nach einem Respawn setzt, damit 0–100 auf Asphalt keine Wiese erbt.
+ */
+export const GRIP_BLEND = 0.25;
+
+/**
+ * Unter diesem Tempo gilt auf losem Boden eine Untergrenze der
+ * Asphalt-Antriebskraft — 65 % Straße, 85 % Utility. 50 km/h = 13,89 m/s.
+ */
+export const DRIVE_RETAIN_SPEED = 50 / 3.6;
+
+/**
+ * Kriechhilfe auf losem Boden. Extra Launch-Kraft nach der Haftklemme,
+ * skaliert mit `support` — eine Wand trägt weiter nichts, Nitro klebt kein
+ * Coupé an die Felswand. Ember und Needle kriechen stärker; Needles Setup
+ * Safe Return nutzt `safeShare`. Asphalt bleibt unberührt (P18).
+ */
+export const ARCADE_CRAWL = {
+  share: 0.5,
+  speed: 8,
+  trackShare: 0.85,
+  safeShare: 1,
+  /** Anteil der Launch-Beschleunigung im Stand, zusätzlich zur Haftung. */
+  extra: 0.35,
 } as const;
 
 /**
@@ -515,10 +548,19 @@ export const ARCADE: Readonly<Record<VehicleId, ArcadeSpec>> = {
  gt:car(1240,320,295,9415,{latG:1.22, brakeG:1.2673, latGrip:13, yawResponse:15, steerAngle:28*Math.PI/180, steerRate:6, steerReturn:8, steerFalloff:42, driftAngle:.62, liftOversteer:.8, downforce:.08}),
  needle:car(710,300,305,6385,{latG:1.35, brakeG:1.4539, latGrip:15, yawResponse:18, steerAngle:24*Math.PI/180, steerRate:7, steerReturn:9, steerFalloff:44, driftAngle:.48, powerOversteer:.5, liftOversteer:.55, downforce:.222222, downforceSpeed:160/3.6, boostAccel:2.5}),
 };
-export const LOOSE_BONUS: Readonly<Record<VehicleId, number>> = {
- touge:1, pip:1, truck:1.0714, offroad:1.2143, torrent:1.2143,
- ribbon:1, meridian:1, morrow:1, gt:.9286, needle:.9286,
+/**
+ * Querhaftung auf festem Dirt, als Faktor von `latG`.
+ *
+ * Das *sind* die Identitätszahlen aus ASTRA_PLAN §6. `LOOSE_BONUS` war
+ * `dirt / 0,70` und multiplizierte dann `ARCADE_SURFACE.kies` 0,78 — Cairn
+ * landete bei 0,95 statt 0,85. Der Faktor ist jetzt die Tabelle selbst.
+ */
+export const DIRT_GRIP: Readonly<Record<VehicleId, number>> = {
+ touge:0.7, pip:0.7, truck:0.75, offroad:0.85, torrent:0.85,
+ ribbon:0.7, meridian:0.7, morrow:0.7, gt:0.65, needle:0.65,
 };
+/** @deprecated Use `DIRT_GRIP`. Same values; kept so older benches still import. */
+export const LOOSE_BONUS = DIRT_GRIP;
 export function topSpeed(spec: ArcadeSpec, mass=0): number {
  let low=0,high=speedFromPower(spec.power,spec.drag);
  for(let i=0;i<40;i++){

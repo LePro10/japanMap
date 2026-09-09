@@ -1,4 +1,4 @@
-import { loadTune, saveTune, type CarTune } from '@/config/tuning.config';
+import { loadTune, saveTune, loadSetup, saveSetup, type CarTune, type SetupId } from '@/config/tuning.config';
 import {
   Group,
   InstancedMesh,
@@ -259,6 +259,11 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #stuckTime = 0;
   #stuckX = 0;
   #stuckZ = 0;
+  /** Letzte trockene Straßenlage — Meer jenseits `spec.ford` setzt hierher zurück. */
+  #safeX = 0;
+  #safeZ = 0;
+  #safeYaw = 0;
+  #deepTime = 0;
 
   readonly #readouts = {
     modus: 'Freiflug',
@@ -426,6 +431,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     }
 
     this.vehicle.setTune(loadTune(this.#vehicleId));
+    this.vehicle.setSetup(loadSetup(this.#vehicleId));
     const fx = new VehicleFx();
     fx.attach(context);
     this.#fx = fx;
@@ -586,6 +592,11 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.vehicle.setTune(tune);
   }
 
+  setCarSetup(setup: SetupId): void {
+    saveSetup(this.#vehicleId, setup);
+    this.vehicle.setSetup(setup);
+  }
+
   /**
    * Simulation anhalten, solange das Spielermenü offen ist.
    *
@@ -605,10 +616,15 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   }
 
   setVehicle(id: VehicleId): void {
-    if (id === this.#vehicleId) { this.vehicle.setTune(loadTune(id)); return; }
+    if (id === this.#vehicleId) {
+      this.vehicle.setTune(loadTune(id));
+      this.vehicle.setSetup(loadSetup(id));
+      return;
+    }
     this.#vehicleId = id;
     this.vehicle.setSpec(vehicleSpec(id));
     this.vehicle.setTune(loadTune(id));
+    this.vehicle.setSetup(loadSetup(id));
     this.#applyVehicleGeometry();
     if (this.#sampler) {
       this.placeAt(this.vehicle.position.x, this.vehicle.position.z, this.vehicle.yaw);
@@ -1116,6 +1132,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     // der Zustand, in dem ein Spieler die meiste Zeit verbringt.
     this.race.drift.step(dt, this.vehicle.telemetry);
     this.#watchStuck(dt, input);
+    this.#watchDeep(dt);
   }
 
   /**
@@ -1231,6 +1248,38 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   }
 
   /**
+   * Meer tiefer als die Furttiefe des Autos — ASTRA_PLAN §3.
+   *
+   * Reisfeld und Shallow Run bleiben befahrbar: 0,08…0,12 m, unter jeder Furt
+   * außer Needles 0,10 m, und Needle soll die vorbereitete Furt durchqueren.
+   * Nur `meer` zählt, und erst nach zwei Sekunden, damit ein kurzer Uferkontakt
+   * nicht teleportiert.
+   */
+  #watchDeep(dt: number): void {
+    const sampler = this.#sampler;
+    if (!sampler || !this.#water.ready) return;
+    const x = this.vehicle.position.x;
+    const z = this.vehicle.position.z;
+    const sample = this.#water.at(x, z, sampler.getHeightAt(x, z));
+    const ford = this.vehicle.spec.ford;
+    if (sample.kind === 'meer' && sample.depth > ford) {
+      this.#deepTime += dt;
+      if (this.#deepTime < 2) return;
+      this.#deepTime = 0;
+      this.placeAt(this.#safeX, this.#safeZ, this.#safeYaw);
+      this.camera.reset(this.vehicle);
+      this.#context?.bus.emit('drive:too-deep');
+      return;
+    }
+    this.#deepTime = 0;
+    if (this.vehicle.telemetry.surface === 'asphalt' && sample.depth < ford * 0.5) {
+      this.#safeX = x;
+      this.#safeZ = z;
+      this.#safeYaw = this.vehicle.yaw;
+    }
+  }
+
+  /**
    * Einen Simulationsschritt mit ausdrücklicher Eingabe rechnen.
    *
    * Öffentlich für den Messlauf (`debug/driveProbe.ts`). Er treibt die Physik in
@@ -1331,6 +1380,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.ground.refresh(x, z, 0);
     this.vehicle.respawn(x, z, heading, this);
     this.camera.reset(this.vehicle);
+    this.#safeX = x;
+    this.#safeZ = z;
+    this.#safeYaw = heading;
+    this.#deepTime = 0;
   }
 
   /**

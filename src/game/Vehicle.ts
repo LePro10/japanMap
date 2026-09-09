@@ -1,9 +1,18 @@
-import { tunedArcade, STOCK_TUNE, type CarTune } from '@/config/tuning.config';
+import {
+  applySetup,
+  crawlShare,
+  driveRetain,
+  rideLift,
+  STOCK_TUNE,
+  tunedArcade,
+  type CarTune,
+  type SetupId,
+} from '@/config/tuning.config';
 import { Euler, Quaternion, Vector3 } from 'three';
 
 import { GRAVITY, SURFACE_FEEL } from '@/config/vehicle.config';
 import { AIR_CONTROL } from '@/config/arcade.config';
-import { ARCADE, LOOSE_BONUS } from '@/config/arcade.config';
+import { ARCADE } from '@/config/arcade.config';
 import { TOUGE, type VehicleSpec } from '@/config/vehicles.config';
 import { ArcadeDynamics, type DriveCommand, type PlanarEnv } from './arcadeDynamics';
 import {
@@ -418,7 +427,7 @@ export class Vehicle {
    * Zustand an zwei Stellen, und die Erfahrung dieses Projekts mit zwei
    * Wahrheiten für dieselbe Sache steht in CLAUDE.md gleich viermal.
    */
-  readonly #planar = new ArcadeDynamics(ARCADE.touge, LOOSE_BONUS.touge);
+  readonly #planar = new ArcadeDynamics(ARCADE.touge, TOUGE.dirt);
   /** Drehwinkel der Räder, nur fürs Bild. */
   #wheelSpin = 0;
 
@@ -517,12 +526,20 @@ export class Vehicle {
    * meldete es.
    */
   #tune: CarTune = {...STOCK_TUNE};
+  #setup: SetupId = 'road';
+  #rideLift = 0;
   setTune(tune:CarTune):void { this.#tune={...tune}; this.#syncPlanarSpec(); }
+  setSetup(setup:SetupId):void { this.#setup=setup; this.#syncPlanarSpec(); }
+  get setup(): SetupId { return this.#setup; }
 
   #syncPlanarSpec(): void {
-    this.#planar.setSpec(tunedArcade(this.#spec.id, this.#tune), LOOSE_BONUS[this.#spec.id]);
+    const arcade = applySetup(tunedArcade(this.#spec.id, this.#tune), this.#setup);
+    this.#planar.setSpec(arcade, this.#spec.dirt);
     this.#planar.setWheelbase(this.#spec.chassis.wheelbase);
     this.#planar.setMass(this.#spec.chassis.mass);
+    this.#planar.setCrawl(crawlShare(this.#spec.id, this.#setup));
+    this.#planar.setDriveRetain(driveRetain(this.#spec.id));
+    this.#rideLift = rideLift(this.#setup);
   }
 
   /** Die gerechnete Spec. Lesen darf jeder, ändern nur über `setSpec`. */
@@ -544,6 +561,7 @@ export class Vehicle {
   setSpec(spec: VehicleSpec): void {
     this.#spec = spec;
     this.#tune = {...STOCK_TUNE};
+    this.#setup = 'road';
     this.#syncPlanarSpec();
   }
 
@@ -605,7 +623,7 @@ export class Vehicle {
     // **91,9 % der Zeit in der Luft, längste Flugphase 7,7 s**.
     ground.normal(x, z, this.#normal);
     const aufrecht = Math.max(0.35, this.#normal.y);
-    this.position.set(x, groundY + this.#spec.chassis.cgHeight / aufrecht, z);
+    this.position.set(x, groundY + (this.#spec.chassis.cgHeight + this.#rideLift) / aufrecht, z);
     this.#yaw = heading;
     this.#yawRate = 0;
     // ── Und die Lage kommt vom Hang, nicht aus der Waagerechten — P21 ─────
@@ -680,7 +698,7 @@ export class Vehicle {
     // genommen werden. Nach dem zweiten Durchgang liegt der Rest unter einem
     // Millimeter.
     for (let i = 0; i < 2; i++) {
-      this.position.y = this.#contactHeight() + this.#spec.chassis.cgHeight / aufrecht;
+      this.position.y = this.#contactHeight() + (this.#spec.chassis.cgHeight + this.#rideLift) / aufrecht;
     }
     this.#updateTransform();
     this.#placeWheels();
@@ -774,7 +792,7 @@ export class Vehicle {
     // Boden; `resolveTerrainFollow` schiebt in XZ.
     const contactY = this.#contactHeight();
     const gap = this.position.y - contactY;
-    let compression = steep ? 0 : derived.springRest - gap * this.#normal.y;
+    let compression = steep ? 0 : derived.springRest + this.#rideLift - gap * this.#normal.y;
     this.#airborne = steep || compression <= 0;
 
     let springForce = 0;
