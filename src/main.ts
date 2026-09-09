@@ -4,6 +4,7 @@ import { SakuraCommons } from './world/stunt/SakuraCommons';
 import { StillwaterVillage } from './world/settlements/StillwaterVillage';
 import { MAP_LANDMARKS } from './ui/navigationMapData';
 import './style.css';
+import './ui/theme.css';
 
 import { Vector3 } from 'three';
 
