@@ -191,6 +191,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #walking = false;
   /** Menü / Foto / Karte — Physik steht, Pose bleibt. */
   #paused = false;
+  /** Open Bay zeigt einen Präsentationsklon; das Fahr-Mesh bleibt unsichtbar. */
+  #presentationHidden = false;
   #rig: WalkerRig | null = null;
   #playStarted = false;
   #spawn: WalkSpawn | null = null;
@@ -615,6 +617,17 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#touchBoost = false;
   }
 
+  /**
+   * Fahr-Mesh und Figur ausblenden, während Open Bay den Klon zeigt.
+   * `startOnFoot` / `enter` rühren `#group.visible` an — deshalb ein Flag,
+   * nicht nur ein einmaliges `visible = false`.
+   */
+  hidePresentation(hide: boolean): void {
+    this.#presentationHidden = hide;
+    if (this.#group) this.#group.visible = !hide && (this.#active || this.#walking);
+    if (this.#rig) this.#rig.group.visible = !hide && this.#walking;
+  }
+
   setVehicle(id: VehicleId): void {
     if (id === this.#vehicleId) {
       this.vehicle.setTune(loadTune(id));
@@ -760,7 +773,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.walker.respawn(spawn.x, spawn.z, Math.PI, this);
     this.walkCamera.reset(this.walker);
     this.#setWalking(true);
-    if (this.#group) this.#group.visible = true;
+    if (this.#group) this.#group.visible = !this.#presentationHidden;
     this.#readouts.modus = 'Zu Fuß';
     context.debug?.refresh();
   }
@@ -839,7 +852,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#leaveDrive();
     this.#placeWalkerBesideCar();
     this.#setWalking(true);
-    if (this.#group) this.#group.visible = true;
+    if (this.#group) this.#group.visible = !this.#presentationHidden;
     this.#readouts.modus = 'Zu Fuß';
     this.#context.debug?.refresh();
   }
@@ -903,7 +916,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     if (!this.#context) return;
     this.#active = true;
     this.#playStarted = true;
-    if (this.#group) this.#group.visible = true;
+    if (this.#group) this.#group.visible = !this.#presentationHidden;
     this.#fx?.show();
     this.#debris?.show();
     this.camera.reset(this.vehicle);
@@ -924,7 +937,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #setWalking(value: boolean): void {
     if (this.#walking === value) return;
     this.#walking = value;
-    if (this.#rig) this.#rig.group.visible = value;
+    if (this.#rig) this.#rig.group.visible = value && !this.#presentationHidden;
     if (value) {
       this.walkCamera.reset(this.walker);
       this.#readouts.modus = 'Zu Fuß';

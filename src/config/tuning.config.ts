@@ -78,3 +78,84 @@ export function loadSetup(id:VehicleId):SetupId {
 export function saveSetup(id:VehicleId,setup:SetupId):void {
  try{localStorage.setItem(`japanmap.setup.${id}`,setup);}catch{/* Sitzung bleibt spielbar. */}
 }
+
+export const TUNE_TIERS = ['Stock', 'Street', 'Sport'] as const;
+export const TUNE_CATEGORIES: readonly TuneCategory[] = ['engine', 'brakes', 'steering', 'tyres'];
+
+/**
+ * Incremental Sparks to reach that tier from the previous one — ASTRA_PLAN §6.
+ *
+ * Street is one session. Sport is the long buy. Stage II is the *additional*
+ * price, not a replacement of Stage I. Buying Sport from Stock pays both.
+ */
+export const TUNE_PRICE: Readonly<Record<TuneCategory, readonly [0, number, number]>> = {
+  engine: [0, 900, 2700],
+  brakes: [0, 600, 1800],
+  steering: [0, 600, 1800],
+  tyres: [0, 900, 2700],
+};
+
+export const TUNE_COPY: Readonly<Record<TuneCategory, { title: string; blurb: string; part: string }>> = {
+  engine: { title: 'Engine', blurb: 'Drive force and top speed. Mass stays this car\'s.', part: 'Intake & ECU' },
+  brakes: { title: 'Brakes', blurb: 'Shorter stops. The heavy cars still need room.', part: 'Pad compound' },
+  steering: { title: 'Steering', blurb: 'Quicker turn-in. High-speed lock is unchanged.', part: 'Rack & arms' },
+  tyres: { title: 'Tyres', blurb: 'More road grip. Handbrake still breaks the rear.', part: 'Compound' },
+};
+
+/** Cost to move one category from `from` to `to`. Downgrades are free. */
+export function tuneCost(category: TuneCategory, from: TuneTier, to: TuneTier): number {
+  if (to <= from) return 0;
+  let sum = 0;
+  for (let tier = (from + 1) as TuneTier; tier <= to; tier = (tier + 1) as TuneTier) {
+    sum += TUNE_PRICE[category][tier]!;
+  }
+  return sum;
+}
+
+/** Total Sparks to apply a whole preview over the fitted tune. */
+export function tunePackageCost(from: Readonly<CarTune>, to: Readonly<CarTune>): number {
+  let sum = 0;
+  for (const key of TUNE_CATEGORIES) sum += tuneCost(key, from[key], to[key]);
+  return sum;
+}
+
+export function anyTuned(tune: Readonly<CarTune>): boolean {
+  return TUNE_CATEGORIES.some((key) => tune[key] > 0);
+}
+
+export function tunesEqual(a: Readonly<CarTune>, b: Readonly<CarTune>): boolean {
+  return TUNE_CATEGORIES.every((key) => a[key] === b[key]);
+}
+
+export interface TuneReadout {
+  readonly speedKmh: number;
+  readonly latG: number;
+  readonly brakeG: number;
+  readonly yawResponse: number;
+  readonly force: number;
+  readonly bars: Readonly<Record<TuneCategory | 'speed', number>>;
+}
+
+/** Player-facing numbers for the bay HUD. Always from this car's own stock. */
+export function tuneReadout(id: VehicleId, tune: Readonly<CarTune>): TuneReadout {
+  const mass = VEHICLES[id].chassis.mass;
+  const arcade = tunedArcade(id, tune);
+  const stock = ARCADE[id];
+  const speed = topSpeed(arcade, mass);
+  const stockSpeed = topSpeed(stock, mass);
+  const speedGain = stockSpeed > 0 ? (speed / stockSpeed - 1) / 0.04 : 0;
+  return {
+    speedKmh: speed * 3.6,
+    latG: arcade.latG,
+    brakeG: arcade.brakeG,
+    yawResponse: arcade.yawResponse,
+    force: arcade.launchForce,
+    bars: {
+      engine: ([0, 50, 100] as const)[tune.engine]!,
+      brakes: ([0, 50, 100] as const)[tune.brakes]!,
+      steering: ([0, 50, 100] as const)[tune.steering]!,
+      tyres: ([0, 50, 100] as const)[tune.tyres]!,
+      speed: Math.max(0, Math.min(100, Math.round(speedGain * 100))),
+    },
+  };
+}

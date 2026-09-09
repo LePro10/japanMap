@@ -152,6 +152,21 @@ export class Profile {
   }
 
   /**
+   * Sparks für eine Tune-Stufe. Sandbox (`og123`) is free — same contract as
+   * `owns()`. Amount 0 succeeds without writing. Negative or NaN is a no-op.
+   */
+  spend(amount: number): boolean {
+    if (!Number.isFinite(amount) || amount < 0) return false;
+    if (amount === 0 || this.#sandbox) return true;
+    const cost = Math.round(amount);
+    if (this.#yen < cost) return false;
+    this.#yen -= cost;
+    this.#save();
+    this.#notify();
+    return true;
+  }
+
+  /**
    * Den Sandkasten-Code prüfen. Gibt zurück, ob der Code stimmte — auch dann,
    * wenn schon alles frei war. Die Oberfläche schließt das Feld daran, nicht
    * daran, ob sich der Bestand bewegt hat: ein zweites Mal denselben Code
