@@ -44,6 +44,8 @@ import type { WaterField } from './WaterField';
  * vor dem der Kopf von `DriveSystem` seit P14 warnt.
  */
 export class RoadGround implements Ground {
+  /** Lokale Werkböden und Zufahrten teilen ihre Dreiecke mit dem Mesh. */
+  localSurfaces: { height(x: number, z: number): number; normal(x: number, z: number, out: Vector3): boolean } | null = null;
   #sampler: TerrainSampler | null = null;
   #network: RoadNetwork | null = null;
   #water: WaterField | null = null;
@@ -254,12 +256,14 @@ export class RoadGround implements Ground {
       const ramp = this.#ramps.surfaceAt(x, z);
       if (ramp > y) y = ramp;
     }
-    return y;
+    return Math.max(y, this.localSurfaces?.height(x, z) ?? -Infinity);
   }
 
   normal(x: number, z: number, target: Vector3): Vector3 {
     const sampler = this.#sampler;
     if (!sampler) return target.set(0, 1, 0);
+    const local = this.localSurfaces;
+    if (local && local.height(x, z) >= this.height(x, z) - 0.015 && local.normal(x, z, target)) return target;
     if (this.#water?.ready) {
       const water = this.#water.at(x, z, this.#groundBase(x, z));
       if (water.depth > WATER_PHYS.floatDepth) return target.set(0, 1, 0);
@@ -283,6 +287,8 @@ export class RoadGround implements Ground {
   }
 
   surface(x: number, z: number): Surface {
+    const local = this.localSurfaces?.height(x, z) ?? -Infinity;
+    if (Number.isFinite(local) && local >= this.height(x, z) - 0.015) return 'kies';
     if (this.#halfWidth > 0 && this.#network) {
       const reach = this.#halfWidth + this.#shoulder;
       const distance = this.#network.distanceToNearestRoad(x, z, reach + 2);
@@ -312,7 +318,9 @@ export class RoadGround implements Ground {
 
   waterDepth(x: number, z: number): number {
     if (!this.#water?.ready || !this.#sampler) return 0;
-    return this.#water.at(x, z, this.#groundBase(x, z)).depth;
+    const water = this.#water.at(x, z, this.#groundBase(x, z));
+    const local = this.localSurfaces?.height(x, z) ?? -Infinity;
+    return Math.min(water.depth, Math.max(0, water.surfaceY - local));
   }
 }
 

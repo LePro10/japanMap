@@ -25,28 +25,37 @@ export class StartCinematic {
   #t0 = performance.now();
   #timer = 0;
   #reduced: boolean;
+  readonly #static: boolean;
 
   constructor(container: HTMLElement) {
-    this.#reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.#reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    // Ein ruhiges Motiv spart auf dem Telefon drei Downloads vor dem ersten Zug.
+    this.#static =
+      this.#reduced || window.matchMedia("(pointer: coarse)").matches;
 
-    this.#root = document.createElement('div');
-    this.#root.className = 'start__cine';
-    this.#root.setAttribute('aria-hidden', 'true');
+    this.#root = document.createElement("div");
+    this.#root.className = "start__cine";
+    this.#root.setAttribute("aria-hidden", "true");
 
-    for (const [i, shot] of SHOTS.entries()) {
-      const img = document.createElement('img');
-      img.className = 'start__shot';
-      img.alt = '';
-      img.decoding = 'async';
+    for (const [i, shot] of (this.#static
+      ? SHOTS.slice(0, 1)
+      : SHOTS
+    ).entries()) {
+      const img = document.createElement("img");
+      img.className = "start__shot";
+      img.alt = "";
+      img.decoding = "async";
       img.src = shot.src;
-      img.loading = i === 0 ? 'eager' : 'lazy';
-      if (i === 0) img.classList.add('is-on');
+      img.loading = i === 0 ? "eager" : "lazy";
+      if (i === 0) img.classList.add("is-on");
       this.#shots.push(img);
       this.#root.append(img);
     }
 
     container.prepend(this.#root);
-    if (!this.#reduced) this.#timer = window.setInterval(this.#tick, 250);
+    if (!this.#static) this.#timer = window.setInterval(this.#tick, 250);
   }
 
   setProgress(ratio: number): void {
@@ -65,6 +74,7 @@ export class StartCinematic {
   };
 
   #apply(): void {
+    if (this.#static) return;
     let byProgress = 0;
     for (const [i, shot] of SHOTS.entries()) {
       if (this.#progress < shot.until) {
@@ -73,11 +83,13 @@ export class StartCinematic {
       }
     }
     const elapsed = performance.now() - this.#t0;
-    const byTime = this.#reduced ? 0 : Math.floor(elapsed / SHOT_MS) % SHOTS.length;
+    const byTime = this.#reduced
+      ? 0
+      : Math.floor(elapsed / SHOT_MS) % SHOTS.length;
     const index = Math.max(byProgress, byTime);
     if (index === this.#active) return;
-    this.#shots[this.#active]?.classList.remove('is-on');
-    this.#shots[index]?.classList.add('is-on');
+    this.#shots[this.#active]?.classList.remove("is-on");
+    this.#shots[index]?.classList.add("is-on");
     this.#active = index;
   }
 }

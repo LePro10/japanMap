@@ -1,8 +1,8 @@
-import type { AppBus } from '@/core/events';
-import { TOUCH_CONTROLS, controlTable, hasTouch } from './controls';
-import { StartCinematic } from './StartCinematic';
-import { StartIsland } from './StartIsland';
-import { START_ZONES, startStepLabel } from './startCopy';
+import type { AppBus } from "@/core/events";
+import { TOUCH_CONTROLS, controlTable, hasTouch } from "./controls";
+import { StartCinematic } from "./StartCinematic";
+import { StartIsland } from "./StartIsland";
+import { START_ZONES, startStepLabel } from "./startCopy";
 
 /**
  * Ladebildschirm **und** Startbildschirm — PLAN.md P7 / 7.3, umgebaut in P13,
@@ -30,7 +30,7 @@ export class StartScreen {
   readonly #percent: HTMLElement;
   readonly #button: HTMLButtonElement;
   readonly #cinematic: StartCinematic;
-  readonly #island: StartIsland;
+  readonly #island: StartIsland | null;
 
   #ready = false;
   #gone = false;
@@ -53,9 +53,9 @@ export class StartScreen {
   #pending = false;
 
   constructor(bus: AppBus, container: HTMLElement) {
-    this.#root = document.createElement('div');
-    this.#root.className = 'start';
-    this.#root.dataset.phase = 'laden';
+    this.#root = document.createElement("div");
+    this.#root.className = "start";
+    this.#root.dataset.phase = "laden";
 
     const touch = hasTouch();
     this.#root.innerHTML = `
@@ -68,7 +68,7 @@ export class StartScreen {
       </header>
 
       <ul class="start__zones" aria-hidden="true">
-        ${START_ZONES.map((zone) => `<li data-zone="${zone.id}">${zone.label}</li>`).join('')}
+        ${START_ZONES.map((zone) => `<li data-zone="${zone.id}">${zone.label}</li>`).join("")}
       </ul>
 
       <div class="start__progress">
@@ -86,37 +86,42 @@ export class StartScreen {
         <button type="button" class="start__button">Play</button>
         <p class="start__hint">F get in the car · W A S D drive · Space handbrake</p>
         <div class="start__keys">
-          ${touch ? controlTable(TOUCH_CONTROLS, 'keytable') : ''}
+          ${touch ? controlTable(TOUCH_CONTROLS, "keytable") : ""}
         </div>
       </div>`;
     container.appendChild(this.#root);
-    document.getElementById('boot')?.remove();
+    document.getElementById("boot")?.remove();
 
     this.#cinematic = new StartCinematic(this.#root);
-    this.#island = new StartIsland(this.#root, (id) => {
-      this.#root.querySelector(`[data-zone="${id}"]`)?.classList.add('is-on');
-    });
+    // Low-Telefone laden keine zweite dekorative Karte vor dem Spiel.
+    this.#island = matchMedia("(pointer: coarse)").matches
+      ? null
+      : new StartIsland(this.#root, (id) => {
+          this.#root
+            .querySelector(`[data-zone="${id}"]`)
+            ?.classList.add("is-on");
+        });
 
-    this.#bar = this.#must('.start__bar');
-    this.#stepLabel = this.#must('.start__stepText');
-    this.#percent = this.#must('.start__percentNum');
-    this.#button = this.#must('.start__button') as HTMLButtonElement;
+    this.#bar = this.#must(".start__bar");
+    this.#stepLabel = this.#must(".start__stepText");
+    this.#percent = this.#must(".start__percentNum");
+    this.#button = this.#must(".start__button") as HTMLButtonElement;
 
-    this.#button.addEventListener('click', this.#onClick);
+    this.#button.addEventListener("click", this.#onClick);
 
-    bus.on('engine:loading', ({ step, total, label }) => {
+    bus.on("engine:loading", ({ step, total, label }) => {
       this.#setProgress(step / total);
       this.#stepLabel.textContent = startStepLabel(label);
     });
 
-    bus.on('resources:error', ({ url }) => {
-      const detail = this.#must('.start__detail');
+    bus.on("resources:error", ({ url }) => {
+      const detail = this.#must(".start__detail");
       detail.hidden = false;
       detail.textContent = `could not load ${basename(url)}`;
-      detail.classList.add('start__detail--error');
+      detail.classList.add("start__detail--error");
     });
 
-    bus.on('engine:warmedup', () => {
+    bus.on("engine:warmedup", () => {
       this.ready();
     });
   }
@@ -148,18 +153,20 @@ export class StartScreen {
     if (this.#ready) return;
     this.#ready = true;
     this.#setProgress(1);
-    this.#stepLabel.textContent = startStepLabel('fertig');
-    this.#island.setReady();
-    console.info(`Ladebildschirm: ${((performance.now() - this.#started) / 1000).toFixed(1)} s.`);
+    this.#stepLabel.textContent = startStepLabel("fertig");
+    this.#island?.setReady();
+    console.info(
+      `Ladebildschirm: ${((performance.now() - this.#started) / 1000).toFixed(1)} s.`,
+    );
 
-    this.#root.dataset.phase = 'bereit';
+    this.#root.dataset.phase = "bereit";
     this.#button.focus();
   }
 
   dispose(): void {
-    this.#button.removeEventListener('click', this.#onClick);
+    this.#button.removeEventListener("click", this.#onClick);
     this.#cinematic.dispose();
-    this.#island.dispose();
+    this.#island?.dispose();
     this.#root.remove();
     this.#gone = true;
     this.#ready = true;
@@ -185,19 +192,19 @@ export class StartScreen {
   #leave(): void {
     if (this.#gone) return;
     this.#gone = true;
-    this.#root.classList.add('start--done');
+    this.#root.classList.add("start--done");
     this.#root.addEventListener(
-      'transitionend',
+      "transitionend",
       () => {
         this.#cinematic.dispose();
-        this.#island.dispose();
+        this.#island?.dispose();
         this.#root.remove();
       },
       { once: true },
     );
     setTimeout(() => {
       this.#cinematic.dispose();
-      this.#island.dispose();
+      this.#island?.dispose();
       this.#root.remove();
     }, 700);
   }
@@ -207,7 +214,7 @@ export class StartScreen {
     this.#bar.style.width = `${(this.#highest * 100).toFixed(1)}%`;
     this.#percent.textContent = `${Math.round(this.#highest * 100)}`;
     this.#cinematic.setProgress(this.#highest);
-    this.#island.setProgress(this.#highest);
+    this.#island?.setProgress(this.#highest);
   }
 
   #must(selector: string): HTMLElement {
@@ -218,5 +225,5 @@ export class StartScreen {
 }
 
 function basename(url: string): string {
-  return url.split('/').pop() ?? url;
+  return url.split("/").pop() ?? url;
 }

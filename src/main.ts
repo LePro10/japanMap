@@ -1,3 +1,8 @@
+import { PhotoMode } from './ui/PhotoMode';
+import { callPlayerCar } from './ui/callPlayerCar';
+import { SakuraCommons } from './world/stunt/SakuraCommons';
+import { StillwaterVillage } from './world/settlements/StillwaterVillage';
+import { MAP_LANDMARKS } from './ui/navigationMapData';
 import './style.css';
 
 import { Vector3 } from 'three';
@@ -801,6 +806,10 @@ async function boot(): Promise<void> {
   // die UND-Verknüpfung in der PostFX-Kette sicher, nicht diese Zeile.
   const quality = new QualitySystem();
   engine.add(quality);
+  const commons = new SakuraCommons(drive, overlay);
+  engine.add(commons);
+  const settlements = new StillwaterVillage(drive, overlay);
+  engine.add(settlements);
 
   // Erste Größe setzen, bevor der ResizeObserver das erste Mal feuert — sonst
   // rendert der erste Frame mit 1×1 Pixeln.
@@ -833,7 +842,15 @@ async function boot(): Promise<void> {
   // „Starten"-Knopf. Der Knopf steht also, bevor die Zeile darunter läuft —
   // deshalb merkt sich `StartScreen` einen Druck, für den noch niemand
   // zuständig war, statt ihn fallen zu lassen.
+  const photo = new PhotoMode(engine, overlay);
   const ui = new PlayerUi({
+    openMap: () => drive.openMap(),
+    callCar: () => callPlayerCar(drive),
+    openPhoto: (onExit) => {
+      const p = drive.walking ? drive.walker.position : drive.vehicle.position;
+      const place = [...MAP_LANDMARKS].sort((a,b) => Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z))[0];
+      photo.open(drive.vehicleId, (place?.label ?? 'Island').replace(/[^a-zA-Z0-9]+/g,'-'), onExit);
+    },
     bus: engine.bus,
     canvas,
     container: overlay,
@@ -874,6 +891,9 @@ async function boot(): Promise<void> {
       setHandbrake: (down) => {
         drive.setTouchHandbrake(down);
       },
+      setBoost: (down) => {
+        drive.setTouchBoost(down);
+      },
       setJump: (down) => {
         drive.setTouchJump(down);
       },
@@ -883,6 +903,7 @@ async function boot(): Promise<void> {
       setVehicle: (id) => {
         drive.setVehicle(id);
       },
+      setCarTune: (tune) => drive.setCarTune(tune),
     },
     // ── Die Veranstaltungen — P23 ────────────────────────────────────────
     //
@@ -935,7 +956,10 @@ async function boot(): Promise<void> {
     },
   });
 
-  // Der „Starten"-Knopf holt den Pointer Lock — **synchron im Klick**, sonst ist
+  commons.openShop = tune => ui.openCommonsShop(tune);
+  commons.isPlaying = () => ui.playing;
+  settlements.isPlaying = () => ui.playing;
+  // Der „Starten“-Knopf holt den Pointer Lock — **synchron im Klick**, sonst ist
   // die Nutzergeste verbraucht und der Browser lehnt ab.
   loading?.onStart(() => {
     // **Im Klick selbst**, nicht danach: ein `AudioContext` bleibt für immer
@@ -946,11 +970,11 @@ async function boot(): Promise<void> {
     audio.unlock();
     ui.begin();
     // Zu Fuß in der Sakura-Schale, nicht im Freiflug und nicht schon im Auto.
-    // Der Seed aus `Date.now()` macht den Fleck je Sitzung ein anderer, immer
-    // in demselben Kreis — Begründung in `rollWalkSpawn`.
+    // Fester Hofanker: Wagen vier Meter nördlich, Fahrertür im ersten Blick.
     drive.startOnFoot();
   });
   audio.armAutoUnlock();
+  import.meta.hot?.dispose(() => { photo.dispose(); ui.dispose(); });
 
   if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive);
 }

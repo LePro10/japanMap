@@ -30,6 +30,7 @@ import { TERRAIN_ASSETS } from '../terrainAssets';
 import type { RiverFile } from '../water/riverGeometry';
 import { createLandmarkMeshes, type LandmarkId } from './landmarkMeshes';
 import { PropClearance } from './PropClearance';
+import { settlementClearance } from '../settlements/settlementLayout';
 import { modelUrl, PROP_ASSETS, type ModelManifest } from './propAssets';
 
 /** Eine Stufe eines Assets: Geometrie plus die Instanzen, die sie zeichnet. */
@@ -187,6 +188,7 @@ export class PropSystem implements System {
     // Streuung hört darauf und verwirft ihren Cache; passierte das später,
     // stünden die zuerst erzeugten Chunks weiter voller Bäume.
     const clearance = new PropClearance();
+    settlementClearance((x, z, r) => clearance.add(x, z, r));
     for (const placement of file.props) {
       const radius = PROP_CLEARANCE[placement.id];
       if (radius) clearance.add(placement.x, placement.z, radius * placement.scale);

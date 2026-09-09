@@ -1,75 +1,36 @@
+import { loadTune, saveTune, tunedArcade, type CarTune, type TuneCategory, type TuneTier } from '@/config/tuning.config';
+import { topSpeed } from '@/config/arcade.config';
+import aerialMapUrl from "../../assets/generated/terrain/navigation-map.webp?url";
 import {
-  CUSTOM_LIMITS,
   QUALITY,
   QUALITY_LEVELS,
-  customFromSettings,
-  type AoQuality,
-  type CustomQuality,
+  CUSTOM_LIMITS,
   type QualityKey,
-} from '@/config/quality.config';
-import { GRID_VERTICES_ALLOWED, lodMetersPerVertex, type GridVertices } from '@/config/lod.config';
-import type { PostFxQuality } from '@/config/postfx.config';
-import { VEHICLES, VEHICLE_ORDER, type VehicleId } from '@/config/vehicles.config';
-import { formatTime } from '@/game/BestTimes';
-import type { RaceEvent } from '@/config/events.config';
-import type { AppBus } from '@/core/events';
-import { VIEWPOINTS, applyViewpoint, type CameraPlacer } from '@/debug/viewpoints';
+  type CustomQuality,
+} from "@/config/quality.config";
 import {
-  CONTROLS,
-  DRIVE_CONTROLS,
-  FLY_CONTROLS,
-  TOUCH_CONTROLS,
-  TOUCH_DRIVE_CONTROLS,
-  controlTable,
-  hasTouch,
-} from './controls';
+  VEHICLES,
+  VEHICLE_ORDER,
+  type VehicleId,
+} from "@/config/vehicles.config";
+import type { RaceEvent } from "@/config/events.config";
+import type { AppBus } from "@/core/events";
+import type { CameraPlacer } from "@/debug/viewpoints";
+import { formatTime } from "@/game/BestTimes";
 import {
   TouchControls,
   type TouchCameraTarget,
   type TouchDriveTarget,
-} from './TouchControls';
+} from "./TouchControls";
+import {
+  CONTROLS,
+  DRIVE_CONTROLS,
+  TOUCH_DRIVE_CONTROLS,
+  controlTable,
+} from "./controls";
+import { CAR_COPY, carPortrait } from "./carPresentation";
+import "./playerMenu.css";
 
-/**
- * Die Oberfläche für den Spieler — PLAN.md P10.2, umgebaut in P13.
- *
- * ## Warum es sie bis P10 nicht gab, und warum das ein Loch war
- *
- * Alles Bedienbare dieses Projekts hing bis dahin am Debug-Panel, und das steckt
- * hinter `import.meta.env.DEV`. Im **gebauten** Stand gab es damit: keinen
- * Hinweis auf die Steuerung (WASD, Maus, Shift muss man raten), keine
- * Möglichkeit, die Qualitätsstufe zu ändern, keine Pause und keinen Weg zu den
- * Blickpunkten.
- *
- * ## Der Zustand ist der Pointer Lock, nicht ein eigenes Flag
- *
- * Es gibt genau drei Zustände, und zwei davon hängen an einer Größe, die der
- * **Browser** führt:
- *
- * | Pointer Lock | schon gestartet | Anzeige |
- * |---|---|---|
- * | ja | — | nichts (man fliegt) |
- * | nein | nein | Startbildschirm (`StartScreen`, liegt darüber) |
- * | nein | ja | Pausenmenü |
- *
- * Das ist Absicht und spart die übliche Fehlerquelle: Escape löst den Lock
- * **selbst**, das kann keine Anwendung abfangen. Wer das Menü an einen eigenen
- * Escape-Zähler hängt, läuft irgendwann aus dem Tritt — Fenster wechseln,
- * Alt-Tab und der Vollbildwechsel lösen den Lock ebenfalls, ohne dass eine
- * Taste gedrückt wurde. Zugehört wird deshalb dem `pointerlockchange`.
- *
- * ## Was P13 geändert hat
- *
- * 1. **Der Hinweiskasten ist weg.** Die mittlere Bildfläche gehört im Flug der
- *    Karte und sonst niemandem. Die Steuerungstabelle steht jetzt auf dem
- *    Startbildschirm und im Reiter „Steuerung"; die Geste, die den Pointer Lock
- *    holt, ist der „Starten"-Knopf statt eines Klicks ins Bild.
- * 2. **Das Menü hat Reiter.** Vorher war es eine Seite mit vier Abschnitten
- *    untereinander, und die Reglerliste allein war länger als ein Telefonbild.
- * 3. **Debug wohnt im Menü.** Zahlenblock und Werkzeugleiste starten
- *    **ausgeschaltet** und werden im Reiter „Debug" eingeschaltet — den es nur
- *    gibt, wenn eine Debug-Steuerung übergeben wurde, also nur im Dev-Build.
- *    Tweakpane und stats-gl bleiben damit aus dem Produktions-Bundle (SPEC §4).
- */
 export interface QualityControl {
   readonly level: QualityKey;
   set(level: QualityKey): void;
@@ -77,1159 +38,604 @@ export interface QualityControl {
   seedCustomFrom(level: QualityKey): void;
   reclassify(): void;
 }
-
-/**
- * Was das Menü von der Debug-UI braucht — bewusst vier Zeilen und kein `import`.
- *
- * `PlayerUi` liegt unter `src/ui/` und wird **ohne** `import.meta.env.DEV`
- * ausgeliefert. Ein Typ-Import auf `DebugPanel` wäre folgenlos (Typen werden
- * gelöscht), ein Wert-Import zöge Tweakpane ins Bundle. Diese Schnittstelle
- * hält beides auseinander: im Dev-Build reicht `main.ts` eine Implementierung
- * herein, im Build ist das Feld schlicht nicht gesetzt.
- */
 export interface DebugControl {
-  /** Der Zahlenblock oben links (Draw-Calls, Dreiecke, GPU-ms). */
   statsVisible: boolean;
-  /** Die Tweakpane-Werkzeugleiste oben rechts. */
   paneVisible: boolean;
 }
-
-/**
- * Was das Menü vom Fahrmodus braucht — dieselbe schmale Bauart wie
- * `QualityControl` und `DebugControl`, und aus demselben Grund: `PlayerUi` soll
- * kein System importieren.
- *
- * **Warum der Umschalter ins Menü gehört und nicht nur auf die Taste `V`.**
- * `DriveSystem.#onKeyDown` steigt ohne Pointer Lock aus. Das ist dort richtig
- * (ohne gefangenen Zeiger liegt das Menü über dem Bild, und eine Taste gehört
- * dann dem Menü), heißt aber: auf jedem Gerät ohne Lock — also **jedem
- * Telefon** — gab es überhaupt keinen Weg ins Auto. Der Menüeintrag ist der
- * zeigergeräteunabhängige, der Knopf in `TouchControls` der schnelle.
- */
 export interface DriveControl extends TouchDriveTarget {
-  /**
-   * Die Fahrzeugwahl — P18.
-   *
-   * **Nicht in `TouchDriveTarget`**, und das ist die Grenze zwischen den beiden:
-   * das Bedienfeld hat vier Knöpfe für Sachen, die man **während der Fahrt**
-   * braucht (Gas, Handbremse, Zurücksetzen, Menü). Ein Fahrzeugwechsel gehört
-   * dorthin nicht — er passiert einmal, mit Bedenkzeit, und braucht Namen und
-   * Kennzahlen daneben. Das ist ein Menü und kein Daumenknopf.
-   */
   readonly vehicleId: VehicleId;
   setVehicle(id: VehicleId): void;
+  setCarTune(tune:CarTune):void;
 }
-
-/**
- * Was das Menü von der Tonschicht braucht.
- *
- * `click()` gehört dazu, weil die Oberfläche ihre eigenen Geräusche macht — und
- * weil ein Klick auf den Stummschalter selbst **keinen** machen darf, sonst
- * klingt Ausschalten nach Einschalten.
- */
 export interface AudioControl {
   readonly muted: boolean;
   setMuted(muted: boolean): void;
   click(): void;
 }
-
+export interface EventsControl {
+  readonly list: readonly RaceEvent[];
+  readonly yen: number;
+  bestOf(eventId: string): number | null;
+  driftBestOf(eventId: string): number;
+  readonly runningEvent: string | null;
+  start(eventId: string): void;
+  abort(): void;
+  owns(id: VehicleId): boolean;
+  price(id: VehicleId): number;
+  buy(id: VehicleId): boolean;
+  enterCode(code: string): boolean;
+  onChange(fn: () => void): void;
+}
 export interface PlayerUiOptions {
   readonly bus: AppBus;
   readonly canvas: HTMLCanvasElement;
   readonly container: HTMLElement;
   readonly quality: QualityControl;
-  /** Der Fahrmodus. Fehlt er, gibt es die Modus-Zeile im Menü nicht. */
   readonly drive?: DriveControl;
-  /** Die Tonschicht. Fehlt sie, gibt es den Stummschalter nicht. */
   readonly audio?: AudioControl;
-  /**
-   * Das Fahr-HUD. Es gehört `main.ts` (dort läuft die Aktualisierung je Frame);
-   * das Menü sagt ihm nur, wann es im Weg steht — genau wie dem Bedienfeld.
-   */
   readonly hud?: { setMenuOpen(open: boolean): void };
-  /**
-   * Die Kamera. `CameraPlacer` für die Blickpunkte, `TouchCameraTarget` für die
-   * Fingersteuerung — `FreeFlyController` erfüllt beides, und die Oberfläche
-   * kennt trotzdem nur die beiden schmalen Schnittstellen und nicht das System.
-   */
   readonly camera: CameraPlacer & TouchCameraTarget;
-  /** Nur im Dev-Build gesetzt. Fehlt sie, gibt es den Reiter „Debug" nicht. */
   readonly debug?: DebugControl;
-  /**
-   * Die Veranstaltungen — P23.
-   *
-   * Dieselbe schmale Bauart wie `DriveControl` und `QualityControl`, und aus
-   * demselben Grund: `PlayerUi` importiert kein System. Fehlt sie, gibt es den
-   * Reiter „Events" nicht — und damit auch keine Anzeige, die etwas anbietet,
-   * das niemand starten kann.
-   */
   readonly events?: EventsControl;
+  readonly openMap?: () => void;
+  readonly openPhoto?: (onExit: (resume?: boolean) => void) => void;
+  readonly callCar?: () => string;
 }
+type Tab = "play" | "cars" | "map" | "records" | "photo" | "settings";
+const TABS: readonly Tab[] = [
+  "play",
+  "cars",
+  "map",
+  "records",
+  "photo",
+  "settings",
+];
 
-/** Was das Menü über Veranstaltungen und Fortschritt wissen muss. */
-export interface EventsControl {
-  readonly list: readonly RaceEvent[];
-  /** Kontostand in ¥. */
-  readonly yen: number;
-  /** Bestzeit einer Veranstaltung in Sekunden, oder `null`. */
-  bestOf(eventId: string): number | null;
-  /** Höchste Driftpunktzahl einer Veranstaltung. */
-  driftBestOf(eventId: string): number;
-  /** Läuft gerade eine? Dann steht dort „Abort" statt „Start". */
-  readonly runningEvent: string | null;
-  start(eventId: string): void;
-  abort(): void;
-  /** Gehört dem Spieler dieses Fahrzeug schon? */
-  owns(id: VehicleId): boolean;
-  price(id: VehicleId): number;
-  buy(id: VehicleId): boolean;
-  /**
-   * Ein Code. Die Oberfläche kennt den Wortlaut nicht — sie reicht durch
-   * und schließt das Feld am Rückgabewert. Heute der Sandkasten (Autos,
-   * später Tunes und Upgrades); ein zweiter Code wäre eine zweite Zeile
-   * in `Profile`, nicht ein zweites Feld hier.
-   */
-  enterCode(code: string): boolean;
-  /** Ein Rückruf, der bei jeder Änderung des Kontostands feuert. */
-  onChange(fn: () => void): void;
-}
-
-const AO_LABELS: Readonly<Record<AoQuality, string>> = {
-  high: 'high',
-  medium: 'medium',
-  low: 'low',
-  off: 'off',
-};
-
-const POSTFX_LABELS: Readonly<Record<PostFxQuality, string>> = {
-  full: 'full',
-  reduced: 'reduced',
-  lean: 'lean',
-  // „kompakt" und nicht „minimal": die Stufe *behält* den Farbstich und die
-  // Vignette und lässt nur Bloom und Kantenglättung weg. Wer „minimal" liest,
-  // erwartet weniger, als sie liefert.
-  compact: 'compact',
-  off: 'off',
-};
-
-type TabKey = 'events' | 'garage' | 'grafik' | 'steuerung' | 'blick' | 'debug';
-
+/** Spieleroberfläche: Vorschau und ausdrückliche Aktionen bleiben getrennt. */
 export class PlayerUi {
-  readonly #bus: AppBus;
-  readonly #canvas: HTMLCanvasElement;
-  readonly #quality: QualityControl;
-  readonly #camera: CameraPlacer;
-  readonly #debug: DebugControl | null;
-  readonly #drive: DriveControl | null;
-  readonly #audio: AudioControl | null;
-  readonly #hud: { setMenuOpen(open: boolean): void } | null;
-  readonly #events: EventsControl | null;
-
+  readonly #o: PlayerUiOptions;
   readonly #menu: HTMLElement;
-  readonly #levelRow: HTMLElement;
-  readonly #effect: HTMLElement;
-  readonly #sliders: HTMLElement;
-
-  #menuOpen = false;
-  /**
-   * Die Weltkarte ist offen. Eigenes Flag neben `#menuOpen`, sonst würde
-   * der Lock-Verlust beim Öffnen der Karte das Pausenmenü aufklappen —
-   * genau der Zustand, den `map:open` verhindern soll.
-   */
-  #mapOpen = false;
-  /**
-   * Hat der Nutzer schon einmal angefangen zu fliegen?
-   *
-   * **Hieß bis P12.4 `#everLocked` und hing allein am Pointer Lock.** Das war
-   * der Grund, warum auf einem Telefon nie ein Menü aufging: der Lock kommt
-   * dort nicht zustande (iOS Safari kennt ihn nicht, Android lehnt ihn bei
-   * Fingereingabe ab), also blieb das Flag für immer falsch — und mit ihm der
-   * einzige Weg ins Pausenmenü verschlossen. Der Zustand heißt jetzt, was er
-   * bedeutet; seit P13 setzt ihn der „Starten"-Knopf, unabhängig vom Zeigegerät.
-   */
+  readonly #touch: TouchControls;
+  readonly #off: Array<() => void> = [];
   #started = false;
-  /** Wahr, solange die Regler aus dem Zustand gefüllt werden — verhindert Rückkopplung. */
-  #syncing = false;
-  #tab: TabKey = 'events';
-  #touch: TouchControls | null = null;
+  #open = false;
+  #map = false;
+  #photo = false;
+  #tab: Tab = "play";
+  #catalogue: "owned" | "showroom" = "owned";
+  #preview: VehicleId;
 
   constructor(options: PlayerUiOptions) {
-    this.#bus = options.bus;
-    this.#canvas = options.canvas;
-    this.#quality = options.quality;
-    this.#camera = options.camera;
-    this.#debug = options.debug ?? null;
-    this.#drive = options.drive ?? null;
-    this.#audio = options.audio ?? null;
-    this.#hud = options.hud ?? null;
-    this.#events = options.events ?? null;
-    this.#events?.onChange(() => {
-      this.#syncGarage();
-    });
-
-    this.#menu = this.#buildMenu();
+    this.#o = options;
+    this.#preview = options.drive?.vehicleId ?? "touge";
+    this.#menu = this.#build();
     options.container.append(this.#menu);
-
     this.#touch = new TouchControls({
       canvas: options.canvas,
       container: options.container,
       camera: options.camera,
-      onMenu: () => {
-        this.#menuOpen = true;
-        this.#render();
-      },
+      onMenu: () => this.#show(),
       ...(options.drive ? { drive: options.drive } : {}),
     });
-
-    this.#levelRow = this.#must(this.#menu, '.menu__levels');
-    this.#effect = this.#must(this.#menu, '.menu__effect');
-    this.#sliders = this.#must(this.#menu, '.menu__sliders');
-
-    this.#fillLevels();
-    this.#fillSliders();
-    this.#fillVehicles();
-    this.#fillEvents();
-    this.#fillViewpoints();
-    this.#fillDebug();
-
-    this.#bus.on('quality:changed', () => {
-      this.#syncQuality();
-    });
-    // F1 schaltet dieselben zwei Sachen wie die Kästchen im Reiter „Debug".
-    // Ohne diesen Weg zeigte das Menü nach einem Tastendruck den alten Stand —
-    // die Anzeige, die lügt, gegen die dieses Projekt schon zweimal angetreten
-    // ist.
-    this.#bus.on('debug:visibility', () => {
-      this.#syncDebug();
-    });
-    // Der dritte Weg in den Fahrmodus ist die Taste `V`, und die geht am Menü
-    // vorbei. `DriveSystem` sendet bei **jedem** Wechsel — also führen alle drei
-    // Wege durch diesen einen Zuhörer, statt jeder seine eigene Anzeige zu
-    // pflegen.
-    this.#bus.on('drive:mode', () => {
-      this.#syncDrive();
-    });
-    this.#bus.on('walk:mode', () => {
-      this.#syncDrive();
-    });
-    // Und derselbe Weg für die Fahrzeugwahl: der Wechsel kann auch aus dem
-    // Debug-Panel kommen.
-    this.#bus.on('drive:vehicle', () => {
-      this.#syncVehicles();
-    });
-    this.#bus.on('map:open', () => {
-      this.#mapOpen = true;
-      this.#menuOpen = false;
-      this.#render();
-    });
-    this.#bus.on('map:close', ({ resume }) => {
-      this.#mapOpen = false;
-      if (!resume && this.#started && !this.#touchMode && !this.#locked) {
-        this.#menuOpen = true;
+    this.#off.push(
+      options.bus.on("quality:changed", () => this.#syncQuality()),
+      options.bus.on("drive:mode", () => this.#syncDrive()),
+      options.bus.on("walk:mode", () => this.#syncDrive()),
+      options.bus.on("drive:vehicle", () => {
+        this.#preview = options.drive?.vehicleId ?? "touge";
+        this.#cars();
+      }),
+      options.bus.on("map:open", () => {
+        this.#map = true;
+        this.#open = false;
+        this.#render();
+      }),
+      options.bus.on("map:close", ({ resume }) => {
+        this.#map = false;
+        if (!resume) this.#show();
+        else this.#render();
+      }),
+    );
+    options.events?.onChange(() => {
+      if (this.#open) {
+        this.#cars();
+        this.#records();
       }
-      this.#render();
     });
-
-    document.addEventListener('pointerlockchange', this.#onPointerLockChange);
-    document.addEventListener('pointerlockerror', this.#onPointerLockError);
-    window.addEventListener('keydown', this.#onKeyDown);
-    // Auf Touch schließt die erste Berührung nichts mehr auf — der
-    // Startbildschirm hat das übernommen —, sie zählt aber weiter als „gestartet":
-    // wer über den Rückfallpfad (Startbildschirm entsorgt) hier landet, soll
-    // trotzdem ein Menü öffnen können.
-    this.#canvas.addEventListener('pointerdown', this.#onCanvasPointerDown);
-
+    document.addEventListener("pointerlockchange", this.#lockChanged);
+    document.addEventListener("pointerlockerror", this.#lockError);
+    window.addEventListener("keydown", this.#key);
+    this.#qualityControls();
     this.#syncQuality();
-    this.#syncDebug();
     this.#syncDrive();
-    this.#syncAudio();
+    this.#cars();
+    this.#records();
+    this.#events();
     this.#render();
   }
-
-  /**
-   * Der Startbildschirm ist bedient worden — ab hier fliegt der Nutzer.
-   *
-   * Wird **synchron im Klick** des „Starten"-Knopfes gerufen; `requestPointerLock`
-   * verlangt die Nutzergeste, und die überlebt kein `await`.
-   */
   begin(): void {
     this.#started = true;
-    this.#menuOpen = false;
+    this.#resume();
+  }
+  openCommonsShop(tune: boolean): void {
+    this.#show();
+    if (document.pointerLockElement) document.exitPointerLock();
+    this.#tab = "cars";
+    const title = this.#el('[data-panel="cars"] h1');
+    title.textContent = tune ? "Open Bay · Tune" : "Petal Motors · Cars";
+    const note = this.#el('[data-panel="cars"] .menu__garageNote');
+    note.textContent = tune
+      ? "Open Bay · Tune — Engine, Brakes, Steering, Tyres. Fit Stock, Street or Sport to each owned car for free."
+      : "Petal Motors · Browse your cars or the showroom.";
+    title.insertAdjacentElement("afterend", note);
+    this.#el('[data-panel="cars"]').scrollTop = 0;
     this.#render();
-    if (!this.#touchMode) this.#requestLock();
   }
-
-  dispose(): void {
-    document.removeEventListener('pointerlockchange', this.#onPointerLockChange);
-    document.removeEventListener('pointerlockerror', this.#onPointerLockError);
-    window.removeEventListener('keydown', this.#onKeyDown);
-    this.#canvas.removeEventListener('pointerdown', this.#onCanvasPointerDown);
-    this.#touch?.dispose();
-    this.#touch = null;
-    this.#menu.remove();
+  get playing(): boolean {
+    return this.#started && !this.#open && !this.#map && !this.#photo;
   }
-
-  // ── Zustand ────────────────────────────────────────────────────────────
-
-  get #locked(): boolean {
-    return document.pointerLockElement === this.#canvas;
-  }
-
-  /** Steuert der Nutzer mit dem Finger? Dann gibt es keinen Pointer Lock. */
-  get #touchMode(): boolean {
-    return this.#touch?.enabled ?? false;
-  }
-
-  readonly #onCanvasPointerDown = (event: PointerEvent): void => {
-    if (event.pointerType === 'mouse') return;
-    this.#started = true;
-  };
-
-  readonly #onPointerLockChange = (): void => {
-    if (this.#locked) {
-      this.#started = true;
-      this.#menuOpen = false;
-    } else if (this.#started && !this.#touchMode && !this.#mapOpen) {
-      // Lock verloren, ohne dass jemand „Weiter" gedrückt hat: Escape,
-      // Fensterwechsel, Vollbildwechsel. In allen Fällen will der Nutzer nicht
-      // mehr fliegen — also Menü, nicht stiller Stillstand.
-      // Ausnahme: die Karte gibt den Lock selbst ab, damit man klicken kann.
-      this.#menuOpen = true;
-    }
+  #show(): void {
+    this.#open = true;
+    this.#tab = "play";
+    this.#events();
+    this.#cars();
+    this.#records();
+    this.#syncDrive();
     this.#render();
-  };
-
-  /**
-   * Der Lock wurde **abgelehnt**, nicht verloren.
-   *
-   * Chrome sperrt eine neue Anforderung für rund 1,25 s, nachdem der Nutzer
-   * selbst mit Escape ausgestiegen ist — wer zweimal schnell hintereinander
-   * Escape drückt und „Weiter" wählt, landet genau darin.
-   *
-   * **Bis P13 wurde hier das Menü geschlossen**, weil dann der Hinweiskasten
-   * „Klick ins Bild" übernahm. Den gibt es nicht mehr, und ohne ihn wäre ein
-   * geschlossenes Menü nach einer abgelehnten Anforderung ein Bild ganz ohne
-   * Bedienelement: der Lock kam nicht, also reagiert auch keine Taste. Das Menü
-   * bleibt deshalb **offen** — sein „Weiter" ist der Wiederholversuch, und die
-   * Sperre ist nach gut einer Sekunde von selbst vorbei.
-   */
-  readonly #onPointerLockError = (): void => {
-    this.#menuOpen = this.#started;
-    this.#render();
-  };
-
-  readonly #onKeyDown = (event: KeyboardEvent): void => {
-    if (event.code !== 'Escape') return;
-    // Im gefangenen Zustand kommt dieses Ereignis gar nicht erst an — der
-    // Browser löst den Lock und wir hören `pointerlockchange`. Hier geht es nur
-    // um den Weg zurück.
-    if (this.#locked) return;
-    if (!this.#started) return;
-    event.preventDefault();
-    // Code-Feld zuerst: Escape im leeren Feld darf nicht gleich das ganze
-    // Menü zumachen. Dasselbe Muster wie „ein von Hand gesetzter Zustand"
-    // umgekehrt — der sichtbare Zustand (Feld offen) ist der, den Escape
-    // zuerst meint.
-    if (this.#codeOpen()) {
-      this.#hideCode();
-      return;
-    }
-    if (this.#menuOpen) this.#resume();
-    else {
-      this.#menuOpen = true;
-      this.#render();
-    }
-  };
-
+    this.#el(".menu__resume").focus();
+  }
   #resume(): void {
-    this.#hideCode();
-    this.#menuOpen = false;
+    this.#open = false;
     this.#render();
-    // **Auf Touch wird kein Lock angefordert.** Er käme nicht zustande, und der
-    // abgelehnte Versuch wirft auf iOS Safari (`requestPointerLock` fehlt dort
-    // ganz) einen Fehler, der die Fortsetzung des Menüs mitnähme.
-    if (!this.#touchMode) this.#requestLock();
-  }
-
-  #requestLock(): void {
-    // `requestPointerLock()` liefert in neueren Browsern eine Zusage, in
-    // älteren `undefined`, und auf iOS Safari gibt es die Funktion **gar
-    // nicht**. Alle drei müssen hier durchgehen, und eine abgelehnte Zusage
-    // darf nicht als unbehandelter Fehler in der Konsole landen —
-    // `pointerlockerror` fängt denselben Fall für die alten.
-    if (typeof this.#canvas.requestPointerLock !== 'function') return;
-    const result: unknown = this.#canvas.requestPointerLock();
-    if (result instanceof Promise) {
-      result.catch(() => {
-        this.#onPointerLockError();
-      });
+    if (!this.#touch.enabled && this.#o.canvas.requestPointerLock) {
+      const result: unknown = this.#o.canvas.requestPointerLock();
+      if (result instanceof Promise) result.catch(() => this.#lockError());
     }
   }
-
+  readonly #lockChanged = (): void => {
+    if (document.pointerLockElement === this.#o.canvas) {
+      this.#started = true;
+      this.#open = false;
+      this.#render();
+    } else if (
+      this.#started &&
+      !this.#touch.enabled &&
+      !this.#map &&
+      !this.#photo
+    ) {
+      if (this.#open) this.#render();
+      else this.#show();
+    }
+  };
+  readonly #lockError = (): void => {
+    if (!this.#photo && !this.#map) this.#show();
+  };
+  readonly #key = (event: KeyboardEvent): void => {
+    if (!this.#started || this.#map || this.#photo) return;
+    if (
+      event.target instanceof HTMLInputElement ||
+      event.target instanceof HTMLSelectElement
+    )
+      return;
+    if (event.code === "KeyP") {
+      event.preventDefault();
+      this.#enterPhoto();
+    }
+    if (
+      event.code === "Escape" &&
+      document.pointerLockElement !== this.#o.canvas
+    ) {
+      event.preventDefault();
+      if (this.#open) this.#resume();
+      else this.#show();
+    }
+  };
   #render(): void {
-    // Beim Öffnen die Liste neu beschriften — Bestzeiten und Kontostand haben
-    // sich seit dem letzten Mal geändert. Begründung bei `#fillEventList`.
-    if (this.#menuOpen) this.#syncGarage();
-    else this.#hideCode();
-    this.#menu.hidden = !this.#menuOpen || (!this.#touchMode && this.#locked);
-    // Das Bedienfeld gehört nicht über das offene Menü und nicht über die Karte.
-    this.#touch?.setVisible(!this.#menuOpen && !this.#mapOpen);
-    // Und das HUD ebenso wenig: bei 375 × 812 liegt der Rundenkasten sonst
-    // genau auf der Kopfzeile des Menüs, also auf dem „Weiter"-Knopf.
-    this.#hud?.setMenuOpen(this.#menuOpen);
+    this.#menu.hidden =
+      !this.#open || document.pointerLockElement === this.#o.canvas;
+    this.#touch.setVisible(
+      this.#started && !this.#open && !this.#map && !this.#photo,
+    );
+    this.#o.hud?.setMenuOpen(this.#open || this.#photo || this.#map);
+    for (const panel of this.#menu.querySelectorAll<HTMLElement>(
+      "[data-panel]",
+    ))
+      panel.hidden = panel.dataset.panel !== this.#tab;
+    for (const button of this.#menu.querySelectorAll<HTMLElement>(
+      "[data-tab]",
+    )) {
+      button.classList.toggle("is-active", button.dataset.tab === this.#tab);
+      button.setAttribute(
+        "aria-current",
+        button.dataset.tab === this.#tab ? "page" : "false",
+      );
+    }
   }
-
-  // ── Aufbau ─────────────────────────────────────────────────────────────
-
-  #buildMenu(): HTMLElement {
-    const menu = document.createElement('div');
-    menu.className = 'menu';
+  #build(): HTMLElement {
+    const menu = document.createElement("div");
+    menu.className = "menu player-menu";
     menu.hidden = true;
-
-    // Der Reiter „Debug" existiert nur, wenn eine Steuerung dafür hereingereicht
-    // wurde. Im gebauten Stand ist das nie der Fall — und das ist die einzige
-    // Stelle, an der über seine Existenz entschieden wird.
-    const tabs: readonly (readonly [TabKey, string])[] = [
-      // **Die Reiter existieren nur mit Fahrmodus** — dieselbe Regel wie bei
-      // „Debug". Ein Reiter, hinter dem eine Auswahl liegt, die nichts steuern
-      // kann, ist eine Anzeige, die lügt.
-      //
-      // „Events" steht **vorn und ist die Voreinstellung**. Das ist keine
-      // Geschmacksfrage: wer auf einem Portal ein Menü öffnet, sucht etwas zu
-      // tun und nicht einen Grafikregler. Bis P22 stand „Grafik" an erster
-      // Stelle — für ein Projekt, das eine Landschaft zeigen wollte, war das
-      // richtig; für ein Spiel ist es die falsche erste Seite.
-      ...(this.#events ? ([['events', 'Events']] as const) : []),
-      ...(this.#drive ? ([['garage', 'Garage']] as const) : []),
-      ['grafik', 'Graphics'],
-      ['steuerung', 'Controls'],
-      ['blick', 'Views'],
-      ...(this.#debug ? ([['debug', 'Debug']] as const) : []),
-    ];
-
-    menu.innerHTML = `
-      <div class="menu__box">
-        <header class="menu__head">
-          <div class="menu__brand">
-            <p class="menu__title">japanMap</p>
-            <form class="menu__code" hidden method="dialog">
-              <input
-                class="menu__codeInput"
-                type="text"
-                maxlength="12"
-                autocomplete="off"
-                autocorrect="off"
-                autocapitalize="off"
-                spellcheck="false"
-                name="k"
-                aria-label="Code"
-              />
-            </form>
-          </div>
-          <div class="menu__headButtons">
-            ${
-              this.#audio
-                ? `<button type="button" class="menu__mute" aria-label="Sound on or off">🔊</button>`
-                : ''
-            }
-            <button type="button" class="menu__resume">Resume</button>
-          </div>
-        </header>
-
-        ${
-          this.#drive
-            ? `<button type="button" class="menu__drive">
-                 <span class="menu__driveIcon">🚗</span>
-                 <span class="menu__driveLabel">Drive</span>
-               </button>`
-            : ''
-        }
-
-        <nav class="menu__tabs">
-          ${tabs
-            .map(
-              ([key, label]) =>
-                `<button type="button" class="menu__tab" data-tab="${key}">${label}</button>`,
-            )
-            .join('')}
-        </nav>
-
-        ${
-          this.#events
-            ? `<section class="menu__panel" data-panel="events">
-                 <div class="menu__events"></div>
-                 <p class="menu__note">
-                   Pick an event to start it — the car is placed on the grid for you.
-                   Finish to earn ¥, then spend it in the Garage.
-                 </p>
-               </section>`
-            : ''
-        }
-
-        ${
-          this.#drive
-            ? `<section class="menu__panel" data-panel="garage">
-                 <p class="menu__wallet"></p>
-                 <div class="menu__cars"></div>
-                 <p class="menu__note">
-                   Every car has its own mass, tyres, suspension and drivetrain. Switching
-                   keeps your position on the map.
-                 </p>
-               </section>`
-            : ''
-        }
-
-        <section class="menu__panel" data-panel="grafik">
-          <div class="menu__levels"></div>
-          <p class="menu__effect"></p>
-          <div class="menu__sliders"></div>
-          <button type="button" class="menu__reclassify">Auto-detect again</button>
-        </section>
-
-        <section class="menu__panel" data-panel="steuerung">
-          ${hasTouch() ? `<h3 class="menu__subhead">Touch</h3>${controlTable(TOUCH_CONTROLS, 'keytable')}<h3 class="menu__subhead">On foot</h3>` : '<h3 class="menu__subhead">On foot</h3>'}
-          ${controlTable(CONTROLS, 'keytable')}
-          <h3 class="menu__subhead">In the car</h3>
-          ${hasTouch() ? controlTable(TOUCH_DRIVE_CONTROLS, 'keytable') : ''}
-          ${controlTable(DRIVE_CONTROLS, 'keytable')}
-          <h3 class="menu__subhead">Free camera</h3>
-          ${controlTable(FLY_CONTROLS, 'keytable')}
-        </section>
-
-        <section class="menu__panel" data-panel="blick">
-          <div class="menu__views"></div>
-          <p class="menu__note">
-            Jump to a named spot on the map. The menu closes when you do.
-          </p>
-        </section>
-
-        ${
-          this.#debug
-            ? `<section class="menu__panel" data-panel="debug">
-                 <div class="menu__sliders menu__sliders--debug"></div>
-                 <p class="menu__note">
-                   <strong>F1</strong> toggles both. Dev server only — the built game has
-                   neither this tab nor Tweakpane and stats-gl in its bundle.
-                 </p>
-               </section>`
-            : ''
-        }
-      </div>`;
-
-    this.#must(menu, '.menu__resume').addEventListener('click', () => {
+    menu.setAttribute("role", "dialog");
+    menu.setAttribute("aria-modal", "true");
+    menu.setAttribute("aria-label", "Player menu");
+    const icons = ["▷", "▰", "◇", "◷", "◎", "⚙"];
+    menu.innerHTML = `<div class="menu__box">
+      <header class="menu__head"><div><button class="menu__title" aria-label="japanMap">japanMap</button><p class="menu__eyebrow">AFTER THE RAIN</p><form class="menu__code" hidden><input aria-label="Code" maxlength="12" autocomplete="off" /></form></div></header>
+      <nav class="menu__tabs" aria-label="Main destinations">${TABS.map((key, i) => `<button class="menu__tab" aria-label="${key[0]!.toUpperCase() + key.slice(1)}" data-tab="${key}" data-icon="${icons[i]}">${key[0]!.toUpperCase() + key.slice(1)}</button>`).join("")}</nav>
+      <button class="menu__resume">Continue <span aria-hidden="true">↗</span></button>
+      <section class="menu__panel" data-panel="play"><p class="menu__eyebrow">YOUR NEXT TURN</p><h1>The road is yours.</h1><p class="menu__intro">Find a mountain line, a quiet coast, or your next personal best.</p>
+        <div class="menu__roadHero"><div><span>FREE DRIVE</span><h2>One island.<br>Room to wander.</h2><button class="menu__explore">Explore the map ↗</button></div><svg viewBox="0 0 500 230" aria-hidden="true"><path d="M0 210 L110 85 L180 150 L300 20 L430 160 L500 80 V230 H0Z" fill="#303e48"/><path d="M60 240 C390 175 130 140 310 65" fill="none" stroke="#dcad72" stroke-width="7"/><path d="M60 240 C390 175 130 140 310 65" fill="none" stroke="#171e27" stroke-width="2" stroke-dasharray="7 9"/></svg></div>
+        <div class="menu__playActions"><button class="menu__drive">Enter car</button><button class="menu__call">Call car</button></div><p class="menu__status" role="status"></p><h2>Pick a drive</h2><div class="menu__events"></div></section>
+      <section class="menu__panel" data-panel="cars" hidden><p class="menu__eyebrow">YOUR GARAGE</p><h1>Find your line.</h1><div class="menu__switch"><button data-catalogue="owned">Owned</button><button data-catalogue="showroom">Showroom</button></div><div class="menu__carDetail"></div><div class="menu__cars"></div><p class="menu__note menu__garageNote">Ten original cars. Purchases use Sparks. Try free Street and Sport tuning on each owned car.</p></section>
+      <section class="menu__panel" data-panel="map" hidden><p class="menu__eyebrow">TAKE A DIFFERENT TURN</p><h1>Beyond the neon.</h1><div class="menu__mapHero"><img src="${aerialMapUrl}" alt="Aerial map of the island" loading="lazy" /></div><p class="menu__intro">Trace the pass, set a waypoint, or follow the coast. Opening the map keeps you where you are.</p><button class="menu__openMap">Open map</button><p class="menu__note">Stillwater Village lies on the western paddies. Tideglass Harbour is the working port on the east coast.</p></section>
+      <section class="menu__panel" data-panel="records" hidden><p class="menu__eyebrow">MAKE IT PERSONAL</p><h1>Your best moments.</h1><h2>Event records</h2><div class="menu__records"></div><p class="menu__note">Saved event bests appear here. Driving milestones, discoveries and the garage wall are not tracked yet.</p></section>
+      <section class="menu__panel" data-panel="photo" hidden><p class="menu__eyebrow">KEEP THE VIEW</p><h1>Stay a little longer.</h1><div class="menu__photoHero" aria-hidden="true">＋</div><p class="menu__intro">Freeze the world, find your angle and keep a clean PNG. Return to exactly the view you left.</p><button class="menu__openPhoto">Enter Photo mode</button><p class="menu__note">High captures use more pixels without changing your graphics preset.</p></section>
+      <section class="menu__panel" data-panel="settings" hidden><p class="menu__eyebrow">MAKE YOURSELF AT HOME</p><h1>Settings</h1><details open><summary>Graphics</summary><div class="menu__levels"></div><p class="menu__effect"></p><details><summary>Custom graphics</summary><div class="menu__sliders"></div></details><button class="menu__reclassify">Recalibrate</button></details><details><summary>Audio</summary><button class="menu__mute">Sound on</button></details><details><summary>Accessibility</summary><label class="menu__row">UI scale<select class="menu__scale"><option value="90">90%</option><option value="100" selected>100%</option><option value="115">115%</option><option value="130">130%</option></select></label><label class="menu__row">Speed units<select class="menu__units"><option value="kmh">km/h</option><option value="mph">mph</option></select></label><label class="menu__row">Reduced motion<input class="menu__motion" type="checkbox" /></label></details><details><summary>Controls</summary><h3>On foot</h3>${controlTable(CONTROLS, "keytable")}<h3>Driving</h3>${controlTable(DRIVE_CONTROLS, "keytable")}${controlTable(TOUCH_DRIVE_CONTROLS, "keytable")}<h3>Photo</h3><p>Drag to look. Use the on-screen controls to move. P opens Photo; Escape leaves it.</p></details><details><summary>Progress</summary><p class="menu__note">Event bests and owned cars use this browser's existing save. Sparks purchases and tuning are saved in this browser.</p></details></section>
+    </div>`;
+    const el = (s: string): HTMLElement => menu.querySelector<HTMLElement>(s)!;
+    el(".menu__resume").onclick = () => this.#resume();
+    el(".menu__drive").onclick = () => {
+      this.#o.drive?.toggleVehicle();
       this.#resume();
-    });
-    this.#wireCode(menu);
-    if (this.#audio) {
-      this.#must(menu, '.menu__mute').addEventListener('click', () => {
-        const audio = this.#audio;
-        if (!audio) return;
-        const neu = !audio.muted;
-        audio.setMuted(neu);
-        // Der Klick wird **nach** dem Umschalten gespielt und nur beim
-        // Einschalten. Andersherum wäre der letzte Ton vor der Stille ein
-        // Bestätigungston für „aus" — verwirrend genau in dem Moment, in dem
-        // jemand Ruhe will.
-        if (!neu) audio.click();
-        this.#syncAudio();
-      });
+    };
+    el(".menu__call").onclick = () => {
+      el(".menu__status").textContent =
+        this.#o.callCar?.() ?? "Call car is unavailable here.";
+    };
+    el(".menu__explore").onclick = () => {
+      this.#tab = "map";
+      this.#render();
+    };
+    el(".menu__openMap").onclick = () => this.#o.openMap?.();
+    el(".menu__openPhoto").onclick = () => this.#enterPhoto();
+    el(".menu__reclassify").onclick = () => this.#o.quality.reclassify();
+    el(".menu__mute").onclick = () => {
+      const audio = this.#o.audio;
+      if (audio) {
+        audio.setMuted(!audio.muted);
+        el(".menu__mute").textContent = audio.muted ? "Sound off" : "Sound on";
+      }
+    };
+    el(".menu__title").onclick = () => {
+      el(".menu__code").hidden = !el(".menu__code").hidden;
+      if (!el(".menu__code").hidden)
+        menu.querySelector<HTMLInputElement>(".menu__code input")?.focus();
+    };
+    menu.querySelector<HTMLFormElement>(".menu__code")!.onsubmit = (event) => {
+      event.preventDefault();
+      const input = menu.querySelector<HTMLInputElement>(".menu__code input")!;
+      if (this.#o.events?.enterCode(input.value)) {
+        input.value = "";
+        el(".menu__code").hidden = true;
+        this.#cars();
+      } else {
+        input.setCustomValidity("Code not recognised");
+        input.reportValidity();
+        input.oninput = () => input.setCustomValidity("");
+      }
+    };
+    for (const button of menu.querySelectorAll<HTMLButtonElement>("[data-tab]"))
+      button.onclick = () => {
+        this.#tab = button.dataset.tab as Tab;
+        this.#render();
+      };
+    for (const button of menu.querySelectorAll<HTMLButtonElement>(
+      "[data-catalogue]",
+    ))
+      button.onclick = () => {
+        this.#catalogue = button.dataset.catalogue as "owned" | "showroom";
+        this.#cars();
+      };
+    const scale = menu.querySelector<HTMLSelectElement>(".menu__scale")!,
+      units = menu.querySelector<HTMLSelectElement>(".menu__units")!,
+      motion = menu.querySelector<HTMLInputElement>(".menu__motion")!;
+    try {
+      scale.value = localStorage.getItem("japanMap.uiScale") ?? "100";
+      units.value = localStorage.getItem("japanMap.units") ?? "kmh";
+      motion.checked =
+        localStorage.getItem("japanMap.reducedMotion") === "true";
+    } catch {
+      /* Sitzung bleibt bedienbar. */
     }
-    if (this.#drive) {
-      // **Umschalten und gleich weiterspielen.** Ein Moduswechsel, nach dem das
-      // Menü offen bleibt, verlangt zwei Handlungen für eine Absicht — und auf
-      // einem Telefon liegt der „Weiter"-Knopf am anderen Rand des Kastens.
-      this.#must(menu, '.menu__drive').addEventListener('click', () => {
-        this.#drive?.toggleVehicle();
-        this.#syncDrive();
-        this.#resume();
-      });
-    }
-    this.#must(menu, '.menu__reclassify').addEventListener('click', () => {
-      this.#quality.reclassify();
+    const prefs = (): void => {
+      const n = Number(scale.value) || 100;
+      menu.style.setProperty("--ui-scale", String(n / 100));
+      document.documentElement.style.setProperty(
+        "--player-ui-scale",
+        String(n / 100),
+      );
+      menu.classList.toggle("player-menu--large", n > 100);
+      document.documentElement.dataset.speedUnits = units.value;
+      document.documentElement.classList.toggle(
+        "reduce-motion",
+        motion.checked,
+      );
+      try {
+        localStorage.setItem("japanMap.uiScale", String(n));
+        localStorage.setItem("japanMap.units", units.value);
+        localStorage.setItem("japanMap.reducedMotion", String(motion.checked));
+      } catch {
+        /* Nur Sitzung. */
+      }
+    };
+    [scale, units, motion].forEach((input) =>
+      input.addEventListener("change", prefs),
+    );
+    prefs();
+    menu.addEventListener("keydown", (event) => {
+      if (event.key !== "Tab") return;
+      const items = [
+        ...menu.querySelectorAll<HTMLElement>(
+          "button:not(:disabled),input,select,summary",
+        ),
+      ].filter((e) => e.getClientRects().length);
+      const first = items[0],
+        last = items.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
     });
-    for (const button of menu.querySelectorAll<HTMLElement>('.menu__tab')) {
-      button.addEventListener('click', () => {
-        this.#tab = button.dataset.tab as TabKey;
-        this.#syncTabs(menu);
-      });
-    }
-    // Klick neben den Kasten schließt — dieselbe Geste wie „Weiter". Der Klick
-    // darf dabei **nicht** vom Kasten selbst kommen.
-    menu.addEventListener('click', (event) => {
-      if (event.target === menu) this.#resume();
-    });
-
-    this.#syncTabs(menu);
     return menu;
   }
-
-  #syncTabs(menu: HTMLElement): void {
-    for (const button of menu.querySelectorAll<HTMLElement>('.menu__tab')) {
-      button.classList.toggle('is-active', button.dataset.tab === this.#tab);
-    }
-    for (const panel of menu.querySelectorAll<HTMLElement>('.menu__panel')) {
-      panel.hidden = panel.dataset.panel !== this.#tab;
-    }
-  }
-
-  /**
-   * Das Easter-Egg im Titel.
-   *
-   * **Klick auf „japanMap" öffnet ein leeres Feld**, Enter schickt den Inhalt
-   * an `Profile.enterCode`. Kein Platzhalter, keine Beschriftung — wer den
-   * Titel nicht extra antippt, sieht nichts, und das ist der Punkt. Der Code
-   * selbst steht in `Profile`, nicht hier: zwei Stellen wären zwei Gelegenheiten,
-   * sie auseinanderlaufen zu lassen.
-   *
-   * Ohne `events` gibt es den Sandkasten nicht, also bleibt der Titel tot.
-   * Ein Feld, das nichts freischalten kann, wäre die Anzeige, die lügt.
-   */
-  #wireCode(menu: HTMLElement): void {
-    if (!this.#events) return;
-    const title = this.#must(menu, '.menu__title');
-    const form = this.#must(menu, '.menu__code') as HTMLFormElement;
-    const input = this.#must(menu, '.menu__codeInput') as HTMLInputElement;
-
-    title.addEventListener('click', () => {
-      if (!form.hidden) this.#hideCode();
-      else this.#openCode();
-    });
-
-    form.addEventListener('submit', (event) => {
-      event.preventDefault();
-      const events = this.#events;
-      if (!events) return;
-      if (events.enterCode(input.value)) {
-        this.#hideCode();
-        // In die Garage, damit man *sieht*, dass die Autos frei sind — nicht
-        // nur dass das Feld verschwunden ist. Eine Zahl ohne Bild hat in
-        // diesem Projekt schon zweimal einen Fehler durchgelassen.
-        if (this.#drive) {
-          this.#tab = 'garage';
-          this.#syncTabs(this.#menu);
-        }
-        this.#syncGarage();
+  #enterPhoto(): void {
+    if (!this.#o.openPhoto || this.#photo) return;
+    this.#photo = true;
+    this.#open = false;
+    this.#render();
+    this.#o.openPhoto((resume) => {
+      this.#photo = false;
+      if (resume) {
+        this.#resume();
         return;
       }
-      form.classList.remove('is-wrong');
-      void form.offsetWidth;
-      form.classList.add('is-wrong');
-      input.value = '';
-      input.focus();
+      this.#open = true;
+      this.#tab = "photo";
+      this.#render();
+      this.#el(".menu__openPhoto").focus();
     });
   }
-
-  #codeOpen(): boolean {
-    const form = this.#menu.querySelector<HTMLElement>('.menu__code');
-    return !!form && !form.hidden;
-  }
-
-  #openCode(): void {
-    const form = this.#menu.querySelector<HTMLFormElement>('.menu__code');
-    const input = this.#menu.querySelector<HTMLInputElement>('.menu__codeInput');
-    if (!form || !input) return;
-    form.hidden = false;
-    form.classList.remove('is-wrong');
-    input.value = '';
-    input.focus();
-  }
-
-  #hideCode(): void {
-    const form = this.#menu.querySelector<HTMLFormElement>('.menu__code');
-    const input = this.#menu.querySelector<HTMLInputElement>('.menu__codeInput');
-    if (!form || !input) return;
-    form.hidden = true;
-    form.classList.remove('is-wrong');
-    input.value = '';
-    input.blur();
-  }
-
-  #fillLevels(): void {
-    for (const level of [...QUALITY_LEVELS, 'custom' as const]) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.dataset.level = level;
-      button.textContent = QUALITY[level].label;
-      button.addEventListener('click', () => {
-        if (level === 'custom') {
-          // „Eigen" ohne Vorgeschichte wäre ein leeres Blatt. Startpunkt ist,
-          // was gerade gilt — dann verändert der erste Reglerzug genau eine
-          // Sache und nicht acht.
-          this.#quality.seedCustomFrom(this.#quality.level);
-          this.#quality.setCustom({});
-        } else {
-          this.#quality.set(level);
-        }
-      });
-      this.#levelRow.appendChild(button);
-    }
-  }
-
-  /**
-   * Die Einzelregler.
-   *
-   * **Angewendet wird bei `change`, angezeigt bei `input`.** Der Unterschied ist
-   * kein Detail: `terrainGridVertices` baut das Terrain-Gitter neu auf, und ein
-   * Schieberegler feuert `input` je Pixel Mausweg. Wer daran den Neuaufbau
-   * hängt, hat bei einem Zug über die Reglerbreite hundert Neuaufbauten in einer
-   * Sekunde — und misst danach die Ruckler seines eigenen Menüs.
-   */
-  #fillSliders(): void {
-    const percent = (v: number): string => `${(v * 100).toFixed(0)} %`;
-
-    this.#slider('Auflösung', 'renderScale', CUSTOM_LIMITS.renderScale, percent, (v) => ({
-      renderScale: v,
-    }));
-    // **Zwei Regler statt eines Prozentwerts** — P11.2. „Vegetationsdichte" gab
-    // es bis dahin als einen Anteil über die ganze Fläche, und der hat gemessen
-    // den Vordergrund leergeräumt (Tabelle bei `vegetationFullRadius`). Ein
-    // einzelner Prozentwert kann die Frage nicht mehr beantworten, seit nah und
-    // fern getrennt behandelt werden.
-    this.#slider(
-      'Full density up to',
-      'vegetationFullRadius',
-      CUSTOM_LIMITS.vegetationFullRadius,
-      (v) => `${v.toFixed(0)} m`,
-      (v) => ({ vegetationFullRadius: v }),
-    );
-    this.#slider(
-      'Density at distance',
-      'vegetationFarKeep',
-      CUSTOM_LIMITS.vegetationFarKeep,
-      percent,
-      (v) => ({ vegetationFarKeep: v }),
-    );
-    // Zwei Reichweiten, weil Bäume und Bodendecker im Bild Verschiedenes tun —
-    // Herleitung bei `SpeciesLayer`. Die zweite ist der wirksamste Regler des
-    // ganzen Menüs: Gras stellt den größten Teil aller Instanzen, und der
-    // Bodenfarbstich springt für es ein.
-    this.#slider(
-      'Grass and shrub range',
-      'vegetationGroundRange',
-      CUSTOM_LIMITS.vegetationGroundRange,
-      percent,
-      (v) => ({ vegetationGroundRange: v }),
-    );
-    this.#slider(
-      'Tree range',
-      'vegetationRange',
-      CUSTOM_LIMITS.vegetationRange,
-      percent,
-      (v) => ({ vegetationRange: v }),
-    );
-    this.#slider('LOD switch point', 'lodBias', CUSTOM_LIMITS.lodBias, (v) => v.toFixed(2), (v) => ({
-      lodBias: v,
-    }));
-
-    this.#select(
-      'Terrain grid',
-      'terrainGridVertices',
-      GRID_VERTICES_ALLOWED.map((v) => [String(v), `${v}² · ${lodMetersPerVertex(v).toFixed(1)} m`]),
-      (raw) => ({ terrainGridVertices: Number(raw) as GridVertices }),
-    );
-    this.#select(
-      'Ambient occlusion',
-      'ao',
-      (Object.keys(AO_LABELS) as AoQuality[]).map((k) => [k, AO_LABELS[k]]),
-      (raw) => ({ ao: raw as AoQuality }),
-    );
-    this.#select(
-      'Post effects',
-      'postFx',
-      (Object.keys(POSTFX_LABELS) as PostFxQuality[]).map((k) => [k, POSTFX_LABELS[k]]),
-      (raw) => ({ postFx: raw as PostFxQuality }),
-    );
-    this.#toggle('Reflections on wet asphalt');
-  }
-
-  /**
-   * Der Reiter „Debug" — zwei Kästchen, sonst nichts.
-   *
-   * **Warum das Werkzeug jetzt ausgeschaltet startet.** Bis P13 stand der
-   * Zahlenblock beim Laden im Bild und die Tweakpane-Leiste daneben; wer den
-   * Dev-Server für einen Blick auf die Landschaft benutzte, sah zuerst
-   * Draw-Calls. Der Schalter merkt sich seinen Zustand (`localStorage`), die
-   * Voreinstellung ist aber „aus" — Werkzeug holt man sich, es liegt einem nicht
-   * im Weg.
-   */
-  #fillDebug(): void {
-    const debug = this.#debug;
-    if (!debug) return;
-    const host = this.#must(this.#menu, '.menu__sliders--debug');
-
-    const kasten = (label: string, read: () => boolean, write: (v: boolean) => void): void => {
-      const row = this.#row(label, 'debug');
-      const input = document.createElement('input');
-      input.type = 'checkbox';
-      input.dataset.debug = label;
-      input.checked = read();
-      input.addEventListener('change', () => {
-        write(input.checked);
-      });
-      row.appendChild(input);
-      host.appendChild(row);
-    };
-
-    kasten(
-      'Stats overlay (draw calls, GPU)',
-      () => debug.statsVisible,
-      (v) => {
-        debug.statsVisible = v;
-      },
-    );
-    kasten(
-      'Tweakpane toolbar',
-      () => debug.paneVisible,
-      (v) => {
-        debug.paneVisible = v;
-      },
-    );
-  }
-
-  /**
-   * Modus-Zeile und Touch-Bedienfeld auf den **tatsächlichen** Zustand bringen.
-   *
-   * Gefragt wird `drive.active`, nicht ein hier mitgeführtes Kästchen. Der Modus
-   * hat drei Wege — Menü, Touch-Knopf, Taste `V` —, und eine Anzeige, die nur
-   * ihren eigenen Weg kennt, steht nach den beiden anderen falsch. Genau diese
-   * Klasse Fehler hat P10.2 schon einmal bei der Stufenwahl gekostet („auf den
-   * Namen geprüft statt auf den Wert").
-   */
-  /** Der Stummschalter zeigt den **Zustand**, nicht den letzten Klick. */
-  #syncAudio(): void {
-    const audio = this.#audio;
-    if (!audio) return;
-    const button = this.#menu.querySelector<HTMLElement>('.menu__mute');
-    if (!button) return;
-    button.textContent = audio.muted ? '🔇' : '🔊';
-    button.classList.toggle('is-muted', audio.muted);
-  }
-
   #syncDrive(): void {
-    const drive = this.#drive;
-    if (!drive) return;
-    const label = this.#menu.querySelector<HTMLElement>('.menu__driveLabel');
-    if (label) {
-      label.textContent = drive.active ? 'Get out' : 'Get in the car';
-    }
-    this.#menu.querySelector('.menu__drive')?.classList.toggle('is-active', drive.active);
-    this.#touch?.setDriveMode(drive.active, drive.walking);
+    const drive = this.#o.drive;
+    this.#el(".menu__drive").textContent = drive?.active
+      ? "Get out"
+      : "Enter car";
+    this.#el(".menu__call").hidden = !drive?.walking;
+    this.#touch.setDriveMode(drive?.active ?? false, drive?.walking ?? false);
   }
-
-  #syncDebug(): void {
-    const debug = this.#debug;
-    if (!debug) return;
-    const boxes = this.#menu.querySelectorAll<HTMLInputElement>('[data-debug]');
-    const state = [debug.statsVisible, debug.paneVisible];
-    boxes.forEach((box, index) => {
-      box.checked = state[index] ?? false;
-    });
+  #owns(id: VehicleId): boolean {
+    return this.#o.events?.owns(id) ?? id === this.#o.drive?.vehicleId;
   }
-
-  #slider(
-    label: string,
-    field:
-      | 'renderScale'
-      | 'vegetationFullRadius'
-      | 'vegetationFarKeep'
-      | 'vegetationRange'
-      | 'vegetationGroundRange'
-      | 'lodBias',
-    limits: { readonly min: number; readonly max: number; readonly step: number },
-    format: (value: number) => string,
-    apply: (value: number) => Partial<CustomQuality>,
-  ): void {
-    const row = this.#row(label, field);
-    const input = document.createElement('input');
-    input.type = 'range';
-    input.min = String(limits.min);
-    input.max = String(limits.max);
-    input.step = String(limits.step);
-    input.dataset.field = field;
-
-    const value = document.createElement('span');
-    value.className = 'menu__value';
-
-    input.addEventListener('input', () => {
-      value.textContent = format(Number(input.value));
-    });
-    input.addEventListener('change', () => {
-      if (this.#syncing) return;
-      this.#quality.setCustom(apply(Number(input.value)));
-    });
-
-    row.append(input, value);
-    this.#sliders.appendChild(row);
-  }
-
-  #select(
-    label: string,
-    field: 'terrainGridVertices' | 'ao' | 'postFx',
-    options: readonly (readonly [string, string])[],
-    apply: (raw: string) => Partial<CustomQuality>,
-  ): void {
-    const row = this.#row(label, field);
-    const select = document.createElement('select');
-    select.dataset.field = field;
-    for (const [value, text] of options) {
-      const option = document.createElement('option');
-      option.value = value;
-      option.textContent = text;
-      select.appendChild(option);
-    }
-    select.addEventListener('change', () => {
-      if (this.#syncing) return;
-      this.#quality.setCustom(apply(select.value));
-    });
-    row.appendChild(select);
-    this.#sliders.appendChild(row);
-  }
-
-  #toggle(label: string): void {
-    const row = this.#row(label, 'reflections');
-    const input = document.createElement('input');
-    input.type = 'checkbox';
-    input.dataset.field = 'reflections';
-    input.addEventListener('change', () => {
-      if (this.#syncing) return;
-      this.#quality.setCustom({ reflections: input.checked });
-    });
-    row.appendChild(input);
-    this.#sliders.appendChild(row);
-  }
-
-  #row(label: string, field: string): HTMLElement {
-    const row = document.createElement('label');
-    row.className = 'menu__row';
-    row.dataset.row = field;
-    const text = document.createElement('span');
-    text.className = 'menu__rowLabel';
-    text.textContent = label;
-    row.appendChild(text);
-    return row;
-  }
-
-  /**
-   * Die Fahrzeugwahl — P18.
-   *
-   * Vier Karten mit Name, Kurzbeschreibung und den drei Zahlen, an denen man
-   * ein Fahrzeug vor der ersten Fahrt einschätzt: Masse, Antriebsart und
-   * Höchstgeschwindigkeit. Die letzte ist **gerechnet und nicht getippt** —
-   * `v = ∛(P/c)` aus dem Gleichgewicht mit dem Luftwiderstand, also genau die
-   * Größe, die das Fahrmodell auch fährt. Eine von Hand gepflegte Zahl daneben
-   * wäre beim nächsten Reglerzug falsch, ohne dass es jemand merkt.
-   *
-   * **Kein `select`, sondern Knöpfe.** Auf einem Telefon öffnet ein `select`
-   * das systemeigene Auswahlrad; das ist bedienbar, verdeckt aber das Bild und
-   * lässt keine zweite Zeile je Eintrag zu. Vier Karten passen bei 375 px
-   * untereinander.
-   */
-  #fillVehicles(): void {
-    const drive = this.#drive;
-    if (!drive) return;
-    const list = this.#menu.querySelector<HTMLElement>('.menu__cars');
-    if (!list) return;
-
+  #cars(): void {
+    if (this.#catalogue === "owned" && !this.#owns(this.#preview))
+      this.#preview = this.#o.drive?.vehicleId ?? "touge";
+    const list = this.#el(".menu__cars");
+    list.replaceChildren();
     for (const id of VEHICLE_ORDER) {
-      const spec = VEHICLES[id];
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'menu__car';
+      if (this.#catalogue === "owned" && !this.#owns(id)) continue;
+      const button = document.createElement("button");
+      button.className = "menu__car";
       button.dataset.vehicle = id;
-      const top = Math.cbrt(spec.drivetrain.power / spec.drivetrain.drag) * 3.6;
-      const layout =
-        spec.drivetrain.layout === 'awd'
-          ? 'AWD'
-          : spec.drivetrain.layout === 'fwd'
-            ? 'FWD'
-            : 'RWD';
-      button.innerHTML =
-        `<span class="menu__carName">${spec.name}</span>` +
-        `<span class="menu__carFacts">${spec.chassis.mass} kg · ${layout} · ${top.toFixed(0)} km/h</span>` +
-        `<span class="menu__carBlurb">${spec.blurb}</span>` +
-        `<span class="menu__carPrice" data-price="${id}"></span>`;
-      // **Ein Knopf, zwei Bedeutungen** — kaufen, wenn es noch nicht gehört,
-      // sonst wechseln. Zwei Knöpfe nebeneinander wären auf einem Telefon zwei
-      // Trefferflächen für eine Absicht, und die falsche davon kostet Geld.
-      button.addEventListener('click', () => {
-        const events = this.#events;
-        if (events && !events.owns(id)) {
-          if (!events.buy(id)) return;
-        }
-        drive.setVehicle(id);
-        this.#syncVehicles();
-        this.#syncGarage();
-      });
-      list.appendChild(button);
+      button.innerHTML = `${carPortrait(id)}<span class="menu__carName">${CAR_COPY[id].name}</span><span class="menu__carFacts">${this.#owns(id) ? "Owned" : `${VEHICLES[id].price.toLocaleString("en-US")} Sparks`}${id === this.#o.drive?.vehicleId ? " · Selected" : ""}</span>`;
+      button.onclick = () => {
+        this.#preview = id;
+        this.#carDetail();
+      };
+      list.append(button);
     }
-    this.#syncVehicles();
-    this.#syncGarage();
-  }
-
-  /**
-   * Preise, Sperren und Kontostand nachziehen.
-   *
-   * Gefragt wird der **Fortschritt**, nicht ein hier mitgeführter Stand —
-   * dieselbe Begründung wie bei `#syncQuality`: ein Menü, das seinen eigenen
-   * letzten Klick anzeigt, ist die Anzeige, die lügt.
-   */
-  #syncGarage(): void {
-    const events = this.#events;
-    if (!events) return;
-    const wallet = this.#menu.querySelector<HTMLElement>('.menu__wallet');
-    if (wallet) wallet.textContent = `Wallet: ¥${events.yen.toLocaleString('en-US')}`;
-    for (const tag of this.#menu.querySelectorAll<HTMLElement>('[data-price]')) {
-      const id = tag.dataset.price as VehicleId;
-      const owned = events.owns(id);
-      const price = events.price(id);
-      tag.textContent = owned ? 'Owned' : `¥${price.toLocaleString('en-US')}`;
-      tag.classList.toggle('menu__carPrice--locked', !owned && events.yen < price);
-      tag.closest('.menu__car')?.classList.toggle('is-locked', !owned && events.yen < price);
+    for (const button of this.#menu.querySelectorAll<HTMLElement>(
+      "[data-catalogue]",
+    )) {
+      button.classList.toggle(
+        "is-active",
+        button.dataset.catalogue === this.#catalogue,
+      );
+      button.setAttribute(
+        "aria-pressed",
+        String(button.dataset.catalogue === this.#catalogue),
+      );
     }
-    this.#fillEventList();
+    this.#carDetail();
   }
-
-  /**
-   * Der Reiter „Events".
-   *
-   * Er wird bei jedem Öffnen neu gefüllt (`#fillEventList`), und das ist
-   * Absicht: Bestzeiten und der laufende Zustand ändern sich zwischen zwei
-   * Menüöffnungen, und eine Liste, die beim Bauen einmal beschriftet wurde,
-   * zeigte die Bestzeit von vor drei Rennen.
-   */
-  #fillEvents(): void {
-    if (!this.#events) return;
-    this.#fillEventList();
+  #carDetail(): void {
+    const id = this.#preview,
+      spec = VEHICLES[id],
+      owned = this.#owns(id),
+      copy = CAR_COPY[id];
+    const host = this.#el(".menu__carDetail");
+    const tune=loadTune(id), arcade=tunedArcade(id,tune), balance=this.#o.events?.yen??0;
+    const canBuy=!!this.#o.events && balance>=spec.price;
+    host.innerHTML = `<div class="menu__carStage">${carPortrait(id)}<span>${spec.category} · ${owned ? "OWNED" : "SHOWROOM"}</span></div><h2>${copy.name}</h2><p class="menu__intro">${copy.role}</p><div class="menu__carSpecs"><span><strong>${spec.chassis.mass.toLocaleString("en-US")}</strong>kg</span><span><strong>${spec.drivetrain.layout.toUpperCase()}</strong>Drivetrain</span><span><strong>${Math.round(topSpeed(arcade,spec.chassis.mass)*3.6)}</strong>km/h · estimated</span><span><strong>${arcade.latG.toFixed(2)}</strong>g · road grip</span></div><p>${balance.toLocaleString("en-US")} Sparks available · Saved in this browser</p><button class="menu__choose" ${owned||canBuy ? "" : "disabled"}>${owned ? (id === this.#o.drive?.vehicleId ? "Selected" : "Select car") : `Buy · ${spec.price.toLocaleString("en-US")} Sparks`}</button>${!owned&&!canBuy ? `<p class="menu__note">${(spec.price-balance).toLocaleString("en-US")} more Sparks needed.</p>` : ""}${owned ? `<details class="menu__tune"><summary>Tune · Free tuning preview</summary><p>Fit tiers to this car. Engine adds force and speed; brakes shorten stops; steering responds sooner; tyres add road grip. Mass and wheelbase stay the same.</p>${(["engine","brakes","steering","tyres"] as TuneCategory[]).map(key=>`<label class="menu__row">${key[0]!.toUpperCase()+key.slice(1)}<select data-tune="${key}" aria-label="${key} tier">${["Stock","Street","Sport"].map((tier,i)=>`<option value="${i}" ${tune[key]===i?"selected":""}>${tier}</option>`).join("")}</select></label>`).join("")}<p class="menu__note">Free to fit and saved per car. No Sparks spent.</p></details>` : ""}`;
+    host.querySelector<HTMLButtonElement>(".menu__choose")!.onclick=()=>{
+      if(!owned&&!this.#o.events?.buy(id))return;
+      this.#o.drive?.setVehicle(id);this.#cars();
+    };
+    for(const select of host.querySelectorAll<HTMLSelectElement>("[data-tune]"))select.onchange=()=>{
+      const next={...loadTune(id),[select.dataset.tune as TuneCategory]:Number(select.value) as TuneTier};
+      saveTune(id,next);
+      if(this.#o.drive?.vehicleId===id)this.#o.drive.setCarTune(next);
+      this.#carDetail();host.querySelector<HTMLDetailsElement>(".menu__tune")!.open=true;
+    };
+    for (const button of this.#menu.querySelectorAll<HTMLElement>(
+      "[data-vehicle]",
+    ))
+      button.classList.toggle("is-active", button.dataset.vehicle === id);
   }
-
-  #fillEventList(): void {
-    const events = this.#events;
-    const list = this.#menu.querySelector<HTMLElement>('.menu__events');
-    if (!events || !list) return;
-    list.textContent = '';
-    for (const event of events.list) {
-      const best = events.bestOf(event.id);
-      const driftBest = events.driftBestOf(event.id);
-      const running = events.runningEvent === event.id;
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'menu__event';
-      if (running) button.classList.add('is-active');
-      const kind =
-        event.kind === 'race'
-          ? `${event.rivals} rivals`
-          : event.kind === 'drift'
-            ? 'drift run'
-            : 'time trial';
-      const record =
-        event.kind === 'drift'
-          ? driftBest > 0
-            ? `Best ${driftBest.toLocaleString('en-US')} pts`
-            : 'No score yet'
-          : best !== null
-            ? `Best ${formatTime(best)}`
-            : 'Not driven yet';
-      button.innerHTML =
-        `<span class="menu__eventName">${event.name}</span>` +
-        `<span class="menu__eventFacts">${kind} · ${event.laps} lap${event.laps > 1 ? 's' : ''} · ${record}</span>` +
-        `<span class="menu__carBlurb">${event.blurb}</span>` +
-        `<span class="menu__eventGo">${running ? 'Abort' : 'Start'}</span>`;
-      button.addEventListener('click', () => {
-        if (running) events.abort();
-        else events.start(event.id);
+  #records(): void {
+    const list = this.#el(".menu__records");
+    list.replaceChildren();
+    for (const event of this.#o.events?.list ?? []) {
+      const row = document.createElement("div");
+      row.className = "menu__record";
+      const name = document.createElement("span");
+      name.textContent = event.name;
+      const value = document.createElement("strong");
+      const best = this.#o.events!.bestOf(event.id),
+        score = this.#o.events!.driftBestOf(event.id);
+      value.textContent =
+        event.kind === "drift"
+          ? score > 0
+            ? `${score.toLocaleString("en-US")} pts`
+            : "No score yet"
+          : best === null
+            ? "No time yet"
+            : formatTime(best);
+      row.append(name, value);
+      list.append(row);
+    }
+    if (!list.children.length)
+      list.textContent =
+        "Your first drive starts the story. No event records yet.";
+  }
+  #events(): void {
+    const list = this.#el(".menu__events");
+    list.replaceChildren();
+    for (const event of this.#o.events?.list ?? []) {
+      const running = this.#o.events!.runningEvent === event.id;
+      const button = document.createElement("button");
+      button.className = "menu__event";
+      const title = document.createElement("span");
+      title.className = "menu__eventName";
+      title.textContent = event.name;
+      const facts = document.createElement("span");
+      facts.className = "menu__eventFacts";
+      facts.textContent = `${event.kind === "race" ? `${event.rivals} rivals` : event.kind === "drift" ? "Drift run" : "Time trial"} · ${event.laps} lap${event.laps > 1 ? "s" : ""}`;
+      const action = document.createElement("span");
+      action.className = "menu__eventGo";
+      action.textContent = running ? "Leave event" : "Start drive ↗";
+      button.append(title, facts, action);
+      button.onclick = () => {
+        if (running) this.#o.events?.abort();
+        else this.#o.events?.start(event.id);
         this.#resume();
-      });
-      list.appendChild(button);
+      };
+      list.append(button);
     }
   }
-
-  /**
-   * Die Auswahl auf den geltenden Zustand setzen.
-   *
-   * Gefragt wird `drive.vehicleId`, nicht ein hier mitgeführter letzter Klick —
-   * dieselbe Begründung wie bei `#syncQuality` und `#syncDrive`. Im Dev-Bau
-   * schaltet auch das Debug-Panel um, und ein Menü, das seinen eigenen letzten
-   * Klick anzeigt, ist die Anzeige, die lügt.
-   */
-  #syncVehicles(): void {
-    const drive = this.#drive;
-    if (!drive) return;
-    for (const button of this.#menu.querySelectorAll<HTMLElement>('.menu__car')) {
-      button.classList.toggle('is-active', button.dataset.vehicle === drive.vehicleId);
+  #qualityControls(): void {
+    const levels = this.#el(".menu__levels");
+    for (const level of [...QUALITY_LEVELS, "custom"] as QualityKey[]) {
+      const button = document.createElement("button");
+      button.dataset.level = level;
+      button.textContent =
+        level === "custom"
+          ? "Custom"
+          : level[0]!.toUpperCase() + level.slice(1);
+      button.onclick = () => {
+        if (level === "custom") {
+          this.#o.quality.seedCustomFrom(this.#o.quality.level);
+          this.#o.quality.setCustom({});
+        } else this.#o.quality.set(level);
+      };
+      levels.append(button);
     }
-  }
-
-  #fillViewpoints(): void {
-    const list = this.#must(this.#menu, '.menu__views');
-    for (const [name, point] of Object.entries(VIEWPOINTS)) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = name;
-      if (point.note) button.title = point.note;
-      button.addEventListener('click', () => {
-        applyViewpoint(this.#camera, name);
-        this.#resume();
-      });
-      list.appendChild(button);
+    const fields = [
+      ["renderScale", "Resolution"],
+      ["vegetationFullRadius", "Full tree density up to"],
+      ["vegetationFarKeep", "Distant tree density"],
+      ["vegetationGroundRange", "Grass and shrub range"],
+      ["vegetationRange", "Tree range"],
+      ["lodBias", "Detail distance"],
+    ] as const;
+    for (const [field, label] of fields) {
+      const limits = CUSTOM_LIMITS[field];
+      const row = document.createElement("label");
+      row.className = "menu__row";
+      const text = document.createElement("span");
+      text.textContent = label;
+      const input = document.createElement("input");
+      input.type = "range";
+      input.dataset.field = field;
+      input.min = String(limits.min);
+      input.max = String(limits.max);
+      input.step = String(limits.step);
+      const value = document.createElement("output");
+      input.oninput = () => {
+        value.textContent = input.value;
+      };
+      input.onchange = () =>
+        this.#o.quality.setCustom({ [field]: Number(input.value) });
+      row.append(text, input, value);
+      this.#el(".menu__sliders").append(row);
     }
-  }
-
-  // ── Anzeige ────────────────────────────────────────────────────────────
-
-  /**
-   * Regler und Knöpfe auf den geltenden Zustand setzen.
-   *
-   * Läuft auch dann, wenn die Stufe **nicht** aus diesem Menü kam — die
-   * Ersteinstufung stuft selbsttätig herunter, das Debug-Panel und die Konsole
-   * schalten ebenfalls um. Ein Menü, das seinen eigenen letzten Klick anzeigt
-   * statt den Zustand, ist die Anzeige, die lügt.
-   */
-  #syncQuality(): void {
-    const key = this.#quality.level;
-    const settings = QUALITY[key];
-    const values = customFromSettings(settings);
-
-    for (const button of this.#levelRow.querySelectorAll('button')) {
-      button.classList.toggle('is-active', button.dataset.level === key);
-    }
-
-    this.#effect.textContent =
-      `Resolution ${(settings.renderScale * 100).toFixed(0)} % · ` +
-      `Grid ${settings.terrainGridVertices}² (${lodMetersPerVertex(settings.terrainGridVertices).toFixed(1)} m) · ` +
-      `AO ${AO_LABELS[settings.ao]} · Post FX ${POSTFX_LABELS[settings.postFx]} · ` +
-      `Reflections ${settings.reflections ? 'on' : 'off'} · ` +
-      `Trees full to ${settings.vegetationFullRadius} m, far ` +
-      `${(settings.vegetationFarKeep * 100).toFixed(0)} % · ` +
-      `Grass ${(settings.vegetationGroundRange * 100).toFixed(0)} %`;
-
-    // Die Regler zeigen **immer** die geltenden Werte, auch auf einer
-    // Voreinstellung. Sonst müsste man erst „Eigen" wählen, um zu sehen, was
-    // „Mittel" eigentlich einstellt — und genau das ist die Frage, die jemand
-    // vor diesem Menü hat.
-    this.#syncing = true;
-    try {
-      for (const element of this.#sliders.querySelectorAll<
-        HTMLInputElement | HTMLSelectElement
-      >('[data-field]')) {
-        const field = element.dataset.field as keyof CustomQuality;
-        const value = values[field];
-        if (element instanceof HTMLInputElement && element.type === 'checkbox') {
-          element.checked = Boolean(value);
-        } else {
-          element.value = String(value);
-        }
-        if (element instanceof HTMLInputElement && element.type === 'range') {
-          element.dispatchEvent(new Event('input'));
-        }
+    for (const [field, label, values] of [
+      ["ao", "Ambient occlusion", ["off", "low", "medium", "high"]],
+      ["postFx", "Effects", ["off", "compact", "lean", "reduced", "full"]],
+    ] as const) {
+      const row = document.createElement("label");
+      row.className = "menu__row";
+      row.textContent = label;
+      const select = document.createElement("select");
+      select.dataset.field = field;
+      for (const val of values) {
+        const option = document.createElement("option");
+        option.value = val;
+        option.textContent = val[0]!.toUpperCase() + val.slice(1);
+        select.append(option);
       }
-    } finally {
-      this.#syncing = false;
+      select.onchange = () =>
+        this.#o.quality.setCustom({
+          [field]: select.value,
+        } as Partial<CustomQuality>);
+      row.append(select);
+      this.#el(".menu__sliders").append(row);
+    }
+    const reflectionRow = document.createElement("label");
+    reflectionRow.className = "menu__row";
+    reflectionRow.textContent = "Wet road reflections";
+    const reflections = document.createElement("input");
+    reflections.type = "checkbox";
+    reflections.dataset.field = "reflections";
+    reflections.disabled = matchMedia("(pointer: coarse)").matches;
+    reflections.onchange = () =>
+      this.#o.quality.setCustom({ reflections: reflections.checked });
+    reflectionRow.append(reflections);
+    this.#el(".menu__sliders").append(reflectionRow);
+    if (reflections.disabled) {
+      const note = document.createElement("p");
+      note.className = "menu__note";
+      note.textContent =
+        "Use Low or Minimal on phones to keep reflections off and driving smooth.";
+      this.#el(".menu__sliders").append(note);
     }
   }
-
-  #must(root: ParentNode, selector: string): HTMLElement {
-    const element = root.querySelector<HTMLElement>(selector);
-    if (!element) throw new Error(`Spielermenü: "${selector}" fehlt.`);
+  #syncQuality(): void {
+    const level = this.#o.quality.level,
+      settings = QUALITY[level];
+    for (const button of this.#menu.querySelectorAll<HTMLElement>(
+      "[data-level]",
+    ))
+      button.classList.toggle("is-active", button.dataset.level === level);
+    this.#el(".menu__effect").textContent =
+      `${Math.round(settings.renderScale * 100)}% resolution · ${settings.reflections ? "Reflections on" : "Reflections off"} · ${settings.postFx} effects`;
+    for (const input of this.#menu.querySelectorAll<
+      HTMLInputElement | HTMLSelectElement
+    >("[data-field]")) {
+      const value = settings[input.dataset.field as keyof typeof settings];
+      if (input instanceof HTMLInputElement && input.type === "checkbox")
+        input.checked = Boolean(value);
+      else input.value = String(value);
+      if (input instanceof HTMLInputElement)
+        input.dispatchEvent(new Event("input"));
+    }
+    this.#el(".menu__mute").textContent = this.#o.audio?.muted
+      ? "Sound off"
+      : "Sound on";
+  }
+  #el(selector: string): HTMLElement {
+    const element = this.#menu.querySelector<HTMLElement>(selector);
+    if (!element) throw new Error(`Player menu: missing ${selector}`);
     return element;
+  }
+  dispose(): void {
+    this.#off.forEach((off) => off());
+    document.removeEventListener("pointerlockchange", this.#lockChanged);
+    document.removeEventListener("pointerlockerror", this.#lockError);
+    window.removeEventListener("keydown", this.#key);
+    this.#touch.dispose();
+    this.#menu.remove();
   }
 }

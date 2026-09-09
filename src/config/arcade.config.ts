@@ -87,6 +87,7 @@ import type { VehicleId } from './vehicles.config';
 
 /** Was ein Fahrzeug im Arcade-Modell ausmacht. */
 export interface ArcadeSpec {
+  readonly downforceSpeed?: number;
   /**
    * Größte Querbeschleunigung auf trockenem Asphalt, in g.
    *
@@ -471,168 +472,40 @@ function speedFromPower(power: number, drag: number): number {
  * steht einmal oben an `ArcadeSpec`; was ein *Fahrzeug* ausmacht, steht in
  * seiner Zeile.
  */
-export const ARCADE: Readonly<Record<VehicleId, ArcadeSpec>> = {
-  /**
-   * **Touge** — der Standardwagen. Gutmütig, driftfreudig, mittelschnell.
-   * Er ist die Referenz: jede Zahl der anderen drei liest sich gegen diese.
-   */
-  touge: {
-    latG: 1.45,
-    latGrip: 9.0,
-    driftLatGrip: 1.8,
-    yawResponse: 12,
-    driftAngle: 0.75,
-    driftYawGain: 4.0,
-    powerOversteer: 0.9,
-    liftOversteer: 0.85,
-    driftRise: 7,
-    driftFall: 2.6,
-    catchAssist: 3.4,
-    maxYawRate: 3.6,
-    // 12 000 N bei 1150 kg = 10,4 m/s² ≙ 1,06 g. 0–100 in rund 3,4 s, wenn die
-    // Leistung nicht vorher begrenzt. Das ist schneller als die 4,62 s des
-    // Einspurmodells und ausdrücklich so gewollt: auf einem Portal entscheidet
-    // die erste halbe Minute, und in ihr fährt niemand 100 km/h aus.
-    launchForce: 12_000,
-    power: 210_000,
-    brakeG: 1.9,
-    boostAccel: 6.0,
-    boostCapacity: 3.2,
-    boostRefill: 0.05,
-    // v_max = ∛(210000/0,42) = 79,3 m/s = 285 km/h.
-    drag: 0.42,
-    rollDecel: 0.35,
-    downforce: 0.1,
-    steerAngle: 0.62,
-    steerRate: 5.2,
-    steerReturn: 7.0,
-    steerFalloff: 55,
-  },
-
-  /**
-   * **GT** — schnell, spitz, wenig Vorwarnung. Er belohnt saubere Linien und
-   * bestraft den Gasstoß in der Kurve stärker als jedes andere Fahrzeug.
-   */
-  gt: {
-    latG: 1.75,
-    latGrip: 12,
-    driftLatGrip: 1.5,
-    yawResponse: 14,
-    driftAngle: 0.62,
-    driftYawGain: 4.4,
-    powerOversteer: 1.0,
-    liftOversteer: 0.75,
-    driftRise: 8,
-    driftFall: 2.2,
-    catchAssist: 3.0,
-    maxYawRate: 3.4,
-    launchForce: 22_000,
-    power: 560_000,
-    brakeG: 2.3,
-    boostAccel: 7.5,
-    boostCapacity: 3.6,
-    boostRefill: 0.05,
-    // v_max = ∛(560000/0,6) = 95,7 m/s = 344 km/h.
-    drag: 0.6,
-    rollDecel: 0.3,
-    downforce: 0.35,
-    steerAngle: 0.54,
-    steerRate: 5.6,
-    steerReturn: 7.6,
-    steerFalloff: 68,
-  },
-
-  /**
-   * **Offroad** — auf Asphalt der langsamste Kurvenwagen, auf allem anderen der
-   * schnellste. `looseBonus` ist der Kern seiner Existenzberechtigung.
-   */
-  offroad: {
-    latG: 1.15,
-    latGrip: 7.0,
-    driftLatGrip: 2.4,
-    yawResponse: 9,
-    driftAngle: 0.7,
-    driftYawGain: 3.4,
-    // Allrad zieht am Kurvenausgang, statt auszubrechen.
-    powerOversteer: 0.45,
-    liftOversteer: 0.3,
-    driftRise: 6,
-    driftFall: 3.0,
-    catchAssist: 4.2,
-    maxYawRate: 3.0,
-    launchForce: 17_000,
-    power: 290_000,
-    brakeG: 1.7,
-    boostAccel: 6.0,
-    boostCapacity: 3.4,
-    boostRefill: 0.06,
-    // v_max = ∛(290000/1,3) = 61,2 m/s = 220 km/h.
-    drag: 1.3,
-    rollDecel: 0.42,
-    downforce: 0,
-    steerAngle: 0.6,
-    steerRate: 4.2,
-    steerReturn: 5.6,
-    steerFalloff: 42,
-  },
-
-  /**
-   * **Lastwagen** — schwer, träge, und deshalb ein eigenes Spiel: er ist das
-   * Fahrzeug, mit dem Zerbrechliches am meisten Spaß macht.
-   */
-  truck: {
-    latG: 0.95,
-    latGrip: 5.5,
-    driftLatGrip: 2.2,
-    yawResponse: 6,
-    driftAngle: 0.5,
-    driftYawGain: 2.4,
-    powerOversteer: 0.5,
-    liftOversteer: 0.35,
-    driftRise: 4.5,
-    driftFall: 2.4,
-    catchAssist: 4.6,
-    maxYawRate: 1.9,
-    launchForce: 62_000,
-    power: 420_000,
-    brakeG: 1.2,
-    boostAccel: 4.5,
-    boostCapacity: 4.0,
-    boostRefill: 0.05,
-    // v_max = ∛(420000/3,6) = 49,3 m/s = 177 km/h. Deutlich über den 115 km/h
-    // des Einspurmodells — ein Lastwagen, der die Ringstraße nicht mithält, wird
-    // einmal ausprobiert und nie wieder gewählt.
-    drag: 3.6,
-    rollDecel: 0.3,
-    downforce: 0,
-    steerAngle: 0.58,
-    steerRate: 3.0,
-    steerReturn: 3.8,
-    steerFalloff: 34,
-  },
-} as const;
-
-/**
- * Wie viel besser ein Fahrzeug auf losem Boden ist, als Faktor auf
- * `ARCADE_SURFACE`.
- *
- * Eine Zahl je Fahrzeug statt drei (Kies, Gelände, Wasser). Der Offroader
- * kommt damit auf Wiese auf 0,7 × 1,3 = 0,91 der Asphalthaftung — er verliert
- * dort fast nichts, und genau das ist sein Charakter.
- */
-export const LOOSE_BONUS: Readonly<Record<VehicleId, number>> = {
-  touge: 1.0,
-  gt: 0.82,
-  offroad: 1.3,
-  truck: 0.95,
+// WP3: Kraft und Widerstand sind auf die Stock-Ziele des Plans abgestimmt.
+const base: ArcadeSpec = {
+ latG:.95, latGrip:9, driftLatGrip:1.8, yawResponse:10, driftAngle:.75,
+ driftYawGain:3.5, powerOversteer:.7, liftOversteer:.4, driftRise:7, driftFall:2.6,
+ catchAssist:3.4, maxYawRate:3.2, launchForce:5400, power:135000, brakeG:.98,
+ boostAccel:2, boostCapacity:5, boostRefill:.04, drag:.6, rollDecel:.25,
+ downforce:0, steerAngle:.61, steerRate:5.2, steerReturn:7, steerFalloff:40,
 };
-
-/** Endgeschwindigkeit aus Leistung und Luftwiderstand — für Anzeige und Prüfstand. */
-export function topSpeed(spec: ArcadeSpec): number {
-  return speedFromPower(spec.power, spec.drag);
+function car(mass:number, power:number, speed:number, launch:number, patch:Partial<ArcadeSpec>): ArcadeSpec {
+ const v=speed/3.6;
+ return {...base, power:power*1000, launchForce:launch, drag:(power*1000/v-mass*base.rollDecel)/(v*v), ...patch};
 }
-
-/** Größte Querbeschleunigung in m/s², ohne Abtrieb. */
-export function latAccel(spec: ArcadeSpec): number {
-  return spec.latG * GRAVITY;
+export const ARCADE: Readonly<Record<VehicleId, ArcadeSpec>> = {
+ touge:car(1180,135,205,5062,{latG:.95, brakeG:1.0036, steerAngle:35*Math.PI/180}),
+ pip:car(820,70,160,2578,{latG:.90, brakeG:0.961, latGrip:10, yawResponse:14, steerAngle:39*Math.PI/180, steerRate:6.7, driftAngle:.40, driftYawGain:2.4, powerOversteer:.08, liftOversteer:.08, driftFall:5, catchAssist:5}),
+ truck:car(1080,78,150,3051,{latG:.78, brakeG:0.8047, latGrip:6, yawResponse:5.5, steerAngle:38*Math.PI/180, steerRate:3.7, steerReturn:4.5, steerFalloff:30, driftAngle:.5, driftYawGain:2.3, powerOversteer:.35, liftOversteer:.2, maxYawRate:2.3, boostAccel:1.1}),
+ offroad:car(1880,145,180,7068,{latG:.82, brakeG:0.8368, latGrip:6.8, yawResponse:5, steerAngle:32*Math.PI/180, steerRate:3.4, steerReturn:4.2, steerFalloff:32, driftAngle:.5, driftYawGain:2.1, powerOversteer:.15, liftOversteer:.15, driftFall:3.6, maxYawRate:2.1, boostAccel:1.4}),
+ torrent:car(1320,205,225,7153,{latG:1.06, brakeG:1.1008, latGrip:10.5, yawResponse:12, steerAngle:33*Math.PI/180, driftAngle:.58, driftLatGrip:2.7, powerOversteer:.25, liftOversteer:.2, driftFall:3.8, catchAssist:4.4}),
+ ribbon:car(1280,225,235,6713,{latG:.98, brakeG:1.0354, latGrip:8.5, yawResponse:10.5, steerAngle:43*Math.PI/180, driftAngle:1.0, driftLatGrip:1.4, driftYawGain:4.1, powerOversteer:1, liftOversteer:.65, driftFall:1.8, catchAssist:2.8}),
+ meridian:car(1660,285,270,10526,{latG:1.03, brakeG:1.0779, latGrip:11, yawResponse:6.8, steerAngle:29*Math.PI/180, steerRate:4, steerReturn:5, steerFalloff:34, driftAngle:.55, powerOversteer:.2, liftOversteer:.15, maxYawRate:2.4}),
+ morrow:car(1740,320,265,10622,{latG:.91, brakeG:0.9641, latGrip:7.5, yawResponse:6, steerAngle:30*Math.PI/180, steerRate:3.8, steerReturn:4.8, steerFalloff:33, driftAngle:.88, powerOversteer:1.1, liftOversteer:.45, driftFall:2.1, maxYawRate:2.5}),
+ gt:car(1240,320,295,9415,{latG:1.22, brakeG:1.2673, latGrip:13, yawResponse:15, steerAngle:28*Math.PI/180, steerRate:6, steerReturn:8, steerFalloff:42, driftAngle:.62, liftOversteer:.8, downforce:.08}),
+ needle:car(710,300,305,6385,{latG:1.35, brakeG:1.4539, latGrip:15, yawResponse:18, steerAngle:24*Math.PI/180, steerRate:7, steerReturn:9, steerFalloff:44, driftAngle:.48, powerOversteer:.5, liftOversteer:.55, downforce:.222222, downforceSpeed:160/3.6, boostAccel:2.5}),
+};
+export const LOOSE_BONUS: Readonly<Record<VehicleId, number>> = {
+ touge:1, pip:1, truck:1.0714, offroad:1.2143, torrent:1.2143,
+ ribbon:1, meridian:1, morrow:1, gt:.9286, needle:.9286,
+};
+export function topSpeed(spec: ArcadeSpec, mass=0): number {
+ let low=0,high=speedFromPower(spec.power,spec.drag);
+ for(let i=0;i<40;i++){
+  const v=(low+high)/2;
+  if(spec.drag*v*v*v+mass*spec.rollDecel*v<spec.power)low=v;else high=v;
+ }
+ return (low+high)/2;
 }
+export function latAccel(spec: ArcadeSpec): number { return spec.latG * GRAVITY; }

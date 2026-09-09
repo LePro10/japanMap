@@ -1,4 +1,6 @@
 import { districtBlend } from '@/config/city.mjs';
+import { urbanLots } from '../city/UrbanLots';
+import { walkSpawnZone } from '@/config/walker.config';
 import { SCATTER, SPECIES } from '@/config/vegetation.config';
 import { WORLD } from '@/config/world.config';
 import type { PropClearance } from '../props/PropClearance';
@@ -97,6 +99,7 @@ function chunkSeed(cx: number, cz: number, salt: number): number {
 }
 
 const RAD_PER_DEG = Math.PI / 180;
+const COMMONS = walkSpawnZone();
 
 /**
  * Über welche Strecke die Vegetation zur Stadt hin ausdünnt, in Metern.
@@ -231,6 +234,10 @@ export function scatterChunk(
         // ihn wachsen Bäume durch die Tempelhalle; das war der Zustand beim
         // ersten Lauf.
         if (input.clearance !== null && input.clearance.blocks(x, z)) continue;
+        if (input.network?.file.urbanLots?.length && urbanLots(input.network, input.sampler).blocks(x, z)) continue;
+        // Freier Autohof und östliche Ausfahrt; die Sakura am Rand bleiben.
+        if (Math.hypot(x - COMMONS.x, z - COMMONS.z) < 55 ||
+            (x >= COMMONS.x && x < COMMONS.x + 180 && Math.abs(z - (COMMONS.z - 4)) < 9)) continue;
 
         const base = species.minScale + (species.maxScale - species.minScale) * scaleRoll;
         // Das Seitenverhältnis dreht Höhe und Breite gegeneinander, statt beide

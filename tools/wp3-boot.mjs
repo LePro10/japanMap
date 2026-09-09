@@ -1,0 +1,59 @@
+﻿import { chromium } from 'playwright-core';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+const browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader']});
+const errors=[];
+try{
+ const page=await browser.newPage({viewport:{width:1280,height:900}});
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>{if(!localStorage.getItem('wp3.test.seeded')){
+  localStorage.setItem('japanmap.profile',JSON.stringify({yen:300000,owned:['touge'],sandbox:false,bestByEvent:{},driftByEvent:{}}));localStorage.setItem('wp3.test.seeded','yes');
+ }});
+ await page.goto('http://localhost:5180/japanMap/');
+ await page.waitForFunction(()=>window.japanMap?.quality,null,{timeout:180000});
+ await page.evaluate(()=>window.japanMap.quality('low'));console.log('Booted Low');
+ await page.locator('.start__button').click();
+ await page.waitForFunction(()=>document.pointerLockElement);
+ await page.evaluate(()=>document.exitPointerLock());
+ await page.locator('.player-menu').waitFor({state:'visible'});
+ await page.getByRole('button',{name:'Cars',exact:true}).click();
+ assert.equal(await page.locator('.menu__car').count(),1,'Only starter owned');
+ await page.getByRole('button',{name:'Showroom',exact:true}).click();
+ assert.equal(await page.locator('.menu__car').count(),10);
+ const ids=['touge','pip','truck','offroad','torrent','ribbon','meridian','morrow','gt','needle'];
+ const distances=[];
+ for(const id of ids){
+  await page.locator(`[data-vehicle="${id}"]`).click();
+  await page.locator('.menu__choose').click();
+  const result=await page.evaluate(id=>{
+   const d=window.japanMap.engine.systems.find(s=>s.name==='DriveSystem');
+   if(d.vehicleId!==id)throw Error(`Selected ${d.vehicleId}, expected ${id}`);
+   d.placeAt(550,510,0);const from=d.vehicle.position.clone();
+   for(let i=0;i<120;i++)d.vehicle.step(1/120,{throttle:1,brake:0,steer:0,handbrake:false,boost:false},d,null);
+   return {id,distance:d.vehicle.position.distanceTo(from),y:d.vehicle.position.y,ground:d.height(d.vehicle.position.x,d.vehicle.position.z)};
+  },id);
+  assert.ok(result.distance>.5,`${id} moves in world`);assert.ok(result.y>result.ground-.2,`${id} stays above terrain`);distances.push(result);
+ }
+ await page.locator('[data-vehicle="truck"]').click();await page.locator('.menu__choose').click();
+ await page.locator('.menu__tune summary').click();await page.locator('[data-tune="engine"]').selectOption('2');
+ await page.locator('[data-tune="tyres"]').selectOption('2');
+ await page.locator('[data-vehicle="pip"]').click();await page.locator('.menu__choose').click();
+ assert.equal(await page.locator('[data-tune="engine"]').inputValue(),'0','Tune does not leak across cars');
+ await page.locator('[data-vehicle="truck"]').click();await page.locator('.menu__choose').click();
+ assert.equal(await page.locator('[data-tune="engine"]').inputValue(),'2','Own tune restored');
+ await fs.mkdir('screenshots/wp3',{recursive:true});await page.locator('.menu__carDetail').scrollIntoViewIfNeeded();await page.screenshot({path:'screenshots/wp3/showroom.png'});
+ await page.setViewportSize({width:390,height:844});
+ await page.locator('[data-vehicle="needle"]').click();await page.locator('.menu__choose').scrollIntoViewIfNeeded();
+ await page.screenshot({path:'screenshots/wp3/phone.png'});
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Phone has no horizontal overflow');
+ const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('japanmap.profile')));
+ assert.equal(saved.owned.length,10);assert.equal(saved.yen,300000-201600);
+ const persistence=await page.evaluate(async()=>{const {Profile}=await import('/japanMap/src/game/Profile.ts');const p=new Profile();return {count:p.ownedCount,balance:p.yen};});
+ assert.equal(persistence.count,10);assert.equal(persistence.balance,saved.yen);
+ await page.setViewportSize({width:1280,height:800});
+ await page.locator('[data-vehicle="truck"]').click();await page.locator('.menu__choose').click();
+ await page.locator('.menu__resume').click();
+ await page.evaluate(()=>{const d=window.japanMap.engine.systems.find(s=>s.name==='DriveSystem');d.startOnFoot(1);d.board();d.camera.reset(d.vehicle);});
+ await page.waitForTimeout(1500);await page.screenshot({path:'screenshots/wp3/skiff-in-world.png'});
+ assert.deepEqual(errors,[]);console.log('WP3 Low boot, ten purchases/selections, world movement, tuning isolation, local persistence and phone layout passed.');console.table(distances);
+}finally{await browser.close();}

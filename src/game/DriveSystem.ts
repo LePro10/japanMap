@@ -1,3 +1,4 @@
+import { loadTune, saveTune, type CarTune } from '@/config/tuning.config';
 import {
   Group,
   InstancedMesh,
@@ -422,6 +423,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       if (this.#network) this.#navigation.setRoads(this.#network.file.roads);
     }
 
+    this.vehicle.setTune(loadTune(this.#vehicleId));
     const fx = new VehicleFx();
     fx.attach(context);
     this.#fx = fx;
@@ -577,10 +579,16 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    * Der Wagen bleibt stehen, wo er stand — gewechselt wird meist aus dem Menü
    * heraus, und dann will niemand plötzlich am anderen Ende der Karte sein.
    */
+  setCarTune(tune:CarTune):void {
+    saveTune(this.#vehicleId,tune);
+    this.vehicle.setTune(tune);
+  }
+
   setVehicle(id: VehicleId): void {
-    if (id === this.#vehicleId) return;
+    if (id === this.#vehicleId) { this.vehicle.setTune(loadTune(id)); return; }
     this.#vehicleId = id;
     this.vehicle.setSpec(vehicleSpec(id));
+    this.vehicle.setTune(loadTune(id));
     this.#applyVehicleGeometry();
     if (this.#sampler) {
       this.placeAt(this.vehicle.position.x, this.vehicle.position.z, this.vehicle.yaw);
@@ -711,8 +719,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
     const spawn = rollWalkSpawn(seed >>> 0);
     this.#spawn = spawn;
-    this.placeAt(spawn.x, spawn.z, spawn.heading);
-    this.#placeWalkerBesideCar();
+    this.placeAt(spawn.x, spawn.z - 4, Math.PI / 2);
+    this.ground.refresh(spawn.x, spawn.z, 0);
+    this.walker.respawn(spawn.x, spawn.z, Math.PI, this);
+    this.walkCamera.reset(this.walker);
     this.#setWalking(true);
     if (this.#group) this.#group.visible = true;
     this.#readouts.modus = 'Zu Fuß';
@@ -953,6 +963,13 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#touchHandbrake = down;
   }
 
+  #touchBoost = false;
+
+  /** Nitro-Knopf im Spieler-HUD, dieselbe Eingabe wie Shift. */
+  setTouchBoost(down: boolean): void {
+    this.#touchBoost = down;
+  }
+
   /** Sprung aus der Fingersteuerung — zu Fuß. */
   setTouchJump(down: boolean): void {
     this.#touchJump = down;
@@ -1013,6 +1030,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
   /** Fenster verliert den Fokus: sonst fährt das Auto mit Vollgas weiter. */
   readonly #onBlur = (): void => {
+    this.#touchBoost = false;
     this.#keys.clear();
     this.#axes.forward = 0;
     this.#axes.right = 0;
@@ -1024,6 +1042,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     if (this.#scripted) return this.#scripted;
 
     const input = this.#input;
+    input.boost = this.#touchBoost || this.#keys.has('shiftleft') || this.#keys.has('shiftright');
     const keys = this.#keys;
     const forward = keys.has('keyw') || keys.has('arrowup') ? 1 : 0;
     const back = keys.has('keys') || keys.has('arrowdown') ? 1 : 0;
