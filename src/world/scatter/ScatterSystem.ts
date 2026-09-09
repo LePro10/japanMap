@@ -11,11 +11,13 @@ import {
 import {
   DEFAULT_QUALITY,
   LOD_BIAS_MIN,
+  PHOTO_CAPTURE,
   QUALITY,
   QUALITY_LEVELS,
   VEGETATION_GROUND_RANGE_MAX,
   VEGETATION_RANGE_MAX,
   type QualityKey,
+  type QualitySettings,
 } from '@/config/quality.config';
 import {
   GROUND_AO,
@@ -51,6 +53,13 @@ import {
 import { ZoneMap } from './ZoneMap';
 
 const CHUNKS_PER_AXIS = WORLD.size / SCATTER.chunkSize;
+/**
+ * Capture High hält ein weites Bild, nicht den ganzen Kompass.
+ * 0,5 ≈ 180° — 90° FOV plus Hang, der mehr als den Keil zeigt.
+ */
+const PHOTO_BUFFER_PACK = 0.5;
+const PHOTO_CHUNKS_PER_FRAME = 48;
+const PHOTO_NEW_CHUNK_MS = 16;
 
 /** Ein Stamm in Reichweite des Autos — ohne Mesh, ohne BVH. */
 export interface CanopyHit {
@@ -159,6 +168,8 @@ export class ScatterSystem implements System {
     groundRange: QUALITY[DEFAULT_QUALITY].vegetationGroundRange,
     bias: QUALITY[DEFAULT_QUALITY].lodBias,
   };
+  /** Capture High: Cinema-Reichweite, Cache bleibt, Physik steht. */
+  #photo = false;
   /** Look-Stärke der Bodenverdeckung, gepuffert bis die Flecken existieren. */
   #lookGroundAo: number = VEGETATION_LOOK.groundAo;
 
@@ -400,6 +411,29 @@ export class ScatterSystem implements System {
   }
 
   /**
+   * Capture High: Gras und Bäume in Foto-Reichweite nachziehen, ohne den
+   * Cache zu leeren. `#reset()` wäre der kahle Wald im PNG.
+   */
+  beginCapture(): void {
+    if (this.#photo) return;
+    this.#photo = true;
+    this.#passOpen = false;
+    this.#lastPassMisses = Number.POSITIVE_INFINITY;
+    this.#worker?.boostQueue(true);
+  }
+
+  endCapture(): void {
+    if (!this.#photo) return;
+    this.#photo = false;
+    this.#passOpen = false;
+    this.#worker?.boostQueue(false);
+  }
+
+  #qualitySettings(): QualitySettings {
+    return this.#photo ? PHOTO_CAPTURE : QUALITY[this.#quality];
+  }
+
+  /**
    * Stämme (Kiefer, Laub) im Umkreis. Schreibt in vorbereitete Slots von
    * `out` und liefert, wie viele getroffen wurden. Gras und Busch fehlen
    * absichtlich: die fährt man um, und 30 000 Gräser als Zylinder wären
@@ -556,8 +590,12 @@ export class ScatterSystem implements System {
     const d1 = distances[1] * LOD_BIAS_MIN;
     // Je Schicht der eigene größte Faktor: ein Grasspuffer, der für die
     // Baumreichweite bemessen wäre, kostete das Hundertfache an Speicher.
-    const d2 =
-      distances[2] * (layer === 'ground' ? VEGETATION_GROUND_RANGE_MAX : VEGETATION_RANGE_MAX);
+    // PHOTO_CAPTURE liegt über der Spielleiter — ohne sie wären die
+    // Foto-Instanzen der Überlauf, den `#dropped` still zählt.
+    const playMax = layer === 'ground' ? VEGETATION_GROUND_RANGE_MAX : VEGETATION_RANGE_MAX;
+    const photoMax =
+      layer === 'ground' ? PHOTO_CAPTURE.vegetationGroundRange : PHOTO_CAPTURE.vegetationRange;
+    const d2 = distances[2] * Math.max(playMax, photoMax);
     return [
       // Die beiden inneren Ringe bekommen ihre Größe aus den **ungeschrumpften**
       // Grenzen: sie sind auf hohen Stufen am größten, und die müssen auch
@@ -599,21 +637,22 @@ export class ScatterSystem implements System {
    */
   static #thinnedRingSlots(inner: number, outer: number, area: number): number {
     let worst = 0;
-    for (const level of QUALITY_LEVELS) {
-      const q = QUALITY[level];
+    const consider = (q: QualitySettings, pack: number): void => {
       const r = q.vegetationFullRadius;
       const keepFar = q.vegetationFarKeep;
-      // Ab hier greift der Boden `keepFar` statt des Abfalls.
       const floorStart = keepFar >= 1 ? r : r / Math.sqrt(keepFar);
       const clamp = (v: number): number => Math.min(Math.max(v, inner), outer);
-
       const fullTo = clamp(r);
       const fadeTo = clamp(floorStart);
       let sum = (fullTo * fullTo - inner * inner) / 2;
       if (fadeTo > fullTo) sum += r * r * Math.log(fadeTo / fullTo);
       if (outer > fadeTo) sum += (keepFar * (outer * outer - fadeTo * fadeTo)) / 2;
-      worst = Math.max(worst, sum);
-    }
+      worst = Math.max(worst, sum * pack);
+    };
+    for (const level of QUALITY_LEVELS) consider(QUALITY[level], 1);
+    // Foto hält nur das Bild, nicht 360°. pack < 1 ist die Bedingung, unter
+    // der `vegetationFarKeep: 1` die Puffer nicht sprengt.
+    consider(PHOTO_CAPTURE, PHOTO_BUFFER_PACK);
     // Derselbe Zuschlag wie bei `ring()`: die Randchunks eines Durchlaufs
     // reichen über die Grenze hinaus, und ein Überlauf verwirft still.
     return Math.ceil((2 * Math.PI * worst) / area) + 64;
@@ -735,7 +774,7 @@ export class ScatterSystem implements System {
     // ein Box-Frustum-Test sind sechs Ebenengleichungen. Er zählt deshalb nicht
     // mehr mit. Die Obergrenze der Arbeit je Frame bleibt damit exakt dieselbe
     // wie vorher, der Durchlauf ist nur nicht mehr an der Kartengröße gemessen.
-    let budget = SCATTER.chunksPerFrame;
+    let budget = this.#photo ? PHOTO_CHUNKS_PER_FRAME : SCATTER.chunksPerFrame;
 
     for (; this.#cursor < this.#pass.length && budget > 0; this.#cursor++) {
       const key = this.#pass[this.#cursor]!;
@@ -873,7 +912,7 @@ export class ScatterSystem implements System {
       // Quadriert gerechnet, weil unten mit quadrierten Abständen verglichen
       // wird: `(R/d)² = R²/d²`, und beides liegt bereits quadriert vor. Die
       // Wurzel je Instanz wären bei 50 000 Instanzen 50 000 Wurzeln.
-      const quality = QUALITY[this.#quality];
+      const quality = this.#qualitySettings();
       const full = Math.min(quality.vegetationFullRadius, d[2]);
       const fullSq = full * full;
       const keepFar = quality.vegetationFarKeep;
@@ -967,7 +1006,8 @@ export class ScatterSystem implements System {
 
     if (
       this.#newThisFrame > 0 &&
-      performance.now() - this.#frameStart >= SCATTER.newChunkBudgetMs
+      performance.now() - this.#frameStart >=
+        (this.#photo ? PHOTO_NEW_CHUNK_MS : SCATTER.newChunkBudgetMs)
     ) {
       return null;
     }
@@ -1017,20 +1057,9 @@ export class ScatterSystem implements System {
    * werden.
    */
   #far(species: SpeciesSettings): number {
-    return species.lodDistances[2] * ScatterSystem.#rangeFactor(this.#quality, species);
-  }
-
-  /**
-   * Welcher Reichweiten-Faktor für diese Art gilt — P11.6.
-   *
-   * Bäume und Bodendecker haben seitdem **getrennte** Faktoren, weil sie
-   * verschiedene Aufgaben im Bild haben: die Silhouette eines Grats kann kein
-   * Bodenanstrich ersetzen, die Farbe einer Wiese sehr wohl. Herleitung bei
-   * `SpeciesLayer` und `QualitySettings.vegetationGroundRange`.
-   */
-  static #rangeFactor(level: QualityKey, species: SpeciesSettings): number {
-    const q = QUALITY[level];
-    return species.layer === 'ground' ? q.vegetationGroundRange : q.vegetationRange;
+    const q = this.#qualitySettings();
+    const factor = species.layer === 'ground' ? q.vegetationGroundRange : q.vegetationRange;
+    return species.lodDistances[2] * factor;
   }
 
   /**
@@ -1047,8 +1076,8 @@ export class ScatterSystem implements System {
    * Ring negativer Breite.
    */
   #distances(species: SpeciesSettings): [number, number, number] {
-    const q = QUALITY[this.#quality];
-    const far = species.lodDistances[2] * ScatterSystem.#rangeFactor(this.#quality, species);
+    const q = this.#qualitySettings();
+    const far = this.#far(species);
     return [
       Math.min(species.lodDistances[0] * q.lodBias, far),
       Math.min(species.lodDistances[1] * q.lodBias, far),
