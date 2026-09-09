@@ -91,6 +91,15 @@ export class QualitySystem implements System {
   #lastFrame = 0;
   /** Wahr, solange dieses System selbst eine Stufe sendet. */
   #internal = false;
+  /**
+   * Stufe, auf die Capture High zurückstellt. `null`, wenn kein Capture läuft.
+   *
+   * Capture High hebt für **einen** Frame auf Ultra. `set('ultra')` wäre falsch:
+   * das gilt als Wahl von Hand, landet in `localStorage` und beendet den
+   * Wächter. Die Streuung würde denselben Wechsel als Stufenwechsel lesen und
+   * den Wald leeren — ein Foto ohne Bäume statt eines schärferen Fotos.
+   */
+  #captureRestore: QualityKey | null = null;
 
   /** Ergebnis der Vorabschätzung — nur zur Anzeige und für Messungen. */
   #estimate: DeviceEstimate | null = null;
@@ -143,13 +152,16 @@ export class QualitySystem implements System {
     // Zuhören **und** senden: die Stufe kann von überall geändert werden (Panel,
     // Konsole, der Startbenchmark). Wer sie ändert, sendet das Ereignis; dieses
     // System führt nur Buch darüber, was gerade gilt.
-    context.bus.on('quality:changed', ({ level }) => {
+    context.bus.on('quality:changed', ({ level, transient }) => {
       this.#level = level;
       // Kam die Stufe nicht von hier, hat jemand sie von Hand gewählt — im
       // Panel, in der Konsole. Das beendet die Einstufung und wird gemerkt.
       // Sonst nähme die Messung dem Nutzer seine Wahl nach einer Sekunde
       // wieder weg, und zwar unbemerkt.
-      if (!this.#internal) {
+      //
+      // Capture High sendet `transient` und kommt über `#emitTransient` — beides
+      // darf die gespeicherte Wahl nicht überschreiben.
+      if (!this.#internal && !transient) {
         this.#run = null;
         // **Und der Wächter endet mit.** Dieselbe Begründung wie zwei Zeilen
         // darüber, nur über eine längere Frist: eine Stufe, die sich nach zehn
@@ -264,6 +276,27 @@ export class QualitySystem implements System {
     }
     if (level === this.#level) return;
     this.#context?.bus.emit('quality:changed', { level });
+  }
+
+  /**
+   * Capture High: PostFX, Gelände, Spiegelung auf Ultra, Spielstufe merken.
+   *
+   * Der Wächter sieht diesen Frame nicht — ein 2560-px-Ultra-Bild wäre sonst
+   * ein langsames Fenster und stufte die Sitzung dauerhaft herunter.
+   */
+  beginCapture(): void {
+    if (this.#captureRestore !== null) return;
+    this.#captureRestore = this.#level;
+    if (this.#level !== 'ultra') this.#emitTransient('ultra');
+  }
+
+  /** Spielstufe zurück, Wächter-Uhr neu setzen. */
+  endCapture(): void {
+    const restore = this.#captureRestore;
+    if (restore === null) return;
+    this.#captureRestore = null;
+    if (this.#level !== restore) this.#emitTransient(restore);
+    this.#lastFrame = performance.now();
   }
 
   /**
@@ -418,6 +451,16 @@ export class QualitySystem implements System {
     }
   }
 
+  /** Wie `#emit`, plus `transient` — Streuung bleibt stehen, Speicher unberührt. */
+  #emitTransient(level: QualityKey): void {
+    this.#internal = true;
+    try {
+      this.#context?.bus.emit('quality:changed', { level, transient: true });
+    } finally {
+      this.#internal = false;
+    }
+  }
+
   /**
    * Die Ersteinstufung — PLAN.md P7 / 7.1, „automatische Ersteinstufung über
    * einen kurzen Benchmark beim ersten Start".
@@ -447,6 +490,9 @@ export class QualitySystem implements System {
     const now = performance.now();
     const delta = now - this.#lastFrame;
     this.#lastFrame = now;
+    // Capture High ist kein Spiel-Frame. Ohne den Ausstieg zählte der Wächter
+    // die teure Ultra-Aufnahme als „die Maschine schafft die Stufe nicht".
+    if (this.#captureRestore !== null) return;
     if (!run) {
       this.#guardStep(delta);
       return;

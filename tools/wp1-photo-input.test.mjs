@@ -17,13 +17,18 @@ try {
   await page.evaluate(async () => {
     const { Engine } = await import("/japanMap/src/core/Engine.ts");
     const { PhotoMode } = await import("/japanMap/src/ui/PhotoMode.ts");
+    const { QualitySystem } = await import(
+      "/japanMap/src/render/QualitySystem.ts"
+    );
     document.querySelector("#loading")?.remove();
+    document.querySelector("#boot")?.remove();
     const engine = (window.photoEngine = new Engine(
       document.querySelector("canvas"),
     ));
     engine.resize(844, 390);
     window.photoUpdates = 0;
     window.photoSteps = 0;
+    window.photoQuality = [];
     engine.add({
       name: "probe",
       update() {
@@ -33,6 +38,13 @@ try {
         window.photoSteps++;
       },
       dispose() {},
+    });
+    const quality = new QualitySystem("low");
+    engine.add(quality);
+    quality.init(engine.context);
+    window.photoQualitySystem = quality;
+    engine.bus.on("quality:changed", ({ level, transient }) => {
+      window.photoQuality.push({ level, transient: Boolean(transient) });
     });
     const photo = (window.photoTest = new PhotoMode(
       engine,
@@ -101,6 +113,29 @@ try {
   await page.mouse.down();
   await page.mouse.move(500, 210);
   await page.mouse.up();
+  await page.evaluate(() => {
+    HTMLCanvasElement.prototype.toBlob = function (cb) {
+      cb(new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" }));
+    };
+    window.photoQuality = [];
+  });
+  await page
+    .getByRole("button", { name: "Capture High", exact: true })
+    .click({ force: true });
+  await page.locator(".photo-mode__result:not([hidden])").waitFor();
+  const capture = await page.evaluate(() => ({
+    level: window.photoQualitySystem.level,
+    events: window.photoQuality,
+  }));
+  assert.equal(capture.level, "low", "Gameplay preset must return after Capture High");
+  assert.ok(
+    capture.events.some((event) => event.level === "ultra" && event.transient),
+    "Capture High must raise one transient Ultra frame",
+  );
+  assert.deepEqual(capture.events.at(-1), {
+    level: "low",
+    transient: true,
+  });
   await page.keyboard.press("Escape");
   assert.equal(await page.locator(".photo-mode").count(), 0);
   assert.deepEqual(
@@ -118,7 +153,7 @@ try {
     window.photoEngine.dispose();
   });
   console.log(
-    "Photo WASD/Space/Shift flight, wheel zoom, streaming preview, frozen simulation, exact camera restoration and shortcut cleanup passed.",
+    "Photo WASD/Space/Shift flight, wheel zoom, streaming preview, frozen simulation, Capture High Ultra-then-restore, exact camera restoration and shortcut cleanup passed.",
   );
 } finally {
   await browser.close();

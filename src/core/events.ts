@@ -156,7 +156,12 @@ export type AppEvents = {
   'look:apply': { look: LookState };
   'look:collect': { target: LookState };
 
-  'quality:changed': { level: QualityKey };
+  /**
+   * `transient` ist der eine Capture-Frame im Fotomodus: Stufe anwenden,
+   * ohne sie zu speichern und ohne die Vegetationsstreuung zu verwerfen.
+   * Ohne das Flag bleibt es eine Wahl von Hand.
+   */
+  'quality:changed': { level: QualityKey; transient?: boolean };
 
   /**
    * Die Maschine hat über längere Zeit Reserve gezeigt — P15.5.

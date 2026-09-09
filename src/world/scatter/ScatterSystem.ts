@@ -240,7 +240,7 @@ export class ScatterSystem implements System {
       target.vegetation.groundAo = this.#shared.uVegBaseAo.value;
     });
 
-    context.bus.on('quality:changed', ({ level }) => {
+    context.bus.on('quality:changed', ({ level, transient }) => {
       // **Verglichen werden die Werte, nicht der Name der Stufe.** Seit P10.2
       // gibt es „Eigen", und dort ändern sich Dichte, Reichweite und
       // Umschaltpunkt, **ohne** dass der Name sich ändert. Ein Abgleich auf den
@@ -279,6 +279,10 @@ export class ScatterSystem implements System {
       ) {
         return;
       }
+      // Capture High hebt die Stufe für einen Frame. `#reset()` leerte den
+      // Cache — gemessen derselbe Fehler wie „0 Instanzen, stable: true":
+      // das Foto hätte den Wald verloren, den man gerade eingerahmt hat.
+      if (transient) return;
       this.#reset();
     });
 
