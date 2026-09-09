@@ -77,12 +77,21 @@
 .tune-garage__brand span,
 .tune-garage__title span,
 .tune-garage__wallet span,
-.tune-garage__kicker {
+.tune-garage__kicker,
+.tune-garage__engine {
   display: block;
   font: 800 10px / 1 var(--display);
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--amber);
+}
+
+.tune-garage__engine {
+  margin: 6px 0 4px;
+  color: var(--paper);
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  text-transform: none;
 }
 
 .tune-garage__brand strong,
@@ -274,6 +283,15 @@
   background: color-mix(in srgb, var(--ink) 58%, transparent);
   color: var(--paper);
   scroll-snap-align: start;
+  animation: tune-card-in 0.32s ease both;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.tune-garage__card:nth-child(2) { animation-delay: 40ms; }
+.tune-garage__card:nth-child(3) { animation-delay: 80ms; }
+.tune-garage__card:nth-child(4) { animation-delay: 120ms; }
+.tune-garage__card:hover {
+  transform: translateY(-3px);
 }
 
 .tune-garage__card b {
@@ -406,6 +424,19 @@
   font: 800 14px / 1 var(--display);
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  animation: tune-toast 0.35s ease;
+}
+
+.tune-garage.is-engine .tune-garage__bar:first-of-type i::after {
+  animation: tune-bar-live 0.9s ease-in-out infinite;
+}
+
+.tune-garage.is-fitting .tune-garage__badge {
+  animation: tune-punch 0.4s ease;
+}
+
+.tune-garage.is-fitting .tune-garage__fit {
+  filter: brightness(1.18);
 }
 
 @keyframes tune-pulse {
@@ -413,9 +444,32 @@
   50% { opacity: 1; filter: blur(0.2px); }
 }
 
+@keyframes tune-card-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes tune-toast {
+  from { opacity: 0; transform: translate(-50%, 8px) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+@keyframes tune-bar-live {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.35); }
+}
+
+@keyframes tune-punch {
+  0% { transform: translateX(-50%) scale(0.86); }
+  55% { transform: translateX(-50%) scale(1.08); }
+  100% { transform: translateX(-50%) scale(1); }
+}
+
 .reduce-motion .tune-garage__badge,
 .reduce-motion .tune-garage__bar i::after,
-.reduce-motion .tune-garage__letter {
+.reduce-motion .tune-garage__letter,
+.reduce-motion .tune-garage__card,
+.reduce-motion .tune-garage__toast {
   animation: none !important;
   transition: none !important;
 }

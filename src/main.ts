@@ -860,7 +860,7 @@ async function boot(): Promise<void> {
     wallet: () => profile.yen,
     sandbox: () => profile.sandbox,
     click: () => audio.click(),
-    engineBlip: () => audio.engineBlip(),
+    engineBlip: (pitch) => audio.engineBlip(pitch),
     hideWorld: (hidden) => {
       commons.group.visible = !hidden;
     },
@@ -894,7 +894,7 @@ async function boot(): Promise<void> {
       click: () => {
         audio.click();
       },
-      engineBlip: () => audio.engineBlip(),
+      engineBlip: (pitch) => audio.engineBlip(pitch),
     },
     drive: {
       get active() {

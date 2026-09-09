@@ -62,6 +62,7 @@ export class GarageStage {
   #pulse = 0;
   #focus: TuneCategory | 'setup' | null = null;
   #sparkT = 0;
+  #flicker = 0;
 
   constructor(atmosphere: AtmosphereUniforms) {
     this.#atmosphere = atmosphere;
@@ -243,12 +244,20 @@ export class GarageStage {
     this.#car?.setTuneVisual(tune, focus);
     const any = tune.engine + tune.brakes + tune.steering + tune.tyres > 0;
     this.#neon.intensity = any ? 40 : 0;
-    this.#engineLight.intensity = focus === 'engine' ? 70 : tune.engine > 0 ? 18 : 0;
+    const glow = this.#car?.engineGlow() ?? 0xff4a2a;
+    this.#engineLight.color.setHex(glow);
+    this.#engineLight.intensity = focus === 'engine' ? 90 : tune.engine > 0 ? 22 : 0;
   }
 
-  pulseInstall(): void {
+  pulseInstall(engine = false): void {
     this.#pulse = 1;
     this.#burst();
+    if (engine) this.#car?.pulseEngine();
+    else this.#car?.blipEngine();
+  }
+
+  blipEngine(): void {
+    this.#car?.blipEngine();
   }
 
   carCenter(target: Vector3): Vector3 {
@@ -262,6 +271,10 @@ export class GarageStage {
       this.#syncCarHeight();
     }
     this.#car?.update(dt, this.#focus);
+    this.#flicker += dt;
+    for (const [i, light] of this.#lights.entries()) {
+      light.intensity = (i < 2 ? 220 : 90) + Math.sin(this.#flicker * 6 + i * 1.7) * 6;
+    }
     if (this.#sparkT > 0) {
       this.#sparkT = Math.max(0, this.#sparkT - dt);
       const pos = this.#sparks.geometry.getAttribute('position');
