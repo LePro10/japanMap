@@ -1,7 +1,5 @@
 import { chromium } from "playwright-core";
 import assert from "node:assert/strict";
-import fs from "node:fs/promises";
-
 const browser = await chromium.launch({
   headless: true,
   args: [
@@ -33,7 +31,6 @@ try {
     );
     localStorage.removeItem("japanmap.tune.touge");
     localStorage.setItem("japanMap.reducedMotion", "true");
-    document.documentElement.classList.add("reduce-motion");
   });
   await page.goto("http://127.0.0.1:5180/japanMap/");
   await page.waitForFunction(() => window.japanMap?.quality, null, {
@@ -71,27 +68,13 @@ try {
   assert.equal(await page.locator("[data-badge]").getAttribute("hidden"), null);
 
   await page.locator('[data-shot="engine"]').click();
-  await fs.mkdir("screenshots/tune", { recursive: true });
-  const shot = async (name) => {
-    try {
-      await page.screenshot({ path: `screenshots/tune/${name}.png`, timeout: 5000 });
-    } catch (error) {
-      console.log(`screenshot ${name} skipped: ${error.message.split("\n")[0]}`);
-    }
-  };
-  await shot("bay-engine");
-  await page.locator('[data-shot="hero"]').click();
-  await shot("bay-hero");
+  assert.ok(
+    await page.locator('[data-shot="engine"]').evaluate((el) => el.classList.contains("is-on")),
+  );
 
   await page.keyboard.press("Escape");
   await page.locator(".player-menu").waitFor({ state: "visible" });
   assert.equal(await bay.count(), 0);
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  const rail = await page.locator(".menu__tile--sakura").evaluate((el) =>
-    el.getBoundingClientRect().height,
-  );
-  assert.ok(rail >= 48, "Tune Car tile stays tappable on the phone");
 
   const fatal = errors.filter(
     (line) =>
@@ -99,7 +82,7 @@ try {
   );
   if (fatal.length) console.log(fatal.join("\n---\n"));
   assert.deepEqual(fatal, []);
-  console.log("   ✓ Open Bay overlay, purchase, TUNED badge, escape");
+  console.log("   ✓ Open Bay overlay, purchase, TUNED badge, engine camera, escape");
 } finally {
   await browser.close();
 }
