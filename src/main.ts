@@ -2,6 +2,7 @@ import { PhotoMode } from './ui/PhotoMode';
 import { callPlayerCar } from './ui/callPlayerCar';
 import { SakuraCommons } from './world/stunt/SakuraCommons';
 import { StillwaterVillage } from './world/settlements/StillwaterVillage';
+import { TerraceOffroad } from './world/settlements/TerraceOffroad';
 import { MAP_LANDMARKS } from './ui/navigationMapData';
 import './style.css';
 import './ui/theme.css';
@@ -537,6 +538,9 @@ async function boot(): Promise<void> {
   engine.bus.on('drive:rescued', () => {
     hud.showRescue();
   });
+  engine.bus.on('drive:too-deep', () => {
+    hud.showTooDeep();
+  });
 
   engine.bus.on('pickup:collected', ({ yen }) => {
     profile.earn(yen);
@@ -811,6 +815,7 @@ async function boot(): Promise<void> {
   engine.add(commons);
   const settlements = new StillwaterVillage(drive, overlay);
   engine.add(settlements);
+  engine.add(new TerraceOffroad(drive));
 
   // Erste Größe setzen, bevor der ResizeObserver das erste Mal feuert — sonst
   // rendert der erste Frame mit 1×1 Pixeln.
@@ -905,6 +910,7 @@ async function boot(): Promise<void> {
         drive.setVehicle(id);
       },
       setCarTune: (tune) => drive.setCarTune(tune),
+      setCarSetup: (setup) => drive.setCarSetup(setup),
       setPaused: (paused) => drive.setPaused(paused),
     },
     sleepWorld: (sleeping) => {

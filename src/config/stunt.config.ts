@@ -267,6 +267,20 @@ export const RAMPS: readonly Ramp[] = [
     height: 2.4,
     tail: 24,
   },
+  {
+    id: 'terrace-roller',
+    name: 'Terrace Roller',
+    // Packed-dirt roller on Terrace Track at (−680, 380), eastbound. 1,4 m
+    // rise over 16 m, 22 m firm landing. Spitze atan(1,5 · 1,4 / 16) = 7,5° —
+    // under the 16° hull limit from P24, so any car can take it.
+    x: -680,
+    z: 380,
+    heading: Math.atan2(220, 50),
+    length: 16,
+    width: 9,
+    height: 1.4,
+    tail: 22,
+  },
 ];
 
 /**

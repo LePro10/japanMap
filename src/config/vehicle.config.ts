@@ -836,6 +836,9 @@ export const CRAWL_ASSIST = {
   /** Ab diesem Tempo ist die Hilfe vollständig weg, m/s. 8 m/s ≙ 29 km/h. */
   speed: 8,
 } as const;
+// Das Arcade-Modell (P22) hat keine Achsen mehr. Die Kriechhilfe, die dort
+// wirklich wirkt, steht in `ARCADE_CRAWL` und `ArcadeDynamics.#longitudinal`.
+// Diese Zahlen bleiben für `tools/bench/hill.mts` (geschlossene Traktionsgrenze).
 
 export const VEHICLE_COLLISION = {
   /**

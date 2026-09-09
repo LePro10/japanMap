@@ -10,6 +10,7 @@ import type { Ground, Surface } from './Vehicle';
 import { isCircuitRoad, preparedCircuitBlend } from './circuitPrep';
 import type { RampField } from './RampField';
 import type { WaterField } from './WaterField';
+import type { HeightField, LocalWater } from '@/world/settlements/LocalSurfaces';
 
 /**
  * Der Boden, auf dem ein Fahrzeug fährt — herausgelöst aus `DriveSystem` in P23.
@@ -46,7 +47,9 @@ import type { WaterField } from './WaterField';
  */
 export class RoadGround implements Ground {
   /** Lokale Werkböden und Zufahrten teilen ihre Dreiecke mit dem Mesh. */
-  localSurfaces: { height(x: number, z: number): number; normal(x: number, z: number, out: Vector3): boolean } | null = null;
+  localSurfaces: HeightField | null = null;
+  /** Prepared shallow water on top of a firm local bed — Shallow Run. */
+  localWater: LocalWater | null = null;
   #sampler: TerrainSampler | null = null;
   #network: RoadNetwork | null = null;
   #water: WaterField | null = null;
@@ -329,6 +332,8 @@ export class RoadGround implements Ground {
   }
 
   surface(x: number, z: number): Surface {
+    const splash = this.localWater?.depth(x, z) ?? 0;
+    if (splash > WATER_PHYS.wetThreshold) return 'wasser';
     const local = this.localSurfaces?.height(x, z) ?? -Infinity;
     if (Number.isFinite(local) && local >= this.height(x, z) - 0.015) return 'kies';
     if (this.#halfWidth > 0 && this.#network) {
@@ -363,10 +368,12 @@ export class RoadGround implements Ground {
   }
 
   waterDepth(x: number, z: number): number {
-    if (!this.#water?.ready || !this.#sampler) return 0;
+    const overlay = this.localWater?.depth(x, z) ?? 0;
+    if (!this.#water?.ready || !this.#sampler) return overlay;
     const water = this.#water.at(x, z, this.#groundBase(x, z));
     const local = this.localSurfaces?.height(x, z) ?? -Infinity;
-    return Math.min(water.depth, Math.max(0, water.surfaceY - local));
+    const field = Math.min(water.depth, Math.max(0, water.surfaceY - local));
+    return Math.max(field, overlay);
   }
 }
 

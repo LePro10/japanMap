@@ -276,6 +276,9 @@ export type AppEvents = {
    */
   'drive:rescued': { seconds: number };
 
+  /** Ocean beyond the car's fording depth — returned to the last dry road. */
+  'drive:too-deep': void;
+
   'debug:visibility': { visible: boolean };
 
   /**

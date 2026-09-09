@@ -50,3 +50,41 @@ export class LocalSurfaces {
     g.computeVertexNormals(); return g;
   }
 }
+
+export interface HeightField {
+  height(x: number, z: number): number;
+  normal(x: number, z: number, out: Vector3): boolean;
+}
+
+export interface LocalWater {
+  depth(x: number, z: number): number;
+}
+
+/**
+ * Mehrere lokale Flächen als Maximum. Mill Lane und Terrace Track dürfen
+ * denselben `localSurfaces`-Steckplatz nicht gegenseitig ersetzen — wer
+ * zuweist statt zu stapeln, lässt das Dorf in den Teich fallen.
+ */
+export class SurfaceStack implements HeightField {
+  readonly layers: HeightField[] = [];
+  height(x: number, z: number): number {
+    let top = -Infinity;
+    for (const layer of this.layers) {
+      const y = layer.height(x, z);
+      if (y > top) top = y;
+    }
+    return top;
+  }
+  normal(x: number, z: number, out: Vector3): boolean {
+    let top = -Infinity;
+    let best: HeightField | null = null;
+    for (const layer of this.layers) {
+      const y = layer.height(x, z);
+      if (y > top) {
+        top = y;
+        best = layer;
+      }
+    }
+    return best ? best.normal(x, z, out) : false;
+  }
+}

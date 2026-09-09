@@ -1,4 +1,7 @@
-import { loadTune, saveTune, tunedArcade, type CarTune, type TuneCategory, type TuneTier } from '@/config/tuning.config';
+import {
+  loadTune, saveTune, tunedArcade, loadSetup, saveSetup, setupsFor, SETUP_LABEL,
+  type CarTune, type TuneCategory, type TuneTier, type SetupId,
+} from '@/config/tuning.config';
 import { topSpeed } from '@/config/arcade.config';
 import aerialMapUrl from "../../assets/generated/terrain/navigation-map.webp?url";
 import {
@@ -47,6 +50,7 @@ export interface DriveControl extends TouchDriveTarget {
   readonly vehicleId: VehicleId;
   setVehicle(id: VehicleId): void;
   setCarTune(tune:CarTune):void;
+  setCarSetup?(setup: SetupId): void;
   /** Welt anhalten, solange das Menü offen ist. Optional, damit Prüfstände ohne Physik durchlaufen. */
   setPaused?(paused: boolean): void;
 }
@@ -573,14 +577,14 @@ export class PlayerUi {
       owned = this.#owns(id),
       copy = CAR_COPY[id];
     const host = this.#el(".menu__carDetail");
-    const tune=loadTune(id), arcade=tunedArcade(id,tune), balance=this.#o.events?.yen??0;
+    const tune=loadTune(id), setup=loadSetup(id), arcade=tunedArcade(id,tune), balance=this.#o.events?.yen??0;
     const canBuy=!!this.#o.events && balance>=spec.price;
     const chooseLabel = owned
       ? id === this.#o.drive?.vehicleId
         ? "Selected"
         : "Select car"
       : `Buy · ${spec.price.toLocaleString("en-US")} Sparks`;
-    host.innerHTML = `<div class="menu__carStage">${carPortrait(id)}<span>${spec.category} · ${owned ? "OWNED" : "SHOWROOM"}</span></div><h2>${copy.name}</h2><p class="menu__intro">${copy.role}</p><div class="menu__carSpecs"><span><strong>${spec.chassis.mass.toLocaleString("en-US")}</strong>kg</span><span><strong>${spec.drivetrain.layout.toUpperCase()}</strong>Drivetrain</span><span><strong>${Math.round(topSpeed(arcade,spec.chassis.mass)*3.6)}</strong>km/h · estimated</span><span><strong>${arcade.latG.toFixed(2)}</strong>g · road grip</span></div><p>${balance.toLocaleString("en-US")} Sparks available · Saved in this browser</p><button class="menu__choose" ${owned ? "" : 'aria-label="Buy"'} ${owned||canBuy ? "" : "disabled"}>${chooseLabel}</button>${!owned&&!canBuy ? `<p class="menu__note">${(spec.price-balance).toLocaleString("en-US")} more Sparks needed.</p>` : ""}${owned ? `<details class="menu__tune"><summary>Tune · Free tuning preview</summary><p>Fit tiers to this car. Engine adds force and speed; brakes shorten stops; steering responds sooner; tyres add road grip. Mass and wheelbase stay the same.</p>${(["engine","brakes","steering","tyres"] as TuneCategory[]).map(key=>`<label class="menu__row">${key[0]!.toUpperCase()+key.slice(1)}<select data-tune="${key}" aria-label="${key} tier">${["Stock","Street","Sport"].map((tier,i)=>`<option value="${i}" ${tune[key]===i?"selected":""}>${tier}</option>`).join("")}</select></label>`).join("")}<p class="menu__note">Free to fit and saved per car. No Sparks spent.</p></details>` : ""}`;
+    host.innerHTML = `<div class="menu__carStage">${carPortrait(id)}<span>${spec.category} · ${owned ? "OWNED" : "SHOWROOM"}</span></div><h2>${copy.name}</h2><p class="menu__intro">${copy.role}</p><div class="menu__carSpecs"><span><strong>${spec.chassis.mass.toLocaleString("en-US")}</strong>kg</span><span><strong>${spec.drivetrain.layout.toUpperCase()}</strong>Drivetrain</span><span><strong>${Math.round(topSpeed(arcade,spec.chassis.mass)*3.6)}</strong>km/h · estimated</span><span><strong>${arcade.latG.toFixed(2)}</strong>g · road grip</span><span><strong>${Math.round(spec.dirt*100)}</strong>% · dirt grip</span><span><strong>${spec.clearance.toFixed(2)}</strong>m · clearance · ${spec.ford.toFixed(2)}m ford</span></div><p>${balance.toLocaleString("en-US")} Sparks available · Saved in this browser</p><button class="menu__choose" ${owned ? "" : 'aria-label="Buy"'} ${owned||canBuy ? "" : "disabled"}>${chooseLabel}</button>${!owned&&!canBuy ? `<p class="menu__note">${(spec.price-balance).toLocaleString("en-US")} more Sparks needed.</p>` : ""}${owned ? `<details class="menu__tune"><summary>Tune · Free tuning preview</summary><p>Fit tiers to this car. Engine adds force and speed; brakes shorten stops; steering responds sooner; tyres add road grip. Mass and wheelbase stay the same.</p>${(["engine","brakes","steering","tyres"] as TuneCategory[]).map(key=>`<label class="menu__row">${key[0]!.toUpperCase()+key.slice(1)}<select data-tune="${key}" aria-label="${key} tier">${["Stock","Street","Sport"].map((tier,i)=>`<option value="${i}" ${tune[key]===i?"selected":""}>${tier}</option>`).join("")}</select></label>`).join("")}<p class="menu__note">Setup sits on top of owned parts. Needle has Safe Return instead of Dirt.</p><div class="menu__row" role="radiogroup" aria-label="Setup">${setupsFor(id).map(s=>`<label><input type="radio" name="car-setup" value="${s}" ${setup===s?"checked":""}>${SETUP_LABEL[s]}</label>`).join("")}</div><p class="menu__note">Free to fit and saved per car. No Sparks spent.</p></details>` : ""}`;
     host.querySelector<HTMLButtonElement>(".menu__choose")!.onclick=()=>{
       if(!owned&&!this.#o.events?.buy(id))return;
       this.#o.drive?.setVehicle(id);this.#cars();
@@ -589,6 +593,12 @@ export class PlayerUi {
       const next={...loadTune(id),[select.dataset.tune as TuneCategory]:Number(select.value) as TuneTier};
       saveTune(id,next);
       if(this.#o.drive?.vehicleId===id)this.#o.drive.setCarTune(next);
+      this.#carDetail();host.querySelector<HTMLDetailsElement>(".menu__tune")!.open=true;
+    };
+    for(const radio of host.querySelectorAll<HTMLInputElement>("[name=car-setup]"))radio.onchange=()=>{
+      const next=radio.value as SetupId;
+      saveSetup(id,next);
+      if(this.#o.drive?.vehicleId===id)this.#o.drive.setCarSetup?.(next);
       this.#carDetail();host.querySelector<HTMLDetailsElement>(".menu__tune")!.open=true;
     };
     for (const button of this.#menu.querySelectorAll<HTMLElement>(

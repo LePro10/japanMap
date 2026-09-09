@@ -499,6 +499,10 @@ export class DriveHud {
     this.#showFlash('Stuck — back on the road (R)', false);
   }
 
+  showTooDeep(): void {
+    this.#showFlash('Too deep · returning to shore', false);
+  }
+
   /** Eine beliebige Meldung, drei Sekunden. */
   flash(text: string, highlight = false): void {
     this.#showFlash(text, highlight);
