@@ -2,6 +2,8 @@
 import { VEHICLES, VEHICLE_ORDER } from '../src/config/vehicles.config.ts';
 import { ARCADE } from '../src/config/arcade.config.ts';
 import { createCarBody,createCarWheel } from '../src/game/carMesh.ts';
+import { Vehicle } from '../src/game/Vehicle.ts';
+import { flatGround, NO_INPUT } from './bench/flat.mjs';
 import { Mesh,MeshBasicMaterial,Raycaster,Vector3 } from 'three';
 assert.equal(VEHICLE_ORDER.length,10,'Ten playable plan cars');
 const shapes=new Set();
@@ -22,4 +24,25 @@ for(const id of VEHICLE_ORDER){
 }
 assert.equal(shapes.size,10,'Ten silhouette families');
 assert.ok(ARCADE.truck.latG*1.08<ARCADE.gt.latG,'Sport pickup remains below stock track grip');
-console.log('WP3 ten meshes, actual wheel openings and Low geometry budget passed');
+assert.ok(VEHICLES.needle.derived.wheelMinDrop<0,'Needle squat must lift wheels above the CG, not into the pavement');
+const ground=flatGround();
+const dt=1/60;
+function wheelSink(v:Vehicle):number {
+ const r=v.spec.chassis.wheelRadius;
+ let worst=0;
+ for (const p of v.wheelPositions) worst=Math.max(worst,r-p.y);
+ return worst;
+}
+for (const id of VEHICLE_ORDER) {
+ const v=new Vehicle(VEHICLES[id]);
+ v.respawn(0,0,0,ground);
+ for (let i=0;i<90;i++) v.step(dt,NO_INPUT,ground,null);
+ const rest=wheelSink(v);
+ assert.ok(rest<0.03,`${id} rest wheel sink ${rest.toFixed(3)} m`);
+ v.position.y+=0.45;
+ v.velocity.y=0;
+ for (let i=0;i<180;i++) v.step(dt,NO_INPUT,ground,null);
+ const land=wheelSink(v);
+ assert.ok(land<0.04,`${id} landing wheel sink ${land.toFixed(3)} m`);
+}
+console.log('WP3 ten meshes, wheel openings, stance and Low geometry budget passed');

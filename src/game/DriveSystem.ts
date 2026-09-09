@@ -189,6 +189,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #network: RoadNetwork | null = null;
   #active = false;
   #walking = false;
+  /** Menü / Foto / Karte — Physik steht, Pose bleibt. */
+  #paused = false;
   #rig: WalkerRig | null = null;
   #playStarted = false;
   #spawn: WalkSpawn | null = null;
@@ -582,6 +584,24 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   setCarTune(tune:CarTune):void {
     saveTune(this.#vehicleId,tune);
     this.vehicle.setTune(tune);
+  }
+
+  /**
+   * Simulation anhalten, solange das Spielermenü offen ist.
+   *
+   * Ohne das fährt das Auto hinter dem Dialog weiter — Vollgas bleibt Vollgas.
+   * Eingaben werden geleert, damit ein gehaltenes W nach Continue nicht
+   * sofort beschleunigt. Die Pose bleibt stehen (`update` zeichnet sie weiter).
+   */
+  setPaused(paused: boolean): void {
+    this.#paused = paused;
+    if (!paused) return;
+    this.#keys.clear();
+    this.#axes.forward = 0;
+    this.#axes.right = 0;
+    this.#touchHandbrake = false;
+    this.#touchJump = false;
+    this.#touchBoost = false;
   }
 
   setVehicle(id: VehicleId): void {
@@ -1077,6 +1097,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   // ── Schleife ────────────────────────────────────────────────────────────
 
   fixedUpdate(dt: number): void {
+    if (this.#paused) return;
     if (this.#walking) {
       this.#stepWalk(dt);
       return;
@@ -1374,6 +1395,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     const px = this.#walking ? this.walker.position.x : this.vehicle.position.x;
     const pz = this.#walking ? this.walker.position.z : this.vehicle.position.z;
     this.#waypoint.update(px, pz);
+    if (this.#paused) {
+      this.#syncMeshes();
+      return;
+    }
     if (this.#walking && this.#context) {
       this.walkCamera.update(dt, this.walker, this, this.#context.camera);
       const rig = this.#rig;

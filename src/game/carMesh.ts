@@ -36,7 +36,7 @@ function loft(sections:readonly Section[],hex:number):BufferGeometry {
  g.computeVertexNormals();return paint(g,hex);
 }
 function cabin(out:BufferGeometry[],s:VehicleSpec,rear:number,front:number,roofRear:number,roofFront:number,belt:number):void {
- const c=s.body,w=c.hullWidth*.43,h=c.roofHeight;
+ const c=s.body,w=c.hullWidth*.47,h=c.roofHeight;
  out.push(loft([[rear,w,belt,belt+.09,w*.94],[roofRear,w*.88,belt,h-.065,w*.83],
   [roofFront,w*.86,belt,h-.065,w*.80],[front,w,belt,belt+.07,w*.94]],c.glass));
  out.push(loft([[roofRear,w*.88,h-.07,h,w*.82],[roofFront,w*.86,h-.07,h,w*.79]],c.paint));
@@ -108,23 +108,23 @@ function closedBody(s:VehicleSpec):BufferGeometry[] {
  return out;
 }
 function openWheel(s:VehicleSpec):BufferGeometry[] {
- const c=s.body,L=c.hullLength/2;
- const out=[loft([[-L+.12,.28,.20,.62,.16],[-.63,.35,.16,.77,.25],[.15,.32,.16,.59,.22],[L-.20,.13,.22,.35,.09]],c.paint)];
+ const c=s.body,L=c.hullLength/2,half=s.chassis.track/2,pod=half*.68;
+ const out=[loft([[-L+.12,.30,.24,.66,.18],[-.63,.37,.20,.81,.27],[.15,.34,.20,.63,.24],[L-.20,.14,.26,.39,.10]],c.paint)];
  for(const side of [-1,1]){
-  out.push(loft([[-.85,.23,.15,.44,.19],[-.30,.26,.15,.49,.20],[.25,.16,.16,.32,.12]],c.paint).translate(side*.55,0,0));
+  out.push(loft([[-.85,.24,.20,.48,.20],[-.30,.27,.20,.53,.21],[.25,.17,.21,.36,.13]],c.paint).translate(side*pod,0,0));
   for(const axle of [-s.derived.cgToRear,s.derived.cgToFront]){
-   out.push(part(.59,.035,.045,side*.52,.28,axle,c.trim));
-   out.push(part(.56,.035,.045,side*.51,.44,axle-.10,c.trim));
+   out.push(part(half*.74,.035,.045,side*(pod-.03),.30,axle,c.trim));
+   out.push(part(half*.70,.035,.045,side*(pod-.04),.46,axle-.10,c.trim));
   }
  }
- out.push(part(.39,.07,.62,0,.77,-.35,c.trim));
- out.push(part(.23,.20,.17,0,.79,-.62,c.paintDark));
- pair(out,.04,.24,.05,.22,.85,-.55,c.trim);
- out.push(part(.47,.04,.63,0,.99,-.26,c.trim),part(.04,.24,.05,0,.86,.04,c.trim));
- out.push(part(1.63,.065,.33,0,.23,L-.12,c.paintDark));
- pair(out,.05,.36,.15,.43,.62,-L+.22,c.trim);
- out.push(part(1.44,.075,.35,0,.84,-L+.20,c.paint));
- out.push(part(.10,.08,.04,0,.49,-L+.04,SHARED_COLORS.lampRear));
+ out.push(part(.39,.07,.62,0,.81,-.35,c.trim));
+ out.push(part(.23,.20,.17,0,.83,-.62,c.paintDark));
+ pair(out,.04,.24,.05,.22,.89,-.55,c.trim);
+ out.push(part(.47,.04,.63,0,1.03,-.26,c.trim),part(.04,.24,.05,0,.90,.04,c.trim));
+ out.push(part(s.chassis.track+.04,.065,.33,0,.25,L-.12,c.paintDark));
+ pair(out,.05,.36,.15,.46,.66,-L+.22,c.trim);
+ out.push(part(s.chassis.track-.18,.075,.35,0,.88,-L+.20,c.paint));
+ out.push(part(.10,.08,.04,0,.53,-L+.04,SHARED_COLORS.lampRear));
  return out;
 }
 export function createCarBody(s:VehicleSpec=TOUGE):BufferGeometry {
