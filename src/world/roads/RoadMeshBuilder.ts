@@ -1,6 +1,6 @@
 import { BufferAttribute, BufferGeometry, Vector3 } from 'three';
 
-import { ROAD_MESH, ROAD_TYPES, type RoadData } from '@/config/roads.config';
+import { ROAD_MESH, ROAD_TYPES, roadWidthAt, type RoadData } from '@/config/roads.config';
 
 /**
  * Straßen-Mesh aus einer abgetasteten Mittellinie — PLAN.md P3 / 3.4.
@@ -28,12 +28,28 @@ interface CrossSection {
  * zeichnet die Kante einen harten Schattenstrich neben die Straße.
  */
 const SHOULDER_DROP = 0.22;
+/** 4 cm Bordstein am Circuit — ASTRA_PLAN, Concrete kerbs. */
+const CIRCUIT_KERB = 0.04;
+const CIRCUIT_KERB_WIDTH = 0.28;
 
-function crossSection(width: number, shoulder: number): CrossSection {
+function crossSection(width: number, shoulder: number, kerbs: boolean): CrossSection {
   const half = width / 2;
+  if (!kerbs) {
+    return {
+      lateral: [-half - shoulder, -half, half, half + shoulder],
+      vertical: [-SHOULDER_DROP, 0, 0, -SHOULDER_DROP],
+    };
+  }
   return {
-    lateral: [-half - shoulder, -half, half, half + shoulder],
-    vertical: [-SHOULDER_DROP, 0, 0, -SHOULDER_DROP],
+    lateral: [
+      -half - shoulder,
+      -half - CIRCUIT_KERB_WIDTH,
+      -half,
+      half,
+      half + CIRCUIT_KERB_WIDTH,
+      half + shoulder,
+    ],
+    vertical: [-SHOULDER_DROP, CIRCUIT_KERB, 0, 0, CIRCUIT_KERB, -SHOULDER_DROP],
   };
 }
 
@@ -108,8 +124,8 @@ export function buildRoadGeometry(road: RoadData): RoadGeometryResult {
       ? full
       : full.slice(skipStart * 3, (fullCount - skipEnd) * 3);
 
-  const section = crossSection(settings.width, settings.shoulder);
-  const lanes = section.lateral.length;
+  const kerbs = road.tags.includes('circuit');
+  const lanes = crossSection(settings.width, settings.shoulder, kerbs).lateral.length;
   const stations = closed ? count + 1 : count;
 
   const vertices = new Float32Array(stations * lanes * 3);
@@ -122,7 +138,6 @@ export function buildRoadGeometry(road: RoadData): RoadGeometryResult {
   const center = new Vector3();
   const worldUp = new Vector3(0, 1, 0);
 
-  const totalWidth = settings.width + 2 * settings.shoulder;
   const gravel = settings.surface === 'kies';
 
   for (let s = 0; s < stations; s++) {
@@ -162,6 +177,9 @@ export function buildRoadGeometry(road: RoadData): RoadGeometryResult {
     const arcLength =
       closed && s === count ? road.length : (i + skipStart) * spacing;
     const v = arcLength / settings.textureLength;
+    const width = roadWidthAt(road, i + skipStart);
+    const section = crossSection(width, settings.shoulder, kerbs);
+    const totalWidth = width + 2 * settings.shoulder;
 
     for (let k = 0; k < lanes; k++) {
       const lateral = section.lateral[k]!;

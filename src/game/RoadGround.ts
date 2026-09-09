@@ -7,6 +7,7 @@ import type { RoadNetwork } from '@/world/roads/RoadNetwork';
 import type { TerrainSampler } from '@/world/TerrainSampler';
 import type { CollisionWorld } from './CollisionWorld';
 import type { Ground, Surface } from './Vehicle';
+import { isCircuitRoad, preparedCircuitBlend } from './circuitPrep';
 import type { RampField } from './RampField';
 import type { WaterField } from './WaterField';
 
@@ -72,6 +73,8 @@ export class RoadGround implements Ground {
   #forwardZ = 1;
   #slopeAlong = 0;
   #baseAtHit = 0;
+  #circuit = 0;
+  #circuitGates: { x: number; z: number }[] = [];
 
   setSources(
     sampler: TerrainSampler | null,
@@ -83,6 +86,17 @@ export class RoadGround implements Ground {
     this.#network = network;
     this.#water = water;
     this.#collision = collision;
+    this.#circuitGates = [];
+    if (network) {
+      for (const road of network.roads) {
+        if (!road.id.startsWith('needle-pit')) continue;
+        for (const junction of road.junctions) {
+          if (!isCircuitRoad(junction.with, [])) continue;
+          const index = junction.at === 'start' ? 0 : road.centerline.length - 3;
+          this.#circuitGates.push({ x: road.centerline[index]!, z: road.centerline[index + 2]! });
+        }
+      }
+    }
   }
 
   /**
@@ -110,6 +124,17 @@ export class RoadGround implements Ground {
   }
 
   /**
+   * Prepared-Circuit-Mischung am zuletzt aufgefrischten Ort, 0…1.
+   *
+   * Steht hier und nicht in `surface()`, weil 1,50× Quer und 1,20× Bremse
+   * zwei Faktoren auf demselben Asphalt sind — ein fünfter Belagsname hätte
+   * den Antrieb mit angehoben.
+   */
+  circuitGrip(): number {
+    return this.#circuit;
+  }
+
+  /**
    * Den Straßenzusammenhang an einer Stelle neu bilden.
    *
    * `dt <= 0` heißt „sofort" — das braucht das Absetzen des Autos, denn dort
@@ -121,6 +146,7 @@ export class RoadGround implements Ground {
     if (!network || !sampler) {
       this.#halfWidth = 0;
       this.#surface = 'gelaende';
+      this.#circuit = 0;
       this.#correctionTarget = 0;
       this.#follow(dt);
       return;
@@ -130,6 +156,7 @@ export class RoadGround implements Ground {
       this.#halfWidth = 0;
       this.#shoulder = 0;
       this.#surface = 'gelaende';
+      this.#circuit = 0;
       this.#correctionTarget = 0;
       this.#follow(dt);
       return;
@@ -172,7 +199,22 @@ export class RoadGround implements Ground {
     this.#halfWidth = hit.width / 2;
     this.#shoulder = shoulderFor(hit.roadId, network);
     this.#surface = hit.surface === 'kies' ? 'kies' : 'asphalt';
+    const host = network.roads.find((r) => r.id === hit.roadId);
+    this.#circuit =
+      host && isCircuitRoad(host.id, host.tags)
+        ? preparedCircuitBlend(hit.distance, this.#halfWidth, this.#gateDistance(x, z))
+        : 0;
     this.#follow(dt);
+  }
+
+  #gateDistance(x: number, z: number): number {
+    if (this.#circuitGates.length === 0) return 1e9;
+    let best = Infinity;
+    for (const gate of this.#circuitGates) {
+      const d = Math.hypot(x - gate.x, z - gate.z);
+      if (d < best) best = d;
+    }
+    return best;
   }
 
   /**
@@ -313,6 +355,10 @@ export class RoadGround implements Ground {
     // Gelände. Der 24-m-Saum der Schürze auch: er ist der Übergang, nicht die
     // Stadt.
     if (inCityDistrict(x, z)) return 'asphalt';
+    // WP6-Terrassen: Bürgersteige außerhalb der alten Platte. Ohne diese
+    // Zeile wäre die Fläche Asphalt im Bild und Gelände unter den Reifen.
+    const plateau = this.#collision?.plateauTop(x, z) ?? -Infinity;
+    if (plateau > this.#groundBase(x, z) - 0.05) return 'asphalt';
     return 'gelaende';
   }
 

@@ -331,6 +331,25 @@ export const ARCADE_SURFACE = {
 } as const;
 
 /**
+ * Prepared Needle-Asphalt — ASTRA_PLAN WP6.
+ *
+ * **Zwei Faktoren, nicht einer.** 1,50× gilt nur der Querhaftung, 1,20× nur
+ * der Bremse. Ein gemeinsamer 50-%-Zuschlag auf `grip` hätte auch den Antrieb
+ * angehoben — genau das „unexplained 50% improvement to every vehicle
+ * parameter", das der Plan ausschließt. Antrieb, Drift-Provokation und
+ * loser's dirt bonus bleiben die des Autos.
+ *
+ * Einmündungen blenden über 25 m, das Bankett über 2 m. Die Mitgliedschaft
+ * ist die Strecke `needle-circuit`, nicht die Regionsfarbe Needle Works.
+ */
+export const CIRCUIT_PREP = {
+  lateral: 1.5,
+  brake: 1.2,
+  entranceMeters: 25,
+  shoulderMeters: 2,
+} as const;
+
+/**
  * Zusätzliche Dämpfung durch den Untergrund, in 1/s: `a = −k · v`.
  *
  * Der zweite Grund, warum Abkürzen über die Wiese nicht lohnt (der erste ist

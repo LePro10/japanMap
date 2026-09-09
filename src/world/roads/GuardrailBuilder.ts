@@ -1,6 +1,6 @@
 import { BufferAttribute, BufferGeometry, Matrix4, Quaternion, Vector3 } from 'three';
 
-import { ROAD_TYPES, type RoadData } from '@/config/roads.config';
+import { ROAD_TYPES, roadWidthAt, type RoadData } from '@/config/roads.config';
 
 /**
  * Leitplanken entlang einer Strecke — PLAN.md P3 / 3.4.
@@ -52,6 +52,8 @@ interface Station {
   readonly nx: number;
   readonly nz: number;
   readonly distance: number;
+  /** Abstand Achse → Bandmitte, aus der gebauten Breite. */
+  readonly edge: number;
 }
 
 /**
@@ -84,6 +86,7 @@ function stationsFor(road: RoadData, side: number, from: number, to: number): St
       nx: (-tz / length) * side,
       nz: (tx / length) * side,
       distance: i * spacing,
+      edge: roadWidthAt(road, i) / 2 + ROAD_TYPES[road.type].shoulder + RAIL.offset,
     });
   }
 
@@ -118,16 +121,13 @@ function stationsFor(road: RoadData, side: number, from: number, to: number): St
 function eachRun(
   roads: readonly RoadData[],
   blocked: RailBlocked | undefined,
-  visit: (stations: Station[], edge: number) => void,
+  visit: (stations: Station[]) => void,
 ): void {
   for (const road of roads) {
-    const settings = ROAD_TYPES[road.type];
-    const edge = settings.width / 2 + settings.shoulder + RAIL.offset;
-
     for (const rail of road.rails) {
       const alle = stationsFor(road, rail.side, rail.from, rail.to);
       if (alle.length < 2) continue;
-      for (const stations of runsOf(alle, blocked, edge)) visit(stations, edge);
+      for (const stations of runsOf(alle, blocked)) visit(stations);
     }
   }
 }
@@ -135,13 +135,13 @@ function eachRun(
 export function railPolylines(roads: readonly RoadData[], blocked?: RailBlocked): Float32Array[] {
   const out: Float32Array[] = [];
 
-  eachRun(roads, blocked, (stations, edge) => {
+  eachRun(roads, blocked, (stations) => {
     const points = new Float32Array(stations.length * 3);
     for (let i = 0; i < stations.length; i++) {
       const s = stations[i]!;
-      points[i * 3] = s.x + s.nx * edge;
+      points[i * 3] = s.x + s.nx * s.edge;
       points[i * 3 + 1] = s.y;
-      points[i * 3 + 2] = s.z + s.nz * edge;
+      points[i * 3 + 2] = s.z + s.nz * s.edge;
     }
     out.push(points);
   });
@@ -177,12 +177,12 @@ export type RailBlocked = (x: number, z: number) => boolean;
  * Übersprungen ergäbe ein Viereck, das über die Lücke hinweg spannt — also genau
  * die Planke quer über die Mündung, nur mit weniger Stützstellen.
  */
-function runsOf(stations: readonly Station[], blocked: RailBlocked | undefined, edge: number): Station[][] {
+function runsOf(stations: readonly Station[], blocked: RailBlocked | undefined): Station[][] {
   if (!blocked) return stations.length >= 2 ? [stations as Station[]] : [];
   const runs: Station[][] = [];
   let current: Station[] = [];
   for (const s of stations) {
-    if (blocked(s.x + s.nx * edge, s.z + s.nz * edge)) {
+    if (blocked(s.x + s.nx * s.edge, s.z + s.nz * s.edge)) {
       if (current.length >= 2) runs.push(current);
       current = [];
     } else {
@@ -210,7 +210,7 @@ export function buildGuardrails(roads: readonly RoadData[], blocked?: RailBlocke
 
   let totalLength = 0;
 
-  eachRun(roads, blocked, (stations, edge) => {
+  eachRun(roads, blocked, (stations) => {
     // Gezählt wird, was **gebaut** wurde, nicht was geplant war. Der
     // Unterschied ist die Länge, die an Einmündungen entfällt — und eine
     // Kennzahl, die den Sollwert meldet statt das Ergebnis, ist in diesem
@@ -224,8 +224,8 @@ export function buildGuardrails(roads: readonly RoadData[], blocked?: RailBlocke
 
     for (let i = 0; i < stations.length; i++) {
       const s = stations[i]!;
-      const px = s.x + s.nx * edge;
-      const pz = s.z + s.nz * edge;
+      const px = s.x + s.nx * s.edge;
+      const pz = s.z + s.nz * s.edge;
       const id = i + 1 < stations.length ? firstId + i : firstId + Math.max(0, stations.length - 2);
 
       // Zwei Punkte je Station: Unter- und Oberkante des Bandes.
@@ -270,9 +270,9 @@ export function buildGuardrails(roads: readonly RoadData[], blocked?: RailBlocke
       const postId = firstId + Math.min(best, lastSeg);
 
       position.set(
-        s.x + s.nx * edge,
+        s.x + s.nx * s.edge,
         s.y + (RAIL.top + 0.1) / 2 - 0.1,
-        s.z + s.nz * edge,
+        s.z + s.nz * s.edge,
       );
       forward.set(-s.nz, 0, s.nx);
       quaternion.setFromUnitVectors(new Vector3(0, 0, 1), forward.normalize());

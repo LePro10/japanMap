@@ -127,6 +127,12 @@ export interface Ground {
    * Fehlt die Methode, ist die Tiefe null — Asphalt-Zahlen bleiben bitgleich.
    */
   waterDepth?(x: number, z: number): number;
+  /**
+   * Prepared-Circuit-Mischung am letzten `refresh`, 0…1 — WP6.
+   *
+   * Optional wie `waterDepth`: der ebene Prüfstand kennt keine Strecke.
+   */
+  circuitGrip?(): number;
 }
 
 /** Ablesbarer Zustand — für Anzeige, Debug-Panel und Messläufe. */
@@ -189,6 +195,8 @@ export interface VehicleTelemetry {
   accelLong: number;
   /** Querbeschleunigung in m/s², positiv = nach rechts. */
   accelLat: number;
+  /** Prepared-Circuit-Mischung, 0…1 — WP6. */
+  circuit: number;
 }
 
 /**
@@ -491,6 +499,7 @@ export class Vehicle {
     boosting: false,
     accelLong: 0,
     accelLat: 0,
+    circuit: 0,
   };
 
   constructor(spec: VehicleSpec = TOUGE) {
@@ -814,6 +823,7 @@ export class Vehicle {
     this.#planarEnv.vLong = this.#vLong;
     this.#planarEnv.vLat = this.#vLat;
     this.#planarEnv.surface = surface;
+    this.#planarEnv.circuit = ground.circuitGrip?.() ?? 0;
     this.#planarEnv.waterDepth = waterDepth;
     this.#planarEnv.airborne = this.#airborne;
     this.#planarEnv.support = halt;
@@ -1034,6 +1044,7 @@ export class Vehicle {
     t.boosting = planar.boosting;
     t.accelLong = accelLong;
     t.accelLat = accelLat;
+    t.circuit = this.#planarEnv.circuit ?? 0;
   }
 
   /**
@@ -1056,6 +1067,7 @@ export class Vehicle {
     vLong: 0,
     vLat: 0,
     surface: 'asphalt',
+    circuit: 0,
     waterDepth: 0,
     airborne: false,
     support: 1,

@@ -9,7 +9,7 @@ import {
   type Texture,
 } from 'three';
 
-import { DECALS, ROAD_MESH, ROAD_TYPES, type RoadData } from '@/config/roads.config';
+import { DECALS, ROAD_MESH, roadWidthAt, type RoadData } from '@/config/roads.config';
 
 /**
  * Straßendecals — PLAN.md P6 / 6.6.
@@ -281,18 +281,17 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
   };
 
   for (const road of roads) {
-    const settings = ROAD_TYPES[road.type];
     const line = road.centerline;
     const count = line.length / 3;
     if (count < 4) continue;
     const spacing = road.length / (road.closed ? count : Math.max(count - 1, 1));
-    const half = settings.width / 2;
     const marked = DECALS.markedTypes.includes(road.type);
 
     // ── Randlinien ────────────────────────────────────────────────────
     if (marked) {
       const step = Math.max(1, Math.round(DECALS.edgeLength / spacing));
       for (let i = 0; i < count; i += step) {
+        const half = roadWidthAt(road, i) / 2;
         for (const side of [-1, 1]) {
           place(
             line,
@@ -336,7 +335,7 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
         i,
         count,
         road.closed,
-        side * (half - DECALS.gullyInset),
+        side * (roadWidthAt(road, i) / 2 - DECALS.gullyInset),
         DECALS.gullySize,
         DECALS.gullySize,
         CELLS.gully,
@@ -356,7 +355,7 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
         i,
         count,
         road.closed,
-        (random() * 2 - 1) * (half - 0.4),
+        (random() * 2 - 1) * (roadWidthAt(road, i) / 2 - 0.4),
         size,
         size * (0.7 + random() * 0.8),
         CELLS.patch,
@@ -383,7 +382,8 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
 
       // So viele Streifen, wie zwischen die Fahrbahnränder passen — gerundet,
       // damit der Überweg mittig sitzt und nicht an einer Seite ausfranst.
-      const usable = settings.width - 2 * DECALS.edgeInset;
+      const half = roadWidthAt(road, index) / 2;
+      const usable = roadWidthAt(road, index) - 2 * DECALS.edgeInset;
       const pitch = cw.stripe + cw.gap;
       const stripes = Math.max(2, Math.floor(usable / pitch));
       const start = -((stripes - 1) * pitch) / 2;
@@ -400,7 +400,7 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
           ? index + Math.round((cw.length / 2 + cw.stopGap) / spacing)
           : index - Math.round((cw.length / 2 + cw.stopGap) / spacing);
       if (stopIndex > 0 && stopIndex < count - 1) {
-        place(line, stopIndex, count, road.closed, half / 2, half - DECALS.edgeInset,
+        place(line, stopIndex, count, road.closed, half / 2, roadWidthAt(road, stopIndex) / 2 - DECALS.edgeInset,
           cw.stopWidth, CELLS.line, WHITE);
         counts.strich!++;
       }
@@ -431,7 +431,7 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
         count,
         road.closed,
         0,
-        settings.width * 0.62,
+        roadWidthAt(road, i) * 0.62,
         DECALS.tireLength,
         CELLS.tire,
         DARK,

@@ -77,6 +77,7 @@ export class DriveHud {
   readonly #prompt: HTMLElement;
   readonly #promptKey: HTMLElement;
   readonly #promptAction: HTMLElement;
+  readonly #prep: HTMLElement;
   readonly #map: MiniMap;
   readonly #nav: HTMLElement;
   #arrowDeg = 999;
@@ -120,8 +121,8 @@ export class DriveHud {
         <div class="hud__speedRow">
           <span class="hud__speed" data-hud="speed">0</span>
           <span class="hud__unit">km/h</span>
-
         </div>
+        <p class="hud__prep" data-hud="prep" hidden>Prepared surface · extra cornering grip</p>
       </div>
       <div class="hud__nav">
         <div class="hud__arrow" data-hud="arrow" hidden><i></i></div>
@@ -163,6 +164,7 @@ export class DriveHud {
     this.#prompt = this.#must('[data-hud="prompt"]');
     this.#promptKey = this.#must('[data-hud="promptKey"]');
     this.#promptAction = this.#must('[data-hud="promptAction"]');
+    this.#prep = this.#must('[data-hud="prep"]');
     this.#nav = this.#must('.hud__nav');
     this.#map = new MiniMap(this.#nav);
     this.#nav.setAttribute('role', 'button');
@@ -349,6 +351,7 @@ export class DriveHud {
     }
     this.#boostBox.classList.toggle('hud__boost--live', t.boosting);
     this.#boostBox.classList.toggle('hud__boost--ready', !t.boosting && t.boost > 0.98);
+    this.#prep.hidden = t.circuit < 0.35;
   }
 
   #boostPct = -1;

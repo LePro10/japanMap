@@ -1,0 +1,72 @@
+{
+  "lots": 242,
+  "needle": 2168.58,
+  "toCity": [
+    "commons-drive",
+    "ring",
+    "zufahrt",
+    "stadt"
+  ],
+  "toVillage": [
+    "stadt",
+    "zufahrt",
+    "ring",
+    "dorf"
+  ],
+  "commons": {
+    "index": 52,
+    "total": 55,
+    "steps": 2046,
+    "maxError": 5.671966098360149,
+    "minClearance": 0.38122000826843205,
+    "water": 0,
+    "position": [
+      753.4337748344436,
+      27.871133639477254,
+      453.3861298338735
+    ],
+    "finished": true
+  },
+  "gate": {
+    "index": 22,
+    "total": 25,
+    "steps": 1087,
+    "maxError": 2.982242796217266,
+    "minClearance": 0.43640774045872277,
+    "water": 0,
+    "position": [
+      750.705618038636,
+      30.500000000000014,
+      200.51717271287208
+    ],
+    "finished": true
+  },
+  "village": {
+    "index": 113,
+    "total": 116,
+    "steps": 4776,
+    "maxError": 6.037435935256647,
+    "minClearance": 0.3025473061877584,
+    "water": 0,
+    "position": [
+      -201.31117003534033,
+      33.88222612176037,
+      77.36571795277406
+    ],
+    "finished": true
+  },
+  "circuit": {
+    "index": 74,
+    "total": 362,
+    "steps": 3000,
+    "maxError": 2.9986173150230147,
+    "minClearance": 0.45649815533428395,
+    "water": 0,
+    "position": [
+      -613.5604946215954,
+      10.395634781842833,
+      855.0000000125295
+    ],
+    "finished": false
+  }
+}

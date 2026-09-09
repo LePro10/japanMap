@@ -397,3 +397,15 @@ export interface RoadData {
     readonly railLength: number;
   };
 }
+
+/**
+ * Fahrbahnbreite an einer Stützstelle — aus der Mittellinie, nicht aus dem Typ.
+ *
+ * Der Typ ist die Vorgabe für neue Knoten. WP6 legt Needle (16 m) und die
+ * Stadtboulevards (bis 18 m) als `city` an, und `city` bleibt 8 m. Mesh,
+ * Decals, Leitplanken und die Fahrphysik müssen dieselbe Zahl lesen, sonst
+ * fährt das Auto auf 16 m geschnittenem Gelände neben 8 m sichtbarem Asphalt.
+ */
+export function roadWidthAt(road: Pick<RoadData, 'type' | 'widths'>, index: number): number {
+  return road.widths[index] ?? ROAD_TYPES[road.type].width;
+}
