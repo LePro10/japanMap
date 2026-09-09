@@ -340,23 +340,23 @@ body {
   min-width: 220px;
   min-height: 56px;
   padding: 0 36px;
-  border: 1px solid #ffd257;
-  border-radius: 6px;
-  background: #ffd257;
-  color: #14110a;
-  font-family: var(--mono);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.28em;
+  border: 1px solid var(--amber);
+  border-radius: 3px;
+  background: var(--amber);
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 0 28px rgba(255, 210, 87, 0.35);
+  box-shadow: 0 0 28px color-mix(in srgb, var(--amber) 40%, transparent);
   animation: start-play 1.8s ease-in-out infinite;
 }
 
 .start__button:hover {
-  background: #ffe58a;
-  border-color: #ffe58a;
+  background: var(--amber-hot);
+  border-color: var(--amber-hot);
 }
 
 .start__button:focus-visible {

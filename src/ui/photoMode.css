@@ -2,8 +2,8 @@
   position: absolute;
   inset: 0;
   z-index: 100;
-  color: #f4eee3;
-  font: 16px system-ui;
+  color: var(--paper, #f6efe4);
+  font: 16px var(--display, system-ui);
   pointer-events: auto;
 }
 .photo-mode [hidden] {
@@ -19,11 +19,11 @@
 .photo-mode a {
   min-height: 48px;
   padding: 12px 16px;
-  border: 1px solid #89939f60;
-  border-radius: 8px;
-  background: #17222ef2;
-  color: #f4eee3;
-  font: 600 14px system-ui;
+  border: 1px solid color-mix(in srgb, var(--paper, #f6efe4) 22%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--ink-2, #0a242c) 95%, transparent);
+  color: var(--paper, #f6efe4);
+  font: 700 14px var(--display, system-ui);
   cursor: pointer;
   text-decoration: none;
   box-sizing: border-box;
@@ -75,8 +75,8 @@
 }
 .photo-mode [data-action="capture"],
 .photo-mode a {
-  background: #e8ba7f;
-  color: #15212c;
+  background: var(--amber, #e8ba7f);
+  color: var(--ink, #06141a);
 }
 .photo-mode__controls p {
   grid-column: 1 / -1;

@@ -24,11 +24,11 @@
   stroke: #bdc8d137;
 }
 .hud__rpmFill {
-  stroke: #f0d6ab;
+  stroke: var(--amber, #f0d6ab);
   stroke-dasharray: 0 100;
 }
 .hud__rpm .hud__redline {
-  stroke: #df7769;
+  stroke: var(--vermilion, #df7769);
   stroke-width: 4;
 }
 .hud .hud__gearLabel {
@@ -77,7 +77,7 @@
 }
 .hud .hud__boostFill {
   border-radius: 4px;
-  background: #66d7f4;
+  background: var(--nitro, #66d7f4);
 }
 .hud__nitroLabel {
   position: absolute;
@@ -85,7 +85,7 @@
   top: -13px;
   font: 9px system-ui;
   letter-spacing: 0.18em;
-  color: #7dd9ef;
+  color: var(--nitro, #7dd9ef);
 }
 .hud__gearShift {
   animation: gear-shift 0.22s ease-out;

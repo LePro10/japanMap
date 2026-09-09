@@ -1,0 +1,31 @@
+/* Spieler-Palette — blaue Stunde nach dem Regen.
+ * Amber = Geld/Auswahl, Sakura = Entdeckung, Nitro = Boost,
+ * Paddy = Fahren, Vermilion = Bremse/Fehler. */
+:root {
+  --ink: #06141a;
+  --ink-2: #0a242c;
+  --teal: #1a6b76;
+  --teal-deep: #0e4550;
+  --teal-bright: #2a9aa6;
+  --paper: #f6efe4;
+  --paper-dim: #b7c4c8;
+  --amber: #e8ba7f;
+  --amber-hot: #f3c56a;
+  --sakura: #e8a9c0;
+  --sakura-hot: #d4789a;
+  --nitro: #66d7f4;
+  --paddy: #2f8b6e;
+  --vermilion: #c44536;
+  --leaf: #8fbf6a;
+  --bg: var(--ink);
+  --fg: var(--paper);
+  --fg-dim: var(--paper-dim);
+  --panel-bg: color-mix(in srgb, var(--ink-2) 88%, transparent);
+  --panel-border: color-mix(in srgb, var(--amber) 22%, transparent);
+  --accent: var(--amber);
+  --status-ok: var(--leaf);
+  --status-warn: var(--amber-hot);
+  --status-over: var(--vermilion);
+  --status-none: var(--paper-dim);
+  --display: "Segoe UI", "Helvetica Neue", ui-sans-serif, system-ui, sans-serif;
+}

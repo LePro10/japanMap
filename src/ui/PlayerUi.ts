@@ -29,6 +29,7 @@ import {
   controlTable,
 } from "./controls";
 import { CAR_COPY, carPortrait } from "./carPresentation";
+import "./theme.css";
 import "./playerMenu.css";
 
 export interface QualityControl {
@@ -139,6 +140,7 @@ export class PlayerUi {
       }),
     );
     options.events?.onChange(() => {
+      this.#syncIdentity();
       if (this.#open) {
         this.#cars();
         this.#records();
@@ -153,6 +155,7 @@ export class PlayerUi {
     this.#cars();
     this.#records();
     this.#events();
+    this.#syncIdentity();
     this.#render();
   }
   begin(): void {
@@ -183,6 +186,7 @@ export class PlayerUi {
     this.#cars();
     this.#records();
     this.#syncDrive();
+    this.#syncIdentity();
     this.#render();
     this.#el(".menu__resume").focus();
   }
@@ -266,12 +270,67 @@ export class PlayerUi {
     menu.setAttribute("aria-label", "Player menu");
     const icons = ["▷", "▰", "◇", "◷", "◎", "⚙"];
     menu.innerHTML = `<div class="menu__box">
-      <header class="menu__head"><div><button class="menu__title" aria-label="japanMap">japanMap</button><p class="menu__eyebrow">AFTER THE RAIN</p><form class="menu__code" hidden><input aria-label="Code" maxlength="12" autocomplete="off" /></form></div></header>
+      <div class="menu__wash" aria-hidden="true"></div>
+      <header class="menu__identity">
+        <div class="menu__now">
+          <div class="menu__nowArt" data-now-art></div>
+          <div>
+            <p class="menu__eyebrow">Current car</p>
+            <p class="menu__nowName" data-now-name></p>
+            <p class="menu__nowMeta" data-now-meta></p>
+          </div>
+        </div>
+        <div class="menu__brand">
+          <button class="menu__title" aria-label="japanMap">japanMap</button>
+          <p class="menu__eyebrow">After the rain</p>
+          <form class="menu__code" hidden><input aria-label="Code" maxlength="12" autocomplete="off" /></form>
+        </div>
+        <div class="menu__wallet">
+          <span class="menu__walletLabel">Sparks</span>
+          <strong data-wallet>0</strong>
+        </div>
+      </header>
       <nav class="menu__tabs" aria-label="Main destinations">${TABS.map((key, i) => `<button class="menu__tab" aria-label="${key[0]!.toUpperCase() + key.slice(1)}" data-tab="${key}" data-icon="${icons[i]}">${key[0]!.toUpperCase() + key.slice(1)}</button>`).join("")}</nav>
       <button class="menu__resume">Continue <span aria-hidden="true">↗</span></button>
-      <section class="menu__panel" data-panel="play"><p class="menu__eyebrow">YOUR NEXT TURN</p><h1>The road is yours.</h1><p class="menu__intro">Find a mountain line, a quiet coast, or your next personal best.</p>
-        <div class="menu__roadHero"><div><span>FREE DRIVE</span><h2>One island.<br>Room to wander.</h2><button class="menu__explore">Explore the map ↗</button></div><svg viewBox="0 0 500 230" aria-hidden="true"><path d="M0 210 L110 85 L180 150 L300 20 L430 160 L500 80 V230 H0Z" fill="#303e48"/><path d="M60 240 C390 175 130 140 310 65" fill="none" stroke="#dcad72" stroke-width="7"/><path d="M60 240 C390 175 130 140 310 65" fill="none" stroke="#171e27" stroke-width="2" stroke-dasharray="7 9"/></svg></div>
-        <div class="menu__playActions"><button class="menu__drive">Enter car</button><button class="menu__call">Call car</button></div><p class="menu__status" role="status"></p><h2>Pick a drive</h2><div class="menu__events"></div></section>
+      <section class="menu__panel" data-panel="play">
+        <div class="menu__hub">
+          <button type="button" class="menu__tile menu__tile--hero" data-go="cars">
+            <div class="menu__tileArt" data-hero-art></div>
+            <span class="menu__tileKicker">Garage</span>
+            <span class="menu__tileTitle">Change Car</span>
+            <span class="menu__tileMeta" data-owned-count></span>
+          </button>
+          <button type="button" class="menu__tile menu__tile--sakura" data-go="cars" data-open-tune>
+            <span class="menu__tileKicker">Open Bay</span>
+            <span class="menu__tileTitle">Tune Car</span>
+            <span class="menu__tileMeta">Engine · Brakes · Steering · Tyres</span>
+          </button>
+          <button type="button" class="menu__drive menu__tile menu__tile--paddy" aria-label="Enter car">
+            <span class="menu__tileTitle">Enter car</span>
+            <span class="menu__tileMeta">Take the wheel</span>
+          </button>
+          <button type="button" class="menu__call menu__tile menu__tile--call" aria-label="Call car">
+            <span class="menu__tileTitle">Call car</span>
+            <span class="menu__tileMeta">Spawn it beside you</span>
+          </button>
+          <button type="button" class="menu__explore menu__tile menu__tile--map">
+            <span class="menu__tileKicker">Island</span>
+            <span class="menu__tileTitle">Island Map</span>
+            <span class="menu__tileMeta">Pass, coast, village</span>
+          </button>
+          <button type="button" class="menu__tile menu__tile--records" data-go="records">
+            <span class="menu__tileTitle">Records</span>
+            <span class="menu__tileMeta">Times, scores, bests</span>
+          </button>
+          <button type="button" class="menu__tile menu__tile--photo" data-go="photo">
+            <span class="menu__tileTitle">Photo Mode</span>
+            <span class="menu__tileMeta">Freeze the world</span>
+          </button>
+        </div>
+        <h2 class="menu__hubHead">Pick a drive</h2>
+        <div class="menu__events"></div>
+        <p class="menu__status" role="status"></p>
+      </section>
       <section class="menu__panel" data-panel="cars" hidden><p class="menu__eyebrow">YOUR GARAGE</p><h1>Find your line.</h1><div class="menu__switch"><button data-catalogue="owned">Owned</button><button data-catalogue="showroom">Showroom</button></div><div class="menu__carDetail"></div><div class="menu__cars"></div><p class="menu__note menu__garageNote">Ten original cars. Purchases use Sparks. Try free Street and Sport tuning on each owned car.</p></section>
       <section class="menu__panel" data-panel="map" hidden><p class="menu__eyebrow">TAKE A DIFFERENT TURN</p><h1>Beyond the neon.</h1><div class="menu__mapHero"><img src="${aerialMapUrl}" alt="Aerial map of the island" loading="lazy" /></div><p class="menu__intro">Trace the pass, set a waypoint, or follow the coast. Opening the map keeps you where you are.</p><button class="menu__openMap">Open map</button><p class="menu__note">Stillwater Village lies on the western paddies. Tideglass Harbour is the working port on the east coast.</p></section>
       <section class="menu__panel" data-panel="records" hidden><p class="menu__eyebrow">MAKE IT PERSONAL</p><h1>Your best moments.</h1><h2>Event records</h2><div class="menu__records"></div><p class="menu__note">Saved event bests appear here. Driving milestones, discoveries and the garage wall are not tracked yet.</p></section>
@@ -324,6 +383,17 @@ export class PlayerUi {
       button.onclick = () => {
         this.#tab = button.dataset.tab as Tab;
         this.#render();
+      };
+    for (const button of menu.querySelectorAll<HTMLButtonElement>("[data-go]"))
+      button.onclick = () => {
+        this.#tab = button.dataset.go as Tab;
+        if (button.hasAttribute("data-open-tune")) this.#catalogue = "owned";
+        if (this.#tab === "cars") this.#cars();
+        this.#render();
+        if (button.hasAttribute("data-open-tune")) {
+          const tune = menu.querySelector<HTMLDetailsElement>(".menu__tune");
+          if (tune) tune.open = true;
+        }
       };
     for (const button of menu.querySelectorAll<HTMLButtonElement>(
       "[data-catalogue]",
@@ -406,11 +476,40 @@ export class PlayerUi {
   }
   #syncDrive(): void {
     const drive = this.#o.drive;
-    this.#el(".menu__drive").textContent = drive?.active
-      ? "Get out"
-      : "Enter car";
+    const label = drive?.active ? "Get out" : "Enter car";
+    const button = this.#el(".menu__drive");
+    button.setAttribute("aria-label", label);
+    const title = button.querySelector(".menu__tileTitle");
+    if (title) title.textContent = label;
+    else button.textContent = label;
+    const meta = button.querySelector(".menu__tileMeta");
+    if (meta)
+      meta.textContent = drive?.active ? "Leave it parked" : "Take the wheel";
     this.#el(".menu__call").hidden = !drive?.walking;
+    this.#menu.classList.toggle("is-walking", Boolean(drive?.walking));
     this.#touch.setDriveMode(drive?.active ?? false, drive?.walking ?? false);
+    this.#syncIdentity();
+  }
+  #syncIdentity(): void {
+    const id = this.#o.drive?.vehicleId ?? this.#preview;
+    const spec = VEHICLES[id];
+    const copy = CAR_COPY[id];
+    const art = carPortrait(id);
+    this.#el("[data-now-art]").innerHTML = art;
+    this.#el("[data-now-name]").textContent = copy.name;
+    this.#el("[data-now-meta]").textContent = this.#o.drive?.walking
+      ? `${spec.category} · On foot`
+      : spec.category;
+    this.#el("[data-wallet]").textContent = (
+      this.#o.events?.yen ?? 0
+    ).toLocaleString("en-US");
+    const hero = this.#menu.querySelector("[data-hero-art]");
+    if (hero) hero.innerHTML = art;
+    const owned = this.#menu.querySelector("[data-owned-count]");
+    if (owned) {
+      const n = VEHICLE_ORDER.filter((vehicle) => this.#owns(vehicle)).length;
+      owned.textContent = `${n} car${n === 1 ? "" : "s"} owned`;
+    }
   }
   #owns(id: VehicleId): boolean {
     return this.#o.events?.owns(id) ?? id === this.#o.drive?.vehicleId;
@@ -454,7 +553,12 @@ export class PlayerUi {
     const host = this.#el(".menu__carDetail");
     const tune=loadTune(id), arcade=tunedArcade(id,tune), balance=this.#o.events?.yen??0;
     const canBuy=!!this.#o.events && balance>=spec.price;
-    host.innerHTML = `<div class="menu__carStage">${carPortrait(id)}<span>${spec.category} · ${owned ? "OWNED" : "SHOWROOM"}</span></div><h2>${copy.name}</h2><p class="menu__intro">${copy.role}</p><div class="menu__carSpecs"><span><strong>${spec.chassis.mass.toLocaleString("en-US")}</strong>kg</span><span><strong>${spec.drivetrain.layout.toUpperCase()}</strong>Drivetrain</span><span><strong>${Math.round(topSpeed(arcade,spec.chassis.mass)*3.6)}</strong>km/h · estimated</span><span><strong>${arcade.latG.toFixed(2)}</strong>g · road grip</span></div><p>${balance.toLocaleString("en-US")} Sparks available · Saved in this browser</p><button class="menu__choose" ${owned||canBuy ? "" : "disabled"}>${owned ? (id === this.#o.drive?.vehicleId ? "Selected" : "Select car") : `Buy · ${spec.price.toLocaleString("en-US")} Sparks`}</button>${!owned&&!canBuy ? `<p class="menu__note">${(spec.price-balance).toLocaleString("en-US")} more Sparks needed.</p>` : ""}${owned ? `<details class="menu__tune"><summary>Tune · Free tuning preview</summary><p>Fit tiers to this car. Engine adds force and speed; brakes shorten stops; steering responds sooner; tyres add road grip. Mass and wheelbase stay the same.</p>${(["engine","brakes","steering","tyres"] as TuneCategory[]).map(key=>`<label class="menu__row">${key[0]!.toUpperCase()+key.slice(1)}<select data-tune="${key}" aria-label="${key} tier">${["Stock","Street","Sport"].map((tier,i)=>`<option value="${i}" ${tune[key]===i?"selected":""}>${tier}</option>`).join("")}</select></label>`).join("")}<p class="menu__note">Free to fit and saved per car. No Sparks spent.</p></details>` : ""}`;
+    const chooseLabel = owned
+      ? id === this.#o.drive?.vehicleId
+        ? "Selected"
+        : "Select car"
+      : `Buy · ${spec.price.toLocaleString("en-US")} Sparks`;
+    host.innerHTML = `<div class="menu__carStage">${carPortrait(id)}<span>${spec.category} · ${owned ? "OWNED" : "SHOWROOM"}</span></div><h2>${copy.name}</h2><p class="menu__intro">${copy.role}</p><div class="menu__carSpecs"><span><strong>${spec.chassis.mass.toLocaleString("en-US")}</strong>kg</span><span><strong>${spec.drivetrain.layout.toUpperCase()}</strong>Drivetrain</span><span><strong>${Math.round(topSpeed(arcade,spec.chassis.mass)*3.6)}</strong>km/h · estimated</span><span><strong>${arcade.latG.toFixed(2)}</strong>g · road grip</span></div><p>${balance.toLocaleString("en-US")} Sparks available · Saved in this browser</p><button class="menu__choose" ${owned ? "" : 'aria-label="Buy"'} ${owned||canBuy ? "" : "disabled"}>${chooseLabel}</button>${!owned&&!canBuy ? `<p class="menu__note">${(spec.price-balance).toLocaleString("en-US")} more Sparks needed.</p>` : ""}${owned ? `<details class="menu__tune"><summary>Tune · Free tuning preview</summary><p>Fit tiers to this car. Engine adds force and speed; brakes shorten stops; steering responds sooner; tyres add road grip. Mass and wheelbase stay the same.</p>${(["engine","brakes","steering","tyres"] as TuneCategory[]).map(key=>`<label class="menu__row">${key[0]!.toUpperCase()+key.slice(1)}<select data-tune="${key}" aria-label="${key} tier">${["Stock","Street","Sport"].map((tier,i)=>`<option value="${i}" ${tune[key]===i?"selected":""}>${tier}</option>`).join("")}</select></label>`).join("")}<p class="menu__note">Free to fit and saved per car. No Sparks spent.</p></details>` : ""}`;
     host.querySelector<HTMLButtonElement>(".menu__choose")!.onclick=()=>{
       if(!owned&&!this.#o.events?.buy(id))return;
       this.#o.drive?.setVehicle(id);this.#cars();
@@ -469,6 +573,7 @@ export class PlayerUi {
       "[data-vehicle]",
     ))
       button.classList.toggle("is-active", button.dataset.vehicle === id);
+    this.#syncIdentity();
   }
   #records(): void {
     const list = this.#el(".menu__records");
