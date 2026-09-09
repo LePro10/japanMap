@@ -8,6 +8,7 @@ import type { RoadMaterial } from '../materials/RoadMaterial';
 import type { RoadNetwork } from '../roads/RoadNetwork';
 import type { TerrainSampler } from '../TerrainSampler';
 import { generateCity } from './CityGenerator';
+import { urbanLots } from './UrbanLots';
 
 /**
  * Die Stadt in der Szene — PLAN.md P6 / 6.1, 6.2.
@@ -105,6 +106,7 @@ export class CitySystem implements System {
 
     const started = performance.now();
     const result = generateCity({
+      urbanLots: urbanLots(network, sampler).lots,
       isRoad: (x, z) =>
         network.distanceToNearestRoad(x, z, CITY.clearance.road) < CITY.clearance.road,
       sampleTerrain: (x, z) => sampler.getHeightAt(x, z),

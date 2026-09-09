@@ -1,3 +1,4 @@
+import { tunedArcade, STOCK_TUNE, type CarTune } from '@/config/tuning.config';
 import { Euler, Quaternion, Vector3 } from 'three';
 
 import { GRAVITY, SURFACE_FEEL } from '@/config/vehicle.config';
@@ -506,8 +507,11 @@ export class Vehicle {
    * Lastwagen führe dann mit dem Radstand des Coupés, und keine Kennzahl
    * meldete es.
    */
+  #tune: CarTune = {...STOCK_TUNE};
+  setTune(tune:CarTune):void { this.#tune={...tune}; this.#syncPlanarSpec(); }
+
   #syncPlanarSpec(): void {
-    this.#planar.setSpec(ARCADE[this.#spec.id], LOOSE_BONUS[this.#spec.id]);
+    this.#planar.setSpec(tunedArcade(this.#spec.id, this.#tune), LOOSE_BONUS[this.#spec.id]);
     this.#planar.setWheelbase(this.#spec.chassis.wheelbase);
     this.#planar.setMass(this.#spec.chassis.mass);
   }
@@ -530,6 +534,7 @@ export class Vehicle {
    */
   setSpec(spec: VehicleSpec): void {
     this.#spec = spec;
+    this.#tune = {...STOCK_TUNE};
     this.#syncPlanarSpec();
   }
 

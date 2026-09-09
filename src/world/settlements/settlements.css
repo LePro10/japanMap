@@ -1,0 +1,4 @@
+.settlement-prompt { position: absolute; left: 50%; bottom: 110px; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; max-width: min(680px, 90vw); padding: 12px 18px; border: 1px solid #cab78566; border-radius: 12px; background: #152e2be8; color: #f7e8c9; font: 14px/1.45 system-ui, sans-serif; pointer-events: auto; box-shadow: 0 5px 24px #0003; }
+.settlement-prompt[hidden], .settlement-prompt button[hidden] { display: none; }
+.settlement-prompt button { flex-shrink: 0; min-height: 44px; padding: 8px 16px; border: 1px solid #d3bd89; border-radius: 8px; color: #203d36; background: #f0d7a2; font: 600 13px system-ui, sans-serif; cursor: pointer; }
+@media (max-width: 700px) { .settlement-prompt { bottom: 175px; width: 84vw; font-size: 12px; padding: 10px 12px; gap: 8px; } }

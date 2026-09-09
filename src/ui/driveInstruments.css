@@ -1,0 +1,219 @@
+.hud .hud__speedo {
+  transform: scale(var(--player-ui-scale, 1));
+  transform-origin: bottom right;
+  width: 220px;
+  height: 180px;
+  right: max(24px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  display: block;
+  background: radial-gradient(ellipse, #101a26e8 25%, #101a2600 72%);
+}
+.hud__rpm {
+  position: absolute;
+  width: 100%;
+  top: 0;
+  left: 0;
+  overflow: visible;
+}
+.hud__rpm path {
+  fill: none;
+  stroke-width: 7;
+  stroke-linecap: butt;
+}
+.hud__rpmTrack {
+  stroke: #bdc8d137;
+}
+.hud__rpmFill {
+  stroke: #f0d6ab;
+  stroke-dasharray: 0 100;
+}
+.hud__rpm .hud__redline {
+  stroke: #df7769;
+  stroke-width: 4;
+}
+.hud .hud__gearLabel {
+  position: absolute;
+  top: 36px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font: 600 48px/1 system-ui;
+  color: #fae9ca;
+}
+.hud .hud__speedRow {
+  position: absolute;
+  top: 105px;
+  left: 0;
+  width: 100%;
+  justify-content: center;
+  align-items: baseline;
+  gap: 6px;
+}
+.hud .hud__speed {
+  font-size: 40px;
+}
+.hud .hud__unit {
+  font-size: 14px;
+}
+.hud__rpmText {
+  position: absolute;
+  top: 88px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  font: 11px system-ui;
+  letter-spacing: 0.09em;
+  color: #b5c0cc;
+}
+.hud .hud__boost {
+  position: absolute;
+  top: 163px;
+  left: 20px;
+  width: 180px;
+  height: 6px;
+  background: #12364a;
+  border-radius: 4px;
+  overflow: visible;
+}
+.hud .hud__boostFill {
+  border-radius: 4px;
+  background: #66d7f4;
+}
+.hud__nitroLabel {
+  position: absolute;
+  left: 0;
+  top: -13px;
+  font: 9px system-ui;
+  letter-spacing: 0.18em;
+  color: #7dd9ef;
+}
+.hud__gearShift {
+  animation: gear-shift 0.22s ease-out;
+}
+@keyframes gear-shift {
+  from {
+    color: #fff;
+    text-shadow: 0 0 16px #ffd49a;
+    transform: scale(1.12);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+.hud .hud__money {
+  display: none;
+}
+.hud .hud__lap[hidden] {
+  display: none;
+}
+.hud.hud--on-foot .hud__speedo {
+  display: none;
+}
+#overlay > .hud .hud__nav {
+  transform: scale(var(--player-ui-scale, 1));
+  transform-origin: bottom left;
+  width: 190px;
+  height: 190px;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  left: max(24px, env(safe-area-inset-left));
+}
+@media (pointer: coarse), (max-width: 700px) {
+  .hud .hud__speedo {
+    width: 144px;
+    height: 118px;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: 138px;
+  }
+  .hud .hud__gearLabel {
+    top: 23px;
+    font-size: 32px;
+  }
+  .hud .hud__speedRow {
+    top: 68px;
+  }
+  .hud .hud__speed {
+    font-size: 32px;
+  }
+  .hud .hud__unit {
+    font-size: 11px;
+  }
+  .hud__rpmText {
+    top: 55px;
+    font-size: 9px;
+  }
+  .hud .hud__boost {
+    top: 112px;
+    left: 12px;
+    width: 120px;
+    height: 5px;
+  }
+  .hud__nitroLabel {
+    top: -10px;
+    font-size: 8px;
+  }
+  #overlay > .hud .hud__nav {
+    transform-origin: top left;
+    width: 112px;
+    height: 112px;
+    top: max(12px, env(safe-area-inset-top));
+    left: max(12px, env(safe-area-inset-left));
+    bottom: auto;
+  }
+  .hud .hud__lap {
+    top: 132px;
+    left: 12px;
+  }
+  .hud .hud__drift {
+    top: 140px;
+  }
+  .hud .hud__race {
+    top: 130px;
+  }
+  .touch--drive .touch__buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 56px);
+    gap: 8px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    right: max(16px, env(safe-area-inset-right));
+  }
+  .touch--drive .touch__buttons .touch__btn {
+    width: 56px;
+    height: 56px;
+    font: 600 12px system-ui;
+    border-radius: 50%;
+  }
+  .touch--drive [data-touch="boost"] {
+    grid-column: 2;
+    grid-row: 1;
+    border-color: #70dbf8;
+    color: #8ee6ff;
+  }
+  .touch--drive [data-touch="handbrake"] {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .touch--drive [data-touch="brake"] {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .touch--drive .touch__side {
+    top: max(12px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+  }
+}
+@media (max-width: 700px) and (orientation: portrait) {
+  .hud .hud__speedo {
+    transform-origin: top right;
+    top: max(12px, env(safe-area-inset-top));
+    bottom: auto;
+    width: 132px;
+    height: 112px;
+  }
+  .hud .hud__boost {
+    width: 108px;
+  }
+  .touch--drive .touch__side {
+    top: 38%;
+    flex-direction: column;
+  }
+}

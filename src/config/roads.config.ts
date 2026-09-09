@@ -297,6 +297,7 @@ export const DECALS = {
 
 /** Struktur von assets/generated/roads/roads.json. */
 export interface RoadFile {
+  readonly urbanLots?: readonly UrbanParcel[];
   readonly seed: number;
   readonly sampleSpacing: number;
   readonly roads: readonly RoadData[];
@@ -304,6 +305,11 @@ export interface RoadFile {
     readonly totalLength: number;
     readonly count: number;
   };
+}
+
+export interface UrbanParcel {
+  readonly minX: number; readonly maxX: number; readonly minZ: number; readonly maxZ: number;
+  readonly bottom: number; readonly top: number; readonly roadY: number; readonly group: string;
 }
 
 export interface RoadData {

@@ -1,4 +1,4 @@
-import { DEFAULT_VEHICLE, VEHICLE_ORDER, type VehicleId } from '@/config/vehicles.config';
+import { DEFAULT_VEHICLE, VEHICLE_ORDER, VEHICLES, type VehicleId } from '@/config/vehicles.config';
 
 /**
  * Der Fortschritt eines Spielers — P23.
@@ -59,12 +59,7 @@ const MAX_PLAUSIBLE_S = 2400;
  * acht. Das ist die Größenordnung, in der ein Freischalten sich verdient anfühlt,
  * ohne zur Arbeit zu werden.
  */
-export const VEHICLE_PRICE: Readonly<Record<VehicleId, number>> = {
-  touge: 0,
-  offroad: 9_000,
-  gt: 24_000,
-  truck: 15_000,
-};
+export const VEHICLE_PRICE = Object.fromEntries(VEHICLE_ORDER.map(id => [id, VEHICLES[id].price])) as Record<VehicleId, number>;
 
 /**
  * Der Sandkasten-Code. Lebt hier und nicht in der Oberfläche, damit das Menü

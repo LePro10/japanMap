@@ -26,8 +26,8 @@ export interface MapLandmark {
 export const MAP_LANDMARKS: readonly MapLandmark[] = [
   {
     id: 'stadt',
-    label: 'Stadt',
-    detail: 'Neonviertel',
+    label: 'Neon City',
+    detail: 'City streets',
     x: 620,
     z: 120,
     icon: 'city',
@@ -35,8 +35,8 @@ export const MAP_LANDMARKS: readonly MapLandmark[] = [
   },
   {
     id: 'tempel',
-    label: 'Tempel',
-    detail: 'Torii-Aufgang',
+    label: 'Hillside Temple',
+    detail: 'Torii approach',
     x: 820,
     z: -940,
     icon: 'temple',
@@ -44,8 +44,8 @@ export const MAP_LANDMARKS: readonly MapLandmark[] = [
   },
   {
     id: 'bergpass',
-    label: 'Bergpass',
-    detail: 'Serpentinen',
+    label: 'Mountain Pass',
+    detail: 'Hairpin roads',
     x: -536,
     z: -495,
     icon: 'mountain',
@@ -53,8 +53,8 @@ export const MAP_LANDMARKS: readonly MapLandmark[] = [
   },
   {
     id: 'reisfelder',
-    label: 'Reisfelder',
-    detail: 'Terrassen',
+    label: 'Western Paddies',
+    detail: 'Rice terraces',
     x: -760,
     z: 60,
     icon: 'paddy',
@@ -62,8 +62,8 @@ export const MAP_LANDMARKS: readonly MapLandmark[] = [
   },
   {
     id: 'fischerdorf',
-    label: 'Fischerdorf',
-    detail: 'Steg & Boote',
+    label: 'Tideglass Harbour',
+    detail: 'Working port and boats',
     x: 780,
     z: 1030,
     icon: 'village',
@@ -71,8 +71,8 @@ export const MAP_LANDMARKS: readonly MapLandmark[] = [
   },
   {
     id: 'kueste',
-    label: 'Küste',
-    detail: 'Südküste',
+    label: 'South Coast',
+    detail: 'Ocean shore',
     x: 100,
     z: 1400,
     icon: 'coast',
@@ -80,13 +80,14 @@ export const MAP_LANDMARKS: readonly MapLandmark[] = [
   },
   {
     id: 'wald',
-    label: 'Wald',
-    detail: 'Hochebene',
+    label: 'Highland Forest',
+    detail: 'Wooded plateau',
     x: 790,
     z: -760,
     icon: 'forest',
     labelMinPx: 700,
   },
+  { id: 'stillwater', label: 'Stillwater Village', detail: 'Walk-in mill, pond and bent stone lane', x: -1244, z: 409, icon: 'village', labelMinPx: 620 },
 ] as const;
 
 export function formatMapDistance(meters: number): string {

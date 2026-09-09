@@ -1,3 +1,5 @@
+import { instruments } from './instruments';
+import './driveInstruments.css';
 import { formatTime } from '@/game/BestTimes';
 import type { DriftState } from '@/game/DriftScore';
 import type { LapResult } from '@/game/LapTimer';
@@ -113,12 +115,12 @@ export class DriveHud {
         <span class="hud__driftMult" data-hud="driftMult">x1.0</span>
         <span class="hud__driftBanked" data-hud="driftBanked">0</span>
       </div>
-      <div class="hud__speedo">
-        <div class="hud__boost" data-hud="boostBox"><i class="hud__boostFill" data-hud="boostFill"></i></div>
+      <div class="hud__speedo"><span class="hud__gearLabel" data-hud="gear">N</span><svg class="hud__rpm" viewBox="0 0 220 130" aria-label="Engine RPM"><path d="M20 110 A90 90 0 0 1 200 110" pathLength="100" class="hud__rpmTrack"/><path d="M20 110 A90 90 0 0 1 200 110" pathLength="100" class="hud__rpmFill" data-hud="rpmFill"/><path d="M181 55 A90 90 0 0 1 200 110" class="hud__redline"/></svg><span class="hud__rpmText" data-hud="rpm">850 RPM</span>
+        <div class="hud__boost" data-hud="boostBox" aria-label="Nitro"><span class="hud__nitroLabel">NITRO</span><i class="hud__boostFill" data-hud="boostFill"></i></div>
         <div class="hud__speedRow">
           <span class="hud__speed" data-hud="speed">0</span>
           <span class="hud__unit">km/h</span>
-          <span class="hud__gearLabel" data-hud="gear"></span>
+
         </div>
       </div>
       <div class="hud__nav">
@@ -133,6 +135,11 @@ export class DriveHud {
       <div class="hud__flash" data-hud="flash" hidden></div>`;
     container.appendChild(this.#root);
 
+    this.#rpmFill = this.#root.querySelector<SVGElement>('[data-hud="rpmFill"]')!;
+    this.#rpmText = this.#must('[data-hud="rpm"]');
+    this.#unit = this.#must('.hud__unit');
+    this.#lapBox = this.#must('.hud__lap');
+    this.#lapBox.hidden = true;
     this.#speed = this.#must('[data-hud="speed"]');
     this.#gear = this.#must('[data-hud="gear"]');
     this.#lapTime = this.#must('[data-hud="lap"]');
@@ -311,11 +318,19 @@ export class DriveHud {
 
     // `Math.round` und nicht `toFixed(0)`: Letzteres liefert bei −0.4 die
     // Zeichenkette „-0", und ein Tacho, der minus null anzeigt, sieht kaputt aus.
-    const kmh = Math.round(Math.abs(t.forwardSpeed) * 3.6);
+    const mph = document.documentElement.dataset.speedUnits === 'mph';
+    const kmh = Math.round(Math.abs(t.forwardSpeed) * (mph ? 2.236936 : 3.6));
+    this.#setText(this.#unit, mph ? 'mph' : 'km/h');
     this.#setText(this.#speed, String(kmh));
     // Rückwärts ist eine eigene Angabe und keine negative Zahl — dieselbe
     // Überlegung wie beim Tacho darüber.
-    this.#setText(this.#gear, t.forwardSpeed < -0.5 ? 'R' : '');
+    const reading = instruments(t.forwardSpeed);
+    if (this.#gear.textContent !== reading.gear) { this.#gear.classList.remove('hud__gearShift'); void this.#gear.offsetWidth; this.#gear.classList.add('hud__gearShift'); }
+    this.#setText(this.#gear, reading.gear);
+    this.#setText(this.#rpmText, `${Math.round(reading.rpm / 100) * 100} RPM`);
+    const rpmPct = Math.round(reading.fraction * 100);
+    if (rpmPct !== this.#rpmPct) { this.#rpmPct = rpmPct; this.#rpmFill.style.strokeDasharray = `${rpmPct} 100`; }
+    this.#lapBox.hidden = !running;
 
     this.#setText(this.#lapTime, running ? formatTime(elapsed) : '—');
     this.#setText(this.#best, best === null ? '—' : formatTime(best));
@@ -337,6 +352,11 @@ export class DriveHud {
   }
 
   #boostPct = -1;
+  #rpmPct = -1;
+  readonly #rpmFill: SVGElement;
+  readonly #rpmText: HTMLElement;
+  readonly #unit: HTMLElement;
+  readonly #lapBox: HTMLElement;
 
   /**
    * Die Driftwertung — sie erscheint nur, während eine Kette läuft.
@@ -416,7 +436,7 @@ export class DriveHud {
 
   /** Der Kontostand oben rechts. */
   setMoney(yen: number): void {
-    this.#setText(this.#money, `¥${yen.toLocaleString('en-US')}`);
+    this.#setText(this.#money, `${yen.toLocaleString('en-US')} Sparks`);
   }
 
   /**

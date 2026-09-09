@@ -205,25 +205,15 @@ export interface WalkSpawn {
 }
 
 /**
- * Einen Startpunkt in der Sakura-Schale würfeln.
- *
- * Polar um den Mittelpunkt, Radius zwischen `WALK_SPAWN_INNER` und
- * `WALK_SPAWN_OUTER`. Die Figur steht **rechts** neben dem Auto (Fahrertür),
- * das Auto schaut in eine zufällige Richtung — „immer ungefähr da", nicht
- * immer auf demselben Pixel.
- *
- * Gemessen über 40 Seeds: 8,0…20,5 m vom Mittelpunkt, kein Ausreißer.
+ * Fester Fußpunkt im bestehenden Hof. Auto und Läden brauchen eine lesbare
+ * Startkomposition; der Seed bleibt für die bestehende Respawn-Schnittstelle.
  */
 export function rollWalkSpawn(seed: number): WalkSpawn {
   const zone = walkSpawnZone();
-  const rng = mulberry32(seed);
-  const angle = rng() * Math.PI * 2;
-  const radius = WALK_SPAWN_INNER + rng() * (WALK_SPAWN_OUTER - WALK_SPAWN_INNER);
-  const heading = rng() * Math.PI * 2;
   return {
-    x: zone.x + Math.cos(angle) * radius,
-    z: zone.z + Math.sin(angle) * radius,
-    heading,
+    x: zone.x,
+    z: zone.z,
+    heading: Math.PI,
     seed,
   };
 }

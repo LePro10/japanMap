@@ -597,7 +597,8 @@ export class ArcadeDynamics {
     // „so viel Prozent mehr Haftung bei 80 m/s". Eine Kraft müsste durch die
     // Masse geteilt werden, und die Masse steht in einer anderen Datei — das
     // wäre eine Abhängigkeit für einen Effekt, den man in einer Zeile hinschreibt.
-    const aero = 1 + spec.downforce * Math.min(1.6, (speed / 80) * (speed / 80));
+    const aeroSpeed = spec.downforceSpeed ?? 80;
+    const aero = 1 + spec.downforce * Math.min(spec.downforceSpeed ? 1 : 1.6, (speed / aeroSpeed) ** 2);
     return spec.latG * GRAVITY * grip * aero;
   }
 

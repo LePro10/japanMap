@@ -61,6 +61,7 @@ export class RoadSystem implements System {
    * größere Fläche ist: die Stadt kommt zu ihr dazu, nicht umgekehrt.
    */
   readonly #surface: RoadUniforms = createRoadUniforms();
+  #urbanLots: NonNullable<RoadFile['urbanLots']> = [];
 
   constructor(
     private readonly atmosphere: AtmosphereUniforms,
@@ -188,6 +189,7 @@ export class RoadSystem implements System {
     // die Pfosten, `aBreakId` sitzt dort als Instanzattribut.
     this.#railMaterial = new RailMaterial();
 
+    this.#urbanLots = file.urbanLots ?? [];
     this.#build(file.roads);
     context.scene.add(group);
 
@@ -259,6 +261,7 @@ export class RoadSystem implements System {
       seed: 0,
       sampleSpacing: 2,
       roads,
+      urbanLots: this.#urbanLots,
       measured: { totalLength, count: roads.length },
     });
     const netz = this.#network;

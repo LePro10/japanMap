@@ -1,0 +1,4 @@
+.commons-prompt { position: absolute; left: 50%; top: 16%; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; max-width: min(90vw, 620px); padding: 12px 18px; border: 1px solid #efcfa666; border-radius: 12px; background: #172126e8; color: #fff1dd; font: 500 15px/1.4 system-ui; text-align: center; pointer-events: auto; }
+.commons-prompt[hidden], .commons-prompt button[hidden] { display: none; }
+.commons-prompt button { flex-shrink: 0; min-height: 44px; border: 0; border-radius: 7px; background: #f4ca8b; color: #202b2d; padding: 8px 14px; font: inherit; cursor: pointer; }
+@media (max-width: 600px) { .commons-prompt { top: 12%; width: 85vw; font-size: 13px; padding: 9px; } }

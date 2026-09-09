@@ -122,6 +122,11 @@ export class Engine {
     this.#present = present;
   }
 
+  /** Einzelbild für Photo Mode, ohne Simulation oder zweiten Renderer. */
+  renderFrame(): void {
+    this.#present(0);
+  }
+
   add(system: System): void {
     if (this.#initialized) {
       throw new Error(

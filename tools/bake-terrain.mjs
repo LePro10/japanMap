@@ -28,6 +28,7 @@ import { PNG } from 'pngjs';
 // Dieselbe Datei, die auch der Renderer liest — die Stadtplatte und die
 // Einebnung darunter müssen auf den Zentimeter zusammenpassen.
 import { CITY_PAD_FEATHER, CITY_PAD_Y, districtBlend } from '../src/config/city.mjs';
+import { padUrbanParcels } from './wp6-parcels.mjs';
 
 /**
  * PNG schreiben.
@@ -2105,9 +2106,11 @@ async function main() {
 
   const roadPath = join(outDir, '..', 'roads', 'roads.json');
   let roadReport = null;
+  let urbanRoadFile = null;
   try {
     if (opts['no-roads']) throw Object.assign(new Error('übersprungen'), { code: 'ENOENT' });
     const roadFile = JSON.parse(await readFile(roadPath, 'utf8'));
+    urbanRoadFile = roadFile;
 
     // Bank **vor** dem Einschnitt: sie glättet das Umfeld, der Einschnitt legt
     // danach die Fahrbahn hinein. Andersherum würde die Bank die frisch
@@ -2244,6 +2247,10 @@ async function main() {
       ),
   );
 
+  if (urbanRoadFile?.urbanLots?.length) {
+    const touched = padUrbanParcels(height, res, spacing, urbanRoadFile.urbanLots, urbanRoadFile.roads);
+    console.log(`  WP6  ${urbanRoadFile.urbanLots.length} Stadtterrassen · ${touched} Texel · Straßen geschützt`);
+  }
   process.stdout.write('  6    Zonenmaske, Normalen, Kodierung … ');
 
   // height.r16 — roh, 16 Bit, little endian. Der Wertebereich ist der

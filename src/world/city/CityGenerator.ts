@@ -1,6 +1,7 @@
 import { BufferAttribute, BufferGeometry, Color, SRGBColorSpace } from 'three';
 
 import { CITY, CITY_DISTRICT, CITY_GROUND_Y, CITY_SLAB_Y } from '@/config/city.config';
+import type { UrbanLot } from './UrbanLots';
 
 /**
  * Stadt-Generator — PLAN.md P6 / 6.1.
@@ -48,6 +49,7 @@ const width = (r: Rect): number => r.maxX - r.minX;
 const depth = (r: Rect): number => r.maxZ - r.minZ;
 
 export interface CityInput {
+  readonly urbanLots?: readonly UrbanLot[];
   /** Liegt der Punkt im Korridor einer befahrenen Straße? */
   readonly isRoad: (x: number, z: number) => boolean;
   /** Geländehöhe für die Schürze am Distriktrand. */
@@ -655,6 +657,23 @@ export function generateCity(input: CityInput): CityResult {
     blockMeshes.push({ geometry: mesh.build(`Stadtblock:${blockMeshes.length}`) });
   }
 
+  // Dasselbe Kit auf einzelnen Terrassen; keine zweite waagerechte Stadtplatte.
+  const extensions = new Map<string, MeshBuilder>();
+  for (const lot of input.urbanLots ?? []) {
+    let mesh = extensions.get(lot.group);
+    if (!mesh) { mesh = new MeshBuilder(); extensions.set(lot.group, mesh); }
+    const footprint = shrink(lot, 1.3);
+    const built = extrudeBuilding(mesh, footprint, lot, lot.top, random, signs);
+    box(mesh, lot, lot.bottom, lot.top, 0, 0, SIDEWALK_COLOR, SIDEWALK_COLOR, 0, KIND_FLAT);
+    colliders.push({ ...footprint, bottom: lot.bottom, top: lot.top + built.height });
+    curbs.push({ minX: lot.minX, maxX: lot.maxX, minZ: lot.minZ, maxZ: lot.maxZ, top: lot.top });
+    buildingCount++; parcelCount++;
+    floorsMax = Math.max(floorsMax, built.floors); heightMax = Math.max(heightMax, built.height);
+  }
+  for (const [key, mesh] of extensions) {
+    triangles += mesh.triangles;
+    blockMeshes.push({ geometry: mesh.build(`Urban terrace:${key}`) });
+  }
   const ground = buildGround(input.sampleTerrain);
   triangles += sidewalkMesh.triangles + ground.triangles;
 

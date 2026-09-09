@@ -30,7 +30,10 @@
     "hdri:ibl": "node tools/optimize-hdri.mjs assets/hdri/rooftop_night_2k.hdr --half --out assets/generated/hdri",
     "hdri:sky": "node tools/optimize-hdri.mjs assets/hdri/industrial_sunset_02_puresky_4k.hdr --half --out assets/generated/hdri",
     "dev:lan": "vite --host 0.0.0.0 --port 5180 --strictPort",
-    "fleet": "node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/fleet.mts"
+    "fleet": "node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/fleet.mts",
+    "test:wp1": "node tools/wp1-ui.test.mjs && node tools/wp1-instruments.test.mjs && node tools/wp1-photo-input.test.mjs",
+    "test:wp1:boot": "node tools/wp1-boot.mjs",
+    "test:wp1:phone": "node tools/wp1-phone.mjs"
   },
   "dependencies": {
     "n8ao": "^2.0.0",
@@ -47,6 +50,7 @@
     "@types/node": "^22.10.0",
     "@types/three": "^0.185.0",
     "meshoptimizer": "^1.2.0",
+    "playwright-core": "1.63.0",
     "pngjs": "^7.0.0",
     "sharp": "^0.34.2",
     "stats-gl": "^4.2.3",

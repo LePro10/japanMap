@@ -46,11 +46,17 @@ import {
 // Distrikt muss auf den Zentimeter übereinstimmen, sonst steht die Stadtplatte
 // neben der Straße, die sie tragen soll.
 import { CITY_ROAD_LEVEL, districtBlend } from '../src/config/city.mjs';
+import { ORCHARD_BYPASS } from './wp6-layout.mjs';
+import { appendWP6Roads } from './wp6-roads.mjs';
+import { fitNetwork } from './wp6-profile.mjs';
+import { planUrbanParcels } from './wp6-parcels.mjs';
 
 // `fileURLToPath`, nicht `.pathname` — siehe tools/bake-terrain.mjs: unter
 // Windows trägt `.pathname` einen führenden Schrägstrich vor dem Laufwerk, und
 // `join` macht daraus `P:\P:\projects\…`.
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
+// WP6 bleibt ausdrücklich opt-in, bis die neue Welt im Spiel abgenommen ist.
+const WP6 = process.argv.includes('--wp6');
 
 // ── Straßentypen (Spiegel von src/config/roads.config.ts) ────────────────────
 //
@@ -1028,9 +1034,7 @@ function layout(terrain) {
     [980, -120],
     [860, 300],
     [560, 720],
-    [80, 940],
-    [-420, 950],
-    [-880, 720],
+    ...(WP6 ? ORCHARD_BYPASS : [[80, 940], [-420, 950], [-880, 720]]),
     [-1020, 340],
   ].map(([x, z]) => pushInland(terrain, x, z, 3));
 
@@ -1169,9 +1173,9 @@ function layout(terrain) {
 
 function buildRoad(
   terrain,
-  { id, type, closed, tags, points, banking = 0, pins, junctions = [], level = null },
+  { id, type, closed, tags, points, banking = 0, pins, junctions = [], level = null, design = {} },
 ) {
-  const settings = TYPES[type];
+  const settings = { ...TYPES[type], ...design };
 
   const toNodes = (heights) =>
     points.map((p, i) => ({
@@ -1388,7 +1392,7 @@ async function main() {
       id: 'ring',
       type: 'highway',
       closed: true,
-      tags: ['ringstrecke', 'startlinie'],
+      tags: ['ringstrecke', 'startlinie', ...(WP6 ? ['orchard-bypass'] : [])],
       waypoints: plan.ring,
       banking: 2,
       // Die Wegpunkte sind der Entwurf, nicht nur ein Vorschlag: ohne Korridor
@@ -1502,7 +1506,8 @@ async function main() {
       id: 'zufahrt',
       type: 'city',
       closed: false,
-      tags: ['stadt', 'anschluss'],
+      tags: ['stadt', 'anschluss', ...(WP6 ? ['east-gate-avenue'] : [])],
+      design: WP6 ? { width: 12 } : {},
       waypoints: plan.cityLink,
       banking: 0,
       level: CITY_ROAD_LEVEL,
@@ -1752,10 +1757,19 @@ async function main() {
     );
   }
 
+  if (WP6) {
+  appendWP6Roads(terrain, roads, buildRoad, waypoints => traceRoute(gridFor(null), waypoints, {
+    settings: { width: 9, maxGradient: .12, minRadius: 25 }, closed: false, corridor: 150,
+  }).points);
+  fitNetwork(roads, terrain);
+  violations = roads.filter(r => r.measured.maxGradient > (r.tags.includes('wp6') ? (r.tags.includes('hill') ? .12 : .08) : TYPES[r.type].maxGradient) + .001).length;
+  }
+  totalLength = roads.reduce((sum, road) => sum + road.length, 0);
   const file = {
     seed: meta.seed,
     sampleSpacing: SAMPLE_SPACING,
     roads,
+    ...(WP6 ? { urbanLots: planUrbanParcels(roads, terrain) } : {}),
     measured: {
       totalLength: Number(totalLength.toFixed(2)),
       count: roads.length,

@@ -1,0 +1,6 @@
+{
+  "readyBytes": 16248063,
+  "compressedResponses": 23,
+  "errors": [],
+  "note": "Built assets served with existing Brotli sidecars; excludes HTTP headers and the HTML document."
+}
