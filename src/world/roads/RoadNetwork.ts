@@ -1,5 +1,5 @@
 import type { RoadData, RoadFile } from '@/config/roads.config';
-import { ROAD_CLEARANCE_REFERENCE, ROAD_TYPES } from '@/config/roads.config';
+import { ROAD_CLEARANCE_REFERENCE, ROAD_TYPES, roadWidthAt } from '@/config/roads.config';
 import { WORLD } from '@/config/world.config';
 
 /**
@@ -71,6 +71,14 @@ interface Segment {
    * damit die Instanzzahlen aus P4 nicht.
    */
   readonly clearanceScale: number;
+  /**
+   * Zusätzliche halbe Breite über den Typ hinaus, in Metern.
+   *
+   * WP6-Boulevards sind `city` (8 m) mit 16–18 m Mittellinie. Ohne diesen
+   * Zuschlag vergleicht die Streuung den Abstand zur Achse mit 7 m Grasfreiheit
+   * und pflanzt mitten auf die Fahrbahn. Bestehende Strecken haben extra 0.
+   */
+  readonly extraHalf: number;
 }
 
 export class RoadNetwork {
@@ -112,10 +120,12 @@ export class RoadNetwork {
 
     for (const road of file.roads) {
       const settings = ROAD_TYPES[road.type];
-      this.#maxHalfWidth = Math.max(
-        this.#maxHalfWidth,
-        settings.width / 2 + settings.shoulder,
-      );
+      for (let i = 0; i < road.widths.length; i++) {
+        this.#maxHalfWidth = Math.max(
+          this.#maxHalfWidth,
+          roadWidthAt(road, i) / 2 + settings.shoulder,
+        );
+      }
       this.#indexRoad(road);
     }
   }
@@ -188,7 +198,7 @@ export class RoadNetwork {
       z: this.#bestZ,
       distanceAlong: (segment.index + t) * spacing,
       distance: Math.sqrt(found),
-      width: road.widths[segment.index] ?? ROAD_TYPES[road.type].width,
+      width: roadWidthAt(road, segment.index),
       forwardX: dx / length,
       forwardZ: dz / length,
       // `length` ist die **waagerechte** Segmentlänge (`hypot(dx, dz)`), also
@@ -262,7 +272,13 @@ export class RoadNetwork {
             // Skaliert wird der **Abstand**, nicht die Schwelle: so bleibt der
             // Vergleich gegen `species.roadClearance` unverändert, und ein Pfad
             // mit Faktor 0,36 räumt einen 0,36-mal so breiten Streifen frei.
-            if (scaled) squared /= segment.clearanceScale * segment.clearanceScale;
+            if (scaled) {
+              // Extra-Halbbreite vor der Pfad-Skala: sonst wächst Gras auf
+              // einem 16-m-Circuit, dessen Typ 8 m heißt.
+              const dist = Math.sqrt(squared);
+              const adj = Math.max(0, dist - segment.extraHalf) / segment.clearanceScale;
+              squared = adj * adj;
+            }
 
             if (squared < bestSquared) {
               bestSquared = squared;
@@ -338,7 +354,6 @@ export class RoadNetwork {
     const total = arc[points - 1]!;
 
     const settings = ROAD_TYPES[road.type];
-    const halfWidth = (settings.width + 2 * settings.shoulder) / 2;
 
     const out = [];
     for (let k = 0; k < count; k++) {
@@ -355,7 +370,7 @@ export class RoadNetwork {
         arc: ziel,
         position: [line[i * 3]!, line[i * 3 + 1]!, line[i * 3 + 2]!] as [number, number, number],
         forward: [dx / len, dz / len] as [number, number],
-        halfWidth,
+        halfWidth: (roadWidthAt(road, i) + 2 * settings.shoulder) / 2,
       });
     }
     return out;
@@ -394,10 +409,9 @@ export class RoadNetwork {
     const count = line.length / 3;
     const last = road.closed ? count : count - 1;
     const settings = ROAD_TYPES[road.type];
-    const reach = settings.width / 2 + settings.shoulder;
-    // Aus der **Typ**breite, nicht aus `road.widths[i]`: die Freihaltung soll
-    // eine Eigenschaft der Streckenart sein und nicht an einzelnen Knoten
-    // springen, an denen ein Editor die Breite verändert hat.
+    // Aus der **Typ**breite für die Pfad-Skala: die Freihaltung soll eine
+    // Eigenschaft der Streckenart sein. Die Zellenhülle und `extraHalf`
+    // nehmen die gebaute Breite — sonst fehlt ein 18-m-Boulevard dem Suchgitter.
     const clearanceScale = Math.min(1, settings.width / ROAD_CLEARANCE_REFERENCE);
 
     for (let i = 0; i < last; i++) {
@@ -406,6 +420,9 @@ export class RoadNetwork {
       const az = line[i * 3 + 2]!;
       const bx = line[j * 3]!;
       const bz = line[j * 3 + 2]!;
+      const width = roadWidthAt(road, i);
+      const reach = width / 2 + settings.shoulder;
+      const extraHalf = Math.max(0, width / 2 - settings.width / 2);
 
       // Jede Zelle, die die Hülle des Segments berührt. Die Segmente sind 2 m
       // lang, betreffen also fast immer genau eine Zelle — der Aufwand hier ist
@@ -424,7 +441,7 @@ export class RoadNetwork {
             list = [];
             this.#cells[key] = list;
           }
-          list.push({ road, index: i, clearanceScale });
+          list.push({ road, index: i, clearanceScale, extraHalf });
         }
       }
     }

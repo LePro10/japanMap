@@ -3,6 +3,7 @@ import {
   ARCADE_SURFACE,
   ARCADE_SURFACE_DRAG,
   BOOST_EARN,
+  CIRCUIT_PREP,
   DRIFT_GATE,
   DRIFT_MAX_ANGLE,
   DRIFT_MIN_SPEED,
@@ -104,6 +105,13 @@ export interface PlanarEnv {
   /** Geschwindigkeit quer, m/s (positiv = nach rechts). */
   vLat: number;
   readonly surface: Surface;
+  /**
+   * Prepared-Circuit-Mischung, 0…1 — WP6.
+   *
+   * Optional, weil der ebene Prüfstand und `tools/bench/arcade.mts` keine
+   * Strecke kennen. Fehlt der Wert, gilt gewöhnlicher Asphalt.
+   */
+  readonly circuit?: number;
   /** Wassertiefe unter dem Wagen, m. */
   readonly waterDepth: number;
   /** Kein Rad trägt. */
@@ -312,6 +320,9 @@ export class ArcadeDynamics {
     // Aquaplaning: nasser Asphalt zählt anteilig als Wasser.
     const wet = Math.min(1, env.waterDepth / 0.35);
     const grip = Math.max(0.05, surfaceGrip * (1 - wet * 0.45)) * env.support;
+    // Prepared Circuit: Quer und Bremse getrennt — Begründung bei CIRCUIT_PREP.
+    const prepared = env.circuit ?? 0;
+    const latMul = 1 + (CIRCUIT_PREP.lateral - 1) * prepared;
 
     // ── Lenkeinschlag ─────────────────────────────────────────────────────
     this.#steer(dt, input.steer);
@@ -425,7 +436,7 @@ export class ArcadeDynamics {
     if (this.#drift < 1e-3) this.#drift = 0;
 
     // ── Soll-Gierrate ─────────────────────────────────────────────────────
-    const aLatMax = this.#latAccel(grip, speed);
+    const aLatMax = this.#latAccel(grip, speed) * latMul;
     let yawTarget = this.#yawTarget(env.vLong, env.vLat, speed, aLatMax, input);
 
     if (env.airborne) {
@@ -463,7 +474,7 @@ export class ArcadeDynamics {
     // Reibkreis dieses Modells — und er ist absichtlich weich: eine harte
     // Ellipse macht den Übergang zum Rutschen zu einer Kante, und Kanten kann
     // ein Spieler mit einer Taste nicht bedienen.
-    const k = lerp(spec.latGrip, spec.driftLatGrip, this.#drift) * grip;
+    const k = lerp(spec.latGrip, spec.driftLatGrip, this.#drift) * grip * latMul;
     let accelLat = env.airborne ? 0 : (-env.vLat * (1 - Math.exp(-k * dt))) / dt;
     const latBudget = aLatMax * (1 - 0.25 * this.#drift);
     accelLat = clamp(accelLat, -latBudget, latBudget);
@@ -745,7 +756,8 @@ export class ArcadeDynamics {
 
     // Bremse. Sie darf die Haftgrenze überschreiten — das ist Arcade und
     // ausdrücklich gewollt: ein Spieler, der bremst, will stehenbleiben.
-    const brakeDecel = brake * spec.brakeG * GRAVITY * (0.4 + 0.6 * grip);
+    const preparedBrake = 1 + (CIRCUIT_PREP.brake - 1) * (env.circuit ?? 0);
+    const brakeDecel = brake * spec.brakeG * GRAVITY * (0.4 + 0.6 * grip) * preparedBrake;
     const brakeSign = env.vLong > 0 ? -1 : env.vLong < 0 ? 1 : 0;
 
     // Widerstände.

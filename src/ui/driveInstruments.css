@@ -87,6 +87,16 @@
   letter-spacing: 0.18em;
   color: var(--nitro, #7dd9ef);
 }
+.hud .hud__prep {
+  margin: 8px 0 0;
+  max-width: 220px;
+  font: 10px/1.3 system-ui;
+  letter-spacing: 0.04em;
+  color: #d8c7a2;
+}
+.hud .hud__prep[hidden] {
+  display: none;
+}
 .hud__gearShift {
   animation: gear-shift 0.22s ease-out;
 }

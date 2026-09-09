@@ -1,5 +1,5 @@
 import { CHASSIS, TIRE, GRAVITY, STEERING } from '@/config/vehicle.config';
-import { ROAD_MESH, ROAD_TYPES } from '@/config/roads.config';
+import { ROAD_MESH, ROAD_TYPES, roadWidthAt } from '@/config/roads.config';
 import type { DriveSystem } from '@/game/DriveSystem';
 import type { DriveInput } from '@/game/Vehicle';
 import type { RoadNetwork } from '@/world/roads/RoadNetwork';
@@ -316,7 +316,7 @@ export function driveRoad(
 
   const points = line.length / 3;
   const settings = ROAD_TYPES[road.type];
-  const halfWidth = settings.width / 2 + settings.shoulder;
+  const halfWidth = roadWidthAt(road, 0) / 2 + settings.shoulder;
 
   // Start am ersten Stützpunkt, Blick auf den zweiten.
   const startX = line[0]!;

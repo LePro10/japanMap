@@ -1534,6 +1534,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     return this.ground.waterDepth(x, z);
   }
 
+  circuitGrip(): number {
+    return this.ground.circuitGrip();
+  }
+
   // ── Debug ───────────────────────────────────────────────────────────────
 
   #registerDebug(context: EngineContext): void {
