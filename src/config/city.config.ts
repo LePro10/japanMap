@@ -345,6 +345,24 @@ export const NEON_COLORS: readonly number[] = [
  * ganze Bild gemittelt sieht 4,5 harmloser aus als 2,2. Derselbe Fehler hat in
  * P4 fünf Anläufe gekostet, siehe CLAUDE.md.
  */
+/**
+ * Acht Fassadenfamilien — ASTRA_PLAN WP4.
+ *
+ * Sie stecken im Vertex-Attribut (`seed + Familie·256`), nicht in acht
+ * Materialien. Ein zweites Programm für „Holz statt Putz" wäre ein Draw-Call
+ * je Familie; die Stadt bleibt drei Programme (Fassade, Boden, Neon).
+ */
+export const FACADE_FAMILY = {
+  shop: 0,
+  workshop: 1,
+  timber: 2,
+  apartment: 3,
+  cinema: 4,
+  hotel: 5,
+  hillside: 6,
+  shed: 7,
+} as const;
+
 export const CITY_LOOK = {
   windowLitFraction: 0.45,
   windowEmissive: 1.8,

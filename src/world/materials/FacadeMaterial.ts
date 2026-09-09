@@ -162,8 +162,9 @@ export class FacadeMaterial extends MeshStandardMaterial {
           // Dächer, Brüstungen und Vordächer sind glatte Flächen ohne Raster.
           // Sie laufen durch dieselbe Kette, bekommen aber eine leere Maske —
           // ein zweites Material wäre ein zweites Programm für dieselbe Wand.
+          // Familie steckt in den hohen Bits von aFacade.x (seed + Familie·256).
           'gFacadeWindow = vFacadeKind.y < 0.5\n' +
-          '  ? facadeWindows(vFacadeUv, vFacadeKind.x, uCityTime)\n' +
+          '  ? facadeWindows(vFacadeUv, mod(vFacadeKind.x, 256.0), uCityTime, floor(vFacadeKind.x / 256.0))\n' +
           '  : vec4(0.0);\n' +
           // Glas ist dunkler und glatter als Putz, der Rahmen dunkler als beides.
           'diffuseColor.rgb *= 1.0 - gFacadeWindow.x * 0.62 - gFacadeWindow.z * 0.25;',
