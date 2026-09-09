@@ -83,8 +83,12 @@ export interface PlayerUiOptions {
   readonly openMap?: () => void;
   readonly openPhoto?: (onExit: (resume?: boolean) => void) => void;
   readonly callCar?: () => string;
+  /** Frameschleife anhalten, solange niemand am Menü sitzt. */
+  readonly sleepWorld?: (sleeping: boolean) => void;
 }
 type Tab = "play" | "cars" | "map" | "records" | "photo" | "settings";
+/** Ohne Eingabe im Pausenmenü: rAF aus. Der Canvas hält den letzten Frame. */
+const MENU_SLEEP_MS = 30_000;
 const TABS: readonly Tab[] = [
   "play",
   "cars",
@@ -107,6 +111,8 @@ export class PlayerUi {
   #tab: Tab = "play";
   #catalogue: "owned" | "showroom" = "owned";
   #preview: VehicleId;
+  #idleTimer: number | null = null;
+  #worldSleeping = false;
 
   constructor(options: PlayerUiOptions) {
     this.#o = options;
@@ -149,6 +155,17 @@ export class PlayerUi {
     document.addEventListener("pointerlockchange", this.#lockChanged);
     document.addEventListener("pointerlockerror", this.#lockError);
     window.addEventListener("keydown", this.#key, true);
+    document.addEventListener("visibilitychange", this.#onVisibility);
+    this.#menu.addEventListener("pointerdown", this.#onMenuActivity, {
+      capture: true,
+    });
+    this.#menu.addEventListener("keydown", this.#onMenuActivity, {
+      capture: true,
+    });
+    this.#menu.addEventListener("wheel", this.#onMenuActivity, {
+      capture: true,
+      passive: true,
+    });
     this.#qualityControls();
     this.#syncQuality();
     this.#syncDrive();
@@ -247,6 +264,11 @@ export class PlayerUi {
     );
     this.#o.hud?.setMenuOpen(this.#open || this.#photo || this.#map);
     this.#o.drive?.setPaused?.(this.#open || this.#photo || this.#map);
+    if (this.#open && !this.#photo) this.#armIdleSleep();
+    else {
+      this.#clearIdleSleep();
+      if (!this.#photo) this.#setWorldSleep(false);
+    }
     for (const panel of this.#menu.querySelectorAll<HTMLElement>(
       "[data-panel]",
     ))
@@ -741,11 +763,45 @@ export class PlayerUi {
     if (!element) throw new Error(`Player menu: missing ${selector}`);
     return element;
   }
+  readonly #onMenuActivity = (): void => {
+    if (this.#open && !this.#photo) this.#armIdleSleep();
+  };
+  readonly #onVisibility = (): void => {
+    if (this.#photo) return;
+    if (document.hidden) {
+      this.#clearIdleSleep();
+      this.#setWorldSleep(true);
+      return;
+    }
+    this.#setWorldSleep(false);
+    if (this.#open) this.#armIdleSleep();
+  };
+  #armIdleSleep(): void {
+    this.#clearIdleSleep();
+    this.#idleTimer = window.setTimeout(() => this.#setWorldSleep(true), MENU_SLEEP_MS);
+  }
+  #clearIdleSleep(): void {
+    if (this.#idleTimer === null) return;
+    window.clearTimeout(this.#idleTimer);
+    this.#idleTimer = null;
+  }
+  #setWorldSleep(sleeping: boolean): void {
+    if (this.#worldSleeping === sleeping) return;
+    this.#worldSleeping = sleeping;
+    this.#menu.classList.toggle("is-sleeping", sleeping);
+    this.#o.sleepWorld?.(sleeping);
+  }
   dispose(): void {
+    this.#clearIdleSleep();
+    this.#setWorldSleep(false);
     this.#off.forEach((off) => off());
     document.removeEventListener("pointerlockchange", this.#lockChanged);
     document.removeEventListener("pointerlockerror", this.#lockError);
+    document.removeEventListener("visibilitychange", this.#onVisibility);
     window.removeEventListener("keydown", this.#key, true);
+    this.#menu.removeEventListener("pointerdown", this.#onMenuActivity, true);
+    this.#menu.removeEventListener("keydown", this.#onMenuActivity, true);
+    this.#menu.removeEventListener("wheel", this.#onMenuActivity, true);
     this.#touch.dispose();
     this.#menu.remove();
   }

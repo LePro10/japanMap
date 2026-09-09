@@ -907,6 +907,10 @@ async function boot(): Promise<void> {
       setCarTune: (tune) => drive.setCarTune(tune),
       setPaused: (paused) => drive.setPaused(paused),
     },
+    sleepWorld: (sleeping) => {
+      if (sleeping) engine.sleep();
+      else engine.wake();
+    },
     // ── Die Veranstaltungen — P23 ────────────────────────────────────────
     //
     // Dieselbe schmale Bauart wie `drive` und `quality` darüber: das Menü
