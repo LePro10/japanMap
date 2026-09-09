@@ -3,6 +3,7 @@ import { Euler, Vector2, Vector3 } from "three";
 import { FreeFlyController } from "@/camera/FreeFlyController";
 import type { Engine } from "@/core/Engine";
 import { CAMERA } from "@/config/world.config";
+import type { QualitySystem } from "@/render/QualitySystem";
 import "./photoMode.css";
 
 /** Langsam genug zum Einrahmen, schnell genug für die 3-km-Insel. */
@@ -19,7 +20,16 @@ function flyOf(engine: Engine): FreeFlyController | null {
   return null;
 }
 
-/** Ein eingefrorener Frame, derselbe Renderer; Qualität bleibt unangetastet. */
+function qualityOf(engine: Engine): QualitySystem | null {
+  for (const system of engine.systems) {
+    // Name, nicht `instanceof`: der Prüfstand importiert dieselbe Klasse über
+    // einen anderen Vite-Pfad, und zwei Kopien einer Klasse sind zwei Typen.
+    if (system.name === "Qualität") return system as QualitySystem;
+  }
+  return null;
+}
+
+/** Freie Kamera, Welt pausiert; Capture High zeichnet einen Ultra-Frame. */
 export class PhotoMode {
   readonly #engine: Engine;
   readonly #container: HTMLElement;
@@ -45,7 +55,7 @@ export class PhotoMode {
     const touch = matchMedia("(pointer: coarse)").matches;
     const root = document.createElement("div");
     root.className = "photo-mode";
-    root.innerHTML = `<div class="photo-mode__view" aria-label="Drag to look around"></div><div class="photo-mode__top"><div><strong>Photo mode</strong><span>World paused · WASD move · Space / Shift up / down · Wheel zoom</span></div><button data-action="exit">Exit Photo</button></div><div class="photo-mode__controls"><div class="photo-mode__moves" aria-label="Camera movement"><button data-move="forward">Forward</button><button data-move="up">Up</button><button data-move="left">Left</button><button data-move="right">Right</button><button data-move="back">Back</button><button data-move="down">Down</button></div><div class="photo-mode__actions"><button data-action="capture">Capture High</button><button data-action="small">Capture smaller</button><button data-action="reset">Reset camera</button><button data-action="hide">Hide UI</button></div><p role="status">WASD to fly, Space / Shift for height, wheel to zoom. Capture up to ${touch ? "1920" : "2560"} px. Your graphics preset stays unchanged.</p></div><button class="photo-mode__show" hidden>Show UI</button><div class="photo-mode__result" hidden><img alt="Your captured photo" /><p></p><a download>Download PNG</a><button data-action="retake">Retake</button><button data-action="return">Return to game</button></div>`;
+    root.innerHTML = `<div class="photo-mode__view" aria-label="Drag to look around"></div><div class="photo-mode__top"><div><strong>Photo mode</strong><span>World paused · WASD move · Space / Shift up / down · Wheel zoom</span></div><button data-action="exit">Exit Photo</button></div><div class="photo-mode__controls"><div class="photo-mode__moves" aria-label="Camera movement"><button data-move="forward">Forward</button><button data-move="up">Up</button><button data-move="left">Left</button><button data-move="right">Right</button><button data-move="back">Back</button><button data-move="down">Down</button></div><div class="photo-mode__actions"><button data-action="capture">Capture High</button><button data-action="small">Capture smaller</button><button data-action="reset">Reset camera</button><button data-action="hide">Hide UI</button></div><p role="status">WASD to fly, Space / Shift for height, wheel to zoom. Capture High draws one Ultra frame, then restores your preset. Up to ${touch ? "1920" : "2560"} px.</p></div><button class="photo-mode__show" hidden>Show UI</button><div class="photo-mode__result" hidden><img alt="Your captured photo" /><p></p><a download>Download PNG</a><button data-action="retake">Retake</button><button data-action="return">Return to game</button></div>`;
     this.#container.append(root);
     engine.stop();
     if (document.pointerLockElement) document.exitPointerLock();
@@ -233,7 +243,11 @@ export class PhotoMode {
         ),
       );
       const scale = target / Math.max(size.width, size.height);
+      const quality = qualityOf(engine);
       try {
+        // Nur Capture High: ein Ultra-Frame (PostFX, Gelände, Spiegelung),
+        // Spielstufe danach zurück. Capture smaller bleibt auf der Spielstufe.
+        if (!small) quality?.beginCapture();
         engine.renderer.setPixelRatio(1);
         engine.resize(
           Math.round(size.width * scale),
@@ -270,6 +284,7 @@ export class PhotoMode {
       } catch {
         status.textContent = "Capture could not finish. Try Capture smaller.";
       } finally {
+        quality?.endCapture();
         engine.renderer.setPixelRatio(oldRatio);
         engine.resize(size.width, size.height);
         busy = false;
