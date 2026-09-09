@@ -281,8 +281,9 @@ export class QualitySystem implements System {
   /**
    * Capture High: PostFX, Gelände, Spiegelung auf Ultra, Spielstufe merken.
    *
-   * Der Wächter sieht diesen Frame nicht — ein 2560-px-Ultra-Bild wäre sonst
-   * ein langsames Fenster und stufte die Sitzung dauerhaft herunter.
+   * Vegetation geht extra über `ScatterSystem.beginCapture` (Cinema, weiter
+   * als Ultra). Der Wächter sieht diesen Frame nicht — ein 2560-px-Bild
+   * wäre sonst ein langsames Fenster und stufte die Sitzung dauerhaft herunter.
    */
   beginCapture(): void {
     if (this.#captureRestore !== null) return;

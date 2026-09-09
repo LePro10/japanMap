@@ -38,6 +38,8 @@ export class ScatterWorkerClient {
   #ready = false;
   #failed: string | null = null;
   #nextId = 1;
+  /** Capture High darf die Schlange füllen — das Spiel wartet sowieso. */
+  #queueBoost = 1;
 
   /** Angeforderte, noch nicht beantwortete Chunks. Schlüssel ist der Chunk-Key. */
   readonly #inFlight = new Map<number, number>();
@@ -86,7 +88,12 @@ export class ScatterWorkerClient {
   /** Freie Plätze in der Warteschlange. 0 heißt: dieser Frame fordert nichts an. */
   get slots(): number {
     if (!this.#ready) return 0;
-    return Math.max(0, SCATTER.workerQueueDepth - this.#inFlight.size);
+    return Math.max(0, SCATTER.workerQueueDepth * this.#queueBoost - this.#inFlight.size);
+  }
+
+  /** Foto: mehr parallele Chunks. Spiel: wieder 4, sonst dreht die Priorität. */
+  boostQueue(on: boolean): void {
+    this.#queueBoost = on ? 4 : 1;
   }
 
   init(sampler: TerrainSampler, roads: RoadFile | null, clearance: PropClearance | null): void {

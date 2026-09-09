@@ -584,6 +584,39 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
   },
 };
 
+/**
+ * Capture High — dichter und weiter als Ultra, nur für das eine Foto.
+ *
+ * Gameplay-Ultra dünnt ab 160 m auf 60 % aus (`vegetationFarKeep`) und lässt
+ * Gras bei 160 m enden. Wer im Fotomodus in die Ferne schaut, sieht genau den
+ * kahlen Ring, den P11.5 für Bäume geschlossen hat, am Boden weiter. Hier
+ * bleibt jede Instanz stehen und Gras reicht rund 450 m — Imposter, aber da.
+ *
+ * **Nicht in `QUALITY_LEVELS`.** Sonst führe der Wächter sie als Spielstufe
+ * und die Instanzpuffer wären in jedem Frame so groß wie für ein Foto.
+ * `ScatterSystem` bemisst die Puffer trotzdem mit, sonst verwirft
+ * `InstancedLOD.push()` still. Der Foto-Anteil ist auf ein weites Bild
+ * gepackt (nicht den ganzen Kompass), Begründung dort.
+ */
+export const PHOTO_CAPTURE: QualitySettings = {
+  label: 'Cinema',
+  shadowMapSize: 2048,
+  reflections: true,
+  ao: 'high',
+  /** Bäume bis 1800 m — Ultra endet bei 1200. */
+  vegetationRange: 1.5,
+  /** Gras/Busch bis ~450 m — Ultra endet bei 160/190. */
+  vegetationGroundRange: 2.8,
+  vegetationFullRadius: 160,
+  /** 1 = keine Ausdünnung. Bezahlt der Foto-Puffer, nicht das Spiel. */
+  vegetationFarKeep: 1,
+  lodBias: 1,
+  renderScale: 1,
+  terrainGridVertices: 33,
+  postFx: 'full',
+  waterDetail: 1,
+};
+
 export const QUALITY_LEVELS: readonly QualityLevel[] = [
   'ultra',
   'high',

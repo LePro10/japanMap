@@ -123,6 +123,8 @@ export class PropSystem implements System {
   #materials: Material[] = [];
   #geometries: BufferGeometry[] = [];
   #placed = false;
+  /** Capture High: kleine Props nicht bei 220 m verschwinden lassen. */
+  #photo = false;
   /**
    * Der Editor, nur im Dev-Build.
    *
@@ -421,6 +423,14 @@ export class PropSystem implements System {
     this.#placed = true;
   }
 
+  beginCapture(): void {
+    this.#photo = true;
+  }
+
+  endCapture(): void {
+    this.#photo = false;
+  }
+
   update(): void {
     const context = this.#context;
     if (!context || !this.#placed) return;
@@ -437,7 +447,10 @@ export class PropSystem implements System {
     for (const asset of this.#assets) {
       for (const stage of asset.stages) { stage.count = 0; stage.slots.length = 0; }
       const limits = PROP_CLASSES[asset.klasse];
-      const fadeStart = limits.cullDistance * (1 - PROPS.fade);
+      const cull = this.#photo
+        ? limits.cullDistance * (asset.klasse === 'klein' ? 4 : 1.25)
+        : limits.cullDistance;
+      const fadeStart = this.#photo ? cull : cull * (1 - PROPS.fade);
       total += asset.placements.length;
 
       for (let placementIndex = 0; placementIndex < asset.placements.length; placementIndex++) {
@@ -446,7 +459,7 @@ export class PropSystem implements System {
         const dy = prop.y - camera.position.y;
         const dz = prop.z - camera.position.z;
         const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (distance > limits.cullDistance) continue;
+        if (distance > cull) continue;
 
         // Weiches Ausblenden über die Größe: das Prop schrumpft in den Boden,
         // statt zu verschwinden. Ein Alpha-Übergang bräuchte ein transparentes
@@ -454,7 +467,7 @@ export class PropSystem implements System {
         // falsche Preis.
         let scale = prop.scale;
         if (distance > fadeStart) {
-          scale *= 1 - (distance - fadeStart) / (limits.cullDistance - fadeStart);
+          scale *= 1 - (distance - fadeStart) / (cull - fadeStart);
         }
         if (scale < 0.02) continue;
 
