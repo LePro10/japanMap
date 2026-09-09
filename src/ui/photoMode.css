@@ -121,6 +121,15 @@
   right: 12px;
   opacity: 0.7;
 }
+/* Desktop flies with WASD; the pad stays for touch, where there is no keyboard. */
+@media (hover: hover) and (pointer: fine) {
+  .photo-mode__moves {
+    display: none;
+  }
+  .photo-mode__controls {
+    grid-template-columns: 1fr;
+  }
+}
 @media (max-height: 460px) {
   .photo-mode__moves {
     grid-template-columns: repeat(3, 64px);

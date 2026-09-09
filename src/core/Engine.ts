@@ -125,9 +125,28 @@ export class Engine {
     this.#present = present;
   }
 
-  /** Einzelbild für Photo Mode, ohne Simulation oder zweiten Renderer. */
+  /** Einzelbild ohne Simulation und ohne System-Update — Capture, nicht Vorschau. */
   renderFrame(): void {
     this.#present(0);
+  }
+
+  /**
+   * Sichtbild ohne Physik — Fotomodus.
+   *
+   * `renderFrame()` zeichnet nur den letzten Stand. Vegetation, Terrain-LOD,
+   * Props, Wasser und Schatten folgen der Kamera in `update()`. Ohne diesen
+   * Schritt bleibt beim Umschauen die Welt stehen, die man beim Öffnen im
+   * Rücken hatte: die Streuung füllt Chunks nur in `ScatterSystem.update()`,
+   * das CDLOD-Gitter nur in `TerrainSystem.update()`.
+   *
+   * `fixedUpdate` läuft bewusst nicht — Autos, Rennen und Fußgängerphysik
+   * bleiben eingefroren. Die Render-Schleife selbst bleibt aus
+   * (`loop.running === false`); der Fotomodus treibt diese Methode per rAF.
+   */
+  previewFrame(dt: number): void {
+    this.#beginFrame();
+    this.#update(Math.min(Math.max(dt, 0), 0.05), 1);
+    this.#render(0);
   }
 
   add(system: System): void {

@@ -22,6 +22,18 @@ try {
       document.querySelector("canvas"),
     ));
     engine.resize(844, 390);
+    window.photoUpdates = 0;
+    window.photoSteps = 0;
+    engine.add({
+      name: "probe",
+      update() {
+        window.photoUpdates++;
+      },
+      fixedUpdate() {
+        window.photoSteps++;
+      },
+      dispose() {},
+    });
     const photo = (window.photoTest = new PhotoMode(
       engine,
       document.querySelector("#overlay"),
@@ -33,12 +45,14 @@ try {
     window.originalCamera = {
       p: engine.camera.position.toArray(),
       q: engine.camera.quaternion.toArray(),
+      fov: engine.camera.fov,
     };
     window.openTestPhoto = () =>
       photo.open("touge", "Island", () => {
         window.restoredCamera = {
           p: engine.camera.position.toArray(),
           q: engine.camera.quaternion.toArray(),
+          fov: engine.camera.fov,
         };
         engine.stop();
       });
@@ -56,7 +70,34 @@ try {
     false,
     "Simulation stays frozen",
   );
+  await page.waitForFunction(() => window.photoUpdates > 2);
+  assert.equal(
+    await page.evaluate(() => window.photoSteps),
+    0,
+    "Physics must not step while composing",
+  );
+  const beforeFly = await page.evaluate(() =>
+    window.photoEngine.camera.position.toArray(),
+  );
+  await page.keyboard.down("w");
+  await page.waitForFunction((start) => {
+    const p = window.photoEngine.camera.position;
+    return p.x !== start[0] || p.y !== start[1] || p.z !== start[2];
+  }, beforeFly);
+  await page.keyboard.up("w");
+  const y0 = await page.evaluate(() => window.photoEngine.camera.position.y);
+  await page.keyboard.down("Space");
+  await page.waitForFunction((y) => window.photoEngine.camera.position.y > y + 0.2, y0);
+  await page.keyboard.up("Space");
+  const y1 = await page.evaluate(() => window.photoEngine.camera.position.y);
+  await page.keyboard.down("Shift");
+  await page.waitForFunction((y) => window.photoEngine.camera.position.y < y - 0.2, y1);
+  await page.keyboard.up("Shift");
+  const fov0 = await page.evaluate(() => window.photoEngine.camera.fov);
   await page.mouse.move(400, 180);
+  await page.mouse.wheel(0, 240);
+  const fov1 = await page.evaluate(() => window.photoEngine.camera.fov);
+  assert.ok(fov1 > fov0, "Wheel must zoom out (wider FOV)");
   await page.mouse.down();
   await page.mouse.move(500, 210);
   await page.mouse.up();
@@ -77,7 +118,7 @@ try {
     window.photoEngine.dispose();
   });
   console.log(
-    "Photo keyboard isolation, frozen simulation, exact camera restoration and shortcut cleanup passed.",
+    "Photo WASD/Space/Shift flight, wheel zoom, streaming preview, frozen simulation, exact camera restoration and shortcut cleanup passed.",
   );
 } finally {
   await browser.close();
