@@ -8,6 +8,7 @@ import type { RoadMaterial } from '../materials/RoadMaterial';
 import type { RoadNetwork } from '../roads/RoadNetwork';
 import type { TerrainSampler } from '../TerrainSampler';
 import { generateCity } from './CityGenerator';
+import { CityCrowd } from './CityCrowd';
 import { urbanLots } from './UrbanLots';
 
 /**
@@ -34,6 +35,7 @@ export class CitySystem implements System {
   #groundMaterial: RoadMaterial | null = null;
   #sampler: TerrainSampler | null = null;
   #network: RoadNetwork | null = null;
+  #crowd: CityCrowd | null = null;
   #built = false;
 
   readonly #shared: CityUniforms;
@@ -88,11 +90,12 @@ export class CitySystem implements System {
     this.#registerDebug(context);
   }
 
-  update(_delta: number, elapsed: number): void {
+  update(delta: number, elapsed: number): void {
     // Eine Zeitbasis für alle Fenster. Sie läuft weiter, auch wenn die Stadt
     // nicht im Bild ist — ein Flackern, das beim Hinsehen von vorn beginnt,
     // wäre auffälliger als das Flackern selbst.
     this.#shared.uCityTime.value = elapsed;
+    this.#crowd?.update(delta, elapsed);
   }
 
   #tryBuild(): void {
@@ -137,9 +140,13 @@ export class CitySystem implements System {
     this.#group.add(slab);
 
     const s = result.stats;
+    this.#crowd = new CityCrowd();
+    this.#crowd.bind(network);
+    this.#group.add(this.#crowd.group);
+
     this.#readouts.stadt =
       `${s.blocks} Blöcke · ${s.buildings} Gebäude von ${s.parcels} Parzellen · ` +
-      `${result.signs.length} Schilderplätze`;
+      `${result.signs.length} Schilderplätze · 8 Familien`;
     this.#readouts.geometrie =
       `${s.triangles.toLocaleString('de-DE')} Dreiecke · ` +
       `${s.blocks + 2} Draw-Calls · höchstes Haus ${s.floorsMax} Etagen / ` +
@@ -213,6 +220,8 @@ export class CitySystem implements System {
   }
 
   dispose(): void {
+    this.#crowd?.dispose();
+    this.#crowd = null;
     if (this.#group) {
       this.#context?.scene.remove(this.#group);
       this.#group.traverse((child) => {

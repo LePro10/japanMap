@@ -1,6 +1,6 @@
 import { BufferAttribute, BufferGeometry, Color, SRGBColorSpace } from 'three';
 
-import { CITY, CITY_DISTRICT, CITY_GROUND_Y, CITY_SLAB_Y } from '@/config/city.config';
+import { CITY, CITY_DISTRICT, CITY_GROUND_Y, CITY_SLAB_Y, FACADE_FAMILY } from '@/config/city.config';
 import type { UrbanLot } from './UrbanLots';
 
 /**
@@ -118,6 +118,8 @@ export interface CityResult {
   readonly colliders: readonly CityCollider[];
   /** Bürgersteige als befahrbare Plateaus. */
   readonly curbs: readonly CityCurb[];
+  /** Benannte Kreuzungsbauten — WP4, vier Ecken um (620, 120). */
+  readonly landmarks: readonly { id: string; family: number; x: number; z: number }[];
   readonly stats: {
     readonly blocks: number;
     readonly parcels: number;
@@ -125,6 +127,8 @@ export interface CityResult {
     readonly triangles: number;
     readonly floorsMax: number;
     readonly heightMax: number;
+    /** Gebäude je Fassadenfamilie, Index 0…7. */
+    readonly families: readonly number[];
     /** Kleinster Abstand zwischen Platte und darunterliegendem Gelände, in Metern. */
     readonly slabClearance: number;
     readonly slabClearanceAt: { x: number; z: number };
@@ -199,6 +203,59 @@ const toLinear = (hex: number): [number, number, number] => {
 };
 
 const FACADE_COLORS: readonly [number, number, number][] = FACADE_HEX.map(toLinear);
+
+const FAMILY_HEX: readonly (readonly number[])[] = [
+  [0x776e64, 0x6e5c4c], // Fliesen-Laden
+  [0x5e6064, 0x4a4c50], // Werkstatt
+  [0x6b4a32, 0x8a6240], // Holz-Restaurant
+  [0x7d776f, 0x6e6e6a], // schmale Wohnung
+  [0x5a2c28, 0x3e2420], // Klinker-Kino
+  [0x8a9aaa, 0x6a7a88], // Glas-Hotel
+  [0x8a8074, 0x7d776f], // Hang-Putz
+  [0x5a5850, 0x46423b], // Wellblech-Schuppen
+];
+const FAMILY_COLORS: readonly (readonly [number, number, number][])[] = FAMILY_HEX.map((row) =>
+  row.map(toLinear),
+);
+
+/** 42 × 42 m Kreuzung um den alten Loop-Mittelpunkt. */
+const CROSSING = { x: 620, z: 120, half: 28 } as const;
+
+const packSeed = (seed: number, family: number): number => seed + family * 256;
+
+function pickFamily(cx: number, cz: number, lot: boolean, random: () => number): number {
+  if (lot) {
+    if (cz < -180) return FACADE_FAMILY.hillside;
+    if (cz > 420) return FACADE_FAMILY.shed;
+    if (cx < 400) return FACADE_FAMILY.workshop;
+    return [FACADE_FAMILY.apartment, FACADE_FAMILY.shop, FACADE_FAMILY.timber][
+      Math.floor(random() * 3)
+    ]!;
+  }
+  const near = Math.hypot(cx - CROSSING.x, cz - CROSSING.z) < 90;
+  if (near) {
+    return [FACADE_FAMILY.shop, FACADE_FAMILY.timber, FACADE_FAMILY.apartment, FACADE_FAMILY.cinema, FACADE_FAMILY.hotel][
+      Math.floor(random() * 5)
+    ]!;
+  }
+  return Math.floor(random() * 8);
+}
+
+function inCrossing(rect: Rect): boolean {
+  const cx = (rect.minX + rect.maxX) / 2;
+  const cz = (rect.minZ + rect.maxZ) / 2;
+  return Math.abs(cx - CROSSING.x) < CROSSING.half && Math.abs(cz - CROSSING.z) < CROSSING.half;
+}
+
+function onStreetEdge(parcel: Rect, block: Rect): boolean {
+  const t = 1.2;
+  return (
+    parcel.minX <= block.minX + t ||
+    parcel.maxX >= block.maxX - t ||
+    parcel.minZ <= block.minZ + t ||
+    parcel.maxZ >= block.maxZ - t
+  );
+}
 
 /** Dach, Brüstung, Vordach — durchweg dunkler als die Wand darunter. */
 const ROOF_COLOR = toLinear(0x3a3a3c);
@@ -422,6 +479,102 @@ function shrink(rect: Rect, by: number): Rect {
   };
 }
 
+/** Türnische an der längsten Kante — keine 35 m glatte Wand. */
+function doorBay(mesh: MeshBuilder, footprint: Rect, baseY: number, groundTop: number, seed: number): void {
+  const w = width(footprint);
+  const d = depth(footprint);
+  const alongX = w >= d;
+  const span = alongX ? w : d;
+  const door = 1.15;
+  const recess = 0.38;
+  const height = Math.min(2.2, groundTop - baseY - 0.15);
+  if (span < 5) return;
+  const mid = alongX ? (footprint.minX + footprint.maxX) / 2 : (footprint.minZ + footprint.maxZ) / 2;
+  const bay: Rect = alongX
+    ? {
+        minX: mid - door / 2,
+        maxX: mid + door / 2,
+        minZ: footprint.maxZ - recess,
+        maxZ: footprint.maxZ + 0.02,
+      }
+    : {
+        minX: footprint.maxX - recess,
+        maxX: footprint.maxX + 0.02,
+        minZ: mid - door / 2,
+        maxZ: mid + door / 2,
+      };
+  box(mesh, bay, baseY, baseY + height, 0, 0, toLinear(0x2a2824), ROOF_COLOR, seed, KIND_FLAT);
+}
+
+function pitchedRoof(
+  mesh: MeshBuilder,
+  crown: Rect,
+  crownTop: number,
+  color: readonly [number, number, number],
+  seed: number,
+): void {
+  const rise = 2.6;
+  const { minX, maxX, minZ, maxZ } = crown;
+  const midZ = (minZ + maxZ) / 2;
+  const ridge = crownTop + rise;
+  const dz = midZ - minZ;
+  const len = Math.hypot(dz, rise) || 1;
+  const ny = dz / len;
+  const nz = -rise / len;
+  mesh.quad(
+    [minX, crownTop, minZ, maxX, crownTop, minZ, maxX, ridge, midZ, minX, ridge, midZ],
+    [0, ny, nz],
+    [0, 0, 1, 0, 1, 1, 0, 1],
+    color,
+    seed,
+    KIND_FLAT,
+  );
+  mesh.quad(
+    [maxX, crownTop, maxZ, minX, crownTop, maxZ, minX, ridge, midZ, maxX, ridge, midZ],
+    [0, ny, -nz],
+    [0, 0, 1, 0, 1, 1, 0, 1],
+    color,
+    seed,
+    KIND_FLAT,
+  );
+}
+
+function placeCrossingLandmarks(
+  mesh: MeshBuilder,
+  baseY: number,
+  random: () => number,
+  signs: SignAnchor[],
+  colliders: CityCollider[],
+): { id: string; family: number; x: number; z: number; floors: number; height: number }[] {
+  const specs: { id: string; family: number; rect: Rect }[] = [
+    { id: 'corner-shop', family: FACADE_FAMILY.shop, rect: { minX: 598, maxX: 610, minZ: 99, maxZ: 111 } },
+    { id: 'cinema', family: FACADE_FAMILY.cinema, rect: { minX: 598, maxX: 614, minZ: 129, maxZ: 141 } },
+    { id: 'hotel', family: FACADE_FAMILY.hotel, rect: { minX: 628, maxX: 646, minZ: 99, maxZ: 115 } },
+    { id: 'corner-mart', family: FACADE_FAMILY.shop, rect: { minX: 638, maxX: 650, minZ: 136, maxZ: 145 } },
+  ];
+  const out: { id: string; family: number; x: number; z: number; floors: number; height: number }[] = [];
+  for (const spec of specs) {
+    const built = extrudeBuilding(mesh, spec.rect, spec.rect, baseY, random, signs, spec.family);
+    colliders.push({
+      minX: spec.rect.minX,
+      maxX: spec.rect.maxX,
+      minZ: spec.rect.minZ,
+      maxZ: spec.rect.maxZ,
+      bottom: baseY,
+      top: baseY + built.height,
+    });
+    out.push({
+      id: spec.id,
+      family: spec.family,
+      x: (spec.rect.minX + spec.rect.maxX) / 2,
+      z: (spec.rect.minZ + spec.rect.maxZ) / 2,
+      floors: built.floors,
+      height: built.height,
+    });
+  }
+  return out;
+}
+
 /**
  * Rekursive Teilung eines Rechtecks.
  *
@@ -581,6 +734,8 @@ export function generateCity(input: CityInput): CityResult {
   let triangles = 0;
   let floorsMax = 0;
   let heightMax = 0;
+  const familyCounts = [0, 0, 0, 0, 0, 0, 0, 0];
+  const landmarks: { id: string; family: number; x: number; z: number }[] = [];
 
   for (const block of blocks) {
     const pad = Math.min(
@@ -607,11 +762,20 @@ export function generateCity(input: CityInput): CityResult {
     let buildings = 0;
 
     for (const parcel of parcels) {
-      if (random() < CITY.parcel.vacancy) continue;
+      if (inCrossing(parcel)) continue;
+      const street = onStreetEdge(parcel, block);
+      if (random() < (street ? 0.08 : CITY.parcel.vacancy)) continue;
       const footprint = shrink(parcel, CITY.parcel.setback);
       if (width(footprint) < 4 || depth(footprint) < 4) continue;
 
-      const built = extrudeBuilding(mesh, footprint, block, sidewalkTop, random, signs);
+      const family = pickFamily(
+        (footprint.minX + footprint.maxX) / 2,
+        (footprint.minZ + footprint.maxZ) / 2,
+        false,
+        random,
+      );
+      const built = extrudeBuilding(mesh, footprint, block, sidewalkTop, random, signs, family);
+      familyCounts[family]!++;
       buildings++;
       // `built.height` ist die Höhe **über** `sidewalkTop`, inklusive Brüstung.
       colliders.push({
@@ -663,7 +827,9 @@ export function generateCity(input: CityInput): CityResult {
     let mesh = extensions.get(lot.group);
     if (!mesh) { mesh = new MeshBuilder(); extensions.set(lot.group, mesh); }
     const footprint = shrink(lot, 1.3);
-    const built = extrudeBuilding(mesh, footprint, lot, lot.top, random, signs);
+    const family = pickFamily((lot.minX + lot.maxX) / 2, (lot.minZ + lot.maxZ) / 2, true, random);
+    const built = extrudeBuilding(mesh, footprint, lot, lot.top, random, signs, family);
+    familyCounts[family]!++;
     box(mesh, lot, lot.bottom, lot.top, 0, 0, SIDEWALK_COLOR, SIDEWALK_COLOR, 0, KIND_FLAT);
     colliders.push({ ...footprint, bottom: lot.bottom, top: lot.top + built.height });
     curbs.push({ minX: lot.minX, maxX: lot.maxX, minZ: lot.minZ, maxZ: lot.maxZ, top: lot.top });
@@ -674,6 +840,21 @@ export function generateCity(input: CityInput): CityResult {
     triangles += mesh.triangles;
     blockMeshes.push({ geometry: mesh.build(`Urban terrace:${key}`) });
   }
+
+  const landmarkMesh = new MeshBuilder();
+  const placed = placeCrossingLandmarks(landmarkMesh, sidewalkTop, random, signs, colliders);
+  landmarks.push(...placed);
+  for (const mark of placed) {
+    familyCounts[mark.family]!++;
+    floorsMax = Math.max(floorsMax, mark.floors);
+    heightMax = Math.max(heightMax, mark.height);
+  }
+  buildingCount += placed.length;
+  if (!landmarkMesh.empty) {
+    triangles += landmarkMesh.triangles;
+    blockMeshes.push({ geometry: landmarkMesh.build('Kreuzung') });
+  }
+
   const ground = buildGround(input.sampleTerrain);
   triangles += sidewalkMesh.triangles + ground.triangles;
 
@@ -684,6 +865,7 @@ export function generateCity(input: CityInput): CityResult {
     signs,
     colliders,
     curbs,
+    landmarks,
     stats: {
       blocks: blockMeshes.length,
       parcels: parcelCount,
@@ -691,6 +873,7 @@ export function generateCity(input: CityInput): CityResult {
       triangles,
       floorsMax,
       heightMax,
+      families: familyCounts,
       slabClearance: ground.clearance,
       slabClearanceAt: ground.clearanceAt,
     },
@@ -712,6 +895,7 @@ function extrudeBuilding(
   baseY: number,
   random: () => number,
   signs: SignAnchor[],
+  family: number,
 ): { floors: number; height: number } {
   const b = CITY.building;
   // **Ganzzahlig, nicht 0…1.** Der Startwert läuft als Vertex-Attribut durch
@@ -720,8 +904,10 @@ function extrudeBuilding(
   // Hash im Shader rundet ihn deshalb auf eine ganze Zahl — was nur geht, wenn
   // hier auch eine steht. Die lange Fassung der Geschichte in
   // `facade_windows.glsl`.
-  const seed = Math.floor(random() * 256);
-  const color = FACADE_COLORS[Math.floor(random() * FACADE_COLORS.length)] ?? FACADE_COLORS[0]!;
+  const seed = packSeed(Math.floor(random() * 256), family);
+  const palette = FAMILY_COLORS[family] ?? FACADE_COLORS;
+  const color = palette[Math.floor(random() * palette.length)] ?? FACADE_COLORS[0]!;
+  const variant = Math.floor(random() * 3);
 
   const cx = (footprint.minX + footprint.maxX) / 2;
   const cz = (footprint.minZ + footprint.maxZ) / 2;
@@ -732,31 +918,46 @@ function extrudeBuilding(
   );
   const core = 1 - t * t * (3 - 2 * t);
 
-  const floors = Math.max(
+  let floors = Math.max(
     b.minFloors,
     Math.min(b.maxFloors, Math.round(b.minFloors + core * b.coreFloors + random() * b.randomFloors)),
   );
+  if (family === FACADE_FAMILY.hillside) floors = Math.min(4, Math.max(2, floors - 6));
+  if (family === FACADE_FAMILY.shed) floors = Math.min(2, floors);
+  if (family === FACADE_FAMILY.cinema) floors = Math.min(5, Math.max(3, floors));
+  if (family === FACADE_FAMILY.workshop) floors = Math.min(4, Math.max(2, floors));
+  if (family === FACADE_FAMILY.hotel) floors = Math.max(floors, 8);
 
   const floorTopY = (floor: number): number =>
     baseY + b.groundFloorHeight + Math.max(0, floor - 1) * b.floorHeight;
 
   const roofY = floorTopY(floors);
 
-  // Erdgeschoss: zurückgesetzte Ladenfront mit Vordach. Das ist der Teil, den
-  // man beim Fahren sieht — SPEC §2.1 nennt genau ihn als den Bereich, der die
-  // Stadt am Boden trägt.
-  const shop = shrink(footprint, b.shopInset);
+  // Erdgeschoss: 0,5…1,5 m Tiefe je Familie — der Teil, den man beim Fahren sieht.
+  const inset =
+    family === FACADE_FAMILY.apartment || family === FACADE_FAMILY.hillside
+      ? 0.2
+      : family === FACADE_FAMILY.hotel
+        ? 0.5
+        : 0.55 + variant * 0.45;
+  const shop = shrink(footprint, inset);
   const groundTop = floorTopY(1);
   box(mesh, shop, baseY, groundTop, 0, 1, color, ROOF_COLOR, seed, KIND_WALL);
+  doorBay(mesh, footprint, baseY, groundTop, seed);
 
-  const canopyY = groundTop - b.canopyThickness;
-  const canopy: Rect = {
-    minX: footprint.minX - (b.canopyDepth - b.shopInset),
-    maxX: footprint.maxX + (b.canopyDepth - b.shopInset),
-    minZ: footprint.minZ - (b.canopyDepth - b.shopInset),
-    maxZ: footprint.maxZ + (b.canopyDepth - b.shopInset),
-  };
-  box(mesh, canopy, canopyY, groundTop, 0, 0, ROOF_COLOR, ROOF_COLOR, seed, KIND_FLAT);
+  const hasCanopy =
+    family !== FACADE_FAMILY.apartment && family !== FACADE_FAMILY.hillside && family !== FACADE_FAMILY.hotel;
+  if (hasCanopy) {
+    const extra = family === FACADE_FAMILY.cinema ? 1.6 : family === FACADE_FAMILY.shed ? 1.8 : b.canopyDepth;
+    const canopyY = groundTop - (family === FACADE_FAMILY.cinema ? 0.45 : b.canopyThickness);
+    const canopy: Rect = {
+      minX: footprint.minX - (extra - inset),
+      maxX: footprint.maxX + (extra - inset),
+      minZ: footprint.minZ - (extra - inset),
+      maxZ: footprint.maxZ + (extra - inset),
+    };
+    box(mesh, canopy, canopyY, groundTop, 0, 0, ROOF_COLOR, ROOF_COLOR, seed, KIND_FLAT);
+  }
 
   // Hauptkörper über dem Erdgeschoss.
   const hasSetback = floors >= b.setbackFloors;
@@ -781,10 +982,16 @@ function extrudeBuilding(
     }
   }
 
-  top(mesh, crown, crownTop, ROOF_COLOR, seed);
+  const pitched = variant === 1 && (family === FACADE_FAMILY.hillside || family === FACADE_FAMILY.timber || family === FACADE_FAMILY.shed);
+  if (pitched) pitchedRoof(mesh, crown, crownTop, color, seed);
+  else top(mesh, crown, crownTop, ROOF_COLOR, seed);
 
   // Brüstung als Ring aus vier flachen Quadern. Ohne sie endet jedes Haus als
   // scharfe Kante — bei 2,23° Sonnenstand die auffälligste Silhouette im Bild.
+  if (pitched) {
+    collectSigns(footprint, block, baseY, floors, roofY, signs);
+    return { floors, height: crownTop + 3.2 - baseY };
+  }
   const p = b.parapetThickness;
   const parapetTop = crownTop + b.parapet;
   const rings: Rect[] = [

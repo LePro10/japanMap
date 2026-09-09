@@ -66,7 +66,7 @@ float facadeHash(vec2 cell, float seed) {
  *   z = Rahmenmaske (dunkler Sturz und Brüstungsband)
  *   w = Detailanteil, 1 nah und 0 fern — siehe unten
  */
-vec4 facadeWindows(vec2 uv, float seed, float time) {
+vec4 facadeWindows(vec2 uv, float seed, float time, float family) {
   vec2 cell = fract(uv);
   vec2 id = floor(uv);
 
@@ -77,6 +77,11 @@ vec4 facadeWindows(vec2 uv, float seed, float time) {
   vec2 soften = max(fwidth(uv), vec2(1e-4)) * 1.2;
 
   bool ground = uv.y < 1.0;
+  // Laden, Werkstatt, Restaurant, Schuppen: Schaufenster/Tor im Erdgeschoss.
+  // Wohnung und Hanghaus bleiben gelochte Wand bis auf den Bürgersteig.
+  bool shopfront = ground && (family < 2.5 || family > 6.5);
+  if (family > 2.5 && family < 3.5) ground = false;
+  if (family > 5.5 && family < 6.5) ground = false;
 
   // Erdgeschoss ist Ladenfront: ein breites Band Glas statt einzelner Fenster.
   //
@@ -85,8 +90,28 @@ vec4 facadeWindows(vec2 uv, float seed, float time) {
   // > Entfernung war die Ladenzeile eine geschlossene weiße Wand ohne Struktur.
   // > Eine Schaufensterfront hat einen Sockel, einen Sturz und Pfosten
   // > dazwischen; ohne die drei ist sie kein Schaufenster, sondern eine Lampe.
-  vec2 lo = ground ? vec2(0.09, 0.21) : vec2(0.19, 0.24);
-  vec2 hi = ground ? vec2(0.91, 0.73) : vec2(0.81, 0.78);
+  vec2 lo = shopfront ? vec2(0.09, 0.21) : vec2(0.19, 0.24);
+  vec2 hi = shopfront ? vec2(0.91, 0.73) : vec2(0.81, 0.78);
+  // Hotel: Vorhangfassade, mehr Glas, auch oben.
+  if (family > 4.5 && family < 5.5) {
+    lo = vec2(0.06, 0.10);
+    hi = vec2(0.94, 0.90);
+  }
+  // Kino: hohe, schmale Lichtschlitze.
+  if (family > 3.5 && family < 4.5) {
+    lo = vec2(0.34, 0.10);
+    hi = vec2(0.66, 0.88);
+  }
+  // Werkstatt: Rolltor-Bänder statt Schaufenster.
+  if (family > 0.5 && family < 1.5 && shopfront) {
+    lo = vec2(0.08, 0.16);
+    hi = vec2(0.92, 0.84);
+  }
+  // Markt-Schuppen: ein Tor, kaum Oberlichter.
+  if (family > 6.5) {
+    lo = shopfront ? vec2(0.12, 0.18) : vec2(0.38, 0.40);
+    hi = shopfront ? vec2(0.88, 0.78) : vec2(0.62, 0.62);
+  }
 
   vec2 low = smoothstep(lo - soften, lo + soften, cell);
   vec2 high = 1.0 - smoothstep(hi - soften, hi + soften, cell);
@@ -95,10 +120,20 @@ vec4 facadeWindows(vec2 uv, float seed, float time) {
   // Pfosten in der Schaufensterfront. Drei Scheiben je Fensterachse: das ist
   // der Maßstab, an dem man im Erdgeschoss erkennt, wie groß ein Laden ist —
   // ohne sie ist die Front eine einzige Scheibe von beliebiger Breite.
-  if (ground) {
+  if (shopfront) {
     float pane = fract((cell.x - lo.x) / max(hi.x - lo.x, 1e-4) * 3.0);
     float toPost = min(pane, 1.0 - pane);
     glass *= smoothstep(0.035, 0.035 + max(soften.x * 3.0, 0.012), toPost);
+  }
+  // Werkstatt: horizontale Lamellen übers Glas — ein Rolltor, keine Vitrine.
+  if (family > 0.5 && family < 1.5 && shopfront) {
+    float slat = fract(cell.y * 9.0);
+    glass *= smoothstep(0.18, 0.28, slat);
+  }
+  // Kino: Lamellen vor den Schlitzen.
+  if (family > 3.5 && family < 4.5) {
+    float slat = fract(cell.x * 7.0);
+    glass *= smoothstep(0.22, 0.34, slat);
   }
 
   // Sturz- und Brüstungsband: ein schmaler dunkler Streifen ober- und unterhalb
@@ -111,8 +146,9 @@ vec4 facadeWindows(vec2 uv, float seed, float time) {
   float h = facadeHash(id, seed);
 
   // Anteil beleuchteter Fenster. Das Erdgeschoss ist fast durchgehend hell —
-  // Läden haben abends Licht, Wohnungen nicht.
-  float threshold = ground ? 0.12 : uWindowLitFraction;
+  // Läden haben abends Licht, Wohnungen nicht. Oben höchstens ein Drittel
+  // (ASTRA_PLAN), unabhängig davon, wie hell das Look-Preset die Läden will.
+  float threshold = shopfront ? 0.12 : max(uWindowLitFraction, 0.62);
   float lit = step(threshold, h);
 
   // Zwei Störungen auf der Helligkeit, beide billig und beide nötig:
