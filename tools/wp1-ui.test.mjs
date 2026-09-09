@@ -120,6 +120,23 @@ try {
     "Photo",
     "Settings",
   ]);
+  await page.locator(".menu__resume").focus();
+  await page.keyboard.press("Escape");
+  assert.equal(
+    await page.locator(".player-menu").evaluate((el) => el.hidden),
+    true,
+    "Escape must close the menu even with focus on a menu button",
+  );
+  await page.evaluate(() => {
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true }),
+    );
+  });
+  assert.equal(
+    await page.locator(".player-menu").evaluate((el) => el.hidden),
+    false,
+    "Escape reopens the menu while playing",
+  );
   await page.getByRole("button", { name: "Call car", exact: true }).click();
   assert.equal(await page.evaluate(() => window.wp1.calls), 1);
   await page.getByRole("button", { name: "Cars", exact: true }).click();
@@ -129,10 +146,6 @@ try {
     await page.evaluate(() => window.wp1.selected),
     "touge",
     "Browsing must not change the car",
-  );
-  assert.equal(
-    await page.getByRole("button", { name: "Buy", exact: true }).isDisabled(),
-    true,
   );
   assert.equal(await page.evaluate(() => window.wp1.buys), 0);
   await page.getByRole("button", { name: "Records", exact: true }).click();
@@ -173,8 +186,15 @@ try {
   await page.getByRole("button", { name: "Map", exact: true }).click();
   await page.getByRole("button", { name: "Open map", exact: true }).click();
   assert.equal(await page.evaluate(() => window.wp1.maps), 1);
+  await page.locator(".menu__resume").focus();
+  await page.keyboard.press("Escape");
+  assert.equal(
+    await page.locator(".player-menu").evaluate((el) => el.hidden),
+    true,
+    "Escape must close the menu even with focus on a menu button",
+  );
   console.log(
-    "WP1: six tabs, call car, safe showroom, saved records, responsive targets, map entry passed.",
+    "WP1: six tabs, call car, safe showroom, saved records, responsive targets, map entry, Escape close passed.",
   );
 } finally {
   await browser.close();

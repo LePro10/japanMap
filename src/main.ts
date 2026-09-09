@@ -904,6 +904,7 @@ async function boot(): Promise<void> {
         drive.setVehicle(id);
       },
       setCarTune: (tune) => drive.setCarTune(tune),
+      setPaused: (paused) => drive.setPaused(paused),
     },
     // ── Die Veranstaltungen — P23 ────────────────────────────────────────
     //

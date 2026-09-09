@@ -46,6 +46,8 @@ export interface DriveControl extends TouchDriveTarget {
   readonly vehicleId: VehicleId;
   setVehicle(id: VehicleId): void;
   setCarTune(tune:CarTune):void;
+  /** Welt anhalten, solange das Menü offen ist. Optional, damit Prüfstände ohne Physik durchlaufen. */
+  setPaused?(paused: boolean): void;
 }
 export interface AudioControl {
   readonly muted: boolean;
@@ -144,7 +146,7 @@ export class PlayerUi {
     });
     document.addEventListener("pointerlockchange", this.#lockChanged);
     document.addEventListener("pointerlockerror", this.#lockError);
-    window.addEventListener("keydown", this.#key);
+    window.addEventListener("keydown", this.#key, true);
     this.#qualityControls();
     this.#syncQuality();
     this.#syncDrive();
@@ -184,13 +186,13 @@ export class PlayerUi {
     this.#render();
     this.#el(".menu__resume").focus();
   }
-  #resume(): void {
+  #resume(requestLock = true): void {
     this.#open = false;
     this.#render();
-    if (!this.#touch.enabled && this.#o.canvas.requestPointerLock) {
-      const result: unknown = this.#o.canvas.requestPointerLock();
-      if (result instanceof Promise) result.catch(() => this.#lockError());
-    }
+    if (!requestLock || this.#touch.enabled) return;
+    if (typeof this.#o.canvas.requestPointerLock !== "function") return;
+    const result: unknown = this.#o.canvas.requestPointerLock();
+    if (result instanceof Promise) result.catch(() => this.#lockError());
   }
   readonly #lockChanged = (): void => {
     if (document.pointerLockElement === this.#o.canvas) {
@@ -212,6 +214,17 @@ export class PlayerUi {
   };
   readonly #key = (event: KeyboardEvent): void => {
     if (!this.#started || this.#map || this.#photo) return;
+    if (event.code === "Escape") {
+      // Nur ohne Lock: mit Lock gibt der Browser den Zeiger frei, und
+      // `#lockChanged` öffnet das Menü. Escape *im* Menü darf den Lock nicht
+      // anfordern — Chrome lehnt eine Lock-Anfrage in derselben Escape-Geste
+      // ab, `#lockError` riss das Menü dann sofort wieder auf.
+      if (document.pointerLockElement === this.#o.canvas) return;
+      event.preventDefault();
+      if (this.#open) this.#resume(false);
+      else this.#show();
+      return;
+    }
     if (
       event.target instanceof HTMLInputElement ||
       event.target instanceof HTMLSelectElement
@@ -221,14 +234,6 @@ export class PlayerUi {
       event.preventDefault();
       this.#enterPhoto();
     }
-    if (
-      event.code === "Escape" &&
-      document.pointerLockElement !== this.#o.canvas
-    ) {
-      event.preventDefault();
-      if (this.#open) this.#resume();
-      else this.#show();
-    }
   };
   #render(): void {
     this.#menu.hidden =
@@ -237,6 +242,7 @@ export class PlayerUi {
       this.#started && !this.#open && !this.#map && !this.#photo,
     );
     this.#o.hud?.setMenuOpen(this.#open || this.#photo || this.#map);
+    this.#o.drive?.setPaused?.(this.#open || this.#photo || this.#map);
     for (const panel of this.#menu.querySelectorAll<HTMLElement>(
       "[data-panel]",
     ))
@@ -634,7 +640,7 @@ export class PlayerUi {
     this.#off.forEach((off) => off());
     document.removeEventListener("pointerlockchange", this.#lockChanged);
     document.removeEventListener("pointerlockerror", this.#lockError);
-    window.removeEventListener("keydown", this.#key);
+    window.removeEventListener("keydown", this.#key, true);
     this.#touch.dispose();
     this.#menu.remove();
   }
