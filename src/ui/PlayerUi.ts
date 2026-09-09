@@ -60,7 +60,7 @@ export interface AudioControl {
   readonly muted: boolean;
   setMuted(muted: boolean): void;
   click(): void;
-  engineBlip?(): void;
+  engineBlip?(pitch?: number): void;
 }
 export interface EventsControl {
   readonly list: readonly RaceEvent[];

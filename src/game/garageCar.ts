@@ -12,13 +12,13 @@ import {
   type IUniform,
   type WebGLProgramParametersWithUniforms,
 } from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
 import { PropMaterial } from '@/world/materials/PropMaterial';
 import { createCarBody, createCarWheel } from './carMesh';
 import type { VehicleSpec } from '@/config/vehicles.config';
 import type { CarTune, TuneCategory } from '@/config/tuning.config';
+import { EngineBay, beltHeight, engineLook } from './garageEngine';
 
 /**
  * Presentation car for Open Bay.
@@ -47,13 +47,14 @@ export function hoodBox(spec: VehicleSpec): { min: Vector3; max: Vector3 } {
   const cg = spec.chassis.cgHeight;
   const halfL = spec.body.hullLength / 2;
   const halfW = spec.body.hullWidth / 2 + 0.04;
-  const belt =
-    spec.body.shape === 'suv' ? 1.16
-    : spec.body.shape === 'truck' ? 0.96
-    : spec.body.shape === 'hatch' ? 0.86
-    : spec.body.shape === 'rally' ? 0.88
-    : spec.body.shape === 'supercar' ? 0.65
-    : 0.78;
+  const belt = beltHeight(spec);
+  const rear = engineLook(spec.id).rear;
+  if (rear) {
+    return {
+      min: new Vector3(-halfW, belt - cg - 0.08, -halfL - 0.06),
+      max: new Vector3(halfW, spec.body.roofHeight - cg + 0.14, -halfL * 0.02),
+    };
+  }
   return {
     min: new Vector3(-halfW, belt - cg - 0.06, halfL * 0.06),
     max: new Vector3(halfW, spec.body.roofHeight - cg + 0.12, halfL + 0.06),
@@ -103,44 +104,11 @@ class BayBodyMaterial extends PropMaterial {
 
 function createHoodPanel(spec: VehicleSpec): BufferGeometry {
   const w = spec.body.hullWidth * 0.9;
-  const len = spec.body.hullLength * 0.38;
-  const belt =
-    spec.body.shape === 'suv' ? 1.16
-    : spec.body.shape === 'truck' ? 0.96
-    : spec.body.shape === 'hatch' ? 0.86
-    : spec.body.shape === 'rally' ? 0.88
-    : spec.body.shape === 'supercar' ? 0.65
-    : 0.78;
+  const len = spec.body.hullLength * (engineLook(spec.id).rear ? 0.32 : 0.38);
+  const belt = beltHeight(spec);
   const y = belt - spec.chassis.cgHeight + 0.045;
-  const z = spec.body.hullLength * 0.28;
+  const z = engineLook(spec.id).rear ? -spec.body.hullLength * 0.24 : spec.body.hullLength * 0.28;
   return box(w, 0.045, len, 0, y, z, spec.body.paint);
-}
-
-function createEngineBay(spec: VehicleSpec): BufferGeometry {
-  const cover = spec.body.paint === 0xe3b0df ? 0xc44536 : 0xb42318;
-  const block = 0x2a3036;
-  const steel = 0x8a93a0;
-  const belt =
-    spec.body.shape === 'suv' ? 1.16
-    : spec.body.shape === 'truck' ? 0.96
-    : spec.body.shape === 'hatch' ? 0.86
-    : spec.body.shape === 'rally' ? 0.88
-    : spec.body.shape === 'supercar' ? 0.65
-    : 0.78;
-  const y = belt - spec.chassis.cgHeight - 0.18;
-  const z = spec.body.hullLength * 0.28;
-  const parts = [
-    box(0.62, 0.28, 0.72, 0, y, z, block),
-    box(0.5, 0.08, 0.58, 0, y + 0.18, z, cover),
-    box(0.18, 0.16, 0.22, 0.28, y + 0.06, z + 0.22, steel),
-    box(0.12, 0.1, 0.34, -0.22, y + 0.12, z - 0.04, 0x1a1e22),
-    box(0.08, 0.22, 0.08, 0.18, y + 0.22, z - 0.18, steel),
-    box(0.08, 0.22, 0.08, -0.18, y + 0.22, z - 0.18, steel),
-  ];
-  const merged = mergeGeometries(parts, false);
-  for (const p of parts) p.dispose();
-  if (!merged) throw new Error(`Engine bay: ${spec.id}`);
-  return merged;
 }
 
 function tunedLabel(): CanvasTexture {
@@ -168,7 +136,7 @@ export class GarageCar {
   readonly group = new Group();
   readonly #body: Mesh;
   readonly #hood: Group;
-  readonly #engine: Mesh;
+  readonly #engine: EngineBay;
   readonly #wheels: Mesh[] = [];
   readonly #discs: Mesh[] = [];
   readonly #badge: Mesh;
@@ -206,8 +174,9 @@ export class GarageCar {
 
     this.#hood = new Group();
     this.#hood.name = 'BayHood';
-    const cowlZ = spec.body.hullLength * 0.08;
-    const cowlY = (spec.body.shape === 'supercar' ? 0.65 : 0.78) - spec.chassis.cgHeight;
+    const rear = engineLook(spec.id).rear;
+    const cowlZ = spec.body.hullLength * (rear ? -0.08 : 0.08);
+    const cowlY = beltHeight(spec) - spec.chassis.cgHeight;
     this.#hood.position.set(0, cowlY, cowlZ);
     const hoodGeom = createHoodPanel(spec);
     this.#geoms.push(hoodGeom);
@@ -220,11 +189,9 @@ export class GarageCar {
     this.#hood.visible = false;
     this.group.add(this.#hood);
 
-    const engineGeom = createEngineBay(spec);
-    this.#geoms.push(engineGeom);
-    this.#engine = new Mesh(engineGeom, solid);
-    this.#engine.visible = false;
-    this.group.add(this.#engine);
+    this.#engine = new EngineBay(spec, solid);
+    this.#engine.group.visible = !this.#hasHood;
+    this.group.add(this.#engine.group);
 
     const wheelMat = new PropMaterial(atmosphere);
     wheelMat.roughness = 0.5;
@@ -282,8 +249,8 @@ export class GarageCar {
     if (this.#bodyMat instanceof BayBodyMaterial) this.#bodyMat.hoodOpen.value = t;
     const show = this.#hasHood && t > 0.02;
     this.#hood.visible = show;
-    this.#engine.visible = t > 0.35;
-    this.#hood.rotation.x = -t * 1.05;
+    this.#engine.group.visible = !this.#hasHood || t > 0.28;
+    this.#hood.rotation.x = (this.#engine.look.rear ? 1 : -1) * t * 1.12;
   }
 
   setTuneVisual(tune: CarTune, focus: TuneCategory | 'setup' | null): void {
@@ -295,23 +262,33 @@ export class GarageCar {
       mat.emissiveIntensity = focus === 'brakes' ? 2.2 : 0.6;
     }
     this.#wheelMat.metalness = 0.35 + 0.2 * tune.tyres;
-    this.#engine.visible = this.#hoodOpen > 0.35 || focus === 'engine';
-    if (focus === 'engine' && this.#hoodOpen < 0.35) this.#engine.visible = true;
+    this.#engine.setTier(tune.engine);
+    if (focus === 'engine' || this.#hoodOpen > 0.28) this.#engine.group.visible = true;
+  }
+
+  pulseEngine(): void {
+    this.#engine.pulse();
+  }
+
+  blipEngine(): void {
+    this.#engine.blip();
+  }
+
+  engineGlow(): number {
+    return this.#engine.glowColor();
   }
 
   update(dt: number, focus: TuneCategory | 'setup' | null): void {
-    if (focus !== 'tyres' && focus !== 'brakes' && focus !== 'engine') return;
-    this.#spin += dt * (focus === 'engine' ? 8 : 2.4);
-    if (focus === 'tyres' || focus === 'brakes') {
-      for (const wheel of this.#wheels) wheel.rotation.x = this.#spin;
-    }
-    if (focus === 'engine') {
-      this.#engine.position.y = Math.sin(this.#spin * 2) * 0.004;
-    }
+    const live = focus === 'engine' || this.#hoodOpen > 0.28;
+    this.#engine.update(dt, live);
+    if (focus !== 'tyres' && focus !== 'brakes') return;
+    this.#spin += dt * 2.8;
+    for (const wheel of this.#wheels) wheel.rotation.x = this.#spin;
   }
 
   dispose(): void {
     this.group.removeFromParent();
+    this.#engine.dispose();
     for (const g of this.#geoms) g.dispose();
     this.#bodyMat.dispose();
     this.#solidMat.dispose();

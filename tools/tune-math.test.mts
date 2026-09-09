@@ -9,6 +9,7 @@ import {
   tunedArcade,
   tunesEqual,
 } from '@/config/tuning.config';
+import { engineLook } from '@/config/engines.config';
 
 assert.equal(tuneCost('engine', 0, 1), 900);
 assert.equal(tuneCost('engine', 0, 2), 3600);
@@ -32,4 +33,10 @@ assert.equal(read.bars.engine, 100);
 assert.equal(read.bars.brakes, 0);
 assert.ok(read.bars.speed > 0);
 assert.equal(TUNE_PRICE.tyres[1], 900);
-console.log('   ✓ tune prices, package cost, readout bars');
+assert.equal(engineLook('morrow').layout, 'v8');
+assert.equal(engineLook('pip').turbo, true);
+assert.equal(engineLook('truck').turbo, false);
+assert.equal(engineLook('gt').rear, true);
+assert.equal(engineLook('touge').rear, false);
+assert.notEqual(engineLook('needle').name, engineLook('morrow').name);
+console.log('   ✓ tune prices, package cost, readout bars, engine identities');

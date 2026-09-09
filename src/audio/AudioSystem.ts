@@ -457,9 +457,11 @@ export class AudioSystem implements System {
    * Preview-Sounds dürfen stumm bleiben, wenn der Nutzer Sound aus hat:
    * `muted` deckt das in `#blip` schon ab.
    */
-  engineBlip(): void {
-    this.#blip(92, 0, 0.16, 0.22);
-    this.#blip(148, 0.07, 0.12, 0.2);
+  engineBlip(pitch = 1): void {
+    const p = Math.max(0.55, Math.min(1.7, pitch));
+    this.#blip(76 * p, 0, 0.2, 0.16);
+    this.#blip(128 * p, 0.05, 0.14, 0.18);
+    this.#blip(48 * p, 0.1, 0.11, 0.34);
   }
 
   /** Ein einzelner Sinuston mit weicher Hüllkurve. */
