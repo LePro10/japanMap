@@ -35,6 +35,12 @@ export type AppEvents = {
   'engine:disposed': void;
 
   /**
+   * Die Frameschleife schläft — Pause-Menü ohne Eingabe, oder der Tab ist weg.
+   * Audio und Simulation hören hier auf, nicht erst wenn der Browser drosselt.
+   */
+  'engine:sleep': { sleeping: boolean };
+
+  /**
    * Der Aufwärmframe ist durch, alle Shader stehen (P7 / 7.4).
    *
    * Wer eine Einstellung hat, die die Menge der benötigten Programme

@@ -34,6 +34,8 @@ export class Engine {
   #height = 1;
   #renderScale = 1;
   #precompileMs = 0;
+  /** rAF steht; der letzte Frame bleibt im Canvas. */
+  #sleeping = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = createRenderer(canvas);
@@ -83,6 +85,7 @@ export class Engine {
         onRestored: () => {
           console.info('WebGL-Kontext wiederhergestellt.');
           this.bus.emit('engine:contextrestored');
+          this.#sleeping = false;
           this.loop.start();
         },
       }),
@@ -270,13 +273,42 @@ export class Engine {
     this.bus.emit('engine:warmedup');
   }
 
+  get sleeping(): boolean {
+    return this.#sleeping;
+  }
+
   start(): void {
     if (this.#disposed) throw new Error('Engine wurde bereits entladen.');
+    this.#sleeping = false;
     this.loop.start();
   }
 
   stop(): void {
     this.loop.stop();
+  }
+
+  /**
+   * Frameschleife anhalten, letzten Frame stehen lassen.
+   *
+   * Günstiger als ein weiterlaufendes rAF hinter dem Menü: Vegetation, Wind
+   * und PostFX laufen sonst weiter, obwohl die Physik schon pausiert. Aufwachen
+   * setzt die Uhr zurück, damit der erste Frame kein dt von 30 s mitbringt.
+   */
+  sleep(): void {
+    if (this.#sleeping || this.#disposed) return;
+    this.#sleeping = true;
+    this.loop.stop();
+    this.bus.emit('engine:sleep', { sleeping: true });
+  }
+
+  wake(): void {
+    if (!this.#sleeping || this.#disposed) return;
+    this.#sleeping = false;
+    if (this.#initialized) {
+      this.loop.resetClock();
+      this.loop.start();
+    }
+    this.bus.emit('engine:sleep', { sleeping: false });
   }
 
   resize(width: number, height: number): void {

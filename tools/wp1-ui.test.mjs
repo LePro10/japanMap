@@ -10,6 +10,7 @@ try {
     hasTouch: true,
   });
   await page.goto("http://localhost:5180/japanMap/");
+  await page.clock.install();
   await page.evaluate(async () => {
     const { PlayerUi } = await import("/japanMap/src/ui/PlayerUi.ts");
     const { EventBus } = await import("/japanMap/src/core/EventBus.ts");
@@ -21,6 +22,7 @@ try {
       maps: 0,
       photos: 0,
       buys: 0,
+      sleeps: [],
     });
     const ui = new PlayerUi({
       bus,
@@ -68,6 +70,9 @@ try {
       },
       openPhoto() {
         state.photos++;
+      },
+      sleepWorld(sleeping) {
+        state.sleeps.push(sleeping);
       },
       events: {
         list: [
@@ -136,6 +141,31 @@ try {
     await page.locator(".player-menu").evaluate((el) => el.hidden),
     false,
     "Escape reopens the menu while playing",
+  );
+  assert.deepEqual(
+    await page.evaluate(() => window.wp1.sleeps),
+    [],
+    "Opening the menu must not freeze the renderer immediately",
+  );
+  const frost = await page.locator(".player-menu").evaluate((el) => {
+    const before = getComputedStyle(el, "::before");
+    return {
+      blur: before.backdropFilter || before.webkitBackdropFilter,
+      bg: before.backgroundColor,
+    };
+  });
+  assert.match(frost.blur, /blur\(/, "Pause menu uses a compositor frost layer");
+  await page.clock.fastForward(30_000);
+  assert.deepEqual(
+    await page.evaluate(() => window.wp1.sleeps),
+    [true],
+    "After 30s idle the world sleeps",
+  );
+  assert.equal(
+    await page.locator(".player-menu").evaluate((el) =>
+      el.classList.contains("is-sleeping"),
+    ),
+    true,
   );
   await page.getByRole("button", { name: "Call car", exact: true }).click();
   assert.equal(await page.evaluate(() => window.wp1.calls), 1);

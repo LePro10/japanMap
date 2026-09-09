@@ -126,6 +126,12 @@ export class AudioSystem implements System {
       if (!active) this.#rpm = AUDIO.engine.idleRpm;
     });
     document.addEventListener('visibilitychange', this.#onVisibility);
+    context.bus.on('engine:sleep', ({ sleeping }) => {
+      const ctx = this.#ctx;
+      if (!ctx) return;
+      if (sleeping) void ctx.suspend().catch(() => undefined);
+      else if (!document.hidden) void ctx.resume().catch(() => undefined);
+    });
   }
 
   /**
