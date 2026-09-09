@@ -1,4 +1,5 @@
 import { PhotoMode } from './ui/PhotoMode';
+import { TuningGarage } from './ui/TuningGarage';
 import { callPlayerCar } from './ui/callPlayerCar';
 import { SakuraCommons } from './world/stunt/SakuraCommons';
 import { StillwaterVillage } from './world/settlements/StillwaterVillage';
@@ -849,6 +850,21 @@ async function boot(): Promise<void> {
   // deshalb merkt sich `StartScreen` einen Druck, für den noch niemand
   // zuständig war, statt ihn fallen zu lassen.
   const photo = new PhotoMode(engine, overlay);
+  const garage = new TuningGarage({
+    engine,
+    drive,
+    atmosphere: atmosphere.uniforms,
+    container: overlay,
+    owns: (id) => profile.owns(id),
+    spend: (amount) => profile.spend(amount),
+    wallet: () => profile.yen,
+    sandbox: () => profile.sandbox,
+    click: () => audio.click(),
+    engineBlip: () => audio.engineBlip(),
+    hideWorld: (hidden) => {
+      commons.group.visible = !hidden;
+    },
+  });
   const ui = new PlayerUi({
     openMap: () => drive.openMap(),
     callCar: () => callPlayerCar(drive),
@@ -857,6 +873,7 @@ async function boot(): Promise<void> {
       const place = [...MAP_LANDMARKS].sort((a,b) => Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z))[0];
       photo.open(drive.vehicleId, (place?.label ?? 'Island').replace(/[^a-zA-Z0-9]+/g,'-'), onExit);
     },
+    openTune: (onExit) => garage.show(drive.vehicleId, onExit),
     bus: engine.bus,
     canvas,
     container: overlay,
@@ -877,6 +894,7 @@ async function boot(): Promise<void> {
       click: () => {
         audio.click();
       },
+      engineBlip: () => audio.engineBlip(),
     },
     drive: {
       get active() {
@@ -912,6 +930,7 @@ async function boot(): Promise<void> {
       setCarTune: (tune) => drive.setCarTune(tune),
       setCarSetup: (setup) => drive.setCarSetup(setup),
       setPaused: (paused) => drive.setPaused(paused),
+      hidePresentation: (hide) => drive.hidePresentation(hide),
     },
     sleepWorld: (sleeping) => {
       if (sleeping) engine.sleep();
@@ -948,6 +967,8 @@ async function boot(): Promise<void> {
       onChange: (fn) => {
         profile.onChange(fn);
       },
+      spend: (amount) => profile.spend(amount),
+      sandbox: () => profile.sandbox,
     },
     quality: {
       get level() {
@@ -986,7 +1007,7 @@ async function boot(): Promise<void> {
     drive.startOnFoot();
   });
   audio.armAutoUnlock();
-  import.meta.hot?.dispose(() => { photo.dispose(); ui.dispose(); });
+  import.meta.hot?.dispose(() => { photo.dispose(); garage.dispose(); ui.dispose(); });
 
   if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive);
 }

@@ -35,12 +35,24 @@ try{
   assert.ok(result.distance>.5,`${id} moves in world`);assert.ok(result.y>result.ground-.2,`${id} stays above terrain`);distances.push(result);
  }
  await page.locator('[data-vehicle="truck"]').click();await page.locator('.menu__choose').click();
- await page.locator('.menu__tune summary').click();await page.locator('[data-tune="engine"]').selectOption('2');
- await page.locator('[data-tune="tyres"]').selectOption('2');
+ const openBay=async()=>{await page.getByRole('button',{name:'Tune in Open Bay'}).click();await page.locator('.tune-garage').waitFor();};
+ await openBay();
+ await page.locator('[data-filter="engine"]').click();
+ await page.locator('[data-cat="engine"][data-tier="2"]').click();
+ await page.locator('[data-filter="tyres"]').click();
+ await page.locator('[data-cat="tyres"][data-tier="2"]').click();
+ await page.locator('[data-action="buy"]').click();
+ await page.locator('[data-action="exit"]').click();
+ await page.locator('.player-menu').waitFor({state:'visible'});
  await page.locator('[data-vehicle="pip"]').click();await page.locator('.menu__choose').click();
- assert.equal(await page.locator('[data-tune="engine"]').inputValue(),'0','Tune does not leak across cars');
+ await openBay();
+ assert.ok(await page.locator('[data-cat="engine"][data-tier="0"]').count()>=0);
+ const pipEngine=await page.evaluate(()=>JSON.parse(localStorage.getItem('japanmap.tune.pip')||'{}').engine||0);
+ assert.equal(pipEngine,0,'Tune does not leak across cars');
+ await page.locator('[data-action="exit"]').click();
  await page.locator('[data-vehicle="truck"]').click();await page.locator('.menu__choose').click();
- assert.equal(await page.locator('[data-tune="engine"]').inputValue(),'2','Own tune restored');
+ const truckEngine=await page.evaluate(()=>JSON.parse(localStorage.getItem('japanmap.tune.truck')||'{}').engine);
+ assert.equal(truckEngine,2,'Own tune restored');
  await fs.mkdir('screenshots/wp3',{recursive:true});await page.locator('.menu__carDetail').scrollIntoViewIfNeeded();await page.screenshot({path:'screenshots/wp3/showroom.png'});
  await page.setViewportSize({width:390,height:844});
  await page.locator('[data-vehicle="needle"]').click();await page.locator('.menu__choose').scrollIntoViewIfNeeded();

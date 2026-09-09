@@ -452,6 +452,16 @@ export class AudioSystem implements System {
     this.#blip(AUDIO.ui.hz, 0, AUDIO.ui.gain, AUDIO.ui.seconds);
   }
 
+  /**
+   * Kurzer Motorblip in der Tune-Bucht — zwei Töne, kein Loop.
+   * Preview-Sounds dürfen stumm bleiben, wenn der Nutzer Sound aus hat:
+   * `muted` deckt das in `#blip` schon ab.
+   */
+  engineBlip(): void {
+    this.#blip(92, 0, 0.16, 0.22);
+    this.#blip(148, 0.07, 0.12, 0.2);
+  }
+
   /** Ein einzelner Sinuston mit weicher Hüllkurve. */
   #blip(hz: number, delay: number, peak: number, seconds: number): void {
     const ctx = this.#ctx;

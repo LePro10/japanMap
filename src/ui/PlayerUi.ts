@@ -1,5 +1,6 @@
 import {
   loadTune, saveTune, tunedArcade, loadSetup, saveSetup, setupsFor, SETUP_LABEL,
+  TUNE_TIERS,
   type CarTune, type TuneCategory, type TuneTier, type SetupId,
 } from '@/config/tuning.config';
 import { topSpeed } from '@/config/arcade.config';
@@ -53,11 +54,13 @@ export interface DriveControl extends TouchDriveTarget {
   setCarSetup?(setup: SetupId): void;
   /** Welt anhalten, solange das Menü offen ist. Optional, damit Prüfstände ohne Physik durchlaufen. */
   setPaused?(paused: boolean): void;
+  hidePresentation?(hide: boolean): void;
 }
 export interface AudioControl {
   readonly muted: boolean;
   setMuted(muted: boolean): void;
   click(): void;
+  engineBlip?(): void;
 }
 export interface EventsControl {
   readonly list: readonly RaceEvent[];
@@ -72,6 +75,8 @@ export interface EventsControl {
   buy(id: VehicleId): boolean;
   enterCode(code: string): boolean;
   onChange(fn: () => void): void;
+  spend?(amount: number): boolean;
+  sandbox?(): boolean;
 }
 export interface PlayerUiOptions {
   readonly bus: AppBus;
@@ -86,6 +91,7 @@ export interface PlayerUiOptions {
   readonly events?: EventsControl;
   readonly openMap?: () => void;
   readonly openPhoto?: (onExit: (resume?: boolean) => void) => void;
+  readonly openTune?: (onExit: (resume?: boolean) => void) => void;
   readonly callCar?: () => string;
   /** Frameschleife anhalten, solange niemand am Menü sitzt. */
   readonly sleepWorld?: (sleeping: boolean) => void;
@@ -112,6 +118,7 @@ export class PlayerUi {
   #open = false;
   #map = false;
   #photo = false;
+  #garage = false;
   #tab: Tab = "play";
   #catalogue: "owned" | "showroom" = "owned";
   #preview: VehicleId;
@@ -184,6 +191,10 @@ export class PlayerUi {
     this.#resume();
   }
   openCommonsShop(tune: boolean): void {
+    if (tune && this.#o.openTune) {
+      this.#enterTune();
+      return;
+    }
     this.#show();
     if (document.pointerLockElement) document.exitPointerLock();
     this.#tab = "cars";
@@ -198,7 +209,7 @@ export class PlayerUi {
     this.#render();
   }
   get playing(): boolean {
-    return this.#started && !this.#open && !this.#map && !this.#photo;
+    return this.#started && !this.#open && !this.#map && !this.#photo && !this.#garage;
   }
   #show(): void {
     this.#open = true;
@@ -228,17 +239,18 @@ export class PlayerUi {
       this.#started &&
       !this.#touch.enabled &&
       !this.#map &&
-      !this.#photo
+      !this.#photo &&
+      !this.#garage
     ) {
       if (this.#open) this.#render();
       else this.#show();
     }
   };
   readonly #lockError = (): void => {
-    if (!this.#photo && !this.#map) this.#show();
+    if (!this.#photo && !this.#map && !this.#garage) this.#show();
   };
   readonly #key = (event: KeyboardEvent): void => {
-    if (!this.#started || this.#map || this.#photo) return;
+    if (!this.#started || this.#map || this.#photo || this.#garage) return;
     if (event.code === "Escape") {
       // Nur ohne Lock: mit Lock gibt der Browser den Zeiger frei, und
       // `#lockChanged` öffnet das Menü. Escape *im* Menü darf den Lock nicht
@@ -264,14 +276,14 @@ export class PlayerUi {
     this.#menu.hidden =
       !this.#open || document.pointerLockElement === this.#o.canvas;
     this.#touch.setVisible(
-      this.#started && !this.#open && !this.#map && !this.#photo,
+      this.#started && !this.#open && !this.#map && !this.#photo && !this.#garage,
     );
-    this.#o.hud?.setMenuOpen(this.#open || this.#photo || this.#map);
-    this.#o.drive?.setPaused?.(this.#open || this.#photo || this.#map);
-    if (this.#open && !this.#photo) this.#armIdleSleep();
+    this.#o.hud?.setMenuOpen(this.#open || this.#photo || this.#map || this.#garage);
+    this.#o.drive?.setPaused?.(this.#open || this.#photo || this.#map || this.#garage);
+    if (this.#open && !this.#photo && !this.#garage) this.#armIdleSleep();
     else {
       this.#clearIdleSleep();
-      if (!this.#photo) this.#setWorldSleep(false);
+      if (!this.#photo && !this.#garage) this.#setWorldSleep(false);
     }
     for (const panel of this.#menu.querySelectorAll<HTMLElement>(
       "[data-panel]",
@@ -329,7 +341,7 @@ export class PlayerUi {
           <button type="button" class="menu__tile menu__tile--sakura" data-go="cars" data-open-tune>
             <span class="menu__tileKicker">Open Bay</span>
             <span class="menu__tileTitle">Tune Car</span>
-            <span class="menu__tileMeta">Engine · Brakes · Steering · Tyres</span>
+            <span class="menu__tileMeta">Cinematic bay · Engine · Brakes · Tyres</span>
           </button>
           <button type="button" class="menu__drive menu__tile menu__tile--paddy" aria-label="Enter car">
             <span class="menu__tileTitle">Enter car</span>
@@ -357,10 +369,10 @@ export class PlayerUi {
         <div class="menu__events"></div>
         <p class="menu__status" role="status"></p>
       </section>
-      <section class="menu__panel" data-panel="cars" hidden><p class="menu__eyebrow">YOUR GARAGE</p><h1>Find your line.</h1><div class="menu__switch"><button data-catalogue="owned">Owned</button><button data-catalogue="showroom">Showroom</button></div><div class="menu__carDetail"></div><div class="menu__cars"></div><p class="menu__note menu__garageNote">Ten original cars. Purchases use Sparks. Try free Street and Sport tuning on each owned car.</p></section>
+      <section class="menu__panel" data-panel="cars" hidden><p class="menu__eyebrow">YOUR GARAGE</p><h1>Find your line.</h1><div class="menu__switch"><button data-catalogue="owned">Owned</button><button data-catalogue="showroom">Showroom</button></div><div class="menu__carDetail"></div><div class="menu__cars"></div><p class="menu__note menu__garageNote">Ten original cars. Purchases use Sparks. Tune in Open Bay — Street and Sport are incremental buys on this car's own stock.</p></section>
       <section class="menu__panel" data-panel="map" hidden><p class="menu__eyebrow">TAKE A DIFFERENT TURN</p><h1>Beyond the neon.</h1><div class="menu__mapHero"><img src="${aerialMapUrl}" alt="Aerial map of the island" loading="lazy" /></div><p class="menu__intro">Trace the pass, set a waypoint, or follow the coast. Opening the map keeps you where you are.</p><button class="menu__openMap">Open map</button><p class="menu__note">Stillwater Village lies on the western paddies. Tideglass Harbour is the working port on the east coast.</p></section>
       <section class="menu__panel" data-panel="records" hidden><p class="menu__eyebrow">MAKE IT PERSONAL</p><h1>Your best moments.</h1><h2>Event records</h2><div class="menu__records"></div><p class="menu__note">Saved event bests appear here. Driving milestones, discoveries and the garage wall are not tracked yet.</p></section>
-      <section class="menu__panel" data-panel="photo" hidden><p class="menu__eyebrow">KEEP THE VIEW</p><h1>Stay a little longer.</h1><div class="menu__photoHero" aria-hidden="true">＋</div><p class="menu__intro">Freeze the world, fly with WASD, Space and Shift, zoom with the wheel and keep a clean PNG. Return to exactly the view you left.</p><button class="menu__openPhoto">Enter Photo mode</button><p class="menu__note">High captures use more pixels without changing your graphics preset.</p></section>
+      <section class="menu__panel" data-panel="photo" hidden><p class="menu__eyebrow">KEEP THE VIEW</p><h1>Stay a little longer.</h1><div class="menu__photoHero" aria-hidden="true">＋</div><p class="menu__intro">Freeze the world, fly with WASD, Space and Shift, zoom with the wheel and keep a clean PNG. Return to exactly the view you left.</p><button class="menu__openPhoto">Enter Photo mode</button><p class="menu__note">Capture High draws one Ultra frame, then puts your graphics preset back.</p></section>
       <section class="menu__panel" data-panel="settings" hidden><p class="menu__eyebrow">MAKE YOURSELF AT HOME</p><h1>Settings</h1><details open><summary>Graphics</summary><div class="menu__levels"></div><p class="menu__effect"></p><details><summary>Custom graphics</summary><div class="menu__sliders"></div></details><button class="menu__reclassify">Recalibrate</button></details><details><summary>Audio</summary><button class="menu__mute">Sound on</button></details><details><summary>Accessibility</summary><label class="menu__row">UI scale<select class="menu__scale"><option value="90">90%</option><option value="100" selected>100%</option><option value="115">115%</option><option value="130">130%</option></select></label><label class="menu__row">Speed units<select class="menu__units"><option value="kmh">km/h</option><option value="mph">mph</option></select></label><label class="menu__row">Reduced motion<input class="menu__motion" type="checkbox" /></label></details><details><summary>Controls</summary><h3>On foot</h3>${controlTable(CONTROLS, "keytable")}<h3>Driving</h3>${controlTable(DRIVE_CONTROLS, "keytable")}${controlTable(TOUCH_DRIVE_CONTROLS, "keytable")}<h3>Photo</h3><p>WASD fly, Space / Shift up / down, wheel zoom, drag to look. On a phone the on-screen pad remains. P opens Photo; Escape leaves it.</p></details><details><summary>Progress</summary><p class="menu__note">Event bests and owned cars use this browser's existing save. Sparks purchases and tuning are saved in this browser.</p></details></section>
     </div>`;
     const el = (s: string): HTMLElement => menu.querySelector<HTMLElement>(s)!;
@@ -412,6 +424,10 @@ export class PlayerUi {
       };
     for (const button of menu.querySelectorAll<HTMLButtonElement>("[data-go]"))
       button.onclick = () => {
+        if (button.hasAttribute("data-open-tune") && this.#o.openTune) {
+          this.#enterTune();
+          return;
+        }
         this.#tab = button.dataset.go as Tab;
         if (button.hasAttribute("data-open-tune")) this.#catalogue = "owned";
         if (this.#tab === "cars") this.#cars();
@@ -482,6 +498,25 @@ export class PlayerUi {
       }
     });
     return menu;
+  }
+  #enterTune(): void {
+    if (!this.#o.openTune || this.#garage) return;
+    this.#garage = true;
+    this.#open = false;
+    this.#render();
+    if (document.pointerLockElement) document.exitPointerLock();
+    this.#o.openTune((resume) => {
+      this.#garage = false;
+      if (resume) {
+        this.#resume();
+        return;
+      }
+      this.#open = true;
+      this.#tab = "cars";
+      this.#catalogue = "owned";
+      this.#cars();
+      this.#render();
+    });
   }
   #enterPhoto(): void {
     if (!this.#o.openPhoto || this.#photo) return;
@@ -584,11 +619,17 @@ export class PlayerUi {
         ? "Selected"
         : "Select car"
       : `Buy · ${spec.price.toLocaleString("en-US")} Sparks`;
-    host.innerHTML = `<div class="menu__carStage">${carPortrait(id)}<span>${spec.category} · ${owned ? "OWNED" : "SHOWROOM"}</span></div><h2>${copy.name}</h2><p class="menu__intro">${copy.role}</p><div class="menu__carSpecs"><span><strong>${spec.chassis.mass.toLocaleString("en-US")}</strong>kg</span><span><strong>${spec.drivetrain.layout.toUpperCase()}</strong>Drivetrain</span><span><strong>${Math.round(topSpeed(arcade,spec.chassis.mass)*3.6)}</strong>km/h · estimated</span><span><strong>${arcade.latG.toFixed(2)}</strong>g · road grip</span><span><strong>${Math.round(spec.dirt*100)}</strong>% · dirt grip</span><span><strong>${spec.clearance.toFixed(2)}</strong>m · clearance · ${spec.ford.toFixed(2)}m ford</span></div><p>${balance.toLocaleString("en-US")} Sparks available · Saved in this browser</p><button class="menu__choose" ${owned ? "" : 'aria-label="Buy"'} ${owned||canBuy ? "" : "disabled"}>${chooseLabel}</button>${!owned&&!canBuy ? `<p class="menu__note">${(spec.price-balance).toLocaleString("en-US")} more Sparks needed.</p>` : ""}${owned ? `<details class="menu__tune"><summary>Tune · Free tuning preview</summary><p>Fit tiers to this car. Engine adds force and speed; brakes shorten stops; steering responds sooner; tyres add road grip. Mass and wheelbase stay the same.</p>${(["engine","brakes","steering","tyres"] as TuneCategory[]).map(key=>`<label class="menu__row">${key[0]!.toUpperCase()+key.slice(1)}<select data-tune="${key}" aria-label="${key} tier">${["Stock","Street","Sport"].map((tier,i)=>`<option value="${i}" ${tune[key]===i?"selected":""}>${tier}</option>`).join("")}</select></label>`).join("")}<p class="menu__note">Setup sits on top of owned parts. Needle has Safe Return instead of Dirt.</p><div class="menu__row" role="radiogroup" aria-label="Setup">${setupsFor(id).map(s=>`<label><input type="radio" name="car-setup" value="${s}" ${setup===s?"checked":""}>${SETUP_LABEL[s]}</label>`).join("")}</div><p class="menu__note">Free to fit and saved per car. No Sparks spent.</p></details>` : ""}`;
+    const tuneBlock = !owned
+      ? ""
+      : this.#o.openTune
+        ? `<p class="menu__note">Open Bay · ${TUNE_TIERS[tune.engine]} engine · ${TUNE_TIERS[tune.brakes]} brakes · ${TUNE_TIERS[tune.steering]} steering · ${TUNE_TIERS[tune.tyres]} tyres · ${SETUP_LABEL[setup]}</p><button type="button" class="menu__choose" data-bay>Tune in Open Bay</button>`
+        : `<details class="menu__tune"><summary>Tune · Free tuning preview</summary><p>Fit tiers to this car. Engine adds force and speed; brakes shorten stops; steering responds sooner; tyres add road grip. Mass and wheelbase stay the same.</p>${(["engine","brakes","steering","tyres"] as TuneCategory[]).map(key=>`<label class="menu__row">${key[0]!.toUpperCase()+key.slice(1)}<select data-tune="${key}" aria-label="${key} tier">${["Stock","Street","Sport"].map((tier,i)=>`<option value="${i}" ${tune[key]===i?"selected":""}>${tier}</option>`).join("")}</select></label>`).join("")}<p class="menu__note">Setup sits on top of owned parts. Needle has Safe Return instead of Dirt.</p><div class="menu__row" role="radiogroup" aria-label="Setup">${setupsFor(id).map(s=>`<label><input type="radio" name="car-setup" value="${s}" ${setup===s?"checked":""}>${SETUP_LABEL[s]}</label>`).join("")}</div><p class="menu__note">Free to fit and saved per car. No Sparks spent.</p></details>`;
+    host.innerHTML = `<div class="menu__carStage">${carPortrait(id)}<span>${spec.category} · ${owned ? "OWNED" : "SHOWROOM"}</span></div><h2>${copy.name}</h2><p class="menu__intro">${copy.role}</p><div class="menu__carSpecs"><span><strong>${spec.chassis.mass.toLocaleString("en-US")}</strong>kg</span><span><strong>${spec.drivetrain.layout.toUpperCase()}</strong>Drivetrain</span><span><strong>${Math.round(topSpeed(arcade,spec.chassis.mass)*3.6)}</strong>km/h · estimated</span><span><strong>${arcade.latG.toFixed(2)}</strong>g · road grip</span><span><strong>${Math.round(spec.dirt*100)}</strong>% · dirt grip</span><span><strong>${spec.clearance.toFixed(2)}</strong>m · clearance · ${spec.ford.toFixed(2)}m ford</span></div><p>${balance.toLocaleString("en-US")} Sparks available · Saved in this browser</p><button class="menu__choose" ${owned ? "" : 'aria-label="Buy"'} ${owned||canBuy ? "" : "disabled"}>${chooseLabel}</button>${!owned&&!canBuy ? `<p class="menu__note">${(spec.price-balance).toLocaleString("en-US")} more Sparks needed.</p>` : ""}${tuneBlock}`;
     host.querySelector<HTMLButtonElement>(".menu__choose")!.onclick=()=>{
       if(!owned&&!this.#o.events?.buy(id))return;
       this.#o.drive?.setVehicle(id);this.#cars();
     };
+    host.querySelector<HTMLButtonElement>("[data-bay]")?.addEventListener("click", () => this.#enterTune());
     for(const select of host.querySelectorAll<HTMLSelectElement>("[data-tune]"))select.onchange=()=>{
       const next={...loadTune(id),[select.dataset.tune as TuneCategory]:Number(select.value) as TuneTier};
       saveTune(id,next);
@@ -777,7 +818,7 @@ export class PlayerUi {
     if (this.#open && !this.#photo) this.#armIdleSleep();
   };
   readonly #onVisibility = (): void => {
-    if (this.#photo) return;
+    if (this.#photo || this.#garage) return;
     if (document.hidden) {
       this.#clearIdleSleep();
       this.#setWorldSleep(true);

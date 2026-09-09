@@ -16,6 +16,8 @@ export class SakuraCommons implements System {
   #next = 0;
   #entered = false;
   #shop = -1;
+  #bayDwell = 0;
+  #bayCool = 0;
   isPlaying: () => boolean = () => false;
   #messageTime = 0;
   constructor(readonly drive: DriveSystem, container: HTMLElement) {
@@ -84,12 +86,24 @@ export class SakuraCommons implements System {
   update(dt: number): void {
     const d = this.drive, s = walkSpawnZone();
     const p = d.walking ? d.walker.position : d.vehicle.position;
+    this.#bayCool = Math.max(0, this.#bayCool - dt);
     this.panel.hidden = !this.isPlaying() || (!d.walking && !d.active) || Math.hypot(p.x - s.x, p.z - s.z) > 85;
     if (this.panel.hidden) return;
     this.#shop = -1;
     if (d.walking) for (let i = 0; i < 2; i++) {
       if (Math.hypot(p.x - (s.x + (i === 0 ? -22 : 22)), p.z - (s.z - 25)) < 5) this.#shop = i;
     }
+    const bayX = s.x + 22, bayZ = s.z - 32;
+    const inBay = Math.hypot(p.x - bayX, p.z - bayZ) < 6;
+    if (d.active && !d.walking && inBay && d.vehicle.telemetry.speed < 10 / 3.6 && this.#bayCool === 0) {
+      this.#bayDwell += dt;
+      if (this.#bayDwell > 0.5) {
+        this.#bayDwell = 0;
+        this.#bayCool = 6;
+        this.openShop(true);
+        return;
+      }
+    } else this.#bayDwell = 0;
     if (d.active) this.#entered = true;
     const marker = this.markers[this.#next];
     if (d.active && d.race.state === 'idle' && marker && Math.hypot(p.x - marker.position.x, p.z - marker.position.z) < 7) {

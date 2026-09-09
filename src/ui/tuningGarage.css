@@ -1,0 +1,442 @@
+/* Open Bay HUD. The car is the renderer; this is chrome around it.
+ * Palette from theme.css. Screenshot layout: top strip, right tools,
+ * bottom parts rail, left readout. */
+
+.tune-garage {
+  --ink: #06141a;
+  --paper: #f6efe4;
+  --paper-dim: #b7c4c8;
+  --amber: #e8ba7f;
+  --amber-hot: #f3c56a;
+  --vermilion: #c44536;
+  --nitro: #66d7f4;
+  --display: "Segoe UI", "Helvetica Neue", ui-sans-serif, system-ui, sans-serif;
+  position: absolute;
+  inset: 0;
+  z-index: 90;
+  color: var(--paper);
+  font-family: var(--display);
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.tune-garage__stage {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+
+.tune-garage__stage:active {
+  cursor: grabbing;
+}
+
+.tune-garage__vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 42%, transparent 38%, #02080c 100%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ink) 55%, transparent), transparent 22%, transparent 62%, color-mix(in srgb, var(--ink) 78%, transparent));
+}
+
+.tune-garage__letter {
+  --letter: 9vh;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow:
+    inset 0 var(--letter) 0 #02080c,
+    inset 0 calc(var(--letter) * -1) 0 #02080c;
+  transition: box-shadow 80ms linear;
+}
+
+.tune-garage__top,
+.tune-garage__stats,
+.tune-garage__tools,
+.tune-garage__dock,
+.tune-garage__badge,
+.tune-garage__toast {
+  pointer-events: auto;
+  position: absolute;
+}
+
+.tune-garage__top {
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px 10px;
+  padding-top: max(14px, env(safe-area-inset-top));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ink) 70%, transparent), transparent);
+}
+
+.tune-garage__brand span,
+.tune-garage__title span,
+.tune-garage__wallet span,
+.tune-garage__kicker {
+  display: block;
+  font: 800 10px / 1 var(--display);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.tune-garage__brand strong,
+.tune-garage__title strong,
+.tune-garage__wallet strong {
+  display: block;
+  font: 800 20px / 1.1 var(--display);
+  letter-spacing: -0.03em;
+}
+
+.tune-garage__title {
+  margin-left: auto;
+  text-align: right;
+}
+
+.tune-garage__wallet {
+  min-width: 7rem;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
+  background: color-mix(in srgb, var(--ink) 55%, transparent);
+}
+
+.tune-garage__top button {
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid color-mix(in srgb, var(--paper) 22%, transparent);
+  background: color-mix(in srgb, var(--ink) 60%, transparent);
+  color: var(--paper);
+  font: 800 12px / 1 var(--display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tune-garage__top button[data-action="drive"] {
+  border-color: var(--amber);
+  color: var(--ink);
+  background: var(--amber);
+}
+
+.tune-garage__stats {
+  top: 86px;
+  left: 16px;
+  width: min(240px, 32vw);
+  padding: 14px 14px 12px;
+  background: color-mix(in srgb, var(--ink) 62%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber) 18%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+.tune-garage__read {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0 12px;
+  color: var(--paper-dim);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tune-garage__read strong {
+  display: block;
+  color: var(--paper);
+  font: 800 16px / 1.1 var(--display);
+  letter-spacing: -0.03em;
+}
+
+.tune-garage__bar {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  align-items: center;
+  gap: 8px;
+  margin: 5px 0;
+  font: 700 10px / 1 var(--display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+}
+
+.tune-garage__bar i {
+  --fill: 0%;
+  display: block;
+  height: 6px;
+  background: color-mix(in srgb, var(--paper) 12%, transparent);
+  position: relative;
+}
+
+.tune-garage__bar i::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--fill);
+  background: linear-gradient(90deg, var(--amber), var(--amber-hot));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--amber) 55%, transparent);
+  transition: width 280ms ease;
+}
+
+.tune-garage__delta {
+  margin: 12px 0 0;
+  color: var(--nitro);
+  font: 700 12px / 1.3 var(--display);
+}
+
+.tune-garage__tools {
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tune-garage__tools button {
+  width: 48px;
+  height: 48px;
+  border: 1px solid color-mix(in srgb, var(--paper) 20%, transparent);
+  background: color-mix(in srgb, var(--ink) 62%, transparent);
+  color: var(--paper);
+  font-size: 18px;
+}
+
+.tune-garage__tools button.is-on,
+.tune-garage__filters button.is-on,
+.tune-garage__card.is-on {
+  border-color: var(--amber);
+  color: var(--ink);
+  background: var(--amber);
+}
+
+.tune-garage__badge {
+  left: 50%;
+  bottom: 168px;
+  transform: translateX(-50%);
+  padding: 6px 22px 8px;
+  font: 800 28px / 1 var(--display);
+  letter-spacing: 0.28em;
+  color: #ff4d5f;
+  text-shadow: 0 0 18px #ff2440, 0 0 4px #ff2440;
+  background: radial-gradient(ellipse at 50% 50%, #5a1018cc, transparent 70%);
+  pointer-events: none;
+  animation: tune-pulse 1.8s ease-in-out infinite;
+}
+
+.tune-garage.is-tuned .tune-garage__stage {
+  box-shadow: inset 0 -80px 120px #3a081066;
+}
+
+.tune-garage__dock {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 16px 14px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  background: linear-gradient(0deg, color-mix(in srgb, var(--ink) 88%, transparent), color-mix(in srgb, var(--ink) 35%, transparent) 70%, transparent);
+}
+
+.tune-garage__filters {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  overflow-x: auto;
+}
+
+.tune-garage__filters button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--paper) 16%, transparent);
+  background: color-mix(in srgb, var(--ink) 50%, transparent);
+  color: var(--paper);
+  font: 800 11px / 1 var(--display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tune-garage__rail {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x mandatory;
+}
+
+.tune-garage__card {
+  flex: 0 0 148px;
+  min-height: 92px;
+  padding: 10px 10px 12px;
+  text-align: left;
+  border: 1px solid color-mix(in srgb, var(--paper) 16%, transparent);
+  background: color-mix(in srgb, var(--ink) 58%, transparent);
+  color: var(--paper);
+  scroll-snap-align: start;
+}
+
+.tune-garage__card b {
+  display: block;
+  font: 700 9px / 1 var(--display);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+}
+
+.tune-garage__card strong {
+  display: block;
+  margin: 4px 0 2px;
+  font: 800 13px / 1.2 var(--display);
+}
+
+.tune-garage__card em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--amber);
+}
+
+.tune-garage__card.is-fitted em {
+  color: var(--nitro);
+}
+
+.tune-garage__fill {
+  --fill: 0%;
+  display: block;
+  height: 4px;
+  margin-top: 8px;
+  background: color-mix(in srgb, var(--paper) 14%, transparent);
+  position: relative;
+}
+
+.tune-garage__fill::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--fill);
+  background: var(--amber);
+}
+
+.tune-garage__icon {
+  display: block;
+  width: 28px;
+  height: 18px;
+  margin-bottom: 6px;
+  background: var(--paper-dim);
+  mask: none;
+  opacity: 0.85;
+}
+
+.tune-garage__icon[data-kind="engine"] {
+  background:
+    linear-gradient(var(--paper-dim), var(--paper-dim)) 20% 40% / 60% 35% no-repeat,
+    linear-gradient(var(--paper-dim), var(--paper-dim)) 10% 70% / 80% 18% no-repeat;
+}
+
+.tune-garage__icon[data-kind="brakes"] {
+  border: 3px solid var(--paper-dim);
+  border-radius: 50%;
+  background: transparent;
+  width: 18px;
+  height: 18px;
+}
+
+.tune-garage__icon[data-kind="steering"] {
+  border: 3px solid var(--paper-dim);
+  border-radius: 50%;
+  background: radial-gradient(circle, transparent 40%, var(--paper-dim) 42% 55%, transparent 57%);
+  width: 18px;
+  height: 18px;
+}
+
+.tune-garage__icon[data-kind="tyres"] {
+  border: 4px solid var(--paper-dim);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  background: transparent;
+}
+
+.tune-garage__icon[data-kind="setup"] {
+  background:
+    linear-gradient(var(--paper-dim), var(--paper-dim)) 0 20% / 100% 3px no-repeat,
+    linear-gradient(var(--paper-dim), var(--paper-dim)) 0 50% / 70% 3px no-repeat,
+    linear-gradient(var(--paper-dim), var(--paper-dim)) 0 80% / 40% 3px no-repeat;
+}
+
+.tune-garage__buy {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.tune-garage__buy button {
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid color-mix(in srgb, var(--paper) 22%, transparent);
+  background: color-mix(in srgb, var(--ink) 55%, transparent);
+  color: var(--paper);
+  font: 800 12px / 1 var(--display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tune-garage__fit {
+  border-color: var(--amber) !important;
+  background: var(--amber) !important;
+  color: var(--ink) !important;
+}
+
+.tune-garage__fit:disabled {
+  opacity: 0.45;
+}
+
+.tune-garage__buy button.is-on {
+  border-color: var(--nitro);
+  color: var(--nitro);
+}
+
+.tune-garage__toast {
+  left: 50%;
+  top: 22%;
+  transform: translateX(-50%);
+  padding: 10px 18px;
+  background: color-mix(in srgb, var(--ink) 80%, transparent);
+  border: 1px solid var(--amber);
+  font: 800 14px / 1 var(--display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@keyframes tune-pulse {
+  0%, 100% { opacity: 0.75; filter: blur(0); }
+  50% { opacity: 1; filter: blur(0.2px); }
+}
+
+.reduce-motion .tune-garage__badge,
+.reduce-motion .tune-garage__bar i::after,
+.reduce-motion .tune-garage__letter {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (max-width: 720px), (pointer: coarse) {
+  .tune-garage__stats {
+    width: auto;
+    right: 64px;
+    left: 10px;
+    top: 70px;
+    padding: 8px 10px;
+  }
+  .tune-garage__read { display: none; }
+  .tune-garage__tools {
+    top: auto;
+    bottom: 210px;
+    transform: none;
+    flex-direction: row;
+    right: 10px;
+  }
+  .tune-garage__badge { bottom: 200px; font-size: 20px; }
+  .tune-garage__card { flex-basis: 132px; }
+  .tune-garage__title { display: none; }
+}
