@@ -9,7 +9,10 @@ import {
   type Texture,
 } from 'three';
 
-import { DECALS, ROAD_MESH, roadWidthAt, type RoadData } from '@/config/roads.config';
+import { DECALS, ROAD_MESH, ROAD_TYPES, roadWidthAt, type RoadData } from '@/config/roads.config';
+
+import { bankAngle, signedCurvature } from './RoadMeshBuilder';
+import { junctionCorridors, overlapsJunction } from './JunctionCorridors';
 
 /**
  * Straßendecals — PLAN.md P6 / 6.6.
@@ -218,6 +221,9 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
   const scale = new Vector3();
   const up = new Vector3(0, 1, 0);
   const basis = new Matrix4();
+  let activeRoad: RoadData;
+  const corridors = junctionCorridors(roads);
+  const corners = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
 
   const push = (cell: number, tint: Color): void => {
     const rect = cellRect(cell);
@@ -244,7 +250,17 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
     cell: number,
     tint: Color,
     yaw = 0,
-  ): void => {
+    dryRun = false,
+  ): boolean => {
+    // The full rectangle must fit on the surviving asphalt, including rotated
+    // repairs. Testing just its centre leaves paint hanging over a trimmed join.
+    const spacing = activeRoad.length / (closed ? count : Math.max(count - 1, 1));
+    const halfExtent = (Math.abs(Math.cos(yaw)) * length + Math.abs(Math.sin(yaw)) * width) / 2;
+    if (!closed) {
+      const first = Math.round(activeRoad.trimStart / spacing) * spacing;
+      const last = (count - 1 - Math.round(activeRoad.trimEnd / spacing)) * spacing;
+      if (index * spacing - halfExtent < first || index * spacing + halfExtent > last) return false;
+    }
     const previous = closed ? (index - 1 + count) % count : Math.max(index - 1, 0);
     const next = closed ? (index + 1) % count : Math.min(index + 1, count - 1);
     tangent
@@ -256,6 +272,10 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
       .normalize();
     right.crossVectors(tangent, up).normalize();
     const normal = new Vector3().crossVectors(right, tangent).normalize();
+    const unbankedUp = normal.clone();
+    const bank = bankAngle(signedCurvature(line, index, count, closed), activeRoad.banking[index] ?? 0);
+    right.multiplyScalar(Math.cos(bank)).addScaledVector(normal, Math.sin(bank));
+    normal.crossVectors(right, tangent).normalize();
 
     position
       .set(line[index * 3]!, line[index * 3 + 1]!, line[index * 3 + 2]!)
@@ -268,7 +288,8 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
       // kein einziges Pixel. Genau das war der erste Lauf: 3339 Instanzen an
       // richtiger Stelle, richtige Skalierung, richtiges Material, und die
       // Differenz gegen ein Bild ohne sie war null.
-      .addScaledVector(normal, ROAD_MESH.surfaceOffset + DECALS.lift);
+      .addScaledVector(unbankedUp, ROAD_MESH.surfaceOffset)
+      .addScaledVector(normal, DECALS.lift);
 
     // Das Viereck liegt in der xy-Ebene; x quer, y längs, z ist die Normale.
     basis.makeBasis(right, tangent, normal);
@@ -276,11 +297,24 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
     if (yaw !== 0) quaternion.multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), yaw));
     scale.set(width, length, 1);
 
-    matrices.push(new Matrix4().compose(position, quaternion, scale));
+    const matrix = new Matrix4().compose(position, quaternion, scale);
+    const adjacent = corridors.get(activeRoad.id);
+    if (adjacent) {
+      corners[0]!.set(-.5, -.5, 0).applyMatrix4(matrix);
+      corners[1]!.set(.5, -.5, 0).applyMatrix4(matrix);
+      corners[2]!.set(.5, .5, 0).applyMatrix4(matrix);
+      corners[3]!.set(-.5, .5, 0).applyMatrix4(matrix);
+      if (overlapsJunction(corners, adjacent)) return false;
+    }
+    if (dryRun) return true;
+    matrices.push(matrix);
     push(cell, tint);
+    return true;
   };
 
   for (const road of roads) {
+    if (ROAD_TYPES[road.type].surface === 'kies') continue;
+    activeRoad = road;
     const line = road.centerline;
     const count = line.length / 3;
     if (count < 4) continue;
@@ -374,15 +408,20 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
     // zu beschreiben; genau diese Sorte Doppelung hat in P3 die Rinne neben das
     // Straßen-Mesh gelegt.
     const cw = DECALS.crosswalk;
-    for (const junction of road.junctions) {
+    for (const junction of marked ? road.junctions : []) {
       const trim = junction.at === 'start' ? road.trimStart : road.trimEnd;
-      const fromEnd = Math.round((trim + cw.offset) / spacing);
-      const index = junction.at === 'start' ? fromEnd : count - 1 - fromEnd;
+      const fromEnd = Math.ceil((Math.round(trim / spacing) * spacing + Math.max(cw.offset, cw.length / 2)) / spacing);
+      let index = junction.at === 'start' ? fromEnd : count - 1 - fromEnd;
+      const direction = junction.at === 'start' ? 1 : -1;
+      // A perpendicular trim distance is insufficient for an oblique mouth.
+      // Find the first complete crossing rectangle outside the host corridor.
+      while (index >= 1 && index <= count - 2 &&
+        !place(line, index, count, road.closed, 0, roadWidthAt(road, index) - 2 * DECALS.edgeInset,
+          cw.length, CELLS.line, WHITE, 0, true)) index += direction;
       if (index < 1 || index > count - 2) continue;
 
       // So viele Streifen, wie zwischen die Fahrbahnränder passen — gerundet,
       // damit der Überweg mittig sitzt und nicht an einer Seite ausfranst.
-      const half = roadWidthAt(road, index) / 2;
       const usable = roadWidthAt(road, index) - 2 * DECALS.edgeInset;
       const pitch = cw.stripe + cw.gap;
       const stripes = Math.max(2, Math.floor(usable / pitch));
@@ -400,7 +439,8 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
           ? index + Math.round((cw.length / 2 + cw.stopGap) / spacing)
           : index - Math.round((cw.length / 2 + cw.stopGap) / spacing);
       if (stopIndex > 0 && stopIndex < count - 1) {
-        place(line, stopIndex, count, road.closed, half / 2, roadWidthAt(road, stopIndex) / 2 - DECALS.edgeInset,
+        const half = roadWidthAt(road, stopIndex) / 2;
+        place(line, stopIndex, count, road.closed, (junction.at === 'start' ? 1 : -1) * half / 2, half - DECALS.edgeInset,
           cw.stopWidth, CELLS.line, WHITE);
         counts.strich!++;
       }

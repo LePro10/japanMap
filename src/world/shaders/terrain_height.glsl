@@ -33,10 +33,9 @@ float terrainTexel(ivec2 coord) {
  * Höhe in Metern an einer Weltposition.
  *
  * Bilinear von Hand, nicht per Texturfilter. Zwei Gründe: Integer-Texturen
- * lassen sich in WebGL2 gar nicht filtern, und der TerrainSampler auf der CPU
- * rechnet genau dieselben vier Zeilen. Nur so liegen gerenderte Oberfläche und
- * `getHeightAt()` exakt aufeinander — sonst schwebt oder versinkt alles, was
- * später auf dem Boden platziert wird.
+ * lassen sich in WebGL2 gar nicht filtern. TerrainSampler liest dieselben
+ * Werte an den Nahgitter-Stützpunkten und interpoliert dazwischen die sichtbaren
+ * Dreiecke. Bilineare Abfragen zwischen Vertices wären eine andere Oberfläche.
  *
  * Texel 0 liegt auf -half, Texel (res-1) auf +half (siehe world.config.ts).
  */

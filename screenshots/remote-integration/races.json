@@ -1,0 +1,137 @@
+{
+  "results": [
+    {
+      "id": "coast-loop",
+      "held": 0,
+      "rivalHeld": [
+        0,
+        0,
+        0
+      ],
+      "gridSpacing": [
+        9.128124590957903,
+        9.07885077304423,
+        9.07885077304423
+      ],
+      "running": "running",
+      "moved": 38.42550078047357,
+      "pathProgress": 1034.8720348244576,
+      "yaw": 2.510237493740712,
+      "rivalProgress": [
+        44.002917310368154,
+        42.00186954263435,
+        42.00162883972345
+      ],
+      "preFinish": "running",
+      "finished": "finished",
+      "closed": true
+    },
+    {
+      "id": "touge-descent",
+      "held": 0,
+      "rivalHeld": [
+        0,
+        0,
+        0
+      ],
+      "gridSpacing": [
+        9.014683426464337,
+        9.014683426464337,
+        9.094805117364926
+      ],
+      "running": "running",
+      "moved": 8.836986274499774,
+      "pathProgress": 31.74266485242525,
+      "yaw": -2.1762052424655787,
+      "rivalProgress": [
+        29.782181703827156,
+        25.83044341043186,
+        31.838489245192903
+      ],
+      "preFinish": "finished",
+      "finished": "finished",
+      "closed": false
+    },
+    {
+      "id": "neon-circuit",
+      "held": 0,
+      "rivalHeld": [
+        0,
+        0,
+        0
+      ],
+      "gridSpacing": [
+        9.130738847483116,
+        9.129695595997854,
+        9.129695595997854
+      ],
+      "running": "running",
+      "moved": 20.409028730718006,
+      "pathProgress": 310.2081848333939,
+      "yaw": 1.7595684998964787,
+      "rivalProgress": [
+        66.03679766317862,
+        66.03245479066914,
+        62.024324367417016
+      ],
+      "preFinish": "running",
+      "finished": "finished",
+      "closed": true
+    },
+    {
+      "id": "touge-climb",
+      "held": 0,
+      "rivalHeld": [
+        0,
+        0,
+        0
+      ],
+      "gridSpacing": [
+        9.052632405628358,
+        9.052632405628358,
+        9.150752904353942
+      ],
+      "running": "running",
+      "moved": 27.523384569197415,
+      "pathProgress": 625.6301834066293,
+      "yaw": -2.086023066664388,
+      "rivalProgress": [
+        35.77388906061239,
+        37.79573882361314,
+        33.84234801173109
+      ],
+      "preFinish": "finished",
+      "finished": "finished",
+      "closed": false
+    },
+    {
+      "id": "ring-trial",
+      "held": 0,
+      "rivalHeld": [],
+      "gridSpacing": [],
+      "running": "running",
+      "moved": 38.42550078047357,
+      "pathProgress": 1034.8720348244576,
+      "yaw": 2.510237493740712,
+      "rivalProgress": [],
+      "preFinish": "running",
+      "finished": "finished",
+      "closed": true
+    },
+    {
+      "id": "touge-drift",
+      "held": 0,
+      "rivalHeld": [],
+      "gridSpacing": [],
+      "running": "running",
+      "moved": 8.836986274499774,
+      "pathProgress": 31.74266485242525,
+      "yaw": -2.1762052424655787,
+      "rivalProgress": [],
+      "preFinish": "finished",
+      "finished": "finished",
+      "closed": false
+    }
+  ],
+  "errors": []
+}

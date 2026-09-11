@@ -247,7 +247,7 @@ export type AppEvents = {
    * dieselbe Begründung wie bei `drive:lap`.
    */
   'drive:broke': {
-    kind: 'rail' | 'tree';
+    kind: 'rail' | 'tree' | 'crate' | 'cone' | 'board' | 'barrel';
     id: number;
     x: number;
     y: number;

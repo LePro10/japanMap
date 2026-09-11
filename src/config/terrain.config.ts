@@ -26,7 +26,7 @@ export const TERRAIN = {
    * Luft ist eine 7-m-Kachel sonst als Gitter erkennbar.
    */
   macroTileMeters: 260,
-  macroStrength: 0.28,
+  macroStrength: 0.18,
 
   /**
    * Triplanares Mapping ab dieser Neigung. Darunter wird von oben projiziert
@@ -48,7 +48,7 @@ export const TERRAIN = {
    * Hell-Dunkel-Sprung. Was bei hochstehender Sonne als feine Struktur
    * durchgeht, wird hier zum Gitter.
    */
-  detailNormalStrength: 0.35,
+  detailNormalStrength: 0.24,
 
   /**
    * Ab dieser Entfernung blendet die Detail-Normalmap aus.

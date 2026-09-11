@@ -64,8 +64,8 @@ export interface RoadGeometryResult {
  * Positiv = Linkskurve. Wird für die Querneigung gebraucht: geneigt wird zur
  * Kurvenaußenseite, und ohne Vorzeichen wüsste man nicht, welche das ist.
  */
-function signedCurvature(
-  positions: Float32Array,
+export function signedCurvature(
+  positions: ArrayLike<number>,
   index: number,
   count: number,
   closed: boolean,
@@ -166,8 +166,7 @@ export function buildRoadGeometry(road: RoadData): RoadGeometryResult {
     // Datei ist die **maximale** Neigung; wo die Strecke gerade läuft, gibt es
     // keinen Grund für eine schiefe Fahrbahn.
     const curvature = signedCurvature(positions, i, count, closed);
-    const maxBank = (road.banking[i + skipStart] ?? 0) * (Math.PI / 180);
-    const bank = Math.max(-maxBank, Math.min(maxBank, curvature * BANK_GAIN * maxBank));
+    const bank = bankAngle(curvature, road.banking[i + skipStart] ?? 0);
     const cosBank = Math.cos(bank);
     const sinBank = Math.sin(bank);
 
@@ -264,3 +263,9 @@ export function buildRoadGeometry(road: RoadData): RoadGeometryResult {
  * beliebige Konstante, sondern die Aussage „ab 20 m Radius voll geneigt".
  */
 const BANK_GAIN = 20;
+
+/** Shared by road geometry, paint and vehicle contact. */
+export function bankAngle(curvature: number, degrees: number): number {
+  const maxBank = degrees * (Math.PI / 180);
+  return Math.max(-maxBank, Math.min(maxBank, curvature * BANK_GAIN * maxBank));
+}

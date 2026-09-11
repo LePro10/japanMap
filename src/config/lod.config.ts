@@ -107,8 +107,8 @@ export const LOD = {
    * der Heightmap (1,5007 m). Feiner abzutasten brächte nichts, gröber ließe
    * Information liegen; das feste Gitter aus P1 lag mit 4,0 m deutlich darüber.
    *
-   * **Seit P8.1 ist das der Wert der höchsten Stufe, nicht der einzige.** Die
-   * Herleitung dafür steht unten bei `gridVerticesAllowed`.
+   * Alle Presets behalten dieses Nahgitter, damit sichtbarer Boden und
+   * Fahrzeugkontakt übereinstimmen. Siehe `GRID_VERTICES_ALLOWED`.
    */
   gridVertices: GRID_VERTICES,
   /** Quads pro Achse. */
@@ -155,9 +155,9 @@ export function lodTrianglesPerNode(gridVertices: number): number {
 }
 
 /**
- * Zulässige Gitterauflösungen — die Stufentabelle in `quality.config.ts` wählt
- * daraus. Der Zusammenhang ist der Kern von P8.1, deshalb steht er hier und
- * nicht dort.
+ * Historische Untersuchung variabler Gitterauflösungen (P8.1).
+ * Seit dem Fahrkontakt-Review ist nur 33 erlaubt; die früheren Kostenmessungen
+ * unten erklären den noch offenen Optimierungsbedarf auf Low/Minimal.
  *
  * ## Warum die Auflösung je Stufe verstellt werden darf
  *
@@ -224,7 +224,11 @@ export function lodTrianglesPerNode(gridVertices: number): number {
  * > **ersatzlos** weg. `morphStart` wird dafür nicht nachgeregelt — das ist die
  * > Regelschleife, die dieses Projekt zweimal ersatzlos entfernt hat.
  */
-export const GRID_VERTICES_ALLOWED = [33, 25, 17] as const;
+// Driving contact is sampled against the 33² leaf triangles. Coarser grids
+// caused visible sinking (Low p99: 0.60 m), so quality and saved custom settings
+// must retain that surface. The historical cost measurements above still apply;
+// lower presets save shading, reflections, resolution and vegetation instead.
+export const GRID_VERTICES_ALLOWED = [33] as const;
 
 export type GridVertices = (typeof GRID_VERTICES_ALLOWED)[number];
 

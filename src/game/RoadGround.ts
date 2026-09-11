@@ -75,6 +75,7 @@ export class RoadGround implements Ground {
   #forwardX = 0;
   #forwardZ = 1;
   #slopeAlong = 0;
+  #slopeAcross = 0;
   #baseAtHit = 0;
   #circuit = 0;
   #circuitGates: { x: number; z: number }[] = [];
@@ -174,7 +175,7 @@ export class RoadGround implements Ground {
     // Korrektur von zig Metern ergäbe. 6 m ist mehr als der größte gemessene
     // Wert (4,30 m auf `zufahrt`) und weniger als jeder Betrag aus einem Fehler.
     this.#correctionTarget = clamp(
-      hit.y + ROAD_MESH.surfaceOffset - this.#groundBase(hit.x, hit.z),
+      hit.y + ROAD_MESH.surfaceOffset * Math.hypot(1, hit.slopeAlong) - this.#groundBase(hit.x, hit.z),
       -6,
       6,
     );
@@ -195,6 +196,7 @@ export class RoadGround implements Ground {
     this.#forwardX = hit.forwardX;
     this.#forwardZ = hit.forwardZ;
     this.#slopeAlong = hit.slopeAlong;
+    this.#slopeAcross = hit.slopeAcross ?? 0;
     // Einmal je Schritt statt einmal je Höhenabfrage: `height()` läuft rund
     // 25-mal je Simulationsschritt, und ein Sampler-Aufruf ist der teuerste
     // Posten darin.
@@ -276,7 +278,8 @@ export class RoadGround implements Ground {
         // Meter auslaufend.
         const fade = 1 - clamp01((distance - this.#halfWidth) / 0.5);
         const s = (x - this.#hitX) * this.#forwardX + (z - this.#hitZ) * this.#forwardZ;
-        const soll = this.#baseAtHit + this.#correction + this.#slopeAlong * s;
+        const lateral = -(x - this.#hitX) * this.#forwardZ + (z - this.#hitZ) * this.#forwardX;
+        const soll = this.#baseAtHit + this.#correction + this.#slopeAlong * s + this.#slopeAcross * lateral;
         y += (soll - y) * fade;
       }
     }
@@ -304,6 +307,11 @@ export class RoadGround implements Ground {
     return Math.max(y, this.localSurfaces?.height(x, z) ?? -Infinity);
   }
 
+  isRamp(x: number, z: number): boolean {
+    const rampY = this.#ramps?.surfaceAt(x, z) ?? -Infinity;
+    return Number.isFinite(rampY) && rampY >= this.height(x, z) - 0.015;
+  }
+
   normal(x: number, z: number, target: Vector3): Vector3 {
     const sampler = this.#sampler;
     if (!sampler) return target.set(0, 1, 0);
@@ -317,9 +325,20 @@ export class RoadGround implements Ground {
     // waagerecht, das Gelände darunter im Distrikt ebenfalls (der Baker ebnet
     // ihn ein) — der Unterschied ist auf dieser Karte nicht messbar.
     sampler.getNormalAt(x, z, target);
+    // Follow the visible ribbon plane, independent of the terrain cut below it.
+    if (this.#halfWidth > 0 && this.#network &&
+        this.#network.distanceToNearestRoad(x, z, this.#halfWidth + 1) < this.#halfWidth) {
+      target.set(
+        -this.#slopeAlong * this.#forwardX + this.#slopeAcross * this.#forwardZ,
+        1,
+        -this.#slopeAlong * this.#forwardZ - this.#slopeAcross * this.#forwardX,
+      ).normalize();
+    }
+    const plateau = this.#collision?.plateauTop(x, z) ?? -Infinity;
+    if (Number.isFinite(plateau) && plateau >= this.height(x, z) - 0.015) target.set(0, 1, 0);
     // Und die Schanze darüber. Begründung samt der Messung, warum eine Schanze
     // ohne Neigung das Auto anhält, bei `RampField.gradient`.
-    if (this.#ramps?.gradient(x, z, GRADIENT)) {
+    if (this.isRamp(x, z) && this.#ramps?.gradient(x, z, GRADIENT)) {
       // Aus dem Höhengradienten `(∂y/∂x, ∂y/∂z)` wird die Normale
       // `(−∂y/∂x, 1, −∂y/∂z)`, normiert. Sie ersetzt die Geländenormale, statt
       // sie zu drehen: auf einer Schanze *ist* die Schanze der Boden.

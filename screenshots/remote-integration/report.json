@@ -1,0 +1,150 @@
+{
+  "errors": [],
+  "report": [],
+  "validation": {
+    "roads": 72,
+    "holes": {
+      "gitter": 33,
+      "gesamt": 0,
+      "schlimmster": {
+        "blick": "—",
+        "loecher": 0,
+        "spalten": 0,
+        "leer": 0
+      },
+      "proBlick": [
+        {
+          "blick": "start",
+          "loecher": 0,
+          "spalten": 0,
+          "leer": 0
+        },
+        {
+          "blick": "stadt",
+          "loecher": 0,
+          "spalten": 0,
+          "leer": 0
+        },
+        {
+          "blick": "stadt-strasse",
+          "loecher": 0,
+          "spalten": 0,
+          "leer": 0
+        },
+        {
+          "blick": "stadt-neon",
+          "loecher": 0,
+          "spalten": 0,
+          "leer": 0
+        },
+        {
+          "blick": "stadt-luft",
+          "loecher": 0,
+          "spalten": 0,
+          "leer": 0
+        },
+        {
+          "blick": "stadt-fern",
+          "loecher": 0,
+          "spalten": 0,
+          "leer": 0
+        },
+        {
+          "blick": "pass",
+          "loecher": 0,
+          "spalten": 0,
+          "leer": 0
+        },
+        {
+          "blick": "pass-kehren",
+          "loecher": 0,
+          "spalten": 0,
+          "leer": 0
+        },
+        {
+          "blick": "tempel",
+          "loecher": 0,
+          "spalten": 0,
+          "leer": 0
+        },
+        {
+          "blick": "sando",
+          "loecher": 0,
+          "spalten": 0,
+          "leer": 0
+        },
+        {
+          "blick": "dorf",
+          "loecher": 0,
+          "spalten": 0,
+          "leer": 0
+        },
+        {
+          "blick": "stadt-rand",
+          "loecher": 0,
+          "spalten": 0,
+          "leer": 0
+        },
+        {
+          "blick": "reisfeld",
+          "loecher": 0,
+          "spalten": 0,
+          "leer": 0
+        },
+        {
+          "blick": "wald",
+          "loecher": 0,
+          "spalten": 0,
+          "leer": 0
+        },
+        {
+          "blick": "wald-fern",
+          "loecher": 0,
+          "spalten": 0,
+          "leer": 0
+        },
+        {
+          "blick": "kueste",
+          "loecher": 0,
+          "spalten": 0,
+          "leer": 0
+        }
+      ]
+    },
+    "negativeHoles": 683,
+    "mountain": [
+      {
+        "preset": "low",
+        "timing": {
+          "frames": 4,
+          "meanMs": 312.875,
+          "medianMs": 313.29999999981374,
+          "p95Ms": 316.10000000009313,
+          "worstMs": 316.10000000009313
+        },
+        "camera": [
+          -672,
+          620,
+          -495
+        ],
+        "triangles": 327123
+      },
+      {
+        "preset": "minimal",
+        "timing": {
+          "frames": 4,
+          "meanMs": 204.55000000004657,
+          "medianMs": 205.5,
+          "p95Ms": 207.3000000002794,
+          "worstMs": 207.3000000002794
+        },
+        "camera": [
+          -672,
+          620,
+          -495
+        ],
+        "triangles": 326812
+      }
+    ]
+  }
+}

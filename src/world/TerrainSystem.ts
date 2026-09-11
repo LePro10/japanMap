@@ -68,7 +68,7 @@ export class TerrainSystem implements System {
    * Panel direkt daran gebunden, überschriebe der nächste Frame die Wahl.
    * Ein eigenes Objekt trennt Wunsch und Zustand.
    */
-  readonly #markerOptions = { sichtbar: true };
+  readonly #markerOptions = { sichtbar: false };
   #uniforms: TerrainUniforms | null = null;
   #material: TerrainMaterial | null = null;
   #camera: PerspectiveCamera | null = null;
@@ -218,6 +218,17 @@ export class TerrainSystem implements System {
     mesh.matrixAutoUpdate = false;
     this.#mesh = mesh;
 
+    // A child preserves the existing Terrain visibility/debug/material API.
+    // Both batches use identical height sampling, morphing and shadow uniforms.
+    const flatMesh = new Mesh(chunks.flatGeometry, material);
+    flatMesh.name = 'Terrain flat nodes';
+    flatMesh.frustumCulled = false;
+    flatMesh.receiveShadow = true;
+    flatMesh.castShadow = true;
+    flatMesh.customDepthMaterial = mesh.customDepthMaterial;
+    flatMesh.matrixAutoUpdate = false;
+    mesh.add(flatMesh);
+
     // ── Die volle Texturstufe anmelden — P15.4 ──────────────────────────
     //
     // Was hier passiert, ist bewusst dasselbe wie oben: `createLayerArray` mit
@@ -300,6 +311,7 @@ export class TerrainSystem implements System {
       if (vertices === chunks.gridVertices) return;
       chunks.setGridVertices(vertices);
       mesh.geometry = chunks.geometry;
+      flatMesh.geometry = chunks.flatGeometry;
       uniforms.uLodGridQuads.value = vertices - 1;
     });
 
