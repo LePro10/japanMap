@@ -82,7 +82,7 @@ export class DriveHud {
   readonly #nav: HTMLElement;
   #arrowDeg = 999;
   /** Zuletzt gesetzter Hinweis — sonst schreibt jeder Frame denselben Text. */
-  #promptKind: 'enter' | 'exit' | null = null;
+  #promptKind: 'enter' | 'exit' | 'slow' | null = null;
   #onOpenMap: (() => void) | null = null;
 
   /** Zuletzt geschriebener Text je Feld — spart das Layout, s. o. */
@@ -293,14 +293,14 @@ export class DriveHud {
    * `null` räumt den Chip weg — nicht Deckkraft 0: ein unsichtbarer Chip
    * läge weiter im Layout und über dem „Continue"-Knopf der Zieltafel.
    */
-  setVehicleHint(kind: 'enter' | 'exit' | null): void {
+  setVehicleHint(kind: 'enter' | 'exit' | 'slow' | null): void {
     if (kind === this.#promptKind) return;
     this.#promptKind = kind;
     if (kind === null) {
       this.#prompt.hidden = true;
       return;
     }
-    this.#setText(this.#promptAction, kind === 'enter' ? 'Enter' : 'Exit');
+    this.#setText(this.#promptAction, kind === 'enter' ? 'Enter' : kind === 'slow' ? 'Slow down to exit' : 'Exit');
     this.#prompt.hidden = false;
   }
 

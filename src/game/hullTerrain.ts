@@ -91,6 +91,8 @@ export const BELLY_DRAG = 3.0;
 export const BELLY_FULL_DEPTH = 0.15;
 
 export interface HullGround {
+  /** Constructed launch surface: may redirect motion up its continuous ramp. */
+  isRamp?(x: number, z: number): boolean;
   height(x: number, z: number): number;
   normal(x: number, z: number, target: Vector3): Vector3;
   /** Belag. Eine **Fahrbahn** ist für die Karosserie kein Hindernis — siehe `istFahrbahn`. */
@@ -228,6 +230,7 @@ export function resolveHullTerrain(
   let hitNX = 0;
   let hitNY = 1;
   let hitNZ = 0;
+  let hitRamp = false;
 
   for (let i = 0; i < samples.length; i += 3) {
     p.set(samples[i]!, samples[i + 1]!, samples[i + 2]!)
@@ -287,6 +290,7 @@ export function resolveHullTerrain(
       hitNX = nx;
       hitNY = ny;
       hitNZ = nz;
+      hitRamp = ground.isRamp?.(px, pz) === true;
     }
 
     // Richtung: längs der Normalen, solange die Fläche befahrbar ist —
@@ -401,6 +405,10 @@ export function resolveHullTerrain(
   const stoss = s.vx * hitNX + s.vy * hitNY + s.vz * hitNZ;
   if (stoss < 0) {
     s.vx -= hitNX * stoss;
+    // A constructed ramp redirects incoming motion uphill. Applying this to
+    // rough terrain launches the chassis off small bumps and unloads its wheels;
+    // falls and steep walls therefore retain suspension-owned vertical motion.
+    if (hitRamp && hitNY >= STEEP_NY && s.vy >= -1) s.vy -= hitNY * stoss;
     s.vz -= hitNZ * stoss;
   }
 

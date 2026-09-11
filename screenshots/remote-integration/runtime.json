@@ -1,0 +1,32 @@
+{
+  "state": {
+    "props": 88
+  },
+  "parking": {
+    "fast": true,
+    "parked": true,
+    "board": true,
+    "speed": 0
+  },
+  "before": [
+    550,
+    27.931301698033568,
+    510
+  ],
+  "after": [
+    550,
+    27.931301698033568,
+    510
+  ],
+  "resumed": [
+    549.9916350182729,
+    28.020317380260764,
+    517.4271157450119
+  ],
+  "smash": {
+    "alive": false,
+    "speed": 11.55,
+    "debris": true
+  },
+  "errors": []
+}

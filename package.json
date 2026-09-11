@@ -13,6 +13,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "test:polish": "node tools/test-polish.mjs",
     "assets": "node tools/polyhaven.mjs",
     "models": "node tools/process-assets.mjs",
     "bake": "node tools/bake-terrain.mjs --seed 20260725 --res 2048 --erosion 2000000",
@@ -33,7 +34,10 @@
     "fleet": "node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/fleet.mts",
     "test:wp1": "node tools/wp1-ui.test.mjs && node tools/wp1-instruments.test.mjs && node tools/wp1-photo-input.test.mjs",
     "test:wp1:boot": "node tools/wp1-boot.mjs",
-    "test:wp1:phone": "node tools/wp1-phone.mjs"
+    "test:wp1:phone": "node tools/wp1-phone.mjs",
+    "predev": "node tools/pack-heightmap.mjs",
+    "predev:lan": "node tools/pack-heightmap.mjs",
+    "prebuild": "node tools/pack-heightmap.mjs"
   },
   "dependencies": {
     "n8ao": "^2.0.0",

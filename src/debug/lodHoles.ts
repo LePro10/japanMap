@@ -153,6 +153,9 @@ export function countLodHoles(options: HoleOptions): HoleReport {
       // Erst die Anwendung einen Frame rechnen lassen — sie wählt dabei die
       // Quadtree-Knoten für *diese* Kamera aus. Siehe `tick` oben.
       options.tick();
+      // A diagnostic marker or gameplay system can restore visibility in update.
+      // Keep the probe terrain-only even when such a system was initially hidden.
+      for (const child of scene.children) if (child.name !== keep) child.visible = false;
 
       // `tick()` hinterlässt Render-Ziel und Viewport der PostFX-Kette.
       renderer.setRenderTarget(null);
@@ -205,16 +208,19 @@ function count(
   let spalten = 0;
   let leer = 0;
 
-  for (let x = 0; x < width; x++) {
+  // Ignore the two-pixel viewport rim: clipped silhouettes at a corner can
+  // enclose a sky pixel without a terrain seam. Interior cracks still count.
+  const inset = 2;
+  for (let x = inset; x < width - inset; x++) {
     let top = -1;
-    for (let y = height - 1; y >= 0; y--) {
+    for (let y = height - 1 - inset; y >= inset; y--) {
       if (!isSky(x, y)) {
         top = y;
         break;
       }
     }
     let bottom = -1;
-    for (let y = 0; y < height; y++) {
+    for (let y = inset; y < height - inset; y++) {
       if (!isSky(x, y)) {
         bottom = y;
         break;

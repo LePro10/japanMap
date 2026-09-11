@@ -284,7 +284,7 @@ export class RivalField {
       const z = POINT.z + tx * side;
       ground.refresh(x, z, 0);
       vehicle.respawn(x, z, Math.atan2(tx, tz), ground);
-      driver.placeAt(arc);
+      driver.placeAt(arc, arc - startArc);
 
       this.#rivals.push({
         vehicle,
@@ -293,7 +293,7 @@ export class RivalField {
         body,
         wheels,
         geometries: [bodyGeometry, wheelGeometry],
-        progress: arc,
+        progress: arc - startArc,
         stuck: 0,
         stuckMark: 0,
         laps: 0,
@@ -318,20 +318,19 @@ export class RivalField {
 
     for (const rival of this.#rivals) {
       const car = rival.vehicle;
+      if (!racing) {
+        car.velocity.set(0, 0, 0);
+        continue;
+      }
       rival.ground.refresh(car.position.x, car.position.z, dt);
 
-      // Vor dem Start stehen sie mit der Bremse — sonst rollen sie beim
-      // Countdown an, und ein Gegner, der vor dem Start losfährt, ist der
-      // erste Eindruck, den niemand vergisst.
-      const input = racing
-        ? rival.driver.drive(
+      const input = rival.driver.drive(
             dt,
             car.position,
             car.yaw,
             car.telemetry.speed,
             this.#catchUp(rival, playerProgress),
-          )
-        : HOLD;
+          );
       car.step(dt, input, rival.ground, collision);
       // **Die Brüche werden abgeholt und weggeworfen.** Ein Gegner, der eine
       // Planke umfährt, soll sie umfahren — aber die Trümmer und das
@@ -339,7 +338,6 @@ export class RivalField {
       // die Liste unbegrenzt; genau davor warnt ihr eigener Kommentar.
       car.consumeBreaks();
 
-      if (!racing) continue;
       // **Der Fortschritt ist der aufsummierte Weg und keine Rechnung aus
       // Runde und Bogenlänge.** Begründung samt Messung bei `RaceLine.delta()`.
       rival.progress = rival.driver.distance;
@@ -518,16 +516,6 @@ export class RivalField {
 }
 
 const POINT = { x: 0, y: 0, z: 0 };
-
-/**
- * Eingabe „stehen bleiben" — vor dem Start und im Ziel.
- *
- * **Ohne Bremse und nur mit Handbremse**, und das ist keine Kosmetik: die
- * Bremse legt im Stand den Rückwärtsgang ein (kein Gangwahlschalter, siehe
- * `ArcadeDynamics.#longitudinal`). Mit `brake: 1` fuhr das ganze Feld den
- * Countdown über rückwärts aus der Startaufstellung heraus.
- */
-const HOLD = { throttle: 0, brake: 0, steer: 0, handbrake: true, boost: false };
 
 /**
  * Namen der Gegner.

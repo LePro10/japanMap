@@ -72,6 +72,9 @@ export const WALK_ALIGHT_GAP = 1.55;
 /** So nah muss man am Auto stehen, um einzusteigen, in Metern. */
 export const WALK_BOARD_RANGE = 4.2;
 
+/** Park before leaving: 5 km/h expressed in m/s. */
+export const WALK_ALIGHT_SPEED = 5 / 3.6;
+
 /**
  * Extra-Meter, die der Einsteige-Hinweis nach dem Erscheinen noch hält.
  *

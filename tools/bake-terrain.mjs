@@ -29,6 +29,7 @@ import { PNG } from 'pngjs';
 // Einebnung darunter müssen auf den Zentimeter zusammenpassen.
 import { CITY_PAD_FEATHER, CITY_PAD_Y, districtBlend } from '../src/config/city.mjs';
 import { padUrbanParcels } from './wp6-parcels.mjs';
+import { encodeHeightmap } from './pack-heightmap.mjs';
 
 /**
  * PNG schreiben.
@@ -2389,6 +2390,7 @@ async function main() {
   await mkdir(outDir, { recursive: true });
   await Promise.all([
     writeFile(join(outDir, 'height.r16'), rawBuffer),
+    writeFile(join(outDir, 'height.h16'), encodeHeightmap(rawBuffer, Math.sqrt(height.length))),
     writeFile(join(outDir, 'height_preview.png'), previewBuffer),
     writeFile(join(outDir, 'normal.png'), normalBuffer),
     writeFile(join(outDir, 'zones.png'), zoneBuffer),

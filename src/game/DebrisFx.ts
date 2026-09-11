@@ -5,7 +5,7 @@ import {
   Group,
   InstancedMesh,
   Matrix4,
-  MeshBasicMaterial,
+  MeshStandardMaterial,
   Quaternion,
   Vector3,
 } from 'three';
@@ -14,19 +14,19 @@ import type { EngineContext } from '@/core/System';
 import type { BreakEvent } from './breakables';
 
 /**
- * Trümmer aus Leitplanke und Baum — ein InstancedMesh, 64 Slots.
+ * Material-specific break fragments — one InstancedMesh, 48 recycled slots.
  *
  * Forza-Arcade: das Stück ist weg, drei bis fünf Brocken fliegen kurz, und
- * nach unter zwei Sekunden ist Ruhe. Kein zweites Mesh, kein Schatten, kein
+ * nach rund fünf Sekunden ist Ruhe. Kein zweites Mesh, kein Schatten, kein
  * eigener Draw-Call im Freiflug (`visible = false` bei null Lebenden).
  *
  * Ballistik ohne Geländeabfrage: die Spawn-Höhe ist der Boden, darunter
  * wird einmal abgefedert. Eine Sampler-Abfrage je Brocken je Frame wäre
- * für ein Effekt, der zwei Sekunden lebt, der falsche Tausch.
+ * für einen kurzlebigen Effekt der falsche Tausch.
  */
 
-const CAP = 64;
-const LIFE = 1.65;
+const CAP = 48;
+const LIFE = 4.5;
 const GRAVITY = 14;
 
 export class DebrisFx {
@@ -34,7 +34,7 @@ export class DebrisFx {
 
   #mesh: InstancedMesh | null = null;
   #geometry: BoxGeometry | null = null;
-  #material: MeshBasicMaterial | null = null;
+  #material: MeshStandardMaterial | null = null;
 
   readonly #life = new Float32Array(CAP);
   readonly #x = new Float32Array(CAP);
@@ -68,8 +68,9 @@ export class DebrisFx {
 
     const geometry = new BoxGeometry(1, 1, 1);
     this.#geometry = geometry;
-    const material = new MeshBasicMaterial({
+    const material = new MeshStandardMaterial({
       color: 0xffffff,
+      roughness: 0.82,
       toneMapped: true,
     });
     material.name = 'TruemmerMaterial';
@@ -106,12 +107,15 @@ export class DebrisFx {
   reset(): void {
     this.#life.fill(0);
     this.#live = 0;
+    // Restart contiguously: a later burst must not reveal stale lower slots.
+    this.#cursor = 0;
     if (this.#mesh) this.#mesh.count = 0;
+    this.group.visible = false;
   }
 
   burst(event: BreakEvent): void {
     if (!this.#active) return;
-    const count = event.kind === 'tree' ? 5 : 3;
+    const count = event.kind === 'tree' ? 6 : event.kind === 'crate' ? 6 : 4;
     for (let i = 0; i < count; i++) this.#spawn(event, i);
   }
 
@@ -128,7 +132,11 @@ export class DebrisFx {
       if (life <= 0) continue;
       life -= step;
       this.#life[i] = life;
-      if (life <= 0) continue;
+      if (life <= 0) {
+        this.#matrix.makeScale(0, 0, 0);
+        mesh.setMatrixAt(i, this.#matrix);
+        continue;
+      }
 
       this.#vy[i]! -= GRAVITY * step;
       this.#x[i]! += this.#vx[i]! * step;
@@ -136,12 +144,13 @@ export class DebrisFx {
       this.#z[i]! += this.#vz[i]! * step;
       this.#angle[i]! += this.#spin[i]! * step;
 
-      const floor = this.#floor[i]!;
+      const floor = this.#floor[i]! + Math.min(this.#sx[i]!, this.#sy[i]!, this.#sz[i]!) * 0.5;
       if (this.#y[i]! < floor) {
         this.#y[i] = floor;
         this.#vy[i]! *= -0.25;
         this.#vx[i]! *= 0.55;
         this.#vz[i]! *= 0.55;
+        this.#spin[i]! *= 0.65;
       }
 
       const fade = life > 0.35 ? 1 : life / 0.35;
@@ -188,7 +197,7 @@ export class DebrisFx {
     const h2 = hash(event.z, event.x, salt + 3);
     const h3 = hash(event.x + salt, event.z - salt, 7);
     const tree = event.kind === 'tree';
-    const kick = tree ? 7 : 9;
+    const kick = tree ? 3 : 5;
     const nx = event.vx;
     const nz = event.vz;
     const run = Math.hypot(nx, nz) || 1;
@@ -197,7 +206,7 @@ export class DebrisFx {
     this.#y[slot] = event.y + (tree ? 0.6 + h2 * 1.4 : 0.35);
     this.#z[slot] = event.z + (h2 - 0.5) * (tree ? 0.7 : 0.4);
     this.#vx[slot] = (nx / run) * (3 + h * kick) + (h2 - 0.5) * 4;
-    this.#vy[slot] = 3.5 + h3 * 5;
+    this.#vy[slot] = 1.5 + h3 * 3;
     this.#vz[slot] = (nz / run) * (3 + h2 * kick) + (h - 0.5) * 4;
     this.#spin[slot] = (h - 0.5) * 14;
     this.#angle[slot] = h * 6;
@@ -205,10 +214,21 @@ export class DebrisFx {
     this.#life[slot] = LIFE * (0.75 + h3 * 0.4);
 
     if (tree) {
-      this.#sx[slot] = 0.18 + h * 0.35;
-      this.#sy[slot] = 0.7 + h2 * 1.3;
-      this.#sz[slot] = 0.18 + h3 * 0.28;
-      mesh.setColorAt(slot, this.#wood);
+      const crown = salt >= 3;
+      this.#sx[slot] = crown ? 1.8 + h : 0.3 + h * 0.25;
+      this.#sy[slot] = crown ? 1.2 + h2 : 1.4 + h2 * 1.5;
+      this.#sz[slot] = crown ? 1.8 + h3 : 0.3 + h3 * 0.2;
+      mesh.setColorAt(slot, crown ? this.#wood.setHex(0x496b42) : this.#wood.setHex(0x795332));
+    } else if (event.kind === 'crate' || event.kind === 'board') {
+      this.#sx[slot] = 0.65 + h * 0.35;
+      this.#sy[slot] = 0.08;
+      this.#sz[slot] = event.kind === 'board' ? 0.55 : 0.35;
+      mesh.setColorAt(slot, this.#wood.setHex(salt % 2 ? 0xc69a60 : 0x8e6440));
+    } else if (event.kind === 'cone' || event.kind === 'barrel') {
+      this.#sx[slot] = 0.25 + h * 0.15;
+      this.#sy[slot] = 0.2 + h2 * 0.3;
+      this.#sz[slot] = 0.12;
+      mesh.setColorAt(slot, this.#wood.setHex(event.kind === 'cone' ? 0xe89548 : 0x5e8990));
     } else {
       this.#sx[slot] = 0.08 + h * 0.06;
       this.#sy[slot] = 0.12 + h2 * 0.1;

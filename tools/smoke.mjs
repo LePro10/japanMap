@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { existsSync } from 'node:fs';
 
 /**
  * Rauchprobe im echten Browser — P23.
@@ -58,7 +59,7 @@ function bad(label, value) {
 }
 
 const browser = await chromium.launch({
-  executablePath: HEADLESS_SHELL,
+  executablePath: existsSync(HEADLESS_SHELL) ? HEADLESS_SHELL : undefined,
   args: [
     // WebGL2 auf einem Software-Rasterisierer. Ohne diese drei Fahnen liefert
     // headless Chromium gar keinen Kontext, und die Probe meldete „WebGL2
@@ -129,6 +130,8 @@ try {
     const api = window.japanMap;
     api.drive(true);
     const drive = api.engine.systems.find((s) => s.name === 'DriveSystem');
+    // Keep the benchmark on its original coupe; the new first visit selects Pip.
+    drive.setVehicle('touge');
     const line = drive.roads.getRacingLine('ring');
     const heading = Math.atan2(line[3] - line[0], line[5] - line[2]);
     window.__smokeStart = { x: line[0], z: line[2], heading };
@@ -151,7 +154,9 @@ try {
       boost: t.boost,
     };
   });
-  if (drove && drove.moved > 55 && drove.kmh > 90) {
+  // Stock Kite's authored WP3 baseline is ~7.2 s to 100, not the old P24 car.
+  // The fleet bench verifies acceleration independently on a flat surface.
+  if (drove && drove.moved > 25 && drove.kmh > 50 && drove.kmh < 80) {
     ok(
       'Fahrmodus: 4 s Vollgas auf dem Ring',
       `${drove.kmh.toFixed(0)} km/h, ${drove.moved.toFixed(0)} m, Belag ${drove.surface}`,
@@ -432,7 +437,7 @@ try {
     const tabs = [...document.querySelectorAll('.menu__tab')].map((b) => b.dataset.tab);
     return { tabs, events: document.querySelectorAll('.menu__event').length };
   });
-  if (menu.tabs.includes('events') && menu.events >= 5) {
+  if (menu.tabs.includes('play') && menu.events >= 5) {
     ok('Menü trägt Veranstaltungen', `${menu.events} Einträge, Reiter ${menu.tabs.join(',')}`);
   } else {
     bad('Menü ohne Veranstaltungen', JSON.stringify(menu));

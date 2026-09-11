@@ -241,16 +241,18 @@ export class RaceDirector {
 
     this.#event = event;
     this.#halfWidth = ROAD_TYPES[road.type].width / 2;
-    this.#startArc = 0;
+    // Open road endpoints are junction trims, not a starting grid. Reserve
+    // 32 m of real road behind the player for three distinct opponent slots.
+    this.#startArc = this.#line.closed ? 0 : Math.min(32, this.#line.length * 0.1);
     this.#buildCheckpoints(event);
-    this.#totalDistance = this.#line.length * event.laps;
+    this.#totalDistance = this.#line.length * event.laps - this.#startArc;
 
     this.#state = 'countdown';
     this.#timer = COUNTDOWN;
     this.#elapsed = 0;
     this.#next = 0;
     this.#lap = 0;
-    this.#playerArc = 0;
+    this.#playerArc = this.#startArc;
     this.#playerProgress = 0;
     this.drift.reset();
 
@@ -325,14 +327,17 @@ export class RaceDirector {
     // die Begründung samt der Messung, die den ersten Entwurf verworfen hat,
     // steht bei `RaceLine.delta()`. Kurz: an der Naht der geschlossenen Strecke
     // ist die Differenz zweier Bogenlängen nicht der gefahrene Weg.
-    const found = line.nearestArc(player.position.x, player.position.z, this.#playerArc);
+    const previousArc = this.#playerArc;
+    const found = line.nearestArc(player.position.x, player.position.z, previousArc);
     this.#playerProgress += line.delta(this.#playerArc, found);
     this.#playerArc = found;
 
     // Eine Runde ist voll, wenn **alle** Kontrollpunkte gefallen sind und der
     // Wagen wieder über die Start-Ziel-Linie kommt. Ohne die erste Bedingung
     // wäre ein Bogen um die Startlinie herum eine Runde.
-    if (line.closed && this.#next >= this.#checkpoints.length) {
+    const crossedStart = previousArc > line.length * 0.75 && found < line.length * 0.25
+      && line.delta(previousArc, found) > 0;
+    if (line.closed && this.#next >= this.#checkpoints.length && crossedStart) {
       this.#lap++;
       this.#next = 0;
       this.#bus?.emit('race:lap', { lap: this.#lap, seconds: this.#elapsed });

@@ -40,9 +40,9 @@ export interface ChunkStats {
  * Ersetzt das feste 768²-Gitter aus P1. Drei Eigenschaften machen den Umbau
  * aus, und alle drei sind messbar:
  *
- *  1. **Ein Draw-Call für das ganze Terrain.** Alle ausgewählten Knoten teilen
- *     sich eine einzige Einheitsgeometrie und unterscheiden sich nur in vier
- *     Instanzattributen. Ein Mesh je Knoten wäre die naheliegende Umsetzung und
+ *  1. **Höchstens zwei Draw-Calls für das ganze Terrain.** Unregelmäßige Knoten
+ *     teilen ein Gitter, exakt ebene Knoten einen Randfächer; beide nutzen vier
+ *     Instanzattribute. Ein Mesh je Knoten wäre die naheliegende Umsetzung und
  *     kostete bei ~180 Knoten 180 Draw-Calls — ein Fünftel des Budgets aus
  *     SPEC §4 für etwas, das vorher einen einzigen gekostet hat.
  *  2. **Feiner nah, gröber fern.** Das P1-Gitter tastete die Heightmap mit 4,0 m
@@ -65,6 +65,8 @@ export class ChunkManager {
    * `TerrainSystem` tut das über `quality:changed`.
    */
   geometry: InstancedBufferGeometry;
+  /** Exactly horizontal nodes retain all grid-edge vertices, with four quadrant fans. */
+  flatGeometry: InstancedBufferGeometry;
   readonly stats: ChunkStats = {
     nodes: 0,
     triangles: 0,
@@ -79,6 +81,10 @@ export class ChunkManager {
   readonly #size: InstancedBufferAttribute;
   readonly #morph: InstancedBufferAttribute;
   readonly #level: InstancedBufferAttribute;
+  readonly #flatOrigin = new InstancedBufferAttribute(new Float32Array(LOD.maxNodes * 2), 2);
+  readonly #flatSize = new InstancedBufferAttribute(new Float32Array(LOD.maxNodes), 1);
+  readonly #flatMorph = new InstancedBufferAttribute(new Float32Array(LOD.maxNodes * 2), 2);
+  readonly #flatLevel = new InstancedBufferAttribute(new Float32Array(LOD.maxNodes), 1);
 
   readonly #frustum = new Frustum();
   readonly #viewProjection = new Matrix4();
@@ -86,6 +92,8 @@ export class ChunkManager {
   readonly #camera = new Vector3();
 
   #count = 0;
+  #gridCount = 0;
+  #flatCount = 0;
   #gridVertices: GridVertices;
   /** Auswahl anhalten, um Risse und Popping im Standbild zu begutachten. */
   frozen = false;
@@ -95,6 +103,7 @@ export class ChunkManager {
 
     this.#gridVertices = gridVertices;
     this.geometry = ChunkManager.#createGeometry(gridVertices);
+    this.flatGeometry = ChunkManager.#createFlatGeometry(gridVertices);
     this.#origin = new InstancedBufferAttribute(new Float32Array(LOD.maxNodes * 2), 2);
     this.#size = new InstancedBufferAttribute(new Float32Array(LOD.maxNodes), 1);
     this.#morph = new InstancedBufferAttribute(new Float32Array(LOD.maxNodes * 2), 2);
@@ -102,6 +111,7 @@ export class ChunkManager {
 
     this.#bindInstanceAttributes();
     this.geometry.instanceCount = 0;
+    this.flatGeometry.instanceCount = 0;
   }
 
   /** Stützstellen pro Achse im aktuellen Gitter. */
@@ -128,12 +138,16 @@ export class ChunkManager {
   setGridVertices(gridVertices: GridVertices): void {
     if (gridVertices === this.#gridVertices) return;
     const previous = this.geometry;
+    const previousFlat = this.flatGeometry;
     this.#gridVertices = gridVertices;
     this.geometry = ChunkManager.#createGeometry(gridVertices);
+    this.flatGeometry = ChunkManager.#createFlatGeometry(gridVertices);
     this.#bindInstanceAttributes();
-    this.geometry.instanceCount = this.#count;
-    this.stats.triangles = this.#count * lodTrianglesPerNode(gridVertices);
+    this.geometry.instanceCount = this.#gridCount;
+    this.flatGeometry.instanceCount = this.#flatCount;
+    this.#updateTriangleCount();
     previous.dispose();
+    previousFlat.dispose();
   }
 
   #bindInstanceAttributes(): void {
@@ -141,6 +155,54 @@ export class ChunkManager {
     this.geometry.setAttribute('aNodeSize', this.#size);
     this.geometry.setAttribute('aNodeMorph', this.#morph);
     this.geometry.setAttribute('aNodeLevel', this.#level);
+    this.flatGeometry.setAttribute('aNodeOrigin', this.#flatOrigin);
+    this.flatGeometry.setAttribute('aNodeSize', this.#flatSize);
+    this.flatGeometry.setAttribute('aNodeMorph', this.#flatMorph);
+    this.flatGeometry.setAttribute('aNodeLevel', this.#flatLevel);
+  }
+
+  #updateTriangleCount(): void {
+    this.stats.triangles = this.#gridCount * lodTrianglesPerNode(this.#gridVertices)
+      + this.#flatCount * 8 * (this.#gridVertices - 1);
+  }
+
+  /** Same perimeter and shader as the grid; four even centers never morph.
+   * Quadrants halve triangle spans after the full-node fan showed grazing-angle cracks. */
+  static #createFlatGeometry(n: number): InstancedBufferGeometry {
+    const quads = n - 1;
+    const half = quads / 2;
+    const perimeter = half * 4;
+    const vertices = (perimeter + 1) * 4;
+    const positions = new Float32Array(vertices * 3);
+    const normals = new Float32Array(vertices * 3);
+    const uv = new Float32Array(vertices * 2);
+    const index = new Uint16Array(perimeter * 4 * 3);
+    const vertex = (i: number, x: number, z: number): void => {
+      positions[i * 3] = x; positions[i * 3 + 2] = z;
+      normals[i * 3 + 1] = 1;
+      uv[i * 2] = x; uv[i * 2 + 1] = z;
+    };
+    for (let quadrant = 0; quadrant < 4; quadrant++) {
+      const x = (quadrant % 2) * half, z = Math.floor(quadrant / 2) * half;
+      const start = quadrant * (perimeter + 1), center = start + perimeter;
+      for (let i = 0; i < half; i++) {
+        vertex(start + i, x / quads, (z + i) / quads);
+        vertex(start + half + i, (x + i) / quads, (z + half) / quads);
+        vertex(start + half * 2 + i, (x + half) / quads, (z + half - i) / quads);
+        vertex(start + half * 3 + i, (x + half - i) / quads, z / quads);
+      }
+      vertex(center, (x + half / 2) / quads, (z + half / 2) / quads);
+      for (let i = 0; i < perimeter; i++) {
+        index.set([center, start + i, start + (i + 1) % perimeter], (quadrant * perimeter + i) * 3);
+      }
+    }
+    const geometry = new InstancedBufferGeometry();
+    geometry.name = 'TerrainFlatNodeFan';
+    geometry.setAttribute('position', new BufferAttribute(positions, 3));
+    geometry.setAttribute('normal', new BufferAttribute(normals, 3));
+    geometry.setAttribute('uv', new BufferAttribute(uv, 2));
+    geometry.setIndex(new BufferAttribute(index, 1));
+    return geometry;
   }
 
   /**
@@ -212,6 +274,8 @@ export class ChunkManager {
 
     const start = performance.now();
     this.#count = 0;
+    this.#gridCount = 0;
+    this.#flatCount = 0;
     this.stats.culled = 0;
     this.stats.overflow = 0;
     this.stats.perLevel.fill(0);
@@ -227,10 +291,15 @@ export class ChunkManager {
     this.#size.needsUpdate = true;
     this.#morph.needsUpdate = true;
     this.#level.needsUpdate = true;
-    this.geometry.instanceCount = this.#count;
+    this.#flatOrigin.needsUpdate = true;
+    this.#flatSize.needsUpdate = true;
+    this.#flatMorph.needsUpdate = true;
+    this.#flatLevel.needsUpdate = true;
+    this.geometry.instanceCount = this.#gridCount;
+    this.flatGeometry.instanceCount = this.#flatCount;
 
     this.stats.nodes = this.#count;
-    this.stats.triangles = this.#count * lodTrianglesPerNode(this.#gridVertices);
+    this.#updateTriangleCount();
     this.stats.selectMs = performance.now() - start;
   }
 
@@ -269,33 +338,41 @@ export class ChunkManager {
       return;
     }
 
-    this.#emit(x0, z0, size, level);
+    // The pyramid includes every raw texel supporting bilinear samples on the
+    // node boundary. Equality proves the whole morphed surface is one plane.
+    this.#emit(x0, z0, size, level, this.#box.min.y === this.#box.max.y);
   }
 
-  #emit(x0: number, z0: number, size: number, level: number): void {
+  #emit(x0: number, z0: number, size: number, level: number, flat: boolean): void {
     if (this.#count >= LOD.maxNodes) {
       this.stats.overflow++;
       return;
     }
-    const i = this.#count++;
+    this.#count++;
+    const i = flat ? this.#flatCount++ : this.#gridCount++;
+    const origin = flat ? this.#flatOrigin : this.#origin;
+    const sizes = flat ? this.#flatSize : this.#size;
+    const morph = flat ? this.#flatMorph : this.#morph;
+    const levels = flat ? this.#flatLevel : this.#level;
 
-    this.#origin.array[i * 2] = x0;
-    this.#origin.array[i * 2 + 1] = z0;
-    this.#size.array[i] = size;
+    origin.array[i * 2] = x0;
+    origin.array[i * 2 + 1] = z0;
+    sizes.array[i] = size;
 
     // Morph-Bereich: von `morphStart · ranges[level]` bis `ranges[level]`. Am
     // oberen Ende ist der Knoten vollständig auf das Gitter der nächstgröberen
     // Stufe zusammengezogen — genau dort übernimmt sie ihn ungemorpht.
     const end = LOD.ranges[level]!;
     const begin = end * LOD.morphStart;
-    this.#morph.array[i * 2] = begin;
-    this.#morph.array[i * 2 + 1] = 1 / (end - begin);
-    this.#level.array[i] = level;
+    morph.array[i * 2] = begin;
+    morph.array[i * 2 + 1] = 1 / (end - begin);
+    levels.array[i] = level;
 
     this.stats.perLevel[level]!++;
   }
 
   dispose(): void {
     this.geometry.dispose();
+    this.flatGeometry.dispose();
   }
 }

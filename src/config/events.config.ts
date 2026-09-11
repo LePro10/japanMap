@@ -112,7 +112,7 @@ export const EVENTS: readonly RaceEvent[] = [
   {
     id: 'touge-descent',
     name: 'Tōge Descent',
-    blurb: 'Nine hairpins, 450 m down. The road this map was built for.',
+    blurb: 'Four tight hairpins, forest bends and a downhill finish.',
     kind: 'race',
     road: 'toge',
     reverse: true,
@@ -138,7 +138,7 @@ export const EVENTS: readonly RaceEvent[] = [
   {
     id: 'touge-climb',
     name: 'Tōge Climb',
-    blurb: 'The same nine hairpins, uphill. Bring torque.',
+    blurb: 'The same four hairpins, uphill. Bring torque.',
     kind: 'race',
     road: 'toge',
     reverse: false,

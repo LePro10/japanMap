@@ -174,6 +174,11 @@ export class ResourceManager {
     });
   }
 
+  /** Drop a decoded asset's transfer buffer once its owner holds the final data. */
+  releaseBinary(url: string): void {
+    this.#cache.delete(`bin:${url}`);
+  }
+
   async json<T>(url: string): Promise<T> {
     return this.#load(`json:${url}`, url, async () => {
       const response = await fetch(url);

@@ -37,6 +37,7 @@ import { PlanarReflection } from './render/PlanarReflection';
 import { PostFXPipeline } from './render/PostFXPipeline';
 import { QualitySystem } from './render/QualitySystem';
 import { CitySystem } from './world/city/CitySystem';
+import { SmashableSystem } from './world/props/SmashableSystem';
 import { NeonSystem } from './world/city/NeonSystem';
 import { TerrainDataError } from './world/TerrainSampler';
 import { RoadSystem } from './world/RoadSystem';
@@ -238,9 +239,8 @@ function installFrameProbe(
         scene: target.scene,
         camera: target.camera,
         gridVertices: QUALITY[qualitySystem.level].terrainGridVertices,
-        tick: () => {
-          target.loop.tick();
-        },
+        // Keep the diagnostic orientation; FreeFlyController would overwrite it.
+        tick: () => target.systems.find(system => system.name === 'TerrainSystem')?.update?.(0, 0),
       });
     },
 
@@ -546,7 +546,7 @@ async function boot(): Promise<void> {
   engine.bus.on('pickup:collected', ({ yen }) => {
     profile.earn(yen);
     audio.click();
-    hud.flash(`+¥${yen}`, true);
+    hud.flash(`+${yen} Sparks`, true);
   });
 
   engine.bus.on('drive:lap', (result) => {
@@ -600,7 +600,7 @@ async function boot(): Promise<void> {
     if (bestBefore !== null) rows.push(row('Previous best', formatTime(bestBefore)));
     if (isBest) rows.push(row('New record', '✓'));
     if (result.driftScore > 0) rows.push(row('Drift score', String(result.driftScore)));
-    rows.push(row('Earned', `¥${result.yen.toLocaleString('en-US')}`));
+    rows.push(row('Earned', `${result.yen.toLocaleString('en-US')} Sparks`));
 
     hud.showResult(
       `<p class="hud__resultTitle">${title}</p>` +
@@ -709,7 +709,7 @@ async function boot(): Promise<void> {
         hud.setVehicleHint(null);
       } else if (drive.active) {
         promptEnter = false;
-        hud.setVehicleHint('exit');
+        hud.setVehicleHint(drive.canAlight ? 'exit' : 'slow');
       } else if (drive.walking) {
         const reach = WALK_BOARD_RANGE + (promptEnter ? WALK_PROMPT_SLACK : 0);
         promptEnter = drive.vehicleRange() <= reach;
@@ -817,6 +817,8 @@ async function boot(): Promise<void> {
   const settlements = new StillwaterVillage(drive, overlay);
   engine.add(settlements);
   engine.add(new TerraceOffroad(drive));
+  const smashables = new SmashableSystem(drive);
+  engine.add(smashables);
 
   // Erste Größe setzen, bevor der ResizeObserver das erste Mal feuert — sonst
   // rendert der erste Frame mit 1×1 Pixeln.
@@ -992,6 +994,10 @@ async function boot(): Promise<void> {
   commons.openShop = tune => ui.openCommonsShop(tune);
   commons.isPlaying = () => ui.playing;
   settlements.isPlaying = () => ui.playing;
+  smashables.isPlaying = () => ui.playing;
+  engine.bus.on('drive:broke', event => {
+    audio.impact(event.kind === 'tree' ? 0.75 : event.kind === 'rail' ? 0.5 : 0.3);
+  });
   // Der „Starten“-Knopf holt den Pointer Lock — **synchron im Klick**, sonst ist
   // die Nutzergeste verbraucht und der Browser lehnt ab.
   loading?.onStart(() => {

@@ -3,11 +3,11 @@
   "version": 2,
   "exposure": 1,
   "lighting": {
-    "sunIntensity": 5,
+    "sunIntensity": 2.8,
     "sunColorHex": "#ffb27a",
     "sunElevationDeg": 2.23,
-    "environmentIntensity": 0.5,
-    "skyIntensity": 1
+    "environmentIntensity": 0.8,
+    "skyIntensity": 0.48
   },
   "fog": {
     "groundDensity": 0.0029,
@@ -22,26 +22,26 @@
   "shade": {
     "penumbraBaseDeg": 0.25,
     "penumbraPerKmDeg": 0.3,
-    "ambientFloor": 0.04
+    "ambientFloor": 0.12
   },
   "water": {
     "deepColorHex": "#050d14",
     "shallowColorHex": "#0d2530",
-    "roughness": 0.075,
+    "roughness": 0.12,
     "foamIntensity": 0.65
   },
   "vegetation": {
     "windStrength": 1,
     "translucency": 0.55,
-    "groundAo": 1
+    "groundAo": 0.72
   },
   "road": {
-    "wetness": 0.44,
+    "wetness": 0.32,
     "reflection": 0.85
   },
   "city": {
-    "windowLitFraction": 0.45,
-    "windowEmissive": 1.8,
+    "windowLitFraction": 0.68,
+    "windowEmissive": 0.85,
     "neonEmissive": 5.5,
     "neonLights": 1
   },
@@ -54,14 +54,14 @@
     "vignetteOffset": 0.32,
     "vignetteDarkness": 0.42,
     "aoEnabled": true,
-    "aoIntensity": 2.1,
-    "aoRadius": 14,
+    "aoIntensity": 1.15,
+    "aoRadius": 3,
     "smaaEnabled": true
   },
   "grading": {
-    "contrast": 1.06,
-    "saturation": 1.04,
-    "temperature": -0.06,
+    "contrast": 1.025,
+    "saturation": 0.98,
+    "temperature": 0.025,
     "tint": 0.01,
     "lift": 0.008,
     "gamma": 1,

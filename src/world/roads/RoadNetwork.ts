@@ -1,6 +1,7 @@
 import type { RoadData, RoadFile } from '@/config/roads.config';
 import { ROAD_CLEARANCE_REFERENCE, ROAD_TYPES, roadWidthAt } from '@/config/roads.config';
 import { WORLD } from '@/config/world.config';
+import { bankAngle, signedCurvature } from './RoadMeshBuilder';
 
 /**
  * Abfragen auf dem Straßennetz — PLAN.md P3 / 3.6.
@@ -56,6 +57,8 @@ export interface RoadHit {
    * teurer und eine zweite Implementierung derselben Rechnung.
    */
   readonly slopeAlong: number;
+  /** Rise toward the mesh's lateral axis (-forwardZ, forwardX). */
+  readonly slopeAcross: number;
   /** Belagsart der getroffenen Strecke — Asphalt oder Kies. */
   readonly surface: 'asphalt' | 'kies';
 }
@@ -190,6 +193,9 @@ export class RoadNetwork {
     const dx = line[j * 3]! - line[segment.index * 3]!;
     const dz = line[j * 3 + 2]! - line[segment.index * 3 + 2]!;
     const length = Math.hypot(dx, dz) || 1;
+    const bank0 = bankAngle(signedCurvature(line, segment.index, count, road.closed), road.banking[segment.index] ?? 0);
+    const bank1 = bankAngle(signedCurvature(line, j, count, road.closed), road.banking[j] ?? 0);
+    const slopeAlong = (by - ay) / length;
 
     return {
       roadId: road.id,
@@ -204,7 +210,8 @@ export class RoadNetwork {
       // `length` ist die **waagerechte** Segmentlänge (`hypot(dx, dz)`), also
       // ist das die Steigung als Höhe je Meter Grundriss — dieselbe Größe, mit
       // der `npm run inspect` die Strecken bemisst.
-      slopeAlong: (by - ay) / length,
+      slopeAlong,
+      slopeAcross: Math.tan(bank0 + (bank1 - bank0) * t) * Math.hypot(1, slopeAlong),
       surface: ROAD_TYPES[road.type].surface,
     };
   }

@@ -507,9 +507,8 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     vegetationFullRadius: 105,
     vegetationFarKeep: 0.4,
     renderScale: 0.85,
-    // 2,0 m je Vertex auf dem Blattknoten. Über dem Texelabstand der Heightmap
-    // (1,5 m), aber deutlich unter dem festen P1-Gitter (4,0 m).
-    terrainGridVertices: 25,
+    // Keep the same 1.5 m contact surface across graphics presets.
+    terrainGridVertices: 33,
     postFx: 'lean',
     waterDetail: 0.6,
   },
@@ -532,9 +531,8 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     vegetationFullRadius: 80,
     vegetationFarKeep: 0.3,
     renderScale: 0.7,
-    // 3,0 m je Vertex — jede zweite Stützstelle der Heightmap wird nicht mehr
-    // gelesen. Ein Viertel der Dreiecke von Ultra.
-    terrainGridVertices: 17,
+    // Coarser leaves disagree with wheel contact; retain the 1.5 m surface.
+    terrainGridVertices: 33,
     postFx: 'compact',
     waterDetail: 0.35,
   },
@@ -577,7 +575,7 @@ const PRESETS: Readonly<Record<QualityLevel, QualitySettings>> = {
     vegetationFullRadius: 55,
     vegetationFarKeep: 0.22,
     renderScale: 0.5,
-    terrainGridVertices: 17,
+    terrainGridVertices: 33,
     postFx: 'compact',
     // Null heißt: der Zweig im Shader fällt ganz weg. Siehe `waterDetail`.
     waterDetail: 0,

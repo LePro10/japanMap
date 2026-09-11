@@ -1,0 +1,496 @@
+[
+  {
+    "legacy": false,
+    "transfer": 15712208,
+    "resources": [
+      {
+        "file": "aerial.webp",
+        "encoded": 38094,
+        "transfer": 38394
+      },
+      {
+        "file": "index-BDT8KAqg.css",
+        "encoded": 12215,
+        "transfer": 12515
+      },
+      {
+        "file": "postfx-Bwkkpzim.js",
+        "encoded": 159977,
+        "transfer": 160277
+      },
+      {
+        "file": "three-BvD8tduD.js",
+        "encoded": 147894,
+        "transfer": 148194
+      },
+      {
+        "file": "index-BiPpPR6I.js",
+        "encoded": 202061,
+        "transfer": 202361
+      },
+      {
+        "file": "river-BrIHZjd3.json",
+        "encoded": 3872,
+        "transfer": 4172
+      },
+      {
+        "file": "meta-Z4MLh6rB.json",
+        "encoded": 2067,
+        "transfer": 2367
+      },
+      {
+        "file": "shade-BSy7ziLU.json",
+        "encoded": 718,
+        "transfer": 1018
+      },
+      {
+        "file": "industrial_sunset_02_puresky_4k.sun-BW_9IpCW.json",
+        "encoded": 531,
+        "transfer": 831
+      },
+      {
+        "file": "industrial_sunset_02_puresky_2k-DdVe0NDZ.hdr",
+        "encoded": 2714809,
+        "transfer": 2715109
+      },
+      {
+        "file": "shade-BYaatkLy.png",
+        "encoded": 1378578,
+        "transfer": 1378878
+      },
+      {
+        "file": "paddy-CQkT7cpo.png",
+        "encoded": 18370,
+        "transfer": 18670
+      },
+      {
+        "file": "rooftop_night_1k-Bj0W-Jpd.hdr",
+        "encoded": 1464579,
+        "transfer": 1464879
+      },
+      {
+        "file": "zones-uqYTuC03.png",
+        "encoded": 688694,
+        "transfer": 688994
+      },
+      {
+        "file": "scatterWorker-BVO2HAqN.js",
+        "encoded": 6832,
+        "transfer": 7132
+      },
+      {
+        "file": "props-LnyhBlRe.json",
+        "encoded": 12376,
+        "transfer": 12676
+      },
+      {
+        "file": "manifest-BdtlX1et.json",
+        "encoded": 540,
+        "transfer": 840
+      },
+      {
+        "file": "DRACOLoader-BKcorARj.js",
+        "encoded": 3075,
+        "transfer": 3375
+      },
+      {
+        "file": "GLTFLoader-Br_qlGm3.js",
+        "encoded": 13221,
+        "transfer": 13521
+      },
+      {
+        "file": "KTX2Loader-Bj_mlDKa.js",
+        "encoded": 24359,
+        "transfer": 24659
+      },
+      {
+        "file": "meshopt_decoder.module-BvwdjiD3.js",
+        "encoded": 7263,
+        "transfer": 7563
+      },
+      {
+        "file": "boulder_01-CXZA8pVZ.glb",
+        "encoded": 8140,
+        "transfer": 8440
+      },
+      {
+        "file": "boulder_01.lod1-CUY-_dxI.glb",
+        "encoded": 3628,
+        "transfer": 3928
+      },
+      {
+        "file": "rock_moss_set_02-C4_QWV_T.glb",
+        "encoded": 6428,
+        "transfer": 6728
+      },
+      {
+        "file": "rock_moss_set_02.lod1-DXl_l_pj.glb",
+        "encoded": 3516,
+        "transfer": 3816
+      },
+      {
+        "file": "modular_wooden_pier-DoIsEA8K.glb",
+        "encoded": 1545740,
+        "transfer": 1546040
+      },
+      {
+        "file": "coastal_cliff_04-D7GG00ST.glb",
+        "encoded": 13992,
+        "transfer": 14292
+      },
+      {
+        "file": "coastal_cliff_04.lod1-V52Ru2jV.glb",
+        "encoded": 4788,
+        "transfer": 5088
+      },
+      {
+        "file": "paddy-CQkT7cpo.png",
+        "encoded": 18370,
+        "transfer": 300
+      },
+      {
+        "file": "height-NnzTPPub.h16",
+        "encoded": 3543281,
+        "transfer": 3543581
+      },
+      {
+        "file": "Diffuse-4-wudEhl.jpg",
+        "encoded": 90437,
+        "transfer": 90737
+      },
+      {
+        "file": "Diffuse-DBOtEEIB.jpg",
+        "encoded": 112376,
+        "transfer": 112676
+      },
+      {
+        "file": "Diffuse-YgL_3HUg.jpg",
+        "encoded": 90152,
+        "transfer": 90452
+      },
+      {
+        "file": "Diffuse-CvchaFdm.jpg",
+        "encoded": 80521,
+        "transfer": 80821
+      },
+      {
+        "file": "nor_gl-Bi0D0Htv.jpg",
+        "encoded": 161615,
+        "transfer": 161915
+      },
+      {
+        "file": "nor_gl-CtyHwEHY.jpg",
+        "encoded": 153525,
+        "transfer": 153825
+      },
+      {
+        "file": "nor_gl-D80-eynM.jpg",
+        "encoded": 155121,
+        "transfer": 155421
+      },
+      {
+        "file": "arm-BefKfTbP.jpg",
+        "encoded": 88889,
+        "transfer": 89189
+      },
+      {
+        "file": "nor_gl-lSWLaajU.jpg",
+        "encoded": 251043,
+        "transfer": 251343
+      },
+      {
+        "file": "arm-BWsLPNWb.jpg",
+        "encoded": 92280,
+        "transfer": 92580
+      },
+      {
+        "file": "zones-uqYTuC03.png",
+        "encoded": 688694,
+        "transfer": 300
+      },
+      {
+        "file": "arm-CtslRgDI.jpg",
+        "encoded": 61643,
+        "transfer": 61943
+      },
+      {
+        "file": "arm-BfhlYMuO.jpg",
+        "encoded": 122551,
+        "transfer": 122851
+      },
+      {
+        "file": "river-BrIHZjd3.json",
+        "encoded": 3872,
+        "transfer": 300
+      },
+      {
+        "file": "roads-CWpwobRU.json",
+        "encoded": 335418,
+        "transfer": 335718
+      },
+      {
+        "file": "nor_gl-C_TGAG5X.jpg",
+        "encoded": 806567,
+        "transfer": 806867
+      },
+      {
+        "file": "arm-BxPE6vWx.jpg",
+        "encoded": 616053,
+        "transfer": 616353
+      },
+      {
+        "file": "Diffuse-BC1Wwm7z.jpg",
+        "encoded": 449979,
+        "transfer": 450279
+      }
+    ],
+    "errors": []
+  },
+  {
+    "legacy": true,
+    "transfer": 18052814,
+    "resources": [
+      {
+        "file": "aerial.webp",
+        "encoded": 38094,
+        "transfer": 38394
+      },
+      {
+        "file": "index-BDT8KAqg.css",
+        "encoded": 12215,
+        "transfer": 12515
+      },
+      {
+        "file": "postfx-Bwkkpzim.js",
+        "encoded": 159977,
+        "transfer": 160277
+      },
+      {
+        "file": "three-BvD8tduD.js",
+        "encoded": 147894,
+        "transfer": 148194
+      },
+      {
+        "file": "index-BiPpPR6I.js",
+        "encoded": 202061,
+        "transfer": 202361
+      },
+      {
+        "file": "river-BrIHZjd3.json",
+        "encoded": 3872,
+        "transfer": 4172
+      },
+      {
+        "file": "meta-Z4MLh6rB.json",
+        "encoded": 2067,
+        "transfer": 2367
+      },
+      {
+        "file": "shade-BSy7ziLU.json",
+        "encoded": 718,
+        "transfer": 1018
+      },
+      {
+        "file": "industrial_sunset_02_puresky_2k-DdVe0NDZ.hdr",
+        "encoded": 2714809,
+        "transfer": 2715109
+      },
+      {
+        "file": "industrial_sunset_02_puresky_4k.sun-BW_9IpCW.json",
+        "encoded": 531,
+        "transfer": 831
+      },
+      {
+        "file": "shade-BYaatkLy.png",
+        "encoded": 1378578,
+        "transfer": 1378878
+      },
+      {
+        "file": "paddy-CQkT7cpo.png",
+        "encoded": 18370,
+        "transfer": 18670
+      },
+      {
+        "file": "rooftop_night_1k-Bj0W-Jpd.hdr",
+        "encoded": 1464579,
+        "transfer": 1464879
+      },
+      {
+        "file": "zones-uqYTuC03.png",
+        "encoded": 688694,
+        "transfer": 688994
+      },
+      {
+        "file": "scatterWorker-BVO2HAqN.js",
+        "encoded": 6832,
+        "transfer": 7132
+      },
+      {
+        "file": "props-LnyhBlRe.json",
+        "encoded": 12376,
+        "transfer": 12676
+      },
+      {
+        "file": "manifest-BdtlX1et.json",
+        "encoded": 540,
+        "transfer": 840
+      },
+      {
+        "file": "GLTFLoader-Br_qlGm3.js",
+        "encoded": 13221,
+        "transfer": 13521
+      },
+      {
+        "file": "DRACOLoader-BKcorARj.js",
+        "encoded": 3075,
+        "transfer": 3375
+      },
+      {
+        "file": "meshopt_decoder.module-BvwdjiD3.js",
+        "encoded": 7263,
+        "transfer": 7563
+      },
+      {
+        "file": "KTX2Loader-Bj_mlDKa.js",
+        "encoded": 24359,
+        "transfer": 24659
+      },
+      {
+        "file": "boulder_01-CXZA8pVZ.glb",
+        "encoded": 8140,
+        "transfer": 8440
+      },
+      {
+        "file": "boulder_01.lod1-CUY-_dxI.glb",
+        "encoded": 3628,
+        "transfer": 3928
+      },
+      {
+        "file": "rock_moss_set_02-C4_QWV_T.glb",
+        "encoded": 6428,
+        "transfer": 6728
+      },
+      {
+        "file": "rock_moss_set_02.lod1-DXl_l_pj.glb",
+        "encoded": 3516,
+        "transfer": 3816
+      },
+      {
+        "file": "modular_wooden_pier-DoIsEA8K.glb",
+        "encoded": 1545740,
+        "transfer": 1546040
+      },
+      {
+        "file": "coastal_cliff_04-D7GG00ST.glb",
+        "encoded": 13992,
+        "transfer": 14292
+      },
+      {
+        "file": "coastal_cliff_04.lod1-V52Ru2jV.glb",
+        "encoded": 4788,
+        "transfer": 5088
+      },
+      {
+        "file": "paddy-CQkT7cpo.png",
+        "encoded": 18370,
+        "transfer": 300
+      },
+      {
+        "file": "height-B2mNhgCj.r16",
+        "encoded": 5883887,
+        "transfer": 5884187
+      },
+      {
+        "file": "Diffuse-4-wudEhl.jpg",
+        "encoded": 90437,
+        "transfer": 90737
+      },
+      {
+        "file": "Diffuse-DBOtEEIB.jpg",
+        "encoded": 112376,
+        "transfer": 112676
+      },
+      {
+        "file": "Diffuse-CvchaFdm.jpg",
+        "encoded": 80521,
+        "transfer": 80821
+      },
+      {
+        "file": "Diffuse-YgL_3HUg.jpg",
+        "encoded": 90152,
+        "transfer": 90452
+      },
+      {
+        "file": "nor_gl-Bi0D0Htv.jpg",
+        "encoded": 161615,
+        "transfer": 161915
+      },
+      {
+        "file": "nor_gl-CtyHwEHY.jpg",
+        "encoded": 153525,
+        "transfer": 153825
+      },
+      {
+        "file": "nor_gl-D80-eynM.jpg",
+        "encoded": 155121,
+        "transfer": 155421
+      },
+      {
+        "file": "arm-BefKfTbP.jpg",
+        "encoded": 88889,
+        "transfer": 89189
+      },
+      {
+        "file": "arm-BWsLPNWb.jpg",
+        "encoded": 92280,
+        "transfer": 92580
+      },
+      {
+        "file": "nor_gl-lSWLaajU.jpg",
+        "encoded": 251043,
+        "transfer": 251343
+      },
+      {
+        "file": "zones-uqYTuC03.png",
+        "encoded": 688694,
+        "transfer": 300
+      },
+      {
+        "file": "arm-BfhlYMuO.jpg",
+        "encoded": 122551,
+        "transfer": 122851
+      },
+      {
+        "file": "arm-CtslRgDI.jpg",
+        "encoded": 61643,
+        "transfer": 61943
+      },
+      {
+        "file": "river-BrIHZjd3.json",
+        "encoded": 3872,
+        "transfer": 300
+      },
+      {
+        "file": "roads-CWpwobRU.json",
+        "encoded": 335418,
+        "transfer": 335718
+      },
+      {
+        "file": "Diffuse-BC1Wwm7z.jpg",
+        "encoded": 449979,
+        "transfer": 450279
+      },
+      {
+        "file": "nor_gl-C_TGAG5X.jpg",
+        "encoded": 806567,
+        "transfer": 806867
+      },
+      {
+        "file": "arm-BxPE6vWx.jpg",
+        "encoded": 616053,
+        "transfer": 616353
+      }
+    ],
+    "errors": []
+  }
+]

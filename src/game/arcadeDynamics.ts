@@ -526,7 +526,7 @@ export class ArcadeDynamics {
     accelLat = clamp(accelLat, -latBudget, latBudget);
 
     // ── Längskraft ────────────────────────────────────────────────────────
-    const longitudinal = this.#longitudinal(input, env, grip);
+    const longitudinal = this.#longitudinal(input, env, grip, dt);
     let accelLong = longitudinal.accel;
 
     // Haftreibung im Stand: hält den Wagen am Hang, statt ihn rückwärts rollen
@@ -747,6 +747,7 @@ export class ArcadeDynamics {
     input: DriveCommand,
     env: PlanarEnv,
     grip: number,
+    dt: number,
   ): { accel: number; wheelspin: number; boosting: boolean; reverse: boolean } {
     const spec = this.#spec;
     if (env.airborne) {
@@ -800,13 +801,16 @@ export class ArcadeDynamics {
     // `support` skaliert den Schub: an einer Wand (support = 0) darf Nitro
     // nichts mehr tun. Sonst klebt ein Coupé mit gehaltenem Boost an der
     // Felswand — ASTRA_PLAN §5, „do not let nitro glue a coupe to a cliff".
-    const boosting = input.boost && this.#boost > 0 && !reverse && env.vLong > -0.5;
+    const boosting = input.boost && this.#boost > 0 && !reverse && env.vLong > -0.5 &&
+      throttle > 0.02 && brake < 0.05 && !input.handbrake && env.support > 0.05;
     const boostAccel = boosting ? spec.boostAccel * env.support : 0;
 
     // Bremse. Sie darf die Haftgrenze überschreiten — das ist Arcade und
     // ausdrücklich gewollt: ein Spieler, der bremst, will stehenbleiben.
     const preparedBrake = 1 + (CIRCUIT_PREP.brake - 1) * (env.circuit ?? 0);
-    const brakeDecel = brake * spec.brakeG * GRAVITY * (0.4 + 0.6 * grip) * preparedBrake;
+    const brakeDecel = Math.min(Math.abs(env.vLong) / dt,
+      (brake * spec.brakeG + (input.handbrake ? 0.36 : 0)) * GRAVITY *
+      (0.4 + 0.6 * grip) * preparedBrake);
     const brakeSign = env.vLong > 0 ? -1 : env.vLong < 0 ? 1 : 0;
 
     // Widerstände.
@@ -824,7 +828,7 @@ export class ArcadeDynamics {
     // Durchdrehfaktor — und der ist im Arcade-Modell nur noch eine **Anzeige**
     // (Rauch, Ton, Spur), keine Kraft mehr. Im Einspurmodell aß er die
     // Seitenführung; hier macht das `drift`, und zwar dosierbar.
-    const driveAccel = force / this.#mass;
+    const driveAccel = force / this.#mass * (input.handbrake ? 0.2 : 1);
     const speed = Math.hypot(env.vLong, env.vLat);
     let tractionLimit = grip * GRAVITY * 1.35;
     // Unter 50 km/h auf losem Boden: Straßenautos behalten 65 % der
@@ -849,6 +853,7 @@ export class ArcadeDynamics {
         (spec.launchForce / this.#mass) *
         this.#crawlShare *
         ARCADE_CRAWL.extra *
+        (input.handbrake ? 0.2 : 1) *
         crawlT *
         env.support;
     }

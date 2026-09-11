@@ -7,7 +7,8 @@
  * 404. Die Reihenfolge der Layer-Arrays entspricht TERRAIN_LAYERS.
  */
 
-import heightUrl from '../../assets/generated/terrain/height.r16?url';
+import heightUrl from '../../assets/generated/terrain/height.h16?url';
+import heightFallbackUrl from '../../assets/generated/terrain/height.r16?url';
 import zonesUrl from '../../assets/generated/terrain/zones.png?url';
 import metaUrl from '../../assets/generated/terrain/meta.json?url';
 import shadeUrl from '../../assets/generated/terrain/shade.png?url';
@@ -26,6 +27,7 @@ import { IBL_SETS, LAYER_TEXTURE_SETS, SKY_SETS, START_TIER } from '@/core/Asset
 
 export const TERRAIN_ASSETS = {
   height: heightUrl,
+  heightFallback: heightFallbackUrl,
   /*
    * ~~`normal: normalUrl` — die gebackenen Geländenormalen.~~
    * **Seit P15.3 kein Feld mehr.**

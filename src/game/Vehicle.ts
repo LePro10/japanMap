@@ -124,6 +124,7 @@ export type Surface = 'asphalt' | 'kies' | 'gelaende' | 'wasser';
  * denselben Sampler benutzen, den auch die Streuung und die Props benutzen.
  */
 export interface Ground {
+  isRamp?(x: number, z: number): boolean;
   /** Höhe der befahrbaren Oberfläche in Metern (Straßenbelag, Bürgersteig, Gelände). */
   height(x: number, z: number): number;
   /** Flächennormale, in `target` geschrieben. */
@@ -818,7 +819,13 @@ export class Vehicle {
       // `SUSPENSION.maxLoadFactor`.
       springForce = Math.min(
         derived.springCap,
-        Math.max(0, stiffness - suspension.damping * this.#vY * this.#normal.y),
+        // Damping measures motion through the support plane. World vertical
+        // speed also contains the climb itself; damping that crushed the
+        // suspension on hills and extended it downhill until contact was lost.
+        Math.max(0, stiffness - suspension.damping * (
+          this.#vY * this.#normal.y +
+          this.velocity.x * this.#normal.x + this.velocity.z * this.#normal.z
+        )),
       );
     } else {
       compression = 0;
@@ -1399,12 +1406,12 @@ export class Vehicle {
     const groundRoll = Math.atan2((h1 + h3) / 2 - (h0 + h2) / 2, this.#spec.chassis.track);
 
     const targetPitch = clamp(
-      groundPitch - this.#spec.suspension.pitchPerLongitudinalG * accelLong,
+      groundPitch - this.#spec.suspension.pitchPerLongitudinalG * accelLong / GRAVITY,
       -this.#spec.suspension.maxPitch - Math.abs(groundPitch),
       this.#spec.suspension.maxPitch + Math.abs(groundPitch),
     );
     const targetRoll = clamp(
-      groundRoll + this.#spec.suspension.rollPerLateralG * accelLat,
+      groundRoll + this.#spec.suspension.rollPerLateralG * accelLat / GRAVITY,
       -this.#spec.suspension.maxRoll - Math.abs(groundRoll),
       this.#spec.suspension.maxRoll + Math.abs(groundRoll),
     );
@@ -1558,13 +1565,13 @@ export class Vehicle {
             vx: this.velocity.x,
             vz: this.velocity.z,
           });
-          // Durchbrechen, nicht abprallen: 45 % der Normalkomponente weg, der
-          // Rest trägt durch das Loch. Forza-Arcade, nicht ein zweiter Anschlag
-          // an Luft.
+          // Ein Material kostet einen begrenzten Impuls, keinen festen Anteil
+          // des gesamten Tempos. Mehrere Planken dürfen keine Vollbremsung sein.
           const into = this.velocity.x * c.nx + this.velocity.z * c.nz;
           if (into < 0) {
-            this.velocity.x -= c.nx * into * 0.45;
-            this.velocity.z -= c.nz * into * 0.45;
+            const loss = Math.min(-into, tree ? 4 : 2.2);
+            this.velocity.x += c.nx * loss;
+            this.velocity.z += c.nz * loss;
           }
           continue;
         }

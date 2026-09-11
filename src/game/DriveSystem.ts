@@ -13,6 +13,7 @@ import { PROP_COLLIDERS } from '@/config/vehicle.config';
 import { DEFAULT_VEHICLE, vehicleSpec, type VehicleId } from '@/config/vehicles.config';
 import {
   WALK_ALIGHT_GAP,
+  WALK_ALIGHT_SPEED,
   WALK_BOARD_RANGE,
   rollWalkSpawn,
   type WalkSpawn,
@@ -847,8 +848,15 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    * Nicht `exit()`: das wäre zurück in den Freiflug, und der Wagen verschwände.
    * Genau das war der alte `V`-Weg, und er bleibt für den Debug-Flug.
    */
+  get canAlight(): boolean {
+    return this.#active && this.vehicle.velocity.length() <= WALK_ALIGHT_SPEED;
+  }
+
   alight(): void {
-    if (!this.#active || !this.#context) return;
+    if (!this.canAlight || !this.#context) return;
+    // Clear suspension/yaw/velocity together, so re-entering never restores
+    // momentum from before parking. Keep the same location and heading.
+    this.placeAt(this.vehicle.position.x, this.vehicle.position.z, this.vehicle.yaw);
     this.#leaveDrive();
     this.#placeWalkerBesideCar();
     this.#setWalking(true);
@@ -1305,6 +1313,12 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    */
   simulateStep(dt: number, input: DriveInput): void {
     if (!this.#sampler) return;
+    // A start grid is locked, including on slopes. Braking alone still lets
+    // throttle/boost and gravity move the player before the countdown ends.
+    if (this.race.state === 'countdown') {
+      this.vehicle.velocity.set(0, 0, 0);
+      return;
+    }
     const started = performance.now();
     this.ground.refresh(this.vehicle.position.x, this.vehicle.position.z, dt);
     this.#fillTrees();
@@ -1365,9 +1379,14 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     if (events.length === 0) return;
     for (const event of events) {
       if (event.kind === 'tree') this.#canopy?.breakTree(event.id);
-      this.#debris?.burst(event);
-      this.#context?.bus.emit('drive:broke', event);
+      this.breakProp(event);
     }
+  }
+
+  /** Ein gemeinsamer begrenzter Trümmerpool für Straßen, Bäume und Spielrequisiten. */
+  breakProp(event: BreakEvent): void {
+    this.#debris?.burst(event);
+    this.#context?.bus.emit('drive:broke', event);
   }
 
   /**
@@ -1598,6 +1617,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
   waterDepth(x: number, z: number): number {
     return this.ground.waterDepth(x, z);
+  }
+
+  isRamp(x: number, z: number): boolean {
+    return this.ground.isRamp(x, z);
   }
 
   circuitGrip(): number {

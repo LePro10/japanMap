@@ -2,8 +2,12 @@ import type { Vector3 } from 'three';
 
 import type { TerrainMeta } from '@/config/terrain.config';
 import { WORLD } from '@/config/world.config';
+import { LOD } from '@/config/lod.config';
 import type { ResourceManager } from '@/core/ResourceManager';
 import { TERRAIN_ASSETS } from './terrainAssets';
+import { decodeHeightmap } from '@/world/heightCodec';
+
+const CONTACT_SPACING = LOD.leafSize / LOD.gridQuads;
 
 /**
  * Fehler beim Laden oder Prüfen der gebackenen Heightmap. Eigener Typ, damit
@@ -27,11 +31,10 @@ export class TerrainDataError extends Error {
  *     Abständen einsammelt — genau die Art Ruckler, die man später stundenlang
  *     an der falschen Stelle sucht.
  *
- *  2. **Identisch zum Shader.** Die bilineare Interpolation hier muss dieselben
- *     Werte liefern wie die im Vertex-Shader. Sonst schwebt oder versinkt alles,
- *     was per `getHeightAt` platziert wird — sichtbar, aber schwer zuzuordnen.
- *     Deshalb rechnet der Shader die Interpolation ebenfalls von Hand statt sie
- *     der Texturfilterung zu überlassen.
+ *  2. **Identisch zur sichtbaren Nahgeometrie.** Die Stützpunkte werden wie im
+ *     Vertex-Shader bilinear aus der Heightmap gelesen. Dazwischen interpoliert
+ *     die CPU die tatsächlichen Dreiecke des 1,5-m-Nahgitters. Bilinear direkt
+ *     am Abfragepunkt wäre eine andere Oberfläche und ließe Räder einsinken.
  */
 export class TerrainSampler {
   readonly meta: TerrainMeta;
@@ -57,13 +60,24 @@ export class TerrainSampler {
   }
 
   static async load(resources: ResourceManager): Promise<TerrainSampler> {
+    // Older browsers retain the original data path without downloading both.
+    const packed = typeof DecompressionStream !== 'undefined';
+    const url = packed ? TERRAIN_ASSETS.height : TERRAIN_ASSETS.heightFallback;
     const [meta, buffer] = await Promise.all([
       resources.json<TerrainMeta>(TERRAIN_ASSETS.meta),
-      resources.binary(TERRAIN_ASSETS.height),
+      resources.binary(url),
     ]);
 
-    TerrainSampler.#validate(meta, buffer);
-    return new TerrainSampler(meta, new Uint16Array(buffer));
+    try {
+      const raw = packed ? await decodeHeightmap(buffer, meta.heightmap.res) : new Uint16Array(buffer);
+      TerrainSampler.#validate(meta, raw.buffer as ArrayBuffer);
+      return new TerrainSampler(meta, raw);
+    } catch (error) {
+      if (error instanceof TerrainDataError) throw error;
+      throw new TerrainDataError(`Terrain height data could not be decoded: ${String(error)}`);
+    } finally {
+      resources.releaseBinary(url);
+    }
   }
 
   /**
@@ -141,8 +155,33 @@ export class TerrainSampler {
     return this.#minHeight + this.raw[z * this.#res + x]! * this.#scale;
   }
 
-  /** Höhe in Metern an einer beliebigen Weltposition, bilinear interpoliert. */
+  /**
+   * Interpolate the actual near-field mesh triangles (a,c,b / b,c,d).
+   * The heightmap's 1.5007 m texels and the mesh's 1.5 m vertices are different
+   * grids. Sampling the heightmap directly here put wheels inside visible banks.
+   * Every graphics preset retains this contact grid; distant CDLOD still morphs.
+   */
   getHeightAt(x: number, z: number): number {
+    const cx = Math.max(-WORLD.half, Math.min(WORLD.half, x));
+    const cz = Math.max(-WORLD.half, Math.min(WORLD.half, z));
+    const gx = (cx + WORLD.half) / CONTACT_SPACING;
+    const gz = (cz + WORLD.half) / CONTACT_SPACING;
+    const ix = Math.floor(gx), iz = Math.floor(gz);
+    const u = gx - ix, v = gz - iz;
+    const x0 = ix * CONTACT_SPACING - WORLD.half;
+    const z0 = iz * CONTACT_SPACING - WORLD.half;
+    const b = this.#heightmapHeight(x0 + CONTACT_SPACING, z0);
+    const c = this.#heightmapHeight(x0, z0 + CONTACT_SPACING);
+    if (u + v <= 1) {
+      const a = this.#heightmapHeight(x0, z0);
+      return a + (b - a) * u + (c - a) * v;
+    }
+    const d = this.#heightmapHeight(x0 + CONTACT_SPACING, z0 + CONTACT_SPACING);
+    return d + (c - d) * (1 - u) + (b - d) * (1 - v);
+  }
+
+  /** Same bilinear vertex fetch as terrain_height.glsl, before triangulation. */
+  #heightmapHeight(x: number, z: number): number {
     const gx = (x + WORLD.half) * this.#invSpacing;
     const gz = (z + WORLD.half) * this.#invSpacing;
 

@@ -20,10 +20,10 @@
  * | 120 km/h, 1 m/s in die Normale | −1,0 m/s | 0,6 kJ | nein | nein |
  */
 
-export const RAIL_BREAK_SPEED = 6.5;
-export const RAIL_BREAK_ENERGY = 18_000;
-export const TREE_BREAK_SPEED = 9;
-export const TREE_BREAK_ENERGY = 28_000;
+export const RAIL_BREAK_SPEED = 4.6;
+export const RAIL_BREAK_ENERGY = 9_000;
+export const TREE_BREAK_SPEED = 7.8;
+export const TREE_BREAK_ENERGY = 21_000;
 
 /** Höchstens so viele Stücke je Simulationsschritt — sonst reißt ein Drift die halbe Leitplanke. */
 export const MAX_BREAKS_PER_STEP = 2;
@@ -32,7 +32,7 @@ export const MAX_BREAKS_PER_STEP = 2;
 export const TREE_QUERY_RADIUS = 12;
 export const TREE_QUERY_CAP = 48;
 
-export type BreakKind = 'rail' | 'tree';
+export type BreakKind = 'rail' | 'tree' | 'crate' | 'cone' | 'board' | 'barrel';
 
 export interface BreakEvent {
   readonly kind: BreakKind;
