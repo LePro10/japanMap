@@ -20,6 +20,7 @@ for(let station=8;station<52;station+=4) {
     const error=Math.abs(g.height(x,z)-y);worst=Math.max(worst,error);
   }
 }
+
 assert.ok(worst<0.025,`wheels and banked road differ by ${worst.toFixed(3)}m`);
 const x=centerline[90]!,z=centerline[92]!;
 g.refresh(x,z,0);
@@ -28,4 +29,23 @@ assert.ok(Math.hypot(n.x,n.z)>0.04,'road contact normal must follow road banking
 geometry.dispose();
 console.log(`Road mesh/contact agreement (grade ${grade}): max ${worst.toFixed(4)}m; banked support normal passed.`);
 
+}
+
+// A raised road blends back into terrain over its physical shoulder. The
+// suspension needs the gradient of that surface, not the flat terrain below it.
+{
+  const road = { id: 'shoulder', type: 'mountain', centerline: [-500, 3.3, -600, -500, 3.3, -400],
+    widths: [8, 8], banking: [0, 0], closed: false, length: 200, trimStart: 0, trimEnd: 0,
+    junctions: [], tags: [], nodes: [], rails: [], measured: {} };
+  const network = new RoadNetwork({ roads: [road] } as never);
+  const ground = new RoadGround();
+  ground.setSources({ getHeightAt: () => 3,
+    getNormalAt: (_x: number, _z: number, out: Vector3) => out.set(0, 1, 0) } as never,
+    network, null, null);
+  ground.refresh(-500, -500, 0);
+  const x = -495.75, z = -500, epsilon = .01;
+  const grade = (ground.height(x + epsilon, z) - ground.height(x - epsilon, z)) / (2 * epsilon);
+  const normal = ground.normal(x, z, new Vector3());
+  assert.ok(Math.abs(-normal.x / normal.y - grade) < .02,
+    `shoulder gradient ${grade}, reported ${-normal.x / normal.y}`);
 }

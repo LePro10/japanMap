@@ -1,94 +1,21 @@
 import type { Quaternion, Vector3 } from 'three';
+import { GROUND_CONTACT } from '@/config/groundContact.config';
 
 import { STEEP_NY, type FollowState } from './supportPlane';
 
 /**
- * Die **Karosserie** gegen das Gelände — P20.
+ * Chassis contact against terrain. Wheel support and this underside envelope
+ * share the same driveable-slope limit (STEEP_NY).
  *
- * ## Der Fehler, den es hier zu beheben gab
+ * Driveable ground supports vertically; falling onto it must not turn vertical
+ * landing speed into an abrupt horizontal brake. Scraping applies a bounded
+ * deceleration from GROUND_CONTACT, proportional to penetration depth.
  *
- * Bis P20 kannte das Fahrzeug das Gelände an genau **fünf** Stellen: unter den
- * vier Rädern (Federung) und unter dem Schwerpunkt (`resolveTerrainFollow`).
- * Der Aufbau selbst ist 4,0 bis 7,6 m lang — alles, was zwischen und **vor**
- * diesen Punkten liegt, gab es für die Physik nicht.
- *
- * Die Folge stand auf dem Bild, das diese Phase ausgelöst hat: ein Auto, das
- * bis zur Fensterkante im Hang steckt. Gemessen mit `tools/bench/world.mts`,
- * Vollgas gegen einen Hang, tiefstes Eintauchen der Blechunterkante unter die
- * Geländeoberfläche:
- *
- * | Hang | Coupé | Offroad |
- * |---:|---:|---:|
- * | 20° | 0,78 m | 1,13 m |
- * | 35° | 1,26 m | 1,73 m |
- * | 45° | 2,22 m | 2,89 m |
- * | 65° | 4,45 m | 5,58 m |
- *
- * Schon auf einem **befahrbaren** 20°-Hang lag die Nase 78 cm im Berg. Keine
- * einzige Kennzahl hat das gemeldet: Durchdringung (die zählt nur Hindernisse)
- * war 0, Kontakte 0, `airborne` false, die Standhöhe stimmte. Der Wagen *fuhr*.
- * Dieselbe Fehlerform wie beim Lastwagen in P19 („er fuhr ja") und bei den vier
- * Fällen aus P6 („alle Zahlen stimmen, im Bild ist nichts") — nur diesmal
- * andersherum: es war im Bild und in keiner Zahl.
- *
- * ## Wie aufgelöst wird
- *
- * Wie gegen ein Hindernis, mit **einem** Unterschied. Ein Hindernis hat eine
- * senkrechte Wand und eine eindeutige Ausweichrichtung; das Gelände hat eine
- * Flächennormale, die von flach (Wiese) bis fast waagerecht (Felswand) alles
- * sein kann. Beide Fälle über **eine** Formel:
- *
- * ```
- * d      = Richtung, in die geschoben wird
- * dist   = über · n_y / (d · n)
- * ```
- *
- * `über` ist die senkrechte Überdeckung (Geländehöhe minus Höhe des Prüfpunkts),
- * `über · n_y` der Abstand **senkrecht zur Fläche**. Der Nenner rechnet um, wenn
- * nicht längs der Normalen geschoben wird.
- *
- *  · **Flach** (`n_y ≥ STEEP_NY`): `d = n`, also `dist = über · n_y`. Auf ebenem
- *    Boden ist das die reine Anhebung — dasselbe, was der Bodenfang tut.
- *  · **Steil**: `d` ist der **waagerechte** Anteil der Normalen. Das ist keine
- *    Vereinfachung, sondern der Schutz gegen die Berg-Rakete: ein Schub längs
- *    der 3D-Normalen hätte an einer 60°-Wand einen Aufwärtsanteil von 0,5, und
- *    ein Wagen, der mit Gas hineindrückt, würde Schritt für Schritt daran
- *    hochgeratscht. Waagerecht geschoben kann er das nie — die Höhe ändert
- *    dieser Zweig überhaupt nicht.
- *
- * Beide Zeilen sind dieselbe Formel; `d · n` ist einmal 1 und einmal `horiz`.
- *
- * ## Was hier **nicht** passiert
- *
- * Kein Giermoment. Ein Hindernis trifft die Karosserie an einem Punkt und dreht
- * sie deshalb (`yawTransfer` in `Vehicle.#resolveCollision`); ein Hang liegt
- * flächig an, und ein Drehimpuls aus einem von mehreren Flächenpunkten wäre eine
- * erfundene Zahl. Die Nase wird trotzdem abgelenkt — über die Geschwindigkeit,
- * und die nächste Runde Reifenkräfte macht daraus die Drehung.
+ * Steep terrain rejects motion horizontally and never lifts the chassis. Each
+ * wall contact blocks its inward velocity even when a deeper floor contact is
+ * present. Authored ramps may redirect forward motion up their launch surface.
+ * No terrain contact adds a yaw impulse.
  */
-
-/**
- * Bremsrate der aufsitzenden Karosserie, 1/s.
- *
- * **Eine Rate je Sekunde und kein Anteil je Schritt** — das ist die Lehre aus
- * `wallFriction` in P19, wo ein „Anteil je Kontakt" in Wahrheit eine
- * Zeitschrittgröße war und das Coupé mit 10 km/h an einer Planke kleben ließ.
- * Ein Wert in 1/s hängt nicht davon ab, wie oft geprüft wird.
- *
- * 3,0/s heißt: eine Sekunde mit dem Bodenblech im Dreck kostet 95 % des Tempos.
- * Das ist absichtlich viel — wer aufsitzt, fährt nicht weiter, und diese
- * Rückmeldung ist der Unterschied zwischen „das Gelände hat eine Form" und „das
- * Gelände ist ein Bild".
- */
-export const BELLY_DRAG = 3.0;
-
-/**
- * Ab dieser Eintauchtiefe wirkt `BELLY_DRAG` voll, in Metern.
- *
- * 15 cm ist die Größenordnung, ab der nicht mehr der Stoßfänger streift, sondern
- * das Bodenblech pflügt. Darunter läuft die Bremse linear ein.
- */
-export const BELLY_FULL_DEPTH = 0.15;
 
 export interface HullGround {
   /** Constructed launch surface: may redirect motion up its continuous ramp. */
@@ -183,7 +110,9 @@ export function hullSupport(
     const px = x + p.x;
     const pz = z + p.z;
     const ueber = ground.height(px, pz) - (y + p.y);
-    if (ueber <= 0) continue;
+    // Keep near-touching support after positional resolution. Dropping it the
+    // instant penetration reaches zero toggled spring load on/off at crests.
+    if (ueber < -GROUND_CONTACT.supportSkin) continue;
     // Dieselbe Ausnahme wie bei der Auflösung: die Fahrbahn ist eine gerechnete
     // Fläche und kein Hindernis. Begründung dort.
     if (istFahrbahn(ground.surface(px, pz))) continue;
@@ -197,9 +126,6 @@ export function hullSupport(
 }
 
 const result: HullResult = { contacts: 0, depth: 0 };
-
-/** „Nichts berührt" — für den Zweig, der die Auflösung ganz überspringt. */
-export const NO_HULL_CONTACT: HullResult = { contacts: 0, depth: 0 };
 
 /**
  * Die Karosserie aus dem Gelände schieben.
@@ -217,16 +143,14 @@ export function resolveHullTerrain(
   dt: number,
   p: Vector3,
   n: Vector3,
+  supportFloor = true,
 ): HullResult {
   let pushX = 0;
   let pushY = 0;
   let pushZ = 0;
   let contacts = 0;
   let deepest = 0;
-  // Die Normale des **tiefsten** Punkts. Die Geschwindigkeit wird genau einmal
-  // behandelt und nicht je Kontakt: die Bremse unten dämpft mit `exp(−k·dt)`,
-  // und zehnmal angewandt wäre daraus die zehnfache Rate — genau die
-  // Zeitschritt-Falle, die `BELLY_DRAG` oben vermeidet.
+  // Deepest contact controls the single scrape term and authored ramp impulse.
   let hitNX = 0;
   let hitNY = 1;
   let hitNZ = 0;
@@ -279,6 +203,9 @@ export function resolveHullTerrain(
     const nx = n.x;
     const ny = n.y;
     const nz = n.z;
+    // Without reachable wheels, an underside must not hold the car over a
+    // drop. Walls still collide with its body while it falls down the slope.
+    if (!supportFloor && ny >= STEEP_NY) continue;
     // Abstand senkrecht zur Fläche. Bei einer waagerechten Fläche ist das die
     // Überdeckung selbst, bei einer geneigten weniger.
     const tief = ueber * ny;
@@ -293,18 +220,25 @@ export function resolveHullTerrain(
       hitRamp = ground.isRamp?.(px, pz) === true;
     }
 
-    // Richtung: längs der Normalen, solange die Fläche befahrbar ist —
-    // waagerecht, sobald sie eine Wand ist. Begründung im Kopf.
-    let dx = nx;
-    let dy = ny;
-    let dz = nz;
-    let dn = 1;
+    // Driveable ground is carried by the support plane. A horizontal normal
+    // correction here was a second, repeated brake on every slope entry.
+    let dx = 0;
+    let dy = 1;
+    let dz = 0;
+    let dn = ny;
     if (ny < STEEP_NY) {
       const horiz = Math.max(Math.hypot(nx, nz), 1e-4);
       dx = nx / horiz;
       dy = 0;
       dz = nz / horiz;
       dn = horiz;
+      // Resolve every wall contact; the deepest contact can be a floor and
+      // must not mask a rock touched by a different part of the chassis.
+      const into = s.vx * dx + s.vz * dz;
+      if (into < 0) {
+        s.vx -= dx * into;
+        s.vz -= dz * into;
+      }
     }
     const dist = tief / dn;
 
@@ -377,39 +311,17 @@ export function resolveHullTerrain(
   const grenze = Math.max(vorher, ceiling);
   if (s.y > grenze) s.y = grenze;
 
-  // ── Die Geschwindigkeit: **waagerecht abweisen, senkrecht nicht anfassen** ─
-  //
-  // Der naheliegende Weg war `blockIntoSurface` — dieselbe Abweisung, die der
-  // Bodenfang benutzt, also `v -= n (v·n)` über alle drei Achsen. Gemessen ist
-  // das falsch, und zwar deutlich. Auf 90 s Zufallsgelände, Anteil der Zeit
-  // **ohne Radlast**:
-  //
-  // | | ohne Hülle | Hülle mit voller Abweisung | Hülle nur waagerecht |
-  // |---|---:|---:|---:|
-  // | Coupé | 17,8 % | 49,8 % | **8,1 %** |
-  // | GT | 13,4 % | 55,2 % | **10,3 %** |
-  // | Offroad | 22,7 % | 57,2 % | **16,5 %** |
-  // | Lastwagen | 4,8 % | 29,0 % | **1,4 %** |
-  //
-  // Die mittlere Spalte ist ein Auto, das die halbe Zeit auf seinem Bodenblech
-  // schwebt: jeder Hüllkontakt strich den Fall, die Federung federte aus, die
-  // Radlast wurde null. Dass die rechte Spalte **unter** der linken liegt, ist
-  // kein Zufall — ohne Hülle steckt der Wagen im Berg, und ein Wagen im Berg ist
-  // ebenfalls ohne Radlast.
-  //
-  // Die Regel dahinter ist dieselbe wie beim Deckel oben, nur für die
-  // Geschwindigkeit: **senkrecht trägt die Federung, waagerecht das Blech.**
-  // „In einen Hang fahren" ist ein waagerechter Stoß; ihn abzuweisen ist die
-  // ganze Aufgabe dieser Datei. Der senkrechte Anteil gehört der Feder, und zwei
-  // Systeme, die dieselbe Achse regeln, arbeiten gegeneinander.
-  const stoss = s.vx * hitNX + s.vy * hitNY + s.vz * hitNZ;
-  if (stoss < 0) {
-    s.vx -= hitNX * stoss;
-    // A constructed ramp redirects incoming motion uphill. Applying this to
-    // rough terrain launches the chassis off small bumps and unloads its wheels;
-    // falls and steep walls therefore retain suspension-owned vertical motion.
-    if (hitRamp && hitNY >= STEEP_NY && s.vy >= -1) s.vy -= hitNY * stoss;
-    s.vz -= hitNZ * stoss;
+  // Floors never convert vertical landing velocity into horizontal braking.
+  // Steep inward velocity was removed per contact above. Only an authored
+  // launch surface redirects the full velocity toward its rising tangent.
+  if (hitRamp && hitNY >= STEEP_NY && s.vy >= -1) {
+    // Authored ramps transfer incoming motion to their launch tangent.
+    const into = s.vx * hitNX + s.vy * hitNY + s.vz * hitNZ;
+    if (into < 0) {
+      s.vx -= hitNX * into;
+      s.vy -= hitNY * into;
+      s.vz -= hitNZ * into;
+    }
   }
 
   // Aufsitzen bremst. Der Anteil **längs** der Fläche ist der, der nach dem
@@ -421,14 +333,13 @@ export function resolveHullTerrain(
   // konstanter Rate: das Coupé kam über den Übergang einer 20°-Rampe nicht
   // hinaus — 0,2 km/h bei Vollgas, in 15 s viermal denselben Anlauf. Ein
   // Streifschuss darf sich anfühlen wie ein Streifschuss.
-  const brake = Math.exp(-BELLY_DRAG * Math.min(1, deepest / BELLY_FULL_DEPTH) * dt);
-  const vn = s.vx * hitNX + s.vy * hitNY + s.vz * hitNZ;
-  const tx = s.vx - hitNX * vn;
-  const ty = s.vy - hitNY * vn;
-  const tz = s.vz - hitNZ * vn;
-  s.vx = hitNX * vn + tx * brake;
-  s.vy = hitNY * vn + ty * brake;
-  s.vz = hitNZ * vn + tz * brake;
+  // Bound scraping in m/s² instead of draining a fraction of all speed.
+  const speed = Math.hypot(s.vx, s.vz);
+  const loss = GROUND_CONTACT.scrapeDecel *
+    Math.min(1, deepest / GROUND_CONTACT.scrapeFullDepth) * dt;
+  const keep = speed > 0 ? Math.max(0, 1 - loss / speed) : 0;
+  s.vx *= keep;
+  s.vz *= keep;
 
   return result;
 }

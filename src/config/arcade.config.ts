@@ -401,14 +401,24 @@ export const CIRCUIT_PREP = {
  * > das Einspurmodell als `terrainDrag` hatte) ist der Term bei null Tempo
  * > exakt null und bei 20 m/s so groß wie zuvor.
  *
- * 0,22/s auf der Wiese sind bei 20 m/s 4,4 m/s² — mehr als der alte
- * Festbetrag —, bei 2 m/s aber nur 0,44 m/s².
+ * At 20 m/s, grass resistance is 2.4 m/s2; at 2 m/s it is 0.24 m/s2.
+ * OFFROAD_DRIVE reduces this further for vehicles with capable loose-ground tyres.
  */
 export const ARCADE_SURFACE_DRAG = {
   asphalt: 0,
   kies: 0.09,
-  gelaende: 0.22,
+  gelaende: 0.12,
   wasser: 0.55,
+} as const;
+
+/** Explicit arcade gearing on loose ground; asphalt performance stays authored. */
+export const OFFROAD_DRIVE = {
+  gradeAssist: 0.35,
+  capableGradeAssist: 0.75,
+  capableDragReduction: 0.4,
+  reverseForce: 0.65,
+  assistFadeStart: 50 / 3.6,
+  assistFadeEnd: 80 / 3.6,
 } as const;
 
 /**

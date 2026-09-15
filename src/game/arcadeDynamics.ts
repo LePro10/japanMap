@@ -1,4 +1,5 @@
 import {
+  OFFROAD_DRIVE,
   AIR_CONTROL,
   ARCADE_CRAWL,
   ARCADE_SURFACE,
@@ -103,6 +104,8 @@ export interface PlanarResult {
 
 /** Was die Dynamik über den Untergrund und die Lage wissen muss. */
 export interface PlanarEnv {
+  /** Signed downhill acceleration along the car's forward axis, m/s². */
+  readonly slopeAccel?: number;
   /** Geschwindigkeit längs der Fahrzeugachse, m/s (vorzeichenbehaftet). */
   vLong: number;
   /** Geschwindigkeit quer, m/s (positiv = nach rechts). */
@@ -788,7 +791,8 @@ export class ArcadeDynamics {
     let force = 0;
     if (throttle > 0) {
       if (reverse) {
-        force = env.vLong > -12 ? -throttle * spec.launchForce * 0.35 : 0;
+        const gearing = env.surface === 'asphalt' ? 0.35 : OFFROAD_DRIVE.reverseForce;
+        force = env.vLong > -12 ? -throttle * spec.launchForce * gearing : 0;
       } else {
         // `F = min(F_start, P/v)`. Die Endgeschwindigkeit ergibt sich aus dem
         // Gleichgewicht mit dem Luftwiderstand und wird nicht gesetzt.
@@ -822,14 +826,27 @@ export class ArcadeDynamics {
       env.waterDepth > 0.05
         ? ARCADE_SURFACE_DRAG.wasser * Math.min(1, env.waterDepth / 0.5)
         : ARCADE_SURFACE_DRAG[env.surface];
-    const roll = -rollSign * spec.rollDecel - env.vLong * surfaceK;
+    const ability = clamp01((this.#looseBonus - 0.65) / 0.2);
+    const dragScale = env.surface === 'gelaende' || env.surface === 'kies'
+      ? 1 - ability * OFFROAD_DRIVE.capableDragReduction : 1;
+    const roll = -rollSign * spec.rollDecel - env.vLong * surfaceK * dragScale;
 
     // Antrieb, gedeckelt durch die Haftung. Der Überschuss ist der
     // Durchdrehfaktor — und der ist im Arcade-Modell nur noch eine **Anzeige**
     // (Rauch, Ton, Spur), keine Kraft mehr. Im Einspurmodell aß er die
     // Seitenführung; hier macht das `drift`, und zwar dosierbar.
-    const driveAccel = force / this.#mass * (input.handbrake ? 0.2 : 1);
     const speed = Math.hypot(env.vLong, env.vLat);
+    const assistFade = 1 - clamp01((speed - OFFROAD_DRIVE.assistFadeStart) /
+      (OFFROAD_DRIVE.assistFadeEnd - OFFROAD_DRIVE.assistFadeStart));
+    const direction = reverse ? -1 : 1;
+    // A partial grade allowance supplies low gearing for exploring. It goes
+    // through the same slope-scaled traction limit as the engine, so neither
+    // this nor reverse gearing can supply drive on an unsupported cliff.
+    const gradeAssist = env.surface !== 'asphalt'
+      ? Math.max(0, -(env.slopeAccel ?? 0) * direction) * throttle * assistFade *
+        lerp(OFFROAD_DRIVE.gradeAssist, OFFROAD_DRIVE.capableGradeAssist, ability) * direction
+      : 0;
+    const driveAccel = (force / this.#mass + gradeAssist) * (input.handbrake ? 0.2 : 1);
     let tractionLimit = grip * GRAVITY * 1.35;
     // Unter 50 km/h auf losem Boden: Straßenautos behalten 65 % der
     // Asphalt-Antriebskraft, Utility 85 %. Der Boden *darf* nicht härter
@@ -846,7 +863,7 @@ export class ArcadeDynamics {
     // Ember/Needle aus einer Wiese, nicht eine Wand hoch. Auf Asphalt null,
     // damit die P18-Zahlen stehen bleiben.
     let crawlAccel = 0;
-    if (env.surface !== 'asphalt' && !reverse && throttle > 0) {
+    if (env.surface !== 'asphalt' && throttle > 0) {
       const crawlT = 1 - Math.min(1, speed / ARCADE_CRAWL.speed);
       crawlAccel =
         throttle *
@@ -855,7 +872,7 @@ export class ArcadeDynamics {
         ARCADE_CRAWL.extra *
         (input.handbrake ? 0.2 : 1) *
         crawlT *
-        env.support;
+        env.support * direction;
     }
 
     return {

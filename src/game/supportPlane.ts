@@ -338,6 +338,7 @@ export function resolveTerrainFollow(
   clearance: number,
   maxPush: number,
   dt: number,
+  redirectFloor = false,
 ): { wall: boolean; snapped: boolean } {
   const floor = height + clearance;
   const pen = floor - s.y;
@@ -398,7 +399,10 @@ export function resolveTerrainFollow(
   // Hüllkontakt und 0,0 km/h bei Vollgas. Dieselbe Fehlerform wie der Wandzweig
   // vor P19: eine Klemme auf einen Zustand trifft **beide** Vorzeichen.
   if (s.vy < 0) s.vy = 0;
-  blockIntoSurface(s, nx, ny, nz, dt);
+  // This is an emergency vertical catch below the suspension. A 3D projection
+  // here converted ordinary terrain landings into large planar braking impulses
+  // (17.6 km/h in one step). Only authored ramps redirect speed up their face.
+  if (redirectFloor) blockIntoSurface(s, nx, ny, nz, dt);
   return { wall: false, snapped: true };
 }
 
@@ -406,12 +410,9 @@ export function resolveTerrainFollow(
  * Die Geschwindigkeit gegen eine Geländefläche abweisen — **die eine Stelle**,
  * an der das im Projekt passiert.
  *
- * Seit P20 rufen sie zwei Aufrufer: der Bodenfang am Schwerpunkt
- * (`resolveTerrainFollow`) und die Karosserie gegen das Gelände
- * (`resolveHullTerrain`). Zwei Abschriften wären zwei Gelegenheiten, den
- * Vorzeichensatz unten auseinanderlaufen zu lassen — und genau diese
- * Fehlerklasse (dieselbe Regel an zwei Stellen, eine davon veraltet) hat dieses
- * Projekt in P14 drei Vorzeichenfehler in einer Kette gekostet.
+ * Used by the emergency ground catch for steep walls and explicitly marked
+ * launch ramps. Ordinary floor contacts preserve horizontal speed; chassis
+ * scraping and wall rejection are handled separately in hullTerrain.ts.
  *
  * ## Flach: abweisen
  *

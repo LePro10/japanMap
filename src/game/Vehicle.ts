@@ -11,6 +11,7 @@ import {
 import { Euler, Quaternion, Vector3 } from 'three';
 
 import { GRAVITY, SURFACE_FEEL } from '@/config/vehicle.config';
+import { GROUND_CONTACT } from '@/config/groundContact.config';
 import { AIR_CONTROL } from '@/config/arcade.config';
 import { ARCADE } from '@/config/arcade.config';
 import { TOUGE, type VehicleSpec } from '@/config/vehicles.config';
@@ -30,13 +31,15 @@ import {
   type BodyContact,
   type CollisionWorld,
 } from './CollisionWorld';
-import { NO_HULL_CONTACT, hullSupport, resolveHullTerrain } from './hullTerrain';
+import { hullSupport, resolveHullTerrain } from './hullTerrain';
+import { wheelSuspensionDrop } from './wheelContact';
 import {
   axleSupport,
   hasReachableWheel,
   slopeSupport,
   reachableWheel,
   resolveTerrainFollow,
+  STEEP_NY,
   type FollowState,
 } from './supportPlane';
 
@@ -654,7 +657,7 @@ export class Vehicle {
       (this.#normal.x * this.#forward.x + this.#normal.z * this.#forward.z) / aufrecht,
     );
     this.#roll = Math.atan(
-      -(this.#normal.x * this.#right.x + this.#normal.z * this.#right.z) / aufrecht,
+      (this.#normal.x * this.#right.x + this.#normal.z * this.#right.z) / aufrecht,
     );
     this.#vLong = 0;
     this.#vLat = 0;
@@ -702,7 +705,7 @@ export class Vehicle {
       this.position.y = this.#contactHeight() + (this.#spec.chassis.cgHeight + this.#rideLift) / aufrecht;
     }
     this.#updateTransform();
-    this.#placeWheels();
+    this.#placeWheels(ground);
 
     // **Und die Telemetrie.** Sie ist eine Anzeige — aber sie wird gelesen, und
     // zwar vom Regler des Messstands, bevor der erste Schritt gerechnet ist.
@@ -852,6 +855,8 @@ export class Vehicle {
     this.#planarEnv.waterDepth = waterDepth;
     this.#planarEnv.airborne = this.#airborne;
     this.#planarEnv.support = halt;
+    this.#planarEnv.slopeAccel = GRAVITY * this.#normal.y *
+      (this.#normal.x * this.#forward.x + this.#normal.z * this.#forward.z);
 
     const planar = this.#planar.step(dt, this.#planarInput, this.#planarEnv);
     const accelLong = planar.accelLong;
@@ -929,6 +934,7 @@ export class Vehicle {
       chassis.wheelRadius * 0.5,
       this.#spec.collision.maxPushPerStep,
       dt,
+      ground.isRamp?.(this.position.x, this.position.z) === true,
     );
     this.position.set(follow.x, follow.y, follow.z);
     this.velocity.x = follow.vx;
@@ -982,26 +988,22 @@ export class Vehicle {
     // zurückschiebt); **vor** den Hindernissen, damit deren Auflösung das letzte
     // Wort behält — ein Baum gibt nicht nach, ein Hang schon.
     //
-    // Gerechnet wird mit der Lage des **vorigen** Schritts (`quaternion` wird
-    // erst unten neu gesetzt). Ein Schritt Verzug ist bei 60 Hz 17 ms; dieselbe
-    // Näherung wie bei `#lastLongAccel`, und aus demselben Grund: die Lage dieses
-    // Schritts steht erst fest, wenn die Höhe feststeht, und die hängt von der
-    // Lage ab.
+    // Resolve against the pose updated below, before solid-world collision.
     follow.x = this.position.x;
     follow.y = this.position.y;
     follow.z = this.position.z;
     follow.vx = this.velocity.x;
     follow.vy = this.#vY;
     follow.vz = this.velocity.z;
-    // **Und nur, solange die Räder tragen.** Ein frei hängender Wagen wird von
-    // seinem Blech nicht gehalten — er kippt, und dieses Modell kann nicht
-    // kippen. Ohne diese Bedingung stand der Lastwagen im Prüfstand mit dem Heck
-    // auf einer 3-m-Kante und schwebte **2,91 m** über dem Boden, dauerhaft.
-    // Vollständige Begründung bei `hasReachableWheel`.
-    //
-    // Der zweite Parameter ist der Deckel: die voll ausgefederte Lage über der
-    // Stützebene. Begründung samt Messung (ein Lastwagen, der 15 s lang in der
-    // Luft parkte) bei der Zeile, die ihn anwendet.
+    // Only reachable wheels allow floor support: without them a chassis must
+    // fall past a ledge, not hang from its tail. Steep walls always collide,
+    // including while the car is falling or sliding without wheel support.
+    // Contact must match the pose that is rendered this step. Previously both
+    // the wheel plane and hull rotation were one step old on a climbing car.
+    this.#normal.copy(followNormal);
+    this.#sampleWheels(ground);
+    this.#updateAttitude(dt, accelLat, accelLong);
+    this.#updateTransform();
     const traegt = hasReachableWheel(
       this.#flatWheel(0),
       this.#flatWheel(1),
@@ -1010,19 +1012,17 @@ export class Vehicle {
       this.position.y - chassis.cgHeight,
       derived.supportReach,
     );
-    const hull = traegt
-      ? resolveHullTerrain(
-          follow,
-          this.quaternion,
-          derived.hullSamples,
-          ground,
-          this.#spec.collision.maxPushPerStep,
-          contactY + chassis.cgHeight / Math.max(0.35, this.#normal.y),
-          dt,
-          this.#hullPoint,
-          this.#hullNormal,
-        )
-      : NO_HULL_CONTACT;
+    this.#hullSupport = hullSupport(
+      this.position.x, this.position.y, this.position.z, this.quaternion,
+      derived.hullSamples, ground, this.#hullPoint, this.#hullNormal,
+    );
+    const contactCeiling = this.#contactHeight() +
+      (chassis.cgHeight + this.#rideLift) / Math.max(0.35, this.#normal.y);
+    const hull = resolveHullTerrain(
+      follow, this.quaternion, derived.hullSamples, ground,
+      this.#spec.collision.maxPushPerStep, contactCeiling, dt,
+      this.#hullPoint, this.#hullNormal, traegt,
+    );
     this.telemetry.hullDepth = hull.depth;
     if (hull.contacts > 0) {
       this.position.set(follow.x, follow.y, follow.z);
@@ -1038,10 +1038,9 @@ export class Vehicle {
     const willFahren = input.throttle > 0.1 || input.brake > 0.1;
     if (collision) this.#resolveCollision(collision, dt, willFahren);
 
-    this.#updateAttitude(dt, accelLat, accelLong);
     this.#wheelSpin += (this.#vLong / chassis.wheelRadius) * dt;
     this.#updateTransform();
-    this.#placeWheels();
+    this.#placeWheels(ground);
 
     // ── Ablesbares ────────────────────────────────────────────────────────
     const t = this.telemetry;
@@ -1143,12 +1142,6 @@ export class Vehicle {
   /** Radaufstandspunkte und ihre Bodenhöhen. */
   #sampleWheels(ground: Ground): void {
     const halfTrack = this.#spec.chassis.track / 2;
-    const offsets: readonly (readonly [number, number])[] = [
-      [-halfTrack, this.#spec.derived.cgToFront],
-      [halfTrack, this.#spec.derived.cgToFront],
-      [-halfTrack, -this.#spec.derived.cgToRear],
-      [halfTrack, -this.#spec.derived.cgToRear],
-    ];
 
     // **Ein Rad ist kein Punkt.** Das Höhenfeld hat 1,5 m Texelabstand; auf der
     // Wiese stehen darin Stufen bis 15 cm, im Reisfeldgelände bis 23 cm. Ein
@@ -1164,15 +1157,20 @@ export class Vehicle {
     // Kostet dreimal so viele Höhenabfragen (12 statt 4 je Schritt) und ist damit
     // der teuerste Posten dieser Schleife. Gemessen bleibt der Schritt trotzdem
     // unter 0,03 ms.
-    const reach = this.#spec.chassis.wheelRadius;
+    const radius = this.#spec.chassis.wheelRadius;
+    const reach = radius * GROUND_CONTACT.tyreProbeFraction;
+    const tyreRise = radius - Math.sqrt(radius * radius - reach * reach);
     for (let i = 0; i < 4; i++) {
-      const [side, ahead] = offsets[i]!;
-      const x = this.position.x + this.#right.x * side + this.#forward.x * ahead;
-      const z = this.position.z + this.#right.z * side + this.#forward.z * ahead;
+      const side = i % 2 === 0 ? -halfTrack : halfTrack;
+      const ahead = i < 2 ? this.#spec.derived.cgToFront : -this.#spec.derived.cgToRear;
+      // Chassis local +X points opposite the driving model's right vector.
+      // Reusing it unnegated swapped wheel tracks and leaned into cross slopes.
+      const x = this.position.x - this.#right.x * side + this.#forward.x * ahead;
+      const z = this.position.z - this.#right.z * side + this.#forward.z * ahead;
       let h = Math.max(
         ground.height(x, z),
-        ground.height(x + this.#forward.x * reach, z + this.#forward.z * reach),
-        ground.height(x - this.#forward.x * reach, z - this.#forward.z * reach),
+        ground.height(x + this.#forward.x * reach, z + this.#forward.z * reach) - tyreRise,
+        ground.height(x - this.#forward.x * reach, z - this.#forward.z * reach) - tyreRise,
       );
       // Belagsrütteln — Asphalt und Wasser bleiben glatt. Die Amplitude ist
       // klein gegen den Federweg, groß genug, dass die Karosserie und die
@@ -1205,8 +1203,8 @@ export class Vehicle {
       // Auf einem gleichmäßigen Hang ist die Abweichung damit exakt null, an
       // einer Felswand bleibt sie so groß wie zuvor — der Schutz aus P14 gegen
       // das Anheben ist unberührt.
-      const dx = this.#right.x * side + this.#forward.x * ahead;
-      const dz = this.#right.z * side + this.#forward.z * ahead;
+      const dx = -this.#right.x * side + this.#forward.x * ahead;
+      const dz = -this.#right.z * side + this.#forward.z * ahead;
       this.#wheelTilt[i] =
         -(this.#normal.x * dx + this.#normal.z * dz) / Math.max(0.35, this.#normal.y);
     }
@@ -1239,12 +1237,9 @@ export class Vehicle {
    *
    * Läuft **nach** `#updateAttitude`, weil sie die frische Lage braucht.
    */
-  #placeWheels(): void {
+  #placeWheels(ground: Ground): void {
     const halfTrack = this.#spec.chassis.track / 2;
     this.#up.set(0, 1, 0).applyQuaternion(this.quaternion);
-    // Fast waagerechter Aufbau ist der Normalfall; der Schutz greift erst, wenn
-    // das Auto so schief steht, dass die Division unbrauchbar würde.
-    const aufrecht = Math.max(0.2, this.#up.y);
 
     for (let i = 0; i < 4; i++) {
       const side = i % 2 === 0 ? -halfTrack : halfTrack;
@@ -1253,8 +1248,8 @@ export class Vehicle {
       // einschließlich Nicken und Wanken.
       this.#scratch.set(side, 0, ahead).applyQuaternion(this.quaternion).add(this.position);
       // Wie weit müsste das Rad längs −up wandern, bis es den Boden berührt?
-      const ziel = this.#wheelGround[i]! + this.#spec.chassis.wheelRadius;
-      const hub = clamp((this.#scratch.y - ziel) / aufrecht, this.#spec.derived.wheelMinDrop, this.#spec.derived.wheelMaxDrop);
+      const hub = wheelSuspensionDrop(ground, this.#scratch, this.#up,
+        this.#spec.chassis.wheelRadius, this.#spec.derived.wheelMinDrop, this.#spec.derived.wheelMaxDrop);
       this.#wheelPos[i]!.copy(this.#scratch).addScaledVector(this.#up, -hub);
     }
   }
@@ -1306,7 +1301,7 @@ export class Vehicle {
     if (this.#hullSupport === -Infinity) return raeder;
     // **Der Aufbau liegt auf dem Höchsten, was unter ihm ist.** Das Blech ist
     // dabei gleichberechtigt mit den Reifen — nur eben eine Stütze, die weh tut
-    // (`BELLY_DRAG`). Die Umrechnung von der Schwerpunktshöhe auf die
+    // (bounded scrape resistance). Die Umrechnung von der Schwerpunktshöhe auf die
     // Stützebene ist dieselbe wie in der Ruhelage: `gap = cgHeight / n_y`.
     const blech = this.#hullSupport - this.#spec.chassis.cgHeight / Math.max(0.35, this.#normal.y);
     return Math.max(raeder, blech);
@@ -1363,7 +1358,7 @@ export class Vehicle {
       const luftPitch = Math.atan(
         (n.x * this.#forward.x + n.z * this.#forward.z) / ny,
       );
-      const luftRoll = Math.atan(-(n.x * this.#right.x + n.z * this.#right.z) / ny);
+      const luftRoll = Math.atan((n.x * this.#right.x + n.z * this.#right.z) / ny);
       // **Die Luftsteuerung wirkt hier und nirgends sonst — P22.** Sie ist der
       // Unterschied zwischen einem Sprung, den man *nimmt*, und einem, der einem
       // zustößt: mit Gas hebt sich die Nase, mit Bremse senkt sie sich, und man
@@ -1402,8 +1397,19 @@ export class Vehicle {
     const h1 = reachableWheel(this.#flatWheel(1), expected, reach) + this.#wheelTilt[1]!;
     const h2 = reachableWheel(this.#flatWheel(2), expected, reach) + this.#wheelTilt[2]!;
     const h3 = reachableWheel(this.#flatWheel(3), expected, reach) + this.#wheelTilt[3]!;
-    const groundPitch = -Math.atan2((h0 + h1) / 2 - (h2 + h3) / 2, this.#spec.chassis.wheelbase);
-    const groundRoll = Math.atan2((h1 + h3) / 2 - (h0 + h2) / 2, this.#spec.chassis.track);
+    const wheelLong = ((this.#wheelGround[0]! + this.#wheelGround[1]!) -
+      (this.#wheelGround[2]! + this.#wheelGround[3]!)) / (2 * this.#spec.chassis.wheelbase);
+    const wheelAcross = ((this.#wheelGround[1]! + this.#wheelGround[3]!) -
+      (this.#wheelGround[0]! + this.#wheelGround[2]!)) / (2 * this.#spec.chassis.track);
+    // On a driveable footprint use both axles to orient the body. Once a nose
+    // contact lifted the car, replacing the lower axle with CG height made it
+    // pitch nose-down INTO the bank. Truly discontinuous/cliff spans retain the
+    // reach filter so a distant plateau cannot rotate a car through a wall.
+    const driveableFootprint = 1 / Math.hypot(1, wheelLong, wheelAcross) >= STEEP_NY;
+    const groundPitch = driveableFootprint ? -Math.atan(wheelLong)
+      : -Math.atan2((h0 + h1) / 2 - (h2 + h3) / 2, this.#spec.chassis.wheelbase);
+    const groundRoll = driveableFootprint ? Math.atan(wheelAcross)
+      : Math.atan2((h1 + h3) / 2 - (h0 + h2) / 2, this.#spec.chassis.track);
 
     const targetPitch = clamp(
       groundPitch - this.#spec.suspension.pitchPerLongitudinalG * accelLong / GRAVITY,

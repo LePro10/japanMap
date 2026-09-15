@@ -3,6 +3,7 @@ import { VEHICLES } from '../../src/config/vehicles.config.ts';
 import { RAMPS } from '../../src/config/stunt.config.ts';
 import { RampField } from '../../src/game/RampField.ts';
 import assert from 'node:assert/strict';
+import { Vector3 } from 'three';
 
 for(const authored of RAMPS) for(const startOffset of [12,authored.length+3]) {
  const ramp={...authored,x:0,z:0,heading:0},field=new RampField([ramp]);field.prepare(()=>0);
@@ -17,16 +18,28 @@ for(const authored of RAMPS) for(const startOffset of [12,authored.length+3]) {
  const idle={throttle:0,brake:0,steer:0,handbrake:false};
  for(let i=0;i<60;i++)car.step(1/60,idle,ground,null);
  car.velocity.set(0,0,140/3.6);
- let launch=0,hull=0,air=0;
+ let launch=0,hull=0,air=0,visibleHull=0;
+ const point=new Vector3();
  for(let i=0;i<480;i++) {
   car.step(1/60,{...idle,throttle:1},ground,null);
-  if(car.position.z<0) hull=Math.max(hull,car.telemetry.hullDepth);
+  if(car.position.z<0) {
+   hull=Math.max(hull,car.telemetry.hullDepth);
+   for(let p=0;p<car.spec.derived.hullSamples.length;p+=3) {
+    point.fromArray(car.spec.derived.hullSamples,p).applyQuaternion(car.quaternion).add(car.position);
+    visibleHull=Math.max(visibleHull,ground.height(point.x,point.z)-point.y);
+   }
+  }
   if(car.position.z>-4 && car.telemetry.airborne && !launch)launch=car.telemetry.speed*3.6;
   if(car.telemetry.airborne)air++;
  }
- console.log(JSON.stringify({id:ramp.id,startOffset,launch,hull,air:air/60,z:car.position.z}));
+ console.log(JSON.stringify({id:ramp.id,startOffset,launch,hull,visibleHull,air:air/60,z:car.position.z}));
  assert.ok(launch > 110, `${ramp.id}: launch speed ${launch} km/h from 140`);
  assert.ok(air / 60 > .35, `${ramp.id}: failed to launch`);
- assert.ok(hull < .13, `${ramp.id}: ramp penetration ${hull} m`);
+ // hullDepth is the correction request BEFORE resolving contact. Verify the
+ // delivered pose instead: after the contact-order fix a 13.4 cm request was
+ // fully resolved, but the old assertion incorrectly called it penetration.
+ assert.ok(visibleHull < .13, `${ramp.id}: rendered ramp penetration ${visibleHull} m`);
+ assert.ok(hull < car.spec.collision.maxPushPerStep, `${ramp.id}: correction exceeds one step`);
+ assert.ok(air / 60 < 4 && !car.telemetry.airborne, `${ramp.id}: failed to settle after landing`);
  assert.ok(Number.isFinite(car.position.y) && car.position.y > -.1, 'landing remains above ground');
 }

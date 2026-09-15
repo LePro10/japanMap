@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 
 // Current-world regressions, including upstream features preserved by the merge.
 const tests = [
+  'tools/bench/offroad-contact.mts',
   'tools/bench/driving-contact.mts', 'tools/bench/ramp-contact.mts',
   'tools/bench/road-contact.mts', 'tools/bench/smashables.mts',
   'tools/bench/debris.mts', 'tools/bench/terrain-grid.mts',

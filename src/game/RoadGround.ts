@@ -1,4 +1,5 @@
 import type { Vector3 } from 'three';
+import { GROUND_CONTACT } from '@/config/groundContact.config';
 
 import { WATER_PHYS } from '@/config/vehicle.config';
 import { CITY, CITY_SLAB_Y, districtBlend, inCityDistrict } from '@/config/city.config';
@@ -276,7 +277,7 @@ export class RoadGround implements Ground {
       if (distance < Infinity) {
         // Volle Korrektur bis zur halben Fahrbahnbreite, dann über einen halben
         // Meter auslaufend.
-        const fade = 1 - clamp01((distance - this.#halfWidth) / 0.5);
+        const fade = 1 - clamp01((distance - this.#halfWidth) / GROUND_CONTACT.roadBlendWidth);
         const s = (x - this.#hitX) * this.#forwardX + (z - this.#hitZ) * this.#forwardZ;
         const lateral = -(x - this.#hitX) * this.#forwardZ + (z - this.#hitZ) * this.#forwardX;
         const soll = this.#baseAtHit + this.#correction + this.#slopeAlong * s + this.#slopeAcross * lateral;
@@ -326,13 +327,24 @@ export class RoadGround implements Ground {
     // ihn ein) — der Unterschied ist auf dieser Karte nicht messbar.
     sampler.getNormalAt(x, z, target);
     // Follow the visible ribbon plane, independent of the terrain cut below it.
-    if (this.#halfWidth > 0 && this.#network &&
-        this.#network.distanceToNearestRoad(x, z, this.#halfWidth + 1) < this.#halfWidth) {
-      target.set(
-        -this.#slopeAlong * this.#forwardX + this.#slopeAcross * this.#forwardZ,
-        1,
-        -this.#slopeAlong * this.#forwardZ - this.#slopeAcross * this.#forwardX,
-      ).normalize();
+    if (this.#halfWidth > 0 && this.#network) {
+      const distance = this.#network.distanceToNearestRoad(x, z, this.#halfWidth + 1);
+      const epsilon = GROUND_CONTACT.roadNormalProbe;
+      if (distance < this.#halfWidth - epsilon) {
+        target.set(
+          -this.#slopeAlong * this.#forwardX + this.#slopeAcross * this.#forwardZ,
+          1,
+          -this.#slopeAlong * this.#forwardZ - this.#slopeAcross * this.#forwardX,
+        ).normalize();
+      } else if (distance < this.#halfWidth + GROUND_CONTACT.roadBlendWidth + epsilon) {
+        // The 0.5 m shoulder has its own grade. Using the raw terrain normal
+        // here reported a 36° ramp as level and broke suspension at road exits.
+        target.set(
+          -(this.height(x + epsilon, z) - this.height(x - epsilon, z)) / (2 * epsilon),
+          1,
+          -(this.height(x, z + epsilon) - this.height(x, z - epsilon)) / (2 * epsilon),
+        ).normalize();
+      }
     }
     const plateau = this.#collision?.plateauTop(x, z) ?? -Infinity;
     if (Number.isFinite(plateau) && plateau >= this.height(x, z) - 0.015) target.set(0, 1, 0);

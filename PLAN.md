@@ -1,5 +1,7 @@
 # japanMap — Implementierungsplan
 
+**Physik-Überarbeitung, 2026-09-15:** Aktueller Bodenkontakt, Offroad-Abstimmung, Messungen und Engine-Vergleich stehen im [Physikbericht](docs/2026-09-13-physics.md). Die folgenden Phasen dokumentieren die historische Entwicklung.
+
 > Ausführungsplan zu [SPEC.md](SPEC.md). Die Spec sagt **was** gebaut wird,
 > dieser Plan sagt **in welcher Reihenfolge, mit welchen Dateien und woran wir
 > merken, dass eine Phase fertig ist**. Wo etwas im Quelltext steht und was mit
