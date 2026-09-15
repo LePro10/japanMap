@@ -106,7 +106,22 @@ export interface CityBlockMesh {
   readonly geometry: BufferGeometry;
 }
 
+/** Stable solid envelopes for street dressing and authored interiors. */
+export interface CityBuilding {
+  id: string;
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+  baseY: number;
+  height: number;
+  family: number;
+  front: 'px' | 'nx' | 'pz' | 'nz';
+  shopInset?: number;
+}
+
 export interface CityResult {
+  readonly buildings: readonly CityBuilding[];
   /** Ein Mesh je Block — die Einheit für Draw-Calls und Frustum-Culling. */
   readonly blocks: readonly CityBlockMesh[];
   /** Alle Bürgersteige in einem Mesh. Sie sind flach und tragen keine Fassade. */
@@ -480,30 +495,67 @@ function shrink(rect: Rect, by: number): Rect {
 }
 
 /** Türnische an der längsten Kante — keine 35 m glatte Wand. */
-function doorBay(mesh: MeshBuilder, footprint: Rect, baseY: number, groundTop: number, seed: number): void {
-  const w = width(footprint);
-  const d = depth(footprint);
-  const alongX = w >= d;
-  const span = alongX ? w : d;
-  const door = 1.15;
-  const recess = 0.38;
-  const height = Math.min(2.2, groundTop - baseY - 0.15);
-  if (span < 5) return;
-  const mid = alongX ? (footprint.minX + footprint.maxX) / 2 : (footprint.minZ + footprint.maxZ) / 2;
-  const bay: Rect = alongX
-    ? {
-        minX: mid - door / 2,
-        maxX: mid + door / 2,
-        minZ: footprint.maxZ - recess,
-        maxZ: footprint.maxZ + 0.02,
+function doorBay(mesh: MeshBuilder, footprint: Rect, baseY: number, groundTop: number, seed: number, front: CityBuilding['front']): void {
+  const span = front === 'px' || front === 'nx' ? depth(footprint) : width(footprint);
+  const height = Math.min(2.6, groundTop - baseY - 0.3);
+  const bay = frontStrip(footprint, front, span * 0.5 - 0.65, span * 0.5 + 0.65, -0.035, 0.03);
+  box(mesh, bay, baseY, baseY + height, 0, 0, toLinear(0x17232a), ROOF_COLOR, seed, KIND_FLAT);
+  const lintel = frontStrip(footprint, front, span * 0.5 - 0.8, span * 0.5 + 0.8, -0.08, 0.08);
+  box(mesh, lintel, baseY + height, baseY + height + 0.16, 0, 0, toLinear(0x464e51), ROOF_COLOR, seed, KIND_FLAT);
+}
+
+/** Local frontage coordinates: u runs along the wall, v runs inward. */
+function frontStrip(rect: Rect, face: CityBuilding['front'], u0: number, u1: number, v0: number, v1: number): Rect {
+  if (face === 'pz') return { minX: rect.minX + u0, maxX: rect.minX + u1, minZ: rect.maxZ - v1, maxZ: rect.maxZ - v0 };
+  if (face === 'nz') return { minX: rect.minX + u0, maxX: rect.minX + u1, minZ: rect.minZ + v0, maxZ: rect.minZ + v1 };
+  if (face === 'px') return { minX: rect.maxX - v1, maxX: rect.maxX - v0, minZ: rect.minZ + u0, maxZ: rect.minZ + u1 };
+  return { minX: rect.minX + v0, maxX: rect.minX + v1, minZ: rect.minZ + u0, maxZ: rect.minZ + u1 };
+}
+
+function recessedBody(rect: Rect, front: CityBuilding['front'], recess: number): Rect {
+  const body = { ...rect };
+  if (front === 'px') body.maxX -= recess;
+  if (front === 'nx') body.minX += recess;
+  if (front === 'pz') body.maxZ -= recess;
+  if (front === 'nz') body.minZ += recess;
+  return body;
+}
+
+/** All trim shares the block mesh; detail creates depth without extra draw calls. */
+function frontageDetails(mesh: MeshBuilder, rect: Rect, front: CityBuilding['front'], baseY: number, firstFloor: number, lastFloor: number, family: number, seed: number, color: readonly [number, number, number]): void {
+  const span = front === 'px' || front === 'nx' ? depth(rect) : width(rect);
+  const trim: [number, number, number] = color.map(c => c * 0.72) as [number, number, number];
+  const metal = toLinear(0x3c4851);
+  const bays = Math.max(1, Math.round(span / 3.4));
+  const floorY = (f: number): number => baseY + CITY.building.groundFloorHeight + (f - 1) * CITY.building.floorHeight;
+  const solid = (r: Rect, y: number, h: number, c: readonly [number, number, number]): void => box(mesh, r, y, y + h, 0, 0, c, c, seed, KIND_FLAT);
+  const residential = family === FACADE_FAMILY.apartment || family === FACADE_FAMILY.hillside;
+  if (residential) {
+    for (let f = firstFloor; f < lastFloor; f++) {
+      const y = floorY(f);
+      solid(frontStrip(rect, front, 0.1, span - 0.1, 0.04, 1.0), y, 0.16, trim);
+      solid(frontStrip(rect, front, 0.1, span - 0.1, 0.08, 0.19), y + 0.18, 0.65, trim);
+      solid(frontStrip(rect, front, 0.07, span - 0.07, 0.06, 0.22), y + 0.91, 0.065, metal);
+      for (let k = 0; k <= bays; k++) {
+        const u = 0.16 + (span - 0.32) * k / bays;
+        solid(frontStrip(rect, front, u - 0.055, u + 0.055, 0.12, 0.92), y + 0.16, k === 0 || k === bays ? 2.8 : 1.7, trim);
       }
-    : {
-        minX: footprint.maxX - recess,
-        maxX: footprint.maxX + 0.02,
-        minZ: mid - door / 2,
-        maxZ: mid + door / 2,
-      };
-  box(mesh, bay, baseY, baseY + height, 0, 0, toLinear(0x2a2824), ROOF_COLOR, seed, KIND_FLAT);
+    }
+  } else if (family === FACADE_FAMILY.hotel) {
+    for (let k = 0; k <= bays; k++) {
+      const u = 0.1 + (span - 0.2) * k / bays;
+      solid(frontStrip(rect, front, u - 0.075, u + 0.075, -0.1, 0.16), floorY(firstFloor), floorY(lastFloor) - floorY(firstFloor), metal);
+    }
+    for (let f = firstFloor; f <= lastFloor; f += 3) solid(frontStrip(rect, front, 0, span, -0.12, 0.2), floorY(f) - 0.12, 0.22, trim);
+  } else {
+    for (let f = firstFloor; f <= lastFloor; f++) solid(frontStrip(rect, front, 0, span, -0.075, 0.18), floorY(f) - 0.13, 0.2, trim);
+    if (family === FACADE_FAMILY.timber || family === FACADE_FAMILY.cinema) {
+      for (let k = 0; k <= bays * 2; k++) {
+        const u = 0.1 + (span - 0.2) * k / (bays * 2);
+        solid(frontStrip(rect, front, u - 0.04, u + 0.04, -0.08, 0.1), floorY(firstFloor), floorY(lastFloor) - floorY(firstFloor), trim);
+      }
+    }
+  }
 }
 
 function pitchedRoof(
@@ -539,12 +591,46 @@ function pitchedRoof(
   );
 }
 
+// Omit author-owned sites before extrusion so no invisible collider survives.
+const AUTHORED_SITES: readonly Rect[] = [
+  { minX: 665, maxX: 745, minZ: -20, maxZ: 50 },
+  { minX: 503, maxX: 525, minZ: 25, maxZ: 47 },
+  { minX: 638, maxX: 650, minZ: 136, maxZ: 145 },
+];
+function reserved(rect: Rect): boolean {
+  return AUTHORED_SITES.some(r => rect.minX < r.maxX && rect.maxX > r.minX && rect.minZ < r.maxZ && rect.maxZ > r.minZ);
+}
+
+function streetFront(rect: Rect, block: Rect, isRoad: CityInput['isRoad']): CityBuilding['front'] {
+  const cx = (rect.minX + rect.maxX) / 2, cz = (rect.minZ + rect.maxZ) / 2;
+  const candidates: { face: CityBuilding['front']; gap: number; x: number; z: number; dx: number; dz: number }[] = [
+    { face: 'px', gap: block.maxX - rect.maxX, x: rect.maxX, z: cz, dx: 1, dz: 0 },
+    { face: 'nx', gap: rect.minX - block.minX, x: rect.minX, z: cz, dx: -1, dz: 0 },
+    { face: 'pz', gap: block.maxZ - rect.maxZ, x: cx, z: rect.maxZ, dx: 0, dz: 1 },
+    { face: 'nz', gap: rect.minZ - block.minZ, x: cx, z: rect.minZ, dx: 0, dz: -1 },
+  ];
+  // Immediate drivable frontage wins; otherwise use the nearest block edge / lane.
+  for (const c of candidates) {
+    for (let d = 1; d <= Math.min(12, c.gap + 8); d += 1) {
+      if (isRoad(c.x + c.dx * d, c.z + c.dz * d)) { c.gap = d - 20; break; }
+    }
+  }
+  candidates.sort((a, b) => a.gap - b.gap);
+  return candidates[0]!.face;
+}
+
+function describe(rect: Rect, baseY: number, built: { height: number; shopInset: number }, family: number, front: CityBuilding['front'], id?: string): CityBuilding {
+  return { ...rect, baseY, height: built.height, shopInset: built.shopInset, family, front, id: id ?? 'building:' + rect.minX.toFixed(4) + ':' + rect.minZ.toFixed(4) };
+}
+
 function placeCrossingLandmarks(
   mesh: MeshBuilder,
   baseY: number,
   random: () => number,
   signs: SignAnchor[],
   colliders: CityCollider[],
+  buildings: CityBuilding[],
+  isRoad: CityInput['isRoad'],
 ): { id: string; family: number; x: number; z: number; floors: number; height: number }[] {
   const specs: { id: string; family: number; rect: Rect }[] = [
     { id: 'corner-shop', family: FACADE_FAMILY.shop, rect: { minX: 598, maxX: 610, minZ: 99, maxZ: 111 } },
@@ -554,7 +640,13 @@ function placeCrossingLandmarks(
   ];
   const out: { id: string; family: number; x: number; z: number; floors: number; height: number }[] = [];
   for (const spec of specs) {
-    const built = extrudeBuilding(mesh, spec.rect, spec.rect, baseY, random, signs, spec.family);
+    if (spec.id === 'corner-mart') {
+      out.push({ id: spec.id, family: spec.family, x: 644, z: 140.5, floors: 0, height: 0 });
+      continue;
+    }
+    const front = streetFront(spec.rect, spec.rect, isRoad);
+    const built = extrudeBuilding(mesh, spec.rect, spec.rect, baseY, random, signs, spec.family, front);
+    buildings.push(describe(spec.rect, baseY, built, spec.family, front, spec.id));
     colliders.push({
       minX: spec.rect.minX,
       maxX: spec.rect.maxX,
@@ -726,6 +818,7 @@ export function generateCity(input: CityInput): CityResult {
   const blockMeshes: CityBlockMesh[] = [];
   const signs: SignAnchor[] = [];
   const colliders: CityCollider[] = [];
+  const buildingDescriptors: CityBuilding[] = [];
   const curbs: CityCurb[] = [];
   const sidewalkTop = CITY_GROUND_Y + CITY.sidewalk.height;
 
@@ -762,7 +855,7 @@ export function generateCity(input: CityInput): CityResult {
     let buildings = 0;
 
     for (const parcel of parcels) {
-      if (inCrossing(parcel)) continue;
+      if (inCrossing(parcel) || reserved(parcel)) continue;
       const street = onStreetEdge(parcel, block);
       if (random() < (street ? 0.08 : CITY.parcel.vacancy)) continue;
       const footprint = shrink(parcel, CITY.parcel.setback);
@@ -774,7 +867,9 @@ export function generateCity(input: CityInput): CityResult {
         false,
         random,
       );
-      const built = extrudeBuilding(mesh, footprint, block, sidewalkTop, random, signs, family);
+      const front = streetFront(footprint, block, input.isRoad);
+      const built = extrudeBuilding(mesh, footprint, block, sidewalkTop, random, signs, family, front);
+      buildingDescriptors.push(describe(footprint, sidewalkTop, built, family, front));
       familyCounts[family]!++;
       buildings++;
       // `built.height` ist die Höhe **über** `sidewalkTop`, inklusive Brüstung.
@@ -824,11 +919,20 @@ export function generateCity(input: CityInput): CityResult {
   // Dasselbe Kit auf einzelnen Terrassen; keine zweite waagerechte Stadtplatte.
   const extensions = new Map<string, MeshBuilder>();
   for (const lot of input.urbanLots ?? []) {
+    if (reserved(lot)) continue;
     let mesh = extensions.get(lot.group);
     if (!mesh) { mesh = new MeshBuilder(); extensions.set(lot.group, mesh); }
+    const authoredLot = [ [1116.731, -331.865], [474.253, 713.377], [205.149, 254.645] ].some(([x, z]) => Math.hypot((lot.minX + lot.maxX) / 2 - x!, (lot.minZ + lot.maxZ) / 2 - z!) < 2);
+    if (authoredLot) {
+      box(mesh, lot, lot.bottom, lot.top, 0, 0, SIDEWALK_COLOR, SIDEWALK_COLOR, 0, KIND_FLAT);
+      curbs.push({ minX: lot.minX, maxX: lot.maxX, minZ: lot.minZ, maxZ: lot.maxZ, top: lot.top });
+      continue;
+    }
     const footprint = shrink(lot, 1.3);
     const family = pickFamily((lot.minX + lot.maxX) / 2, (lot.minZ + lot.maxZ) / 2, true, random);
-    const built = extrudeBuilding(mesh, footprint, lot, lot.top, random, signs, family);
+    const front = streetFront(footprint, lot, input.isRoad);
+    const built = extrudeBuilding(mesh, footprint, lot, lot.top, random, signs, family, front);
+    buildingDescriptors.push(describe(footprint, lot.top, built, family, front));
     familyCounts[family]!++;
     box(mesh, lot, lot.bottom, lot.top, 0, 0, SIDEWALK_COLOR, SIDEWALK_COLOR, 0, KIND_FLAT);
     colliders.push({ ...footprint, bottom: lot.bottom, top: lot.top + built.height });
@@ -842,14 +946,15 @@ export function generateCity(input: CityInput): CityResult {
   }
 
   const landmarkMesh = new MeshBuilder();
-  const placed = placeCrossingLandmarks(landmarkMesh, sidewalkTop, random, signs, colliders);
+  const placed = placeCrossingLandmarks(landmarkMesh, sidewalkTop, random, signs, colliders, buildingDescriptors, input.isRoad);
   landmarks.push(...placed);
   for (const mark of placed) {
+    if (mark.height === 0) continue;
     familyCounts[mark.family]!++;
     floorsMax = Math.max(floorsMax, mark.floors);
     heightMax = Math.max(heightMax, mark.height);
   }
-  buildingCount += placed.length;
+  buildingCount += placed.filter(mark => mark.height > 0).length;
   if (!landmarkMesh.empty) {
     triangles += landmarkMesh.triangles;
     blockMeshes.push({ geometry: landmarkMesh.build('Kreuzung') });
@@ -859,6 +964,7 @@ export function generateCity(input: CityInput): CityResult {
   triangles += sidewalkMesh.triangles + ground.triangles;
 
   return {
+    buildings: buildingDescriptors,
     blocks: blockMeshes,
     sidewalks: sidewalkMesh.build('Bürgersteige'),
     ground: ground.geometry,
@@ -896,7 +1002,8 @@ function extrudeBuilding(
   random: () => number,
   signs: SignAnchor[],
   family: number,
-): { floors: number; height: number } {
+  front: CityBuilding['front'],
+): { floors: number; height: number; shopInset: number } {
   const b = CITY.building;
   // **Ganzzahlig, nicht 0…1.** Der Startwert läuft als Vertex-Attribut durch
   // die perspektivisch korrekte Interpolation; die trifft je Pixel die letzten
@@ -926,7 +1033,7 @@ function extrudeBuilding(
   if (family === FACADE_FAMILY.shed) floors = Math.min(2, floors);
   if (family === FACADE_FAMILY.cinema) floors = Math.min(5, Math.max(3, floors));
   if (family === FACADE_FAMILY.workshop) floors = Math.min(4, Math.max(2, floors));
-  if (family === FACADE_FAMILY.hotel) floors = Math.max(floors, 8);
+  if (family === FACADE_FAMILY.hotel) floors = Math.min(20, Math.max(floors + 3, 11));
 
   const floorTopY = (floor: number): number =>
     baseY + b.groundFloorHeight + Math.max(0, floor - 1) * b.floorHeight;
@@ -943,7 +1050,7 @@ function extrudeBuilding(
   const shop = shrink(footprint, inset);
   const groundTop = floorTopY(1);
   box(mesh, shop, baseY, groundTop, 0, 1, color, ROOF_COLOR, seed, KIND_WALL);
-  doorBay(mesh, footprint, baseY, groundTop, seed);
+  doorBay(mesh, shop, baseY, groundTop, seed, front);
 
   const hasCanopy =
     family !== FACADE_FAMILY.apartment && family !== FACADE_FAMILY.hillside && family !== FACADE_FAMILY.hotel;
@@ -964,9 +1071,12 @@ function extrudeBuilding(
   const splitFloor = hasSetback ? Math.max(2, Math.round(floors * b.setbackAt)) : floors;
   const lowerTop = floorTopY(splitFloor);
 
+  const residential = family === FACADE_FAMILY.apartment || family === FACADE_FAMILY.hillside;
+  const body = recessedBody(footprint, front, residential ? 0.95 : 0);
   for (const face of ['px', 'nx', 'pz', 'nz'] as const) {
-    wall(mesh, face, footprint, groundTop, lowerTop, 1, splitFloor, color, seed, KIND_WALL);
+    wall(mesh, face, body, groundTop, lowerTop, 1, splitFloor, color, seed, KIND_WALL);
   }
+  frontageDetails(mesh, footprint, front, baseY, 1, splitFloor, family, seed, color);
 
   let crown = footprint;
   let crownTop = lowerTop;
@@ -974,8 +1084,10 @@ function extrudeBuilding(
     top(mesh, footprint, lowerTop, ROOF_COLOR, seed);
     const upper = shrink(footprint, b.setbackDepth);
     if (width(upper) > 4 && depth(upper) > 4) {
+      const upperBody = recessedBody(upper, front, residential ? 0.95 : 0);
+      frontageDetails(mesh, upper, front, baseY, splitFloor, floors, family, seed, color);
       for (const face of ['px', 'nx', 'pz', 'nz'] as const) {
-        wall(mesh, face, upper, lowerTop, roofY, splitFloor, floors, color, seed, KIND_WALL);
+        wall(mesh, face, upperBody, lowerTop, roofY, splitFloor, floors, color, seed, KIND_WALL);
       }
       crown = upper;
       crownTop = roofY;
@@ -990,7 +1102,7 @@ function extrudeBuilding(
   // scharfe Kante — bei 2,23° Sonnenstand die auffälligste Silhouette im Bild.
   if (pitched) {
     collectSigns(footprint, block, baseY, floors, roofY, signs);
-    return { floors, height: crownTop + 3.2 - baseY };
+    return { floors, height: crownTop + 3.2 - baseY, shopInset: inset };
   }
   const p = b.parapetThickness;
   const parapetTop = crownTop + b.parapet;
@@ -1007,6 +1119,7 @@ function extrudeBuilding(
 
   // Dachaufbauten: Wassertank oder Klimagerät. Zwei bis drei Prozent der
   // Dreiecke, und sie sind der Unterschied zwischen einem Dach und einem Deckel.
+  let highestY = parapetTop;
   const roofBoxes = 1 + Math.floor(random() * 3);
   for (let i = 0; i < roofBoxes; i++) {
     const bw = 1.4 + random() * 2.6;
@@ -1015,11 +1128,13 @@ function extrudeBuilding(
     if (width(inner) <= bw || depth(inner) <= bd) break;
     const x0 = inner.minX + random() * (width(inner) - bw);
     const z0 = inner.minZ + random() * (depth(inner) - bd);
+    const unitTop = crownTop + 0.8 + random() * 1.6;
+    highestY = Math.max(highestY, unitTop);
     box(
       mesh,
       { minX: x0, maxX: x0 + bw, minZ: z0, maxZ: z0 + bd },
       crownTop,
-      crownTop + 0.8 + random() * 1.6,
+      unitTop,
       0,
       0,
       ROOF_COLOR,
@@ -1029,9 +1144,32 @@ function extrudeBuilding(
     );
   }
 
+  // Japanese FRP water tanks on steel legs and elevator overruns break the skyline.
+  const equipment = shrink(crown, 0.9);
+  if (width(equipment) > 3.2 && depth(equipment) > 3.2 && floors >= 4) {
+    const ex = (equipment.minX + equipment.maxX) / 2;
+    const ez = (equipment.minZ + equipment.maxZ) / 2;
+    const tankSize = family === FACADE_FAMILY.hotel ? 2.8 : 1.8;
+    const metal = toLinear(0x525c62);
+    const tankColor = toLinear(0x8a9390);
+    const unit = { minX: ex - tankSize / 2, maxX: ex + tankSize / 2, minZ: ez - tankSize / 2, maxZ: ez + tankSize / 2 };
+    const supportTop = crownTop + 0.85;
+    const equipmentTop = supportTop + (family === FACADE_FAMILY.hotel ? 2.5 : 1.9);
+    for (const x of [unit.minX + 0.1, unit.maxX - 0.1]) {
+      for (const z of [unit.minZ + 0.1, unit.maxZ - 0.1]) {
+        box(mesh, { minX: x - 0.06, maxX: x + 0.06, minZ: z - 0.06, maxZ: z + 0.06 }, crownTop, supportTop, 0, 0, metal, metal, seed, KIND_FLAT);
+      }
+    }
+    box(mesh, unit, supportTop, equipmentTop, 0, 0, tankColor, tankColor, seed, KIND_FLAT);
+    for (const y of [supportTop + 0.06, supportTop + 0.94, equipmentTop - 0.06]) {
+      const band = { minX: unit.minX - 0.025, maxX: unit.maxX + 0.025, minZ: unit.minZ - 0.025, maxZ: unit.maxZ + 0.025 };
+      box(mesh, band, y, y + 0.035, 0, 0, metal, metal, seed, KIND_FLAT);
+    }
+    highestY = Math.max(highestY, equipmentTop);
+  }
   collectSigns(footprint, block, baseY, floors, roofY, signs);
 
-  return { floors, height: parapetTop - baseY };
+  return { floors, height: highestY - baseY, shopInset: inset };
 }
 
 /**
