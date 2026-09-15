@@ -1,0 +1,9 @@
+{
+  "hooks": {
+    "stop": [
+      {
+        "command": "node tools/agent-isolate.mjs --hook-stop"
+      }
+    ]
+  }
+}

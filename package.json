@@ -35,6 +35,9 @@
     "test:wp1": "node tools/wp1-ui.test.mjs && node tools/wp1-instruments.test.mjs && node tools/wp1-photo-input.test.mjs",
     "test:wp1:boot": "node tools/wp1-boot.mjs",
     "test:wp1:phone": "node tools/wp1-phone.mjs",
+    "agent:isolate": "node tools/agent-isolate.mjs",
+    "agent:status": "node tools/agent-isolate.mjs --status",
+    "agent:finish": "node tools/agent-isolate.mjs --finish",
     "predev": "node tools/pack-heightmap.mjs",
     "predev:lan": "node tools/pack-heightmap.mjs",
     "prebuild": "node tools/pack-heightmap.mjs"

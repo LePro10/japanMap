@@ -1,5 +1,12 @@
 # japanMap — Game Design Plan
 
+**Implementation status, 2026-09-15:** This remains the product *target*. WP1–WP6
+built the menu/HUD/photo, Sakura Commons, ten car identities, the old-plate
+city kit, Stillwater/Tideglass, and the 72-road WP6 net (Needle Circuit, East
+Gate). They did **not** ship E01/E08–E17, eight regions, 24 discoveries, the
+2.60 km² city, stunt mode, or SDK/cloud save. The living cut list is PLAN.md
+(“Astra — nächste Schritte”).
+
 **Design decision:** Build a place where a player can leave a warm, walkable car court, make something exciting happen within seconds, and return with a car that feels more like theirs. The city supplies street choices, the pass rewards commitment, the circuit rewards precision, and the countryside rewards curiosity. Buying the fastest car must not make the other three pleasures obsolete.
 
 This is a product and content specification, not a development schedule. Numbers below are design targets unless explicitly identified as observations. Currency and session estimates are balancing assumptions, not measured retention or earnings.

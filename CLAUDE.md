@@ -59,13 +59,31 @@ Die Kette ist zirkulär: der Straßengenerator braucht ein Höhenfeld, der Baker
 braucht die Straßen. Aufgelöst wird das durch **zweimaliges Backen**.
 
 ```bash
+# Historisch, und seit WP6 gefährlich:
 npm run world     # textures → hdri → bake:clean → sun → roads → bake → shade → map
 ```
+
+**Seit WP6 (72 Routen) gilt diese Kette nicht mehr unverändert.**
+`npm run roads` und damit `npm run world` rufen `gen-roads.mjs` **ohne**
+`--wp6` auf und würden das alte Acht-Straßen-Netz zurückschreiben. Der
+lebende Stand entsteht so:
+
+```bash
+npm run bake:clean
+node tools/gen-roads.mjs --wp6
+npm run bake
+npm run shade
+npm run map
+```
+
+Details und Pass-Zahlen: [docs/WP6-status.md](docs/WP6-status.md). Den Schalter
+in `package.json` einzuhängen ist ein offener Prozessschritt (PLAN.md, Astra).
 
 Die Kurzform `bake:clean → sun → roads → bake → shade` (~40 s) nennt nur den
 Gelände-Kern. Vollständig gehören dazu: `textures` (Texturen optimieren),
 `hdri` (IBL- und Himmels-HDRI halbieren) und `map` (Navigationskarte erzeugen).
-Verbindlich ist die Kette in `package.json`, Skript `world`.
+Verbindlich *war* die Kette in `package.json`, Skript `world` — verbindlich
+*ist* sie mit `--wp6` an `roads`.
 
 **`npm run roads` allein ist keine gültige Messung.** Es läuft gegen das zuletzt
 gebackene, also bereits eingeschnittene Gelände; der Generator trassiert dann
@@ -75,21 +93,25 @@ Parameter. Seit `meta.json` ein `carved`-Flag führt, **verweigert** der Generat
 in diesem Fall den Dienst. Wer am Generator iteriert:
 
 ```bash
-npm run bake:clean     # einmal, danach bleibt das Feld sauber
-npm run roads          # beliebig oft
+npm run bake:clean              # einmal, danach bleibt das Feld sauber
+node tools/gen-roads.mjs --wp6  # beliebig oft — nicht `npm run roads`
 ```
 
-Verbindlich ist trotzdem immer, was `npm run world` ausgibt.
+Verbindlich ist der Stand aus dieser WP6-Kette, nicht `npm run world`.
 
 ---
 
 ## Bevor etwas „fertig" heißt
 
 ```bash
-npm run world                              # 40 s, muss ohne ✗ durchlaufen
+# Gelände-Kette: seit WP6 mit --wp6 an roads, nicht `npm run world`
+npm run bake:clean
+node tools/gen-roads.mjs --wp6
+npm run bake && npm run shade && npm run map
 npm run inspect                            # Geometrie + Bilder
 npm run typecheck                          # muss sauber sein
 npm run build                              # muss durchlaufen
+npm run test:polish                        # Stadt / Offroad / Circuit / Tune
 ```
 
 > Auf einem Netzlaufwerk scheitern die letzten beiden mit Exit 127, weil
@@ -271,11 +293,12 @@ gedrosselt. ~~Referenzwerte zum Gegenhalten: `wald` auf Ultra 38 948, mit Dichte
 
 | Befehl | Wofür |
 |---|---|
-| `npm run world` | Ganze Kette (`textures → hdri → bake:clean → sun → roads → bake → shade → map`). Die einzige verbindliche Quelle für Zahlen |
+| `npm run world` | Historische volle Kette. **Seit WP6 nicht mehr der lebende Stand** — `roads` darin fehlt `--wp6` |
+| `node tools/gen-roads.mjs --wp6` | Lebendes Netz (72 Routen, Needle, East Gate). Nur auf sauberem Feld |
 | `npm run bake:clean` | Terrain **ohne** Straßen — der saubere Stand, auf dem der Generator arbeiten darf |
 | `npm run bake` | Terrain **mit** eingeschnittenen Straßen — der Stand für das Spiel |
 | `npm run sun` | Sonnenrichtung aus dem Himmels-HDRI neu bestimmen |
-| `npm run roads` | Nur Straßennetz neu trassieren (gilt nur auf sauberem Feld, siehe „Bake-Kreislauf") |
+| `npm run roads` | Generator **ohne** `--wp6` — schreibt das alte Acht-Straßen-Netz. Nicht messen, nicht ausliefern |
 | `npm run shade` | Nur Verschattung (`shade.png`) neu backen |
 | `npm run map` | Nur Navigationskarte neu erzeugen |
 | `npm run textures` / `npm run hdri` | Texturen / HDRIs optimieren (Teil von `world`) |
@@ -296,7 +319,9 @@ gedrosselt. ~~Referenzwerte zum Gegenhalten: `wald` auf Ultra 38 948, mit Dichte
 | `japanMap.drive(true)` | **Fahrmodus an/aus (P14).** Der einzige Weg dorthin ohne Pointer Lock — die Taste `V` verlangt einen, die eingebettete Vorschau gibt keinen |
 | 🚗-Knopf / Menüzeile „Auto fahren" | **Der Weg ins Auto ohne Tastatur (P16).** Auf Touch der einzige — `V` verlangt einen Pointer Lock, den kein Telefon gibt, und `japanMap` fehlt im Build. Beide Wege schalten denselben Zustand und melden über `drive:mode` |
 | `japanMap.driveProbe()` | **Der Messstand des Fahrmodus (P14).** Fährt jede Strecke ab und schreibt Durchdringung, Spurlage, Tempo und CPU je Schritt mit; dazu Standhöhe und Höhendifferenz Sampler ↔ Mittellinie. Läuft **ohne zu rendern** — 3600 Schritte in ~50 ms |
-| `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/fleet.mts` | **Der Fahrzeug-Prüfstand (P18).** Alle vier Fahrzeuge durch dieselben acht Proben, ohne Browser. Kurzform: `npm run fleet`. Siehe unten |
+| `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/fleet.mts` | **Der Fahrzeug-Prüfstand (P18).** Historisch vier Autos; Handling der zehn Identitäten: `tools/wp3-handling.mts`. Kurzform weiter: `npm run fleet` |
+| `npm run test:polish` | 16 Programme (Stadt, Offroad, Circuit, Tune, Smashables, Bodenkontakt) |
+| `tools/physics-runtime.mjs` | Zehn Autos auf der echten Welt — Physikbericht 2026-09-15 |
 | `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/offroad.mts` | **Der Trenntest für den rauen Hang (P26).** Fährt Wellenlänge × Epsilon durch und beantwortet die eine Frage, an der `hill.mts` einmal einen Fehlalarm ausgelöst hat: gehört ein Einbruch dem Fahrzeug oder der Abtastung des Prüfstands |
 | `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/hill.mts` | **Der Steigungs-Prüfstand (P21).** Fahrzeug × Belag × Steigung, und neben jeder Zelle steht, **welche** der vier Ursachen greift (Traktion, Wand, Blech, Flattern). Der Grenzwinkel wird geschlossen ausgerechnet — die einzige Zahl im Projekt, die ohne einen Simulationsschritt entsteht |
 | `node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/world.mts` | **Der Prüfstand für Gelände und Kollision (P19/P20).** Felswand, Baum, Innenecke, Planke, Landung, Kosten — dazu seit P20 **Hang** (steckt das Blech im Berg?) und **Zufallsgelände** (90 s gewürfelt, geprüft werden Zusicherungen statt Zahlen). Die Schicht, die `fleet.mts` auf seinem idealen Boden ausdrücklich *nicht* sieht |
@@ -510,6 +535,12 @@ mit `@/` muss man dafür vorher auf relative umschreiben).
 
 ## Umgebung
 
+- **Parallele Agents** sitzen nicht in diesem Checkout. Vor der ersten Datei-
+  änderung: `node tools/agent-isolate.mjs <slug>` — danach nur noch in dem
+  ausgegebenen `path` arbeiten. Am Ende: `node tools/agent-isolate.mjs --finish`
+  (lokaler Commit auf `agent/<slug>`, Merge in den Hauptordner nur ohne
+  Konflikt, nie push, nie `npm run world`). Ports 5180/4180 gehören dem
+  Menschen. Verbindlich: [AGENTS.md](AGENTS.md).
 - **Node ≥ 22.** Der Plan verlangt es spätestens für P5 (`@gltf-transform/cli`),
   und `--experimental-strip-types` (Prüfstände unter `tools/bench/`) hängt
   ebenfalls daran. Das `engines`-Feld in `package.json` nennt noch `>=18.17`
@@ -1595,7 +1626,11 @@ baut so eine Probe und nicht noch einen Nachbau.
 die waagerechte Ebene (Gieren, Längs- und Quergeschwindigkeit); Federung,
 Stützebene, Blech gegen Gelände, Kollision und Klemmschutz laufen unverändert
 weiter. Wer wissen will, was P22 geändert hat, liest `src/game/arcadeDynamics.ts`
-und sonst nichts.
+und sonst nichts. Die Bodenkontakt-Korrektur vom 15. September ändert genau
+diese Schicht (`hullTerrain`, `groundContact.config.ts`, Offroad-Kraft) und
+**nicht** das Arcade-Gieren — Bericht: [docs/2026-09-13-physics.md](docs/2026-09-13-physics.md).
+Zehn Autos teilen dasselbe Modell; die Identitäten stehen in
+`vehicles.config.ts` / `arcade.config.ts`.
 
 Drei Folgen für jede Messung am Fahrverhalten:
 

@@ -31,6 +31,9 @@ Thumbs.db
 !.vscode/extensions.json
 .harness/
 
+# Agent-Lane-Marker in Worktrees (tools/agent-isolate.mjs).
+.agent-lane.json
+
 # Lokale Einstellungen dieser Maschine — nicht geteilt.
 .claude/settings.local.json
 

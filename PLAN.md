@@ -1,13 +1,20 @@
 # japanMap — Implementierungsplan
 
-**Physik-Überarbeitung, 2026-09-15:** Aktueller Bodenkontakt, Offroad-Abstimmung, Messungen und Engine-Vergleich stehen im [Physikbericht](docs/2026-09-13-physics.md). Die folgenden Phasen dokumentieren die historische Entwicklung.
+**Stand: 2026-09-15.** P0–P26 bleiben die historische Entwicklung. Die aktuelle
+Produktarbeit ist Astra WP1–WP6 plus die Physik vom 13.–15. September. Was als
+Nächstes kommt, steht am Ende unter [Astra — nächste Schritte](#astra--was-als-nächstes-kommt-2026-09-15).
+
+**Physik-Überarbeitung, 2026-09-15:** Bodenkontakt, Offroad-Abstimmung, Messungen
+und Engine-Vergleich stehen im [Physikbericht](docs/2026-09-13-physics.md).
 
 > Ausführungsplan zu [SPEC.md](SPEC.md). Die Spec sagt **was** gebaut wird,
 > dieser Plan sagt **in welcher Reihenfolge, mit welchen Dateien und woran wir
 > merken, dass eine Phase fertig ist**. Wo etwas im Quelltext steht und was mit
-> was redet, sagt [ARCHITECTURE.md](ARCHITECTURE.md).
+> was redet, sagt [ARCHITECTURE.md](ARCHITECTURE.md). Die Produktziele nach P26
+> stehen in [ASTRA_PLAN.md](ASTRA_PLAN.md); die sechs Build-Pakete in
+> [ASTRA_BUILD.md](ASTRA_BUILD.md). **Bei Widersprüchen gilt diese Datei.**
 >
-> **Stand: 2026-08-21 · P0–P6, P8–P10, P15, P16, P18–P21 abgenommen · P7, P11–P14 ◐ · P22–P26 gebaut**
+> **Stand: 2026-09-15 · P0–P6, P8–P10, P15, P16, P18–P21 abgenommen · P7, P11–P14 ◐ · P22–P26 gebaut · WP1–WP6 gebaut · Physik 2026-09-15 gemessen**
 >
 > ## Inhalt
 >
@@ -40,6 +47,8 @@
 > - [P24 — Schanzen, Driftzonen](#p24--schanzen-driftzonen-sammelstücke)
 > - [P25 — Politur-Durchgang](#p25--der-politur-durchgang-was-ein-bild-zeigt-und-keine-zahl)
 > - [P26 — Streifen über den Fahrzeugen](#p26--die-sehen-tot-aus-mit-diesem-streifen)
+> - [Astra WP1–WP6](#astra--produktarbeit-nach-p26-2026-09)
+> - [Astra — nächste Schritte](#astra--was-als-nächstes-kommt-2026-09-15)
 >
 > | Phase | Stand |
 > |---|---|
@@ -57,6 +66,9 @@
 > | P12 | ◐ — 9 von 11; offen: echtes Telefon, volle Auflösung je Stufe (zurückgezogen) |
 > | P13 | ◐ — 6 von 8; offen: Pointer Lock auf einer Maschine, wo er funktioniert, und ein echtes Telefon |
 > | P14 | ◐ — 7 von 9; offen: „fühlt sich der Drift gut an" und ein echtes Telefon |
+> | P22–P26 | gebaut — Arcade, sechs Veranstaltungen, Schanzen, Politur, Fahrzeug-Look |
+> | WP1–WP6 | gebaut — Menü/HUD/Foto, Sakura Commons, zehn Autos, Stadtkit, Stillwater, Needle Circuit + 72 Straßen |
+> | Physik 2026-09-15 | gemessen — Bodenkontakt und Offroad; Arcade-Modell bleibt |
 >
 > **Vier Phasen in Folge lassen dieselbe Zeile offen: „auf echter Zielhardware
 > gemessen".** P12.6, P13, P14 und P15 — das ist ein Muster und kein Zufall. Es
@@ -158,13 +170,41 @@ erfüllt sind. Ausnahmen werden hier dokumentiert, nicht mündlich vereinbart.
 >
 > ```bash
 > npm install
-> npm run world   # backt alles der Reihe nach (Gelände-Kern gemessen ~40 s)
+> # Seit WP6 nicht `npm run world` — das würde das 72-Straßen-Netz überschreiben.
+> # Texturen/HDRI einmal, dann die WP6-Kette aus docs/WP6-status.md.
+> npm run textures
+> npm run hdri
+> npm run bake:clean
+> npm run sun
+> node tools/gen-roads.mjs --wp6
+> npm run bake
+> npm run shade
+> npm run map
 > npm run dev
 > ```
 >
 > `npm run world` ist die Abkürzung für diese Kette — und die Reihenfolge darin
 > ist nicht beliebig, sondern zirkulär aufgelöst (verbindlich: `package.json`,
-> Skript `world`):
+> Skript `world`).
+>
+> **Seit WP6 (2026-09) gilt zusätzlich:** das lebende Netz hat **72 Routen**
+> und entsteht nur mit `node tools/gen-roads.mjs --wp6`. `npm run roads` und
+> `npm run world` rufen den Generator **ohne** diesen Schalter auf und würden
+> das alte Acht-Straßen-Netz zurückschreiben. Die Kette, die den aktuellen
+> Stand erzeugt, steht in [docs/WP6-status.md](docs/WP6-status.md):
+>
+> ```bash
+> npm run bake:clean
+> node tools/gen-roads.mjs --wp6
+> npm run bake
+> npm run shade
+> npm run map
+> ```
+>
+> Das `--wp6` in `package.json` einzuhängen ist ein offener Prozessschritt,
+> kein Feature — siehe [Astra — nächste Schritte](#astra--was-als-nächstes-kommt-2026-09-15).
+>
+> Historische Kurzform der Kette (verbindlich bis WP5, gefährlich danach):
 >
 > ```bash
 > npm run textures    # Texturen optimieren
@@ -233,6 +273,13 @@ erfüllt sind. Ausnahmen werden hier dokumentiert, nicht mündlich vereinbart.
 | **P24** | Schanzen, Driftzonen, Sammelstücke | `RampField` als Funktion, Blüten, Pickups | P22 |
 | **P25** | Politur-Durchgang | Was ein Bild zeigt und keine Zahl | P23, P24 |
 | **P26** | Streifen über den Fahrzeugen | Offene Detailfrage am Fahrzeug-Look | P25 |
+| **WP1** | Menü + HUD + Foto | Sechs Reiter, Instrumente, Photo Mode | P26 |
+| **WP2** | Sakura Commons | Zu Fuß starten, zwei Läden, Auto rufen | WP1 |
+| **WP3** | Zehn Autos + Tune-Stubs | Identitäten, Street/Sport, Sparks-Preise | WP1 |
+| **WP4** | Stadtkit | Acht Fassadenfamilien, Crossing, 6/12 Verkehr | WP3 |
+| **WP5** | Stillwater + Tideglass | Mühle, Teich, Net House | WP2 |
+| **WP6** | Neue Straßen / Needle | 72 Routen, Circuit, East Gate, Terrassen | WP4, WP5 |
+| **Physik** | Bodenkontakt 2026-09-15 | Hangübergang ohne Vollbremsimpuls | WP3, WP6 |
 
 > **Diese Tabelle stand bis zum 2026-08-07 auf „P7 ◐ / P8 ○"** — also zwei
 > Phasen hinter dem Rest der Datei, sechs Tage nach der P8-Abnahme. Dieselbe
@@ -11081,3 +11128,146 @@ village-hop  2.17s · harbour-jump 2.12s · south-crest  1.22s
       noch `true`, die Instanzzahlen sind also **Untergrenzen**. Was fehlt, ist
       derselbe Lauf mit fertiger Streuung; auf diesem Software-Rasterisierer
       ist er nicht bezahlbar (s. dort).
+
+---
+
+# Astra — Produktarbeit nach P26 (2026-09)
+
+> **Anlass:** [TODO.md](TODO.md) ist eine Wunschliste, kein Spec.
+> [ASTRA_PLAN.md](ASTRA_PLAN.md) ist die Produktspezifikation;
+> [ASTRA_BUILD.md](ASTRA_BUILD.md) teilt sie in sechs Pakete. P0–P26 bleiben
+> die technische Geschichte. Hier steht, was davon **gebaut** ist und was
+> **nicht**.
+
+`ASTRA_BUILD.md` hat **kein WP7**. Alles unter „nächste Schritte" ist
+deshalb neu zu schneiden, nicht stillschweigend als siebtes Paket zu
+behaupten.
+
+## Was der Spieler jetzt tun kann
+
+| Paket | Spieler kann | Nachweis |
+|---|---|---|
+| **WP1** | Sechs Reiter (Play, Cars, Map, Records, Photo, Settings); Gang/Drehzahl/Tempo/Nitro; Foto mit Pause, Freikamera und PNG | [docs/WP1.md](docs/WP1.md), `npm run test:wp1` |
+| **WP2** | Zu Fuß in der Schale starten, Kite 4 m nördlich, Petal Motors / Open Bay, Auto rufen, fünf Übungskegel | [docs/WP2-SAKURA.md](docs/WP2-SAKURA.md), `tools/wp2-boot.mjs` |
+| **WP3** | Zehn originale Autos fahren, Street/Sport an Motor/Bremse/Lenkung/Reifen, Sparks-Preise, Speicher je Auto | [docs/WP3.md](docs/WP3.md), `tools/wp3-handling.mts` |
+| **WP4** | Acht Fassadenfamilien, 42-m-Kreuzung, sechs Zivilautos, zwölf Fußgänger auf der alten Stadtplatte | [docs/WP4.md](docs/WP4.md), `tools/wp4-city.test.mts` |
+| **WP5** | Mill Lane nach Stillwater, Mühle betreten, Schleuse, Teich; Tideglass bleibt Arbeitshafen mit Net House | [docs/WP5-stillwater.md](docs/WP5-stillwater.md) |
+| **WP-offroad** | Dirt/Gras/Flachwasser nach Tabelle, Terrace Track, Shallow Run, Terrace Roller, Setups Road/Drift/Dirt | [docs/WP-offroad.md](docs/WP-offroad.md) |
+| **WP6** | Commons → East Gate → Stadtplatte → Dorfstraße; Needle Circuit 2,17 km mit 900-m-Gerade; 242 Stadtterrassen | [docs/WP6-status.md](docs/WP6-status.md) |
+| **Integration** | Pause/Sleep, Countdown sperrt den Start, Aussteigen nur unter 5 km/h, Smashables, packed Heightmap | [docs/2026-09-11-remote-integration.md](docs/2026-09-11-remote-integration.md) |
+| **Physik** | Hangübergang ohne Vollbremsimpuls; größter Schrittverlust über 50 Weltfahrten 0,703 km/h | [docs/2026-09-13-physics.md](docs/2026-09-13-physics.md) |
+
+Die alten sechs Veranstaltungen (Coast Loop, Tōge Descent, Neon Circuit,
+Tōge Climb, Ring Time Trial, Tōge Drift Run) laufen weiter auf dem neuen Netz.
+Die Währung heißt in der Oberfläche **Sparks**; intern bleibt der Schlüssel
+`yen` in `Profile`. Das ist Absicht bis zur Speicher-Migration, kein
+erledigter Namenswechsel.
+
+## Was WP1–WP6 ausdrücklich *nicht* sind
+
+Aus den Paketnotizen, nicht neu erfunden:
+
+- Kein volles Shop-/Tune-Wirtschaftssystem, keine Testfahrt, keine Lacke/Kits
+- Kein Stunt-Modus (Doppel-Leertaste)
+- Keine Events E08–E17, keine Lieferfahrten, keine Eventkarten mit Cruise/Club/Expert
+- Keine 2,60 km² Stadt, kein Beacon Tower, kein Rain Garden, kein Breakyard
+- Keine acht Regionen, keine 24 Entdeckungskarten, keine Road Card
+- Keine begehbaren Innenräume außer Mühle und Net House (Petal/Open Bay öffnen Menüs)
+- Keine GLB-Autos, kein CrazyGames-SDK, kein Cloud-Save
+- `npm run world` schreibt das WP6-Netz **nicht**
+
+---
+
+# Astra — was als Nächstes kommt (2026-09-15)
+
+Reihenfolge nach dem, was ein Spieler zuerst merkt. Die historischen ◐-Zeilen
+(P7, P11–P14: echte Zielhardware, Pointer Lock, „fühlt sich gut an") bleiben
+offen und sind **kein** Ersatz für die Produktlücken darunter.
+
+### 0. Bake-Kette — Prozess, kein Feature
+
+`--wp6` in `package.json` (`roads` und `world`) einhängen, sonst zerstört der
+nächste `npm run world` 72 Routen. Bis dahin gilt nur die Kette aus
+`docs/WP6-status.md`.
+
+### 1. Spielbarkeit, die die Wunschliste noch rot führt
+
+Teile davon sind **schon gebaut** (Pause, Countdown-Sperre, Aussteigen unter
+5 km/h) und gehören nicht noch einmal „repariert", sondern gegen die
+Wunschliste **nachgefahren**. Was fehlt:
+
+| Thema | Soll (TODO / ASTRA_PLAN) | Stand im Code |
+|---|---|---|
+| ESC im Menü / Weltpause | Escape schließt, Welt steht, optional Sleep | Pause und `engine.sleep()` existieren; ESC-auf-offenem-Menü und AFK-Sleep sind nicht als erledigt gemessen |
+| Rennen | Grid gerade, Countdown hält, KI fährt, Kollision bleibt | Countdown nullt Tempo; Integration meldet sechs Events grün. KI-Stärke und „wegschallern" sind nicht gegen ASTRA_PLAN §8 gemessen |
+| Pickups | sitzen nicht im Boden; später Sparks-Ikon + Aufsammel-Animation | Clip-Bug in TODO offen; 90 anonyme Münzen sind nicht durch 24 Entdeckungen ersetzt |
+| Fluss vs. Bergpass | sichtbar oder Brücke, keine unsichtbare Kollision | offen — P21 hat das schwebende Becken bewusst nicht am Bake repariert |
+| Reisfeld-Wasser | Auto nicht versunken, Stufe hat Erde | offen |
+| Brücke zur Stadt | East Gate ist Damm, keine transparente Brücke | WP6 hat den Damm geschnitten; ob das alte Mesh noch stört, ist nicht neu fotografiert |
+
+### 2. Veranstaltungen — der größte fehlende Spielgrund
+
+ASTRA_PLAN §8: Eventkarte, 3–2–1–GO, drei KI-Persönlichkeiten, Schwierigkeit
+Cruise/Club/Expert, Katalog **E01–E17** plus zwei Lieferfahrten.
+
+Gebaut sind nur die sechs alten Strecken (E02–E07 unter neuen Namen in der
+Spec, alte IDs im Code). **E01, E08–E17, Lieferungen, Eventkarten und
+Schwierigkeit fehlen.** Ohne sie bleibt Needle Circuit eine Straße ohne
+Grund, sie zu fahren.
+
+### 3. Orte, die der Plan pinnt und die Karte noch nicht hat
+
+| Ort / Mechanik | Spec | Gebaut? |
+|---|---|---|
+| Acht Regionen + Erstbetretung | ASTRA_PLAN §3 | nein |
+| 2,60 km² Stadt, fünf Viertel | §3 | nein — WP4 ist die **alte** Platte, WP6 legt Terrassen daneben |
+| Beacon, Rain Garden, Rotor Court, Breakyard, Market Hall | §3 / §4 | nein |
+| Sechs neue Schanzen | §4 | nur Terrace Roller; die sechs P24-Schanzen stehen noch |
+| Sieben Innenräume | §7 | Mühle + Net House; Petal/Open Bay sind Menütüren |
+| 24 Entdeckungen + Road Card | §9 | nein |
+| Lobby-Dichte (Fußgänger, Warmlicht, intro sprint als Event) | §2 | Commons-Geometrie ja, E01-Belohnung/Pip-Unlock nein |
+
+### 4. Fahrgefühl, das über WP3/Physik hinausgeht
+
+- **Stunt-Modus** (Q / Doppel-Leertaste) — ASTRA_PLAN §5, in TODO, **null Code**
+- Zerstörung nach Materialklassen (TODO: fast alles; Plan: begrenzte Klassen)
+- Zu-Fuß: Laufen/Sprint/Slide — Walker existiert, Slide/CTRL nicht
+- Pro-Auto-Motoren, Belag×Drift, Kollisionstöne, Weltgeräusch — ASTRA_PLAN §6
+- GLB-Heldenautos später, nicht als nächster Schritt (`ASTRA_BUILD`: nach WP1–3)
+
+### 5. Fortschritt, der eine zweite Sitzung lohnt
+
+- Sparks-Ikon, Aufsammel-Animation, Pickup-Ersatz
+- Bezahlte Street/Sport (Preise stehen, Kaufpfad in Open Bay existiert teilweise)
+- Lacke, Felgen, Kits, 90-s-Testfahrt
+- Persistenz: localStorage ja, CrazyGames Cloud-Save nein
+- Records mit Screenshot-Karte bei Meilensteinen
+
+### 6. Auslieferung
+
+- CrazyGames-SDK (User, Cloud-Save, Gameplay-Events, Ads laut ASTRA_PLAN §12)
+- GitHub-Pages-Pfad muss bis zur Einreichung weiterlaufen
+- Rest-Deutsch in UI/Konsole
+- KTX2-Texturen (offene Entscheidung #7 seit P10.4)
+- Mobil als Erstklasse: Layout und Bildrate auf echtem Telefon — dieselbe
+  Zeile, die P12–P15 offen lassen
+
+### Vorgeschlagene nächste Schnitte
+
+Kein WP7 in `ASTRA_BUILD.md`. Wenn die Arbeit weiter in Paketen laufen soll:
+
+1. **Bake-Flag + Eventkatalog auf dem *vorhandenen* Netz** (Needle Sprint,
+   Open Seat, Terrace Rally, Eventkarte, Countdown-Ritual). Nutzt WP6-Straßen,
+   ohne die Stadt zu verdoppeln.
+2. **Entdeckungen und Regionen** — acht Namen, 24 Karten, Erstbetretung.
+   Macht die vorhandene Karte lesbar, bevor sie größer wird.
+3. **Stunt-Modus + Schanzen tauschen** — nachdem die Physik vom 15. September
+   sitzt (TODO verlangt genau diese Reihenfolge).
+4. **Stadt-Wachstum und Breakyard** — 2,60 km², Landmarken, Innenräume.
+   Das ist der teure Bake und gehört zuletzt, nicht zuerst.
+5. **SDK, Save, Ads, KTX2** — parallel zur Einreichung, nicht als
+   Spielinhalt.
+
+Was dieses Projekt **nicht** als Nächstes braucht: eine zweite Physik-Engine.
+Der Bericht vom 15. September lässt Arcade stehen und nennt Rapier/Jolt nur
+als späteren Prototyp, nachdem Hang, Kuppe, Rampe und Telefon gemessen sind.

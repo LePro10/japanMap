@@ -2,9 +2,9 @@
 
 An open-world driving game in the browser: a 3 × 3 km Japanese landscape at
 blue hour after rain — mountain pass, forest temple, rice paddies, neon city
-and coast — with arcade driving, drift scoring, races against AI rivals and
-90 collectibles. Built with vanilla Three.js + TypeScript + Vite, no game
-engine.
+and coast — with arcade driving, ten original cars, drift scoring, races
+against AI rivals and a walkable sakura court. Built with vanilla Three.js +
+TypeScript + Vite, no game engine.
 
 ![Overview of the map](screenshots/01-uebersicht.png)
 
@@ -34,13 +34,18 @@ just desktops.
 
 **Content:**
 
+- **10 original cars, one physics model** — Kite S (starter) through Needle 01;
+  Street/Sport tune stubs; earn Sparks from races, drift chains and pickups
 - **6 events** — 4 races with up to 3 AI rivals
   (Coast Loop, Tōge Descent, Neon Circuit, Tōge Climb), a Ring Time Trial and
-  a Tōge Drift Run
-- **4 vehicles, one physics model** — Touge Coupé, GT, Offroad 4×4, Truck;
-  earn ¥ from races, drift chains and collectibles to unlock them
+  a Tōge Drift Run. A larger catalogue is specified, not yet built
+- **Places** — Sakura Commons (on-foot spawn), Stillwater Village, Tideglass
+  Harbour, Needle Circuit (2.17 km, 900 m straight), neon city crossing
 - **Drift scoring** with chain multiplier up to ×5, doubled in two drift zones
-- **6 jump ramps**, 90 pickups, minimap with rivals and checkpoint arrow
+- **Photo mode**, six-tab pause menu, minimap, 6 jump ramps, 90 pickups
+
+The product spec for what is still missing is [`ASTRA_PLAN.md`](ASTRA_PLAN.md);
+what is actually shipped, and the next cuts, are in [`PLAN.md`](PLAN.md).
 
 ![Neon city street](screenshots/03-stadt-strasse.png)
 ![Sunset drive over the paddies](screenshots/11-drift-hinten.png)
@@ -85,7 +90,16 @@ Requirements: **Node ≥ 22**.
 
 ```bash
 npm install
-npm run world   # bake terrain, roads, shadows, map (takes a while, run once)
+# Do not use `npm run world` on this checkout: it would rebuild the pre-WP6
+# eight-road net. Current roads need `--wp6` (see docs/WP6-status.md).
+npm run textures
+npm run hdri
+npm run bake:clean
+npm run sun
+node tools/gen-roads.mjs --wp6
+npm run bake
+npm run shade
+npm run map
 npm run dev     # dev server, then open the printed URL
 ```
 
@@ -95,11 +109,12 @@ Other useful commands:
 npm run typecheck   # TypeScript, must be clean
 npm run build       # production build
 npm run preview     # serve the production build
-npm run fleet       # vehicle test rig: all 4 cars, 8 probes, no browser
+npm run fleet       # vehicle test rig (legacy four-car probes)
+npm run test:polish # city / offroad / circuit / tune / smashables
 ```
 
-> After a fresh clone you must run `npm run world` before `npm run dev`:
-> `assets/generated/` is git-ignored and reproduced from seed + tools.
+> After a fresh clone you must bake before `npm run dev`: `assets/generated/`
+> is git-ignored. Use the WP6 chain above, not `npm run world`.
 
 ---
 
@@ -108,11 +123,11 @@ npm run fleet       # vehicle test rig: all 4 cars, 8 probes, no browser
 ```
 src/
 ├── core/     Engine, RenderLoop, EventBus, ResourceManager
-├── world/    terrain, roads, water, vegetation, props, city, stunt, materials
-├── game/     driving, collision, AI rivals, races, drift scoring, cameras
+├── world/    terrain, roads, water, vegetation, props, city, settlements, stunt
+├── game/     driving (10 cars), collision, AI rivals, races, walker, garage
 ├── render/   post-processing, lighting, reflections, quality, atmosphere
 ├── audio/    engine + event sounds
-├── ui/       start screen, pause menu, HUD, minimap, touch controls
+├── ui/       start screen, six-tab menu, HUD, photo mode, minimap, touch
 ├── debug/    dev-only overlay, benchmarks, editors
 └── config/   all magic numbers live here, never in code
 

@@ -1,5 +1,15 @@
 # JapanMap TODOs
 
+This file is a **wishlist**, not the current ship state. What WP1–WP6 and the
+2026-09-15 physics pass actually built — and the next cuts — live in
+[PLAN.md](PLAN.md) (Astra sections) and [ASTRA_PLAN.md](ASTRA_PLAN.md).
+
+Several items below are partly done and must not be rebuilt from scratch:
+pause/sleep exists, countdown locks the grid, exiting the car requires
+under 5 km/h, East Gate is a carved embankment, ten cars and tune stubs exist,
+Needle Circuit is in the live `roads.json`. Remaining work is listed in PLAN
+under “Astra — nächste Schritte”.
+
 ## table of contents:
 
 - general bugs

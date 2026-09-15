@@ -1,7 +1,7 @@
 # japanMap — Technische Spezifikation
 
 > Open-World-Map in Three.js als Basis für ein Browser-Game
-> (Racing / Drifting / Erkundung). Stand: 2026-08-21.
+> (Racing / Drifting / Erkundung). Stand: 2026-09-15.
 >
 > **Dokumentenübersicht:**
 >
@@ -11,6 +11,9 @@
 > | [PLAN.md](PLAN.md) | **In welcher Reihenfolge**, mit welchen Dateien, woran Fertigkeit erkennbar ist | PLAN.md |
 > | [ARCHITECTURE.md](ARCHITECTURE.md) | **Wo** etwas im Quelltext steht und was mit was kommuniziert | die Quelldatei |
 > | [CLAUDE.md](CLAUDE.md) | **Wie** hier gearbeitet und gemessen wird | — |
+> | [ASTRA_PLAN.md](ASTRA_PLAN.md) | **Produktziele** nach P26 (Orte, Autos, Events, Menü) | PLAN.md für den Stand, ASTRA_PLAN für das Soll |
+> | [TODO.md](TODO.md) | Wunschliste, kein Spec | ASTRA_PLAN / PLAN |
+> | [AGENTS.md](AGENTS.md) | Parallele Agents: Worktree-Lane, lokaler Commit | — |
 >
 > Ausführungsdetails, Dateilisten und Akzeptanzkriterien pro Phase stehen in
 > [PLAN.md](PLAN.md). Diese Datei ist die Kurzfassung — bei Widersprüchen gilt PLAN.md.
@@ -49,18 +52,21 @@
 > Browser-Game"), und die Beschwerde, die P22 ausgelöst hat, war die logische
 > Folge davon: *„Es ist nicht lustig."* Eine Basis ist kein Spiel.
 
-Seit P22–P24 gibt es eine Antwort auf „und jetzt?":
+Seit P22–P24 gibt es eine Antwort auf „und jetzt?". Seit Astra WP1–WP6
+(2026-09) ist daraus ein erstes Produkt geworden — unvollständig gegen
+[ASTRA_PLAN.md](ASTRA_PLAN.md), aber fahrbar:
 
-| Bereich | Stand |
+| Bereich | Stand 2026-09-15 |
 |---|---|
-| **Fahrmodell** | Arcade, kein Einspurmodell. Die Lenkung ist proportional, der Drift ist eine Entscheidung, es gibt Nitro und Luftsteuerung |
-| **Veranstaltungen** | Sechs — vier Rennen mit drei KI-Gegnern, ein Zeitfahren, ein Driftlauf |
+| **Fahrmodell** | Arcade, kein Einspurmodell. Lenkung proportional, Drift per Handbremse, Nitro. Bodenkontakt und Offroad nachgemessen am 15. September |
+| **Flotte** | **Zehn** originale Autos (Kite S … Needle 01), ein Modell, Street/Sport-Stubs. GLB-Helden später |
+| **Veranstaltungen** | Weiterhin **sechs** (Coast Loop, Tōge Descent, Neon Circuit, Tōge Climb, Ring Time Trial, Tōge Drift Run). Katalog E01/E08–E17 aus ASTRA_PLAN ist **nicht** gebaut |
 | **Wertung** | Driftkette mit Multiplikator bis ×5, verdoppelt in zwei Driftzonen |
-| **Fortschritt** | ¥ aus Rennen, Drift und 90 Sammelstücken; drei Fahrzeuge zum Freischalten |
-| **Spielgerät** | Sechs Sprungschanzen, zwei Kirschbaum-Driftzonen mit fallenden Blüten |
-| **Orientierung** | Nordfeste Minikarte mit Straßennetz, Driftzonen, Schanzen und Gegnern; ein Richtungspfeil zum nächsten Kontrollpunkt (P25) |
-| **Rückmeldung** | Meldetöne für Sammelstück, Kontrollpunkt und Rundenende; ein Aufsammel-Effekt am Stück selbst (P25) |
-| **Sprache** | Die Spieler-Oberfläche ist **englisch**. Code, Kommentare und Doku bleiben deutsch |
+| **Fortschritt** | Oberfläche sagt **Sparks**; Speicher bleibt `yen` in `Profile`. Vier Alt-IDs mapen auf Kite/Skiff/Cairn/Ember; die übrigen sind kaufbar. 90 Münzen sind nicht durch 24 Entdeckungen ersetzt |
+| **Orte** | Sakura Commons (zu Fuß), Stillwater Village (Mühle), Tideglass Harbour, Needle Circuit (2,17 km), East Gate, Terrace Track. Stadtplatte mit acht Fassadenfamilien — **nicht** die 2,60 km² aus dem Plan |
+| **Oberfläche** | Sechs Reiter, Gang/Drehzahl/Nitro, Photo Mode, Tuning-Garage, Minikarte |
+| **Spielgerät** | Sechs P24-Schanzen plus Terrace Roller; Stunt-Modus fehlt |
+| **Sprache** | Spieler-Oberfläche **englisch**. Code, Kommentare und Doku bleiben deutsch |
 
 Die letzte Zeile ist eine Entscheidung über die Reichweite und keine über den
 Stil: Das Publikum von CrazyGames ist global, und eine deutschsprachige
@@ -109,6 +115,14 @@ und die einzige, die ohne Asset-Budget funktioniert.
 > Torii im 16-m-Raster über 150 m, zwanzig Laternen, Chōzuya und Glockenturm,
 > und die Tempelhalle steht 2 m hinter dem letzten Wegpunkt. Bis dahin lag sie
 > 300 m neben dem Weg.
+>
+> **Stand Astra WP5/WP6, 2026-09.** Der östliche Hafen heißt **Tideglass
+> Harbour** und bleibt Arbeitshafen. Das Schönheitsziel **Stillwater Village**
+> sitzt an der westlichen Farm (x −1244, z 409), nicht als Umbenennung des
+> Hafens. **Needle Circuit** liegt an der Südwestküste (2,17 km, 16 m Asphalt,
+> 900 m Gerade). Das Netz hat 72 Routen; der Ring ist durch Orchard Bypass
+> kürzer (5985 m statt 6096). Die acht Regionen aus ASTRA_PLAN §3 sind
+> **Namen**, keine gebauten Masken.
 
 Jede Zone misst ~1,5 km Kantenlänge → bei 120 km/h ca. 45 s Durchfahrt. Das reicht
 für einen echten Ortswechsel.
@@ -396,16 +410,17 @@ src/
 │                  AssetUpgrader, AssetManifest
 ├── world/         TerrainSystem, TerrainSampler, RoadSystem, WaterSystem,
 │                  ScatterSystem, PropSystem, CitySystem, NeonSystem,
-│                  StuntSystem, Materialien, Shader
-├── game/          DriveSystem, Vehicle, ArcadeDynamics, Kollision,
-│                  Gegner-KI, Rennen, Wertung, Kamera
+│                  StuntSystem, settlements/ (Stillwater, Terrace), Materialien
+├── game/          DriveSystem, Vehicle (zehn Specs), ArcadeDynamics,
+│                  Kollision, Gegner-KI, Rennen, Wertung, Walker, Garage
 ├── render/        PostFXPipeline, LightingRig, PlanarReflection,
 │                  QualitySystem, AtmosphereSystem, Looks
 ├── audio/         AudioSystem
 ├── camera/        FreeFlyController
-├── ui/            StartScreen, PlayerUi, DriveHud, MiniMap, TouchControls
+├── ui/            StartScreen, PlayerUi (sechs Reiter), DriveHud,
+│                  PhotoMode, TuningGarage, MiniMap, TouchControls
 ├── debug/         StatsOverlay, DebugPanel, Messläufe (nur Dev-Build)
-└── config/        world, quality, vehicle(s), city, roads, … (Magic Numbers)
+└── config/        world, quality, vehicles, arcade, tuning, walker, …
 
 assets/            hdri/, textures/, props.json — eingecheckte Quellen
 assets/generated/  heightmap, Verschattung, roads.json — nie eingecheckt,
@@ -428,10 +443,11 @@ tools/             Heightmap-Baker, Schatten-Baker, Straßen-Generator,
 > npm run dev
 > ```
 >
-> Die vollständige Kette steht in `package.json` (`textures → hdri →
-> bake:clean → sun → roads → bake → shade → map`); die zirkuläre
-> Auflösung (zweimaliges Backen) ist in [CLAUDE.md](CLAUDE.md) unter
-> „Der Bake-Kreislauf" und in [PLAN.md](PLAN.md) unter „Konventionen" erklärt.
+> Die vollständige Kette stand historisch in `package.json` (`textures → hdri →
+> bake:clean → sun → roads → bake → shade → map`). **Seit WP6** muss
+> `gen-roads.mjs --wp6` an die Stelle von `npm run roads` — sonst entsteht das
+> alte Acht-Straßen-Netz. Die zirkuläre Auflösung bleibt; der Schalter ist neu.
+> Siehe [CLAUDE.md](CLAUDE.md) und [docs/WP6-status.md](docs/WP6-status.md).
 
 ### Bibliotheken
 
@@ -517,13 +533,17 @@ Kitbashing aus verschiedenen Gratis-Quellen scheitert sonst am Stil-Mix.
 | **P20** ✅ | Karosserie gegen Gelände, Stützebene (abgenommen 2026-08-21) | `hullTerrain`, keine 0,78-m-Durchdringung mehr |
 | **P21** ✅ | Vier Ursachen statt einem Symptom (abgenommen 2026-08-21) | Fahrbahn als Ebene, Steilhang-Kraft stetig, Blech trägt |
 | **P22–P26** | Arcade-Fahrmodell, Rennen/Gegner/Wertung, Schanzen/Sammelstücke, Politur | Spielschicht über der Fahrschicht (Details in PLAN.md) |
+| **WP1–WP6** | Menü/HUD/Foto, Commons, zehn Autos, Stadtkit, Stillwater, Needle Circuit | Erstes Produkt über der Spielschicht |
+| **Physik 2026-09-15** | Bodenkontakt und Offroad, Arcade bleibt | Hangübergang ohne Vollbremsimpuls |
 
-**Aktueller Stand (2026-08-21): P0–P6, P8–P10 und P15–P21 abgenommen;
-P7 und P11–P14 auf ◐; P22–P26 gebaut.** Die Karte trägt seit P14 ein Spiel —
-ein Auto fährt alle acht Strecken mit 0 cm Durchdringung —, und seit P15 lädt
-der Erststart **17,02 MB** statt 40,83. Was in den ◐-Phasen offen ist, steht als
-Tabelle im Kopf von [PLAN.md](PLAN.md); die Kurzfassung: Vier Phasen in Folge
-lassen dieselbe Zeile offen — „auf echter Zielhardware gemessen".
+**Aktueller Stand (2026-09-15): P0–P6, P8–P10 und P15–P21 abgenommen;
+P7 und P11–P14 auf ◐; P22–P26 gebaut; WP1–WP6 gebaut; Physik gemessen.**
+Die Karte trägt seit P14 ein Spiel und seit WP2 einen zu-Fuß-Start in der
+Schale. Das lebende Straßennetz hat **72 Routen** (Needle Circuit, East Gate,
+Orchard Bypass) und entsteht nur mit `--wp6` — `npm run world` ohne diesen
+Schalter wäre ein Rückschritt. Was in den ◐-Phasen offen ist, bleibt dieselbe
+Hardware-Zeile; was am **Produkt** offen ist, steht in PLAN.md unter
+„Astra — nächste Schritte".
 
 > ~~Aktueller Stand (2026-08-08)~~ stand hier bis zum 2026-08-18, also zehn Tage
 > und fünf Phasen zu lange. Es ist **das dritte Mal**, dass eine Statuszeile
@@ -609,6 +629,8 @@ Bekannte offene Punkte, Stand 2026-08-08 (ergänzt 2026-08-18):
   `fatal()` ohne Rückweg, inhaltsloser Ladebildschirm, Ruckler beim Stufenwechsel
   (17 zusätzliche Shader-Übersetzungen), kein Fotomodus. Vollständiger Durchgang
   und Abnahme in [PLAN.md](PLAN.md) unter P10.2.
+  **Fotomodus ist seit WP1 gebaut** (`src/ui/PhotoMode.ts`). Die anderen vier
+  P10.2-Befunde sind hier nicht neu gemessen.
 
 ---
 
@@ -653,3 +675,12 @@ Bekannte offene Punkte, Stand 2026-08-08 (ergänzt 2026-08-18):
   Kontrollpunkt und Rundenende, `muteAudio`-Anschluss für das CrazyGames-SDK
   (`AudioSystem.setExternallyMuted()`). Für eine Stimmung, die „blaue Stunde
   nach Regen" heißt, war das der größte fehlende Anteil.
+  **Nicht erledigt** ist der Motor je Auto, Belag×Drift und Weltgeräusch aus
+  ASTRA_PLAN §6 — der P16-Ton ist ein Motor plus Melder, keine Flotte.
+- **Produktlücken nach WP1–WP6 (2026-09-15).** Gebaut ist das Gerüst (Menü,
+  zehn Autos, Commons, Stillwater, Circuit). Nicht gebaut: Eventkatalog
+  E01/E08–E17, acht Regionen, 24 Entdeckungen, 2,60 km² Stadt, Stunt-Modus,
+  Schanzen-Tausch, Cloud-Save, CrazyGames-SDK, KTX2. Die geschnittene Liste
+  steht in PLAN.md unter „Astra — nächste Schritte".
+- **Bake-Schalter `--wp6`.** Das lebende Netz hängt an einem Generator-Flag,
+  das `package.json` nicht setzt. Offener Prozessschritt, siehe PLAN.md.

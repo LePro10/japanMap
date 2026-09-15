@@ -1,6 +1,6 @@
 # japanMap — Aufbau
 
-> Stand: 2026-08-21. Diese Datei beantwortet **wo etwas steht und was mit was
+> Stand: 2026-09-15. Diese Datei beantwortet **wo etwas steht und was mit was
 > redet**. Die Begründungen stehen ausführlich in den Dateien selbst; wer neu
 > dazukommt, bekommt hier die Karte dazu.
 >
@@ -9,6 +9,7 @@
 > | [SPEC.md](SPEC.md) | **Was** gebaut wird und warum | — |
 > | [PLAN.md](PLAN.md) | **In welcher Reihenfolge**, und woran Fertigkeit erkennbar ist | PLAN.md |
 > | [CLAUDE.md](CLAUDE.md) | **Wie** hier gearbeitet und gemessen wird | — |
+> | [ASTRA_PLAN.md](ASTRA_PLAN.md) | Produkt-Soll nach P26 | PLAN.md für den Ist-Stand |
 > | ARCHITECTURE.md (diese Datei) | **Wo** etwas steht und **was mit was redet** | die Quelldatei |
 >
 > **Zahlen in dieser Datei stammen aus Läufen** und tragen ihr Datum. Wo eine
@@ -26,6 +27,7 @@
 - [8. Qualitätsstufen — wer was liest](#8-qualitätsstufen--wer-was-liest)
 - [9. Was nur im Dev-Build existiert](#9-was-nur-im-dev-build-existiert)
 - [10. Wo neue Arbeit hingehört](#10-wo-neue-arbeit-hingehört)
+- [11. Die Astra-Schicht — WP1–WP6](#11-die-astra-schicht--wp1wp6)
 
 ---
 
@@ -63,7 +65,7 @@ Gelände-Kern. Vollständig (siehe `package.json`, Skript `world`) gehören dazu
 |---|---|
 | `tools/bake-terrain.mjs` | `height.r16` (2048², 16 bit), `zones.png`, `normal.png`, `meta.json` |
 | `tools/hdri-sun.mjs` | Sonnenstand aus dem Himmels-HDRI |
-| `tools/gen-roads.mjs` | `roads.json` — Kontrollpunkte **und** abgetastete Mittellinie |
+| `tools/gen-roads.mjs` | `roads.json` — Kontrollpunkte **und** abgetastete Mittellinie. **Seit WP6 nur mit `--wp6`** (72 Routen). Ohne Flag: das alte Acht-Straßen-Netz |
 | `tools/bake-shadows.mjs` | `shade.png` (Horizontwinkel, Verdeckerentfernung, Himmelssicht) |
 | `tools/gen-props.mjs` | `assets/props.json` |
 | `tools/process-assets.mjs` | `assets/generated/models/*.glb` aus `assets/source/models` |
@@ -71,9 +73,12 @@ Gelände-Kern. Vollständig (siehe `package.json`, Skript `world`) gehören dazu
 | `tools/optimize-hdri.mjs` | halbierte HDRIs nach `assets/generated/hdri` (Teil von `npm run world`) |
 | `tools/gen-navigation-map.mjs` | Navigationskarte für Minikarte und Weltkarte |
 | `tools/inspect-map.mjs` | Prüfbericht + Schummerung als PNG, **erzeugt nichts für die Laufzeit** |
-| `tools/bench/*.mts` | Prüfstände ohne Browser (`fleet`, `world`, `hill`, `arcade`, `offroad`) — reiner TypeScript-Code, ausgeführt mit `node --experimental-strip-types` |
+| `tools/bench/*.mts` | Prüfstände ohne Browser (`fleet`, `world`, `hill`, `arcade`, `offroad`, `offroad-contact`, `wp3-*`, `wp4-city`) |
 | `tools/smoke.mjs` | Rauchprobe im echten Browser (liest die Konsole mit) |
 | `tools/bench/imgdiff.mjs` | Differenzbild, 8× verstärkt — „wer eine Differenz misst, sieht sie sich an" |
+| `tools/physics-runtime.mjs` | Zehn Autos auf der echten Welt, fünf Linien — Physikbericht 2026-09-15 |
+| `tools/wp1-*.mjs` / `wp2-boot.mjs` / `wp5-*.mjs` | Browser-Prüfungen für Menü, Commons, Stillwater |
+| `npm run test:polish` | 16 Programme: Stadt, Offroad, Circuit, Tune, Smashables |
 
 **Geteilte Mathematik lebt in `.mjs` mit Typen daneben.** Kurvenauswertung
 brauchen Werkzeug *und* Renderer, und zwei Implementierungen wären zwei Kurven:
@@ -144,7 +149,12 @@ FreeFlyController → DriveSystem → AudioSystem → DriveHudUpdate (inline)
   → PostFXPipeline   setzt den Presenter
   → LookController   zuletzt: look:apply erreicht nur Angemeldete
   → QualitySystem    danach: sendet die Stufe genau einmal beim Start
+  → SmashableSystem  nach DriveSystem (braucht vehicle + collision)
 ```
+
+Stillwater, Terrace Track und Sakura Commons hängen an `PropSystem` /
+`StuntSystem` / `world/settlements/`, nicht als eigene `System`-Klasse in
+dieser Liste. Walker und Garage leben in `DriveSystem` bzw. `src/ui/`.
 
 `DriveSystem` steht direkt hinter der Kamera und vor allem, was Ereignisse
 sendet — es hängt an vier Ereignissen (`terrain:ready`, `roads:ready`,
@@ -199,9 +209,10 @@ src/world/
 ├── RoadSystem         Mesh, Decals, Leitplanken              → RoadNetwork (Abfragen)
 ├── WaterSystem        Meer + Fluss (+ Kielwelle, Reisfeld-Anbindung)
 ├── scatter/           Vegetation: Worker, Chunks, LOD, Imposter
-├── props/             Landmarks, Reisfelder, Freihaltekreise
-├── city/              Generator, Blöcke, Neon
-├── stunt/             Schanzen, Blütenblätter, Sammelstücke
+├── props/             Landmarks, Reisfelder, Freihaltekreise, SmashableSystem
+├── city/              Generator, Blöcke, Neon, CityCrowd, UrbanLots
+├── settlements/       Stillwater Village, Terrace Track, LocalSurfaces
+├── stunt/             Schanzen, Blütenblätter, Sammelstücke, SakuraCommons
 └── materials/         alle Materialien
 ```
 
@@ -342,20 +353,23 @@ und vor allem, was diese Ereignisse sendet.
 
 ```
 DriveSystem ──┬── Vehicle           Kräfte, Gieren, Federung   (fixedUpdate, 60 Hz)
-              │     ├── VehicleSpec  vier Datensätze, eine Physik   (P18)
+              │     ├── VehicleSpec  zehn Datensätze, eine Physik   (P18 → WP3)
               │     ├── supportPlane Stützebene, Bodenfang, Steilhang
-              │     └── hullTerrain  Karosserie gegen das Höhenfeld  (P20)
+              │     └── hullTerrain  Karosserie gegen das Höhenfeld  (P20, 2026-09-15)
               ├── CollisionWorld    Hindernisse im Raster
               ├── ChaseCamera       Verfolger / Haube          (update, Bildrate)
               ├── VehicleFx         Spuren + 5 Partikelsorten  (update, Bildrate)
-              └── carMesh           Geometrie, prozedural, vier Bauformen
+              ├── Walker            zu Fuß, Aussteigen unter 5 km/h
+              └── carMesh           Geometrie, prozedural, zehn Silhouetten
 ```
 
-**Vier Fahrzeuge, eine Physik — P18.** `Vehicle` liest seine Zahlen aus einer
-`VehicleSpec` (`config/vehicles.config.ts`) statt aus Modulkonstanten. Eine
-zweite `Vehicle`-Klasse je Fahrzeug wäre die naheliegende Abkürzung und der
-Fehler, den dieses Projekt zweimal gemacht hat: zwei Implementierungen derselben
-Sache, die auseinanderlaufen, sobald jemand nur eine repariert.
+**Zehn Fahrzeuge, eine Physik — P18, erweitert in WP3.** `Vehicle` liest seine
+Zahlen aus einer `VehicleSpec` (`config/vehicles.config.ts`) statt aus
+Modulkonstanten. Die vier Alt-IDs bleiben Speicher-Schlüssel (`touge` = Kite S,
+`truck` = Skiff Mini, `offroad` = Cairn 4, `gt` = Ember RS). Eine zweite
+`Vehicle`-Klasse je Fahrzeug wäre die naheliegende Abkürzung und der Fehler,
+den dieses Projekt zweimal gemacht hat: zwei Implementierungen derselben Sache,
+die auseinanderlaufen, sobald jemand nur eine repariert.
 
 Der Wechsel tauscht die **Spec an derselben Instanz** und rechnet die Geometrie
 neu; die beiden Meshes bleiben dieselben Objekte. Beides ist notwendig und nicht
@@ -413,6 +427,12 @@ Dazu wurde die **Stützebene** endlich eine: `Vehicle` rechnet jede Radhöhe auf
 die Hangebene durch den Schwerpunkt zurück, bevor sie gegen die Federreichweite
 geprüft wird. Vorher war der Bezug waagerecht — auf 20 % Steigung galt damit die
 ganze Vorderachse als unerreichbar, und der Wagen verlor seine Radlast.
+
+**Bodenkontakt 2026-09-15.** Kleine Unterbodenkontakte dürfen nicht mehr
+horizontal bremsen; Wand und Boden sind getrennt; Radspuren folgen der
+Karosserie-X. Zahlen und die Empfehlung, Arcade zu behalten, stehen in
+[docs/2026-09-13-physics.md](docs/2026-09-13-physics.md). `groundContact.config.ts`
+ist die neue Stellschraube.
 
 **Und das Blech trägt, statt zu pflügen — P21.** Die erste Fassung schob den
 Wagen von außen aus dem Boden und durfte ihn dabei nicht über seine Standhöhe
@@ -618,11 +638,13 @@ Der Unterschied ist groß und für die UX entscheidend (siehe PLAN.md P10.2):
 | Editoren (Straßen, Props) | ja | **nein** |
 | `SceneScaffold` | ja | **nein** |
 | Start- und Ladebildschirm `src/ui/StartScreen.ts` | ja | **ja** |
-| Spieler-Oberfläche `src/ui/PlayerUi.ts` | ja | **ja** (seit P10.2) |
+| Spieler-Oberfläche `src/ui/PlayerUi.ts` | ja | **ja** (seit P10.2; sechs Reiter seit WP1) |
 | Fingersteuerung `src/ui/TouchControls.ts` | ja | **ja** (seit P12.4) |
 | Steuerungstabellen `src/ui/controls.ts` | ja | **ja** (seit P13) |
-| Fahr-HUD `src/ui/DriveHud.ts` | ja | **ja** (seit P16) |
+| Fahr-HUD `src/ui/DriveHud.ts` | ja | **ja** (seit P16; Gang/Nitro seit WP1) |
 | Minikarte `src/ui/MiniMap.ts` | ja | **ja** (seit P25) |
+| Photo Mode `src/ui/PhotoMode.ts` | ja | **ja** (seit WP1) |
+| Tuning-Garage `src/ui/TuningGarage.ts` | ja | **ja** (seit WP3 / Open Bay) |
 
 **Wie der Reiter „Debug" die Grenze überquert, ohne sie einzureißen** (P13):
 `PlayerUi` darf nichts aus `src/debug/` importieren — es wird ohne
@@ -661,6 +683,10 @@ Zwei Betriebsarten, Einzelheiten in CLAUDE.md.
 | Etwas auf dem Gelände platzieren | `TerrainSampler` + Versatz | **§5** |
 | Fahrzeug, Kollision, Rundenlogik | `src/game/` | §3 Straßen, **§5** |
 | Veranstaltung, Gegner, Wertung | `src/game/`, `config/events.config.ts` | **§7** |
+| Neues Auto | `vehicles.config.ts` + `carMesh.ts` + Arcade-Zahlen, **kein** zweites Modell | **§6**, WP3 |
+| Tune / Garage | `tuning.config.ts`, `TuningGarage.ts`, `garageEngine.ts` | §11 |
+| Siedlung / lokaler Boden | `src/world/settlements/`, nicht `npm run world` | WP5, WP-offroad |
+| Neue Straße auf dem lebenden Netz | `tools/gen-roads.mjs --wp6`, nie `npm run roads` ohne Flag | WP6, CLAUDE.md |
 | Etwas, worauf man fährt oder springt | `RampField` (eine Funktion), nie ein Mesh daneben | **§5**, §7 |
 | Eine Farbe in einem Material **ohne** Beleuchtung | gegen einen gemessenen Bezugspunkt im Bild setzen | CLAUDE.md, P25 |
 | Spieler-Oberfläche | `src/ui/`, **ohne** `import.meta.env.DEV` | §9 |
@@ -670,3 +696,30 @@ Zwei Betriebsarten, Einzelheiten in CLAUDE.md.
 
 **Und die Regel, die über allem steht:** Was nicht gemessen wurde, gilt als
 nicht erledigt. Wie hier gemessen wird, steht in [CLAUDE.md](CLAUDE.md).
+
+---
+
+## 11. Die Astra-Schicht — WP1–WP6
+
+P22–P25 haben Rennen, Drift und Schanzen über die Fahrschicht gelegt. WP1–WP6
+legen **Produkt** darüber: Menü, Flotte, Lobby, Dorf, Circuit. Die Trennung
+bleibt dieselbe — `Vehicle` weiß nichts von Photo Mode, `StillwaterVillage`
+nichts von Sparks.
+
+```
+src/ui/
+├── PlayerUi           sechs Reiter, Pause, Sleep
+├── DriveHud           Gang, Drehzahl, Tempo, Nitro
+├── PhotoMode          Weltpause, Freikamera, PNG
+├── TuningGarage       Street/Sport je Auto
+└── callPlayerCar.ts   Auto neben die Figur
+
+src/world/settlements/ Stillwater, Terrace Track, lokale Fahrflächen
+src/world/city/        acht Fassadenfamilien, CityCrowd (6/12)
+src/world/stunt/       SakuraCommons (Kegel, Petal/Open Bay)
+src/game/              Walker, SmashableSystem, garageCar, Profile (yen = Sparks)
+```
+
+**Was hier bewusst nicht liegt:** Eventkatalog E08–E17, Regionen, Entdeckungen,
+Stunt-Modus, 2,60 km² Stadt. Das Soll steht in `ASTRA_PLAN.md`, der Ist-Stand
+und die nächsten Schnitte in PLAN.md.

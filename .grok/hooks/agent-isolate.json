@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node tools/agent-isolate.mjs --hook-stop",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node tools/agent-isolate.mjs --hook-stop",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

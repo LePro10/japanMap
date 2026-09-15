@@ -12,6 +12,11 @@ Read ASTRA_BUILD.md from "RULES" to the end, then do only the work package I nam
 
 Then name the package: `WP1` / `WP2` / `WP3` / `WP4` / `WP5` / `WP6`.
 
+**Status 2026-09-15:** WP1–WP6 are built. Notes per package live in
+`docs/WP1.md` … `docs/WP6-status.md`. There is still no WP7; remaining work
+is cut in PLAN.md under “Astra — nächste Schritte”. Do not treat this file
+as an open queue.
+
 ---
 
 ## RULES
