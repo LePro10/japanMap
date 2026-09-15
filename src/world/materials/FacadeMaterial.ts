@@ -167,11 +167,12 @@ export class FacadeMaterial extends MeshStandardMaterial {
           '  ? facadeWindows(vFacadeUv, mod(vFacadeKind.x, 256.0), uCityTime, floor(vFacadeKind.x / 256.0))\n' +
           '  : vec4(0.0);\n' +
           // Glas ist dunkler und glatter als Putz, der Rahmen dunkler als beides.
-          'diffuseColor.rgb *= 1.0 - gFacadeWindow.x * 0.62 - gFacadeWindow.z * 0.25;',
+          'if (vFacadeKind.y < 0.5) diffuseColor.rgb *= facadeSurface(vFacadeUv, mod(vFacadeKind.x, 256.0), floor(vFacadeKind.x / 256.0), gFacadeWindow);',
       )
       .replace(
         '#include <roughnessmap_fragment>',
         '#include <roughnessmap_fragment>\n' +
+          'roughnessFactor = facadeRoughness(floor(vFacadeKind.x / 256.0), mod(vFacadeKind.x, 256.0));\n' +
           // **Glas wird mit der Entfernung stumpfer, und das ist kein Kompromiss
           // an die Optik, sondern an die Abtastung.** Mit Rauheit 0,12 tastet
           // die Umgebungsspiegelung eine hochaufgelöste Mip-Stufe der HDRI ab;
@@ -190,6 +191,14 @@ export class FacadeMaterial extends MeshStandardMaterial {
           '  mix(0.55, 0.30, gFacadeWindow.w),\n' +
           '  gFacadeWindow.x\n' +
           ');',
+      )
+      .replace(
+        '#include <normal_fragment_maps>',
+        '#include <normal_fragment_maps>\n' +
+          'if (vFacadeKind.y < 0.5) {\n' +
+          '  float relief = (-gFacadeWindow.x * 0.055 + gFacadeWindow.z * 0.016) * gFacadeWindow.w;\n' +
+          '  normal = facadeReliefNormal(normal, -vViewPosition, relief);\n' +
+          '}',
       )
       .replace(
         '#include <lights_fragment_end>',
@@ -225,6 +234,6 @@ export class FacadeMaterial extends MeshStandardMaterial {
   }
 
   override customProgramCacheKey(): string {
-    return 'japanmap:facade';
+    return 'japanmap:facade-depth-v2';
   }
 }

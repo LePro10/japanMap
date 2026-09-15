@@ -139,9 +139,15 @@ vec4 facadeWindows(vec2 uv, float seed, float time, float family) {
   // Sturz- und Brüstungsband: ein schmaler dunkler Streifen ober- und unterhalb
   // des Fensters. Er kostet nichts und ist der Unterschied zwischen „Loch in
   // der Wand" und „Fenster".
-  float bandLo = smoothstep(lo.y - 0.06 - soften.y, lo.y - 0.06 + soften.y, cell.y);
-  float bandHi = 1.0 - smoothstep(hi.y + 0.06 - soften.y, hi.y + 0.06 + soften.y, cell.y);
-  float frame = clamp(bandLo * bandHi - glass, 0.0, 1.0);
+  vec2 frameLo = smoothstep(lo - vec2(0.035, 0.045) - soften, lo - vec2(0.035, 0.045) + soften, cell);
+  vec2 frameHi = 1.0 - smoothstep(hi + vec2(0.035, 0.045) - soften, hi + vec2(0.035, 0.045) + soften, cell);
+  float frame = clamp(frameLo.x * frameLo.y * frameHi.x * frameHi.y - glass, 0.0, 1.0);
+  // Upper rooms use a narrow sash; large panes retain a readable human scale.
+  if (!shopfront && family < 6.5) {
+    float sash = 1.0 - smoothstep(0.013, 0.013 + soften.x, abs(cell.x - 0.5));
+    frame = max(frame, glass * sash);
+    glass *= 1.0 - sash;
+  }
 
   float h = facadeHash(id, seed);
 
@@ -210,4 +216,47 @@ vec3 facadeWindowColor(vec2 uv, float seed) {
   vec3 tv = vec3(0.42, 0.62, 1.0);
   vec3 base = mix(warm, cool, smoothstep(0.45, 0.75, pick));
   return mix(base, tv, smoothstep(0.9, 0.98, pick));
+}
+
+/** Subtle ceramic joints, mineral variation and curtains, filtered at distance. */
+vec3 facadeSurface(vec2 uv, float seed, float family, vec4 window) {
+  vec2 cell = fract(uv);
+  vec2 aa = max(fwidth(uv), vec2(0.0001));
+  float tone = facadeHash(floor(uv), seed + 133.0);
+  float joints = 0.0;
+  if (family < 0.5 || (family > 3.5 && family < 4.5)) {
+    vec2 tileUv = uv * vec2(4.0, 8.0);
+    tileUv.x += mod(floor(tileUv.y), 2.0) * 0.5;
+    vec2 tile = fract(tileUv);
+    vec2 tileAa = max(fwidth(tileUv), vec2(0.001));
+    vec2 edge = smoothstep(vec2(0.025), vec2(0.025) + tileAa, min(tile, 1.0 - tile));
+    joints = (1.0 - edge.x * edge.y) * (1.0 - smoothstep(0.12, 0.35, max(tileAa.x, tileAa.y)));
+  }
+  float sillShadow = (1.0 - smoothstep(0.0, 0.15, cell.y)) * window.w;
+  float wallTone = 0.95 + tone * 0.09 - joints * 0.14 - sillShadow * 0.1;
+  // Curtains create dim vertical folds inside each room, never over the wall.
+  float folds = 0.86 + 0.14 * cos(cell.x * 36.0);
+  folds = mix(1.0, folds, (1.0 - smoothstep(0.025, 0.09, aa.x)) * window.x);
+  vec3 surface = vec3(wallTone * (1.0 - window.z * 0.48));
+  surface = mix(surface, vec3(0.20, 0.29, 0.35) * folds, window.x * 0.88);
+  return surface;
+}
+
+float facadeRoughness(float family, float seed) {
+  float variation = facadeHash(vec2(0.0), seed + 37.0) * 0.09;
+  if (family > 4.5 && family < 5.5) return 0.48 + variation;
+  if (family < 0.5) return 0.66 + variation;
+  if (family > 1.5 && family < 2.5) return 0.82 + variation;
+  return 0.76 + variation;
+}
+
+/** Screen-space height gradients shade recessed panes and their raised frames. */
+vec3 facadeReliefNormal(vec3 surfaceNormal, vec3 eyePosition, float height) {
+  vec3 dx = dFdx(eyePosition);
+  vec3 dy = dFdy(eyePosition);
+  vec3 r1 = cross(dy, surfaceNormal);
+  vec3 r2 = cross(surfaceNormal, dx);
+  float det = dot(dx, r1);
+  vec3 gradient = sign(det) * (dFdx(height) * r1 + dFdy(height) * r2);
+  return normalize(abs(det) * surfaceNormal - gradient);
 }
