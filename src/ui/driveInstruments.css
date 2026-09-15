@@ -126,6 +126,12 @@
   height: 190px;
   bottom: max(24px, env(safe-area-inset-bottom));
   left: max(24px, env(safe-area-inset-left));
+  border-radius: 50%;
+}
+
+#overlay > .hud .hud__wp {
+  left: max(24px, env(safe-area-inset-left));
+  bottom: calc(max(24px, env(safe-area-inset-bottom)) + 204px);
 }
 @media (pointer: coarse), (max-width: 700px) {
   .hud .hud__speedo {
@@ -167,6 +173,11 @@
     height: 112px;
     top: max(12px, env(safe-area-inset-top));
     left: max(12px, env(safe-area-inset-left));
+    bottom: auto;
+  }
+  #overlay > .hud .hud__wp {
+    top: 132px;
+    left: max(132px, calc(env(safe-area-inset-left) + 120px));
     bottom: auto;
   }
   .hud .hud__lap {

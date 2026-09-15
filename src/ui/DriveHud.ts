@@ -80,6 +80,9 @@ export class DriveHud {
   readonly #prep: HTMLElement;
   readonly #map: MiniMap;
   readonly #nav: HTMLElement;
+  readonly #wp: HTMLElement;
+  readonly #wpName: HTMLElement;
+  readonly #wpDist: HTMLElement;
   #arrowDeg = 999;
   /** Zuletzt gesetzter Hinweis — sonst schreibt jeder Frame denselben Text. */
   #promptKind: 'enter' | 'exit' | 'slow' | null = null;
@@ -124,6 +127,10 @@ export class DriveHud {
         </div>
         <p class="hud__prep" data-hud="prep" hidden>Prepared surface · extra cornering grip</p>
       </div>
+      <div class="hud__wp" data-hud="wp" hidden>
+        <span class="hud__wpName" data-hud="wpName">Waypoint</span>
+        <strong class="hud__wpDist" data-hud="wpDist">—</strong>
+      </div>
       <div class="hud__nav">
         <div class="hud__arrow" data-hud="arrow" hidden><i></i></div>
       </div>
@@ -166,6 +173,9 @@ export class DriveHud {
     this.#promptAction = this.#must('[data-hud="promptAction"]');
     this.#prep = this.#must('[data-hud="prep"]');
     this.#nav = this.#must('.hud__nav');
+    this.#wp = this.#must('[data-hud="wp"]');
+    this.#wpName = this.#must('[data-hud="wpName"]');
+    this.#wpDist = this.#must('[data-hud="wpDist"]');
     this.#map = new MiniMap(this.#nav);
     this.#nav.setAttribute('role', 'button');
     this.#nav.setAttribute('aria-label', 'Open map (M)');
@@ -221,11 +231,14 @@ export class DriveHud {
     target: MiniMapMark | null,
     dt: number,
     waypoint: MiniMapMark | null = null,
+    speed = 0,
+    onFoot = false,
   ): void {
     if (!this.#visible) return;
     // `dt` reicht bis in die Karte durch: sie zeichnet nicht je Frame neu,
     // sondern mit 15 Hz — Begründung in `MiniMap.update()`.
-    this.#map.update(x, z, heading, rivals, target, dt, waypoint);
+    this.#map.update(x, z, heading, rivals, target, dt, waypoint, speed, onFoot);
+    this.#syncWaypointChip(x, z, waypoint);
 
     if (!target) {
       if (!this.#arrow.hidden) this.#arrow.hidden = true;
@@ -529,6 +542,20 @@ export class DriveHud {
     if (this.#written.get(element) === text) return;
     this.#written.set(element, text);
     element.textContent = text;
+  }
+
+  #syncWaypointChip(x: number, z: number, waypoint: MiniMapMark | null): void {
+    if (!waypoint) {
+      if (!this.#wp.hidden) this.#wp.hidden = true;
+      return;
+    }
+    if (this.#wp.hidden) this.#wp.hidden = false;
+    this.#setText(this.#wpName, waypoint.label ?? 'Waypoint');
+    const meters = Math.hypot(waypoint.x - x, waypoint.z - z);
+    this.#setText(
+      this.#wpDist,
+      meters < 999.5 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`,
+    );
   }
 
   readonly #onNavClick = (): void => {

@@ -41,10 +41,10 @@ export function clampWorldPoint(x: number, z: number, bounds: MapBounds): MapPoi
 /**
  * Pan/Zoom der Vollkarte in CSS-Pixeln der unskalierten Bühne.
  *
- * `scale` 1 zeigt die ganze Insel; größer zoomt auf den Ursprung (0, 0)
- * der Bühne. `tx`/`ty` sind die Verschiebung *danach*. Die Klemme hält den
- * Ausschnitt über der Bühne — sonst gäbe es eine leere Fläche, in die man
- * klickt und nichts trifft.
+ * `scale` 1 füllt die Bühne. `tx`/`ty` sind CSS-Pixel der **unskalierten**
+ * Bühne, Ursprung oben links. Cursor-Zoom muss in demselben Raum liegen —
+ * nicht in `getBoundingClientRect()` der schon skalierten Fläche, sonst
+ * wandert der Punkt unter dem Zeiger.
  */
 export interface MapView {
   scale: number;
@@ -64,6 +64,21 @@ export function clampMapView(view: MapView, stageWidth: number, stageHeight: num
     tx: clamp(view.tx, minTx, 0),
     ty: clamp(view.ty, minTy, 0),
   };
+}
+
+/** Einen Weltpunkt in die Mitte der Bühne legen. */
+export function centerMapView(
+  x: number,
+  y: number,
+  scale: number,
+  stageWidth: number,
+  stageHeight: number,
+): MapView {
+  return clampMapView(
+    { scale, tx: stageWidth * 0.5 - x * scale, ty: stageHeight * 0.5 - y * scale },
+    stageWidth,
+    stageHeight,
+  );
 }
 
 /** Zoom auf einen Bühnenpunkt, sodass dieser Punkt stehen bleibt. */

@@ -76,7 +76,7 @@ try {
     "Photo: captured 2560 px PNG, downloaded, restored Low and viewport.",
   );
   await page.getByRole("button", { name: "Map", exact: true }).click();
-  await page.getByRole("button", { name: "Open map", exact: true }).click();
+  await page.locator(".navmap--docked").waitFor({ state: "visible" });
   await page.screenshot({ path: "screenshots/wp1/map.png" });
   await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 390, height: 844 });

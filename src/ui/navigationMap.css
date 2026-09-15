@@ -1,8 +1,9 @@
-/* Vollkarte — HUD-Theme, dieselbe Graustufen-Zeichnung wie die Minikarte. */
+/* Vollkarte — Aerial-Gelände, Overlay und Pause-Dock. */
 
+.navmap[hidden],
 #overlay > .navmap[hidden],
 .navmap__actions[hidden] {
-  display: none;
+  display: none !important;
 }
 
 #overlay > .navmap {
@@ -11,98 +12,216 @@
   z-index: 70;
   display: grid;
   place-items: center;
-  padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right))
-    max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
-  background: rgba(6, 8, 12, 0.72);
-  backdrop-filter: blur(6px);
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background:
+    radial-gradient(1200px 800px at 50% 18%, rgba(26, 107, 118, 0.22), transparent 58%),
+    rgba(6, 20, 24, 0.72);
+  backdrop-filter: blur(10px) saturate(1.15);
   overscroll-behavior: contain;
 }
 
 .navmap__panel {
   display: flex;
   flex-direction: column;
-  width: min(920px, 96vw);
-  max-height: min(920px, 96dvh);
-  padding: 14px;
-  border: 1px solid var(--panel-border);
+  width: min(1180px, 96vw);
+  height: min(860px, 96dvh);
+  max-height: min(860px, 96dvh);
+  padding: 14px 16px 12px;
+  border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--ink-2, #0a242c) 88%, transparent);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+}
+
+.navmap--docked {
+  position: relative;
+  inset: auto;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  background: none;
+  backdrop-filter: none;
+}
+
+.navmap--docked .navmap__panel {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink) 42%, transparent);
+  box-shadow: none;
+}
+
+.navmap--docked .navmap__close,
+.navmap--docked .navmap__footer,
+.navmap--docked .navmap__hint {
+  display: none;
+}
+
+.navmap--docked .navmap__head {
+  position: absolute;
+  left: 16px;
+  top: 12px;
+  z-index: 8;
+  padding: 0;
+  pointer-events: none;
+}
+
+.navmap--docked .navmap__headActions {
+  pointer-events: auto;
+}
+
+.navmap--docked .navmap__body {
+  display: block;
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+}
+
+.navmap--docked .navmap__stage {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: 8px;
+}
+
+.navmap--docked .navmap__side {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  bottom: 12px;
+  z-index: 8;
+  width: 236px;
+  padding: 12px;
   border-radius: 12px;
-  background: var(--panel-bg);
-  backdrop-filter: blur(4px);
+  background: color-mix(in srgb, var(--ink, #06141a) 78%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.navmap--docked .navmap__place {
+  min-height: 38px;
+  padding: 6px 8px;
 }
 
 .navmap__head {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  padding: 0 2px 12px;
+  padding: 0 4px 12px;
+}
+
+.navmap__kicker {
+  margin: 0 0 4px;
+  color: var(--amber, #e8ba7f);
+  font: 700 10px/1 var(--display, var(--mono));
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
 }
 
 .navmap__title {
   margin: 0;
-  color: var(--fg);
-  font-family: var(--mono);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  color: var(--paper, var(--fg));
+  font-family: var(--display, var(--mono));
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
 }
 
 .navmap__headActions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .navmap__hint {
-  color: var(--fg-dim);
+  color: var(--paper-dim, var(--fg-dim));
   font: 11px/1 var(--mono);
 }
 
 .navmap__close,
 .navmap__actions button,
-.navmap__zoom button {
-  border: 1px solid var(--panel-border);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--fg);
+.navmap__zoom button,
+.navmap__headActions button {
+  border: 1px solid color-mix(in srgb, var(--paper, #f6efe4) 16%, transparent);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--paper, var(--fg));
   font-family: var(--mono);
   cursor: pointer;
 }
 
 .navmap__close:hover,
 .navmap__actions button:hover,
-.navmap__zoom button:hover {
-  border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.08);
+.navmap__zoom button:hover,
+.navmap__headActions button:hover {
+  border-color: color-mix(in srgb, var(--amber) 55%, transparent);
+  background: rgba(232, 186, 127, 0.12);
 }
 
-.navmap__close {
-  width: 34px;
-  height: 34px;
+.navmap__close,
+.navmap__headActions button {
+  width: 36px;
+  height: 36px;
   padding: 0;
-  border-radius: 8px;
-  font-size: 22px;
-  line-height: 30px;
+  border-radius: 9px;
+  font-size: 18px;
+  line-height: 34px;
+}
+
+.navmap__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 248px;
+  gap: 12px;
+  min-height: 0;
+  flex: 1 1 auto;
 }
 
 .navmap__stage {
   position: relative;
   min-height: 0;
-  flex: 1 1 auto;
-  aspect-ratio: 1;
+  min-width: 0;
   overflow: hidden;
   isolation: isolate;
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
-  background: #0a0d12;
+  container-type: size;
+  border: 1px solid color-mix(in srgb, var(--amber) 22%, transparent);
+  border-radius: 12px;
+  background: #12343c;
   touch-action: none;
+}
+
+.navmap__terrain {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .navmap__view {
   position: absolute;
   inset: 0;
+  z-index: 1;
   transform-origin: 0 0;
   will-change: transform;
+}
+
+.navmap__plane {
+  position: absolute;
+  width: max(100cqw, 100cqh);
+  height: max(100cqw, 100cqh);
+  left: calc(50% - max(50cqw, 50cqh));
+  top: calc(50% - max(50cqw, 50cqh));
 }
 
 .navmap__canvas {
@@ -113,6 +232,62 @@
   height: 100%;
   cursor: grab;
   touch-action: none;
+  opacity: 0;
+}
+
+.navmap__roads {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.navmap-road-outline,
+.navmap-road {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.navmap-road-outline {
+  stroke: rgba(8, 18, 20, 0.84);
+}
+
+.navmap-road--main {
+  stroke: #f4f1ea;
+}
+
+.navmap-road--local {
+  stroke: #d4cec4;
+}
+
+.navmap-road--dirt {
+  stroke: #c49a5c;
+  stroke-dasharray: 5 4;
+}
+
+.navmap-zone {
+  fill: none;
+  stroke: rgba(212, 120, 154, 0.72);
+  stroke-width: 2.2;
+}
+
+.navmap-ramp {
+  fill: #e8763f;
+}
+
+.navmap__marks {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .navmap__canvas:active {
@@ -137,6 +312,22 @@
   font: 18px/1 var(--mono);
 }
 
+.navmap__compass {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 6;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(246, 239, 228, 0.28);
+  background: rgba(6, 20, 24, 0.62);
+  color: var(--amber, #e8ba7f);
+  font: 800 11px/26px var(--display, sans-serif);
+  text-align: center;
+  pointer-events: none;
+}
+
 .navmap__actions {
   position: absolute;
   left: 50%;
@@ -147,19 +338,30 @@
   align-items: center;
   gap: 8px;
   max-width: calc(100% - 28px);
-  padding: 8px;
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
-  background: var(--panel-bg);
-  backdrop-filter: blur(6px);
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--nitro, #66d7f4) 35%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ink, #06141a) 82%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.navmap__selectionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 108px;
+  padding: 0 6px;
 }
 
 .navmap__selection {
-  min-width: 96px;
-  padding: 0 5px;
-  color: var(--fg-dim);
-  font: 10px/1 var(--mono);
+  color: var(--paper, var(--fg));
+  font: 800 13px/1.1 var(--display, var(--mono));
   white-space: nowrap;
+}
+
+.navmap__selectionMeta {
+  color: var(--nitro, #66d7f4);
+  font: 700 11px/1 var(--mono);
 }
 
 .navmap__actions button {
@@ -167,19 +369,113 @@
   padding: 8px 12px;
   border-radius: 8px;
   font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   white-space: nowrap;
+}
+
+.navmap__actions button[data-map-action='waypoint'] {
+  background: color-mix(in srgb, var(--nitro, #66d7f4) 22%, transparent);
+  border-color: color-mix(in srgb, var(--nitro, #66d7f4) 45%, transparent);
 }
 
 .navmap__actions button[data-map-action='teleport'][hidden] {
   display: none;
 }
 
+.navmap__side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 4px 2px 0;
+}
+
+.navmap__sideKicker {
+  margin: 0 0 8px;
+  color: var(--amber, #e8ba7f);
+  font: 700 10px/1 var(--display, var(--mono));
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.navmap__places {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.navmap__place {
+  --pin: #c9ccd4;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink, #06141a) 55%, transparent);
+  color: var(--paper, var(--fg));
+  text-align: left;
+  cursor: pointer;
+}
+
+.navmap__place:hover,
+.navmap__place.is-selected {
+  background: color-mix(in srgb, var(--teal, #1a6b76) 38%, transparent);
+}
+
+.navmap__place i {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--pin);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pin) 28%, transparent);
+}
+
+.navmap__place span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.navmap__place strong {
+  font: 800 13px/1.1 var(--display, sans-serif);
+  letter-spacing: -0.03em;
+}
+
+.navmap__place em {
+  color: var(--paper-dim, var(--fg-dim));
+  font: 600 11px/1.2 var(--display, sans-serif);
+  font-style: normal;
+}
+
+.navmap__place b {
+  color: var(--nitro, #66d7f4);
+  font: 700 11px/1 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.navmap__place--city { --pin: #e8a9c0; }
+.navmap__place--temple { --pin: #c44536; }
+.navmap__place--mountain { --pin: #e8ba7f; }
+.navmap__place--paddy { --pin: #2f8b6e; }
+.navmap__place--village { --pin: #66d7f4; }
+.navmap__place--coast { --pin: #7ec8e3; }
+.navmap__place--forest { --pin: #8fbf6a; }
+.navmap__place--garage { --pin: #f3c56a; }
+.navmap__place--drift { --pin: #d4789a; }
+
 .navmap__footer {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 12px 2px 0;
-  color: var(--fg-dim);
+  padding: 10px 4px 0;
+  color: var(--paper-dim, var(--fg-dim));
   font: 10px/1 var(--mono);
 }
 
@@ -195,10 +491,10 @@
 
 .navmap__footer kbd {
   padding: 3px 5px;
-  border: 1px solid var(--panel-border);
+  border: 1px solid color-mix(in srgb, var(--paper) 16%, transparent);
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.04);
-  color: var(--fg);
+  color: var(--paper, var(--fg));
   font: inherit;
 }
 
@@ -213,11 +509,43 @@
 }
 
 .navmap__legend--waypoint {
-  background: #d8dee9;
+  background: #66d7f4;
 }
 
 .navmap__legend--poi {
-  background: #7b8494;
+  background: #e8a9c0;
+}
+
+.navmap__legend--route {
+  background: #66d7f4;
+  border-radius: 2px;
+  height: 3px;
+}
+
+@media (max-width: 860px) {
+  .navmap__body {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .navmap__side {
+    max-height: 168px;
+  }
+
+  .navmap__places {
+    flex-direction: row;
+    overflow: auto;
+    padding-bottom: 4px;
+  }
+
+  .navmap__place {
+    flex: 0 0 168px;
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+
+  .navmap__place b {
+    display: none;
+  }
 }
 
 @media (max-width: 700px) {
@@ -228,14 +556,20 @@
 
   .navmap__panel {
     width: 100%;
+    height: 100%;
     max-height: 100%;
     padding: 10px;
     border-radius: 10px;
   }
 
   .navmap__hint,
-  .navmap__footerKey {
+  .navmap__footerKey,
+  .navmap__kicker {
     display: none;
+  }
+
+  .navmap__title {
+    font-size: 18px;
   }
 
   .navmap__actions {
@@ -245,7 +579,7 @@
     width: calc(100% - 16px);
   }
 
-  .navmap__selection {
+  .navmap__selectionBlock {
     width: 100%;
     text-align: center;
   }

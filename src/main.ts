@@ -729,6 +729,8 @@ async function boot(): Promise<void> {
         race.nextCheckpointPoint(),
         dt,
         drive.waypoint,
+        onFoot ? drive.walker.speed : drive.vehicle.telemetry.speed,
+        onFoot,
       );
     },
     dispose: () => {
@@ -869,6 +871,8 @@ async function boot(): Promise<void> {
   });
   const ui = new PlayerUi({
     openMap: () => drive.openMap(),
+    dockMap: (host) => drive.dockMap(host),
+    undockMap: () => drive.undockMap(),
     callCar: () => callPlayerCar(drive),
     openPhoto: (onExit) => {
       const p = drive.walking ? drive.walker.position : drive.vehicle.position;
@@ -1015,7 +1019,7 @@ async function boot(): Promise<void> {
   audio.armAutoUnlock();
   import.meta.hot?.dispose(() => { photo.dispose(); garage.dispose(); ui.dispose(); });
 
-  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive);
+  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive, lookController);
 }
 
 /** Eine Zeile der Zieltafel. Englisch, wie alles im DOM. */

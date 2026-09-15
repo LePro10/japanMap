@@ -19,18 +19,59 @@ export class NavigationMapBackdrop {
     this.#image.src = aerialMapUrl;
   }
 
+  get ready(): boolean {
+    return this.#ready;
+  }
+
   draw(ctx: CanvasRenderingContext2D, size: number): void {
-    if (this.#ready) {
-      ctx.drawImage(this.#image, 0, 0, size, size);
+    this.drawVisible(ctx, size, size, 0, 0, 1, 1);
+  }
+
+  /**
+   * Sichtbares Fenster in Bildschirmpixeln. CSS-Scale auf der 1024er-Leinwand
+   * macht aus Texeln Klötze — hier wird der Ausschnitt aus dem Quellbild
+   * direkt auf die Anzeige gezogen.
+   */
+  drawVisible(
+    ctx: CanvasRenderingContext2D,
+    destW: number,
+    destH: number,
+    nx0: number,
+    ny0: number,
+    nx1: number,
+    ny1: number,
+  ): void {
+    ctx.fillStyle = '#0d3a48';
+    ctx.fillRect(0, 0, destW, destH);
+    if (!this.#ready) {
+      const gradient = ctx.createRadialGradient(
+        destW * 0.52,
+        destH * 0.4,
+        destW * 0.08,
+        destW * 0.5,
+        destH * 0.5,
+        destW * 0.72,
+      );
+      gradient.addColorStop(0, '#243c3c');
+      gradient.addColorStop(0.55, '#162a2b');
+      gradient.addColorStop(1, '#081418');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, destW, destH);
       return;
     }
 
-    const gradient = ctx.createRadialGradient(size * 0.52, size * 0.4, size * 0.08, size * 0.5, size * 0.5, size * 0.72);
-    gradient.addColorStop(0, '#243c3c');
-    gradient.addColorStop(0.55, '#162a2b');
-    gradient.addColorStop(1, '#081418');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, size, size);
+    const sw = this.#image.naturalWidth || this.#image.width;
+    const sh = this.#image.naturalHeight || this.#image.height;
+    const sx = nx0 * sw;
+    const sy = ny0 * sh;
+    const tw = (nx1 - nx0) * sw;
+    const th = (ny1 - ny0) * sh;
+    if (tw <= 0.5 || th <= 0.5) return;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.filter = 'saturate(1.18) contrast(1.08) brightness(1.03)';
+    ctx.drawImage(this.#image, sx, sy, tw, th, 0, 0, destW, destH);
+    ctx.filter = 'none';
   }
 
   dispose(): void {

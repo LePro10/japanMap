@@ -584,6 +584,50 @@
   font-weight: 800;
 }
 
+.player-menu .menu__panel--map:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.player-menu .menu__mapDock {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.player-menu .menu__mapDock .navmap {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.player-menu button.navmap__place {
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink) 55%, transparent);
+  color: var(--paper);
+  text-align: left;
+  font: inherit;
+}
+
+.player-menu button.navmap__place:hover,
+.player-menu button.navmap__place.is-selected {
+  background: color-mix(in srgb, var(--teal) 38%, transparent);
+}
+
+.player-menu .menu__mapFallback {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+}
+
+.player-menu .menu__mapFallback[hidden] {
+  display: none;
+}
+
 .player-menu .menu__mapHero img {
   width: 100%;
   height: 210px;

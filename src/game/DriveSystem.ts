@@ -412,10 +412,13 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
           this.teleportTo(x, z);
         },
         canTeleport: () => this.#canTeleport(),
-        setWaypoint: (x, z) => {
+        setWaypoint: (x, z, label) => {
           const sampler = this.#sampler;
           if (!sampler) return;
-          this.#waypoint.set(x, z, sampler.getHeightAt(x, z));
+          this.#waypoint.set(x, z, sampler.getHeightAt(x, z), label);
+        },
+        clearWaypoint: () => {
+          this.#waypoint.clear();
         },
         getWaypoint: () => this.#waypoint.waypoint,
         onOpen: () => {
@@ -497,11 +500,20 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#navigation?.openMap(mouseLike);
   }
 
+  /** Dieselbe Karte in das Pause-Menü hängen. */
+  dockMap(host: HTMLElement): void {
+    this.#navigation?.dock(host);
+  }
+
+  undockMap(): void {
+    this.#navigation?.undock();
+  }
+
   get mapOpen(): boolean {
     return this.#navigation?.open ?? false;
   }
 
-  get waypoint(): { readonly x: number; readonly z: number } | null {
+  get waypoint(): { readonly x: number; readonly z: number; readonly label?: string } | null {
     return this.#waypoint.waypoint;
   }
 
@@ -1479,7 +1491,9 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#navigation?.update(dt);
     const px = this.#walking ? this.walker.position.x : this.vehicle.position.x;
     const pz = this.#walking ? this.walker.position.z : this.vehicle.position.z;
-    this.#waypoint.update(px, pz);
+    this.#waypoint.update(px, pz, dt);
+    const wp = this.#waypoint.waypoint;
+    if (wp && Math.hypot(wp.x - px, wp.z - pz) < 22) this.#waypoint.clear();
     if (this.#paused) {
       this.#syncMeshes();
       return;

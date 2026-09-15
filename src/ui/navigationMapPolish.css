@@ -1,9 +1,9 @@
-/* POIs über der Graustufen-Karte — eine Farbe, die des HUD. */
+/* POIs über der Aerial-Karte — je Ort eine eigene Farbe, kein Einheitsgrau. */
 
 .navmap__poiLayer {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 3;
   display: block;
   width: 100%;
   height: 100%;
@@ -13,48 +13,97 @@
 
 .navmap-poi {
   color: #c9ccd4;
+  cursor: pointer;
+  pointer-events: auto;
 }
+
+.navmap-poi--city { color: #e8a9c0; }
+.navmap-poi--temple { color: #e06a55; }
+.navmap-poi--mountain { color: #e8ba7f; }
+.navmap-poi--paddy { color: #4db38c; }
+.navmap-poi--village { color: #66d7f4; }
+.navmap-poi--coast { color: #7ec8e3; }
+.navmap-poi--forest { color: #8fbf6a; }
+.navmap-poi--garage { color: #f3c56a; }
+.navmap-poi--drift { color: #d4789a; }
 
 .navmap-poi__halo {
   fill: currentColor;
-  opacity: 0.08;
+  opacity: 0.16;
+}
+
+.navmap-poi__badge {
+  fill: color-mix(in srgb, currentColor 88%, #081418);
+  stroke: rgba(8, 20, 24, 0.85);
+  stroke-width: 1.4;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
 }
 
 .navmap-poi__disc {
-  fill: #0a0d12;
+  fill: #081418;
   stroke: currentColor;
-  stroke-width: 1.6;
+  stroke-width: 1.5;
 }
 
 .navmap-poi__icon {
   fill: currentColor;
 }
 
+.navmap-poi.is-selected .navmap-poi__halo {
+  opacity: 0.32;
+}
+
+.navmap-poi.is-selected .navmap-poi__badge {
+  stroke: #f6efe4;
+  stroke-width: 2;
+}
+
+.navmap-poi__kanji,
 .navmap-poi__label,
 .navmap-poi__detail {
   paint-order: stroke fill;
-  stroke: rgba(6, 8, 12, 0.92);
+  stroke: rgba(6, 16, 18, 0.92);
   stroke-linejoin: round;
   text-anchor: start;
-  font-family: var(--mono);
+  font-family: var(--display, var(--mono));
+  pointer-events: none;
+}
+
+.navmap-poi__kanji {
+  fill: currentColor;
+  stroke-width: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
 }
 
 .navmap-poi__label {
-  fill: #d8dee9;
+  fill: #f6efe4;
   stroke-width: 4px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 .navmap-poi__detail {
-  fill: #7b8494;
+  fill: #b7c4c8;
   stroke-width: 3px;
   font-size: 10px;
   font-weight: 500;
 }
 
+.navmap[data-zoom='far'] .navmap-poi__detail,
+.navmap[data-zoom='far'] .navmap-poi__kanji {
+  display: none;
+}
+
+.navmap[data-zoom='far'] .navmap-poi--forest .navmap-poi__label {
+  display: none;
+}
+
 @media (max-width: 700px) {
-  .navmap-poi__detail {
+  .navmap-poi__detail,
+  .navmap-poi__kanji {
     display: none;
   }
 

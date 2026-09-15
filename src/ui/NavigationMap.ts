@@ -1,16 +1,29 @@
-import { DRIFT_ZONES, RAMPS } from '@/config/stunt.config';
 import type { RoadData } from '@/config/roads.config';
 import { WORLD } from '@/config/world.config';
-import { MAP_LANDMARKS, formatMapDistance } from './navigationMapData';
+import {
+  MAP_LANDMARKS,
+  formatMapDistance,
+  nearestLandmark,
+  type MapLandmark,
+} from './navigationMapData';
 import {
   clampMapView,
+  centerMapView,
   mapToWorld,
   worldToMap,
   zoomMapView,
   type MapPoint,
   type MapView,
 } from './navigationMapMath';
+import { NavigationMapBackdrop } from './NavigationMapBackdrop';
 import { NavigationPoiLayer } from './NavigationPoiLayer';
+import { NavigationRoadLayer } from './navigationMapRoads';
+import {
+  MAP_INK,
+  drawGlowRoute,
+  drawPlayerChevron,
+  drawWaypointPin,
+} from './mapDraw';
 import './navigationMap.css';
 import './navigationMapPolish.css';
 
@@ -27,8 +40,9 @@ export interface NavigationMapOptions {
   readonly getPose: () => NavigationPose;
   readonly teleport: (x: number, z: number) => void;
   readonly canTeleport: () => boolean;
-  readonly setWaypoint: (x: number, z: number) => void;
-  readonly getWaypoint: () => MapPoint | null;
+  readonly setWaypoint: (x: number, z: number, label?: string) => void;
+  readonly clearWaypoint: () => void;
+  readonly getWaypoint: () => (MapPoint & { label?: string }) | null;
   readonly onOpen: () => void;
   readonly onClose: (resume: boolean) => void;
 }
@@ -38,11 +52,6 @@ const UPDATE_INTERVAL = 0.1;
 /** Unter diesem Pixelabstand gilt ein Zeiger als Klick, darüber als Schwenk. */
 const PAN_THRESHOLD_PX = 8;
 const ZOOM_STEP = 1.28;
-/** Dieselben Grautöne wie die HUD-Minikarte — P25. */
-const ROAD_COLOR = '#8d8f96';
-const ROAD_MAIN = '#c9ccd4';
-const PLAYER_COLOR = '#ffd257';
-const WAYPOINT_COLOR = '#d8dee9';
 const BOUNDS = {
   minX: -WORLD.half,
   maxX: WORLD.half,
@@ -51,109 +60,160 @@ const BOUNDS = {
 } as const;
 
 /**
- * Vollkarte — dieselbe Zeichnung wie die HUD-Minikarte unten links, nur größer.
+ * Vollkarte — Aerial-Gelände plus Straßen, Zoom, Waypoint-Route.
  *
- * Keine zweite Mini, keine Aerial-Textur. Die Minikarte aus P25 bleibt die
- * einzige Mini; diese Overlay-Karte ist ihr vergrößerter, zoombarer Zustand.
+ * Overlay (Taste M) und Pause-Tab teilen dieselbe Instanz. Docked hängt das
+ * Panel in das Menü; Overlay legt es über die Welt. Zwei Wirte, eine Zeichnung.
  */
 export class NavigationMap {
   readonly #canvas: HTMLCanvasElement;
+  readonly #container: HTMLElement;
   readonly #isActive: () => boolean;
   readonly #getPose: () => NavigationPose;
   readonly #teleport: (x: number, z: number) => void;
   readonly #canTeleport: () => boolean;
-  readonly #setWaypoint: (x: number, z: number) => void;
-  readonly #getWaypoint: () => MapPoint | null;
+  readonly #setWaypoint: (x: number, z: number, label?: string) => void;
+  readonly #clearWaypoint: () => void;
+  readonly #getWaypoint: () => (MapPoint & { label?: string }) | null;
   readonly #onOpen: () => void;
   readonly #onClose: (resume: boolean) => void;
 
-  readonly #base = document.createElement('canvas');
   readonly #root: HTMLElement;
   readonly #view: HTMLElement;
+  readonly #plane: HTMLElement;
   readonly #stage: HTMLElement;
   readonly #fullCanvas: HTMLCanvasElement;
+  readonly #terrain: HTMLCanvasElement;
+  readonly #marks: HTMLCanvasElement;
   readonly #actions: HTMLElement;
   readonly #selectionLabel: HTMLElement;
+  readonly #selectionMeta: HTMLElement;
   readonly #teleportButton: HTMLElement;
+  readonly #waypointButton: HTMLElement;
+  readonly #places: HTMLElement;
   readonly #poiLayer: NavigationPoiLayer;
+  readonly #roadLayer: NavigationRoadLayer;
+  readonly #backdrop: NavigationMapBackdrop;
+  readonly #placeButtons = new Map<string, HTMLButtonElement>();
 
-  #roads: readonly RoadData[] = [];
-  #selected: MapPoint | null = null;
+  #selected: (MapPoint & { label?: string; landmarkId?: string }) | null = null;
   #elapsed = UPDATE_INTERVAL;
   #openedWithMouse = true;
   #disposed = false;
+  #docked = false;
   #viewState: MapView = { scale: 1, tx: 0, ty: 0 };
   #drag: { pointerId: number; x: number; y: number; tx: number; ty: number; moved: boolean } | null =
     null;
+  #resize: ResizeObserver | null = null;
 
   constructor(options: NavigationMapOptions) {
     this.#canvas = options.canvas;
+    this.#container = options.container;
     this.#isActive = options.isActive;
     this.#getPose = options.getPose;
     this.#teleport = options.teleport;
     this.#canTeleport = options.canTeleport;
     this.#setWaypoint = options.setWaypoint;
+    this.#clearWaypoint = options.clearWaypoint;
     this.#getWaypoint = options.getWaypoint;
     this.#onOpen = options.onOpen;
     this.#onClose = options.onClose;
-
-    this.#base.width = BASE_SIZE;
-    this.#base.height = BASE_SIZE;
 
     this.#root = document.createElement('div');
     this.#root.className = 'navmap';
     this.#root.hidden = true;
     this.#root.innerHTML = `
-      <section class="navmap__panel" role="dialog" aria-modal="true" aria-label="Map">
+      <section class="navmap__panel" role="dialog" aria-modal="true" aria-label="Island map">
         <header class="navmap__head">
-          <h2 class="navmap__title">Map</h2>
+          <div class="navmap__brand">
+            <p class="navmap__kicker">After the rain</p>
+            <h2 class="navmap__title">Island Atlas</h2>
+          </div>
           <div class="navmap__headActions">
-            <span class="navmap__hint">Drag · scroll · click</span>
+            <span class="navmap__hint">Drag · scroll · click a pin</span>
+            <button type="button" data-map-recenter aria-label="Recenter on you">◎</button>
             <button type="button" class="navmap__close" aria-label="Close map">×</button>
           </div>
         </header>
-        <div class="navmap__stage">
-          <div class="navmap__view">
-            <canvas class="navmap__canvas" width="${BASE_SIZE}" height="${BASE_SIZE}"></canvas>
+        <div class="navmap__body">
+          <div class="navmap__stage">
+            <canvas class="navmap__terrain" aria-hidden="true"></canvas>
+            <div class="navmap__view">
+              <div class="navmap__plane">
+                <canvas class="navmap__canvas" width="${BASE_SIZE}" height="${BASE_SIZE}"></canvas>
+              </div>
+            </div>
+            <canvas class="navmap__marks" aria-hidden="true"></canvas>
+            <div class="navmap__zoom">
+              <button type="button" data-map-zoom="in" aria-label="Zoom in">+</button>
+              <button type="button" data-map-zoom="out" aria-label="Zoom out">−</button>
+            </div>
+            <div class="navmap__compass" aria-hidden="true">N</div>
+            <div class="navmap__actions" hidden>
+              <div class="navmap__selectionBlock">
+                <span class="navmap__selection"></span>
+                <span class="navmap__selectionMeta"></span>
+              </div>
+              <button type="button" data-map-action="teleport" hidden>Travel</button>
+              <button type="button" data-map-action="waypoint">Set waypoint</button>
+            </div>
           </div>
-          <div class="navmap__zoom">
-            <button type="button" data-map-zoom="in" aria-label="Zoom in">+</button>
-            <button type="button" data-map-zoom="out" aria-label="Zoom out">−</button>
-          </div>
-          <div class="navmap__actions" hidden>
-            <span class="navmap__selection"></span>
-            <button type="button" data-map-action="teleport" hidden>Teleport</button>
-            <button type="button" data-map-action="waypoint">Set waypoint</button>
-          </div>
+          <aside class="navmap__side">
+            <p class="navmap__sideKicker">Places</p>
+            <nav class="navmap__places" aria-label="Places"></nav>
+          </aside>
         </div>
         <footer class="navmap__footer">
           <span><i class="navmap__legend navmap__legend--player"></i>You</span>
           <span><i class="navmap__legend navmap__legend--waypoint"></i>Waypoint</span>
           <span><i class="navmap__legend navmap__legend--poi"></i>Place</span>
+          <span><i class="navmap__legend navmap__legend--route"></i>Route</span>
           <span class="navmap__footerKey"><kbd>M</kbd> Map</span>
         </footer>
       </section>`;
     options.container.append(this.#root);
 
     this.#view = this.#must('.navmap__view');
+    this.#plane = this.#must('.navmap__plane');
     this.#stage = this.#must('.navmap__stage');
     this.#fullCanvas = this.#mustCanvas('.navmap__canvas');
+    this.#terrain = this.#mustCanvas('.navmap__terrain');
+    this.#marks = this.#mustCanvas('.navmap__marks');
     this.#actions = this.#must('.navmap__actions');
     this.#selectionLabel = this.#must('.navmap__selection');
+    this.#selectionMeta = this.#must('.navmap__selectionMeta');
     this.#teleportButton = this.#must('[data-map-action="teleport"]');
-    this.#poiLayer = new NavigationPoiLayer(this.#view, BOUNDS, BASE_SIZE);
+    this.#waypointButton = this.#must('[data-map-action="waypoint"]');
+    this.#places = this.#must('.navmap__places');
+    this.#roadLayer = new NavigationRoadLayer(this.#plane, BOUNDS, BASE_SIZE);
+    this.#poiLayer = new NavigationPoiLayer(this.#plane, BOUNDS, BASE_SIZE, (landmark) => {
+      this.#selectLandmark(landmark);
+    });
+    this.#backdrop = new NavigationMapBackdrop(() => {
+      this.#drawBase();
+      this.#drawNow();
+    });
+    this.#fillPlaces();
 
     this.#fullCanvas.addEventListener('pointerdown', this.#onMapPointerDown);
+    this.#fullCanvas.addEventListener('dblclick', this.#onDoubleClick);
     this.#must('.navmap__close').addEventListener('click', this.#onCloseClick);
     this.#teleportButton.addEventListener('click', this.#onTeleport);
-    this.#must('[data-map-action="waypoint"]').addEventListener('click', this.#onWaypoint);
+    this.#waypointButton.addEventListener('click', this.#onWaypoint);
     this.#must('[data-map-zoom="in"]').addEventListener('click', this.#onZoomIn);
     this.#must('[data-map-zoom="out"]').addEventListener('click', this.#onZoomOut);
+    this.#must('[data-map-recenter]').addEventListener('click', this.#onRecenter);
     this.#stage.addEventListener('wheel', this.#onWheel, { passive: false });
     window.addEventListener('keydown', this.#onKeyDown);
     window.addEventListener('pointermove', this.#onMapPointerMove);
     window.addEventListener('pointerup', this.#onMapPointerUp);
     window.addEventListener('pointercancel', this.#onMapPointerUp);
+    this.#resize = new ResizeObserver(() => {
+      this.#viewState = clampMapView(this.#viewState, this.#stageSize().width, this.#stageSize().height);
+      this.#applyView();
+      this.#drawNow();
+    });
+    this.#resize.observe(this.#stage);
 
     this.#drawBase();
   }
@@ -162,8 +222,12 @@ export class NavigationMap {
     return !this.#root.hidden;
   }
 
+  get docked(): boolean {
+    return this.#docked;
+  }
+
   setRoads(roads: readonly RoadData[]): void {
-    this.#roads = roads;
+    this.#roadLayer.setRoads(roads);
     this.#drawBase();
     this.#drawNow();
   }
@@ -174,10 +238,13 @@ export class NavigationMap {
     if (this.#elapsed < UPDATE_INTERVAL) return;
     this.#elapsed = 0;
     this.#drawFull();
+    this.#syncPlaceDistances();
   }
 
   openMap(mouseLike = true): void {
-    if (!this.#isActive() || this.open) return;
+    if (!this.#isActive()) return;
+    if (this.#docked) this.undock();
+    if (this.open) return;
     this.#openedWithMouse = mouseLike;
     // Erst das Ereignis, dann den Lock abgeben: `PlayerUi` liest den
     // Lock-Verlust sonst als Pause und legt das Menü über die Karte.
@@ -186,13 +253,57 @@ export class NavigationMap {
     this.#actions.hidden = true;
     this.#drag = null;
     this.#viewState = { scale: 1, tx: 0, ty: 0 };
+    this.#root.classList.remove('navmap--docked');
     this.#root.hidden = false;
+    this.#container.append(this.#root);
     this.#applyView();
     this.#drawFull();
+    this.#syncPlaceDistances();
     if (document.pointerLockElement === this.#canvas) document.exitPointerLock();
   }
 
+  /**
+   * Die Karte in das Pause-Menü hängen. Kein `map:open`: das Menü ist schon
+   * offen, und dasselbe Ereignis würde es schließen.
+   */
+  dock(host: HTMLElement): void {
+    if (this.#disposed) return;
+    if (this.#docked && this.#root.parentElement === host) {
+      this.#drawNow();
+      return;
+    }
+    this.#docked = true;
+    this.#selected = null;
+    this.#actions.hidden = true;
+    this.#drag = null;
+    this.#viewState = { scale: 1, tx: 0, ty: 0 };
+    this.#root.classList.add('navmap--docked');
+    this.#root.hidden = false;
+    host.append(this.#root);
+    requestAnimationFrame(() => {
+      if (!this.#docked) return;
+      this.#applyView();
+      this.#drawFull();
+      this.#syncPlaceDistances();
+    });
+  }
+
+  undock(): void {
+    if (!this.#docked) return;
+    this.#docked = false;
+    this.#root.classList.remove('navmap--docked');
+    this.#root.hidden = true;
+    this.#selected = null;
+    this.#actions.hidden = true;
+    this.#drag = null;
+    this.#container.append(this.#root);
+  }
+
   closeMap(resume: boolean): void {
+    if (this.#docked) {
+      this.undock();
+      return;
+    }
     if (!this.open) return;
     this.#root.hidden = true;
     this.#selected = null;
@@ -203,179 +314,209 @@ export class NavigationMap {
     if (resume && this.#openedWithMouse && !isCoarsePointer()) this.#requestPointerLock();
   }
 
+  #fillPlaces(): void {
+    this.#places.replaceChildren();
+    for (const landmark of MAP_LANDMARKS) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `navmap__place navmap__place--${landmark.icon}`;
+      button.innerHTML = `<i></i><span><strong>${escapeHtml(landmark.label)}</strong><em>${escapeHtml(landmark.kanji)}</em></span><b>—</b>`;
+      button.addEventListener('click', () => this.#selectLandmark(landmark, true));
+      this.#places.append(button);
+      this.#placeButtons.set(landmark.id, button);
+    }
+  }
+
+  #selectLandmark(landmark: MapLandmark, zoom = false): void {
+    this.#selected = {
+      x: landmark.x,
+      z: landmark.z,
+      label: landmark.label,
+      landmarkId: landmark.id,
+    };
+    this.#poiLayer.setSelected(landmark.id);
+    this.#showSelection();
+    if (zoom) {
+      this.#focusWorld(landmark.x, landmark.z, 2.6);
+    }
+    this.#drawFull();
+  }
+
+  #showSelection(): void {
+    const selected = this.#selected;
+    if (!selected) {
+      this.#actions.hidden = true;
+      this.#poiLayer.setSelected(null);
+      return;
+    }
+    const pose = this.#getPose();
+    const waypoint = this.#getWaypoint();
+    const dist = formatMapDistance(distance(pose.x, pose.z, selected.x, selected.z));
+    const name = selected.label ?? selectionName(selected);
+    this.#selectionLabel.textContent = name;
+    this.#selectionMeta.textContent = dist;
+    this.#actions.hidden = false;
+    this.#teleportButton.hidden = !this.#canTeleport();
+    const same =
+      waypoint !== null &&
+      Math.hypot(waypoint.x - selected.x, waypoint.z - selected.z) < 12;
+    this.#waypointButton.textContent = same ? 'Clear waypoint' : 'Set waypoint';
+    this.#waypointButton.dataset.mode = same ? 'clear' : 'set';
+  }
+
   #drawBase(): void {
-    const ctx = context2d(this.#base);
-    ctx.fillStyle = '#0a0d12';
-    ctx.fillRect(0, 0, BASE_SIZE, BASE_SIZE);
+    this.#drawTerrain();
+  }
 
-    ctx.strokeStyle = 'rgba(216, 222, 233, 0.16)';
-    ctx.lineWidth = 2;
-    for (const zone of DRIFT_ZONES) {
-      const p = worldToMap(zone.x, zone.z, BOUNDS);
-      ctx.beginPath();
-      ctx.arc(p.x * BASE_SIZE, p.y * BASE_SIZE, (zone.radius / WORLD.size) * BASE_SIZE, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+  #syncTerrainSize(): void {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const width = Math.max(1, Math.round(this.#stage.clientWidth * dpr));
+    const height = Math.max(1, Math.round(this.#stage.clientHeight * dpr));
+    if (this.#terrain.width !== width) this.#terrain.width = width;
+    if (this.#terrain.height !== height) this.#terrain.height = height;
+  }
 
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    for (const road of this.#roads) {
-      if (road.centerline.length < 6) continue;
-      const main = road.length > 2000;
-      ctx.strokeStyle = main ? ROAD_MAIN : ROAD_COLOR;
-      ctx.lineWidth = main ? 5.5 : 3.2;
-      ctx.beginPath();
-      for (let i = 0; i < road.centerline.length; i += 12) {
-        const point = worldToMap(road.centerline[i]!, road.centerline[i + 2]!, BOUNDS);
-        const x = point.x * BASE_SIZE;
-        const y = point.y * BASE_SIZE;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      if (road.closed) ctx.closePath();
-      ctx.stroke();
-    }
-
-    ctx.fillStyle = ROAD_MAIN;
-    for (const ramp of RAMPS) {
-      const p = worldToMap(ramp.x, ramp.z, BOUNDS);
-      ctx.beginPath();
-      ctx.arc(p.x * BASE_SIZE, p.y * BASE_SIZE, 4, 0, Math.PI * 2);
-      ctx.fill();
-    }
+  #drawTerrain(): void {
+    this.#syncTerrainSize();
+    const stage = this.#stageSize();
+    const plane = Math.max(stage.width, stage.height);
+    const left = (stage.width - plane) * 0.5;
+    const top = (stage.height - plane) * 0.5;
+    const { scale, tx, ty } = this.#viewState;
+    const nx0 = (0 - tx) / scale - left;
+    const ny0 = (0 - ty) / scale - top;
+    const nx1 = (stage.width - tx) / scale - left;
+    const ny1 = (stage.height - ty) / scale - top;
+    const ctx = context2d(this.#terrain);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.#backdrop.drawVisible(
+      ctx,
+      this.#terrain.width,
+      this.#terrain.height,
+      nx0 / plane,
+      ny0 / plane,
+      nx1 / plane,
+      ny1 / plane,
+    );
   }
 
   #drawFull(): void {
-    const ctx = context2d(this.#fullCanvas);
-    ctx.clearRect(0, 0, BASE_SIZE, BASE_SIZE);
-    ctx.drawImage(this.#base, 0, 0);
+    this.#drawMarks();
+    this.#showSelection();
+  }
+
+  #syncMarksSize(): void {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const width = Math.max(1, Math.round(this.#stage.clientWidth * dpr));
+    const height = Math.max(1, Math.round(this.#stage.clientHeight * dpr));
+    if (this.#marks.width !== width) this.#marks.width = width;
+    if (this.#marks.height !== height) this.#marks.height = height;
+  }
+
+  #worldToStage(x: number, z: number): { x: number; y: number } | null {
+    const plane = this.#plane.getBoundingClientRect();
+    const stage = this.#stage.getBoundingClientRect();
+    if (plane.width <= 0 || plane.height <= 0) return null;
+    const point = worldToMap(x, z, BOUNDS);
+    return {
+      x: plane.left - stage.left + point.x * plane.width,
+      y: plane.top - stage.top + point.y * plane.height,
+    };
+  }
+
+  #focusWorld(x: number, z: number, scale: number): void {
+    const stage = this.#stageSize();
+    const plane = Math.max(stage.width, stage.height);
+    const point = worldToMap(x, z, BOUNDS);
+    const localX = (stage.width - plane) * 0.5 + point.x * plane;
+    const localY = (stage.height - plane) * 0.5 + point.y * plane;
+    this.#viewState = centerMapView(localX, localY, scale, stage.width, stage.height);
+    this.#applyView();
+  }
+
+  #drawMarks(): void {
+    this.#syncMarksSize();
+    const ctx = context2d(this.#marks);
+    const dpr = this.#marks.width / Math.max(1, this.#stage.clientWidth);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.#marks.width, this.#marks.height);
+    ctx.scale(dpr, dpr);
 
     const pose = this.#getPose();
-    const player = worldToMap(pose.x, pose.z, BOUNDS);
-    this.#drawPlayer(ctx, player.x * BASE_SIZE, player.y * BASE_SIZE, pose.yaw, 15);
+    const player = this.#worldToStage(pose.x, pose.z);
+    if (!player) return;
 
     const waypoint = this.#getWaypoint();
     if (waypoint) {
-      const wp = worldToMap(waypoint.x, waypoint.z, BOUNDS);
-      const x = wp.x * BASE_SIZE;
-      const y = wp.y * BASE_SIZE;
-      this.#drawWaypoint(ctx, x, y, false, 14);
-      this.#drawWaypointCallout(
-        ctx,
-        x,
-        y,
-        `WAYPOINT · ${formatMapDistance(distance(pose.x, pose.z, waypoint.x, waypoint.z))}`,
-      );
+      const wp = this.#worldToStage(waypoint.x, waypoint.z);
+      if (wp) {
+        drawGlowRoute(ctx, player.x, player.y, wp.x, wp.y, 4);
+        drawWaypointPin(ctx, wp.x, wp.y, 13);
+        this.#drawCallout(
+          ctx,
+          wp.x,
+          wp.y,
+          `${(waypoint.label ?? 'Waypoint').toUpperCase()} · ${formatMapDistance(distance(pose.x, pose.z, waypoint.x, waypoint.z))}`,
+        );
+      }
     }
+
+    drawPlayerChevron(ctx, player.x, player.y, pose.yaw, 13);
 
     if (this.#selected) {
-      const selected = worldToMap(this.#selected.x, this.#selected.z, BOUNDS);
-      this.#drawSelection(ctx, selected.x * BASE_SIZE, selected.y * BASE_SIZE);
+      const selected = this.#worldToStage(this.#selected.x, this.#selected.z);
+      if (selected) this.#drawSelection(ctx, selected.x, selected.y);
     }
   }
 
-  #drawPlayer(ctx: CanvasRenderingContext2D, x: number, y: number, yaw: number, radius: number): void {
+  #drawCallout(ctx: CanvasRenderingContext2D, x: number, y: number, text: string): void {
     ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(Math.PI - yaw);
-    ctx.beginPath();
-    ctx.moveTo(0, -radius);
-    ctx.lineTo(radius * 0.72, radius * 0.75);
-    ctx.lineTo(0, radius * 0.48);
-    ctx.lineTo(-radius * 0.72, radius * 0.75);
-    ctx.closePath();
-    ctx.fillStyle = PLAYER_COLOR;
-    ctx.strokeStyle = 'rgba(6, 8, 12, 0.92)';
-    ctx.lineWidth = 2;
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-    ctx.shadowBlur = radius * 0.4;
-    ctx.stroke();
-    ctx.fill();
-    ctx.restore();
-  }
-
-  #drawWaypoint(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    edge: boolean,
-    radius: number,
-  ): void {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
-    ctx.shadowBlur = radius * 0.8;
-    ctx.fillStyle = WAYPOINT_COLOR;
-    ctx.strokeStyle = '#0a0d12';
-    ctx.lineWidth = 2;
-
-    ctx.beginPath();
-    ctx.arc(0, -radius * 0.32, radius, Math.PI * 0.15, Math.PI * 0.85, true);
-    ctx.quadraticCurveTo(radius * 0.68, radius * 0.65, 0, radius * 1.45);
-    ctx.quadraticCurveTo(-radius * 0.68, radius * 0.65, -radius * 0.99, -radius * 0.18);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#0a0d12';
-    ctx.beginPath();
-    ctx.arc(0, -radius * 0.34, radius * 0.34, 0, Math.PI * 2);
-    ctx.fill();
-
-    if (edge) {
-      ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = 'rgba(216, 222, 233, 0.7)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, radius + 7, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  #drawWaypointCallout(ctx: CanvasRenderingContext2D, x: number, y: number, text: string): void {
-    ctx.save();
-    ctx.font = '700 15px ui-monospace, SFMono-Regular, Menlo, monospace';
+    ctx.font = '700 14px "Segoe UI", system-ui, sans-serif';
     const paddingX = 12;
     const width = ctx.measureText(text).width + paddingX * 2;
-    const height = 34;
-    let left = x + 24;
-    if (left + width > BASE_SIZE - 12) left = x - width - 24;
-    left = clamp(left, 12, BASE_SIZE - width - 12);
-    const top = clamp(y - height - 12, 12, BASE_SIZE - height - 12);
-
-    roundedRect(ctx, left, top, width, height, 8);
-    ctx.fillStyle = 'rgba(10, 13, 18, 0.92)';
+    const height = 30;
+    const stageW = Math.max(1, this.#stage.clientWidth);
+    const stageH = Math.max(1, this.#stage.clientHeight);
+    let left = x + 22;
+    if (left + width > stageW - 12) left = x - width - 22;
+    left = clamp(left, 12, stageW - width - 12);
+    const top = clamp(y - height - 18, 12, stageH - height - 12);
+    roundedRect(ctx, left, top, width, height, 7);
+    ctx.fillStyle = 'rgba(6, 20, 24, 0.9)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+    ctx.strokeStyle = 'rgba(102, 215, 244, 0.45)';
     ctx.lineWidth = 1;
     ctx.stroke();
-    ctx.fillStyle = '#d8dee9';
+    ctx.fillStyle = '#eaf6f8';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, left + paddingX, top + height * 0.51);
+    ctx.fillText(text, left + paddingX, top + height * 0.52);
     ctx.restore();
   }
 
   #drawSelection(ctx: CanvasRenderingContext2D, x: number, y: number): void {
     ctx.save();
-    ctx.strokeStyle = '#ffffff';
+    ctx.strokeStyle = MAP_INK.waypointHot;
     ctx.lineWidth = 2;
-    ctx.setLineDash([6, 6]);
+    ctx.setLineDash([5, 5]);
     ctx.beginPath();
-    ctx.arc(x, y, 17, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x - 23, y);
-    ctx.lineTo(x + 23, y);
-    ctx.moveTo(x, y - 23);
-    ctx.lineTo(x, y + 23);
+    ctx.arc(x, y, 22, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }
 
   #drawNow(): void {
     if (this.open) this.#drawFull();
+  }
+
+  #syncPlaceDistances(): void {
+    const pose = this.#getPose();
+    for (const landmark of MAP_LANDMARKS) {
+      const button = this.#placeButtons.get(landmark.id);
+      if (!button) continue;
+      const dist = button.querySelector('b');
+      if (dist) dist.textContent = formatMapDistance(distance(pose.x, pose.z, landmark.x, landmark.z));
+      button.classList.toggle('is-selected', this.#selected?.landmarkId === landmark.id);
+    }
   }
 
   readonly #onMapPointerDown = (event: PointerEvent): void => {
@@ -413,32 +554,58 @@ export class NavigationMap {
     if (!drag || event.pointerId !== drag.pointerId) return;
     this.#drag = null;
     if (drag.moved || !this.open) return;
+    const point = this.#eventToWorld(event);
+    if (!point) return;
+    const landmark = nearestLandmark(point.x, point.z, 90);
+    if (landmark) {
+      this.#selectLandmark(landmark);
+      return;
+    }
+    this.#selected = { x: point.x, z: point.z, label: selectionName(point) };
+    this.#poiLayer.setSelected(null);
+    this.#showSelection();
+    this.#drawFull();
+  };
+
+  readonly #onDoubleClick = (event: MouseEvent): void => {
+    if (!this.open) return;
+    event.preventDefault();
+    const point = this.#eventToWorld(event);
+    if (!point) return;
+    const landmark = nearestLandmark(point.x, point.z, 90);
+    this.#setWaypoint(landmark?.x ?? point.x, landmark?.z ?? point.z, landmark?.label ?? 'Waypoint');
+    this.#drawFull();
+  };
+
+  #eventToWorld(event: MouseEvent): MapPoint | null {
     const rect = this.#fullCanvas.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return;
-    const point = mapToWorld(
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    return mapToWorld(
       (event.clientX - rect.left) / rect.width,
       (event.clientY - rect.top) / rect.height,
       BOUNDS,
     );
-    this.#selected = point;
-    this.#selectionLabel.textContent = selectionLabel(point);
-    this.#actions.hidden = false;
-    this.#teleportButton.hidden = !this.#canTeleport();
-    this.#drawFull();
-  };
+  }
 
   readonly #onTeleport = (): void => {
     const selected = this.#selected;
     if (!selected || !this.#canTeleport()) return;
     this.#teleport(selected.x, selected.z);
-    this.closeMap(true);
+    if (!this.#docked) this.closeMap(true);
   };
 
   readonly #onWaypoint = (): void => {
+    if (this.#waypointButton.dataset.mode === 'clear') {
+      this.#clearWaypoint();
+      this.#showSelection();
+      this.#drawFull();
+      return;
+    }
     const selected = this.#selected;
     if (!selected) return;
-    this.#setWaypoint(selected.x, selected.z);
-    this.closeMap(true);
+    this.#setWaypoint(selected.x, selected.z, selected.label ?? 'Waypoint');
+    this.#showSelection();
+    this.#drawFull();
   };
 
   readonly #onCloseClick = (): void => {
@@ -453,6 +620,11 @@ export class NavigationMap {
     this.#zoomBy(1 / ZOOM_STEP);
   };
 
+  readonly #onRecenter = (): void => {
+    const pose = this.#getPose();
+    this.#focusWorld(pose.x, pose.z, Math.max(this.#viewState.scale, 2.2));
+  };
+
   readonly #onWheel = (event: WheelEvent): void => {
     if (!this.open) return;
     event.preventDefault();
@@ -462,7 +634,7 @@ export class NavigationMap {
   };
 
   readonly #onKeyDown = (event: KeyboardEvent): void => {
-    if (isTyping() || event.repeat) return;
+    if (this.#docked || isTyping() || event.repeat) return;
     if (event.code === 'KeyM') {
       if (!this.#isActive() && !this.open) return;
       event.preventDefault();
@@ -511,6 +683,10 @@ export class NavigationMap {
   #applyView(): void {
     const { scale, tx, ty } = this.#viewState;
     this.#view.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+    this.#root.dataset.zoom = scale < 1.35 ? 'far' : scale < 3 ? 'mid' : 'near';
+    this.#poiLayer.setViewScale(scale);
+    this.#drawTerrain();
+    this.#drawMarks();
   }
 
   #requestPointerLock(): void {
@@ -534,16 +710,21 @@ export class NavigationMap {
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
+    this.#resize?.disconnect();
+    this.#resize = null;
     window.removeEventListener('keydown', this.#onKeyDown);
     window.removeEventListener('pointermove', this.#onMapPointerMove);
     window.removeEventListener('pointerup', this.#onMapPointerUp);
     window.removeEventListener('pointercancel', this.#onMapPointerUp);
     this.#fullCanvas.removeEventListener('pointerdown', this.#onMapPointerDown);
+    this.#fullCanvas.removeEventListener('dblclick', this.#onDoubleClick);
     this.#stage.removeEventListener('wheel', this.#onWheel);
     this.#poiLayer.dispose();
+    this.#roadLayer.dispose();
+    this.#backdrop.dispose();
     this.#root.remove();
-    this.#roads = [];
     this.#selected = null;
+    this.#placeButtons.clear();
   }
 }
 
@@ -553,18 +734,9 @@ function context2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   return context;
 }
 
-function selectionLabel(point: MapPoint): string {
-  let closestLabel = '';
-  let closest = 130;
-  for (const landmark of MAP_LANDMARKS) {
-    const d = distance(point.x, point.z, landmark.x, landmark.z);
-    if (d < closest) {
-      closest = d;
-      closestLabel = landmark.label;
-    }
-  }
-  if (closestLabel) return `${closestLabel} · ${formatMapDistance(closest)}`;
-  return `${Math.round(point.x)} / ${Math.round(point.z)} m`;
+function selectionName(point: MapPoint): string {
+  const landmark = nearestLandmark(point.x, point.z, 130);
+  return landmark ? landmark.label : `${Math.round(point.x)} / ${Math.round(point.z)} m`;
 }
 
 function roundedRect(
@@ -604,4 +776,21 @@ function isTyping(): boolean {
 
 function clamp(value: number, min: number, max: number): number {
   return value < min ? min : value > max ? max : value;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => {
+    switch (character) {
+      case '&':
+        return '&amp;';
+      case '<':
+        return '&lt;';
+      case '>':
+        return '&gt;';
+      case '"':
+        return '&quot;';
+      default:
+        return '&#39;';
+    }
+  });
 }

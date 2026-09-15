@@ -14,14 +14,18 @@ import sharp from 'sharp';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const TERRAIN = join(ROOT, 'assets/generated/terrain');
-const OUTPUT_RES = 1024;
+const OUTPUT_RES = 4096;
 
-const ROCK = [105, 110, 106];
-const GRASS = [69, 101, 76];
-const SAND = [171, 151, 108];
-const PADDY = [72, 112, 91];
-const WATER_DEEP = [25, 57, 73];
-const WATER_SHALLOW = [39, 86, 102];
+const ROCK = [142, 132, 112];
+const GRASS = [72, 138, 64];
+const FOREST = [32, 78, 46];
+const SAND = [210, 184, 118];
+const PADDY = [42, 128, 108];
+const CITY = [118, 116, 112];
+const SNOW = [226, 228, 230];
+const WATER_DEEP = [12, 58, 84];
+const WATER_SHALLOW = [48, 132, 142];
+const CITY_BOX = { minX: 440, maxX: 800, minZ: -60, maxZ: 300 };
 
 const clamp = (value, min, max) => (value < min ? min : value > max ? max : value);
 const mix = (a, b, t) => a + (b - a) * t;
@@ -90,12 +94,38 @@ async function main() {
         const rock = zones.data[zoneIndex] / 255;
         const grass = zones.data[zoneIndex + 1] / 255;
         const sand = zones.data[zoneIndex + 2] / 255;
-        const paddy = zones.data[zoneIndex + 3] / 255;
-        const weight = Math.max(0.001, rock + grass + sand + paddy);
+        // zones.png ist RGB ohne Reisfeldkanal. Paddy steckt als Rest in der
+        // Normierung — siehe bake-terrain.mjs computeZones.
+        const paddy = Math.max(0, 1 - rock - grass - sand);
+        const forest = grass * clamp((height - 90) / 160, 0, 1);
+        const field = Math.max(0, grass - forest);
+        const weight = Math.max(0.001, rock + field + forest + sand + paddy);
 
-        r = (ROCK[0] * rock + GRASS[0] * grass + SAND[0] * sand + PADDY[0] * paddy) / weight;
-        g = (ROCK[1] * rock + GRASS[1] * grass + SAND[1] * sand + PADDY[1] * paddy) / weight;
-        b = (ROCK[2] * rock + GRASS[2] * grass + SAND[2] * sand + PADDY[2] * paddy) / weight;
+        r =
+          (ROCK[0] * rock + GRASS[0] * field + FOREST[0] * forest + SAND[0] * sand + PADDY[0] * paddy) /
+          weight;
+        g =
+          (ROCK[1] * rock + GRASS[1] * field + FOREST[1] * forest + SAND[1] * sand + PADDY[1] * paddy) /
+          weight;
+        b =
+          (ROCK[2] * rock + GRASS[2] * field + FOREST[2] * forest + SAND[2] * sand + PADDY[2] * paddy) /
+          weight;
+
+        const wx = -worldSize / 2 + (x / (OUTPUT_RES - 1)) * worldSize;
+        const wz = -worldSize / 2 + (y / (OUTPUT_RES - 1)) * worldSize;
+        const city = cityBlend(wx, wz);
+        if (city > 0) {
+          r = mix(r, CITY[0], city * 0.38);
+          g = mix(g, CITY[1], city * 0.38);
+          b = mix(b, CITY[2], city * 0.38);
+        }
+
+        const snow = clamp((height - 310) / 80, 0, 1) * rock;
+        if (snow > 0) {
+          r = mix(r, SNOW[0], snow);
+          g = mix(g, SNOW[1], snow);
+          b = mix(b, SNOW[2], snow);
+        }
 
         const step = 2;
         const dx = (readHeight(hx + step, hy) - readHeight(hx - step, hy)) / (2 * step * sourceSpacing);
@@ -105,23 +135,21 @@ async function main() {
 
         const shadeIndex = sampleIndex(x, y, shade.width, shade.height);
         const sky = shade.data[shadeIndex + 2] / 255;
-        const relief = 0.62 + (sun + 0.35) * 0.27;
-        const ambient = 0.88 + sky * 0.12;
+        const relief = 0.52 + (sun + 0.35) * 0.4;
+        const ambient = 0.86 + sky * 0.16;
         const altitude = clamp((height - 40) / 380, 0, 1);
-        const brightness = relief * ambient * (0.98 + altitude * 0.08);
+        const brightness = relief * ambient * (0.96 + altitude * 0.1);
 
         r *= brightness;
         g *= brightness;
         b *= brightness;
 
-        // Sehr feine Höhenlinien geben der Karte Struktur, ohne wie eine
-        // technische Topografie auszusehen. Nur oberhalb der Ebenen.
         if (height > 45) {
-          const contourDistance = Math.min(height % 50, 50 - (height % 50));
-          if (contourDistance < 0.8) {
-            r *= 0.86;
-            g *= 0.86;
-            b *= 0.86;
+          const contourDistance = Math.min(height % 40, 40 - (height % 40));
+          if (contourDistance < 0.7) {
+            r *= 0.84;
+            g *= 0.84;
+            b *= 0.84;
           }
         }
       }
@@ -137,13 +165,24 @@ async function main() {
 
   const png = PNG.sync.write(output, { colorType: 6, inputColorType: 6 });
   const destination = join(TERRAIN, 'navigation-map.webp');
-  const webp = await sharp(png).webp({ quality: 86, effort: 6, smartSubsample: true }).toBuffer();
+  const webp = await sharp(png).webp({ quality: 90, effort: 4, smartSubsample: true }).toBuffer();
   await writeFile(destination, webp);
 
   console.log(
     `Navigation-Basiskarte: ${OUTPUT_RES}×${OUTPUT_RES}, ${(webp.byteLength / 1024).toFixed(1)} KiB → ` +
       'assets/generated/terrain/navigation-map.webp',
   );
+}
+
+function cityBlend(x, z) {
+  const dx = Math.max(CITY_BOX.minX - x, x - CITY_BOX.maxX, 0);
+  const dz = Math.max(CITY_BOX.minZ - z, z - CITY_BOX.maxZ, 0);
+  if (dx === 0 && dz === 0) return 1;
+  const feather = 70;
+  const q = dx * dx + dz * dz;
+  if (q >= feather * feather) return 0;
+  const t = 1 - Math.sqrt(q) / feather;
+  return t * t * (3 - 2 * t);
 }
 
 function drawRiver(image, centerline, worldSize) {
@@ -157,7 +196,7 @@ function drawRiver(image, centerline, worldSize) {
   let previous = toPixel(centerline[0], centerline[2]);
   for (let i = 3; i + 2 < centerline.length; i += 3) {
     const next = toPixel(centerline[i], centerline[i + 2]);
-    drawSegment(image, previous.x, previous.y, next.x, next.y, 2.2);
+    drawSegment(image, previous.x, previous.y, next.x, next.y, 8.8);
     previous = next;
   }
 }

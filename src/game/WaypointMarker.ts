@@ -17,15 +17,16 @@ import type { EngineContext } from '@/core/System';
 export interface WaypointPosition {
   readonly x: number;
   readonly z: number;
+  readonly label: string;
 }
 
-const BEAM_HEIGHT = 1200;
-const LABEL_Y = 72;
+const BEAM_HEIGHT = 280;
+const LABEL_Y = 18;
 
 /**
- * Weltmarker wie in einem Open-World-Spiel: ein weit sichtbarer Beam, heller
- * Kern, Bodenring und ein immer lesbares Label. Alles bleibt extrem klein:
- * vier simple Draw-Calls existieren nur solange tatsächlich ein Waypoint steht.
+ * Weltmarker: dünner Lichtschaft, Bodenring, Pin-Label. Die alte 1200-m-Säule
+ * in Signalblau stand als Turm in der Landschaft — hier ist es ein Ziel, das
+ * man aus der Ferne findet, ohne die Insel zu überstrahlen.
  */
 export class WaypointMarker {
   #context: EngineContext | null = null;
@@ -38,6 +39,7 @@ export class WaypointMarker {
   #labelCanvas: HTMLCanvasElement | null = null;
   #waypoint: WaypointPosition | null = null;
   #distanceBucket = -1;
+  #pulse = 0;
 
   attach(context: EngineContext): void {
     if (this.#group) return;
@@ -49,11 +51,11 @@ export class WaypointMarker {
     group.frustumCulled = false;
 
     const outerBeam = new Mesh(
-      new CylinderGeometry(5.4, 5.4, BEAM_HEIGHT, 10, 1, true),
+      new CylinderGeometry(1.8, 2.6, BEAM_HEIGHT, 12, 1, true),
       new MeshBasicMaterial({
-        color: 0x168cff,
+        color: 0x66d7f4,
         transparent: true,
-        opacity: 0.28,
+        opacity: 0.16,
         depthTest: false,
         depthWrite: false,
         blending: AdditiveBlending,
@@ -66,11 +68,11 @@ export class WaypointMarker {
     outerBeam.renderOrder = 1000;
 
     const coreBeam = new Mesh(
-      new CylinderGeometry(1.35, 1.35, BEAM_HEIGHT, 8, 1, true),
+      new CylinderGeometry(0.38, 0.55, BEAM_HEIGHT, 8, 1, true),
       new MeshBasicMaterial({
-        color: 0x8bcaff,
+        color: 0xffe1a3,
         transparent: true,
-        opacity: 0.86,
+        opacity: 0.72,
         depthTest: false,
         depthWrite: false,
         blending: AdditiveBlending,
@@ -83,11 +85,11 @@ export class WaypointMarker {
     coreBeam.renderOrder = 1001;
 
     const ring = new Mesh(
-      new RingGeometry(10, 21, 48),
+      new RingGeometry(4.5, 8.5, 48),
       new MeshBasicMaterial({
-        color: 0x168cff,
+        color: 0x66d7f4,
         transparent: true,
-        opacity: 0.8,
+        opacity: 0.85,
         depthTest: false,
         depthWrite: false,
         blending: AdditiveBlending,
@@ -102,8 +104,8 @@ export class WaypointMarker {
     ring.renderOrder = 1002;
 
     const canvas = document.createElement('canvas');
-    canvas.width = 768;
-    canvas.height = 192;
+    canvas.width = 640;
+    canvas.height = 160;
     const texture = new CanvasTexture(canvas);
     texture.colorSpace = SRGBColorSpace;
     texture.minFilter = LinearFilter;
@@ -134,44 +136,45 @@ export class WaypointMarker {
     this.#label = label;
     this.#labelTexture = texture;
     this.#labelCanvas = canvas;
-    this.#writeLabel(0);
+    this.#writeLabel('Waypoint', 0);
   }
 
   get waypoint(): WaypointPosition | null {
     return this.#waypoint;
   }
 
-  set(x: number, z: number, groundY: number): void {
-    this.#waypoint = { x, z };
+  set(x: number, z: number, groundY: number, label = 'Waypoint'): void {
+    this.#waypoint = { x, z, label };
     this.#distanceBucket = -1;
     const group = this.#group;
     if (!group) return;
     group.position.set(x, groundY, z);
     group.visible = true;
-    this.#writeLabel(0);
+    this.#writeLabel(label, 0);
   }
 
-  /**
-   * Nur Distanztext und Labelgröße. Die Textur wird nicht jeden Frame neu
-   * gerastert, sondern erst wenn sich die Anzeige um 10 m geändert hat.
-   */
-  update(playerX: number, playerZ: number): void {
+  update(playerX: number, playerZ: number, dt = 0): void {
     const waypoint = this.#waypoint;
     const label = this.#label;
+    const ring = this.#ring;
     if (!waypoint || !label) return;
     const meters = Math.hypot(waypoint.x - playerX, waypoint.z - playerZ);
     const bucket = Math.round(meters / 10);
     if (bucket !== this.#distanceBucket) {
       this.#distanceBucket = bucket;
-      this.#writeLabel(meters);
+      this.#writeLabel(waypoint.label, meters);
     }
 
-    // Ziel: das Schild behält auf mittlere/große Distanz fast dieselbe
-    // Bildschirmgröße. Die alte 0.14-Skalierung war in realen Spielszenen
-    // deutlich zu klein und aus ~1 km kaum lesbar.
-    const width = clamp(40 + meters * 0.28, 64, 420);
-    label.scale.set(width, width * 0.32, 1);
-    label.position.y = LABEL_Y + clamp(meters * 0.018, 0, 42);
+    this.#pulse += dt;
+    if (ring) {
+      const wave = 1 + 0.14 * Math.sin(this.#pulse * 3.2);
+      ring.scale.setScalar(wave);
+      ring.material.opacity = 0.55 + 0.3 * (0.5 + 0.5 * Math.sin(this.#pulse * 3.2));
+    }
+
+    const width = clamp(22 + meters * 0.1, 28, 140);
+    label.scale.set(width, width * 0.28, 1);
+    label.position.y = LABEL_Y + clamp(meters * 0.01, 0, 22);
   }
 
   clear(): void {
@@ -180,7 +183,7 @@ export class WaypointMarker {
     if (this.#group) this.#group.visible = false;
   }
 
-  #writeLabel(meters: number): void {
+  #writeLabel(name: string, meters: number): void {
     const canvas = this.#labelCanvas;
     const texture = this.#labelTexture;
     if (!canvas || !texture) return;
@@ -188,22 +191,22 @@ export class WaypointMarker {
     if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    roundedRect(ctx, 24, 22, 720, 148, 28);
-    ctx.fillStyle = 'rgba(2, 8, 14, 0.96)';
+    roundedRect(ctx, 20, 18, 600, 124, 22);
+    ctx.fillStyle = 'rgba(6, 20, 24, 0.92)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(76, 181, 255, 1)';
-    ctx.lineWidth = 8;
+    ctx.strokeStyle = 'rgba(102, 215, 244, 0.85)';
+    ctx.lineWidth = 5;
     ctx.stroke();
 
-    ctx.fillStyle = '#168cff';
-    ctx.fillRect(24, 22, 20, 148);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '900 62px system-ui, sans-serif';
+    ctx.fillStyle = '#66d7f4';
+    ctx.fillRect(20, 18, 14, 124);
+    ctx.fillStyle = '#f6efe4';
+    ctx.font = '800 44px "Segoe UI", system-ui, sans-serif';
     ctx.textBaseline = 'middle';
-    ctx.fillText('WAYPOINT', 78, 76);
-    ctx.fillStyle = '#b9e2ff';
-    ctx.font = '800 43px ui-monospace, monospace';
-    ctx.fillText(formatDistance(meters), 78, 132);
+    ctx.fillText(name.toUpperCase(), 56, 62);
+    ctx.fillStyle = '#e8ba7f';
+    ctx.font = '700 34px ui-monospace, monospace';
+    ctx.fillText(formatDistance(meters), 56, 110);
     texture.needsUpdate = true;
   }
 
