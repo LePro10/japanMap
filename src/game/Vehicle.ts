@@ -1051,7 +1051,7 @@ export class Vehicle {
     // sie: „steht und will nicht stehen" ist die einzige Beobachtung, die eine
     // Nische von einer Wand unterscheidet, gegen die jemand absichtlich drückt.
     const willFahren = input.throttle > 0.1 || input.brake > 0.1;
-    if (collision) this.#resolveCollision(collision, dt, willFahren);
+    if (collision) this.#resolveCollision(collision, ground, dt, willFahren);
 
     this.#wheelSpin += (this.#vLong / chassis.wheelRadius) * dt;
     this.#updateTransform();
@@ -1488,7 +1488,12 @@ export class Vehicle {
    * Die Geschwindigkeit läuft durch dieselbe Schleife; sie ist derselbe Vorgang,
    * nur eine Ableitung höher.
    */
-  #resolveCollision(collision: CollisionWorld, dt: number, willFahren: boolean): void {
+  #resolveCollision(
+    collision: CollisionWorld,
+    ground: Ground,
+    dt: number,
+    willFahren: boolean,
+  ): void {
     const spec = this.#spec;
     // Das Blech plus einen Zuschlag. Der Zuschlag ist klein und ersetzt den
     // alten Eckradius: der war 34 cm groß, weil er an vier *Punkten* eine ganze
@@ -1584,10 +1589,16 @@ export class Vehicle {
             kind: tree ? 'tree' : 'rail',
             id: c.id,
             x: c.px,
-            y: this.position.y,
+            // Boden, nicht Schwerpunkt. Die Trümmer haben `event.y` lange als
+            // Fußboden gelesen — und sind deshalb in Autohöhe in der Luft
+            // liegengeblieben. `c.px/pz` ist der Berührpunkt, also der Ort,
+            // an dem die Planke wirklich steht.
+            y: ground.height(c.px, c.pz),
             z: c.pz,
             vx: this.velocity.x,
             vz: this.velocity.z,
+            nx: c.nx,
+            nz: c.nz,
           });
           // Ein Material kostet einen begrenzten Impuls, keinen festen Anteil
           // des gesamten Tempos. Mehrere Planken dürfen keine Vollbremsung sein.
