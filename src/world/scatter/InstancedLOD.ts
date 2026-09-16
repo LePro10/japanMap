@@ -173,6 +173,35 @@ export class InstancedLOD {
     this.#counts[bucket] = at + 1;
   }
 
+  /**
+   * Eine Instanz an (x, z) sofort unsichtbar machen — live **und** Scratch.
+   *
+   * `ScatterSystem.breakTree` trägt den Schlüssel erst in `#broken` ein; die
+   * GPU-Puffer tauschen aber erst am Ende eines vollständigen Streu-Durchlaufs.
+   * Bis dahin steht der Stamm noch, die Kollision ist schon weg — genau das
+   * „ich fahre durch den Baum" bei Tempo. Hier wird die Matrix auf Maßstab
+   * null gesetzt, in beiden Puffern, damit `endPass` den Stamm nicht
+   * wiederbelebt.
+   *
+   * Einmal je Bruch, und ein Bruch sind höchstens zwei je Schritt. Ein
+   * linearer Lauf über die sichtbaren Instanzen einer Art ist dafür der
+   * richtige Preis — ein Shader-Loch wie bei den Leitplanken bräuchte eine
+   * zweite Kennungstextur in jedem Vegetationsprogramm.
+   */
+  hideAt(x: number, z: number, eps = 0.55): boolean {
+    const e = eps * eps;
+    let found = false;
+    for (let b = 0; b < this.meshes.length; b++) {
+      const mesh = this.meshes[b]!;
+      const live = mesh.instanceMatrix.array as Float32Array;
+      let dirty = false;
+      if (zeroNear(live, mesh.count, x, z, e)) dirty = found = true;
+      if (dirty) mesh.instanceMatrix.needsUpdate = true;
+      if (zeroNear(this.#scratch[b]!, this.#counts[b]!, x, z, e)) found = true;
+    }
+    return found;
+  }
+
   /** Durchlauf abschließen: Zwischenpuffer sichtbar machen. */
   endPass(): void {
     for (let bucket = 0; bucket < this.meshes.length; bucket++) {
@@ -211,4 +240,25 @@ export class InstancedLOD {
   dispose(): void {
     for (const mesh of this.meshes) mesh.dispose();
   }
+}
+
+function zeroNear(m: Float32Array, count: number, x: number, z: number, e: number): boolean {
+  let hit = false;
+  for (let i = 0; i < count; i++) {
+    const o = i * 16;
+    const dx = m[o + 12]! - x;
+    const dz = m[o + 14]! - z;
+    if (dx * dx + dz * dz >= e) continue;
+    m[o] = 0;
+    m[o + 1] = 0;
+    m[o + 2] = 0;
+    m[o + 4] = 0;
+    m[o + 5] = 0;
+    m[o + 6] = 0;
+    m[o + 8] = 0;
+    m[o + 9] = 0;
+    m[o + 10] = 0;
+    hit = true;
+  }
+  return hit;
 }

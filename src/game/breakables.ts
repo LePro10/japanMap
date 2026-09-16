@@ -42,6 +42,13 @@ export interface BreakEvent {
   readonly z: number;
   readonly vx: number;
   readonly vz: number;
+  /** Kontaktnormale, aus dem Hindernis zum Auto. Fehlt bei Spielrequisiten. */
+  readonly nx?: number;
+  readonly nz?: number;
+  /** Stammlänge, nur Bäume — sonst die Vorgabe in DebrisFx. */
+  readonly height?: number;
+  /** Stammradius, nur Bäume. */
+  readonly radius?: number;
 }
 
 export function shouldBreak(

@@ -193,6 +193,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     height: 0,
     key: 0,
   }));
+  #treeCount = 0;
   #wake: WakeSink | null = null;
   #navigation: NavigationMap | null = null;
   readonly #waypoint = new WaypointMarker();
@@ -1539,13 +1540,17 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     const pz = this.#walking ? this.walker.position.z : this.vehicle.position.z;
     if (this.#walking) this.#addParkedCarCollider();
     const canopy = this.#canopy;
-    if (!canopy) return;
+    if (!canopy) {
+      this.#treeCount = 0;
+      return;
+    }
     const n = canopy.queryCanopy(
       px,
       pz,
       TREE_QUERY_RADIUS,
       this.#treeBuf,
     );
+    this.#treeCount = n;
     for (let i = 0; i < n; i++) {
       const tree = this.#treeBuf[i]!;
       this.collision.addDynamicCylinder(
@@ -1563,7 +1568,29 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     const events: readonly BreakEvent[] = this.vehicle.consumeBreaks();
     if (events.length === 0) return;
     for (const event of events) {
-      if (event.kind === 'tree') this.#canopy?.breakTree(event.id);
+      if (event.kind === 'tree') {
+        let x = event.x;
+        let y = event.y;
+        let z = event.z;
+        let height = event.height ?? 6;
+        let radius = event.radius ?? 0.22;
+        for (let i = 0; i < this.#treeCount; i++) {
+          const tree = this.#treeBuf[i]!;
+          if (tree.key !== event.id) continue;
+          x = tree.x;
+          y = tree.y;
+          z = tree.z;
+          height = tree.height;
+          radius = tree.radius;
+          break;
+        }
+        // Stammfuß, nicht Berührpunkt am Blech — sonst explodieren die
+        // Brocken neben dem Auto, und der Baum steht noch, bis die Streuung
+        // umsortiert hat.
+        this.#canopy?.breakTree(event.id, x, z);
+        this.breakProp({ ...event, x, y, z, height, radius });
+        continue;
+      }
       this.breakProp(event);
     }
   }

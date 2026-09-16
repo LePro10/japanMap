@@ -73,7 +73,7 @@ export interface CanopyHit {
 
 export interface CanopySource {
   queryCanopy(x: number, z: number, radius: number, out: CanopyHit[]): number;
-  breakTree(key: number): boolean;
+  breakTree(key: number, x?: number, z?: number): boolean;
 }
 
 /**
@@ -495,9 +495,17 @@ export class ScatterSystem implements System {
     return n;
   }
 
-  breakTree(key: number): boolean {
+  breakTree(key: number, x?: number, z?: number): boolean {
     if (this.#broken.has(key)) return false;
     this.#broken.add(key);
+    // Ohne x/z bleibt nur der nächste Streu-Durchlauf — das ist der alte Weg,
+    // auf dem man den Stamm noch sah, während die Kollision schon weg war.
+    if (x !== undefined && z !== undefined) {
+      for (let s = 0; s < SPECIES.length; s++) {
+        if (SPECIES[s]!.layer !== 'canopy') continue;
+        this.#lods[s]?.hideAt(x, z);
+      }
+    }
     return true;
   }
 

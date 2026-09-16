@@ -260,6 +260,10 @@ export type AppEvents = {
     z: number;
     vx: number;
     vz: number;
+    nx?: number;
+    nz?: number;
+    height?: number;
+    radius?: number;
   };
 
   /**
