@@ -1652,9 +1652,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     const wp = this.#waypoint.waypoint;
     if (wp && Math.hypot(wp.x - px, wp.z - pz) < WAYPOINT.arriveMeters) {
       this.#clearWaypoint();
-    } else {
-      this.#followRoute(px, pz, dt);
     }
+    this.#followRoute(px, pz, dt);
     if (this.#paused) {
       this.#syncMeshes();
       return;

@@ -7,7 +7,8 @@ import type { LapResult } from '@/game/LapTimer';
 import type { RaceStanding } from '@/game/RaceDirector';
 import type { VehicleTelemetry } from '@/game/Vehicle';
 import type { RoadFile } from '@/config/roads.config';
-import { formatEta, formatWaypointDistance } from '@/game/waypointScreen';
+import { WAYPOINT } from '@/config/waypoint.config';
+import { damp, dampAngle, formatEta, formatWaypointDistance } from '@/game/waypointScreen';
 import { MiniMap, type MiniMapMark } from './MiniMap';
 import { SPARK_ICON, sparkMark } from './sparkIcon';
 import { EXPLORE_TOAST_MS } from '@/config/explore.config';
@@ -101,6 +102,10 @@ export class DriveHud {
   readonly #exploreBody: HTMLElement;
   #lastWpLabel: string | null = null;
   #lastWpRemaining = Infinity;
+  #pinX = 0;
+  #pinY = 0;
+  #pinAng = 0;
+  #pinReady = false;
   #arrowDeg = 999;
   /** Zuletzt gesetzter Hinweis — sonst schreibt jeder Frame denselben Text. */
   #promptKind: 'enter' | 'exit' | 'slow' | null = null;
@@ -153,12 +158,12 @@ export class DriveHud {
           <span class="hud__driftBanked" data-hud="driftBanked"></span>
         </div>
       </div>
-      <div class="hud__wp" data-hud="wp" hidden>
+      <div class="hud__wp" data-hud="wp">
         <span class="hud__wpName" data-hud="wpName">Waypoint</span>
         <strong class="hud__wpDist" data-hud="wpDist">—</strong>
         <span class="hud__wpMeta" data-hud="wpMeta"></span>
       </div>
-      <div class="hud__pin" data-hud="pin" hidden>
+      <div class="hud__pin" data-hud="pin">
         <i class="hud__pinArrow" data-hud="pinArrow"></i>
         <span class="hud__pinName" data-hud="pinName">Waypoint</span>
         <strong class="hud__pinDist" data-hud="pinDist">—</strong>
@@ -285,7 +290,7 @@ export class DriveHud {
     // `dt` reicht bis in die Karte durch: sie zeichnet nicht je Frame neu,
     // sondern mit 15 Hz — Begründung in `MiniMap.update()`.
     this.#map.update(x, z, heading, rivals, target, dt, waypoint, speed, onFoot);
-    this.#syncWaypointChip(x, z, waypoint);
+    this.#syncWaypointChip(x, z, waypoint, dt);
 
     if (!target) {
       if (!this.#arrow.hidden) this.#arrow.hidden = true;
@@ -694,19 +699,20 @@ export class DriveHud {
     element.textContent = text;
   }
 
-  #syncWaypointChip(x: number, z: number, waypoint: MiniMapMark | null): void {
+  #syncWaypointChip(x: number, z: number, waypoint: MiniMapMark | null, dt: number): void {
     if (!waypoint) {
       if (this.#lastWpLabel && this.#lastWpRemaining < 40) {
         this.#showFlash(`Arrived · ${this.#lastWpLabel}`, false);
       }
       this.#lastWpLabel = null;
       this.#lastWpRemaining = Infinity;
-      if (!this.#wp.hidden) this.#wp.hidden = true;
-      if (!this.#pin.hidden) this.#pin.hidden = true;
+      this.#wp.classList.remove('is-on');
+      this.#pin.classList.remove('is-on');
+      this.#pinReady = false;
       this.#wp.removeAttribute('data-advisory');
       return;
     }
-    if (this.#wp.hidden) this.#wp.hidden = false;
+    this.#wp.classList.add('is-on');
     const name = waypoint.label ?? 'Waypoint';
     this.#setText(this.#wpName, name);
     const crow = Math.hypot(waypoint.x - x, waypoint.z - z);
@@ -723,26 +729,36 @@ export class DriveHud {
     if (waypoint.advisory === 'brake') bits.push('Too fast');
     else if (waypoint.advisory === 'caution') bits.push('Brake');
     this.#setText(this.#wpMeta, bits.join(' · '));
-    this.#wp.hidden = false;
     this.#wp.dataset.advisory = waypoint.advisory ?? 'ok';
-    this.#syncPin(waypoint, formatWaypointDistance(meters), name);
+    this.#syncPin(waypoint, formatWaypointDistance(meters), name, dt);
   }
 
-  #syncPin(waypoint: MiniMapMark, dist: string, name: string): void {
+  #syncPin(waypoint: MiniMapMark, dist: string, name: string, dt: number): void {
     const pin = waypoint.pin;
     if (!pin) {
-      if (!this.#pin.hidden) this.#pin.hidden = true;
+      this.#pin.classList.remove('is-on');
+      this.#pinReady = false;
       return;
     }
-    if (this.#pin.hidden) this.#pin.hidden = false;
     this.#setText(this.#pinName, name.toUpperCase());
     this.#setText(this.#pinDist, dist);
-    this.#pin.style.left = `${pin.x}px`;
-    this.#pin.style.top = `${pin.y}px`;
+    if (!this.#pinReady) {
+      this.#pinX = pin.x;
+      this.#pinY = pin.y;
+      this.#pinAng = pin.edgeAngle;
+      this.#pinReady = true;
+    } else {
+      this.#pinX = damp(this.#pinX, pin.x, WAYPOINT.pinSmooth, dt);
+      this.#pinY = damp(this.#pinY, pin.y, WAYPOINT.pinSmooth, dt);
+      this.#pinAng = dampAngle(this.#pinAng, pin.edgeAngle, WAYPOINT.pinSmooth, dt);
+    }
+    this.#pin.style.left = `${this.#pinX}px`;
+    this.#pin.style.top = `${this.#pinY}px`;
     this.#pin.classList.toggle('hud__pin--edge', !pin.onScreen);
+    this.#pin.classList.add('is-on');
     this.#pinArrow.style.transform = pin.onScreen
       ? 'none'
-      : `rotate(${(pin.edgeAngle * 180) / Math.PI}deg)`;
+      : `rotate(${(this.#pinAng * 180) / Math.PI}deg)`;
   }
 
   readonly #onNavClick = (): void => {

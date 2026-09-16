@@ -10,15 +10,17 @@ import { WAYPOINT } from '@/config/waypoint.config';
 import { ROAD_MESH } from '@/config/roads.config';
 import type { EngineContext } from '@/core/System';
 import type { RoutePath } from './routeGraph';
+import { damp } from './waypointScreen';
 import vertexShader from './guideLine.vert.glsl';
 import fragmentShader from './guideLine.frag.glsl';
 
 /**
  * Das Band auf der Fahrbahn. Ein Mesh, ein Draw-Call, Farbe im Shader.
  *
- * Geometrie nur beim Setzen der Route. Je Frame gehen Tempo, Bogenlänge und
- * Zeit als Uniforms rüber — Vertexfarben je Frame wären ein Upload für eine
- * Zahl, die der Shader selbst hat.
+ * Geometrie nur beim Setzen der Route. Je Frame gehen Tempo, Bogenlänge,
+ * Opacity und Reveal als Uniforms rüber. Das Sichtfenster schneidet
+ * `drawRange` — ein 5-km-Band, von dem 720 m vor dem Wagen liegen, darf
+ * den Rest nicht rastern.
  */
 export class GuideLine {
   #context: EngineContext | null = null;
@@ -27,6 +29,13 @@ export class GuideLine {
   #arc = 0;
   #time = 0;
   #xz: Float32Array | null = null;
+  #arcs: Float32Array | null = null;
+  #opacity = 0;
+  #opacityGoal = 0;
+  #reveal = 0;
+  #speedSmooth = 0;
+  #arcSmooth = 0;
+  #winLo = 0;
 
   attach(context: EngineContext): void {
     if (this.#mesh) return;
@@ -44,6 +53,9 @@ export class GuideLine {
         uNearFade: { value: WAYPOINT.lineNearFade },
         uNearSolid: { value: WAYPOINT.lineNearSolid },
         uBehind: { value: WAYPOINT.lineBehind },
+        uOpacity: { value: 0 },
+        uReveal: { value: 0 },
+        uRevealHead: { value: WAYPOINT.revealHead },
       },
       transparent: true,
       depthWrite: false,
@@ -78,17 +90,28 @@ export class GuideLine {
   setPath(path: RoutePath | null): void {
     this.#path = path;
     this.#arc = 0;
-    this.#xz = path ? pack(path) : null;
+    this.#arcSmooth = 0;
+    this.#winLo = 0;
+    this.#xz = path ? pack(path) : this.#xz;
     const mesh = this.#mesh;
     if (!mesh) return;
-    mesh.geometry.dispose();
     if (!path || path.points.length < 2) {
-      mesh.geometry = new BufferGeometry();
-      mesh.visible = false;
+      this.#opacityGoal = 0;
       return;
     }
-    mesh.geometry = buildRibbon(path);
+    mesh.geometry.dispose();
+    const built = buildRibbon(path);
+    mesh.geometry = built.geometry;
+    this.#arcs = built.arcs;
+    this.#reveal = 16;
+    this.#opacityGoal = 1;
     mesh.visible = true;
+    this.#xz = pack(path);
+    const material = mesh.material;
+    material.uniforms.uReveal!.value = this.#reveal;
+    material.uniforms.uOpacity!.value = this.#opacity;
+    material.uniforms.uArc!.value = 0;
+    this.#applyWindow(0, this.#reveal);
   }
 
   setBrake(accel: number): void {
@@ -99,15 +122,44 @@ export class GuideLine {
   update(speed: number, arc: number, dt: number): void {
     this.#arc = arc;
     this.#time += dt;
-    const material = this.#mesh?.material;
-    if (!material) return;
-    material.uniforms.uSpeed!.value = speed;
-    material.uniforms.uArc!.value = arc;
+    const mesh = this.#mesh;
+    const material = mesh?.material;
+    if (!material || !mesh) return;
+
+    const appear = this.#opacityGoal > this.#opacity;
+    const lambda = appear ? WAYPOINT.fadeIn : WAYPOINT.fadeOut;
+    this.#opacity = damp(this.#opacity, this.#opacityGoal, lambda, dt);
+    if (Math.abs(arc - this.#arcSmooth) > 48) this.#arcSmooth = arc;
+    else this.#arcSmooth = damp(this.#arcSmooth, arc, WAYPOINT.arcSmooth, dt);
+    this.#speedSmooth = damp(this.#speedSmooth, speed, WAYPOINT.speedSmooth, dt);
+    if (this.#opacityGoal > 0) {
+      this.#reveal = Math.min(WAYPOINT.revealMax, this.#reveal + dt * WAYPOINT.revealSpeed);
+    }
+
+    material.uniforms.uSpeed!.value = this.#speedSmooth;
+    material.uniforms.uArc!.value = this.#arcSmooth;
     material.uniforms.uTime!.value = this.#time;
+    material.uniforms.uOpacity!.value = this.#opacity;
+    material.uniforms.uReveal!.value = this.#reveal;
+
+    this.#applyWindow(this.#arcSmooth, this.#reveal);
+
+    if (this.#opacityGoal <= 0 && this.#opacity < 0.012) {
+      mesh.visible = false;
+      this.#xz = null;
+      this.#arcs = null;
+      if (mesh.geometry.attributes.position) {
+        mesh.geometry.dispose();
+        mesh.geometry = new BufferGeometry();
+      }
+    } else if (this.#opacity > 0.012) {
+      mesh.visible = true;
+    }
   }
 
   clear(): void {
-    this.setPath(null);
+    this.#path = null;
+    this.#opacityGoal = 0;
   }
 
   dispose(): void {
@@ -120,7 +172,27 @@ export class GuideLine {
     this.#mesh = null;
     this.#path = null;
     this.#xz = null;
+    this.#arcs = null;
     this.#context = null;
+  }
+
+  #applyWindow(arc: number, reveal: number): void {
+    const arcs = this.#arcs;
+    const geometry = this.#mesh?.geometry;
+    if (!arcs || !geometry || arcs.length < 2) return;
+    const n = arcs.length;
+    const loBound = arc - WAYPOINT.lineBehind - 14;
+    const hiBound = arc + reveal + 8;
+    let lo = this.#winLo;
+    if (lo < 0 || lo >= n) lo = 0;
+    while (lo > 0 && arcs[lo]! > loBound) lo--;
+    while (lo < n - 2 && arcs[lo + 1]! < loBound) lo++;
+    let hi = lo;
+    while (hi < n - 1 && arcs[hi]! < hiBound) hi++;
+    this.#winLo = lo;
+    const from = lo;
+    const to = Math.max(from + 1, hi);
+    geometry.setDrawRange(from * 6, Math.max(6, (to - from) * 6));
   }
 }
 
@@ -133,7 +205,7 @@ function pack(path: RoutePath): Float32Array {
   return out;
 }
 
-function buildRibbon(path: RoutePath): BufferGeometry {
+function buildRibbon(path: RoutePath): { geometry: BufferGeometry; arcs: Float32Array } {
   const pts = path.points;
   const n = pts.length;
   const lift = ROAD_MESH.surfaceOffset + WAYPOINT.lineLift;
@@ -142,12 +214,14 @@ function buildRibbon(path: RoutePath): BufferGeometry {
 
   const positions = new Float32Array(n * 2 * 3);
   const uvs = new Float32Array(n * 2 * 2);
-  const arcs = new Float32Array(n * 2);
+  const arcsAttr = new Float32Array(n * 2);
   const limits = new Float32Array(n * 2);
   const indices = new Uint32Array((n - 1) * 6);
+  const arcs = new Float32Array(n);
 
   for (let i = 0; i < n; i++) {
     const p = pts[i]!;
+    arcs[i] = p.arc;
     const prev = pts[i === 0 ? 0 : i - 1]!;
     const next = pts[i === n - 1 ? n - 1 : i + 1]!;
     let tx = next.x - prev.x;
@@ -157,7 +231,6 @@ function buildRibbon(path: RoutePath): BufferGeometry {
     tz /= len;
     const rx = tz;
     const rz = -tx;
-    // Innenversatz: positive Krümmung (links) schiebt nach links.
     const k = signedK(prev, p, next);
     const inset = Math.max(-apex, Math.min(apex, -Math.sign(k) * Math.min(apex, Math.abs(k) * 55)));
     const cx = p.x + rx * inset;
@@ -176,8 +249,8 @@ function buildRibbon(path: RoutePath): BufferGeometry {
     uvs[a * 2 + 1] = p.arc * 0.12;
     uvs[b * 2] = 1;
     uvs[b * 2 + 1] = p.arc * 0.12;
-    arcs[a] = p.arc;
-    arcs[b] = p.arc;
+    arcsAttr[a] = p.arc;
+    arcsAttr[b] = p.arc;
     const limit = p.limit > 0.5 ? p.limit : 40;
     limits[a] = limit;
     limits[b] = limit;
@@ -197,11 +270,11 @@ function buildRibbon(path: RoutePath): BufferGeometry {
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new BufferAttribute(positions, 3));
   geometry.setAttribute('uv', new BufferAttribute(uvs, 2));
-  geometry.setAttribute('aArc', new BufferAttribute(arcs, 1));
+  geometry.setAttribute('aArc', new BufferAttribute(arcsAttr, 1));
   geometry.setAttribute('aLimit', new BufferAttribute(limits, 1));
   geometry.setIndex(new BufferAttribute(indices, 1));
   geometry.computeBoundingSphere();
-  return geometry;
+  return { geometry, arcs };
 }
 
 function signedK(
@@ -217,6 +290,5 @@ function signedK(
   const l2 = Math.hypot(d2x, d2z);
   if (l1 < 1e-3 || l2 < 1e-3) return 0;
   const cross = d1x * d2z - d1z * d2x;
-  // Wie RaceLine.#turnSign: negativer Cross = links = positiv.
   return -cross / (l1 * l2 * ((l1 + l2) * 0.5));
 }

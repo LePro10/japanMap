@@ -43,6 +43,24 @@ export const WAYPOINT = {
   apexOffset: 1.15,
 
   /**
+   * Aufbau und Fade. Lambda ist die Zeitkonstante der Exponentialglättung
+   * (`1 − e^{−λ·dt}`): 7 ≈ 0,3 s, 5 ≈ 0,4 s. Kein Keyframe, ein Filter —
+   * derselbe Trick wie bei der Drehzahlanzeige, und er kostet drei Uniforms.
+   */
+  fadeIn: 7,
+  fadeOut: 5,
+  /** Wie schnell das Band vor dem Auto ausrollt, m/s. 520 ≈ 200 m in 0,4 s. */
+  revealSpeed: 520,
+  /** Sichtfenster vor dem Wagen, Meter. Der Rest wird nicht gezeichnet. */
+  revealMax: 720,
+  /** Weiche Spitze des ausrollenden Bands, Meter. */
+  revealHead: 28,
+  speedSmooth: 6,
+  arcSmooth: 16,
+  pinSmooth: 14,
+  appearSmooth: 8,
+
+  /**
    * Knotenabstand im Suchgraph, in Mittellinienpunkten.
    * `ROAD_MESH.sampleSpacing` ist 2 m; 2 heißt 4 m. 25 km Netz → ~6 000 Knoten,
    * Dijkstra beim Setzen, nicht je Frame.

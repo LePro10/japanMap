@@ -97,7 +97,7 @@ try {
       mid: [mid[0], mid[1], mid[2], mid[3]],
       ring: [ring[0], ring[1], ring[2], ring[3]],
       round: getComputedStyle(document.querySelector('.hud__nav')).borderRadius,
-      wpHidden: wp instanceof HTMLElement ? wp.hidden : true,
+      wpHidden: wp instanceof HTMLElement ? !wp.classList.contains('is-on') : true,
       wpText: wp?.textContent ?? '',
     };
   });

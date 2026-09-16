@@ -10,7 +10,7 @@ import {
   remainingAlong,
   routeTurn,
 } from '@/game/routeGraph';
-import { formatEta, formatWaypointDistance, pinScreen } from '@/game/waypointScreen';
+import { damp, dampAngle, formatEta, formatWaypointDistance, pinScreen } from '@/game/waypointScreen';
 
 function road(
   id: string,
@@ -151,6 +151,13 @@ assert.ok(turn === 'none' || turn === 'left' || turn === 'right' || turn === 'ar
 
 assert.ok(WAYPOINT.arriveMeters > 10);
 assert.ok(WAYPOINT.lineWidth < 4, 'GPS strip must stay narrower than a lane');
+
+const step = damp(0, 1, 7, 0.3);
+assert.ok(Math.abs(step - (1 - Math.exp(-2.1))) < 1e-9, 'damp must be exponential');
+assert.equal(damp(0.4, 0.4, 7, 0.16), 0.4);
+assert.equal(damp(0, 1, 7, 0), 0);
+const wrapped = dampAngle(3.0, -3.0, 12, 0.05);
+assert.ok(wrapped > 3.0 || wrapped < -2.5, 'angle damp must take the short way across the seam');
 
 console.log(
   `waypoint route: ${graph.nodeCount} nodes, path ${path.length.toFixed(0)} m, pin edge ${edge.x.toFixed(0)} — ok`,

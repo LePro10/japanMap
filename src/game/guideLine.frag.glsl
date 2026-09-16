@@ -2,6 +2,10 @@
 // fuer die naechste Kurve. Die Grenze ist v_arrive = sqrt(v_limit^2 + 2 a s),
 // also der Bremsweg, nicht der lokale Limit — sonst wird erst IN der Kurve
 // rot, wenn es zu spaet ist. Dasselbe Verfahren wie US8425293 / F1 Dynamic.
+//
+// Chevrons und Aufbau sind weiche Fenster, kein step(): sonst poppen die
+// Pfeile. uReveal rollt das Band vor dem Wagen aus; uOpacity blendet
+// Setzen und Loeschen.
 
 uniform float uSpeed;
 uniform float uArc;
@@ -12,6 +16,9 @@ uniform float uAmberExcess;
 uniform float uNearFade;
 uniform float uNearSolid;
 uniform float uBehind;
+uniform float uOpacity;
+uniform float uReveal;
+uniform float uRevealHead;
 
 varying vec2 vUv;
 varying float vArc;
@@ -19,7 +26,7 @@ varying float vLimit;
 
 void main() {
   float ahead = vArc - uArc;
-  if (ahead < -uBehind) discard;
+  if (ahead > uReveal || ahead < -(uBehind + 10.0)) discard;
 
   float dist = max(ahead, 0.0);
   float arrive = sqrt(max(0.0, vLimit * vLimit + 2.0 * uBrake * dist));
@@ -37,18 +44,24 @@ void main() {
   }
 
   float across = abs(vUv.x - 0.5) * 2.0;
-  float edge = 1.0 - smoothstep(0.62, 1.0, across);
+  float edge = 1.0 - smoothstep(0.55, 1.0, across);
+  float spine = 1.0 - smoothstep(0.0, 0.42, across);
 
-  float chev = fract(vArc * 0.085 - uTime * 0.55);
-  float arrow = 1.0 - smoothstep(0.0, 0.42, abs(across - (1.0 - chev) * 0.85));
-  arrow *= step(0.12, chev) * step(chev, 0.72);
-  float body = 0.55 + 0.45 * arrow;
+  float chev = fract(vArc * 0.068 - uTime * 0.78);
+  float head = 1.0 - chev;
+  float chevShape = 1.0 - smoothstep(0.0, 0.34, abs(across - head * 0.88));
+  float chevLife = smoothstep(0.02, 0.14, chev) * smoothstep(0.94, 0.58, chev);
+  float eat = smoothstep(5.0, 16.0, ahead);
+  float arrow = chevShape * chevLife * eat;
+
+  float body = 0.38 * spine + 0.62 * arrow;
 
   float nearFade = smoothstep(uNearFade, uNearSolid, ahead);
-  float farFade = 1.0 - smoothstep(420.0, 780.0, ahead);
-  float behindFade = smoothstep(-uBehind, 0.0, ahead);
-  float alpha = edge * body * nearFade * farFade * behindFade * 0.88;
-  if (alpha < 0.02) discard;
+  float farFade = 1.0 - smoothstep(uReveal - 90.0, uReveal, ahead);
+  float behindFade = smoothstep(-(uBehind + 6.0), 3.0, ahead);
+  float tip = 1.0 - smoothstep(uReveal - uRevealHead, uReveal, ahead);
+  float alpha = edge * body * nearFade * farFade * behindFade * tip * uOpacity * 0.92;
+  if (alpha < 0.018) discard;
 
-  gl_FragColor = vec4(color * (0.7 + 0.5 * arrow), alpha);
+  gl_FragColor = vec4(color * (0.62 + 0.55 * arrow), alpha);
 }

@@ -69,6 +69,20 @@ export function pinScreen(
   };
 }
 
+/** Exponentialglättung, rahmenratenfest. λ = 1/s. */
+export function damp(current: number, target: number, lambda: number, dt: number): number {
+  if (dt <= 0) return current;
+  return current + (target - current) * (1 - Math.exp(-lambda * dt));
+}
+
+/** Wie `damp`, über die −π…π-Naht. */
+export function dampAngle(current: number, target: number, lambda: number, dt: number): number {
+  let delta = target - current;
+  if (delta > Math.PI) delta -= Math.PI * 2;
+  else if (delta < -Math.PI) delta += Math.PI * 2;
+  return current + delta * (dt <= 0 ? 1 : 1 - Math.exp(-lambda * dt));
+}
+
 export function formatWaypointDistance(meters: number): string {
   if (meters < 999.5) return `${Math.round(meters)} m`;
   return `${(meters / 1000).toFixed(1)} km`;
