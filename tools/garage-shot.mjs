@@ -57,8 +57,13 @@ try {
   console.log(`tools=${tools} data-shot=${shots}`);
 
   await page.locator('[data-filter="engine"]').click();
-  await page.waitForTimeout(700);
+  await page.waitForTimeout(800);
   await page.screenshot({ path: join(out, 'bay-engine.png') });
+
+  await page.locator('[data-filter="brakes"]').click();
+  await page.locator('[data-cat="brakes"][data-tier="2"]').click();
+  await page.waitForTimeout(900);
+  await page.screenshot({ path: join(out, 'bay-brakes.png') });
 
   await page.locator('[data-filter="tyres"]').click();
   await page.locator('[data-cat="tyres"][data-tier="2"]').click();

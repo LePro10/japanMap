@@ -101,12 +101,11 @@ function createHoodPanel(spec: VehicleSpec): BufferGeometry {
   const belt = beltHeight(spec);
   const y = belt - spec.chassis.cgHeight + 0.04;
   const z = engineLook(spec.id).rear ? -spec.body.hullLength * 0.22 : spec.body.hullLength * 0.26;
-  const paintHex = spec.body.paint;
   const parts = [
-    box(w, 0.04, len, 0, y, z, paintHex),
-    box(w * 0.72, 0.018, len * 0.7, 0, y - 0.028, z, spec.body.trim),
-    box(w * 0.04, 0.03, len * 0.62, -w * 0.28, y - 0.03, z, spec.body.trim),
-    box(w * 0.04, 0.03, len * 0.62, w * 0.28, y - 0.03, z, spec.body.trim),
+    box(w, 0.025, len, 0, y, z, spec.body.trim),
+    box(w * 0.72, 0.016, len * 0.7, 0, y - 0.022, z, 0x2a2420),
+    box(w * 0.04, 0.028, len * 0.62, -w * 0.28, y - 0.024, z, spec.body.trim),
+    box(w * 0.04, 0.028, len * 0.62, w * 0.28, y - 0.024, z, spec.body.trim),
   ];
   const merged = mergeGeometries(parts, false);
   for (const p of parts) p.dispose();
@@ -162,6 +161,33 @@ function tunedLabel(): CanvasTexture {
 const CALIPER = [0x1a1c1e, 0x8a9098, 0xb42318] as const;
 const LUG_COUNT = 5;
 const SWAP_TIME = 0.72;
+const BRAKE_CORNER = 0;
+
+function makeBrakeDisc(radius: number): BufferGeometry {
+  const rotor = paint(new CylinderGeometry(radius * 0.62, radius * 0.62, 0.028, 24), 0x6a7380);
+  rotor.rotateZ(Math.PI / 2);
+  const hat = paint(new CylinderGeometry(radius * 0.22, radius * 0.22, 0.05, 12), 0x3a4048);
+  hat.rotateZ(Math.PI / 2);
+  const parts = [rotor, hat];
+  const merged = mergeGeometries(parts, false);
+  for (const p of parts) p.dispose();
+  if (!merged) throw new Error('Brake disc');
+  return merged;
+}
+
+function makeCaliper(radius: number): BufferGeometry {
+  const h = radius * 0.34;
+  const parts = [
+    box(0.11, h, 0.2, 0, h * 0.15, 0, 0xb42318),
+    box(0.07, h * 0.45, 0.07, 0.06, h * 0.28, 0.05, 0x9aa3ad),
+    box(0.07, h * 0.45, 0.07, 0.06, h * 0.28, -0.05, 0x9aa3ad),
+    box(0.04, 0.04, 0.16, -0.04, -h * 0.22, 0, 0x2a3138),
+  ];
+  const merged = mergeGeometries(parts, false);
+  for (const p of parts) p.dispose();
+  if (!merged) throw new Error('Caliper');
+  return merged;
+}
 
 export class GarageCar {
   readonly group = new Group();
@@ -196,6 +222,7 @@ export class GarageCar {
   #pendingGeom: BufferGeometry | null = null;
   #swapped = false;
   #instant = false;
+  #brakeReveal = 0;
 
   constructor(spec: VehicleSpec, atmosphere: AtmosphereUniforms) {
     this.spec = spec;
@@ -266,10 +293,10 @@ export class GarageCar {
       [halfTrack, -spec.chassis.cgHeight + spec.chassis.wheelRadius, -spec.derived.cgToRear],
     ];
     this.#discMat = new MeshStandardMaterial({
-      color: 0x1a1c1e,
+      color: 0x8a9098,
       emissive: 0x000000,
-      roughness: 0.45,
-      metalness: 0.7,
+      roughness: 0.35,
+      metalness: 0.82,
     });
     const discMat = this.#discMat;
     this.#caliperMat = new MeshStandardMaterial({
@@ -284,8 +311,8 @@ export class GarageCar {
       metalness: 0.7,
       flatShading: true,
     });
-    const discGeom = new CylinderGeometry(spec.chassis.wheelRadius * 0.42, spec.chassis.wheelRadius * 0.42, 0.04, 18);
-    const caliperGeom = new BoxGeometry(0.08, spec.chassis.wheelRadius * 0.28, 0.14);
+    const discGeom = makeBrakeDisc(spec.chassis.wheelRadius);
+    const caliperGeom = makeCaliper(spec.chassis.wheelRadius);
     const lugGeom = new CylinderGeometry(0.012, 0.012, 0.018, 6);
     this.#geoms.push(discGeom, caliperGeom, lugGeom);
     for (const [x, y, z] of positions) {
@@ -298,11 +325,11 @@ export class GarageCar {
       this.#wheels.push(wheel);
       hub.add(wheel);
       const disc = new Mesh(discGeom, discMat);
-      disc.rotation.z = Math.PI / 2;
       this.#discs.push(disc);
       hub.add(disc);
       const caliper = new Mesh(caliperGeom, this.#caliperMat);
-      caliper.position.set(Math.sign(x) * 0.02, spec.chassis.wheelRadius * 0.22, 0);
+      caliper.position.set(Math.sign(x) * 0.03, spec.chassis.wheelRadius * 0.28, 0);
+      caliper.rotation.z = Math.sign(x) < 0 ? Math.PI : 0;
       this.#calipers.push(caliper);
       hub.add(caliper);
       const lugs: Mesh[] = [];
@@ -346,10 +373,12 @@ export class GarageCar {
     const t = Math.max(0, Math.min(1, open01));
     this.#hoodOpen = t;
     if (this.#bodyMat instanceof BayBodyMaterial) this.#bodyMat.hoodOpen.value = t;
-    const show = this.#hasHood && t > 0.02;
+    const show = this.#hasHood && t > 0.02 && t < 0.78;
     this.#hood.visible = show;
     this.#engine.group.visible = !this.#hasHood || t > 0.22;
-    this.#hood.rotation.x = (this.#engine.look.rear ? 1 : -1) * t * 1.55;
+    this.#hood.rotation.x = (this.#engine.look.rear ? 1 : -1) * t * 1.72;
+    // Parked open, the panel is a cream billboard over the bay. Hide it once
+    // the hole in the body is the view — the lifted lid is the animation only.
   }
 
   setTuneVisual(tune: CarTune, focus: TuneCategory | 'setup' | null, setup: SetupId = 'road'): void {
@@ -362,6 +391,8 @@ export class GarageCar {
     }
     this.#caliperMat.color.setHex(CALIPER[tune.brakes]!, 'srgb');
     this.#caliperMat.metalness = 0.35 + 0.2 * tune.brakes;
+    const caliperScale = 0.82 + 0.28 * tune.brakes;
+    for (const caliper of this.#calipers) caliper.scale.setScalar(caliperScale);
     this.#wheelMat.metalness = 0.35 + 0.22 * tune.tyres;
     this.#engine.setTier(tune.engine);
     if (focus === 'engine' || this.#hoodOpen > 0.22) this.#engine.group.visible = true;
@@ -452,14 +483,23 @@ export class GarageCar {
       this.#steer *= Math.exp(-4 * dt);
     }
     const steer = Math.sin(this.#steer) * 0.42;
-    if (focus === 'tyres' || focus === 'brakes') this.#spin += dt * 2.8;
+    if (focus === 'tyres') this.#spin += dt * 2.8;
+    if (focus === 'brakes') this.#spin += dt * 1.4;
+    const wantReveal = focus === 'brakes' ? 1 : 0;
+    this.#brakeReveal += (wantReveal - this.#brakeReveal) * Math.min(1, dt * 5);
     this.#tickSwap(dt);
     for (let i = 0; i < this.#hubs.length; i++) {
       const hub = this.#hubs[i]!;
       const base = this.#wheelBase[i]!;
       this.#wheels[i]!.rotation.x = this.#spin;
-      hub.rotation.y = i < 2 ? steer : 0;
+      this.#discs[i]!.rotation.x = focus === 'brakes' ? this.#spin * 0.7 : 0;
+      hub.rotation.y = i < 2 && focus === 'steering' ? steer : 0;
       if (this.#swap <= 0) hub.position.set(base.x, base.y, base.z);
+      const off = i === BRAKE_CORNER && this.#brakeReveal > 0.28;
+      this.#wheels[i]!.visible = !off;
+      this.#wheels[i]!.position.x = 0;
+      const lugs = this.#lugs[i]!;
+      for (const lug of lugs) lug.visible = !off;
     }
   }
 

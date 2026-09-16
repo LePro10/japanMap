@@ -60,7 +60,6 @@ export class GarageStage {
   readonly #lights: PointLight[] = [];
   readonly #neon: PointLight;
   readonly #engineLight: PointLight;
-  readonly #dropLamp: Mesh;
   readonly #sparks: Points;
   readonly #weldSparks: Points;
   readonly #sparkVel: Float32Array;
@@ -149,15 +148,8 @@ export class GarageStage {
     this.#engineLight.position.set(0, 1.6, 1.0);
     this.group.add(this.#engineLight);
 
-    const dropMat = new MeshStandardMaterial({
-      color: 0xffe0b0,
-      emissive: 0xffc077,
-      emissiveIntensity: 0.4,
-      roughness: 0.45,
-    });
-    this.#mats.push(dropMat);
-    this.#dropLamp = boxMesh(0.55, 0.08, 0.55, dropMat, 0, 6.2, 1.1);
-    this.group.add(this.#dropLamp);
+    // Work lamp is a point light only. A lit box over the bay read as a
+    // white table floating on the engine (the screenshot that stopped this).
 
     this.#buildProps(steelMat, redMat, floorMat);
     this.#mechanic = this.#buildMechanic(steelMat, redMat);
@@ -435,7 +427,8 @@ export class GarageStage {
     const car = this.#car;
     if (!car) return this.carCenter(target);
     if (focus === 'engine') return car.enginePoint(target);
-    if (focus === 'tyres' || focus === 'brakes') {
+    if (focus === 'brakes') return car.wheelPoint(target, 0);
+    if (focus === 'tyres') {
       this.carCenter(target);
       car.wheelPoint(_wheel, 1);
       return target.lerp(_wheel, 0.42);
@@ -462,19 +455,23 @@ export class GarageStage {
     for (const [i, light] of this.#lights.entries()) {
       light.intensity = (i < 2 ? 260 : 70) + Math.sin(this.#flicker * 6 + i * 1.7) * 8;
     }
-    const lampY = this.#focus === 'engine' ? 2.85 : 6.2;
-    this.#dropLamp.position.y += (lampY - this.#dropLamp.position.y) * Math.min(1, dt * 3);
-    (this.#dropLamp.material as MeshStandardMaterial).emissiveIntensity =
-      this.#focus === 'engine' ? 2.4 : 0.4;
     if (this.#car && this.#focus === 'engine') {
       this.#car.enginePoint(_tmp);
       this.#engineLight.position.set(
         _tmp.x - this.group.position.x,
-        _tmp.y - this.group.position.y + 0.35,
+        _tmp.y - this.group.position.y + 0.55,
         _tmp.z - this.group.position.z,
       );
-      this.#dropLamp.position.x = this.#engineLight.position.x;
-      this.#dropLamp.position.z = this.#engineLight.position.z;
+    }
+    if (this.#car && this.#focus === 'brakes') {
+      this.#car.wheelPoint(_tmp, 0);
+      this.#engineLight.color.setHex(0xffc077);
+      this.#engineLight.position.set(
+        _tmp.x - this.group.position.x,
+        _tmp.y - this.group.position.y + 0.2,
+        _tmp.z - this.group.position.z,
+      );
+      this.#engineLight.intensity = 12;
     }
     if (this.#mechArm) {
       this.#mechArm.rotation.x = -0.4 + Math.sin(this.#work * 7) * 0.35;
