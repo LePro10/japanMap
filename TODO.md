@@ -7,7 +7,7 @@ This file is a **wishlist**, not the current ship state. What WP1–WP6 and the
 Several items below are partly done and must not be rebuilt from scratch:
 pause/sleep exists, countdown locks the grid, exiting the car requires
 under 5 km/h, East Gate is a carved embankment, ten cars and tune stubs exist,
-10→Needle Circuit is in the live `roads.json`. Remaining work is listed in PLAN
+Needle Circuit is in the live `roads.json`. Remaining work is listed in PLAN
 under “Astra — nächste Schritte”.
 
 Status vs code + worktrees, 2026-09-16 (docs can lag). Original wording kept.
