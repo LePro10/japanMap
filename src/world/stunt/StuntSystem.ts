@@ -823,7 +823,9 @@ export class StuntSystem implements System {
         const len = Math.hypot(dx, dz) || 1;
         // Halbe Breite **an dieser Stelle**, nicht 3,5 m für jede Straße.
         const half = roadWidthAt(road, i) * 0.5;
-        const side = (k % 2 === 0 ? 1 : -1) * PICKUPS.offset * half;
+        // −1 / 0 / +1: linke Spur, Mittellinie, rechte Spur.
+        const lane = (k % 3) - 1;
+        const side = lane * PICKUPS.offset * half;
         const x = x0 - (dz / len) * side;
         const z = z0 + (dx / len) * side;
         // Fahrbahnhöhe der Mittellinie, nicht `getHeightAt` am Versatz: der

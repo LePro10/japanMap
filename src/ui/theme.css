@@ -48,10 +48,6 @@
   fill: var(--amber);
 }
 
-.spark-icon__notch {
-  fill: #121a20;
-}
-
 .spark-mark {
   display: inline-flex;
   align-items: center;

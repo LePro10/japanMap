@@ -376,12 +376,12 @@ export const PICKUPS = {
   /**
    * Abstand zur Fahrbahnmitte, als Anteil der **halben Breite an der Stelle**.
    *
-   * 0,68 legt sie ins äußere Drittel der Spur — nah genug, dass man die Linie
-   * ändert, auf der Fahrbahn, nicht in der Böschung. Die erste Fassung nahm
-   * `0,55 · 3,5 m` für jede Straße; WP6-Breiten reichen von 1,8 bis 18 m, und
-   * auf dem Ring stand das Stück mitten in der Spur, auf dem Pfad in der Wand.
+   * 0,40 ist die **Mitte einer Fahrspur**, nicht der Rand: auf 9 m Straße
+   * 1,8 m neben der Achse, Bordstein bei 4,5 m. 0,68 lag fast am Bankett.
+   * Die Stücke wechseln links / Mitte / rechts — auf dem Asphalt, zum
+   * Mitnehmen, nicht zum Streifen.
    */
-  offset: 0.68,
+  offset: 0.4,
   /** Aufsammelradius in Metern. Großzügig — ein verpasstes Stück ist Frust. */
   radius: 4.5,
   /**
