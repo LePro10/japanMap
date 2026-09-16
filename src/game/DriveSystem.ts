@@ -1179,13 +1179,14 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #collectPickups(dt: number): void {
     const stunt = this.#stunt;
     if (!stunt) return;
-    const taken = stunt.collect(this.vehicle.position.x, this.vehicle.position.z, dt);
-    if (taken > 0) {
-      this.vehicle.addBoost(PICKUPS.boost * taken);
+    const hit = stunt.collect(this.vehicle.position.x, this.vehicle.position.z, dt);
+    if (hit.taken > 0) {
+      this.vehicle.addBoost(PICKUPS.boost * hit.taken);
       this.#context?.bus.emit('pickup:collected', {
         kind: 'coin',
-        total: taken,
-        yen: PICKUPS.yen * taken,
+        total: hit.taken,
+        yen: PICKUPS.yen * hit.taken,
+        at: hit.at,
       });
     }
     // Die Driftzone verdoppelt die Wertung. Sie wird **je Schritt** gefragt und

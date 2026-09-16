@@ -296,7 +296,7 @@ try {
     const line = drive.roads.getRacingLine('ring');
     const stuntSystem = window.japanMap.engine.systems.find((s) => s.name === 'StuntSystem');
     for (let i = 0; i < line.length / 3; i += 5) {
-      out.pickups += stuntSystem.collect(line[i * 3], line[i * 3 + 2], 0);
+      out.pickups += stuntSystem.collect(line[i * 3], line[i * 3 + 2], 0).taken;
     }
     const zone = cfg.DRIFT_ZONES[0];
     out.zone = stuntSystem.driftBonusAt(zone.x, zone.z);

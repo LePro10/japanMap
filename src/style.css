@@ -417,7 +417,8 @@ body {
   .start__button,
   .start__island,
   .start__veil,
-  .start__cine {
+  .start__cine,
+  .hud__money.is-pulse {
     animation: none;
     transition: none;
   }
@@ -1496,11 +1497,62 @@ body {
   position: absolute;
   right: max(14px, env(safe-area-inset-right));
   top: max(20px, env(safe-area-inset-top));
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--amber) 38%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 72%, transparent);
+  backdrop-filter: blur(8px);
   font-family: var(--mono);
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--accent, #e0b25a);
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+  color: var(--amber);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+.hud__money .spark-icon {
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--amber-hot) 55%, transparent));
+}
+
+.hud__money.is-pulse {
+  animation: spark-wallet 0.38s ease-out;
+}
+
+@keyframes spark-wallet {
+  0% {
+    transform: scale(1);
+    border-color: color-mix(in srgb, var(--amber-hot) 80%, transparent);
+  }
+  35% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.hud__facet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  z-index: 8;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--amber-hot) 80%, transparent));
+  will-change: transform, opacity;
+}
+
+.hud__facet .spark-icon {
+  width: 16px;
+  height: 16px;
 }
 
 /* Die Driftwertung. Typografie hier, Lage in driveInstruments.css — sie sitzt
@@ -1655,6 +1707,11 @@ body {
   color: var(--fg-dim);
 }
 
+.hud__resultRow .spark-mark {
+  font-weight: 700;
+  color: var(--amber);
+}
+
 .hud__resultButton {
   margin-top: 16px;
   width: 100%;
@@ -1693,13 +1750,14 @@ body {
   }
 
   .hud__money {
-    /* Auf schmalem Schirm liegt der Kontostand **unter** dem Rennstreifen —
-     * oben rechts ist dort der Menüknopf der Fingersteuerung. */
-    top: auto;
-    bottom: max(14px, env(safe-area-inset-bottom));
-    right: auto;
-    left: 50%;
-    transform: translateX(-50%);
+    /* Oben rechts bleibt das Wallet — dort landen die Facetten. Der
+     * ☰-Knopf sitzt in `.touch__side` und teilt sich die Ecke; 58 px
+     * darunter bleibt der Chip greifbar und nicht unter dem Knopf. */
+    top: max(58px, calc(env(safe-area-inset-top) + 44px));
+    right: max(14px, env(safe-area-inset-right));
+    left: auto;
+    bottom: auto;
+    transform: none;
   }
 
   .hud__countdown {

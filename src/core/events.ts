@@ -313,11 +313,15 @@ export type AppEvents = {
   /**
    * Ein Sammelstück ist eingesammelt — P23.
    *
-   * Trägt den Kontostand mit, damit die Anzeige ihn nicht selbst führen muss:
-   * zwei Zähler für dieselbe Größe sind zwei Gelegenheiten, sie auseinander
-   * laufen zu lassen.
+   * `yen` ist der Betrag dieses Treffers, nicht der Kontostand. `at` sind die
+   * Weltpositionen, aus denen die Facetten ins Wallet fliegen.
    */
-  'pickup:collected': { kind: 'coin' | 'boost'; total: number; yen: number };
+  'pickup:collected': {
+    kind: 'coin' | 'boost';
+    total: number;
+    yen: number;
+    at: readonly { x: number; y: number; z: number }[];
+  };
 };
 
 

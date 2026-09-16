@@ -29,3 +29,36 @@
   --status-none: var(--paper-dim);
   --display: "Segoe UI", "Helvetica Neue", ui-sans-serif, system-ui, sans-serif;
 }
+
+/* Sparks-Zeichen — Form in `sparkIcon.ts`. `1em` damit HUD, Menü und
+ * Preisschilder dieselbe Silhouette in ihrer jeweiligen Schriftgröße tragen. */
+.spark-icon {
+  display: block;
+  flex: none;
+  width: 1em;
+  height: 1em;
+  overflow: visible;
+}
+
+.spark-icon__a {
+  fill: var(--amber-hot);
+}
+
+.spark-icon__b {
+  fill: var(--amber);
+}
+
+.spark-icon__notch {
+  fill: #121a20;
+}
+
+.spark-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28em;
+}
+
+.spark-mark .spark-icon {
+  width: 1.05em;
+  height: 1.05em;
+}

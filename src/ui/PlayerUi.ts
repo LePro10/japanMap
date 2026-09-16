@@ -33,6 +33,7 @@ import {
   controlTable,
 } from "./controls";
 import { CAR_COPY, carPortrait } from "./carPresentation";
+import { SPARK_ICON, sparkMark } from "./sparkIcon";
 import "./theme.css";
 import "./playerMenu.css";
 
@@ -347,7 +348,7 @@ export class PlayerUi {
           <form class="menu__code" hidden><input aria-label="Code" maxlength="12" autocomplete="off" /></form>
         </div>
         <div class="menu__wallet">
-          <span class="menu__walletLabel">Sparks</span>
+          <span class="menu__walletLabel">${SPARK_ICON} Sparks</span>
           <strong data-wallet>0</strong>
         </div>
       </header>
@@ -625,7 +626,7 @@ export class PlayerUi {
       const button = document.createElement("button");
       button.className = "menu__car";
       button.dataset.vehicle = id;
-      button.innerHTML = `${carPortrait(id)}<span class="menu__carName">${CAR_COPY[id].name}</span><span class="menu__carFacts">${this.#owns(id) ? "Owned" : `${VEHICLES[id].price.toLocaleString("en-US")} Sparks`}${id === this.#o.drive?.vehicleId ? " · Selected" : ""}</span>`;
+      button.innerHTML = `${carPortrait(id)}<span class="menu__carName">${CAR_COPY[id].name}</span><span class="menu__carFacts">${this.#owns(id) ? "Owned" : sparkMark(VEHICLES[id].price)}${id === this.#o.drive?.vehicleId ? " · Selected" : ""}</span>`;
       button.onclick = () => {
         this.#preview = id;
         this.#carDetail();
@@ -658,13 +659,13 @@ export class PlayerUi {
       ? id === this.#o.drive?.vehicleId
         ? "Selected"
         : "Select car"
-      : `Buy · ${spec.price.toLocaleString("en-US")} Sparks`;
+      : `Buy · ${sparkMark(spec.price)}`;
     const tuneBlock = !owned
       ? ""
       : this.#o.openTune
         ? `<p class="menu__note">Open Bay · ${TUNE_TIERS[tune.engine]} engine · ${TUNE_TIERS[tune.brakes]} brakes · ${TUNE_TIERS[tune.steering]} steering · ${TUNE_TIERS[tune.tyres]} tyres · ${SETUP_LABEL[setup]}</p><button type="button" class="menu__choose" data-bay>Tune in Open Bay</button>`
         : `<details class="menu__tune"><summary>Tune · Free tuning preview</summary><p>Fit tiers to this car. Engine adds force and speed; brakes shorten stops; steering responds sooner; tyres add road grip. Mass and wheelbase stay the same.</p>${(["engine","brakes","steering","tyres"] as TuneCategory[]).map(key=>`<label class="menu__row">${key[0]!.toUpperCase()+key.slice(1)}<select data-tune="${key}" aria-label="${key} tier">${["Stock","Street","Sport"].map((tier,i)=>`<option value="${i}" ${tune[key]===i?"selected":""}>${tier}</option>`).join("")}</select></label>`).join("")}<p class="menu__note">Setup sits on top of owned parts. Needle has Safe Return instead of Dirt.</p><div class="menu__row" role="radiogroup" aria-label="Setup">${setupsFor(id).map(s=>`<label><input type="radio" name="car-setup" value="${s}" ${setup===s?"checked":""}>${SETUP_LABEL[s]}</label>`).join("")}</div><p class="menu__note">Free to fit and saved per car. No Sparks spent.</p></details>`;
-    host.innerHTML = `<div class="menu__carStage">${carPortrait(id)}<span>${spec.category} · ${owned ? "OWNED" : "SHOWROOM"}</span></div><h2>${copy.name}</h2><p class="menu__intro">${copy.role}</p><div class="menu__carSpecs"><span><strong>${spec.chassis.mass.toLocaleString("en-US")}</strong>kg</span><span><strong>${spec.drivetrain.layout.toUpperCase()}</strong>Drivetrain</span><span><strong>${Math.round(topSpeed(arcade,spec.chassis.mass)*3.6)}</strong>km/h · estimated</span><span><strong>${arcade.latG.toFixed(2)}</strong>g · road grip</span><span><strong>${Math.round(spec.dirt*100)}</strong>% · dirt grip</span><span><strong>${spec.clearance.toFixed(2)}</strong>m · clearance · ${spec.ford.toFixed(2)}m ford</span></div><p>${balance.toLocaleString("en-US")} Sparks available · Saved in this browser</p><button class="menu__choose" ${owned ? "" : 'aria-label="Buy"'} ${owned||canBuy ? "" : "disabled"}>${chooseLabel}</button>${!owned&&!canBuy ? `<p class="menu__note">${(spec.price-balance).toLocaleString("en-US")} more Sparks needed.</p>` : ""}${tuneBlock}`;
+    host.innerHTML = `<div class="menu__carStage">${carPortrait(id)}<span>${spec.category} · ${owned ? "OWNED" : "SHOWROOM"}</span></div><h2>${copy.name}</h2><p class="menu__intro">${copy.role}</p><div class="menu__carSpecs"><span><strong>${spec.chassis.mass.toLocaleString("en-US")}</strong>kg</span><span><strong>${spec.drivetrain.layout.toUpperCase()}</strong>Drivetrain</span><span><strong>${Math.round(topSpeed(arcade,spec.chassis.mass)*3.6)}</strong>km/h · estimated</span><span><strong>${arcade.latG.toFixed(2)}</strong>g · road grip</span><span><strong>${Math.round(spec.dirt*100)}</strong>% · dirt grip</span><span><strong>${spec.clearance.toFixed(2)}</strong>m · clearance · ${spec.ford.toFixed(2)}m ford</span></div><p>${sparkMark(balance)} available · Saved in this browser</p><button class="menu__choose" ${owned ? "" : 'aria-label="Buy"'} ${owned||canBuy ? "" : "disabled"}>${chooseLabel}</button>${!owned&&!canBuy ? `<p class="menu__note">${sparkMark(spec.price-balance)} more needed.</p>` : ""}${tuneBlock}`;
     host.querySelector<HTMLButtonElement>(".menu__choose")!.onclick=()=>{
       if(!owned&&!this.#o.events?.buy(id))return;
       this.#o.drive?.setVehicle(id);this.#cars();

@@ -19,6 +19,7 @@ import { DRIFT_YEN_PER_POINT, EVENTS, findEvent } from './config/events.config';
 import { WALK_BOARD_RANGE, WALK_PROMPT_SLACK } from './config/walker.config';
 import { DriveSystem } from './game/DriveSystem';
 import { DriveHud } from './ui/DriveHud';
+import { sparkMark } from './ui/sparkIcon';
 import { runAb } from './debug/abMeasure';
 import { runDriveProbe } from './debug/driveProbe';
 import { captureShot, probeFrame, type CaptureTarget } from './debug/capture';
@@ -543,10 +544,21 @@ async function boot(): Promise<void> {
     hud.showTooDeep();
   });
 
-  engine.bus.on('pickup:collected', ({ yen }) => {
+  const sparkNdc = new Vector3();
+  engine.bus.on('pickup:collected', ({ yen, at }) => {
     profile.earn(yen);
-    audio.click();
-    hud.flash(`+${yen} Sparks`, true);
+    const w = overlay.clientWidth || 1;
+    const h = overlay.clientHeight || 1;
+    engine.camera.updateMatrixWorld();
+    const origins = at.map((p) => {
+      sparkNdc.set(p.x, p.y, p.z).project(engine.camera);
+      return {
+        x: (sparkNdc.x * 0.5 + 0.5) * w,
+        y: (-sparkNdc.y * 0.5 + 0.5) * h,
+        visible: sparkNdc.z < 1 && Math.abs(sparkNdc.x) < 1.4 && Math.abs(sparkNdc.y) < 1.4,
+      };
+    });
+    hud.collectSparks(origins);
   });
 
   engine.bus.on('drive:lap', (result) => {
@@ -600,7 +612,7 @@ async function boot(): Promise<void> {
     if (bestBefore !== null) rows.push(row('Previous best', formatTime(bestBefore)));
     if (isBest) rows.push(row('New record', '✓'));
     if (result.driftScore > 0) rows.push(row('Drift score', String(result.driftScore)));
-    rows.push(row('Earned', `${result.yen.toLocaleString('en-US')} Sparks`));
+    rows.push(row('Earned', sparkMark(result.yen)));
 
     hud.showResult(
       `<p class="hud__resultTitle">${title}</p>` +
@@ -1019,7 +1031,7 @@ async function boot(): Promise<void> {
   audio.armAutoUnlock();
   import.meta.hot?.dispose(() => { photo.dispose(); garage.dispose(); ui.dispose(); });
 
-  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive, lookController);
+  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive);
 }
 
 /** Eine Zeile der Zieltafel. Englisch, wie alles im DOM. */
