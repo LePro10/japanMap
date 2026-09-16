@@ -237,29 +237,19 @@ export const PADDY_WATER = {
   depth: 0.1,
 
   /**
-   * Wasser endet so weit innerhalb einer nassen/trockenen Kante.
+   * Wasser endet so weit innerhalb einer nassen/trockenen Kante, in Metern.
    *
-   * Ohne den Versatz liegt der Spiegel bündig auf der Marching-Squares-Kante,
-   * und die Böschung hat keine Krone, auf der Erde sichtbar wäre. 0,25 m ist
-   * ein Bund, kein zweiter Damm — der gebackene Damm ist 1,7 m halbe Breite.
+   * Die Lippe ist das Gelände — dieselbe Splat-Lage wie der Rest des Felds.
+   * Extra-Meshes als Bund (2026-09-16) lasen sich vom Gehweg als Karton.
    */
   bankInset: 0.25,
 
   /**
-   * Erde über dem Spiegel, in Metern. Untergrenze aus ASTRA (Krone mindestens
-   * 0,20 m über Wasser); der gebackene Damm liegt höher und bleibt unangetastet.
+   * Zusätzlicher Versatz an einer Terrassenstufe, als Anteil des Abfalls,
+   * gedeckelt. Der Spiegel bleibt auf dem Bett; die Böschung ist der Hang,
+   * den der Baker schon gebaut hat.
    */
-  bankCrest: 0.2,
-
-  /**
-   * Wie weit die Böschungsfläche nach außen tastet, in Metern.
-   *
-   * Nur die Luft unter dem Spiegel, nicht die ganze Stufe. 2,4 m machte aus
-   * der Wand eine 6 × 3 m-Pappe (gemessen 2026-09-16, Blick entlang der
-   * Normalen). 1,0 m bei 1,5 m Abfall ist ~56° — ein Bund, und das Gelände
-   * darunter bleibt das Gelände.
-   */
-  bankReach: 1,
+  dropInset: 0.55,
 
   /**
    * Ab diesem Abfall unter dem Spiegel gilt die Kante als Stufe, nicht als Damm.
@@ -281,15 +271,6 @@ export const PADDY_WATER = {
   color: 0x2b3026,
   roughness: 0.06,
   metalness: 0,
-
-  /**
-   * Erde der Böschung. Krone trocken, Fuß nass — echte Bundwände sind am
-   * Wasserspiegel dunkler. `brown_mud_02` ist die Splat-Lage darunter; die
-   * Zahlen liegen in derselben Wärme, etwas dunkler, weil eine senkrechte
-   * Fläche bei 2,23° Sonne sonst als helles Band steht.
-   */
-  bankTop: 0x6a5844,
-  bankWet: 0x3a3026,
 } as const;
 
 /** Eine Platzierung, wie sie in `assets/props.json` steht. */
