@@ -899,6 +899,8 @@ async function boot(): Promise<void> {
     engineBlip: (pitch) => audio.engineBlip(pitch),
     hideWorld: (hidden) => {
       commons.group.visible = !hidden;
+      const veg = engine.scene.getObjectByName('Vegetation');
+      if (veg) veg.visible = !hidden;
     },
   });
   const ui = new PlayerUi({

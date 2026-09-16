@@ -42,7 +42,8 @@ import {
   routeTurn,
   type RoutePath,
 } from './routeGraph';
-import { createCarBody, createCarWheel } from './carMesh';
+import { createCarBody } from './carMesh';
+import { createGarageWheel } from './garageWheels';
 import { ChaseCamera } from './ChaseCamera';
 import {
   TREE_QUERY_CAP,
@@ -728,11 +729,13 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   setCarTune(tune:CarTune):void {
     saveTune(this.#vehicleId,tune);
     this.vehicle.setTune(tune);
+    this.#applyWheelGeometry();
   }
 
   setCarSetup(setup: SetupId): void {
     saveSetup(this.#vehicleId, setup);
     this.vehicle.setSetup(setup);
+    this.#applyWheelGeometry();
   }
 
   /**
@@ -799,12 +802,24 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #applyVehicleGeometry(): void {
     const spec = this.vehicle.spec;
     const bodyGeometry = createCarBody(spec);
-    const wheelGeometry = createCarWheel(spec);
+    const wheelGeometry = createGarageWheel(spec, loadTune(this.#vehicleId).tyres, loadSetup(this.#vehicleId));
     if (this.#body) this.#body.geometry = bodyGeometry;
     if (this.#wheels) this.#wheels.geometry = wheelGeometry;
     for (const old of this.#geometries) old.dispose();
     this.#geometries.length = 0;
     this.#geometries.push(bodyGeometry, wheelGeometry);
+  }
+
+  #applyWheelGeometry(): void {
+    const spec = this.vehicle.spec;
+    const wheelGeometry = createGarageWheel(spec, loadTune(this.#vehicleId).tyres, loadSetup(this.#vehicleId));
+    const previous = this.#geometries[1];
+    if (this.#wheels) this.#wheels.geometry = wheelGeometry;
+    if (previous && previous !== this.#geometries[0]) previous.dispose();
+    const body = this.#geometries[0];
+    this.#geometries.length = 0;
+    if (body) this.#geometries.push(body);
+    this.#geometries.push(wheelGeometry);
   }
 
   #rebuild(): void {
