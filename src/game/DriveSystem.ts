@@ -36,6 +36,7 @@ import { GuideLine } from './GuideLine';
 import {
   RouteGraph,
   nearestRouteArc,
+  packRouteXZ,
   profileRoute,
   remainingAlong,
   routeAdvisory,
@@ -200,6 +201,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   readonly #guide = new GuideLine();
   #graph: RouteGraph | null = null;
   #route: RoutePath | null = null;
+  #routeLine: Float32Array | null = null;
   #routeArc = 0;
   #offRoute = 0;
   #canTeleport: () => boolean = () => false;
@@ -453,7 +455,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
           this.#clearWaypoint();
         },
         getWaypoint: () => this.#waypoint.waypoint,
-        getRoute: () => this.#guide.xz,
+        getRoute: () => this.#routePolyline(),
         onOpen: () => {
           this.#keys.clear();
           this.#axes.forward = 0;
@@ -574,7 +576,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       eta,
       turn: route ? routeTurn(route, this.#routeArc, heading) : 'none',
       advisory: route ? routeAdvisory(route, this.#routeArc, speed) : 'ok',
-      path: this.#guide.xz,
+      path: this.#routePolyline(),
       pin: this.#waypoint.screen,
     };
   }
@@ -591,16 +593,25 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#waypoint.clear();
     this.#guide.clear();
     this.#route = null;
+    this.#routeLine = null;
     this.#routeArc = 0;
     this.#offRoute = 0;
   }
 
+  #routePolyline(): Float32Array | null {
+    if (this.#routeLine) return this.#routeLine;
+    if (this.#waypoint.waypoint) this.#rebuildRoute();
+    return this.#routeLine;
+  }
+
   #rebuildRoute(): void {
     const wp = this.#waypoint.waypoint;
+    if (!this.#graph && this.#network) this.#graph = new RouteGraph(this.#network.roads);
     const graph = this.#graph;
     if (!wp) {
       this.#guide.clear();
       this.#route = null;
+      this.#routeLine = null;
       return;
     }
     const raw = graph
@@ -609,6 +620,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     if (!raw) {
       this.#guide.clear();
       this.#route = null;
+      this.#routeLine = null;
       return;
     }
     const arcade = ARCADE[this.vehicle.spec.id];
@@ -621,6 +633,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       closed: false,
     });
     this.#route = path;
+    this.#routeLine = packRouteXZ(path);
     this.#routeArc = 0;
     this.#offRoute = 0;
     this.#guide.setPath(path);
@@ -1934,6 +1947,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#guide.dispose();
     this.#graph = null;
     this.#route = null;
+    this.#routeLine = null;
 
     if (this.#group) {
       this.#context?.scene.remove(this.#group);

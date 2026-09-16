@@ -501,4 +501,13 @@ function pointNear(
   return { tx: tx / len, tz: tz / len };
 }
 
+export function packRouteXZ(path: RoutePath): Float32Array {
+  const out = new Float32Array(path.points.length * 2);
+  for (let i = 0; i < path.points.length; i++) {
+    out[i * 2] = path.points[i]!.x;
+    out[i * 2 + 1] = path.points[i]!.z;
+  }
+  return out;
+}
+
 

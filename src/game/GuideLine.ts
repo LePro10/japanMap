@@ -103,7 +103,7 @@ export class GuideLine {
     const built = buildRibbon(path);
     mesh.geometry = built.geometry;
     this.#arcs = built.arcs;
-    this.#reveal = 16;
+    this.#reveal = Math.min(280, WAYPOINT.lookAhead);
     this.#opacityGoal = 1;
     mesh.visible = true;
     this.#xz = pack(path);
