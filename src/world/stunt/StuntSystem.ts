@@ -1,4 +1,5 @@
 import {
+  AdditiveBlending,
   BufferAttribute,
   BufferGeometry,
   Color,
@@ -117,8 +118,16 @@ const FLAG_CLOTH_DARK = 0x9e2626;
  */
 const SPARK_FACET_A = 0xffc56a;
 const SPARK_FACET_B = 0xe8a45c;
-const SPARK_NOTCH = 0x1a2228;
-const SPARK_GAIN = 2.45;
+const SPARK_GAIN = 2.6;
+/**
+ * Additive Hülle, als Anteil der Kristallgröße.
+ *
+ * Ein zweites `InstancedMesh`, **ein** Draw-Call, 8 Dreiecke × 90. Kein
+ * Punktlicht, kein Partikel, kein Extra-Bloom-Pass — Additive addiert nur
+ * dort, wo die Hülle im Bild liegt. 1,55 bleibt knapp um den Körper, sonst
+ * liest sich der Glow als Nebelfleck und nicht als Kristall.
+ */
+const SPARK_HALO = 1.55;
 /**
  * Halbe Höhe des Kristalls, m.
  *
@@ -379,9 +388,11 @@ export class StuntSystem implements System {
    * `color.setScalar` sonst Laternenpapier und Kristall denselben Gain gäbe.
    */
   #sparkMat: MeshBasicMaterial | null = null;
+  #sparkHaloMat: MeshBasicMaterial | null = null;
   #trees: InstancedMesh | null = null;
   #flags: InstancedMesh | null = null;
   #pickups: InstancedMesh | null = null;
+  #sparkHalo: InstancedMesh | null = null;
   readonly #petals = new PetalFall();
 
   /** Weltpositionen der Sammelstücke und ihre Wiederkehr-Uhr. */
@@ -429,6 +440,18 @@ export class StuntSystem implements System {
     sparkMat.fog = false;
     sparkMat.color.setScalar(SPARK_GAIN);
     this.#sparkMat = sparkMat;
+    const haloMat = new MeshBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      blending: AdditiveBlending,
+      depthWrite: false,
+      fog: false,
+      side: DoubleSide,
+    });
+    haloMat.name = 'SparkHaloMaterial';
+    // Vertexfarbe trägt die Intensität; 1,0 hier, sonst wird der Hof weiß.
+    haloMat.color.setScalar(1);
+    this.#sparkHaloMat = haloMat;
     this.#tilt.setFromAxisAngle(this.#east, 0.38);
     context.scene.add(this.#group);
 
@@ -438,6 +461,7 @@ export class StuntSystem implements System {
     context.bus.on('quality:changed', ({ level }) => {
       this.#level = level;
       this.#petals.setDensity(PETAL_DENSITY[level]);
+      if (this.#sparkHalo) this.#sparkHalo.visible = level !== 'minimal';
     });
 
     context.bus.on('terrain:ready', ({ sampler }) => {
@@ -819,6 +843,17 @@ export class StuntSystem implements System {
     // Instanzmatrizen jeden Frame drehen. Dieselbe Begründung wie bei den
     // Rädern des Fahrzeugs (P14).
     this.#pickups.frustumCulled = false;
+    if (this.#sparkHaloMat) {
+      this.#sparkHalo = this.#instance(
+        createSparkHalo(),
+        this.#pickupPos.length,
+        'Sammelstücke-Hof',
+        this.#sparkHaloMat,
+      );
+      this.#sparkHalo.frustumCulled = false;
+      this.#sparkHalo.renderOrder = 1;
+      this.#sparkHalo.visible = this.#level !== 'minimal';
+    }
     this.#writePickups();
   }
 
@@ -966,38 +1001,42 @@ export class StuntSystem implements System {
 
   #writePickups(): void {
     const mesh = this.#pickups;
+    const halo = this.#sparkHalo;
     if (!mesh) return;
     for (let i = 0; i < this.#pickupPos.length; i++) {
       const p = this.#pickupPos[i]!;
       const seit = PICKUPS.respawn - p.back;
-      if (p.back > 0 && seit < POP_TIME) {
+      const popping = p.back > 0 && seit < POP_TIME;
+      let s = 1;
+      if (popping) {
         const t = seit / POP_TIME;
-        // Schrumpfen zur Mitte, leicht steigen. Die Unterkante bleibt über
-        // der Fahrbahn: hover 1,35 − half 0,22·s + rise 0,35·t, s = (1−t)².
-        // Bei t = 1 ist die Instanz ein Punkt 0,35 m über der alten Mitte.
-        const s = Math.max(0.04, (1 - t) * (1 - t));
-        this.#scale.set(s, s, s);
+        s = Math.max(0.04, (1 - t) * (1 - t));
         this.#quat.setFromAxisAngle(this.#up, this.#spin * 5.5 + i * 0.7);
         this.#quat.multiply(this.#tilt);
-        this.#matrix.compose(POINT.set(p.x, p.y + t * 0.7, p.z), this.#quat, this.#scale);
-        mesh.setMatrixAt(i, this.#matrix);
-        this.#scale.set(1, 1, 1);
-        continue;
+        POINT.set(p.x, p.y + t * 0.7, p.z);
+      } else {
+        const bob = Math.sin(this.#spin * 2.1 + i * 0.73) * 0.12;
+        this.#quat.setFromAxisAngle(this.#up, this.#spin * 0.85 + i * 0.7);
+        this.#quat.multiply(this.#tilt);
+        // Eingesammelte Stücke wandern unter die Welt statt `count` zu ändern:
+        // `count` verkleinern hieße, die Liste umzusortieren, und dann stimmt die
+        // Zuordnung Position ↔ Instanz nicht mehr.
+        if (p.back > 0) POINT.copy(this.#zero);
+        else POINT.set(p.x, p.y + bob, p.z);
       }
-      const bob = Math.sin(this.#spin * 2.1 + i * 0.73) * 0.12;
-      this.#quat.setFromAxisAngle(this.#up, this.#spin * 0.85 + i * 0.7);
-      this.#quat.multiply(this.#tilt);
-      // Eingesammelte Stücke wandern unter die Welt statt `count` zu ändern:
-      // `count` verkleinern hieße, die Liste umzusortieren, und dann stimmt die
-      // Zuordnung Position ↔ Instanz nicht mehr.
-      this.#matrix.compose(
-        p.back > 0 ? this.#zero : POINT.set(p.x, p.y + bob, p.z),
-        this.#quat,
-        this.#scale,
-      );
+      this.#scale.set(s, s, s);
+      this.#matrix.compose(POINT, this.#quat, this.#scale);
       mesh.setMatrixAt(i, this.#matrix);
+      if (halo) {
+        const h = s * SPARK_HALO;
+        this.#scale.set(h, h, h);
+        this.#matrix.compose(POINT, this.#quat, this.#scale);
+        halo.setMatrixAt(i, this.#matrix);
+      }
+      this.#scale.set(1, 1, 1);
     }
     mesh.instanceMatrix.needsUpdate = true;
+    if (halo) halo.instanceMatrix.needsUpdate = true;
   }
 
   /**
@@ -1101,8 +1140,12 @@ export class StuntSystem implements System {
     this.#trees?.dispose();
     this.#flags?.dispose();
     this.#pickups?.dispose();
+    this.#sparkHalo?.dispose();
+    this.#sparkHalo = null;
     this.#sparkMat?.dispose();
     this.#sparkMat = null;
+    this.#sparkHaloMat?.dispose();
+    this.#sparkHaloMat = null;
     this.#material?.dispose();
     this.#material = null;
   }
@@ -1390,23 +1433,58 @@ function createFallenPatch(): BufferGeometry {
 }
 
 /**
- * Ein Spark — zwei versetzte Oktaeder und eine dunkle Kerbe.
+ * Ein Spark — **ein** Oktaeder, links/rechts zwei Facettentöne.
  *
- * Dieselbe Silhouette wie das HUD-Ikon (ASTRA_PLAN §9). Eine Münze verschwindet
- * von der Kante, und das ist der Blickwinkel hinter dem Auto. Ein Split-Diamond
- * hat aus jeder Richtung eine Kante.
+ * Die Fassung mit zwei versetzten Oktaedern plus Kerben-Kasten schnitt sich
+ * selbst: Z-Fight, eine Silhouette wie ein defektes Mesh. Ein Körper, eine
+ * Falte aus Farbe — dieselbe Raute wie das HUD-Ikon.
  *
  * Wicklung: jede Fläche CCW von außen. `japanMap.winding()` prüft das, und
  * dieses Projekt hat zwei rückseitige Flächen teuer bezahlt (P8.11).
  */
 function createSparkToken(): BufferGeometry {
+  return sparkOcta(0.48, SPARK_HALF_H, 0.34, SPARK_FACET_A, SPARK_FACET_B);
+}
+
+/**
+ * Additive Hülle — dieselbe Form, eine Farbe, gedimmt.
+ *
+ * Vertexfarbe ~0,22 der Facette: Additive addiert, und 0,22 hält den Hof
+ * unter dem Weißpunkt (Laternen-Lehre: k = 5 macht die Farbe tot).
+ */
+function createSparkHalo(): BufferGeometry {
+  return sparkOcta(0.48, SPARK_HALF_H, 0.34, 0x3a2810, 0x3a2810);
+}
+
+function sparkOcta(
+  hx: number,
+  hy: number,
+  hz: number,
+  hexEast: number,
+  hexWest: number,
+): BufferGeometry {
   const positions: number[] = [];
   const colors: number[] = [];
-  octahedron(positions, colors, -0.16, 0, 0, 0.42, SPARK_HALF_H, 0.32, SPARK_FACET_A);
-  octahedron(positions, colors, 0.2, 0.04, 0.05, 0.38, SPARK_HALF_H * 0.92, 0.28, SPARK_FACET_B);
-  const notch = box(0.1, SPARK_HALF_H * 1.55, 0.18, 0.03, 0, 0.01, SPARK_NOTCH);
-  positions.push(...notch.positions);
-  colors.push(...notch.colors);
+  const top: [number, number, number] = [0, hy, 0];
+  const bot: [number, number, number] = [0, -hy, 0];
+  const n: [number, number, number] = [0, 0, hz];
+  const s: [number, number, number] = [0, 0, -hz];
+  const e: [number, number, number] = [hx, 0, 0];
+  const w: [number, number, number] = [-hx, 0, 0];
+  const east: [number, number, number][][] = [
+    [top, n, e],
+    [top, e, s],
+    [bot, e, n],
+    [bot, s, e],
+  ];
+  const west: [number, number, number][][] = [
+    [top, s, w],
+    [top, w, n],
+    [bot, w, s],
+    [bot, n, w],
+  ];
+  pushFaces(positions, colors, east, hexEast);
+  pushFaces(positions, colors, west, hexWest);
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new BufferAttribute(Float32Array.from(positions), 3));
   geometry.setAttribute('color', new BufferAttribute(Float32Array.from(colors), 3));
@@ -1415,33 +1493,12 @@ function createSparkToken(): BufferGeometry {
   return geometry;
 }
 
-function octahedron(
+function pushFaces(
   positions: number[],
   colors: number[],
-  ox: number,
-  oy: number,
-  oz: number,
-  hx: number,
-  hy: number,
-  hz: number,
+  faces: [number, number, number][][],
   hex: number,
 ): void {
-  const top: [number, number, number] = [ox, oy + hy, oz];
-  const bot: [number, number, number] = [ox, oy - hy, oz];
-  const n: [number, number, number] = [ox, oy, oz + hz];
-  const s: [number, number, number] = [ox, oy, oz - hz];
-  const e: [number, number, number] = [ox + hx, oy, oz];
-  const w: [number, number, number] = [ox - hx, oy, oz];
-  const faces: [number, number, number][][] = [
-    [top, n, e],
-    [top, e, s],
-    [top, s, w],
-    [top, w, n],
-    [bot, e, n],
-    [bot, s, e],
-    [bot, w, s],
-    [bot, n, w],
-  ];
   const c = new Color(hex);
   for (const [a, b, cc] of faces) {
     positions.push(a![0], a![1], a![2], b![0], b![1], b![2], cc![0], cc![1], cc![2]);
