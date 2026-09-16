@@ -16,10 +16,8 @@ async function importTypescript(path, fileName) {
   return import(moduleUrl);
 }
 
-const { clampMapView, clampWorldPoint, mapToWorld, worldToMap, zoomMapView } = await importTypescript(
-  '../src/ui/navigationMapMath.ts',
-  'navigationMapMath.ts',
-);
+const { clampMapView, clampWorldPoint, mapMinScale, mapToWorld, worldToMap, zoomMapView } =
+  await importTypescript('../src/ui/navigationMapMath.ts', 'navigationMapMath.ts');
 const { MAP_LANDMARKS, formatMapDistance } = await importTypescript(
   '../src/ui/navigationMapData.ts',
   'navigationMapData.ts',
@@ -55,6 +53,14 @@ assert.equal(clamped.ty, 0);
 const overPan = clampMapView({ scale: 2, tx: -999, ty: -999 }, 400, 400);
 assert.equal(overPan.tx, -400);
 assert.equal(overPan.ty, -400);
+
+const landscapeMin = mapMinScale(1400, 700);
+assert.ok(landscapeMin < 1, 'Querformat muss unter Cover zoomen können.');
+const fitted = clampMapView({ scale: 0.05, tx: 0, ty: 0 }, 1400, 700);
+assert.ok(Math.abs(fitted.scale - landscapeMin) < 1e-9);
+assert.ok(fitted.tx > 0, 'Contain-Zoom zentriert die Insel waagerecht.');
+const zoomOut = zoomMapView({ scale: 1, tx: 0, ty: 0 }, 0.4, 700, 350, 1400, 700);
+assert.ok(zoomOut.scale < 1, 'Mausrad nach hinten darf unter Cover fallen.');
 
 assert.equal(formatMapDistance(428), '428 m');
 assert.equal(formatMapDistance(999.6), '1.0 km');

@@ -612,8 +612,21 @@
   font: inherit;
 }
 
+.player-menu button.navmap__region {
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink) 45%, transparent);
+  color: var(--paper);
+  text-align: left;
+  font: inherit;
+}
+
 .player-menu button.navmap__place:hover,
-.player-menu button.navmap__place.is-selected {
+.player-menu button.navmap__place.is-selected,
+.player-menu button.navmap__region:hover,
+.player-menu button.navmap__region.is-selected {
   background: color-mix(in srgb, var(--teal) 38%, transparent);
 }
 

@@ -80,6 +80,12 @@
   pointer-events: auto;
 }
 
+.navmap--docked .navmap__zoom {
+  left: 12px;
+  bottom: 14px;
+  z-index: 11;
+}
+
 .navmap--docked .navmap__body {
   display: block;
   position: absolute;
@@ -90,6 +96,7 @@
 .navmap--docked .navmap__stage {
   position: absolute;
   inset: 0;
+  z-index: 1;
   border: 0;
   border-radius: 8px;
 }
@@ -99,17 +106,39 @@
   right: 12px;
   top: 12px;
   bottom: 12px;
-  z-index: 8;
+  z-index: 10;
   width: 236px;
   padding: 12px;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--ink, #06141a) 78%, transparent);
-  backdrop-filter: blur(10px);
+  overflow: hidden;
+  background: rgba(6, 20, 26, 0.94);
+  backdrop-filter: blur(14px);
+}
+
+.navmap--docked .navmap__side {
+  display: flex;
+  flex-direction: column;
+}
+
+.navmap--docked .navmap__regionsList {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.navmap--docked .navmap__places {
+  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .navmap--docked .navmap__place {
   min-height: 38px;
   padding: 6px 8px;
+}
+
+.navmap--docked .navmap__region {
+  min-height: 32px;
+  padding: 4px 8px;
 }
 
 .navmap__head {
@@ -224,6 +253,16 @@
   top: calc(50% - max(50cqw, 50cqh));
 }
 
+.navmap__base {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 .navmap__canvas {
   position: relative;
   z-index: 1;
@@ -272,8 +311,14 @@
 
 .navmap-zone {
   fill: none;
-  stroke: rgba(212, 120, 154, 0.72);
-  stroke-width: 2.2;
+  stroke: rgba(232, 169, 192, 0.9);
+  stroke-width: 2.4;
+  stroke-dasharray: 5 4;
+}
+
+.navmap-zone--fill {
+  fill: rgba(212, 120, 154, 0.16);
+  stroke: none;
 }
 
 .navmap-ramp {
@@ -296,9 +341,11 @@
 
 .navmap__zoom {
   position: absolute;
-  right: 10px;
-  top: 10px;
-  z-index: 6;
+  left: 12px;
+  bottom: 12px;
+  right: auto;
+  top: auto;
+  z-index: 9;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -310,6 +357,11 @@
   padding: 0;
   border-radius: 8px;
   font: 18px/1 var(--mono);
+}
+
+.navmap__zoom button:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .navmap__compass {
@@ -388,6 +440,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: auto;
   padding: 4px 2px 0;
 }
 
@@ -399,12 +452,16 @@
   text-transform: uppercase;
 }
 
-.navmap__places {
+.navmap__places,
+.navmap__regionsList {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-height: 0;
-  overflow: auto;
+}
+
+.navmap__regionsList {
+  margin-bottom: 14px;
 }
 
 .navmap__place {
@@ -458,6 +515,59 @@
   color: var(--nitro, #66d7f4);
   font: 700 11px/1 var(--mono);
   font-variant-numeric: tabular-nums;
+}
+
+.navmap__region {
+  --pin: #c9ccd4;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink, #06141a) 45%, transparent);
+  color: var(--paper, var(--fg));
+  text-align: left;
+  cursor: pointer;
+}
+
+.navmap__region:hover,
+.navmap__region.is-selected,
+.navmap__place:hover,
+.navmap__place.is-selected {
+  background: color-mix(in srgb, var(--teal, #1a6b76) 38%, transparent);
+}
+
+.navmap__region.is-here {
+  box-shadow: inset 2px 0 0 var(--pin);
+}
+
+.navmap__region i {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--pin);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pin) 28%, transparent);
+}
+
+.navmap__region span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.navmap__region strong {
+  font: 800 12px/1.1 var(--display, sans-serif);
+  letter-spacing: -0.03em;
+}
+
+.navmap__region em {
+  color: var(--paper-dim, var(--fg-dim));
+  font: 600 10px/1.2 var(--display, sans-serif);
+  font-style: normal;
 }
 
 .navmap__place--city { --pin: #e8a9c0; }

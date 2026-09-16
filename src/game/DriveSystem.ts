@@ -523,8 +523,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   }
 
   /** Dieselbe Karte in das Pause-Menü hängen. */
-  dockMap(host: HTMLElement): void {
-    this.#navigation?.dock(host);
+  dockMap(host: HTMLElement, options?: { focusPlayer?: boolean }): void {
+    this.#navigation?.dock(host, options);
   }
 
   undockMap(): void {
