@@ -11,7 +11,6 @@ import type { EngineContext, System } from '@/core/System';
 import { WORLD } from '@/config/world.config';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
 import { PaddyWaterMaterial } from '../materials/PaddyWaterMaterial';
-import { PropMaterial } from '../materials/PropMaterial';
 import type { TerrainSampler } from '../TerrainSampler';
 import { TERRAIN_ASSETS } from '../terrainAssets';
 
@@ -66,7 +65,6 @@ export class RicePaddy implements System {
   #group: Group | null = null;
   #material: PaddyWaterMaterial | null = null;
   #meshes: Mesh[] = [];
-  #bankMaterial: PropMaterial | null = null;
   #sampler: TerrainSampler | null = null;
   #mask: Uint8ClampedArray | null = null;
   #maskRes = 0;
@@ -74,7 +72,7 @@ export class RicePaddy implements System {
   /** Nahdetail aus der Qualitätsstufe — siehe `setDetail`. */
   #detail = 1;
 
-  readonly #readouts = { kacheln: '—', dreiecke: '—', boeschung: '—' };
+  readonly #readouts = { kacheln: '—', dreiecke: '—' };
 
   constructor(private readonly atmosphere: AtmosphereUniforms) {}
 
@@ -154,23 +152,10 @@ export class RicePaddy implements System {
     // überlebt, bis es ein Material gibt, das den Wert tragen kann.
     material.uPaddyDetail.value = this.#detail;
 
-    const bankMaterial = new PropMaterial(this.atmosphere);
-    bankMaterial.name = 'PaddyBankMaterial';
-    bankMaterial.vertexColors = true;
-    bankMaterial.flatShading = true;
-    bankMaterial.roughness = 0.92;
-    bankMaterial.polygonOffset = true;
-    bankMaterial.polygonOffsetFactor = -1;
-    bankMaterial.polygonOffsetUnits = -1;
-    this.#bankMaterial = bankMaterial;
-    const bankTop = new Color().setHex(PADDY_WATER.bankTop, 'srgb');
-    const bankWet = new Color().setHex(PADDY_WATER.bankWet, 'srgb');
-
     const step = PADDY_WATER.grid;
     const tile = PADDY_WATER.tile;
     const tiles = Math.ceil(WORLD.size / tile);
     let triangles = 0;
-    let bankTriangles = 0;
 
     // Kratzpuffer außerhalb der Schleifen: bei 6 m Raster über 101 ha sind das
     // rund 28 000 Zellen, und vier neue Felder je Zelle wären 112 000
@@ -186,8 +171,6 @@ export class RicePaddy implements System {
         const x0 = -WORLD.half + tx * tile;
         const z0 = -WORLD.half + tz * tile;
         const position: number[] = [];
-        const bankPos: number[] = [];
-        const bankCol: number[] = [];
 
         for (let z = z0; z < z0 + tile; z += step) {
           for (let x = x0; x < x0 + tile; x += step) {
@@ -269,7 +252,7 @@ export class RicePaddy implements System {
               );
             }
 
-            this.#emitBanks(sampler, polyX, polyZ, insetX, insetZ, y, bankPos, bankCol, bankTop, bankWet);
+
           }
         }
 
@@ -289,27 +272,11 @@ export class RicePaddy implements System {
           this.#meshes.push(mesh);
           triangles += position.length / 9;
         }
-
-        if (bankPos.length) {
-          const geometry = new BufferGeometry();
-          geometry.setAttribute('position', new Float32BufferAttribute(bankPos, 3));
-          geometry.setAttribute('color', new Float32BufferAttribute(bankCol, 3));
-          geometry.computeVertexNormals();
-          geometry.computeBoundingSphere();
-          const mesh = new Mesh(geometry, bankMaterial);
-          mesh.name = `paddy-bank:${tx}:${tz}`;
-          mesh.matrixAutoUpdate = false;
-          mesh.frustumCulled = true;
-          group.add(mesh);
-          this.#meshes.push(mesh);
-          bankTriangles += bankPos.length / 9;
-        }
       }
     }
 
     this.#readouts.kacheln = `${this.#meshes.length}`;
     this.#readouts.dreiecke = triangles.toLocaleString('de-DE');
-    this.#readouts.boeschung = bankTriangles.toLocaleString('de-DE');
     this.#context?.debug?.refresh();
   }
 
@@ -348,149 +315,28 @@ export class RicePaddy implements System {
       const oz = dx / len;
       const mx = (polyX[i]! + polyX[j]!) * 0.5;
       const mz = (polyZ[i]! + polyZ[j]!) * 0.5;
-      const outH = sampler.getHeightAt(mx + ox * probe, mz + oz * probe);
       const hereH = sampler.getHeightAt(mx, mz);
+      let outH = sampler.getHeightAt(mx + ox * probe, mz + oz * probe);
+      const h2 = sampler.getHeightAt(mx + ox * 3.2, mz + oz * 3.2);
+      if (h2 < outH) outH = h2;
       // Gleiches Niveau und nass: Innenkante, nicht einziehen — sonst klafft
       // zwischen zwei Wasserzellen ein Spalt. Eine Stufe (nasse Nachbarparzelle
       // tiefer) ist ein Rand, auch wenn die Maske dort nass bleibt.
       if (this.#wet(mx + ox * probe, mz + oz * probe) && hereH - outH < PADDY_WATER.dropMin) {
         continue;
       }
-      insetX[i]! -= ox * ins;
-      insetZ[i]! -= oz * ins;
-      insetX[j]! -= ox * ins;
-      insetZ[j]! -= oz * ins;
+      // Stufe: weiter einziehen, damit der Spiegel nicht über den Hang ragt.
+      // Die Böschung ist dann das Gelände, kein zweites Mesh.
+      const drop = hereH - outH;
+      const extra = drop > PADDY_WATER.dropMin
+        ? Math.min(1.6, drop * PADDY_WATER.dropInset)
+        : 0;
+      const pull = ins + extra;
+      insetX[i]! -= ox * pull;
+      insetZ[i]! -= oz * pull;
+      insetX[j]! -= ox * pull;
+      insetZ[j]! -= oz * pull;
     }
-  }
-
-  /**
-   * Erde an Stufen, nicht an Dämmen.
-   *
-   * Der Spiegel ist eine einseitige Fläche mit Normale +Y. Von der unteren
-   * Terrasse sieht man darunter durch — Backface-Culling, und das Gelände fällt
-   * in 1,5 m Texeln als Schräge, nicht als Wand. Gemessen 2026-09-16: 4 747
-   * Kanten mit mehr als 0,4 m Luft unter der Wasserlinie, in der Nähe des
-   * Blickpunkts `reisfeld` 2,5 m. Der Baker müsste das Höhenfeld anfassen;
-   * Erosion trägt jede Störung über die Karte. Die Fläche hier hängt am
-   * Wasserpolygon und folgt dem Abfall nach außen.
-   *
-   * Wicklung der Wand: P_krone → Q_krone → Q_fuß (und P_krone → Q_fuß → P_fuß).
-   * Kante × (nach außen + nach unten) zeigt nach außen und oben — sichtbar von
-   * der unteren Terrasse, nicht von unter der Fläche. Die Stadt-Schürze in
-   * `CityGenerator.buildGround` ist dieselbe Form; dort hat die umgekehrte
-   * Eckenfolge 240 von 242 Dreiecken ins Culling fallen lassen.
-   */
-  #emitBanks(
-    sampler: TerrainSampler,
-    polyX: number[],
-    polyZ: number[],
-    insetX: number[],
-    insetZ: number[],
-    waterY: number,
-    pos: number[],
-    col: number[],
-    top: Color,
-    wet: Color,
-  ): void {
-    const n = polyX.length;
-    if (n < 3) return;
-    const tint = new Color();
-    const crestY = waterY + PADDY_WATER.bankCrest;
-    const reach = PADDY_WATER.bankReach;
-    const rings = [0, reach * 0.45, reach];
-    const probe = 1.2;
-
-    for (let i = 0; i < n; i++) {
-      const j = (i + 1) % n;
-      const dx = polyX[j]! - polyX[i]!;
-      const dz = polyZ[j]! - polyZ[i]!;
-      const len = Math.hypot(dx, dz);
-      if (len < 1e-4) continue;
-      const ox = -dz / len;
-      const oz = dx / len;
-      const mx = (polyX[i]! + polyX[j]!) * 0.5;
-      const mz = (polyZ[i]! + polyZ[j]!) * 0.5;
-      if (this.#wet(mx + ox * probe, mz + oz * probe)
-        && waterY - sampler.getHeightAt(mx + ox * probe, mz + oz * probe) < PADDY_WATER.dropMin) {
-        continue;
-      }
-
-      let lowest = Infinity;
-      for (const r of rings) {
-        if (r === 0) continue;
-        const hy = sampler.getHeightAt(mx + ox * r, mz + oz * r);
-        if (hy < lowest) lowest = hy;
-      }
-      if (waterY - lowest < PADDY_WATER.dropMin) continue;
-
-      const shade = (x: number, y: number, z: number): { r: number; g: number; b: number } => {
-        const wetness = Math.min(1, Math.max(0, (crestY - y) / Math.max(0.08, crestY - lowest)));
-        tint.copy(top).lerp(wet, wetness);
-        const n = Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453);
-        const frac = n - Math.floor(n);
-        const layer = Math.floor(y * 2.6) & 1;
-        const k = (layer ? 0.88 : 1.05) * (0.9 + frac * 0.18);
-        return { r: tint.r * k, g: tint.g * k, b: tint.b * k };
-      };
-
-      // Krone +Y. Reihenfolge gegen den Umlauf, weil Outward (−dz, dx) ist.
-      this.#pushTri(
-        pos, col,
-        polyX[i]!, crestY, polyZ[i]!, shade(polyX[i]!, crestY, polyZ[i]!),
-        insetX[j]!, crestY, insetZ[j]!, shade(insetX[j]!, crestY, insetZ[j]!),
-        insetX[i]!, crestY, insetZ[i]!, shade(insetX[i]!, crestY, insetZ[i]!),
-      );
-      this.#pushTri(
-        pos, col,
-        polyX[i]!, crestY, polyZ[i]!, shade(polyX[i]!, crestY, polyZ[i]!),
-        polyX[j]!, crestY, polyZ[j]!, shade(polyX[j]!, crestY, polyZ[j]!),
-        insetX[j]!, crestY, insetZ[j]!, shade(insetX[j]!, crestY, insetZ[j]!),
-      );
-
-      // Wand in 2-m-Stücken, zwei Ringe — folgt dem Abfall statt einer Pappe.
-      const segs = Math.max(1, Math.ceil(len / 2));
-      const point = (t: number, r: number): { x: number; y: number; z: number } => {
-        const px = polyX[i]! + dx * t;
-        const pz = polyZ[i]! + dz * t;
-        const x = px + ox * r;
-        const z = pz + oz * r;
-        const y = r === 0 ? crestY : Math.min(crestY - 0.04, sampler.getHeightAt(x, z));
-        return { x, y, z };
-      };
-      for (let s = 0; s < segs; s++) {
-        const t0 = s / segs;
-        const t1 = (s + 1) / segs;
-        for (let r = 0; r + 1 < rings.length; r++) {
-          const a = point(t0, rings[r]!);
-          const b = point(t1, rings[r]!);
-          const c = point(t1, rings[r + 1]!);
-          const d = point(t0, rings[r + 1]!);
-          this.#pushTri(
-            pos, col,
-            a.x, a.y, a.z, shade(a.x, a.y, a.z),
-            d.x, d.y, d.z, shade(d.x, d.y, d.z),
-            b.x, b.y, b.z, shade(b.x, b.y, b.z),
-          );
-          this.#pushTri(
-            pos, col,
-            b.x, b.y, b.z, shade(b.x, b.y, b.z),
-            d.x, d.y, d.z, shade(d.x, d.y, d.z),
-            c.x, c.y, c.z, shade(c.x, c.y, c.z),
-          );
-        }
-      }
-    }
-  }
-
-  #pushTri(
-    pos: number[],
-    col: number[],
-    ax: number, ay: number, az: number, ac: { r: number; g: number; b: number },
-    bx: number, by: number, bz: number, bc: { r: number; g: number; b: number },
-    cx: number, cy: number, cz: number, cc: { r: number; g: number; b: number },
-  ): void {
-    pos.push(ax, ay, az, bx, by, bz, cx, cy, cz);
-    col.push(ac.r, ac.g, ac.b, bc.r, bc.g, bc.b, cc.r, cc.g, cc.b);
   }
 
   update(): void {
@@ -530,7 +376,6 @@ export class RicePaddy implements System {
     if (!folder || !group) return;
     folder.addBinding(this.#readouts, 'kacheln', { readonly: true, label: 'Kacheln' });
     folder.addBinding(this.#readouts, 'dreiecke', { readonly: true, label: 'Dreiecke' });
-    folder.addBinding(this.#readouts, 'boeschung', { readonly: true, label: 'Böschung' });
     folder.addBinding(group, 'visible', { label: 'Sichtbar' });
   }
 
@@ -543,8 +388,6 @@ export class RicePaddy implements System {
     this.#meshes = [];
     this.#material?.dispose();
     this.#material = null;
-    this.#bankMaterial?.dispose();
-    this.#bankMaterial = null;
     this.#mask = null;
     this.#context = null;
   }
