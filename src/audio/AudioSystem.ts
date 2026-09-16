@@ -119,7 +119,7 @@ export class AudioSystem implements System {
       this.#chime(880, 0.16);
     });
     context.bus.on('drive:stunt', ({ active }) => {
-      this.stunt(active);
+      if (active) this.stunt(true);
     });
     context.bus.on('drive:mode', ({ active }) => {
       this.#driveActive = active;

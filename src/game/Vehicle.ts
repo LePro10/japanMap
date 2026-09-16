@@ -216,8 +216,8 @@ export interface VehicleTelemetry {
   /** Prepared-Circuit-Mischung, 0…1 — WP6. */
   circuit: number;
   /**
-   * Stunt-Overlay, 0…1. 1 = an (sofort beim Umschalten), beim Verlassen
-   * der Blend. HUD und Kamera, nicht die Driftpunkte.
+   * Stunt-Drift, 0…1. Folgt der Drift, kein Toggle: Geradeaus lässt ihn
+   * schneller fallen als `#drift`. HUD und Kamera.
    */
   stunt: number;
   /** Spin-Absicht, 0…1. Space gehalten im Stunt — HUD pulsiert damit. */

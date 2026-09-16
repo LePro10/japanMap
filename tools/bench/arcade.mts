@@ -361,7 +361,7 @@ function catchAfterSpin(): { before: number; after: number; spin: number } {
   return { before, after: Math.abs(car.telemetry.slip), spin: car.telemetry.spin };
 }
 
-console.log('── Stunt-Modus (kontrollierter Spin)\n');
+console.log('── Stunt-Drift (Doppeltipp, kein Toggle)\n');
 
 const tapA = isStuntDoubleTap(Number.NEGATIVE_INFINITY, 0);
 const tapB = isStuntDoubleTap(0, STUNT.tapWindow);
@@ -436,6 +436,37 @@ console.log(
     `  ${cleanStuntOk ? '✓ kein Drift ohne Space' : '⚠ driftet ungefragt'}`,
 );
 
+/** Geradeaus beendet den Stunt schneller als einen normalen Drift — und trotz `stunt: true` am Input. */
+function fallCompare(holdSteps: number, coastSteps: number): {
+  stunt: number;
+  stuntDrift: number;
+  normalDrift: number;
+} {
+  const stuntCar = freshTouge(80);
+  integrateYaw(
+    stuntCar,
+    { throttle: 0.7, steer: 1, handbrake: true, stunt: true },
+    holdSteps,
+  );
+  integrateYaw(stuntCar, { throttle: 0.5, steer: 0, handbrake: false, stunt: true }, coastSteps);
+  const normalCar = freshTouge(80);
+  integrateYaw(normalCar, { throttle: 0.7, steer: 1, handbrake: true }, holdSteps);
+  integrateYaw(normalCar, { throttle: 0.5, steer: 0, handbrake: false }, coastSteps);
+  return {
+    stunt: stuntCar.telemetry.stunt,
+    stuntDrift: stuntCar.telemetry.drift,
+    normalDrift: normalCar.telemetry.drift,
+  };
+}
+
+const fade = fallCompare(30, 15);
+const fadeOk = fade.stunt < 0.18 && fade.stunt < fade.normalDrift;
+console.log(
+  `   Geradeaus 0,25 s:         stunt ${fade.stunt.toFixed(2)}  drift ${fade.stuntDrift.toFixed(2)}` +
+    `  normal ${fade.normalDrift.toFixed(2)}` +
+    `  ${fadeOk ? '✓ Stunt weg, schneller als Drift' : '⚠ hängt wie ein Toggle'}`,
+);
+
 let failed = 0;
 if (!tapOk) failed++;
 if (!singleOk) failed++;
@@ -444,6 +475,7 @@ if (!flickOk) failed++;
 if (!fullOk) failed++;
 if (!catchOk) failed++;
 if (!cleanStuntOk) failed++;
+if (!fadeOk) failed++;
 if (failed > 0) {
   console.log(`\n   ${failed} Stunt-Proben rot.\n`);
   process.exitCode = 1;

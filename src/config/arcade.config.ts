@@ -486,37 +486,30 @@ export const DRIFT_SCORE_ANGLE = 0.21;
 export const DRIFT_MAX_ANGLE = 1.4;
 
 /**
- * Stunt-Modus — Doppeltipp Space, nicht der Drift.
+ * Stunt-Drift — Doppeltipp Space, kein Toggle.
  *
- * ## Warum der erste Wurf ein Kreisel war
+ * Einzeltipp ist der normale Drift (~43°). Doppeltipp *ersetzt* ihn für
+ * diese eine Drift: loser, 180/360 mit gehaltenem Space. Geradeaus
+ * (Lenkung in der Totzone) beendet ihn, und zwar schneller als ein
+ * normaler Drift ausläuft — kein Modus, den man an- und ausschaltet.
  *
- * Eine Extra-Gierrate auf `#drift` (6,5 rad/s, sobald der Drift offen war)
- * hat in 1,2 s 422° geliefert. Der Drift bleibt nach dem Anriss über
- * Gas·Lenkung offen — wer also nur weiterlenkt, bekam denselben Spin wie
- * jemand, der einen 360 *will*. P22 hat genau das als Fehler gemessen
- * (feste Rate, kein Gleichgewicht). Beim Drift war das falsch; als
- * Stunt-Overlay war es dasselbe, nur mit Absichtsschild.
- *
- * ## Was der Modus stattdessen ist
- *
- * Zwei Schichten, eine Taste:
- *
- *  1. **Loserer Drift.** Der Regler zielt auf einen größeren Winkel
- *     (`extraAngle`), die Reifen fangen langsamer, die Fangleine bleibt.
- *     Das hat ein Gleichgewicht. Wer Space tippt und lenkt, driftet
- *     freier — und fängt sich, wenn er loslässt.
- *  2. **Spin, solange Space gehalten wird.** Eigener Zustand `#spin`,
- *     nicht der Drift. Tippen = ein Ruck. Halten = 180, weiter halten =
- *     360. Loslassen oder Gegenlenken fängt.
- *
- * Einzeltipp Space ohne Modus bleibt der 43°-Drift.
+ * Spin nur bei gehaltenem Space. Weiterlenken ohne Space ist der lose
+ * Drift, kein Kreisel.
  */
 export const STUNT = {
-  /** Zwei Space-Downs in diesem Fenster schalten um, s. ASTRA_PLAN §5: 280 ms. */
+  /** Zwei Space-Downs in diesem Fenster reißen den Stunt-Drift an. */
   tapWindow: 0.28,
-  /** Ausblendzeit des Modus, s. Anschalten kürzer, damit der erste Griff sitzt. */
-  blend: 0.4,
-  enter: 0.12,
+  /** Anstieg, 1/s. Snappy, sobald der Doppeltipp in eine Drift geht. */
+  enterRate: 14,
+  /**
+   * Abfall auf der Geraden, 1/s.
+   * Gemessen 2026-09-16, 0,25 s Geradeaus nach Stunt-Drift: stunt 0,12,
+   * Drift-Rest 0,20, normaler Drift-Rest 0,51. Der Stunt ist weg, bevor
+   * der normale Drift ausgelaufen wäre — und trotz `stunt: true` am Input.
+   */
+  fall: 8.5,
+  /** Extra-Drift-Abfall beim Geradeaus-Ende, Faktor auf `driftFall`. */
+  exitDump: 2.4,
   /**
    * Extra-Schwimmwinkel im Modus, rad, auf den der Drift *regelt*.
    * 0,28 auf das Coupé (0,75) → ~59°. Freier als 43°, unter 90°, also

@@ -10,7 +10,7 @@ import {
 } from 'three';
 
 import { GRAVITY, PROP_COLLIDERS } from '@/config/vehicle.config';
-import { ARCADE, isStuntDoubleTap, latAccel } from '@/config/arcade.config';
+import { ARCADE, DRIFT_GATE, isStuntDoubleTap, latAccel } from '@/config/arcade.config';
 import { WAYPOINT } from '@/config/waypoint.config';
 import { DEFAULT_VEHICLE, vehicleSpec, type VehicleId } from '@/config/vehicles.config';
 import {
@@ -249,8 +249,13 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #scripted: DriveInput | null = null;
 
   readonly #input: DriveInput = { throttle: 0, brake: 0, steer: 0, handbrake: false, stunt: false };
-  /** Stunt-Modus. Nicht `#stunt` — das ist das Weltsystem (Schanzen, Pickups). */
-  #stuntMode = false;
+  /**
+   * Stunt-Drift für *diese* Drift, kein Toggle.
+   * Doppeltipp setzt, Geradeaus löscht. Nicht `#stunt` — das ist das Weltsystem.
+   */
+  #stuntArmed = false;
+  /** Wurde der Arm schon zu einer echten Stunt-Drift? Geradeaus löscht nur dann. */
+  #stuntLived = false;
   /** Zeitpunkt des letzten Space-Down, s. `STUNT.tapWindow`. */
   #stuntTapAt = Number.NEGATIVE_INFINITY;
   readonly #walkInput: WalkInput = { forward: 0, right: 0, jump: false, sprint: false };
@@ -1085,7 +1090,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #leaveDrive(): void {
     if (!this.#active) return;
     this.#active = false;
-    this.#setStuntMode(false);
+    this.#armStunt(false);
     this.#fx?.hide();
     this.#debris?.hide();
     this.#wake?.(0, 0, 0, 0, 0, false);
@@ -1093,22 +1098,22 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   }
 
   get stuntMode(): boolean {
-    return this.#stuntMode;
+    return this.#stuntArmed;
   }
 
   #noteStuntTap(now = performance.now() / 1000): void {
     if (isStuntDoubleTap(this.#stuntTapAt, now)) {
-      this.#setStuntMode(!this.#stuntMode);
-      // Dritter Tipp in demselben Fenster soll nicht sofort wieder umschalten.
+      this.#armStunt(true);
       this.#stuntTapAt = Number.NEGATIVE_INFINITY;
       return;
     }
     this.#stuntTapAt = now;
   }
 
-  #setStuntMode(on: boolean): void {
-    if (this.#stuntMode === on) return;
-    this.#stuntMode = on;
+  #armStunt(on: boolean): void {
+    if (this.#stuntArmed === on) return;
+    this.#stuntArmed = on;
+    if (!on) this.#stuntLived = false;
     this.#context?.bus.emit('drive:stunt', { active: on });
   }
 
@@ -1286,7 +1291,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     input.brake = clamp01(back + Math.max(0, -stick));
     input.steer = clamp(right - left + this.#axes.right, -1, 1);
     input.handbrake = keys.has('space') || this.#touchHandbrake;
-    input.stunt = this.#stuntMode;
+    input.stunt = this.#stuntArmed;
     return input;
   }
 
@@ -1497,6 +1502,12 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.ground.refresh(this.vehicle.position.x, this.vehicle.position.z, dt);
     this.#fillTrees();
     this.vehicle.step(dt, input, this, this.collision);
+    // Doppeltipp wartet auf die Drift. Geradeaus danach löscht — nicht
+    // schon der Arm auf der Geraden, sonst ist der Tipp weg bevor jemand lenkt.
+    if (this.#stuntArmed && this.vehicle.telemetry.stunt > 0.2) this.#stuntLived = true;
+    if (this.#stuntLived && Math.abs(input.steer) < DRIFT_GATE.enterSteer) {
+      this.#armStunt(false);
+    }
     this.#flushBreaks();
     // **Nach dem Schritt, nicht davor** — P9.3. Die Rundenlogik prüft den
     // Vorzeichenwechsel zwischen zwei *aufeinanderfolgenden* Positionen; sie
