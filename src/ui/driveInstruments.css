@@ -6,7 +6,47 @@
   right: max(24px, env(safe-area-inset-right));
   bottom: max(24px, env(safe-area-inset-bottom));
   display: block;
+  overflow: visible;
   background: radial-gradient(ellipse, #101a26e8 25%, #101a2600 72%);
+}
+.hud .hud__speedo.is-stunt {
+  filter: drop-shadow(0 0 16px #ff7a2a66);
+}
+.hud .hud__stunt {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  width: 100%;
+  z-index: 3;
+  text-align: center;
+  font: 700 11px/1 system-ui;
+  letter-spacing: 0.32em;
+  color: #ff7a2a;
+  text-shadow: 0 0 12px #ff7a2acc;
+  pointer-events: none;
+}
+.hud .hud__stunt[hidden] {
+  display: none;
+}
+.hud .hud__stunt.is-live {
+  color: #ffd0a8;
+  letter-spacing: 0.38em;
+  text-shadow: 0 0 16px #ff7a2a;
+}
+/* Krone des Bogens, nicht im Strich. `+ 8px` hängt die Unterkante knapp
+ * in die Tachobox, der Amber-Bogen beginnt ~16 px tiefer — gemessene Lücke
+ * statt Schätzung, sonst liegt der Multiplikator wieder auf dem Strich. */
+.hud .hud__drift {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  right: auto;
+  bottom: auto;
+  z-index: 2;
+  transform: translate(-50%, calc(-100% + 8px));
+  padding: 1px 10px 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #101a26 82%, transparent);
 }
 .hud__rpm {
   position: absolute;
@@ -111,7 +151,15 @@
   }
 }
 .hud .hud__money {
-  display: none;
+  display: flex;
+}
+
+.hud .hud__boost.is-spark {
+  box-shadow: 0 0 14px color-mix(in srgb, var(--nitro) 80%, transparent);
+}
+
+.hud .hud__boost.is-spark .hud__boostFill {
+  filter: brightness(1.35);
 }
 .hud .hud__lap[hidden] {
   display: none;
@@ -184,8 +232,11 @@
     top: 132px;
     left: 12px;
   }
-  .hud .hud__drift {
-    top: 140px;
+  .hud .hud__driftPoints {
+    font-size: 20px;
+  }
+  .hud .hud__driftMult {
+    font-size: 13px;
   }
   .hud .hud__race {
     top: 130px;
@@ -223,6 +274,11 @@
   }
 }
 @media (max-width: 700px) and (orientation: portrait) {
+  .hud .hud__money {
+    /* Tacho sitzt oben rechts; das Wallet rutscht nach links daneben. */
+    top: max(12px, env(safe-area-inset-top));
+    right: calc(max(24px, env(safe-area-inset-right)) + 140px);
+  }
   .hud .hud__speedo {
     transform-origin: top right;
     top: max(12px, env(safe-area-inset-top));
@@ -232,6 +288,25 @@
   }
   .hud .hud__boost {
     width: 108px;
+  }
+  /* Über dem Bogen würde die Krone aus dem oberen Safe-Area laufen.
+   * Links daneben: die Lücke zur Minikarte trägt eine schmale Spalte. */
+  .hud .hud__drift {
+    left: auto;
+    right: calc(100% + 4px);
+    top: 2px;
+    transform: none;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0;
+    line-height: 1.05;
+    padding: 3px 8px 4px;
+  }
+  .hud .hud__driftPoints {
+    font-size: 18px;
+  }
+  .hud .hud__driftMult {
+    font-size: 12px;
   }
   .touch--drive .touch__side {
     top: 38%;

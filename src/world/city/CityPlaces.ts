@@ -4,6 +4,7 @@ import type { CityCollider } from './CityGenerator';
 import type { UrbanLot } from './UrbanLots';
 import { LocalSurfaces, type Point } from '../settlements/LocalSurfaces';
 import { SettlementKit } from '../settlements/SettlementKit';
+import { placeAuthoredCherry } from '../scatter/authoredCanopy';
 import { getCityPlaceReserves, RAIN_GARDEN } from './cityPlacesLayout';
 export { getCityPlaceReserves } from './cityPlacesLayout';
 
@@ -42,6 +43,8 @@ export function buildCityPlaces(input: CityPlacesInput): {
     solid(k, x, y + 0.48, z, w, 0.18, 0.78, WOOD);
     solid(k, x, y + 0.87, z - 0.34, w, 0.48, 0.14, WOOD);
     for (const s of [-1, 1]) solid(k, x + s * (w / 2 - 0.35), y + 0.2, z, 0.18, 0.4, 0.62, DARK);
+    for (const dz of [-0.22, 0, 0.22]) k.box(x, y + 0.578, z + dz, w - 0.04, 0.012, 0.018, 0x493c2d);
+    k.box(x, y + 0.85, z - 0.265, w - 0.04, 0.018, 0.012, 0x493c2d);
   };
   const lantern = (k: SettlementKit, x: number, y: number, z: number) => {
     solid(k, x, y + 0.19, z, 1.05, 0.38, 1.05, STONE);
@@ -53,6 +56,10 @@ export function buildCityPlaces(input: CityPlacesInput): {
     k.ball(x, y + 2.62, z, 0.13, STONE);
   };
   const tree = (k: SettlementKit, x: number, y: number, z: number, h: number, kind: 'pine' | 'maple' | 'cherry', seed: number) => {
+    // Kirschen: Standorte bleiben Garden-Dressing, Zeichenstufen und Bruch
+    // hängen an der Vegetations-LOD. Ohne Streuung (Prüfstand) backt der Kit
+    // weiter — `placeAuthoredCherry` liefert dann false.
+    if (kind === 'cherry' && placeAuthoredCherry({ x, y, z, height: h, seed })) return;
     const trunk = kind === 'pine' ? 0.32 : 0.25;
     k.cylinder(x, y + h * 0.35, z, trunk, h * 0.7, WOOD, 0, 0, trunk * 0.58);
     colliders.push({ minX: x - trunk, maxX: x + trunk, minZ: z - trunk, maxZ: z + trunk, bottom: y, top: y + h * 0.65 });
@@ -62,6 +69,14 @@ export function buildCityPlaces(input: CityPlacesInput): {
       const tx = x + Math.cos(a) * r, tz = z + Math.sin(a) * r;
       const ty = y + h * (0.72 + 0.17 * Math.sin(i * 1.4));
       const canopy = new SphereGeometry(h * (kind === 'pine' ? 0.27 : 0.3), 9, 6);
+      // Irregular silhouettes read as layered foliage even without leaf alpha cards.
+      const vertices = canopy.getAttribute('position');
+      for (let v = 0; v < vertices.count; v++) {
+        const vx = vertices.getX(v), vy = vertices.getY(v), vz = vertices.getZ(v);
+        const shape = 1 + Math.sin(vx * 3.7 + seed) * Math.cos(vz * 4.1 - vy * 2.8) * 0.16;
+        vertices.setXYZ(v, vx * shape, vy * shape, vz * shape);
+      }
+      canopy.computeVertexNormals();
       canopy.scale(1, kind === 'pine' ? 0.33 : 0.57, 1);
       k.add(canopy, colors[i % 3]!, tx, ty, tz);
       if (i > 0) {
@@ -80,6 +95,13 @@ export function buildCityPlaces(input: CityPlacesInput): {
     const { minX, maxX, minZ, maxZ } = RAIN_GARDEN;
     k.box(705, y - 0.12, 15, 80, 0.24, 70, GREEN);
     flat(k, 705, 15, 80, 70, y + 0.004, GREEN);
+    // Broad low-cost turf variation under the paths avoids a single plastic lawn.
+    for (let i = 0; i < 48; i++) {
+      const gx = 670 + ((i * 17.13) % 69), gz = -15 + ((i * 13.71) % 59);
+      const patch = new CylinderGeometry(1, 1, 0.004, 7);
+      patch.scale(1.3 + i % 4, 1, 0.9 + i % 3);
+      k.add(patch, [0x657a59, 0x5c7053, 0x6b805e][i % 3]!, gx, y + 0.009, gz, 0, i * 1.4);
+    }
     // Low stone boundaries, with a wide south entrance and east/west openings.
     solid(k, 705, y + 0.38, minZ + 0.4, 80, 0.76, 0.8, STONE);
     for (const x of [minX + 0.4, maxX - 0.4]) for (const z of [-7, 36]) solid(k, x, y + 0.38, z, 0.8, 0.76, 24, STONE);
@@ -91,6 +113,7 @@ export function buildCityPlaces(input: CityPlacesInput): {
         const ta = curve.getTangent(i / 64), tb = curve.getTangent((i + 1) / 64);
         quad(k, [[a.x - ta.z * width / 2, a.y, a.z + ta.x * width / 2], [a.x + ta.z * width / 2, a.y, a.z - ta.x * width / 2],
           [b.x + tb.z * width / 2, b.y, b.z - tb.x * width / 2], [b.x - tb.z * width / 2, b.y, b.z + tb.x * width / 2]], PATH);
+        if (i > 0 && i % 2 === 0) k.box(a.x, a.y + 0.009, a.z, width - 0.08, 0.01, 0.035, 0x8c8b76, 0, -Math.atan2(ta.z, ta.x) + Math.PI / 2);
       }
     };
     path([[700, 50], [700, 36], [686, 27], [681, 12], [689, -4], [706, -9], [725, -3], [733, 13], [728, 33], [711, 39], [700, 36]], 3.7);
@@ -130,7 +153,18 @@ export function buildCityPlaces(input: CityPlacesInput): {
       [672, 8, 9, 'maple'], [673, 38, 9, 'cherry'], [688, 44, 7, 'maple'], [714, 44, 8, 'cherry'],
       [737, 39, 9, 'pine'], [738, 8, 8, 'maple'], [688, 17, 7, 'pine'],
     ];
-    trees.forEach(([x, z, h, kind], i) => tree(k, x, y, z, h, kind, i));
+    trees.forEach(([x, z, h, kind], i) => {
+      tree(k, x, y, z, h, kind, i);
+      // Mulch, little fallen stones and upright tufts stay inside tree beds.
+      k.add(new CylinderGeometry(1.1, 1.1, 0.018, 11), 0x555d43, x, y + 0.025, z);
+      for (let tuft = 0; tuft < 7; tuft++) {
+        const a = tuft * 2.4 + i, r = 0.65 + (tuft % 3) * 0.16;
+        const tx = x + Math.cos(a) * r, tz = z + Math.sin(a) * r;
+        k.add(new CylinderGeometry(0.015, 0.13, 0.25 + (tuft % 3) * 0.08, 4), tuft % 2 ? 0x84905f : 0x4b6648, tx, y + 0.16, tz, 0.14, a);
+        const pebble = new SphereGeometry(0.10, 4, 3); pebble.scale(1.5, 0.45, 1);
+        k.add(pebble, 0xaca994, x + Math.sin(a) * 1.2, y + 0.04, z + Math.cos(a) * 1.2);
+      }
+    });
     finish(k, 'Rain Garden stone timber and canopy');
     destinations.push({ id: RAIN_GARDEN.id, name: RAIN_GARDEN.name, x: 700, y: y + 0.025, z: 40, description: 'A quiet pond, red bridge and lantern paths beneath maple and cherry trees.' });
   }
@@ -144,6 +178,13 @@ export function buildCityPlaces(input: CityPlacesInput): {
     k.box(x, (bottom + y - 0.18) / 2, z, w, y - 0.18 - bottom, d, STONE);
     // Reuse baked sidewalk height. The 15 cm lip is bevelled inside the reserve.
     flat(k, x, z, w - 2, d - 2, y, PATH);
+    // Flush inset pavers: visual detail without introducing small collider steps.
+    for (let px = lot.minX + 2; px < lot.maxX - 1; px += 2) {
+      k.box(px, y + 0.008, z, 0.026, 0.01, d - 2.1, 0x939484);
+      for (let pz = lot.minZ + 2; pz < lot.maxZ - 1; pz += 2) {
+        k.box(px + 0.5, y + 0.009, pz, 1.95, 0.01, 0.026, 0x939484);
+      }
+    }
     const rimY = lot.roadY;
     quad(k, [[lot.minX, rimY, lot.minZ], [lot.maxX, rimY, lot.minZ], [lot.maxX - 1, y, lot.minZ + 1], [lot.minX + 1, y, lot.minZ + 1]], STONE);
     quad(k, [[lot.minX + 1, y, lot.maxZ - 1], [lot.maxX - 1, y, lot.maxZ - 1], [lot.maxX, rimY, lot.maxZ], [lot.minX, rimY, lot.maxZ]], STONE);
@@ -167,6 +208,10 @@ export function buildCityPlaces(input: CityPlacesInput): {
     } else if (reserve.id === 'market-hall') {
       // A generous central aisle remains open all the way through the hall.
       for (const dx of [-10, 10]) for (const dz of [-9, 0, 9]) solid(k, x + dx, y + 3, z + dz, 0.32, 6, 0.32, WOOD);
+      for (const dz of [-9, 0, 9]) {
+        k.box(x, y + 5.65, z + dz, 20.4, 0.32, 0.3, WOOD);
+        for (const side of [-1, 1]) k.box(x + side * 8.9, y + 5.0, z + dz, 0.2, 2.2, 0.22, WOOD, 0, 0, -side * 0.72);
+      }
       for (const dx of [-5.5, 5.5]) {
         k.box(x + dx, y + 6.8, z, 11.5, 0.24, 23, 0x43575a, 0, 0, -Math.sign(dx) * 0.17);
         for (let dz = -10.5; dz <= 10.5; dz += 1.5) k.box(x + dx, y + 6.6, z + dz, 11.2, 0.2, 0.16, WOOD, 0, 0, -Math.sign(dx) * 0.17);
@@ -176,7 +221,21 @@ export function buildCityPlaces(input: CityPlacesInput): {
         solid(k, x + dx, y + 0.65, z + dz, 3.4, 1.3, 3.5, WOOD);
         k.box(x + dx, y + 1.35, z + dz, 3.6, 0.14, 3.7, PATH);
         k.box(x + dx, y + 3.2, z + dz, 4.0, 0.17, 4.4, dx < 0 ? 0x995548 : 0x507b76);
-        for (let p = 0; p < 6; p++) k.ball(x + dx - 0.95 + (p % 3) * 0.7, y + 1.58, z + dz - 0.5 + Math.floor(p / 3), 0.25, [0xbb754a, 0x94a868, 0xcbbd6d][p % 3]!);
+        for (const sx of [-1.45, 1.45]) for (const sz of [-1.45, 1.45]) k.box(x + dx + sx, y + 2.25, z + dz + sz, 0.12, 1.9, 0.12, WOOD);
+        for (let slat = -1.5; slat <= 1.5; slat += 0.3) k.box(x + dx + slat, y + 0.67, z + dz + 1.758, 0.023, 1.14, 0.015, 0x493c2d);
+        for (let tray = 0; tray < 3; tray++) {
+          const tx = x + dx - 1.08 + tray * 1.08;
+          k.box(tx, y + 1.46, z + dz, 0.94, 0.1, 2.6, 0x4a3829);
+          for (const side of [-1, 1]) k.box(tx + side * 0.47, y + 1.59, z + dz, 0.07, 0.2, 2.6, 0xa48155);
+          for (const end of [-1.3, 1.3]) k.box(tx, y + 1.59, z + dz + end, 1, 0.2, 0.07, 0xa48155);
+          for (let p = 0; p < 6; p++) k.ball(tx + (p % 2 ? 0.2 : -0.2), y + 1.66, z + dz - 0.82 + Math.floor(p / 2) * 0.8, 0.19, [0xc8893d, 0x879c50, 0xb04f3c][tray]!);
+        }
+        // Small hanging fabric panels with simple original produce emblems.
+        for (let n = 0; n < 3; n++) {
+          const nx = x + dx - 1.1 + n * 1.1;
+          k.box(nx, y + 2.78, z + dz + 2.11, 1.04, 0.68, 0.045, dx < 0 ? 0x995548 : 0x507b76);
+          k.add(new CylinderGeometry(0.17, 0.17, 0.015, 8), CREAM, nx, y + 2.78, z + dz + 2.14, Math.PI / 2);
+        }
         glow.cylinder(x + dx * 0.5, y + 4.5, z + dz, 0.3, 0.7, GOLD);
       }
       destinations.push({ id: reserve.id, name: reserve.name, x, y, z: z + 10.5, description: 'Timber roof trusses, warm pendants and six colorful produce stalls around an open aisle.' });
@@ -190,6 +249,14 @@ export function buildCityPlaces(input: CityPlacesInput): {
       }
       const ring = new TorusGeometry(5.0, 0.13, 6, 40); k.add(ring, CREAM, x, y + 4.7, z - 1, Math.PI / 2);
       glow.add(new TorusGeometry(3.2, 0.08, 6, 36), GOLD, x, y + 0.08, z - 1, Math.PI / 2);
+      for (const radius of [6, 8.2]) k.add(new TorusGeometry(radius, 0.025, 4, 48), 0x777f76, x, y + 0.017, z - 1, Math.PI / 2);
+      for (const dx of [-10, 10]) {
+        k.box(x + dx, y + 0.01, z, 1.7, 0.014, 8, 0x6f766b);
+        for (let stone = 0; stone < 20; stone++) {
+          const rock = new SphereGeometry(0.11 + stone % 3 * 0.015, 4, 3); rock.scale(1.4, 0.45, 1);
+          k.add(rock, stone % 2 ? 0xa6a998 : 0x8b9484, x + dx + Math.sin(stone * 2.4) * 0.64, y + 0.035, z - 3.6 + stone * 0.37);
+        }
+      }
       for (const dx of [-9, 9]) { bench(k, x + dx, y, z + 7, 4); tree(k, x + dx, y, z - 8, 7, 'cherry', dx); lantern(k, x + dx, y, z + 10); }
       destinations.push({ id: reserve.id, name: reserve.name, x, y, z: z + 8, description: 'A bronze three-blade sculpture and illuminated ring, framed by cherry trees and seating.' });
     }

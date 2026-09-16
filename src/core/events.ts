@@ -201,6 +201,18 @@ export type AppEvents = {
   'drive:mode': { active: boolean };
 
   /**
+   * Stunt-Drift an oder aus — Doppeltipp Space reißt an, Geradeaus löscht.
+   * Kein Toggle. Der Ton spielt nur die An-Flanke; das Ende ist der Drift.
+   */
+  'drive:stunt': { active: boolean };
+
+  /**
+   * Sitzkamera an oder aus. Eigenes Ereignis: der Motor dämpft Fahrtwind
+   * hinter der Scheibe, ohne `drive:mode` umzubauen.
+   */
+  'drive:view': { cabin: boolean };
+
+  /**
    * Zu Fuß an oder aus.
    *
    * Eigenes Ereignis und nicht `drive:mode` mit einem dritten Wert: das HUD,
@@ -254,6 +266,10 @@ export type AppEvents = {
     z: number;
     vx: number;
     vz: number;
+    nx?: number;
+    nz?: number;
+    height?: number;
+    radius?: number;
   };
 
   /**
@@ -313,11 +329,15 @@ export type AppEvents = {
   /**
    * Ein Sammelstück ist eingesammelt — P23.
    *
-   * Trägt den Kontostand mit, damit die Anzeige ihn nicht selbst führen muss:
-   * zwei Zähler für dieselbe Größe sind zwei Gelegenheiten, sie auseinander
-   * laufen zu lassen.
+   * `yen` ist der Betrag dieses Treffers, nicht der Kontostand. `at` sind die
+   * Weltpositionen, aus denen die Facetten ins Wallet fliegen.
    */
-  'pickup:collected': { kind: 'coin' | 'boost'; total: number; yen: number };
+  'pickup:collected': {
+    kind: 'coin' | 'boost';
+    total: number;
+    yen: number;
+    at: readonly { x: number; y: number; z: number }[];
+  };
 };
 
 

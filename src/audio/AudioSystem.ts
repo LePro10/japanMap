@@ -77,6 +77,9 @@ export class AudioSystem implements System {
 
   /** Geglättete Drehzahl — siehe `AUDIO.engine.rpmSmoothing`. */
   #rpm = AUDIO.engine.idleRpm;
+  /** Kette aufeinanderfolgender Sparks — ASTRA: nicht wie ein Wecker klingen. */
+  #sparkChain = 0;
+  #sparkChainUntil = 0;
   /** Kontextzeit des letzten Aufpralls, gegen das Dauerknattern an der Kante. */
   #lastImpactAt = -1;
   /** Durchdringung des vorigen Schritts — der Aufprall ist die *Flanke*. */
@@ -85,6 +88,7 @@ export class AudioSystem implements System {
   #userMuted = false;
   #externallyMuted = false;
   #driveActive = false;
+  #cabin = false;
   #telemetry: VehicleTelemetry | null = null;
 
   constructor() {
@@ -106,16 +110,17 @@ export class AudioSystem implements System {
     // Stück, ein Kontrollpunkt und ein Zieleinlauf klangen wie das Nichtstun
     // daneben. Das ist keine Kleinigkeit — die Rückmeldung *„das hat gezählt"*
     // ist der Grund, warum jemand ein zweites Mal danach fährt.
-    context.bus.on('pickup:collected', ({ kind }) => {
-      // Nitro höher als Geld: zwei Belohnungen, die man im Vorbeifahren nicht
-      // ansieht, müssen sich **hören** lassen wie zwei verschiedene Dinge.
-      this.#chime(kind === 'boost' ? 1046.5 : 784, 0.09);
+    context.bus.on('pickup:collected', () => {
+      this.#sparkChime();
     });
     context.bus.on('race:checkpoint', () => {
       this.#chime(659.25, 0.11);
     });
     context.bus.on('race:lap', () => {
       this.#chime(880, 0.16);
+    });
+    context.bus.on('drive:stunt', ({ active }) => {
+      if (active) this.stunt(true);
     });
     context.bus.on('drive:mode', ({ active }) => {
       this.#driveActive = active;
@@ -124,6 +129,9 @@ export class AudioSystem implements System {
       // die Zielverstärkung; hier wird nur die Drehzahl zurückgesetzt, damit das
       // nächste Einsteigen im Leerlauf beginnt und nicht bei 7000.
       if (!active) this.#rpm = AUDIO.engine.idleRpm;
+    });
+    context.bus.on('drive:view', ({ cabin }) => {
+      this.#cabin = cabin;
     });
     document.addEventListener('visibilitychange', this.#onVisibility);
     context.bus.on('engine:sleep', ({ sleeping }) => {
@@ -290,13 +298,36 @@ export class AudioSystem implements System {
    * weil ein Meldeton im Menü ein Fehler wäre, den niemand als Fehler meldet —
    * er klingt nur seltsam.
    */
-  #chime(hz: number, seconds: number): void {
+  /**
+   * Sparks-Melodie: erster Treffer zwei Noten, die nächsten in 0,3 s eine
+   * Stufe höher. Eine Linie klingt sonst wie ein Wecker — ASTRA_PLAN §9.
+   */
+  #sparkChime(): void {
+    const ctx = this.#ctx;
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    if (now < this.#sparkChainUntil) this.#sparkChain += 1;
+    else this.#sparkChain = 0;
+    this.#sparkChainUntil = now + 0.32;
+    // G5-Pentatonik, nach sechs Stufen von vorn — eine volle Linie bleibt
+    // musikalisch, statt in die Hundepfeife zu laufen.
+    const ladder = [784, 880, 988, 1175, 1319, 1568];
+    const hz = ladder[Math.min(this.#sparkChain, ladder.length - 1)]!;
+    if (this.#sparkChain === 0) {
+      this.#chime(hz, 0.08);
+      this.#chime(hz * 1.5, 0.09, 0.055);
+    } else {
+      this.#chime(hz, 0.055);
+    }
+  }
+
+  #chime(hz: number, seconds: number, delay = 0): void {
     const ctx = this.#ctx;
     const master = this.#master;
     if (!ctx || !master || this.muted || !this.#driveActive) return;
     if (ctx.state !== 'running') return;
 
-    const now = ctx.currentTime;
+    const now = ctx.currentTime + delay;
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0.0001, now);
     // 8 ms Anstieg: schnell genug, dass es als Anschlag wirkt, langsam genug,
@@ -452,6 +483,14 @@ export class AudioSystem implements System {
     this.#blip(AUDIO.ui.hz, 0, AUDIO.ui.gain, AUDIO.ui.seconds);
   }
 
+  /** Zwei Töne: aufsteigend an, fallend aus. Der Modus muss hörbar sein. */
+  stunt(on: boolean): void {
+    const { gain, onHz, offHz, noteSeconds } = AUDIO.stunt;
+    const pair = on ? onHz : offHz;
+    this.#blip(pair[0]!, 0, gain, noteSeconds);
+    this.#blip(pair[1]!, noteSeconds * 0.85, gain, noteSeconds);
+  }
+
   /**
    * Kurzer Motorblip in der Tune-Bucht — zwei Töne, kein Loop.
    * Preview-Sounds dürfen stumm bleiben, wenn der Nutzer Sound aus hat:
@@ -584,9 +623,11 @@ export class AudioSystem implements System {
     if (fahrend && t.airborne) noiseTarget *= 0.35;
 
     rampe(this.#noiseGain?.gain, noiseTarget, now, 0.1);
+    // Hinter der Scheibe ist Fahrtwind dumpfer — der Motor bleibt, die Welt nicht.
+    const cabinCut = this.#cabin ? 0.55 : 1;
     rampe(
       this.#noiseFilter?.frequency,
-      AUDIO.noise.minHz + norm * (AUDIO.noise.maxHz - AUDIO.noise.minHz),
+      (AUDIO.noise.minHz + norm * (AUDIO.noise.maxHz - AUDIO.noise.minHz)) * cabinCut,
       now,
       0.12,
     );

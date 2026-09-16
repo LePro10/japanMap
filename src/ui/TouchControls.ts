@@ -69,12 +69,15 @@ export interface TouchCameraTarget {
 export interface TouchDriveTarget {
   readonly active: boolean;
   readonly walking: boolean;
+  readonly stunt?: boolean;
   toggle(): void;
   toggleVehicle(): void;
   respawn(): void;
   setHandbrake(down: boolean): void;
   setJump(down: boolean): void;
   setBoost?(down: boolean): void;
+  setSlide?(down: boolean): void;
+  toggleView?(): void;
 }
 
 export interface TouchControlsOptions {
@@ -135,7 +138,9 @@ export class TouchControls {
         <button type="button" class="touch__btn" data-touch="boost" aria-label="Boost" hidden>Boost</button>
         <button type="button" class="touch__btn" data-touch="brake" aria-label="Brake" hidden>Brake</button>
         <button type="button" class="touch__btn" data-touch="handbrake" aria-label="Drift">Drift</button>
+        <button type="button" class="touch__btn" data-touch="view" aria-label="Camera" hidden>Cam</button>
         <button type="button" class="touch__btn" data-touch="jump" aria-label="Jump" hidden>↑</button>
+        <button type="button" class="touch__btn" data-touch="slide" aria-label="Slide" hidden>Slide</button>
       </div>
       <div class="touch__side">
         <button type="button" class="touch__btn touch__btn--wide" data-touch="menu" aria-label="Menu">☰</button>
@@ -281,8 +286,14 @@ export class TouchControls {
       halten(this.#must('[data-touch="jump"]'), 0, (down) => {
         this.#drive?.setJump(down);
       });
+      halten(this.#must('[data-touch="slide"]'), 0, (down) => {
+        this.#drive?.setSlide?.(down);
+      });
       halten(this.#must('[data-touch="boost"]'), 0, down => this.#drive?.setBoost?.(down));
       halten(this.#must('[data-touch="brake"]'), 0, down => { this.#braking = down; });
+      this.#must('[data-touch="view"]').addEventListener('click', () => {
+        this.#drive?.toggleView?.();
+      });
     } else {
       auto.hidden = true;
     }
@@ -299,6 +310,11 @@ export class TouchControls {
    * „Anzeige, die lügt", gegen die dieses Projekt schon bei `F1` und der
    * Stufenwahl angetreten ist.
    */
+  setStunt(on: boolean): void {
+    this.#must('[data-touch="handbrake"]').classList.toggle('is-stunt', on);
+    this.#must('[data-touch="handbrake"]').textContent = on ? 'STUNT' : 'Drift';
+  }
+
   setDriveMode(active: boolean, walking = false): void {
     const onFoot = walking && !active;
     this.#root.classList.toggle('touch--drive', active);
@@ -311,13 +327,19 @@ export class TouchControls {
     this.#must('[data-touch="down"]').hidden = active || onFoot;
     this.#must('[data-touch="collision"]').hidden = active || onFoot;
     this.#must('[data-touch="handbrake"]').hidden = !active;
+    this.#must('[data-touch="view"]').hidden = !active || !this.#drive?.toggleView;
     this.#must('[data-touch="boost"]').hidden = !active || !this.#drive?.setBoost;
     this.#must('[data-touch="brake"]').hidden = !active;
     this.#must('[data-touch="jump"]').hidden = !onFoot;
+    this.#must('[data-touch="slide"]').hidden = !onFoot || !this.#drive?.setSlide;
     this.#must('[data-touch="drive"]').classList.toggle('is-active', active);
-    if (!active) this.#drive?.setHandbrake(false);
+    if (!active) {
+      this.#drive?.setHandbrake(false);
+      this.setStunt(false);
+    }
     if (!active) { this.#drive?.setBoost?.(false); this.#braking = false; }
     if (!onFoot) this.#drive?.setJump(false);
+    if (!onFoot) this.#drive?.setSlide?.(false);
     this.#updateSpeedLabel();
   }
 
@@ -417,6 +439,7 @@ export class TouchControls {
     this.#braking = false;
     this.#drive?.setBoost?.(false);
     this.#drive?.setJump(false);
+    this.#drive?.setSlide?.(false);
     this.#root.querySelector('[data-touch="boost"]')?.classList.remove('is-active');
     this.#root.querySelector('[data-touch="brake"]')?.classList.remove('is-active');
     this.#stick = null;

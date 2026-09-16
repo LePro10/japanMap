@@ -1,4 +1,5 @@
 import { instruments } from './instruments';
+import './theme.css';
 import './driveInstruments.css';
 import { formatTime } from '@/game/BestTimes';
 import type { DriftState } from '@/game/DriftScore';
@@ -6,7 +7,12 @@ import type { LapResult } from '@/game/LapTimer';
 import type { RaceStanding } from '@/game/RaceDirector';
 import type { VehicleTelemetry } from '@/game/Vehicle';
 import type { RoadFile } from '@/config/roads.config';
+import { WAYPOINT } from '@/config/waypoint.config';
+import { damp, dampAngle, formatEta, formatWaypointDistance } from '@/game/waypointScreen';
 import { MiniMap, type MiniMapMark } from './MiniMap';
+import { SPARK_ICON, sparkMark } from './sparkIcon';
+import { EXPLORE_TOAST_MS } from '@/config/explore.config';
+import { exploreToastText, type ExploreGrant } from '@/game/regionExplore';
 
 /**
  * Die Anzeige im Fahrmodus — P16, in P23 auf das Spiel erweitert.
@@ -66,6 +72,8 @@ export class DriveHud {
   readonly #driftPoints: HTMLElement;
   readonly #driftMult: HTMLElement;
   readonly #driftBanked: HTMLElement;
+  readonly #stunt: HTMLElement;
+  readonly #speedo: HTMLElement;
   readonly #race: HTMLElement;
   readonly #racePlace: HTMLElement;
   readonly #raceLap: HTMLElement;
@@ -73,6 +81,7 @@ export class DriveHud {
   readonly #countdown: HTMLElement;
   readonly #result: HTMLElement;
   readonly #money: HTMLElement;
+  readonly #moneyValue: HTMLElement;
   readonly #arrow: HTMLElement;
   readonly #prompt: HTMLElement;
   readonly #promptKey: HTMLElement;
@@ -83,6 +92,20 @@ export class DriveHud {
   readonly #wp: HTMLElement;
   readonly #wpName: HTMLElement;
   readonly #wpDist: HTMLElement;
+  readonly #wpMeta: HTMLElement;
+  readonly #pin: HTMLElement;
+  readonly #pinName: HTMLElement;
+  readonly #pinDist: HTMLElement;
+  readonly #pinArrow: HTMLElement;
+  readonly #explore: HTMLElement;
+  readonly #exploreTitle: HTMLElement;
+  readonly #exploreBody: HTMLElement;
+  #lastWpLabel: string | null = null;
+  #lastWpRemaining = Infinity;
+  #pinX = 0;
+  #pinY = 0;
+  #pinAng = 0;
+  #pinReady = false;
   #arrowDeg = 999;
   /** Zuletzt gesetzter Hinweis — sonst schreibt jeder Frame denselben Text. */
   #promptKind: 'enter' | 'exit' | 'slow' | null = null;
@@ -92,11 +115,19 @@ export class DriveHud {
   readonly #written = new Map<HTMLElement, string>();
 
   #flashTimer: number | null = null;
+  #exploreTimer: number | null = null;
+  #boostPulseTimer: number | null = null;
+  #moneyRaf = 0;
+  #shownYen = 0;
+  #targetYen = 0;
+  #countFrom = 0;
+  #countStart = 0;
   #visible = false;
   #driveActive = false;
   #walking = false;
   #menuOpen = false;
   #driftShown = false;
+  #stuntShown = false;
 
   constructor(container: HTMLElement) {
     this.#root = document.createElement('div');
@@ -113,23 +144,29 @@ export class DriveHud {
         <p class="hud__raceRow"><span class="hud__label">Lap</span><span data-hud="raceLap">1 / 1</span></p>
         <p class="hud__raceRow"><span class="hud__label">Next</span><span data-hud="raceNext">—</span></p>
       </div>
-      <div class="hud__money" data-hud="money">¥0</div>
-      <div class="hud__drift" data-hud="drift" hidden>
-        <span class="hud__driftPoints" data-hud="driftPoints">0</span>
-        <span class="hud__driftMult" data-hud="driftMult">x1.0</span>
-        <span class="hud__driftBanked" data-hud="driftBanked">0</span>
-      </div>
-      <div class="hud__speedo"><span class="hud__gearLabel" data-hud="gear">N</span><svg class="hud__rpm" viewBox="0 0 220 130" aria-label="Engine RPM"><path d="M20 110 A90 90 0 0 1 200 110" pathLength="100" class="hud__rpmTrack"/><path d="M20 110 A90 90 0 0 1 200 110" pathLength="100" class="hud__rpmFill" data-hud="rpmFill"/><path d="M181 55 A90 90 0 0 1 200 110" class="hud__redline"/></svg><span class="hud__rpmText" data-hud="rpm">850 RPM</span>
+      <div class="hud__money" data-hud="money">${SPARK_ICON}<strong data-hud="moneyValue">0</strong></div>
+      <div class="hud__speedo"><span class="hud__stunt" data-hud="stunt" hidden>STUNT</span><span class="hud__gearLabel" data-hud="gear">N</span><svg class="hud__rpm" viewBox="0 0 220 130" aria-label="Engine RPM"><path d="M20 110 A90 90 0 0 1 200 110" pathLength="100" class="hud__rpmTrack"/><path d="M20 110 A90 90 0 0 1 200 110" pathLength="100" class="hud__rpmFill" data-hud="rpmFill"/><path d="M181 55 A90 90 0 0 1 200 110" class="hud__redline"/></svg><span class="hud__rpmText" data-hud="rpm">850 RPM</span>
         <div class="hud__boost" data-hud="boostBox" aria-label="Nitro"><span class="hud__nitroLabel">NITRO</span><i class="hud__boostFill" data-hud="boostFill"></i></div>
         <div class="hud__speedRow">
           <span class="hud__speed" data-hud="speed">0</span>
           <span class="hud__unit">km/h</span>
         </div>
         <p class="hud__prep" data-hud="prep" hidden>Prepared surface · extra cornering grip</p>
+        <div class="hud__drift" data-hud="drift" hidden>
+          <span class="hud__driftPoints" data-hud="driftPoints">0</span>
+          <span class="hud__driftMult" data-hud="driftMult">x1.0</span>
+          <span class="hud__driftBanked" data-hud="driftBanked"></span>
+        </div>
       </div>
-      <div class="hud__wp" data-hud="wp" hidden>
+      <div class="hud__wp" data-hud="wp">
         <span class="hud__wpName" data-hud="wpName">Waypoint</span>
         <strong class="hud__wpDist" data-hud="wpDist">—</strong>
+        <span class="hud__wpMeta" data-hud="wpMeta"></span>
+      </div>
+      <div class="hud__pin" data-hud="pin">
+        <i class="hud__pinArrow" data-hud="pinArrow"></i>
+        <span class="hud__pinName" data-hud="pinName">Waypoint</span>
+        <strong class="hud__pinDist" data-hud="pinDist">—</strong>
       </div>
       <div class="hud__nav">
         <div class="hud__arrow" data-hud="arrow" hidden><i></i></div>
@@ -140,7 +177,11 @@ export class DriveHud {
       </p>
       <div class="hud__countdown" data-hud="countdown" hidden>3</div>
       <div class="hud__result" data-hud="result" hidden></div>
-      <div class="hud__flash" data-hud="flash" hidden></div>`;
+      <div class="hud__flash" data-hud="flash" hidden></div>
+      <div class="hud__explore" data-hud="explore" hidden>
+        <strong class="hud__exploreTitle" data-hud="exploreTitle"></strong>
+        <span class="hud__exploreBody" data-hud="exploreBody"></span>
+      </div>`;
     container.appendChild(this.#root);
 
     this.#rpmFill = this.#root.querySelector<SVGElement>('[data-hud="rpmFill"]')!;
@@ -154,6 +195,9 @@ export class DriveHud {
     this.#best = this.#must('[data-hud="best"]');
     this.#gate = this.#must('[data-hud="gate"]');
     this.#flash = this.#must('[data-hud="flash"]');
+    this.#explore = this.#must('[data-hud="explore"]');
+    this.#exploreTitle = this.#must('[data-hud="exploreTitle"]');
+    this.#exploreBody = this.#must('[data-hud="exploreBody"]');
     this.#boostFill = this.#must('[data-hud="boostFill"]');
     this.#boostBox = this.#must('[data-hud="boostBox"]');
     this.#drift = this.#must('[data-hud="drift"]');
@@ -167,15 +211,23 @@ export class DriveHud {
     this.#countdown = this.#must('[data-hud="countdown"]');
     this.#result = this.#must('[data-hud="result"]');
     this.#money = this.#must('[data-hud="money"]');
+    this.#moneyValue = this.#must('[data-hud="moneyValue"]');
     this.#arrow = this.#must('[data-hud="arrow"]');
     this.#prompt = this.#must('[data-hud="prompt"]');
     this.#promptKey = this.#must('[data-hud="promptKey"]');
     this.#promptAction = this.#must('[data-hud="promptAction"]');
     this.#prep = this.#must('[data-hud="prep"]');
+    this.#stunt = this.#must('[data-hud="stunt"]');
+    this.#speedo = this.#must('.hud__speedo');
     this.#nav = this.#must('.hud__nav');
     this.#wp = this.#must('[data-hud="wp"]');
     this.#wpName = this.#must('[data-hud="wpName"]');
     this.#wpDist = this.#must('[data-hud="wpDist"]');
+    this.#wpMeta = this.#must('[data-hud="wpMeta"]');
+    this.#pin = this.#must('[data-hud="pin"]');
+    this.#pinName = this.#must('[data-hud="pinName"]');
+    this.#pinDist = this.#must('[data-hud="pinDist"]');
+    this.#pinArrow = this.#must('[data-hud="pinArrow"]');
     this.#map = new MiniMap(this.#nav);
     this.#nav.setAttribute('role', 'button');
     this.#nav.setAttribute('aria-label', 'Open map (M)');
@@ -238,7 +290,7 @@ export class DriveHud {
     // `dt` reicht bis in die Karte durch: sie zeichnet nicht je Frame neu,
     // sondern mit 15 Hz — Begründung in `MiniMap.update()`.
     this.#map.update(x, z, heading, rivals, target, dt, waypoint, speed, onFoot);
-    this.#syncWaypointChip(x, z, waypoint);
+    this.#syncWaypointChip(x, z, waypoint, dt);
 
     if (!target) {
       if (!this.#arrow.hidden) this.#arrow.hidden = true;
@@ -365,6 +417,15 @@ export class DriveHud {
     this.#boostBox.classList.toggle('hud__boost--live', t.boosting);
     this.#boostBox.classList.toggle('hud__boost--ready', !t.boosting && t.boost > 0.98);
     this.#prep.hidden = t.circuit < 0.35;
+
+    // Anschalten ist sofort (telemetry.stunt = 1), Ausblenden folgt dem Blend.
+    const stuntOn = this.#driveActive && t.stunt > 0.2;
+    if (stuntOn !== this.#stuntShown) {
+      this.#stuntShown = stuntOn;
+      this.#stunt.hidden = !stuntOn;
+      this.#speedo.classList.toggle('is-stunt', stuntOn);
+    }
+    this.#stunt.classList.toggle('is-live', stuntOn && (t.spin > 0.22 || t.trick > 0.12));
   }
 
   #boostPct = -1;
@@ -376,6 +437,12 @@ export class DriveHud {
 
   /**
    * Die Driftwertung — sie erscheint nur, während eine Kette läuft.
+   *
+   * Sie sitzt **im Tacho**, nicht als Geschwister daneben. Der Rundbogen ist
+   * höher als der alte Zahlen-Tacho, und das Speedo kommt im DOM nach der
+   * Wertung: eine viewport-absolute Zahl landete hinter dem Bogen (gemessen:
+   * Multiplikator in Amber auf dem Amber-Strich). Am Instrument wandert sie
+   * mit, auch wenn der Tacho auf dem Telefon nach oben rutscht.
    *
    * **Erscheinen und Verschwinden über `hidden` und nicht über Deckkraft.** Ein
    * Element mit `opacity: 0` liegt weiter im Layout und wird weiter beschriftet;
@@ -452,7 +519,78 @@ export class DriveHud {
 
   /** Der Kontostand oben rechts. */
   setMoney(yen: number): void {
-    this.#setText(this.#money, `${yen.toLocaleString('en-US')} Sparks`);
+    this.#targetYen = yen;
+    if (reducedMotion() || yen <= this.#shownYen) {
+      this.#shownYen = yen;
+      this.#setText(this.#moneyValue, yen.toLocaleString('en-US'));
+      return;
+    }
+    this.#countFrom = this.#shownYen;
+    this.#countStart = performance.now();
+    if (this.#moneyRaf === 0) this.#moneyRaf = requestAnimationFrame(this.#tickMoney);
+  }
+
+  /**
+   * Drei Facetten fliegen von der Weltposition ins Wallet.
+   *
+   * `origins` sind schon Bildkoordinaten (main.ts projiziert). Hinter der
+   * Kamera oder weit außerhalb: nur Puls, kein Flug — sonst startet ein
+   * Splitter am Bildrand und liest sich als Fehler.
+   */
+  collectSparks(origins: readonly { x: number; y: number; visible: boolean }[]): void {
+    this.#money.classList.remove('is-pulse');
+    void this.#money.offsetWidth;
+    this.#money.classList.add('is-pulse');
+    this.#boostBox.classList.add('is-spark');
+    if (this.#boostPulseTimer !== null) window.clearTimeout(this.#boostPulseTimer);
+    this.#boostPulseTimer = window.setTimeout(() => {
+      this.#boostBox.classList.remove('is-spark');
+      this.#boostPulseTimer = null;
+    }, 280);
+    if (reducedMotion() || !this.#visible) return;
+    const root = this.#root.getBoundingClientRect();
+    const wallet = this.#money.getBoundingClientRect();
+    const tx = wallet.left - root.left + 14;
+    const ty = wallet.top - root.top + wallet.height * 0.5;
+    const seeds = origins.length > 0 ? origins : [{ x: tx, y: ty + 80, visible: true }];
+    for (const origin of seeds) {
+      const sx = origin.visible ? origin.x : tx;
+      const sy = origin.visible ? origin.y : ty + 64;
+      for (let i = 0; i < 3; i++) this.#flyFacet(sx, sy, tx, ty, i);
+    }
+  }
+
+  readonly #tickMoney = (now: number): void => {
+    const t = Math.min(1, (now - this.#countStart) / 320);
+    const eased = 1 - (1 - t) ** 3;
+    this.#shownYen = Math.round(this.#countFrom + (this.#targetYen - this.#countFrom) * eased);
+    this.#setText(this.#moneyValue, this.#shownYen.toLocaleString('en-US'));
+    if (t < 1) this.#moneyRaf = requestAnimationFrame(this.#tickMoney);
+    else this.#moneyRaf = 0;
+  };
+
+  #flyFacet(sx: number, sy: number, tx: number, ty: number, i: number): void {
+    const el = document.createElement('span');
+    el.className = 'hud__facet';
+    el.innerHTML = SPARK_ICON;
+    el.style.transform = `translate(${sx}px, ${sy}px) scale(1)`;
+    this.#root.appendChild(el);
+    const midX = sx + (tx - sx) * 0.55 + (i - 1) * 28;
+    const midY = sy + (ty - sy) * 0.4 - 36 - i * 10;
+    const anim = el.animate(
+      [
+        { transform: `translate(${sx}px, ${sy}px) scale(1)`, opacity: 1 },
+        { transform: `translate(${midX}px, ${midY}px) scale(0.9)`, opacity: 1, offset: 0.45 },
+        { transform: `translate(${tx}px, ${ty}px) scale(0.25)`, opacity: 0.15 },
+      ],
+      {
+        duration: 420,
+        delay: i * 42,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        fill: 'forwards',
+      },
+    );
+    anim.addEventListener('finish', () => el.remove());
   }
 
   /**
@@ -522,6 +660,23 @@ export class DriveHud {
   }
 
   /**
+   * First visit of a region. Two lines so the counter stays readable; Sparks
+   * use the existing icon, the wallet chip is not restyled.
+   */
+  showExplore(grant: ExploreGrant): void {
+    const copy = exploreToastText(grant);
+    this.#exploreTitle.textContent = copy.title;
+    this.#exploreBody.innerHTML = `${copy.body} · +${sparkMark(grant.sparks)}`;
+    this.#explore.hidden = false;
+    this.#flash.hidden = true;
+    if (this.#exploreTimer !== null) window.clearTimeout(this.#exploreTimer);
+    this.#exploreTimer = window.setTimeout(() => {
+      this.#explore.hidden = true;
+      this.#exploreTimer = null;
+    }, EXPLORE_TOAST_MS);
+  }
+
+  /**
    * Der Kasten bleibt drei Sekunden stehen. Ein bestehender Zeitgeber wird dabei
    * **abgeräumt** — wer zwei Meldungen in kurzem Abstand auslöst, soll nicht
    * erleben, dass der erste Zeitgeber die zweite wegräumt.
@@ -530,6 +685,7 @@ export class DriveHud {
     this.#flash.textContent = text;
     this.#flash.classList.toggle('hud__flash--best', best);
     this.#flash.hidden = false;
+    this.#explore.hidden = true;
 
     if (this.#flashTimer !== null) window.clearTimeout(this.#flashTimer);
     this.#flashTimer = window.setTimeout(() => {
@@ -544,18 +700,66 @@ export class DriveHud {
     element.textContent = text;
   }
 
-  #syncWaypointChip(x: number, z: number, waypoint: MiniMapMark | null): void {
+  #syncWaypointChip(x: number, z: number, waypoint: MiniMapMark | null, dt: number): void {
     if (!waypoint) {
-      if (!this.#wp.hidden) this.#wp.hidden = true;
+      if (this.#lastWpLabel && this.#lastWpRemaining < 40) {
+        this.#showFlash(`Arrived · ${this.#lastWpLabel}`, false);
+      }
+      this.#lastWpLabel = null;
+      this.#lastWpRemaining = Infinity;
+      this.#wp.classList.remove('is-on');
+      this.#pin.classList.remove('is-on');
+      this.#pinReady = false;
+      this.#wp.removeAttribute('data-advisory');
       return;
     }
-    if (this.#wp.hidden) this.#wp.hidden = false;
-    this.#setText(this.#wpName, waypoint.label ?? 'Waypoint');
-    const meters = Math.hypot(waypoint.x - x, waypoint.z - z);
-    this.#setText(
-      this.#wpDist,
-      meters < 999.5 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`,
-    );
+    this.#wp.classList.add('is-on');
+    const name = waypoint.label ?? 'Waypoint';
+    this.#setText(this.#wpName, name);
+    const crow = Math.hypot(waypoint.x - x, waypoint.z - z);
+    const meters = waypoint.remaining ?? crow;
+    this.#setText(this.#wpDist, formatWaypointDistance(meters));
+    this.#lastWpLabel = name;
+    this.#lastWpRemaining = Math.min(meters, crow);
+
+    const bits: string[] = [];
+    if (waypoint.turn === 'left') bits.push('Turn left');
+    else if (waypoint.turn === 'right') bits.push('Turn right');
+    else if (waypoint.turn === 'around') bits.push('Turn around');
+    if (waypoint.eta && waypoint.eta > 0) bits.push(formatEta(waypoint.eta));
+    if (waypoint.advisory === 'brake') bits.push('Too fast');
+    else if (waypoint.advisory === 'caution') bits.push('Brake');
+    this.#setText(this.#wpMeta, bits.join(' · '));
+    this.#wp.dataset.advisory = waypoint.advisory ?? 'ok';
+    this.#syncPin(waypoint, formatWaypointDistance(meters), name, dt);
+  }
+
+  #syncPin(waypoint: MiniMapMark, dist: string, name: string, dt: number): void {
+    const pin = waypoint.pin;
+    if (!pin) {
+      this.#pin.classList.remove('is-on');
+      this.#pinReady = false;
+      return;
+    }
+    this.#setText(this.#pinName, name.toUpperCase());
+    this.#setText(this.#pinDist, dist);
+    if (!this.#pinReady) {
+      this.#pinX = pin.x;
+      this.#pinY = pin.y;
+      this.#pinAng = pin.edgeAngle;
+      this.#pinReady = true;
+    } else {
+      this.#pinX = damp(this.#pinX, pin.x, WAYPOINT.pinSmooth, dt);
+      this.#pinY = damp(this.#pinY, pin.y, WAYPOINT.pinSmooth, dt);
+      this.#pinAng = dampAngle(this.#pinAng, pin.edgeAngle, WAYPOINT.pinSmooth, dt);
+    }
+    this.#pin.style.left = `${this.#pinX}px`;
+    this.#pin.style.top = `${this.#pinY}px`;
+    this.#pin.classList.toggle('hud__pin--edge', !pin.onScreen);
+    this.#pin.classList.add('is-on');
+    this.#pinArrow.style.transform = pin.onScreen
+      ? 'none'
+      : `rotate(${(this.#pinAng * 180) / Math.PI}deg)`;
   }
 
   readonly #onNavClick = (): void => {
@@ -571,10 +775,25 @@ export class DriveHud {
   dispose(): void {
     if (this.#flashTimer !== null) window.clearTimeout(this.#flashTimer);
     this.#flashTimer = null;
+    if (this.#exploreTimer !== null) window.clearTimeout(this.#exploreTimer);
+    this.#exploreTimer = null;
+    if (this.#boostPulseTimer !== null) window.clearTimeout(this.#boostPulseTimer);
+    this.#boostPulseTimer = null;
+    if (this.#moneyRaf !== 0) cancelAnimationFrame(this.#moneyRaf);
+    this.#moneyRaf = 0;
     this.#written.clear();
     this.#nav.removeEventListener('click', this.#onNavClick);
     this.#onOpenMap = null;
     this.#map.dispose();
     this.#root.remove();
   }
+}
+
+function reducedMotion(): boolean {
+  try {
+    if (localStorage.getItem('japanMap.reducedMotion') === 'true') return true;
+  } catch {
+    // Privater Modus — die Systempräferenz reicht.
+  }
+  return matchMedia('(prefers-reduced-motion: reduce)').matches;
 }

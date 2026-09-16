@@ -68,7 +68,7 @@ export class RicePaddy implements System {
   #sampler: TerrainSampler | null = null;
   #mask: Uint8ClampedArray | null = null;
   #maskRes = 0;
-  #waterDepth = 0.3;
+  #waterDepth = PADDY_WATER.depth;
   /** Nahdetail aus der Qualitätsstufe — siehe `setDetail`. */
   #detail = 1;
 
@@ -89,7 +89,9 @@ export class RicePaddy implements System {
       console.warn('RicePaddy: meta.json führt keine Parzellen — `npm run bake` ausführen.');
       return;
     }
-    this.#waterDepth = meta.paddies.waterDepth;
+    // Depth is a runtime number. The baker's 0,30 m stays in meta so a rebake
+    // does not become a requirement for a shallower sheet — see `PADDY_WATER.depth`.
+    this.#waterDepth = PADDY_WATER.depth;
     this.#maskRes = meta.paddies.res;
 
     const bitmap = await createImageBitmap(await (await fetch(TERRAIN_ASSETS.paddy)).blob());
@@ -161,6 +163,8 @@ export class RicePaddy implements System {
     const wet = [false, false, false, false];
     const polyX: number[] = [];
     const polyZ: number[] = [];
+    const insetX: number[] = [];
+    const insetZ: number[] = [];
 
     for (let tz = 0; tz < tiles; tz++) {
       for (let tx = 0; tx < tiles; tx++) {
@@ -235,39 +239,104 @@ export class RicePaddy implements System {
               }
             }
 
+            this.#insetBoundary(sampler, polyX, polyZ, insetX, insetZ);
+
             // Fächer vom ersten Punkt. Die Umlaufrichtung von `CORNER_*` trägt
-            // die Wickelrichtung — siehe dort.
-            for (let i = 1; i + 1 < polyX.length; i++) {
+            // die Wickelrichtung — siehe dort. Eingezogen, damit die Erde der
+            // Böschung eine Krone hat und der Spiegel nicht über die Stufe ragt.
+            for (let i = 1; i + 1 < insetX.length; i++) {
               position.push(
-                polyX[0]!, y, polyZ[0]!,
-                polyX[i]!, y, polyZ[i]!,
-                polyX[i + 1]!, y, polyZ[i + 1]!,
+                insetX[0]!, y, insetZ[0]!,
+                insetX[i]!, y, insetZ[i]!,
+                insetX[i + 1]!, y, insetZ[i + 1]!,
               );
             }
+
+
           }
         }
 
-        if (!position.length) continue;
-        const geometry = new BufferGeometry();
-        geometry.setAttribute('position', new Float32BufferAttribute(position, 3));
-        geometry.computeVertexNormals();
-        geometry.computeBoundingSphere();
-        const mesh = new Mesh(geometry, material);
-        mesh.name = `paddy:${tx}:${tz}`;
-        mesh.matrixAutoUpdate = false;
-        // Hier **darf** three cullen: das Mesh liegt im Weltursprung und seine
-        // Hülle beschreibt genau die Kachel. Anders als bei den Instanzen der
-        // Vegetation stimmt die Objektmatrix mit der Geometrie überein.
-        mesh.frustumCulled = true;
-        group.add(mesh);
-        this.#meshes.push(mesh);
-        triangles += position.length / 9;
+        if (position.length) {
+          const geometry = new BufferGeometry();
+          geometry.setAttribute('position', new Float32BufferAttribute(position, 3));
+          geometry.computeVertexNormals();
+          geometry.computeBoundingSphere();
+          const mesh = new Mesh(geometry, material);
+          mesh.name = `paddy:${tx}:${tz}`;
+          mesh.matrixAutoUpdate = false;
+          // Hier **darf** three cullen: das Mesh liegt im Weltursprung und seine
+          // Hülle beschreibt genau die Kachel. Anders als bei den Instanzen der
+          // Vegetation stimmt die Objektmatrix mit der Geometrie überein.
+          mesh.frustumCulled = true;
+          group.add(mesh);
+          this.#meshes.push(mesh);
+          triangles += position.length / 9;
+        }
       }
     }
 
     this.#readouts.kacheln = `${this.#meshes.length}`;
     this.#readouts.dreiecke = triangles.toLocaleString('de-DE');
     this.#context?.debug?.refresh();
+  }
+
+  /**
+   * Nasse/trockene Kanten um `bankInset` nach innen ziehen.
+   *
+   * Innenkanten (Nachbar nass) bleiben, sonst entstünde zwischen zwei
+   * Wasserzellen ein 0,5-m-Spalt. Eine Ecke an zwei trockenen Seiten wird
+   * entlang beider Innennormalen verschoben — das ist die Diagonale, kein Fehler.
+   */
+  #insetBoundary(
+    sampler: TerrainSampler,
+    polyX: number[],
+    polyZ: number[],
+    insetX: number[],
+    insetZ: number[],
+  ): void {
+    const n = polyX.length;
+    insetX.length = n;
+    insetZ.length = n;
+    for (let i = 0; i < n; i++) {
+      insetX[i] = polyX[i]!;
+      insetZ[i] = polyZ[i]!;
+    }
+    const ins = PADDY_WATER.bankInset;
+    const probe = 1.6;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      const dx = polyX[j]! - polyX[i]!;
+      const dz = polyZ[j]! - polyZ[i]!;
+      const len = Math.hypot(dx, dz);
+      if (len < 1e-4) continue;
+      // Polygon is (0,0)→(0,1)→(1,1)→(1,0): clockwise in XZ with Z up, +Y
+      // triangles. Outward is rotate the edge 90° CCW: (−dz, dx).
+      const ox = -dz / len;
+      const oz = dx / len;
+      const mx = (polyX[i]! + polyX[j]!) * 0.5;
+      const mz = (polyZ[i]! + polyZ[j]!) * 0.5;
+      const hereH = sampler.getHeightAt(mx, mz);
+      let outH = sampler.getHeightAt(mx + ox * probe, mz + oz * probe);
+      const h2 = sampler.getHeightAt(mx + ox * 3.2, mz + oz * 3.2);
+      if (h2 < outH) outH = h2;
+      // Gleiches Niveau und nass: Innenkante, nicht einziehen — sonst klafft
+      // zwischen zwei Wasserzellen ein Spalt. Eine Stufe (nasse Nachbarparzelle
+      // tiefer) ist ein Rand, auch wenn die Maske dort nass bleibt.
+      if (this.#wet(mx + ox * probe, mz + oz * probe) && hereH - outH < PADDY_WATER.dropMin) {
+        continue;
+      }
+      // Stufe: weiter einziehen, damit der Spiegel nicht über den Hang ragt.
+      // Die Böschung ist dann das Gelände, kein zweites Mesh.
+      const drop = hereH - outH;
+      const extra = drop > PADDY_WATER.dropMin
+        ? Math.min(1.6, drop * PADDY_WATER.dropInset)
+        : 0;
+      const pull = ins + extra;
+      insetX[i]! -= ox * pull;
+      insetZ[i]! -= oz * pull;
+      insetX[j]! -= ox * pull;
+      insetZ[j]! -= oz * pull;
+    }
   }
 
   update(): void {

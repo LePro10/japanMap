@@ -486,6 +486,97 @@ export const DRIFT_SCORE_ANGLE = 0.21;
 export const DRIFT_MAX_ANGLE = 1.4;
 
 /**
+ * Stunt-Drift — Doppeltipp Space, kein Toggle.
+ *
+ * Einzeltipp bleibt der 43°-Drift. Doppeltipp reißt *diese* Drift an und
+ * wirft einen 360 durch die Gierrate — nicht `yaw += 2π`, sondern eine
+ * Restrotation, die der Integrator auffrisst. Tempo und Lenkung färben
+ * die Rate, Gegenlenken bricht ab, am Ende fängt die Fangleine. Geradeaus
+ * danach löscht wie bisher, schneller als ein normaler Drift.
+ *
+ * In der Luft ist derselbe Tipp eine Rolle um die Längsachse (seitlich),
+ * kein Loop nach oben.
+ */
+export const STUNT = {
+  /** Zwei Space-Downs in diesem Fenster reißen den Stunt-Drift an. */
+  tapWindow: 0.28,
+  /** Anstieg, 1/s. Snappy, sobald der Doppeltipp in eine Drift geht. */
+  enterRate: 14,
+  /**
+   * Abfall auf der Geraden, 1/s.
+   * Gemessen 2026-09-16, 0,25 s Geradeaus nach Stunt-Drift: stunt 0,12,
+   * Drift-Rest 0,20, normaler Drift-Rest 0,51. Der Stunt ist weg, bevor
+   * der normale Drift ausgelaufen wäre — und trotz `stunt: true` am Input.
+   */
+  fall: 8.5,
+  /** Extra-Drift-Abfall beim Geradeaus-Ende, Faktor auf `driftFall`. */
+  exitDump: 2.4,
+  /**
+   * Extra-Schwimmwinkel im Modus, rad, auf den der Drift *regelt*.
+   * 0,28 auf das Coupé (0,75) → ~59°. Freier als 43°, unter 90°, also
+   * kein Dreher. Ein 180 braucht den Spin darunter, nicht diese Zahl.
+   */
+  extraAngle: 0.28,
+  /**
+   * Peak-Extra-Gierrate bei vollem `#spin`, rad/s.
+   * Gemessen 2026-09-16, Kite S, 80 km/h:
+   *  Space 1,0 s → 139° (180-Fenster), Space 2,2 s → 440° (360).
+   *  Space los, nur lenken → 50° Gier, spin 0 (vorher 422° in 1,2 s).
+   *  Gegenlenken 84,6° → 27,4°.
+   */
+  spinYaw: 2.85,
+  /** Gierdeckel im Spin, rad/s. Nur angehoben, während `#spin` lebt. */
+  maxYawRate: 5.2,
+  /** `#spin` steigt, 1/s. Langsamer als der Drift-Anriss: ein Tipp ist kein 360. */
+  spinRise: 4.2,
+  /** `#spin` fällt nach Loslassen, 1/s. */
+  spinFall: 5.8,
+  /** Gegenlenken schmeißt den Spin weg, 1/s. */
+  spinFallCounter: 12,
+  /** Querhaftung im Modus ohne Spin (Faktor auf k). */
+  latGrip: 0.78,
+  /** Querhaftung bei vollem Spin. */
+  spinLatGrip: 0.55,
+  /** Fangleine im Modus, Anteil der normalen. 0 wäre der Kreisel von vorher. */
+  catch: 0.6,
+  /** Extra-Fang beim Gegenlenken gegen den Spin, 1/s auf den Schwimmwinkel. */
+  counterCatch: 4.8,
+  /** Antrieb mit gezogener Handbremse. Normal 0,2 — gehaltenes Space muss Tempo lassen. */
+  handbrakeDrive: 0.72,
+  /** Extra-Bremse der Handbremse, in g. Normal 0,36. */
+  handbrakeBrake: 0.14,
+  /** Luft-Gieren als Faktor auf `AIR_CONTROL.yaw`. 3,2 war zu viel Aftertouch. */
+  airYaw: 1.65,
+  airPitch: 1.3,
+  /** Spin erst ab diesem Tempo, m/s. Darunter bleibt es der losere Drift. */
+  minSpeed: 30 / 3.6,
+  fov: 4,
+  velocityBlend: 0.12,
+  /**
+   * Restrotation eines Doppeltipp-360, rad. Eine volle Umdrehung, die der
+   * Integrator abarbeitet — kein Teleport.
+   */
+  trickAngle: Math.PI * 2,
+  /**
+   * Peak-Gierrate des Boden-360, rad/s.
+   * Gemessen 2026-09-16: Doppeltipp im Drift, Space nicht gehalten,
+   * 1,5 s → 433° Gier. Luft-Rolle 357°, Nick 0,2° (kein Loop).
+   */
+  trickYaw: 5.4,
+  /** Gierdeckel während des Tricks, rad/s. */
+  trickYawCap: 6.8,
+  /** Luft-Rolle, rad/s. 7,2 → 360° in ~0,87 s, passt in einen normalen Sprung. */
+  airRoll: 7.2,
+  /** Gegenlenken während des Tricks kürzt die Restrotation, 1/s. */
+  trickAbort: 5.5,
+} as const;
+
+/** Zweiter Space-Down innerhalb von `STUNT.tapWindow`. */
+export function isStuntDoubleTap(previousTapAt: number, now: number): boolean {
+  return previousTapAt >= 0 && now - previousTapAt <= STUNT.tapWindow;
+}
+
+/**
  * Luftsteuerung — P22.
  *
  * Ohne sie ist jeder Sprung ein Glücksspiel, und ein Sprung, der Glücksspiel

@@ -12,6 +12,7 @@ import {
   DRIFT_SCORE_ANGLE,
   DRIVE_RETAIN_SPEED,
   GRIP_BLEND,
+  STUNT,
   YAW_CAP_SPEED,
   type ArcadeSpec,
 } from '@/config/arcade.config';
@@ -86,6 +87,8 @@ export interface PlanarResult {
   yawRate: number;
   /** Nickrate im Flug, rad/s — null am Boden. */
   pitchRate: number;
+  /** Rollrate im Flug, rad/s — Boden null. Seitliche Rolle, kein Loop. */
+  rollRate: number;
   /** Wie weit der Drift-Zustand offen ist, 0…1. */
   drift: number;
   /** Schwimmwinkel, rad. Positiv = Fahrtrichtung zeigt rechts an der Nase vorbei. */
@@ -100,6 +103,12 @@ export interface PlanarResult {
   boost: number;
   /** Radeinschlag für die Anzeige, rad. */
   steerAngle: number;
+  /** Stunt-Overlay, 0…1 — HUD und Kamera, nicht die Punkte. */
+  stunt: number;
+  /** Spin-Absicht im Stunt, 0…1. Space gehalten, nicht der offene Drift. */
+  spin: number;
+  /** Rest des Doppeltipp-360, 0…1. HUD und Expire. */
+  trick: number;
 }
 
 /** Was die Dynamik über den Untergrund und die Lage wissen muss. */
@@ -138,6 +147,17 @@ export interface DriveCommand {
   readonly steer: number;
   readonly handbrake: boolean;
   readonly boost: boolean;
+  /**
+   * Stunt-Modus. Optional wie `boost`: Prüfstände, die die Eingabe von Hand
+   * bauen, meinen `false`, und ein Pflichtfeld hätte sie alle anfassen müssen.
+   */
+  readonly stunt?: boolean;
+  /**
+   * Eine Frame-Flanke: Doppeltipp in diesem Schritt. Optional wie `stunt`.
+   * Startet den 360 (Boden gieren / Luft rollen) durch die Bewegung, kein
+   * Teleport.
+   */
+  readonly trick?: boolean;
 }
 
 /** Ein Zustand, den ein Prüfstand von Hand setzen darf. */
@@ -246,6 +266,19 @@ export class ArcadeDynamics {
   #pitchRate = 0;
   /** Zuletzt gefahrener Drift-Zuschlag — hält das Vorzeichen über die Flaute. */
   #driftSign = 0;
+  /** Stunt-Overlay, 0…1. Folgt `input.stunt`, nicht der Taste selbst. */
+  #stuntBlend = 0;
+  /**
+   * Spin-Absicht, 0…1. Steigt nur bei gehaltenem Space+Lenkung im Modus.
+   * Der Drift darf ihn nicht tragen — sonst ist Weiterlenken ein 360.
+   */
+  #spin = 0;
+  /** Restrotation des Doppeltipp-Tricks, rad. */
+  #trickRemain = 0;
+  #trickSign = 0;
+  /** true = Rolle um die Längsachse, false = Gier-360 am Boden. */
+  #trickAir = false;
+  #rollRate = 0;
 
   constructor(spec: ArcadeSpec, looseBonus: number) {
     this.#spec = spec;
@@ -286,6 +319,12 @@ export class ArcadeDynamics {
     this.#gripSmoothed = Number.NaN;
     this.#wasAirborne = false;
     this.#landTimer = 0;
+    this.#stuntBlend = 0;
+    this.#spin = 0;
+    this.#trickRemain = 0;
+    this.#trickSign = 0;
+    this.#trickAir = false;
+    this.#rollRate = 0;
     // **Der Nitro-Vorrat bleibt stehen.** Ein Respawn nach einem Fehler soll
     // nicht auch noch den Boost verschenken — das bestraft den Fehler zweimal.
   }
@@ -470,51 +509,150 @@ export class ArcadeDynamics {
     const initiate = !env.airborne && fastEnough && armed && steering;
     const sustain = !env.airborne && fastEnough && this.#drift > DRIFT_GATE.sustainDrift;
     const want = initiate ? 1 : sustain ? Math.max(powerSlide, liftSlide) : 0;
-    const driftRate = want > this.#drift ? spec.driftRise : spec.driftFall;
+
+    // Doppeltipp: Restrotation durch die Bewegung, kein `yaw += 2π`.
+    if (input.trick === true && (env.airborne || speed > STUNT.minSpeed)) {
+      const sign =
+        Math.abs(input.steer) > 0.1
+          ? Math.sign(input.steer)
+          : this.#driftSign !== 0
+            ? this.#driftSign
+            : 1;
+      this.#trickSign = sign;
+      this.#trickAir = env.airborne;
+      this.#trickRemain = Math.min(
+        this.#trickRemain + STUNT.trickAngle,
+        STUNT.trickAngle * 2,
+      );
+      if (!env.airborne) {
+        this.#drift = Math.max(this.#drift, 0.62);
+        this.#driftSign = sign;
+        this.#stuntBlend = Math.max(this.#stuntBlend, 0.85);
+      } else {
+        this.#stuntBlend = Math.max(this.#stuntBlend, 0.9);
+      }
+    }
+    const inTrick = this.#trickRemain > 0.12;
+    // Geradeaus beendet den Stunt-Drift — außer mitten im 360.
+    const stuntWant =
+      (input.stunt === true || inTrick) &&
+      (env.airborne || steering || inTrick) &&
+      (env.airborne || this.#drift > 0.04 || initiate || inTrick)
+        ? 1
+        : 0;
+    const exitingStunt = this.#stuntBlend > 0.08 && stuntWant === 0;
+    const driftRate =
+      want > this.#drift
+        ? spec.driftRise
+        : spec.driftFall * (exitingStunt ? STUNT.exitDump : 1);
     this.#drift += (want - this.#drift) * (1 - Math.exp(-driftRate * dt));
     if (this.#drift < 1e-3) this.#drift = 0;
+
+    const stuntRate = stuntWant > this.#stuntBlend ? STUNT.enterRate : STUNT.fall;
+    this.#stuntBlend += (stuntWant - this.#stuntBlend) * (1 - Math.exp(-stuntRate * dt));
+    if (this.#stuntBlend < 1e-3) this.#stuntBlend = 0;
+
+    // ── Stunt-Spin ────────────────────────────────────────────────────────
+    //
+    // Eigener Zustand, nicht `#drift`. Der Drift bleibt nach dem Anriss über
+    // Gas·Lenkung offen; hing der Spin daran, war Weiterlenken ein Kreisel.
+    // Hier zählt nur **gehaltenes** Space plus Lenkung, und Gegenlenken
+    // schmeißt ihn weg — das ist die Kontrolle.
+    const spinAsk =
+      this.#stuntBlend > 0.15 &&
+      !env.airborne &&
+      speed > STUNT.minSpeed &&
+      input.handbrake &&
+      Math.abs(input.steer) >= DRIFT_GATE.enterSteer;
+    // Gegenlenken gegen das *stehende* Vorzeichen, bevor yawTarget es
+    // umlegt. Sonst ist `countering` nie wahr — das Vorzeichen wäre schon
+    // das der Fang-Lenkung.
+    const countering =
+      this.#spin > 0.04 &&
+      this.#driftSign !== 0 &&
+      Math.abs(input.steer) >= DRIFT_GATE.enterSteer &&
+      Math.sign(input.steer) !== this.#driftSign;
+    const spinWant = spinAsk ? Math.abs(this.#steerInput) : 0;
+    const spinRate = spinWant > this.#spin
+      ? STUNT.spinRise
+      : countering
+        ? STUNT.spinFallCounter
+        : STUNT.spinFall;
+    this.#spin += (spinWant - this.#spin) * (1 - Math.exp(-spinRate * dt));
+    if (this.#spin < 1e-3) this.#spin = 0;
 
     // ── Soll-Gierrate ─────────────────────────────────────────────────────
     const aLatMax = this.#latAccel(grip, speed) * latMul;
     let yawTarget = this.#yawTarget(env.vLong, env.vLat, speed, aLatMax, input);
 
+    this.#rollRate = 0;
+    const trickFrac = this.#trickRemain / STUNT.trickAngle;
+    const trickEnv = Math.sin(Math.PI * Math.min(1, Math.max(0.07, 1 - trickFrac)));
+
     if (env.airborne) {
       this.#wasAirborne = true;
-      // Luftsteuerung. Sie ist Winkel*beschleunigung* und keine Sollrate — in der
-      // Luft gibt es nichts, was eine Rate erzwänge, und ein Wagen, der im Flug
-      // sofort auf eine Sollrate springt, sieht aus wie ein Modellflugzeug.
-      this.#yawRate += -Math.sign(input.steer) * Math.abs(input.steer) * AIR_CONTROL.yaw * dt;
+      const airYaw = AIR_CONTROL.yaw * (1 + this.#stuntBlend * (STUNT.airYaw - 1));
+      const airPitch = AIR_CONTROL.pitch * (1 + this.#stuntBlend * (STUNT.airPitch - 1));
+      this.#yawRate += -Math.sign(input.steer) * Math.abs(input.steer) * airYaw * dt;
       this.#yawRate *= Math.exp(-AIR_CONTROL.damping * dt);
       this.#pitchRate +=
-        (clamp01(input.brake) - clamp01(input.throttle)) * AIR_CONTROL.pitch * dt;
+        (clamp01(input.brake) - clamp01(input.throttle)) * airPitch * dt;
       this.#pitchRate *= Math.exp(-AIR_CONTROL.damping * dt);
+      if (this.#trickRemain > 0 && this.#trickAir) {
+        const rate = this.#trickSign * STUNT.airRoll * (0.62 + 0.38 * trickEnv);
+        this.#rollRate = rate;
+        this.#trickRemain = Math.max(0, this.#trickRemain - Math.abs(rate) * dt);
+      } else {
+        this.#rollRate *= Math.exp(-AIR_CONTROL.damping * dt);
+      }
     } else {
       if (this.#wasAirborne) this.#landTimer = GRIP_BLEND;
       this.#wasAirborne = false;
       this.#landTimer = Math.max(0, this.#landTimer - dt);
       this.#pitchRate *= Math.exp(-8 * dt);
-      // **Die Fangleine.** Ohne Lenkeingabe zieht sie die Nase in die
-      // Fahrtrichtung — genau das, was ein Fahrer mit Gegenlenken täte und was
-      // mit einer Taste nicht dosierbar ist. Sie ist null, sobald jemand lenkt,
-      // kann also nichts verfälschen, was der Spieler selbst tut. Begründung bei
-      // `ArcadeSpec.catchAssist`.
-      //
-      // Nach einer Kuppe aus: sonst schnappt die Nase in die alte Sollrate, und
-      // das liest sich als Gierkick genau dann, wenn die Räder den Boden
-      // wiederfinden. ASTRA_PLAN §5 verlangt das Gegenteil.
+      this.#rollRate *= Math.exp(-10 * dt);
+      if (this.#trickRemain > 0 && !this.#trickAir) {
+        const steerHelp = 0.72 + 0.38 * Math.abs(this.#steerInput);
+        let rate = STUNT.trickYaw * (0.52 + 0.48 * trickEnv) * steerHelp;
+        // Letzte 30° an der Restrotation deckeln — sonst läuft yawRate über
+        // den 360 hinaus und der Wagen sieht unkontrolliert aus.
+        rate = Math.min(rate, Math.max(1.2, this.#trickRemain / 0.16));
+        if (countering) {
+          this.#trickRemain *= Math.exp(-STUNT.trickAbort * dt);
+          rate *= 0.32;
+        }
+        yawTarget += -this.#trickSign * rate;
+        this.#trickRemain = Math.max(0, this.#trickRemain - rate * dt);
+      } else if (this.#trickRemain > 0 && this.#trickAir) {
+        this.#trickRemain = 0;
+      }
       const landing = this.#landTimer > 0;
-      if (!landing && Math.abs(input.steer) < 0.2 && speed > 2 && !input.handbrake) {
+      const spinningOut = this.#trickRemain > 0.4;
+      if (
+        !landing &&
+        !spinningOut &&
+        Math.abs(input.steer) < 0.2 &&
+        speed > 2 &&
+        !input.handbrake
+      ) {
         const slip = Math.atan2(env.vLat, Math.abs(env.vLong));
-        // Ein Schwimmwinkel nach rechts (positiv) heißt: die Nase muss nach
-        // rechts, also ψ fallen. Daher das Minus — dieselbe Kette wie oben.
-        yawTarget += -slip * spec.catchAssist * Math.min(1, speed / 8);
+        const catchMul =
+          lerp(1, STUNT.catch, this.#stuntBlend) * (1 - this.#spin);
+        yawTarget +=
+          -slip * spec.catchAssist * catchMul * Math.min(1, speed / 8);
       }
       const yawFollow = landing ? spec.yawResponse * 0.25 : spec.yawResponse;
       const blend = 1 - Math.exp(-yawFollow * dt);
       this.#yawRate += (yawTarget - this.#yawRate) * blend;
     }
-    this.#yawRate = clamp(this.#yawRate, -spec.maxYawRate, spec.maxYawRate);
+    const yawCap = lerp(
+      spec.maxYawRate,
+      this.#trickRemain > 0.2 ? STUNT.trickYawCap : STUNT.maxYawRate,
+      Math.max(this.#stuntBlend * Math.max(this.#spin, 0.12), this.#trickRemain > 0.2 ? 1 : 0),
+    );
+    this.#yawRate = clamp(this.#yawRate, -yawCap, yawCap);
     this.#pitchRate = clamp(this.#pitchRate, -2.5, 2.5);
+    this.#rollRate = clamp(this.#rollRate, -9, 9);
 
     // ── Querkraft ─────────────────────────────────────────────────────────
     //
@@ -523,7 +661,12 @@ export class ArcadeDynamics {
     // Reibkreis dieses Modells — und er ist absichtlich weich: eine harte
     // Ellipse macht den Übergang zum Rutschen zu einer Kante, und Kanten kann
     // ein Spieler mit einer Taste nicht bedienen.
-    const k = lerp(spec.latGrip, spec.driftLatGrip, this.#drift) * grip * latMul;
+    const stuntK = lerp(STUNT.latGrip, STUNT.spinLatGrip, this.#spin);
+    const k =
+      lerp(spec.latGrip, spec.driftLatGrip, this.#drift) *
+      grip *
+      latMul *
+      lerp(1, stuntK, this.#stuntBlend);
     let accelLat = env.airborne ? 0 : (-env.vLat * (1 - Math.exp(-k * dt))) / dt;
     const latBudget = aLatMax * (1 - 0.25 * this.#drift);
     accelLat = clamp(accelLat, -latBudget, latBudget);
@@ -594,6 +737,7 @@ export class ArcadeDynamics {
       accelLat,
       yawRate: this.#yawRate,
       pitchRate: env.airborne ? this.#pitchRate : 0,
+      rollRate: env.airborne ? this.#rollRate : 0,
       drift: this.#drift,
       slip,
       skid,
@@ -601,6 +745,9 @@ export class ArcadeDynamics {
       boosting: longitudinal.boosting,
       boost: this.#boost,
       steerAngle: this.#steerAngle,
+      stunt: this.#stuntBlend,
+      spin: this.#spin,
+      trick: this.#trickRemain / STUNT.trickAngle,
     };
   }
 
@@ -710,7 +857,14 @@ export class ArcadeDynamics {
       //
       // Nicht aus Restgieren erfinden: Space auf der Geraden ohne Lenkung
       // hätte sonst die letzte Kurve fortgesetzt.
-      if (Math.abs(input.steer) > 0.1) this.#driftSign = Math.sign(input.steer);
+      if (Math.abs(input.steer) > 0.1) {
+        const next = Math.sign(input.steer);
+        // Im Spin das Vorzeichen halten: Gegenlenken soll fangen, nicht
+        // den Kreisel umdrehen.
+        const againstSpin =
+          this.#spin > 0.04 && this.#driftSign !== 0 && next !== this.#driftSign;
+        if (!againstSpin) this.#driftSign = next;
+      }
 
       // **Geregelt wird auf den Winkel, nicht auf die Rate.** Die vollständige
       // Begründung samt der Rechnung, warum eine feste Zusatzrate kein
@@ -724,10 +878,29 @@ export class ArcadeDynamics {
       // Lenkung. Zwei Dinge, die dieselbe Größe regeln, laufen in diesem
       // Projekt erfahrungsgemäß gegeneinander.
       const beta = -this.#driftSign * Math.atan2(vLat, Math.max(1, Math.abs(vLong)));
-      const missing = Math.max(0, spec.driftAngle * this.#drift - beta);
+      const holdAngle =
+        spec.driftAngle + STUNT.extraAngle * this.#stuntBlend * (1 - this.#spin);
+      const missing = Math.max(0, holdAngle * this.#drift - beta);
       target += -this.#driftSign * missing * spec.driftYawGain * Math.min(1, speed / 12);
     } else {
       this.#driftSign = 0;
+    }
+
+    // Spin nur aus `#spin` (gehaltenes Space), nicht aus dem offenen Drift.
+    // Gegenlenken zieht die Nase zurück — das ist die Kontrolle, die der
+    // erste Wurf nicht hatte.
+    if (this.#spin > 0.01 && this.#driftSign !== 0 && speed > STUNT.minSpeed) {
+      target += -this.#driftSign * this.#spin * this.#stuntBlend * STUNT.spinYaw;
+    }
+    if (
+      this.#stuntBlend > 0.05 &&
+      this.#spin > 0.04 &&
+      this.#driftSign !== 0 &&
+      Math.abs(input.steer) >= DRIFT_GATE.enterSteer &&
+      Math.sign(input.steer) !== this.#driftSign
+    ) {
+      const slip = Math.atan2(vLat, Math.max(1, Math.abs(vLong)));
+      target += -slip * STUNT.counterCatch * this.#stuntBlend;
     }
     return target;
   }
@@ -812,8 +985,9 @@ export class ArcadeDynamics {
     // Bremse. Sie darf die Haftgrenze überschreiten — das ist Arcade und
     // ausdrücklich gewollt: ein Spieler, der bremst, will stehenbleiben.
     const preparedBrake = 1 + (CIRCUIT_PREP.brake - 1) * (env.circuit ?? 0);
+    const handbrakeBrake = lerp(0.36, STUNT.handbrakeBrake, this.#stuntBlend);
     const brakeDecel = Math.min(Math.abs(env.vLong) / dt,
-      (brake * spec.brakeG + (input.handbrake ? 0.36 : 0)) * GRAVITY *
+      (brake * spec.brakeG + (input.handbrake ? handbrakeBrake : 0)) * GRAVITY *
       (0.4 + 0.6 * grip) * preparedBrake);
     const brakeSign = env.vLong > 0 ? -1 : env.vLong < 0 ? 1 : 0;
 
@@ -846,7 +1020,8 @@ export class ArcadeDynamics {
       ? Math.max(0, -(env.slopeAccel ?? 0) * direction) * throttle * assistFade *
         lerp(OFFROAD_DRIVE.gradeAssist, OFFROAD_DRIVE.capableGradeAssist, ability) * direction
       : 0;
-    const driveAccel = (force / this.#mass + gradeAssist) * (input.handbrake ? 0.2 : 1);
+    const handbrakeDrive = lerp(0.2, STUNT.handbrakeDrive, this.#stuntBlend);
+    const driveAccel = (force / this.#mass + gradeAssist) * (input.handbrake ? handbrakeDrive : 1);
     let tractionLimit = grip * GRAVITY * 1.35;
     // Unter 50 km/h auf losem Boden: Straßenautos behalten 65 % der
     // Asphalt-Antriebskraft, Utility 85 %. Der Boden *darf* nicht härter
@@ -870,7 +1045,7 @@ export class ArcadeDynamics {
         (spec.launchForce / this.#mass) *
         this.#crawlShare *
         ARCADE_CRAWL.extra *
-        (input.handbrake ? 0.2 : 1) *
+        (input.handbrake ? handbrakeDrive : 1) *
         crawlT *
         env.support * direction;
     }

@@ -1,45 +1,51 @@
 import {
   AdditiveBlending,
-  CanvasTexture,
+  ConeGeometry,
   CylinderGeometry,
   Group,
-  LinearFilter,
   Mesh,
   MeshBasicMaterial,
   RingGeometry,
-  Sprite,
-  SpriteMaterial,
-  SRGBColorSpace,
+  SphereGeometry,
+  Vector3,
+  type PerspectiveCamera,
 } from 'three';
 
+import { WAYPOINT } from '@/config/waypoint.config';
 import type { EngineContext } from '@/core/System';
+import type { HeightAt } from './guideDrape';
+import { damp, pinScreen, type PinScreen } from './waypointScreen';
 
 export interface WaypointPosition {
   readonly x: number;
+  readonly y: number;
   readonly z: number;
   readonly label: string;
 }
 
-const BEAM_HEIGHT = 280;
-const LABEL_Y = 18;
+const _world = new Vector3();
+const _view = new Vector3();
 
 /**
- * Weltmarker: dünner Lichtschaft, Bodenring, Pin-Label. Die alte 1200-m-Säule
- * in Signalblau stand als Turm in der Landschaft — hier ist es ein Ziel, das
- * man aus der Ferne findet, ohne die Insel zu überstrahlen.
+ * Weltmarker ohne Text. Der Text war ein Sprite in Weltmetern und ist
+ * genau deshalb je nach Standpunkt zu groß, zu klein oder unsichtbar
+ * gewesen — Begründung in `waypoint.config.ts`. Was hier bleibt: Schaft,
+ * Ring, Pin. Lesbare Schrift sitzt im HUD.
  */
 export class WaypointMarker {
   #context: EngineContext | null = null;
   #group: Group | null = null;
+  #ring: Mesh<RingGeometry, MeshBasicMaterial> | null = null;
+  #pin: Mesh<ConeGeometry, MeshBasicMaterial> | null = null;
   #outerBeam: Mesh<CylinderGeometry, MeshBasicMaterial> | null = null;
   #coreBeam: Mesh<CylinderGeometry, MeshBasicMaterial> | null = null;
-  #ring: Mesh<RingGeometry, MeshBasicMaterial> | null = null;
-  #label: Sprite | null = null;
-  #labelTexture: CanvasTexture | null = null;
-  #labelCanvas: HTMLCanvasElement | null = null;
+  #head: Mesh<SphereGeometry, MeshBasicMaterial> | null = null;
   #waypoint: WaypointPosition | null = null;
-  #distanceBucket = -1;
   #pulse = 0;
+  #screen: PinScreen | null = null;
+  #appear = 0;
+  #appearGoal = 0;
+  #scaleSmooth = 1;
 
   attach(context: EngineContext): void {
     if (this.#group) return;
@@ -51,11 +57,11 @@ export class WaypointMarker {
     group.frustumCulled = false;
 
     const outerBeam = new Mesh(
-      new CylinderGeometry(1.8, 2.6, BEAM_HEIGHT, 12, 1, true),
+      new CylinderGeometry(1.4, 2.1, WAYPOINT.beamHeight, 12, 1, true),
       new MeshBasicMaterial({
         color: 0x66d7f4,
         transparent: true,
-        opacity: 0.16,
+        opacity: WAYPOINT.beamOpacity,
         depthTest: false,
         depthWrite: false,
         blending: AdditiveBlending,
@@ -63,16 +69,16 @@ export class WaypointMarker {
       }),
     );
     outerBeam.name = 'Waypoint:Beam';
-    outerBeam.position.y = BEAM_HEIGHT * 0.5;
+    outerBeam.position.y = WAYPOINT.beamHeight * 0.5;
     outerBeam.frustumCulled = false;
     outerBeam.renderOrder = 1000;
 
     const coreBeam = new Mesh(
-      new CylinderGeometry(0.38, 0.55, BEAM_HEIGHT, 8, 1, true),
+      new CylinderGeometry(0.28, 0.42, WAYPOINT.beamHeight, 8, 1, true),
       new MeshBasicMaterial({
         color: 0xffe1a3,
         transparent: true,
-        opacity: 0.72,
+        opacity: 0.55,
         depthTest: false,
         depthWrite: false,
         blending: AdditiveBlending,
@@ -80,12 +86,12 @@ export class WaypointMarker {
       }),
     );
     coreBeam.name = 'Waypoint:Core';
-    coreBeam.position.y = BEAM_HEIGHT * 0.5;
+    coreBeam.position.y = WAYPOINT.beamHeight * 0.5;
     coreBeam.frustumCulled = false;
     coreBeam.renderOrder = 1001;
 
     const ring = new Mesh(
-      new RingGeometry(4.5, 8.5, 48),
+      new RingGeometry(WAYPOINT.ringInner, WAYPOINT.ringOuter, 48),
       new MeshBasicMaterial({
         color: 0x66d7f4,
         transparent: true,
@@ -103,164 +109,164 @@ export class WaypointMarker {
     ring.frustumCulled = false;
     ring.renderOrder = 1002;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = 640;
-    canvas.height = 160;
-    const texture = new CanvasTexture(canvas);
-    texture.colorSpace = SRGBColorSpace;
-    texture.minFilter = LinearFilter;
-    texture.magFilter = LinearFilter;
-    texture.generateMipmaps = false;
-    const label = new Sprite(
-      new SpriteMaterial({
-        map: texture,
+    const pin = new Mesh(
+      new ConeGeometry(WAYPOINT.pinRadius * 1.35, WAYPOINT.pinHeight, 10),
+      new MeshBasicMaterial({
+        color: 0x3ee0ff,
         transparent: true,
-        depthTest: false,
+        opacity: 0.92,
+        depthTest: true,
         depthWrite: false,
         toneMapped: false,
       }),
     );
-    label.name = 'Waypoint:Label';
-    label.position.y = LABEL_Y;
-    label.center.set(0.5, 0.5);
-    label.renderOrder = 1003;
-    label.frustumCulled = false;
+    pin.name = 'Waypoint:Pin';
+    pin.rotation.x = Math.PI;
+    pin.position.y = WAYPOINT.pinHeight * 0.5 + 0.4;
+    pin.frustumCulled = false;
+    pin.renderOrder = 1003;
 
-    group.add(outerBeam, coreBeam, ring, label);
+    const head = new Mesh(
+      new SphereGeometry(WAYPOINT.pinRadius * 1.15, 12, 10),
+      new MeshBasicMaterial({
+        color: 0xe8ba7f,
+        transparent: true,
+        opacity: 0.95,
+        depthTest: true,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+    );
+    head.position.y = WAYPOINT.pinHeight + 0.55;
+    head.frustumCulled = false;
+    head.renderOrder = 1004;
+
+    group.add(outerBeam, coreBeam, ring, pin, head);
     context.scene.add(group);
 
     this.#group = group;
     this.#outerBeam = outerBeam;
     this.#coreBeam = coreBeam;
     this.#ring = ring;
-    this.#label = label;
-    this.#labelTexture = texture;
-    this.#labelCanvas = canvas;
-    this.#writeLabel('Waypoint', 0);
+    this.#pin = pin;
+    this.#head = head;
   }
 
   get waypoint(): WaypointPosition | null {
     return this.#waypoint;
   }
 
+  get screen(): PinScreen | null {
+    return this.#screen;
+  }
+
   set(x: number, z: number, groundY: number, label = 'Waypoint'): void {
-    this.#waypoint = { x, z, label };
-    this.#distanceBucket = -1;
+    this.#waypoint = { x, y: groundY, z, label };
+    this.#appearGoal = 1;
     const group = this.#group;
     if (!group) return;
     group.position.set(x, groundY, z);
     group.visible = true;
-    this.#writeLabel(label, 0);
+    if (this.#appear < 0.05) this.#appear = 0;
   }
 
-  update(playerX: number, playerZ: number, dt = 0): void {
+  update(
+    playerX: number,
+    playerZ: number,
+    dt = 0,
+    camera: PerspectiveCamera | null = null,
+    viewW = 0,
+    viewH = 0,
+    heightAt: HeightAt | null = null,
+  ): void {
     const waypoint = this.#waypoint;
-    const label = this.#label;
-    const ring = this.#ring;
-    if (!waypoint || !label) return;
-    const meters = Math.hypot(waypoint.x - playerX, waypoint.z - playerZ);
-    const bucket = Math.round(meters / 10);
-    if (bucket !== this.#distanceBucket) {
-      this.#distanceBucket = bucket;
-      this.#writeLabel(waypoint.label, meters);
+    if (waypoint && heightAt && this.#group) {
+      this.#group.position.y = heightAt(waypoint.x, waypoint.z);
+    }
+    this.#appear = damp(
+      this.#appear,
+      this.#appearGoal,
+      this.#appearGoal > this.#appear ? WAYPOINT.appearSmooth : WAYPOINT.fadeOut,
+      dt,
+    );
+    const group = this.#group;
+    if (group) group.visible = this.#appear > 0.01;
+    if (this.#appear <= 0.01 && this.#appearGoal <= 0) {
+      this.#screen = null;
+      return;
     }
 
     this.#pulse += dt;
+    const wave = 1 + 0.14 * Math.sin(this.#pulse * 3.2);
+    const pulse = 0.55 + 0.3 * (0.5 + 0.5 * Math.sin(this.#pulse * 3.2));
+    const a = this.#appear;
+    if (this.#outerBeam) this.#outerBeam.material.opacity = WAYPOINT.beamOpacity * a;
+    if (this.#coreBeam) this.#coreBeam.material.opacity = 0.55 * a;
+    const ring = this.#ring;
     if (ring) {
-      const wave = 1 + 0.14 * Math.sin(this.#pulse * 3.2);
-      ring.scale.setScalar(wave);
-      ring.material.opacity = 0.55 + 0.3 * (0.5 + 0.5 * Math.sin(this.#pulse * 3.2));
+      ring.scale.setScalar(wave * (0.72 + 0.28 * a));
+      ring.material.opacity = pulse * a;
+    }
+    if (this.#head) this.#head.material.opacity = 0.95 * a;
+
+    const meters = waypoint
+      ? Math.hypot(waypoint.x - playerX, waypoint.z - playerZ)
+      : WAYPOINT.pinHideMeters;
+    const pin = this.#pin;
+    if (pin) {
+      const target = clamp(1 + meters * 0.0012, 1, 3.2) * (0.55 + 0.45 * a);
+      this.#scaleSmooth = damp(this.#scaleSmooth, target, WAYPOINT.appearSmooth, dt);
+      pin.scale.setScalar(this.#scaleSmooth);
+      pin.material.opacity = 0.92 * a;
     }
 
-    const width = clamp(22 + meters * 0.1, 28, 140);
-    label.scale.set(width, width * 0.28, 1);
-    label.position.y = LABEL_Y + clamp(meters * 0.01, 0, 22);
+    if (!waypoint || !camera || viewW < 8 || viewH < 8) {
+      this.#screen = null;
+      return;
+    }
+    if (meters < WAYPOINT.pinHideMeters) {
+      this.#screen = null;
+      return;
+    }
+
+    _world.set(
+      waypoint.x,
+      (this.#group?.position.y ?? waypoint.y) + WAYPOINT.pinHeight + 1.2,
+      waypoint.z,
+    );
+    _view.copy(_world).applyMatrix4(camera.matrixWorldInverse);
+    const inFront = _view.z < 0;
+    _world.project(camera);
+    this.#screen = pinScreen(_world.x, _world.y, inFront, viewW, viewH);
   }
 
   clear(): void {
     this.#waypoint = null;
-    this.#distanceBucket = -1;
-    if (this.#group) this.#group.visible = false;
-  }
-
-  #writeLabel(name: string, meters: number): void {
-    const canvas = this.#labelCanvas;
-    const texture = this.#labelTexture;
-    if (!canvas || !texture) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    roundedRect(ctx, 20, 18, 600, 124, 22);
-    ctx.fillStyle = 'rgba(6, 20, 24, 0.92)';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(102, 215, 244, 0.85)';
-    ctx.lineWidth = 5;
-    ctx.stroke();
-
-    ctx.fillStyle = '#66d7f4';
-    ctx.fillRect(20, 18, 14, 124);
-    ctx.fillStyle = '#f6efe4';
-    ctx.font = '800 44px "Segoe UI", system-ui, sans-serif';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(name.toUpperCase(), 56, 62);
-    ctx.fillStyle = '#e8ba7f';
-    ctx.font = '700 34px ui-monospace, monospace';
-    ctx.fillText(formatDistance(meters), 56, 110);
-    texture.needsUpdate = true;
+    this.#screen = null;
+    this.#appearGoal = 0;
   }
 
   dispose(): void {
     const group = this.#group;
-    if (group) this.#context?.scene.remove(group);
-
-    this.#outerBeam?.geometry.dispose();
-    this.#outerBeam?.material.dispose();
-    this.#coreBeam?.geometry.dispose();
-    this.#coreBeam?.material.dispose();
-    this.#ring?.geometry.dispose();
-    this.#ring?.material.dispose();
-    const labelMaterial = this.#label?.material;
-    if (labelMaterial instanceof SpriteMaterial) labelMaterial.dispose();
-    this.#labelTexture?.dispose();
-
+    if (group) {
+      this.#context?.scene.remove(group);
+      group.traverse((child) => {
+        if (child instanceof Mesh) {
+          child.geometry.dispose();
+          if (child.material instanceof MeshBasicMaterial) child.material.dispose();
+        }
+      });
+    }
     this.#group = null;
     this.#outerBeam = null;
     this.#coreBeam = null;
     this.#ring = null;
-    this.#label = null;
-    this.#labelTexture = null;
-    this.#labelCanvas = null;
+    this.#pin = null;
+    this.#head = null;
     this.#waypoint = null;
+    this.#screen = null;
     this.#context = null;
   }
-}
-
-function formatDistance(meters: number): string {
-  if (meters < 999.5) return `${Math.round(meters)} m`;
-  return `${(meters / 1000).toFixed(1)} km`;
-}
-
-function roundedRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-): void {
-  const r = Math.min(radius, width * 0.5, height * 0.5);
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + width - r, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-  ctx.lineTo(x + width, y + height - r);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-  ctx.lineTo(x + r, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
 }
 
 function clamp(value: number, min: number, max: number): number {

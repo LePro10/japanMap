@@ -104,6 +104,13 @@ export interface DriveInput {
    * davon etwas anderes als `false` gemeint hätte.
    */
   boost?: boolean;
+  /**
+   * Stunt-Modus — Doppeltipp Space. Optional wie `boost`: Messläufe, die
+   * die Eingabe von Hand bauen, meinen aus.
+   */
+  stunt?: boolean;
+  /** Doppeltipp in diesem Frame — startet den 360. Optional wie `stunt`. */
+  trick?: boolean;
 }
 
 /**
@@ -210,6 +217,19 @@ export interface VehicleTelemetry {
   accelLat: number;
   /** Prepared-Circuit-Mischung, 0…1 — WP6. */
   circuit: number;
+  /**
+   * Stunt-Drift, 0…1. Folgt der Drift, kein Toggle: Geradeaus lässt ihn
+   * schneller fallen als `#drift`. HUD und Kamera.
+   */
+  stunt: number;
+  /** Spin-Absicht, 0…1. Space gehalten im Stunt — HUD pulsiert damit. */
+  spin: number;
+  /** Rest des Doppeltipp-360, 0…1. */
+  trick: number;
+  /** Karosserie-Wanken, rad. Luft-Rolle läuft hier durch. */
+  roll: number;
+  /** Karosserie-Nicken, rad. Die Luft-Rolle darf das nicht zum Loop machen. */
+  pitch: number;
 }
 
 /**
@@ -513,6 +533,11 @@ export class Vehicle {
     accelLong: 0,
     accelLat: 0,
     circuit: 0,
+    stunt: 0,
+    spin: 0,
+    trick: 0,
+    roll: 0,
+    pitch: 0,
   };
 
   constructor(spec: VehicleSpec = TOUGE) {
@@ -585,6 +610,10 @@ export class Vehicle {
    */
   get pitch(): number {
     return this.#pitch;
+  }
+
+  get roll(): number {
+    return this.#roll;
   }
 
   get wheelSpinAngle(): number {
@@ -665,6 +694,10 @@ export class Vehicle {
     this.#steerAngle = 0;
     this.#planar.reset();
     this.#airborne = false;
+    this.#airPitch = 0;
+    this.#airPitchRate = 0;
+    this.#airRoll = 0;
+    this.#airRollRate = 0;
     // **Und der Raddrehwinkel.** Jeder Zustand, der ein Reset überlebt, tarnt
     // sich als „nicht ganz reproduzierbar": gemessen endeten zwei Läufe
     // derselben Strecke 6 cm auseinander (742,26 m gegen 742,20 m), weil die
@@ -847,6 +880,8 @@ export class Vehicle {
     this.#planarInput.steer = input.steer;
     this.#planarInput.handbrake = input.handbrake;
     this.#planarInput.boost = input.boost === true;
+    this.#planarInput.stunt = input.stunt === true;
+    this.#planarInput.trick = input.trick === true;
 
     this.#planarEnv.vLong = this.#vLong;
     this.#planarEnv.vLat = this.#vLat;
@@ -900,6 +935,7 @@ export class Vehicle {
     this.#yawRate = planar.yawRate;
     this.#yaw += this.#yawRate * dt;
     this.#airPitchRate = planar.pitchRate;
+    this.#airRollRate = planar.rollRate;
 
     // ── Lage integrieren ──────────────────────────────────────────────────
     this.#updateBasis();
@@ -1036,7 +1072,7 @@ export class Vehicle {
     // sie: „steht und will nicht stehen" ist die einzige Beobachtung, die eine
     // Nische von einer Wand unterscheidet, gegen die jemand absichtlich drückt.
     const willFahren = input.throttle > 0.1 || input.brake > 0.1;
-    if (collision) this.#resolveCollision(collision, dt, willFahren);
+    if (collision) this.#resolveCollision(collision, ground, dt, willFahren);
 
     this.#wheelSpin += (this.#vLong / chassis.wheelRadius) * dt;
     this.#updateTransform();
@@ -1069,6 +1105,11 @@ export class Vehicle {
     t.accelLong = accelLong;
     t.accelLat = accelLat;
     t.circuit = this.#planarEnv.circuit ?? 0;
+    t.stunt = planar.stunt;
+    t.spin = planar.spin;
+    t.trick = planar.trick;
+    t.roll = this.#roll;
+    t.pitch = this.#pitch;
   }
 
   /**
@@ -1085,6 +1126,8 @@ export class Vehicle {
     steer: 0,
     handbrake: false,
     boost: false,
+    stunt: false,
+    trick: false,
   };
 
   readonly #planarEnv: { -readonly [K in keyof PlanarEnv]: PlanarEnv[K] } = {
@@ -1101,6 +1144,9 @@ export class Vehicle {
   #airPitchRate = 0;
   /** Aufintegrierte Flugauslenkung des Nickwinkels, rad. */
   #airPitch = 0;
+  #airRollRate = 0;
+  /** Flug-Rolle, unwrapped. Doppeltipp in der Luft: seitlich, nicht nach oben. */
+  #airRoll = 0;
 
   // ── Teilschritte ────────────────────────────────────────────────────────
 
@@ -1374,9 +1420,16 @@ export class Vehicle {
         -AIR_CONTROL.maxPitch,
         AIR_CONTROL.maxPitch,
       );
+      this.#airRoll += this.#airRollRate * dt;
       const blend = 1 - Math.exp(-this.#spec.suspension.attitudeRate * dt);
       this.#pitch += (luftPitch + this.#airPitch - this.#pitch) * blend;
-      this.#roll += (luftRoll - this.#roll) * blend;
+      // Rolle seitlich um die Längsachse — addiert, nicht statt der Hanglage.
+      // Direkte Setzung während der Trick-Rate, sonst frisst der Blend die 360.
+      if (Math.abs(this.#airRollRate) > 0.4 || Math.abs(this.#airRoll) > 0.35) {
+        this.#roll = luftRoll + this.#airRoll;
+      } else {
+        this.#roll += (luftRoll + this.#airRoll - this.#roll) * blend;
+      }
       return;
     }
     // Am Boden läuft die Flugauslenkung aus — sonst stünde der Wagen nach einer
@@ -1384,6 +1437,11 @@ export class Vehicle {
     if (this.#airPitch !== 0) {
       this.#airPitch *= Math.exp(-6 * dt);
       if (Math.abs(this.#airPitch) < 1e-4) this.#airPitch = 0;
+    }
+    if (this.#airRoll !== 0) {
+      this.#airRoll = Math.atan2(Math.sin(this.#airRoll), Math.cos(this.#airRoll));
+      this.#airRoll *= Math.exp(-8 * dt);
+      if (Math.abs(this.#airRoll) < 1e-4) this.#airRoll = 0;
     }
 
     const expected = this.position.y - this.#spec.chassis.cgHeight;
@@ -1470,7 +1528,12 @@ export class Vehicle {
    * Die Geschwindigkeit läuft durch dieselbe Schleife; sie ist derselbe Vorgang,
    * nur eine Ableitung höher.
    */
-  #resolveCollision(collision: CollisionWorld, dt: number, willFahren: boolean): void {
+  #resolveCollision(
+    collision: CollisionWorld,
+    ground: Ground,
+    dt: number,
+    willFahren: boolean,
+  ): void {
     const spec = this.#spec;
     // Das Blech plus einen Zuschlag. Der Zuschlag ist klein und ersetzt den
     // alten Eckradius: der war 34 cm groß, weil er an vier *Punkten* eine ganze
@@ -1566,10 +1629,16 @@ export class Vehicle {
             kind: tree ? 'tree' : 'rail',
             id: c.id,
             x: c.px,
-            y: this.position.y,
+            // Boden, nicht Schwerpunkt. Die Trümmer haben `event.y` lange als
+            // Fußboden gelesen — und sind deshalb in Autohöhe in der Luft
+            // liegengeblieben. `c.px/pz` ist der Berührpunkt, also der Ort,
+            // an dem die Planke wirklich steht.
+            y: ground.height(c.px, c.pz),
             z: c.pz,
             vx: this.velocity.x,
             vz: this.velocity.z,
+            nx: c.nx,
+            nz: c.nz,
           });
           // Ein Material kostet einen begrenzten Impuls, keinen festen Anteil
           // des gesamten Tempos. Mehrere Planken dürfen keine Vollbremsung sein.

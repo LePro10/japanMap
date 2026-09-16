@@ -1,4 +1,5 @@
 import {
+  AdditiveBlending,
   BufferAttribute,
   BufferGeometry,
   Color,
@@ -14,6 +15,7 @@ import {
   type Scene,
 } from 'three';
 
+import { ROAD_MESH, roadWidthAt } from '@/config/roads.config';
 import { DRIFT_ZONES, PICKUPS, RAMPS } from '@/config/stunt.config';
 import { DEFAULT_QUALITY, type QualityKey } from '@/config/quality.config';
 import type { EngineContext, System } from '@/core/System';
@@ -69,43 +71,39 @@ const RAMP_COLOR = 0xb4462c;
 /** Der dunklere Ton der Querbalken. Begründung an der Stelle, die ihn setzt. */
 const RAMP_COLOR_DARK = 0x7d2f1e;
 const RAMP_EDGE_COLOR = 0xe6d8c0;
-const SAKURA_TRUNK = 0x5b483a;
-
-/**
- * Drei Blütentöne — **durchmischt und nicht gestapelt**.
- *
- * ## Erst ein Ton, dann drei gestapelte, und beide Male sah es falsch aus
- *
- * Der erste Entwurf hatte einen Ton, und die Kronen lasen sich als flache rosa
- * Schilder: in der blauen Stunde steht die Sonne 2,23° über dem Horizont, und
- * zwischen einer waagerechten und einer senkrechten Fläche liegt dann kaum ein
- * Helligkeitsunterschied. Ohne Farbunterschied gibt es im Bild auch keinen.
- * Die Diagnose stimmt und gilt weiter.
- *
- * Die **Reparatur** war falsch. Sie legte die drei Töne als waagerechte Lagen
- * übereinander — hell oben, mauve unten. Was dabei herauskommt, ist genau das,
- * was ein Baum nicht ist: ein heller Streifen mit einem dunklen Band darunter.
- * Der Auftraggeber hat es in vier Worten gesagt, *„sehen tot aus mit diesem
- * Streifen"*, und `.cache/shots/baum-vorher.png` zeigt es: rosa Sonnenschirme
- * auf Stielen.
- *
- * Zwei Änderungen, und beide sind nötig:
- *
- *  1. **Der Ton hängt nicht mehr an der Höhe**, sondern an einer Kennzahl des
- *     Ballens. Damit stehen helle und tiefe Ballen nebeneinander statt
- *     übereinander, und das liest sich als Blattwerk mit Tiefe statt als
- *     Schichtkuchen. Eine kleine Aufhellung nach oben bleibt — sie ist richtig,
- *     sie darf nur nicht die ganze Lage einfärben.
- *  2. **Der Abstand der Töne ist viel enger und die Sättigung höher.** Vorher
- *     lagen zwischen `0xf7c6d8` und `0xb06e8c` Welten, und der tiefste Ton war
- *     ein staubiges Mauve — die Farbe welker Blüten. Eine blühende Kirsche ist
- *     hell **und** gesättigt.
- */
-const SAKURA_TONES = [0xffc9dd, 0xf7aecb, 0xe391b4] as const;
 const FLAG_POLE = 0xd8d4cc;
 const FLAG_CLOTH = 0xd83a3a;
 const FLAG_CLOTH_DARK = 0x9e2626;
-const PICKUP_COLOR = 0xffd257;
+
+/**
+ * Sparks-Token — unbeleuchtet, wie das Laternenpapier.
+ *
+ * Das alte Oktaeder teilte sich `PropMaterial` mit Schanzen und Bäumen.
+ * Bei 2,23° Sonne ist beleuchtetes Gelb eine matte Kruste, kein Sammelstück.
+ * Die Zahlen sind an derselben Laternen-Messung bemessen (P26): Gain 2,2 hält
+ * die Farbe unter dem Weißpunkt des Tonemappers, über dem Asphalt (0,058).
+ */
+const SPARK_FACET_A = 0xffc56a;
+const SPARK_FACET_B = 0xe8a45c;
+const SPARK_GAIN = 2.6;
+/**
+ * Additive Hülle, als Anteil der Kristallgröße.
+ *
+ * Ein zweites `InstancedMesh`, **ein** Draw-Call, 8 Dreiecke × 90. Kein
+ * Punktlicht, kein Partikel, kein Extra-Bloom-Pass — Additive addiert nur
+ * dort, wo die Hülle im Bild liegt. 1,55 bleibt knapp um den Körper, sonst
+ * liest sich der Glow als Nebelfleck und nicht als Kristall.
+ */
+const SPARK_HALO = 1.55;
+/**
+ * Halbe Höhe des Kristalls, m.
+ *
+ * Die erste Spark-Fassung war 0,44 m hoch — vom Verfolger aus ein Punkt.
+ * Das alte Oktaeder war 1,7 m und lesbar, klemmte aber im Boden. 1,4 m hält
+ * die Silhouette, die Unterkante bleibt bei hover 1,65 m noch 0,95 m über
+ * der Fahrbahn.
+ */
+const SPARK_HALF_H = 0.7;
 
 /** Stützpunkte des Zonenrings. 96 sind bei 62 m Radius alle 4,1 m einer. */
 const ZONE_RING_STEPS = 96;
@@ -149,13 +147,14 @@ const ZONE_RING_INNER = 0xf7c6d8;
 const ZONE_RING_OUTER = 0xb84a72;
 
 /**
- * Wie lange der Aufsammel-Effekt dauert, s.
+ * Wie lange der Welt-Pop dauert, s.
  *
- * 0,35 s: lang genug, dass man es aus dem Augenwinkel sieht, kurz genug, dass
- * es bei 90 Stücken je Runde nicht zum Dauerflackern wird. Der Ton dazu ist
- * 90 ms lang — das Bild darf länger stehen als der Ton, umgekehrt nicht.
+ * Schrumpfen zur Mitte, nicht Wachsen: die alte 0,35 s × 2,6-Skalierung
+ * steckte die Unterkante 0,68 m **in** den Asphalt. 0,22 s ist lang genug,
+ * dass das Auge den Implosion sieht, kurz genug, dass die drei Facetten im
+ * HUD den Rest der Belohnung tragen.
  */
-const POP_TIME = 0.35;
+const POP_TIME = 0.22;
 
 /** Sekunden zwischen zwei Schreibvorgängen der Instanzmatrizen — s. `update`. */
 const TRANSFORM_INTERVAL = 1 / 20;
@@ -334,6 +333,10 @@ export class StuntSystem implements System {
     private readonly ramps: RampField,
   ) {}
 
+  setScatter(scatter: { placeAuthored(id: string, data: ArrayLike<number>): void }): void {
+    this.#scatter = scatter;
+  }
+
   readonly #group = new Group();
   #material: PropMaterial | null = null;
   #sampler: TerrainSampler | null = null;
@@ -351,9 +354,16 @@ export class StuntSystem implements System {
    * leuchtet. Begründung ausführlich bei `#buildLanterns`.
    */
   #glow: MeshBasicMaterial | null = null;
-  #trees: InstancedMesh | null = null;
+  /**
+   * Unbeleuchtetes Material der Sparks — getrennt von den Laternen, weil
+   * `color.setScalar` sonst Laternenpapier und Kristall denselben Gain gäbe.
+   */
+  #sparkMat: MeshBasicMaterial | null = null;
+  #sparkHaloMat: MeshBasicMaterial | null = null;
+  #scatter: { placeAuthored(id: string, data: ArrayLike<number>): void } | null = null;
   #flags: InstancedMesh | null = null;
   #pickups: InstancedMesh | null = null;
+  #sparkHalo: InstancedMesh | null = null;
   readonly #petals = new PetalFall();
 
   /** Weltpositionen der Sammelstücke und ihre Wiederkehr-Uhr. */
@@ -363,9 +373,11 @@ export class StuntSystem implements System {
   readonly #geometries: BufferGeometry[] = [];
   readonly #matrix = new Matrix4();
   readonly #quat = new Quaternion();
+  readonly #tilt = new Quaternion();
   readonly #scale = new Vector3(1, 1, 1);
   readonly #zero = new Vector3(0, -1000, 0);
   readonly #up = new Vector3(0, 1, 0);
+  readonly #east = new Vector3(1, 0, 0);
   #spin = 0;
   #wind = 0;
   /** Sekunden seit dem letzten Schreiben der Instanzmatrizen. */
@@ -394,6 +406,24 @@ export class StuntSystem implements System {
     // Antwort auf den Tonemapper. Messtabelle bei `LANTERN_PAPER`.
     glow.color.setScalar(LANTERN_GAIN);
     this.#glow = glow;
+    const sparkMat = new MeshBasicMaterial({ vertexColors: true });
+    sparkMat.name = 'SparkMaterial';
+    sparkMat.fog = false;
+    sparkMat.color.setScalar(SPARK_GAIN);
+    this.#sparkMat = sparkMat;
+    const haloMat = new MeshBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      blending: AdditiveBlending,
+      depthWrite: false,
+      fog: false,
+      side: DoubleSide,
+    });
+    haloMat.name = 'SparkHaloMaterial';
+    // Vertexfarbe trägt die Intensität; 1,0 hier, sonst wird der Hof weiß.
+    haloMat.color.setScalar(1);
+    this.#sparkHaloMat = haloMat;
+    this.#tilt.setFromAxisAngle(this.#east, 0.38);
     context.scene.add(this.#group);
 
     // Die Blüten hängen seit P26 an der Qualitätsstufe — Begründung bei
@@ -402,6 +432,7 @@ export class StuntSystem implements System {
     context.bus.on('quality:changed', ({ level }) => {
       this.#level = level;
       this.#petals.setDensity(PETAL_DENSITY[level]);
+      if (this.#sparkHalo) this.#sparkHalo.visible = level !== 'minimal';
     });
 
     context.bus.on('terrain:ready', ({ sampler }) => {
@@ -679,15 +710,26 @@ export class StuntSystem implements System {
       }
     }
 
-    this.#trees = this.#instance(createSakura(), trees.length, 'Kirschbäume');
-    for (let i = 0; i < trees.length; i++) {
-      const t = trees[i]!;
-      this.#quat.setFromAxisAngle(this.#up, t.turn);
-      this.#scale.set(t.scale, t.scale, t.scale);
-      this.#matrix.compose(new Vector3(t.x, t.y, t.z), this.#quat, this.#scale);
-      this.#trees.setMatrixAt(i, this.#matrix);
+    // LOD und Bruch laufen über die Streuung — dieselbe Leiter wie die Kiefer.
+    // Ein eigenes InstancedMesh hier hätte keine Imposter-Stufe und keinen Stamm
+    // in der Kollision.
+    const scatter = this.#scatter;
+    if (scatter) {
+      const packed = new Float32Array(trees.length * 8);
+      for (let i = 0; i < trees.length; i++) {
+        const t = trees[i]!;
+        const at = i * 8;
+        packed[at] = t.x;
+        packed[at + 1] = t.y;
+        packed[at + 2] = t.z;
+        packed[at + 3] = t.scale;
+        packed[at + 4] = t.scale;
+        packed[at + 5] = t.turn;
+        packed[at + 6] = 0;
+        packed[at + 7] = i % 3;
+      }
+      scatter.placeAuthored('sakura', packed);
     }
-    this.#trees.instanceMatrix.needsUpdate = true;
     this.#scale.set(1, 1, 1);
 
     this.#flagPos.push(...flags);
@@ -741,10 +783,9 @@ export class StuntSystem implements System {
    * Ringstraße.
    */
   #buildPickups(): void {
-    const sampler = this.#sampler;
     const network = this.#network;
-    const material = this.#material;
-    if (!sampler || !network || !material) return;
+    const material = this.#sparkMat;
+    if (!network || !material) return;
 
     const roads = network.roads.filter((r) => r.centerline.length >= 12);
     const total = roads.reduce((sum, r) => sum + r.length, 0);
@@ -757,29 +798,46 @@ export class StuntSystem implements System {
       for (let k = 0; k < share; k++) {
         const i = Math.min(points - 2, Math.floor((points * (k + 0.5)) / share));
         const x0 = line[i * 3]!;
+        const y0 = line[i * 3 + 1]!;
         const z0 = line[i * 3 + 2]!;
         const dx = line[(i + 1) * 3]! - x0;
         const dz = line[(i + 1) * 3 + 2]! - z0;
         const len = Math.hypot(dx, dz) || 1;
-        // Seitlich versetzt, Seite abwechselnd — das ist der Punkt: die Stücke
-        // sollen die Linie ändern und nicht auf ihr liegen.
-        const side = (k % 2 === 0 ? 1 : -1) * PICKUPS.offset * 3.5;
+        // Halbe Breite **an dieser Stelle**, nicht 3,5 m für jede Straße.
+        const half = roadWidthAt(road, i) * 0.5;
+        // −1 / 0 / +1: linke Spur, Mittellinie, rechte Spur.
+        const lane = (k % 3) - 1;
+        const side = lane * PICKUPS.offset * half;
         const x = x0 - (dz / len) * side;
         const z = z0 + (dx / len) * side;
+        // Fahrbahnhöhe der Mittellinie, nicht `getHeightAt` am Versatz: der
+        // Versatz liegt auf der Spur, die Mittellinie ist die Ebene, auf der
+        // gefahren wird. Plus Mesh-Offset, plus Schwebehöhe.
         this.#pickupPos.push({
           x,
-          y: sampler.getHeightAt(x, z) + PICKUPS.height,
+          y: y0 + ROAD_MESH.surfaceOffset + PICKUPS.height,
           z,
           back: 0,
         });
       }
     }
 
-    this.#pickups = this.#instance(createToken(), this.#pickupPos.length, 'Sammelstücke');
+    this.#pickups = this.#instance(createSparkToken(), this.#pickupPos.length, 'Sammelstücke', material);
     // Frustum-Culling aus: die Hüllkugel wird nie aktualisiert, weil die
     // Instanzmatrizen jeden Frame drehen. Dieselbe Begründung wie bei den
     // Rädern des Fahrzeugs (P14).
     this.#pickups.frustumCulled = false;
+    if (this.#sparkHaloMat) {
+      this.#sparkHalo = this.#instance(
+        createSparkHalo(),
+        this.#pickupPos.length,
+        'Sammelstücke-Hof',
+        this.#sparkHaloMat,
+      );
+      this.#sparkHalo.frustumCulled = false;
+      this.#sparkHalo.renderOrder = 1;
+      this.#sparkHalo.visible = this.#level !== 'minimal';
+    }
     this.#writePickups();
   }
 
@@ -927,49 +985,42 @@ export class StuntSystem implements System {
 
   #writePickups(): void {
     const mesh = this.#pickups;
+    const halo = this.#sparkHalo;
     if (!mesh) return;
     for (let i = 0; i < this.#pickupPos.length; i++) {
       const p = this.#pickupPos[i]!;
-      // ── Der Aufsammel-Effekt — P25 ──────────────────────────────────
-      //
-      // P24 hat als offenen Punkt hinterlassen: „die Sammelstücke stehen ohne
-      // Ton und ohne Partikel". Der Ton steht seit P25 in `AudioSystem`; das
-      // hier ist das Bild dazu — und es kostet **nichts**.
-      //
-      // Der Trick ist, dass ein eingesammeltes Stück nicht sofort weg sein
-      // muss. Es hat ohnehin eine Uhr (`back`), also bekommt der erste Moment
-      // davon eine eigene Bedeutung: das Stück wächst, dreht schneller und
-      // verschwindet. Kein Partikelsystem, keine zweite Instanzliste, kein
-      // Draw-Call — dieselben 90 Instanzen, nur mit einer anderen Matrix.
       const seit = PICKUPS.respawn - p.back;
-      if (p.back > 0 && seit < POP_TIME) {
+      const popping = p.back > 0 && seit < POP_TIME;
+      let s = 1;
+      if (popping) {
         const t = seit / POP_TIME;
-        // Wachsen und dabei ausdünnen. Ein Oktaeder hat keine Deckkraft je
-        // Instanz (`PropMaterial` liest die Vertexfarbe), also macht die
-        // **Größe** die ganze Arbeit: über 2,6 hinaus liest das Auge es als
-        // Blitz und nicht mehr als Gegenstand.
-        const s = 1 + t * 1.6;
-        this.#scale.set(s, s * 1.35, s);
-        // Vierfache Drehgeschwindigkeit — sie ist das, was den Moment vom
-        // ruhigen Kreiseln davor unterscheidet.
-        this.#quat.setFromAxisAngle(this.#up, this.#spin * 4 + i * 0.7);
-        this.#matrix.compose(POINT.set(p.x, p.y + t * 1.2, p.z), this.#quat, this.#scale);
-        mesh.setMatrixAt(i, this.#matrix);
-        this.#scale.set(1, 1, 1);
-        continue;
+        s = Math.max(0.04, (1 - t) * (1 - t));
+        this.#quat.setFromAxisAngle(this.#up, this.#spin * 5.5 + i * 0.7);
+        this.#quat.multiply(this.#tilt);
+        POINT.set(p.x, p.y + t * 0.7, p.z);
+      } else {
+        const bob = Math.sin(this.#spin * 2.1 + i * 0.73) * 0.12;
+        this.#quat.setFromAxisAngle(this.#up, this.#spin * 0.85 + i * 0.7);
+        this.#quat.multiply(this.#tilt);
+        // Eingesammelte Stücke wandern unter die Welt statt `count` zu ändern:
+        // `count` verkleinern hieße, die Liste umzusortieren, und dann stimmt die
+        // Zuordnung Position ↔ Instanz nicht mehr.
+        if (p.back > 0) POINT.copy(this.#zero);
+        else POINT.set(p.x, p.y + bob, p.z);
       }
-      this.#quat.setFromAxisAngle(this.#up, this.#spin + i * 0.7);
-      // Eingesammelte Stücke wandern unter die Welt statt `count` zu ändern:
-      // `count` verkleinern hieße, die Liste umzusortieren, und dann stimmt die
-      // Zuordnung Position ↔ Instanz nicht mehr.
-      this.#matrix.compose(
-        p.back > 0 ? this.#zero : POINT.set(p.x, p.y, p.z),
-        this.#quat,
-        this.#scale,
-      );
+      this.#scale.set(s, s, s);
+      this.#matrix.compose(POINT, this.#quat, this.#scale);
       mesh.setMatrixAt(i, this.#matrix);
+      if (halo) {
+        const h = s * SPARK_HALO;
+        this.#scale.set(h, h, h);
+        this.#matrix.compose(POINT, this.#quat, this.#scale);
+        halo.setMatrixAt(i, this.#matrix);
+      }
+      this.#scale.set(1, 1, 1);
     }
     mesh.instanceMatrix.needsUpdate = true;
+    if (halo) halo.instanceMatrix.needsUpdate = true;
   }
 
   /**
@@ -981,8 +1032,9 @@ export class StuntSystem implements System {
    * niemand gestellt hat. Wenn die Zahl je dreistellig wird, steht hier ein
    * Raster — vorher nicht.
    */
-  collect(x: number, z: number, dt: number): number {
+  collect(x: number, z: number, dt: number): { taken: number; at: { x: number; y: number; z: number }[] } {
     let taken = 0;
+    const at: { x: number; y: number; z: number }[] = [];
     const r2 = PICKUPS.radius * PICKUPS.radius;
     for (const p of this.#pickupPos) {
       if (p.back > 0) {
@@ -993,10 +1045,11 @@ export class StuntSystem implements System {
       const dz = p.z - z;
       if (dx * dx + dz * dz <= r2) {
         p.back = PICKUPS.respawn;
+        at.push({ x: p.x, y: p.y, z: p.z });
         taken++;
       }
     }
-    return taken;
+    return { taken, at };
   }
 
   /** Ist der Punkt in einer Driftzone? Gibt den Multiplikator zurück, sonst 1. */
@@ -1032,24 +1085,29 @@ export class StuntSystem implements System {
     // **Darstellung**, die niemand Frame für Frame prüft.
     //
     // Beides sind langsame Bewegungen: die Fahne schwingt mit 1,7 und 2,9 rad/s,
-    // das Stück dreht mit 1,8 rad/s. Bei 20 Hz liegen zwischen zwei Bildern
-    // 5,2° Drehung — das ist unterhalb dessen, was an einem 40 Pixel großen
-    // Oktaeder überhaupt zu sehen ist.
+    // das Stück dreht mit 0,85 rad/s. Bei 20 Hz liegen zwischen zwei Bildern
+    // 2,4° — unterhalb dessen, was an einem 16-Pixel-Kristall zu sehen ist.
     //
     // **20 Hz und nicht 15 wie die Minikarte**, weil hier Geometrie in
     // Bewegung ist und dort eine Zeichnung: eine ruckelnde Drehung fällt eher
-    // auf als eine ruckelnde Karte. Die Zahl ist eine Abwägung und keine
-    // Messung — was sie spart, ist proportional und offensichtlich (zwei
-    // Drittel der Aufrufe), was sie kostet, ist eine Frage fürs Auge.
+    // auf als eine ruckelnde Karte. Der Pop schreibt trotzdem jeden Frame.
     this.#since += dt;
-    if (this.#since < TRANSFORM_INTERVAL) return;
+    // Idle bei 20 Hz (Begründung oben). Der Pop dauert 0,22 s — bei 20 Hz
+    // wären das vier Bilder, und eine Implosion in vier Sprüngen liest sich
+    // als Ruck. Solange einer poppt, schreiben wir jeden Frame.
+    const popping = this.#anyPopping();
+    if (!popping && this.#since < TRANSFORM_INTERVAL) return;
     this.#since = 0;
 
     this.#waveFlags();
-    // Die Stücke drehen sich. Das ist die billigste Art, ein Ding als
-    // „einsammelbar" zu kennzeichnen — jedes Spiel seit 1991 macht es so, und
-    // zwar weil es funktioniert: bewegte Dinge ziehen den Blick.
     if (this.#pickups) this.#writePickups();
+  }
+
+  #anyPopping(): boolean {
+    for (const p of this.#pickupPos) {
+      if (p.back > 0 && PICKUPS.respawn - p.back < POP_TIME) return true;
+    }
+    return false;
   }
 
   dispose(): void {
@@ -1063,9 +1121,14 @@ export class StuntSystem implements System {
     this.#fallen?.dispose();
     this.#glow?.dispose();
     this.#glow = null;
-    this.#trees?.dispose();
     this.#flags?.dispose();
     this.#pickups?.dispose();
+    this.#sparkHalo?.dispose();
+    this.#sparkHalo = null;
+    this.#sparkMat?.dispose();
+    this.#sparkMat = null;
+    this.#sparkHaloMat?.dispose();
+    this.#sparkHaloMat = null;
     this.#material?.dispose();
     this.#material = null;
   }
@@ -1077,137 +1140,6 @@ const POINT = new Vector3();
 function hash(x: number, z: number): number {
   const n = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
   return n - Math.floor(n);
-}
-
-/**
- * Ein Kirschbaum — Stamm, zwei Äste und neun Kronenballen.
- *
- * **Kein Blattwerk, keine Textur.** Die Karte lebt vom Licht und nicht von der
- * Geometrie (SPEC, Leitprinzip); ein rosa Block in der blauen Stunde liest sich
- * auf 200 m als Kirschbaum, und ein Alphatest-Blatt kostet zehnmal so viel.
- *
- * ## Warum aus drei Blöcken neun wurden
- *
- * Die erste Fassung stapelte drei achsenparallele Kästen. Aus der Ferne trug
- * das; aus dem Auto heraus — und da fährt man mitten hindurch — stand ein
- * **Schild** in der Landschaft: eine 4,4 m breite Fläche, die dem Betrachter
- * fast immer eine ihrer vier gleich hellen Seiten zudreht.
- *
- * Drei Dinge zusammen lösen das, und keines davon allein:
- *
- *  1. **Mehr und kleinere Ballen.** Neun Kästen von 1,7…3,4 m ergeben eine
- *     Silhouette mit Ecken statt einer Kante.
- *  2. **Gedreht.** `boxY` dreht um die Hochachse; zwei Kästen mit 30° Versatz
- *     haben aus jeder Richtung eine unregelmäßige Umrisslinie. Achsenparallel
- *     gestapelt bleibt ein Stapel ein Stapel, egal wie viele es sind.
- *  3. **Drei Farbtöne.** Begründung bei `SAKURA_TOP` — in der blauen Stunde
- *     trennt das Licht die Flächen nicht, also muss die Farbe es tun.
- *
- * Kosten, **nachgezählt** und nicht geschätzt (12 Kästen · 12 Dreiecke):
- * 144 Dreiecke je Baum gegen vorher 48, bei 44 Bäumen (24 + 20, siehe
- * `DRIFT_ZONES`) also **6336** in *einem* Draw-Call. Das Budget aus SPEC §4
- * liegt bei 3 Mio.
- *
- * > Hier stand zuerst „22 Kästen … 10 560 Dreiecke". Beides war falsch: die
- * > Funktion hat zwölf Kästen, und Bäume gibt es 44, nicht 40. Die Zahlen waren
- * > beim Schreiben geschätzt statt gezählt — genau der Fehler, den CLAUDE.md
- * > unter „eine Zahl als Begründung geschrieben, ohne sie zu messen" führt,
- * > diesmal nur an einer Kostenangabe und nicht an einer Wirkung.
- */
-function createSakura(): BufferGeometry {
-  const parts: BoxSpec[] = [
-    // ── Stamm und Äste ──────────────────────────────────────────────────
-    //
-    // Kräftiger und kürzer als vorher (0,52 statt 0,42 breit, Krone tiefer
-    // angesetzt). Der alte Baum war ein dünner Stiel mit einem Hut darauf, und
-    // zwischen beiden klaffte Luft — auf `.cache/shots/baum-vorher.png` liest
-    // sich das als Sonnenschirm. Die drei Äste greifen jetzt **in** die Krone
-    // hinein und schließen die Lücke.
-    // **Ein Stamm, nicht vier Balken.** Die alten drei Äste standen mit 1,5 bis
-    // 1,9 m Länge zur Hälfte **neben** der Krone und lasen sich im Bild als
-    // einzelne dunkle Stangen (`.cache/shots/p26b-baum-nah.png`, beide Bäume).
-    // Sie sind jetzt kurz und stecken bis auf ihren Ansatz im Laub — was einen
-    // Baum ausmacht, ist der geschlossene Übergang von Stamm zu Krone, nicht
-    // sichtbares Geäst.
-    box(0.62, 1.9, 0.62, 0, 0.95, 0, SAKURA_TRUNK),
-    // Der Übergang: ein kürzeres, schmaleres Stück darüber. Zwei gestapelte
-    // Kästen mit unterschiedlicher Breite deuten die Verjüngung an.
-    box(0.46, 1.1, 0.46, 0, 2.3, 0, SAKURA_TRUNK),
-    boxY(0.3, 1.0, 0.3, 0.42, 2.55, -0.16, 0.55, SAKURA_TRUNK),
-    boxY(0.28, 0.9, 0.28, -0.38, 2.5, 0.28, -0.75, SAKURA_TRUNK),
-  ];
-
-  // ── Die Krone als Kuppel aus Ballen ───────────────────────────────────
-  //
-  // **Warum eine Spirale und keine Liste von Hand.** Von Hand gesetzte Ballen
-  // werden unweigerlich zu Lagen — man schreibt sie zeilenweise hin, und genau
-  // das war der Streifen. Eine Fibonacci-Spirale verteilt sie gleichmäßig über
-  // eine Halbkugel, ohne dass zwei je auf derselben Höhe landen; die Silhouette
-  // bekommt Beulen statt Stufen.
-  //
-  // `CROWN_*` beschreibt ein **Ellipsoid**, das breiter als hoch ist (eine
-  // Kirsche ist ausladend) — aber nicht so flach wie die 4,2 × 2,2 von vorher,
-  // die als Scheibe gelesen wurden.
-  // **Breit und tief angesetzt.** Der erste Entwurf dieser Spirale hatte
-  // `CROWN_Y 4,1` und `RX 1,95` — im Bild (`.cache/shots/baum-nah.png`) ein
-  // Ball auf einem Stiel, weil zwischen Kronenunterkante und Astansatz wieder
-  // Luft stand. Eine Zierkirsche ist **breiter als hoch** und hängt bis auf
-  // gut zwei Meter herunter; die Krone soll den Stamm zur Hälfte verdecken.
-  //
-  // **~~19 Kästen~~ — seit P26 neun Ikosaeder.** Aus 60 m sahen die Kästen gut
-  // aus, aus 10 m waren es Würfel: drei sichtbare Flächen, drei harte Kanten,
-  // und bei 2,23° Sonnenstand liegen alle drei fast gleich hell. Ein Ballen hat
-  // jetzt zwanzig verschieden geneigte Flächen statt sechs (siehe `blob`), und
-  // die Krone kostet dabei **weniger**: 9 × 20 = 180 Dreiecke gegen 19 × 12 =
-  // 228. Weniger, größere, rundere Ballen lesen sich als Laub; viele kleine
-  // Kästen lesen sich als Haufen.
-  //
-  // **Elf Ballen und enger gesetzt.** Mit neun auf RX 2,35 lag der Abstand
-  // zweier Nachbarn im weitesten Ring bei rund 2,5 m und ihr Durchmesser bei
-  // 2,4…3,0 m — sie stießen aneinander, statt sich zu überlappen, und auf
-  // `.cache/shots/p26b-baum-nah.png` steht zwischen ihnen Himmel. Eine Krone
-  // ist keine Perlenkette: die Ballen müssen sich **schneiden**, sonst ist die
-  // Silhouette gezackt und das Innere durchsichtig.
-  //
-  //   Umfang 2π · 2,1 = 13,2 m auf ~6 Ballen im weitesten Ring = 2,2 m Abstand
-  //   Durchmesser 2 · (1,72 − 0,25) = 2,9 m                   -> 0,7 m Überlappung
-  const CROWN_N = 11;
-  const CROWN_Y = 3.4;
-  const CROWN_RX = 2.1;
-  const CROWN_RY = 1.1;
-  // Der goldene Winkel. Er ist der einzige, bei dem keine zwei der ersten N
-  // Punkte annähernd übereinanderliegen — deshalb steht er in jedem
-  // Sonnenblumen-Modell.
-  const GOLDEN = Math.PI * (3 - Math.sqrt(5));
-
-  for (let i = 0; i < CROWN_N; i++) {
-    // `t` läuft von 0 (unten am Ellipsoid) nach 1 (oben). Die Wurzel drückt
-    // mehr Ballen nach außen-unten, wo die Krone dicht ist.
-    const t = (i + 0.5) / CROWN_N;
-    const winkel = i * GOLDEN;
-    const hoehe = Math.cos(t * Math.PI * 0.72);
-    const ring = Math.sqrt(Math.max(0, 1 - hoehe * hoehe));
-
-    const x = Math.cos(winkel) * ring * CROWN_RX;
-    const z = Math.sin(winkel) * ring * CROWN_RX;
-    const y = CROWN_Y + hoehe * CROWN_RY;
-
-    // Ballen weiter außen sind kleiner — das rundet die Silhouette ab, statt
-    // sie mit gleich großen Klötzen zu bepflastern. Bei neun statt neunzehn
-    // Ballen muss jeder größer sein, sonst steht zwischen ihnen Himmel.
-    const groesse = 1.72 - ring * 0.25;
-
-    // **Der Ton kommt aus dem Index und nicht aus der Höhe.** Begründung bei
-    // `SAKURA_TONES`. Der Zuschlag `hoehe > 0.55` hellt nur die obersten
-    // Ballen auf und färbt keine ganze Lage ein.
-    const wahl = (i * 7 + (hoehe > 0.55 ? 2 : 0)) % SAKURA_TONES.length;
-    const ton = SAKURA_TONES[hoehe > 0.55 ? Math.min(wahl, 1) : wahl]!;
-
-    // Flach gedrückt (0,74 in der Höhe): Laub hängt, es ist keine Kugel.
-    parts.push(blob(groesse, groesse * 0.74, groesse * 0.94, x, y, z, ton));
-  }
-
-  return mergeBoxes(parts);
 }
 
 /**
@@ -1353,37 +1285,77 @@ function createFallenPatch(): BufferGeometry {
 }
 
 /**
- * Ein Sammelstück — ein Oktaeder als zwei Pyramiden.
+ * Ein Spark — **ein** Oktaeder, links/rechts zwei Facettentöne.
  *
- * Es ist absichtlich **keine Münze**: eine flache Scheibe verschwindet, sobald
- * man sie von der Kante sieht, und das ist genau der Blickwinkel eines Fahrers.
- * Ein Oktaeder hat aus jeder Richtung eine Silhouette.
+ * Die Fassung mit zwei versetzten Oktaedern plus Kerben-Kasten schnitt sich
+ * selbst: Z-Fight, eine Silhouette wie ein defektes Mesh. Ein Körper, eine
+ * Falte aus Farbe — dieselbe Raute wie das HUD-Ikon.
+ *
+ * Wicklung: jede Fläche CCW von außen. `japanMap.winding()` prüft das, und
+ * dieses Projekt hat zwei rückseitige Flächen teuer bezahlt (P8.11).
  */
-function createToken(): BufferGeometry {
-  const h = 0.85;
-  const r = 0.55;
+function createSparkToken(): BufferGeometry {
+  return sparkOcta(0.48, SPARK_HALF_H, 0.34, SPARK_FACET_A, SPARK_FACET_B);
+}
+
+/**
+ * Additive Hülle — dieselbe Form, eine Farbe, gedimmt.
+ *
+ * Vertexfarbe ~0,22 der Facette: Additive addiert, und 0,22 hält den Hof
+ * unter dem Weißpunkt (Laternen-Lehre: k = 5 macht die Farbe tot).
+ */
+function createSparkHalo(): BufferGeometry {
+  return sparkOcta(0.48, SPARK_HALF_H, 0.34, 0x3a2810, 0x3a2810);
+}
+
+function sparkOcta(
+  hx: number,
+  hy: number,
+  hz: number,
+  hexEast: number,
+  hexWest: number,
+): BufferGeometry {
   const positions: number[] = [];
   const colors: number[] = [];
-  const c = new Color(PICKUP_COLOR);
-  const ring: [number, number][] = [];
-  for (let i = 0; i < 6; i++) {
-    const a = (Math.PI * 2 * i) / 6;
-    ring.push([Math.cos(a) * r, Math.sin(a) * r]);
-  }
-  for (let i = 0; i < 6; i++) {
-    const [ax, az] = ring[i]!;
-    const [bx, bz] = ring[(i + 1) % 6]!;
-    // Oben und unten. Reihenfolge so, dass beide Hälften nach außen zeigen.
-    positions.push(ax, 0, az, bx, 0, bz, 0, h, 0);
-    positions.push(bx, 0, bz, ax, 0, az, 0, -h, 0);
-    for (let k = 0; k < 6; k++) colors.push(c.r, c.g, c.b);
-  }
+  const top: [number, number, number] = [0, hy, 0];
+  const bot: [number, number, number] = [0, -hy, 0];
+  const n: [number, number, number] = [0, 0, hz];
+  const s: [number, number, number] = [0, 0, -hz];
+  const e: [number, number, number] = [hx, 0, 0];
+  const w: [number, number, number] = [-hx, 0, 0];
+  const east: [number, number, number][][] = [
+    [top, n, e],
+    [top, e, s],
+    [bot, e, n],
+    [bot, s, e],
+  ];
+  const west: [number, number, number][][] = [
+    [top, s, w],
+    [top, w, n],
+    [bot, w, s],
+    [bot, n, w],
+  ];
+  pushFaces(positions, colors, east, hexEast);
+  pushFaces(positions, colors, west, hexWest);
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new BufferAttribute(Float32Array.from(positions), 3));
   geometry.setAttribute('color', new BufferAttribute(Float32Array.from(colors), 3));
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();
   return geometry;
+}
+
+function pushFaces(
+  positions: number[],
+  colors: number[],
+  faces: [number, number, number][][],
+  hex: number,
+): void {
+  const c = new Color(hex);
+  for (const [a, b, cc] of faces) {
+    positions.push(a![0], a![1], a![2], b![0], b![1], b![2], cc![0], cc![1], cc![2]);
+    for (let k = 0; k < 3; k++) colors.push(c.r, c.g, c.b);
+  }
 }
 
 interface BoxSpec {
@@ -1470,94 +1442,6 @@ function boxY(
     p[i + 2] = x * s + z * c + oz;
   }
   return spec;
-}
-
-/**
- * Ein Ikosaeder als Laubballen — 20 Dreiecke, rund statt eckig.
- *
- * ## Warum überhaupt eine zweite Grundform
- *
- * Die Krone bestand bis hier aus Kästen. Aus 60 m sah das gut aus, aus 10 m
- * sind es **Würfel**: drei sichtbare Flächen, drei harte Kanten, und bei 2,23°
- * Sonnenstand liegen alle drei fast gleich hell (dieselbe Beobachtung wie in
- * P25 bei den Farbtönen). Der Auftraggeber hat es zweimal gemeldet.
- *
- * Ein Ikosaeder kostet **20 Dreiecke gegen 12** beim Kasten, hat aber
- * **zwanzig** verschieden geneigte Flächen statt sechs. Genau das ist der
- * Punkt: die Silhouette wird rund, und weil `computeVertexNormals` auf
- * nicht-indizierter Geometrie flache Flächennormalen erzeugt, entsteht dabei
- * von selbst die facettierte Schattierung, die einen Low-Poly-Baum ausmacht.
- *
- * Netto ist die Krone dadurch **billiger**: neun Ballen × 20 = 180 Dreiecke
- * gegen vorher 19 Kästen × 12 = 228.
- *
- * ## Die Wickelrichtung wird gerechnet, nicht abgeschrieben
- *
- * Die 20 Flächenindizes eines Ikosaeders stehen in jedem Lehrbuch, und in
- * jedem zweiten mit einer anderen Umlaufrichtung. Dieses Projekt hat zwei
- * rückseitig gewickelte Flächen teuer bezahlt (P8.11) — deshalb wird hier
- * **nachgerechnet**: zeigt die Flächennormale zum Mittelpunkt statt von ihm
- * weg, werden zwei Ecken getauscht. Das kostet drei Zeilen und macht die
- * Tabelle unten unkritisch.
- */
-function blob(
-  rx: number,
-  ry: number,
-  rz: number,
-  ox: number,
-  oy: number,
-  oz: number,
-  hex: number,
-): BoxSpec {
-  const t = (1 + Math.sqrt(5)) / 2;
-  const roh: [number, number, number][] = [
-    [-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0],
-    [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t],
-    [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1],
-  ];
-  // Auf die Einheitskugel normieren, dann auf das Ellipsoid ziehen. Ein
-  // Kirschbaum ist breiter als hoch, also sind rx/rz > ry.
-  const v = roh.map(([x, y, z]) => {
-    const l = Math.hypot(x, y, z);
-    return [(x / l) * rx, (y / l) * ry, (z / l) * rz] as [number, number, number];
-  });
-  const flaechen: [number, number, number][] = [
-    [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
-    [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
-    [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
-    [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1],
-  ];
-  const positions: number[] = [];
-  const colors: number[] = [];
-  const c = new Color(hex);
-  for (const [ia, ib, ic] of flaechen) {
-    const a = v[ia]!;
-    let b = v[ib]!;
-    let d = v[ic]!;
-    // (b−a) × (d−a) muss vom Mittelpunkt weg zeigen. Der Mittelpunkt des
-    // Ellipsoids ist der Ursprung, also genügt das Skalarprodukt mit `a`.
-    const ux = b[0] - a[0];
-    const uy = b[1] - a[1];
-    const uz = b[2] - a[2];
-    const wx = d[0] - a[0];
-    const wy = d[1] - a[1];
-    const wz = d[2] - a[2];
-    const nx = uy * wz - uz * wy;
-    const ny = uz * wx - ux * wz;
-    const nz = ux * wy - uy * wx;
-    if (nx * a[0] + ny * a[1] + nz * a[2] < 0) {
-      const hilf = b;
-      b = d;
-      d = hilf;
-    }
-    positions.push(
-      a[0] + ox, a[1] + oy, a[2] + oz,
-      b[0] + ox, b[1] + oy, b[2] + oz,
-      d[0] + ox, d[1] + oy, d[2] + oz,
-    );
-    for (let k = 0; k < 3; k++) colors.push(c.r, c.g, c.b);
-  }
-  return { positions, colors };
 }
 
 function mergeBoxes(specs: BoxSpec[]): BufferGeometry {

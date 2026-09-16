@@ -1,8 +1,9 @@
 import { Vector3, type PerspectiveCamera } from 'three';
 
-import { WALK_CAMERA } from '@/config/walker.config';
+import { WALKER, WALK_CAMERA } from '@/config/walker.config';
 import type { Ground } from './Vehicle';
 import type { Walker } from './Walker';
+import type { CollisionWorld } from './CollisionWorld';
 
 /**
  * Dritte Person zu Fuß.
@@ -57,17 +58,20 @@ export class WalkCamera {
     this.#initialized = false;
   }
 
-  update(dt: number, walker: Walker, ground: Ground, camera: PerspectiveCamera): void {
+  update(dt: number, walker: Walker, ground: Ground, camera: PerspectiveCamera, collision?: CollisionWorld): void {
     this.#zoomApplied +=
       (this.#zoom - this.#zoomApplied) * (1 - Math.exp(-WALK_CAMERA.zoomRate * dt));
     const yaw = this.#heading;
     const pitch = this.#pitch;
     const arm = WALK_CAMERA.distance * this.#zoomApplied;
     const dist = arm * Math.cos(pitch);
-    const height = WALK_CAMERA.height - arm * Math.sin(pitch);
+    const dip = walker.slideAmount;
+    const height =
+      WALK_CAMERA.height - dip * WALKER.slideCameraDip - arm * Math.sin(pitch);
+    const lookHeight = WALK_CAMERA.targetHeight - dip * WALKER.slideLookDip;
 
     const bob =
-      walker.grounded && walker.speed > 0.15
+      walker.grounded && walker.speed > 0.15 && dip < 0.2
         ? Math.sin(walker.cycle * WALK_CAMERA.bobFreq) *
           WALK_CAMERA.bob *
           Math.min(1, walker.speed / 3.2)
@@ -80,7 +84,7 @@ export class WalkCamera {
     );
     this.#lookAt.set(
       walker.position.x,
-      walker.position.y + WALK_CAMERA.targetHeight + bob * 0.4,
+      walker.position.y + lookHeight + bob * 0.4,
       walker.position.z,
     );
 
@@ -93,6 +97,16 @@ export class WalkCamera {
 
     const floor = ground.height(this.#position.x, this.#position.z) + WALK_CAMERA.groundClearance;
     if (this.#position.y < floor) this.#position.y = floor;
+
+    // Resolve after smoothing and terrain correction: either can otherwise move
+    // a clear target through a wall. Retract immediately, recover with the spring.
+    if (collision) {
+      const nearHalfHeight = camera.near * Math.tan(WALK_CAMERA.fov * Math.PI / 360);
+      const clearance = Math.max(.18, Math.hypot(camera.near, nearHalfHeight * camera.aspect, nearHalfHeight));
+      const fraction = collision.cameraFraction(this.#lookAt.x, this.#lookAt.y, this.#lookAt.z,
+        this.#position.x, this.#position.y, this.#position.z, clearance);
+      if (fraction < 1) this.#position.lerpVectors(this.#lookAt, this.#position, Math.max(0, fraction - .002));
+    }
 
     camera.position.copy(this.#position);
     camera.lookAt(this.#lookAt);

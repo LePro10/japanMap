@@ -1,5 +1,6 @@
 import { WORLD } from '@/config/world.config';
 import { RIVER } from '@/config/water.config';
+import { PADDY_WATER } from '@/config/props.config';
 import { WATER_PHYS } from '@/config/vehicle.config';
 import { TERRAIN_ASSETS } from '@/world/terrainAssets';
 import type { RiverFile } from '@/world/water/riverGeometry';
@@ -55,7 +56,7 @@ export class WaterField {
 
   #paddy: Uint8Array | null = null;
   #paddyRes = 0;
-  #paddyDepth = 0.3;
+  #paddyDepth = PADDY_WATER.depth;
 
   get ready(): boolean {
     return this.#ready;
@@ -100,7 +101,9 @@ export class WaterField {
 
     if (meta.paddies) {
       this.#paddyRes = meta.paddies.res;
-      this.#paddyDepth = meta.paddies.waterDepth;
+      // Runtime owns the depth — `meta.paddies.waterDepth` is the baker's 0,30 m
+      // used to size dams, not the sheet the car sits in. See `PADDY_WATER.depth`.
+      this.#paddyDepth = PADDY_WATER.depth;
       const bitmap = await createImageBitmap(await (await fetch(TERRAIN_ASSETS.paddy)).blob());
       const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
       const drawing = canvas.getContext('2d', { willReadFrequently: true });

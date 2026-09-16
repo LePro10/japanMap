@@ -30,9 +30,10 @@ import {
 } from '@/config/tuning.config';
 import { engineLook } from '@/game/garageEngine';
 import { CAR_COPY } from './carPresentation';
+import { SPARK_ICON, sparkMark } from './sparkIcon';
 import './tuningGarage.css';
 
-export type BayShot = 'hero' | 'engine' | 'wheels' | 'front' | 'rear' | 'orbit';
+export type BayShot = 'hero' | 'engine' | 'wheels' | 'brakes' | 'front' | 'rear';
 
 interface Shot {
   yaw: number;
@@ -42,19 +43,20 @@ interface Shot {
   hood: number;
 }
 
-const SHOTS: Record<Exclude<BayShot, 'orbit'>, Shot> = {
-  hero: { yaw: 0.62, pitch: 0.18, radius: 6.6, fov: 38, hood: 0 },
-  engine: { yaw: 0.28, pitch: 0.36, radius: 3.2, fov: 32, hood: 1 },
-  wheels: { yaw: 1.22, pitch: 0.07, radius: 3.55, fov: 34, hood: 0 },
-  front: { yaw: 0.1, pitch: 0.14, radius: 5.15, fov: 36, hood: 0 },
-  rear: { yaw: 2.95, pitch: 0.16, radius: 5.35, fov: 36, hood: 0 },
+const SHOTS: Record<BayShot, Shot> = {
+  hero: { yaw: 0.7, pitch: 0.16, radius: 5.35, fov: 36, hood: 0 },
+  engine: { yaw: 1.58, pitch: 0.32, radius: 2.35, fov: 36, hood: 1 },
+  wheels: { yaw: 1.52, pitch: 0.16, radius: 3.35, fov: 34, hood: 0 },
+  brakes: { yaw: 1.05, pitch: 0.08, radius: 2.25, fov: 34, hood: 0 },
+  front: { yaw: 0.2, pitch: 0.18, radius: 4.35, fov: 36, hood: 0 },
+  rear: { yaw: 3.02, pitch: 0.14, radius: 4.55, fov: 36, hood: 0 },
 };
 
 const LOOK = 0.005;
-const PITCH_MIN = 0.02;
-const PITCH_MAX = 0.72;
-const RADIUS_MIN = 2.8;
-const RADIUS_MAX = 10;
+const PITCH_MIN = 0.04;
+const PITCH_MAX = 0.78;
+const RADIUS_MIN = 2.2;
+const RADIUS_MAX = 5.55;
 
 function flyOf(engine: Engine): FreeFlyController | null {
   for (const system of engine.systems) {
@@ -88,6 +90,9 @@ export interface TuningGarageOptions {
  * The world loop stops (`engine.stop`), DriveSystem is paused, and this class
  * drives `previewFrame` so the bay can orbit without the car rolling off the
  * lift. DOM is the HUD; the car is the real renderer.
+ *
+ * Orbit: drag right orbits the camera right (yaw += dx). The previous sign
+ * felt inverted against every car configurator. Pitch was already correct.
  */
 export class TuningGarage {
   readonly #o: TuningGarageOptions;
@@ -133,6 +138,7 @@ export class TuningGarage {
     const reduced =
       document.documentElement.classList.contains('reduce-motion') ||
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    stage.setInstant(reduced);
 
     let fitted = loadTune(id);
     let preview: CarTune = { ...fitted };
@@ -140,7 +146,6 @@ export class TuningGarage {
     let filter: TuneCategory | 'all' | 'setup' = 'all';
     let shot: BayShot = 'hero';
     let compare = false;
-    let autoOrbit = false;
     let yaw = SHOTS.hero.yaw;
     let pitch = SHOTS.hero.pitch;
     let radius = SHOTS.hero.radius;
@@ -152,6 +157,7 @@ export class TuningGarage {
     let target: Shot = { ...SHOTS.hero };
     const unit = engineLook(id);
     const look = new Vector3();
+    const desired = new Vector3();
     const toastTimer = { id: 0 };
 
     const root = document.createElement('div');
@@ -178,14 +184,21 @@ export class TuningGarage {
 
     const shownTune = (): CarTune => (compare ? fitted : preview);
 
+    const currentFocus = (): TuneCategory | 'setup' | null =>
+      shot === 'engine' ? 'engine'
+      : shot === 'brakes' ? 'brakes'
+      : shot === 'wheels' ? 'tyres'
+      : filter === 'all' ? null
+      : filter;
+
     const engineShot: Shot = unit.rear
-      ? { yaw: 2.88, pitch: 0.34, radius: 3.45, fov: 32, hood: 1 }
+      ? { yaw: 1.85, pitch: 0.34, radius: 2.55, fov: 38, hood: 1 }
       : SHOTS.engine;
     const applyShot = (next: BayShot, snap = false): void => {
       shot = next;
-      autoOrbit = next === 'orbit';
       if (next === 'engine') target = { ...engineShot };
-      else if (next !== 'orbit') target = { ...SHOTS[next] };
+      else target = { ...SHOTS[next] };
+      if (reduced) snap = true;
       if (snap) {
         yaw = target.yaw;
         pitch = target.pitch;
@@ -193,9 +206,6 @@ export class TuningGarage {
         hood = target.hood;
         camera.fov = target.fov;
         camera.updateProjectionMatrix();
-      }
-      for (const button of root.querySelectorAll<HTMLElement>('[data-shot]')) {
-        button.classList.toggle('is-on', button.dataset.shot === next);
       }
       root.classList.toggle('is-engine', next === 'engine');
       if (next === 'engine' && !snap) {
@@ -217,11 +227,11 @@ export class TuningGarage {
       const buy = root.querySelector<HTMLButtonElement>('[data-action="buy"]')!;
       const same = tunesEqual(fitted, preview);
       buy.disabled = same || (cost > 0 && this.#o.wallet() < cost && !this.#o.sandbox());
-      buy.textContent = same
+      buy.innerHTML = same
         ? 'Fitted'
         : cost === 0
           ? 'Fit'
-          : `Buy and fit · ${cost.toLocaleString('en-US')}`;
+          : `Buy and fit · ${sparkMark(cost)}`;
       const tuned = anyTuned(live);
       root.querySelector<HTMLElement>('[data-badge]')!.hidden = !tuned;
       root.classList.toggle('is-tuned', tuned);
@@ -244,24 +254,22 @@ export class TuningGarage {
         ? 'Holding fitted setup'
         : `${dSpeed >= 0 ? '+' : ''}${dSpeed.toFixed(1)} km/h · ${dGrip >= 0 ? '+' : ''}${dGrip.toFixed(2)} g`;
       this.#paintRail(root, id, fitted, preview, setup, filter, cost);
-      const focus: TuneCategory | 'setup' | null =
-        shot === 'engine' ? 'engine'
-        : shot === 'wheels' ? 'tyres'
-        : filter === 'all' ? null
-        : filter;
-      stage.setTuneVisual(live, focus);
+      stage.setTuneVisual(live, currentFocus(), setup);
     };
 
     const placeCamera = (): void => {
-      stage.carCenter(look);
-      look.y += 0.15;
+      stage.focusPoint(currentFocus(), desired);
+      const follow = intro < 1 ? 1 : 1 - Math.pow(0.0004, 1 / 60);
+      if (look.lengthSq() < 1e-6) look.copy(desired);
+      else look.lerp(desired, follow);
       const cp = Math.cos(pitch);
-      const arm = radius - punch * 0.7;
+      const arm = radius - punch * 0.55;
       camera.position.set(
         look.x + Math.sin(yaw) * cp * arm,
         look.y + Math.sin(pitch) * arm,
         look.z - Math.cos(yaw) * cp * arm,
       );
+      stage.interiorClamp(camera.position);
       camera.lookAt(look);
     };
 
@@ -275,30 +283,27 @@ export class TuningGarage {
       const dt = Math.min(0.05, (now - previous) / 1000);
       previous = now;
       if (!reduced && intro < 1) {
-        intro = Math.min(1, intro + dt / 1.55);
-        const liftT = Math.min(1, intro / 0.55);
+        intro = Math.min(1, intro + dt / 1.35);
+        const liftT = Math.min(1, intro / 0.5);
         lift = ease(liftT);
-        if (intro > 0.55) lift = 1 + Math.sin(Math.min(1, (intro - 0.55) / 0.3) * Math.PI) * 0.055;
-        const door: Shot = { yaw: 0.04, pitch: 0.1, radius: 9.2, fov: 42, hood: 0 };
-        const k = ease((intro - 0.18) / 0.82);
-        yaw = door.yaw + (SHOTS.hero.yaw - door.yaw) * k;
-        pitch = door.pitch + (SHOTS.hero.pitch - door.pitch) * k;
-        radius = door.radius + (SHOTS.hero.radius - door.radius) * k;
-        camera.fov = door.fov + (SHOTS.hero.fov - door.fov) * k;
+        if (intro > 0.5) lift = 1 + Math.sin(Math.min(1, (intro - 0.5) / 0.28) * Math.PI) * 0.05;
+        const start: Shot = { yaw: 0.98, pitch: 0.22, radius: 5.5, fov: 40, hood: 0 };
+        const k = ease(intro);
+        yaw = start.yaw + (SHOTS.hero.yaw - start.yaw) * k;
+        pitch = start.pitch + (SHOTS.hero.pitch - start.pitch) * k;
+        radius = start.radius + (SHOTS.hero.radius - start.radius) * k;
+        camera.fov = start.fov + (SHOTS.hero.fov - start.fov) * k;
         camera.updateProjectionMatrix();
         letter.style.setProperty('--letter', `${(1 - ease(intro)) * 9 + 3.5}vh`);
       } else {
         lift = 1;
         letter.style.setProperty('--letter', '3.5vh');
-        if (autoOrbit) yaw += dt * 0.22;
-        else {
-          const follow = 1 - Math.pow(0.0008, dt);
-          yaw += (target.yaw - yaw) * follow;
-          pitch += (target.pitch - pitch) * follow;
-          radius += (target.radius - radius) * follow;
-          camera.fov += (target.fov - camera.fov) * follow;
-          camera.updateProjectionMatrix();
-        }
+        const follow = 1 - Math.pow(0.0008, dt);
+        yaw += (target.yaw - yaw) * follow;
+        pitch += (target.pitch - pitch) * follow;
+        radius += (target.radius - radius) * follow;
+        camera.fov += (target.fov - camera.fov) * follow;
+        camera.updateProjectionMatrix();
         hoodVel += (target.hood - hood) * 26 * dt;
         hoodVel *= Math.exp(-10 * dt);
         hood += hoodVel * dt;
@@ -341,23 +346,18 @@ export class TuningGarage {
         return;
       }
       if (event.type !== 'keydown' || event.repeat) return;
-      if (event.code === 'KeyQ') applyShot('hero');
-      if (event.code === 'KeyE') applyShot('engine');
-      if (event.code === 'KeyC') compare = event.type === 'keydown';
     };
 
     stageEl.onpointerdown = (event) => {
       if (event.button !== 0) return;
       pointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
       stageEl.setPointerCapture(event.pointerId);
-      autoOrbit = false;
-      shot = 'hero';
     };
     stageEl.onpointermove = (event) => {
       if (!pointer || pointer.id !== event.pointerId) return;
       const dx = event.clientX - pointer.x;
       const dy = event.clientY - pointer.y;
-      yaw -= dx * LOOK;
+      yaw += dx * LOOK;
       pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch + dy * LOOK));
       target.yaw = yaw;
       target.pitch = pitch;
@@ -376,7 +376,7 @@ export class TuningGarage {
         event.preventDefault();
         radius = Math.max(
           RADIUS_MIN,
-          Math.min(RADIUS_MAX, radius + Math.sign(event.deltaY) * 0.45),
+          Math.min(RADIUS_MAX, radius + Math.sign(event.deltaY) * 0.35),
         );
         target.radius = radius;
       },
@@ -388,7 +388,6 @@ export class TuningGarage {
       if (!button) return;
       this.#o.click();
       const action = button.dataset.action;
-      const nextShot = button.dataset.shot as BayShot | undefined;
       const nextFilter = button.dataset.filter as typeof filter | undefined;
       const tier = button.dataset.tier;
       const cat = button.dataset.cat as TuneCategory | undefined;
@@ -416,24 +415,33 @@ export class TuningGarage {
         window.setTimeout(() => root.classList.remove('is-fitting'), 420);
         stage.pulseInstall(engineChanged);
         if (engineChanged) this.#o.engineBlip(unit.pitch);
-        applyShot(engineChanged ? 'engine' : shot === 'orbit' ? 'orbit' : 'hero');
+        applyShot(engineChanged ? 'engine' : shot);
         showToast(cost === 0 ? 'Fitted' : `−${cost.toLocaleString('en-US')} Sparks`);
         paintHud();
       }
-      if (nextShot) applyShot(nextShot);
       if (nextFilter) {
         filter = nextFilter;
         if (nextFilter === 'engine') applyShot('engine');
-        else if (nextFilter === 'tyres' || nextFilter === 'brakes') applyShot('wheels');
+        else if (nextFilter === 'tyres') applyShot('wheels');
+        else if (nextFilter === 'brakes') applyShot('brakes');
         else if (nextFilter === 'steering') applyShot('front');
+        else if (nextFilter === 'all' || nextFilter === 'setup') applyShot('hero');
         paintHud();
       }
       if (cat && tier !== undefined) {
-        if (filter === 'all') filter = cat;
-        else preview = { ...preview, [cat]: Number(tier) as TuneTier };
-        if (cat === 'engine') applyShot('engine');
-        if (cat === 'tyres' || cat === 'brakes') applyShot('wheels');
-        if (cat === 'steering') applyShot('front');
+        if (filter === 'all') {
+          filter = cat;
+          if (cat === 'engine') applyShot('engine');
+          if (cat === 'tyres') applyShot('wheels');
+          if (cat === 'brakes') applyShot('brakes');
+          if (cat === 'steering') applyShot('front');
+        } else {
+          preview = { ...preview, [cat]: Number(tier) as TuneTier };
+          if (cat === 'engine') applyShot('engine');
+          if (cat === 'tyres') applyShot('wheels');
+          if (cat === 'brakes') applyShot('brakes');
+          if (cat === 'steering') applyShot('front');
+        }
         paintHud();
       }
       if (nextSetup) {
@@ -441,6 +449,7 @@ export class TuningGarage {
         saveSetup(id, setup);
         if (drive.vehicleId === id) drive.setCarSetup?.(setup);
         filter = 'setup';
+        applyShot('hero');
         paintHud();
         showToast(`${SETUP_LABEL[setup]} setup`);
       }
@@ -473,14 +482,6 @@ export class TuningGarage {
   #markup(id: VehicleId): string {
     const copy = CAR_COPY[id];
     const spec = VEHICLES[id];
-    const tools: Array<[BayShot, string, string]> = [
-      ['hero', '▣', 'Showroom'],
-      ['engine', '⎔', 'Engine'],
-      ['wheels', '◎', 'Wheels'],
-      ['front', '⌃', 'Front'],
-      ['rear', '⌄', 'Rear'],
-      ['orbit', '↻', 'Orbit'],
-    ];
     const bars: Array<[string, string]> = [
       ['engine', 'Engine'],
       ['brakes', 'Brakes'],
@@ -502,7 +503,7 @@ export class TuningGarage {
           <strong data-car-name>${copy.name}</strong>
         </div>
         <div class="tune-garage__wallet">
-          <span>Sparks</span>
+          <span class="spark-mark">${SPARK_ICON}<span>Sparks</span></span>
           <strong data-wallet>0</strong>
         </div>
         <button type="button" data-action="drive">Take it out</button>
@@ -523,14 +524,6 @@ export class TuningGarage {
           )
           .join('')}
         <p class="tune-garage__delta" data-delta></p>
-      </aside>
-      <aside class="tune-garage__tools">
-        ${tools
-          .map(
-            ([shot, icon, label]) =>
-              `<button type="button" data-shot="${shot}" title="${label}" aria-label="${label}"><span aria-hidden="true">${icon}</span></button>`,
-          )
-          .join('')}
       </aside>
       <div class="tune-garage__badge" data-badge hidden>TUNED</div>
       <footer class="tune-garage__dock">
@@ -596,7 +589,7 @@ export class TuningGarage {
               <span class="tune-garage__icon" data-kind="${cat}"></span>
               <b>${cat === 'engine' ? engineLook(id).name : copy.part}</b>
               <strong>${copy.title} · ${TUNE_TIERS[tier]}</strong>
-              <em>${owned ? 'Owned' : price === 0 ? 'Stock' : `${price.toLocaleString('en-US')} Sparks`}</em>
+              <em>${owned ? 'Owned' : price === 0 ? 'Stock' : sparkMark(price)}</em>
               <i class="tune-garage__fill" style="--fill:${fill}%"></i>
             </button>`,
           );

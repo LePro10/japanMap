@@ -216,6 +216,51 @@ export const PADDY_WATER = {
   levelTolerance: 0.08,
 
   /**
+   * Wasserstand über dem Parzellenbett, in Metern.
+   *
+   * `meta.json` speichert 0,30 m — das ist die Zahl, mit der der Baker die
+   * Dämme (0,55 m) bemessen hat, nicht die, die das Bild braucht. Gemessen
+   * 2026-09-16 gegen Kite S (`radius` 0,31 m, Blechunterkante 0,16 m,
+   * Furt 0,20 m):
+   *
+   * | Spiegel | Rad nass | Blech im Wasser | Körper |
+   * |---|---:|---:|---:|
+   * | 0,30 m (Bake) | 97 % | +14 cm | 22 % |
+   * | 0,10 m        | 32 % | −6 cm  |  7 % |
+   *
+   * 0,30 m ersäuft das Auto; 0,10 m ist eine Pfütze über Schlamm, unter der
+   * Schwellerlinie, unter der Furt. Die Dämme bleiben 0,45 m über dem Spiegel
+   * — der Baker muss dafür nicht neu laufen. Physik (`WaterField`) und Mesh
+   * (`RicePaddy`) lesen **diese** Zahl, nicht die Meta, sonst liegen Bild und
+   * Widerstand wieder auseinander.
+   */
+  depth: 0.1,
+
+  /**
+   * Wasser endet so weit innerhalb einer nassen/trockenen Kante, in Metern.
+   *
+   * Die Lippe ist das Gelände — dieselbe Splat-Lage wie der Rest des Felds.
+   * Extra-Meshes als Bund (2026-09-16) lasen sich vom Gehweg als Karton.
+   */
+  bankInset: 0.25,
+
+  /**
+   * Zusätzlicher Versatz an einer Terrassenstufe, als Anteil des Abfalls,
+   * gedeckelt. Der Spiegel bleibt auf dem Bett; die Böschung ist der Hang,
+   * den der Baker schon gebaut hat.
+   */
+  dropInset: 0.55,
+
+  /**
+   * Ab diesem Abfall unter dem Spiegel gilt die Kante als Stufe, nicht als Damm.
+   *
+   * Ein Damm ist höher als das Bett; eine nasse/trockene Kante auf gleichem
+   * Niveau hat nur die Wassertiefe als Spalt (0,10 m). 0,18 m liegt dazwischen:
+   * gemessene Stufen beginnen bei 0,6 m Raster (`PADDY.step`).
+   */
+  dropMin: 0.18,
+
+  /**
    * Tiefes Grün-Braun statt Blau.
    *
    * Ein Reisfeld im Mai ist eine dünne Wasserschicht über Schlamm, kein See —

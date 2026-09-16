@@ -58,6 +58,29 @@ const KIND_CYLINDER = 1;
 /** Wandstück: von (ax,az) nach (bx,bz), mit halber Dicke. */
 const KIND_WALL = 2;
 
+/** Slab intersection of a finite camera boom and a clearance-expanded box. */
+function boomBox(
+  x: number, y: number, z: number, dx: number, dy: number, dz: number,
+  minX: number, maxX: number, minY: number, maxY: number, minZ: number, maxZ: number,
+): number {
+  let enter = 0, exit = 1;
+  for (let axis = 0; axis < 3; axis++) {
+    const origin = axis === 0 ? x : axis === 1 ? y : z;
+    const delta = axis === 0 ? dx : axis === 1 ? dy : dz;
+    const min = axis === 0 ? minX : axis === 1 ? minY : minZ;
+    const max = axis === 0 ? maxX : axis === 1 ? maxY : maxZ;
+    if (Math.abs(delta) < 1e-10) {
+      if (origin < min || origin > max) return 1;
+      continue;
+    }
+    const a = (min - origin) / delta, b = (max - origin) / delta;
+    enter = Math.max(enter, Math.min(a, b));
+    exit = Math.min(exit, Math.max(a, b));
+    if (enter > exit) return 1;
+  }
+  return enter;
+}
+
 /**
  * Ergebnis einer Abfrage.
  *
@@ -475,6 +498,58 @@ export class CollisionWorld {
 
   get plateauCount(): number {
     return this.#plateaus.length;
+  }
+
+  /**
+   * Visible fraction of a camera boom, including vertical clearance. Queries
+   * only intersecting grid cells. Cylinders use conservative square bounds;
+   * rotated walls retain their orientation. No per-frame allocations or sampling
+   * gaps, so even thin glass and ceilings stop an orbiting/zooming camera.
+   */
+  cameraFraction(
+    x: number, y: number, z: number, toX: number, toY: number, toZ: number, radius: number,
+  ): number {
+    const dx = toX - x, dy = toY - y, dz = toZ - z;
+    const x0 = Math.max(0, Math.floor((Math.min(x, toX) - radius + WORLD.half) / CELL));
+    const x1 = Math.min(this.#columns - 1, Math.floor((Math.max(x, toX) + radius + WORLD.half) / CELL));
+    const z0 = Math.max(0, Math.floor((Math.min(z, toZ) - radius + WORLD.half) / CELL));
+    const z1 = Math.min(this.#rows - 1, Math.floor((Math.max(z, toZ) + radius + WORLD.half) / CELL));
+    let fraction = 1;
+    const p = this.#shapes.p;
+    for (let cz = z0; cz <= z1; cz++) for (let cx = x0; cx <= x1; cx++) {
+      const list = this.#cells[cz * this.#columns + cx];
+      if (!list) continue;
+      for (const id of list) {
+        if (this.#alive[id] !== 1) continue;
+        const i = id * 5, bottom = this.#shapes.y0[id]! - radius, top = this.#shapes.y1[id]! + radius;
+        let hit: number;
+        if (this.#shapes.kind[id] === KIND_BOX) {
+          hit = boomBox(x, y, z, dx, dy, dz, p[i]! - radius, p[i + 1]! + radius,
+            bottom, top, p[i + 2]! - radius, p[i + 3]! + radius);
+        } else if (this.#shapes.kind[id] === KIND_CYLINDER) {
+          const r = p[i + 2]! + radius;
+          hit = boomBox(x, y, z, dx, dy, dz, p[i]! - r, p[i]! + r,
+            bottom, top, p[i + 1]! - r, p[i + 1]! + r);
+        } else {
+          const ax = p[i]!, az = p[i + 1]!, ex = p[i + 2]! - ax, ez = p[i + 3]! - az;
+          const length = Math.hypot(ex, ez);
+          if (length < 1e-9) continue;
+          const ux = ex / length, uz = ez / length, half = p[i + 4]! + radius;
+          hit = boomBox((x - ax) * ux + (z - az) * uz, y, -(x - ax) * uz + (z - az) * ux,
+            dx * ux + dz * uz, dy, -dx * uz + dz * ux, -radius, length + radius,
+            bottom, top, -half, half);
+        }
+        fraction = Math.min(fraction, hit);
+      }
+    }
+    for (let i = 0; i < this.#dynCount; i++) {
+      if (this.#dynAlive[i] !== 1) continue;
+      const r = this.#dynR[i]! + radius;
+      fraction = Math.min(fraction, boomBox(x, y, z, dx, dy, dz,
+        this.#dynX[i]! - r, this.#dynX[i]! + r, this.#dynY0[i]! - radius,
+        this.#dynY1[i]! + radius, this.#dynZ[i]! - r, this.#dynZ[i]! + r));
+    }
+    return fraction;
   }
 
   /** Alles wieder leeren — beim Entladen und für Messläufe. */

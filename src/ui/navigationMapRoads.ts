@@ -37,9 +37,11 @@ export class NavigationRoadLayer {
     for (const zone of DRIFT_ZONES) {
       const p = worldToMap(zone.x, zone.z, bounds);
       const r = (zone.radius / metres) * size;
-      fills.push(
-        `<circle class="navmap-zone" cx="${(p.x * size).toFixed(1)}" cy="${(p.y * size).toFixed(1)}" r="${r.toFixed(1)}" />`,
-      );
+      const cx = (p.x * size).toFixed(1);
+      const cy = (p.y * size).toFixed(1);
+      const rr = r.toFixed(1);
+      fills.push(`<circle class="navmap-zone navmap-zone--fill" cx="${cx}" cy="${cy}" r="${rr}" />`);
+      fills.push(`<circle class="navmap-zone" cx="${cx}" cy="${cy}" r="${rr}" />`);
     }
 
     for (const road of roads) {

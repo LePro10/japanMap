@@ -114,6 +114,18 @@ export const AUDIO = {
     hz: 660,
     seconds: 0.045,
   },
+
+  /**
+   * Zwei Töne beim Umschalten in den Stunt-Modus. Aufsteigend an, fallend aus.
+   * Synthetisiert wie der Rest — 0 Byte Download, und der Modus muss hörbar
+   * sein, nicht nur als Label.
+   */
+  stunt: {
+    gain: 0.22,
+    onHz: [392, 587.33],
+    offHz: [523.25, 329.63],
+    noteSeconds: 0.11,
+  },
 } as const;
 
 /** Schlüssel im `localStorage` — dieselbe Namensform wie beim Debug-Werkzeug. */

@@ -9,7 +9,9 @@ import {
   type BufferGeometry,
 } from 'three';
 
-import { PROP_COLLIDERS } from '@/config/vehicle.config';
+import { GRAVITY, PROP_COLLIDERS } from '@/config/vehicle.config';
+import { ARCADE, DRIFT_GATE, isStuntDoubleTap, latAccel } from '@/config/arcade.config';
+import { WAYPOINT } from '@/config/waypoint.config';
 import { DEFAULT_VEHICLE, vehicleSpec, type VehicleId } from '@/config/vehicles.config';
 import {
   WALK_ALIGHT_GAP,
@@ -30,8 +32,23 @@ import type { RaceEvent } from '@/config/events.config';
 import type { TerrainSampler } from '@/world/TerrainSampler';
 import type { CityCollider, CityCurb } from '@/world/city/CityGenerator';
 import { NavigationMap } from '@/ui/NavigationMap';
-import { createCarBody, createCarWheel } from './carMesh';
-import { ChaseCamera } from './ChaseCamera';
+import { GuideLine } from './GuideLine';
+import {
+  RouteGraph,
+  nearestRouteArc,
+  packRouteXZ,
+  profileRoute,
+  remainingAlong,
+  routeAdvisory,
+  routeTurn,
+  type RoutePath,
+} from './routeGraph';
+import { helmHub } from '@/config/cabin.config';
+import { instruments } from '@/ui/instruments';
+import { createCarVisuals } from './carMesh';
+import { createGarageWheel } from './garageWheels';
+import { ChaseCamera, viewLabel } from './ChaseCamera';
+import { ClusterDisplay } from './clusterDisplay';
 import {
   TREE_QUERY_CAP,
   TREE_QUERY_RADIUS,
@@ -180,9 +197,16 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     height: 0,
     key: 0,
   }));
+  #treeCount = 0;
   #wake: WakeSink | null = null;
   #navigation: NavigationMap | null = null;
   readonly #waypoint = new WaypointMarker();
+  readonly #guide = new GuideLine();
+  #graph: RouteGraph | null = null;
+  #route: RoutePath | null = null;
+  #routeLine: Float32Array | null = null;
+  #routeArc = 0;
+  #offRoute = 0;
   #canTeleport: () => boolean = () => false;
 
   #context: EngineContext | null = null;
@@ -200,6 +224,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
   #group: Group | null = null;
   #body: Mesh | null = null;
+  #glass: Mesh | null = null;
+  #cabin: Mesh | null = null;
+  #helm: Mesh | null = null;
+  #cluster: ClusterDisplay | null = null;
   #wheels: InstancedMesh | null = null;
   #material: PropMaterial | null = null;
   /**
@@ -227,11 +255,24 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #touchHandbrake = false;
   /** Sprung aus der Fingersteuerung — zu Fuß die Entsprechung der Leertaste. */
   #touchJump = false;
+  /** Rutschen aus der Fingersteuerung — zu Fuß die Entsprechung von Strg. */
+  #touchSlide = false;
   /** Eingabe aus einem Messlauf. Gesetzt = Tastatur und Finger sind stumm. */
   #scripted: DriveInput | null = null;
 
-  readonly #input: DriveInput = { throttle: 0, brake: 0, steer: 0, handbrake: false };
-  readonly #walkInput: WalkInput = { forward: 0, right: 0, jump: false, sprint: false };
+  readonly #input: DriveInput = { throttle: 0, brake: 0, steer: 0, handbrake: false, stunt: false, trick: false };
+  /**
+   * Stunt-Drift für *diese* Drift, kein Toggle.
+   * Doppeltipp setzt, Geradeaus löscht. Nicht `#stunt` — das ist das Weltsystem.
+   */
+  #stuntArmed = false;
+  /** Wurde der Arm schon zu einer echten Stunt-Drift? Geradeaus löscht nur dann. */
+  #stuntLived = false;
+  /** Zeitpunkt des letzten Space-Down, s. `STUNT.tapWindow`. */
+  #stuntTapAt = Number.NEGATIVE_INFINITY;
+  /** Doppeltipp-Flanke für genau einen Simulationsschritt. */
+  #trickPulse = false;
+  readonly #walkInput: WalkInput = { forward: 0, right: 0, jump: false, sprint: false, slide: false };
 
   /** Flugpose beim Einsteigen — beim Aussteigen wird genau sie wiederhergestellt. */
   readonly #flyPosition = new Vector3();
@@ -370,8 +411,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     });
     context.bus.on('roads:ready', ({ network }) => {
       this.#network = network;
+      this.#graph = new RouteGraph(network.roads);
       this.#navigation?.setRoads(network.file.roads);
       this.race.setNetwork(network);
+      if (this.#waypoint.waypoint) this.#rebuildRoute();
       // Die Tore des Rings — P9.3. Der Ring ist die einzige geschlossene
       // Strecke der Karte; auf einer Stichstraße wie dem Bergpass gibt es keine
       // Runde, sondern eine Fahrt. `setRoad()` lässt sich später auf jede
@@ -397,6 +440,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     // Weltmarker ist ein Mesh und damit genau die Draw-Calls, solange ein
     // Waypoint steht.
     this.#waypoint.attach(context);
+    this.#guide.attach(context);
     const canvas = document.querySelector<HTMLCanvasElement>('#viewport');
     const overlay = document.querySelector<HTMLElement>('#overlay');
     if (canvas && overlay) {
@@ -416,11 +460,13 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
           const sampler = this.#sampler;
           if (!sampler) return;
           this.#waypoint.set(x, z, sampler.getHeightAt(x, z), label);
+          this.#rebuildRoute();
         },
         clearWaypoint: () => {
-          this.#waypoint.clear();
+          this.#clearWaypoint();
         },
         getWaypoint: () => this.#waypoint.waypoint,
+        getRoute: () => this.#routePolyline(),
         onOpen: () => {
           this.#keys.clear();
           this.#axes.forward = 0;
@@ -501,8 +547,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   }
 
   /** Dieselbe Karte in das Pause-Menü hängen. */
-  dockMap(host: HTMLElement): void {
-    this.#navigation?.dock(host);
+  dockMap(host: HTMLElement, options?: { focusPlayer?: boolean }): void {
+    this.#navigation?.dock(host, options);
   }
 
   undockMap(): void {
@@ -513,8 +559,115 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     return this.#navigation?.open ?? false;
   }
 
-  get waypoint(): { readonly x: number; readonly z: number; readonly label?: string } | null {
-    return this.#waypoint.waypoint;
+  get waypoint(): {
+    readonly x: number;
+    readonly z: number;
+    readonly y?: number;
+    readonly label?: string;
+    readonly remaining?: number;
+    readonly eta?: number;
+    readonly turn?: 'none' | 'left' | 'right' | 'around';
+    readonly advisory?: 'ok' | 'caution' | 'brake';
+    readonly path?: Float32Array | null;
+    readonly pin?: { x: number; y: number; onScreen: boolean; edgeAngle: number } | null;
+  } | null {
+    const wp = this.#waypoint.waypoint;
+    if (!wp) return null;
+    const route = this.#route;
+    const speed = this.#walking ? this.walker.speed : this.vehicle.telemetry.speed;
+    const heading = this.#walking ? this.walker.yaw : this.vehicle.yaw;
+    const remaining = route ? remainingAlong(route, this.#routeArc) : Math.hypot(wp.x - this.#poseX(), wp.z - this.#poseZ());
+    const eta = speed > 2.5 ? remaining / speed : 0;
+    return {
+      x: wp.x,
+      z: wp.z,
+      y: wp.y,
+      label: wp.label,
+      remaining,
+      eta,
+      turn: route ? routeTurn(route, this.#routeArc, heading) : 'none',
+      advisory: route ? routeAdvisory(route, this.#routeArc, speed) : 'ok',
+      path: this.#routePolyline(),
+      pin: this.#waypoint.screen,
+    };
+  }
+
+  #poseX(): number {
+    return this.#walking ? this.walker.position.x : this.vehicle.position.x;
+  }
+
+  #poseZ(): number {
+    return this.#walking ? this.walker.position.z : this.vehicle.position.z;
+  }
+
+  #clearWaypoint(): void {
+    this.#waypoint.clear();
+    this.#guide.clear();
+    this.#route = null;
+    this.#routeLine = null;
+    this.#routeArc = 0;
+    this.#offRoute = 0;
+  }
+
+  #routePolyline(): Float32Array | null {
+    if (this.#routeLine) return this.#routeLine;
+    if (this.#waypoint.waypoint) this.#rebuildRoute();
+    return this.#routeLine;
+  }
+
+  #rebuildRoute(): void {
+    const wp = this.#waypoint.waypoint;
+    if (!this.#graph && this.#network) this.#graph = new RouteGraph(this.#network.roads);
+    const graph = this.#graph;
+    if (!wp) {
+      this.#guide.clear();
+      this.#route = null;
+      this.#routeLine = null;
+      return;
+    }
+    const raw = graph
+      ? graph.find(this.#poseX(), this.#poseZ(), wp.x, wp.z, this.#walking)
+      : null;
+    if (!raw) {
+      this.#guide.clear();
+      this.#route = null;
+      this.#routeLine = null;
+      return;
+    }
+    const arcade = ARCADE[this.vehicle.spec.id];
+    const path = profileRoute(raw, {
+      latAccel: latAccel(arcade) * WAYPOINT.lineLatFactor,
+      brakeAccel: arcade.brakeG * GRAVITY * WAYPOINT.lineBrakeFactor,
+      driveAccel: WAYPOINT.lineDriveAccel,
+      crestAccel: WAYPOINT.lineCrestAccel,
+      maxSpeed: WAYPOINT.lineMaxSpeed,
+      closed: false,
+    });
+    this.#route = path;
+    this.#routeLine = packRouteXZ(path);
+    this.#routeArc = 0;
+    this.#offRoute = 0;
+    const sampler = this.#sampler;
+    this.#guide.setPath(path, sampler ? (x, z) => sampler.getHeightAt(x, z) : null);
+    this.#guide.setBrake(arcade.brakeG * GRAVITY * WAYPOINT.lineBrakeFactor);
+  }
+
+  #followRoute(x: number, z: number, dt: number): void {
+    const route = this.#route;
+    if (!route) {
+      this.#guide.update(0, 0, dt);
+      return;
+    }
+    const hit = nearestRouteArc(route, x, z, this.#routeArc);
+    this.#routeArc = hit.arc;
+    const speed = this.#walking ? this.walker.speed : this.vehicle.telemetry.speed;
+    this.#guide.update(speed, hit.arc, dt);
+    if (hit.distance > WAYPOINT.offRouteMeters) {
+      this.#offRoute += dt;
+      if (this.#offRoute >= WAYPOINT.offRouteSeconds) this.#rebuildRoute();
+    } else {
+      this.#offRoute = 0;
+    }
   }
 
   #build(context: EngineContext): void {
@@ -540,6 +693,30 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     body.matrixAutoUpdate = false;
     this.#body = body;
     group.add(body);
+
+    const glass = new Mesh(undefined, material);
+    glass.name = 'Fahrzeug:Glas';
+    glass.matrixAutoUpdate = false;
+    this.#glass = glass;
+    group.add(glass);
+
+    const cabin = new Mesh(undefined, material);
+    cabin.name = 'Fahrzeug:Kabine';
+    cabin.matrixAutoUpdate = false;
+    cabin.visible = false;
+    this.#cabin = cabin;
+    group.add(cabin);
+
+    const helm = new Mesh(undefined, material);
+    helm.name = 'Fahrzeug:Lenkrad';
+    helm.matrixAutoUpdate = false;
+    helm.visible = false;
+    this.#helm = helm;
+    group.add(helm);
+
+    const cluster = new ClusterDisplay();
+    this.#cluster = cluster;
+    group.add(cluster.mesh);
 
     const wheels = new InstancedMesh(undefined, material, 4);
     wheels.name = 'Fahrzeug:Räder';
@@ -605,11 +782,13 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   setCarTune(tune:CarTune):void {
     saveTune(this.#vehicleId,tune);
     this.vehicle.setTune(tune);
+    this.#applyWheelGeometry();
   }
 
   setCarSetup(setup: SetupId): void {
     saveSetup(this.#vehicleId, setup);
     this.vehicle.setSetup(setup);
+    this.#applyWheelGeometry();
   }
 
   /**
@@ -660,6 +839,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#readouts.fahrzeug = this.vehicle.spec.name;
     this.#context?.bus.emit('drive:vehicle', { id });
     this.#context?.debug?.refresh();
+    if (this.#waypoint.waypoint) this.#rebuildRoute();
   }
 
   /**
@@ -674,13 +854,53 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    */
   #applyVehicleGeometry(): void {
     const spec = this.vehicle.spec;
-    const bodyGeometry = createCarBody(spec);
-    const wheelGeometry = createCarWheel(spec);
-    if (this.#body) this.#body.geometry = bodyGeometry;
+    const visuals = createCarVisuals(spec);
+    const wheelGeometry = createGarageWheel(spec, loadTune(this.#vehicleId).tyres, loadSetup(this.#vehicleId));
+    if (this.#body) this.#body.geometry = visuals.body;
+    if (this.#glass) this.#glass.geometry = visuals.glass;
+    if (this.#cabin) this.#cabin.geometry = visuals.cabin;
+    if (this.#helm) this.#helm.geometry = visuals.helm;
     if (this.#wheels) this.#wheels.geometry = wheelGeometry;
     for (const old of this.#geometries) old.dispose();
     this.#geometries.length = 0;
-    this.#geometries.push(bodyGeometry, wheelGeometry);
+    this.#geometries.push(visuals.body, visuals.glass, visuals.cabin, visuals.helm, wheelGeometry);
+    this.#applyViewLayers();
+  }
+
+  /**
+   * Außenkarosserie im Sitz aus, Käfig an. Open-Wheel behält das Blech —
+   * die Nase *ist* die Aussicht. Glas immer aus im Cockpit (opak, sonst Wand).
+   */
+  #applyViewLayers(): void {
+    const cockpit = this.camera.mode === 'cockpit';
+    const open = this.vehicle.spec.body.shape === 'openwheel';
+    if (this.#body) this.#body.visible = !cockpit || open;
+    if (this.#glass) {
+      this.#glass.visible = !cockpit && !this.#glass.geometry.name.startsWith('Dummy');
+    }
+    if (this.#cabin) this.#cabin.visible = cockpit;
+    if (this.#helm) this.#helm.visible = cockpit;
+    if (this.#cluster) this.#cluster.mesh.visible = cockpit;
+    if (this.#wheels) this.#wheels.visible = !cockpit || open;
+  }
+
+  /** Taste C / Touch: Verfolger ↔ Sitz. Haube nur noch übers Mausrad. */
+  toggleView(): void {
+    this.camera.toggleMode();
+    this.#applyViewLayers();
+    this.#readouts.ansicht = viewLabel(this.camera.mode);
+    this.#context?.bus.emit('drive:view', { cabin: this.camera.mode === 'cockpit' });
+    this.#context?.debug?.refresh();
+  }
+
+  #applyWheelGeometry(): void {
+    const spec = this.vehicle.spec;
+    const wheelGeometry = createGarageWheel(spec, loadTune(this.#vehicleId).tyres, loadSetup(this.#vehicleId));
+    const previous = this.#geometries.at(-1);
+    if (this.#wheels) this.#wheels.geometry = wheelGeometry;
+    if (previous && previous !== wheelGeometry) previous.dispose();
+    if (this.#geometries.length > 0) this.#geometries[this.#geometries.length - 1] = wheelGeometry;
+    else this.#geometries.push(wheelGeometry);
   }
 
   #rebuild(): void {
@@ -908,8 +1128,12 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     // auf bis 68°; bliebe es stehen, wäre jede spätere Messung an einem
     // Blickpunkt mit einer anderen Kamera gemacht als die davor — und ein
     // Vorher/Nachher würde die Kamera messen statt die Änderung.
-    if (Math.abs(context.camera.fov - CAMERA.fov) > 1e-6) {
+    if (
+      Math.abs(context.camera.fov - CAMERA.fov) > 1e-6 ||
+      Math.abs(context.camera.near - CAMERA.near) > 1e-4
+    ) {
       context.camera.fov = CAMERA.fov;
+      context.camera.near = CAMERA.near;
       context.camera.updateProjectionMatrix();
     }
 
@@ -941,17 +1165,43 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#debris?.show();
     this.camera.reset(this.vehicle);
     this.#readouts.modus = 'Fahren';
+    this.#readouts.ansicht = viewLabel(this.camera.mode);
+    this.#applyViewLayers();
     this.#context.bus.emit('drive:mode', { active: true });
+    this.#context.bus.emit('drive:view', { cabin: this.camera.mode === 'cockpit' });
     this.#context.debug?.refresh();
   }
 
   #leaveDrive(): void {
     if (!this.#active) return;
     this.#active = false;
+    this.#armStunt(false);
     this.#fx?.hide();
     this.#debris?.hide();
     this.#wake?.(0, 0, 0, 0, 0, false);
     this.#context?.bus.emit('drive:mode', { active: false });
+    this.#context?.bus.emit('drive:view', { cabin: false });
+  }
+
+  get stuntMode(): boolean {
+    return this.#stuntArmed;
+  }
+
+  #noteStuntTap(now = performance.now() / 1000): void {
+    if (isStuntDoubleTap(this.#stuntTapAt, now)) {
+      this.#armStunt(true);
+      this.#trickPulse = true;
+      this.#stuntTapAt = Number.NEGATIVE_INFINITY;
+      return;
+    }
+    this.#stuntTapAt = now;
+  }
+
+  #armStunt(on: boolean): void {
+    if (this.#stuntArmed === on) return;
+    this.#stuntArmed = on;
+    if (!on) this.#stuntLived = false;
+    this.#context?.bus.emit('drive:stunt', { active: on });
   }
 
   #setWalking(value: boolean): void {
@@ -1029,6 +1279,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    * Verodert wird unten in `#collectInput()`, wie bei Stick und Tastatur auch.
    */
   setTouchHandbrake(down: boolean): void {
+    if (down && !this.#touchHandbrake && this.#active) this.#noteStuntTap();
     this.#touchHandbrake = down;
   }
 
@@ -1042,6 +1293,11 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   /** Sprung aus der Fingersteuerung — zu Fuß. */
   setTouchJump(down: boolean): void {
     this.#touchJump = down;
+  }
+
+  /** Rutschen aus der Fingersteuerung — zu Fuß, nicht die Handbremse. */
+  setTouchSlide(down: boolean): void {
+    this.#touchSlide = down;
   }
 
   /**
@@ -1084,12 +1340,17 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     }
     if (code === 'keyc' && this.#active) {
       event.preventDefault();
-      this.#readouts.ansicht = this.camera.toggleMode() === 'hood' ? 'Haube' : 'Verfolger';
-      this.#context?.debug?.refresh();
+      this.toggleView();
       return;
     }
     // Leertaste (Handbremse / Sprung) und die Pfeiltasten scrollen sonst die Seite.
     if (code === 'space' || code.startsWith('arrow')) event.preventDefault();
+    if (code === 'space' && this.#active && !event.repeat) this.#noteStuntTap();
+    // Strg ist zu Fuß der Rutsch. Space bleibt Sprung — Drive/Stunt
+    // fassen wir hier nicht an.
+    if (this.#walking && (code === 'controlleft' || code === 'controlright')) {
+      event.preventDefault();
+    }
     this.#keys.add(code);
   };
 
@@ -1105,6 +1366,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#axes.right = 0;
     this.#touchHandbrake = false;
     this.#touchJump = false;
+    this.#touchSlide = false;
   };
 
   #collectInput(): DriveInput {
@@ -1126,6 +1388,9 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     input.brake = clamp01(back + Math.max(0, -stick));
     input.steer = clamp(right - left + this.#axes.right, -1, 1);
     input.handbrake = keys.has('space') || this.#touchHandbrake;
+    input.stunt = this.#stuntArmed;
+    input.trick = this.#trickPulse;
+    this.#trickPulse = false;
     return input;
   }
 
@@ -1140,6 +1405,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     input.right = clamp(right - left + this.#axes.right, -1, 1);
     input.jump = keys.has('space') || this.#touchJump;
     input.sprint = keys.has('shiftleft') || keys.has('shiftright');
+    input.slide =
+      keys.has('controlleft') || keys.has('controlright') || this.#touchSlide;
     return input;
   }
 
@@ -1179,13 +1446,14 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #collectPickups(dt: number): void {
     const stunt = this.#stunt;
     if (!stunt) return;
-    const taken = stunt.collect(this.vehicle.position.x, this.vehicle.position.z, dt);
-    if (taken > 0) {
-      this.vehicle.addBoost(PICKUPS.boost * taken);
+    const hit = stunt.collect(this.vehicle.position.x, this.vehicle.position.z, dt);
+    if (hit.taken > 0) {
+      this.vehicle.addBoost(PICKUPS.boost * hit.taken);
       this.#context?.bus.emit('pickup:collected', {
         kind: 'coin',
-        total: taken,
-        yen: PICKUPS.yen * taken,
+        total: hit.taken,
+        yen: PICKUPS.yen * hit.taken,
+        at: hit.at,
       });
     }
     // Die Driftzone verdoppelt die Wertung. Sie wird **je Schritt** gefragt und
@@ -1335,6 +1603,18 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.ground.refresh(this.vehicle.position.x, this.vehicle.position.z, dt);
     this.#fillTrees();
     this.vehicle.step(dt, input, this, this.collision);
+    // Doppeltipp wartet auf die Drift. Geradeaus danach löscht — nicht
+    // schon der Arm auf der Geraden, sonst ist der Tipp weg bevor jemand lenkt.
+    if (this.#stuntArmed && this.vehicle.telemetry.stunt > 0.2) this.#stuntLived = true;
+    const t = this.vehicle.telemetry;
+    if (
+      this.#stuntLived &&
+      Math.abs(input.steer) < DRIFT_GATE.enterSteer &&
+      !t.airborne &&
+      t.trick < 0.08
+    ) {
+      this.#armStunt(false);
+    }
     this.#flushBreaks();
     // **Nach dem Schritt, nicht davor** — P9.3. Die Rundenlogik prüft den
     // Vorzeichenwechsel zwischen zwei *aufeinanderfolgenden* Positionen; sie
@@ -1366,13 +1646,17 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     const pz = this.#walking ? this.walker.position.z : this.vehicle.position.z;
     if (this.#walking) this.#addParkedCarCollider();
     const canopy = this.#canopy;
-    if (!canopy) return;
+    if (!canopy) {
+      this.#treeCount = 0;
+      return;
+    }
     const n = canopy.queryCanopy(
       px,
       pz,
       TREE_QUERY_RADIUS,
       this.#treeBuf,
     );
+    this.#treeCount = n;
     for (let i = 0; i < n; i++) {
       const tree = this.#treeBuf[i]!;
       this.collision.addDynamicCylinder(
@@ -1390,7 +1674,29 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     const events: readonly BreakEvent[] = this.vehicle.consumeBreaks();
     if (events.length === 0) return;
     for (const event of events) {
-      if (event.kind === 'tree') this.#canopy?.breakTree(event.id);
+      if (event.kind === 'tree') {
+        let x = event.x;
+        let y = event.y;
+        let z = event.z;
+        let height = event.height ?? 6;
+        let radius = event.radius ?? 0.22;
+        for (let i = 0; i < this.#treeCount; i++) {
+          const tree = this.#treeBuf[i]!;
+          if (tree.key !== event.id) continue;
+          x = tree.x;
+          y = tree.y;
+          z = tree.z;
+          height = tree.height;
+          radius = tree.radius;
+          break;
+        }
+        // Stammfuß, nicht Berührpunkt am Blech — sonst explodieren die
+        // Brocken neben dem Auto, und der Baum steht noch, bis die Streuung
+        // umsortiert hat.
+        this.#canopy?.breakTree(event.id, x, z);
+        this.breakProp({ ...event, x, y, z, height, radius });
+        continue;
+      }
       this.breakProp(event);
     }
   }
@@ -1491,19 +1797,36 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#navigation?.update(dt);
     const px = this.#walking ? this.walker.position.x : this.vehicle.position.x;
     const pz = this.#walking ? this.walker.position.z : this.vehicle.position.z;
-    this.#waypoint.update(px, pz, dt);
+    const canvas = this.#context?.renderer.domElement;
+    this.#waypoint.update(
+      px,
+      pz,
+      dt,
+      this.#paused ? null : this.#context?.camera ?? null,
+      canvas?.clientWidth ?? 0,
+      canvas?.clientHeight ?? 0,
+      this.#sampler ? (x, z) => this.#sampler!.getHeightAt(x, z) : null,
+    );
     const wp = this.#waypoint.waypoint;
-    if (wp && Math.hypot(wp.x - px, wp.z - pz) < 22) this.#waypoint.clear();
+    if (wp && Math.hypot(wp.x - px, wp.z - pz) < WAYPOINT.arriveMeters) {
+      this.#clearWaypoint();
+    }
+    this.#followRoute(px, pz, dt);
     if (this.#paused) {
       this.#syncMeshes();
       return;
     }
     if (this.#walking && this.#context) {
-      this.walkCamera.update(dt, this.walker, this, this.#context.camera);
+      this.walkCamera.update(dt, this.walker, this, this.#context.camera, this.collision);
       const rig = this.#rig;
       if (rig) {
         rig.group.position.copy(this.walker.position);
-        rig.group.rotation.y = this.walker.yaw;
+        const dip = this.walker.slideAmount;
+        rig.group.rotation.set(
+          this.walker.slopePitch * dip,
+          this.walker.yaw,
+          this.walker.slopeRoll * dip,
+        );
         rig.animate(
           {
             cycle: this.walker.cycle,
@@ -1511,6 +1834,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
             grounded: this.walker.grounded,
             vy: this.walker.vy,
             lean: this.walker.lean,
+            slideAmount: this.walker.slideAmount,
           },
           dt,
         );
@@ -1520,6 +1844,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     }
     if (!this.#active || !this.#context) return;
     this.camera.update(dt, this.vehicle, this, this.#context.camera);
+    this.#applyViewLayers();
     this.#syncMeshes();
     this.#fx?.update(dt, this.vehicle, this, this.#context.camera, this.#input.handbrake);
     this.#debris?.update(dt);
@@ -1538,11 +1863,32 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   }
 
   #syncMeshes(): void {
-    const body = this.#body;
-    if (body) {
-      body.position.copy(this.vehicle.position);
-      body.quaternion.copy(this.vehicle.quaternion);
-      body.updateMatrix();
+    const pose = (mesh: Mesh | null): void => {
+      if (!mesh) return;
+      mesh.position.copy(this.vehicle.position);
+      mesh.quaternion.copy(this.vehicle.quaternion);
+      mesh.updateMatrix();
+    };
+    pose(this.#body);
+    pose(this.#glass);
+    pose(this.#cabin);
+    if (this.#helm) {
+      const hub = helmHub(this.vehicle.spec);
+      this.#scratch.set(hub.x, hub.y, hub.z).applyQuaternion(this.vehicle.quaternion);
+      this.#helm.position.copy(this.vehicle.position).add(this.#scratch);
+      this.#helm.quaternion.copy(this.vehicle.quaternion);
+      // ~18° zum Fahrer — genug, dass es ein Rad ist, nicht so steil, dass
+      // der Kranz zur Scheibe wird.
+      this.#helm.rotateX(-0.32);
+      const lock = Math.max(1e-4, this.vehicle.spec.steering.maxAngle);
+      // Positiver Lock = rechts. Von hinten aufs Rad: rechts ist −Z (Uhrzeigersinn entlang +Z).
+      this.#helm.rotateZ(-(this.vehicle.telemetry.steerAngle / lock) * 1.85);
+      this.#helm.updateMatrix();
+    }
+    if (this.#cluster) {
+      this.#cluster.pose(this.vehicle.spec, this.vehicle.position, this.vehicle.quaternion, this.#scratch);
+      const reading = instruments(this.vehicle.telemetry.forwardSpeed);
+      this.#cluster.paint(this.vehicle.telemetry.speed * 3.6, reading.gear);
     }
 
     const wheels = this.#wheels;
@@ -1649,6 +1995,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
     folder.addBinding(this.#readouts, 'modus', { readonly: true, label: 'Modus' });
     folder.addBinding(this.#readouts, 'ansicht', { readonly: true, label: 'Ansicht' });
+    folder.addBinding(this.camera, 'motion', { min: 0, max: 1, step: 0.05, label: 'Sitz-Motion' });
     folder.addBinding(this.#readouts, 'tempo', { readonly: true, label: 'Tempo', interval: 100 });
     folder.addBinding(this.#readouts, 'schwimmwinkel', {
       readonly: true,
@@ -1720,6 +2067,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#navigation?.dispose();
     this.#navigation = null;
     this.#waypoint.dispose();
+    this.#guide.dispose();
+    this.#graph = null;
+    this.#route = null;
+    this.#routeLine = null;
 
     if (this.#group) {
       this.#context?.scene.remove(this.#group);
@@ -1728,6 +2079,11 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#wheels?.dispose();
     this.#wheels = null;
     this.#body = null;
+    this.#glass = null;
+    this.#cabin = null;
+    this.#helm = null;
+    this.#cluster?.dispose();
+    this.#cluster = null;
     for (const geometry of this.#geometries) geometry.dispose();
     this.#geometries.length = 0;
     this.#rig?.dispose();

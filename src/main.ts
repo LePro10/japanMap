@@ -19,6 +19,10 @@ import { DRIFT_YEN_PER_POINT, EVENTS, findEvent } from './config/events.config';
 import { WALK_BOARD_RANGE, WALK_PROMPT_SLACK } from './config/walker.config';
 import { DriveSystem } from './game/DriveSystem';
 import { DriveHud } from './ui/DriveHud';
+import { sparkMark } from './ui/sparkIcon';
+import { MAP_REGIONS } from './ui/navigationMapRegions';
+import { EXPLORE_SPARKS } from './config/explore.config';
+import { RegionWatch } from './game/regionExplore';
 import { runAb } from './debug/abMeasure';
 import { runDriveProbe } from './debug/driveProbe';
 import { captureShot, probeFrame, type CaptureTarget } from './debug/capture';
@@ -511,8 +515,11 @@ async function boot(): Promise<void> {
   const bestTimes = new BestTimes();
   const profile = new Profile();
   drive.setCanTeleport(() => profile.sandbox);
-  hud.setOnOpenMap(() => {
+  let openPlayerMap = (): void => {
     drive.openMap();
+  };
+  hud.setOnOpenMap(() => {
+    openPlayerMap();
   });
   hud.setMoney(profile.yen);
   profile.onChange(() => {
@@ -544,10 +551,21 @@ async function boot(): Promise<void> {
     hud.showTooDeep();
   });
 
-  engine.bus.on('pickup:collected', ({ yen }) => {
+  const sparkNdc = new Vector3();
+  engine.bus.on('pickup:collected', ({ yen, at }) => {
     profile.earn(yen);
-    audio.click();
-    hud.flash(`+${yen} Sparks`, true);
+    const w = overlay.clientWidth || 1;
+    const h = overlay.clientHeight || 1;
+    engine.camera.updateMatrixWorld();
+    const origins = at.map((p) => {
+      sparkNdc.set(p.x, p.y, p.z).project(engine.camera);
+      return {
+        x: (sparkNdc.x * 0.5 + 0.5) * w,
+        y: (-sparkNdc.y * 0.5 + 0.5) * h,
+        visible: sparkNdc.z < 1 && Math.abs(sparkNdc.x) < 1.4 && Math.abs(sparkNdc.y) < 1.4,
+      };
+    });
+    hud.collectSparks(origins);
   });
 
   engine.bus.on('drive:lap', (result) => {
@@ -601,7 +619,7 @@ async function boot(): Promise<void> {
     if (bestBefore !== null) rows.push(row('Previous best', formatTime(bestBefore)));
     if (isBest) rows.push(row('New record', '✓'));
     if (result.driftScore > 0) rows.push(row('Drift score', String(result.driftScore)));
-    rows.push(row('Earned', `${result.yen.toLocaleString('en-US')} Sparks`));
+    rows.push(row('Earned', sparkMark(result.yen)));
 
     hud.showResult(
       `<p class="hud__resultTitle">${title}</p>` +
@@ -631,6 +649,7 @@ async function boot(): Promise<void> {
   // sind das 10 800 nicht angelegte Objekte je Minute.
   const NAV_DIR = new Vector3();
   const navRivals: { x: number; z: number }[] = [];
+  const exploreWatch = new RegionWatch();
 
   engine.add({
     name: 'DriveHudUpdate',
@@ -690,7 +709,7 @@ async function boot(): Promise<void> {
       // ── Minikarte und Richtungspfeil — P25 ───────────────────────────
       //
       // Die Kamerarichtung kommt aus der **Kamera** und nicht aus
-      // `ChaseCamera.#heading`: es gibt zwei Kameras (Verfolger und Haube), und
+      // `ChaseCamera.#heading`: es gibt drei Kameras (Verfolger, Haube, Sitz), und
       // eine Anzeige, die nur eine davon kennt, zeigt bei der anderen falsch.
       // `getWorldDirection` ist die eine Quelle, die für beide stimmt.
       engine.camera.getWorldDirection(NAV_DIR);
@@ -721,9 +740,22 @@ async function boot(): Promise<void> {
       }
 
       const onFoot = drive.walking;
+      const poseX = onFoot ? drive.walker.position.x : drive.vehicle.position.x;
+      const poseZ = onFoot ? drive.walker.position.z : drive.vehicle.position.z;
+      if (drive.active || drive.walking) {
+        const grant = exploreWatch.tick(dt, poseX, poseZ, {
+          airborne: drive.active && drive.vehicle.telemetry.airborne,
+          explored: (id) => profile.hasExplored(id),
+        });
+        if (grant && profile.markExplored(grant.id)) {
+          profile.earn(grant.sparks);
+          hud.showExplore(grant);
+          hud.collectSparks([]);
+        }
+      }
       hud.updateNav(
-        onFoot ? drive.walker.position.x : drive.vehicle.position.x,
-        onFoot ? drive.walker.position.z : drive.vehicle.position.z,
+        poseX,
+        poseZ,
         onFoot ? drive.walker.yaw : drive.vehicle.yaw,
         Math.atan2(NAV_DIR.x, NAV_DIR.z),
         navRivals,
@@ -762,6 +794,7 @@ async function boot(): Promise<void> {
   // weil das System auf `terrain:ready` und `roads:ready` hört und beide genau
   // einmal gesendet werden, während sich jene Systeme initialisieren.
   const stunt = new StuntSystem(atmosphere.uniforms, drive.ramps);
+  stunt.setScatter(scatter);
   engine.add(stunt);
   drive.setStunt(stunt);
   // Ebenso: die Wasserflächen der Reisfelder holen ihre Höhe aus dem Sampler,
@@ -870,11 +903,13 @@ async function boot(): Promise<void> {
     engineBlip: (pitch) => audio.engineBlip(pitch),
     hideWorld: (hidden) => {
       commons.group.visible = !hidden;
+      const veg = engine.scene.getObjectByName('Vegetation');
+      if (veg) veg.visible = !hidden;
     },
   });
   const ui = new PlayerUi({
     openMap: () => drive.openMap(),
-    dockMap: (host) => drive.dockMap(host),
+    dockMap: (host, options) => drive.dockMap(host, options),
     undockMap: () => drive.undockMap(),
     callCar: () => callPlayerCar(drive),
     openPhoto: (onExit) => {
@@ -912,11 +947,17 @@ async function boot(): Promise<void> {
       get walking() {
         return drive.walking;
       },
+      get stunt() {
+        return drive.stuntMode;
+      },
       toggle: () => {
         drive.toggle();
       },
       toggleVehicle: () => {
         drive.toggleVehicle();
+      },
+      toggleView: () => {
+        drive.toggleView();
       },
       respawn: () => {
         drive.respawn();
@@ -929,6 +970,9 @@ async function boot(): Promise<void> {
       },
       setJump: (down) => {
         drive.setTouchJump(down);
+      },
+      setSlide: (down) => {
+        drive.setTouchSlide(down);
       },
       get vehicleId() {
         return drive.vehicleId;
@@ -998,6 +1042,7 @@ async function boot(): Promise<void> {
     },
   });
 
+  openPlayerMap = () => ui.openToMap();
   commons.openShop = tune => ui.openCommonsShop(tune);
   commons.isPlaying = () => ui.playing;
   settlements.isPlaying = () => ui.playing;
@@ -1022,7 +1067,17 @@ async function boot(): Promise<void> {
   audio.armAutoUnlock();
   import.meta.hot?.dispose(() => { photo.dispose(); garage.dispose(); ui.dispose(); });
 
-  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive);
+  if (import.meta.env.DEV) {
+    installFrameProbe(engine, controller, quality, scatter, drive);
+    if (window.japanMap) {
+      window.japanMap.explored = () => ({
+        ids: profile.exploredIds(),
+        count: profile.exploredCount,
+        total: MAP_REGIONS.length,
+        sparks: EXPLORE_SPARKS,
+      });
+    }
+  }
 }
 
 /** Eine Zeile der Zieltafel. Englisch, wie alles im DOM. */

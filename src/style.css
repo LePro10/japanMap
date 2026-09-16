@@ -417,7 +417,8 @@ body {
   .start__button,
   .start__island,
   .start__veil,
-  .start__cine {
+  .start__cine,
+  .hud__money.is-pulse {
     animation: none;
     transition: none;
   }
@@ -1168,6 +1169,23 @@ body {
   background: rgba(216, 222, 233, 0.28);
 }
 
+.touch__btn.is-stunt {
+  background: rgba(255, 122, 42, 0.38);
+  border-color: #ff7a2a;
+  color: #ffd4b0;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.touch--walk .touch__buttons {
+  flex-direction: column;
+}
+
+.touch--walk [data-touch='slide'] {
+  font: 600 12px system-ui;
+}
+
 .touch__speed {
   position: absolute;
   left: max(14px, env(safe-area-inset-left));
@@ -1434,6 +1452,54 @@ body {
   display: none;
 }
 
+/* First-visit region toast. Same slot as the lap flash so it does not sit on
+ * the road; two lines instead of nowrap so n/X stays readable on a phone. */
+.hud__explore {
+  position: absolute;
+  left: 50%;
+  top: max(18%, calc(env(safe-area-inset-top) + 56px));
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  max-width: min(90vw, 420px);
+  padding: 10px 18px;
+  border: 1px solid color-mix(in srgb, var(--amber) 38%, transparent);
+  border-radius: 18px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(4px);
+  font-family: var(--mono);
+  color: var(--fg);
+  text-align: center;
+  pointer-events: none;
+}
+
+.hud__explore[hidden] {
+  display: none;
+}
+
+.hud__exploreTitle {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.hud__exploreBody {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--fg) 78%, transparent);
+}
+
+.hud__exploreBody .spark-mark {
+  color: var(--amber);
+}
+
 .hud__flash--best {
   border-color: var(--accent, #e0b25a);
   color: var(--accent, #e0b25a);
@@ -1496,24 +1562,74 @@ body {
   position: absolute;
   right: max(14px, env(safe-area-inset-right));
   top: max(20px, env(safe-area-inset-top));
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--amber) 38%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 72%, transparent);
+  backdrop-filter: blur(8px);
   font-family: var(--mono);
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--accent, #e0b25a);
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+  color: var(--amber);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
 }
 
-/* Die Driftwertung. Rechts über dem Tacho — sie gehört zum Fahren und nicht
- * zur Rennleitung, und der Blick ist beim Driften ohnehin rechts unten. */
-.hud__drift {
+.hud__money .spark-icon {
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--amber-hot) 55%, transparent));
+}
+
+.hud__money.is-pulse {
+  animation: spark-wallet 0.38s ease-out;
+}
+
+@keyframes spark-wallet {
+  0% {
+    transform: scale(1);
+    border-color: color-mix(in srgb, var(--amber-hot) 80%, transparent);
+  }
+  35% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.hud__facet {
   position: absolute;
-  right: max(14px, env(safe-area-inset-right));
-  bottom: max(150px, calc(env(safe-area-inset-bottom) + 72px));
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+  z-index: 8;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--amber-hot) 80%, transparent));
+  will-change: transform, opacity;
+}
+
+.hud__facet .spark-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Die Driftwertung. Typografie hier, Lage in driveInstruments.css — sie sitzt
+ * am Rundinstrument, nicht viewport-absolut. Der alte `bottom: 150px` traf den
+ * Zahlen-Tacho; der Bogen ist 180 px hoch und überdeckte die Zahl. */
+.hud__drift {
   display: flex;
   align-items: baseline;
   gap: 8px;
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
 }
 
@@ -1536,6 +1652,10 @@ body {
 .hud__driftBanked {
   font-size: 12px;
   color: var(--fg-dim);
+}
+
+.hud__driftBanked:empty {
+  display: none;
 }
 
 /* Ab Multiplikator 2,5 wird die Zahl warm. Das ist die einzige Farbänderung im
@@ -1652,6 +1772,11 @@ body {
   color: var(--fg-dim);
 }
 
+.hud__resultRow .spark-mark {
+  font-weight: 700;
+  color: var(--amber);
+}
+
 .hud__resultButton {
   margin-top: 16px;
   width: 100%;
@@ -1690,13 +1815,14 @@ body {
   }
 
   .hud__money {
-    /* Auf schmalem Schirm liegt der Kontostand **unter** dem Rennstreifen —
-     * oben rechts ist dort der Menüknopf der Fingersteuerung. */
-    top: auto;
-    bottom: max(14px, env(safe-area-inset-bottom));
-    right: auto;
-    left: 50%;
-    transform: translateX(-50%);
+    /* Oben rechts bleibt das Wallet — dort landen die Facetten. Der
+     * ☰-Knopf sitzt in `.touch__side` und teilt sich die Ecke; 58 px
+     * darunter bleibt der Chip greifbar und nicht unter dem Knopf. */
+    top: max(58px, calc(env(safe-area-inset-top) + 44px));
+    right: max(14px, env(safe-area-inset-right));
+    left: auto;
+    bottom: auto;
+    transform: none;
   }
 
   .hud__countdown {
@@ -1731,8 +1857,8 @@ body {
   position: absolute;
   left: max(14px, env(safe-area-inset-left));
   bottom: max(14px, env(safe-area-inset-bottom));
-  width: 168px;
-  height: 168px;
+  width: 190px;
+  height: 190px;
   pointer-events: auto;
   cursor: pointer;
   overflow: hidden;
@@ -1774,7 +1900,7 @@ body {
 .hud__wp {
   position: absolute;
   left: max(14px, env(safe-area-inset-left));
-  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 180px);
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 204px);
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -1787,10 +1913,22 @@ body {
   color: #f6efe4;
   pointer-events: none;
   backdrop-filter: blur(8px);
+  opacity: 0;
+  transform: translateY(10px);
+  visibility: hidden;
+  transition:
+    opacity 0.28s ease,
+    transform 0.34s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s linear 0.28s,
+    border-color 0.35s ease,
+    background-color 0.35s ease;
 }
 
-.hud__wp[hidden] {
-  display: none;
+.hud__wp.is-on {
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+  transition-delay: 0s;
 }
 
 .hud__wpName {
@@ -1804,6 +1942,100 @@ body {
   font: 800 16px/1 var(--display, sans-serif);
   letter-spacing: -0.03em;
   color: #e8ba7f;
+  transition: color 0.35s ease;
+}
+
+.hud__wpMeta {
+  font: 700 9px/1.2 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(237, 246, 250, 0.72);
+}
+
+.hud__wp[data-advisory='caution'] {
+  border-color: rgba(232, 186, 127, 0.7);
+}
+
+.hud__wp[data-advisory='brake'] {
+  border-color: rgba(255, 80, 64, 0.85);
+}
+
+.hud__wp[data-advisory='brake'] .hud__wpDist {
+  color: #ff6b5a;
+}
+
+/*
+ * Screen-Pin: konstante Pixelgröße, Klemme am Rand. Der alte Sprite war in
+ * Weltmetern skaliert und damit je nach Standpunkt unlesbar — siehe
+ * waypoint.config.ts. `#overlay > *` setzt pointer-events auto; der Pin
+ * darf den Klick ins Bild nicht schlucken.
+ */
+#overlay > .hud .hud__pin {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 72px;
+  padding: 6px 10px 7px;
+  border: 1px solid rgba(62, 224, 255, 0.55);
+  border-radius: 10px;
+  background: rgba(6, 20, 24, 0.78);
+  color: #f6efe4;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 14px)) scale(0.92);
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.26s ease,
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s linear 0.26s;
+}
+
+#overlay > .hud .hud__pin.is-on {
+  opacity: 1;
+  transform: translate(-50%, calc(-100% - 14px)) scale(1);
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.hud__pinName {
+  font: 800 10px/1 var(--mono);
+  letter-spacing: 0.14em;
+  color: #66d7f4;
+}
+
+.hud__pinDist {
+  font: 800 15px/1 var(--display, sans-serif);
+  color: #e8ba7f;
+}
+
+.hud__pinArrow {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  margin-left: -7px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 11px solid #3ee0ff;
+  filter: drop-shadow(0 0 4px rgba(62, 224, 255, 0.7));
+  opacity: 0;
+  transform-origin: 50% 18px;
+  transition: opacity 0.2s ease;
+}
+
+#overlay > .hud .hud__pin.is-on.hud__pin--edge {
+  transform: translate(-50%, -50%) scale(1);
+  padding-top: 12px;
+}
+
+#overlay > .hud .hud__pin--edge .hud__pinArrow {
+  opacity: 1;
 }
 
 /* Der Pfeil sitzt in der Mitte der Karte und dreht sich um sie. Er ist damit

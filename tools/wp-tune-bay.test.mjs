@@ -67,10 +67,11 @@ try {
   );
   assert.equal(await page.locator("[data-badge]").getAttribute("hidden"), null);
 
-  await page.locator('[data-shot="engine"]').click();
+  await page.locator('[data-filter="engine"]').click();
   assert.ok(
-    await page.locator('[data-shot="engine"]').evaluate((el) => el.classList.contains("is-on")),
+    await page.locator(".tune-garage").evaluate((el) => el.classList.contains("is-engine")),
   );
+  assert.equal(await page.locator(".tune-garage__tools").count(), 0);
 
   await page.keyboard.press("Escape");
   await page.locator(".player-menu").waitFor({ state: "visible" });

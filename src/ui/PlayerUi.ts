@@ -33,6 +33,7 @@ import {
   controlTable,
 } from "./controls";
 import { CAR_COPY, carPortrait } from "./carPresentation";
+import { SPARK_ICON, sparkMark } from "./sparkIcon";
 import "./theme.css";
 import "./playerMenu.css";
 
@@ -90,7 +91,7 @@ export interface PlayerUiOptions {
   readonly debug?: DebugControl;
   readonly events?: EventsControl;
   readonly openMap?: () => void;
-  readonly dockMap?: (host: HTMLElement) => void;
+  readonly dockMap?: (host: HTMLElement, options?: { focusPlayer?: boolean }) => void;
   readonly undockMap?: () => void;
   readonly openPhoto?: (onExit: (resume?: boolean) => void) => void;
   readonly openTune?: (onExit: (resume?: boolean) => void) => void;
@@ -126,6 +127,8 @@ export class PlayerUi {
   #preview: VehicleId;
   #idleTimer: number | null = null;
   #worldSleeping = false;
+  /** Taste M aus der Fahrt: Atlas auf den Wagen legen, nicht auf den letzten Schwenk. */
+  #mapFocusPlayer = false;
 
   constructor(options: PlayerUiOptions) {
     this.#o = options;
@@ -143,6 +146,7 @@ export class PlayerUi {
       options.bus.on("quality:changed", () => this.#syncQuality()),
       options.bus.on("drive:mode", () => this.#syncDrive()),
       options.bus.on("walk:mode", () => this.#syncDrive()),
+      options.bus.on("drive:stunt", ({ active }) => this.#touch.setStunt(active)),
       options.bus.on("drive:vehicle", () => {
         this.#preview = options.drive?.vehicleId ?? "touge";
         this.#cars();
@@ -191,6 +195,24 @@ export class PlayerUi {
   begin(): void {
     this.#started = true;
     this.#resume();
+  }
+  /**
+   * Taste M / Klick auf die Minikarte. Derselbe Atlas wie der Map-Tab —
+   * zentriert auf den Wagen, nicht als zweites Overlay oben links.
+   */
+  openToMap(): void {
+    if (!this.#started) return;
+    this.#open = true;
+    this.#tab = "map";
+    this.#mapFocusPlayer = true;
+    this.#events();
+    this.#syncDrive();
+    this.#syncIdentity();
+    if (document.pointerLockElement === this.#o.canvas) {
+      document.exitPointerLock();
+      return;
+    }
+    this.#render();
   }
   openCommonsShop(tune: boolean): void {
     if (tune && this.#o.openTune) {
@@ -249,10 +271,23 @@ export class PlayerUi {
     }
   };
   readonly #lockError = (): void => {
-    if (!this.#photo && !this.#map && !this.#garage) this.#show();
+    if (this.#photo || this.#map || this.#garage || this.#open) return;
+    this.#show();
   };
   readonly #key = (event: KeyboardEvent): void => {
-    if (!this.#started || this.#map || this.#photo || this.#garage) return;
+    if (!this.#started || this.#photo || this.#garage) return;
+    if (event.code === "KeyM") {
+      if (this.#map) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (this.#open && this.#tab === "map") {
+        this.#resume(false);
+        return;
+      }
+      this.openToMap();
+      return;
+    }
+    if (this.#map) return;
     if (event.code === "Escape") {
       // Nur ohne Lock: mit Lock gibt der Browser den Zeiger frei, und
       // `#lockChanged` öffnet das Menü. Escape *im* Menü darf den Lock nicht
@@ -269,14 +304,6 @@ export class PlayerUi {
       event.target instanceof HTMLSelectElement
     )
       return;
-    if (event.code === "KeyM") {
-      if (!this.#open) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      this.#tab = "map";
-      this.#render();
-      return;
-    }
     if (event.code === "KeyP") {
       event.preventDefault();
       this.#enterPhoto();
@@ -290,10 +317,20 @@ export class PlayerUi {
     );
     this.#o.hud?.setMenuOpen(this.#open || this.#photo || this.#map || this.#garage);
     this.#o.drive?.setPaused?.(this.#open || this.#photo || this.#map || this.#garage);
-    if (this.#open && !this.#photo && !this.#garage) this.#armIdleSleep();
-    else {
+    // Photo/Garage brauchen den Renderer. Hinter dem Atlas nicht: jedes
+    // Schwenken hat sonst 3D-Vegetation plus Canvas-Filter bezahlt.
+    if (this.#photo || this.#garage) {
       this.#clearIdleSleep();
-      if (!this.#photo && !this.#garage) this.#setWorldSleep(false);
+      this.#setWorldSleep(false);
+    } else if (this.#map || (this.#open && this.#tab === "map")) {
+      this.#clearIdleSleep();
+      this.#setWorldSleep(true);
+    } else if (this.#open) {
+      this.#setWorldSleep(false);
+      this.#armIdleSleep();
+    } else {
+      this.#clearIdleSleep();
+      this.#setWorldSleep(false);
     }
     for (const panel of this.#menu.querySelectorAll<HTMLElement>(
       "[data-panel]",
@@ -316,7 +353,9 @@ export class PlayerUi {
     const live = this.#open && this.#tab === "map" && Boolean(this.#o.dockMap);
     if (live && host) {
       if (fallback) fallback.hidden = true;
-      this.#o.dockMap?.(host);
+      const focusPlayer = this.#mapFocusPlayer;
+      this.#mapFocusPlayer = false;
+      this.#o.dockMap?.(host, { focusPlayer });
       return;
     }
     this.#o.undockMap?.();
@@ -347,7 +386,7 @@ export class PlayerUi {
           <form class="menu__code" hidden><input aria-label="Code" maxlength="12" autocomplete="off" /></form>
         </div>
         <div class="menu__wallet">
-          <span class="menu__walletLabel">Sparks</span>
+          <span class="menu__walletLabel">${SPARK_ICON} Sparks</span>
           <strong data-wallet>0</strong>
         </div>
       </header>
@@ -419,11 +458,13 @@ export class PlayerUi {
         this.#o.callCar?.() ?? "Call car is unavailable here.";
     };
     el(".menu__explore").onclick = () => {
+      this.#mapFocusPlayer = true;
       this.#tab = "map";
       this.#render();
     };
     el(".menu__openMap").onclick = () => {
       if (this.#o.dockMap) {
+        this.#mapFocusPlayer = true;
         this.#tab = "map";
         this.#render();
         return;
@@ -459,7 +500,9 @@ export class PlayerUi {
     };
     for (const button of menu.querySelectorAll<HTMLButtonElement>("[data-tab]"))
       button.onclick = () => {
-        this.#tab = button.dataset.tab as Tab;
+        const next = button.dataset.tab as Tab;
+        if (next === "map") this.#mapFocusPlayer = true;
+        this.#tab = next;
         this.#render();
       };
     for (const button of menu.querySelectorAll<HTMLButtonElement>("[data-go]"))
@@ -625,7 +668,7 @@ export class PlayerUi {
       const button = document.createElement("button");
       button.className = "menu__car";
       button.dataset.vehicle = id;
-      button.innerHTML = `${carPortrait(id)}<span class="menu__carName">${CAR_COPY[id].name}</span><span class="menu__carFacts">${this.#owns(id) ? "Owned" : `${VEHICLES[id].price.toLocaleString("en-US")} Sparks`}${id === this.#o.drive?.vehicleId ? " · Selected" : ""}</span>`;
+      button.innerHTML = `${carPortrait(id)}<span class="menu__carName">${CAR_COPY[id].name}</span><span class="menu__carFacts">${this.#owns(id) ? "Owned" : sparkMark(VEHICLES[id].price)}${id === this.#o.drive?.vehicleId ? " · Selected" : ""}</span>`;
       button.onclick = () => {
         this.#preview = id;
         this.#carDetail();
@@ -658,13 +701,13 @@ export class PlayerUi {
       ? id === this.#o.drive?.vehicleId
         ? "Selected"
         : "Select car"
-      : `Buy · ${spec.price.toLocaleString("en-US")} Sparks`;
+      : `Buy · ${sparkMark(spec.price)}`;
     const tuneBlock = !owned
       ? ""
       : this.#o.openTune
         ? `<p class="menu__note">Open Bay · ${TUNE_TIERS[tune.engine]} engine · ${TUNE_TIERS[tune.brakes]} brakes · ${TUNE_TIERS[tune.steering]} steering · ${TUNE_TIERS[tune.tyres]} tyres · ${SETUP_LABEL[setup]}</p><button type="button" class="menu__choose" data-bay>Tune in Open Bay</button>`
         : `<details class="menu__tune"><summary>Tune · Free tuning preview</summary><p>Fit tiers to this car. Engine adds force and speed; brakes shorten stops; steering responds sooner; tyres add road grip. Mass and wheelbase stay the same.</p>${(["engine","brakes","steering","tyres"] as TuneCategory[]).map(key=>`<label class="menu__row">${key[0]!.toUpperCase()+key.slice(1)}<select data-tune="${key}" aria-label="${key} tier">${["Stock","Street","Sport"].map((tier,i)=>`<option value="${i}" ${tune[key]===i?"selected":""}>${tier}</option>`).join("")}</select></label>`).join("")}<p class="menu__note">Setup sits on top of owned parts. Needle has Safe Return instead of Dirt.</p><div class="menu__row" role="radiogroup" aria-label="Setup">${setupsFor(id).map(s=>`<label><input type="radio" name="car-setup" value="${s}" ${setup===s?"checked":""}>${SETUP_LABEL[s]}</label>`).join("")}</div><p class="menu__note">Free to fit and saved per car. No Sparks spent.</p></details>`;
-    host.innerHTML = `<div class="menu__carStage">${carPortrait(id)}<span>${spec.category} · ${owned ? "OWNED" : "SHOWROOM"}</span></div><h2>${copy.name}</h2><p class="menu__intro">${copy.role}</p><div class="menu__carSpecs"><span><strong>${spec.chassis.mass.toLocaleString("en-US")}</strong>kg</span><span><strong>${spec.drivetrain.layout.toUpperCase()}</strong>Drivetrain</span><span><strong>${Math.round(topSpeed(arcade,spec.chassis.mass)*3.6)}</strong>km/h · estimated</span><span><strong>${arcade.latG.toFixed(2)}</strong>g · road grip</span><span><strong>${Math.round(spec.dirt*100)}</strong>% · dirt grip</span><span><strong>${spec.clearance.toFixed(2)}</strong>m · clearance · ${spec.ford.toFixed(2)}m ford</span></div><p>${balance.toLocaleString("en-US")} Sparks available · Saved in this browser</p><button class="menu__choose" ${owned ? "" : 'aria-label="Buy"'} ${owned||canBuy ? "" : "disabled"}>${chooseLabel}</button>${!owned&&!canBuy ? `<p class="menu__note">${(spec.price-balance).toLocaleString("en-US")} more Sparks needed.</p>` : ""}${tuneBlock}`;
+    host.innerHTML = `<div class="menu__carStage">${carPortrait(id)}<span>${spec.category} · ${owned ? "OWNED" : "SHOWROOM"}</span></div><h2>${copy.name}</h2><p class="menu__intro">${copy.role}</p><div class="menu__carSpecs"><span><strong>${spec.chassis.mass.toLocaleString("en-US")}</strong>kg</span><span><strong>${spec.drivetrain.layout.toUpperCase()}</strong>Drivetrain</span><span><strong>${Math.round(topSpeed(arcade,spec.chassis.mass)*3.6)}</strong>km/h · estimated</span><span><strong>${arcade.latG.toFixed(2)}</strong>g · road grip</span><span><strong>${Math.round(spec.dirt*100)}</strong>% · dirt grip</span><span><strong>${spec.clearance.toFixed(2)}</strong>m · clearance · ${spec.ford.toFixed(2)}m ford</span></div><p>${sparkMark(balance)} available · Saved in this browser</p><button class="menu__choose" ${owned ? "" : 'aria-label="Buy"'} ${owned||canBuy ? "" : "disabled"}>${chooseLabel}</button>${!owned&&!canBuy ? `<p class="menu__note">${sparkMark(spec.price-balance)} more needed.</p>` : ""}${tuneBlock}`;
     host.querySelector<HTMLButtonElement>(".menu__choose")!.onclick=()=>{
       if(!owned&&!this.#o.events?.buy(id))return;
       this.#o.drive?.setVehicle(id);this.#cars();
@@ -855,7 +898,9 @@ export class PlayerUi {
     return element;
   }
   readonly #onMenuActivity = (): void => {
-    if (this.#open && !this.#photo) this.#armIdleSleep();
+    if (!this.#open || this.#photo || this.#garage) return;
+    if (this.#tab === "map") return;
+    this.#armIdleSleep();
   };
   readonly #onVisibility = (): void => {
     if (this.#photo || this.#garage) return;

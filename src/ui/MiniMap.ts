@@ -7,6 +7,7 @@ import {
   drawGlowRoute,
   drawLocalRoads,
   drawNorthMark,
+  drawPathRoute,
   drawPlayerChevron,
   drawWaypointPin,
 } from './mapDraw';
@@ -23,7 +24,8 @@ import {
  */
 
 const SIZE = 190;
-const VIEW_WALK = 160;
+/** Dieselbe Sicht zu Fuß und im Auto. 160 m gegen 420 m war ein Sprung
+ *  beim Ein-/Aussteigen — die Karte darf den Wechsel nicht zeigen. */
 const VIEW_DRIVE = 420;
 const VIEW_FAST = 640;
 const FAST_MS = 50;
@@ -34,6 +36,12 @@ export interface MiniMapMark {
   readonly x: number;
   readonly z: number;
   readonly label?: string;
+  readonly remaining?: number;
+  readonly eta?: number;
+  readonly turn?: 'none' | 'left' | 'right' | 'around';
+  readonly advisory?: 'ok' | 'caution' | 'brake';
+  readonly path?: Float32Array | null;
+  readonly pin?: { x: number; y: number; onScreen: boolean; edgeAngle: number } | null;
 }
 
 export class MiniMap {
@@ -46,6 +54,7 @@ export class MiniMap {
   #roadsDrawn = 0;
   #since = Number.POSITIVE_INFINITY;
   #file: RoadFile | null = null;
+  #onFoot = false;
 
   constructor(container: HTMLElement) {
     const canvas = document.createElement('canvas');
@@ -106,12 +115,14 @@ export class MiniMap {
     speed = 0,
     onFoot = false,
   ): void {
+    const modeChanged = onFoot !== this.#onFoot;
+    this.#onFoot = onFoot;
     this.#since += dt;
-    if (dt > 0 && this.#since < REDRAW_INTERVAL) return;
+    if (!modeChanged && dt > 0 && this.#since < REDRAW_INTERVAL) return;
     this.#since = 0;
 
     const fast = Math.min(1, Math.max(0, (speed - 8) / (FAST_MS - 8)));
-    const span = onFoot ? VIEW_WALK : VIEW_DRIVE + (VIEW_FAST - VIEW_DRIVE) * fast;
+    const span = VIEW_DRIVE + (VIEW_FAST - VIEW_DRIVE) * fast;
     const radius = SIZE * 0.5;
 
     const ctx = this.#ctx;
@@ -165,7 +176,11 @@ export class MiniMap {
       const from = local(x, z);
       const to = local(waypoint.x, waypoint.z);
       const clamped = clampToCircle(to.x, to.y, radius, radius, radius - 12);
-      drawGlowRoute(ctx, from.x, from.y, clamped.x, clamped.y, 4.2);
+      if (waypoint.path && waypoint.path.length >= 4) {
+        drawPathRoute(ctx, waypoint.path, local, MAP_INK.route, 3.4);
+      } else {
+        drawGlowRoute(ctx, from.x, from.y, clamped.x, clamped.y, 4.2);
+      }
       if (clamped.inside) drawWaypointPin(ctx, to.x, to.y, 7);
       else drawEdgeChevron(ctx, clamped.x, clamped.y, clamped.angle, MAP_INK.waypoint);
     }

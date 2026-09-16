@@ -83,18 +83,21 @@ export class VegetationMaterial extends MeshStandardMaterial {
   readonly #shared: VegetationUniforms;
 
   readonly #amplitude: IUniform<number>;
+  readonly #tintAmount: IUniform<number>;
 
   constructor(
     atmosphere: AtmosphereUniforms,
     shared: VegetationUniforms,
     base: number,
     windAmplitude: number,
+    options?: { vertexColors?: boolean; tintAmount?: number },
   ) {
     super({
       color: new Color().setHex(base, 'srgb'),
       roughness: 0.85,
       metalness: 0,
       side: DoubleSide,
+      vertexColors: options?.vertexColors === true,
       // Ohne das wirkt Laub bei streifendem Licht wie lackiertes Blech: die
       // Rückseiten stehen im Gegenlicht komplett schwarz. `flatShading` ist
       // hier zusätzlich Absicht und nicht Sparsamkeit — die Formen sind
@@ -105,6 +108,7 @@ export class VegetationMaterial extends MeshStandardMaterial {
     this.#atmosphere = atmosphere;
     this.#shared = shared;
     this.#amplitude = { value: windAmplitude };
+    this.#tintAmount = { value: options?.tintAmount ?? 1 };
     this.name = 'VegetationMaterial';
   }
 
@@ -113,6 +117,7 @@ export class VegetationMaterial extends MeshStandardMaterial {
       shader.uniforms[name] = uniform as IUniform;
     }
     shader.uniforms['uWindAmplitude'] = this.#amplitude;
+    shader.uniforms['uVegTintAmount'] = this.#tintAmount;
 
     shader.vertexShader = shader.vertexShader
       .replace(
@@ -145,6 +150,7 @@ export class VegetationMaterial extends MeshStandardMaterial {
       '#include <common>',
       `#include <common>\n${tintGlsl}\n${translucencyGlsl}\n${baseAoGlsl}\n` +
         'uniform float uVegTranslucency;\n' +
+        'uniform float uVegTintAmount;\n' +
         'varying vec3 vVegWorld;\nvarying float vVegTint;\nvarying float vVegBase;\n' +
         'vec2 gVegShade;',
     );
@@ -166,7 +172,7 @@ export class VegetationMaterial extends MeshStandardMaterial {
           // Streulicht durch Blätter, das weiter unten aus `diffuseColor`
           // rechnet, wird damit gleich mitverdunkelt. Am Stammfuß soll auch
           // nichts durchleuchten.
-          'diffuseColor.rgb *= vegetationTint(vVegTint) * vegetationBaseAo(vVegBase);',
+          'diffuseColor.rgb *= mix(vec3(1.0), vegetationTint(vVegTint), uVegTintAmount) * vegetationBaseAo(vVegBase);',
       )
       .replace(
         '#include <lights_fragment_end>',
@@ -191,6 +197,6 @@ export class VegetationMaterial extends MeshStandardMaterial {
   }
 
   override customProgramCacheKey(): string {
-    return 'japanmap:vegetation';
+    return `japanmap:vegetation:c${this.vertexColors ? 1 : 0}:t${this.#tintAmount.value}`;
   }
 }

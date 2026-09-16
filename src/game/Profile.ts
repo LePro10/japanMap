@@ -1,4 +1,5 @@
 import { DEFAULT_VEHICLE, VEHICLE_ORDER, VEHICLES, type VehicleId } from '@/config/vehicles.config';
+import { isMapRegionId, type MapRegionId } from '@/ui/navigationMapRegions';
 
 /**
  * Der Fortschritt eines Spielers — P23.
@@ -14,13 +15,14 @@ import { DEFAULT_VEHICLE, VEHICLE_ORDER, VEHICLES, type VehicleId } from '@/conf
  *
  * ## Was gespeichert wird
  *
- * Fünf Dinge: Kontostand, freigeschaltete Fahrzeuge, Bestzeit je Veranstaltung,
- * Höchstpunktzahl je Driftlauf, und der **Sandkasten**. Der letzte ist ein
- * Flag, kein Katalog — Tunes und Upgrades, die es heute nicht gibt, fragen
- * später dieselbe Zeile. Alles andere (Qualitätsstufe, Debug-Schalter, Bestzeit
- * je *Straße*) hat schon einen eigenen Schlüssel und behält ihn — ein
- * Sammelobjekt, in das alles wandert, ist beim nächsten Format-Wechsel ein
- * Datenverlust.
+ * Sechs Dinge: Kontostand, freigeschaltete Fahrzeuge, Bestzeit je Veranstaltung,
+ * Höchstpunktzahl je Driftlauf, der **Sandkasten**, und die schon betretenen
+ * Regionen. Der Sandkasten ist ein Flag, kein Katalog — Tunes und Upgrades, die
+ * es heute nicht gibt, fragen später dieselbe Zeile. Regionen müssen denselben
+ * Speicher überleben, sonst feuert der Erstbesuch-Toast nach jedem Reload.
+ * Alles andere (Qualitätsstufe, Debug-Schalter, Bestzeit je *Straße*) hat schon
+ * einen eigenen Schlüssel und behält ihn — ein Sammelobjekt, in das alles
+ * wandert, ist beim nächsten Format-Wechsel ein Datenverlust.
  *
  * ## Gelesen wird vorsichtig
  *
@@ -75,6 +77,8 @@ interface Stored {
   driftByEvent: Record<string, number>;
   /** Sandkasten — Autos, und später Tunes und Upgrades. */
   sandbox: boolean;
+  /** Region ids already toasted — a reload must not fire them again. */
+  explored: string[];
 }
 
 export class Profile {
@@ -96,6 +100,7 @@ export class Profile {
    * nächsten Start in der Garage — ohne dass jemand den Speicher anfasst.
    */
   #sandbox = false;
+  #explored = new Set<MapRegionId>();
   #listeners: (() => void)[] = [];
 
   constructor() {
@@ -130,6 +135,30 @@ export class Profile {
 
   get ownedCount(): number {
     return this.#owned.size;
+  }
+
+  get exploredCount(): number {
+    return this.#explored.size;
+  }
+
+  exploredIds(): readonly MapRegionId[] {
+    return [...this.#explored];
+  }
+
+  hasExplored(id: string): boolean {
+    return isMapRegionId(id) && this.#explored.has(id);
+  }
+
+  /**
+   * First visit of a region. Returns false if it was already known — that is
+   * the reload path: persist, then stay silent.
+   */
+  markExplored(id: string): boolean {
+    if (!isMapRegionId(id) || this.#explored.has(id)) return false;
+    this.#explored.add(id);
+    this.#save();
+    this.#notify();
+    return true;
   }
 
   earn(amount: number): void {
@@ -238,6 +267,7 @@ export class Profile {
     this.#sandbox = false;
     this.#best.clear();
     this.#drift.clear();
+    this.#explored.clear();
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -274,6 +304,11 @@ export class Profile {
       }
       readTimes(d.bestByEvent, this.#best, MAX_PLAUSIBLE_S);
       readTimes(d.driftByEvent, this.#drift, Number.MAX_SAFE_INTEGER);
+      if (Array.isArray(d.explored)) {
+        for (const id of d.explored) {
+          if (typeof id === 'string' && isMapRegionId(id)) this.#explored.add(id);
+        }
+      }
     } catch {
       // Kaputtes JSON: wie „nichts gespeichert" behandeln.
     }
@@ -286,6 +321,7 @@ export class Profile {
       bestByEvent: Object.fromEntries(this.#best),
       driftByEvent: Object.fromEntries(this.#drift),
       sandbox: this.#sandbox,
+      explored: [...this.#explored],
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));

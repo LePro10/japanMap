@@ -160,9 +160,23 @@
 }
 
 .player-menu .menu__walletLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font: 700 11px / 1 var(--display);
   letter-spacing: 0.16em;
   text-transform: uppercase;
+}
+
+.player-menu .menu__walletLabel .spark-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.player-menu .menu__choose .spark-mark,
+.player-menu .menu__carFacts .spark-mark,
+.player-menu .menu__note .spark-mark {
+  vertical-align: -0.15em;
 }
 
 .player-menu .menu__wallet [data-wallet] {
@@ -612,8 +626,21 @@
   font: inherit;
 }
 
+.player-menu button.navmap__region {
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink) 45%, transparent);
+  color: var(--paper);
+  text-align: left;
+  font: inherit;
+}
+
 .player-menu button.navmap__place:hover,
-.player-menu button.navmap__place.is-selected {
+.player-menu button.navmap__place.is-selected,
+.player-menu button.navmap__region:hover,
+.player-menu button.navmap__region.is-selected {
   background: color-mix(in srgb, var(--teal) 38%, transparent);
 }
 
