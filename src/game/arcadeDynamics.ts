@@ -87,6 +87,8 @@ export interface PlanarResult {
   yawRate: number;
   /** Nickrate im Flug, rad/s — null am Boden. */
   pitchRate: number;
+  /** Rollrate im Flug, rad/s — Boden null. Seitliche Rolle, kein Loop. */
+  rollRate: number;
   /** Wie weit der Drift-Zustand offen ist, 0…1. */
   drift: number;
   /** Schwimmwinkel, rad. Positiv = Fahrtrichtung zeigt rechts an der Nase vorbei. */
@@ -105,6 +107,8 @@ export interface PlanarResult {
   stunt: number;
   /** Spin-Absicht im Stunt, 0…1. Space gehalten, nicht der offene Drift. */
   spin: number;
+  /** Rest des Doppeltipp-360, 0…1. HUD und Expire. */
+  trick: number;
 }
 
 /** Was die Dynamik über den Untergrund und die Lage wissen muss. */
@@ -148,6 +152,12 @@ export interface DriveCommand {
    * bauen, meinen `false`, und ein Pflichtfeld hätte sie alle anfassen müssen.
    */
   readonly stunt?: boolean;
+  /**
+   * Eine Frame-Flanke: Doppeltipp in diesem Schritt. Optional wie `stunt`.
+   * Startet den 360 (Boden gieren / Luft rollen) durch die Bewegung, kein
+   * Teleport.
+   */
+  readonly trick?: boolean;
 }
 
 /** Ein Zustand, den ein Prüfstand von Hand setzen darf. */
@@ -263,6 +273,12 @@ export class ArcadeDynamics {
    * Der Drift darf ihn nicht tragen — sonst ist Weiterlenken ein 360.
    */
   #spin = 0;
+  /** Restrotation des Doppeltipp-Tricks, rad. */
+  #trickRemain = 0;
+  #trickSign = 0;
+  /** true = Rolle um die Längsachse, false = Gier-360 am Boden. */
+  #trickAir = false;
+  #rollRate = 0;
 
   constructor(spec: ArcadeSpec, looseBonus: number) {
     this.#spec = spec;
@@ -305,6 +321,10 @@ export class ArcadeDynamics {
     this.#landTimer = 0;
     this.#stuntBlend = 0;
     this.#spin = 0;
+    this.#trickRemain = 0;
+    this.#trickSign = 0;
+    this.#trickAir = false;
+    this.#rollRate = 0;
     // **Der Nitro-Vorrat bleibt stehen.** Ein Respawn nach einem Fehler soll
     // nicht auch noch den Boost verschenken — das bestraft den Fehler zweimal.
   }
@@ -489,10 +509,37 @@ export class ArcadeDynamics {
     const initiate = !env.airborne && fastEnough && armed && steering;
     const sustain = !env.airborne && fastEnough && this.#drift > DRIFT_GATE.sustainDrift;
     const want = initiate ? 1 : sustain ? Math.max(powerSlide, liftSlide) : 0;
-    // Geradeaus beendet den Stunt-Drift sofort — nicht erst wenn jemand
-    // umschaltet. `input.stunt` darf auf der Geraden nicht offen bleiben.
+
+    // Doppeltipp: Restrotation durch die Bewegung, kein `yaw += 2π`.
+    if (input.trick === true && (env.airborne || speed > STUNT.minSpeed)) {
+      const sign =
+        Math.abs(input.steer) > 0.1
+          ? Math.sign(input.steer)
+          : this.#driftSign !== 0
+            ? this.#driftSign
+            : 1;
+      this.#trickSign = sign;
+      this.#trickAir = env.airborne;
+      this.#trickRemain = Math.min(
+        this.#trickRemain + STUNT.trickAngle,
+        STUNT.trickAngle * 2,
+      );
+      if (!env.airborne) {
+        this.#drift = Math.max(this.#drift, 0.62);
+        this.#driftSign = sign;
+        this.#stuntBlend = Math.max(this.#stuntBlend, 0.85);
+      } else {
+        this.#stuntBlend = Math.max(this.#stuntBlend, 0.9);
+      }
+    }
+    const inTrick = this.#trickRemain > 0.12;
+    // Geradeaus beendet den Stunt-Drift — außer mitten im 360.
     const stuntWant =
-      input.stunt === true && steering && (this.#drift > 0.04 || initiate) ? 1 : 0;
+      (input.stunt === true || inTrick) &&
+      (env.airborne || steering || inTrick) &&
+      (env.airborne || this.#drift > 0.04 || initiate || inTrick)
+        ? 1
+        : 0;
     const exitingStunt = this.#stuntBlend > 0.08 && stuntWant === 0;
     const driftRate =
       want > this.#drift
@@ -538,11 +585,12 @@ export class ArcadeDynamics {
     const aLatMax = this.#latAccel(grip, speed) * latMul;
     let yawTarget = this.#yawTarget(env.vLong, env.vLat, speed, aLatMax, input);
 
+    this.#rollRate = 0;
+    const trickFrac = this.#trickRemain / STUNT.trickAngle;
+    const trickEnv = Math.sin(Math.PI * Math.min(1, Math.max(0.07, 1 - trickFrac)));
+
     if (env.airborne) {
       this.#wasAirborne = true;
-      // Luftsteuerung. Sie ist Winkel*beschleunigung* und keine Sollrate — in der
-      // Luft gibt es nichts, was eine Rate erzwänge, und ein Wagen, der im Flug
-      // sofort auf eine Sollrate springt, sieht aus wie ein Modellflugzeug.
       const airYaw = AIR_CONTROL.yaw * (1 + this.#stuntBlend * (STUNT.airYaw - 1));
       const airPitch = AIR_CONTROL.pitch * (1 + this.#stuntBlend * (STUNT.airPitch - 1));
       this.#yawRate += -Math.sign(input.steer) * Math.abs(input.steer) * airYaw * dt;
@@ -550,25 +598,44 @@ export class ArcadeDynamics {
       this.#pitchRate +=
         (clamp01(input.brake) - clamp01(input.throttle)) * airPitch * dt;
       this.#pitchRate *= Math.exp(-AIR_CONTROL.damping * dt);
+      if (this.#trickRemain > 0 && this.#trickAir) {
+        const rate = this.#trickSign * STUNT.airRoll * (0.62 + 0.38 * trickEnv);
+        this.#rollRate = rate;
+        this.#trickRemain = Math.max(0, this.#trickRemain - Math.abs(rate) * dt);
+      } else {
+        this.#rollRate *= Math.exp(-AIR_CONTROL.damping * dt);
+      }
     } else {
       if (this.#wasAirborne) this.#landTimer = GRIP_BLEND;
       this.#wasAirborne = false;
       this.#landTimer = Math.max(0, this.#landTimer - dt);
       this.#pitchRate *= Math.exp(-8 * dt);
-      // **Die Fangleine.** Ohne Lenkeingabe zieht sie die Nase in die
-      // Fahrtrichtung — genau das, was ein Fahrer mit Gegenlenken täte und was
-      // mit einer Taste nicht dosierbar ist. Sie ist null, sobald jemand lenkt,
-      // kann also nichts verfälschen, was der Spieler selbst tut. Begründung bei
-      // `ArcadeSpec.catchAssist`.
-      //
-      // Nach einer Kuppe aus: sonst schnappt die Nase in die alte Sollrate, und
-      // das liest sich als Gierkick genau dann, wenn die Räder den Boden
-      // wiederfinden. ASTRA_PLAN §5 verlangt das Gegenteil.
+      this.#rollRate *= Math.exp(-10 * dt);
+      if (this.#trickRemain > 0 && !this.#trickAir) {
+        const steerHelp = 0.72 + 0.38 * Math.abs(this.#steerInput);
+        let rate = STUNT.trickYaw * (0.52 + 0.48 * trickEnv) * steerHelp;
+        // Letzte 30° an der Restrotation deckeln — sonst läuft yawRate über
+        // den 360 hinaus und der Wagen sieht unkontrolliert aus.
+        rate = Math.min(rate, Math.max(1.2, this.#trickRemain / 0.16));
+        if (countering) {
+          this.#trickRemain *= Math.exp(-STUNT.trickAbort * dt);
+          rate *= 0.32;
+        }
+        yawTarget += -this.#trickSign * rate;
+        this.#trickRemain = Math.max(0, this.#trickRemain - rate * dt);
+      } else if (this.#trickRemain > 0 && this.#trickAir) {
+        this.#trickRemain = 0;
+      }
       const landing = this.#landTimer > 0;
-      if (!landing && Math.abs(input.steer) < 0.2 && speed > 2 && !input.handbrake) {
+      const spinningOut = this.#trickRemain > 0.4;
+      if (
+        !landing &&
+        !spinningOut &&
+        Math.abs(input.steer) < 0.2 &&
+        speed > 2 &&
+        !input.handbrake
+      ) {
         const slip = Math.atan2(env.vLat, Math.abs(env.vLong));
-        // Im Stunt bleibt eine Fangleine — nur leiser, und der Spin dämpft
-        // sie. Null wäre der Kreisel: wer Space loslässt, muss fangen können.
         const catchMul =
           lerp(1, STUNT.catch, this.#stuntBlend) * (1 - this.#spin);
         yawTarget +=
@@ -580,11 +647,12 @@ export class ArcadeDynamics {
     }
     const yawCap = lerp(
       spec.maxYawRate,
-      STUNT.maxYawRate,
-      this.#stuntBlend * Math.max(this.#spin, 0.12),
+      this.#trickRemain > 0.2 ? STUNT.trickYawCap : STUNT.maxYawRate,
+      Math.max(this.#stuntBlend * Math.max(this.#spin, 0.12), this.#trickRemain > 0.2 ? 1 : 0),
     );
     this.#yawRate = clamp(this.#yawRate, -yawCap, yawCap);
     this.#pitchRate = clamp(this.#pitchRate, -2.5, 2.5);
+    this.#rollRate = clamp(this.#rollRate, -9, 9);
 
     // ── Querkraft ─────────────────────────────────────────────────────────
     //
@@ -669,6 +737,7 @@ export class ArcadeDynamics {
       accelLat,
       yawRate: this.#yawRate,
       pitchRate: env.airborne ? this.#pitchRate : 0,
+      rollRate: env.airborne ? this.#rollRate : 0,
       drift: this.#drift,
       slip,
       skid,
@@ -678,6 +747,7 @@ export class ArcadeDynamics {
       steerAngle: this.#steerAngle,
       stunt: this.#stuntBlend,
       spin: this.#spin,
+      trick: this.#trickRemain / STUNT.trickAngle,
     };
   }
 

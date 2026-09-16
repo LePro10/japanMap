@@ -109,6 +109,8 @@ export interface DriveInput {
    * die Eingabe von Hand bauen, meinen aus.
    */
   stunt?: boolean;
+  /** Doppeltipp in diesem Frame — startet den 360. Optional wie `stunt`. */
+  trick?: boolean;
 }
 
 /**
@@ -222,6 +224,12 @@ export interface VehicleTelemetry {
   stunt: number;
   /** Spin-Absicht, 0…1. Space gehalten im Stunt — HUD pulsiert damit. */
   spin: number;
+  /** Rest des Doppeltipp-360, 0…1. */
+  trick: number;
+  /** Karosserie-Wanken, rad. Luft-Rolle läuft hier durch. */
+  roll: number;
+  /** Karosserie-Nicken, rad. Die Luft-Rolle darf das nicht zum Loop machen. */
+  pitch: number;
 }
 
 /**
@@ -527,6 +535,9 @@ export class Vehicle {
     circuit: 0,
     stunt: 0,
     spin: 0,
+    trick: 0,
+    roll: 0,
+    pitch: 0,
   };
 
   constructor(spec: VehicleSpec = TOUGE) {
@@ -679,6 +690,10 @@ export class Vehicle {
     this.#steerAngle = 0;
     this.#planar.reset();
     this.#airborne = false;
+    this.#airPitch = 0;
+    this.#airPitchRate = 0;
+    this.#airRoll = 0;
+    this.#airRollRate = 0;
     // **Und der Raddrehwinkel.** Jeder Zustand, der ein Reset überlebt, tarnt
     // sich als „nicht ganz reproduzierbar": gemessen endeten zwei Läufe
     // derselben Strecke 6 cm auseinander (742,26 m gegen 742,20 m), weil die
@@ -862,6 +877,7 @@ export class Vehicle {
     this.#planarInput.handbrake = input.handbrake;
     this.#planarInput.boost = input.boost === true;
     this.#planarInput.stunt = input.stunt === true;
+    this.#planarInput.trick = input.trick === true;
 
     this.#planarEnv.vLong = this.#vLong;
     this.#planarEnv.vLat = this.#vLat;
@@ -915,6 +931,7 @@ export class Vehicle {
     this.#yawRate = planar.yawRate;
     this.#yaw += this.#yawRate * dt;
     this.#airPitchRate = planar.pitchRate;
+    this.#airRollRate = planar.rollRate;
 
     // ── Lage integrieren ──────────────────────────────────────────────────
     this.#updateBasis();
@@ -1086,6 +1103,9 @@ export class Vehicle {
     t.circuit = this.#planarEnv.circuit ?? 0;
     t.stunt = planar.stunt;
     t.spin = planar.spin;
+    t.trick = planar.trick;
+    t.roll = this.#roll;
+    t.pitch = this.#pitch;
   }
 
   /**
@@ -1103,6 +1123,7 @@ export class Vehicle {
     handbrake: false,
     boost: false,
     stunt: false,
+    trick: false,
   };
 
   readonly #planarEnv: { -readonly [K in keyof PlanarEnv]: PlanarEnv[K] } = {
@@ -1119,6 +1140,9 @@ export class Vehicle {
   #airPitchRate = 0;
   /** Aufintegrierte Flugauslenkung des Nickwinkels, rad. */
   #airPitch = 0;
+  #airRollRate = 0;
+  /** Flug-Rolle, unwrapped. Doppeltipp in der Luft: seitlich, nicht nach oben. */
+  #airRoll = 0;
 
   // ── Teilschritte ────────────────────────────────────────────────────────
 
@@ -1392,9 +1416,16 @@ export class Vehicle {
         -AIR_CONTROL.maxPitch,
         AIR_CONTROL.maxPitch,
       );
+      this.#airRoll += this.#airRollRate * dt;
       const blend = 1 - Math.exp(-this.#spec.suspension.attitudeRate * dt);
       this.#pitch += (luftPitch + this.#airPitch - this.#pitch) * blend;
-      this.#roll += (luftRoll - this.#roll) * blend;
+      // Rolle seitlich um die Längsachse — addiert, nicht statt der Hanglage.
+      // Direkte Setzung während der Trick-Rate, sonst frisst der Blend die 360.
+      if (Math.abs(this.#airRollRate) > 0.4 || Math.abs(this.#airRoll) > 0.35) {
+        this.#roll = luftRoll + this.#airRoll;
+      } else {
+        this.#roll += (luftRoll + this.#airRoll - this.#roll) * blend;
+      }
       return;
     }
     // Am Boden läuft die Flugauslenkung aus — sonst stünde der Wagen nach einer
@@ -1402,6 +1433,11 @@ export class Vehicle {
     if (this.#airPitch !== 0) {
       this.#airPitch *= Math.exp(-6 * dt);
       if (Math.abs(this.#airPitch) < 1e-4) this.#airPitch = 0;
+    }
+    if (this.#airRoll !== 0) {
+      this.#airRoll = Math.atan2(Math.sin(this.#airRoll), Math.cos(this.#airRoll));
+      this.#airRoll *= Math.exp(-8 * dt);
+      if (Math.abs(this.#airRoll) < 1e-4) this.#airRoll = 0;
     }
 
     const expected = this.position.y - this.#spec.chassis.cgHeight;

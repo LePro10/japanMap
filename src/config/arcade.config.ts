@@ -488,13 +488,14 @@ export const DRIFT_MAX_ANGLE = 1.4;
 /**
  * Stunt-Drift — Doppeltipp Space, kein Toggle.
  *
- * Einzeltipp ist der normale Drift (~43°). Doppeltipp *ersetzt* ihn für
- * diese eine Drift: loser, 180/360 mit gehaltenem Space. Geradeaus
- * (Lenkung in der Totzone) beendet ihn, und zwar schneller als ein
- * normaler Drift ausläuft — kein Modus, den man an- und ausschaltet.
+ * Einzeltipp bleibt der 43°-Drift. Doppeltipp reißt *diese* Drift an und
+ * wirft einen 360 durch die Gierrate — nicht `yaw += 2π`, sondern eine
+ * Restrotation, die der Integrator auffrisst. Tempo und Lenkung färben
+ * die Rate, Gegenlenken bricht ab, am Ende fängt die Fangleine. Geradeaus
+ * danach löscht wie bisher, schneller als ein normaler Drift.
  *
- * Spin nur bei gehaltenem Space. Weiterlenken ohne Space ist der lose
- * Drift, kein Kreisel.
+ * In der Luft ist derselbe Tipp eine Rolle um die Längsachse (seitlich),
+ * kein Loop nach oben.
  */
 export const STUNT = {
   /** Zwei Space-Downs in diesem Fenster reißen den Stunt-Drift an. */
@@ -551,6 +552,23 @@ export const STUNT = {
   minSpeed: 30 / 3.6,
   fov: 4,
   velocityBlend: 0.12,
+  /**
+   * Restrotation eines Doppeltipp-360, rad. Eine volle Umdrehung, die der
+   * Integrator abarbeitet — kein Teleport.
+   */
+  trickAngle: Math.PI * 2,
+  /**
+   * Peak-Gierrate des Boden-360, rad/s.
+   * Gemessen 2026-09-16: Doppeltipp im Drift, Space nicht gehalten,
+   * 1,5 s → 433° Gier. Luft-Rolle 357°, Nick 0,2° (kein Loop).
+   */
+  trickYaw: 5.4,
+  /** Gierdeckel während des Tricks, rad/s. */
+  trickYawCap: 6.8,
+  /** Luft-Rolle, rad/s. 7,2 → 360° in ~0,87 s, passt in einen normalen Sprung. */
+  airRoll: 7.2,
+  /** Gegenlenken während des Tricks kürzt die Restrotation, 1/s. */
+  trickAbort: 5.5,
 } as const;
 
 /** Zweiter Space-Down innerhalb von `STUNT.tapWindow`. */
