@@ -30,6 +30,12 @@ export interface MapLandmark {
  * an echte Orte, nicht an generische „City / Forest"-Stempel.
  */
 export const MAP_LANDMARKS: readonly MapLandmark[] = [
+  { id: 'komorebi-diner', label: 'Komorebi Diner', kanji: '食堂', detail: 'Walk inside · counter seats and a warm kitchen', x: 505, z: 35, icon: 'village', labelMinPx: 720 },
+  { id: 'corner-mart', label: 'Kōji Corner Mart', kanji: '小路', detail: 'Walk inside · neighborhood shop', x: 644, z: 145, icon: 'village', labelMinPx: 800 },
+  { id: 'rain-garden', label: 'Rain Garden', kanji: '庭', detail: 'Pond bridge · pavilion · lantern paths', x: 705, z: 48, icon: 'forest', labelMinPx: 740 },
+  { id: 'beacon-tower', label: 'Beacon Tower', kanji: '灯台', detail: 'Twin fins above the hillside courtyard', x: 1116.731, z: -322.865, icon: 'city', labelMinPx: 660 },
+  { id: 'market-hall', label: 'Market Hall', kanji: '市場', detail: 'Open timber hall and produce stalls', x: 474.253, z: 723.877, icon: 'village', labelMinPx: 700 },
+  { id: 'rotor-court', label: 'Rotor Court', kanji: '工房', detail: 'Workshop courtyard and rotary sculpture', x: 205.149, z: 265.145, icon: 'drift', labelMinPx: 700 },
   {
     id: 'stadt',
     label: 'Yoru Ward',

@@ -7,8 +7,7 @@ import { createCityUniforms, FacadeMaterial, type CityUniforms } from '../materi
 import type { RoadMaterial } from '../materials/RoadMaterial';
 import type { RoadNetwork } from '../roads/RoadNetwork';
 import type { TerrainSampler } from '../TerrainSampler';
-import { generateCity } from './CityGenerator';
-import { CityCrowd } from './CityCrowd';
+import { generateCity, type CityBuilding } from './CityGenerator';
 import { urbanLots } from './UrbanLots';
 
 /**
@@ -28,6 +27,7 @@ import { urbanLots } from './UrbanLots';
  */
 export class CitySystem implements System {
   readonly name = 'CitySystem';
+  buildings: readonly CityBuilding[] = [];
 
   #context: EngineContext | null = null;
   #group: Group | null = null;
@@ -35,7 +35,6 @@ export class CitySystem implements System {
   #groundMaterial: RoadMaterial | null = null;
   #sampler: TerrainSampler | null = null;
   #network: RoadNetwork | null = null;
-  #crowd: CityCrowd | null = null;
   #built = false;
 
   readonly #shared: CityUniforms;
@@ -90,12 +89,11 @@ export class CitySystem implements System {
     this.#registerDebug(context);
   }
 
-  update(delta: number, elapsed: number): void {
+  update(_delta: number, elapsed: number): void {
     // Eine Zeitbasis für alle Fenster. Sie läuft weiter, auch wenn die Stadt
     // nicht im Bild ist — ein Flackern, das beim Hinsehen von vorn beginnt,
     // wäre auffälliger als das Flackern selbst.
     this.#shared.uCityTime.value = elapsed;
-    this.#crowd?.update(delta, elapsed);
   }
 
   #tryBuild(): void {
@@ -115,6 +113,7 @@ export class CitySystem implements System {
       sampleTerrain: (x, z) => sampler.getHeightAt(x, z),
     });
     const elapsed = performance.now() - started;
+    this.buildings = result.buildings;
 
     for (const block of result.blocks) {
       const mesh = new Mesh(block.geometry, facade);
@@ -140,9 +139,6 @@ export class CitySystem implements System {
     this.#group.add(slab);
 
     const s = result.stats;
-    this.#crowd = new CityCrowd();
-    this.#crowd.bind(network);
-    this.#group.add(this.#crowd.group);
 
     this.#readouts.stadt =
       `${s.blocks} Blöcke · ${s.buildings} Gebäude von ${s.parcels} Parzellen · ` +
@@ -220,8 +216,7 @@ export class CitySystem implements System {
   }
 
   dispose(): void {
-    this.#crowd?.dispose();
-    this.#crowd = null;
+    this.buildings = [];
     if (this.#group) {
       this.#context?.scene.remove(this.#group);
       this.#group.traverse((child) => {

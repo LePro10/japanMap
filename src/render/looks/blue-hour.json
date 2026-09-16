@@ -3,11 +3,11 @@
   "version": 2,
   "exposure": 1,
   "lighting": {
-    "sunIntensity": 2.8,
+    "sunIntensity": 0.85,
     "sunColorHex": "#ffb27a",
     "sunElevationDeg": 2.23,
-    "environmentIntensity": 0.8,
-    "skyIntensity": 0.48
+    "environmentIntensity": 0.46,
+    "skyIntensity": 0.2
   },
   "fog": {
     "groundDensity": 0.0029,
@@ -40,8 +40,8 @@
     "reflection": 0.85
   },
   "city": {
-    "windowLitFraction": 0.68,
-    "windowEmissive": 0.85,
+    "windowLitFraction": 0.38,
+    "windowEmissive": 0.68,
     "neonEmissive": 5.5,
     "neonLights": 1
   },

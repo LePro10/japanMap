@@ -1,0 +1,3 @@
+.city-discovery{position:absolute;left:26px;top:102px;z-index:12;display:flex;flex-direction:column;gap:5px;width:min(310px,calc(100vw - 52px));padding:15px 18px;border-left:2px solid #e2bb83;background:linear-gradient(90deg,#111f2cef,#111f2c88);color:#dfdfd3;font:12px/1.5 system-ui,sans-serif;pointer-events:none;box-shadow:0 8px 30px #07101a33}
+.city-discovery[hidden]{display:none}.city-discovery strong{font-size:23px;font-weight:550;letter-spacing:-.035em;color:#fff3da}.city-discovery__eyebrow{font-size:9px;letter-spacing:.19em;color:#dfb987}
+@media(pointer:coarse){.city-discovery{left:16px;top:80px;width:245px;padding:9px 12px;font-size:10px}.city-discovery strong{font-size:19px}}

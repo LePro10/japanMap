@@ -12,6 +12,7 @@ import {
 } from 'three';
 
 import { CITY, NEON, NEON_COLORS } from '@/config/city.config';
+import type { QualityKey } from '@/config/quality.config';
 import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
 import type { CityUniforms } from '../materials/FacadeMaterial';
@@ -40,6 +41,8 @@ export class NeonSystem implements System {
   #material: NeonMaterial | null = null;
   #atlas: NeonAtlas | null = null;
   readonly #lights: PointLight[] = [];
+  #quality:QualityKey='high';
+  #lightTimer=0;
 
   readonly #readouts = {
     schilder: 'noch nicht gebaut',
@@ -51,6 +54,7 @@ export class NeonSystem implements System {
 
   init(context: EngineContext): void {
     this.#context = context;
+    context.bus.on('quality:changed',({level})=>{this.#quality=level;this.#lightTimer=0;});
 
     const group = new Group();
     group.name = 'Neon';
@@ -72,6 +76,17 @@ export class NeonSystem implements System {
     });
 
     this.#registerDebug(context);
+  }
+
+  update(dt:number):void {
+    this.#lightTimer-=dt;
+    if(this.#lightTimer>0||!this.#context)return;
+    this.#lightTimer=.5;
+    const budget={ultra:10,high:6,medium:2,low:0,minimal:0,custom:6}[this.#quality];
+    const camera=this.#context.camera.position;
+    const nearest=[...this.#lights].sort((a,b)=>a.position.distanceToSquared(camera)-b.position.distanceToSquared(camera));
+    nearest.forEach((light,index)=>{light.visible=index<budget;});
+    this.#readouts.lichter=`${Math.min(budget,this.#lights.length)} / ${this.#lights.length} · ${this.#quality}`;
   }
 
   #build(signs: readonly SignAnchor[], uniforms: CityUniforms): void {

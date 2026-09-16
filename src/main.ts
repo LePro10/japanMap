@@ -37,6 +37,7 @@ import { PlanarReflection } from './render/PlanarReflection';
 import { PostFXPipeline } from './render/PostFXPipeline';
 import { QualitySystem } from './render/QualitySystem';
 import { CitySystem } from './world/city/CitySystem';
+import { CityExperienceSystem } from './world/city/CityExperienceSystem';
 import { SmashableSystem } from './world/props/SmashableSystem';
 import { NeonSystem } from './world/city/NeonSystem';
 import { TerrainDataError } from './world/TerrainSampler';
@@ -777,7 +778,8 @@ async function boot(): Promise<void> {
   // Und ebenso die Stadt: sie braucht den Sampler für die Schürze am
   // Distriktrand und das Straßennetz, damit die Blöcke der Stadtstraße
   // ausweichen. Beides kommt als Ereignis aus Systemen, die danach kommen.
-  engine.add(new CitySystem(atmosphere.uniforms));
+  const city = new CitySystem(atmosphere.uniforms);
+  engine.add(city);
   // Nach der Stadt: das Neon hört auf `city:ready` und hat vorher nichts zu tun.
   engine.add(new NeonSystem(atmosphere.uniforms));
   // Der Nachlader (P15.4) wird **vor** seinen Nutzern angelegt und **nach**
@@ -819,6 +821,7 @@ async function boot(): Promise<void> {
   const settlements = new StillwaterVillage(drive, overlay);
   engine.add(settlements);
   engine.add(new TerraceOffroad(drive));
+  engine.add(new CityExperienceSystem(drive, city, quality, overlay));
   const smashables = new SmashableSystem(drive);
   engine.add(smashables);
 
@@ -1019,7 +1022,7 @@ async function boot(): Promise<void> {
   audio.armAutoUnlock();
   import.meta.hot?.dispose(() => { photo.dispose(); garage.dispose(); ui.dispose(); });
 
-  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive, lookController);
+  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive);
 }
 
 /** Eine Zeile der Zieltafel. Englisch, wie alles im DOM. */
