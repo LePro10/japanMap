@@ -31,8 +31,10 @@ import type { TerrainSampler } from '@/world/TerrainSampler';
 import type { CityCollider, CityCurb } from '@/world/city/CityGenerator';
 import { NavigationMap } from '@/ui/NavigationMap';
 import { helmHub } from '@/config/cabin.config';
+import { instruments } from '@/ui/instruments';
 import { createCarVisuals, createCarWheel } from './carMesh';
 import { ChaseCamera, viewLabel } from './ChaseCamera';
+import { ClusterDisplay } from './clusterDisplay';
 import {
   TREE_QUERY_CAP,
   TREE_QUERY_RADIUS,
@@ -204,6 +206,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #glass: Mesh | null = null;
   #cabin: Mesh | null = null;
   #helm: Mesh | null = null;
+  #cluster: ClusterDisplay | null = null;
   #wheels: InstancedMesh | null = null;
   #material: PropMaterial | null = null;
   /**
@@ -565,6 +568,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#helm = helm;
     group.add(helm);
 
+    const cluster = new ClusterDisplay();
+    this.#cluster = cluster;
+    group.add(cluster.mesh);
+
     const wheels = new InstancedMesh(undefined, material, 4);
     wheels.name = 'Fahrzeug:Räder';
     wheels.matrixAutoUpdate = false;
@@ -724,6 +731,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     }
     if (this.#cabin) this.#cabin.visible = cockpit;
     if (this.#helm) this.#helm.visible = cockpit;
+    if (this.#cluster) this.#cluster.mesh.visible = cockpit;
     if (this.#wheels) this.#wheels.visible = !cockpit || open;
   }
 
@@ -1621,6 +1629,11 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       this.#helm.rotateZ(-(this.vehicle.telemetry.steerAngle / lock) * 1.85);
       this.#helm.updateMatrix();
     }
+    if (this.#cluster) {
+      this.#cluster.pose(this.vehicle.spec, this.vehicle.position, this.vehicle.quaternion, this.#scratch);
+      const reading = instruments(this.vehicle.telemetry.forwardSpeed);
+      this.#cluster.paint(this.vehicle.telemetry.speed * 3.6, reading.gear);
+    }
 
     const wheels = this.#wheels;
     if (!wheels) return;
@@ -1809,6 +1822,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#glass = null;
     this.#cabin = null;
     this.#helm = null;
+    this.#cluster?.dispose();
+    this.#cluster = null;
     for (const geometry of this.#geometries) geometry.dispose();
     this.#geometries.length = 0;
     this.#rig?.dispose();

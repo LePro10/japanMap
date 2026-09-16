@@ -13,7 +13,7 @@ import { WalkCamera } from '@/game/WalkCamera';
 import { Vehicle } from '@/game/Vehicle';
 import { Walker } from '@/game/Walker';
 import { CAMERA } from '@/config/world.config';
-import { cabinLayout, cockpitEye, helmHub, hoodCowl } from '@/config/cabin.config';
+import { cabinLayout, clusterFace, cockpitEye, helmHub, hoodCowl } from '@/config/cabin.config';
 import { CHASE_CAMERA, COCKPIT_CAMERA } from '@/config/vehicle.config';
 import { VEHICLES, VEHICLE_ORDER } from '@/config/vehicles.config';
 import { createCarVisuals } from '@/game/carMesh';
@@ -235,6 +235,15 @@ function ok(msg: string): void {
   if (rimTop > -0.12) fail(`Kranz zu hoch (Tunnel): ${rimDeg.toFixed(1)}°`);
   if (hubPitch < -halfFov * 1.05) fail(`Nabe unter dem Bild: ${hubDeg.toFixed(1)}°`);
   ok('Lenkrad ist ein Bogen unten, kein Tunnel');
+
+  const face = clusterFace(v.spec);
+  const clusterPitch = Math.atan2(face.y - eye.y, face.z - eye.z) - look;
+  const clusterDeg = (clusterPitch * 180) / Math.PI;
+  console.log(`Cluster ${clusterDeg.toFixed(1)}°  zwischen Kranz ${rimDeg.toFixed(1)}° und Nabe ${hubDeg.toFixed(1)}°`);
+  if (clusterPitch > rimTop + 0.02 || clusterPitch < hubPitch - 0.02) {
+    fail(`Cluster liegt nicht im Lenkradloch (${clusterDeg.toFixed(1)}°)`);
+  }
+  ok('Tacho sitzt im Lenkradloch');
 
   chase.toggleMode();
   if (chase.mode !== 'chase') fail(`C zweimal = Verfolger, war ${chase.mode}`);

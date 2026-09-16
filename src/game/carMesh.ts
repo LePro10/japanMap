@@ -185,22 +185,20 @@ function cabinKit(s:VehicleSpec):BufferGeometry[] {
   out.push(part(.42,.1,.5,0,floorY+.14,ez-.15,c.paintDark));
   return out;
  }
- // Armatur: breit, hinter dem Rad. Füllt das Loch im Kranz, damit man
- // nicht durchs Auto aufs Gras sieht.
- out.push(part(1.08,.22,.4,0,ey-.48,ez+.70,SHARED_COLORS.dash));
- out.push(part(1.0,.035,.14,0,ey-.35,ez+.62,0x1c2228));
- const gauge=paint(new CylinderGeometry(.05,.05,.028,10),0xb8c4ce);
- gauge.rotateX(Math.PI/2);out.push(gauge.clone().translate(-.07,ey-.32,ez+.64));
- out.push(gauge.translate(.07,ey-.32,ez+.64));
- pair(out,.03,.28,.035,.5,ey+.08,ez+.72,frame);
- out.push(part(1.08,.03,.035,0,ey+.24,ez+.74,frame));
- // Türen + Heck, Fußraum mit drei Pedalen (Kupplung / Bremse / Gas).
- pair(out,.05,.42,.9,.56,ey-.18,ez+.05,c.paintDark);
- out.push(part(1.1,.55,.05,0,ey-.1,ez-.62,c.paintDark));
- const pedalY=floorY+.09;
- out.push(part(.05,.11,.02,-.11,pedalY,ez+.22,0x2a2e32));
- out.push(part(.06,.13,.02,0,pedalY,ez+.22,0x2a2e32));
- out.push(part(.05,.1,.02,.11,pedalY,ez+.22,0x2a2e32));
+ // Armatur + Binnacle: das Forza-Bild, als Kästen. Lack-Lippen unten
+ // außen, Cluster-Mulde in der Mitte (das Display ist ein Extra-Mesh).
+ out.push(part(1.12,.26,.44,0,ey-.50,ez+.72,SHARED_COLORS.dash));
+ out.push(part(.42,.12,.16,0,ey-.30,ez+.58,0x1c2428));
+ pair(out,.12,.12,.12,.20,ey-.30,ez+.56,0xc5cdd4);
+ out.push(part(.22,.01,.12,0,ey-.23,ez+.56,0xb43c3c));
+ pair(out,.28,.04,.2,.42,layout.belt-.02,ez+.82,c.paint);
+ // Scheibenrahmen: Header + schmale A-Säulen, nicht Boden-bis-Dach.
+ pair(out,.032,.34,.04,.52,ey+.06,ez+.70,frame);
+ out.push(part(1.12,.04,.04,0,ey+.26,ez+.74,frame));
+ const mirror=paint(new CylinderGeometry(.045,.045,.02,8),0x8a96a0);
+ mirror.rotateY(Math.PI/2);mirror.translate(-.58,ey+.02,ez+.55);out.push(mirror);
+ pair(out,.05,.4,.95,.58,ey-.16,ez+.02,c.paintDark);
+ out.push(part(1.12,.55,.05,0,ey-.12,ez-.62,c.paintDark));
  out.push(part(.38,.07,.36,-.22,floorY+.11,ez-.22,SHARED_COLORS.seat));
  out.push(part(.38,.38,.07,-.22,floorY+.32,ez-.36,SHARED_COLORS.seat));
  return out;

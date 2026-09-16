@@ -194,3 +194,12 @@ export function helmHub(spec: VehicleSpec): CockpitSocket {
   // bei 62° FOV = unteres Viertel, kein Tunnel (Forza-Horizon-Bild).
   return { x: eye.x, y: eye.y - 0.42, z: eye.z + 0.62 };
 }
+
+/**
+ * Display in der Armatur, im Lenkradloch. Breite/Höhe sind die Plane, nicht
+ * der Kasten darum — der sitzt in `cabinKit`.
+ */
+export function clusterFace(spec: VehicleSpec): CockpitSocket & { readonly width: number; readonly height: number } {
+  const eye = cockpitEye(spec);
+  return { x: 0, y: eye.y - 0.27, z: eye.z + 0.54, width: 0.2, height: 0.1 };
+}
