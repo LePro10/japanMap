@@ -118,6 +118,9 @@ export class AudioSystem implements System {
     context.bus.on('race:lap', () => {
       this.#chime(880, 0.16);
     });
+    context.bus.on('drive:stunt', ({ active }) => {
+      this.stunt(active);
+    });
     context.bus.on('drive:mode', ({ active }) => {
       this.#driveActive = active;
       // Der Motor darf beim Aussteigen nicht ausklingen wie ein abgewürgter
@@ -474,6 +477,14 @@ export class AudioSystem implements System {
   /** Ein Klick für die Oberfläche. */
   click(): void {
     this.#blip(AUDIO.ui.hz, 0, AUDIO.ui.gain, AUDIO.ui.seconds);
+  }
+
+  /** Zwei Töne: aufsteigend an, fallend aus. Der Modus muss hörbar sein. */
+  stunt(on: boolean): void {
+    const { gain, onHz, offHz, noteSeconds } = AUDIO.stunt;
+    const pair = on ? onHz : offHz;
+    this.#blip(pair[0]!, 0, gain, noteSeconds);
+    this.#blip(pair[1]!, noteSeconds * 0.85, gain, noteSeconds);
   }
 
   /**

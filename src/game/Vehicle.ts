@@ -104,6 +104,11 @@ export interface DriveInput {
    * davon etwas anderes als `false` gemeint hätte.
    */
   boost?: boolean;
+  /**
+   * Stunt-Modus — Doppeltipp Space. Optional wie `boost`: Messläufe, die
+   * die Eingabe von Hand bauen, meinen aus.
+   */
+  stunt?: boolean;
 }
 
 /**
@@ -210,6 +215,11 @@ export interface VehicleTelemetry {
   accelLat: number;
   /** Prepared-Circuit-Mischung, 0…1 — WP6. */
   circuit: number;
+  /**
+   * Stunt-Overlay, 0…1. 1 = an (sofort beim Umschalten), beim Verlassen
+   * der Blend. HUD und Kamera, nicht die Driftpunkte.
+   */
+  stunt: number;
 }
 
 /**
@@ -513,6 +523,7 @@ export class Vehicle {
     accelLong: 0,
     accelLat: 0,
     circuit: 0,
+    stunt: 0,
   };
 
   constructor(spec: VehicleSpec = TOUGE) {
@@ -847,6 +858,7 @@ export class Vehicle {
     this.#planarInput.steer = input.steer;
     this.#planarInput.handbrake = input.handbrake;
     this.#planarInput.boost = input.boost === true;
+    this.#planarInput.stunt = input.stunt === true;
 
     this.#planarEnv.vLong = this.#vLong;
     this.#planarEnv.vLat = this.#vLat;
@@ -1069,6 +1081,7 @@ export class Vehicle {
     t.accelLong = accelLong;
     t.accelLat = accelLat;
     t.circuit = this.#planarEnv.circuit ?? 0;
+    t.stunt = planar.stunt;
   }
 
   /**
@@ -1085,6 +1098,7 @@ export class Vehicle {
     steer: 0,
     handbrake: false,
     boost: false,
+    stunt: false,
   };
 
   readonly #planarEnv: { -readonly [K in keyof PlanarEnv]: PlanarEnv[K] } = {

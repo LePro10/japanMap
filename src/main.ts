@@ -941,6 +941,9 @@ async function boot(): Promise<void> {
       get walking() {
         return drive.walking;
       },
+      get stunt() {
+        return drive.stuntMode;
+      },
       toggle: () => {
         drive.toggle();
       },

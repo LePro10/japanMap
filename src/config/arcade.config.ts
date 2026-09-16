@@ -486,6 +486,61 @@ export const DRIFT_SCORE_ANGLE = 0.21;
 export const DRIFT_MAX_ANGLE = 1.4;
 
 /**
+ * Stunt-Modus — Doppeltipp Space, nicht der Drift.
+ *
+ * Der Drift regelt auf `driftAngle` (~43°) und fängt sich über `latGrip`.
+ * Genau das macht 180/360 unmöglich: eine feste Extra-Gierrate hat dort
+ * keinen Gleichgewichtspunkt, und P22 hat das als Fehler gemessen
+ * (111 °/s bei 40 km/h). Hier ist dasselbe die Absicht — der Spieler hat
+ * den Modus *angewählt*, der Kreisel ist der Trick.
+ *
+ * Einzeltipp Space bleibt der Drift. Der Modus ist ein Overlay auf
+ * dieselbe Dynamik, kein zweites Modell.
+ */
+export const STUNT = {
+  /** Zwei Space-Downs in diesem Fenster schalten um, s. ASTRA_PLAN §5: 280 ms. */
+  tapWindow: 0.28,
+  /** Ausblendzeit, s. Anschalten ist kürzer (`enter`), damit der erste 360 sitzt. */
+  blend: 0.4,
+  enter: 0.12,
+  /**
+   * Extra-Gierrate bei offenem Drift, rad/s.
+   * Gemessen 2026-09-16, Kite S, 80 km/h, Space+Lenkung 1,2 s:
+   * ohne Modus 68° Gier / 54,9° Schwimm (Drift), mit Modus 422° Gier
+   * (ein 360 plus). `maxYawRate` 3,2 würde 6,5 abschneiden, deshalb
+   * der eigene Deckel.
+   */
+  spinYaw: 6.5,
+  /** Angehobener Gierdeckel im Modus, rad/s. */
+  maxYawRate: 8,
+  /**
+   * Querhaftung als Faktor auf das Drift-k. 0,45 lässt die Nase durchdrehen,
+   * während der Geschwindigkeitsvektor stehen bleibt — sonst wird aus dem
+   * 360 ein enger Kreis, kein Spin.
+   */
+  latGrip: 0.45,
+  /** Antrieb mit gezogener Handbremse. Normal ist 0,2 — der 360 stürbe sonst weg. */
+  handbrakeDrive: 0.85,
+  /** Extra-Bremse der Handbremse, in g. Normal 0,36. */
+  handbrakeBrake: 0.08,
+  /** Luft-Gieren als Faktor auf `AIR_CONTROL.yaw`. */
+  airYaw: 3.2,
+  /** Luft-Nicken als Faktor auf `AIR_CONTROL.pitch`. */
+  airPitch: 1.8,
+  /** Boden-Spin erst ab diesem Tempo, m/s. Plan: 35 km/h. Darunter bleibt es Drift. */
+  minSpeed: 35 / 3.6,
+  /** Zusätzliches Blickfeld, Grad — der Modus soll im Bild stehen, nicht nur als Label. */
+  fov: 6,
+  /** Extra-Anteil Fahrtrichtung an der Kamera. */
+  velocityBlend: 0.2,
+} as const;
+
+/** Zweiter Space-Down innerhalb von `STUNT.tapWindow`. */
+export function isStuntDoubleTap(previousTapAt: number, now: number): boolean {
+  return previousTapAt >= 0 && now - previousTapAt <= STUNT.tapWindow;
+}
+
+/**
  * Luftsteuerung — P22.
  *
  * Ohne sie ist jeder Sprung ein Glücksspiel, und ein Sprung, der Glücksspiel

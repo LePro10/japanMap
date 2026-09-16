@@ -1,5 +1,6 @@
 import { Vector3, type PerspectiveCamera } from 'three';
 
+import { STUNT } from '@/config/arcade.config';
 import { CHASE_CAMERA } from '@/config/vehicle.config';
 import type { Ground, Vehicle } from './Vehicle';
 
@@ -165,8 +166,10 @@ export class ChaseCamera {
     // Rangieren um 180°.
     if (speed > 0.5 && t.forwardSpeed > 0.5) {
       const velocityHeading = Math.atan2(vehicle.velocity.x, vehicle.velocity.z);
+      const stuntBlend = Math.min(1, t.stunt);
       const weight =
-        CHASE_CAMERA.velocityBlend * Math.min(1, speed / CHASE_CAMERA.velocityBlendSpeed);
+        (CHASE_CAMERA.velocityBlend + STUNT.velocityBlend * stuntBlend) *
+        Math.min(1, speed / CHASE_CAMERA.velocityBlendSpeed);
       desiredHeading = vehicle.yaw + wrapAngle(velocityHeading - vehicle.yaw) * weight;
     }
 
@@ -213,6 +216,7 @@ export class ChaseCamera {
       CHASE_CAMERA.fov +
       (CHASE_CAMERA.fovFast - CHASE_CAMERA.fov) * pace +
       CHASE_CAMERA.fovBoost * this.#boost +
+      STUNT.fov * Math.min(1, t.stunt) +
       accelFov;
     this.#fov += (targetFov - this.#fov) * (1 - Math.exp(-CHASE_CAMERA.fovRate * dt));
     if (Math.abs(camera.fov - this.#fov) > 0.05) {

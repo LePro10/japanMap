@@ -46,7 +46,7 @@ export const FLY_CONTROLS: readonly (readonly [string, string])[] = [
 export const DRIVE_CONTROLS: readonly (readonly [string, string])[] = [
   ['W / S', 'throttle / brake (reverse when stopped)'],
   ['A / D', 'steer'],
-  ['Space', 'handbrake'],
+  ['Space', 'handbrake · double-tap stunt'],
   ['Shift', 'nitro boost'],
   ['Mouse', 'look around'],
   ['Wheel', 'zoom (closest = hood)'],

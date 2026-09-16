@@ -10,7 +10,7 @@ import {
 } from 'three';
 
 import { GRAVITY, PROP_COLLIDERS } from '@/config/vehicle.config';
-import { ARCADE, latAccel } from '@/config/arcade.config';
+import { ARCADE, isStuntDoubleTap, latAccel } from '@/config/arcade.config';
 import { WAYPOINT } from '@/config/waypoint.config';
 import { DEFAULT_VEHICLE, vehicleSpec, type VehicleId } from '@/config/vehicles.config';
 import {
@@ -247,7 +247,11 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   /** Eingabe aus einem Messlauf. Gesetzt = Tastatur und Finger sind stumm. */
   #scripted: DriveInput | null = null;
 
-  readonly #input: DriveInput = { throttle: 0, brake: 0, steer: 0, handbrake: false };
+  readonly #input: DriveInput = { throttle: 0, brake: 0, steer: 0, handbrake: false, stunt: false };
+  /** Stunt-Modus. Nicht `#stunt` — das ist das Weltsystem (Schanzen, Pickups). */
+  #stuntMode = false;
+  /** Zeitpunkt des letzten Space-Down, s. `STUNT.tapWindow`. */
+  #stuntTapAt = Number.NEGATIVE_INFINITY;
   readonly #walkInput: WalkInput = { forward: 0, right: 0, jump: false, sprint: false };
 
   /** Flugpose beim Einsteigen — beim Aussteigen wird genau sie wiederhergestellt. */
@@ -1068,10 +1072,31 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #leaveDrive(): void {
     if (!this.#active) return;
     this.#active = false;
+    this.#setStuntMode(false);
     this.#fx?.hide();
     this.#debris?.hide();
     this.#wake?.(0, 0, 0, 0, 0, false);
     this.#context?.bus.emit('drive:mode', { active: false });
+  }
+
+  get stuntMode(): boolean {
+    return this.#stuntMode;
+  }
+
+  #noteStuntTap(now = performance.now() / 1000): void {
+    if (isStuntDoubleTap(this.#stuntTapAt, now)) {
+      this.#setStuntMode(!this.#stuntMode);
+      // Dritter Tipp in demselben Fenster soll nicht sofort wieder umschalten.
+      this.#stuntTapAt = Number.NEGATIVE_INFINITY;
+      return;
+    }
+    this.#stuntTapAt = now;
+  }
+
+  #setStuntMode(on: boolean): void {
+    if (this.#stuntMode === on) return;
+    this.#stuntMode = on;
+    this.#context?.bus.emit('drive:stunt', { active: on });
   }
 
   #setWalking(value: boolean): void {
@@ -1149,6 +1174,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    * Verodert wird unten in `#collectInput()`, wie bei Stick und Tastatur auch.
    */
   setTouchHandbrake(down: boolean): void {
+    if (down && !this.#touchHandbrake && this.#active) this.#noteStuntTap();
     this.#touchHandbrake = down;
   }
 
@@ -1210,6 +1236,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     }
     // Leertaste (Handbremse / Sprung) und die Pfeiltasten scrollen sonst die Seite.
     if (code === 'space' || code.startsWith('arrow')) event.preventDefault();
+    if (code === 'space' && this.#active && !event.repeat) this.#noteStuntTap();
     this.#keys.add(code);
   };
 
@@ -1246,6 +1273,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     input.brake = clamp01(back + Math.max(0, -stick));
     input.steer = clamp(right - left + this.#axes.right, -1, 1);
     input.handbrake = keys.has('space') || this.#touchHandbrake;
+    input.stunt = this.#stuntMode;
     return input;
   }
 

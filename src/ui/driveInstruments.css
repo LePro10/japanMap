@@ -9,6 +9,25 @@
   overflow: visible;
   background: radial-gradient(ellipse, #101a26e8 25%, #101a2600 72%);
 }
+.hud .hud__speedo.is-stunt {
+  filter: drop-shadow(0 0 16px #ff7a2a66);
+}
+.hud .hud__stunt {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  width: 100%;
+  z-index: 3;
+  text-align: center;
+  font: 700 11px/1 system-ui;
+  letter-spacing: 0.32em;
+  color: #ff7a2a;
+  text-shadow: 0 0 12px #ff7a2acc;
+  pointer-events: none;
+}
+.hud .hud__stunt[hidden] {
+  display: none;
+}
 /* Krone des Bogens, nicht im Strich. `+ 8px` hängt die Unterkante knapp
  * in die Tachobox, der Amber-Bogen beginnt ~16 px tiefer — gemessene Lücke
  * statt Schätzung, sonst liegt der Multiplikator wieder auf dem Strich. */
