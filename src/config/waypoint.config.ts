@@ -1,0 +1,79 @@
+/**
+ * Waypoint, GPS-Band und Speed-Hinweis — Zahlen an einer Stelle.
+ *
+ * Die alte Markierung war ein `Sprite` in Weltmetern
+ * (`scale = clamp(22 + m·0.1, 28, 140)`). Aus 10 m Entfernung füllte ein
+ * 28-m-Schild den Bildschirm, aus 2 km war dasselbe Schild unleserlich, und
+ * von der Verfolgerkamera aus (2,35 m hoch, Blick auf die Straße) lag der
+ * Text bei y = 18 m schlicht über dem Bild. Genau die drei Sätze, die der
+ * Spieler gemeldet hat.
+ *
+ * Text gehört deshalb ins HUD (konstante Pixelgröße, `DriveHud` sagt dasselbe
+ * seit P16). Was in der Welt bleibt, ist ein Pin plus das Band auf der
+ * Fahrbahn — Forza Horizon GPS plus die dynamische Racing Line aus F1 /
+ * Microsoft US8425293: cyan fahren, rot bremsen, und das Rot kriecht nach
+ * vorn, sobald das Tempo die nächste Kurve nicht mehr hergibt.
+ */
+export const WAYPOINT = {
+  /** Ankunft: der Pin räumt sich selbst ab. */
+  arriveMeters: 22,
+  /** Welt-Pin, Meter. Kein Text — der steht im HUD. */
+  pinHeight: 3.4,
+  pinRadius: 0.55,
+  /** Lichtschaft, damit das Ziel hinter einem Hang noch zu finden ist. */
+  beamHeight: 220,
+  beamOpacity: 0.14,
+  /** Bodenring. */
+  ringInner: 3.2,
+  ringOuter: 6.4,
+
+  /**
+   * Bandbreite auf der Fahrbahn, Meter. Keine volle Spur: Forza-GPS ist ein
+   * Streifen in der Mitte, keine zweite Fahrbahn.
+   */
+  lineWidth: 2.35,
+  /** Über `ROAD_MESH.surfaceOffset` (6 cm), plus Offset gegen Z-Fighting. */
+  lineLift: 0.11,
+  /** Erste Meter am Auto ausblenden — sonst schneidet das Band durch die Haube. */
+  lineNearFade: 6,
+  lineNearSolid: 14,
+  /** Hinter dem Wagen nicht zeichnen. */
+  lineBehind: 8,
+  /** Apex-Versatz, Meter, skaliert mit der Krümmung. */
+  apexOffset: 1.15,
+
+  /**
+   * Knotenabstand im Suchgraph, in Mittellinienpunkten.
+   * `ROAD_MESH.sampleSpacing` ist 2 m; 2 heißt 4 m. 25 km Netz → ~6 000 Knoten,
+   * Dijkstra beim Setzen, nicht je Frame.
+   */
+  graphStride: 2,
+  /** Kreuzungen ohne Junction-Tag: andere Straße, näher als das, wird verbunden. */
+  linkMeters: 14,
+  /** Ab diesem Abstand vom Band gilt der Spieler als runter, und die Route neu. */
+  offRouteMeters: 48,
+  offRouteSeconds: 0.8,
+
+  /** Querbeschleunigung der Linie, Anteil an `latG`. 0,90 = Rat, kein Limit. */
+  lineLatFactor: 0.9,
+  lineBrakeFactor: 0.9,
+  lineDriveAccel: 6,
+  lineCrestAccel: 0.55,
+  lineMaxSpeed: 72,
+
+  /**
+   * Rot, sobald das Tempo die Ankunftsgrenze um so viele m/s überschreitet.
+   * US8425293 nennt 5 m/s als Vollrot — hier 6, etwas weniger nervös.
+   */
+  redExcess: 6,
+  amberExcess: 1.5,
+
+  /** Screen-Pin: unter dieser Distanz reicht der Chip, das Schild stört. */
+  pinHideMeters: 28,
+  pinMarginX: 0.08,
+  pinMarginY: 0.1,
+  /** Ab diesem Richtungswechsel (rad) in den nächsten Metern: Turn-Hinweis. */
+  turnLookahead: 70,
+  turnAngle: 0.55,
+  aroundAngle: 2.1,
+} as const;

@@ -125,6 +125,31 @@ export function drawLocalRoads(
   return drawn;
 }
 
+export function drawPathRoute(
+  ctx: CanvasRenderingContext2D,
+  path: Float32Array,
+  project: MapProject,
+  color: string,
+  width = 3.2,
+): void {
+  if (path.length < 4) return;
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = color;
+  ctx.shadowColor = 'rgba(62, 224, 255, 0.85)';
+  ctx.shadowBlur = 10;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  for (let i = 0; i < path.length; i += 2) {
+    const p = project(path[i]!, path[i + 1]!);
+    if (i === 0) ctx.moveTo(p.x, p.y);
+    else ctx.lineTo(p.x, p.y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
 export function drawGlowRoute(
   ctx: CanvasRenderingContext2D,
   x0: number,

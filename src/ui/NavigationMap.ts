@@ -21,6 +21,7 @@ import { NavigationRoadLayer } from './navigationMapRoads';
 import {
   MAP_INK,
   drawGlowRoute,
+  drawPathRoute,
   drawPlayerChevron,
   drawWaypointPin,
 } from './mapDraw';
@@ -43,6 +44,7 @@ export interface NavigationMapOptions {
   readonly setWaypoint: (x: number, z: number, label?: string) => void;
   readonly clearWaypoint: () => void;
   readonly getWaypoint: () => (MapPoint & { label?: string }) | null;
+  readonly getRoute?: () => Float32Array | null;
   readonly onOpen: () => void;
   readonly onClose: (resume: boolean) => void;
 }
@@ -75,6 +77,7 @@ export class NavigationMap {
   readonly #setWaypoint: (x: number, z: number, label?: string) => void;
   readonly #clearWaypoint: () => void;
   readonly #getWaypoint: () => (MapPoint & { label?: string }) | null;
+  readonly #getRoute: () => Float32Array | null;
   readonly #onOpen: () => void;
   readonly #onClose: (resume: boolean) => void;
 
@@ -116,6 +119,7 @@ export class NavigationMap {
     this.#setWaypoint = options.setWaypoint;
     this.#clearWaypoint = options.clearWaypoint;
     this.#getWaypoint = options.getWaypoint;
+    this.#getRoute = options.getRoute ?? (() => null);
     this.#onOpen = options.onOpen;
     this.#onClose = options.onClose;
 
@@ -449,8 +453,19 @@ export class NavigationMap {
     const waypoint = this.#getWaypoint();
     if (waypoint) {
       const wp = this.#worldToStage(waypoint.x, waypoint.z);
-      if (wp) {
+      const route = this.#getRoute();
+      if (route && route.length >= 4) {
+        drawPathRoute(
+          ctx,
+          route,
+          (x, z) => this.#worldToStage(x, z) ?? { x: -999, y: -999 },
+          MAP_INK.route,
+          3.6,
+        );
+      } else if (wp) {
         drawGlowRoute(ctx, player.x, player.y, wp.x, wp.y, 4);
+      }
+      if (wp) {
         drawWaypointPin(ctx, wp.x, wp.y, 13);
         this.#drawCallout(
           ctx,

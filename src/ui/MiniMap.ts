@@ -7,6 +7,7 @@ import {
   drawGlowRoute,
   drawLocalRoads,
   drawNorthMark,
+  drawPathRoute,
   drawPlayerChevron,
   drawWaypointPin,
 } from './mapDraw';
@@ -34,6 +35,12 @@ export interface MiniMapMark {
   readonly x: number;
   readonly z: number;
   readonly label?: string;
+  readonly remaining?: number;
+  readonly eta?: number;
+  readonly turn?: 'none' | 'left' | 'right' | 'around';
+  readonly advisory?: 'ok' | 'caution' | 'brake';
+  readonly path?: Float32Array | null;
+  readonly pin?: { x: number; y: number; onScreen: boolean; edgeAngle: number } | null;
 }
 
 export class MiniMap {
@@ -165,7 +172,11 @@ export class MiniMap {
       const from = local(x, z);
       const to = local(waypoint.x, waypoint.z);
       const clamped = clampToCircle(to.x, to.y, radius, radius, radius - 12);
-      drawGlowRoute(ctx, from.x, from.y, clamped.x, clamped.y, 4.2);
+      if (waypoint.path && waypoint.path.length >= 4) {
+        drawPathRoute(ctx, waypoint.path, local, MAP_INK.route, 3.4);
+      } else {
+        drawGlowRoute(ctx, from.x, from.y, clamped.x, clamped.y, 4.2);
+      }
       if (clamped.inside) drawWaypointPin(ctx, to.x, to.y, 7);
       else drawEdgeChevron(ctx, clamped.x, clamped.y, clamped.angle, MAP_INK.waypoint);
     }

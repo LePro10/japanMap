@@ -9,7 +9,9 @@ import {
   type BufferGeometry,
 } from 'three';
 
-import { PROP_COLLIDERS } from '@/config/vehicle.config';
+import { GRAVITY, PROP_COLLIDERS } from '@/config/vehicle.config';
+import { ARCADE, latAccel } from '@/config/arcade.config';
+import { WAYPOINT } from '@/config/waypoint.config';
 import { DEFAULT_VEHICLE, vehicleSpec, type VehicleId } from '@/config/vehicles.config';
 import {
   WALK_ALIGHT_GAP,
@@ -30,6 +32,16 @@ import type { RaceEvent } from '@/config/events.config';
 import type { TerrainSampler } from '@/world/TerrainSampler';
 import type { CityCollider, CityCurb } from '@/world/city/CityGenerator';
 import { NavigationMap } from '@/ui/NavigationMap';
+import { GuideLine } from './GuideLine';
+import {
+  RouteGraph,
+  nearestRouteArc,
+  profileRoute,
+  remainingAlong,
+  routeAdvisory,
+  routeTurn,
+  type RoutePath,
+} from './routeGraph';
 import { createCarBody, createCarWheel } from './carMesh';
 import { ChaseCamera } from './ChaseCamera';
 import {
@@ -183,6 +195,11 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #wake: WakeSink | null = null;
   #navigation: NavigationMap | null = null;
   readonly #waypoint = new WaypointMarker();
+  readonly #guide = new GuideLine();
+  #graph: RouteGraph | null = null;
+  #route: RoutePath | null = null;
+  #routeArc = 0;
+  #offRoute = 0;
   #canTeleport: () => boolean = () => false;
 
   #context: EngineContext | null = null;
@@ -370,8 +387,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     });
     context.bus.on('roads:ready', ({ network }) => {
       this.#network = network;
+      this.#graph = new RouteGraph(network.roads);
       this.#navigation?.setRoads(network.file.roads);
       this.race.setNetwork(network);
+      if (this.#waypoint.waypoint) this.#rebuildRoute();
       // Die Tore des Rings — P9.3. Der Ring ist die einzige geschlossene
       // Strecke der Karte; auf einer Stichstraße wie dem Bergpass gibt es keine
       // Runde, sondern eine Fahrt. `setRoad()` lässt sich später auf jede
@@ -397,6 +416,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     // Weltmarker ist ein Mesh und damit genau die Draw-Calls, solange ein
     // Waypoint steht.
     this.#waypoint.attach(context);
+    this.#guide.attach(context);
     const canvas = document.querySelector<HTMLCanvasElement>('#viewport');
     const overlay = document.querySelector<HTMLElement>('#overlay');
     if (canvas && overlay) {
@@ -416,11 +436,13 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
           const sampler = this.#sampler;
           if (!sampler) return;
           this.#waypoint.set(x, z, sampler.getHeightAt(x, z), label);
+          this.#rebuildRoute();
         },
         clearWaypoint: () => {
-          this.#waypoint.clear();
+          this.#clearWaypoint();
         },
         getWaypoint: () => this.#waypoint.waypoint,
+        getRoute: () => this.#guide.xz,
         onOpen: () => {
           this.#keys.clear();
           this.#axes.forward = 0;
@@ -513,8 +535,105 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     return this.#navigation?.open ?? false;
   }
 
-  get waypoint(): { readonly x: number; readonly z: number; readonly label?: string } | null {
-    return this.#waypoint.waypoint;
+  get waypoint(): {
+    readonly x: number;
+    readonly z: number;
+    readonly y?: number;
+    readonly label?: string;
+    readonly remaining?: number;
+    readonly eta?: number;
+    readonly turn?: 'none' | 'left' | 'right' | 'around';
+    readonly advisory?: 'ok' | 'caution' | 'brake';
+    readonly path?: Float32Array | null;
+    readonly pin?: { x: number; y: number; onScreen: boolean; edgeAngle: number } | null;
+  } | null {
+    const wp = this.#waypoint.waypoint;
+    if (!wp) return null;
+    const route = this.#route;
+    const arcade = ARCADE[this.vehicle.spec.id];
+    const brake = arcade.brakeG * GRAVITY * WAYPOINT.lineBrakeFactor;
+    const speed = this.#walking ? this.walker.speed : this.vehicle.telemetry.speed;
+    const heading = this.#walking ? this.walker.yaw : this.vehicle.yaw;
+    const remaining = route ? remainingAlong(route, this.#routeArc) : Math.hypot(wp.x - this.#poseX(), wp.z - this.#poseZ());
+    const eta = speed > 2.5 ? remaining / speed : 0;
+    return {
+      x: wp.x,
+      z: wp.z,
+      y: wp.y,
+      label: wp.label,
+      remaining,
+      eta,
+      turn: route ? routeTurn(route, this.#routeArc, heading) : 'none',
+      advisory: route ? routeAdvisory(route, this.#routeArc, speed, brake) : 'ok',
+      path: this.#guide.xz,
+      pin: this.#waypoint.screen,
+    };
+  }
+
+  #poseX(): number {
+    return this.#walking ? this.walker.position.x : this.vehicle.position.x;
+  }
+
+  #poseZ(): number {
+    return this.#walking ? this.walker.position.z : this.vehicle.position.z;
+  }
+
+  #clearWaypoint(): void {
+    this.#waypoint.clear();
+    this.#guide.clear();
+    this.#route = null;
+    this.#routeArc = 0;
+    this.#offRoute = 0;
+  }
+
+  #rebuildRoute(): void {
+    const wp = this.#waypoint.waypoint;
+    const graph = this.#graph;
+    if (!wp) {
+      this.#guide.clear();
+      this.#route = null;
+      return;
+    }
+    const raw = graph
+      ? graph.find(this.#poseX(), this.#poseZ(), wp.x, wp.z, this.#walking)
+      : null;
+    if (!raw) {
+      this.#guide.clear();
+      this.#route = null;
+      return;
+    }
+    const arcade = ARCADE[this.vehicle.spec.id];
+    const path = profileRoute(raw, {
+      latAccel: latAccel(arcade) * WAYPOINT.lineLatFactor,
+      brakeAccel: arcade.brakeG * GRAVITY * WAYPOINT.lineBrakeFactor,
+      driveAccel: WAYPOINT.lineDriveAccel,
+      crestAccel: WAYPOINT.lineCrestAccel,
+      maxSpeed: WAYPOINT.lineMaxSpeed,
+      closed: false,
+    });
+    this.#route = path;
+    this.#routeArc = 0;
+    this.#offRoute = 0;
+    this.#guide.setPath(path);
+    this.#guide.setBrake(arcade.brakeG * GRAVITY * WAYPOINT.lineBrakeFactor);
+  }
+
+  #followRoute(x: number, z: number, dt: number): void {
+    const route = this.#route;
+    if (!route) {
+      this.#guide.update(0, 0, dt);
+      return;
+    }
+    const hit = nearestRouteArc(route, x, z, this.#routeArc);
+    this.#routeArc = hit.arc;
+    const speed = this.#walking ? this.walker.speed : this.vehicle.telemetry.speed;
+    this.#guide.update(speed, hit.arc, dt);
+    if (hit.distance > WAYPOINT.offRouteMeters) {
+      this.#offRoute += dt;
+      if (this.#offRoute >= WAYPOINT.offRouteSeconds) this.#rebuildRoute();
+    } else {
+      this.#offRoute = 0;
+    }
   }
 
   #build(context: EngineContext): void {
@@ -660,6 +779,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#readouts.fahrzeug = this.vehicle.spec.name;
     this.#context?.bus.emit('drive:vehicle', { id });
     this.#context?.debug?.refresh();
+    if (this.#waypoint.waypoint) this.#rebuildRoute();
   }
 
   /**
@@ -1491,9 +1611,21 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#navigation?.update(dt);
     const px = this.#walking ? this.walker.position.x : this.vehicle.position.x;
     const pz = this.#walking ? this.walker.position.z : this.vehicle.position.z;
-    this.#waypoint.update(px, pz, dt);
+    const canvas = this.#context?.renderer.domElement;
+    this.#waypoint.update(
+      px,
+      pz,
+      dt,
+      this.#paused ? null : this.#context?.camera ?? null,
+      canvas?.clientWidth ?? 0,
+      canvas?.clientHeight ?? 0,
+    );
     const wp = this.#waypoint.waypoint;
-    if (wp && Math.hypot(wp.x - px, wp.z - pz) < 22) this.#waypoint.clear();
+    if (wp && Math.hypot(wp.x - px, wp.z - pz) < WAYPOINT.arriveMeters) {
+      this.#clearWaypoint();
+    } else {
+      this.#followRoute(px, pz, dt);
+    }
     if (this.#paused) {
       this.#syncMeshes();
       return;
@@ -1720,6 +1852,9 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#navigation?.dispose();
     this.#navigation = null;
     this.#waypoint.dispose();
+    this.#guide.dispose();
+    this.#graph = null;
+    this.#route = null;
 
     if (this.#group) {
       this.#context?.scene.remove(this.#group);

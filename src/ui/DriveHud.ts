@@ -6,6 +6,7 @@ import type { LapResult } from '@/game/LapTimer';
 import type { RaceStanding } from '@/game/RaceDirector';
 import type { VehicleTelemetry } from '@/game/Vehicle';
 import type { RoadFile } from '@/config/roads.config';
+import { formatEta, formatWaypointDistance } from '@/game/waypointScreen';
 import { MiniMap, type MiniMapMark } from './MiniMap';
 
 /**
@@ -83,6 +84,13 @@ export class DriveHud {
   readonly #wp: HTMLElement;
   readonly #wpName: HTMLElement;
   readonly #wpDist: HTMLElement;
+  readonly #wpMeta: HTMLElement;
+  readonly #pin: HTMLElement;
+  readonly #pinName: HTMLElement;
+  readonly #pinDist: HTMLElement;
+  readonly #pinArrow: HTMLElement;
+  #lastWpLabel: string | null = null;
+  #lastWpRemaining = Infinity;
   #arrowDeg = 999;
   /** Zuletzt gesetzter Hinweis — sonst schreibt jeder Frame denselben Text. */
   #promptKind: 'enter' | 'exit' | 'slow' | null = null;
@@ -130,6 +138,12 @@ export class DriveHud {
       <div class="hud__wp" data-hud="wp" hidden>
         <span class="hud__wpName" data-hud="wpName">Waypoint</span>
         <strong class="hud__wpDist" data-hud="wpDist">—</strong>
+        <span class="hud__wpMeta" data-hud="wpMeta"></span>
+      </div>
+      <div class="hud__pin" data-hud="pin" hidden>
+        <i class="hud__pinArrow" data-hud="pinArrow"></i>
+        <span class="hud__pinName" data-hud="pinName">Waypoint</span>
+        <strong class="hud__pinDist" data-hud="pinDist">—</strong>
       </div>
       <div class="hud__nav">
         <div class="hud__arrow" data-hud="arrow" hidden><i></i></div>
@@ -176,6 +190,11 @@ export class DriveHud {
     this.#wp = this.#must('[data-hud="wp"]');
     this.#wpName = this.#must('[data-hud="wpName"]');
     this.#wpDist = this.#must('[data-hud="wpDist"]');
+    this.#wpMeta = this.#must('[data-hud="wpMeta"]');
+    this.#pin = this.#must('[data-hud="pin"]');
+    this.#pinName = this.#must('[data-hud="pinName"]');
+    this.#pinDist = this.#must('[data-hud="pinDist"]');
+    this.#pinArrow = this.#must('[data-hud="pinArrow"]');
     this.#map = new MiniMap(this.#nav);
     this.#nav.setAttribute('role', 'button');
     this.#nav.setAttribute('aria-label', 'Open map (M)');
@@ -552,16 +571,53 @@ export class DriveHud {
 
   #syncWaypointChip(x: number, z: number, waypoint: MiniMapMark | null): void {
     if (!waypoint) {
+      if (this.#lastWpLabel && this.#lastWpRemaining < 40) {
+        this.#showFlash(`Arrived · ${this.#lastWpLabel}`, false);
+      }
+      this.#lastWpLabel = null;
+      this.#lastWpRemaining = Infinity;
       if (!this.#wp.hidden) this.#wp.hidden = true;
+      if (!this.#pin.hidden) this.#pin.hidden = true;
+      this.#wp.removeAttribute('data-advisory');
       return;
     }
     if (this.#wp.hidden) this.#wp.hidden = false;
-    this.#setText(this.#wpName, waypoint.label ?? 'Waypoint');
-    const meters = Math.hypot(waypoint.x - x, waypoint.z - z);
-    this.#setText(
-      this.#wpDist,
-      meters < 999.5 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`,
-    );
+    const name = waypoint.label ?? 'Waypoint';
+    this.#setText(this.#wpName, name);
+    const crow = Math.hypot(waypoint.x - x, waypoint.z - z);
+    const meters = waypoint.remaining ?? crow;
+    this.#setText(this.#wpDist, formatWaypointDistance(meters));
+    this.#lastWpLabel = name;
+    this.#lastWpRemaining = Math.min(meters, crow);
+
+    const bits: string[] = [];
+    if (waypoint.turn === 'left') bits.push('Turn left');
+    else if (waypoint.turn === 'right') bits.push('Turn right');
+    else if (waypoint.turn === 'around') bits.push('Turn around');
+    if (waypoint.eta && waypoint.eta > 0) bits.push(formatEta(waypoint.eta));
+    if (waypoint.advisory === 'brake') bits.push('Too fast');
+    else if (waypoint.advisory === 'caution') bits.push('Brake');
+    this.#setText(this.#wpMeta, bits.join(' · '));
+    this.#wp.hidden = false;
+    this.#wp.dataset.advisory = waypoint.advisory ?? 'ok';
+    this.#syncPin(waypoint, formatWaypointDistance(meters), name);
+  }
+
+  #syncPin(waypoint: MiniMapMark, dist: string, name: string): void {
+    const pin = waypoint.pin;
+    if (!pin) {
+      if (!this.#pin.hidden) this.#pin.hidden = true;
+      return;
+    }
+    if (this.#pin.hidden) this.#pin.hidden = false;
+    this.#setText(this.#pinName, name.toUpperCase());
+    this.#setText(this.#pinDist, dist);
+    this.#pin.style.left = `${pin.x}px`;
+    this.#pin.style.top = `${pin.y}px`;
+    this.#pin.classList.toggle('hud__pin--edge', !pin.onScreen);
+    this.#pinArrow.style.transform = pin.onScreen
+      ? 'none'
+      : `rotate(${(pin.edgeAngle * 180) / Math.PI}deg)`;
   }
 
   readonly #onNavClick = (): void => {

@@ -10,6 +10,7 @@ const tests = [
   'tools/road-visuals.test.mjs', 'tools/wp4-city.test.mts',
   'tools/wp-offroad.test.mts', 'tools/tune-math.test.mts',
   'tools/wp6-runtime.test.mts', 'tools/wp6-layout.test.mjs', 'tools/wp6-roads.test.mjs',
+  'tools/waypoint-route.test.mts',
 ];
 for (const test of tests) {
   console.log(`\n${test}`);

@@ -1019,7 +1019,7 @@ async function boot(): Promise<void> {
   audio.armAutoUnlock();
   import.meta.hot?.dispose(() => { photo.dispose(); garage.dispose(); ui.dispose(); });
 
-  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive, lookController);
+  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive);
 }
 
 /** Eine Zeile der Zieltafel. Englisch, wie alles im DOM. */
