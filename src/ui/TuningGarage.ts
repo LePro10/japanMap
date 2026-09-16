@@ -33,7 +33,7 @@ import { CAR_COPY } from './carPresentation';
 import { SPARK_ICON, sparkMark } from './sparkIcon';
 import './tuningGarage.css';
 
-export type BayShot = 'hero' | 'engine' | 'wheels' | 'front' | 'rear';
+export type BayShot = 'hero' | 'engine' | 'wheels' | 'brakes' | 'front' | 'rear';
 
 interface Shot {
   yaw: number;
@@ -45,8 +45,9 @@ interface Shot {
 
 const SHOTS: Record<BayShot, Shot> = {
   hero: { yaw: 0.7, pitch: 0.16, radius: 5.35, fov: 36, hood: 0 },
-  engine: { yaw: 1.22, pitch: 0.64, radius: 2.9, fov: 40, hood: 1 },
+  engine: { yaw: 1.58, pitch: 0.32, radius: 2.35, fov: 36, hood: 1 },
   wheels: { yaw: 1.52, pitch: 0.16, radius: 3.35, fov: 34, hood: 0 },
+  brakes: { yaw: 1.05, pitch: 0.08, radius: 2.25, fov: 34, hood: 0 },
   front: { yaw: 0.2, pitch: 0.18, radius: 4.35, fov: 36, hood: 0 },
   rear: { yaw: 3.02, pitch: 0.14, radius: 4.55, fov: 36, hood: 0 },
 };
@@ -185,12 +186,13 @@ export class TuningGarage {
 
     const currentFocus = (): TuneCategory | 'setup' | null =>
       shot === 'engine' ? 'engine'
-      : shot === 'wheels' ? (filter === 'brakes' ? 'brakes' : 'tyres')
+      : shot === 'brakes' ? 'brakes'
+      : shot === 'wheels' ? 'tyres'
       : filter === 'all' ? null
       : filter;
 
     const engineShot: Shot = unit.rear
-      ? { yaw: 2.12, pitch: 0.6, radius: 2.95, fov: 40, hood: 1 }
+      ? { yaw: 1.85, pitch: 0.34, radius: 2.55, fov: 38, hood: 1 }
       : SHOTS.engine;
     const applyShot = (next: BayShot, snap = false): void => {
       shot = next;
@@ -420,7 +422,8 @@ export class TuningGarage {
       if (nextFilter) {
         filter = nextFilter;
         if (nextFilter === 'engine') applyShot('engine');
-        else if (nextFilter === 'tyres' || nextFilter === 'brakes') applyShot('wheels');
+        else if (nextFilter === 'tyres') applyShot('wheels');
+        else if (nextFilter === 'brakes') applyShot('brakes');
         else if (nextFilter === 'steering') applyShot('front');
         else if (nextFilter === 'all' || nextFilter === 'setup') applyShot('hero');
         paintHud();
@@ -429,12 +432,14 @@ export class TuningGarage {
         if (filter === 'all') {
           filter = cat;
           if (cat === 'engine') applyShot('engine');
-          if (cat === 'tyres' || cat === 'brakes') applyShot('wheels');
+          if (cat === 'tyres') applyShot('wheels');
+          if (cat === 'brakes') applyShot('brakes');
           if (cat === 'steering') applyShot('front');
         } else {
           preview = { ...preview, [cat]: Number(tier) as TuneTier };
           if (cat === 'engine') applyShot('engine');
-          if (cat === 'tyres' || cat === 'brakes') applyShot('wheels');
+          if (cat === 'tyres') applyShot('wheels');
+          if (cat === 'brakes') applyShot('brakes');
           if (cat === 'steering') applyShot('front');
         }
         paintHud();
