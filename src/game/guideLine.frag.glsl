@@ -1,15 +1,15 @@
-// Dynamische Racing Line: cyan = passt, amber = knapp, rot = zu schnell
-// fuer die naechste Kurve. Die Grenze ist v_arrive = sqrt(v_limit^2 + 2 a s),
-// also der Bremsweg, nicht der lokale Limit — sonst wird erst IN der Kurve
-// rot, wenn es zu spaet ist. Dasselbe Verfahren wie US8425293 / F1 Dynamic.
+// Forza Drive Line / US8425293: Farbe = Tempo jetzt gegen Solltempo HIER.
 //
-// Chevrons und Aufbau sind weiche Fenster, kein step(): sonst poppen die
-// Pfeile. uReveal rollt das Band vor dem Wagen aus; uOpacity blendet
-// Setzen und Loeschen.
+// Das Solltempo (aLimit) kommt aus dem Rueckwaertslauf von RaceLine:
+// vor einer Kurve ist es schon heruntergesetzt. Wer bei 50 m/s auf einen
+// Punkt mit Soll 22 m/s zufahrt, sieht Rot auf der Anfahrt — nicht erst
+// am Scheitel. Die Formel sqrt(v_limit^2 + 2 a s) von der Auto-Position
+// aus zaehlt denselben Bremsweg zweimal und schiebt das Rot in die Kurve.
+//
+// Das Band ist nur das Sichtfenster (uReveal), nicht die ganze Reststrecke.
 
 uniform float uSpeed;
 uniform float uArc;
-uniform float uBrake;
 uniform float uTime;
 uniform float uRedExcess;
 uniform float uAmberExcess;
@@ -28,9 +28,7 @@ void main() {
   float ahead = vArc - uArc;
   if (ahead > uReveal || ahead < -(uBehind + 10.0)) discard;
 
-  float dist = max(ahead, 0.0);
-  float arrive = sqrt(max(0.0, vLimit * vLimit + 2.0 * uBrake * dist));
-  float excess = uSpeed - arrive;
+  float excess = uSpeed - vLimit;
 
   vec3 cyan = vec3(0.24, 0.88, 1.0);
   vec3 amber = vec3(1.0, 0.72, 0.18);
@@ -57,7 +55,7 @@ void main() {
   float body = 0.38 * spine + 0.62 * arrow;
 
   float nearFade = smoothstep(uNearFade, uNearSolid, ahead);
-  float farFade = 1.0 - smoothstep(uReveal - 90.0, uReveal, ahead);
+  float farFade = 1.0 - smoothstep(uReveal - 48.0, uReveal, ahead);
   float behindFade = smoothstep(-(uBehind + 6.0), 3.0, ahead);
   float tip = 1.0 - smoothstep(uReveal - uRevealHead, uReveal, ahead);
   float alpha = edge * body * nearFade * farFade * behindFade * tip * uOpacity * 0.92;

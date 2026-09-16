@@ -555,8 +555,6 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     const wp = this.#waypoint.waypoint;
     if (!wp) return null;
     const route = this.#route;
-    const arcade = ARCADE[this.vehicle.spec.id];
-    const brake = arcade.brakeG * GRAVITY * WAYPOINT.lineBrakeFactor;
     const speed = this.#walking ? this.walker.speed : this.vehicle.telemetry.speed;
     const heading = this.#walking ? this.walker.yaw : this.vehicle.yaw;
     const remaining = route ? remainingAlong(route, this.#routeArc) : Math.hypot(wp.x - this.#poseX(), wp.z - this.#poseZ());
@@ -569,7 +567,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       remaining,
       eta,
       turn: route ? routeTurn(route, this.#routeArc, heading) : 'none',
-      advisory: route ? routeAdvisory(route, this.#routeArc, speed, brake) : 'ok',
+      advisory: route ? routeAdvisory(route, this.#routeArc, speed) : 'ok',
       path: this.#guide.xz,
       pin: this.#waypoint.screen,
     };

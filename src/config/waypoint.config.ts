@@ -9,10 +9,16 @@
  * Spieler gemeldet hat.
  *
  * Text gehört deshalb ins HUD (konstante Pixelgröße, `DriveHud` sagt dasselbe
- * seit P16). Was in der Welt bleibt, ist ein Pin plus das Band auf der
- * Fahrbahn — Forza Horizon GPS plus die dynamische Racing Line aus F1 /
- * Microsoft US8425293: cyan fahren, rot bremsen, und das Rot kriecht nach
- * vorn, sobald das Tempo die nächste Kurve nicht mehr hergibt.
+ * seit P16). Was in der Welt bleibt, ist ein Pin plus ein **kurzes** Band —
+ * Forza Drive Line, nicht die ganze GPS-Strecke auf den Asphalt. Die Minikarte
+ * trägt den Rest.
+ *
+ * Farbe nach US8425293 / Forza: an jedem Punkt `Tempo jetzt` gegen das
+ * **Solltempo dort**. Das Solltempo kommt aus dem Rückwärtslauf von
+ * `RaceLine` (Bremsen liegt schon vor der Kurve). Wer `sqrt(v²+2as)` noch
+ * einmal darüber legt, verschiebt das Rot in die Kurve — genau das, was die
+ * Linie nicht tun darf. Forza: „If you brake after the red zone begins,
+ * you will head off into the grass."
  */
 export const WAYPOINT = {
   /** Ankunft: der Pin räumt sich selbst ab. */
@@ -49,12 +55,16 @@ export const WAYPOINT = {
    */
   fadeIn: 7,
   fadeOut: 5,
-  /** Wie schnell das Band vor dem Auto ausrollt, m/s. 520 ≈ 200 m in 0,4 s. */
-  revealSpeed: 520,
-  /** Sichtfenster vor dem Wagen, Meter. Der Rest wird nicht gezeichnet. */
-  revealMax: 720,
-  /** Weiche Spitze des ausrollenden Bands, Meter. */
-  revealHead: 28,
+  /** Wie schnell das Fenster vor dem Auto ausrollt, m/s. */
+  revealSpeed: 480,
+  /**
+   * Sichtfenster vor dem Wagen, Meter. Keine ganze Reststrecke: F1/Forza
+   * zeigen die Racing Line ein, zwei Kurven weit, nicht bis ins Ziel.
+   * 240 m decken den Bremsweg 250→50 km/h.
+   */
+  lookAhead: 240,
+  /** Weiche Spitze, Meter. */
+  revealHead: 36,
   speedSmooth: 6,
   arcSmooth: 16,
   pinSmooth: 14,
@@ -72,9 +82,13 @@ export const WAYPOINT = {
   offRouteMeters: 48,
   offRouteSeconds: 0.8,
 
-  /** Querbeschleunigung der Linie, Anteil an `latG`. 0,90 = Rat, kein Limit. */
-  lineLatFactor: 0.9,
-  lineBrakeFactor: 0.9,
+  /**
+   * Querbeschleunigung der Linie, Anteil an `latG`. Unter 1, damit das Rot
+   * etwas vor der physikalischen Grenze liegt — Forza: nach dem Rot ist es
+   * zu spät, nicht erst in der Kurve.
+   */
+  lineLatFactor: 0.85,
+  lineBrakeFactor: 0.8,
   lineDriveAccel: 6,
   lineCrestAccel: 0.55,
   lineMaxSpeed: 72,

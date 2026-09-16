@@ -382,35 +382,26 @@ export type RouteAdvisory = 'ok' | 'caution' | 'brake';
 export type RouteTurn = 'none' | 'left' | 'right' | 'around';
 
 /**
- * Farbe der Linie an einem Punkt: schaffe ich `limit` mit der aktuellen
- * Geschwindigkeit und dem Bremsweg? Rot kriecht damit vor die Kurve, sobald
- * das Tempo zu hoch ist — F1 Dynamic Racing Line / US8425293.
+ * Farbe an einem Punkt: Tempo jetzt gegen Solltempo **dort**.
+ *
+ * Das Solltempo trägt den Bremsweg der nächsten Kurve schon in sich
+ * (`RaceLine` rückwärts). Noch einmal `sqrt(v²+2as)` von der Auto-Position
+ * draufzurechnen würde das Rot in den Scheitel schieben — Forza färbt die
+ * Anfahrt.
  */
-export function advisoryAt(
-  speed: number,
-  limit: number,
-  distance: number,
-  brakeAccel: number,
-): RouteAdvisory {
-  const ds = Math.max(0, distance);
-  const arrive = Math.sqrt(Math.max(0, limit * limit + 2 * brakeAccel * ds));
-  const excess = speed - arrive;
+export function advisoryAt(speed: number, limit: number): RouteAdvisory {
+  const excess = speed - limit;
   if (excess >= WAYPOINT.redExcess) return 'brake';
   if (excess >= WAYPOINT.amberExcess) return 'caution';
   return 'ok';
 }
 
-export function routeAdvisory(
-  path: RoutePath,
-  arc: number,
-  speed: number,
-  brakeAccel: number,
-): RouteAdvisory {
+export function routeAdvisory(path: RoutePath, arc: number, speed: number): RouteAdvisory {
   let worst: RouteAdvisory = 'ok';
   for (const point of path.points) {
     const ahead = point.arc - arc;
-    if (ahead < 0 || ahead > 220) continue;
-    const grade = advisoryAt(speed, point.limit || 40, ahead, brakeAccel);
+    if (ahead < 0 || ahead > WAYPOINT.lookAhead) continue;
+    const grade = advisoryAt(speed, point.limit || 40);
     if (grade === 'brake') return 'brake';
     if (grade === 'caution') worst = 'caution';
   }

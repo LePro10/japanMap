@@ -130,8 +130,11 @@ assert.ok(near.distance < 2);
 
 // ── Speed-Hinweis: zu schnell in die Kurve = brake ──────────────────────────
 
-assert.equal(advisoryAt(40, 12, 20, 10), 'brake');
-assert.equal(advisoryAt(10, 40, 80, 10), 'ok');
+assert.equal(advisoryAt(40, 12), 'brake');
+assert.equal(advisoryAt(10, 40), 'ok');
+// Anfahrt: 50 m/s gegen Soll 20 — muss JETZT rot sein, nicht erst am Scheitel.
+assert.equal(advisoryAt(50, 20), 'brake');
+assert.equal(advisoryAt(22, 20), 'caution');
 
 const hairpin = graph.find(0, 0, 0, 400, false);
 assert.ok(hairpin);

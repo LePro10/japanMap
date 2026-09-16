@@ -17,10 +17,10 @@ import fragmentShader from './guideLine.frag.glsl';
 /**
  * Das Band auf der Fahrbahn. Ein Mesh, ein Draw-Call, Farbe im Shader.
  *
- * Geometrie nur beim Setzen der Route. Je Frame gehen Tempo, Bogenlänge,
- * Opacity und Reveal als Uniforms rüber. Das Sichtfenster schneidet
- * `drawRange` — ein 5-km-Band, von dem 720 m vor dem Wagen liegen, darf
- * den Rest nicht rastern.
+ * Geometrie der ganzen Route bleibt auf der CPU (Restmeter, Minikarte).
+ * Gezeichnet wird nur `lookAhead` Meter — Forza/F1 malen die Linie ein
+ * Stück vor dem Auto, nicht bis zum Ziel. `drawRange` hält den Rasterizer
+ * in diesem Fenster.
  */
 export class GuideLine {
   #context: EngineContext | null = null;
@@ -133,7 +133,7 @@ export class GuideLine {
     else this.#arcSmooth = damp(this.#arcSmooth, arc, WAYPOINT.arcSmooth, dt);
     this.#speedSmooth = damp(this.#speedSmooth, speed, WAYPOINT.speedSmooth, dt);
     if (this.#opacityGoal > 0) {
-      this.#reveal = Math.min(WAYPOINT.revealMax, this.#reveal + dt * WAYPOINT.revealSpeed);
+      this.#reveal = Math.min(WAYPOINT.lookAhead, this.#reveal + dt * WAYPOINT.revealSpeed);
     }
 
     material.uniforms.uSpeed!.value = this.#speedSmooth;
