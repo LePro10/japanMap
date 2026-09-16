@@ -356,13 +356,6 @@ export class ArcadeDynamics {
     const spec = this.#spec;
     const speed = Math.hypot(env.vLong, env.vLat);
 
-    // Stunt-Blend: anschalten kurz, ausschalten in `STUNT.blend`. Der Drift
-    // selbst bleibt ein eigener Zustand — dieser Wert ist nur das Overlay.
-    const stuntWant = input.stunt === true ? 1 : 0;
-    const stuntTau = stuntWant > this.#stuntBlend ? STUNT.enter : STUNT.blend;
-    this.#stuntBlend += (stuntWant - this.#stuntBlend) * (1 - Math.exp((-3 * dt) / stuntTau));
-    if (this.#stuntBlend < 1e-3) this.#stuntBlend = 0;
-
     // ── Belag ─────────────────────────────────────────────────────────────
     //
     // Dirt (`kies`) trägt den fahrzeugspezifischen Faktor; Wiese und Wasser
@@ -496,9 +489,21 @@ export class ArcadeDynamics {
     const initiate = !env.airborne && fastEnough && armed && steering;
     const sustain = !env.airborne && fastEnough && this.#drift > DRIFT_GATE.sustainDrift;
     const want = initiate ? 1 : sustain ? Math.max(powerSlide, liftSlide) : 0;
-    const driftRate = want > this.#drift ? spec.driftRise : spec.driftFall;
+    // Geradeaus beendet den Stunt-Drift sofort — nicht erst wenn jemand
+    // umschaltet. `input.stunt` darf auf der Geraden nicht offen bleiben.
+    const stuntWant =
+      input.stunt === true && steering && (this.#drift > 0.04 || initiate) ? 1 : 0;
+    const exitingStunt = this.#stuntBlend > 0.08 && stuntWant === 0;
+    const driftRate =
+      want > this.#drift
+        ? spec.driftRise
+        : spec.driftFall * (exitingStunt ? STUNT.exitDump : 1);
     this.#drift += (want - this.#drift) * (1 - Math.exp(-driftRate * dt));
     if (this.#drift < 1e-3) this.#drift = 0;
+
+    const stuntRate = stuntWant > this.#stuntBlend ? STUNT.enterRate : STUNT.fall;
+    this.#stuntBlend += (stuntWant - this.#stuntBlend) * (1 - Math.exp(-stuntRate * dt));
+    if (this.#stuntBlend < 1e-3) this.#stuntBlend = 0;
 
     // ── Stunt-Spin ────────────────────────────────────────────────────────
     //
@@ -671,7 +676,7 @@ export class ArcadeDynamics {
       boosting: longitudinal.boosting,
       boost: this.#boost,
       steerAngle: this.#steerAngle,
-      stunt: input.stunt === true ? 1 : this.#stuntBlend,
+      stunt: this.#stuntBlend,
       spin: this.#spin,
     };
   }
