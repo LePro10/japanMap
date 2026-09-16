@@ -248,7 +248,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   /** Eingabe aus einem Messlauf. Gesetzt = Tastatur und Finger sind stumm. */
   #scripted: DriveInput | null = null;
 
-  readonly #input: DriveInput = { throttle: 0, brake: 0, steer: 0, handbrake: false, stunt: false };
+  readonly #input: DriveInput = { throttle: 0, brake: 0, steer: 0, handbrake: false, stunt: false, trick: false };
   /**
    * Stunt-Drift für *diese* Drift, kein Toggle.
    * Doppeltipp setzt, Geradeaus löscht. Nicht `#stunt` — das ist das Weltsystem.
@@ -258,6 +258,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #stuntLived = false;
   /** Zeitpunkt des letzten Space-Down, s. `STUNT.tapWindow`. */
   #stuntTapAt = Number.NEGATIVE_INFINITY;
+  /** Doppeltipp-Flanke für genau einen Simulationsschritt. */
+  #trickPulse = false;
   readonly #walkInput: WalkInput = { forward: 0, right: 0, jump: false, sprint: false };
 
   /** Flugpose beim Einsteigen — beim Aussteigen wird genau sie wiederhergestellt. */
@@ -1104,6 +1106,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #noteStuntTap(now = performance.now() / 1000): void {
     if (isStuntDoubleTap(this.#stuntTapAt, now)) {
       this.#armStunt(true);
+      this.#trickPulse = true;
       this.#stuntTapAt = Number.NEGATIVE_INFINITY;
       return;
     }
@@ -1292,6 +1295,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     input.steer = clamp(right - left + this.#axes.right, -1, 1);
     input.handbrake = keys.has('space') || this.#touchHandbrake;
     input.stunt = this.#stuntArmed;
+    input.trick = this.#trickPulse;
+    this.#trickPulse = false;
     return input;
   }
 
@@ -1505,7 +1510,13 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     // Doppeltipp wartet auf die Drift. Geradeaus danach löscht — nicht
     // schon der Arm auf der Geraden, sonst ist der Tipp weg bevor jemand lenkt.
     if (this.#stuntArmed && this.vehicle.telemetry.stunt > 0.2) this.#stuntLived = true;
-    if (this.#stuntLived && Math.abs(input.steer) < DRIFT_GATE.enterSteer) {
+    const t = this.vehicle.telemetry;
+    if (
+      this.#stuntLived &&
+      Math.abs(input.steer) < DRIFT_GATE.enterSteer &&
+      !t.airborne &&
+      t.trick < 0.08
+    ) {
       this.#armStunt(false);
     }
     this.#flushBreaks();

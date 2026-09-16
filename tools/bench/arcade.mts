@@ -467,6 +467,73 @@ console.log(
     `  ${fadeOk ? '✓ Stunt weg, schneller als Drift' : '⚠ hängt wie ein Toggle'}`,
 );
 
+/** Doppeltipp mitten im Drift: ein Frame `trick`, dann ohne gehaltenes Space. */
+function free360(): SpinSample {
+  const car = freshTouge(80);
+  integrateYaw(car, { throttle: 0.7, steer: 1, handbrake: true }, 24);
+  car.step(
+    DT,
+    cmd({ throttle: 0.7, steer: 1, handbrake: true, stunt: true, trick: true }),
+    asphalt as never,
+    null,
+  );
+  return integrateYaw(
+    car,
+    { throttle: 0.7, steer: 1, handbrake: false, stunt: true },
+    Math.round(1.5 / DT),
+  );
+}
+
+const flick360 = free360();
+const flick360Ok = flick360.yawDeg >= 300;
+console.log(
+  `   Doppeltipp im Drift 1,5 s: Gier ${pad(flick360.yawDeg.toFixed(0) + '°', 6)}` +
+    `  ohne Space gehalten` +
+    `  ${flick360Ok ? '✓ 360 aus der Bewegung' : '⚠ zu wenig'}`,
+);
+
+function airBarrel(): { rollDeg: number; peakPitch: number; airborne: boolean } {
+  let dropped = false;
+  const sky = {
+    height: () => (dropped ? -40 : 0),
+    normal: (_x: number, _z: number, t: { set(x: number, y: number, z: number): unknown }) =>
+      t.set(0, 1, 0),
+    surface: () => 'asphalt',
+  };
+  const car = new Vehicle(VEHICLES.touge);
+  car.respawn(0, 0, 0, sky as never);
+  accelerateTo(car, sky as Ground, 80);
+  dropped = true;
+  for (let i = 0; i < 12; i++) {
+    car.step(DT, cmd({ steer: 1 }), sky as never, null);
+  }
+  const air = car.telemetry.airborne;
+  car.step(
+    DT,
+    cmd({ steer: 1, stunt: true, trick: true }),
+    sky as never,
+    null,
+  );
+  let roll = 0;
+  let prev = car.telemetry.roll;
+  let peakPitch = Math.abs(car.telemetry.pitch);
+  for (let i = 0; i < 90; i++) {
+    car.step(DT, cmd({ steer: 1, stunt: true }), sky as never, null);
+    roll += wrapDelta(prev, car.telemetry.roll);
+    prev = car.telemetry.roll;
+    peakPitch = Math.max(peakPitch, Math.abs(car.telemetry.pitch));
+  }
+  return { rollDeg: (Math.abs(roll) * 180) / Math.PI, peakPitch, airborne: air };
+}
+
+const air = airBarrel();
+const airOk = air.airborne && air.rollDeg >= 280 && air.peakPitch * (180 / Math.PI) < 40;
+console.log(
+  `   Luft-Rolle:               Roll ${pad(air.rollDeg.toFixed(0) + '°', 6)}` +
+    `  Nick ${pad(deg(air.peakPitch), 7)}` +
+    `  ${airOk ? '✓ seitlich, kein Loop' : '⚠'}`,
+);
+
 let failed = 0;
 if (!tapOk) failed++;
 if (!singleOk) failed++;
@@ -476,6 +543,8 @@ if (!fullOk) failed++;
 if (!catchOk) failed++;
 if (!cleanStuntOk) failed++;
 if (!fadeOk) failed++;
+if (!flick360Ok) failed++;
+if (!airOk) failed++;
 if (failed > 0) {
   console.log(`\n   ${failed} Stunt-Proben rot.\n`);
   process.exitCode = 1;
