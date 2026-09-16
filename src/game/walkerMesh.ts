@@ -102,6 +102,8 @@ export interface WalkerAnim {
   grounded: boolean;
   vy: number;
   lean: number;
+  /** 0…1, geglättet. Pose, kein zweiter Cycle. */
+  slideAmount?: number;
 }
 
 export interface WalkerRig {
@@ -219,38 +221,44 @@ export function createWalkerRig(material: PropMaterial): WalkerRig {
       const knee = Math.max(0, -Math.cos(phase));
       const kneeOpp = Math.max(0, -Math.cos(phase + Math.PI));
 
-      const bob = moving ? Math.abs(Math.sin(phase * 2)) * (run ? 0.045 : 0.028) : 0;
+      const slide = Math.min(1, Math.max(0, state.slideAmount ?? 0));
+      const bob = moving && slide < 0.2 ? Math.abs(Math.sin(phase * 2)) * (run ? 0.045 : 0.028) : 0;
       const crouch = land * 0.12;
-      hips.position.y = 0.98 - bob - crouch - airPose * 0.04;
-      hips.rotation.z = moving ? step * 0.06 : Math.sin(breatheT * 1.1) * 0.02;
-      hips.rotation.y = moving ? step * 0.08 : 0;
+      hips.position.y = 0.98 - bob - crouch - airPose * 0.04 - slide * 0.5;
+      hips.rotation.z = moving && slide < 0.4 ? step * 0.06 : Math.sin(breatheT * 1.1) * 0.02 * (1 - slide);
+      hips.rotation.y = moving && slide < 0.4 ? step * 0.08 : slide * 0.35;
 
       const breath = Math.sin(breatheT * 2.2) * 0.012;
-      spine.rotation.x = (moving ? -state.lean * 0.18 : breath) - airPose * 0.12;
-      spine.rotation.y = moving ? -step * 0.1 : 0;
+      spine.rotation.x =
+        (moving ? -state.lean * 0.18 : breath) - airPose * 0.12 + slide * 0.42;
+      spine.rotation.y = moving && slide < 0.4 ? -step * 0.1 : 0;
 
-      head.rotation.x = airPose * 0.15 - spine.rotation.x * 0.4;
-      head.rotation.y = moving ? step * 0.05 : Math.sin(breatheT * 0.4) * 0.04;
+      head.rotation.x = airPose * 0.15 - spine.rotation.x * 0.4 - slide * 0.12;
+      head.rotation.y = moving && slide < 0.4 ? step * 0.05 : Math.sin(breatheT * 0.4) * 0.04;
 
-      const armSwing = moving ? (run ? 0.95 : 0.55) : Math.sin(breatheT * 1.3) * 0.04;
-      lArm.root.rotation.x = stepOpp * armSwing + airPose * 0.6;
-      rArm.root.rotation.x = step * armSwing + airPose * 0.6;
-      lArm.root.rotation.z = 0.12 + airPose * 0.25;
-      rArm.root.rotation.z = -0.12 - airPose * 0.25;
+      const armSwing = moving && slide < 0.3 ? (run ? 0.95 : 0.55) : Math.sin(breatheT * 1.3) * 0.04 * (1 - slide);
+      lArm.root.rotation.x = stepOpp * armSwing + airPose * 0.6 + slide * 0.55;
+      rArm.root.rotation.x = step * armSwing + airPose * 0.6 - slide * 0.35;
+      lArm.root.rotation.z = 0.12 + airPose * 0.25 + slide * 0.45;
+      rArm.root.rotation.z = -0.12 - airPose * 0.25 - slide * 0.2;
       lArm.fore.rotation.x = moving ? -0.35 - kneeOpp * 0.4 : -0.15;
       rArm.fore.rotation.x = moving ? -0.35 - knee * 0.4 : -0.15;
+      lArm.fore.rotation.x += slide * -0.4;
+      rArm.fore.rotation.x += slide * -0.2;
 
-      const thighSwing = swing;
-      lLeg.root.rotation.x = step * thighSwing - airPose * 0.35;
-      rLeg.root.rotation.x = stepOpp * thighSwing - airPose * 0.35;
+      const thighSwing = swing * (1 - slide);
+      lLeg.root.rotation.x = step * thighSwing - airPose * 0.35 + slide * 0.95;
+      rLeg.root.rotation.x = stepOpp * thighSwing - airPose * 0.35 - slide * 0.55;
       lLeg.shin.rotation.x = moving ? knee * 0.95 : 0.08;
       rLeg.shin.rotation.x = moving ? kneeOpp * 0.95 : 0.08;
+      lLeg.shin.rotation.x = lLeg.shin.rotation.x * (1 - slide) + slide * 0.18;
+      rLeg.shin.rotation.x = rLeg.shin.rotation.x * (1 - slide) + slide * 1.15;
       if (!grounded) {
         lLeg.shin.rotation.x = 0.7;
         rLeg.shin.rotation.x = 0.7;
       }
-      lLeg.foot.rotation.x = moving ? -lLeg.root.rotation.x * 0.35 - lLeg.shin.rotation.x * 0.25 : 0;
-      rLeg.foot.rotation.x = moving ? -rLeg.root.rotation.x * 0.35 - rLeg.shin.rotation.x * 0.25 : 0;
+      lLeg.foot.rotation.x = moving || slide > 0.2 ? -lLeg.root.rotation.x * 0.35 - lLeg.shin.rotation.x * 0.25 : 0;
+      rLeg.foot.rotation.x = moving || slide > 0.2 ? -rLeg.root.rotation.x * 0.35 - rLeg.shin.rotation.x * 0.25 : 0;
     },
     dispose() {
       for (const geometry of geometries) geometry.dispose();

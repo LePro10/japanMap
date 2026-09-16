@@ -942,6 +942,9 @@ async function boot(): Promise<void> {
       setJump: (down) => {
         drive.setTouchJump(down);
       },
+      setSlide: (down) => {
+        drive.setTouchSlide(down);
+      },
       get vehicleId() {
         return drive.vehicleId;
       },
