@@ -793,6 +793,7 @@ async function boot(): Promise<void> {
   // weil das System auf `terrain:ready` und `roads:ready` hört und beide genau
   // einmal gesendet werden, während sich jene Systeme initialisieren.
   const stunt = new StuntSystem(atmosphere.uniforms, drive.ramps);
+  stunt.setScatter(scatter);
   engine.add(stunt);
   drive.setStunt(stunt);
   // Ebenso: die Wasserflächen der Reisfelder holen ihre Höhe aus dem Sampler,

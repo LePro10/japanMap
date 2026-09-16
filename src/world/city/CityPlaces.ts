@@ -4,6 +4,7 @@ import type { CityCollider } from './CityGenerator';
 import type { UrbanLot } from './UrbanLots';
 import { LocalSurfaces, type Point } from '../settlements/LocalSurfaces';
 import { SettlementKit } from '../settlements/SettlementKit';
+import { placeAuthoredCherry } from '../scatter/authoredCanopy';
 import { getCityPlaceReserves, RAIN_GARDEN } from './cityPlacesLayout';
 export { getCityPlaceReserves } from './cityPlacesLayout';
 
@@ -53,6 +54,10 @@ export function buildCityPlaces(input: CityPlacesInput): {
     k.ball(x, y + 2.62, z, 0.13, STONE);
   };
   const tree = (k: SettlementKit, x: number, y: number, z: number, h: number, kind: 'pine' | 'maple' | 'cherry', seed: number) => {
+    // Kirschen: Standorte bleiben Garden-Dressing, Zeichenstufen und Bruch
+    // hängen an der Vegetations-LOD. Ohne Streuung (Prüfstand) backt der Kit
+    // weiter — `placeAuthoredCherry` liefert dann false.
+    if (kind === 'cherry' && placeAuthoredCherry({ x, y, z, height: h, seed })) return;
     const trunk = kind === 'pine' ? 0.32 : 0.25;
     k.cylinder(x, y + h * 0.35, z, trunk, h * 0.7, WOOD, 0, 0, trunk * 0.58);
     colliders.push({ minX: x - trunk, maxX: x + trunk, minZ: z - trunk, maxZ: z + trunk, bottom: y, top: y + h * 0.65 });
