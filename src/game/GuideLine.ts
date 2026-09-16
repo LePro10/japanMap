@@ -7,9 +7,9 @@ import {
 } from 'three';
 
 import { WAYPOINT } from '@/config/waypoint.config';
-import { ROAD_MESH } from '@/config/roads.config';
 import type { EngineContext } from '@/core/System';
 import type { RoutePath } from './routeGraph';
+import { densifyRoute, drapeRibbon, type HeightAt } from './guideDrape';
 import { damp } from './waypointScreen';
 import vertexShader from './guideLine.vert.glsl';
 import fragmentShader from './guideLine.frag.glsl';
@@ -87,7 +87,7 @@ export class GuideLine {
     return this.#xz;
   }
 
-  setPath(path: RoutePath | null): void {
+  setPath(path: RoutePath | null, heightAt: HeightAt | null = null): void {
     this.#path = path;
     this.#arc = 0;
     this.#arcSmooth = 0;
@@ -100,7 +100,7 @@ export class GuideLine {
       return;
     }
     mesh.geometry.dispose();
-    const built = buildRibbon(path);
+    const built = buildRibbon(path, heightAt);
     mesh.geometry = built.geometry;
     this.#arcs = built.arcs;
     this.#reveal = Math.min(280, WAYPOINT.lookAhead);
@@ -205,10 +205,13 @@ function pack(path: RoutePath): Float32Array {
   return out;
 }
 
-function buildRibbon(path: RoutePath): { geometry: BufferGeometry; arcs: Float32Array } {
-  const pts = path.points;
-  const n = pts.length;
-  const lift = ROAD_MESH.surfaceOffset + WAYPOINT.lineLift;
+function buildRibbon(
+  path: RoutePath,
+  heightAt: HeightAt | null,
+): { geometry: BufferGeometry; arcs: Float32Array } {
+  const dense = densifyRoute(path, 2);
+  const draped = drapeRibbon(dense, heightAt);
+  const n = draped.length;
   const half = WAYPOINT.lineWidth * 0.5;
   const apex = WAYPOINT.apexOffset;
 
@@ -216,35 +219,35 @@ function buildRibbon(path: RoutePath): { geometry: BufferGeometry; arcs: Float32
   const uvs = new Float32Array(n * 2 * 2);
   const arcsAttr = new Float32Array(n * 2);
   const limits = new Float32Array(n * 2);
-  const indices = new Uint32Array((n - 1) * 6);
+  const indices = new Uint32Array(Math.max(0, n - 1) * 6);
   const arcs = new Float32Array(n);
 
   for (let i = 0; i < n; i++) {
-    const p = pts[i]!;
+    const p = draped[i]!;
     arcs[i] = p.arc;
-    const prev = pts[i === 0 ? 0 : i - 1]!;
-    const next = pts[i === n - 1 ? n - 1 : i + 1]!;
-    let tx = next.x - prev.x;
-    let tz = next.z - prev.z;
-    const len = Math.hypot(tx, tz) || 1;
-    tx /= len;
-    tz /= len;
-    const rx = tz;
-    const rz = -tx;
-    const k = signedK(prev, p, next);
+    const k = signedK(
+      i === 0 ? p : draped[i - 1]!,
+      p,
+      i === n - 1 ? p : draped[i + 1]!,
+    );
     const inset = Math.max(-apex, Math.min(apex, -Math.sign(k) * Math.min(apex, Math.abs(k) * 55)));
-    const cx = p.x + rx * inset;
-    const cz = p.z + rz * inset;
-    const y = p.y + lift;
+    const cx = p.x + p.rx * inset;
+    const cz = p.z + p.rz * inset;
+    const lx = cx - p.rx * half;
+    const lz = cz - p.rz * half;
+    const rx = cx + p.rx * half;
+    const rz = cz + p.rz * half;
+    const yL = heightAt ? heightAt(lx, lz) + WAYPOINT.lineLift : p.yL;
+    const yR = heightAt ? heightAt(rx, rz) + WAYPOINT.lineLift : p.yR;
 
     const a = i * 2;
     const b = a + 1;
-    positions[a * 3] = cx - rx * half;
-    positions[a * 3 + 1] = y;
-    positions[a * 3 + 2] = cz - rz * half;
-    positions[b * 3] = cx + rx * half;
-    positions[b * 3 + 1] = y;
-    positions[b * 3 + 2] = cz + rz * half;
+    positions[a * 3] = lx;
+    positions[a * 3 + 1] = yL;
+    positions[a * 3 + 2] = lz;
+    positions[b * 3] = rx;
+    positions[b * 3 + 1] = yR;
+    positions[b * 3 + 2] = rz;
     uvs[a * 2] = 0;
     uvs[a * 2 + 1] = p.arc * 0.12;
     uvs[b * 2] = 1;

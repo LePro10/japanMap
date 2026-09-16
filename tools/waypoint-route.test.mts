@@ -11,6 +11,7 @@ import {
   remainingAlong,
   routeTurn,
 } from '@/game/routeGraph';
+import { densifyRoute, drapeRibbon } from '@/game/guideDrape';
 import { damp, dampAngle, formatEta, formatWaypointDistance, pinScreen } from '@/game/waypointScreen';
 
 function road(
@@ -172,6 +173,23 @@ assert.equal(commonsToNeon.offroadTail, false);
 assert.ok(
   commonsToNeon.length > crow * 1.15,
   `Commons→Neon must follow streets (${commonsToNeon.length.toFixed(0)} m) not the air line (${crow.toFixed(0)} m)`,
+);
+
+const air = {
+  points: [
+    { x: 0, y: 0, z: 0, limit: 0, arc: 0 },
+    { x: 0, y: 0, z: 20, limit: 0, arc: 20 },
+  ],
+  length: 20,
+  offroadTail: true,
+};
+const dense = densifyRoute(air, 2);
+assert.ok(dense.length >= 10, `offroad must densify, got ${dense.length}`);
+const draped = drapeRibbon(dense, (x) => 10 + x * 0.4, 1, 0.05);
+assert.ok(draped.every((p) => p.yR > p.yL + 0.3), 'cross-slope must tilt the strip onto the ground');
+assert.ok(
+  draped.every((p) => Math.abs(p.yL - 9.65) < 0.02),
+  'left edge follows the height field, not y=0 air',
 );
 
 console.log(

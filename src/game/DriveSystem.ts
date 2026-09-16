@@ -638,7 +638,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#routeLine = packRouteXZ(path);
     this.#routeArc = 0;
     this.#offRoute = 0;
-    this.#guide.setPath(path);
+    const sampler = this.#sampler;
+    this.#guide.setPath(path, sampler ? (x, z) => sampler.getHeightAt(x, z) : null);
     this.#guide.setBrake(arcade.brakeG * GRAVITY * WAYPOINT.lineBrakeFactor);
   }
 
@@ -1723,6 +1724,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       this.#paused ? null : this.#context?.camera ?? null,
       canvas?.clientWidth ?? 0,
       canvas?.clientHeight ?? 0,
+      this.#sampler ? (x, z) => this.#sampler!.getHeightAt(x, z) : null,
     );
     const wp = this.#waypoint.waypoint;
     if (wp && Math.hypot(wp.x - px, wp.z - pz) < WAYPOINT.arriveMeters) {

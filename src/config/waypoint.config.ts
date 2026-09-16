@@ -38,8 +38,12 @@ export const WAYPOINT = {
    * Streifen in der Mitte, keine zweite Fahrbahn.
    */
   lineWidth: 2.35,
-  /** Über `ROAD_MESH.surfaceOffset` (6 cm), plus Offset gegen Z-Fighting. */
-  lineLift: 0.11,
+  /**
+   * Über dem Höhenfeld, Meter. Das Feld ist schon die Fahrbahn (Bake);
+   * `surfaceOffset` nochmal drauf und der Streifen schwebt. 5 cm plus
+   * `polygonOffset` reicht gegen Z-Fighting, auch am Hang.
+   */
+  lineLift: 0.05,
   /** Erste Meter am Auto ausblenden — sonst schneidet das Band durch die Haube. */
   lineNearFade: 6,
   lineNearSolid: 14,

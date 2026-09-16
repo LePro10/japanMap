@@ -13,6 +13,7 @@ import {
 
 import { WAYPOINT } from '@/config/waypoint.config';
 import type { EngineContext } from '@/core/System';
+import type { HeightAt } from './guideDrape';
 import { damp, pinScreen, type PinScreen } from './waypointScreen';
 
 export interface WaypointPosition {
@@ -176,8 +177,12 @@ export class WaypointMarker {
     camera: PerspectiveCamera | null = null,
     viewW = 0,
     viewH = 0,
+    heightAt: HeightAt | null = null,
   ): void {
     const waypoint = this.#waypoint;
+    if (waypoint && heightAt && this.#group) {
+      this.#group.position.y = heightAt(waypoint.x, waypoint.z);
+    }
     this.#appear = damp(
       this.#appear,
       this.#appearGoal,
@@ -224,7 +229,11 @@ export class WaypointMarker {
       return;
     }
 
-    _world.set(waypoint.x, waypoint.y + WAYPOINT.pinHeight + 1.2, waypoint.z);
+    _world.set(
+      waypoint.x,
+      (this.#group?.position.y ?? waypoint.y) + WAYPOINT.pinHeight + 1.2,
+      waypoint.z,
+    );
     _view.copy(_world).applyMatrix4(camera.matrixWorldInverse);
     const inFront = _view.z < 0;
     _world.project(camera);
