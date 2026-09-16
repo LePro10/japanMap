@@ -1091,9 +1091,11 @@ export const CHASE_CAMERA = {
   hoodHeight: 0.62,
   hoodForward: 0.15,
   /** Eigenes Blickfeld auf der Haube — der Chase-Zug 62→82 macht aus dem Blech eine Wand. */
-  hoodFov: 65,
+  hoodFov: 68,
   hoodFovBoost: 3,
-  hoodNear: 0.25,
+  hoodNear: 0.2,
+  /** Leicht nach unten, damit ein Streifen Haube im Bild bleibt — nicht die ganze Fläche. */
+  hoodLookPitch: -0.06,
   /**
    * Anteil des Aufbau-Nickens an der Haube, solange sie *nicht* am Quaternion
    * hängt. Die parented Haube nimmt die Lage aus dem Aufbau; dieser Wert bleibt
@@ -1189,10 +1191,15 @@ export const CHASE_CAMERA = {
  * Verfolger; im Cockpit ist Zoom eine Lüge über die Entfernung.
  */
 export const COCKPIT_CAMERA = {
-  fov: 54,
+  fov: 60,
   fovBoost: 2,
-  near: 0.12,
+  near: 0.1,
   lookAtDist: 18,
+  /**
+   * Ruhelage des Blicks, negativ = Straße. Ohne das zielt die Kamera über das
+   * Lenkrad hinweg in den Himmel, und das Rad liegt unter dem Bildrand.
+   */
+  lookPitch: -0.14,
   /** Nacken-Feder, Hz und Dämpfung. Über ~2,5 Hz frisst sie den Belag; unter ~0,7 Hz wird einem übel. */
   neckHz: 1.6,
   neckZeta: 0.85,

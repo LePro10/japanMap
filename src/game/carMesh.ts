@@ -185,17 +185,17 @@ function cabinKit(s:VehicleSpec):BufferGeometry[] {
   pair(out,.05,.22,.7,half*.22,floorY+.28,-.1,c.trim);
   return out;
  }
- // Armatur vor dem Blick, unter dem Gürtel.
- const dashZ=front-.22;
- out.push(part(w*.74,.16,.22,0,belt-.18,dashZ,SHARED_COLORS.dash));
- out.push(part(w*.42,.07,.08,0,belt-.08,dashZ+.04,SHARED_COLORS.cluster));
+ // Armatur — niedrig und kurz, sonst frisst sie die Straße.
+ const dashZ=front-.28;
+ out.push(part(w*.7,.12,.18,0,belt-.28,dashZ,SHARED_COLORS.dash));
+ out.push(part(w*.36,.05,.06,0,belt-.18,dashZ+.05,SHARED_COLORS.cluster));
  if(s.id==='touge'||s.id==='meridian'||s.id==='needle'){
-  pair(out,.09,.045,.03,.12,belt-.05,dashZ+.07,0xd8e2ea);
+  pair(out,.08,.04,.025,.11,belt-.16,dashZ+.07,0xd8e2ea);
  }
- // Hauben-Innenseite: die Fläche, die man durch das Scheibenloch sieht.
- const hoodLen=Math.min(1.35, c.hullLength/2-front+.05);
- if(hoodLen>.2){
-  out.push(part(w*.72,.04,hoodLen,0,belt-.02,front+hoodLen/2,c.paint));
+ // Nur ein kurzer Cowl, kein 1,3-m-Lackteppich vor der Nase.
+ const hoodLen=Math.min(.55, Math.max(0, c.hullLength/2-front));
+ if(hoodLen>.12){
+  out.push(part(w*.68,.035,hoodLen,0,belt-.03,front+hoodLen/2,c.paint));
  }
  // A-Säulen und Scheibenrahmen — 80 % von „ich sitze drin".
  const pillarH=c.roofHeight-belt-.04;
@@ -218,14 +218,14 @@ function helmKit(s:VehicleSpec):BufferGeometry[] {
  // Ursprung = Nabe. DriveSystem setzt die Pose auf `helmHub`, sonst
  // dreht rotateZ das Rad um den Schwerpunkt statt um die Nabe.
  const rim=s.body.rim, trim=s.body.trim;
- const ring=paint(new TorusGeometry(.155,.016,6,16),trim);
+ const ring=paint(new TorusGeometry(.19,.022,8,20),trim);
  const out:BufferGeometry[]=[ring];
- const cap=paint(new CylinderGeometry(.035,.035,.02,8),rim);
+ const cap=paint(new CylinderGeometry(.045,.045,.028,8),rim);
  cap.rotateX(Math.PI/2);out.push(cap);
  const spokes=s.id==='needle'||s.id==='gt'?3:s.id==='meridian'?4:3;
  for(let i=0;i<spokes;i++){
   const a=i*Math.PI*2/spokes+Math.PI/2;
-  const spoke=part(.018,.018,.13,0,0,.07,rim);
+  const spoke=part(.022,.022,.16,0,0,.08,rim);
   spoke.rotateZ(a);out.push(spoke);
  }
  return out;

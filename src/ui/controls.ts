@@ -50,7 +50,7 @@ export const DRIVE_CONTROLS: readonly (readonly [string, string])[] = [
   ['Shift', 'nitro boost'],
   ['Mouse', 'look around'],
   ['Wheel', 'zoom (closest = hood)'],
-  ['C', 'view: chase / hood / cockpit'],
+  ['C', 'view: chase / cockpit / hood'],
   ['R', 'respawn on the nearest road'],
   ['F', 'get out'],
   ['M', 'map'],

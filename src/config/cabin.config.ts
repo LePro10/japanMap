@@ -146,40 +146,45 @@ export function cabinLayout(spec: VehicleSpec): CabinLayout {
 /**
  * Sitz-Auge im Fahrzeugsystem (Ursprung = Schwerpunkt).
  *
- * Unter dem Dach mit 8 cm Luft, über dem Gürtel, hinter der Scheibe.
- * Seitlich mittig: auf 16:9 ist die tote Mitte spielbarer als eine echte
- * Eyellipse, die die A-Säule auf den Apex legt.
+ * Hoch und weit hinten: das Blech darf nicht die untere Bildhälfte fressen
+ * (gemessen: 10 cm über der Haube = Dach-Tapete). 10 cm unter dem Dach,
+ * 72 cm hinter der Scheibe. Blick leicht nach unten kommt aus
+ * `COCKPIT_CAMERA.lookPitch` — dann liegen Lenkrad und Straße im Bild.
  */
 export function cockpitEye(spec: VehicleSpec): CockpitSocket {
   const cabin = cabinLayout(spec);
   const cg = spec.chassis.cgHeight;
   const roofLocal = cabin.roof - cg;
   const beltLocal = cabin.belt - cg;
-  const y = Math.min(roofLocal - 0.08, beltLocal + 0.38);
-  const z = cabin.open ? -0.08 : cabin.glassFront - 0.58;
+  const y = Math.min(roofLocal - 0.1, beltLocal + 0.5);
+  const z = cabin.open ? -0.12 : cabin.glassFront - 0.72;
   return { x: 0, y, z };
 }
 
 /**
- * Haubenkamera *auf* dem Blech, vor der Scheibe — nicht im Gewächshaus.
+ * Haubenkamera über dem Blech, nicht drauf.
  *
- * 10 cm über dem Gürtel, 18 cm vor der Glasfront. Open-Wheel: über der Nase.
+ * 45 cm über dem Gürtel: die Haube ist ein Streifen unten, die Straße der Rest.
+ * 10 cm war die Aufnahme, in der man nur Lack gesehen hat.
  */
 export function hoodCowl(spec: VehicleSpec): CockpitSocket {
   const cabin = cabinLayout(spec);
   const cg = spec.chassis.cgHeight;
   if (cabin.open) {
-    return { x: 0, y: 0.62 - cg, z: 0.9 };
+    return { x: 0, y: 0.85 - cg, z: 0.7 };
   }
   return {
     x: 0,
-    y: cabin.belt - cg + 0.1,
-    z: cabin.glassFront + 0.18,
+    y: cabin.belt - cg + 0.45,
+    z: cabin.glassFront + 0.06,
   };
 }
 
-/** Lenkradnabe relativ zum Auge — vor und unter dem Blick, nicht im Near-Clip. */
+/**
+ * Lenkradnabe. 18 cm unter dem Auge, 34 cm davor — mit `lookPitch` −8° sitzt
+ * die Nabe im unteren Bilddrittel, nicht unter dem Bildrand.
+ */
 export function helmHub(spec: VehicleSpec): CockpitSocket {
   const eye = cockpitEye(spec);
-  return { x: eye.x, y: eye.y - 0.22, z: eye.z + 0.36 };
+  return { x: eye.x, y: eye.y - 0.18, z: eye.z + 0.34 };
 }

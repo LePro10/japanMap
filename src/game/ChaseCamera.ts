@@ -151,7 +151,8 @@ export class ChaseCamera {
   }
 
   toggleMode(): ChaseMode {
-    this.mode = this.mode === 'chase' ? 'hood' : this.mode === 'hood' ? 'cockpit' : 'chase';
+    // Sitz zuerst: C ist der Weg in die First Person, nicht aufs Blech.
+    this.mode = this.mode === 'chase' ? 'cockpit' : this.mode === 'cockpit' ? 'hood' : 'chase';
     this.#initialized = false;
     return this.mode;
   }
@@ -362,7 +363,7 @@ export class ChaseCamera {
     this.#offset.set(cowl.x, cowl.y, cowl.z).applyQuaternion(vehicle.quaternion);
     camera.position.copy(vehicle.position).add(this.#offset);
     const yaw = this.#yawOffset;
-    const pitch = this.#pitchOffset;
+    const pitch = this.#pitchOffset + CHASE_CAMERA.hoodLookPitch;
     const cp = Math.cos(pitch);
     this.#lookLocal.set(Math.sin(yaw) * cp, Math.sin(pitch), Math.cos(yaw) * cp);
     this.#lookLocal.applyQuaternion(vehicle.quaternion);
@@ -411,7 +412,10 @@ export class ChaseCamera {
     camera.quaternion.copy(vehicle.quaternion);
     camera.rotateY(this.#yawOffset + steerLook + velYaw * velWeight * motion);
     camera.rotateX(
-      this.#pitchOffset + extraPitch + vehicle.pitch * (COCKPIT_CAMERA.chassisPitch - 1) * motion,
+      this.#pitchOffset +
+        COCKPIT_CAMERA.lookPitch +
+        extraPitch +
+        vehicle.pitch * (COCKPIT_CAMERA.chassisPitch - 1) * motion,
     );
     camera.rotateZ(extraRoll + vehicle.roll * (COCKPIT_CAMERA.chassisRoll - 1) * motion);
     camera.position.add(this.#shake);

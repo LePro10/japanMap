@@ -13,7 +13,7 @@ import { WalkCamera } from '@/game/WalkCamera';
 import { Vehicle } from '@/game/Vehicle';
 import { Walker } from '@/game/Walker';
 import { CAMERA } from '@/config/world.config';
-import { cabinLayout, cockpitEye, hoodCowl } from '@/config/cabin.config';
+import { cabinLayout, cockpitEye, helmHub, hoodCowl } from '@/config/cabin.config';
 import { CHASE_CAMERA, COCKPIT_CAMERA } from '@/config/vehicle.config';
 import { VEHICLES, VEHICLE_ORDER } from '@/config/vehicles.config';
 import { createCarVisuals } from '@/game/carMesh';
@@ -187,30 +187,13 @@ function ok(msg: string): void {
   const cam = new PerspectiveCamera(CHASE_CAMERA.fov, 1, CAMERA.near, 6000);
   chase.reset(v);
   chase.toggleMode();
-  if (chase.mode !== 'hood') fail(`C einmal = Haube, war ${chase.mode}`);
+  if (chase.mode !== 'cockpit') fail(`C einmal = Sitz, war ${chase.mode}`);
   const tick = () => {
     v.step(DT, input({}), g, null);
     chase.update(DT, v, g, cam);
   };
-  settle(tick, 0.4);
-  const cowl = hoodCowl(v.spec);
-  const local = cam.position.clone().sub(v.position);
-  const inv = v.quaternion.clone().invert();
-  local.applyQuaternion(inv);
-  console.log(
-    `Haube lokal ${local.x.toFixed(3)} ${local.y.toFixed(3)} ${local.z.toFixed(3)}  cowl ${cowl.y.toFixed(3)} ${cowl.z.toFixed(3)}  near=${cam.near}`,
-  );
-  if (Math.hypot(local.y - cowl.y, local.z - cowl.z) > 0.08) {
-    fail(`Haube sitzt nicht auf dem Cowl, Δ=${Math.hypot(local.y - cowl.y, local.z - cowl.z).toFixed(3)}`);
-  }
-  const layout = cabinLayout(v.spec);
-  if (local.z < layout.glassFront) fail(`Haube hinter der Scheibe (z=${local.z.toFixed(3)} < ${layout.glassFront.toFixed(3)})`);
-  if (Math.abs(cam.near - CHASE_CAMERA.hoodNear) > 1e-3) fail(`Haube near ${cam.near}, erwartet ${CHASE_CAMERA.hoodNear}`);
-  ok('Haube sitzt auf dem Blech, vor der Scheibe');
-
-  chase.toggleMode();
-  if (chase.mode !== 'cockpit') fail(`C zweimal = Sitz, war ${chase.mode}`);
   settle(tick, 1.2);
+  const inv = v.quaternion.clone().invert();
   const eye = cockpitEye(v.spec);
   const eyeLocal = cam.position.clone().sub(v.position).applyQuaternion(inv);
   console.log(
@@ -235,6 +218,39 @@ function ok(msg: string): void {
   visuals.body.dispose();
   visuals.glass.dispose();
   visuals.helm.dispose();
+
+  const hub = helmHub(v.spec);
+  const look = COCKPIT_CAMERA.lookPitch;
+  const wheelPitch = Math.atan2(hub.y - eye.y, hub.z - eye.z);
+  const wheelInView = wheelPitch - look;
+  const halfFov = (COCKPIT_CAMERA.fov * Math.PI) / 180 / 2;
+  console.log(
+    `Lenkrad Δpitch=${(wheelInView * 180 / Math.PI).toFixed(1)}°  halbes FOV=${(halfFov * 180 / Math.PI).toFixed(1)}°`,
+  );
+  if (Math.abs(wheelInView) > halfFov * 0.95) {
+    fail(`Lenkrad außerhalb des Blicks: ${(wheelInView * 180 / Math.PI).toFixed(1)}°`);
+  }
+  ok('Lenkrad liegt im Blick');
+
+  chase.toggleMode();
+  if (chase.mode !== 'hood') fail(`C zweimal = Haube, war ${chase.mode}`);
+  settle(tick, 0.5);
+  const cowl = hoodCowl(v.spec);
+  const local = cam.position.clone().sub(v.position);
+  local.applyQuaternion(inv);
+  const layout = cabinLayout(v.spec);
+  const beltLocal = layout.belt - v.spec.chassis.cgHeight;
+  console.log(
+    `Haube lokal ${local.x.toFixed(3)} ${local.y.toFixed(3)} ${local.z.toFixed(3)}  cowl ${cowl.y.toFixed(3)} ${cowl.z.toFixed(3)}  overBelt=${(local.y - beltLocal).toFixed(3)}`,
+  );
+  if (Math.hypot(local.y - cowl.y, local.z - cowl.z) > 0.08) {
+    fail(`Haube sitzt nicht auf dem Cowl, Δ=${Math.hypot(local.y - cowl.y, local.z - cowl.z).toFixed(3)}`);
+  }
+  if (local.y - beltLocal < 0.35) {
+    fail(`Haube zu nah am Blech: ${(local.y - beltLocal).toFixed(3)} m über Gürtel`);
+  }
+  if (Math.abs(cam.near - CHASE_CAMERA.hoodNear) > 1e-3) fail(`Haube near ${cam.near}, erwartet ${CHASE_CAMERA.hoodNear}`);
+  ok('Haube hoch genug, dass die Straße bleibt');
 
   chase.toggleMode();
   if (chase.mode !== 'chase') fail(`C dreimal = Verfolger, war ${chase.mode}`);
