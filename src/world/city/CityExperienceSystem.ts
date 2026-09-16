@@ -55,7 +55,7 @@ export class CityExperienceSystem implements System {
   }
   update(dt:number,_alpha:number):void{
     const camera=this.#context?.camera;if(camera)this.#street?.update(camera.position.x,camera.position.z,this.quality.level);
-    if(document.querySelector('.player-menu:not([hidden]), .photo-mode:not([hidden]), .navmap:not([hidden]), .tune-garage:not([hidden])')){this.#card.hidden=true;return;}
+    if(document.querySelector('.player-menu:not([hidden]), .photo-mode:not([hidden]), .navmap:not([hidden]), .tune-garage:not([hidden]), .hud__explore:not([hidden])')){this.#card.hidden=true;return;}
     this.#elapsed+=dt;
     const active=this.drive.active||this.drive.walking;
     const p=this.drive.walking?this.drive.walker.position:this.drive.vehicle.position;

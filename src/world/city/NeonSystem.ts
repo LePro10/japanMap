@@ -43,6 +43,7 @@ export class NeonSystem implements System {
   readonly #lights: PointLight[] = [];
   #quality:QualityKey='high';
   #lightTimer=0;
+  #lightsEnabled=true;
 
   readonly #readouts = {
     schilder: 'noch nicht gebaut',
@@ -82,7 +83,7 @@ export class NeonSystem implements System {
     this.#lightTimer-=dt;
     if(this.#lightTimer>0||!this.#context)return;
     this.#lightTimer=.5;
-    const budget={ultra:10,high:6,medium:2,low:0,minimal:0,custom:6}[this.#quality];
+    const budget=this.#lightsEnabled?{ultra:10,high:6,medium:2,low:0,minimal:0,custom:6}[this.#quality]:0;
     const camera=this.#context.camera.position;
     const nearest=[...this.#lights].sort((a,b)=>a.position.distanceToSquared(camera)-b.position.distanceToSquared(camera));
     nearest.forEach((light,index)=>{light.visible=index<budget;});
@@ -319,7 +320,7 @@ export class NeonSystem implements System {
     folder.addBinding(this.#readouts, 'lichter', { readonly: true, label: 'Punktlichter' });
     folder.addBinding(group, 'visible', { label: 'Sichtbar' });
     folder.addButton({ title: 'Punktlichter an/aus' }).on('click', () => {
-      for (const light of this.#lights) light.visible = !light.visible;
+      this.#lightsEnabled=!this.#lightsEnabled;this.#lightTimer=0;this.update(0);
     });
   }
 
