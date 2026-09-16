@@ -216,6 +216,61 @@ export const PADDY_WATER = {
   levelTolerance: 0.08,
 
   /**
+   * Wasserstand über dem Parzellenbett, in Metern.
+   *
+   * `meta.json` speichert 0,30 m — das ist die Zahl, mit der der Baker die
+   * Dämme (0,55 m) bemessen hat, nicht die, die das Bild braucht. Gemessen
+   * 2026-09-16 gegen Kite S (`radius` 0,31 m, Blechunterkante 0,16 m,
+   * Furt 0,20 m):
+   *
+   * | Spiegel | Rad nass | Blech im Wasser | Körper |
+   * |---|---:|---:|---:|
+   * | 0,30 m (Bake) | 97 % | +14 cm | 22 % |
+   * | 0,10 m        | 32 % | −6 cm  |  7 % |
+   *
+   * 0,30 m ersäuft das Auto; 0,10 m ist eine Pfütze über Schlamm, unter der
+   * Schwellerlinie, unter der Furt. Die Dämme bleiben 0,45 m über dem Spiegel
+   * — der Baker muss dafür nicht neu laufen. Physik (`WaterField`) und Mesh
+   * (`RicePaddy`) lesen **diese** Zahl, nicht die Meta, sonst liegen Bild und
+   * Widerstand wieder auseinander.
+   */
+  depth: 0.1,
+
+  /**
+   * Wasser endet so weit innerhalb einer nassen/trockenen Kante.
+   *
+   * Ohne den Versatz liegt der Spiegel bündig auf der Marching-Squares-Kante,
+   * und die Böschung hat keine Krone, auf der Erde sichtbar wäre. 0,25 m ist
+   * ein Bund, kein zweiter Damm — der gebackene Damm ist 1,7 m halbe Breite.
+   */
+  bankInset: 0.25,
+
+  /**
+   * Erde über dem Spiegel, in Metern. Untergrenze aus ASTRA (Krone mindestens
+   * 0,20 m über Wasser); der gebackene Damm liegt höher und bleibt unangetastet.
+   */
+  bankCrest: 0.2,
+
+  /**
+   * Wie weit die Böschungsfläche nach außen tastet, in Metern.
+   *
+   * Nur die Luft unter dem Spiegel, nicht die ganze Stufe. 2,4 m machte aus
+   * der Wand eine 6 × 3 m-Pappe (gemessen 2026-09-16, Blick entlang der
+   * Normalen). 1,0 m bei 1,5 m Abfall ist ~56° — ein Bund, und das Gelände
+   * darunter bleibt das Gelände.
+   */
+  bankReach: 1,
+
+  /**
+   * Ab diesem Abfall unter dem Spiegel gilt die Kante als Stufe, nicht als Damm.
+   *
+   * Ein Damm ist höher als das Bett; eine nasse/trockene Kante auf gleichem
+   * Niveau hat nur die Wassertiefe als Spalt (0,10 m). 0,18 m liegt dazwischen:
+   * gemessene Stufen beginnen bei 0,6 m Raster (`PADDY.step`).
+   */
+  dropMin: 0.18,
+
+  /**
    * Tiefes Grün-Braun statt Blau.
    *
    * Ein Reisfeld im Mai ist eine dünne Wasserschicht über Schlamm, kein See —
@@ -226,6 +281,15 @@ export const PADDY_WATER = {
   color: 0x2b3026,
   roughness: 0.06,
   metalness: 0,
+
+  /**
+   * Erde der Böschung. Krone trocken, Fuß nass — echte Bundwände sind am
+   * Wasserspiegel dunkler. `brown_mud_02` ist die Splat-Lage darunter; die
+   * Zahlen liegen in derselben Wärme, etwas dunkler, weil eine senkrechte
+   * Fläche bei 2,23° Sonne sonst als helles Band steht.
+   */
+  bankTop: 0x6a5844,
+  bankWet: 0x3a3026,
 } as const;
 
 /** Eine Platzierung, wie sie in `assets/props.json` steht. */
