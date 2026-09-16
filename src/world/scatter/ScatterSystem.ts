@@ -43,6 +43,8 @@ import type { TerrainSampler } from '../TerrainSampler';
 import { ImposterAtlas } from './ImposterAtlas';
 import { InstancedLOD, LOD_COUNT, type LodStage } from './InstancedLOD';
 import { treeKey } from '@/game/breakables';
+import { setAuthoredCherrySink, type AuthoredCherry } from './authoredCanopy';
+import { SAKURA_HEIGHT } from './sakuraMesh';
 import { INSTANCE_STRIDE, scatterChunk, type ScatterChunk } from './scatterChunk';
 import { ScatterWorkerClient } from './ScatterWorkerClient';
 import {
@@ -138,6 +140,11 @@ export class ScatterSystem implements System {
    * CollisionWorld zu legen.
    */
   readonly #broken = new Set<number>();
+  /**
+   * Gesetzte Instanzen je Art, dieselbe Packung wie ein Chunk (`INSTANCE_STRIDE`).
+   * Kirschen stehen hier, nicht im Cache: sie gehören keinem Streu-Gitter an.
+   */
+  #authored: Float32Array[] = [];
 
   /**
    * Die Streuung auf einem eigenen Thread (P7 / 7.2). `null`, wenn sie dort
@@ -182,6 +189,7 @@ export class ScatterSystem implements System {
   readonly #readouts = {
     instanzen: '—',
     stufen: '—',
+    kirschen: '—',
     flecken: '—',
     chunks: '—',
     aufwand: '—',
@@ -192,6 +200,8 @@ export class ScatterSystem implements System {
 
   async init(context: EngineContext): Promise<void> {
     this.#context = context;
+    this.#authored = SPECIES.map(() => new Float32Array(0));
+    setAuthoredCherrySink((tree) => this.#acceptCherry(tree));
 
     this.#worker = new ScatterWorkerClient(
       (key, chunk) => {
@@ -317,11 +327,14 @@ export class ScatterSystem implements System {
       const meshes = this.#meshes[species.id];
       if (!meshes) throw new Error(`Keine Geometrie für Art „${species.id}".`);
 
+      const vertexColors = !!meshes.variants[0]?.full.getAttribute('color');
+      const tintAmount = vertexColors ? 0 : 1;
       const material = new VegetationMaterial(
         this.atmosphere,
         this.#shared,
         species.color,
         species.windAmplitude,
+        { vertexColors, tintAmount },
       );
       this.#materials.push(material);
 
@@ -343,6 +356,7 @@ export class ScatterSystem implements System {
         this.#shared,
         0xffffff,
         species.windAmplitude,
+        tintAmount,
       );
       this.#imposterMaterials.push(imposter);
 
@@ -355,7 +369,9 @@ export class ScatterSystem implements System {
       const lod = new InstancedLOD(
         species,
         stages,
-        ScatterSystem.#capacity(species.lodDistances, species.cellSize, species.layer),
+        species.authored
+          ? ScatterSystem.#authoredCapacity()
+          : ScatterSystem.#capacity(species.lodDistances, species.cellSize, species.layer),
       );
       this.#lods.push(lod);
       for (const mesh of lod.meshes) group.add(mesh);
@@ -434,14 +450,14 @@ export class ScatterSystem implements System {
   }
 
   /**
-   * Stämme (Kiefer, Laub) im Umkreis. Schreibt in vorbereitete Slots von
+   * Stämme (Kiefer, Laub, Kirsche) im Umkreis. Schreibt in vorbereitete Slots von
    * `out` und liefert, wie viele getroffen wurden. Gras und Busch fehlen
    * absichtlich: die fährt man um, und 30 000 Gräser als Zylinder wären
    * genau das Budget, das diese Abfrage vermeiden soll.
    */
   queryCanopy(x: number, z: number, radius: number, out: CanopyHit[]): number {
     const cap = out.length;
-    if (cap === 0 || this.#cache.size === 0) return 0;
+    if (cap === 0) return 0;
     const size = SCATTER.chunkSize;
     const half = WORLD.half;
     const cx0 = Math.floor((x + half) / size);
@@ -449,15 +465,34 @@ export class ScatterSystem implements System {
     const r2 = radius * radius;
     let n = 0;
 
+    n = this.#collectCanopy(this.#authored, x, z, r2, out, n, cap);
+    if (n >= cap) return n;
+
     for (let dz = -1; dz <= 1; dz++) {
       for (let dx = -1; dx <= 1; dx++) {
         const chunk = this.#cache.get((cz0 + dz) * CHUNKS_PER_AXIS + (cx0 + dx));
         if (!chunk) continue;
+        n = this.#collectCanopy(chunk.instances, x, z, r2, out, n, cap);
+        if (n >= cap) return n;
+      }
+    }
+    return n;
+  }
+
+  #collectCanopy(
+    buckets: readonly Float32Array[],
+    x: number,
+    z: number,
+    r2: number,
+    out: CanopyHit[],
+    n: number,
+    cap: number,
+  ): number {
         for (let s = 0; s < SPECIES.length; s++) {
           const species = SPECIES[s]!;
           if (species.layer !== 'canopy') continue;
-          const data = chunk.instances[s];
-          if (!data) continue;
+          const data = buckets[s];
+          if (!data || data.length === 0) continue;
           // **Der Radius des sichtbaren Stammes, nicht mehr.** Bis P19 stand
           // hier das Doppelte (0,32 / 0,40) mit der Begründung „sonst fährt man
           // durch die Rinde, weil die Karosserie abgerundete Ecken hat". Die
@@ -468,8 +503,8 @@ export class ScatterSystem implements System {
           //
           // Die Zahlen sind die Fußradien aus `vegetationMeshes.ts`: die Kiefer
           // ist unten 0,17 m stark, der Laubbaum 0,26 m.
-          const trunk = species.id === 'pine' ? 0.17 : 0.26;
-          const tall = species.id === 'pine' ? 5.5 : 7;
+          const trunk = species.id === 'pine' ? 0.17 : species.id === 'sakura' ? 0.31 : 0.26;
+          const tall = species.id === 'pine' ? 5.5 : species.id === 'sakura' ? SAKURA_HEIGHT : 7;
           for (let i = 0; i < data.length; i += INSTANCE_STRIDE) {
             const tx = data[i]!;
             const tz = data[i + 2]!;
@@ -490,8 +525,6 @@ export class ScatterSystem implements System {
             if (n >= cap) return n;
           }
         }
-      }
-    }
     return n;
   }
 
@@ -503,6 +536,49 @@ export class ScatterSystem implements System {
 
   get brokenTrees(): number {
     return this.#broken.size;
+  }
+
+  /**
+   * Gesetzte Instanzen an die LOD-Leiter hängen. `data` ist dieselbe Packung
+   * wie ein Streu-Chunk: x y z scaleXZ scaleY rotationY lean variante.
+   */
+  placeAuthored(id: string, data: ArrayLike<number>): void {
+    const index = SPECIES.findIndex((species) => species.id === id);
+    if (index < 0) throw new Error(`Keine Vegetationsart „${id}".`);
+    const previous = this.#authored[index] ?? new Float32Array(0);
+    const next = new Float32Array(previous.length + data.length);
+    next.set(previous);
+    next.set(data, previous.length);
+    this.#authored[index] = next;
+  }
+
+  /** Sichtbare Stufen einer Art — für die Messung, nicht fürs Overlay. */
+  speciesVisible(id: string): { near: number; mid: number; far: number; authored: number } {
+    const index = SPECIES.findIndex((species) => species.id === id);
+    const lod = index >= 0 ? this.#lods[index] : undefined;
+    const authored = index >= 0 ? (this.#authored[index]?.length ?? 0) / INSTANCE_STRIDE : 0;
+    return {
+      near: lod?.visibleOnStage(0) ?? 0,
+      mid: lod?.visibleOnStage(1) ?? 0,
+      far: lod?.visibleOnStage(2) ?? 0,
+      authored,
+    };
+  }
+
+  #acceptCherry(tree: AuthoredCherry): void {
+    const scale = tree.height / SAKURA_HEIGHT;
+    const rotation = tree.seed * 1.7;
+    const variant = Math.abs(Math.floor(tree.seed)) % 3;
+    this.placeAuthored('sakura', [
+      tree.x,
+      tree.y,
+      tree.z,
+      scale,
+      scale,
+      rotation,
+      0,
+      variant,
+    ]);
   }
 
   /**
@@ -579,6 +655,11 @@ export class ScatterSystem implements System {
    * Fall ist deshalb: innere Grenzen mit dem kleinsten Bias, äußere mit der
    * größten Reichweite.
    */
+  /** Puffer für gesetzte Kirschen — ein paar Dutzend, nicht ein Wald. */
+  static #authoredCapacity(): number[] {
+    return [96, 96, 128];
+  }
+
   static #capacity(
     distances: readonly [number, number, number],
     cellSize: number,
@@ -754,6 +835,7 @@ export class ScatterSystem implements System {
     this.#missesThisPass = 0;
     for (const lod of this.#lods) lod.beginPass();
     this.#decals?.beginPass();
+    this.#pushAuthored(camera);
   }
 
   #advancePass(camera: PerspectiveCamera): void {
@@ -851,6 +933,60 @@ export class ScatterSystem implements System {
    * sie kostet dort ein Kapitel: bei großen Argumenten ist der Sinus gegen
    * kleine Eingabeunterschiede nicht robust.
    */
+  /**
+   * Gesetzte Kirschen einsortieren. **Ohne Ausdünnung:** der Commons-Ring
+   * ist die Anzeige der Driftzone, und `(R/d)²` würde genau die fernen
+   * Kronen würfeln, die man von 200 m als Kreis lesen soll.
+   */
+  #pushAuthored(camera: PerspectiveCamera): void {
+    const cameraX = camera.position.x;
+    const cameraY = camera.position.y;
+    const cameraZ = camera.position.z;
+    const decals = this.#decals;
+    const aoFar = GROUND_AO.fade[1] * GROUND_AO.fade[1];
+
+    for (let s = 0; s < SPECIES.length; s++) {
+      const species = SPECIES[s]!;
+      if (!species.authored) continue;
+      const lod = this.#lods[s];
+      const data = this.#authored[s];
+      if (!lod || !data || data.length === 0) continue;
+      const d = this.#distances(species);
+      const near = d[0] * d[0];
+      const mid = d[1] * d[1];
+      const far = d[2] * d[2];
+      const ao = species.groundAo;
+      const aoRadius = this.#aoRadius[s] ?? 0;
+
+      for (let i = 0; i < data.length; i += INSTANCE_STRIDE) {
+        const x = data[i]!;
+        const y = data[i + 1]!;
+        const z = data[i + 2]!;
+        if (this.#broken.size > 0 && this.#broken.has(treeKey(x, z))) continue;
+        const dx = x - cameraX;
+        const dy = y - cameraY;
+        const dz = z - cameraZ;
+        const distance = dx * dx + dy * dy + dz * dz;
+        if (distance > far) continue;
+        if (decals && ao && distance < aoFar) {
+          decals.push(x, z, aoRadius * data[i + 3]!, ao.strength);
+        }
+        const stage = distance < near ? 0 : distance < mid ? 1 : 2;
+        lod.push(
+          stage,
+          data[i + 7]!,
+          x,
+          y,
+          z,
+          data[i + 3]!,
+          data[i + 4]!,
+          data[i + 5]!,
+          data[i + 6]!,
+        );
+      }
+    }
+  }
+
   static #instanceRoll(x: number, z: number): number {
     // Zentimeter-Raster: die Positionen sind Fließkomma, der Hash braucht
     // Ganzzahlen. 100 ist fein genug, dass zwei verschiedene Pflanzen nie
@@ -1041,7 +1177,9 @@ export class ScatterSystem implements System {
 
     let mask = 0;
     for (let s = 0; s < SPECIES.length; s++) {
-      const far = this.#far(SPECIES[s]!);
+      const species = SPECIES[s]!;
+      if (species.authored) continue;
+      const far = this.#far(species);
       if (distanceSq <= far * far) mask |= 1 << s;
     }
     return mask;
@@ -1112,6 +1250,8 @@ export class ScatterSystem implements System {
     this.#readouts.instanzen =
       `${total.toLocaleString('de-DE')}` + (dropped > 0 ? ` · ${dropped} VERWORFEN` : '');
     this.#readouts.stufen = `${perStage[0]} / ${perStage[1]} / ${perStage[2]}`;
+    const sakura = this.speciesVisible('sakura');
+    this.#readouts.kirschen = `${sakura.authored | 0} gesetzt · ${sakura.near} / ${sakura.mid} / ${sakura.far}`;
     this.#readouts.flecken = this.#decals
       ? `${this.#decals.visible}` +
         (this.#decals.dropped > 0 ? ` · ${this.#decals.dropped} VERWORFEN` : '')
@@ -1141,6 +1281,11 @@ export class ScatterSystem implements System {
     folder.addBinding(this.#readouts, 'stufen', {
       readonly: true,
       label: 'Nah / Mittel / Fern',
+      interval: 200,
+    });
+    folder.addBinding(this.#readouts, 'kirschen', {
+      readonly: true,
+      label: 'Kirschen Nah / Mittel / Fern',
       interval: 200,
     });
     folder.addBinding(this.#readouts, 'flecken', {
@@ -1228,6 +1373,7 @@ export class ScatterSystem implements System {
   }
 
   dispose(): void {
+    setAuthoredCherrySink(null);
     const scene = this.#context?.scene;
     if (this.#group) {
       scene?.remove(this.#group);

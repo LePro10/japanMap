@@ -131,7 +131,7 @@ export function scatterChunk(
   let maxY = -Infinity;
 
   SPECIES.forEach((species, index) => {
-    if ((mask & (1 << index)) === 0) {
+    if (species.authored || (mask & (1 << index)) === 0) {
       instances.push(EMPTY);
       return;
     }
