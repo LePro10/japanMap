@@ -151,8 +151,9 @@ export class ChaseCamera {
   }
 
   toggleMode(): ChaseMode {
-    // Sitz zuerst: C ist der Weg in die First Person, nicht aufs Blech.
-    this.mode = this.mode === 'chase' ? 'cockpit' : this.mode === 'cockpit' ? 'hood' : 'chase';
+    // C ist Sitz an/aus. Die Haube bleibt am Mausrad — sonst landet man
+    // auf dem Lack und hält das für First Person.
+    this.mode = this.mode === 'cockpit' ? 'chase' : 'cockpit';
     this.#initialized = false;
     return this.mode;
   }

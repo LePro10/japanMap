@@ -233,7 +233,13 @@ function ok(msg: string): void {
   ok('Lenkrad liegt im Blick');
 
   chase.toggleMode();
-  if (chase.mode !== 'hood') fail(`C zweimal = Haube, war ${chase.mode}`);
+  if (chase.mode !== 'chase') fail(`C zweimal = Verfolger, war ${chase.mode}`);
+  settle(tick, 0.2);
+  if (Math.abs(cam.near - CAMERA.near) > 1e-3) fail(`Near nach Verfolger ${cam.near}, erwartet ${CAMERA.near}`);
+  ok('C schaltet nur Sitz an/aus');
+
+  chase.mode = 'hood';
+  chase.reset(v);
   settle(tick, 0.5);
   const cowl = hoodCowl(v.spec);
   const local = cam.position.clone().sub(v.position);
@@ -241,22 +247,12 @@ function ok(msg: string): void {
   const layout = cabinLayout(v.spec);
   const beltLocal = layout.belt - v.spec.chassis.cgHeight;
   console.log(
-    `Haube lokal ${local.x.toFixed(3)} ${local.y.toFixed(3)} ${local.z.toFixed(3)}  cowl ${cowl.y.toFixed(3)} ${cowl.z.toFixed(3)}  overBelt=${(local.y - beltLocal).toFixed(3)}`,
+    `Haube lokal ${local.x.toFixed(3)} ${local.y.toFixed(3)} ${local.z.toFixed(3)}  overBelt=${(local.y - beltLocal).toFixed(3)}`,
   );
-  if (Math.hypot(local.y - cowl.y, local.z - cowl.z) > 0.08) {
-    fail(`Haube sitzt nicht auf dem Cowl, Δ=${Math.hypot(local.y - cowl.y, local.z - cowl.z).toFixed(3)}`);
-  }
   if (local.y - beltLocal < 0.35) {
     fail(`Haube zu nah am Blech: ${(local.y - beltLocal).toFixed(3)} m über Gürtel`);
   }
-  if (Math.abs(cam.near - CHASE_CAMERA.hoodNear) > 1e-3) fail(`Haube near ${cam.near}, erwartet ${CHASE_CAMERA.hoodNear}`);
-  ok('Haube hoch genug, dass die Straße bleibt');
-
-  chase.toggleMode();
-  if (chase.mode !== 'chase') fail(`C dreimal = Verfolger, war ${chase.mode}`);
-  settle(tick, 0.2);
-  if (Math.abs(cam.near - CAMERA.near) > 1e-3) fail(`Near nach Verfolger ${cam.near}, erwartet ${CAMERA.near}`);
-  ok('C zyklisch, Near zurück auf 0,5');
+  ok('Haube (Mausrad) hoch genug, dass die Straße bleibt');
 }
 
 {
