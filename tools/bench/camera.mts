@@ -6,13 +6,17 @@
  * Findet die vertauschte Mausachse (Verfolger/zu Fuß) und prüft, dass Gas den
  * Arm verlängert und Bremse ihn kürzt. Feel selbst bleibt eine Hand an der Maus.
  */
-import { PerspectiveCamera } from 'three';
+import { Mesh, MeshBasicMaterial, PerspectiveCamera, Raycaster, Vector3 } from 'three';
 
 import { ChaseCamera } from '@/game/ChaseCamera';
 import { WalkCamera } from '@/game/WalkCamera';
 import { Vehicle } from '@/game/Vehicle';
 import { Walker } from '@/game/Walker';
-import { CHASE_CAMERA } from '@/config/vehicle.config';
+import { CAMERA } from '@/config/world.config';
+import { cabinLayout, cockpitEye, hoodCowl } from '@/config/cabin.config';
+import { CHASE_CAMERA, COCKPIT_CAMERA } from '@/config/vehicle.config';
+import { VEHICLES, VEHICLE_ORDER } from '@/config/vehicles.config';
+import { createCarVisuals } from '@/game/carMesh';
 import { flatGround, input } from './flat.mjs';
 
 const DT = 1 / 60;
@@ -170,6 +174,125 @@ function ok(msg: string): void {
   chase.zoom(1.2);
   if (chase.mode !== 'chase') fail(`Zoom aus der Haube soll in den Verfolger, war ${chase.mode}`);
   ok('Nächste Rastung unter Minimum = Haube');
+  for (let i = 0; i < 12; i++) chase.zoom(0.5);
+  chase.zoom(0.5);
+  if (chase.mode !== 'hood') fail(`Zoom im Sitz-Pfad darf nicht ins Cockpit, war ${chase.mode}`);
+  ok('Mausrad erreicht den Sitz nicht');
+}
+
+{
+  const v = new Vehicle();
+  v.respawn(0, 0, 0, g);
+  const chase = new ChaseCamera();
+  const cam = new PerspectiveCamera(CHASE_CAMERA.fov, 1, CAMERA.near, 6000);
+  chase.reset(v);
+  chase.toggleMode();
+  if (chase.mode !== 'hood') fail(`C einmal = Haube, war ${chase.mode}`);
+  const tick = () => {
+    v.step(DT, input({}), g, null);
+    chase.update(DT, v, g, cam);
+  };
+  settle(tick, 0.4);
+  const cowl = hoodCowl(v.spec);
+  const local = cam.position.clone().sub(v.position);
+  const inv = v.quaternion.clone().invert();
+  local.applyQuaternion(inv);
+  console.log(
+    `Haube lokal ${local.x.toFixed(3)} ${local.y.toFixed(3)} ${local.z.toFixed(3)}  cowl ${cowl.y.toFixed(3)} ${cowl.z.toFixed(3)}  near=${cam.near}`,
+  );
+  if (Math.hypot(local.y - cowl.y, local.z - cowl.z) > 0.08) {
+    fail(`Haube sitzt nicht auf dem Cowl, Δ=${Math.hypot(local.y - cowl.y, local.z - cowl.z).toFixed(3)}`);
+  }
+  const layout = cabinLayout(v.spec);
+  if (local.z < layout.glassFront) fail(`Haube hinter der Scheibe (z=${local.z.toFixed(3)} < ${layout.glassFront.toFixed(3)})`);
+  if (Math.abs(cam.near - CHASE_CAMERA.hoodNear) > 1e-3) fail(`Haube near ${cam.near}, erwartet ${CHASE_CAMERA.hoodNear}`);
+  ok('Haube sitzt auf dem Blech, vor der Scheibe');
+
+  chase.toggleMode();
+  if (chase.mode !== 'cockpit') fail(`C zweimal = Sitz, war ${chase.mode}`);
+  settle(tick, 1.2);
+  const eye = cockpitEye(v.spec);
+  const eyeLocal = cam.position.clone().sub(v.position).applyQuaternion(inv);
+  console.log(
+    `Sitz lokal ${eyeLocal.x.toFixed(3)} ${eyeLocal.y.toFixed(3)} ${eyeLocal.z.toFixed(3)}  eye ${eye.y.toFixed(3)} ${eye.z.toFixed(3)}  near=${cam.near}`,
+  );
+  if (Math.abs(eyeLocal.y - eye.y) > 0.12) fail(`Auge Y ${eyeLocal.y.toFixed(3)} gegen ${eye.y.toFixed(3)}`);
+  const roofLocal = v.spec.body.roofHeight - v.spec.chassis.cgHeight;
+  if (eyeLocal.y > roofLocal - 0.05) fail(`Auge im Dach: ${eyeLocal.y.toFixed(3)} Dach ${roofLocal.toFixed(3)}`);
+  if (Math.abs(cam.near - COCKPIT_CAMERA.near) > 1e-3) fail(`Sitz near ${cam.near}`);
+  if (Math.abs(cam.fov - COCKPIT_CAMERA.fov) > 2) fail(`Sitz FOV ${cam.fov}, erwartet ~${COCKPIT_CAMERA.fov}`);
+  ok('Sitz unter dem Dach, eigenes FOV und Near');
+
+  const visuals = createCarVisuals(v.spec);
+  const cabinMesh = new Mesh(visuals.cabin, new MeshBasicMaterial());
+  const down = new Raycaster(new Vector3(eye.x, eye.y, eye.z), new Vector3(0, -1, 0), 0, 1.2);
+  const hits = down.intersectObject(cabinMesh);
+  console.log(`Cabin-Bodenstrahl Treffer=${hits.length} dist=${hits[0]?.distance.toFixed(3) ?? '—'}`);
+  if (hits.length === 0) fail('Strahl nach unten trifft keinen Kabinenboden');
+  ok('Kabinenboden schließt den Durchblick');
+  cabinMesh.geometry.dispose();
+  cabinMesh.material.dispose();
+  visuals.body.dispose();
+  visuals.glass.dispose();
+  visuals.helm.dispose();
+
+  chase.toggleMode();
+  if (chase.mode !== 'chase') fail(`C dreimal = Verfolger, war ${chase.mode}`);
+  settle(tick, 0.2);
+  if (Math.abs(cam.near - CAMERA.near) > 1e-3) fail(`Near nach Verfolger ${cam.near}, erwartet ${CAMERA.near}`);
+  ok('C zyklisch, Near zurück auf 0,5');
+}
+
+{
+  const v = new Vehicle();
+  v.respawn(0, 0, 0, g);
+  const slope = {
+    height: (_x: number, z: number) => z * 0.18,
+    normal: (_x: number, _z: number, out: Vector3) => out.set(0, 1, -0.18).normalize(),
+    surface: () => 'asphalt' as const,
+  };
+  // Echter Hang: height = 0,18·z ≈ 10°. Nach dem Einschwingen muss die Haube
+  // der Quaternion folgen, nicht der Welt-Y.
+  v.respawn(0, 0, 0, slope as never);
+  const chase = new ChaseCamera();
+  chase.mode = 'hood';
+  const cam = new PerspectiveCamera(CHASE_CAMERA.fov, 1, CAMERA.near, 6000);
+  chase.reset(v);
+  for (let i = 0; i < 90; i++) {
+    v.step(DT, input({}), slope as never, null);
+    chase.update(DT, v, slope as never, cam);
+  }
+  const cowl = hoodCowl(v.spec);
+  const local = cam.position.clone().sub(v.position);
+  local.applyQuaternion(v.quaternion.clone().invert());
+  console.log(
+    `Hang-Haube lokal y=${local.y.toFixed(3)} z=${local.z.toFixed(3)}  cowl y=${cowl.y.toFixed(3)}  pitch=${(v.pitch * 180 / Math.PI).toFixed(1)}°`,
+  );
+  if (Math.abs(local.y - cowl.y) > 0.12) {
+    fail(`Haube folgt der Quaternion nicht: lokal y=${local.y.toFixed(3)} cowl=${cowl.y.toFixed(3)}`);
+  }
+  ok('Haube parented: Hang verschiebt das Auge nicht durchs Blech');
+}
+
+{
+  for (const id of VEHICLE_ORDER) {
+    const spec = VEHICLES[id];
+    const eye = cockpitEye(spec);
+    const cowl = hoodCowl(spec);
+    const layout = cabinLayout(spec);
+    const roofLocal = spec.body.roofHeight - spec.chassis.cgHeight;
+    if (eye.y > roofLocal - 0.05) fail(`${id}: Auge im Dach (${eye.y.toFixed(3)} / ${roofLocal.toFixed(3)})`);
+    if (!layout.open && cowl.z <= layout.glassFront) {
+      fail(`${id}: Cowl hinter der Scheibe (${cowl.z.toFixed(3)} / ${layout.glassFront.toFixed(3)})`);
+    }
+    const visuals = createCarVisuals(spec);
+    if (visuals.cabin.getAttribute('position').count < 24) fail(`${id}: Cabin leer`);
+    visuals.body.dispose();
+    visuals.glass.dispose();
+    visuals.cabin.dispose();
+    visuals.helm.dispose();
+  }
+  ok('Zehn Autos: Auge unter Dach, Cowl vor der Scheibe, Cabin da');
 }
 
 console.log('Kamera-Prüfstand: alle Proben grün');

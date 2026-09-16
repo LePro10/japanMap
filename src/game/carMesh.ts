@@ -1,9 +1,10 @@
 import { BoxGeometry, BufferGeometry, Color, CylinderGeometry, Float32BufferAttribute, TorusGeometry } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { cabinLayout, cockpitEye, type CabinLayout } from '@/config/cabin.config';
 import { TOUGE, type VehicleSpec } from '@/config/vehicles.config';
 
 // Originale WP3-Codekarosserien. Ein Vertexfarben-Mesh plus vier instanzierte Räder.
-const SHARED_COLORS = { tire:0x191b1e, lamp:0xf7ebc7, lampRear:0xc14c43 };
+const SHARED_COLORS = { tire:0x191b1e, lamp:0xf7ebc7, lampRear:0xc14c43, seat:0x1a2228, dash:0x14181c, cluster:0x9aa7b0 };
 const color = new Color();
 function paint(g:BufferGeometry, hex:number):BufferGeometry {
  color.setHex(hex,'srgb'); const n=g.getAttribute('position').count;
@@ -35,18 +36,18 @@ function loft(sections:readonly Section[],hex:number):BufferGeometry {
  g.setAttribute('uv',new Float32BufferAttribute(new Float32Array(pos.length/3*2),2));
  g.computeVertexNormals();return paint(g,hex);
 }
-function cabin(out:BufferGeometry[],s:VehicleSpec,rear:number,front:number,roofRear:number,roofFront:number,belt:number):void {
- const c=s.body,w=c.hullWidth*.47,h=c.roofHeight;
- out.push(loft([[rear,w,belt,belt+.09,w*.94],[roofRear,w*.88,belt,h-.065,w*.83],
-  [roofFront,w*.86,belt,h-.065,w*.80],[front,w,belt,belt+.07,w*.94]],c.glass));
- out.push(loft([[roofRear,w*.88,h-.07,h,w*.82],[roofFront,w*.86,h-.07,h,w*.79]],c.paint));
- // Schmale Säulen lassen die Fensterfläche lesbar.
- pair(out,.045,h-belt,.055,w*.87,(h+belt)/2,(roofRear+roofFront)/2,c.paint);
+function cabinShell(body:BufferGeometry[],glass:BufferGeometry[],s:VehicleSpec,layout:CabinLayout):void {
+ const c=s.body,w=c.hullWidth*.47,h=c.roofHeight,belt=layout.belt;
+ glass.push(loft([[layout.glassRear,w,belt,belt+.09,w*.94],[layout.roofRear,w*.88,belt,h-.065,w*.83],
+  [layout.roofFront,w*.86,belt,h-.065,w*.80],[layout.glassFront,w,belt,belt+.07,w*.94]],c.glass));
+ body.push(loft([[layout.roofRear,w*.88,h-.07,h,w*.82],[layout.roofFront,w*.86,h-.07,h,w*.79]],c.paint));
+ pair(body,.045,h-belt,.055,w*.87,(h+belt)/2,(layout.roofRear+layout.roofFront)/2,c.paint);
 }
-function closedBody(s:VehicleSpec):BufferGeometry[] {
+function closedBody(s:VehicleSpec):{body:BufferGeometry[];glass:BufferGeometry[]} {
  const c=s.body,ch=s.chassis,L=c.hullLength/2,w=c.hullWidth/2;
+ const layout=cabinLayout(s);
  const utility=c.shape==='suv', pickup=c.shape==='truck';
- const belt=utility?1.16:pickup?.96:c.shape==='hatch'?.86:c.shape==='rally'?.88:c.shape==='supercar'?.65:.78;
+ const belt=layout.belt;
  const axles=[-s.derived.cgToRear,s.derived.cgToFront];
  const zs=pickup?[-L,-L+.16,.24,.25,L-.16,L]:[-L,-L+.16,L-.16,L];
  for(const axle of axles) for(let i=0;i<=8;i++) zs.push(axle+(i/4-1)*(ch.wheelRadius+.07));
@@ -60,52 +61,45 @@ function closedBody(s:VehicleSpec):BufferGeometry[] {
   const width=w*(c.shape==='hatch' ? 1-.16*Math.pow(end,6) : c.shape==='supercar' ? 1-.18*Math.pow(Math.max(0,z/L),3) : end>.9?.91:1);
   return [z,width,bottom,top,width*.89];
  });
- const out=[loft(sections,c.paint)];
- // Sichtbarer schmaler Unterboden; die Radausschnitte bleiben offen.
- out.push(part(c.hullWidth*.63,.07,c.hullLength-.24,0,s.collision.band[0],0,c.trim));
+ const body:BufferGeometry[]=[loft(sections,c.paint)];
+ const glass:BufferGeometry[]=[];
+ body.push(part(c.hullWidth*.63,.07,c.hullLength-.24,0,s.collision.band[0],0,c.trim));
  if(pickup){
-  cabin(out,s,.25,L-.12,.47,L-.40,belt);
-  out.push(part(c.hullWidth-.10,.09,L+.18,0,.70,-L/2+.05,c.paintDark));
-  pair(out,.075,.38,L+.1,w-.05,.81,-L/2+.04,c.paint);
-  out.push(part(c.hullWidth,.38,.075,0,.81,-L+.04,c.paint));
+  cabinShell(body,glass,s,layout);
+  body.push(part(c.hullWidth-.10,.09,L+.18,0,.70,-L/2+.05,c.paintDark));
+  pair(body,.075,.38,L+.1,w-.05,.81,-L/2+.04,c.paint);
+  body.push(part(c.hullWidth,.38,.075,0,.81,-L+.04,c.paint));
  } else if(utility){
-  cabin(out,s,-L+.13,.80,-L+.29,.48,belt);
-  pair(out,.055,.055,2.1,w*.75,c.roofHeight+.07,-.44,c.trim);
-  out.push(part(.72,.53,.09,0,1.13,-L-.015,c.paintDark));
-  out.push(part(c.hullWidth*.83,.09,.16,0,.50,L,c.rim));
- } else if(c.shape==='hatch') cabin(out,s,-L+.12,.81,-L+.29,.36,belt);
- else if(c.shape==='rally'){
-  cabin(out,s,-L+.16,1.02,-L+.47,.36,belt);
-  out.push(part(c.hullWidth*.86,.075,.23,0,c.roofHeight-.08,-L+.18,c.paintDark));
- } else if(c.shape==='liftback') cabin(out,s,-L+.20,.94,-.92,.24,belt);
- else if(c.shape==='fastback') {
+  cabinShell(body,glass,s,layout);
+  pair(body,.055,.055,2.1,w*.75,c.roofHeight+.07,-.44,c.trim);
+  body.push(part(.72,.53,.09,0,1.13,-L-.015,c.paintDark));
+  body.push(part(c.hullWidth*.83,.09,.16,0,.50,L,c.rim));
+ } else if(c.shape==='hatch'||c.shape==='rally'||c.shape==='liftback'||c.shape==='muscle'||c.shape==='supercar'||c.shape==='coupe'){
+  cabinShell(body,glass,s,layout);
+  if(c.shape==='rally') body.push(part(c.hullWidth*.86,.075,.23,0,c.roofHeight-.08,-L+.18,c.paintDark));
+  if(c.shape==='muscle') body.push(loft([[.59,.24,belt,belt+.10,.22],[1.38,.29,belt,belt+.12,.25],[1.61,.25,belt,belt+.03,.23]],c.paintDark));
+  if(c.shape==='supercar'){
+   for(const side of [-1,1])body.push(loft([[-L+.24,.12,.70,.80,.10],[-.62,.10,.72,1.02,.07]],c.paint).translate(side*w*.66,0,0));
+   pair(body,.055,.20,.55,w+.005,.55,-.58,c.paintDark);
+   body.push(part(.9,.09,.035,0,.66,-L-.01,c.trim));
+  }
+ } else if(c.shape==='fastback') {
   const h=c.roofHeight;
-  out.push(loft([[-L+.24,w*.83,belt,belt+.03,w*.78],[-1.24,w*.78,belt,h-.19,w*.71],
+  glass.push(loft([[-L+.24,w*.83,belt,belt+.03,w*.78],[-1.24,w*.78,belt,h-.19,w*.71],
    [-.58,w*.77,belt,h-.03,w*.70],[.12,w*.77,belt,h-.02,w*.70],[.65,w*.78,belt,h-.17,w*.71],
    [1.24,w*.83,belt,belt+.04,w*.78]],c.glass));
-  out.push(loft([[-1.24,w*.70,h-.22,h-.16,w*.66],[-.58,w*.70,h-.05,h+.01,w*.66],
+  body.push(loft([[-1.24,w*.70,h-.22,h-.16,w*.66],[-.58,w*.70,h-.05,h+.01,w*.66],
    [.12,w*.70,h-.04,h+.02,w*.66],[.65,w*.71,h-.19,h-.13,w*.67]],c.paint));
  }
- else if(c.shape==='muscle'){
-  cabin(out,s,-1.64,.53,-1.03,-.08,belt);
-  out.push(loft([[.59,.24,belt,belt+.10,.22],[1.38,.29,belt,belt+.12,.25],[1.61,.25,belt,belt+.03,.23]],c.paintDark));
- } else if(c.shape==='supercar'){
-  cabin(out,s,-.86,1.03,-.45,.26,belt);
-  // Offene Heckstreben und seitliche Lufteinlässe.
-  for(const side of [-1,1])out.push(loft([[-L+.24,.12,.70,.80,.10],[-.62,.10,.72,1.02,.07]],c.paint).translate(side*w*.66,0,0));
-  pair(out,.055,.20,.55,w+.005,.55,-.58,c.paintDark);
-  out.push(part(.9,.09,.035,0,.66,-L-.01,c.trim));
- } else cabin(out,s,-1.30,.94,-.86,.30,belt);
- // Jede Identität bekommt ihre eigene Leuchtensignatur.
- if(c.shape==='hatch')pair(out,.12,.42,.045,w*.83,1.01,-L,c.paintDark);
+ if(c.shape==='hatch')pair(body,.12,.42,.045,w*.83,1.01,-L,c.paintDark);
  else if(c.shape==='muscle'||c.shape==='liftback')for(const side of [-1,1])for(let i=0;i<3;i++)
-  out.push(part(.16,.105,.04,side*(.28+i*.19),belt-.07,-L,SHARED_COLORS.lampRear));
- else pair(out,c.shape==='fastback'?.22:.36,.095,.05,w*.60,belt-.06,-L,SHARED_COLORS.lampRear);
- if(c.shape==='hatch')pair(out,.09,.34,.05,w*.83,1.01,-L-.026,SHARED_COLORS.lampRear);
- pair(out,c.shape==='truck'?.22:.33,c.shape==='truck'?.18:.105,.055,w*.60,belt-.10,L,SHARED_COLORS.lamp);
- if(c.shape==='coupe')out.push(part(.14,.07,.06,-w*.25,belt-.1,L+.01,SHARED_COLORS.lamp));
- pair(out,.11,.075,.17,w+.025,belt+.17,pickup?L-.50:.64,c.paintDark);
- return out;
+  body.push(part(.16,.105,.04,side*(.28+i*.19),belt-.07,-L,SHARED_COLORS.lampRear));
+ else pair(body,c.shape==='fastback'?.22:.36,.095,.05,w*.60,belt-.06,-L,SHARED_COLORS.lampRear);
+ if(c.shape==='hatch')pair(body,.09,.34,.05,w*.83,1.01,-L-.026,SHARED_COLORS.lampRear);
+ pair(body,c.shape==='truck'?.22:.33,c.shape==='truck'?.18:.105,.055,w*.60,belt-.10,L,SHARED_COLORS.lamp);
+ if(c.shape==='coupe')body.push(part(.14,.07,.06,-w*.25,belt-.1,L+.01,SHARED_COLORS.lamp));
+ pair(body,.11,.075,.17,w+.025,belt+.17,pickup?L-.50:.64,c.paintDark);
+ return {body,glass};
 }
 function openWheel(s:VehicleSpec):BufferGeometry[] {
  const c=s.body,L=c.hullLength/2,half=s.chassis.track/2,pod=half*.68;
@@ -127,13 +121,116 @@ function openWheel(s:VehicleSpec):BufferGeometry[] {
  out.push(part(.10,.08,.04,0,.53,-L+.04,SHARED_COLORS.lampRear));
  return out;
 }
+
+function mergeNamed(parts:BufferGeometry[],name:string,cg:number):BufferGeometry {
+ const merged=mergeGeometries(parts,false);for(const p of parts)p.dispose();
+ if(!merged)throw new Error(`Car geometry: ${name}`);
+ merged.translate(0,-cg,0);merged.computeBoundingSphere();merged.name=name;return merged;
+}
+function dummyGeom(name:string):BufferGeometry {
+ const g=paint(new BoxGeometry(.01,.01,.01),0x000000);g.name=`Dummy:${name}`;return g;
+}
+
 export function createCarBody(s:VehicleSpec=TOUGE):BufferGeometry {
  if((s.chassis.track+s.chassis.wheelWidth-s.body.hullWidth)/2<.05)throw new Error(`Hidden wheels: ${s.id}`);
- const parts=s.body.shape==='openwheel'?openWheel(s):closedBody(s);
- const merged=mergeGeometries(parts,false);for(const p of parts)p.dispose();
- if(!merged)throw new Error(`Car geometry: ${s.id}`);
- merged.translate(0,-s.chassis.cgHeight,0);merged.computeBoundingSphere();merged.name=`Car:${s.id}`;return merged;
+ if(s.body.shape==='openwheel') return mergeNamed(openWheel(s),`Car:${s.id}`,s.chassis.cgHeight);
+ const {body,glass}=closedBody(s);
+ return mergeNamed([...body,...glass],`Car:${s.id}`,s.chassis.cgHeight);
 }
+
+/**
+ * Fahrermesh in Schichten. Rivals und Garage bleiben bei `createCarBody`.
+ * Im Cockpit: Karosserie+Glas aus, Käfig+Lenkrad an — sonst sieht man durch den Boden.
+ */
+export interface CarVisuals {
+ readonly body: BufferGeometry;
+ readonly glass: BufferGeometry;
+ readonly cabin: BufferGeometry;
+ readonly helm: BufferGeometry;
+}
+
+export function createCarVisuals(s:VehicleSpec=TOUGE):CarVisuals {
+ if((s.chassis.track+s.chassis.wheelWidth-s.body.hullWidth)/2<.05)throw new Error(`Hidden wheels: ${s.id}`);
+ const cg=s.chassis.cgHeight;
+ if(s.body.shape==='openwheel'){
+  return {
+   body: mergeNamed(openWheel(s),`Car:${s.id}`,cg),
+   glass: dummyGeom(`Glass:${s.id}`),
+   cabin: mergeNamed(cabinKit(s),`Cabin:${s.id}`,cg),
+   helm: mergeNamed(helmKit(s),`Helm:${s.id}`,0),
+  };
+ }
+ const {body,glass}=closedBody(s);
+ return {
+  body: mergeNamed(body,`Car:${s.id}`,cg),
+  glass: glass.length?mergeNamed(glass,`Glass:${s.id}`,cg):dummyGeom(`Glass:${s.id}`),
+  cabin: mergeNamed(cabinKit(s),`Cabin:${s.id}`,cg),
+  helm: mergeNamed(helmKit(s),`Helm:${s.id}`,0),
+ };
+}
+
+function cabinKit(s:VehicleSpec):BufferGeometry[] {
+ const layout=cabinLayout(s);
+ const c=s.body;
+ const w=c.hullWidth, half=w*.46;
+ const belt=layout.belt, floorY=s.collision.band[0]+.03;
+ const rear=layout.glassRear, front=layout.glassFront;
+ const depth=Math.max(.9, front-rear);
+ const midZ=(front+rear)/2;
+ const out:BufferGeometry[]=[];
+ // Boden — FrontSide nach oben. Ohne ihn ist die Straße der Kabinenboden.
+ out.push(part(w*.78,.05,depth-.08,0,floorY+.025,midZ,SHARED_COLORS.seat));
+ if(layout.open){
+  out.push(part(.42,.12,.55,0,floorY+.16,-.18,c.paintDark));
+  pair(out,.05,.22,.7,half*.22,floorY+.28,-.1,c.trim);
+  return out;
+ }
+ // Armatur vor dem Blick, unter dem Gürtel.
+ const dashZ=front-.22;
+ out.push(part(w*.74,.16,.22,0,belt-.18,dashZ,SHARED_COLORS.dash));
+ out.push(part(w*.42,.07,.08,0,belt-.08,dashZ+.04,SHARED_COLORS.cluster));
+ if(s.id==='touge'||s.id==='meridian'||s.id==='needle'){
+  pair(out,.09,.045,.03,.12,belt-.05,dashZ+.07,0xd8e2ea);
+ }
+ // Hauben-Innenseite: die Fläche, die man durch das Scheibenloch sieht.
+ const hoodLen=Math.min(1.35, c.hullLength/2-front+.05);
+ if(hoodLen>.2){
+  out.push(part(w*.72,.04,hoodLen,0,belt-.02,front+hoodLen/2,c.paint));
+ }
+ // A-Säulen und Scheibenrahmen — 80 % von „ich sitze drin".
+ const pillarH=c.roofHeight-belt-.04;
+ pair(out,.05,pillarH,.06,half*.9,belt+pillarH/2,(layout.roofFront+front)/2,c.paint);
+ out.push(part(w*.7,.04,.05,0,c.roofHeight-.04,(layout.roofFront+front)/2,c.paint));
+ // Türkarten + Heckwand, damit ein Mausschwenk nicht ins Leere fällt.
+ pair(out,.05,belt-floorY-.08,.9,half*.82,(belt+floorY)/2,midZ,c.paintDark);
+ out.push(part(w*.76,.7,.05,0,(belt+floorY)/2,rear+.08,c.paintDark));
+ // Sitze als Schulter/Lehne am Bildrand, nicht begehbar.
+ const eye=cockpitEye(s);
+ const seatZ=eye.z-.18;
+ out.push(part(.38,.08,.38,-.18,floorY+.12,seatZ,SHARED_COLORS.seat));
+ out.push(part(.38,.42,.08,-.18,floorY+.34,seatZ-.16,SHARED_COLORS.seat));
+ out.push(part(.38,.08,.38,.22,floorY+.12,seatZ,SHARED_COLORS.seat));
+ out.push(part(.38,.42,.08,.22,floorY+.34,seatZ-.16,SHARED_COLORS.seat));
+ return out;
+}
+
+function helmKit(s:VehicleSpec):BufferGeometry[] {
+ // Ursprung = Nabe. DriveSystem setzt die Pose auf `helmHub`, sonst
+ // dreht rotateZ das Rad um den Schwerpunkt statt um die Nabe.
+ const rim=s.body.rim, trim=s.body.trim;
+ const ring=paint(new TorusGeometry(.155,.016,6,16),trim);
+ const out:BufferGeometry[]=[ring];
+ const cap=paint(new CylinderGeometry(.035,.035,.02,8),rim);
+ cap.rotateX(Math.PI/2);out.push(cap);
+ const spokes=s.id==='needle'||s.id==='gt'?3:s.id==='meridian'?4:3;
+ for(let i=0;i<spokes;i++){
+  const a=i*Math.PI*2/spokes+Math.PI/2;
+  const spoke=part(.018,.018,.13,0,0,.07,rim);
+  spoke.rotateZ(a);out.push(spoke);
+ }
+ return out;
+}
+
 export function createCarWheel(spec:VehicleSpec=TOUGE):BufferGeometry {
  const {wheelRadius:r,wheelWidth:w}=spec.chassis;
  const segments=20;

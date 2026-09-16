@@ -75,6 +75,7 @@ export interface TouchDriveTarget {
   setHandbrake(down: boolean): void;
   setJump(down: boolean): void;
   setBoost?(down: boolean): void;
+  toggleView?(): void;
 }
 
 export interface TouchControlsOptions {
@@ -135,6 +136,7 @@ export class TouchControls {
         <button type="button" class="touch__btn" data-touch="boost" aria-label="Boost" hidden>Boost</button>
         <button type="button" class="touch__btn" data-touch="brake" aria-label="Brake" hidden>Brake</button>
         <button type="button" class="touch__btn" data-touch="handbrake" aria-label="Drift">Drift</button>
+        <button type="button" class="touch__btn" data-touch="view" aria-label="Camera" hidden>Cam</button>
         <button type="button" class="touch__btn" data-touch="jump" aria-label="Jump" hidden>↑</button>
       </div>
       <div class="touch__side">
@@ -283,6 +285,9 @@ export class TouchControls {
       });
       halten(this.#must('[data-touch="boost"]'), 0, down => this.#drive?.setBoost?.(down));
       halten(this.#must('[data-touch="brake"]'), 0, down => { this.#braking = down; });
+      this.#must('[data-touch="view"]').addEventListener('click', () => {
+        this.#drive?.toggleView?.();
+      });
     } else {
       auto.hidden = true;
     }
@@ -311,6 +316,7 @@ export class TouchControls {
     this.#must('[data-touch="down"]').hidden = active || onFoot;
     this.#must('[data-touch="collision"]').hidden = active || onFoot;
     this.#must('[data-touch="handbrake"]').hidden = !active;
+    this.#must('[data-touch="view"]').hidden = !active || !this.#drive?.toggleView;
     this.#must('[data-touch="boost"]').hidden = !active || !this.#drive?.setBoost;
     this.#must('[data-touch="brake"]').hidden = !active;
     this.#must('[data-touch="jump"]').hidden = !onFoot;

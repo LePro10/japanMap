@@ -1084,14 +1084,20 @@ export const CHASE_CAMERA = {
    */
   recenterRate: 0.8,
 
-  /** Höhe der Haubenkamera über dem Schwerpunkt und ihr Versatz nach vorn. */
+  /**
+   * Fallback, falls ein Aufrufer noch die alten Welt-Offsets liest.
+   * Die lebende Haube sitzt auf `hoodCowl(spec)` und am Quaternion.
+   */
   hoodHeight: 0.62,
   hoodForward: 0.15,
+  /** Eigenes Blickfeld auf der Haube — der Chase-Zug 62→82 macht aus dem Blech eine Wand. */
+  hoodFov: 65,
+  hoodFovBoost: 3,
+  hoodNear: 0.25,
   /**
-   * Anteil des Aufbau-Nickens an der Haube. Der Kommentar versprach ein
-   * Drittel — gemessen war das zusammen mit dem Karosserie-Nicken ein
-   * doppelter Nick, und die erste Feel-Runde war damit unspielbar. 0,12
-   * lässt die Nase atmen, ohne die Fahrbahn zu kippen.
+   * Anteil des Aufbau-Nickens an der Haube, solange sie *nicht* am Quaternion
+   * hängt. Die parented Haube nimmt die Lage aus dem Aufbau; dieser Wert bleibt
+   * für den Fall, dass jemand den alten Welt-Y-Pfad noch misst.
    */
   hoodPitchBlend: 0.12,
 
@@ -1171,6 +1177,45 @@ export const CHASE_CAMERA = {
   occludeRateIn: 6,
   occludeRateOut: 2.4,
   occludeMin: 0.72,
+} as const;
+
+/**
+ * Sitzkamera. Nicht die Haube: das Auge sitzt hinter der Scheibe, die
+ * Karosserie ist aus, der Käfig an. Zahlen aus dem Forza/iRacing-Kochbuch,
+ * auf dieses Arcade-Modell und 16:9 gekürzt.
+ *
+ * FOV 54° vertikal — weiter wird die Armatur zur Wand, enger das Dach zum
+ * Tunnel. Nitro darf das Blickfeld um 2° aufreißen, nicht um 9° wie der
+ * Verfolger; im Cockpit ist Zoom eine Lüge über die Entfernung.
+ */
+export const COCKPIT_CAMERA = {
+  fov: 54,
+  fovBoost: 2,
+  near: 0.12,
+  lookAtDist: 18,
+  /** Nacken-Feder, Hz und Dämpfung. Über ~2,5 Hz frisst sie den Belag; unter ~0,7 Hz wird einem übel. */
+  neckHz: 1.6,
+  neckZeta: 0.85,
+  /** Anteil der Karosserielage an Blick-Roll/Nick. Rest ist Horizon. */
+  chassisRoll: 0.8,
+  chassisPitch: 0.8,
+  /** Extra-Gieren bei vollem Lock, Radiant. Maus gewinnt immer. */
+  steerYaw: 0.12,
+  /** Blickanteil entlang der Fahrtrichtung; im Drift höher. */
+  velLook: 0.2,
+  driftVelLook: 0.65,
+  driftSlip: 0.18,
+  /** Extra-Roll je Quer-g, plus Deckel. */
+  gRollPerG: 0.05,
+  gPitchPerG: 0.03,
+  maxExtraRoll: 0.105,
+  maxExtraPitch: 0.087,
+  /** Kopfweg je g, Meter, plus Klemme. */
+  headPerG: 0.035,
+  headMax: 0.07,
+  landImpulse: 0.03,
+  /** Recenter der Maus im Sitz — langsamer als der Verfolger, sonst kann man die Kurve nicht ansehen. */
+  recenterRate: 0.18,
 } as const;
 
 /**
