@@ -1503,17 +1503,16 @@ body {
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
 }
 
-/* Die Driftwertung. Rechts über dem Tacho — sie gehört zum Fahren und nicht
- * zur Rennleitung, und der Blick ist beim Driften ohnehin rechts unten. */
+/* Die Driftwertung. Typografie hier, Lage in driveInstruments.css — sie sitzt
+ * am Rundinstrument, nicht viewport-absolut. Der alte `bottom: 150px` traf den
+ * Zahlen-Tacho; der Bogen ist 180 px hoch und überdeckte die Zahl. */
 .hud__drift {
-  position: absolute;
-  right: max(14px, env(safe-area-inset-right));
-  bottom: max(150px, calc(env(safe-area-inset-bottom) + 72px));
   display: flex;
   align-items: baseline;
   gap: 8px;
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
 }
 
@@ -1536,6 +1535,10 @@ body {
 .hud__driftBanked {
   font-size: 12px;
   color: var(--fg-dim);
+}
+
+.hud__driftBanked:empty {
+  display: none;
 }
 
 /* Ab Multiplikator 2,5 wird die Zahl warm. Das ist die einzige Farbänderung im

@@ -114,11 +114,6 @@ export class DriveHud {
         <p class="hud__raceRow"><span class="hud__label">Next</span><span data-hud="raceNext">—</span></p>
       </div>
       <div class="hud__money" data-hud="money">¥0</div>
-      <div class="hud__drift" data-hud="drift" hidden>
-        <span class="hud__driftPoints" data-hud="driftPoints">0</span>
-        <span class="hud__driftMult" data-hud="driftMult">x1.0</span>
-        <span class="hud__driftBanked" data-hud="driftBanked">0</span>
-      </div>
       <div class="hud__speedo"><span class="hud__gearLabel" data-hud="gear">N</span><svg class="hud__rpm" viewBox="0 0 220 130" aria-label="Engine RPM"><path d="M20 110 A90 90 0 0 1 200 110" pathLength="100" class="hud__rpmTrack"/><path d="M20 110 A90 90 0 0 1 200 110" pathLength="100" class="hud__rpmFill" data-hud="rpmFill"/><path d="M181 55 A90 90 0 0 1 200 110" class="hud__redline"/></svg><span class="hud__rpmText" data-hud="rpm">850 RPM</span>
         <div class="hud__boost" data-hud="boostBox" aria-label="Nitro"><span class="hud__nitroLabel">NITRO</span><i class="hud__boostFill" data-hud="boostFill"></i></div>
         <div class="hud__speedRow">
@@ -126,6 +121,11 @@ export class DriveHud {
           <span class="hud__unit">km/h</span>
         </div>
         <p class="hud__prep" data-hud="prep" hidden>Prepared surface · extra cornering grip</p>
+        <div class="hud__drift" data-hud="drift" hidden>
+          <span class="hud__driftPoints" data-hud="driftPoints">0</span>
+          <span class="hud__driftMult" data-hud="driftMult">x1.0</span>
+          <span class="hud__driftBanked" data-hud="driftBanked"></span>
+        </div>
       </div>
       <div class="hud__wp" data-hud="wp" hidden>
         <span class="hud__wpName" data-hud="wpName">Waypoint</span>
@@ -376,6 +376,12 @@ export class DriveHud {
 
   /**
    * Die Driftwertung — sie erscheint nur, während eine Kette läuft.
+   *
+   * Sie sitzt **im Tacho**, nicht als Geschwister daneben. Der Rundbogen ist
+   * höher als der alte Zahlen-Tacho, und das Speedo kommt im DOM nach der
+   * Wertung: eine viewport-absolute Zahl landete hinter dem Bogen (gemessen:
+   * Multiplikator in Amber auf dem Amber-Strich). Am Instrument wandert sie
+   * mit, auch wenn der Tacho auf dem Telefon nach oben rutscht.
    *
    * **Erscheinen und Verschwinden über `hidden` und nicht über Deckkraft.** Ein
    * Element mit `opacity: 0` liegt weiter im Layout und wird weiter beschriftet;
