@@ -116,6 +116,10 @@ export function regionById(id: MapRegionId): MapRegion {
   return region;
 }
 
+export function isMapRegionId(value: string): value is MapRegionId {
+  return BY_ID.has(value as MapRegionId);
+}
+
 /**
  * Erste zutreffende Regel aus ASTRA_PLAN §3. Commons ist ein Kreis um S,
  * nicht das Driftzonen-Radius — die Entdeckung gilt für den ganzen Hof.

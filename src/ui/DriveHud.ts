@@ -9,7 +9,9 @@ import type { VehicleTelemetry } from '@/game/Vehicle';
 import type { RoadFile } from '@/config/roads.config';
 import { formatEta, formatWaypointDistance } from '@/game/waypointScreen';
 import { MiniMap, type MiniMapMark } from './MiniMap';
-import { SPARK_ICON } from './sparkIcon';
+import { SPARK_ICON, sparkMark } from './sparkIcon';
+import { EXPLORE_TOAST_MS } from '@/config/explore.config';
+import { exploreToastText, type ExploreGrant } from '@/game/regionExplore';
 
 /**
  * Die Anzeige im Fahrmodus — P16, in P23 auf das Spiel erweitert.
@@ -92,6 +94,9 @@ export class DriveHud {
   readonly #pinName: HTMLElement;
   readonly #pinDist: HTMLElement;
   readonly #pinArrow: HTMLElement;
+  readonly #explore: HTMLElement;
+  readonly #exploreTitle: HTMLElement;
+  readonly #exploreBody: HTMLElement;
   #lastWpLabel: string | null = null;
   #lastWpRemaining = Infinity;
   #arrowDeg = 999;
@@ -103,6 +108,7 @@ export class DriveHud {
   readonly #written = new Map<HTMLElement, string>();
 
   #flashTimer: number | null = null;
+  #exploreTimer: number | null = null;
   #boostPulseTimer: number | null = null;
   #moneyRaf = 0;
   #shownYen = 0;
@@ -163,7 +169,11 @@ export class DriveHud {
       </p>
       <div class="hud__countdown" data-hud="countdown" hidden>3</div>
       <div class="hud__result" data-hud="result" hidden></div>
-      <div class="hud__flash" data-hud="flash" hidden></div>`;
+      <div class="hud__flash" data-hud="flash" hidden></div>
+      <div class="hud__explore" data-hud="explore" hidden>
+        <strong class="hud__exploreTitle" data-hud="exploreTitle"></strong>
+        <span class="hud__exploreBody" data-hud="exploreBody"></span>
+      </div>`;
     container.appendChild(this.#root);
 
     this.#rpmFill = this.#root.querySelector<SVGElement>('[data-hud="rpmFill"]')!;
@@ -177,6 +187,9 @@ export class DriveHud {
     this.#best = this.#must('[data-hud="best"]');
     this.#gate = this.#must('[data-hud="gate"]');
     this.#flash = this.#must('[data-hud="flash"]');
+    this.#explore = this.#must('[data-hud="explore"]');
+    this.#exploreTitle = this.#must('[data-hud="exploreTitle"]');
+    this.#exploreBody = this.#must('[data-hud="exploreBody"]');
     this.#boostFill = this.#must('[data-hud="boostFill"]');
     this.#boostBox = this.#must('[data-hud="boostBox"]');
     this.#drift = this.#must('[data-hud="drift"]');
@@ -628,6 +641,23 @@ export class DriveHud {
   }
 
   /**
+   * First visit of a region. Two lines so the counter stays readable; Sparks
+   * use the existing icon, the wallet chip is not restyled.
+   */
+  showExplore(grant: ExploreGrant): void {
+    const copy = exploreToastText(grant);
+    this.#exploreTitle.textContent = copy.title;
+    this.#exploreBody.innerHTML = `${copy.body} · +${sparkMark(grant.sparks)}`;
+    this.#explore.hidden = false;
+    this.#flash.hidden = true;
+    if (this.#exploreTimer !== null) window.clearTimeout(this.#exploreTimer);
+    this.#exploreTimer = window.setTimeout(() => {
+      this.#explore.hidden = true;
+      this.#exploreTimer = null;
+    }, EXPLORE_TOAST_MS);
+  }
+
+  /**
    * Der Kasten bleibt drei Sekunden stehen. Ein bestehender Zeitgeber wird dabei
    * **abgeräumt** — wer zwei Meldungen in kurzem Abstand auslöst, soll nicht
    * erleben, dass der erste Zeitgeber die zweite wegräumt.
@@ -636,6 +666,7 @@ export class DriveHud {
     this.#flash.textContent = text;
     this.#flash.classList.toggle('hud__flash--best', best);
     this.#flash.hidden = false;
+    this.#explore.hidden = true;
 
     if (this.#flashTimer !== null) window.clearTimeout(this.#flashTimer);
     this.#flashTimer = window.setTimeout(() => {
@@ -714,6 +745,8 @@ export class DriveHud {
   dispose(): void {
     if (this.#flashTimer !== null) window.clearTimeout(this.#flashTimer);
     this.#flashTimer = null;
+    if (this.#exploreTimer !== null) window.clearTimeout(this.#exploreTimer);
+    this.#exploreTimer = null;
     if (this.#boostPulseTimer !== null) window.clearTimeout(this.#boostPulseTimer);
     this.#boostPulseTimer = null;
     if (this.#moneyRaf !== 0) cancelAnimationFrame(this.#moneyRaf);

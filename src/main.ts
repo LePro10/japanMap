@@ -20,6 +20,9 @@ import { WALK_BOARD_RANGE, WALK_PROMPT_SLACK } from './config/walker.config';
 import { DriveSystem } from './game/DriveSystem';
 import { DriveHud } from './ui/DriveHud';
 import { sparkMark } from './ui/sparkIcon';
+import { MAP_REGIONS } from './ui/navigationMapRegions';
+import { EXPLORE_SPARKS } from './config/explore.config';
+import { RegionWatch } from './game/regionExplore';
 import { runAb } from './debug/abMeasure';
 import { runDriveProbe } from './debug/driveProbe';
 import { captureShot, probeFrame, type CaptureTarget } from './debug/capture';
@@ -645,6 +648,7 @@ async function boot(): Promise<void> {
   // sind das 10 800 nicht angelegte Objekte je Minute.
   const NAV_DIR = new Vector3();
   const navRivals: { x: number; z: number }[] = [];
+  const exploreWatch = new RegionWatch();
 
   engine.add({
     name: 'DriveHudUpdate',
@@ -735,9 +739,22 @@ async function boot(): Promise<void> {
       }
 
       const onFoot = drive.walking;
+      const poseX = onFoot ? drive.walker.position.x : drive.vehicle.position.x;
+      const poseZ = onFoot ? drive.walker.position.z : drive.vehicle.position.z;
+      if (drive.active || drive.walking) {
+        const grant = exploreWatch.tick(dt, poseX, poseZ, {
+          airborne: drive.active && drive.vehicle.telemetry.airborne,
+          explored: (id) => profile.hasExplored(id),
+        });
+        if (grant && profile.markExplored(grant.id)) {
+          profile.earn(grant.sparks);
+          hud.showExplore(grant);
+          hud.collectSparks([]);
+        }
+      }
       hud.updateNav(
-        onFoot ? drive.walker.position.x : drive.vehicle.position.x,
-        onFoot ? drive.walker.position.z : drive.vehicle.position.z,
+        poseX,
+        poseZ,
         onFoot ? drive.walker.yaw : drive.vehicle.yaw,
         Math.atan2(NAV_DIR.x, NAV_DIR.z),
         navRivals,
@@ -1035,7 +1052,17 @@ async function boot(): Promise<void> {
   audio.armAutoUnlock();
   import.meta.hot?.dispose(() => { photo.dispose(); garage.dispose(); ui.dispose(); });
 
-  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive);
+  if (import.meta.env.DEV) {
+    installFrameProbe(engine, controller, quality, scatter, drive);
+    if (window.japanMap) {
+      window.japanMap.explored = () => ({
+        ids: profile.exploredIds(),
+        count: profile.exploredCount,
+        total: MAP_REGIONS.length,
+        sparks: EXPLORE_SPARKS,
+      });
+    }
+  }
 }
 
 /** Eine Zeile der Zieltafel. Englisch, wie alles im DOM. */

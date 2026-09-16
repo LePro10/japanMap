@@ -2,6 +2,7 @@
 /// <reference types="vite-plugin-glsl/ext" />
 
 import type { QualityKey, QualityLevel } from './config/quality.config';
+import type { MapRegionId } from './ui/navigationMapRegions';
 import type { Engine } from './core/Engine';
 import type { AbOptions, AbReport } from './debug/abMeasure';
 import type { DriveProbeOptions, DriveProbeReport } from './debug/driveProbe';
@@ -132,6 +133,13 @@ declare global {
         laufend: boolean;
         verstrichen: number;
         runden: readonly LapResult[];
+      };
+      /** First-visit regions already toasted — silent on reload. */
+      explored?: () => {
+        ids: readonly MapRegionId[];
+        count: number;
+        total: number;
+        sparks: number;
       };
     };
   }
