@@ -14,6 +14,7 @@ import {
   type Scene,
 } from 'three';
 
+import { ROAD_MESH, roadWidthAt } from '@/config/roads.config';
 import { DRIFT_ZONES, PICKUPS, RAMPS } from '@/config/stunt.config';
 import { DEFAULT_QUALITY, type QualityKey } from '@/config/quality.config';
 import type { EngineContext, System } from '@/core/System';
@@ -105,7 +106,21 @@ const SAKURA_TONES = [0xffc9dd, 0xf7aecb, 0xe391b4] as const;
 const FLAG_POLE = 0xd8d4cc;
 const FLAG_CLOTH = 0xd83a3a;
 const FLAG_CLOTH_DARK = 0x9e2626;
-const PICKUP_COLOR = 0xffd257;
+
+/**
+ * Sparks-Token — unbeleuchtet, wie das Laternenpapier.
+ *
+ * Das alte Oktaeder teilte sich `PropMaterial` mit Schanzen und Bäumen.
+ * Bei 2,23° Sonne ist beleuchtetes Gelb eine matte Kruste, kein Sammelstück.
+ * Die Zahlen sind an derselben Laternen-Messung bemessen (P26): Gain 2,2 hält
+ * die Farbe unter dem Weißpunkt des Tonemappers, über dem Asphalt (0,058).
+ */
+const SPARK_FACET_A = 0xffc56a;
+const SPARK_FACET_B = 0xe8a45c;
+const SPARK_NOTCH = 0x1a2228;
+const SPARK_GAIN = 2.2;
+/** Halbe Höhe des Kristalls, m. Unterkante = hover − das hier. */
+const SPARK_HALF_H = 0.22;
 
 /** Stützpunkte des Zonenrings. 96 sind bei 62 m Radius alle 4,1 m einer. */
 const ZONE_RING_STEPS = 96;
@@ -149,13 +164,14 @@ const ZONE_RING_INNER = 0xf7c6d8;
 const ZONE_RING_OUTER = 0xb84a72;
 
 /**
- * Wie lange der Aufsammel-Effekt dauert, s.
+ * Wie lange der Welt-Pop dauert, s.
  *
- * 0,35 s: lang genug, dass man es aus dem Augenwinkel sieht, kurz genug, dass
- * es bei 90 Stücken je Runde nicht zum Dauerflackern wird. Der Ton dazu ist
- * 90 ms lang — das Bild darf länger stehen als der Ton, umgekehrt nicht.
+ * Schrumpfen zur Mitte, nicht Wachsen: die alte 0,35 s × 2,6-Skalierung
+ * steckte die Unterkante 0,68 m **in** den Asphalt. 0,22 s ist lang genug,
+ * dass das Auge den Implosion sieht, kurz genug, dass die drei Facetten im
+ * HUD den Rest der Belohnung tragen.
  */
-const POP_TIME = 0.35;
+const POP_TIME = 0.22;
 
 /** Sekunden zwischen zwei Schreibvorgängen der Instanzmatrizen — s. `update`. */
 const TRANSFORM_INTERVAL = 1 / 20;
@@ -351,6 +367,11 @@ export class StuntSystem implements System {
    * leuchtet. Begründung ausführlich bei `#buildLanterns`.
    */
   #glow: MeshBasicMaterial | null = null;
+  /**
+   * Unbeleuchtetes Material der Sparks — getrennt von den Laternen, weil
+   * `color.setScalar` sonst Laternenpapier und Kristall denselben Gain gäbe.
+   */
+  #sparkMat: MeshBasicMaterial | null = null;
   #trees: InstancedMesh | null = null;
   #flags: InstancedMesh | null = null;
   #pickups: InstancedMesh | null = null;
@@ -363,9 +384,11 @@ export class StuntSystem implements System {
   readonly #geometries: BufferGeometry[] = [];
   readonly #matrix = new Matrix4();
   readonly #quat = new Quaternion();
+  readonly #tilt = new Quaternion();
   readonly #scale = new Vector3(1, 1, 1);
   readonly #zero = new Vector3(0, -1000, 0);
   readonly #up = new Vector3(0, 1, 0);
+  readonly #east = new Vector3(1, 0, 0);
   #spin = 0;
   #wind = 0;
   /** Sekunden seit dem letzten Schreiben der Instanzmatrizen. */
@@ -394,6 +417,12 @@ export class StuntSystem implements System {
     // Antwort auf den Tonemapper. Messtabelle bei `LANTERN_PAPER`.
     glow.color.setScalar(LANTERN_GAIN);
     this.#glow = glow;
+    const sparkMat = new MeshBasicMaterial({ vertexColors: true });
+    sparkMat.name = 'SparkMaterial';
+    sparkMat.fog = false;
+    sparkMat.color.setScalar(SPARK_GAIN);
+    this.#sparkMat = sparkMat;
+    this.#tilt.setFromAxisAngle(this.#east, 0.38);
     context.scene.add(this.#group);
 
     // Die Blüten hängen seit P26 an der Qualitätsstufe — Begründung bei
@@ -741,10 +770,9 @@ export class StuntSystem implements System {
    * Ringstraße.
    */
   #buildPickups(): void {
-    const sampler = this.#sampler;
     const network = this.#network;
-    const material = this.#material;
-    if (!sampler || !network || !material) return;
+    const material = this.#sparkMat;
+    if (!network || !material) return;
 
     const roads = network.roads.filter((r) => r.centerline.length >= 12);
     const total = roads.reduce((sum, r) => sum + r.length, 0);
@@ -757,25 +785,29 @@ export class StuntSystem implements System {
       for (let k = 0; k < share; k++) {
         const i = Math.min(points - 2, Math.floor((points * (k + 0.5)) / share));
         const x0 = line[i * 3]!;
+        const y0 = line[i * 3 + 1]!;
         const z0 = line[i * 3 + 2]!;
         const dx = line[(i + 1) * 3]! - x0;
         const dz = line[(i + 1) * 3 + 2]! - z0;
         const len = Math.hypot(dx, dz) || 1;
-        // Seitlich versetzt, Seite abwechselnd — das ist der Punkt: die Stücke
-        // sollen die Linie ändern und nicht auf ihr liegen.
-        const side = (k % 2 === 0 ? 1 : -1) * PICKUPS.offset * 3.5;
+        // Halbe Breite **an dieser Stelle**, nicht 3,5 m für jede Straße.
+        const half = roadWidthAt(road, i) * 0.5;
+        const side = (k % 2 === 0 ? 1 : -1) * PICKUPS.offset * half;
         const x = x0 - (dz / len) * side;
         const z = z0 + (dx / len) * side;
+        // Fahrbahnhöhe der Mittellinie, nicht `getHeightAt` am Versatz: der
+        // Versatz liegt auf der Spur, die Mittellinie ist die Ebene, auf der
+        // gefahren wird. Plus Mesh-Offset, plus Schwebehöhe.
         this.#pickupPos.push({
           x,
-          y: sampler.getHeightAt(x, z) + PICKUPS.height,
+          y: y0 + ROAD_MESH.surfaceOffset + PICKUPS.height,
           z,
           back: 0,
         });
       }
     }
 
-    this.#pickups = this.#instance(createToken(), this.#pickupPos.length, 'Sammelstücke');
+    this.#pickups = this.#instance(createSparkToken(), this.#pickupPos.length, 'Sammelstücke', material);
     // Frustum-Culling aus: die Hüllkugel wird nie aktualisiert, weil die
     // Instanzmatrizen jeden Frame drehen. Dieselbe Begründung wie bei den
     // Rädern des Fahrzeugs (P14).
@@ -930,40 +962,29 @@ export class StuntSystem implements System {
     if (!mesh) return;
     for (let i = 0; i < this.#pickupPos.length; i++) {
       const p = this.#pickupPos[i]!;
-      // ── Der Aufsammel-Effekt — P25 ──────────────────────────────────
-      //
-      // P24 hat als offenen Punkt hinterlassen: „die Sammelstücke stehen ohne
-      // Ton und ohne Partikel". Der Ton steht seit P25 in `AudioSystem`; das
-      // hier ist das Bild dazu — und es kostet **nichts**.
-      //
-      // Der Trick ist, dass ein eingesammeltes Stück nicht sofort weg sein
-      // muss. Es hat ohnehin eine Uhr (`back`), also bekommt der erste Moment
-      // davon eine eigene Bedeutung: das Stück wächst, dreht schneller und
-      // verschwindet. Kein Partikelsystem, keine zweite Instanzliste, kein
-      // Draw-Call — dieselben 90 Instanzen, nur mit einer anderen Matrix.
       const seit = PICKUPS.respawn - p.back;
       if (p.back > 0 && seit < POP_TIME) {
         const t = seit / POP_TIME;
-        // Wachsen und dabei ausdünnen. Ein Oktaeder hat keine Deckkraft je
-        // Instanz (`PropMaterial` liest die Vertexfarbe), also macht die
-        // **Größe** die ganze Arbeit: über 2,6 hinaus liest das Auge es als
-        // Blitz und nicht mehr als Gegenstand.
-        const s = 1 + t * 1.6;
-        this.#scale.set(s, s * 1.35, s);
-        // Vierfache Drehgeschwindigkeit — sie ist das, was den Moment vom
-        // ruhigen Kreiseln davor unterscheidet.
-        this.#quat.setFromAxisAngle(this.#up, this.#spin * 4 + i * 0.7);
-        this.#matrix.compose(POINT.set(p.x, p.y + t * 1.2, p.z), this.#quat, this.#scale);
+        // Schrumpfen zur Mitte, leicht steigen. Die Unterkante bleibt über
+        // der Fahrbahn: hover 1,35 − half 0,22·s + rise 0,35·t, s = (1−t)².
+        // Bei t = 1 ist die Instanz ein Punkt 0,35 m über der alten Mitte.
+        const s = Math.max(0.04, (1 - t) * (1 - t));
+        this.#scale.set(s, s, s);
+        this.#quat.setFromAxisAngle(this.#up, this.#spin * 5.5 + i * 0.7);
+        this.#quat.multiply(this.#tilt);
+        this.#matrix.compose(POINT.set(p.x, p.y + t * 0.35, p.z), this.#quat, this.#scale);
         mesh.setMatrixAt(i, this.#matrix);
         this.#scale.set(1, 1, 1);
         continue;
       }
-      this.#quat.setFromAxisAngle(this.#up, this.#spin + i * 0.7);
+      const bob = Math.sin(this.#spin * 2.1 + i * 0.73) * 0.07;
+      this.#quat.setFromAxisAngle(this.#up, this.#spin * 0.85 + i * 0.7);
+      this.#quat.multiply(this.#tilt);
       // Eingesammelte Stücke wandern unter die Welt statt `count` zu ändern:
       // `count` verkleinern hieße, die Liste umzusortieren, und dann stimmt die
       // Zuordnung Position ↔ Instanz nicht mehr.
       this.#matrix.compose(
-        p.back > 0 ? this.#zero : POINT.set(p.x, p.y, p.z),
+        p.back > 0 ? this.#zero : POINT.set(p.x, p.y + bob, p.z),
         this.#quat,
         this.#scale,
       );
@@ -981,8 +1002,9 @@ export class StuntSystem implements System {
    * niemand gestellt hat. Wenn die Zahl je dreistellig wird, steht hier ein
    * Raster — vorher nicht.
    */
-  collect(x: number, z: number, dt: number): number {
+  collect(x: number, z: number, dt: number): { taken: number; at: { x: number; y: number; z: number }[] } {
     let taken = 0;
+    const at: { x: number; y: number; z: number }[] = [];
     const r2 = PICKUPS.radius * PICKUPS.radius;
     for (const p of this.#pickupPos) {
       if (p.back > 0) {
@@ -993,10 +1015,11 @@ export class StuntSystem implements System {
       const dz = p.z - z;
       if (dx * dx + dz * dz <= r2) {
         p.back = PICKUPS.respawn;
+        at.push({ x: p.x, y: p.y, z: p.z });
         taken++;
       }
     }
-    return taken;
+    return { taken, at };
   }
 
   /** Ist der Punkt in einer Driftzone? Gibt den Multiplikator zurück, sonst 1. */
@@ -1032,24 +1055,29 @@ export class StuntSystem implements System {
     // **Darstellung**, die niemand Frame für Frame prüft.
     //
     // Beides sind langsame Bewegungen: die Fahne schwingt mit 1,7 und 2,9 rad/s,
-    // das Stück dreht mit 1,8 rad/s. Bei 20 Hz liegen zwischen zwei Bildern
-    // 5,2° Drehung — das ist unterhalb dessen, was an einem 40 Pixel großen
-    // Oktaeder überhaupt zu sehen ist.
+    // das Stück dreht mit 0,85 rad/s. Bei 20 Hz liegen zwischen zwei Bildern
+    // 2,4° — unterhalb dessen, was an einem 16-Pixel-Kristall zu sehen ist.
     //
     // **20 Hz und nicht 15 wie die Minikarte**, weil hier Geometrie in
     // Bewegung ist und dort eine Zeichnung: eine ruckelnde Drehung fällt eher
-    // auf als eine ruckelnde Karte. Die Zahl ist eine Abwägung und keine
-    // Messung — was sie spart, ist proportional und offensichtlich (zwei
-    // Drittel der Aufrufe), was sie kostet, ist eine Frage fürs Auge.
+    // auf als eine ruckelnde Karte. Der Pop schreibt trotzdem jeden Frame.
     this.#since += dt;
-    if (this.#since < TRANSFORM_INTERVAL) return;
+    // Idle bei 20 Hz (Begründung oben). Der Pop dauert 0,22 s — bei 20 Hz
+    // wären das vier Bilder, und eine Implosion in vier Sprüngen liest sich
+    // als Ruck. Solange einer poppt, schreiben wir jeden Frame.
+    const popping = this.#anyPopping();
+    if (!popping && this.#since < TRANSFORM_INTERVAL) return;
     this.#since = 0;
 
     this.#waveFlags();
-    // Die Stücke drehen sich. Das ist die billigste Art, ein Ding als
-    // „einsammelbar" zu kennzeichnen — jedes Spiel seit 1991 macht es so, und
-    // zwar weil es funktioniert: bewegte Dinge ziehen den Blick.
     if (this.#pickups) this.#writePickups();
+  }
+
+  #anyPopping(): boolean {
+    for (const p of this.#pickupPos) {
+      if (p.back > 0 && PICKUPS.respawn - p.back < POP_TIME) return true;
+    }
+    return false;
   }
 
   dispose(): void {
@@ -1066,6 +1094,8 @@ export class StuntSystem implements System {
     this.#trees?.dispose();
     this.#flags?.dispose();
     this.#pickups?.dispose();
+    this.#sparkMat?.dispose();
+    this.#sparkMat = null;
     this.#material?.dispose();
     this.#material = null;
   }
@@ -1353,37 +1383,63 @@ function createFallenPatch(): BufferGeometry {
 }
 
 /**
- * Ein Sammelstück — ein Oktaeder als zwei Pyramiden.
+ * Ein Spark — zwei versetzte Oktaeder und eine dunkle Kerbe.
  *
- * Es ist absichtlich **keine Münze**: eine flache Scheibe verschwindet, sobald
- * man sie von der Kante sieht, und das ist genau der Blickwinkel eines Fahrers.
- * Ein Oktaeder hat aus jeder Richtung eine Silhouette.
+ * Dieselbe Silhouette wie das HUD-Ikon (ASTRA_PLAN §9). Eine Münze verschwindet
+ * von der Kante, und das ist der Blickwinkel hinter dem Auto. Ein Split-Diamond
+ * hat aus jeder Richtung eine Kante.
+ *
+ * Wicklung: jede Fläche CCW von außen. `japanMap.winding()` prüft das, und
+ * dieses Projekt hat zwei rückseitige Flächen teuer bezahlt (P8.11).
  */
-function createToken(): BufferGeometry {
-  const h = 0.85;
-  const r = 0.55;
+function createSparkToken(): BufferGeometry {
   const positions: number[] = [];
   const colors: number[] = [];
-  const c = new Color(PICKUP_COLOR);
-  const ring: [number, number][] = [];
-  for (let i = 0; i < 6; i++) {
-    const a = (Math.PI * 2 * i) / 6;
-    ring.push([Math.cos(a) * r, Math.sin(a) * r]);
-  }
-  for (let i = 0; i < 6; i++) {
-    const [ax, az] = ring[i]!;
-    const [bx, bz] = ring[(i + 1) % 6]!;
-    // Oben und unten. Reihenfolge so, dass beide Hälften nach außen zeigen.
-    positions.push(ax, 0, az, bx, 0, bz, 0, h, 0);
-    positions.push(bx, 0, bz, ax, 0, az, 0, -h, 0);
-    for (let k = 0; k < 6; k++) colors.push(c.r, c.g, c.b);
-  }
+  octahedron(positions, colors, -0.055, 0, 0, 0.15, SPARK_HALF_H, 0.11, SPARK_FACET_A);
+  octahedron(positions, colors, 0.07, 0.012, 0.018, 0.135, SPARK_HALF_H * 0.92, 0.1, SPARK_FACET_B);
+  const notch = box(0.04, SPARK_HALF_H * 1.55, 0.07, 0.012, 0, 0.004, SPARK_NOTCH);
+  positions.push(...notch.positions);
+  colors.push(...notch.colors);
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new BufferAttribute(Float32Array.from(positions), 3));
   geometry.setAttribute('color', new BufferAttribute(Float32Array.from(colors), 3));
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();
   return geometry;
+}
+
+function octahedron(
+  positions: number[],
+  colors: number[],
+  ox: number,
+  oy: number,
+  oz: number,
+  hx: number,
+  hy: number,
+  hz: number,
+  hex: number,
+): void {
+  const top: [number, number, number] = [ox, oy + hy, oz];
+  const bot: [number, number, number] = [ox, oy - hy, oz];
+  const n: [number, number, number] = [ox, oy, oz + hz];
+  const s: [number, number, number] = [ox, oy, oz - hz];
+  const e: [number, number, number] = [ox + hx, oy, oz];
+  const w: [number, number, number] = [ox - hx, oy, oz];
+  const faces: [number, number, number][][] = [
+    [top, n, e],
+    [top, e, s],
+    [top, s, w],
+    [top, w, n],
+    [bot, e, n],
+    [bot, s, e],
+    [bot, w, s],
+    [bot, n, w],
+  ];
+  const c = new Color(hex);
+  for (const [a, b, cc] of faces) {
+    positions.push(a![0], a![1], a![2], b![0], b![1], b![2], cc![0], cc![1], cc![2]);
+    for (let k = 0; k < 3; k++) colors.push(c.r, c.g, c.b);
+  }
 }
 
 interface BoxSpec {

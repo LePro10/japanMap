@@ -114,6 +114,19 @@
   background: color-mix(in srgb, var(--ink) 55%, transparent);
 }
 
+.tune-garage__wallet .spark-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tune-garage__wallet .spark-icon,
+.tune-garage__card em .spark-icon,
+.tune-garage__top [data-action='buy'] .spark-icon {
+  width: 12px;
+  height: 12px;
+}
+
 .tune-garage__top button {
   min-height: 48px;
   padding: 0 16px;

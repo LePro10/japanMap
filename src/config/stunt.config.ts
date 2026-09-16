@@ -373,13 +373,27 @@ export const DRIFT_ZONES: readonly DriftZone[] = [
 export const PICKUPS = {
   /** Wie viele Stücke insgesamt auf der Karte liegen. */
   count: 90,
-  /** Abstand zur Fahrbahnmitte, als Anteil der halben Breite. */
-  offset: 0.55,
+  /**
+   * Abstand zur Fahrbahnmitte, als Anteil der **halben Breite an der Stelle**.
+   *
+   * 0,68 legt sie ins äußere Drittel der Spur — nah genug, dass man die Linie
+   * ändert, auf der Fahrbahn, nicht in der Böschung. Die erste Fassung nahm
+   * `0,55 · 3,5 m` für jede Straße; WP6-Breiten reichen von 1,8 bis 18 m, und
+   * auf dem Ring stand das Stück mitten in der Spur, auf dem Pfad in der Wand.
+   */
+  offset: 0.68,
   /** Aufsammelradius in Metern. Großzügig — ein verpasstes Stück ist Frust. */
   radius: 4.5,
-  /** Höhe über der Fahrbahn, m. */
-  height: 1.1,
-  /** Wert in ¥. */
+  /**
+   * Schwebehöhe der **Mitte** über der Fahrbahnoberkante, m.
+   *
+   * Das Token ist 0,44 m hoch. Unterkante also 1,13 m über dem Asphalt — weit
+   * über dem, was das CDLOD-Gitter zwischen zwei Stützstellen über dem Feld
+   * aufwölbt (die P6-Klasse). Die alte 1,1 m-Mitte an einem 1,7 m Oktaeder
+   * lag 0,25 m über dem Gelände und **in** der Böschung.
+   */
+  height: 1.35,
+  /** Wert in Sparks. */
   yen: 120,
   /** Anteil des Nitro-Vorrats, den ein Stück auffüllt. */
   boost: 0.2,

@@ -30,6 +30,7 @@ import {
 } from '@/config/tuning.config';
 import { engineLook } from '@/game/garageEngine';
 import { CAR_COPY } from './carPresentation';
+import { SPARK_ICON, sparkMark } from './sparkIcon';
 import './tuningGarage.css';
 
 export type BayShot = 'hero' | 'engine' | 'wheels' | 'front' | 'rear' | 'orbit';
@@ -217,11 +218,11 @@ export class TuningGarage {
       const buy = root.querySelector<HTMLButtonElement>('[data-action="buy"]')!;
       const same = tunesEqual(fitted, preview);
       buy.disabled = same || (cost > 0 && this.#o.wallet() < cost && !this.#o.sandbox());
-      buy.textContent = same
+      buy.innerHTML = same
         ? 'Fitted'
         : cost === 0
           ? 'Fit'
-          : `Buy and fit · ${cost.toLocaleString('en-US')}`;
+          : `Buy and fit · ${sparkMark(cost)}`;
       const tuned = anyTuned(live);
       root.querySelector<HTMLElement>('[data-badge]')!.hidden = !tuned;
       root.classList.toggle('is-tuned', tuned);
@@ -502,7 +503,7 @@ export class TuningGarage {
           <strong data-car-name>${copy.name}</strong>
         </div>
         <div class="tune-garage__wallet">
-          <span>Sparks</span>
+          <span class="spark-mark">${SPARK_ICON}<span>Sparks</span></span>
           <strong data-wallet>0</strong>
         </div>
         <button type="button" data-action="drive">Take it out</button>
@@ -596,7 +597,7 @@ export class TuningGarage {
               <span class="tune-garage__icon" data-kind="${cat}"></span>
               <b>${cat === 'engine' ? engineLook(id).name : copy.part}</b>
               <strong>${copy.title} · ${TUNE_TIERS[tier]}</strong>
-              <em>${owned ? 'Owned' : price === 0 ? 'Stock' : `${price.toLocaleString('en-US')} Sparks`}</em>
+              <em>${owned ? 'Owned' : price === 0 ? 'Stock' : sparkMark(price)}</em>
               <i class="tune-garage__fill" style="--fill:${fill}%"></i>
             </button>`,
           );

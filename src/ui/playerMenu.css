@@ -160,9 +160,23 @@
 }
 
 .player-menu .menu__walletLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font: 700 11px / 1 var(--display);
   letter-spacing: 0.16em;
   text-transform: uppercase;
+}
+
+.player-menu .menu__walletLabel .spark-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.player-menu .menu__choose .spark-mark,
+.player-menu .menu__carFacts .spark-mark,
+.player-menu .menu__note .spark-mark {
+  vertical-align: -0.15em;
 }
 
 .player-menu .menu__wallet [data-wallet] {

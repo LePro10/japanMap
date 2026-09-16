@@ -127,7 +127,15 @@
   }
 }
 .hud .hud__money {
-  display: none;
+  display: flex;
+}
+
+.hud .hud__boost.is-spark {
+  box-shadow: 0 0 14px color-mix(in srgb, var(--nitro) 80%, transparent);
+}
+
+.hud .hud__boost.is-spark .hud__boostFill {
+  filter: brightness(1.35);
 }
 .hud .hud__lap[hidden] {
   display: none;
@@ -242,6 +250,11 @@
   }
 }
 @media (max-width: 700px) and (orientation: portrait) {
+  .hud .hud__money {
+    /* Tacho sitzt oben rechts; das Wallet rutscht nach links daneben. */
+    top: max(12px, env(safe-area-inset-top));
+    right: calc(max(24px, env(safe-area-inset-right)) + 140px);
+  }
   .hud .hud__speedo {
     transform-origin: top right;
     top: max(12px, env(safe-area-inset-top));

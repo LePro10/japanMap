@@ -1,4 +1,5 @@
 import { instruments } from './instruments';
+import './theme.css';
 import './driveInstruments.css';
 import { formatTime } from '@/game/BestTimes';
 import type { DriftState } from '@/game/DriftScore';
@@ -8,6 +9,7 @@ import type { VehicleTelemetry } from '@/game/Vehicle';
 import type { RoadFile } from '@/config/roads.config';
 import { formatEta, formatWaypointDistance } from '@/game/waypointScreen';
 import { MiniMap, type MiniMapMark } from './MiniMap';
+import { SPARK_ICON } from './sparkIcon';
 
 /**
  * Die Anzeige im Fahrmodus — P16, in P23 auf das Spiel erweitert.
@@ -74,6 +76,7 @@ export class DriveHud {
   readonly #countdown: HTMLElement;
   readonly #result: HTMLElement;
   readonly #money: HTMLElement;
+  readonly #moneyValue: HTMLElement;
   readonly #arrow: HTMLElement;
   readonly #prompt: HTMLElement;
   readonly #promptKey: HTMLElement;
@@ -100,6 +103,12 @@ export class DriveHud {
   readonly #written = new Map<HTMLElement, string>();
 
   #flashTimer: number | null = null;
+  #boostPulseTimer: number | null = null;
+  #moneyRaf = 0;
+  #shownYen = 0;
+  #targetYen = 0;
+  #countFrom = 0;
+  #countStart = 0;
   #visible = false;
   #driveActive = false;
   #walking = false;
@@ -121,7 +130,7 @@ export class DriveHud {
         <p class="hud__raceRow"><span class="hud__label">Lap</span><span data-hud="raceLap">1 / 1</span></p>
         <p class="hud__raceRow"><span class="hud__label">Next</span><span data-hud="raceNext">—</span></p>
       </div>
-      <div class="hud__money" data-hud="money">¥0</div>
+      <div class="hud__money" data-hud="money">${SPARK_ICON}<strong data-hud="moneyValue">0</strong></div>
       <div class="hud__speedo"><span class="hud__gearLabel" data-hud="gear">N</span><svg class="hud__rpm" viewBox="0 0 220 130" aria-label="Engine RPM"><path d="M20 110 A90 90 0 0 1 200 110" pathLength="100" class="hud__rpmTrack"/><path d="M20 110 A90 90 0 0 1 200 110" pathLength="100" class="hud__rpmFill" data-hud="rpmFill"/><path d="M181 55 A90 90 0 0 1 200 110" class="hud__redline"/></svg><span class="hud__rpmText" data-hud="rpm">850 RPM</span>
         <div class="hud__boost" data-hud="boostBox" aria-label="Nitro"><span class="hud__nitroLabel">NITRO</span><i class="hud__boostFill" data-hud="boostFill"></i></div>
         <div class="hud__speedRow">
@@ -181,6 +190,7 @@ export class DriveHud {
     this.#countdown = this.#must('[data-hud="countdown"]');
     this.#result = this.#must('[data-hud="result"]');
     this.#money = this.#must('[data-hud="money"]');
+    this.#moneyValue = this.#must('[data-hud="moneyValue"]');
     this.#arrow = this.#must('[data-hud="arrow"]');
     this.#prompt = this.#must('[data-hud="prompt"]');
     this.#promptKey = this.#must('[data-hud="promptKey"]');
@@ -477,7 +487,78 @@ export class DriveHud {
 
   /** Der Kontostand oben rechts. */
   setMoney(yen: number): void {
-    this.#setText(this.#money, `${yen.toLocaleString('en-US')} Sparks`);
+    this.#targetYen = yen;
+    if (reducedMotion() || yen <= this.#shownYen) {
+      this.#shownYen = yen;
+      this.#setText(this.#moneyValue, yen.toLocaleString('en-US'));
+      return;
+    }
+    this.#countFrom = this.#shownYen;
+    this.#countStart = performance.now();
+    if (this.#moneyRaf === 0) this.#moneyRaf = requestAnimationFrame(this.#tickMoney);
+  }
+
+  /**
+   * Drei Facetten fliegen von der Weltposition ins Wallet.
+   *
+   * `origins` sind schon Bildkoordinaten (main.ts projiziert). Hinter der
+   * Kamera oder weit außerhalb: nur Puls, kein Flug — sonst startet ein
+   * Splitter am Bildrand und liest sich als Fehler.
+   */
+  collectSparks(origins: readonly { x: number; y: number; visible: boolean }[]): void {
+    this.#money.classList.remove('is-pulse');
+    void this.#money.offsetWidth;
+    this.#money.classList.add('is-pulse');
+    this.#boostBox.classList.add('is-spark');
+    if (this.#boostPulseTimer !== null) window.clearTimeout(this.#boostPulseTimer);
+    this.#boostPulseTimer = window.setTimeout(() => {
+      this.#boostBox.classList.remove('is-spark');
+      this.#boostPulseTimer = null;
+    }, 280);
+    if (reducedMotion() || !this.#visible) return;
+    const root = this.#root.getBoundingClientRect();
+    const wallet = this.#money.getBoundingClientRect();
+    const tx = wallet.left - root.left + 14;
+    const ty = wallet.top - root.top + wallet.height * 0.5;
+    const seeds = origins.length > 0 ? origins : [{ x: tx, y: ty + 80, visible: true }];
+    for (const origin of seeds) {
+      const sx = origin.visible ? origin.x : tx;
+      const sy = origin.visible ? origin.y : ty + 64;
+      for (let i = 0; i < 3; i++) this.#flyFacet(sx, sy, tx, ty, i);
+    }
+  }
+
+  readonly #tickMoney = (now: number): void => {
+    const t = Math.min(1, (now - this.#countStart) / 320);
+    const eased = 1 - (1 - t) ** 3;
+    this.#shownYen = Math.round(this.#countFrom + (this.#targetYen - this.#countFrom) * eased);
+    this.#setText(this.#moneyValue, this.#shownYen.toLocaleString('en-US'));
+    if (t < 1) this.#moneyRaf = requestAnimationFrame(this.#tickMoney);
+    else this.#moneyRaf = 0;
+  };
+
+  #flyFacet(sx: number, sy: number, tx: number, ty: number, i: number): void {
+    const el = document.createElement('span');
+    el.className = 'hud__facet';
+    el.innerHTML = SPARK_ICON;
+    el.style.transform = `translate(${sx}px, ${sy}px) scale(1)`;
+    this.#root.appendChild(el);
+    const midX = sx + (tx - sx) * 0.55 + (i - 1) * 28;
+    const midY = sy + (ty - sy) * 0.4 - 36 - i * 10;
+    const anim = el.animate(
+      [
+        { transform: `translate(${sx}px, ${sy}px) scale(1)`, opacity: 1 },
+        { transform: `translate(${midX}px, ${midY}px) scale(0.9)`, opacity: 1, offset: 0.45 },
+        { transform: `translate(${tx}px, ${ty}px) scale(0.25)`, opacity: 0.15 },
+      ],
+      {
+        duration: 420,
+        delay: i * 42,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        fill: 'forwards',
+      },
+    );
+    anim.addEventListener('finish', () => el.remove());
   }
 
   /**
@@ -633,10 +714,23 @@ export class DriveHud {
   dispose(): void {
     if (this.#flashTimer !== null) window.clearTimeout(this.#flashTimer);
     this.#flashTimer = null;
+    if (this.#boostPulseTimer !== null) window.clearTimeout(this.#boostPulseTimer);
+    this.#boostPulseTimer = null;
+    if (this.#moneyRaf !== 0) cancelAnimationFrame(this.#moneyRaf);
+    this.#moneyRaf = 0;
     this.#written.clear();
     this.#nav.removeEventListener('click', this.#onNavClick);
     this.#onOpenMap = null;
     this.#map.dispose();
     this.#root.remove();
   }
+}
+
+function reducedMotion(): boolean {
+  try {
+    if (localStorage.getItem('japanMap.reducedMotion') === 'true') return true;
+  } catch {
+    // Privater Modus — die Systempräferenz reicht.
+  }
+  return matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
