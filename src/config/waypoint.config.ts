@@ -58,11 +58,12 @@ export const WAYPOINT = {
   /** Wie schnell das Fenster vor dem Auto ausrollt, m/s. */
   revealSpeed: 480,
   /**
-   * Sichtfenster vor dem Wagen, Meter. Keine ganze Reststrecke: F1/Forza
-   * zeigen die Racing Line ein, zwei Kurven weit, nicht bis ins Ziel.
-   * 240 m decken den Bremsweg 250→50 km/h.
+   * Sichtfenster auf der Fahrbahn, Meter. Die Karte trägt die ganze Route;
+   * auf dem Asphalt reichen ein paar Straßenzüge, nicht 37 km.
+   * 240 m war zu knapp: die nächste Kreuzung lag oft schon hinter dem Fade,
+   * und die Karte fiel auf die Luftlinie zurück.
    */
-  lookAhead: 240,
+  lookAhead: 900,
   /** Weiche Spitze, Meter. */
   revealHead: 36,
   speedSmooth: 6,

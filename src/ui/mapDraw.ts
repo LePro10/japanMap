@@ -137,15 +137,20 @@ export function drawPathRoute(
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.strokeStyle = color;
-  ctx.shadowColor = 'rgba(62, 224, 255, 0.85)';
-  ctx.shadowBlur = 10;
-  ctx.lineWidth = width;
+  ctx.shadowColor = 'rgba(62, 224, 255, 0.95)';
+  ctx.shadowBlur = 14;
   ctx.beginPath();
   for (let i = 0; i < path.length; i += 2) {
     const p = project(path[i]!, path[i + 1]!);
     if (i === 0) ctx.moveTo(p.x, p.y);
     else ctx.lineTo(p.x, p.y);
   }
+  ctx.globalAlpha = 0.4;
+  ctx.lineWidth = width + 3;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 8;
+  ctx.lineWidth = width;
   ctx.stroke();
   ctx.restore();
 }

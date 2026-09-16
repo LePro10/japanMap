@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import type { RoadData } from '@/config/roads.config';
 import { WAYPOINT } from '@/config/waypoint.config';
@@ -161,6 +162,17 @@ assert.equal(damp(0.4, 0.4, 7, 0.16), 0.4);
 assert.equal(damp(0, 1, 7, 0), 0);
 const wrapped = dampAngle(3.0, -3.0, 12, 0.05);
 assert.ok(wrapped > 3.0 || wrapped < -2.5, 'angle damp must take the short way across the seam');
+
+const worldFile = JSON.parse(readFileSync('assets/generated/roads/roads.json', 'utf8'));
+const world = new RouteGraph(worldFile.roads);
+const commonsToNeon = world.find(550, 510, 620, 120, false);
+const crow = Math.hypot(620 - 550, 120 - 510);
+assert.ok(commonsToNeon, 'Commons→Neon must return a path');
+assert.equal(commonsToNeon.offroadTail, false);
+assert.ok(
+  commonsToNeon.length > crow * 1.15,
+  `Commons→Neon must follow streets (${commonsToNeon.length.toFixed(0)} m) not the air line (${crow.toFixed(0)} m)`,
+);
 
 console.log(
   `waypoint route: ${graph.nodeCount} nodes, path ${path.length.toFixed(0)} m, pin edge ${edge.x.toFixed(0)} — ok`,
