@@ -220,6 +220,8 @@ export interface VehicleTelemetry {
    * der Blend. HUD und Kamera, nicht die Driftpunkte.
    */
   stunt: number;
+  /** Spin-Absicht, 0…1. Space gehalten im Stunt — HUD pulsiert damit. */
+  spin: number;
 }
 
 /**
@@ -524,6 +526,7 @@ export class Vehicle {
     accelLat: 0,
     circuit: 0,
     stunt: 0,
+    spin: 0,
   };
 
   constructor(spec: VehicleSpec = TOUGE) {
@@ -1082,6 +1085,7 @@ export class Vehicle {
     t.accelLat = accelLat;
     t.circuit = this.#planarEnv.circuit ?? 0;
     t.stunt = planar.stunt;
+    t.spin = planar.spin;
   }
 
   /**

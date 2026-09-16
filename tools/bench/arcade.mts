@@ -294,69 +294,156 @@ function wrapDelta(from: number, to: number): number {
   return Math.atan2(Math.sin(to - from), Math.cos(to - from));
 }
 
-/**
- * Space+Lenkung 1,2 s, mit oder ohne Stunt-Flag.
- *
- * Gemessen wird die **aufintegrierte Gier**, nicht der Schwimmwinkel: atan2
- * wickelt bei ±180°, genau deshalb der Drift keinen 360 kann. Ein 360 ist
- * eine Umdrehung der Nase, nicht ein größerer β.
- */
-function spinRun(stunt: boolean, seconds = 1.2): { yawDeg: number; peakSlip: number; speed: number } {
-  const car = new Vehicle(VEHICLES.touge);
-  car.respawn(0, 0, 0, asphalt as never);
-  accelerateTo(car, asphalt, 80);
+interface SpinSample {
+  yawDeg: number;
+  peakSlip: number;
+  speed: number;
+  spin: number;
+  endSpin: number;
+}
+
+function integrateYaw(
+  car: Vehicle,
+  patch: Partial<DriveInput>,
+  steps: number,
+): SpinSample {
   let yaw = 0;
   let prev = car.yaw;
   let peakSlip = 0;
-  const steps = Math.round(seconds / DT);
+  let peakSpin = 0;
   for (let i = 0; i < steps; i++) {
-    car.step(
-      DT,
-      cmd({ throttle: 0.7, steer: 1, handbrake: true, stunt }),
-      asphalt as never,
-      null,
-    );
+    car.step(DT, cmd(patch), asphalt as never, null);
     yaw += wrapDelta(prev, car.yaw);
     prev = car.yaw;
     peakSlip = Math.max(peakSlip, Math.abs(car.telemetry.slip));
+    peakSpin = Math.max(peakSpin, car.telemetry.spin);
   }
-  return { yawDeg: (Math.abs(yaw) * 180) / Math.PI, peakSlip, speed: car.telemetry.speed * 3.6 };
+  return {
+    yawDeg: (Math.abs(yaw) * 180) / Math.PI,
+    peakSlip,
+    speed: car.telemetry.speed * 3.6,
+    spin: peakSpin,
+    endSpin: car.telemetry.spin,
+  };
 }
 
-console.log('── Stunt-Modus (Doppeltipp Space)\n');
+function freshTouge(kmh: number): Vehicle {
+  const car = new Vehicle(VEHICLES.touge);
+  car.respawn(0, 0, 0, asphalt as never);
+  accelerateTo(car, asphalt, kmh);
+  return car;
+}
+
+/** Gehaltener Space+Lenker im Stunt — der 180/360. */
+function heldSpin(seconds: number): SpinSample {
+  return integrateYaw(freshTouge(80), { throttle: 0.7, steer: 1, handbrake: true, stunt: true }, Math.round(seconds / DT));
+}
+
+/**
+ * Die Probe gegen den Kreisel: Anriss mit Space, dann nur Gas+Lenkung.
+ * Der Drift bleibt offen. Wenn der Spin daran hängt, ist das ein 360
+ * ohne Absicht — genau der Befund.
+ */
+function sustainNoSpace(seconds = 1.5): SpinSample {
+  const car = freshTouge(80);
+  // Anriss, dann Spin abklingen lassen, dann messen. Sonst ist die
+  // Spitze der Rest vom Tipp und kein Kreisel.
+  integrateYaw(car, { throttle: 0.7, steer: 1, handbrake: true, stunt: true }, 12);
+  integrateYaw(car, { throttle: 0.7, steer: 1, handbrake: false, stunt: true }, 24);
+  return integrateYaw(car, { throttle: 0.7, steer: 1, handbrake: false, stunt: true }, Math.round(seconds / DT));
+}
+
+function catchAfterSpin(): { before: number; after: number; spin: number } {
+  const car = freshTouge(80);
+  integrateYaw(car, { throttle: 0.7, steer: 1, handbrake: true, stunt: true }, 42);
+  const before = Math.abs(car.telemetry.slip);
+  integrateYaw(car, { throttle: 0.5, steer: -1, handbrake: false, stunt: true }, 48);
+  return { before, after: Math.abs(car.telemetry.slip), spin: car.telemetry.spin };
+}
+
+console.log('── Stunt-Modus (kontrollierter Spin)\n');
 
 const tapA = isStuntDoubleTap(Number.NEGATIVE_INFINITY, 0);
 const tapB = isStuntDoubleTap(0, STUNT.tapWindow);
 const tapC = isStuntDoubleTap(0, STUNT.tapWindow + 0.001);
 const tapD = isStuntDoubleTap(0, STUNT.tapWindow * 0.5);
+const tapOk = !tapA && tapB && tapD && !tapC;
 console.log(
   `   Doppeltipp-Fenster ${STUNT.tapWindow * 1000} ms:` +
     `  erster ${tapA ? '⚠' : '✓ nicht'}   innerhalb ${tapB && tapD ? '✓' : '⚠'}` +
     `   danach ${tapC ? '⚠ noch drin' : '✓ raus'}`,
 );
-if (tapA || !tapB || !tapD || tapC) {
-  console.log('   ⚠ Doppeltipp-Erkennung falsch');
-}
 
-const single = spinRun(false);
-const stunt = spinRun(true);
+const single = integrateYaw(
+  freshTouge(80),
+  { throttle: 0.7, steer: 1, handbrake: true },
+  Math.round(1.2 / DT),
+);
 const singleOk = single.peakSlip > DRIFT_SCORE_ANGLE && single.yawDeg < 180;
-const stuntOk = stunt.yawDeg >= 330;
 console.log(
   `   Einzeltipp 1,2 s:         Gier ${pad(single.yawDeg.toFixed(0) + '°', 6)}` +
     `  Schwimm ${pad(deg(single.peakSlip), 7)}  ${single.speed.toFixed(0)} km/h` +
     `  ${singleOk ? '✓ driftet, kein 360' : '⚠'}`,
 );
+
+const idle = sustainNoSpace(1.5);
+const idleOk = idle.yawDeg < 150 && idle.endSpin < 0.12;
 console.log(
-  `   Stunt 1,2 s:              Gier ${pad(stunt.yawDeg.toFixed(0) + '°', 6)}` +
-    `  Schwimm ${pad(deg(stunt.peakSlip), 7)}  ${stunt.speed.toFixed(0)} km/h` +
-    `  ${stuntOk ? '✓ 360 geht' : '⚠ kein 360'}`,
+  `   Stunt, Space los, lenken: Gier ${pad(idle.yawDeg.toFixed(0) + '°', 6)}` +
+    `  Schwimm ${pad(deg(idle.peakSlip), 7)}  spin ${idle.endSpin.toFixed(2)}` +
+    `  ${idleOk ? '✓ kein Kreisel' : '⚠ dreht ohne Space'}`,
+);
+
+const flick = heldSpin(1.0);
+const flickOk = flick.yawDeg >= 120 && flick.yawDeg < 270;
+console.log(
+  `   Stunt, Space 1,0 s:       Gier ${pad(flick.yawDeg.toFixed(0) + '°', 6)}` +
+    `  Schwimm ${pad(deg(flick.peakSlip), 7)}` +
+    `  ${flickOk ? '✓ 180-Fenster' : '⚠'}`,
+);
+
+const full = heldSpin(2.2);
+const fullOk = full.yawDeg >= 330;
+console.log(
+  `   Stunt, Space 2,2 s:       Gier ${pad(full.yawDeg.toFixed(0) + '°', 6)}` +
+    `  Schwimm ${pad(deg(full.peakSlip), 7)}  ${full.speed.toFixed(0)} km/h` +
+    `  ${fullOk ? '✓ 360 geht' : '⚠ kein 360'}`,
+);
+
+const caught = catchAfterSpin();
+const catchOk = caught.after < caught.before * 0.7 && caught.spin < 0.15;
+console.log(
+  `   Gegenlenken nach Spin:    ${deg(caught.before)} → ${deg(caught.after)}` +
+    `  spin ${caught.spin.toFixed(2)}` +
+    `  ${catchOk ? '✓ fängt' : '⚠ fängt nicht'}`,
+);
+
+const cleanStuntCar = freshTouge(90);
+const hold = 90 / 3.6;
+let cleanPeak = 0;
+for (let i = 0; i < 240; i++) {
+  cleanStuntCar.step(
+    DT,
+    cmd({ throttle: cleanStuntCar.telemetry.speed < hold ? 1 : 0, steer: 0.5, stunt: true }),
+    asphalt as never,
+    null,
+  );
+  cleanPeak = Math.max(cleanPeak, Math.abs(cleanStuntCar.telemetry.slip));
+}
+const cleanStuntOk = cleanPeak < DRIFT_SCORE_ANGLE;
+console.log(
+  `   Stunt, saubere Kurve:     Schwimm ${pad(deg(cleanPeak), 6)}` +
+    `  ${cleanStuntOk ? '✓ kein Drift ohne Space' : '⚠ driftet ungefragt'}`,
 );
 
 let failed = 0;
-if (tapA || !tapB || !tapD || tapC) failed++;
+if (!tapOk) failed++;
 if (!singleOk) failed++;
-if (!stuntOk) failed++;
+if (!idleOk) failed++;
+if (!flickOk) failed++;
+if (!fullOk) failed++;
+if (!catchOk) failed++;
+if (!cleanStuntOk) failed++;
 if (failed > 0) {
   console.log(`\n   ${failed} Stunt-Proben rot.\n`);
   process.exitCode = 1;
