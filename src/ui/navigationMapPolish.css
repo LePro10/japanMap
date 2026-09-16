@@ -1,3 +1,73 @@
+/* Regionen: weiche Farbfelder à la Forza Horizon, Labels nur aus der Ferne. */
+
+.navmap__regions {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.navmap-region-wash {
+  fill-opacity: 0.22;
+  stroke: none;
+  pointer-events: none;
+}
+
+.navmap-region-wash--soft {
+  fill-opacity: 0.12;
+}
+
+.navmap-region-label {
+  display: none;
+  color: #f6efe4;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.navmap--regionNames .navmap-region-label {
+  display: block;
+}
+
+.navmap-region-label__kanji,
+.navmap-region-label__name {
+  paint-order: stroke fill;
+  stroke: rgba(6, 16, 18, 0.88);
+  stroke-linejoin: round;
+  font-family: var(--display, var(--mono));
+  pointer-events: none;
+}
+
+.navmap-region-label__kanji {
+  fill: currentColor;
+  stroke-width: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.navmap-region-label__name {
+  fill: #f6efe4;
+  stroke-width: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.navmap-region-label.is-selected .navmap-region-label__name {
+  fill: #ffe7b0;
+}
+
+.navmap--regionNames .navmap-poi__label,
+.navmap--regionNames .navmap-poi__kanji,
+.navmap--regionNames .navmap-poi__detail,
+.navmap[data-zoom='far'] .navmap-poi__label {
+  display: none;
+}
+
 /* POIs über der Aerial-Karte — je Ort eine eigene Farbe, kein Einheitsgrau. */
 
 .navmap__poiLayer {
