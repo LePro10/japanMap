@@ -1817,7 +1817,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       return;
     }
     if (this.#walking && this.#context) {
-      this.walkCamera.update(dt, this.walker, this, this.#context.camera);
+      this.walkCamera.update(dt, this.walker, this, this.#context.camera, this.collision);
       const rig = this.#rig;
       if (rig) {
         rig.group.position.copy(this.walker.position);
