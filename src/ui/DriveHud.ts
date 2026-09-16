@@ -69,6 +69,8 @@ export class DriveHud {
   readonly #driftPoints: HTMLElement;
   readonly #driftMult: HTMLElement;
   readonly #driftBanked: HTMLElement;
+  readonly #stunt: HTMLElement;
+  readonly #speedo: HTMLElement;
   readonly #race: HTMLElement;
   readonly #racePlace: HTMLElement;
   readonly #raceLap: HTMLElement;
@@ -114,6 +116,7 @@ export class DriveHud {
   #walking = false;
   #menuOpen = false;
   #driftShown = false;
+  #stuntShown = false;
 
   constructor(container: HTMLElement) {
     this.#root = document.createElement('div');
@@ -131,7 +134,7 @@ export class DriveHud {
         <p class="hud__raceRow"><span class="hud__label">Next</span><span data-hud="raceNext">—</span></p>
       </div>
       <div class="hud__money" data-hud="money">${SPARK_ICON}<strong data-hud="moneyValue">0</strong></div>
-      <div class="hud__speedo"><span class="hud__gearLabel" data-hud="gear">N</span><svg class="hud__rpm" viewBox="0 0 220 130" aria-label="Engine RPM"><path d="M20 110 A90 90 0 0 1 200 110" pathLength="100" class="hud__rpmTrack"/><path d="M20 110 A90 90 0 0 1 200 110" pathLength="100" class="hud__rpmFill" data-hud="rpmFill"/><path d="M181 55 A90 90 0 0 1 200 110" class="hud__redline"/></svg><span class="hud__rpmText" data-hud="rpm">850 RPM</span>
+      <div class="hud__speedo"><span class="hud__stunt" data-hud="stunt" hidden>STUNT</span><span class="hud__gearLabel" data-hud="gear">N</span><svg class="hud__rpm" viewBox="0 0 220 130" aria-label="Engine RPM"><path d="M20 110 A90 90 0 0 1 200 110" pathLength="100" class="hud__rpmTrack"/><path d="M20 110 A90 90 0 0 1 200 110" pathLength="100" class="hud__rpmFill" data-hud="rpmFill"/><path d="M181 55 A90 90 0 0 1 200 110" class="hud__redline"/></svg><span class="hud__rpmText" data-hud="rpm">850 RPM</span>
         <div class="hud__boost" data-hud="boostBox" aria-label="Nitro"><span class="hud__nitroLabel">NITRO</span><i class="hud__boostFill" data-hud="boostFill"></i></div>
         <div class="hud__speedRow">
           <span class="hud__speed" data-hud="speed">0</span>
@@ -196,6 +199,8 @@ export class DriveHud {
     this.#promptKey = this.#must('[data-hud="promptKey"]');
     this.#promptAction = this.#must('[data-hud="promptAction"]');
     this.#prep = this.#must('[data-hud="prep"]');
+    this.#stunt = this.#must('[data-hud="stunt"]');
+    this.#speedo = this.#must('.hud__speedo');
     this.#nav = this.#must('.hud__nav');
     this.#wp = this.#must('[data-hud="wp"]');
     this.#wpName = this.#must('[data-hud="wpName"]');
@@ -394,6 +399,14 @@ export class DriveHud {
     this.#boostBox.classList.toggle('hud__boost--live', t.boosting);
     this.#boostBox.classList.toggle('hud__boost--ready', !t.boosting && t.boost > 0.98);
     this.#prep.hidden = t.circuit < 0.35;
+
+    // Anschalten ist sofort (telemetry.stunt = 1), Ausblenden folgt dem Blend.
+    const stuntOn = this.#driveActive && t.stunt > 0.2;
+    if (stuntOn !== this.#stuntShown) {
+      this.#stuntShown = stuntOn;
+      this.#stunt.hidden = !stuntOn;
+      this.#speedo.classList.toggle('is-stunt', stuntOn);
+    }
   }
 
   #boostPct = -1;

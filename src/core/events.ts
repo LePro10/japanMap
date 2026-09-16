@@ -201,6 +201,16 @@ export type AppEvents = {
   'drive:mode': { active: boolean };
 
   /**
+   * Stunt-Modus an oder aus — Doppeltipp Space.
+   *
+   * Eigenes Ereignis, weil HUD und Ton die **Flanke** brauchen (Label,
+   * Zwei-Ton). Die Physik liest `DriveInput.stunt` je Schritt; wer nur
+   * den Blend aus der Telemetrie nimmt, hört den Anschalt-Ton 0,12 s zu
+   * spät und den Ausschalt-Ton gar nicht, solange der Blend noch läuft.
+   */
+  'drive:stunt': { active: boolean };
+
+  /**
    * Zu Fuß an oder aus.
    *
    * Eigenes Ereignis und nicht `drive:mode` mit einem dritten Wert: das HUD,

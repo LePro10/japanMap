@@ -1,6 +1,13 @@
 import { Vehicle, type DriveInput } from '@/game/Vehicle';
 import { VEHICLES, VEHICLE_ORDER, type VehicleId } from '@/config/vehicles.config';
-import { ARCADE, DRIFT_MAX_ANGLE, DRIFT_SCORE_ANGLE, topSpeed } from '@/config/arcade.config';
+import {
+  ARCADE,
+  DRIFT_MAX_ANGLE,
+  DRIFT_SCORE_ANGLE,
+  STUNT,
+  isStuntDoubleTap,
+  topSpeed,
+} from '@/config/arcade.config';
 // @ts-expect-error — reines Node-ESM ohne Typen, wie der Rest von tools/.
 import { flatGround } from './flat.mjs';
 
@@ -281,4 +288,78 @@ for (const id of VEHICLE_ORDER) {
       surfaces.map((s, i) => `${s} ${pad(dists[i]!.toFixed(0), 4)} m`).join('   '),
   );
   console.log('');
+}
+
+function wrapDelta(from: number, to: number): number {
+  return Math.atan2(Math.sin(to - from), Math.cos(to - from));
+}
+
+/**
+ * Space+Lenkung 1,2 s, mit oder ohne Stunt-Flag.
+ *
+ * Gemessen wird die **aufintegrierte Gier**, nicht der Schwimmwinkel: atan2
+ * wickelt bei ±180°, genau deshalb der Drift keinen 360 kann. Ein 360 ist
+ * eine Umdrehung der Nase, nicht ein größerer β.
+ */
+function spinRun(stunt: boolean, seconds = 1.2): { yawDeg: number; peakSlip: number; speed: number } {
+  const car = new Vehicle(VEHICLES.touge);
+  car.respawn(0, 0, 0, asphalt as never);
+  accelerateTo(car, asphalt, 80);
+  let yaw = 0;
+  let prev = car.yaw;
+  let peakSlip = 0;
+  const steps = Math.round(seconds / DT);
+  for (let i = 0; i < steps; i++) {
+    car.step(
+      DT,
+      cmd({ throttle: 0.7, steer: 1, handbrake: true, stunt }),
+      asphalt as never,
+      null,
+    );
+    yaw += wrapDelta(prev, car.yaw);
+    prev = car.yaw;
+    peakSlip = Math.max(peakSlip, Math.abs(car.telemetry.slip));
+  }
+  return { yawDeg: (Math.abs(yaw) * 180) / Math.PI, peakSlip, speed: car.telemetry.speed * 3.6 };
+}
+
+console.log('── Stunt-Modus (Doppeltipp Space)\n');
+
+const tapA = isStuntDoubleTap(Number.NEGATIVE_INFINITY, 0);
+const tapB = isStuntDoubleTap(0, STUNT.tapWindow);
+const tapC = isStuntDoubleTap(0, STUNT.tapWindow + 0.001);
+const tapD = isStuntDoubleTap(0, STUNT.tapWindow * 0.5);
+console.log(
+  `   Doppeltipp-Fenster ${STUNT.tapWindow * 1000} ms:` +
+    `  erster ${tapA ? '⚠' : '✓ nicht'}   innerhalb ${tapB && tapD ? '✓' : '⚠'}` +
+    `   danach ${tapC ? '⚠ noch drin' : '✓ raus'}`,
+);
+if (tapA || !tapB || !tapD || tapC) {
+  console.log('   ⚠ Doppeltipp-Erkennung falsch');
+}
+
+const single = spinRun(false);
+const stunt = spinRun(true);
+const singleOk = single.peakSlip > DRIFT_SCORE_ANGLE && single.yawDeg < 180;
+const stuntOk = stunt.yawDeg >= 330;
+console.log(
+  `   Einzeltipp 1,2 s:         Gier ${pad(single.yawDeg.toFixed(0) + '°', 6)}` +
+    `  Schwimm ${pad(deg(single.peakSlip), 7)}  ${single.speed.toFixed(0)} km/h` +
+    `  ${singleOk ? '✓ driftet, kein 360' : '⚠'}`,
+);
+console.log(
+  `   Stunt 1,2 s:              Gier ${pad(stunt.yawDeg.toFixed(0) + '°', 6)}` +
+    `  Schwimm ${pad(deg(stunt.peakSlip), 7)}  ${stunt.speed.toFixed(0)} km/h` +
+    `  ${stuntOk ? '✓ 360 geht' : '⚠ kein 360'}`,
+);
+
+let failed = 0;
+if (tapA || !tapB || !tapD || tapC) failed++;
+if (!singleOk) failed++;
+if (!stuntOk) failed++;
+if (failed > 0) {
+  console.log(`\n   ${failed} Stunt-Proben rot.\n`);
+  process.exitCode = 1;
+} else {
+  console.log('\n   Stunt-Proben grün.\n');
 }

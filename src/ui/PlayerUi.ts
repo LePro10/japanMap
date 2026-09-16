@@ -146,6 +146,7 @@ export class PlayerUi {
       options.bus.on("quality:changed", () => this.#syncQuality()),
       options.bus.on("drive:mode", () => this.#syncDrive()),
       options.bus.on("walk:mode", () => this.#syncDrive()),
+      options.bus.on("drive:stunt", ({ active }) => this.#touch.setStunt(active)),
       options.bus.on("drive:vehicle", () => {
         this.#preview = options.drive?.vehicleId ?? "touge";
         this.#cars();

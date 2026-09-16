@@ -12,6 +12,7 @@ import {
   DRIFT_SCORE_ANGLE,
   DRIVE_RETAIN_SPEED,
   GRIP_BLEND,
+  STUNT,
   YAW_CAP_SPEED,
   type ArcadeSpec,
 } from '@/config/arcade.config';
@@ -100,6 +101,8 @@ export interface PlanarResult {
   boost: number;
   /** Radeinschlag für die Anzeige, rad. */
   steerAngle: number;
+  /** Stunt-Overlay, 0…1 — HUD und Kamera, nicht die Punkte. */
+  stunt: number;
 }
 
 /** Was die Dynamik über den Untergrund und die Lage wissen muss. */
@@ -138,6 +141,11 @@ export interface DriveCommand {
   readonly steer: number;
   readonly handbrake: boolean;
   readonly boost: boolean;
+  /**
+   * Stunt-Modus. Optional wie `boost`: Prüfstände, die die Eingabe von Hand
+   * bauen, meinen `false`, und ein Pflichtfeld hätte sie alle anfassen müssen.
+   */
+  readonly stunt?: boolean;
 }
 
 /** Ein Zustand, den ein Prüfstand von Hand setzen darf. */
@@ -246,6 +254,8 @@ export class ArcadeDynamics {
   #pitchRate = 0;
   /** Zuletzt gefahrener Drift-Zuschlag — hält das Vorzeichen über die Flaute. */
   #driftSign = 0;
+  /** Stunt-Overlay, 0…1. Folgt `input.stunt`, nicht der Taste selbst. */
+  #stuntBlend = 0;
 
   constructor(spec: ArcadeSpec, looseBonus: number) {
     this.#spec = spec;
@@ -286,6 +296,7 @@ export class ArcadeDynamics {
     this.#gripSmoothed = Number.NaN;
     this.#wasAirborne = false;
     this.#landTimer = 0;
+    this.#stuntBlend = 0;
     // **Der Nitro-Vorrat bleibt stehen.** Ein Respawn nach einem Fehler soll
     // nicht auch noch den Boost verschenken — das bestraft den Fehler zweimal.
   }
@@ -336,6 +347,13 @@ export class ArcadeDynamics {
   step(dt: number, input: DriveCommand, env: PlanarEnv): PlanarResult {
     const spec = this.#spec;
     const speed = Math.hypot(env.vLong, env.vLat);
+
+    // Stunt-Blend: anschalten kurz, ausschalten in `STUNT.blend`. Der Drift
+    // selbst bleibt ein eigener Zustand — dieser Wert ist nur das Overlay.
+    const stuntWant = input.stunt === true ? 1 : 0;
+    const stuntTau = stuntWant > this.#stuntBlend ? STUNT.enter : STUNT.blend;
+    this.#stuntBlend += (stuntWant - this.#stuntBlend) * (1 - Math.exp((-3 * dt) / stuntTau));
+    if (this.#stuntBlend < 1e-3) this.#stuntBlend = 0;
 
     // ── Belag ─────────────────────────────────────────────────────────────
     //
@@ -483,10 +501,12 @@ export class ArcadeDynamics {
       // Luftsteuerung. Sie ist Winkel*beschleunigung* und keine Sollrate — in der
       // Luft gibt es nichts, was eine Rate erzwänge, und ein Wagen, der im Flug
       // sofort auf eine Sollrate springt, sieht aus wie ein Modellflugzeug.
-      this.#yawRate += -Math.sign(input.steer) * Math.abs(input.steer) * AIR_CONTROL.yaw * dt;
+      const airYaw = AIR_CONTROL.yaw * (1 + this.#stuntBlend * (STUNT.airYaw - 1));
+      const airPitch = AIR_CONTROL.pitch * (1 + this.#stuntBlend * (STUNT.airPitch - 1));
+      this.#yawRate += -Math.sign(input.steer) * Math.abs(input.steer) * airYaw * dt;
       this.#yawRate *= Math.exp(-AIR_CONTROL.damping * dt);
       this.#pitchRate +=
-        (clamp01(input.brake) - clamp01(input.throttle)) * AIR_CONTROL.pitch * dt;
+        (clamp01(input.brake) - clamp01(input.throttle)) * airPitch * dt;
       this.#pitchRate *= Math.exp(-AIR_CONTROL.damping * dt);
     } else {
       if (this.#wasAirborne) this.#landTimer = GRIP_BLEND;
@@ -503,17 +523,25 @@ export class ArcadeDynamics {
       // das liest sich als Gierkick genau dann, wenn die Räder den Boden
       // wiederfinden. ASTRA_PLAN §5 verlangt das Gegenteil.
       const landing = this.#landTimer > 0;
-      if (!landing && Math.abs(input.steer) < 0.2 && speed > 2 && !input.handbrake) {
+      if (
+        !landing &&
+        Math.abs(input.steer) < 0.2 &&
+        speed > 2 &&
+        !input.handbrake &&
+        this.#stuntBlend < 0.25
+      ) {
         const slip = Math.atan2(env.vLat, Math.abs(env.vLong));
         // Ein Schwimmwinkel nach rechts (positiv) heißt: die Nase muss nach
         // rechts, also ψ fallen. Daher das Minus — dieselbe Kette wie oben.
-        yawTarget += -slip * spec.catchAssist * Math.min(1, speed / 8);
+        yawTarget +=
+          -slip * spec.catchAssist * (1 - this.#stuntBlend) * Math.min(1, speed / 8);
       }
       const yawFollow = landing ? spec.yawResponse * 0.25 : spec.yawResponse;
       const blend = 1 - Math.exp(-yawFollow * dt);
       this.#yawRate += (yawTarget - this.#yawRate) * blend;
     }
-    this.#yawRate = clamp(this.#yawRate, -spec.maxYawRate, spec.maxYawRate);
+    const yawCap = lerp(spec.maxYawRate, STUNT.maxYawRate, this.#stuntBlend);
+    this.#yawRate = clamp(this.#yawRate, -yawCap, yawCap);
     this.#pitchRate = clamp(this.#pitchRate, -2.5, 2.5);
 
     // ── Querkraft ─────────────────────────────────────────────────────────
@@ -523,7 +551,11 @@ export class ArcadeDynamics {
     // Reibkreis dieses Modells — und er ist absichtlich weich: eine harte
     // Ellipse macht den Übergang zum Rutschen zu einer Kante, und Kanten kann
     // ein Spieler mit einer Taste nicht bedienen.
-    const k = lerp(spec.latGrip, spec.driftLatGrip, this.#drift) * grip * latMul;
+    const k =
+      lerp(spec.latGrip, spec.driftLatGrip, this.#drift) *
+      grip *
+      latMul *
+      lerp(1, STUNT.latGrip, this.#stuntBlend);
     let accelLat = env.airborne ? 0 : (-env.vLat * (1 - Math.exp(-k * dt))) / dt;
     const latBudget = aLatMax * (1 - 0.25 * this.#drift);
     accelLat = clamp(accelLat, -latBudget, latBudget);
@@ -601,6 +633,7 @@ export class ArcadeDynamics {
       boosting: longitudinal.boosting,
       boost: this.#boost,
       steerAngle: this.#steerAngle,
+      stunt: input.stunt === true ? 1 : this.#stuntBlend,
     };
   }
 
@@ -729,6 +762,18 @@ export class ArcadeDynamics {
     } else {
       this.#driftSign = 0;
     }
+
+    // Stunt-Spin. Bewusst eine Rate und kein Winkel: der Drift-Zuschlag
+    // oben stoppt bei `driftAngle`, und atan2 wickelt bei ±180°. Beides
+    // zusammen macht einen 360 unmöglich — das Overlay hebt genau das.
+    // Ohne offenen Drift bleibt es tot: Space auf der Geraden erfindet
+    // weiter kein Vorzeichen, Einzeltipp ohne Modus bleibt der 43°-Drift.
+    if (this.#stuntBlend > 0.01 && this.#drift > 0.05 && speed > STUNT.minSpeed) {
+      if (Math.abs(input.steer) > 0.1) this.#driftSign = Math.sign(input.steer);
+      if (this.#driftSign !== 0) {
+        target += -this.#driftSign * this.#stuntBlend * this.#drift * STUNT.spinYaw;
+      }
+    }
     return target;
   }
 
@@ -812,8 +857,9 @@ export class ArcadeDynamics {
     // Bremse. Sie darf die Haftgrenze überschreiten — das ist Arcade und
     // ausdrücklich gewollt: ein Spieler, der bremst, will stehenbleiben.
     const preparedBrake = 1 + (CIRCUIT_PREP.brake - 1) * (env.circuit ?? 0);
+    const handbrakeBrake = lerp(0.36, STUNT.handbrakeBrake, this.#stuntBlend);
     const brakeDecel = Math.min(Math.abs(env.vLong) / dt,
-      (brake * spec.brakeG + (input.handbrake ? 0.36 : 0)) * GRAVITY *
+      (brake * spec.brakeG + (input.handbrake ? handbrakeBrake : 0)) * GRAVITY *
       (0.4 + 0.6 * grip) * preparedBrake);
     const brakeSign = env.vLong > 0 ? -1 : env.vLong < 0 ? 1 : 0;
 
@@ -846,7 +892,8 @@ export class ArcadeDynamics {
       ? Math.max(0, -(env.slopeAccel ?? 0) * direction) * throttle * assistFade *
         lerp(OFFROAD_DRIVE.gradeAssist, OFFROAD_DRIVE.capableGradeAssist, ability) * direction
       : 0;
-    const driveAccel = (force / this.#mass + gradeAssist) * (input.handbrake ? 0.2 : 1);
+    const handbrakeDrive = lerp(0.2, STUNT.handbrakeDrive, this.#stuntBlend);
+    const driveAccel = (force / this.#mass + gradeAssist) * (input.handbrake ? handbrakeDrive : 1);
     let tractionLimit = grip * GRAVITY * 1.35;
     // Unter 50 km/h auf losem Boden: Straßenautos behalten 65 % der
     // Asphalt-Antriebskraft, Utility 85 %. Der Boden *darf* nicht härter
@@ -870,7 +917,7 @@ export class ArcadeDynamics {
         (spec.launchForce / this.#mass) *
         this.#crawlShare *
         ARCADE_CRAWL.extra *
-        (input.handbrake ? 0.2 : 1) *
+        (input.handbrake ? handbrakeDrive : 1) *
         crawlT *
         env.support * direction;
     }

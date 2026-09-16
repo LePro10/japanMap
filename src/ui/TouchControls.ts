@@ -69,6 +69,7 @@ export interface TouchCameraTarget {
 export interface TouchDriveTarget {
   readonly active: boolean;
   readonly walking: boolean;
+  readonly stunt?: boolean;
   toggle(): void;
   toggleVehicle(): void;
   respawn(): void;
@@ -299,6 +300,11 @@ export class TouchControls {
    * „Anzeige, die lügt", gegen die dieses Projekt schon bei `F1` und der
    * Stufenwahl angetreten ist.
    */
+  setStunt(on: boolean): void {
+    this.#must('[data-touch="handbrake"]').classList.toggle('is-stunt', on);
+    this.#must('[data-touch="handbrake"]').textContent = on ? 'STUNT' : 'Drift';
+  }
+
   setDriveMode(active: boolean, walking = false): void {
     const onFoot = walking && !active;
     this.#root.classList.toggle('touch--drive', active);
@@ -315,7 +321,10 @@ export class TouchControls {
     this.#must('[data-touch="brake"]').hidden = !active;
     this.#must('[data-touch="jump"]').hidden = !onFoot;
     this.#must('[data-touch="drive"]').classList.toggle('is-active', active);
-    if (!active) this.#drive?.setHandbrake(false);
+    if (!active) {
+      this.#drive?.setHandbrake(false);
+      this.setStunt(false);
+    }
     if (!active) { this.#drive?.setBoost?.(false); this.#braking = false; }
     if (!onFoot) this.#drive?.setJump(false);
     this.#updateSpeedLabel();
