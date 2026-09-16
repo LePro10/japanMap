@@ -23,6 +23,7 @@ You start on foot in the sakura bowl. Press **F** to get in the car and drive.
 | `A` / `D` | steer |
 | `Space` | handbrake (drift) |
 | `C` | camera: chase / cockpit |
+| Wheel | zoom (closest = cockpit) |
 | `R` | respawn on the nearest road |
 | `F` | get out of the car |
 | `M` | world map |

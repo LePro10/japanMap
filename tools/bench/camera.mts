@@ -170,14 +170,10 @@ function ok(msg: string): void {
   ok('Mausrad zoomt den Boom');
 
   for (let i = 0; i < 12; i++) chase.zoom(0.5);
-  if (chase.mode !== 'hood') fail(`Zoom unter Minimum soll in die Haube, war ${chase.mode}`);
+  if (chase.mode !== 'cockpit') fail(`Zoom unter Minimum soll in den Sitz, war ${chase.mode}`);
   chase.zoom(1.2);
-  if (chase.mode !== 'chase') fail(`Zoom aus der Haube soll in den Verfolger, war ${chase.mode}`);
-  ok('Nächste Rastung unter Minimum = Haube');
-  for (let i = 0; i < 12; i++) chase.zoom(0.5);
-  chase.zoom(0.5);
-  if (chase.mode !== 'hood') fail(`Zoom im Sitz-Pfad darf nicht ins Cockpit, war ${chase.mode}`);
-  ok('Mausrad erreicht den Sitz nicht');
+  if (chase.mode !== 'chase') fail(`Zoom aus dem Sitz soll in den Verfolger, war ${chase.mode}`);
+  ok('Nächste Rastung unter Minimum = Sitz');
 }
 
 {
@@ -208,29 +204,37 @@ function ok(msg: string): void {
 
   const visuals = createCarVisuals(v.spec);
   const cabinMesh = new Mesh(visuals.cabin, new MeshBasicMaterial());
-  const down = new Raycaster(new Vector3(eye.x, eye.y, eye.z), new Vector3(0, -1, 0), 0, 1.2);
-  const hits = down.intersectObject(cabinMesh);
-  console.log(`Cabin-Bodenstrahl Treffer=${hits.length} dist=${hits[0]?.distance.toFixed(3) ?? '—'}`);
-  if (hits.length === 0) fail('Strahl nach unten trifft keinen Kabinenboden');
+  const origin = new Vector3(eye.x, eye.y, eye.z);
+  const down = new Raycaster(origin, new Vector3(0, -1, 0), 0, 1.4);
+  const floorHits = down.intersectObject(cabinMesh);
+  console.log(`Cabin-Bodenstrahl Treffer=${floorHits.length} dist=${floorHits[0]?.distance.toFixed(3) ?? '—'}`);
+  if (floorHits.length === 0) fail('Strahl nach unten trifft keinen Kabinenboden');
   ok('Kabinenboden schließt den Durchblick');
+
+  const hub = helmHub(v.spec);
+  const toHub = new Vector3(hub.x - eye.x, hub.y - eye.y, hub.z - eye.z).normalize();
+  const through = new Raycaster(origin, toHub, 0, 1.4);
+  const dashHits = through.intersectObject(cabinMesh);
+  console.log(`Strahl durchs Rad Treffer=${dashHits.length} dist=${dashHits[0]?.distance.toFixed(3) ?? '—'}`);
+  if (dashHits.length === 0) fail('Durchs Lenkrad muss die Armatur kommen, nicht die Wiese');
+  ok('Armatur sitzt hinter dem Kranz');
   cabinMesh.geometry.dispose();
   cabinMesh.material.dispose();
   visuals.body.dispose();
   visuals.glass.dispose();
   visuals.helm.dispose();
 
-  const hub = helmHub(v.spec);
   const look = COCKPIT_CAMERA.lookPitch;
-  const wheelPitch = Math.atan2(hub.y - eye.y, hub.z - eye.z);
-  const wheelInView = wheelPitch - look;
+  const rim = 0.16;
+  const rimTop = Math.atan2(hub.y + rim - eye.y, hub.z - eye.z) - look;
+  const hubPitch = Math.atan2(hub.y - eye.y, hub.z - eye.z) - look;
   const halfFov = (COCKPIT_CAMERA.fov * Math.PI) / 180 / 2;
-  console.log(
-    `Lenkrad Δpitch=${(wheelInView * 180 / Math.PI).toFixed(1)}°  halbes FOV=${(halfFov * 180 / Math.PI).toFixed(1)}°`,
-  );
-  if (Math.abs(wheelInView) > halfFov * 0.95) {
-    fail(`Lenkrad außerhalb des Blicks: ${(wheelInView * 180 / Math.PI).toFixed(1)}°`);
-  }
-  ok('Lenkrad liegt im Blick');
+  const rimDeg = (rimTop * 180) / Math.PI;
+  const hubDeg = (hubPitch * 180) / Math.PI;
+  console.log(`Kranz oben ${rimDeg.toFixed(1)}°  Nabe ${hubDeg.toFixed(1)}°  halbes FOV=${((halfFov * 180) / Math.PI).toFixed(1)}°`);
+  if (rimTop > -0.12) fail(`Kranz zu hoch (Tunnel): ${rimDeg.toFixed(1)}°`);
+  if (hubPitch < -halfFov * 1.05) fail(`Nabe unter dem Bild: ${hubDeg.toFixed(1)}°`);
+  ok('Lenkrad ist ein Bogen unten, kein Tunnel');
 
   chase.toggleMode();
   if (chase.mode !== 'chase') fail(`C zweimal = Verfolger, war ${chase.mode}`);

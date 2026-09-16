@@ -1191,15 +1191,15 @@ export const CHASE_CAMERA = {
  * Verfolger; im Cockpit ist Zoom eine Lüge über die Entfernung.
  */
 export const COCKPIT_CAMERA = {
-  fov: 60,
+  fov: 62,
   fovBoost: 2,
-  near: 0.1,
+  near: 0.06,
   lookAtDist: 18,
   /**
    * Ruhelage des Blicks, negativ = Straße. Ohne das zielt die Kamera über das
    * Lenkrad hinweg in den Himmel, und das Rad liegt unter dem Bildrand.
    */
-  lookPitch: -0.08,
+  lookPitch: -0.12,
   /** Nacken-Feder, Hz und Dämpfung. Über ~2,5 Hz frisst sie den Belag; unter ~0,7 Hz wird einem übel. */
   neckHz: 1.6,
   neckZeta: 0.85,

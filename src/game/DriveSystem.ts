@@ -1613,8 +1613,9 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       this.#scratch.set(hub.x, hub.y, hub.z).applyQuaternion(this.vehicle.quaternion);
       this.#helm.position.copy(this.vehicle.position).add(this.#scratch);
       this.#helm.quaternion.copy(this.vehicle.quaternion);
-      // ~25° zum Fahrer, sonst steht das Rad als flacher Ring im Bild.
-      this.#helm.rotateX(-0.44);
+      // ~18° zum Fahrer — genug, dass es ein Rad ist, nicht so steil, dass
+      // der Kranz zur Scheibe wird.
+      this.#helm.rotateX(-0.32);
       const lock = Math.max(1e-4, this.vehicle.spec.steering.maxAngle);
       // Positiver Lock = rechts. Von hinten aufs Rad: rechts ist −Z (Uhrzeigersinn entlang +Z).
       this.#helm.rotateZ(-(this.vehicle.telemetry.steerAngle / lock) * 1.85);

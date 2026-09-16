@@ -182,10 +182,15 @@ export function hoodCowl(spec: VehicleSpec): CockpitSocket {
 }
 
 /**
- * Lenkradnabe. 18 cm unter dem Auge, 34 cm davor — mit `lookPitch` −8° sitzt
- * die Nabe im unteren Bilddrittel, nicht unter dem Bildrand.
+ * Lenkradnabe — weit und tief, damit man *über* den Kranz schaut.
+ *
+ * 15 cm / 32 cm hat den vollen Ring um die Bildmitte gelegt (Aufnahme:
+ * Tunnel). 30 cm unter dem Auge, 52 cm davor: der untere Kranz fällt
+ * aus dem FOV, oben bleibt ein Bogen im unteren Drittel.
  */
 export function helmHub(spec: VehicleSpec): CockpitSocket {
   const eye = cockpitEye(spec);
-  return { x: eye.x, y: eye.y - 0.15, z: eye.z + 0.32 };
+  // 42 cm unter dem Auge, 62 cm davor: Kranz oben ~16° unter der Blickachse
+  // bei 62° FOV = unteres Viertel, kein Tunnel (Forza-Horizon-Bild).
+  return { x: eye.x, y: eye.y - 0.42, z: eye.z + 0.62 };
 }

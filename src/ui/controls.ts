@@ -49,7 +49,7 @@ export const DRIVE_CONTROLS: readonly (readonly [string, string])[] = [
   ['Space', 'handbrake'],
   ['Shift', 'nitro boost'],
   ['Mouse', 'look around'],
-  ['Wheel', 'zoom (closest = hood)'],
+  ['Wheel', 'zoom (closest = cockpit)'],
   ['C', 'view: chase / cockpit'],
   ['R', 'respawn on the nearest road'],
   ['F', 'get out'],
@@ -80,7 +80,7 @@ export const TOUCH_CONTROLS: readonly (readonly [string, string])[] = [
 export const TOUCH_DRIVE_CONTROLS: readonly (readonly [string, string])[] = [
   ['Drag left', 'throttle / brake / steer'],
   ['Drag right', 'look around'],
-  ['Pinch', 'zoom (closest = hood)'],
+  ['Pinch', 'zoom (closest = cockpit)'],
   ['Cam', 'view: chase / cockpit'],
   ['Drift / Brake / Boost', 'hold the corresponding driving action'],
   ['⟲', 'recover on the nearest road'],

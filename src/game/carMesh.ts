@@ -174,43 +174,48 @@ function cabinKit(s:VehicleSpec):BufferGeometry[] {
  const cg=s.chassis.cgHeight;
  const c=s.body;
  const eye=cockpitEye(s);
- // Käfig relativ zum Auge, in Mesh-Y über Grund (mergeNamed zieht cg ab).
- const ex=eye.x, ey=eye.y+cg, ez=eye.z;
- const frame=0x12161c;
+ const ey=eye.y+cg, ez=eye.z;
+ const frame=0x161a20;
+ const carpet=0x1a1816;
  const out:BufferGeometry[]=[];
- const floorY=s.collision.band[0]+.03;
- out.push(part(c.hullWidth*.7,.04,1.1,0,floorY+.02,ez-.1,SHARED_COLORS.seat));
+ const floorY=s.collision.band[0]+.02;
+ // Teppich über die ganze Kabine — sonst ist die Wiese der Fußraum.
+ out.push(part(1.15,.05,1.45,0,floorY+.025,ez+.05,carpet));
  if(layout.open){
-  out.push(part(.4,.1,.5,0,floorY+.14,ez-.2,c.paintDark));
+  out.push(part(.42,.1,.5,0,floorY+.14,ez-.15,c.paintDark));
   return out;
  }
- // Blickkäfig im FOV, nicht an der echten A-Säule (die lag bei 62° — außerhalb).
- pair(out,.055,.62,.055,.40,ey-.04,ez+.48,frame);
- out.push(part(.92,.045,.05,0,ey+.30,ez+.52,frame));
- // Armatur als dunkles Band unter dem Blick, kein Lackteppich.
- out.push(part(.9,.1,.28,0,ey-.34,ez+.38,SHARED_COLORS.dash));
- out.push(part(.28,.04,.06,0,ey-.26,ez+.46,SHARED_COLORS.cluster));
- pair(out,.07,.035,.03,.10,ey-.25,ez+.48,0xc5d0da);
- // Heckwand, damit ein Mausschwenk nicht ins Leere fällt.
- out.push(part(c.hullWidth*.7,.7,.05,0,ey-.15,ez-.55,c.paintDark));
- pair(out,.05,.55,.8,.48,ey-.12,ez-.05,c.paintDark);
- out.push(part(.36,.08,.34,ex-.22,floorY+.12,ez-.2,SHARED_COLORS.seat));
- out.push(part(.36,.4,.07,ex-.22,floorY+.34,ez-.34,SHARED_COLORS.seat));
+ // Armatur: breit, hinter dem Rad. Füllt das Loch im Kranz, damit man
+ // nicht durchs Auto aufs Gras sieht.
+ out.push(part(1.08,.22,.4,0,ey-.48,ez+.70,SHARED_COLORS.dash));
+ out.push(part(1.0,.035,.14,0,ey-.35,ez+.62,0x1c2228));
+ const gauge=paint(new CylinderGeometry(.05,.05,.028,10),0xb8c4ce);
+ gauge.rotateX(Math.PI/2);out.push(gauge.clone().translate(-.07,ey-.32,ez+.64));
+ out.push(gauge.translate(.07,ey-.32,ez+.64));
+ pair(out,.03,.28,.035,.5,ey+.08,ez+.72,frame);
+ out.push(part(1.08,.03,.035,0,ey+.24,ez+.74,frame));
+ // Türen + Heck, Fußraum mit drei Pedalen (Kupplung / Bremse / Gas).
+ pair(out,.05,.42,.9,.56,ey-.18,ez+.05,c.paintDark);
+ out.push(part(1.1,.55,.05,0,ey-.1,ez-.62,c.paintDark));
+ const pedalY=floorY+.09;
+ out.push(part(.05,.11,.02,-.11,pedalY,ez+.22,0x2a2e32));
+ out.push(part(.06,.13,.02,0,pedalY,ez+.22,0x2a2e32));
+ out.push(part(.05,.1,.02,.11,pedalY,ez+.22,0x2a2e32));
+ out.push(part(.38,.07,.36,-.22,floorY+.11,ez-.22,SHARED_COLORS.seat));
+ out.push(part(.38,.38,.07,-.22,floorY+.32,ez-.36,SHARED_COLORS.seat));
  return out;
 }
 
 function helmKit(s:VehicleSpec):BufferGeometry[] {
- // Ursprung = Nabe. DriveSystem setzt die Pose auf `helmHub`, sonst
- // dreht rotateZ das Rad um den Schwerpunkt statt um die Nabe.
+ // 31 cm Radius wäre ein Traktor. 16 cm = 32 cm Durchmesser, realistisches Rad.
  const rim=s.body.rim, trim=s.body.trim;
- const ring=paint(new TorusGeometry(.21,.026,8,22),trim);
+ const ring=paint(new TorusGeometry(.16,.012,8,24),trim);
  const out:BufferGeometry[]=[ring];
- const cap=paint(new CylinderGeometry(.045,.045,.028,8),rim);
+ const cap=paint(new CylinderGeometry(.032,.032,.018,8),rim);
  cap.rotateX(Math.PI/2);out.push(cap);
- const spokes=s.id==='needle'||s.id==='gt'?3:s.id==='meridian'?4:3;
- for(let i=0;i<spokes;i++){
-  const a=i*Math.PI*2/spokes+Math.PI/2;
-  const spoke=part(.022,.022,.16,0,0,.08,rim);
+ for(let i=0;i<3;i++){
+  const a=i*Math.PI*2/3+Math.PI/2;
+  const spoke=part(.014,.014,.13,0,0,.065,rim);
   spoke.rotateZ(a);out.push(spoke);
  }
  return out;

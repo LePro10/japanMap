@@ -109,15 +109,21 @@ export class ChaseCamera {
   /**
    * Boom näher/weiter. Faktor > 1 = weiter weg.
    *
-   * An der Haube ist der Arm schon null: eine Rastung weiter weg steigt in
-   * den Verfolger bei `zoomMin`, eine Rastung näher tut nichts. Umgekehrt
-   * wechselt der Verfolger an `zoomMin` in die Haube — das ist das Ende
-   * von „näher", nicht ein zweiter Modus daneben. Der Sitz ist **nicht**
-   * auf diesem Weg erreichbar: wer zoomt, soll nicht im Cockpit landen.
+   * Eine Rastung unter `zoomMin` geht in den **Sitz**, nicht auf die Haube.
+   * Die Haube als Zoom-Ende war die Lack-Tapete. Aus dem Sitz eine Rastung
+   * weiter weg steigt wieder in den Verfolger bei `zoomMin`.
    */
   zoom(factor: number): void {
     if (!Number.isFinite(factor) || factor <= 0) return;
-    if (this.mode === 'cockpit') return;
+    if (this.mode === 'cockpit') {
+      if (factor > 1.002) {
+        this.mode = 'chase';
+        this.#zoom = CHASE_CAMERA.zoomMin;
+        this.#zoomApplied = CHASE_CAMERA.zoomMin;
+        this.#initialized = false;
+      }
+      return;
+    }
     if (this.mode === 'hood') {
       if (factor > 1.002) {
         this.mode = 'chase';
@@ -128,7 +134,7 @@ export class ChaseCamera {
       return;
     }
     if (factor < 0.998 && this.#zoom <= CHASE_CAMERA.zoomMin + 1e-4) {
-      this.mode = 'hood';
+      this.mode = 'cockpit';
       return;
     }
     this.#zoom = clamp(this.#zoom * factor, CHASE_CAMERA.zoomMin, CHASE_CAMERA.zoomMax);
