@@ -11168,11 +11168,11 @@ erledigter Namenswechsel.
 Aus den Paketnotizen, nicht neu erfunden:
 
 - Kein volles Shop-/Tune-Wirtschaftssystem, keine Testfahrt, keine Lacke/Kits
-- Kein Stunt-Modus (Doppel-Leertaste)
+- Kein **bleibender** Stunt-Modus (Q / Toggle). Doppeltipp-Space, Hold-Spin und Trick-360 **liegen im Code** — Wertung, Landed-UI und Stay-on fehlen
 - Keine Events E08–E17, keine Lieferfahrten, keine Eventkarten mit Cruise/Club/Expert
-- Keine 2,60 km² Stadt, kein Beacon Tower, kein Rain Garden, kein Breakyard
-- Keine acht Regionen, keine 24 Entdeckungskarten, keine Road Card
-- Keine begehbaren Innenräume außer Mühle und Net House (Petal/Open Bay öffnen Menüs)
+- Keine 2,60 km² Stadt, kein Breakyard. Rain Garden / Beacon / Market / Rotor Court stehen als Places
+- Acht Regionen + Erstbetretung-Toast **ja**; keine 24 Entdeckungskarten, keine Road Card
+- Begehbar: Mühle, Net House, Komorebi Diner, Kōji Mart. Petal/Open Bay öffnen weiter Menüs
 - Keine GLB-Autos, kein CrazyGames-SDK, kein Cloud-Save
 - `npm run world` schreibt das WP6-Netz **nicht**
 
@@ -11202,7 +11202,7 @@ Wunschliste **nachgefahren**. Was fehlt:
 | Rennen | Grid gerade, Countdown hält, KI fährt, Kollision bleibt | Countdown nullt Tempo; Integration meldet sechs Events grün. KI-Stärke und „wegschallern" sind nicht gegen ASTRA_PLAN §8 gemessen |
 | Pickups | sitzen nicht im Boden; später Sparks-Ikon + Aufsammel-Animation | Clip-Bug in TODO offen; 90 anonyme Münzen sind nicht durch 24 Entdeckungen ersetzt |
 | Fluss vs. Bergpass | sichtbar oder Brücke, keine unsichtbare Kollision | offen — P21 hat das schwebende Becken bewusst nicht am Bake repariert |
-| Reisfeld-Wasser | Auto nicht versunken, Stufe hat Erde | offen |
+| Reisfeld-Wasser | Auto nicht versunken, Stufe hat Erde | `PADDY_WATER.depth` 0,10 m (nicht Bake-0,30); Rand `bankInset` 0,25, Stufe `dropInset`. Physik-Maske ist nicht inset — Krone kann nass sein, Mesh trocken |
 | Brücke zur Stadt | East Gate ist Damm, keine transparente Brücke | WP6 hat den Damm geschnitten; ob das alte Mesh noch stört, ist nicht neu fotografiert |
 
 ### 2. Veranstaltungen — der größte fehlende Spielgrund
@@ -11219,9 +11219,9 @@ Grund, sie zu fahren.
 
 | Ort / Mechanik | Spec | Gebaut? |
 |---|---|---|
-| Acht Regionen + Erstbetretung | ASTRA_PLAN §3 | nein |
-| 2,60 km² Stadt, fünf Viertel | §3 | nein — WP4 ist die **alte** Platte, WP6 legt Terrassen daneben |
-| Beacon, Rain Garden, Rotor Court, Breakyard, Market Hall | §3 / §4 | nein |
+| Acht Regionen + Erstbetretung | ASTRA_PLAN §3 | Regionen + Toast `n/8` + 200 Sparks, persistiert. 24 Karten fehlen |
+| 2,60 km² Stadt, fünf Viertel | §3 | nein — WP4 ist die **alte** Platte, WP6 legt Terrassen daneben. Lane `neon-city` ungemergt |
+| Beacon, Rain Garden, Rotor Court, Breakyard, Market Hall | §3 / §4 | Places ja außer Breakyard |
 | Sechs neue Schanzen | §4 | nur Terrace Roller; die sechs P24-Schanzen stehen noch |
 | Sieben Innenräume | §7 | Mühle + Net House; Petal/Open Bay sind Menütüren |
 | 24 Entdeckungen + Road Card | §9 | nein |
@@ -11229,9 +11229,11 @@ Grund, sie zu fahren.
 
 ### 4. Fahrgefühl, das über WP3/Physik hinausgeht
 
-- **Stunt-Modus** (Q / Doppel-Leertaste) — ASTRA_PLAN §5, in TODO, **null Code**
+- **Stunt-Modus** — Doppeltipp Space reißt an, Hold dreht 180/360, Geradeaus löscht. **Kein Toggle, keine Trick-Wertung, kein Landed-UI** (TODO/ASTRA_PLAN §5)
 - Zerstörung nach Materialklassen (TODO: fast alles; Plan: begrenzte Klassen)
-- Zu-Fuß: Laufen/Sprint/Slide — Walker existiert, Slide/CTRL nicht
+- Zu-Fuß: Laufen/Sprint/**Slide (Strg)** — `tools/bench/walker.mts` 22 Proben grün
+- Kirschbäume: Species `sakura`, LOD `[80, 180, 1200]` wie Kiefer, authored + smashable
+- Sitzkamera (C) + Kabine/Lenkrad-Cluster — `tools/bench/camera.mts` grün
 - Pro-Auto-Motoren, Belag×Drift, Kollisionstöne, Weltgeräusch — ASTRA_PLAN §6
 - GLB-Heldenautos später, nicht als nächster Schritt (`ASTRA_BUILD`: nach WP1–3)
 
@@ -11256,15 +11258,14 @@ Grund, sie zu fahren.
 
 Kein WP7 in `ASTRA_BUILD.md`. Wenn die Arbeit weiter in Paketen laufen soll:
 
-1. **Bake-Flag + Eventkatalog auf dem *vorhandenen* Netz** (Needle Sprint,
-   Open Seat, Terrace Rally, Eventkarte, Countdown-Ritual). Nutzt WP6-Straßen,
-   ohne die Stadt zu verdoppeln.
-2. **Entdeckungen und Regionen** — acht Namen, 24 Karten, Erstbetretung.
-   Macht die vorhandene Karte lesbar, bevor sie größer wird.
-3. **Stunt-Modus + Schanzen tauschen** — nachdem die Physik vom 15. September
-   sitzt (TODO verlangt genau diese Reihenfolge).
-4. **Stadt-Wachstum und Breakyard** — 2,60 km², Landmarken, Innenräume.
-   Das ist der teure Bake und gehört zuletzt, nicht zuerst.
+1. **Stunt-Modus fertig** — Stay-on oder klarer Exit, 180/360-Wertung,
+   Landed-UI. Mechanik liegt (`stunt` / `stunt-ctrl` / `stunt-hold` /
+   `stunt-360`); das Produkt nicht.
+2. **Bake-Flag + Eventkatalog auf dem *vorhandenen* Netz** (Needle Sprint,
+   Open Seat, Terrace Rally, Eventkarte). Nutzt WP6-Straßen.
+3. **24 Entdeckungskarten / Road Card** — Regionen und Erstbetretung sind da.
+4. **Stadt-Wachstum (`neon-city`) und Breakyard** — Lane nicht mergen, bis
+   sie fertig ist. Kein zweiter Bake nebenbei.
 5. **SDK, Save, Ads, KTX2** — parallel zur Einreichung, nicht als
    Spielinhalt.
 

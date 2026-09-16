@@ -44,21 +44,21 @@ Status vs code + worktrees, 2026-09-16 (docs can lag). Original wording kept.
 
 ### - Pickups:
 
-- [ ] When you collect the current "yen" pickups they sit half inside the ground and look glitched. That's a placement / animation bug and has to be fixed independently of the new currency (the currency itself is under 3. General).
+- [~] When you collect the current "yen" pickups they sit half inside the ground and look glitched. That's a placement / animation bug and has to be fixed independently of the new currency (the currency itself is under 3. General).
 
 ## 2. map bugs:
 
 - [~] the bridge from the highway to the tokyo city has a transparent fundament and also when driving into it you get glitched on top of the bridge. also in general the bridge shouldn't be a bridge at all because it doesn't look quite good.
 - [ ] all ramps distributed accross the map should be removed and replaced with better ones (first physics should be improved) and then update their form and design and also place them to some usefull places.
-- [ ] the water on the ricefield is sometimes too high so the car looks too sunken and also when you look from the side sometimes you can see under the water because at the start of the ricefield step there is no dirt covering that.
+- [x] the water on the ricefield is sometimes too high so the car looks too sunken and also when you look from the side sometimes you can see under the water because at the start of the ricefield step there is no dirt covering that.
 - [~] there is a river on the mountain wich looks horrible right now. its only a 2d "paper" wich you can't even see when going up the mountain pass but feel because at one place you are stuck. but because the "river" is above you you can't see it. here the river has to change its place / form or create a small bridge for the mountain pass at the collisioning spots.
 
 ## 3. general feature requests:
 
 ### - Physics and Controls
 
-- [ ] add the feature to double press space wich unlocks a FULL Drift mode. similar to the already existing single space press with puts the player into a drift mode. But in this new mode you should be much more free to hit crazy stunts for example 180, 360ies wich is currently not possible in the "single space press mode". this mode should be called "Stunt mode" and should be really enjoyable for the players.
-- [ ] when beeing in the charachter mode (after you exit the car) the player should be able to press CTRL while the terrain is straight or going downwards. Should basically function exactly the same as the "sliding" feature in Fortnite.
+- [~] add the feature to double press space wich unlocks a FULL Drift mode. similar to the already existing single space press with puts the player into a drift mode. But in this new mode you should be much more free to hit crazy stunts for example 180, 360ies wich is currently not possible in the "single space press mode". this mode should be called "Stunt mode" and should be really enjoyable for the players.
+- [x] when beeing in the charachter mode (after you exit the car) the player should be able to press CTRL while the terrain is straight or going downwards. Should basically function exactly the same as the "sliding" feature in Fortnite.
 - [~] The "breaking" feature should be improved. Right now we can only break the things on the side of the road and the trees. but i want that these things near the road break about 50% lighter and the trees about 25% faster. Then i want that you add that break effect to bascially all objects arround the map except the really big towers in tokyo. but also the small snack automates and so on they should break into pieces or also these small houses on the ricefield, basically everything. also i want that the trees or the houses don't disapear when you drive into it instead it should really fall down into its pices (for example the house should fall into its rectangles and all elements). the same for trees and so on. can be a little compromised for performance but should be more realistic.
 - [~] Offroad physics should be improved, but in a simple way: you should be able to drive basically everywhere on the map. Not through walls or cliffs — the traction limit still exists — but dirt / grass / hills shouldn't feel like a trap. The car should keep moving instead of getting stuck or crawling.
 - [~] At full speed on normal roads the cars need more grip / better ground contact. Right now they feel like they lose the road. This should apply to every car; the racecar can have even more on top of that.
@@ -66,7 +66,7 @@ Status vs code + worktrees, 2026-09-16 (docs can lag). Original wording kept.
 
 ### - Tuning & Upgrades
 
-- [~] [🚧 tune] add the option to tune all cars. for a first version keep it relatively simple. you should be able to upgrade engine brakes stearing and maybe grip or a few things like that. with also a little incremental prices and cool animations and visuals. (all vailable in the tuning and upgrades garage at the spawn).
+- [~] add the option to tune all cars. for a first version keep it relatively simple. you should be able to upgrade engine brakes stearing and maybe grip or a few things like that. with also a little incremental prices and cool animations and visuals. (all vailable in the tuning and upgrades garage at the spawn).
 - [x] Tuning has to sit on top of the per-car defaults from Physics. When you upgrade engine / brakes / steering / grip, you are changing that car's calculated base values, not a generic shared spec. Weight and the other defaults stay part of the car's identity unless a tune explicitly changes them.
 
 ### - Cars / Assets
@@ -81,8 +81,8 @@ The menu should be built around tabs (names can be nicer, the structure is what 
 
 - [~] **Play / Continue** — back into the game. This is also where ESC-pause lives (see 1. Menu and ESC Logic: everything paused).
 - [~] **Shop** — cars you can buy, cars you already own. From a car you can go straight into tune with that car already selected. Somewhere in here (or in Garage) there has to be spawn / enter the car next to the character.
-- [~] [🚧 tune] **Garage / Tuning** — option to directly enter the upgrades and tuning garage in the lobby, but directly in the dialog where i can tune and upgrade and everything. Teleporting directly as a character to the auto house where you can see and buy all cars.
-- [~] [🚧 waypoints] **Map** — option to open the minimap. Option to teleport to the lobby.
+- [~] **Garage / Tuning** — option to directly enter the upgrades and tuning garage in the lobby, but directly in the dialog where i can tune and upgrade and everything. Teleporting directly as a character to the auto house where you can see and buy all cars.
+- [~] **Map** — option to open the minimap. Option to teleport to the lobby.
 - [x] **Photo Mode** — opens the photo mode (see below). Has to be reachable from this menu, not only a secret key.
 - [~] **Analytics** — longest airtime, fastest speed, and similar records. What would be cool: when we hit a record while we are driving we get some coins / money and also create a small screenshot which is visible in the analytics menu afterwards.
 - [~] **Settings** — controls, sensitivity, graphics, etc. Also custom keybinds so the player can remap the important actions.
@@ -113,8 +113,8 @@ The menu should be built around tabs (names can be nicer, the structure is what 
 
 - [~] [🚧 neon-city] increase the size of the city by adding more buildings streets parks and more. (take some inspiration from forza horizon 6). this also helps to solve the problem that the map is too empty. we have enough place so why we don't use it?
 - [~] [🚧 neon-city] change the look from a boring city wich looks generic and always the same to a really dynamic city with many grocery stores, pedestrians, snack or drink automates, a few npc cars (with collision but should be easy to push them away so players still enjoy it), restaurants good lightning and also small but meaningfull details. the goal is to show all highlights from tokyo in the city for example shibuya crossing. and no we are not going to put 1000 pedestrians but maybe a few the goal is to drift there. so basically really take serious inspiration from the forza horizon 6 map. When rolling over a pedestrians it should not just drop flat to the bottom it should really "feel" the knockback and for example when driving with full speed the pedestrians should almost fly. just make them realistically but no big real collision (don't make it that the player looses to much speed but a little pysical collision should be there)
-- [~] [🚧 city-interiors] now that we have the feature to exit the car and walk arround it should also be able to go inside these restaurants and grocery stores. no real functionality for now but we should be able to to explore the map and entertain the user further.
-- [ ] make the cherry trees like all other trees (same opimizations when beeing wide away). and also breakable like the other trees.
+- [~] now that we have the feature to exit the car and walk arround it should also be able to go inside these restaurants and grocery stores. no real functionality for now but we should be able to to explore the map and entertain the user further.
+- [x] make the cherry trees like all other trees (same opimizations when beeing wide away). and also breakable like the other trees.
 
 ### - Lobby / Spawn
 
@@ -133,9 +133,9 @@ Right all players spawn in the middle of the cherry tree circle.
 
 Right now we already have a Minimap but it should be improved along with adding the different Zones.
 
-- [~] Add different Zones. There Should be something like 4-8 differnt Regions wich makes sense. for example: For these "spots" there should be a region: the city, the ricefield, the mountain and pass, the beach to the atlantic, spawn etz. but you know we need to be creative with the names and not just call it "spawn zone" because thats boring and maybe the zone is also a little bigger than just the spawn / lobby. also its important than like in forza horizon 6 there can't be a place wich is not in a zone. the zones are distrobuted trough the entire place.
-- [ ] Bei der ersten Endeckung bzw Betretung dieser Zone sollte sowas kommen wie "{Region_name} explored! \n you explored 3/X Zones" und dann zb eine Belohnung in der eigenen Währung (nicht Yen, nicht USD).
-- [~] [🚧 waypoints] The minimap has to show these zones, not just a flat map. Color the zones so you can read the map at a glance, and put small icons on the important spots (ricefield, city, spawn / lobby, mountain, beach, …). Icons should be hoverable and clickable (e.g. to see the zone name or jump the view there). And the minimap must not stretch / warp on different devices — phone, tablet, desktop all get a correct aspect, not a squeezed map.
+- [x] Add different Zones. There Should be something like 4-8 differnt Regions wich makes sense. for example: For these "spots" there should be a region: the city, the ricefield, the mountain and pass, the beach to the atlantic, spawn etz. but you know we need to be creative with the names and not just call it "spawn zone" because thats boring and maybe the zone is also a little bigger than just the spawn / lobby. also its important than like in forza horizon 6 there can't be a place wich is not in a zone. the zones are distrobuted trough the entire place.
+- [x] Bei der ersten Endeckung bzw Betretung dieser Zone sollte sowas kommen wie "{Region_name} explored! \n you explored 3/X Zones" und dann zb eine Belohnung in der eigenen Währung (nicht Yen, nicht USD).
+- [~] The minimap has to show these zones, not just a flat map. Color the zones so you can read the map at a glance, and put small icons on the important spots (ricefield, city, spawn / lobby, mountain, beach, …). Icons should be hoverable and clickable (e.g. to see the zone name or jump the view there). And the minimap must not stretch / warp on different devices — phone, tablet, desktop all get a correct aspect, not a squeezed map.
 
 ## 5. platform / release:
 
