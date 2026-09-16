@@ -28,6 +28,11 @@
 .hud .hud__stunt[hidden] {
   display: none;
 }
+.hud .hud__stunt.is-live {
+  color: #ffd0a8;
+  letter-spacing: 0.38em;
+  text-shadow: 0 0 16px #ff7a2a;
+}
 /* Krone des Bogens, nicht im Strich. `+ 8px` hängt die Unterkante knapp
  * in die Tachobox, der Amber-Bogen beginnt ~16 px tiefer — gemessene Lücke
  * statt Schätzung, sonst liegt der Multiplikator wieder auf dem Strich. */

@@ -425,6 +425,7 @@ export class DriveHud {
       this.#stunt.hidden = !stuntOn;
       this.#speedo.classList.toggle('is-stunt', stuntOn);
     }
+    this.#stunt.classList.toggle('is-live', stuntOn && t.spin > 0.22);
   }
 
   #boostPct = -1;

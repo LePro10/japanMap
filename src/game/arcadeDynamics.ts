@@ -103,6 +103,8 @@ export interface PlanarResult {
   steerAngle: number;
   /** Stunt-Overlay, 0…1 — HUD und Kamera, nicht die Punkte. */
   stunt: number;
+  /** Spin-Absicht im Stunt, 0…1. Space gehalten, nicht der offene Drift. */
+  spin: number;
 }
 
 /** Was die Dynamik über den Untergrund und die Lage wissen muss. */
@@ -256,6 +258,11 @@ export class ArcadeDynamics {
   #driftSign = 0;
   /** Stunt-Overlay, 0…1. Folgt `input.stunt`, nicht der Taste selbst. */
   #stuntBlend = 0;
+  /**
+   * Spin-Absicht, 0…1. Steigt nur bei gehaltenem Space+Lenkung im Modus.
+   * Der Drift darf ihn nicht tragen — sonst ist Weiterlenken ein 360.
+   */
+  #spin = 0;
 
   constructor(spec: ArcadeSpec, looseBonus: number) {
     this.#spec = spec;
@@ -297,6 +304,7 @@ export class ArcadeDynamics {
     this.#wasAirborne = false;
     this.#landTimer = 0;
     this.#stuntBlend = 0;
+    this.#spin = 0;
     // **Der Nitro-Vorrat bleibt stehen.** Ein Respawn nach einem Fehler soll
     // nicht auch noch den Boost verschenken — das bestraft den Fehler zweimal.
   }
@@ -492,6 +500,35 @@ export class ArcadeDynamics {
     this.#drift += (want - this.#drift) * (1 - Math.exp(-driftRate * dt));
     if (this.#drift < 1e-3) this.#drift = 0;
 
+    // ── Stunt-Spin ────────────────────────────────────────────────────────
+    //
+    // Eigener Zustand, nicht `#drift`. Der Drift bleibt nach dem Anriss über
+    // Gas·Lenkung offen; hing der Spin daran, war Weiterlenken ein Kreisel.
+    // Hier zählt nur **gehaltenes** Space plus Lenkung, und Gegenlenken
+    // schmeißt ihn weg — das ist die Kontrolle.
+    const spinAsk =
+      this.#stuntBlend > 0.15 &&
+      !env.airborne &&
+      speed > STUNT.minSpeed &&
+      input.handbrake &&
+      Math.abs(input.steer) >= DRIFT_GATE.enterSteer;
+    // Gegenlenken gegen das *stehende* Vorzeichen, bevor yawTarget es
+    // umlegt. Sonst ist `countering` nie wahr — das Vorzeichen wäre schon
+    // das der Fang-Lenkung.
+    const countering =
+      this.#spin > 0.04 &&
+      this.#driftSign !== 0 &&
+      Math.abs(input.steer) >= DRIFT_GATE.enterSteer &&
+      Math.sign(input.steer) !== this.#driftSign;
+    const spinWant = spinAsk ? Math.abs(this.#steerInput) : 0;
+    const spinRate = spinWant > this.#spin
+      ? STUNT.spinRise
+      : countering
+        ? STUNT.spinFallCounter
+        : STUNT.spinFall;
+    this.#spin += (spinWant - this.#spin) * (1 - Math.exp(-spinRate * dt));
+    if (this.#spin < 1e-3) this.#spin = 0;
+
     // ── Soll-Gierrate ─────────────────────────────────────────────────────
     const aLatMax = this.#latAccel(grip, speed) * latMul;
     let yawTarget = this.#yawTarget(env.vLong, env.vLat, speed, aLatMax, input);
@@ -523,24 +560,24 @@ export class ArcadeDynamics {
       // das liest sich als Gierkick genau dann, wenn die Räder den Boden
       // wiederfinden. ASTRA_PLAN §5 verlangt das Gegenteil.
       const landing = this.#landTimer > 0;
-      if (
-        !landing &&
-        Math.abs(input.steer) < 0.2 &&
-        speed > 2 &&
-        !input.handbrake &&
-        this.#stuntBlend < 0.25
-      ) {
+      if (!landing && Math.abs(input.steer) < 0.2 && speed > 2 && !input.handbrake) {
         const slip = Math.atan2(env.vLat, Math.abs(env.vLong));
-        // Ein Schwimmwinkel nach rechts (positiv) heißt: die Nase muss nach
-        // rechts, also ψ fallen. Daher das Minus — dieselbe Kette wie oben.
+        // Im Stunt bleibt eine Fangleine — nur leiser, und der Spin dämpft
+        // sie. Null wäre der Kreisel: wer Space loslässt, muss fangen können.
+        const catchMul =
+          lerp(1, STUNT.catch, this.#stuntBlend) * (1 - this.#spin);
         yawTarget +=
-          -slip * spec.catchAssist * (1 - this.#stuntBlend) * Math.min(1, speed / 8);
+          -slip * spec.catchAssist * catchMul * Math.min(1, speed / 8);
       }
       const yawFollow = landing ? spec.yawResponse * 0.25 : spec.yawResponse;
       const blend = 1 - Math.exp(-yawFollow * dt);
       this.#yawRate += (yawTarget - this.#yawRate) * blend;
     }
-    const yawCap = lerp(spec.maxYawRate, STUNT.maxYawRate, this.#stuntBlend);
+    const yawCap = lerp(
+      spec.maxYawRate,
+      STUNT.maxYawRate,
+      this.#stuntBlend * Math.max(this.#spin, 0.12),
+    );
     this.#yawRate = clamp(this.#yawRate, -yawCap, yawCap);
     this.#pitchRate = clamp(this.#pitchRate, -2.5, 2.5);
 
@@ -551,11 +588,12 @@ export class ArcadeDynamics {
     // Reibkreis dieses Modells — und er ist absichtlich weich: eine harte
     // Ellipse macht den Übergang zum Rutschen zu einer Kante, und Kanten kann
     // ein Spieler mit einer Taste nicht bedienen.
+    const stuntK = lerp(STUNT.latGrip, STUNT.spinLatGrip, this.#spin);
     const k =
       lerp(spec.latGrip, spec.driftLatGrip, this.#drift) *
       grip *
       latMul *
-      lerp(1, STUNT.latGrip, this.#stuntBlend);
+      lerp(1, stuntK, this.#stuntBlend);
     let accelLat = env.airborne ? 0 : (-env.vLat * (1 - Math.exp(-k * dt))) / dt;
     const latBudget = aLatMax * (1 - 0.25 * this.#drift);
     accelLat = clamp(accelLat, -latBudget, latBudget);
@@ -634,6 +672,7 @@ export class ArcadeDynamics {
       boost: this.#boost,
       steerAngle: this.#steerAngle,
       stunt: input.stunt === true ? 1 : this.#stuntBlend,
+      spin: this.#spin,
     };
   }
 
@@ -743,7 +782,14 @@ export class ArcadeDynamics {
       //
       // Nicht aus Restgieren erfinden: Space auf der Geraden ohne Lenkung
       // hätte sonst die letzte Kurve fortgesetzt.
-      if (Math.abs(input.steer) > 0.1) this.#driftSign = Math.sign(input.steer);
+      if (Math.abs(input.steer) > 0.1) {
+        const next = Math.sign(input.steer);
+        // Im Spin das Vorzeichen halten: Gegenlenken soll fangen, nicht
+        // den Kreisel umdrehen.
+        const againstSpin =
+          this.#spin > 0.04 && this.#driftSign !== 0 && next !== this.#driftSign;
+        if (!againstSpin) this.#driftSign = next;
+      }
 
       // **Geregelt wird auf den Winkel, nicht auf die Rate.** Die vollständige
       // Begründung samt der Rechnung, warum eine feste Zusatzrate kein
@@ -757,22 +803,29 @@ export class ArcadeDynamics {
       // Lenkung. Zwei Dinge, die dieselbe Größe regeln, laufen in diesem
       // Projekt erfahrungsgemäß gegeneinander.
       const beta = -this.#driftSign * Math.atan2(vLat, Math.max(1, Math.abs(vLong)));
-      const missing = Math.max(0, spec.driftAngle * this.#drift - beta);
+      const holdAngle =
+        spec.driftAngle + STUNT.extraAngle * this.#stuntBlend * (1 - this.#spin);
+      const missing = Math.max(0, holdAngle * this.#drift - beta);
       target += -this.#driftSign * missing * spec.driftYawGain * Math.min(1, speed / 12);
     } else {
       this.#driftSign = 0;
     }
 
-    // Stunt-Spin. Bewusst eine Rate und kein Winkel: der Drift-Zuschlag
-    // oben stoppt bei `driftAngle`, und atan2 wickelt bei ±180°. Beides
-    // zusammen macht einen 360 unmöglich — das Overlay hebt genau das.
-    // Ohne offenen Drift bleibt es tot: Space auf der Geraden erfindet
-    // weiter kein Vorzeichen, Einzeltipp ohne Modus bleibt der 43°-Drift.
-    if (this.#stuntBlend > 0.01 && this.#drift > 0.05 && speed > STUNT.minSpeed) {
-      if (Math.abs(input.steer) > 0.1) this.#driftSign = Math.sign(input.steer);
-      if (this.#driftSign !== 0) {
-        target += -this.#driftSign * this.#stuntBlend * this.#drift * STUNT.spinYaw;
-      }
+    // Spin nur aus `#spin` (gehaltenes Space), nicht aus dem offenen Drift.
+    // Gegenlenken zieht die Nase zurück — das ist die Kontrolle, die der
+    // erste Wurf nicht hatte.
+    if (this.#spin > 0.01 && this.#driftSign !== 0 && speed > STUNT.minSpeed) {
+      target += -this.#driftSign * this.#spin * this.#stuntBlend * STUNT.spinYaw;
+    }
+    if (
+      this.#stuntBlend > 0.05 &&
+      this.#spin > 0.04 &&
+      this.#driftSign !== 0 &&
+      Math.abs(input.steer) >= DRIFT_GATE.enterSteer &&
+      Math.sign(input.steer) !== this.#driftSign
+    ) {
+      const slip = Math.atan2(vLat, Math.max(1, Math.abs(vLong)));
+      target += -slip * STUNT.counterCatch * this.#stuntBlend;
     }
     return target;
   }
