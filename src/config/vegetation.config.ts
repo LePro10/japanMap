@@ -59,6 +59,13 @@ export interface SpeciesSettings {
    */
   readonly cellSize: number;
 
+  /**
+   * Gesetzte Standorte statt Streuung — Kirschen am Commons-Ring und im
+   * Stadtgarten. Dieselbe LOD-Leiter wie die Kiefer, aber kein Chunk wirft
+   * Kandidaten. Ohne die Flagge würde `scatterChunk` sie als Wald auslegen.
+   */
+  readonly authored?: boolean;
+
   /** Entfernungen in Metern, ab denen die nächstbilligere Stufe übernimmt. */
   readonly lodDistances: readonly [near: number, mid: number, far: number];
 
@@ -153,7 +160,7 @@ export interface SpeciesSettings {
 }
 
 /**
- * Vier Arten, absichtlich wenige.
+ * Vier gestreute Arten plus gesetzte Kirschen.
  *
  * Die Zahl der **Instanzen** entscheidet über das Draw-Call-Budget, nicht die
  * Zahl der Arten — jede Art kostet drei Draw-Calls (eine je LOD-Stufe), und
@@ -223,6 +230,37 @@ export const SPECIES: readonly SpeciesSettings[] = [
     tintJitter: 0.22,
     windAmplitude: 0.75,
     groundAo: { radius: 1.25, strength: 1 },
+  },
+  {
+    id: 'sakura',
+    label: 'Kirschbaum',
+    layer: 'canopy',
+    authored: true,
+    // Ungenutzt — die Streuung überspringt die Art. Steht trotzdem da, weil
+    // `SpeciesSettings.cellSize` Pflicht ist und ein stiller Default 0 die
+    // Kapazitätsrechnung durch Null teilen würde.
+    cellSize: 8,
+    // **Dieselben Grenzen wie die Kiefer.** Die Anforderung ist nicht „Kirschen
+    // irgendwie billiger in der Ferne", sondern derselbe Stufenwechsel: Mesh
+    // bis 80 m, reduziert bis 180 m, Imposter bis 1200 m. Eine eigene Leiter
+    // wäre der nächste Wert, der nach der nächsten P11-Änderung nicht mehr
+    // mitzieht.
+    lodDistances: [80, 180, 1200],
+    minScale: 0.85,
+    maxScale: 1.35,
+    variants: 3,
+    aspectJitter: 0.12,
+    leanDeg: 4,
+    maxSlopeDeg: 27,
+    minHeight: 0,
+    maxHeight: 400,
+    zones: { rock: 0.0, grass: 0.0, sand: 0.0, paddy: -1.0 },
+    roadClearance: 0,
+    // Weiß: die Krone trägt Vertexfarbe. Ein Rosa hier würde den Stamm mitfärben.
+    color: 0xffffff,
+    tintJitter: 0,
+    windAmplitude: 0.45,
+    groundAo: { radius: 1.2, strength: 1 },
   },
   {
     id: 'bush',

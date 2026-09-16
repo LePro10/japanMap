@@ -128,6 +128,9 @@ export class ImposterAtlas {
         '}',
     });
 
+    const vertexColors = geometry.hasAttribute('color');
+    albedoMaterial.vertexColors = vertexColors;
+    if (vertexColors) albedoMaterial.color.setHex(0xffffff);
     const mesh = new Mesh<BufferGeometry, Material>(geometry, albedoMaterial);
     scene.add(mesh);
 

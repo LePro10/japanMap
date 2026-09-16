@@ -66,6 +66,7 @@ export class ImposterMaterial extends MeshStandardMaterial {
   readonly #atmosphere: AtmosphereUniforms;
   readonly #shared: VegetationUniforms;
   readonly #amplitude: IUniform<number>;
+  readonly #tintAmount: IUniform<number>;
   readonly #uniforms: Record<string, IUniform>;
 
   constructor(
@@ -74,6 +75,7 @@ export class ImposterMaterial extends MeshStandardMaterial {
     shared: VegetationUniforms,
     color: number,
     windAmplitude: number,
+    tintAmount = 1,
   ) {
     super({
       color,
@@ -91,6 +93,7 @@ export class ImposterMaterial extends MeshStandardMaterial {
     // Dieselbe Amplitude wie das Mesh derselben Art — sonst wechselte ein Baum
     // beim Stufensprung seine Ausschlagweite.
     this.#amplitude = { value: windAmplitude };
+    this.#tintAmount = { value: tintAmount };
     this.name = 'ImposterMaterial';
     this.alphaTestUniform = { value: IMPOSTER.alphaTest };
     this.declaredTextures = [atlas.albedo, atlas.normal];
@@ -119,6 +122,7 @@ export class ImposterMaterial extends MeshStandardMaterial {
     const pars = `${octGlsl}\n${tintGlsl}\n${parsGlsl}`;
 
     shader.uniforms['uWindAmplitude'] = this.#amplitude;
+    shader.uniforms['uVegTintAmount'] = this.#tintAmount;
 
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\n${pars}\n${windGlsl}`)
@@ -127,7 +131,8 @@ export class ImposterMaterial extends MeshStandardMaterial {
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <common>',
       `#include <common>\n${pars}\n${translucencyGlsl}\n${baseAoGlsl}\n` +
-        'uniform float uVegTranslucency;',
+        'uniform float uVegTranslucency;\n' +
+        'uniform float uVegTintAmount;',
     );
 
     injectAtmosphere(
@@ -139,6 +144,10 @@ export class ImposterMaterial extends MeshStandardMaterial {
     shader.fragmentShader = shader.fragmentShader
       // Ersetzt, nicht ergänzt: die Farbe kommt vollständig aus dem Atlas.
       .replace('#include <map_fragment>', fragmentGlsl)
+      .replace(
+        'vegetationTint(vImposterTint)',
+        'mix(vec3(1.0), vegetationTint(vImposterTint), uVegTintAmount)',
+      )
       // Die Normale aus dem Atlas überschreibt die des Quads. `viewMatrix`
       // bringt sie in den Raum, in dem three ab hier weiterrechnet — dieselbe
       // Stelle und derselbe Grund wie im TerrainMaterial.
@@ -167,6 +176,6 @@ export class ImposterMaterial extends MeshStandardMaterial {
   }
 
   override customProgramCacheKey(): string {
-    return 'japanmap:imposter';
+    return `japanmap:imposter:t${this.#tintAmount.value}`;
   }
 }

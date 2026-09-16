@@ -708,7 +708,7 @@ async function boot(): Promise<void> {
       // ── Minikarte und Richtungspfeil — P25 ───────────────────────────
       //
       // Die Kamerarichtung kommt aus der **Kamera** und nicht aus
-      // `ChaseCamera.#heading`: es gibt zwei Kameras (Verfolger und Haube), und
+      // `ChaseCamera.#heading`: es gibt drei Kameras (Verfolger, Haube, Sitz), und
       // eine Anzeige, die nur eine davon kennt, zeigt bei der anderen falsch.
       // `getWorldDirection` ist die eine Quelle, die für beide stimmt.
       engine.camera.getWorldDirection(NAV_DIR);
@@ -793,6 +793,7 @@ async function boot(): Promise<void> {
   // weil das System auf `terrain:ready` und `roads:ready` hört und beide genau
   // einmal gesendet werden, während sich jene Systeme initialisieren.
   const stunt = new StuntSystem(atmosphere.uniforms, drive.ramps);
+  stunt.setScatter(scatter);
   engine.add(stunt);
   drive.setStunt(stunt);
   // Ebenso: die Wasserflächen der Reisfelder holen ihre Höhe aus dem Sampler,
@@ -952,6 +953,9 @@ async function boot(): Promise<void> {
       toggleVehicle: () => {
         drive.toggleVehicle();
       },
+      toggleView: () => {
+        drive.toggleView();
+      },
       respawn: () => {
         drive.respawn();
       },
@@ -963,6 +967,9 @@ async function boot(): Promise<void> {
       },
       setJump: (down) => {
         drive.setTouchJump(down);
+      },
+      setSlide: (down) => {
+        drive.setTouchSlide(down);
       },
       get vehicleId() {
         return drive.vehicleId;

@@ -1,7 +1,9 @@
 import { Vector3, type PerspectiveCamera } from 'three';
 
 import { STUNT } from '@/config/arcade.config';
-import { CHASE_CAMERA } from '@/config/vehicle.config';
+import { cockpitEye, hoodCowl } from '@/config/cabin.config';
+import { CAMERA } from '@/config/world.config';
+import { CHASE_CAMERA, COCKPIT_CAMERA } from '@/config/vehicle.config';
 import type { Ground, Vehicle } from './Vehicle';
 
 /**
@@ -32,15 +34,17 @@ import type { Ground, Vehicle } from './Vehicle';
  * Ein Sinus auf der Kameraposition hat das Bild zittern lassen — das liest
  * sich als Glitch. Übrig ist nur ein einmaliger Landestoß.
  *
- * ## Zwei Ansichten
+ * ## Drei Ansichten
  *
- * `chase` (Verfolger) und `hood` (Haube). Die Haubenkamera ist nicht Deko: sie ist
- * die einzige Ansicht, in der man die Fahrbahnbreite und die Leitplanke wirklich
- * sieht, und damit die, an der ein Bild über die Straßengeometrie etwas aussagt.
- * Sie zeigt bewusst **kein** Wanken und nur ein Drittel des Nickens — der Rest
- * ist auf einem Bildschirm ohne Fliehkraft nur Übelkeit.
+ * `chase` (Verfolger), `hood` (Haube), `cockpit` (Sitz). Die Haube sitzt *auf*
+ * dem Blech, vor der Scheibe — nicht im Gewächshaus. Der Sitz ist optional;
+ * Default bleibt der Verfolger. Taste C zyklisch, Mausrad nur Verfolger ↔ Haube.
  */
-export type ChaseMode = 'chase' | 'hood';
+export type ChaseMode = 'chase' | 'hood' | 'cockpit';
+
+export function viewLabel(mode: ChaseMode): string {
+  return mode === 'hood' ? 'Haube' : mode === 'cockpit' ? 'Sitz' : 'Verfolger';
+}
 
 export class ChaseCamera {
   mode: ChaseMode = 'chase';
@@ -60,12 +64,20 @@ export class ChaseCamera {
   readonly #target = new Vector3();
   readonly #desired = new Vector3();
   readonly #lookAt = new Vector3();
-  readonly #normal = new Vector3();
   readonly #shake = new Vector3();
   readonly #right = new Vector3();
+  readonly #offset = new Vector3();
+  readonly #lookLocal = new Vector3();
 
   #fov = CHASE_CAMERA.fov;
   #initialized = false;
+  /**
+   * Nacken-Feder, 0 = starr am Blech. Debug-Schalter analog Forza Motion Off.
+   * 1 ist Normal; die ODE steht in `#stepNeck`.
+   */
+  motion = 1;
+
+  #neck = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };
 
   /** Geglätteter Nitro-Zustand, 0…1 — treibt Blickwinkel und Abstand. */
   #boost = 0;
@@ -98,13 +110,21 @@ export class ChaseCamera {
   /**
    * Boom näher/weiter. Faktor > 1 = weiter weg.
    *
-   * An der Haube ist der Arm schon null: eine Rastung weiter weg steigt in
-   * den Verfolger bei `zoomMin`, eine Rastung näher tut nichts. Umgekehrt
-   * wechselt der Verfolger an `zoomMin` in die Haube — das ist das Ende
-   * von „näher", nicht ein zweiter Modus daneben.
+   * Eine Rastung unter `zoomMin` geht in den **Sitz**, nicht auf die Haube.
+   * Die Haube als Zoom-Ende war die Lack-Tapete. Aus dem Sitz eine Rastung
+   * weiter weg steigt wieder in den Verfolger bei `zoomMin`.
    */
   zoom(factor: number): void {
     if (!Number.isFinite(factor) || factor <= 0) return;
+    if (this.mode === 'cockpit') {
+      if (factor > 1.002) {
+        this.mode = 'chase';
+        this.#zoom = CHASE_CAMERA.zoomMin;
+        this.#zoomApplied = CHASE_CAMERA.zoomMin;
+        this.#initialized = false;
+      }
+      return;
+    }
     if (this.mode === 'hood') {
       if (factor > 1.002) {
         this.mode = 'chase';
@@ -115,7 +135,7 @@ export class ChaseCamera {
       return;
     }
     if (factor < 0.998 && this.#zoom <= CHASE_CAMERA.zoomMin + 1e-4) {
-      this.mode = 'hood';
+      this.mode = 'cockpit';
       return;
     }
     this.#zoom = clamp(this.#zoom * factor, CHASE_CAMERA.zoomMin, CHASE_CAMERA.zoomMax);
@@ -133,10 +153,15 @@ export class ChaseCamera {
     this.#occlude = 1;
     this.#shake.set(0, 0, 0);
     this.#wasAirborne = vehicle.telemetry.airborne;
+    this.#neck.x = this.#neck.y = this.#neck.z = 0;
+    this.#neck.vx = this.#neck.vy = this.#neck.vz = 0;
   }
 
   toggleMode(): ChaseMode {
-    this.mode = this.mode === 'chase' ? 'hood' : 'chase';
+    // C ist Sitz an/aus. Die Haube bleibt am Mausrad — sonst landet man
+    // auf dem Lack und hält das für First Person.
+    this.mode = this.mode === 'cockpit' ? 'chase' : 'cockpit';
+    this.#initialized = false;
     return this.mode;
   }
 
@@ -178,8 +203,11 @@ export class ChaseCamera {
     this.#heading = wrapAngle(this.#heading);
 
     // Mausschwenk läuft bei Gas nach hinten zurück — Begründung bei `recenterRate`.
+    // Im Sitz langsamer: wer in die Kurve sieht, soll sie ansehen dürfen.
     if (t.forwardSpeed > 2) {
-      this.#yawOffset *= Math.exp(-CHASE_CAMERA.recenterRate * dt);
+      const recenter =
+        this.mode === 'cockpit' ? COCKPIT_CAMERA.recenterRate : CHASE_CAMERA.recenterRate;
+      this.#yawOffset *= Math.exp(-recenter * dt);
     }
 
     // Nitro-Zustand **vor** der Position, damit Arm und Blickfeld denselben
@@ -190,7 +218,9 @@ export class ChaseCamera {
 
     this.#updateShake(dt, vehicle);
 
-    if (this.mode === 'hood') {
+    if (this.mode === 'cockpit') {
+      this.#updateCockpit(dt, vehicle, camera);
+    } else if (this.mode === 'hood') {
       this.#updateHood(vehicle, camera);
     } else {
       this.#updateChase(dt, vehicle, ground, camera);
@@ -208,21 +238,38 @@ export class ChaseCamera {
     // darf träge sein (er folgt einer trägen Größe), der Nitro-Anteil nicht: er
     // ist ein Knopfdruck, und ein Knopfdruck, dessen Wirkung eine halbe Sekunde
     // braucht, fühlt sich nach nichts an.
-    const pace = Math.min(1, speed / CHASE_CAMERA.fovSpeed);
-    const accelFov =
-      Math.max(0, this.#accelLong) * CHASE_CAMERA.accelFov -
-      Math.max(0, -this.#accelLong) * CHASE_CAMERA.brakeFov;
-    const targetFov =
-      CHASE_CAMERA.fov +
-      (CHASE_CAMERA.fovFast - CHASE_CAMERA.fov) * pace +
-      CHASE_CAMERA.fovBoost * this.#boost +
-      STUNT.fov * Math.min(1, t.stunt) +
-      accelFov;
-    this.#fov += (targetFov - this.#fov) * (1 - Math.exp(-CHASE_CAMERA.fovRate * dt));
-    if (Math.abs(camera.fov - this.#fov) > 0.05) {
-      camera.fov = this.#fov;
-      camera.updateProjectionMatrix();
+    //
+    // Sitz und Haube haben eigene Blickfelder. Den Chase-Zug 62→82 in die
+    // Kabine zu übernehmen macht aus der Armatur eine Wand.
+    let targetFov: number;
+    if (this.mode === 'cockpit') {
+      targetFov = COCKPIT_CAMERA.fov + COCKPIT_CAMERA.fovBoost * this.#boost;
+    } else if (this.mode === 'hood') {
+      targetFov = CHASE_CAMERA.hoodFov + CHASE_CAMERA.hoodFovBoost * this.#boost;
+    } else {
+      const pace = Math.min(1, speed / CHASE_CAMERA.fovSpeed);
+      const accelFov =
+        Math.max(0, this.#accelLong) * CHASE_CAMERA.accelFov -
+        Math.max(0, -this.#accelLong) * CHASE_CAMERA.brakeFov;
+      targetFov =
+        CHASE_CAMERA.fov +
+        (CHASE_CAMERA.fovFast - CHASE_CAMERA.fov) * pace +
+        CHASE_CAMERA.fovBoost * this.#boost +
+        STUNT.fov * Math.min(1, t.stunt) +
+        accelFov;
     }
+    this.#fov += (targetFov - this.#fov) * (1 - Math.exp(-CHASE_CAMERA.fovRate * dt));
+    const near =
+      this.mode === 'cockpit'
+        ? COCKPIT_CAMERA.near
+        : this.mode === 'hood'
+          ? CHASE_CAMERA.hoodNear
+          : CAMERA.near;
+    const fovDirty = Math.abs(camera.fov - this.#fov) > 0.05;
+    const nearDirty = Math.abs(camera.near - near) > 1e-4;
+    if (fovDirty) camera.fov = this.#fov;
+    if (nearDirty) camera.near = near;
+    if (fovDirty || nearDirty) camera.updateProjectionMatrix();
   }
 
   #updateChase(dt: number, vehicle: Vehicle, ground: Ground, camera: PerspectiveCamera): void {
@@ -321,27 +368,99 @@ export class ChaseCamera {
   }
 
   #updateHood(vehicle: Vehicle, camera: PerspectiveCamera): void {
-    // Ungefedert: die Haubenkamera sitzt am Auto. Eine Federung hier wäre eine
-    // Kamera, die im Auto schwimmt.
-    this.#normal.set(0, 0, 1).applyQuaternion(vehicle.quaternion);
-    camera.position.set(
-      vehicle.position.x + this.#normal.x * CHASE_CAMERA.hoodForward,
-      vehicle.position.y + CHASE_CAMERA.hoodHeight,
-      vehicle.position.z + this.#normal.z * CHASE_CAMERA.hoodForward,
-    );
-    const yaw = vehicle.yaw + this.#yawOffset;
-    // Ein Drittel des Aufbau-Nickens, kein Wanken — Begründung im Kopf.
-    // `vehicle.pitch` positiv senkt die Nase; die Haube blickt mit `sin(pitch)`
-    // nach oben, also das Vorzeichen umdrehen.
-    const pitch = this.#pitchOffset - vehicle.pitch * CHASE_CAMERA.hoodPitchBlend;
-    const cosPitch = Math.cos(pitch);
-    this.#target.set(
-      camera.position.x + Math.sin(yaw) * cosPitch * 20,
-      camera.position.y + Math.sin(pitch) * 20,
-      camera.position.z + Math.cos(yaw) * cosPitch * 20,
-    );
+    // Ungefedert, aber am Quaternion: Welt-Y hat die Kamera am Hang durchs
+    // Blech geschoben. Eine Federung hier wäre eine Kamera, die im Auto schwimmt.
+    const cowl = hoodCowl(vehicle.spec);
+    this.#offset.set(cowl.x, cowl.y, cowl.z).applyQuaternion(vehicle.quaternion);
+    camera.position.copy(vehicle.position).add(this.#offset);
+    const yaw = this.#yawOffset;
+    const pitch = this.#pitchOffset + CHASE_CAMERA.hoodLookPitch;
+    const cp = Math.cos(pitch);
+    this.#lookLocal.set(Math.sin(yaw) * cp, Math.sin(pitch), Math.cos(yaw) * cp);
+    this.#lookLocal.applyQuaternion(vehicle.quaternion);
+    this.#target.copy(camera.position).addScaledVector(this.#lookLocal, 20);
+    // lookAt mit Welt-Up: die Haube darf nicken, aber nicht mit dem Auto rollen —
+    // volles Wanken auf einem Bildschirm ohne Fliehkraft ist Übelkeit.
+    camera.up.set(0, 1, 0);
     camera.lookAt(this.#target);
     camera.position.add(this.#shake);
+  }
+
+  #updateCockpit(dt: number, vehicle: Vehicle, camera: PerspectiveCamera): void {
+    this.#stepNeck(dt, vehicle);
+    const eye = cockpitEye(vehicle.spec);
+    const motion = this.motion;
+    this.#offset.set(
+      eye.x + this.#neck.x * motion,
+      eye.y + this.#neck.y * motion,
+      eye.z + this.#neck.z * motion,
+    );
+    this.#offset.applyQuaternion(vehicle.quaternion);
+    camera.position.copy(vehicle.position).add(this.#offset);
+
+    const t = vehicle.telemetry;
+    const maxLock = Math.max(1e-4, vehicle.spec.steering.maxAngle);
+    const steerLook = (-t.steerAngle / maxLock) * COCKPIT_CAMERA.steerYaw * motion;
+    let velYaw = 0;
+    if (t.speed > 0.8 && t.forwardSpeed > 0.4) {
+      velYaw = wrapAngle(Math.atan2(vehicle.velocity.x, vehicle.velocity.z) - vehicle.yaw);
+    }
+    const slip = Math.abs(t.slip);
+    const velWeight =
+      slip > COCKPIT_CAMERA.driftSlip ? COCKPIT_CAMERA.driftVelLook : COCKPIT_CAMERA.velLook;
+    const g = 9.81;
+    const extraPitch = clamp(
+      -this.#accelLong / g * COCKPIT_CAMERA.gPitchPerG * motion,
+      -COCKPIT_CAMERA.maxExtraPitch,
+      COCKPIT_CAMERA.maxExtraPitch,
+    );
+    const extraRoll = clamp(
+      this.#accelLat / g * COCKPIT_CAMERA.gRollPerG * motion,
+      -COCKPIT_CAMERA.maxExtraRoll,
+      COCKPIT_CAMERA.maxExtraRoll,
+    );
+
+    camera.quaternion.copy(vehicle.quaternion);
+    camera.rotateY(this.#yawOffset + steerLook + velYaw * velWeight * motion);
+    camera.rotateX(
+      this.#pitchOffset +
+        COCKPIT_CAMERA.lookPitch +
+        extraPitch +
+        vehicle.pitch * (COCKPIT_CAMERA.chassisPitch - 1) * motion,
+    );
+    camera.rotateZ(extraRoll + vehicle.roll * (COCKPIT_CAMERA.chassisRoll - 1) * motion);
+    camera.position.add(this.#shake);
+  }
+
+  /**
+   * Kopf als gedämpfte Feder auf der Karosserie.
+   *
+   * `ẍ = −a_chassis − ωn² x − 2ζωn ẋ` — die Sitzbeschleunigung schiebt den
+   * Kopf entgegen, die Feder holt ihn zurück. Ohne das ist die Kamera eine
+   * GoPro am Überrollkäfig: die Welt zittert, die Kabine ist tot.
+   */
+  #stepNeck(dt: number, vehicle: Vehicle): void {
+    const ω = Math.PI * 2 * COCKPIT_CAMERA.neckHz;
+    const damp = 2 * COCKPIT_CAMERA.neckZeta * ω;
+    const stiff = ω * ω;
+    const g = 9.81;
+    const ax = -this.#accelLat;
+    const ay = this.#wasAirborne && !vehicle.telemetry.airborne
+      ? -COCKPIT_CAMERA.landImpulse * 40
+      : 0;
+    const az = -this.#accelLong;
+    const n = this.#neck;
+    n.vx += (ax - stiff * n.x - damp * n.vx) * dt;
+    n.vy += (ay - stiff * n.y - damp * n.vy) * dt;
+    n.vz += (az - stiff * n.z - damp * n.vz) * dt;
+    n.x += n.vx * dt;
+    n.y += n.vy * dt;
+    n.z += n.vz * dt;
+    const max = COCKPIT_CAMERA.headMax + COCKPIT_CAMERA.headPerG * (Math.abs(this.#accelLat) + Math.abs(this.#accelLong)) / g;
+    const cap = Math.min(0.1, max);
+    n.x = clamp(n.x, -cap, cap);
+    n.y = clamp(n.y, -cap * 0.6, cap * 0.6);
+    n.z = clamp(n.z, -cap, cap);
   }
 
   /**

@@ -1178,6 +1178,14 @@ body {
   font-weight: 700;
 }
 
+.touch--walk .touch__buttons {
+  flex-direction: column;
+}
+
+.touch--walk [data-touch='slide'] {
+  font: 600 12px system-ui;
+}
+
 .touch__speed {
   position: absolute;
   left: max(14px, env(safe-area-inset-left));

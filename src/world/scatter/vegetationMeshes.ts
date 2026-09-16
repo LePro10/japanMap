@@ -8,6 +8,7 @@ import {
   PlaneGeometry,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { createSakuraGeometry, SAKURA_HEIGHT } from './sakuraMesh';
 
 /**
  * Vegetationsgeometrie, prozedural — PLAN.md P4 / 4.2, 4.3.
@@ -29,7 +30,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
  * eigenes Attribut.
  */
 
-export type VegetationSpeciesId = 'pine' | 'broadleaf' | 'bush' | 'grass';
+export type VegetationSpeciesId = 'pine' | 'broadleaf' | 'sakura' | 'bush' | 'grass';
 
 /** Eine Formvariante in ihren beiden Mesh-Stufen. */
 export interface MeshVariant {
@@ -334,6 +335,10 @@ interface SpeciesRecipe {
 const RECIPES: Readonly<Record<VegetationSpeciesId, SpeciesRecipe>> = {
   pine: { height: 5.4, build: (rng, d) => pine(rng, d > 0 ? 9 : 5, d > 0 ? 4 : 2) },
   broadleaf: { height: 4.9, build: (rng, d) => broadleaf(rng, d) },
+  sakura: {
+    height: SAKURA_HEIGHT,
+    build: (rng, d) => addWindMask(createSakuraGeometry(rng, d), SAKURA_HEIGHT),
+  },
   bush: { height: 1.1, build: (rng, d) => bush(rng, d) },
   grass: { height: 0.66, build: (rng, d) => grass(rng, d > 0 ? 6 : 3) },
 };

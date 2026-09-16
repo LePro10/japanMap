@@ -43,9 +43,12 @@ import {
   routeTurn,
   type RoutePath,
 } from './routeGraph';
-import { createCarBody } from './carMesh';
+import { helmHub } from '@/config/cabin.config';
+import { instruments } from '@/ui/instruments';
+import { createCarVisuals } from './carMesh';
 import { createGarageWheel } from './garageWheels';
-import { ChaseCamera } from './ChaseCamera';
+import { ChaseCamera, viewLabel } from './ChaseCamera';
+import { ClusterDisplay } from './clusterDisplay';
 import {
   TREE_QUERY_CAP,
   TREE_QUERY_RADIUS,
@@ -221,6 +224,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
   #group: Group | null = null;
   #body: Mesh | null = null;
+  #glass: Mesh | null = null;
+  #cabin: Mesh | null = null;
+  #helm: Mesh | null = null;
+  #cluster: ClusterDisplay | null = null;
   #wheels: InstancedMesh | null = null;
   #material: PropMaterial | null = null;
   /**
@@ -248,6 +255,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #touchHandbrake = false;
   /** Sprung aus der Fingersteuerung — zu Fuß die Entsprechung der Leertaste. */
   #touchJump = false;
+  /** Rutschen aus der Fingersteuerung — zu Fuß die Entsprechung von Strg. */
+  #touchSlide = false;
   /** Eingabe aus einem Messlauf. Gesetzt = Tastatur und Finger sind stumm. */
   #scripted: DriveInput | null = null;
 
@@ -263,7 +272,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #stuntTapAt = Number.NEGATIVE_INFINITY;
   /** Doppeltipp-Flanke für genau einen Simulationsschritt. */
   #trickPulse = false;
-  readonly #walkInput: WalkInput = { forward: 0, right: 0, jump: false, sprint: false };
+  readonly #walkInput: WalkInput = { forward: 0, right: 0, jump: false, sprint: false, slide: false };
 
   /** Flugpose beim Einsteigen — beim Aussteigen wird genau sie wiederhergestellt. */
   readonly #flyPosition = new Vector3();
@@ -685,6 +694,30 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#body = body;
     group.add(body);
 
+    const glass = new Mesh(undefined, material);
+    glass.name = 'Fahrzeug:Glas';
+    glass.matrixAutoUpdate = false;
+    this.#glass = glass;
+    group.add(glass);
+
+    const cabin = new Mesh(undefined, material);
+    cabin.name = 'Fahrzeug:Kabine';
+    cabin.matrixAutoUpdate = false;
+    cabin.visible = false;
+    this.#cabin = cabin;
+    group.add(cabin);
+
+    const helm = new Mesh(undefined, material);
+    helm.name = 'Fahrzeug:Lenkrad';
+    helm.matrixAutoUpdate = false;
+    helm.visible = false;
+    this.#helm = helm;
+    group.add(helm);
+
+    const cluster = new ClusterDisplay();
+    this.#cluster = cluster;
+    group.add(cluster.mesh);
+
     const wheels = new InstancedMesh(undefined, material, 4);
     wheels.name = 'Fahrzeug:Räder';
     wheels.matrixAutoUpdate = false;
@@ -821,25 +854,53 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    */
   #applyVehicleGeometry(): void {
     const spec = this.vehicle.spec;
-    const bodyGeometry = createCarBody(spec);
+    const visuals = createCarVisuals(spec);
     const wheelGeometry = createGarageWheel(spec, loadTune(this.#vehicleId).tyres, loadSetup(this.#vehicleId));
-    if (this.#body) this.#body.geometry = bodyGeometry;
+    if (this.#body) this.#body.geometry = visuals.body;
+    if (this.#glass) this.#glass.geometry = visuals.glass;
+    if (this.#cabin) this.#cabin.geometry = visuals.cabin;
+    if (this.#helm) this.#helm.geometry = visuals.helm;
     if (this.#wheels) this.#wheels.geometry = wheelGeometry;
     for (const old of this.#geometries) old.dispose();
     this.#geometries.length = 0;
-    this.#geometries.push(bodyGeometry, wheelGeometry);
+    this.#geometries.push(visuals.body, visuals.glass, visuals.cabin, visuals.helm, wheelGeometry);
+    this.#applyViewLayers();
+  }
+
+  /**
+   * Außenkarosserie im Sitz aus, Käfig an. Open-Wheel behält das Blech —
+   * die Nase *ist* die Aussicht. Glas immer aus im Cockpit (opak, sonst Wand).
+   */
+  #applyViewLayers(): void {
+    const cockpit = this.camera.mode === 'cockpit';
+    const open = this.vehicle.spec.body.shape === 'openwheel';
+    if (this.#body) this.#body.visible = !cockpit || open;
+    if (this.#glass) {
+      this.#glass.visible = !cockpit && !this.#glass.geometry.name.startsWith('Dummy');
+    }
+    if (this.#cabin) this.#cabin.visible = cockpit;
+    if (this.#helm) this.#helm.visible = cockpit;
+    if (this.#cluster) this.#cluster.mesh.visible = cockpit;
+    if (this.#wheels) this.#wheels.visible = !cockpit || open;
+  }
+
+  /** Taste C / Touch: Verfolger ↔ Sitz. Haube nur noch übers Mausrad. */
+  toggleView(): void {
+    this.camera.toggleMode();
+    this.#applyViewLayers();
+    this.#readouts.ansicht = viewLabel(this.camera.mode);
+    this.#context?.bus.emit('drive:view', { cabin: this.camera.mode === 'cockpit' });
+    this.#context?.debug?.refresh();
   }
 
   #applyWheelGeometry(): void {
     const spec = this.vehicle.spec;
     const wheelGeometry = createGarageWheel(spec, loadTune(this.#vehicleId).tyres, loadSetup(this.#vehicleId));
-    const previous = this.#geometries[1];
+    const previous = this.#geometries.at(-1);
     if (this.#wheels) this.#wheels.geometry = wheelGeometry;
-    if (previous && previous !== this.#geometries[0]) previous.dispose();
-    const body = this.#geometries[0];
-    this.#geometries.length = 0;
-    if (body) this.#geometries.push(body);
-    this.#geometries.push(wheelGeometry);
+    if (previous && previous !== wheelGeometry) previous.dispose();
+    if (this.#geometries.length > 0) this.#geometries[this.#geometries.length - 1] = wheelGeometry;
+    else this.#geometries.push(wheelGeometry);
   }
 
   #rebuild(): void {
@@ -1067,8 +1128,12 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     // auf bis 68°; bliebe es stehen, wäre jede spätere Messung an einem
     // Blickpunkt mit einer anderen Kamera gemacht als die davor — und ein
     // Vorher/Nachher würde die Kamera messen statt die Änderung.
-    if (Math.abs(context.camera.fov - CAMERA.fov) > 1e-6) {
+    if (
+      Math.abs(context.camera.fov - CAMERA.fov) > 1e-6 ||
+      Math.abs(context.camera.near - CAMERA.near) > 1e-4
+    ) {
       context.camera.fov = CAMERA.fov;
+      context.camera.near = CAMERA.near;
       context.camera.updateProjectionMatrix();
     }
 
@@ -1100,7 +1165,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#debris?.show();
     this.camera.reset(this.vehicle);
     this.#readouts.modus = 'Fahren';
+    this.#readouts.ansicht = viewLabel(this.camera.mode);
+    this.#applyViewLayers();
     this.#context.bus.emit('drive:mode', { active: true });
+    this.#context.bus.emit('drive:view', { cabin: this.camera.mode === 'cockpit' });
     this.#context.debug?.refresh();
   }
 
@@ -1112,6 +1180,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#debris?.hide();
     this.#wake?.(0, 0, 0, 0, 0, false);
     this.#context?.bus.emit('drive:mode', { active: false });
+    this.#context?.bus.emit('drive:view', { cabin: false });
   }
 
   get stuntMode(): boolean {
@@ -1226,6 +1295,11 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#touchJump = down;
   }
 
+  /** Rutschen aus der Fingersteuerung — zu Fuß, nicht die Handbremse. */
+  setTouchSlide(down: boolean): void {
+    this.#touchSlide = down;
+  }
+
   /**
    * Eingabe aus einem Messlauf setzen — `null` gibt die Steuerung zurück.
    *
@@ -1266,13 +1340,17 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     }
     if (code === 'keyc' && this.#active) {
       event.preventDefault();
-      this.#readouts.ansicht = this.camera.toggleMode() === 'hood' ? 'Haube' : 'Verfolger';
-      this.#context?.debug?.refresh();
+      this.toggleView();
       return;
     }
     // Leertaste (Handbremse / Sprung) und die Pfeiltasten scrollen sonst die Seite.
     if (code === 'space' || code.startsWith('arrow')) event.preventDefault();
     if (code === 'space' && this.#active && !event.repeat) this.#noteStuntTap();
+    // Strg ist zu Fuß der Rutsch. Space bleibt Sprung — Drive/Stunt
+    // fassen wir hier nicht an.
+    if (this.#walking && (code === 'controlleft' || code === 'controlright')) {
+      event.preventDefault();
+    }
     this.#keys.add(code);
   };
 
@@ -1288,6 +1366,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#axes.right = 0;
     this.#touchHandbrake = false;
     this.#touchJump = false;
+    this.#touchSlide = false;
   };
 
   #collectInput(): DriveInput {
@@ -1326,6 +1405,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     input.right = clamp(right - left + this.#axes.right, -1, 1);
     input.jump = keys.has('space') || this.#touchJump;
     input.sprint = keys.has('shiftleft') || keys.has('shiftright');
+    input.slide =
+      keys.has('controlleft') || keys.has('controlright') || this.#touchSlide;
     return input;
   }
 
@@ -1740,7 +1821,12 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       const rig = this.#rig;
       if (rig) {
         rig.group.position.copy(this.walker.position);
-        rig.group.rotation.y = this.walker.yaw;
+        const dip = this.walker.slideAmount;
+        rig.group.rotation.set(
+          this.walker.slopePitch * dip,
+          this.walker.yaw,
+          this.walker.slopeRoll * dip,
+        );
         rig.animate(
           {
             cycle: this.walker.cycle,
@@ -1748,6 +1834,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
             grounded: this.walker.grounded,
             vy: this.walker.vy,
             lean: this.walker.lean,
+            slideAmount: this.walker.slideAmount,
           },
           dt,
         );
@@ -1757,6 +1844,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     }
     if (!this.#active || !this.#context) return;
     this.camera.update(dt, this.vehicle, this, this.#context.camera);
+    this.#applyViewLayers();
     this.#syncMeshes();
     this.#fx?.update(dt, this.vehicle, this, this.#context.camera, this.#input.handbrake);
     this.#debris?.update(dt);
@@ -1775,11 +1863,32 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   }
 
   #syncMeshes(): void {
-    const body = this.#body;
-    if (body) {
-      body.position.copy(this.vehicle.position);
-      body.quaternion.copy(this.vehicle.quaternion);
-      body.updateMatrix();
+    const pose = (mesh: Mesh | null): void => {
+      if (!mesh) return;
+      mesh.position.copy(this.vehicle.position);
+      mesh.quaternion.copy(this.vehicle.quaternion);
+      mesh.updateMatrix();
+    };
+    pose(this.#body);
+    pose(this.#glass);
+    pose(this.#cabin);
+    if (this.#helm) {
+      const hub = helmHub(this.vehicle.spec);
+      this.#scratch.set(hub.x, hub.y, hub.z).applyQuaternion(this.vehicle.quaternion);
+      this.#helm.position.copy(this.vehicle.position).add(this.#scratch);
+      this.#helm.quaternion.copy(this.vehicle.quaternion);
+      // ~18° zum Fahrer — genug, dass es ein Rad ist, nicht so steil, dass
+      // der Kranz zur Scheibe wird.
+      this.#helm.rotateX(-0.32);
+      const lock = Math.max(1e-4, this.vehicle.spec.steering.maxAngle);
+      // Positiver Lock = rechts. Von hinten aufs Rad: rechts ist −Z (Uhrzeigersinn entlang +Z).
+      this.#helm.rotateZ(-(this.vehicle.telemetry.steerAngle / lock) * 1.85);
+      this.#helm.updateMatrix();
+    }
+    if (this.#cluster) {
+      this.#cluster.pose(this.vehicle.spec, this.vehicle.position, this.vehicle.quaternion, this.#scratch);
+      const reading = instruments(this.vehicle.telemetry.forwardSpeed);
+      this.#cluster.paint(this.vehicle.telemetry.speed * 3.6, reading.gear);
     }
 
     const wheels = this.#wheels;
@@ -1886,6 +1995,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
     folder.addBinding(this.#readouts, 'modus', { readonly: true, label: 'Modus' });
     folder.addBinding(this.#readouts, 'ansicht', { readonly: true, label: 'Ansicht' });
+    folder.addBinding(this.camera, 'motion', { min: 0, max: 1, step: 0.05, label: 'Sitz-Motion' });
     folder.addBinding(this.#readouts, 'tempo', { readonly: true, label: 'Tempo', interval: 100 });
     folder.addBinding(this.#readouts, 'schwimmwinkel', {
       readonly: true,
@@ -1969,6 +2079,11 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#wheels?.dispose();
     this.#wheels = null;
     this.#body = null;
+    this.#glass = null;
+    this.#cabin = null;
+    this.#helm = null;
+    this.#cluster?.dispose();
+    this.#cluster = null;
     for (const geometry of this.#geometries) geometry.dispose();
     this.#geometries.length = 0;
     this.#rig?.dispose();
