@@ -387,12 +387,12 @@ export const PICKUPS = {
   /**
    * Schwebehöhe der **Mitte** über der Fahrbahnoberkante, m.
    *
-   * Das Token ist 0,44 m hoch. Unterkante also 1,13 m über dem Asphalt — weit
+   * Das Token ist 1,4 m hoch. Unterkante also 0,95 m über dem Asphalt — weit
    * über dem, was das CDLOD-Gitter zwischen zwei Stützstellen über dem Feld
    * aufwölbt (die P6-Klasse). Die alte 1,1 m-Mitte an einem 1,7 m Oktaeder
    * lag 0,25 m über dem Gelände und **in** der Böschung.
    */
-  height: 1.35,
+  height: 1.65,
   /** Wert in Sparks. */
   yen: 120,
   /** Anteil des Nitro-Vorrats, den ein Stück auffüllt. */

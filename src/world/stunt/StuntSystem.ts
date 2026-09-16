@@ -118,9 +118,16 @@ const FLAG_CLOTH_DARK = 0x9e2626;
 const SPARK_FACET_A = 0xffc56a;
 const SPARK_FACET_B = 0xe8a45c;
 const SPARK_NOTCH = 0x1a2228;
-const SPARK_GAIN = 2.2;
-/** Halbe Höhe des Kristalls, m. Unterkante = hover − das hier. */
-const SPARK_HALF_H = 0.22;
+const SPARK_GAIN = 2.45;
+/**
+ * Halbe Höhe des Kristalls, m.
+ *
+ * Die erste Spark-Fassung war 0,44 m hoch — vom Verfolger aus ein Punkt.
+ * Das alte Oktaeder war 1,7 m und lesbar, klemmte aber im Boden. 1,4 m hält
+ * die Silhouette, die Unterkante bleibt bei hover 1,65 m noch 0,95 m über
+ * der Fahrbahn.
+ */
+const SPARK_HALF_H = 0.7;
 
 /** Stützpunkte des Zonenrings. 96 sind bei 62 m Radius alle 4,1 m einer. */
 const ZONE_RING_STEPS = 96;
@@ -972,12 +979,12 @@ export class StuntSystem implements System {
         this.#scale.set(s, s, s);
         this.#quat.setFromAxisAngle(this.#up, this.#spin * 5.5 + i * 0.7);
         this.#quat.multiply(this.#tilt);
-        this.#matrix.compose(POINT.set(p.x, p.y + t * 0.35, p.z), this.#quat, this.#scale);
+        this.#matrix.compose(POINT.set(p.x, p.y + t * 0.7, p.z), this.#quat, this.#scale);
         mesh.setMatrixAt(i, this.#matrix);
         this.#scale.set(1, 1, 1);
         continue;
       }
-      const bob = Math.sin(this.#spin * 2.1 + i * 0.73) * 0.07;
+      const bob = Math.sin(this.#spin * 2.1 + i * 0.73) * 0.12;
       this.#quat.setFromAxisAngle(this.#up, this.#spin * 0.85 + i * 0.7);
       this.#quat.multiply(this.#tilt);
       // Eingesammelte Stücke wandern unter die Welt statt `count` zu ändern:
@@ -1395,9 +1402,9 @@ function createFallenPatch(): BufferGeometry {
 function createSparkToken(): BufferGeometry {
   const positions: number[] = [];
   const colors: number[] = [];
-  octahedron(positions, colors, -0.055, 0, 0, 0.15, SPARK_HALF_H, 0.11, SPARK_FACET_A);
-  octahedron(positions, colors, 0.07, 0.012, 0.018, 0.135, SPARK_HALF_H * 0.92, 0.1, SPARK_FACET_B);
-  const notch = box(0.04, SPARK_HALF_H * 1.55, 0.07, 0.012, 0, 0.004, SPARK_NOTCH);
+  octahedron(positions, colors, -0.16, 0, 0, 0.42, SPARK_HALF_H, 0.32, SPARK_FACET_A);
+  octahedron(positions, colors, 0.2, 0.04, 0.05, 0.38, SPARK_HALF_H * 0.92, 0.28, SPARK_FACET_B);
+  const notch = box(0.1, SPARK_HALF_H * 1.55, 0.18, 0.03, 0, 0.01, SPARK_NOTCH);
   positions.push(...notch.positions);
   colors.push(...notch.colors);
   const geometry = new BufferGeometry();

@@ -1573,8 +1573,8 @@ body {
 }
 
 .hud__money .spark-icon {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   filter: drop-shadow(0 0 5px color-mix(in srgb, var(--amber-hot) 55%, transparent));
 }
 
@@ -1599,8 +1599,8 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   pointer-events: none;
   z-index: 8;
   filter: drop-shadow(0 0 8px color-mix(in srgb, var(--amber-hot) 80%, transparent));
@@ -1608,8 +1608,8 @@ body {
 }
 
 .hud__facet .spark-icon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 /* Die Driftwertung. Typografie hier, Lage in driveInstruments.css — sie sitzt
