@@ -248,6 +248,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #touchHandbrake = false;
   /** Sprung aus der Fingersteuerung — zu Fuß die Entsprechung der Leertaste. */
   #touchJump = false;
+  /** Rutschen aus der Fingersteuerung — zu Fuß die Entsprechung von Strg. */
+  #touchSlide = false;
   /** Eingabe aus einem Messlauf. Gesetzt = Tastatur und Finger sind stumm. */
   #scripted: DriveInput | null = null;
 
@@ -263,7 +265,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   #stuntTapAt = Number.NEGATIVE_INFINITY;
   /** Doppeltipp-Flanke für genau einen Simulationsschritt. */
   #trickPulse = false;
-  readonly #walkInput: WalkInput = { forward: 0, right: 0, jump: false, sprint: false };
+  readonly #walkInput: WalkInput = { forward: 0, right: 0, jump: false, sprint: false, slide: false };
 
   /** Flugpose beim Einsteigen — beim Aussteigen wird genau sie wiederhergestellt. */
   readonly #flyPosition = new Vector3();
@@ -1225,6 +1227,11 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#touchJump = down;
   }
 
+  /** Rutschen aus der Fingersteuerung — zu Fuß, nicht die Handbremse. */
+  setTouchSlide(down: boolean): void {
+    this.#touchSlide = down;
+  }
+
   /**
    * Eingabe aus einem Messlauf setzen — `null` gibt die Steuerung zurück.
    *
@@ -1272,6 +1279,11 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     // Leertaste (Handbremse / Sprung) und die Pfeiltasten scrollen sonst die Seite.
     if (code === 'space' || code.startsWith('arrow')) event.preventDefault();
     if (code === 'space' && this.#active && !event.repeat) this.#noteStuntTap();
+    // Strg ist zu Fuß der Rutsch. Space bleibt Sprung — Drive/Stunt
+    // fassen wir hier nicht an.
+    if (this.#walking && (code === 'controlleft' || code === 'controlright')) {
+      event.preventDefault();
+    }
     this.#keys.add(code);
   };
 
@@ -1287,6 +1299,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#axes.right = 0;
     this.#touchHandbrake = false;
     this.#touchJump = false;
+    this.#touchSlide = false;
   };
 
   #collectInput(): DriveInput {
@@ -1325,6 +1338,8 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     input.right = clamp(right - left + this.#axes.right, -1, 1);
     input.jump = keys.has('space') || this.#touchJump;
     input.sprint = keys.has('shiftleft') || keys.has('shiftright');
+    input.slide =
+      keys.has('controlleft') || keys.has('controlright') || this.#touchSlide;
     return input;
   }
 
@@ -1738,7 +1753,12 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       const rig = this.#rig;
       if (rig) {
         rig.group.position.copy(this.walker.position);
-        rig.group.rotation.y = this.walker.yaw;
+        const dip = this.walker.slideAmount;
+        rig.group.rotation.set(
+          this.walker.slopePitch * dip,
+          this.walker.yaw,
+          this.walker.slopeRoll * dip,
+        );
         rig.animate(
           {
             cycle: this.walker.cycle,
@@ -1746,6 +1766,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
             grounded: this.walker.grounded,
             vy: this.walker.vy,
             lean: this.walker.lean,
+            slideAmount: this.walker.slideAmount,
           },
           dt,
         );

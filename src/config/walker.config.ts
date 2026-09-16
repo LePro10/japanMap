@@ -148,6 +148,46 @@ export const WALKER = {
 
   /** Wie hoch eine Stufe sein darf, die man noch nimmt, in Metern. */
   stepHeight: 0.38,
+
+  /**
+   * Rutschen (Strg) — Fortnite-artig: Momentum, kein zweites Gehen.
+   *
+   * Einstieg nur mit Sprinttempo oder bergab. Die Kapsel bleibt dieselbe,
+   * nur tiefer; Space bleibt Sprung (Drive/Stunt fassen wir nicht an).
+   * Hang: Schwerkraft speist nur die XZ-Ebene, Y klebt am Boden — sonst
+   * schießt der Körper den Hang hoch. Zahlen gewählt, gemessen in
+   * `tools/bench/walker.mts`.
+   */
+  /** So schnell muss man auf Flach sein, um zu rutschen, in m/s. Zwischen Schritt und Sprint. */
+  slideEnterSpeed: 5.8,
+  /** Kleiner Schub beim Niedergehen, m/s. Kein Dash — nur das Fallen in die Gleitpose.
+   * Gemessen: Sprint 7,50 → Einstieg 8,58. */
+  slideBoost: 1.15,
+  /** Deckel, damit ein langer Hang keine zweite Fahrphysik wird, in m/s.
+   * Gemessen bergab 20°: sitzt auf 11,50. */
+  slideMaxSpeed: 11.5,
+  /** Reibung auf Flach, m/s². Gemessen: 1,20 s vom Sprint bis der Rutsch endet. */
+  slideFriction: 4.2,
+  /** Anteil, um den ein Hang die Reibung frisst (1 = bergab fast ohne Reibung). */
+  slideHillRelief: 0.88,
+  /** Extra-Bremse bergauf, m/s². Der Rutsch darf den Hang nicht hochschießen. */
+  slideUphillBrake: 8,
+  /** Lenken während des Rutsches, 1/s. Dreht die Bahn, setzt kein Solltempo. */
+  slideSteer: 3.4,
+  /** Mindestlänge, damit ein Tippen ein Rutsch ist und kein Duck-Frame. */
+  slideMinTime: 0.22,
+  /** Darunter steht man wieder auf (nach `slideMinTime`), in m/s. */
+  slideExitSpeed: 3.6,
+  /**
+   * Kapselhöhe als Anteil der Standgröße.
+   *
+   * Hüfte bleibt über dem Radius (0,24 m), sonst fällt die untere Kugel
+   * in den Boden. 0,62 → Hüfte ~0,32 m, Brust ~0,77 m.
+   */
+  slideCrouch: 0.62,
+  /** Wie tief Kamera und Blickziel sinken, in Metern. Unter `groundClearance`. */
+  slideCameraDip: 0.72,
+  slideLookDip: 0.55,
 } as const;
 
 export const WALK_CAMERA = {

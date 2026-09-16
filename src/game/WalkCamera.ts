@@ -1,6 +1,6 @@
 import { Vector3, type PerspectiveCamera } from 'three';
 
-import { WALK_CAMERA } from '@/config/walker.config';
+import { WALKER, WALK_CAMERA } from '@/config/walker.config';
 import type { Ground } from './Vehicle';
 import type { Walker } from './Walker';
 
@@ -64,10 +64,13 @@ export class WalkCamera {
     const pitch = this.#pitch;
     const arm = WALK_CAMERA.distance * this.#zoomApplied;
     const dist = arm * Math.cos(pitch);
-    const height = WALK_CAMERA.height - arm * Math.sin(pitch);
+    const dip = walker.slideAmount;
+    const height =
+      WALK_CAMERA.height - dip * WALKER.slideCameraDip - arm * Math.sin(pitch);
+    const lookHeight = WALK_CAMERA.targetHeight - dip * WALKER.slideLookDip;
 
     const bob =
-      walker.grounded && walker.speed > 0.15
+      walker.grounded && walker.speed > 0.15 && dip < 0.2
         ? Math.sin(walker.cycle * WALK_CAMERA.bobFreq) *
           WALK_CAMERA.bob *
           Math.min(1, walker.speed / 3.2)
@@ -80,7 +83,7 @@ export class WalkCamera {
     );
     this.#lookAt.set(
       walker.position.x,
-      walker.position.y + WALK_CAMERA.targetHeight + bob * 0.4,
+      walker.position.y + lookHeight + bob * 0.4,
       walker.position.z,
     );
 

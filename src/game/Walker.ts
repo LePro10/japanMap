@@ -16,9 +16,14 @@ export interface WalkInput {
   jump: boolean;
   /** Sprint — Shift. Ohne ihn bleibt es ein Schritt. */
   sprint: boolean;
+  /**
+   * Rutschen — Strg. Nicht Space: Drive und Stunt behalten die Leertaste.
+   * Optional, damit ältere Prüfstände ohne das Feld weiterlaufen.
+   */
+  slide?: boolean;
 }
 
-const NO_INPUT: WalkInput = { forward: 0, right: 0, jump: false, sprint: false };
+const NO_INPUT: WalkInput = { forward: 0, right: 0, jump: false, sprint: false, slide: false };
 
 /**
  * Der Körper zu Fuß.
@@ -49,15 +54,26 @@ export class Walker {
   yaw = 0;
   grounded = true;
   jumping = false;
+  sliding = false;
 
   /** Strecke seit dem letzten Stand, für den Walk-Cycle. */
   cycle = 0;
   /** 0…1, wie sehr der Körper in die Bewegung lehnt. */
   lean = 0;
+  /** 0…1, geglättet — Kamera und Mesh, nicht die Physik. */
+  slideAmount = 0;
+  /**
+   * Geländeneigung im Fahrzeugsystem, Bogenmaß. Pitch positiv = Nase runter
+   * (Three-YXZ). Nur die Pose liest das; die Kapsel bleibt welt-aufrecht.
+   */
+  slopePitch = 0;
+  slopeRoll = 0;
 
   #vy = 0;
   #coyote = 0;
   #jumpBuf = 0;
+  #slideTime = 0;
+  #airborneTime = 0;
   readonly #normal = new Vector3(0, 1, 0);
   readonly #wish = new Vector3();
 
@@ -77,10 +93,27 @@ export class Walker {
     this.yaw = heading;
     this.grounded = true;
     this.jumping = false;
+    this.sliding = false;
     this.cycle = 0;
     this.lean = 0;
+    this.slideAmount = 0;
+    this.slopePitch = 0;
+    this.slopeRoll = 0;
     this.#coyote = WALKER.coyote;
     this.#jumpBuf = 0;
+    this.#slideTime = 0;
+    this.#airborneTime = 0;
+  }
+
+  /**
+   * Kugelmitten der Kapsel über den Sohlen. Öffentlich, weil der Prüfstand
+   * genau das fragen muss: sinkt die untere Kugel in den Boden.
+   */
+  capsuleHeights(): { hips: number; chest: number } {
+    const crouch = this.sliding ? WALKER.slideCrouch : 1;
+    const hips = Math.max(WALKER.radius + 0.04, WALKER.cgHeight * 0.55 * crouch);
+    const chest = Math.max(hips + WALKER.radius * 0.85, WALKER.height * 0.72 * crouch);
+    return { hips, chest };
   }
 
   step(
@@ -120,27 +153,6 @@ export class Walker {
       this.#wish.set(0, 0, 0);
     }
 
-    const accel = this.grounded ? WALKER.accel : WALKER.accel * WALKER.airControl;
-    const brake = this.grounded ? WALKER.brake : WALKER.brake * 0.15;
-    if (wishMag > 1e-6) {
-      this.velocity.x += (this.#wish.x - this.velocity.x) * Math.min(1, accel * dt);
-      this.velocity.z += (this.#wish.z - this.velocity.z) * Math.min(1, accel * dt);
-    } else {
-      const damp = Math.exp(-brake * dt);
-      this.velocity.x *= damp;
-      this.velocity.z *= damp;
-    }
-
-    if (wishMag > 0.15) {
-      const targetYaw = Math.atan2(this.#wish.x, this.#wish.z);
-      let dYaw = targetYaw - this.yaw;
-      while (dYaw > Math.PI) dYaw -= Math.PI * 2;
-      while (dYaw < -Math.PI) dYaw += Math.PI * 2;
-      // 10 1/s: die Figur dreht sich in ~0,3 s in die Laufrichtung. Härter
-      // wäre ein Instant-Turn, weicher ein Nachlaufen hinter der Kamera.
-      this.yaw += dYaw * (1 - Math.exp(-10 * dt));
-    }
-
     if (input.jump) this.#jumpBuf = WALKER.jumpBuffer;
     else this.#jumpBuf = Math.max(0, this.#jumpBuf - dt);
 
@@ -152,8 +164,35 @@ export class Walker {
       this.#vy = WALKER.jumpSpeed;
       this.grounded = false;
       this.jumping = true;
+      this.sliding = false;
+      this.#slideTime = 0;
       this.#jumpBuf = 0;
       this.#coyote = 0;
+    }
+
+    ground.normal(this.position.x, this.position.z, this.#normal);
+    this.#updateSlide(dt, !!input.slide, wishMag);
+
+    if (this.sliding && this.grounded) {
+      this.#slideMove(dt, wishMag);
+    } else {
+      const accel = this.grounded ? WALKER.accel : WALKER.accel * WALKER.airControl;
+      const brake = this.grounded ? WALKER.brake : WALKER.brake * 0.15;
+      if (wishMag > 1e-6) {
+        this.velocity.x += (this.#wish.x - this.velocity.x) * Math.min(1, accel * dt);
+        this.velocity.z += (this.#wish.z - this.velocity.z) * Math.min(1, accel * dt);
+      } else {
+        const damp = Math.exp(-brake * dt);
+        this.velocity.x *= damp;
+        this.velocity.z *= damp;
+      }
+    }
+
+    if (wishMag > 0.15 && !this.sliding) {
+      const targetYaw = Math.atan2(this.#wish.x, this.#wish.z);
+      this.#turnToward(targetYaw, dt, 10);
+    } else if (this.sliding && this.speed > 0.4) {
+      this.#turnToward(Math.atan2(this.velocity.x, this.velocity.z), dt, 14);
     }
 
     this.#vy -= WALKER.gravity * dt;
@@ -176,30 +215,174 @@ export class Walker {
     ground.normal(this.position.x, this.position.z, this.#normal);
     const floor = ground.height(this.position.x, this.position.z);
     const walkable = this.#normal.y >= WALKER.minNy;
-    const onFloor = ny <= floor + 0.02 && this.#vy <= 0.15;
+    // 2 cm reichen auf Flach. Am Hang fällt die Fläche je Schritt um
+    // v·dt·tanθ — bei Sprint auf 20° sind das 4,5 cm, im Rutsch 7 cm.
+    // `stepHeight` lag seit dem ersten Walker ungenutzt genau dafür:
+    // dem Boden folgen, ohne eine Klippe zu ignorieren.
+    const follow =
+      this.grounded &&
+      !this.jumping &&
+      this.#vy <= 0.15 &&
+      Math.abs(ny - floor) <= WALKER.stepHeight;
+    const onFloor = (ny <= floor + 0.02 && this.#vy <= 0.15) || follow;
 
     if (onFloor && walkable) {
       this.position.y = floor;
       if (this.#vy < 0) this.#vy = 0;
       this.grounded = true;
       this.jumping = false;
+      this.#airborneTime = 0;
     } else if (!walkable && onFloor) {
       // Hang zu steil: stehen lassen wir ihn nicht, aber auch nicht
       // einsinken. Er rutscht — die Horizontalkomponente der Normalen
       // schiebt ihn den Hang hinunter.
       this.position.y = Math.max(ny, floor);
       this.grounded = false;
+      this.#airborneTime += dt;
+      if (this.#airborneTime > 0.1) this.sliding = false;
       this.velocity.x += this.#normal.x * 8 * dt;
       this.velocity.z += this.#normal.z * 8 * dt;
     } else {
       this.position.y = ny;
       this.grounded = false;
+      this.#airborneTime += dt;
+      // Ein Frame ohne Boden am Hang ist kein Flug. Die Pose hat die
+      // Schienbeine hart auf 0,7 gesetzt, sobald `grounded` falsch war —
+      // auf dem Berg ein Bein-Stroboskop. Erst nach ~6 Frames abbrechen.
+      if (!this.jumping && this.#airborneTime > 0.1) this.sliding = false;
     }
+
+    this.#refreshSlope();
 
     const spd = this.speed;
     this.cycle += spd * dt;
-    const targetLean = wishMag > 0.15 ? Math.min(1, spd / WALKER.runSpeed) : 0;
+    const targetLean = this.sliding ? 1 : wishMag > 0.15 ? Math.min(1, spd / WALKER.runSpeed) : 0;
     this.lean += (targetLean - this.lean) * (1 - Math.exp(-8 * dt));
+    const targetSlide = this.sliding ? 1 : 0;
+    this.slideAmount += (targetSlide - this.slideAmount) * (1 - Math.exp(-14 * dt));
+  }
+
+  #updateSlide(dt: number, wantSlide: boolean, wishMag: number): void {
+    const nLen = Math.hypot(this.#normal.x, this.#normal.z);
+    const downX = nLen > 1e-5 ? this.#normal.x / nLen : 0;
+    const downZ = nLen > 1e-5 ? this.#normal.z / nLen : 0;
+    const speed = this.speed;
+    const alongDown = speed > 0.4 ? (this.velocity.x * downX + this.velocity.z * downZ) / speed : 0;
+    // Hang *und* Bahn bergab. Nur nLen wäre auch ein Hang hinauf — dort
+    // muss der Rutsch sterben, sonst bleibt v = 0 im Slide und Sprint
+    // greift nie wieder.
+    const goingDown = nLen > 0.14 && alongDown > 0.18;
+
+    if (this.sliding) {
+      this.#slideTime += dt;
+      const tooSlow =
+        speed < WALKER.slideExitSpeed && this.#slideTime > WALKER.slideMinTime && !goingDown;
+      const released = !wantSlide && this.#slideTime > WALKER.slideMinTime;
+      if (tooSlow || released || this.#airborneTime > 0.1) {
+        this.sliding = false;
+        this.#slideTime = 0;
+      }
+      return;
+    }
+
+    if (!wantSlide || !this.grounded) return;
+
+    const canFlat = speed >= WALKER.slideEnterSpeed;
+    const canHill = goingDown || (nLen > 0.14 && wishMag > 0.15 && alongDown >= 0);
+    if (!canFlat && !canHill) return;
+
+    this.sliding = true;
+    this.#slideTime = 0;
+    if (speed < 0.4 && nLen > 0.14) {
+      // Vom Stand am Hang: den Hang hinunter, nicht in Blickrichtung.
+      const takeoff = WALKER.slideEnterSpeed * 0.45;
+      this.velocity.x = downX * takeoff;
+      this.velocity.z = downZ * takeoff;
+    } else if (speed > 0.4) {
+      const boosted = Math.min(speed + WALKER.slideBoost, WALKER.slideMaxSpeed);
+      const k = boosted / speed;
+      this.velocity.x *= k;
+      this.velocity.z *= k;
+    }
+  }
+
+  #slideMove(dt: number, wishMag: number): void {
+    // Hangschub nur in XZ. Y gehört dem Boden-Snap — wer hier vy aus
+    // sin(θ)·v setzt, schießt den Körper den Hang hoch. Dieselbe Falle
+    // wie „horizontalen Impuls in die Flächennormale kippen".
+    this.velocity.x += this.#normal.x * WALKER.gravity * this.#normal.y * dt;
+    this.velocity.z += this.#normal.z * WALKER.gravity * this.#normal.y * dt;
+
+    let speed = this.speed;
+    const wishLen = Math.hypot(this.#wish.x, this.#wish.z);
+    if (speed > 0.4 && wishMag > 0.15 && wishLen > 1e-6) {
+      const wishX = this.#wish.x / wishLen;
+      const wishZ = this.#wish.z / wishLen;
+      const align = (this.velocity.x * wishX + this.velocity.z * wishZ) / speed;
+      if (align < -0.25) {
+        // S gegen die Bahn: bremsen, nicht wenden. Sonst wäre der Rutsch
+        // ein Strafe, das rückwärts beschleunigt.
+        const extra = 6 * (-align);
+        speed = Math.max(0, speed - extra * dt);
+        const inv = this.speed > 1e-6 ? speed / this.speed : 0;
+        this.velocity.x *= inv;
+        this.velocity.z *= inv;
+      } else {
+        const blend = 1 - Math.exp(-WALKER.slideSteer * dt);
+        let dx = this.velocity.x / speed + (wishX - this.velocity.x / speed) * blend;
+        let dz = this.velocity.z / speed + (wishZ - this.velocity.z / speed) * blend;
+        const len = Math.hypot(dx, dz) || 1;
+        this.velocity.x = (dx / len) * speed;
+        this.velocity.z = (dz / len) * speed;
+      }
+    }
+
+    speed = this.speed;
+    const nLen = Math.hypot(this.#normal.x, this.#normal.z);
+    let hill = 0;
+    if (nLen > 1e-5 && speed > 0.2) {
+      const ux = this.#normal.x / nLen;
+      const uz = this.#normal.z / nLen;
+      // n_xz zeigt hangab. Positiv entlang der Bahn = bergab.
+      hill = (this.velocity.x * ux + this.velocity.z * uz) / speed;
+    }
+    let friction = WALKER.slideFriction * (1 - WALKER.slideHillRelief * Math.max(0, hill));
+    if (hill < 0) friction += WALKER.slideUphillBrake * -hill;
+    speed = Math.max(0, speed - friction * dt);
+    if (speed > WALKER.slideMaxSpeed) speed = WALKER.slideMaxSpeed;
+    const cur = this.speed;
+    if (cur > 1e-6) {
+      const k = speed / cur;
+      this.velocity.x *= k;
+      this.velocity.z *= k;
+    } else {
+      this.velocity.x = 0;
+      this.velocity.z = 0;
+    }
+  }
+
+  #refreshSlope(): void {
+    const ny = this.#normal.y;
+    if (ny < 0.15) {
+      this.slopePitch = 0;
+      this.slopeRoll = 0;
+      return;
+    }
+    const fx = Math.sin(this.yaw);
+    const fz = Math.cos(this.yaw);
+    const rx = -Math.cos(this.yaw);
+    const rz = Math.sin(this.yaw);
+    // n·forward_xz > 0 → Fläche zeigt nach vorn → Hang fällt nach vorn →
+    // Nase runter = +rotation.x in Three-YXZ.
+    this.slopePitch = Math.atan2(this.#normal.x * fx + this.#normal.z * fz, ny);
+    this.slopeRoll = Math.atan2(this.#normal.x * rx + this.#normal.z * rz, ny);
+  }
+
+  #turnToward(targetYaw: number, dt: number, rate: number): void {
+    let dYaw = targetYaw - this.yaw;
+    while (dYaw > Math.PI) dYaw -= Math.PI * 2;
+    while (dYaw < -Math.PI) dYaw += Math.PI * 2;
+    this.yaw += dYaw * (1 - Math.exp(-rate * dt));
   }
 
   #resolve(
@@ -211,9 +394,9 @@ export class Walker {
     const r = WALKER.radius;
     // Hüfte und Schulter. Eine dritte Kugel am Kopf hat in der Probe gegen
     // eine 2 m hohe Wand nichts zusätzlich gefunden — die Schulter sitzt
-    // schon in der Wand, bevor der Schädel sie erreicht.
-    const hips = WALKER.cgHeight * 0.55;
-    const chest = WALKER.height * 0.72;
+    // schon in der Wand, bevor der Schädel sie erreicht. Im Rutsch sinken
+    // beide mit `slideCrouch`, bleiben aber über dem Radius.
+    const { hips, chest } = this.capsuleHeights();
     for (let pass = 0; pass < 3; pass++) {
       let deepest = 0;
       let nx = 0;
