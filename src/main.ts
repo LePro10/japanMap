@@ -708,7 +708,7 @@ async function boot(): Promise<void> {
       // ── Minikarte und Richtungspfeil — P25 ───────────────────────────
       //
       // Die Kamerarichtung kommt aus der **Kamera** und nicht aus
-      // `ChaseCamera.#heading`: es gibt zwei Kameras (Verfolger und Haube), und
+      // `ChaseCamera.#heading`: es gibt drei Kameras (Verfolger, Haube, Sitz), und
       // eine Anzeige, die nur eine davon kennt, zeigt bei der anderen falsch.
       // `getWorldDirection` ist die eine Quelle, die für beide stimmt.
       engine.camera.getWorldDirection(NAV_DIR);
@@ -952,6 +952,9 @@ async function boot(): Promise<void> {
       },
       toggleVehicle: () => {
         drive.toggleVehicle();
+      },
+      toggleView: () => {
+        drive.toggleView();
       },
       respawn: () => {
         drive.respawn();

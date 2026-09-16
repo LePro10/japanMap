@@ -207,6 +207,12 @@ export type AppEvents = {
   'drive:stunt': { active: boolean };
 
   /**
+   * Sitzkamera an oder aus. Eigenes Ereignis: der Motor dämpft Fahrtwind
+   * hinter der Scheibe, ohne `drive:mode` umzubauen.
+   */
+  'drive:view': { cabin: boolean };
+
+  /**
    * Zu Fuß an oder aus.
    *
    * Eigenes Ereignis und nicht `drive:mode` mit einem dritten Wert: das HUD,

@@ -6,13 +6,17 @@
  * Findet die vertauschte Mausachse (Verfolger/zu Fuß) und prüft, dass Gas den
  * Arm verlängert und Bremse ihn kürzt. Feel selbst bleibt eine Hand an der Maus.
  */
-import { PerspectiveCamera } from 'three';
+import { Mesh, MeshBasicMaterial, PerspectiveCamera, Raycaster, Vector3 } from 'three';
 
 import { ChaseCamera } from '@/game/ChaseCamera';
 import { WalkCamera } from '@/game/WalkCamera';
 import { Vehicle } from '@/game/Vehicle';
 import { Walker } from '@/game/Walker';
-import { CHASE_CAMERA } from '@/config/vehicle.config';
+import { CAMERA } from '@/config/world.config';
+import { cabinLayout, clusterFace, cockpitEye, helmHub, hoodCowl } from '@/config/cabin.config';
+import { CHASE_CAMERA, COCKPIT_CAMERA } from '@/config/vehicle.config';
+import { VEHICLES, VEHICLE_ORDER } from '@/config/vehicles.config';
+import { createCarVisuals } from '@/game/carMesh';
 import { flatGround, input } from './flat.mjs';
 
 const DT = 1 / 60;
@@ -166,10 +170,155 @@ function ok(msg: string): void {
   ok('Mausrad zoomt den Boom');
 
   for (let i = 0; i < 12; i++) chase.zoom(0.5);
-  if (chase.mode !== 'hood') fail(`Zoom unter Minimum soll in die Haube, war ${chase.mode}`);
+  if (chase.mode !== 'cockpit') fail(`Zoom unter Minimum soll in den Sitz, war ${chase.mode}`);
   chase.zoom(1.2);
-  if (chase.mode !== 'chase') fail(`Zoom aus der Haube soll in den Verfolger, war ${chase.mode}`);
-  ok('Nächste Rastung unter Minimum = Haube');
+  if (chase.mode !== 'chase') fail(`Zoom aus dem Sitz soll in den Verfolger, war ${chase.mode}`);
+  ok('Nächste Rastung unter Minimum = Sitz');
+}
+
+{
+  const v = new Vehicle();
+  v.respawn(0, 0, 0, g);
+  const chase = new ChaseCamera();
+  const cam = new PerspectiveCamera(CHASE_CAMERA.fov, 1, CAMERA.near, 6000);
+  chase.reset(v);
+  chase.toggleMode();
+  if (chase.mode !== 'cockpit') fail(`C einmal = Sitz, war ${chase.mode}`);
+  const tick = () => {
+    v.step(DT, input({}), g, null);
+    chase.update(DT, v, g, cam);
+  };
+  settle(tick, 1.2);
+  const inv = v.quaternion.clone().invert();
+  const eye = cockpitEye(v.spec);
+  const eyeLocal = cam.position.clone().sub(v.position).applyQuaternion(inv);
+  console.log(
+    `Sitz lokal ${eyeLocal.x.toFixed(3)} ${eyeLocal.y.toFixed(3)} ${eyeLocal.z.toFixed(3)}  eye ${eye.y.toFixed(3)} ${eye.z.toFixed(3)}  near=${cam.near}`,
+  );
+  if (Math.abs(eyeLocal.y - eye.y) > 0.12) fail(`Auge Y ${eyeLocal.y.toFixed(3)} gegen ${eye.y.toFixed(3)}`);
+  const roofLocal = v.spec.body.roofHeight - v.spec.chassis.cgHeight;
+  if (eyeLocal.y > roofLocal - 0.05) fail(`Auge im Dach: ${eyeLocal.y.toFixed(3)} Dach ${roofLocal.toFixed(3)}`);
+  if (Math.abs(cam.near - COCKPIT_CAMERA.near) > 1e-3) fail(`Sitz near ${cam.near}`);
+  if (Math.abs(cam.fov - COCKPIT_CAMERA.fov) > 2) fail(`Sitz FOV ${cam.fov}, erwartet ~${COCKPIT_CAMERA.fov}`);
+  ok('Sitz unter dem Dach, eigenes FOV und Near');
+
+  const visuals = createCarVisuals(v.spec);
+  const cabinMesh = new Mesh(visuals.cabin, new MeshBasicMaterial());
+  const origin = new Vector3(eye.x, eye.y, eye.z);
+  const down = new Raycaster(origin, new Vector3(0, -1, 0), 0, 1.4);
+  const floorHits = down.intersectObject(cabinMesh);
+  console.log(`Cabin-Bodenstrahl Treffer=${floorHits.length} dist=${floorHits[0]?.distance.toFixed(3) ?? '—'}`);
+  if (floorHits.length === 0) fail('Strahl nach unten trifft keinen Kabinenboden');
+  ok('Kabinenboden schließt den Durchblick');
+
+  const hub = helmHub(v.spec);
+  const toHub = new Vector3(hub.x - eye.x, hub.y - eye.y, hub.z - eye.z).normalize();
+  const through = new Raycaster(origin, toHub, 0, 1.4);
+  const dashHits = through.intersectObject(cabinMesh);
+  console.log(`Strahl durchs Rad Treffer=${dashHits.length} dist=${dashHits[0]?.distance.toFixed(3) ?? '—'}`);
+  if (dashHits.length === 0) fail('Durchs Lenkrad muss die Armatur kommen, nicht die Wiese');
+  ok('Armatur sitzt hinter dem Kranz');
+  cabinMesh.geometry.dispose();
+  cabinMesh.material.dispose();
+  visuals.body.dispose();
+  visuals.glass.dispose();
+  visuals.helm.dispose();
+
+  const look = COCKPIT_CAMERA.lookPitch;
+  const rim = 0.16;
+  const rimTop = Math.atan2(hub.y + rim - eye.y, hub.z - eye.z) - look;
+  const hubPitch = Math.atan2(hub.y - eye.y, hub.z - eye.z) - look;
+  const halfFov = (COCKPIT_CAMERA.fov * Math.PI) / 180 / 2;
+  const rimDeg = (rimTop * 180) / Math.PI;
+  const hubDeg = (hubPitch * 180) / Math.PI;
+  console.log(`Kranz oben ${rimDeg.toFixed(1)}°  Nabe ${hubDeg.toFixed(1)}°  halbes FOV=${((halfFov * 180) / Math.PI).toFixed(1)}°`);
+  if (rimTop > -0.12) fail(`Kranz zu hoch (Tunnel): ${rimDeg.toFixed(1)}°`);
+  if (hubPitch < -halfFov * 1.05) fail(`Nabe unter dem Bild: ${hubDeg.toFixed(1)}°`);
+  ok('Lenkrad ist ein Bogen unten, kein Tunnel');
+
+  const face = clusterFace(v.spec);
+  const clusterPitch = Math.atan2(face.y - eye.y, face.z - eye.z) - look;
+  const clusterDeg = (clusterPitch * 180) / Math.PI;
+  console.log(`Cluster ${clusterDeg.toFixed(1)}°  zwischen Kranz ${rimDeg.toFixed(1)}° und Nabe ${hubDeg.toFixed(1)}°`);
+  if (clusterPitch > rimTop + 0.02 || clusterPitch < hubPitch - 0.02) {
+    fail(`Cluster liegt nicht im Lenkradloch (${clusterDeg.toFixed(1)}°)`);
+  }
+  ok('Tacho sitzt im Lenkradloch');
+
+  chase.toggleMode();
+  if (chase.mode !== 'chase') fail(`C zweimal = Verfolger, war ${chase.mode}`);
+  settle(tick, 0.2);
+  if (Math.abs(cam.near - CAMERA.near) > 1e-3) fail(`Near nach Verfolger ${cam.near}, erwartet ${CAMERA.near}`);
+  ok('C schaltet nur Sitz an/aus');
+
+  chase.mode = 'hood';
+  chase.reset(v);
+  settle(tick, 0.5);
+  const cowl = hoodCowl(v.spec);
+  const local = cam.position.clone().sub(v.position);
+  local.applyQuaternion(inv);
+  const layout = cabinLayout(v.spec);
+  const beltLocal = layout.belt - v.spec.chassis.cgHeight;
+  console.log(
+    `Haube lokal ${local.x.toFixed(3)} ${local.y.toFixed(3)} ${local.z.toFixed(3)}  overBelt=${(local.y - beltLocal).toFixed(3)}`,
+  );
+  if (local.y - beltLocal < 0.35) {
+    fail(`Haube zu nah am Blech: ${(local.y - beltLocal).toFixed(3)} m über Gürtel`);
+  }
+  ok('Haube (Mausrad) hoch genug, dass die Straße bleibt');
+}
+
+{
+  const v = new Vehicle();
+  v.respawn(0, 0, 0, g);
+  const slope = {
+    height: (_x: number, z: number) => z * 0.18,
+    normal: (_x: number, _z: number, out: Vector3) => out.set(0, 1, -0.18).normalize(),
+    surface: () => 'asphalt' as const,
+  };
+  // Echter Hang: height = 0,18·z ≈ 10°. Nach dem Einschwingen muss die Haube
+  // der Quaternion folgen, nicht der Welt-Y.
+  v.respawn(0, 0, 0, slope as never);
+  const chase = new ChaseCamera();
+  chase.mode = 'hood';
+  const cam = new PerspectiveCamera(CHASE_CAMERA.fov, 1, CAMERA.near, 6000);
+  chase.reset(v);
+  for (let i = 0; i < 90; i++) {
+    v.step(DT, input({}), slope as never, null);
+    chase.update(DT, v, slope as never, cam);
+  }
+  const cowl = hoodCowl(v.spec);
+  const local = cam.position.clone().sub(v.position);
+  local.applyQuaternion(v.quaternion.clone().invert());
+  console.log(
+    `Hang-Haube lokal y=${local.y.toFixed(3)} z=${local.z.toFixed(3)}  cowl y=${cowl.y.toFixed(3)}  pitch=${(v.pitch * 180 / Math.PI).toFixed(1)}°`,
+  );
+  if (Math.abs(local.y - cowl.y) > 0.12) {
+    fail(`Haube folgt der Quaternion nicht: lokal y=${local.y.toFixed(3)} cowl=${cowl.y.toFixed(3)}`);
+  }
+  ok('Haube parented: Hang verschiebt das Auge nicht durchs Blech');
+}
+
+{
+  for (const id of VEHICLE_ORDER) {
+    const spec = VEHICLES[id];
+    const eye = cockpitEye(spec);
+    const cowl = hoodCowl(spec);
+    const layout = cabinLayout(spec);
+    const roofLocal = spec.body.roofHeight - spec.chassis.cgHeight;
+    if (eye.y > roofLocal - 0.05) fail(`${id}: Auge im Dach (${eye.y.toFixed(3)} / ${roofLocal.toFixed(3)})`);
+    const overBelt = cowl.y - (layout.belt - spec.chassis.cgHeight);
+    if (!layout.open && overBelt < 0.35) {
+      fail(`${id}: Haube zu nah am Blech (${overBelt.toFixed(3)} m über Gürtel)`);
+    }
+    const visuals = createCarVisuals(spec);
+    if (visuals.cabin.getAttribute('position').count < 24) fail(`${id}: Cabin leer`);
+    visuals.body.dispose();
+    visuals.glass.dispose();
+    visuals.cabin.dispose();
+    visuals.helm.dispose();
+  }
+  ok('Zehn Autos: Auge unter Dach, Haube hoch, Cabin da');
 }
 
 console.log('Kamera-Prüfstand: alle Proben grün');

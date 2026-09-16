@@ -88,6 +88,7 @@ export class AudioSystem implements System {
   #userMuted = false;
   #externallyMuted = false;
   #driveActive = false;
+  #cabin = false;
   #telemetry: VehicleTelemetry | null = null;
 
   constructor() {
@@ -128,6 +129,9 @@ export class AudioSystem implements System {
       // die Zielverstärkung; hier wird nur die Drehzahl zurückgesetzt, damit das
       // nächste Einsteigen im Leerlauf beginnt und nicht bei 7000.
       if (!active) this.#rpm = AUDIO.engine.idleRpm;
+    });
+    context.bus.on('drive:view', ({ cabin }) => {
+      this.#cabin = cabin;
     });
     document.addEventListener('visibilitychange', this.#onVisibility);
     context.bus.on('engine:sleep', ({ sleeping }) => {
@@ -619,9 +623,11 @@ export class AudioSystem implements System {
     if (fahrend && t.airborne) noiseTarget *= 0.35;
 
     rampe(this.#noiseGain?.gain, noiseTarget, now, 0.1);
+    // Hinter der Scheibe ist Fahrtwind dumpfer — der Motor bleibt, die Welt nicht.
+    const cabinCut = this.#cabin ? 0.55 : 1;
     rampe(
       this.#noiseFilter?.frequency,
-      AUDIO.noise.minHz + norm * (AUDIO.noise.maxHz - AUDIO.noise.minHz),
+      (AUDIO.noise.minHz + norm * (AUDIO.noise.maxHz - AUDIO.noise.minHz)) * cabinCut,
       now,
       0.12,
     );

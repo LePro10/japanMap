@@ -612,6 +612,10 @@ export class Vehicle {
     return this.#pitch;
   }
 
+  get roll(): number {
+    return this.#roll;
+  }
+
   get wheelSpinAngle(): number {
     return this.#wheelSpin;
   }
