@@ -298,8 +298,9 @@ function ok(msg: string): void {
     const layout = cabinLayout(spec);
     const roofLocal = spec.body.roofHeight - spec.chassis.cgHeight;
     if (eye.y > roofLocal - 0.05) fail(`${id}: Auge im Dach (${eye.y.toFixed(3)} / ${roofLocal.toFixed(3)})`);
-    if (!layout.open && cowl.z <= layout.glassFront) {
-      fail(`${id}: Cowl hinter der Scheibe (${cowl.z.toFixed(3)} / ${layout.glassFront.toFixed(3)})`);
+    const overBelt = cowl.y - (layout.belt - spec.chassis.cgHeight);
+    if (!layout.open && overBelt < 0.35) {
+      fail(`${id}: Haube zu nah am Blech (${overBelt.toFixed(3)} m über Gürtel)`);
     }
     const visuals = createCarVisuals(spec);
     if (visuals.cabin.getAttribute('position').count < 24) fail(`${id}: Cabin leer`);
@@ -308,7 +309,7 @@ function ok(msg: string): void {
     visuals.cabin.dispose();
     visuals.helm.dispose();
   }
-  ok('Zehn Autos: Auge unter Dach, Cowl vor der Scheibe, Cabin da');
+  ok('Zehn Autos: Auge unter Dach, Haube hoch, Cabin da');
 }
 
 console.log('Kamera-Prüfstand: alle Proben grün');

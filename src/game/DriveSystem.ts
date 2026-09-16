@@ -727,7 +727,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     if (this.#wheels) this.#wheels.visible = !cockpit || open;
   }
 
-  /** Taste C / Touch: Verfolger → Haube → Sitz → Verfolger. */
+  /** Taste C / Touch: Verfolger → Sitz → Haube → Verfolger. */
   toggleView(): void {
     this.camera.toggleMode();
     this.#applyViewLayers();

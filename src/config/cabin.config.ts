@@ -156,8 +156,8 @@ export function cockpitEye(spec: VehicleSpec): CockpitSocket {
   const cg = spec.chassis.cgHeight;
   const roofLocal = cabin.roof - cg;
   const beltLocal = cabin.belt - cg;
-  const y = Math.min(roofLocal - 0.1, beltLocal + 0.5);
-  const z = cabin.open ? -0.12 : cabin.glassFront - 0.72;
+  const y = Math.min(roofLocal - 0.12, beltLocal + 0.46);
+  const z = cabin.open ? -0.12 : cabin.glassFront - 0.62;
   return { x: 0, y, z };
 }
 
@@ -171,12 +171,13 @@ export function hoodCowl(spec: VehicleSpec): CockpitSocket {
   const cabin = cabinLayout(spec);
   const cg = spec.chassis.cgHeight;
   if (cabin.open) {
-    return { x: 0, y: 0.85 - cg, z: 0.7 };
+    return { x: 0, y: cabin.roof - cg - 0.06, z: 0.55 };
   }
+  // Dachhöhe an der Scheibe, Blick über die Haube — nicht 45 cm über dem Lack.
   return {
     x: 0,
-    y: cabin.belt - cg + 0.45,
-    z: cabin.glassFront + 0.06,
+    y: cabin.roof - cg - 0.08,
+    z: cabin.glassFront - 0.02,
   };
 }
 
@@ -186,5 +187,5 @@ export function hoodCowl(spec: VehicleSpec): CockpitSocket {
  */
 export function helmHub(spec: VehicleSpec): CockpitSocket {
   const eye = cockpitEye(spec);
-  return { x: eye.x, y: eye.y - 0.18, z: eye.z + 0.34 };
+  return { x: eye.x, y: eye.y - 0.15, z: eye.z + 0.32 };
 }

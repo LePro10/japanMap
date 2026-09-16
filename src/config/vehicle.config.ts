@@ -1094,8 +1094,8 @@ export const CHASE_CAMERA = {
   hoodFov: 68,
   hoodFovBoost: 3,
   hoodNear: 0.2,
-  /** Leicht nach unten, damit ein Streifen Haube im Bild bleibt — nicht die ganze Fläche. */
-  hoodLookPitch: -0.06,
+  /** Leicht nach oben über die Haube. Negativ legt den Blick auf den Lack. */
+  hoodLookPitch: 0.04,
   /**
    * Anteil des Aufbau-Nickens an der Haube, solange sie *nicht* am Quaternion
    * hängt. Die parented Haube nimmt die Lage aus dem Aufbau; dieser Wert bleibt
@@ -1199,7 +1199,7 @@ export const COCKPIT_CAMERA = {
    * Ruhelage des Blicks, negativ = Straße. Ohne das zielt die Kamera über das
    * Lenkrad hinweg in den Himmel, und das Rad liegt unter dem Bildrand.
    */
-  lookPitch: -0.14,
+  lookPitch: -0.08,
   /** Nacken-Feder, Hz und Dämpfung. Über ~2,5 Hz frisst sie den Belag; unter ~0,7 Hz wird einem übel. */
   neckHz: 1.6,
   neckZeta: 0.85,

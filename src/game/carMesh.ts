@@ -171,46 +171,31 @@ export function createCarVisuals(s:VehicleSpec=TOUGE):CarVisuals {
 
 function cabinKit(s:VehicleSpec):BufferGeometry[] {
  const layout=cabinLayout(s);
+ const cg=s.chassis.cgHeight;
  const c=s.body;
- const w=c.hullWidth, half=w*.46;
- const belt=layout.belt, floorY=s.collision.band[0]+.03;
- const rear=layout.glassRear, front=layout.glassFront;
- const depth=Math.max(.9, front-rear);
- const midZ=(front+rear)/2;
+ const eye=cockpitEye(s);
+ // Käfig relativ zum Auge, in Mesh-Y über Grund (mergeNamed zieht cg ab).
+ const ex=eye.x, ey=eye.y+cg, ez=eye.z;
+ const frame=0x12161c;
  const out:BufferGeometry[]=[];
- // Boden — FrontSide nach oben. Ohne ihn ist die Straße der Kabinenboden.
- out.push(part(w*.78,.05,depth-.08,0,floorY+.025,midZ,SHARED_COLORS.seat));
+ const floorY=s.collision.band[0]+.03;
+ out.push(part(c.hullWidth*.7,.04,1.1,0,floorY+.02,ez-.1,SHARED_COLORS.seat));
  if(layout.open){
-  out.push(part(.42,.12,.55,0,floorY+.16,-.18,c.paintDark));
-  pair(out,.05,.22,.7,half*.22,floorY+.28,-.1,c.trim);
+  out.push(part(.4,.1,.5,0,floorY+.14,ez-.2,c.paintDark));
   return out;
  }
- // Armatur — niedrig und kurz, sonst frisst sie die Straße.
- const dashZ=front-.28;
- out.push(part(w*.7,.12,.18,0,belt-.28,dashZ,SHARED_COLORS.dash));
- out.push(part(w*.36,.05,.06,0,belt-.18,dashZ+.05,SHARED_COLORS.cluster));
- if(s.id==='touge'||s.id==='meridian'||s.id==='needle'){
-  pair(out,.08,.04,.025,.11,belt-.16,dashZ+.07,0xd8e2ea);
- }
- // Nur ein kurzer Cowl, kein 1,3-m-Lackteppich vor der Nase.
- const hoodLen=Math.min(.55, Math.max(0, c.hullLength/2-front));
- if(hoodLen>.12){
-  out.push(part(w*.68,.035,hoodLen,0,belt-.03,front+hoodLen/2,c.paint));
- }
- // A-Säulen und Scheibenrahmen — 80 % von „ich sitze drin".
- const pillarH=c.roofHeight-belt-.04;
- pair(out,.05,pillarH,.06,half*.9,belt+pillarH/2,(layout.roofFront+front)/2,c.paint);
- out.push(part(w*.7,.04,.05,0,c.roofHeight-.04,(layout.roofFront+front)/2,c.paint));
- // Türkarten + Heckwand, damit ein Mausschwenk nicht ins Leere fällt.
- pair(out,.05,belt-floorY-.08,.9,half*.82,(belt+floorY)/2,midZ,c.paintDark);
- out.push(part(w*.76,.7,.05,0,(belt+floorY)/2,rear+.08,c.paintDark));
- // Sitze als Schulter/Lehne am Bildrand, nicht begehbar.
- const eye=cockpitEye(s);
- const seatZ=eye.z-.18;
- out.push(part(.38,.08,.38,-.18,floorY+.12,seatZ,SHARED_COLORS.seat));
- out.push(part(.38,.42,.08,-.18,floorY+.34,seatZ-.16,SHARED_COLORS.seat));
- out.push(part(.38,.08,.38,.22,floorY+.12,seatZ,SHARED_COLORS.seat));
- out.push(part(.38,.42,.08,.22,floorY+.34,seatZ-.16,SHARED_COLORS.seat));
+ // Blickkäfig im FOV, nicht an der echten A-Säule (die lag bei 62° — außerhalb).
+ pair(out,.055,.62,.055,.40,ey-.04,ez+.48,frame);
+ out.push(part(.92,.045,.05,0,ey+.30,ez+.52,frame));
+ // Armatur als dunkles Band unter dem Blick, kein Lackteppich.
+ out.push(part(.9,.1,.28,0,ey-.34,ez+.38,SHARED_COLORS.dash));
+ out.push(part(.28,.04,.06,0,ey-.26,ez+.46,SHARED_COLORS.cluster));
+ pair(out,.07,.035,.03,.10,ey-.25,ez+.48,0xc5d0da);
+ // Heckwand, damit ein Mausschwenk nicht ins Leere fällt.
+ out.push(part(c.hullWidth*.7,.7,.05,0,ey-.15,ez-.55,c.paintDark));
+ pair(out,.05,.55,.8,.48,ey-.12,ez-.05,c.paintDark);
+ out.push(part(.36,.08,.34,ex-.22,floorY+.12,ez-.2,SHARED_COLORS.seat));
+ out.push(part(.36,.4,.07,ex-.22,floorY+.34,ez-.34,SHARED_COLORS.seat));
  return out;
 }
 
@@ -218,7 +203,7 @@ function helmKit(s:VehicleSpec):BufferGeometry[] {
  // Ursprung = Nabe. DriveSystem setzt die Pose auf `helmHub`, sonst
  // dreht rotateZ das Rad um den Schwerpunkt statt um die Nabe.
  const rim=s.body.rim, trim=s.body.trim;
- const ring=paint(new TorusGeometry(.19,.022,8,20),trim);
+ const ring=paint(new TorusGeometry(.21,.026,8,22),trim);
  const out:BufferGeometry[]=[ring];
  const cap=paint(new CylinderGeometry(.045,.045,.028,8),rim);
  cap.rotateX(Math.PI/2);out.push(cap);
