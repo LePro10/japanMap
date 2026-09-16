@@ -1905,10 +1905,22 @@ body {
   color: #f6efe4;
   pointer-events: none;
   backdrop-filter: blur(8px);
+  opacity: 0;
+  transform: translateY(10px);
+  visibility: hidden;
+  transition:
+    opacity 0.28s ease,
+    transform 0.34s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s linear 0.28s,
+    border-color 0.35s ease,
+    background-color 0.35s ease;
 }
 
-.hud__wp[hidden] {
-  display: none;
+.hud__wp.is-on {
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+  transition-delay: 0s;
 }
 
 .hud__wpName {
@@ -1922,6 +1934,7 @@ body {
   font: 800 16px/1 var(--display, sans-serif);
   letter-spacing: -0.03em;
   color: #e8ba7f;
+  transition: color 0.35s ease;
 }
 
 .hud__wpMeta {
@@ -1963,13 +1976,22 @@ body {
   background: rgba(6, 20, 24, 0.78);
   color: #f6efe4;
   pointer-events: none;
-  transform: translate(-50%, calc(-100% - 14px));
+  transform: translate(-50%, calc(-100% - 14px)) scale(0.92);
   backdrop-filter: blur(8px);
   white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.26s ease,
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s linear 0.26s;
 }
 
-#overlay > .hud .hud__pin[hidden] {
-  display: none;
+#overlay > .hud .hud__pin.is-on {
+  opacity: 1;
+  transform: translate(-50%, calc(-100% - 14px)) scale(1);
+  visibility: visible;
+  transition-delay: 0s;
 }
 
 .hud__pinName {
@@ -1984,27 +2006,28 @@ body {
 }
 
 .hud__pinArrow {
-  display: none;
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  margin-left: -7px;
   width: 0;
   height: 0;
   border-left: 7px solid transparent;
   border-right: 7px solid transparent;
   border-bottom: 11px solid #3ee0ff;
   filter: drop-shadow(0 0 4px rgba(62, 224, 255, 0.7));
+  opacity: 0;
+  transform-origin: 50% 18px;
+  transition: opacity 0.2s ease;
 }
 
-#overlay > .hud .hud__pin--edge {
-  transform: translate(-50%, -50%);
+#overlay > .hud .hud__pin.is-on.hud__pin--edge {
+  transform: translate(-50%, -50%) scale(1);
   padding-top: 12px;
 }
 
 #overlay > .hud .hud__pin--edge .hud__pinArrow {
-  display: block;
-  position: absolute;
-  top: -10px;
-  left: 50%;
-  margin-left: -7px;
-  transform-origin: 50% 18px;
+  opacity: 1;
 }
 
 /* Der Pfeil sitzt in der Mitte der Karte und dreht sich um sie. Er ist damit

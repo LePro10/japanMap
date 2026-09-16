@@ -13,7 +13,7 @@ import {
 
 import { WAYPOINT } from '@/config/waypoint.config';
 import type { EngineContext } from '@/core/System';
-import { pinScreen, type PinScreen } from './waypointScreen';
+import { damp, pinScreen, type PinScreen } from './waypointScreen';
 
 export interface WaypointPosition {
   readonly x: number;
@@ -36,9 +36,15 @@ export class WaypointMarker {
   #group: Group | null = null;
   #ring: Mesh<RingGeometry, MeshBasicMaterial> | null = null;
   #pin: Mesh<ConeGeometry, MeshBasicMaterial> | null = null;
+  #outerBeam: Mesh<CylinderGeometry, MeshBasicMaterial> | null = null;
+  #coreBeam: Mesh<CylinderGeometry, MeshBasicMaterial> | null = null;
+  #head: Mesh<SphereGeometry, MeshBasicMaterial> | null = null;
   #waypoint: WaypointPosition | null = null;
   #pulse = 0;
   #screen: PinScreen | null = null;
+  #appear = 0;
+  #appearGoal = 0;
+  #scaleSmooth = 1;
 
   attach(context: EngineContext): void {
     if (this.#group) return;
@@ -138,8 +144,11 @@ export class WaypointMarker {
     context.scene.add(group);
 
     this.#group = group;
+    this.#outerBeam = outerBeam;
+    this.#coreBeam = coreBeam;
     this.#ring = ring;
     this.#pin = pin;
+    this.#head = head;
   }
 
   get waypoint(): WaypointPosition | null {
@@ -152,10 +161,12 @@ export class WaypointMarker {
 
   set(x: number, z: number, groundY: number, label = 'Waypoint'): void {
     this.#waypoint = { x, y: groundY, z, label };
+    this.#appearGoal = 1;
     const group = this.#group;
     if (!group) return;
     group.position.set(x, groundY, z);
     group.visible = true;
+    if (this.#appear < 0.05) this.#appear = 0;
   }
 
   update(
@@ -167,27 +178,44 @@ export class WaypointMarker {
     viewH = 0,
   ): void {
     const waypoint = this.#waypoint;
-    const ring = this.#ring;
-    if (!waypoint) {
+    this.#appear = damp(
+      this.#appear,
+      this.#appearGoal,
+      this.#appearGoal > this.#appear ? WAYPOINT.appearSmooth : WAYPOINT.fadeOut,
+      dt,
+    );
+    const group = this.#group;
+    if (group) group.visible = this.#appear > 0.01;
+    if (this.#appear <= 0.01 && this.#appearGoal <= 0) {
       this.#screen = null;
       return;
     }
 
     this.#pulse += dt;
+    const wave = 1 + 0.14 * Math.sin(this.#pulse * 3.2);
+    const pulse = 0.55 + 0.3 * (0.5 + 0.5 * Math.sin(this.#pulse * 3.2));
+    const a = this.#appear;
+    if (this.#outerBeam) this.#outerBeam.material.opacity = WAYPOINT.beamOpacity * a;
+    if (this.#coreBeam) this.#coreBeam.material.opacity = 0.55 * a;
+    const ring = this.#ring;
     if (ring) {
-      const wave = 1 + 0.14 * Math.sin(this.#pulse * 3.2);
-      ring.scale.setScalar(wave);
-      ring.material.opacity = 0.55 + 0.3 * (0.5 + 0.5 * Math.sin(this.#pulse * 3.2));
+      ring.scale.setScalar(wave * (0.72 + 0.28 * a));
+      ring.material.opacity = pulse * a;
     }
+    if (this.#head) this.#head.material.opacity = 0.95 * a;
 
-    const meters = Math.hypot(waypoint.x - playerX, waypoint.z - playerZ);
+    const meters = waypoint
+      ? Math.hypot(waypoint.x - playerX, waypoint.z - playerZ)
+      : WAYPOINT.pinHideMeters;
     const pin = this.#pin;
     if (pin) {
-      const scale = clamp(1 + meters * 0.0012, 1, 3.2);
-      pin.scale.setScalar(scale);
+      const target = clamp(1 + meters * 0.0012, 1, 3.2) * (0.55 + 0.45 * a);
+      this.#scaleSmooth = damp(this.#scaleSmooth, target, WAYPOINT.appearSmooth, dt);
+      pin.scale.setScalar(this.#scaleSmooth);
+      pin.material.opacity = 0.92 * a;
     }
 
-    if (!camera || viewW < 8 || viewH < 8) {
+    if (!waypoint || !camera || viewW < 8 || viewH < 8) {
       this.#screen = null;
       return;
     }
@@ -206,7 +234,7 @@ export class WaypointMarker {
   clear(): void {
     this.#waypoint = null;
     this.#screen = null;
-    if (this.#group) this.#group.visible = false;
+    this.#appearGoal = 0;
   }
 
   dispose(): void {
@@ -221,8 +249,11 @@ export class WaypointMarker {
       });
     }
     this.#group = null;
+    this.#outerBeam = null;
+    this.#coreBeam = null;
     this.#ring = null;
     this.#pin = null;
+    this.#head = null;
     this.#waypoint = null;
     this.#screen = null;
     this.#context = null;
