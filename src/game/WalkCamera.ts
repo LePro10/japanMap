@@ -3,6 +3,7 @@ import { Vector3, type PerspectiveCamera } from 'three';
 import { WALKER, WALK_CAMERA } from '@/config/walker.config';
 import type { Ground } from './Vehicle';
 import type { Walker } from './Walker';
+import type { CollisionWorld } from './CollisionWorld';
 
 /**
  * Dritte Person zu Fuß.
@@ -57,7 +58,7 @@ export class WalkCamera {
     this.#initialized = false;
   }
 
-  update(dt: number, walker: Walker, ground: Ground, camera: PerspectiveCamera): void {
+  update(dt: number, walker: Walker, ground: Ground, camera: PerspectiveCamera, collision?: CollisionWorld): void {
     this.#zoomApplied +=
       (this.#zoom - this.#zoomApplied) * (1 - Math.exp(-WALK_CAMERA.zoomRate * dt));
     const yaw = this.#heading;
@@ -96,6 +97,16 @@ export class WalkCamera {
 
     const floor = ground.height(this.#position.x, this.#position.z) + WALK_CAMERA.groundClearance;
     if (this.#position.y < floor) this.#position.y = floor;
+
+    // Resolve after smoothing and terrain correction: either can otherwise move
+    // a clear target through a wall. Retract immediately, recover with the spring.
+    if (collision) {
+      const nearHalfHeight = camera.near * Math.tan(WALK_CAMERA.fov * Math.PI / 360);
+      const clearance = Math.max(.18, Math.hypot(camera.near, nearHalfHeight * camera.aspect, nearHalfHeight));
+      const fraction = collision.cameraFraction(this.#lookAt.x, this.#lookAt.y, this.#lookAt.z,
+        this.#position.x, this.#position.y, this.#position.z, clearance);
+      if (fraction < 1) this.#position.lerpVectors(this.#lookAt, this.#position, Math.max(0, fraction - .002));
+    }
 
     camera.position.copy(this.#position);
     camera.lookAt(this.#lookAt);
