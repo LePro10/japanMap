@@ -510,8 +510,11 @@ async function boot(): Promise<void> {
   const bestTimes = new BestTimes();
   const profile = new Profile();
   drive.setCanTeleport(() => profile.sandbox);
-  hud.setOnOpenMap(() => {
+  let openPlayerMap = (): void => {
     drive.openMap();
+  };
+  hud.setOnOpenMap(() => {
+    openPlayerMap();
   });
   hud.setMoney(profile.yen);
   profile.onChange(() => {
@@ -871,7 +874,7 @@ async function boot(): Promise<void> {
   });
   const ui = new PlayerUi({
     openMap: () => drive.openMap(),
-    dockMap: (host) => drive.dockMap(host),
+    dockMap: (host, options) => drive.dockMap(host, options),
     undockMap: () => drive.undockMap(),
     callCar: () => callPlayerCar(drive),
     openPhoto: (onExit) => {
@@ -995,6 +998,7 @@ async function boot(): Promise<void> {
     },
   });
 
+  openPlayerMap = () => ui.openToMap();
   commons.openShop = tune => ui.openCommonsShop(tune);
   commons.isPlaying = () => ui.playing;
   settlements.isPlaying = () => ui.playing;
@@ -1019,7 +1023,7 @@ async function boot(): Promise<void> {
   audio.armAutoUnlock();
   import.meta.hot?.dispose(() => { photo.dispose(); garage.dispose(); ui.dispose(); });
 
-  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive, lookController);
+  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive);
 }
 
 /** Eine Zeile der Zieltafel. Englisch, wie alles im DOM. */

@@ -90,7 +90,7 @@ export interface PlayerUiOptions {
   readonly debug?: DebugControl;
   readonly events?: EventsControl;
   readonly openMap?: () => void;
-  readonly dockMap?: (host: HTMLElement) => void;
+  readonly dockMap?: (host: HTMLElement, options?: { focusPlayer?: boolean }) => void;
   readonly undockMap?: () => void;
   readonly openPhoto?: (onExit: (resume?: boolean) => void) => void;
   readonly openTune?: (onExit: (resume?: boolean) => void) => void;
@@ -126,6 +126,8 @@ export class PlayerUi {
   #preview: VehicleId;
   #idleTimer: number | null = null;
   #worldSleeping = false;
+  /** Taste M aus der Fahrt: Atlas auf den Wagen legen, nicht auf den letzten Schwenk. */
+  #mapFocusPlayer = false;
 
   constructor(options: PlayerUiOptions) {
     this.#o = options;
@@ -192,6 +194,24 @@ export class PlayerUi {
     this.#started = true;
     this.#resume();
   }
+  /**
+   * Taste M / Klick auf die Minikarte. Derselbe Atlas wie der Map-Tab —
+   * zentriert auf den Wagen, nicht als zweites Overlay oben links.
+   */
+  openToMap(): void {
+    if (!this.#started) return;
+    this.#open = true;
+    this.#tab = "map";
+    this.#mapFocusPlayer = true;
+    this.#events();
+    this.#syncDrive();
+    this.#syncIdentity();
+    if (document.pointerLockElement === this.#o.canvas) {
+      document.exitPointerLock();
+      return;
+    }
+    this.#render();
+  }
   openCommonsShop(tune: boolean): void {
     if (tune && this.#o.openTune) {
       this.#enterTune();
@@ -249,10 +269,23 @@ export class PlayerUi {
     }
   };
   readonly #lockError = (): void => {
-    if (!this.#photo && !this.#map && !this.#garage) this.#show();
+    if (this.#photo || this.#map || this.#garage || this.#open) return;
+    this.#show();
   };
   readonly #key = (event: KeyboardEvent): void => {
-    if (!this.#started || this.#map || this.#photo || this.#garage) return;
+    if (!this.#started || this.#photo || this.#garage) return;
+    if (event.code === "KeyM") {
+      if (this.#map) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (this.#open && this.#tab === "map") {
+        this.#resume(false);
+        return;
+      }
+      this.openToMap();
+      return;
+    }
+    if (this.#map) return;
     if (event.code === "Escape") {
       // Nur ohne Lock: mit Lock gibt der Browser den Zeiger frei, und
       // `#lockChanged` öffnet das Menü. Escape *im* Menü darf den Lock nicht
@@ -269,14 +302,6 @@ export class PlayerUi {
       event.target instanceof HTMLSelectElement
     )
       return;
-    if (event.code === "KeyM") {
-      if (!this.#open) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      this.#tab = "map";
-      this.#render();
-      return;
-    }
     if (event.code === "KeyP") {
       event.preventDefault();
       this.#enterPhoto();
@@ -290,10 +315,20 @@ export class PlayerUi {
     );
     this.#o.hud?.setMenuOpen(this.#open || this.#photo || this.#map || this.#garage);
     this.#o.drive?.setPaused?.(this.#open || this.#photo || this.#map || this.#garage);
-    if (this.#open && !this.#photo && !this.#garage) this.#armIdleSleep();
-    else {
+    // Photo/Garage brauchen den Renderer. Hinter dem Atlas nicht: jedes
+    // Schwenken hat sonst 3D-Vegetation plus Canvas-Filter bezahlt.
+    if (this.#photo || this.#garage) {
       this.#clearIdleSleep();
-      if (!this.#photo && !this.#garage) this.#setWorldSleep(false);
+      this.#setWorldSleep(false);
+    } else if (this.#map || (this.#open && this.#tab === "map")) {
+      this.#clearIdleSleep();
+      this.#setWorldSleep(true);
+    } else if (this.#open) {
+      this.#setWorldSleep(false);
+      this.#armIdleSleep();
+    } else {
+      this.#clearIdleSleep();
+      this.#setWorldSleep(false);
     }
     for (const panel of this.#menu.querySelectorAll<HTMLElement>(
       "[data-panel]",
@@ -316,7 +351,9 @@ export class PlayerUi {
     const live = this.#open && this.#tab === "map" && Boolean(this.#o.dockMap);
     if (live && host) {
       if (fallback) fallback.hidden = true;
-      this.#o.dockMap?.(host);
+      const focusPlayer = this.#mapFocusPlayer;
+      this.#mapFocusPlayer = false;
+      this.#o.dockMap?.(host, { focusPlayer });
       return;
     }
     this.#o.undockMap?.();
@@ -419,11 +456,13 @@ export class PlayerUi {
         this.#o.callCar?.() ?? "Call car is unavailable here.";
     };
     el(".menu__explore").onclick = () => {
+      this.#mapFocusPlayer = true;
       this.#tab = "map";
       this.#render();
     };
     el(".menu__openMap").onclick = () => {
       if (this.#o.dockMap) {
+        this.#mapFocusPlayer = true;
         this.#tab = "map";
         this.#render();
         return;
@@ -459,7 +498,9 @@ export class PlayerUi {
     };
     for (const button of menu.querySelectorAll<HTMLButtonElement>("[data-tab]"))
       button.onclick = () => {
-        this.#tab = button.dataset.tab as Tab;
+        const next = button.dataset.tab as Tab;
+        if (next === "map") this.#mapFocusPlayer = true;
+        this.#tab = next;
         this.#render();
       };
     for (const button of menu.querySelectorAll<HTMLButtonElement>("[data-go]"))
@@ -855,7 +896,9 @@ export class PlayerUi {
     return element;
   }
   readonly #onMenuActivity = (): void => {
-    if (this.#open && !this.#photo) this.#armIdleSleep();
+    if (!this.#open || this.#photo || this.#garage) return;
+    if (this.#tab === "map") return;
+    this.#armIdleSleep();
   };
   readonly #onVisibility = (): void => {
     if (this.#photo || this.#garage) return;

@@ -48,10 +48,12 @@ try {
       hidden: document.querySelector('.navmap--docked')?.hidden ?? true,
     };
   });
+  const regions = await page.evaluate(() => document.querySelectorAll('.navmap__region').length);
   assert.equal(docked.ok, true, docked.reason);
   assert.equal(docked.title, 'Island Atlas');
   assert.equal(docked.pois, 9);
   assert.equal(docked.places, 9);
+  assert.equal(regions, 8, 'Eight ASTRA regions should be listed');
   const brightness = docked.sample[0] + docked.sample[1] + docked.sample[2];
   assert.ok(brightness > 80, `Docked map still looks black: ${docked.sample.join(',')}`);
   await fs.mkdir('screenshots/map', { recursive: true });
@@ -110,16 +112,30 @@ try {
   }
 
   await page.keyboard.press('m');
-  await page.locator('.navmap:not(.navmap--docked)').waitFor({ state: 'visible' });
-  const overlay = await page.evaluate(() => {
-    const root = document.querySelector('#overlay > .navmap');
+  await page.locator('.player-menu:not([hidden]) .navmap--docked').waitFor({ state: 'visible' });
+  const fromDrive = await page.evaluate(() => {
+    const menu = document.querySelector('.player-menu');
+    const dock = document.querySelector('.navmap--docked');
+    const zoomOut = document.querySelector('.navmap--docked [data-map-zoom="out"]');
+    const side = document.querySelector('.navmap--docked .navmap__side');
+    const zoomBox = zoomOut?.getBoundingClientRect();
+    const sideBox = side?.getBoundingClientRect();
+    const covered =
+      zoomBox && sideBox
+        ? zoomBox.right > sideBox.left && zoomBox.top < sideBox.bottom && zoomBox.bottom > sideBox.top
+        : true;
     return {
-      hidden: root instanceof HTMLElement ? root.hidden : true,
-      docked: root?.classList.contains('navmap--docked') ?? false,
+      menuHidden: menu instanceof HTMLElement ? menu.hidden : true,
+      tab: document.querySelector('.menu__tab.is-active')?.getAttribute('data-tab') ?? '',
+      docked: dock?.classList.contains('navmap--docked') ?? false,
+      covered,
+      scale: document.querySelector('.navmap--docked')?.dataset.zoom ?? '',
     };
   });
-  assert.equal(overlay.hidden, false);
-  assert.equal(overlay.docked, false);
+  assert.equal(fromDrive.menuHidden, false);
+  assert.equal(fromDrive.tab, 'map');
+  assert.equal(fromDrive.docked, true);
+  assert.equal(fromDrive.covered, false, 'Zoom-out must not sit under the places column');
   await page.screenshot({ path: 'screenshots/map/overlay.png' });
 
   const fatal = errors.filter((line) => !line.includes('Pointer lock'));

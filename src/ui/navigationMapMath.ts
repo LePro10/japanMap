@@ -41,10 +41,16 @@ export function clampWorldPoint(x: number, z: number, bounds: MapBounds): MapPoi
 /**
  * Pan/Zoom der Vollkarte in CSS-Pixeln der unskalierten Bühne.
  *
- * `scale` 1 füllt die Bühne. `tx`/`ty` sind CSS-Pixel der **unskalierten**
+ * `scale` 1 füllt die **längere** Kante (Cover). Darunter liegt Contain —
+ * die ganze Insel mit Rändern. `tx`/`ty` sind CSS-Pixel der unskalierten
  * Bühne, Ursprung oben links. Cursor-Zoom muss in demselben Raum liegen —
  * nicht in `getBoundingClientRect()` der schon skalierten Fläche, sonst
  * wandert der Punkt unter dem Zeiger.
+ *
+ * Die Plane ist das Quadrat `max(width, height)`, zentriert auf der Bühne.
+ * Ohne das in der Klemme landet Zoom-out auf Cover und beschneidet Nord/Süd
+ * auf einem Querformat — gemessen am Pause-Atlas: die Insel war ein Streifen,
+ * Minus tat nichts.
  */
 export interface MapView {
   scale: number;
@@ -52,17 +58,48 @@ export interface MapView {
   ty: number;
 }
 
-export const MAP_MIN_SCALE = 1;
+/** Cover: die Plane füllt die längere Bühnenkante. */
+export const MAP_COVER_SCALE = 1;
 export const MAP_MAX_SCALE = 8;
+/** Kleiner Rand um die Insel im Contain-Zoom, damit Pins nicht am Rand kleben. */
+export const MAP_FIT_PADDING = 0.94;
+
+/** @deprecated Use mapMinScale(stageWidth, stageHeight). Cover is no longer the floor. */
+export const MAP_MIN_SCALE = MAP_COVER_SCALE;
+
+export function mapPlaneSize(stageWidth: number, stageHeight: number): number {
+  return Math.max(stageWidth, stageHeight);
+}
+
+/** Kleinster Zoom: die ganze Insel steht in der Bühne. */
+export function mapMinScale(stageWidth: number, stageHeight: number): number {
+  const plane = mapPlaneSize(stageWidth, stageHeight);
+  const short = Math.min(stageWidth, stageHeight);
+  if (plane <= 0) return MAP_FIT_PADDING;
+  return (short / plane) * MAP_FIT_PADDING;
+}
 
 export function clampMapView(view: MapView, stageWidth: number, stageHeight: number): MapView {
-  const scale = clamp(view.scale, MAP_MIN_SCALE, MAP_MAX_SCALE);
-  const minTx = stageWidth - stageWidth * scale;
-  const minTy = stageHeight - stageHeight * scale;
+  const plane = mapPlaneSize(stageWidth, stageHeight);
+  const minScale = mapMinScale(stageWidth, stageHeight);
+  const scale = clamp(view.scale, minScale, MAP_MAX_SCALE);
+  const planeLeft = (stageWidth - plane) * 0.5;
+  const planeTop = (stageHeight - plane) * 0.5;
+  const screenSize = plane * scale;
+
+  let sx = view.tx + planeLeft * scale;
+  let sy = view.ty + planeTop * scale;
+
+  if (screenSize <= stageWidth) sx = (stageWidth - screenSize) * 0.5;
+  else sx = clamp(sx, stageWidth - screenSize, 0);
+
+  if (screenSize <= stageHeight) sy = (stageHeight - screenSize) * 0.5;
+  else sy = clamp(sy, stageHeight - screenSize, 0);
+
   return {
     scale,
-    tx: clamp(view.tx, minTx, 0),
-    ty: clamp(view.ty, minTy, 0),
+    tx: sx - planeLeft * scale,
+    ty: sy - planeTop * scale,
   };
 }
 
@@ -90,7 +127,8 @@ export function zoomMapView(
   stageWidth: number,
   stageHeight: number,
 ): MapView {
-  const scale = clamp(view.scale * factor, MAP_MIN_SCALE, MAP_MAX_SCALE);
+  const minScale = mapMinScale(stageWidth, stageHeight);
+  const scale = clamp(view.scale * factor, minScale, MAP_MAX_SCALE);
   if (scale === view.scale) return clampMapView(view, stageWidth, stageHeight);
   const mapX = (focusX - view.tx) / view.scale;
   const mapY = (focusY - view.ty) / view.scale;
