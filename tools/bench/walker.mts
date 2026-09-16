@@ -7,11 +7,13 @@
  * Sprunghöhe aus der Formel, Wand bleibt Wand, gleicher Seed gleicher Fleck.
  * Was er nicht kann: sagen, ob der Walk-Cycle gut aussieht.
  */
-import { PerspectiveCamera, Vector3 } from 'three';
+import { MeshBasicMaterial, PerspectiveCamera, Vector3 } from 'three';
 
 import { CollisionWorld } from '@/game/CollisionWorld';
 import { WalkCamera } from '@/game/WalkCamera';
 import { Walker, type WalkInput } from '@/game/Walker';
+import { createWalkerRig } from '@/game/walkerMesh';
+import type { PropMaterial } from '@/world/materials/PropMaterial';
 import {
   WALK_ALIGHT_GAP,
   WALK_BOARD_RANGE,
@@ -445,6 +447,126 @@ if (c.x === a.x && c.z === a.z && c.seed === 43) {
       `stand ${yStand.toFixed(3)} slide ${ySlide.toFixed(3)} floor ${floor.toFixed(3)} sliding ${w.sliding} finite ${finite}`,
     );
   }
+}
+
+// ── Beine: Sohlen auf der Fläche, kein Stroboskop am Hang ────────────────
+{
+  const dummy = new MeshBasicMaterial() as unknown as PropMaterial;
+  const rig = createWalkerRig(dummy);
+  const scratch = new Vector3();
+
+  const soleGaps = (
+    w: Walker,
+    ground: { height: (x: number, z: number) => number },
+  ): number[] => {
+    rig.group.position.copy(w.position);
+    const dip = w.slideAmount;
+    rig.group.rotation.set(w.slopePitch * dip, w.yaw, w.slopeRoll * dip);
+    rig.animate(
+      {
+        cycle: w.cycle,
+        speed: w.speed,
+        grounded: w.grounded,
+        vy: w.vy,
+        lean: w.lean,
+        slideAmount: w.slideAmount,
+      },
+      DT,
+    );
+    rig.group.updateMatrixWorld(true);
+    const gaps: number[] = [];
+    rig.group.traverse((obj) => {
+      if (obj.name !== 'Sohle') return;
+      obj.getWorldPosition(scratch);
+      gaps.push(scratch.y - ground.height(scratch.x, scratch.z));
+    });
+    return gaps;
+  };
+
+  const shinOf = (side: 'BeinL' | 'BeinR'): number => {
+    let v = 0;
+    rig.group.traverse((obj) => {
+      if (obj.name === side) {
+        const shin = obj.children.find((c) => c.name === 'Unterschenkel');
+        if (shin) v = shin.rotation.x;
+      }
+    });
+    return v;
+  };
+
+  {
+    const w = new Walker();
+    w.respawn(0, 0, 0, flat);
+    for (let i = 0; i < 90; i++) {
+      w.step(DT, input({ forward: 1, sprint: true }), flat, null, 0);
+      soleGaps(w, flat);
+    }
+    const stand = soleGaps(w, flat);
+    for (let i = 0; i < 40; i++) {
+      w.step(DT, input({ forward: 1, sprint: true, slide: true }), flat, null, 0);
+      soleGaps(w, flat);
+    }
+    const slide = soleGaps(w, flat);
+    const deepest = Math.min(...slide);
+    const highest = Math.max(...slide);
+    if (w.sliding && deepest > -0.08 && highest < 0.22) {
+      ok(
+        'Sohlen auf Flach',
+        `Stand ${stand.map((g) => g.toFixed(3)).join('/')} → Rutsch ${slide.map((g) => g.toFixed(3)).join('/')}`,
+      );
+    } else {
+      bad(
+        'Sohlen auf Flach',
+        `deep ${deepest.toFixed(3)} high ${highest.toFixed(3)} sliding ${w.sliding}`,
+      );
+    }
+  }
+
+  {
+    const hill = ramp(20, true);
+    const w = new Walker();
+    w.respawn(0, -4, 0, hill);
+    let air = 0;
+    let maxShinJump = 0;
+    let prevShin = 0;
+    for (let i = 0; i < 90; i++) {
+      w.step(DT, input({ forward: 1, sprint: true }), hill, null, 0);
+      soleGaps(w, hill);
+    }
+    for (let i = 0; i < 90; i++) {
+      w.step(DT, input({ forward: 1, sprint: true, slide: true }), hill, null, 0);
+      soleGaps(w, hill);
+      if (!w.grounded) air++;
+      const shin = shinOf('BeinR');
+      if (i > 8) maxShinJump = Math.max(maxShinJump, Math.abs(shin - prevShin));
+      prevShin = shin;
+    }
+    const slide = soleGaps(w, hill);
+    const deepest = Math.min(...slide);
+    const highest = Math.max(...slide);
+    const pitchOk = Math.abs(w.slopePitch) > 0.2;
+    if (
+      w.sliding &&
+      air === 0 &&
+      deepest > -0.1 &&
+      highest < 0.28 &&
+      maxShinJump < 0.12 &&
+      pitchOk
+    ) {
+      ok(
+        'Sohlen am Hang',
+        `Spalt ${slide.map((g) => g.toFixed(3)).join('/')}, shinΔ ${maxShinJump.toFixed(3)}, pitch ${w.slopePitch.toFixed(2)}`,
+      );
+    } else {
+      bad(
+        'Beine am Hang',
+        `deep ${deepest.toFixed(3)} high ${highest.toFixed(3)} air ${air} shinΔ ${maxShinJump.toFixed(3)} pitch ${w.slopePitch.toFixed(2)} sliding ${w.sliding}`,
+      );
+    }
+  }
+
+  dummy.dispose();
+  rig.dispose();
 }
 
 console.log(`Walker-Prüfstand (${(WALKER.height * 100).toFixed(0)} cm, g = ${WALKER.gravity})`);

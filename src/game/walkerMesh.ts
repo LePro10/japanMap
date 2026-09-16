@@ -136,6 +136,8 @@ function limb(name: string): Group {
 export function createWalkerRig(material: PropMaterial): WalkerRig {
   const group = new Group();
   group.name = 'Fahrer';
+  // Yaw, dann Pitch/Roll — sonst kippt der Hang den Gierwinkel mit.
+  group.rotation.order = 'YXZ';
 
   const hips = limb('Hüfte');
   // 0,98 m: Oberschenkel 0,44 + Wade 0,40 + Sohle 0,08 + Gelenkversatz 0,06.
@@ -222,43 +224,49 @@ export function createWalkerRig(material: PropMaterial): WalkerRig {
       const kneeOpp = Math.max(0, -Math.cos(phase + Math.PI));
 
       const slide = Math.min(1, Math.max(0, state.slideAmount ?? 0));
+      const gait = 1 - slide;
+      const air = airPose * gait;
       const bob = moving && slide < 0.2 ? Math.abs(Math.sin(phase * 2)) * (run ? 0.045 : 0.028) : 0;
       const crouch = land * 0.12;
-      hips.position.y = 0.98 - bob - crouch - airPose * 0.04 - slide * 0.5;
-      hips.rotation.z = moving && slide < 0.4 ? step * 0.06 : Math.sin(breatheT * 1.1) * 0.02 * (1 - slide);
-      hips.rotation.y = moving && slide < 0.4 ? step * 0.08 : slide * 0.35;
+      // Hüfte nur so weit runter, dass die angewinkelten Beine die Sohlen
+      // bei y ≈ 0 halten. 0,50 Drop bei gestrecktem Bein hat die Füße
+      // einen halben Meter in den Hang geschoben.
+      hips.position.y = 0.98 - bob - crouch - air * 0.04 - slide * 0.68;
+      hips.rotation.z = moving ? step * 0.06 * gait : Math.sin(breatheT * 1.1) * 0.02 * gait;
+      hips.rotation.y = moving ? step * 0.08 * gait : 0;
+      hips.rotation.x = slide * 0.06;
 
       const breath = Math.sin(breatheT * 2.2) * 0.012;
       spine.rotation.x =
-        (moving ? -state.lean * 0.18 : breath) - airPose * 0.12 + slide * 0.42;
-      spine.rotation.y = moving && slide < 0.4 ? -step * 0.1 : 0;
+        (moving ? -state.lean * 0.18 : breath) * gait - air * 0.12 + slide * 0.48;
+      spine.rotation.y = moving ? -step * 0.1 * gait : 0;
 
-      head.rotation.x = airPose * 0.15 - spine.rotation.x * 0.4 - slide * 0.12;
-      head.rotation.y = moving && slide < 0.4 ? step * 0.05 : Math.sin(breatheT * 0.4) * 0.04;
+      head.rotation.x = air * 0.15 - spine.rotation.x * 0.4 - slide * 0.08;
+      head.rotation.y = moving ? step * 0.05 * gait : Math.sin(breatheT * 0.4) * 0.04 * gait;
 
-      const armSwing = moving && slide < 0.3 ? (run ? 0.95 : 0.55) : Math.sin(breatheT * 1.3) * 0.04 * (1 - slide);
-      lArm.root.rotation.x = stepOpp * armSwing + airPose * 0.6 + slide * 0.55;
-      rArm.root.rotation.x = step * armSwing + airPose * 0.6 - slide * 0.35;
-      lArm.root.rotation.z = 0.12 + airPose * 0.25 + slide * 0.45;
-      rArm.root.rotation.z = -0.12 - airPose * 0.25 - slide * 0.2;
-      lArm.fore.rotation.x = moving ? -0.35 - kneeOpp * 0.4 : -0.15;
-      rArm.fore.rotation.x = moving ? -0.35 - knee * 0.4 : -0.15;
-      lArm.fore.rotation.x += slide * -0.4;
-      rArm.fore.rotation.x += slide * -0.2;
+      const armSwing = moving ? (run ? 0.95 : 0.55) * gait : Math.sin(breatheT * 1.3) * 0.04 * gait;
+      lArm.root.rotation.x = stepOpp * armSwing + air * 0.6 + slide * 0.7;
+      rArm.root.rotation.x = step * armSwing + air * 0.6 + slide * 0.15;
+      lArm.root.rotation.z = 0.12 + air * 0.25 + slide * 0.35;
+      rArm.root.rotation.z = -0.12 - air * 0.25 - slide * 0.12;
+      lArm.fore.rotation.x = (moving ? -0.35 - kneeOpp * 0.4 : -0.15) * gait + slide * -0.55;
+      rArm.fore.rotation.x = (moving ? -0.35 - knee * 0.4 : -0.15) * gait + slide * -0.25;
 
-      const thighSwing = swing * (1 - slide);
-      lLeg.root.rotation.x = step * thighSwing - airPose * 0.35 + slide * 0.95;
-      rLeg.root.rotation.x = stepOpp * thighSwing - airPose * 0.35 - slide * 0.55;
-      lLeg.shin.rotation.x = moving ? knee * 0.95 : 0.08;
-      rLeg.shin.rotation.x = moving ? kneeOpp * 0.95 : 0.08;
-      lLeg.shin.rotation.x = lLeg.shin.rotation.x * (1 - slide) + slide * 0.18;
-      rLeg.shin.rotation.x = rLeg.shin.rotation.x * (1 - slide) + slide * 1.15;
-      if (!grounded) {
+      const thighSwing = swing * gait;
+      // Beine nach vorn, fast gestreckt — die Sohle soll auf y ≈ 0 liegen,
+      // nicht unter den Hüften. Die lokale XZ-Ebene folgt dem Hang.
+      lLeg.root.rotation.x = step * thighSwing - air * 0.35 + slide * 1.05;
+      rLeg.root.rotation.x = stepOpp * thighSwing - air * 0.35 + slide * 1.28;
+      lLeg.shin.rotation.x = (moving ? knee * 0.95 : 0.08) * gait + slide * 0.38;
+      rLeg.shin.rotation.x = (moving ? kneeOpp * 0.95 : 0.08) * gait + slide * 0.12;
+      if (!grounded && slide < 0.2) {
         lLeg.shin.rotation.x = 0.7;
         rLeg.shin.rotation.x = 0.7;
       }
-      lLeg.foot.rotation.x = moving || slide > 0.2 ? -lLeg.root.rotation.x * 0.35 - lLeg.shin.rotation.x * 0.25 : 0;
-      rLeg.foot.rotation.x = moving || slide > 0.2 ? -rLeg.root.rotation.x * 0.35 - rLeg.shin.rotation.x * 0.25 : 0;
+      const walkFootL = moving ? -lLeg.root.rotation.x * 0.35 - lLeg.shin.rotation.x * 0.25 : 0;
+      const walkFootR = moving ? -rLeg.root.rotation.x * 0.35 - rLeg.shin.rotation.x * 0.25 : 0;
+      lLeg.foot.rotation.x = walkFootL * gait + slide * -0.12;
+      rLeg.foot.rotation.x = walkFootR * gait + slide * -0.08;
     },
     dispose() {
       for (const geometry of geometries) geometry.dispose();

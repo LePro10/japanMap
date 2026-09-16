@@ -62,11 +62,18 @@ export class Walker {
   lean = 0;
   /** 0…1, geglättet — Kamera und Mesh, nicht die Physik. */
   slideAmount = 0;
+  /**
+   * Geländeneigung im Fahrzeugsystem, Bogenmaß. Pitch positiv = Nase runter
+   * (Three-YXZ). Nur die Pose liest das; die Kapsel bleibt welt-aufrecht.
+   */
+  slopePitch = 0;
+  slopeRoll = 0;
 
   #vy = 0;
   #coyote = 0;
   #jumpBuf = 0;
   #slideTime = 0;
+  #airborneTime = 0;
   readonly #normal = new Vector3(0, 1, 0);
   readonly #wish = new Vector3();
 
@@ -90,9 +97,12 @@ export class Walker {
     this.cycle = 0;
     this.lean = 0;
     this.slideAmount = 0;
+    this.slopePitch = 0;
+    this.slopeRoll = 0;
     this.#coyote = WALKER.coyote;
     this.#jumpBuf = 0;
     this.#slideTime = 0;
+    this.#airborneTime = 0;
   }
 
   /**
@@ -221,22 +231,28 @@ export class Walker {
       if (this.#vy < 0) this.#vy = 0;
       this.grounded = true;
       this.jumping = false;
+      this.#airborneTime = 0;
     } else if (!walkable && onFloor) {
       // Hang zu steil: stehen lassen wir ihn nicht, aber auch nicht
       // einsinken. Er rutscht — die Horizontalkomponente der Normalen
       // schiebt ihn den Hang hinunter.
       this.position.y = Math.max(ny, floor);
       this.grounded = false;
-      this.sliding = false;
+      this.#airborneTime += dt;
+      if (this.#airborneTime > 0.1) this.sliding = false;
       this.velocity.x += this.#normal.x * 8 * dt;
       this.velocity.z += this.#normal.z * 8 * dt;
     } else {
       this.position.y = ny;
       this.grounded = false;
-      // In der Luft ist der Rutsch vorbei — sonst wäre er ein zweites
-      // Flugmodell. Coyote-Sprung bleibt, der hängt nicht am Slide-Flag.
-      if (!this.jumping) this.sliding = false;
+      this.#airborneTime += dt;
+      // Ein Frame ohne Boden am Hang ist kein Flug. Die Pose hat die
+      // Schienbeine hart auf 0,7 gesetzt, sobald `grounded` falsch war —
+      // auf dem Berg ein Bein-Stroboskop. Erst nach ~6 Frames abbrechen.
+      if (!this.jumping && this.#airborneTime > 0.1) this.sliding = false;
     }
+
+    this.#refreshSlope();
 
     const spd = this.speed;
     this.cycle += spd * dt;
@@ -262,7 +278,7 @@ export class Walker {
       const tooSlow =
         speed < WALKER.slideExitSpeed && this.#slideTime > WALKER.slideMinTime && !goingDown;
       const released = !wantSlide && this.#slideTime > WALKER.slideMinTime;
-      if (tooSlow || released || !this.grounded) {
+      if (tooSlow || released || this.#airborneTime > 0.1) {
         this.sliding = false;
         this.#slideTime = 0;
       }
@@ -343,6 +359,23 @@ export class Walker {
       this.velocity.x = 0;
       this.velocity.z = 0;
     }
+  }
+
+  #refreshSlope(): void {
+    const ny = this.#normal.y;
+    if (ny < 0.15) {
+      this.slopePitch = 0;
+      this.slopeRoll = 0;
+      return;
+    }
+    const fx = Math.sin(this.yaw);
+    const fz = Math.cos(this.yaw);
+    const rx = -Math.cos(this.yaw);
+    const rz = Math.sin(this.yaw);
+    // n·forward_xz > 0 → Fläche zeigt nach vorn → Hang fällt nach vorn →
+    // Nase runter = +rotation.x in Three-YXZ.
+    this.slopePitch = Math.atan2(this.#normal.x * fx + this.#normal.z * fz, ny);
+    this.slopeRoll = Math.atan2(this.#normal.x * rx + this.#normal.z * rz, ny);
   }
 
   #turnToward(targetYaw: number, dt: number, rate: number): void {
