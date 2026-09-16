@@ -867,6 +867,8 @@ async function boot(): Promise<void> {
     engineBlip: (pitch) => audio.engineBlip(pitch),
     hideWorld: (hidden) => {
       commons.group.visible = !hidden;
+      const veg = engine.scene.getObjectByName('Vegetation');
+      if (veg) veg.visible = !hidden;
     },
   });
   const ui = new PlayerUi({
@@ -1019,7 +1021,7 @@ async function boot(): Promise<void> {
   audio.armAutoUnlock();
   import.meta.hot?.dispose(() => { photo.dispose(); garage.dispose(); ui.dispose(); });
 
-  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive, lookController);
+  if (import.meta.env.DEV) installFrameProbe(engine, controller, quality, scatter, drive);
 }
 
 /** Eine Zeile der Zieltafel. Englisch, wie alles im DOM. */

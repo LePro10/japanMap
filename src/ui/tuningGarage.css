@@ -1,6 +1,5 @@
 /* Open Bay HUD. The car is the renderer; this is chrome around it.
- * Palette from theme.css. Screenshot layout: top strip, right tools,
- * bottom parts rail, left readout. */
+ * Palette from theme.css. Layout: top strip, left readout, bottom parts rail. */
 
 .tune-garage {
   --ink: #06141a;
@@ -54,7 +53,6 @@
 
 .tune-garage__top,
 .tune-garage__stats,
-.tune-garage__tools,
 .tune-garage__dock,
 .tune-garage__badge,
 .tune-garage__toast {
@@ -194,25 +192,6 @@
   font: 700 12px / 1.3 var(--display);
 }
 
-.tune-garage__tools {
-  top: 50%;
-  right: 14px;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.tune-garage__tools button {
-  width: 48px;
-  height: 48px;
-  border: 1px solid color-mix(in srgb, var(--paper) 20%, transparent);
-  background: color-mix(in srgb, var(--ink) 62%, transparent);
-  color: var(--paper);
-  font-size: 18px;
-}
-
-.tune-garage__tools button.is-on,
 .tune-garage__filters button.is-on,
 .tune-garage__card.is-on {
   border-color: var(--amber);
@@ -477,19 +456,12 @@
 @media (max-width: 720px), (pointer: coarse) {
   .tune-garage__stats {
     width: auto;
-    right: 64px;
+    right: 10px;
     left: 10px;
     top: 70px;
     padding: 8px 10px;
   }
   .tune-garage__read { display: none; }
-  .tune-garage__tools {
-    top: auto;
-    bottom: 210px;
-    transform: none;
-    flex-direction: row;
-    right: 10px;
-  }
   .tune-garage__badge { bottom: 200px; font-size: 20px; }
   .tune-garage__card { flex-basis: 132px; }
   .tune-garage__title { display: none; }
