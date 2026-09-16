@@ -23,7 +23,8 @@ import {
  */
 
 const SIZE = 190;
-const VIEW_WALK = 160;
+/** Dieselbe Sicht zu Fuß und im Auto. 160 m gegen 420 m war ein Sprung
+ *  beim Ein-/Aussteigen — die Karte darf den Wechsel nicht zeigen. */
 const VIEW_DRIVE = 420;
 const VIEW_FAST = 640;
 const FAST_MS = 50;
@@ -46,6 +47,7 @@ export class MiniMap {
   #roadsDrawn = 0;
   #since = Number.POSITIVE_INFINITY;
   #file: RoadFile | null = null;
+  #onFoot = false;
 
   constructor(container: HTMLElement) {
     const canvas = document.createElement('canvas');
@@ -106,12 +108,14 @@ export class MiniMap {
     speed = 0,
     onFoot = false,
   ): void {
+    const modeChanged = onFoot !== this.#onFoot;
+    this.#onFoot = onFoot;
     this.#since += dt;
-    if (dt > 0 && this.#since < REDRAW_INTERVAL) return;
+    if (!modeChanged && dt > 0 && this.#since < REDRAW_INTERVAL) return;
     this.#since = 0;
 
     const fast = Math.min(1, Math.max(0, (speed - 8) / (FAST_MS - 8)));
-    const span = onFoot ? VIEW_WALK : VIEW_DRIVE + (VIEW_FAST - VIEW_DRIVE) * fast;
+    const span = VIEW_DRIVE + (VIEW_FAST - VIEW_DRIVE) * fast;
     const radius = SIZE * 0.5;
 
     const ctx = this.#ctx;
