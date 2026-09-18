@@ -14,6 +14,7 @@ const tests = [
   'tools/waypoint-route.test.mts',
   'tools/region-explore.test.mts',
   'tools/sakura-lod.test.mts',
+  'tools/sakura-lobby.test.mts',
 ];
 for (const test of tests) {
   console.log(`\n${test}`);

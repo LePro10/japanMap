@@ -1045,6 +1045,11 @@ async function boot(): Promise<void> {
   openPlayerMap = () => ui.openToMap();
   commons.openShop = tune => ui.openCommonsShop(tune);
   commons.isPlaying = () => ui.playing;
+  commons.owns = id => profile.owns(id);
+  commons.buy = id => profile.buy(id);
+  commons.wallet = () => profile.yen;
+  commons.syncOwned();
+  profile.onChange(() => commons.syncOwned());
   settlements.isPlaying = () => ui.playing;
   smashables.isPlaying = () => ui.playing;
   engine.bus.on('drive:broke', event => {
