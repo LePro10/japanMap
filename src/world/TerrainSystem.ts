@@ -1,6 +1,7 @@
 import {
   ClampToEdgeWrapping,
   DataTexture,
+  LinearFilter,
   Mesh,
   MeshBasicMaterial,
   NearestFilter,
@@ -152,7 +153,7 @@ export class TerrainSystem implements System {
     // nächsten Umbau stillschweigend teurer.
     this.#readouts.normalen = `abgeleitet · ${derived.millis.toFixed(1)} ms`;
 
-    const [zones, albedoArray, normalArray, armArray] = await Promise.all([
+    const [zones, paddyMask, albedoArray, normalArray, armArray] = await Promise.all([
       // flipY: false ist hier keine Kosmetik. Die gebackenen Karten sind
       // zeilenweise von Nord (-Z) nach Süd (+Z) gespeichert, und der Shader
       // liest sie mit v = (z + half) / size. Mit dem Standard flipY = true
@@ -163,10 +164,25 @@ export class TerrainSystem implements System {
         wrap: 'clamp',
         flipY: false,
       }),
+      context.resources.texture(TERRAIN_ASSETS.paddy, {
+        srgb: false,
+        wrap: 'clamp',
+        flipY: false,
+      }),
       createLayerArray(LAYER_TEXTURES.albedo, { srgb: true, anisotropy, label: 'albedo' }),
       createLayerArray(LAYER_TEXTURES.normal, { srgb: false, anisotropy, label: 'normal' }),
       createLayerArray(LAYER_TEXTURES.arm, { srgb: false, anisotropy, label: 'arm' }),
     ]);
+
+    // Linear, ohne Mipmaps: eine Mip-Kette der Binärmaske macht aus einer
+    // 30-m-Parzelle in der Ferne einen grauen Klecks, und der Uferverlauf
+    // läge dann über dem ganzen Feld. Mag/Min linear gibt die 3-m-Texelkante
+    // als weichen Saum — genau die Weite, die der Shader auf 1,2 m staucht.
+    paddyMask.generateMipmaps = false;
+    paddyMask.minFilter = LinearFilter;
+    paddyMask.magFilter = LinearFilter;
+    paddyMask.anisotropy = 1;
+    paddyMask.needsUpdate = true;
 
     for (const texture of [albedoArray, normalArray, armArray]) {
       context.resources.track(texture);
@@ -187,6 +203,8 @@ export class TerrainSystem implements System {
       spacing: sampler.spacing,
       zonesRes: sampler.meta.zones.res,
       normalRes: sampler.meta.heightmap.res,
+      paddyMask,
+      paddyRes: (paddyMask.image as { width: number }).width,
     });
     this.#uniforms = uniforms;
 

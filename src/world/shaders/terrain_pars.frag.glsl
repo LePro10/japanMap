@@ -38,6 +38,12 @@ uniform vec4 uGroundTintLaw;
 
 uniform int uDebugMode;
 
+/** Wassermaske der Reisfelder — nasser Schlamm am Ufer, nicht die Zonenkarte. */
+uniform sampler2D uPaddyMask;
+uniform float uPaddyMaskRes;
+/** x = Abdunklung, y = Rauheit nass, z = Ausblendweite in m. */
+uniform vec3 uPaddyWet;
+
 varying vec3 vTerrainWorld;
 /** Aus dem Quadtree (P4 / 4.1) — nur für die Debug-Ansichten. */
 varying float vLodLevel;

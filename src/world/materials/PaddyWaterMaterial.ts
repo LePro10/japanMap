@@ -1,5 +1,6 @@
 import { Vector4, type IUniform, type WebGLProgramParametersWithUniforms } from 'three';
 
+import { PADDY_WATER } from '@/config/props.config';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
 import { PropMaterial } from './PropMaterial';
 
@@ -27,13 +28,20 @@ import { PropMaterial } from './PropMaterial';
  * Kielwelle**. Beides ist eine Störung der Normalen und braucht weder Tiefe noch
  * Uferlinie.
  *
+ * Der Uferverlauf hängt **nicht** an der Tiefe. Er liest `aPaddyShore` —
+ * Meter zur trockenen Maske, gebacken in `RicePaddy.#build`. Keine
+ * zusätzliche Texturabfrage, keine Transparenz (die Fläche bleibt undurchsichtig,
+ * `depthWrite` an, Sortierung unverändert). Was den Schnitt weich macht, ist
+ * Schlammfarbe plus Rauheit plus eine dünne Kahmhaut, und denselben Saum
+ * dunkelt das Gelände von der anderen Seite.
+ *
  * ## Kosten
  *
  * Ein zusätzliches Shaderprogramm (`customProgramCacheKey`) und drei Sinus je
  * Pixel im Nahbereich. Die Draw-Call-Zahl bleibt gleich — es ist dasselbe
  * Material auf denselben Kacheln, nur mit anderem Fragment-Shader. Jenseits von
- * `uPaddyDetail = 0` (Minimal) fällt der ganze Zweig weg und die Fläche ist
- * wieder, was sie vor P19 war.
+ * `uPaddyDetail = 0` (Minimal) fällt der Wellen-Zweig weg; der Uferverlauf
+ * bleibt, weil er ein interpoliertes Varying ist und nichts kostet.
  */
 export class PaddyWaterMaterial extends PropMaterial {
   /** xy = Fahrzeug-XZ, z = Fahrtrichtung X, w = Tempo. Siehe `uPaddyWake`. */
@@ -42,6 +50,18 @@ export class PaddyWaterMaterial extends PropMaterial {
   readonly uPaddyFwd: IUniform<Vector4> = { value: new Vector4() };
   /** Stärke der Kräuselung, 0…1 — aus der Qualitätsstufe. */
   readonly uPaddyDetail: IUniform<number> = { value: 1 };
+  /**
+   * Ufer: x = Verlauf (m), y = Kahmweite (m), z = Kahmstärke, w = Rauheit.
+   * Siehe `PADDY_WATER.shore`.
+   */
+  readonly uPaddyShore: IUniform<Vector4> = {
+    value: new Vector4(
+      PADDY_WATER.shore.fade,
+      PADDY_WATER.shore.scum,
+      PADDY_WATER.shore.scumIntensity,
+      PADDY_WATER.shore.roughness,
+    ),
+  };
 
   constructor(atmosphere: AtmosphereUniforms) {
     super(atmosphere);
@@ -57,6 +77,20 @@ export class PaddyWaterMaterial extends PropMaterial {
     shader.uniforms.uPaddyWake = this.uPaddyWake as IUniform;
     shader.uniforms.uPaddyFwd = this.uPaddyFwd as IUniform;
     shader.uniforms.uPaddyDetail = this.uPaddyDetail as IUniform;
+    shader.uniforms.uPaddyShore = this.uPaddyShore as IUniform;
+
+    // Distanz zur trockenen Maske: CPU-Attribut, einmal interpoliert.
+    // Super hat `#include <worldpos_vertex>` schon ersetzt — der Haken
+    // danach ist die `vPropWorld`-Zuweisung, nicht der Include-Name.
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>\nvarying vec3 vPropWorld;',
+        '#include <common>\nvarying vec3 vPropWorld;\nattribute float aPaddyShore;\nvarying float vPaddyShore;',
+      )
+      .replace(
+        'vPropWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\n#endif',
+        'vPropWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\n#endif\nvPaddyShore = aPaddyShore;',
+      );
 
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <common>',
@@ -64,7 +98,11 @@ export class PaddyWaterMaterial extends PropMaterial {
 uniform vec4 uPaddyWake;
 uniform vec4 uPaddyFwd;
 uniform float uPaddyDetail;
+uniform vec4 uPaddyShore;
+varying float vPaddyShore;
 float gPaddyFoam;
+float gPaddyLip;
+float gPaddyScum;
 vec2 gPaddyRipple;`,
     );
 
@@ -144,6 +182,25 @@ vec2 gPaddyRipple;`,
   }
 
   gPaddyRipple = stoerung;
+
+  // ── Uferverlauf ───────────────────────────────────────────────────────
+  //
+  // vPaddyShore ist Meter zur trockenen Maske. Die Distanz ist entlang
+  // einer geraden Dammkante linear, also interpoliert das Attribut richtig
+  // — anders als ein saturierender Maskenwert, den eine 6-m-Zelle über die
+  // ganze Fläche strecken würde. Ein Sinus von ±0,2 m bricht die
+  // Marching-Squares-Treppe, ohne die Fläche zu wellen.
+  //
+  // Keine Transparenz: ein weiter Alpha-Verlauf liest sich als Filter, und
+  // transparent plus 101 ha Sortierung waere der teurere Fehler. Die
+  // Landseite des Saums macht das Gelaende (nasser Schlamm, eigene Abtastung).
+  float dist = max(vPaddyShore + 0.20 * sin(dot(p, vec2(2.13, 1.67))), 0.0);
+  float interior = smoothstep(0.0, uPaddyShore.x, dist);
+  gPaddyLip = 1.0 - interior;
+  gPaddyScum = (1.0 - smoothstep(0.0, uPaddyShore.y, dist)) * uPaddyShore.z;
+  vec3 mud = diffuseColor.rgb * vec3(0.50, 0.55, 0.48);
+  diffuseColor.rgb = mix(mud, diffuseColor.rgb, interior);
+  diffuseColor.rgb += gPaddyScum * vec3(0.12, 0.15, 0.10);
 }`,
     );
 
@@ -170,12 +227,14 @@ vec2 gPaddyRipple;`,
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <roughnessmap_fragment>',
-        '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.55, gPaddyFoam);',
+        '#include <roughnessmap_fragment>\n' +
+          'roughnessFactor = mix(roughnessFactor, uPaddyShore.w, gPaddyLip);\n' +
+          'roughnessFactor = mix(roughnessFactor, 0.55, gPaddyFoam);',
       )
       .replace(
         'reflectedLight.directSpecular *= gPropShade.x;',
         'reflectedLight.directSpecular *= gPropShade.x;\n' +
-          'reflectedLight.indirectDiffuse += vec3(gPaddyFoam * 0.16);',
+          'reflectedLight.indirectDiffuse += vec3(gPaddyFoam * 0.16 + gPaddyScum * 0.05);',
       );
   }
 
