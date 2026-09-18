@@ -18,16 +18,24 @@ import { START_ZONES, startStepLabel } from "./startCopy";
  * ## Was neu ist
  *
  * Der Ladebildschirm ist kein zentrierter Kasten mehr. Unten liegt ein Trailer
- * aus echten Shots der Karte (Ken-Burns, optional das gebackene Video). Darüber
- * fliegt die Aerial-Insel: die Ringstraße leuchtet mit dem Fortschritt, das Auto
- * *ist* der Prozentwert. Dateinamen gehören nicht auf diesen Bildschirm — sie
- * sind für uns, nicht für den ersten Frame auf CrazyGames.
+ * aus echten Shots der Karte (Ken-Burns). Darüber fliegt die Aerial-Insel: die
+ * Ringstraße leuchtet mit dem Fortschritt, das Auto *ist* der Prozentwert.
+ * Dateinamen gehören nicht auf diesen Bildschirm — sie sind für uns, nicht für
+ * den ersten Frame auf CrazyGames.
+ *
+ * Der Wechsel auf `bereit` ist ein Überblenden, kein harter Schnitt: Insel,
+ * Trailer und Balken lösen sich auf, der Overlay-Hintergrund wird transparent,
+ * und die fertige Karte ist das Titelbild. Der Play-Knopf steht unten, nicht
+ * über dem Wagen — `display: none` würde die Transition verschlucken.
  */
 export class StartScreen {
   readonly #root: HTMLElement;
   readonly #bar: HTMLElement;
   readonly #stepLabel: HTMLElement;
   readonly #percent: HTMLElement;
+  readonly #readyRoot: HTMLElement;
+  readonly #progress: HTMLElement;
+  readonly #zones: HTMLElement;
   readonly #button: HTMLButtonElement;
   readonly #cinematic: StartCinematic;
   readonly #island: StartIsland | null;
@@ -82,9 +90,21 @@ export class StartScreen {
         <div class="start__track"><div class="start__bar"></div></div>
       </div>
 
-      <div class="start__ready">
-        <button type="button" class="start__button">Play</button>
-        <p class="start__hint">F get in the car · W A S D drive · Space handbrake</p>
+      <div class="start__ready" aria-hidden="true">
+        <p class="start__readyLine" aria-hidden="true"></p>
+        <p class="start__kicker">${startStepLabel("fertig")}</p>
+        <button type="button" class="start__button" tabindex="-1">
+          <span class="start__buttonRing" aria-hidden="true"></span>
+          Play
+        </button>
+        <ul class="start__cues">
+          ${
+            touch
+              ? `<li>stick walk</li><li>drag look</li><li>car get in</li>`
+              : `<li><kbd>F</kbd> get in</li><li><kbd>W A S D</kbd> drive</li><li><kbd>Space</kbd> handbrake</li>`
+          }
+        </ul>
+        ${touch ? "" : `<p class="start__hint"><kbd>Enter</kbd> to start</p>`}
         <div class="start__keys">
           ${touch ? controlTable(TOUCH_CONTROLS, "keytable") : ""}
         </div>
@@ -105,9 +125,13 @@ export class StartScreen {
     this.#bar = this.#must(".start__bar");
     this.#stepLabel = this.#must(".start__stepText");
     this.#percent = this.#must(".start__percentNum");
+    this.#readyRoot = this.#must(".start__ready");
+    this.#progress = this.#must(".start__progress");
+    this.#zones = this.#must(".start__zones");
     this.#button = this.#must(".start__button") as HTMLButtonElement;
 
     this.#button.addEventListener("click", this.#onClick);
+    window.addEventListener("keydown", this.#onKey);
 
     bus.on("engine:loading", ({ step, total, label }) => {
       this.#setProgress(step / total);
@@ -160,11 +184,16 @@ export class StartScreen {
     );
 
     this.#root.dataset.phase = "bereit";
+    this.#progress.setAttribute("aria-hidden", "true");
+    this.#zones.setAttribute("aria-hidden", "true");
+    this.#readyRoot.removeAttribute("aria-hidden");
+    this.#button.tabIndex = 0;
     this.#button.focus();
   }
 
   dispose(): void {
     this.#button.removeEventListener("click", this.#onClick);
+    window.removeEventListener("keydown", this.#onKey);
     this.#cinematic.dispose();
     this.#island?.dispose();
     this.#root.remove();
@@ -173,13 +202,26 @@ export class StartScreen {
   }
 
   readonly #onClick = (): void => {
-    if (this.#gone) return;
+    if (this.#gone || !this.#ready) return;
     if (!this.#onStart) {
       this.#pending = true;
       return;
     }
     this.#onStart();
     this.#leave();
+  };
+
+  /**
+   * Enter startet, auch wenn der Fokus den Knopf verlassen hat.
+   * Liegt er auf dem Knopf, feuert der native Klick — dann nicht noch einmal.
+   */
+  readonly #onKey = (event: KeyboardEvent): void => {
+    if (!this.#ready || this.#gone) return;
+    if (event.code !== "Enter" && event.code !== "NumpadEnter") return;
+    if (event.repeat || event.isComposing) return;
+    if (event.target === this.#button) return;
+    event.preventDefault();
+    this.#onClick();
   };
 
   /**
@@ -193,20 +235,20 @@ export class StartScreen {
     if (this.#gone) return;
     this.#gone = true;
     this.#root.classList.add("start--done");
-    this.#root.addEventListener(
-      "transitionend",
-      () => {
-        this.#cinematic.dispose();
-        this.#island?.dispose();
-        this.#root.remove();
-      },
-      { once: true },
-    );
+    window.removeEventListener("keydown", this.#onKey);
+    const onEnd = (event: TransitionEvent): void => {
+      if (event.target !== this.#root || event.propertyName !== "opacity") return;
+      this.#root.removeEventListener("transitionend", onEnd);
+      this.#cinematic.dispose();
+      this.#island?.dispose();
+      this.#root.remove();
+    };
+    this.#root.addEventListener("transitionend", onEnd);
     setTimeout(() => {
       this.#cinematic.dispose();
       this.#island?.dispose();
       this.#root.remove();
-    }, 700);
+    }, 900);
   }
 
   #setProgress(ratio: number): void {
