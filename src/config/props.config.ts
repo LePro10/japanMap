@@ -271,6 +271,55 @@ export const PADDY_WATER = {
   color: 0x2b3026,
   roughness: 0.06,
   metalness: 0,
+
+  /**
+   * Uferverlauf zwischen Spiegel und Damm.
+   *
+   * **Nicht über die Wassertiefe.** `WaterMaterial` rechnet Schaum und Kante
+   * aus der Heightmap-Tiefe — bei 0,10 m Spiegel wäre die ganze Parzelle
+   * Schaum, und genau deshalb hat `PaddyWaterMaterial` diesen Weg nie
+   * übernommen. Was hier zählt, ist die **waagerechte** Distanz zur
+   * trockenen Maske: sie steht als Vertex-Attribut `aPaddyShore` (Meter) auf
+   * dem Wasser-Mesh, und das Gelände dunkelt denselben Saum von der
+   * Landseite über eine Abtastung von `paddy.png`.
+   *
+   * Weiten bewusst unter einem Masken-Texel (3 m). Weiter sähe der Verlauf
+   * aus wie ein Filter über dem Feld — dieselbe Falle wie `WATER.edgeFade`
+   * am Strand. Kahmhaut, nicht Brandung: weißes Uferschaum auf 10 cm
+   * Pfütze ist Meer, kein Reisfeld.
+   */
+  shore: {
+    /** Farb- und Rauheitsverlauf auf dem Wasser, in Metern. */
+    fade: 1.2,
+    /** Kahmhaut an der Kontaktlinie, in Metern. */
+    scum: 0.16,
+    /** Deckkraft der Kahmhaut, 0…1. Bewusst schwach: weißer Saum wäre Brandung. */
+    scumIntensity: 0.12,
+    /**
+     * Rauheit am Ufer. 0,06 ist der Spiegel; 0,35 nimmt ihm die
+     * Chromkante gegen den Damm, ohne die Fläche zu Lack zu machen.
+     */
+    roughness: 0.35,
+    /**
+     * Ab dieser Distanz gilt ein Vertex als Innenfläche. Die Suche im
+     * Builder bricht dort ab — sie muss über `fade` liegen, sonst
+     * interpoliert der Shader den Verlauf über die ganze 6-m-Zelle.
+     */
+    interior: 3,
+    /**
+     * Abdunklung des Gelände-Splats am nassen Rand, 0…1. Der Saum selbst
+     * ist die bilinear gefilterte Maskenkante (~1,2 m), nicht eine zweite
+     * Distanzsuche auf jedem Terrain-Pixel.
+     */
+    wetDark: 0.36,
+    /** Rauheit des nassen Schlamms — tief genug für einen Himmelssaum. */
+    wetRoughness: 0.4,
+    /**
+     * Entfernung, ab der der Terrain-Saum entfällt. Jenseits davon ist
+     * 1,2 m Ufer unter einem Pixel, und die Texturabfrage wäre umsonst.
+     */
+    wetFar: 72,
+  },
 } as const;
 
 /** Eine Platzierung, wie sie in `assets/props.json` steht. */

@@ -15,6 +15,7 @@ import {
 } from 'three';
 
 import { LOD } from '@/config/lod.config';
+import { PADDY_WATER } from '@/config/props.config';
 import { TERRAIN, TERRAIN_LAYERS } from '@/config/terrain.config';
 import { DEFAULT_QUALITY, QUALITY } from '@/config/quality.config';
 import { GROUND_TINT, SCATTER, SPECIES } from '@/config/vegetation.config';
@@ -95,6 +96,15 @@ export interface TerrainUniforms {
   readonly uLodGridQuads: IUniform<number>;
   /** Spielerkamera für die Morph-Entfernung — nicht `cameraPosition`, siehe Shader. */
   readonly uLodCamera: IUniform<Vector3>;
+  /**
+   * Wassermaske der Reisfelder (`paddy.png`) — nasser Schlamm am Ufer.
+   * Linear, ohne Mipmaps: Mips würden kleine Parzellen in der Ferne
+   * vollständig zu Kante machen.
+   */
+  readonly uPaddyMask: IUniform<Texture>;
+  readonly uPaddyMaskRes: IUniform<number>;
+  /** x = Abdunklung, y = Rauheit nass, z = Ausblendweite in m. */
+  readonly uPaddyWet: IUniform<Vector3>;
 }
 
 export interface TerrainTextures {
@@ -112,6 +122,8 @@ export interface TerrainTextures {
   /** Auflösung von zones.png und normal.png, für die Stützstellen-Korrektur. */
   readonly zonesRes: number;
   readonly normalRes: number;
+  readonly paddyMask: Texture;
+  readonly paddyRes: number;
 }
 
 /**
@@ -202,6 +214,15 @@ export function createTerrainUniforms(textures: TerrainTextures): TerrainUniform
     uDebugMode: { value: 0 },
     uLodGridQuads: { value: LOD.gridQuads },
     uLodCamera: { value: new Vector3() },
+    uPaddyMask: { value: textures.paddyMask },
+    uPaddyMaskRes: { value: textures.paddyRes },
+    uPaddyWet: {
+      value: new Vector3(
+        PADDY_WATER.shore.wetDark,
+        PADDY_WATER.shore.wetRoughness,
+        PADDY_WATER.shore.wetFar,
+      ),
+    },
   };
 }
 

@@ -138,6 +138,26 @@ if (groundTint > 0.001) {
 
 diffuseColor.rgb *= terrainAlbedo;
 gTerrainArm = clamp(terrainArm, 0.0, 1.0);
+
+// ── Nasser Schlamm am Reisfeld-Ufer ─────────────────────────────────────
+//
+// Die Landseite des Verlaufs, den `PaddyWaterMaterial` auf dem Spiegel
+// rechnet. Ohne sie bleibt die Chromkante des Wassers gegen trockenen
+// Dreck — genau der Schnitt aus dem Gehweg-Bild. Eine Abtastung, und nur
+// in der Reisfeldzone unter `uPaddyWet.z`: jenseits davon ist 1,2 m Ufer
+// unter einem Pixel, und die Abfrage wäre umsonst. Der Zweig hängt an der
+// Zone und der Entfernung, also laufen die Warps nicht auseinander.
+//
+// `paddy.png` bilinear, ohne Mipmaps. Die Kante eines 3-m-Texels ist der
+// Saum; `smoothstep(0.02, 0.40)` komprimiert ihn auf ~1,2 m, und der
+// zweite Term nimmt das nasse Innere (unter dem Spiegel, verdeckt) raus.
+if (splat.a > 0.04 && viewDistance < uPaddyWet.z) {
+  float paddyWet = texture(uPaddyMask, atmoMapUv(vTerrainWorld.xz, uPaddyMaskRes)).r;
+  float wet = smoothstep(0.02, 0.40, paddyWet) * (1.0 - smoothstep(0.55, 0.92, paddyWet));
+  wet *= 0.82 + 0.18 * sin(dot(vTerrainWorld.xz, vec2(3.73, 2.91)));
+  diffuseColor.rgb *= 1.0 - wet * uPaddyWet.x;
+  gTerrainArm.g = mix(gTerrainArm.g, uPaddyWet.y, wet);
+}
 // **Ohne Abfrage keine Störung** — und vor allem kein `normalize(vec3(0.0))`.
 // Das wäre NaN, und ein NaN in der Normale steckt Beleuchtung, Spiegelung und
 // Nebel gleich mit an; im Bild stünde ein schwarzes Loch, das nach einem

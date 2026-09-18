@@ -112,6 +112,45 @@ export class RicePaddy implements System {
     this.#build();
   }
 
+  /**
+   * Meter zur nächsten trockenen Maske.
+   *
+   * Acht Richtungen, 0,25-m-Schritte, Abbruch bei `shore.interior`. Die Distanz
+   * ist entlang einer Dammkante linear, und genau deshalb darf sie als
+   * Vertex-Attribut interpolieren — ein saturierender Maskenwert täte das
+   * nicht und zöge den 1,2-m-Verlauf über die ganze 6-m-Zelle.
+   *
+   * Cache auf 25 cm, weil der Fächer dieselben Ecken mehrfach anfasst.
+   */
+  #shoreMeters(x: number, z: number, cache: Map<number, number>): number {
+    const qx = Math.round(x * 4);
+    const qz = Math.round(z * 4);
+    const key = qx * 100_000 + qz;
+    const hit = cache.get(key);
+    if (hit !== undefined) return hit;
+
+    const max = PADDY_WATER.shore.interior;
+    if (!this.#wet(x, z)) {
+      cache.set(key, 0);
+      return 0;
+    }
+
+    let best: number = max;
+    for (let k = 0; k < 8; k++) {
+      const angle = k * 0.7853981633974483;
+      const dx = Math.cos(angle);
+      const dz = Math.sin(angle);
+      for (let r = 0.25; r < best; r += 0.25) {
+        if (!this.#wet(x + dx * r, z + dz * r)) {
+          best = r;
+          break;
+        }
+      }
+    }
+    cache.set(key, best);
+    return best;
+  }
+
   /** Wassermaske an einer Weltposition — nächster Nachbar, wie bei `ZoneMap`. */
   #wet(x: number, z: number): boolean {
     const mask = this.#mask;
@@ -171,6 +210,8 @@ export class RicePaddy implements System {
         const x0 = -WORLD.half + tx * tile;
         const z0 = -WORLD.half + tz * tile;
         const position: number[] = [];
+        const shore: number[] = [];
+        const shoreCache = new Map<number, number>();
 
         for (let z = z0; z < z0 + tile; z += step) {
           for (let x = x0; x < x0 + tile; x += step) {
@@ -244,11 +285,17 @@ export class RicePaddy implements System {
             // Fächer vom ersten Punkt. Die Umlaufrichtung von `CORNER_*` trägt
             // die Wickelrichtung — siehe dort. Eingezogen, damit die Erde der
             // Böschung eine Krone hat und der Spiegel nicht über die Stufe ragt.
+            const s0 = this.#shoreMeters(insetX[0]!, insetZ[0]!, shoreCache);
             for (let i = 1; i + 1 < insetX.length; i++) {
               position.push(
                 insetX[0]!, y, insetZ[0]!,
                 insetX[i]!, y, insetZ[i]!,
                 insetX[i + 1]!, y, insetZ[i + 1]!,
+              );
+              shore.push(
+                s0,
+                this.#shoreMeters(insetX[i]!, insetZ[i]!, shoreCache),
+                this.#shoreMeters(insetX[i + 1]!, insetZ[i + 1]!, shoreCache),
               );
             }
 
@@ -259,6 +306,7 @@ export class RicePaddy implements System {
         if (position.length) {
           const geometry = new BufferGeometry();
           geometry.setAttribute('position', new Float32BufferAttribute(position, 3));
+          geometry.setAttribute('aPaddyShore', new Float32BufferAttribute(shore, 1));
           geometry.computeVertexNormals();
           geometry.computeBoundingSphere();
           const mesh = new Mesh(geometry, material);
