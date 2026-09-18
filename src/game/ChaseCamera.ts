@@ -421,7 +421,10 @@ export class ChaseCamera {
     );
 
     camera.quaternion.copy(vehicle.quaternion);
-    camera.rotateY(this.#yawOffset + steerLook + velYaw * velWeight * motion);
+    // Three.js blickt lokal −Z, die Nase ist lokal +Z. Ohne die halbe Drehung
+    // starrt der Sitz in die Rückwand (gemessen align ≈ −1, Armatur und Straße
+    // lagen hinter der Near-Plane).
+    camera.rotateY(Math.PI + this.#yawOffset + steerLook + velYaw * velWeight * motion);
     camera.rotateX(
       this.#pitchOffset +
         COCKPIT_CAMERA.lookPitch +
