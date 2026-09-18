@@ -66,7 +66,12 @@ assert.equal(formatMapDistance(428), '428 m');
 assert.equal(formatMapDistance(999.6), '1.0 km');
 assert.equal(formatMapDistance(1340), '1.3 km');
 
-assert.ok(MAP_LANDMARKS.length >= 8, 'Die Karte soll die wichtigen Regionen sichtbar machen.');
+assert.ok(MAP_LANDMARKS.length >= 15, 'Die Karte soll Regionen und Neon-Orte tragen.');
+assert.equal(
+  MAP_LANDMARKS.filter((landmark) => landmark.major).length,
+  9,
+  'Neun Region-Pins, der Rest erst aus der Nähe.',
+);
 const city = MAP_LANDMARKS.find((landmark) => landmark.id === 'stadt');
 assert.deepEqual(
   city && { x: city.x, z: city.z, icon: city.icon },

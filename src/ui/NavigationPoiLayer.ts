@@ -35,6 +35,7 @@ export class NavigationPoiLayer {
       const y = point.y * size;
       const group = document.createElementNS(NS, 'g');
       group.classList.add('navmap-poi', `navmap-poi--${landmark.icon}`);
+      if (!landmark.major) group.classList.add('navmap-poi--local');
       group.dataset.id = landmark.id;
       group.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)})`);
       this.#origin.set(landmark.id, { x, y });

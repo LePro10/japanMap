@@ -31,7 +31,7 @@ try {
   await page.waitForTimeout(400);
 
   const docked = await page.evaluate(() => {
-    const canvas = document.querySelector('.navmap--docked .navmap__canvas');
+    const canvas = document.querySelector('.navmap--docked .navmap__base');
     if (!(canvas instanceof HTMLCanvasElement)) return { ok: false, reason: 'no canvas' };
     const ctx = canvas.getContext('2d');
     if (!ctx) return { ok: false, reason: 'no ctx' };
@@ -51,13 +51,48 @@ try {
   const regions = await page.evaluate(() => document.querySelectorAll('.navmap__region').length);
   assert.equal(docked.ok, true, docked.reason);
   assert.equal(docked.title, 'Island Atlas');
-  assert.equal(docked.pois, 9);
-  assert.equal(docked.places, 9);
+  assert.equal(docked.pois, 15);
+  assert.equal(docked.places, 15);
   assert.equal(regions, 8, 'Eight ASTRA regions should be listed');
   const brightness = docked.sample[0] + docked.sample[1] + docked.sample[2];
   assert.ok(brightness > 80, `Docked map still looks black: ${docked.sample.join(',')}`);
+  const layout = await page.evaluate(() => {
+    const root = document.querySelector('.navmap--docked');
+    const stage = document.querySelector('.navmap--docked .navmap__stage');
+    const side = document.querySelector('.navmap--docked .navmap__side');
+    const poi = document.querySelector('.navmap-poi');
+    const label = document.querySelector('.navmap-region-label');
+    if (!(stage instanceof HTMLElement) || !(side instanceof HTMLElement) || !poi || !label) {
+      return { ok: false };
+    }
+    const stageBox = stage.getBoundingClientRect();
+    const sideBox = side.getBoundingClientRect();
+    return {
+      ok: true,
+      zoom: root instanceof HTMLElement ? root.dataset.zoom ?? '' : '',
+      regionNames: root?.classList.contains('navmap--regionNames') ?? false,
+      poiDisplay: getComputedStyle(poi).display,
+      labelDisplay: getComputedStyle(label).display,
+      stageRight: stageBox.right,
+      sideLeft: sideBox.left,
+    };
+  });
+  assert.equal(layout.ok, true);
+  assert.equal(layout.zoom, 'far', 'Map tab should fit the island, not crop around the car');
+  assert.equal(layout.regionNames, true);
+  assert.equal(layout.poiDisplay, 'none', 'Far zoom must hide pins so region names stay readable');
+  assert.notEqual(layout.labelDisplay, 'none');
+  assert.ok(
+    layout.sideLeft >= layout.stageRight - 1,
+    `Places column overlaps the map: stage ${layout.stageRight} side ${layout.sideLeft}`,
+  );
   await fs.mkdir('screenshots/map', { recursive: true });
   await page.screenshot({ path: 'screenshots/map/pause-dock.png' });
+  await page.setViewportSize({ width: 2476, height: 1094 });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: 'screenshots/map/pause-dock-wide.png' });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.waitForTimeout(200);
 
   await page.getByRole('button', { name: /Yoru Ward/ }).click();
   await page.getByRole('button', { name: 'Set waypoint' }).click();

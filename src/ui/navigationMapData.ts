@@ -19,6 +19,8 @@ export interface MapLandmark {
   readonly icon: MapLandmarkIcon;
   /** Ab welcher Kartenbreite der Text neben dem Icon stehen darf. */
   readonly labelMinPx: number;
+  /** Region-level pin: visible from mid zoom. Interiors wait until near. */
+  readonly major?: boolean;
 }
 
 /**
@@ -30,12 +32,6 @@ export interface MapLandmark {
  * an echte Orte, nicht an generische „City / Forest"-Stempel.
  */
 export const MAP_LANDMARKS: readonly MapLandmark[] = [
-  { id: 'komorebi-diner', label: 'Komorebi Diner', kanji: '食堂', detail: 'Walk inside · counter seats and a warm kitchen', x: 505, z: 35, icon: 'village', labelMinPx: 720 },
-  { id: 'corner-mart', label: 'Kōji Corner Mart', kanji: '小路', detail: 'Walk inside · neighborhood shop', x: 644, z: 145, icon: 'village', labelMinPx: 800 },
-  { id: 'rain-garden', label: 'Rain Garden', kanji: '庭', detail: 'Pond bridge · pavilion · lantern paths', x: 705, z: 48, icon: 'forest', labelMinPx: 740 },
-  { id: 'beacon-tower', label: 'Beacon Tower', kanji: '灯台', detail: 'Twin fins above the hillside courtyard', x: 1116.731, z: -322.865, icon: 'city', labelMinPx: 660 },
-  { id: 'market-hall', label: 'Market Hall', kanji: '市場', detail: 'Open timber hall and produce stalls', x: 474.253, z: 723.877, icon: 'village', labelMinPx: 700 },
-  { id: 'rotor-court', label: 'Rotor Court', kanji: '工房', detail: 'Workshop courtyard and rotary sculpture', x: 205.149, z: 265.145, icon: 'drift', labelMinPx: 700 },
   {
     id: 'stadt',
     label: 'Yoru Ward',
@@ -45,6 +41,7 @@ export const MAP_LANDMARKS: readonly MapLandmark[] = [
     z: 120,
     icon: 'city',
     labelMinPx: 520,
+    major: true,
   },
   {
     id: 'tempel',
@@ -55,6 +52,7 @@ export const MAP_LANDMARKS: readonly MapLandmark[] = [
     z: -940,
     icon: 'temple',
     labelMinPx: 540,
+    major: true,
   },
   {
     id: 'bergpass',
@@ -65,6 +63,7 @@ export const MAP_LANDMARKS: readonly MapLandmark[] = [
     z: -495,
     icon: 'mountain',
     labelMinPx: 600,
+    major: true,
   },
   {
     id: 'reisfelder',
@@ -75,6 +74,7 @@ export const MAP_LANDMARKS: readonly MapLandmark[] = [
     z: 60,
     icon: 'paddy',
     labelMinPx: 560,
+    major: true,
   },
   {
     id: 'fischerdorf',
@@ -85,6 +85,7 @@ export const MAP_LANDMARKS: readonly MapLandmark[] = [
     z: 1030,
     icon: 'village',
     labelMinPx: 620,
+    major: true,
   },
   {
     id: 'kueste',
@@ -95,6 +96,7 @@ export const MAP_LANDMARKS: readonly MapLandmark[] = [
     z: 1400,
     icon: 'coast',
     labelMinPx: 660,
+    major: true,
   },
   {
     id: 'wald',
@@ -105,6 +107,7 @@ export const MAP_LANDMARKS: readonly MapLandmark[] = [
     z: -760,
     icon: 'forest',
     labelMinPx: 700,
+    major: true,
   },
   {
     id: 'stillwater',
@@ -115,6 +118,7 @@ export const MAP_LANDMARKS: readonly MapLandmark[] = [
     z: 409,
     icon: 'village',
     labelMinPx: 620,
+    major: true,
   },
   {
     id: 'commons',
@@ -125,7 +129,14 @@ export const MAP_LANDMARKS: readonly MapLandmark[] = [
     z: 510,
     icon: 'garage',
     labelMinPx: 540,
+    major: true,
   },
+  { id: 'komorebi-diner', label: 'Komorebi Diner', kanji: '食堂', detail: 'Walk inside · counter seats and a warm kitchen', x: 505, z: 35, icon: 'village', labelMinPx: 720 },
+  { id: 'corner-mart', label: 'Kōji Corner Mart', kanji: '小路', detail: 'Walk inside · neighborhood shop', x: 644, z: 145, icon: 'village', labelMinPx: 800 },
+  { id: 'rain-garden', label: 'Rain Garden', kanji: '庭', detail: 'Pond bridge · pavilion · lantern paths', x: 705, z: 48, icon: 'forest', labelMinPx: 740 },
+  { id: 'beacon-tower', label: 'Beacon Tower', kanji: '灯台', detail: 'Twin fins above the hillside courtyard', x: 1116.731, z: -322.865, icon: 'city', labelMinPx: 660 },
+  { id: 'market-hall', label: 'Market Hall', kanji: '市場', detail: 'Open timber hall and produce stalls', x: 474.253, z: 723.877, icon: 'village', labelMinPx: 700 },
+  { id: 'rotor-court', label: 'Rotor Court', kanji: '工房', detail: 'Workshop courtyard and rotary sculpture', x: 205.149, z: 265.145, icon: 'drift', labelMinPx: 700 },
 ] as const;
 
 export function formatMapDistance(meters: number): string {

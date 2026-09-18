@@ -68,14 +68,26 @@ export class NavigationMapBackdrop {
 
     const sw = this.#graded.width;
     const sh = this.#graded.height;
-    const sx = nx0 * sw;
-    const sy = ny0 * sh;
-    const tw = (nx1 - nx0) * sw;
-    const th = (ny1 - ny0) * sh;
+    const spanX = nx1 - nx0;
+    const spanY = ny1 - ny0;
+    if (spanX <= 1e-6 || spanY <= 1e-6) return;
+    const cx0 = clamp01(nx0);
+    const cy0 = clamp01(ny0);
+    const cx1 = clamp01(nx1);
+    const cy1 = clamp01(ny1);
+    if (cx1 <= cx0 || cy1 <= cy0) return;
+    const sx = cx0 * sw;
+    const sy = cy0 * sh;
+    const tw = (cx1 - cx0) * sw;
+    const th = (cy1 - cy0) * sh;
     if (tw <= 0.5 || th <= 0.5) return;
+    const dx = ((cx0 - nx0) / spanX) * destW;
+    const dy = ((cy0 - ny0) / spanY) * destH;
+    const dw = ((cx1 - cx0) / spanX) * destW;
+    const dh = ((cy1 - cy0) / spanY) * destH;
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'medium';
-    ctx.drawImage(this.#graded, sx, sy, tw, th, 0, 0, destW, destH);
+    ctx.drawImage(this.#graded, sx, sy, tw, th, dx, dy, dw, dh);
   }
 
   dispose(): void {
@@ -95,4 +107,8 @@ export class NavigationMapBackdrop {
     ctx.drawImage(this.#image, 0, 0, width, height);
     ctx.filter = 'none';
   }
+}
+
+function clamp01(value: number): number {
+  return value < 0 ? 0 : value > 1 ? 1 : value;
 }
