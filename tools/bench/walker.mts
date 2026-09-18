@@ -460,8 +460,7 @@ if (c.x === a.x && c.z === a.z && c.seed === 43) {
     ground: { height: (x: number, z: number) => number },
   ): number[] => {
     rig.group.position.copy(w.position);
-    const dip = w.slideAmount;
-    rig.group.rotation.set(w.slopePitch * dip, w.yaw, w.slopeRoll * dip);
+    rig.group.rotation.set(w.visualPitch, w.yaw, w.visualRoll);
     rig.animate(
       {
         cycle: w.cycle,
@@ -561,6 +560,52 @@ if (c.x === a.x && c.z === a.z && c.seed === 43) {
       bad(
         'Beine am Hang',
         `deep ${deepest.toFixed(3)} high ${highest.toFixed(3)} air ${air} shinΔ ${maxShinJump.toFixed(3)} pitch ${w.slopePitch.toFixed(2)} sliding ${w.sliding}`,
+      );
+    }
+  }
+
+  {
+    // 40° ist begehbar (`minNy` 0,55 ≈ 57°) und war der Bauchflop:
+    // visualPitch folgte slopePitch 1:1, plus Wirbelsäule +0,48.
+    const hill = ramp(40, true);
+    const w = new Walker();
+    w.respawn(0, -4, 0, hill);
+    for (let i = 0; i < 90; i++) {
+      w.step(DT, input({ forward: 1, sprint: true }), hill, null, 0);
+    }
+    for (let i = 0; i < 90; i++) {
+      w.step(DT, input({ forward: 1, sprint: true, slide: true }), hill, null, 0);
+    }
+    soleGaps(w, hill);
+    let headX = 0;
+    let headY = 0;
+    let headZ = 0;
+    rig.group.traverse((obj) => {
+      if (obj.name !== 'Schädel') return;
+      obj.getWorldPosition(scratch);
+      headX = scratch.x;
+      headY = scratch.y;
+      headZ = scratch.z;
+    });
+    const headClear = headY - hill.height(headX, headZ);
+    const tilt = Math.abs(w.visualPitch);
+    const raw = Math.abs(w.slopePitch);
+    // Hocke hält den Schädel über einem Meter. Volle Hangneigung plus
+    // Wirbelsäule 0,48 legt ihn an die Fläche.
+    if (
+      w.sliding &&
+      raw > WALKER.slideTiltCap + 0.15 &&
+      tilt <= WALKER.slideTiltCap + 1e-6 &&
+      headClear > 1.05
+    ) {
+      ok(
+        'Keine Bauchlage am Berg',
+        `visualPitch ${w.visualPitch.toFixed(3)} gegen Hang ${w.slopePitch.toFixed(3)}, Schädel ${headClear.toFixed(2)} m über Boden`,
+      );
+    } else {
+      bad(
+        'Bauchlage',
+        `sliding ${w.sliding} visual ${w.visualPitch.toFixed(3)} hang ${w.slopePitch.toFixed(3)} Schädel ${headClear.toFixed(2)} m`,
       );
     }
   }

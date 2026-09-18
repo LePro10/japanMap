@@ -185,9 +185,26 @@ export const WALKER = {
    * in den Boden. 0,62 → Hüfte ~0,32 m, Brust ~0,77 m.
    */
   slideCrouch: 0.62,
-  /** Wie tief Kamera und Blickziel sinken, in Metern. Unter `groundClearance`. */
-  slideCameraDip: 0.72,
-  slideLookDip: 0.55,
+  /**
+   * Kamera-Senke im Rutsch, in Metern. Unter `groundClearance`.
+   *
+   * 0,72 gehörte zur Bauchlage (Hüfte 0,68 tiefer). Die Hocke senkt
+   * die Hüfte um 0,22 — die Kamera folgt derselben Größenordnung,
+   * sonst zielt sie auf die Oberschenkel eines aufrechten Rumpfs.
+   */
+  slideCameraDip: 0.38,
+  slideLookDip: 0.28,
+  /**
+   * Mesh-Neigung am Hang, Anteil der Geländeneigung.
+   *
+   * 1,0 hat den Körper am Berg auf die Nase gelegt — die Kapsel bleibt
+   * welt-aufrecht, das Mesh folgte dem Hang vollständig, plus die
+   * Bauchlage der Pose. 0,42 senkt die vordere Sohle genug, dass sie
+   * nicht schwebt; der Deckel verhindert die Bauchlage ab ~12°.
+   */
+  slideTiltFollow: 0.42,
+  /** Bogenmaß. 0,22 ≈ 12,6°. Darüber liegt der Rumpf am Hang. */
+  slideTiltCap: 0.22,
 } as const;
 
 export const WALK_CAMERA = {

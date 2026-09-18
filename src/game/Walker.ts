@@ -69,6 +69,18 @@ export class Walker {
   slopePitch = 0;
   slopeRoll = 0;
 
+  /**
+   * Was das Mesh vom Hang wirklich bekommt. `slopePitch` selbst darf am
+   * Berg 50°+ werden — ungeklemmt ist das eine Bauchlage.
+   */
+  get visualPitch(): number {
+    return tiltToward(this.slopePitch * this.slideAmount, WALKER.slideTiltFollow, WALKER.slideTiltCap);
+  }
+
+  get visualRoll(): number {
+    return tiltToward(this.slopeRoll * this.slideAmount, WALKER.slideTiltFollow, WALKER.slideTiltCap);
+  }
+
   #vy = 0;
   #coyote = 0;
   #jumpBuf = 0;
@@ -422,6 +434,13 @@ export class Walker {
     }
     return { x, y, z };
   }
+}
+
+function tiltToward(angle: number, follow: number, cap: number): number {
+  const v = angle * follow;
+  if (v > cap) return cap;
+  if (v < -cap) return -cap;
+  return v;
 }
 
 export { NO_INPUT as NO_WALK_INPUT };
