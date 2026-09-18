@@ -1821,11 +1821,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       const rig = this.#rig;
       if (rig) {
         rig.group.position.copy(this.walker.position);
-        const dip = this.walker.slideAmount;
         rig.group.rotation.set(
-          this.walker.slopePitch * dip,
+          this.walker.visualPitch,
           this.walker.yaw,
-          this.walker.slopeRoll * dip,
+          this.walker.visualRoll,
         );
         rig.animate(
           {
