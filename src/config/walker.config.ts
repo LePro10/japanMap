@@ -142,7 +142,9 @@ export const WALKER = {
    * Steiler als das gilt der Boden als Wand, nicht als Standfläche.
    *
    * 0,55 ≈ 57°. Unter `STEEP_NY` (0,78 ≈ 39°) der Fahrzeuge: ein Mensch
-   * steigt einen Hang, den ein Auto nicht fährt. Darüber rutscht er.
+   * steigt einen Hang, den ein Auto nicht fährt. Darüber schiebt
+   * `Walker.#confineTerrain` in XZ heraus — Y folgt nicht der Fläche.
+   * Gemessen vorher: Sprung in 70° in 4 s auf 33,6 m (die Fläche klebte).
    */
   minNy: 0.55,
 

@@ -46,7 +46,9 @@ const NO_INPUT: WalkInput = { forward: 0, right: 0, jump: false, sprint: false, 
  * Zwei Kugeln, eine in Hüfthöhe, eine in Schulterhöhe, Radius
  * `WALKER.radius`. Eine Kugel in der Mitte der Figur sähe über niedrige
  * Leitplanken hinweg und durch Türstürze hindurch; zwei decken beides.
- * Aufgelöst wird nur in XZ — die Höhe gehört dem Boden, nicht der Wand.
+ * Gebäude und Planken löst `#resolve` in XZ. Steiles Gelände ist dieselbe
+ * Frage in einer anderen Quelle: die Fläche ist eine Wand, nicht ein Boden,
+ * auf den man die Figur hebt.
  */
 export class Walker {
   readonly position = new Vector3();
@@ -201,47 +203,51 @@ export class Walker {
     const nx = this.position.x + this.velocity.x * dt;
     const nz = this.position.z + this.velocity.z * dt;
     let ny = this.position.y + this.#vy * dt;
+    const fromX = this.position.x;
+    const fromZ = this.position.z;
 
-    if (collision) {
-      const pushed = this.#resolve(nx, ny, nz, collision);
-      this.position.x = pushed.x;
-      this.position.z = pushed.z;
-      ny = pushed.y;
-    } else {
-      this.position.x = nx;
-      this.position.z = nz;
+    // Hindernisse zuerst, dann das Gelände als Wand. Umgekehrt schöbe eine
+    // Hauswand in den Berg, und der Berg wieder ins Haus.
+    let px = nx;
+    let pz = nz;
+    for (let pass = 0; pass < 2; pass++) {
+      if (collision) {
+        const pushed = this.#resolve(px, ny, pz, collision);
+        px = pushed.x;
+        pz = pushed.z;
+        ny = pushed.y;
+      }
+      const kept = this.#confineTerrain(px, ny, pz, fromX, fromZ, ground);
+      px = kept.x;
+      pz = kept.z;
     }
+    this.position.x = px;
+    this.position.z = pz;
 
     ground.normal(this.position.x, this.position.z, this.#normal);
     const floor = ground.height(this.position.x, this.position.z);
     const walkable = this.#normal.y >= WALKER.minNy;
-    // 2 cm reichen auf Flach. Am Hang fällt die Fläche je Schritt um
-    // v·dt·tanθ — bei Sprint auf 20° sind das 4,5 cm, im Rutsch 7 cm.
-    // `stepHeight` lag seit dem ersten Walker ungenutzt genau dafür:
-    // dem Boden folgen, ohne eine Klippe zu ignorieren.
-    const follow =
+    // Spalt zur Fläche: positiv = darüber. Snap nach oben nur in
+    // `stepHeight` — `ny <= floor` allein war wahr, sobald die Figur *im*
+    // Berg stand, und hat sie nach oben teleportiert. Nach unten muss ein
+    // schon stehender Schritt der Fläche in derselben Reichweite folgen,
+    // sonst verliert der Rutsch bergab den Boden (0,43 m Spalt auf 20°).
+    const gap = ny - floor;
+    const landWalkable =
+      walkable && this.#vy <= 0.15 && gap <= 0.02 && gap >= -WALKER.stepHeight;
+    const followWalkable =
+      walkable &&
       this.grounded &&
       !this.jumping &&
       this.#vy <= 0.15 &&
-      Math.abs(ny - floor) <= WALKER.stepHeight;
-    const onFloor = (ny <= floor + 0.02 && this.#vy <= 0.15) || follow;
+      Math.abs(gap) <= WALKER.stepHeight;
 
-    if (onFloor && walkable) {
+    if (landWalkable || followWalkable) {
       this.position.y = floor;
       if (this.#vy < 0) this.#vy = 0;
       this.grounded = true;
       this.jumping = false;
       this.#airborneTime = 0;
-    } else if (!walkable && onFloor) {
-      // Hang zu steil: stehen lassen wir ihn nicht, aber auch nicht
-      // einsinken. Er rutscht — die Horizontalkomponente der Normalen
-      // schiebt ihn den Hang hinunter.
-      this.position.y = Math.max(ny, floor);
-      this.grounded = false;
-      this.#airborneTime += dt;
-      if (this.#airborneTime > 0.1) this.sliding = false;
-      this.velocity.x += this.#normal.x * 8 * dt;
-      this.velocity.z += this.#normal.z * 8 * dt;
     } else {
       this.position.y = ny;
       this.grounded = false;
@@ -250,6 +256,13 @@ export class Walker {
       // Schienbeine hart auf 0,7 gesetzt, sobald `grounded` falsch war —
       // auf dem Berg ein Bein-Stroboskop. Erst nach ~6 Frames abbrechen.
       if (!this.jumping && this.#airborneTime > 0.1) this.sliding = false;
+      // Steilwand in Reichweite: hangab schieben, nicht kleben. Gemessen
+      // vorher: Sprung in 70° klebte die Figur in 4 s 33 m den Hang hoch,
+      // weil Y auf die Fläche gesetzt wurde statt XZ heraus.
+      if (!walkable && gap < 0.08 && gap > -WALKER.stepHeight) {
+        this.velocity.x += this.#normal.x * 8 * dt;
+        this.velocity.z += this.#normal.z * 8 * dt;
+      }
     }
 
     this.#refreshSlope();
@@ -383,6 +396,93 @@ export class Walker {
     while (dYaw > Math.PI) dYaw -= Math.PI * 2;
     while (dYaw < -Math.PI) dYaw += Math.PI * 2;
     this.yaw += dYaw * (1 - Math.exp(-rate * dt));
+  }
+
+  /**
+   * Steile oder zu hohe Fläche: in XZ heraus, Y bleibt der Sprungphysik.
+   *
+   * Dieselbe Trennung wie `hullTerrain` fürs Auto — befahrbar trägt senkrecht,
+   * steil weist waagerecht ab. `Math.max(y, floor)` auf ungehbarem Grund hat
+   * die Figur den Berg hochgeklebt: Sprung in 70° in 4 s auf 33,6 m, Gehen
+   * in 80° in 3 s auf 48,6 m. `tools/bench/walker.mts` hält beides.
+   */
+  #confineTerrain(
+    x: number,
+    y: number,
+    z: number,
+    fromX: number,
+    fromZ: number,
+    ground: Ground,
+  ): { x: number; z: number } {
+    for (let pass = 0; pass < 3; pass++) {
+      ground.normal(x, z, this.#normal);
+      const floor = ground.height(x, z);
+      const walkable = this.#normal.y >= WALKER.minNy;
+      const rise = floor - y;
+      const canStep =
+        this.grounded && !this.jumping && this.#vy <= 0.15 && walkable;
+      const maxRise = canStep ? WALKER.stepHeight : 0.02;
+      const horiz = Math.hypot(this.#normal.x, this.#normal.z);
+
+      // Ungehbar: auch über der Fläche nicht hineingehen. Sonst trägt ein
+      // Sprung die Figur 0,4 m in den 70°-Hang (y ≈ Sprunghöhe = Fläche)
+      // und sie klebt dort. Die Fläche ist eine Wand, kein Boden in der Luft.
+      if (!walkable && horiz > 1e-4) {
+        const ux = this.#normal.x / horiz;
+        const uz = this.#normal.z / horiz;
+        const disp = (x - fromX) * ux + (z - fromZ) * uz;
+        if (disp < 0) {
+          x -= ux * disp;
+          z -= uz * disp;
+          const into = this.velocity.x * ux + this.velocity.z * uz;
+          if (into < 0) {
+            this.velocity.x -= ux * into;
+            this.velocity.z -= uz * into;
+          }
+          continue;
+        }
+      }
+
+      if (rise <= maxRise) break;
+
+      if (horiz < 1e-4) {
+        // Flacher Absatz. Liegt er nicht höher als der Punkt, von dem wir
+        // kommen, ist das kein Vorsprung sondern Boden, den der Hangschub
+        // gerade freigegeben hat — dort bleiben, sonst fällt die Figur an
+        // der Felskante durch die Welt (gemessen: Sprung in 70° vom Tal
+        // klebte bei z ≈ 0 und y → −60 m).
+        const fromFloor = ground.height(fromX, fromZ);
+        if (floor <= fromFloor + maxRise) break;
+        const dx = x - fromX;
+        const dz = z - fromZ;
+        const into = this.velocity.x * dx + this.velocity.z * dz;
+        if (into > 0) {
+          const len = Math.hypot(dx, dz);
+          if (len > 1e-8) {
+            const inv = 1 / len;
+            this.velocity.x -= dx * inv * (into * inv);
+            this.velocity.z -= dz * inv * (into * inv);
+          }
+        }
+        return { x: fromX, z: fromZ };
+      }
+
+      const ux = this.#normal.x / horiz;
+      const uz = this.#normal.z / horiz;
+      // Eindringtiefe längs der Fläche, MTV nur waagerecht — wie
+      // `hullTerrain` bei `ny < STEEP_NY`.
+      let dist = (rise * this.#normal.y) / horiz;
+      if (dist > 1.5) dist = 1.5;
+      if (dist < 1e-5) break;
+      x += ux * dist;
+      z += uz * dist;
+      const into = this.velocity.x * ux + this.velocity.z * uz;
+      if (into < 0) {
+        this.velocity.x -= ux * into;
+        this.velocity.z -= uz * into;
+      }
+    }
+    return { x, z };
   }
 
   #resolve(
