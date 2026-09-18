@@ -604,6 +604,41 @@ export class Vehicle {
   }
 
   /**
+   * Gierrate, rad/s. Positiv dreht nach links (`forward` von +Z nach +X).
+   *
+   * Öffentlich, weil der Rammstoß in `carBump` die Geschwindigkeit **am
+   * Berührpunkt** braucht (`v + ω × r`). Ohne sie wäre jeder Stoß ein
+   * translatorischer Schubs, und ein Streifkontakt würde nicht eindrehen.
+   */
+  get yawRate(): number {
+    return this.#yawRate;
+  }
+
+  /**
+   * Einen Impuls von außen — Blech gegen Blech, nicht gegen die Welt.
+   *
+   * Die Wandauflösung schreibt nur `this.#yawRate` und verliert die Drehung im
+   * nächsten Schritt, weil `ArcadeDynamics` die Gierrate besitzt. Hier gehört
+   * sie zurückgeschrieben, sonst ist ein Rammstoß eine einmalige Verschiebung
+   * ohne Nachdrehen.
+   */
+  applyImpulse(dvx: number, dvz: number, yawDelta = 0): void {
+    this.velocity.x += dvx;
+    this.velocity.z += dvz;
+    if (yawDelta !== 0) {
+      const cap = this.#spec.limits.maxYawRate;
+      this.#yawRate = clamp(this.#yawRate + yawDelta, -cap, cap);
+      this.#planar.yawRate = this.#yawRate;
+    }
+  }
+
+  /** Lagekorrektur nach einem Kontakt — der Weganteil des SAT. */
+  applyNudge(dx: number, dz: number): void {
+    this.position.x += dx;
+    this.position.z += dz;
+  }
+
+  /**
    * Aufbau-Nicken in Radiant. Positiv senkt die Nase — Vorzeichen und
    * Begründung bei `#updateAttitude`. Die Haubenkamera liest das, die
    * Physik nicht: Nicken bleibt kinematisch.
