@@ -96,7 +96,12 @@ body {
  *
  * Danach bleibt die Fläche stehen und wird **durchsichtig**: der Trailer weicht
  * der fertigen Karte, der Ladebalken einem „Play"-Knopf. Die zwei Zustände
- * hängen an `data-phase` und **nicht** an zwei Klassen. */
+ * hängen an `data-phase` und **nicht** an zwei Klassen.
+ *
+ * Der Wechsel ist eine Transition, kein `display: none`. Eine harte Ausblendung
+ * verschluckt das Überblenden, und ein Vollflächen-Blur plus deckender Hintergrund
+ * hat die Karte hinter dem Knopf unsichtbar gemacht — der Play-Zustand sah aus
+ * wie ein zweites Ladebild. */ 
 
 .start {
   position: fixed;
@@ -104,13 +109,19 @@ body {
   z-index: 50;
   overflow: hidden;
   color: var(--fg);
-  background: var(--bg);
-  transition: opacity 420ms ease-out;
+  background-color: var(--bg);
+  transition:
+    opacity 560ms ease-out,
+    background-color 720ms ease;
 }
 
 .start--done {
   opacity: 0;
   pointer-events: none;
+}
+
+.start[data-phase='bereit'] {
+  background-color: transparent;
 }
 
 .start__cine,
@@ -124,6 +135,7 @@ body {
   z-index: 0;
   overflow: hidden;
   background: #070b10;
+  transition: opacity 800ms ease;
 }
 
 .start__shot {
@@ -159,16 +171,24 @@ body {
     rgba(4, 8, 12, 0.22) 42%,
     rgba(4, 8, 12, 0.72) 100%
   );
-  transition: background 480ms ease;
+  transition: background 720ms ease;
 }
 
 .start[data-phase='bereit'] .start__veil {
-  background: rgba(4, 6, 9, 0.5);
-  backdrop-filter: blur(3px);
+  /* Vignette, kein Vollflächen-Blur: die Welt ist das Titelbild. */
+  background: linear-gradient(
+    180deg,
+    rgba(4, 8, 12, 0.58) 0%,
+    rgba(4, 8, 12, 0.12) 26%,
+    rgba(4, 8, 12, 0) 48%,
+    rgba(4, 8, 12, 0.22) 72%,
+    rgba(4, 8, 12, 0.78) 100%
+  );
 }
 
 .start[data-phase='bereit'] .start__cine {
-  opacity: 0.2;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .start__grain {
@@ -177,6 +197,10 @@ body {
   opacity: 0.06;
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.55'/></svg>");
+}
+
+.start[data-phase='bereit'] .start__grain {
+  opacity: 0.04;
 }
 
 .start__island {
@@ -192,13 +216,13 @@ body {
   box-shadow:
     0 0 0 1px rgba(180, 220, 240, 0.18),
     0 28px 80px rgba(0, 0, 0, 0.5);
-  transition: opacity 420ms ease, transform 420ms ease;
+  transition: opacity 640ms ease, transform 640ms ease;
 }
 
 .start[data-phase='bereit'] .start__island {
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, -50%) scale(0.96);
+  transform: translate(-50%, -48%) scale(1.04);
 }
 
 .start__brand {
@@ -228,6 +252,12 @@ body {
   text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
 }
 
+.start[data-phase='bereit'] .start__title {
+  text-shadow:
+    0 2px 28px rgba(0, 0, 0, 0.7),
+    0 0 36px rgba(232, 186, 127, 0.18);
+}
+
 .start__zones {
   position: absolute;
   z-index: 4;
@@ -240,6 +270,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  transition: opacity 420ms ease, transform 420ms ease;
 }
 
 .start__zones li {
@@ -262,6 +293,7 @@ body {
   left: max(22px, env(safe-area-inset-left));
   right: max(22px, env(safe-area-inset-right));
   bottom: max(18px, env(safe-area-inset-bottom));
+  transition: opacity 480ms ease, transform 480ms ease;
 }
 
 .start__percent {
@@ -320,67 +352,169 @@ body {
   color: var(--status-over);
 }
 
-.start[data-phase='laden'] .start__ready,
-.start[data-phase='bereit'] .start__progress,
+.start[data-phase='bereit'] .start__progress {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+}
+
 .start[data-phase='bereit'] .start__zones {
-  display: none;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) translateX(-8px);
 }
 
 .start__ready {
   position: absolute;
   z-index: 5;
   left: 50%;
-  top: 52%;
-  transform: translate(-50%, -50%);
-  width: min(440px, calc(100% - 32px));
+  bottom: max(40px, calc(env(safe-area-inset-bottom) + 28px));
+  width: min(520px, calc(100% - 32px));
   text-align: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate(-50%, 18px);
+  transition:
+    opacity 700ms ease 240ms,
+    transform 700ms ease 240ms,
+    visibility 0s linear 940ms;
+}
+
+.start[data-phase='bereit'] .start__ready {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+  transition:
+    opacity 700ms ease 240ms,
+    transform 700ms ease 240ms,
+    visibility 0s linear 0s;
+}
+
+.start__readyLine {
+  width: 56px;
+  height: 2px;
+  margin: 0 auto 16px;
+  background: linear-gradient(90deg, #7ee7ff, #ffd257);
+  box-shadow: 0 0 12px rgba(126, 231, 255, 0.45);
+  transform: scaleX(0);
+  transform-origin: center;
+}
+
+.start[data-phase='bereit'] .start__readyLine {
+  transform: scaleX(1);
+  transition: transform 640ms cubic-bezier(0.2, 0.8, 0.2, 1) 180ms;
+}
+
+.start__kicker {
+  margin: 0 0 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(216, 230, 236, 0.72);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6);
 }
 
 .start__button {
-  min-width: 220px;
+  position: relative;
+  isolation: isolate;
+  min-width: 240px;
   min-height: 56px;
-  padding: 0 36px;
-  border: 1px solid var(--amber);
-  border-radius: 3px;
-  background: var(--amber);
-  color: var(--ink);
-  font-family: var(--display);
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  padding: 0 44px;
+  border: 1px solid color-mix(in srgb, var(--amber) 82%, white);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ink) 62%, transparent);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 0 28px color-mix(in srgb, var(--amber) 40%, transparent);
-  animation: start-play 1.8s ease-in-out infinite;
+  box-shadow:
+    0 0 28px color-mix(in srgb, var(--amber) 22%, transparent),
+    0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.start__buttonRing {
+  position: absolute;
+  inset: -10px;
+  border: 1px solid color-mix(in srgb, var(--amber) 55%, transparent);
+  border-radius: 2px;
+  pointer-events: none;
+  animation: start-ring 2.6s ease-out infinite;
+}
+
+@keyframes start-ring {
+  0% {
+    transform: scale(0.96);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.16);
+    opacity: 0;
+  }
 }
 
 .start__button:hover {
-  background: var(--amber-hot);
-  border-color: var(--amber-hot);
+  background: var(--amber);
+  border-color: var(--amber);
+  color: var(--ink);
 }
 
+/* `ready()` fokussiert den Knopf (Enter startet). :focus-visible darf ihn
+ * deshalb nicht füllen — sonst ist der Titelzustand der beige Kasten, den
+ * dieser Bildschirm gerade abgelöst hat. */
 .start__button:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 3px;
+  outline: 2px solid var(--amber);
+  outline-offset: 4px;
 }
 
-@keyframes start-play {
-  0%,
-  100% {
-    box-shadow: 0 0 22px rgba(255, 210, 87, 0.28);
-  }
-  50% {
-    box-shadow: 0 0 40px rgba(255, 210, 87, 0.55);
-  }
+.start__cues {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 22px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(216, 230, 236, 0.7);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.65);
+}
+
+.start__cues li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.start kbd {
+  display: inline-block;
+  padding: 2px 7px 1px;
+  border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--ink) 55%, transparent);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--amber);
 }
 
 .start__hint {
-  margin: 16px 0 0;
+  margin: 14px 0 0;
   font-family: var(--mono);
   font-size: 11px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(216, 230, 236, 0.72);
+  color: rgba(216, 230, 236, 0.55);
 }
 
 .start__keys {
@@ -389,6 +523,10 @@ body {
   justify-content: center;
   gap: 8px 32px;
   margin-top: 18px;
+}
+
+.start__keys:empty {
+  display: none;
 }
 
 @media (max-width: 720px) {
@@ -407,17 +545,41 @@ body {
     gap: 8px 14px;
   }
 
+  .start[data-phase='bereit'] .start__zones {
+    transform: translateY(8px);
+  }
+
   .start__percentNum {
     font-size: 56px;
+  }
+
+  .start__ready {
+    bottom: max(24px, env(safe-area-inset-bottom));
+    width: min(520px, calc(100% - 24px));
+  }
+
+  .start__button {
+    min-width: min(240px, 100%);
+    width: min(320px, 100%);
+  }
+
+  .start__keys {
+    max-height: 28vh;
+    overflow: auto;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .start__shot,
   .start__button,
+  .start__buttonRing,
   .start__island,
   .start__veil,
   .start__cine,
+  .start__ready,
+  .start__readyLine,
+  .start__progress,
+  .start__zones,
   .hud__money.is-pulse {
     animation: none;
     transition: none;
