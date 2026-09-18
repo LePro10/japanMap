@@ -501,7 +501,6 @@ export class PlayerUi {
     for (const button of menu.querySelectorAll<HTMLButtonElement>("[data-tab]"))
       button.onclick = () => {
         const next = button.dataset.tab as Tab;
-        if (next === "map") this.#mapFocusPlayer = true;
         this.#tab = next;
         this.#render();
       };

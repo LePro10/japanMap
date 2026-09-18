@@ -12,13 +12,13 @@
 }
 
 .navmap-region-wash {
-  fill-opacity: 0.22;
+  fill-opacity: 0.1;
   stroke: none;
   pointer-events: none;
 }
 
 .navmap-region-wash--soft {
-  fill-opacity: 0.12;
+  fill-opacity: 0.06;
 }
 
 .navmap-region-label {
@@ -43,7 +43,7 @@
 
 .navmap-region-label__kanji {
   fill: currentColor;
-  stroke-width: 5px;
+  stroke-width: 4px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.18em;
@@ -51,20 +51,39 @@
 
 .navmap-region-label__name {
   fill: #f6efe4;
-  stroke-width: 6px;
-  font-size: 13px;
+  stroke-width: 4px;
+  font-size: 15px;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
 }
 
 .navmap-region-label.is-selected .navmap-region-label__name {
   fill: #ffe7b0;
 }
 
+/*
+ * Far zoom keeps region names and hides pins. The two used to share a
+ * world point (Bellwood = Cedar High, Neon Basin = Yoru Ward), so the
+ * teardrop punched BEL…OD / SAKURA…MMONS out of the label.
+ * Local Neon interiors stay off until near — they sit inside 1 km of the Ward.
+ */
+.navmap--regionNames .navmap-poi,
+.navmap[data-zoom='far'] .navmap-poi,
+.navmap[data-zoom='mid'] .navmap-poi--local {
+  display: none;
+}
+
 .navmap--regionNames .navmap-poi__label,
 .navmap--regionNames .navmap-poi__kanji,
 .navmap--regionNames .navmap-poi__detail,
 .navmap[data-zoom='far'] .navmap-poi__label {
+  display: none;
+}
+
+.navmap[data-zoom='far'] .navmap-zone,
+.navmap[data-zoom='far'] .navmap-ramp,
+.navmap--regionNames .navmap-zone,
+.navmap--regionNames .navmap-ramp {
   display: none;
 }
 

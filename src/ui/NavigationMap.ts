@@ -7,7 +7,6 @@ import {
   type MapLandmark,
 } from './navigationMapData';
 import {
-  MAP_COVER_SCALE,
   MAP_MAX_SCALE,
   clampMapView,
   centerMapView,
@@ -333,7 +332,10 @@ export class NavigationMap {
     if (already && !options.focusPlayer) return;
     const paint = (): void => {
       if (!this.#docked) return;
-      if (options.focusPlayer || !already) this.focusPlayer();
+      // M / minmap want the car. The Map tab is an atlas: the whole island,
+      // not a crop around the last pose (that left a dark gutter on ultrawide).
+      if (options.focusPlayer) this.focusPlayer();
+      else if (!already) this.fitIsland();
       else {
         this.#applyView();
         this.#drawMarks();
@@ -393,6 +395,7 @@ export class NavigationMap {
     );
     this.#applyView();
     this.#drawMarks();
+    this.#syncPlaceDistances();
   }
 
   #fillRegions(): void {
@@ -500,13 +503,11 @@ export class NavigationMap {
   #drawTerrain(): void {
     if (!this.open || this.#interacting) return;
     const stage = this.#stageSize();
-    if (this.#viewState.scale <= MAP_COVER_SCALE * 1.2) {
-      this.#terrain.hidden = true;
-      this.#base.style.opacity = '1';
-      return;
-    }
+    // Contain-zoom leaves letterbox around the world square. Painting the
+    // aerial into the stage (ocean fill outside 0..1) makes those bars sea
+    // instead of empty UI chrome — the 1024 base stays as the pan preview.
     this.#terrain.hidden = false;
-    this.#base.style.opacity = '0';
+    this.#base.style.opacity = this.#backdrop.ready ? '0' : '1';
     this.#syncTerrainSize();
     const plane = Math.max(stage.width, stage.height);
     const left = (stage.width - plane) * 0.5;
@@ -878,7 +879,7 @@ export class NavigationMap {
     this.#regionLayer.setViewScale(scale);
     this.#syncZoomButtons();
     this.#drawMarks();
-    if (hq) this.#scheduleHq();
+    if (hq) this.#drawTerrain();
   }
 
   #syncZoomButtons(): void {

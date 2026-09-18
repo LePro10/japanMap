@@ -69,8 +69,8 @@
 
 .navmap--docked .navmap__head {
   position: absolute;
-  left: 16px;
-  top: 12px;
+  left: 20px;
+  top: 16px;
   z-index: 8;
   padding: 0;
   pointer-events: none;
@@ -81,41 +81,52 @@
 }
 
 .navmap--docked .navmap__zoom {
-  left: 12px;
-  bottom: 14px;
+  left: 16px;
+  bottom: 16px;
   z-index: 11;
 }
 
+.navmap--docked .navmap__compass {
+  top: 72px;
+  left: 20px;
+}
+
+/*
+ * Docked used to paint the Places column on top of a full-bleed stage.
+ * Contain-zoom then centered the world square in that full width — the
+ * sidebar ate the right gutter and the left looked like a missing panel.
+ * Grid gives the plane a real content rect, same contract as the overlay.
+ */
 .navmap--docked .navmap__body {
-  display: block;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 248px;
+  gap: 10px;
   position: absolute;
   inset: 0;
+  padding: 8px;
   min-height: 0;
 }
 
 .navmap--docked .navmap__stage {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  inset: auto;
   z-index: 1;
-  border: 0;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid color-mix(in srgb, var(--amber) 18%, transparent);
   border-radius: 8px;
 }
 
 .navmap--docked .navmap__side {
-  position: absolute;
-  right: 12px;
-  top: 12px;
-  bottom: 12px;
+  position: relative;
+  inset: auto;
   z-index: 10;
-  width: 236px;
+  width: auto;
   padding: 12px;
   border-radius: 12px;
   overflow: hidden;
   background: rgba(6, 20, 26, 0.94);
   backdrop-filter: blur(14px);
-}
-
-.navmap--docked .navmap__side {
   display: flex;
   flex-direction: column;
 }
@@ -223,7 +234,8 @@
   container-type: size;
   border: 1px solid color-mix(in srgb, var(--amber) 22%, transparent);
   border-radius: 12px;
-  background: #12343c;
+  background:
+    radial-gradient(ellipse at 52% 40%, #1a5558 0%, #0d3a48 52%, #071c22 100%);
   touch-action: none;
 }
 
@@ -633,12 +645,14 @@
 }
 
 @media (max-width: 860px) {
-  .navmap__body {
+  .navmap__body,
+  .navmap--docked .navmap__body {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(0, 1fr) auto;
   }
 
-  .navmap__side {
+  .navmap__side,
+  .navmap--docked .navmap__side {
     max-height: 168px;
   }
 
