@@ -77,6 +77,48 @@ export interface RivalSkill {
   readonly lane: number;
   /** Wie stark das Gummiband greift, 0…1. */
   readonly rubber: number;
+  /**
+   * Wie sehr dieser Fahrer um Position kämpft, 0…1.
+   *
+   * Steuert Überholen und den letzten Renndrittel — nicht das Grundtempo.
+   * Tempo bleibt an `pace`; wer beides in eine Zahl packt, kann hinterher
+   * nicht mehr sagen, *warum* ein Gegner schnell war.
+   */
+  readonly aggression?: number;
+  /** Linie verteidigen, wenn der Spieler hinten drauf ist, 0…1. */
+  readonly block?: number;
+  /**
+   * Spätbremsen, 0…1 — kürzt die Tempo-Vorausschau.
+   *
+   * 0 liest das Solltempo 1,6 s voraus (der Tabellenwert). 1 liest 0,9 s
+   * voraus: der Wagen trägt mehr Tempo in die Kurve und riskiert den Ausgang.
+   */
+  readonly lateBrake?: number;
+  /** Wie bereitwillig Nitro, 0…1. */
+  readonly boostHunger?: number;
+  /**
+   * Sollabstand zum Spieler, m. Positiv = dieser Fahrer will vorn liegen.
+   *
+   * Das Gummiband zieht auf den Slot, nicht auf null — Pure, nicht NFS.
+   * Ein Slot von +20 m heißt „ich will 20 m führen", nicht „ich warte".
+   */
+  readonly slot?: number;
+}
+
+/**
+ * Ein Wagen in der Nachbarschaft — für Überholen, Decken und Windschatten.
+ *
+ * Koordinaten im Fahrzeugsystem des Fahrers: `along` entlang der Nase,
+ * `across` nach rechts. `progress` ist die Differenz auf der Ideallinie
+ * (positiv = der andere liegt vorn). Beide werden gebraucht: die Linie
+ * sagt, wer führt, die Nase sagt, wohin man ausweichen muss.
+ */
+export interface NearbyRacer {
+  readonly progress: number;
+  readonly along: number;
+  readonly across: number;
+  readonly speed: number;
+  readonly isPlayer: boolean;
 }
 
 /** Vorausschau für den **Winkel**: Grundweite plus Anteil des Tempos, m. */
@@ -128,6 +170,22 @@ const FEEDFORWARD_LEAD = 0.5;
 const RECOVER_OFFSET = 7;
 /** Mit welchem Tempo er dann zurückfährt, m/s. */
 const RECOVER_SPEED = 14;
+/** Wie weit die Fahrspur maximal von der Mittellinie abweichen darf, m. */
+const LANE_LIMIT = 2.6;
+/** Abstand, in dem ein Wagen vorn als Hindernis zählt, m. */
+const PASS_NEAR = 18;
+/** Abstand, in dem ein Wagen hinten als Angreifer zählt, m. */
+const BLOCK_NEAR = 16;
+/** Wie lange ein Überholversuch gehalten wird, s — sonst wirkt er zaghaft. */
+const PASS_HOLD = 0.95;
+/** Windschatten: Längsfenster, m. */
+const DRAFT_ALONG = 11;
+/** Windschatten: Querfenster, m. */
+const DRAFT_ACROSS = 1.3;
+/** Tempozuschlag im Windschatten. */
+const DRAFT_GAIN = 0.055;
+/** Letztes Renndrittel: zusätzlicher Pace, skaliert mit `aggression`. */
+const LATE_PACE = 0.045;
 
 export class RivalDriver {
   readonly input: DriveInput = {
@@ -156,14 +214,26 @@ export class RivalDriver {
   /** Wie lange der Wagen schon fast steht, s. Löst das Rangieren aus. */
   #stuck = 0;
   #reverse = 0;
+  /** Geglättete Fahrspur, m — springt nicht, wenn der Überholentschluss fällt. */
+  #lane = 0;
+  /** Restliche Haltedauer eines Überholversuchs, s. */
+  #commit = 0;
+  /** Vorzeichen der Überholseite, oder 0. */
+  #passSide = 0;
   /** Nur für den Prüfstand: die beiden Regelabweichungen des letzten Schritts. */
   cross = 0;
   headingError = 0;
+  /** Nur für den Prüfstand: welche Taktik der letzte Schritt gewählt hat. */
+  tactic: 'race' | 'overtake' | 'defend' | 'recover' = 'race';
 
-  constructor(
-    private readonly line: RaceLine,
-    private readonly skill: RivalSkill,
-  ) {}
+  readonly #line: RaceLine;
+  readonly #skill: RivalSkill;
+
+  constructor(line: RaceLine, skill: RivalSkill) {
+    this.#line = line;
+    this.#skill = skill;
+    this.#lane = skill.lane;
+  }
 
   get arc(): number {
     return this.#arc;
@@ -171,6 +241,15 @@ export class RivalDriver {
 
   get distance(): number {
     return this.#distance;
+  }
+
+  /** Sollabstand zum Spieler, m — der Slot, auf den das Gummiband zieht. */
+  get skillSlot(): number {
+    return this.#skill.slot ?? 0;
+  }
+
+  get skillRubber(): number {
+    return this.#skill.rubber;
   }
 
   /** Auf eine Bogenlänge setzen — beim Aufstellen und nach einem Respawn. */
@@ -187,6 +266,10 @@ export class RivalDriver {
     this.#distance = distance;
     this.#stuck = 0;
     this.#reverse = 0;
+    this.#lane = this.#skill.lane;
+    this.#commit = 0;
+    this.#passSide = 0;
+    this.tactic = 'race';
   }
 
   /**
@@ -201,8 +284,10 @@ export class RivalDriver {
     yaw: number,
     speed: number,
     catchUp: number,
+    traffic: readonly NearbyRacer[] = EMPTY_TRAFFIC,
+    raceFrac = 0.5,
   ): DriveInput {
-    const line = this.line;
+    const line = this.#line;
     const found = line.nearestArc(position.x, position.z, this.#arc);
     this.#distance += line.delta(this.#arc, found);
     this.#arc = found;
@@ -244,12 +329,14 @@ export class RivalDriver {
     const px = line.tangent[pi * 2]!;
     const pz = line.tangent[pi * 2 + 1]!;
 
+    this.#pickLane(dt, speed, traffic, raceFrac);
+
     // Querabstand, **vorzeichenbehaftet**. Rechts der Fahrtrichtung ist
     // `(−tz, tx)` — die Konvention aus `Vehicle.#updateBasis`
     // (`right = forward × up`). Positiv heißt: der Wagen steht rechts der Linie.
     line.pointAt(this.#arc, TARGET);
-    const nearX = TARGET.x - az * this.skill.lane;
-    const nearZ = TARGET.z + ax * this.skill.lane;
+    const nearX = TARGET.x - az * this.#lane;
+    const nearZ = TARGET.z + ax * this.#lane;
     const cross = (position.x - nearX) * -az + (position.z - nearZ) * ax;
 
     // ── Zurück auf die Straße — die Regel, die den ersten Regler ersetzt hat ──
@@ -269,10 +356,11 @@ export class RivalDriver {
     //
     // Der Querterm wird dabei ausgeblendet, sonst zählte der Abstand zweimal.
     const strayed = clamp01((Math.abs(cross) - RECOVER_OFFSET) / RECOVER_OFFSET);
+    if (strayed > 0.4) this.tactic = 'recover';
 
     line.pointAt(this.#arc + preview, TARGET);
-    const goalX = TARGET.x - pz * this.skill.lane;
-    const goalZ = TARGET.z + px * this.skill.lane;
+    const goalX = TARGET.x - pz * this.#lane;
+    const goalZ = TARGET.z + px * this.#lane;
     const bearing = Math.atan2(goalX - position.x, goalZ - position.z);
     const tangentHeading = Math.atan2(px, pz);
     const desired = tangentHeading + wrapAngle(bearing - tangentHeading) * strayed;
@@ -312,10 +400,12 @@ export class RivalDriver {
 
     this.cross = cross;
     this.headingError = headingError;
+    const avoid = this.#avoidSteer(traffic);
     this.input.steer = clamp(
       feedforward * (1 - strayed) -
         headingError * HEADING_GAIN -
-        crossTerm * CROSS_WEIGHT * (1 - strayed),
+        crossTerm * CROSS_WEIGHT * (1 - strayed) +
+        avoid,
       -1,
       1,
     );
@@ -326,11 +416,17 @@ export class RivalDriver {
     // Tempo, das man haben *dürfte*, und wer sich danach richtet, bremst in der
     // Kurve statt davor. `SPEED_PREVIEW` Sekunden voraus ist der Punkt, an dem
     // die Bremsung beginnen muss.
-    const speedPreview = Math.max(8, speed * SPEED_PREVIEW);
+    const late = this.#skill.lateBrake ?? 0;
+    const speedPreview = Math.max(8, speed * SPEED_PREVIEW * (1 - late * 0.45));
+    const aggression = this.#skill.aggression ?? 0.7;
+    const finishPush = raceFrac > 0.72 ? 1 + LATE_PACE * aggression : 1;
+    const draft = this.#draftBonus(speed, traffic);
     const target =
       Math.min(line.speedAt(this.#arc + speedPreview), line.speedAt(this.#arc)) *
-      this.skill.pace *
-      (1 + (catchUp - 1) * this.skill.rubber);
+      this.#skill.pace *
+      finishPush *
+      (1 + draft) *
+      (1 + (catchUp - 1) * this.#skill.rubber);
 
     // **Wer neben der Straße ist, fährt langsam zurück.** Ohne diese Zeile
     // versucht ein abgekommener Gegner, das Kurventempo der *Straße* im Gelände
@@ -363,22 +459,134 @@ export class RivalDriver {
       this.input.brake = 0;
     }
 
-    // **Nitro nur, wenn der Gegner hinterherfährt.** Der erste Entwurf ließ ihn
-    // auf jeder Geraden zünden; gemessen kam der Wagen damit auf 167 km/h, also
-    // über den Deckel der Ideallinie (158 km/h) — und flog an der nächsten Kuppe
-    // ab. Ein Gegner, der schneller ist, als seine eigene Linie erlaubt, fährt
-    // gegen seinen eigenen Regler.
-    //
-    // Als Aufholhilfe bleibt er richtig: dort ist er sichtbar („der zieht jetzt
-    // weg") und rechnerisch gedeckt, weil das Solltempo ohnehin unter der
-    // Linie liegt.
-    this.input.boost = catchUp > 1.05 && this.input.throttle > 0.9 && speed > 25;
+    // **Nitro nur im Angriff, und nur auf der Geraden.** Der erste Entwurf ließ
+    // ihn auf jeder Geraden zünden; gemessen kam der Wagen damit auf 167 km/h,
+    // also über den Deckel der Ideallinie — und flog an der nächsten Kuppe ab.
+    // Als Aufholhilfe, Überholhilfe und Schlussspurt bleibt er richtig: dort
+    // ist er sichtbar und die Linie deckelt das Solltempo.
+    const kappaNow = Math.abs(line.signedCurvatureAt(this.#arc + preview * 0.3));
+    const hunger = this.#skill.boostHunger ?? 0.6;
+    const attacking = catchUp > 1.03 || this.tactic === 'overtake' || raceFrac > 0.72;
+    this.input.boost =
+      attacking &&
+      hunger > 0.2 &&
+      this.input.throttle > 0.85 &&
+      speed > 18 &&
+      kappaNow < 0.012 &&
+      strayed < 0.2;
     this.input.handbrake = false;
     return this.input;
+  }
+
+  /**
+   * Fahrspur wählen: Rennlinie, Überholen oder Decken.
+   *
+   * Die Taktik sitzt **über** dem Stanley-Regler, nicht in seinen Beiwerten.
+   * Wer Überholen in den Querterm mischt, bekommt denselben Fehler wie der
+   * erste Pure-Pursuit-Entwurf: der Wagen webt, statt eine Seite zu halten.
+   *
+   * Ein Entschluss wird 0,95 s gehalten — sonst bricht jeder Ansatz ab, sobald
+   * das Fenster um einen Meter schrumpft, und das sieht nach Zaghaftigkeit aus.
+   */
+  #pickLane(dt: number, speed: number, traffic: readonly NearbyRacer[], raceFrac: number): void {
+    const aggression = this.#skill.aggression ?? 0.7;
+    const blockSkill = this.#skill.block ?? 0.4;
+    const preferred = this.#skill.lane;
+    let desired = preferred;
+    this.tactic = 'race';
+
+    if (this.#commit > 0) {
+      this.#commit -= dt;
+      desired = clamp(preferred + this.#passSide * 2.2, -LANE_LIMIT, LANE_LIMIT);
+      this.tactic = this.#passSide === 0 ? 'race' : 'overtake';
+    } else {
+      this.#passSide = 0;
+      const ahead = this.#blockerAhead(traffic);
+      if (ahead && aggression > 0.25 && speed > ahead.speed - 1.5) {
+        const side = ahead.across >= 0 ? -1 : 1;
+        this.#passSide = side;
+        this.#commit = PASS_HOLD;
+        desired = clamp(preferred + side * 2.2, -LANE_LIMIT, LANE_LIMIT);
+        this.tactic = 'overtake';
+      } else {
+        const hunter = this.#hunterBehind(traffic);
+        const kappa = Math.abs(this.#line.signedCurvatureAt(this.#arc + 40));
+        const willBlock =
+          hunter &&
+          blockSkill > 0.2 &&
+          kappa > 0.012 &&
+          hunter.speed > speed - 1 &&
+          (raceFrac > 0.55 || blockSkill > 0.7);
+        if (willBlock && hunter) {
+          const cover = hunter.across > 0 ? 1 : -1;
+          desired = clamp(preferred + cover * (1.2 + blockSkill), -LANE_LIMIT, LANE_LIMIT);
+          this.tactic = 'defend';
+        }
+      }
+    }
+
+    const blend = 1 - Math.exp(-dt * 4.5);
+    this.#lane += (desired - this.#lane) * blend;
+    this.#lane = clamp(this.#lane, -LANE_LIMIT, LANE_LIMIT);
+  }
+
+  #blockerAhead(traffic: readonly NearbyRacer[]): NearbyRacer | null {
+    let best: NearbyRacer | null = null;
+    for (const other of traffic) {
+      if (other.along < 3.5 || other.along > PASS_NEAR) continue;
+      if (Math.abs(other.across) > 2.8) continue;
+      if (!best || other.along < best.along) best = other;
+    }
+    return best;
+  }
+
+  #hunterBehind(traffic: readonly NearbyRacer[]): NearbyRacer | null {
+    for (const other of traffic) {
+      if (!other.isPlayer) continue;
+      if (other.along > -3 || other.along < -BLOCK_NEAR) continue;
+      return other;
+    }
+    return null;
+  }
+
+  /**
+   * Abstoßung gegen einen Wagen, der schon in der Karosserie steckt.
+   *
+   * Super Mario Kart gibt beim Überholen eine kleine Abstoßkraft, damit die
+   * KI nicht durch den Spieler fährt. Hier ist sie die *zweite* Schicht: der
+   * Impuls in `carBump` trennt die Bleche, dieser Term hält die Lenkung davon
+   * ab, sofort wieder hineinzustechen.
+   */
+  #avoidSteer(traffic: readonly NearbyRacer[]): number {
+    let steer = 0;
+    for (const other of traffic) {
+      if (other.along < -2.5 || other.along > 8) continue;
+      const across = other.across;
+      if (Math.abs(across) > 3.2 || Math.abs(across) < 0.15) continue;
+      const near = 1 - Math.abs(across) / 3.2;
+      const alongFade = other.along < 0 ? 0.45 : 1;
+      // Positiv across = der andere ist rechts → nach links (negative Lenkung).
+      steer += -Math.sign(across) * near * alongFade * 0.55;
+    }
+    return clamp(steer, -0.45, 0.45);
+  }
+
+  #draftBonus(speed: number, traffic: readonly NearbyRacer[]): number {
+    if (speed < 12) return 0;
+    let best = 0;
+    for (const other of traffic) {
+      if (other.along < 3.5 || other.along > DRAFT_ALONG) continue;
+      if (Math.abs(other.across) > DRAFT_ACROSS) continue;
+      const alongT = 1 - (other.along - 3.5) / (DRAFT_ALONG - 3.5);
+      const sideT = 1 - Math.abs(other.across) / DRAFT_ACROSS;
+      best = Math.max(best, DRAFT_GAIN * alongT * sideT);
+    }
+    return best;
   }
 }
 
 const TARGET = { x: 0, y: 0, z: 0 };
+const EMPTY_TRAFFIC: readonly NearbyRacer[] = [];
 
 function clamp(value: number, min: number, max: number): number {
   return value < min ? min : value > max ? max : value;

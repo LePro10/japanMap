@@ -20,8 +20,10 @@ import type { CollisionWorld } from './CollisionWorld';
 import { RoadGround } from './RoadGround';
 import { Vehicle } from './Vehicle';
 import type { WaterField } from './WaterField';
+import { bumpPair } from './ai/carBump';
+import { catchUpFactor } from './ai/catchUp';
 import { RaceLine } from './ai/RaceLine';
-import { RivalDriver, type RivalSkill } from './ai/RivalDriver';
+import { RivalDriver, type NearbyRacer, type RivalSkill } from './ai/RivalDriver';
 
 /**
  * Das Gegnerfeld — P23.
@@ -46,20 +48,14 @@ import { RivalDriver, type RivalSkill } from './ai/RivalDriver';
  * Geteilt werden dagegen Terrain, Wasserfeld und Kollisionswelt: sie sind
  * **Daten**, kein Zustand.
  *
- * ## Was die Gegner nicht tun
+ * ## Blech gegen Blech
  *
- * Sie stehen **nicht** in der Kollisionswelt. Ein Spieler kann sie also
- * durchfahren, und sie sich gegenseitig. Das ist eine Entscheidung mit
- * Begründung: `CollisionWorld` ist ein statisches Raster, das einmal je
- * Weltänderung aufgebaut wird (`beginDynamic` nimmt nur die Baumstämme im
- * 12-m-Umkreis auf). Vier bewegte Rechtecke je Schritt einzutragen hieße, die
- * Abfragestruktur zu einer dynamischen zu machen — und damit die
- * Kollisionsauflösung anzufassen, die P19 bis P21 mühsam stabil bekommen haben.
- *
- * Der Preis ist ehrlich: **man fährt durch die Gegner hindurch.** Auf einem
- * Portal ist das der übliche Kompromiss (Rammschaden verlangt Netzcode-Qualität
- * an Kollisionsauflösung, sonst schleudern beide Autos in die Landschaft), und
- * er kostet weniger als ein Rennen, in dem der Spieler an Gegner klebt.
+ * Sie stehen **weiter nicht** in der Kollisionswelt. `CollisionWorld` bleibt
+ * ein statisches Raster plus Bäume im 12-m-Umkreis des Spielers; vier bewegte
+ * Rechtecke dort einzutragen würde die Auflösung anfassen, die P19 bis P21
+ * stabil bekommen haben. Stattdessen löst `carBump` nach jedem Schritt die
+ * Paare `{Spieler} ∪ Gegner` — SAT, Impuls, Deckel. Der Spieler kann sie
+ * wegschieben, sie sich gegenseitig, und niemand fliegt in die Landschaft.
  */
 
 /** Wie viele Gegner höchstens gleichzeitig fahren. */
@@ -68,11 +64,12 @@ export const MAX_RIVALS = 3;
 /**
  * Obergrenze des Zieltempos einer Ideallinie, m/s.
  *
- * 36 m/s ≙ 130 km/h. Begründung bei `buildLine`; die Kurzfassung: über diesem
+ * 40 m/s ≙ 144 km/h. Begründung bei `buildLine`; die Kurzfassung: über diesem
  * Tempo entscheidet auf dieser Karte nicht mehr die Kurve, sondern die
- * Bodenwelle.
+ * Bodenwelle. Die Kuppengrenze in `RaceLine` bleibt die härtere Schranke —
+ * dieser Deckel ist nur die zweite Sicherung gegen den Geraden-Sprint.
  */
-const LINE_SPEED_CAP = 36;
+const LINE_SPEED_CAP = 40;
 
 /**
  * So lange darf ein Gegner ohne Fortschritt bleiben, bevor er zurückgesetzt
@@ -102,11 +99,21 @@ const RIVAL_PAINT: readonly { paint: number; dark: number }[] = [
   { paint: 0xe0b400, dark: 0x2b2410 },
 ];
 
-/** Können, Fahrspur und Gummiband je Startplatz. */
+/**
+ * Können je Startplatz — AOKI, KUROSE, TAKAMI.
+ *
+ * Die drei lesen sich in zehn Sekunden anders:
+ * - AOKI fährt innen, deckt, will führen (`slot` +18 m).
+ * - KUROSE bremst spät, außen, greift an.
+ * - TAKAMI fährt mittig, kommt zurück, wenn er abhängt, und will knapp vorn liegen.
+ *
+ * `pace` sitzt nahe 1, weil die Linie selbst schon 0,65·a_lat trägt. Ein
+ * zweiter Abschlag darunter hat das Feld unbeabsichtigt langsam gemacht.
+ */
 const SKILLS: readonly RivalSkill[] = [
-  { pace: 0.98, lane: -1.4, rubber: 1.0 },
-  { pace: 0.95, lane: 1.6, rubber: 0.85 },
-  { pace: 0.92, lane: -0.2, rubber: 0.7 },
+  { pace: 1.00, lane: -1.5, rubber: 0.55, aggression: 1.0, block: 0.88, lateBrake: 0.22, boostHunger: 0.92, slot: 18 },
+  { pace: 0.99, lane: 1.7, rubber: 0.80, aggression: 0.86, block: 0.32, lateBrake: 0.68, boostHunger: 0.78, slot: 6 },
+  { pace: 0.98, lane: -0.35, rubber: 1.0, aggression: 0.78, block: 0.55, lateBrake: 0.12, boostHunger: 0.85, slot: 4 },
 ];
 
 interface Rival {
@@ -134,6 +141,8 @@ export class RivalField {
   #material: PropMaterial | null = null;
   #scene: Scene | null = null;
   #line: RaceLine | null = null;
+  /** Kontakte im letzten Schritt — nur für den Prüfstand. */
+  bumpHits = 0;
 
   readonly #matrix = new Matrix4();
   readonly #quat = new Quaternion();
@@ -205,7 +214,10 @@ export class RivalField {
       // Beschleunigung aus der Anfahrkraft; sie ist bei hohem Tempo kleiner,
       // aber der Vorwärtslauf ist ohnehin nur die schwächere der beiden
       // Schranken.
-      driveAccel: 4.5,
+      // 5,2 statt 4,5: die Gegner sollen aus der Kurve *angreifen*, nicht nur
+      // mitrollen. Die Linie bleibt durch latAccel·0,65 und die Kuppengrenze
+      // gedeckelt — das hier ist nur der Vorwärtslauf.
+      driveAccel: 5.2,
       crestAccel: 0.5,
       /**
        * Der Deckel ist die Endgeschwindigkeit des Fahrzeugs — **und ein
@@ -310,11 +322,25 @@ export class RivalField {
    *
    * `playerProgress` ist die Gesamtstrecke des Spielers; daraus entsteht das
    * Gummiband. `collision` ist dieselbe Welt wie beim Spieler — die Gegner
-   * stoßen also an dieselben Leitplanken und Bäume.
+   * stoßen also an dieselben Leitplanken und Bäume. `player` ist das
+   * Spielerfahrzeug für Rammstoß und Taktik; ohne ihn bleiben die Gegner
+   * Geister, und das ist der Zustand, den der Countdown will.
    */
-  step(dt: number, playerProgress: number, collision: CollisionWorld, racing: boolean): void {
+  step(
+    dt: number,
+    playerProgress: number,
+    collision: CollisionWorld,
+    racing: boolean,
+    player: Vehicle | null = null,
+    totalDistance = 0,
+    elapsed = 0,
+  ): void {
     const line = this.#line;
     if (!line || !this.#group.visible) return;
+    this.bumpHits = 0;
+
+    const raceFrac =
+      totalDistance > 1 ? clamp(playerProgress / totalDistance, 0, 1) : 0.5;
 
     for (const rival of this.#rivals) {
       const car = rival.vehicle;
@@ -324,13 +350,21 @@ export class RivalField {
       }
       rival.ground.refresh(car.position.x, car.position.z, dt);
 
+      const traffic = this.#trafficAround(rival, player, playerProgress);
+      let catchUp = this.#catchUp(rival, playerProgress);
+      // Startpush: die ersten sechs Sekunden sollen die Gegner *am Spieler
+      // vorbeikommen* — sonst ist der Spieler nach der ersten Kurve allein.
+      // Pure hat genau das als Extra-Mechanismus beschrieben.
+      if (elapsed < 6) catchUp = Math.max(catchUp, 1.06);
       const input = rival.driver.drive(
-            dt,
-            car.position,
-            car.yaw,
-            car.telemetry.speed,
-            this.#catchUp(rival, playerProgress),
-          );
+        dt,
+        car.position,
+        car.yaw,
+        car.telemetry.speed,
+        catchUp,
+        traffic,
+        raceFrac,
+      );
       car.step(dt, input, rival.ground, collision);
       // **Die Brüche werden abgeholt und weggeworfen.** Ein Gegner, der eine
       // Planke umfährt, soll sie umfahren — aber die Trümmer und das
@@ -344,6 +378,8 @@ export class RivalField {
       rival.laps = Math.max(0, Math.floor(rival.progress / line.length));
       this.#watchStuck(dt, rival, line);
     }
+
+    if (racing) this.#resolveBumps(player);
   }
 
   /**
@@ -398,16 +434,94 @@ export class RivalField {
   }
 
   /**
-   * Das Gummiband — ein Faktor auf das Solltempo.
+   * Das Gummiband — ein Faktor auf das Solltempo, gezogen auf den *Slot*.
    *
    * Begründung im Kopf von `RivalDriver`: verschoben wird das **Tempo**, nie die
-   * Position. Der Deckel liegt bei ±12 %; darüber schaltet sich das Band im Bild
-   * sichtbar an und ab.
+   * Position. Game AI Pro Kap. 42: in der Totzone um den Spieler (±12 m Slot-
+   * Fehler) ist das Band aus, sonst sieht man es im Spiegel an- und abschalten.
+   *
+   * Hinter dem Slot bis +10 %, davor nur −6 %: wer führt, soll führen dürfen.
+   * Der Deckel bleibt unter dem, was als Motor sichtbar würde.
    */
   #catchUp(rival: Rival, playerProgress: number): number {
-    const behind = playerProgress - rival.progress;
-    // 80 m Rückstand → voller Zuschlag, 80 m Vorsprung → voller Abschlag.
-    return 1 + clamp(behind / 80, -1, 1) * 0.12;
+    return catchUpFactor(
+      playerProgress - rival.progress,
+      rival.driver.skillSlot,
+      rival.driver.skillRubber,
+    );
+  }
+
+  /**
+   * Nachbarn im Fahrzeugsystem — Spieler plus die anderen Gegner.
+   *
+   * Gebaut aus Weltpositionen, nicht aus der Bogenlänge: an einer Kehre liegt
+   * der Wagen 8 m voraus auf der Linie und 4 m neben der Nase, und Überholen
+   * fragt nach der Nase.
+   */
+  #trafficAround(self: Rival, player: Vehicle | null, playerProgress: number): NearbyRacer[] {
+    const out: NearbyRacer[] = [];
+    const yaw = self.vehicle.yaw;
+    const fx = Math.sin(yaw);
+    const fz = Math.cos(yaw);
+    const rx = -Math.cos(yaw);
+    const rz = Math.sin(yaw);
+    const push = (
+      x: number,
+      z: number,
+      speed: number,
+      progress: number,
+      isPlayer: boolean,
+    ): void => {
+      const dx = x - self.vehicle.position.x;
+      const dz = z - self.vehicle.position.z;
+      const along = dx * fx + dz * fz;
+      const across = dx * rx + dz * rz;
+      if (Math.hypot(along, across) > 28) return;
+      out.push({
+        progress: progress - self.progress,
+        along,
+        across,
+        speed,
+        isPlayer,
+      });
+    };
+    if (player) {
+      push(
+        player.position.x,
+        player.position.z,
+        player.telemetry.speed,
+        playerProgress,
+        true,
+      );
+    }
+    for (const other of this.#rivals) {
+      if (other === self) continue;
+      push(
+        other.vehicle.position.x,
+        other.vehicle.position.z,
+        other.vehicle.telemetry.speed,
+        other.progress,
+        false,
+      );
+    }
+    return out;
+  }
+
+  #resolveBumps(player: Vehicle | null): void {
+    const cars: Vehicle[] = [];
+    const playerIndex = player ? 0 : -1;
+    if (player) cars.push(player);
+    for (const rival of this.#rivals) cars.push(rival.vehicle);
+    for (let i = 0; i < cars.length; i++) {
+      for (let j = i + 1; j < cars.length; j++) {
+        const a = cars[i]!;
+        const b = cars[j]!;
+        let who: -1 | 0 | 1 = -1;
+        if (i === playerIndex) who = 0;
+        else if (j === playerIndex) who = 1;
+        if (bumpPair(a, b, who)) this.bumpHits++;
+      }
+    }
   }
 
   /**
@@ -417,7 +531,7 @@ export class RivalField {
    * Ein Prüfstand, der Zahlen aus einer nachgebauten Schleife nimmt statt aus der
    * echten, misst sich selbst — dieselbe Begründung wie bei `simulateStep`.
    */
-  debug(): { off: number; cross: number; hErr: number; kmh: number; arc: number; dist: number; thr: number; brk: number; steer: number; surf: string; cont: number; air: boolean }[] {
+  debug(): { off: number; cross: number; hErr: number; kmh: number; arc: number; dist: number; thr: number; brk: number; steer: number; surf: string; cont: number; air: boolean; tactic: string }[] {
     const line = this.#line;
     return this.#rivals.map((r) => {
       let off = -1;
@@ -439,6 +553,7 @@ export class RivalField {
       surf: r.vehicle.telemetry.surface,
       cont: r.vehicle.telemetry.contacts,
       air: r.vehicle.telemetry.airborne,
+      tactic: r.driver.tactic,
     };
     });
   }

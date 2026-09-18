@@ -311,7 +311,7 @@ export class RaceDirector {
 
     if (this.#state === 'countdown') {
       this.#timer -= dt;
-      this.rivals.step(dt, 0, collision, false);
+      this.rivals.step(dt, 0, collision, false, player);
       if (this.#timer <= 0) {
         this.#state = 'running';
         this.#bus?.emit('race:state', { state: 'running', event: event.id });
@@ -345,7 +345,15 @@ export class RaceDirector {
     }
 
     this.#checkPoint(player.position.x, player.position.z);
-    this.rivals.step(dt, this.#playerProgress, collision, true);
+    this.rivals.step(
+      dt,
+      this.#playerProgress,
+      collision,
+      true,
+      player,
+      this.#totalDistance,
+      this.#elapsed,
+    );
 
     // ── Ziel ──────────────────────────────────────────────────────────────
     const done = line.closed
