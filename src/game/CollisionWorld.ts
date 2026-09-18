@@ -82,6 +82,42 @@ function boomBox(
 }
 
 /**
+ * Camera boom vs a body, with near-plane clearance.
+ *
+ * Expanding the AABB by `radius` keeps the frustum out of a wall — and it also
+ * swallows the look-at when the walker stands next to a building or on a
+ * parked car. `CAMERA.near` is 0.5 m, so the corner clearance is ~0.76 m;
+ * the walker stops 0.24 m off a wall. A hit at t = 0 then snaps the camera
+ * onto the look-at, and `Object3D.lookAt` with a zero direction picks world
+ * +Z: the view jumps to a completely different heading.
+ *
+ * Solid-embedded look-at: skip that body (the player is standing in it).
+ * Clearance-shell only: clip against the unexpanded body so a boom that
+ * actually goes through the wall still shortens, and a boom that only
+ * overlaps the shell does not collapse.
+ */
+function boomClear(
+  x: number, y: number, z: number, dx: number, dy: number, dz: number,
+  minX: number, maxX: number, minY: number, maxY: number, minZ: number, maxZ: number,
+  radius: number,
+): number {
+  const eMinX = minX - radius, eMaxX = maxX + radius;
+  const eMinY = minY - radius, eMaxY = maxY + radius;
+  const eMinZ = minZ - radius, eMaxZ = maxZ + radius;
+  const inExpanded =
+    x >= eMinX && x <= eMaxX && y >= eMinY && y <= eMaxY && z >= eMinZ && z <= eMaxZ;
+  if (!inExpanded) {
+    return boomBox(x, y, z, dx, dy, dz, eMinX, eMaxX, eMinY, eMaxY, eMinZ, eMaxZ);
+  }
+  const inSolid =
+    x > minX + 1e-4 && x < maxX - 1e-4 &&
+    y > minY + 1e-4 && y < maxY - 1e-4 &&
+    z > minZ + 1e-4 && z < maxZ - 1e-4;
+  if (inSolid) return 1;
+  return boomBox(x, y, z, dx, dy, dz, minX, maxX, minY, maxY, minZ, maxZ);
+}
+
+/**
  * Ergebnis einer Abfrage.
  *
  * Ein wiederverwendetes Objekt und kein neues je Aufruf — dieselbe Regel wie bei
@@ -521,33 +557,30 @@ export class CollisionWorld {
       if (!list) continue;
       for (const id of list) {
         if (this.#alive[id] !== 1) continue;
-        const i = id * 5, bottom = this.#shapes.y0[id]! - radius, top = this.#shapes.y1[id]! + radius;
+        const i = id * 5, y0 = this.#shapes.y0[id]!, y1 = this.#shapes.y1[id]!;
         let hit: number;
         if (this.#shapes.kind[id] === KIND_BOX) {
-          hit = boomBox(x, y, z, dx, dy, dz, p[i]! - radius, p[i + 1]! + radius,
-            bottom, top, p[i + 2]! - radius, p[i + 3]! + radius);
+          hit = boomClear(x, y, z, dx, dy, dz, p[i]!, p[i + 1]!, y0, y1, p[i + 2]!, p[i + 3]!, radius);
         } else if (this.#shapes.kind[id] === KIND_CYLINDER) {
-          const r = p[i + 2]! + radius;
-          hit = boomBox(x, y, z, dx, dy, dz, p[i]! - r, p[i]! + r,
-            bottom, top, p[i + 1]! - r, p[i + 1]! + r);
+          const r = p[i + 2]!;
+          hit = boomClear(x, y, z, dx, dy, dz, p[i]! - r, p[i]! + r, y0, y1, p[i + 1]! - r, p[i + 1]! + r, radius);
         } else {
           const ax = p[i]!, az = p[i + 1]!, ex = p[i + 2]! - ax, ez = p[i + 3]! - az;
           const length = Math.hypot(ex, ez);
           if (length < 1e-9) continue;
-          const ux = ex / length, uz = ez / length, half = p[i + 4]! + radius;
-          hit = boomBox((x - ax) * ux + (z - az) * uz, y, -(x - ax) * uz + (z - az) * ux,
-            dx * ux + dz * uz, dy, -dx * uz + dz * ux, -radius, length + radius,
-            bottom, top, -half, half);
+          const ux = ex / length, uz = ez / length, half = p[i + 4]!;
+          hit = boomClear((x - ax) * ux + (z - az) * uz, y, -(x - ax) * uz + (z - az) * ux,
+            dx * ux + dz * uz, dy, -dx * uz + dz * ux, 0, length, y0, y1, -half, half, radius);
         }
         fraction = Math.min(fraction, hit);
       }
     }
     for (let i = 0; i < this.#dynCount; i++) {
       if (this.#dynAlive[i] !== 1) continue;
-      const r = this.#dynR[i]! + radius;
-      fraction = Math.min(fraction, boomBox(x, y, z, dx, dy, dz,
-        this.#dynX[i]! - r, this.#dynX[i]! + r, this.#dynY0[i]! - radius,
-        this.#dynY1[i]! + radius, this.#dynZ[i]! - r, this.#dynZ[i]! + r));
+      const r = this.#dynR[i]!;
+      fraction = Math.min(fraction, boomClear(x, y, z, dx, dy, dz,
+        this.#dynX[i]! - r, this.#dynX[i]! + r, this.#dynY0[i]!, this.#dynY1[i]!,
+        this.#dynZ[i]! - r, this.#dynZ[i]! + r, radius));
     }
     return fraction;
   }

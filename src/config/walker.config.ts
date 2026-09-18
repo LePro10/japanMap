@@ -209,6 +209,19 @@ export const WALK_CAMERA = {
   groundClearance: 0.45,
   fov: 58,
   /**
+   * Near-Ebene zu Fuß. `CAMERA.near` ist 0,5 m für die 6-km-Far-Ebene; bei
+   * der liegt die Frustum-Eckenfreiheit bei ~0,76 m und schluckt das Blickziel
+   * an jeder Wand (Kapselradius 0,24 m). 0,15 m hält die Figur vor dem Clip
+   * und die Freiheit unter diesem Radius.
+   */
+  near: 0.15,
+  /**
+   * Kürzt den Arm nie kürzer als diesen Anteil. `lookAt()` mit Richtung 0
+   * nimmt Welt-+Z — der Blick-Sprung an Gebäuden und auf dem parkenden Wagen.
+   * 0,22 von 4,1 m sind 0,90 m, noch hinter den Schultern.
+   */
+  occludeMin: 0.22,
+  /**
    * Kopf-Wippen, Meter bei Schrittgeschwindigkeit. `walker.cycle` ist
    * gelaufene Strecke; eine Periode von 0,75 m ist ein Schritt. 2 cm —
    * die erste Runde mit 3,5 cm hat mit der Autokamera zusammen zu laut

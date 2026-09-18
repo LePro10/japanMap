@@ -29,6 +29,7 @@ const layout = createInteriorLayout();
 const world = new CollisionWorld();
 for (const c of layout.colliders) world.addBox(c.minX, c.maxX, c.minZ, c.maxZ, c.bottom, c.top);
 const ground = { height: () => layout.floorY, normal: (_x: number, _z: number, n: Vector3) => n.set(0, 1, 0), surface: () => 'asphalt' as const };
+const flat = { height: () => 0, normal: (_x: number, _z: number, n: Vector3) => n.set(0, 1, 0), surface: () => 'asphalt' as const };
 for (const [x, z] of [[644, 141], [644, 138.5], [508.5, 35], [514, 36.8]]) {
   const walker = new Walker();
   walker.position.set(x!, layout.floorY, z!);
@@ -57,4 +58,55 @@ const blockedLength = camera.position.distanceTo(walker.position);
 world.clear();
 for (let i = 0; i < 120; i++) orbit.update(1 / 60, walker, ground, camera, world);
 assert.ok(camera.position.distanceTo(walker.position) > blockedLength + .25, 'Boom smoothly recovers its length after leaving an obstacle');
-console.log('Walk camera: thin/rotated walls, ceilings, props, recovery and 640 interior orbit/zoom frames clear.');
+
+// Look-at inside the near-plane shell of a wall in front of the walker (the
+// production CAMERA.near = 0.5 m case). Boom points away from the wall; the
+// camera must keep looking at the walker, not snap onto the look-at and flip
+// to world +Z.
+{
+  const shell = new CollisionWorld();
+  shell.addBox(-8, 8, -8, -0.4, 0, 6);
+  assert.equal(shell.cameraFraction(0, 1.28, 0, 0, 1.55, 4.1, 0.76), 1,
+    'Look-at in a wall’s clearance shell must not collapse a boom that points away');
+  assert.ok(shell.cameraFraction(0, 1.28, 0, 0, 1.55, -4.1, 0.76) < 0.2,
+    'A boom that actually goes through the wall still shortens');
+  const beside = new Walker();
+  beside.position.set(0, 0, 0);
+  beside.yaw = 0;
+  const look = new WalkCamera();
+  const cam = new PerspectiveCamera(58, 16 / 9, 0.5, 6000);
+  look.reset(beside);
+  for (let i = 0; i < 45; i++) look.update(1 / 60, beside, flat, cam, shell);
+  const forward = new Vector3();
+  cam.getWorldDirection(forward);
+  assert.ok(cam.position.distanceTo(beside.position) > 1.2,
+    `Boom next to a building must not collapse, was ${cam.position.distanceTo(beside.position).toFixed(3)} m`);
+  assert.ok(forward.z > 0.55,
+    `View next to a building must stay on the walker (heading 0 looks +Z), was ${forward.toArray().map((n) => n.toFixed(3)).join(',')}`);
+}
+
+// Parked-car cylinders: look-at sits inside the expanded volume when standing
+// beside or on the body. Same collapse, same +Z flip.
+{
+  const car = new CollisionWorld();
+  // A single axle/hood volume the walker is standing in — extra axles along
+  // the boom are a different hit and must not hide this skip.
+  car.addDynamicCylinder(0, 0, 0.84, -0.7, 1.4, 0xffffff00);
+  const onCar = new Walker();
+  onCar.position.set(0, 0, 0);
+  onCar.yaw = 0;
+  assert.equal(car.cameraFraction(0, 1.28, 0, 0, 1.55, 4.1, 0.76), 1,
+    'Look-at inside a parked-car collider must not collapse the boom');
+  const look = new WalkCamera();
+  const cam = new PerspectiveCamera(58, 16 / 9, 0.5, 6000);
+  look.reset(onCar);
+  for (let i = 0; i < 45; i++) look.update(1 / 60, onCar, flat, cam, car);
+  const forward = new Vector3();
+  cam.getWorldDirection(forward);
+  assert.ok(cam.position.distanceTo(onCar.position) > 1.2,
+    `Boom on the parked car must not collapse, was ${cam.position.distanceTo(onCar.position).toFixed(3)} m`);
+  assert.ok(forward.z > 0.55,
+    `View on the parked car must stay on the walker, was ${forward.toArray().map((n) => n.toFixed(3)).join(',')}`);
+}
+
+console.log('Walk camera: thin/rotated walls, ceilings, props, recovery, 640 interior orbit/zoom frames, wall-shell and parked-car look-at clear.');

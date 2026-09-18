@@ -101,18 +101,37 @@ export class WalkCamera {
     // Resolve after smoothing and terrain correction: either can otherwise move
     // a clear target through a wall. Retract immediately, recover with the spring.
     if (collision) {
-      const nearHalfHeight = camera.near * Math.tan(WALK_CAMERA.fov * Math.PI / 360);
-      const clearance = Math.max(.18, Math.hypot(camera.near, nearHalfHeight * camera.aspect, nearHalfHeight));
+      const near = WALK_CAMERA.near;
+      const nearHalfHeight = near * Math.tan(WALK_CAMERA.fov * Math.PI / 360);
+      const clearance = Math.max(0.18, Math.hypot(near, nearHalfHeight * camera.aspect, nearHalfHeight));
       const fraction = collision.cameraFraction(this.#lookAt.x, this.#lookAt.y, this.#lookAt.z,
         this.#position.x, this.#position.y, this.#position.z, clearance);
-      if (fraction < 1) this.#position.lerpVectors(this.#lookAt, this.#position, Math.max(0, fraction - .002));
+      // occludeMin: a hit at t=0 (look-at inside a wall/car shell) used to lerp
+      // the camera onto the look-at. lookAt() then picks world +Z.
+      const t = Math.max(WALK_CAMERA.occludeMin, fraction - 0.002);
+      if (t < 1) this.#position.lerpVectors(this.#lookAt, this.#position, t);
     }
 
     camera.position.copy(this.#position);
-    camera.lookAt(this.#lookAt);
+    const sepSq = this.#position.distanceToSquared(this.#lookAt);
+    if (sepSq > 1e-4) {
+      camera.lookAt(this.#lookAt);
+    } else {
+      // Degenerate boom: keep the mouse heading instead of world +Z.
+      const cp = Math.cos(this.#pitch);
+      camera.lookAt(
+        this.#lookAt.x + Math.sin(this.#heading) * cp,
+        this.#lookAt.y + Math.sin(this.#pitch),
+        this.#lookAt.z + Math.cos(this.#heading) * cp,
+      );
+    }
 
-    if (Math.abs(camera.fov - WALK_CAMERA.fov) > 0.05) {
+    if (
+      Math.abs(camera.fov - WALK_CAMERA.fov) > 0.05 ||
+      Math.abs(camera.near - WALK_CAMERA.near) > 1e-4
+    ) {
       camera.fov = WALK_CAMERA.fov;
+      camera.near = WALK_CAMERA.near;
       camera.updateProjectionMatrix();
     }
   }
