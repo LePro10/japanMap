@@ -6,7 +6,7 @@ import type { EngineContext, System } from '@/core/System';
 import type { DriveSystem } from '@/game/DriveSystem';
 import type { PropFile, PropPlacement } from '@/config/props.config';
 import { PROP_ASSETS } from '../props/propAssets';
-import { LocalSurfaces, type Point } from './LocalSurfaces';
+import { LocalSurfaces, SurfaceStack, type Point } from './LocalSurfaces';
 import { HOMES, MILL, MILL_LANE, POND } from './settlementLayout';
 import { SettlementKit } from './SettlementKit';
 import './settlements.css';
@@ -23,6 +23,8 @@ export class StillwaterVillage implements System {
   readonly wheel = new Group();
   readonly lever = new Group();
   readonly floors = new LocalSurfaces();
+  readonly #stack = new SurfaceStack();
+  #previous: DriveSystem['ground']['localSurfaces'] = null;
   readonly laneSamples: Vector3[] = [];
   readonly panel = document.createElement('div');
   readonly label = document.createElement('span');
@@ -64,7 +66,11 @@ export class StillwaterVillage implements System {
     context.scene.add(this.village, this.harbour);
     const file = await context.resources.json<PropFile>(PROP_ASSETS.placements);
     this.#buildVillage(); this.#buildHarbour(file.props);
-    this.drive.ground.localSurfaces = this.floors;
+    this.#previous = this.drive.ground.localSurfaces;
+    this.#stack.layers.length = 0;
+    if (this.#previous) this.#stack.layers.push(this.#previous);
+    this.#stack.layers.push(this.floors);
+    this.drive.ground.localSurfaces = this.#stack;
     window.addEventListener('keydown', this.#key);
   }
   #solid(k: SettlementKit, x: number, y: number, z: number, w: number, h: number, d: number, color: number): void {
@@ -536,7 +542,7 @@ export class StillwaterVillage implements System {
   }
   dispose(): void {
     window.removeEventListener('keydown', this.#key); this.panel.remove();
-    this.drive.ground.localSurfaces = null;
+    if (this.drive.ground.localSurfaces === this.#stack) this.drive.ground.localSurfaces = this.#previous;
     const materials = new Set<MeshStandardMaterial | MeshBasicMaterial>();
     for (const group of [this.village, this.harbour]) {
       group.removeFromParent(); group.traverse(o => {
