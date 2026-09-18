@@ -9,16 +9,17 @@ export function buildCityCrossing() {
   const colliders:CityCollider[]=[];
   const paint=new SettlementKit(),street=new SettlementKit(),lights=new SettlementKit();
   const ground=CITY_GROUND_Y+.025, white=0xd3d7ca;
-  // Crossings sit inside the clear centre; their direction naturally points to the four corners.
-  for(const a of [Math.PI/4,-Math.PI/4])for(let i=-9;i<=9;i++){
+  // 42 m scramble: diagonals in the square, axis zebra on the four mouths
+  // just outside Crosslight (z 111–129) × Lantern (x 613–627).
+  for(const a of [Math.PI/4,-Math.PI/4])for(let i=-14;i<=14;i++){
     if(Math.abs(i)<3)continue; // Leave the shared centre clear instead of overlapping both patterns.
     const d=i*1.25;
     paint.box(620+Math.sin(a)*d,ground,120+Math.cos(a)*d,4.1,.012,.58,white,0,a);
   }
-  for(const z of [103,137])for(let i=0;i<13;i++)paint.box(613+i*1.1,ground,z,.56,.012,3.5,white);
-  for(const x of [603,637])for(let i=0;i<13;i++)paint.box(x,ground,113+i*1.1,3.5,.012,.56,white);
-  // Poles sit on the outside edge, clear of the centre and of the mart entrance.
-  for(const p of [{x:597,z:116,a:Math.PI/2},{x:625,z:144,a:Math.PI},{x:648,z:122,a:-Math.PI/2},{x:619,z:96,a:0}]){
+  for(const z of [108.5,131.5])for(let i=0;i<13;i++)paint.box(613+i*1.1,ground,z,.56,.012,3.5,white);
+  for(const x of [610.5,629.5])for(let i=0;i<13;i++)paint.box(x,ground,111+i*1.5,3.5,.012,.56,white);
+  // Poles on the four plaza corners, clear of the mart door at (644, 141).
+  for(const p of [{x:600,z:100,a:Math.PI/2},{x:640,z:100,a:0},{x:600,z:140,a:Math.PI},{x:634,z:134,a:-Math.PI/2}]){
     street.cylinder(p.x,CITY_GROUND_Y+3.1,p.z,.085,6.2,0x263a43);
     colliders.push({minX:p.x-.09,maxX:p.x+.09,minZ:p.z-.09,maxZ:p.z+.09,bottom:CITY_GROUND_Y,top:CITY_GROUND_Y+6.2});
     street.box(p.x,CITY_GROUND_Y+5.9,p.z,2.7,.09,.12,0x263a43,0,p.a);

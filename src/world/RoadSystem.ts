@@ -23,6 +23,7 @@ import { AssetUpgrader, loadTextureViaBitmap, transferredBytes } from '@/core/As
 import { ROAD_TEXTURE_SETS } from '@/core/AssetManifest';
 import { buildRoadGeometry } from './roads/RoadMeshBuilder';
 import { RoadNetwork } from './roads/RoadNetwork';
+import { resolveTrims } from './roads/resolveTrims';
 import type { RoadEditor } from './roads/RoadEditor';
 
 /**
@@ -237,8 +238,9 @@ export class RoadSystem implements System {
       if (child instanceof Mesh) child.geometry.dispose();
     }
 
+    const meshed = resolveTrims(roads);
     let triangles = 0;
-    for (const road of roads) {
+    for (const road of meshed) {
       const built = buildRoadGeometry(road);
       triangles += built.triangles;
 
@@ -260,13 +262,13 @@ export class RoadSystem implements System {
     this.#network = new RoadNetwork({
       seed: 0,
       sampleSpacing: 2,
-      roads,
+      roads: meshed,
       urbanLots: this.#urbanLots,
-      measured: { totalLength, count: roads.length },
+      measured: { totalLength, count: meshed.length },
     });
     const netz = this.#network;
     this.#railMaterial.resetBroken();
-    const guardrails = buildGuardrails(roads, (x, z) => netz.isOnRoad(x, z));
+    const guardrails = buildGuardrails(meshed, (x, z) => netz.isOnRoad(x, z));
     if (guardrails.geometry) {
       const band = new Mesh(guardrails.geometry, this.#railMaterial);
       band.name = 'Leitplanken:Band';
@@ -295,7 +297,7 @@ export class RoadSystem implements System {
 
     // ── Decals (P6 / 6.6) ───────────────────────────────────────────────
     if (this.#decalMaterial) {
-      const decals = buildDecals(roads);
+      const decals = buildDecals(meshed);
       if (decals.matrices.length > 0) {
         const mesh = new InstancedMesh(
           new PlaneGeometry(1, 1),

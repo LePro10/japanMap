@@ -234,7 +234,8 @@ const FAMILY_COLORS: readonly (readonly [number, number, number][])[] = FAMILY_H
 );
 
 /** 42 × 42 m Kreuzung um den alten Loop-Mittelpunkt. */
-const CROSSING = { x: 620, z: 120, half: 28 } as const;
+/** 42 m scramble, not the old 56 m hole (half 28) that emptied the four corners. */
+const CROSSING = { x: 620, z: 120, half: 21 } as const;
 
 const packSeed = (seed: number, family: number): number => seed + family * 256;
 
@@ -632,10 +633,13 @@ function placeCrossingLandmarks(
   buildings: CityBuilding[],
   isRoad: CityInput['isRoad'],
 ): { id: string; family: number; x: number; z: number; floors: number; height: number }[] {
+  // Footprints sit outside Crosslight (z 111–129) and Lantern (x 613–627)
+  // plus the 2.2 m sidewalk. The previous hotel maxZ 115 covered 4 m of
+  // 18 m asphalt; cinema minZ 129 sat on the north kerb.
   const specs: { id: string; family: number; rect: Rect }[] = [
-    { id: 'corner-shop', family: FACADE_FAMILY.shop, rect: { minX: 598, maxX: 610, minZ: 99, maxZ: 111 } },
-    { id: 'cinema', family: FACADE_FAMILY.cinema, rect: { minX: 598, maxX: 614, minZ: 129, maxZ: 141 } },
-    { id: 'hotel', family: FACADE_FAMILY.hotel, rect: { minX: 628, maxX: 646, minZ: 99, maxZ: 115 } },
+    { id: 'corner-shop', family: FACADE_FAMILY.shop, rect: { minX: 572, maxX: 598, minZ: 74, maxZ: 98 } },
+    { id: 'cinema', family: FACADE_FAMILY.cinema, rect: { minX: 572, maxX: 598, minZ: 142, maxZ: 160 } },
+    { id: 'hotel', family: FACADE_FAMILY.hotel, rect: { minX: 642, maxX: 662, minZ: 74, maxZ: 98 } },
     { id: 'corner-mart', family: FACADE_FAMILY.shop, rect: { minX: 638, maxX: 650, minZ: 136, maxZ: 145 } },
   ];
   const out: { id: string; family: number; x: number; z: number; floors: number; height: number }[] = [];

@@ -45,4 +45,18 @@ for (const [i, block] of city.blocks.entries()) {
   }
 }
 assert.ok(city.stats.triangles < 220000, `merged geometry stays bounded: ${city.stats.triangles}`);
+
+const pavement = {
+  minX: 613, maxX: 627, minZ: 111, maxZ: 129,
+};
+for (const id of ['hotel', 'cinema', 'corner-shop'] as const) {
+  const body = city.buildings.find((b) => b.id === id);
+  assert.ok(body, `${id} landmark missing`);
+  assert.ok(
+    body.maxX <= pavement.minX || body.minX >= pavement.maxX ||
+      body.maxZ <= pavement.minZ || body.minZ >= pavement.maxZ,
+    `${id} sits on Crosslight × Lantern asphalt`,
+  );
+}
+
 console.log(`Architecture: ${city.buildings.length} deterministic bodies, reserved sites clear, ${city.stats.triangles} triangles in ${city.blocks.length} blocks.`);

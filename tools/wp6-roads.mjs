@@ -67,8 +67,8 @@ export function appendWP6Roads(terrain, roads, buildRoad, routeHill) {
     const rounded = filletPath(waypoints, { radius: 75, floor: 32, closed: false });
     const points = hill && controls.length <= 4 ? routeHill(waypoints) : toControlPoints(rounded.path, { fine: 8, coarse: 12, closed: false });
     const { hits, arcs } = crossings(points, roads);
-    const first = { p: points[0], arc: 0, ...(id !== 'commons-drive' && start ? { y: start.y, road: start.road, trim: 0 } : {}) };
-    const last = { p: points.at(-1), arc: arcs.at(-1), ...(end ? { y: end.y, road: end.road, trim: 0 } : {}) };
+    const first = { p: points[0], arc: 0, ...(id !== 'commons-drive' && start ? { y: start.y, road: start.road, trim: start.width / 2 + 1 } : {}) };
+    const last = { p: points.at(-1), arc: arcs.at(-1), ...(end ? { y: end.y, road: end.road, trim: end.width / 2 + 1 } : {}) };
     const cuts = [first, ...hits.filter(h => h.arc > 18 && h.arc < last.arc - 18), last];
     for (let k = 0; k < cuts.length - 1; k++) {
       const a = cuts[k], b = cuts[k + 1];

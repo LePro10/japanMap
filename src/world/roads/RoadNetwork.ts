@@ -23,6 +23,7 @@ const CELL_SIZE = 64;
 
 export interface RoadHit {
   readonly roadId: string;
+  readonly type: RoadData['type'];
   /** Weltposition des nächsten Punkts auf der Mittellinie. */
   readonly x: number;
   readonly y: number;
@@ -199,6 +200,7 @@ export class RoadNetwork {
 
     return {
       roadId: road.id,
+      type: road.type,
       x: this.#bestX,
       y: ay + (by - ay) * t,
       z: this.#bestZ,
@@ -306,7 +308,13 @@ export class RoadNetwork {
   /** Liegt der Punkt auf der Fahrbahn (inklusive Bankett)? */
   isOnRoad(x: number, z: number): boolean {
     const hit = this.closestPoint(x, z, this.#maxHalfWidth + 2);
-    return hit !== null && hit.distance <= hit.width / 2;
+    if (hit === null) return false;
+    // Shoulder belongs to the mouth. WP6 boulevards are 16–18 m; a ring
+    // plank at `width/2 + 1.6 + 0.35` sat in that shoulder and still
+    // counted as "off road" when the test used pavement half-width only.
+    // Measured 2026-09-18: 21 planned ring-rail samples land on WP6
+    // pavement or shoulder (crosslight, old-neon, zufahrt, toge).
+    return hit.distance <= hit.width / 2 + ROAD_TYPES[hit.type].shoulder;
   }
 
   /**

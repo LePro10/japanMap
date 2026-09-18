@@ -92,14 +92,13 @@ export const CITY = {
     splitLow: 0.38,
     splitHigh: 0.62,
     /**
-     * Straßenbreite je Teilungstiefe, in Metern.
+     * Alley width by split depth, in metres.
      *
-     * Die erste Teilung zerlegt den ganzen Distrikt und bekommt die breiteste
-     * Straße, die letzte trennt zwei Häuserzeilen und bekommt eine Gasse. So
-     * entsteht die Hierarchie Hauptstraße → Nebenstraße → Gasse aus der
-     * Konstruktion, statt nachträglich verteilt zu werden.
+     * WP6 already authors the 9–18 m streets. A 20 m first split on top of
+     * Crosslight carved a second empty plaza (city-overview.png). 8 m / 6 m
+     * gaps stay walkable without competing with the driven network.
      */
-    streetByDepth: [20, 14, 10, 7, 5],
+    streetByDepth: [8, 6],
   },
 
   /** Bürgersteig: die erhöhte Platte, auf der die Häuser eines Blocks stehen. */

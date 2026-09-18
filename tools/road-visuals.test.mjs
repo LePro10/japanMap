@@ -3,6 +3,7 @@ import test from 'node:test';
 import { Vector3 } from 'three';
 import { buildDecals } from '../src/world/roads/Decals.ts';
 import { buildRoadGeometry } from '../src/world/roads/RoadMeshBuilder.ts';
+import { resolveTrims } from '../src/world/roads/resolveTrims.ts';
 
 function road(overrides = {}) {
   const centerline = Array.from({ length: 51 }, (_, i) => [0, 10, i * 2]).flat();
@@ -57,6 +58,23 @@ test('host edge lines leave the branch mouth open', () => {
     const center = new Vector3().setFromMatrixPosition(matrix);
     assert.ok(!(Math.abs(center.x) < 4 && center.z >= 0 && center.z < 6), `paint closes the road mouth at ${center.toArray()}`);
   }
+});
+
+test('trim-zero WP6 mouths get a host-width setback without a rebake', () => {
+  const host = road({
+    id: 'host',
+    type: 'highway',
+    centerline: Array.from({ length: 51 }, (_, i) => [i * 2 - 50, 10, 0]).flat(),
+    widths: Array(51).fill(9),
+  });
+  const branch = road({ junctions: [junction()], trimStart: 0, trimEnd: 0 });
+  const resolved = resolveTrims([host, branch]);
+  const fixed = resolved.find((r) => r.id === 'branch');
+  assert.ok(fixed.trimStart >= 5.5, `expected ≥ 5.5 m setback, got ${fixed.trimStart}`);
+  const mesh = buildRoadGeometry(fixed);
+  const z0 = mesh.geometry.getAttribute('position').getZ(0);
+  assert.ok(z0 >= 5, `branch mesh still covers the host at z=${z0}`);
+  mesh.geometry.dispose();
 });
 
 test('road mesh respects authored widths instead of replacing them with the type default', () => {

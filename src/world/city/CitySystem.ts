@@ -1,6 +1,7 @@
 import { Group, Mesh } from 'three';
 
 import { CITY, CITY_LOOK, CITY_SLAB_Y } from '@/config/city.config';
+import { ROAD_TYPES } from '@/config/roads.config';
 import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
 import { createCityUniforms, FacadeMaterial, type CityUniforms } from '../materials/FacadeMaterial';
@@ -108,8 +109,18 @@ export class CitySystem implements System {
     const started = performance.now();
     const result = generateCity({
       urbanLots: urbanLots(network, sampler).lots,
-      isRoad: (x, z) =>
-        network.distanceToNearestRoad(x, z, CITY.clearance.road) < CITY.clearance.road,
+      isRoad: (x, z) => {
+        // Width-aware carve. The old 12 m isotropic radius was 3.6 m too
+        // wide on a 9 m street and 0.9 m too tight on Crosslight (18 m +
+        // shoulder + sidewalk). Buildings then either floated in a plaza
+        // or sat on the boulevard — both visible in city-overview.png.
+        const hit = network.closestPoint(x, z, 28);
+        if (!hit) return false;
+        return (
+          hit.distance <
+          hit.width / 2 + ROAD_TYPES[hit.type].shoulder + CITY.sidewalk.overhang + 0.4
+        );
+      },
       sampleTerrain: (x, z) => sampler.getHeightAt(x, z),
     });
     const elapsed = performance.now() - started;

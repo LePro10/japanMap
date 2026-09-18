@@ -7,7 +7,7 @@ const tests = [
   'tools/bench/road-contact.mts', 'tools/bench/smashables.mts',
   'tools/bench/debris.mts', 'tools/bench/terrain-grid.mts',
   'tools/bench/terrain-flat.mts', 'tools/bench/height-codec.mts',
-  'tools/road-visuals.test.mjs', 'tools/wp4-city.test.mts',
+  'tools/road-visuals.test.mjs', 'tools/road-trims.test.mts', 'tools/wp4-city.test.mts',
   'tools/wp-offroad.test.mts', 'tools/tune-math.test.mts',
   'tools/garage-visual.test.mts',
   'tools/wp6-runtime.test.mts', 'tools/wp6-layout.test.mjs', 'tools/wp6-roads.test.mjs',
