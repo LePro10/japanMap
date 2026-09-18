@@ -200,6 +200,11 @@ function ok(msg: string): void {
   if (eyeLocal.y > roofLocal - 0.05) fail(`Auge im Dach: ${eyeLocal.y.toFixed(3)} Dach ${roofLocal.toFixed(3)}`);
   if (Math.abs(cam.near - COCKPIT_CAMERA.near) > 1e-3) fail(`Sitz near ${cam.near}`);
   if (Math.abs(cam.fov - COCKPIT_CAMERA.fov) > 2) fail(`Sitz FOV ${cam.fov}, erwartet ~${COCKPIT_CAMERA.fov}`);
+  const gaze = new Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+  const carF = new Vector3(Math.sin(v.yaw), 0, Math.cos(v.yaw));
+  const align = gaze.x * carF.x + gaze.z * carF.z;
+  console.log(`Sitz-Blick align=${align.toFixed(3)}  gaze=${gaze.x.toFixed(2)} ${gaze.z.toFixed(2)}  carF=${carF.x.toFixed(2)} ${carF.z.toFixed(2)}`);
+  if (align < 0.85) fail(`Sitz blickt nicht nach vorn (align ${align.toFixed(3)})`);
   ok('Sitz unter dem Dach, eigenes FOV und Near');
 
   const visuals = createCarVisuals(v.spec);
@@ -319,6 +324,45 @@ function ok(msg: string): void {
     visuals.helm.dispose();
   }
   ok('Zehn Autos: Auge unter Dach, Haube hoch, Cabin da');
+}
+
+{
+  // Forward cone: nothing glued to the near plane. The Needle halo post sat
+  // 16 cm ahead on the look axis and filled a quarter of the frame.
+  const look = new Vector3(0, Math.sin(COCKPIT_CAMERA.lookPitch), Math.cos(COCKPIT_CAMERA.lookPitch)).normalize();
+  const origin = new Vector3();
+  for (const id of VEHICLE_ORDER) {
+    const spec = VEHICLES[id];
+    const eye = cockpitEye(spec);
+    const visuals = createCarVisuals(spec);
+    const cabinMesh = new Mesh(visuals.cabin, new MeshBasicMaterial());
+    origin.set(eye.x, eye.y, eye.z);
+    const ahead = new Raycaster(origin, look, 0.04, 6);
+    const hits = ahead.intersectObject(cabinMesh);
+    const first = hits[0];
+    const dist = first?.distance ?? 99;
+    console.log(`Sitz-Frei ${id}  first=${dist.toFixed(3)} m`);
+    if (dist < 0.32) fail(`${id}: Kabine ${dist.toFixed(3)} m vor dem Auge (Near-Plane-Wand)`);
+    // A-pillars belong at the edge of a 16:9 62° frame (~47° half-HFOV), not 10°.
+    const right = new Vector3(Math.sin(0.22), look.y, Math.cos(0.22)).normalize();
+    const sideHits = new Raycaster(origin, right, 0.04, 2.5).intersectObject(cabinMesh);
+    if (sideHits[0] && sideHits[0].distance < 0.28) {
+      fail(`${id}: Seitenwand ${sideHits[0].distance.toFixed(3)} m — Säule in der Bildmitte`);
+    }
+    if (id === 'needle') {
+      const stalk = new Raycaster(origin, new Vector3(0, 0.22, 0.975).normalize(), 0.04, 2);
+      const stalkHit = stalk.intersectObject(cabinMesh)[0];
+      const stalkDist = stalkHit?.distance ?? 0;
+      console.log(`Needle-Stiel ${stalkDist.toFixed(3)} m`);
+      if (stalkDist < 0.55) fail(`Needle-Halo-Stiel zu nah: ${stalkDist.toFixed(3)} m`);
+    }
+    cabinMesh.geometry.dispose();
+    cabinMesh.material.dispose();
+    visuals.body.dispose();
+    visuals.glass.dispose();
+    visuals.helm.dispose();
+  }
+  ok('Zehn Autos: Blickachse frei, keine Near-Plane-Wand');
 }
 
 console.log('Kamera-Prüfstand: alle Proben grün');

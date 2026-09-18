@@ -1,6 +1,6 @@
 import { BoxGeometry, BufferGeometry, Color, CylinderGeometry, Float32BufferAttribute, TorusGeometry } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { cabinLayout, cockpitEye, type CabinLayout } from '@/config/cabin.config';
+import { cabinLayout, cockpitEye, helmHub, pillarSocket, type CabinLayout } from '@/config/cabin.config';
 import { TOUGE, type VehicleSpec } from '@/config/vehicles.config';
 
 // Originale WP3-Codekarosserien. Ein Vertexfarben-Mesh plus vier instanzierte Räder.
@@ -107,14 +107,18 @@ function openWheel(s:VehicleSpec):BufferGeometry[] {
  for(const side of [-1,1]){
   out.push(loft([[-.85,.24,.20,.48,.20],[-.30,.27,.20,.53,.21],[.25,.17,.21,.36,.13]],c.paint).translate(side*pod,0,0));
   for(const axle of [-s.derived.cgToRear,s.derived.cgToFront]){
-   out.push(part(half*.74,.035,.045,side*(pod-.03),.30,axle,c.trim));
-   out.push(part(half*.70,.035,.045,side*(pod-.04),.46,axle-.10,c.trim));
+   out.push(part(half*.74,.016,.022,side*(pod-.03),.30,axle,c.trim));
+   out.push(part(half*.70,.016,.022,side*(pod-.04),.46,axle-.10,c.trim));
   }
  }
  out.push(part(.39,.07,.62,0,.81,-.35,c.trim));
  out.push(part(.23,.20,.17,0,.83,-.62,c.paintDark));
- pair(out,.04,.24,.05,.22,.89,-.55,c.trim);
- out.push(part(.47,.04,.63,0,1.03,-.26,c.trim),part(.04,.24,.05,0,.90,.04,c.trim));
+ pair(out,.025,.22,.025,.22,.90,-.40,c.trim);
+ // Halo als Ring plus Stiel auf der Nase — nicht als 4-cm-Pfosten 16 cm
+ // vor dem Auge. Der Pfosten auf der Blickachse war die schwarze Wand.
+ const halo=paint(new TorusGeometry(.27,.015,6,18),c.trim);
+ halo.rotateX(Math.PI/2);halo.translate(0,1.00,-.16);out.push(halo);
+ out.push(part(.016,.30,.016,0,.86,.46,c.trim));
  out.push(part(s.chassis.track+.04,.065,.33,0,.25,L-.12,c.paintDark));
  pair(out,.05,.36,.15,.46,.66,-L+.22,c.trim);
  out.push(part(s.chassis.track-.18,.075,.35,0,.88,-L+.20,c.paint));
@@ -174,40 +178,97 @@ function cabinKit(s:VehicleSpec):BufferGeometry[] {
  const cg=s.chassis.cgHeight;
  const c=s.body;
  const eye=cockpitEye(s);
+ const hub=helmHub(s);
  const ey=eye.y+cg, ez=eye.z;
- const frame=0x161a20;
+ const frame=0x12151a;
  const carpet=0x1a1816;
+ const leather=0x1c242c;
+ const vent=0x3a444c;
  const out:BufferGeometry[]=[];
  const floorY=s.collision.band[0]+.02;
- // Teppich über die ganze Kabine — sonst ist die Wiese der Fußraum.
- out.push(part(1.15,.05,1.45,0,floorY+.025,ez+.05,carpet));
- if(layout.open){
-  out.push(part(.42,.1,.5,0,floorY+.14,ez-.15,c.paintDark));
-  return out;
+ if(layout.open) return openCabin(s,ey,ez,floorY,out);
+ // Teppich — sonst ist die Wiese der Fußraum (camera.mts strahlt nach unten).
+ const cabinW=Math.min(1.28,c.hullWidth*.72);
+ out.push(part(cabinW,.05,1.55,0,floorY+.025,ez+.04,carpet));
+ // Armatur HINTER dem Kranz. 0,70 / 0,42 tief fraß das Lenkrad (Nabe bei
+ // ez+0,62 lag im Kasten). Jetzt beginnt das Blech 8 cm hinter dem Ring.
+ out.push(part(cabinW,.18,.34,0,ey-.54,ez+.90,SHARED_COLORS.dash));
+ out.push(part(cabinW*.96,.04,.32,0,ey-.42,ez+.96,c.paint));
+ out.push(part(cabinW*.9,.03,.50,0,layout.belt-.04,ez+1.22,c.paint));
+ // Binnacle ums Display, zwei Lüftungsgitter, Naht — nicht durch den Kranz.
+ out.push(part(.36,.08,.08,0,ey-.30,ez+.54,0x1c2428));
+ pair(out,.10,.04,.07,.20,ey-.34,ez+.72,vent);
+ out.push(part(.20,.006,.08,0,ey-.25,ez+.54,0xb43c3c));
+ const col=paint(new CylinderGeometry(.016,.024,.28,6),c.trim);
+ col.rotateX(Math.PI/2);col.translate(0,hub.y+cg,hub.z+.12);out.push(col);
+ // A-Säulen + Header am FOV-Rand. 41° / 0,82 m — Rechnung in pillarSocket.
+ const pillar=pillarSocket(s);
+ pair(out,.022,pillar.height,.03,pillar.x,pillar.y+cg,pillar.z,frame);
+ out.push(part(pillar.x*2+.04,.018,.03,0,Math.min(ey+.30,c.roofHeight-.03),ez+.80,frame));
+ // Türtafeln hinter/neben dem Auge, nicht vorbei am Near-Plane.
+ pair(out,.04,.30,.62,cabinW*.46,ey-.22,ez-.18,c.paintDark);
+ out.push(part(cabinW,.52,.05,0,ey-.10,ez-.66,c.paintDark));
+ const mirror=paint(new CylinderGeometry(.04,.04,.016,8),0x8a96a0);
+ mirror.rotateY(Math.PI/2);mirror.translate(-pillar.x,ey+.02,ez+.52);out.push(mirror);
+ const mirrorR=paint(new CylinderGeometry(.04,.04,.016,8),0x8a96a0);
+ mirrorR.rotateY(Math.PI/2);mirrorR.translate(pillar.x,ey+.02,ez+.52);out.push(mirrorR);
+ out.push(part(.40,.08,.38,0,floorY+.12,ez-.24,SHARED_COLORS.seat));
+ out.push(part(.40,.42,.07,0,floorY+.34,ez-.40,SHARED_COLORS.seat));
+ out.push(part(.28,.16,.06,0,floorY+.58,ez-.40,leather));
+ if(c.shape==='truck'||c.shape==='suv'){
+  out.push(part(cabinW*.7,.08,.18,0,ey-.22,ez+.48,c.paintDark));
+  pair(out,.03,.16,.03,cabinW*.38,ey+.06,ez+.36,c.trim);
  }
- // Armatur + Binnacle: das Forza-Bild, als Kästen. Lack-Lippen unten
- // außen, Cluster-Mulde in der Mitte (das Display ist ein Extra-Mesh).
- out.push(part(1.12,.26,.44,0,ey-.50,ez+.72,SHARED_COLORS.dash));
- out.push(part(.42,.12,.16,0,ey-.30,ez+.58,0x1c2428));
- pair(out,.12,.12,.12,.20,ey-.30,ez+.56,0xc5cdd4);
- out.push(part(.22,.01,.12,0,ey-.23,ez+.56,0xb43c3c));
- pair(out,.28,.04,.2,.42,layout.belt-.02,ez+.82,c.paint);
- // Scheibenrahmen: Header + schmale A-Säulen, nicht Boden-bis-Dach.
- pair(out,.032,.34,.04,.52,ey+.06,ez+.70,frame);
- out.push(part(1.12,.04,.04,0,ey+.26,ez+.74,frame));
- const mirror=paint(new CylinderGeometry(.045,.045,.02,8),0x8a96a0);
- mirror.rotateY(Math.PI/2);mirror.translate(-.58,ey+.02,ez+.55);out.push(mirror);
- pair(out,.05,.4,.95,.58,ey-.16,ez+.02,c.paintDark);
- out.push(part(1.12,.55,.05,0,ey-.12,ez-.62,c.paintDark));
- out.push(part(.38,.07,.36,-.22,floorY+.11,ez-.22,SHARED_COLORS.seat));
- out.push(part(.38,.38,.07,-.22,floorY+.32,ez-.36,SHARED_COLORS.seat));
+ if(c.shape==='supercar'){
+  pair(out,.18,.05,.42,.36,ey-.44,ez+.58,c.paintDark);
+  out.push(part(.5,.02,.2,0,ey-.36,ez+.62,0x2a3238));
+ }
+ if(c.shape==='rally'){
+  pair(out,.04,.04,.04,.16,ey-.26,ez+.50,0xc45c2a);
+  out.push(part(.18,.01,.08,.18,ey-.28,ez+.50,0xd8c9a4));
+ }
+ if(c.shape==='muscle'){
+  out.push(part(.56,.06,.22,0,ey-.36,ez+.64,c.paintDark));
+ }
+ return out;
+}
+
+function openCabin(s:VehicleSpec,ey:number,ez:number,floorY:number,out:BufferGeometry[]):BufferGeometry[] {
+ const c=s.body;
+ const hub=helmHub(s);
+ const cg=s.chassis.cgHeight;
+ // Wanne: Boden + gepolsterte Flanken. Die Nase ist ein Lackstreifen unten
+ // im Bild, der Halo ein Ring oben — Räder bleiben das Außenmesh.
+ out.push(part(.52,.04,1.05,0,floorY+.03,ez+.12,0x1a1816));
+ pair(out,.05,.16,.7,.22,floorY+.14,ez+.02,0x1c2428);
+ out.push(part(.48,.05,.42,0,floorY+.12,ez-.28,c.paintDark));
+ out.push(part(.22,.12,.16,0,floorY+.18,ez-.22,SHARED_COLORS.seat));
+ out.push(part(.36,.045,.70,0,.46,ez+.55,c.paint));
+ out.push(part(.28,.03,.55,0,.42,ez+.95,c.paint));
+ const halo=paint(new TorusGeometry(.26,.012,6,16),c.trim);
+ halo.rotateX(Math.PI/2);halo.translate(0,ey+.22,ez+.22);out.push(halo);
+ pair(out,.018,.18,.018,.20,ey+.10,ez+.04,c.trim);
+ // Stiel weit vorn und nur in der oberen Bildhälfte. 1,4 cm auf 70 cm
+ // sind 1,1° — ein Strich, keine Wand.
+ out.push(part(.014,.18,.014,0,ey+.18,ez+.70,c.trim));
+ const col=paint(new CylinderGeometry(.012,.018,.22,6),c.trim);
+ col.rotateX(Math.PI/2);col.translate(0,hub.y+cg,hub.z+.10);out.push(col);
+ out.push(part(.18,.035,.10,0,ey-.22,ez+.36,0x1c2428));
  return out;
 }
 
 function helmKit(s:VehicleSpec):BufferGeometry[] {
- // 31 cm Radius wäre ein Traktor. 16 cm = 32 cm Durchmesser, realistisches Rad.
  const rim=s.body.rim, trim=s.body.trim;
- const ring=paint(new TorusGeometry(.16,.012,8,24),trim);
+ if(s.body.shape==='openwheel'){
+  // Joch, kein Buskranz. Display sitzt in der Mulde (clusterFace).
+  const out:BufferGeometry[]=[part(.24,.10,.016,0,0,0,trim)];
+  pair(out,.035,.15,.02,.125,0,0,trim);
+  out.push(part(.12,.03,.018,0,.055,.002,rim));
+  out.push(part(.08,.03,.014,0,-.04,.002,0x1c2428));
+  return out;
+ }
+ // 31 cm Radius wäre ein Traktor. 16 cm = 32 cm Durchmesser, realistisches Rad.
+ const ring=paint(new TorusGeometry(.16,.018,8,24),trim);
  const out:BufferGeometry[]=[ring];
  const cap=paint(new CylinderGeometry(.032,.032,.018,8),rim);
  cap.rotateX(Math.PI/2);out.push(cap);

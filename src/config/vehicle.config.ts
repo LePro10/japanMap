@@ -1193,7 +1193,7 @@ export const CHASE_CAMERA = {
 export const COCKPIT_CAMERA = {
   fov: 62,
   fovBoost: 2,
-  near: 0.06,
+  near: 0.1,
   lookAtDist: 18,
   /**
    * Ruhelage des Blicks, negativ = Straße. Ohne das zielt die Kamera über das

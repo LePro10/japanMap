@@ -146,19 +146,29 @@ export function cabinLayout(spec: VehicleSpec): CabinLayout {
 /**
  * Sitz-Auge im Fahrzeugsystem (Ursprung = Schwerpunkt).
  *
- * Hoch und weit hinten: das Blech darf nicht die untere Bildhälfte fressen
- * (gemessen: 10 cm über der Haube = Dach-Tapete). 10 cm unter dem Dach,
- * 72 cm hinter der Scheibe. Blick leicht nach unten kommt aus
- * `COCKPIT_CAMERA.lookPitch` — dann liegen Lenkrad und Straße im Bild.
+ * Geschlossene Wagen: 14 cm unter dem Dach, 66 cm hinter der Scheibe.
+ * Blick leicht nach unten kommt aus `COCKPIT_CAMERA.lookPitch` — dann liegen
+ * Lenkrad und Straße im Bild, die Haube ist ein Lackstreifen unten.
+ *
+ * Open-Wheel: *unter* dem Halo, *hinter* dem vorderen Stiel. Der Stiel auf
+ * der Blickachse 16 cm vor dem Auge war die schwarze Wand im Bild (Near-Plane
+ * schneidet ein 4-cm-Blech auf 14° Breite). 18 cm unter dem Halo, 40 cm hinter
+ * dem Schwerpunkt: Stiel ≥ 55 cm voraus, Nase unten, Räder in den Ecken.
+ *
+ * Kein Rechtslenker-Versatz. 62° vertikales FOV sind ~94° horizontal, und
+ * 30 cm nach rechts legt die rechte A-Säule in die Bildmitte — dasselbe
+ * Fehlerbild, nur in der Kabine. Arcade bleibt mittig.
  */
 export function cockpitEye(spec: VehicleSpec): CockpitSocket {
   const cabin = cabinLayout(spec);
   const cg = spec.chassis.cgHeight;
   const roofLocal = cabin.roof - cg;
   const beltLocal = cabin.belt - cg;
-  const y = Math.min(roofLocal - 0.12, beltLocal + 0.46);
-  const z = cabin.open ? -0.12 : cabin.glassFront - 0.62;
-  return { x: 0, y, z };
+  if (cabin.open) {
+    return { x: 0, y: Math.min(roofLocal - 0.18, 0.54), z: -0.4 };
+  }
+  const y = Math.min(roofLocal - 0.14, beltLocal + 0.48);
+  return { x: 0, y, z: cabin.glassFront - 0.66 };
 }
 
 /**
@@ -171,7 +181,8 @@ export function hoodCowl(spec: VehicleSpec): CockpitSocket {
   const cabin = cabinLayout(spec);
   const cg = spec.chassis.cgHeight;
   if (cabin.open) {
-    return { x: 0, y: cabin.roof - cg - 0.06, z: 0.55 };
+    // Über dem Halo, vor dem Überrollbügel — nicht in der Nase.
+    return { x: 0, y: cabin.roof - cg + 0.04, z: 0.18 };
   }
   // Dachhöhe an der Scheibe, Blick über die Haube — nicht 45 cm über dem Lack.
   return {
@@ -185,13 +196,16 @@ export function hoodCowl(spec: VehicleSpec): CockpitSocket {
  * Lenkradnabe — weit und tief, damit man *über* den Kranz schaut.
  *
  * 15 cm / 32 cm hat den vollen Ring um die Bildmitte gelegt (Aufnahme:
- * Tunnel). 30 cm unter dem Auge, 52 cm davor: der untere Kranz fällt
- * aus dem FOV, oben bleibt ein Bogen im unteren Drittel.
+ * Tunnel). 42 cm unter dem Auge, 62 cm davor: Kranz oben ~16° unter der
+ * Blickachse bei 62° FOV = unteres Viertel, kein Tunnel (Forza-Horizon-Bild).
+ *
+ * Open-Wheel: der Kranz sitzt näher und höher — ein Formel-Joch, kein Buslenkrad.
  */
 export function helmHub(spec: VehicleSpec): CockpitSocket {
   const eye = cockpitEye(spec);
-  // 42 cm unter dem Auge, 62 cm davor: Kranz oben ~16° unter der Blickachse
-  // bei 62° FOV = unteres Viertel, kein Tunnel (Forza-Horizon-Bild).
+  if (cabinLayout(spec).open) {
+    return { x: eye.x, y: eye.y - 0.26, z: eye.z + 0.4 };
+  }
   return { x: eye.x, y: eye.y - 0.42, z: eye.z + 0.62 };
 }
 
@@ -201,5 +215,26 @@ export function helmHub(spec: VehicleSpec): CockpitSocket {
  */
 export function clusterFace(spec: VehicleSpec): CockpitSocket & { readonly width: number; readonly height: number } {
   const eye = cockpitEye(spec);
+  if (cabinLayout(spec).open) {
+    return { x: eye.x, y: eye.y - 0.2, z: eye.z + 0.385, width: 0.15, height: 0.075 };
+  }
   return { x: 0, y: eye.y - 0.27, z: eye.z + 0.54, width: 0.2, height: 0.1 };
+}
+
+/**
+ * A-Säulen am Bildrand, nicht in der Mitte.
+ *
+ * Three.js-FOV ist vertikal. 62° auf 16:9 → halbes Horizontal-FOV ≈ 46,9°.
+ * Säulen bei 39° / 0,82 m vor dem Auge: 2–3 cm Blech am Rand, Straße frei.
+ * Open-Wheel hat keine Säulen — der Halo-Stiel sitzt weiter vorn und oben.
+ */
+export function pillarSocket(spec: VehicleSpec): CockpitSocket & { readonly height: number } {
+  const eye = cockpitEye(spec);
+  const cabin = cabinLayout(spec);
+  const cg = spec.chassis.cgHeight;
+  const z = eye.z + 0.82;
+  const x = Math.tan((41 * Math.PI) / 180) * 0.82;
+  const y0 = cabin.belt - cg + 0.04;
+  const y1 = Math.min(cabin.roof - cg - 0.04, eye.y + 0.34);
+  return { x, y: (y0 + y1) / 2, z, height: Math.max(0.28, y1 - y0) };
 }

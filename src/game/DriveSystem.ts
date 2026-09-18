@@ -868,13 +868,15 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   }
 
   /**
-   * Außenkarosserie im Sitz aus, Käfig an. Open-Wheel behält das Blech —
-   * die Nase *ist* die Aussicht. Glas immer aus im Cockpit (opak, sonst Wand).
+   * Außenkarosserie im Sitz aus, Käfig an. Glas immer aus (opak, sonst Wand).
+   * Open-Wheel behält die Räder — sie gehören zur Aussicht — aber nicht das
+   * massive Blech: die Kamera saß im Halo-Pfosten, Near-Plane = schwarze Wand.
+   * Nase und Halo zeichnet der Käfig.
    */
   #applyViewLayers(): void {
     const cockpit = this.camera.mode === 'cockpit';
     const open = this.vehicle.spec.body.shape === 'openwheel';
-    if (this.#body) this.#body.visible = !cockpit || open;
+    if (this.#body) this.#body.visible = !cockpit;
     if (this.#glass) {
       this.#glass.visible = !cockpit && !this.#glass.geometry.name.startsWith('Dummy');
     }
@@ -1888,7 +1890,12 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     if (this.#cluster) {
       this.#cluster.pose(this.vehicle.spec, this.vehicle.position, this.vehicle.quaternion, this.#scratch);
       const reading = instruments(this.vehicle.telemetry.forwardSpeed);
-      this.#cluster.paint(this.vehicle.telemetry.speed * 3.6, reading.gear);
+      this.#cluster.paint(
+        this.vehicle.telemetry.speed * 3.6,
+        reading.gear,
+        reading.rpm,
+        reading.fraction,
+      );
     }
 
     const wheels = this.#wheels;
