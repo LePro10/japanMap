@@ -31,13 +31,8 @@ body {
   padding: 0;
   width: 100%;
   height: 100%;
-  /* **`dvh` für mobile Browser.** `100%` bezieht sich auf das *große*
-   * Ansichtsfenster — also auf die Höhe **ohne** eingeblendete Adressleiste.
-   * Auf iOS und Android steht die Leiste beim Laden aber da, und der Canvas
-   * ragt dann unter sie: das Bedienfeld am unteren Rand liegt außerhalb des
-   * Sichtbaren, und weil `overflow: hidden` gilt, kommt man auch nicht hin.
-   * `dvh` folgt der *dynamischen* Höhe. Die `100%`-Zeile darüber bleibt als
-   * Rückfall für Browser ohne `dvh` stehen. */
+  /* Dynamische Viewporthöhe als Rückfall. Auf Touchgeräten überschreibt `svh`
+   * sie unten, damit die Browserleiste den WebGL-Puffer nicht laufend resized. */
   height: 100dvh;
   overflow: hidden;
   background: var(--bg);
@@ -45,6 +40,15 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   /* Kein Gummiband-Scrollen und keine Zoom-Gesten auf dem Dokument. */
   overscroll-behavior: none;
+}
+
+/* The small viewport stays fixed when mobile browser chrome slides in or out.
+ * A changing dvh resized the WebGL drawing buffer mid-drive and flashed black. */
+@media (pointer: coarse) {
+  html,
+  body {
+    height: 100svh;
+  }
 }
 
 #viewport {
@@ -1289,6 +1293,26 @@ body {
   margin: -23px 0 0 -23px;
   border-radius: 50%;
   background: rgba(216, 222, 233, 0.5);
+}
+
+.touch__steerHint {
+  display: none;
+  position: absolute;
+  left: max(20px, env(safe-area-inset-left));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  margin: 0;
+  padding: 11px 16px;
+  border: 1px solid rgba(246, 239, 228, 0.28);
+  border-radius: 999px;
+  background: rgba(6, 20, 26, 0.35);
+  color: rgba(246, 239, 228, 0.75);
+  font: 700 11px/1 var(--mono);
+  letter-spacing: 0.12em;
+  pointer-events: none;
+}
+
+.touch--drive:not(.touch--steering) .touch__steerHint {
+  display: block;
 }
 
 .touch__buttons,

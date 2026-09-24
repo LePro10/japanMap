@@ -132,13 +132,14 @@ export class TouchControls {
       <div class="touch__stick" hidden>
         <div class="touch__stickKnob"></div>
       </div>
+      <p class="touch__steerHint" aria-hidden="true">← &nbsp; STEER &nbsp; →</p>
       <div class="touch__buttons">
         <button type="button" class="touch__btn" data-touch="up" aria-label="Move up">▲</button>
         <button type="button" class="touch__btn" data-touch="down" aria-label="Move down">▼</button>
         <button type="button" class="touch__btn" data-touch="boost" aria-label="Boost" hidden>Boost</button>
+        <button type="button" class="touch__btn" data-touch="gas" aria-label="Accelerate" hidden>Gas</button>
         <button type="button" class="touch__btn" data-touch="brake" aria-label="Brake" hidden>Brake</button>
         <button type="button" class="touch__btn" data-touch="handbrake" aria-label="Drift">Drift</button>
-        <button type="button" class="touch__btn" data-touch="view" aria-label="Camera" hidden>Cam</button>
         <button type="button" class="touch__btn" data-touch="jump" aria-label="Jump" hidden>↑</button>
         <button type="button" class="touch__btn" data-touch="slide" aria-label="Slide" hidden>Slide</button>
       </div>
@@ -146,6 +147,7 @@ export class TouchControls {
         <button type="button" class="touch__btn touch__btn--wide" data-touch="menu" aria-label="Menu">☰</button>
         <button type="button" class="touch__btn touch__btn--wide" data-touch="drive" aria-label="Car">🚗</button>
         <button type="button" class="touch__btn touch__btn--wide" data-touch="reset" aria-label="Recover">⟲</button>
+        <button type="button" class="touch__btn touch__btn--wide" data-touch="view" aria-label="Camera" hidden>Cam</button>
         <button type="button" class="touch__btn touch__btn--wide" data-touch="collision" aria-label="Ground collision">⇩</button>
       </div>
       <p class="touch__speed">—</p>`;
@@ -290,6 +292,7 @@ export class TouchControls {
         this.#drive?.setSlide?.(down);
       });
       halten(this.#must('[data-touch="boost"]'), 0, down => this.#drive?.setBoost?.(down));
+      halten(this.#must('[data-touch="gas"]'), 0, down => { this.#accelerating = down; });
       halten(this.#must('[data-touch="brake"]'), 0, down => { this.#braking = down; });
       this.#must('[data-touch="view"]').addEventListener('click', () => {
         this.#drive?.toggleView?.();
@@ -329,6 +332,7 @@ export class TouchControls {
     this.#must('[data-touch="handbrake"]').hidden = !active;
     this.#must('[data-touch="view"]').hidden = !active || !this.#drive?.toggleView;
     this.#must('[data-touch="boost"]').hidden = !active || !this.#drive?.setBoost;
+    this.#must('[data-touch="gas"]').hidden = !active;
     this.#must('[data-touch="brake"]').hidden = !active;
     this.#must('[data-touch="jump"]').hidden = !onFoot;
     this.#must('[data-touch="slide"]').hidden = !onFoot || !this.#drive?.setSlide;
@@ -337,7 +341,7 @@ export class TouchControls {
       this.#drive?.setHandbrake(false);
       this.setStunt(false);
     }
-    if (!active) { this.#drive?.setBoost?.(false); this.#braking = false; }
+    if (!active) { this.#drive?.setBoost?.(false); this.#accelerating = false; this.#braking = false; }
     if (!onFoot) this.#drive?.setJump(false);
     if (!onFoot) this.#drive?.setSlide?.(false);
     this.#updateSpeedLabel();
@@ -357,6 +361,7 @@ export class TouchControls {
         x: 0,
         y: 0,
       };
+      this.#root.classList.add('touch--steering');
       this.#showStick(event.clientX, event.clientY, 0, 0);
       capture(this.#canvas, event.pointerId);
       return;
@@ -420,6 +425,7 @@ export class TouchControls {
   readonly #onPointerUp = (event: PointerEvent): void => {
     if (this.#stick?.pointerId === event.pointerId) {
       this.#stick = null;
+      this.#root.classList.remove('touch--steering');
       this.#stickBase.hidden = true;
       this.#pushAxes();
     }
@@ -436,13 +442,16 @@ export class TouchControls {
   };
 
   readonly #releaseAll = (): void => {
+    this.#accelerating = false;
     this.#braking = false;
     this.#drive?.setBoost?.(false);
     this.#drive?.setJump(false);
     this.#drive?.setSlide?.(false);
     this.#root.querySelector('[data-touch="boost"]')?.classList.remove('is-active');
+    this.#root.querySelector('[data-touch="gas"]')?.classList.remove('is-active');
     this.#root.querySelector('[data-touch="brake"]')?.classList.remove('is-active');
     this.#stick = null;
+    this.#root.classList.remove('touch--steering');
     this.#look = null;
     this.#pinch = null;
     this.#vertical = 0;
@@ -457,13 +466,14 @@ export class TouchControls {
   // ── Anzeige ────────────────────────────────────────────────────────────
 
   #braking = false;
+  #accelerating = false;
 
   #pushAxes(): void {
     const stick = this.#stick;
     // Bildschirm-Y zeigt nach unten, „vorwärts" ist oben — daher das
     // Minuszeichen. Eine Totzone, weil ein Daumen nie ganz stillhält und die
     // Kamera sonst dauernd kriecht.
-    const forward = this.#braking ? -1 : stick ? -deadzone(stick.y) : 0;
+    const forward = this.#braking ? -1 : this.#accelerating ? 1 : stick ? -deadzone(stick.y) : 0;
     const right = stick ? deadzone(stick.x) : 0;
     this.#camera.setAxes(forward, right, this.#vertical);
   }

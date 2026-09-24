@@ -14,7 +14,7 @@ try {
       body: 'import "/japanMap/src/style.css";',
     }),
   );
-  await page.goto("http://localhost:5180/japanMap/");
+  await page.goto(process.env.GAME_URL ?? "http://localhost:5180/japanMap/");
   await page.evaluate(() => document.querySelector("#loading")?.remove());
   const readings = await page.evaluate(async () => {
     const { instruments } = await import("/japanMap/src/ui/instruments.ts");
@@ -134,10 +134,11 @@ try {
       boost,
       brake,
       page.getByRole("button", { name: "Drift", exact: true }),
+      page.getByRole("button", { name: "Accelerate", exact: true }),
     ]) {
       const b = await control.boundingBox();
       assert.ok(
-        b.width >= 56 && b.height >= 56 && b.y + b.height <= size.height,
+        b.width >= 48 && b.height >= 48 && b.y + b.height <= size.height,
       );
     }
     await page.screenshot({

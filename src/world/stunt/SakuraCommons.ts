@@ -162,6 +162,12 @@ export class SakuraCommons implements System {
       marker.visible = false; this.#next++;
       if (this.#next === 5) this.#messageTime = 8;
     }
+    // The optional tour message is useful on foot, but a permanent banner
+    // across the windshield obscures the road and the mobile HUD.
+    if (d.active && this.#messageTime <= 0) {
+      this.panel.hidden = true;
+      return;
+    }
     this.#paintPrompt(d);
   }
   #paintPrompt(d: DriveSystem): void {

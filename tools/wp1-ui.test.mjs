@@ -9,7 +9,7 @@ try {
     isMobile: true,
     hasTouch: true,
   });
-  await page.goto("http://localhost:5180/japanMap/");
+  await page.goto(process.env.GAME_URL ?? "http://localhost:5180/japanMap/");
   await page.clock.install();
   await page.evaluate(async () => {
     const { PlayerUi } = await import("/japanMap/src/ui/PlayerUi.ts");
@@ -183,6 +183,7 @@ try {
     await page.locator('[data-panel="records"]').innerText(),
     /1:12/,
   );
+  await page.evaluate(() => document.fullscreenElement && document.exitFullscreen());
   for (const size of [
     { width: 390, height: 844 },
     { width: 844, height: 390 },
@@ -197,7 +198,7 @@ try {
           box.height >= 48 &&
           box.x >= 0 &&
           box.y + box.height <= size.height,
-        `Reachable tab at ${size.width}`,
+        `Reachable tab at ${size.width}: ${JSON.stringify(box)}`,
       );
     }
   }

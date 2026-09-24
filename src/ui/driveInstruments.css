@@ -183,33 +183,33 @@
 }
 @media (pointer: coarse), (max-width: 700px) {
   .hud .hud__speedo {
-    width: 144px;
-    height: 118px;
-    right: max(12px, env(safe-area-inset-right));
-    bottom: 138px;
+    width: 118px;
+    height: 96px;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: 126px;
   }
   .hud .hud__gearLabel {
-    top: 23px;
-    font-size: 32px;
+    top: 17px;
+    font-size: 26px;
   }
   .hud .hud__speedRow {
-    top: 68px;
+    top: 56px;
   }
   .hud .hud__speed {
-    font-size: 32px;
+    font-size: 27px;
   }
   .hud .hud__unit {
-    font-size: 11px;
-  }
-  .hud__rpmText {
-    top: 55px;
     font-size: 9px;
   }
+  .hud__rpmText {
+    top: 46px;
+    font-size: 8px;
+  }
   .hud .hud__boost {
-    top: 112px;
-    left: 12px;
-    width: 120px;
-    height: 5px;
+    top: 92px;
+    left: 10px;
+    width: 98px;
+    height: 4px;
   }
   .hud__nitroLabel {
     top: -10px;
@@ -217,20 +217,20 @@
   }
   #overlay > .hud .hud__nav {
     transform-origin: top left;
-    width: 112px;
-    height: 112px;
-    top: max(12px, env(safe-area-inset-top));
-    left: max(12px, env(safe-area-inset-left));
+    width: 88px;
+    height: 88px;
+    top: max(10px, env(safe-area-inset-top));
+    left: max(10px, env(safe-area-inset-left));
     bottom: auto;
   }
   #overlay > .hud .hud__wp {
-    top: 132px;
-    left: max(132px, calc(env(safe-area-inset-left) + 120px));
+    top: 105px;
+    left: max(104px, calc(env(safe-area-inset-left) + 94px));
     bottom: auto;
   }
   .hud .hud__lap {
-    top: 132px;
-    left: 12px;
+    top: 105px;
+    left: 10px;
   }
   .hud .hud__driftPoints {
     font-size: 20px;
@@ -239,23 +239,32 @@
     font-size: 13px;
   }
   .hud .hud__race {
-    top: 130px;
+    top: 105px;
+  }
+  .hud .hud__money {
+    display: none;
   }
   .touch--drive .touch__buttons {
     display: grid;
-    grid-template-columns: repeat(2, 56px);
+    grid-template-columns: repeat(2, 50px);
     gap: 8px;
-    bottom: max(16px, env(safe-area-inset-bottom));
-    right: max(16px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    right: max(10px, env(safe-area-inset-right));
   }
   .touch--drive .touch__buttons .touch__btn {
-    width: 56px;
-    height: 56px;
-    font: 600 12px system-ui;
+    width: 50px;
+    height: 50px;
+    font: 700 11px system-ui;
     border-radius: 50%;
   }
-  .touch--drive [data-touch="boost"] {
+  .touch--drive [data-touch="gas"] {
     grid-column: 2;
+    grid-row: 1;
+    border-color: #e8ba7f;
+    color: #f6d5a8;
+  }
+  .touch--drive [data-touch="boost"] {
+    grid-column: 1;
     grid-row: 1;
     border-color: #70dbf8;
     color: #8ee6ff;
@@ -269,25 +278,26 @@
     grid-row: 2;
   }
   .touch--drive .touch__side {
-    top: max(12px, env(safe-area-inset-top));
-    right: max(12px, env(safe-area-inset-right));
+    top: max(10px, env(safe-area-inset-top));
+    right: max(10px, env(safe-area-inset-right));
+    gap: 6px;
+  }
+  .touch--drive .touch__side .touch__btn {
+    width: 44px;
+    height: 44px;
+    font-size: 16px;
   }
 }
 @media (max-width: 700px) and (orientation: portrait) {
-  .hud .hud__money {
-    /* Tacho sitzt oben rechts; das Wallet rutscht nach links daneben. */
-    top: max(12px, env(safe-area-inset-top));
-    right: calc(max(24px, env(safe-area-inset-right)) + 140px);
+  #overlay > .hud .hud__wp {
+    top: 112px;
+    left: max(10px, env(safe-area-inset-left));
+    max-width: min(220px, calc(100vw - 20px));
   }
   .hud .hud__speedo {
     transform-origin: top right;
-    top: max(12px, env(safe-area-inset-top));
+    top: max(10px, env(safe-area-inset-top));
     bottom: auto;
-    width: 132px;
-    height: 112px;
-  }
-  .hud .hud__boost {
-    width: 108px;
   }
   /* Über dem Bogen würde die Krone aus dem oberen Safe-Area laufen.
    * Links daneben: die Lücke zur Minikarte trägt eine schmale Spalte. */
@@ -309,7 +319,7 @@
     font-size: 12px;
   }
   .touch--drive .touch__side {
-    top: 38%;
+    top: 36%;
     flex-direction: column;
   }
 }

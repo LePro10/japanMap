@@ -135,6 +135,7 @@ export class PlayerUi {
     this.#preview = options.drive?.vehicleId ?? "touge";
     this.#menu = this.#build();
     options.container.append(this.#menu);
+    this.#syncFullscreen();
     this.#touch = new TouchControls({
       canvas: options.canvas,
       container: options.container,
@@ -171,6 +172,7 @@ export class PlayerUi {
     });
     document.addEventListener("pointerlockchange", this.#lockChanged);
     document.addEventListener("pointerlockerror", this.#lockError);
+    document.addEventListener("fullscreenchange", this.#syncFullscreen);
     window.addEventListener("keydown", this.#key, true);
     document.addEventListener("visibilitychange", this.#onVisibility);
     this.#menu.addEventListener("pointerdown", this.#onMenuActivity, {
@@ -195,6 +197,7 @@ export class PlayerUi {
   begin(): void {
     this.#started = true;
     this.#resume();
+    this.#requestFullscreen();
   }
   /**
    * Taste M / Klick auf die Minikarte. Derselbe Atlas wie der Map-Tab —
@@ -254,6 +257,23 @@ export class PlayerUi {
     const result: unknown = this.#o.canvas.requestPointerLock();
     if (result instanceof Promise) result.catch(() => this.#lockError());
   }
+  #requestFullscreen(): void {
+    if (!document.fullscreenEnabled || document.fullscreenElement) return;
+    // A user gesture is available here (Play or the Settings button). Keep the
+    // request synchronous; browsers reject it after an awaited promise.
+    const result = document.documentElement.requestFullscreen();
+    result?.catch(() => this.#syncFullscreen());
+  }
+  readonly #syncFullscreen = (): void => {
+    const button = this.#menu.querySelector<HTMLButtonElement>(".menu__fullscreen");
+    const hint = this.#menu.querySelector<HTMLElement>(".menu__fullscreenHint");
+    if (!button || !hint) return;
+    const supported = document.fullscreenEnabled &&
+      typeof document.documentElement.requestFullscreen === "function";
+    button.hidden = !supported;
+    button.textContent = document.fullscreenElement ? "Exit full screen" : "Full screen";
+    hint.hidden = supported || matchMedia("(display-mode: standalone), (display-mode: fullscreen)").matches;
+  };
   readonly #lockChanged = (): void => {
     if (document.pointerLockElement === this.#o.canvas) {
       this.#started = true;
@@ -275,6 +295,11 @@ export class PlayerUi {
     this.#show();
   };
   readonly #key = (event: KeyboardEvent): void => {
+    if (event.code === "F11" && document.fullscreenElement) {
+      event.preventDefault();
+      void document.exitFullscreen();
+      return;
+    }
     if (!this.#started || this.#photo || this.#garage) return;
     if (event.code === "KeyM") {
       if (this.#map) return;
@@ -447,7 +472,18 @@ export class PlayerUi {
       <section class="menu__panel" data-panel="photo" hidden><p class="menu__eyebrow">KEEP THE VIEW</p><h1>Stay a little longer.</h1><div class="menu__photoHero" aria-hidden="true">＋</div><p class="menu__intro">Freeze the world, fly with WASD, Space and Shift, zoom with the wheel and keep a clean PNG. Return to exactly the view you left.</p><button class="menu__openPhoto">Enter Photo mode</button><p class="menu__note">Capture High fills trees and grass in view at cinema density, then puts your graphics preset back.</p></section>
       <section class="menu__panel" data-panel="settings" hidden><p class="menu__eyebrow">MAKE YOURSELF AT HOME</p><h1>Settings</h1><details open><summary>Graphics</summary><div class="menu__levels"></div><p class="menu__effect"></p><details><summary>Custom graphics</summary><div class="menu__sliders"></div></details><button class="menu__reclassify">Recalibrate</button></details><details><summary>Audio</summary><button class="menu__mute">Sound on</button></details><details><summary>Accessibility</summary><label class="menu__row">UI scale<select class="menu__scale"><option value="90">90%</option><option value="100" selected>100%</option><option value="115">115%</option><option value="130">130%</option></select></label><label class="menu__row">Speed units<select class="menu__units"><option value="kmh">km/h</option><option value="mph">mph</option></select></label><label class="menu__row">Reduced motion<input class="menu__motion" type="checkbox" /></label></details><details><summary>Controls</summary><h3>On foot</h3>${controlTable(CONTROLS, "keytable")}<h3>Driving</h3>${controlTable(DRIVE_CONTROLS, "keytable")}${controlTable(TOUCH_DRIVE_CONTROLS, "keytable")}<h3>Photo</h3><p>WASD fly, Space / Shift up / down, wheel zoom, drag to look. On a phone the on-screen pad remains. P opens Photo; Escape leaves it.</p></details><details><summary>Progress</summary><p class="menu__note">Event bests and owned cars use this browser's existing save. Sparks purchases and tuning are saved in this browser.</p></details></section>
     </div>`;
+    menu.querySelector('[data-panel="settings"] h1')?.insertAdjacentHTML(
+      "afterend",
+      '<details open><summary>Display</summary><button type="button" class="menu__fullscreen">Full screen</button><p class="menu__note menu__fullscreenHint" hidden>For full-screen play on this device, add the game to your Home Screen.</p></details>',
+    );
     const el = (s: string): HTMLElement => menu.querySelector<HTMLElement>(s)!;
+    el(".menu__fullscreen").onclick = () => {
+      if (document.fullscreenElement) {
+        void document.exitFullscreen().catch(() => this.#syncFullscreen());
+      } else {
+        this.#requestFullscreen();
+      }
+    };
     el(".menu__resume").onclick = () => this.#resume();
     el(".menu__drive").onclick = () => {
       this.#o.drive?.toggleVehicle();
@@ -932,6 +968,7 @@ export class PlayerUi {
     this.#off.forEach((off) => off());
     document.removeEventListener("pointerlockchange", this.#lockChanged);
     document.removeEventListener("pointerlockerror", this.#lockError);
+    document.removeEventListener("fullscreenchange", this.#syncFullscreen);
     document.removeEventListener("visibilitychange", this.#onVisibility);
     window.removeEventListener("keydown", this.#key, true);
     this.#menu.removeEventListener("pointerdown", this.#onMenuActivity, true);

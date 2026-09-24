@@ -21,6 +21,7 @@ export const CONTROLS: readonly (readonly [string, string])[] = [
   ['R', 'back to the sakura bowl'],
   ['M', 'map'],
   ['P', 'photo mode'],
+  ['F11', 'leave full screen'],
   ['Esc', 'menu'],
 ];
 
@@ -56,6 +57,7 @@ export const DRIVE_CONTROLS: readonly (readonly [string, string])[] = [
   ['F', 'get out'],
   ['M', 'map'],
   ['P', 'photo mode'],
+  ['F11', 'leave full screen'],
   ['Esc', 'menu'],
 ];
 
@@ -80,11 +82,12 @@ export const TOUCH_CONTROLS: readonly (readonly [string, string])[] = [
  * weiterhin „zurück auf Anfang" — im Auto heißt das „auf die nächste Straße".
  */
 export const TOUCH_DRIVE_CONTROLS: readonly (readonly [string, string])[] = [
-  ['Drag left', 'throttle / brake / steer'],
+  ['Drag left', 'steer (up / down also throttle / brake)'],
+  ['Gas / Brake', 'hold to accelerate / slow down'],
   ['Drag right', 'look around'],
   ['Pinch', 'zoom (closest = cockpit)'],
   ['Cam', 'view: chase / cockpit'],
-  ['Drift / Brake / Boost', 'hold the corresponding driving action'],
+  ['Drift / Boost', 'hold the corresponding driving action'],
   ['⟲', 'recover on the nearest road'],
   ['🚗', 'get out'],
   ['Minimap', 'open map'],

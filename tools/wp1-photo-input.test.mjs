@@ -13,7 +13,7 @@ try {
       body: 'import "/japanMap/src/style.css";',
     }),
   );
-  await page.goto("http://localhost:5180/japanMap/");
+  await page.goto(process.env.GAME_URL ?? "http://localhost:5180/japanMap/");
   await page.evaluate(async () => {
     const { Engine } = await import("/japanMap/src/core/Engine.ts");
     const { PhotoMode } = await import("/japanMap/src/ui/PhotoMode.ts");
