@@ -787,7 +787,10 @@ export class StuntSystem implements System {
     const material = this.#sparkMat;
     if (!network || !material) return;
 
-    const roads = network.roads.filter((r) => r.centerline.length >= 12);
+    // Neo-Tokio: das Stadtnetz (Tag `tokyo`) bekommt keine Sammelstücke außer auf
+    // dem Stadtkurs. Mit ihm im Verteiler sank der Anteil des Rings von über 20
+    // auf 13 Stücke (Rauchprobe), und die übrigen lagen als Rauten in den Gassen.
+    const roads = network.roads.filter((r) => r.centerline.length >= 12 && (!r.tags.includes('tokyo') || r.id === 'stadt'));
     const total = roads.reduce((sum, r) => sum + r.length, 0);
     if (total <= 0) return;
 
@@ -1026,7 +1029,7 @@ export class StuntSystem implements System {
   /**
    * Prüfen, ob das Fahrzeug ein Stück eingesammelt hat.
    *
-   * **Lineare Suche über 90 Einträge, je Frame.** Das ist absichtlich die
+   * **Lineare Suche über 110 Einträge, je Frame.** Das ist absichtlich die
    * einfachste mögliche Lösung: 90 Abstandsquadrate kosten gemessen unter
    * 0,002 ms, und ein Raster dafür wäre Code, der eine Frage beantwortet, die
    * niemand gestellt hat. Wenn die Zahl je dreistellig wird, steht hier ein

@@ -3,7 +3,7 @@ import { GROUND_CONTACT } from '@/config/groundContact.config';
 
 import { WATER_PHYS } from '@/config/vehicle.config';
 import { CITY, CITY_SLAB_Y, districtBlend, inCityDistrict } from '@/config/city.config';
-import { ROAD_MESH, ROAD_TYPES } from '@/config/roads.config';
+import { ROAD_LAYER_SPAN, ROAD_MESH, ROAD_TYPES } from '@/config/roads.config';
 import type { RoadNetwork } from '@/world/roads/RoadNetwork';
 import type { TerrainSampler } from '@/world/TerrainSampler';
 import type { CollisionWorld } from './CollisionWorld';
@@ -72,6 +72,8 @@ export class RoadGround implements Ground {
   #correction = 0;
   #correctionTarget = 0;
   #hitX = 0;
+  /** Höhe der Mittellinie am Treffer — Bezug für die Ebenenfilter unten. */
+  #hitY = NaN;
   #hitZ = 0;
   #forwardX = 0;
   #forwardZ = 1;
@@ -144,8 +146,12 @@ export class RoadGround implements Ground {
    *
    * `dt <= 0` heißt „sofort" — das braucht das Absetzen des Autos, denn dort
    * gibt es keine Vorgeschichte, an die man sich anschmiegen könnte.
+   *
+   * `y`: Höhe des Fahrzeugs am Boden. Mit ihr zählen nur Fahrbahnen in seiner
+   * Ebene (`ROAD_LAYER_SPAN`) — unter der Ring-Hochstraße ist die Straße
+   * darunter gemeint, nicht die darüber. `NaN` sucht wie bisher nur in x/z.
    */
-  refresh(x: number, z: number, dt: number): void {
+  refresh(x: number, z: number, dt: number, y = NaN): void {
     const network = this.#network;
     const sampler = this.#sampler;
     if (!network || !sampler) {
@@ -156,7 +162,7 @@ export class RoadGround implements Ground {
       this.#follow(dt);
       return;
     }
-    const hit = network.closestPoint(x, z, 40);
+    const hit = network.closestPoint(x, z, 40, y);
     if (!hit) {
       this.#halfWidth = 0;
       this.#shoulder = 0;
@@ -175,11 +181,18 @@ export class RoadGround implements Ground {
     // Gedeckelt, weil ein Treffer 40 m entfernt an einem Steilhang eine
     // Korrektur von zig Metern ergäbe. 6 m ist mehr als der größte gemessene
     // Wert (4,30 m auf `zufahrt`) und weniger als jeder Betrag aus einem Fehler.
-    this.#correctionTarget = clamp(
-      hit.y + ROAD_MESH.surfaceOffset * Math.hypot(1, hit.slopeAlong) - this.#groundBase(hit.x, hit.z),
-      -6,
-      6,
-    );
+    //
+    // > **Neo-Tokio, 2026-09-23: auf der Fahrbahn gilt der Deckel nicht mehr.**
+    // > Seit der Ringdamm in der Stadt abgetragen ist, liegt die Fahrbahn dort
+    // > legitim 8…35 m über dem Boden (Hochstraße). Gemessen stand ein Auto auf
+    // > dem Ring bei z = 0 auf 37,5 m statt 41,9 m — genau Boden + 6 m. Der
+    // > Deckel war für *ferne* Treffer gedacht; wer auf der Fahrbahn steht
+    // > (Abstand ≤ halbe Breite + 2 m), bekommt die volle Höhe. Die Ebene hat
+    // > dabei schon der Höhenfilter in `closestPoint` gewählt.
+    const correction =
+      hit.y + ROAD_MESH.surfaceOffset * Math.hypot(1, hit.slopeAlong) - this.#groundBase(hit.x, hit.z);
+    const onDeck = hit.distance <= hit.width / 2 + 2;
+    this.#correctionTarget = onDeck ? clamp(correction, -6, 60) : clamp(correction, -6, 6);
     // ── Die Fahrbahn als **Ebene**, nicht als Skalar — P21 ────────────────
     //
     // Bis P21 war die Fahrbahnhöhe `Gelände(x,z) + Korrektur`, mit einer
@@ -193,6 +206,7 @@ export class RoadGround implements Ground {
     // Längsneigung des Segments. Die Verwindung quer ist damit per Konstruktion
     // null: die Fahrbahn ist flach, **weil sie als flach gerechnet wird**.
     this.#hitX = hit.x;
+    this.#hitY = hit.y;
     this.#hitZ = hit.z;
     this.#forwardX = hit.forwardX;
     this.#forwardZ = hit.forwardZ;
@@ -239,7 +253,11 @@ export class RoadGround implements Ground {
    * Sprung ist damit nach 0,45 s abgebaut.
    */
   #follow(dt: number): void {
-    if (dt <= 0) {
+    // Ein Sprung über `ROAD_LAYER_SPAN` ist kein Artefakt zweier Mittellinien
+    // an einer Kreuzung (1,36 m, siehe oben), sondern ein Ebenenwechsel — etwa
+    // wenn das Auto von der Hochstraße fällt oder auf ihr landet. Den mit 3 m/s
+    // nachzuführen hieße, die Fahrbahn unter dem Auto sekundenlang wegzuziehen.
+    if (dt <= 0 || Math.abs(this.#correctionTarget - this.#correction) > ROAD_LAYER_SPAN) {
       this.#correction = this.#correctionTarget;
       return;
     }
@@ -273,7 +291,7 @@ export class RoadGround implements Ground {
     // seit P21 auch dann eine Neigung, wenn der Höhenversatz gerade null ist;
     // `correction !== 0` hätte sie in genau diesem Fall verworfen.
     if (this.#halfWidth > 0 && this.#network) {
-      const distance = this.#network.distanceToNearestRoad(x, z, this.#halfWidth + 4);
+      const distance = this.#network.distanceToNearestRoad(x, z, this.#halfWidth + 4, this.#hitY);
       if (distance < Infinity) {
         // Volle Korrektur bis zur halben Fahrbahnbreite, dann über einen halben
         // Meter auslaufend.
@@ -328,7 +346,7 @@ export class RoadGround implements Ground {
     sampler.getNormalAt(x, z, target);
     // Follow the visible ribbon plane, independent of the terrain cut below it.
     if (this.#halfWidth > 0 && this.#network) {
-      const distance = this.#network.distanceToNearestRoad(x, z, this.#halfWidth + 1);
+      const distance = this.#network.distanceToNearestRoad(x, z, this.#halfWidth + 1, this.#hitY);
       const epsilon = GROUND_CONTACT.roadNormalProbe;
       if (distance < this.#halfWidth - epsilon) {
         target.set(
@@ -369,7 +387,7 @@ export class RoadGround implements Ground {
     if (Number.isFinite(local) && local >= this.height(x, z) - 0.015) return 'kies';
     if (this.#halfWidth > 0 && this.#network) {
       const reach = this.#halfWidth + this.#shoulder;
-      const distance = this.#network.distanceToNearestRoad(x, z, reach + 2);
+      const distance = this.#network.distanceToNearestRoad(x, z, reach + 2, this.#hitY);
       if (distance <= reach) return this.#surface;
     }
     if (this.#water?.ready && this.#sampler) {

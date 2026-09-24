@@ -946,7 +946,9 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
     // ── Gebäude und Bürgersteige ──────────────────────────────────────────
     for (const box of this.#cityColliders) {
-      this.collision.addBox(box.minX, box.maxX, box.minZ, box.maxZ, box.bottom, box.top);
+      const o = box.oriented;
+      if (o) this.collision.addOrientedBox(o.cx, o.cz, o.angle, o.hu, o.hv, box.bottom, box.top);
+      else this.collision.addBox(box.minX, box.maxX, box.minZ, box.maxZ, box.bottom, box.top);
     }
     for (const curb of this.#cityCurbs) {
       this.collision.addPlateau(curb.minX, curb.maxX, curb.minZ, curb.maxZ, curb.top);
@@ -1602,7 +1604,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
       return;
     }
     const started = performance.now();
-    this.ground.refresh(this.vehicle.position.x, this.vehicle.position.z, dt);
+    // Mit Höhe: unter der Ring-Hochstraße zählt die Fahrbahn der eigenen Ebene
+    // (ROAD_LAYER_SPAN). −1 m: der Schwerpunkt sitzt je nach Fahrzeug 0,5…1,1 m
+    // über dem Boden; das Fenster von 4,5 m trägt beides.
+    this.ground.refresh(this.vehicle.position.x, this.vehicle.position.z, dt, this.vehicle.position.y - 1);
     this.#fillTrees();
     this.vehicle.step(dt, input, this, this.collision);
     // Doppeltipp wartet auf die Drift. Geradeaus danach löscht — nicht
@@ -1726,10 +1731,12 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    * mit „Ein von Hand gesetzter Zustand ist ein Zustand, den es im Betrieb nicht
    * gibt".
    */
-  placeAt(x: number, z: number, heading: number): void {
+  placeAt(x: number, z: number, heading: number, y = NaN): void {
     this.vehicle.position.x = x;
     this.vehicle.position.z = z;
-    this.ground.refresh(x, z, 0);
+    // `y` wählt die Ebene, wo zwei Fahrbahnen übereinanderliegen (Ring-Hochstraße
+    // über dem Stadtraster). Ohne Angabe gilt die nächste Straße in x/z.
+    this.ground.refresh(x, z, 0, y);
     this.vehicle.respawn(x, z, heading, this);
     this.camera.reset(this.vehicle);
     this.#safeX = x;
@@ -1764,7 +1771,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   }
 
   #stepWalk(dt: number): void {
-    this.ground.refresh(this.walker.position.x, this.walker.position.z, dt);
+    this.ground.refresh(this.walker.position.x, this.walker.position.z, dt, this.walker.position.y - 1);
     this.#fillTrees();
     this.walker.step(dt, this.#collectWalkInput(), this, this.collision, this.walkCamera.heading);
   }

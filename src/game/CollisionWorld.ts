@@ -57,6 +57,15 @@ const KIND_BOX = 0;
 const KIND_CYLINDER = 1;
 /** Wandstück: von (ax,az) nach (bx,bz), mit halber Dicke. */
 const KIND_WALL = 2;
+/**
+ * Gedrehter Kasten: Mitte (cx, cz), Winkel, halbe Länge entlang u, halbe Tiefe.
+ *
+ * Neo-Tokio stellt Häuser an krumme Straßen (docs/TOKYO.md, Generator v2). Ein
+ * Wandstück wäre dafür die falsche Form: `query()` rechnet es als Kapsel, und
+ * deren runde Enden stünden bei einem 10 m tiefen Haus 5 m über die Giebelseite
+ * hinaus — ein unsichtbares Hindernis in jeder Baulücke.
+ */
+const KIND_OBOX = 3;
 
 /** Slab intersection of a finite camera boom and a clearance-expanded box. */
 function boomBox(
@@ -564,6 +573,10 @@ export class CollisionWorld {
         } else if (this.#shapes.kind[id] === KIND_CYLINDER) {
           const r = p[i + 2]!;
           hit = boomClear(x, y, z, dx, dy, dz, p[i]! - r, p[i]! + r, y0, y1, p[i + 1]! - r, p[i + 1]! + r, radius);
+        } else if (this.#shapes.kind[id] === KIND_OBOX) {
+          const ox = p[i]!, oz = p[i + 1]!, ux = Math.cos(p[i + 2]!), uz = Math.sin(p[i + 2]!), hu = p[i + 3]!, hv = p[i + 4]!;
+          hit = boomClear((x - ox) * ux + (z - oz) * uz, y, -(x - ox) * uz + (z - oz) * ux,
+            dx * ux + dz * uz, dy, -dx * uz + dz * ux, -hu, hu, y0, y1, -hv, hv, radius);
         } else {
           const ax = p[i]!, az = p[i + 1]!, ex = p[i + 2]! - ax, ez = p[i + 3]! - az;
           const length = Math.hypot(ex, ez);
@@ -673,6 +686,16 @@ export class CollisionWorld {
     y1: number,
   ): number {
     return this.#push(KIND_BOX, minX, maxX, minZ, maxZ, y0, y1, minX, maxX, minZ, maxZ);
+  }
+
+  /**
+   * Gedrehter Kasten — Häuser an krummen Straßen. `angle` dreht die u-Achse
+   * aus +X Richtung +Z (u = (cos, sin)); `hu` liegt entlang u, `hv` quer dazu.
+   */
+  addOrientedBox(cx: number, cz: number, angle: number, hu: number, hv: number, y0: number, y1: number): number {
+    const ex = Math.abs(Math.cos(angle)) * hu + Math.abs(Math.sin(angle)) * hv;
+    const ez = Math.abs(Math.sin(angle)) * hu + Math.abs(Math.cos(angle)) * hv;
+    return this.#push(KIND_OBOX, cx, cz, angle, hu, y0, y1, cx - ex, cx + ex, cz - ez, cz + ez, hv);
   }
 
   /** Kreiszylinder — Props, Pfosten. */
@@ -925,6 +948,39 @@ export class CollisionWorld {
               break;
             }
 
+            case KIND_OBOX: {
+              // In den Kastenrahmen drehen, dort wie KIND_BOX, Richtung zurück.
+              const ox = p[base]!;
+              const oz = p[base + 1]!;
+              const ux = Math.cos(p[base + 2]!);
+              const uz = Math.sin(p[base + 2]!);
+              const hu = p[base + 3]!;
+              const hv = p[base + 4]!;
+              const lu = (x - ox) * ux + (z - oz) * uz;
+              const lv = -(x - ox) * uz + (z - oz) * ux;
+              const qu = lu < -hu ? -hu : lu > hu ? hu : lu;
+              const qv = lv < -hv ? -hv : lv > hv ? hv : lv;
+              let du: number;
+              let dv: number;
+              if (qu !== lu || qv !== lv) {
+                du = lu - qu;
+                dv = lv - qv;
+                distance = Math.hypot(du, dv);
+                if (distance >= radius || distance < 1e-9) continue;
+                du /= distance;
+                dv /= distance;
+              } else {
+                const a = hu - lu, b = lu + hu, c = hv - lv, d = lv + hv;
+                const best = Math.min(a, b, c, d);
+                du = best === a ? 1 : best === b ? -1 : 0;
+                dv = du !== 0 ? 0 : best === c ? 1 : -1;
+                distance = -best;
+              }
+              dirX = du * ux - dv * uz;
+              dirZ = du * uz + dv * ux;
+              break;
+            }
+
             default: {
               const ax = p[base]!;
               const az = p[base + 1]!;
@@ -1081,6 +1137,12 @@ export class CollisionWorld {
                 hl,
                 hw,
               );
+              break;
+            }
+
+            case KIND_OBOX: {
+              const angle = p[base + 2]!;
+              touched = boxVsBody(p[base]!, p[base + 1]!, Math.cos(angle), Math.sin(angle), p[base + 3]!, p[base + 4]!, cx, cz, ux, uz, vx, vz, hl, hw);
               break;
             }
 

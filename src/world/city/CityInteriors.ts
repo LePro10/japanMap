@@ -3,6 +3,7 @@ import {
   Group, Mesh, MeshStandardMaterial, PlaneGeometry, SphereGeometry, SRGBColorSpace,
 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { INTERIOR_SITES } from '@/config/tokyoLayout.mjs';
 import type { CityCollider } from './CityGenerator';
 import type { LocalSurfaces } from '../settlements/LocalSurfaces';
 import { createInteriorLayout } from './CityInteriorLayout';
@@ -280,6 +281,9 @@ export function buildCityInteriors(): {
     geometry.add(merged);
     const finish = key.split(':')[1]!;
     const mesh = new Mesh(merged, materials[finish]);
+    // Neo-Tokio: der ganze Innenraum wandert an seinen neuen Platz (INTERIOR_SITES).
+    const site = INTERIOR_SITES[key.startsWith('diner') ? 0 : 1]!;
+    mesh.position.set(site.dx, 0, site.dz);
     mesh.name = key; mesh.castShadow = finish !== 'glass' && finish !== 'glow'; mesh.receiveShadow = true;
     group.add(mesh);
   }
@@ -287,8 +291,8 @@ export function buildCityInteriors(): {
   return {
     group, colliders: layout.colliders, floors: layout.floors,
     destinations: [
-      { id: 'komorebi-diner', name: 'Komorebi Diner', x: 508.5, y: y0, z: 35, description: 'Step through the noren for a quiet counter, warm lanterns and the neighbourhood kitchen.' },
-      { id: 'koji-mart', name: 'Kōji Corner Mart', x: 644, y: y0, z: 141, description: 'Browse the little aisles, chilled drinks and handwritten neighbourhood notices.' },
+      { id: 'komorebi-diner', name: 'Komorebi Diner', x: 508.5 + INTERIOR_SITES[0]!.dx, y: y0, z: 35 + INTERIOR_SITES[0]!.dz, description: 'Step through the noren for a quiet counter, warm lanterns and the neighbourhood kitchen.' },
+      { id: 'koji-mart', name: 'Kōji Corner Mart', x: 644 + INTERIOR_SITES[1]!.dx, y: y0, z: 141 + INTERIOR_SITES[1]!.dz, description: 'Browse the little aisles, chilled drinks and handwritten neighbourhood notices.' },
     ],
     dispose(): void {
       if (disposed) return;

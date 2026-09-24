@@ -348,7 +348,7 @@ export class RivalField {
         car.velocity.set(0, 0, 0);
         continue;
       }
-      rival.ground.refresh(car.position.x, car.position.z, dt);
+      rival.ground.refresh(car.position.x, car.position.z, dt, car.position.y - 1);
 
       const traffic = this.#trafficAround(rival, player, playerProgress);
       let catchUp = this.#catchUp(rival, playerProgress);

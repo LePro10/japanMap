@@ -166,8 +166,11 @@ assert.ok(wrapped > 3.0 || wrapped < -2.5, 'angle damp must take the short way a
 
 const worldFile = JSON.parse(readFileSync('assets/generated/roads/roads.json', 'utf8'));
 const world = new RouteGraph(worldFile.roads);
-const commonsToNeon = world.find(550, 510, 620, 120, false);
-const crow = Math.hypot(620 - 550, 120 - 510);
+// Neo-Tokio: (620 | 120) war die Mitte der alten Stadt und liegt heute im
+// Miyashita-Park neben der Hochbahn. Ziel ist jetzt die Ichiban-gai (557 | 20) —
+// die Scramble lag über die Bunkamura-dōri fast auf der Luftlinie (259 m gegen 228 m).
+const commonsToNeon = world.find(550, 510, 557, 20, false);
+const crow = Math.hypot(557 - 550, 20 - 510);
 assert.ok(commonsToNeon, 'Commons→Neon must return a path');
 assert.equal(commonsToNeon.offroadTail, false);
 assert.ok(

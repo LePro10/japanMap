@@ -33,6 +33,7 @@ import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
 
 import { sampleSpline } from '../src/world/roads/splineSampler.mjs';
+import { CITY_DISTRICT } from '../src/config/city.mjs';
 
 // `fileURLToPath`, nicht `.pathname` — siehe tools/bake-terrain.mjs.
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -901,24 +902,40 @@ async function main() {
   // Kleinstadt ist Lagerhalle, Gewächshaus und Grundstücksmauer, nicht ein
   // kleineres Hochhaus. Ein weiteres Gebäude vom Typ des Distrikts würde die
   // Kante nur verschieben.
-  const CITY = { x: 620, z: 120, inner: 215, outer: 330 };
+  //
+  // > **Neo-Tokio (docs/TOKYO.md, v2): der Ring stand danach mitten in der
+  // > Stadt.** Er war um die alte 360-m-Stadt bei (620 | 120) gelegt; der neue
+  // > Kern reicht von x 300 bis 1300 und z −250 bis 450. Gemessen standen 141
+  // > Lagerhallen, Gewächshäuser, Mauern und Masten **innerhalb** des neuen
+  // > Kerns — auf Straßen und in Häusern (die weißen „Tonnen" aus dem ersten
+  // > Teilstück). Der Ring läuft jetzt um den Kern aus `CITY_DISTRICT`, als
+  // > Abstand zu seinen Teilkästen: ab 32 m (Schürze 24 m plus Luft) bis 170 m.
+  const RING = { inner: 40, outer: 170 };
   const fringe = [];
-  const cityRing = (x, z) => Math.max(Math.abs(x - CITY.x), Math.abs(z - CITY.z));
+  const coreDistance = (x, z) => {
+    let best = Infinity;
+    for (const p of CITY_DISTRICT.parts) {
+      const dx = Math.max(p.minX - x, x - p.maxX, 0);
+      const dz = Math.max(p.minZ - z, z - p.maxZ, 0);
+      best = Math.min(best, Math.hypot(dx, dz));
+    }
+    return best;
+  };
 
   const fringePlace = (id, minGap, rules) => {
-    for (let attempt = 0; attempt < 900; attempt++) {
-      const side = Math.floor(rng() * 4);
+    for (let attempt = 0; attempt < 2400; attempt++) {
       // **Nach innen gewichtet.** Gleichverteilt über 115 m Tiefe sah der Ring
       // im Bild aus wie verstreute Kisten auf leerem Feld — die Fläche wächst
       // quadratisch nach außen, die Dichte fällt also von selbst. `^1.8` dreht
       // das um: rund die Hälfte aller Plätze liegt in den inneren 30 m, wo die
       // Bebauung an den Distrikt anschließen soll.
-      const von = rules.inner ?? CITY.inner;
-      const depth = von + Math.pow(rng(), 1.8) * (CITY.outer - von);
-      const along = (rng() - 0.5) * 2 * depth;
-      const x = CITY.x + (side === 0 ? depth : side === 1 ? -depth : along);
-      const z = CITY.z + (side === 2 ? depth : side === 3 ? -depth : along);
-      if (cityRing(x, z) < von || cityRing(x, z) > CITY.outer) continue;
+      const von = rules.inner ?? RING.inner;
+      const depth = von + Math.pow(rng(), 1.8) * (RING.outer - von);
+      const x = CITY_DISTRICT.minX - RING.outer + rng() * (CITY_DISTRICT.maxX - CITY_DISTRICT.minX + 2 * RING.outer);
+      const z = CITY_DISTRICT.minZ - RING.outer + rng() * (CITY_DISTRICT.maxZ - CITY_DISTRICT.minZ + 2 * RING.outer);
+      const d = coreDistance(x, z);
+      // Nach innen gewichtet über die gewürfelte Solltiefe (siehe oben).
+      if (d < von || d > RING.outer || Math.abs(d - depth) > 16) continue;
       const height = world.heightAt(x, z);
       if (height < 6) continue; // nicht in die Bucht bauen
       if (world.slopeAt(x, z) > (rules.maxSlope ?? 7)) continue;
@@ -927,6 +944,10 @@ async function main() {
       const road = world.roadDistance(x, z);
       if (road < (rules.minRoad ?? 16) || road > (rules.maxRoad ?? Infinity)) continue;
       if (nearest(fringe, x, z) < minGap) continue;
+      // Neo-Tokio: der neue Ring berührt die Sakura-Wiese (550 | 510, Driftzone r 62) und
+      // Bestand anderer Orte — dort nichts abstellen.
+      if (Math.hypot(x - 550, z - 510) < 84) continue;
+      if (nearest(props, x, z) < 9) continue;
       fringe.push({ x, z });
       return { x, z, height };
     }
@@ -954,20 +975,23 @@ async function main() {
   // Streuung. Zufällig gedrehte Hallen sehen aus wie hingefallen — ein
   // Gewerbegebiet ist das Gegenteil davon.
   const gridRot = (spot, i) => ({ rot: round((i % 2 ? 90 : 0) + (rng() - 0.5) * 8, 1) });
-  fringeAdd('warehouse', 11, 48, { maxSlope: 5, minRoad: 30 }, gridRot);
-  fringeAdd('greenhouse', 26, 20, { maxSlope: 6, minRoad: 22 }, gridRot);
+  // Neo-Tokio: der neue Kernrand ist rund 3,6 km lang statt 1,4 km — die
+  // Zahlen sind entsprechend höher, die Dichte je Meter Rand etwa gleich.
+  fringeAdd('warehouse', 16, 48, { maxSlope: 5, minRoad: 30 }, gridRot);
+  fringeAdd('farmhouse', 12, 40, { maxSlope: 6, minRoad: 14, inner: 70 }, gridRot);
+  fringeAdd('greenhouse', 30, 20, { maxSlope: 6, minRoad: 22, inner: 60 }, gridRot);
   // **Schuppen und Mauern rücken bis 208 m heran.** Gemessen war die Kante im
   // Bild nicht der Ring, sondern der 35 m breite kahle Streifen zwischen
   // Distriktkante (180 m) und Ringbeginn (215 m). Die Schürze endet bei 204 m;
   // 208 m lassen 4 m Luft und schließen den Streifen mit dem Kleinkram, für den
   // er groß genug ist. Die Hallen bleiben draußen — eine 21-m-Halle direkt an
   // der Bordsteinkante wäre wieder eine Kante, nur eine andere.
-  fringeAdd('shed', 34, 12, { maxSlope: 9, inner: 208 }, gridRot);
+  fringeAdd('shed', 60, 12, { maxSlope: 9, inner: 32 }, gridRot);
   // Mauern in kurzen Reihen zu dritt: eine einzelne 8-m-Mauer ist ein Fragment,
   // drei in einer Flucht sind eine Parzellengrenze.
   let walls = 0;
-  for (let i = 0; i < 18; i++) {
-    const spot = fringePlace('concreteWall', 24, { maxSlope: 8, minRoad: 12, inner: 208 });
+  for (let i = 0; i < 30; i++) {
+    const spot = fringePlace('concreteWall', 24, { maxSlope: 8, minRoad: 12, inner: 32 });
     if (!spot) continue;
     const rot = (i % 2 ? 90 : 0) + (rng() - 0.5) * 6;
     const a = (rot * Math.PI) / 180;
@@ -980,7 +1004,7 @@ async function main() {
   }
   fringeCounts.concreteWall = walls;
   // Strommasten in den Ring: sie ziehen die Blicklinie über die Kante hinweg.
-  fringeAdd('powerPole', 16, 28, { maxSlope: 12, minRoad: 10 }, () => ({ rot: round(rng() * 360, 1) }));
+  fringeAdd('powerPole', 40, 28, { maxSlope: 12, minRoad: 10 }, () => ({ rot: round(rng() * 360, 1) }));
 
   notes.push(
     'Stadtrand: ' +

@@ -10,6 +10,20 @@ import { buildCityCrossing } from './CityCrossing';
 import { cityDistrictAt } from './CityStreetLayout';
 import './cityExperience.css';
 
+/**
+ * Neo-Tokio (docs/TOKYO.md): Innenräume, Plätze und die alte Kreuzung stehen auf
+ * festen Koordinaten der alten 360-m-Stadt — der Mini-Markt etwa mitten auf der
+ * heutigen Meiji-dōri. Bis Phase 8 sie an neue Orte setzt, bleiben sie aus. Die
+ * Straßenausstattung hängt dagegen an der Gebäudeliste und läuft weiter.
+ */
+const LEGACY_PLACES = false;
+/**
+ * Die beiden begehbaren Läden sind seit v2 verschoben (`INTERIOR_SITES`) und
+ * wieder an — Rückmeldung: „mal ein Schaufenster, wo man wirklich reingehen
+ * kann". Plätze und alte Kreuzung bleiben aus.
+ */
+const INTERIORS = true;
+
 /** Integrates destinations after the road, city and village collision/floor contracts are ready. */
 export class CityExperienceSystem implements System {
   readonly name='CityExperienceSystem';
@@ -36,17 +50,27 @@ export class CityExperienceSystem implements System {
     this.#street=new CityStreetDress(this.city.buildings,(x,z)=>{
       const hit=road.closestPoint(x,z,25);return !!hit&&hit.distance<hit.width*.5+1.1;
     });
-    this.#interiors=buildCityInteriors();
-    this.#places=buildCityPlaces({terrainHeight:(x,z)=>terrain.getHeightAt(x,z),roadHeight:(x,z)=>road.closestPoint(x,z)?.y??terrain.getHeightAt(x,z),urbanLots:road.file.urbanLots??[]});
-    this.#crossing=buildCityCrossing();
-    context.scene.add(this.#street.group,this.#interiors.group,this.#places.group,this.#crossing.group);
-    for(const source of [this.#street,this.#interiors,this.#places,this.#crossing])for(const b of source.colliders)
-      this.drive.collision.addBox(b.minX,b.maxX,b.minZ,b.maxZ,b.bottom,b.top);
-    this.#previousFloors=this.drive.ground.localSurfaces;
-    if(this.#previousFloors)this.#floors.layers.push(this.#previousFloors);
-    this.#floors.layers.push(this.#interiors.floors,this.#places.floors);
-    this.drive.ground.localSurfaces=this.#floors;
-    this.destinations.push(...this.#interiors.destinations,...this.#places.destinations);
+    context.scene.add(this.#street.group);
+    for(const b of this.#street.colliders)this.drive.collision.addBox(b.minX,b.maxX,b.minZ,b.maxZ,b.bottom,b.top);
+    if(INTERIORS){
+      this.#interiors=buildCityInteriors();
+      context.scene.add(this.#interiors.group);
+      for(const b of this.#interiors.colliders)this.drive.collision.addBox(b.minX,b.maxX,b.minZ,b.maxZ,b.bottom,b.top);
+      this.#previousFloors=this.drive.ground.localSurfaces;
+      if(this.#previousFloors)this.#floors.layers.push(this.#previousFloors);
+      this.#floors.layers.push(this.#interiors.floors);
+      this.drive.ground.localSurfaces=this.#floors;
+      this.destinations.push(...this.#interiors.destinations);
+    }
+    if(LEGACY_PLACES){
+      this.#places=buildCityPlaces({terrainHeight:(x,z)=>terrain.getHeightAt(x,z),roadHeight:(x,z)=>road.closestPoint(x,z)?.y??terrain.getHeightAt(x,z),urbanLots:road.file.urbanLots??[]});
+      this.#crossing=buildCityCrossing();
+      context.scene.add(this.#places.group,this.#crossing.group);
+      for(const source of [this.#places,this.#crossing])for(const b of source.colliders)
+        this.drive.collision.addBox(b.minX,b.maxX,b.minZ,b.maxZ,b.bottom,b.top);
+      this.#floors.layers.push(this.#places.floors);
+      this.destinations.push(...this.#places.destinations);
+    }
     context.resources.track(this.#street.atlas);
     this.#card.className='city-discovery';this.#card.hidden=true;this.#card.setAttribute('role','status');
     this.overlay.append(this.#card);
@@ -69,7 +93,7 @@ export class CityExperienceSystem implements System {
     const label=nearest?.name??district.name;
     if(label!==this.#lastLabel){
       this.#lastLabel=label;this.#shownUntil=this.#elapsed+7;
-      const eyebrow=document.createElement('span');eyebrow.className='city-discovery__eyebrow';eyebrow.textContent=nearest?'TAKE A CLOSER LOOK':'NEON BASIN';
+      const eyebrow=document.createElement('span');eyebrow.className='city-discovery__eyebrow';eyebrow.textContent=nearest?'TAKE A CLOSER LOOK':'NEO TOKYO';
       const title=document.createElement('strong');title.textContent=label;
       const detail=document.createElement('span');detail.textContent=nearest?.description??district.description;
       this.#card.replaceChildren(eyebrow,title,detail);

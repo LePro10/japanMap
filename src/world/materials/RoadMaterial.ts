@@ -1,11 +1,13 @@
 import {
   MeshStandardMaterial,
+  ShaderChunk,
   type IUniform,
   type Texture,
   type WebGLProgramParametersWithUniforms,
 } from 'three';
 
 import { ROAD_GRAVEL_COLOR, ROAD_WET } from '@/config/roads.config';
+import { CITY_DISTRICT } from '@/config/city.config';
 import {
   injectAtmosphere,
   type AtmosphereUniforms,
@@ -197,6 +199,19 @@ export class RoadMaterial extends MeshStandardMaterial {
           `  vec3 erde = ${gravelGlsl()};\n` +
           '  diffuseColor.rgb = erde * (0.62 + lum * 1.9) * (0.82 + korn * 0.36);\n' +
           '}\n' +
+          // Neo-Tokio: in der Stadt keine tiefen Risse. Die Asphalttextur
+          // (asphalt_02) ist ein verwitterter Landstraßenbelag — am Bergpass
+          // richtig, in Shibuya „räudig" (Rückmeldung). Die Risse sind dunkler
+          // als ihre Umgebung; eine tiefe Mip-Stufe derselben Textur liefert
+          // diese Umgebung, und alles, was deutlich darunter liegt, wird auf sie
+          // angehoben. Körnung und Flecken bleiben, die Risse verschwinden.
+          `float roadCity = 1.0 - smoothstep(0.0, 25.0, max(max(${CITY_DISTRICT.minX.toFixed(1)} - vRoadWorld.x, vRoadWorld.x - ${CITY_DISTRICT.maxX.toFixed(1)}), max(${CITY_DISTRICT.minZ.toFixed(1)} - vRoadWorld.z, vRoadWorld.z - ${CITY_DISTRICT.maxZ.toFixed(1)})));\n` +
+          '#ifdef USE_MAP\n' +
+          'if (roadCity > 0.0 && vRoadGravel < 0.5) {\n' +
+          '  vec3 roadMean = texture2D(map, vMapUv, 7.0).rgb;\n' +
+          '  diffuseColor.rgb = mix(diffuseColor.rgb, max(diffuseColor.rgb, roadMean * 0.9) * 0.92, roadCity);\n' +
+          '}\n' +
+          '#endif\n' +
           'gRoadWet = roadPuddleMask(vRoadWorld.xz, vRoadPuddle, uWetness, uPuddleEdge) * (1.0 - vRoadGravel);\n' +
           `diffuseColor.rgb *= mix(1.0, ${ROAD_WET.darken.toFixed(3)}, gRoadWet);`,
       )
@@ -224,7 +239,7 @@ export class RoadMaterial extends MeshStandardMaterial {
           // > Straßen wie Stadtboden — verschwanden spurlos. Der Draw-Call-Zähler
           // > stand dabei unverändert bei 68, die Geometrie lag an ihrem Platz,
           // > und ein Raycast traf sie. Nur die Konsole wusste Bescheid.
-          'normal = normalize(mix(normal, nonPerturbedNormal, gRoadWet));',
+          'normal = normalize(mix(normal, nonPerturbedNormal, max(gRoadWet, roadCity * 0.65)));',
       )
       .replace(
         '#include <lights_fragment_end>',
@@ -271,13 +286,16 @@ export class RoadMaterial extends MeshStandardMaterial {
       )
       .replace(
         '#include <aomap_fragment>',
-        '#include <aomap_fragment>\n' +
+        // Stadt: die Verdeckung der Textur malt die Risse ein zweites Mal — dort
+        // auf ein Fünftel gedämpft (siehe `roadCity` oben).
+        ShaderChunk.aomap_fragment.replaceAll('aoMapIntensity', '(aoMapIntensity * (1.0 - 0.8 * roadCity))') +
+          '\n' +
           'reflectedLight.indirectDiffuse *= mix(1.0, gRoadShade.y, uAtmoSkyOcclusion.x);\n' +
           'reflectedLight.indirectSpecular *= mix(1.0, gRoadShade.y, uAtmoSkyOcclusion.y);',
       );
   }
 
   override customProgramCacheKey(): string {
-    return 'japanmap:road';
+    return 'japanmap:road-city';
   }
 }

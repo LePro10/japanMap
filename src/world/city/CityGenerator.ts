@@ -38,15 +38,15 @@ import type { UrbanLot } from './UrbanLots';
  */
 
 /** Achsparalleles Rechteck in XZ. */
-interface Rect {
+export interface Rect {
   minX: number;
   maxX: number;
   minZ: number;
   maxZ: number;
 }
 
-const width = (r: Rect): number => r.maxX - r.minX;
-const depth = (r: Rect): number => r.maxZ - r.minZ;
+export const width = (r: Rect): number => r.maxX - r.minX;
+export const depth = (r: Rect): number => r.maxZ - r.minZ;
 
 export interface CityInput {
   readonly urbanLots?: readonly UrbanLot[];
@@ -67,6 +67,12 @@ export interface SignAnchor {
   readonly span: number;
   /** Etagenzahl des Trägergebäudes — 6.3 wählt daran die Schildgröße. */
   readonly floors: number;
+  /**
+   * Neo-Tokio: Zahl der Hochkant-Schilder übereinander, vom Generator je Viertel
+   * vergeben. Gesetzt heißt zugleich: der Platz ist ausgewählt, das
+   * `NeonSystem` würfelt nicht noch einmal über die Abdeckung.
+   */
+  readonly stack?: number;
 }
 
 /**
@@ -91,6 +97,11 @@ export interface CityCollider {
   readonly bottom: number;
   /** Oberkante inklusive Brüstung. */
   readonly top: number;
+  /**
+   * Neo-Tokio v2: gedrehter Kasten. Gesetzt heißt, `minX…maxZ` ist nur die
+   * umschließende Hülle, und die Kollision nimmt Mitte, Winkel und halbe Maße.
+   */
+  readonly oriented?: { readonly cx: number; readonly cz: number; readonly angle: number; readonly hu: number; readonly hv: number };
 }
 
 /** Ein Bürgersteig: befahrbare erhöhte Fläche, kein Hindernis. */
@@ -118,6 +129,16 @@ export interface CityBuilding {
   family: number;
   front: 'px' | 'nx' | 'pz' | 'nz';
   shopInset?: number;
+  /**
+   * Neo-Tokio v2: gedrehtes Haus. `minX…maxZ` ist dann die umschließende
+   * Hülle; die Front zeigt nach (sin yaw, cos yaw), `w` liegt entlang der
+   * Front, `d` in die Tiefe.
+   */
+  yaw?: number;
+  cx?: number;
+  cz?: number;
+  w?: number;
+  d?: number;
 }
 
 export interface CityResult {
@@ -151,7 +172,7 @@ export interface CityResult {
 }
 
 /** mulberry32 — derselbe Strom wie im Baker, damit „deterministisch" dasselbe heißt. */
-function mulberry32(seed: number): () => number {
+export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -212,24 +233,35 @@ const FACADE_HEX: readonly number[] = [
   0x46423b, // dunkler Klinker
 ];
 
-const toLinear = (hex: number): [number, number, number] => {
+export const toLinear = (hex: number): [number, number, number] => {
   const c = new Color().setHex(hex, SRGBColorSpace);
   return [c.r, c.g, c.b];
 };
 
-const FACADE_COLORS: readonly [number, number, number][] = FACADE_HEX.map(toLinear);
+export const FACADE_COLORS: readonly [number, number, number][] = FACADE_HEX.map(toLinear);
 
+/**
+ * Je Familie mehrere Töne — Neo-Tokio v2.
+ *
+ * v1 hatte zwei je Familie, alle dunkel und warm. Mit 2558 Häusern ergab das
+ * eine braune Stadt (Rückmeldung: „Häuser ein bisschen anders machen"); die
+ * Vorbilder (ref/web/15, 17, 24) zeigen vor allem **helle Fliese und Putz**,
+ * dazwischen Sichtbeton, dunkles Glas, vereinzelt Farbe. Die hellsten Töne
+ * bleiben unter 0xa8 (sRGB), damit der gemessene Befund oben — ohne Eigenlicht
+ * ist die Stadt nicht heller als ihre Umgebung — nicht kippt. **Nachgemessen
+ * ist das mit dieser Palette noch nicht** (docs/TOKYO.md, offene Punkte).
+ */
 const FAMILY_HEX: readonly (readonly number[])[] = [
-  [0x776e64, 0x6e5c4c], // Fliesen-Laden
-  [0x5e6064, 0x4a4c50], // Werkstatt
-  [0x6b4a32, 0x8a6240], // Holz-Restaurant
-  [0x7d776f, 0x6e6e6a], // schmale Wohnung
-  [0x5a2c28, 0x3e2420], // Klinker-Kino
-  [0x8a9aaa, 0x6a7a88], // Glas-Hotel
-  [0x8a8074, 0x7d776f], // Hang-Putz
-  [0x5a5850, 0x46423b], // Wellblech-Schuppen
+  [0x8c8578, 0x6e5c4c, 0xa39e93, 0x5d6b73, 0x7a6f62, 0x9a8f7c], // Fliesen-Laden
+  [0x5e6064, 0x4a4c50, 0x7b7d78, 0x6d665a], // Werkstatt
+  [0x6b4a32, 0x8a6240, 0x4f3a2a, 0x7a5a42], // Holz-Restaurant
+  [0x9d988e, 0x7d776f, 0x8e8a80, 0xa7a196, 0x6e6e6a, 0x7f8a86], // schmale Wohnung
+  [0x5a2c28, 0x3e2420, 0x2e3440, 0x6b3a2e], // Klinker-Kino
+  [0x8a9aaa, 0x6a7a88, 0x3c4a58, 0x9aa3a8, 0x55606a], // Glas-Hotel
+  [0x8a8074, 0x7d776f, 0x9c9486, 0x8a8a7e], // Hang-Putz
+  [0x5a5850, 0x46423b, 0x6a6e70, 0x7a6448], // Wellblech-Schuppen
 ];
-const FAMILY_COLORS: readonly (readonly [number, number, number][])[] = FAMILY_HEX.map((row) =>
+export const FAMILY_COLORS: readonly (readonly [number, number, number][])[] = FAMILY_HEX.map((row) =>
   row.map(toLinear),
 );
 
@@ -237,7 +269,7 @@ const FAMILY_COLORS: readonly (readonly [number, number, number][])[] = FAMILY_H
 /** 42 m scramble, not the old 56 m hole (half 28) that emptied the four corners. */
 const CROSSING = { x: 620, z: 120, half: 21 } as const;
 
-const packSeed = (seed: number, family: number): number => seed + family * 256;
+export const packSeed = (seed: number, family: number): number => seed + family * 256;
 
 function pickFamily(cx: number, cz: number, lot: boolean, random: () => number): number {
   if (lot) {
@@ -274,8 +306,8 @@ function onStreetEdge(parcel: Rect, block: Rect): boolean {
 }
 
 /** Dach, Brüstung, Vordach — durchweg dunkler als die Wand darunter. */
-const ROOF_COLOR = toLinear(0x3a3a3c);
-const SIDEWALK_COLOR = toLinear(0x7d7b78);
+export const ROOF_COLOR = toLinear(0x3a3a3c);
+export const SIDEWALK_COLOR = toLinear(0x7d7b78);
 
 /**
  * Der Vertex-Kanal der **Bodenplatte** trägt keine Farbe, sondern die
@@ -294,12 +326,12 @@ const SIDEWALK_COLOR = toLinear(0x7d7b78);
  * > Fahrbahnränder bekommen. Ein Platz **ohne jede Querneigung** hält aber mehr
  * > Wasser als eine gewölbte Fahrbahn, nicht weniger.
  */
-const PUDDLE_SLAB: [number, number, number] = [0.95, 0, 0];
-const PUDDLE_SKIRT: [number, number, number] = [0.22, 0, 0];
+export const PUDDLE_SLAB: [number, number, number] = [0.95, 0, 0];
+export const PUDDLE_SKIRT: [number, number, number] = [0.22, 0, 0];
 
 /** Kennzeichnung der Fläche für das Fassaden-Material. */
-const KIND_WALL = 0;
-const KIND_FLAT = 1;
+export const KIND_WALL = 0;
+export const KIND_FLAT = 1;
 
 /**
  * Kachelmaß der Belagstextur auf der Bodenplatte, in Metern.
@@ -310,10 +342,10 @@ const KIND_FLAT = 1;
  * aneinander; liefen sie mit verschiedenen Maßstäben, wäre jede Bordsteinkante
  * eine sichtbare Materialgrenze.
  */
-const TILE_U = 10.4;
-const TILE_V = 8;
+export const TILE_U = 10.4;
+export const TILE_V = 8;
 
-class MeshBuilder {
+export class MeshBuilder {
   readonly #positions: number[] = [];
   readonly #normals: number[] = [];
   readonly #uvs: number[] = [];
@@ -358,6 +390,100 @@ class MeshBuilder {
     this.#indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
   }
 
+  /**
+   * Ein Dreieck — für die Gehwegflächen aus Neo-Tokio v2, die als Polygon aus
+   * einer Höhenlinie kommen und nicht mehr als Rechteck. Die Wickelung wird
+   * gegen die übergebene Normale **geprüft** und bei Bedarf gedreht: die
+   * Triangulierung liefert beide Umlaufsinne, und eine falsch gewickelte
+   * Gehwegfläche wäre nur von unten sichtbar (die Fehlerklasse aus P8.11).
+   */
+  tri(
+    a: readonly [number, number, number],
+    b: readonly [number, number, number],
+    c: readonly [number, number, number],
+    normal: readonly [number, number, number],
+    uv: readonly number[],
+    color: readonly [number, number, number],
+    seed: number,
+    kind: number,
+  ): void {
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+    const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const flip = nx * normal[0] + ny * normal[1] + nz * normal[2] < 0;
+    const base = this.#positions.length / 3;
+    const order = flip ? [0, 2, 1] : [0, 1, 2];
+    const pts = [a, b, c];
+    for (const o of order) {
+      const p = pts[o]!;
+      this.#positions.push(p[0], p[1], p[2]);
+      this.#normals.push(normal[0], normal[1], normal[2]);
+      this.#uvs.push(uv[o * 2]!, uv[o * 2 + 1]!);
+      this.#colors.push(color[0], color[1], color[2]);
+      this.#facade.push(seed, kind);
+    }
+    this.#indices.push(base, base + 1, base + 2);
+  }
+
+  /** Ein Viereck, dessen Wickelung gegen die Normale geprüft wird (siehe `tri`). */
+  quadFacing(
+    p: readonly number[],
+    normal: readonly [number, number, number],
+    uv: readonly number[],
+    color: readonly [number, number, number],
+    seed: number,
+    kind: number,
+  ): void {
+    const ux = p[3]! - p[0]!, uy = p[4]! - p[1]!, uz = p[5]! - p[2]!;
+    const vx = p[6]! - p[0]!, vy = p[7]! - p[1]!, vz = p[8]! - p[2]!;
+    const dot = (uy * vz - uz * vy) * normal[0] + (uz * vx - ux * vz) * normal[1] + (ux * vy - uy * vx) * normal[2];
+    if (dot >= 0) {
+      this.quad(p, normal, uv, color, seed, kind);
+      return;
+    }
+    this.quad(
+      [p[9]!, p[10]!, p[11]!, p[6]!, p[7]!, p[8]!, p[3]!, p[4]!, p[5]!, p[0]!, p[1]!, p[2]!],
+      normal,
+      [uv[6]!, uv[7]!, uv[4]!, uv[5]!, uv[2]!, uv[3]!, uv[0]!, uv[1]!],
+      color,
+      seed,
+      kind,
+    );
+  }
+
+  /**
+   * Den Inhalt eines anderen Builders gedreht und verschoben anhängen.
+   *
+   * Neo-Tokio v2 baut jedes Haus in seinem **eigenen** Rahmen (Front zeigt nach
+   * +z, Mitte im Ursprung) mit dem bewährten achsparallelen Baukasten und dreht
+   * es erst hier an die Straße. `yaw` dreht um +Y: lokales (0, 0, 1) landet auf
+   * (sin yaw, 0, cos yaw). Fenster-UVs sind wandlokal und bleiben gültig.
+   */
+  appendTransformed(src: MeshBuilder, yaw: number, tx: number, ty: number, tz: number): void {
+    const c = Math.cos(yaw), s = Math.sin(yaw);
+    const base = this.#positions.length / 3;
+    const p = src.#positions, n = src.#normals;
+    for (let i = 0; i < p.length; i += 3) {
+      const x = p[i]!, z = p[i + 2]!;
+      this.#positions.push(tx + x * c + z * s, ty + p[i + 1]!, tz - x * s + z * c);
+      const nx = n[i]!, nz = n[i + 2]!;
+      this.#normals.push(nx * c + nz * s, n[i + 1]!, -nx * s + nz * c);
+    }
+    for (const v of src.#uvs) this.#uvs.push(v);
+    for (const v of src.#colors) this.#colors.push(v);
+    for (const v of src.#facade) this.#facade.push(v);
+    for (const i of src.#indices) this.#indices.push(base + i);
+  }
+
+  clear(): void {
+    this.#positions.length = 0;
+    this.#normals.length = 0;
+    this.#uvs.length = 0;
+    this.#colors.length = 0;
+    this.#facade.length = 0;
+    this.#indices.length = 0;
+  }
+
   build(name: string): BufferGeometry {
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new BufferAttribute(new Float32Array(this.#positions), 3));
@@ -384,7 +510,7 @@ class MeshBuilder {
  * stünde an jeder Gebäudeecke ein angeschnittenes Fenster; mit ihr ist eine
  * UV-Einheit exakt ein Fenster, und das Raster passt per Konstruktion.
  */
-function wall(
+export function wall(
   mesh: MeshBuilder,
   face: 'px' | 'nx' | 'pz' | 'nz',
   rect: Rect,
@@ -448,7 +574,7 @@ function wall(
   }
 }
 
-function top(
+export function top(
   mesh: MeshBuilder,
   rect: Rect,
   y: number,
@@ -467,7 +593,7 @@ function top(
 }
 
 /** Ein geschlossener Quader: vier Wände und ein Deckel, ohne Boden. */
-function box(
+export function box(
   mesh: MeshBuilder,
   rect: Rect,
   y0: number,
@@ -486,7 +612,7 @@ function box(
 }
 
 /** Rechteck rundum verkleinern. */
-function shrink(rect: Rect, by: number): Rect {
+export function shrink(rect: Rect, by: number): Rect {
   return {
     minX: rect.minX + by,
     maxX: rect.maxX - by,
@@ -559,6 +685,18 @@ function frontageDetails(mesh: MeshBuilder, rect: Rect, front: CityBuilding['fro
   }
 }
 
+/**
+ * Satteldach mit Überstand und geschlossenen Giebeln.
+ *
+ * Neo-Tokio v2: die erste Fassung bestand aus zwei Dachflächen ohne Giebel —
+ * von der Seite sah man durch das Dreieck in den Dachraum, und ohne Überstand
+ * lag das Dach wie ein Deckel auf der Wand. Beides fiel erst auf, als die
+ * Vororthäuser (fast alle mit Satteldach) dazukamen. Die Dachdeckung trägt jetzt
+ * einen eigenen Ziegelton statt der Fassadenfarbe: Japans Vorstadt hat
+ * dunkelgraue, blaugraue und braune Ziegel, keine putzfarbenen Dächer.
+ */
+const ROOF_TILES: readonly (readonly [number, number, number])[] = [0x3a3f47, 0x4a4038, 0x2f3a4a, 0x5a5550, 0x6a3a2e].map(toLinear);
+
 function pitchedRoof(
   mesh: MeshBuilder,
   crown: Rect,
@@ -567,29 +705,37 @@ function pitchedRoof(
   seed: number,
 ): void {
   const rise = 2.6;
+  const o = 0.45;
   const { minX, maxX, minZ, maxZ } = crown;
   const midZ = (minZ + maxZ) / 2;
   const ridge = crownTop + rise;
   const dz = midZ - minZ;
   const len = Math.hypot(dz, rise) || 1;
   const ny = dz / len;
-  const nz = -rise / len;
-  mesh.quad(
-    [minX, crownTop, minZ, maxX, crownTop, minZ, maxX, ridge, midZ, minX, ridge, midZ],
-    [0, ny, nz],
-    [0, 0, 1, 0, 1, 1, 0, 1],
-    color,
-    seed,
-    KIND_FLAT,
-  );
-  mesh.quad(
-    [maxX, crownTop, maxZ, minX, crownTop, maxZ, minX, ridge, midZ, maxX, ridge, midZ],
+  const nz = rise / len;
+  const tile = ROOF_TILES[seed % ROOF_TILES.length]!;
+  // Traufe liegt um den Überstand tiefer, damit die Neigung bleibt.
+  const eave = crownTop - (o * rise) / dz;
+  mesh.quadFacing(
+    [minX - o, eave, minZ - o, maxX + o, eave, minZ - o, maxX + o, ridge, midZ, minX - o, ridge, midZ],
     [0, ny, -nz],
     [0, 0, 1, 0, 1, 1, 0, 1],
-    color,
+    tile,
     seed,
     KIND_FLAT,
   );
+  mesh.quadFacing(
+    [maxX + o, eave, maxZ + o, minX - o, eave, maxZ + o, minX - o, ridge, midZ, maxX + o, ridge, midZ],
+    [0, ny, nz],
+    [0, 0, 1, 0, 1, 1, 0, 1],
+    tile,
+    seed,
+    KIND_FLAT,
+  );
+  // Giebeldreiecke in der Wandfarbe, bündig mit der Wand.
+  for (const [x, nx] of [[minX, -1], [maxX, 1]] as const) {
+    mesh.tri([x, crownTop, minZ], [x, crownTop, maxZ], [x, ridge, midZ], [nx, 0, 0], [0, 0, 1, 0, 0.5, 1], color, seed, KIND_FLAT);
+  }
 }
 
 // Omit author-owned sites before extrusion so no invisible collider survives.
@@ -998,7 +1144,7 @@ export function generateCity(input: CityInput): CityResult {
  * aus der Ferne eine Platte, und die Silhouette ist das, was sie über einen
  * Kilometer hinweg als Stadt lesbar macht.
  */
-function extrudeBuilding(
+export function extrudeBuilding(
   mesh: MeshBuilder,
   footprint: Rect,
   block: Rect,
@@ -1007,7 +1153,11 @@ function extrudeBuilding(
   signs: SignAnchor[],
   family: number,
   front: CityBuilding['front'],
-): { floors: number; height: number; shopInset: number } {
+  /** Neo-Tokio: das Viertel gibt die Etagenzahl vor, nicht der Abstand zur alten Mitte. */
+  floorsOverride?: number,
+  /** Neo-Tokio v2: Satteldach erzwingen (true) oder verbieten (false) — Vororthäuser. */
+  pitchedOverride?: boolean,
+): { floors: number; height: number; shopInset: number; color: readonly [number, number, number]; seed: number } {
   const b = CITY.building;
   // **Ganzzahlig, nicht 0…1.** Der Startwert läuft als Vertex-Attribut durch
   // die perspektivisch korrekte Interpolation; die trifft je Pixel die letzten
@@ -1038,6 +1188,7 @@ function extrudeBuilding(
   if (family === FACADE_FAMILY.cinema) floors = Math.min(5, Math.max(3, floors));
   if (family === FACADE_FAMILY.workshop) floors = Math.min(4, Math.max(2, floors));
   if (family === FACADE_FAMILY.hotel) floors = Math.min(20, Math.max(floors + 3, 11));
+  if (floorsOverride !== undefined) floors = floorsOverride;
 
   const floorTopY = (floor: number): number =>
     baseY + b.groundFloorHeight + Math.max(0, floor - 1) * b.floorHeight;
@@ -1098,7 +1249,7 @@ function extrudeBuilding(
     }
   }
 
-  const pitched = variant === 1 && (family === FACADE_FAMILY.hillside || family === FACADE_FAMILY.timber || family === FACADE_FAMILY.shed);
+  const pitched = pitchedOverride ?? (variant === 1 && (family === FACADE_FAMILY.hillside || family === FACADE_FAMILY.timber || family === FACADE_FAMILY.shed));
   if (pitched) pitchedRoof(mesh, crown, crownTop, color, seed);
   else top(mesh, crown, crownTop, ROOF_COLOR, seed);
 
@@ -1106,7 +1257,7 @@ function extrudeBuilding(
   // scharfe Kante — bei 2,23° Sonnenstand die auffälligste Silhouette im Bild.
   if (pitched) {
     collectSigns(footprint, block, baseY, floors, roofY, signs);
-    return { floors, height: crownTop + 3.2 - baseY, shopInset: inset };
+    return { floors, height: crownTop + 3.2 - baseY, shopInset: inset, color, seed };
   }
   const p = b.parapetThickness;
   const parapetTop = crownTop + b.parapet;
@@ -1173,7 +1324,7 @@ function extrudeBuilding(
   }
   collectSigns(footprint, block, baseY, floors, roofY, signs);
 
-  return { floors, height: highestY - baseY, shopInset: inset };
+  return { floors, height: highestY - baseY, shopInset: inset, color, seed };
 }
 
 /**
@@ -1185,7 +1336,7 @@ function extrudeBuilding(
  * zusammenfällt, an den Straßenraum. Alle anderen Wände sind Brandwände und
  * bekommen kein Schild; eines dort wäre unsichtbar und trotzdem im Budget.
  */
-function collectSigns(
+export function collectSigns(
   footprint: Rect,
   block: Rect,
   baseY: number,

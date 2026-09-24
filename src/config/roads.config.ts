@@ -145,6 +145,22 @@ export const ROAD_GRAVEL_COLOR = 0x6f6049;
  */
 export const ROAD_CLEARANCE_REFERENCE = 5;
 
+/**
+ * Höhenfenster für „ist das meine Straße?" — Neo-Tokio, 2026-09-23.
+ *
+ * Seit der Ring als Hochstraße über das Stadtraster läuft, liegen an derselben
+ * Stelle in x/z zwei Fahrbahnen übereinander (Ring 38…63 m, Straße 30 m). Die
+ * Suche nach der nächsten Straße kannte nur x/z; ein Auto auf der Aoi-dōri
+ * wäre unter dem Ring 8 m hoch auf dessen Fahrbahn gehoben worden. Mit einer
+ * Bezugshöhe zählen nur Abschnitte, deren Mittellinie höchstens so weit über
+ * oder unter ihr liegt.
+ *
+ * 4,5 m: mehr als jede Federung, Rampe oder Kuppe auf einer Fahrbahn ausmacht
+ * (gemessen größte Korrektur 4,30 m auf der alten `zufahrt`), weniger als die
+ * kleinste lichte Höhe unter dem Ring (7 m bei z = 60).
+ */
+export const ROAD_LAYER_SPAN = 4.5;
+
 export const ROAD_MESH = {
   /**
    * Abstand der abgetasteten Mittellinie in Metern.

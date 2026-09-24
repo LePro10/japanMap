@@ -24,10 +24,10 @@
     "azimuthDeg": 125.98
   },
   "measured": {
-    "litFraction": 0.5175876617431641,
+    "litFraction": 0.5494070053100586,
     "minSkyVisibility": 0.05530013538841963
   },
   "checksums": {
-    "shade.png": "bb00a9a5116cdd2efeadc35eb988f60b64ce5bc99c4ec4a4178a3ff4379b2c1b"
+    "shade.png": "a369c272020b293d681f73acfe05a0b081f7a25048b1790bd5e2a753bd529124"
   }
 }

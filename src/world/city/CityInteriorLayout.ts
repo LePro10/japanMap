@@ -1,6 +1,7 @@
 import { CITY, CITY_GROUND_Y } from '@/config/city.config';
 import type { CityCollider } from './CityGenerator';
 import { LocalSurfaces } from '../settlements/LocalSurfaces';
+import { interiorOffset } from '@/config/tokyoLayout.mjs';
 
 export type InteriorFinish = 'plaster' | 'wood' | 'dark' | 'tile' | 'metal' | 'red' | 'green';
 export interface InteriorBox {
@@ -20,7 +21,10 @@ export function createInteriorLayout(): {
     if (solid) colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, bottom: floorY + y - h / 2, top: floorY + y + h / 2 });
   };
   const floor = (x0: number, z0: number, x1: number, z1: number, finish: InteriorFinish): void => {
-    floors.quad([x0, floorY, z0], [x1, floorY, z0], [x1, floorY, z1], [x0, floorY, z1]);
+    // Neo-Tokio: die Laufflächen wandern mit dem Innenraum (INTERIOR_SITES);
+    // gezeichnet wird in alten Koordinaten und dort verschoben (CityInteriors).
+    const o = interiorOffset(x0);
+    floors.quad([x0 + o.dx, floorY, z0 + o.dz], [x1 + o.dx, floorY, z0 + o.dz], [x1 + o.dx, floorY, z1 + o.dz], [x0 + o.dx, floorY, z1 + o.dz]);
     box((x0 + x1) / 2, -0.06, (z0 + z1) / 2, x1 - x0, 0.12, z1 - z0, finish, false);
   };
   floor(505, 27, 521, 43, 'wood');
@@ -76,5 +80,10 @@ export function createInteriorLayout(): {
   box(649.2, 1.1, 143.45, 1, 2.2, 1.1, 'red');
   for (const z of [137.25, 138]) colliders.push({ minX: 638.3, maxX: 639.1, minZ: z - 0.38, maxZ: z + 0.38, bottom: floorY, top: floorY + 1.7 });
   for (const x of [646.1, 646.7]) colliders.push({ minX: x - 0.23, maxX: x + 0.23, minZ: 144.01, maxZ: 144.49, bottom: floorY, top: floorY + 0.74 });
-  return { boxes, colliders, floors, floorY };
+  // Kollision in neuen Koordinaten — Boxen bleiben alt, siehe oben.
+  const moved = colliders.map((c) => {
+    const o = interiorOffset((c.minX + c.maxX) / 2);
+    return { ...c, minX: c.minX + o.dx, maxX: c.maxX + o.dx, minZ: c.minZ + o.dz, maxZ: c.maxZ + o.dz };
+  });
+  return { boxes, colliders: moved, floors, floorY };
 }

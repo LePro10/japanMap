@@ -1555,6 +1555,10 @@ async function main() {
   let totalLength = 0;
 
   for (const definition of definitions) {
+    // Neo-Tokio (docs/TOKYO.md): Stadtschleife und Zufahrt entstehen mit dem
+    // Raster in `appendWP6Roads` neu — `stadt` als Stadtkurs mit 90°-Ecken, die
+    // Zufahrt als Teil des Rasters. Hier gebaut, lägen sie quer durch Blöcke.
+    if (WP6 && (definition.id === 'stadt' || definition.id === 'zufahrt')) continue;
     const settings = TYPES[definition.type];
     // Ein Bergpass endet dort, wo er hinkommt.
     //

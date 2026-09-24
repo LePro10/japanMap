@@ -320,9 +320,15 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
     if (count < 4) continue;
     const spacing = road.length / (road.closed ? count : Math.max(count - 1, 1));
     const marked = DECALS.markedTypes.includes(road.type);
+    // Neo-Tokio: Gassen (5 m) tragen gar keine Linie, Nebenstraßen (7 m) nur
+    // Randlinien — ein Mittelstrich auf einer Gasse, in der ein Auto Platz hat,
+    // sah im ersten Bild aus wie eine zweispurige Straße (Golden Gai, v2).
+    const widthHere = roadWidthAt(road, 0);
+    const edgeLines = marked && widthHere >= 6;
+    const centreLine = marked && widthHere >= 9;
 
     // ── Randlinien ────────────────────────────────────────────────────
-    if (marked) {
+    if (edgeLines) {
       const step = Math.max(1, Math.round(DECALS.edgeLength / spacing));
       for (let i = 0; i < count; i += step) {
         const half = roadWidthAt(road, i) / 2;
@@ -342,6 +348,8 @@ export function buildDecals(roads: readonly RoadData[]): DecalResult {
         }
       }
 
+    }
+    if (centreLine) {
       // ── Mittelstrich, gestrichelt ───────────────────────────────────
       const dashStep = Math.max(1, Math.round(DECALS.dashPitch / spacing));
       for (let i = 0; i < count; i += dashStep) {

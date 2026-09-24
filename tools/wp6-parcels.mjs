@@ -1,4 +1,5 @@
 import { inUrbanEnvelope } from './wp6-layout.mjs';
+import { districtBlend } from '../src/config/city.mjs';
 
 /** Kleine, an die Straße gebundene Terrassen statt einer Ebene über dem Hang. */
 export function planUrbanParcels(roads, terrain) {
@@ -23,7 +24,8 @@ export function planUrbanParcels(roads, terrain) {
       for(const side of [-1,1]) {
         const offset=road.widths[i/3]/2+22,cx=x-dz/d*offset*side,cz=z+dx/d*offset*side;
         const lot={minX:cx-15,maxX:cx+15,minZ:cz-14,maxZ:cz+14};
-        if(cx>410&&cx<830&&cz>-90&&cz<330)continue;
+        // Neo-Tokio: im Kern und seinem 30-m-Saum baut der CityGenerator selbst.
+        if(districtBlend(cx,cz,30)>0)continue;
         const probes=[]; for(const px of [lot.minX,cx,lot.maxX])for(const pz of [lot.minZ,cz,lot.maxZ])probes.push([px,pz]);
         if(probes.some(([px,pz])=>!inUrbanEnvelope(px,pz)||onRoad(px,pz)))continue;
         if((cells.get(key(cx,cz))??[]).some(p=>p.minX<lot.maxX+2&&p.maxX>lot.minX-2&&p.minZ<lot.maxZ+2&&p.maxZ>lot.minZ-2))continue;

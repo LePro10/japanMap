@@ -1,5 +1,5 @@
 import type { RoadData, RoadFile } from '@/config/roads.config';
-import { ROAD_CLEARANCE_REFERENCE, ROAD_TYPES, roadWidthAt } from '@/config/roads.config';
+import { ROAD_CLEARANCE_REFERENCE, ROAD_LAYER_SPAN, ROAD_TYPES, roadWidthAt } from '@/config/roads.config';
 import { WORLD } from '@/config/world.config';
 import { bankAngle, signedCurvature } from './RoadMeshBuilder';
 
@@ -151,8 +151,8 @@ export class RoadNetwork {
    * Abfragen einige Millionen kurzlebige Objekte. Deshalb rechnet die Suche
    * hier direkt mit Zahlen, und nur `closestPoint` baut am Ende ein Objekt.
    */
-  distanceToNearestRoad(x: number, z: number, maxDistance = 120): number {
-    const found = this.#search(x, z, maxDistance, false);
+  distanceToNearestRoad(x: number, z: number, maxDistance = 120, yRef = NaN): number {
+    const found = this.#search(x, z, maxDistance, false, yRef);
     return found < 0 ? Infinity : Math.sqrt(found);
   }
 
@@ -175,9 +175,13 @@ export class RoadNetwork {
   /**
    * Nächster Punkt auf dem Netz — für das Zurücksetzen nach dem Verlassen der
    * Strecke und ab P4 für die Vegetationsmaske.
+   *
+   * `yRef`: nur Abschnitte, deren Mittellinie höchstens `ROAD_LAYER_SPAN` über
+   * oder unter dieser Höhe liegt — die zweite Ebene unter der Ring-Hochstraße.
+   * `NaN` (Voreinstellung) heißt: wie bisher nur in x/z.
    */
-  closestPoint(x: number, z: number, maxDistance = 120): RoadHit | null {
-    const found = this.#search(x, z, maxDistance, false);
+  closestPoint(x: number, z: number, maxDistance = 120, yRef = NaN): RoadHit | null {
+    const found = this.#search(x, z, maxDistance, false, yRef);
     if (found < 0 || this.#bestSegment === null) return null;
 
     const segment = this.#bestSegment;
@@ -231,7 +235,8 @@ export class RoadNetwork {
    * Quadriert, weil die Wurzel nur einmal am Ende gebraucht wird und im
    * inneren Vergleich nichts beiträgt.
    */
-  #search(x: number, z: number, maxDistance: number, scaled: boolean): number {
+  #search(x: number, z: number, maxDistance: number, scaled: boolean, yRef = NaN): number {
+    const layered = yRef === yRef;
     const rings = Math.max(1, Math.ceil(maxDistance / CELL_SIZE));
     const cellX = Math.floor((x + WORLD.half) / CELL_SIZE);
     const cellZ = Math.floor((z + WORLD.half) / CELL_SIZE);
@@ -274,6 +279,12 @@ export class RoadNetwork {
 
             let t = ((x - ax) * ddx + (z - az) * ddz) / lengthSquared;
             t = t < 0 ? 0 : t > 1 ? 1 : t;
+
+            if (layered) {
+              const ay = line[i * 3 + 1]!;
+              const sy = ay + (line[j * 3 + 1]! - ay) * t;
+              if (Math.abs(sy - yRef) > ROAD_LAYER_SPAN) continue;
+            }
 
             const px = ax + ddx * t;
             const pz = az + ddz * t;

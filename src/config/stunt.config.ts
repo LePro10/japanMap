@@ -371,8 +371,15 @@ export const DRIFT_ZONES: readonly DriftZone[] = [
  * `npm run world` still falsch wird.
  */
 export const PICKUPS = {
-  /** Wie viele Stücke insgesamt auf der Karte liegen. */
-  count: 90,
+  /**
+   * Wie viele Stücke insgesamt auf der Karte liegen.
+   *
+   * Neo-Tokio: 110 statt 90. Das Stadtnetz ist aus dem Verteiler genommen
+   * (außer dem Stadtkurs), und das neue Außennetz ist länger; mit 90 lagen am
+   * Ring 19 statt über 20 (Rauchprobe). 110 bringt den Anteil des Rings wieder
+   * auf das alte Maß, der Rest verteilt sich auf die neuen Randstraßen.
+   */
+  count: 110,
   /**
    * Abstand zur Fahrbahnmitte, als Anteil der **halben Breite an der Stelle**.
    *

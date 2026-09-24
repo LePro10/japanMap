@@ -220,8 +220,14 @@ export const NEON = {
 
   /** Höhe der Ladenzeilen-Schilder über dem Bürgersteig, in Metern. */
   bannerY: 4.6,
-  /** Höhen der hochkanten Schilder über dem Bürgersteig. */
-  uprightY: [6.4, 11.2],
+  /**
+   * Höhen der hochkanten Schilder über dem Bürgersteig.
+   *
+   * Neo-Tokio: fünf Stufen im Abstand von 3,6 m (Schild 3,4 m hoch), damit sich
+   * in Kabukichō Schildertürme bilden wie im Referenzbild. Wie viele davon ein
+   * Platz trägt, sagt `SignAnchor.stack` aus dem Generator.
+   */
+  uprightY: [6.4, 10.0, 13.6, 17.2, 20.8],
 
   /** Anteil der Wandflächen, die überhaupt ein Schild bekommen. */
   coverage: 0.62,
@@ -242,7 +248,13 @@ export const NEON = {
   /** Anteil der Schilder, die flackern. */
   flickerFraction: 0.16,
 
-  capacity: 512,
+  /**
+   * Neo-Tokio: 1600 statt 512. Mit 2837 Häusern gab es über 1100 Plätze, und die
+   * Kappung nahm sie in Rasterreihenfolge — der Osten ging leer aus. Ein Schild
+   * sind zwei Dreiecke in einem instanzierten Draw-Call.
+   */
+  // v2 (Programm je Haus): rund 3000 Schilder bei 2558 Häusern.
+  capacity: 4000,
 } as const;
 
 /**
@@ -360,6 +372,19 @@ export const FACADE_FAMILY = {
   hotel: 5,
   hillside: 6,
   shed: 7,
+} as const;
+
+/**
+ * Neo-Tokio: bis zu welcher Entfernung eine 160-m-Kachel mit voller Geometrie
+ * steht (Vordächer, Balkonbänder, Dachaufbauten), in Metern bis zum Kachelrand.
+ * Dahinter steht die Hülle — Quader mit demselben Fensterraster.
+ *
+ * Minimal ist absichtlich knapp: die Messbasis (docs/TOKYO.md) verlangt, dass
+ * Minimal nicht teurer wird als die alte Stadt; die Hülle kostet je Haus 10
+ * Dreiecke, das volle Haus 300…1000.
+ */
+export const CITY_LOD = {
+  detailRange: { ultra: 340, high: 260, medium: 200, low: 140, minimal: 90, custom: 200 },
 } as const;
 
 export const CITY_LOOK = {

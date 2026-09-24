@@ -42,6 +42,9 @@ import { PostFXPipeline } from './render/PostFXPipeline';
 import { QualitySystem } from './render/QualitySystem';
 import { CitySystem } from './world/city/CitySystem';
 import { CityExperienceSystem } from './world/city/CityExperienceSystem';
+import { TokyoLandmarkSystem } from './world/city/TokyoLandmarkSystem';
+import { TokyoOpenSpaceSystem } from './world/city/TokyoOpenSpaceSystem';
+import { TokyoStreetFurnitureSystem } from './world/city/TokyoStreetFurnitureSystem';
 import { SmashableSystem } from './world/props/SmashableSystem';
 import { NeonSystem } from './world/city/NeonSystem';
 import { TerrainDataError } from './world/TerrainSampler';
@@ -855,6 +858,12 @@ async function boot(): Promise<void> {
   engine.add(settlements);
   engine.add(new TerraceOffroad(drive));
   engine.add(new CityExperienceSystem(drive, city, quality, overlay));
+  // Neo-Tokio: Scramble, Videowände, Hochbahn, Tor, Turm (docs/TOKYO.md, Phase 4).
+  engine.add(new TokyoLandmarkSystem(drive));
+  // Neo-Tokio v2: Parks, Schrein, Plätze und Münzparkplätze in den Lücken des Generators.
+  engine.add(new TokyoOpenSpaceSystem(drive, city));
+  // Laternen, Alleebäume, Masten mit Leitungen und Ampeln entlang der Bordsteine.
+  engine.add(new TokyoStreetFurnitureSystem(drive, city));
   const smashables = new SmashableSystem(drive);
   engine.add(smashables);
 

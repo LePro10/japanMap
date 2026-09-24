@@ -14,10 +14,25 @@ export interface CityDistrict {
   readonly maxZ: number;
   readonly centerX: number;
   readonly centerZ: number;
+  readonly sizeX: number;
+  readonly sizeZ: number;
+  /** Größere Kantenlänge. */
   readonly size: number;
+  /** Teilkästen, deren Vereinigung der Kern ist. */
+  readonly parts: readonly CityBox[];
+}
+
+export interface CityBox {
+  readonly minX: number;
+  readonly maxX: number;
+  readonly minZ: number;
+  readonly maxZ: number;
 }
 
 export declare const CITY_DISTRICT: CityDistrict;
+
+/** Alter 360-m-Kasten — nur für die Einebnung in `bake:clean`. */
+export declare const LEGACY_PAD_DISTRICT: CityBox;
 
 /** Höhe der Asphaltebene des Distrikts, in Metern. */
 export declare const CITY_GROUND_Y: number;
@@ -32,7 +47,12 @@ export declare const CITY_PAD_Y: number;
 export declare const CITY_PAD_FEATHER: number;
 
 /** 1 im Distrikt, 0 weiter als `feather` außerhalb, dazwischen glatt. */
-export declare function districtBlend(x: number, z: number, feather?: number): number;
+export declare function districtBlend(
+  x: number,
+  z: number,
+  feather?: number,
+  box?: CityBox & { readonly parts?: readonly CityBox[] },
+): number;
 
 /** Harte Zugehörigkeit zum Distriktkasten — ohne Auslauf. */
 export declare function inCityDistrict(x: number, z: number): boolean;

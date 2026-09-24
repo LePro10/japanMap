@@ -69,7 +69,9 @@ export class NeonMaterial extends MeshBasicMaterial {
           'varying vec3 vNeonWorld;\n' +
           'varying vec3 vNeonTint;\n' +
           'varying vec2 vNeonFlicker;\n' +
-          'varying vec2 vNeonUv;',
+          'varying vec2 vNeonUv;\n' +
+          'varying vec4 vNeonRect;\n' +
+          'varying vec2 vNeonLocal;',
       )
       .replace(
         '#include <worldpos_vertex>',
@@ -77,7 +79,9 @@ export class NeonMaterial extends MeshBasicMaterial {
           'vNeonWorld = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;\n' +
           'vNeonTint = aNeonTint;\n' +
           'vNeonFlicker = aNeonFlicker;\n' +
-          'vNeonUv = aNeonRect.xy + uv * aNeonRect.zw;',
+          'vNeonUv = aNeonRect.xy + uv * aNeonRect.zw;\n' +
+          'vNeonRect = aNeonRect;\n' +
+          'vNeonLocal = uv;',
       );
 
     shader.fragmentShader = shader.fragmentShader.replace(
@@ -88,7 +92,9 @@ export class NeonMaterial extends MeshBasicMaterial {
         'varying vec3 vNeonWorld;\n' +
         'varying vec3 vNeonTint;\n' +
         'varying vec2 vNeonFlicker;\n' +
-        'varying vec2 vNeonUv;',
+        'varying vec2 vNeonUv;\n' +
+        'varying vec4 vNeonRect;\n' +
+        'varying vec2 vNeonLocal;',
     );
 
     injectAtmosphere(
@@ -101,7 +107,11 @@ export class NeonMaterial extends MeshBasicMaterial {
       '#include <map_fragment>',
       // Die Atlas-Koordinate kommt aus dem Instanz-Attribut, nicht aus `vMapUv`.
       // Ein zweites Feld im Atlas wäre sonst ein zweites Mesh.
-      'vec4 neonTexel = texture2D(map, vNeonUv);\n' +
+      // Rückseite: waagerecht gespiegelt lesen. Ein abstehendes Schild trägt
+      // seine Schrift auf beiden Seiten, und ohne das stand sie von hinten
+      // spiegelverkehrt im Bild (v2, Blick über den Kinoplatz).
+      'vec2 neonUv = gl_FrontFacing ? vNeonUv : vNeonRect.xy + vec2(1.0 - vNeonLocal.x, vNeonLocal.y) * vNeonRect.zw;\n' +
+        'vec4 neonTexel = texture2D(map, neonUv);\n' +
         'diffuseColor *= neonTexel;\n' +
         // Flackern: eine Leuchtstoffröhre, die zündet — Stufen, keine Sinuskurve.
         // Ein weiches Auf und Ab sieht nach Atmung aus, nicht nach defektem
@@ -114,6 +124,6 @@ export class NeonMaterial extends MeshBasicMaterial {
   }
 
   override customProgramCacheKey(): string {
-    return 'japanmap:neon';
+    return 'japanmap:neon-v2';
   }
 }

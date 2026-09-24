@@ -31,18 +31,60 @@
  * (29,77 m), damit die Platte nirgends vom Terrain durchstoßen wird. Der
  * Sicherheitsabstand ist mit 23 cm knapp und deshalb eine geprüfte Zusage, keine
  * Annahme: `CityGenerator` misst ihn beim Bauen nach und meldet ihn.
+ *
+ * > **Neo-Tokio, 2026-09-23 (docs/TOKYO.md): der Distrikt ist jetzt der
+ * > 1-km-Kern, und der Ring läuft absichtlich hindurch.** Die Begründung oben
+ * > („nicht mitten hindurch") gilt für eine Stadt, die neben der Strecke liegt.
+ * > Die neue Stadt nimmt den Ring auf: sein Dammstück im Norden wird zur
+ * > aufgeständerten Stadtautobahn, der ebenerdige Südabschnitt zur Diagonale.
+ * > Die Trasse des Rings bleibt dabei unverändert — er wird auf dem **alten**
+ * > sauberen Feld trassiert, siehe `LEGACY_PAD_DISTRICT`.
+ * >
+ * > Gelände im neuen Kasten, abgelesen am gebackenen Feld (100-m-Raster):
+ * > 25…37 m, am Nordrand (z = −250) im Osten bis ~55 m — dort übernimmt eine
+ * > Stützmauer die Kante.
  */
 
 /** Der Distrikt in Weltkoordinaten. Norden ist −Z. */
 export const CITY_DISTRICT = {
+  minX: 300,
+  maxX: 1300,
+  minZ: -250,
+  maxZ: 450,
+  centerX: 800,
+  centerZ: 100,
+  /** Kantenlängen in Metern — seit Neo-Tokio kein Quadrat mehr. */
+  sizeX: 1000,
+  sizeZ: 700,
+  /** Größere Kantenlänge; nur noch für grobe Reichweiten gedacht. */
+  size: 1000,
+  /**
+   * Der Kern ist kein Rechteck: im Nordosten (x > 1040) beginnt er erst bei
+   * z = −160. Dort steigt das Gelände auf 45…55 m; mit Rasterstraßen auf 30 m
+   * gemessen **bis 22 m Einschnitt** (east-rim, kita-dori, showa-dori). Statt
+   * einer 20-m-Stützmauer wird der Hang zum Park unter dem Turm.
+   * `minX…maxZ` oben ist die umschließende Box.
+   */
+  parts: [
+    { minX: 300, maxX: 1300, minZ: -160, maxZ: 450 },
+    { minX: 300, maxX: 1040, minZ: -250, maxZ: -160 },
+  ],
+};
+
+/**
+ * Der alte 360-m-Kasten — **nur** für die Einebnung in `bake:clean`.
+ *
+ * `padCity` läuft auch ohne Straßen, und auf genau diesem sauberen Feld
+ * trassiert `gen-roads` den Ring. Ein größerer Kasten hier hätte ihm ein anderes
+ * Gelände gezeigt und die Rennstrecke verschoben. Im sauberen Feld bleibt die
+ * Einebnung deshalb bitgleich zum Stand vor Neo-Tokio; der neue Kern wird erst
+ * im echten Bake **nach** dem Einschneiden eingeebnet.
+ */
+export const LEGACY_PAD_DISTRICT = {
   minX: 440,
   maxX: 800,
   minZ: -60,
   maxZ: 300,
-  centerX: 620,
-  centerZ: 120,
-  /** Kantenlänge in Metern — der Kasten ist quadratisch. */
-  size: 360,
 };
 
 /**
@@ -114,12 +156,10 @@ export const CITY_PAD_FEATHER = 60;
  * Gelände und bleibt Gelände.
  */
 export function inCityDistrict(x, z) {
-  return (
-    x >= CITY_DISTRICT.minX &&
-    x <= CITY_DISTRICT.maxX &&
-    z >= CITY_DISTRICT.minZ &&
-    z <= CITY_DISTRICT.maxZ
-  );
+  for (const p of CITY_DISTRICT.parts) {
+    if (x >= p.minX && x <= p.maxX && z >= p.minZ && z <= p.maxZ) return true;
+  }
+  return false;
 }
 
 /**
@@ -131,17 +171,22 @@ export function inCityDistrict(x, z) {
  * Auslauf steigt die Trasse über `feather` Meter aus dem Gelände auf die
  * Stadtebene — bei 60 m und knapp einem Meter Differenz sind das 1,6 % Neigung.
  */
-export function districtBlend(x, z, feather = 60) {
-  const dx = Math.max(CITY_DISTRICT.minX - x, x - CITY_DISTRICT.maxX, 0);
-  const dz = Math.max(CITY_DISTRICT.minZ - z, z - CITY_DISTRICT.maxZ, 0);
-  if (dx === 0 && dz === 0) return 1;
+export function districtBlend(x, z, feather = 60, box = CITY_DISTRICT) {
+  // Abstand zur Vereinigung der Teilkästen = kleinster Abstand zu einem davon.
+  let q = Infinity;
+  for (const p of box.parts ?? [box]) {
+    const dx = Math.max(p.minX - x, x - p.maxX, 0);
+    const dz = Math.max(p.minZ - z, z - p.maxZ, 0);
+    if (dx === 0 && dz === 0) return 1;
+    const d = dx * dx + dz * dz;
+    if (d < q) q = d;
+  }
 
   // Quadratisch vergleichen und die Wurzel nur ziehen, wenn sie gebraucht wird.
   // Das ist hier keine Mikrooptimierung: die Vegetations-Streuung ruft diese
   // Funktion für **jeden** Kandidaten auf, das sind bei Gras rund 6700 je Chunk,
   // und für die weit über 99 % der Karte, die nicht Stadt sind, endet sie damit
   // nach zwei Multiplikationen.
-  const q = dx * dx + dz * dz;
   if (q >= feather * feather) return 0;
   const t = 1 - Math.sqrt(q) / feather;
   return t * t * (3 - 2 * t);

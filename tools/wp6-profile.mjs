@@ -1,7 +1,7 @@
 // Ein gemeinsames Höhenprofil: Einmündungen sind geteilte Knoten, keine
 // nachträglich übereinandergelegten Rampen. Kürzeste Wege begrenzen die
 // Höhendifferenz entlang des Straßennetzes auch über mehrere Straßen hinweg.
-import { CITY_ROAD_LEVEL as CITY_LEVEL } from '../src/config/city.mjs';
+import { CITY_ROAD_LEVEL as CITY_LEVEL, inCityDistrict } from '../src/config/city.mjs';
 
 class Heap {
   a = [];
@@ -59,7 +59,11 @@ export function fitNetwork(roads, terrain) {
     for (let i = 0; i < r.centerline.length; i += 3) {
       const [x, y, z] = r.centerline.slice(i, i + 3), key = `${Math.round(x * 100)},${Math.round(z * 100)}`;
       let id = ids.get(key);
-      const core = x >= 440 && x <= 800 && z >= -60 && z <= 300;
+      // Neo-Tokio: der ganze 1-km-Kern liegt auf Stadthöhe — außer dem Ring,
+      // wo er als Hochstraße über der Stadt steht. Sein ebenerdiger Südabschnitt
+      // (vorher 29,2…29,4 m) wird mitgenommen, sonst läge er 0,6 m unter den
+      // Stadtstraßen, die ihn kreuzen.
+      const core = inCityDistrict(x, z) && (r.id !== 'ring' || y < CITY_LEVEL + 1.5);
       const locked = r.id === 'stadt' || (!fresh && r.id !== 'ring' && r.id !== 'zufahrt') || (r.id === 'ring' && x < 0 && z < 450);
       const ground = core ? CITY_LEVEL : terrain.at(x, z);
       const target = fresh && r.id !== 'needle-circuit' ? ground + .05 : r.id === 'ring' && x > 0 ? ground + .1 : y;

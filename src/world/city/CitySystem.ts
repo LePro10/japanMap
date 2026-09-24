@@ -1,34 +1,40 @@
 import { Group, Mesh } from 'three';
 
-import { CITY, CITY_LOOK, CITY_SLAB_Y } from '@/config/city.config';
-import { ROAD_TYPES } from '@/config/roads.config';
+import { CITY_DISTRICT, CITY_LOD, CITY_LOOK, CITY_ROAD_LEVEL, CITY_SLAB_Y } from '@/config/city.config';
+import type { QualityKey } from '@/config/quality.config';
 import type { EngineContext, System } from '@/core/System';
 import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms';
 import { createCityUniforms, FacadeMaterial, type CityUniforms } from '../materials/FacadeMaterial';
 import type { RoadMaterial } from '../materials/RoadMaterial';
 import type { RoadNetwork } from '../roads/RoadNetwork';
 import type { TerrainSampler } from '../TerrainSampler';
-import { generateCity, type CityBuilding } from './CityGenerator';
-import { urbanLots } from './UrbanLots';
+import type { CityBuilding } from './CityGenerator';
+import { generateTokyo, type TokyoOpenLot, type TokyoRoad, type TokyoTile } from './TokyoGenerator';
+import { generateSuburbs } from './TokyoSuburbs';
 
 /**
- * Die Stadt in der Szene — PLAN.md P6 / 6.1, 6.2.
+ * Die Stadt — PLAN.md P6, seit 2026-09-23 Neo-Tokio (docs/TOKYO.md).
  *
- * Baut, sobald **beide** Voraussetzungen da sind: der Terrain-Sampler für die
- * Schürze am Distriktrand und das Straßennetz, damit die Blöcke der befahrenen
- * Stadtstraße ausweichen. Beide kommen als Ereignis, beide genau einmal —
- * dieses System muss deshalb **vor** TerrainSystem und RoadSystem registriert
- * sein, wie ScatterSystem und PropSystem auch.
- *
- * Das Straßennetz kommt als letztes (main.ts baut in dieser Reihenfolge auf),
- * gebaut wird trotzdem aus einem gemeinsamen Punkt heraus statt aus dem
- * zweiten Ereignis: die Reihenfolge zweier Ereignisse ist eine Annahme über
- * eine andere Datei, und solche Annahmen halten genau bis zur nächsten
- * Umsortierung.
+ * Baut die Stadt einmal, sobald Gelände und Straßennetz da sind, und schaltet
+ * danach je Frame die Detailstufe der 160-m-Kacheln um. Der Aufbau selbst steht
+ * in `TokyoGenerator`; hier stehen nur die beiden Abfragen, die er vom
+ * Straßennetz braucht, und die Umschaltung.
  */
+interface TileMeshes {
+  readonly tile: TokyoTile;
+  readonly full: Mesh;
+  readonly shell: Mesh;
+}
+
 export class CitySystem implements System {
   readonly name = 'CitySystem';
   buildings: readonly CityBuilding[] = [];
+  /** Freiflächen (Parks, Schrein, Plätze, Münzparkplätze) für die Ausstattung. */
+  openLots: readonly TokyoOpenLot[] = [];
+  /** Bordsteinlinien als x,z-Züge — Masten, Laternen, Poller stehen daran. */
+  curbLines: readonly (readonly number[])[] = [];
+  /** Gartenbäume der Vororte (Phase 5) — gebaut von `TokyoOpenSpaceSystem`. */
+  gardenTrees: readonly { readonly x: number; readonly y: number; readonly z: number; readonly s: number }[] = [];
 
   #context: EngineContext | null = null;
   #group: Group | null = null;
@@ -37,6 +43,8 @@ export class CitySystem implements System {
   #sampler: TerrainSampler | null = null;
   #network: RoadNetwork | null = null;
   #built = false;
+  #tiles: TileMeshes[] = [];
+  #detailRange: number = CITY_LOD.detailRange.ultra;
 
   readonly #shared: CityUniforms;
 
@@ -45,6 +53,7 @@ export class CitySystem implements System {
     geometrie: '—',
     platte: '—',
     aufbau: '—',
+    kacheln: '—',
   };
 
   constructor(private readonly atmosphere: AtmosphereUniforms) {
@@ -71,12 +80,11 @@ export class CitySystem implements System {
     });
     context.bus.on('roads:ready', ({ network, surface }) => {
       this.#network = network;
-      // **Dasselbe Material wie die Fahrbahn**, nicht ein gleich aussehendes.
-      // Bodenplatte und Stadtstraße stoßen im Distrikt aneinander; mit zwei
-      // Materialien liefe die Pfützenmaske aus 6.4 über zwei Uniform-Blöcke und
-      // die Nässe spränge an der Bordsteinkante.
       this.#groundMaterial = surface;
       this.#tryBuild();
+    });
+    context.bus.on('quality:changed', ({ level }) => {
+      this.#detailRange = CITY_LOD.detailRange[level as QualityKey] ?? CITY_LOD.detailRange.medium;
     });
     context.bus.on('look:apply', ({ look }) => {
       this.#shared.uWindowLitFraction.value = look.city.windowLitFraction;
@@ -91,10 +99,22 @@ export class CitySystem implements System {
   }
 
   update(_delta: number, elapsed: number): void {
-    // Eine Zeitbasis für alle Fenster. Sie läuft weiter, auch wenn die Stadt
-    // nicht im Bild ist — ein Flackern, das beim Hinsehen von vorn beginnt,
-    // wäre auffälliger als das Flackern selbst.
     this.#shared.uCityTime.value = elapsed;
+    const camera = this.#context?.camera;
+    if (!camera || this.#tiles.length === 0) return;
+    const cx = camera.position.x;
+    const cz = camera.position.z;
+    let full = 0;
+    for (const t of this.#tiles) {
+      const b = t.tile.bounds;
+      const dx = Math.max(b.minX - cx, cx - b.maxX, 0);
+      const dz = Math.max(b.minZ - cz, cz - b.maxZ, 0);
+      const near = dx * dx + dz * dz < this.#detailRange * this.#detailRange;
+      t.full.visible = near;
+      t.shell.visible = !near;
+      if (near) full++;
+    }
+    this.#readouts.kacheln = `${full} voll · ${this.#tiles.length - full} Hülle (bis ${this.#detailRange} m)`;
   }
 
   #tryBuild(): void {
@@ -106,68 +126,97 @@ export class CitySystem implements System {
     if (!facade || !ground) return;
     this.#built = true;
 
-    const started = performance.now();
-    const result = generateCity({
-      urbanLots: urbanLots(network, sampler).lots,
-      isRoad: (x, z) => {
-        // Width-aware carve. The old 12 m isotropic radius was 3.6 m too
-        // wide on a 9 m street and 0.9 m too tight on Crosslight (18 m +
-        // shoulder + sidewalk). Buildings then either floated in a plaza
-        // or sat on the boulevard — both visible in city-overview.png.
-        const hit = network.closestPoint(x, z, 28);
-        if (!hit) return false;
-        return (
-          hit.distance <
-          hit.width / 2 + ROAD_TYPES[hit.type].shoulder + CITY.sidewalk.overhang + 0.4
-        );
-      },
-      sampleTerrain: (x, z) => sampler.getHeightAt(x, z),
-    });
-    const elapsed = performance.now() - started;
-    this.buildings = result.buildings;
-
-    for (const block of result.blocks) {
-      const mesh = new Mesh(block.geometry, facade);
-      mesh.name = block.geometry.name;
-      mesh.matrixAutoUpdate = false;
-      mesh.castShadow = false;
-      mesh.receiveShadow = false;
-      this.#group.add(mesh);
+    // Fahrbahnen für das Abstandsfeld: jedes Stück, das ebenerdig (±1,5 m um
+    // die Stadthöhe) im Kern oder bis 40 m davor liegt, in Läufe zerlegt. Was
+    // höher liegt, ist Hochstraße — darunter Gehweg, aber kein Haus.
+    const roads: TokyoRoad[] = [];
+    const viaduct: TokyoRoad[] = [];
+    const margin = 40;
+    const near = (x: number, z: number): boolean =>
+      x > CITY_DISTRICT.minX - margin && x < CITY_DISTRICT.maxX + margin && z > CITY_DISTRICT.minZ - margin && z < CITY_DISTRICT.maxZ + margin;
+    for (const road of network.roads) {
+      const l = road.centerline;
+      const width = road.widths[0] ?? 8;
+      let run: number[] = [];
+      let runElevated = false;
+      const flush = (): void => {
+        if (run.length >= 4) (runElevated ? viaduct : roads).push({ points: run, width });
+        run = [];
+      };
+      for (let i = 0; i < l.length; i += 3) {
+        const x = l[i]!, y = l[i + 1]!, z = l[i + 2]!;
+        if (!near(x, z)) { flush(); continue; }
+        const elevated = y > CITY_ROAD_LEVEL + 1.5;
+        if (run.length && elevated !== runElevated) {
+          const px = run[run.length - 2]!, pz = run[run.length - 1]!;
+          flush();
+          run.push(px, pz);
+        }
+        runElevated = elevated;
+        run.push(x, z);
+      }
+      if (road.closed && run.length && !runElevated && l.length >= 3) run.push(l[0]!, l[2]!);
+      flush();
     }
 
-    const sidewalks = new Mesh(result.sidewalks, facade);
-    sidewalks.name = 'Bürgersteige';
-    sidewalks.matrixAutoUpdate = false;
-    this.#group.add(sidewalks);
+    const started = performance.now();
+    const result = generateTokyo({ roads, viaduct, sampleTerrain: (x, z) => sampler.getHeightAt(x, z) });
+    // Phase 5: der Übergang auf den WP6-Terrassen vor dem Kern.
+    const suburbs = generateSuburbs(network.file.urbanLots ?? [], (x, z) => {
+      const hit = network.closestPoint(x, z, 90);
+      if (!hit) return null;
+      const dx = hit.x - x, dz = hit.z - z, l = Math.hypot(dx, dz) || 1;
+      return [dx / l, dz / l];
+    });
+    const elapsed = performance.now() - started;
+    this.buildings = [...result.buildings, ...suburbs.buildings];
+    this.gardenTrees = suburbs.trees;
+    this.openLots = result.openLots;
+    this.curbLines = result.curbLines;
+
+    for (const tile of [...result.tiles, ...suburbs.tiles]) {
+      const full = new Mesh(tile.full, facade);
+      const shell = new Mesh(tile.shell, facade);
+      full.name = tile.full.name;
+      shell.name = tile.shell.name;
+      for (const m of [full, shell]) {
+        m.matrixAutoUpdate = false;
+        m.castShadow = false;
+        m.receiveShadow = false;
+        this.#group.add(m);
+      }
+      shell.visible = false;
+      this.#tiles.push({ tile, full, shell });
+    }
+
+    // Gehwege: ein Mesh für den ganzen Kern, in beiden Detailstufen dasselbe.
+    const walks = new Mesh(result.sidewalks, facade);
+    walks.name = 'Gehwege';
+    walks.matrixAutoUpdate = false;
+    walks.receiveShadow = false;
+    this.#group.add(walks);
 
     const slab = new Mesh(result.ground, ground);
     slab.name = 'Stadtboden';
     slab.matrixAutoUpdate = false;
-    // Die Platte ist 360 × 360 m groß und liegt fast immer teilweise im Bild;
-    // ihre Bounding-Sphere hat 255 m Radius. Culling brächte hier nichts außer
-    // einer Kugel-Frustum-Prüfung je Frame.
     slab.frustumCulled = false;
     this.#group.add(slab);
 
     const s = result.stats;
-
     this.#readouts.stadt =
       `${s.blocks} Blöcke · ${s.buildings} Gebäude von ${s.parcels} Parzellen · ` +
-      `${result.signs.length} Schilderplätze · 8 Familien`;
+      `${result.signs.length} Schilderplätze · ${Object.entries(s.byStyle).map(([k, v]) => `${k} ${v}`).join(', ')} · ` +
+      `Vororte ${suburbs.stats.houses} Häuser auf ${suburbs.stats.lots} Terrassen`;
     this.#readouts.geometrie =
-      `${s.triangles.toLocaleString('de-DE')} Dreiecke · ` +
-      `${s.blocks + 2} Draw-Calls · höchstes Haus ${s.floorsMax} Etagen / ` +
-      `${s.heightMax.toFixed(1)} m`;
+      `${s.trianglesFull.toLocaleString('de-DE')} Dreiecke voll · ${s.trianglesShell.toLocaleString('de-DE')} Hülle · ` +
+      `${result.tiles.length} Kacheln · höchstes Haus ${s.floorsMax} Etagen / ${s.heightMax.toFixed(1)} m · ` +
+      `Gehwege ${s.trianglesSidewalk.toLocaleString('de-DE')} Dreiecke · auf Fahrbahn ${s.onRoad} · Feld ${s.fieldMs.toFixed(0)} ms · ${s.phases}`;
     this.#readouts.platte =
       `y = ${CITY_SLAB_Y.toFixed(2)} m · geringster Abstand zum Gelände ` +
-      `${(s.slabClearance * 100).toFixed(1)} cm bei (${s.slabClearanceAt.x}, ` +
-      `${s.slabClearanceAt.z})`;
+      `${(s.slabClearance * 100).toFixed(1)} cm bei (${s.slabClearanceAt.x}, ${s.slabClearanceAt.z})`;
     this.#readouts.aufbau = `${elapsed.toFixed(1)} ms`;
+    console.info(`[Stadt] ${this.#readouts.stadt} · ${this.#readouts.geometrie} · Aufbau ${this.#readouts.aufbau}`);
 
-    // **Die knappe Zusage aus city.mjs wird hier geprüft, nicht geglaubt.**
-    // Liegt die Platte auf dem Gelände auf, wächst irgendwo ein Grasbüschel
-    // durch den Asphalt — ein Fehler, den man auf einem Bild aus 200 m
-    // Entfernung nicht sieht und aus 5 m nicht mehr übersieht.
     if (s.slabClearance <= 0) {
       console.error(
         `Stadt: die Bodenplatte liegt bei (${s.slabClearanceAt.x}, ${s.slabClearanceAt.z}) ` +
@@ -180,7 +229,7 @@ export class CitySystem implements System {
     this.#context?.bus.emit('city:ready', {
       signs: result.signs,
       uniforms: this.#shared,
-      colliders: result.colliders,
+      colliders: [...result.colliders, ...suburbs.colliders],
       curbs: result.curbs,
     });
   }
@@ -192,6 +241,7 @@ export class CitySystem implements System {
 
     folder.addBinding(this.#readouts, 'stadt', { readonly: true, label: 'Bestand' });
     folder.addBinding(this.#readouts, 'geometrie', { readonly: true, label: 'Geometrie' });
+    folder.addBinding(this.#readouts, 'kacheln', { readonly: true, label: 'Kacheln' });
     folder.addBinding(this.#readouts, 'platte', { readonly: true, label: 'Bodenplatte' });
     folder.addBinding(this.#readouts, 'aufbau', { readonly: true, label: 'Aufbau' });
     folder.addBinding(group, 'visible', { label: 'Sichtbar' });
@@ -217,9 +267,6 @@ export class CitySystem implements System {
       max: 20,
       step: 0.1,
     });
-    // Die Diagnose-Ausgabe der Fassade. Sie hat das Pixelrauschen der Fenster
-    // gefunden, nachdem drei Vermutungen daran vorbeigegangen waren — und sie
-    // bleibt aus genau dem Grund stehen.
     folder.addBinding(this.#shared.uCityDebug, 'value', {
       label: 'Fassaden-Diagnose',
       options: { Aus: 0, Detailanteil: 1, Fensterleuchten: 2, 'Hash je Fenster': 3 },
@@ -228,6 +275,7 @@ export class CitySystem implements System {
 
   dispose(): void {
     this.buildings = [];
+    this.#tiles = [];
     if (this.#group) {
       this.#context?.scene.remove(this.#group);
       this.#group.traverse((child) => {
@@ -237,13 +285,9 @@ export class CitySystem implements System {
     }
     this.#facade?.dispose();
     this.#facade = null;
-    // Das Belagsmaterial gehört dem RoadSystem und wird dort freigegeben. Es
-    // hier ein zweites Mal zu entsorgen hieße, dem Straßennetz sein Programm
-    // unter den Meshes wegzuziehen.
     this.#groundMaterial = null;
     this.#sampler = null;
     this.#network = null;
     this.#context = null;
   }
 }
-

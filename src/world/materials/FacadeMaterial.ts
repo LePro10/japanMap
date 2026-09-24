@@ -167,7 +167,26 @@ export class FacadeMaterial extends MeshStandardMaterial {
           '  ? facadeWindows(vFacadeUv, mod(vFacadeKind.x, 256.0), uCityTime, floor(vFacadeKind.x / 256.0))\n' +
           '  : vec4(0.0);\n' +
           // Glas ist dunkler und glatter als Putz, der Rahmen dunkler als beides.
-          'if (vFacadeKind.y < 0.5) diffuseColor.rgb *= facadeSurface(vFacadeUv, mod(vFacadeKind.x, 256.0), floor(vFacadeKind.x / 256.0), gFacadeWindow);',
+          'if (vFacadeKind.y < 0.5) diffuseColor.rgb *= facadeSurface(vFacadeUv, mod(vFacadeKind.x, 256.0), floor(vFacadeKind.x / 256.0), gFacadeWindow);\n' +
+          // Neo-Tokio v2: Gehwegpflaster (Art 2). Platten 60 × 30 cm im
+          // Läuferverband, Fugen dunkler, jede Platte leicht anders. Vorher war
+          // der Gehweg eine einfarbige Fläche — „Beton überall" in der
+          // Rückmeldung. Der Plattenwert kommt aus der **ganzzahligen** Zelle
+          // (floor), nicht aus einer interpolierten Größe: die Falle mit dem
+          // Sinus-Hash (CLAUDE.md, Fassadenrauschen) greift hier nicht, weil
+          // alle Pixel einer Platte exakt dieselbe Zahl hashen. In der Ferne
+          // blendet `fwidth` die Fugen aus, bevor sie flimmern.
+          'if (vFacadeKind.y > 1.5) {\n' +
+          '  vec2 pv = vFacadeWorld.xz / vec2(0.6, 0.3);\n' +
+          '  pv.x += mod(floor(pv.y), 2.0) * 0.5;\n' +
+          '  vec2 pc = mod(floor(pv), 256.0);\n' +
+          '  vec2 pf = fract(pv);\n' +
+          '  float grout = smoothstep(0.0, 0.05, pf.x) * smoothstep(0.0, 0.05, 1.0 - pf.x) * smoothstep(0.0, 0.1, pf.y) * smoothstep(0.0, 0.1, 1.0 - pf.y);\n' +
+          '  float fw = max(fwidth(pv.x), fwidth(pv.y));\n' +
+          '  grout = mix(grout, 0.9, smoothstep(0.25, 0.7, fw));\n' +
+          '  float ph = fract(sin(dot(pc, vec2(12.9898, 78.233))) * 43758.5453);\n' +
+          '  diffuseColor.rgb *= mix(0.6, 1.0, grout) * (0.88 + 0.22 * ph);\n' +
+          '}',
       )
       .replace(
         '#include <roughnessmap_fragment>',
@@ -234,6 +253,6 @@ export class FacadeMaterial extends MeshStandardMaterial {
   }
 
   override customProgramCacheKey(): string {
-    return 'japanmap:facade-depth-v2';
+    return 'japanmap:facade-depth-v3';
   }
 }

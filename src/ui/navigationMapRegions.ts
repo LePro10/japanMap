@@ -63,12 +63,14 @@ export const MAP_REGIONS: readonly MapRegion[] = [
   },
   {
     id: 'neon',
-    label: 'Neon Basin',
-    kanji: '夜',
-    detail: 'Streets after rain',
+    // Neo-Tokio v2: Name und Mitte der neuen Stadt (Kern x 300…1300, z −250…450).
+    // Die id bleibt — Karte, Tests und gespeicherte Entdeckungen hängen an ihr.
+    label: 'Neo Tokyo',
+    kanji: '東京',
+    detail: 'Scramble, alleys and neon',
     color: '#9b6bb3',
-    x: 620,
-    z: 120,
+    x: 800,
+    z: 100,
   },
   {
     id: 'cinder',

@@ -1,5 +1,7 @@
 import {
+  BoxGeometry,
   Color,
+  MeshStandardMaterial,
   Group,
   InstancedBufferAttribute,
   InstancedMesh,
@@ -38,6 +40,7 @@ export class NeonSystem implements System {
   #context: EngineContext | null = null;
   #group: Group | null = null;
   #mesh: InstancedMesh | null = null;
+  #frames: InstancedMesh | null = null;
   #material: NeonMaterial | null = null;
   #atlas: NeonAtlas | null = null;
   readonly #lights: PointLight[] = [];
@@ -133,62 +136,126 @@ export class NeonSystem implements System {
     const position = new Vector3();
     const axis = new Vector3(0, 1, 0);
 
-    for (const sign of signs) {
-      if (random() > NEON.coverage) continue;
-
-      // Querliegendes Schild über der Ladenfront, bündig an der Wand.
-      const bannerCell = atlas.banner[Math.floor(random() * atlas.banner.length)] ?? 0;
-      const bannerAspect = atlas.cells[bannerCell]?.aspect ?? 2;
-      const bannerWidth = Math.min(NEON.bannerWidth, sign.span * 0.8);
-      const bannerHeight = bannerWidth / bannerAspect;
-      const outward = new Vector3(Math.sin(sign.angle), 0, Math.cos(sign.angle));
-
-      position.set(
-        sign.x + outward.x * NEON.bannerOffset,
-        sign.y + NEON.bannerY,
-        sign.z + outward.z * NEON.bannerOffset,
-      );
-      quaternion.setFromAxisAngle(axis, sign.angle);
-      scale.set(bannerWidth, bannerHeight, 1);
+    const b = CITY.building;
+    const rand = (lo: number, hi: number): number => lo + random() * (hi - lo);
+    const pickFrom = (list: readonly number[]): number => list[Math.floor(random() * list.length)] ?? 0;
+    const white = new Color(1, 1, 1);
+    // Leuchtkästen tragen ihren Grund selbst; bei voller Neonstärke (5,5)
+    // stünde ein roter Kasten als roter Scheinwerfer im Bloom. Die Röhren
+    // (`mono`) behalten die volle Stärke — sie sind dünne Linien.
+    const BOX_LEVEL = 0.34;
+    const frames: Matrix4[] = [];
+    const add = (cell: number, px: number, py: number, pz: number, angle: number, w: number, h: number): void => {
+      const info = atlas.cells[cell];
+      if (!info) return;
+      position.set(px, py, pz);
+      quaternion.setFromAxisAngle(axis, angle);
+      scale.set(w, h, 1);
+      const color = info.mono ? pickColor(random) : white.clone().multiplyScalar(BOX_LEVEL * rand(0.85, 1.15));
       placements.push({
         matrix: new Matrix4().compose(position, quaternion, scale),
-        cell: bannerCell,
-        color: pickColor(random),
-        flicker: [random(), random() < NEON.flickerFraction ? 1 : 0],
+        cell,
+        color,
+        flicker: [random(), info.mono && random() < NEON.flickerFraction ? 1 : 0],
         position: position.clone(),
-        area: bannerWidth * bannerHeight,
+        area: w * h,
       });
+    };
+    const frameBox = (x: number, y: number, z: number, angle: number, w: number, h: number, d: number): void => {
+      frames.push(new Matrix4().compose(new Vector3(x, y, z), new Quaternion().setFromAxisAngle(axis, angle), new Vector3(w, h, d)));
+    };
 
-      if (sign.floors < NEON.uprightFloors) continue;
+    /**
+     * v2: je Haus ein **Programm** statt je Wand derselbe Stapel. Gemessen an
+     * Bild 2 der Rückmeldung war das Problem nicht die Zahl der Schilder,
+     * sondern dass jedes Haus dieselben trug: gleiche Höhe (3,4 m), gleiche
+     * Abstände (3,6 m), vier Wörter. Jetzt entscheidet je Wand der Zufall aus
+     * vier Bausteinen, gewichtet mit der Dichte des Viertels (`stack`, 0…5 aus
+     * dem Generator):
+     *
+     *  - Ladenschild über dem Eingang (fast immer),
+     *  - Hochkant-Schild **einer** Höhe zwischen 2,6 und 11 m an einer
+     *    Hauskante, in dichten Vierteln öfter ein Mieterverzeichnis,
+     *  - Etagenbänder flach an der Wand (Kabukichō, Akiba),
+     *  - selten eine Dachtafel mit Stahlgestell.
+     */
+    for (const sign of signs) {
+      if (sign.stack === undefined && random() > NEON.coverage) continue;
+      const rich = sign.stack ?? 1;
+      const outX = Math.sin(sign.angle), outZ = Math.cos(sign.angle);
+      const tX = Math.cos(sign.angle), tZ = -Math.sin(sign.angle);
+      const roofY = sign.y + b.groundFloorHeight + Math.max(0, sign.floors - 1) * b.floorHeight;
+      const tall = roofY - sign.y;
+      const at = (u: number, out: number): [number, number] => [sign.x + tX * u + outX * out, sign.z + tZ * u + outZ * out];
 
-      // Hochkante Schilder stehen **quer** von der Wand ab: man sieht sie die
-      // Straße entlang, nicht frontal. Genau das macht eine japanische
-      // Geschäftsstraße aus — flach an der Wand wären sie aus dem Auto
-      // unsichtbar.
-      const levels = Math.min(
-        NEON.uprightY.length,
-        1 + (sign.floors >= NEON.uprightFloors + 4 ? 1 : 0),
-      );
-      for (let level = 0; level < levels; level++) {
-        const cell = atlas.upright[Math.floor(random() * atlas.upright.length)] ?? 0;
-        const aspect = atlas.cells[cell]?.aspect ?? 0.5;
-        const height = NEON.uprightHeight;
-        const width = height * aspect;
-        position.set(
-          sign.x + outward.x * NEON.uprightOffset,
-          sign.y + (NEON.uprightY[level] ?? NEON.uprightY[0]!),
-          sign.z + outward.z * NEON.uprightOffset,
-        );
-        quaternion.setFromAxisAngle(axis, sign.angle + Math.PI / 2);
-        scale.set(width, height, 1);
-        placements.push({
-          matrix: new Matrix4().compose(position, quaternion, scale),
-          cell,
-          color: pickColor(random),
-          flicker: [random(), random() < NEON.flickerFraction ? 1 : 0],
-          position: position.clone(),
-          area: width * height,
-        });
+      // 1. Ladenschild über dem Eingang.
+      if (random() < 0.82) {
+        const cell = pickFrom(atlas.banner);
+        const w = Math.min(sign.span * 0.85, rand(2.4, 5.2));
+        const h = Math.min(1.15, w / (atlas.cells[cell]?.aspect ?? 4));
+        const u = rand(-1, 1) * Math.max(0, sign.span / 2 - w / 2 - 0.2);
+        const [x, z] = at(u, NEON.bannerOffset);
+        add(cell, x, sign.y + NEON.bannerY, z, sign.angle, w, h);
+      }
+
+      // 2. Hochkant-Schild(er) an der Hauskante.
+      if (rich >= 1 && tall > 9 && random() < (rich >= 3 ? 0.9 : 0.55)) {
+        const count = rich >= 4 && sign.span > 7 && random() < 0.5 ? 2 : 1;
+        let side = random() < 0.5 ? -1 : 1;
+        for (let k = 0; k < count; k++, side = -side) {
+          const dir = random() < (rich >= 4 ? 0.35 : 0.12) && atlas.directory.length > 0;
+          const cell = dir ? pickFrom(atlas.directory) : pickFrom(atlas.upright);
+          const aspect = atlas.cells[cell]?.aspect ?? 0.25;
+          const maxH = Math.min(tall - 6, rich >= 4 ? 11 : 6.5);
+          if (maxH < 2.6) break;
+          let bottom = sign.y + 5.4 + rand(0, 1.2);
+          const h = dir ? rand(Math.min(6, maxH), maxH) : rand(2.6, maxH);
+          const w = Math.max(0.75, Math.min(1.5, h * aspect));
+          const u = side * Math.max(0, sign.span / 2 - 0.7);
+          const [x, z] = at(u, w / 2 + 0.25);
+          add(cell, x, bottom + h / 2, z, sign.angle + Math.PI / 2, w, h);
+          const [hx, hz] = at(u, 0.12);
+          frameBox(hx, bottom + h * 0.2, hz, sign.angle, 0.08, 0.08, 0.3);
+          // Kabukichō: darüber ein zweites, anderes — Schildertürme, nicht Stapel gleicher Kästen.
+          bottom += h + 0.35;
+          if (rich >= 5 && random() < 0.45 && roofY - bottom > 3) {
+            const c2 = pickFrom(atlas.upright);
+            const h2 = rand(2.4, Math.min(5, roofY - bottom - 0.4));
+            const w2 = Math.max(0.75, Math.min(1.4, h2 * (atlas.cells[c2]?.aspect ?? 0.25)));
+            const [x2, z2] = at(u, w2 / 2 + 0.25);
+            add(c2, x2, bottom + h2 / 2, z2, sign.angle + Math.PI / 2, w2, h2);
+          }
+        }
+      }
+
+      // 3. Etagenbänder flach an der Wand.
+      if (rich >= 3) {
+        for (let f = 2; f <= Math.min(sign.floors - 1, 7); f++) {
+          if (random() > 0.26) continue;
+          const cell = pickFrom(atlas.banner);
+          const w = sign.span * rand(0.45, 0.8);
+          const h = Math.min(1.2, w / (atlas.cells[cell]?.aspect ?? 4));
+          const [x, z] = at(rand(-1, 1) * (sign.span - w) * 0.4, 0.12);
+          add(cell, x, sign.y + b.groundFloorHeight + (f - 1.45) * b.floorHeight, z, sign.angle, w, h);
+        }
+      }
+
+      // 4. Dachtafel mit Gestell — der Blickfang an Kreuzungen (ref/web/01).
+      if (sign.floors >= 5 && rich >= 2 && random() < 0.05 * rich && sign.span > 7) {
+        const cell = pickFrom(atlas.banner);
+        const w = Math.min(sign.span * 0.95, rand(8, 13));
+        const h = w / (atlas.cells[cell]?.aspect ?? 4);
+        const bottom = roofY + 2.4;
+        const [x, z] = at(0, -0.6);
+        add(cell, x, bottom + h / 2, z, sign.angle, w, h);
+        for (const u of [-w * 0.38, 0, w * 0.38]) {
+          const [lx, lz] = at(u, -0.85);
+          frameBox(lx, (roofY + bottom + h) / 2, lz, sign.angle, 0.16, bottom + h - roofY, 0.16);
+          const [bx, bz] = at(u, -2.2);
+          frameBox(bx, (roofY + bottom) / 2 + 0.4, bz, sign.angle, 0.12, bottom - roofY + 0.8, 0.12);
+        }
+        const [tx2, tz2] = at(0, -0.75);
+        frameBox(tx2, bottom - 0.1, tz2, sign.angle, w, 0.14, 0.14);
       }
     }
 
@@ -225,6 +292,21 @@ export class NeonSystem implements System {
 
     this.#mesh = mesh;
     group.add(mesh);
+
+    // Gestelle und Halter: ein zweiter instanzierter Kasten, dunkles Blech.
+    if (frames.length > 0) {
+      const frameMesh = new InstancedMesh(
+        new BoxGeometry(1, 1, 1),
+        new MeshStandardMaterial({ color: 0x2c3237, roughness: 0.6, metalness: 0.5 }),
+        frames.length,
+      );
+      frameMesh.name = 'Schildergestelle';
+      frames.forEach((m, i) => frameMesh.setMatrixAt(i, m));
+      frameMesh.instanceMatrix.needsUpdate = true;
+      frameMesh.computeBoundingSphere();
+      group.add(frameMesh);
+      this.#frames = frameMesh;
+    }
 
     this.#placeLights(placements.slice(0, count), group);
 
@@ -331,6 +413,9 @@ export class NeonSystem implements System {
     }
     this.#mesh?.geometry.dispose();
     this.#mesh = null;
+    this.#frames?.geometry.dispose();
+    (this.#frames?.material as MeshStandardMaterial | undefined)?.dispose();
+    this.#frames = null;
     this.#material?.dispose();
     this.#material = null;
     this.#atlas?.texture.dispose();

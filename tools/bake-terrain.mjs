@@ -27,7 +27,7 @@ import { createNoise2D } from 'simplex-noise';
 import { PNG } from 'pngjs';
 // Dieselbe Datei, die auch der Renderer liest — die Stadtplatte und die
 // Einebnung darunter müssen auf den Zentimeter zusammenpassen.
-import { CITY_PAD_FEATHER, CITY_PAD_Y, districtBlend } from '../src/config/city.mjs';
+import { CITY_DISTRICT, CITY_PAD_FEATHER, CITY_PAD_Y, LEGACY_PAD_DISTRICT, districtBlend } from '../src/config/city.mjs';
 import { padUrbanParcels } from './wp6-parcels.mjs';
 import { encodeHeightmap } from './pack-heightmap.mjs';
 
@@ -1658,7 +1658,7 @@ function carveRiver(height, res, spacing, traceField) {
  * wird sie überschrieben. Die Fahrbahn selbst bleibt, wo sie ist — sie ist
  * Geometrie, kein Höhenfeld.
  */
-function padCity(height, res, spacing) {
+function padCity(height, res, spacing, box = CITY_DISTRICT) {
   const half = (res - 1) * spacing * 0.5;
   let touched = 0;
   let lowered = 0;
@@ -1670,7 +1670,7 @@ function padCity(height, res, spacing) {
     const z = j * spacing - half;
     for (let i = 0; i < res; i++) {
       const x = i * spacing - half;
-      const blend = districtBlend(x, z, CITY_PAD_FEATHER);
+      const blend = districtBlend(x, z, CITY_PAD_FEATHER, box);
       if (blend <= 0) continue;
 
       const index = j * res + i;
@@ -2238,7 +2238,10 @@ async function main() {
 
   // Stadtplateau. **Nach** dem Straßeneinschnitt — Begründung bei `padCity`.
   process.stdout.write('  5d   Stadtplateau … ');
-  const cityReport = padCity(height, res, spacing);
+  // Neo-Tokio: im sauberen Feld nur der alte 360-m-Kasten, damit gen-roads den
+  // Ring auf bitgleichem Gelände trassiert (siehe LEGACY_PAD_DISTRICT). Der neue
+  // 1-km-Kern kommt erst im echten Bake, nach dem Einschneiden.
+  const cityReport = padCity(height, res, spacing, opts['no-roads'] ? LEGACY_PAD_DISTRICT : CITY_DISTRICT);
   console.log(
     c.green('fertig') +
       c.dim(
