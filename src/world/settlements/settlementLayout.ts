@@ -1,13 +1,14 @@
 import { funauraClearance } from './funaura/funauraLayout';
 import { gasshoClearance, gasshoDry } from './gassho/gasshoLayout';
 import { kisoClearance } from './kiso/kisoLayout';
+import { koedoClearance, koedoDry } from './koedo/koedoLayout';
 
 /**
  * Stellen, an denen die Reismaske zur Laufzeit trocken gilt (Hofränder des
  * Gassho-Weilers). Gelesen von `RicePaddy` (Wasserfläche) und `WaterField`
  * (Fahrphysik) — beide müssen dasselbe sagen, sonst spritzt ein Auto auf trockenem Boden.
  */
-export function paddyDry(x: number, z: number): boolean { return gasshoDry(x, z); }
+export function paddyDry(x: number, z: number): boolean { return gasshoDry(x, z) || koedoDry(x, z); }
 
 /** Nur Baukörper und schmale Wege freihalten; die Reismaske bleibt unverändert. */
 export const MILL = { x: -1244, z: 409 };
@@ -80,4 +81,5 @@ export function settlementClearance(add: (x: number, z: number, r: number) => vo
   funauraClearance(add);
   gasshoClearance(add);
   kisoClearance(add);
+  koedoClearance(add);
 }

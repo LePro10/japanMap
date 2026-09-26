@@ -7,6 +7,7 @@ import { TerraceOffroad } from './world/settlements/TerraceOffroad';
 import { FunauraVillage } from './world/settlements/funaura/FunauraVillage';
 import { GasshoHamlet } from './world/settlements/gassho/GasshoHamlet';
 import { KisoJuku } from './world/settlements/kiso/KisoJuku';
+import { KoedoTown } from './world/settlements/koedo/KoedoTown';
 import { MAP_LANDMARKS } from './ui/navigationMapData';
 import './style.css';
 import './ui/theme.css';
@@ -870,6 +871,9 @@ async function boot(): Promise<void> {
   // Kiso-Juku: Poststation am Pass (docs/DOERFER.md §3). Liest die Mittellinie des `toge`.
   const kiso = new KisoJuku(drive, overlay);
   engine.add(kiso);
+  // Koedo: Kura-Handelsstädtchen am Ende der Dorfstraße (docs/DOERFER.md §4). Liest die Mittellinie der `dorf`-Straße.
+  const koedo = new KoedoTown(drive, overlay);
+  engine.add(koedo);
   engine.add(new CityExperienceSystem(drive, city, quality, overlay));
   // Neo-Tokio: Scramble, Videowände, Hochbahn, Tor, Turm (docs/TOKYO.md, Phase 4).
   engine.add(new TokyoLandmarkSystem(drive));
@@ -1076,6 +1080,7 @@ async function boot(): Promise<void> {
   funaura.isPlaying = () => ui.playing;
   gassho.isPlaying = () => ui.playing;
   kiso.isPlaying = () => ui.playing;
+  koedo.isPlaying = () => ui.playing;
   smashables.isPlaying = () => ui.playing;
   engine.bus.on('drive:broke', event => {
     audio.impact(event.kind === 'tree' ? 0.75 : event.kind === 'rail' ? 0.5 : 0.3);

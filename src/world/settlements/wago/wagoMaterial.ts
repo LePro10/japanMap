@@ -62,6 +62,13 @@ export interface WeatherOptions {
    * hält dunkles Holz dunkel und Tatami hell. 0 = aus.
    */
   lift?: number;
+  /**
+   * Namako-kabe (Koedo, Kurashiki): quadratische Schieferfliesen, um 45° gedreht,
+   * mit erhabenen weißen Kalkfugen. Das Muster entsteht im Shader aus der
+   * Weltposition in der Wandebene — gilt für jede Wandrichtung, ohne UVs, und
+   * bleibt aus der Nähe scharf. Die Vertexfarbe ist die Fugenfarbe (Kalk).
+   */
+  namako?: boolean;
 }
 
 /** Vertexfarbe × Verwitterung. `strength` 1 = Holz/Stein am Meer, 0,4 = Lack. */
@@ -133,6 +140,34 @@ export function weatheredMaterial(o: WeatherOptions = {}): MeshStandardMaterial 
             diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.2, 0.07) * (0.7 + s1 * 0.6), moss * 0.7);
           }
           #endif
+          #ifdef WAGO_NAMAKO
+          {
+            // Ebene aus der waagerechten Normalen: u entlang der Wand, v = Höhe.
+            // Gitter um 45° gedreht, Fliese 0,32/√2 ≈ 0,23 m — gemessen an den
+            // Referenzbildern (ein Fenster von 0,9 m sind knapp vier Rauten).
+            vec2 hor = normalize(vec2(-n.z, n.x) + vec2(1e-5));
+            float u = dot(vWPos.xz, hor), v = vWPos.y;
+            const float NL = 0.32;
+            vec2 q = vec2(u + v, u - v) / NL;
+            vec2 fq = abs(fract(q) - 0.5);
+            // Abstand zur nächsten Fuge in Metern (Fugen bei ganzzahligem q).
+            float d = (0.5 - max(fq.x, fq.y)) * NL * 0.70711;
+            float px = max(length(fwidth(q)), 1e-4) * NL * 0.70711;
+            float jw = 0.022;
+            float joint = 1.0 - smoothstep(jw - px, jw + px, d);
+            float bead = clamp(1.0 - d / jw, 0.0, 1.0);
+            // Fliesen leicht verschieden: ganzzahlige Zelle, klein gehalten — ein
+            // sin-Hash mit großem Argument rauscht pixelweise (CLAUDE.md, Fassaden).
+            vec2 cell = mod(floor(q), 61.0);
+            float hsh = fract(cell.x * 0.1377 + cell.y * 0.2819 + cell.x * cell.y * 0.0123);
+            vec3 plaster = diffuseColor.rgb;
+            vec3 slate = plaster * vec3(0.2, 0.215, 0.235) * (0.78 + hsh * 0.44);
+            vec3 pattern = mix(slate, plaster * (0.8 + bead * 0.2), joint);
+            // Aus der Ferne unter einem Pixel je Fuge: auf den Mittelwert blenden, sonst Moiré.
+            float far = smoothstep(0.01, 0.028, px);
+            diffuseColor.rgb = mix(pattern, mix(slate, plaster, 0.33), far);
+          }
+          #endif
         }`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         totalEmissiveRadiance += diffuseColor.rgb * vec3(1.0, 0.8, 0.58) * ${(o.lift ?? 0).toFixed(3)};`)
@@ -142,7 +177,8 @@ export function weatheredMaterial(o: WeatherOptions = {}): MeshStandardMaterial 
   // Ergänzen, nicht ersetzen: three setzt für MeshStandardMaterial selbst `STANDARD`.
   // Die erste Fassung überschrieb das Objekt und rechnete damit ein anderes Material.
   if (o.thatch) m.defines = { ...(m.defines ?? {}), WAGO_THATCH: '' };
-  m.customProgramCacheKey = () => `wago-weather-${strength}-${o.doubleSide ? 1 : 0}-${o.thatch ? 1 : 0}-${o.lift ?? 0}`;
+  if (o.namako) m.defines = { ...(m.defines ?? {}), WAGO_NAMAKO: '' };
+  m.customProgramCacheKey = () => `wago-weather-${strength}-${o.doubleSide ? 1 : 0}-${o.thatch ? 1 : 0}-${o.lift ?? 0}-${o.namako ? 1 : 0}-${o.roughness ?? 0.86}`;
   return m;
 }
 

@@ -143,6 +143,17 @@ export const MAP_LANDMARKS: readonly MapLandmark[] = [
     major: true,
   },
   {
+    id: 'koedo',
+    label: 'Koedo',
+    kanji: '小江戸',
+    detail: 'Kura merchant town · canal, bell tower, sake brewery',
+    x: -214,
+    z: 140,
+    icon: 'village',
+    labelMinPx: 620,
+    major: true,
+  },
+  {
     id: 'commons',
     label: 'Petal Commons',
     kanji: '花',

@@ -239,6 +239,42 @@ export const VIEWPOINTS: Readonly<Record<string, Viewpoint>> = {
     lookAt: [-1363.4, 139.5, -1070.7],
     note: 'Kiso-Juku aus der Luft: Dachkette am Pass, Zedernhang, Talseite.',
   },
+  // Koedo (docs/DOERFER.md §4): Ichibangai zum Turm, Straße B im Gegenlicht, Kanal, Damm, Brauerei, Reisfeld, Luft.
+  koedo: {
+    position: [-232, 32.5, 44],
+    lookAt: [-167, 40, 108],
+    note: 'Koedo — die Dorfstraße als Ichibangai: schwarze Kura beidseitig, am Ende der Glockenturm.',
+  },
+  'koedo-strasse': {
+    position: [-181.4, 35.3, 136],
+    lookAt: [-187.9, 35.3, 186],
+    note: 'Koedo — Straße B nach Süden im Gegenlicht: Kopfsteinpflaster, Kura, Laternen, am Ende der Schrein.',
+  },
+  'koedo-kanal': {
+    position: [-258, 31.7, 140],
+    lookAt: [-266, 30.1, 175],
+    note: 'Koedo — Kanalpromenade (Kurashiki): weiße Kura mit Namako, Trauerweiden, Bogenbrücke.',
+  },
+  'koedo-damm': {
+    position: [-272, 31.4, 176],
+    lookAt: [-258, 33.1, 160],
+    note: 'Koedo — vom Westdamm über den Kanal: Bogenbrücke, Kanalzeile, Brauerei mit Schornstein.',
+  },
+  'koedo-brauerei': {
+    position: [-186.5, 35.8, 166],
+    lookAt: [-195, 36, 170],
+    note: 'Koedo — Izumiya-Brauerei: Laden mit Kanban und Sugidama, offen bis zur Probiertheke.',
+  },
+  'koedo-reis': {
+    position: [-320, 27.5, 185],
+    lookAt: [-240, 31, 160],
+    note: 'Koedo aus den Reisfeldern: Damm, Kanalzeile, Brauerei — dahinter die Türme von Tokio.',
+  },
+  'koedo-luft': {
+    position: [-330, 110, 290],
+    lookAt: [-205, 30, 140],
+    note: 'Koedo aus der Luft: Kanal am Rand der Reisebene, Hauptstraße, Platz mit Turm, Stadt am Horizont.',
+  },
   kueste: {
     position: [200, 90, 1100],
     lookAt: [100, 0, 1400],

@@ -53,7 +53,19 @@ export class Parts {
   readonly interior = new SettlementKit();
   /** Innenraum mit Atlas (Tatami, Fusuma, Rollbild) — dieselbe Aufhellung. */
   readonly interiorTex = new SettlementKit(true);
-  get kits(): readonly SettlementKit[] { return [this.mass, this.detail, this.glass, this.glow, this.cloth, this.sign, this.signGlow, this.fine, this.thatch, this.interior, this.interiorTex]; }
+  /**
+   * Polierter Kalkputz (Koedo): die schwarzen Kura von Kawagoe glänzen — matt
+   * gerechnet sehen sie aus wie verkohltes Holz. Eigene Schicht mit niedriger
+   * Rauheit; der matte Körper darunter steht in `mass` und trägt die Fernsicht.
+   */
+  readonly gloss = new SettlementKit();
+  /**
+   * Namako-kabe (Koedo): Schieferfliesen mit erhabenen weißen Fugen im
+   * Diagonalgitter, im Shader aus der Weltposition gerechnet
+   * (`weatheredMaterial({ namako: true })`). Die Vertexfarbe ist die Fugenfarbe.
+   */
+  readonly namako = new SettlementKit();
+  get kits(): readonly SettlementKit[] { return [this.mass, this.detail, this.glass, this.glow, this.cloth, this.sign, this.signGlow, this.fine, this.thatch, this.interior, this.interiorTex, this.gloss, this.namako]; }
 }
 
 export type V3 = readonly [number, number, number];

@@ -384,7 +384,7 @@ export class RoadGround implements Ground {
     const splash = this.localWater?.depth(x, z) ?? 0;
     if (splash > WATER_PHYS.wetThreshold) return 'wasser';
     const local = this.localSurfaces?.height(x, z) ?? -Infinity;
-    if (Number.isFinite(local) && local >= this.height(x, z) - 0.015) return 'kies';
+    if (Number.isFinite(local) && local >= this.height(x, z) - 0.015) return this.localSurfaces?.surfaceAt?.(x, z) ?? 'kies';
     if (this.#halfWidth > 0 && this.#network) {
       const reach = this.#halfWidth + this.#shoulder;
       const distance = this.#network.distanceToNearestRoad(x, z, reach + 2, this.#hitY);

@@ -1,6 +1,7 @@
 # Vier Dörfer — Stil, Lage, Plan
 
-Stand 2026-09-26: **Funaura (§1), Stillwater als Gassho-Weiler (§2) und Kiso-Juku (§3) gebaut**, Koedo ist Plan.
+Stand 2026-09-26: **alle vier Dörfer gebaut** — Funaura (§1), Stillwater als Gassho-Weiler (§2),
+Kiso-Juku (§3) und Koedo (§4).
 
 ## Funaura — was gebaut ist und was gemessen wurde
 
@@ -207,6 +208,108 @@ Luftballons; Dachsteine und Zylinder-Ziegelstirnen kosteten ~60 k Dreiecke in de
 Fels-Material des Geländes. Die Lichtflecken sind in der Abendsonne dezent — ob sie genug
 tragen, ist eine Frage an dich. Ob es sich „AAA“ anfühlt, auch.
 
+## Koedo — Kura-Handelsstädtchen: was gebaut ist und was gemessen wurde
+
+Code: `src/world/settlements/koedo/` (Layout in Straßenkoordinaten, Bauten, Atlas, System
+`KoedoTown`). Baukasten erweitert: zwei Schichten in `Parts` — `gloss` (polierter schwarzer
+Kalkputz, Rauheit 0,28) und `namako` (Namako-kabe **im Shader**: Diagonalgitter aus der
+Weltposition in der Wandebene, ohne UVs, ohne Textur, mit Auf-Mittelwert-Blenden gegen Moiré;
+`weatheredMaterial({ namako: true })`). `LocalSurfaces.kind` / `surfaceAt` (neu, optional): eine
+lokale Fläche kann `asphalt` statt `kies` melden; `RoadGround.surface` fragt das ab. Blickpunkte
+`koedo`, `koedo-strasse`, `koedo-kanal`, `koedo-damm`, `koedo-brauerei`, `koedo-reis`,
+`koedo-luft`. Kartenpin „Koedo 小江戸“ (12. Hauptpin).
+
+- **Lage (gemessen 2026-09-26):** am Ende der `dorf`-Straße (Sackgasse bei (−190 | 90), 34,1 m).
+  Westlich die Reisebene (24…27 m in Parzellenstufen), östlich der Hang (45…55 m), oben 170 m
+  weiter die Tokioter Vorstadt. Dort endet auch die Terrace Track — beide bleiben unverändert:
+  kein Rebake, keine Kollision auf Fahrbahn und Track.
+- **Aufbau als eine Achse** wie Kiso-Juku: bis s 692 ist sie die Dorfstraße (Straße A,
+  Ichibangai mit Autoverkehr, Gehwege, Granitrinne), dann biegt sie am Platz (R ≈ 35 m) nach
+  Süden ab — **Straße B**, neu, Kopfsteinpflaster, eigene Fläche. Ihr Höhenprofil ist die
+  kleinste Fläche über dem höchsten Geländepunkt des Querschnitts mit ≤ 5 % Neigung; zwischen
+  z 100 und 125 liegt sie bis 3 m über einer Senke.
+- **Platz und Toki no Kane:** außen an der Biegung, in der Verlängerung der Dorfstraße — wer
+  hineinfährt, hat den Turm vor sich. Drei Geschosse mit umlaufenden Pultdächern, offenes
+  Glockengeschoss, Pyramidendach, 18 m. Der Platz steht auf einer Ishigaki-Mauer über der Senke;
+  Steinlaternen, Tafel, Ginkgo in Gold, Kiefer, Rikscha, Poller.
+- **46 Häuser**: Kawagoe-Kura (schwarzer Glanzputz, eingeputzte Traufe, hoher First, Onigawara
+  bis 1,5 m, Kannon-biraki-Läden, Pultdach, Kanban auf dem Pultdach oder an der Wand, Seitenfenster,
+  zum Teil Brandwände), weiße Kura mit Namako (Museum), Machiya (Mushiko-mado, Bengara-Gitter,
+  eingeschossige Varianten). 19 Rollen mit eigenem Kanban, Noren, Innenraumkachel und Auslage
+  (Aal, Süßkartoffel, Kimono, Keramik, Weihrauch, Soba, Miso, Washi, Kaffee …). Variation von
+  Anfang an: Rücksprung 0,5…1,4 m mit Vorplatz, 0,25 m vor der Flucht, ±1,3° Gier, ungleiche
+  Fugen, Putz schwarz/anthrazit/braunschwarz, vier Ziegeltöne, Firsthöhe ±0,4 m.
+- **Brauerei Izumiya (Hero, begehbar):** Laden-Kura mit großem Kanban, Sugidama und Komodaru;
+  innen Steinboden, Probiertheke, Flaschenregale, Lampen; Hintertür in den Hof (Brunnen, Fässer,
+  Kei-Truck), Brauhalle mit sechs Emailletanks, drei Holzbottichen, Reisdämpfer mit Glut,
+  Lüftungsaufsatz; Reisspeicher mit Namako, 18-m-Ziegelschornstein mit Schrift. Auf einem
+  Sockel, der zur Kanalseite bis 5 m hoch wird.
+- **Kanal (Kurashiki):** Nord-Süd am Rand der Reisebene, **zwei Haltungen** (Spiegel 28,84 und
+  26,49 m, gerechnet: höchster Geländepunkt + 0,45) mit Stufenwehr — mit einem Spiegel hätte das
+  Südende auf 3 m Damm gestanden. Bruchsteinmauern mit Algenband, Granit-Deckstein, Promenade
+  (1,25 m über dem Wasser) mit Pfosten und Kette, Westdamm mit Kiesweg, Grasböschung mit Susuki
+  und zwei Treppen in die Felder. Granit-Bogenbrücke (Nakabashi), Plattenbrücke über dem Wehr,
+  Anlegestelle mit schaukelndem Stakboot, elf Trauerweiden (Ruten als Stoffbahnen im Wind),
+  Schütze an beiden Enden. Zehn Häuser der Kanalzeile (weiße Kura mit Namako-Sockel, -Ecken und
+  -Gurt oder Yakisugi, Giebel mit Wappen, Fenster mit kleinem Dach).
+- **Gassen:** Kashiya Yokochō (Süßigkeitengasse) von Straße B zum Kanal mit sechs Buden,
+  Chōchin am Draht und Tor mit Schild; Wehrgasse mit Jizō. Speicher und Gärten im Hinterland.
+- **Übergänge (die 100 m ringsum):** Zufahrt durch die Reisfelder mit Leitungsmasten (im Ort wie
+  in Kawagoe ohne), Inari-Schrein mit sieben roten Torii, Jizō, Wegweiser („東京 12km“),
+  Bushaltestelle mit Automaten, Steinlaternen und Ortsschild; Strohhaufen, Kaki. Südende:
+  Hikawa-Schrein (Torii, Halle, Komainu, heiliger Baum). Osthang: moderne Häuser mit
+  Faserzement, Balkonen, Kei-Cars, ein Konbini mit Parkplatz, Leitung hinauf zur Stadt — Reisfeld,
+  Kanal, Kura, Beton, Tokio in einer Blickachse (`koedo-reis`).
+- **Keine Figuren, keine Tiere** (Auftrag). Rauch aus Aalgrill, Dango, Brauerei, Herden.
+
+**Gemessen (2026-09-26, AMD iGPU 0x164E, 1280 × 720, Szene gesamt mit Koedo / ohne):**
+
+| Stufe · Blickpunkt | Draw-Calls | Dreiecke |
+|---|---|---|
+| Minimal · koedo (Blick zur Stadt) | 336 (288) | 869 k (679 k) |
+| Minimal · koedo-strasse | 143 (95) | 676 k (510 k) |
+| Minimal · koedo-kanal | 129 (92) | 639 k (517 k) |
+| Minimal · koedo-luft | 307 (249) | 810 k (621 k) |
+| Ultra · koedo | 626 (504) | 2171 k (1465 k) |
+| Ultra · koedo-strasse | 310 (202) | 1612 k (1054 k) |
+| Ultra · koedo-kanal | 288 (204) | 1478 k (1081 k) |
+| Ultra · koedo-luft | 644 (461) | 2128 k (1319 k) |
+
+Koedo selbst kostet auf Minimal +37…58 Draw-Calls und +120…190 k Dreiecke (Kiso: +57 / +240 k);
+im Ort liegt Minimal unter dem Tokio-Kern (167…231 DC / 474…673 k). Der Blickpunkt `koedo`
+schaut auf die Stadt — die 288 DC ohne Dorf sind Tokio. Ultra steigt um bis +800 k. Aufbau
+0,74…1,9 s (kalt), 398 k Dreiecke über alle Schichten: Masse 60 k, Nahschicht 125 k,
+Oberfläche 173 k (auf Minimal aus), Stoff 17 k. `japanMap.winding()`: leer.
+
+**Prüfprogramm** `node tools/koedo-traversal.mjs [url]`: Auto von den Reisfeldern (s 450) die
+Dorfstraße hinauf, über den Platz, Straße B bis vor den Schrein in 31,8 s und zurück in 34,9 s,
+0 Kontakte, 0 Wasser, Spur ≤ 2,9 m; Fahrbahn an 1415 Proben frei, **Terrace Track im Ort an 219
+Proben frei**; Figur durch den Brauereiladen, den Hof und in die Brauhalle zwischen die Tanks;
+die Kashiya-Gasse hinunter, über die Bogenbrücke auf den Damm; die Wehrgasse hinunter und über
+die Plattenbrücke; auf den Turmplatz; Kura-Front hält. `kiso-`, `gassho-`, `funaura-`,
+`wp5-traversal` (gegen 5181, das Skript kennt nur 5180), `test:polish`, `smoke.mjs` („Konsole
+sauber“), `navigation-map.test` (12 Hauptpins), Typecheck, Build: grün.
+
+**Unterwegs gefunden (und behoben):** Die erste Biegung (R 23 m) trug das Auto bei 50 km/h auf
+„Kies“-Haftung in die Poller am Platz — Kurve geweitet, Poller zurückgesetzt, und die Pflaster-
+flächen melden jetzt Asphalt. Der Turm stand verkehrt herum (Tür von der Dorfstraße weg; erst der
+Prüfweg lief hinter ihn). Zwischen Brauereiladen und Hof lag ein 0,5-m-Spalt im Boden (die Figur
+fiel hindurch). Die Platzmauer hatte die Außenseite vertauscht (Steine nach innen — die Culling-
+Falle aus Kiso). Die Laden-Innenwände trugen den Glanzputz auch innen (schwarzer Raum). Weiden-
+ruten als 0,34 m breite Bahnen lasen sich als Klebestreifen, die Kronen als Schirme; Susuki als
+Pylonen; Lampions als leuchtende Klötze; Laternengläser blendeten im Bloom; die Grasböschung des
+Damms war eine dunkle Wand; Gemüsebeete schwebten als Kasten über dem Gelände; Streu-Bäume standen
+mitten auf der Kashiya-Gasse (Freihaltung deckte das Hinterland nicht); eine freistehende
+Kura-Seite am Platz war eine leere schwarze Fläche von 9 × 6 m.
+
+**Offen:** Das Ende der Terrace Track liegt seit jeher ~0,4 m über dem Ende der Dorfstraße
+(gemessen 34,59 gegen 34,18 m) — das Auto hüpft dort; die Track ist nicht angefasst, und ihr
+rotbraunes Band läuft unverändert durch den Westteil des Ortes. Die Straße B liegt über der
+Senke bei z 100…125 bis 3 m hoch; von unten (Hinterhöfe) sieht man ihre Stützmauern. Namako nur
+diagonal (die quadratische Kurashiki-Variante fehlt). Das Stakboot liegt nur vor Anker, der Kanal
+hat keine Geräusche, die Kaki am Ortseingang (aus dem Gassho-Baukasten) lesen sich aus der Nähe
+etwas wie Ballons. Ob es sich „AAA“ anfühlt: die Frage an dich.
+
 ---
 
 # Plan (Entwurf 2026-09-25)
@@ -286,7 +389,7 @@ Koordinaten in Metern, Höhen aus `height.r16` (gemessen 2026-09-25).
 - **Inhalt:** ~24 Häuser, Honjin (Gasthof) als Hero-Gebäude mit Innenraum,
   Teehaus am oberen Ende.
 
-### 4 · Koedo — Kura-Handelsstädtchen (neu)
+### 4 · Koedo — Kura-Handelsstädtchen (gebaut 2026-09-26, siehe oben)
 
 - **Lage:** x −300…−90, z −110…240, Ende der Dorfstraße (−190, 90). Gelände
   steigt von 24 m (Reisfeldkante) auf 48 m (Osthang) — der Übergang

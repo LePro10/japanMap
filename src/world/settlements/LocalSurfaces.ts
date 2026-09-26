@@ -6,6 +6,13 @@ type Triangle = { a: Point; b: Point; c: Point; nx: number; ny: number; nz: numb
 /** Gemeinsame Dreiecke für sichtbare Böden, Räder und Füße; kein Terrain-Bake. */
 export class LocalSurfaces {
   readonly positions: number[] = [];
+  /**
+   * Belag für die Fahrphysik. Voreinstellung Kies (Mill Lane, Terrace Track). Koedo
+   * pflastert seine Straßen und meldet Asphalt — sonst fuhr sich der Granit der
+   * Straße B wie ein Feldweg, und das Auto trug in der Platzkurve nach außen.
+   */
+  kind: 'kies' | 'asphalt' = 'kies';
+  surfaceAt(x: number, z: number): 'kies' | 'asphalt' | null { return Number.isFinite(this.height(x, z)) ? this.kind : null; }
   readonly #cells = new Map<string, Triangle[]>();
   #hit: Triangle | null = null;
   quad(a: Point, b: Point, c: Point, d: Point): void {
@@ -54,6 +61,8 @@ export class LocalSurfaces {
 export interface HeightField {
   height(x: number, z: number): number;
   normal(x: number, z: number, out: Vector3): boolean;
+  /** Belag der Fläche an (x, z), falls die Schicht einen angibt (sonst Kies). */
+  surfaceAt?(x: number, z: number): 'kies' | 'asphalt' | null;
 }
 
 export interface LocalWater {
@@ -74,6 +83,11 @@ export class SurfaceStack implements HeightField {
       if (y > top) top = y;
     }
     return top;
+  }
+  surfaceAt(x: number, z: number): 'kies' | 'asphalt' | null {
+    let top = -Infinity, best: HeightField | null = null;
+    for (const layer of this.layers) { const y = layer.height(x, z); if (y > top) { top = y; best = layer; } }
+    return best?.surfaceAt?.(x, z) ?? null;
   }
   normal(x: number, z: number, out: Vector3): boolean {
     let top = -Infinity;

@@ -69,9 +69,9 @@ assert.equal(formatMapDistance(1340), '1.3 km');
 assert.ok(MAP_LANDMARKS.length >= 15, 'Die Karte soll Regionen und Neon-Orte tragen.');
 assert.equal(
   MAP_LANDMARKS.filter((landmark) => landmark.major).length,
-  // 10 seit Funaura (docs/DOERFER.md §1), 11 seit Kiso-Juku (§3): ein neues Dorf ist ein Hauptort, kein Innenraum.
-  11,
-  'Elf Region-Pins, der Rest erst aus der Nähe.',
+  // 10 seit Funaura (docs/DOERFER.md §1), 11 seit Kiso-Juku (§3), 12 seit Koedo (§4): ein neues Dorf ist ein Hauptort, kein Innenraum.
+  12,
+  'Zwölf Region-Pins, der Rest erst aus der Nähe.',
 );
 const city = MAP_LANDMARKS.find((landmark) => landmark.id === 'stadt');
 assert.deepEqual(
