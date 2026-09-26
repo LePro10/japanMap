@@ -13,6 +13,7 @@ import type { AtmosphereUniforms } from '@/render/atmosphere/atmosphereUniforms'
 import { PaddyWaterMaterial } from '../materials/PaddyWaterMaterial';
 import type { TerrainSampler } from '../TerrainSampler';
 import { TERRAIN_ASSETS } from '../terrainAssets';
+import { paddyDry } from '../settlements/settlementLayout';
 
 /**
  * Die vier Ecken einer Rasterzelle, im Umlauf.
@@ -159,7 +160,7 @@ export class RicePaddy implements System {
     const ix = Math.round(((x + WORLD.half) / WORLD.size) * last);
     const iz = Math.round(((z + WORLD.half) / WORLD.size) * last);
     if (ix < 0 || iz < 0 || ix > last || iz > last) return false;
-    return mask[(iz * this.#maskRes + ix) * 4]! > 127;
+    return mask[(iz * this.#maskRes + ix) * 4]! > 127 && !paddyDry(x, z);
   }
 
   /**

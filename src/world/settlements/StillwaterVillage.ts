@@ -1,18 +1,21 @@
 import {
   CanvasTexture, CatmullRomCurve3, DoubleSide, Group, InstancedMesh, Matrix4,
-  Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, SphereGeometry, TorusGeometry, Vector3,
+  Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, TorusGeometry, Vector3,
 } from 'three';
 import type { EngineContext, System } from '@/core/System';
 import type { DriveSystem } from '@/game/DriveSystem';
 import type { PropFile, PropPlacement } from '@/config/props.config';
 import { PROP_ASSETS } from '../props/propAssets';
 import { LocalSurfaces, SurfaceStack, type Point } from './LocalSurfaces';
-import { HOMES, MILL, MILL_LANE, POND } from './settlementLayout';
+import { MILL, MILL_LANE, POND } from './settlementLayout';
 import { SettlementKit } from './SettlementKit';
 import './settlements.css';
 
 const WOOD = 0x654731, TRIM = 0x342c25, PLASTER = 0xc0ac83, STONE = 0x777b6c;
 const ROOF = 0x384746, WATER = 0x4b9a93, GOLD = 0xfbd397;
+// Stillwater ist seit docs/DOERFER.md §2 ein Gassho-Weiler: Häuser, Strohdach der
+// Mühle, Kakibäume und Brücken baut `gassho/GasshoHamlet.ts`. Hier bleiben Mill Lane,
+// Mühle mit Rad und Schleuse, Teich, Tiere, Beete — und Tideglass.
 type Actor = { mesh: InstancedMesh; spots: readonly (readonly [number, number, number])[]; kind: 'goat' | 'chicken' | 'worker' };
 
 /** WP5: kleine, begehbare Orte auf dem vorhandenen Gelände. */
@@ -97,40 +100,6 @@ export class StillwaterVillage implements System {
     }
     this.floors.quad([x - w / 2, y, z - d / 2], [x + w / 2, y, z - d / 2], [x + w / 2, y, z + d / 2], [x - w / 2, y, z + d / 2]);
   }
-  #roof(k: SettlementKit, x: number, y: number, z: number, w: number, d: number, color = ROOF): void {
-    const pitch = 0.43, span = w / 2 + 1.05, rise = Math.sin(pitch) * span;
-    for (const s of [-1, 1]) {
-      k.gable(x, y - 0.08, z + s * d / 2, w, Math.tan(pitch) * w / 2 + 0.2, 0.22, PLASTER);
-      k.box(x, y + rise * 0.43, z + s * (d / 2 + 0.13), 0.2, rise * 0.9, 0.16, WOOD);
-      k.box(x, y + 0.04, z + s * (d / 2 + 0.15), w + 0.1, 0.2, 0.2, WOOD);
-    }
-    for (const s of [-1, 1]) {
-      k.box(x + s * span * Math.cos(pitch) / 2, y + rise / 2, z, span, 0.24, d + 2.2, color, 0, 0, -s * pitch);
-      for (let j = -d / 2 - 0.9; j <= d / 2 + 1; j += 1.1)
-        k.box(x + s * span * Math.cos(pitch) / 2, y + rise / 2 + 0.15, z + j, span + 0.08, 0.1, 0.12, color, 0, 0, -s * pitch);
-    }
-    k.box(x, y + rise + 0.14, z, 0.45, 0.32, d + 2.5, TRIM);
-  }
-  #house(k: SettlementKit, x: number, z: number, w: number, d: number, index: number): void {
-    const y = this.#maxGround(x, z, w, d) + 0.15, h = 3.7 + (index % 3) * 0.4;
-    this.#floor(k, x, z, w + 0.6, d + 0.6, y);
-    this.#solid(k, x, y + h / 2, z, w, h, d, index % 3 === 0 ? 0x9d7961 : PLASTER);
-    this.#roof(k, x, y + h, z, w, d, index % 4 === 0 ? 0x665c47 : ROOF);
-    for (const s of [-1, 1]) {
-      for (let dx = -w / 2; dx <= w / 2; dx += w / 4) k.box(x + dx, y + h / 2, z + s * (d / 2 + 0.08), 0.17, h, 0.18, WOOD);
-      k.box(x, y + 0.65, z + s * (d / 2 + 0.08), w, 0.85, 0.18, WOOD);
-      for (const dx of [-w * 0.28, w * 0.28]) {
-        k.box(x + dx, y + 2.2, z + s * (d / 2 + 0.11), 1.7, 1.35, 0.12, GOLD);
-        for (const t of [-0.6, 0, 0.6]) k.box(x + dx + t, y + 2.2, z + s * (d / 2 + 0.2), 0.08, 1.45, 0.12, TRIM);
-      }
-      k.box(x, y + 1.15, z + s * (d / 2 + 0.12), 1.4, 2.3, 0.16, TRIM);
-      k.box(x, y + 2.55, z + s * (d / 2 + 0.65), 3.2, 0.14, 1.5, WOOD, s * 0.12);
-      for (const dx of [-w * 0.4, w * 0.4]) {
-        k.box(x + dx, y + 0.32, z + s * (d / 2 + 0.65), 1.4, 0.5, 0.7, 0x846348);
-        for (let j = 0; j < 3; j++) k.ball(x + dx - 0.45 + j * 0.45, y + 0.65, z + s * (d / 2 + 0.65), 0.26, index % 2 ? 0xcbb882 : 0x869766);
-      }
-    }
-  }
   #lane(k: SettlementKit, nodes: readonly (readonly [number, number])[], width: number, group: Group, color: number, record = false): void {
     const curve = new CatmullRomCurve3(nodes.map(([x, z]) => new Vector3(x, 0, z)), false, 'centripetal');
     const count = Math.ceil(curve.getLength() / 1.5), points = curve.getSpacedPoints(count);
@@ -201,16 +170,6 @@ export class StillwaterVillage implements System {
     const m = new Mesh(new PlaneGeometry(w, d), this.#waterMaterial);
     m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); group.add(m);
   }
-  #boat(k: SettlementKit, x: number, y: number, z: number): void {
-    k.box(x, y, z, 1.45, 0.18, 4.5, 0x443c2e);
-    for (const s of [-1, 1]) {
-      k.box(x + s * 0.75, y + 0.3, z, 0.16, 0.6, 4.5, WOOD, 0, 0, s * -0.12);
-      k.box(x, y + 0.3, z + s * 2.1, 1.5, 0.6, 0.16, WOOD);
-      k.box(x, y + 0.35, z + s * 0.95, 1.45, 0.12, 0.32, 0xa08762);
-    }
-    k.box(x + 0.3, y + 0.5, z, 0.09, 0.1, 5.8, 0xc4ae7c, 0, 0.22);
-    k.cylinder(x - 0.3, y + 0.32, z, 0.3, 0.45, 0x687763);
-  }
   #fence(k: SettlementKit, x: number, z: number, w: number, d: number): void {
     for (const s of [-1, 1]) {
       for (let dx = -w / 2; dx <= w / 2; dx += 2) {
@@ -228,7 +187,6 @@ export class StillwaterVillage implements System {
   #buildVillage(): void {
     const k = new SettlementKit();
     this.#lane(k, MILL_LANE, 7, this.village, 0xaaa28a, true);
-    HOMES.forEach(([x, z, w, d], i) => this.#house(k, x, z, w, d, i));
     this.millY = this.#maxGround(MILL.x, MILL.z, 14, 10) + 0.18;
     const y = this.millY;
     this.#floor(k, MILL.x, MILL.z, 14, 10, y, 0x8d8068);
@@ -255,7 +213,7 @@ export class StillwaterVillage implements System {
     for (const x of [-1250, -1238]) this.#solid(k, x, y + 2.2, 404, 2, 2.5, 0.3, PLASTER);
     for (const x of [-1251, -1247.5, -1240.5, -1237]) for (const z of [404, 414]) k.box(x, y + 2.2, z, 0.23, 4.5, 0.38, TRIM);
     for (const z of [405, 409, 413]) k.box(-1244, y + 4.35, z, 14.4, 0.28, 0.3, WOOD);
-    this.#roof(k, -1244, y + 4.5, 409, 14, 10);
+    // Dach: Kayabuki-Walmdach aus GasshoHamlet (#buildMillRoof) — liest `millY`.
     for (let x = -1250.5; x < -1237; x += 0.48) k.box(x, y + 0.015, 409, 0.025, 0.03, 9.8, 0x655b4b);
     for (const x of [-1247.7, -1240]) {
       k.cylinder(x, y + 0.45, 407, 1.1, 0.75, STONE);
@@ -290,26 +248,16 @@ export class StillwaterVillage implements System {
       this.#floor(k, -1257, z, 2.6, 0.9, top);
       if (i % 3 === 0) k.box(-1255.6, top + 0.52, z, 0.12, 1.04, 0.12, WOOD);
     }
-    this.#tree(k, -1267, 378, 1, 0xb78457);
-    this.#tree(k, -1235, 418, 0.85, 0xa19360);
-    this.#tree(k, -1280, 409, 0.9, 0x80956b);
     // Sitznische vor dem Wasser: Blick aufs Rad statt Dekoration mitten in der Fahrspur.
     const seatY = this.floors.height(-1263, 398);
     k.box(-1263, seatY + 0.52, 399.1, 2.5, 0.16, 0.55, WOOD);
     for (const dx of [-0.9, 0.9]) k.box(-1263 + dx, seatY + 0.26, 399.1, 0.15, 0.52, 0.42, TRIM);
-    this.#house(k, -1300, 415, 7, 6, 2); this.#house(k, -1284, 446, 7, 5, 1);
     this.#fence(k, -1304, 393, 10, 12);
-    // Kleine Gemüsebeete und Obstbäume an den Hausrändern, keine neue Biomfläche.
+    // Kleine Gemüsebeete an den Hausrändern, keine neue Biomfläche (die Kakibäume stehen jetzt in gassho/).
     for (let i = 0; i < 7; i++) for (let j = 0; j < 4; j++) {
       const x = -1320 + i * 3.7, z = 435 + j * 3.5, g = this.#ground(x, z);
       k.box(x, g + 0.06, z, 2.8, 0.12, 2.7, 0x61543b);
       for (let n = 0; n < 3; n++) k.ball(x - 0.7 + n * 0.7, g + 0.28, z, 0.32, 0x819256);
-    }
-    for (let i = 0; i < 6; i++) {
-      const x = -1312 + i * 5, z = 367 - i * 1.4, g = this.#ground(x, z);
-      k.cylinder(x, g + 1.4, z, 0.16, 2.8, WOOD);
-      k.ball(x, g + 3.1, z, 1.9, i % 2 ? 0x8e9f61 : 0xa4aa71);
-      for (let j = 0; j < 5; j++) k.ball(x + Math.cos(j * 1.3) * 1.5, g + 2.7, z + Math.sin(j * 1.3) * 1.5, 0.16, 0xd4a15f);
     }
     for (let i = 20; i < this.laneSamples.length; i += 29) {
       const p = this.laneSamples[i]!;
@@ -324,16 +272,6 @@ export class StillwaterVillage implements System {
     this.#actors('goat', [[-1306, 392, 0.4], [-1302, 396, 2.4]], this.village);
     this.#actors('chicken', [[-1284, 434, 0], [-1281, 436, 1.2], [-1286, 438, 2.1], [-1280, 432, 4]], this.village);
     this.#actors('worker', [[-1242, 411, 2.8], [-1307, 439, 0.2], [-1311, 446, 1.2], [-1247, 381, 2], [-1250, 381, 0.5], [-1264.4, 397.3, 2.9], [-1269, 371, 0.4], [-1278, 410, 2.6]], this.village);
-  }
-  #tree(k: SettlementKit, x: number, z: number, scale: number, color: number): void {
-    const y = Math.max(this.#ground(x, z), this.floors.height(x, z));
-    k.cylinder(x, y + 2.4 * scale, z, 0.23 * scale, 4.8 * scale, WOOD, 0, 0.1);
-    for (let j = 0; j < 11; j++) {
-      const a = j * 2.4, r = (j % 3 + 1) * 0.8 * scale;
-      const g = new SphereGeometry(1, 7, 5); g.scale(2.1 * scale, 0.8 * scale, 1.8 * scale);
-      k.add(g, j % 3 === 0 ? 0xc2a26b : color, x + Math.cos(a) * r, y + (4.2 + (j % 3) * 0.6) * scale, z + Math.sin(a) * r);
-    }
-    this.drive.collision.addCylinder(x, z, 0.25 * scale, y, y + 4 * scale);
   }
   #buildWheel(y: number): void {
     this.wheel.name = 'Waterwheel · shaft enters mill wall';
@@ -358,7 +296,12 @@ export class StillwaterVillage implements System {
       this.#floor(k, POND.x, POND.z + s * 7.55, 24, 1.1, y + 0.13);
       this.#floor(k, POND.x + s * 11.55, POND.z, 1.1, 14, y + 0.13);
     }
-    this.#boat(k, -1250, y + 0.03, 389); this.#boat(k, -1257, y + 0.03, 386);
+    // Koi knapp unter der Oberfläche (der Teich ist undurchsichtig, also an der Oberfläche).
+    for (let i = 0; i < 7; i++) {
+      const x = -1262 + i * 2.6 + (i % 2) * 0.7, z = 385 + (i * 37 % 7) * 0.9, a = i * 1.9;
+      k.box(x, y + 0.012, z, 0.16, 0.03, 0.5, [0xe86a24, 0xf2efe6, 0xe8a030, 0xd84a2a][i % 4]!, 0, a);
+      k.box(x + Math.sin(a) * 0.1, y + 0.016, z + Math.cos(a) * 0.1, 0.1, 0.03, 0.16, 0xf2efe6, 0, a);
+    }
     for (let i = 0; i < 9; i++) {
       const x = -1262 + (i % 3) * 0.85, z = 383 + Math.floor(i / 3) * 0.7;
       k.cylinder(x, y + 0.03, z, 0.27, 0.025, i % 2 ? 0x78976a : 0x678777);
@@ -368,10 +311,6 @@ export class StillwaterVillage implements System {
       k.add(new TorusGeometry(0.65, 0.014, 3, 24), 0x9fbbb0, x, y + 0.025, z, Math.PI / 2);
     this.#floor(k, -1263, 398, 6, 4, y + 0.18, WOOD);
     for (let i = 0; i < 9; i++) k.box(-1265.8 + i * 0.65, y + 0.2, 398, 0.03, 0.025, 4, TRIM);
-    for (const x of [-1259, -1249]) k.box(x, y + 1.6, 380.5, 0.16, 3.2, 0.16, WOOD);
-    k.box(-1254, y + 3, 380.5, 10.5, 0.12, 0.12, WOOD);
-    for (let i = 0; i < 21; i++) k.box(-1259 + i * 0.5, y + 2, 380.5, 0.035, 1.8, 0.035, 0x928c72);
-    for (let i = 0; i < 5; i++) k.box(-1254, y + 1.1 + i * 0.4, 380.5, 10, 0.035, 0.035, 0x928c72);
     // Der gebackene Fluss liegt tiefer: sichtbare Förderleitung statt Wasser bergauf.
     const tankY = this.millY + 3.25;
     k.cylinder(-1249, tankY + 0.55, 401.5, 0.85, 1.1, WOOD);
@@ -503,7 +442,7 @@ export class StillwaterVillage implements System {
     if (this.#spot === 'sluice') {
       this.sluiceOpen = !this.sluiceOpen;
       this.#message = this.sluiceOpen ? 'Sluice open. The paddles turn and the mill comes alive.' : 'Sluice closed. Watch the wheel settle.';
-    } else if (this.#spot === 'pond') this.#message = 'River water is lifted to this terrace, feeds the mill, then returns downhill. Two skiffs wait by the slip.';
+    } else if (this.#spot === 'pond') this.#message = 'River water is lifted to this terrace, feeds the mill, then returns downhill. Koi drift under the lilies.';
     else if (this.#spot === 'nets') this.#message = 'One, two, three knots: the net-menders mark their ropes by touch.';
     else if (this.#spot === 'tide') this.#message = 'Tideglass Harbour · Six ocean boats, one working quay. The mountain mill is inland.';
     else if (this.#spot === 'market') this.#message = 'Harbour card found: Net House, boat ramp and the ocean landing.';
@@ -526,7 +465,7 @@ export class StillwaterVillage implements System {
       camera.position.set(Math.max(-1250.5, Math.min(-1237.5, p.x - Math.sin(h) * 1.6)), p.y + 2.3, Math.max(404.5, Math.min(413.8, p.z - Math.cos(h) * 1.6)));
       camera.lookAt(p.x + Math.sin(h) * 2, p.y + 1.2, p.z + Math.cos(h) * 2);
     }
-    const nearVillage = Math.hypot(p.x + 1244, p.z - 409) < 105, nearHarbour = Math.hypot(p.x - 784, p.z - 1006) < 85;
+    const nearVillage = Math.hypot(p.x + 1250, p.z - 400) < 34, nearHarbour = Math.hypot(p.x - 784, p.z - 1006) < 85;
     this.panel.hidden = !this.isPlaying() || (!nearVillage && !nearHarbour);
     this.#spot = '';
     if (this.drive.walking) {
@@ -537,7 +476,7 @@ export class StillwaterVillage implements System {
     this.action.textContent = this.#spot === 'sluice' ? (this.sluiceOpen ? 'Close sluice · Enter' : 'Open sluice · Enter') : 'Inspect · Enter';
     this.label.textContent = this.#time < this.#messageUntil ? this.#message
       : this.#spot === 'sluice' ? 'Stillwater Mill · Use the lever. Watch the wheel through the wall.'
-      : nearVillage ? 'Stillwater Village · Follow the bent lane. Park at the mill and walk inside.'
+      : nearVillage ? 'Stillwater Mill · Park by the wall and walk inside. The lever opens the sluice.'
       : 'Tideglass Harbour · Working waterfront. Visit Net House and the tide board.';
   }
   dispose(): void {

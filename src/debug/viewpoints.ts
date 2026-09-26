@@ -156,6 +156,89 @@ export const VIEWPOINTS: Readonly<Record<string, Viewpoint>> = {
     lookAt: [790, 150, -900],
     note: 'Über dem Waldrücken nach Nordwesten — hier ist die 520-m-Kante der Streuung sichtbar.',
   },
+  // Funaura (docs/DOERFER.md §1): Bootshausreihe vom Becken, Gasse auf Augenhöhe, Luftbild.
+  funaura: {
+    position: [-1250, 3.2, 1170],
+    lookAt: [-1265, 5, 1100],
+    note: 'Funaura — Funaya-Reihe vom Hafenbecken aus, Augenhöhe über dem Wasser.',
+  },
+  'funaura-gasse': {
+    position: [-1270, 8.2, 960],
+    lookAt: [-1262, 2, 1060],
+    note: 'Funaura — die Dorfgasse hinunter zum Kai, Blick aufs Meer.',
+  },
+  'funaura-kai': {
+    position: [-1306, 3.5, 1082],
+    lookAt: [-1250, 3.2, 1084],
+    note: 'Funaura — Hafenstraße zwischen Bootshäusern (rechts) und Häuserzeile, Augenhöhe.',
+  },
+  'funaura-nah': {
+    position: [-1262, 3.4, 1083],
+    lookAt: [-1284, 3.6, 1070],
+    note: 'Funaura — zu Fuß vor Izakaya und Minshuku: Schilder, Noren, Laternen, Automaten.',
+  },
+  'funaura-mole': {
+    position: [-1300, 5.2, 1200],
+    lookAt: [-1250, 6, 1090],
+    note: 'Funaura — vom weißen Molenfeuer zurück auf Becken, Bootshäuser und Hang.',
+  },
+  'funaura-luft': {
+    position: [-1120, 95, 1250],
+    lookAt: [-1250, 0, 1060],
+    note: 'Funaura aus der Luft: Kai, Molen, Becken, Hang.',
+  },
+  // Stillwater als Gassho-Weiler (docs/DOERFER.md §2): Dorfstraße, Wasserrad, Mühle, Luftbild.
+  gassho: {
+    position: [-1183.5, 24.2, 262],
+    lookAt: [-1174, 24.6, 330],
+    note: 'Stillwater — die Dorfstraße nach Süden zwischen den Gassho-Häusern, Augenhöhe.',
+  },
+  'gassho-gasse': {
+    position: [-1171, 24.9, 372],
+    lookAt: [-1178, 25.8, 300],
+    note: 'Stillwater — vor dem großen Haus nach Norden: Engawa, Shōji, Hasa-gake, Feuerwehrhütte.',
+  },
+  'gassho-rad': {
+    position: [-1236, 22.7, 327],
+    lookAt: [-1206, 22.4, 343],
+    note: 'Stillwater — das Dreifach-Wasserrad am Ostufer vom Westufer aus, mit Rinne auf die Terrasse.',
+  },
+  'gassho-muehle': {
+    position: [-1266, 29.2, 428],
+    lookAt: [-1244, 29.5, 409],
+    note: 'Stillwater — die Mühle mit Kayabuki-Dach von der Mill Lane.',
+  },
+  'gassho-luft': {
+    position: [-1165, 62, 525],
+    lookAt: [-1195, 22, 330],
+    note: 'Stillwater aus der Luft nach Norden: Strohdächer zwischen den Reisfeldern, dahinter das Massiv.',
+  },
+  // Kiso-Juku (docs/DOERFER.md §3): Straße auf Augenhöhe bergauf, Honjin, Steingasse, Teehaus, Luftbild.
+  kiso: {
+    position: [-1322.0, 131.7, -963.8],
+    lookAt: [-1340.6, 136.3, -1020.6],
+    note: 'Kiso-Juku — die Poststraße bergauf auf Augenhöhe, links Talseite, rechts Hangseite.',
+  },
+  'kiso-honjin': {
+    position: [-1342.9, 137.7, -1032.8],
+    lookAt: [-1357.2, 137.9, -1029.8],
+    note: 'Kiso-Juku — vor dem Honjin-Tor: Maku, Laternen, Vorhof.',
+  },
+  'kiso-gasse': {
+    position: [-1377.0, 148.8, -1159.5],
+    lookAt: [-1370.6, 142.9, -1105.1],
+    note: 'Kiso-Juku — bergab durch die Häuserzeilen, Abendlicht in den Gittern.',
+  },
+  'kiso-tee': {
+    position: [-1354.6, 155.2, -1105.6],
+    lookAt: [-1356.8, 140.4, -1046.6],
+    note: 'Kiso-Juku — von der Teehausterrasse über die Dächer.',
+  },
+  'kiso-luft': {
+    position: [-1262.1, 212.8, -1022.4],
+    lookAt: [-1363.4, 139.5, -1070.7],
+    note: 'Kiso-Juku aus der Luft: Dachkette am Pass, Zedernhang, Talseite.',
+  },
   kueste: {
     position: [200, 90, 1100],
     lookAt: [100, 0, 1400],

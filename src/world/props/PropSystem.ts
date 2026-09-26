@@ -31,6 +31,7 @@ import type { RiverFile } from '../water/riverGeometry';
 import { createLandmarkMeshes, type LandmarkId } from './landmarkMeshes';
 import { PropClearance } from './PropClearance';
 import { settlementClearance } from '../settlements/settlementLayout';
+import { inKiso } from '../settlements/kiso/kisoLayout';
 import { modelUrl, PROP_ASSETS, type ModelManifest } from './propAssets';
 
 /** Eine Stufe eines Assets: Geometrie plus die Instanzen, die sie zeichnet. */
@@ -169,6 +170,9 @@ export class PropSystem implements System {
     // Platzierung. Bei 322 Tetrapoden wäre das Gegenteil 322 Draw-Calls.
     const byAsset = new Map<string, PropPlacement[]>();
     for (const placement of file.props) {
+      // Kunststoff-Leitpfosten gehören an den Pass, nicht in die Poststation
+      // (docs/DOERFER.md §3): dort säumen Rinne und Gehweg die Straße.
+      if (placement.id === 'delineator' && inKiso(placement.x, placement.z)) continue;
       const list = byAsset.get(placement.id);
       if (list) list.push(placement);
       else byAsset.set(placement.id, [placement]);

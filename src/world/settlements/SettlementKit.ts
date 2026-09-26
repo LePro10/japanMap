@@ -4,13 +4,19 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 /** Ein Vertexfarben-Batch je Ort: Details kosten Dreiecke, nicht einzelne Draw-Calls. */
 export class SettlementKit {
   readonly parts: BufferGeometry[] = [];
+  /** Atlasflächen brauchen ihre UVs; alles andere wirft sie weg, damit Merge-Attribute passen. */
+  // Kein Parameter-Property (`constructor(readonly …)`): Node führt die Prüfstände
+  // mit --experimental-strip-types aus, und das kennt nur löschbare Typsyntax.
+  readonly keepUv: boolean;
+  constructor(keepUv = false) { this.keepUv = keepUv; }
   add(g: BufferGeometry, color: number, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0): void {
     if (g.index) { const old = g; g = g.toNonIndexed(); old.dispose(); }
     g.rotateX(rx); g.rotateY(ry); g.rotateZ(rz); g.translate(x, y, z);
     const c = new Color(color), colors = new Float32Array(g.getAttribute('position').count * 3);
     for (let i = 0; i < colors.length; i += 3) { colors[i] = c.r; colors[i + 1] = c.g; colors[i + 2] = c.b; }
     g.setAttribute('color', new Float32BufferAttribute(colors, 3));
-    g.deleteAttribute('uv'); this.parts.push(g);
+    if (!this.keepUv) g.deleteAttribute('uv');
+    this.parts.push(g);
   }
   box(x: number, y: number, z: number, w: number, h: number, d: number, color: number, rx = 0, ry = 0, rz = 0): void {
     this.add(new BoxGeometry(w, h, d), color, x, y, z, rx, ry, rz);

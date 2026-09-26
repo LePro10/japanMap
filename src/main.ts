@@ -4,6 +4,9 @@ import { callPlayerCar } from './ui/callPlayerCar';
 import { SakuraCommons } from './world/stunt/SakuraCommons';
 import { StillwaterVillage } from './world/settlements/StillwaterVillage';
 import { TerraceOffroad } from './world/settlements/TerraceOffroad';
+import { FunauraVillage } from './world/settlements/funaura/FunauraVillage';
+import { GasshoHamlet } from './world/settlements/gassho/GasshoHamlet';
+import { KisoJuku } from './world/settlements/kiso/KisoJuku';
 import { MAP_LANDMARKS } from './ui/navigationMapData';
 import './style.css';
 import './ui/theme.css';
@@ -857,6 +860,16 @@ async function boot(): Promise<void> {
   const settlements = new StillwaterVillage(drive, overlay);
   engine.add(settlements);
   engine.add(new TerraceOffroad(drive));
+  // Funaura: Fischerdorf an der Flussmündung — nach Stillwater, weil seine Straße auf der Mill Lane aufsetzt.
+  const funaura = new FunauraVillage(drive, overlay);
+  engine.add(funaura);
+  // Stillwater als Gassho-Weiler (docs/DOERFER.md §2) — nach Stillwater, weil die Dorfstraße
+  // an beiden Enden auf der Mill Lane aufsetzt und das Mühlendach deren `millY` liest.
+  const gassho = new GasshoHamlet(drive, settlements, overlay);
+  engine.add(gassho);
+  // Kiso-Juku: Poststation am Pass (docs/DOERFER.md §3). Liest die Mittellinie des `toge`.
+  const kiso = new KisoJuku(drive, overlay);
+  engine.add(kiso);
   engine.add(new CityExperienceSystem(drive, city, quality, overlay));
   // Neo-Tokio: Scramble, Videowände, Hochbahn, Tor, Turm (docs/TOKYO.md, Phase 4).
   engine.add(new TokyoLandmarkSystem(drive));
@@ -1060,6 +1073,9 @@ async function boot(): Promise<void> {
   commons.syncOwned();
   profile.onChange(() => commons.syncOwned());
   settlements.isPlaying = () => ui.playing;
+  funaura.isPlaying = () => ui.playing;
+  gassho.isPlaying = () => ui.playing;
+  kiso.isPlaying = () => ui.playing;
   smashables.isPlaying = () => ui.playing;
   engine.bus.on('drive:broke', event => {
     audio.impact(event.kind === 'tree' ? 0.75 : event.kind === 'rail' ? 0.5 : 0.3);

@@ -3,6 +3,7 @@ import { RIVER } from '@/config/water.config';
 import { PADDY_WATER } from '@/config/props.config';
 import { WATER_PHYS } from '@/config/vehicle.config';
 import { TERRAIN_ASSETS } from '@/world/terrainAssets';
+import { paddyDry } from '@/world/settlements/settlementLayout';
 import type { RiverFile } from '@/world/water/riverGeometry';
 import type { ResourceManager } from '@/core/ResourceManager';
 
@@ -206,6 +207,6 @@ export class WaterField {
     const ix = Math.round(((x + WORLD.half) / WORLD.size) * last);
     const iz = Math.round(((z + WORLD.half) / WORLD.size) * last);
     if (ix < 0 || iz < 0 || ix > last || iz > last) return false;
-    return mask[iz * this.#paddyRes + ix] === 1;
+    return mask[iz * this.#paddyRes + ix] === 1 && !paddyDry(x, z);
   }
 }

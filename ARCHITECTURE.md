@@ -211,7 +211,10 @@ src/world/
 ├── scatter/           Vegetation: Worker, Chunks, LOD, Imposter
 ├── props/             Landmarks, Reisfelder, Freihaltekreise, SmashableSystem
 ├── city/              Generator, Blöcke, Neon, CityCrowd, UrbanLots
-├── settlements/       Stillwater Village, Terrace Track, LocalSurfaces
+├── settlements/       Stillwater Village, Terrace Track, LocalSurfaces,
+│   ├── wago/          Baukasten für Dörfer: Häuser/Dächer lokal bauen, Verwitterungs- und Stoffmaterial
+│   ├── funaura/       Fischerdorf an der Flussmündung (docs/DOERFER.md §1)
+│   └── gassho/        Stillwater als Gassho-Weiler: Dorfstraße, Wasserrad, Brücken (§2)
 ├── stunt/             Schanzen, Blütenblätter, Sammelstücke, SakuraCommons
 └── materials/         alle Materialien
 ```
