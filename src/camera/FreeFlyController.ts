@@ -2,6 +2,7 @@ import { Euler, Vector3, type PerspectiveCamera } from 'three';
 
 import { WORLD, CAMERA } from '@/config/world.config';
 import type { EngineContext, System } from '@/core/System';
+import { gameInputActive } from '@/core/gameInput';
 import type { TerrainSampler } from '@/world/TerrainSampler';
 
 const STORAGE_KEY = 'japanmap.camera';
@@ -82,7 +83,7 @@ interface StoredCamera {
  * | R | zurück zur Startposition |
  * | Esc | löst den Pointer Lock — seit P10.2 öffnet das das Pausenmenü |
  *
- * **Alle Tasten wirken nur bei gefangenem Zeiger.** Siehe `#onKeyDown`.
+ * **Alle Tasten wirken nur, solange gespielt wird** (Menü zu). Siehe `#onKeyDown`.
  */
 export class FreeFlyController implements System {
   readonly name = 'FreeFlyController';
@@ -470,7 +471,12 @@ export class FreeFlyController implements System {
     //
     // Der umgekehrte Fall ist keiner: Umsehen braucht den Lock ohnehin, eine
     // Bewegung ohne Blick gibt es also nicht zu verlieren.
-    if (!this.#pointerLocked) return;
+    //
+    // > **Widerlegt 2026-09-26: der Lock war die falsche Größe.** Gesperrt wird
+    // > jetzt über den Spielzustand (`gameInputActive`, siehe `core/gameInput.ts`)
+    // > — ein gescheiterter Lock ließ sonst ein laufendes Spiel ohne Tasten
+    // > zurück. Umsehen braucht den Lock weiterhin (`#onMouseMove`).
+    if (!gameInputActive()) return;
     // Und im Fahrmodus gar nichts: `R` bedeutet dort „Auto zurücksetzen", und
     // beide Bedeutungen gleichzeitig hieße, dass ein Respawn nebenbei die
     // Flugkamera an den Startpunkt legt — unsichtbar, bis man zurückschaltet.

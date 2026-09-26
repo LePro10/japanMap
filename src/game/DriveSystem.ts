@@ -10,6 +10,7 @@ import {
 } from 'three';
 
 import { GRAVITY, PROP_COLLIDERS } from '@/config/vehicle.config';
+import { gameInputActive } from '@/core/gameInput';
 import { ARCADE, DRIFT_GATE, isStuntDoubleTap, latAccel } from '@/config/arcade.config';
 import { WAYPOINT } from '@/config/waypoint.config';
 import { DEFAULT_VEHICLE, vehicleSpec, type VehicleId } from '@/config/vehicles.config';
@@ -1322,7 +1323,9 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     // ohne gefangenen Zeiger liegt das Menü über dem Bild, und eine Taste dort
     // gehört dem Menü. Auf einem Telefon gibt es keinen Lock — dort steuert der
     // Stick, und der geht nicht über diesen Weg.
-    if (document.pointerLockElement === null) return;
+    // > Seit 2026-09-26 über den Spielzustand statt über den Lock — Begründung
+    // > in `core/gameInput.ts`.
+    if (!gameInputActive()) return;
 
     const code = event.code.toLowerCase();
     if (code === 'keyv') {

@@ -34,6 +34,7 @@ import {
 } from "./controls";
 import { CAR_COPY, carPortrait } from "./carPresentation";
 import { SPARK_ICON, sparkMark } from "./sparkIcon";
+import { setGameInputSource } from "@/core/gameInput";
 import "./theme.css";
 import "./playerMenu.css";
 
@@ -129,12 +130,33 @@ export class PlayerUi {
   #worldSleeping = false;
   /** Taste M aus der Fahrt: Atlas auf den Wagen legen, nicht auf den letzten Schwenk. */
   #mapFocusPlayer = false;
+  /**
+   * Will der Spieler Vollbild? „Play" schaltet es ein, der Knopf in den
+   * Einstellungen und F11 schalten es bewusst aus. Verliert das Spiel das
+   * Vollbild ungewollt (Firefox/Safari: Escape beendet es zwingend mit), holt
+   * „Weiter" es zurück — die Geste dafür ist der Klick.
+   */
+  #wantFullscreen = false;
+  /** Escape gehört uns (Keyboard Lock, nur Chromium und nur im Vollbild). */
+  #keyboardLocked = false;
+  /** Den Zeiger erst nach dem Vollbild-Wechsel fangen — siehe `#capture`. */
+  #lockAfterFullscreen = false;
+  /** Wann der Browser zuletzt den Zeiger freigab — gegen doppeltes Escape. */
+  #lockLostAt = -Infinity;
+  /** „Klick ins Bild" — nur, solange gespielt wird und der Zeiger frei ist. */
+  readonly #lockHint: HTMLElement;
 
   constructor(options: PlayerUiOptions) {
     this.#o = options;
     this.#preview = options.drive?.vehicleId ?? "touge";
     this.#menu = this.#build();
     options.container.append(this.#menu);
+    this.#lockHint = document.createElement("div");
+    this.#lockHint.className = "lock-hint";
+    this.#lockHint.textContent = "Click to look around";
+    this.#lockHint.hidden = true;
+    options.container.append(this.#lockHint);
+    setGameInputSource(() => this.playing);
     this.#syncFullscreen();
     this.#touch = new TouchControls({
       canvas: options.canvas,
@@ -172,7 +194,7 @@ export class PlayerUi {
     });
     document.addEventListener("pointerlockchange", this.#lockChanged);
     document.addEventListener("pointerlockerror", this.#lockError);
-    document.addEventListener("fullscreenchange", this.#syncFullscreen);
+    document.addEventListener("fullscreenchange", this.#onFullscreen);
     window.addEventListener("keydown", this.#key, true);
     document.addEventListener("visibilitychange", this.#onVisibility);
     this.#menu.addEventListener("pointerdown", this.#onMenuActivity, {
@@ -196,8 +218,8 @@ export class PlayerUi {
   }
   begin(): void {
     this.#started = true;
+    this.#wantFullscreen = fullscreenSupported();
     this.#resume();
-    this.#requestFullscreen();
   }
   /**
    * Taste M / Klick auf die Minikarte. Derselbe Atlas wie der Map-Tab —
@@ -252,24 +274,98 @@ export class PlayerUi {
   #resume(requestLock = true): void {
     this.#open = false;
     this.#render();
-    if (!requestLock || this.#touch.enabled) return;
+    if (requestLock) this.#capture();
+  }
+  /**
+   * Zurück ins Spiel: bei Bedarf Vollbild, dann den Zeiger fangen.
+   *
+   * **Die Reihenfolge ist der Befund vom 2026-09-26.** Bis dahin forderte
+   * `begin()` erst den Lock und direkt danach das Vollbild an, beides im
+   * selben Klick. Der Vollbild-Wechsel nahm dem gerade gewährten bzw. noch
+   * ausstehenden Lock in Chrome die Grundlage: Vollbild ja, Zeiger frei, und
+   * weil die Tasten damals am Lock hingen, reagierte nichts, bis man ins Bild
+   * klickte. Jetzt wird der Lock erst in `fullscreenchange` angefordert — die
+   * Klickgeste gilt in Chrome noch rund 5 s, das Vollbild verbraucht sie nicht.
+   * **Nicht auf dieser Maschine prüfbar** (die eingebettete Vorschau gibt
+   * keinen Lock); scheitert er trotzdem, bleibt das Spiel über die Tastatur
+   * steuerbar, und `.lock-hint` sagt, dass ein Klick die Maus fängt.
+   */
+  #capture(): void {
+    if (
+      this.#wantFullscreen &&
+      !document.fullscreenElement &&
+      this.#requestFullscreen()
+    ) {
+      this.#lockAfterFullscreen = !this.#touch.enabled;
+      return;
+    }
+    this.#requestLock();
+  }
+  #requestLock(): void {
+    if (this.#touch.enabled || !this.playing) return;
+    if (document.pointerLockElement === this.#o.canvas) return;
     if (typeof this.#o.canvas.requestPointerLock !== "function") return;
     const result: unknown = this.#o.canvas.requestPointerLock();
     if (result instanceof Promise) result.catch(() => this.#lockError());
   }
-  #requestFullscreen(): void {
-    if (!document.fullscreenEnabled || document.fullscreenElement) return;
-    // A user gesture is available here (Play or the Settings button). Keep the
-    // request synchronous; browsers reject it after an awaited promise.
+  /** Gibt zurück, ob eine Anfrage unterwegs ist. */
+  #requestFullscreen(): boolean {
+    if (!fullscreenSupported() || document.fullscreenElement) return false;
+    // A user gesture is available here (Play, Resume or the Settings button).
+    // Keep the request synchronous; browsers reject it after an awaited promise.
     const result = document.documentElement.requestFullscreen();
-    result?.catch(() => this.#syncFullscreen());
+    result?.catch(() => {
+      this.#syncFullscreen();
+      // Abgelehnt (keine Geste, iframe ohne `allow`): dann eben ohne Vollbild.
+      if (this.#lockAfterFullscreen) {
+        this.#lockAfterFullscreen = false;
+        this.#requestLock();
+      }
+    });
+    return true;
+  }
+  readonly #onFullscreen = (): void => {
+    this.#syncFullscreen();
+    if (document.fullscreenElement) {
+      this.#lockKeyboard();
+      if (this.#lockAfterFullscreen) {
+        this.#lockAfterFullscreen = false;
+        this.#requestLock();
+      }
+      return;
+    }
+    this.#lockAfterFullscreen = false;
+    // Mit Keyboard Lock verlässt man das Vollbild nur durch **gehaltenes**
+    // Escape (Chrome blendet den Hinweis selbst ein) — das ist eine bewusste
+    // Entscheidung, „Weiter" soll sie nicht rückgängig machen. Ohne Keyboard
+    // Lock (Firefox, Safari) beendet schon ein kurzes Escape das Vollbild,
+    // obwohl der Spieler nur ins Menü wollte; dort holt „Weiter" es zurück.
+    if (this.#keyboardLocked) this.#wantFullscreen = false;
+    this.#keyboardLocked = false;
+  };
+  /**
+   * Escape dem Spiel geben, wie es jedes Desktop-Spiel erwartet: kurz drücken
+   * öffnet das Menü, das Vollbild bleibt. Ohne das beendet Chrome bei Escape
+   * Vollbild **und** Lock zugleich, und die Seite bekommt die Taste nie zu
+   * sehen. Nur Chromium kennt `navigator.keyboard.lock`, und es wirkt nur in
+   * einem per `requestFullscreen` angeforderten Vollbild (nicht in F11).
+   */
+  #lockKeyboard(): void {
+    // `Keyboard.lock` steht nicht in jeder lib.dom-Fassung — daher strukturell.
+    const keyboard = (navigator as Navigator & {
+      keyboard?: { lock?: (codes: string[]) => Promise<void> };
+    }).keyboard;
+    if (typeof keyboard?.lock !== "function") return;
+    keyboard.lock(["Escape"]).then(
+      () => { this.#keyboardLocked = Boolean(document.fullscreenElement); },
+      () => { this.#keyboardLocked = false; },
+    );
   }
   readonly #syncFullscreen = (): void => {
     const button = this.#menu.querySelector<HTMLButtonElement>(".menu__fullscreen");
     const hint = this.#menu.querySelector<HTMLElement>(".menu__fullscreenHint");
     if (!button || !hint) return;
-    const supported = document.fullscreenEnabled &&
-      typeof document.documentElement.requestFullscreen === "function";
+    const supported = fullscreenSupported();
     button.hidden = !supported;
     button.textContent = document.fullscreenElement ? "Exit full screen" : "Full screen";
     hint.hidden = supported || matchMedia("(display-mode: standalone), (display-mode: fullscreen)").matches;
@@ -279,7 +375,12 @@ export class PlayerUi {
       this.#started = true;
       this.#open = false;
       this.#render();
-    } else if (
+      return;
+    }
+    this.#lockLostAt = performance.now();
+    // Der Browser hat den Zeiger freigegeben (Escape ohne Keyboard Lock,
+    // Alt-Tab, Fokusverlust): das ist eine Pause, also Menü.
+    if (
       this.#started &&
       !this.#touch.enabled &&
       !this.#map &&
@@ -290,13 +391,21 @@ export class PlayerUi {
       else this.#show();
     }
   };
+  /**
+   * Lock abgelehnt. **Bis 2026-09-26 öffnete das das Menü** (Rückfallpfad aus
+   * P13.4: ohne Lock gab es keine Tasten, ein geschlossenes Menü wäre ein Bild
+   * ohne Bedienelement gewesen). Seit die Tasten am Spielzustand hängen, ist
+   * das Spiel auch ohne Lock bedienbar — ein aufspringendes Menü wäre dann
+   * genau das „Escape schließt das Menü nicht"-Gefühl. Es bleibt beim Spiel,
+   * und `.lock-hint` bietet den Klick an.
+   */
   readonly #lockError = (): void => {
-    if (this.#photo || this.#map || this.#garage || this.#open) return;
-    this.#show();
+    this.#render();
   };
   readonly #key = (event: KeyboardEvent): void => {
     if (event.code === "F11" && document.fullscreenElement) {
       event.preventDefault();
+      this.#wantFullscreen = false;
       void document.exitFullscreen();
       return;
     }
@@ -314,14 +423,36 @@ export class PlayerUi {
     }
     if (this.#map) return;
     if (event.code === "Escape") {
-      // Nur ohne Lock: mit Lock gibt der Browser den Zeiger frei, und
-      // `#lockChanged` öffnet das Menü. Escape *im* Menü darf den Lock nicht
-      // anfordern — Chrome lehnt eine Lock-Anfrage in derselben Escape-Geste
-      // ab, `#lockError` riss das Menü dann sofort wieder auf.
-      if (document.pointerLockElement === this.#o.canvas) return;
+      // Escape schaltet Menü ↔ Spiel, und das Vollbild bleibt.
+      //
+      // Zwei Wege, auf denen die Taste hier ankommt:
+      // - **Mit Keyboard Lock** (Chrome/Edge im Vollbild) kommt sie *vor*
+      //   jeder Browser-Reaktion an, auch bei gefangenem Zeiger. Dann öffnen
+      //   wir das Menü selbst und geben den Zeiger frei.
+      // - **Ohne** hat der Browser den Zeiger unter Umständen schon selbst
+      //   freigegeben, `#lockChanged` hat das Menü geöffnet — und dieselbe
+      //   Taste kommt danach noch einmal hier an. Sie darf das Menü nicht
+      //   gleich wieder schließen: daher das Fenster über `#lockLostAt`.
+      //
+      // Gehaltenes Escape (`repeat`) ist in Chrome „Vollbild verlassen" und
+      // schaltet hier nichts um.
+      //
+      // > Früher kehrte der Zweig bei gefangenem Zeiger sofort zurück und
+      // > schloss das Menü mit `#resume(false)`, ohne Lock-Anfrage, weil
+      // > `#lockError` das Menü sonst wieder aufriss. Beides ist seit
+      // > 2026-09-26 hinfällig: `#lockError` öffnet nichts mehr. Der Lock
+      // > wird angefordert; Chrome lehnt ihn in einer Escape-Geste zwar ab
+      // > (Escape zählt nicht als Nutzeraktivierung), aber dann läuft das
+      // > Spiel mit Tastatur weiter und ein Klick fängt die Maus.
       event.preventDefault();
-      if (this.#open) this.#resume(false);
-      else this.#show();
+      if (event.repeat) return;
+      if (this.#open) {
+        if (performance.now() - this.#lockLostAt < 300) return;
+        this.#resume();
+        return;
+      }
+      this.#show();
+      if (document.pointerLockElement) document.exitPointerLock();
       return;
     }
     if (
@@ -337,6 +468,10 @@ export class PlayerUi {
   #render(): void {
     this.#menu.hidden =
       !this.#open || document.pointerLockElement === this.#o.canvas;
+    this.#lockHint.hidden =
+      !this.playing ||
+      this.#touch.enabled ||
+      document.pointerLockElement === this.#o.canvas;
     this.#touch.setVisible(
       this.#started && !this.#open && !this.#map && !this.#photo && !this.#garage,
     );
@@ -479,8 +614,10 @@ export class PlayerUi {
     const el = (s: string): HTMLElement => menu.querySelector<HTMLElement>(s)!;
     el(".menu__fullscreen").onclick = () => {
       if (document.fullscreenElement) {
+        this.#wantFullscreen = false;
         void document.exitFullscreen().catch(() => this.#syncFullscreen());
       } else {
+        this.#wantFullscreen = true;
         this.#requestFullscreen();
       }
     };
@@ -968,7 +1105,9 @@ export class PlayerUi {
     this.#off.forEach((off) => off());
     document.removeEventListener("pointerlockchange", this.#lockChanged);
     document.removeEventListener("pointerlockerror", this.#lockError);
-    document.removeEventListener("fullscreenchange", this.#syncFullscreen);
+    document.removeEventListener("fullscreenchange", this.#onFullscreen);
+    setGameInputSource(null);
+    this.#lockHint.remove();
     document.removeEventListener("visibilitychange", this.#onVisibility);
     window.removeEventListener("keydown", this.#key, true);
     this.#menu.removeEventListener("pointerdown", this.#onMenuActivity, true);
@@ -978,4 +1117,9 @@ export class PlayerUi {
     this.#o.undockMap?.();
     this.#menu.remove();
   }
+}
+
+function fullscreenSupported(): boolean {
+  return document.fullscreenEnabled &&
+    typeof document.documentElement.requestFullscreen === "function";
 }

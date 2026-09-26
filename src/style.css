@@ -2286,3 +2286,33 @@ body {
     top: -48px;
   }
 }
+
+/* ── „Click to look around" (2026-09-26) ───────────────────────────────────
+ *
+ * Kommt zurück, aber mit neuer Bedeutung: der alte `.hint` (P10.2…P13)
+ * erklärte, wie man überhaupt ins Spiel kommt. Dieser steht nur da, wenn
+ * gespielt wird, die Tasten also schon wirken, und der Zeiger frei ist — nach
+ * einem abgelehnten Lock (Escape zählt in Chrome nicht als Geste). Ein Klick
+ * ins Bild fängt die Maus, der Hinweis verschwindet mit `pointerlockchange`.
+ *
+ * ID im Selektor aus demselben Grund wie `.touch` und `.hud`: `#overlay > *`
+ * setzt `pointer-events: auto`, und der Hinweis darf den Klick nicht schlucken,
+ * den er verlangt. */
+#overlay > .lock-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 14%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(10, 12, 20, 0.55);
+  color: rgba(255, 255, 255, 0.85);
+  font: 500 13px/1.3 system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  user-select: none;
+}
+
+.lock-hint[hidden] {
+  display: none;
+}
