@@ -593,6 +593,24 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     };
   }
 
+  /**
+   * Wegpunkt von außen setzen — das Intro führt so zur Sakura Commons.
+   *
+   * Derselbe Weg wie der Klick in der Karte (`setWaypoint` im
+   * `NavigationMap`-Aufbau oben), damit Führungslinie, Pin und Minikarte
+   * nicht wissen müssen, wer den Punkt gesetzt hat.
+   */
+  setWaypoint(x: number, z: number, label?: string): void {
+    const sampler = this.#sampler;
+    if (!sampler) return;
+    this.#waypoint.set(x, z, sampler.getHeightAt(x, z), label);
+    this.#rebuildRoute();
+  }
+
+  clearWaypoint(): void {
+    this.#clearWaypoint();
+  }
+
   #poseX(): number {
     return this.#walking ? this.walker.position.x : this.vehicle.position.x;
   }
@@ -1050,6 +1068,34 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
   }
 
   /**
+   * Direkt im fahrenden Wagen beginnen — der Einstieg des Intros.
+   *
+   * Nicht `enter()`: das setzt den Wagen auf die nächste Straße, und das
+   * Intro braucht eine bestimmte Linie (die Anfahrt einer Schanze), die 16 m
+   * neben der Fahrbahn liegt. `placeAt` bleibt der einzige Weg zum Absetzen;
+   * die Geschwindigkeit wird danach gesetzt, weil `respawn` sie nullt.
+   * `Vehicle` liest `vLong` in jedem Schritt aus `velocity` zurück, der
+   * rollende Start braucht deshalb keinen zweiten Weg in die Physik.
+   */
+  startDriving(x: number, z: number, heading: number, speed = 0): void {
+    if (!this.#sampler || !this.#context) return;
+    if (!this.#playStarted) {
+      this.#context.camera.getWorldDirection(this.#flyForward);
+      this.#flyPosition.copy(this.#context.camera.position);
+    }
+    this.#leaveDrive();
+    this.#setWalking(false);
+    this.#seizeCamera();
+    this.placeAt(x, z, heading);
+    this.vehicle.velocity.set(Math.sin(heading) * speed, 0, Math.cos(heading) * speed);
+    this.#fx?.reset();
+    this.#stuckTime = 0;
+    this.#stuckX = x;
+    this.#stuckZ = z;
+    this.#beginDrive();
+  }
+
+  /**
    * Einsteigen in den Wagen, der schon da ist.
    *
    * Liefert false, wenn die Figur zu weit weg ist. Der Aufrufer (Taste, Menü,
@@ -1104,6 +1150,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
   /** Auto ↔ zu Fuß. Dieselbe Taste in beide Richtungen — `F`. */
   toggleVehicle(): void {
+    if (this.introLock) return;
     if (this.#active) this.alight();
     else if (this.#walking) this.board();
     else this.enter();
@@ -1317,6 +1364,25 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     this.#scripted = input;
   }
 
+  /**
+   * Eine Hilfe, die die **Spielereingabe** nachbearbeitet — das Intro.
+   *
+   * Anders als `setScriptedInput` bleiben Tastatur und Finger dabei wirksam:
+   * das Intro legt eine Spurhilfe auf die Lenkung und hält das Gas, solange
+   * der Spieler es noch nicht gefunden hat. Wer selbst lenkt, lenkt. Ein
+   * Messlauf mit `setScriptedInput` sieht die Hilfe nicht.
+   */
+  inputAssist: ((input: DriveInput) => void) | null = null;
+
+  /**
+   * Sperrt Aussteigen, Freiflug und Respawn — während das Intro läuft.
+   *
+   * `F` mitten im Anflug auf die Schanze ließe den Wagen stehen und die Figur
+   * auf der Wiese; `R` setzte ihn auf die Ringstraße neben die Schanze. Beides
+   * sind Zustände, für die das Intro keine Fortsetzung hat.
+   */
+  introLock = false;
+
   readonly #onKeyDown = (event: KeyboardEvent): void => {
     if (isTyping()) return;
     // Dieselbe Sperre wie im `FreeFlyController` und aus demselben Grund (P10.2):
@@ -1328,6 +1394,10 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     if (!gameInputActive()) return;
 
     const code = event.code.toLowerCase();
+    if (this.introLock && (code === 'keyv' || code === 'keyf' || code === 'keyr')) {
+      event.preventDefault();
+      return;
+    }
     if (code === 'keyv') {
       event.preventDefault();
       this.toggle();
@@ -1398,6 +1468,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     input.stunt = this.#stuntArmed;
     input.trick = this.#trickPulse;
     this.#trickPulse = false;
+    this.inputAssist?.(input);
     return input;
   }
 
@@ -1898,7 +1969,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
     }
     if (this.#cluster) {
       this.#cluster.pose(this.vehicle.spec, this.vehicle.position, this.vehicle.quaternion, this.#scratch);
-      const reading = instruments(this.vehicle.telemetry.forwardSpeed);
+      const reading = instruments(this.vehicle.telemetry.forwardSpeed, this.vehicle.telemetry);
       this.#cluster.paint(
         this.vehicle.telemetry.speed * 3.6,
         reading.gear,

@@ -1,0 +1,77 @@
+/* Rolltor — über der Garage (`.tune-garage`) und über dem Intro.
+ * `#overlay > …` wegen des ID-Selektors `#overlay > *` (P10.2). */
+#overlay > .bay-shutter {
+  position: absolute;
+  inset: 0;
+  z-index: 120;
+  overflow: hidden;
+  pointer-events: none;
+}
+#overlay > .bay-shutter[hidden] { display: none; }
+
+.bay-shutter__door {
+  position: absolute;
+  inset: 0;
+  transform: translateY(-101%);
+  transition: transform var(--ms, 620ms) cubic-bezier(0.55, 0, 0.35, 1);
+  background: #1b2227;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+}
+.bay-shutter.is-down .bay-shutter__door {
+  transform: translateY(0);
+  transition-timing-function: cubic-bezier(0.5, 0, 0.75, 0.2);
+}
+
+/* Lamellen: helle Kante oben, Schatten unten, alle 34 px. */
+.bay-shutter__slats {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      #3a444b 0 2px,
+      #262e34 2px 20px,
+      #20272c 20px 30px,
+      #11161a 30px 34px
+    );
+}
+.bay-shutter__slats::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.45), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.45));
+}
+
+.bay-shutter__plate {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  padding: 18px 36px;
+  border: 2px solid #e8ba7f;
+  background: #111a1e;
+  color: #ffe6be;
+  font-family: var(--display);
+  box-shadow: 0 0 0 6px #111a1e, 0 18px 40px rgba(0, 0, 0, 0.6);
+}
+.bay-shutter__plate span { font: 700 16px/1 'Yu Gothic', var(--display); letter-spacing: 0.3em; color: #c9b08a; }
+.bay-shutter__plate strong { font: 900 clamp(28px, 4vw, 52px)/1 var(--display); letter-spacing: 0.12em; }
+.bay-shutter__plate em { font: 600 12px/1 var(--display); font-style: normal; letter-spacing: 0.24em; text-transform: uppercase; color: #9fb1b6; }
+
+/* Unterkante: Warnstreifen, wie an jeder Werkstatt. */
+.bay-shutter__hazard {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 22px;
+  background: repeating-linear-gradient(45deg, #e8b04a 0 18px, #14191c 18px 36px);
+  border-top: 3px solid #0b0f11;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bay-shutter__door { transition-duration: 1ms !important; }
+}

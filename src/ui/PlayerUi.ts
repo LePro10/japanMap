@@ -61,6 +61,9 @@ export interface DriveControl extends TouchDriveTarget {
 export interface AudioControl {
   readonly muted: boolean;
   setMuted(muted: boolean): void;
+  /** Gesamtlautstärke 0…1 — Tonschicht 2. Optional, damit Tests ohne Ton auskommen. */
+  readonly volume?: number;
+  setVolume?(volume: number): void;
   click(): void;
   engineBlip?(pitch?: number): void;
 }
@@ -99,6 +102,13 @@ export interface PlayerUiOptions {
   readonly callCar?: () => string;
   /** Frameschleife anhalten, solange niemand am Menü sitzt. */
   readonly sleepWorld?: (sleeping: boolean) => void;
+  /** Das Intro „First Drive" — erneut abspielen oder überspringen. */
+  readonly intro?: IntroControl;
+}
+export interface IntroControl {
+  readonly running: boolean;
+  replay(): void;
+  skip(): void;
 }
 type Tab = "play" | "cars" | "map" | "records" | "photo" | "settings";
 /** Ohne Eingabe im Pausenmenü: rAF aus. Der Canvas hält den letzten Frame. */
@@ -239,9 +249,17 @@ export class PlayerUi {
     }
     this.#render();
   }
-  openCommonsShop(tune: boolean): void {
+  /**
+   * Petal Motors oder Open Bay aus der Welt heraus.
+   *
+   * `after` ist der Weg der **Einfahrt** (`SakuraCommons`): der Wagen steht in
+   * der Bay, und egal wie die Garage verlassen wird, geht es zurück ins Spiel —
+   * die Commons lässt ihn dann durch das Tor hinausrollen. Ohne `after` bleibt
+   * es beim alten Verhalten (Verlassen führt ins Menü).
+   */
+  openCommonsShop(tune: boolean, after?: (resume: boolean) => void): void {
     if (tune && this.#o.openTune) {
-      this.#enterTune();
+      this.#enterTune(after);
       return;
     }
     this.#show();
@@ -257,12 +275,26 @@ export class PlayerUi {
     this.#el('[data-panel="cars"]').scrollTop = 0;
     this.#render();
   }
+  /** Die Veranstaltungstafel der Commons — das Menü, Liste der Rennen im Blick. */
+  openEvents(): void {
+    if (!this.#started) return;
+    this.#show();
+    if (document.pointerLockElement) document.exitPointerLock();
+    this.#el(".menu__hubHead").scrollIntoView({ block: "start" });
+  }
   get playing(): boolean {
     return this.#started && !this.#open && !this.#map && !this.#photo && !this.#garage;
   }
   #show(): void {
     this.#open = true;
     this.#tab = "play";
+    if (this.#o.intro) {
+      const running = this.#o.intro.running;
+      this.#el(".menu__intro .menu__tileTitle").textContent = running ? "Skip intro" : "Replay intro";
+      this.#el(".menu__intro .menu__tileMeta").textContent = running
+        ? "Straight to Sakura Commons"
+        : "Jump, roll, drift, home";
+    }
     this.#events();
     this.#cars();
     this.#records();
@@ -586,6 +618,11 @@ export class PlayerUi {
             <span class="menu__tileTitle">Photo Mode</span>
             <span class="menu__tileMeta">Freeze the world</span>
           </button>
+          <button type="button" class="menu__intro menu__tile menu__tile--records" hidden>
+            <span class="menu__tileKicker">First drive</span>
+            <span class="menu__tileTitle">Replay intro</span>
+            <span class="menu__tileMeta">Jump, roll, drift, home</span>
+          </button>
         </div>
         <h2 class="menu__hubHead">Pick a drive</h2>
         <div class="menu__events"></div>
@@ -605,7 +642,7 @@ export class PlayerUi {
       </section>
       <section class="menu__panel" data-panel="records" hidden><p class="menu__eyebrow">MAKE IT PERSONAL</p><h1>Your best moments.</h1><h2>Event records</h2><div class="menu__records"></div><p class="menu__note">Saved event bests appear here. Driving milestones, discoveries and the garage wall are not tracked yet.</p></section>
       <section class="menu__panel" data-panel="photo" hidden><p class="menu__eyebrow">KEEP THE VIEW</p><h1>Stay a little longer.</h1><div class="menu__photoHero" aria-hidden="true">＋</div><p class="menu__intro">Freeze the world, fly with WASD, Space and Shift, zoom with the wheel and keep a clean PNG. Return to exactly the view you left.</p><button class="menu__openPhoto">Enter Photo mode</button><p class="menu__note">Capture High fills trees and grass in view at cinema density, then puts your graphics preset back.</p></section>
-      <section class="menu__panel" data-panel="settings" hidden><p class="menu__eyebrow">MAKE YOURSELF AT HOME</p><h1>Settings</h1><details open><summary>Graphics</summary><div class="menu__levels"></div><p class="menu__effect"></p><details><summary>Custom graphics</summary><div class="menu__sliders"></div></details><button class="menu__reclassify">Recalibrate</button></details><details><summary>Audio</summary><button class="menu__mute">Sound on</button></details><details><summary>Accessibility</summary><label class="menu__row">UI scale<select class="menu__scale"><option value="90">90%</option><option value="100" selected>100%</option><option value="115">115%</option><option value="130">130%</option></select></label><label class="menu__row">Speed units<select class="menu__units"><option value="kmh">km/h</option><option value="mph">mph</option></select></label><label class="menu__row">Reduced motion<input class="menu__motion" type="checkbox" /></label></details><details><summary>Controls</summary><h3>On foot</h3>${controlTable(CONTROLS, "keytable")}<h3>Driving</h3>${controlTable(DRIVE_CONTROLS, "keytable")}${controlTable(TOUCH_DRIVE_CONTROLS, "keytable")}<h3>Photo</h3><p>WASD fly, Space / Shift up / down, wheel zoom, drag to look. On a phone the on-screen pad remains. P opens Photo; Escape leaves it.</p></details><details><summary>Progress</summary><p class="menu__note">Event bests and owned cars use this browser's existing save. Sparks purchases and tuning are saved in this browser.</p></details></section>
+      <section class="menu__panel" data-panel="settings" hidden><p class="menu__eyebrow">MAKE YOURSELF AT HOME</p><h1>Settings</h1><details open><summary>Graphics</summary><div class="menu__levels"></div><p class="menu__effect"></p><details><summary>Custom graphics</summary><div class="menu__sliders"></div></details><button class="menu__reclassify">Recalibrate</button></details><details><summary>Audio</summary><button class="menu__mute">Sound on</button><label class="menu__row">Volume<input class="menu__volume" type="range" min="0" max="100" step="1" value="70" /></label></details><details><summary>Accessibility</summary><label class="menu__row">UI scale<select class="menu__scale"><option value="90">90%</option><option value="100" selected>100%</option><option value="115">115%</option><option value="130">130%</option></select></label><label class="menu__row">Speed units<select class="menu__units"><option value="kmh">km/h</option><option value="mph">mph</option></select></label><label class="menu__row">Reduced motion<input class="menu__motion" type="checkbox" /></label></details><details><summary>Controls</summary><h3>On foot</h3>${controlTable(CONTROLS, "keytable")}<h3>Driving</h3>${controlTable(DRIVE_CONTROLS, "keytable")}${controlTable(TOUCH_DRIVE_CONTROLS, "keytable")}<h3>Photo</h3><p>WASD fly, Space / Shift up / down, wheel zoom, drag to look. On a phone the on-screen pad remains. P opens Photo; Escape leaves it.</p></details><details><summary>Progress</summary><p class="menu__note">Event bests and owned cars use this browser's existing save. Sparks purchases and tuning are saved in this browser.</p></details></section>
     </div>`;
     menu.querySelector('[data-panel="settings"] h1')?.insertAdjacentHTML(
       "afterend",
@@ -630,6 +667,14 @@ export class PlayerUi {
       el(".menu__status").textContent =
         this.#o.callCar?.() ?? "Call car is unavailable here.";
     };
+    el(".menu__intro").hidden = !this.#o.intro;
+    el(".menu__intro").onclick = () => {
+      const intro = this.#o.intro;
+      if (!intro) return;
+      if (intro.running) intro.skip();
+      else intro.replay();
+      this.#resume();
+    };
     el(".menu__explore").onclick = () => {
       this.#mapFocusPlayer = true;
       this.#tab = "map";
@@ -653,6 +698,12 @@ export class PlayerUi {
         el(".menu__mute").textContent = audio.muted ? "Sound off" : "Sound on";
       }
     };
+    const volume = el(".menu__volume") as HTMLInputElement;
+    if (this.#o.audio?.volume !== undefined) volume.value = String(Math.round(this.#o.audio.volume * 100));
+    volume.oninput = () => {
+      this.#o.audio?.setVolume?.(Number(volume.value) / 100);
+    };
+    volume.onchange = () => this.#o.audio?.click();
     el(".menu__title").onclick = () => {
       el(".menu__code").hidden = !el(".menu__code").hidden;
       if (!el(".menu__code").hidden)
@@ -754,7 +805,7 @@ export class PlayerUi {
     });
     return menu;
   }
-  #enterTune(): void {
+  #enterTune(after?: (resume: boolean) => void): void {
     if (!this.#o.openTune || this.#garage) return;
     this.#garage = true;
     this.#open = false;
@@ -762,6 +813,11 @@ export class PlayerUi {
     if (document.pointerLockElement) document.exitPointerLock();
     this.#o.openTune((resume) => {
       this.#garage = false;
+      if (after) {
+        this.#resume();
+        after(resume === true);
+        return;
+      }
       if (resume) {
         this.#resume();
         return;

@@ -82,6 +82,11 @@ export interface TuningGarageOptions {
   click(): void;
   engineBlip(pitch?: number): void;
   hideWorld?(hidden: boolean): void;
+  /**
+   * Einmal-Tipp beim Öffnen — das Intro setzt ihn für den ersten Besuch.
+   * Liefert den Text (HTML) oder `null`; wer ihn liefert, verbraucht ihn.
+   */
+  coach?(): string | null;
 }
 
 /**
@@ -167,6 +172,21 @@ export class TuningGarage {
     root.setAttribute('aria-label', 'Open Bay tuning');
     root.innerHTML = this.#markup(id);
     container.append(root);
+
+    const coachText = this.#o.coach?.() ?? null;
+    if (coachText) {
+      const coach = document.createElement('div');
+      coach.className = 'tune-garage__coach';
+      coach.setAttribute('role', 'note');
+      coach.innerHTML = `<span>${coachText}</span><button type="button" data-coach-ok>Got it</button>`;
+      root.append(coach);
+      // Nicht über `root.onclick`: der Knopf ist kein Teil der Werkstatt, und
+      // `data-action` fehlt ihm absichtlich.
+      coach.querySelector<HTMLButtonElement>('[data-coach-ok]')!.addEventListener('click', (event) => {
+        event.stopPropagation();
+        coach.remove();
+      });
+    }
 
     const stageEl = root.querySelector<HTMLElement>('.tune-garage__stage')!;
     const toast = root.querySelector<HTMLElement>('[data-toast]')!;

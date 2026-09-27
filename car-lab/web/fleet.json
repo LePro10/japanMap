@@ -1,0 +1,496 @@
+[
+ {
+  "id": "mame",
+  "name": "Mame K",
+  "maker": "Hoshi",
+  "klass": "Starter",
+  "tagline": "660 cc, 64 PS, zero fear. The car you learn the map in.",
+  "hp": 64,
+  "kg": 840,
+  "drive": "FWD",
+  "top_kmh": 140,
+  "inspo": "Kei hatch (N-One / Alto Works)",
+  "L": 3.395,
+  "W": 1.475,
+  "H": 1.545,
+  "wb_len": 2.52,
+  "track": 1.3,
+  "r": 0.285,
+  "travel": 0.2,
+  "lock": 40,
+  "stiff": 0.7,
+  "roll": 0.09,
+  "pitch": 0.07,
+  "grip": 0.85,
+  "drift": 0.4,
+  "sound": "kei",
+  "tuning": {
+   "wheels": [
+    "Stock 5-spoke",
+    "Retro steel",
+    "Mini 8-spoke"
+   ],
+   "aero": [
+    "Stock roof lip",
+    "Sport lip",
+    "Kei-racer wing + splitter"
+   ],
+   "engine": "i3",
+   "paints": [
+    "Mint two-tone",
+    "Sunny yellow",
+    "Rally stripes"
+   ],
+   "paint_hex": [
+    "#8fd6c0",
+    "#f2c230",
+    "#f4f4f0"
+   ]
+  }
+ },
+ {
+  "id": "hachi",
+  "name": "Hachi 86",
+  "maker": "Kaiun",
+  "klass": "Touge Drift",
+  "tagline": "Pop-up lights, 1.6 twin-cam, the mountain-pass legend.",
+  "hp": 130,
+  "kg": 940,
+  "drive": "RWD",
+  "top_kmh": 200,
+  "inspo": "AE86 Trueno (panda)",
+  "L": 4.2,
+  "W": 1.625,
+  "H": 1.335,
+  "wb_len": 2.4,
+  "track": 1.38,
+  "r": 0.29,
+  "travel": 0.18,
+  "lock": 38,
+  "stiff": 0.85,
+  "roll": 0.07,
+  "pitch": 0.06,
+  "grip": 0.9,
+  "drift": 0.95,
+  "sound": "i4_na",
+  "popups": true,
+  "tuning": {
+   "wheels": [
+    "Stock 8-spoke gold",
+    "Deep dish white",
+    "Bronze mesh"
+   ],
+   "aero": [
+    "Stock lip",
+    "Touge spoiler",
+    "Time-attack wing + canards"
+   ],
+   "engine": "i4",
+   "paints": [
+    "Panda",
+    "Black / gold",
+    "Tofu white"
+   ],
+   "paint_hex": [
+    "#f2f2ef",
+    "#0e0e10",
+    "#f6f6f2"
+   ]
+  }
+ },
+ {
+  "id": "kaze",
+  "name": "Kaze 35 Drift",
+  "maker": "Tsuru",
+  "klass": "Drift Missile",
+  "tagline": "Widebody, sakura-graffiti wrap, swan-neck GT wing. Built to go sideways.",
+  "hp": 520,
+  "kg": 1320,
+  "drive": "RWD",
+  "top_kmh": 270,
+  "inspo": "350Z (Z33) pro-drift build",
+  "L": 4.32,
+  "W": 1.84,
+  "H": 1.28,
+  "wb_len": 2.65,
+  "track": 1.6,
+  "r": 0.325,
+  "travel": 0.12,
+  "lock": 58,
+  "stiff": 1.4,
+  "roll": 0.035,
+  "pitch": 0.03,
+  "grip": 0.95,
+  "drift": 1.0,
+  "sound": "v6_turbo",
+  "tuning": {
+   "wheels": [
+    "White dish 6-spoke",
+    "Bronze 6-spoke",
+    "Black mesh"
+   ],
+   "aero": [
+    "Pro GT wing",
+    "Street wing",
+    "Ducktail"
+   ],
+   "engine": "v6",
+   "paints": [
+    "Sakura graffiti",
+    "Candy pink",
+    "Matte grey"
+   ],
+   "paint_hex": [
+    "#0c0c10",
+    "#e8318f",
+    "#5c5f63"
+   ]
+  }
+ },
+ {
+  "id": "rotor",
+  "name": "Rotor FD",
+  "maker": "Tsubasa",
+  "klass": "JDM Legend",
+  "tagline": "Twin-rotor, 9000 rpm scream, curves for days. Pop-ups included.",
+  "hp": 280,
+  "kg": 1280,
+  "drive": "RWD",
+  "top_kmh": 260,
+  "inspo": "RX-7 FD3S",
+  "L": 4.29,
+  "W": 1.76,
+  "H": 1.23,
+  "wb_len": 2.425,
+  "track": 1.46,
+  "r": 0.315,
+  "travel": 0.15,
+  "lock": 36,
+  "stiff": 1.1,
+  "roll": 0.05,
+  "pitch": 0.045,
+  "grip": 1.02,
+  "drift": 0.85,
+  "sound": "rotary",
+  "popups": true,
+  "tuning": {
+   "wheels": [
+    "Bronze mesh",
+    "Silver 5-spoke",
+    "Black 10-spoke"
+   ],
+   "aero": [
+    "Stock hoop wing",
+    "Time-attack aero",
+    "Clean ducktail"
+   ],
+   "engine": "rotary",
+   "paints": [
+    "Vintage red",
+    "Competition yellow",
+    "Night stripes"
+   ],
+   "paint_hex": [
+    "#c4101e",
+    "#f2c500",
+    "#121418"
+   ]
+  }
+ },
+ {
+  "id": "raiden",
+  "name": "Raiden GT-R34",
+  "maker": "Ichiban",
+  "klass": "JDM Legend",
+  "tagline": "All-wheel drive, twin-turbo six, blue underglow, zero chill.",
+  "hp": 480,
+  "kg": 1560,
+  "drive": "AWD",
+  "top_kmh": 290,
+  "inspo": "Skyline GT-R R34 (street racer build)",
+  "L": 4.6,
+  "W": 1.785,
+  "H": 1.36,
+  "wb_len": 2.665,
+  "track": 1.5,
+  "r": 0.335,
+  "travel": 0.15,
+  "lock": 36,
+  "stiff": 1.15,
+  "roll": 0.05,
+  "pitch": 0.045,
+  "grip": 1.12,
+  "drift": 0.55,
+  "sound": "i6_turbo",
+  "underglow": 2780159,
+  "tuning": {
+   "wheels": [
+    "Black 6-spoke",
+    "Gunmetal 10-spoke",
+    "Bronze Y-spoke"
+   ],
+   "aero": [
+    "Stock adjustable wing",
+    "GT wing",
+    "Lip only"
+   ],
+   "engine": "i6",
+   "paints": [
+    "Street racer",
+    "Bayside blue",
+    "Midnight purple"
+   ],
+   "paint_hex": [
+    "#b8bdc4",
+    "#1f4fb8",
+    "#3a1f52"
+   ]
+  }
+ },
+ {
+  "id": "suprema",
+  "name": "Suprema RZ",
+  "maker": "Kaiun",
+  "klass": "JDM Legend",
+  "tagline": "Twin-turbo straight six, hoop wing, 1000-hp reputation.",
+  "hp": 330,
+  "kg": 1510,
+  "drive": "RWD",
+  "top_kmh": 285,
+  "inspo": "Supra MK4 (A80)",
+  "L": 4.52,
+  "W": 1.81,
+  "H": 1.27,
+  "wb_len": 2.55,
+  "track": 1.54,
+  "r": 0.33,
+  "travel": 0.16,
+  "lock": 34,
+  "stiff": 1.0,
+  "roll": 0.055,
+  "pitch": 0.05,
+  "grip": 1.0,
+  "drift": 0.7,
+  "sound": "i6_turbo",
+  "tuning": {
+   "wheels": [
+    "Stock split 5-spoke",
+    "Chrome 10-spoke",
+    "Black 6-spoke"
+   ],
+   "aero": [
+    "Stock hoop wing",
+    "GT wing",
+    "Ducktail"
+   ],
+   "engine": "i6",
+   "paints": [
+    "Street orange",
+    "Renaissance red",
+    "Black / graphics"
+   ],
+   "paint_hex": [
+    "#ff5a00",
+    "#b3101c",
+    "#0c0c0e"
+   ]
+  }
+ },
+ {
+  "id": "kumo",
+  "name": "Kumo STi 22",
+  "maker": "Rokusei",
+  "klass": "Rally",
+  "tagline": "Boxer rumble, gold wheels, gravel spray. Flat-out on any surface.",
+  "hp": 300,
+  "kg": 1270,
+  "drive": "AWD",
+  "top_kmh": 245,
+  "inspo": "Impreza GC8 / 22B WRC",
+  "L": 4.35,
+  "W": 1.77,
+  "H": 1.4,
+  "wb_len": 2.52,
+  "track": 1.5,
+  "r": 0.32,
+  "travel": 0.26,
+  "lock": 40,
+  "stiff": 0.9,
+  "roll": 0.07,
+  "pitch": 0.06,
+  "grip": 1.0,
+  "drift": 0.8,
+  "sound": "boxer",
+  "tuning": {
+   "wheels": [
+    "Gold gravel 6-spoke",
+    "White tarmac 10-spoke",
+    "Gold 18\" tarmac"
+   ],
+   "aero": [
+    "WRC wing",
+    "Street wing",
+    "Tarmac mega-wing"
+   ],
+   "engine": "boxer",
+   "paints": [
+    "Rally blue",
+    "Pure white",
+    "Gravel camo"
+   ],
+   "paint_hex": [
+    "#1b3c9c",
+    "#f4f4f4",
+    "#6a6f55"
+   ]
+  }
+ },
+ {
+  "id": "yama",
+  "name": "Yama Cruiser 250",
+  "maker": "Kaiun",
+  "klass": "Offroad",
+  "tagline": "Body-on-frame, locking diffs, mud tyres. The mountain is the road.",
+  "hp": 280,
+  "kg": 2250,
+  "drive": "AWD",
+  "top_kmh": 175,
+  "inspo": "Land Cruiser 250",
+  "L": 4.92,
+  "W": 1.98,
+  "H": 1.93,
+  "wb_len": 2.85,
+  "track": 1.67,
+  "r": 0.4,
+  "travel": 0.32,
+  "lock": 34,
+  "stiff": 0.6,
+  "roll": 0.11,
+  "pitch": 0.09,
+  "grip": 0.85,
+  "drift": 0.35,
+  "sound": "v6_diesel",
+  "tuning": {
+   "wheels": [
+    "Gunmetal 6-spoke",
+    "Beadlock black",
+    "Bronze 5-spoke"
+   ],
+   "aero": [
+    "Roof rack + light bar",
+    "Clean roof",
+    "Roof rack (no change)"
+   ],
+   "engine": "v6",
+   "paints": [
+    "Sand gold",
+    "Heritage blue",
+    "Olive"
+   ],
+   "paint_hex": [
+    "#b58b4c",
+    "#3a5e7a",
+    "#55603f"
+   ]
+  }
+ },
+ {
+  "id": "hauler",
+  "name": "Mini Hauler",
+  "maker": "Hoshi",
+  "klass": "Utility",
+  "tagline": "Cab-over, tiny turning circle, the village delivery hero. Surprisingly driftable.",
+  "hp": 53,
+  "kg": 780,
+  "drive": "RWD",
+  "top_kmh": 120,
+  "inspo": "Kei truck (Hijet / Carry)",
+  "L": 3.395,
+  "W": 1.475,
+  "H": 1.78,
+  "wb_len": 1.9,
+  "track": 1.3,
+  "r": 0.28,
+  "travel": 0.24,
+  "lock": 45,
+  "stiff": 0.6,
+  "roll": 0.12,
+  "pitch": 0.1,
+  "grip": 0.8,
+  "drift": 0.9,
+  "sound": "kei",
+  "tuning": {
+   "wheels": [
+    "Steel + hubcap",
+    "Retro steel white",
+    "Mini mesh gold"
+   ],
+   "aero": [
+    "Cab guard",
+    "Cab guard",
+    "Cab guard"
+   ],
+   "engine": "i3",
+   "paints": [
+    "Farm white",
+    "Kei blue",
+    "Retro green"
+   ],
+   "paint_hex": [
+    "#eeeeea",
+    "#2f6fb5",
+    "#5b8c4a"
+   ]
+  }
+ },
+ {
+  "id": "hanami",
+  "name": "Hanami SF-26",
+  "maker": "Sakura Works",
+  "klass": "Formula",
+  "tagline": "1.6 V6 hybrid, 1000 hp, halo, DRS. Grip that builds with speed.",
+  "hp": 1000,
+  "kg": 800,
+  "drive": "RWD",
+  "top_kmh": 345,
+  "inspo": "2020s F1 car, cherry-blossom livery",
+  "L": 5.4,
+  "W": 1.9,
+  "H": 0.95,
+  "wb_len": 3.4,
+  "track": 1.62,
+  "r": 0.36,
+  "travel": 0.06,
+  "lock": 22,
+  "stiff": 3.0,
+  "roll": 0.012,
+  "pitch": 0.012,
+  "grip": 1.6,
+  "drift": 0.25,
+  "sound": "f1",
+  "drs": true,
+  "tuning": {
+   "wheels": [
+    "Medium (yellow)",
+    "Soft (red)",
+    "Wet (blue)"
+   ],
+   "aero": [
+    "Standard",
+    "Low drag (Monza)",
+    "High downforce (Monaco)"
+   ],
+   "engine": "f1v6",
+   "paints": [
+    "Sakura",
+    "Midnight gold",
+    "Papaya"
+   ],
+   "paint_hex": [
+    "#f6f3f4",
+    "#101014",
+    "#ff7a1a"
+   ]
+  }
+ }
+]

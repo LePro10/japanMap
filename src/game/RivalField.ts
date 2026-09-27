@@ -558,6 +558,14 @@ export class RivalField {
     });
   }
 
+  /**
+   * Die Fahrzeuge der Gegner — für die Tonschicht 2, die jedem seinen Motor
+   * gibt. Leer, solange kein Feld steht.
+   */
+  get vehicles(): readonly Vehicle[] {
+    return this.active ? this.#rivals.map((r) => r.vehicle) : [];
+  }
+
   /** Weltposition eines Gegners — für die Positionsanzeige und die Minikarte. */
   positionOf(index: number): Vector3 | null {
     return this.#rivals[index]?.vehicle.position ?? null;

@@ -479,3 +479,51 @@
   .tune-garage__card { flex-basis: 132px; }
   .tune-garage__title { display: none; }
 }
+
+/* Einmal-Tipp beim ersten Besuch (Intro) — über der Teileleiste. */
+.tune-garage__coach {
+  position: absolute;
+  left: 50%;
+  bottom: 190px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(560px, 90vw);
+  padding: 12px 14px 12px 16px;
+  border: 1px solid var(--amber);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ink) 90%, transparent);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  transform: translateX(-50%);
+  font: 500 14px/1.4 var(--display);
+  pointer-events: auto;
+  animation: tune-toast 0.45s ease both;
+}
+.tune-garage__coach[hidden] { display: none; }
+.tune-garage__coach b { color: var(--amber); }
+.tune-garage__coach::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: inherit;
+  border-right: 1px solid var(--amber);
+  border-bottom: 1px solid var(--amber);
+  transform: rotate(45deg);
+}
+.tune-garage__coach button {
+  flex: none;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 3px;
+  background: var(--amber);
+  color: var(--ink);
+  font: 800 12px/1 var(--display);
+  cursor: pointer;
+}
+@media (max-width: 720px) { .tune-garage__coach { bottom: 46%; font-size: 12px; } }

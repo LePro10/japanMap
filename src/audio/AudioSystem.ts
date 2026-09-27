@@ -1,137 +1,178 @@
-import { AUDIO, AUDIO_STORAGE_KEY } from '@/config/audio.config';
+import { Vector3, type PerspectiveCamera } from 'three';
+import { AUDIO, AUDIO_STORAGE_KEY, AUDIO_VOLUME_KEY, ENGINE_VOICES } from '@/config/audio.config';
+import type { VehicleId } from '@/config/vehicles.config';
 import type { EngineContext, System } from '@/core/System';
-import type { VehicleTelemetry } from '@/game/Vehicle';
+import type { Vehicle, VehicleTelemetry } from '@/game/Vehicle';
+import { SURFACE_ID, type VehicleSoundParams } from './dsp/vehicleMixer';
+import * as shots from './oneShots';
+import type { VehicleAudioMessage } from './vehicleAudio.worklet';
+import workletUrl from './vehicleAudio.worklet.ts?worker&url';
 
 /**
- * Die Tonschicht — P16.
+ * Die Tonschicht — P16, neu gebaut als **Tonschicht 2**.
  *
- * ## Der Befund, aus dem sie entsteht
+ * ## Warum neu
  *
- * Das Projekt hatte **keinen Ton**. Nicht „wenig" — keinen: `grep -rli
- * "audio|sound|AudioContext|AudioListener"` über `src/` fand null Dateien. Für
- * eine Landschaft zum Anschauen ging das durch; mit der Fahrschicht aus P14 ist
- * es der auffälligste Mangel, den ein Besucher in den ersten fünf Sekunden
- * bemerkt. Ein Auto, das lautlos beschleunigt, liest sich als kaputt.
+ * Die erste Fassung (P16) war zwei verstimmte Sägezähne durch einen Tiefpass
+ * für den Motor und ein Bandpassrauschen für alles andere. Der Auftraggeber:
+ * „jeder Sound hört sich nach AI Slop an, fast unspielbar, vor allem beim
+ * Fahren und Schalten". Drei Befunde standen dahinter, alle drei nachgemessen:
  *
- * ## Vollständig synthetisiert
+ * 1. **Die Tonhöhe sprang beim Schalten** in einem Frame, über fünf feste
+ *    Tempobänder für alle zehn Autos; das Gas änderte an der Tonhöhe nichts.
+ * 2. **Ein Sägezahn hat eine Klangfarbe** — egal ob Leerlauf, Vollgas, Schub.
+ * 3. **Rauschen war lauter als der Motor** und auf jedem Belag gleich.
  *
- * Kein einziges Byte Download — Begründung in `audio.config.ts`. Was hier
- * entsteht, entsteht aus Oszillatoren und einem Rauschpuffer, den diese Datei
- * selbst füllt.
+ * ## Aufbau jetzt
  *
- * ## Die drei Fallen der Web Audio API, und wie sie hier umgangen sind
+ * - `Gearbox` (in `Vehicle`) liefert Drehzahl, Gang, Last — mit Schaltpause,
+ *   Zwischengas, Kupplung, Begrenzer. Anzeige und Ton lesen dasselbe.
+ * - Ein **AudioWorklet** (`vehicleAudio.worklet.ts` → `dsp/`) rendert Motor,
+ *   Reifen, Belag, Wind, Nitro, Schleifen und Fahrwerk je Abtastwert. Der
+ *   Motor ist ein Modell aus Zündpulsen, Krümmer- und Endrohren
+ *   (Wellenleiter) und Schalldämpferkammern, eine Stimme je Fahrzeug
+ *   (`ENGINE_VOICES`).
+ * - **Einzelgeräusche** (`oneShots.ts`) sind geschichtet: Körper, Material,
+ *   Nachklang — Holz klingt nach Holz, eine Planke nach Stahl.
+ * - Summe: Hall-Send → Kompressor als Begrenzer → Lautstärke → Ausgang.
  *
- * 1. **Ein `AudioContext` startet suspendiert.** Jeder Browser verlangt eine
- *    Nutzergeste, bevor Ton kommt. Der Kontext wird deshalb **nicht** im
- *    Konstruktor angelegt, sondern in `unlock()` — und das ruft der
- *    „Starten"-Knopf, also im Klick selbst. Ein Kontext, der im Konstruktor
- *    entsteht, steht danach für immer auf `suspended`, und *das* ist der Grund,
- *    warum in so vielen Web-Spielen der Ton erst nach einem Tab-Wechsel kommt.
+ * 0 Byte Download — Begründung in `audio.config.ts`.
  *
- * 2. **Ein `setValueAtTime` je Frame auf denselben Parameter knackt.** Sprünge
- *    im Wert eines laufenden Oszillators sind Klicks. Alles, was sich fortlaufend
- *    ändert (Drehzahl, Lautstärke, Filter), läuft über
- *    `setTargetAtTime` — eine Exponentialrampe, die die Hardware selbst fährt und
- *    die keine Bildrate braucht.
+ * ## Die drei Fallen der Web Audio API (P16, gelten weiter)
  *
- * 3. **Ein Oszillator ist ein Einwegteil.** `stop()` ist endgültig; ein
- *    gestoppter Knoten lässt sich nicht neu starten. Motor und Rauschen laufen
- *    deshalb **durchgehend** ab `unlock()` und werden über ihre Verstärkung auf
- *    null geregelt, statt sie zu stoppen. Nur die Einzelgeräusche (Aufprall,
- *    Runde, Klick) legen je Ereignis neue Knoten an — die sterben nach ihrer
- *    Hüllkurve von selbst.
+ * 1. Ein `AudioContext` startet suspendiert → angelegt in `unlock()`, also in
+ *    der Nutzergeste.
+ * 2. Sprünge an einem laufenden Parameter knacken → Rampen, und im Worklet
+ *    wird ohnehin je Block geglättet.
+ * 3. Oszillatoren sind Einwegteile → Einzelgeräusche legen je Ereignis Knoten
+ *    an, die sich nach `onended` selbst abhängen.
  *
- * ## Was der Browser abschaltet, wenn niemand hinsieht
- *
- * Bei `document.hidden` wird der Kontext angehalten. Das ist nicht nur
- * Höflichkeit: ein Spiel, das im Hintergrundtab weiterdröhnt, ist der häufigste
- * Grund, warum ein Tab geschlossen wird — und CrazyGames verlangt ohnehin, dass
- * die Seite im Hintergrund keine teure Arbeit macht.
- *
- * ## Die Schnittstelle für später
- *
- * `setMuted()` ist bewusst öffentlich und von der Einstellung des Nutzers
- * getrennt (`#userMuted` gegen `#externallyMuted`). Das CrazyGames-SDK verlangt
- * einen `muteAudio`-Rückruf, der **Vorrang vor der Spieleinstellung** hat; wenn
- * das SDK dazukommt, hängt es sich an `setExternallyMuted()` und muss an dieser
- * Datei nichts ändern.
+ * Und eine vierte, neu: **ein Worklet-Modul lädt asynchron.** Bis es da ist,
+ * gibt es keinen Motor; die Parameter werden bis dahin verworfen, nicht
+ * gepuffert — der erste Satz nach dem Laden ist ohnehin vollständig.
  */
+interface RivalVoice {
+  readonly node: AudioWorkletNode;
+  readonly panner: PannerNode;
+  id: VehicleId | null;
+  readonly last: Vector3;
+  /** Abstand zur Kamera im letzten Bild, m; −1 = unbekannt. */
+  dist: number;
+}
+
+/** Höchstzahl gleichzeitiger Gegnermotoren. */
+const RIVAL_VOICES = 3;
+
 export class AudioSystem implements System {
   readonly name = 'AudioSystem';
 
   #ctx: AudioContext | null = null;
-  /** Einmal melden und nicht je Frame — siehe die Notbremse in `update()`. */
   #warnedNaN = false;
   #master: GainNode | null = null;
-
-  // ── Motor ──────────────────────────────────────────────────────────────
-  #engineGain: GainNode | null = null;
-  #engineFilter: BiquadFilterNode | null = null;
-  #engineOsc: OscillatorNode | null = null;
-  #engineOsc2: OscillatorNode | null = null;
-
-  // ── Roll- und Fahrtwind ────────────────────────────────────────────────
-  #noiseGain: GainNode | null = null;
-  #noiseFilter: BiquadFilterNode | null = null;
-  #noiseBuffer: AudioBuffer | null = null;
-
-  /** Geglättete Drehzahl — siehe `AUDIO.engine.rpmSmoothing`. */
-  #rpm = AUDIO.engine.idleRpm;
-  /** Kette aufeinanderfolgender Sparks — ASTRA: nicht wie ein Wecker klingen. */
-  #sparkChain = 0;
-  #sparkChainUntil = 0;
-  /** Kontextzeit des letzten Aufpralls, gegen das Dauerknattern an der Kante. */
-  #lastImpactAt = -1;
-  /** Durchdringung des vorigen Schritts — der Aufprall ist die *Flanke*. */
-  #lastPenetration = 0;
+  #bus: shots.ShotBus | null = null;
+  #node: AudioWorkletNode | null = null;
+  #workletFailed = false;
+  readonly #params: Partial<VehicleSoundParams> = {};
+  #sum: GainNode | null = null;
+  #reverb: ConvolverNode | null = null;
+  #moduleReady = false;
+  #rivalSource: (() => readonly Vehicle[]) | null = null;
+  readonly #rivalVoices: RivalVoice[] = [];
+  readonly #fwd = new Vector3();
 
   #userMuted = false;
   #externallyMuted = false;
+  #volume: number = AUDIO.masterVolume;
   #driveActive = false;
   #cabin = false;
   #telemetry: VehicleTelemetry | null = null;
+  #vehicleId: VehicleId = 'touge';
+  #camera: PerspectiveCamera | null = null;
+  readonly #lastCam = new Vector3();
+  #camSpeed = 0;
+  #camInit = false;
+
+  // Zustände für Flanken.
+  #lastShifts = 0;
+  #lastLimiter = 0;
+  #wasAirborne = false;
+  #airTime = 0;
+  #lastCompression = 0;
+  #lastPenetration = 0;
+  #lastImpactAt = -1;
+  #scrape = 0;
+  #lastWater = 0;
+  #sparkChain = 0;
+  #sparkChainUntil = 0;
+  #countdown: AudioScheduledSourceNode[] = [];
+
+  // Anlassen, Abstellen, Gasstoß in der Garage.
+  #startT = -1;
+  #stopT = -1;
+  #blipT = -1;
+  #blipPitch = 1;
+  #lastRpm = 800;
 
   constructor() {
-    // Die Einstellung wird **vor** dem Kontext gelesen: der Nutzer soll seinen
-    // Stummschalter aus der letzten Sitzung wiederfinden, auch wenn er den Ton
-    // in dieser nie freischaltet.
     try {
       this.#userMuted = localStorage.getItem(AUDIO_STORAGE_KEY) === '1';
+      const v = Number(localStorage.getItem(AUDIO_VOLUME_KEY));
+      if (localStorage.getItem(AUDIO_VOLUME_KEY) !== null && Number.isFinite(v)) {
+        this.#volume = Math.min(1, Math.max(0, v));
+      }
     } catch {
-      // Privater Modus ohne Speicher — kein Grund, den Ton zu verweigern.
       this.#userMuted = false;
     }
   }
 
   init(context: EngineContext): void {
-    // ── Meldetöne — P25 ───────────────────────────────────────────────────
-    //
-    // Bis P24 war jede Belohnung dieses Spiels **stumm**: ein eingesammeltes
-    // Stück, ein Kontrollpunkt und ein Zieleinlauf klangen wie das Nichtstun
-    // daneben. Das ist keine Kleinigkeit — die Rückmeldung *„das hat gezählt"*
-    // ist der Grund, warum jemand ein zweites Mal danach fährt.
-    context.bus.on('pickup:collected', () => {
-      this.#sparkChime();
-    });
+    this.#camera = context.camera;
+    context.bus.on('pickup:collected', ({ kind }) => this.#sparkChime(kind));
     context.bus.on('race:checkpoint', () => {
-      this.#chime(659.25, 0.11);
+      if (this.#bus && this.#audible()) shots.checkpoint(this.#bus);
     });
     context.bus.on('race:lap', () => {
-      this.#chime(880, 0.16);
+      if (this.#bus && this.#audible()) shots.lap(this.#bus, false);
+    });
+    context.bus.on('race:state', ({ state }) => {
+      for (const n of this.#countdown) {
+        try {
+          n.stop();
+        } catch {
+          // schon verklungen
+        }
+      }
+      this.#countdown = [];
+      if (state === 'countdown' && this.#bus && !this.muted) {
+        this.#countdown = shots.countdown(this.#bus, AUDIO.countdownSeconds);
+      }
     });
     context.bus.on('drive:stunt', ({ active }) => {
       if (active) this.stunt(true);
     });
     context.bus.on('drive:mode', ({ active }) => {
+      if (active && !this.#driveActive) {
+        this.#startT = 0;
+        this.#stopT = -1;
+      } else if (!active && this.#driveActive) {
+        this.#stopT = 0;
+        this.#startT = -1;
+      }
       this.#driveActive = active;
-      // Der Motor darf beim Aussteigen nicht ausklingen wie ein abgewürgter
-      // Wagen — er ist schlicht weg. Die Rampe in `update()` erledigt das über
-      // die Zielverstärkung; hier wird nur die Drehzahl zurückgesetzt, damit das
-      // nächste Einsteigen im Leerlauf beginnt und nicht bei 7000.
-      if (!active) this.#rpm = AUDIO.engine.idleRpm;
     });
     context.bus.on('drive:view', ({ cabin }) => {
       this.#cabin = cabin;
+    });
+    context.bus.on('drive:vehicle', ({ id }) => this.setVehicle(id));
+    context.bus.on('drive:broke', (e) => {
+      if (!this.#bus || this.muted) return;
+      shots.breakable(this.#bus, e.kind, Math.hypot(e.vx, e.vz));
+    });
+    context.bus.on('drive:rescued', () => {
+      if (this.#bus && !this.muted) shots.whoosh(this.#bus, 0.12, false);
+    });
+    context.bus.on('drive:too-deep', () => {
+      if (this.#bus && !this.muted) shots.splash(this.#bus, 0.8);
     });
     document.addEventListener('visibilitychange', this.#onVisibility);
     context.bus.on('engine:sleep', ({ sleeping }) => {
@@ -142,265 +183,158 @@ export class AudioSystem implements System {
     });
   }
 
-  /**
-   * Woher die Fahrzeugwerte kommen.
-   *
-   * Hereingereicht statt gesucht — dieselbe Regel wie bei `DriveSystem` und dem
-   * Freiflug. `AudioSystem` importiert `DriveSystem` **nicht**: es braucht
-   * genau ein Objekt mit Zahlen darin, und dieses Objekt schreibt die Physik
-   * ohnehin jeden Schritt fort.
-   */
   setTelemetry(telemetry: VehicleTelemetry): void {
     this.#telemetry = telemetry;
+    this.#lastShifts = telemetry.shifts;
+    this.#lastLimiter = telemetry.limiterHits;
+  }
+
+  /**
+   * Woher die Gegner kommen — Tonschicht 2. Jeder Gegner bekommt seinen
+   * eigenen Motor, räumlich und mit Doppler; bis dahin fuhr das Feld stumm
+   * neben einem her, und ein Überholmanöver war nur zu *sehen*.
+   */
+  setRivals(source: () => readonly Vehicle[]): void {
+    this.#rivalSource = source;
+  }
+
+  /** Welche Motorstimme spielt. Auch vor `unlock()` gültig — wird dann nachgereicht. */
+  setVehicle(id: VehicleId): void {
+    this.#vehicleId = id;
+    this.#post({ t: 'profile', profile: ENGINE_VOICES[id] });
   }
 
   // ── Freischalten ────────────────────────────────────────────────────────
 
-  /**
-   * Den Kontext anlegen und starten — **muss aus einer Nutzergeste kommen**.
-   *
-   * Mehrfachaufruf ist ausdrücklich erlaubt und der Normalfall: der
-   * „Starten"-Knopf ruft es, und jeder spätere Klick ruft es erneut, falls der
-   * Browser den Kontext zwischendurch angehalten hat (Safari tut das nach einem
-   * Tab-Wechsel).
-   */
   unlock(): void {
     if (!this.#ctx) this.#build();
-    // `resume()` gibt ein Promise zurück, das abgelehnt werden kann, wenn der
-    // Aufruf doch nicht aus einer Geste kam. Das ist kein Fehler, den jemand
-    // sehen müsste — beim nächsten Klick klappt es.
     void this.#ctx?.resume().catch(() => undefined);
   }
 
-  /**
-   * Auffangnetz: die **nächste** Geste irgendwo im Dokument schaltet frei.
-   *
-   * Der reguläre Weg ist der „Starten"-Knopf, und der genügt fast immer. Fast:
-   * `StartScreen` merkt sich einen Druck, für den noch kein Zuhörer da war, und
-   * holt ihn später nach — dieser Aufruf käme dann **außerhalb** der Geste, und
-   * der Browser verweigert. Dazu kommt der Rückfallpfad, auf dem der
-   * Startbildschirm gar nicht erst erscheint.
-   *
-   * Die Zuhörer entfernen sich beim ersten Auslösen selbst (`once`), und
-   * `unlock()` verträgt Mehrfachaufruf — beide Wege dürfen also feuern.
-   */
   armAutoUnlock(): void {
     const los = (): void => {
       this.unlock();
     };
     for (const type of ['pointerdown', 'keydown', 'touchend'] as const) {
-      // `capture`, damit auch eine Geste zählt, die ein anderer Handler mit
-      // `stopPropagation` abfängt — der Knopf im Bedienfeld tut genau das.
       window.addEventListener(type, los, { once: true, capture: true });
     }
   }
 
   #build(): void {
-    // `webkitAudioContext` gibt es auf älteren iOS-Ständen noch; ohne den
-    // Rückfall bleibt dort alles still. Der Typ ist eine schmale Behauptung
-    // statt `any` — die Konstruktorform ist dieselbe.
     const Ctor =
       window.AudioContext ??
       (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctor) return;
-
-    const ctx = new Ctor();
+    // `interactive` ist der Standard; ausdrücklich, weil der Motor auf Gas
+    // reagieren muss — 10 ms Latenz sind spürbar, 100 ms nicht mehr spielbar.
+    const ctx = new Ctor({ latencyHint: 'interactive' });
     this.#ctx = ctx;
 
+    // Summe: [Quellen] → sum → Kompressor → master (Lautstärke/Stumm) → Ausgang.
     const master = ctx.createGain();
-    master.gain.value = this.muted ? 0 : AUDIO.masterVolume;
+    master.gain.value = this.muted ? 0 : this.#volume;
     master.connect(ctx.destination);
     this.#master = master;
 
-    // ── Motor: zwei verstimmte Sägezähne durch einen Tiefpass ────────────
-    //
-    // Zwei und nicht einer: ein einzelner Sägezahn ist ein Summton. Die
-    // Schwebung zwischen zwei leicht verstimmten Stimmen ist das, was das Ohr
-    // als „Maschine mit mehreren Zylindern" liest.
-    const engineGain = ctx.createGain();
-    engineGain.gain.value = 0;
-    engineGain.connect(master);
-    this.#engineGain = engineGain;
+    // Der Kompressor ist ein Begrenzer: Motor + Quietschen + Aufprall + Glocke
+    // können gleichzeitig kommen, und ohne ihn übersteuert die Summe hörbar.
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -12;
+    comp.knee.value = 8;
+    comp.ratio.value = 6;
+    comp.attack.value = 0.003;
+    comp.release.value = 0.18;
+    comp.connect(master);
 
-    const engineFilter = ctx.createBiquadFilter();
-    engineFilter.type = 'lowpass';
-    engineFilter.frequency.value = AUDIO.engine.filterMinHz;
-    engineFilter.Q.value = 1.2;
-    engineFilter.connect(engineGain);
-    this.#engineFilter = engineFilter;
+    const sum = ctx.createGain();
+    sum.gain.value = 1;
+    sum.connect(comp);
 
-    const osc = ctx.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.value = AUDIO.engine.minHz;
-    osc.connect(engineFilter);
-    osc.start();
-    this.#engineOsc = osc;
+    const reverb = ctx.createConvolver();
+    reverb.buffer = shots.makeImpulse(ctx);
+    const wet = ctx.createGain();
+    wet.gain.value = 0.5;
+    reverb.connect(wet);
+    wet.connect(sum);
 
-    const osc2 = ctx.createOscillator();
-    osc2.type = 'sawtooth';
-    osc2.frequency.value = AUDIO.engine.minHz;
-    osc2.detune.value = AUDIO.engine.detuneCents;
-    osc2.connect(engineFilter);
-    osc2.start();
-    this.#engineOsc2 = osc2;
+    this.#bus = { ctx, dry: sum, wet: reverb, noise: shots.makeNoise(ctx) };
+    this.#sum = sum;
+    this.#reverb = reverb;
 
-    // ── Roll- und Fahrtwind: Rauschschleife durch einen Bandpass ─────────
-    this.#noiseBuffer = this.#makeNoise(ctx);
-
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.value = 0;
-    noiseGain.connect(master);
-    this.#noiseGain = noiseGain;
-
-    const noiseFilter = ctx.createBiquadFilter();
-    noiseFilter.type = 'bandpass';
-    noiseFilter.frequency.value = AUDIO.noise.minHz;
-    noiseFilter.Q.value = 0.7;
-    noiseFilter.connect(noiseGain);
-    this.#noiseFilter = noiseFilter;
-
-    const noise = ctx.createBufferSource();
-    noise.buffer = this.#noiseBuffer;
-    noise.loop = true;
-    noise.connect(noiseFilter);
-    noise.start();
-  }
-
-  /**
-   * Ein kurzer Meldeton — P25.
-   *
-   * ## Warum ein Oszillator je Ton und kein Wiederverwenden
-   *
-   * Ein `OscillatorNode` ist in der Web-Audio-API ausdrücklich ein
-   * **Einmalobjekt**: nach `stop()` lässt er sich nicht wieder starten. Der
-   * übliche Reflex — einen Oszillator halten und seine Verstärkung auf- und
-   * zudrehen — hat einen Preis, den man hört: die Phase läuft weiter, und zwei
-   * schnell aufeinanderfolgende Töne setzen an zufälliger Stelle der Welle ein.
-   * Ein neuer Knoten beginnt immer bei null.
-   *
-   * > Was ein solcher Knoten **kostet**, ist hier nicht gemessen. Der Grund für
-   * > diese Bauart ist die Phase und nicht der Preis; eine Kostenzahl daneben
-   * > wäre eine Behauptung, und dieses Projekt hat für genau die schon einmal
-   * > bezahlt (die Imposter-Schwelle in P4). Wenn es je eng wird, ist die Zahl
-   * > messbar — bis dahin steht sie nicht da.
-   *
-   * ## Warum eine Exponentialrampe und kein `setValueAtTime`
-   *
-   * Ein Sprung der Verstärkung auf null ist ein Knacken — er ist im Signal eine
-   * Stufe, und eine Stufe hat unendlich viele Obertöne. `exponentialRampTo`
-   * kann dabei nicht auf 0 gehen (der Logarithmus), deshalb 0,0001 und danach
-   * `stop()`.
-   *
-   * ## Und warum es nicht spielt, wenn niemand fährt
-   *
-   * `#driveActive` ist die Bedingung: die Ereignisse, an denen das hier hängt,
-   * kann nur ein fahrendes Fahrzeug auslösen. Die Prüfung steht trotzdem da,
-   * weil ein Meldeton im Menü ein Fehler wäre, den niemand als Fehler meldet —
-   * er klingt nur seltsam.
-   */
-  /**
-   * Sparks-Melodie: erster Treffer zwei Noten, die nächsten in 0,3 s eine
-   * Stufe höher. Eine Linie klingt sonst wie ein Wecker — ASTRA_PLAN §9.
-   */
-  #sparkChime(): void {
-    const ctx = this.#ctx;
-    if (!ctx) return;
-    const now = ctx.currentTime;
-    if (now < this.#sparkChainUntil) this.#sparkChain += 1;
-    else this.#sparkChain = 0;
-    this.#sparkChainUntil = now + 0.32;
-    // G5-Pentatonik, nach sechs Stufen von vorn — eine volle Linie bleibt
-    // musikalisch, statt in die Hundepfeife zu laufen.
-    const ladder = [784, 880, 988, 1175, 1319, 1568];
-    const hz = ladder[Math.min(this.#sparkChain, ladder.length - 1)]!;
-    if (this.#sparkChain === 0) {
-      this.#chime(hz, 0.08);
-      this.#chime(hz * 1.5, 0.09, 0.055);
-    } else {
-      this.#chime(hz, 0.055);
+    const worklet = ctx.audioWorklet;
+    if (!worklet) {
+      this.#workletFailed = true;
+      console.warn('AudioSystem: kein AudioWorklet — Motor und Reifen bleiben stumm.');
+      return;
     }
+    worklet
+      .addModule(workletUrl)
+      .then(() => {
+        if (this.#ctx !== ctx) return;
+        this.#moduleReady = true;
+        const node = new AudioWorkletNode(ctx, 'vehicle-audio', {
+          numberOfInputs: 0,
+          numberOfOutputs: 1,
+          outputChannelCount: [2],
+        });
+        node.connect(sum);
+        // Ein Hauch Raum für den Motor — trocken klingt er wie aus einem Kasten.
+        const send = ctx.createGain();
+        send.gain.value = 0.06;
+        node.connect(send);
+        send.connect(reverb);
+        this.#node = node;
+        node.port.postMessage({ t: 'profile', profile: ENGINE_VOICES[this.#vehicleId] } satisfies VehicleAudioMessage);
+        node.port.postMessage({ t: 'p', p: this.#params } satisfies VehicleAudioMessage);
+      })
+      .catch((err: unknown) => {
+        this.#workletFailed = true;
+        console.warn('AudioSystem: Worklet konnte nicht geladen werden.', err);
+      });
   }
 
-  #chime(hz: number, seconds: number, delay = 0): void {
+  #post(m: VehicleAudioMessage): void {
+    this.#node?.port.postMessage(m);
+  }
+
+  #audible(): boolean {
     const ctx = this.#ctx;
-    const master = this.#master;
-    if (!ctx || !master || this.muted || !this.#driveActive) return;
-    if (ctx.state !== 'running') return;
-
-    const now = ctx.currentTime + delay;
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, now);
-    // 8 ms Anstieg: schnell genug, dass es als Anschlag wirkt, langsam genug,
-    // dass es kein Knacken ist.
-    gain.gain.exponentialRampToValueAtTime(AUDIO.masterVolume * 0.5, now + 0.008);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + seconds);
-    gain.connect(master);
-
-    // Dreieck und nicht Sinus: ein reiner Sinus verschwindet unter dem
-    // Motorgeräusch (zwei Sägezähne durch einen Tiefpass, s. o.). Das Dreieck
-    // hat gerade genug ungerade Obertöne, um darüber zu stehen, ohne wie ein
-    // Fehlerton zu klingen.
-    const osc = ctx.createOscillator();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(hz, now);
-    // Ein Hauch aufwärts über die Dauer — ein fallender Ton liest sich als
-    // „vorbei", ein steigender als „gut gemacht".
-    osc.frequency.exponentialRampToValueAtTime(hz * 1.18, now + seconds);
-    osc.connect(gain);
-    osc.start(now);
-    osc.stop(now + seconds + 0.02);
-    // Aufräumen, sobald er verklungen ist. Ohne das sammeln sich bei 90
-    // Sammelstücken je Runde die Knoten im Graphen — sie sind zwar gestoppt,
-    // hängen aber weiter am Master.
-    osc.onended = () => {
-      osc.disconnect();
-      gain.disconnect();
-    };
+    return !!ctx && !this.muted && ctx.state === 'running';
   }
 
-  /**
-   * Zwei Sekunden weißes Rauschen.
-   *
-   * Zwei und nicht 0,2: eine kurze Schleife wird als **Tonhöhe** hörbar (bei
-   * 0,2 s sind das 5 Hz Schleifenfrequenz und deren Obertöne), und das klingt
-   * nach Brummen statt nach Wind. Zwei Sekunden bei 48 kHz sind 384 KB im
-   * Speicher — einmalig, und der Puffer wird von genau einer Quelle gelesen.
-   */
-  #makeNoise(ctx: AudioContext): AudioBuffer {
-    const frames = Math.floor(ctx.sampleRate * 2);
-    const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
-    return buffer;
-  }
+  // ── Stummschaltung und Lautstärke ──────────────────────────────────────
 
-  // ── Stummschaltung ──────────────────────────────────────────────────────
-
-  /** Gilt gerade Stille? Nutzereinstellung **oder** Wunsch von außen. */
   get muted(): boolean {
     return this.#userMuted || this.#externallyMuted;
   }
 
-  /** Die Einstellung des Nutzers — Menü und `localStorage`. */
+  get volume(): number {
+    return this.#volume;
+  }
+
   setMuted(muted: boolean): void {
     this.#userMuted = muted;
     try {
       localStorage.setItem(AUDIO_STORAGE_KEY, muted ? '1' : '0');
     } catch {
-      // Ohne Speicher gilt die Einstellung eben nur für diese Sitzung.
+      // nur für diese Sitzung
     }
     this.#applyMute();
   }
 
-  /**
-   * Stummschaltung von außen — **hat Vorrang vor der Spieleinstellung**.
-   *
-   * Für das CrazyGames-SDK: es schaltet den Ton während eines Werbespots stumm
-   * und verlangt ausdrücklich, dass dieser Wunsch die Einstellung im Spiel
-   * überstimmt. Getrennte Felder, weil ein gemeinsames beim Zurückschalten die
-   * Nutzereinstellung überschriebe — wer vor der Werbung stumm gestellt hatte,
-   * bekäme danach Ton.
-   */
+  /** Gesamtlautstärke 0…1 — der Regler im Menü. */
+  setVolume(volume: number): void {
+    if (!Number.isFinite(volume)) return;
+    this.#volume = Math.min(1, Math.max(0, volume));
+    try {
+      localStorage.setItem(AUDIO_VOLUME_KEY, String(this.#volume));
+    } catch {
+      // nur für diese Sitzung
+    }
+    this.#applyMute();
+  }
+
+  /** Vorrang vor der Spieleinstellung — für das CrazyGames-SDK (P16). */
   setExternallyMuted(muted: boolean): void {
     this.#externallyMuted = muted;
     this.#applyMute();
@@ -410,9 +344,7 @@ export class AudioSystem implements System {
     const ctx = this.#ctx;
     const master = this.#master;
     if (!ctx || !master) return;
-    // Eine kurze Rampe statt eines Sprungs: ein Gain-Sprung auf einem laufenden
-    // Signal ist ein hörbarer Knack.
-    master.gain.setTargetAtTime(this.muted ? 0 : AUDIO.masterVolume, ctx.currentTime, 0.02);
+    master.gain.setTargetAtTime(this.muted ? 0 : this.#volume, ctx.currentTime, 0.02);
   }
 
   readonly #onVisibility = (): void => {
@@ -422,113 +354,60 @@ export class AudioSystem implements System {
     else void ctx.resume().catch(() => undefined);
   };
 
-  // ── Einzelgeräusche ─────────────────────────────────────────────────────
+  // ── Einzelgeräusche (öffentlich) ────────────────────────────────────────
 
-  /**
-   * Aufprall. `strength` 0…1 — der Aufrufer rechnet aus der Durchdringung.
-   *
-   * Ein Rauschstoß mit steiler Hüllkurve, kein Ton: ein Blechschaden hat keine
-   * Tonhöhe. Der Tiefpass wandert mit der Stärke nach oben — ein harter Treffer
-   * klingt heller als ein Streifen.
-   */
+  /** Aufprall gegen etwas Festes. `strength` 0…1. */
   impact(strength: number): void {
     const ctx = this.#ctx;
-    const master = this.#master;
-    const buffer = this.#noiseBuffer;
-    if (!ctx || !master || !buffer || this.muted) return;
-
+    if (!ctx || !this.#bus || this.muted) return;
     const now = ctx.currentTime;
     if (now - this.#lastImpactAt < AUDIO.impact.minInterval) return;
     this.#lastImpactAt = now;
-
-    const s = Math.min(Math.max(strength, 0), 1);
-
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    // Ein zufälliger Anschnitt, damit zwei Treffer nicht identisch klingen.
-    const offset = Math.random() * (buffer.duration - AUDIO.impact.decay);
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 320 + s * 2200;
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(AUDIO.impact.gain * (0.25 + s * 0.75), now);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + AUDIO.impact.decay);
-
-    source.connect(filter);
-    filter.connect(gain);
-    gain.connect(master);
-    source.start(now, Math.max(0, offset), AUDIO.impact.decay);
-    // **Aufräumen gehört dazu.** Ein Knoten, den niemand trennt, bleibt am
-    // Graphen hängen; bei einem Geräusch je Bordsteinkante sind das nach einer
-    // Minute Fahrt hunderte. `onended` ist die einzige Stelle, an der sicher
-    // ist, dass er fertig ist.
-    source.onended = (): void => {
-      source.disconnect();
-      filter.disconnect();
-      gain.disconnect();
-    };
+    shots.carImpact(this.#bus, strength);
+    this.#post({ t: 'thump', s: Math.min(1, strength * 0.8) });
   }
 
-  /** Rundensignal. `best` = neue Bestzeit, dann steigt der zweite Ton. */
   lap(best: boolean): void {
-    const { baseHz, bestHz, noteSeconds, gain } = AUDIO.lap;
-    this.#blip(baseHz, 0, gain, noteSeconds);
-    this.#blip(best ? bestHz : baseHz * 1.5, noteSeconds, gain, noteSeconds);
+    if (this.#bus && !this.muted) shots.lap(this.#bus, best);
   }
 
-  /** Ein Klick für die Oberfläche. */
+  finish(place: number, best: boolean): void {
+    if (!this.#bus || this.muted) return;
+    if (best || place === 1) shots.finish(this.#bus, 1);
+    else shots.finish(this.#bus, place);
+  }
+
   click(): void {
-    this.#blip(AUDIO.ui.hz, 0, AUDIO.ui.gain, AUDIO.ui.seconds);
+    if (this.#bus && !this.muted) shots.uiClick(this.#bus);
   }
 
-  /** Zwei Töne: aufsteigend an, fallend aus. Der Modus muss hörbar sein. */
   stunt(on: boolean): void {
-    const { gain, onHz, offHz, noteSeconds } = AUDIO.stunt;
-    const pair = on ? onHz : offHz;
-    this.#blip(pair[0]!, 0, gain, noteSeconds);
-    this.#blip(pair[1]!, noteSeconds * 0.85, gain, noteSeconds);
+    if (!this.#bus || this.muted) return;
+    shots.whoosh(this.#bus, on ? 0.2 : 0.1, on);
+    if (on) shots.bell(this.#bus, 587.33, 0.08, 0.06, 0.5);
   }
 
   /**
-   * Kurzer Motorblip in der Tune-Bucht — zwei Töne, kein Loop.
-   * Preview-Sounds dürfen stumm bleiben, wenn der Nutzer Sound aus hat:
-   * `muted` deckt das in `#blip` schon ab.
+   * Gasstoß in der Tune-Bucht: der echte Motor des gewählten Fahrzeugs,
+   * Leerlauf → hoch → zurück, samt Fehlzündungen im Schub. `pitch` ist der
+   * Drehzahlcharakter des eingebauten Motors (`engines.config.ts`).
    */
   engineBlip(pitch = 1): void {
-    const p = Math.max(0.55, Math.min(1.7, pitch));
-    this.#blip(76 * p, 0, 0.2, 0.16);
-    this.#blip(128 * p, 0.05, 0.14, 0.18);
-    this.#blip(48 * p, 0.1, 0.11, 0.34);
+    if (this.#driveActive) return;
+    this.#blipT = 0;
+    this.#blipPitch = Math.max(0.6, Math.min(1.5, pitch));
   }
 
-  /** Ein einzelner Sinuston mit weicher Hüllkurve. */
-  #blip(hz: number, delay: number, peak: number, seconds: number): void {
+  #sparkChime(kind: 'coin' | 'boost'): void {
     const ctx = this.#ctx;
-    const master = this.#master;
-    if (!ctx || !master || this.muted) return;
-
-    const start = ctx.currentTime + delay;
-    const osc = ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.value = hz;
-
-    const gain = ctx.createGain();
-    // Ein Anstieg über 12 ms statt eines Sprungs — ein Sinus, der bei voller
-    // Amplitude einsetzt, klickt genauso wie einer, der so aufhört.
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(peak, start + 0.012);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + seconds);
-
-    osc.connect(gain);
-    gain.connect(master);
-    osc.start(start);
-    osc.stop(start + seconds + 0.02);
-    osc.onended = (): void => {
-      osc.disconnect();
-      gain.disconnect();
-    };
+    if (!ctx || !this.#bus || !this.#audible()) return;
+    const now = ctx.currentTime;
+    if (now < this.#sparkChainUntil) this.#sparkChain += 1;
+    else this.#sparkChain = 0;
+    this.#sparkChainUntil = now + 0.32;
+    const ladder = [1568, 1760, 1976, 2349, 2637, 3136];
+    const hz = ladder[Math.min(this.#sparkChain, ladder.length - 1)]!;
+    shots.pickup(this.#bus, hz, this.#sparkChain === 0, kind);
   }
 
   // ── Schleife ────────────────────────────────────────────────────────────
@@ -536,194 +415,322 @@ export class AudioSystem implements System {
   update(dt: number): void {
     const ctx = this.#ctx;
     if (!ctx || ctx.state !== 'running') return;
+    if (!(dt > 0) || !Number.isFinite(dt)) return;
+
+    // Kameratempo für den Wind zu Fuß und im Freiflug.
+    const cam = this.#camera;
+    if (cam) {
+      if (!this.#camInit) {
+        this.#lastCam.copy(cam.position);
+        this.#camInit = true;
+      }
+      const v = cam.position.distanceTo(this.#lastCam) / dt;
+      this.#lastCam.copy(cam.position);
+      // Teleports (Blickpunkt, Respawn) sind keine Geschwindigkeit.
+      if (v < 400) this.#camSpeed += (v - this.#camSpeed) * (1 - Math.exp(-dt / 0.3));
+    }
 
     const t = this.#telemetry;
-    const now = ctx.currentTime;
     const fahrend = this.#driveActive && t !== null;
 
-    // ── Drehzahl aus Tempo und Scheingetriebe ────────────────────────────
-    const speed = fahrend ? Math.abs(t.forwardSpeed) : 0;
-    const zielRpm = fahrend ? gearedRpm(speed) : AUDIO.engine.idleRpm;
-    // Exponentielle Glättung mit zeitschrittunabhängiger Konstante: bei 30 wie
-    // bei 144 Hz dieselbe Trägheit. `1 - e^(-k·dt)` und nicht `k·dt` — Letzteres
-    // wird bei großem `dt` instabil, und ein Frame von 200 ms kommt beim Laden
-    // vor.
-    this.#rpm += (zielRpm - this.#rpm) * (1 - Math.exp(-AUDIO.engine.rpmSmoothing * dt));
+    // ── Motorzustand: Telemetrie, überlagert von Anlassen/Abstellen/Blip ──
+    let rpm = t ? t.rpm : 800;
+    let load = t ? t.load : 0;
+    let throttle = t ? t.throttle : 0;
+    const idle = t ? t.idleRpm : 800;
+    const redline = t ? t.redline : 7000;
+    let on = fahrend ? 1 : 0;
+    let starter = 0;
 
-    // ── Die Notbremse gegen NaN — P25 ────────────────────────────────────
-    //
-    // **Ein nicht-endlicher Wert an einem `AudioParam` wirft**, und zwar eine
-    // `TypeError` mitten im Frame. Gemessen (P25, getriebene Schleife am
-    // Blickpunkt `wald`): eine einzige solche Ausnahme aus `update()` reißt
-    // über `Engine.#update` → `RenderLoop.#frame` die **ganze Schleife** mit —
-    // das Bild steht, das Auto steht, das Spiel ist tot. Für eine Tonspur ist
-    // das der denkbar schlechteste Tausch.
-    //
-    // Zwei Dinge machen es schlimmer, als es klingt:
-    //
-    //  1. `#rpm` ist **klebrig**. Die Glättung oben ist `x += (ziel − x)·k`;
-    //     ist `x` einmal NaN, bleibt es NaN, auch wenn die Telemetrie im
-    //     nächsten Schritt wieder gesund ist. Ein einziger schlechter Frame
-    //     vergiftet die Sitzung.
-    //  2. Es gibt **keine** Meldung, die auf die Ursache zeigt. Der Stapel
-    //     endet in der Web-Audio-API, und die Quelle des NaN steht irgendwo in
-    //     der Physik.
-    //
-    // Deshalb hier zwei Zeilen: zurücksetzen statt weiterrechnen, und **einmal**
-    // melden. Das ist ausdrücklich kein Beheben der Ursache — woher das NaN
-    // kam, ist nicht bekannt und steht so in PLAN.md P25. Es ist die Zusage,
-    // dass die Tonspur das Spiel nicht mitnimmt.
-    if (!Number.isFinite(this.#rpm)) {
+    if (this.#startT >= 0) {
+      this.#startT += dt;
+      const s = this.#startT;
+      if (s < 0.55) {
+        // Anlasser: der Motor wird mit ~200 min⁻¹ durchgedreht, die Zylinder
+        // zünden noch nicht richtig.
+        starter = 1;
+        rpm = 170 + 90 * Math.abs(Math.sin(s * 22));
+        load = 0.04;
+        throttle = 0;
+      } else if (s < 1.4) {
+        // Er springt an: kurzes Hochdrehen über den Leerlauf, dann setzt er sich.
+        const k = (s - 0.55) / 0.85;
+        const flare = Math.sin(Math.min(1, k * 1.6) * Math.PI * 0.5) * (1 - k);
+        rpm = Math.max(rpm, idle * (1 + 1.1 * flare));
+        load = Math.max(load, 0.5 * flare);
+      } else {
+        this.#startT = -1;
+      }
+    }
+    if (this.#stopT >= 0) {
+      this.#stopT += dt;
+      const s = this.#stopT;
+      if (s < 0.7) {
+        on = 1 - s / 0.7;
+        rpm = this.#lastRpm * (1 - s / 0.7) + 60;
+        load = 0;
+      } else {
+        this.#stopT = -1;
+      }
+    }
+    if (this.#blipT >= 0 && !fahrend) {
+      this.#blipT += dt;
+      const s = this.#blipT;
+      const p = this.#blipPitch;
+      const top = Math.min(redline * 0.9, idle + (redline - idle) * 0.72 * p);
+      on = 1;
+      if (s < 0.28) {
+        rpm = idle + (top - idle) * (s / 0.28) ** 0.8;
+        load = 1;
+        throttle = 1;
+      } else if (s < 1.3) {
+        rpm = idle + (top - idle) * Math.exp(-(s - 0.28) / 0.28);
+        load = 0;
+        throttle = 0;
+      } else if (s < 2.2) {
+        rpm = idle;
+        load = 0;
+      } else {
+        on = 0;
+        this.#blipT = -1;
+      }
+    }
+
+    if (!Number.isFinite(rpm) || !Number.isFinite(load)) {
       if (!this.#warnedNaN) {
         this.#warnedNaN = true;
-        console.warn(
-          'AudioSystem: Drehzahl wurde nicht-endlich und ist zurückgesetzt worden.',
-          { dt, zielRpm, speed, telemetrie: t },
-        );
+        console.warn('AudioSystem: Drehzahl oder Last nicht endlich — Frame übersprungen.', { rpm, load, telemetrie: t });
       }
-      this.#rpm = AUDIO.engine.idleRpm;
+      return;
     }
+    if (fahrend) this.#lastRpm = rpm;
 
-    const rpmNorm =
-      (this.#rpm - AUDIO.engine.idleRpm) / (AUDIO.engine.maxRpm - AUDIO.engine.idleRpm);
-    const hz = AUDIO.engine.minHz + rpmNorm * (AUDIO.engine.maxHz - AUDIO.engine.minHz);
+    // ── Flanken: Schalten, Begrenzer, Landung, Bodenwelle, Aufprall ───────
+    if (t && fahrend) {
+      if (t.shifts !== this.#lastShifts) {
+        const up = t.gear > this.#lastGear();
+        this.#post({ t: 'clunk' });
+        // Knall beim Hochschalten unter Last — nur Motoren, die dazu neigen.
+        if (up && t.throttle > 0.8 && t.rpm > t.redline * 0.7 && ENGINE_VOICES[this.#vehicleId].crackle >= 0.35) {
+          this.#post({ t: 'bang', s: 0.25 + 0.35 * ENGINE_VOICES[this.#vehicleId].crackle });
+        }
+        this.#lastShifts = t.shifts;
+      }
+      this.#gearNow = t.gear;
+      if (t.limiterHits !== this.#lastLimiter) this.#lastLimiter = t.limiterHits;
 
-    // Die Last, nicht die Drehzahl, bestimmt Lautstärke und Filteröffnung: ein
-    // Motor im Schubbetrieb ist leise, auch wenn er hoch dreht.
-    const last = fahrend ? Math.min(1, rpmNorm + (t.wheelspin > 1 ? 0.35 : 0)) : 0;
-    const engineTarget = fahrend
-      ? AUDIO.engine.idleGain + last * (AUDIO.engine.fullGain - AUDIO.engine.idleGain)
-      : 0;
-    const filterHz =
-      AUDIO.engine.filterMinHz + last * (AUDIO.engine.filterMaxHz - AUDIO.engine.filterMinHz);
+      if (t.airborne) {
+        this.#airTime += dt;
+      } else {
+        if (this.#wasAirborne && this.#airTime > 0.18) {
+          this.#post({ t: 'thump', s: Math.min(1, 0.25 + this.#airTime * 0.9) });
+        }
+        this.#airTime = 0;
+      }
+      this.#wasAirborne = t.airborne;
 
-    // `setTargetAtTime` und nicht `value =` — Begründung im Kopf, Falle 2.
-    // `rampe()` statt des nackten Aufrufs — Begründung bei der Funktion. Die
-    // Notbremse oben deckt **einen** Weg zum NaN ab (die Drehzahl); `t.speed`
-    // und `t.wheelspin` sind zwei weitere, und ein Fehlerbild ist eine Klasse
-    // und kein Einzelfall.
-    rampe(this.#engineOsc?.frequency, hz, now, 0.05);
-    rampe(this.#engineOsc2?.frequency, hz, now, 0.05);
-    rampe(this.#engineFilter?.frequency, filterHz, now, 0.08);
-    rampe(this.#engineGain?.gain, engineTarget, now, 0.08);
+      // Bodenwelle: schneller Anstieg der Federung.
+      const dc = (t.compression - this.#lastCompression) / dt;
+      if (!t.airborne && dc > 2.2 && t.speed > 4) {
+        this.#post({ t: 'thump', s: Math.min(0.6, (dc - 2.2) * 0.08) });
+      }
+      this.#lastCompression = t.compression;
 
-    // ── Rollen und Fahrtwind ─────────────────────────────────────────────
-    //
-    // Im Auto aus dem Tempo, im Flug aus dem Grundtempo der Kamera — dort ist
-    // es Fahrtwind und deutlich leiser, sonst rauscht ein Standbild.
-    const noiseSpeed = fahrend ? t.speed : 0;
-    const norm = Math.min(1, noiseSpeed / AUDIO.noise.fullSpeed);
-    let noiseTarget = fahrend ? norm * norm * AUDIO.noise.driveGain : 0;
-    // Durchdrehende Räder sind hörbar, und zwar auch im Stand — genau dann ist
-    // das Rauschen sonst null und der Burnout lautlos.
-    if (fahrend && t.wheelspin > 1 && !t.airborne) {
-      noiseTarget += Math.min(1, (t.wheelspin - 1) * 0.8) * AUDIO.noise.wheelspinGain;
-    }
-    // In der Luft gibt es kein Rollgeräusch — nur der Wind bleibt.
-    if (fahrend && t.airborne) noiseTarget *= 0.35;
-
-    rampe(this.#noiseGain?.gain, noiseTarget, now, 0.1);
-    // Hinter der Scheibe ist Fahrtwind dumpfer — der Motor bleibt, die Welt nicht.
-    const cabinCut = this.#cabin ? 0.55 : 1;
-    rampe(
-      this.#noiseFilter?.frequency,
-      (AUDIO.noise.minHz + norm * (AUDIO.noise.maxHz - AUDIO.noise.minHz)) * cabinCut,
-      now,
-      0.12,
-    );
-
-    // ── Aufprall ─────────────────────────────────────────────────────────
-    //
-    // **Die Flanke, nicht der Zustand.** `lastPenetration` steht bei einem
-    // Wagen, der an der Leitplanke entlangschrammt, über hunderte Schritte auf
-    // einem Wert; ein Ton je Schritt wäre ein Presslufthammer. Ausgelöst wird
-    // nur, wenn die Durchdringung *zunimmt* — und `AUDIO.impact.minInterval`
-    // deckelt den Rest.
-    if (fahrend) {
+      // Aufprall ist die Flanke der Durchdringung (P16), Schleifen ihr Zustand.
       const p = t.lastPenetration;
       if (p > AUDIO.impact.minPenetration && p > this.#lastPenetration * 1.5) {
         const s =
-          (p - AUDIO.impact.minPenetration) /
-          (AUDIO.impact.fullPenetration - AUDIO.impact.minPenetration);
-        this.impact(s);
+          (p - AUDIO.impact.minPenetration) / (AUDIO.impact.fullPenetration - AUDIO.impact.minPenetration);
+        this.impact(Math.min(1, s * Math.min(1, 0.3 + t.speed / 12)));
       }
       this.#lastPenetration = p;
+      const scrapeT = t.contacts > 0 && t.speed > 2 ? Math.min(1, 0.4 + t.speed / 20) : 0;
+      this.#scrape += (scrapeT - this.#scrape) * (1 - Math.exp(-dt / (scrapeT > this.#scrape ? 0.03 : 0.15)));
+
+      // Ins Wasser fahren.
+      if (t.waterDepth > 0.15 && this.#lastWater <= 0.15 && t.speed > 5 && this.#bus && !this.muted) {
+        shots.splash(this.#bus, Math.min(1, t.speed / 20));
+      }
+      this.#lastWater = t.waterDepth;
     } else {
       this.#lastPenetration = 0;
+      this.#scrape = 0;
+      this.#wasAirborne = false;
+      this.#airTime = 0;
     }
+
+    this.#updateRivals(dt);
+
+    // ── Parameter an den Worklet ──────────────────────────────────────────
+    const P = this.#params;
+    P.rpm = rpm;
+    P.load = load;
+    P.throttle = throttle;
+    P.idle = idle;
+    P.redline = redline;
+    P.on = on;
+    P.starter = starter;
+    P.cabin = this.#cabin && fahrend ? 1 : 0;
+    P.drive = fahrend ? 1 : 0;
+    P.speed = fahrend ? t.speed : 0;
+    P.surface = fahrend ? SURFACE_ID[t.surface] ?? 0 : 0;
+    P.skid = fahrend ? t.skid : 0;
+    P.slip = fahrend ? Math.abs(t.slip) : 0;
+    P.wheelspin = fahrend ? t.wheelspin : 0;
+    P.airborne = fahrend && t.airborne ? 1 : 0;
+    P.water = fahrend ? t.waterDepth : 0;
+    P.boost = fahrend && t.boosting ? 1 : 0;
+    P.scrape = this.#scrape;
+    P.circuit = fahrend ? t.circuit : 0;
+    P.fly = fahrend ? 0 : this.#camSpeed;
+    if (!this.muted) this.#post({ t: 'p', p: P });
+    else this.#post({ t: 'p', p: { ...P, on: 0, drive: 0, fly: 0, starter: 0 } });
+  }
+
+  /**
+   * Gegnerstimmen: je Gegner ein Worklet-Knoten (nur Motor) hinter einem
+   * `PannerNode`. Höchstens `RIVAL_VOICES` — mehr hört man in einem Pulk
+   * ohnehin nicht getrennt, und jede Stimme kostet rund 1,5 % eines Kerns.
+   *
+   * **Doppler von Hand**: die Web-Audio-API hat ihren eigenen Doppler
+   * gestrichen. Die Annäherungsgeschwindigkeit skaliert hier die Drehzahl, und
+   * weil das Motormodell alles aus der Drehzahl ableitet, verschiebt sich das
+   * ganze Spektrum — genau das „Iiiiyowww" beim Vorbeifahren.
+   */
+  #updateRivals(dt: number): void {
+    const ctx = this.#ctx;
+    const cam = this.#camera;
+    if (!ctx || !cam || !this.#moduleReady || !this.#sum) return;
+    const now = ctx.currentTime;
+    const L = ctx.listener;
+    cam.getWorldDirection(this.#fwd);
+    if (L.positionX) {
+      L.positionX.setTargetAtTime(cam.position.x, now, 0.02);
+      L.positionY.setTargetAtTime(cam.position.y, now, 0.02);
+      L.positionZ.setTargetAtTime(cam.position.z, now, 0.02);
+      L.forwardX.setTargetAtTime(this.#fwd.x, now, 0.02);
+      L.forwardY.setTargetAtTime(this.#fwd.y, now, 0.02);
+      L.forwardZ.setTargetAtTime(this.#fwd.z, now, 0.02);
+      L.upX.value = 0;
+      L.upY.value = 1;
+      L.upZ.value = 0;
+    } else {
+      L.setPosition(cam.position.x, cam.position.y, cam.position.z);
+      L.setOrientation(this.#fwd.x, this.#fwd.y, this.#fwd.z, 0, 1, 0);
+    }
+
+    const rivals = this.#rivalSource?.() ?? [];
+    const n = Math.min(RIVAL_VOICES, rivals.length);
+    while (this.#rivalVoices.length < n) {
+      const node = new AudioWorkletNode(ctx, 'vehicle-audio', {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        outputChannelCount: [2],
+      });
+      const panner = ctx.createPanner();
+      panner.panningModel = 'equalpower';
+      panner.distanceModel = 'inverse';
+      panner.refDistance = 7;
+      panner.rolloffFactor = 1.15;
+      panner.maxDistance = 500;
+      const gain = ctx.createGain();
+      gain.gain.value = 0.75;
+      node.connect(panner);
+      panner.connect(gain);
+      gain.connect(this.#sum);
+      if (this.#reverb) {
+        const send = ctx.createGain();
+        send.gain.value = 0.08;
+        gain.connect(send);
+        send.connect(this.#reverb);
+      }
+      this.#rivalVoices.push({ node, panner, id: null, last: new Vector3(), dist: -1 });
+    }
+    for (let i = 0; i < this.#rivalVoices.length; i++) {
+      const voice = this.#rivalVoices[i]!;
+      const car = i < n ? rivals[i] : undefined;
+      if (!car || this.muted) {
+        voice.dist = -1;
+        voice.node.port.postMessage({ t: 'p', p: { on: 0, drive: 0 } } satisfies VehicleAudioMessage);
+        continue;
+      }
+      const id = car.spec.id;
+      if (voice.id !== id) {
+        voice.id = id;
+        voice.node.port.postMessage({ t: 'profile', profile: ENGINE_VOICES[id] } satisfies VehicleAudioMessage);
+      }
+      const pos = car.position;
+      const dist = pos.distanceTo(cam.position);
+      // Annäherung positiv → höher. Teleports (Start, Rettung) nicht als Tempo lesen.
+      let closing = voice.dist >= 0 ? (voice.dist - dist) / dt : 0;
+      if (!Number.isFinite(closing) || Math.abs(closing) > 120) closing = 0;
+      voice.dist = dist;
+      const doppler = Math.min(1.3, Math.max(0.75, 343 / (343 - closing)));
+      voice.panner.positionX.setTargetAtTime(pos.x, now, 0.02);
+      voice.panner.positionY.setTargetAtTime(pos.y + 0.5, now, 0.02);
+      voice.panner.positionZ.setTargetAtTime(pos.z, now, 0.02);
+      const tel = car.telemetry;
+      voice.node.port.postMessage({
+        t: 'p',
+        p: {
+          rpm: tel.rpm * doppler,
+          load: tel.load,
+          throttle: tel.throttle,
+          idle: tel.idleRpm * doppler,
+          redline: tel.redline * doppler,
+          on: 1,
+          drive: 0,
+          cabin: 0,
+          starter: 0,
+          fly: 0,
+        },
+      } satisfies VehicleAudioMessage);
+    }
+  }
+
+  #gearNow = 0;
+  #lastGear(): number {
+    return this.#gearNow;
+  }
+
+  /**
+   * Zustand zum Nachsehen in der Konsole — `japanMap.engine.systems.find(s =>
+   * s.name === 'AudioSystem').debugState`. Der Ton ist hier nicht hörbar
+   * prüfbar; ob der Kontext läuft und der Worklet steht, schon.
+   */
+  get debugState(): {
+    context: string;
+    worklet: boolean;
+    vehicle: VehicleId;
+    rivals: number;
+    params: Partial<VehicleSoundParams>;
+  } {
+    return {
+      context: this.#ctx?.state ?? 'none',
+      worklet: this.#node !== null,
+      rivals: this.#rivalVoices.filter((v) => v.dist >= 0).length,
+      vehicle: this.#vehicleId,
+      params: { ...this.#params },
+    };
+  }
+
+  /** `true`, wenn der Motor mangels AudioWorklet stumm bleibt — für die Konsole und Tests. */
+  get degraded(): boolean {
+    return this.#workletFailed;
   }
 
   dispose(): void {
     document.removeEventListener('visibilitychange', this.#onVisibility);
-    this.#engineOsc?.stop();
-    this.#engineOsc2?.stop();
-    this.#engineOsc?.disconnect();
-    this.#engineOsc2?.disconnect();
-    this.#engineFilter?.disconnect();
-    this.#engineGain?.disconnect();
-    this.#noiseFilter?.disconnect();
-    this.#noiseGain?.disconnect();
+    this.#node?.disconnect();
+    for (const v of this.#rivalVoices) v.node.disconnect();
+    this.#rivalVoices.length = 0;
     this.#master?.disconnect();
     void this.#ctx?.close().catch(() => undefined);
     this.#ctx = null;
     this.#master = null;
-    this.#engineOsc = null;
-    this.#engineOsc2 = null;
-    this.#engineFilter = null;
-    this.#engineGain = null;
-    this.#noiseFilter = null;
-    this.#noiseGain = null;
-    this.#noiseBuffer = null;
+    this.#node = null;
+    this.#bus = null;
     this.#telemetry = null;
+    this.#camera = null;
   }
-}
-
-/**
- * Tempo → Drehzahl über ein Scheingetriebe.
- *
- * Innerhalb eines Gangs steigt die Drehzahl linear von Leerlauf auf Höchstwert;
- * beim Gangwechsel fällt sie zurück. Genau dieser Sägezahn ist das, was ein Ohr
- * als Beschleunigung erkennt — Begründung bei `AUDIO.engine.gearTopSpeeds`.
- */
-/**
- * Eine Rampe auf einem `AudioParam`, die nicht wirft — P25.
- *
- * ## Warum das eine eigene Funktion ist und kein `if` an jeder Stelle
- *
- * Die Web-Audio-API wirft bei einem nicht-endlichen Wert eine `TypeError`.
- * Diese Ausnahme läuft durch `Engine.#update` und `RenderLoop.#frame` und
- * **beendet die Frameschleife** — für eine Tonspur ein absurd hoher Preis.
- * Gemessen in P25 an einer getriebenen Schleife: ein NaN, und das Spiel stand.
- *
- * Sechs Aufrufstellen, sechs `if`s wären sechs Gelegenheiten, eine zu
- * vergessen. Der siebte Regler, den jemand nächstes Jahr einbaut, ist der, an
- * dem es wieder passiert — deshalb geht der Weg zum `AudioParam` durch diese
- * eine Tür. Dieselbe Überlegung wie bei `japanMap.winding()`: ein Fehlerbild
- * ist eine Klasse, und gegen eine Klasse hilft nur ein Ort.
- *
- * Stillschweigend übersprungen und nicht geklemmt: eine geklemmte Frequenz
- * wäre ein **falscher** Ton, ein übersprungener Frame ist keiner. Der Parameter
- * behält, was er hatte, und der nächste gesunde Frame holt ihn nach.
- */
-function rampe(param: AudioParam | undefined, wert: number, zeit: number, konstante: number): void {
-  if (!param) return;
-  if (!Number.isFinite(wert)) return;
-  param.setTargetAtTime(wert, zeit, konstante);
-}
-
-function gearedRpm(speed: number): number {
-  const gears = AUDIO.engine.gearTopSpeeds;
-  const { idleRpm, maxRpm } = AUDIO.engine;
-
-  let low = 0;
-  for (const top of gears) {
-    if (speed < top) {
-      const t = (speed - low) / (top - low);
-      return idleRpm + t * (maxRpm - idleRpm);
-    }
-    low = top;
-  }
-  // Über dem letzten Gang: am Begrenzer. Nicht weiter steigen zu lassen ist
-  // hier richtig — sonst klettert die Tonhöhe im Sturzflug ins Unhörbare.
-  return maxRpm;
 }

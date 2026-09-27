@@ -2,6 +2,7 @@ import { PhotoMode } from './ui/PhotoMode';
 import { TuningGarage } from './ui/TuningGarage';
 import { callPlayerCar } from './ui/callPlayerCar';
 import { SakuraCommons } from './world/stunt/SakuraCommons';
+import { FirstDrive } from './game/intro/FirstDrive';
 import { StillwaterVillage } from './world/settlements/StillwaterVillage';
 import { TerraceOffroad } from './world/settlements/TerraceOffroad';
 import { FunauraVillage } from './world/settlements/funaura/FunauraVillage';
@@ -504,6 +505,8 @@ async function boot(): Promise<void> {
   // zweite Gelegenheit, ihn zu vergessen.
   const audio = new AudioSystem();
   audio.setTelemetry(drive.vehicle.telemetry);
+  audio.setVehicle(drive.vehicleId);
+  audio.setRivals(() => drive.race.rivals.vehicles);
   engine.add(audio);
 
   // ── Zeitfahren (P16) ──────────────────────────────────────────────────
@@ -592,9 +595,8 @@ async function boot(): Promise<void> {
   });
 
   // ── Die Veranstaltung — P23 ───────────────────────────────────────────
-  engine.bus.on('race:checkpoint', () => {
-    audio.click();
-  });
+  // Der Kontrollpunkt-Ton kommt aus `AudioSystem` selbst (Glocke) — hier stand
+  // bis zur Tonschicht 2 zusätzlich ein Klick, und beide spielten übereinander.
 
   engine.bus.on('race:lap', ({ lap }) => {
     hud.flash(`LAP ${lap}`, false);
@@ -607,7 +609,7 @@ async function boot(): Promise<void> {
     const bestBefore = profile.bestOf(event.id);
     const isBest = profile.submitTime(event.id, result.seconds);
     const driftBest = event.kind === 'drift' && profile.submitDrift(event.id, result.driftScore);
-    audio.lap(isBest || driftBest || result.place === 1);
+    audio.finish(result.place, isBest || driftBest);
 
     const title =
       event.kind === 'race'
@@ -858,6 +860,37 @@ async function boot(): Promise<void> {
   engine.add(quality);
   const commons = new SakuraCommons(drive, overlay);
   engine.add(commons);
+  // ── „First Drive" — das Intro (intro.config.ts) ────────────────────────
+  //
+  // **Nach der Commons**, weil `update()` in dieser Reihenfolge läuft: die
+  // Einfahrt in die Bay (Commons) meldet sich beim Intro, und das soll den
+  // Zustand desselben Frames sehen. `playing` zeigt erst nach dem Aufbau von
+  // `PlayerUi` auf die echte Oberfläche — das Intro startet ohnehin frühestens
+  // mit „Play", also nach dieser Zuweisung.
+  let playingNow = (): boolean => false;
+  let garageCoach = false;
+  const intro = new FirstDrive({
+    drive,
+    loop: engine.loop,
+    container: overlay,
+    playing: () => playingNow(),
+    earn: (sparks) => {
+      profile.earn(sparks);
+      hud.collectSparks([]);
+    },
+    click: () => audio.click(),
+    bayTarget: () => commons.bayApron,
+    startOnFoot: () => drive.startOnFoot(),
+    onFinished: (_skipped, earned) => {
+      commons.showWelcome(earned);
+    },
+  });
+  engine.add(intro);
+  commons.onDriveIn = () => {
+    if (intro.homeward) garageCoach = true;
+    intro.enteredBay();
+  };
+  commons.onDriveOut = () => intro.leftBay();
   const settlements = new StillwaterVillage(drive, overlay);
   engine.add(settlements);
   engine.add(new TerraceOffroad(drive));
@@ -927,6 +960,11 @@ async function boot(): Promise<void> {
     sandbox: () => profile.sandbox,
     click: () => audio.click(),
     engineBlip: (pitch) => audio.engineBlip(pitch),
+    coach: () => {
+      if (!garageCoach) return null;
+      garageCoach = false;
+      return '<b>Your first upgrade is on us.</b> Pick a part below, then <b>Buy and fit</b>. Drag to look around — <b>Take it out</b> when you are done.';
+    },
     hideWorld: (hidden) => {
       commons.group.visible = !hidden;
       const veg = engine.scene.getObjectByName('Vegetation');
@@ -961,6 +999,10 @@ async function boot(): Promise<void> {
       setMuted: (muted) => {
         audio.setMuted(muted);
       },
+      get volume() {
+        return audio.volume;
+      },
+      setVolume: (volume) => audio.setVolume(volume),
       click: () => {
         audio.click();
       },
@@ -1014,6 +1056,16 @@ async function boot(): Promise<void> {
     sleepWorld: (sleeping) => {
       if (sleeping) engine.sleep();
       else engine.wake();
+    },
+    intro: {
+      get running() {
+        return intro.running;
+      },
+      replay: () => {
+        intro.skip();
+        intro.start();
+      },
+      skip: () => intro.skip(),
     },
     // ── Die Veranstaltungen — P23 ────────────────────────────────────────
     //
@@ -1069,7 +1121,9 @@ async function boot(): Promise<void> {
   });
 
   openPlayerMap = () => ui.openToMap();
-  commons.openShop = tune => ui.openCommonsShop(tune);
+  playingNow = () => ui.playing;
+  commons.openShop = (tune, after) => ui.openCommonsShop(tune, after);
+  commons.openEvents = () => ui.openEvents();
   commons.isPlaying = () => ui.playing;
   commons.owns = id => profile.owns(id);
   commons.buy = id => profile.buy(id);
@@ -1082,9 +1136,8 @@ async function boot(): Promise<void> {
   kiso.isPlaying = () => ui.playing;
   koedo.isPlaying = () => ui.playing;
   smashables.isPlaying = () => ui.playing;
-  engine.bus.on('drive:broke', event => {
-    audio.impact(event.kind === 'tree' ? 0.75 : event.kind === 'rail' ? 0.5 : 0.3);
-  });
+  // Zerbrechliches klingt seit der Tonschicht 2 nach seinem Material — der
+  // Zuhörer steht in `AudioSystem` (`drive:broke`).
   // Der „Starten“-Knopf holt den Pointer Lock — **synchron im Klick**, sonst ist
   // die Nutzergeste verbraucht und der Browser lehnt ab.
   loading?.onStart(() => {
@@ -1095,9 +1148,11 @@ async function boot(): Promise<void> {
     // Rückruf nachgeholt wird und damit außerhalb der Geste liegt.
     audio.unlock();
     ui.begin();
-    // Zu Fuß in der Sakura-Schale, nicht im Freiflug und nicht schon im Auto.
-    // Fester Hofanker: Wagen vier Meter nördlich, Fahrertür im ersten Blick.
-    drive.startOnFoot();
+    // Beim ersten Start: im fahrenden Wagen, das Intro läuft („First Drive").
+    // Danach zu Fuß in der Sakura-Schale — fester Hofanker, Wagen vier Meter
+    // nördlich, Fahrertür im ersten Blick.
+    if (!FirstDrive.seen) intro.start();
+    else drive.startOnFoot();
   });
   audio.armAutoUnlock();
   import.meta.hot?.dispose(() => { photo.dispose(); garage.dispose(); ui.dispose(); });

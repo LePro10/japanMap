@@ -391,7 +391,7 @@ export class DriveHud {
     this.#setText(this.#speed, String(kmh));
     // Rückwärts ist eine eigene Angabe und keine negative Zahl — dieselbe
     // Überlegung wie beim Tacho darüber.
-    const reading = instruments(t.forwardSpeed);
+    const reading = instruments(t.forwardSpeed, t);
     if (this.#gear.textContent !== reading.gear) { this.#gear.classList.remove('hud__gearShift'); void this.#gear.offsetWidth; this.#gear.classList.add('hud__gearShift'); }
     this.#setText(this.#gear, reading.gear);
     this.#setText(this.#rpmText, `${Math.round(reading.rpm / 100) * 100} RPM`);

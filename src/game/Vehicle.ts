@@ -13,7 +13,8 @@ import { Euler, Quaternion, Vector3 } from 'three';
 import { GRAVITY, SURFACE_FEEL } from '@/config/vehicle.config';
 import { GROUND_CONTACT } from '@/config/groundContact.config';
 import { AIR_CONTROL } from '@/config/arcade.config';
-import { ARCADE } from '@/config/arcade.config';
+import { ARCADE, topSpeed } from '@/config/arcade.config';
+import { Gearbox } from './Gearbox';
 import { TOUGE, type VehicleSpec } from '@/config/vehicles.config';
 import { ArcadeDynamics, type DriveCommand, type PlanarEnv } from './arcadeDynamics';
 import {
@@ -230,6 +231,25 @@ export interface VehicleTelemetry {
   roll: number;
   /** Karosserie-Nicken, rad. Die Luft-Rolle darf das nicht zum Loop machen. */
   pitch: number;
+  /** Eingabe dieses Schritts, 0…1 — für Ton und Anzeige, nicht für Kräfte. */
+  throttle: number;
+  brake: number;
+  handbrake: boolean;
+  /**
+   * Das Anzeige- und Tongetriebe (`Gearbox`) — Tonschicht 2. Keine dieser
+   * Zahlen wirkt auf eine Kraft; Begründung in `gearbox.config.ts`.
+   */
+  rpm: number;
+  /** −1 rückwärts, 0 Leerlauf, 1…n. */
+  gear: number;
+  /** Was der Motor verbrennt, 0…1 — Schaltpause und Begrenzer ziehen es auf null. */
+  load: number;
+  /** Zähler der Schaltvorgänge. Ein Zähler statt einer Flanke — siehe `Gearbox`. */
+  shifts: number;
+  /** Zähler der Begrenzereingriffe. */
+  limiterHits: number;
+  idleRpm: number;
+  redline: number;
 }
 
 /**
@@ -538,7 +558,18 @@ export class Vehicle {
     trick: 0,
     roll: 0,
     pitch: 0,
+    throttle: 0,
+    brake: 0,
+    handbrake: false,
+    rpm: 850,
+    gear: 0,
+    load: 0,
+    shifts: 0,
+    limiterHits: 0,
+    idleRpm: 850,
+    redline: 7600,
   };
+  readonly #gearbox = new Gearbox();
 
   constructor(spec: VehicleSpec = TOUGE) {
     this.#spec = spec;
@@ -569,6 +600,10 @@ export class Vehicle {
     this.#planar.setCrawl(crawlShare(this.#spec.id, this.#setup));
     this.#planar.setDriveRetain(driveRetain(this.#spec.id));
     this.#rideLift = rideLift(this.#setup);
+    this.#gearbox.configure(this.#spec.id, topSpeed(arcade, this.#spec.chassis.mass));
+    this.telemetry.idleRpm = this.#gearbox.spec.idle;
+    this.telemetry.redline = this.#gearbox.spec.redline;
+    this.telemetry.rpm = this.#gearbox.rpm;
   }
 
   /** Die gerechnete Spec. Lesen darf jeder, ändern nur über `setSpec`. */
@@ -797,6 +832,10 @@ export class Vehicle {
     t.skid = 0;
     t.accelLong = 0;
     t.accelLat = 0;
+    this.#gearbox.reset();
+    t.rpm = this.#gearbox.rpm;
+    t.gear = 0;
+    t.load = 0;
   }
 
   /**
@@ -1145,6 +1184,15 @@ export class Vehicle {
     t.trick = planar.trick;
     t.roll = this.#roll;
     t.pitch = this.#pitch;
+    t.throttle = input.throttle;
+    t.brake = input.brake;
+    t.handbrake = input.handbrake;
+    this.#gearbox.step(dt, t);
+    t.rpm = this.#gearbox.rpm;
+    t.gear = this.#gearbox.gear;
+    t.load = this.#gearbox.load;
+    t.shifts = this.#gearbox.shifts;
+    t.limiterHits = this.#gearbox.limiterHits;
   }
 
   /**

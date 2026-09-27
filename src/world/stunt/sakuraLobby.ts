@@ -45,6 +45,8 @@ export interface SakuraLobby {
   petal: { x: number; z: number; w: number; d: number; y: number };
   bay: { x: number; z: number; w: number; d: number; y: number };
   bench: { x: number; z: number };
+  /** Veranstaltungstafel im Hof. */
+  board: { x: number; z: number; y: number };
   turntable: Group;
   actors: LobbyActor[];
   setOwned(owned: ReadonlySet<VehicleId>): void;
@@ -57,8 +59,16 @@ export function lobbyOffsets(s: { x: number; z: number }): {
   bay: { x: number; z: number; w: number; d: number };
 } {
   // WP2 kept shops at ±22, −32 so they sit in the first camera view.
+  //
+  // ~~Petal Motors bei −22~~ — **die Zufahrt `commons-drive` lief durch die
+  // Halle.** Sie kommt aus dem Hof (550 | 510) nach NNW und liegt bei
+  // z = 471…485 auf x ≈ 533…541 (9 m breit); die Halle reichte bis x = 539.
+  // Gefunden hat es der Heimweg des Intros: die Führungslinie endete an der
+  // Ostwand, und der Wagen stand hinter der Halle. Bei −36 liegt die Ostwand
+  // auf 525, 3,5 m vor der Fahrbahnkante. Geprüft in
+  // `tools/sakura-lobby.test.mts` gegen die gebackene Mittellinie.
   return {
-    petal: { x: s.x - 22, z: s.z - 32, w: 22, d: 14 },
+    petal: { x: s.x - 36, z: s.z - 32, w: 22, d: 14 },
     bay: { x: s.x + 22, z: s.z - 32, w: 18, d: 14 },
   };
 }
@@ -131,10 +141,18 @@ export function buildSakuraLobby(
   glowMesh.name = 'Sakura Commons lamps';
   group.add(glowMesh);
 
+  const board = eventBoardSpot(s);
+  const boardY = height(board.x, board.z);
   const signs = [
     signMesh('花びらモータース', 'Petal Motors', 'WALK IN · BROWSE · BUY', P.x, petalY + 3.55, P.z + P.d / 2 + 0.14, 8.4),
     signMesh('オープンベイ', 'Open Bay', 'DRIVE IN · TUNE · FIT', B.x, bayY + 3.45, B.z + B.d / 2 + 0.14, 7.2),
+    // 3,4 m breit auf dem Holzbrett der Tafel, 7 cm vor dessen Front gegen Z-Fighting.
+    signMesh('催し物', 'Events', 'RACE · DRIFT · TIME TRIAL', board.x, boardY + 2.02, board.z + 0.05, 3.4),
   ];
+  colliders.push({
+    minX: board.x - 1.9, maxX: board.x + 1.9, minZ: board.z - 0.3, maxZ: board.z + 0.3,
+    y0: boardY, y1: boardY + 3.1,
+  });
   for (const sign of signs) group.add(sign);
 
   const carMat = new MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.15 });
@@ -176,6 +194,7 @@ export function buildSakuraLobby(
     petal: { ...P, y: petalY },
     bay: { ...B, y: bayY },
     bench,
+    board: { ...board, y: boardY },
     turntable,
     actors,
     setOwned(owned) { plaques.setOwned(owned); },
@@ -370,9 +389,27 @@ function buildCourt(
     glow.box(x, y + 2.15, z, 0.5, 0.58, 0.5, 0xffc077);
     kit.box(x, y + 2.48, z, 0.7, 0.1, 0.7, ROOF);
   }
-  const postZ = s.z - 6, postY = height(s.x, postZ);
-  kit.box(s.x, postY + 1.15, postZ, 0.18, 2.3, 0.18, TRIM);
-  kit.box(s.x, postY + 2.45, postZ, 1.6, 0.5, 0.08, GOLD);
+  // Die Veranstaltungstafel — ersetzt den goldenen Pfosten, der hier stand
+  // und nichts bedeutete. Mittig zwischen beiden Hallen, damit sie vom Spawn
+  // aus über dem eigenen Wagen steht: Autos links, Tuning rechts, Rennen in
+  // der Mitte. Schild und Kollision baut `buildSakuraLobby`.
+  const { x: bx, z: bz } = eventBoardSpot(s);
+  const by = height(bx, bz);
+  for (const side of [-1, 1]) {
+    kit.box(bx + side * 1.75, by + 1.45, bz, 0.2, 2.9, 0.2, TRIM);
+    kit.box(bx + side * 1.75, by + 0.12, bz, 0.5, 0.24, 0.5, STONE);
+  }
+  kit.box(bx, by + 2.02, bz - 0.08, 3.6, 1.62, 0.12, WOOD);
+  kit.box(bx, by + 3.02, bz, 4.1, 0.14, 0.7, ROOF);
+  kit.box(bx, by + 2.92, bz + 0.05, 3.6, 0.1, 0.1, GOLD);
+  glow.box(bx, by + 2.86, bz + 0.26, 2.8, 0.05, 0.05, 0xffd7a0);
+}
+
+/** Wo die Veranstaltungstafel steht — Hof, mittig vor den beiden Hallen. */
+export function eventBoardSpot(s: { x: number; z: number }): { x: number; z: number } {
+  // +6 statt mittig: bei x = s.x läge die Tafel 0,6 m neben der Fahrbahnkante
+  // von `commons-drive`, die hier schräg durch den Hof läuft.
+  return { x: s.x + 6, z: s.z - 17 };
 }
 
 export function layoutPads(cx: number, cz: number, w: number, d: number): ShowroomPad[] {

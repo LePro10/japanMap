@@ -15,6 +15,13 @@
       "port": 5181
     },
     {
+      "comment": "Auto-Showroom (car-lab/) — eigener Vite-Root, berührt das Spiel nicht.",
+      "name": "car-lab",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "car-lab", "--port", "5192", "--strictPort"],
+      "port": 5192
+    },
+    {
       "name": "japanmap-preview",
       "runtimeExecutable": "node",
       "runtimeArgs": ["node_modules/vite/bin/vite.js", "preview", "--port", "4180", "--strictPort"],

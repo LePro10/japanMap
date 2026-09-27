@@ -25,15 +25,16 @@ try {
     };
   });
   assert.ok(Math.abs(spawn.range - 4) < 0.3, JSON.stringify(spawn));
-  assert.match(spawn.prompt, /Your car. Take it out./);
+  // Seit „First Drive": kein Dauerbanner mehr, nur der Wagen in Reichweite.
+  assert.match(spawn.prompt, /Your car/);
   await fs.mkdir('screenshots/lobby', { recursive: true });
   await page.screenshot({ path: 'screenshots/lobby/opening.png' });
 
   await page.evaluate(() => {
     const d = window.japanMap.engine.systems.find(s => s.name === 'DriveSystem');
     const c = window.japanMap.engine.systems.find(s => s.name === 'SakuraCommons');
-    d.ground.refresh(528, 480, 0);
-    d.walker.respawn(528, 480, Math.PI, d);
+    d.ground.refresh(514, 480, 0);
+    d.walker.respawn(514, 480, Math.PI, d);
     d.walkCamera.reset(d.walker);
     for (let i = 0; i < 8; i++) c.update(1 / 60);
   });
@@ -42,8 +43,8 @@ try {
   const inside = await page.evaluate(() => {
     const d = window.japanMap.engine.systems.find(s => s.name === 'DriveSystem');
     const c = window.japanMap.engine.systems.find(s => s.name === 'SakuraCommons');
-    d.ground.refresh(519.2, 477.3, 0);
-    d.walker.respawn(519.2, 477.3, Math.PI / 2, d);
+    d.ground.refresh(505.2, 477.3, 0);
+    d.walker.respawn(505.2, 477.3, Math.PI / 2, d);
     d.walkCamera.reset(d.walker);
     for (let i = 0; i < 12; i++) c.update(1 / 60);
     return {
@@ -70,16 +71,25 @@ try {
 
   await page.evaluate(() => {
     const d = window.japanMap.engine.systems.find(s => s.name === 'DriveSystem');
-    d.ground.refresh(528, 485, 0);
-    d.walker.respawn(528, 485, Math.PI, d);
+    d.ground.refresh(514, 485, 0);
+    d.walker.respawn(514, 485, Math.PI, d);
     d.walkCamera.reset(d.walker);
   });
   await page.waitForFunction(() => document.querySelector('.commons-prompt button')?.textContent === 'Enter Cars');
   await page.screenshot({ path: 'screenshots/lobby/petal-door.png' });
 
+  // Die Veranstaltungstafel im Hof.
+  await page.evaluate(() => {
+    const d = window.japanMap.engine.systems.find(s => s.name === 'DriveSystem');
+    d.ground.refresh(556, 495.5, 0);
+    d.walker.respawn(556, 495.5, Math.PI, d);
+    d.walkCamera.reset(d.walker);
+  });
+  await page.waitForFunction(() => document.querySelector('.commons-prompt button')?.textContent === 'Open events');
+
   const consoleErrors = errors.filter(m => !/PropSystem/.test(m));
   assert.deepEqual(consoleErrors, []);
-  console.log('Sakura lobby boot: spawn, showroom pad, both doorways.');
+  console.log('Sakura lobby boot: spawn, showroom pad, both doorways, event board.');
 } finally {
   await browser.close();
 }

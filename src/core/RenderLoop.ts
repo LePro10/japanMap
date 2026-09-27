@@ -53,6 +53,17 @@ export class RenderLoop {
   #stepsLastFrame = 0;
   /** Reine Wanduhr-Zeit des letzten Frames in Millisekunden. */
   #frameTimeMs = 0;
+  /**
+   * Zeitlupe — der Faktor auf die **simulierte** Zeit, 1 = Echtzeit.
+   *
+   * Für das Intro (Absprung in Zeitlupe). Er wirkt auf den Akkumulator und auf
+   * das `dt` von `update()`, nicht auf die Schrittweite: die Physik rechnet
+   * weiter in festen 1/60-s-Schritten, es kommen nur weniger je Sekunde an.
+   * Eine kleinere Schrittweite wäre ein anderes Fahrmodell — und dieses
+   * Projekt hat für „derselbe Code, andere Schrittweite, anderes Ergebnis"
+   * schon bezahlt (`wallFriction`, P19).
+   */
+  #timeScale = 1;
 
   constructor(handlers: RenderLoopHandlers, options: RenderLoopOptions = {}) {
     this.#handlers = handlers;
@@ -79,6 +90,15 @@ export class RenderLoop {
 
   get frameTimeMs(): number {
     return this.#frameTimeMs;
+  }
+
+  get timeScale(): number {
+    return this.#timeScale;
+  }
+
+  /** 0,05…1. Werte außerhalb werden geklemmt, `NaN` heißt Echtzeit. */
+  set timeScale(value: number) {
+    this.#timeScale = Number.isFinite(value) ? Math.min(1, Math.max(0.05, value)) : 1;
   }
 
   start(): void {
@@ -137,7 +157,7 @@ export class RenderLoop {
 
     // Zeit, die maximal simuliert wird. Alles darüber wird verworfen: lieber
     // Zeitlupe als eine Frame-Lawine.
-    const dt = Math.min(rawDt, this.#fixedDt * this.#maxSteps);
+    const dt = Math.min(rawDt, this.#fixedDt * this.#maxSteps) * this.#timeScale;
     this.#accumulator += dt;
 
     let steps = 0;

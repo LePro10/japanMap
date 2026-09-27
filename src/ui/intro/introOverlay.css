@@ -1,0 +1,297 @@
+/* Intro „First Drive" — Letterbox, Titel, ein Hinweis zur Zeit.
+ *
+ * `#overlay > .intro` und nicht `.intro`: `#overlay > *` setzt
+ * `pointer-events: auto` mit einem ID-Selektor (P10.2, CLAUDE.md). Die Fläche
+ * liegt über dem ganzen Bild — mit `auto` schluckte sie jeden Touch, der dem
+ * Stick gilt. Nur der Überspringen-Knopf nimmt Zeiger an. */
+#overlay > .intro {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  color: var(--paper);
+  font-family: var(--display);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+#overlay > .intro[hidden] { display: none; }
+#overlay > .intro.is-on { opacity: 1; }
+
+/* ── Letterbox ────────────────────────────────────────────────────────── */
+.intro__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 11vh;
+  background: #020709;
+  transform: scaleY(0);
+  transition: transform 0.9s cubic-bezier(0.7, 0, 0.2, 1);
+}
+.intro__bar--top { top: 0; transform-origin: top; }
+.intro__bar--bottom { bottom: 0; transform-origin: bottom; }
+.intro.is-cinema .intro__bar { transform: scaleY(1); }
+/* Das Bedienfeld der Fingersteuerung bleibt stehen: in der Zeitlupe verlangt
+ * der Hinweis genau seinen Drift-Knopf. */
+body.intro-cinema .hud,
+body.intro-cinema .commons-prompt { opacity: 0; transition: opacity 0.5s; pointer-events: none; }
+body.intro-running .commons-prompt { display: none; }
+
+/* ── Zeitlupe: Vignette und ein leiser Schriftzug ───────────────────────── */
+.intro__slow {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  background:
+    radial-gradient(ellipse at center, transparent 42%, rgba(2, 10, 14, 0.55) 100%),
+    linear-gradient(180deg, rgba(102, 215, 244, 0.06), transparent 30%, transparent 70%, rgba(102, 215, 244, 0.06));
+}
+.intro__slow span {
+  position: absolute;
+  right: 4vw;
+  top: calc(11vh + 18px);
+  font: 700 12px/1 var(--display);
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--nitro);
+}
+.intro__slow span::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 10px;
+  border-radius: 50%;
+  background: var(--vermilion);
+  animation: intro-rec 1s steps(2) infinite;
+}
+.intro.is-slow .intro__slow { opacity: 1; }
+@keyframes intro-rec { 50% { opacity: 0.2; } }
+
+/* ── Titelkarte ─────────────────────────────────────────────────────────── */
+.intro__title {
+  position: absolute;
+  left: 6vw;
+  bottom: calc(11vh + 5vh);
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.9s ease, transform 1.2s cubic-bezier(0.2, 0.7, 0.2, 1);
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.55);
+}
+.intro.is-title .intro__title { opacity: 1; transform: none; }
+.intro__kicker {
+  margin: 0 0 6px;
+  font: 700 12px/1 var(--display);
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+.intro__title h1 {
+  margin: 0;
+  font: 800 clamp(44px, 7.5vw, 104px)/0.95 var(--display);
+  letter-spacing: -0.03em;
+}
+.intro__sub {
+  margin: 10px 0 0;
+  font: 400 clamp(14px, 1.4vw, 19px)/1.4 var(--display);
+  color: var(--paper-dim);
+}
+
+/* ── Der eine Hinweis ──────────────────────────────────────────────────── */
+.intro__prompt {
+  position: absolute;
+  left: 50%;
+  bottom: calc(11vh + 7vh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  transform: translate(-50%, 16px) scale(0.96);
+  opacity: 0;
+  transition: opacity 0.22s ease, transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+  text-align: center;
+}
+.intro__prompt[hidden] { display: none; }
+.intro__prompt.is-shown { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.intro__prompt.is-big { bottom: 38vh; }
+.intro__prompt.is-big .intro__key { min-width: 86px; height: 86px; font-size: 26px; border-radius: 14px; }
+.intro__prompt.is-big .intro__key--wide { min-width: 168px; }
+.intro__prompt.is-big .intro__label { font-size: clamp(26px, 3vw, 40px); }
+.intro__prompt.is-hit .intro__key {
+  background: var(--amber);
+  color: var(--ink);
+  transform: scale(1.12);
+  box-shadow: 0 0 0 10px color-mix(in srgb, var(--amber) 0%, transparent), 0 0 40px var(--amber);
+}
+.intro__keys { display: flex; align-items: center; gap: 10px; }
+.intro__plus { font: 700 18px/1 var(--display); color: var(--paper-dim); }
+.intro__key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 56px;
+  height: 56px;
+  padding: 0 14px;
+  border: 1.5px solid color-mix(in srgb, var(--amber) 75%, transparent);
+  border-bottom-width: 4px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink-2) 86%, transparent);
+  color: var(--paper);
+  font: 800 18px/1 var(--display);
+  letter-spacing: 0.04em;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), 0 0 0 0 color-mix(in srgb, var(--amber) 55%, transparent);
+  animation: intro-pulse 1.3s ease-out infinite;
+  transition: transform 0.15s, background 0.15s, color 0.15s;
+}
+.intro__key--wide { min-width: 116px; }
+@keyframes intro-pulse {
+  0% { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), 0 0 0 0 color-mix(in srgb, var(--amber) 55%, transparent); }
+  100% { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), 0 0 0 16px color-mix(in srgb, var(--amber) 0%, transparent); }
+}
+.intro__label {
+  margin: 0;
+  font: 800 clamp(18px, 1.8vw, 24px)/1.15 var(--display);
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.7);
+}
+.intro__hint {
+  margin: -4px 0 0;
+  font: 500 14px/1.35 var(--display);
+  color: var(--paper-dim);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+}
+.intro__hint[hidden] { display: none; }
+
+/* ── Bestätigung ───────────────────────────────────────────────────────── */
+.intro__toast {
+  position: absolute;
+  left: 50%;
+  top: 24vh;
+  margin: 0;
+  transform: translateX(-50%);
+  font: 900 clamp(26px, 3.4vw, 46px)/1 var(--display);
+  font-style: italic;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 3px 22px rgba(0, 0, 0, 0.6);
+}
+.intro__toast[hidden] { display: none; }
+.intro__toast.is-gold { color: var(--amber-hot); }
+.intro__toast.is-shown { animation: intro-toast 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes intro-toast {
+  0% { opacity: 0; transform: translate(-50%, 10px) scale(1.25); letter-spacing: 0.1em; }
+  14% { opacity: 1; transform: translate(-50%, 0) scale(1); letter-spacing: -0.01em; }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -8px); }
+}
+
+/* ── Ziel oben links, wie ein Auftrag ──────────────────────────────────── */
+.intro__objective {
+  position: absolute;
+  left: 24px;
+  top: 96px;
+  display: grid;
+  gap: 2px;
+  padding: 12px 16px 12px 14px;
+  border-left: 3px solid var(--amber);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--ink-2) 92%, transparent), transparent);
+  min-width: 240px;
+}
+.intro__objective[hidden] { display: none; }
+.intro__objective span {
+  font: 700 10px/1 var(--display);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+.intro__objective strong { font: 800 18px/1.2 var(--display); }
+.intro__objective em { font: 500 13px/1.3 var(--display); font-style: normal; color: var(--paper-dim); }
+
+/* ── Fortschritt und Überspringen ──────────────────────────────────────── */
+.intro__steps {
+  position: absolute;
+  left: 50%;
+  top: 22px;
+  display: flex;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transform: translateX(-50%);
+  font: 700 10px/1 var(--display);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--paper) 45%, transparent);
+  transition: opacity 0.4s;
+}
+.intro.is-cinema .intro__steps { opacity: 0; }
+.intro__steps li { display: flex; align-items: center; gap: 7px; }
+.intro__steps li::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+}
+.intro__steps li.is-now { color: var(--paper); }
+.intro__steps li.is-now::before { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 10px var(--amber); }
+.intro__steps li.is-done { color: var(--amber); }
+.intro__steps li.is-done::before { background: currentColor; }
+
+.intro__skip {
+  position: absolute;
+  right: 22px;
+  bottom: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--paper) 22%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 60%, transparent);
+  color: var(--paper-dim);
+  font: 600 12px/1 var(--display);
+  letter-spacing: 0.06em;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.intro__skip kbd {
+  padding: 3px 6px;
+  border: 1px solid color-mix(in srgb, var(--paper) 35%, transparent);
+  border-radius: 4px;
+  font: 700 11px/1 var(--display);
+}
+.intro__skipRing {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: conic-gradient(var(--amber) var(--p, 0%), color-mix(in srgb, var(--paper) 18%, transparent) 0);
+  -webkit-mask: radial-gradient(circle, transparent 4px, #000 5px);
+  mask: radial-gradient(circle, transparent 4px, #000 5px);
+}
+
+@media (max-width: 720px) {
+  .intro__steps { gap: 10px; font-size: 9px; letter-spacing: 0.12em; top: 12px; }
+  .intro__steps li { gap: 4px; }
+  .intro__objective { left: 12px; top: 64px; min-width: 0; max-width: 62vw; }
+  .intro__prompt { bottom: calc(11vh + 22vh); }
+  .intro__prompt.is-big { bottom: 44vh; }
+  .intro__title { left: 20px; }
+  .intro__skip { bottom: auto; top: 40px; right: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro__key { animation: none; }
+  .intro__toast.is-shown { animation-duration: 0.01s; animation-delay: 0s; }
+}
+
+.intro__times {
+  margin-left: 2px;
+  font: 900 italic 28px/1 var(--display);
+  color: var(--amber);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.6);
+}
+.intro__prompt.is-big .intro__times { font-size: 44px; }
+/* „Click to look around" steht sonst mitten im Titel. Der Klick fängt die
+ * Maus weiterhin; das Intro erklärt nur zuerst das Fahren. */
+body.intro-running .lock-hint { display: none; }
