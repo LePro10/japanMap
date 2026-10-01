@@ -259,7 +259,9 @@ export class TouchControls {
     // Straße. Ein zweiter Knopf dafür wäre auf 375 px Breite verschwendeter
     // Platz — und im jeweils anderen Modus ohne Wirkung.
     this.#must('[data-touch="reset"]').addEventListener('click', () => {
-      if (this.#drive?.active) {
+      // Zu Fuß ebenso: `respawn()` setzt den Läufer zurück. Vorher lief der
+      // Knopf hier in die (abgeschaltete) Flugkamera und tat nichts.
+      if (this.#drive?.active || this.#drive?.walking) {
         this.#drive.respawn();
         return;
       }

@@ -323,3 +323,39 @@
     flex-direction: column;
   }
 }
+
+/* ── Review 2026-09: Telefon ────────────────────────────────────────────────
+ * Der Ein-/Aussteige-Chip ist auf Touch der Knopf selbst: die Taste „F" gibt
+ * es dort nicht, und der Text bleibt einzeilig, statt in zwei Zeilen in den
+ * Boost-Knopf zu laufen. */
+@media (pointer: coarse) {
+  #overlay > .hud .hud__prompt {
+    pointer-events: auto;
+    cursor: pointer;
+    max-width: calc(100vw - 180px);
+    padding: 8px 14px;
+    white-space: nowrap;
+  }
+  .hud .hud__promptKey {
+    display: none;
+  }
+  .hud .hud__promptAction {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.12em;
+  }
+}
+/* Der Kontostand fehlte auf dem Telefon ganz (display: none) — gesammelte
+ * Funken hatten kein Ziel. Kompakt unter dem Tacho statt versteckt. */
+@media (max-width: 700px) and (orientation: portrait) {
+  .hud .hud__money {
+    display: flex;
+    top: calc(max(10px, env(safe-area-inset-top)) + 104px);
+    right: max(10px, env(safe-area-inset-right));
+    left: auto;
+    bottom: auto;
+    transform: none;
+    padding: 3px 8px;
+    font-size: 12px;
+  }
+}

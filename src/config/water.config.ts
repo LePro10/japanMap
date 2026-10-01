@@ -122,8 +122,31 @@ export const RIVER = {
    * allesamt aus der Tiefe; der Fluss wäre unsichtbar. Gemessen liegt die
    * Sohle im Median 2,68 m unter dem Ufer, ein Spiegel 0,9 m darüber bleibt
    * also mit Abstand im Bett.
+   *
+   * > **Widerlegt, Review 2026-09.** `river.json` führt nicht die Sohle,
+   * > sondern die Uferlinie; die 2,68 m waren die Einschnitttiefe. Mit +0,9 m
+   * > schwebte der Spiegel im Median 1,9 m über dem Gelände am Bandrand. Der
+   * > Wert bleibt als **Obergrenze** über dem Knoten stehen; die wirksame
+   * > Grenze ist seitdem `edgeSink` (siehe `riverSurface`).
    */
   surfaceRise: 0.9,
+
+  /**
+   * Wie tief der Spiegel am Rand des Bandes unter dem Gelände liegt, in Metern.
+   *
+   * Seit dem Review 2026-09 die eigentliche Obergrenze des Spiegels (siehe
+   * `riverSurface`): `surfaceRise` allein ließ ihn im Median 1,9 m über dem
+   * Ufer schweben. 0,2 m reichen, dass die Uferlinie im Hang verschwindet,
+   * auch wo das CDLOD-Gitter zwischen zwei Stützstellen etwas tiefer liegt.
+   */
+  edgeSink: 0.2,
+
+  /**
+   * Mindesttiefe in der Bandmitte, in Metern. Darunter setzt das Band an
+   * diesem Knoten aus — ein Spiegel, der die Sohle kaum bedeckt, zeigt nur
+   * Flimmern gegen das Gelände.
+   */
+  minDepth: 0.35,
 
   /**
    * Wie tief ein Flussknoten das Gelände unter sich höchstens flutet, in Metern

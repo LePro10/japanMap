@@ -18,7 +18,7 @@ export const CONTROLS: readonly (readonly [string, string])[] = [
   ['Shift', 'run'],
   ['Ctrl', 'slide (flat / downhill)'],
   ['F', 'get in / out of the car'],
-  ['R', 'back to the sakura bowl'],
+  ['R', 'back to Sakura Commons'],
   ['M', 'map'],
   ['P', 'photo mode'],
   ['F11', 'leave full screen'],
@@ -69,7 +69,7 @@ export const TOUCH_CONTROLS: readonly (readonly [string, string])[] = [
   ['↑', 'jump'],
   ['Slide', 'slide (flat / downhill)'],
   ['🚗', 'get in / out of the car'],
-  ['⟲', 'back to the sakura bowl'],
+  ['⟲', 'back to Sakura Commons'],
   ['Minimap', 'open map'],
   ['☰', 'menu'],
 ];

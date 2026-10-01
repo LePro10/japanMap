@@ -35,6 +35,11 @@
 body.intro-cinema .hud,
 body.intro-cinema .commons-prompt { opacity: 0; transition: opacity 0.5s; pointer-events: none; }
 body.intro-running .commons-prompt { display: none; }
+/* Das Intro stellt eigene Tastenhinweise; die HUD-Pille („F Slow down to
+   exit") stand sonst daneben und widersprach „W Hold to accelerate". */
+body.intro-running .hud__prompt { display: none; }
+/* Die Regionskarte gehört nicht in den Letterbox-Film. */
+body.intro-running .city-discovery { display: none; }
 
 /* ── Zeitlupe: Vignette und ein leiser Schriftzug ───────────────────────── */
 .intro__slow {

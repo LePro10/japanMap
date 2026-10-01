@@ -43,6 +43,6 @@ export const START_ZONES: readonly {
   { id: 'paddy', label: 'Paddies', x: -760, z: 60 },
   { id: 'toge', label: 'Tōge', x: -536, z: -495 },
   { id: 'torii', label: 'Torii', x: 820, z: -940 },
-  { id: 'city', label: 'Neon City', x: 620, z: 120 },
+  { id: 'city', label: 'Neo Tokyo', x: 620, z: 120 },
   { id: 'coast', label: 'Coast', x: 100, z: 1400 },
 ];

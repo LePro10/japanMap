@@ -129,7 +129,7 @@ export class SakuraCommons implements System {
     this.drive.ground.localSurfaces = this.#stack;
     this.#refreshOwned();
     context.scene.add(this.group);
-    window.addEventListener('keydown', this.#key);
+    window.addEventListener('keydown', this.#key, { capture: true });
 
     const L = this.#lobby;
     const beacons: Beacon[] = [
@@ -157,7 +157,10 @@ export class SakuraCommons implements System {
   readonly #key = (event: KeyboardEvent): void => {
     if (this.#welcome && !event.repeat && (event.code === 'Enter' || event.code === 'Escape')) {
       this.#closeWelcome();
-      if (event.code === 'Enter') event.preventDefault();
+      // Die Taste gehört der Karte. Escape öffnete sonst zugleich das
+      // Pausenmenü (es hört in der Capture-Phase — daher hier ebenfalls).
+      event.preventDefault();
+      event.stopImmediatePropagation();
       return;
     }
     if (this.panel.hidden) return;
@@ -476,7 +479,15 @@ export class SakuraCommons implements System {
     const carNear = d.vehicleRange() <= 4.2;
     this.action.hidden = this.#shop < 0 && !carNear;
     this.action.textContent = this.#shop >= 0 ? `Enter ${this.#shop === 0 ? 'Cars' : 'Tune'}` : 'Enter car';
-    if (this.action.hidden && this.#messageTime <= 0 && !inHall) {
+    // Nur „Enter car" und sonst nichts: das sagt die HUD-Pille („F Enter")
+    // schon, und zwei Hinweise für dieselbe Tür waren zwei Stimmen (Review
+    // 2026-09: Karte und Pille standen gleichzeitig).
+    const carOnly = this.#shop < 0 && carNear;
+    // „Meldung steht" heißt Zeit **und** Text — dieselbe Bedingung wie beim
+    // Zeichnen unten. Mit der Zeit allein hielt eine leere Meldung die Karte
+    // offen (gemessen: `#messageTime` 7,6 s nach dem Start, Text leer).
+    const showingMessage = this.#messageTime > 0 && !!this.#message;
+    if ((this.action.hidden || carOnly) && !showingMessage && !inHall) {
       // Nichts in Reichweite: kein Banner. Die Wegweiser sagen, wo es was gibt.
       this.panel.hidden = true;
       return;
@@ -505,7 +516,7 @@ export class SakuraCommons implements System {
   }
 
   dispose(): void {
-    window.removeEventListener('keydown', this.#key);
+    window.removeEventListener('keydown', this.#key, { capture: true });
     this.panel.remove();
     this.#beacons?.dispose();
     this.#shutter.dispose();

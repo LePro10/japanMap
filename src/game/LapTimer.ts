@@ -153,7 +153,7 @@ export class LapTimer {
     this.readouts.runde = '—';
     this.readouts.letzteZeit = '—';
     this.readouts.beste = '—';
-    this.readouts.naechstesTor = this.#gates.length > 0 ? 'Start-Ziel' : '—';
+    this.readouts.naechstesTor = this.#gates.length > 0 ? 'Start / Finish' : '—';
   }
 
   /**
@@ -203,7 +203,7 @@ export class LapTimer {
       this.#splits = [];
       this.#elapsed = 0;
       this.readouts.runde = 'ungültig — versetzt';
-      this.readouts.naechstesTor = 'Start-Ziel';
+      this.readouts.naechstesTor = 'Start / Finish';
       return null;
     }
 
@@ -239,13 +239,13 @@ export class LapTimer {
       this.#splits = [];
       this.#next = this.#gates.length > 1 ? 1 : 0;
       this.readouts.runde = `${this.#laps.length + 1} läuft`;
-      this.readouts.naechstesTor = `Tor ${this.#next}`;
+      this.readouts.naechstesTor = `Gate ${this.#next}`;
       return ergebnis;
     }
 
     this.#splits.push(this.#elapsed);
     this.#next = (this.#next + 1) % this.#gates.length;
-    this.readouts.naechstesTor = this.#next === 0 ? 'Start-Ziel' : `Tor ${this.#next}`;
+    this.readouts.naechstesTor = this.#next === 0 ? 'Start / Finish' : `Gate ${this.#next}`;
     return null;
   }
 

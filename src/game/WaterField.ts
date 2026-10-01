@@ -4,7 +4,7 @@ import { PADDY_WATER } from '@/config/props.config';
 import { WATER_PHYS } from '@/config/vehicle.config';
 import { TERRAIN_ASSETS } from '@/world/terrainAssets';
 import { paddyDry } from '@/world/settlements/settlementLayout';
-import type { RiverFile } from '@/world/water/riverGeometry';
+import { riverSurface, type RiverFile } from '@/world/water/riverGeometry';
 import type { ResourceManager } from '@/core/ResourceManager';
 
 /**
@@ -55,6 +55,29 @@ export class WaterField {
   #riverMinZ = 0;
   #riverMaxZ = 0;
 
+  /** Spiegel je Knoten aus `riverSurface` — `NaN` = kein Wasser (Einschnitt). */
+  #riverSurf: Float32Array | null = null;
+  #riverSurfHalf: Float32Array | null = null;
+  #riverFile: RiverFile | null = null;
+  #ground: ((x: number, z: number) => number) | null = null;
+
+  /**
+   * Das Gelände nachreichen. Ohne es gilt der alte, feste Spiegel über dem
+   * Knoten; mit ihm derselbe, den das Bild zeichnet (`riverSurface`). Beide
+   * Reihenfolgen kommen vor — `load()` und `terrain:ready` laufen unabhängig.
+   */
+  setGround(heightAt: (x: number, z: number) => number): void {
+    this.#ground = heightAt;
+    this.#refreshSurface();
+  }
+
+  #refreshSurface(): void {
+    if (!this.#riverFile || !this.#ground) return;
+    const surface = riverSurface(this.#riverFile, this.#ground);
+    this.#riverSurf = surface.level;
+    this.#riverSurfHalf = surface.halfWidth;
+  }
+
   #paddy: Uint8Array | null = null;
   #paddyRes = 0;
   #paddyDepth = PADDY_WATER.depth;
@@ -80,6 +103,8 @@ export class WaterField {
       riverZ[i] = river.centerline[i * 3 + 2]!;
       riverHalf[i] = (river.halfWidths[i] ?? 4) * RIVER.widthFactor;
     }
+    this.#riverFile = river;
+    this.#refreshSurface();
     this.#riverX = riverX;
     this.#riverY = riverY;
     this.#riverZ = riverZ;
@@ -181,12 +206,14 @@ export class WaterField {
       }
     }
     if (bestI < 0) return false;
-    const reach = hs[bestI]! + 1.2;
+    const reach = (this.#riverSurfHalf?.[bestI] ?? hs[bestI]!) + 1.2;
     if (best > reach * reach) return false;
 
     // Tiefe gegen das Gelände, nicht gegen die Sohle: am Ufer steht man über
     // dem Spiegel, auch wenn der nächste Knoten nah ist.
-    const surfaceY = ys[bestI]! + RIVER.surfaceRise;
+    const level = this.#riverSurf?.[bestI];
+    if (level !== undefined && Number.isNaN(level)) return false;
+    const surfaceY = level ?? ys[bestI]! + RIVER.surfaceRise;
     const depth = surfaceY - groundY;
     if (depth <= WATER_PHYS.wetThreshold) return false;
     // **Und nicht tiefer als ein Bett** — P21. Die Suche oben kennt nur XZ; am

@@ -29,14 +29,40 @@ import {
 import {
   CONTROLS,
   DRIVE_CONTROLS,
+  TOUCH_CONTROLS,
   TOUCH_DRIVE_CONTROLS,
   controlTable,
+  hasTouch,
 } from "./controls";
 import { CAR_COPY, carPortrait } from "./carPresentation";
 import { SPARK_ICON, sparkMark } from "./sparkIcon";
 import { setGameInputSource } from "@/core/gameInput";
 import "./theme.css";
 import "./playerMenu.css";
+
+
+/** Grundtexte des Autos-Reiters — `openCommonsShop` überschreibt sie zeitweise. */
+const CARS_TITLE = "Find your line.";
+const CARS_NOTE =
+  "Ten original cars. Purchases use Sparks. Tune in Open Bay — Street and Sport are incremental buys on this car's own stock.";
+
+
+/**
+ * Die Belegung im Einstellungsmenü, **das eigene Gerät zuerst**.
+ *
+ * Vorher stand auf dem Desktop die Touch-Fahrtabelle ohne Überschrift unter
+ * der Tastatur, und ein Telefon bekam nur Tastaturtabellen — die Fußgänger-
+ * Tabelle für Finger (`TOUCH_CONTROLS`) kam nirgends vor (Review 2026-09).
+ */
+function controlsBlock(): string {
+  const keyboard =
+    `<h3>Keyboard · on foot</h3>${controlTable(CONTROLS, "keytable")}` +
+    `<h3>Keyboard · driving</h3>${controlTable(DRIVE_CONTROLS, "keytable")}`;
+  const touch =
+    `<h3>Touch · on foot</h3>${controlTable(TOUCH_CONTROLS, "keytable")}` +
+    `<h3>Touch · driving</h3>${controlTable(TOUCH_DRIVE_CONTROLS, "keytable")}`;
+  return hasTouch() ? touch + keyboard : keyboard + touch;
+}
 
 export interface QualityControl {
   readonly level: QualityKey;
@@ -275,12 +301,31 @@ export class PlayerUi {
     this.#el('[data-panel="cars"]').scrollTop = 0;
     this.#render();
   }
+  /**
+   * Den Autos-Reiter auf seinen Grundtext zurückstellen.
+   *
+   * `openCommonsShop` schreibt Titel und Hinweis für den Besuch bei Petal
+   * Motors / Open Bay um und rückt den Hinweis nach oben. Ohne Rückstellung
+   * blieb das für jeden späteren Besuch des Reiters stehen.
+   */
+  #resetCarsPanel(): void {
+    const panel = this.#el('[data-panel="cars"]');
+    this.#el('[data-panel="cars"] h1').textContent = CARS_TITLE;
+    const note = this.#el('[data-panel="cars"] .menu__garageNote');
+    note.textContent = CARS_NOTE;
+    panel.append(note);
+  }
   /** Die Veranstaltungstafel der Commons — das Menü, Liste der Rennen im Blick. */
   openEvents(): void {
     if (!this.#started) return;
     this.#show();
     if (document.pointerLockElement) document.exitPointerLock();
-    this.#el(".menu__hubHead").scrollIntoView({ block: "start" });
+    // **Nur das Panel scrollen.** `scrollIntoView` scrollte auch `.menu__box`
+    // (overflow: hidden) — der Kopf „CURRENT CAR" stand danach auf jedem
+    // Reiter abgeschnitten, und zurückscrollen konnte ihn niemand.
+    const head = this.#el(".menu__hubHead");
+    const panel = head.closest<HTMLElement>(".menu__panel");
+    if (panel) panel.scrollTop = head.offsetTop - panel.offsetTop;
   }
   get playing(): boolean {
     return this.#started && !this.#open && !this.#map && !this.#photo && !this.#garage;
@@ -288,10 +333,11 @@ export class PlayerUi {
   #show(): void {
     this.#open = true;
     this.#tab = "play";
+    this.#resetCarsPanel();
     if (this.#o.intro) {
       const running = this.#o.intro.running;
-      this.#el(".menu__intro .menu__tileTitle").textContent = running ? "Skip intro" : "Replay intro";
-      this.#el(".menu__intro .menu__tileMeta").textContent = running
+      this.#el(".menu__introTile .menu__tileTitle").textContent = running ? "Skip intro" : "Replay intro";
+      this.#el(".menu__introTile .menu__tileMeta").textContent = running
         ? "Straight to Sakura Commons"
         : "Jump, roll, drift, home";
     }
@@ -442,7 +488,13 @@ export class PlayerUi {
       return;
     }
     if (!this.#started || this.#photo || this.#garage) return;
-    if (event.code === "KeyM") {
+    // Wer in ein Textfeld tippt (Geheimcode), meint Buchstaben: „m" schaltete
+    // sonst auf die Karte und ein zweites „m" schloss das Menü.
+    const typing =
+      event.target instanceof HTMLInputElement ||
+      event.target instanceof HTMLTextAreaElement ||
+      event.target instanceof HTMLSelectElement;
+    if (event.code === "KeyM" && !typing) {
       if (this.#map) return;
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -618,7 +670,7 @@ export class PlayerUi {
             <span class="menu__tileTitle">Photo Mode</span>
             <span class="menu__tileMeta">Freeze the world</span>
           </button>
-          <button type="button" class="menu__intro menu__tile menu__tile--records" hidden>
+          <button type="button" class="menu__introTile menu__tile menu__tile--records" hidden>
             <span class="menu__tileKicker">First drive</span>
             <span class="menu__tileTitle">Replay intro</span>
             <span class="menu__tileMeta">Jump, roll, drift, home</span>
@@ -628,7 +680,7 @@ export class PlayerUi {
         <div class="menu__events"></div>
         <p class="menu__status" role="status"></p>
       </section>
-      <section class="menu__panel" data-panel="cars" hidden><p class="menu__eyebrow">YOUR GARAGE</p><h1>Find your line.</h1><div class="menu__switch"><button data-catalogue="owned">Owned</button><button data-catalogue="showroom">Showroom</button></div><div class="menu__carDetail"></div><div class="menu__cars"></div><p class="menu__note menu__garageNote">Ten original cars. Purchases use Sparks. Tune in Open Bay — Street and Sport are incremental buys on this car's own stock.</p></section>
+      <section class="menu__panel" data-panel="cars" hidden><p class="menu__eyebrow">YOUR GARAGE</p><h1>${CARS_TITLE}</h1><div class="menu__switch"><button data-catalogue="owned">Owned</button><button data-catalogue="showroom">Showroom</button></div><div class="menu__carDetail"></div><div class="menu__cars"></div><p class="menu__note menu__garageNote">${CARS_NOTE}</p></section>
       <section class="menu__panel menu__panel--map" data-panel="map" hidden>
         <div class="menu__mapDock" data-map-dock>
           <div class="menu__mapFallback">
@@ -642,7 +694,7 @@ export class PlayerUi {
       </section>
       <section class="menu__panel" data-panel="records" hidden><p class="menu__eyebrow">MAKE IT PERSONAL</p><h1>Your best moments.</h1><h2>Event records</h2><div class="menu__records"></div><p class="menu__note">Saved event bests appear here. Driving milestones, discoveries and the garage wall are not tracked yet.</p></section>
       <section class="menu__panel" data-panel="photo" hidden><p class="menu__eyebrow">KEEP THE VIEW</p><h1>Stay a little longer.</h1><div class="menu__photoHero" aria-hidden="true">＋</div><p class="menu__intro">Freeze the world, fly with WASD, Space and Shift, zoom with the wheel and keep a clean PNG. Return to exactly the view you left.</p><button class="menu__openPhoto">Enter Photo mode</button><p class="menu__note">Capture High fills trees and grass in view at cinema density, then puts your graphics preset back.</p></section>
-      <section class="menu__panel" data-panel="settings" hidden><p class="menu__eyebrow">MAKE YOURSELF AT HOME</p><h1>Settings</h1><details open><summary>Graphics</summary><div class="menu__levels"></div><p class="menu__effect"></p><details><summary>Custom graphics</summary><div class="menu__sliders"></div></details><button class="menu__reclassify">Recalibrate</button></details><details><summary>Audio</summary><button class="menu__mute">Sound on</button><label class="menu__row">Volume<input class="menu__volume" type="range" min="0" max="100" step="1" value="70" /></label></details><details><summary>Accessibility</summary><label class="menu__row">UI scale<select class="menu__scale"><option value="90">90%</option><option value="100" selected>100%</option><option value="115">115%</option><option value="130">130%</option></select></label><label class="menu__row">Speed units<select class="menu__units"><option value="kmh">km/h</option><option value="mph">mph</option></select></label><label class="menu__row">Reduced motion<input class="menu__motion" type="checkbox" /></label></details><details><summary>Controls</summary><h3>On foot</h3>${controlTable(CONTROLS, "keytable")}<h3>Driving</h3>${controlTable(DRIVE_CONTROLS, "keytable")}${controlTable(TOUCH_DRIVE_CONTROLS, "keytable")}<h3>Photo</h3><p>WASD fly, Space / Shift up / down, wheel zoom, drag to look. On a phone the on-screen pad remains. P opens Photo; Escape leaves it.</p></details><details><summary>Progress</summary><p class="menu__note">Event bests and owned cars use this browser's existing save. Sparks purchases and tuning are saved in this browser.</p></details></section>
+      <section class="menu__panel" data-panel="settings" hidden><p class="menu__eyebrow">MAKE YOURSELF AT HOME</p><h1>Settings</h1><details open><summary>Graphics</summary><div class="menu__levels"></div><p class="menu__effect"></p><details><summary>Custom graphics</summary><div class="menu__sliders"></div></details><button class="menu__reclassify" title="Measure this device again and pick the matching graphics preset">Auto-detect graphics</button></details><details><summary>Audio</summary><button class="menu__mute">Sound: On</button><label class="menu__row">Volume<input class="menu__volume" type="range" min="0" max="100" step="1" value="70" /></label></details><details><summary>Accessibility</summary><label class="menu__row">UI scale<select class="menu__scale"><option value="90">90%</option><option value="100" selected>100%</option><option value="115">115%</option><option value="130">130%</option></select></label><label class="menu__row">Speed units<select class="menu__units"><option value="kmh">km/h</option><option value="mph">mph</option></select></label><label class="menu__row">Reduced motion<input class="menu__motion" type="checkbox" /></label></details><details><summary>Controls</summary>${controlsBlock()}<h3>Photo</h3><p>WASD fly, Space / Shift up / down, wheel zoom, drag to look. On a phone the on-screen pad remains. P opens Photo; Escape leaves it.</p></details><details><summary>Progress</summary><p class="menu__note">Event bests and owned cars use this browser's existing save. Sparks purchases and tuning are saved in this browser.</p></details></section>
     </div>`;
     menu.querySelector('[data-panel="settings"] h1')?.insertAdjacentHTML(
       "afterend",
@@ -667,8 +719,8 @@ export class PlayerUi {
       el(".menu__status").textContent =
         this.#o.callCar?.() ?? "Call car is unavailable here.";
     };
-    el(".menu__intro").hidden = !this.#o.intro;
-    el(".menu__intro").onclick = () => {
+    el(".menu__introTile").hidden = !this.#o.intro;
+    el(".menu__introTile").onclick = () => {
       const intro = this.#o.intro;
       if (!intro) return;
       if (intro.running) intro.skip();
@@ -695,7 +747,7 @@ export class PlayerUi {
       const audio = this.#o.audio;
       if (audio) {
         audio.setMuted(!audio.muted);
-        el(".menu__mute").textContent = audio.muted ? "Sound off" : "Sound on";
+        el(".menu__mute").textContent = audio.muted ? "Sound: Off" : "Sound: On";
       }
     };
     const volume = el(".menu__volume") as HTMLInputElement;
@@ -831,12 +883,15 @@ export class PlayerUi {
   }
   #enterPhoto(): void {
     if (!this.#o.openPhoto || this.#photo) return;
+    // Mit P aus dem Spiel geöffnet, führt Verlassen ins Spiel zurück — so wie
+    // die Karte (M). Vorher landete man dann im Pausenmenü, das nie offen war.
+    const fromGame = !this.#open;
     this.#photo = true;
     this.#open = false;
     this.#render();
     this.#o.openPhoto((resume) => {
       this.#photo = false;
-      if (resume) {
+      if (resume || fromGame) {
         this.#resume();
         return;
       }
@@ -1117,8 +1172,8 @@ export class PlayerUi {
         input.dispatchEvent(new Event("input"));
     }
     this.#el(".menu__mute").textContent = this.#o.audio?.muted
-      ? "Sound off"
-      : "Sound on";
+      ? "Sound: Off"
+      : "Sound: On";
   }
   #el(selector: string): HTMLElement {
     const element = this.#menu.querySelector<HTMLElement>(selector);

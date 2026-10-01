@@ -14,6 +14,7 @@ import {
 import { TERRAIN_ASSETS } from './terrainAssets';
 import {
   buildRiverGeometry,
+  riverSurface,
   type RiverFile,
   type RiverGeometryReport,
 } from './water/riverGeometry';
@@ -81,7 +82,7 @@ export class WaterSystem implements System {
     this.#context = context;
     this.#camera = context.camera;
 
-    context.bus.on('terrain:ready', ({ height }) => {
+    context.bus.on('terrain:ready', ({ height, sampler }) => {
       const uniforms = createWaterUniforms();
       this.#uniforms = uniforms;
 
@@ -104,7 +105,7 @@ export class WaterSystem implements System {
       context.scene.add(mesh);
       this.#applyDetail();
       this.#registerDebug(context);
-      void this.#addRiver(context, height);
+      void this.#addRiver(context, height, (x, z) => sampler.getHeightAt(x, z));
     });
 
     // **Die Nahkräuselung hängt an der Stufe und wird beim Anlegen nachgezogen.**
@@ -186,7 +187,11 @@ export class WaterSystem implements System {
    * dagegen *im* Gelände und wird von Vegetation überstreut — ohne
    * Tiefenschreiben stünden Grashalme, die hinter dem Wasser liegen, davor.
    */
-  async #addRiver(context: EngineContext, height: TerrainHeightUniforms): Promise<void> {
+  async #addRiver(
+    context: EngineContext,
+    height: TerrainHeightUniforms,
+    heightAt: (x: number, z: number) => number,
+  ): Promise<void> {
     let file: RiverFile;
     try {
       const response = await fetch(TERRAIN_ASSETS.river);
@@ -200,7 +205,7 @@ export class WaterSystem implements System {
       return;
     }
 
-    const { geometry, report } = buildRiverGeometry(file);
+    const { geometry, report } = buildRiverGeometry(file, riverSurface(file, heightAt));
     this.#riverReport = report;
 
     const uniforms = createWaterUniforms();

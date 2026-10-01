@@ -1115,6 +1115,9 @@ function carveRoads(height, res, spacing, roadFile) {
     // Wird von den Reisfeld-Terrassen gebraucht: eine Parzelle, die bis an die
     // Achse heranreicht, hübe die Fahrbahn mit an.
     roadDistance,
+    // Und vom Stadtplateau (`padCity`) — dieselbe Frage eine Stufe später.
+    roadHalfWidth,
+    roadEmbankment,
   };
 }
 
@@ -1658,9 +1661,13 @@ function carveRiver(height, res, spacing, traceField) {
  * wird sie überschrieben. Die Fahrbahn selbst bleibt, wo sie ist — sie ist
  * Geometrie, kein Höhenfeld.
  */
-function padCity(height, res, spacing, box = CITY_DISTRICT) {
+/** Bis zu dieser Dammhöhe über dem Plateau behält eine Straße ihre Böschung, in Metern. */
+const ROAD_KEEP_FILL = 4;
+
+function padCity(height, res, spacing, box = CITY_DISTRICT, roads = null) {
   const half = (res - 1) * spacing * 0.5;
   let touched = 0;
+  let protectedRoad = 0;
   let lowered = 0;
   let raised = 0;
   let deepest = 0;
@@ -1675,7 +1682,33 @@ function padCity(height, res, spacing, box = CITY_DISTRICT) {
 
       const index = j * res + i;
       const before = height[index];
-      const after = before + (CITY_PAD_Y - before) * blend;
+      let after = before + (CITY_PAD_Y - before) * blend;
+      // **Die Ausfallstraßen nicht wieder zuschütten** (Review 2026-09).
+      // Dieser Schritt läuft nach dem Einschnitt; im 60-m-Auslauf zog er jedes
+      // Straßenbett zurück Richtung 29 m. Gemessen lag danach Gras bis 3,21 m
+      // über der Fahrbahn (`rain-garden-drive`), 1,91 m (`market-street`) und
+      // 0,82 m auf der Zufahrt von Sakura Commons — das Auto fuhr im Hang.
+      // Im Auslauf behält deshalb der Korridor, was der Einschnitt gesetzt hat,
+      // mit derselben Kosinus-Gewichtung wie dort. Im Kern (blend = 1) gilt
+      // weiter die Platte.
+      if (roads && blend < 1) {
+        const distance = roads.roadDistance[index];
+        if (Number.isFinite(distance)) {
+          const halfWidth = roads.roadHalfWidth[index];
+          const t = distance <= halfWidth ? 0 : (distance - halfWidth) / roads.roadEmbankment[index];
+          // **Einschnitte immer, Dämme nur bis `ROAD_KEEP_FILL`.** Ein hoher
+          // Damm im Auslauf ist die Rampe der Ring-Hochstraße (bis 30,9 m bei
+          // 960 | −280) — ihn stehen zu lassen, baute eine Erdwand unter die
+          // Hochstraße, die dort seitdem Deck und Pfeiler trägt
+          // (`ViaductSystem`). Niedrige Böschungen (2…4 m an west-works,
+          // yasukuni) bleiben; auf ihnen lag die Fahrbahn vorher in der Luft.
+          if (t < 1 && before - after <= ROAD_KEEP_FILL) {
+            const keep = t <= 0 ? 1 : 0.5 * (1 + Math.cos(Math.PI * t));
+            after += (before - after) * keep;
+            protectedRoad++;
+          }
+        }
+      }
       height[index] = after;
 
       touched++;
@@ -1690,7 +1723,7 @@ function padCity(height, res, spacing, box = CITY_DISTRICT) {
     }
   }
 
-  return { touched, lowered, raised, deepest, highest };
+  return { touched, protectedRoad, lowered, raised, deepest, highest };
 }
 
 // ── Schritt 5c: Reisfeld-Terrassen ───────────────────────────────────────────
@@ -2241,11 +2274,18 @@ async function main() {
   // Neo-Tokio: im sauberen Feld nur der alte 360-m-Kasten, damit gen-roads den
   // Ring auf bitgleichem Gelände trassiert (siehe LEGACY_PAD_DISTRICT). Der neue
   // 1-km-Kern kommt erst im echten Bake, nach dem Einschneiden.
-  const cityReport = padCity(height, res, spacing, opts['no-roads'] ? LEGACY_PAD_DISTRICT : CITY_DISTRICT);
+  const cityReport = padCity(
+    height,
+    res,
+    spacing,
+    opts['no-roads'] ? LEGACY_PAD_DISTRICT : CITY_DISTRICT,
+    roadReport,
+  );
   console.log(
     c.green('fertig') +
       c.dim(
         ` ${cityReport.touched.toLocaleString('de-DE')} Texel auf ${CITY_PAD_Y} m · ` +
+          `${cityReport.protectedRoad.toLocaleString('de-DE')} Straßenkorridor geschützt · ` +
           `${cityReport.lowered.toLocaleString('de-DE')} abgetragen (bis ${cityReport.deepest.toFixed(2)} m) · ` +
           `${cityReport.raised.toLocaleString('de-DE')} aufgefüllt (bis +${cityReport.highest.toFixed(2)} m)`,
       ),

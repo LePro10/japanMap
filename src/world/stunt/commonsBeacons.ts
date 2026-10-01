@@ -26,11 +26,40 @@ export interface Beacon {
 }
 
 const NEAR_FADE = 5.5;
+/** Abstand zum Bildrand in Pixeln. */
+const EDGE_PAD = 8;
+/**
+ * HUD-Flächen, die eine Marke nicht überdecken darf. Die Liste nennt, was im
+ * Review 2026-09 tatsächlich überdeckt wurde (Aktionshinweis, Regionskarte,
+ * Kontostand, Minikarte, Touch-Knöpfe).
+ */
+const BLOCKERS = [
+  '.commons-prompt:not([hidden])',
+  '.city-discovery:not([hidden])',
+  '.hud:not([hidden]) .hud__money',
+  '.hud:not([hidden]) .hud__nav',
+  '.hud:not([hidden]) .hud__prompt',
+  '.touch:not([hidden]) button',
+];
+
+interface Rect { l: number; t: number; r: number; b: number }
+interface Item { beacon: Beacon; el: HTMLElement; dist: HTMLElement; w: number; h: number; d: number }
+
+const clamp = (v: number, lo: number, hi: number): number => (hi < lo ? (lo + hi) / 2 : Math.min(hi, Math.max(lo, v)));
+
+function overlapsAny(a: Rect, list: readonly Rect[]): boolean {
+  for (const b of list) {
+    if (a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t) return true;
+  }
+  return false;
+}
 const FAR = 95;
 
 export class CommonsBeacons {
   readonly #root = document.createElement('div');
-  readonly #items: { beacon: Beacon; el: HTMLElement; dist: HTMLElement }[] = [];
+  readonly #items: Item[] = [];
+  /** Dieselben Einträge, nach Entfernung sortiert — eine Liste, kein Neuanlegen je Frame. */
+  readonly #order: Item[] = [];
   readonly #p = new Vector3();
 
   constructor(container: HTMLElement, beacons: readonly Beacon[]) {
@@ -41,7 +70,9 @@ export class CommonsBeacons {
       el.className = `commons-beacon commons-beacon--${beacon.tone}`;
       el.innerHTML = `<strong>${beacon.title}</strong><span>${beacon.sub}</span><em></em><i></i>`;
       this.#root.append(el);
-      this.#items.push({ beacon, el, dist: el.querySelector('em')! });
+      const item: Item = { beacon, el, dist: el.querySelector('em')!, w: 0, h: 0, d: 0 };
+      this.#items.push(item);
+      this.#order.push(item);
     }
     container.append(this.#root);
   }
@@ -61,8 +92,28 @@ export class CommonsBeacons {
     this.#root.classList.toggle('is-on', visible);
     if (!visible || width === 0) return;
     camera.updateMatrixWorld();
-    for (const { beacon, el, dist } of this.#items) {
-      const d = Math.hypot(beacon.x - px, beacon.z - pz);
+    // **Erst lesen, dann schreiben.** Maße und Hindernisse in einem Durchgang
+    // abfragen — dazwischen geschriebene Transformationen lösen kein Layout aus,
+    // ein Lesen nach `textContent` dagegen schon, und das je Etikett.
+    const origin = this.#root.getBoundingClientRect();
+    const blockers: Rect[] = [];
+    for (const selector of BLOCKERS) {
+      for (const node of this.#root.ownerDocument.querySelectorAll<HTMLElement>(selector)) {
+        const r = node.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) continue;
+        blockers.push({ l: r.left - origin.left, t: r.top - origin.top, r: r.right - origin.left, b: r.bottom - origin.top });
+      }
+    }
+    for (const item of this.#items) {
+      item.w = item.el.offsetWidth;
+      item.h = item.el.offsetHeight;
+      item.d = Math.hypot(item.beacon.x - px, item.beacon.z - pz);
+    }
+    // Die nähere Marke gewinnt einen Platz — sie ist die, auf die man zufährt.
+    this.#order.sort((a, b) => a.d - b.d);
+    const placed: Rect[] = [];
+    for (const item of this.#order) {
+      const { beacon, el, dist, d } = item;
       this.#p.set(beacon.x, beacon.y, beacon.z).project(camera);
       // Hinter der Kamera spiegelt `project` x/y — dort gibt es nichts zu zeigen.
       const ahead = this.#p.z < 1;
@@ -71,19 +122,34 @@ export class CommonsBeacons {
       // Sichtfelds — ohne Randmarke wüsste der Spieler nicht, dass es sie gibt.
       const edge = ahead && Math.abs(this.#p.x) > 0.9;
       const fade = d < NEAR_FADE ? 0 : d < NEAR_FADE + 3 ? (d - NEAR_FADE) / 3 : d > FAR ? 0 : 1;
-      const alpha = ahead && Math.abs(this.#p.y) < 1.1 ? fade * (edge ? 0.8 : 1) : 0;
-      el.style.opacity = alpha.toFixed(2);
+      let alpha = ahead && Math.abs(this.#p.y) < 1.1 ? fade * (edge ? 0.8 : 1) : 0;
       el.classList.toggle('is-edge-left', edge && this.#p.x < 0);
       el.classList.toggle('is-edge-right', edge && this.#p.x > 0);
-      if (alpha <= 0) continue;
-      const nx = edge ? Math.sign(this.#p.x) * 0.84 : this.#p.x;
-      const x = (nx * 0.5 + 0.5) * width;
-      const y = (-Math.max(-0.2, this.#p.y) * 0.5 + 0.5) * height;
-      // Nähere Etiketten etwas größer — Tiefe ohne 3D-Text.
-      const s = Math.max(0.78, Math.min(1.08, 1.12 - d / 140));
-      el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%) scale(${s.toFixed(3)})`;
-      el.style.zIndex = String(1000 - Math.round(d));
-      dist.textContent = `${Math.round(d)} m`;
+      if (alpha > 0) {
+        // Nähere Etiketten etwas größer — Tiefe ohne 3D-Text.
+        const s = Math.max(0.78, Math.min(1.08, 1.12 - d / 140));
+        const w = item.w * s;
+        const h = item.h * s;
+        const nx = edge ? Math.sign(this.#p.x) * 0.84 : this.#p.x;
+        // **Im Bild halten.** Am Rand geklebte Marken ragten zur Hälfte hinaus
+        // (Petal Motors bei x −13 auf 390 px), und oben liefen sie in den
+        // Bildrand, sobald der Ort über dem Horizont lag.
+        const x = clamp((nx * 0.5 + 0.5) * width, w / 2 + EDGE_PAD, width - w / 2 - EDGE_PAD);
+        const y = clamp((-Math.max(-0.2, this.#p.y) * 0.5 + 0.5) * height, h + EDGE_PAD, height - EDGE_PAD);
+        const rect: Rect = { l: x - w / 2, t: y - h, r: x + w / 2, b: y };
+        // **Nichts überdecken.** Im Review lag „Event Board" über dem
+        // Aktionshinweis, „Open Bay" im Kontostand und auf dem Telefon Marken
+        // über Minikarte und ⟲. Eine Marke, die gerade keinen Platz hat, setzt
+        // aus — die nächste Kopfdrehung bringt sie zurück.
+        if (overlapsAny(rect, placed) || overlapsAny(rect, blockers)) alpha = 0;
+        else {
+          placed.push(rect);
+          el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%) scale(${s.toFixed(3)})`;
+          el.style.zIndex = String(1000 - Math.round(d));
+          dist.textContent = `${Math.round(d)} m`;
+        }
+      }
+      el.style.opacity = alpha.toFixed(2);
     }
   }
 

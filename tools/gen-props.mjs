@@ -488,10 +488,16 @@ async function main() {
   // Laternenpaare flankieren den Weg. 2,6 m Versatz und nicht 4,5 wie vor 8.9:
   // der Pfad ist 1,8 m breit, und Laternen 9 m auseinander stehen nicht mehr
   // an einem Weg, sondern auf einer Wiese.
+  //
+  // > **3,4 m seit dem Review 2026-09.** Mit 2,6 m und 0,45 m Kollisionsradius
+  // > blieben 4,3 m Lücke; Lastwagen und Geländewagen standen dort fest (3 s
+  // > Vollgas, 0 km/h). 3,4 m lassen 5,9 m und stehen noch am Weg. Im
+  // > eingecheckten `props.json` von Hand nachgezogen — ein Neulauf dieses
+  // > Generators verschiebt heute rund 2000 Zeilen anderswo.
   for (let i = 0; i < 10; i++) {
     const d = 28 + i * 13;
     for (const side of [-1, 1]) {
-      onSando('stoneLantern', d, side * 2.6, 0.9 + rng() * 0.2, [0.52, 0.45], rng() * 360);
+      onSando('stoneLantern', d, side * 3.4, 0.9 + rng() * 0.2, [0.52, 0.45], rng() * 360);
     }
   }
 

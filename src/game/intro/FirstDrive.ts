@@ -44,6 +44,10 @@ const KEY_W: IntroKey = { key: 'W', touch: 'Gas' };
 const KEY_SHIFT: IntroKey = { key: 'Shift', touch: 'Boost' };
 const KEY_SPACE: IntroKey = { key: 'Space', touch: 'Drift' };
 
+
+/** Sekunden im Nitro-Schritt, nach denen es ohne Absprung weitergeht. */
+const INTRO_NITRO_STALL = 7;
+
 export interface FirstDriveHooks {
   readonly drive: DriveSystem;
   readonly loop: RenderLoop;
@@ -170,6 +174,19 @@ export class FirstDrive implements System {
     this.#h.onFinished(true, this.#earned);
   }
 
+  /**
+   * Still beenden — ohne Absetzen zu Fuß und ohne Willkommenskarte.
+   *
+   * Für eine Veranstaltung, die aus dem Menü mitten im Intro startet: sie
+   * setzt den Wagen selbst an die Startlinie. `skip()` würde den Spieler
+   * zuerst aussteigen lassen und danach die Karte über das Rennen legen.
+   */
+  abort(): void {
+    if (this.#beat === 'off') return;
+    this.#teardown();
+    this.#markSeen();
+  }
+
   /** Die Commons meldet: der Wagen rollt in die Open Bay. */
   enteredBay(): void {
     if (this.#beat !== 'home') return;
@@ -254,9 +271,12 @@ export class FirstDrive implements System {
             hint: this.#ui.touch ? 'Tap Drift twice in the air' : 'Space twice in the air',
             big: true,
           });
-        } else if (along > 30 && !tel.airborne) {
+        } else if ((along > 30 || this.#t > INTRO_NITRO_STALL) && !tel.airborne) {
           // Schanze verpasst (vorbeigelenkt oder zu langsam) — ohne Zeitlupe
-          // weiter, statt den Spieler zurückzusetzen.
+          // weiter, statt den Spieler zurückzusetzen. **Auch nach einer Frist:**
+          // wer vor der Schanze im Grünstreifen steht, kommt nie 30 m hinter die
+          // Kante, und der Nitro-Hinweis stand im Review 8 s und länger — nur
+          // Tab-Halten führte heraus.
           this.#ui.cinema(false);
           this.#ui.step(3);
           this.#beginDrift();

@@ -152,8 +152,16 @@ export class RenderLoop {
   #frame(now: number): void {
     this.#handlers.beginFrame();
 
-    const rawDt = (now - this.#lastTime) / 1000;
-    this.#lastTime = now;
+    // **Nie rückwärts.** `resetClock()` und `tick()` setzen die Uhr mit
+    // `performance.now()`, die Schleife selbst bekommt den rAF-Zeitstempel —
+    // und der ist der Beginn des Frames, nicht der Zeitpunkt des Aufrufs. Lief
+    // im selben rAF-Durchgang vorher eine lange Aufgabe mit anschließendem
+    // `resetClock()` (Aufwärmen, Teleport zur Startlinie), kam dieser Frame mit
+    // einem um Sekunden **älteren** Zeitstempel an. Gemessen (Review 2026-09):
+    // Akkumulator −7 s, `alpha` −419 — kein einziger fester Schritt, der
+    // Countdown stand nach „Start drive" 6 bis 20 s still, das Auto auch.
+    const rawDt = Math.max(0, (now - this.#lastTime) / 1000);
+    this.#lastTime = Math.max(this.#lastTime, now);
 
     // Zeit, die maximal simuliert wird. Alles darüber wird verworfen: lieber
     // Zeitlupe als eine Frame-Lawine.

@@ -100,7 +100,19 @@ try {
   const bootMs = await page.evaluate(() => performance.now());
   ok('Zeit bis zum Startknopf', `${(bootMs / 1000).toFixed(2)} s`);
 
-  await page.click('.start__button');
+  // **Erst auf „bereit" warten, dann klicken.** `StartScreen.#onClick` verwirft
+  // jeden Klick vor `engine:warmedup` still — der Knopf steht schon im DOM,
+  // ist aber noch unsichtbar. Die Probe klickte dort hinein und lief nach 30 s
+  // in die Zeitschranke, ohne dass an der Seite etwas kaputt war.
+  await page.waitForFunction(
+    () => document.querySelector('[data-phase="bereit"]') !== null,
+    undefined,
+    { timeout: 120_000 },
+  );
+  await page.evaluate(() => document.querySelector('.start__button')?.click());
+  await page.waitForFunction(() => document.querySelector('.start__button') === null, undefined, {
+    timeout: 30_000,
+  });
   await page.waitForTimeout(1500);
   await page.evaluate((b) => {
     window.__smokeBase = b;

@@ -12,7 +12,7 @@ import {
 
 import { CITY, CITY_GROUND_Y, CITY_ROAD_LEVEL } from '@/config/city.config';
 import type { QualityKey } from '@/config/quality.config';
-import { SCRAMBLE } from '@/config/tokyoLayout.mjs';
+import { INTERIOR_SITES, SCRAMBLE } from '@/config/tokyoLayout.mjs';
 import type { EngineContext, System } from '@/core/System';
 import type { DriveSystem } from '@/game/DriveSystem';
 import { SettlementKit } from '../settlements/SettlementKit';
@@ -53,6 +53,10 @@ interface Chunk {
   readonly group: Group;
 }
 
+
+/** Freihalteabstand um die begehbaren Läden (`INTERIOR_SITES`), in Metern. */
+const INTERIOR_KEEP = 4;
+
 export class TokyoStreetFurnitureSystem implements System {
   readonly name = 'TokyoStreetFurnitureSystem';
   readonly group = new Group();
@@ -61,6 +65,11 @@ export class TokyoStreetFurnitureSystem implements System {
   #range = RANGE.high;
   readonly #materials: (MeshStandardMaterial | MeshBasicMaterial | LineBasicMaterial)[] = [];
   readonly #readouts = { moebel: '—' };
+  /**
+   * Stämme der Alleebäume als x, z — für die Fußgänger, die sonst mitten
+   * durch einen Stamm liefen (Review 2026-09, Nahbild an der Aoi-dōri).
+   */
+  readonly trunks: number[] = [];
 
   constructor(private readonly drive: DriveSystem, private readonly city: CitySystem) {}
 
@@ -111,6 +120,26 @@ export class TokyoStreetFurnitureSystem implements System {
       return hit ? hit.distance - hit.width / 2 : 30;
     };
 
+    /**
+     * Lichte Höhe unter einer Hochstraße an dieser Stelle, in Metern über dem
+     * Gehweg — `Infinity`, wenn nichts darüber liegt.
+     *
+     * **Masten stachen durch die Ring-Hochstraße.** Die Möbel folgen den
+     * Bordsteinen der Straßenebene und wussten nichts von der zweiten Ebene:
+     * eine 9-m-Laterne bei (921,9 | 73,3) ragte 2,5 m durch die Fahrbahn des
+     * Rings, und ihr Kollisionszylinder hielt dort jedes Auto an (Review
+     * 2026-09: alle fünf gefahrenen Wagen standen an derselben Stelle). Die
+     * Straßensuche filtert je `yRef` nur ±`ROAD_LAYER_SPAN`; deshalb vier
+     * Höhenbänder bis 34 m über dem Gehweg.
+     */
+    const headroom = (x: number, z: number): number => {
+      for (const rise of [5, 13, 21, 29]) {
+        const hit = roads.closestPoint(x, z, 24, y + rise);
+        if (hit && hit.y > y + 2 && hit.distance < hit.width / 2 + 2) return hit.y - y;
+      }
+      return Infinity;
+    };
+
     for (const loop of this.city.curbLines) {
       // Dicht abtasten: alle 1 m ein Punkt mit Richtung und Innennormale.
       const pts: { x: number; z: number; tx: number; tz: number; nx: number; nz: number; turn: number }[] = [];
@@ -154,6 +183,20 @@ export class TokyoStreetFurnitureSystem implements System {
         if (!due) continue;
         const width = widthAt(p.x, p.z);
         if (width <= 0) continue;
+        // Unter einer Hochstraße steht nichts Hohes — auch keine Leitung, die
+        // vom letzten Mast durch das Deck zum nächsten hinge.
+        // Vor den begehbaren Läden nichts aufstellen: ein Alleebaum stand bei
+        // (578 | 49) mitten vor der Tür des Minimarkts (Review 2026-09).
+        if (INTERIOR_SITES.some((site) =>
+          p.x > site.minX - INTERIOR_KEEP && p.x < site.maxX + INTERIOR_KEEP &&
+          p.z > site.minZ - INTERIOR_KEEP && p.z < site.maxZ + INTERIOR_KEEP)) {
+          lastPole = null;
+          continue;
+        }
+        if (headroom(p.x, p.z) < 10) {
+          lastPole = null;
+          continue;
+        }
 
         // Ampel an der Ecke einer Straße ab 10 m.
         if (corner && width >= 10) {
@@ -187,6 +230,7 @@ export class TokyoStreetFurnitureSystem implements System {
             c.solid.box(tx, y + 0.06, tz, 1.4, 0.12, 1.4, 0x4a4640);
             tree(c.solid, tx, y, tz, 0.95 + random() * 0.25, random);
             collision.addCylinder(tx, tz, 0.22, y - 0.5, y + 3);
+            this.trunks.push(tx, tz);
             count.baeume++;
           }
         }

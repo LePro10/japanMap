@@ -48,6 +48,8 @@ import { QualitySystem } from './render/QualitySystem';
 import { CitySystem } from './world/city/CitySystem';
 import { CityExperienceSystem } from './world/city/CityExperienceSystem';
 import { TokyoLandmarkSystem } from './world/city/TokyoLandmarkSystem';
+import { ViaductSystem } from './world/roads/ViaductSystem';
+import { CityPedestrians } from './world/city/CityPedestrians';
 import { TokyoOpenSpaceSystem } from './world/city/TokyoOpenSpaceSystem';
 import { TokyoStreetFurnitureSystem } from './world/city/TokyoStreetFurnitureSystem';
 import { SmashableSystem } from './world/props/SmashableSystem';
@@ -522,6 +524,7 @@ async function boot(): Promise<void> {
   // System. Der Fehler wäre erst zur Laufzeit aufgefallen — `typecheck` sieht
   // ihn nicht.
   const hud = new DriveHud(overlay);
+  hud.onPromptTap = () => drive.toggleVehicle();
   const bestTimes = new BestTimes();
   const profile = new Profile();
   drive.setCanTeleport(() => profile.sandbox);
@@ -598,8 +601,13 @@ async function boot(): Promise<void> {
   // Der Kontrollpunkt-Ton kommt aus `AudioSystem` selbst (Glocke) — hier stand
   // bis zur Tonschicht 2 zusätzlich ein Klick, und beide spielten übereinander.
 
+  // `lap` ist die Zahl der **vollendeten** Runden. Gezeigt wird die, die jetzt
+  // beginnt — „LAP 1" nach der ersten Runde hieß, man fange von vorn an. Nach
+  // der letzten Runde entscheidet der Zieleinlauf, dort blitzt nichts.
   engine.bus.on('race:lap', ({ lap }) => {
-    hud.flash(`LAP ${lap}`, false);
+    const laps = drive.race.event?.laps ?? 1;
+    if (lap >= laps) return;
+    hud.flash(lap + 1 === laps ? 'FINAL LAP' : `LAP ${lap + 1} / ${laps}`, false);
   });
 
   engine.bus.on('race:finished', (result) => {
@@ -636,6 +644,10 @@ async function boot(): Promise<void> {
         rows.join('') +
         `<button class="hud__resultButton" data-close type="button">Continue</button>`,
       () => {
+        // Nur die **eigene** Veranstaltung abräumen. Wer inzwischen eine neue
+        // gestartet hat, darf sie nicht mit dem Wegklicken der alten Tafel
+        // verlieren.
+        if (drive.race.state !== 'finished') return;
         drive.race.clear();
         hud.hideRace();
       },
@@ -714,6 +726,12 @@ async function boot(): Promise<void> {
         hud.hideRace();
       }
       if (race.state === 'idle') hud.setGate(drive.laps.readouts.naechstesTor);
+      // Im Rennen stand hier die letzte Anzeige der freien Runde weiter
+      // („Start / Finish") — eine Zahl einer anderen Zählung.
+      else if (race.state === 'running') {
+        const left = race.checkpointsLeft;
+        hud.setGate(left === 1 ? '1 checkpoint left' : `${left} checkpoints left`);
+      }
 
       // ── Minikarte und Richtungspfeil — P25 ───────────────────────────
       //
@@ -910,10 +928,13 @@ async function boot(): Promise<void> {
   engine.add(new CityExperienceSystem(drive, city, quality, overlay));
   // Neo-Tokio: Scramble, Videowände, Hochbahn, Tor, Turm (docs/TOKYO.md, Phase 4).
   engine.add(new TokyoLandmarkSystem(drive));
+  engine.add(new ViaductSystem(drive));
   // Neo-Tokio v2: Parks, Schrein, Plätze und Münzparkplätze in den Lücken des Generators.
   engine.add(new TokyoOpenSpaceSystem(drive, city));
   // Laternen, Alleebäume, Masten mit Leitungen und Ampeln entlang der Bordsteine.
-  engine.add(new TokyoStreetFurnitureSystem(drive, city));
+  const furniture = new TokyoStreetFurnitureSystem(drive, city);
+  engine.add(furniture);
+  engine.add(new CityPedestrians(drive, city, furniture));
   const smashables = new SmashableSystem(drive);
   engine.add(smashables);
 
@@ -1081,11 +1102,21 @@ async function boot(): Promise<void> {
       bestOf: (id) => profile.bestOf(id),
       driftBestOf: (id) => profile.driftBestOf(id),
       get runningEvent() {
-        return drive.race.state === 'idle' ? null : (drive.race.event?.id ?? null);
+        // Eine **beendete** Veranstaltung läuft nicht mehr — sonst bot das Menü
+        // nach dem Zieleinlauf „Leave event" für ein Rennen an, das vorbei ist.
+        const state = drive.race.state;
+        return state === 'idle' || state === 'finished' ? null : (drive.race.event?.id ?? null);
       },
       start: (id) => {
         const event = findEvent(id);
-        if (event) drive.startEvent(event);
+        if (!event) return;
+        // Eine stehengebliebene Zieltafel und ein laufendes Intro gehören der
+        // Zeit **vor** dieser Veranstaltung. Das Intro zwang sonst weiter Vollgas
+        // und Lenkung zur Intro-Schanze — mitten im Rennen.
+        hud.closeResult();
+        if (drive.race.state === 'finished') drive.race.clear();
+        if (intro.running) intro.abort();
+        drive.startEvent(event);
       },
       abort: () => {
         drive.abortEvent();

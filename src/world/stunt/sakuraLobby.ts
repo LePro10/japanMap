@@ -118,6 +118,35 @@ export function buildSakuraLobby(
     glow.cylinder(pad.x, petalY + 3.55, pad.z, 0.22, 0.08, GOLD);
   }
   buildCollectionWall(kit, P.x, petalY, P.z, P.w, P.d);
+  // **Stufen vor der Tür** (Review 2026-09). Der Boden des Showrooms folgt dem
+  // höchsten Punkt seines Grundrisses; am Hang lag die Tür zur Commons hin
+  // 1…1,5 m über dem Gelände, ohne Aufgang — die beiden Verkäufer standen
+  // unten davor. Die Stufenzahl folgt der gemessenen Höhe, die Lauffläche ist
+  // eine schiefe Ebene darüber, damit die Figur die Treppe hinaufgeht.
+  {
+    const front = P.z + P.d / 2;
+    const width = 4.2 + 1.2;
+    const rise = petalY - Math.min(
+      height(P.x - width / 2, front + 1.2), height(P.x + width / 2, front + 1.2), height(P.x, front + 1.2),
+    );
+    if (rise > 0.22) {
+      const steps = Math.ceil(rise / 0.18);
+      const tread = 0.36;
+      const run = steps * tread;
+      for (let i = 0; i < steps; i++) {
+        const top = petalY - (i * rise) / steps;
+        const z = front + tread * (i + 0.5);
+        // Jede Stufe reicht bis unter das Gelände: am Hang keine Lücke darunter.
+        const bottom = Math.min(height(P.x - width / 2, z), height(P.x + width / 2, z)) - 0.3;
+        kit.box(P.x, (top + bottom) / 2, z, width, top - bottom, tread + 0.02, STONE);
+      }
+      const end = front + run;
+      floors.quad(
+        [P.x - width / 2, petalY, front - 0.05], [P.x + width / 2, petalY, front - 0.05],
+        [P.x + width / 2, petalY - rise, end], [P.x - width / 2, petalY - rise, end],
+      );
+    }
+  }
 
   buildFloorSkirt(kit, B.x, B.z, B.w + 0.8, B.d + 0.8, bayY, height, STONE);
   slab(B.x, B.z, B.w, B.d, bayY, CONCRETE);

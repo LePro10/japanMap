@@ -35,6 +35,11 @@
 .commons-welcome li::before { content: ''; width: 10px; height: 10px; margin-top: 4px; border-radius: 50%; background: var(--tone, var(--amber, #e8ba7f)); box-shadow: 0 0 10px var(--tone, var(--amber, #e8ba7f)); }
 .commons-welcome li b { display: block; font-weight: 800; }
 .commons-welcome li span { color: var(--paper-dim, #b7c4c8); font-size: 13px; }
+/* Drei Rasterkinder (::before, <b>, <span>) auf zwei Spalten: ohne feste
+   Spalte rutschte <span> in die 12-px-Punktspalte, der Text brach nach jedem
+   Wort um, und die Karte wurde 962 px hoch — „Let's go" lag unter dem Rand. */
+.commons-welcome li b, .commons-welcome li span { grid-column: 2; }
+.commons-welcome li::before { grid-row: 1 / span 2; }
 .commons-welcome kbd { padding: 1px 5px; border: 1px solid color-mix(in srgb, var(--paper, #f6efe4) 35%, transparent); border-radius: 3px; font: 700 11px/1.3 var(--display, system-ui); }
 .commons-welcome button { width: 100%; min-height: 42px; border: 0; border-radius: 3px; background: var(--amber, #e8ba7f); color: var(--ink, #06141a); font: 800 14px/1 var(--display, system-ui); letter-spacing: 0.04em; cursor: pointer; }
 @media (max-width: 720px) { #overlay > .commons-welcome { right: 50%; top: auto; bottom: 16px; transform: translate(50%, 20px); } #overlay > .commons-welcome.is-on { transform: translate(50%, 0); } .commons-welcome ul { gap: 6px; } .commons-welcome h2 { font-size: 21px; } }

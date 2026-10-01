@@ -37,13 +37,18 @@ export const VIEWPOINTS: Readonly<Record<string, Viewpoint>> = {
     note: 'Die Stadt von der Ringstraße aus, südöstlich — der Blick der Phase.',
   },
   'stadt-strasse': {
-    position: [620, 32, 268],
-    lookAt: [620, 40, 60],
+    // Seit dem Tokyo-Umbau stand (620, 32, 268) im Bahnhofsgrundriss
+    // (567…621 × 211…287) und blickte auf einen leeren Platz unter der
+    // Hochbahn (Review 2026-09). Jetzt auf der Meiji-dōri.
+    position: [640, 32.35, 262],
+    lookAt: [640, 34, 120],
     note: 'Auf der Stadtstraße, Augenhöhe. Hier muss das Neon im Asphalt stehen.',
   },
   'stadt-neon': {
-    position: [660, 31.4, 200],
-    lookAt: [600, 34, 40],
+    // Stand seit dem Tokyo-Umbau in der Wand eines Konbini (Review 2026-09,
+    // Bild `city/t1/vp-stadt-neon.png`). Jetzt Akiba, Shōwa-dōri.
+    position: [1120, 31.9, -150],
+    lookAt: [1120, 34.5, -60],
     note: 'Der Money-Shot der Phase: Geschäftsstraße, Kanban über der Fahrbahn, Neon in der Pfütze.',
   },
   'stadt-luft': {
@@ -62,8 +67,11 @@ export const VIEWPOINTS: Readonly<Record<string, Viewpoint>> = {
     // ins Gebirge; im Bild stand Fels und kein einziger Meter Asphalt — und
     // genau dieser Blickpunkt heißt „Der Bergpass mit seinen Kehren".
     // Die Trasse liegt gemessen bei x −552…−520, z −730…−261, y 28…199.
-    position: [-620, 420, -180],
-    lookAt: [-880, 110, -470],
+    // **Seit WP6 zeigte er wieder daneben.** Der Bergpass läuft heute über
+    // x −1387…−552, z −1451…−288; der alte Blick sah auf die Trasse von vor
+    // WP6 (Review 2026-09).
+    position: [-800, 380, -200],
+    lookAt: [-980, 70, -600],
     note: 'Der Bergpass mit seinen Kehren — von Südosten über die Flanke.',
   },
   'pass-kehren': {
@@ -76,8 +84,10 @@ export const VIEWPOINTS: Readonly<Record<string, Viewpoint>> = {
     // (x −552…−520, z −730…−261, y 28…199) — alle vier Ecken liegen gemessen
     // im 16:9-Bild. Der Zweck („die Kehren zum Abzählen") bleibt; die Zahl
     // selbst kommt aus `npm run inspect`.
-    position: [-672, 620, -495],
-    lookAt: [-536, 113, -495],
+    // Review 2026-09: die Kehren liegen seit WP6 bei (−1030 | −427) und
+    // (−954 | −398); rund 58° nach unten, innerhalb der 75°-Grenze.
+    position: [-1150, 320, -420],
+    lookAt: [-990, 65, -415],
     note: '15° über dem Serpentinenstapel — die Kehren zum Abzählen.',
   },
   tempel: {
@@ -276,8 +286,10 @@ export const VIEWPOINTS: Readonly<Record<string, Viewpoint>> = {
     note: 'Koedo aus der Luft: Kanal am Rand der Reisebene, Hauptstraße, Platz mit Turm, Stadt am Horizont.',
   },
   kueste: {
-    position: [200, 90, 1100],
-    lookAt: [100, 0, 1400],
+    // Zeigte bis zum Review 2026-09 nur offenes Meer. Die Tetrapoden liegen
+    // bei x −1000…−692, z 1034…1063, dahinter Funaura.
+    position: [-760, 30, 960],
+    lookAt: [-850, 0, 1050],
     note: 'Südküste mit Wellenbrecher und Steg.',
   },
 };

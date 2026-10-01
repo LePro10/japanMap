@@ -214,6 +214,9 @@ export class DriveHud {
     this.#moneyValue = this.#must('[data-hud="moneyValue"]');
     this.#arrow = this.#must('[data-hud="arrow"]');
     this.#prompt = this.#must('[data-hud="prompt"]');
+    this.#prompt.addEventListener('click', () => {
+      if (this.#promptKind === 'enter' || this.#promptKind === 'exit') this.#onPromptTap?.();
+    });
     this.#promptKey = this.#must('[data-hud="promptKey"]');
     this.#promptAction = this.#must('[data-hud="promptAction"]');
     this.#prep = this.#must('[data-hud="prep"]');
@@ -358,6 +361,16 @@ export class DriveHud {
    * `null` räumt den Chip weg — nicht Deckkraft 0: ein unsichtbarer Chip
    * läge weiter im Layout und über dem „Continue"-Knopf der Zieltafel.
    */
+  /**
+   * Antippen des Chips — auf Touch ist „F" keine Taste, der Chip selbst ist
+   * dort der Knopf (vorher traf `elementFromPoint` durch ihn den Canvas).
+   */
+  set onPromptTap(fn: (() => void) | null) {
+    this.#onPromptTap = fn;
+  }
+
+  #onPromptTap: (() => void) | null = null;
+
   setVehicleHint(kind: 'enter' | 'exit' | 'slow' | null): void {
     if (kind === this.#promptKind) return;
     this.#promptKind = kind;
@@ -484,6 +497,10 @@ export class DriveHud {
     if (!this.#visible) return;
     if (this.#race.hidden) this.#race.hidden = false;
     const place = standings.findIndex((row) => row.isPlayer) + 1;
+    // Allein gegen die Uhr gibt es keinen Platz — „P1" in einem Zeitfahren
+    // sieht nach einem Sieg aus, den es nicht gibt.
+    const solo = standings.length <= 1;
+    if (this.#racePlace.hidden !== solo) this.#racePlace.hidden = solo;
     this.#setText(this.#racePlace, `P${place}`);
     this.#racePlace.classList.toggle('hud__place--lead', place === 1);
     this.#setText(this.#raceLap, `${Math.min(lap, laps)} / ${laps}`);
@@ -514,7 +531,9 @@ export class DriveHud {
       return;
     }
     this.#countdown.hidden = false;
-    this.#setText(this.#countdown, String(Math.ceil(seconds)));
+    // Gedeckelt auf 3: der Rennleiter zählt 3,2 s (ein Atemzug Vorlauf), und
+    // `ceil` zeigte dafür eine „4", die niemand erwartet.
+    this.#setText(this.#countdown, String(Math.min(3, Math.ceil(seconds))));
   }
 
   /** Der Kontostand oben rechts. */
@@ -550,6 +569,8 @@ export class DriveHud {
     if (reducedMotion() || !this.#visible) return;
     const root = this.#root.getBoundingClientRect();
     const wallet = this.#money.getBoundingClientRect();
+    // Ohne sichtbaren Kontostand flögen die Funken nach (0|0) in die Ecke.
+    if (wallet.width === 0) return;
     const tx = wallet.left - root.left + 14;
     const ty = wallet.top - root.top + wallet.height * 0.5;
     const seeds = origins.length > 0 ? origins : [{ x: tx, y: ty + 80, visible: true }];
@@ -602,18 +623,60 @@ export class DriveHud {
    * verpasst, weil man gerade in die Auslaufkurve gebremst hat.
    */
   showResult(html: string, onClose: () => void): void {
+    // Eine noch offene Tafel erst schließen — ohne ihr `onClose`. Das hing an
+    // der **vorigen** Veranstaltung und hätte, später weggeklickt, die neue
+    // abgebrochen (gemessen: `race.state` sprang mitten im Rennen auf `idle`).
+    this.closeResult();
     this.#result.innerHTML = html;
     this.#result.hidden = false;
     const button = this.#result.querySelector<HTMLButtonElement>('[data-close]');
-    button?.addEventListener(
-      'click',
-      () => {
-        this.#result.hidden = true;
-        onClose();
-      },
-      { once: true },
-    );
+    const close = (): void => {
+      if (this.#result.hidden) return;
+      this.closeResult();
+      onClose();
+    };
+    button?.addEventListener('click', close, { once: true });
+    // **Die Tafel war auf dem Desktop nicht wegzuklicken.** Im Ziel steht der
+    // Zeiger noch im Pointer Lock; ein Mausklick geht dann an den Canvas und
+    // nicht an den Knopf, und eine Taste gab es nicht. Den Lock freizugeben
+    // hilft nicht — das öffnet das Pausenmenü über der Tafel (gemessen). Also:
+    // jeder Mausklick und Enter/Leertaste/Escape schließen, der Knopf bleibt
+    // für Touch und freien Zeiger.
+    button?.focus({ preventScroll: true });
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.code !== 'Enter' && event.code !== 'NumpadEnter' && event.code !== 'Space' &&
+        event.code !== 'Escape') return;
+      // Vor dem Menü (das in der Capture-Phase auf Escape hört) abfangen.
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      close();
+    };
+    const onPointer = (event: MouseEvent): void => {
+      if (!document.pointerLockElement || event.button !== 0) return;
+      event.preventDefault();
+      close();
+    };
+    window.addEventListener('keydown', onKey, { capture: true });
+    window.addEventListener('mousedown', onPointer, { capture: true });
+    this.#resultKey = onKey;
+    this.#resultPointer = onPointer;
   }
+
+  /** Die Tafel schließen, ohne ihr `onClose` auszulösen. */
+  closeResult(): void {
+    if (this.#resultKey) {
+      window.removeEventListener('keydown', this.#resultKey, { capture: true });
+      this.#resultKey = null;
+    }
+    if (this.#resultPointer) {
+      window.removeEventListener('mousedown', this.#resultPointer, { capture: true });
+      this.#resultPointer = null;
+    }
+    this.#result.hidden = true;
+  }
+
+  #resultKey: ((event: KeyboardEvent) => void) | null = null;
+  #resultPointer: ((event: MouseEvent) => void) | null = null;
 
   get resultOpen(): boolean {
     return !this.#result.hidden;
@@ -773,6 +836,7 @@ export class DriveHud {
   }
 
   dispose(): void {
+    this.closeResult();
     if (this.#flashTimer !== null) window.clearTimeout(this.#flashTimer);
     this.#flashTimer = null;
     if (this.#exploreTimer !== null) window.clearTimeout(this.#exploreTimer);

@@ -404,6 +404,7 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
 
     context.bus.on('terrain:ready', ({ sampler }) => {
       this.#sampler = sampler;
+      this.#water.setGround((x, z) => sampler.getHeightAt(x, z));
       // Die Schanzen brauchen ihre Fußhöhen, und zwar **bevor** jemand darauf
       // fährt. Begründung bei `RampField.prepare`.
       this.ramps.prepare((x, z) => sampler.getHeightAt(x, z));
@@ -817,6 +818,11 @@ export class DriveSystem implements System, FlyInputDelegate, Ground {
    * Eingaben werden geleert, damit ein gehaltenes W nach Continue nicht
    * sofort beschleunigt. Die Pose bleibt stehen (`update` zeichnet sie weiter).
    */
+  /** Menü, Karte, Fotomodus oder Garage offen — die Welt steht. */
+  get paused(): boolean {
+    return this.#paused;
+  }
+
   setPaused(paused: boolean): void {
     this.#paused = paused;
     if (!paused) return;

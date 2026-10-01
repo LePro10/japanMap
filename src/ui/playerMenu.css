@@ -536,7 +536,7 @@
   border-color: var(--paper);
 }
 
-.player-menu .menu__car svg {
+.player-menu .menu__car > svg {
   width: 100%;
   height: 65px;
 }
@@ -716,6 +716,9 @@
   gap: 12px;
   align-items: center;
   padding: 12px 0;
+  /* Die Menüzeilen erbten sonst die Monospace-Schrift der alten Debugzeilen
+     (style.css, .menu__row) — Einstellungen lasen sich wie ein Terminal. */
+  font-family: var(--display, system-ui);
   font-size: calc(16px * var(--ui-scale));
 }
 
@@ -937,4 +940,11 @@
   .player-menu .menu__tile--hero .menu__tileTitle {
     font-size: 24px;
   }
+}
+
+/* Das Kachelraster des Play-Reiters: „Enter car" trug noch den Abstand des
+   alten Einzelknopfs (style.css, .menu__drive margin-top 16px) und stand 16 px
+   tiefer als „Tune Car". */
+.player-menu .menu__tile.menu__drive {
+  margin-top: 0;
 }
