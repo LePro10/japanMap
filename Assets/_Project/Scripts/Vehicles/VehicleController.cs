@@ -75,6 +75,10 @@ namespace JapanMap.Vehicles
             _rb.interpolation = RigidbodyInterpolation.Interpolate;
             _rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             _rb.maxAngularVelocity = 20f;
+            // Own layer: the wheels must not stand on this or another car's body, nor on water planes.
+            var vehicleLayer = LayerMask.NameToLayer("Vehicle");
+            if (vehicleLayer >= 0) gameObject.layer = vehicleLayer;
+            groundMask &= ~(LayerMask.GetMask("Vehicle", "Water", "UI") | Physics.IgnoreRaycastLayer);
 
             // Body box: from the clearance up to the roof. Zero friction so a car slides along a wall
             // or a guardrail instead of sticking to it.
@@ -82,13 +86,20 @@ namespace JapanMap.Vehicles
             if (_body == null) _body = gameObject.AddComponent<BoxCollider>();
             var size = def.bodySize;
             _body.size = new Vector3(size.y, size.z - def.clearance, size.x);
-            _body.center = new Vector3(0f, (size.z + def.clearance) * 0.5f, 0f);
+            _body.center = new Vector3(0f, (size.z + def.clearance) * 0.5f, def.bodyCenterZ);
             _body.sharedMaterial = BodyMaterial;
 
-            // Axles from wheelbase and weight split; the centre of mass sits where the split balances.
+            // Wheels from the model when linked, else from wheelbase and weight split. The centre of
+            // mass sits where the axle loads split as frontWeight says.
             var frontZ = def.wheelbase * (1f - def.frontWeight);
             var rearZ = -def.wheelbase * def.frontWeight;
             var halfTrack = Mathf.Max(0.5f, size.y * 0.5f - def.wheelRadius * 0.6f);
+            var fromModel = def.wheelPositions != null && def.wheelPositions.Length == WheelCount;
+            if (fromModel)
+            {
+                frontZ = (def.wheelPositions[0].z + def.wheelPositions[1].z) * 0.5f;
+                rearZ = (def.wheelPositions[2].z + def.wheelPositions[3].z) * 0.5f;
+            }
             var f = def.springFrequency;
             for (var i = 0; i < WheelCount; i++)
             {
@@ -96,17 +107,20 @@ namespace JapanMap.Vehicles
                 var share = (front ? def.frontWeight : 1f - def.frontWeight) * 0.5f;
                 _wheels[i] = new Wheel
                 {
-                    local = new Vector3(i % 2 == 0 ? -halfTrack : halfTrack, def.wheelRadius, front ? frontZ : rearZ),
+                    local = fromModel
+                        ? new Vector3(def.wheelPositions[i].x, def.wheelRadius, def.wheelPositions[i].z)
+                        : new Vector3(i % 2 == 0 ? -halfTrack : halfTrack, def.wheelRadius, front ? frontZ : rearZ),
                     front = front,
                     stiffness = def.mass * f * f * share,
                     damping = 2f * def.mass * f * def.dampingRatio * share,
                     cap = def.mass * ArcadeTuning.Gravity * def.maxLoadFactor * share,
                 };
             }
+            var comZ = rearZ + (frontZ - rearZ) * def.frontWeight;
             // Inertia from the body box, recomputed now that the collider exists (a Rigidbody built
             // before its collider keeps a near-zero tensor and spins wildly on every spring kick).
             _rb.ResetInertiaTensor();
-            _rb.centerOfMass = new Vector3(0f, def.cgHeight * tuning.physicsComHeightShare, 0f);
+            _rb.centerOfMass = new Vector3(0f, def.cgHeight * tuning.physicsComHeightShare, comZ);
 
             _dyn = new ArcadeDynamics(def.arcade, tuning, def.dirtGrip, def.crawlShare, def.driveRetain);
             _dyn.SetChassis(def.wheelbase, def.mass);
@@ -124,14 +138,21 @@ namespace JapanMap.Vehicles
                 bounceCombine = PhysicsMaterialCombine.Minimum,
             };
 
-        /// <summary>Put the car down at rest: on the ground below <paramref name="position"/>, facing heading (degrees).</summary>
-        public void Place(Vector3 position, float headingDegrees)
+        /// <summary>
+        /// Put the car down at rest on the ground below <paramref name="position"/>, facing heading
+        /// (degrees). The ground probe starts <paramref name="fromAbove"/> metres up — small on a road
+        /// point (so a viaduct above does not catch it), large for a free drop.
+        /// </summary>
+        public void Place(Vector3 position, float headingDegrees, float fromAbove = 50f)
         {
             Build();
             var rotation = Quaternion.Euler(0f, headingDegrees, 0f);
             var ground = position.y;
-            if (gameObject.scene.GetPhysicsScene().Raycast(position + Vector3.up * 50f, Vector3.down, out var hit, 200f, groundMask, QueryTriggerInteraction.Ignore))
+            _body.enabled = false; // a probe from above must not land on our own roof
+            if (gameObject.scene.GetPhysicsScene().Raycast(position + Vector3.up * fromAbove, Vector3.down, out var hit,
+                    fromAbove + 100f, groundMask, QueryTriggerInteraction.Ignore))
                 ground = hit.point.y;
+            _body.enabled = true;
             var pos = new Vector3(position.x, ground, position.z);
             transform.SetPositionAndRotation(pos, rotation);
             _rb.position = pos;

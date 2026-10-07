@@ -16,13 +16,19 @@ MonoBehaviour:
   displayName: Mame K
   category: 0
   legacyId: pip
-  model: {fileID: 0}
+  model: {fileID: 2311655142441783332, guid: 97a810bde7ff5494fa959b990ad3df31, type: 3}
   mass: 820
   wheelbase: 2.12
   frontWeight: 0.61
   cgHeight: 0.53
-  wheelRadius: 0.275
-  bodySize: {x: 3.18, y: 1.66, z: 1.6}
+  wheelRadius: 0.285
+  bodySize: {x: 3.4781752, y: 1.677287, z: 1.5428991}
+  wheelPositions:
+  - {x: -0.65, y: 0.285, z: 1.26}
+  - {x: 0.65, y: 0.285, z: 1.26}
+  - {x: -0.65, y: 0.285, z: -1.26}
+  - {x: 0.65, y: 0.285, z: -1.26}
+  bodyCenterZ: 0.00763762
   clearance: 0.16
   ford: 0.2
   travel: 0.23

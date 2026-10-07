@@ -16,13 +16,19 @@ MonoBehaviour:
   displayName: Hachi 86
   category: 0
   legacyId: touge
-  model: {fileID: 0}
+  model: {fileID: -1967845482108973795, guid: efa03ac8162e1439e81231a0a1bd9699, type: 3}
   mass: 1180
   wheelbase: 2.43
   frontWeight: 0.52
   cgHeight: 0.5
-  wheelRadius: 0.31
-  bodySize: {x: 4.12, y: 1.92, z: 1.36}
+  wheelRadius: 0.29
+  bodySize: {x: 4.286824, y: 1.756436, z: 1.3324652}
+  wheelPositions:
+  - {x: -0.69, y: 0.29, z: 1.22}
+  - {x: 0.69, y: 0.29, z: 1.22}
+  - {x: -0.69, y: 0.29, z: -1.18}
+  - {x: 0.69, y: 0.29, z: -1.18}
+  bodyCenterZ: 0.031411648
   clearance: 0.16
   ford: 0.2
   travel: 0.22

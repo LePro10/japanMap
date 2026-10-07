@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f6e9a94607ac4ead9807bb8a8da1930, type: 3}
+  m_Name: CarCameraSettings
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.CarCameraSettings
+  distance: 6.4
+  distanceFast: 1.6
+  height: 2.35
+  targetHeight: 1
+  velocityBlend: 0.55
+  velocityBlendSpeed: 6
+  headingRate: 7
+  positionDamping: 0.12
+  lookAhead: 0.05
+  lookAheadMax: 1.1
+  fov: 62
+  fovFast: 82
+  fovSpeed: 45
+  fovBoost: 9
+  fovRate: 3.5
+  orbitSpeed: 2.4
+  recenterRate: 0.8
+  zoomMin: 0.42
+  zoomMax: 2.4
+  zoomStep: 0.1
+  cockpitFov: 62
+  cockpitFovBoost: 2
+  cockpitNear: 0.1
+  cockpitLookPitch: -0.12
+  cockpitDriftLook: 0.65

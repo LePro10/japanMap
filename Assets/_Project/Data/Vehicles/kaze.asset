@@ -16,13 +16,19 @@ MonoBehaviour:
   displayName: Kaze 35 Drift
   category: 2
   legacyId: ribbon
-  model: {fileID: 0}
+  model: {fileID: 6540835163501072439, guid: b12748b33e9514a9ba477d26ce5a14a5, type: 3}
   mass: 1280
   wheelbase: 2.65
   frontWeight: 0.5
   cgHeight: 0.48
-  wheelRadius: 0.32
-  bodySize: {x: 4.48, y: 2.02, z: 1.29}
+  wheelRadius: 0.325
+  bodySize: {x: 4.565835, y: 1.8417206, z: 1.2752199}
+  wheelPositions:
+  - {x: -0.8, y: 0.325, z: 1.355}
+  - {x: 0.8, y: 0.325, z: 1.355}
+  - {x: -0.8, y: 0.325, z: -1.295}
+  - {x: 0.8, y: 0.325, z: -1.295}
+  bodyCenterZ: -0.044226885
   clearance: 0.16
   ford: 0.2
   travel: 0.21

@@ -16,13 +16,19 @@ MonoBehaviour:
   displayName: Suprema RZ
   category: 2
   legacyId: morrow
-  model: {fileID: 0}
+  model: {fileID: 8558441958396019507, guid: 9076037e48771407d9f86ebca63f35ba, type: 3}
   mass: 1740
   wheelbase: 2.77
   frontWeight: 0.59
   cgHeight: 0.55
-  wheelRadius: 0.35
-  bodySize: {x: 4.73, y: 2.16, z: 1.34}
+  wheelRadius: 0.33
+  bodySize: {x: 4.6862, y: 1.8287376, z: 1.265394}
+  wheelPositions:
+  - {x: -0.77, y: 0.33, z: 1.315}
+  - {x: 0.77, y: 0.33, z: 1.315}
+  - {x: -0.77, y: 0.33, z: -1.235}
+  - {x: 0.77, y: 0.33, z: -1.235}
+  bodyCenterZ: -0.07109976
   clearance: 0.16
   ford: 0.2
   travel: 0.24

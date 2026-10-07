@@ -16,13 +16,19 @@ MonoBehaviour:
   displayName: Rotor FD
   category: 3
   legacyId: gt
-  model: {fileID: 0}
+  model: {fileID: -3624338741610695390, guid: ae592200c83a44d5f9a83d59ab79fca5, type: 3}
   mass: 1240
   wheelbase: 2.62
   frontWeight: 0.44
   cgHeight: 0.41
-  wheelRadius: 0.34
-  bodySize: {x: 4.38, y: 2.14, z: 1.12}
+  wheelRadius: 0.315
+  bodySize: {x: 4.49405, y: 1.7886188, z: 1.2247043}
+  wheelPositions:
+  - {x: -0.73, y: 0.315, z: 1.2325}
+  - {x: 0.73, y: 0.315, z: 1.2325}
+  - {x: -0.73, y: 0.315, z: -1.1925}
+  - {x: 0.73, y: 0.315, z: -1.1925}
+  bodyCenterZ: -0.032375097
   clearance: 0.12
   ford: 0.12
   travel: 0.17

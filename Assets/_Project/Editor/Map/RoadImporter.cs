@@ -7,6 +7,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Road = JapanMap.Editor.Map.LegacySource.Road;
+using RoadNetwork = JapanMap.World.RoadNetwork;
 
 namespace JapanMap.Editor.Map
 {
@@ -100,9 +101,29 @@ namespace JapanMap.Editor.Map
                 var path = AssetDatabase.GUIDToAssetPath(guid);
                 if (!written.Contains(path)) AssetDatabase.DeleteAsset(path);
             }
+            SaveNetwork(roads, types);
             AssetDatabase.SaveAssets();
             Debug.Log($"[Map] roads imported: {roads.Count} roads, {surface.Count} surface chunks ({surfaceTris} tris), {rails.Count} rail chunks ({railTris} tris), viaducts: {decks} deck spans, {piers} piers");
             return group;
+        }
+
+        public const string NetworkPath = MeshDir + "/RoadNetwork.asset";
+
+        /// <summary>Centrelines for runtime queries (respawn, later AI). Same asset GUID on every import.</summary>
+        static void SaveNetwork(List<Road> roads, Dictionary<string, MapImportSettings.RoadType> types)
+        {
+            var network = AssetDatabase.LoadAssetAtPath<RoadNetwork>(NetworkPath);
+            var created = network == null;
+            if (created) network = ScriptableObject.CreateInstance<RoadNetwork>();
+            network.roads = roads.Select(r =>
+            {
+                var c = r.centerline;
+                var points = new Vector3[c.Length / 3];
+                for (var i = 0; i < points.Length; i++) points[i] = LegacySource.ToUnity(c[i * 3], c[i * 3 + 1], c[i * 3 + 2]);
+                return new RoadNetwork.Road { id = r.id, type = r.type, closed = r.closed, width = types[r.type].width, points = points };
+            }).ToList();
+            if (created) AssetDatabase.CreateAsset(network, NetworkPath);
+            else EditorUtility.SetDirty(network);
         }
 
         public static List<Road> Load(MapImportSettings settings) =>

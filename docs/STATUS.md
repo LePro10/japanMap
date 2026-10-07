@@ -43,7 +43,7 @@ Alles per Menü `JapanMap/Map/Import All` (Regler: `Data/Map/MapImportSettings.a
 ## Phase 3 — Fahren (als Nächstes)
 
 - [x] 1. Ansatz: Rigidbody + Raycast-Federung + portiertes Arcade-Modell (D15, gemessen gegen WheelCollider); Zuordnung Modelle ↔ Fahrwerte (D16)
-- [ ] 2. Ein Auto (Kite S) fahrbar inkl. Drift, Nitro, Respawn
+- [x] 2. Hachi 86 (Kite-S-Werte) fahrbar inkl. Drift, Nitro, Respawn auf nächste Straße (R / Y / auf dem Dach)
 - [ ] 3. Eingabe: Tastatur, Gamepad, Touch
 - [ ] 4. Kameras: Verfolger + Cockpit
 - [ ] 5. Prüfstände als PlayMode-Tests
@@ -51,6 +51,10 @@ Alles per Menü `JapanMap/Map/Import All` (Regler: `Data/Map/MapImportSettings.a
 - [ ] 7. Fahrzeug-Optik
 
 ## Offene Probleme / Gefunden
+
+- **`Placeholders/torii.prefab` ändert sich bei jedem EditMode-Lauf** (neue fileIDs durch den Import-Test) → nicht committen, Ursache im PropImporter suchen.
+- **Car-Lab-Modelle schwer:** Hachi 137 k Dreiecke inkl. Tuning-Teilen, GLBs zusammen 31 MB (PNG) → LOD/Texturgröße in Phase 4/10, Autos per Addressables nachladen.
+- **Wassertiefe** wird vom Fahrmodell noch nicht gemessen (Wasser hat keine Collider) → Aquaplaning/Furt fehlen bis Phase 4.
 
 - **Draw Calls über Budget durch Platzhalter:** 977 Props × 2 Teile ≈ 1 800 Draw Calls (Budget 1 500 / Niedrig 400). Echte Modelle in Phase 4 mit Instancing/Zusammenfassen/LOD.
 - **Download 25,8 MB** > Ziel Handy 20 MB: `data` 20 MB (Höhenfeld, Texturen, Straßen-Meshes) → Phase 10 (Kompression, Addressables).

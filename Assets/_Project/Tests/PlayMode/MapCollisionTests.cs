@@ -42,6 +42,10 @@ namespace JapanMap.Tests
             // A Boot scene loaded while the previous test's Bootstrapper is still being destroyed loads
             // Game a second time a frame later; objects spawned before that would be thrown away.
             for (var f = 0; f < 10; f++) yield return null;
+            // This test measures the map only: the player car spawns on one of the drop spots.
+            var player = GameObject.Find("Player");
+            if (player != null) Object.Destroy(player);
+            yield return null;
 
             const float radius = 0.25f;
             var balls = new Rigidbody[Drops.Length];

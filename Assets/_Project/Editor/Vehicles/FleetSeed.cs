@@ -75,8 +75,62 @@ namespace JapanMap.Editor.Vehicles
             var created = def == null;
             if (created) def = ScriptableObject.CreateInstance<VehicleDefinition>();
             r.Apply(def);
+            LinkModel(def);
             if (created) AssetDatabase.CreateAsset(def, path);
             else EditorUtility.SetDirty(def);
+        }
+
+        public const string ModelDir = "Assets/_Project/Art/Cars";
+        static readonly string[] WheelNames = { "wheel_FL", "wheel_FR", "wheel_RL", "wheel_RR" };
+
+        /// <summary>
+        /// Model reference and geometry from the car-lab GLB (Tools/convert-cars.mjs): wheel centres,
+        /// wheel radius and body box. Tuning options other than 0 (names ending _o1/_o2) are left out.
+        /// </summary>
+        public static void LinkModel(VehicleDefinition def)
+        {
+            var model = AssetDatabase.LoadAssetAtPath<GameObject>($"{ModelDir}/{def.id}.glb");
+            def.model = model;
+            if (model == null)
+            {
+                Debug.LogWarning($"[Fleet] no model for {def.id} in {ModelDir}");
+                return;
+            }
+            var wheels = new Vector3[4];
+            var radius = 0f;
+            for (var i = 0; i < 4; i++)
+            {
+                var t = VehicleVisuals.FindPrefix(model.transform, WheelNames[i]);
+                if (t == null) throw new InvalidOperationException($"{def.id}: model has no {WheelNames[i]}");
+                wheels[i] = model.transform.InverseTransformPoint(t.position);
+                radius += wheels[i].y / 4f;
+            }
+            Bounds? bounds = null;
+            foreach (var r in model.GetComponentsInChildren<Renderer>(true))
+            {
+                if (VehicleVisuals.IsTuningOption(r.transform) || r.name.StartsWith("wheel") || r.name.StartsWith("caliper") || r.transform.parent?.name.StartsWith("spin") == true) continue;
+                if (bounds == null) bounds = r.bounds;
+                else { var b = bounds.Value; b.Encapsulate(r.bounds); bounds = b; }
+            }
+            def.wheelPositions = wheels;
+            def.wheelRadius = radius;
+            if (bounds is { } body)
+            {
+                def.bodySize = new Vector3(body.size.z, body.size.x, body.max.y);
+                def.bodyCenterZ = body.center.z;
+            }
+        }
+
+        [MenuItem("JapanMap/Vehicles/Link Models")]
+        public static void LinkAll()
+        {
+            foreach (var id in Order)
+            {
+                var def = Load(id);
+                LinkModel(def);
+                EditorUtility.SetDirty(def);
+            }
+            AssetDatabase.SaveAssets();
         }
 
         public static VehicleDefinition Load(string id) =>

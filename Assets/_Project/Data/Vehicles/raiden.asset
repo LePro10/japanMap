@@ -16,13 +16,19 @@ MonoBehaviour:
   displayName: Raiden GT-R34
   category: 2
   legacyId: meridian
-  model: {fileID: 0}
+  model: {fileID: 5178551124810577399, guid: 70a6b79edce0f47b887d65a23e7de986, type: 3}
   mass: 1660
   wheelbase: 2.91
   frontWeight: 0.54
   cgHeight: 0.53
-  wheelRadius: 0.35
-  bodySize: {x: 4.86, y: 2.1, z: 1.4}
+  wheelRadius: 0.335
+  bodySize: {x: 4.7728086, y: 1.8892237, z: 1.3569428}
+  wheelPositions:
+  - {x: -0.75, y: 0.335, z: 1.3825}
+  - {x: 0.75, y: 0.335, z: 1.3825}
+  - {x: -0.75, y: 0.335, z: -1.2825}
+  - {x: 0.75, y: 0.335, z: -1.2825}
+  bodyCenterZ: -0.06459546
   clearance: 0.16
   ford: 0.2
   travel: 0.23

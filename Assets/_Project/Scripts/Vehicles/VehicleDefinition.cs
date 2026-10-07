@@ -30,8 +30,12 @@ namespace JapanMap.Vehicles
         [Tooltip("Centre of gravity above ground, m.")]
         public float cgHeight = 0.5f;
         public float wheelRadius = 0.31f;
-        [Tooltip("Body box for collisions: length, width, height, m.")]
+        [Tooltip("Body box for collisions: length, width, height, m (from the model bounds once linked).")]
         public Vector3 bodySize = new(4.12f, 1.92f, 1.36f);
+        [Tooltip("Wheel centres FL, FR, RL, RR in the model (root on the ground, +Z forward). Empty = from wheelbase.")]
+        public Vector3[] wheelPositions = new Vector3[0];
+        [Tooltip("Body box centre along Z (model bounds), m.")]
+        public float bodyCenterZ;
         [Tooltip("Gap between body underside and ground at rest, m.")]
         public float clearance = 0.16f;
         [Tooltip("Water depth the car wades without trouble, m.")]

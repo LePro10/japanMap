@@ -16,13 +16,19 @@ MonoBehaviour:
   displayName: Hanami SF-26
   category: 3
   legacyId: needle
-  model: {fileID: 0}
+  model: {fileID: 603326477844932168, guid: 9740e4081271f4184815db363bef6767, type: 3}
   mass: 710
   wheelbase: 2.88
   frontWeight: 0.44
   cgHeight: 0.32
-  wheelRadius: 0.32
-  bodySize: {x: 4.55, y: 2.2, z: 1.03}
+  wheelRadius: 0.36
+  bodySize: {x: 5.45, y: 1.8219999, z: 1.0067519}
+  wheelPositions:
+  - {x: -0.81, y: 0.36, z: 1.72}
+  - {x: 0.81, y: 0.36, z: 1.72}
+  - {x: -0.78, y: 0.36, z: -1.68}
+  - {x: 0.78, y: 0.36, z: -1.68}
+  bodyCenterZ: 0.10500002
   clearance: 0.1
   ford: 0.1
   travel: 0.13

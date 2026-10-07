@@ -16,13 +16,19 @@ MonoBehaviour:
   displayName: Mini Hauler
   category: 1
   legacyId: truck
-  model: {fileID: 0}
+  model: {fileID: 2491861127262583478, guid: 8e63b37cede0f45fabee6cfe273c7785, type: 3}
   mass: 1080
   wheelbase: 2.24
   frontWeight: 0.57
   cgHeight: 0.62
-  wheelRadius: 0.29
-  bodySize: {x: 3.58, y: 1.76, z: 1.77}
+  wheelRadius: 0.28
+  bodySize: {x: 3.5320735, y: 1.7732452, z: 1.7786362}
+  wheelPositions:
+  - {x: -0.65, y: 0.28, z: 1.25}
+  - {x: 0.65, y: 0.28, z: 1.25}
+  - {x: -0.65, y: 0.28, z: -0.65}
+  - {x: 0.65, y: 0.28, z: -0.65}
+  bodyCenterZ: 0.050538063
   clearance: 0.24
   ford: 0.3
   travel: 0.32

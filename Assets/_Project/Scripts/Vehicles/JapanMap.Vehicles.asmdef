@@ -2,7 +2,9 @@
     "name": "JapanMap.Vehicles",
     "rootNamespace": "JapanMap.Vehicles",
     "references": [
-        "JapanMap.Core"
+        "JapanMap.Core",
+        "Unity.InputSystem",
+        "Unity.Cinemachine"
     ],
     "autoReferenced": true,
     "noEngineReferences": false

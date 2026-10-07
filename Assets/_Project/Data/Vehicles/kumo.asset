@@ -16,13 +16,19 @@ MonoBehaviour:
   displayName: Kumo STi 22
   category: 2
   legacyId: torrent
-  model: {fileID: 0}
+  model: {fileID: 1464532425044276665, guid: 0442fa0f89ee842b8995d66df898cfcc, type: 3}
   mass: 1320
   wheelbase: 2.52
   frontWeight: 0.57
   cgHeight: 0.54
-  wheelRadius: 0.33
-  bodySize: {x: 4.02, y: 1.98, z: 1.47}
+  wheelRadius: 0.32
+  bodySize: {x: 4.5437074, y: 1.879732, z: 1.455018}
+  wheelPositions:
+  - {x: -0.75, y: 0.32, z: 1.3}
+  - {x: 0.75, y: 0.32, z: 1.3}
+  - {x: -0.75, y: 0.32, z: -1.22}
+  - {x: 0.75, y: 0.32, z: -1.22}
+  bodyCenterZ: -0.02285409
   clearance: 0.22
   ford: 0.3
   travel: 0.29

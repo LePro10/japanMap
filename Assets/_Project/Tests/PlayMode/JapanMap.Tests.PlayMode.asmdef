@@ -6,7 +6,8 @@
         "JapanMap.DevTools",
         "JapanMap.Vehicles",
         "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner"
+        "UnityEditor.TestRunner",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "overrideReferences": true,

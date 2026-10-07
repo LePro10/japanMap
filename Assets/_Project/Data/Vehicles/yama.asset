@@ -16,13 +16,19 @@ MonoBehaviour:
   displayName: Yama Cruiser 250
   category: 1
   legacyId: offroad
-  model: {fileID: 0}
+  model: {fileID: -7350903048061135662, guid: df8f1d252e0204e07af6c0d6f3c1a5e9, type: 3}
   mass: 1880
   wheelbase: 2.4
   frontWeight: 0.54
   cgHeight: 0.75
-  wheelRadius: 0.39
-  bodySize: {x: 3.94, y: 2.06, z: 1.89}
+  wheelRadius: 0.4
+  bodySize: {x: 5.0867815, y: 2.2447913, z: 2.1290545}
+  wheelPositions:
+  - {x: -0.835, y: 0.4, z: 1.505}
+  - {x: 0.835, y: 0.4, z: 1.505}
+  - {x: -0.835, y: 0.4, z: -1.345}
+  - {x: 0.835, y: 0.4, z: -1.345}
+  bodyCenterZ: -0.005169153
   clearance: 0.32
   ford: 0.45
   travel: 0.42

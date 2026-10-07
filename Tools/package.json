@@ -3,8 +3,16 @@
   "private": true,
   "type": "module",
   "description": "Command-line tools for agents (see CLAUDE.md, Befehle).",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "devDependencies": {
     "playwright-core": "1.63.0"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
+    "sharp": "^0.35.5"
   }
 }
