@@ -89,6 +89,71 @@ namespace JapanMap.Tests
         }
 
         [Test]
+        public void Roads_LieOnTheCarvedTerrain()
+        {
+            // Floating or sunken roads show up as a large p95; bridges/viaducts (> 1.5 m) are counted apart.
+            foreach (var f in RoadImporter.MeasureFit(MapImportSettings.LoadOrCreate()))
+            {
+                Assert.That(f.samples, Is.GreaterThan(100), f.type);
+                Assert.That(Mathf.Abs(f.median), Is.LessThan(0.05f), $"{f.type}: median {f.median:F3} m");
+                Assert.That(f.p95Abs, Is.LessThan(0.15f), $"{f.type}: |p95| {f.p95Abs:F3} m");
+            }
+        }
+
+        [Test]
+        public void Roads_SurfacesFaceUp()
+        {
+            var roads = GameObject.Find($"{MapScene.RootName}/{RoadImporter.GroupName}");
+            Assert.IsNotNull(roads, "World/Roads missing — run JapanMap/Map/Import Roads");
+            int checkedTris = 0, folded = 0;
+            foreach (Transform child in roads.transform)
+            {
+                if (!child.name.StartsWith("Road_") && child.name != "CitySlab") continue;
+                var m = child.GetComponent<MeshFilter>().sharedMesh;
+                var v = m.vertices;
+                for (var s = 0; s < m.subMeshCount; s++)
+                {
+                    var t = m.GetTriangles(s);
+                    for (var i = 0; i < t.Length; i += 3)
+                    {
+                        var n = Vector3.Cross(v[t[i + 1]] - v[t[i]], v[t[i + 2]] - v[t[i]]);
+                        if (Mathf.Abs(n.normalized.y) < 0.5f) continue; // kerbs, slab curtain
+                        checkedTris++;
+                        if (n.y > 0) continue;
+                        // The inner shoulder of a wide road folds over itself in a very tight corner (as in
+                        // the prototype): a few tiny triangles. A wrong winding would flip all of them.
+                        folded++;
+                        Assert.That(n.magnitude / 2, Is.LessThan(1f), $"{child.name}: triangle {i / 3} faces down and is not a small fold");
+                    }
+                }
+            }
+            Assert.That(checkedTris, Is.GreaterThan(10000));
+            Assert.That(folded, Is.LessThanOrEqualTo(10), $"{folded} folded road triangles");
+        }
+
+        [Test]
+        public void MeshAssets_SaveTwice_KeepsGuidAndTakesNewGeometry()
+        {
+            const string path = "Assets/_Project/Data/__test_mesh.asset";
+            try
+            {
+                var first = new Mesh { vertices = new[] { Vector3.zero, Vector3.forward, Vector3.right }, triangles = new[] { 0, 1, 2 } };
+                MeshAssets.Save(path, first);
+                var guid = UnityEditor.AssetDatabase.AssetPathToGUID(path);
+                var second = new Mesh
+                {
+                    vertices = new[] { Vector3.zero, Vector3.forward, Vector3.right, Vector3.one },
+                    triangles = new[] { 0, 1, 2, 1, 3, 2 },
+                };
+                var saved = MeshAssets.Save(path, second);
+                Assert.AreEqual(guid, UnityEditor.AssetDatabase.AssetPathToGUID(path));
+                Assert.AreEqual(6, saved.triangles.Length);
+                Assert.AreEqual(4, saved.vertexCount);
+            }
+            finally { UnityEditor.AssetDatabase.DeleteAsset(path); }
+        }
+
+        [Test]
         public void ToUnity_MirrorsZ_NorthIsPlusZ()
         {
             // templeHall: Three (820, -954) lies north of the centre → Unity z must be positive.

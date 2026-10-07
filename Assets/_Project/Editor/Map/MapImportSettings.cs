@@ -51,6 +51,57 @@ namespace JapanMap.Editor.Map
         public float riverMaxDepth = 6f;
         public float riverWidthFactor = 0.78f;
 
+        [Header("Roads (legacy roads.config.ts ROAD_TYPES / ROAD_MESH)")]
+        public RoadType[] roadTypes =
+        {
+            new() { type = "highway", width = 9f, shoulder = 1.6f, textureLength = 8f },
+            new() { type = "mountain", width = 6.5f, shoulder = 1f, textureLength = 7f },
+            new() { type = "village", width = 5f, shoulder = 0.8f, textureLength = 6f },
+            new() { type = "city", width = 8f, shoulder = 1.2f, textureLength = 8f },
+            new() { type = "dirt", width = 4f, shoulder = 0.6f, textureLength = 5f },
+            new() { type = "pfad", width = 1.8f, shoulder = 0f, textureLength = 3f, gravel = true },
+        };
+        [Tooltip("Road surface above the centreline height (legacy ROAD_MESH.surfaceOffset).")]
+        public float roadSurfaceOffset = 0.06f;
+        [Tooltip("Outer shoulder edge lies this much lower, so the road does not end in a knife edge.")]
+        public float roadShoulderDrop = 0.22f;
+        [Tooltip("Banking reaches its maximum at this curvature × max (legacy BANK_GAIN 20 = full at 20 m radius).")]
+        public float roadBankGain = 20f;
+        [Tooltip("Roads are merged into square chunks of this size (fewer draw calls, still culled).")]
+        public float roadChunk = 512f;
+        [Tooltip("Guardrail band bottom/top above the road, offset outside the shoulder, post spacing (legacy GuardrailBuilder RAIL).")]
+        public float railBottom = 0.5f;
+        public float railTop = 0.85f;
+        public float railOffset = 0.35f;
+        public float railPostSpacing = 4f;
+
+        [Header("Viaducts (legacy ViaductSystem.ts)")]
+        [Tooltip("Deck below road spans this far above ground; piers from pierFrom, every pierSpacing metres.")]
+        public float deckFrom = 2.5f;
+        public float deckDepth = 1.35f;
+        public float pierFrom = 4f;
+        public float pierSpacing = 28f;
+
+        [Header("City slab (legacy city.mjs CITY_DISTRICT.parts, CITY_GROUND_Y 30 − dropBelowRoad 0.03)")]
+        [Tooltip("The city streets lie at 30 m on a slab; the carved terrain below is at 29.0 m.")]
+        public float citySlabY = 29.97f;
+        [Tooltip("Rectangles in Three coordinates: x = minX, y = minZ, width/height = size.")]
+        public Rect[] cityParts =
+        {
+            Rect.MinMaxRect(300, -160, 1300, 450),
+            Rect.MinMaxRect(300, -250, 1040, -160),
+        };
+
+        [System.Serializable]
+        public class RoadType
+        {
+            public string type;
+            public float width = 8f;
+            public float shoulder = 1f;
+            public float textureLength = 8f;
+            public bool gravel;
+        }
+
         [System.Serializable]
         public class SplatLayer
         {

@@ -70,4 +70,12 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
 - **Projektname-Kollisionen:** Unity hat eigene Typen wie
   `UnityEngine.Rendering.DebugOverlay` — eigene Klassen eindeutig benennen.
 
+- **Generierte Meshes nie mit `EditorUtility.CopySerialized` überschreiben:** die
+  Daten stimmen danach, gezeichnet wird bis zum Neustart das alte Mesh.
+  Immer `JapanMap.Editor.Map.MeshAssets.Save`. Allgemein: wenn Zahl und Bild
+  sich widersprechen, einen Testwürfel neben das fehlende Objekt stellen —
+  so trennt man „nicht da" von „nicht gezeichnet".
+- **`UnityStats` liest im Editor nur das letzte Game-View-Bild**, nicht ein
+  `camera.Render()`. Render-Zahlen je Blickpunkt: `ViewpointBench`.
+
 (Ergänzen, sobald neue Fallen auftauchen — Skill `retro`.)

@@ -276,21 +276,7 @@ namespace JapanMap.Editor.Map
             return mesh;
         }
 
-        /// <summary>Stores the mesh as an asset (scene files stay small); updates in place on re-import.</summary>
-        static Mesh SaveMesh(string name, Mesh mesh)
-        {
-            var path = $"{MeshDir}/{name}.asset";
-            var existing = AssetDatabase.LoadAssetAtPath<Mesh>(path);
-            mesh.name = name;
-            if (existing == null)
-            {
-                AssetDatabase.CreateAsset(mesh, path);
-                return mesh;
-            }
-            EditorUtility.CopySerialized(mesh, existing);
-            UnityEngine.Object.DestroyImmediate(mesh);
-            return existing;
-        }
+        static Mesh SaveMesh(string name, Mesh mesh) => MeshAssets.Save($"{MeshDir}/{name}.asset", mesh);
 
         static GameObject Add(Transform parent, string name, Mesh mesh, Material material)
         {

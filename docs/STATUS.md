@@ -11,7 +11,7 @@
 - [x] 1. Terrain-Importer (`JapanMap/Map/Import Terrain`, Regler in `Data/Map/MapImportSettings.asset`): 5 Checkpoints, größte Abweichung 0,034 m; Gipfel 450 m an der erwarteten Stelle; Draufsicht = Vorschau (Norden oben). Zweimal importieren → identisch (`MapImportTests`). Kachelung entschieden: **eine Kachel** (DECISIONS D13, gemessen mit `ViewpointBench`). Web-Build mit ganzer Karte: sichtbar, Rauchprobe GREEN.
 - [x] 2. Splatmap aus `zones.png` → 4 Terrain-Layer (Fels/Gras/Sand/Reisfeld, Kachelgrößen aus dem Prototyp), Poly-Haven-Texturen (CC0) unter `Assets/ThirdParty/PolyHaven` mit `LICENSES.md`; Normalmaps/Max. 1024 px per Import-Regel (`TextureImportRules`). Draufsicht = `zones.png`; Test: dominante Schicht an drei Punkten. Noch ohne Mask-Map/Triplanar (Optik → Phase 4).
 - [x] 3. Wasser (`JapanMap/Map/Import Water`): Meer auf 0 m, Reisfeld-Wasser aus `paddy.png` (29 Kacheln à 256 m, 16 k Dreiecke), Fluss als Band mit der Spiegel-Logik des Prototyps (730 Dreiecke). Reisfeld-Wassertiefe **0,10 m** wie im Prototyp (`props.config` PADDY_WATER.depth; bei den 0,30 m aus der Bake-Meta „ersoff" dort das Auto). Test: alle Wasserflächen zeigen nach oben. Ränder treppig, Material schlicht → Phase 4.
-- [ ] 4. Straßen-Importer
+- [x] 4. Straßen-Importer (`JapanMap/Map/Import Roads`): 152 Straßen in 24 Kacheln à 512 m (127 k Dreiecke), Querschnitt/Querneigung/Kürzung an Einmündungen wie im Prototyp, Leitplanken mit Pfosten (an Einmündungen unterbrochen), Stadt-Bodenplatte auf 29,97 m, Hochstraße mit Deck und Pfeilern/Portal-Jochen (vereinfacht nach `ViaductSystem`). Passung Mittellinie − Gelände je Typ: Median ≤ 2,4 cm, |p95| ≤ 9 cm (Test). Alle Collider als MeshCollider.
 - [ ] 5. Props-Importer
 - [x] 6. Blickpunkte: 39 aus dem Prototyp (z gespiegelt) in `Data/Map/Viewpoints.asset`; Menü `JapanMap/Viewpoints/Go To…`, `Capture All`; `node Tools/capture.mjs --viewpoint <name|all>` bzw. MCP `ViewpointTools.Capture("pass")`. Test: kein Blickpunkt unter dem Gelände. Vergleich mit alten Bildern: `node Tools/montage.mjs` (neu). Kamera: FOV 60, near 0,5, far 6000 wie im Prototyp; Phase-1-Platzhalter (Boden, Würfel, Kugel) entfernt.
 - [ ] 7. Kollision
@@ -69,6 +69,9 @@ angesehen. Web-Build im Headless-Chrome: 0 Konsolenfehler, Boot nach 0,9 s
 ## Gefunden (später)
 
 - Terrain allein bis 1,3 M Dreiecke (Reisfeld-Blick) — über dem Budget „Niedrig" (800 k). `pixelError` je Qualitätsstufe setzen (10 halbiert) → Phase 10.
+
+- Hochstraße: Brüstungen und Pfeiler-Feinheiten des Prototyps fehlen; 6 winzige Faltungen an zwei engen Stadtecken (< 1 m²) → Phase 5 (Stadt).
+- Stadt-Bodenplatte ist nur Platte + senkrechte Kante, ohne die 24-m-Böschung des Prototyps → Phase 5.
 
 ## Für dich (Mensch)
 

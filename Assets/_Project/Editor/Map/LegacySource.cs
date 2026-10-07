@@ -43,6 +43,42 @@ namespace JapanMap.Editor.Map
         }
 
         [Serializable]
+        public class Roads
+        {
+            public float sampleSpacing;
+            public Road[] roads;
+        }
+
+        [Serializable]
+        public class Road
+        {
+            public string id, type;
+            public bool closed;
+            public string[] tags;
+            public float[] centerline; // flat x, y, z (Three coordinates), sampleSpacing apart
+            public float[] widths, banking;
+            public float length, trimStart, trimEnd;
+            public Junction[] junctions;
+            public Rail[] rails;
+            [Serializable] public class Junction { public string at, with; public float trim; }
+            [Serializable] public class Rail { public int side; public float from, to; }
+        }
+
+        public static void MirrorVertices(System.Collections.Generic.List<Vector3> vertices)
+        {
+            for (var i = 0; i < vertices.Count; i++) vertices[i] = ToUnity(vertices[i].x, vertices[i].y, vertices[i].z);
+        }
+
+        /// <summary>
+        /// Mirroring z flips the handedness of every triangle; without swapping two indices each
+        /// face built in Three coordinates would face away (and be culled) in Unity.
+        /// </summary>
+        public static void FlipWinding(System.Collections.Generic.List<int> triangles)
+        {
+            for (var i = 0; i < triangles.Count; i += 3) (triangles[i + 1], triangles[i + 2]) = (triangles[i + 2], triangles[i + 1]);
+        }
+
+        [Serializable]
         public class Checkpoints
         {
             public Point[] points;
