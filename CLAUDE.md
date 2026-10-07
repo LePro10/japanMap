@@ -109,6 +109,11 @@ dem Unity-MCP. Der MCP verbindet sich nur beim Start einer Claude-Sitzung.
     geglättet) — Begründung im Commit. Große Änderungen (Ort verlegen, Straße
     entfernen, Regel ändern) nur mit Zustimmung und Eintrag in DECISIONS.md.
 
+16. **Was der Mensch einmal korrigiert, muss er nie wieder sagen.**
+    Jede Rückmeldung (Stil, Fahrgefühl, Arbeitsweise) wird noch in derselben
+    Sitzung festgeschrieben: im passenden Skill, `STYLE-KIT.md` oder als
+    Test — nicht nur umgesetzt. Freigegebene Ergebnisse sind der neue Maßstab.
+
 ## Sich selbst verbessern — Pflicht, nicht Kür
 
 Jeder Fehler, jede Sackgasse und jeder langsame Arbeitsschritt wird zu einer

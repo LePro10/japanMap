@@ -7,6 +7,8 @@
 
 | Datum | Phase | Was passiert ist | Vorkehrung (wo) | Art |
 |---|---|---|---|---|
+| 2026-10-07 | Asset | Stil-Kit Runde 1 zu flach (Kura 22 %, Automat 14 % des Budgets), gestreckte Texturen | Skill `blender-asset` „Qualitäts-Schleife", Zielbereich 40–80 % in ART-DIRECTION.md, Streck-Warnung in `ArtSource/build.py` | Skill/Werkzeug |
+| 2026-10-07 | — | Rückmeldungen des Menschen mussten jedem Agenten neu gesagt werden | CLAUDE.md Regel 16, Skill `retro` Schritt 1 | Regel |
 | 2026-10-07 | 2 | Zweite Sitzung committete parallel (D13 doppelt vergeben); ein `commit -a` hätte fremde Dateien mitgenommen | `CLAUDE.md` Regel 13: nur eigene Pfade committen, DECISIONS-Nummer neu lesen | Regel |
 | 2026-10-07 | 2 | Neuer Default im ScriptableObject-Code (Torii als Tor) kam im vorhandenen Asset nicht an | Hinweis im Kopf von `MapImportSettings`: das Asset ist die Wahrheit | Ablauf |
 | 2026-10-07 | 2 | Beim Umbau einer Testdatei fielen drei Splat-Tests still weg (34 statt 37); nur die Zahl verriet es | Sperrklinke `Tools/test-count.json` in `verify.mjs`, Schritt im Skill `unity-verify` | Werkzeug |

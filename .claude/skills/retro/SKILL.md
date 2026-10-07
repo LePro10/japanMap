@@ -11,6 +11,9 @@ kein zweites Mal. Eine Lehre ohne Vorkehrung zählt nicht.
 ## Ablauf (2–5 Minuten, nicht mehr)
 
 1. **Sammeln:** Was hat in dieser Sitzung Zeit gekostet oder war falsch?
+   **Und: Was hat der Mensch korrigiert oder freigegeben?** Jede Korrektur
+   wird eine Regel im passenden Skill/Kit (CLAUDE.md Regel 16), jede
+   Freigabe ein festgehaltener Maßstab („so ist es richtig").
    (Fehlversuche, falsche Annahmen, Bugs, wiederholte Handgriffe, Werkzeuge,
    die fehlten, Doku, die nicht stimmte.)
 2. **Ursache als Klasse benennen** — nicht „Laterne schwebte", sondern

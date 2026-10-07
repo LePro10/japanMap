@@ -52,5 +52,10 @@ der Prototyp entstand; bei Bedarf beim Menschen erfragen), die Screenshots in
 | Auto | ≤ 40 000 | 2048² |
 | Baum | ≤ 6 000 + Billboard | 1024² Atlas |
 
+**Zielbereich: 40–80 % des Budgets für LOD0.** Zu sparsam ist genauso falsch
+wie zu viel — im Stil-Kit lagen Automat (14 %) und Kura (22 %) weit darunter
+und wirkten flach; mit 42 % bzw. 81 % wurden sie freigegeben. Die
+Silhouette kostet Dreiecke, Texturen und Varianten nicht.
+
 Jedes Prop ab mittlerer Größe braucht mindestens eine LOD-Stufe. Maßstab in
 Metern, Ursprung am Boden, Vorderseite nach +Z (Unity).
