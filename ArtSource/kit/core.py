@@ -512,7 +512,18 @@ def mesh_object(name, bm, col, mats, bevel=0.0, bevel_angle=35.0, smooth=True, h
         me = bpy.data.meshes.new(name)
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
     if recalc:  # open shells (wall modules) keep their built winding instead
+        # a lone face (glass pane, signal lens) has no inside/outside: recalc may
+        # flip it and the back-face culling hides it - keep the built facing
+        lone = {}
+        for f in bm.faces:
+            f.normal_update()
+            if all(len(e.link_faces) == 1 for e in f.edges):
+                lone[f] = f.normal.copy()
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        for f, n in lone.items():
+            f.normal_update()
+            if f.normal.dot(n) < 0:
+                f.normal_flip()
     if dissolve:
         # grid splits (window columns) cut every profile edge into pieces, and the
         # bevel pays per piece: merge flat neighbours back (same UVs/material only)

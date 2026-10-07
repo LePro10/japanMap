@@ -477,6 +477,7 @@ LAYOUTS = {
             ('LED_COOL',      emissive('#e8f3ff')),
             ('LAMP_WARM',     emissive('#ffc985')),
             ('INTERIOR',      flat('#0c0c0d', 0.2, dirt=0.0)),
+            ('LENS_OFF',      flat('#121516', 0.5, dirt=0.0)),    # unlit signal lens behind the lit one
         ], 192, 0, 13),
     },
     'Kura': {    # plaster strips 2 m tall at 128 px/m; namako at 256 px/m (1 m)
