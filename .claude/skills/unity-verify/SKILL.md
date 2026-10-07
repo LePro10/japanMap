@@ -62,7 +62,11 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
   (`POST http://127.0.0.1:8080/mcp`, JSON-RPC: `initialize` → Header
   `mcp-session-id` → `tools/call`). Der Server startet mit dem Editor (~25 s).
 - **Einen selbst gestarteten Editor schließen:** AppleScript `quit` greift
-  nicht; `kill -TERM <pid>` beendet ihn sauber in ~2 s.
+  nicht; `kill -TERM <pid>` beendet ihn sauber in ~2 s. **Danach auch den
+  MCP-Server beenden** (`lsof -nP -iTCP:8080 -sTCP:LISTEN`, Prozesse
+  `mcp-for-unity`): Er überlebt den Editor, und ein später geöffneter Editor
+  meldet sich dann nicht an ("0 verbundene Editoren"). Abhilfe: verwaisten
+  Server beenden, im Fenster "MCP for Unity" "Start Server" drücken.
 - **Projektname-Kollisionen:** Unity hat eigene Typen wie
   `UnityEngine.Rendering.DebugOverlay` — eigene Klassen eindeutig benennen.
 

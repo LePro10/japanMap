@@ -7,6 +7,7 @@
 
 | Datum | Phase | Was passiert ist | Vorkehrung (wo) | Art |
 |---|---|---|---|---|
+| 2026-10-07 | 1 | Editor per `kill` beendet, MCP-Server lief verwaist weiter; der nächste Editor meldete sich nicht an | Skill `unity-verify`, Falle "Editor schließen" | Skill |
 | 2026-10-07 | 1 | Web-Player liefert „Draw Calls"/„Batches" als 0, obwohl gezeichnet wird — eine falsche Budgetzahl | Overlay zeigt „n/a" (`StatsOverlay.Snapshot.Count`), Test in `FrameTimeStatsTests` | Test |
 | 2026-10-07 | 1 | Capture im Editor ohne gespeicherte Szene schrieb `Captures/.png` | Fallback-Name in `Capture.FromMenu` | Werkzeug |
 | 2026-10-07 | 1 | Rauchprobe meldete Unitys absichtlich abgebrochenen Brotli-Stream als Fehler | Filter nur für `ERR_ABORTED` auf `*.unityweb` in `Tools/smoke.mjs` | Werkzeug |
