@@ -154,6 +154,57 @@ namespace JapanMap.Tests
         }
 
         [Test]
+        public void Props_AllPlacedOnTheGround()
+        {
+            var props = GameObject.Find($"{MapScene.RootName}/{PropImporter.GroupName}");
+            Assert.IsNotNull(props, "World/Props missing — run JapanMap/Map/Import Props");
+            var placed = props.GetComponentsInChildren<BoxCollider>().Select(c => c.transform).Distinct().ToList();
+            Assert.AreEqual(977, placed.Count, "props.json has 977 placements");
+
+            // Expected position straight from the file: terrain or the fixed y (tetrapod piles, pier, jetty) + yOffset.
+            var settings = MapImportSettings.LoadOrCreate();
+            var raw = System.IO.File.ReadAllText(LegacySource.PathOf(settings, "props/props.json"));
+            var file = JsonUtility.FromJson<LegacySource.Props>(raw).props;
+            var fixedY = PropImporter.FixedHeightFlags(raw, file.Length);
+            var seen = new System.Collections.Generic.Dictionary<string, int>();
+            for (var k = 0; k < file.Length; k++)
+            {
+                var p = file[k];
+                seen.TryGetValue(p.id, out var i);
+                seen[p.id] = i + 1;
+                var t = props.transform.Find(p.id).GetChild(i);
+                var expected = new Vector3(p.x, 0, -p.z);
+                if (fixedY[k]) expected.y = p.y + p.yOffset;
+                else
+                {
+                    var tile = TerrainImporter.TileAt(expected);
+                    expected.y = tile.SampleHeight(expected) + tile.transform.position.y + p.yOffset;
+                }
+                Assert.That(Vector3.Distance(t.position, expected), Is.LessThan(0.01f), $"{t.name}: at {t.position}, expected {expected}");
+            }
+        }
+
+        [Test]
+        public void Props_TempleStairsLeadUpToTheHall()
+        {
+            // The rotation formula of the README, checked on the one clearly directed prop: the foot of
+            // the stairs (front, +Z) faces away from the hall.
+            var stairs = GameObject.Find($"{MapScene.RootName}/{PropImporter.GroupName}/templeStairs").transform.GetChild(0);
+            var hall = GameObject.Find($"{MapScene.RootName}/{PropImporter.GroupName}/templeHall").transform.GetChild(0);
+            Assert.That(Vector3.Dot(stairs.forward, hall.position - stairs.position), Is.LessThan(0f));
+            Assert.That(Vector3.Dot(hall.forward, stairs.position - hall.position), Is.GreaterThan(0f), "hall faces the stairs");
+        }
+
+        [Test]
+        public void Props_ToriiCanBePassedThrough()
+        {
+            var torii = GameObject.Find($"{MapScene.RootName}/{PropImporter.GroupName}/torii").transform.GetChild(0);
+            var centre = torii.position + Vector3.up * 1.5f;
+            foreach (var c in torii.GetComponents<BoxCollider>())
+                Assert.IsFalse(c.bounds.Contains(centre), "a collider blocks the middle of the torii");
+        }
+
+        [Test]
         public void ToUnity_MirrorsZ_NorthIsPlusZ()
         {
             // templeHall: Three (820, -954) lies north of the centre → Unity z must be positive.

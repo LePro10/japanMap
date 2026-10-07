@@ -24,8 +24,12 @@ Drehungen um Y (Props): `props.json` führt `rot` in **Grad** (der Prototyp
 rechnet es beim Laden in Radiant um). Three dreht positiv gegen den
 Uhrzeigersinn (von oben), Unity im Uhrzeigersinn. Mit der Spiegelung an z gilt
 **`unityYawDeg = 180 − rot`**, sofern das Modell in beiden Welten
-nach lokal +Z schaut. **Nicht verifiziert** — an einem unsymmetrischen Prop
-(z. B. `templeHall`) im Bild prüfen, bevor alle 977 gesetzt werden.
+nach lokal +Z schaut. **Geprüft 2026-10-07** an `templeStairs` (der Fuß zeigt
+vom Tempel weg, Bild + Test `Props_TempleStairsLeadUpToTheHall`); `templeHall`
+ist vorn/hinten symmetrisch und taugt dafür nicht. Links/rechts (lokal ±X) ist
+dabei gespiegelt — für symmetrische Modelle egal, neue Modelle (Phase 4) werden
+ohnehin für Unity gebaut. 380 Einträge (Tetrapoden-Haufen, Steg, Mole) tragen
+eine feste Höhe `y`; dann gilt sie statt der Geländehöhe.
 
 ## terrain/
 

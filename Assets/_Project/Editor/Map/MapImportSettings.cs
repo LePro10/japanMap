@@ -92,6 +92,50 @@ namespace JapanMap.Editor.Map
             Rect.MinMaxRect(300, -250, 1040, -160),
         };
 
+        [Header("Props (placeholders until Phase 4; sizes W × H × D from legacy landmarkMeshes.ts / props.config.ts)")]
+        [Tooltip("Yaw in Unity = propYawBase − rot (README: 180 − rot for models whose front is local +Z in both worlds).")]
+        public float propYawBase = 180f;
+        public PropSpec[] props =
+        {
+            new() { id = "tetrapod", size = new Vector3(2.0f, 1.7f, 2.2f), category = "Concrete" },
+            new() { id = "delineator", size = new Vector3(0.15f, 1.0f, 0.15f), category = "Marker" },
+            new() { id = "concreteWall", size = new Vector3(8.42f, 2.05f, 0.44f), category = "Concrete" },
+            new() { id = "shed", size = new Vector3(4.6f, 2.9f, 3.6f), category = "Wood" },
+            new() { id = "powerPole", size = new Vector3(0.3f, 9.0f, 0.3f), category = "Wood" },
+            new() { id = "rock_moss_set_02", size = new Vector3(3.5f, 2.0f, 3.5f), category = "Rock" },
+            new() { id = "boulder_01", size = new Vector3(2.5f, 1.8f, 2.5f), category = "Rock" },
+            new() { id = "greenhouse", size = new Vector3(7.1f, 3.6f, 14.3f), category = "Building" },
+            new() { id = "stoneLantern", size = new Vector3(0.8f, 2.24f, 0.8f), category = "Stone" },
+            new() { id = "farmhouse", size = new Vector3(11.9f, 7.5f, 9.8f), category = "Building" },
+            new() { id = "warehouse", size = new Vector3(21.52f, 6.42f, 13.3f), category = "Building" },
+            new() { id = "netRack", size = new Vector3(2.91f, 2.47f, 4.6f), category = "Wood" },
+            new() { id = "torii", size = new Vector3(6.0f, 5.0f, 0.8f), category = "Shrine", gate = true },
+            new() { id = "fishHut", size = new Vector3(6.2f, 3.77f, 4.92f), category = "Wood" },
+            new() { id = "boat", size = new Vector3(2.0f, 1.2f, 5.6f), category = "Wood" },
+            new() { id = "crateStack", size = new Vector3(2.11f, 1.23f, 1.49f), category = "Wood" },
+            new() { id = "templeHall", size = new Vector3(14.0f, 7.7f, 11.0f), category = "Shrine" },
+            new() { id = "templeStairs", size = new Vector3(4.3f, 2.5f, 3.8f), category = "Stone" },
+            new() { id = "chozuya", size = new Vector3(3.25f, 2.9f, 3.25f), category = "Shrine" },
+            new() { id = "bellTower", size = new Vector3(3.54f, 4.23f, 3.54f), category = "Shrine" },
+            new() { id = "hokora", size = new Vector3(1.0f, 1.4f, 1.0f), category = "Shrine" },
+            new() { id = "lighthouse", size = new Vector3(3.0f, 13.56f, 3.0f), category = "Building" },
+            new() { id = "modular_wooden_pier", size = new Vector3(3.0f, 1.0f, 10.0f), category = "Wood" },
+            new() { id = "coastal_cliff_04", size = new Vector3(20.0f, 12.0f, 20.0f), category = "Rock" },
+            new() { id = "boatRamp", size = new Vector3(5.25f, 2.53f, 11.58f), category = "Concrete" },
+            new() { id = "jetty", size = new Vector3(2.59f, 2.6f, 14.0f), category = "Wood" },
+        };
+
+        [System.Serializable]
+        public class PropSpec
+        {
+            public string id;
+            public Vector3 size = Vector3.one * 2;
+            [Tooltip("Placeholder material: Concrete, Wood, Stone, Rock, Building, Shrine, Marker.")]
+            public string category = "Concrete";
+            [Tooltip("Two posts and a beam instead of a solid box; only the posts collide (you pass through a torii).")]
+            public bool gate;
+        }
+
         [System.Serializable]
         public class RoadType
         {

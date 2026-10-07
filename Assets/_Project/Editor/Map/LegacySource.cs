@@ -79,6 +79,23 @@ namespace JapanMap.Editor.Map
         }
 
         [Serializable]
+        public class Props
+        {
+            public Prop[] props;
+        }
+
+        /// <summary>
+        /// Three coordinates, rot in degrees. y is a fixed height if present (JsonUtility cannot tell
+        /// "missing" from 0, hence the raw-text check in PropImporter), yOffset is added to it.
+        /// </summary>
+        [Serializable]
+        public class Prop
+        {
+            public string id;
+            public float x, z, rot, scale = 1, y, yOffset;
+        }
+
+        [Serializable]
         public class Checkpoints
         {
             public Point[] points;

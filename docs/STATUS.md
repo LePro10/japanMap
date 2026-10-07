@@ -12,7 +12,7 @@
 - [x] 2. Splatmap aus `zones.png` → 4 Terrain-Layer (Fels/Gras/Sand/Reisfeld, Kachelgrößen aus dem Prototyp), Poly-Haven-Texturen (CC0) unter `Assets/ThirdParty/PolyHaven` mit `LICENSES.md`; Normalmaps/Max. 1024 px per Import-Regel (`TextureImportRules`). Draufsicht = `zones.png`; Test: dominante Schicht an drei Punkten. Noch ohne Mask-Map/Triplanar (Optik → Phase 4).
 - [x] 3. Wasser (`JapanMap/Map/Import Water`): Meer auf 0 m, Reisfeld-Wasser aus `paddy.png` (29 Kacheln à 256 m, 16 k Dreiecke), Fluss als Band mit der Spiegel-Logik des Prototyps (730 Dreiecke). Reisfeld-Wassertiefe **0,10 m** wie im Prototyp (`props.config` PADDY_WATER.depth; bei den 0,30 m aus der Bake-Meta „ersoff" dort das Auto). Test: alle Wasserflächen zeigen nach oben. Ränder treppig, Material schlicht → Phase 4.
 - [x] 4. Straßen-Importer (`JapanMap/Map/Import Roads`): 152 Straßen in 24 Kacheln à 512 m (127 k Dreiecke), Querschnitt/Querneigung/Kürzung an Einmündungen wie im Prototyp, Leitplanken mit Pfosten (an Einmündungen unterbrochen), Stadt-Bodenplatte auf 29,97 m, Hochstraße mit Deck und Pfeilern/Portal-Jochen (vereinfacht nach `ViaductSystem`). Passung Mittellinie − Gelände je Typ: Median ≤ 2,4 cm, |p95| ≤ 9 cm (Test). Alle Collider als MeshCollider.
-- [ ] 5. Props-Importer
+- [x] 5. Props-Importer (`JapanMap/Map/Import Props`): 977 Platzhalter (26 Prefabs unter `Prefabs/Placeholders`, Kasten in Prototyp-Maßen + rote Markierung vorn, Torii als Tor), Höhe aus Gelände bzw. fester `y` + `yOffset`. Drehformel `180 − rot` an der Tempeltreppe im Bild geprüft. Tests: Position jedes Props gegen die Datei, Treppe führt zur Halle, Torii passierbar.
 - [x] 6. Blickpunkte: 39 aus dem Prototyp (z gespiegelt) in `Data/Map/Viewpoints.asset`; Menü `JapanMap/Viewpoints/Go To…`, `Capture All`; `node Tools/capture.mjs --viewpoint <name|all>` bzw. MCP `ViewpointTools.Capture("pass")`. Test: kein Blickpunkt unter dem Gelände. Vergleich mit alten Bildern: `node Tools/montage.mjs` (neu). Kamera: FOV 60, near 0,5, far 6000 wie im Prototyp; Phase-1-Platzhalter (Boden, Würfel, Kugel) entfernt.
 - [ ] 7. Kollision
 
@@ -62,8 +62,6 @@ angesehen. Web-Build im Headless-Chrome: 0 Konsolenfehler, Boot nach 0,9 s
 - Die Web-Seite ist noch Unitys Standardvorlage (960 × 600 mit Fußleiste) → eigene Vorlage spätestens Phase 9/10.
 - Zwölf alte Agent-Zweige `agent/*` (Worktrees unter `../japanMap.worktrees/`)
   gehören zum Prototyp. Nicht mergen. Löschen entscheidet der Mensch.
-- Achsen-Umrechnung der Props-Drehung (`SourceData/legacy/README.md`) ist
-  gerechnet, nicht im Bild geprüft → Phase 2, Aufgabe 5.
 - `legacy/threejs/node_modules` fehlt (war nicht da) — `npm ci` dort erst, wenn der Prototyp gebraucht wird.
 
 ## Gefunden (später)
