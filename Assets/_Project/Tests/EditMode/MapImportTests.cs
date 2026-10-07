@@ -22,7 +22,7 @@ namespace JapanMap.Tests
         }
 
         [Test]
-        public void TerrainImport_TwiceGivesIdenticalResult()
+        public void TerrainImport_TwiceGivesIdenticalHeights()
         {
             var settings = MapImportSettings.LoadOrCreate();
             var first = Fingerprint(TerrainImporter.Import(settings));
@@ -40,6 +40,17 @@ namespace JapanMap.Tests
                 sum += h[r, c] * (r + 1) * (c % 17 + 1);
             return $"{t.name} {t.transform.position} {d.size} {sum:R} {UnityEditor.AssetDatabase.GetAssetPath(d)}";
         }));
+
+        [Test]
+        public void ImportAll_TwiceGivesIdenticalMap()
+        {
+            MapImport.ImportAll();
+            var first = MapImport.Fingerprint();
+            MapImport.ImportAll();
+            var second = MapImport.Fingerprint();
+            Assert.That(first.Split('\n').Length, Is.GreaterThan(3000));
+            Assert.AreEqual(first, second);
+        }
 
         // Mirror errors in zones.png would put sand into the mountains — check one clear spot per zone.
         [TestCase(-1000f, 1000f, 0, TestName = "Splat_NorthWestMassif_IsRock")]

@@ -23,15 +23,18 @@ fragen — es sei denn, der Agent hat ihn selbst geöffnet.
 
 1. **Kompilieren abwarten**, dann Konsole lesen: 0 Fehler. Warnungen aus
    eigenem Code ernst nehmen.
-2. **Tests** der betroffenen Module (EditMode zuerst, schnell; PlayMode für
+2. **Testzahl** mit `Tools/test-count.json` vergleichen (über den MCP von
+   Hand, `verify.mjs` tut es selbst): weniger Tests als dort = ein Test ist
+   verloren gegangen, RED. Mehr: Datei hochsetzen.
+3. **Tests** der betroffenen Module (EditMode zuerst, schnell; PlayMode für
    Laufzeitverhalten). Neue Logik bekommt einen Test, Bugfixes einen Test,
    der vorher rot war.
-3. **Bild** bei allem Sichtbaren: von einem festen Blickpunkt (ab Phase 2),
+4. **Bild** bei allem Sichtbaren: von einem festen Blickpunkt (ab Phase 2),
    klein (≈ 1024 px), und **ansehen** — Zahlen allein haben im Prototyp
    mehrfach grobe Fehler durchgelassen.
-4. **Play-Modus-Konsole** nach ein paar Sekunden Laufzeit: Fehler, die erst
+5. **Play-Modus-Konsole** nach ein paar Sekunden Laufzeit: Fehler, die erst
    zur Laufzeit kommen (NullReference, fehlende Referenzen).
-5. Bei Leistungsfragen: Debug-Overlay / Profiler am Blickpunkt, Vorher und
+6. Bei Leistungsfragen: Debug-Overlay / Profiler am Blickpunkt, Vorher und
    Nachher am **selben** Ort.
 
 ## Umgebung prüfen (Beginn Phase 1 und nach Rechnerwechsel)
