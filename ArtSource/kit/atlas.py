@@ -2,10 +2,13 @@
 
 Layout per atlas:
 - *strips* span the full width, so UVs may run past u=1 and the strip repeats
-  horizontally (walls, stone, wood). V is never tiled: either stretched over
-  the part height (streaks, grime gradients survive that) or metric (namako).
-- *cells* are small swatches: one colour with a soft grime gradient in V.
-- *rects* are hand-laid graphics (vending display) mapped 1:1 onto one face.
+  horizontally (walls, stone, wood). Strips are mapped **metric in both
+  axes** (texel density = ppm, default 128 px/m) - never stretched. V starts
+  at the bottom of the part, so grime sits at the bottom; a strip is as tall
+  as the tallest surface that uses it.
+- *cells* are 64 px swatches: one colour with a smooth grime gradient and no
+  noise (cells cover whole faces, any noise would smear).
+- *rects* are graphics mapped 1:1 onto one face (display, stickers, crests).
 
 Three maps per atlas, matching Unity URP/Lit: BaseColor (sRGB), MaskMap
 (R metallic, G occlusion, B unused, A smoothness; linear) and Emission (sRGB).
@@ -14,7 +17,7 @@ Rows are stored bottom-up like Blender images: row 0 = v 0.
 import numpy as np
 
 SIZE = 1024
-PX_PER_M = 256  # texel density of strips (see STYLE-KIT.md)
+PPM = 128  # default texel density of strips, px per metre (STYLE-KIT.md)
 
 
 # ── noise ───────────────────────────────────────────────────────────────────
@@ -67,15 +70,12 @@ def grime(w, h, rng, amount=0.18, height=0.25):
     return 1 - amount * (1 - smoothstep(0, height, vgrad(w, h) + 0.1 * n))
 
 
-def flat(col, smooth=0.35, metal=0.0, noise=0.04, dirt=0.18, streaks=0.0):
+
+def flat(col, smooth=0.35, metal=0.0, dirt=0.18):
+    """Cell: one colour, darker towards the bottom. No noise on purpose."""
     def gen(w, h, rng):
-        c = srgb(col)
-        n = fbm(w, h, 4, 4, rng, 3)
-        f = (1 + noise * (n - 0.5) * 2) * grime(w, h, rng, dirt)
-        if streaks:
-            s = value_noise(w, h, 24, 2, rng)
-            f *= 1 - streaks * smoothstep(0.55, 0.9, s) * (1 - vgrad(w, h) * 0.6)
-        return _out(c * f[..., None], smooth, metal)
+        f = 1 - dirt * (1 - smoothstep(0, 0.3, vgrad(w, h)))
+        return _out(srgb(col) * f[..., None], smooth, metal)
     return gen
 
 
@@ -86,43 +86,47 @@ def emissive(col, smooth=0.5):
     return gen
 
 
-def stone(col='#7b7972', moss=0.0, dirt=0.25):
-    """Granite: soft blotches, salt-and-pepper speckles, rain streaks, optional moss on top."""
+def rain_streaks(w, h, rng, amount):
+    """Thin, broken vertical runs (a few cm wide, 10-60 cm long) - no smears."""
+    cols = value_noise(w, h, w // 3, 1, rng)                       # which columns run
+    length = value_noise(w, h, w // 24, max(2, h // 40), rng)      # where runs start/stop
+    breakup = value_noise(w, h, w // 6, max(2, h // 12), rng)
+    m = smoothstep(0.72, 0.85, cols) * smoothstep(0.45, 0.65, length) * (0.6 + 0.4 * breakup)
+    return 1 - amount * m
+
+
+def stone(col='#808183', moss=0.0, dirt=0.22):
+    """Granite: cool grey, visible salt-and-pepper grain, soft blotches,
+    short rain runs, optional moss patches (spread evenly over V)."""
     def gen(w, h, rng):
         c = srgb(col)
-        blot = fbm(w, h, 8, max(2, h // 64), rng, 5)
+        blot = fbm(w, h, w // 32, max(2, h // 32), rng, 4)
+        f = 0.78 + 0.4 * blot
         speck = rng.random((h, w))
-        f = 0.72 + 0.5 * blot
-        lich = smoothstep(0.6, 0.75, fbm(w, h, 20, max(4, h // 24), rng, 3))   # dark lichen spots
-        f *= 1 - 0.18 * lich
-        f = np.where(speck > 0.985, f * 0.55, f)
-        f = np.where(speck < 0.01, f * 1.18, f)
-        s = value_noise(w, h, 40, 2, rng)
-        f *= 1 - 0.2 * smoothstep(0.5, 0.9, s)
-        f *= grime(w, h, rng, dirt, 0.3)
+        f = np.where(speck > 0.93, f * 0.62, f)          # dark mica/hornblende grains
+        f = np.where(speck < 0.05, f * 1.15, f)          # light feldspar grains
+        f *= rain_streaks(w, h, rng, 0.12)
+        f *= grime(w, h, rng, dirt, 0.35)
         rgb = c * f[..., None]
-        sm = 0.18 + 0.1 * blot
+        sm = 0.2 + 0.1 * blot
         if moss:
-            m = fbm(w, h, 12, max(2, h // 48), rng, 4) + (vgrad(w, h) - 0.5) * 0.6
-            m = smoothstep(0.62 - moss * 0.3, 0.72 - moss * 0.3, m)
-            mc = srgb('#4d5a2c') * (0.75 + 0.4 * fbm(w, h, 30, 6, rng, 2))[..., None]
+            m = fbm(w, h, w // 24, max(2, h // 24), rng, 4)
+            m = smoothstep(0.62 - 0.25 * moss, 0.70 - 0.25 * moss, m)
+            mc = srgb('#4d5a2c') * (0.7 + 0.45 * fbm(w, h, w // 8, max(2, h // 8), rng, 2))[..., None]
             rgb = rgb * (1 - m[..., None]) + mc * m[..., None]
             sm = sm * (1 - m) + 0.08 * m
         return _out(rgb, sm)
     return gen
 
 
-def plaster(col='#e2dccf', dirt=0.22, streak=0.12, smooth=0.25):
-    """Lime plaster (shikkui): near-flat, vertical rain streaks fading upwards."""
+def plaster(col='#e2dccf', dirt=0.25, streak=0.10, smooth=0.25):
+    """Lime plaster (shikkui): faint trowel mottling, thin rain runs, grime at the foot."""
     def gen(w, h, rng):
         c = srgb(col)
-        n = fbm(w, h, 16, max(2, h // 64), rng, 4)
-        s = value_noise(w, h, 90, 3, rng) * value_noise(w, h, 30, 2, rng)
-        st = smoothstep(0.25, 0.6, s) * (1 - 0.7 * vgrad(w, h))
-        f = (0.95 + 0.08 * n) * (1 - streak * st) * grime(w, h, rng, dirt, 0.22)
-        return _out(c * f[..., None], smooth - 0.1 * st)
+        n = fbm(w, h, w // 48, max(2, h // 48), rng, 4)
+        f = (0.95 + 0.08 * n) * rain_streaks(w, h, rng, streak) * grime(w, h, rng, dirt, 0.2)
+        return _out(c * f[..., None], smooth + 0.05 * n)
     return gen
-
 
 def namako(tile='#2f343b', joint='#ddd9cf', period_px=64, joint_px=6.5):
     """Namako-kabe: square tiles laid diagonally, raised white plaster joints.
@@ -156,14 +160,6 @@ def wood(col='#3a281c', smooth=0.3):
     return gen
 
 
-def rooftile(col='#4d5560'):
-    """Fired kawara: blue-grey, faint glaze sheen, lighter on the upper edge."""
-    def gen(w, h, rng):
-        c = srgb(col)
-        n = fbm(w, h, 32, max(2, h // 32), rng, 4)
-        f = (0.85 + 0.25 * n) * (0.9 + 0.15 * vgrad(w, h))
-        return _out(c * f[..., None], 0.35 + 0.2 * n)
-    return gen
 
 
 def vending_display(seed=7):
@@ -237,9 +233,92 @@ def control_panel():
     return gen
 
 
+def _canvas(w, h, bg):
+    y, x = np.mgrid[0:h, 0:w].astype(float)
+    return x / w, y / h, np.ones((h, w, 3)) * srgb(bg), np.zeros((h, w, 3))
+
+
+def side_ad():
+    """Side wrap of a drink machine: gradient, big bottle, wave band, 'copy' bars."""
+    def gen(w, h, rng):
+        u, v, rgb, emit = _canvas(w, h, '#0d3b78')
+        rgb[:] = (srgb('#0d3b78') * (1 - v[..., None]) + srgb('#2fa8e0') * v[..., None])
+        wave = np.abs(v - (0.32 + 0.05 * np.sin(u * 6.3))) < 0.035
+        rgb[wave] = srgb('#ffffff')
+        bot = (np.abs(u - 0.5) < 0.16) & (v > 0.38) & (v < 0.78)
+        neck = (np.abs(u - 0.5) < 0.06) & (v >= 0.78) & (v < 0.88)
+        sh = (v >= 0.72) & (v < 0.78) & (np.abs(u - 0.5) < 0.16 - (v - 0.72) / 0.06 * 0.1)
+        rgb[bot & ~((v >= 0.72) & ~sh)] = srgb('#e8f4fb')
+        rgb[neck] = srgb('#e8f4fb'); rgb[(np.abs(u - 0.5) < 0.07) & (v >= 0.88) & (v < 0.91)] = srgb('#c8102e')
+        lab = (np.abs(u - 0.5) < 0.16) & (v > 0.5) & (v < 0.6)
+        rgb[lab] = srgb('#c8102e')
+        for i, yy in enumerate((0.16, 0.11, 0.07)):
+            bar = (u > 0.12) & (u < 0.88 - 0.2 * i) & (np.abs(v - yy) < 0.012)
+            rgb[bar] = srgb('#ffffff')
+        rgb *= grime(w, h, rng, 0.15, 0.2)[..., None]
+        return _out(rgb, 0.55)
+    return gen
+
+
+def sticker(kind):
+    """Small labels: caution, recycling, info notice, rating plate."""
+    def gen(w, h, rng):
+        u, v, rgb, emit = _canvas(w, h, '#f2f2ee')
+        if kind == 'caution':
+            rgb[:] = srgb('#f5c400')
+            tri = (v > 0.18) & (v < 0.82) & (np.abs(u - 0.5) < (0.82 - v) * 0.6)
+            rgb[tri] = srgb('#111111')
+            inner = (v > 0.28) & (v < 0.7) & (np.abs(u - 0.5) < (0.7 - v) * 0.45)
+            rgb[inner] = srgb('#f5c400')
+            rgb[(np.abs(u - 0.5) < 0.03) & (v > 0.36) & (v < 0.58)] = srgb('#111111')
+        elif kind == 'recycle':
+            rgb[:] = srgb('#1f7a3a')
+            r = np.hypot(u - 0.5, v - 0.5)
+            rgb[(r > 0.22) & (r < 0.32)] = srgb('#ffffff')
+            rgb[(np.abs(u - 0.5) < 0.06) & (v > 0.6) & (v < 0.86)] = srgb('#1f7a3a')
+        elif kind == 'notice':
+            rgb[:] = srgb('#ffffff')
+            rgb[v > 0.8] = srgb('#c8102e')
+            for i in range(6):
+                rgb[(u > 0.1) & (u < 0.9 - 0.1 * (i % 3)) & (np.abs(v - (0.68 - i * 0.1)) < 0.018)] = srgb('#333333')
+        else:  # rating plate: brushed aluminium with engraved lines
+            rgb[:] = srgb('#b8bbbf') * (0.92 + 0.08 * value_noise(w, h, 4, h, rng))[..., None]
+            for i in range(5):
+                rgb[(u > 0.1) & (u < 0.9) & (np.abs(v - (0.8 - i * 0.15)) < 0.012)] = srgb('#4a4c50')
+            return _out(rgb, 0.55, 0.9)
+        return _out(rgb, 0.45)
+    return gen
+
+
+def kamon():
+    """Family crest on a plaster disc: ring with three bars (maru ni mitsu-biki)."""
+    def gen(w, h, rng):
+        u, v, rgb, emit = _canvas(w, h, '#e2dccf')
+        r = np.hypot(u - 0.5, v - 0.5)
+        ink = (r > 0.36) & (r < 0.44)
+        for yy in (0.36, 0.5, 0.64):
+            ink |= (np.abs(v - yy) < 0.045) & (r < 0.36)
+        rgb[ink] = srgb('#1a1a1c')
+        return _out(rgb, 0.3)
+    return gen
+
+
+def oni():
+    """Onigawara face: fired tile grey with a raised crest disc and rim."""
+    def gen(w, h, rng):
+        u, v, rgb, emit = _canvas(w, h, '#4b525b')
+        n = fbm(w, h, 8, 8, rng, 3)
+        rgb *= (0.85 + 0.25 * n)[..., None]
+        r = np.hypot(u - 0.5, (v - 0.42) * 1.1)
+        rgb[(r > 0.17) & (r < 0.22)] = srgb('#6b737d')
+        rgb[r < 0.1] = srgb('#6b737d')
+        rgb[(u < 0.06) | (u > 0.94) | (v < 0.06)] *= 0.75
+        return _out(rgb, 0.4)
+    return gen
+
+
+
 # ── atlas layouts (pixel rects: x, y, w, h; y from the bottom) ──────────────
-# Strips: full width. Metric size of a strip = px / PX_PER_M.
-# Cells: 64 px swatches in the lower band.
 
 def _cells(names_gens, x0, y0, cols, size=64):
     out = {}
@@ -248,48 +327,63 @@ def _cells(names_gens, x0, y0, cols, size=64):
     return out
 
 
-def _strip(y, h, gen):
-    return dict(kind='strip', rect=(0, y, SIZE, h), gen=gen)
+def _strip(y, h, gen, ppm=PPM):
+    return dict(kind='strip', rect=(0, y, SIZE, h), gen=gen, ppm=ppm)
+
+
+def _rect(x, y, w, h, gen):
+    return dict(kind='rect', rect=(x, y, w, h), gen=gen)
 
 
 LAYOUTS = {
-    'Props': {
+    'Props': {   # strips at 128 px/m: 1024 px = 8 m wide, 128 px = 1 m tall
         'STONE':      _strip(896, 128, stone()),
         'STONE_MOSS': _strip(768, 128, stone(moss=0.6)),
-        'WOOD_DARK':  _strip(640, 128, wood()),
-        'CONCRETE':   _strip(512, 128, stone('#9b9993', dirt=0.3)),
-        'DISPLAY':    dict(kind='rect', rect=(0, 0, 512, 384), gen=vending_display()),
-        'CONTROL':    dict(kind='rect', rect=(512, 256, 128, 256), gen=control_panel()),
+        'WOOD_DARK':  _strip(704, 64, wood()),
+        'CONCRETE':   _strip(640, 64, stone('#9b9993', dirt=0.3)),
+        'DISPLAY':    _rect(0, 0, 512, 384, vending_display()),
+        'SIDE_AD':    _rect(0, 384, 112, 256, side_ad()),
+        'STICKER_CAUTION': _rect(160, 576, 64, 64, sticker('caution')),
+        'STICKER_RECYCLE': _rect(224, 576, 64, 64, sticker('recycle')),
+        'STICKER_NOTICE':  _rect(288, 576, 64, 64, sticker('notice')),
+        'RATING_PLATE':    _rect(352, 576, 64, 64, sticker('plate')),
+        'CONTROL':    _rect(512, 256, 128, 256, control_panel()),
         **_cells([
-            ('VEND_RED',     flat('#b3141c', 0.55, dirt=0.2, streaks=0.15)),
-            ('VEND_BLUE',    flat('#1c4a9c', 0.55, dirt=0.2, streaks=0.15)),
-            ('VEND_WHITE',   flat('#e6e7e6', 0.55, dirt=0.25, streaks=0.2)),
+            ('VEND_RED',     flat('#b3141c', 0.55, dirt=0.15)),
+            ('VEND_BLUE',    flat('#1c4a9c', 0.55, dirt=0.15)),
+            ('VEND_WHITE',   flat('#e6e7e6', 0.55, dirt=0.2)),
             ('PLASTIC_BLACK', flat('#141416', 0.55, dirt=0.05)),
             ('PLASTIC_GREY', flat('#7d7e80', 0.45, dirt=0.1)),
             ('STEEL',        flat('#9a9ca0', 0.6, 1.0, dirt=0.15)),
             ('STEEL_DARK',   flat('#2c2d30', 0.45, 0.8, dirt=0.1)),
-            ('RUST',         flat('#6b3a1f', 0.15, 0.3, noise=0.15, dirt=0.2)),
+            ('RUST',         flat('#6b3a1f', 0.15, 0.3, dirt=0.2)),
             ('INTERIOR',     flat('#0c0c0d', 0.2, dirt=0.0)),
             ('LIGHT_WARM',   emissive('#ffb768')),
             ('LIGHT_PAPER',  emissive('#ffd9a0')),
             ('LIGHT_COOL',   emissive('#dff3ff')),
-            ('VERMILION',    flat('#c4381c', 0.4, dirt=0.25, streaks=0.2)),
-            ('SOOT',         flat('#1b1a19', 0.15, noise=0.12, dirt=0.0)),
+            ('VERMILION',    flat('#c4381c', 0.4, dirt=0.25)),
+            ('SOOT',         flat('#1b1a19', 0.15, dirt=0.0)),
         ], 640, 256, 6),
     },
-    'Kura': {
+    'Kura': {    # plaster strips 2 m tall at 128 px/m; namako at 256 px/m (1 m)
         'PLASTER_WHITE': _strip(768, 256, plaster()),
-        'PLASTER_BLACK': _strip(640, 128, plaster('#1a1a1c', dirt=0.1, streak=0.12, smooth=0.55)),
-        'NAMAKO':        _strip(384, 256, namako()),
-        'WOOD_DARK':     _strip(256, 128, wood()),
-        'ROOFTILE':      _strip(128, 128, rooftile()),
-        'STONE':         _strip(64, 64, stone('#7e7c76', dirt=0.3)),
+        'PLASTER_BLACK': _strip(512, 256, plaster('#1a1a1c', dirt=0.1, streak=0.08, smooth=0.55)),
+        'NAMAKO':        _strip(256, 256, namako(), ppm=256),
+        'WOOD_DARK':     _strip(192, 64, wood()),
+        'STONE':         _strip(128, 64, stone('#7e7f80', dirt=0.3)),
+        'KAMON':         _rect(0, 64, 64, 64, kamon()),
+        'ONI':           _rect(64, 64, 64, 64, oni()),
         **_cells([
             ('IRON',        flat('#26272a', 0.4, 0.7, dirt=0.1)),
             ('INTERIOR',    flat('#0b0a09', 0.2, dirt=0.0)),
             ('LIGHT_WARM',  emissive('#ffb768')),
+            ('TILE_A',      flat('#4d5560', 0.45, dirt=0.12)),
+            ('TILE_B',      flat('#454c56', 0.4, dirt=0.12)),
+            ('TILE_C',      flat('#555d68', 0.5, dirt=0.12)),
             ('TILE_DARK',   flat('#353b43', 0.4, dirt=0.15)),
             ('PLASTER_EDGE', flat('#d6d0c4', 0.25, dirt=0.3)),
+            ('PLASTER_WHITE_FLAT', flat('#e2dccf', 0.25, dirt=0.08)),
+            ('PLASTER_BLACK_FLAT', flat('#1a1a1c', 0.55, dirt=0.04)),
         ], 0, 0, 16),
     },
 }
@@ -303,6 +397,7 @@ def build_maps(name, seed=1):
     base[..., :3] = 0.5
     for i, (rname, reg) in enumerate(sorted(LAYOUTS[name].items())):
         x, y, w, h = reg['rect']
+        assert x + w <= SIZE and y + h <= SIZE, rname
         rng = np.random.default_rng(seed * 1000 + i)
         o = reg['gen'](w, h, rng)
         base[y:y + h, x:x + w, :3] = o['rgb']
@@ -310,7 +405,18 @@ def build_maps(name, seed=1):
         mask[y:y + h, x:x + w, 3] = o['smooth']
         if o['emit'] is not None:
             emit[y:y + h, x:x + w, :3] = np.clip(o['emit'], 0, 1)
+    _check_overlap(name)
     return base, mask, emit
+
+
+def _check_overlap(name):
+    regs = list(LAYOUTS[name].items())
+    for i, (a, ra) in enumerate(regs):
+        ax, ay, aw, ah = ra['rect']
+        for b, rb in regs[i + 1:]:
+            bx, by, bw, bh = rb['rect']
+            if ax < bx + bw and bx < ax + aw and ay < by + bh and by < ay + ah:
+                raise ValueError(f'atlas {name}: regions {a} and {b} overlap')
 
 
 def uv_rect(name, region, margin_px=2):
@@ -323,5 +429,6 @@ def uv_rect(name, region, margin_px=2):
 def region(name, rname):
     reg = LAYOUTS[name][rname]
     x, y, w, h = reg['rect']
+    ppm = reg.get('ppm', PPM)
     return dict(atlas=name, name=rname, kind=reg['kind'], uv=uv_rect(name, rname),
-                w_m=w / PX_PER_M, h_m=h / PX_PER_M)
+                w_m=w / ppm, h_m=h / ppm)

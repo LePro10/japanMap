@@ -16,13 +16,13 @@ H = 1.96
 
 
 def _geo(lod):
-    bm = bmesh.new()
+    bm = K.new_bm()
     stone, moss, light = (A.region(ATLAS, n) for n in ('STONE', 'STONE_MOSS', 'LIGHT_PAPER'))
     seg = 12 if lod == 0 else 8
     up = []  # upward faces -> moss
 
-    def part(p, zr=(0, H)):
-        K.map_faces(bm, p['sides'], stone, zrange=zr)
+    def part(p):
+        K.map_faces(bm, p['sides'], stone)   # metric, grime at the foot of each part
         if p['bottom'] is not None:
             K.map_faces(bm, [p['bottom']], stone)
         if p['top'] is not None:
@@ -39,7 +39,7 @@ def _geo(lod):
     part(K.lathe(bm, 6, [(0.15, 0.98), (0.30, 1.10), (0.34, 1.11), (0.34, 1.16)]))
     # hibukuro: fire box; front/back windows recessed with lit paper, relief panels on the sides
     fb = K.prism(bm, 6, 0.21, 0.21, 1.16, 1.48, cap_bottom=False, cap_top=False)
-    K.map_faces(bm, fb['sides'], stone, zrange=(0, H))
+    K.map_faces(bm, fb['sides'], stone)
     for f in list(fb['sides']):
         if abs(f.calc_center_median().x) < 0.05:     # faces looking at ±Y
             floor, walls = K.recess(bm, f, 0.035, 0.05)
@@ -47,7 +47,7 @@ def _geo(lod):
             K.map_faces(bm, [floor], light)
         elif lod == 0:
             floor, walls = K.recess(bm, f, 0.04, 0.012)
-            K.map_faces(bm, [floor] + walls, stone, zrange=(0, H))
+            K.map_faces(bm, [floor] + walls, stone)
     # kasa: hex roof, 4 verts per side so the corners can curl up (warabite)
     n = 24
 
@@ -63,14 +63,15 @@ def _geo(lod):
             for j in (1, 2, 3):
                 v = ring[s * 4 + j]; z = v.co.z
                 v.co = a.lerp(b, j / 4); v.co.z = z
-    K.map_faces(bm, roof['sides'], stone, zrange=(1.4, H))
+    K.map_faces(bm, roof['sides'], stone)
     K.map_faces(bm, [roof['bottom']], stone)
     up += [f for f in roof['sides'] if f.normal.z > 0.3] + [roof['top']]
     # hōju: lotus collar + jewel
     part(K.lathe(bm, 6, [(0.11, 1.73), (0.12, 1.77), (0.07, 1.79)], cap_bottom=False))
     gem = K.lathe(bm, seg, [(0.07, 1.79), (0.085, 1.83), (0.075, 1.88), (0.035, 1.93), (0.0, H)], cap_bottom=False)
-    K.map_faces(bm, gem['sides'], moss, zrange=(1.79, H))
-    K.map_faces(bm, up, moss)
+    K.map_faces(bm, gem['sides'], stone)
+    for f in up:   # each face from its own foot, so nothing is clamped
+        K.map_faces(bm, [f], moss)
     return bm
 
 

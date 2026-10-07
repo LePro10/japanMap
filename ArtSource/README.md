@@ -11,9 +11,9 @@ geht, wird nach `Assets/_Project/Art/…` exportiert (Regeln:
 | `kit/` | Stil-Kit: Atlas-Generator (`atlas.py`), Bausteine/UV/Fasen/Export (`core.py`), Vorschau-Bühne (`preview.py`). Regeln: `STYLE-KIT.md` |
 | `build.py` | Läufer: `build.run([...])` baut, exportiert, rendert Vorschau |
 | `props/` | Generatoren für Straßenmöbel (Steinlaterne, Getränkeautomat, …) |
-| `buildings/` | Generatoren für Gebäude-Module je Baustil (Kura, …) |
+| `buildings/` | Generatoren für ganze Gebäude je Baustil (Kura, …), aus Feldern zusammengesetzt |
 | `exports/` | Erzeugte FBX + Atlas-Texturen (nicht von Hand ändern) |
-| `previews/` | Vorschaubilder (Stimmung + neutral) |
+| `previews/` | Vorschaubilder (Stimmung, neutral, `_clay` ohne Textur); `compare/` vorher/nachher |
 | `STATUS.md` | Stand des Asset-Sprints |
 
 Regeln:

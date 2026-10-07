@@ -12,7 +12,10 @@ STAGE = 'PreviewStage'
 PREV_DIR = os.path.join(core.ART, 'previews')
 
 
-def _world(mood):
+def _world(mood, sun_dir=(0, 1, 0.1)):
+    """Mood sky: deep blue zenith, cool blue-grey horizon all round, and the
+    warm glow only towards the sun (an all-round peach horizon tinted every
+    wall warm - stone read as wood)."""
     w = bpy.data.worlds.get('W_Preview') or bpy.data.worlds.new('W_Preview')
     w.use_nodes = True
     nt = w.node_tree
@@ -20,26 +23,38 @@ def _world(mood):
     out = nt.nodes.new('ShaderNodeOutputWorld')
     bg = nt.nodes.new('ShaderNodeBackground')
     nt.links.new(bg.outputs[0], out.inputs[0])
-    if mood:
-        tc = nt.nodes.new('ShaderNodeTexCoord')
-        sep = nt.nodes.new('ShaderNodeSeparateXYZ')
-        ramp = nt.nodes.new('ShaderNodeValToRGB')
-        nt.links.new(tc.outputs['Generated'], sep.inputs[0])
-        ma = nt.nodes.new('ShaderNodeMath'); ma.operation = 'MULTIPLY_ADD'
-        ma.inputs[1].default_value = 0.5; ma.inputs[2].default_value = 0.5  # z -1..1 -> 0..1
-        nt.links.new(sep.outputs['Z'], ma.inputs[0])
-        nt.links.new(ma.outputs[0], ramp.inputs[0])
-        nt.links.new(ramp.outputs[0], bg.inputs['Color'])
-        cr = ramp.color_ramp
-        cr.elements[0].position = 0.0; cr.elements[0].color = (0.02, 0.025, 0.035, 1)
-        cr.elements[1].position = 1.0; cr.elements[1].color = (0.03, 0.06, 0.16, 1)
-        e = cr.elements.new(0.5); e.color = (0.5, 0.28, 0.18, 1)      # thin warm horizon
-        e = cr.elements.new(0.53); e.color = (0.2, 0.18, 0.32, 1)
-        e = cr.elements.new(0.62); e.color = (0.06, 0.1, 0.25, 1)
-        bg.inputs['Strength'].default_value = 1.0
-    else:
+    if not mood:
         bg.inputs['Color'].default_value = (0.42, 0.43, 0.45, 1)
         bg.inputs['Strength'].default_value = 1.0
+        return w
+    L = nt.links.new
+    tc = nt.nodes.new('ShaderNodeTexCoord')
+    sep = nt.nodes.new('ShaderNodeSeparateXYZ'); L(tc.outputs['Generated'], sep.inputs[0])
+    ma = nt.nodes.new('ShaderNodeMath'); ma.operation = 'MULTIPLY_ADD'
+    ma.inputs[1].default_value = 0.5; ma.inputs[2].default_value = 0.5  # z -1..1 -> 0..1
+    L(sep.outputs['Z'], ma.inputs[0])
+    ramp = nt.nodes.new('ShaderNodeValToRGB'); L(ma.outputs[0], ramp.inputs[0])
+    cr = ramp.color_ramp
+    cr.elements[0].position = 0.0; cr.elements[0].color = (0.02, 0.025, 0.035, 1)
+    cr.elements[1].position = 1.0; cr.elements[1].color = (0.02, 0.04, 0.13, 1)
+    e = cr.elements.new(0.5); e.color = (0.16, 0.18, 0.26, 1)       # cool horizon
+    e = cr.elements.new(0.6); e.color = (0.06, 0.1, 0.24, 1)
+    # warm glow: towards the sun, near the horizon
+    dot = nt.nodes.new('ShaderNodeVectorMath'); dot.operation = 'DOT_PRODUCT'
+    L(tc.outputs['Generated'], dot.inputs[0]); dot.inputs[1].default_value = sun_dir
+    toward = nt.nodes.new('ShaderNodeMapRange'); L(dot.outputs['Value'], toward.inputs['Value'])
+    toward.inputs['From Min'].default_value = 0.3; toward.inputs['From Max'].default_value = 1.0
+    absz = nt.nodes.new('ShaderNodeMath'); absz.operation = 'ABSOLUTE'; L(sep.outputs['Z'], absz.inputs[0])
+    band = nt.nodes.new('ShaderNodeMapRange'); L(absz.outputs[0], band.inputs['Value'])
+    band.inputs['From Min'].default_value = 0.0; band.inputs['From Max'].default_value = 0.25
+    band.inputs['To Min'].default_value = 1.0; band.inputs['To Max'].default_value = 0.0
+    glow = nt.nodes.new('ShaderNodeMath'); glow.operation = 'MULTIPLY'
+    L(toward.outputs['Result'], glow.inputs[0]); L(band.outputs['Result'], glow.inputs[1])
+    mix = nt.nodes.new('ShaderNodeMix'); mix.data_type = 'RGBA'; mix.blend_type = 'ADD'
+    L(glow.outputs[0], mix.inputs['Factor'])
+    L(ramp.outputs[0], mix.inputs[6]); mix.inputs[7].default_value = (0.55, 0.28, 0.14, 1)
+    L(mix.outputs[2], bg.inputs['Color'])
+    bg.inputs['Strength'].default_value = 1.0
     return w
 
 
@@ -81,7 +96,9 @@ def stage(mood=True):
     cam = get('PreviewCam', lambda: bpy.data.objects.new('PreviewCam', bpy.data.cameras.new('PreviewCam')))
     cam.data.lens = 50
     sc.camera = cam
-    sc.world = _world(mood)
+    bpy.context.view_layer.update()
+    sun_dir = tuple(sun.matrix_world.to_quaternion() @ Vector((0, 0, 1)))   # towards the sun
+    sc.world = _world(mood, sun_dir)
     r = sc.render
     try:
         r.engine = 'BLENDER_EEVEE'
@@ -98,6 +115,15 @@ def stage(mood=True):
     r.resolution_percentage = 100
     r.image_settings.file_format = 'PNG'
     return cam
+
+
+def _clay():
+    m = bpy.data.materials.get('M_Clay') or bpy.data.materials.new('M_Clay')
+    m.use_nodes = True
+    b = core._principled(m.node_tree)
+    b.inputs['Base Color'].default_value = (0.22, 0.22, 0.22, 1)
+    b.inputs['Roughness'].default_value = 0.7
+    return m
 
 
 def _lights(objs, on):
@@ -153,8 +179,12 @@ def render(objs, name, views, size=(640, 640), show=None):
     r.resolution_x, r.resolution_y = size
     tiles = []
     tmp = bpy.app.tempdir or '/tmp'
+    vl = bpy.context.view_layer
     for i, (label, direction, mood) in enumerate(views):
+        clay = mood == 'clay'   # grey material only: the silhouette must read without texture
+        mood = mood is True
         cam = stage(mood)
+        vl.material_override = _clay() if clay else None
         _lights([o for c in show for o in bpy.data.collections[c].all_objects], mood)
         _frame(cam, [o for o in objs if not o.hide_render], direction, size[0] / size[1])
         p = os.path.join(tmp, f'_prev_{i}.png')
@@ -164,6 +194,7 @@ def render(objs, name, views, size=(640, 640), show=None):
         a = np.array(img.pixels[:], np.float32).reshape(img.size[1], img.size[0], 4)
         bpy.data.images.remove(img)
         tiles.append(a)
+    vl.material_override = None
     out = np.concatenate(tiles, axis=1)
     h, w = out.shape[:2]
     img = bpy.data.images.new('_preview', w, h, alpha=True)

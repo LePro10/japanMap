@@ -5,7 +5,8 @@ Regeln für alle selbst gebauten Modelle. Stimmung und Budgets:
 
 **Kurz:** Die Form trägt das Detail (Fasen, Stufen, Rücksprünge, Ziegelreihen
 sind Geometrie). Die Textur liefert nur Farbe, leichtes Rauschen und
-Abnutzung. Ein Material je Baustil.
+Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
+(`*_clay.png`) muss man das Objekt erkennen.
 
 ## Maßstab und Ausrichtung
 
@@ -13,17 +14,24 @@ Abnutzung. Ein Material je Baustil.
 - Vorderseite schaut in Blender nach **−Y** (Ansicht „Vorne"). Der FBX-Export
   (`axis_forward='-Z', axis_up='Y'`, Transform angewendet) macht daraus
   **+Z in Unity** — *ungeprüft, bis die Hauptsitzung das erste FBX importiert*.
-- **Gebäude-Module:** Raster 4,0 m breit (x −2…2), Geschoss 3,9 m. Außenwand
-  liegt auf y = 0, der Wandkörper reicht nach +Y (0,30 m). Muster und
-  Ziegelreihen wiederholen sich so, dass Module nahtlos aneinanderpassen.
+- **Gebäude** sind ganze Häuser aus einem Generator mit Feldern (Bays):
+  Wandprofil einmal ums Grundrissrechteck geführt (Gehrung an den Ecken),
+  Fenster/Türen als Spalten darin, Dach als Profilkörper. Kura: Feld 3,0 m,
+  Tiefe 4,5 m, Traufe 5,42 m, First 7,9 m. Mehr Felder = längeres Haus.
 - Glaubwürdige Maße, vorher nachschlagen. Pilot-Maße: Steinlaterne 1,96 m,
-  Getränkeautomat 1,83 × 1,00 × 0,75 m, Kura-Sockel 0,40 m, Namako-Band 1,0 m.
+  Getränkeautomat 1,83 × 1,00 × 0,75 m, Kura 6,0 × 4,5 m (2 Felder),
+  Sockel 0,5 m, Namako-Band 1,0 m, Traufüberstand 1,15 m, Dachneigung 30°.
 
 ## Fasen und Normalen
 
-- Bevel-Modifier, 1 Segment, nur Kanten über **35°**, harte Normalen
-  (`harden_normals`). Runde Teile bleiben dadurch glatt, Kanten fangen Licht.
-- Breiten: Stein 12 mm · Blech/Kunststoff 8 mm · Gebäude 15 mm.
+- Bevel-Modifier, **1 Segment** (2 Segmente verdoppeln die Dreiecke, gemessen
+  am Automaten: 1 270 → 2 498), nur Kanten über **35°**, harte Normalen.
+  Runde Teile bleiben glatt, Kanten fangen Licht.
+- Fasen nur, wo man sie sieht: Ziegelreihen, Gitterstäbe, Lamellen und tiefe
+  Laibungen sind ausgenommen (`K.nobevel`). Gebäude verschmelzen ebene
+  Nachbarflächen vor dem Fasen (`dissolve=True`), sonst zahlt jede
+  Rasterspalte eigene Fasen (Kura: 4 991 → 4 035).
+- Breiten: Stein 12 mm · Blech/Kunststoff 12 mm · Gebäude 20 mm.
 - LOD1 ohne Fasen, mit harten Kanten ab 35°.
 
 ## Materialien und Atlanten
@@ -35,24 +43,26 @@ Abnutzung. Ein Material je Baustil.
   A Glätte; linear) · `T_<Stil>_Emission` (sRGB).
 - Aufbau des Atlas (`kit/atlas.py`, Tabelle `LAYOUTS`):
   - **Streifen** über die volle Breite — wiederholen sich in U (Wände, Stein,
-    Holz). V wird über die Teilhöhe gestreckt (Schmutz sitzt unten), außer bei
-    Mustern mit fester Größe (Namako: metrisch, 1 m).
-  - **Zellen** 64 px — eine Farbe mit Schmutzverlauf (Lack, Kunststoff,
-    Eisen, Leuchtflächen).
-  - **Rechtecke** — Grafik genau auf eine Fläche (Automaten-Display,
-    Bedienfeld).
+    Holz). **Maßstabsgetreu in beiden Richtungen**, nie gestreckt; V beginnt am
+    Fuß des Teils (Schmutz unten). Ein Streifen ist so hoch wie die höchste
+    Fläche, die ihn nutzt (Putz: 2 m). Zu hohe Flächen meldet der Bau als
+    `WARN stretched strips` — dann Fläche teilen oder Streifen erhöhen.
+  - **Zellen** 64 px — eine Farbe mit sanftem Schmutzverlauf, **ohne
+    Rauschen** (Zellen decken ganze Flächen, Rauschen würde verschmieren).
+  - **Rechtecke** — Grafik genau auf eine Fläche (Display, Bedienfeld,
+    Seitenwerbung, Aufkleber, Typenschild, Wappen, Oni-Ziegel).
 - Neue Farben/Muster: Eintrag in `LAYOUTS`, nie ein zweites Material.
-- **Texel-Dichte:** Streifen 256 px/m. Blickfänge dürfen mehr haben
-  (Display ≈ 580 px/m).
+- **Texel-Dichte:** Streifen 128 px/m (Namako 256 px/m wegen der feinen
+  Fugen). Blickfänge dürfen mehr haben (Display ≈ 580 px/m).
 
 ## Farbpalette (sRGB)
 
 | Rolle | Farbe | | Rolle | Farbe |
 |---|---|---|---|---|
-| Granit | `#7b7972` | | Kalkputz weiß | `#e2dccf` |
+| Granit (kühl) | `#808183` | | Kalkputz weiß | `#e2dccf` |
 | Moos | `#4d5a2c` | | Kalkputz schwarz (Koedo) | `#1a1a1c` |
 | Holz dunkel | `#3a281c` | | Namako-Fliese / Fuge | `#2f343b` / `#ddd9cf` |
-| Dachziegel | `#4d5560` | | Eisen | `#26272a` |
+| Dachziegel (3 Töne) | `#4d5560` `#454c56` `#555d68` | | Eisen | `#26272a` |
 | Automat rot / blau / weiß | `#b3141c` / `#1c4a9c` / `#e6e7e6` | | Zinnober (Torii) | `#c4381c` |
 | Licht warm | `#ffb768` | | Papierlicht | `#ffd9a0` |
 | Licht kühl (LED) | `#dff3ff` | | Beton | `#9b9993` |
@@ -62,7 +72,9 @@ Gedämpfte Grundtöne, kräftige Farben nur als Akzent (Automat, Torii, Licht).
 ## Abnutzung
 
 - **Schmutz unten:** jede Fläche wird zum Boden hin dunkler (Spritzwasser).
-- **Regenspuren:** senkrechte Schlieren auf Putz, Stein, Lack.
+- **Regenspuren:** dünne, unterbrochene Läufe (wenige cm breit, 10–60 cm
+  lang) auf Putz und Stein — keine breiten Schlieren. Lack bleibt sauber;
+  Abnutzung dort über Form und Aufkleber.
 - **Moos:** nur auf nach oben zeigenden Flächen (Dach, Absätze).
 - Nässe kommt **nicht** in die Textur — das macht später ein Shader-Effekt
   in Unity für alle Flächen gleich.
@@ -98,6 +110,13 @@ Baut, zählt Dreiecke, exportiert nach `exports/<klasse>/`, schreibt Atlanten
 nach `exports/textures/` und Vorschauen nach `previews/`. Ein Asset-Modul
 braucht `KLASS`, `NAME`, `build()`; optional `preview()`.
 
+Vorschau-Bühne: Stimmung (Blaue Stunde; warmes Horizontglühen nur zur
+Sonne hin — ein Rundum-Pfirsichhorizont färbte jede Wand warm), neutral,
+und **Grau ohne Textur** (`*_clay.png`) für den Silhouetten-Test.
+
 **Eingebaute Prüfungen:** Abbruch, wenn ein Material-Slot unbenutzt bleibt;
-Rückseiten werden in der Vorschau ausgeblendet wie in Unity (verdrehte
-Flächen sieht man als Loch).
+Warnung bei gestreckten Streifen (mit Ort); Dreiecke werden auch für
+ausgeblendete Objekte mit Fasen gezählt; Rückseiten werden in der Vorschau
+ausgeblendet wie in Unity (verdrehte Flächen sieht man als Loch); konkave
+n-Ecke werden vor dem Export trianguliert; Atlas-Bereiche dürfen sich nicht
+überlappen.

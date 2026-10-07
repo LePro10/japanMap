@@ -124,6 +124,16 @@ def glass_material():
 
 # ── mesh building blocks (bmesh; all return the faces they made) ────────────
 
+def new_bm():
+    """BMesh with every custom layer the kit uses created up front: adding a
+    layer later invalidates the Python references to faces already built."""
+    bm = bmesh.new()
+    bm.loops.layers.uv.verify()
+    bm.faces.layers.int.new('nobevel')
+    bm.edges.layers.float.new('bevel_weight_edge')
+    return bm
+
+
 def box(bm, x0, x1, y0, y1, z0, z1, skip=()):
     v = [bm.verts.new(c) for c in [
         (x0, y0, z0), (x1, y0, z0), (x1, y1, z0), (x0, y1, z0),
@@ -145,10 +155,91 @@ def grid_front(bm, xs, zs, y):
             for i in range(len(xs) - 1) for j in range(len(zs) - 1)}
 
 
+def grid_plane(bm, pos, us, zs, normal):
+    """General grid: pos(u, z) -> (x, y, z) on a plane; faces flipped to point
+    along normal. Returns {(col, row): face}."""
+    v = {(i, j): bm.verts.new(pos(u, z)) for i, u in enumerate(us) for j, z in enumerate(zs)}
+    out = {}
+    for i in range(len(us) - 1):
+        for j in range(len(zs) - 1):
+            f = bm.faces.new([v[i, j], v[i + 1, j], v[i + 1, j + 1], v[i, j + 1]])
+            f.normal_update()
+            if f.normal.dot(Vector(normal)) < 0:
+                f.normal_flip()
+            out[i, j] = f
+    return out
+
+
+def slats(bm, axis_pos, along, zs, depth, thick=0.012):
+    """Louvre slats in a vent recess: one thin bar per z, along = (a0, a1) on the
+    wall, axis_pos(a, z, d) -> (x, y, z) where d runs out of the wall."""
+    faces = []
+    for z in zs:
+        vs = [bm.verts.new(axis_pos(a, z + dz, d)) for a in along for dz, d in
+              ((0, 0), (thick, 0), (thick, depth), (0, depth))]
+        A, B = vs[:4], vs[4:]
+        for k in range(4):
+            f = bm.faces.new([A[k], B[k], B[(k + 1) % 4], A[(k + 1) % 4]])
+            faces.append(f)
+    return faces
+
+
 def merge(bm, faces):
     """Dissolve neighbouring faces into one (e.g. a window spanning grid cells)."""
     res = bmesh.ops.dissolve_faces(bm, faces=list(faces))
     return res['region'][0]
+
+
+def sweep_loop(bm, corners, profile, splits=None):
+    """Sweep a wall profile (d, z) around a closed footprint (corners CCW seen
+    from above; d = outward offset from the footprint line) with mitred
+    corners. splits[e] = list of 0..1 positions along edge e (window columns).
+    Returns faces[seg][edge][col]; faces point outward."""
+    n = len(corners)
+    C = [Vector((c[0], c[1], 0)) for c in corners]
+    nrm = []
+    for e in range(n):
+        d = C[(e + 1) % n] - C[e]
+        nrm.append(Vector((d.y, -d.x, 0)).normalized())
+    corner_v = {}
+    for c in range(n):
+        n1, n2 = nrm[c - 1], nrm[c]
+        m = (n1 + n2) / (1 + n1.dot(n2))   # mitre: offset d along both edge normals
+        corner_v[c] = [bm.verts.new(C[c] + m * d + Vector((0, 0, z))) for d, z in profile]
+    faces = [[[] for _ in range(n)] for _ in range(len(profile) - 1)]
+    for e in range(n):
+        A, B = C[e], C[(e + 1) % n]
+        ts = sorted((splits or {}).get(e, []))
+        cols = [corner_v[e]]
+        for t in ts:
+            P = A.lerp(B, t)
+            cols.append([bm.verts.new(P + nrm[e] * d + Vector((0, 0, z))) for d, z in profile])
+        cols.append(corner_v[(e + 1) % n])
+        for j in range(len(cols) - 1):
+            a, b = cols[j], cols[j + 1]
+            for k in range(len(profile) - 1):
+                faces[k][e].append(bm.faces.new([a[k], b[k], b[k + 1], a[k + 1]]))
+    return faces
+
+
+def poly_prism_x(bm, poly, x0, x1):
+    """Closed (y, z) outline extruded along X from x0 to x1, both ends capped.
+    Returns (sides[i] for edge i -> i+1, cap at x0, cap at x1)."""
+    a = [bm.verts.new((x0, y, z)) for y, z in poly]
+    b = [bm.verts.new((x1, y, z)) for y, z in poly]
+    n = len(poly)
+    sides = [bm.faces.new([a[i], b[i], b[(i + 1) % n], a[(i + 1) % n]]) for i in range(n)]
+    c0, c1 = bm.faces.new(a), bm.faces.new(b)
+    for f, sign in ((c0, -1), (c1, 1)):
+        f.normal_update()
+        if f.normal.x * sign < 0:
+            f.normal_flip()
+    # side normal = x × edge = (0, -dz, dy): inward for a counter-clockwise (y, z) outline
+    area = sum(poly[i][0] * poly[(i + 1) % n][1] - poly[(i + 1) % n][0] * poly[i][1] for i in range(n))
+    if area > 0:
+        for f in sides:
+            f.normal_flip()
+    return sides, c0, c1
 
 
 def extrude_profile(bm, profile, xs, back_y=None):
@@ -245,53 +336,85 @@ def _face_st(face):
         tang = Vector((-n.y, n.x, 0)).normalized()
         return [(l.vert.co.dot(tang), l.vert.co.z) for l in face.loops], False
     sgn = 1 if n.z > 0 else -1
+    xs = [l.vert.co.x for l in face.loops]; ys = [l.vert.co.y for l in face.loops]
+    if max(ys) - min(ys) > max(xs) - min(xs):   # long side along y (ledges on gable walls): u follows it
+        return [(l.vert.co.y * sgn, l.vert.co.x) for l in face.loops], True
     return [(l.vert.co.x * sgn, l.vert.co.y) for l in face.loops], True
 
 
-def map_faces(bm, faces, reg, zrange=None, metric_z0=None, rotate=False, s_offset=0.0):
-    """Map faces into an atlas region.
-    strip: s (metres) runs along U and repeats; t is stretched over zrange
-      (default: the faces' own height) so grime sits at the bottom of the part,
-      or metric from metric_z0 (namako must not stretch).
-    cell: everything squeezed into the swatch, t again by zrange.
+STRETCH = []  # (region, metres over) - strips used on surfaces taller than the strip
+
+
+def map_faces(bm, faces, reg, z0=None, zrange=None, rotate=False, s_offset=0.0, metric_z0=None):
+    """Map faces into an atlas region (texel density stays constant).
+    strip: metric in both axes. s runs along U and repeats; t starts at z0
+      (default: bottom of these faces) so grime sits at the bottom of the
+      part. Horizontal faces start t at their own edge. A surface taller than
+      the strip is clamped and reported in STRETCH.
+    cell: one swatch; t over zrange (default: these faces' height) only picks
+      the grime gradient, which is smooth, so nothing visibly stretches.
     rect: each face filled exactly (one graphic per face).
-    rotate: swap axes (grain along height for wood posts)."""
+    rotate: swap axes (grain along the height of wooden posts)."""
     uv = _uv(bm)
     u0, v0, u1, v1 = reg['uv']
     faces = [f for f in faces if f is not None]
     if not faces:
         return
-    if zrange is None:
-        zs = [v.co.z for f in faces for v in f.verts]
-        zrange = (min(zs), max(zs))
-    zlo, zhi = zrange
+    z0 = metric_z0 if metric_z0 is not None else z0
+    zs = [v.co.z for f in faces for v in f.verts]
+    if z0 is None:
+        z0 = min(zs)
+    zlo, zhi = zrange or (min(zs), max(zs))
+    over, worst = 0.0, None
     for f in faces:
         f.normal_update()  # new bmesh faces carry a zero normal until updated
         st, horizontal = _face_st(f)
         if rotate:
             st = [(t, s) for s, t in st]
+            horizontal = True  # t is now horizontal: start at the face edge
         ss = [p[0] for p in st]; ts = [p[1] for p in st]
         for l, (s, t) in zip(f.loops, st):
-            if horizontal or reg['kind'] == 'rect':
-                tt = (t - min(ts)) / max(max(ts) - min(ts), 1e-6)
-            elif metric_z0 is not None:
-                tt = (t - metric_z0) / reg['h_m']
-            else:
-                tt = (t - zlo) / max(zhi - zlo, 1e-6)
-            tt = min(max(tt, 0.0), 1.0)
             if reg['kind'] == 'strip':
                 uu = (s + s_offset) / reg['w_m']
+                tt = (t - (min(ts) if horizontal else z0)) / reg['h_m']
+                if (tt - 1.0) * reg['h_m'] > over:
+                    over, worst = (tt - 1.0) * reg['h_m'], f
             else:
                 uu = (s - min(ss)) / max(max(ss) - min(ss), 1e-6)
-                if reg['kind'] == 'cell':
+                if reg['kind'] == 'rect':
+                    tt = (t - min(ts)) / max(max(ts) - min(ts), 1e-6)
+                else:
                     uu = 0.3 + 0.4 * uu
+                    tt = (t - zlo) / max(zhi - zlo, 1e-6) if not horizontal else 0.9
                 uu = u0 + uu * (u1 - u0)
+            tt = min(max(tt, 0.0), 1.0)
             l[uv].uv = (uu, v0 + tt * (v1 - v0))
+    if over > 0.02:
+        c = worst.calc_center_median()
+        STRETCH.append((reg['name'], round(over, 2), tuple(round(x, 1) for x in c)))
+
+
+def nobevel(bm, faces):
+    """Exclude faces from the bevel (tile rows, bars: many small edges, no gain)."""
+    lay = bm.faces.layers.int.get('nobevel') or bm.faces.layers.int.new('nobevel')
+    for f in faces:
+        if f is not None:
+            f[lay] = 1
+
+
+def _bevel_weights(bm, angle):
+    lay = bm.faces.layers.int.get('nobevel')
+    w = bm.edges.layers.float.get('bevel_weight_edge') or bm.edges.layers.float.new('bevel_weight_edge')
+    for e in bm.edges:
+        lf = e.link_faces
+        ok = len(lf) == 2 and not (lay and (lf[0][lay] or lf[1][lay]))
+        e[w] = 1.0 if ok and e.calc_face_angle(0.0) > angle else 0.0
 
 
 # ── objects, bevel, LOD ─────────────────────────────────────────────────────
 
-def mesh_object(name, bm, col, mats, bevel=0.0, bevel_angle=35.0, smooth=True, hidden=False, recalc=True):
+def mesh_object(name, bm, col, mats, bevel=0.0, bevel_angle=35.0, smooth=True, hidden=False, recalc=True,
+                bevel_segments=1, dissolve=False):
     me = bpy.data.meshes.get(name)
     if me:
         me.clear_geometry()
@@ -300,6 +423,16 @@ def mesh_object(name, bm, col, mats, bevel=0.0, bevel_angle=35.0, smooth=True, h
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
     if recalc:  # open shells (wall modules) keep their built winding instead
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    if dissolve:
+        # grid splits (window columns) cut every profile edge into pieces, and the
+        # bevel pays per piece: merge flat neighbours back (same UVs/material only)
+        bmesh.ops.dissolve_limit(bm, angle_limit=math.radians(0.5), use_dissolve_boundaries=False,
+                                 verts=list(bm.verts), edges=list(bm.edges), delimit={'UV', 'MATERIAL'})
+    # concave n-gons (gables, onigawara) are split here, so Unity never has to guess
+    bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 4],
+                          quad_method='BEAUTY', ngon_method='EAR_CLIP')
+    if bevel > 0:
+        _bevel_weights(bm, math.radians(bevel_angle))
     me.materials.clear()  # before to_mesh: clearing afterwards resets every face to slot 0
     for m in mats:
         me.materials.append(m)
@@ -314,11 +447,11 @@ def mesh_object(name, bm, col, mats, bevel=0.0, bevel_angle=35.0, smooth=True, h
     col.objects.link(ob)
     if bevel > 0:
         md = ob.modifiers.new('Bevel', 'BEVEL')
-        md.width = bevel; md.segments = 1
-        md.limit_method = 'ANGLE'; md.angle_limit = math.radians(bevel_angle)
+        md.width = bevel; md.segments = bevel_segments
+        md.limit_method = 'WEIGHT'; md.edge_weight = 'bevel_weight_edge'
         md.harden_normals = True; md.use_clamp_overlap = True
-    elif smooth:
-        # no bevel (LODs): keep hard edges crisp, round parts smooth
+    if smooth:
+        # hard edges stay crisp (also where the bevel skips), round parts smooth
         me.set_sharp_from_angle(angle=math.radians(bevel_angle))
     if hidden:  # LOD1+ stays out of view and renders, but is exported
         ob.hide_set(True); ob.hide_render = True
@@ -326,12 +459,23 @@ def mesh_object(name, bm, col, mats, bevel=0.0, bevel_angle=35.0, smooth=True, h
 
 
 def tri_count(ob):
+    """Triangles after modifiers. Hidden objects are not evaluated by the
+    depsgraph (the bevel silently drops out), so unhide while counting."""
+    cols = [c for c in ob.users_collection if c.hide_viewport]
+    hid = ob.hide_get(); hv = ob.hide_viewport
+    for c in cols:
+        c.hide_viewport = False
+    ob.hide_set(False); ob.hide_viewport = False
+    bpy.context.view_layer.update()
     dg = bpy.context.evaluated_depsgraph_get()
     ev = ob.evaluated_get(dg)
     m = ev.to_mesh()
     m.calc_loop_triangles()
     n = len(m.loop_triangles)
     ev.to_mesh_clear()
+    for c in cols:
+        c.hide_viewport = True
+    ob.hide_set(hid); ob.hide_viewport = hv
     return n
 
 

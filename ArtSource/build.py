@@ -10,13 +10,15 @@ import importlib, sys, time, traceback
 ASSETS = {
     'stone_lantern': 'props.stone_lantern',
     'vending_machine': 'props.vending_machine',
-    'kura_bay': 'buildings.kura_bay',
+    'kura': 'buildings.kura',
 }
 
-# 3/4 front in the mood light, 3/4 front neutral, 3/4 back neutral
+# 3/4 front in the mood light, 3/4 front neutral, 3/4 back neutral (same as
+# the first previews, so before/after stay comparable) + clay (grey only)
 VIEWS = [('mood', (-0.9, -1.6, 0.55), True),
          ('front', (1.0, -1.7, 0.6), False),
          ('back', (-1.2, 1.5, 0.7), False)]
+CLAY = [('clay', (1.0, -1.7, 0.6), 'clay'), ('clay back', (-1.2, 1.5, 0.7), 'clay')]
 
 
 def _reload():
@@ -33,7 +35,10 @@ def run(names=None, preview=True, export=True):
         t = time.time()
         try:
             mod = importlib.reload(importlib.import_module(ASSETS[key]))
+            K.STRETCH.clear()
             results = mod.build()
+            if K.STRETCH:  # a strip used on a surface taller than the strip
+                out.append(f'  WARN stretched strips: {sorted(set(K.STRETCH))}')
             if isinstance(results, tuple):
                 results = [results]
             for col, lods in results:
@@ -45,10 +50,11 @@ def run(names=None, preview=True, export=True):
                 out.append(line)
             if preview:
                 if hasattr(mod, 'preview'):
-                    p = mod.preview(results, VIEWS)
+                    p = mod.preview(results, VIEWS + CLAY)
                 else:
                     col, lods = results[0]
-                    p = P.render(lods[:1], mod.NAME, getattr(mod, 'PREVIEW_VIEWS', VIEWS), show=[col.name])
+                    p = P.render(lods[:1], mod.NAME, VIEWS, show=[col.name])
+                    p += ', ' + P.render(lods[:1], mod.NAME + '_clay', CLAY, show=[col.name])
                 out.append(f'  preview {p}')
             out.append(f'  {key} {time.time() - t:.1f}s')
         except Exception:
