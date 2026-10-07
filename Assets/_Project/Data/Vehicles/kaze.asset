@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31ab3890ed448430dbd8df5667a012b3, type: 3}
+  m_Name: kaze
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleDefinition
+  id: kaze
+  displayName: Kaze 35 Drift
+  category: 2
+  legacyId: ribbon
+  model: {fileID: 0}
+  mass: 1280
+  wheelbase: 2.65
+  frontWeight: 0.5
+  cgHeight: 0.48
+  wheelRadius: 0.32
+  bodySize: {x: 4.48, y: 2.02, z: 1.29}
+  clearance: 0.16
+  ford: 0.2
+  travel: 0.21
+  springFrequency: 10
+  dampingRatio: 0.72
+  bumpStopFactor: 9
+  maxLoadFactor: 3.5
+  rollPerLateralG: 0.065
+  pitchPerLongitudinalG: 0.06
+  dirtGrip: 0.7
+  driveRetain: 0.65
+  crawlShare: 0.5
+  arcade:
+    latG: 0.98
+    latGrip: 8.5
+    driftLatGrip: 1.4
+    yawResponse: 10.5
+    maxYawRate: 3.2
+    downforce: 0
+    downforceSpeed: 0
+    driftAngle: 1
+    driftYawGain: 4.1
+    powerOversteer: 1
+    liftOversteer: 0.65
+    driftRise: 7
+    driftFall: 1.8
+    catchAssist: 2.8
+    launchForce: 6713
+    power: 225000
+    brakeG: 1.0354
+    drag: 0.7337879
+    rollDecel: 0.25
+    boostAccel: 2
+    boostCapacity: 5
+    boostRefill: 0.04
+    steerAngle: 0.75049156
+    steerRate: 5.2
+    steerReturn: 7
+    steerFalloff: 40

@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31ab3890ed448430dbd8df5667a012b3, type: 3}
+  m_Name: hauler
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleDefinition
+  id: hauler
+  displayName: Mini Hauler
+  category: 1
+  legacyId: truck
+  model: {fileID: 0}
+  mass: 1080
+  wheelbase: 2.24
+  frontWeight: 0.57
+  cgHeight: 0.62
+  wheelRadius: 0.29
+  bodySize: {x: 3.58, y: 1.76, z: 1.77}
+  clearance: 0.24
+  ford: 0.3
+  travel: 0.32
+  springFrequency: 8
+  dampingRatio: 0.42
+  bumpStopFactor: 9
+  maxLoadFactor: 3.5
+  rollPerLateralG: 0.13
+  pitchPerLongitudinalG: 0.12
+  dirtGrip: 0.75
+  driveRetain: 0.85
+  crawlShare: 0.5
+  arcade:
+    latG: 0.78
+    latGrip: 6
+    driftLatGrip: 1.8
+    yawResponse: 5.5
+    maxYawRate: 2.3
+    downforce: 0
+    downforceSpeed: 0
+    driftAngle: 0.5
+    driftYawGain: 2.3
+    powerOversteer: 0.35
+    liftOversteer: 0.2
+    driftRise: 7
+    driftFall: 2.6
+    catchAssist: 3.4
+    launchForce: 3051
+    power: 78000
+    brakeG: 0.8047
+    drag: 0.9227519
+    rollDecel: 0.25
+    boostAccel: 1.1
+    boostCapacity: 5
+    boostRefill: 0.04
+    steerAngle: 0.6632251
+    steerRate: 3.7
+    steerReturn: 4.5
+    steerFalloff: 30

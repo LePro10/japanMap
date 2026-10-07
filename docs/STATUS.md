@@ -42,7 +42,7 @@ Alles per Menü `JapanMap/Map/Import All` (Regler: `Data/Map/MapImportSettings.a
 
 ## Phase 3 — Fahren (als Nächstes)
 
-- [ ] 1. Ansatz wählen und begründen (Rigidbody + Raycast-Federung vs. WheelCollider vs. Paket)
+- [x] 1. Ansatz: Rigidbody + Raycast-Federung + portiertes Arcade-Modell (D15, gemessen gegen WheelCollider); Zuordnung Modelle ↔ Fahrwerte (D16)
 - [ ] 2. Ein Auto (Kite S) fahrbar inkl. Drift, Nitro, Respawn
 - [ ] 3. Eingabe: Tastatur, Gamepad, Touch
 - [ ] 4. Kameras: Verfolger + Cockpit

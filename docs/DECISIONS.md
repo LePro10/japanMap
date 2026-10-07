@@ -143,10 +143,59 @@ Höhendaten sind 8 MB. Ohne Instancing 200–2 550 Draw Calls → Instancing ble
 Dreiecke (57–587 k) → Kandidat für die Stufe Niedrig (Phase 10).
 Regler: `Data/Map/MapImportSettings.asset`.
 
+## D15 — Fahrphysik: Rigidbody + Raycast-Federung + portiertes Arcade-Modell · 2026-10-07
+
+**Entscheidung:** PhysX-Rigidbody mit vier Raycast-Federn trägt das Auto, PhysX
+macht alle Kollisionen. Die waagerechte Fahrdynamik ist das Arcade-Modell des
+Prototyps (`arcadeDynamics.ts`), nach C# portiert (`Scripts/Vehicles/ArcadeDynamics.cs`,
+ohne Unity-Abhängigkeit). Es liefert Beschleunigungen und die Gierrate; der
+Controller setzt sie als Kraft bzw. Drehgeschwindigkeit um und liest die Gierrate
+vor jedem Schritt vom Körper zurück (so drehen Wandstöße das Auto). Die ~8 000
+Zeilen Eigenbau-Kollision des Prototyps entfallen.
+
+**Gemessen** (Hachi 86 = Kite-S-Zahlen, gleiche Proben, `Captures/`):
+
+| | Prototyp | Raycast + Arcade | WheelCollider, gleiche Kräfte |
+|---|---|---|---|
+| 0–100 km/h | 7,18 s | 7,20 s | 10,66 s (Radschlupf) |
+| Bremsweg 100→0 | 37,9 m | 37,9 m | 59,7 m |
+| Lenkantwort 90 km/h (0,2 / 1,0) | 4,3 / 21,7 °/s | 4,3 / 21,6 °/s | 37,3 / 19,2 °/s, 50° Schwimmwinkel bei 0,2 = Dreher |
+| Handbremsdrift 80 km/h | 42° Spitze, fängt in 0,3 s | 42° / 0,3 s | 160° = Dreher |
+
+Alle zehn Autos treffen die Prototyp-Zahlen auf ~1 % (Ausnahme Hang: ~5 %
+langsamer, weil PhysX die volle Hangabtriebskraft `g·sin θ` rechnet, der
+Prototyp `g·sin θ·cos θ`).
+
+**Verworfen:**
+- *WheelCollider:* eigenes Reifenmodell (Schlupfkurven), das gegen das
+  Arcade-Gefühl arbeitet — um es wiederzuerkennen, müsste man seine Reibung
+  abschalten und die Kräfte selbst setzen; dann bleibt nur ein teurer Raycast.
+  Braucht zusätzlich das Modul `com.unity.modules.vehicles`.
+- *Asset-Store-Paket* (NWH, Edy's): kostet, eigenes Fahrgefühl statt des
+  wiedererkennbaren; kein Kauf ohne Zustimmung.
+
+**Preis:** Räder sind keine Collider (seitlich können Reifen in eine Wand
+ragen); Schräglage/Nicken der Karosserie ist Optik (wie im Prototyp), der
+physikalische Schwerpunkt liegt tiefer (`ArcadeTuning.physicsComHeightShare`),
+damit das Auto nicht kippt.
+
+## D16 — Zehn Car-Lab-Modelle, Fahrwerte aus der Spiel-Flotte des Prototyps · 2026-10-07
+
+Der Prototyp hat zwei Flotten: die gefahrenen Datensätze (`vehicles.config.ts`,
+Kite S … Needle 01, gemessen und abgestimmt) und die zehn neuen Car-Lab-Modelle
+(Mame K … Hanami SF-26), die der Eigentümer als echte Autos wollte (legacy
+TODO.md). **Zuordnung nach Rolle:** Mame K ← Pip 650, Hachi 86 ← Kite S,
+Mini Hauler ← Skiff Mini, Yama Cruiser ← Cairn 4, Kumo STi ← Torrent R,
+Kaze 35 Drift ← Ribbon R, Raiden GT-R34 ← Meridian GT, Suprema RZ ← Morrow 8,
+Rotor FD ← Ember RS, Hanami SF-26 ← Needle 01. Fahrwerte, Masse und Leistung
+kommen aus dem Datensatz (die Prüfstandszahlen sind der Maßstab), Aussehen und
+Name vom Modell. Die PS-/kg-Angaben im Car-Lab-Datenblatt sind damit nur
+Anzeige und werden in Phase 8 (Händler) angeglichen.
+Startauto vorerst **Hachi 86** (im Prototyp war Kite S das Startauto).
+Saat: Menü `JapanMap/Vehicles/Seed Fleet From Legacy` → `Data/Vehicles/*.asset`.
+
 ## Offen (in der genannten Phase entscheiden)
 
-- **Fahrphysik-Ansatz** (Phase 3): eigene Raycast-Federung + Arcade-Modell auf
-  PhysX-Rigidbody (Empfehlung) vs. WheelCollider vs. Asset-Store-Paket.
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,
   sobald verfügbar (Phase 1 oder 10).
 - **Spielname:** Arbeitstitel „japanMap"; der Probelauf schlug „Ameagari" vor.

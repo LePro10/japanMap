@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31ab3890ed448430dbd8df5667a012b3, type: 3}
+  m_Name: mame
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleDefinition
+  id: mame
+  displayName: Mame K
+  category: 0
+  legacyId: pip
+  model: {fileID: 0}
+  mass: 820
+  wheelbase: 2.12
+  frontWeight: 0.61
+  cgHeight: 0.53
+  wheelRadius: 0.275
+  bodySize: {x: 3.18, y: 1.66, z: 1.6}
+  clearance: 0.16
+  ford: 0.2
+  travel: 0.23
+  springFrequency: 10
+  dampingRatio: 0.72
+  bumpStopFactor: 9
+  maxLoadFactor: 3.5
+  rollPerLateralG: 0.065
+  pitchPerLongitudinalG: 0.06
+  dirtGrip: 0.7
+  driveRetain: 0.65
+  crawlShare: 0.5
+  arcade:
+    latG: 0.9
+    latGrip: 10
+    driftLatGrip: 1.8
+    yawResponse: 14
+    maxYawRate: 3.2
+    downforce: 0
+    downforceSpeed: 0
+    driftAngle: 0.4
+    driftYawGain: 2.4
+    powerOversteer: 0.08
+    liftOversteer: 0.08
+    driftRise: 7
+    driftFall: 5
+    catchAssist: 5
+    launchForce: 2578
+    power: 70000
+    brakeG: 0.961
+    drag: 0.6935624
+    rollDecel: 0.25
+    boostAccel: 2
+    boostCapacity: 5
+    boostRefill: 0.04
+    steerAngle: 0.6806784
+    steerRate: 6.7
+    steerReturn: 7
+    steerFalloff: 40

@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31ab3890ed448430dbd8df5667a012b3, type: 3}
+  m_Name: suprema
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleDefinition
+  id: suprema
+  displayName: Suprema RZ
+  category: 2
+  legacyId: morrow
+  model: {fileID: 0}
+  mass: 1740
+  wheelbase: 2.77
+  frontWeight: 0.59
+  cgHeight: 0.55
+  wheelRadius: 0.35
+  bodySize: {x: 4.73, y: 2.16, z: 1.34}
+  clearance: 0.16
+  ford: 0.2
+  travel: 0.24
+  springFrequency: 10
+  dampingRatio: 0.72
+  bumpStopFactor: 9
+  maxLoadFactor: 3.5
+  rollPerLateralG: 0.065
+  pitchPerLongitudinalG: 0.06
+  dirtGrip: 0.7
+  driveRetain: 0.65
+  crawlShare: 0.5
+  arcade:
+    latG: 0.91
+    latGrip: 7.5
+    driftLatGrip: 1.8
+    yawResponse: 6
+    maxYawRate: 2.5
+    downforce: 0
+    downforceSpeed: 0
+    driftAngle: 0.88
+    driftYawGain: 3.5
+    powerOversteer: 1.1
+    liftOversteer: 0.45
+    driftRise: 7
+    driftFall: 2.1
+    catchAssist: 3.4
+    launchForce: 10622
+    power: 320000
+    brakeG: 0.9641
+    drag: 0.7219895
+    rollDecel: 0.25
+    boostAccel: 2
+    boostCapacity: 5
+    boostRefill: 0.04
+    steerAngle: 0.5235988
+    steerRate: 3.8
+    steerReturn: 4.8
+    steerFalloff: 33

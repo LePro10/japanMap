@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0518d34ef623c4f7eb76d625e5d85228, type: 3}
+  m_Name: Fleet
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleFleet
+  tuning: {fileID: 11400000, guid: c67ebc2c0965546e4950a4495827ae59, type: 2}
+  vehicles:
+  - {fileID: 11400000, guid: 3213ba526053a481ea383eead388d2a0, type: 2}
+  - {fileID: 11400000, guid: 39f476ed0037747f39f644aaa6f8f76a, type: 2}
+  - {fileID: 11400000, guid: 0628062491e9e415d9a4d3138c1e4edf, type: 2}
+  - {fileID: 11400000, guid: 32d467a84b4914725999a505e1f6bbb4, type: 2}
+  - {fileID: 11400000, guid: 6eb4ca044531e4b91b845c1dcb5e5815, type: 2}
+  - {fileID: 11400000, guid: 754b4df9d709042c098c90acf5c7d872, type: 2}
+  - {fileID: 11400000, guid: df4d6d67a44b548e091c3fe17258d499, type: 2}
+  - {fileID: 11400000, guid: dfdf64a7f37ae40c4a3d6b90d85357c4, type: 2}
+  - {fileID: 11400000, guid: 82888043c58d945caa48dc3b4f0e671c, type: 2}
+  - {fileID: 11400000, guid: 583edfbd5bdd5495b87c34a9b7b3f6de, type: 2}
+  defaultId: hachi

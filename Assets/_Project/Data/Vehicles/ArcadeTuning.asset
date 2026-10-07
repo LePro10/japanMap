@@ -1,0 +1,90 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 240db4bf72197468495033af58cbfb69, type: 3}
+  m_Name: ArcadeTuning
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.ArcadeTuning
+  surfaceGrip:
+    asphalt: 1
+    gravel: 1
+    terrain: 0.65
+    water: 0.75
+  surfaceDrag:
+    asphalt: 0
+    gravel: 0.09
+    terrain: 0.12
+    water: 0.55
+  gripBlend: 0.25
+  aquaplaneDepth: 0.35
+  aquaplaneLoss: 0.45
+  steepFull: 0.82
+  steepNone: 0.64
+  physicsComHeightShare: 0.4
+  driveRetainSpeed: 13.888889
+  gradeAssist: 0.35
+  capableGradeAssist: 0.75
+  capableDragReduction: 0.4
+  offroadReverseForce: 0.65
+  assistFadeStart: 13.888889
+  assistFadeEnd: 22.222223
+  crawlSpeed: 8
+  crawlExtra: 0.35
+  circuitLateral: 1.5
+  circuitBrake: 1.2
+  driftMinSpeed: 6
+  driftArmWindow: 0.32
+  driftEnterSteer: 0.22
+  driftSustain: 0.12
+  driftScoreAngle: 0.21
+  driftMaxAngle: 1.4
+  yawCapSpeed: 4
+  liftMinSteer: 0.15
+  liftOffThrottle: 0.15
+  liftOnset: 0.12
+  liftRearmThrottle: 0.5
+  liftDecay: 2.2
+  staticHoldSpeed: 0.9
+  throttleRate: 9
+  reverseGearing: 0.35
+  reverseMaxSpeed: 12
+  handbrakeBrake: 0.36
+  handbrakeDrive: 0.2
+  tractionG: 1.35
+  airYaw: 2.2
+  airPitch: 2.8
+  airDamping: 1.4
+  boostEarnDrift: 0.34
+  boostEarnAir: 0.5
+  boostEarnSmash: 0.12
+  stuntTapWindow: 0.28
+  stuntEnterRate: 14
+  stuntFall: 8.5
+  stuntExitDump: 2.4
+  stuntExtraAngle: 0.28
+  stuntSpinYaw: 2.85
+  stuntMaxYawRate: 5.2
+  stuntSpinRise: 4.2
+  stuntSpinFall: 5.8
+  stuntSpinFallCounter: 12
+  stuntLatGrip: 0.78
+  stuntSpinLatGrip: 0.55
+  stuntCatch: 0.6
+  stuntCounterCatch: 4.8
+  stuntHandbrakeDrive: 0.72
+  stuntHandbrakeBrake: 0.14
+  stuntAirYaw: 1.65
+  stuntAirPitch: 1.3
+  stuntMinSpeed: 8.333334
+  stuntTrickAngle: 6.2831855
+  stuntTrickYaw: 5.4
+  stuntTrickYawCap: 6.8
+  stuntAirRoll: 7.2
+  stuntTrickAbort: 5.5

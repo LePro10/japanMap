@@ -1,0 +1,123 @@
+
+╔══ Fahrzeugliste — Prüfstand P18, idealer Boden ═══════════════════════════
+
+── Kite S  (touge, RWD, 1180 kg)
+   0–100   7.18 s   Endtempo  205 km/h   Bremsweg 100→0  37.9 m in  2.70 s
+   Geradeauslauf  0.0000 m Versatz auf 60 s   Lenksymmetrie ± 35.95 m, Abweichung 0.0e+0
+   Gier: Spitze   1.6°, nach 3 s   0.0°   Ausrollen: 0 Anstiege (max 0.0e+0 m/s), 159→halb in  26.5 s
+     asphalt   Durchdrehen: Anfahrt  0.32× Bogen  0.32×  Grenze   6.6 kN  |  10 s Vollgas  128 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     kies      Durchdrehen: Anfahrt  0.46× Bogen  0.46×  Grenze   4.0 kN  |  10 s Vollgas   96 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     gelaende  Durchdrehen: Anfahrt  0.50× Bogen  0.50×  Grenze   4.0 kN  |  10 s Vollgas   86 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     Lenkantwort 40 km/h:   9.8  19.6  29.6  39.8  50.4 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lenkantwort 90 km/h:   4.3   8.6  13.0  17.3  21.7 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lastwechsel im Bogen: steer 0.35   1.3°→  1.3°  steer 0.55   2.0°→  2.0°  steer 0.80   3.0°→  3.0°
+     Einfederung im Stand   9.8 cm =  45 % des Federwegs
+
+── Pip 650  (pip, FWD, 820 kg)
+   0–100  10.48 s   Endtempo  160 km/h   Bremsweg 100→0  38.9 m in  2.78 s
+   Geradeauslauf  0.0000 m Versatz auf 60 s   Lenksymmetrie ± 32.29 m, Abweichung 0.0e+0
+   Gier: Spitze   1.7°, nach 3 s   0.0°   Ausrollen: 0 Anstiege (max 0.0e+0 m/s), 126→halb in  21.1 s
+     asphalt   Durchdrehen: Anfahrt  0.24× Bogen  0.24×  Grenze   3.6 kN  |  10 s Vollgas   96 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     kies      Durchdrehen: Anfahrt  0.34× Bogen  0.34×  Grenze   2.4 kN  |  10 s Vollgas   69 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     gelaende  Durchdrehen: Anfahrt  0.37× Bogen  0.37×  Grenze   2.4 kN  |  10 s Vollgas   62 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     Lenkantwort 40 km/h:   9.3  18.7  28.3  38.1  48.3 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lenkantwort 90 km/h:   4.1   8.3  12.4  16.6  20.8 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lastwechsel im Bogen: steer 0.35   1.1°→  1.1°  steer 0.55   1.8°→  1.8°  steer 0.80   2.6°→  2.6°
+     Einfederung im Stand   9.8 cm =  43 % des Federwegs
+
+── Skiff Mini  (truck, RWD, 1080 kg)
+   0–100  12.00 s   Endtempo  150 km/h   Bremsweg 100→0  45.9 m in  3.35 s
+   Geradeauslauf  0.0000 m Versatz auf 60 s   Lenksymmetrie ± 24.49 m, Abweichung 0.0e+0
+   Gier: Spitze   1.2°, nach 3 s   0.0°   Ausrollen: 0 Anstiege (max 0.0e+0 m/s), 115→halb in  21.6 s
+     asphalt   Durchdrehen: Anfahrt  0.21× Bogen  0.21×  Grenze   4.5 kN  |  10 s Vollgas   86 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     kies      Durchdrehen: Anfahrt  0.28× Bogen  0.28×  Grenze   2.4 kN  |  10 s Vollgas   64 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     gelaende  Durchdrehen: Anfahrt  0.33× Bogen  0.33×  Grenze   2.4 kN  |  10 s Vollgas   58 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     Lenkantwort 40 km/h:   8.1  16.3  24.7  33.4  42.6 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lenkantwort 90 km/h:   3.6   7.2  10.8  14.4  18.1 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lastwechsel im Bogen: steer 0.35   1.5°→  1.5°  steer 0.55   2.5°→  2.5°  steer 0.80   3.7°→  3.7°
+     Einfederung im Stand  15.3 cm =  48 % des Federwegs
+
+── Cairn 4  (offroad, AWD, 1880 kg)
+   0–100   8.78 s   Endtempo  180 km/h   Bremsweg 100→0  44.9 m in  3.23 s
+   Geradeauslauf  0.0000 m Versatz auf 60 s   Lenksymmetrie ± 27.35 m, Abweichung 0.0e+0
+   Gier: Spitze   1.0°, nach 3 s   0.0°   Ausrollen: 0 Anstiege (max 0.0e+0 m/s), 134→halb in  28.6 s
+     asphalt   Durchdrehen: Anfahrt  0.28× Bogen  0.28×  Grenze  15.1 kN  |  10 s Vollgas  109 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     kies      Durchdrehen: Anfahrt  0.33× Bogen  0.33×  Grenze  10.5 kN  |  10 s Vollgas   90 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     gelaende  Durchdrehen: Anfahrt  0.44× Bogen  0.44×  Grenze  10.5 kN  |  10 s Vollgas   85 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     Lenkantwort 40 km/h:   8.4  16.9  25.6  34.5  43.7 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lenkantwort 90 km/h:   3.7   7.5  11.3  15.0  18.9 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lastwechsel im Bogen: steer 0.35   1.4°→  1.4°  steer 0.55   2.2°→  2.2°  steer 0.80   3.3°→  3.3°
+     Einfederung im Stand  15.3 cm =  36 % des Federwegs
+
+── Torrent R  (torrent, AWD, 1320 kg)
+   0–100   5.58 s   Endtempo  225 km/h   Bremsweg 100→0  34.9 m in  2.48 s
+   Geradeauslauf  0.0000 m Versatz auf 60 s   Lenksymmetrie ± 41.32 m, Abweichung 0.0e+0
+   Gier: Spitze   1.7°, nach 3 s   0.0°   Ausrollen: 0 Anstiege (max 0.0e+0 m/s), 185→halb in  23.9 s
+     asphalt   Durchdrehen: Anfahrt  0.41× Bogen  0.41×  Grenze  13.7 kN  |  10 s Vollgas  153 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     kies      Durchdrehen: Anfahrt  0.48× Bogen  0.48×  Grenze  12.4 kN  |  10 s Vollgas  128 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     gelaende  Durchdrehen: Anfahrt  0.63× Bogen  0.63×  Grenze  12.4 kN  |  10 s Vollgas  121 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     Lenkantwort 40 km/h:  10.9  21.8  32.8  44.1  55.7 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lenkantwort 90 km/h:   4.8   9.6  14.5  19.3  24.2 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lastwechsel im Bogen: steer 0.35   1.2°→  1.2°  steer 0.55   1.9°→  1.9°  steer 0.80   2.9°→  2.9°
+     Einfederung im Stand   9.8 cm =  34 % des Federwegs
+
+── Ribbon R  (ribbon, RWD, 1280 kg)
+   0–100   5.78 s   Endtempo  235 km/h   Bremsweg 100→0  36.9 m in  2.62 s
+   Geradeauslauf  0.0000 m Versatz auf 60 s   Lenksymmetrie ± 38.22 m, Abweichung 0.0e+0
+   Gier: Spitze   1.7°, nach 3 s   0.0°   Ausrollen: 0 Anstiege (max 0.0e+0 m/s), 192→halb in  23.4 s
+     asphalt   Durchdrehen: Anfahrt  0.40× Bogen  0.40×  Grenze   7.5 kN  |  10 s Vollgas  157 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     kies      Durchdrehen: Anfahrt  0.57× Bogen  0.57×  Grenze   4.8 kN  |  10 s Vollgas  117 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     gelaende  Durchdrehen: Anfahrt  0.61× Bogen  0.61×  Grenze   4.8 kN  |  10 s Vollgas  105 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     Lenkantwort 40 km/h:  10.0  20.1  30.4  40.8  51.6 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lenkantwort 90 km/h:   4.4   8.9  13.4  17.9  22.4 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lastwechsel im Bogen: steer 0.35   1.4°→  1.4°  steer 0.55   2.2°→  2.2°  steer 0.80   3.3°→  3.3°
+     Einfederung im Stand   9.8 cm =  47 % des Federwegs
+
+── Meridian GT  (meridian, AWD, 1660 kg)
+   0–100   4.68 s   Endtempo  270 km/h   Bremsweg 100→0  36.0 m in  2.55 s
+   Geradeauslauf  0.0000 m Versatz auf 60 s   Lenksymmetrie ± 38.05 m, Abweichung 0.0e+0
+   Gier: Spitze   1.2°, nach 3 s   0.0°   Ausrollen: 0 Anstiege (max 0.0e+0 m/s), 207→halb in  31.9 s
+     asphalt   Durchdrehen: Anfahrt  0.48× Bogen  0.48×  Grenze  16.8 kN  |  10 s Vollgas  171 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     kies      Durchdrehen: Anfahrt  0.68× Bogen  0.68×  Grenze  12.1 kN  |  10 s Vollgas  130 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     gelaende  Durchdrehen: Anfahrt  0.74× Bogen  0.74×  Grenze  12.1 kN  |  10 s Vollgas  120 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     Lenkantwort 40 km/h:  10.5  21.1  31.8  42.6  53.6 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lenkantwort 90 km/h:   4.7   9.3  14.0  18.7  23.4 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lastwechsel im Bogen: steer 0.35   1.1°→  1.1°  steer 0.55   1.8°→  1.8°  steer 0.80   2.6°→  2.6°
+     Einfederung im Stand   9.8 cm =  43 % des Federwegs
+
+── Morrow 8  (morrow, RWD, 1740 kg)
+   0–100   4.88 s   Endtempo  265 km/h   Bremsweg 100→0  40.0 m in  2.83 s
+   Geradeauslauf  0.0000 m Versatz auf 60 s   Lenksymmetrie ± 32.90 m, Abweichung 0.0e+0
+   Gier: Spitze   1.2°, nach 3 s   0.0°   Ausrollen: 0 Anstiege (max 0.0e+0 m/s), 208→halb in  28.8 s
+     asphalt   Durchdrehen: Anfahrt  0.46× Bogen  0.46×  Grenze   7.8 kN  |  10 s Vollgas  172 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     kies      Durchdrehen: Anfahrt  0.66× Bogen  0.66×  Grenze   4.6 kN  |  10 s Vollgas  131 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     gelaende  Durchdrehen: Anfahrt  0.71× Bogen  0.71×  Grenze   4.6 kN  |  10 s Vollgas  121 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     Lenkantwort 40 km/h:   9.3  18.6  28.1  37.7  47.5 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lenkantwort 90 km/h:   4.1   8.2  12.4  16.5  20.7 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lastwechsel im Bogen: steer 0.35   1.4°→  1.4°  steer 0.55   2.2°→  2.2°  steer 0.80   3.3°→  3.3°
+     Einfederung im Stand   9.8 cm =  41 % des Federwegs
+
+── Ember RS  (gt, RWD, 1240 kg)
+   0–100   3.90 s   Endtempo  295 km/h   Bremsweg 100→0  31.0 m in  2.18 s
+   Geradeauslauf  0.0000 m Versatz auf 60 s   Lenksymmetrie ± 50.41 m, Abweichung 0.0e+0
+   Gier: Spitze   1.9°, nach 3 s   0.0°   Ausrollen: 0 Anstiege (max 0.0e+0 m/s), 244→halb in  25.7 s
+     asphalt   Durchdrehen: Anfahrt  0.57× Bogen  0.57×  Grenze  10.3 kN  |  10 s Vollgas  205 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     kies      Durchdrehen: Anfahrt  0.88× Bogen  0.88×  Grenze   7.8 kN  |  10 s Vollgas  153 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     gelaende  Durchdrehen: Anfahrt  0.88× Bogen  0.88×  Grenze   7.8 kN  |  10 s Vollgas  141 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     Lenkantwort 40 km/h:  12.5  25.0  37.6  50.4  63.5 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lenkantwort 90 km/h:   5.6  11.1  16.7  22.3  27.9 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lastwechsel im Bogen: steer 0.35   1.1°→  1.1°  steer 0.55   1.8°→  1.8°  steer 0.80   2.7°→  2.7°
+     Einfederung im Stand   5.8 cm =  34 % des Federwegs
+
+── Needle 01  (needle, RWD, 710 kg)
+   0–100   3.30 s   Endtempo  305 km/h   Bremsweg 100→0  27.1 m in  1.92 s
+   Geradeauslauf  0.0000 m Versatz auf 60 s   Lenksymmetrie ± 67.54 m, Abweichung 0.0e+0
+   Gier: Spitze   2.1°, nach 3 s   0.0°   Ausrollen: 0 Anstiege (max 0.0e+0 m/s), 278→halb in  16.2 s
+     asphalt   Durchdrehen: Anfahrt  0.68× Bogen  0.68×  Grenze   6.2 kN  |  10 s Vollgas  242 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     kies      Durchdrehen: Anfahrt  1.04× Bogen  1.04×  Grenze   5.3 kN  |  10 s Vollgas  179 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     gelaende  Durchdrehen: Anfahrt  1.04× Bogen  1.04×  Grenze   5.3 kN  |  10 s Vollgas  160 km/h, Schwimm  0.0°, Versatz  0.00 m  |  Stabilität  1.33
+     Lenkantwort 40 km/h:  13.9  28.0  42.1  56.4  70.9 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lenkantwort 90 km/h:   6.5  13.1  19.6  26.2  32.8 °/s  (Lenkung 0,2…1,0)   Abfall hinter der Spitze   0 %
+     Lastwechsel im Bogen: steer 0.35   1.2°→  1.2°  steer 0.55   1.9°→  1.9°  steer 0.80   2.8°→  2.8°
+     Einfederung im Stand   5.8 cm =  45 % des Federwegs
+

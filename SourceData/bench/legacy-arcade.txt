@@ -1,0 +1,120 @@
+
+╔══ Arcade-Fahrmodell — Prüfstand P22, idealer Boden ═══════════════════════
+
+   Drift zählt ab 12.0°, gilt bis 80.2°.
+
+── Kite S  (touge)
+   Ziel-Driftwinkel  43.0°   Grip 0.95 g   Endtempo (gerechnet) 214 km/h
+   Handbremsdrift 80 km/h:  Spitze   42.3°  gehalten   33.4°  Tempo   44 km/h  fängt nach 0.30 s
+   Gasstoß im Bogen:        Spitze    2.5°  gehalten    1.8°  ✓ kein Anriss ohne Space
+   Tippen, dann lenken:     Spitze   32.8°  ✓ Fenster öffnet
+   Space auf der Geraden:   Restgier    2.7°  ✓ keine letzte Richtung
+   Saubere Kurve 90 km/h:   Schwimm   1.3°   ✓ kein Drift
+   Nitro:                   +85 km/h über 7.5 s Brenndauer
+   12 s aus dem Stand:      asphalt  267 m   kies  212 m   gelaende  195 m
+
+── Pip 650  (pip)
+   Ziel-Driftwinkel  22.9°   Grip 0.90 g   Endtempo (gerechnet) 168 km/h
+   Handbremsdrift 80 km/h:  Spitze   20.5°  gehalten    8.8°  Tempo   63 km/h  fängt nach 0.00 s
+   Gasstoß im Bogen:        Spitze    2.2°  gehalten    1.8°  ✓ kein Anriss ohne Space
+   Tippen, dann lenken:     Spitze   12.3°  ✓ Fenster öffnet
+   Space auf der Geraden:   Restgier    1.9°  ✓ keine letzte Richtung
+   Saubere Kurve 90 km/h:   Schwimm   1.1°   ✓ kein Drift
+   Nitro:                   +56 km/h über 7.5 s Brenndauer
+   12 s aus dem Stand:      asphalt  196 m   kies  153 m   gelaende  141 m
+
+── Skiff Mini  (truck)
+   Ziel-Driftwinkel  28.6°   Grip 0.78 g   Endtempo (gerechnet) 158 km/h
+   Handbremsdrift 80 km/h:  Spitze   27.1°  gehalten   20.5°  Tempo   55 km/h  fängt nach 0.27 s
+   Gasstoß im Bogen:        Spitze    3.0°  gehalten    2.6°  ✓ kein Anriss ohne Space
+   Tippen, dann lenken:     Spitze   18.0°  ✓ Fenster öffnet
+   Space auf der Geraden:   Restgier    4.0°  ✓ keine letzte Richtung
+   Saubere Kurve 90 km/h:   Schwimm   1.5°   ✓ kein Drift
+   Nitro:                   +37 km/h über 7.5 s Brenndauer
+   12 s aus dem Stand:      asphalt  176 m   kies  142 m   gelaende  131 m
+
+── Cairn 4  (offroad)
+   Ziel-Driftwinkel  28.6°   Grip 0.82 g   Endtempo (gerechnet) 191 km/h
+   Handbremsdrift 80 km/h:  Spitze   25.5°  gehalten   16.0°  Tempo   66 km/h  fängt nach 0.22 s
+   Gasstoß im Bogen:        Spitze    2.7°  gehalten    2.3°  ✓ kein Anriss ohne Space
+   Tippen, dann lenken:     Spitze   14.7°  ✓ Fenster öffnet
+   Space auf der Geraden:   Restgier    4.5°  ✓ keine letzte Richtung
+   Saubere Kurve 90 km/h:   Schwimm   1.4°   ✓ kein Drift
+   Nitro:                   +58 km/h über 7.5 s Brenndauer
+   12 s aus dem Stand:      asphalt  229 m   kies  200 m   gelaende  189 m
+
+── Torrent R  (torrent)
+   Ziel-Driftwinkel  33.2°   Grip 1.06 g   Endtempo (gerechnet) 233 km/h
+   Handbremsdrift 80 km/h:  Spitze   31.8°  gehalten   16.6°  Tempo   66 km/h  fängt nach 0.15 s
+   Gasstoß im Bogen:        Spitze    2.3°  gehalten    1.6°  ✓ kein Anriss ohne Space
+   Tippen, dann lenken:     Spitze   21.9°  ✓ Fenster öffnet
+   Space auf der Geraden:   Restgier    2.5°  ✓ keine letzte Richtung
+   Saubere Kurve 90 km/h:   Schwimm   1.2°   ✓ kein Drift
+   Nitro:                   +101 km/h über 7.5 s Brenndauer
+   12 s aus dem Stand:      asphalt  328 m   kies  285 m   gelaende  271 m
+
+── Ribbon R  (ribbon)
+   Ziel-Driftwinkel  57.3°   Grip 0.98 g   Endtempo (gerechnet) 243 km/h
+   Handbremsdrift 80 km/h:  Spitze   57.2°  gehalten   48.7°  Tempo   28 km/h  fängt nach 0.40 s
+   Gasstoß im Bogen:        Spitze    2.6°  gehalten    1.8°  ✓ kein Anriss ohne Space
+   Tippen, dann lenken:     Spitze   50.0°  ✓ Fenster öffnet
+   Space auf der Geraden:   Restgier    2.6°  ✓ keine letzte Richtung
+   Saubere Kurve 90 km/h:   Schwimm   1.4°   ✓ kein Drift
+   Nitro:                   +109 km/h über 7.5 s Brenndauer
+   12 s aus dem Stand:      asphalt  327 m   kies  259 m   gelaende  238 m
+
+── Meridian GT  (meridian)
+   Ziel-Driftwinkel  31.5°   Grip 1.03 g   Endtempo (gerechnet) 281 km/h
+   Handbremsdrift 80 km/h:  Spitze   31.2°  gehalten   17.0°  Tempo   71 km/h  fängt nach 0.20 s
+   Gasstoß im Bogen:        Spitze    2.1°  gehalten    1.4°  ✓ kein Anriss ohne Space
+   Tippen, dann lenken:     Spitze   22.9°  ✓ Fenster öffnet
+   Space auf der Geraden:   Restgier    4.2°  ✓ keine letzte Richtung
+   Saubere Kurve 90 km/h:   Schwimm   1.2°   ✓ kein Drift
+   Nitro:                   +123 km/h über 7.5 s Brenndauer
+   12 s aus dem Stand:      asphalt  372 m   kies  301 m   gelaende  282 m
+
+── Morrow 8  (morrow)
+   Ziel-Driftwinkel  50.4°   Grip 0.91 g   Endtempo (gerechnet) 274 km/h
+   Handbremsdrift 80 km/h:  Spitze   51.5°  gehalten   41.2°  Tempo   50 km/h  fängt nach 0.40 s
+   Gasstoß im Bogen:        Spitze    2.5°  gehalten    1.8°  ✓ kein Anriss ohne Space
+   Tippen, dann lenken:     Spitze   42.6°  ✓ Fenster öffnet
+   Space auf der Geraden:   Restgier    4.1°  ✓ keine letzte Richtung
+   Saubere Kurve 90 km/h:   Schwimm   1.5°   ✓ kein Drift
+   Nitro:                   +124 km/h über 7.5 s Brenndauer
+   12 s aus dem Stand:      asphalt  369 m   kies  297 m   gelaende  277 m
+
+── Ember RS  (gt)
+   Ziel-Driftwinkel  35.5°   Grip 1.22 g   Endtempo (gerechnet) 303 km/h
+   Handbremsdrift 80 km/h:  Spitze   33.2°  gehalten   19.3°  Tempo   70 km/h  fängt nach 0.18 s
+   Gasstoß im Bogen:        Spitze    2.2°  gehalten    1.3°  ✓ kein Anriss ohne Space
+   Tippen, dann lenken:     Spitze   25.0°  ✓ Fenster öffnet
+   Space auf der Geraden:   Restgier    2.2°  ✓ keine letzte Richtung
+   Saubere Kurve 90 km/h:   Schwimm   1.2°   ✓ kein Drift
+   Nitro:                   +150 km/h über 7.5 s Brenndauer
+   12 s aus dem Stand:      asphalt  446 m   kies  356 m   gelaende  331 m
+
+── Needle 01  (needle)
+   Ziel-Driftwinkel  27.5°   Grip 1.35 g   Endtempo (gerechnet) 310 km/h
+   Handbremsdrift 80 km/h:  Spitze   25.4°  gehalten    9.4°  Tempo   76 km/h  fängt nach 0.00 s
+   Gasstoß im Bogen:        Spitze    2.2°  gehalten    1.4°  ✓ kein Anriss ohne Space
+   Tippen, dann lenken:     Spitze   19.3°  ✓ Fenster öffnet
+   Space auf der Geraden:   Restgier    2.1°  ✓ keine letzte Richtung
+   Saubere Kurve 90 km/h:   Schwimm   1.2°   ✓ kein Drift
+   Nitro:                   +180 km/h über 7.5 s Brenndauer
+   12 s aus dem Stand:      asphalt  527 m   kies  406 m   gelaende  373 m
+
+── Stunt-Drift (Doppeltipp, kein Toggle)
+
+   Doppeltipp-Fenster 280 ms:  erster ✓ nicht   innerhalb ✓   danach ✓ raus
+   Einzeltipp 1,2 s:         Gier    68°  Schwimm   54.9°  54 km/h  ✓ driftet, kein 360
+   Stunt, Space los, lenken: Gier    51°  Schwimm   71.4°  spin 0.00  ✓ kein Kreisel
+   Stunt, Space 1,0 s:       Gier   138°  Schwimm   89.5°  ✓ 180-Fenster
+   Stunt, Space 2,2 s:       Gier   439°  Schwimm   89.5°  42 km/h  ✓ 360 geht
+   Gegenlenken nach Spin:    83.9° → 27.6°  spin 0.00  ✓ fängt
+   Stunt, saubere Kurve:     Schwimm   1.3°  ✓ kein Drift ohne Space
+   Geradeaus 0,25 s:         stunt 0.12  drift 0.20  normal 0.51  ✓ Stunt weg, schneller als Drift
+   Doppeltipp im Drift 1,5 s: Gier   433°  ohne Space gehalten  ✓ 360 aus der Bewegung
+   Luft-Rolle:               Roll   357°  Nick    0.2°  ✓ seitlich, kein Loop
+
+   Stunt-Proben grün.
+

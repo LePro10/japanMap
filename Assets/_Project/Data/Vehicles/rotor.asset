@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31ab3890ed448430dbd8df5667a012b3, type: 3}
+  m_Name: rotor
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleDefinition
+  id: rotor
+  displayName: Rotor FD
+  category: 3
+  legacyId: gt
+  model: {fileID: 0}
+  mass: 1240
+  wheelbase: 2.62
+  frontWeight: 0.44
+  cgHeight: 0.41
+  wheelRadius: 0.34
+  bodySize: {x: 4.38, y: 2.14, z: 1.12}
+  clearance: 0.12
+  ford: 0.12
+  travel: 0.17
+  springFrequency: 13
+  dampingRatio: 0.72
+  bumpStopFactor: 9
+  maxLoadFactor: 3.5
+  rollPerLateralG: 0.025
+  pitchPerLongitudinalG: 0.025
+  dirtGrip: 0.65
+  driveRetain: 0.65
+  crawlShare: 0.85
+  arcade:
+    latG: 1.22
+    latGrip: 13
+    driftLatGrip: 1.8
+    yawResponse: 15
+    maxYawRate: 3.2
+    downforce: 0.08
+    downforceSpeed: 0
+    driftAngle: 0.62
+    driftYawGain: 3.5
+    powerOversteer: 0.7
+    liftOversteer: 0.8
+    driftRise: 7
+    driftFall: 2.6
+    catchAssist: 3.4
+    launchForce: 9415
+    power: 320000
+    brakeG: 1.2673
+    drag: 0.53538966
+    rollDecel: 0.25
+    boostAccel: 2
+    boostCapacity: 5
+    boostRefill: 0.04
+    steerAngle: 0.4886922
+    steerRate: 6
+    steerReturn: 8
+    steerFalloff: 42

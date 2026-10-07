@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31ab3890ed448430dbd8df5667a012b3, type: 3}
+  m_Name: kumo
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleDefinition
+  id: kumo
+  displayName: Kumo STi 22
+  category: 2
+  legacyId: torrent
+  model: {fileID: 0}
+  mass: 1320
+  wheelbase: 2.52
+  frontWeight: 0.57
+  cgHeight: 0.54
+  wheelRadius: 0.33
+  bodySize: {x: 4.02, y: 1.98, z: 1.47}
+  clearance: 0.22
+  ford: 0.3
+  travel: 0.29
+  springFrequency: 10
+  dampingRatio: 0.72
+  bumpStopFactor: 9
+  maxLoadFactor: 3.5
+  rollPerLateralG: 0.065
+  pitchPerLongitudinalG: 0.06
+  dirtGrip: 0.85
+  driveRetain: 0.65
+  crawlShare: 0.5
+  arcade:
+    latG: 1.06
+    latGrip: 10.5
+    driftLatGrip: 2.7
+    yawResponse: 12
+    maxYawRate: 3.2
+    downforce: 0
+    downforceSpeed: 0
+    driftAngle: 0.58
+    driftYawGain: 3.5
+    powerOversteer: 0.25
+    liftOversteer: 0.2
+    driftRise: 7
+    driftFall: 3.8
+    catchAssist: 4.4
+    launchForce: 7153
+    power: 205000
+    brakeG: 1.1008
+    drag: 0.7552
+    rollDecel: 0.25
+    boostAccel: 2
+    boostCapacity: 5
+    boostRefill: 0.04
+    steerAngle: 0.57595867
+    steerRate: 5.2
+    steerReturn: 7
+    steerFalloff: 40

@@ -4,6 +4,7 @@
     "references": [
         "JapanMap.Core",
         "JapanMap.DevTools",
+        "JapanMap.Vehicles",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

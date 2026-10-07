@@ -1,0 +1,142 @@
+╔══ Steigung — Prüfstand P21 ══════════════════════════════════════════════
+   STEEP_NY = 0.78 ≙ 38.7° — darüber gibt es keine Radlast.
+
+── Belag: asphalt
+   Kite S             RWD Grenze   27.1° → mit Kriechhilfe   27.1°  |   5°:   152   10°:   128   15°:   102   20°:    60   25°:    20   30°:     0!  35°:    -6!  40°:   -21!
+   Pip 650            FWD Grenze   33.3° → mit Kriechhilfe   33.3°  |   5°:   116   10°:    77   15°:    30   20°:    -0!  25°:   -26!  30°:   -57!  35°:   -78!  40°:   -90!
+   Skiff Mini         RWD Grenze   19.6° → mit Kriechhilfe   19.6°  |   5°:   102   10°:    59   15°:     9   20°:    -7!  25°:   -46!  30°:   -75!  35°:   -95!  40°:  -109!
+   Cairn 4            AWD Grenze   39.0° → mit Kriechhilfe   39.0°  |   5°:   124   10°:   100   15°:    71   20°:    25   25°:     0!  30°:   -18!  35°:   -42!  40°:   -57!
+   Torrent R          AWD Grenze   49.4° → mit Kriechhilfe   49.4°  |   5°:   179   10°:   157   15°:   138   20°:   119   25°:    91   30°:    62   35°:    38   40°:    24 
+   Ribbon R           RWD Grenze   29.3° → mit Kriechhilfe   29.3°  |   5°:   188   10°:   166   15°:   144   20°:   116   25°:    81   30°:    51   35°:    27   40°:    12 
+   Meridian GT        AWD Grenze   52.2° → mit Kriechhilfe   52.2°  |   5°:   203   10°:   179   15°:   158   20°:   140   25°:   126   30°:   113   35°:    99   40°:    85 
+   Morrow 8           RWD Grenze   21.9° → mit Kriechhilfe   21.9°  |   5°:   205   10°:   182   15°:   161   20°:   143   25°:   127   30°:   106   35°:    83   40°:    69 
+   Ember RS           RWD Grenze   43.1° → mit Kriechhilfe   43.1°  |   5°:   242   10°:   220   15°:   201   20°:   184   25°:   170   30°:   159   35°:   150   40°:   145 
+   Needle 01          RWD Grenze   49.1° → mit Kriechhilfe   49.1°  |   5°:   276   10°:   260   15°:   245   20°:   231   25°:   219   30°:   209   35°:   202   40°:   197 
+
+── Belag: kies
+   Kite S             RWD Grenze   17.7° → mit Kriechhilfe   37.3°  |   5°:   103   10°:    84   15°:    72   20°:    64   25°:    58   30°:    55   35°:    52   40°:    48 
+   Pip 650            FWD Grenze   20.2° → mit Kriechhilfe   20.2°  |   5°:    73   10°:    61   15°:    52   20°:    40   25°:    31   30°:    25   35°:    20   40°:    16 
+   Skiff Mini         RWD Grenze   11.3° → mit Kriechhilfe   23.1°  |   5°:    70   10°:    59   15°:    52   20°:    43   25°:    34   30°:    28   35°:    24   40°:    21 
+   Cairn 4            AWD Grenze   26.0° → mit Kriechhilfe   31.7°  |   5°:    94   10°:    81   15°:    75   20°:    69   25°:    65   30°:    63   35°:    61   40°:    60 
+   Torrent R          AWD Grenze   43.2° → mit Kriechhilfe   55.2°  |   5°:   136   10°:   123   15°:   111   20°:    94   25°:    79   30°:    76   35°:    73   40°:    72 
+   Ribbon R           RWD Grenze   19.6° → mit Kriechhilfe   42.2°  |   5°:   128   10°:   109   15°:    89   20°:    76   25°:    70   30°:    65   35°:    63   40°:    61 
+   Meridian GT        AWD Grenze   34.7° → mit Kriechhilfe   43.1°  |   5°:   133   10°:   121   15°:   111   20°:   102   25°:    88   30°:    78   35°:    75   40°:    72 
+   Morrow 8           RWD Grenze   13.7° → mit Kriechhilfe   28.4°  |   5°:   136   10°:   124   15°:   114   20°:    97   25°:    81   30°:    75   35°:    72   40°:    70 
+   Ember RS           RWD Grenze   32.8° → mit Kriechhilfe   58.4°  |   5°:   157   10°:   146   15°:   136   20°:   128   25°:   114   30°:   101   35°:    91   40°:    55 
+   Needle 01          RWD Grenze   41.6° → mit Kriechhilfe   90.0°  |   5°:   192   10°:   181   15°:   165   20°:   148   25°:   133   30°:   121   35°:   111   40°:    54 
+
+── Belag: gelaende
+   Kite S             RWD Grenze   17.7° → mit Kriechhilfe   37.3°  |   5°:    89   10°:    74   15°:    65   20°:    58   25°:    54   30°:    49   35°:    44   40°:    40 
+   Pip 650            FWD Grenze   20.2° → mit Kriechhilfe   20.2°  |   5°:    63   10°:    54   15°:    44   20°:    34   25°:    26   30°:    21   35°:    18   40°:    14 
+   Skiff Mini         RWD Grenze   11.3° → mit Kriechhilfe   23.1°  |   5°:    62   10°:    53   15°:    45   20°:    36   25°:    29   30°:    25   35°:    21   40°:    18 
+   Cairn 4            AWD Grenze   26.0° → mit Kriechhilfe   31.7°  |   5°:    87   10°:    77   15°:    71   20°:    66   25°:    62   30°:    60   35°:    59   40°:    58 
+   Torrent R          AWD Grenze   43.2° → mit Kriechhilfe   55.2°  |   5°:   126   10°:   114   15°:   101   20°:    83   25°:    76   30°:    73   35°:    71   40°:    61 
+   Ribbon R           RWD Grenze   19.6° → mit Kriechhilfe   42.2°  |   5°:   111   10°:    92   15°:    78   20°:    70   25°:    64   30°:    61   35°:    58   40°:    48 
+   Meridian GT        AWD Grenze   34.7° → mit Kriechhilfe   43.1°  |   5°:   120   10°:   110   15°:   101   20°:    87   25°:    77   30°:    72   35°:    69   40°:    49 
+   Morrow 8           RWD Grenze   13.7° → mit Kriechhilfe   28.4°  |   5°:   124   10°:   113   15°:    97   20°:    81   25°:    74   30°:    70   35°:    67   40°:    48 
+   Ember RS           RWD Grenze   32.8° → mit Kriechhilfe   58.4°  |   5°:   142   10°:   133   15°:   124   20°:   108   25°:    94   30°:    84   35°:    78   40°:    45 
+   Needle 01          RWD Grenze   41.6° → mit Kriechhilfe   90.0°  |   5°:   172   10°:   156   15°:   140   20°:   125   25°:   112   30°:   101   35°:    93   40°:    45 
+
+── Diagnose: warum bleibt er stehen (glatter Hang, 20 s Vollgas)
+   Kite S             10°  Tempo   73.9 km/h  gestiegen   54.7 m  Luft    0.0 %  Blech  0.000 m  Spin   0.55  → ok
+   Kite S             15°  Tempo   64.6 km/h  gestiegen   73.3 m  Luft    0.0 %  Blech  0.000 m  Spin   0.60  → ok
+   Kite S             20°  Tempo   58.2 km/h  gestiegen   88.7 m  Luft    0.0 %  Blech  0.000 m  Spin   0.64  → ok
+   Kite S             25°  Tempo   53.6 km/h  gestiegen  101.5 m  Luft    0.0 %  Blech  0.000 m  Spin   0.69  → ok
+   Kite S             30°  Tempo   48.8 km/h  gestiegen  111.5 m  Luft    0.0 %  Blech  0.000 m  Spin   0.72  → ok
+   Pip 650            10°  Tempo   53.5 km/h  gestiegen   37.7 m  Luft    0.0 %  Blech  0.000 m  Spin   0.45  → ok
+   Pip 650            15°  Tempo   43.5 km/h  gestiegen   46.4 m  Luft    0.0 %  Blech  0.000 m  Spin   0.49  → ok
+   Pip 650            20°  Tempo   33.7 km/h  gestiegen   50.1 m  Luft    0.0 %  Blech  0.000 m  Spin   0.53  → ok
+   Pip 650            25°  Tempo   26.4 km/h  gestiegen   51.4 m  Luft    0.0 %  Blech  0.000 m  Spin   0.56  → ok
+   Pip 650            30°  Tempo   21.4 km/h  gestiegen   51.3 m  Luft    0.0 %  Blech  0.000 m  Spin   0.59  → ok
+   Skiff Mini         10°  Tempo   53.5 km/h  gestiegen   36.9 m  Luft    0.0 %  Blech  0.000 m  Spin   0.36  → ok
+   Skiff Mini         15°  Tempo   44.9 km/h  gestiegen   46.7 m  Luft    0.0 %  Blech  0.000 m  Spin   0.37  → ok
+   Skiff Mini         20°  Tempo   36.2 km/h  gestiegen   52.1 m  Luft    0.0 %  Blech  0.000 m  Spin   0.40  → ok
+   Skiff Mini         25°  Tempo   29.1 km/h  gestiegen   55.2 m  Luft    0.0 %  Blech  0.000 m  Spin   0.43  → ok
+   Skiff Mini         30°  Tempo   24.5 km/h  gestiegen   57.5 m  Luft    0.0 %  Blech  0.000 m  Spin   0.46  → ok
+   Cairn 4            10°  Tempo   77.1 km/h  gestiegen   58.4 m  Luft    0.0 %  Blech  0.000 m  Spin   0.46  → ok
+   Cairn 4            15°  Tempo   70.6 km/h  gestiegen   82.1 m  Luft    0.0 %  Blech  0.000 m  Spin   0.52  → ok
+   Cairn 4            20°  Tempo   65.6 km/h  gestiegen  104.9 m  Luft    0.0 %  Blech  0.000 m  Spin   0.58  → ok
+   Cairn 4            25°  Tempo   62.4 km/h  gestiegen  128.2 m  Luft    0.0 %  Blech  0.000 m  Spin   0.63  → ok
+   Cairn 4            30°  Tempo   60.3 km/h  gestiegen  153.3 m  Luft    0.0 %  Blech  0.000 m  Spin   0.67  → ok
+   Torrent R          10°  Tempo  114.3 km/h  gestiegen   83.6 m  Luft    0.0 %  Blech  0.000 m  Spin   0.64  → ok
+   Torrent R          15°  Tempo  101.1 km/h  gestiegen  113.3 m  Luft    0.0 %  Blech  0.000 m  Spin   0.68  → ok
+   Torrent R          20°  Tempo   82.7 km/h  gestiegen  137.2 m  Luft    0.0 %  Blech  0.000 m  Spin   0.71  → ok
+   Torrent R          25°  Tempo   76.1 km/h  gestiegen  166.0 m  Luft    0.0 %  Blech  0.000 m  Spin   0.75  → ok
+   Torrent R          30°  Tempo   72.8 km/h  gestiegen  197.9 m  Luft    0.0 %  Blech  0.000 m  Spin   0.80  → ok
+   Ribbon R           10°  Tempo   92.3 km/h  gestiegen   67.8 m  Luft    0.0 %  Blech  0.000 m  Spin   0.64  → ok
+   Ribbon R           15°  Tempo   77.6 km/h  gestiegen   90.7 m  Luft    0.0 %  Blech  0.000 m  Spin   0.67  → ok
+   Ribbon R           20°  Tempo   69.7 km/h  gestiegen  111.7 m  Luft    0.0 %  Blech  0.000 m  Spin   0.71  → ok
+   Ribbon R           25°  Tempo   64.2 km/h  gestiegen  131.8 m  Luft    0.0 %  Blech  0.000 m  Spin   0.75  → ok
+   Ribbon R           30°  Tempo   60.5 km/h  gestiegen  152.7 m  Luft    0.0 %  Blech  0.000 m  Spin   0.79  → ok
+   Meridian GT        10°  Tempo  110.1 km/h  gestiegen   83.7 m  Luft    0.0 %  Blech  0.000 m  Spin   0.72  → ok
+   Meridian GT        15°  Tempo  101.4 km/h  gestiegen  115.0 m  Luft    0.0 %  Blech  0.000 m  Spin   0.76  → ok
+   Meridian GT        20°  Tempo   87.1 km/h  gestiegen  138.5 m  Luft    0.0 %  Blech  0.000 m  Spin   0.79  → ok
+   Meridian GT        25°  Tempo   77.1 km/h  gestiegen  162.8 m  Luft    0.0 %  Blech  0.000 m  Spin   0.82  → ok
+   Meridian GT        30°  Tempo   72.4 km/h  gestiegen  190.0 m  Luft    0.0 %  Blech  0.000 m  Spin   0.85  → ok
+   Morrow 8           10°  Tempo  113.3 km/h  gestiegen   82.2 m  Luft    0.0 %  Blech  0.000 m  Spin   0.72  → ok
+   Morrow 8           15°  Tempo   97.1 km/h  gestiegen  109.3 m  Luft    0.0 %  Blech  0.000 m  Spin   0.74  → ok
+   Morrow 8           20°  Tempo   81.3 km/h  gestiegen  131.8 m  Luft    0.0 %  Blech  0.000 m  Spin   0.76  → ok
+   Morrow 8           25°  Tempo   74.3 km/h  gestiegen  156.2 m  Luft    0.0 %  Blech  0.000 m  Spin   0.80  → ok
+   Morrow 8           30°  Tempo   69.8 km/h  gestiegen  182.1 m  Luft    0.0 %  Blech  0.000 m  Spin   0.84  → ok
+   Ember RS           10°  Tempo  132.8 km/h  gestiegen   99.7 m  Luft    0.0 %  Blech  0.000 m  Spin   0.87  → ok
+   Ember RS           15°  Tempo  123.8 km/h  gestiegen  137.3 m  Luft    0.0 %  Blech  0.000 m  Spin   0.90  → ok
+   Ember RS           20°  Tempo  108.2 km/h  gestiegen  165.9 m  Luft    0.0 %  Blech  0.000 m  Spin   0.91  → ok
+   Ember RS           25°  Tempo   94.4 km/h  gestiegen  189.9 m  Luft    0.0 %  Blech  0.000 m  Spin   0.92  → ok
+   Ember RS           30°  Tempo   83.7 km/h  gestiegen  214.2 m  Luft    0.0 %  Blech  0.000 m  Spin   0.94  → ok
+   Needle 01          10°  Tempo  155.7 km/h  gestiegen  112.2 m  Luft    0.0 %  Blech  0.000 m  Spin   1.05  → ok
+   Needle 01          15°  Tempo  139.9 km/h  gestiegen  152.7 m  Luft    0.0 %  Blech  0.000 m  Spin   1.06  → ok
+   Needle 01          20°  Tempo  125.2 km/h  gestiegen  185.3 m  Luft    0.0 %  Blech  0.000 m  Spin   1.07  → ok
+   Needle 01          25°  Tempo  112.2 km/h  gestiegen  212.6 m  Luft    0.0 %  Blech  0.000 m  Spin   1.08  → ok
+   Needle 01          30°  Tempo  101.5 km/h  gestiegen  238.1 m  Luft    0.0 %  Blech  0.000 m  Spin   1.09  → ok
+
+── Dasselbe auf **rauem** Gelände (±6 cm, wie zwischen zwei Texeln)
+   Kite S — Grenze   37.3°
+      10° glatt   73.9 (Luft      0 %) rau   74.0 (Luft      0 %, Blech   0.00)
+      15° glatt   64.6 (Luft      0 %) rau   64.6 (Luft      0 %, Blech   0.00)
+      20° glatt   58.2 (Luft      0 %) rau   58.2 (Luft      0 %, Blech   0.00)
+      25° glatt   53.6 (Luft      0 %) rau   53.6 (Luft      0 %, Blech   0.00)
+   Pip 650 — Grenze   20.2°
+      10° glatt   53.5 (Luft      0 %) rau   53.6 (Luft      0 %, Blech   0.00)
+      15° glatt   43.5 (Luft      0 %) rau   43.5 (Luft      0 %, Blech   0.00)
+      20° glatt   33.7 (Luft      0 %) rau   33.7 (Luft      0 %, Blech   0.00)
+      25° glatt   26.4 (Luft      0 %) rau   27.0 (Luft      0 %, Blech   0.00)
+   Skiff Mini — Grenze   23.1°
+      10° glatt   53.5 (Luft      0 %) rau   53.5 (Luft      0 %, Blech   0.00)
+      15° glatt   44.9 (Luft      0 %) rau   44.9 (Luft      0 %, Blech   0.00)
+      20° glatt   36.2 (Luft      0 %) rau   36.2 (Luft      0 %, Blech   0.00)
+      25° glatt   29.1 (Luft      0 %) rau   29.3 (Luft      0 %, Blech   0.00)
+   Cairn 4 — Grenze   31.7°
+      10° glatt   77.1 (Luft      0 %) rau   77.2 (Luft      0 %, Blech   0.00)
+      15° glatt   70.6 (Luft      0 %) rau   70.6 (Luft      0 %, Blech   0.00)
+      20° glatt   65.6 (Luft      0 %) rau   65.6 (Luft      0 %, Blech   0.00)
+      25° glatt   62.4 (Luft      0 %) rau   62.4 (Luft      0 %, Blech   0.00)
+   Torrent R — Grenze   55.2°
+      10° glatt  114.3 (Luft      0 %) rau  114.4 (Luft      0 %, Blech   0.00)
+      15° glatt  101.1 (Luft      0 %) rau  101.1 (Luft      0 %, Blech   0.00)
+      20° glatt   82.7 (Luft      0 %) rau   82.7 (Luft      0 %, Blech   0.00)
+      25° glatt   76.1 (Luft      0 %) rau   76.1 (Luft      0 %, Blech   0.00)
+   Ribbon R — Grenze   42.2°
+      10° glatt   92.3 (Luft      0 %) rau   92.4 (Luft      0 %, Blech   0.00)
+      15° glatt   77.6 (Luft      0 %) rau   77.7 (Luft      0 %, Blech   0.00)
+      20° glatt   69.7 (Luft      0 %) rau   69.7 (Luft      0 %, Blech   0.00)
+      25° glatt   64.2 (Luft      0 %) rau   64.3 (Luft      0 %, Blech   0.00)
+   Meridian GT — Grenze   43.1°
+      10° glatt  110.1 (Luft      0 %) rau  110.2 (Luft      0 %, Blech   0.01)
+      15° glatt  101.4 (Luft      0 %) rau  101.4 (Luft      0 %, Blech   0.01)
+      20° glatt   87.1 (Luft      0 %) rau   87.1 (Luft      0 %, Blech   0.01)
+      25° glatt   77.1 (Luft      0 %) rau   77.2 (Luft      0 %, Blech   0.00)
+   Morrow 8 — Grenze   28.4°
+      10° glatt  113.3 (Luft      0 %) rau  113.4 (Luft      0 %, Blech   0.00)
+      15° glatt   97.1 (Luft      0 %) rau   97.2 (Luft      0 %, Blech   0.01)
+      20° glatt   81.3 (Luft      0 %) rau   81.4 (Luft      0 %, Blech   0.01)
+      25° glatt   74.3 (Luft      0 %) rau   74.3 (Luft      0 %, Blech   0.01)
+   Ember RS — Grenze   58.4°
+      10° glatt  132.8 (Luft      0 %) rau  132.8 (Luft      0 %, Blech   0.00)
+      15° glatt  123.8 (Luft      0 %) rau  123.8 (Luft      0 %, Blech   0.00)
+      20° glatt  108.2 (Luft      0 %) rau  108.2 (Luft      0 %, Blech   0.00)
+      25° glatt   94.4 (Luft      0 %) rau   94.5 (Luft      0 %, Blech   0.00)
+   Needle 01 — Grenze   90.0°
+      10° glatt  155.7 (Luft      0 %) rau  155.7 (Luft      0 %, Blech   0.01)
+      15° glatt  139.9 (Luft      0 %) rau  140.0 (Luft      0 %, Blech   0.01)
+      20° glatt  125.2 (Luft      0 %) rau  125.3 (Luft      0 %, Blech   0.01)
+      25° glatt  112.2 (Luft      0 %) rau  112.3 (Luft      0 %, Blech   0.00)
