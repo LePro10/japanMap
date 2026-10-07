@@ -3,7 +3,18 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-07 · **Phase:** 1 abgeschlossen, **Phase 2 (Die Karte) ist als Nächstes dran**
+**Stand:** 2026-10-07 · **Phase:** 2 (Die Karte) läuft
+
+## Phase 2 — Die Karte
+
+- [x] 0. Terrain-Shader im Web geklärt: Probe-Terrain (URP Terrain/Lit) im Web-Build sichtbar, Rauchprobe GREEN. Die Warnung „All SubShaders stripped" betrifft nur Unitys Debug-Shader `Hidden/Core/Debug*`. `WebBuild` schlägt jetzt fehl, wenn ein anderer Shader komplett gestrippt wird (`WebBuildTests`).
+- [ ] 1. Terrain-Importer + Checkpoints
+- [ ] 2. Splatmap
+- [ ] 3. Wasser
+- [ ] 4. Straßen-Importer
+- [ ] 5. Props-Importer
+- [ ] 6. Blickpunkte
+- [ ] 7. Kollision
 
 ## Phase 1 — Fundament ✅
 
@@ -44,8 +55,6 @@ angesehen. Web-Build im Headless-Chrome: 0 Konsolenfehler, Boot nach 0,9 s
 
 - **Draw Calls im Browser nicht messbar:** Der Web-Player meldet sie als 0
   (Overlay zeigt „n/a"). Draw-Call-Budgets im offenen Editor messen.
-- **URP-Terrain-Shader** meldet beim Import für Web „All subshaders removed"
-  (Warnung). Vor dem Terrain-Import in Phase 2 klären (im Probelauf lief Terrain im Web).
 - Die Web-Seite ist noch Unitys Standardvorlage (960 × 600 mit Fußleiste) → eigene Vorlage spätestens Phase 9/10.
 - Zwölf alte Agent-Zweige `agent/*` (Worktrees unter `../japanMap.worktrees/`)
   gehören zum Prototyp. Nicht mergen. Löschen entscheidet der Mensch.

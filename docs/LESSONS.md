@@ -7,6 +7,7 @@
 
 | Datum | Phase | Was passiert ist | Vorkehrung (wo) | Art |
 |---|---|---|---|---|
+| 2026-10-07 | 2 | Warnung „All SubShaders stripped“ war nur notiert, nicht geprüft — ein gestrippter Shader ist im Browser unsichtbar, im Editor aber da | `WebBuild` sammelt die Warnungen und scheitert bei unbekannten Shadern (`WebBuildTests`) | Werkzeug |
 | 2026-10-07 | 1 | Editor per `kill` beendet, MCP-Server lief verwaist weiter; der nächste Editor meldete sich nicht an | Skill `unity-verify`, Falle "Editor schließen" | Skill |
 | 2026-10-07 | 1 | Web-Player liefert „Draw Calls"/„Batches" als 0, obwohl gezeichnet wird — eine falsche Budgetzahl | Overlay zeigt „n/a" (`StatsOverlay.Snapshot.Count`), Test in `FrameTimeStatsTests` | Test |
 | 2026-10-07 | 1 | Capture im Editor ohne gespeicherte Szene schrieb `Captures/.png` | Fallback-Name in `Capture.FromMenu` | Werkzeug |

@@ -1,8 +1,10 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using Debug = UnityEngine.Debug;
@@ -42,8 +44,18 @@ namespace JapanMap.Editor
                 options = development ? BuildOptions.Development : BuildOptions.None,
             };
 
+            var stripped = new List<string>();
+            void Collect(string message, string _, UnityEngine.LogType __)
+            {
+                var name = StrippedShaderName(message);
+                if (name != null) lock (stripped) stripped.Add(name);
+            }
+
             var clock = Stopwatch.StartNew();
-            var report = BuildPipeline.BuildPlayer(options);
+            UnityEngine.Application.logMessageReceivedThreaded += Collect;
+            BuildReport report;
+            try { report = BuildPipeline.BuildPlayer(options); }
+            finally { UnityEngine.Application.logMessageReceivedThreaded -= Collect; }
             clock.Stop();
 
             var summary = report.summary;
@@ -56,8 +68,33 @@ namespace JapanMap.Editor
             var text = SizeReport(development, clock.Elapsed.TotalSeconds);
             File.WriteAllText(Path.Combine(OutputDir, "size-report.txt"), text);
             Debug.Log("[WebBuild] done\n" + text);
+
+            // A fully stripped shader renders nothing (or pink) in the browser while the editor looks fine.
+            var broken = UnexpectedStrippedShaders(stripped);
+            if (broken.Count > 0)
+            {
+                Debug.LogError("[WebBuild] shaders with no subshader left for Web: " + string.Join(", ", broken));
+                return false;
+            }
             return true;
         }
+
+        static readonly Regex StrippedShader = new(@"Shader '([^']+)': All SubShaders were stripped", RegexOptions.Compiled);
+
+        // Unity's own GPU-occlusion debug shaders are always stripped on Web; nothing of ours uses them.
+        static readonly string[] KnownStrippedPrefixes = { "Hidden/Core/Debug" };
+
+        public static string StrippedShaderName(string logMessage)
+        {
+            var m = StrippedShader.Match(logMessage);
+            return m.Success ? m.Groups[1].Value : null;
+        }
+
+        public static List<string> UnexpectedStrippedShaders(IEnumerable<string> shaderNames) =>
+            shaderNames.Distinct()
+                .Where(n => !KnownStrippedPrefixes.Any(n.StartsWith))
+                .OrderBy(n => n)
+                .ToList();
 
         static string SizeReport(bool development, double seconds)
         {
