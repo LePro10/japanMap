@@ -35,7 +35,54 @@ namespace JapanMap.Tests.Vehicles
         }
 
         [UnityTest]
-        public IEnumerator Keyboard_DrivesTheSpawnedCar_AndRespawnPutsItBackOnTheRoad()
+        public IEnumerator TouchStick_Throttles_And_DriftButton_PullsTheHandbrake_WithTwoFingers()
+        {
+            yield return BootGame();
+            var touch = InputSystem.AddDevice<Touchscreen>("TestTouch");
+            try
+            {
+                var controls = Object.FindAnyObjectByType<DriveTouchControls>();
+                Assert.NotNull(controls, "no touch controls in the Game scene");
+                controls.SetVisible(true);
+                yield return null;
+                var car = Object.FindAnyObjectByType<PlayerCarSpawner>().Current;
+                var root = controls.Stick.panel.visualTree.worldBound;
+                var scale = Screen.height / root.height;
+                Vector2 ToScreen(Vector2 p) => new(p.x * scale, Screen.height - p.y * scale);
+                var stick = ToScreen(controls.Stick.worldBound.center);
+
+                void Finger(int id, UnityEngine.InputSystem.TouchPhase phase, Vector2 at)
+                {
+                    InputSystem.QueueStateEvent(touch, new TouchState { touchId = id, phase = phase, position = at });
+                    InputSystem.Update();
+                }
+                Finger(1, UnityEngine.InputSystem.TouchPhase.Began, stick);
+                yield return null;
+                Finger(1, UnityEngine.InputSystem.TouchPhase.Moved, stick + new Vector2(0f, 90f * scale));
+                yield return new WaitForSeconds(2f);
+                Assert.That(car.Input.throttle, Is.GreaterThan(0.6f), "stick up must be throttle");
+                Assert.That(car.Telemetry.speed * 3.6f, Is.GreaterThan(15f), "stick up must move the car");
+
+                var drift = ToScreen(controls.DriftButton.worldBound.center);
+                Finger(2, UnityEngine.InputSystem.TouchPhase.Began, drift);
+                yield return new WaitForFixedUpdate();
+                yield return new WaitForFixedUpdate();
+                Assert.IsTrue(car.Input.handbrake, "drift button with a second finger must pull the handbrake");
+                Assert.That(car.Input.throttle, Is.GreaterThan(0.6f), "the first finger must keep the throttle");
+                Finger(2, UnityEngine.InputSystem.TouchPhase.Ended, drift);
+                Finger(1, UnityEngine.InputSystem.TouchPhase.Ended, stick);
+                yield return new WaitForFixedUpdate();
+                yield return new WaitForFixedUpdate();
+                Assert.That(car.Input.throttle, Is.EqualTo(0f));
+                Assert.IsFalse(car.Input.handbrake);
+            }
+            finally
+            {
+                InputSystem.RemoveDevice(touch);
+            }
+        }
+
+        static IEnumerator BootGame()
         {
             SceneManager.LoadScene(Bootstrapper.BootSceneName);
             var waited = 0f;
@@ -45,8 +92,13 @@ namespace JapanMap.Tests.Vehicles
                 yield return null;
             }
             for (var f = 0; f < 10; f++) yield return null;
+        }
 
-            var spawner = Object.FindFirstObjectByType<PlayerCarSpawner>();
+        [UnityTest]
+        public IEnumerator Keyboard_DrivesTheSpawnedCar_AndRespawnPutsItBackOnTheRoad()
+        {
+            yield return BootGame();
+            var spawner = Object.FindAnyObjectByType<PlayerCarSpawner>();
             Assert.NotNull(spawner, "Game scene has no PlayerCarSpawner");
             var car = spawner.Current;
             Assert.NotNull(car, "no car spawned");
@@ -69,7 +121,7 @@ namespace JapanMap.Tests.Vehicles
             yield return null;
             Press();
             yield return new WaitForSeconds(0.5f);
-            var network = Object.FindFirstObjectByType<VehicleRespawn>().Locator;
+            var network = Object.FindAnyObjectByType<VehicleRespawn>().Locator;
             Assert.NotNull(network, "respawn has no road locator");
             Assert.IsTrue(network.TryNearest(car.transform.position, car.transform.forward, 50f, out var road, out _));
             var off = new Vector2(road.x - car.transform.position.x, road.z - car.transform.position.z).magnitude;

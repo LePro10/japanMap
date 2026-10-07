@@ -33208,107 +33208,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1568330535572588392, guid: d528b8b38f2634adb920b466ecd3ae13, type: 3}
   m_PrefabInstance: {fileID: 921618616}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &923780985
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 923780990}
-  - component: {fileID: 923780989}
-  - component: {fileID: 923780988}
-  - component: {fileID: 923780987}
-  - component: {fileID: 923780986}
-  m_Layer: 0
-  m_Name: Player
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &923780986
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 923780985}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85d5930ba940b45159e2a787fe09e1c0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.CarCameraRig
-  settings: {fileID: 11400000, guid: 8936e6a8a5d0f4d098fe8134fcd4e5ae, type: 2}
-  spawner: {fileID: 923780987}
-  driver: {fileID: 923780989}
---- !u!114 &923780987
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 923780985}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bec2e30a88abb4d4d841efd5faae7aab, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.PlayerCarSpawner
-  fleet: {fileID: 11400000, guid: e763cb0739ae741d4a4a1d8765862f38, type: 2}
-  roadLocator: {fileID: 11400000, guid: b9d4082b9489141aa924de2b95c119e1, type: 2}
-  driver: {fileID: 923780989}
-  respawn: {fileID: 923780988}
-  carId: 
-  spawnPoint: {x: 640, y: 30, z: -262}
-  spawnHeading: 0
---- !u!114 &923780988
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 923780985}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ee76702d471cd49dd9c0c35b0b4ab155, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleRespawn
-  vehicle: {fileID: 0}
-  roadLocator: {fileID: 11400000, guid: b9d4082b9489141aa924de2b95c119e1, type: 2}
-  driver: {fileID: 923780989}
-  searchRadius: 600
-  flippedSeconds: 2.5
-  killHeight: -30
---- !u!114 &923780989
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 923780985}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9b4c54ba233c24fdd8e1b8cbb0f50d6e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.DriverInput
-  actions: {fileID: -944628639613478452, guid: 43bdcf87b6e88458eaa485d47f827223, type: 3}
-  vehicle: {fileID: 0}
---- !u!4 &923780990
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 923780985}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &924885458
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -62814,6 +62713,125 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8755864598178514508, guid: 6016bb512df884af7a91c0158fc2c5bb, type: 3}
   m_PrefabInstance: {fileID: 1789969028}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1790214992
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1790214998}
+  - component: {fileID: 1790214997}
+  - component: {fileID: 1790214996}
+  - component: {fileID: 1790214995}
+  - component: {fileID: 1790214994}
+  - component: {fileID: 1790214993}
+  m_Layer: 0
+  m_Name: Player
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1790214993
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1790214992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 93c35d2387e334f10ae2efbadea369f3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.DriveTouchControls
+  driver: {fileID: 1790214997}
+  panelSettings: {fileID: 11400000, guid: a0208705cf2e24b24b2cdab2ddae1aa1, type: 2}
+  stickRadius: 110
+  deadZone: 0.12
+  forceVisible: 0
+--- !u!114 &1790214994
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1790214992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85d5930ba940b45159e2a787fe09e1c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.CarCameraRig
+  settings: {fileID: 11400000, guid: 8936e6a8a5d0f4d098fe8134fcd4e5ae, type: 2}
+  spawner: {fileID: 1790214995}
+  driver: {fileID: 1790214997}
+--- !u!114 &1790214995
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1790214992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bec2e30a88abb4d4d841efd5faae7aab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.PlayerCarSpawner
+  fleet: {fileID: 11400000, guid: e763cb0739ae741d4a4a1d8765862f38, type: 2}
+  roadLocator: {fileID: 11400000, guid: b9d4082b9489141aa924de2b95c119e1, type: 2}
+  driver: {fileID: 1790214997}
+  respawn: {fileID: 1790214996}
+  carId: 
+  spawnPoint: {x: 640, y: 30, z: -262}
+  spawnHeading: 0
+--- !u!114 &1790214996
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1790214992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ee76702d471cd49dd9c0c35b0b4ab155, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleRespawn
+  vehicle: {fileID: 0}
+  roadLocator: {fileID: 11400000, guid: b9d4082b9489141aa924de2b95c119e1, type: 2}
+  driver: {fileID: 1790214997}
+  searchRadius: 600
+  flippedSeconds: 2.5
+  killHeight: -30
+--- !u!114 &1790214997
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1790214992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b4c54ba233c24fdd8e1b8cbb0f50d6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.DriverInput
+  actions: {fileID: -944628639613478452, guid: 43bdcf87b6e88458eaa485d47f827223, type: 3}
+  vehicle: {fileID: 0}
+--- !u!4 &1790214998
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1790214992}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1792622989
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -76184,4 +76202,4 @@ SceneRoots:
   - {fileID: 1977537392}
   - {fileID: 745894284}
   - {fileID: 708005471}
-  - {fileID: 923780990}
+  - {fileID: 1790214998}

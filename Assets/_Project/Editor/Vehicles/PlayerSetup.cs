@@ -4,6 +4,7 @@ using JapanMap.World;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UIElements;
 
 namespace JapanMap.Editor.Vehicles
 {
@@ -38,6 +39,7 @@ namespace JapanMap.Editor.Vehicles
             var respawn = go.AddComponent<VehicleRespawn>();
             var spawner = go.AddComponent<PlayerCarSpawner>();
             var rig = go.AddComponent<CarCameraRig>();
+            var touch = go.AddComponent<DriveTouchControls>();
             var network = AssetDatabase.LoadAssetAtPath<RoadNetwork>(RoadImporter.NetworkPath);
 
             Set(driver, "actions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(InputPath));
@@ -50,12 +52,32 @@ namespace JapanMap.Editor.Vehicles
             Set(rig, "settings", settings);
             Set(rig, "spawner", spawner);
             Set(rig, "driver", driver);
+            Set(touch, "driver", driver);
+            Set(touch, "panelSettings", HudPanel());
             var so = new SerializedObject(spawner);
             so.FindProperty("spawnPoint").vector3Value = SpawnPoint;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             MapScene.Save();
             Debug.Log("[Player] set up in Game.unity");
+        }
+
+        public const string PanelPath = "Assets/_Project/Data/UI/HudPanel.asset";
+
+        /// <summary>Panel for in-game UI: scales with height from 1080 p, default runtime theme.</summary>
+        static PanelSettings HudPanel()
+        {
+            var panel = AssetDatabase.LoadAssetAtPath<PanelSettings>(PanelPath);
+            if (panel != null) return panel;
+            panel = ScriptableObject.CreateInstance<PanelSettings>();
+            panel.themeStyleSheet = AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>("Assets/_Project/Data/UI/RuntimeTheme.tss");
+            panel.scaleMode = PanelScaleMode.ScaleWithScreenSize;
+            panel.referenceResolution = new Vector2Int(1920, 1080);
+            panel.screenMatchMode = PanelScreenMatchMode.MatchWidthOrHeight;
+            panel.match = 1f;
+            panel.sortingOrder = 10;
+            AssetDatabase.CreateAsset(panel, PanelPath);
+            return panel;
         }
 
         static void Set(Object target, string field, Object value)

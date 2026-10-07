@@ -44,8 +44,8 @@ Alles per Menü `JapanMap/Map/Import All` (Regler: `Data/Map/MapImportSettings.a
 
 - [x] 1. Ansatz: Rigidbody + Raycast-Federung + portiertes Arcade-Modell (D15, gemessen gegen WheelCollider); Zuordnung Modelle ↔ Fahrwerte (D16)
 - [x] 2. Hachi 86 (Kite-S-Werte) fahrbar inkl. Drift, Nitro, Respawn auf nächste Straße (R / Y / auf dem Dach)
-- [ ] 3. Eingabe: Tastatur, Gamepad, Touch
-- [ ] 4. Kameras: Verfolger + Cockpit
+- [x] 3. Eingabe: Tastatur (WASD/Pfeile, Leertaste, Shift, R, C, B), Gamepad (Trigger, Stick, A, X/RB, Y), Touch (Stick + DRIFT/NITRO, zwei Finger getestet)
+- [x] 4. Kameras: Verfolger (Cinemachine, Drift-Blick, FOV, Zoom per Mausrad, Blick zurück) + Cockpit (C)
 - [ ] 5. Prüfstände als PlayMode-Tests
 - [ ] 6. Alle zehn Autos als Datensätze
 - [ ] 7. Fahrzeug-Optik
