@@ -58,6 +58,12 @@ const G = {
   PLAQUE: [64, 128, `<rect width="64" height="128" fill="#15120f"/><rect x="4" y="4" width="56" height="120" fill="none" stroke="#c9a14a" stroke-width="4"/>
     <text font-family="'Hiragino Mincho ProN', serif" font-size="25" fill="#e2c26a" text-anchor="middle">
     <tspan x="32" y="34">稲</tspan><tspan x="32" y="61">荷</tspan><tspan x="32" y="88">神</tspan><tspan x="32" y="115">社</tspan></text>`],
+  // shopping-street banner (fictional street name: 'Sakura-dōri shopping street')
+  BANNER: [64, 128, `<rect width="64" height="128" fill="#b3202a"/><rect x="0" y="0" width="64" height="16" fill="#f3e9d8"/>
+    <rect x="0" y="112" width="64" height="16" fill="#f3e9d8"/>
+    <circle cx="32" cy="34" r="11" fill="#f6c6d4"/><circle cx="32" cy="34" r="4" fill="#d9577a"/>
+    <text font-family="${JP}" font-weight="700" font-size="15" fill="#ffffff" text-anchor="middle">
+    <tspan x="32" y="64">さ</tspan><tspan x="32" y="80">く</tspan><tspan x="32" y="96">ら</tspan><tspan x="32" y="111">通</tspan></text>`],
   BUS_STOP: [128, 128, `<circle cx="64" cy="64" r="63" fill="${WHITE}"/><circle cx="64" cy="64" r="56" fill="#1f6fb2"/>
     <text x="64" y="60" font-family="${JP}" font-weight="700" font-size="22" fill="${WHITE}" text-anchor="middle">バス停</text>
     <text x="64" y="90" font-family="Helvetica" font-weight="700" font-size="20" fill="${WHITE}" text-anchor="middle">BUS</text>`],

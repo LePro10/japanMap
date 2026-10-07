@@ -222,10 +222,11 @@ def sweep_loop(bm, corners, profile, splits=None):
     return faces
 
 
-def tube_path(bm, pts, r, n=6, cap0=False, cap1=False, twist_up=(0, 0, 1)):
+def tube_path(bm, pts, r, n=6, cap0=False, cap1=False, twist_up=(0, 0, 1), reg=None):
     """Tube along a polyline (cables, pipes, bolts, braces). Rings are
     oriented by the averaged tangent so bends stay round. Returns
-    (sides, cap0, cap1); faces point outward."""
+    (sides, cap0, cap1); faces point outward. With a strip `reg` the sides
+    are unwrapped along the tube: U = length in metres, V = once round."""
     P = [Vector(p) for p in pts]
     rings = []
     for i, p in enumerate(P):
@@ -237,6 +238,10 @@ def tube_path(bm, pts, r, n=6, cap0=False, cap1=False, twist_up=(0, 0, 1)):
         rings.append([bm.verts.new(p + (a * math.cos(2 * math.pi * k / n) + b * math.sin(2 * math.pi * k / n)) * r)
                       for k in range(n)])
     sides = []
+    uvl = _uv(bm)
+    dist = [0.0]
+    for i in range(1, len(P)):
+        dist.append(dist[-1] + (P[i] - P[i - 1]).length)
     for i in range(len(rings) - 1):
         A, B = rings[i], rings[i + 1]
         for k in range(n):
@@ -244,6 +249,13 @@ def tube_path(bm, pts, r, n=6, cap0=False, cap1=False, twist_up=(0, 0, 1)):
             f.normal_update()
             if f.normal.dot(f.calc_center_median() - (P[i] + P[i + 1]) / 2) < 0:
                 f.normal_flip()
+            if reg is not None and reg['kind'] == 'strip':
+                u0, v0, u1, v1 = reg['uv']
+                for l in f.loops:
+                    j = 0 if l.vert in A else 1
+                    kk = (A if j == 0 else B).index(l.vert)
+                    kk = n if (kk == 0 and k == n - 1) else kk      # last face closes the ring at V = 1
+                    l[uvl].uv = (dist[i + j] / reg['w_m'], v0 + kk / n * (v1 - v0))
             sides.append(f)
     c0 = c1 = None
     if cap0:

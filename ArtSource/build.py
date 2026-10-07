@@ -13,6 +13,8 @@ ASSETS = {
     'kura': 'buildings.kura',
     'utility_pole': 'props.utility_pole',
     'power_line': 'props.power_line',
+    'street_light': 'props.street_light',
+    'guardrail': 'props.guardrail',
 }
 
 # 3/4 front in the mood light, 3/4 front neutral, 3/4 back neutral (same as

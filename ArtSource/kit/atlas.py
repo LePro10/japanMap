@@ -453,6 +453,7 @@ LAYOUTS = {
         'PED_GREEN':  _rect(64, 256, 64, 64, png('PED_GREEN', 0.7, emit=1.0)),
         'POLE_PLATE': _rect(128, 256, 32, 64, png('POLE_PLATE')),
         'TORA':       _rect(0, 128, 128, 128, png('TORA', 0.35)),
+        'BANNER':     _rect(128, 128, 64, 128, png('BANNER', 0.2)),
         **_cells([
             ('PAINT_WHITE',   flat('#e9eae6', 0.45, dirt=0.15)),
             ('PAINT_GREY',    flat('#8d9096', 0.4, 0.3, dirt=0.1)),     # light poles, signal housings
