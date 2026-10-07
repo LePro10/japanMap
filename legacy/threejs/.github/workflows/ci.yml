@@ -1,21 +1,13 @@
-# Prüft den alten Three.js-Prototyp, solange er noch geändert wird. Für das
-# Unity-Projekt kommt eine eigene Prüfung (Plan, Phase 10: GameCI).
-name: CI (legacy prototype)
+name: CI
 
 on:
   push:
     branches-ignore: [master]
-    paths: ['legacy/threejs/**']
   pull_request:
     branches: [master]
-    paths: ['legacy/threejs/**']
 
 permissions:
   contents: read
-
-defaults:
-  run:
-    working-directory: legacy/threejs
 
 jobs:
   verify:
@@ -29,7 +21,6 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: legacy/threejs/package-lock.json
 
       - name: Install dependencies
         run: npm ci
