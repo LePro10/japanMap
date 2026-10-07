@@ -67,3 +67,6 @@ Thumbs.db
 
 # Burst-Zwischenstand des Web-Builds (wird bei jedem Build neu erzeugt)
 /Data/Plugins/lib_burst_generated*
+
+# Referenzbilder (fremde Screenshots, v. a. Forza Horizon 6) — nur lokal, nie committen.
+/docs/refs/

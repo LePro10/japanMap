@@ -89,8 +89,9 @@ dem Unity-MCP. Der MCP verbindet sich nur beim Start einer Claude-Sitzung.
     Tokens) — gezielt suchen.
 12. **Leistung zählt ab Tag 1.** Budgets in docs/PLAN.md; nach größeren
     Änderungen Web-Build bauen und Größe/FPS notieren.
-13. **Ein Agent zur Zeit auf `master`.** Subagenten für Recherche sind ok,
-    parallele Schreib-Agenten nicht.
+13. **Ein Agent zur Zeit in Unity.** Einzige Ausnahme: der Asset-Sprint
+    (PLAN.md) in einer zweiten Sitzung, nur in `ArtSource/` und Blender,
+    Commits nur mit eigenen Dateien. Subagenten für Recherche sind ok.
 
 14. **Mitdenken und gleich verbessern.** Fällt dir ein Bug oder etwas
     Unschönes auf, denk über die Ursache nach statt nur über das Symptom.

@@ -133,6 +133,16 @@ Höhendaten sind 8 MB. Ohne Instancing 200–2 550 Draw Calls → Instancing ble
 Dreiecke (57–587 k) → Kandidat für die Stufe Niedrig (Phase 10).
 Regler: `Data/Map/MapImportSettings.asset`.
 
+## D13 — Alle Assets selbst in Blender bauen, kein Kauf · 2026-10-07
+
+**Warum:** Wunsch des Eigentümers; ein einheitlicher eigener Stil statt
+gemischter Fremd-Packs. Die gesichteten Packs lagen entweder zu Low-Poly
+(*POLY Japan*) oder zu realistisch und für den Browser zu schwer (*Japanese
+City*, 5,5 GB). **Folge:** Die Asset-Produktion ist der größte Arbeitsblock
+des Projekts. Deshalb beginnt sie früh und parallel (PLAN.md „Asset-Sprint"),
+mit einem Stil-Kit vor der Massenproduktion. Ausnahme bleiben freie
+Texturen (Poly Haven, CC0) für Gelände und Materialien.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Fahrphysik-Ansatz** (Phase 3): eigene Raycast-Federung + Arcade-Modell auf

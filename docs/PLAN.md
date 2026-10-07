@@ -154,6 +154,46 @@ Platzhalter für alle Props — maßstabsgetreu, reproduzierbar importiert.
 
 ---
 
+## Asset-Sprint — parallel ab Phase 2
+
+**Ziel:** Eine große, stimmige Bibliothek eigener Modelle (DECISIONS D13),
+fertig, bevor Phase 4/5 sie braucht. Läuft in einer **zweiten Sitzung** neben
+der Unity-Arbeit, weil er Unity nicht braucht.
+
+**Grenzen (damit sich zwei Agenten nicht stören):** arbeitet **nur** in
+`ArtSource/` und Blender; fasst `Assets/`, `ProjectSettings/`, `Packages/`,
+`docs/STATUS.md` und `CLAUDE.md` nicht an. Eigener Fortschritt in
+`ArtSource/STATUS.md`. Commits nur mit Dateien aus `ArtSource/`
+(`git add ArtSource/…`, nie `git add -A`). Der Import nach Unity passiert
+später in Phase 4 durch die Hauptsitzung.
+
+**Aufgaben**
+1. **Stil-Kit zuerst:** Regeln für Fasen, Proportionen, Farbpalette,
+   Materialien (wenige gemeinsame Materialien/Atlanten je Baustil),
+   Texel-Dichte. Drei Pilot-Assets (Steinlaterne, Getränkeautomat, ein
+   Kura-Haus-Modul), Bilder nach `ArtSource/previews/`. **Stopp: der Mensch
+   gibt den Stil frei**, erst dann weiter.
+2. **Requisiten** (in dieser Reihenfolge — was die Karte am meisten füllt):
+   Strommast + Kabel, Straßenlaterne, Leitplanke, Verkehrsschilder, Ampel,
+   Zaun-Varianten, Getränkeautomaten-Varianten, Torii, Steinlaternen,
+   Bänke, Bushaltestelle, Mülltonnen, Fahrradständer, Blumenkübel, Felsen.
+3. **Gebäude-Bausätze** je Baustil (Wand, Ecke, Fenster, Tür, Dach, Ladenfront):
+   Tokyo-Laden/Konbini/Wohnblock mit Neon-Schildern, Kura-Speicher (Koedo),
+   Holz-Gasse (Kiso), Gassho-Bauernhaus, Fischerdorf/Hafen, Tempel.
+4. **Vegetation:** Zeder, Ahorn, Kirsche, Bambus, Kiefer, Büsche — je mit LOD
+   und Billboard.
+
+**Je Asset:** Generator-Skript, Export nach `ArtSource/exports/<klasse>/`
+(FBX), Vorschaubild, Dreiecke gegen Budget (ART-DIRECTION.md), Eintrag in
+`ArtSource/STATUS.md`.
+
+**Abnahme:** Übersichtsbild je Baustil; jedes Asset im Budget; alle Exporte
+reproduzierbar aus ihren Skripten.
+
+**Mensch prüft:** Stil-Kit (Aufgabe 1) und je Baustil ein Übersichtsbild.
+
+---
+
 ## Phase 3 — Fahren
 
 **Ziel:** Ein Auto, das sich besser fährt als im Prototyp — und dann alle
@@ -211,11 +251,10 @@ Asset-Pipeline, die gleichbleibend gute Modelle liefert.
    Detail, LOD + Billboards, Dichte je Stufe.
 4. **Asset-Pipeline Blender → Unity** (Skill `blender-asset`): Generator-
    Skripte in `ArtSource/`, Export, Import-Einstellungen, LODs, Vorschaubild.
-5. **Erste Bibliothek:** Torii, Steinlaternen, Automaten, Straßenmöbel,
-   Leitplanken, Strommasten, Zäune, Felsen — ersetzt die Platzhalter aus
-   Phase 2.
-6. **Fremd-Assets** (Asset Store, Fab, Poly Haven, Kenney, Quaternius) dort,
-   wo sie besser/schneller sind — Lizenz je Paket in `ThirdParty/LICENSES.md`.
+5. **Bibliothek importieren:** die Modelle aus dem Asset-Sprint
+   (`ArtSource/exports/`) nach Unity holen (Prefabs, LOD, Collider) — ersetzt
+   die Platzhalter aus Phase 2.
+6. **Keine gekauften Modelle** (D13); freie CC0-Texturen bleiben erlaubt.
 
 **Abnahme:** Bilder aller Blickpunkte auf Hoch und Niedrig; FPS-Ziel auf
 Niedrig gehalten (Budgets unten); Konsole sauber.
