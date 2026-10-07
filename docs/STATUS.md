@@ -48,7 +48,7 @@ Alles per Menü `JapanMap/Map/Import All` (Regler: `Data/Map/MapImportSettings.a
 - [x] 4. Kameras: Verfolger (Cinemachine, Drift-Blick, FOV, Zoom per Mausrad, Blick zurück) + Cockpit (C)
 - [x] 5. Prüfstände als PlayMode-Tests: 13 Proben × 10 Autos + 4 Stunt-Proben = 134 grün (0–100, Endtempo, Bremsweg, Symmetrie, Ausrollen, Lenkantwort, Drift ohne Absicht, Handbremsdrift, Hang 20°, Landung 6 m, Wand)
 - [x] 6. Alle zehn Autos als Datensätze (`Data/Vehicles/*.asset`, D16)
-- [ ] 7. Fahrzeug-Optik
+- [x] 7. Fahrzeug-Optik: Räder drehen/lenken/federn, Karosserie neigt sich, Bremslicht, Reifenspuren, Rauch (Asphalt) / Staub (Gelände). Wasser-Spritzer fehlen (keine Wassertiefe)
 
 ## Offene Probleme / Gefunden
 

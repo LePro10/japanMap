@@ -39,7 +39,7 @@ namespace JapanMap.Vehicles
                 forward = Current.transform.forward;
                 Destroy(Current.gameObject);
             }
-            var car = Build(def, fleet.tuning);
+            var car = Build(def, fleet.tuning, fleet.effects);
             car.transform.SetParent(transform, true);
             if (roadLocator is IRoadLocator locator && locator.TryNearest(at, forward, 600f, out var p, out var f))
                 car.Place(p, Mathf.Atan2(f.x, f.z) * Mathf.Rad2Deg, fromAbove: 3f);
@@ -53,7 +53,7 @@ namespace JapanMap.Vehicles
         }
 
         /// <summary>A complete car: physics root, controller, model and visuals.</summary>
-        public static VehicleController Build(VehicleDefinition def, ArcadeTuning tuning)
+        public static VehicleController Build(VehicleDefinition def, ArcadeTuning tuning, VehicleEffectsSettings effects = null)
         {
             var root = new GameObject(def.displayName);
             root.AddComponent<Rigidbody>();
@@ -65,6 +65,7 @@ namespace JapanMap.Vehicles
                 model.name = "Model";
                 foreach (var c in model.GetComponentsInChildren<Collider>()) Destroy(c);
                 root.AddComponent<VehicleVisuals>().Bind(car, model.transform);
+                if (effects != null) root.AddComponent<VehicleEffects>().Bind(car, model.transform, effects);
             }
             return car;
         }

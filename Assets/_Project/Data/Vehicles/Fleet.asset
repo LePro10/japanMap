@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Fleet
   m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleFleet
   tuning: {fileID: 11400000, guid: c67ebc2c0965546e4950a4495827ae59, type: 2}
+  effects: {fileID: 11400000, guid: 65330ae08423a4424b0e61707ecbce1b, type: 2}
   vehicles:
   - {fileID: 11400000, guid: 3213ba526053a481ea383eead388d2a0, type: 2}
   - {fileID: 11400000, guid: 39f476ed0037747f39f644aaa6f8f76a, type: 2}

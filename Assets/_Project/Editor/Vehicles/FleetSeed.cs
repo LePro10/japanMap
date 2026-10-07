@@ -62,6 +62,7 @@ namespace JapanMap.Editor.Vehicles
                 AssetDatabase.CreateAsset(fleet, FleetPath);
             }
             fleet.tuning = LoadTuning();
+            fleet.effects = EffectsAssets();
             fleet.vehicles = Array.ConvertAll(Order, Load);
             EditorUtility.SetDirty(fleet);
             AssetDatabase.SaveAssets();
@@ -131,6 +132,71 @@ namespace JapanMap.Editor.Vehicles
                 EditorUtility.SetDirty(def);
             }
             AssetDatabase.SaveAssets();
+        }
+
+        public const string FxDir = "Assets/_Project/Art/Vehicles/FX";
+
+        /// <summary>Skid and smoke materials (URP Particles/Unlit, alpha blended) and the settings asset.</summary>
+        static VehicleEffectsSettings EffectsAssets()
+        {
+            System.IO.Directory.CreateDirectory(FxDir);
+            var path = Dir + "/VehicleEffects.asset";
+            var fx = AssetDatabase.LoadAssetAtPath<VehicleEffectsSettings>(path);
+            if (fx == null)
+            {
+                fx = ScriptableObject.CreateInstance<VehicleEffectsSettings>();
+                AssetDatabase.CreateAsset(fx, path);
+            }
+            fx.skidMaterial = FxMaterial("Skid", new Color(0.04f, 0.04f, 0.04f, 0.55f), null);
+            fx.smokeMaterial = FxMaterial("Smoke", Color.white, SoftDot());
+            EditorUtility.SetDirty(fx);
+            return fx;
+        }
+
+        static Material FxMaterial(string name, Color color, Texture2D tex)
+        {
+            var path = $"{FxDir}/{name}.mat";
+            var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (m == null)
+            {
+                m = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
+                AssetDatabase.CreateAsset(m, path);
+            }
+            m.SetFloat("_Surface", 1f);
+            m.SetFloat("_Blend", 0f);
+            m.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.SetFloat("_ZWrite", 0f);
+            m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            m.SetColor("_BaseColor", color);
+            if (tex != null) m.SetTexture("_BaseMap", tex);
+            EditorUtility.SetDirty(m);
+            return m;
+        }
+
+        /// <summary>A 64² soft round dot for smoke puffs, written once as a PNG asset.</summary>
+        static Texture2D SoftDot()
+        {
+            var path = $"{FxDir}/SoftDot.png";
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (tex != null) return tex;
+            const int n = 64;
+            var t = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            for (var y = 0; y < n; y++)
+            for (var x = 0; x < n; x++)
+            {
+                var d = new Vector2(x - n / 2f + 0.5f, y - n / 2f + 0.5f).magnitude / (n / 2f);
+                var a = Mathf.Clamp01(1f - d);
+                t.SetPixel(x, y, new Color(1f, 1f, 1f, a * a));
+            }
+            System.IO.File.WriteAllBytes(path, t.EncodeToPNG());
+            AssetDatabase.ImportAsset(path);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+            importer.alphaIsTransparency = true;
+            importer.mipmapEnabled = false;
+            importer.SaveAndReimport();
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
         public static VehicleDefinition Load(string id) =>

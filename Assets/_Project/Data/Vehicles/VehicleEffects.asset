@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60994c3e6e31c4fa9b5149134422a9f9, type: 3}
+  m_Name: VehicleEffects
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleEffectsSettings
+  skidMaterial: {fileID: 2100000, guid: 0da626011fb414d2fae163b590c3b72b, type: 2}
+  smokeMaterial: {fileID: 2100000, guid: c5ffd42bb41204ac0a231725532df539, type: 2}
+  markFromSkid: 0.3
+  markWidth: 0.24
+  markSeconds: 12
+  smokeRate: 40
+  dustFullSpeed: 20
+  smokeColor: {r: 0.85, g: 0.85, b: 0.88, a: 1}
+  dustColor: {r: 0.62, g: 0.52, b: 0.38, a: 1}
+  tailIdle: 0.35
+  tailBrake: 3

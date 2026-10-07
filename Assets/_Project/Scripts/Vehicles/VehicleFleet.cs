@@ -7,6 +7,7 @@ namespace JapanMap.Vehicles
     public sealed class VehicleFleet : ScriptableObject
     {
         public ArcadeTuning tuning;
+        public VehicleEffectsSettings effects;
         public VehicleDefinition[] vehicles;
         [Tooltip("Car the player starts in.")]
         public string defaultId = "hachi";
