@@ -1,0 +1,171 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71ea52b2429554940a22f3237de14e88, type: 3}
+  m_Name: Viewpoints
+  m_EditorClassIdentifier: JapanMap.World::JapanMap.World.ViewpointSet
+  viewpoints:
+  - name: start
+    position: {x: 620, y: 330, z: -1010}
+    lookAt: {x: -700, y: 140, z: 720}
+    note: "Der Startblick \xFCber die ganze Karte auf das Massiv."
+  - name: stadt
+    position: {x: 960, y: 96, z: -480}
+    lookAt: {x: 620, y: 34, z: -120}
+    note: "Die Stadt von der Ringstra\xDFe aus, s\xFCd\xF6stlich \u2014 der Blick der Phase."
+  - name: stadt-strasse
+    position: {x: 640, y: 32.35, z: -262}
+    lookAt: {x: 640, y: 34, z: -120}
+    note: "Auf der Stadtstra\xDFe, Augenh\xF6he. Hier muss das Neon im Asphalt stehen."
+  - name: stadt-neon
+    position: {x: 1120, y: 31.9, z: 150}
+    lookAt: {x: 1120, y: 34.5, z: 60}
+    note: "Der Money-Shot der Phase: Gesch\xE4ftsstra\xDFe, Kanban \xFCber der Fahrbahn, Neon in der Pf\xFCtze."
+  - name: stadt-luft
+    position: {x: 620, y: 420, z: -620}
+    lookAt: {x: 620, y: 30, z: -120}
+    note: "Senkrecht \xFCber dem Distrikt \u2014 Blockraster und Stra\xDFenzug."
+  - name: stadt-fern
+    position: {x: 1500, y: 260, z: -900}
+    lookAt: {x: 620, y: 40, z: -120}
+    note: 'Aus 1,2 km: taugt die Silhouette?'
+  - name: pass
+    position: {x: -800, y: 380, z: 200}
+    lookAt: {x: -980, y: 70, z: 600}
+    note: "Der Bergpass mit seinen Kehren \u2014 von S\xFCdosten \xFCber die Flanke."
+  - name: pass-kehren
+    position: {x: -1150, y: 320, z: 420}
+    lookAt: {x: -990, y: 65, z: 415}
+    note: "15\xB0 \xFCber dem Serpentinenstapel \u2014 die Kehren zum Abz\xE4hlen."
+  - name: tempel
+    position: {x: 820, y: 200, z: 700}
+    lookAt: {x: 820, y: 150, z: 940}
+    note: Die Tempelanlage im Nordosten.
+  - name: sando
+    position: {x: 842, y: 133.8, z: 830}
+    lookAt: {x: 822, y: 152, z: 945}
+    note: "Auf dem Tempelaufgang, Augenh\xF6he, Blick bergauf durch die Torii-Reihe."
+  - name: dorf
+    position: {x: 745, y: 1.7, z: -1048}
+    lookAt: {x: 806, y: 5, z: -998}
+    note: "Im Fischerdorf, Augenh\xF6he am Wasser, Blick \xFCber die Zeile zum Steg."
+  - name: stadt-rand
+    position: {x: 620, y: 62, z: -620}
+    lookAt: {x: 620, y: 40, z: -120}
+    note: "Der Blick von 8.8 auf die S\xFCdkante des Distrikts. Vorher/Nachher der Stadtrandbebauung."
+  - name: reisfeld
+    position: {x: -760, y: 120, z: -400}
+    lookAt: {x: -760, y: 22, z: -60}
+    note: Die Reisfeld-Terrassen im Westen.
+  - name: wald
+    position: {x: 742, y: 133.7, z: 690}
+    lookAt: {x: 800, y: 138, z: 800}
+    note: "Im Wald \xF6stlich des Tempels, Augenh\xF6he. Nahfeld-Meshes, Mittelfeld, Baumgrenze."
+  - name: wald-fern
+    position: {x: 700, y: 205, z: 540}
+    lookAt: {x: 790, y: 150, z: 900}
+    note: "\xDCber dem Waldr\xFCcken nach Nordwesten \u2014 hier ist die 520-m-Kante der Streuung sichtbar."
+  - name: funaura
+    position: {x: -1250, y: 3.2, z: -1170}
+    lookAt: {x: -1265, y: 5, z: -1100}
+    note: "Funaura \u2014 Funaya-Reihe vom Hafenbecken aus, Augenh\xF6he \xFCber dem Wasser."
+  - name: funaura-gasse
+    position: {x: -1270, y: 8.2, z: -960}
+    lookAt: {x: -1262, y: 2, z: -1060}
+    note: "Funaura \u2014 die Dorfgasse hinunter zum Kai, Blick aufs Meer."
+  - name: funaura-kai
+    position: {x: -1306, y: 3.5, z: -1082}
+    lookAt: {x: -1250, y: 3.2, z: -1084}
+    note: "Funaura \u2014 Hafenstra\xDFe zwischen Bootsh\xE4usern (rechts) und H\xE4userzeile, Augenh\xF6he."
+  - name: funaura-nah
+    position: {x: -1262, y: 3.4, z: -1083}
+    lookAt: {x: -1284, y: 3.6, z: -1070}
+    note: "Funaura \u2014 zu Fu\xDF vor Izakaya und Minshuku: Schilder, Noren, Laternen, Automaten."
+  - name: funaura-mole
+    position: {x: -1300, y: 5.2, z: -1200}
+    lookAt: {x: -1250, y: 6, z: -1090}
+    note: "Funaura \u2014 vom wei\xDFen Molenfeuer zur\xFCck auf Becken, Bootsh\xE4user und Hang."
+  - name: funaura-luft
+    position: {x: -1120, y: 95, z: -1250}
+    lookAt: {x: -1250, y: 0, z: -1060}
+    note: 'Funaura aus der Luft: Kai, Molen, Becken, Hang.'
+  - name: gassho
+    position: {x: -1183.5, y: 24.2, z: -262}
+    lookAt: {x: -1174, y: 24.6, z: -330}
+    note: "Stillwater \u2014 die Dorfstra\xDFe nach S\xFCden zwischen den Gassho-H\xE4usern, Augenh\xF6he."
+  - name: gassho-gasse
+    position: {x: -1171, y: 24.9, z: -372}
+    lookAt: {x: -1178, y: 25.8, z: -300}
+    note: "Stillwater \u2014 vor dem gro\xDFen Haus nach Norden: Engawa, Sh\u014Dji, Hasa-gake, Feuerwehrh\xFCtte."
+  - name: gassho-rad
+    position: {x: -1236, y: 22.7, z: -327}
+    lookAt: {x: -1206, y: 22.4, z: -343}
+    note: "Stillwater \u2014 das Dreifach-Wasserrad am Ostufer vom Westufer aus, mit Rinne auf die Terrasse."
+  - name: gassho-muehle
+    position: {x: -1266, y: 29.2, z: -428}
+    lookAt: {x: -1244, y: 29.5, z: -409}
+    note: "Stillwater \u2014 die M\xFChle mit Kayabuki-Dach von der Mill Lane."
+  - name: gassho-luft
+    position: {x: -1165, y: 62, z: -525}
+    lookAt: {x: -1195, y: 22, z: -330}
+    note: "Stillwater aus der Luft nach Norden: Strohd\xE4cher zwischen den Reisfeldern, dahinter das Massiv."
+  - name: kiso
+    position: {x: -1322, y: 131.7, z: 963.8}
+    lookAt: {x: -1340.6, y: 136.3, z: 1020.6}
+    note: "Kiso-Juku \u2014 die Poststra\xDFe bergauf auf Augenh\xF6he, links Talseite, rechts Hangseite."
+  - name: kiso-honjin
+    position: {x: -1342.9, y: 137.7, z: 1032.8}
+    lookAt: {x: -1357.2, y: 137.9, z: 1029.8}
+    note: "Kiso-Juku \u2014 vor dem Honjin-Tor: Maku, Laternen, Vorhof."
+  - name: kiso-gasse
+    position: {x: -1377, y: 148.8, z: 1159.5}
+    lookAt: {x: -1370.6, y: 142.9, z: 1105.1}
+    note: "Kiso-Juku \u2014 bergab durch die H\xE4userzeilen, Abendlicht in den Gittern."
+  - name: kiso-tee
+    position: {x: -1354.6, y: 155.2, z: 1105.6}
+    lookAt: {x: -1356.8, y: 140.4, z: 1046.6}
+    note: "Kiso-Juku \u2014 von der Teehausterrasse \xFCber die D\xE4cher."
+  - name: kiso-luft
+    position: {x: -1262.1, y: 212.8, z: 1022.4}
+    lookAt: {x: -1363.4, y: 139.5, z: 1070.7}
+    note: 'Kiso-Juku aus der Luft: Dachkette am Pass, Zedernhang, Talseite.'
+  - name: koedo
+    position: {x: -232, y: 32.5, z: -44}
+    lookAt: {x: -167, y: 40, z: -108}
+    note: "Koedo \u2014 die Dorfstra\xDFe als Ichibangai: schwarze Kura beidseitig, am Ende der Glockenturm."
+  - name: koedo-strasse
+    position: {x: -181.4, y: 35.3, z: -136}
+    lookAt: {x: -187.9, y: 35.3, z: -186}
+    note: "Koedo \u2014 Stra\xDFe B nach S\xFCden im Gegenlicht: Kopfsteinpflaster, Kura, Laternen, am Ende der Schrein."
+  - name: koedo-kanal
+    position: {x: -258, y: 31.7, z: -140}
+    lookAt: {x: -266, y: 30.1, z: -175}
+    note: "Koedo \u2014 Kanalpromenade (Kurashiki): wei\xDFe Kura mit Namako, Trauerweiden, Bogenbr\xFCcke."
+  - name: koedo-damm
+    position: {x: -272, y: 31.4, z: -176}
+    lookAt: {x: -258, y: 33.1, z: -160}
+    note: "Koedo \u2014 vom Westdamm \xFCber den Kanal: Bogenbr\xFCcke, Kanalzeile, Brauerei mit Schornstein."
+  - name: koedo-brauerei
+    position: {x: -186.5, y: 35.8, z: -166}
+    lookAt: {x: -195, y: 36, z: -170}
+    note: "Koedo \u2014 Izumiya-Brauerei: Laden mit Kanban und Sugidama, offen bis zur Probiertheke."
+  - name: koedo-reis
+    position: {x: -320, y: 27.5, z: -185}
+    lookAt: {x: -240, y: 31, z: -160}
+    note: "Koedo aus den Reisfeldern: Damm, Kanalzeile, Brauerei \u2014 dahinter die T\xFCrme von Tokio."
+  - name: koedo-luft
+    position: {x: -330, y: 110, z: -290}
+    lookAt: {x: -205, y: 30, z: -140}
+    note: "Koedo aus der Luft: Kanal am Rand der Reisebene, Hauptstra\xDFe, Platz mit Turm, Stadt am Horizont."
+  - name: kueste
+    position: {x: -760, y: 30, z: -960}
+    lookAt: {x: -850, y: 0, z: -1050}
+    note: "S\xFCdk\xFCste mit Wellenbrecher und Steg."

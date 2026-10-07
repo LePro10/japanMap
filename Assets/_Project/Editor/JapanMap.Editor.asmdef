@@ -4,6 +4,7 @@
     "references": [
         "JapanMap.Core",
         "JapanMap.DevTools",
+        "JapanMap.World",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime"
     ],

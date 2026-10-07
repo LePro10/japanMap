@@ -45,10 +45,11 @@ Alle einmal ausgeführt (2026-10-07). Einrichtung einmalig: `cd Tools && npm ins
 | Zweck | Editor **zu** (Batchmode) | Editor **offen** (Unity-MCP) |
 |---|---|---|
 | Prüfen: kompilieren, EditMode + PlayMode | `node Tools/verify.mjs` (`--edit` nur EditMode) — eine Zeile GREEN/RED, ~15 s | `refresh_unity`, `read_console`, `run_tests` + `get_test_job` |
-| Bild der Main Camera → `Captures/` | `node Tools/capture.mjs [--scene … --out …]` | `execute_menu_item` „JapanMap/Capture Main Camera" |
+| Bild der Main Camera → `Captures/` | `node Tools/capture.mjs [--scene … --out …]`, `--viewpoint <name\|all>` | `execute_menu_item` „JapanMap/Capture Main Camera"; `ViewpointTools.Capture("pass")` |
 | Web-Build + `Builds/Web/size-report.txt` | `node Tools/build-web.mjs` (`--dev` mit F1-Overlay) | Menü „JapanMap/Build Web (Release)" |
 | Rauchprobe im Headless-Chrome | `node Tools/smoke.mjs` (baut nicht, liefert `Builds/Web` aus) | — |
 | Ausliefern (Handy: `--lan`) | `node Tools/serve-web.mjs` → Port **8090** | — |
+| Bilder nebeneinander (alt/neu) | `node Tools/montage.mjs --out Captures/x.png a.png b.png …` | — |
 | Arbeitsschleife messen | `node Tools/measure-loop.mjs` | — |
 | Einstellungen erzwingen | `-executeMethod JapanMap.Editor.ProjectSetup.Apply` | Menü „JapanMap/Setup/Apply Project Settings" |
 

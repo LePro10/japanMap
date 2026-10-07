@@ -10,6 +10,7 @@ namespace JapanMap.Editor
     /// window or Game view because it renders into its own RenderTexture.
     /// Batch:  Unity -batchmode -quit -executeMethod JapanMap.Editor.Capture.Batch
     ///         [-jmScene Assets/.../Game.unity] [-jmOut Captures/x.png] [-jmWidth 1024] [-jmHeight 576]
+    ///         [-jmViewpoint name|all] (→ Captures/vp-&lt;name&gt;.png, see Map.ViewpointTools)
     /// Editor: menu JapanMap/Capture Main Camera (current scene, also in play mode).
     /// </summary>
     public static class Capture
@@ -22,6 +23,17 @@ namespace JapanMap.Editor
             var name = Path.GetFileNameWithoutExtension(scenePath);
             var output = BatchArgs.Get("jmOut", $"{Dir}/{name}.png");
             EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+            var viewpoint = BatchArgs.Get("jmViewpoint", null);
+            if (viewpoint != null)
+            {
+                var w = BatchArgs.GetInt("jmWidth", 1024);
+                var h = BatchArgs.GetInt("jmHeight", 576);
+                var written = viewpoint == "all"
+                    ? Map.ViewpointTools.CaptureAll(w, h)
+                    : new System.Collections.Generic.List<string> { Map.ViewpointTools.Capture(viewpoint, w, h) };
+                if (written.Contains(null)) EditorApplication.Exit(1);
+                return;
+            }
             var path = Render(Camera.main, output, BatchArgs.GetInt("jmWidth", 1024), BatchArgs.GetInt("jmHeight", 576));
             if (path == null) EditorApplication.Exit(1);
         }

@@ -13,7 +13,7 @@
 - [ ] 3. Wasser
 - [ ] 4. Straßen-Importer
 - [ ] 5. Props-Importer
-- [ ] 6. Blickpunkte
+- [x] 6. Blickpunkte: 39 aus dem Prototyp (z gespiegelt) in `Data/Map/Viewpoints.asset`; Menü `JapanMap/Viewpoints/Go To…`, `Capture All`; `node Tools/capture.mjs --viewpoint <name|all>` bzw. MCP `ViewpointTools.Capture("pass")`. Test: kein Blickpunkt unter dem Gelände. Vergleich mit alten Bildern: `node Tools/montage.mjs` (neu). Kamera: FOV 60, near 0,5, far 6000 wie im Prototyp; Phase-1-Platzhalter (Boden, Würfel, Kugel) entfernt.
 - [ ] 7. Kollision
 
 ## Phase 1 — Fundament ✅

@@ -42,6 +42,20 @@ namespace JapanMap.Tests
         }));
 
         [Test]
+        public void Viewpoints_AreAboveTheTerrain()
+        {
+            var set = ViewpointTools.Load();
+            Assert.That(set.viewpoints.Count, Is.GreaterThanOrEqualTo(6));
+            foreach (var v in set.viewpoints)
+            {
+                var tile = TerrainImporter.TileAt(v.position);
+                Assert.IsNotNull(tile, $"{v.name} lies outside the terrain");
+                var ground = tile.SampleHeight(v.position) + tile.transform.position.y;
+                Assert.That(v.position.y, Is.GreaterThan(ground + 0.3f), $"{v.name} is {ground - v.position.y:F1} m under the ground");
+            }
+        }
+
+        [Test]
         public void ToUnity_MirrorsZ_NorthIsPlusZ()
         {
             // templeHall: Three (820, -954) lies north of the centre → Unity z must be positive.
