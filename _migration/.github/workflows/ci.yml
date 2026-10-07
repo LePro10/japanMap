@@ -1,0 +1,44 @@
+# Prüft den alten Three.js-Prototyp, solange er noch geändert wird. Für das
+# Unity-Projekt kommt eine eigene Prüfung (Plan, Phase 10: GameCI).
+name: CI (legacy prototype)
+
+on:
+  push:
+    branches-ignore: [master]
+    paths: ['legacy/threejs/**']
+  pull_request:
+    branches: [master]
+    paths: ['legacy/threejs/**']
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: legacy/threejs
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: legacy/threejs/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Navigation map tests
+        run: node tools/navigation-map.test.mjs
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build

@@ -1,0 +1,34 @@
+{
+  "source": "japanMap height.r16, seed 20260725",
+  "file": "height_2049.raw",
+  "import": {
+    "depth": 16,
+    "byteOrder": "Windows (little endian)",
+    "resolution": 2049,
+    "flipVertically": false
+  },
+  "terrainSize": {
+    "x": 3073.501,
+    "y": 488.004,
+    "z": 3073.501
+  },
+  "metersPerSample": 1.500733,
+  "heightMeters": {
+    "min": -38,
+    "max": 450
+  },
+  "unityTerrainPosition": {
+    "x": -1536,
+    "y": -38.004,
+    "z": -1537.501
+  },
+  "axes": "unityX = threeX, unityY = threeY, unityZ = -threeZ (Norden = +Z)",
+  "check": {
+    "peakUnity": {
+      "x": -880.2,
+      "y": 450,
+      "z": 1372.4
+    },
+    "note": "Nach dem Import muss hier der höchste Punkt des Terrains liegen. Sonst Zeilen spiegeln."
+  }
+}

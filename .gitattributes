@@ -1,0 +1,61 @@
+# Gilt nur für das Unity-Projekt (Assets/, ArtSource/). Der Prototyp unter
+# legacy/threejs/ bleibt bewusst unberührt — keine Regel hier greift dort.
+
+# ── Unity-YAML: als Text, LF, mit Unitys Merge-Werkzeug (Treiber: docs/SETUP.md)
+Assets/**/*.unity            text eol=lf merge=unityyamlmerge
+Assets/**/*.prefab           text eol=lf merge=unityyamlmerge
+Assets/**/*.asset            text eol=lf merge=unityyamlmerge
+Assets/**/*.mat              text eol=lf merge=unityyamlmerge
+Assets/**/*.anim             text eol=lf merge=unityyamlmerge
+Assets/**/*.controller       text eol=lf merge=unityyamlmerge
+Assets/**/*.overrideController text eol=lf merge=unityyamlmerge
+Assets/**/*.physicMaterial   text eol=lf merge=unityyamlmerge
+Assets/**/*.mask             text eol=lf merge=unityyamlmerge
+Assets/**/*.playable         text eol=lf merge=unityyamlmerge
+Assets/**/*.lighting         text eol=lf merge=unityyamlmerge
+Assets/**/*.meta             text eol=lf
+ProjectSettings/*.asset      text eol=lf merge=unityyamlmerge
+Packages/*.json              text eol=lf
+Assets/**/*.cs               text eol=lf diff=csharp
+Assets/**/*.uxml             text eol=lf
+Assets/**/*.uss              text eol=lf
+Assets/**/*.shader           text eol=lf
+Assets/**/*.hlsl             text eol=lf
+Assets/**/*.shadergraph      text eol=lf
+Assets/**/*.asmdef           text eol=lf
+
+# ── Große Terrain-Daten (Heights als Binärblock im .asset)
+Assets/_Project/Data/Terrain/*.asset filter=lfs diff=lfs merge=lfs -text
+
+# ── Binärdateien über Git LFS
+Assets/**/*.fbx   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.FBX   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.obj   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.glb   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.blend filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.png   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.jpg   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.jpeg  filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.tga   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.psd   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.tif   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.tiff  filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.exr   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.hdr   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.wav   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.mp3   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.ogg   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.aif   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.flac  filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.mp4   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.ttf   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.otf   filter=lfs diff=lfs merge=lfs -text
+Assets/**/*.raw   filter=lfs diff=lfs merge=lfs -text
+
+ArtSource/**/*.blend filter=lfs diff=lfs merge=lfs -text
+ArtSource/**/*.fbx   filter=lfs diff=lfs merge=lfs -text
+ArtSource/**/*.glb   filter=lfs diff=lfs merge=lfs -text
+ArtSource/**/*.png   filter=lfs diff=lfs merge=lfs -text
+ArtSource/**/*.jpg   filter=lfs diff=lfs merge=lfs -text
+ArtSource/**/*.exr   filter=lfs diff=lfs merge=lfs -text
+ArtSource/**/*.hdr   filter=lfs diff=lfs merge=lfs -text

@@ -1,0 +1,66 @@
+# ── Unity ─────────────────────────────────────────────────────────────────
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+/ServerData/
+/[Aa]ssets/[Ss]treamingAssets/aa/
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/Plugins/Editor/JetBrains*
+
+# Bilder und Berichte der Agenten-Werkzeuge
+/Captures/
+
+# IDEs und erzeugte Projektdateien
+.vs/
+.vscode/
+.idea/
+.gradle/
+.consulo/
+ExportedObj/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+sysinfo.txt
+crashlytics-buildtime*
+mono_crash.*
+
+# Build-Ausgaben anderer Ziele
+*.apk
+*.aab
+*.app
+*.unitypackage
+
+# ── Blender, Python, Node ─────────────────────────────────────────────────
+*.blend1
+*.blend2
+__pycache__/
+/node_modules/
+/Tools/node_modules/
+
+# ── Betriebssystem, lokale Einstellungen ──────────────────────────────────
+.DS_Store
+Thumbs.db
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# Der Prototyp unter legacy/threejs/ hat seine eigene .gitignore.

@@ -1,0 +1,66 @@
+{
+  "note": "Gelaendehoehe an festen Punkten. Nach dem Unity-Import muss Terrain.SampleHeight an (unityX, unityZ) + Terrain-Position.y diese Hoehe liefern (Toleranz ~0,1 m). Prueft Spiegelung und Massstab.",
+  "samplesAtMax": 2677,
+  "points": [
+    {
+      "name": "origin",
+      "three": {
+        "x": 0,
+        "z": 0
+      },
+      "unity": {
+        "x": 0,
+        "z": 0
+      },
+      "heightM": 52.65
+    },
+    {
+      "name": "templeHall",
+      "three": {
+        "x": 820,
+        "z": -954
+      },
+      "unity": {
+        "x": 820,
+        "z": 954
+      },
+      "heightM": 154.65
+    },
+    {
+      "name": "north-west",
+      "three": {
+        "x": -1000,
+        "z": -1000
+      },
+      "unity": {
+        "x": -1000,
+        "z": 1000
+      },
+      "heightM": 324.97
+    },
+    {
+      "name": "south-east",
+      "three": {
+        "x": 1000,
+        "z": 1000
+      },
+      "unity": {
+        "x": 1000,
+        "z": -1000
+      },
+      "heightM": 0.5
+    },
+    {
+      "name": "pass-viewpoint",
+      "three": {
+        "x": -800,
+        "z": -200
+      },
+      "unity": {
+        "x": -800,
+        "z": 200
+      },
+      "heightM": 27
+    }
+  ]
+}

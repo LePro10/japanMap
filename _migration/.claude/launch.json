@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "comment": "Alter Three.js-Prototyp (legacy/threejs) — nur zum Nachschauen und für den GLB-Export der Orte. Vite-Root ist der Legacy-Ordner, dessen vite.config.ts wird von dort geladen.",
+      "name": "legacy-dev",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["legacy/threejs/node_modules/vite/bin/vite.js", "legacy/threejs", "--port", "5180", "--strictPort"],
+      "port": 5180
+    },
+    {
+      "comment": "Unity-Web-Build ausliefern (Builds/Web). Ab Phase 1 vorhanden.",
+      "name": "web-build",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "http-server", "Builds/Web", "-p", "8080", "-c-1"],
+      "port": 8080
+    }
+  ]
+}

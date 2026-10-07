@@ -39,3 +39,6 @@ Thumbs.db
 
 # Forza / photo refs for the Astra design pass — do not commit third-party stills.
 docs/astra-refs/
+
+# Austauschdaten für den Unity-Umzug — erzeugt von tools/export-unity-tile.mjs.
+export/
