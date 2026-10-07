@@ -1,0 +1,1337 @@
+{
+ "Barrier_GuardPipe_2m": {
+  "fbx": "props/SM_Barrier_GuardPipe_2m.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Barrier_GuardPipe_2m_LOD0",
+   "SM_Barrier_GuardPipe_2m_LOD1"
+  ],
+  "tris": [
+   500,
+   174
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_Barrier_GuardPipe_2m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Barrier_GuardRail_4m": {
+  "fbx": "props/SM_Barrier_GuardRail_4m.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Barrier_GuardRail_4m_LOD0",
+   "SM_Barrier_GuardRail_4m_LOD1"
+  ],
+  "tris": [
+   428,
+   46
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_Barrier_GuardRail_4m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Barrier_GuardRail_End": {
+  "fbx": "props/SM_Barrier_GuardRail_End.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Barrier_GuardRail_End_LOD0",
+   "SM_Barrier_GuardRail_End_LOD1"
+  ],
+  "tris": [
+   356,
+   54
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_Barrier_GuardRail_End"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Bench_Park": {
+  "fbx": "props/SM_Bench_Park.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Bench_Park_LOD0",
+   "SM_Bench_Park_LOD1"
+  ],
+  "tris": [
+   760,
+   112
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_Bench_Park"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Bench_Stone": {
+  "fbx": "props/SM_Bench_Stone.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Bench_Stone_LOD0",
+   "SM_Bench_Stone_LOD1"
+  ],
+  "tris": [
+   76,
+   28
+  ],
+  "materials": [
+   "M_Props_Atlas"
+  ],
+  "colliders": [
+   "COL_Bench_Stone"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Bench_Teahouse": {
+  "fbx": "props/SM_Bench_Teahouse.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Bench_Teahouse_LOD0",
+   "SM_Bench_Teahouse_LOD1"
+  ],
+  "tris": [
+   874,
+   334
+  ],
+  "materials": [
+   "M_Props_Atlas"
+  ],
+  "colliders": [
+   "COL_Bench_Teahouse"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Fence_Bamboo_1_8m": {
+  "fbx": "props/SM_Fence_Bamboo_1_8m.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Fence_Bamboo_1_8m_LOD0",
+   "SM_Fence_Bamboo_1_8m_LOD1"
+  ],
+  "tris": [
+   940,
+   122
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_Fence_Bamboo_1_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Fence_BlockWall_2m": {
+  "fbx": "props/SM_Fence_BlockWall_2m.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Fence_BlockWall_2m_LOD0",
+   "SM_Fence_BlockWall_2m_LOD1"
+  ],
+  "tris": [
+   254,
+   74
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_Fence_BlockWall_2m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Fence_BlockWall_Pillar": {
+  "fbx": "props/SM_Fence_BlockWall_Pillar.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Fence_BlockWall_Pillar_LOD0",
+   "SM_Fence_BlockWall_Pillar_LOD1"
+  ],
+  "tris": [
+   74,
+   22
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_Fence_BlockWall_Pillar"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Fence_Board_1_8m": {
+  "fbx": "props/SM_Fence_Board_1_8m.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Fence_Board_1_8m_LOD0",
+   "SM_Fence_Board_1_8m_LOD1"
+  ],
+  "tris": [
+   540,
+   92
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_Fence_Board_1_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Kura_2Bay_Black": {
+  "fbx": "buildings/SM_Kura_2Bay_Black.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kura_2Bay_Black_LOD0",
+   "SM_Kura_2Bay_Black_LOD1"
+  ],
+  "tris": [
+   4035,
+   382
+  ],
+  "materials": [
+   "M_Kura_Atlas"
+  ],
+  "colliders": [
+   "COL_Kura_2Bay_Black_Roof",
+   "COL_Kura_2Bay_Black_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Kura_2Bay_Black",
+    "pos": [
+     1.5,
+     -3.15,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.7,
+     0.4
+    ],
+    "range": 6.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Kura_2Bay_White": {
+  "fbx": "buildings/SM_Kura_2Bay_White.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kura_2Bay_White_LOD0",
+   "SM_Kura_2Bay_White_LOD1"
+  ],
+  "tris": [
+   4035,
+   382
+  ],
+  "materials": [
+   "M_Kura_Atlas"
+  ],
+  "colliders": [
+   "COL_Kura_2Bay_White_Roof",
+   "COL_Kura_2Bay_White_Walls"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "PowerLine_Span20": {
+  "fbx": "props/SM_PowerLine_Span20.fbx",
+  "class": "props",
+  "lods": [
+   "SM_PowerLine_Span20_LOD0",
+   "SM_PowerLine_Span20_LOD1"
+  ],
+  "tris": [
+   748,
+   336
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "PowerLine_Span30": {
+  "fbx": "props/SM_PowerLine_Span30.fbx",
+  "class": "props",
+  "lods": [
+   "SM_PowerLine_Span30_LOD0",
+   "SM_PowerLine_Span30_LOD1"
+  ],
+  "tris": [
+   748,
+   336
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "PowerLine_Span40": {
+  "fbx": "props/SM_PowerLine_Span40.fbx",
+  "class": "props",
+  "lods": [
+   "SM_PowerLine_Span40_LOD0",
+   "SM_PowerLine_Span40_LOD1"
+  ],
+  "tris": [
+   748,
+   336
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "RecycleBins": {
+  "fbx": "props/SM_RecycleBins.fbx",
+  "class": "props",
+  "lods": [
+   "SM_RecycleBins_LOD0",
+   "SM_RecycleBins_LOD1"
+  ],
+  "tris": [
+   256,
+   44
+  ],
+  "materials": [
+   "M_Props_Atlas"
+  ],
+  "colliders": [
+   "COL_RecycleBins"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "RoadSign_Crosswalk": {
+  "fbx": "props/SM_RoadSign_Crosswalk.fbx",
+  "class": "props",
+  "lods": [
+   "SM_RoadSign_Crosswalk_LOD0",
+   "SM_RoadSign_Crosswalk_LOD1"
+  ],
+  "tris": [
+   394,
+   90
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_RoadSign_Crosswalk"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "RoadSign_Curve": {
+  "fbx": "props/SM_RoadSign_Curve.fbx",
+  "class": "props",
+  "lods": [
+   "SM_RoadSign_Curve_LOD0",
+   "SM_RoadSign_Curve_LOD1"
+  ],
+  "tris": [
+   314,
+   42
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_RoadSign_Curve"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "RoadSign_NoParking": {
+  "fbx": "props/SM_RoadSign_NoParking.fbx",
+  "class": "props",
+  "lods": [
+   "SM_RoadSign_NoParking_LOD0",
+   "SM_RoadSign_NoParking_LOD1"
+  ],
+  "tris": [
+   458,
+   122
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_RoadSign_NoParking"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "RoadSign_OneWay_Speed40": {
+  "fbx": "props/SM_RoadSign_OneWay_Speed40.fbx",
+  "class": "props",
+  "lods": [
+   "SM_RoadSign_OneWay_Speed40_LOD0",
+   "SM_RoadSign_OneWay_Speed40_LOD1"
+  ],
+  "tris": [
+   682,
+   182
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_RoadSign_OneWay_Speed40"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "RoadSign_Speed40": {
+  "fbx": "props/SM_RoadSign_Speed40.fbx",
+  "class": "props",
+  "lods": [
+   "SM_RoadSign_Speed40_LOD0",
+   "SM_RoadSign_Speed40_LOD1"
+  ],
+  "tris": [
+   458,
+   122
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_RoadSign_Speed40"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "RoadSign_Stop": {
+  "fbx": "props/SM_RoadSign_Stop.fbx",
+  "class": "props",
+  "lods": [
+   "SM_RoadSign_Stop_LOD0",
+   "SM_RoadSign_Stop_LOD1"
+  ],
+  "tris": [
+   302,
+   38
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_RoadSign_Stop"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "StoneLantern": {
+  "fbx": "props/SM_StoneLantern.fbx",
+  "class": "props",
+  "lods": [
+   "SM_StoneLantern_LOD0",
+   "SM_StoneLantern_LOD1"
+  ],
+  "tris": [
+   1154,
+   528
+  ],
+  "materials": [
+   "M_Props_Atlas"
+  ],
+  "colliders": [
+   "COL_StoneLantern"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_StoneLantern",
+    "pos": [
+     0.0,
+     0.0,
+     1.32
+    ],
+    "color": [
+     1.0,
+     0.72,
+     0.42
+    ],
+    "range": 3.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "StoneLantern_Oki": {
+  "fbx": "props/SM_StoneLantern_Oki.fbx",
+  "class": "props",
+  "lods": [
+   "SM_StoneLantern_Oki_LOD0",
+   "SM_StoneLantern_Oki_LOD1"
+  ],
+  "tris": [
+   442,
+   176
+  ],
+  "materials": [
+   "M_Props_Atlas"
+  ],
+  "colliders": [
+   "COL_StoneLantern_Oki"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_StoneLantern_Oki",
+    "pos": [
+     0.0,
+     0.0,
+     0.18
+    ],
+    "color": [
+     1.0,
+     0.72,
+     0.42
+    ],
+    "range": 3.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "StoneLantern_Yukimi": {
+  "fbx": "props/SM_StoneLantern_Yukimi.fbx",
+  "class": "props",
+  "lods": [
+   "SM_StoneLantern_Yukimi_LOD0",
+   "SM_StoneLantern_Yukimi_LOD1"
+  ],
+  "tris": [
+   1078,
+   404
+  ],
+  "materials": [
+   "M_Props_Atlas"
+  ],
+  "colliders": [
+   "COL_StoneLantern_Yukimi"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_StoneLantern_Yukimi",
+    "pos": [
+     0.0,
+     0.0,
+     0.6
+    ],
+    "color": [
+     1.0,
+     0.72,
+     0.42
+    ],
+    "range": 3.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "StreetLight_Road": {
+  "fbx": "props/SM_StreetLight_Road.fbx",
+  "class": "props",
+  "lods": [
+   "SM_StreetLight_Road_LOD0",
+   "SM_StreetLight_Road_LOD1"
+  ],
+  "tris": [
+   434,
+   126
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_StreetLight_Road"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_StreetLight_Road_0",
+    "pos": [
+     0.0,
+     -1.91,
+     7.83
+    ],
+    "color": [
+     0.9,
+     0.95,
+     1.0
+    ],
+    "range": 18.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "StreetLight_Road2": {
+  "fbx": "props/SM_StreetLight_Road2.fbx",
+  "class": "props",
+  "lods": [
+   "SM_StreetLight_Road2_LOD0",
+   "SM_StreetLight_Road2_LOD1"
+  ],
+  "tris": [
+   598,
+   174
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_StreetLight_Road2"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_StreetLight_Road2_0",
+    "pos": [
+     0.0,
+     -1.91,
+     7.83
+    ],
+    "color": [
+     0.9,
+     0.95,
+     1.0
+    ],
+    "range": 18.0
+   },
+   {
+    "name": "LIGHT_StreetLight_Road2_1",
+    "pos": [
+     0.0,
+     1.91,
+     7.83
+    ],
+    "color": [
+     0.9,
+     0.95,
+     1.0
+    ],
+    "range": 18.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "StreetLight_Shotengai": {
+  "fbx": "props/SM_StreetLight_Shotengai.fbx",
+  "class": "props",
+  "lods": [
+   "SM_StreetLight_Shotengai_LOD0",
+   "SM_StreetLight_Shotengai_LOD1"
+  ],
+  "tris": [
+   884,
+   344
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_StreetLight_Shotengai"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_StreetLight_Shotengai_0",
+    "pos": [
+     -0.55,
+     0.0,
+     3.83
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.45
+    ],
+    "range": 8.0
+   },
+   {
+    "name": "LIGHT_StreetLight_Shotengai_1",
+    "pos": [
+     0.55,
+     0.0,
+     3.83
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.45
+    ],
+    "range": 8.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Torii_Stone_M": {
+  "fbx": "props/SM_Torii_Stone_M.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Torii_Stone_M_LOD0",
+   "SM_Torii_Stone_M_LOD1"
+  ],
+  "tris": [
+   1484,
+   384
+  ],
+  "materials": [
+   "M_Props_Atlas"
+  ],
+  "colliders": [
+   "COL_Torii_Stone_M_L",
+   "COL_Torii_Stone_M_R"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Torii_Vermilion_M": {
+  "fbx": "props/SM_Torii_Vermilion_M.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Torii_Vermilion_M_LOD0",
+   "SM_Torii_Vermilion_M_LOD1"
+  ],
+  "tris": [
+   1484,
+   384
+  ],
+  "materials": [
+   "M_Props_Atlas"
+  ],
+  "colliders": [
+   "COL_Torii_Vermilion_M_L",
+   "COL_Torii_Vermilion_M_R"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Torii_Vermilion_S": {
+  "fbx": "props/SM_Torii_Vermilion_S.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Torii_Vermilion_S_LOD0",
+   "SM_Torii_Vermilion_S_LOD1"
+  ],
+  "tris": [
+   1484,
+   384
+  ],
+  "materials": [
+   "M_Props_Atlas"
+  ],
+  "colliders": [
+   "COL_Torii_Vermilion_S_L",
+   "COL_Torii_Vermilion_S_R"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "TrafficLight_Arm": {
+  "fbx": "props/SM_TrafficLight_Arm.fbx",
+  "class": "props",
+  "lods": [
+   "SM_TrafficLight_Arm_LOD0",
+   "SM_TrafficLight_Arm_LOD1"
+  ],
+  "tris": [
+   944,
+   202
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_TrafficLight_Arm"
+  ],
+  "lights": [],
+  "switchable": [
+   "LENS_Car_Green_Arm",
+   "LENS_Car_Red_Arm",
+   "LENS_Car_Yellow_Arm",
+   "LENS_Ped_Green_Arm",
+   "LENS_Ped_Red_Arm"
+  ],
+  "attach": []
+ },
+ "TrafficLight_Ped": {
+  "fbx": "props/SM_TrafficLight_Ped.fbx",
+  "class": "props",
+  "lods": [
+   "SM_TrafficLight_Ped_LOD0",
+   "SM_TrafficLight_Ped_LOD1"
+  ],
+  "tris": [
+   428,
+   98
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_TrafficLight_Ped"
+  ],
+  "lights": [],
+  "switchable": [
+   "LENS_Ped_Green_Ped",
+   "LENS_Ped_Red_Ped"
+  ],
+  "attach": []
+ },
+ "UtilityPole_Guy": {
+  "fbx": "props/SM_UtilityPole_Guy.fbx",
+  "class": "props",
+  "lods": [
+   "SM_UtilityPole_Guy_LOD0",
+   "SM_UtilityPole_Guy_LOD1"
+  ],
+  "tris": [
+   1732,
+   472
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_UtilityPole_Guy"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_UtilityPole_Guy",
+    "pos": [
+     0.0,
+     -1.03,
+     4.55
+    ],
+    "color": [
+     0.9,
+     0.95,
+     1.0
+    ],
+    "range": 8.0
+   }
+  ],
+  "switchable": [],
+  "attach": [
+   {
+    "name": "CABLE_HV_0_Guy",
+    "pos": [
+     0.0,
+     -0.9,
+     11.68
+    ]
+   },
+   {
+    "name": "CABLE_HV_1_Guy",
+    "pos": [
+     0.0,
+     -0.3,
+     11.68
+    ]
+   },
+   {
+    "name": "CABLE_HV_2_Guy",
+    "pos": [
+     0.0,
+     0.6,
+     11.68
+    ]
+   },
+   {
+    "name": "CABLE_LV_0_Guy",
+    "pos": [
+     0.0,
+     -0.36,
+     8.7
+    ]
+   },
+   {
+    "name": "CABLE_LV_1_Guy",
+    "pos": [
+     0.0,
+     -0.36,
+     8.45
+    ]
+   },
+   {
+    "name": "CABLE_LV_2_Guy",
+    "pos": [
+     0.0,
+     -0.36,
+     8.2
+    ]
+   },
+   {
+    "name": "CABLE_TEL_0_Guy",
+    "pos": [
+     0.0,
+     -0.4,
+     5.95
+    ]
+   }
+  ]
+ },
+ "UtilityPole_Plain": {
+  "fbx": "props/SM_UtilityPole_Plain.fbx",
+  "class": "props",
+  "lods": [
+   "SM_UtilityPole_Plain_LOD0",
+   "SM_UtilityPole_Plain_LOD1"
+  ],
+  "tris": [
+   1618,
+   430
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_UtilityPole_Plain"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_UtilityPole_Plain",
+    "pos": [
+     0.0,
+     -1.03,
+     4.55
+    ],
+    "color": [
+     0.9,
+     0.95,
+     1.0
+    ],
+    "range": 8.0
+   }
+  ],
+  "switchable": [],
+  "attach": [
+   {
+    "name": "CABLE_HV_0_Plain",
+    "pos": [
+     0.0,
+     -0.9,
+     11.68
+    ]
+   },
+   {
+    "name": "CABLE_HV_1_Plain",
+    "pos": [
+     0.0,
+     -0.3,
+     11.68
+    ]
+   },
+   {
+    "name": "CABLE_HV_2_Plain",
+    "pos": [
+     0.0,
+     0.6,
+     11.68
+    ]
+   },
+   {
+    "name": "CABLE_LV_0_Plain",
+    "pos": [
+     0.0,
+     -0.36,
+     8.7
+    ]
+   },
+   {
+    "name": "CABLE_LV_1_Plain",
+    "pos": [
+     0.0,
+     -0.36,
+     8.45
+    ]
+   },
+   {
+    "name": "CABLE_LV_2_Plain",
+    "pos": [
+     0.0,
+     -0.36,
+     8.2
+    ]
+   },
+   {
+    "name": "CABLE_TEL_0_Plain",
+    "pos": [
+     0.0,
+     -0.4,
+     5.95
+    ]
+   }
+  ]
+ },
+ "UtilityPole_Transformer": {
+  "fbx": "props/SM_UtilityPole_Transformer.fbx",
+  "class": "props",
+  "lods": [
+   "SM_UtilityPole_Transformer_LOD0",
+   "SM_UtilityPole_Transformer_LOD1"
+  ],
+  "tris": [
+   2336,
+   536
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_UtilityPole_Transformer"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_UtilityPole_Transformer",
+    "pos": [
+     0.0,
+     -1.03,
+     4.55
+    ],
+    "color": [
+     0.9,
+     0.95,
+     1.0
+    ],
+    "range": 8.0
+   }
+  ],
+  "switchable": [],
+  "attach": [
+   {
+    "name": "CABLE_HV_0_Transformer",
+    "pos": [
+     0.0,
+     -0.9,
+     11.68
+    ]
+   },
+   {
+    "name": "CABLE_HV_1_Transformer",
+    "pos": [
+     0.0,
+     -0.3,
+     11.68
+    ]
+   },
+   {
+    "name": "CABLE_HV_2_Transformer",
+    "pos": [
+     0.0,
+     0.6,
+     11.68
+    ]
+   },
+   {
+    "name": "CABLE_LV_0_Transformer",
+    "pos": [
+     0.0,
+     -0.36,
+     8.7
+    ]
+   },
+   {
+    "name": "CABLE_LV_1_Transformer",
+    "pos": [
+     0.0,
+     -0.36,
+     8.45
+    ]
+   },
+   {
+    "name": "CABLE_LV_2_Transformer",
+    "pos": [
+     0.0,
+     -0.36,
+     8.2
+    ]
+   },
+   {
+    "name": "CABLE_TEL_0_Transformer",
+    "pos": [
+     0.0,
+     -0.4,
+     5.95
+    ]
+   }
+  ]
+ },
+ "VendingMachineSlim_Blue": {
+  "fbx": "props/SM_VendingMachineSlim_Blue.fbx",
+  "class": "props",
+  "lods": [
+   "SM_VendingMachineSlim_Blue_LOD0",
+   "SM_VendingMachineSlim_Blue_LOD1"
+  ],
+  "tris": [
+   1270,
+   224
+  ],
+  "materials": [
+   "M_Glass",
+   "M_Props_Atlas"
+  ],
+  "colliders": [
+   "COL_VendingMachineSlim_Blue"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_VendingMachineSlim_Blue",
+    "pos": [
+     0.0,
+     -0.525,
+     1.4
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 4.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "VendingMachineSlim_Red": {
+  "fbx": "props/SM_VendingMachineSlim_Red.fbx",
+  "class": "props",
+  "lods": [
+   "SM_VendingMachineSlim_Red_LOD0",
+   "SM_VendingMachineSlim_Red_LOD1"
+  ],
+  "tris": [
+   1270,
+   224
+  ],
+  "materials": [
+   "M_Glass",
+   "M_Props_Atlas"
+  ],
+  "colliders": [
+   "COL_VendingMachineSlim_Red"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_VendingMachineSlim_Red",
+    "pos": [
+     0.0,
+     -0.525,
+     1.4
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 4.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "VendingMachineSlim_White": {
+  "fbx": "props/SM_VendingMachineSlim_White.fbx",
+  "class": "props",
+  "lods": [
+   "SM_VendingMachineSlim_White_LOD0",
+   "SM_VendingMachineSlim_White_LOD1"
+  ],
+  "tris": [
+   1270,
+   224
+  ],
+  "materials": [
+   "M_Glass",
+   "M_Props_Atlas"
+  ],
+  "colliders": [
+   "COL_VendingMachineSlim_White"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_VendingMachineSlim_White",
+    "pos": [
+     0.0,
+     -0.525,
+     1.4
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 4.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "VendingMachine_Blue": {
+  "fbx": "props/SM_VendingMachine_Blue.fbx",
+  "class": "props",
+  "lods": [
+   "SM_VendingMachine_Blue_LOD0",
+   "SM_VendingMachine_Blue_LOD1"
+  ],
+  "tris": [
+   1270,
+   224
+  ],
+  "materials": [
+   "M_Glass",
+   "M_Props_Atlas"
+  ],
+  "colliders": [
+   "COL_VendingMachine_Blue"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_VendingMachine_Blue",
+    "pos": [
+     0.0,
+     -0.525,
+     1.4
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 4.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "VendingMachine_Red": {
+  "fbx": "props/SM_VendingMachine_Red.fbx",
+  "class": "props",
+  "lods": [
+   "SM_VendingMachine_Red_LOD0",
+   "SM_VendingMachine_Red_LOD1"
+  ],
+  "tris": [
+   1270,
+   224
+  ],
+  "materials": [
+   "M_Glass",
+   "M_Props_Atlas"
+  ],
+  "colliders": [
+   "COL_VendingMachine_Red"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_VendingMachine_Red",
+    "pos": [
+     0.0,
+     -0.525,
+     1.4
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 4.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "VendingMachine_White": {
+  "fbx": "props/SM_VendingMachine_White.fbx",
+  "class": "props",
+  "lods": [
+   "SM_VendingMachine_White_LOD0",
+   "SM_VendingMachine_White_LOD1"
+  ],
+  "tris": [
+   1270,
+   224
+  ],
+  "materials": [
+   "M_Glass",
+   "M_Props_Atlas"
+  ],
+  "colliders": [
+   "COL_VendingMachine_White"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_VendingMachine_White",
+    "pos": [
+     0.0,
+     -0.525,
+     1.4
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 4.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ }
+}

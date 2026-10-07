@@ -37,7 +37,8 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
 ## Materialien und Atlanten
 
 - Je Baustil **ein** deckendes Material `M_<Stil>_Atlas` + das gemeinsame
-  `M_Glass` (durchsichtig). Pilot: `Props` (Straßenmöbel) und `Kura`.
+  `M_Glass` (durchsichtig). Atlanten: `Props` (Schrein/Stein, Automaten),
+  `Street` (Masten, Schilder, Ampeln, Zäune, Bänke), `Kura`.
 - Atlas 1024², drei Karten passend zu URP/Lit:
   `T_<Stil>_BaseColor` (sRGB) · `T_<Stil>_MaskMap` (R Metall, G AO = 1,
   A Glätte; linear) · `T_<Stil>_Emission` (sRGB).
@@ -88,6 +89,26 @@ Gedämpfte Grundtöne, kräftige Farben nur als Akzent (Automat, Torii, Licht).
 - Helligkeit der Emission in Unity gegen einen gemessenen Bezugspunkt
   einstellen (ART-DIRECTION.md), nicht nach Gefühl.
 
+## Grafiken (Schilder, Tafeln, Banner)
+
+Flache Grafiken mit Schrift entstehen als SVG in `kit/graphics.mjs` und
+werden mit dem Headless-Chrome der Tools gerendert (`node
+ArtSource/kit/graphics.mjs` → `kit/gfx/*.png`, committet; japanische Schrift
+über Hiragino). Der Atlas lädt sie als Rechteck (`png(...)`). Schildplatten
+folgen dem Umriss der Grafik, die UVs laufen über dieselben Pixelkoordinaten.
+**Keine echten Firmen- oder Betreibernamen** — Texte sind fiktiv oder
+allgemein (止まれ, 稲荷神社, „Sakura-dōri").
+
+## Runde Teile und Rohre
+
+- Masten und Säulen: `K.map_cyl` (Höhe läuft entlang U, Umfang einmal über
+  V). Die Naht liegt hinten (+Y) **auf einer Kante** — Lathe mit Phase 0 und
+  Seitenzahl durch 4 teilbar, sonst ragt eine Fläche aus dem Atlasfeld.
+- Rohre, Kabel, Ausleger: `K.tube_path(..., reg=Streifen)` mappt entlang der
+  Rohrlänge.
+- Bretter, Latten, Pfosten: eine Fläche je Brett (eigene Maserung);
+  `rotate=True` für senkrechte Maserung; `s_offset` versetzt Muster (Knoten).
+
 ## LOD, Collider, Namen
 
 - LOD-Stufen baut der **Generator** mit weniger Details (keine Fasen, weniger
@@ -95,6 +116,15 @@ Gedämpfte Grundtöne, kräftige Farben nur als Akzent (Automat, Torii, Licht).
 - Ein Mesh je LOD: `SM_<Name>_LOD0`, `SM_<Name>_LOD1` (Unity baut daraus
   die LOD Group). Collider: `COL_<Name>` (einfache Box). Licht: `LIGHT_<Name>`.
 - Varianten (Farbe, Fenster) sind eigene FBX: `SM_<Name>_<Variante>.fbx`.
+- Weitere Marker: `CABLE_<HV|LV|TEL>_<i>` (Kabel-Anschlusspunkte am Mast),
+  `LENS_<Car|Ped>_<Farbe>` (eigenes Mesh je Ampellicht — Unity schaltet es
+  ein/aus, dahinter liegt eine unbeleuchtete Linse).
+- `exports/manifest.json` (schreibt `build.run`): je FBX die LOD-Meshes,
+  Dreiecke, Materialien, Collider, Lichter, schaltbaren Teile und
+  Anschlusspunkte — der Unity-Import liest das, statt Namen zu raten.
+- Lange Module (Leitplanke) sind entlang X in Stücke geteilt, damit Unity
+  sie entlang einer Spline biegen kann. Linke Enden = gespiegelte rechte
+  (Scale X −1).
 
 ## Arbeitsablauf
 

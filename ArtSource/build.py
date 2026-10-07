@@ -5,7 +5,7 @@
 
 Each asset module: KLASS, NAME, build() -> (collection, [LOD meshes]),
 optional PREVIEW_VIEWS / preview(col) for a custom shot."""
-import importlib, sys, time, traceback
+import importlib, json, os, sys, time, traceback
 
 ASSETS = {
     'stone_lantern': 'props.stone_lantern',
@@ -18,6 +18,8 @@ ASSETS = {
     'road_sign': 'props.road_sign',
     'traffic_light': 'props.traffic_light',
     'fence': 'props.fence',
+    'torii': 'props.torii',
+    'bench': 'props.bench',
 }
 
 # 3/4 front in the mood light, 3/4 front neutral, 3/4 back neutral (same as
@@ -34,10 +36,44 @@ def _reload():
         importlib.reload(m)
 
 
+MANIFEST = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exports', 'manifest.json')
+
+
+def _manifest_entry(col, klass, path, tris):
+    """What the Unity importer needs to know about one FBX (no guessing from names)."""
+    objs = list(col.all_objects)
+    mats = sorted({m.name for o in objs if o.type == 'MESH' for m in o.data.materials if m})
+    return {
+        'fbx': os.path.relpath(path, os.path.dirname(MANIFEST)),
+        'class': klass,
+        'lods': [f'{o.name}' for o in sorted(objs, key=lambda o: o.name) if o.name.startswith('SM_')],
+        'tris': tris,
+        'materials': mats,
+        'colliders': sorted(o.name for o in objs if o.name.startswith('COL_')),
+        'lights': [{'name': o.name, 'pos': [round(c, 3) for c in o.location],
+                    'color': list(o.get('color', [])), 'range': o.get('unity_range')}
+                   for o in objs if o.name.startswith('LIGHT_')],
+        'switchable': sorted(o.name for o in objs if o.name.startswith('LENS_')),
+        'attach': [{'name': o.name, 'pos': [round(c, 3) for c in o.location]}
+                   for o in objs if o.name.startswith('CABLE_')],
+    }
+
+
+def _write_manifest(entries):
+    data = {}
+    if os.path.exists(MANIFEST):
+        with open(MANIFEST) as f:
+            data = json.load(f)
+    data.update(entries)
+    with open(MANIFEST, 'w') as f:
+        json.dump(dict(sorted(data.items())), f, indent=1, ensure_ascii=False)
+
+
 def run(names=None, preview=True, export=True):
     _reload()
     from kit import core as K, preview as P
     out = []
+    manifest = {}
     for key in names or list(ASSETS):
         t = time.time()
         try:
@@ -54,6 +90,7 @@ def run(names=None, preview=True, export=True):
                 if export:
                     path, size = K.export_fbx(col, mod.KLASS, f'SM_{col.name}')
                     line += f' · fbx {size // 1024} KB'
+                    manifest[col.name] = _manifest_entry(col, mod.KLASS, path, tris)
                 out.append(line)
             if preview:
                 if hasattr(mod, 'preview'):
@@ -66,5 +103,7 @@ def run(names=None, preview=True, export=True):
             out.append(f'  {key} {time.time() - t:.1f}s')
         except Exception:
             out.append(f'{key}: FAILED\n' + traceback.format_exc())
+    if manifest:
+        _write_manifest(manifest)
     print('\n'.join(out))
     return out

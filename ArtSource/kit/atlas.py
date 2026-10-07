@@ -419,6 +419,7 @@ LAYOUTS = {
         'RATING_PLATE':    _rect(352, 576, 64, 64, sticker('plate')),
         'CONTROL':    _rect(512, 256, 128, 256, control_panel()),
         'DISPLAY_SLIM': _rect(512, 0, 384, 256, vending_display(seed=11, cols=6)),
+        'PLAQUE':     _rect(112, 384, 64, 128, png('PLAQUE', 0.5)),
         **_cells([
             ('VEND_RED',     flat('#b3141c', 0.55, dirt=0.15)),
             ('VEND_BLUE',    flat('#1c4a9c', 0.55, dirt=0.15)),
@@ -436,6 +437,9 @@ LAYOUTS = {
             ('SOOT',         flat('#1b1a19', 0.15, dirt=0.0)),
             ('BIN_BLUE',     flat('#2f6fb5', 0.5, dirt=0.18)),
             ('BIN_GREY',     flat('#c9cbc7', 0.45, dirt=0.18)),
+            ('LACQUER_BLACK', flat('#141313', 0.55, dirt=0.05)),
+            ('FELT_RED',     flat('#b0242a', 0.1, dirt=0.1)),
+            ('STONE_FLAT',   flat('#7a7b7d', 0.2, dirt=0.15)),     # big undersides wider than a strip
         ], 640, 256, 6),
     },
     'Street': {  # street furniture; strips at 128 px/m
