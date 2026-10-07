@@ -51,6 +51,10 @@ angesehen. Web-Build im Headless-Chrome: 0 Konsolenfehler, Boot nach 0,9 s
 |---|---|---|---|---|
 | 2026-10-07 | Release, leere Szene | 7,75 MB | 5,18 MB | 2,39 MB |
 
+## Gefunden (nebenbei bemerkt, noch nicht behoben — CLAUDE.md Regel 14)
+
+- —
+
 ## Offene Probleme
 
 - **Draw Calls im Browser nicht messbar:** Der Web-Player meldet sie als 0

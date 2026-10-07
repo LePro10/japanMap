@@ -90,6 +90,16 @@ dem Unity-MCP. Der MCP verbindet sich nur beim Start einer Claude-Sitzung.
 13. **Ein Agent zur Zeit auf `master`.** Subagenten für Recherche sind ok,
     parallele Schreib-Agenten nicht.
 
+14. **Mitdenken und gleich verbessern.** Fällt dir ein Bug oder etwas
+    Unschönes auf, denk über die Ursache nach statt nur über das Symptom.
+    Klein (ein paar Minuten, ohne Plan-Änderung): sofort beheben, prüfen, im
+    Commit erwähnen. Größer: unter „Gefunden" in STATUS.md notieren und bei
+    der aktuellen Aufgabe bleiben. Schlag Verbesserungen von dir aus vor.
+15. **Wiedererkennbar bleiben.** Karte, Orte, Strecken, Autos und Spielregeln
+    wie im Prototyp. Jede inhaltliche Abweichung (mehr als Optik und
+    Fehlerbehebung) nur mit Zustimmung des Menschen und Eintrag in
+    DECISIONS.md.
+
 ## Sich selbst verbessern — Pflicht, nicht Kür
 
 Jeder Fehler, jede Sackgasse und jeder langsame Arbeitsschritt wird zu einer
