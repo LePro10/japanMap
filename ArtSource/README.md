@@ -8,8 +8,13 @@ geht, wird nach `Assets/_Project/Art/…` exportiert (Regeln:
 | Ordner | Inhalt |
 |---|---|
 | `cars/blender/` | Prozedurale Fahrzeug-Generatoren aus dem Prototyp (`carkit.py`, `cars.py`, `build.py`, Lackierung, Tuning-Teile). Bauen die 10 Autos in Blender und exportieren GLB mit spielfertiger Hierarchie. Beschreibung: `cars/README.legacy.md` |
-| `props/` | (Phase 4) Torii, Laternen, Automaten, Straßenmöbel |
-| `buildings/` | (Phase 4/5) Modulare Gebäudebausätze je Ort |
+| `kit/` | Stil-Kit: Atlas-Generator (`atlas.py`), Bausteine/UV/Fasen/Export (`core.py`), Vorschau-Bühne (`preview.py`). Regeln: `STYLE-KIT.md` |
+| `build.py` | Läufer: `build.run([...])` baut, exportiert, rendert Vorschau |
+| `props/` | Generatoren für Straßenmöbel (Steinlaterne, Getränkeautomat, …) |
+| `buildings/` | Generatoren für Gebäude-Module je Baustil (Kura, …) |
+| `exports/` | Erzeugte FBX + Atlas-Texturen (nicht von Hand ändern) |
+| `previews/` | Vorschaubilder (Stimmung + neutral) |
+| `STATUS.md` | Stand des Asset-Sprints |
 
 Regeln:
 - Eine Quelle je Asset. Wer ein Asset ändert, ändert die Quelle und exportiert

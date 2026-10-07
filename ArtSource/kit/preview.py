@@ -1,0 +1,175 @@
+"""Preview renders for ArtSource/previews/: the same stage for every asset, so
+pictures stay comparable. Two lightings:
+- mood: blue hour after rain (cold sky, low warm sun, wet ground, lamps on)
+- neutral: grey studio, high sun - to judge form and colour.
+LIGHT_ empties in an asset become point lights here (and lights in Unity)."""
+import bpy, math, os
+import numpy as np
+from mathutils import Vector
+from . import core
+
+STAGE = 'PreviewStage'
+PREV_DIR = os.path.join(core.ART, 'previews')
+
+
+def _world(mood):
+    w = bpy.data.worlds.get('W_Preview') or bpy.data.worlds.new('W_Preview')
+    w.use_nodes = True
+    nt = w.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new('ShaderNodeOutputWorld')
+    bg = nt.nodes.new('ShaderNodeBackground')
+    nt.links.new(bg.outputs[0], out.inputs[0])
+    if mood:
+        tc = nt.nodes.new('ShaderNodeTexCoord')
+        sep = nt.nodes.new('ShaderNodeSeparateXYZ')
+        ramp = nt.nodes.new('ShaderNodeValToRGB')
+        nt.links.new(tc.outputs['Generated'], sep.inputs[0])
+        ma = nt.nodes.new('ShaderNodeMath'); ma.operation = 'MULTIPLY_ADD'
+        ma.inputs[1].default_value = 0.5; ma.inputs[2].default_value = 0.5  # z -1..1 -> 0..1
+        nt.links.new(sep.outputs['Z'], ma.inputs[0])
+        nt.links.new(ma.outputs[0], ramp.inputs[0])
+        nt.links.new(ramp.outputs[0], bg.inputs['Color'])
+        cr = ramp.color_ramp
+        cr.elements[0].position = 0.0; cr.elements[0].color = (0.02, 0.025, 0.035, 1)
+        cr.elements[1].position = 1.0; cr.elements[1].color = (0.03, 0.06, 0.16, 1)
+        e = cr.elements.new(0.5); e.color = (0.5, 0.28, 0.18, 1)      # thin warm horizon
+        e = cr.elements.new(0.53); e.color = (0.2, 0.18, 0.32, 1)
+        e = cr.elements.new(0.62); e.color = (0.06, 0.1, 0.25, 1)
+        bg.inputs['Strength'].default_value = 1.0
+    else:
+        bg.inputs['Color'].default_value = (0.42, 0.43, 0.45, 1)
+        bg.inputs['Strength'].default_value = 1.0
+    return w
+
+
+def _ground_mat(mood):
+    m = bpy.data.materials.get('M_PreviewGround') or bpy.data.materials.new('M_PreviewGround')
+    m.use_nodes = True
+    b = core._principled(m.node_tree)
+    b.inputs['Base Color'].default_value = (0.035, 0.037, 0.04, 1) if mood else (0.25, 0.25, 0.25, 1)
+    b.inputs['Roughness'].default_value = 0.12 if mood else 0.85
+    return m
+
+
+def stage(mood=True):
+    sc = core.scene()
+    col = bpy.data.collections.get(STAGE)
+    if not col:
+        col = bpy.data.collections.new(STAGE)
+        sc.collection.children.link(col)
+    def get(name, make):
+        ob = bpy.data.objects.get(name)
+        if not ob:
+            ob = make(); ob.name = name; col.objects.link(ob)
+        return ob
+    def mk_ground():
+        me = bpy.data.meshes.new('PreviewGround')
+        s = 40
+        me.from_pydata([(-s, -s, 0), (s, -s, 0), (s, s, 0), (-s, s, 0)], [], [(0, 1, 2, 3)])
+        return bpy.data.objects.new('PreviewGround', me)
+    g = get('PreviewGround', mk_ground)
+    g.data.materials.clear(); g.data.materials.append(_ground_mat(mood))
+    sun = get('PreviewSun', lambda: bpy.data.objects.new('PreviewSun', bpy.data.lights.new('PreviewSun', 'SUN')))
+    if mood:
+        sun.data.color = (1.0, 0.62, 0.38); sun.data.energy = 2.2
+        sun.rotation_euler = (math.radians(82), 0, math.radians(-150))
+    else:
+        sun.data.color = (1, 1, 1); sun.data.energy = 3.5
+        sun.rotation_euler = (math.radians(40), 0, math.radians(-35))
+    sun.data.angle = math.radians(2)
+    cam = get('PreviewCam', lambda: bpy.data.objects.new('PreviewCam', bpy.data.cameras.new('PreviewCam')))
+    cam.data.lens = 50
+    sc.camera = cam
+    sc.world = _world(mood)
+    r = sc.render
+    try:
+        r.engine = 'BLENDER_EEVEE'
+    except TypeError:
+        pass
+    try:
+        sc.eevee.taa_render_samples = 48
+    except AttributeError:
+        pass
+    try:
+        sc.view_settings.view_transform = 'AgX'
+    except TypeError:
+        pass
+    r.resolution_percentage = 100
+    r.image_settings.file_format = 'PNG'
+    return cam
+
+
+def _lights(objs, on):
+    """Point lights for LIGHT_ empties (mood only)."""
+    col = bpy.data.collections[STAGE]
+    for o in list(col.objects):
+        if o.name.startswith('PL_'):
+            bpy.data.objects.remove(o, do_unlink=True)
+    if not on:
+        return
+    for e in objs:
+        if e.type == 'EMPTY' and e.name.startswith('LIGHT_'):
+            ld = bpy.data.lights.new('PL_' + e.name, 'POINT')
+            ld.color = tuple(e.get('color', (1.0, 0.7, 0.4)))
+            ld.energy = float(e.get('watts', 20.0))
+            ld.shadow_soft_size = float(e.get('radius', 0.05))
+            lo = bpy.data.objects.new('PL_' + e.name, ld)
+            lo.matrix_world = e.matrix_world.copy()
+            col.objects.link(lo)
+
+
+def _bounds(objs):
+    bpy.context.view_layer.update()  # matrix_world is stale right after moving objects
+    pts = [o.matrix_world @ Vector(c) for o in objs if o.type == 'MESH' for c in o.bound_box]
+    lo = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts)))
+    hi = Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))
+    return lo, hi
+
+
+def _frame(cam, objs, direction, aspect, margin=1.12):
+    lo, hi = _bounds(objs)
+    c = (lo + hi) / 2
+    rad = (hi - lo).length / 2
+    fov = 2 * math.atan(36 / 2 / cam.data.lens)  # horizontal; sensor 36 mm
+    if aspect < 1:
+        fov = 2 * math.atan(math.tan(fov / 2) * aspect)
+    d = Vector(direction).normalized()
+    dist = rad * margin / math.sin(fov / 2)
+    cam.location = c + d * dist
+    cam.rotation_euler = (-d).to_track_quat('-Z', 'Y').to_euler()
+    cam.data.clip_end = dist * 4
+
+
+def render(objs, name, views, size=(640, 640), show=None):
+    """Render each (label, direction, mood) view, put them side by side and
+    save ArtSource/previews/<name>.png. show: collections visible in the shot."""
+    sc = core.scene()
+    bpy.context.view_layer.update()  # callers may just have moved objects (stale matrix_world)
+    show = set(show or [])
+    for c in sc.collection.children:
+        c.hide_render = c.name not in show and c.name != STAGE
+    r = sc.render
+    r.resolution_x, r.resolution_y = size
+    tiles = []
+    tmp = bpy.app.tempdir or '/tmp'
+    for i, (label, direction, mood) in enumerate(views):
+        cam = stage(mood)
+        _lights([o for c in show for o in bpy.data.collections[c].all_objects], mood)
+        _frame(cam, [o for o in objs if not o.hide_render], direction, size[0] / size[1])
+        p = os.path.join(tmp, f'_prev_{i}.png')
+        r.filepath = p
+        bpy.ops.render.render(write_still=True)
+        img = bpy.data.images.load(p, check_existing=False)
+        a = np.array(img.pixels[:], np.float32).reshape(img.size[1], img.size[0], 4)
+        bpy.data.images.remove(img)
+        tiles.append(a)
+    out = np.concatenate(tiles, axis=1)
+    h, w = out.shape[:2]
+    img = bpy.data.images.new('_preview', w, h, alpha=True)
+    img.pixels.foreach_set(out.ravel())
+    os.makedirs(PREV_DIR, exist_ok=True)
+    path = os.path.join(PREV_DIR, name + '.png')
+    img.filepath_raw = path; img.file_format = 'PNG'; img.save()
+    bpy.data.images.remove(img)
+    return path
