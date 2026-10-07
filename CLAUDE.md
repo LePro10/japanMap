@@ -95,10 +95,12 @@ dem Unity-MCP. Der MCP verbindet sich nur beim Start einer Claude-Sitzung.
     Klein (ein paar Minuten, ohne Plan-Änderung): sofort beheben, prüfen, im
     Commit erwähnen. Größer: unter „Gefunden" in STATUS.md notieren und bei
     der aktuellen Aufgabe bleiben. Schlag Verbesserungen von dir aus vor.
-15. **Wiedererkennbar bleiben.** Karte, Orte, Strecken, Autos und Spielregeln
-    wie im Prototyp. Jede inhaltliche Abweichung (mehr als Optik und
-    Fehlerbehebung) nur mit Zustimmung des Menschen und Eintrag in
-    DECISIONS.md.
+15. **Wiedererkennbar bleiben, aber besser machen.** Karte, Orte, Strecken,
+    Autos und Spielregeln sollen wiedererkennbar sein. Kleine Verbesserungen
+    darfst du selbst machen, wenn sie das Spiel für CrazyGames besser machen
+    (schönere Kurve, Prop versetzt, leere Fläche gefüllt, hässliche Stelle
+    geglättet) — Begründung im Commit. Große Änderungen (Ort verlegen, Straße
+    entfernen, Regel ändern) nur mit Zustimmung und Eintrag in DECISIONS.md.
 
 ## Sich selbst verbessern — Pflicht, nicht Kür
 
