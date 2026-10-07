@@ -13,11 +13,12 @@ KLASS = 'props'
 NAME = 'VendingMachine'
 ATLAS = 'Props'
 VARIANTS = {'Red': 'VEND_RED', 'Blue': 'VEND_BLUE', 'White': 'VEND_WHITE'}
+SLIM = 0.8   # width factor of the slim machine (0.8 m, 6 drinks per shelf)
 W, D, H = 1.0, 0.75, 1.83
 YF = -D / 2          # door front plane
 
 
-def _geo(lod, variant):
+def _geo(lod, variant, w=1.0):
     bm = K.new_bm()
     R = lambda n: A.region(ATLAS, n)
     body, black, grey, white = R(VARIANTS[variant]), R('PLASTIC_BLACK'), R('PLASTIC_GREY'), R('VEND_WHITE')
@@ -83,7 +84,7 @@ def _geo(lod, variant):
     # display window: one recess over three cells, display graphic on its floor, glass in front
     win = K.merge(bm, [g[i, 5] for i in (1, 2, 3)])
     floor, walls = K.recess(bm, win, 0.0, 0.08)
-    K.map_faces(bm, [floor], R('DISPLAY'))
+    K.map_faces(bm, [floor], R('DISPLAY' if w == 1.0 else 'DISPLAY_SLIM'))
     K.map_faces(bm, walls, white)
     gl = K.grid_front(bm, [-0.44, 0.44], [1.03, 1.74], YF + 0.012)
     for face in gl.values():
@@ -115,37 +116,73 @@ def _geo(lod, variant):
     # top: rain lip over the door
     lip = K.box(bm, -0.5, 0.5, YF - 0.03, YF + 0.07, H - 0.02, H, skip=('-z',) if lod else ())
     K.map_faces(bm, lip.values(), body, zrange=zr)
+    if w != 1.0:   # slim machine: same parts squeezed in width (atlas cells and rects do not mind)
+        for v in bm.verts:
+            v.co.x *= w
     return bm
 
 
-def build_variant(variant, lods=(0, 1)):
-    name = f'{NAME}_{variant}'
+def _bins(lod):
+    """Pair of recycling bins that stand next to drink machines."""
+    bm = K.new_bm()
+    R = lambda n: A.region(ATLAS, n)
+    for x, reg in ((-0.24, 'BIN_BLUE'), (0.24, 'BIN_GREY')):
+        b = K.box(bm, x - 0.2, x + 0.2, -0.17, 0.17, 0.0, 0.78, skip=('-z',))
+        K.map_faces(bm, b.values(), R(reg), zrange=(0, 0.85))
+        lid = K.box(bm, x - 0.215, x + 0.215, -0.185, 0.185, 0.78, 0.84)
+        K.map_faces(bm, lid.values(), R(reg), zrange=(0, 0.85))
+        if lod == 0:
+            hole, walls = K.recess(bm, lid['+z'], 0.11, 0.05)
+            K.map_faces(bm, [hole] + walls, R('INTERIOR'))
+            st = K.box(bm, x - 0.09, x + 0.09, -0.173, -0.17, 0.48, 0.66, skip=('+y',))
+            K.map_faces(bm, [st['-y']], R('STICKER_RECYCLE'))
+            K.map_faces(bm, [st[k] for k in st if k != '-y'], R(reg))
+    return bm
+
+
+def build_variant(variant, lods=(0, 1), slim=False):
+    name = f'{NAME}{"Slim" if slim else ""}_{variant}'
+    w = SLIM if slim else 1.0
     col = K.collection(name)
     mats = [K.atlas_material(ATLAS), K.glass_material()]
-    objs = [K.mesh_object(f'SM_{name}_LOD{lod}', _geo(lod, variant), col, mats, bevel=0.012 if lod == 0 else 0.0,
+    objs = [K.mesh_object(f'SM_{name}_LOD{lod}', _geo(lod, variant, w), col, mats, bevel=0.012 if lod == 0 else 0.0,
                           bevel_segments=1, hidden=lod > 0) for lod in lods]
-    K.collider_box(f'COL_{name}', col, -W / 2, W / 2, YF, D / 2, 0, H)
+    K.collider_box(f'COL_{name}', col, -W * w / 2, W * w / 2, YF, D / 2, 0, H)
     K.light_marker(f'LIGHT_{name}', col, (0, YF - 0.15, 1.4), color=(0.92, 0.96, 1.0), watts=40,
                    unity_range=4.0)
     return col, objs
 
 
+def build_bins(lods=(0, 1)):
+    col = K.collection('RecycleBins')
+    mat = K.atlas_material(ATLAS)
+    objs = [K.mesh_object(f'SM_RecycleBins_LOD{lod}', _bins(lod), col, [mat], bevel=0.015 if lod == 0 else 0.0,
+                          hidden=lod > 0) for lod in lods]
+    K.collider_box('COL_RecycleBins', col, -0.46, 0.46, -0.19, 0.19, 0, 0.84)
+    return col, objs
+
+
 def build():
-    return [build_variant(v) for v in VARIANTS]
+    return ([build_variant(v) for v in VARIANTS] + [build_variant(v, slim=True) for v in VARIANTS]
+            + [build_bins()])
 
 
 def preview(results, views):
-    """Mood: the three variants in a row (moved after export); neutral: the red one."""
-    for i, (col, _) in enumerate(results):
-        for o in col.objects:
-            o.location.x = (i - 1) * 1.15
-    lod0 = [objs[0] for _, objs in results]
-    a = P.render(lod0, NAME + '_variants', views[:1], size=(960, 640), show=[c.name for c, _ in results])
-    a += ', ' + P.render(lod0, NAME + '_variants_clay', [('clay', views[0][1], 'clay')], size=(960, 640),
-                         show=[c.name for c, _ in results])
-    for i, (col, _) in enumerate(results):
-        for o in col.objects:
+    """Mood: a vending corner - full machines, slim machines, bins; neutral/clay: red one."""
+    by = {c.name: (c, o) for c, o in results}
+    row = [('VendingMachine_Red', -2.2), ('VendingMachine_Blue', -1.1), ('VendingMachineSlim_White', -0.1),
+           ('VendingMachineSlim_Red', 0.75), ('RecycleBins', 1.75), ('VendingMachine_White', 2.75)]
+    for key, x in row:
+        for o in by[key][0].objects:
+            o.location.x = x
+    lod0 = [by[k][1][0] for k, _ in row]
+    show = [by[k][0].name for k, _ in row]
+    a = P.render(lod0, NAME + '_variants', views[:1], size=(960, 640), show=show)
+    a += ', ' + P.render(lod0, NAME + '_variants_clay', [('clay', views[0][1], 'clay')], size=(960, 640), show=show)
+    for key, _ in row:
+        for o in by[key][0].objects:
             o.location.x = 0.0
-    b = P.render(lod0[:1], NAME, [v for v in views[1:] if v[2] != 'clay'], show=[results[0][0].name])
-    b += ', ' + P.render(lod0[:1], NAME + '_clay', [v for v in views if v[2] == 'clay'], show=[results[0][0].name])
+    red = by['VendingMachine_Red']
+    b = P.render(red[1][:1], NAME, [v for v in views[1:] if v[2] != 'clay'], show=[red[0].name])
+    b += ', ' + P.render(red[1][:1], NAME + '_clay', [v for v in views if v[2] == 'clay'], show=[red[0].name])
     return f'{a}, {b}'

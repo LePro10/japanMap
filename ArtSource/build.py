@@ -17,6 +17,7 @@ ASSETS = {
     'guardrail': 'props.guardrail',
     'road_sign': 'props.road_sign',
     'traffic_light': 'props.traffic_light',
+    'fence': 'props.fence',
 }
 
 # 3/4 front in the mood light, 3/4 front neutral, 3/4 back neutral (same as

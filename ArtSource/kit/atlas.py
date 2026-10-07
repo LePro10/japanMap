@@ -162,7 +162,7 @@ def wood(col='#3a281c', smooth=0.3):
 
 
 
-def vending_display(seed=7):
+def vending_display(seed=7, cols=8):
     """Front window of a drink machine: 3 shelves x 8 dummy drinks, price tags
     and buttons under each. Lit from behind, so most of it also emits."""
     pal = ['#c8102e', '#1d4fa1', '#f2f2f2', '#e8a317', '#2a8c4a', '#5b3a29',
@@ -173,7 +173,7 @@ def vending_display(seed=7):
         rgb = np.ones((h, w, 3)) * srgb('#f4f1ea')
         emit = np.ones((h, w, 3)) * srgb('#fff4e0') * 0.3
         y, x = np.mgrid[0:h, 0:w]
-        rows, cols = 3, 8
+        rows = 3
         rh = h / rows; cw = w / cols
         for ri in range(rows):
             base = ri * rh
@@ -418,6 +418,7 @@ LAYOUTS = {
         'STICKER_NOTICE':  _rect(288, 576, 64, 64, sticker('notice')),
         'RATING_PLATE':    _rect(352, 576, 64, 64, sticker('plate')),
         'CONTROL':    _rect(512, 256, 128, 256, control_panel()),
+        'DISPLAY_SLIM': _rect(512, 0, 384, 256, vending_display(seed=11, cols=6)),
         **_cells([
             ('VEND_RED',     flat('#b3141c', 0.55, dirt=0.15)),
             ('VEND_BLUE',    flat('#1c4a9c', 0.55, dirt=0.15)),
@@ -433,6 +434,8 @@ LAYOUTS = {
             ('LIGHT_COOL',   emissive('#dff3ff')),
             ('VERMILION',    flat('#c4381c', 0.4, dirt=0.25)),
             ('SOOT',         flat('#1b1a19', 0.15, dirt=0.0)),
+            ('BIN_BLUE',     flat('#2f6fb5', 0.5, dirt=0.18)),
+            ('BIN_GREY',     flat('#c9cbc7', 0.45, dirt=0.18)),
         ], 640, 256, 6),
     },
     'Street': {  # street furniture; strips at 128 px/m
@@ -478,6 +481,9 @@ LAYOUTS = {
             ('LAMP_WARM',     emissive('#ffc985')),
             ('INTERIOR',      flat('#0c0c0d', 0.2, dirt=0.0)),
             ('LENS_OFF',      flat('#121516', 0.5, dirt=0.0)),    # unlit signal lens behind the lit one
+            ('TILE',          flat('#4d5560', 0.45, dirt=0.12)),
+            ('TILE_DARK',     flat('#353b43', 0.4, dirt=0.15)),
+            ('WOOD_POST',     flat('#3b2a1e', 0.3, dirt=0.2)),
         ], 192, 0, 13),
     },
     'Kura': {    # plaster strips 2 m tall at 128 px/m; namako at 256 px/m (1 m)
