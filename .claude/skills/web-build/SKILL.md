@@ -12,6 +12,7 @@ Web-Build läuft.
 node Tools/build-web.mjs        # Release → Builds/Web + size-report.txt (~1,5–2,5 min)
 node Tools/build-web.mjs --dev  # Development mit F1-Overlay (~30 s, ~45 MB — Größe zählt nicht)
 node Tools/smoke.mjs            # ausliefern, Headless-Chrome, Konsole, F1, Bild → Captures/web-smoke.png
+node Tools/smoke.mjs --gpu      # dasselbe mit echter GPU (Metal) ohne Vsync + FPS über 5 s
 node Tools/serve-web.mjs --lan  # Handy im WLAN, Port 8090
 ```
 
@@ -40,7 +41,9 @@ Referenz leerer Build (2026-10-07): Release **7,75 MB** (wasm 5,18, data 2,39).
 
 ## Fallen
 
-- Die Rauchprobe läuft auf **SwiftShader** (Software): FPS dort sind wertlos.
+- Ohne `--gpu` läuft die Rauchprobe auf **SwiftShader** (Software): FPS dort sind wertlos.
+  Mit `--gpu` gelten sie für **diesen Rechner** (M4: leere Karte P2 = 250 fps) —
+  nie für Handy oder Chromebook; die prüft der Mensch.
 - Der Web-Player liefert „Draw Calls" und „Batches" nicht (Overlay: „n/a");
   Dreiecke und SetPass stimmen. Draw-Calls im offenen Editor messen.
 - `net::ERR_ABORTED` auf `*.unityweb` ist Absicht des Unity-Laders.

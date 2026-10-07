@@ -1,14 +1,16 @@
 // Tools/smoke — serve Builds/Web, load it in headless Chromium, read the console, take a picture.
-//   node Tools/smoke.mjs [--timeout 60] [--out Captures/web-smoke.png]
+//   node Tools/smoke.mjs [--timeout 60] [--out Captures/web-smoke.png] [--gpu]
+// --gpu: real GPU (macOS: Metal) instead of SwiftShader, no vsync, and a 5 s frame-rate
+// measurement (rAF = Unity frames). Numbers are for THIS machine only, never for phones.
 // Green when: the page loads, Unity reports "[Boot] … systems up" (the Bootstrapper finished),
 // no console errors, no page errors, no failed requests.
-// Runs on SwiftShader (software GL): frame rate here says nothing about real hardware.
+// Default runs on SwiftShader (software GL): frame rate there says nothing about real hardware.
 // Setup once: (cd Tools && npm install && npx playwright install chromium-headless-shell)
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { serve } from './serve-web.mjs';
-import { ROOT, arg } from './lib/unity.mjs';
+import { ROOT, arg, flag } from './lib/unity.mjs';
 
 const timeoutMs = Number(arg('timeout', 60)) * 1000;
 const out = join(ROOT, arg('out', 'Captures/web-smoke.png'));
@@ -19,7 +21,13 @@ const errors = [];
 const logs = [];
 let browser;
 try {
-  browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+  const gpu = flag('gpu');
+  const angle = process.platform === 'darwin' ? 'metal' : process.platform === 'win32' ? 'd3d11' : 'vulkan';
+  browser = await chromium.launch({
+    args: gpu
+      ? [`--use-angle=${angle}`, '--enable-gpu', '--ignore-gpu-blocklist', '--disable-gpu-vsync', '--disable-frame-rate-limit']
+      : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
+  });
   const page = await browser.newPage({ viewport: { width: 1024, height: 720 } });
   page.on('console', (m) => {
     const text = m.text();
@@ -52,6 +60,19 @@ try {
     await page.keyboard.press('F1');
     await page.waitForTimeout(1000);
   }
+  let fpsText = '';
+  if (gpu && bootMs !== null) {
+    // Average and worst frame interval over 5 s, measured where Unity renders: requestAnimationFrame.
+    const r = await page.evaluate(() => new Promise((done) => {
+      const t0 = performance.now(); let last = t0, n = 0, worst = 0;
+      const tick = (now) => {
+        n++; worst = Math.max(worst, now - last); last = now;
+        if (now - t0 < 5000) requestAnimationFrame(tick); else done({ fps: n / ((now - t0) / 1000), worst });
+      };
+      requestAnimationFrame(tick);
+    }));
+    fpsText = ` · ${r.fps.toFixed(0)} fps (worst frame ${r.worst.toFixed(1)} ms)`;
+  }
   mkdirSync(dirname(out), { recursive: true });
   await page.screenshot({ path: out });
 
@@ -61,7 +82,7 @@ try {
     return c ? c.getParameter(d ? d.UNMASKED_RENDERER_WEBGL : c.RENDERER) : 'no webgl2';
   });
   const green = bootMs !== null && errors.length === 0;
-  console.log(`SMOKE ${green ? 'GREEN' : 'RED'} · boot ${bootMs === null ? 'not reached' : (bootMs / 1000).toFixed(1) + ' s'} · console errors ${errors.length} · ${gl} · ${out}`);
+  console.log(`SMOKE ${green ? 'GREEN' : 'RED'} · boot ${bootMs === null ? 'not reached' : (bootMs / 1000).toFixed(1) + ' s'}${fpsText} · console errors ${errors.length} · ${gl} · ${out}`);
   for (const e of errors.slice(0, 20)) console.log('  ' + e);
   const bootLine = logs.find((l) => l.includes('[Boot]'));
   if (bootLine) console.log('  ' + bootLine);
