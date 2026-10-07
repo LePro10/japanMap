@@ -123,11 +123,20 @@ Ergebnis in einer Zeile zusammen.
 Development-Builds; IMGUI braucht dafür kein Asset und keine Panel-Settings.
 D05 (UI Toolkit) gilt für alles, was ein Spieler sieht.
 
+## D13 — Terrain als eine Kachel (3 km, 2049²), GPU-Instancing an · 2026-10-07
+
+**Warum:** gemessen mit `ViewpointBench` an sechs Blickpunkten (Editor, M4, Stufe Hoch):
+Draw Calls 43–59 bei 1 Kachel, 43–105 bei 2 × 2, 63–198 bei 4 × 4; Dreiecke in
+allen Fällen gleich (100 k–1,3 M). Kacheln brächten nur Streaming, und die
+Höhendaten sind 8 MB. Ohne Instancing 200–2 550 Draw Calls → Instancing bleibt an
+(im Web-Build geprüft: sichtbar, 0 Fehler). `pixelError` 5; 10 halbiert die
+Dreiecke (57–587 k) → Kandidat für die Stufe Niedrig (Phase 10).
+Regler: `Data/Map/MapImportSettings.asset`.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Fahrphysik-Ansatz** (Phase 3): eigene Raycast-Federung + Arcade-Modell auf
   PhysX-Rigidbody (Empfehlung) vs. WheelCollider vs. Asset-Store-Paket.
-- **Terrain als eine Kachel oder mehrere** (Phase 2), nach Messung.
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,
   sobald verfügbar (Phase 1 oder 10).
 - **Spielname:** Arbeitstitel „japanMap"; der Probelauf schlug „Ameagari" vor.

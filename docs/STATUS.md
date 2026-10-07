@@ -8,7 +8,7 @@
 ## Phase 2 — Die Karte
 
 - [x] 0. Terrain-Shader im Web geklärt: Probe-Terrain (URP Terrain/Lit) im Web-Build sichtbar, Rauchprobe GREEN. Die Warnung „All SubShaders stripped" betrifft nur Unitys Debug-Shader `Hidden/Core/Debug*`. `WebBuild` schlägt jetzt fehl, wenn ein anderer Shader komplett gestrippt wird (`WebBuildTests`).
-- [x] 1. Terrain-Importer (`JapanMap/Map/Import Terrain`, Regler in `Data/Map/MapImportSettings.asset`): 5 Checkpoints, größte Abweichung 0,034 m; Gipfel 450 m an der erwarteten Stelle; Draufsicht = Vorschau (Norden oben). Zweimal importieren → identisch (`MapImportTests`). **Kachelung noch offen** — Messung braucht Blickpunkte (Aufgabe 6 vorgezogen).
+- [x] 1. Terrain-Importer (`JapanMap/Map/Import Terrain`, Regler in `Data/Map/MapImportSettings.asset`): 5 Checkpoints, größte Abweichung 0,034 m; Gipfel 450 m an der erwarteten Stelle; Draufsicht = Vorschau (Norden oben). Zweimal importieren → identisch (`MapImportTests`). Kachelung entschieden: **eine Kachel** (DECISIONS D13, gemessen mit `ViewpointBench`). Web-Build mit ganzer Karte: sichtbar, Rauchprobe GREEN.
 - [ ] 2. Splatmap
 - [ ] 3. Wasser
 - [ ] 4. Straßen-Importer
@@ -65,6 +65,10 @@ angesehen. Web-Build im Headless-Chrome: 0 Konsolenfehler, Boot nach 0,9 s
 - Achsen-Umrechnung der Props-Drehung (`SourceData/legacy/README.md`) ist
   gerechnet, nicht im Bild geprüft → Phase 2, Aufgabe 5.
 - `legacy/threejs/node_modules` fehlt (war nicht da) — `npm ci` dort erst, wenn der Prototyp gebraucht wird.
+
+## Gefunden (später)
+
+- Terrain allein bis 1,3 M Dreiecke (Reisfeld-Blick) — über dem Budget „Niedrig" (800 k). `pixelError` je Qualitätsstufe setzen (10 halbiert) → Phase 10.
 
 ## Für dich (Mensch)
 

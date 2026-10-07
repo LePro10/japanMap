@@ -50,6 +50,7 @@ Alle einmal ausgeführt (2026-10-07). Einrichtung einmalig: `cd Tools && npm ins
 | Rauchprobe im Headless-Chrome | `node Tools/smoke.mjs` (baut nicht, liefert `Builds/Web` aus) | — |
 | Ausliefern (Handy: `--lan`) | `node Tools/serve-web.mjs` → Port **8090** | — |
 | Bilder nebeneinander (alt/neu) | `node Tools/montage.mjs --out Captures/x.png a.png b.png …` | — |
+| Draw Calls/Dreiecke je Blickpunkt (Editor offen) | — | `ViewpointBench.Run("label")` → `Captures/bench-label.txt` |
 | Arbeitsschleife messen | `node Tools/measure-loop.mjs` | — |
 | Einstellungen erzwingen | `-executeMethod JapanMap.Editor.ProjectSetup.Apply` | Menü „JapanMap/Setup/Apply Project Settings" |
 
