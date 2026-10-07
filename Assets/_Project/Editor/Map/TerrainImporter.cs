@@ -16,6 +16,8 @@ namespace JapanMap.Editor.Map
     {
         public const string GroupName = "Terrain";
         public const string DataDir = "Assets/_Project/Data/Terrain";
+        public const string LayerDir = DataDir + "/Layers";
+        public const string TextureDir = "Assets/ThirdParty/PolyHaven/Textures";
 
         [MenuItem("JapanMap/Map/Import Terrain")]
         public static void ImportFromMenu()
@@ -31,11 +33,16 @@ namespace JapanMap.Editor.Map
             var res = info.import.resolution;
             if (info.import.flipVertically) throw new InvalidOperationException("source expects a vertical flip — not supported");
             var heights = ReadRaw(LegacySource.PathOf(settings, "terrain/" + info.file), res);
+            var layers = settings.splatLayers.Select(LoadOrCreateLayer).ToArray();
+            var zones = ReadZones(settings, layers.Length);
+            var zonesRes = zones.GetLength(0);
 
             var n = settings.tilesPerSide;
             if (n < 1 || (res - 1) % n != 0) throw new ArgumentException($"tilesPerSide {n} does not divide {res - 1}");
             var cells = (res - 1) / n;
             var tileRes = cells + 1;
+            if (zonesRes % n != 0) throw new ArgumentException($"tilesPerSide {n} does not divide zones resolution {zonesRes}");
+            var alphaRes = zonesRes / n;
             var size = new Vector3(info.terrainSize.x / n, info.terrainSize.y, info.terrainSize.z / n);
             var origin = new Vector3(info.unityTerrainPosition.x, info.unityTerrainPosition.y, info.unityTerrainPosition.z);
 
@@ -55,6 +62,15 @@ namespace JapanMap.Editor.Map
                 data.heightmapResolution = tileRes; // must come before size: it resets the size
                 data.size = size;
                 data.SetHeights(0, 0, block);
+
+                data.terrainLayers = layers;
+                data.alphamapResolution = alphaRes;
+                var alpha = new float[alphaRes, alphaRes, layers.Length];
+                for (var r = 0; r < alphaRes; r++)
+                for (var c = 0; c < alphaRes; c++)
+                for (var l = 0; l < layers.Length; l++)
+                    alpha[r, c, l] = zones[tz * alphaRes + r, tx * alphaRes + c, l];
+                data.SetAlphamaps(0, 0, alpha);
                 EditorUtility.SetDirty(data);
 
                 var go = Terrain.CreateTerrainGameObject(data);
@@ -91,6 +107,59 @@ namespace JapanMap.Editor.Map
             for (var i = 0; i < values.Length; i++)
                 values[i] = (bytes[2 * i] | (bytes[2 * i + 1] << 8)) / 65535f;
             return values;
+        }
+
+        /// <summary>
+        /// zones.png → weights [row = south..north, col = west..east, layer]. Channels R, G, B are the
+        /// first three layers, the remainder (1 − R − G − B) the fourth. The PNG has north in its first
+        /// row; Texture2D puts the first PNG row at the top (highest y), so GetPixel(c, r) is already
+        /// south-first like the alphamap.
+        /// </summary>
+        static float[,,] ReadZones(MapImportSettings settings, int layerCount)
+        {
+            if (layerCount != 4) throw new ArgumentException($"zones.png carries 4 layers, settings have {layerCount}");
+            var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false, true);
+            try
+            {
+                if (!tex.LoadImage(File.ReadAllBytes(LegacySource.PathOf(settings, "terrain/zones.png"))))
+                    throw new InvalidDataException("zones.png could not be decoded");
+                var res = tex.width;
+                var px = tex.GetPixels32();
+                var w = new float[res, res, 4];
+                for (var r = 0; r < res; r++)
+                for (var c = 0; c < res; c++)
+                {
+                    var p = px[r * res + c];
+                    float a = p.r / 255f, b = p.g / 255f, d = p.b / 255f;
+                    var rest = Mathf.Max(0f, 1f - a - b - d);
+                    var sum = a + b + d + rest;
+                    w[r, c, 0] = a / sum;
+                    w[r, c, 1] = b / sum;
+                    w[r, c, 2] = d / sum;
+                    w[r, c, 3] = rest / sum;
+                }
+                return w;
+            }
+            finally { UnityEngine.Object.DestroyImmediate(tex); }
+        }
+
+        static TerrainLayer LoadOrCreateLayer(MapImportSettings.SplatLayer spec)
+        {
+            Directory.CreateDirectory(LayerDir);
+            var path = $"{LayerDir}/{spec.name}.terrainlayer";
+            var layer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(path);
+            if (layer == null)
+            {
+                layer = new TerrainLayer();
+                AssetDatabase.CreateAsset(layer, path);
+            }
+            var folder = $"{TextureDir}/{spec.texture}/{spec.texture}";
+            layer.diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(folder + "_diff.jpg")
+                ?? throw new FileNotFoundException(folder + "_diff.jpg");
+            layer.normalMapTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(folder + "_nor_gl.jpg");
+            layer.tileSize = new Vector2(spec.tileMeters, spec.tileMeters);
+            EditorUtility.SetDirty(layer);
+            return layer;
         }
 
         static string TileAssetPath(int n, int tx, int tz) =>

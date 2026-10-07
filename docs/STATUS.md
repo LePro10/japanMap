@@ -9,7 +9,7 @@
 
 - [x] 0. Terrain-Shader im Web geklärt: Probe-Terrain (URP Terrain/Lit) im Web-Build sichtbar, Rauchprobe GREEN. Die Warnung „All SubShaders stripped" betrifft nur Unitys Debug-Shader `Hidden/Core/Debug*`. `WebBuild` schlägt jetzt fehl, wenn ein anderer Shader komplett gestrippt wird (`WebBuildTests`).
 - [x] 1. Terrain-Importer (`JapanMap/Map/Import Terrain`, Regler in `Data/Map/MapImportSettings.asset`): 5 Checkpoints, größte Abweichung 0,034 m; Gipfel 450 m an der erwarteten Stelle; Draufsicht = Vorschau (Norden oben). Zweimal importieren → identisch (`MapImportTests`). Kachelung entschieden: **eine Kachel** (DECISIONS D13, gemessen mit `ViewpointBench`). Web-Build mit ganzer Karte: sichtbar, Rauchprobe GREEN.
-- [ ] 2. Splatmap
+- [x] 2. Splatmap aus `zones.png` → 4 Terrain-Layer (Fels/Gras/Sand/Reisfeld, Kachelgrößen aus dem Prototyp), Poly-Haven-Texturen (CC0) unter `Assets/ThirdParty/PolyHaven` mit `LICENSES.md`; Normalmaps/Max. 1024 px per Import-Regel (`TextureImportRules`). Draufsicht = `zones.png`; Test: dominante Schicht an drei Punkten. Noch ohne Mask-Map/Triplanar (Optik → Phase 4).
 - [ ] 3. Wasser
 - [ ] 4. Straßen-Importer
 - [ ] 5. Props-Importer

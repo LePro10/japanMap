@@ -41,6 +41,21 @@ namespace JapanMap.Tests
             return $"{t.name} {t.transform.position} {d.size} {sum:R} {UnityEditor.AssetDatabase.GetAssetPath(d)}";
         }));
 
+        // Mirror errors in zones.png would put sand into the mountains — check one clear spot per zone.
+        [TestCase(-1000f, 1000f, 0, TestName = "Splat_NorthWestMassif_IsRock")]
+        [TestCase(1000f, -1000f, 2, TestName = "Splat_SouthEastCoast_IsSand")]
+        [TestCase(-600f, -100f, 3, TestName = "Splat_WestPlain_IsPaddy")]
+        public void Splat_DominantLayerAt(float x, float z, int expectedLayer)
+        {
+            var world = new Vector3(x, 0, z);
+            var tile = TerrainImporter.TileAt(world);
+            var d = tile.terrainData;
+            var local = world - tile.transform.position;
+            var a = d.GetAlphamaps((int)(local.x / d.size.x * d.alphamapWidth), (int)(local.z / d.size.z * d.alphamapHeight), 1, 1);
+            var best = Enumerable.Range(0, d.alphamapLayers).OrderByDescending(l => a[0, 0, l]).First();
+            Assert.AreEqual(expectedLayer, best, $"dominant layer at ({x}, {z}) is {d.terrainLayers[best].name}");
+        }
+
         [Test]
         public void Viewpoints_AreAboveTheTerrain()
         {

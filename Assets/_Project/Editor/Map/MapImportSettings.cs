@@ -25,6 +25,25 @@ namespace JapanMap.Editor.Map
         [Tooltip("Allowed deviation at the checkpoints of checkpoints.json, in metres.")]
         public float checkpointTolerance = 0.1f;
 
+        [Header("Splatmap (zones.png: R, G, B, rest = 4th layer)")]
+        [Tooltip("Order is the channel order of zones.png. Tile size from legacy terrain.config.ts: 11 m × tileScale.")]
+        public SplatLayer[] splatLayers =
+        {
+            new() { name = "Rock", texture = "rock_face_03", tileMeters = 17.6f },
+            new() { name = "Grass", texture = "aerial_grass_rock", tileMeters = 11f },
+            new() { name = "Sand", texture = "coast_sand_01", tileMeters = 8.25f },
+            new() { name = "Paddy", texture = "brown_mud_02", tileMeters = 12.1f },
+        };
+
+        [System.Serializable]
+        public class SplatLayer
+        {
+            public string name;
+            [Tooltip("Folder name under Assets/ThirdParty/PolyHaven/Textures.")]
+            public string texture;
+            public float tileMeters = 11f;
+        }
+
         public static MapImportSettings LoadOrCreate()
         {
             var settings = UnityEditor.AssetDatabase.LoadAssetAtPath<MapImportSettings>(AssetPath);
