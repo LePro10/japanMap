@@ -36,6 +36,13 @@ namespace JapanMap.Editor.Map
         }
 
         [Serializable]
+        public class River
+        {
+            public float[] centerline; // flat x, y, z (Three coordinates)
+            public float[] halfWidths;
+        }
+
+        [Serializable]
         public class Checkpoints
         {
             public Point[] points;

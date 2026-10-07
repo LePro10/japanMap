@@ -35,6 +35,22 @@ namespace JapanMap.Editor.Map
             new() { name = "Paddy", texture = "brown_mud_02", tileMeters = 12.1f },
         };
 
+        [Header("Water")]
+        [Tooltip("Half size of the sea plane around the map centre, metres. Sea level is 0 (meta.json).")]
+        public float seaExtent = 8000f;
+        [Tooltip("Water above the paddy floor. Legacy props.config PADDY_WATER.depth: 0.10 (0.30 from the bake drowned the cars).")]
+        public float paddyDepth = 0.1f;
+        [Tooltip("Max height difference of the wet cells merged into one water strip (legacy levelTolerance).")]
+        public float paddyLevelTolerance = 0.08f;
+        [Tooltip("Paddy water is split into square chunks of this size so whole chunks are culled.")]
+        public float paddyChunk = 256f;
+        [Tooltip("Legacy water.config RIVER: surfaceRise, edgeSink, minDepth, maxDepth, widthFactor.")]
+        public float riverSurfaceRise = 0.9f;
+        public float riverEdgeSink = 0.2f;
+        public float riverMinDepth = 0.35f;
+        public float riverMaxDepth = 6f;
+        public float riverWidthFactor = 0.78f;
+
         [System.Serializable]
         public class SplatLayer
         {

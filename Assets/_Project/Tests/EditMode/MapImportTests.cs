@@ -71,6 +71,24 @@ namespace JapanMap.Tests
         }
 
         [Test]
+        public void Water_AllSurfacesFaceUp()
+        {
+            var water = GameObject.Find($"{MapScene.RootName}/{WaterImporter.GroupName}");
+            Assert.IsNotNull(water, "World/Water missing — run JapanMap/Map/Import Water");
+            var filters = water.GetComponentsInChildren<MeshFilter>();
+            Assert.That(filters.Length, Is.GreaterThanOrEqualTo(3));
+            foreach (var f in filters)
+            {
+                var m = f.sharedMesh;
+                var v = m.vertices;
+                var t = m.triangles;
+                Assert.That(t.Length, Is.GreaterThan(0), f.name);
+                for (var i = 0; i < t.Length; i += 3)
+                    Assert.That(Vector3.Cross(v[t[i + 1]] - v[t[i]], v[t[i + 2]] - v[t[i]]).y, Is.GreaterThan(0f), $"{f.name}: triangle {i / 3} faces down");
+            }
+        }
+
+        [Test]
         public void ToUnity_MirrorsZ_NorthIsPlusZ()
         {
             // templeHall: Three (820, -954) lies north of the centre → Unity z must be positive.
