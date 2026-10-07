@@ -97,11 +97,9 @@ dem Unity-MCP. Der MCP verbindet sich nur beim Start einer Claude-Sitzung.
     nie `-A`/`commit -a`) und liest vor einem DECISIONS-Eintrag die höchste
     Nummer neu.
 
-14. **Mitdenken und gleich verbessern.** Fällt dir ein Bug oder etwas
-    Unschönes auf, denk über die Ursache nach statt nur über das Symptom.
-    Klein (ein paar Minuten, ohne Plan-Änderung): sofort beheben, prüfen, im
-    Commit erwähnen. Größer: unter „Gefunden" in STATUS.md notieren und bei
-    der aktuellen Aufgabe bleiben. Schlag Verbesserungen von dir aus vor.
+14. **Mitdenken und gleich verbessern.** Bei Bug oder Unschönem die Ursache
+    suchen. Klein: sofort beheben, prüfen, im Commit nennen. Größer: unter
+    „Gefunden" in STATUS.md, bei der Aufgabe bleiben. Verbesserungen vorschlagen.
 15. **Wiedererkennbar bleiben, aber besser machen.** Karte, Orte, Strecken,
     Autos und Spielregeln sollen wiedererkennbar sein. Kleine Verbesserungen
     darfst du selbst machen, wenn sie das Spiel für CrazyGames besser machen
@@ -109,10 +107,9 @@ dem Unity-MCP. Der MCP verbindet sich nur beim Start einer Claude-Sitzung.
     geglättet) — Begründung im Commit. Große Änderungen (Ort verlegen, Straße
     entfernen, Regel ändern) nur mit Zustimmung und Eintrag in DECISIONS.md.
 
-16. **Was der Mensch einmal korrigiert, muss er nie wieder sagen.**
-    Jede Rückmeldung (Stil, Fahrgefühl, Arbeitsweise) wird noch in derselben
-    Sitzung festgeschrieben: im passenden Skill, `STYLE-KIT.md` oder als
-    Test — nicht nur umgesetzt. Freigegebene Ergebnisse sind der neue Maßstab.
+16. **Was der Mensch einmal korrigiert, muss er nie wieder sagen.** Jede
+    Rückmeldung wird in derselben Sitzung festgeschrieben (Skill, Kit, Test);
+    Freigegebenes ist der neue Maßstab.
 
 ## Sich selbst verbessern — Pflicht, nicht Kür
 
