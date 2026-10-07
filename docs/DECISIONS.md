@@ -79,6 +79,50 @@ geladen) — Wissen, das niemand mehr lesen konnte. Neu: jede Lehre wird zu eine
 **Vorkehrung** (Test > Werkzeug > Skill > Regel), mit einer Zeile in
 `docs/LESSONS.md`; `CLAUDE.md` hat ein festes Budget von 150 Zeilen.
 
+## D09 — Pakete in Phase 1 · 2026-10-07
+
+Jedes Paket mit einem Satz Begründung. Neues Paket = neue Zeile hier.
+
+| Paket | Version | Warum |
+|---|---|---|
+| URP | 17.6.0 | Renderweg für Web und Handy; Qualitätsstufen als URP-Assets |
+| Input System | 1.20.1 | Tastatur, Gamepad und Touch über einen Weg; altes Input ist abgeschaltet |
+| Cinemachine | 3.1.7 | Verfolger- und Fotokamera ohne Eigenbau (Phase 3/9) |
+| Splines | 2.9.1 | Straßen aus `roads.json` als Splines (Phase 2) |
+| AI Navigation | 2.0.15 | NavMesh für Fußgänger und Verkehr (Phase 6) |
+| Addressables | 4.1.1 | Welt nachladen statt im Startpaket (D04) |
+| Test Framework | 1.8.0 | EditMode-/PlayMode-Tests für `Tools/verify` |
+| MCP for Unity (CoplayDev) | Git `main` | Agent steuert den offenen Editor; Stand im `packages-lock.json` festgehalten |
+| Rider / Visual Studio | — | nur Editor, kostet im Build nichts |
+
+**Entfernt** aus der URP-Vorlage: Visual Scripting, Collab, Timeline und die
+Module XR, Tilemap, 2D-Physik, Cloth, Video, Vector Graphics, Adaptive
+Performance, Android JNI, Analytics. Was ein Paket davon wieder braucht, holt
+der Paketmanager als Abhängigkeit nach.
+
+## D10 — Domain Reload beim Play aus · 2026-10-07
+
+**Warum:** gemessen mit `node Tools/measure-loop.mjs`: Play-Eintritt 1,17 / 1,19 s
+mit Domain Reload, 0,11 / 0,07 s ohne. **Preis:** statische Felder überleben
+zwischen zwei Play-Sitzungen. Jede Klasse mit statischem Zustand setzt ihn in
+einer `[RuntimeInitializeOnLoadMethod(SubsystemRegistration)]`-Methode zurück
+(Vorbild: `Bootstrapper.ResetStatics`).
+
+## D11 — Agenten-Werkzeuge in Node, Logik in C# · 2026-10-07
+
+**Warum:** Die Werkzeuge unter `Tools/` müssen auf macOS und Windows laufen
+(das Projekt hat schon einmal den Rechner gewechselt); Node ≥ 22 ist ohnehin
+da. Was Unity-Wissen braucht (Bild rendern, bauen, Einstellungen), steckt in
+Editor-Skripten unter `Assets/_Project/Editor/` und ist damit auch über den MCP
+und das Menü erreichbar — die Node-Skripte starten nur, warten und fassen das
+Ergebnis in einer Zeile zusammen.
+
+## D12 — Entwickler-Overlay mit IMGUI, nicht UI Toolkit · 2026-10-07
+
+**Warum:** Das F1-Overlay (`StatsOverlay`) existiert nur im Editor und in
+Development-Builds; IMGUI braucht dafür kein Asset und keine Panel-Settings.
+D05 (UI Toolkit) gilt für alles, was ein Spieler sieht.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Fahrphysik-Ansatz** (Phase 3): eigene Raycast-Federung + Arcade-Modell auf

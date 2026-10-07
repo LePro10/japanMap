@@ -18,12 +18,20 @@ namespace JapanMap.DevTools
         public struct Snapshot
         {
             public float Fps, FrameMs, WorstMs;
-            public long DrawCalls, SetPassCalls, Triangles, UsedMemoryBytes, GcMemoryBytes;
+            public long DrawCalls, Batches, SetPassCalls, Triangles, UsedMemoryBytes, GcMemoryBytes;
             public bool RenderStatsValid;
+
+            /// <summary>
+            /// Unity's Web player reports triangles and SetPass calls but leaves "Draw Calls" and
+            /// "Batches" at 0 (measured 2026-10-07, 6000.6.4f1). Something drawn with zero draw calls is
+            /// impossible, so such a 0 means "not provided" and must not be read as a budget value.
+            /// </summary>
+            public static string Count(long value, long triangles) =>
+                value == 0 && triangles > 0 ? "n/a" : value.ToString();
         }
 
         readonly FrameTimeStats _frames = new(120);
-        ProfilerRecorder _drawCalls, _setPass, _triangles, _usedMemory, _gcMemory;
+        ProfilerRecorder _drawCalls, _batches, _setPass, _triangles, _usedMemory, _gcMemory;
         GUIStyle _style;
         Snapshot _last;
 
@@ -43,6 +51,7 @@ namespace JapanMap.DevTools
         void OnEnable()
         {
             _drawCalls = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Draw Calls Count");
+            _batches = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Batches Count");
             _setPass = ProfilerRecorder.StartNew(ProfilerCategory.Render, "SetPass Calls Count");
             _triangles = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Triangles Count");
             _usedMemory = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "System Used Memory");
@@ -52,6 +61,7 @@ namespace JapanMap.DevTools
         void OnDisable()
         {
             _drawCalls.Dispose();
+            _batches.Dispose();
             _setPass.Dispose();
             _triangles.Dispose();
             _usedMemory.Dispose();
@@ -71,6 +81,7 @@ namespace JapanMap.DevTools
                 Fps = _frames.AverageMs > 0f ? 1000f / _frames.AverageMs : 0f,
                 RenderStatsValid = _drawCalls.Valid && _triangles.Valid,
                 DrawCalls = _drawCalls.LastValue,
+                Batches = _batches.LastValue,
                 SetPassCalls = _setPass.LastValue,
                 Triangles = _triangles.LastValue,
                 UsedMemoryBytes = _usedMemory.LastValue,
@@ -89,7 +100,7 @@ namespace JapanMap.DevTools
             };
             var s = _last;
             var render = s.RenderStatsValid
-                ? $"Draw calls {s.DrawCalls}  SetPass {s.SetPassCalls}\nTriangles {s.Triangles / 1000f:F1} k"
+                ? $"Draw calls {Snapshot.Count(s.DrawCalls, s.Triangles)}  Batches {Snapshot.Count(s.Batches, s.Triangles)}  SetPass {s.SetPassCalls}\nTriangles {s.Triangles / 1000f:F1} k"
                 : "Draw calls n/a\nTriangles n/a";
             var text =
                 $"{s.Fps:F0} fps  {s.FrameMs:F2} ms (worst {s.WorstMs:F1})\n{render}\n" +

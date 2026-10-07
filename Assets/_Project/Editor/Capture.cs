@@ -27,8 +27,12 @@ namespace JapanMap.Editor
         }
 
         [MenuItem("JapanMap/Capture Main Camera")]
-        public static void FromMenu() =>
-            Render(Camera.main, $"{Dir}/{UnityEngine.SceneManagement.SceneManager.GetActiveScene().name}.png", 1024, 576);
+        public static void FromMenu()
+        {
+            // An unsaved scene has an empty name; without the fallback the file would be ".png".
+            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            Render(Camera.main, $"{Dir}/{(string.IsNullOrEmpty(scene) ? "untitled" : scene)}.png", 1024, 576);
+        }
 
         /// <summary>Returns the written path, or null (with an error in the console) on failure.</summary>
         public static string Render(Camera camera, string output, int width, int height)

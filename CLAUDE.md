@@ -39,18 +39,23 @@ dazu `Editor` und `Tests`. Abhängigkeiten nur nach unten zu `Core`.
 
 ## Befehle
 
-> Werden in Phase 1 gebaut. Jeder Befehl steht erst hier, wenn er einmal
-> ausgeführt wurde.
+Alle einmal ausgeführt (2026-10-07). Einrichtung einmalig: `cd Tools && npm install
+&& npx playwright install chromium-headless-shell`.
 
-| Zweck | Befehl |
-|---|---|
-| Prüfen (kompilieren, Tests, Konsole) | *Phase 1* |
-| Bild von Blickpunkt | *Phase 1/2* |
-| Web-Build + Größenbericht | *Phase 1* |
-| Web-Build ausliefern + Rauchprobe | *Phase 1* |
+| Zweck | Editor **zu** (Batchmode) | Editor **offen** (Unity-MCP) |
+|---|---|---|
+| Prüfen: kompilieren, EditMode + PlayMode | `node Tools/verify.mjs` (`--edit` nur EditMode) — eine Zeile GREEN/RED, ~15 s | `refresh_unity`, `read_console`, `run_tests` + `get_test_job` |
+| Bild der Main Camera → `Captures/` | `node Tools/capture.mjs [--scene … --out …]` | `execute_menu_item` „JapanMap/Capture Main Camera" |
+| Web-Build + `Builds/Web/size-report.txt` | `node Tools/build-web.mjs` (`--dev` mit F1-Overlay) | Menü „JapanMap/Build Web (Release)" |
+| Rauchprobe im Headless-Chrome | `node Tools/smoke.mjs` (baut nicht, liefert `Builds/Web` aus) | — |
+| Ausliefern (Handy: `--lan`) | `node Tools/serve-web.mjs` → Port **8090** | — |
+| Arbeitsschleife messen | `node Tools/measure-loop.mjs` | — |
+| Einstellungen erzwingen | `-executeMethod JapanMap.Editor.ProjectSetup.Apply` | Menü „JapanMap/Setup/Apply Project Settings" |
 
-Wichtig: **Batchmode geht nicht, solange der Editor das Projekt offen hat.**
-Dann alles über den Unity-MCP auslösen.
+Die Batch-Werkzeuge melden `BLOCKED` (Exit 2), wenn der Editor das Projekt
+offen hat — dann den MCP nehmen, nicht den Editor schließen, ohne zu fragen.
+Play immer aus `Boot.unity` starten (sie startet die Systeme). Port 8080 gehört
+dem Unity-MCP. Der MCP verbindet sich nur beim Start einer Claude-Sitzung.
 
 ## Regeln
 

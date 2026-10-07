@@ -30,6 +30,12 @@ git pull
 git lfs install
 ```
 
+Einmal für die Agenten-Werkzeuge (Rauchprobe im Headless-Chrome):
+
+```bash
+cd Tools && npm install && npx playwright install chromium-headless-shell
+```
+
 Dann eine **neue** Claude-Code-Sitzung **im Repo-Ordner** öffnen, Unity Hub
 und Blender offen haben und sagen:
 

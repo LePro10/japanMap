@@ -22,5 +22,13 @@ namespace JapanMap.Tests
             Assert.AreEqual(20f, s.AverageMs, 1e-4f);
             Assert.AreEqual(30f, s.WorstMs);
         }
+
+        [Test]
+        public void ZeroDrawCalls_WithTriangles_IsNotAvailable()
+        {
+            Assert.AreEqual("n/a", StatsOverlay.Snapshot.Count(0, 7600));
+            Assert.AreEqual("0", StatsOverlay.Snapshot.Count(0, 0));
+            Assert.AreEqual("42", StatsOverlay.Snapshot.Count(42, 7600));
+        }
     }
 }

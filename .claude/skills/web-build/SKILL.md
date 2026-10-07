@@ -6,8 +6,16 @@ description: Build the game for the browser, measure download size, serve it loc
 # Web-Build bauen und prüfen
 
 Der Browser ist die Zielplattform — ein Feature ist erst fertig, wenn es im
-Web-Build läuft. Die Werkzeuge entstehen in Phase 1 (`Tools/build-web`,
-`Tools/serve-web`); bis dahin über den Unity-MCP bauen.
+Web-Build läuft.
+
+```bash
+node Tools/build-web.mjs        # Release → Builds/Web + size-report.txt (~1,5–2,5 min)
+node Tools/build-web.mjs --dev  # Development mit F1-Overlay (~30 s, ~45 MB — Größe zählt nicht)
+node Tools/smoke.mjs            # ausliefern, Headless-Chrome, Konsole, F1, Bild → Captures/web-smoke.png
+node Tools/serve-web.mjs --lan  # Handy im WLAN, Port 8090
+```
+
+Referenz leerer Build (2026-10-07): Release **7,75 MB** (wasm 5,18, data 2,39).
 
 ## Einstellungen (Ausgangspunkt)
 
@@ -23,12 +31,20 @@ Web-Build läuft. Die Werkzeuge entstehen in Phase 1 (`Tools/build-web`,
 1. Bauen nach `Builds/Web/`, Dauer notieren.
 2. **Größenbericht:** Gesamtgröße, größte 10 Dateien, Anzahl Dateien.
    Vergleich mit dem letzten Wert in STATUS.md — Sprünge erklären.
-3. **Ausliefern** (z. B. `npx http-server Builds/Web -p 8080`) und in
+3. **Ausliefern** (`node Tools/smoke.mjs` macht 3. selbst) und in
    Headless-Chrome laden: Konsole mitlesen (0 Fehler), warten bis spielbar,
    Bild machen. Zeit bis spielbar notieren.
 4. Nur **ein** Spiel-Fenster gleichzeitig rendern lassen (der Rechner des
    Menschen ist mit zwei schon abgestürzt).
 5. Werte in STATUS.md eintragen.
+
+## Fallen
+
+- Die Rauchprobe läuft auf **SwiftShader** (Software): FPS dort sind wertlos.
+- Der Web-Player liefert „Draw Calls" und „Batches" nicht (Overlay: „n/a");
+  Dreiecke und SetPass stimmen. Draw-Calls im offenen Editor messen.
+- `net::ERR_ABORTED` auf `*.unityweb` ist Absicht des Unity-Laders.
+- Port 8080 gehört dem Unity-MCP.
 
 ## CrazyGames-Grenzen
 

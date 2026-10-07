@@ -20,7 +20,7 @@ const logs = [];
 let browser;
 try {
   browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-  const page = await browser.newPage({ viewport: { width: 1024, height: 576 } });
+  const page = await browser.newPage({ viewport: { width: 1024, height: 720 } });
   page.on('console', (m) => {
     const text = m.text();
     logs.push(text);
@@ -45,7 +45,13 @@ try {
     await page.waitForTimeout(250);
   }
   // A few seconds of runtime to catch errors that only appear after the first frames.
-  if (bootMs !== null) await page.waitForTimeout(3000);
+  if (bootMs !== null) {
+    await page.waitForTimeout(2000);
+    // F1 shows the stats overlay in development builds (release builds ignore it).
+    await page.locator('canvas').first().click();
+    await page.keyboard.press('F1');
+    await page.waitForTimeout(1000);
+  }
   mkdirSync(dirname(out), { recursive: true });
   await page.screenshot({ path: out });
 

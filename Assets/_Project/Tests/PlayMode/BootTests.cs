@@ -41,6 +41,8 @@ namespace JapanMap.Tests
             var overlay = Bootstrapper.Instance.GetComponentInChildren<StatsOverlay>();
             Assert.IsNotNull(overlay, "StatsOverlay must exist in editor/development");
             Assert.Greater(overlay.Last.FrameMs, 0f);
+            var l = overlay.Last;
+            Debug.Log($"[StatsProbe] valid={l.RenderStatsValid} draw={l.DrawCalls} batches={l.Batches} setpass={l.SetPassCalls} tris={l.Triangles}");
         }
     }
 }

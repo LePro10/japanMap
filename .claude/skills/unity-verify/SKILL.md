@@ -10,12 +10,14 @@ Sichtbaren ein Bild angesehen. Ungeprüftes wird als ungeprüft gemeldet.
 
 ## Zwei Wege — je nachdem, ob der Editor offen ist
 
-| Editor offen (Normalfall) | Editor zu |
+| Editor zu | Editor offen |
 |---|---|
-| Über **Unity-MCP**: Skript speichern → Kompilierung abwarten → Konsole lesen → Tests starten → Play / Bild | **Batchmode** über die Werkzeuge in `Tools/` (Phase 1) |
+| `node Tools/verify.mjs` → eine Zeile GREEN/RED (Kompilierfehler, fehlgeschlagene Tests, verwaiste `.meta`) | MCP: `refresh_unity` (compile) → `read_console` (error, warning) → `run_tests` + `get_test_job` |
+| `node Tools/capture.mjs` | MCP: `manage_scene` load → `execute_menu_item` „JapanMap/Capture Main Camera" |
 
-Batchmode auf ein Projekt, das der Editor offen hat, scheitert (Projekt
-gesperrt). Nicht den Editor schließen, ohne den Menschen zu fragen.
+Batchmode auf ein offenes Projekt scheitert (Sperre); die Werkzeuge melden
+dann `BLOCKED` (Exit 2). Nicht den Editor schließen, ohne den Menschen zu
+fragen — es sei denn, der Agent hat ihn selbst geöffnet.
 
 ## Reihenfolge nach einer Änderung
 
@@ -34,8 +36,10 @@ gesperrt). Nicht den Editor schließen, ohne den Menschen zu fragen.
 
 ## Umgebung prüfen (Beginn Phase 1 und nach Rechnerwechsel)
 
-- Unity-Version und Pfad zu `Unity.exe` (Hub: `Editor/<version>/Editor/Unity.exe`),
-  Web-Modul installiert (`PlaybackEngines/WebGLSupport`).
+- Unity-Version (`ProjectSettings/ProjectVersion.txt`) und Editor-Pfad: macOS
+  `/Applications/Unity/Hub/Editor/<v>/Unity.app/Contents/MacOS/Unity`, Windows
+  `C:/Program Files/Unity/Hub/Editor/<v>/Editor/Unity.exe` (Überschreiben:
+  `UNITY_EDITOR`). Web-Modul: `<v>/PlaybackEngines/WebGLSupport`.
 - `git lfs version` funktioniert, `git lfs install` wurde ausgeführt.
 - Unity-MCP antwortet (Tools auflisten), Blender-MCP antwortet
   (`get_addon_status`).
@@ -50,5 +54,16 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
 - `.meta`-Dateien gehören zum Asset; nie einzeln löschen.
 - Mit abgeschaltetem Domain Reload bleiben statische Felder zwischen
   Play-Sitzungen erhalten → statische Zustände explizit zurücksetzen.
+
+- **Batchmode-PlayMode rendert nicht:** Render-Zähler (Draw Calls, Dreiecke)
+  sind dort 0. Zahlen dazu nur im offenen Editor oder im Web-Dev-Build ablesen.
+- **Der Unity-MCP verbindet sich nur beim Start einer Claude-Sitzung.** Startet
+  der Editor später, ist er für diese Sitzung nur per HTTP erreichbar
+  (`POST http://127.0.0.1:8080/mcp`, JSON-RPC: `initialize` → Header
+  `mcp-session-id` → `tools/call`). Der Server startet mit dem Editor (~25 s).
+- **Einen selbst gestarteten Editor schließen:** AppleScript `quit` greift
+  nicht; `kill -TERM <pid>` beendet ihn sauber in ~2 s.
+- **Projektname-Kollisionen:** Unity hat eigene Typen wie
+  `UnityEngine.Rendering.DebugOverlay` — eigene Klassen eindeutig benennen.
 
 (Ergänzen, sobald neue Fallen auftauchen — Skill `retro`.)
