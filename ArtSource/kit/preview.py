@@ -80,7 +80,7 @@ def stage(mood=True):
         return ob
     def mk_ground():
         me = bpy.data.meshes.new('PreviewGround')
-        s = 40
+        s = 200
         me.from_pydata([(-s, -s, 0), (s, -s, 0), (s, s, 0), (-s, s, 0)], [], [(0, 1, 2, 3)])
         return bpy.data.objects.new('PreviewGround', me)
     g = get('PreviewGround', mk_ground)
@@ -153,18 +153,28 @@ def _bounds(objs):
     return lo, hi
 
 
-def _frame(cam, objs, direction, aspect, margin=1.12):
+def _frame(cam, objs, direction, aspect, margin=1.08):
+    """Distance so every corner of the bounding box fits the frame (a bounding
+    sphere left tall thin things like poles tiny)."""
     lo, hi = _bounds(objs)
     c = (lo + hi) / 2
-    rad = (hi - lo).length / 2
-    fov = 2 * math.atan(36 / 2 / cam.data.lens)  # horizontal; sensor 36 mm
-    if aspect < 1:
-        fov = 2 * math.atan(math.tan(fov / 2) * aspect)
     d = Vector(direction).normalized()
-    dist = rad * margin / math.sin(fov / 2)
-    cam.location = c + d * dist
+    right = d.cross(Vector((0, 0, 1))).normalized()
+    if right.length < 1e-6:
+        right = Vector((1, 0, 0))
+    up = right.cross(d).normalized()
+    half = math.atan(36 / 2 / cam.data.lens)       # sensor fits the longer side
+    th = math.tan(half) * (1 if aspect >= 1 else aspect)
+    tv = math.tan(half) * (1 / aspect if aspect >= 1 else 1)
+    D = 0.0
+    for x in (lo.x, hi.x):
+        for y in (lo.y, hi.y):
+            for z in (lo.z, hi.z):
+                p = Vector((x, y, z)) - c
+                D = max(D, p.dot(d) + abs(p.dot(right)) * margin / th, p.dot(d) + abs(p.dot(up)) * margin / tv)
+    cam.location = c + d * D
     cam.rotation_euler = (-d).to_track_quat('-Z', 'Y').to_euler()
-    cam.data.clip_end = dist * 4
+    cam.data.clip_end = D * 6
 
 
 def render(objs, name, views, size=(640, 640), show=None):

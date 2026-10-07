@@ -318,6 +318,76 @@ def oni():
 
 
 
+
+def png(name, smooth=0.45, emit=0.0, bg='#808080'):
+    """Graphic rendered by kit/graphics.mjs (signs need real fonts)."""
+    def gen(w, h, rng):
+        import bpy, os
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'gfx', name + '.png')
+        img = bpy.data.images.load(path, check_existing=False)
+        try:
+            assert tuple(img.size) == (w, h), f'{name}: png {tuple(img.size)} != region {(w, h)}'
+            a = np.array(img.pixels[:], np.float32).reshape(h, w, 4)
+        finally:
+            bpy.data.images.remove(img)
+        rgb = a[..., :3] * a[..., 3:4] + srgb(bg) * (1 - a[..., 3:4])
+        return _out(rgb, smooth, 0.0, rgb * emit if emit else None)
+    return gen
+
+
+def concrete_pole(col='#a9a8a2'):
+    """Spun-concrete pole, used rotated: U runs up the pole, so streaks run along U."""
+    def gen(w, h, rng):
+        c = srgb(col)
+        n = fbm(w, h, w // 64, max(2, h // 32), rng, 4)
+        streak = value_noise(w, h, max(4, w // 96), h // 3, rng)          # long along U
+        f = (0.88 + 0.18 * n) * (1 - 0.12 * smoothstep(0.55, 0.85, streak))
+        pores = rng.random((h, w))
+        f = np.where(pores > 0.985, f * 0.7, f)
+        return _out(c * f[..., None], 0.3 + 0.05 * n)
+    return gen
+
+
+def galvanized(col='#a3a7ab'):
+    """Hot-dip galvanised steel: faint spangle blotches, dull metal."""
+    def gen(w, h, rng):
+        n = value_noise(w, h, w // 6, max(2, h // 6), rng)
+        n2 = fbm(w, h, w // 64, max(2, h // 32), rng, 3)
+        f = 0.9 + 0.1 * np.round(n * 3) / 3 + 0.06 * (n2 - 0.5)
+        return _out(srgb(col) * f[..., None], 0.45 + 0.1 * n2, 0.9)
+    return gen
+
+
+def block_wall(col='#a19f98', bw=0.40, bh=0.20, ppm=128):
+    """Concrete block wall (burokku-bei): 390 x 190 blocks, 10 mm joints, running bond."""
+    def gen(w, h, rng):
+        y, x = np.mgrid[0:h, 0:w].astype(float)
+        X, Y = x / ppm, y / ppm
+        row = np.floor(Y / bh)
+        xs = X + (row % 2) * bw / 2
+        col_i = np.floor(xs / bw) % (w / ppm / bw)
+        jx = np.abs(xs - np.round(xs / bw) * bw); jy = np.abs(Y - np.round(Y / bh) * bh)
+        joint = smoothstep(0.009, 0.004, np.minimum(jx, jy))
+        tv = (np.sin((row * 31 + col_i * 17) * 12.9898) * 43758.5453) % 1.0
+        n = fbm(w, h, w // 32, max(2, h // 32), rng, 4)
+        f = (0.85 + 0.12 * tv + 0.12 * n) * (1 - 0.35 * joint)
+        f *= rain_streaks(w, h, rng, 0.15) * grime(w, h, rng, 0.3, 0.25)
+        return _out(srgb(col) * f[..., None], 0.2)
+    return gen
+
+
+def bamboo(col='#b59b62', node_m=0.4, ppm=128):
+    """Split, aged bamboo: fibres along U, darker node rings every node_m (U)."""
+    def gen(w, h, rng):
+        y, x = np.mgrid[0:h, 0:w].astype(float)
+        fib = value_noise(w, h, max(4, w // 64), h // 2, rng)
+        d = np.abs(((x / ppm) % node_m) - node_m / 2)
+        node = smoothstep(0.02, 0.006, np.abs(d - node_m / 2))
+        f = (0.85 + 0.25 * fib) * (1 - 0.35 * node)
+        return _out(srgb(col) * f[..., None], 0.4 + 0.15 * fib)
+    return gen
+
+
 # ── atlas layouts (pixel rects: x, y, w, h; y from the bottom) ──────────────
 
 def _cells(names_gens, x0, y0, cols, size=64):
@@ -364,6 +434,49 @@ LAYOUTS = {
             ('VERMILION',    flat('#c4381c', 0.4, dirt=0.25)),
             ('SOOT',         flat('#1b1a19', 0.15, dirt=0.0)),
         ], 640, 256, 6),
+    },
+    'Street': {  # street furniture; strips at 128 px/m
+        'CONCRETE_POLE': _strip(896, 128, concrete_pole()),
+        'GALV':          _strip(832, 64, galvanized()),
+        'BLOCK_WALL':    _strip(640, 192, block_wall()),
+        'WOOD_BOARD':    _strip(576, 64, wood('#5a4634', smooth=0.2)),
+        'BAMBOO':        _strip(512, 64, bamboo()),
+        'WOOD_LIGHT':    _strip(448, 64, wood('#8a6440', smooth=0.35)),
+        'STOP':       _rect(0, 320, 128, 128, png('STOP')),
+        'SPEED40':    _rect(128, 320, 128, 128, png('SPEED40')),
+        'NO_PARKING': _rect(256, 320, 128, 128, png('NO_PARKING')),
+        'CROSSWALK':  _rect(384, 320, 128, 128, png('CROSSWALK')),
+        'CURVE':      _rect(512, 320, 128, 128, png('CURVE')),
+        'ONE_WAY':    _rect(640, 320, 256, 128, png('ONE_WAY')),
+        'BUS_STOP':   _rect(896, 320, 128, 128, png('BUS_STOP', bg='#8d9096')),
+        'PED_RED':    _rect(0, 256, 64, 64, png('PED_RED', 0.7, emit=1.0)),
+        'PED_GREEN':  _rect(64, 256, 64, 64, png('PED_GREEN', 0.7, emit=1.0)),
+        'POLE_PLATE': _rect(128, 256, 32, 64, png('POLE_PLATE')),
+        'TORA':       _rect(0, 128, 128, 128, png('TORA', 0.35)),
+        **_cells([
+            ('PAINT_WHITE',   flat('#e9eae6', 0.45, dirt=0.15)),
+            ('PAINT_GREY',    flat('#8d9096', 0.4, 0.3, dirt=0.1)),     # light poles, signal housings
+            ('PAINT_DARK',    flat('#3b3e42', 0.4, 0.3, dirt=0.08)),
+            ('BLACK',         flat('#121314', 0.35, dirt=0.0)),
+            ('SIGN_BACK',     flat('#9ea2a6', 0.5, 0.8, dirt=0.1)),
+            ('PORCELAIN',     flat('#e8e6df', 0.8, dirt=0.05)),
+            ('TRANSFORMER',   flat('#8e979c', 0.45, 0.4, dirt=0.15)),
+            ('CABLE',         flat('#1a1a1b', 0.4, dirt=0.0)),
+            ('YELLOW',        flat('#e8b51a', 0.45, dirt=0.15)),
+            ('STEEL',         flat('#9a9ca0', 0.6, 1.0, dirt=0.1)),
+            ('RUST',          flat('#6b3a1f', 0.15, 0.3, dirt=0.15)),
+            ('CONCRETE_CAP',  flat('#b3b1aa', 0.25, dirt=0.2)),
+            ('PLASTIC_BLUE',  flat('#2f6fb5', 0.5, dirt=0.15)),
+            ('PLASTIC_GREY',  flat('#c4c6c2', 0.45, dirt=0.15)),
+            ('PLASTIC_BLACK', flat('#18191a', 0.5, dirt=0.05)),
+            ('ROPE_BLACK',    flat('#202020', 0.2, dirt=0.0)),
+            ('LENS_RED',      emissive('#ff2a1a')),
+            ('LENS_YELLOW',   emissive('#ffb000')),
+            ('LENS_GREEN',    emissive('#00d0a0')),
+            ('LED_COOL',      emissive('#e8f3ff')),
+            ('LAMP_WARM',     emissive('#ffc985')),
+            ('INTERIOR',      flat('#0c0c0d', 0.2, dirt=0.0)),
+        ], 192, 0, 13),
     },
     'Kura': {    # plaster strips 2 m tall at 128 px/m; namako at 256 px/m (1 m)
         'PLASTER_WHITE': _strip(768, 256, plaster()),

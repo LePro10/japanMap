@@ -6,7 +6,11 @@ Plan: [docs/PLAN.md](../docs/PLAN.md), Abschnitt „Asset-Sprint". Regeln:
 
 ## Wo wir stehen (2026-10-07)
 
-**Aufgabe 1 — Stil-Kit + drei Pilot-Assets: 2. Runde fertig, wartet auf Freigabe.**
+**Aufgabe 1 — Stil-Kit + drei Pilot-Assets: freigegeben (2026-10-07, 2. Runde).**
+Kura 35 Dreiecke über Ziel ist ok (Entscheid Eigentümer).
+
+**Aufgabe 2 — Requisiten: läuft.** Nach ≈ 10 Requisiten Stopp mit Übersicht,
+damit die Unity-Sitzung sie unter echtem Licht testet.
 
 Runde 1: Stil-Richtung, Laterne und Automaten gut; nicht freigegeben wegen
 (1) Kura zu flach, (2) gestreckte Schlieren, (3) Automat hinten/seitlich

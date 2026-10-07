@@ -11,6 +11,8 @@ ASSETS = {
     'stone_lantern': 'props.stone_lantern',
     'vending_machine': 'props.vending_machine',
     'kura': 'buildings.kura',
+    'utility_pole': 'props.utility_pole',
+    'power_line': 'props.power_line',
 }
 
 # 3/4 front in the mood light, 3/4 front neutral, 3/4 back neutral (same as

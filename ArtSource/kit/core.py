@@ -222,6 +222,53 @@ def sweep_loop(bm, corners, profile, splits=None):
     return faces
 
 
+def tube_path(bm, pts, r, n=6, cap0=False, cap1=False, twist_up=(0, 0, 1)):
+    """Tube along a polyline (cables, pipes, bolts, braces). Rings are
+    oriented by the averaged tangent so bends stay round. Returns
+    (sides, cap0, cap1); faces point outward."""
+    P = [Vector(p) for p in pts]
+    rings = []
+    for i, p in enumerate(P):
+        t = (P[min(i + 1, len(P) - 1)] - P[max(i - 1, 0)]).normalized()
+        up = Vector(twist_up)
+        if abs(t.dot(up)) > 0.95:
+            up = Vector((1, 0, 0))
+        a = t.cross(up).normalized(); b = t.cross(a).normalized()
+        rings.append([bm.verts.new(p + (a * math.cos(2 * math.pi * k / n) + b * math.sin(2 * math.pi * k / n)) * r)
+                      for k in range(n)])
+    sides = []
+    for i in range(len(rings) - 1):
+        A, B = rings[i], rings[i + 1]
+        for k in range(n):
+            f = bm.faces.new([A[k], A[(k + 1) % n], B[(k + 1) % n], B[k]])
+            f.normal_update()
+            if f.normal.dot(f.calc_center_median() - (P[i] + P[i + 1]) / 2) < 0:
+                f.normal_flip()
+            sides.append(f)
+    c0 = c1 = None
+    if cap0:
+        c0 = bm.faces.new(rings[0]); c0.normal_update()
+        if c0.normal.dot(P[0] - P[1]) < 0:
+            c0.normal_flip()
+    if cap1:
+        c1 = bm.faces.new(rings[-1]); c1.normal_update()
+        if c1.normal.dot(P[-1] - P[-2]) < 0:
+            c1.normal_flip()
+    return sides, c0, c1
+
+
+def catenary(p0, p1, sag, segs=12):
+    """Points of a hanging cable from p0 to p1 with the given mid-span sag."""
+    p0, p1 = Vector(p0), Vector(p1)
+    out = []
+    for i in range(segs + 1):
+        t = i / segs
+        p = p0.lerp(p1, t)
+        p.z -= sag * 4 * t * (1 - t)   # parabola: close to a catenary for small sag
+        out.append(p)
+    return out
+
+
 def poly_prism_x(bm, poly, x0, x1):
     """Closed (y, z) outline extruded along X from x0 to x1, both ends capped.
     Returns (sides[i] for edge i -> i+1, cap at x0, cap at x1)."""
@@ -394,6 +441,37 @@ def map_faces(bm, faces, reg, z0=None, zrange=None, rotate=False, s_offset=0.0, 
         STRETCH.append((reg['name'], round(over, 2), tuple(round(x, 1) for x in c)))
 
 
+def map_cyl(bm, faces, reg, cx=0.0, cy=0.0, z0=None, rotate=False, z_len=None, seam=math.pi / 2):
+    """Cylindrical unwrap for round parts (poles, pipes): the circumference
+    runs once across the region. The seam sits at angle `seam` (default +Y,
+    the back); build the part with a vertex there (lathe phase 0, n % 4 == 0)
+    so no face straddles it - such a face would reach outside the region.
+    strip, rotate=True: U = height in metres (repeats), V = once round.
+    rect: U = once round, V = height over z_len (tiger-stripe cover)."""
+    uv = _uv(bm)
+    u0, v0, u1, v1 = reg['uv']
+    faces = [f for f in faces if f is not None]
+    zs = [v.co.z for f in faces for v in f.verts]
+    z0 = min(zs) if z0 is None else z0
+    z_len = z_len or (max(zs) - z0) or 1.0
+    tau = 2 * math.pi
+    for f in faces:
+        c = f.calc_center_median()
+        ac = (math.atan2(c.y - cy, c.x - cx) - seam) % tau
+        for l in f.loops:
+            a = (math.atan2(l.vert.co.y - cy, l.vert.co.x - cx) - seam) % tau
+            a += tau * round((ac - a) / tau)          # unwrap next to the face centre
+            r = min(max(a / tau, 0.0), 1.0)
+            if reg['kind'] == 'strip':
+                if not rotate:
+                    raise ValueError('map_cyl: a strip needs rotate=True (height along U)')
+                uu, vv = (l.vert.co.z - z0) / reg['w_m'], v0 + r * (v1 - v0)
+            else:
+                uu = u0 + r * (u1 - u0)
+                vv = v0 + min(max((l.vert.co.z - z0) / z_len, 0), 1) * (v1 - v0)
+            l[uv].uv = (uu, vv)
+
+
 def nobevel(bm, faces):
     """Exclude faces from the bevel (tile rows, bars: many small edges, no gain)."""
     lay = bm.faces.layers.int.get('nobevel') or bm.faces.layers.int.new('nobevel')
@@ -488,6 +566,17 @@ def collider_box(name, col, x0, x1, y0, y1, z0, z1):
     ob = bpy.data.objects.new(name, me)
     col.objects.link(ob)
     ob.display_type = 'WIRE'; ob.hide_render = True
+    return ob
+
+
+def marker(name, col, loc, **props):
+    """Plain empty marking a point for Unity (cable attach, seat, spawn ...)."""
+    ob = bpy.data.objects.new(name, None)
+    ob.empty_display_type = 'PLAIN_AXES'; ob.empty_display_size = 0.15
+    ob.location = loc
+    for k, v in props.items():
+        ob[k] = v
+    col.objects.link(ob)
     return ob
 
 
