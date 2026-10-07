@@ -4,7 +4,8 @@ namespace JapanMap.Editor.Map
 {
     /// <summary>
     /// Tuning for the map importers (Phase 2). One asset at <see cref="AssetPath"/>; the importers
-    /// create it with these defaults if it is missing.
+    /// create it with these defaults if it is missing. The asset is the truth: changing a default
+    /// here does not reach the existing asset — edit the asset (inspector or SerializedObject).
     /// </summary>
     [CreateAssetMenu(menuName = "JapanMap/Map Import Settings")]
     public sealed class MapImportSettings : ScriptableObject

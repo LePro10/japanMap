@@ -3,81 +3,74 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-07 · **Phase:** 2 (Die Karte) läuft
+**Stand:** 2026-10-07 · **Phase:** 2 abgeschlossen, **Phase 3 (Fahren) ist als Nächstes dran**
 
-## Phase 2 — Die Karte
+## Phase 2 — Die Karte ✅
 
-- [x] 0. Terrain-Shader im Web geklärt: Probe-Terrain (URP Terrain/Lit) im Web-Build sichtbar, Rauchprobe GREEN. Die Warnung „All SubShaders stripped" betrifft nur Unitys Debug-Shader `Hidden/Core/Debug*`. `WebBuild` schlägt jetzt fehl, wenn ein anderer Shader komplett gestrippt wird (`WebBuildTests`).
-- [x] 1. Terrain-Importer (`JapanMap/Map/Import Terrain`, Regler in `Data/Map/MapImportSettings.asset`): 5 Checkpoints, größte Abweichung 0,034 m; Gipfel 450 m an der erwarteten Stelle; Draufsicht = Vorschau (Norden oben). Zweimal importieren → identisch (`MapImportTests`). Kachelung entschieden: **eine Kachel** (DECISIONS D14, gemessen mit `ViewpointBench`). Web-Build mit ganzer Karte: sichtbar, Rauchprobe GREEN.
-- [x] 2. Splatmap aus `zones.png` → 4 Terrain-Layer (Fels/Gras/Sand/Reisfeld, Kachelgrößen aus dem Prototyp), Poly-Haven-Texturen (CC0) unter `Assets/ThirdParty/PolyHaven` mit `LICENSES.md`; Normalmaps/Max. 1024 px per Import-Regel (`TextureImportRules`). Draufsicht = `zones.png`; Test: dominante Schicht an drei Punkten. Noch ohne Mask-Map/Triplanar (Optik → Phase 4).
-- [x] 3. Wasser (`JapanMap/Map/Import Water`): Meer auf 0 m, Reisfeld-Wasser aus `paddy.png` (29 Kacheln à 256 m, 16 k Dreiecke), Fluss als Band mit der Spiegel-Logik des Prototyps (730 Dreiecke). Reisfeld-Wassertiefe **0,10 m** wie im Prototyp (`props.config` PADDY_WATER.depth; bei den 0,30 m aus der Bake-Meta „ersoff" dort das Auto). Test: alle Wasserflächen zeigen nach oben. Ränder treppig, Material schlicht → Phase 4.
-- [x] 4. Straßen-Importer (`JapanMap/Map/Import Roads`): 152 Straßen in 24 Kacheln à 512 m (127 k Dreiecke), Querschnitt/Querneigung/Kürzung an Einmündungen wie im Prototyp, Leitplanken mit Pfosten (an Einmündungen unterbrochen), Stadt-Bodenplatte auf 29,97 m, Hochstraße mit Deck und Pfeilern/Portal-Jochen (vereinfacht nach `ViaductSystem`). Passung Mittellinie − Gelände je Typ: Median ≤ 2,4 cm, |p95| ≤ 9 cm (Test). Alle Collider als MeshCollider.
-- [x] 5. Props-Importer (`JapanMap/Map/Import Props`): 977 Platzhalter (26 Prefabs unter `Prefabs/Placeholders`, Kasten in Prototyp-Maßen + rote Markierung vorn, Torii als Tor), Höhe aus Gelände bzw. fester `y` + `yOffset`. Drehformel `180 − rot` an der Tempeltreppe im Bild geprüft. Tests: Position jedes Props gegen die Datei, Treppe führt zur Halle, Torii passierbar.
-- [x] 6. Blickpunkte: 39 aus dem Prototyp (z gespiegelt) in `Data/Map/Viewpoints.asset`; Menü `JapanMap/Viewpoints/Go To…`, `Capture All`; `node Tools/capture.mjs --viewpoint <name|all>` bzw. MCP `ViewpointTools.Capture("pass")`. Test: kein Blickpunkt unter dem Gelände. Vergleich mit alten Bildern: `node Tools/montage.mjs` (neu). Kamera: FOV 60, near 0,5, far 6000 wie im Prototyp; Phase-1-Platzhalter (Boden, Würfel, Kugel) entfernt.
-- [x] 7. Kollision: TerrainCollider, MeshCollider auf Straßen/Leitplanken/Hochstraße/Stadtplatte, BoxCollider je Prop (Torii nur Pfosten). Tests: Strahl von oben trifft die richtige Fläche in richtiger Höhe (4 Punkte); PlayMode über Boot: fallende Körper bleiben auf Gelände, Straße, Stadtplatte und Tempeldach liegen. Gefunden und behoben: Stadtplatte hatte 1000-m-Dreiecke (PhysX-Warnung) → 50-m-Raster, Test „keine Collider-Kante > 100 m".
+Alles per Menü `JapanMap/Map/Import All` (Regler: `Data/Map/MapImportSettings.asset`).
 
-## Phase 1 — Fundament ✅
+- [x] 0. Terrain-Shader im Web geklärt (sichtbar; `WebBuild` scheitert jetzt bei komplett gestrippten Shadern)
+- [x] 1. Terrain: 1 Kachel 3 km, 2049², Instancing (D14, gemessen). Checkpoints max. 0,034 m
+- [x] 2. Splatmap aus `zones.png`, 4 Poly-Haven-Layer (CC0, `Assets/ThirdParty/LICENSES.md`)
+- [x] 3. Wasser: Meer 0 m, Reisfelder 0,10 m (Prototyp-Wert), Fluss
+- [x] 4. Straßen: 152 Straßen, Leitplanken, Hochstraße mit Pfeilern, Stadt-Bodenplatte (29,97 m)
+- [x] 5. Props: 977 Platzhalter, Drehformel `180 − rot` an der Tempeltreppe geprüft
+- [x] 6. Blickpunkte: 39 aus dem Prototyp, `Go To…`, Capture je Blickpunkt, `ViewpointBench`
+- [x] 7. Kollision: Terrain, Straßen, Props; Strahl- und Fall-Tests
 
-- [x] 1. Umgebung: Unity 6000.6.4f1 + Web-Modul, Git LFS 3.8.0 (neu installiert), Node 26, Apple M4 / 16 GB, Metal 4
-- [x] 2. Projekt im Repo-Wurzelordner (URP-Vorlage per CLI, 42 s)
-- [x] 3. Einstellungen (`ProjectSetup.Apply`, abgesichert durch `ProjectSettingsTests`)
-- [x] 4. Pakete (Begründung: DECISIONS D09)
-- [x] 5. Module `JapanMap.*` mit je einer `.asmdef`
-- [x] 6. Werkzeuge: verify, capture, build-web, serve-web, smoke, measure-loop (CLAUDE.md „Befehle")
-- [x] 7. F1-Overlay `StatsOverlay` (nur Editor/Development)
-- [x] 8. `Boot.unity` (Bootstrapper → QualitySystem → StatsOverlay) + `Game.unity`
-- [x] 9. Qualitätsstufen High / Medium / Low mit eigenen URP-Assets
-- [x] 10. Schleife gemessen (unten)
+**Abnahme**
+- Checkpoints ≤ 0,1 m: ✅ max. 0,034 m. Straßen auf dem Gelände: Median ≤ 2,4 cm, |p95| ≤ 9 cm je Typ.
+- Bilder: `Captures/gate-p2-high.png` (6 Blickpunkte neben den alten Bildern), `gate-p2-low.png`. Lage stimmt.
+- Zweimal importieren: Daten-Assets byte-gleich, Weltinhalt (3 051 Objekte) identisch (Test `ImportAll_TwiceGivesIdenticalMap`).
+- Tests: EditMode 37/37, PlayMode 2/2 (MCP). Web-Rauchprobe Release + Development GREEN, 0 Konsolenfehler.
+- **FPS auf deinem Rechner: offen** → „Für dich" Punkt 1.
 
-**Abnahme:** `verify` GREEN (EditMode 15/15, PlayMode 1/1); Gegenprobe mit
-absichtlich falschem Test und Kompilierfehler → RED. Bild `Captures/Game.png`
-angesehen. Web-Build im Headless-Chrome: 0 Konsolenfehler, Boot nach 0,9 s
-(lokal). Alle Befehle aus CLAUDE.md einmal ausgeführt, auch über den MCP.
+## Messwerte (M4, Editor, Stufe Hoch, `ViewpointBench`)
 
-## Messwerte der Arbeitsschleife (M4, 2026-10-07)
-
-| Schritt | Dauer |
-|---|---|
-| Editor-Start ohne Änderung (Batchmode) | 5,6 s |
-| … mit einer geänderten Skriptdatei | 6,0 s (Kompilieren ≈ 0,4 s) |
-| Play Mode betreten | 0,07–0,11 s (Domain Reload aus; an: 1,2 s) |
-| `verify` gesamt (EditMode / PlayMode) | 13–15 s (6–9 s / 6 s); über MCP EditMode 0,4 s |
-| `capture` | 6–10 s |
-| Web-Build Release / Development | 82–150 s / 22–38 s |
+| Blickpunkt | Draw Calls | davon ohne Props | Dreiecke |
+|---|---|---|---|
+| start / stadt | 1 991 / 1 977 | 167 / 195 | 0,9 / 1,2 M |
+| pass / reisfeld | 900 / 1 277 | 78 / 138 | 1,2 / 1,4 M |
+| tempel / kueste | 236 / 1 249 | 59 / 51 | 0,2 / 0,1 M |
 
 ## Web-Build
 
-| Datum | Typ | Gesamt | wasm | data |
-|---|---|---|---|---|
-| 2026-10-07 | Release, leere Szene | 7,75 MB | 5,18 MB | 2,39 MB |
+| Datum | Typ | Gesamt | wasm | data | Boot (lokal) |
+|---|---|---|---|---|---|
+| 2026-10-07 | Release, leere Szene | 7,75 MB | 5,18 MB | 2,39 MB | 0,9 s |
+| 2026-10-07 | Release, ganze Karte | 25,81 MB | 5,28 MB | 20,34 MB | 1,6 s |
 
-## Gefunden (nebenbei bemerkt, noch nicht behoben — CLAUDE.md Regel 14)
+## Phase 3 — Fahren (als Nächstes)
 
-- —
+- [ ] 1. Ansatz wählen und begründen (Rigidbody + Raycast-Federung vs. WheelCollider vs. Paket)
+- [ ] 2. Ein Auto (Kite S) fahrbar inkl. Drift, Nitro, Respawn
+- [ ] 3. Eingabe: Tastatur, Gamepad, Touch
+- [ ] 4. Kameras: Verfolger + Cockpit
+- [ ] 5. Prüfstände als PlayMode-Tests
+- [ ] 6. Alle zehn Autos als Datensätze
+- [ ] 7. Fahrzeug-Optik
 
-## Offene Probleme
+## Offene Probleme / Gefunden
 
-- **Draw Calls im Browser nicht messbar:** Der Web-Player meldet sie als 0
-  (Overlay zeigt „n/a"). Draw-Call-Budgets im offenen Editor messen.
-- Die Web-Seite ist noch Unitys Standardvorlage (960 × 600 mit Fußleiste) → eigene Vorlage spätestens Phase 9/10.
-- Zwölf alte Agent-Zweige `agent/*` (Worktrees unter `../japanMap.worktrees/`)
-  gehören zum Prototyp. Nicht mergen. Löschen entscheidet der Mensch.
-- `legacy/threejs/node_modules` fehlt (war nicht da) — `npm ci` dort erst, wenn der Prototyp gebraucht wird.
-
-## Gefunden (später)
-
-- Terrain allein bis 1,3 M Dreiecke (Reisfeld-Blick) — über dem Budget „Niedrig" (800 k). `pixelError` je Qualitätsstufe setzen (10 halbiert) → Phase 10.
-
-- Hochstraße: Brüstungen und Pfeiler-Feinheiten des Prototyps fehlen; 6 winzige Faltungen an zwei engen Stadtecken (< 1 m²) → Phase 5 (Stadt).
-- Stadt-Bodenplatte ist nur Platte + senkrechte Kante, ohne die 24-m-Böschung des Prototyps → Phase 5.
+- **Draw Calls über Budget durch Platzhalter:** 977 Props × 2 Teile ≈ 1 800 Draw Calls (Budget 1 500 / Niedrig 400). Echte Modelle in Phase 4 mit Instancing/Zusammenfassen/LOD.
+- **Download 25,8 MB** > Ziel Handy 20 MB: `data` 20 MB (Höhenfeld, Texturen, Straßen-Meshes) → Phase 10 (Kompression, Addressables).
+- Terrain bis 1,4 M Dreiecke (Budget Niedrig 800 k): `pixelError` je Stufe (10 halbiert) → Phase 10.
+- Hochstraße ohne Brüstungen; Stadtplatte ohne Böschung; 6 winzige Faltungen an zwei Stadtecken → Phase 5.
+- Reisfeld-Wasserränder treppig, Materialien schlicht, kein Triplanar am Fels → Phase 4.
+- Draw Calls im Browser nicht messbar (Web-Player meldet 0) → im Editor mit `ViewpointBench`.
+- **Ungeprüft im Batchmode** (Editor war offen): Sperrklinke `Tools/test-count.json` in `verify.mjs` und `capture.mjs --viewpoint`. Beim nächsten Lauf mit geschlossenem Editor einmal ausführen.
+- Web-Seite ist noch Unitys Standardvorlage → Phase 9/10.
+- Zwölf alte Agent-Zweige `agent/*` gehören zum Prototyp. Löschen entscheidet der Mensch.
 
 ## Für dich (Mensch)
 
-1. **Neue Claude-Sitzung** für Phase 2 starten, mit **offenem Unity-Editor**
-   (Projekt `japanMap` aus dem Hub). Dann verbindet sich der Unity-MCP von
-   selbst. Im Fenster „MCP for Unity" musst du nichts klicken.
-2. **Blender** öffnen und im Add-on „Blender MCP" den Server starten — ist
-   erst ab Phase 4 nötig, beim Start dieser Sitzung war Blender nicht erreichbar.
-3. **Optional, 2 Minuten:** einmal selbst ins Projekt schauen — `Boot.unity`
-   öffnen, Play drücken, F1 drücken: oben links erscheinen FPS, Dreiecke, Speicher.
-4. Commits liegen lokal; **Push** nur, wenn du es sagst.
+1. **Einmal durch die Karte fliegen und FPS ablesen (10 Min.):** Im Terminal
+   `node Tools/serve-web.mjs` starten, in Chrome `http://localhost:8090`
+   öffnen, ins Bild klicken, **F1** drücken → oben links steht die FPS-Zahl.
+   Bitte die Zahl notieren (Startblick). Das ist der Development-Build.
+   Danach im Unity-Editor `JapanMap/Viewpoints/Go To…` → z. B. `pass`,
+   `reisfeld`, `kueste`, `stadt` wählen und im Scene-Fenster umsehen:
+   **Stimmt die Karte?** (Lage von Bergen, Stadt, Reisfeldern, Küste, Straßen.)
+   Graue/braune Kästen sind Platzhalter, rote Klötze zeigen deren Vorderseite.
+2. **Blender** + Add-on „Blender MCP" erst ab Phase 4 bzw. für den Asset-Sprint nötig.
+3. Commits liegen lokal; **Push** nur, wenn du es sagst.

@@ -7,6 +7,8 @@
 
 | Datum | Phase | Was passiert ist | Vorkehrung (wo) | Art |
 |---|---|---|---|---|
+| 2026-10-07 | 2 | Zweite Sitzung committete parallel (D13 doppelt vergeben); ein `commit -a` hätte fremde Dateien mitgenommen | `CLAUDE.md` Regel 13: nur eigene Pfade committen, DECISIONS-Nummer neu lesen | Regel |
+| 2026-10-07 | 2 | Neuer Default im ScriptableObject-Code (Torii als Tor) kam im vorhandenen Asset nicht an | Hinweis im Kopf von `MapImportSettings`: das Asset ist die Wahrheit | Ablauf |
 | 2026-10-07 | 2 | Beim Umbau einer Testdatei fielen drei Splat-Tests still weg (34 statt 37); nur die Zahl verriet es | Sperrklinke `Tools/test-count.json` in `verify.mjs`, Schritt im Skill `unity-verify` | Werkzeug |
 | 2026-10-07 | 2 | Stadtplatte als 2 Riesendreiecke (1000 m) → PhysX-Warnung, instabile Kollision; erst der PlayMode-Fall-Test zeigte sie | Test `Colliders_HaveNoHugeTriangles` (Kanten < 100 m) | Test |
 | 2026-10-07 | 2 | Re-Import mit `EditorUtility.CopySerialized` in ein Mesh-Asset: Daten neu, Bild alt (Grafikpuffer nicht erneuert) — Pfeiler fehlten im Bild, obwohl im Mesh | `MeshAssets.Save` befüllt über die Mesh-API (Test `MeshAssets_SaveTwice…`); Skill `unity-verify`, Falle ergänzt | Werkzeug |

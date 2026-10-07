@@ -130,6 +130,11 @@ namespace JapanMap.Editor.Map
                 marker.transform.localScale = m;
                 marker.GetComponent<MeshRenderer>().sharedMaterial = PlaceholderMaterial("Marker");
 
+                // Measured: 977 placeholders were ~1 800 of 2 000 draw calls, half of them shadow pass.
+                // Markers and small props cast no shadow; real models (Phase 4) bring instancing/LOD.
+                foreach (var r in root.GetComponentsInChildren<MeshRenderer>())
+                    if (r.gameObject == marker || size.y < 2.5f) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
                 foreach (var t in root.GetComponentsInChildren<Transform>())
                     GameObjectUtility.SetStaticEditorFlags(t.gameObject, (StaticEditorFlags)~0);
                 return PrefabUtility.SaveAsPrefabAsset(root, $"{PrefabDir}/{spec.id}.prefab");

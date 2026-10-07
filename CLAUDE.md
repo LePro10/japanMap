@@ -49,6 +49,7 @@ Alle einmal ausgeführt (2026-10-07). Einrichtung einmalig: `cd Tools && npm ins
 | Web-Build + `Builds/Web/size-report.txt` | `node Tools/build-web.mjs` (`--dev` mit F1-Overlay) | Menü „JapanMap/Build Web (Release)" |
 | Rauchprobe im Headless-Chrome | `node Tools/smoke.mjs` (baut nicht, liefert `Builds/Web` aus) | — |
 | Ausliefern (Handy: `--lan`) | `node Tools/serve-web.mjs` → Port **8090** | — |
+| Karte neu importieren (Terrain, Wasser, Straßen, Props) | — | Menü „JapanMap/Map/Import All“ |
 | Bilder nebeneinander (alt/neu) | `node Tools/montage.mjs --out Captures/x.png a.png b.png …` | — |
 | Draw Calls/Dreiecke je Blickpunkt (Editor offen) | — | `ViewpointBench.Run("label")` → `Captures/bench-label.txt` |
 | Arbeitsschleife messen | `node Tools/measure-loop.mjs` | — |
@@ -92,6 +93,9 @@ dem Unity-MCP. Der MCP verbindet sich nur beim Start einer Claude-Sitzung.
 13. **Ein Agent zur Zeit in Unity.** Einzige Ausnahme: der Asset-Sprint
     (PLAN.md) in einer zweiten Sitzung, nur in `ArtSource/` und Blender,
     Commits nur mit eigenen Dateien. Subagenten für Recherche sind ok.
+    Darum committet **jede** Sitzung nur ihre eigenen Pfade (`git add <pfad>`,
+    nie `-A`/`commit -a`) und liest vor einem DECISIONS-Eintrag die höchste
+    Nummer neu.
 
 14. **Mitdenken und gleich verbessern.** Fällt dir ein Bug oder etwas
     Unschönes auf, denk über die Ursache nach statt nur über das Symptom.
