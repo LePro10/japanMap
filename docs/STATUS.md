@@ -8,7 +8,7 @@
 ## Phase 2 — Die Karte
 
 - [x] 0. Terrain-Shader im Web geklärt: Probe-Terrain (URP Terrain/Lit) im Web-Build sichtbar, Rauchprobe GREEN. Die Warnung „All SubShaders stripped" betrifft nur Unitys Debug-Shader `Hidden/Core/Debug*`. `WebBuild` schlägt jetzt fehl, wenn ein anderer Shader komplett gestrippt wird (`WebBuildTests`).
-- [ ] 1. Terrain-Importer + Checkpoints
+- [x] 1. Terrain-Importer (`JapanMap/Map/Import Terrain`, Regler in `Data/Map/MapImportSettings.asset`): 5 Checkpoints, größte Abweichung 0,034 m; Gipfel 450 m an der erwarteten Stelle; Draufsicht = Vorschau (Norden oben). Zweimal importieren → identisch (`MapImportTests`). **Kachelung noch offen** — Messung braucht Blickpunkte (Aufgabe 6 vorgezogen).
 - [ ] 2. Splatmap
 - [ ] 3. Wasser
 - [ ] 4. Straßen-Importer
