@@ -14,7 +14,7 @@
 - [x] 4. Straßen-Importer (`JapanMap/Map/Import Roads`): 152 Straßen in 24 Kacheln à 512 m (127 k Dreiecke), Querschnitt/Querneigung/Kürzung an Einmündungen wie im Prototyp, Leitplanken mit Pfosten (an Einmündungen unterbrochen), Stadt-Bodenplatte auf 29,97 m, Hochstraße mit Deck und Pfeilern/Portal-Jochen (vereinfacht nach `ViaductSystem`). Passung Mittellinie − Gelände je Typ: Median ≤ 2,4 cm, |p95| ≤ 9 cm (Test). Alle Collider als MeshCollider.
 - [x] 5. Props-Importer (`JapanMap/Map/Import Props`): 977 Platzhalter (26 Prefabs unter `Prefabs/Placeholders`, Kasten in Prototyp-Maßen + rote Markierung vorn, Torii als Tor), Höhe aus Gelände bzw. fester `y` + `yOffset`. Drehformel `180 − rot` an der Tempeltreppe im Bild geprüft. Tests: Position jedes Props gegen die Datei, Treppe führt zur Halle, Torii passierbar.
 - [x] 6. Blickpunkte: 39 aus dem Prototyp (z gespiegelt) in `Data/Map/Viewpoints.asset`; Menü `JapanMap/Viewpoints/Go To…`, `Capture All`; `node Tools/capture.mjs --viewpoint <name|all>` bzw. MCP `ViewpointTools.Capture("pass")`. Test: kein Blickpunkt unter dem Gelände. Vergleich mit alten Bildern: `node Tools/montage.mjs` (neu). Kamera: FOV 60, near 0,5, far 6000 wie im Prototyp; Phase-1-Platzhalter (Boden, Würfel, Kugel) entfernt.
-- [ ] 7. Kollision
+- [x] 7. Kollision: TerrainCollider, MeshCollider auf Straßen/Leitplanken/Hochstraße/Stadtplatte, BoxCollider je Prop (Torii nur Pfosten). Tests: Strahl von oben trifft die richtige Fläche in richtiger Höhe (4 Punkte); PlayMode über Boot: fallende Körper bleiben auf Gelände, Straße, Stadtplatte und Tempeldach liegen. Gefunden und behoben: Stadtplatte hatte 1000-m-Dreiecke (PhysX-Warnung) → 50-m-Raster, Test „keine Collider-Kante > 100 m".
 
 ## Phase 1 — Fundament ✅
 

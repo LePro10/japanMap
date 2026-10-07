@@ -205,6 +205,34 @@ namespace JapanMap.Tests
         }
 
         [Test]
+        public void Colliders_HaveNoHugeTriangles()
+        {
+            // PhysX gets unstable with triangle edges above 500 m (warning seen on the first city slab).
+            foreach (var mc in GameObject.Find(MapScene.RootName).GetComponentsInChildren<MeshCollider>())
+            {
+                var v = mc.sharedMesh.vertices;
+                var t = mc.sharedMesh.triangles;
+                for (var i = 0; i < t.Length; i += 3)
+                {
+                    var longest = Mathf.Max(Vector3.Distance(v[t[i]], v[t[i + 1]]), Mathf.Max(Vector3.Distance(v[t[i + 1]], v[t[i + 2]]), Vector3.Distance(v[t[i]], v[t[i + 2]])));
+                    Assert.That(longest, Is.LessThan(100f), $"{mc.name}: triangle {i / 3}");
+                }
+            }
+        }
+
+        [TestCase(0f, 0f, "Terrain_0_0", 52.65f)]
+        [TestCase(-552.21f, 343.88f, "Road_", 41.60f)] // pass road where it joins the ring
+        [TestCase(640f, -262f, "Road_", 30.00f)]       // city street on the slab
+        [TestCase(820f, 954f, "templeHall", 162.35f)]  // roof of the placeholder hall
+        public void Raycast_HitsTheRightSurface(float x, float z, string colliderPrefix, float height)
+        {
+            Physics.SyncTransforms();
+            Assert.IsTrue(Physics.Raycast(new Vector3(x, 600, z), Vector3.down, out var hit, 1000), "nothing hit");
+            StringAssert.StartsWith(colliderPrefix, hit.collider.name);
+            Assert.That(hit.point.y, Is.EqualTo(height).Within(0.05f));
+        }
+
+        [Test]
         public void ToUnity_MirrorsZ_NorthIsPlusZ()
         {
             // templeHall: Three (820, -954) lies north of the centre → Unity z must be positive.

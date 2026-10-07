@@ -7,6 +7,7 @@
 
 | Datum | Phase | Was passiert ist | Vorkehrung (wo) | Art |
 |---|---|---|---|---|
+| 2026-10-07 | 2 | Stadtplatte als 2 Riesendreiecke (1000 m) → PhysX-Warnung, instabile Kollision; erst der PlayMode-Fall-Test zeigte sie | Test `Colliders_HaveNoHugeTriangles` (Kanten < 100 m) | Test |
 | 2026-10-07 | 2 | Re-Import mit `EditorUtility.CopySerialized` in ein Mesh-Asset: Daten neu, Bild alt (Grafikpuffer nicht erneuert) — Pfeiler fehlten im Bild, obwohl im Mesh | `MeshAssets.Save` befüllt über die Mesh-API (Test `MeshAssets_SaveTwice…`); Skill `unity-verify`, Falle ergänzt | Werkzeug |
 | 2026-10-07 | 2 | Warnung „All SubShaders stripped“ war nur notiert, nicht geprüft — ein gestrippter Shader ist im Browser unsichtbar, im Editor aber da | `WebBuild` sammelt die Warnungen und scheitert bei unbekannten Shadern (`WebBuildTests`) | Werkzeug |
 | 2026-10-07 | 1 | Editor per `kill` beendet, MCP-Server lief verwaist weiter; der nächste Editor meldete sich nicht an | Skill `unity-verify`, Falle "Editor schließen" | Skill |

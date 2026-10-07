@@ -554,20 +554,37 @@ namespace JapanMap.Editor.Map
             var y = s.citySlabY;
             foreach (var r in s.cityParts)
             {
+                // Tessellated: PhysX warns (and gets unstable) on triangles longer than 500 m.
+                const float cell = 50f;
+                int nx = Mathf.CeilToInt(r.width / cell), nz = Mathf.CeilToInt(r.height / cell);
                 var b0 = chunk.v.Count;
-                chunk.v.AddRange(new[] { new Vector3(r.xMin, y, r.yMin), new Vector3(r.xMax, y, r.yMin), new Vector3(r.xMax, y, r.yMax), new Vector3(r.xMin, y, r.yMax) });
-                chunk.uv.AddRange(new[] { Vector2.zero, Vector2.right, Vector2.one, Vector2.up });
-                // Counter-clockwise from above in Three space → faces up there (and after mirroring).
-                chunk.t[0].AddRange(new[] { b0, b0 + 2, b0 + 1, b0, b0 + 3, b0 + 2 });
+                for (var iz = 0; iz <= nz; iz++)
+                for (var ix = 0; ix <= nx; ix++)
+                {
+                    chunk.v.Add(new Vector3(Mathf.Lerp(r.xMin, r.xMax, (float)ix / nx), y, Mathf.Lerp(r.yMin, r.yMax, (float)iz / nz)));
+                    chunk.uv.Add(new Vector2((float)ix / nx, (float)iz / nz));
+                }
+                for (var iz = 0; iz < nz; iz++)
+                for (var ix = 0; ix < nx; ix++)
+                {
+                    int a = b0 + iz * (nx + 1) + ix, b = a + 1, c = a + nx + 1, d = c + 1;
+                    // Counter-clockwise from above in Three space → faces up there (and after mirroring).
+                    chunk.t[0].AddRange(new[] { a, d, b, a, c, d });
+                }
 
                 var corners = new[] { new Vector2(r.xMin, r.yMin), new Vector2(r.xMax, r.yMin), new Vector2(r.xMax, r.yMax), new Vector2(r.xMin, r.yMax) };
                 for (var e = 0; e < 4; e++)
                 {
-                    Vector2 a = corners[e], b = corners[(e + 1) % 4];
-                    var c0 = chunk.v.Count;
-                    chunk.v.AddRange(new[] { new Vector3(a.x, y, a.y), new Vector3(b.x, y, b.y), new Vector3(b.x, y - 3, b.y), new Vector3(a.x, y - 3, a.y) });
-                    chunk.uv.AddRange(new[] { Vector2.zero, Vector2.right, Vector2.one, Vector2.up });
-                    chunk.t[0].AddRange(new[] { c0, c0 + 1, c0 + 2, c0, c0 + 2, c0 + 3, c0, c0 + 2, c0 + 1, c0, c0 + 3, c0 + 2 });
+                    Vector2 ea = corners[e], eb = corners[(e + 1) % 4];
+                    var pieces = Mathf.CeilToInt(Vector2.Distance(ea, eb) / cell);
+                    for (var k = 0; k < pieces; k++)
+                    {
+                        Vector2 a = Vector2.Lerp(ea, eb, (float)k / pieces), b = Vector2.Lerp(ea, eb, (float)(k + 1) / pieces);
+                        var c0 = chunk.v.Count;
+                        chunk.v.AddRange(new[] { new Vector3(a.x, y, a.y), new Vector3(b.x, y, b.y), new Vector3(b.x, y - 3, b.y), new Vector3(a.x, y - 3, a.y) });
+                        chunk.uv.AddRange(new[] { Vector2.zero, Vector2.right, Vector2.one, Vector2.up });
+                        chunk.t[0].AddRange(new[] { c0, c0 + 1, c0 + 2, c0, c0 + 2, c0 + 3, c0, c0 + 2, c0 + 1, c0, c0 + 3, c0 + 2 });
+                    }
                 }
             }
             return chunk;
