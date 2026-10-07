@@ -1,0 +1,9 @@
+{
+    "name": "JapanMap.Audio",
+    "rootNamespace": "JapanMap.Audio",
+    "references": [
+        "JapanMap.Core"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

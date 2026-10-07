@@ -1,0 +1,10 @@
+{
+  "name": "japanmap-tools",
+  "private": true,
+  "type": "module",
+  "description": "Command-line tools for agents (see CLAUDE.md, Befehle).",
+  "engines": { "node": ">=22" },
+  "devDependencies": {
+    "playwright-core": "1.63.0"
+  }
+}

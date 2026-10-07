@@ -1,0 +1,9 @@
+{
+    "name": "JapanMap.OnFoot",
+    "rootNamespace": "JapanMap.OnFoot",
+    "references": [
+        "JapanMap.Core"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

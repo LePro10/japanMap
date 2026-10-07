@@ -1,0 +1,9 @@
+{
+    "name": "JapanMap.Vehicles",
+    "rootNamespace": "JapanMap.Vehicles",
+    "references": [
+        "JapanMap.Core"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

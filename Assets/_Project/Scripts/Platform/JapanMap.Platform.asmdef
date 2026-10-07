@@ -1,0 +1,9 @@
+{
+    "name": "JapanMap.Platform",
+    "rootNamespace": "JapanMap.Platform",
+    "references": [
+        "JapanMap.Core"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

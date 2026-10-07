@@ -1,0 +1,20 @@
+{
+    "name": "JapanMap.Tests.PlayMode",
+    "rootNamespace": "JapanMap.Tests",
+    "references": [
+        "JapanMap.Core",
+        "JapanMap.DevTools",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "noEngineReferences": false
+}

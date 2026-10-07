@@ -1,0 +1,10 @@
+{
+    "name": "JapanMap.DevTools",
+    "rootNamespace": "JapanMap.DevTools",
+    "references": [
+        "JapanMap.Core",
+        "Unity.InputSystem"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

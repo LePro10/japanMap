@@ -64,3 +64,6 @@ Thumbs.db
 .claude/scheduled_tasks.lock
 
 # Der Prototyp unter legacy/threejs/ hat seine eigene .gitignore.
+
+# Burst-Zwischenstand des Web-Builds (wird bei jedem Build neu erzeugt)
+/Data/Plugins/lib_burst_generated*

@@ -1,0 +1,9 @@
+{
+    "name": "JapanMap.Gameplay",
+    "rootNamespace": "JapanMap.Gameplay",
+    "references": [
+        "JapanMap.Core"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}
