@@ -73,7 +73,9 @@ namespace JapanMap.Vehicles
             _rb.linearDamping = 0f;
             _rb.angularDamping = 0.05f;
             _rb.interpolation = RigidbodyInterpolation.Interpolate;
-            _rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            // Speculative: contacts ahead of the motion. ContinuousDynamic missed a 6 m landing (PhysX only sweeps
+            // moves longer than the body, a 21 cm step went 9 cm into the ground).
+            _rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
             _rb.maxAngularVelocity = 20f;
             // Own layer: the wheels must not stand on this or another car's body, nor on water planes.
             var vehicleLayer = LayerMask.NameToLayer("Vehicle");

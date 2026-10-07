@@ -235,5 +235,114 @@ namespace JapanMap.Tests.Vehicles
             r.Run(20f, Cmd(throttle: 1));
             return (r.T.forwardSpeed * 3.6f, r.Position.y - y0);
         }
+
+        // ── Stunt (arcade.mts, Kite S / Hachi only) ─────────────────────────
+
+        /// <summary>Accumulated |yaw| in degrees over a run, plus the peak slip in degrees.</summary>
+        static (float yaw, float slip) IntegrateYaw(VehicleRig r, DriveInput input, float seconds)
+        {
+            float yaw = 0f, slip = 0f;
+            var prev = r.Yaw * Deg;
+            var n = Steps(seconds);
+            for (var i = 0; i < n; i++)
+            {
+                r.Step(input);
+                var now = r.Yaw * Deg;
+                yaw += Mathf.DeltaAngle(prev, now);
+                prev = now;
+                slip = Mathf.Max(slip, Mathf.Abs(r.T.slip) * Deg);
+            }
+            return (Mathf.Abs(yaw), slip);
+        }
+
+        /// <summary>Handbrake + full lock at 80 km/h, stunt off, for 1.2 s: drifts but no 360.</summary>
+        public static (float yaw, float slip) SingleTap(string id)
+        {
+            using var r = Rig(id);
+            r.AccelerateTo(80f);
+            return IntegrateYaw(r, Cmd(throttle: 0.7f, steer: 1, handbrake: true), 1.2f);
+        }
+
+        /// <summary>Stunt mode, handbrake + lock held: yaw after the given seconds.</summary>
+        public static float HeldSpin(string id, float seconds)
+        {
+            using var r = Rig(id);
+            r.AccelerateTo(80f);
+            return IntegrateYaw(r, Cmd(throttle: 0.7f, steer: 1, handbrake: true, stunt: true), seconds).yaw;
+        }
+
+        /// <summary>Double tap inside a drift: the trick pulse turns a 360 by motion, handbrake released.</summary>
+        public static float Trick360(string id)
+        {
+            using var r = Rig(id);
+            r.AccelerateTo(80f);
+            IntegrateYaw(r, Cmd(throttle: 0.7f, steer: 1, handbrake: true), 0.4f);
+            r.Step(Cmd(throttle: 0.7f, steer: 1, handbrake: true, stunt: true, trick: true));
+            return IntegrateYaw(r, Cmd(throttle: 0.7f, steer: 1, stunt: true), 1.5f).yaw;
+        }
+
+        // ── New in Unity: landing and walls ────────────────────────────────
+
+        /// <summary>
+        /// Drop from 6 m: lowest point of the body underside relative to the ground (must stay ≥ 0 —
+        /// "no sinking"), rest height error after 3 s, and whether it stands upright on four wheels.
+        /// </summary>
+        public static (float lowestUnderside, float restError, bool upright) Landing(string id)
+        {
+            using var r = Rig(id);
+            var def = Fleet.Get(id);
+            r.Car.transform.position = new Vector3(0f, 6f, 0f);
+            r.Car.Body.position = new Vector3(0f, 6f, 0f);
+            Physics.SyncTransforms();
+            var lowest = float.MaxValue;
+            var n = Steps(3f);
+            for (var i = 0; i < n; i++)
+            {
+                r.Step(default);
+                var t = r.Car.transform;
+                // Lowest corner of the body box underside.
+                var size = def.bodySize;
+                for (var cx = -1; cx <= 1; cx += 2)
+                for (var cz = -1; cz <= 1; cz += 2)
+                {
+                    var p = t.TransformPoint(new Vector3(cx * size.y * 0.5f, def.clearance, def.bodyCenterZ + cz * size.x * 0.5f));
+                    lowest = Mathf.Min(lowest, p.y);
+                }
+            }
+            return (lowest, Mathf.Abs(r.Position.y), r.Car.transform.up.y > 0.98f && r.T.groundedWheels == 4);
+        }
+
+        /// <summary>
+        /// Run into a wall at 25° and 80 km/h with throttle held: the car must slide along it, not stick.
+        /// Returns the speed 3 s after first contact and the distance covered along the wall.
+        /// </summary>
+        public static (float kmh, float along) Wall(string id)
+        {
+            using var r = Rig(id);
+            var wall = new GameObject("Wall");
+            UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(wall, r.Car.gameObject.scene);
+            var box = wall.AddComponent<BoxCollider>();
+            box.size = new Vector3(1f, 3f, 4000f);
+            wall.transform.position = new Vector3(14f, 1.5f, 1000f);
+            r.Car.Place(new Vector3(0f, 0f, -200f), 0f);
+            r.AccelerateTo(80f);
+            // Turn towards the wall by placing the car at the same speed with a 25° heading.
+            var v = r.Car.Body.linearVelocity.magnitude;
+            var start = r.Position;
+            r.Car.Place(new Vector3(0f, 0f, start.z), 25f);
+            r.Car.Body.linearVelocity = Quaternion.Euler(0f, 25f, 0f) * Vector3.forward * v;
+            var z0 = r.Position.z;
+            var contactAt = -1f;
+            var guard = 0;
+            while (guard++ < Steps(10f))
+            {
+                r.Step(Cmd(throttle: 1));
+                if (contactAt < 0 && r.Position.x > 14f - 0.5f - Def(id).bodySize.y * 0.5f - 0.3f) contactAt = r.Time;
+                if (contactAt >= 0 && r.Time - contactAt >= 3f) break;
+            }
+            return (r.Kmh, r.Position.z - z0);
+        }
+
+        static VehicleDefinition Def(string id) => Fleet.Get(id);
     }
 }

@@ -36,5 +36,28 @@ namespace JapanMap.Tests.Vehicles
             }
             File.WriteAllText("Captures/vehicle-trace.txt", sb.ToString());
         }
+
+        [Test]
+        public void TraceLanding()
+        {
+            VehicleProbes.Fleet = VehicleBenchReport.LoadFleet();
+            var def = VehicleProbes.Fleet.Get("hachi");
+            using var r = new VehicleRig(def, VehicleProbes.Fleet.tuning);
+            r.Car.transform.position = new Vector3(0f, 6f, 0f);
+            r.Car.Body.position = new Vector3(0f, 6f, 0f);
+            Physics.SyncTransforms();
+            var sb = new StringBuilder();
+            for (var i = 0; i < 90; i++)
+            {
+                r.Step(default);
+                var t = r.Car.transform;
+                var low = float.MaxValue;
+                for (var cx = -1; cx <= 1; cx += 2)
+                for (var cz = -1; cz <= 1; cz += 2)
+                    low = Mathf.Min(low, t.TransformPoint(new Vector3(cx * def.bodySize.y * 0.5f, def.clearance, def.bodyCenterZ + cz * def.bodySize.x * 0.5f)).y);
+                if (i > 45 && i < 80) sb.AppendLine($"{i} y={r.Position.y:F3} vy={r.Car.Body.linearVelocity.y:F2} low={low:F3} pitch={t.eulerAngles.x:F1} roll={t.eulerAngles.z:F1} x=[{r.Car.Wheels[0].compression:F2},{r.Car.Wheels[2].compression:F2}] load={r.Car.Wheels[0].load:F0}");
+            }
+            File.WriteAllText("Captures/vehicle-trace-landing.txt", sb.ToString());
+        }
     }
 }

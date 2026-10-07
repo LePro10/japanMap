@@ -46,8 +46,8 @@ Alles per Menü `JapanMap/Map/Import All` (Regler: `Data/Map/MapImportSettings.a
 - [x] 2. Hachi 86 (Kite-S-Werte) fahrbar inkl. Drift, Nitro, Respawn auf nächste Straße (R / Y / auf dem Dach)
 - [x] 3. Eingabe: Tastatur (WASD/Pfeile, Leertaste, Shift, R, C, B), Gamepad (Trigger, Stick, A, X/RB, Y), Touch (Stick + DRIFT/NITRO, zwei Finger getestet)
 - [x] 4. Kameras: Verfolger (Cinemachine, Drift-Blick, FOV, Zoom per Mausrad, Blick zurück) + Cockpit (C)
-- [ ] 5. Prüfstände als PlayMode-Tests
-- [ ] 6. Alle zehn Autos als Datensätze
+- [x] 5. Prüfstände als PlayMode-Tests: 13 Proben × 10 Autos + 4 Stunt-Proben = 134 grün (0–100, Endtempo, Bremsweg, Symmetrie, Ausrollen, Lenkantwort, Drift ohne Absicht, Handbremsdrift, Hang 20°, Landung 6 m, Wand)
+- [x] 6. Alle zehn Autos als Datensätze (`Data/Vehicles/*.asset`, D16)
 - [ ] 7. Fahrzeug-Optik
 
 ## Offene Probleme / Gefunden
