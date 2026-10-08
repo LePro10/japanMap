@@ -38,7 +38,9 @@ Web: 0 Fehler, 47,69 MB; Browser-fps zuletzt Niedrig 178, Hoch 49 — **unter La
 - [x] 2. **Fußgänger** (D23) auf NavMesh, 48 (Niedrig 24) um den Spieler. **Abnahme-Test 10 min: 55 515 Stichproben, 0 auf
   der Fahrbahn** (`PedestrianTests`, Bericht `Captures/pedestrian-10min.txt`). Rückstoß: wegfliegen, Auto −5 %, wieder aufstehen.
   Bench Hoch sakura-hof 1 492 DC (Budget 1 500, knapp), Niedrig ≤ 337. Web 49,32 MB (+1,6), Niedrig 308 fps (Blender lief).
-- [ ] 3. Wenig Verkehr in der Stadt
+- [x] 3. **Verkehr**: 6 NPC-Autos (Niedrig 3) auf Tokyos Straßen um den Spieler, linke Spur, 40 km/h, biegen an Straßenenden ab,
+  halten vor Autos/Leuten, sind echte Fahrphysik-Körper (wegschiebbar). Kasten-Stellvertreter (vorläufig). Tests: 1 min 96–99 % auf
+  der Fahrbahn, Wegschieben, Anhalten vor einer Person. Bench Hoch sakura-hof 1 499 (am Budget), Niedrig ≤ 341. Web 49,32 MB, 321 fps.
 - [ ] 4. Zerstörbares: Pfosten, Zäune, Automaten, Bäume, Hütten zerfallen in Teile
 - [ ] 5. Begehbare Läden, Arbeiter/Tiere im Fischerdorf
 
@@ -58,6 +60,8 @@ Web: 0 Fehler, 47,69 MB; Browser-fps zuletzt Niedrig 178, Hoch 49 — **unter La
 - Sakura: Autohaus Petal Motors (22 × 14 m), Werkstatt Open Bay (18 × 14 m), **leichte Ausstellungsautos** (≤ 8 k Dreiecke; die Fahrmodelle haben 120 k).
 - Tokyo: Hochhäuser 40–154 m (41 Stück), Kino-/Hotel-/Markthallen-Fronten, Holz-Izakaya für Yokochō. Koedo: 2 Kanalbrücken, 6 moderne Wohnhäuser, Brauhalle.
 - Funaura: Kei-Truck. Needle: Tribüne, Boxengebäude, Start-Ziel-Brücke, Reifenstapel. Viadukt: Brüstungsmauer.
+- **Verkehrsautos** (Phase 6): 3–4 leichte Stadtautos (Kei, Limousine, Taxi, Lieferwagen), ≤ 5 k Dreiecke, Maße wie Hachi
+  (4,1 × 1,7 m), Räder als eigene Objekte. Bis dahin Kasten-Stellvertreter (`TrafficSystem.AddBody`).
 - **Spielfigur** (Phase 6): 1,72 m, Fahrerin/Fahrer der späten 80er (Jacke, Hose), ≤ 6 k Dreiecke, Ursprung zwischen den Füßen,
   +Z vorn; Animationen Stehen, Gehen (4,4 m/s), Rennen (7,5 m/s), Sprung, Rutschen (Hocke, Hüfte ~0,4 m). Bis dahin `StandInFigure`.
 

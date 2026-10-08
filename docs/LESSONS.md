@@ -60,6 +60,7 @@
 | 2026-10-08 | 6 | Bench maß alten Code („Schatten aus“ ohne Wirkung) | `bench.mjs` kompiliert vorher (`lib/fresh.mjs`); `play.mjs` bricht bei Kompilierfehlern sofort ab statt 3 min zu warten | Werkzeug |
 | 2026-10-08 | 6 | Fußgänger auf Fahrbahn, wo Gelände durch die Straße ragt | NavMesh schneidet Fahrbahnen exakt nach dem Straßennetz aus; 10-min-Test + `RoadNetworkTests` | Test |
 | 2026-10-08 | 6 | Python-`replace` mit leerem Suchtext zerschoss eine Datei | Ersetzungen mit `assert old in s` und Länge > 0; Diff-Größe vor dem Weiterarbeiten ansehen | Ablauf |
+| 2026-10-08 | 6 | Bench direkt nach Tests: „already in play mode“, 10 min ohne Bericht | `lib/fresh.mjs` wartet bis 20 s auf den Edit-Modus, bevor es „Mensch spielt“ annimmt (bench, play, exec, test) | Werkzeug |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

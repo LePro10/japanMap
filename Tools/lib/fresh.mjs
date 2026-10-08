@@ -8,8 +8,15 @@ const mcp = (tool, args) => JSON.parse(execFileSync('node', [new URL('../mcp-cal
 
 /** true if it compiled (or nothing was pending), false if skipped because the game is running. */
 export function compileIfChanged() {
-  const r = mcp('execute_code', { action: 'execute', code: 'return EditorApplication.isPlayingOrWillChangePlaymode ? "play" : "edit";' });
-  if (r?.data?.result !== 'edit') return false;
+  // A test run that just reported may still be leaving play mode (bench once found "already in play
+  // mode" right after the tests): give it up to 20 s before calling it a human's game.
+  const state = () => mcp('execute_code', { action: 'execute', code: 'return EditorApplication.isPlayingOrWillChangePlaymode ? "play" : "edit";' })?.data?.result;
+  let r = state();
+  for (let i = 0; i < 20 && r !== 'edit'; i++) {
+    execFileSync('sleep', ['1']);
+    r = state();
+  }
+  if (r !== 'edit') return false;
   mcp('refresh_unity', { mode: 'if_dirty', scope: 'all', compile: 'request', wait_for_ready: true });
   return true;
 }

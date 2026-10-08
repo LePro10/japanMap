@@ -3,6 +3,7 @@
     "rootNamespace": "JapanMap.Gameplay",
     "references": [
         "JapanMap.Core",
+        "JapanMap.World",
         "JapanMap.Vehicles",
         "JapanMap.OnFoot",
         "Unity.InputSystem"

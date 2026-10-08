@@ -2,13 +2,17 @@ using JapanMap.Editor.Map;
 using JapanMap.Editor.Vehicles;
 using JapanMap.Gameplay;
 using JapanMap.Gameplay.Life;
+using JapanMap.Gameplay.Traffic;
+using JapanMap.Vehicles;
+using JapanMap.World;
 using UnityEditor;
 using UnityEngine;
 
 namespace JapanMap.Editor.Life
 {
     /// <summary>
-    /// Puts World/Life into Game.unity: the pedestrian crowd with its settings and stand-in looks.
+    /// Puts World/Life into Game.unity: the pedestrian crowd with its settings and stand-in looks, and
+    /// the city traffic.
     /// Re-running replaces it. The NavMesh comes from <see cref="PedestrianNav.Bake"/>.
     /// </summary>
     public static class LifeSetup
@@ -43,6 +47,16 @@ namespace JapanMap.Editor.Life
             Fill(so.FindProperty("tops"), tops);
             Fill(so.FindProperty("bottoms"), bottoms);
             so.ApplyModifiedPropertiesWithoutUndo();
+
+            var trafficGo = new GameObject("Traffic");
+            trafficGo.transform.SetParent(life, false);
+            var traffic = new SerializedObject(trafficGo.AddComponent<TrafficSystem>());
+            traffic.FindProperty("settings").objectReferenceValue = Asset<TrafficSettings>("TrafficSettings");
+            traffic.FindProperty("fleet").objectReferenceValue = AssetDatabase.LoadAssetAtPath<VehicleFleet>(FleetSeed.FleetPath);
+            traffic.FindProperty("roads").objectReferenceValue = AssetDatabase.LoadAssetAtPath<RoadNetwork>(RoadImporter.NetworkPath);
+            traffic.FindProperty("player").objectReferenceValue = Object.FindAnyObjectByType<PlayerModeController>();
+            traffic.FindProperty("template").objectReferenceValue = PlayerSetup.StandInMaterial("Skin", new Color(0.73f, 0.58f, 0.45f));
+            traffic.ApplyModifiedPropertiesWithoutUndo();
             MapScene.Save();
             return "[Life] crowd set up";
         }

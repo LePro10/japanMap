@@ -177,6 +177,20 @@ namespace JapanMap.Editor
                     rig.SetLive(true);
                     return true;
                 }
+                case "nearcar":
+                {
+                    // For pictures only: walker on the pavement beside traffic car i, looking at it.
+                    var ts = Object.FindAnyObjectByType<JapanMap.Gameplay.Traffic.TrafficSystem>();
+                    var car = ts.Cars[int.Parse(a[1])];
+                    var ahead = car.transform.position + car.transform.forward * 32f + Vector3.up * 30f;
+                    if (!Physics.Raycast(ahead, Vector3.down, out var nh, 80f, ~JapanMap.Core.GameLayers.NotGround)) return true;
+                    var to = car.transform.position - nh.point;
+                    var yaw = Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg;
+                    var pm = Object.FindAnyObjectByType<PlayerModeController>();
+                    pm.Walker.Place(nh.point, yaw);
+                    Object.FindAnyObjectByType<JapanMap.OnFoot.WalkCameraRig>().SetLive(true);
+                    return true;
+                }
                 case "probe":
                     Probe();
                     return true;
@@ -243,6 +257,18 @@ namespace JapanMap.Editor
                     if (w != null) nearest = Mathf.Min(nearest, Vector3.Distance(q.transform.position, w.transform.position));
                 }
                 Log.AppendLine($"  crowd {active}/{crowd.People.Count} active, {walking} walking, {knocked} knocked, nearest {nearest:0.0} m");
+            }
+            var traffic = Object.FindAnyObjectByType<JapanMap.Gameplay.Traffic.TrafficSystem>();
+            if (traffic != null)
+            {
+                var sb = new StringBuilder();
+                foreach (var c in traffic.Cars)
+                {
+                    if (!c.gameObject.activeSelf) { sb.Append(" [off]"); continue; }
+                    var road = c.RoadIndex >= 0 ? traffic.Roads.roads[c.RoadIndex].id : "-";
+                    sb.Append(string.Format(CultureInfo.InvariantCulture, " [{0} {1:0}km/h off {2:0.0}{3}]", road, c.Car.Telemetry.speed * 3.6f, c.Pilot.Offset, c.Blocked ? " blocked" : ""));
+                }
+                Log.AppendLine("  traffic" + sb);
             }
         }
 

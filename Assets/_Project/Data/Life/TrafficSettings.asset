@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69bec010154144825af9bf23ecc53e3a, type: 3}
+  m_Name: TrafficSettings
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Traffic.TrafficSettings
+  countHigh: 6
+  countLow: 3
+  roadTypes:
+  - city
+  maxSpeedKmh: 40
+  laneShare: 0.25
+  spawnRange: {x: 70, y: 200}
+  despawn: 260
+  gapBase: 5
+  gapSeconds: 1.2
+  stuckSeconds: 8
+  colors:
+  - {r: 0.86, g: 0.86, b: 0.84, a: 1}
+  - {r: 0.55, g: 0.57, b: 0.6, a: 1}
+  - {r: 0.08, g: 0.08, b: 0.09, a: 1}
+  - {r: 0.85, g: 0.65, b: 0.12, a: 1}
+  - {r: 0.55, g: 0.1, b: 0.1, a: 1}

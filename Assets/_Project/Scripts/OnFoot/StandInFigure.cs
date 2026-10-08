@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using JapanMap.Core;
 using UnityEngine;
 
 namespace JapanMap.OnFoot
@@ -32,11 +32,11 @@ namespace JapanMap.OnFoot
             f._legL = Bone("LegL", f._body, new Vector3(-0.11f, 0f, 0f) * k);
             f._legR = Bone("LegR", f._body, new Vector3(0.11f, 0f, 0f) * k);
 
-            var palette = Palette.For(skin);
-            var cSkin = palette.Uv(skin.GetColor(BaseColor));
-            var cTop = palette.Uv(top.GetColor(BaseColor));
-            var cBottom = palette.Uv(bottom.GetColor(BaseColor));
-            var mesh = new MeshBuilder();
+            var palette = StandInPalette.For(skin);
+            var cSkin = palette.Uv(skin.GetColor(StandInPalette.BaseColor));
+            var cTop = palette.Uv(top.GetColor(StandInPalette.BaseColor));
+            var cBottom = palette.Uv(bottom.GetColor(StandInPalette.BaseColor));
+            var mesh = new BoxMeshBuilder();
             // Positions in the figure's root space at bind pose; bone index per box.
             mesh.Box(0, new Vector3(0f, 0.92f + 0.3f, 0f) * k, new Vector3(0.44f, 0.6f, 0.26f) * k, cTop);
             mesh.Box(0, new Vector3(0f, 0.92f + 0.74f, 0.01f) * k, new Vector3(0.22f, 0.25f, 0.24f) * k, cSkin);
@@ -46,7 +46,7 @@ namespace JapanMap.OnFoot
             mesh.Box(4, new Vector3(0.11f, 0.92f - 0.45f, 0f) * k, new Vector3(0.17f, 0.9f, 0.18f) * k, cBottom);
 
             var bones = new[] { f._body, f._armL, f._armR, f._legL, f._legR };
-            var m = mesh.ToMesh();
+            var m = mesh.ToMesh("StandInFigure");
             var bind = new Matrix4x4[bones.Length];
             for (var i = 0; i < bones.Length; i++) bind[i] = bones[i].worldToLocalMatrix * root.transform.localToWorldMatrix;
             m.bindposes = bind;
@@ -60,8 +60,6 @@ namespace JapanMap.OnFoot
             smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
             return f;
         }
-
-        static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
 
         static Transform Bone(string name, Transform parent, Vector3 localPos)
         {
@@ -98,94 +96,6 @@ namespace JapanMap.OnFoot
                 _legR.localRotation = Quaternion.Slerp(_legR.localRotation, Quaternion.Euler(-10f, 0f, 0f), slide);
                 _armL.localRotation = Quaternion.Slerp(_armL.localRotation, Quaternion.Euler(30f, 0f, -40f), slide);
                 _armR.localRotation = Quaternion.Slerp(_armR.localRotation, Quaternion.Euler(-60f, 0f, 20f), slide);
-            }
-        }
-
-        /// <summary>One palette texture + material per template: each new colour gets a texel.</summary>
-        sealed class Palette
-        {
-            const int Size = 64;
-            static readonly Dictionary<Material, Palette> All = new();
-            readonly Texture2D _tex;
-            readonly List<Color> _colors = new();
-            public Material Material { get; }
-
-            // Domain reload may be off: palettes from the last play session hold destroyed textures.
-            [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-            static void Reset() => All.Clear();
-
-            Palette(Material template)
-            {
-                _tex = new Texture2D(Size, 1, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, name = "StandInPalette" };
-                Material = new Material(template) { name = "StandIn (palette)", enableInstancing = true };
-                Material.SetColor(BaseColor, Color.white);
-                Material.SetTexture("_BaseMap", _tex);
-            }
-
-            public static Palette For(Material template)
-            {
-                if (!All.TryGetValue(template, out var p) || p._tex == null) All[template] = p = new Palette(template);
-                return p;
-            }
-
-            public Vector2 Uv(Color c)
-            {
-                var i = _colors.IndexOf(c);
-                if (i < 0)
-                {
-                    i = Mathf.Min(_colors.Count, Size - 1);
-                    if (_colors.Count < Size) _colors.Add(c);
-                    // sRGB texture, like the _BaseColor it replaces: the colour reads the same.
-                    _tex.SetPixel(i, 0, c);
-                    _tex.Apply(false);
-                }
-                return new Vector2((i + 0.5f) / Size, 0.5f);
-            }
-        }
-
-        sealed class MeshBuilder
-        {
-            readonly List<Vector3> _v = new(), _n = new();
-            readonly List<Vector2> _uv = new();
-            readonly List<BoneWeight> _w = new();
-            readonly List<int> _t = new();
-
-            public void Box(int bone, Vector3 c, Vector3 size, Vector2 uv)
-            {
-                var h = size * 0.5f;
-                void Face(Vector3 n, Vector3 u, Vector3 v)
-                {
-                    var b = _v.Count;
-                    var o = c + Vector3.Scale(n, h);
-                    var du = Vector3.Scale(u, h);
-                    var dv = Vector3.Scale(v, h);
-                    _v.Add(o - du - dv); _v.Add(o - du + dv); _v.Add(o + du + dv); _v.Add(o + du - dv);
-                    for (var i = 0; i < 4; i++)
-                    {
-                        _n.Add(n);
-                        _uv.Add(uv);
-                        _w.Add(new BoneWeight { boneIndex0 = bone, weight0 = 1f });
-                    }
-                    _t.Add(b); _t.Add(b + 1); _t.Add(b + 2); _t.Add(b); _t.Add(b + 2); _t.Add(b + 3);
-                }
-                Face(Vector3.up, Vector3.right, Vector3.forward);
-                Face(Vector3.down, Vector3.forward, Vector3.right);
-                Face(Vector3.forward, Vector3.up, Vector3.right);
-                Face(Vector3.back, Vector3.right, Vector3.up);
-                Face(Vector3.right, Vector3.forward, Vector3.up);
-                Face(Vector3.left, Vector3.up, Vector3.forward);
-            }
-
-            public Mesh ToMesh()
-            {
-                var m = new Mesh { name = "StandInFigure" };
-                m.SetVertices(_v);
-                m.SetNormals(_n);
-                m.SetUVs(0, _uv);
-                m.boneWeights = _w.ToArray();
-                m.SetTriangles(_t, 0);
-                m.RecalculateBounds();
-                return m;
             }
         }
     }
