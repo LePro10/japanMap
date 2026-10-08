@@ -189,3 +189,15 @@ MonoBehaviour:
     position: {x: 826, y: 146.67595, z: 912}
     lookAt: {x: 820, y: 159.65048, z: 954}
     note: 'Bellwood temple courtyard from the top of the sando: hall, stairs, gate (Phase 5)'
+  - name: needle-gerade
+    position: {x: -1000, y: 15.671143, z: -861}
+    lookAt: {x: -600, y: 11.058952, z: -855}
+    note: 'Needle Circuit: start of the 900 m South Straight, looking east (Phase 5)'
+  - name: needle-box
+    position: {x: -300, y: 38.149128, z: -560}
+    lookAt: {x: -350, y: 34.131016, z: -595}
+    note: 'Needle Circuit pit court (ASTRA: (-350, 585))'
+  - name: needle-luft
+    position: {x: -500, y: 161.22272, z: -1000}
+    lookAt: {x: -620, y: 24.136314, z: -720}
+    note: 'Needle Circuit from the sea: straight, Sea Bend, esses, hairpin'

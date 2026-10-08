@@ -50,12 +50,12 @@ namespace JapanMap.Tests
                 foreach (var pt in road.points)
                 {
                     // distance from the centreline point to the footprint must exceed half the carriageway
-                    var l = toLocal * new Vector3(pt.x - p.position.x, 0, pt.z - p.position.z);
+                    var l = toLocal * new Vector3(pt.x - p.centre.x, 0, pt.z - p.centre.z);
                     var dx = Mathf.Max(0, Mathf.Abs(l.x) - half.x);
                     var dz = Mathf.Max(0, Mathf.Abs(l.z) - half.y);
                     if (dx * dx + dz * dz < road.width * road.width / 4)
                     {
-                        hits.Add($"{kit.name} {p.item.kind} at ({p.position.x:F0}, {p.position.z:F0}) on road {road.id}");
+                        hits.Add($"{kit.name} {p.item.kind} at ({p.centre.x:F0}, {p.centre.z:F0}) on road {road.id}");
                         break;
                     }
                 }

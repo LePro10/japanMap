@@ -53,6 +53,7 @@
 | 2026-10-08 | 5 | Neue Ortsstraße folgte den Buckeln des Geländes (34 % Steigung), Gelände stand 0,46 m über dem Asphalt | Profil wie im Prototyp (geglättet, ≤ 11 %), Aufschütten unter Ortsstraßen; `Terrain_NeverPokesThroughARoad` deckt jede neue Straße ab | Test |
 | 2026-10-08 | 5 | Seitenstraße schüttete Gelände über die Straße, in die sie mündet (0,92 m); Spline-Stoß Mill Lane → Funaura knickte das Mesh | Erst alle Dämme, dann alle Einschnitte; Einmündungen übernehmen die Höhe; Verlängerungen runden den Stoß — `Terrain_NeverPokesThroughARoad`, `Roads_SurfacesFaceUp` | Test |
 | 2026-10-08 | 5 | Reisfeldwasser lag quer über der neuen Dorfstraße (Maske älter als die Orte) | Maske wird unter Ortsstraßen und Hausflächen trocken (`PlaceImporter.Dry`) | Werkzeug |
+| 2026-10-08 | 5 | Leitplanken als Einzelstücke mit Lücken: Modelle mit Ursprung am Ende (Zäune, Planken) wurden symmetrisch vermessen und versetzt gesetzt | Echte Grundfläche + Mittelpunkt je Modell (`CentreOf`), Platzierung gleicht den Versatz aus; Prüfungen und Einebnen nehmen den Mittelpunkt | Werkzeug |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

@@ -15,6 +15,20 @@ MonoBehaviour:
   source: kiso
   levelBlend: 4
   rules:
+  - kind: gate
+    tag: 
+    library:
+    - Kiso_Kido
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: inn
     library:
@@ -29,6 +43,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: waki
     library:
@@ -42,6 +57,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: soba
     library:
@@ -55,6 +71,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: sake
     library:
@@ -68,6 +85,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: gohei
     library:
@@ -81,6 +99,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: home
     library:
@@ -94,6 +113,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: home/low
     library:
@@ -107,6 +127,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: 
     library:
@@ -121,6 +142,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: kura
     tag: 
     library:
@@ -135,6 +157,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: honjin
     tag: 
     library:
@@ -149,6 +172,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: stairSteps
     tag: 
     library:
@@ -162,6 +186,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: stairPath
     tag: 
     library:
@@ -175,6 +200,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: waterwheel
     tag: 
     library:
@@ -188,6 +214,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: trough
     tag: 
     library:
@@ -201,6 +228,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: bell
     tag: 
     library:
@@ -214,6 +242,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: teahouse
     tag: 
     library:
@@ -227,6 +256,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: hokora
     tag: 
     library:
@@ -240,6 +270,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: noticeBoard
     tag: 
     library:
@@ -253,6 +284,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: back
     tag: kura
     library:
@@ -267,6 +299,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: back
     tag: shed
     library:
@@ -280,6 +313,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: back
     tag: house
     library:
@@ -293,6 +327,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   instanced: 0
   lodDistanceScale: 1
   cullDistanceScale: 1

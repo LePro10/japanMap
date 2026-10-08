@@ -15,6 +15,34 @@ MonoBehaviour:
   source: funaura
   levelBlend: 4
   rules:
+  - kind: slipway
+    tag: 
+    library:
+    - Minato_Slipway_8m
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+  - kind: harbourLight
+    tag: white
+    library:
+    - Minato_Lighthouse_White
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
   - kind: quay
     tag: 
     library: []
@@ -27,6 +55,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: quayWall
     tag: 
     library:
@@ -41,6 +70,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: quaySteps
     tag: 
     library:
@@ -54,6 +84,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: funaya
     tag: balcony
     library:
@@ -67,6 +98,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: funaya
     tag: plain
     library:
@@ -81,6 +113,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: omoya
     library:
@@ -95,6 +128,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: shop
     library:
@@ -108,6 +142,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: grocery
     library:
@@ -122,6 +157,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: izakaya
     library:
@@ -135,6 +171,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: inn
     library:
@@ -149,6 +186,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: tackle
     library:
@@ -162,6 +200,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: coop
     library:
@@ -175,6 +214,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: ice
     library:
@@ -188,6 +228,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: house
     tag: hill
     library:
@@ -203,6 +244,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: marketHall
     tag: 
     library:
@@ -216,6 +258,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: pier
     tag: 
     library:
@@ -229,6 +272,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: mole
     tag: 
     library:
@@ -242,6 +286,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: harbourLight
     tag: red
     library:
@@ -255,6 +300,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: streetLamp
     tag: 
     library:
@@ -268,6 +314,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: boat
     tag: big
     library:
@@ -281,6 +328,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: boat
     tag: small
     library:
@@ -294,6 +342,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: squidRack
     tag: 
     library:
@@ -307,6 +356,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: yardGear
     tag: nets
     library:
@@ -320,6 +370,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: yardGear
     tag: 
     library:
@@ -333,6 +384,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: dryingNet
     tag: 
     library:
@@ -346,6 +398,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: bicycle
     tag: 
     library:
@@ -361,6 +414,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: shrine
     tag: 
     library:
@@ -374,6 +428,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: shrineTorii
     tag: 
     library:
@@ -387,6 +442,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   instanced: 0
   lodDistanceScale: 1
   cullDistanceScale: 1

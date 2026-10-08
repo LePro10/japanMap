@@ -56,7 +56,10 @@ namespace JapanMap.Editor.Places
             public PlaceSource.Item item;
             public PlaceKit.Rule rule;
             public GameObject prefab;
+            /// <summary>Pivot of the model (where it is instantiated).</summary>
             public Vector3 position;
+            /// <summary>Centre of the footprint (levelling, checks) — differs from the pivot for end-pivoted pieces.</summary>
+            public Vector3 centre;
             public float yaw;
             public Vector3 scale;
             public Vector2 halfSize; // footprint half extents in the model's own x/z, scaled
@@ -75,7 +78,7 @@ namespace JapanMap.Editor.Places
                 if (rule != null && rule.level && rule.library.Length == 0)
                 {
                     // Ground only (a forecourt, a car lot): levelled to the item's own size, nothing placed.
-                    list.Add(new Placement { item = item, rule = rule, position = at, yaw = yaw + rule.yaw, scale = Vector3.one, halfSize = new Vector2(item.w, item.d) / 2 });
+                    list.Add(new Placement { item = item, rule = rule, position = at, centre = at, yaw = yaw + rule.yaw, scale = Vector3.one, halfSize = new Vector2(item.w, item.d) / 2 });
                     continue;
                 }
                 var options = rule == null ? new GameObject[0] : rule.library.Select(n => Load(n, item, fleet)).Where(g => g != null).ToArray();
@@ -108,7 +111,7 @@ namespace JapanMap.Editor.Places
                     if (rule.fitUniform && item.w > 0 && item.d > 0) scale *= Mathf.Min(item.w / fx, item.d / fz);
                     list.Add(new Placement
                     {
-                        item = item, rule = rule, prefab = prefab, position = at, yaw = yaw + rule.yaw,
+                        item = item, rule = rule, prefab = prefab, position = PivotFor(at, yaw + rule.yaw, prefab, Vector3.one * scale), centre = at, yaw = yaw + rule.yaw,
                         scale = Vector3.one * scale, halfSize = new Vector2(size.x, size.z) * scale / 2,
                     });
                     continue;
@@ -132,10 +135,11 @@ namespace JapanMap.Editor.Places
                     // Front on the building line: depth the parcel cannot take goes behind, into the block; a
                     // parcel deeper than the model (Koedo brewery, 40 m) keeps its yard behind the house.
                     if (item.d > 0) centre += turn * new Vector3(0, 0, (item.d - size.z * sz) / 2);
+                    var sc = new Vector3(sx, 1, sz) * rule.scale;
                     list.Add(new Placement
                     {
-                        item = item, rule = rule, prefab = prefab, position = centre, yaw = yaw + rule.yaw,
-                        scale = new Vector3(sx, 1, sz) * rule.scale, halfSize = new Vector2(size.x * sx, size.z * sz) * rule.scale / 2,
+                        item = item, rule = rule, prefab = prefab, position = PivotFor(centre, yaw + rule.yaw, prefab, sc), centre = centre, yaw = yaw + rule.yaw,
+                        scale = sc, halfSize = new Vector2(size.x * sx, size.z * sz) * rule.scale / 2,
                     });
                 }
             }
@@ -144,7 +148,7 @@ namespace JapanMap.Editor.Places
 
         static readonly Dictionary<GameObject, Vector3> Sizes = new();
 
-        /// <summary>LOD0 render size of a prefab: footprint (x, z, symmetric about the pivot) and height.</summary>
+        /// <summary>LOD0 render size of a prefab: footprint (x, z; centre in <see cref="CentreOf"/>) and height.</summary>
         public static Vector3 SizeOf(GameObject prefab)
         {
             if (Sizes.TryGetValue(prefab, out var s)) return s;
@@ -189,7 +193,27 @@ namespace JapanMap.Editor.Places
                     else b.Encapsulate(p);
                 }
             }
-            return any ? new Vector2(Mathf.Max(Mathf.Abs(b.min.x), Mathf.Abs(b.max.x)) * 2, Mathf.Max(Mathf.Abs(b.min.z), Mathf.Abs(b.max.z)) * 2) : Vector2.one;
+            Centres[prefab] = any ? new Vector2(b.center.x, b.center.z) : Vector2.zero;
+            return any ? new Vector2(b.size.x, b.size.z) : Vector2.one;
+        }
+
+        static readonly Dictionary<GameObject, Vector2> Centres = new();
+
+        /// <summary>
+        /// Footprint centre relative to the pivot (x, z). Rails, fences and wall pieces have their pivot at
+        /// one end (GuardRail_4m: centre at x −2.0) — placed by the pivot they sat 2 m off their spot.
+        /// </summary>
+        public static Vector2 CentreOf(GameObject prefab)
+        {
+            if (!Centres.ContainsKey(prefab)) FootprintOf(prefab);
+            return Centres[prefab];
+        }
+
+        /// <summary>Pivot position that puts the model's footprint centre at <paramref name="at"/>.</summary>
+        static Vector3 PivotFor(Vector3 at, float yaw, GameObject prefab, Vector3 scale)
+        {
+            var c = CentreOf(prefab);
+            return at - Quaternion.Euler(0, yaw, 0) * new Vector3(c.x * scale.x, 0, c.y * scale.z);
         }
 
         /// <summary>Footprints to level, for every kit (also called by the terrain import).</summary>
@@ -202,7 +226,7 @@ namespace JapanMap.Editor.Places
                     if (p.rule.level && (!p.item.fixedY || p.prefab == null))
                         pads.Add(new PlaceGround.Pad
                         {
-                            center = p.position, yaw = p.yaw, half = p.halfSize, blend = kit.levelBlend,
+                            center = p.centre, yaw = p.yaw, half = p.halfSize, blend = kit.levelBlend,
                             fixedLevel = p.item.fixedY ? p.item.y : float.NaN,
                             paint = string.IsNullOrEmpty(p.rule.paint) ? -1 : layers.IndexOf(p.rule.paint),
                             paintOnly = p.rule.paintOnly,
@@ -236,7 +260,7 @@ namespace JapanMap.Editor.Places
                     var go = (GameObject)PrefabUtility.InstantiatePrefab(p.prefab, parent);
                     go.name = $"{p.item.kind}_{parent.childCount - 1:D3}";
                     var pos = p.position;
-                    pos.y = p.item.fixedY ? p.item.y : Ground(pos);
+                    pos.y = p.item.fixedY ? p.item.y : Ground(p.centre); // the pad is levelled around the footprint centre
                     pos.y += p.rule.yOffset;
                     go.transform.SetPositionAndRotation(pos, Quaternion.Euler(0, p.yaw, 0));
                     go.transform.localScale = p.scale;
@@ -274,7 +298,7 @@ namespace JapanMap.Editor.Places
                 if (p.prefab == null) continue;
                 if (!parts.TryGetValue(p.prefab, out var chains)) parts[p.prefab] = chains = Chains(kit, p.prefab, protos, protoIndex);
                 var pos = p.position;
-                pos.y = (p.item.fixedY ? p.item.y : Ground(pos)) + p.rule.yOffset;
+                pos.y = (p.item.fixedY ? p.item.y : Ground(p.centre)) + p.rule.yOffset;
                 var m = Matrix4x4.TRS(pos, Quaternion.Euler(0, p.yaw, 0), p.scale);
                 var c = new Vector2Int(Mathf.FloorToInt(pos.x / chunk), Mathf.FloorToInt(pos.z / chunk));
                 foreach (var (proto, local) in chains) instances.Add((c, proto, m * local, pos));

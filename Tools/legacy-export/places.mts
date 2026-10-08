@@ -404,6 +404,40 @@ const exporters: Record<string, () => Promise<Place>> = {
     }
     return { place: 'temple', title: 'Bellwood Shrine', anchor: hall, items, trees, clearCircles, clearRects: [] };
   },
+  /**
+   * Needle Circuit (ASTRA §3): the track, pit lanes and approaches are in roads.json already. The
+   * prototype built nothing beside them; added from the plan: pit court at (−350 | 585) with garages,
+   * soft barriers outside the tight bends behind 8 m of runoff, lights along the South Straight,
+   * and the runoff kept clear of trees.
+   */
+  async needle() {
+    const track = roadsFile().roads.find((r: any) => r.id === 'needle-circuit');
+    const c = track.centerline, n = c.length / 3, half = track.widths[0] / 2;
+    const P = (i: number): [number, number] => { const k = ((i % n) + n) % n; return [c[k * 3], c[k * 3 + 2]]; };
+    const items: Item[] = [
+      { kind: 'pitCourt', x: -350, z: 600, yaw: 0, w: 92, d: 34 },
+    ];
+    for (let k = 0; k < 4; k++) items.push({ kind: 'pitGarage', x: -386 + k * 24, z: 611, yaw: 0 });
+    for (let x = -1040; x <= -180; x += 60) {
+      items.push({ kind: 'trackLight', x, z: 855 - (half + 5), yaw: 0 });
+      items.push({ kind: 'trackLight', x: x + 30, z: 855 + (half + 5), yaw: Math.PI });
+    }
+    const clearCircles: [number, number, number][] = [];
+    for (let i = 0; i < n; i += 4) clearCircles.push([...P(i), half + 8 + 2]);
+    // barriers: outside of bends tighter than 140 m radius, beyond the runoff
+    for (let i = 0; i < n; i += 2) {
+      const [ax, az] = P(i - 5), [bx, bz] = P(i), [cx, cz] = P(i + 5);
+      const t1 = Math.atan2(bz - az, bx - ax), t2 = Math.atan2(cz - bz, cx - bx);
+      let turn = t2 - t1; while (turn > Math.PI) turn -= 2 * Math.PI; while (turn < -Math.PI) turn += 2 * Math.PI;
+      const arc = Math.hypot(cx - ax, cz - az), radius = Math.abs(turn) > 1e-4 ? arc / Math.abs(turn) : Infinity;
+      if (radius > 140) continue;
+      const [px, pz] = P(i + 1), tx = px - bx, tz = pz - bz, len = Math.hypot(tx, tz) || 1;
+      // left normal in x/z is (−tz, tx); a positive turn bends towards it, so the outside is the other side
+      const side = turn > 0 ? -1 : 1, off = half + 8 + 1;
+      items.push({ kind: 'barrier', x: bx + (-tz / len) * side * off, z: bz + (tx / len) * side * off, yaw: Math.atan2(-tz, tx), w: 4 * (radius + off) / radius + 0.1, d: 0.6, h: 0.9 });
+    }
+    return { place: 'needle', title: 'Needle Circuit', anchor: { x: -620, z: 760 }, items, trees: [], clearCircles, clearRects: [] };
+  },
 };
 
 for (const name of only.length ? only : Object.keys(exporters)) {
