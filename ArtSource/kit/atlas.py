@@ -60,8 +60,8 @@ def srgb(hexstr):
 
 # ── generators: (w, h, rng) -> dict(rgb, smooth, metal, emit) ───────────────
 
-def _out(rgb, smooth, metal=0.0, emit=None):
-    return dict(rgb=np.clip(rgb, 0, 1), smooth=smooth, metal=metal, emit=emit)
+def _out(rgb, smooth, metal=0.0, emit=None, alpha=None):
+    return dict(rgb=np.clip(rgb, 0, 1), smooth=smooth, metal=metal, emit=emit, alpha=alpha)
 
 
 def grime(w, h, rng, amount=0.18, height=0.25):
@@ -1975,6 +1975,10 @@ LAYOUTS = {
 }
 
 
+from .atlas_flora import layout as _flora_layout   # noqa: E402 (needs the generators above)
+LAYOUTS['Flora'] = _flora_layout()
+
+
 def build_maps(name, seed=1):
     """Return (base, mask, emit) as float32 RGBA arrays (SIZE, SIZE, 4)."""
     base = np.zeros((SIZE, SIZE, 4), np.float32); base[..., 3] = 1
@@ -1991,6 +1995,8 @@ def build_maps(name, seed=1):
         mask[y:y + h, x:x + w, 3] = o['smooth']
         if o['emit'] is not None:
             emit[y:y + h, x:x + w, :3] = np.clip(o['emit'], 0, 1)
+        if o.get('alpha') is not None:          # leaf cards (Flora): cut-out alpha in BaseColor.a
+            base[y:y + h, x:x + w, 3] = o['alpha']
     _check_overlap(name)
     return base, mask, emit
 

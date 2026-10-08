@@ -311,6 +311,132 @@
   "switchable": [],
   "attach": []
  },
+ "Bush_Ajisai": {
+  "fbx": "vegetation/SM_Bush_Ajisai.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Bush_Ajisai_LOD0",
+   "SM_Bush_Ajisai_LOD1",
+   "SM_Bush_Ajisai_LOD2"
+  ],
+  "tris": [
+   360,
+   144,
+   20
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Bush_Sasa": {
+  "fbx": "vegetation/SM_Bush_Sasa.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Bush_Sasa_LOD0",
+   "SM_Bush_Sasa_LOD1",
+   "SM_Bush_Sasa_LOD2"
+  ],
+  "tris": [
+   540,
+   216,
+   20
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Bush_Tama": {
+  "fbx": "vegetation/SM_Bush_Tama.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Bush_Tama_LOD0",
+   "SM_Bush_Tama_LOD1",
+   "SM_Bush_Tama_LOD2"
+  ],
+  "tris": [
+   360,
+   80,
+   20
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Bush_Tsutsuji": {
+  "fbx": "vegetation/SM_Bush_Tsutsuji.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Bush_Tsutsuji_LOD0",
+   "SM_Bush_Tsutsuji_LOD1",
+   "SM_Bush_Tsutsuji_LOD2"
+  ],
+  "tris": [
+   360,
+   80,
+   20
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Bush_Tsutsuji_Row_4m": {
+  "fbx": "vegetation/SM_Bush_Tsutsuji_Row_4m.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Bush_Tsutsuji_Row_4m_LOD0",
+   "SM_Bush_Tsutsuji_Row_4m_LOD1",
+   "SM_Bush_Tsutsuji_Row_4m_LOD2"
+  ],
+  "tris": [
+   1440,
+   320,
+   40
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Bush_Yabu": {
+  "fbx": "vegetation/SM_Bush_Yabu.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Bush_Yabu_LOD0",
+   "SM_Bush_Yabu_LOD1",
+   "SM_Bush_Yabu_LOD2"
+  ],
+  "tris": [
+   483,
+   168,
+   20
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
  "Fence_Bamboo_1_8m": {
   "fbx": "props/SM_Fence_Bamboo_1_8m.fbx",
   "class": "props",
@@ -5132,6 +5258,282 @@
    "LENS_Ped_Green_Ped",
    "LENS_Ped_Red_Ped"
   ],
+  "attach": []
+ },
+ "Tree_Matsu_Aka": {
+  "fbx": "vegetation/SM_Tree_Matsu_Aka.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Tree_Matsu_Aka_LOD0",
+   "SM_Tree_Matsu_Aka_LOD1",
+   "SM_Tree_Matsu_Aka_LOD2"
+  ],
+  "tris": [
+   5252,
+   642,
+   108
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [
+   "COL_Tree_Matsu_Aka"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tree_Matsu_Niwa": {
+  "fbx": "vegetation/SM_Tree_Matsu_Niwa.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Tree_Matsu_Niwa_LOD0",
+   "SM_Tree_Matsu_Niwa_LOD1",
+   "SM_Tree_Matsu_Niwa_LOD2"
+  ],
+  "tris": [
+   2964,
+   522,
+   108
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [
+   "COL_Tree_Matsu_Niwa"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tree_Momiji_Gold": {
+  "fbx": "vegetation/SM_Tree_Momiji_Gold.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Tree_Momiji_Gold_LOD0",
+   "SM_Tree_Momiji_Gold_LOD1",
+   "SM_Tree_Momiji_Gold_LOD2"
+  ],
+  "tris": [
+   3264,
+   738,
+   48
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [
+   "COL_Tree_Momiji_Gold"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tree_Momiji_Green": {
+  "fbx": "vegetation/SM_Tree_Momiji_Green.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Tree_Momiji_Green_LOD0",
+   "SM_Tree_Momiji_Green_LOD1",
+   "SM_Tree_Momiji_Green_LOD2"
+  ],
+  "tris": [
+   3264,
+   738,
+   48
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [
+   "COL_Tree_Momiji_Green"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tree_Momiji_Red": {
+  "fbx": "vegetation/SM_Tree_Momiji_Red.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Tree_Momiji_Red_LOD0",
+   "SM_Tree_Momiji_Red_LOD1",
+   "SM_Tree_Momiji_Red_LOD2"
+  ],
+  "tris": [
+   3264,
+   738,
+   48
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [
+   "COL_Tree_Momiji_Red"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tree_Sakura_Bloom": {
+  "fbx": "vegetation/SM_Tree_Sakura_Bloom.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Tree_Sakura_Bloom_LOD0",
+   "SM_Tree_Sakura_Bloom_LOD1",
+   "SM_Tree_Sakura_Bloom_LOD2"
+  ],
+  "tris": [
+   4348,
+   964,
+   48
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [
+   "COL_Tree_Sakura_Bloom"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tree_Sakura_Leaf": {
+  "fbx": "vegetation/SM_Tree_Sakura_Leaf.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Tree_Sakura_Leaf_LOD0",
+   "SM_Tree_Sakura_Leaf_LOD1",
+   "SM_Tree_Sakura_Leaf_LOD2"
+  ],
+  "tris": [
+   4348,
+   964,
+   48
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [
+   "COL_Tree_Sakura_Leaf"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tree_Sakura_Shidare": {
+  "fbx": "vegetation/SM_Tree_Sakura_Shidare.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Tree_Sakura_Shidare_LOD0",
+   "SM_Tree_Sakura_Shidare_LOD1",
+   "SM_Tree_Sakura_Shidare_LOD2"
+  ],
+  "tris": [
+   2640,
+   986,
+   48
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [
+   "COL_Tree_Sakura_Shidare"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tree_Sugi": {
+  "fbx": "vegetation/SM_Tree_Sugi.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Tree_Sugi_LOD0",
+   "SM_Tree_Sugi_LOD1",
+   "SM_Tree_Sugi_LOD2"
+  ],
+  "tris": [
+   4944,
+   876,
+   68
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [
+   "COL_Tree_Sugi"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tree_Sugi_Shinboku": {
+  "fbx": "vegetation/SM_Tree_Sugi_Shinboku.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Tree_Sugi_Shinboku_LOD0",
+   "SM_Tree_Sugi_Shinboku_LOD1",
+   "SM_Tree_Sugi_Shinboku_LOD2"
+  ],
+  "tris": [
+   5522,
+   1032,
+   68
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [
+   "COL_Tree_Sugi_Shinboku"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tree_Sugi_Young": {
+  "fbx": "vegetation/SM_Tree_Sugi_Young.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Tree_Sugi_Young_LOD0",
+   "SM_Tree_Sugi_Young_LOD1",
+   "SM_Tree_Sugi_Young_LOD2"
+  ],
+  "tris": [
+   3672,
+   708,
+   68
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [
+   "COL_Tree_Sugi_Young"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tree_Take_Grove": {
+  "fbx": "vegetation/SM_Tree_Take_Grove.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Tree_Take_Grove_LOD0",
+   "SM_Tree_Take_Grove_LOD1",
+   "SM_Tree_Take_Grove_LOD2"
+  ],
+  "tris": [
+   4825,
+   1520,
+   28
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [
+   "COL_Tree_Take_Grove"
+  ],
+  "lights": [],
+  "switchable": [],
   "attach": []
  },
  "UtilityPole_Guy": {

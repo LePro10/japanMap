@@ -4,10 +4,31 @@ Plan: [docs/PLAN.md](../docs/PLAN.md), Abschnitt „Asset-Sprint". Regeln:
 [STYLE-KIT.md](STYLE-KIT.md) (verbindlich). Läuft parallel zur Unity-Sitzung,
 nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
-## Wo wir stehen (2026-10-08, Nacht)
+## Wo wir stehen (2026-10-08, Nachmittag/Abend)
 
-- **Aufgabe 3 — Gebäude, Tempel/Schrein („Tera"): Pilot fertig, wartet auf
-  Freigabe.** Letzter Baustil von Aufgabe 3. Zwei Dichten: **großer
+- **Aufgabe 4 — Vegetation („Flora"): Pilot fertig, wartet auf Freigabe.**
+  Alle sechs Arten aus PLAN (Zeder, Ahorn, Kirsche, Bambus, Kiefer, Büsche)
+  mit japanischen Varianten, je LOD0/LOD1/LOD2 (LOD2 = Fernkörper ≤ 108
+  Dreiecke statt Billboard, D18). 12 Bäume + 6 Büsche, **ein** Material
+  `M_Flora_Atlas` (Alpha-Clip) je Modell. Bilder in `previews/`:
+  `Flora_Overview.png` (Bergschrein im Zedernwald mit Shinboku, Tempelgarten,
+  Kirschallee mit Hängekirsche, Bambusweg; je Augenhöhe Stimmung/neutral/Grau,
+  von oben), `Flora_Trees.png` und `Flora_Bushes.png` (alle einzeln: vorne,
+  hinten, Stimmung, Grau), `Flora_LOD.png` (LOD0 | LOD1 | LOD2 nebeneinander),
+  `Flora_detail.png` (Nahaufnahmen: Shimenawa mit Shide, Kiefernstütze,
+  Zedernkrone, Rotkiefer, Ahorn, Kirschblüten, Bambus-Knoten, geschnittene
+  Azalee, Hortensie, Sasa), `Flora_Atlas.png`.
+  **Der Bergschrein (Tera) steht jetzt im echten Zedernwald** — gleiche
+  Kamera wie `Tera_Overview` „yama_steps", also direkt vergleichbar.
+- **Tera (Tempel/Schrein): als freigegeben übernommen.** Der Mensch hat
+  ohne Einwand zur nächsten Aufgabe weitergeschickt („führe asset phase
+  fort", 2026-10-08), die Hauptsitzung hatte Tera schon importiert. Die drei
+  Wahrzeichen (Haupthalle 9 343, Pagode 9 072, Tor 7 073) bleiben wie
+  gemessen, solange niemand widerspricht.
+
+## Davor (2026-10-08, Nacht)
+
+- **Aufgabe 3 — Gebäude, Tempel/Schrein („Tera"): fertig** (siehe oben). Letzter Baustil von Aufgabe 3. Zwei Dichten: **großer
   Tempelbezirk** (Tor mit großer Laterne, Sandō mit Fahnen und
   Steinlaternen, Haupthalle in Zinnober, Pagode, Glockenturm, Brunnenhaus,
   Amulett-Schalter mit Ema- und Omikuji-Gestell, Lehmmauer mit weißen
@@ -23,8 +44,6 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
   Ecke mit Grat und Windglocke, Haiden-Front mit Shimenawa und Glocke,
   Tempelglocke mit Stoßbalken, Chigi/Katsuogi, Brunnen mit Schöpfkellen,
   Pagoden-Traufe, Tor mit Laterne, Amulett-Schalter), `Tera_Pieces.png`.
-  **Frage an dich:** drei Wahrzeichen über 5 000 Dreiecken (Tabelle unten).
-  Danach: Aufgabe 4 Vegetation (ersetzt auch die Platzhalter-Zedern).
 
 ## Davor (2026-10-08, Abend)
 
@@ -79,6 +98,47 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
   Wohnblock-Budget: a) gilt (als 3 Felder zählen), mit der Freigabe bestätigt.
   Danach Baustil für Baustil: Koedo (Kura ausbauen), Kiso, Gassho,
   Fischerdorf, Tempel — je Pilot + Freigabe.
+
+### Vegetation-Pilot „Flora" (Atlas `Flora`, Generator `vegetation/trees.py` + Bausatz `vegetation/tree_kit.py`)
+
+| FBX (`exports/vegetation/`) | Was | Dreiecke LOD0 / LOD1 / LOD2 · Maße |
+|---|---|---|
+| Tree_Sugi | Zeder (sugi) 22 m: gerader Stamm mit faseriger rotbrauner Rinde, untere 40 % kahl (wie im Forst geästet), Krone als Kegel aus Büscheln an kurzen Ästen | 4 944 / 876 / 68 · 9 × 9 × 22,7 m |
+| Tree_Sugi_Young | junge Zeder 14,5 m, Krone tiefer | 3 672 / 708 / 68 |
+| Tree_Sugi_Shinboku | **heilige Zeder** 27,6 m, Stamm 1,5 m mit Wurzelanlauf, Shimenawa (dickes Strohseil mit Knoten und hängenden Enden) und 4 Shide im Zickzack, ältere Nadeln mit braunen Spitzen | 5 522 / 1 032 / 68 |
+| Tree_Matsu_Niwa | **Gartenkiefer** (kuromatsu, niwaki) 6 m: S-förmig geneigter Stamm mit Plattenrinde, waagrechte Äste mit flachen Wolkenpolstern, längster Ast auf zwei gekreuzten Stützen (shichū) mit Palmseil-Bund | 2 964 / 522 / 108 |
+| Tree_Matsu_Aka | **Rotkiefer** (akamatsu) 14,8 m: geneigt, unten graue Platten, oben orange Schuppenrinde, Schirmkrone aus Polstern | 5 252 / 642 / 108 |
+| Tree_Momiji_Green · _Red · _Gold | Fächerahorn 6,6 m: kurzer Stamm, drei Stämmlinge, feine Zweige, breite lichte Krone aus siebenlappigen Blättern; grün / rot / gold (Herbst-Akzent, D18 „10 %") | 3 264 / 738 / 48 |
+| Tree_Sakura_Bloom · _Leaf | Somei-yoshino 8,8 m, Krone 11,5 m: dicker Stamm mit Querstreifen (Lentizellen), 4 weit ausladende Äste, Schirmkrone; Blüte (blassrosa, gekerbte Blütenblätter in Dolden) / Sommerlaub | 4 348 / 964 / 48 |
+| Tree_Sakura_Shidare | **Hängekirsche** 7,7 m: Äste steigen, biegen über und lassen Vorhänge aus Blütenzweigen fast bis zum Boden hängen | 2 640 / 986 / 48 |
+| Tree_Take_Grove | **Mōsō-Bambushain** (Stück ~4 m): 10 Halme 10–14,5 m mit Knoten und Wachsring, nach außen geneigt und oben gebogen, Laub nur in der oberen Hälfte | 4 825 / 1 520 / 28 |
+| Bush_Tsutsuji · _Row_4m | **geschnittene Azalee** (karikomi) mit pinken Blüten, einzeln und als 4-m-Reihe | 360 / 80 / 20 · 1 440 / 320 / 40 |
+| Bush_Tama | runder geschnittener Strauch (tamamono) | 360 / 80 / 20 |
+| Bush_Ajisai | **Hortensie** (Regenzeit): große Blätter, blaue bis violette Blütenbälle | 360 / 144 / 20 |
+| Bush_Sasa | **Kumazasa** (Zwergbambus mit hellen Blatträndern), kniehoher Teppich 3 × 3 m | 540 / 216 / 20 |
+| Bush_Yabu | wilder Strauch für Wald- und Straßenränder | 483 / 168 / 20 |
+
+- **Bauweise:** Äste = sich verjüngende Röhren (Rinde entlang, bei dicken
+  Stämmen mehrmals rundherum). Laub = Büschel: dunkler Kern mit dichter
+  Laub-Kachel + Schale aus 20 Blatt-Karten (Alpha), LOD1 8 Karten.
+  Normalen der Karten zeigen vom Büschel- und Kronenmittelpunkt weg (Krone
+  schattiert wie ein Volumen). Kronen von Ahorn/Kirsche über eine
+  Hüllform gefüllt (`fill_crown`).
+- **Budget** (Baum ≤ 6 000, Ziel 40–80 %): Zedern 61–92 %, Kiefern 49–88 %,
+  Kirsche 72 %, Ahorn 54 %, Bambus 80 %, Hängekirsche 44 %. Gemessen und
+  gekürzt: Shinboku 6 434 → 5 522 (Astquirle alle 1,55 m), Bambus 6 555 →
+  4 825 (Laub ohne Kern, 10 Halme), Kiefern hoch 1 400 → 2 964 (Polster mit
+  80 Karten statt 20: zu dünn). Büsche haben kein eigenes Budget (≤ 1 500
+  angesetzt, werden tausendfach gestreut).
+- **Gemessen:** 18 FBX, 0 Streck-Warnungen. FBX zurückgelesen: eigene
+  Normalen, UV und ein Material kommen an. Alte Atlanten bitgleich (Rundung
+  ≤ 1/255). **Ungeprüft:** alles in Unity (Alpha-Clip, beidseitig, Normalen,
+  Mip-Stufen der Karten).
+- **Offen / Ideen nach der Freigabe:** Wind (Biege-Gewicht als
+  Vertex-Farbe: R = Höhe/Astspitze); Kiefer mit Strohmanschette (komomaki,
+  Winter) und Schneeseilen (yukitsuri, Kanazawa); Farne/Gras-Büschel für den
+  Waldboden; Zedernkarten aus der Nähe eher Laub als Nadeln (aus Fahrhöhe
+  unauffällig).
 
 ### Tempel/Schrein-Pilot „Tera" (Atlas `Tera` + `TeraShop`, Generator `buildings/tera.py` + Bausatz `buildings/tera_kit.py`)
 
@@ -349,8 +409,8 @@ Fischerdorf/Hafen, Tempel. Je Baustil gilt:
   noch offen.
 - `Planter_PotGroup` LOD1 hat 1 220 Dreiecke, das sind 43 % von LOD0. Das
   ist ok, könnte aber mit einfacheren Pflanzen weiter runter.
-- Vegetation (Aufgabe 4) nutzt `kit/organic.py` und den Atlas `Nature`.
-  Blätter mit Alpha brauchen ein eigenes Cutout-Material.
+- Vegetation (Aufgabe 4) hat einen eigenen Atlas `Flora` mit Alpha und
+  das Cutout-Material `M_Flora_Atlas` (`K.cutout_material`).
 
 ## Für die Unity-Sitzung: Lichttest (noch offen)
 
@@ -382,25 +442,40 @@ Konventionen:
 
 ## Für dich
 
-1. **Tempel-Pilot ansehen** (`previews/Tera_*.png`) und freigeben oder
-   Rückmeldung geben. Dazu die Frage: Dürfen Haupthalle (9 343), Pagode
-   (9 072) und Tor (7 073) als Wahrzeichen über 5 000 Dreiecken liegen?
-   Alternative: kleinere Haupthalle (3 × 3 Felder ≈ 5 700 wie der
-   Bergtempel) und Pagode ohne Sparren in allen Stockwerken.
-   Danach: Aufgabe 4 Vegetation.
-2. Der Unity-Sitzung bei Gelegenheit „Lichttest nach ArtSource/STATUS.md"
-   sagen.
+1. **Vegetation-Pilot ansehen** (`previews/Flora_Overview.png` zuerst,
+   dann `Flora_Trees.png`, `Flora_Bushes.png`, `Flora_detail.png`) und
+   freigeben oder sagen, was nicht passt (z. B. „Kirsche zu weiß",
+   „Bambus zu dicht"). Damit ist der Asset-Sprint inhaltlich durch
+   (Aufgaben 1–4); danach nur noch Nachbesserungen nach Rückmeldung.
+2. Falls du doch etwas gegen die drei Tempel-Wahrzeichen über 5 000
+   Dreiecken hast (Haupthalle, Pagode, Tor): sag es, dann verkleinere ich sie.
+3. Der Unity-Sitzung sagen: „Vegetation aus ArtSource importieren
+   (ArtSource/STATUS.md, Abschnitt Für die Hauptsitzung)" — und weiterhin
+   den Lichttest.
 
 ## Für die Hauptsitzung (darf ich nicht ändern)
 
-- **Fehler `Tools/montage.mjs` Zeile 10:** `join(ROOT, …)` macht aus einem
-  absoluten `--out` einen Pfad unter dem Repo (`japanMap/private/tmp/…`).
-  Lösung: `resolve` statt `join`.
-- **Skill `blender-asset`:** zwei Regeln aus STYLE-KIT übernehmen,
-  „Japanisch, nicht allgemein" und „Befestigung zeigen + Nahaufnahme".
-- **LESSONS.md:** die Zeilen unten eintragen.
-- Der Fehler in `montage.mjs` besteht weiter (2026-10-08 Abend: wieder
-  umgangen mit relativem `--out`).
+- **Vegetation importieren** (ersetzt die vorläufigen Bäume aus
+  `Editor/Vegetation/TreeBuilder`, D18), nach Freigabe des Menschen:
+  - 18 FBX in `exports/vegetation/` (`SM_Tree_*`, `SM_Bush_*`), je
+    `_LOD0/_LOD1/_LOD2` + bei Bäumen `COL_` (Stammbox 3 m hoch). Atlas
+    `T_Flora_{BaseColor,MaskMap,Emission}`; **BaseColor hat Alpha**.
+  - Material `M_Flora_Atlas`: URP/Lit, **Alpha Clipping 0,5**,
+    **Render Face Both** (Karten sind einzelne Flächen), keine Emission.
+    Textur: „Alpha is Transparency" an, **„Mip Maps Preserve Coverage"**
+    (Cutoff 0,5) — sonst dünnt das Laub in der Ferne aus.
+  - Modell-Import: **Normals = Import** (eigene Normalen: die Krone
+    schattiert wie ein Volumen; „Calculate" macht daraus Papierkarten).
+  - Zuordnung zu den bisherigen Arten: Cedar → `Tree_Sugi` /
+    `_Sugi_Young` (Wald), Maple → `Tree_Momiji_Green` (+ `_Red`/`_Gold`
+    als 10 % Herbst), Cherry → `Tree_Sakura_Bloom` (oder `_Leaf`), Bamboo
+    → `Tree_Take_Grove` (ein Stück ist schon ein Hain ~4 m), Bush →
+    `Bush_Yabu` (Wald/Straße), `Bush_Tsutsuji`/`_Tama`/`_Ajisai` (Gärten,
+    Tempel, Orte). Neu: Kiefer (`Tree_Matsu_Aka` an Küste/Hängen,
+    `Tree_Matsu_Niwa` in Gärten), `Bush_Sasa` (Waldboden),
+    Einzelstücke `Tree_Sugi_Shinboku` (an Schreinen) und
+    `Tree_Sakura_Shidare` (Tempel).
+  - Dreiecke LOD0 ≤ 5 522 (Bäume), LOD2 ≤ 108. Größen in der Tabelle oben.
 - **Alle FBX neu exportiert** (2026-10-08, Koedo): Die Triangulierung im
   Kit hat sich geändert (siehe Lektionen). Wer FBX schon importiert hat,
   importiert neu; Dreieckszahlen bleiben fast gleich.
@@ -509,6 +584,29 @@ Konventionen:
     Szene mit `build.run([...])` in einer Minute wieder da. Neu exportierte
     Requisiten-FBX (Zeitstempel) mit `git checkout -- ArtSource/exports/props`
     zurückgesetzt, sie gehörten nicht zur Aufgabe.
+- 2026-10-08 Abend (Vegetation):
+  - **Karten mit gemeinsamem Mittelpunkt wirkten wie Sterne** (Zedernzweige
+    strahlenförmig aus der Kartenmitte): Triebe über die ganze Karte
+    verteilt, jeder in eigener Richtung (`card_sugi`).
+  - **Dunkle Kerne lasen sich als glatte schwarze Kugeln** zwischen den
+    Karten: Kerne bekommen eine dichte Laub-Kachel ohne Alpha (`dense`).
+  - **Alle Karten tangential auf einer Kugel** zeichneten deren Rand als
+    Linie („Kugelschalen"): Tiefe und Neigung je Karte zufällig.
+  - **Laubbäume sahen aus wie Schirmakazien** (Büschel nur an den
+    Zweigspitzen): Krone über eine Hüllform füllen (`fill_crown`).
+  - **Rinde einmal rund gestaucht** (Kiefernplatten wie Pflaster am dicken
+    Stamm): der Streifen läuft bei dicken Stämmen mehrmals rundherum
+    (Teiler der Seitenzahl, damit keine Fläche über den Streifen ragt).
+  - **Grau-Test machte Karten zu Quadraten** (Material-Override ohne
+    Alpha): `P._clay` liest bei Objekten mit Eigenschaft `cutout` das
+    Flora-Alpha (Werkzeug).
+  - **Kartenbüschel stand aus der geschnittenen Oberseite** der Azalee:
+    `cards(zmax=…)` legt sie auf die Schnittfläche.
+  - **Kamera in einer Krone / Baum 2 m neben einem anderen:** Szenen
+    einmal ansehen (wie bei Tera) — Kirschabstände und Shinboku-Platz
+    korrigiert.
+  - `Tools/montage.mjs`: eine Beschriftung mit „=" bricht ab (Trenner von
+    `label=pfad`) — vermeiden oder dort nur am ersten „=" trennen.
 - 2026-10-08 Nacht (Tempel):
   - **Traufbretter mit Punkten der falschen Dachseite:** eine Hilfsfunktion
     in der Schleife über die Dachseiten griff erst später auf `side`/`cache`

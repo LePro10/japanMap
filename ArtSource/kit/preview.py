@@ -118,11 +118,29 @@ def stage(mood=True):
 
 
 def _clay():
+    """Grey only. Objects with the property `cutout` (leaf cards) keep the
+    alpha of the Flora atlas, so a tree reads as foliage, not as squares."""
     m = bpy.data.materials.get('M_Clay') or bpy.data.materials.new('M_Clay')
     m.use_nodes = True
-    b = core._principled(m.node_tree)
+    nt = m.node_tree
+    b = core._principled(nt)
     b.inputs['Base Color'].default_value = (0.22, 0.22, 0.22, 1)
     b.inputs['Roughness'].default_value = 0.7
+    img = bpy.data.images.get('T_Flora_BaseColor')
+    if img and not any(n.type == 'TEX_IMAGE' for n in nt.nodes):
+        tex = nt.nodes.new('ShaderNodeTexImage'); tex.image = img
+        att = nt.nodes.new('ShaderNodeAttribute'); att.attribute_type = 'OBJECT'; att.attribute_name = 'cutout'
+        clip = nt.nodes.new('ShaderNodeMath'); clip.operation = 'GREATER_THAN'; clip.inputs[1].default_value = 0.5
+        nt.links.new(tex.outputs['Alpha'], clip.inputs[0])
+        mix = nt.nodes.new('ShaderNodeMix'); mix.data_type = 'FLOAT'
+        nt.links.new(att.outputs['Fac'], mix.inputs['Factor'])
+        mix.inputs[2].default_value = 1.0                       # A: opaque (everything else)
+        nt.links.new(clip.outputs[0], mix.inputs[3])            # B: leaf alpha
+        nt.links.new(mix.outputs[0], b.inputs['Alpha'])
+        try:
+            m.surface_render_method = 'DITHERED'
+        except (AttributeError, TypeError):
+            pass
     return m
 
 

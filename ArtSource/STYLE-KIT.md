@@ -43,6 +43,8 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
   nur deckend, Blatt-Karten mit Alpha brauchen in Aufgabe 4 ein eigenes
   Material), `Kura`, `Tokyo` (Fliesen- und ALC-Wände, Konbini, Schilder,
   Neon), `TokyoSigns`, `Koedo` + `KoedoShop`, `Kiso` + `KisoShop`, `Gassho` + `GasshoShop`, `Minato` + `MinatoShop`, `Tera` + `TeraShop`. Neuer Baustil = neuer Atlas.
+  Ausnahme Vegetation: `Flora` mit Alpha im BaseColor und **einem**
+  Cutout-Material `M_Flora_Atlas` (Stamm, Laub und Fernstufe zusammen).
 - Atlas 1024², drei Karten passend zu URP/Lit:
   `T_<Stil>_BaseColor` (sRGB) · `T_<Stil>_MaskMap` (R Metall, G AO = 1,
   A Glätte; linear) · `T_<Stil>_Emission` (sRGB).
@@ -380,6 +382,37 @@ Steinpflaster, Ishigaki, Waldboden) und `TeraShop` (3 Innenräume, Tafeln
 - **Bodenstücke liegen ≥ 2 cm über 0** (Kies, Pflaster, Waldboden): der
   Bühnenboden bei 0 verdeckt sonst alles (zweites Mal nach Kiso).
 - **Bilder:** `tera.shots(ordner)`.
+
+## Flora-Bausatz (Vegetation, ab 2026-10-08)
+
+`vegetation/tree_kit.py` (Bausatz) + `vegetation/trees.py` (Arten als
+Pläne: Skelett + Laub-Büschel aus einem Startwert; Varianten tauschen nur
+Karten). Atlas `Flora` (`kit/atlas_flora.py`): Rinden-Streifen (Zeder,
+Kiefer grau/rot, Ahorn, Kirsche mit Lentizellen, Bambus mit Knoten),
+Blatt-Karten 160 px mit Alpha (Elemente einzeln gemalt, je eine Hälfte
+heller wie eine Mittelrippe), dichte Kacheln 80 px für Kerne,
+Schnitthecken-Streifen, Zellen für Fernstufe, Seil, Papier, Stützen.
+- **Ein Material** je Baum (`K.cutout_material`: Alpha > 0,5, beidseitig) —
+  der Instanz-Renderer in Unity zeichnet ein Material je Baum und LOD (D18).
+- **Büschel** = dunkler Kern (dichte Kachel, kein glatter Ball) + Schale
+  aus Karten auf Ikosaeder-Flächen (LOD0 20, Kiefernpolster 80, LOD1 8),
+  Tiefe und Neigung je Karte zufällig. Karten-Texturen ohne gemeinsamen
+  Mittelpunkt (sonst Sterne). **Eigene Normalen**: weg vom Büschel- und
+  Kronenmittelpunkt plus etwas nach oben; Rinde glatt.
+- **Kronen füllen:** Laubbäume über eine Hüllform (`fill_crown`), nicht nur
+  Büschel an den Zweigspitzen. Zeder: Kegel aus Astquirlen, untere ~40 %
+  kahl. Kiefer: flache Polster (Gartenkiefer mit Stützen *shichū*).
+- **Rinde:** U entlang des Asts in Metern, V rundherum; dicke Stämme
+  wiederholen den Streifen rundherum (Teiler der Seitenzahl).
+- **LOD2 statt Billboard** (D18): Stamm-Prisma + 1–5 Klumpen in der
+  Durchschnittsfarbe (`FAR_*`, etwas dunkler als die Karten), ≤ 108.
+- **Japanisch:** Sugi geästet, Shinboku mit Shimenawa und Shide,
+  Niwaki-Kiefer mit Stützen, Momiji, Somei-yoshino und Shidarezakura,
+  Mōsō-Bambus, Karikomi-Azalee, Ajisai, Kumazasa.
+- **Grau-Test:** Objekte mit Eigenschaft `cutout` behalten im Grau-Bild
+  das Laub-Alpha (`P._clay`).
+- **Bilder:** `trees.shots(ordner)` — Bergschrein (Tera) im Zedernwald,
+  Tempelgarten, Kirschallee, Bambusweg, Reihen, LOD-Vergleich, Nahaufnahmen.
 
 ## Abnutzung
 

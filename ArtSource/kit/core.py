@@ -106,6 +106,25 @@ def atlas_material(name, emission_strength=4.0):
     return mat
 
 
+def cutout_material(name):
+    """M_<Atlas>_Atlas with alpha clipping (leaf cards, Flora): the opaque
+    atlas material plus BaseColor.a > 0.5 as a hard cut, both faces drawn
+    (cards are single quads). Unity: URP/Lit, Alpha Clipping 0.5, Render Face Both."""
+    mat = atlas_material(name, emission_strength=0.0)
+    nt = mat.node_tree
+    tb = next(n for n in nt.nodes if n.type == 'TEX_IMAGE' and n.image and n.image.name.endswith('_BaseColor'))
+    clip = nt.nodes.new('ShaderNodeMath'); clip.operation = 'GREATER_THAN'; clip.location = (-400, 300)
+    clip.inputs[1].default_value = 0.5
+    nt.links.new(tb.outputs['Alpha'], clip.inputs[0])
+    nt.links.new(clip.outputs[0], _principled(nt).inputs['Alpha'])
+    try:
+        mat.surface_render_method = 'DITHERED'
+    except (AttributeError, TypeError):
+        pass
+    mat.use_backface_culling = False
+    return mat
+
+
 def glass_material():
     """M_Glass: the one shared transparent material (all props and buildings)."""
     mat = bpy.data.materials.get('M_Glass') or bpy.data.materials.new('M_Glass')
