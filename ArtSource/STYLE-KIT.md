@@ -138,6 +138,23 @@ Schildertürme je Haus, auch seitlich), Dach-Billboards, Videowände,
 Leuchtkästen an den Pfeilern, Laternenketten. Maßstab: „vor lauter
 Schildern sieht man die Wand kaum".
 
+**Schilderhaut (Zentrum, `buildings/tokyo_signs_kit.py`, Atlas `TokyoSigns`):**
+eigenes Mesh je Haus (`SM_<Haus>_Signs_LOD0/1`), damit Phase 5 die Dichte
+je Straße wählen kann. Teile: Querkasten je Geschoss (0,7–1,25 m, deckt
+Brüstung und unteren Fensterteil), Schilderturm (1,05 m breit, 1–2
+Kästen übereinander, leuchtende Vorderkante, optional Glühbirnen),
+auskragender Querkasten, Neon-Wort (mit Platte oder direkt an der Wand
+mit Klammern), Aufsteller auf dem Gehweg, Laternenkette, Videowand mit
+Wartungssteg, Dach-Billboard auf Stahlgitterturm. 36 erfundene Läden in
+fünf Gestaltungen (voll, Rahmen, dunkel mit Leuchtrand, geteilt, Mincho).
+Häuser im Zentrum sind Daten + Startwert (`tokyo_center.CENTER`):
+Fassadenart je Geschoss, Fensterfarben und Schilderauswahl wechseln mit
+dem Startwert; `density` < 1 ergibt ruhige Nebenstraßen-Versionen.
+Vorderseiten teilen sich dieselben Spaltenlinien (jede Linie schneidet
+jedes Geschoss der Wandhülle; 11 → 5 Spalten sparte ~650 Dreiecke).
+Vorschau der Schilder mit Emissionsstärke 1,6 statt 4 (sonst wäscht AgX
+die Farben pastellig aus).
+
 ## Abnutzung
 
 - **Schmutz unten:** jede Fläche wird zum Boden hin dunkler (Spritzwasser).

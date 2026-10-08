@@ -162,9 +162,10 @@ def profile(floors, lod, parapet=0.85):
 class Shell:
     """The swept walls of one building and their cells."""
 
-    def __init__(self, bm, W, D, floors, walls, lod, openings):
+    def __init__(self, bm, W, D, floors, walls, lod, openings, rows_reg=None):
         self.bm, self.W, self.D, self.lod = bm, W, D, lod
         self.walls = walls
+        self.rows_reg = rows_reg or {}   # {(edge, floor): {row name: region}}: panels, coloured floors
         self.corners = [(-W / 2, -D / 2), (W / 2, -D / 2), (W / 2, D / 2), (-W / 2, D / 2)]
         self.len = [W, D, W, D]
         pts, self.meta, self.roof = profile(floors, lod)
@@ -216,15 +217,15 @@ class Shell:
                     fz = [p[1] for kk, p in enumerate(self.pts[:-1])
                           if self.meta[kk]['floor'] == mt['floor'] and self.meta[kk]['kind'] == 'wall']
                     z0 = min([b for b in fz if z_hi - b <= STRIP_H + 1e-6] or [z_lo])
-                    m(bm, fs, wall, z0=z0)
+                    m(bm, fs, self.rows_reg.get((e, mt['floor']), {}).get(mt['name'], wall), z0=z0)
                 elif kind == 'plinth':
                     m(bm, fs, 'GRANITE')
                 elif kind == 'coping':
                     m(bm, fs, 'ALU')
                 elif kind == 'inner':
-                    m(bm, fs, FLAT[wall])
+                    m(bm, fs, FLAT.get(wall, wall))
                 else:   # band faces and the small horizontal ledges
-                    m(bm, fs, FLAT[wall])
+                    m(bm, fs, FLAT.get(wall, wall))
         # roof surface inside the parapet
         r = self.roof + 0.12
         x, y = self.W / 2 - 0.22, self.D / 2 - 0.22

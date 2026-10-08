@@ -32,7 +32,7 @@ def _open(sh, ops, lod):
     """Fill the opening cells with their modules."""
     for op in ops:
         face = sh.cell(op['e'], op['u'], op['fl'], T.ROWS[op['rows']])
-        ctx = dict(lod=lod, reveal=T.FLAT[sh.walls[op['e']]])
+        ctx = dict(lod=lod, reveal=T.FLAT.get(sh.walls[op['e']], sh.walls[op['e']]))
         T.MODULES[op['kind']](sh.bm, face, ctx, **op.get('opt', {}))
 
 

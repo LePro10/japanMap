@@ -562,10 +562,11 @@ def alc(col='#d9d8d2', panel_m=0.6, ppm=96):
 
 # ── atlas layouts (pixel rects: x, y, w, h; y from the bottom) ──────────────
 
-def _cells(names_gens, x0, y0, cols, size=64):
+def _cells(names_gens, x0, y0, cols, size=64, h=None):
     out = {}
+    h = h or size
     for i, (name, gen) in enumerate(names_gens):
-        out[name] = dict(kind='cell', rect=(x0 + (i % cols) * size, y0 + (i // cols) * size, size, size), gen=gen)
+        out[name] = dict(kind='cell', rect=(x0 + (i % cols) * size, y0 + (i // cols) * h, size, h), gen=gen)
     return out
 
 
@@ -712,6 +713,20 @@ LAYOUTS = {
         'WOOD':       _strip(384, 32, wood('#4a3424', smooth=0.3)),            # battens only (rotated)
         'NOBORI_A':   _rect(0, 416, 128, 32, png('NOBORI_A', 0.2)),
         'NOBORI_B':   _rect(128, 416, 128, 32, png('NOBORI_B', 0.2)),
+        **_cells([   # facade panels (aluminium composite, glass, raw concrete): variety for the centre
+            ('PANEL_DARK',   flat('#2f3235', 0.5, 0.4, dirt=0.06)),
+            ('PANEL_SILVER', flat('#a9adb0', 0.55, 0.8, dirt=0.06)),
+            ('PANEL_RED',    flat('#8a2a24', 0.45, 0.2, dirt=0.08)),
+            ('PANEL_CREAM',  flat('#d8cdb4', 0.4, dirt=0.12)),
+            ('PANEL_NAVY',   flat('#24324a', 0.5, 0.3, dirt=0.06)),
+            ('PANEL_TEAL',   flat('#2f5f5a', 0.45, 0.2, dirt=0.08)),
+            ('GLASS_BLACK',  flat('#14181c', 0.92, dirt=0.0)),
+            ('PANEL_ORANGE', flat('#b8642c', 0.45, 0.2, dirt=0.08)),
+            ('TILE_WHITE',   flat('#e4e1d8', 0.5, dirt=0.14)),
+            ('CONCRETE_RAW', flat('#8f8d87', 0.25, dirt=0.22)),
+            ('GLASS_BLUE',   flat('#2a4a62', 0.92, 0.2, dirt=0.0)),
+            ('PANEL_GREY',   flat('#5f6366', 0.45, 0.4, dirt=0.08)),
+        ], 256, 416, 12, 64, 32),
         'KONBINI_INT_A':  _rect(0, 256, 192, 128, png('KONBINI_INT_A', 0.8, emit=0.9)),
         'KONBINI_INT_B':  _rect(192, 256, 192, 128, png('KONBINI_INT_B', 0.8, emit=0.9)),
         'KONBINI_FASCIA': _rect(384, 320, 512, 64, png('KONBINI_FASCIA', 0.6, emit=0.85)),
@@ -769,6 +784,33 @@ LAYOUTS = {
             ('RED_PAINT',    flat('#b3202a', 0.4, dirt=0.1)),
             ('YELLOW',       flat('#e8b51a', 0.45, dirt=0.15)),
         ], 0, 0, 8),
+    },
+    'TokyoSigns': {   # sign skin of the dense centre: lightboxes, towers, stands, billboards, screens
+        **{f'Y{i:02d}': _rect((i % 4) * 256, (i // 4) * 64, 256, 64, png(f'SG_Y{i:02d}', 0.55, emit=0.85)) for i in range(24)},
+        **{f'T{i:02d}': _rect(i * 64, 384, 64, 320, png(f'SG_T{i:02d}', 0.55, emit=0.85)) for i in range(16)},
+        **{k: _rect(i * 256, 704, 256, 128, png(f'SG_{k}', 0.5, emit=0.75))
+           for i, k in enumerate(('BILL_LAGER', 'BILL_MOBILE', 'BILL_CAMERA', 'BILL_SODA'))},
+        'VIDEO_A': _rect(0, 832, 256, 128, png('SG_VIDEO_A', 0.8, emit=1.0)),
+        'VIDEO_B': _rect(768, 832, 256, 128, png('SG_VIDEO_B', 0.8, emit=1.0)),
+        **{f'S{i}': _rect(256 + i * 64, 832, 64, 128, png(f'SG_S{i}', 0.55, emit=0.8)) for i in range(8)},
+        **_cells([
+            ('FRAME_BLACK',  flat('#18191a', 0.45, 0.3, dirt=0.05)),
+            ('FRAME_SILVER', flat('#b9bcbd', 0.55, 0.9, dirt=0.05)),
+            ('FRAME_WHITE',  flat('#e8e8e4', 0.45, dirt=0.1)),
+            ('GALV',         flat('#a3a7ab', 0.45, 0.9, dirt=0.1)),
+            ('RUST',         flat('#6b3a1f', 0.15, 0.3, dirt=0.15)),
+            ('NEON_PINK',    emissive('#ff3fa4')),
+            ('NEON_CYAN',    emissive('#3fe6ff')),
+            ('NEON_YELLOW',  emissive('#ffd23f')),
+            ('NEON_GREEN',   emissive('#4dff7a')),
+            ('NEON_RED',     emissive('#ff3020')),
+            ('NEON_WHITE',   emissive('#f4f6ff')),
+            ('BULB_WARM',    emissive('#ffc070')),
+            ('LANTERN_RED',  emissive('#d8301f')),
+            ('PAINT_RED',    flat('#b3202a', 0.4, dirt=0.1)),
+            ('SIGN_BACK',    flat('#3b3e42', 0.4, 0.3, dirt=0.1)),
+            ('SCREEN_OFF',   flat('#0c0e10', 0.8, dirt=0.0)),
+        ], 0, 960, 16),
     },
     'Kura': {    # plaster strips 2 m tall at 128 px/m; namako at 256 px/m (1 m)
         'PLASTER_WHITE': _strip(768, 256, plaster()),

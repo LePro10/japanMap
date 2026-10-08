@@ -1091,6 +1091,324 @@
   "switchable": [],
   "attach": []
  },
+ "Tokyo_Center_6F_Brown": {
+  "fbx": "buildings/SM_Tokyo_Center_6F_Brown.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Center_6F_Brown_LOD0",
+   "SM_Tokyo_Center_6F_Brown_LOD1",
+   "SM_Tokyo_Center_6F_Brown_Signs_LOD0",
+   "SM_Tokyo_Center_6F_Brown_Signs_LOD1"
+  ],
+  "tris": [
+   4454,
+   1218
+  ],
+  "materials": [
+   "M_TokyoSigns_Atlas",
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Center_6F_Brown"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Center_6F_Brown_Shop",
+    "pos": [
+     0.6,
+     -6.5,
+     2.6
+    ],
+    "color": [
+     1.0,
+     0.6,
+     0.35
+    ],
+    "range": 7.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Center_6F_Brown_Signs",
+    "pos": [
+     2.15,
+     -7.0,
+     6.8
+    ],
+    "color": [
+     1.0,
+     0.55,
+     0.7
+    ],
+    "range": 8.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Center_6F_Narrow": {
+  "fbx": "buildings/SM_Tokyo_Center_6F_Narrow.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Center_6F_Narrow_LOD0",
+   "SM_Tokyo_Center_6F_Narrow_LOD1",
+   "SM_Tokyo_Center_6F_Narrow_Signs_LOD0",
+   "SM_Tokyo_Center_6F_Narrow_Signs_LOD1"
+  ],
+  "tris": [
+   3468,
+   1044
+  ],
+  "materials": [
+   "M_TokyoSigns_Atlas",
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Center_6F_Narrow"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Center_6F_Narrow_Shop",
+    "pos": [
+     0.6,
+     -6.5,
+     2.6
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 7.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Center_6F_Narrow_Signs",
+    "pos": [
+     1.65,
+     -7.0,
+     6.8
+    ],
+    "color": [
+     1.0,
+     0.55,
+     0.7
+    ],
+    "range": 8.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Center_7F_Concrete": {
+  "fbx": "buildings/SM_Tokyo_Center_7F_Concrete.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Center_7F_Concrete_LOD0",
+   "SM_Tokyo_Center_7F_Concrete_LOD1",
+   "SM_Tokyo_Center_7F_Concrete_Signs_LOD0",
+   "SM_Tokyo_Center_7F_Concrete_Signs_LOD1"
+  ],
+  "tris": [
+   3856,
+   1224
+  ],
+  "materials": [
+   "M_TokyoSigns_Atlas",
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Center_7F_Concrete"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Center_7F_Concrete_Shop",
+    "pos": [
+     0.6,
+     -7.0,
+     2.6
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 7.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Center_7F_Concrete_Signs",
+    "pos": [
+     2.65,
+     -7.5,
+     6.8
+    ],
+    "color": [
+     1.0,
+     0.55,
+     0.7
+    ],
+    "range": 8.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Center_7F_Izakaya": {
+  "fbx": "buildings/SM_Tokyo_Center_7F_Izakaya.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Center_7F_Izakaya_LOD0",
+   "SM_Tokyo_Center_7F_Izakaya_LOD1",
+   "SM_Tokyo_Center_7F_Izakaya_Signs_LOD0",
+   "SM_Tokyo_Center_7F_Izakaya_Signs_LOD1"
+  ],
+  "tris": [
+   4742,
+   1374
+  ],
+  "materials": [
+   "M_TokyoSigns_Atlas",
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Center_7F_Izakaya"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Center_7F_Izakaya_Shop",
+    "pos": [
+     0.6,
+     -7.0,
+     2.6
+    ],
+    "color": [
+     1.0,
+     0.6,
+     0.35
+    ],
+    "range": 7.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Center_7F_Izakaya_Signs",
+    "pos": [
+     2.4,
+     -7.5,
+     6.8
+    ],
+    "color": [
+     1.0,
+     0.55,
+     0.7
+    ],
+    "range": 8.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Center_8F_Glass": {
+  "fbx": "buildings/SM_Tokyo_Center_8F_Glass.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Center_8F_Glass_LOD0",
+   "SM_Tokyo_Center_8F_Glass_LOD1",
+   "SM_Tokyo_Center_8F_Glass_Signs_LOD0",
+   "SM_Tokyo_Center_8F_Glass_Signs_LOD1"
+  ],
+  "tris": [
+   4614,
+   1424
+  ],
+  "materials": [
+   "M_TokyoSigns_Atlas",
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Center_8F_Glass"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Center_8F_Glass_Shop",
+    "pos": [
+     0.6,
+     -7.5,
+     2.6
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 7.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Center_8F_Glass_Signs",
+    "pos": [
+     3.4,
+     -8.0,
+     6.8
+    ],
+    "color": [
+     1.0,
+     0.55,
+     0.7
+    ],
+    "range": 8.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Center_9F_Karaoke": {
+  "fbx": "buildings/SM_Tokyo_Center_9F_Karaoke.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Center_9F_Karaoke_LOD0",
+   "SM_Tokyo_Center_9F_Karaoke_LOD1",
+   "SM_Tokyo_Center_9F_Karaoke_Signs_LOD0",
+   "SM_Tokyo_Center_9F_Karaoke_Signs_LOD1"
+  ],
+  "tris": [
+   4980,
+   1582
+  ],
+  "materials": [
+   "M_TokyoSigns_Atlas",
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Center_9F_Karaoke"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Center_9F_Karaoke_Shop",
+    "pos": [
+     0.6,
+     -8.0,
+     2.6
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 7.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Center_9F_Karaoke_Signs",
+    "pos": [
+     3.15,
+     -8.5,
+     6.8
+    ],
+    "color": [
+     1.0,
+     0.55,
+     0.7
+    ],
+    "range": 8.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
  "Tokyo_Konbini_3F": {
   "fbx": "buildings/SM_Tokyo_Konbini_3F.fbx",
   "class": "buildings",
@@ -1309,6 +1627,218 @@
   ],
   "colliders": [],
   "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Street_3F_Brown": {
+  "fbx": "buildings/SM_Tokyo_Street_3F_Brown.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Street_3F_Brown_LOD0",
+   "SM_Tokyo_Street_3F_Brown_LOD1",
+   "SM_Tokyo_Street_3F_Brown_Signs_LOD0",
+   "SM_Tokyo_Street_3F_Brown_Signs_LOD1"
+  ],
+  "tris": [
+   1966,
+   536
+  ],
+  "materials": [
+   "M_TokyoSigns_Atlas",
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Street_3F_Brown"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Street_3F_Brown_Shop",
+    "pos": [
+     0.6,
+     -6.0,
+     2.6
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 7.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Street_3F_Brown_Signs",
+    "pos": [
+     2.9,
+     -6.5,
+     6.8
+    ],
+    "color": [
+     1.0,
+     0.55,
+     0.7
+    ],
+    "range": 8.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Street_4F_Teal": {
+  "fbx": "buildings/SM_Tokyo_Street_4F_Teal.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Street_4F_Teal_LOD0",
+   "SM_Tokyo_Street_4F_Teal_LOD1",
+   "SM_Tokyo_Street_4F_Teal_Signs_LOD0",
+   "SM_Tokyo_Street_4F_Teal_Signs_LOD1"
+  ],
+  "tris": [
+   2982,
+   840
+  ],
+  "materials": [
+   "M_TokyoSigns_Atlas",
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Street_4F_Teal"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Street_4F_Teal_Shop",
+    "pos": [
+     0.6,
+     -6.0,
+     2.6
+    ],
+    "color": [
+     1.0,
+     0.6,
+     0.35
+    ],
+    "range": 7.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Street_4F_Teal_Signs",
+    "pos": [
+     1.9,
+     -6.5,
+     6.8
+    ],
+    "color": [
+     1.0,
+     0.55,
+     0.7
+    ],
+    "range": 8.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Street_5F_Tile": {
+  "fbx": "buildings/SM_Tokyo_Street_5F_Tile.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Street_5F_Tile_LOD0",
+   "SM_Tokyo_Street_5F_Tile_LOD1",
+   "SM_Tokyo_Street_5F_Tile_Signs_LOD0",
+   "SM_Tokyo_Street_5F_Tile_Signs_LOD1"
+  ],
+  "tris": [
+   3136,
+   880
+  ],
+  "materials": [
+   "M_TokyoSigns_Atlas",
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Street_5F_Tile"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Street_5F_Tile_Shop",
+    "pos": [
+     0.6,
+     -6.5,
+     2.6
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 7.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Street_5F_Tile_Signs",
+    "pos": [
+     2.4,
+     -7.0,
+     6.8
+    ],
+    "color": [
+     1.0,
+     0.55,
+     0.7
+    ],
+    "range": 8.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Street_6F_Cream": {
+  "fbx": "buildings/SM_Tokyo_Street_6F_Cream.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Street_6F_Cream_LOD0",
+   "SM_Tokyo_Street_6F_Cream_LOD1",
+   "SM_Tokyo_Street_6F_Cream_Signs_LOD0",
+   "SM_Tokyo_Street_6F_Cream_Signs_LOD1"
+  ],
+  "tris": [
+   3530,
+   1064
+  ],
+  "materials": [
+   "M_TokyoSigns_Atlas",
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Street_6F_Cream"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Street_6F_Cream_Shop",
+    "pos": [
+     0.6,
+     -6.5,
+     2.6
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 7.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Street_6F_Cream_Signs",
+    "pos": [
+     2.15,
+     -7.0,
+     6.8
+    ],
+    "color": [
+     1.0,
+     0.55,
+     0.7
+    ],
+    "range": 8.0
+   }
+  ],
   "switchable": [],
   "attach": []
  },

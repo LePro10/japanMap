@@ -25,6 +25,7 @@ ASSETS = {
     'planter': 'props.planter',
     'rocks': 'props.rocks',
     'tokyo': 'buildings.tokyo',
+    'tokyo_center': 'buildings.tokyo_center',
 }
 
 # 3/4 front in the mood light, 3/4 front neutral, 3/4 back neutral (same as

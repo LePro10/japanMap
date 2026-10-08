@@ -8,17 +8,35 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
 - **Aufgabe 1 — Stil-Kit + Piloten:** freigegeben.
 - **Aufgabe 2 — Requisiten:** fertig (15 Gruppen, Tabelle unten).
-- **Aufgabe 3 — Gebäude: Tokyo-Pilot steht zur Freigabe (STOPP).**
-  Bilder: [previews/Tokyo_Overview.png](previews/Tokyo_Overview.png)
-  (Stimmung, neutral, Rückseite, Straßenhöhe) und
-  [previews/Tokyo_detail.png](previews/Tokyo_detail.png) (Nahaufnahmen),
-  dazu `Tokyo.png`, `Tokyo_clay.png`, `Tokyo_Signs.png`.
-  **Rückmeldung des Menschen:** für Tokyo-Zentrum zu wenig Schilder und
-  Details (Vorbild Kabukichō-Gasse). → Der Pilot gilt als Stufe
-  „Nebenstraße"; als Nächstes kommt die Stufe „Zentrum" (Stil-Kit
-  „Zwei Dichten"), Plan in der Antwort vom 2026-10-08.
+- **Aufgabe 3 — Gebäude, Tokyo: zwei Stufen, zur Freigabe (STOPP).**
+  1. **Nebenstraße** (Pilot 1): Konbini, Zakkyo, Wohnblock — Bilder
+     `previews/Tokyo_Overview.png`, `Tokyo_detail.png`.
+  2. **Zentrum** (neu, nach Rückmeldung „zu wenig Schilder/Details für
+     Tokyo City", Vorbild Kabukichō-Gasse): 6 dichte Häuser + 4 ruhige
+     Nebenstraßen-Versionen, jedes mit eigener Schilderhaut — Bilder
+     `previews/Tokyo_Center_Overview.png` (Gasse) und
+     `Tokyo_Center_Buildings.png` (alle 10 einzeln).
+  Wohnblock-Budget: Der Mensch hat nicht gewählt → Empfehlung a) gilt
+  vorläufig (als 3 Felder zählen).
   Danach Baustil für Baustil: Koedo (Kura ausbauen), Kiso, Gassho,
   Fischerdorf, Tempel — je Pilot + Freigabe.
+
+### Tokyo-Zentrum (Atlas `TokyoSigns` + `Tokyo`, Generator `buildings/tokyo_center.py`)
+
+| FBX (`exports/buildings/`, Präfix `SM_Tokyo_`) | Haus | Schilder | Dreiecke Haus LOD0 / LOD1 · Schilder LOD0 / LOD1 |
+|---|---|---|---|
+| Center_7F_Izakaya | 6,0 m breit, Fliese beige, Izakaya, Laternenkette | 2 Türme, Querkästen, Bier-Billboard auf Gitterturm | 4 742 / 1 374 · 1 256 / 276 |
+| Center_9F_Karaoke | 7,5 m, ALC + rote Paneele, Ladenfront | Turm mit Glühbirnen, Kamera-Billboard | 4 980 / 1 582 · 2 336 / 416 |
+| Center_6F_Narrow | 4,5 m, ALC, Rollladen | Turm, Neon ラーメン direkt an der Wand | 3 468 / 1 044 · 636 / 210 |
+| Center_8F_Glass | 8,0 m, Silberpaneel + Glasband | Videowand „NEO TOKYO" mit Wartungssteg | 4 614 / 1 424 · 652 / 232 |
+| Center_6F_Brown | 5,5 m, Fliese braun, Izakaya | Turm, Neon BAR auf Platte, Laternen | 4 454 / 1 218 · 986 / 248 |
+| Center_7F_Concrete | 6,5 m, Sichtbeton + dunkle Paneele | 2 Türme mit Glühbirnen, Handy-Billboard | 3 856 / 1 224 · 2 006 / 286 |
+| Street_5F_Tile / _4F_Teal / _3F_Brown / _6F_Cream | ruhige Nebenstraßen-Häuser (density 0,3–0,5) | wenige Schilder, Neon スナック (Teal) | 1 966–3 530 · 160–388 |
+
+Alle Häuser ≤ 5 000 Dreiecke; Schilderhaut getrennt (Zentrum 650–2 340).
+Schilder: 24 Querkästen, 16 Turmschilder, 8 Aufsteller, 4 Billboards,
+2 Videowände, 36 erfundene Läden. Gemessen in Blender, **ungeprüft in
+Unity** (zwei Materialien je Haus: `M_Tokyo_Atlas`, `M_TokyoSigns_Atlas`).
 
 ### Tokyo-Pilot (Atlas `Tokyo`, Generator `buildings/tokyo.py` + Bausatz `buildings/tokyo_kit.py`)
 
@@ -131,7 +149,7 @@ Fischerdorf/Hafen, Tempel. Je Baustil gilt:
 ## Für die Unity-Sitzung: Lichttest (noch offen)
 
 Ziel: einmal unter echtem Licht prüfen (Blaue Stunde, Nebel, Nässe).
-1. Texturen `exports/textures/T_{Props,Street,Nature,Kura,Tokyo}_{BaseColor,MaskMap,Emission}.png`
+1. Texturen `exports/textures/T_{Props,Street,Nature,Kura,Tokyo,TokyoSigns}_{BaseColor,MaskMap,Emission}.png`
    importieren. MaskMap **linear**. Je Atlas ein URP/Lit-Material,
    `M_Glass` transparent.
 2. An einen Blickpunkt stellen:
@@ -143,6 +161,7 @@ Ziel: einmal unter echtem Licht prüfen (Blaue Stunde, Nebel, Nässe).
    - Fence_Ishigaki_2m, Barrier_GuardRail_4m
    - BusStop_Shelter, Bicycle_Mamachari_Mint
    - Kura_2Bay_Black, Tokyo_Konbini_3F (Leuchtblende, Glasfront, Neon am Zakkyo)
+   - Tokyo_Center_7F_Izakaya + Tokyo_Center_8F_Glass gegenüber (6 m Gasse): Schilderhaut, Videowand im Nebel
 3. Prüfen und hier unter „Gefunden" eintragen:
    - Vorderseite nach +Z?
    - 1 m = 1 Einheit?
@@ -157,16 +176,14 @@ Konventionen:
 
 ## Für dich
 
-1. **Tokyo-Pilot freigeben oder korrigieren:** `ArtSource/previews/Tokyo_Overview.png`
-   und `Tokyo_detail.png` ansehen. Stimmt der Tokyo-Stil (Fliesen, Klimageräte,
-   Schilder, Neon, Konbini, Balkone, Stahltreppe)?
-2. **Eine Entscheidung zum Wohnblock:** Er hat 8 283 Dreiecke, das Budget
-   ist 5 000 je Modul. Er ist 3 Wohnungen breit. Möglichkeiten:
-   a) so lassen und als „3 Felder" zählen (empfohlen, Bild bleibt wie es ist),
-   b) in drei Feld-Module schneiden, die Phase 5 aneinandersetzt,
-   c) auf unter 5 000 abspecken (weniger Gitter, Balkon-Details, Treppe).
-3. Weiter wie bisher: der Unity-Sitzung bei Gelegenheit „Lichttest nach
-   ArtSource/STATUS.md" sagen.
+1. **Tokyo freigeben oder korrigieren:** zuerst
+   `ArtSource/previews/Tokyo_Center_Overview.png` (Gasse) und
+   `Tokyo_Center_Buildings.png`, dann die Nebenstraße
+   (`Tokyo_Overview.png`). Ist das Zentrum dicht genug? Was fehlt noch?
+2. **Wohnblock (8 283 Dreiecke):** a) so lassen (vorläufig gesetzt),
+   b) in 3 Feld-Module schneiden, c) abspecken — kurze Antwort genügt.
+3. Der Unity-Sitzung bei Gelegenheit „Lichttest nach ArtSource/STATUS.md"
+   sagen.
 
 ## Für die Hauptsitzung (darf ich nicht ändern)
 
@@ -229,3 +246,14 @@ Konventionen:
     Laibungen, Gitter und Kleinteile ohne Fasen (Stil-Kit „Gebäude-Bausatz").
   - **Stil-Bausatz wurde nicht neu geladen:** `build._reload` lädt jetzt
     alle `*_kit`-Module neu.
+- 2026-10-08 Nacht (Tokyo-Zentrum):
+  - **Rückmeldung „zu wenig, zu generisch für Tokyo City":** Stil-Kit
+    „Zwei Dichten" + Schilderhaut als eigener Bausatz; Häuser als Daten +
+    Startwert, damit eine Straße sich nicht wiederholt.
+  - **Verschmelzen half kaum, weil jede Fensterspalte alle Geschosse
+    schneidet:** gemeinsame Spaltenlinien je Vorderseite (−650 Dreiecke).
+  - **Schilder wirkten pastellig:** Emission 4 + AgX wäscht Farben aus →
+    Vorschau-Stärke 1,6 für `TokyoSigns`. Erst messen/vergleichen, dann
+    Grafiken ändern.
+  - **Querkästen nur in der Brüstung wirkten klein**; Kabukichō-Kästen
+    decken auch den unteren Fensterteil (0,7–1,25 m).
