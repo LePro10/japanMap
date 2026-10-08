@@ -190,6 +190,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7604147125975657311}
   - component: {fileID: 6552222211682861140}
+  - component: {fileID: 601986617444197783}
   m_Layer: 0
   m_Name: bellTower
   m_TagString: Untagged
@@ -235,3 +236,24 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 3.54, y: 4.23, z: 3.54}
   m_Center: {x: 0, y: 2.115, z: 0}
+--- !u!205 &601986617444197783
+LODGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9118783407586954463}
+  serializedVersion: 3
+  m_LocalReferencePoint: {x: 0, y: 2.1149998, z: 0.14999998}
+  m_Size: 4.2299995
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
+  m_LastLODIsBillboard: 0
+  m_LODs:
+  - screenRelativeHeight: 0.015
+    fadeTransitionWidth: 0
+    renderers:
+    - renderer: {fileID: 3147964221215831031}
+    - renderer: {fileID: 2997642506162172112}
+  m_Enabled: 1
+  m_GlobalIlluminationLOD: 0

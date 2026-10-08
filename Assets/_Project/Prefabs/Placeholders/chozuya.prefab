@@ -190,6 +190,7 @@ GameObject:
   m_Component:
   - component: {fileID: 264057740578348543}
   - component: {fileID: 1062951752919567672}
+  - component: {fileID: 5599361708243554587}
   m_Layer: 0
   m_Name: chozuya
   m_TagString: Untagged
@@ -235,3 +236,24 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 3.25, y: 2.9, z: 3.25}
   m_Center: {x: 0, y: 1.45, z: 0}
+--- !u!205 &5599361708243554587
+LODGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5755125196697859770}
+  serializedVersion: 3
+  m_LocalReferencePoint: {x: 0, y: 1.45, z: 0.15000004}
+  m_Size: 3.5499997
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
+  m_LastLODIsBillboard: 0
+  m_LODs:
+  - screenRelativeHeight: 0.015
+    fadeTransitionWidth: 0
+    renderers:
+    - renderer: {fileID: 5097142048047591949}
+    - renderer: {fileID: 4760044061093908046}
+  m_Enabled: 1
+  m_GlobalIlluminationLOD: 0

@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 728320473823374127}
   - component: {fileID: 7904966056975663948}
+  - component: {fileID: 3785159453842371823}
   m_Layer: 0
   m_Name: coastal_cliff_04
   m_TagString: Untagged
@@ -55,6 +56,27 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 20, y: 12, z: 20}
   m_Center: {x: 0, y: 6, z: 0}
+--- !u!205 &3785159453842371823
+LODGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2069605145724378755}
+  serializedVersion: 3
+  m_LocalReferencePoint: {x: 0, y: 6, z: 0.14999962}
+  m_Size: 20.3
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
+  m_LastLODIsBillboard: 0
+  m_LODs:
+  - screenRelativeHeight: 0.015
+    fadeTransitionWidth: 0
+    renderers:
+    - renderer: {fileID: 6113962070903337027}
+    - renderer: {fileID: 8475465438039799725}
+  m_Enabled: 1
+  m_GlobalIlluminationLOD: 0
 --- !u!1 &2231986292134588894
 GameObject:
   m_ObjectHideFlags: 0

@@ -100,6 +100,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2734389698027803962}
   - component: {fileID: 1780081349346864306}
+  - component: {fileID: 4419315783910897061}
   m_Layer: 0
   m_Name: netRack
   m_TagString: Untagged
@@ -145,6 +146,27 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2.91, y: 2.47, z: 4.6}
   m_Center: {x: 0, y: 1.235, z: 0}
+--- !u!205 &4419315783910897061
+LODGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5865279193614520426}
+  serializedVersion: 3
+  m_LocalReferencePoint: {x: 0, y: 1.2350001, z: 0.15000021}
+  m_Size: 4.8999996
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
+  m_LastLODIsBillboard: 0
+  m_LODs:
+  - screenRelativeHeight: 0.015
+    fadeTransitionWidth: 0
+    renderers:
+    - renderer: {fileID: 3142986435780527182}
+    - renderer: {fileID: 6203614071308497899}
+  m_Enabled: 1
+  m_GlobalIlluminationLOD: 0
 --- !u!1 &7087217932702483676
 GameObject:
   m_ObjectHideFlags: 0

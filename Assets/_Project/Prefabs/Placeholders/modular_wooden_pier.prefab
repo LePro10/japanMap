@@ -100,6 +100,7 @@ GameObject:
   m_Component:
   - component: {fileID: 333775163635830107}
   - component: {fileID: 1727409661121712098}
+  - component: {fileID: 8648887175368391562}
   m_Layer: 0
   m_Name: modular_wooden_pier
   m_TagString: Untagged
@@ -145,6 +146,27 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 3, y: 1, z: 10}
   m_Center: {x: 0, y: 0.5, z: 0}
+--- !u!205 &8648887175368391562
+LODGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3625777814207048657}
+  serializedVersion: 3
+  m_LocalReferencePoint: {x: 0, y: 0.5, z: 0.1500001}
+  m_Size: 10.3
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
+  m_LastLODIsBillboard: 0
+  m_LODs:
+  - screenRelativeHeight: 0.015
+    fadeTransitionWidth: 0
+    renderers:
+    - renderer: {fileID: 4635982579053984886}
+    - renderer: {fileID: 7872984304093482360}
+  m_Enabled: 1
+  m_GlobalIlluminationLOD: 0
 --- !u!1 &5395925284096530215
 GameObject:
   m_ObjectHideFlags: 0

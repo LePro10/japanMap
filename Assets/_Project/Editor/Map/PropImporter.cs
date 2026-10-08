@@ -168,6 +168,12 @@ namespace JapanMap.Editor.Map
                 foreach (var r in root.GetComponentsInChildren<MeshRenderer>())
                     if (r.gameObject == marker || size.y < 2.5f) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
+                // Culled when small on screen, like the library models: 372 tetrapod boxes alone were
+                // ~600 draw calls at the coast on Low (bench p4-low).
+                var lod = root.AddComponent<LODGroup>();
+                lod.SetLODs(new[] { new LOD(0.015f, root.GetComponentsInChildren<MeshRenderer>()) });
+                lod.RecalculateBounds();
+
                 foreach (var t in root.GetComponentsInChildren<Transform>())
                     GameObjectUtility.SetStaticEditorFlags(t.gameObject, (StaticEditorFlags)~0);
                 return PrefabUtility.SaveAsPrefabAsset(root, $"{PrefabDir}/{spec.id}.prefab");

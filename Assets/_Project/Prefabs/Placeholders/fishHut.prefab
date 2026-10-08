@@ -100,6 +100,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7472080437662963383}
   - component: {fileID: 3309361939594653591}
+  - component: {fileID: 4222826332772124713}
   m_Layer: 0
   m_Name: fishHut
   m_TagString: Untagged
@@ -145,6 +146,27 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 6.2, y: 3.77, z: 4.92}
   m_Center: {x: 0, y: 1.885, z: 0}
+--- !u!205 &4222826332772124713
+LODGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5276821909019435927}
+  serializedVersion: 3
+  m_LocalReferencePoint: {x: 0, y: 1.885, z: 0.15000021}
+  m_Size: 6.1999993
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
+  m_LastLODIsBillboard: 0
+  m_LODs:
+  - screenRelativeHeight: 0.015
+    fadeTransitionWidth: 0
+    renderers:
+    - renderer: {fileID: 6405891715581720257}
+    - renderer: {fileID: 3352287655189722178}
+  m_Enabled: 1
+  m_GlobalIlluminationLOD: 0
 --- !u!1 &8554963892077527532
 GameObject:
   m_ObjectHideFlags: 0

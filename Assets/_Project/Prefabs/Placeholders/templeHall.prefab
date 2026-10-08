@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7457404998301418267}
   - component: {fileID: 3158907466353664482}
+  - component: {fileID: 3721585941048031966}
   m_Layer: 0
   m_Name: templeHall
   m_TagString: Untagged
@@ -55,6 +56,27 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 14, y: 7.7, z: 11}
   m_Center: {x: 0, y: 3.85, z: 0}
+--- !u!205 &3721585941048031966
+LODGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1045704970934926542}
+  serializedVersion: 3
+  m_LocalReferencePoint: {x: 0, y: 3.85, z: 0.1500001}
+  m_Size: 14
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
+  m_LastLODIsBillboard: 0
+  m_LODs:
+  - screenRelativeHeight: 0.015
+    fadeTransitionWidth: 0
+    renderers:
+    - renderer: {fileID: 3863147337311341584}
+    - renderer: {fileID: 1732636373989159353}
+  m_Enabled: 1
+  m_GlobalIlluminationLOD: 0
 --- !u!1 &3858766102520047778
 GameObject:
   m_ObjectHideFlags: 0

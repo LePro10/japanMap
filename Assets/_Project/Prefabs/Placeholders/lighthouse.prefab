@@ -190,6 +190,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5993044870814176979}
   - component: {fileID: 5248100481649672436}
+  - component: {fileID: 978307173040230904}
   m_Layer: 0
   m_Name: lighthouse
   m_TagString: Untagged
@@ -235,3 +236,24 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 3, y: 13.56, z: 3}
   m_Center: {x: 0, y: 6.78, z: 0}
+--- !u!205 &978307173040230904
+LODGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4001764047186901458}
+  serializedVersion: 3
+  m_LocalReferencePoint: {x: 0, y: 6.78, z: 0.14999998}
+  m_Size: 13.56
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
+  m_LastLODIsBillboard: 0
+  m_LODs:
+  - screenRelativeHeight: 0.015
+    fadeTransitionWidth: 0
+    renderers:
+    - renderer: {fileID: 5541606015819797973}
+    - renderer: {fileID: 3049640730843522420}
+  m_Enabled: 1
+  m_GlobalIlluminationLOD: 0
