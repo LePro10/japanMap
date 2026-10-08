@@ -6,7 +6,8 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
 ## Wo wir stehen (2026-10-08, Nachmittag)
 
-- **Aufgabe 3 — Gebäude, Gassho: Pilot fertig, wartet auf Freigabe.**
+- **Aufgabe 3 — Gebäude, Gassho: freigegeben** (Mensch fragte nach der
+  nächsten Aufgabe, 2026-10-08). Nächster Baustil: **Fischerdorf/Hafen**.
   Strohdachdorf wie Shirakawa-gō/Gokayama: 5 Bauernhäuser + 2 ruhige
   Feld-Versionen + 4 kleine Bauten + 3 Dorfstücke, je mit eigener
   Ausstattung (Mesh `_Shop`). Bilder: `previews/Gassho_Overview.png`
@@ -276,8 +277,8 @@ Konventionen:
 
 ## Für dich
 
-1. Gassho-Pilot ansehen (`ArtSource/previews/Gassho_*.png`) und freigeben
-   oder Rückmeldung geben. Danach: Fischerdorf, dann Tempel.
+1. Neue Sitzung für das Fischerdorf starten (Starttext in der Antwort vom
+   2026-10-08). Danach: Tempel.
 2. Der Unity-Sitzung bei Gelegenheit „Lichttest nach ArtSource/STATUS.md"
    sagen.
 
