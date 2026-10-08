@@ -1,0 +1,394 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 42c31839a3d8045998f78eea4bdf1720, type: 3}
+  m_Name: Funaura
+  m_EditorClassIdentifier: JapanMap.Editor::JapanMap.Editor.Places.PlaceKit
+  source: funaura
+  levelBlend: 4
+  rules:
+  - kind: quay
+    tag: 
+    library: []
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: Sand
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: quayWall
+    tag: 
+    library:
+    - Minato_Quay_Stone_8m
+    - Minato_Quay_8m
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: quaySteps
+    tag: 
+    library:
+    - Minato_Quay_Steps_8m
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: funaya
+    tag: balcony
+    library:
+    - Minato_Funaya_A
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: funaya
+    tag: plain
+    library:
+    - Minato_Funaya_B
+    - Minato_Funaya_A_Quiet
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: house
+    tag: omoya
+    library:
+    - Minato_Gyoka_Kawara
+    - Minato_Gyoka_Tin_Quiet
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: house
+    tag: shop
+    library:
+    - Minato_Shop_Ice
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: house
+    tag: grocery
+    library:
+    - Minato_Shop_Ice
+    - Minato_Shokudo
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: house
+    tag: izakaya
+    library:
+    - Minato_Shokudo
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: house
+    tag: inn
+    library:
+    - Minato_Shokudo
+    - Minato_Gyoka_Kawara
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: house
+    tag: tackle
+    library:
+    - Minato_Gyoka_Tin
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: house
+    tag: coop
+    library:
+    - Minato_Gyoka_Kawara
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: house
+    tag: ice
+    library:
+    - Minato_Gyoka_Tin
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: house
+    tag: hill
+    library:
+    - Minato_Gyoka_Kawara
+    - Minato_Gyoka_Tin_Quiet
+    - Minato_Gyoka_Tin
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: marketHall
+    tag: 
+    library:
+    - Minato_Ichiba
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: pier
+    tag: 
+    library:
+    - Minato_Pier_8m
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 1
+    matchHeight: 0
+  - kind: mole
+    tag: 
+    library:
+    - Minato_Breakwater_8m
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: harbourLight
+    tag: red
+    library:
+    - Minato_Lighthouse_Red
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: streetLamp
+    tag: 
+    library:
+    - StreetLight_Road
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: boat
+    tag: big
+    library:
+    - Minato_Boat_Ika
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: boat
+    tag: small
+    library:
+    - Minato_Boat_Skiff
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: squidRack
+    tag: 
+    library:
+    - Minato_Gear_Drying
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: yardGear
+    tag: nets
+    library:
+    - Minato_Gear_Nets
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: yardGear
+    tag: 
+    library:
+    - Minato_Gear_Market
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: dryingNet
+    tag: 
+    library:
+    - Minato_Gear_Nets
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: bicycle
+    tag: 
+    library:
+    - Bicycle_Mamachari_Cream
+    - Bicycle_Mamachari_Mint
+    - Bicycle_Mamachari_Silver
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: shrine
+    tag: 
+    library:
+    - Gassho_Hokora
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: shrineTorii
+    tag: 
+    library:
+    - Torii_Vermilion_S
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  instanced: 0
+  lodDistanceScale: 1
+  cullDistanceScale: 1
+  shadowFromLastLod: 1
+  shellDistance: 0

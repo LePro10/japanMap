@@ -23,6 +23,8 @@ interface Place {
   clearCircles: [number, number, number][];
   clearRects: [number, number, number, number][];
   spawn?: { x: number; z: number; yaw: number };
+  /** Roads the prototype built inside the place (not in roads.json): control points, Three x/z. */
+  roads?: { id: string; type: string; width: number; points: [number, number][]; endY?: number }[];
 }
 
 const r3 = (v: number): number => Math.round(v * 1000) / 1000;
@@ -33,6 +35,7 @@ function round(p: Place): Place {
   };
   p.items.forEach(fix);
   p.trees.forEach(fix);
+  p.roads?.forEach((r) => { r.points = r.points.map(([x, z]) => [r3(x), r3(z)]); });
   p.clearCircles = p.clearCircles.map((c) => c.map(r3) as [number, number, number]);
   p.clearRects = p.clearRects.map((c) => c.map(r3) as [number, number, number, number]);
   return p;
@@ -165,6 +168,65 @@ const exporters: Record<string, () => Promise<Place>> = {
     const sample = result.buildings.slice(0, 3).map((b: any) => b.id).join(', ') + ' … ' + suburbs.buildings.slice(0, 2).map((b: any) => b.id).join(', ');
     console.log(`  ids: ${sample}`);
     return { place: 'tokyo', title: 'Tokyo', anchor: { x: 620, z: 120 }, items, trees: [], clearCircles: [], clearRects: [] };
+  },
+  /** FunauraVillage.ts + funauraLayout.ts (DOERFER.md §1). */
+  async funaura() {
+    const L = await src('world/settlements/funaura/funauraLayout.ts');
+    const Q = L.QUAY_Y, P = L.PLATFORM;
+    const items: Item[] = [];
+    const fixed = (it: Item, y: number): Item => ({ ...it, y, fixedY: true });
+    // the filled quay platform (umetate-chi), west (funaya quarter) and east (working port)
+    items.push(fixed({ kind: 'quay', x: (P.minX + P.split) / 2, z: (P.minZ + P.faceWest) / 2, yaw: 0, w: P.split - P.minX, d: P.faceWest - P.minZ }, Q));
+    items.push(fixed({ kind: 'quay', x: (P.split + P.maxX) / 2, z: (P.minZ + P.faceEast) / 2, yaw: 0, w: P.maxX - P.split, d: P.faceEast - P.minZ }, Q));
+    // quay wall along the sea faces, every 8 m, facing the sea (+z)
+    for (let x = P.minX + 4; x < P.split; x += 8) items.push(fixed({ kind: 'quayWall', x, z: P.faceWest, yaw: 0 }, Q));
+    for (let x = P.split + 4; x < P.maxX; x += 8) items.push(fixed({ kind: 'quayWall', x, z: P.faceEast, yaw: 0 }, Q));
+    // stone steps (gangi) in front of the hall
+    items.push(fixed({ kind: 'quaySteps', x: -1212.5, z: P.faceWest, yaw: 0 }, Q));
+    for (const [x, w, variant, balcony] of L.FUNAYA)
+      items.push(fixed({ kind: 'funaya', tag: balcony ? 'balcony' : 'plain', x, z: (L.FUNAYA_BACK + L.FUNAYA_FRONT) / 2, yaw: 0, w, d: L.FUNAYA_FRONT - L.FUNAYA_BACK }, Q));
+    for (const [x, z, w, d, yaw, kind, floors] of L.VILLAGE_HOUSES) {
+      const onQuay = x > P.minX - 1 && x < P.maxX + 1 && z > P.minZ - 1;
+      const it: Item = { kind: 'house', tag: kind, x, z, yaw, w, d, h: floors * 3.2 };
+      items.push(onQuay ? fixed(it, Q) : it);
+    }
+    items.push(fixed({ kind: 'marketHall', x: -1180, z: 1095.5, yaw: 0, w: 26, d: 13 }, Q));
+    for (let z = L.PIER.z0 + 4; z < L.PIER.z1; z += 8) items.push(fixed({ kind: 'pier', x: L.PIER.x, z, yaw: 0, w: L.PIER.w }, Q));
+    items.push(fixed({ kind: 'slipway', x: L.SLIPWAY.x, z: (L.SLIPWAY.z0 + L.SLIPWAY.z1) / 2, yaw: 0, w: L.SLIPWAY.w, d: L.SLIPWAY.z1 - L.SLIPWAY.z0 }, Q));
+    for (const mole of [L.WEST_MOLE, L.EAST_MOLE]) for (let i = 1; i < mole.length; i++) {
+      const [ax, az] = mole[i - 1]!, [bx, bz] = mole[i]!, len = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(len / 8));
+      for (let k = 0; k < n; k++) items.push(fixed({ kind: 'mole', x: ax + (bx - ax) * (k + 0.5) / n, z: az + (bz - az) * (k + 0.5) / n, yaw: Math.atan2(-(bz - az), bx - ax) }, 0));
+    }
+    items.push(fixed({ kind: 'harbourLight', tag: 'red', ...L.LIGHT_RED, yaw: 0 }, L.MOLE_Y));
+    items.push(fixed({ kind: 'harbourLight', tag: 'white', ...L.LIGHT_WHITE, yaw: 0 }, L.MOLE_Y));
+    for (const [x, z] of [[L.PIER.x - 3, L.PIER.z1 - 2], [L.PIER.x + 3, L.PIER.z0 + 20], [-1300, 1075], [-1266, 1075], [-1232, 1075], [-1150, 1075]])
+      items.push(fixed({ kind: 'streetLamp', x: x!, z: z!, yaw: Math.PI }, Q));
+    // boats: four at the pier, one at the east quay, one in the basin, three skiffs (#buildWorkingPort)
+    for (let i = 0; i < 4; i++) items.push(fixed({ kind: 'boat', tag: 'big', x: L.PIER.x + (i % 2 ? 1 : -1) * (L.PIER.w / 2 + 1.9), z: L.PIER.z0 + 14 + Math.floor(i / 2) * 20, yaw: i % 2 ? 0 : Math.PI }, 0));
+    items.push(fixed({ kind: 'boat', tag: 'big', x: -1158, z: P.faceEast + 2, yaw: Math.PI / 2 }, 0));
+    items.push(fixed({ kind: 'boat', tag: 'big', x: -1300, z: 1165, yaw: 0.3 }, 0));
+    for (const [x, z, yaw] of [[-1196, 1112, 0.2], [-1150, 1118, 2.9], [-1300, 1130, -0.4]]) items.push(fixed({ kind: 'boat', tag: 'small', x: x!, z: z!, yaw: yaw! }, 0));
+    // quay clutter (#buildProps): squid racks, nets/buoys/crates in the yard behind the boathouses, drying nets, bicycles
+    for (const [x, z] of [[-1296, 1089.2], [-1243, 1089.2], [-1165, 1074.5]]) items.push(fixed({ kind: 'squidRack', x: x!, z: z!, yaw: 0 }, Q));
+    for (let i = 0; i < 22; i++) {
+      const x = P.minX + 4 + i * 4.6;
+      if (x > P.split - 2) break;
+      if (Math.abs(x + 1243) < 2.5 || Math.abs(x + 1296) < 2.5) continue;
+      items.push(fixed({ kind: 'yardGear', tag: ['nets', 'buoys', 'crates', 'barrels'][i % 4], x, z: L.HARBOUR_LANE.z1 + 1.9, yaw: 0 }, Q));
+    }
+    for (let i = 0; i < 3; i++) items.push(fixed({ kind: 'dryingNet', x: -1225 + i * 7, z: 1068, yaw: 0 }, Q));
+    for (const [x, z] of [[-1293, 1074], [-1244, 1074], [-1232, 1074.5]]) items.push(fixed({ kind: 'bicycle', x: x!, z: z!, yaw: Math.PI / 2 }, Q));
+    for (const [x, z, yaw] of [[-1190, 1068, 0.1], [-1168, 1070, -0.2], [-1232.5, 1075.3, Math.PI / 2]]) items.push(fixed({ kind: 'keiTruck', x: x!, z: z!, yaw: yaw! }, Q));
+    items.push({ kind: 'shrine', ...L.SHRINE });
+    { const [ax, az] = L.SHRINE_PATH[L.SHRINE_PATH.length - 2]!, [bx, bz] = L.SHRINE_PATH[L.SHRINE_PATH.length - 1]!;
+      items.push({ kind: 'shrineTorii', x: bx, z: bz, yaw: Math.atan2(bx - ax, bz - az) }); }
+    const trees: Tree[] = L.PINES.map(([x, z, scale]: number[]) => ({ species: 'Pine', x, z, scale, yaw: hash(x!, z!) * Math.PI * 2 }));
+    const clearCircles: [number, number, number][] = [];
+    L.funauraClearance((x: number, z: number, r: number) => clearCircles.push([x, z, r]));
+    return {
+      place: 'funaura', title: 'Funaura', anchor: L.FUNAURA, items, trees, clearCircles, clearRects: [],
+      roads: [{ id: 'funaura-river-road', type: 'village', width: 6.2, points: L.RIVER_ROAD.map(([x, z]: number[]) => [x, z]), endY: Q }],
+    };
   },
 };
 

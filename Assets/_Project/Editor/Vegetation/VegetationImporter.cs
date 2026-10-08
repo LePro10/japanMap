@@ -201,7 +201,8 @@ namespace JapanMap.Editor.Vegetation
             foreach (var kit in Places.PlaceImporter.Kits())
             foreach (var t in Places.PlaceSource.Load(kit.source).trees)
             {
-                if (!System.Enum.TryParse<TreeBuilder.Species>(t.species, out var species))
+                if (!System.Enum.TryParse<TreeBuilder.Species>(t.species, out var species) &&
+                    !(Stand.TryGetValue(t.species, out var stand) && System.Enum.TryParse(stand, out species)))
                 {
                     Debug.LogWarning($"[Vegetation] {kit.name}: unknown tree species '{t.species}'");
                     continue;
@@ -221,6 +222,15 @@ namespace JapanMap.Editor.Vegetation
             }
             return n;
         }
+
+        /// <summary>
+        /// Species the places name but the provisional tree set does not have yet (D18): drawn as the
+        /// closest one until the asset session brings the real tree; the place data keeps the real name.
+        /// </summary>
+        static readonly Dictionary<string, string> Stand = new()
+        {
+            ["Pine"] = "Cedar", ["Sugi"] = "Cedar", ["Willow"] = "Maple", ["Kaki"] = "Maple", ["Momiji"] = "Maple", ["Niwaki"] = "Bush",
+        };
 
         static int PickVariant(Vector3 w, float roll)
         {

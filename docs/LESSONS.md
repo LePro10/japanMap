@@ -50,6 +50,7 @@
 | 2026-10-08 | 5 | Boden unter Orten wurde bei jedem Orts-Import erneut eingeebnet (± 0,85 m) | Einebnen nur im Gelände-Import vom Rohgelände; „Places/Import All" = ganzer Import (4 s); Fingerabdruck zweier Importe gleich | Werkzeug |
 | 2026-10-08 | 5 | Schatten-Abschalten „ohne Wirkung" gemessen — Asset nicht gespeichert, Play lud es neu | Für Bench-Versuche Asset `SetDirty` + `SaveAssets`; gleiche Zahlen bis auf die letzte Stelle = Versuch prüfen (LEGACY-MAP Lehre 5) | Skill |
 | 2026-10-08 | 5 | Prototyp-TypeScript lief nicht im Node-Strip-Modus (Parameter-Properties, `@/…mjs`) | Eigener Lader `Tools/legacy-export/alias-loader.mjs` übersetzt mit esbuild aus dem Prototyp | Werkzeug |
+| 2026-10-08 | 5 | Neue Ortsstraße folgte den Buckeln des Geländes (34 % Steigung), Gelände stand 0,46 m über dem Asphalt | Profil wie im Prototyp (geglättet, ≤ 11 %), Aufschütten unter Ortsstraßen; `Terrain_NeverPokesThroughARoad` deckt jede neue Straße ab | Test |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

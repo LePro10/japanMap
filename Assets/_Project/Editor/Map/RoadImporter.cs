@@ -135,8 +135,10 @@ namespace JapanMap.Editor.Map
             else EditorUtility.SetDirty(network);
         }
 
+        /// <summary>roads.json plus the roads the prototype's places built themselves (Places/PlaceRoads).</summary>
         public static List<Road> Load(MapImportSettings settings) =>
-            LegacySource.ReadJson<LegacySource.Roads>(settings, "roads/roads.json").roads.ToList();
+            LegacySource.ReadJson<LegacySource.Roads>(settings, "roads/roads.json").roads
+                .Concat(Places.PlaceRoads.Load(settings)).ToList();
 
         static float Spacing(Road r)
         {
@@ -565,6 +567,8 @@ namespace JapanMap.Editor.Map
             }
             foreach (var road in roads)
             {
+                // Place roads sit on their own embankment (TerrainCarve fills under them, D21) — never a deck.
+                if (road.tags != null && road.tags.Contains("place")) continue;
                 var c = road.centerline;
                 var count = c.Length / 3;
                 var last = road.closed ? count : count - 1;

@@ -15,7 +15,9 @@ namespace JapanMap.Editor.Map
     /// </summary>
     public static class TerrainCarve
     {
-        public static (int texels, float maxCut, int skipped) UnderRoads(IList<RoadNetwork.Road> roads, Func<string, float> shoulderOf, MapImportSettings s)
+        /// <param name="fills">Roads that also raise the ground to their surface (an embankment with a 45° bank):
+        /// the places' own roads, which — unlike roads.json — are not baked into the heightmap.</param>
+        public static (int texels, float maxCut, int skipped) UnderRoads(IList<RoadNetwork.Road> roads, Func<string, float> shoulderOf, MapImportSettings s, ISet<string> fills = null)
         {
             int changed = 0, skipped = 0;
             var maxCut = 0f;
@@ -31,6 +33,7 @@ namespace JapanMap.Editor.Map
                 foreach (var road in roads)
                 {
                     var p = road.points;
+                    var fill = fills != null && fills.Contains(road.id);
                     var half = road.width / 2f;
                     var shoulder = shoulderOf(road.type);
                     var core = half + shoulder;
@@ -69,9 +72,21 @@ namespace JapanMap.Editor.Map
                             if (d > reach) continue;
                             // The road mesh drops by roadShoulderDrop across the shoulder; follow it.
                             var drop = shoulder > 0f ? s.roadShoulderDrop * Mathf.Clamp01((d - half) / shoulder) : 0f;
-                            var allowed = Mathf.LerpUnclamped(a.y, b.y, tRaw) - s.carveDepth - drop + Mathf.Max(0f, d - core);
+                            var surface = Mathf.LerpUnclamped(a.y, b.y, tRaw) - s.carveDepth - drop;
+                            var allowed = surface + Mathf.Max(0f, d - core);
                             var world = origin.y + h[r, c] * size.y;
                             var cut = world - allowed;
+                            if (fill)
+                            {
+                                var floor = surface - Mathf.Max(0f, d - core);
+                                if (world < floor)
+                                {
+                                    h[r, c] = (floor - origin.y) / size.y;
+                                    changed++;
+                                    touched = true;
+                                    continue;
+                                }
+                            }
                             if (cut <= 0f) continue;
                             if (cut > s.carveMaxDepth)
                             {

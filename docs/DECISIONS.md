@@ -305,6 +305,17 @@ Gemessen: Tokyo-Dreiecke an `stadt-neon` Hoch 12,9 M → 3,1 M, Niedrig ≤ 545 
 jetzt die eigene Breite; dabei fiel auf, dass Straßenenden nicht weit genug
 abgesenkt waren (bis 0,39 m Gelände über dem Asphalt).
 
+## D21 — Orte bringen ihre eigenen Straßen mit (Damm und Einschnitt) · 2026-10-08
+
+Der Prototyp baute einige Straßen im Ort selbst (Funaura: Straße von Stillwater
+herunter; Mill Lane) — sie fehlen in `roads.json`, Funaura war ohne Zufahrt.
+Orte exportieren sie als Kontrollpunkte (`roads` im Orts-JSON);
+`Places/PlaceRoads` macht daraus normale Straßen für den Straßen-Import
+(Mesh, Netz, Respawn): Höhe = Gelände über ± 20 m geglättet, höchstens 11 %
+Steigung (wie der Prototyp), Ende auf fester Höhe (Kai 1,8 m). Weil sie nicht
+im gebackenen Gelände eingeschnitten sind, **schüttet das Absenken unter ihnen
+auch auf** (Damm, 45°-Böschung). Die gebackenen Straßen bleiben unberührt.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

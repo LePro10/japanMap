@@ -192,10 +192,11 @@ namespace JapanMap.Editor.Places
             var layers = MapImportSettings.LoadOrCreate().splatLayers.Select(l => l.name).ToList();
             foreach (var kit in Kits())
                 foreach (var p in Resolve(kit, PlaceSource.Load(kit.source)))
-                    if (p.rule.level && !p.item.fixedY)
+                    if (p.rule.level && (!p.item.fixedY || p.prefab == null))
                         pads.Add(new PlaceGround.Pad
                         {
                             center = p.position, yaw = p.yaw, half = p.halfSize, blend = kit.levelBlend,
+                            fixedLevel = p.item.fixedY ? p.item.y : float.NaN,
                             paint = string.IsNullOrEmpty(p.rule.paint) ? -1 : layers.IndexOf(p.rule.paint),
                             paintOnly = p.rule.paintOnly,
                         });

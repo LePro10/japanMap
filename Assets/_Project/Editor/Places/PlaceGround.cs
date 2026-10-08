@@ -23,6 +23,8 @@ namespace JapanMap.Editor.Places
             public float blend;
             public int paint;     // terrain layer index, −1 = keep
             public bool paintOnly;
+            [Tooltip("NaN: level to the footprint's mean. Else this height (a quay platform at 1.8 m).")]
+            public float fixedLevel;
         }
 
         public static (int pads, int texels, float maxChange, int roadTexels) Level(IList<Pad> pads, MapImportSettings s)
@@ -63,7 +65,8 @@ namespace JapanMap.Editor.Places
                         n++;
                     }
                     if (n == 0) continue;
-                    var level = (float)(sum / n);
+                    var fixedPad = !float.IsNaN(pad.fixedLevel);
+                    var level = fixedPad ? (pad.fixedLevel - origin.y) / size.y : (float)(sum / n);
 
                     for (var r = r0; r <= r1; r++)
                     for (var c = c0; c <= c1; c++)
@@ -75,7 +78,8 @@ namespace JapanMap.Editor.Places
                         var dz = Mathf.Max(0, Mathf.Abs(local.z) - pad.half.y);
                         var outside = Mathf.Sqrt(dx * dx + dz * dz);
                         if (outside >= pad.blend) continue;
-                        if (NearRoad(near, x, z, types))
+                        // a fixed-height pad carries its roads at that height (quay); a mean pad leaves them to the carve
+                        if (!fixedPad && NearRoad(near, x, z, types))
                         {
                             roadTexels++;
                             continue;
