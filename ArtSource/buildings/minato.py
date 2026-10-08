@@ -629,6 +629,8 @@ PIECES = {   # builder, collider (x0, x1, y0, y1, z0, z1), atlas
     'Pier_8m': (lambda c: M.pier(c), (-1.2, 1.2, -8.0, 0.0, WATER_Z - 0.6, -0.2)),
     'Breakwater_8m': (lambda c: M.breakwater(c), (-4, 4, -2.0, 7.0, WATER_Z - 0.6, 2.3)),
     'Lighthouse_Red': (lambda c: M.lighthouse(c, red=True), (-1.3, 1.3, -1.3, 1.3, 0.0, 8.6)),
+    'Lighthouse_White': (lambda c: M.lighthouse(c, red=False), (-1.3, 1.3, -1.3, 1.3, 0.0, 8.6)),
+    'Slipway_8m': (lambda c: M.slipway(c), (-4, 4, -13.6, 6.0, WATER_Z - 0.6, 0.0)),
     'Sea_8m': (lambda c: _sea(c), None),
 }
 BOATS = {
@@ -684,7 +686,9 @@ def build_piece(key, table, atlas, lods=(0, 1)):
     if cb:
         K.collider_box(f'COL_{name}', col, *cb)
     if key.startswith('Lighthouse'):
-        K.light_marker(f'LIGHT_{name}', col, (0, 0, 7.7), color=(1.0, 0.2, 0.15), watts=60, unity_range=12.0)
+        # Japanese harbour lights: red tower shows red, white tower shows green
+        rgb = (1.0, 0.2, 0.15) if key.endswith('Red') else (0.2, 1.0, 0.45)
+        K.light_marker(f'LIGHT_{name}', col, (0, 0, 7.7), color=rgb, watts=60, unity_range=12.0)
     return col, objs
 
 

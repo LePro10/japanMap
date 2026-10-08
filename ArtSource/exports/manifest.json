@@ -437,6 +437,120 @@
   "switchable": [],
   "attach": []
  },
+ "Cemetery_Row_8m": {
+  "fbx": "props/SM_Cemetery_Row_8m.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Cemetery_Row_8m_LOD0",
+   "SM_Cemetery_Row_8m_LOD1"
+  ],
+  "tris": [
+   4160,
+   1256
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Cemetery_Row_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Delineator_Orange": {
+  "fbx": "props/SM_Delineator_Orange.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Delineator_Orange_LOD0",
+   "SM_Delineator_Orange_LOD1"
+  ],
+  "tris": [
+   318,
+   156
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Delineator_Orange"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Delineator_White": {
+  "fbx": "props/SM_Delineator_White.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Delineator_White_LOD0",
+   "SM_Delineator_White_LOD1"
+  ],
+  "tris": [
+   318,
+   156
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Delineator_White"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "EventBoard_4m": {
+  "fbx": "props/SM_EventBoard_4m.fbx",
+  "class": "props",
+  "lods": [
+   "SM_EventBoard_4m_LOD0",
+   "SM_EventBoard_4m_LOD1"
+  ],
+  "tris": [
+   608,
+   200
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_EventBoard_4m_L",
+   "COL_EventBoard_4m_R"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_EventBoard_4m_L",
+    "pos": [
+     -1.55,
+     -0.75,
+     3.1
+    ],
+    "color": [
+     0.95,
+     0.97,
+     1.0
+    ],
+    "range": 5.0
+   },
+   {
+    "name": "LIGHT_EventBoard_4m_R",
+    "pos": [
+     1.55,
+     -0.75,
+     3.1
+    ],
+    "color": [
+     0.95,
+     0.97,
+     1.0
+    ],
+    "range": 5.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
  "Fence_Bamboo_1_8m": {
   "fbx": "props/SM_Fence_Bamboo_1_8m.fbx",
   "class": "props",
@@ -1070,6 +1184,132 @@
   "switchable": [],
   "attach": []
  },
+ "Grave_Family": {
+  "fbx": "props/SM_Grave_Family.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Grave_Family_LOD0",
+   "SM_Grave_Family_LOD1"
+  ],
+  "tris": [
+   1042,
+   312
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Grave_Family"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Grave_Old": {
+  "fbx": "props/SM_Grave_Old.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Grave_Old_LOD0",
+   "SM_Grave_Old_LOD1"
+  ],
+  "tris": [
+   570,
+   228
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Grave_Old"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Greenhouse_Closed": {
+  "fbx": "props/SM_Greenhouse_Closed.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Greenhouse_Closed_LOD0",
+   "SM_Greenhouse_Closed_LOD1"
+  ],
+  "tris": [
+   2698,
+   498
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Greenhouse_Closed"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Greenhouse_Open": {
+  "fbx": "props/SM_Greenhouse_Open.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Greenhouse_Open_LOD0",
+   "SM_Greenhouse_Open_LOD1"
+  ],
+  "tris": [
+   7696,
+   1682
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Greenhouse_Open"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Jizo": {
+  "fbx": "props/SM_Jizo.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Jizo_LOD0",
+   "SM_Jizo_LOD1"
+  ],
+  "tris": [
+   802,
+   249
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Jizo"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Jizo_Roku": {
+  "fbx": "props/SM_Jizo_Roku.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Jizo_Roku_LOD0",
+   "SM_Jizo_Roku_LOD1"
+  ],
+  "tris": [
+   3512,
+   946
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Jizo_Roku"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
  "Kiso_Chaya_1F_Gohei": {
   "fbx": "buildings/SM_Kiso_Chaya_1F_Gohei.fbx",
   "class": "buildings",
@@ -1295,6 +1535,57 @@
      0.45
     ],
     "range": 3.5
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Kiso_Kido": {
+  "fbx": "buildings/SM_Kiso_Kido.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kiso_Kido_LOD0",
+   "SM_Kiso_Kido_LOD1"
+  ],
+  "tris": [
+   1695,
+   468
+  ],
+  "materials": [
+   "M_Kiso_Atlas"
+  ],
+  "colliders": [
+   "COL_Kiso_Kido_L",
+   "COL_Kiso_Kido_R"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Kiso_Kido_L",
+    "pos": [
+     -3.75,
+     -0.49,
+     2.28
+    ],
+    "color": [
+     1.0,
+     0.72,
+     0.42
+    ],
+    "range": 5.0
+   },
+   {
+    "name": "LIGHT_Kiso_Kido_R",
+    "pos": [
+     3.75,
+     -0.49,
+     2.28
+    ],
+    "color": [
+     1.0,
+     0.72,
+     0.42
+    ],
+    "range": 5.0
    }
   ],
   "switchable": [],
@@ -2741,6 +3032,42 @@
   "switchable": [],
   "attach": []
  },
+ "Minato_Lighthouse_White": {
+  "fbx": "buildings/SM_Minato_Lighthouse_White.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Lighthouse_White_LOD0",
+   "SM_Minato_Lighthouse_White_LOD1"
+  ],
+  "tris": [
+   474,
+   226
+  ],
+  "materials": [
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Lighthouse_White"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Minato_Lighthouse_White",
+    "pos": [
+     0.0,
+     0.0,
+     7.7
+    ],
+    "color": [
+     0.2,
+     1.0,
+     0.45
+    ],
+    "range": 12.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
  "Minato_Pier_8m": {
   "fbx": "buildings/SM_Minato_Pier_8m.fbx",
   "class": "buildings",
@@ -3008,6 +3335,90 @@
   "switchable": [],
   "attach": []
  },
+ "Minato_Slipway_8m": {
+  "fbx": "buildings/SM_Minato_Slipway_8m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Slipway_8m_LOD0",
+   "SM_Minato_Slipway_8m_LOD1"
+  ],
+  "tris": [
+   578,
+   266
+  ],
+  "materials": [
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Slipway_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Nobori_Blue": {
+  "fbx": "props/SM_Nobori_Blue.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Nobori_Blue_LOD0",
+   "SM_Nobori_Blue_LOD1"
+  ],
+  "tris": [
+   404,
+   54
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Nobori_Blue"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Nobori_Red": {
+  "fbx": "props/SM_Nobori_Red.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Nobori_Red_LOD0",
+   "SM_Nobori_Red_LOD1"
+  ],
+  "tris": [
+   404,
+   54
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Nobori_Red"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Nobori_Yellow": {
+  "fbx": "props/SM_Nobori_Yellow.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Nobori_Yellow_LOD0",
+   "SM_Nobori_Yellow_LOD1"
+  ],
+  "tris": [
+   404,
+   54
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Nobori_Yellow"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
  "Planter_Concrete": {
   "fbx": "props/SM_Planter_Concrete.fbx",
   "class": "props",
@@ -3066,6 +3477,27 @@
   ],
   "colliders": [
    "COL_Planter_Round"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "PostCone": {
+  "fbx": "props/SM_PostCone.fbx",
+  "class": "props",
+  "lods": [
+   "SM_PostCone_LOD0",
+   "SM_PostCone_LOD1"
+  ],
+  "tris": [
+   324,
+   114
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_PostCone"
   ],
   "lights": [],
   "switchable": [],
@@ -3396,6 +3828,27 @@
   ],
   "colliders": [
    "COL_Rock_Standing"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "SnowPole": {
+  "fbx": "props/SM_SnowPole.fbx",
+  "class": "props",
+  "lods": [
+   "SM_SnowPole_LOD0",
+   "SM_SnowPole_LOD1"
+  ],
+  "tris": [
+   598,
+   230
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_SnowPole"
   ],
   "lights": [],
   "switchable": [],
@@ -4339,6 +4792,73 @@
     "range": 5.0
    }
   ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tetrapod": {
+  "fbx": "props/SM_Tetrapod.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Tetrapod_LOD0",
+   "SM_Tetrapod_LOD1"
+  ],
+  "tris": [
+   712,
+   112
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Tetrapod_0"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tetrapod_Pile": {
+  "fbx": "props/SM_Tetrapod_Pile.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Tetrapod_Pile_LOD0",
+   "SM_Tetrapod_Pile_LOD1"
+  ],
+  "tris": [
+   3560,
+   560
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Tetrapod_Pile_0",
+   "COL_Tetrapod_Pile_1",
+   "COL_Tetrapod_Pile_2",
+   "COL_Tetrapod_Pile_3",
+   "COL_Tetrapod_Pile_4"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tetrapod_Tilted": {
+  "fbx": "props/SM_Tetrapod_Tilted.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Tetrapod_Tilted_LOD0",
+   "SM_Tetrapod_Tilted_LOD1"
+  ],
+  "tris": [
+   712,
+   112
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Tetrapod_Tilted_0"
+  ],
+  "lights": [],
   "switchable": [],
   "attach": []
  },
@@ -6034,6 +6554,70 @@
     "range": 4.0
    }
   ],
+  "switchable": [],
+  "attach": []
+ },
+ "Wall_Concrete_8m": {
+  "fbx": "props/SM_Wall_Concrete_8m.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Wall_Concrete_8m_LOD0",
+   "SM_Wall_Concrete_8m_LOD1"
+  ],
+  "tris": [
+   418,
+   192
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Wall_Concrete_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Wall_Kenchi_8m": {
+  "fbx": "props/SM_Wall_Kenchi_8m.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Wall_Kenchi_8m_LOD0",
+   "SM_Wall_Kenchi_8m_LOD1"
+  ],
+  "tris": [
+   298,
+   128
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Wall_Kenchi_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Wall_Norimen_8m": {
+  "fbx": "props/SM_Wall_Norimen_8m.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Wall_Norimen_8m_LOD0",
+   "SM_Wall_Norimen_8m_LOD1"
+  ],
+  "tris": [
+   2060,
+   338
+  ],
+  "materials": [
+   "M_Scatter_Atlas"
+  ],
+  "colliders": [
+   "COL_Wall_Norimen_8m_Slope",
+   "COL_Wall_Norimen_8m_Toe"
+  ],
+  "lights": [],
   "switchable": [],
   "attach": []
  }

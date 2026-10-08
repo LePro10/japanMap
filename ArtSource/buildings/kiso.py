@@ -150,7 +150,7 @@ LANE = {   # quiet lane versions: shops shut, lattice dark
 }
 LIVELY = {'noren', 'nobori', 'wares', 'display', 'cask', 'bench', 'plain_bench', 'menu', 'kv', 'chochin', 'sugidama',
           'waraji', 'kago', 'sudare'}
-STREET_PIECES = ('Street_8m', 'Street_Steps_8m', 'Trough', 'Waterwheel')
+STREET_PIECES = ('Street_8m', 'Street_Steps_8m', 'Trough', 'Waterwheel', 'Kido')
 
 
 def lane(spec):
@@ -377,11 +377,68 @@ def build_variant(key, spec, density=1.0, lods=(0, 1)):
     return col, objs
 
 
+
+KIDO_X = 3.75     # post centres: the gate spans the 6.4 m street (cars pass), posts stand outside it
+
+
+def kido(c):
+    """Kido: the wooden gate at each end of the post town (kabuki-mon with
+    rear posts): square posts on stone footings, tie beam through them with
+    wedges, the kabuki beam projecting over the posts, a low board-shingle
+    roof weighted with stones, rear posts tied back by beams, short board
+    fence wings, a hanging lantern on each post facing out of the town (-Y)."""
+    from buildings.tokyo_kit import F
+    lod = c.lod
+    fr = F(Vector((0, 0, 0)), (0, -1))          # u = x, d = -y
+    zk = 4.35                                    # underside of the kabuki beam
+    for sx in (-1, 1):
+        x = sx * KIDO_X
+        for y, w in ((0.0, 0.26), (1.1, 0.18)):     # main post, rear post (hikae-bashira)
+            st = K.lathe(c.bm, 6 if lod == 0 else 4, [(w * 0.95, 0.0), (w * 0.95, 0.22), (w * 0.75, 0.32)], cx=x, cy=y,
+                         phase=0.3, cap_bottom=False)
+            c.m(st['sides'] + [st['top']], 'STONE_FLAT')
+            top = zk if y == 0.0 else 2.6
+            c.box(fr, x - w / 2, x + w / 2, 0.3, top, -y - w / 2, -y + w / 2, 'WOOD', skip=('bot',), rotate=True)
+        # tie beams back to the rear post, low and high
+        for z in (0.9, 2.4):
+            c.box(fr, x - 0.06, x + 0.06, z, z + 0.15, -1.1, 0.0, 'WOOD', skip=())
+        # small roof over the rear post pair (like a kōrai-mon)
+        if lod == 0:
+            c.box(fr, x - 0.35, x + 0.35, 2.6, 2.68, -1.35, -0.85, 'WOOD_GREY_FLAT', skip=())
+        # wing fence: boards on a sill, top rail, 1.8 m out from the post
+        x0, x1 = sorted((x + sx * 0.13, x + sx * 1.93))
+        c.box(fr, x0, x1, 0.0, 0.25, -0.12, 0.12, 'STONE_FLAT', skip=('bot',))
+        c.box(fr, x0, x1, 0.25, 1.75, -0.03, 0.03, 'WOOD_BOARD', skip=('l', 'r') if lod else ())
+        c.box(fr, x0, x1, 1.75, 1.85, -0.09, 0.09, 'WOOD', skip=())
+        if lod == 0:
+            xe = x + sx * 1.93
+            c.box(fr, xe - 0.07, xe + 0.07, 0.25, 1.9, -0.07, 0.07, 'WOOD', skip=('bot',), rotate=True)
+            for u in [x0 + 0.3 + 0.45 * i for i in range(4)]:     # battens on the boards
+                c.box(fr, u - 0.03, u + 0.03, 0.3, 1.72, 0.03, 0.05, 'WOOD_FLAT', skip=('bot', 'in'))
+        # hanging lantern (kake-andon) on the post, facing out of town
+        if lod == 0:
+            c.box(fr, x - 0.04, x + 0.04, 2.55, 2.6, 0.13, 0.42, 'IRON', skip=())
+            lb = c.box(fr, x - 0.14, x + 0.14, 2.05, 2.5, 0.36, 0.62, 'LIGHT_WARM', skip=())
+            for u in (x - 0.14, x + 0.14):
+                c.box(fr, u - 0.015, u + 0.015, 2.03, 2.52, 0.345, 0.635, 'WOOD_FLAT', skip=())
+            c.box(fr, x - 0.17, x + 0.17, 2.5, 2.55, 0.33, 0.65, 'WOOD_FLAT', skip=())
+    W = 2 * KIDO_X
+    # tie beam (nuki) through both posts, sticking out with wedges
+    c.box(fr, -W / 2 - 0.45, W / 2 + 0.45, 3.55, 3.75, -0.07, 0.07, 'WOOD', skip=())
+    if lod == 0:
+        for sx in (-1, 1):
+            c.box(fr, sx * (W / 2 + 0.22) - 0.04, sx * (W / 2 + 0.22) + 0.04, 3.5, 3.82, -0.1, 0.1, 'WOOD_FLAT', skip=())
+    # kabuki beam, ends cut at a slant look: plain box with end grain
+    kb = c.box(fr, -W / 2 - 0.65, W / 2 + 0.65, zk, zk + 0.3, -0.15, 0.15, 'WOOD', skip=())
+    c.m([kb['l'], kb['r']], 'END_GRAIN')
+    KI.board_roof(c, W + 0.6, -0.15, 0.15, zk + 0.3, slope=0.5, eave_f=0.75, eave_b=0.75, oh=0.35, rows=(1, 1), seed=11)
+
 PIECES = {   # street pieces: builder, collider box (x0, x1, y0, y1, z0, z1)
     'Street_8m': (lambda c: KI.street(c, bridges=(-2.2, 2.6)), (-4, 4, -3.2, 3.2, -0.4, 0.05)),
     'Street_Steps_8m': (lambda c: KI.street_steps(c), (-4, 4, -2.7, 2.7, -0.4, 1.44)),
     'Trough': (KI.trough, (-1.1, 0.9, -0.3, 0.3, 0.0, 0.8)),
     'Waterwheel': (KI.waterwheel, (-1.7, 3.3, -0.8, 0.8, 0.0, 3.2)),
+    'Kido': (kido, None),
 }
 
 
@@ -396,7 +453,13 @@ def build_piece(key, lods=(0, 1)):
         fn(c)
         objs.append(K.mesh_object(f'SM_{name}_LOD{lod}', c.bm, col, [mat], bevel=0.012 if lod == 0 else 0.0,
                                   hidden=lod > 0, recalc=False))
-    K.collider_box(f'COL_{name}', col, *cb)
+    if cb:
+        K.collider_box(f'COL_{name}', col, *cb)
+    if key == 'Kido':   # posts only: the street between them stays open
+        for sx in (-1, 1):
+            K.collider_box(f'COL_{name}_{"L" if sx < 0 else "R"}', col, sx * KIDO_X - 0.2, sx * KIDO_X + 0.2, -0.2, 1.25, 0.0, 4.6)
+            K.light_marker(f'LIGHT_{name}_{"L" if sx < 0 else "R"}', col, (sx * KIDO_X, -0.49, 2.28), color=(1.0, 0.72, 0.42),
+                           watts=15, unity_range=5.0)
     return col, objs
 
 

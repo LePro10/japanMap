@@ -779,6 +779,68 @@ def breakwater(c, L=8.0, seed=4):
         bollard(c, (0.0, -1.5, zt))
 
 
+def slipway(c, L=8.0, apron=6.0, slope=1 / 8):
+    """Boat slipway (fune-age-ba): concrete ramp 1:8 from the quay down into
+    the sea across the whole module, algae below the tide line, two timber
+    skids (bangi) the boats slide on, cheeks closing the ends; on the apron
+    a winch on a concrete base with its drum, motor box and cable running
+    down the ramp to a hook, bollards on both sides."""
+    lod = c.lod
+    xa, xb = -L / 2, L / 2
+    zb = WATER_Z - 0.6
+    yl = zb / slope                       # where the ramp meets the sea bed (negative)
+    z = lambda y: y * slope
+    y = 0.0
+    while y < apron - 1e-3:
+        ye = min(apron, y + 2.0)
+        f = _face(c, [(xa, y, 0.0), (xb, y, 0.0), (xb, ye, 0.0), (xa, ye, 0.0)], (0, 0, 1)); c.m([f], 'APRON')
+        y = ye
+    y = 0.0
+    while y > yl + 1e-3:                  # ramp in 1.6 m bands (strip height), wet ones with algae
+        ye = max(yl, y - 1.6)
+        f = _face(c, [(xa, ye, z(ye)), (xb, ye, z(ye)), (xb, y, z(y)), (xa, y, z(y))], (0, 0, 1))
+        c.m([f], 'ALGAE' if z(ye) < WATER_Z + 0.3 else 'APRON')
+        y = ye
+    for x, sx in ((xa, -1), (xb, 1)):
+        cf = _face(c, [(x, 0.0, 0.0), (x, yl, zb), (x, 0.0, zb)], (sx, 0, 0))
+        _map(c, [cf], 'QUAY', (0, 0, zb), (0, 1, 0), (0, 0, 1))
+    y = yl + 0.0
+    yw = WATER_Z / slope
+    while y > -16.0 + 1e-3:   # sea in front, from where the ramp dives under
+        ye = max(-16.0, y - 4.0)
+        wf = _face(c, [(xa, ye, WATER_Z), (xb, ye, WATER_Z), (xb, y, WATER_Z), (xa, y, WATER_Z)], (0, 0, 1))
+        c.m([wf], 'WATER'); c.nb([wf])
+        y = ye
+    wf = _face(c, [(xa, yl, WATER_Z), (xb, yl, WATER_Z), (xb, yw, WATER_Z), (xa, yw, WATER_Z)], (0, 0, 1))
+    c.m([wf], 'WATER'); c.nb([wf])
+    # timber skids along the ramp, on short sleepers
+    fr = F(Vector((0, 0, 0)), (1, 0))      # u = y, d = x
+    for x in (-1.1, 1.1):
+        pts = [(x, -0.4, z(-0.4) + 0.12), (x, yw - 1.0, z(yw - 1.0) + 0.12)]
+        a, b = Vector(pts[0]), Vector(pts[1])
+        d = (b - a).normalized(); side = Vector((1, 0, 0)); up = side.cross(d).normalized()
+        vs = [c.bm.verts.new(p + side * sx * 0.08 + up * h) for p in (a, b) for sx in (-1, 1) for h in (-0.12, 0.0)]
+        quads = [(0, 4, 6, 2), (1, 3, 7, 5), (2, 6, 7, 3), (0, 1, 5, 4), (0, 2, 3, 1), (4, 5, 7, 6)]
+        fs = [c.bm.faces.new([vs[i] for i in q]) for q in quads]
+        orient(fs, (a + b) / 2 - up * 0.06)
+        c.m(fs, 'WOOD_FLAT')
+    # winch on a concrete base, drum, motor box, cable down the ramp
+    yw0 = 3.2
+    b = c.box(F(Vector((0, yw0, 0)), (0, -1)), -0.9, 0.9, 0.0, 0.35, -0.5, 0.5, 'CONC_FLAT', skip=('bot',), bevel=True)
+    for x in (-0.55, 0.55):
+        c.box(F(Vector((x, yw0, 0)), (0, -1)), -0.06, 0.06, 0.35, 0.95, -0.3, 0.3, 'STEEL_GREEN')
+    c.tube([(-0.5, yw0, 0.75), (0.5, yw0, 0.75)], 0.2, 10 if lod == 0 else 6, 'STEEL_GREEN', caps=True)
+    if lod == 0:
+        c.tube([(-0.45, yw0, 0.75), (0.45, yw0, 0.75)], 0.215, 10, 'RUST', caps=False)      # wound cable
+    mb = c.box(F(Vector((0.95, yw0, 0)), (0, -1)), -0.25, 0.25, 0.35, 0.9, -0.3, 0.3, 'STEEL_GREEN', skip=('bot',), bevel=True)
+    if lod == 0:
+        c.box(F(Vector((0.95, yw0, 0)), (0, -1)), -0.27, 0.27, 0.9, 0.95, -0.32, 0.32, 'STEEL_GREEN')
+        c.tube([(0, yw0 - 0.2, 0.6), (0, 0.2, 0.08), (0, -6.0, z(-6.0) + 0.05)], 0.012, 4, 'IRON')
+        c.tube([(0, -6.0, z(-6.0) + 0.05), (0, -6.15, z(-6.15) + 0.12), (0, -6.25, z(-6.25) + 0.05)], 0.02, 4, 'IRON')
+    for x in (-3.4, 3.4):
+        bollard(c, (x, 0.6, 0.0))
+
+
 def lighthouse(c, red=True):
     """Small harbour light on a breakwater head (bōhatei tōdai): concrete
     base with door, tapering tower, gallery with railing, lantern, cap."""

@@ -1977,6 +1977,8 @@ LAYOUTS = {
 
 from .atlas_flora import layout as _flora_layout   # noqa: E402 (needs the generators above)
 LAYOUTS['Flora'] = _flora_layout()
+from .atlas_scatter import layout as _scatter_layout   # noqa: E402
+LAYOUTS['Scatter'] = _scatter_layout()
 
 
 def build_maps(name, seed=1):
