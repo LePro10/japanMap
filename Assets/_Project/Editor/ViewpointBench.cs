@@ -79,6 +79,8 @@ namespace JapanMap.Editor
                 return;
             }
             if (_frame <= SettleFrames) return;
+            if (_frame == SettleFrames + 1 && ViewpointTools.Load().TryGet(_names[_index], out var vp) && Vector3.Distance(cam.transform.position, vp.position) > 1f)
+                Debug.LogError($"[Bench] camera is not at viewpoint {_names[_index]} — something else moves it");
             _calls += UnityStats.drawCalls;
             _setPass += UnityStats.setPassCalls;
             _tris += UnityStats.triangles;
@@ -96,6 +98,11 @@ namespace JapanMap.Editor
             _calls = _setPass = _tris = _ms = 0;
             if (_index < _names.Length)
             {
+                // Since Phase 3 the car camera (Cinemachine) moves the main camera every frame; without
+                // this every viewpoint measured the car's view (bench p4-veg: 9 identical rows).
+                foreach (var b in cam.GetComponents<Behaviour>())
+                    if (b.GetType().Name.Contains("Cinemachine")) b.enabled = false;
+                foreach (var rig in Object.FindObjectsByType<JapanMap.Vehicles.CarCameraRig>(FindObjectsSortMode.None)) rig.enabled = false;
                 ViewpointTools.Load().Apply(_names[_index], cam.transform);
                 return;
             }

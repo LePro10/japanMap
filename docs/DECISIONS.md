@@ -218,6 +218,34 @@ Stellen weg). **Offen (Phase 5):** Höhenstufen an Kreuzungen (Stadtstraßen
 treffen sich mit 0,1–2,5 m Unterschied) und 460 scharfe Kuppen-Knicke
 (+7 % → −7 % auf 2 m).
 
+## D18 — Vegetation: eigener Instanz-Renderer, vorläufige Bäume aus dem Editor · 2026-10-08
+
+**Warum nicht Unitys Gelände-Bäume:** gemessen mit 77 000 Bäumen/Büschen
+(LODGroup-Prefabs als Terrain-Trees): bis **44 500 Draw Calls und 30 Mio.
+Dreiecke** je Bild (Budget Hoch 1 500 / 3 Mio.) — Unity zeichnet sie mit
+URP einzeln. GPU Resident Drawer würde bündeln, läuft aber nicht unter
+WebGL2. **Lösung:** `World/VegetationRenderer` — Bäume in 64-m-Feldern,
+Sichtkegel je Feld, LOD je Baum nach Entfernung (× `lodBias` der Stufe),
+je Baumart und LOD-Stufe ein `Graphics.RenderMeshInstanced` (Unity-API, geht
+in WebGL2). Kollision nur für Stämme in Spielernähe (Kapsel-Pool). So
+streute auch der Prototyp (`InstancedLOD`). Gras und Reis bleiben im
+Terrain-Detail-System (instanziert, Dichte/Weite je Stufe).
+
+**Fernstufe statt Billboard:** LOD2 ist ein Körper mit 20–90 Dreiecken.
+Billboards bräuchten gerenderte Bildatlanten und Alpha — erst prüfen, wenn
+die Dreiecke auf Niedrig nicht reichen.
+
+**Vorläufige Modelle:** Bäume sind Aufgabe 4 des Asset-Sprints (noch nicht
+dran). Bis dahin baut `Editor/Vegetation/TreeBuilder` einfache Zeder,
+Ahorn, Kirsche, Bambus, Busch, Gras, Reis (Palette statt Atlas). Platzierung,
+Dichte, LOD und Leistung hängen nicht am Modell; die Sprint-Bäume ersetzen
+nur die Meshes (`VegetationData.prototypes`).
+
+**Kleine Änderungen nach Regel 15:** Abstand zur Straße vom Fahrbahnrand
+statt von der Mitte gemessen (wächst mit der Breite, wie Prototyp P8.7);
+einige Kirschen und Bambushaine in tiefen Wiesen (im Prototyp nur in
+Städten). Laubbäume meist grün, 10 % Herbstfarben als Akzent.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

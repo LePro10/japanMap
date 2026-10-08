@@ -22,6 +22,7 @@ namespace JapanMap.Editor.Map
             WaterImporter.Import(s);
             RoadImporter.Import(s);
             PropImporter.Import(s);
+            Vegetation.VegetationImporter.Import(Vegetation.VegetationImporter.Settings(), s);
         }
 
         /// <summary>

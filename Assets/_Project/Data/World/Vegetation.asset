@@ -1,0 +1,99 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1093d5efffdc4b58b84283eefd97ded, type: 3}
+  m_Name: Vegetation
+  m_EditorClassIdentifier: JapanMap.Editor::JapanMap.Editor.Vegetation.VegetationSettings
+  seed: 20260727
+  species:
+  - model: 0
+    cellSize: 8
+    zoneWeights: {x: 0, y: 0.35, z: 0, w: -1}
+    minScale: 0.7
+    maxScale: 1.25
+    maxSlopeDeg: 38
+    minHeight: 12
+    maxHeight: 350
+    roadClearance: 16
+    variantWeights: {x: 1, y: 1, z: 1}
+    lod0End: 45
+    lod1End: 140
+    maxDistance: 3000
+    colliderRadius: 0.35
+    colliderHeight: 4
+  - model: 1
+    cellSize: 11
+    zoneWeights: {x: 0, y: 0.5, z: 0, w: -1}
+    minScale: 0.8
+    maxScale: 1.5
+    maxSlopeDeg: 27
+    minHeight: 6
+    maxHeight: 190
+    roadClearance: 18
+    variantWeights: {x: 0.9, y: 0.07, z: 0.03}
+    lod0End: 35
+    lod1End: 110
+    maxDistance: 3000
+    colliderRadius: 0.35
+    colliderHeight: 4
+  - model: 4
+    cellSize: 5
+    zoneWeights: {x: 0, y: 0.3, z: 0, w: -1}
+    minScale: 0.6
+    maxScale: 1.35
+    maxSlopeDeg: 42
+    minHeight: 2
+    maxHeight: 400
+    roadClearance: 12
+    variantWeights: {x: 1, y: 1, z: 1}
+    lod0End: 10
+    lod1End: 30
+    maxDistance: 220
+    colliderRadius: 0
+    colliderHeight: 4
+  - model: 2
+    cellSize: 24
+    zoneWeights: {x: 0, y: 0.08, z: 0, w: -1}
+    minScale: 0.85
+    maxScale: 1.35
+    maxSlopeDeg: 20
+    minHeight: 3
+    maxHeight: 80
+    roadClearance: 8
+    variantWeights: {x: 1, y: 1, z: 1}
+    lod0End: 35
+    lod1End: 110
+    maxDistance: 3000
+    colliderRadius: 0.35
+    colliderHeight: 4
+  - model: 3
+    cellSize: 7
+    zoneWeights: {x: 0, y: 0.05, z: 0, w: -1}
+    minScale: 0.8
+    maxScale: 1.2
+    maxSlopeDeg: 30
+    minHeight: 4
+    maxHeight: 120
+    roadClearance: 10
+    variantWeights: {x: 1, y: 1, z: 1}
+    lod0End: 30
+    lod1End: 90
+    maxDistance: 3000
+    colliderRadius: 0.6
+    colliderHeight: 4
+  detailResolution: 1024
+  grassCoverage: 200
+  riceCoverage: 255
+  grassDensity: 0.25
+  riceDensity: 0.4
+  grassRoadClearance: 1
+  propClearance: 3
+  cityFade: 40

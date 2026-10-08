@@ -12,6 +12,9 @@ namespace JapanMap.Core
         public const string PrefsKey = "jm.quality";
         public static readonly string[] Tiers = { "High", "Medium", "Low" };
 
+        /// <summary>Raised after a tier is applied (name). Systems with per-tier settings that Unity's quality level does not cover listen here.</summary>
+        public static event Action<string> TierChanged;
+
         protected override void OnInitialize()
         {
             var names = QualitySettings.names;
@@ -30,6 +33,7 @@ namespace JapanMap.Core
             }
             QualitySettings.SetQualityLevel(index, applyExpensiveChanges: true);
             if (save) PlayerPrefs.SetString(PrefsKey, tier);
+            TierChanged?.Invoke(tier);
         }
 
         /// <summary>Phones get Low; everything else starts on High (auto-detection comes in Phase 10).</summary>

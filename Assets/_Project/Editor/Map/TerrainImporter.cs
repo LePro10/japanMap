@@ -190,6 +190,9 @@ namespace JapanMap.Editor.Map
                 ?? throw new FileNotFoundException(folder + "_diff.jpg");
             layer.normalMapTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(folder + "_nor_gl.jpg");
             layer.tileSize = new Vector2(spec.tileMeters, spec.tileMeters);
+            var tint = spec.tint.maxColorComponent > 0 ? spec.tint : Color.white; // assets from before the field read black
+            layer.diffuseRemapMin = Vector4.zero;
+            layer.diffuseRemapMax = new Vector4(tint.r, tint.g, tint.b, 1);
             EditorUtility.SetDirty(layer);
             return layer;
         }

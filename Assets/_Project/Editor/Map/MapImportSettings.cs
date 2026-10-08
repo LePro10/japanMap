@@ -166,6 +166,8 @@ namespace JapanMap.Editor.Map
             [Tooltip("Folder name under Assets/ThirdParty/PolyHaven/Textures.")]
             public string texture;
             public float tileMeters = 11f;
+            [Tooltip("Multiplier on the texture colour (TerrainLayer diffuseRemapMax). Legacy GROUND_TINT pulled grass towards #5a6b35.")]
+            public Color tint = Color.white;
         }
 
         public static MapImportSettings LoadOrCreate()

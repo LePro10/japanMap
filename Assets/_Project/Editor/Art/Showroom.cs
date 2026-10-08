@@ -28,6 +28,7 @@ namespace JapanMap.Editor.Art
             ("tokyo", new[] { "Tokyo_Center", "Tokyo_Street", "Tokyo_Konbini", "Tokyo_Zakkyo", "Tokyo_Mansion" }),
             ("koedo", new[] { "Koedo", "Kura_" }),
             ("kiso", new[] { "Kiso" }),
+            ("vegetation", new[] { "Veg_Cedar", "Veg_Maple", "Veg_Cherry", "Veg_Bamboo", "Veg_Bush" }),
         };
 
         [MenuItem("JapanMap/Art/Build Showroom")]
@@ -41,7 +42,9 @@ namespace JapanMap.Editor.Art
             new GameObject("Sun", typeof(Light));
             new GameObject("Global Volume", typeof(Volume));
 
-            var prefabs = Directory.GetFiles(LibraryImporter.PrefabDir, "P_*.prefab").OrderBy(p => p)
+            var prefabs = Directory.GetFiles(LibraryImporter.PrefabDir, "P_*.prefab")
+                .Concat(Directory.Exists(Vegetation.TreeBuilder.PrefabDir) ? Directory.GetFiles(Vegetation.TreeBuilder.PrefabDir, "P_*.prefab") : new string[0])
+                .OrderBy(p => p)
                 .Select(AssetDatabase.LoadAssetAtPath<GameObject>).Where(p => p != null).ToList();
             var used = new HashSet<GameObject>();
             var z = 0f;
