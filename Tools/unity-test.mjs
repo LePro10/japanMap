@@ -4,11 +4,13 @@
 //   node Tools/unity-test.mjs PlayMode
 // Exit 0 = passed, 1 = failed, 2 = MCP not reachable.
 import { execFileSync } from 'node:child_process';
+import { compileIfChanged } from './lib/fresh.mjs';
 const call = (tool, args) => {
   const out = execFileSync('node', [new URL('./mcp-call.mjs', import.meta.url).pathname, tool, JSON.stringify(args)], { encoding: 'utf8', maxBuffer: 64 << 20 });
   return JSON.parse(out.replace(/[\u0000-\u001f]/g, ' '));
 };
 const [mode = 'EditMode', group] = process.argv.slice(2);
+try { compileIfChanged(); } catch (e) { console.error(`(compile check skipped: ${String(e.message).split('\n')[0]})`); }
 const args = { mode, include_failed_tests: true, init_timeout: 120000, ...(group ? { group_names: [group] } : {}) };
 // A compile error makes Unity run the last good assemblies — tests would silently pass on old code.
 try {

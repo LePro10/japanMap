@@ -7,13 +7,22 @@
 
 | Datum | Phase | Was passiert ist | Vorkehrung (wo) | Art |
 |---|---|---|---|---|
+| 2026-10-08 | 5 | `unity-exec`/`unity-test` liefen dreimal auf altem Code (Änderung nicht kompiliert); erste Abhilfe kompilierte während eines laufenden Spiels (NullReference) | `Tools/lib/fresh.mjs`: kompiliert vor jedem Aufruf, nie im Play-Modus | Werkzeug |
+| 2026-10-08 | 5 | Brüstungen gebaut für einen offenen STATUS-Punkt, der längst erledigt war (Leitplanken auf allen Viadukten) | Skill `unity-verify`: offenen Punkt erst im Bild bestätigen, dann bauen | Skill |
+| 2026-10-08 | 5 | Leitplanken als Einzelstücke mit Lücken: Modelle mit Ursprung am Ende (Zäune, Planken) wurden symmetrisch vermessen und versetzt gesetzt | Echte Grundfläche + Mittelpunkt je Modell (`CentreOf`), Platzierung gleicht den Versatz aus; Prüfungen und Einebnen nehmen den Mittelpunkt | Werkzeug |
+| 2026-10-08 | 5 | Reisfeldwasser lag quer über der neuen Dorfstraße (Maske älter als die Orte) | Maske wird unter Ortsstraßen und Hausflächen trocken (`PlaceImporter.Dry`) | Werkzeug |
+| 2026-10-08 | 5 | Prototyp-TypeScript lief nicht im Node-Strip-Modus (Parameter-Properties, `@/…mjs`) | Eigener Lader `Tools/legacy-export/alias-loader.mjs` übersetzt mit esbuild aus dem Prototyp | Werkzeug |
+| 2026-10-08 | 5 | Schatten-Abschalten „ohne Wirkung" gemessen — Asset nicht gespeichert, Play lud es neu | Für Bench-Versuche Asset `SetDirty` + `SaveAssets`; gleiche Zahlen bis auf die letzte Stelle = Versuch prüfen (LEGACY-MAP Lehre 5) | Skill |
+| 2026-10-08 | 5 | Boden unter Orten wurde bei jedem Orts-Import erneut eingeebnet (± 0,85 m) | Einebnen nur im Gelände-Import vom Rohgelände; „Places/Import All" = ganzer Import (4 s); Fingerabdruck zweier Importe gleich | Werkzeug |
+| 2026-10-08 | 5 | `RoadNetwork.width` war die Typbreite (8 m) statt der Straßenbreite (5–24 m); Häusertest schlug 143× falsch an, Geländetest sah nur 8 m | Netzbreite = eigene Breite; Test `Terrain_NeverPokesThroughARoad` tastet jetzt die volle Breite ab (fand 3 Stellen am Straßenanfang) | Test |
+| 2026-10-08 | 5 | Stellvertreter-Modell (Fischmarkthalle als Autohaus) sah erst im Nahbild falsch aus | Je Ort Nahbilder mit fester Kamera vor dem Commit; Bench-Werkzeug statt Handschritte | Werkzeug |
+| 2026-10-08 | 5 | Zehn Fahrzeugmodelle als Ausstellung: 1,23 Mio. Dreiecke, 1 212 Draw Calls an einem Ort | Test `EveryPlace_StaysInItsTriangleBudget` (≤ 600 k je Ort); Bench je Ort mit `Tools/bench.mjs` (Hoch + Niedrig in einem Lauf) | Test |
+| 2026-10-08 | 5 | Neue Ortsstraßen: 34 % Steigung über Buckel, Damm einer Seitenstraße 0,92 m über der Hauptstraße, Mesh-Knick am Stoß zweier Splines | Profil wie Prototyp (≤ 11 %), erst Dämme dann Einschnitte, Einmündungshöhe übernehmen, Stoß runden — `Terrain_NeverPokesThroughARoad`, `Roads_SurfacesFaceUp` | Test |
 | 2026-10-08 | 4 | Unity verwarf beim FBX-Import 395 sich selbst schneidende Polygone in 29 Gebäuden (Löcher), nur als Warnung | `LibraryImporter` meldet sie je Mesh im Import-Bericht; Skill `blender-asset` „ohne Löcher" | Werkzeug |
 | 2026-10-08 | 4 | URP-Validierung schaltete `_EMISSION` beim Reimport ab (GI-Flag None) — Schilder wären dunkel | `RealtimeEmissive` im Importer; Test `AtlasMaterials_KeepEmissionAfterUrpValidation` | Test |
 | 2026-10-08 | 4 | Terrain-Bäume: 44 500 Draw Calls, 30 Mio. Dreiecke; Gras im Coverage-Modus 7,6/m² statt 2,5 | `VegetationRenderer` (D18), Test `Terrain_HasNoTreeInstances`; Dichte-Messung im Tooltip | Test |
-| 2026-10-08 | 4 | ViewpointBench maß seit Phase 3 an jedem Blickpunkt das Auto-Bild (Cinemachine) | Bench schaltet Kamera-Rigs ab und meldet, wenn die Kamera nicht am Blickpunkt steht | Werkzeug |
-| 2026-10-08 | 4 | Sonnenscheibe + Bloom ohne Clamp füllte im Browser das halbe Bild; kein Blickpunkt sah zur Sonne | `bloomClamp` im LookProfile, Blickpunkt `stadt-sonne` | Werkzeug |
-| 2026-10-08 | 4 | Post-Processing war an der Kamera aus — Phase 1–3 maß FPS ohne Nachbearbeitung | `LookTests.Scene_HasTheProfileApplied` prüft `renderPostProcessing` | Test |
-| 2026-10-08 | 4 | Rote Herbst-Ahorne und Bonbon-Punkte im Fernblick erst im Fahrerbild aufgefallen | Rauchprobe-Bild (Fahrerblick) bei jeder Optik-Änderung ansehen; Anteil als Regler `variantWeights` | Ablauf |
+| 2026-10-08 | 4 | Messaufbau falsch: Bench maß das Auto-Bild (Cinemachine), Phase 1–3 maß FPS ohne Post-Processing | Bench schaltet Kamera-Rigs ab und prüft die Kameralage; `LookTests.Scene_HasTheProfileApplied` prüft `renderPostProcessing` | Werkzeug/Test |
+| 2026-10-08 | 4 | Erst im Fahrerbild aufgefallen: Sonne + Bloom füllte das halbe Bild, Herbst-Ahorne als Bonbon-Punkte | `bloomClamp`, Blickpunkt `stadt-sonne`, Regler `variantWeights`; Rauchprobe-Bild bei jeder Optik-Änderung ansehen | Werkzeug/Ablauf |
 | 2026-10-08 | 4 | JSON von Hand escapen für MCP-C#; Tests starten und abfragen von Hand | `Tools/unity-exec.mjs`, `Tools/unity-test.mjs`, `Tools/unity-run.mjs` (Batch) | Werkzeug |
 | 2026-10-08 | Asset | Mehrere Lektionen der Asset-Sitzung (BMesh-Fallen, Atlas-Ränder, verirrte Teile, Blender-5-Ikosphären) | stehen mit Vorkehrung in `ArtSource/STATUS.md` „Gefunden" und `ArtSource/STYLE-KIT.md` | Skill |
 | 2026-10-07 | Asset | Stil-Kit Runde 1 zu flach (Kura 22 %, Automat 14 % des Budgets), gestreckte Texturen | Skill `blender-asset` „Qualitäts-Schleife", Zielbereich 40–80 % in ART-DIRECTION.md, Streck-Warnung in `ArtSource/build.py` | Skill/Werkzeug |
@@ -44,16 +53,6 @@
 | 2026-10-08 | 3 | MCP-Werkzeuge fehlten, weil der Editor nach Sitzungsstart kam | HTTP-Helfer wie im Skill `unity-verify` beschrieben; Skill um fertiges Skript ergänzt | Skill |
 | 2026-10-08 | 3 | Prototyp-Prüfstände ließen sich nicht starten (kein `three`), Zeit fürs Herausfinden | Rezept im Skill `legacy-port`; Ausgaben in `SourceData/bench/` | Skill |
 | 2026-10-08 | 3 | Mensch: Auto rammt mit der Front in Senken/Kanten und stoppt abrupt | Kollisionsbox höher und kürzer (`ArcadeTuning.bodyUnderLift`, `bodyLengthShare`); Ringfahrt zählt harte Karosserie-Stöße (3 → 0) | Test |
-| 2026-10-08 | 5 | Zehn Fahrzeugmodelle als Ausstellung: 1,23 Mio. Dreiecke, 1 212 Draw Calls an einem Ort | Test `EveryPlace_StaysInItsTriangleBudget` (≤ 600 k je Ort); Bench je Ort mit `Tools/bench.mjs` (Hoch + Niedrig in einem Lauf) | Test |
-| 2026-10-08 | 5 | Stellvertreter-Modell (Fischmarkthalle als Autohaus) sah erst im Nahbild falsch aus | Je Ort Nahbilder mit fester Kamera vor dem Commit; Bench-Werkzeug statt Handschritte | Werkzeug |
-| 2026-10-08 | 5 | `RoadNetwork.width` war die Typbreite (8 m) statt der Straßenbreite (5–24 m); Häusertest schlug 143× falsch an, Geländetest sah nur 8 m | Netzbreite = eigene Breite; Test `Terrain_NeverPokesThroughARoad` tastet jetzt die volle Breite ab (fand 3 Stellen am Straßenanfang) | Test |
-| 2026-10-08 | 5 | Boden unter Orten wurde bei jedem Orts-Import erneut eingeebnet (± 0,85 m) | Einebnen nur im Gelände-Import vom Rohgelände; „Places/Import All" = ganzer Import (4 s); Fingerabdruck zweier Importe gleich | Werkzeug |
-| 2026-10-08 | 5 | Schatten-Abschalten „ohne Wirkung" gemessen — Asset nicht gespeichert, Play lud es neu | Für Bench-Versuche Asset `SetDirty` + `SaveAssets`; gleiche Zahlen bis auf die letzte Stelle = Versuch prüfen (LEGACY-MAP Lehre 5) | Skill |
-| 2026-10-08 | 5 | Prototyp-TypeScript lief nicht im Node-Strip-Modus (Parameter-Properties, `@/…mjs`) | Eigener Lader `Tools/legacy-export/alias-loader.mjs` übersetzt mit esbuild aus dem Prototyp | Werkzeug |
-| 2026-10-08 | 5 | Neue Ortsstraße folgte den Buckeln des Geländes (34 % Steigung), Gelände stand 0,46 m über dem Asphalt | Profil wie im Prototyp (geglättet, ≤ 11 %), Aufschütten unter Ortsstraßen; `Terrain_NeverPokesThroughARoad` deckt jede neue Straße ab | Test |
-| 2026-10-08 | 5 | Seitenstraße schüttete Gelände über die Straße, in die sie mündet (0,92 m); Spline-Stoß Mill Lane → Funaura knickte das Mesh | Erst alle Dämme, dann alle Einschnitte; Einmündungen übernehmen die Höhe; Verlängerungen runden den Stoß — `Terrain_NeverPokesThroughARoad`, `Roads_SurfacesFaceUp` | Test |
-| 2026-10-08 | 5 | Reisfeldwasser lag quer über der neuen Dorfstraße (Maske älter als die Orte) | Maske wird unter Ortsstraßen und Hausflächen trocken (`PlaceImporter.Dry`) | Werkzeug |
-| 2026-10-08 | 5 | Leitplanken als Einzelstücke mit Lücken: Modelle mit Ursprung am Ende (Zäune, Planken) wurden symmetrisch vermessen und versetzt gesetzt | Echte Grundfläche + Mittelpunkt je Modell (`CentreOf`), Platzierung gleicht den Versatz aus; Prüfungen und Einebnen nehmen den Mittelpunkt | Werkzeug |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

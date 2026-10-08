@@ -3,91 +3,71 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-08 · **Phase:** 5 (Orte) läuft · Phase 4 abgeschlossen (Optik-Abnahme durch dich offen)
+**Stand:** 2026-10-08 · **Phase:** 5 (Orte) abgeschlossen — deine Abnahme offen · **Phase 6 (Zu Fuß und Leben) ist als Nächstes dran**
 
-Phase 2 (Karte) ✅ · Phase 3 (Fahren) ✅ von dir freigegeben.
+Phase 2 ✅ · Phase 3 ✅ von dir freigegeben · Phase 4 ✅ (deine Optik-Abnahme offen).
 
-## Phase 4 — Look und Asset-Pipeline ✅
+## Phase 5 — Orte ✅
 
-- [x] 1. Art Direction festgeschrieben (`docs/ART-DIRECTION.md`: Licht-Werte, Modelle, Showroom, Budgets)
-- [x] 2. „Blaue Stunde nach Regen": `Data/Look/Look.asset`, Menü JapanMap/Look/Apply — Sonne 126°/7° (Prototyp-Richtung), Himmel, Nebel, Post, nasser Asphalt, Gegenlicht-Blickpunkt `stadt-sonne`
-- [x] 3. Vegetation: 77 700 Bäume/Büsche + Gras + Reis nach Prototyp-Regeln, eigener Instanz-Renderer (D18); Bäume **vorläufig** aus dem Editor bis Sprint-Aufgabe 4
-- [x] 4. Asset-Pipeline: `ArtSource/exports` → Menü JapanMap/Art/Import Library (nur freigegebene Atlanten, `Data/Art/LibraryImport.asset`), LOD, Collider, Lichter; Showroom-Szene
-- [x] 5. Bibliothek: 158 Prefabs aus 16 Atlanten; **321 von 977** Platzhaltern auf der Karte ersetzt (Torii, Laternen, Masten, Felsen, Gassho-Höfe, Schuppen, Hafenkram, Schrein)
+Weg (D19–D21): Layout-Daten des Prototyps → `node Tools/export-places.mjs` → `SourceData/legacy/places/*.json`
+(reproduzierbar: Neu-Export bitgleich) → `Data/Places/<Ort>.asset` (Art → Bibliotheksmodell) → „JapanMap/Places/Import All".
+Bilder: vorher `Captures/p5-before/`, nachher `Captures/p5-after/`, Niedrig `Captures/p5-low/alle.png`,
+Vergleich je Ort `Captures/p5-<ort>-vorher-nachher.png`. Bench `Captures/bench-p5-*-High|Low.txt`, Gesamt `bench-p5-final-*`.
 
-**Abnahme (gemessen):** Bilder aller 40 Blickpunkte Hoch `Captures/p4-after/`, Niedrig `Captures/p4-low/`
-(vorher: `Captures/p4-before/`). Bench Hoch (Editor, M4): 307–1 700 Draw Calls, ≤ 3,4 Mio. Dreiecke, ≤ 3,9 ms;
-Niedrig: 119–357 Draw Calls, ≤ 0,34 Mio. Dreiecke, ≤ 2 ms → **Budget Niedrig gehalten**. Konsole 0 Fehler.
-Tests im Editor: EditMode 53/53, PlayMode 139/139 (+4 auf Abruf). Web: 0 Fehler, Hoch 105 fps, Mittel 244, Niedrig 545 (M4).
+- [x] **Sakura Commons** — Start wieder hier (D19); Petal Motors + Kies-Ausstellungsfläche, Open Bay, Tafel, Laternen, Kirschring
+- [x] **Tokyo** — 2 685 Häuser aus dem Prototyp-Generator, 3 321 Fassadenmodule instanziert, Hüllen mit Fensterraster (D20); 717 Straßenmöbel nach Straßenklasse, Automaten, Parks
+- [x] **Funaura** — Kaiplatte, 11 Bootshäuser, Molen + 2 Feuer, Steg, Slip, Boote; eigene Zufahrt (D21)
+- [x] **Koedo** — Kura-Straßen A + B, Brauerei, Toki no Kane, Kanal mit Wasser und Ishigaki-Ufern, Schrein
+- [x] **Kiso-Juku** — 42 Häuser an der Passstraße, Honjin, Kido-Tore, Hangtreppe, Wasserrad
+- [x] **Gassho & Stillwater** — 20 Strohdachhäuser, Mill Lane bis Funaura, Mühlhaus + Teich, Wasserräder, Hasa
+- [x] **Bellwood-Schrein** — Honden, Pagode, Mauer, Komainu, Zedernallee am Sandō (Regel 15)
+- [x] **Needle Circuit** — Boxenhof, Leitplanken an engen Kurven, Lichter an der Geraden
+- [x] Dichte: Vegetation in allen Orten freigeräumt; Reisfeldwasser unter Ortsstraßen/Häusern trocken
 
-## Phase 5 — Orte (läuft)
+**Abnahme (gemessen, Editor M4, 10 Blickpunkte):** Niedrig ≤ 347 Draw Calls / ≤ 572 k Dreiecke ✓ (Budget 400 / 800 k).
+Hoch ≤ 1 289 Draw Calls ✓, Dreiecke 1,6–6,8 M ✗ an 6 von 10 Punkten (Budget 3 M) — Orte selbst +0,03…1,9 M, der Rest Wald und
+Reisgras (an `start`/`pass`/`reisfeld` gleich wie Phase 4). Konsole 0 Fehler. Tests: EditMode 59/59, PlayMode 140/144 (4 auf Abruf).
+Web: 0 Fehler, 47,69 MB; Browser-fps zuletzt Niedrig 178, Hoch 49 — **unter Last gemessen** (Blender lief, siehe unten).
 
-Weg (D19): Layout-Daten des Prototyps → `node Tools/export-places.mjs` → `SourceData/legacy/places/*.json`
-→ je Ort `Data/Places/<Ort>.asset` (Art → Bibliotheksmodell) → Menü „JapanMap/Places/Import All".
-Bilder vorher `Captures/p5-before/<ort>.png`, nachher `Captures/p5-after/<ort>.png`; Bench `Captures/bench-p5-<ort>-High|Low.txt`.
+## Phase 6 — Zu Fuß und Leben (als Nächstes)
 
-- [x] 1. Blockout: statt GLB die Layout-Daten selbst (Gebäude sind im Prototyp zu einem Mesh verschmolzen)
-- [x] 2. Bausätze: Bibliothek (158 Prefabs) — fehlende Modelle unten unter „Für die Asset-Sitzung"
-- [x] 3. Orte bauen:
-  - [x] **Sakura Commons** — Petal Motors (Kiso-Gasthaus als Stellvertreter) mit Kies-Ausstellungsfläche, Open Bay (Netzschuppen als Stellvertreter), Tafel, Laternen, Bänke, Kirschring (24), Start wieder hier (Blick Ost). Bench Hoch ≤ 1 159 DC / 3,77 M (davon Ort +39 DC / +63 k; Rest Wald, s. „Hoch kostet viel"), Niedrig ≤ 293 DC / 381 k ✓. Web Niedrig 392 fps, 0 Fehler
-  - [x] **Tokyo** — 2 583 Stadthäuser + 102 Vorstadthäuser aus dem Prototyp-Generator, 3 321 Fassadenmodule instanziert (D20), Hüllen mit Fensterraster in der Ferne, 2 685 Kollider. Bench Niedrig ≤ 288 DC / 545 k ✓; **Hoch 3,1–3,7 M Dreiecke (Budget 3 M)** — Stadt +1,0–1,9 M, Rest Wald/Gelände (an `sakura` jetzt 4,8 M, weil die Stadt im Blick ist). Web Niedrig 377 fps, Hoch 134 fps, 0 Fehler
-  - [x] **Funaura** — Kaiplatte (1,8 m), 21 Kaimauer-Stücke, 11 Bootshäuser, 40 Häuser, Fischhalle, Steg, 45 Molenstücke, rotes Feuer, 9 Boote, Kaikram, Ebisu-Schrein, 44 Kiefern (vorläufig als Zeder), Dorfstraße von Stillwater (D21). Bench Hoch ≤ 947 DC / 1,77 M ✓, Niedrig ≤ 309 DC / 356 k ✓. Web Niedrig 387 fps, 0 Fehler
-  - [x] **Koedo** — 46 Kura/Machiya an Straße A und der neuen Straße B (verlängert die Dorfstraße, D21), Brauerei, Glockenturm (Shōrō als Stellvertreter), Platz, weiße Kura am Kanal, Speicher, Hikawa-Schrein, 22 Laternen, Weiden (vorläufig). Bench Niedrig ≤ 235 DC / 274 k ✓; Hoch bis 5,0 M (Reisfeld-Gras + Wald im Blick, Ort selbst ≈ 0,5 M). Web 378 fps, 0 Fehler
-  - [x] **Kiso-Juku** — 42 Häuser beidseits der Passstraße (Hatago, Soba, Sake, Läden, Minka, Kura), Honjin, Treppe mit Kiesweg den Hang hinauf, Wasserrad, Glocke, Teehaus, Hokora, Kōsatsu, Hinterhäuser, 222 gesetzte Bäume (Ahorn, Zedern, vorläufig). Bench Hoch ≤ 935 DC / 3,5 M, Niedrig ≤ 290 DC / 559 k ✓. Web 378 fps, 0 Fehler
-  - [x] **Gassho & Stillwater** — 20 Gassho-/Kayabuki-Häuser und Itakura (mit der Langseite zur Straße und auf die Prototyp-Grundfläche skaliert), Dorfstraße, Fußwege, Mill Lane vom Feldweg bis Funaura (Funauras Straße setzt sie fort), 3 Wasserräder, Mühlrad, 22 Hasa-Gestelle, Feuerhäuschen, Schrein, 135 Bäume. Reisfeldwasser unter Ortsstraßen und Häusern trocken (wie `gasshoDry`). Bench Niedrig ≤ 239 DC / 378 k ✓; **Hoch 5,0–6,7 M / bis 1 431 DC** — davon Ort nur +0,3 M / +240 DC, Rest Reisgras + Wald (Grundwert 5,9–6,4 M, in Phase 4 hier nicht gemessen; `start`/`pass`/`reisfeld` unverändert wie Phase 4). Web 393 fps, 0 Fehler
-  - [x] **Bellwood-Schrein (Tempel)** — Kern aus `props.json` (Halle, Treppe, 9 Torii, Laternen, Brunnenhaus, Glocke) bleibt; neu (Regel 15, ASTRA §3): Honden, Komainu, Ema/Omikuji, Amulettstand, Laternengestelle, Pagode als Landmarke, Lehmmauer um den Hof, 3 Nobori, Zedernallee an den letzten 150 m des Sandō. Neuer Blickpunkt `tempel-hof`. Bench Hoch ≤ 625 DC / 3,7 M (Wald), Niedrig ≤ 148 DC / 333 k ✓. Web 384 fps, 0 Fehler
-  - [x] **Needle Circuit** — Strecke, Boxengassen und Zufahrten waren schon in `roads.json`; neu: Boxenhof bei (−350 | 585) mit 4 Garagen (Blechhallen als Stellvertreter), 82 Leitplanken außen an Kurven < 140 m Radius hinter 8 m Auslauf, 30 Lichtmasten an der 900-m-Geraden, Auslauf frei von Bäumen. Blickpunkte `needle-gerade`, `needle-box`, `needle-luft`. Bench Hoch ≤ 1 177 DC / 2,4 M ✓, Niedrig ≤ 186 DC / 321 k ✓. Web Niedrig 130–225 fps (Rechner belastet: Blender lief parallel; Editor-Zahlen unverändert), 0 Fehler
-- Neu aus der Asset-Sitzung übernommen (freigegebene Stile): Kido-Tor (Kiso), weißes Molenfeuer und Slipanlage (Funaura)
-- [x] 4. Dichte: Vegetation in allen Orten freigeräumt (Kollider + Freiflächen des Prototyps); Tokyo-Straßenmöbel nach Straßenklasse (657 Laternen, 60 Masten, 142 Automaten, Alleebäume) und Parks; Koedo-Kanal (2 Haltungen, Wasser, Ishigaki-Ufer); Toki no Kane, Mühlhaus + Mühlteich aus der neuen Bibliothek
+- [ ] 1. Spielfigur zu Fuß: Laufen, Rennen, Rutschen, Kamera; Ein-/Aussteigen, Auto herbeirufen (Start zu Fuß in den Commons wie WP2)
+- [ ] 2. Fußgänger auf NavMesh (Gehwege, Plätze, Commons-Hof), nie auf der Fahrbahn; Rückstoß
+- [ ] 3. Wenig Verkehr in der Stadt
+- [ ] 4. Zerstörbares: Pfosten, Zäune, Automaten, Bäume, Hütten zerfallen in Teile
+- [ ] 5. Begehbare Läden, Arbeiter/Tiere im Fischerdorf
 
-### Für die Asset-Sitzung (fehlende Modelle, aus dem Import-Bericht)
+## Offen / Gefunden
 
-- **Sakura Commons:** Autohaus „Petal Motors" (22 × 14 m, offene Front, innen 10 Stellplätze), Werkstatt „Open Bay" (18 × 14 m, Einfahrt), Veranstaltungstafel (4 m), einzelne Nobori-Fahne (6×), Leute (6, Phase 6).
-- **Tokyo:** Hochhäuser über 40 m (41 Türme bis 154 m, Hotel/Kino-Familie; jetzt 35-m-Modelle), Kino-/Hotel-/Markthallen-Fronten (Familien 4, 5, 7 nutzen Stellvertreter), Holz-Izakaya für die Yokochō-Gassen (jetzt Koedo/Kiso-Läden).
-- **Funaura:** Kei-Truck (3×), Kiefer (Kuromatsu) als Baumart.
-- **Needle Circuit:** Tribüne, Boxengebäude, Start-Ziel-Brücke, Reifenstapel; Randsteine (4 cm) gehören ins Straßen-Mesh (Phase 7, mit der Haftung).
-- **Koedo:** Bogen- und Plattenbrücke über den Kanal, 6 moderne Wohnhäuser (2–3 Geschosse), Brauhalle mit Schornstein.
-- **Kiso-Juku:** Kaki-/Momiji-/Niwaki-Bäume als Arten.
-- **Warten auf deine Freigabe** (fertig in `ArtSource`, Stile „Scatter" und „Flora"): Veranstaltungstafel, Nobori, Jizō, Friedhof/Gräber, Tetrapoden, Leitpfosten, Gewächshäuser, Mauern — und die echten Bäume. Nach Freigabe: Stil in `Data/Art/LibraryImport.asset` eintragen, „Art/Import Library", dann „Places/Import All".
-- **Gassho & Stillwater:** Jizō (wartet auf Freigabe „Scatter"), Rinne zum Mühlrad.
-  **Ausstellungsautos:** die Fahrzeugmodelle haben 120 k Dreiecke und ~120 Teil-Meshes je Auto (10 Autos = 1,23 M / 1 212 Draw Calls) → für die Ausstellung eine leichte Stufe (≤ 8 k, 1–2 Materialien).
+- **Deine Kartenpunkte:** Höhen an Einmündungen ✓ für alle neuen Ortsstraßen. **Nicht erledigt:** Kuppen-Knicke und Höhenstufen der alten Straßen, Stadtplatte ohne Böschung (Felskante neben der Platte, `Captures/look-viadukt.png`), treppige Reisfeldränder. Hochstraße: Leitplanken sind auf allen 204 Viadukt-Rändern schon da, eine geschlossene Brüstungsmauer fehlt (kein Modell).
+- **Browser-fps** zuletzt Hoch 49 statt 134, Niedrig 178 statt ~380 — gemessen, während Blender lief; Editor-Bench am selben Punkt unverändert. Ursache ungeprüft → bei ruhigem Rechner `node Tools/smoke.mjs --gpu` wiederholen; bleibt es, gegen einen Build von `9500ab6` messen.
+- **Hoch kostet viel:** Wald-Schatten (Instanzen werden nicht je Kaskade aussortiert), lodBias 2, Reisgras (Gassho-Tal ohne Ort 6,4 M) → Phase 10.
+- **Download 47,7 MB** (Ziel Handy 20 MB; Phase 5 +4,7 MB). Autos 71 MB unkomprimiert → Addressables, Phase 10.
+- `Game.unity` 7,1 MB durch 2 685 Tokyo-Kollider → zur Laufzeit aus `PlaceInstanceData` erzeugen.
+- Sakura Commons: `commons-drive` beginnt als Asphaltkante in der Schale (Startbild).
+- Fahrtests nur im Batchmodus rot (`PlayerDriveTests`, seit Phase 3; im Editor grün). Löcher in Gebäude-FBX (Asset-Sitzung). Rest aus Phase 3/4: Leitplanken zerbrechen nicht, Fels ohne Triplanar, Wasser ohne Tiefe → Phase 7/10.
 
-## Offene Probleme / Gefunden
+### Für die Asset-Sitzung (fehlende Modelle; Lagen stehen in den Daten, Import genügt)
 
-- **Download 47,7 MB** (Ziel Handy 20 MB; Phase 5 gesamt +4,7 MB). Unkomprimiert: Autos 71 MB (alle zehn im Build), Gelände 15, Straßen 10,5, Modell-Atlanten 8 + 6 neue Stile, Baumdaten 2 → nur gewähltes Auto laden (Addressables), Atlanten ohne Leuchten ohne Emission-Karte, Phase 10.
-- **Browser-fps auf Hoch zuletzt 49 statt 134** (Niedrig 178 statt ~380) — gemessen, während Blender parallel lief; Editor-Bench am selben Punkt unverändert. Ursache **ungeprüft** → bei ruhigem Rechner `node Tools/smoke.mjs --gpu` wiederholen; bleibt es, Build von `9500ab6` dagegen messen.
-- **Hoch kostet viel** (105 fps auf M4 gegen 244 auf Mittel: 4 Schatten-Kaskaden über Wald, MSAA, doppelte LOD-Weite) — auf iGPU-Laptops vermutlich unter 60 → Standardstufe in Phase 10 kalibrieren. Seit Tokyo an Stadt-Blickpunkten 3,1–4,8 M Dreiecke (Budget 3 M); Hebel: Wald-Schatten (Instanzen werden nicht je Kaskade aussortiert), lodBias 2. **Reisfeld-Täler (Gassho) schon ohne Ort 6,4 M** — Reis-/Grasdichte auf Hoch.
-- **Löcher in Gebäuden:** Unity verwirft 395 sich selbst schneidende Polygone in 29 Meshes (Tokyo-Mansion 114, Gassho-Häuser je ~20, Kiso/Koedo 3–20) → Asset-Sitzung: vor dem Export triangulieren. Liste: Import-Bericht „JapanMap/Art/Import Library".
-- **Fahrtests nur im Batchmodus rot** (`PlayerDriveTests`, Gas bleibt 0): schon vor Phase 4 so, im Editor grün. Ursache offen (nicht der Fensterfokus allein).
-- **Niedrig:** Laternen beleuchten das Gelände kaum (Forward, 4 Lichter je Objekt; das Gelände ist ein Objekt) — bewusster Kompromiss.
-- Vegetation wächst noch dort, wo Phase 5 Orte baut (Gassho-Tal, Funaura) → beim Bau der Orte freiräumen.
-- `Game.unity` 7,1 MB: 2 685 Tokyo-Kollider als GameObjects → später zur Laufzeit aus `PlaceInstanceData` erzeugen (Szene klein, gleiches Verhalten).
-- Sakura Commons: die Zufahrt `commons-drive` beginnt als Asphaltkante mitten in der Schale (Startbild) — mit Tokyo/Stadtrand glätten.
-- Horizont vom Startpunkt (hoch oben): schmale grünliche Linie zwischen Himmel und Nebel.
-- Vorläufige Bäume: Zeder von unten gesehen (Stufen-Kegel) und Bambus noch grob → Sprint-Aufgabe 4 ersetzt sie.
-- Rest aus Phase 3: Straßen-Höhenstufen + Kuppen-Knicke (Phase 5), Leitplanken zerbrechen nicht (Phase 7), `PathFollower` ohne Zurücksetzen (Phase 7), Terrain-Dreiecke `pixelError` (jetzt je Stufe in `TerrainQuality`), Web-Seite Standardvorlage (Phase 9/10), zwölf alte Zweige `agent/*` (du entscheidest).
-- **Aus Phase 4 nicht geschafft:** Reisfeldränder treppig, Fels ohne Triplanar-Mapping, Wasser ohne Tiefe/Collider (kein Spritzwasser) → Phase 5/7. Hochstraße ohne Brüstungen, Stadtplatte ohne Böschung → Phase 5.
-- Batchmodus jetzt geprüft: `verify.mjs` (Sperrklinke) und `capture.mjs --viewpoint all` laufen.
-- 656 Platzhalter bleiben (Tetrapoden 372, Leitpfosten 170, Betonmauern 79, Gewächshäuser 30 u. a.) — dafür gibt es noch keine Modelle.
+- Sakura: Autohaus Petal Motors (22 × 14 m), Werkstatt Open Bay (18 × 14 m), **leichte Ausstellungsautos** (≤ 8 k Dreiecke; die Fahrmodelle haben 120 k).
+- Tokyo: Hochhäuser 40–154 m (41 Stück), Kino-/Hotel-/Markthallen-Fronten, Holz-Izakaya für Yokochō. Koedo: 2 Kanalbrücken, 6 moderne Wohnhäuser, Brauhalle.
+- Funaura: Kei-Truck. Needle: Tribüne, Boxengebäude, Start-Ziel-Brücke, Reifenstapel. Viadukt: Brüstungsmauer. Leute (Phase 6).
 
 ## Für dich (Mensch)
 
-1. **Optik-Abnahme (~10 Min.): „Würde ich das spielen wollen?"** Unity offen, Szene `Boot` → ▶ Play.
-   Du startest in der Stadt. Bitte anschauen:
-   - **Gegenlicht:** Fahr auf der Stadtstraße Richtung Sonne (tief, rechts vom Start) — kleine Sonne, Glanzstreifen auf dem nassen Asphalt. Zu hell, zu dunkel, zu blau?
-   - **Wald und Wiesen:** Fahr aus der Stadt raus Richtung Berge — dichter Zedernwald, grüne Wiesen, ab und zu ein roter Ahorn. Die Bäume sind **vorläufig** (einfache Formen), bis der Asset-Sprint sie baut. Stört dich die Form schon jetzt?
-   - **Tempelpfad (Sandō):** Torii mit Steinlaternen, die warm leuchten — so wie im Prototyp?
-   Ohne Fahren geht es schneller mit Bildern: `Captures/p4-after/` (Hoch) und `Captures/p4-low/` (Handy-Stufe), vorher/nachher `Captures/p4-before/montage-a.png` ↔ `Captures/p4-after/montage-a.png`.
-2. **Modelle im Spiel-Licht:** Datei → `Assets/_Project/Scenes/Showroom.unity` öffnen (Play nicht nötig) — alle 158 Modelle in Reihen (Requisiten, Tokyo, Koedo, Kiso, Gassho, Minato, Tera, Bäume).
-3. **Tempel (Tera):** Laut Asset-Sprint wartet der Stil noch auf deine Freigabe (+ Frage zu drei Wahrzeichen über 5 000 Dreiecken, siehe `ArtSource/STATUS.md`). Ich habe ihn schon importiert, weil du „alle fertig" geschrieben hast — sag Bescheid, falls nicht.
-4. **Asset-Sitzung:** bitte ausrichten: „Löcher: vor dem FBX-Export alle n-Ecke triangulieren (Liste in docs/STATUS.md), danach Vegetation (Aufgabe 4)".
-5. **Hachi (noch offen aus Phase 3):** Von hinten sieht man durch die Heckscheibe in den Innenraum (`Captures/web-smoke-High.png`). Richtig so oder fehlt ein Dach?
+1. **Dein laufendes Spiel:** Ich habe aus Versehen neu kompiliert, während Play lief → das Auto wirft Fehler. Bitte **Play stoppen und aus `Boot` neu starten**. (Ist behoben: Werkzeuge kompilieren nie mehr im Play-Modus.)
+2. **Abnahme Phase 5 (~15 Min.):** `Boot` → ▶ Play. Du startest jetzt in **Sakura Commons** (wie im Prototyp), Blick nach Osten.
+   - Links die Holzhalle „Petal Motors" mit Kieshof, die Tafel, Laternen, Kirschring. Fahr Richtung Westen/Norden → **Tokyo**: Neon-Straßen, Laternen, Bäume auf Boulevards. Würde ich hier fahren wollen?
+   - Schneller per Bild: `Captures/p5-<ort>-vorher-nachher.png` für sakura, tokyo, funaura, koedo, kiso, gassho, tempel, needle; Handy-Stufe `Captures/p5-low/alle.png`.
+   - Wichtigste Fragen: Wirken **Funaura** (Bootshäuser am Wasser) und **Gassho** (Strohdächer zwischen Reisfeldern) wie im Prototyp, nur schöner? Stören die **Stellvertreter** (Autohaus = Gasthaus, Garagen = Blechhallen)?
+3. **Freigabe Asset-Stile „Scatter" und „Flora"** (`ArtSource/STATUS.md`): Tafel, Nobori, Jizō, Gräber, Tetrapoden, Leitpfosten, Gewächshäuser, Mauern — und die **echten Bäume**. Sag „freigegeben", dann trage ich sie ein und importiere.
+4. **Browser-Probe bei ruhigem Rechner** (Blender zu): `node Tools/smoke.mjs --gpu` — ich brauche die fps-Zahl.
+5. Noch offen aus früher: Optik-Abnahme Phase 4; Hachi-Heckscheibe (Phase 3); zwölf alte Zweige `agent/*`.
 6. Commits liegen lokal; **Push** nur, wenn du es sagst.
 
 ## Web-Build
 
 | Datum | Typ | Gesamt | wasm | data | Boot (lokal) |
 |---|---|---|---|---|---|
-| 2026-10-07 | Release, ganze Karte | 25,81 MB | 5,28 MB | 20,34 MB | 1,6 s |
-| 2026-10-08 | Release, Karte + 10 Autos | 34,56 MB | 5,54 MB | 28,84 MB | 1,0 s |
 | 2026-10-08 | Release, Phase 4 (Look, Vegetation, 158 Modelle) | 43,01 MB | 5,53 MB | 37,29 MB | 0,8–1,1 s |
+| 2026-10-08 | Release, Phase 5 (8 Orte, 164 Modelle) | 47,69 MB | 5,53 MB | 41,96 MB | 1,2–1,3 s |

@@ -5,9 +5,11 @@
 //   echo 'return Application.unityVersion;' | node Tools/unity-exec.mjs -
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { compileIfChanged } from './lib/fresh.mjs';
 const src = process.argv[2];
 if (!src) { console.error('usage: node Tools/unity-exec.mjs <file.cs|->'); process.exit(2); }
 const code = readFileSync(src === '-' ? 0 : src, 'utf8');
+try { compileIfChanged(); } catch (e) { console.error(`(compile check skipped: ${String(e.message).split('\n')[0]})`); }
 const out = execFileSync('node', [new URL('./mcp-call.mjs', import.meta.url).pathname, 'execute_code',
   JSON.stringify({ action: 'execute', code })], { encoding: 'utf8', maxBuffer: 64 << 20 });
 try {

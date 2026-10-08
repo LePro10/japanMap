@@ -96,6 +96,10 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
   Klärung: im Editor laufen lassen.
 - **ViewpointBench** schaltet Cinemachine/CarCameraRig ab — sonst misst jeder
   Blickpunkt das Auto-Bild. Gleiche Zahlen an allen Blickpunkten = Messfehler.
+- **Offene Punkte aus STATUS erst ansehen, dann bauen:** „Hochstraße ohne Brüstungen" war längst erledigt
+  (Leitplanken auf allen 204 Viadukt-Rändern) — ein Nahbild (`node Tools/look.mjs`) spart die Arbeit.
+- **Werkzeuge kompilieren selbst:** `unity-exec`/`unity-test` lassen Unity vorher geänderte Skripte
+  übersetzen (`Tools/lib/fresh.mjs`) — außer im Play-Modus (dann bleibt alter Code, Hinweis beachten).
 - **Bench je Ort:** `node Tools/bench.mjs <label> <blickpunkte>` misst Hoch und Niedrig in einem Lauf.
   Für Versuche („Schatten aus") das geänderte Asset `EditorUtility.SetDirty` + `AssetDatabase.SaveAssets`
   — sonst lädt Play die alte Fassung, und der Versuch misst nichts (gleiche Zahlen bis zur letzten Stelle).
