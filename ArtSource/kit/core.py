@@ -484,6 +484,42 @@ def map_cyl(bm, faces, reg, cx=0.0, cy=0.0, z0=None, rotate=False, z_len=None, s
             l[uv].uv = (uu, vv)
 
 
+def map_box(bm, faces, reg, z0=None):
+    """Box projection for organic shapes (rocks, shrubs): each face is
+    projected along its dominant axis, so neighbours facing the same way
+    share one continuous mapping (per-face tangents would seam everywhere).
+    Strips only. Sides: U = horizontal position, V = z - z0. Tops: U = x,
+    V = y from the lowest y of all top faces."""
+    uv = _uv(bm)
+    u0, v0, u1, v1 = reg['uv']
+    faces = [f for f in faces if f is not None]
+    if not faces:
+        return
+    z0 = min(v.co.z for f in faces for v in f.verts) if z0 is None else z0
+    for f in faces:
+        f.normal_update()
+    tops = [f for f in faces if abs(f.normal.z) >= max(abs(f.normal.x), abs(f.normal.y))]
+    y0 = min((v.co.y for f in tops for v in f.verts), default=0.0)
+    over, worst = 0.0, None
+    for f in faces:
+        n = f.normal
+        for l in f.loops:
+            c = l.vert.co
+            if f in tops:
+                s, t = c.x * (1 if n.z > 0 else -1), c.y - y0
+            elif abs(n.x) > abs(n.y):
+                s, t = c.y * (1 if n.x > 0 else -1), c.z - z0
+            else:
+                s, t = -c.x * (1 if n.y > 0 else -1), c.z - z0
+            tt = t / reg['h_m']
+            if (tt - 1.0) * reg['h_m'] > over:
+                over, worst = (tt - 1.0) * reg['h_m'], f
+            l[uv].uv = (s / reg['w_m'], v0 + min(max(tt, 0.0), 1.0) * (v1 - v0))
+    if over > 0.02:
+        c = worst.calc_center_median()
+        STRETCH.append((reg['name'], round(over, 2), tuple(round(x, 1) for x in c)))
+
+
 def nobevel(bm, faces):
     """Exclude faces from the bevel (tile rows, bars: many small edges, no gain)."""
     lay = bm.faces.layers.int.get('nobevel') or bm.faces.layers.int.new('nobevel')

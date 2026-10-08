@@ -8,7 +8,7 @@ geht, wird nach `Assets/_Project/Art/…` exportiert (Regeln:
 | Ordner | Inhalt |
 |---|---|
 | `cars/blender/` | Prozedurale Fahrzeug-Generatoren aus dem Prototyp (`carkit.py`, `cars.py`, `build.py`, Lackierung, Tuning-Teile). Bauen die 10 Autos in Blender und exportieren GLB mit spielfertiger Hierarchie. Beschreibung: `cars/README.legacy.md` |
-| `kit/` | Stil-Kit: Atlas-Generator (`atlas.py`), Bausteine/UV/Fasen/Export (`core.py`), Vorschau-Bühne (`preview.py`). Regeln: `STYLE-KIT.md` |
+| `kit/` | Stil-Kit: Atlas-Generator (`atlas.py`), Bausteine/UV/Fasen/Export (`core.py`), Vorschau-Bühne (`preview.py`), Felsen/Büsche (`organic.py`). Regeln: `STYLE-KIT.md` |
 | `build.py` | Läufer: `build.run([...])` baut, exportiert, rendert Vorschau, schreibt `exports/manifest.json` |
 | `kit/graphics.mjs` | Schild- und Tafelgrafiken als SVG → `kit/gfx/*.png` (Headless-Chrome) |
 | `props/` | Generatoren für Straßenmöbel (Steinlaterne, Getränkeautomat, …) |

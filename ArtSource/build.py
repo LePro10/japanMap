@@ -20,6 +20,10 @@ ASSETS = {
     'fence': 'props.fence',
     'torii': 'props.torii',
     'bench': 'props.bench',
+    'bus_stop': 'props.bus_stop',
+    'bicycle': 'props.bicycle',
+    'planter': 'props.planter',
+    'rocks': 'props.rocks',
 }
 
 # 3/4 front in the mood light, 3/4 front neutral, 3/4 back neutral (same as
@@ -31,8 +35,8 @@ CLAY = [('clay', (1.0, -1.7, 0.6), 'clay'), ('clay back', (-1.2, 1.5, 0.7), 'cla
 
 
 def _reload():
-    import kit, kit.atlas, kit.core, kit.preview
-    for m in (kit.atlas, kit.core, kit.preview):
+    import kit, kit.atlas, kit.core, kit.preview, kit.organic
+    for m in (kit.atlas, kit.core, kit.preview, kit.organic):
         importlib.reload(m)
 
 
@@ -65,6 +69,13 @@ def _write_manifest(entries):
         with open(MANIFEST) as f:
             data = json.load(f)
     data.update(entries)
+    # a renamed or dropped asset leaves its old entry behind: keep only FBX that exist
+    base = os.path.dirname(MANIFEST)
+    gone = [k for k, v in data.items() if not os.path.exists(os.path.join(base, v['fbx']))]
+    for k in gone:
+        del data[k]
+    if gone:
+        print('manifest: dropped stale entries', gone)
     with open(MANIFEST, 'w') as f:
         json.dump(dict(sorted(data.items())), f, indent=1, ensure_ascii=False)
 

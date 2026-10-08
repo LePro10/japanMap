@@ -7,14 +7,35 @@
    "SM_Barrier_GuardPipe_2m_LOD1"
   ],
   "tris": [
-   500,
-   174
+   892,
+   198
   ],
   "materials": [
    "M_Street_Atlas"
   ],
   "colliders": [
    "COL_Barrier_GuardPipe_2m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Barrier_GuardPipe_End": {
+  "fbx": "props/SM_Barrier_GuardPipe_End.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Barrier_GuardPipe_End_LOD0",
+   "SM_Barrier_GuardPipe_End_LOD1"
+  ],
+  "tris": [
+   1366,
+   210
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_Barrier_GuardPipe_End"
   ],
   "lights": [],
   "switchable": [],
@@ -28,8 +49,8 @@
    "SM_Barrier_GuardRail_4m_LOD1"
   ],
   "tris": [
-   428,
-   46
+   1236,
+   74
   ],
   "materials": [
    "M_Street_Atlas"
@@ -49,14 +70,35 @@
    "SM_Barrier_GuardRail_End_LOD1"
   ],
   "tris": [
-   356,
-   54
+   1198,
+   114
   ],
   "materials": [
    "M_Street_Atlas"
   ],
   "colliders": [
    "COL_Barrier_GuardRail_End"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Barrier_Railing_2m": {
+  "fbx": "props/SM_Barrier_Railing_2m.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Barrier_Railing_2m_LOD0",
+   "SM_Barrier_Railing_2m_LOD1"
+  ],
+  "tris": [
+   414,
+   68
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_Barrier_Railing_2m"
   ],
   "lights": [],
   "switchable": [],
@@ -125,6 +167,150 @@
   "switchable": [],
   "attach": []
  },
+ "Bicycle_Mamachari_Cream": {
+  "fbx": "props/SM_Bicycle_Mamachari_Cream.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Bicycle_Mamachari_Cream_LOD0",
+   "SM_Bicycle_Mamachari_Cream_LOD1"
+  ],
+  "tris": [
+   2444,
+   570
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_Bicycle_Mamachari_Cream"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Bicycle_Mamachari_Mint": {
+  "fbx": "props/SM_Bicycle_Mamachari_Mint.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Bicycle_Mamachari_Mint_LOD0",
+   "SM_Bicycle_Mamachari_Mint_LOD1"
+  ],
+  "tris": [
+   2444,
+   570
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_Bicycle_Mamachari_Mint"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Bicycle_Mamachari_Silver": {
+  "fbx": "props/SM_Bicycle_Mamachari_Silver.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Bicycle_Mamachari_Silver_LOD0",
+   "SM_Bicycle_Mamachari_Silver_LOD1"
+  ],
+  "tris": [
+   2444,
+   570
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_Bicycle_Mamachari_Silver"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "BikeRack_6": {
+  "fbx": "props/SM_BikeRack_6.fbx",
+  "class": "props",
+  "lods": [
+   "SM_BikeRack_6_LOD0",
+   "SM_BikeRack_6_LOD1"
+  ],
+  "tris": [
+   1872,
+   284
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_BikeRack_6"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "BusStop_Pole": {
+  "fbx": "props/SM_BusStop_Pole.fbx",
+  "class": "props",
+  "lods": [
+   "SM_BusStop_Pole_LOD0",
+   "SM_BusStop_Pole_LOD1"
+  ],
+  "tris": [
+   672,
+   152
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_BusStop_Pole"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "BusStop_Shelter": {
+  "fbx": "props/SM_BusStop_Shelter.fbx",
+  "class": "props",
+  "lods": [
+   "SM_BusStop_Shelter_LOD0",
+   "SM_BusStop_Shelter_LOD1"
+  ],
+  "tris": [
+   1102,
+   266
+  ],
+  "materials": [
+   "M_Glass",
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_BusStop_Shelter_Ad",
+   "COL_BusStop_Shelter_Back",
+   "COL_BusStop_Shelter_Roof"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_BusStop_Shelter_Strip",
+    "pos": [
+     0.0,
+     -0.37,
+     2.38
+    ],
+    "color": [
+     0.92,
+     0.95,
+     1.0
+    ],
+    "range": 6.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
  "Fence_Bamboo_1_8m": {
   "fbx": "props/SM_Fence_Bamboo_1_8m.fbx",
   "class": "props",
@@ -133,56 +319,14 @@
    "SM_Fence_Bamboo_1_8m_LOD1"
   ],
   "tris": [
-   940,
-   122
+   1588,
+   128
   ],
   "materials": [
    "M_Street_Atlas"
   ],
   "colliders": [
    "COL_Fence_Bamboo_1_8m"
-  ],
-  "lights": [],
-  "switchable": [],
-  "attach": []
- },
- "Fence_BlockWall_2m": {
-  "fbx": "props/SM_Fence_BlockWall_2m.fbx",
-  "class": "props",
-  "lods": [
-   "SM_Fence_BlockWall_2m_LOD0",
-   "SM_Fence_BlockWall_2m_LOD1"
-  ],
-  "tris": [
-   254,
-   74
-  ],
-  "materials": [
-   "M_Street_Atlas"
-  ],
-  "colliders": [
-   "COL_Fence_BlockWall_2m"
-  ],
-  "lights": [],
-  "switchable": [],
-  "attach": []
- },
- "Fence_BlockWall_Pillar": {
-  "fbx": "props/SM_Fence_BlockWall_Pillar.fbx",
-  "class": "props",
-  "lods": [
-   "SM_Fence_BlockWall_Pillar_LOD0",
-   "SM_Fence_BlockWall_Pillar_LOD1"
-  ],
-  "tris": [
-   74,
-   22
-  ],
-  "materials": [
-   "M_Street_Atlas"
-  ],
-  "colliders": [
-   "COL_Fence_BlockWall_Pillar"
   ],
   "lights": [],
   "switchable": [],
@@ -196,14 +340,56 @@
    "SM_Fence_Board_1_8m_LOD1"
   ],
   "tris": [
-   540,
-   92
+   748,
+   112
   ],
   "materials": [
    "M_Street_Atlas"
   ],
   "colliders": [
    "COL_Fence_Board_1_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Fence_Ishigaki_2m": {
+  "fbx": "props/SM_Fence_Ishigaki_2m.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Fence_Ishigaki_2m_LOD0",
+   "SM_Fence_Ishigaki_2m_LOD1"
+  ],
+  "tris": [
+   204,
+   18
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_Fence_Ishigaki_2m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Fence_Ishigaki_Retain_4m": {
+  "fbx": "props/SM_Fence_Ishigaki_Retain_4m.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Fence_Ishigaki_Retain_4m_LOD0",
+   "SM_Fence_Ishigaki_Retain_4m_LOD1"
+  ],
+  "tris": [
+   408,
+   18
+  ],
+  "materials": [
+   "M_Street_Atlas"
+  ],
+  "colliders": [
+   "COL_Fence_Ishigaki_Retain_4m"
   ],
   "lights": [],
   "switchable": [],
@@ -263,6 +449,69 @@
   "colliders": [
    "COL_Kura_2Bay_White_Roof",
    "COL_Kura_2Bay_White_Walls"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Planter_Concrete": {
+  "fbx": "props/SM_Planter_Concrete.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Planter_Concrete_LOD0",
+   "SM_Planter_Concrete_LOD1"
+  ],
+  "tris": [
+   398,
+   98
+  ],
+  "materials": [
+   "M_Nature_Atlas"
+  ],
+  "colliders": [
+   "COL_Planter_Concrete"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Planter_PotGroup": {
+  "fbx": "props/SM_Planter_PotGroup.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Planter_PotGroup_LOD0",
+   "SM_Planter_PotGroup_LOD1"
+  ],
+  "tris": [
+   2812,
+   1220
+  ],
+  "materials": [
+   "M_Nature_Atlas"
+  ],
+  "colliders": [
+   "COL_Planter_PotGroup"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Planter_Round": {
+  "fbx": "props/SM_Planter_Round.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Planter_Round_LOD0",
+   "SM_Planter_Round_LOD1"
+  ],
+  "tris": [
+   980,
+   190
+  ],
+  "materials": [
+   "M_Nature_Atlas"
+  ],
+  "colliders": [
+   "COL_Planter_Round"
   ],
   "lights": [],
   "switchable": [],
@@ -467,6 +716,132 @@
   ],
   "colliders": [
    "COL_RoadSign_Stop"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Rock_Flat": {
+  "fbx": "props/SM_Rock_Flat.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Rock_Flat_LOD0",
+   "SM_Rock_Flat_LOD1"
+  ],
+  "tris": [
+   320,
+   80
+  ],
+  "materials": [
+   "M_Nature_Atlas"
+  ],
+  "colliders": [
+   "COL_Rock_Flat"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Rock_L": {
+  "fbx": "props/SM_Rock_L.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Rock_L_LOD0",
+   "SM_Rock_L_LOD1"
+  ],
+  "tris": [
+   1280,
+   80
+  ],
+  "materials": [
+   "M_Nature_Atlas"
+  ],
+  "colliders": [
+   "COL_Rock_L"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Rock_M": {
+  "fbx": "props/SM_Rock_M.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Rock_M_LOD0",
+   "SM_Rock_M_LOD1"
+  ],
+  "tris": [
+   320,
+   80
+  ],
+  "materials": [
+   "M_Nature_Atlas"
+  ],
+  "colliders": [
+   "COL_Rock_M"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Rock_M_Moss": {
+  "fbx": "props/SM_Rock_M_Moss.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Rock_M_Moss_LOD0",
+   "SM_Rock_M_Moss_LOD1"
+  ],
+  "tris": [
+   320,
+   80
+  ],
+  "materials": [
+   "M_Nature_Atlas"
+  ],
+  "colliders": [
+   "COL_Rock_M_Moss"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Rock_S": {
+  "fbx": "props/SM_Rock_S.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Rock_S_LOD0",
+   "SM_Rock_S_LOD1"
+  ],
+  "tris": [
+   320,
+   80
+  ],
+  "materials": [
+   "M_Nature_Atlas"
+  ],
+  "colliders": [
+   "COL_Rock_S"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Rock_Standing": {
+  "fbx": "props/SM_Rock_Standing.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Rock_Standing_LOD0",
+   "SM_Rock_Standing_LOD1"
+  ],
+  "tris": [
+   320,
+   80
+  ],
+  "materials": [
+   "M_Nature_Atlas"
+  ],
+  "colliders": [
+   "COL_Rock_Standing"
   ],
   "lights": [],
   "switchable": [],

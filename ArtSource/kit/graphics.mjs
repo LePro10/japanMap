@@ -67,6 +67,32 @@ const G = {
   BUS_STOP: [128, 128, `<circle cx="64" cy="64" r="63" fill="${WHITE}"/><circle cx="64" cy="64" r="56" fill="#1f6fb2"/>
     <text x="64" y="60" font-family="${JP}" font-weight="700" font-size="22" fill="${WHITE}" text-anchor="middle">バス停</text>
     <text x="64" y="90" font-family="Helvetica" font-weight="700" font-size="20" fill="${WHITE}" text-anchor="middle">BUS</text>`],
+  // bus stop timetable board, 96 x 128 (fictional route and times)
+  TIMETABLE: [96, 128, `<rect width="96" height="128" fill="#f2f2ee"/><rect width="96" height="22" fill="#1f6fb2"/>
+    <text x="48" y="15" font-family="${JP}" font-weight="700" font-size="11" fill="#fff" text-anchor="middle">時刻表  さくら線</text>
+    <rect x="4" y="26" width="88" height="10" fill="#d9e4ef"/>
+    <text x="7" y="34" font-family="${JP}" font-size="7" fill="#123">平日  Weekday</text>
+    ${[6,7,8,9,10,11,12,13,14,15,16,17,18,19].map((hr, i) => `<text x="7" y="${45 + i * 5.9}" font-family="Helvetica" font-size="5.6" font-weight="700" fill="#1f6fb2">${hr}</text>
+    <text x="17" y="${45 + i * 5.9}" font-family="Helvetica" font-size="5.6" fill="#222">${['05 35','02 22 41 58','15 32 50','10 40','10 40','10 40','10 40','10 40','10 40','10 30 50','05 20 35 52','10 28 46','05 25 45','15 45'][i]}</text>`).join('')}
+    <line x1="14" y1="38" x2="14" y2="126" stroke="#999" stroke-width="0.6"/>
+    <rect x="1" y="1" width="94" height="126" fill="none" stroke="#666" stroke-width="2"/>`],
+  // backlit poster in the shelter side panel (fictional hot-spring town)
+  AD_POSTER: [96, 128, `<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d2f5e"/>
+    <stop offset="0.7" stop-color="#e98a6a"/><stop offset="1" stop-color="#f6d3a2"/></linearGradient></defs>
+    <rect width="96" height="128" fill="url(#sky)"/><circle cx="66" cy="58" r="12" fill="#fff1d0"/>
+    <path d="M0,92 L22,64 L38,80 L58,56 L96,94 L96,128 L0,128 Z" fill="#26304a"/>
+    <path d="M0,104 Q48,94 96,106 L96,128 L0,128 Z" fill="#141a2c"/>
+    <g fill="none" stroke="#fff" stroke-width="2" opacity="0.8"><path d="M30,100 q-4,-6 0,-12 q4,-6 0,-12"/><path d="M40,100 q-4,-6 0,-12 q4,-6 0,-12"/></g>
+    <text font-family="'Hiragino Mincho ProN', serif" font-size="15" fill="#fff" text-anchor="middle"><tspan x="18" y="22">湯</tspan><tspan x="18" y="39">け</tspan><tspan x="18" y="56">む</tspan><tspan x="18" y="73">り</tspan></text>
+    <text x="48" y="121" font-family="Helvetica" font-size="8" font-weight="700" fill="#fff" text-anchor="middle" letter-spacing="1">YUKEMURI ONSEN</text>`],
+  // stop name plate under the round bus-stop sign (fictional stop)
+  STOP_NAME: [128, 32, `<rect width="128" height="32" fill="#ffffff"/><rect x="1" y="1" width="126" height="30" fill="none" stroke="#1f6fb2" stroke-width="2"/>
+    <text x="64" y="17" font-family="${JP}" font-weight="700" font-size="14" fill="#111" text-anchor="middle">桜町三丁目</text>
+    <text x="64" y="28" font-family="Helvetica" font-size="8" fill="#333" text-anchor="middle">Sakuramachi 3-chome</text>`],
+  // wire basket mesh (bicycle basket): bright wires on the dark gap colour
+  BASKET: [64, 64, `<rect width="64" height="64" fill="#2a2c2e"/>
+    <g stroke="#b9bcbf" stroke-width="1.6">${[4,12,20,28,36,44,52,60].map(v => `<line x1="${v}" y1="0" x2="${v}" y2="64"/><line x1="0" y1="${v}" x2="64" y2="${v}"/>`).join('')}</g>
+    <rect x="0" y="0" width="64" height="4" fill="#cfd2d4"/>`],
 };
 
 mkdirSync(OUT, { recursive: true });

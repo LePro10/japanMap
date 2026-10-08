@@ -358,32 +358,161 @@ def galvanized(col='#a3a7ab'):
     return gen
 
 
-def block_wall(col='#a19f98', bw=0.40, bh=0.20, ppm=128):
-    """Concrete block wall (burokku-bei): 390 x 190 blocks, 10 mm joints, running bond."""
+def _voronoi(w, h, ppm, pts, aspect=1.0, warp=None):
+    """Nearest / second-nearest distance (metres) and nearest index for each
+    pixel; pts (N, 2) in metres, wrapped in x so the strip tiles. warp =
+    (dx, dy) arrays in metres bend the cell borders (round stones)."""
+    W = w / ppm
+    X = (np.arange(w)[None, :] + 0.5) / ppm + np.zeros((h, 1))
+    Y = (np.arange(h)[:, None] + 0.5) / ppm + np.zeros((1, w))
+    if warp is not None:
+        X = X + warp[0]; Y = Y + warp[1]
+    d1 = np.full((h, w), 9.0); d2 = np.full((h, w), 9.0); idx = np.zeros((h, w), int)
+    for i, (px, py) in enumerate(pts):
+        for off in (-W, 0.0, W):
+            d = np.sqrt(((X - px - off) * aspect) ** 2 + (Y - py) ** 2)
+            closer = d < d1
+            d2 = np.where(closer, d1, np.minimum(d2, d))
+            idx = np.where(closer, i, idx)
+            d1 = np.where(closer, d, d1)
+    return d1, d2, idx, Y
+
+
+def ishigaki(col='#84817b', stone_m=(0.42, 0.28), ppm=96):
+    """Japanese dry rubble wall (nozura / ran-zumi ishigaki): irregular,
+    rounded, slightly flat-lying stones, each with its own tone, lit from
+    above with a shadow under it; deep dark joints with small wedge stones
+    (kai-ishi); moss only in patches, black weathering runs."""
     def gen(w, h, rng):
-        y, x = np.mgrid[0:h, 0:w].astype(float)
-        X, Y = x / ppm, y / ppm
-        row = np.floor(Y / bh)
-        xs = X + (row % 2) * bw / 2
-        col_i = np.floor(xs / bw) % (w / ppm / bw)
-        jx = np.abs(xs - np.round(xs / bw) * bw); jy = np.abs(Y - np.round(Y / bh) * bh)
-        joint = smoothstep(0.009, 0.004, np.minimum(jx, jy))
-        tv = (np.sin((row * 31 + col_i * 17) * 12.9898) * 43758.5453) % 1.0
-        n = fbm(w, h, w // 32, max(2, h // 32), rng, 4)
-        f = (0.85 + 0.12 * tv + 0.12 * n) * (1 - 0.35 * joint)
-        f *= rain_streaks(w, h, rng, 0.15) * grime(w, h, rng, 0.3, 0.25)
-        return _out(srgb(col) * f[..., None], 0.2)
+        W, H = w / ppm, h / ppm
+        nx = max(1, round(W / stone_m[0])); sx = W / nx; sz = stone_m[1]
+        pts = []
+        for j in range(-1, int(H / sz) + 2):
+            for i in range(nx):
+                if rng.random() < 0.15:   # a missing seed = one bigger stone
+                    continue
+                pts.append(((i + 0.5 * (j % 2) + 0.35 * (rng.random() - 0.5)) * sx % W,
+                            (j + 0.5 + 0.4 * (rng.random() - 0.5)) * sz))
+                if rng.random() < 0.3:    # kai-ishi: small wedge stone in a joint
+                    pts.append(((i + 0.5 * (j % 2) + 0.5) * sx % W, (j + 1.0) * sz + 0.04 * rng.random()))
+        pts = np.array(pts)
+        warp = ((value_noise(w, h, int(W / 0.12), max(2, int(H / 0.12)), rng) - 0.5) * 0.09,
+                (value_noise(w, h, int(W / 0.12), max(2, int(H / 0.12)), rng) - 0.5) * 0.07)
+        d1, d2, idx, Y = _voronoi(w, h, ppm, pts, aspect=0.8, warp=warp)
+        edge = d2 - d1                                   # ~2x distance to the joint
+        n = len(pts)
+        tone = 0.7 + 0.38 * rng.random(n)
+        hue = rng.random(n)
+        c = srgb(col)[None, :]
+        warm, cool = srgb('#857766')[None, :], srgb('#757b81')[None, :]
+        base = c + 0.8 * np.where(hue[:, None] < 0.35, warm - c, np.where(hue[:, None] > 0.75, cool - c, 0.0))
+        rgb = base[idx] * tone[idx][..., None]
+        dome = smoothstep(0.0, 0.15, edge)
+        # light from above: upper part of each stone brighter, underside in shadow
+        rel = np.clip((Y - pts[idx, 1]) / (sz * 0.6), -1, 1)
+        lit = 0.78 + 0.22 * rel * (1 - dome * 0.5) + 0.12 * dome
+        grain = fbm(w, h, w // 10, max(2, h // 10), rng, 3)
+        speck = rng.random((h, w))
+        f = lit * (0.86 + 0.26 * grain)
+        f = np.where(speck > 0.95, f * 0.72, f)
+        rgb = rgb * f[..., None]
+        joint = smoothstep(0.032, 0.008, edge)
+        jcol = srgb('#262420') * (0.7 + 0.5 * grain)[..., None]
+        rgb = rgb * (1 - joint[..., None]) + jcol * joint[..., None]
+        # moss in patches (not a green grid), hugging joints a little
+        mz = fbm(w, h, w // 48, max(2, h // 48), rng, 4)
+        moss = smoothstep(0.70, 0.73, mz + 0.1 * (1 - vgrad(w, h)) + 0.1 * smoothstep(0.06, 0.0, edge)
+                          + 0.12 * (grain - 0.5))
+        mc = srgb('#4a5529') * (0.7 + 0.45 * grain)[..., None]
+        rgb = rgb * (1 - moss[..., None] * 0.85) + mc * moss[..., None] * 0.85
+        # dark weathering runs below the stones
+        runs = 1 - 0.3 * smoothstep(0.7, 0.9, value_noise(w, h, w // 4, 2, rng)) * smoothstep(0.4, 0.7, value_noise(w, h, w // 30, max(2, h // 30), rng))
+        rgb *= (runs * grime(w, h, rng, 0.25, 0.2))[..., None]
+        return _out(rgb, 0.1 + 0.12 * dome * (1 - moss))
     return gen
 
 
-def bamboo(col='#b59b62', node_m=0.4, ppm=128):
+def rock(col='#7f7e7a', moss=0.0, lichen=0.25):
+    """Weathered granite boulder: big soft blotches, grain, pale lichen
+    spots, dark weathering in cracks; optional moss cover."""
+    def gen(w, h, rng):
+        c = srgb(col)
+        big = fbm(w, h, w // 96, max(2, h // 96), rng, 4)
+        mid = fbm(w, h, w // 24, max(2, h // 24), rng, 3)
+        f = 0.7 + 0.45 * big + 0.15 * (mid - 0.5)
+        speck = rng.random((h, w))
+        f = np.where(speck > 0.94, f * 0.65, f)
+        f = np.where(speck < 0.04, f * 1.18, f)
+        pits = smoothstep(0.8, 0.9, value_noise(w, h, w // 6, max(2, h // 6), rng))   # small dark pits
+        f *= 1 - 0.25 * pits
+        rgb = c * f[..., None]
+        lc = smoothstep(0.72, 0.78, value_noise(w, h, w // 6, max(2, h // 6), rng)) * lichen
+        rgb = rgb * (1 - lc[..., None]) + srgb('#b9b7a2') * lc[..., None]
+        rgb *= rain_streaks(w, h, rng, 0.12)[..., None]
+        sm = 0.18 + 0.1 * big
+        if moss:
+            m = smoothstep(0.55 - 0.3 * moss, 0.62 - 0.3 * moss, fbm(w, h, w // 32, max(2, h // 32), rng, 4))
+            fine = value_noise(w, h, w // 3, max(2, h // 3), rng)
+            mc = srgb('#434f29') * (0.6 + 0.35 * mid + 0.3 * fine)[..., None]
+            rgb = rgb * (1 - m[..., None]) + mc * m[..., None]
+            sm = sm * (1 - m) + 0.06 * m
+        return _out(rgb, sm)
+    return gen
+
+
+def leaves(col='#3c5a2a', bloom=None, leaf_m=0.035, ppm=128):
+    """Dense shrub foliage (boxwood, azalea): many small leaves, each lit on
+    its upper side, dark gaps between; bloom = (colour, share): that share of
+    the leaves, in clusters, are blossoms instead."""
+    def gen(w, h, rng):
+        W, H = w / ppm, h / ppm
+        n = int(W * H / (leaf_m * leaf_m * 0.75))
+        pts = rng.random((n, 2)) * (W, H)
+        cl = fbm(w, h, w // 40, max(2, h // 40), rng, 3)
+        rgb = np.zeros((h, w, 3)) + srgb(col)[None, None, :] * (0.3 + 0.25 * cl)[..., None]
+        smooth = np.zeros((h, w))
+        r_px = leaf_m * ppm * 0.6
+        tone = 0.75 + 0.35 * rng.random(n)
+        yy, xx = np.mgrid[-int(r_px) - 1:int(r_px) + 2, -int(r_px) - 1:int(r_px) + 2]
+        green = srgb(col)
+        for (px, py), t in zip(pts * ppm, tone):
+            ix, iy = int(px), int(py)
+            d = np.sqrt((xx + ix - px) ** 2 * 0.7 + (yy + iy - py) ** 2) / r_px
+            m = d < 1
+            ys = (yy + iy)[m]; xs = (xx + ix)[m] % w
+            ok = (ys >= 0) & (ys < h)
+            ys, xs = ys[ok], xs[ok]
+            val = (t * (1.0 - 0.45 * d[m]) + 0.25 * (yy[m] < 0))[ok]   # upper half catches the sky
+            k = cl[min(iy, h - 1), ix % w]
+            c = green * (0.7 + 0.6 * k)            # clumps: lit and shaded masses
+            if bloom and rng.random() < bloom[1] * (0.4 + 1.2 * smoothstep(0.4, 0.6, k)):
+                c = srgb(bloom[0]) * 1.1
+            rgb[ys, xs] = c * val[:, None]
+            smooth[ys, xs] = 0.3
+        return _out(rgb, smooth)
+    return gen
+
+
+def soil(col='#3a2d22'):
+    def gen(w, h, rng):
+        n = fbm(w, h, w // 16, max(2, h // 16), rng, 4)
+        speck = rng.random((h, w))
+        f = 0.75 + 0.45 * n
+        rgb = srgb(col) * f[..., None]
+        peb = speck > 0.985
+        rgb[peb] = srgb('#8a8278') * (0.8 + 0.3 * n[peb])[..., None]
+        return _out(rgb, 0.1 + 0.1 * n)
+    return gen
+
+
+def bamboo(col='#a48d5e', node_m=0.4, ppm=128):
     """Split, aged bamboo: fibres along U, darker node rings every node_m (U)."""
     def gen(w, h, rng):
         y, x = np.mgrid[0:h, 0:w].astype(float)
         fib = value_noise(w, h, max(4, w // 64), h // 2, rng)
         d = np.abs(((x / ppm) % node_m) - node_m / 2)
-        node = smoothstep(0.02, 0.006, np.abs(d - node_m / 2))
-        f = (0.85 + 0.25 * fib) * (1 - 0.35 * node)
+        node = smoothstep(0.012, 0.004, np.abs(d - node_m / 2))
+        f = (0.85 + 0.25 * fib) * (1 - 0.18 * node)
         return _out(srgb(col) * f[..., None], 0.4 + 0.15 * fib)
     return gen
 
@@ -445,7 +574,7 @@ LAYOUTS = {
     'Street': {  # street furniture; strips at 128 px/m
         'CONCRETE_POLE': _strip(896, 128, concrete_pole()),
         'GALV':          _strip(832, 64, galvanized()),
-        'BLOCK_WALL':    _strip(640, 192, block_wall()),
+        'ISHIGAKI':      _strip(640, 192, ishigaki(), ppm=96),     # 10.7 m x 2 m
         'WOOD_BOARD':    _strip(576, 64, wood('#5a4634', smooth=0.2)),
         'BAMBOO':        _strip(512, 64, bamboo()),
         'WOOD_LIGHT':    _strip(448, 64, wood('#8a6440', smooth=0.35)),
@@ -461,6 +590,10 @@ LAYOUTS = {
         'POLE_PLATE': _rect(128, 256, 32, 64, png('POLE_PLATE')),
         'TORA':       _rect(0, 128, 128, 128, png('TORA', 0.35)),
         'BANNER':     _rect(128, 128, 64, 128, png('BANNER', 0.2)),
+        'TIMETABLE':  _rect(192, 128, 96, 128, png('TIMETABLE', 0.6)),
+        'AD_POSTER':  _rect(288, 128, 96, 128, png('AD_POSTER', 0.7, emit=0.55)),
+        'STOP_NAME':  _rect(384, 192, 128, 32, png('STOP_NAME', 0.5)),
+        'BASKET':     _rect(384, 128, 64, 64, png('BASKET', 0.4, bg='#2a2c2e')),
         **_cells([
             ('PAINT_WHITE',   flat('#e9eae6', 0.45, dirt=0.15)),
             ('PAINT_GREY',    flat('#8d9096', 0.4, 0.3, dirt=0.1)),     # light poles, signal housings
@@ -489,6 +622,45 @@ LAYOUTS = {
             ('TILE_DARK',     flat('#353b43', 0.4, dirt=0.15)),
             ('WOOD_POST',     flat('#3b2a1e', 0.3, dirt=0.2)),
         ], 192, 0, 13),
+        **_cells([   # second block (y 256): street furniture added with task 2b
+            ('REFLECTOR',     flat('#f08a1c', 0.85, dirt=0.0)),     # delineator: bright, no emission
+            ('REFLECTOR_RED', flat('#c01818', 0.85, dirt=0.0)),
+            ('STONE_CUT',     flat('#8a8882', 0.2, dirt=0.25)),
+            ('BIKE_SILVER',   flat('#b9bcbf', 0.6, 0.8, dirt=0.05)),
+            ('BIKE_MINT',     flat('#8cc4b4', 0.5, dirt=0.05)),
+            ('BIKE_CREAM',    flat('#e6dcc4', 0.5, dirt=0.05)),
+            ('RUBBER',        flat('#151515', 0.25, dirt=0.0)),
+            ('SADDLE',        flat('#2a201b', 0.45, dirt=0.0)),
+            ('ALU',           flat('#c3c6c8', 0.55, 0.9, dirt=0.08)),
+            ('LED_SHELTER',   emissive('#f3f6ff')),
+            ('ROOF_SHEET',    flat('#6d7176', 0.4, 0.6, dirt=0.1)),
+            ('PAINT_BROWN',   flat('#4a3b30', 0.4, 0.3, dirt=0.1)),
+            ('PAINT_GREEN',   flat('#33584a', 0.4, 0.3, dirt=0.1)),
+        ], 160, 256, 13),
+    },
+    'Nature': {  # rocks, planters, later vegetation (task 4); opaque only
+        'ROCK':         _strip(768, 256, rock(), ppm=100),             # 10.2 m x 2.56 m
+        'ROCK_MOSS':    _strip(640, 128, rock(moss=0.7), ppm=100),
+        'LEAVES':       _strip(512, 128, leaves()),
+        'LEAVES_BLOOM': _strip(384, 128, leaves('#3f5c2c', bloom=('#e0577f', 0.35))),
+        'SOIL':         _strip(320, 64, soil()),
+        'CONCRETE':     _strip(256, 64, stone('#a3a19b', dirt=0.3)),
+        **_cells([
+            ('TERRACOTTA',  flat('#a2573a', 0.25, dirt=0.25)),
+            ('GLAZE_BLUE',  flat('#2b4c74', 0.75, dirt=0.15)),
+            ('GLAZE_BROWN', flat('#5b3b25', 0.7, dirt=0.15)),
+            ('STYRO',       flat('#e6e6e1', 0.2, dirt=0.3)),
+            ('PLASTIC_GREEN', flat('#3e6a3a', 0.45, dirt=0.15)),
+            ('FRP_GREY',    flat('#97948e', 0.35, dirt=0.25)),
+            ('FRP_BROWN',   flat('#6a5040', 0.35, dirt=0.25)),
+            ('SOIL_FLAT',   flat('#33281f', 0.1, dirt=0.0)),
+            ('LEAF_FLAT',   flat('#3a5728', 0.3, dirt=0.0)),
+            ('STEM',        flat('#4a3a26', 0.2, dirt=0.0)),
+            ('PLASTIC_BLACK', flat('#18191a', 0.5, dirt=0.05)),
+            ('STEEL',       flat('#9a9ca0', 0.6, 1.0, dirt=0.1)),
+            ('ROCK_FLAT',   flat('#77766f', 0.2, dirt=0.15)),
+            ('WOOD_CEDAR',  flat('#5d4330', 0.3, dirt=0.2)),
+        ], 0, 0, 16),
     },
     'Kura': {    # plaster strips 2 m tall at 128 px/m; namako at 256 px/m (1 m)
         'PLASTER_WHITE': _strip(768, 256, plaster()),

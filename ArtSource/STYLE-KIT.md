@@ -38,7 +38,10 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
 
 - Je Baustil **ein** deckendes Material `M_<Stil>_Atlas` + das gemeinsame
   `M_Glass` (durchsichtig). Atlanten: `Props` (Schrein/Stein, Automaten),
-  `Street` (Masten, Schilder, Ampeln, Zäune, Bänke), `Kura`.
+  `Street` (Masten, Schilder, Ampeln, Zäune, Ishigaki, Bänke, Haltestelle,
+  Fahrräder), `Nature` (Felsen, Laub, Erde, Töpfe — später Vegetation;
+  nur deckend, Blatt-Karten mit Alpha brauchen in Aufgabe 4 ein eigenes
+  Material), `Kura`. Neuer Baustil = neuer Atlas (z. B. `Tokyo`, `Kiso`).
 - Atlas 1024², drei Karten passend zu URP/Lit:
   `T_<Stil>_BaseColor` (sRGB) · `T_<Stil>_MaskMap` (R Metall, G AO = 1,
   A Glätte; linear) · `T_<Stil>_Emission` (sRGB).
@@ -67,8 +70,33 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
 | Automat rot / blau / weiß | `#b3141c` / `#1c4a9c` / `#e6e7e6` | | Zinnober (Torii) | `#c4381c` |
 | Licht warm | `#ffb768` | | Papierlicht | `#ffd9a0` |
 | Licht kühl (LED) | `#dff3ff` | | Beton | `#9b9993` |
+| Ishigaki (Grau/warm/kühl) | `#84817b` `#857766` `#757b81` | | Laub / Blüte Azalee | `#3c5a2a` / `#e0577f` |
+| Fels | `#7f7e7a` | | Rückstrahler | `#f08a1c` |
 
 Gedämpfte Grundtöne, kräftige Farben nur als Akzent (Automat, Torii, Licht).
+
+## Japanisch, nicht allgemein (Rückmeldung 2026-10-08)
+
+Ein Asset muss als **japanisch** erkennbar sein, nicht nur als „Mauer" oder
+„Geländer". Die Betonsteinmauer in Läuferverband wirkte europäisch → ersetzt
+durch **Ishigaki** (Bruchsteinmauer: runde, flach liegende Steine, tiefe
+dunkle Fugen mit Keilsteinen, Moos in Flecken, geböschte Front). Vor jedem
+Asset fragen: Welche Variante gibt es *so* nur in Japan? Beispiele, die
+freigegeben sind: Ishigaki, Kenninji-Bambuszaun mit Palmseil-Knoten,
+Itabei-Brettzaun mit Ziegeldach, Leitplanke mit Rückstrahler (デリネーター),
+Mamachari mit Korb, runde バス停-Tafel auf Betonfuß, Topfgarten (roji).
+Auch Muster prüfen: Voronoi-Steine ohne Licht/Schatten sahen aus wie
+Gartenplatten — Steine brauchen runde Ränder, Licht oben, Schatten unten.
+
+## Befestigung zeigen (Rückmeldung 2026-10-08)
+
+„Zu schlicht" hieß: Profil, Pfosten und Befestigung fehlten. Jedes gebaute
+Teil zeigt, **wie es hält**: Schrauben/Muttern, Halter, Schellen, Kappen,
+Fußplatten, Seilbünde, Sockel, Stoßlaschen; Bleche mit echter Stärke und
+Profil (W-Profil mit Kanten), Pfosten mit Kappe. Prüfen mit einer
+**Nahaufnahme** (`P.details`, unten) — die Gruppen-Vorschau ist dafür zu klein.
+Weißer Lack wirkt im neutralen Licht flach; Profile im Stimmungsbild oder
+in der Nahaufnahme beurteilen.
 
 ## Abnutzung
 
@@ -109,6 +137,16 @@ allgemein (止まれ, 稲荷神社, „Sakura-dōri").
 - Bretter, Latten, Pfosten: eine Fläche je Brett (eigene Maserung);
   `rotate=True` für senkrechte Maserung; `s_offset` versetzt Muster (Knoten).
 
+## Organische Formen (Felsen, Büsche)
+
+`kit/organic.py`: `lump()` = Ikosphäre mit Rauschen, optional planare
+Bruchflächen (Fels), plane Oberseite (Hecke, Trittstein), Boden-Klemme;
+`shrub()` = Hauptballen + kleinere Ballen. LOD0 und LOD1 aus demselben Seed
+haben dieselbe Silhouette. **Achtung Blender 5:** `create_icosphere`
+zählt das Ikosaeder als Stufe 1 → 2 = 80, 3 = 320, 4 = 1 280 Dreiecke.
+UVs mit `K.map_box` (Projektion entlang der Hauptachse, Nachbarflächen
+nahtlos) statt `map_faces` (Tangente je Fläche → Nähte überall).
+
 ## LOD, Collider, Namen
 
 - LOD-Stufen baut der **Generator** mit weniger Details (keine Fasen, weniger
@@ -140,6 +178,9 @@ Baut, zählt Dreiecke, exportiert nach `exports/<klasse>/`, schreibt Atlanten
 nach `exports/textures/` und Vorschauen nach `previews/`. Ein Asset-Modul
 braucht `KLASS`, `NAME`, `build()`; optional `preview()`.
 
+Nahaufnahme je Objekt (Profile, Befestigung):
+`from kit import preview as P; P.details([obj, …], 'name', direction, mood=…, out_dir=…)`.
+
 Vorschau-Bühne: Stimmung (Blaue Stunde; warmes Horizontglühen nur zur
 Sonne hin — ein Rundum-Pfirsichhorizont färbte jede Wand warm), neutral,
 und **Grau ohne Textur** (`*_clay.png`) für den Silhouetten-Test.
@@ -149,4 +190,5 @@ Warnung bei gestreckten Streifen (mit Ort); Dreiecke werden auch für
 ausgeblendete Objekte mit Fasen gezählt; Rückseiten werden in der Vorschau
 ausgeblendet wie in Unity (verdrehte Flächen sieht man als Loch); konkave
 n-Ecke werden vor dem Export trianguliert; Atlas-Bereiche dürfen sich nicht
-überlappen.
+überlappen; das Manifest wirft Einträge ohne FBX-Datei hinaus
+(umbenannte/entfernte Assets).

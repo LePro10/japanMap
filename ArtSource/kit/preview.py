@@ -214,3 +214,32 @@ def render(objs, name, views, size=(640, 640), show=None):
     img.filepath_raw = path; img.file_format = 'PNG'; img.save()
     bpy.data.images.remove(img)
     return path
+
+
+def details(objs, name, direction=(1.0, -1.7, 0.6), mood=False, size=(480, 400), out_dir=None):
+    """Close-up of each object on its own, side by side (one frame per object):
+    group shots of long runs are too small to judge profiles and fixings."""
+    tiles = []
+    for o in objs:
+        others = {x: x.hide_render for x in bpy.data.objects if x is not o}
+        for x in others:
+            x.hide_render = True
+        was = o.hide_render; o.hide_render = False
+        try:
+            show = [c.name for c in o.users_collection]
+            p = render([o], '_detail_tmp', [('d', direction, mood)], size=size, show=show)
+        finally:
+            for x, h in others.items():
+                x.hide_render = h
+            o.hide_render = was
+        img = bpy.data.images.load(p, check_existing=False)
+        tiles.append(np.array(img.pixels[:], np.float32).reshape(img.size[1], img.size[0], 4))
+        bpy.data.images.remove(img)
+        os.remove(p)
+    out = np.concatenate(tiles, axis=1)
+    img = bpy.data.images.new('_details', out.shape[1], out.shape[0], alpha=True)
+    img.pixels.foreach_set(out.ravel())
+    path = os.path.join(out_dir or PREV_DIR, name + '.png')
+    img.filepath_raw = path; img.file_format = 'PNG'; img.save()
+    bpy.data.images.remove(img)
+    return path
