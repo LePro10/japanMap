@@ -39,27 +39,80 @@ namespace JapanMap.Editor.Places
             var dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", PlaceSource.Dir));
             if (!Directory.Exists(dir)) return roads;
             System.Func<float, float, float> ground = null;
-            foreach (var file in Directory.GetFiles(dir, "*.json").OrderBy(f => f))
-            foreach (var spec in Parse(File.ReadAllText(file)))
+            var specs = Directory.GetFiles(dir, "*.json").OrderBy(f => f).SelectMany(f => Parse(File.ReadAllText(f))).ToList();
+            // new roads first, then extensions: an extension may continue another place's road (Funaura → mill lane)
+            foreach (var spec in specs.OrderBy(sp => string.IsNullOrEmpty(sp.extends) ? 0 : 1))
             {
                 ground ??= TerrainImporter.RawGround(settings);
                 var host = string.IsNullOrEmpty(spec.extends) ? null : roads.FirstOrDefault(r => r.id == spec.extends);
                 if (!string.IsNullOrEmpty(spec.extends) && host == null)
                     Debug.LogWarning($"[Places] road {spec.id} extends unknown road '{spec.extends}' — added on its own");
                 if (host == null) { roads.Add(Build(spec, ground, float.NaN)); continue; }
+                // Join without a corner: cut the host back ~12 m and let the spline run from there through the
+                // extension's points; its first point (the old end) is left out so the bend is rounded
+                // (mill lane → Funaura turned 70° in one point and folded the road mesh).
                 var c = host.centerline;
-                var end = new Vector2(c[c.Length - 3], c[c.Length - 1]);
-                var startY = c[c.Length - 2];
-                spec.points.Insert(0, end);
-                var tail = Build(spec, ground, startY);
-                var n = tail.centerline.Length / 3;
-                host.centerline = c.Concat(tail.centerline.Skip(3)).ToArray();
-                host.widths = (host.widths ?? Enumerable.Repeat(spec.width, c.Length / 3).ToArray()).Concat(tail.widths.Skip(1)).ToArray();
-                host.banking = (host.banking ?? new float[c.Length / 3]).Concat(tail.banking.Skip(1)).ToArray();
-                host.length += tail.length;
+                var count = c.Length / 3;
+                var cut = Mathf.Clamp(Mathf.RoundToInt(12f / Mathf.Max(0.5f, host.length / Mathf.Max(1, count - 1))), 1, count - 2);
+                var keep = count - cut;
+                Vector2 At(int i) => new(c[i * 3], c[i * 3 + 2]);
+                var lead = At(Mathf.Max(0, keep - 1 - cut));
+                var controls = new List<Vector2> { lead, At(keep - 1) };
+                controls.AddRange(spec.points.Skip(1));
+                spec.points = controls;
+                var tail = Build(spec, ground, c[(keep - 1) * 3 + 1]);
+                // drop the samples of the lead-in segment (up to the new joint)
+                var tn = tail.centerline.Length / 3;
+                var joint = At(keep - 1);
+                var skip = 0;
+                for (var i = 0; i < tn; i++)
+                    if (Vector2.Distance(new Vector2(tail.centerline[i * 3], tail.centerline[i * 3 + 2]), joint) < Spacing * 0.6f) { skip = i + 1; break; }
+                host.centerline = c.Take(keep * 3).Concat(tail.centerline.Skip(skip * 3)).ToArray();
+                host.widths = (host.widths ?? Enumerable.Repeat(spec.width, count).ToArray()).Take(keep).Concat(tail.widths.Skip(skip)).ToArray();
+                host.banking = (host.banking ?? new float[count]).Take(keep).Concat(tail.banking.Skip(skip)).ToArray();
+                host.length = host.length * (keep - 1) / Mathf.Max(1, count - 1) + Spacing * (tn - skip);
                 host.tags = (host.tags ?? new string[0]).Concat(new[] { "extended" }).ToArray();
             }
+            MatchJunctions(roads);
             return roads;
+        }
+
+        /// <summary>
+        /// A place road that starts or ends at another road takes that road's height there, blended over
+        /// 16 m — otherwise its embankment rose through the road it joins (gassho street onto the mill lane: 0.92 m).
+        /// </summary>
+        static void MatchJunctions(List<LegacySource.Road> roads)
+        {
+            foreach (var road in roads)
+            {
+                if (road.tags == null || !road.tags.Contains("place")) continue;
+                var c = road.centerline;
+                var n = c.Length / 3;
+                foreach (var atStart in new[] { true, false })
+                {
+                    var e = atStart ? 0 : n - 1;
+                    var p = new Vector2(c[e * 3], c[e * 3 + 2]);
+                    float best = float.MaxValue, y = 0;
+                    foreach (var other in roads)
+                    {
+                        if (other == road) continue;
+                        var o = other.centerline;
+                        var reach = (other.widths != null && other.widths.Length > 0 ? other.widths.Max() : 5) / 2 + 3;
+                        for (var i = 0; i < o.Length / 3; i++)
+                        {
+                            var d = Vector2.Distance(p, new Vector2(o[i * 3], o[i * 3 + 2]));
+                            if (d < reach && d < best) { best = d; y = o[i * 3 + 1]; }
+                        }
+                    }
+                    if (best == float.MaxValue) continue;
+                    const int blend = 8;
+                    for (var j = 0; j < Mathf.Min(blend, n); j++)
+                    {
+                        var i = atStart ? j : n - 1 - j;
+                        c[i * 3 + 1] = Mathf.Lerp(y, c[i * 3 + 1], j / (float)blend);
+                    }
+                }
+            }
         }
 
         static IEnumerable<Spec> Parse(string raw)

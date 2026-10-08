@@ -46,7 +46,7 @@ namespace JapanMap.Tests
                 if (p.prefab == null || !(p.rule.level || kit.instanced)) continue;
                 var toLocal = Quaternion.Euler(0, -p.yaw, 0);
                 var half = p.halfSize - Vector2.one * 0.5f;
-                foreach (var road in network.roads)
+                foreach (var road in network.roads.Where(r => r.type != "pfad")) // footpaths lead to the doors
                 foreach (var pt in road.points)
                 {
                     // distance from the centreline point to the footprint must exceed half the carriageway

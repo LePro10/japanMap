@@ -40,6 +40,8 @@ namespace JapanMap.Editor.Places
             public bool fill;
             [Tooltip("Pick among the models closest to the item's height (h).")]
             public bool matchHeight;
+            [Tooltip("Scale uniformly so the model (after 'yaw') fits the item's footprint w × d — no stretching (gassho roofs).")]
+            public bool fitUniform;
         }
 
         [Tooltip("File name in SourceData/legacy/places without .json.")]

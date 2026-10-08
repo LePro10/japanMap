@@ -134,6 +134,7 @@ namespace JapanMap.Editor.Map
                 var px = tex.GetPixels32(); // Texture2D row 0 = last PNG row = south
                 var wet = new bool[px.Length];
                 for (var k = 0; k < px.Length; k++) wet[k] = px[k].r > 127;
+                Places.PlaceImporter.Dry(wet, res, settings);
                 return wet;
             }
             finally { UnityEngine.Object.DestroyImmediate(tex); }

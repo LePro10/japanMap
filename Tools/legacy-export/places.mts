@@ -225,7 +225,7 @@ const exporters: Record<string, () => Promise<Place>> = {
     L.funauraClearance((x: number, z: number, r: number) => clearCircles.push([x, z, r]));
     return {
       place: 'funaura', title: 'Funaura', anchor: L.FUNAURA, items, trees, clearCircles, clearRects: [],
-      roads: [{ id: 'funaura-river-road', type: 'village', width: 6.2, points: L.RIVER_ROAD.map(([x, z]: number[]) => [x, z]), endY: Q }],
+      roads: [{ id: 'funaura-river-road', type: 'village', width: 6.2, points: L.RIVER_ROAD.map(([x, z]: number[]) => [x, z]), endY: Q, extends: 'stillwater-mill-lane' }],
     };
   },
   /** KoedoTown.ts + koedoLayout.ts (DOERFER.md §4): one street in road coordinates (s along, o left). */
@@ -311,6 +311,51 @@ const exporters: Record<string, () => Promise<Place>> = {
     const clearCircles: [number, number, number][] = [];
     L.kisoClearance((x: number, z: number, r: number) => clearCircles.push([x, z, r]));
     return { place: 'kiso', title: 'Kiso-Juku', anchor: { x: L.KISO.x, z: L.KISO.z }, items, trees, clearCircles, clearRects: [] };
+  },
+  /** GasshoHamlet.ts + gasshoLayout.ts and the Stillwater mill lane (settlementLayout.ts). */
+  async gassho() {
+    const L = await src('world/settlements/gassho/gasshoLayout.ts');
+    const S = await src('world/settlements/settlementLayout.ts');
+    const items: Item[] = [];
+    // legacy front = local +x at yaw 0 (gasshoDry); here front = +z → yaw + π/2; w lies along the street
+    for (const [x, z, w, d, yaw, kind, role] of L.HOUSES)
+      items.push({ kind, tag: role, x, z, yaw: yaw + Math.PI / 2, w: d, d: w });
+    L.WHEELS.radii.forEach((r: number, i: number) => {
+      const z = L.WHEELS.z0 + L.WHEELS.radii.slice(0, i).reduce((a: number, b: number) => a + 2 * b + L.WHEELS.gap, 0) + r;
+      items.push({ kind: 'waterwheel', x: L.WHEELS.x, z, yaw: Math.PI / 2, h: r, y: L.RIVER_Y, fixedY: true });
+    });
+    for (const [x0, z0, x1, z1] of L.RACKS) {
+      const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 8)), yaw = Math.atan2(-(z1 - z0), x1 - x0);
+      for (let k = 0; k < n; k++) items.push({ kind: 'rack', x: x0 + (x1 - x0) * (k + 0.5) / n, z: z0 + (z1 - z0) * (k + 0.5) / n, yaw });
+    }
+    for (const [x, z, yaw] of L.FIRE_HUTS) items.push({ kind: 'fireHut', x, z, yaw: yaw + Math.PI / 2 });
+    items.push({ kind: 'shrine', ...L.SHRINE, yaw: L.SHRINE.yaw + Math.PI / 2 });
+    items.push({ kind: 'shrineTorii', x: L.SHRINE.x - 7, z: L.SHRINE.z, yaw: L.SHRINE.yaw + Math.PI / 2 });
+    items.push({ kind: 'jizo', ...L.JIZO, yaw: L.JIZO.yaw + Math.PI / 2 });
+    items.push({ kind: 'millWheel', x: S.MILL.x - 11, z: S.MILL.z - 4, yaw: 0 });
+    items.push({ kind: 'pond', x: S.POND.x, z: S.POND.z, yaw: 0, w: S.POND.w, d: S.POND.d });
+    const trees: Tree[] = [];
+    for (const [x, z, scale] of L.KAKI) trees.push({ species: 'Kaki', x, z, scale, yaw: hash(x, z) * 6.28 });
+    for (const [x, z, scale] of L.SUGI) trees.push({ species: 'Sugi', x, z, scale, yaw: hash(x, z) * 6.28 });
+    for (const [cx, cz, count] of L.BAMBOO) for (let i = 0; i < count; i++) {
+      const a = hash(cx + i, cz) * 6.28, r = Math.sqrt(hash(cz, cx + i * 3)) * 5.5;
+      trees.push({ species: 'Bamboo', x: cx + Math.cos(a) * r, z: cz + Math.sin(a) * r, scale: 0.8 + hash(i, cx) * 0.4, yaw: a });
+    }
+    const clearCircles: [number, number, number][] = [];
+    L.gasshoClearance((x: number, z: number, r: number) => clearCircles.push([x, z, r]));
+    clearCircles.push([S.MILL.x, S.MILL.z, 10], [S.POND.x, S.POND.z, 12]);
+    for (let i = 1; i < S.MILL_LANE.length; i++) {
+      const [ax, az] = S.MILL_LANE[i - 1]!, [bx, bz] = S.MILL_LANE[i]!, n = Math.ceil(Math.hypot(bx - ax, bz - az) / 4);
+      for (let j = 0; j <= n; j++) clearCircles.push([ax + (bx - ax) * j / n, az + (bz - az) * j / n, 4.4]);
+    }
+    return {
+      place: 'gassho', title: 'Gassho & Stillwater', anchor: L.GASSHO, items, trees, clearCircles, clearRects: [],
+      roads: [
+        { id: 'stillwater-mill-lane', type: 'village', width: 6, points: S.MILL_LANE.map(([x, z]: number[]) => [x, z]) },
+        { id: 'gassho-street', type: 'village', width: L.STREET_WIDTH, points: L.STREET.map(([x, z]: number[]) => [x, z]) },
+        ...L.PATHS.map((p: number[][], i: number) => ({ id: `gassho-path-${i}`, type: 'pfad', width: 1.8, points: p.map(([x, z]) => [x!, z!] as [number, number]) })),
+      ],
+    };
   },
 };
 

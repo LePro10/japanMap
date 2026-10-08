@@ -30,10 +30,15 @@ namespace JapanMap.Editor.Map
                 var cell = size.x / (res - 1);
                 var h = data.GetHeights(0, 0, res, res);
                 var touched = false;
+                // Two passes: every embankment first, then every cut — so a side road's fill never rises
+                // through the road it joins (0.92 m at the gassho street junction when done road by road).
+                for (var pass = 0; pass < 2; pass++)
                 foreach (var road in roads)
                 {
                     var p = road.points;
                     var fill = fills != null && fills.Contains(road.id);
+                    if (pass == 0 && !fill) continue;
+                    var cutting = pass == 1;
                     var half = road.width / 2f;
                     var shoulder = shoulderOf(road.type);
                     var core = half + shoulder;
@@ -76,7 +81,7 @@ namespace JapanMap.Editor.Map
                             var allowed = surface + Mathf.Max(0f, d - core);
                             var world = origin.y + h[r, c] * size.y;
                             var cut = world - allowed;
-                            if (fill)
+                            if (!cutting)
                             {
                                 var floor = surface - Mathf.Max(0f, d - core);
                                 if (world < floor)
@@ -84,8 +89,8 @@ namespace JapanMap.Editor.Map
                                     h[r, c] = (floor - origin.y) / size.y;
                                     changed++;
                                     touched = true;
-                                    continue;
                                 }
+                                continue;
                             }
                             if (cut <= 0f) continue;
                             if (cut > s.carveMaxDepth)

@@ -100,10 +100,16 @@ namespace JapanMap.Editor.Places
                 {
                     var prefab = options[Variant(item.x, item.z, options.Length)];
                     var size = SizeOf(prefab);
+                    var scale = rule.scale;
+                    // footprint in the item's frame: a model turned by ±90° lies across
+                    var across = Mathf.Abs(Mathf.Sin(rule.yaw * Mathf.Deg2Rad)) > 0.7f;
+                    var fx = across ? size.z : size.x;
+                    var fz = across ? size.x : size.z;
+                    if (rule.fitUniform && item.w > 0 && item.d > 0) scale *= Mathf.Min(item.w / fx, item.d / fz);
                     list.Add(new Placement
                     {
                         item = item, rule = rule, prefab = prefab, position = at, yaw = yaw + rule.yaw,
-                        scale = Vector3.one * rule.scale, halfSize = new Vector2(size.x, size.z) * rule.scale / 2,
+                        scale = Vector3.one * scale, halfSize = new Vector2(size.x, size.z) * scale / 2,
                     });
                     continue;
                 }
@@ -523,6 +529,48 @@ namespace JapanMap.Editor.Places
             mat.SetColor("_EmissionColor", Color.white * 1.6f);
             AssetDatabase.CreateAsset(mat, ShellMaterialPath);
             return mat;
+        }
+
+        /// <summary>
+        /// Paddy mask texels under the places' own roads and building pads become dry (legacy gasshoDry,
+        /// koedoDry): the mask is from before the places, and its water lay across the gassho street.
+        /// Mask layout as WaterImporter: res² over the original 3072 m, j south → north.
+        /// </summary>
+        public static int Dry(bool[] wet, int res, MapImportSettings settings)
+        {
+            const float worldSize = 3072f, half = worldSize / 2f;
+            var step = worldSize / (res - 1);
+            var dried = 0;
+            void Clear(Vector3 centre, float reach, System.Func<Vector3, bool> inside)
+            {
+                int i0 = Mathf.Max(0, Mathf.FloorToInt((centre.x - reach + half) / step)), i1 = Mathf.Min(res - 1, Mathf.CeilToInt((centre.x + reach + half) / step));
+                int j0 = Mathf.Max(0, Mathf.FloorToInt((centre.z - reach + half) / step)), j1 = Mathf.Min(res - 1, Mathf.CeilToInt((centre.z + reach + half) / step));
+                for (var j = j0; j <= j1; j++)
+                for (var i = i0; i <= i1; i++)
+                {
+                    var k = j * res + i;
+                    if (!wet[k] || !inside(new Vector3(-half + i * step, 0, -half + j * step))) continue;
+                    wet[k] = false;
+                    dried++;
+                }
+            }
+            foreach (var pad in Pads())
+            {
+                var rot = Quaternion.Euler(0, -pad.yaw, 0);
+                var h = pad.half + Vector2.one * 2f;
+                Clear(pad.center, h.magnitude, w => { var l = rot * (w - pad.center); return Mathf.Abs(l.x) < h.x && Mathf.Abs(l.z) < h.y; });
+            }
+            foreach (var road in RoadImporter.Load(settings).Where(r => r.tags != null && (r.tags.Contains("place") || r.tags.Contains("extended"))))
+            {
+                var c = road.centerline;
+                var r = (road.widths != null && road.widths.Length > 0 ? road.widths.Max() : 5) / 2 + 2f;
+                for (var i = 0; i < c.Length / 3; i++)
+                {
+                    var p = PlaceSource.ToUnity(c[i * 3], c[i * 3 + 2]);
+                    Clear(p, r, w => (w - p).sqrMagnitude < r * r);
+                }
+            }
+            return dried;
         }
 
         public static float Ground(Vector3 p)
