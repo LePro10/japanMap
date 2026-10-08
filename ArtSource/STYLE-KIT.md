@@ -41,7 +41,8 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
   `Street` (Masten, Schilder, Ampeln, Zäune, Ishigaki, Bänke, Haltestelle,
   Fahrräder), `Nature` (Felsen, Laub, Erde, Töpfe — später Vegetation;
   nur deckend, Blatt-Karten mit Alpha brauchen in Aufgabe 4 ein eigenes
-  Material), `Kura`. Neuer Baustil = neuer Atlas (z. B. `Tokyo`, `Kiso`).
+  Material), `Kura`, `Tokyo` (Fliesen- und ALC-Wände, Konbini, Schilder,
+  Neon). Neuer Baustil = neuer Atlas (z. B. `Kiso`).
 - Atlas 1024², drei Karten passend zu URP/Lit:
   `T_<Stil>_BaseColor` (sRGB) · `T_<Stil>_MaskMap` (R Metall, G AO = 1,
   A Glätte; linear) · `T_<Stil>_Emission` (sRGB).
@@ -53,6 +54,9 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
     `WARN stretched strips` — dann Fläche teilen oder Streifen erhöhen.
   - **Zellen** 64 px — eine Farbe mit sanftem Schmutzverlauf, **ohne
     Rauschen** (Zellen decken ganze Flächen, Rauschen würde verschmieren).
+    `map_faces` bleibt in beiden Achsen vom Zellrand weg (U 0,3–0,7,
+    V 0,12–0,88): Mip-Stufen mischen Nachbarzellen, eine leuchtende
+    Nachbarzelle glühte sonst als Linie am Rand mit.
   - **Rechtecke** — Grafik genau auf eine Fläche (Display, Bedienfeld,
     Seitenwerbung, Aufkleber, Typenschild, Wappen, Oni-Ziegel).
 - Neue Farben/Muster: Eintrag in `LAYOUTS`, nie ein zweites Material.
@@ -72,6 +76,8 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
 | Licht kühl (LED) | `#dff3ff` | | Beton | `#9b9993` |
 | Ishigaki (Grau/warm/kühl) | `#84817b` `#857766` `#757b81` | | Laub / Blüte Azalee | `#3c5a2a` / `#e0577f` |
 | Fels | `#7f7e7a` | | Rückstrahler | `#f08a1c` |
+| Fliese beige / braun (Tokyo) | `#b9a78c` / `#6e5143` | | ALC-Platte | `#d9d8d2` |
+| Konbini blau / orange (fiktiv) | `#2d8fd6` / `#f39a1e` | | Neon pink / cyan | `#ff3fa4` / `#3fe6ff` |
 
 Gedämpfte Grundtöne, kräftige Farben nur als Akzent (Automat, Torii, Licht).
 
@@ -97,6 +103,32 @@ Profil (W-Profil mit Kanten), Pfosten mit Kappe. Prüfen mit einer
 **Nahaufnahme** (`P.details`, unten) — die Gruppen-Vorschau ist dafür zu klein.
 Weißer Lack wirkt im neutralen Licht flach; Profile im Stimmungsbild oder
 in der Nahaufnahme beurteilen.
+
+## Gebäude-Bausatz (Tokyo, ab 2026-10-08)
+
+Vorbild für neue Baustile: `buildings/tokyo_kit.py` (Module) +
+`buildings/tokyo.py` (Häuser als Daten).
+- **Wandprofil** je Geschossart (`profile`): Laden (Sockel, Brüstung,
+  Kämpfer, Blende), Wohnen (Deckenband, Brüstung, Fensterzone, Sturz),
+  oben Attika mit Abdeckblech. Läuft einmal um den Grundriss.
+- **Öffnungen** sind Daten: `op(Seite, u0, u1, Geschoss, Modul, Zeilen)`.
+  Module: Fenster (Laibung, Alu-Rahmen, Schiebeflügel, Sohlbank, Gitter,
+  Klimagerät), Konbini-Front, Izakaya, Rollladen, Eingang, Stahltür.
+- **Teile auf Wandrahmen** `F` (u entlang der Wand, z hoch, d nach außen;
+  jedes Modul funktioniert auf jeder Seite): Balkon, Laubengang,
+  Stahltreppe, Klimagerät, Fallrohr, Zählerkasten, Schilder, Nobori,
+  Dachtechnik (Wassertank, Treppenhaus, Billboard, Antenne).
+- Wand-Streifen sind 2 m hoch (96 px/m); das Profil teilt jedes Geschoss so,
+  dass keine Wandfläche höher ist (`STRIP_H`).
+- **Fasen** nur an Hülle, Bändern und großen Teilen; Laibungen,
+  Kleinteile, Gitter, Rohre ohne (`nb`). Die Fasen kosteten sonst 40 %.
+- Schilder sind auch eigene FBX (`Tokyo_Sign_*`, Ursprung = Wandbefestigung),
+  damit Phase 5 sie an jede Fassade hängen kann.
+- Typisch Tokyo und Pflicht im Bausatz: Klimageräte mit Leitungskanal,
+  Fallrohre, Zählerkästen, Fenstergitter, senkrechte Mieterschilder,
+  Nobori, Rollladenkasten, Laubengang mit Stahltreppe, Balkon-Trennwand
+  (非常の際は…), Wäschestangen, Wassertank auf dem Dach, Fliesen
+  (二丁掛) und ALC-Platten statt Ziegel/Putz.
 
 ## Abnutzung
 
@@ -174,11 +206,13 @@ import importlib, build; importlib.reload(build)
 build.run(['stone_lantern'])   # oder build.run() für alle
 ```
 
-Baut, zählt Dreiecke, exportiert nach `exports/<klasse>/`, schreibt Atlanten
+Baut, zählt Dreiecke, meldet die Maße (B × T × H — ein verirrtes Teil fällt
+sofort auf), exportiert nach `exports/<klasse>/`, schreibt Atlanten
 nach `exports/textures/` und Vorschauen nach `previews/`. Ein Asset-Modul
 braucht `KLASS`, `NAME`, `build()`; optional `preview()`.
 
-Nahaufnahme je Objekt (Profile, Befestigung):
+Ein Stil-Bausatz (`buildings/<stil>_kit.py`) wird bei jedem `build.run`
+mit neu geladen. Nahaufnahme je Objekt (Profile, Befestigung):
 `from kit import preview as P; P.details([obj, …], 'name', direction, mood=…, out_dir=…)`.
 
 Vorschau-Bühne: Stimmung (Blaue Stunde; warmes Horizontglühen nur zur

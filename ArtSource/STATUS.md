@@ -4,26 +4,39 @@ Plan: [docs/PLAN.md](../docs/PLAN.md), Abschnitt „Asset-Sprint". Regeln:
 [STYLE-KIT.md](STYLE-KIT.md) (verbindlich). Läuft parallel zur Unity-Sitzung,
 nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
-## Wo wir stehen (2026-10-08)
+## Wo wir stehen (2026-10-08, Abend)
 
 - **Aufgabe 1 — Stil-Kit + Piloten:** freigegeben.
-- **Aufgabe 2 — Requisiten:** **fertig**, alle 15 Gruppen aus PLAN.md. Der
-  Mensch hat den Stil freigegeben („Stil passt") und zwei Nachbesserungen
-  verlangt, beide erledigt:
-  - Leitplanken und Zäune waren zu schlicht → jetzt mit Profil, Pfosten und
-    Befestigung.
-  - Die Mauer wirkte europäisch → jetzt Ishigaki.
-  Zur Freigabe liegt die Übersicht der neuen und nachgeschärften Teile:
-  [previews/Props_Overview_2.png](previews/Props_Overview_2.png). Die erste
-  Runde zeigt [Props_Overview_1.png](previews/Props_Overview_1.png).
-  Vorher/nachher: `previews/compare/{Fence,Barrier}_vorher_nachher.png`,
-  Nahaufnahmen: `previews/{Fence,Barrier}_detail.png`.
-- **Nächster Schritt: Aufgabe 3 — Gebäude-Bausätze** (Anleitung unten).
+- **Aufgabe 2 — Requisiten:** fertig (15 Gruppen, Tabelle unten).
+- **Aufgabe 3 — Gebäude: Tokyo-Pilot steht zur Freigabe (STOPP).**
+  Bilder: [previews/Tokyo_Overview.png](previews/Tokyo_Overview.png)
+  (Stimmung, neutral, Rückseite, Straßenhöhe) und
+  [previews/Tokyo_detail.png](previews/Tokyo_detail.png) (Nahaufnahmen),
+  dazu `Tokyo.png`, `Tokyo_clay.png`, `Tokyo_Signs.png`.
+  Danach Baustil für Baustil: Koedo (Kura ausbauen), Kiso, Gassho,
+  Fischerdorf, Tempel — je Pilot + Freigabe.
 
-Gesamtbau `build.run()`: **59 FBX in 37 s, 0 Fehler, keine Streck-Warnung**;
-`exports/manifest.json` hat 59 Einträge.
-**Ungeprüft:** alles in Unity (Ausrichtung +Z, Maßstab, LOD Group, Emission
-im Nebel). Der Lichttest unten wurde noch nicht gemeldet.
+### Tokyo-Pilot (Atlas `Tokyo`, Generator `buildings/tokyo.py` + Bausatz `buildings/tokyo_kit.py`)
+
+| FBX (`exports/buildings/`, Präfix `SM_`) | Inhalt | Dreiecke LOD0 / LOD1 | Maße B × T × H |
+|---|---|---|---|
+| Tokyo_Konbini_3F | Eckhaus: Konbini „SORA MART" (Glasfront ums Eck, Leuchtblende, Automatiktür, Nobori おでん), Hauseingang mit Briefkästen, 2F Englischschule + Kissaten-Ausleger, 3F Wohnungen mit Klimageräten; Dach: Treppenhaus, Wassertank, Klimageräte | 4 541 / 1 193 | 11,8 × 13,3 × 15,0 m |
+| Tokyo_Zakkyo_5F | Schmales Mieterhaus: Izakaya (Noren 焼き鳥, Gittertür, rote Laternen, Nobori 生ビール), Treppentür, Salon/Büro/Bar, senkrechtes Mieterschild, Neon „スナック", Dach-Billboard „ひかり不動産" | 4 366 / 1 212 | 5,8 × 11,3 × 18,2 m |
+| Tokyo_Mansion_4F | Wohnblock, 3 Wohnungen je Geschoss: Balkone (Fliesenbrüstung, Milchglas, Trennwand 非常の際は…, Klimagerät, Wäschestange), Eingang mit Namensschild und Stufen; hinten Laubengang mit Stahltüren, Zählern, Gitterfenstern, braune Stahltreppe; TV-Antenne | **8 283** / 2 436 | 18,7 × 11,0 × 14,6 m |
+| Tokyo_Sign_Tate_A / _B | Senkrechte Mieterschilder (5 Mieter, Leuchtkasten, 3 Arme + Streben) | 158 / 32 | 1,2 × 5,6 m |
+| Tokyo_Sign_Neon_Snack | Neon スナック mit Rahmen, Abstandshaltern, Trafo und Kabel | 258 / 108 | 2,0 × 0,7 m |
+| Tokyo_Sign_Kissa | Rundes Ausleger-Leuchtschild 喫茶 COFFEE | 126 / 54 | Ø 0,64 m |
+
+- **Budget:** Konbini 91 %, Zakkyo 87 % von 5 000 — im Rahmen. **Mansion
+  8 283 liegt über 5 000.** Es ist 3 Wohnungen breit (= 3 Felder à ~2 760).
+  Frage an den Menschen (unten). LOD1 je 26–29 % (Kiste mit Dach, Öffnungen
+  aufgemalt, Schilder vereinfacht).
+- **Gemessen:** Gesamtbau 66 FBX, 0 Fehler, keine Streck-Warnung.
+  **Ungeprüft:** alles in Unity (Achsen, Emission im Nebel, LOD Group).
+- Lichter: `LIGHT_` am Konbini (kühl, Bürgersteig), Eingang, Laternen,
+  Neon, Laubengang.
+
+### Requisiten (Aufgabe 2, fertig)
 
 | # | Gruppe | FBX (`exports/props/`, Präfix `SM_`) | Dreiecke LOD0 / LOD1 |
 |---|---|---|---|
@@ -48,7 +61,7 @@ ISHIGAKI-Streifen statt Betonstein, Fahrplan, Plakat, Haltestellenname,
 Korbgitter, 13 neue Zellen), **neu `Nature`** (Fels, Moosfels, Laub,
 Blütenlaub, Erde, Beton, Topf-Zellen), `Kura`.
 
-## Aufgabe 3 — so geht es weiter (für eine neue Sitzung)
+## Aufgabe 3 — Anleitung (für eine neue Sitzung)
 
 **Start:**
 1. Lesen: `STYLE-KIT.md` und `docs/ART-DIRECTION.md`. Dann aus `docs/PLAN.md`
@@ -60,7 +73,11 @@ Blütenlaub, Erde, Beton, Topf-Zellen), `Kura`.
    import importlib, build; importlib.reload(build); build.run(['kura'])
    ```
 
-**Vorlage:** `buildings/kura.py` (freigegeben, 4 035 Dreiecke).
+**Vorlage:** für Häuser mit vielen Öffnungen und Anbauten
+`buildings/tokyo_kit.py` + `tokyo.py` (Wandprofil je Geschossart,
+Öffnungen als Daten `op(...)`, Teile auf Wandrahmen `F`; Stil-Kit-Abschnitt
+„Gebäude-Bausatz"). Für Häuser mit Satteldach `buildings/kura.py`
+(freigegeben, 4 035 Dreiecke).
 - **Aufbau:** ganzes Haus aus Feldern (Bays).
   - Ein Wandprofil läuft einmal um den Grundriss (`K.sweep_loop`).
   - Fenster und Türen sind Spalten (`GROUPS`/`ROW` je LOD).
@@ -110,7 +127,7 @@ Fischerdorf/Hafen, Tempel. Je Baustil gilt:
 ## Für die Unity-Sitzung: Lichttest (noch offen)
 
 Ziel: einmal unter echtem Licht prüfen (Blaue Stunde, Nebel, Nässe).
-1. Texturen `exports/textures/T_{Props,Street,Nature,Kura}_{BaseColor,MaskMap,Emission}.png`
+1. Texturen `exports/textures/T_{Props,Street,Nature,Kura,Tokyo}_{BaseColor,MaskMap,Emission}.png`
    importieren. MaskMap **linear**. Je Atlas ein URP/Lit-Material,
    `M_Glass` transparent.
 2. An einen Blickpunkt stellen:
@@ -121,7 +138,7 @@ Ziel: einmal unter echtem Licht prüfen (Blaue Stunde, Nebel, Nässe).
    - Torii_Vermilion_M, StoneLantern
    - Fence_Ishigaki_2m, Barrier_GuardRail_4m
    - BusStop_Shelter, Bicycle_Mamachari_Mint
-   - Kura_2Bay_Black
+   - Kura_2Bay_Black, Tokyo_Konbini_3F (Leuchtblende, Glasfront, Neon am Zakkyo)
 3. Prüfen und hier unter „Gefunden" eintragen:
    - Vorderseite nach +Z?
    - 1 m = 1 Einheit?
@@ -136,12 +153,16 @@ Konventionen:
 
 ## Für dich
 
-1. Sieh dir `ArtSource/previews/Props_Overview_2.png` an, dazu die
-   Vorher-nachher-Bilder in `previews/compare/`. Passt der Stand, ist
-   Aufgabe 2 abgeschlossen.
-2. Sag der Unity-Sitzung bei Gelegenheit: „Lichttest nach ArtSource/STATUS.md".
-3. Neue Sitzung für Aufgabe 3 starten mit: „Asset-Sprint Aufgabe 3 nach
-   ArtSource/STATUS.md".
+1. **Tokyo-Pilot freigeben oder korrigieren:** `ArtSource/previews/Tokyo_Overview.png`
+   und `Tokyo_detail.png` ansehen. Stimmt der Tokyo-Stil (Fliesen, Klimageräte,
+   Schilder, Neon, Konbini, Balkone, Stahltreppe)?
+2. **Eine Entscheidung zum Wohnblock:** Er hat 8 283 Dreiecke, das Budget
+   ist 5 000 je Modul. Er ist 3 Wohnungen breit. Möglichkeiten:
+   a) so lassen und als „3 Felder" zählen (empfohlen, Bild bleibt wie es ist),
+   b) in drei Feld-Module schneiden, die Phase 5 aneinandersetzt,
+   c) auf unter 5 000 abspecken (weniger Gitter, Balkon-Details, Treppe).
+3. Weiter wie bisher: der Unity-Sitzung bei Gelegenheit „Lichttest nach
+   ArtSource/STATUS.md" sagen.
 
 ## Für die Hauptsitzung (darf ich nicht ändern)
 
@@ -151,6 +172,8 @@ Konventionen:
 - **Skill `blender-asset`:** zwei Regeln aus STYLE-KIT übernehmen,
   „Japanisch, nicht allgemein" und „Befestigung zeigen + Nahaufnahme".
 - **LESSONS.md:** die Zeilen unten eintragen.
+- Der Fehler in `montage.mjs` besteht weiter (2026-10-08 Abend: wieder
+  umgangen mit relativem `--out`).
 
 ## Gefunden / Lektionen (für docs/LESSONS.md)
 
@@ -187,3 +210,18 @@ Konventionen:
     `build._write_manifest` entfernt jetzt Einträge ohne FBX (Werkzeug).
   - **Organische Formen bekamen Nähte durch Tangenten je Fläche:**
     `K.map_box` (Werkzeug).
+- 2026-10-08 Abend (Tokyo-Pilot):
+  - **Zellen bluteten an den Rand:** Stufen und Sockel glühten türkis,
+    weil V bis an die Zellkante lief und die Mip-Stufe die Neon-Zelle
+    darunter mischte. `map_faces` bleibt jetzt in U und V vom Rand weg
+    (Werkzeug, gilt für alle Atlanten; alle 66 FBX neu exportiert).
+  - **Verirrtes Teil 20 m über dem Dach** (Leitersprossen mit absoluter
+    statt relativer Höhe gezählt) fiel nur an der zu fernen Vorschau-Kamera
+    auf. `build.run` meldet jetzt die Maße B × T × H je Asset (Werkzeug).
+  - **`P.details(..., mood=True)` brach ab:** die Vorschau baut ihre
+    Punktlichter bei jedem Bild neu, `details` hielt sie fest. Behoben;
+    nach dem Abbruch waren Objekte unsichtbar geblieben (leere Bilder).
+  - **Fasen kosten bei Gebäuden ~40 %, Verschmelzen fast nichts:**
+    Laibungen, Gitter und Kleinteile ohne Fasen (Stil-Kit „Gebäude-Bausatz").
+  - **Stil-Bausatz wurde nicht neu geladen:** `build._reload` lädt jetzt
+    alle `*_kit`-Module neu.

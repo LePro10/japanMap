@@ -1091,6 +1091,277 @@
   "switchable": [],
   "attach": []
  },
+ "Tokyo_Konbini_3F": {
+  "fbx": "buildings/SM_Tokyo_Konbini_3F.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Konbini_3F_LOD0",
+   "SM_Tokyo_Konbini_3F_LOD1"
+  ],
+  "tris": [
+   4541,
+   1193
+  ],
+  "materials": [
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Konbini_3F"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Konbini_3F_Shop",
+    "pos": [
+     2.0,
+     -7.2,
+     2.6
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 9.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Konbini_3F_Side",
+    "pos": [
+     6.6,
+     -4.2,
+     2.6
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 7.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Konbini_3F_Door",
+    "pos": [
+     -3.8,
+     -6.6,
+     2.5
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.45
+    ],
+    "range": 4.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Mansion_4F": {
+  "fbx": "buildings/SM_Tokyo_Mansion_4F.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Mansion_4F_LOD0",
+   "SM_Tokyo_Mansion_4F_LOD1"
+  ],
+  "tris": [
+   8283,
+   2436
+  ],
+  "materials": [
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Mansion_4F",
+   "COL_Tokyo_Mansion_4F_Back",
+   "COL_Tokyo_Mansion_4F_Balconies",
+   "COL_Tokyo_Mansion_4F_Stair"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Mansion_4F_Entrance",
+    "pos": [
+     0.0,
+     -4.8,
+     2.6
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.45
+    ],
+    "range": 5.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Mansion_4F_Corridor2",
+    "pos": [
+     0.0,
+     4.8,
+     5.3
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Mansion_4F_Corridor3",
+    "pos": [
+     0.0,
+     4.8,
+     8.2
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Mansion_4F_Corridor4",
+    "pos": [
+     0.0,
+     4.8,
+     11.1
+    ],
+    "color": [
+     0.92,
+     0.96,
+     1.0
+    ],
+    "range": 6.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Sign_Kissa": {
+  "fbx": "buildings/SM_Tokyo_Sign_Kissa.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Sign_Kissa_LOD0",
+   "SM_Tokyo_Sign_Kissa_LOD1"
+  ],
+  "tris": [
+   126,
+   54
+  ],
+  "materials": [
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Sign_Neon_Snack": {
+  "fbx": "buildings/SM_Tokyo_Sign_Neon_Snack.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Sign_Neon_Snack_LOD0",
+   "SM_Tokyo_Sign_Neon_Snack_LOD1"
+  ],
+  "tris": [
+   258,
+   108
+  ],
+  "materials": [
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Sign_Tate_A": {
+  "fbx": "buildings/SM_Tokyo_Sign_Tate_A.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Sign_Tate_A_LOD0",
+   "SM_Tokyo_Sign_Tate_A_LOD1"
+  ],
+  "tris": [
+   158,
+   32
+  ],
+  "materials": [
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Sign_Tate_B": {
+  "fbx": "buildings/SM_Tokyo_Sign_Tate_B.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Sign_Tate_B_LOD0",
+   "SM_Tokyo_Sign_Tate_B_LOD1"
+  ],
+  "tris": [
+   158,
+   32
+  ],
+  "materials": [
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Zakkyo_5F": {
+  "fbx": "buildings/SM_Tokyo_Zakkyo_5F.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Zakkyo_5F_LOD0",
+   "SM_Tokyo_Zakkyo_5F_LOD1"
+  ],
+  "tris": [
+   4366,
+   1212
+  ],
+  "materials": [
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Zakkyo_5F"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Zakkyo_5F_Lanterns",
+    "pos": [
+     0.6,
+     -5.9,
+     2.4
+    ],
+    "color": [
+     1.0,
+     0.45,
+     0.25
+    ],
+    "range": 5.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Zakkyo_5F_Neon",
+    "pos": [
+     -0.9,
+     -5.6,
+     10.2
+    ],
+    "color": [
+     1.0,
+     0.3,
+     0.65
+    ],
+    "range": 4.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
  "Torii_Stone_M": {
   "fbx": "props/SM_Torii_Stone_M.fbx",
   "class": "props",

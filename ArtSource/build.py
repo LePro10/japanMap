@@ -24,6 +24,7 @@ ASSETS = {
     'bicycle': 'props.bicycle',
     'planter': 'props.planter',
     'rocks': 'props.rocks',
+    'tokyo': 'buildings.tokyo',
 }
 
 # 3/4 front in the mood light, 3/4 front neutral, 3/4 back neutral (same as
@@ -38,6 +39,8 @@ def _reload():
     import kit, kit.atlas, kit.core, kit.preview, kit.organic
     for m in (kit.atlas, kit.core, kit.preview, kit.organic):
         importlib.reload(m)
+    for name in [n for n in sys.modules if n.endswith('_kit')]:   # shared style kits (buildings/tokyo_kit)
+        importlib.reload(sys.modules[name])
 
 
 MANIFEST = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exports', 'manifest.json')
@@ -98,6 +101,11 @@ def run(names=None, preview=True, export=True):
             for col, lods in results:
                 tris = [K.tri_count(o) for o in lods]
                 line = f'{col.name}: tris ' + ' / '.join(f'LOD{i} {n}' for i, n in enumerate(tris))
+                # size in metres: a stray part (a ladder 20 m up) shows here at once
+                vs = [v.co for v in lods[0].data.vertices]
+                if vs:
+                    dims = [max(c[a] for c in vs) - min(c[a] for c in vs) for a in range(3)]
+                    line += ' · ' + ' x '.join(f'{d:.1f}' for d in dims) + ' m'
                 if export:
                     path, size = K.export_fbx(col, mod.KLASS, f'SM_{col.name}')
                     line += f' · fbx {size // 1024} KB'

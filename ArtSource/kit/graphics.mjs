@@ -9,6 +9,7 @@ import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TOKYO } from './graphics_tokyo.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(join(here, '../../Tools/package.json'));
@@ -93,6 +94,7 @@ const G = {
   BASKET: [64, 64, `<rect width="64" height="64" fill="#2a2c2e"/>
     <g stroke="#b9bcbf" stroke-width="1.6">${[4,12,20,28,36,44,52,60].map(v => `<line x1="${v}" y1="0" x2="${v}" y2="64"/><line x1="0" y1="${v}" x2="64" y2="${v}"/>`).join('')}</g>
     <rect x="0" y="0" width="64" height="4" fill="#cfd2d4"/>`],
+  ...TOKYO,
 };
 
 mkdirSync(OUT, { recursive: true });

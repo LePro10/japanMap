@@ -443,8 +443,10 @@ def map_faces(bm, faces, reg, z0=None, zrange=None, rotate=False, s_offset=0.0, 
                 if reg['kind'] == 'rect':
                     tt = (t - min(ts)) / max(max(ts) - min(ts), 1e-6)
                 else:
+                    # stay clear of the cell borders in both axes: mip levels blend
+                    # neighbouring cells (an emissive neighbour glowed along the edge)
                     uu = 0.3 + 0.4 * uu
-                    tt = (t - zlo) / max(zhi - zlo, 1e-6) if not horizontal else 0.9
+                    tt = 0.12 + 0.76 * ((t - zlo) / max(zhi - zlo, 1e-6)) if not horizontal else 0.85
                 uu = u0 + uu * (u1 - u0)
             tt = min(max(tt, 0.0), 1.0)
             l[uv].uv = (uu, v0 + tt * (v1 - v0))
@@ -518,6 +520,26 @@ def map_box(bm, faces, reg, z0=None):
     if over > 0.02:
         c = worst.calc_center_median()
         STRETCH.append((reg['name'], round(over, 2), tuple(round(x, 1) for x in c)))
+
+
+def map_span(bm, faces, reg, t, up=(0.0, 0.0, 1.0), flip_u=False):
+    """Map several faces into one rect by planar projection (U along t, V
+    along up) over their joint extent: one graphic across parts split by
+    geometry (noren panels, a sign face cut by its frame)."""
+    uv = _uv(bm)
+    u0, v0, u1, v1 = reg['uv']
+    faces = [f for f in faces if f is not None]
+    t, up = Vector(t), Vector(up)
+    ss = [l.vert.co.dot(t) for f in faces for l in f.loops]
+    vs = [l.vert.co.dot(up) for f in faces for l in f.loops]
+    s0, s1, w0, w1 = min(ss), max(ss), min(vs), max(vs)
+    for f in faces:
+        for l in f.loops:
+            a = (l.vert.co.dot(t) - s0) / max(s1 - s0, 1e-6)
+            if flip_u:
+                a = 1 - a
+            b = (l.vert.co.dot(up) - w0) / max(w1 - w0, 1e-6)
+            l[uv].uv = (u0 + a * (u1 - u0), v0 + b * (v1 - v0))
 
 
 def nobevel(bm, faces):

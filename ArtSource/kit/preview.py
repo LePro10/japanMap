@@ -221,7 +221,8 @@ def details(objs, name, direction=(1.0, -1.7, 0.6), mood=False, size=(480, 400),
     group shots of long runs are too small to judge profiles and fixings."""
     tiles = []
     for o in objs:
-        others = {x: x.hide_render for x in bpy.data.objects if x is not o}
+        # PL_ point lights are rebuilt by every render (mood): never hold on to them
+        others = {x: x.hide_render for x in bpy.data.objects if x is not o and not x.name.startswith('PL_')}
         for x in others:
             x.hide_render = True
         was = o.hide_render; o.hide_render = False

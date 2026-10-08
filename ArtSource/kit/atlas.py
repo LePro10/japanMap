@@ -517,6 +517,49 @@ def bamboo(col='#a48d5e', node_m=0.4, ppm=128):
     return gen
 
 
+def facade_tile(col='#b9a78c', tile_m=(0.227, 0.06), joint_m=0.009, joint='#cfc8bb', var=0.16, ppm=96):
+    """Japanese facade tiles (nichō-gake 227 x 60 mm, or 45-mosaic): running
+    bond, each tile its own kiln shade, light mortar joints, thin rain runs
+    and grime at the foot. The tile count is rounded so the strip tiles in U."""
+    def gen(w, h, rng):
+        y, x = np.mgrid[0:h, 0:w].astype(float)
+        nx = max(1, round(w / ((tile_m[0] + joint_m) * ppm)))
+        pw = w / nx; ph = (tile_m[1] + joint_m) * ppm
+        row = np.floor(y / ph)
+        xs = x + (row % 2) * pw / 2
+        col_i = np.floor(xs / pw) % nx
+        fx = np.mod(xs, pw); fy = np.mod(y, ph)
+        jp = joint_m * ppm
+        j = np.maximum(smoothstep(jp * 0.9, jp * 0.4, fx), smoothstep(jp * 0.9, jp * 0.4, fy))
+        tid = row * 131 + col_i * 17
+        tv = (np.sin(tid * 12.9898) * 43758.5453) % 1.0
+        tv2 = (np.sin(tid * 4.1414) * 23421.631) % 1.0
+        c = srgb(col)
+        tilecol = c * (1 - var + 2 * var * tv)[..., None]
+        tilecol = tilecol * (1 + 0.06 * (tv2 - 0.5))[..., None] * np.array([1.0, 0.99, 0.97])
+        tilecol *= (0.94 + 0.1 * fbm(w, h, w // 32, max(2, h // 32), rng, 3))[..., None]
+        rgb = tilecol * (1 - j[..., None]) + srgb(joint) * j[..., None]
+        rgb *= (rain_streaks(w, h, rng, 0.1) * grime(w, h, rng, 0.2, 0.18))[..., None]
+        return _out(rgb, 0.45 * (1 - j) + 0.15 * j)
+    return gen
+
+
+def alc(col='#d9d8d2', panel_m=0.6, ppm=96):
+    """Painted ALC panels (white-grey apartment and side walls): vertical
+    joints every 60 cm, soft trowel noise, black rain runs - the grimy white
+    walls of Tokyo back streets."""
+    def gen(w, h, rng):
+        y, x = np.mgrid[0:h, 0:w].astype(float)
+        n = max(1, round(w / (panel_m * ppm))); pw = w / n
+        fx = np.mod(x, pw)
+        j = smoothstep(2.2, 0.6, np.minimum(fx, pw - fx))
+        nz = fbm(w, h, w // 24, max(2, h // 24), rng, 4)
+        f = (0.93 + 0.1 * nz) * (1 - 0.35 * j)
+        f *= rain_streaks(w, h, rng, 0.13) * grime(w, h, rng, 0.2, 0.2)
+        return _out(srgb(col) * f[..., None], 0.3)
+    return gen
+
+
 # ── atlas layouts (pixel rects: x, y, w, h; y from the bottom) ──────────────
 
 def _cells(names_gens, x0, y0, cols, size=64):
@@ -661,6 +704,71 @@ LAYOUTS = {
             ('ROCK_FLAT',   flat('#77766f', 0.2, dirt=0.15)),
             ('WOOD_CEDAR',  flat('#5d4330', 0.3, dirt=0.2)),
         ], 0, 0, 16),
+    },
+    'Tokyo': {   # walls 2 m strips at 96 px/m (faces split at floor, sill and lintel lines)
+        'TILE_BEIGE': _strip(832, 192, facade_tile(), ppm=96),
+        'ALC_WHITE':  _strip(640, 192, alc(), ppm=96),
+        'TILE_BROWN': _strip(448, 192, facade_tile('#6e5143', (0.108, 0.06), 0.01, '#9c958a', 0.2), ppm=96),
+        'WOOD':       _strip(384, 32, wood('#4a3424', smooth=0.3)),            # battens only (rotated)
+        'NOBORI_A':   _rect(0, 416, 128, 32, png('NOBORI_A', 0.2)),
+        'NOBORI_B':   _rect(128, 416, 128, 32, png('NOBORI_B', 0.2)),
+        'KONBINI_INT_A':  _rect(0, 256, 192, 128, png('KONBINI_INT_A', 0.8, emit=0.9)),
+        'KONBINI_INT_B':  _rect(192, 256, 192, 128, png('KONBINI_INT_B', 0.8, emit=0.9)),
+        'KONBINI_FASCIA': _rect(384, 320, 512, 64, png('KONBINI_FASCIA', 0.6, emit=0.85)),
+        'ROOF_SIGN':  _rect(384, 256, 256, 64, png('ROOF_SIGN', 0.5, emit=0.75)),
+        'SCHOOL':     _rect(640, 256, 256, 48, png('SCHOOL', 0.8, emit=0.6)),
+        'SALON':      _rect(512, 192, 128, 48, png('SALON', 0.8, emit=0.6)),
+        'KISSA':      _rect(832, 192, 64, 64, png('KISSA', 0.5, emit=0.7)),
+        'TATE_A':     _rect(960, 0, 64, 384, png('TATE_A', 0.5, emit=0.85)),
+        'TATE_B':     _rect(896, 0, 64, 384, png('TATE_B', 0.5, emit=0.85)),
+        'NOREN':      _rect(640, 128, 128, 96, png('NOREN', 0.15)),
+        'LANTERN':    _rect(768, 128, 128, 64, png('LANTERN', 0.3, emit=0.8)),
+        'MENU':       _rect(832, 0, 64, 96, png('MENU', 0.2)),
+        'SHUTTER':    _rect(704, 0, 64, 128, png('SHUTTER', 0.4)),
+        'AUTO_DOOR':  _rect(768, 0, 64, 128, png('AUTO_DOOR', 0.8, emit=0.8)),
+        'LOBBY':      _rect(640, 0, 64, 128, png('LOBBY', 0.6, emit=0.7)),
+        'PARTITION':  _rect(576, 96, 64, 96, png('PARTITION', 0.3)),
+        'WIN_CURTAIN': _rect(512, 64, 64, 64, png('WIN_CURTAIN', 0.8, emit=0.8)),
+        'WIN_BLIND':  _rect(512, 128, 64, 64, png('WIN_BLIND', 0.8, emit=0.7)),
+        'WIN_DARK':   _rect(512, 0, 64, 64, png('WIN_DARK', 0.85)),
+        'AC_FRONT':   _rect(576, 0, 64, 48, png('AC_FRONT', 0.4)),
+        'MAILBOX':    _rect(768, 192, 64, 64, png('MAILBOX', 0.5)),
+        'NAMEPLATE':  _rect(640, 224, 128, 32, png('NAMEPLATE', 0.6)),
+        'METER':      _rect(576, 48, 32, 32, png('METER', 0.4)),
+        **_cells([
+            ('ALU',          flat('#b9bcbd', 0.55, 0.9, dirt=0.05)),
+            ('ALU_BRONZE',   flat('#4a4038', 0.5, 0.8, dirt=0.05)),     # dark sash ('sten colour')
+            ('GLASS_DARK',   flat('#1c242b', 0.92, dirt=0.0)),
+            ('LIT_WARM',     emissive('#ffc985')),
+            ('LIT_COOL',     emissive('#e8f3ff')),
+            ('FROSTED',      flat('#c9d0d2', 0.7, dirt=0.15)),
+            ('CONCRETE',     flat('#a3a19b', 0.25, dirt=0.25)),
+            ('ROOF_GREEN',   flat('#5f7266', 0.3, dirt=0.1)),            # urethane roof coating
+            ('GALV',         flat('#a3a7ab', 0.45, 0.9, dirt=0.1)),
+            ('PAINT_GREY',   flat('#7d8084', 0.4, 0.3, dirt=0.1)),
+            ('AC_IVORY',     flat('#e2dfd5', 0.45, dirt=0.18)),
+            ('PIPE_COVER',   flat('#d8d2c2', 0.4, dirt=0.15)),
+            ('BLACK',        flat('#151617', 0.4, dirt=0.0)),
+            ('SIGN_FACE',    emissive('#f6f4ee')),
+            ('NEON_PINK',    emissive('#ff3fa4')),
+            ('NEON_CYAN',    emissive('#3fe6ff')),
+            ('NEON_ORANGE',  emissive('#ff9a2e')),
+            ('WOOD_DARK',    flat('#3a281c', 0.3, dirt=0.15)),
+            ('KONBINI_BLUE', flat('#2d8fd6', 0.55, dirt=0.05)),
+            ('KONBINI_ORANGE', flat('#f39a1e', 0.55, dirt=0.05)),
+            ('LANTERN_RED',  emissive('#d8301f')),
+            ('TANK_CREAM',   flat('#d9d3bf', 0.4, dirt=0.25)),
+            ('INTERIOR',     flat('#0c0c0d', 0.2, dirt=0.0)),
+            ('GRANITE',      flat('#3d3b3a', 0.65, dirt=0.05)),          # polished plinth
+            ('DOOR_STEEL',   flat('#6b5a48', 0.45, 0.4, dirt=0.1)),
+            ('RUST',         flat('#6b3a1f', 0.15, 0.3, dirt=0.15)),
+            ('TILE_FLAT',    flat('#b9a78c', 0.4, dirt=0.15)),           # slab edges, soffits
+            ('ALC_FLAT',     flat('#d4d3cd', 0.3, dirt=0.15)),
+            ('BROWN_FLAT',   flat('#6e5143', 0.4, dirt=0.15)),
+            ('NOREN_NAVY',   flat('#1d2a4a', 0.15, dirt=0.0)),
+            ('RED_PAINT',    flat('#b3202a', 0.4, dirt=0.1)),
+            ('YELLOW',       flat('#e8b51a', 0.45, dirt=0.15)),
+        ], 0, 0, 8),
     },
     'Kura': {    # plaster strips 2 m tall at 128 px/m; namako at 256 px/m (1 m)
         'PLASTER_WHITE': _strip(768, 256, plaster()),
