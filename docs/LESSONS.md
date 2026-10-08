@@ -7,6 +7,15 @@
 
 | Datum | Phase | Was passiert ist | Vorkehrung (wo) | Art |
 |---|---|---|---|---|
+| 2026-10-08 | 4 | Unity verwarf beim FBX-Import 395 sich selbst schneidende Polygone in 29 Gebäuden (Löcher), nur als Warnung | `LibraryImporter` meldet sie je Mesh im Import-Bericht; Skill `blender-asset` „ohne Löcher" | Werkzeug |
+| 2026-10-08 | 4 | URP-Validierung schaltete `_EMISSION` beim Reimport ab (GI-Flag None) — Schilder wären dunkel | `RealtimeEmissive` im Importer; Test `AtlasMaterials_KeepEmissionAfterUrpValidation` | Test |
+| 2026-10-08 | 4 | Terrain-Bäume: 44 500 Draw Calls, 30 Mio. Dreiecke; Gras im Coverage-Modus 7,6/m² statt 2,5 | `VegetationRenderer` (D18), Test `Terrain_HasNoTreeInstances`; Dichte-Messung im Tooltip | Test |
+| 2026-10-08 | 4 | ViewpointBench maß seit Phase 3 an jedem Blickpunkt das Auto-Bild (Cinemachine) | Bench schaltet Kamera-Rigs ab und meldet, wenn die Kamera nicht am Blickpunkt steht | Werkzeug |
+| 2026-10-08 | 4 | Sonnenscheibe + Bloom ohne Clamp füllte im Browser das halbe Bild; kein Blickpunkt sah zur Sonne | `bloomClamp` im LookProfile, Blickpunkt `stadt-sonne` | Werkzeug |
+| 2026-10-08 | 4 | Post-Processing war an der Kamera aus — Phase 1–3 maß FPS ohne Nachbearbeitung | `LookTests.Scene_HasTheProfileApplied` prüft `renderPostProcessing` | Test |
+| 2026-10-08 | 4 | Rote Herbst-Ahorne und Bonbon-Punkte im Fernblick erst im Fahrerbild aufgefallen | Rauchprobe-Bild (Fahrerblick) bei jeder Optik-Änderung ansehen; Anteil als Regler `variantWeights` | Ablauf |
+| 2026-10-08 | 4 | JSON von Hand escapen für MCP-C#; Tests starten und abfragen von Hand | `Tools/unity-exec.mjs`, `Tools/unity-test.mjs`, `Tools/unity-run.mjs` (Batch) | Werkzeug |
+| 2026-10-08 | Asset | Mehrere Lektionen der Asset-Sitzung (BMesh-Fallen, Atlas-Ränder, verirrte Teile, Blender-5-Ikosphären) | stehen mit Vorkehrung in `ArtSource/STATUS.md` „Gefunden" und `ArtSource/STYLE-KIT.md` | Skill |
 | 2026-10-07 | Asset | Stil-Kit Runde 1 zu flach (Kura 22 %, Automat 14 % des Budgets), gestreckte Texturen | Skill `blender-asset` „Qualitäts-Schleife", Zielbereich 40–80 % in ART-DIRECTION.md, Streck-Warnung in `ArtSource/build.py` | Skill/Werkzeug |
 | 2026-10-07 | — | Rückmeldungen des Menschen mussten jedem Agenten neu gesagt werden | CLAUDE.md Regel 16, Skill `retro` Schritt 1 | Regel |
 | 2026-10-07 | 2 | Zweite Sitzung committete parallel (D13 doppelt vergeben); ein `commit -a` hätte fremde Dateien mitgenommen | `CLAUDE.md` Regel 13: nur eigene Pfade committen, DECISIONS-Nummer neu lesen | Regel |

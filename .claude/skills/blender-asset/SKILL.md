@@ -69,6 +69,19 @@ auslesen und gegen Budget halten.
 - **Bild in Unity** am Einsatzort machen und ansehen — Licht und Nebel ändern
   die Wirkung stark.
 
+## Japanisch, mit Befestigung, ohne Löcher
+
+- **Japanisch, nicht allgemein:** vor jedem Asset fragen, welche Variante es
+  *so* nur in Japan gibt (STYLE-KIT „Japanisch, nicht allgemein").
+- **Befestigung zeigen** (Schrauben, Halter, Kappen, Fußplatten) und mit einer
+  Nahaufnahme `P.details` prüfen (STYLE-KIT „Befestigung zeigen").
+- **Keine sich selbst schneidenden n-Ecke exportieren:** Unity verwirft sie
+  beim Import (Löcher). Der Unity-Import (`JapanMap/Art/Import Library`) meldet
+  sie je Mesh — vor dem Export triangulieren.
+- **In Unity zuerst im Showroom ansehen** (`Scenes/Showroom.unity`, Menü
+  „JapanMap/Art/Build Showroom"), freigegebene Stile stehen in
+  `Data/Art/LibraryImport.asset`.
+
 ## Ändern
 
 Immer die Quelle ändern (Skript/`.blend`) und neu exportieren — nie das

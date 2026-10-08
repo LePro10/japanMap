@@ -7,7 +7,7 @@ import { readFileSync, mkdirSync } from 'node:fs';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { ROOT, arg } from './lib/unity.mjs';
 
-const out = join(ROOT, arg('out', 'Captures/montage.png'));
+const out = resolve(ROOT, arg('out', 'Captures/montage.png')); // resolve: an absolute --out stays absolute
 const cols = Number(arg('cols', 2));
 const width = Number(arg('width', 480));
 const files = process.argv.slice(2).filter((a, i, all) => !a.startsWith('--') && !all[i - 1]?.startsWith('--'));

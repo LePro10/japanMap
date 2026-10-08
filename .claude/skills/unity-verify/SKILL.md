@@ -84,3 +84,17 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
   `camera.Render()`. Render-Zahlen je Blickpunkt: `ViewpointBench`.
 
 (Ergänzen, sobald neue Fallen auftauchen — Skill `retro`.)
+
+- **Werkzeuge bei offenem Editor:** `node Tools/unity-test.mjs EditMode [Gruppe]`
+  (wartet, prüft vorher Kompilierfehler), `node Tools/unity-exec.mjs datei.cs`
+  (C#-Methodenrumpf, `return` liefert das Ergebnis). `AssetDatabase.DeleteAsset`
+  blockt der MCP → Datei + `.meta` per `git rm`, dann `refresh_unity`. Lange
+  Aufrufe (Web-Build) melden `success:false`, laufen aber weiter → auf die
+  Ausgabedatei warten. Editor-Log: `Logs/Editor.log` (nicht `~/Library/Logs`).
+- **Nur im Batchmodus rot:** `PlayerDriveTests` (Tastatur/Touch, Gas = 0) —
+  im Editor grün, auch vor Phase 4 schon rot (Arbeitskopie geprüft). Bis zur
+  Klärung: im Editor laufen lassen.
+- **ViewpointBench** schaltet Cinemachine/CarCameraRig ab — sonst misst jeder
+  Blickpunkt das Auto-Bild. Gleiche Zahlen an allen Blickpunkten = Messfehler.
+- **Stufen messen:** Editor `QualitySystem.SetTier("Low")` + `TerrainQuality.Apply`;
+  Browser `node Tools/smoke.mjs --gpu --quality Low`.

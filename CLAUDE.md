@@ -44,12 +44,12 @@ Alle einmal ausgeführt (2026-10-07). Einrichtung einmalig: `cd Tools && npm ins
 
 | Zweck | Editor **zu** (Batchmode) | Editor **offen** (Unity-MCP) |
 |---|---|---|
-| Prüfen: kompilieren, EditMode + PlayMode | `node Tools/verify.mjs` (`--edit` nur EditMode) — eine Zeile GREEN/RED, ~15 s | `refresh_unity`, `read_console`, `run_tests` + `get_test_job` |
+| Prüfen: kompilieren, EditMode + PlayMode | `node Tools/verify.mjs` (`--edit` nur EditMode) — eine Zeile GREEN/RED, ~15 s | `node Tools/unity-test.mjs EditMode\|PlayMode [Gruppe]`; C# ausführen: `node Tools/unity-exec.mjs datei.cs` |
 | Bild der Main Camera → `Captures/` | `node Tools/capture.mjs [--scene … --out …]`, `--viewpoint <name\|all>` | `execute_menu_item` „JapanMap/Capture Main Camera"; `ViewpointTools.Capture("pass")` |
 | Web-Build + `Builds/Web/size-report.txt` | `node Tools/build-web.mjs` (`--dev` mit F1-Overlay) | Menü „JapanMap/Build Web (Release)" |
-| Rauchprobe im Headless-Chrome | `node Tools/smoke.mjs` (baut nicht, liefert `Builds/Web` aus); `--gpu` = echte GPU + FPS-Messung | — |
+| Rauchprobe im Headless-Chrome | `node Tools/smoke.mjs` (baut nicht); `--gpu` = echte GPU + FPS, `--quality Low` | — |
 | Ausliefern (Handy: `--lan`) | `node Tools/serve-web.mjs` → Port **8090** | — |
-| Karte neu importieren (Terrain, Wasser, Straßen, Props) | — | Menü „JapanMap/Map/Import All“ |
+| Karte/Look/Modelle neu importieren | `node Tools/unity-run.mjs <Klasse.Methode>` | Menüs „JapanMap/Map/Import All“, „Look/Apply“, „Art/Import Library“, „Art/Build Showroom“ |
 | Bilder nebeneinander (alt/neu) | `node Tools/montage.mjs --out Captures/x.png a.png b.png …` | — |
 | Draw Calls/Dreiecke je Blickpunkt (Editor offen) | — | `ViewpointBench.Run("label")` → `Captures/bench-label.txt` |
 | Arbeitsschleife messen | `node Tools/measure-loop.mjs` | — |

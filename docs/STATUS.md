@@ -3,31 +3,58 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-08 · **Phase:** 3 abgeschlossen, Fahrgefühl von dir freigegeben, **Phase 4 (Look und Asset-Pipeline) ist als Nächstes dran**
+**Stand:** 2026-10-08 · **Phase:** 4 abgeschlossen (Optik-Abnahme durch dich offen), **Phase 5 (Orte) ist als Nächstes dran**
 
-Phase 2 (Karte) ✅ von dir geprüft, FPS im Browser 144 (Monitor-Deckel).
+Phase 2 (Karte) ✅ · Phase 3 (Fahren) ✅ von dir freigegeben.
 
-## Phase 3 — Fahren ✅
+## Phase 4 — Look und Asset-Pipeline ✅
 
-- [x] 1. Rigidbody + Raycast-Federung + portiertes Arcade-Modell (D15; gegen WheelCollider gemessen) · Modelle ↔ Fahrwerte (D16)
-- [x] 2. Hachi 86 fahrbar: Gas, Bremse/Rückwärts, Lenkung, Handbremsdrift, Stunt-Doppeltipp, Nitro, Respawn
-- [x] 3. Eingabe: Tastatur, Gamepad, Touch (Stick + DRIFT/NITRO, zwei Finger getestet)
-- [x] 4. Kameras: Verfolger (Cinemachine) + Cockpit, Zoom, Blick zurück
-- [x] 5. Prüfstände als PlayMode-Tests: 134 Tests, alle zehn Autos auf ~1 % an den Prototyp-Zahlen
-- [x] 6. Zehn Autos als Datensätze (`Data/Vehicles/*.asset`, Menü `JapanMap/Vehicles/Seed Fleet From Legacy`)
-- [x] 7. Optik: Räder, Karosserie-Neigung, Bremslicht, Reifenspuren, Rauch/Staub
+- [x] 1. Art Direction festgeschrieben (`docs/ART-DIRECTION.md`: Licht-Werte, Modelle, Showroom, Budgets)
+- [x] 2. „Blaue Stunde nach Regen": `Data/Look/Look.asset`, Menü JapanMap/Look/Apply — Sonne 126°/7° (Prototyp-Richtung), Himmel, Nebel, Post, nasser Asphalt, Gegenlicht-Blickpunkt `stadt-sonne`
+- [x] 3. Vegetation: 77 700 Bäume/Büsche + Gras + Reis nach Prototyp-Regeln, eigener Instanz-Renderer (D18); Bäume **vorläufig** aus dem Editor bis Sprint-Aufgabe 4
+- [x] 4. Asset-Pipeline: `ArtSource/exports` → Menü JapanMap/Art/Import Library (nur freigegebene Atlanten, `Data/Art/LibraryImport.asset`), LOD, Collider, Lichter; Showroom-Szene
+- [x] 5. Bibliothek: 158 Prefabs aus 16 Atlanten; **321 von 977** Platzhaltern auf der Karte ersetzt (Torii, Laternen, Masten, Felsen, Gassho-Höfe, Schuppen, Hafenkram, Schrein)
 
-**Abnahme:** Ring 5 987 m Ø 89 km/h, max. 0,9 m neben der Mitte, kein Hängenbleiben; Bergpass-Abfahrt
-3 501 m Ø 66 km/h (`AcceptanceDriveTests`). Tests EditMode 43/43, PlayMode 140/140 (+4 auf Abruf).
-Bilder: `Captures/p3-drift.png`, `p3-touch-1.png`, `gate-p3.png`. Web: 289 fps (M4, Headless-GPU), 0 Fehler.
+**Abnahme (gemessen):** Bilder aller 40 Blickpunkte Hoch `Captures/p4-after/`, Niedrig `Captures/p4-low/`
+(vorher: `Captures/p4-before/`). Bench Hoch (Editor, M4): 307–1 700 Draw Calls, ≤ 3,4 Mio. Dreiecke, ≤ 3,9 ms;
+Niedrig: 119–357 Draw Calls, ≤ 0,34 Mio. Dreiecke, ≤ 2 ms → **Budget Niedrig gehalten**. Konsole 0 Fehler.
+Tests im Editor: EditMode 53/53, PlayMode 139/139 (+4 auf Abruf). Web: 0 Fehler, Hoch 105 fps, Mittel 244, Niedrig 545 (M4).
 
-## Phase 4 — Look und Asset-Pipeline (als Nächstes)
+## Phase 5 — Orte (als Nächstes)
 
-- [ ] 1. Art Direction festschreiben (ART-DIRECTION.md)
-- [ ] 2. Licht und Atmosphäre „Blaue Stunde nach Regen"
-- [ ] 3. Vegetation (Zeder, Ahorn, Kirsche, Bambus, Gras/Reis)
-- [ ] 4. Asset-Pipeline Blender → Unity (Skill `blender-asset`)
-- [ ] 5. Bibliothek aus dem Asset-Sprint importieren (Platzhalter ersetzen)
+- [ ] 1. Blockout aus dem Prototyp (Lagen der Städte/Dörfer)
+- [ ] 2. Bausätze: liegen aus dem Asset-Sprint in Unity bereit (Showroom)
+- [ ] 3. Orte bauen: Sakura Commons → Tokyo → Funaura → Koedo → Kiso → Gassho → Tempel → Needle Circuit
+- [ ] 4. Dichte: keine leeren Flächen; dabei Vegetation in den Orten freiräumen (Import neu laufen lassen)
+
+## Offene Probleme / Gefunden
+
+- **Download 43,0 MB** (Ziel Handy 20 MB). Unkomprimiert: Autos 71 MB (alle zehn im Build), Gelände 15, Straßen 10,5, Modell-Atlanten 8 + 6 neue Stile, Baumdaten 2 → nur gewähltes Auto laden (Addressables), Atlanten ohne Leuchten ohne Emission-Karte, Phase 10.
+- **Hoch kostet viel** (105 fps auf M4 gegen 244 auf Mittel: 4 Schatten-Kaskaden über Wald, MSAA, doppelte LOD-Weite) — auf iGPU-Laptops vermutlich unter 60 → Standardstufe in Phase 10 kalibrieren.
+- **Löcher in Gebäuden:** Unity verwirft 395 sich selbst schneidende Polygone in 29 Meshes (Tokyo-Mansion 114, Gassho-Häuser je ~20, Kiso/Koedo 3–20) → Asset-Sitzung: vor dem Export triangulieren. Liste: Import-Bericht „JapanMap/Art/Import Library".
+- **Fahrtests nur im Batchmodus rot** (`PlayerDriveTests`, Gas bleibt 0): schon vor Phase 4 so, im Editor grün. Ursache offen (nicht der Fensterfokus allein).
+- **Niedrig:** Laternen beleuchten das Gelände kaum (Forward, 4 Lichter je Objekt; das Gelände ist ein Objekt) — bewusster Kompromiss.
+- Vegetation wächst noch dort, wo Phase 5 Orte baut (Gassho-Tal, Funaura) → beim Bau der Orte freiräumen.
+- Horizont vom Startpunkt (hoch oben): schmale grünliche Linie zwischen Himmel und Nebel.
+- Vorläufige Bäume: Zeder von unten gesehen (Stufen-Kegel) und Bambus noch grob → Sprint-Aufgabe 4 ersetzt sie.
+- Rest aus Phase 3: Straßen-Höhenstufen + Kuppen-Knicke (Phase 5), Leitplanken zerbrechen nicht (Phase 7), `PathFollower` ohne Zurücksetzen (Phase 7), Terrain-Dreiecke `pixelError` (jetzt je Stufe in `TerrainQuality`), Web-Seite Standardvorlage (Phase 9/10), zwölf alte Zweige `agent/*` (du entscheidest).
+- **Aus Phase 4 nicht geschafft:** Reisfeldränder treppig, Fels ohne Triplanar-Mapping, Wasser ohne Tiefe/Collider (kein Spritzwasser) → Phase 5/7. Hochstraße ohne Brüstungen, Stadtplatte ohne Böschung → Phase 5.
+- Batchmodus jetzt geprüft: `verify.mjs` (Sperrklinke) und `capture.mjs --viewpoint all` laufen.
+- 656 Platzhalter bleiben (Tetrapoden 372, Leitpfosten 170, Betonmauern 79, Gewächshäuser 30 u. a.) — dafür gibt es noch keine Modelle.
+
+## Für dich (Mensch)
+
+1. **Optik-Abnahme (~10 Min.): „Würde ich das spielen wollen?"** Unity offen, Szene `Boot` → ▶ Play.
+   Du startest in der Stadt. Bitte anschauen:
+   - **Gegenlicht:** Fahr auf der Stadtstraße Richtung Sonne (tief, rechts vom Start) — kleine Sonne, Glanzstreifen auf dem nassen Asphalt. Zu hell, zu dunkel, zu blau?
+   - **Wald und Wiesen:** Fahr aus der Stadt raus Richtung Berge — dichter Zedernwald, grüne Wiesen, ab und zu ein roter Ahorn. Die Bäume sind **vorläufig** (einfache Formen), bis der Asset-Sprint sie baut. Stört dich die Form schon jetzt?
+   - **Tempelpfad (Sandō):** Torii mit Steinlaternen, die warm leuchten — so wie im Prototyp?
+   Ohne Fahren geht es schneller mit Bildern: `Captures/p4-after/` (Hoch) und `Captures/p4-low/` (Handy-Stufe), vorher/nachher `Captures/p4-before/montage-a.png` ↔ `Captures/p4-after/montage-a.png`.
+2. **Modelle im Spiel-Licht:** Datei → `Assets/_Project/Scenes/Showroom.unity` öffnen (Play nicht nötig) — alle 158 Modelle in Reihen (Requisiten, Tokyo, Koedo, Kiso, Gassho, Minato, Tera, Bäume).
+3. **Tempel (Tera):** Laut Asset-Sprint wartet der Stil noch auf deine Freigabe (+ Frage zu drei Wahrzeichen über 5 000 Dreiecken, siehe `ArtSource/STATUS.md`). Ich habe ihn schon importiert, weil du „alle fertig" geschrieben hast — sag Bescheid, falls nicht.
+4. **Asset-Sitzung:** bitte ausrichten: „Löcher: vor dem FBX-Export alle n-Ecke triangulieren (Liste in docs/STATUS.md), danach Vegetation (Aufgabe 4)".
+5. **Hachi (noch offen aus Phase 3):** Von hinten sieht man durch die Heckscheibe in den Innenraum (`Captures/web-smoke-High.png`). Richtig so oder fehlt ein Dach?
+6. Commits liegen lokal; **Push** nur, wenn du es sagst.
 
 ## Web-Build
 
@@ -35,40 +62,4 @@ Bilder: `Captures/p3-drift.png`, `p3-touch-1.png`, `gate-p3.png`. Web: 289 fps (
 |---|---|---|---|---|---|
 | 2026-10-07 | Release, ganze Karte | 25,81 MB | 5,28 MB | 20,34 MB | 1,6 s |
 | 2026-10-08 | Release, Karte + 10 Autos | 34,56 MB | 5,54 MB | 28,84 MB | 1,0 s |
-
-## Offene Probleme / Gefunden
-
-- **Download 34,6 MB** (Ziel Handy 20 MB): +8,5 MB durch die zehn Autos (alle im Build, inkl. Tuning-Teile, Hachi 137 k Dreiecke) → nur gewähltes Auto laden (Addressables), Texturen/LOD (Phase 4/10).
-- **Straßendaten:** Höhenstufen an Kreuzungen (0,1–2,5 m) und 460 scharfe Kuppen-Knicke (+7 %→−7 % auf 2 m) → Phase 5.
-- **Barrieren/Leitplanken zerbrechen noch nicht** (Prototyp: Smashables) → Phase 7. Bis dahin kann ein frontaler Treffer abrupt stoppen.
-- Wassertiefe wird nicht gemessen (Wasser ohne Collider) → kein Aquaplaning/Spritzwasser bis Phase 4.
-- `PathFollower` setzt nicht zurück, wenn er ansteht → für KI-Gegner (Phase 7) nachrüsten.
-- `Placeholders/torii.prefab` bekommt bei jedem EditMode-Lauf neue fileIDs → nicht committen; Ursache im PropImporter.
-- Draw Calls über Budget durch 977 Platzhalter-Props (~1 800) → echte Modelle mit Instancing (Phase 4).
-- Terrain bis 1,4 M Dreiecke (Niedrig 800 k) → `pixelError` je Stufe (Phase 10).
-- Hochstraße ohne Brüstungen, Stadtplatte ohne Böschung → Phase 5. Reisfeldränder treppig, kein Triplanar am Fels → Phase 4.
-- Ungeprüft im Batchmode (Editor war offen): Sperrklinke in `verify.mjs`, `capture.mjs --viewpoint`.
-- Web-Seite ist noch Unitys Standardvorlage → Phase 9/10. Zwölf alte Zweige `agent/*`: Löschen entscheidest du.
-
-## Für dich (Mensch)
-
-1. **Fahrgefühl testen (die wichtigste Abnahme, ~15 Min.).** Unity-Editor offen lassen, oben
-   auf ▶ (Play) drücken — die Szene `Boot` muss geöffnet sein (Datei → Boot.unity). Du startest
-   im **Hachi 86** auf einer breiten Stadtstraße. Tasten: **W/S** Gas/Bremse (S im Stand =
-   rückwärts), **A/D** lenken, **Leertaste** Handbremse, **Leertaste 2× schnell** = Stunt-Modus,
-   **Shift** Nitro, **C** Kamera (Cockpit), **B** halten = nach hinten schauen, **Mausrad** Zoom,
-   **R** zurück auf die Straße. Gamepad geht auch (Trigger, linker Stick, A = Handbremse).
-   Bitte darauf achten und kurz notieren:
-   - **Drift:** Bei ~80 km/h D + Leertaste kurz → kommt das Heck? Kannst du den Drift mit
-     Gas und Gegenlenken halten und wieder fangen? Zu leicht / zu schwer?
-   - **Lenkung:** direkt genug? Schaukelt das Auto auf der Geraden?
-   - **Offroad:** von der Straße in die Wiese → zu „klebrig" (Sumpf) oder ok?
-   - **Kamera:** angenehm, zu nah/fern, zu träge?
-   Gern auch den **Kaze 35 Drift** (sehr loses Heck) und den **Yama Cruiser** (schwer, Offroad):
-   im Inspector am Objekt `Player` → `PlayerCarSpawner` → `Car Id` = `kaze` bzw. `yama`, dann Play.
-   Deine Antworten übersetze ich in Zahlen und messe nach.
-2. **Handy (optional, 5 Min.):** `node Tools/serve-web.mjs --lan` starten, angezeigte Adresse am
-   Handy öffnen (gleiches WLAN), Bildschirm berühren → Stick links, DRIFT/NITRO rechts.
-3. **Optik-Frage zum Hachi:** Von hinten sieht man durch die Heckscheibe in den Innenraum (Bild
-   `Captures/web-smoke.png`). Wirkt das richtig oder fehlt dort ein Dach?
-4. Commits liegen lokal; **Push** nur, wenn du es sagst.
+| 2026-10-08 | Release, Phase 4 (Look, Vegetation, 158 Modelle) | 43,01 MB | 5,53 MB | 37,29 MB | 0,8–1,1 s |
