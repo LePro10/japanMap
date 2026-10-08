@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1577a27e05ac846f0b8384d344a682e8, type: 3}
+  m_Name: WalkCameraSettings
+  m_EditorClassIdentifier: JapanMap.OnFoot::JapanMap.OnFoot.WalkCameraSettings
+  distance: 4.1
+  height: 1.55
+  targetHeight: 1.28
+  mouseSensitivity: 0.15
+  stickSpeed: 150
+  pitchMin: -48
+  pitchMax: 26
+  pitchStart: -10
+  damping: 0.11
+  fov: 58
+  near: 0.15
+  collisionRadius: 0.2
+  bob: 0.02
+  bobFreq: 8.4
+  slideDip: 0.38
+  zoomMin: 0.5
+  zoomMax: 2.2
+  zoomStep: 0.1

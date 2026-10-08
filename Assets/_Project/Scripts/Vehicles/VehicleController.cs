@@ -1,3 +1,4 @@
+using JapanMap.Core;
 using UnityEngine;
 
 namespace JapanMap.Vehicles
@@ -77,7 +78,7 @@ namespace JapanMap.Vehicles
             // Own layer: the wheels must not stand on this or another car's body, nor on water planes.
             var vehicleLayer = LayerMask.NameToLayer("Vehicle");
             if (vehicleLayer >= 0) gameObject.layer = vehicleLayer;
-            groundMask &= ~(LayerMask.GetMask("Vehicle", "Water", "UI") | Physics.IgnoreRaycastLayer);
+            groundMask &= ~GameLayers.NotGround;
 
             // Body box: from the clearance up to the roof. Zero friction so a car slides along a wall
             // or a guardrail instead of sticking to it.

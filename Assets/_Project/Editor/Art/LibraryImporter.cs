@@ -241,6 +241,9 @@ namespace JapanMap.Editor.Art
                     var t = Find(l.name);
                     if (t == null) return $"{e.name}: light marker {l.name} not in FBX";
                     var light = t.gameObject.AddComponent<Light>();
+                    // URP adds this itself the first time a scene shows the light — then as an added
+                    // component on every placed instance (Game.unity grew 3.7 MB from 385 lamps).
+                    t.gameObject.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalLightData>();
                     light.type = LightType.Point;
                     light.color = new Color(l.color[0], l.color[1], l.color[2]);
                     light.range = l.range > 0 ? l.range : 6f;

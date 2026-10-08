@@ -2,7 +2,9 @@
     "name": "JapanMap.OnFoot",
     "rootNamespace": "JapanMap.OnFoot",
     "references": [
-        "JapanMap.Core"
+        "JapanMap.Core",
+        "Unity.InputSystem",
+        "Unity.Cinemachine"
     ],
     "autoReferenced": true,
     "noEngineReferences": false

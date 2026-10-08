@@ -32,24 +32,41 @@ namespace JapanMap.Vehicles
         internal VisualElement Stick => _stickBase;
         internal VisualElement DriftButton { get; private set; }
         internal Vector2 Axes => _axes;
+        bool _revealed, _suppressed;
+
         public bool Visible => _root != null && _root.style.display == DisplayStyle.Flex;
+
+        /// <summary>Hidden while the player is on foot, without forgetting that this is a touch device.</summary>
+        public bool Suppressed
+        {
+            get => _suppressed;
+            set
+            {
+                _suppressed = value;
+                if (value && driver != null) driver.SetTouch(Vector2.zero, false, false);
+                Refresh();
+            }
+        }
 
         void Awake()
         {
-            _doc = gameObject.AddComponent<UIDocument>();
+            // Own child: a GameObject holds only one UIDocument, and the Player carries several panels.
+            var host = new GameObject("DriveTouchUi");
+            host.transform.SetParent(transform, false);
+            _doc = host.AddComponent<UIDocument>();
             _doc.panelSettings = panelSettings;
         }
 
         void OnEnable()
         {
             Build(_doc.rootVisualElement);
-            SetVisible(forceVisible || Application.isMobilePlatform);
+            SetVisible(_revealed || forceVisible || Application.isMobilePlatform);
         }
 
         void Update()
         {
             // A touch anywhere reveals the controls (touch laptops, tablets in a desktop browser).
-            if (!Visible && Touchscreen.current != null && Touchscreen.current.primaryTouch.press.isPressed) SetVisible(true);
+            if (!_revealed && Touchscreen.current != null && Touchscreen.current.primaryTouch.press.isPressed) SetVisible(true);
             if (Visible && driver != null) driver.SetTouch(_axes, _handbrake, _boost);
         }
 
@@ -60,7 +77,13 @@ namespace JapanMap.Vehicles
 
         public void SetVisible(bool on)
         {
-            if (_root != null) _root.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
+            _revealed = on;
+            Refresh();
+        }
+
+        void Refresh()
+        {
+            if (_root != null) _root.style.display = _revealed && !_suppressed ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         void Build(VisualElement doc)

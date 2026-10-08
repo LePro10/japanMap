@@ -2,7 +2,10 @@
     "name": "JapanMap.Gameplay",
     "rootNamespace": "JapanMap.Gameplay",
     "references": [
-        "JapanMap.Core"
+        "JapanMap.Core",
+        "JapanMap.Vehicles",
+        "JapanMap.OnFoot",
+        "Unity.InputSystem"
     ],
     "autoReferenced": true,
     "noEngineReferences": false

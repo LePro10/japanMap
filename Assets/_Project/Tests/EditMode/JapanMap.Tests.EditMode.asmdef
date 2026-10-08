@@ -6,6 +6,8 @@
         "JapanMap.DevTools",
         "JapanMap.Vehicles",
         "JapanMap.World",
+        "JapanMap.Gameplay",
+        "JapanMap.OnFoot",
         "JapanMap.Editor",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",

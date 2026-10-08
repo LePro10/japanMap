@@ -31,7 +31,10 @@ Web: 0 Fehler, 47,69 MB; Browser-fps zuletzt Niedrig 178, Hoch 49 — **unter La
 
 ## Phase 6 — Zu Fuß und Leben (als Nächstes)
 
-- [ ] 1. Spielfigur zu Fuß: Laufen, Rennen, Rutschen, Kamera; Ein-/Aussteigen, Auto herbeirufen (Start zu Fuß in den Commons wie WP2)
+- [x] 1. **Zu Fuß** (D22): Start in Sakura, Auto 4 m nördlich. WASD/Stick, Shift rennen, Leertaste springen, **C rutschen**,
+  Maus (Klick fängt den Zeiger) / rechter Stick schaut; **F** ein/aus (aus nur < 5 km/h), **H** Auto rufen. Touch: Stick,
+  Wischen = Blick, JUMP/SLIDE/CAR/CALL. Figur aus Grundformen (vorläufig). Bench Niedrig Sakura 290 DC (vorher 275).
+  Werkzeug neu: `node Tools/play.mjs <ordner> "<skript>"` spielt das echte Spiel mit Tasten und macht Bilder.
 - [ ] 2. Fußgänger auf NavMesh (Gehwege, Plätze, Commons-Hof), nie auf der Fahrbahn; Rückstoß
 - [ ] 3. Wenig Verkehr in der Stadt
 - [ ] 4. Zerstörbares: Pfosten, Zäune, Automaten, Bäume, Hütten zerfallen in Teile
@@ -51,7 +54,9 @@ Web: 0 Fehler, 47,69 MB; Browser-fps zuletzt Niedrig 178, Hoch 49 — **unter La
 
 - Sakura: Autohaus Petal Motors (22 × 14 m), Werkstatt Open Bay (18 × 14 m), **leichte Ausstellungsautos** (≤ 8 k Dreiecke; die Fahrmodelle haben 120 k).
 - Tokyo: Hochhäuser 40–154 m (41 Stück), Kino-/Hotel-/Markthallen-Fronten, Holz-Izakaya für Yokochō. Koedo: 2 Kanalbrücken, 6 moderne Wohnhäuser, Brauhalle.
-- Funaura: Kei-Truck. Needle: Tribüne, Boxengebäude, Start-Ziel-Brücke, Reifenstapel. Viadukt: Brüstungsmauer. Leute (Phase 6).
+- Funaura: Kei-Truck. Needle: Tribüne, Boxengebäude, Start-Ziel-Brücke, Reifenstapel. Viadukt: Brüstungsmauer.
+- **Spielfigur** (Phase 6): 1,72 m, Fahrerin/Fahrer der späten 80er (Jacke, Hose), ≤ 6 k Dreiecke, Ursprung zwischen den Füßen,
+  +Z vorn; Animationen Stehen, Gehen (4,4 m/s), Rennen (7,5 m/s), Sprung, Rutschen (Hocke, Hüfte ~0,4 m). Bis dahin `StandInFigure`.
 
 ## Für dich (Mensch)
 

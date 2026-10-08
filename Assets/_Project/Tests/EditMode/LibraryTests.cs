@@ -23,6 +23,9 @@ namespace JapanMap.Tests
                 Assert.AreEqual(e.lods.Any(l => l.EndsWith("_LOD1")) ? 2 : 1, lod.lodCount, $"{e.name}: LOD levels");
                 Assert.AreEqual(e.colliders.Length, p.GetComponentsInChildren<BoxCollider>(true).Length, $"{e.name}: colliders");
                 Assert.AreEqual(e.lights?.Length ?? 0, p.GetComponentsInChildren<Light>(true).Length, $"{e.name}: lights");
+                // Else URP adds the data on every placed instance when a scene is saved (+3.7 MB Game.unity).
+                foreach (var l in p.GetComponentsInChildren<Light>(true))
+                    Assert.IsNotNull(l.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalLightData>(), $"{e.name}/{l.name}: light without URP data");
                 foreach (var r in p.GetComponentsInChildren<MeshRenderer>(true))
                     Assert.That(r.sharedMaterials.All(mat => mat != null && mat.shader.name.StartsWith("Universal")), $"{e.name}/{r.name}: material not remapped");
             }

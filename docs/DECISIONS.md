@@ -316,6 +316,21 @@ Steigung (wie der Prototyp), Ende auf fester Höhe (Kai 1,8 m). Weil sie nicht
 im gebackenen Gelände eingeschnitten sind, **schüttet das Absenken unter ihnen
 auch auf** (Damm, 45°-Böschung). Die gebackenen Straßen bleiben unberührt.
 
+## D22 — Zu Fuß: CharacterController + Cinemachine, Gangart aus dem Prototyp · 2026-10-08
+
+Körper ist Unitys **CharacterController** (Kollision, Stufen 0,38 m, Hang 57°), nicht
+ein Rigidbody: eine Figur soll nicht kippen oder von Autos geschubst rutschen, und der
+Controller bringt Stufen und Hanggrenze mit. Darauf liegt die Gangart aus `Walker.ts`
+(Beschleunigung, Coyote-Sprung, Rutschen mit Schwung und Hang) — eigener Code, weil Unity
+keine Rutsch-Bewegung hat; Zahlen in `Data/OnFoot/WalkerSettings.asset`. Kamera ist
+Cinemachine **ThirdPersonFollow** (Arm, Dämpfung, Wand-Ausweichen); unser Rig dreht nur den
+Drehpunkt. Abweichungen vom Prototyp (Regel 15): **Rutschen auf C** statt Strg (Strg+W
+schließt im Browser den Tab); **Auto rufen** parkt ohne Straße in Reichweite auf ebenem,
+trockenem, freiem Boden statt „kein Platz"; Gamepad: B = Ein/Aus, Steuerkreuz ↓ = Rufen.
+Das Modul **Gameplay** darf `Vehicles` und `OnFoot` kennen (es verbindet beide); die
+Physik-Ebenen stehen zentral in `Core/GameLayers` (Walker, Pedestrian, Debris sind nie
+Boden für Räder und Kameras). Figur vorerst aus Grundformen (`StandInFigure`, vorläufig).
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

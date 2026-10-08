@@ -37,7 +37,7 @@ namespace JapanMap.Tests.Vehicles
         [UnityTest]
         public IEnumerator TouchStick_Throttles_And_DriftButton_PullsTheHandbrake_WithTwoFingers()
         {
-            yield return BootGame();
+            yield return BootAndBoard();
             var touch = InputSystem.AddDevice<Touchscreen>("TestTouch");
             try
             {
@@ -94,10 +94,23 @@ namespace JapanMap.Tests.Vehicles
             for (var f = 0; f < 10; f++) yield return null;
         }
 
+        /// <summary>The game starts on foot beside the car (Phase 6): F gets in, the real way.</summary>
+        IEnumerator BootAndBoard()
+        {
+            yield return BootGame();
+            var mode = Object.FindAnyObjectByType<JapanMap.Gameplay.PlayerModeController>();
+            Assert.NotNull(mode, "Game scene has no PlayerModeController");
+            Press(Key.F);
+            yield return null;
+            Press();
+            yield return null;
+            Assert.AreEqual(JapanMap.Gameplay.PlayerModeController.Mode.Driving, mode.Current, "F beside the car must get in");
+        }
+
         [UnityTest]
         public IEnumerator Keyboard_DrivesTheSpawnedCar_AndRespawnPutsItBackOnTheRoad()
         {
-            yield return BootGame();
+            yield return BootAndBoard();
             var spawner = Object.FindAnyObjectByType<PlayerCarSpawner>();
             Assert.NotNull(spawner, "Game scene has no PlayerCarSpawner");
             var car = spawner.Current;

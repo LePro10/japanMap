@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfe872b45c8f5431da0c2a332d52bd5a, type: 3}
+  m_Name: WalkerSettings
+  m_EditorClassIdentifier: JapanMap.OnFoot::JapanMap.OnFoot.WalkerSettings
+  height: 1.72
+  radius: 0.24
+  stepHeight: 0.38
+  slopeLimit: 56.6
+  walkSpeed: 4.4
+  runSpeed: 7.5
+  accel: 18
+  brake: 12
+  airControl: 0.28
+  turnRate: 10
+  jumpSpeed: 4.6
+  gravity: 9.81
+  coyote: 0.1
+  jumpBuffer: 0.1
+  slideEnterSpeed: 5.8
+  slideBoost: 1.15
+  slideMaxSpeed: 11.5
+  slideFriction: 4.2
+  slideHillRelief: 0.88
+  slideUphillBrake: 8
+  slideSteer: 3.4
+  slideMinTime: 0.22
+  slideExitSpeed: 3.6
+  slideCrouch: 0.62
+  alightGap: 1.55
+  alightMaxKmh: 5
+  boardMaxKmh: 1
+  boardRange: 4.2
+  promptSlack: 0.8
+  callRings:
+  - 8
+  - 14
+  - 22
+  - 32
+  callDirections: 12
+  callMaxDistance: 45
+  callAlreadyHere: 6
+  callRoadSnap: 12
+  callMaxStep: 0.7

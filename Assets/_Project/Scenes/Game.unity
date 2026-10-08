@@ -175100,126 +175100,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.4, y: 6, z: 0.4}
   m_Center: {x: 0, y: 3, z: 0}
---- !u!1 &1194470088
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1194470094}
-  - component: {fileID: 1194470093}
-  - component: {fileID: 1194470092}
-  - component: {fileID: 1194470091}
-  - component: {fileID: 1194470090}
-  - component: {fileID: 1194470089}
-  m_Layer: 0
-  m_Name: Player
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1194470089
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1194470088}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 93c35d2387e334f10ae2efbadea369f3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.DriveTouchControls
-  driver: {fileID: 1194470093}
-  panelSettings: {fileID: 11400000, guid: a0208705cf2e24b24b2cdab2ddae1aa1, type: 2}
-  stickRadius: 110
-  deadZone: 0.12
-  forceVisible: 0
---- !u!114 &1194470090
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1194470088}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85d5930ba940b45159e2a787fe09e1c0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.CarCameraRig
-  settings: {fileID: 11400000, guid: 8936e6a8a5d0f4d098fe8134fcd4e5ae, type: 2}
-  spawner: {fileID: 1194470091}
-  driver: {fileID: 1194470093}
---- !u!114 &1194470091
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1194470088}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bec2e30a88abb4d4d841efd5faae7aab, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.PlayerCarSpawner
-  fleet: {fileID: 11400000, guid: e763cb0739ae741d4a4a1d8765862f38, type: 2}
-  roadLocator: {fileID: 11400000, guid: b9d4082b9489141aa924de2b95c119e1, type: 2}
-  driver: {fileID: 1194470093}
-  respawn: {fileID: 1194470092}
-  carId: 
-  spawnPoint: {x: 550, y: 27.20506, z: -506}
-  spawnHeading: 90
-  snapToRoad: 0
---- !u!114 &1194470092
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1194470088}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ee76702d471cd49dd9c0c35b0b4ab155, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleRespawn
-  vehicle: {fileID: 0}
-  roadLocator: {fileID: 11400000, guid: b9d4082b9489141aa924de2b95c119e1, type: 2}
-  driver: {fileID: 1194470093}
-  searchRadius: 600
-  flippedSeconds: 2.5
-  killHeight: -30
---- !u!114 &1194470093
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1194470088}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9b4c54ba233c24fdd8e1b8cbb0f50d6e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.DriverInput
-  actions: {fileID: -944628639613478452, guid: 43bdcf87b6e88458eaa485d47f827223, type: 3}
-  vehicle: {fileID: 0}
---- !u!4 &1194470094
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1194470088}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1194765240
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -221396,6 +221276,222 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4720850451322263727, guid: 880abca7c60024db8a93157f79751e8b, type: 3}
   m_PrefabInstance: {fileID: 1493193710}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1493207661
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1493207672}
+  - component: {fileID: 1493207671}
+  - component: {fileID: 1493207670}
+  - component: {fileID: 1493207669}
+  - component: {fileID: 1493207668}
+  - component: {fileID: 1493207667}
+  - component: {fileID: 1493207666}
+  - component: {fileID: 1493207665}
+  - component: {fileID: 1493207664}
+  - component: {fileID: 1493207663}
+  - component: {fileID: 1493207662}
+  m_Layer: 0
+  m_Name: Player
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1493207662
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1493207661}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d31f8cc4e7f7243f59dc708c58cfd84b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.PlayerModeUi
+  player: {fileID: 1493207663}
+  panelSettings: {fileID: 11400000, guid: a0208705cf2e24b24b2cdab2ddae1aa1, type: 2}
+  messageSeconds: 3.5
+--- !u!114 &1493207663
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1493207661}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ebbf87701dd1e456e83b1165294f6fe3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.PlayerModeController
+  spawner: {fileID: 1493207669}
+  driver: {fileID: 1493207671}
+  carCamera: {fileID: 1493207668}
+  driveTouch: {fileID: 1493207667}
+  roadLocator: {fileID: 11400000, guid: b9d4082b9489141aa924de2b95c119e1, type: 2}
+  walkerSettings: {fileID: 11400000, guid: 6969b7400bdb04f36a28cf59a3a86e56, type: 2}
+  walkInput: {fileID: 1493207666}
+  walkCamera: {fileID: 1493207665}
+  walkTouch: {fileID: 1493207664}
+  skin: {fileID: 2100000, guid: 2b9586b1742c0412b8e4375fb52775bb, type: 2}
+  top: {fileID: 2100000, guid: d404a280d938d44b4a75c2e8eb54f873, type: 2}
+  bottom: {fileID: 2100000, guid: cf3cfb699fb6e4799a8ef4202a754d5d, type: 2}
+  actions: {fileID: -944628639613478452, guid: 43bdcf87b6e88458eaa485d47f827223, type: 3}
+  startOnFoot: 1
+  walkSpawn: {x: 550, y: 27.334103, z: -510}
+  walkSpawnYaw: 360
+--- !u!114 &1493207664
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1493207661}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0fab5d3dd69df4ce48f399f54085cad8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.OnFoot::JapanMap.OnFoot.WalkTouchControls
+  input: {fileID: 0}
+  panelSettings: {fileID: 11400000, guid: a0208705cf2e24b24b2cdab2ddae1aa1, type: 2}
+  stickRadius: 110
+  deadZone: 0.12
+  lookScale: 1.6
+  forceVisible: 0
+--- !u!114 &1493207665
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1493207661}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d733ddb2b9c814df596d4b9066cfd5e2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.OnFoot::JapanMap.OnFoot.WalkCameraRig
+  settings: {fileID: 11400000, guid: 23ab8192ed4f4442da9a8ba3d337bfa5, type: 2}
+  motor: {fileID: 0}
+  input: {fileID: 0}
+--- !u!114 &1493207666
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1493207661}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85af3db91696e494db0595d173b92f53, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.OnFoot::JapanMap.OnFoot.WalkerInput
+  actions: {fileID: -944628639613478452, guid: 43bdcf87b6e88458eaa485d47f827223, type: 3}
+  motor: {fileID: 0}
+  touchRunFrom: 0.92
+--- !u!114 &1493207667
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1493207661}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 93c35d2387e334f10ae2efbadea369f3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.DriveTouchControls
+  driver: {fileID: 1493207671}
+  panelSettings: {fileID: 11400000, guid: a0208705cf2e24b24b2cdab2ddae1aa1, type: 2}
+  stickRadius: 110
+  deadZone: 0.12
+  forceVisible: 0
+--- !u!114 &1493207668
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1493207661}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85d5930ba940b45159e2a787fe09e1c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.CarCameraRig
+  settings: {fileID: 11400000, guid: 8936e6a8a5d0f4d098fe8134fcd4e5ae, type: 2}
+  spawner: {fileID: 1493207669}
+  driver: {fileID: 1493207671}
+--- !u!114 &1493207669
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1493207661}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bec2e30a88abb4d4d841efd5faae7aab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.PlayerCarSpawner
+  fleet: {fileID: 11400000, guid: e763cb0739ae741d4a4a1d8765862f38, type: 2}
+  roadLocator: {fileID: 11400000, guid: b9d4082b9489141aa924de2b95c119e1, type: 2}
+  driver: {fileID: 1493207671}
+  respawn: {fileID: 1493207670}
+  carId: 
+  spawnPoint: {x: 550, y: 27.20506, z: -506}
+  spawnHeading: 90
+  snapToRoad: 0
+--- !u!114 &1493207670
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1493207661}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ee76702d471cd49dd9c0c35b0b4ab155, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleRespawn
+  vehicle: {fileID: 0}
+  roadLocator: {fileID: 11400000, guid: b9d4082b9489141aa924de2b95c119e1, type: 2}
+  driver: {fileID: 1493207671}
+  searchRadius: 600
+  flippedSeconds: 2.5
+  killHeight: -30
+--- !u!114 &1493207671
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1493207661}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b4c54ba233c24fdd8e1b8cbb0f50d6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.DriverInput
+  actions: {fileID: -944628639613478452, guid: 43bdcf87b6e88458eaa485d47f827223, type: 3}
+  vehicle: {fileID: 0}
+--- !u!4 &1493207672
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1493207661}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1493212627
 GameObject:
   m_ObjectHideFlags: 0
@@ -316236,4 +316332,4 @@ SceneRoots:
   - {fileID: 1977537392}
   - {fileID: 745894284}
   - {fileID: 708005471}
-  - {fileID: 1194470094}
+  - {fileID: 1493207672}

@@ -1,3 +1,4 @@
+using JapanMap.Core;
 using Unity.Cinemachine;
 using Unity.Cinemachine.TargetTracking;
 using UnityEngine;
@@ -26,6 +27,7 @@ namespace JapanMap.Vehicles
         CinemachineFollow _follow;
         float _heading, _orbit, _zoom = 1f, _fov;
         GameObject _hideInCockpit;
+        bool _live = true;
 
         public Mode Current { get; private set; } = Mode.Chase;
         public CinemachineCamera Chase => _chase;
@@ -54,7 +56,7 @@ namespace JapanMap.Vehicles
             _follow.TrackerSettings.RotationDamping = Vector3.zero;
             _chase.gameObject.AddComponent<CinemachineHardLookAt>();
             var deocc = _chase.gameObject.AddComponent<CinemachineDeoccluder>();
-            deocc.CollideAgainst = ~LayerMask.GetMask("Vehicle", "Water", "UI", "Ignore Raycast");
+            deocc.CollideAgainst = GameLayers.CameraObstacles;
             deocc.MinimumDistanceFromTarget = 1.5f;
             deocc.AvoidObstacles.Enabled = true;
             deocc.AvoidObstacles.CameraRadius = 0.3f;
@@ -103,17 +105,29 @@ namespace JapanMap.Vehicles
             ApplyMode();
         }
 
+        /// <summary>Off while the player is on foot; on again snaps behind the car.</summary>
+        public void SetLive(bool on)
+        {
+            _live = on;
+            if (on && _car != null)
+            {
+                UpdatePivot(0f, snap: true);
+                _chase.PreviousStateIsValid = false;
+            }
+            ApplyMode();
+        }
+
         void ApplyMode()
         {
             var cockpit = Current == Mode.Cockpit;
-            _cockpit.gameObject.SetActive(cockpit);
-            _chase.gameObject.SetActive(!cockpit);
-            if (_hideInCockpit != null) _hideInCockpit.SetActive(!cockpit);
+            _cockpit.gameObject.SetActive(_live && cockpit);
+            _chase.gameObject.SetActive(_live && !cockpit);
+            if (_hideInCockpit != null) _hideInCockpit.SetActive(_live && !cockpit); // an empty seat while the player walks
         }
 
         void LateUpdate()
         {
-            if (_car == null) return;
+            if (_car == null || !_live) return;
             UpdatePivot(Time.deltaTime, snap: false);
             UpdateCockpit();
         }

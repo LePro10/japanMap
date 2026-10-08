@@ -15,6 +15,13 @@ namespace JapanMap.Tests
     /// </summary>
     public class ProjectSettingsTests
     {
+        [Test]
+        public void GameLayers_AllExist()
+        {
+            foreach (var name in new[] { GameLayers.Vehicle, GameLayers.Walker, GameLayers.Pedestrian, GameLayers.Debris, "Water" })
+                Assert.That(LayerMask.NameToLayer(name), Is.GreaterThanOrEqualTo(0), $"layer {name} missing in TagManager");
+        }
+
         [Test] public void Serialization_IsForceText() => Assert.AreEqual(SerializationMode.ForceText, EditorSettings.serializationMode);
         [Test] public void MetaFiles_AreVisible() => Assert.AreEqual("Visible Meta Files", VersionControlSettings.mode);
         [Test] public void ColorSpace_IsLinear() => Assert.AreEqual(ColorSpace.Linear, PlayerSettings.colorSpace);

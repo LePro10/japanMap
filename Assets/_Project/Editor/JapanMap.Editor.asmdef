@@ -6,6 +6,8 @@
         "JapanMap.DevTools",
         "JapanMap.Vehicles",
         "JapanMap.World",
+        "JapanMap.Gameplay",
+        "JapanMap.OnFoot",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime",
         "Unity.InputSystem"

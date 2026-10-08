@@ -23,6 +23,8 @@ interface Place {
   clearCircles: [number, number, number][];
   clearRects: [number, number, number, number][];
   spawn?: { x: number; z: number; yaw: number };
+  /** On-foot start (legacy walker.config rollWalkSpawn: sakura-bowl centre, heading π = towards the car). */
+  walkSpawn?: { x: number; z: number; yaw: number };
   /** Roads the prototype built inside the place (not in roads.json): control points, Three x/z. */
   roads?: { id: string; type: string; width: number; points: [number, number][]; endY?: number; extends?: string }[];
 }
@@ -108,6 +110,7 @@ const exporters: Record<string, () => Promise<Place>> = {
       clearRects: [[s.x, s.z - 4 - 9, s.x + 180, s.z - 4 + 9]],
       // WP2: the car starts 4 m north of the on-foot spawn, facing east (driver's side visible)
       spawn: { x: s.x, z: s.z - 4, yaw: Math.PI / 2 },
+      walkSpawn: { x: s.x, z: s.z, yaw: Math.PI },
     };
   },
   /** CitySystem: generateTokyo (core) + generateSuburbs (WP6 terraces), fed like the prototype feeds them. */

@@ -22,8 +22,8 @@ namespace JapanMap.Editor.Places
             public Anchor anchor;
             public Item[] items = { };
             public Tree[] trees = { };
-            public Spawn spawn;
-            [NonSerialized] public bool hasSpawn;
+            public Spawn spawn, walkSpawn;
+            [NonSerialized] public bool hasSpawn, hasWalkSpawn;
             /// <summary>Keep vegetation out: (x, z, r) and (minX, minZ, maxX, maxZ), Three coordinates.</summary>
             [NonSerialized] public float[][] clearCircles, clearRects;
         }
@@ -54,6 +54,7 @@ namespace JapanMap.Editor.Places
             var raw = File.ReadAllText(PathOf(source));
             var p = JsonUtility.FromJson<Place>(raw);
             p.hasSpawn = raw.Contains("\"spawn\"");
+            p.hasWalkSpawn = raw.Contains("\"walkSpawn\"");
             // JsonUtility cannot read arrays of arrays.
             p.clearCircles = Tuples(raw, "clearCircles", 3);
             p.clearRects = Tuples(raw, "clearRects", 4);

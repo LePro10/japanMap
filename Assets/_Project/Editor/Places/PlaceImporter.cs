@@ -655,6 +655,7 @@ namespace JapanMap.Editor.Places
                 var place = PlaceSource.Load(kit.source);
                 if (!place.hasSpawn) continue;
                 SetSpawn(place.spawn);
+                if (place.hasWalkSpawn) SetWalkSpawn(place.walkSpawn);
                 return true;
             }
             return false;
@@ -672,6 +673,19 @@ namespace JapanMap.Editor.Places
             // Unity heading: clockwise from +Z; legacy yaw counter-clockwise from +Z with z mirrored.
             so.FindProperty("spawnHeading").floatValue = Mathf.Repeat(PlaceSource.Yaw(s.yaw), 360f);
             so.FindProperty("snapToRoad").boolValue = false;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>The session starts on foot here (legacy rollWalkSpawn), the car beside it.</summary>
+        static void SetWalkSpawn(PlaceSource.Spawn s)
+        {
+            var player = Object.FindAnyObjectByType<JapanMap.Gameplay.PlayerModeController>();
+            if (player == null) { Debug.LogWarning("[Places] no PlayerModeController in Game.unity — walk spawn not set"); return; }
+            var at = PlaceSource.ToUnity(s.x, s.z);
+            at.y = Ground(at);
+            var so = new SerializedObject(player);
+            so.FindProperty("walkSpawn").vector3Value = at;
+            so.FindProperty("walkSpawnYaw").floatValue = Mathf.Repeat(PlaceSource.Yaw(s.yaw), 360f);
             so.ApplyModifiedPropertiesWithoutUndo();
         }
     }
