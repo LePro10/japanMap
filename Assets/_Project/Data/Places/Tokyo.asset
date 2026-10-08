@@ -36,6 +36,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 1
+    fitUniform: 0
   - kind: cityBuilding
     tag: f1
     library:
@@ -51,6 +52,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 1
+    fitUniform: 0
   - kind: cityBuilding
     tag: f2
     library:
@@ -67,6 +69,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 1
+    fitUniform: 0
   - kind: cityBuilding
     tag: f3
     library:
@@ -83,6 +86,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 1
+    fitUniform: 0
   - kind: cityBuilding
     tag: f4
     library:
@@ -99,6 +103,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 1
+    fitUniform: 0
   - kind: cityBuilding
     tag: f5
     library:
@@ -115,6 +120,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 1
+    fitUniform: 0
   - kind: cityBuilding
     tag: f6
     library:
@@ -130,6 +136,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 1
+    fitUniform: 0
   - kind: cityBuilding
     tag: f7
     library:
@@ -144,6 +151,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 1
+    fitUniform: 0
   - kind: suburbHouse
     tag: f2
     library:
@@ -159,6 +167,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 1
+    fitUniform: 0
   - kind: suburbHouse
     tag: f3
     library:
@@ -173,6 +182,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 1
+    fitUniform: 0
   - kind: suburbHouse
     tag: f6
     library:
@@ -188,6 +198,112 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 1
+    fitUniform: 0
+  - kind: streetLamp
+    tag: 
+    library:
+    - StreetLight_Road
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+  - kind: avenueLamp
+    tag: 
+    library:
+    - StreetLight_Road2
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+  - kind: utilityPole
+    tag: 
+    library:
+    - UtilityPole_Plain
+    - UtilityPole_Transformer
+    - UtilityPole_Plain
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+  - kind: vending
+    tag: 
+    library:
+    - VendingMachine_Red
+    - VendingMachine_Blue
+    - VendingMachine_White
+    - VendingMachineSlim_Red
+    - VendingMachineSlim_Blue
+    - VendingMachineSlim_White
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+  - kind: parkBench
+    tag: 
+    library:
+    - Bench_Park
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+  - kind: parkLamp
+    tag: 
+    library:
+    - StreetLight_Shotengai
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+  - kind: cityShrine
+    tag: 
+    library:
+    - Gassho_Hokora
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
   instanced: 1
   lodDistanceScale: 0.4
   cullDistanceScale: 0.6

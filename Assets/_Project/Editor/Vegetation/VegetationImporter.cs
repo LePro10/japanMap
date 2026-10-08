@@ -207,7 +207,9 @@ namespace JapanMap.Editor.Vegetation
                     Debug.LogWarning($"[Vegetation] {kit.name}: unknown tree species '{t.species}'");
                     continue;
                 }
-                var variant = Places.PlaceImporter.Variant(t.x, t.z, TreeBuilder.Variants);
+                // stand-ins (Kaki, StreetTree, … drawn as maple) keep the plain green variant, not autumn red
+                var standIn = !System.Enum.IsDefined(typeof(TreeBuilder.Species), t.species);
+                var variant = standIn && t.species != "Momiji" ? 0 : Places.PlaceImporter.Variant(t.x, t.z, TreeBuilder.Variants);
                 if (!protoIndex.TryGetValue((species, variant), out var proto) && !protoIndex.TryGetValue((species, 0), out proto))
                 {
                     Debug.LogWarning($"[Vegetation] {kit.name}: species {species} is not scattered anywhere — add it to Vegetation.asset");
@@ -229,7 +231,7 @@ namespace JapanMap.Editor.Vegetation
         /// </summary>
         static readonly Dictionary<string, string> Stand = new()
         {
-            ["Pine"] = "Cedar", ["Sugi"] = "Cedar", ["Willow"] = "Maple", ["Kaki"] = "Maple", ["Momiji"] = "Maple", ["Niwaki"] = "Bush",
+            ["Pine"] = "Cedar", ["Sugi"] = "Cedar", ["Willow"] = "Maple", ["Kaki"] = "Maple", ["Momiji"] = "Maple", ["Niwaki"] = "Bush", ["StreetTree"] = "Maple",
         };
 
         static int PickVariant(Vector3 w, float roll)

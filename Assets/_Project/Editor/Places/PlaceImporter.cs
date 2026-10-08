@@ -24,6 +24,8 @@ namespace JapanMap.Editor.Places
         public const string GroupName = "Places";
         /// <summary>Library entry that means "the fleet car whose legacy id is the item's tag".</summary>
         public const string FleetCar = "@car";
+        /// <summary>Library entry for a flat water surface of the item's size at its height (canal, pond).</summary>
+        public const string WaterSurface = "@water";
 
         /// <summary>
         /// The whole map import (≈ 4 s): building pads are levelled from the raw terrain inside the terrain
@@ -75,6 +77,11 @@ namespace JapanMap.Editor.Places
                 var yaw = PlaceSource.Yaw(item.yaw);
                 var turn = Quaternion.Euler(0, yaw, 0);
                 var at = PlaceSource.ToUnity(item.x, item.z);
+                if (rule != null && rule.library.Length == 1 && rule.library[0] == WaterSurface)
+                {
+                    list.Add(new Placement { item = item, rule = rule, position = at, centre = at, yaw = yaw + rule.yaw, scale = Vector3.one, halfSize = new Vector2(item.w, item.d) / 2 });
+                    continue;
+                }
                 if (rule != null && rule.level && rule.library.Length == 0)
                 {
                     // Ground only (a forecourt, a car lot): levelled to the item's own size, nothing placed.
@@ -248,6 +255,8 @@ namespace JapanMap.Editor.Places
                 var placed = Resolve(kit, place, missing);
                 var parents = new Dictionary<string, Transform>();
                 if (kit.instanced) report.Append("\n" + BuildInstanced(kit, placed, root));
+                foreach (var p in placed.Where(p => p.prefab == null && p.rule.library.Contains(WaterSurface)))
+                    AddWater(root, p);
                 foreach (var p in placed)
                 {
                     if (p.prefab == null || kit.instanced) continue;
@@ -595,6 +604,34 @@ namespace JapanMap.Editor.Places
                 }
             }
             return dried;
+        }
+
+        public const string WaterMeshDir = "Assets/_Project/Art/Places/Water";
+
+        /// <summary>A flat quad of the item's size at its fixed height, with the river's water material.</summary>
+        static void AddWater(Transform root, Placement p)
+        {
+            var parent = root.Find("Water") ?? new GameObject("Water").transform;
+            parent.SetParent(root, false);
+            Directory.CreateDirectory(WaterMeshDir);
+            var i = parent.childCount;
+            var name = $"{root.name.Replace(" ", "").Replace("&", "")}_Water_{i:D3}";
+            var hw = p.item.w / 2;
+            var hd = p.item.d / 2;
+            var mesh = new Mesh();
+            mesh.SetVertices(new[] { new Vector3(-hw, 0, -hd), new Vector3(-hw, 0, hd), new Vector3(hw, 0, hd), new Vector3(hw, 0, -hd) });
+            mesh.SetTriangles(new[] { 0, 1, 2, 0, 2, 3 }, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            mesh = MeshAssets.Save($"{WaterMeshDir}/{name}.asset", mesh);
+            var go = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
+            go.transform.SetParent(parent, false);
+            go.transform.SetPositionAndRotation(new Vector3(p.centre.x, p.item.y, p.centre.z), Quaternion.Euler(0, p.yaw, 0));
+            go.GetComponent<MeshFilter>().sharedMesh = mesh;
+            var r = go.GetComponent<MeshRenderer>();
+            r.sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>($"{WaterImporter.MaterialDir}/Water_River.mat");
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            GameObjectUtility.SetStaticEditorFlags(go, (StaticEditorFlags)~0 & ~StaticEditorFlags.ContributeGI);
         }
 
         public static float Ground(Vector3 p)

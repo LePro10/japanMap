@@ -28,7 +28,7 @@ Bilder vorher `Captures/p5-before/<ort>.png`, nachher `Captures/p5-after/<ort>.p
 
 - [x] 1. Blockout: statt GLB die Layout-Daten selbst (Gebäude sind im Prototyp zu einem Mesh verschmolzen)
 - [x] 2. Bausätze: Bibliothek (158 Prefabs) — fehlende Modelle unten unter „Für die Asset-Sitzung"
-- [ ] 3. Orte bauen:
+- [x] 3. Orte bauen:
   - [x] **Sakura Commons** — Petal Motors (Kiso-Gasthaus als Stellvertreter) mit Kies-Ausstellungsfläche, Open Bay (Netzschuppen als Stellvertreter), Tafel, Laternen, Bänke, Kirschring (24), Start wieder hier (Blick Ost). Bench Hoch ≤ 1 159 DC / 3,77 M (davon Ort +39 DC / +63 k; Rest Wald, s. „Hoch kostet viel"), Niedrig ≤ 293 DC / 381 k ✓. Web Niedrig 392 fps, 0 Fehler
   - [x] **Tokyo** — 2 583 Stadthäuser + 102 Vorstadthäuser aus dem Prototyp-Generator, 3 321 Fassadenmodule instanziert (D20), Hüllen mit Fensterraster in der Ferne, 2 685 Kollider. Bench Niedrig ≤ 288 DC / 545 k ✓; **Hoch 3,1–3,7 M Dreiecke (Budget 3 M)** — Stadt +1,0–1,9 M, Rest Wald/Gelände (an `sakura` jetzt 4,8 M, weil die Stadt im Blick ist). Web Niedrig 377 fps, Hoch 134 fps, 0 Fehler
   - [x] **Funaura** — Kaiplatte (1,8 m), 21 Kaimauer-Stücke, 11 Bootshäuser, 40 Häuser, Fischhalle, Steg, 45 Molenstücke, rotes Feuer, 9 Boote, Kaikram, Ebisu-Schrein, 44 Kiefern (vorläufig als Zeder), Dorfstraße von Stillwater (D21). Bench Hoch ≤ 947 DC / 1,77 M ✓, Niedrig ≤ 309 DC / 356 k ✓. Web Niedrig 387 fps, 0 Fehler
@@ -38,7 +38,7 @@ Bilder vorher `Captures/p5-before/<ort>.png`, nachher `Captures/p5-after/<ort>.p
   - [x] **Bellwood-Schrein (Tempel)** — Kern aus `props.json` (Halle, Treppe, 9 Torii, Laternen, Brunnenhaus, Glocke) bleibt; neu (Regel 15, ASTRA §3): Honden, Komainu, Ema/Omikuji, Amulettstand, Laternengestelle, Pagode als Landmarke, Lehmmauer um den Hof, 3 Nobori, Zedernallee an den letzten 150 m des Sandō. Neuer Blickpunkt `tempel-hof`. Bench Hoch ≤ 625 DC / 3,7 M (Wald), Niedrig ≤ 148 DC / 333 k ✓. Web 384 fps, 0 Fehler
   - [x] **Needle Circuit** — Strecke, Boxengassen und Zufahrten waren schon in `roads.json`; neu: Boxenhof bei (−350 | 585) mit 4 Garagen (Blechhallen als Stellvertreter), 82 Leitplanken außen an Kurven < 140 m Radius hinter 8 m Auslauf, 30 Lichtmasten an der 900-m-Geraden, Auslauf frei von Bäumen. Blickpunkte `needle-gerade`, `needle-box`, `needle-luft`. Bench Hoch ≤ 1 177 DC / 2,4 M ✓, Niedrig ≤ 186 DC / 321 k ✓. Web Niedrig 130–225 fps (Rechner belastet: Blender lief parallel; Editor-Zahlen unverändert), 0 Fehler
 - Neu aus der Asset-Sitzung übernommen (freigegebene Stile): Kido-Tor (Kiso), weißes Molenfeuer und Slipanlage (Funaura)
-- [ ] 4. Dichte: keine leeren Flächen; Vegetation in den Orten freiräumen (geschieht je Ort beim Import)
+- [x] 4. Dichte: Vegetation in allen Orten freigeräumt (Kollider + Freiflächen des Prototyps); Tokyo-Straßenmöbel nach Straßenklasse (657 Laternen, 60 Masten, 142 Automaten, Alleebäume) und Parks; Koedo-Kanal (2 Haltungen, Wasser, Ishigaki-Ufer); Toki no Kane, Mühlhaus + Mühlteich aus der neuen Bibliothek
 
 ### Für die Asset-Sitzung (fehlende Modelle, aus dem Import-Bericht)
 
@@ -46,15 +46,16 @@ Bilder vorher `Captures/p5-before/<ort>.png`, nachher `Captures/p5-after/<ort>.p
 - **Tokyo:** Hochhäuser über 40 m (41 Türme bis 154 m, Hotel/Kino-Familie; jetzt 35-m-Modelle), Kino-/Hotel-/Markthallen-Fronten (Familien 4, 5, 7 nutzen Stellvertreter), Holz-Izakaya für die Yokochō-Gassen (jetzt Koedo/Kiso-Läden).
 - **Funaura:** Kei-Truck (3×), Kiefer (Kuromatsu) als Baumart.
 - **Needle Circuit:** Tribüne, Boxengebäude, Start-Ziel-Brücke, Reifenstapel; Randsteine (4 cm) gehören ins Straßen-Mesh (Phase 7, mit der Haftung).
-- **Koedo:** Kanal (Wasser, Mauern, Bogen- und Plattenbrücke — kommt mit „Dichte" aus Bibliotheksteilen), Toki-no-Kane-Glockenturm (16 m Holzturm), 6 moderne Wohnhäuser (2–3 Geschosse), Brauhalle mit Schornstein.
+- **Koedo:** Bogen- und Plattenbrücke über den Kanal, 6 moderne Wohnhäuser (2–3 Geschosse), Brauhalle mit Schornstein.
 - **Kiso-Juku:** Kaki-/Momiji-/Niwaki-Bäume als Arten.
 - **Warten auf deine Freigabe** (fertig in `ArtSource`, Stile „Scatter" und „Flora"): Veranstaltungstafel, Nobori, Jizō, Friedhof/Gräber, Tetrapoden, Leitpfosten, Gewächshäuser, Mauern — und die echten Bäume. Nach Freigabe: Stil in `Data/Art/LibraryImport.asset` eintragen, „Art/Import Library", dann „Places/Import All".
-- **Gassho & Stillwater:** Jizō-Figur, Mühlteich (22 × 14 m Wasser) samt Mühlhaus, Rinne zum Rad.
+- **Gassho & Stillwater:** Jizō (wartet auf Freigabe „Scatter"), Rinne zum Mühlrad.
   **Ausstellungsautos:** die Fahrzeugmodelle haben 120 k Dreiecke und ~120 Teil-Meshes je Auto (10 Autos = 1,23 M / 1 212 Draw Calls) → für die Ausstellung eine leichte Stufe (≤ 8 k, 1–2 Materialien).
 
 ## Offene Probleme / Gefunden
 
-- **Download 47,5 MB** (Ziel Handy 20 MB; Phase 5 bisher +4,5 MB). Unkomprimiert: Autos 71 MB (alle zehn im Build), Gelände 15, Straßen 10,5, Modell-Atlanten 8 + 6 neue Stile, Baumdaten 2 → nur gewähltes Auto laden (Addressables), Atlanten ohne Leuchten ohne Emission-Karte, Phase 10.
+- **Download 47,7 MB** (Ziel Handy 20 MB; Phase 5 gesamt +4,7 MB). Unkomprimiert: Autos 71 MB (alle zehn im Build), Gelände 15, Straßen 10,5, Modell-Atlanten 8 + 6 neue Stile, Baumdaten 2 → nur gewähltes Auto laden (Addressables), Atlanten ohne Leuchten ohne Emission-Karte, Phase 10.
+- **Browser-fps auf Hoch zuletzt 49 statt 134** (Niedrig 178 statt ~380) — gemessen, während Blender parallel lief; Editor-Bench am selben Punkt unverändert. Ursache **ungeprüft** → bei ruhigem Rechner `node Tools/smoke.mjs --gpu` wiederholen; bleibt es, Build von `9500ab6` dagegen messen.
 - **Hoch kostet viel** (105 fps auf M4 gegen 244 auf Mittel: 4 Schatten-Kaskaden über Wald, MSAA, doppelte LOD-Weite) — auf iGPU-Laptops vermutlich unter 60 → Standardstufe in Phase 10 kalibrieren. Seit Tokyo an Stadt-Blickpunkten 3,1–4,8 M Dreiecke (Budget 3 M); Hebel: Wald-Schatten (Instanzen werden nicht je Kaskade aussortiert), lodBias 2. **Reisfeld-Täler (Gassho) schon ohne Ort 6,4 M** — Reis-/Grasdichte auf Hoch.
 - **Löcher in Gebäuden:** Unity verwirft 395 sich selbst schneidende Polygone in 29 Meshes (Tokyo-Mansion 114, Gassho-Häuser je ~20, Kiso/Koedo 3–20) → Asset-Sitzung: vor dem Export triangulieren. Liste: Import-Bericht „JapanMap/Art/Import Library".
 - **Fahrtests nur im Batchmodus rot** (`PlayerDriveTests`, Gas bleibt 0): schon vor Phase 4 so, im Editor grün. Ursache offen (nicht der Fensterfokus allein).

@@ -13,8 +13,63 @@ MonoBehaviour:
   m_Name: Koedo
   m_EditorClassIdentifier: JapanMap.Editor::JapanMap.Editor.Places.PlaceKit
   source: koedo
-  levelBlend: 4
+  levelBlend: 1.5
   rules:
+  - kind: canalWall
+    tag: 
+    library:
+    - Fence_Ishigaki_Retain_4m
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 1
+    matchHeight: 0
+    fitUniform: 0
+  - kind: canalWater
+    tag: 
+    library:
+    - '@water'
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+  - kind: canalBed
+    tag: 
+    library: []
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+  - kind: bellTower
+    tag: 
+    library:
+    - Koedo_TokiNoKane
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
   - kind: kura
     tag: imo
     library:
@@ -28,6 +83,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: kura
     tag: pottery
     library:
@@ -41,6 +97,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: kura
     tag: 
     library:
@@ -58,6 +115,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: machiya
     tag: eel
     library:
@@ -71,6 +129,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: machiya
     tag: tea
     library:
@@ -84,6 +143,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: machiya
     tag: candy
     library:
@@ -97,6 +157,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: machiya
     tag: home/low
     library:
@@ -110,6 +171,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: machiya
     tag: 
     library:
@@ -125,6 +187,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: white
     tag: 
     library:
@@ -138,6 +201,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: brewery
     tag: 
     library:
@@ -151,19 +215,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
-  - kind: bellTower
-    tag: 
-    library:
-    - Tera_Shoro
-    yaw: 0
-    scale: 1
-    level: 1
-    yOffset: 0
-    offset: {x: 0, y: 0}
-    paint: 
-    paintOnly: 0
-    fill: 0
-    matchHeight: 0
+    fitUniform: 0
   - kind: plaza
     tag: 
     library: []
@@ -176,6 +228,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: storehouse
     tag: 
     library:
@@ -190,6 +243,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 1
     matchHeight: 0
+    fitUniform: 0
   - kind: shrineTorii
     tag: 
     library:
@@ -203,6 +257,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: shrineHall
     tag: 
     library:
@@ -216,6 +271,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   - kind: streetLamp
     tag: 
     library:
@@ -229,6 +285,7 @@ MonoBehaviour:
     paintOnly: 0
     fill: 0
     matchHeight: 0
+    fitUniform: 0
   instanced: 0
   lodDistanceScale: 1
   cullDistanceScale: 1

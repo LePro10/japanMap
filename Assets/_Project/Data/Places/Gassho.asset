@@ -15,6 +15,34 @@ MonoBehaviour:
   source: gassho
   levelBlend: 4
   rules:
+  - kind: pond
+    tag: 
+    library:
+    - Gassho_MillPond
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+  - kind: millHouse
+    tag: 
+    library:
+    - Gassho_Mill
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
   - kind: gassho
     tag: soba
     library:

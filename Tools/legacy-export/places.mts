@@ -152,6 +152,7 @@ const exporters: Record<string, () => Promise<Place>> = {
     };
     const suburbs = generateSuburbs(file.urbanLots ?? [], toward);
     const items: Item[] = [];
+    const trees: Tree[] = [];
     const frontYaw: Record<string, number> = { pz: 0, px: Math.PI / 2, nz: Math.PI, nx: -Math.PI / 2 };
     for (const b of [...result.buildings, ...suburbs.buildings]) {
       const rotated = b.yaw !== undefined;
@@ -164,10 +165,95 @@ const exporters: Record<string, () => Promise<Place>> = {
         yaw: rotated ? b.yaw : frontYaw[b.front]!, w, d, h: b.height, y: b.baseY, fixedY: true,
       });
     }
-    console.log(`  tokyo stats: ${JSON.stringify(result.stats.byStyle)} onRoad ${result.stats.onRoad}, suburbs ${suburbs.buildings.length}, open lots ${result.openLots.length}`);
+    // ── Street furniture by street class (TokyoStreetFurnitureSystem, docs/TOKYO.md v2) ─────────────────
+    const { sidewalkFor } = await src('world/city/TokyoGenerator.ts');
+    const all = roads.map((r: any) => ({ pts: r.points as number[], width: r.width as number }));
+    const nearJunction = (x: number, z: number, self: any) => all.some((o: any) => o !== self && (() => {
+      for (let i = 0; i < o.pts.length; i += 2) if ((o.pts[i] - x) ** 2 + (o.pts[i + 1] - z) ** 2 < (o.width / 2 + 7) ** 2) return true;
+      return false; })());
+    // every carriageway of the map (own widest width), on a 16 m grid: furniture must stand off all of them
+    const grid = new Map<string, [number, number, number][]>();
+    for (const road of file.roads) {
+      const half = Math.max(...road.widths) / 2, l = road.centerline;
+      for (let i = 0; i < l.length; i += 3) {
+        const key = `${Math.floor(l[i] / 16)},${Math.floor(l[i + 2] / 16)}`;
+        if (!grid.has(key)) grid.set(key, []);
+        grid.get(key)!.push([l[i], l[i + 2], half]);
+      }
+    }
+    const clearOfRoads = (x: number, z: number, margin: number) => {
+      const gx = Math.floor(x / 16), gz = Math.floor(z / 16);
+      for (let a = gx - 2; a <= gx + 2; a++) for (let b = gz - 2; b <= gz + 2; b++)
+        for (const [px, pz, half] of grid.get(`${a},${b}`) ?? []) if ((px - x) ** 2 + (pz - z) ** 2 < (half + margin) ** 2) return false;
+      return true;
+    };
+    let furniture = 0, dropped = 0;
+    const push = items.push.bind(items);
+    const pushFurniture = (it: Item) => { if (clearOfRoads(it.x, it.z, 0.5)) { push(it); return true; } dropped++; return false; };
+    for (const r of all) {
+      const w = r.width, walk = sidewalkFor(w);
+      const cls = w >= 22 ? 'boulevard' : w >= 13 ? 'avenue' : w >= 9 ? 'street' : 'lane';
+      const step = cls === 'boulevard' ? 24 : cls === 'avenue' ? 26 : cls === 'street' ? 30 : 28;
+      let along = 0, next = step / 2, vend = 40 + hash(r.pts[0]!, r.pts[1]!) * 40;
+      for (let i = 2; i < r.pts.length; i += 2) {
+        const ax = r.pts[i - 2]!, az = r.pts[i - 1]!, bx = r.pts[i]!, bz = r.pts[i + 1]!;
+        const len = Math.hypot(bx - ax, bz - az); if (len < 1e-3) continue;
+        const tx = (bx - ax) / len, tz = (bz - az) / len;
+        while (next <= along + len) {
+          const t = (next - along) / len, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+          if (!nearJunction(x, z, r)) for (const side of [-1, 1]) {
+            if (cls === 'lane' && side < 0) continue; // one row of poles in a lane
+            const off = w / 2 + 0.8; // at the kerb, clear of the carriageway
+            const px = x + -tz * side * off, pz = z + tx * side * off, face = Math.atan2(tz * side, -tx * side) ; // front towards the road
+            const kind = cls === 'lane' ? 'utilityPole' : cls === 'street' ? 'streetLamp' : 'avenueLamp';
+            if (pushFurniture({ kind, x: px, z: pz, yaw: Math.atan2(tz * side, -tx * side), y: CITY_ROAD_LEVEL, fixedY: true, w: 0.4, d: 0.4, h: 6 })) furniture++;
+            if (cls === 'boulevard' || (cls === 'avenue' && hash(px, pz) < 0.4)) {
+              const ox = x + -tz * side * (w / 2 + walk * 0.55), oz = z + tx * side * (w / 2 + walk * 0.55);
+              trees.push({ species: 'StreetTree', x: ox + tx * step / 2, z: oz + tz * step / 2, scale: 0.8 + hash(ox, oz) * 0.3, yaw: hash(oz, ox) * 6.28 });
+            }
+            void face;
+          }
+          next += step;
+        }
+        // vending machines on the pavement every 40–80 m on streets and lanes with a pavement
+        while (vend <= along + len && walk >= 1.6 && cls !== 'boulevard') {
+          const t = (vend - along) / len, x = ax + (bx - ax) * t, z = az + (bz - az) * t, side = hash(x, z) < 0.5 ? -1 : 1;
+          if (!nearJunction(x, z, r)) {
+            const off = w / 2 + walk - 0.5;
+            pushFurniture({ kind: 'vending', x: x + -tz * side * off, z: z + tx * side * off, yaw: Math.atan2(tz * side, -tx * side), y: CITY_ROAD_LEVEL, fixedY: true, w: 1, d: 0.8, h: 1.9 });
+          }
+          vend += 40 + hash(x, z + 1) * 40;
+        }
+        along += len;
+      }
+    }
+    // ── Open lots (TokyoOpenSpaceSystem): parks get trees, benches and lamps; small shrines a torii + hokora ─
+    for (const lot of result.openLots) {
+      const poly: number[] = lot.polygon as number[];
+      const xs = poly.filter((_, k) => k % 2 === 0), zs = poly.filter((_, k) => k % 2 === 1);
+      const cx = xs.reduce((a, b) => a + b, 0) / xs.length, cz = zs.reduce((a, b) => a + b, 0) / zs.length;
+      const inside = (x: number, z: number) => { let c = false; for (let i = 0, j = xs.length - 1; i < xs.length; j = i++) if ((zs[i]! > z) !== (zs[j]! > z) && x < (xs[j]! - xs[i]!) * (z - zs[i]!) / (zs[j]! - zs[i]!) + xs[i]!) c = !c; return c; };
+      const y = CITY_ROAD_LEVEL + 0.15;
+      if (lot.type === 'park' || lot.type === 'garden' || lot.type === 'plaza') {
+        for (let x = Math.min(...xs) + 4; x < Math.max(...xs) - 4; x += 7) for (let z = Math.min(...zs) + 4; z < Math.max(...zs) - 4; z += 7) {
+          const jx = x + (hash(x, z) - 0.5) * 3, jz = z + (hash(z, x) - 0.5) * 3;
+          if (!inside(jx, jz) || Math.abs(jx - cx) < 3 || Math.abs(jz - cz) < 3) continue; // keep the cross paths open
+          if (lot.type === 'plaza' ? hash(jx, jz) < 0.75 : hash(jx, jz) < 0.25) continue;
+          trees.push({ species: hash(jz, jx) < 0.3 ? 'Cherry' : 'StreetTree', x: jx, z: jz, scale: 0.85 + hash(jx + 1, jz) * 0.35, yaw: hash(jx, jz + 2) * 6.28 });
+        }
+        for (const [dx, dz, yaw] of [[3.5, 2, Math.PI / 2], [-3.5, -2, -Math.PI / 2], [2, -3.5, 0], [-2, 3.5, Math.PI]] as const)
+          if (inside(cx + dx, cz + dz)) items.push({ kind: 'parkBench', x: cx + dx, z: cz + dz, yaw, y, fixedY: true, w: 1.8, d: 0.6, h: 0.9 });
+        for (const [dx, dz] of [[5, 5], [-5, -5]]) if (inside(cx + dx, cz + dz)) items.push({ kind: 'parkLamp', x: cx + dx, z: cz + dz, yaw: 0, y, fixedY: true, w: 0.4, d: 0.4, h: 4 });
+      } else if (lot.type === 'shrine') {
+        items.push({ kind: 'cityShrine', x: cx, z: cz, yaw: 0, y, fixedY: true, w: 2, d: 2, h: 2 });
+      }
+    }
+    // street and park trees never on a carriageway (a tree half a module along could reach a cross street)
+    for (let i = trees.length - 1; i >= 0; i--) if (!clearOfRoads(trees[i]!.x, trees[i]!.z, 1.5)) trees.splice(i, 1);
+    console.log(`  tokyo stats: ${JSON.stringify(result.stats.byStyle)} onRoad ${result.stats.onRoad}, suburbs ${suburbs.buildings.length}, open lots ${result.openLots.length} (${[...new Set(result.openLots.map((l: any) => l.type))].join(', ')}), street furniture ${furniture} (${dropped} dropped: too close to a carriageway)`);
     const sample = result.buildings.slice(0, 3).map((b: any) => b.id).join(', ') + ' … ' + suburbs.buildings.slice(0, 2).map((b: any) => b.id).join(', ');
     console.log(`  ids: ${sample}`);
-    return { place: 'tokyo', title: 'Tokyo', anchor: { x: 620, z: 120 }, items, trees: [], clearCircles: [], clearRects: [] };
+    return { place: 'tokyo', title: 'Tokyo', anchor: { x: 620, z: 120 }, items, trees, clearCircles: [], clearRects: [] };
   },
   /** FunauraVillage.ts + funauraLayout.ts (DOERFER.md §1). */
   async funaura() {
@@ -248,7 +334,21 @@ const exporters: Record<string, () => Promise<Place>> = {
     // canal promenade: white storehouses facing west across the promenade to the water
     const C = L.CANAL;
     for (const [z, w, d, kind] of L.CANAL_ROW) items.push({ kind: kind === 'white' ? 'white' : kind, tag: 'canal', x: L.canalX(z) + C.water / 2 + C.wall + C.prom + d / 2, z, yaw: -Math.PI / 2, w, d });
-    items.push({ kind: 'canal', x: L.canalX((C.z0 + C.z1) / 2), z: (C.z0 + C.z1) / 2, yaw: 0, w: C.water + 2 * C.wall, d: C.z1 - C.z0 });
+    // the canal (Kurashiki Bikan): two reaches with a weir at zWeir; water at the reach's highest ground + 0.25 m
+    // (as KoedoTown computes it); bed 1.1 m below the water, stone walls on both banks every 4 m
+    const height = terrainSampler();
+    for (const [za, zb] of [[C.z0, C.zWeir], [C.zWeir, C.z1]] as const) {
+      let top = -Infinity;
+      for (let z = za; z <= zb; z += 2) for (const o of [-C.water / 2, 0, C.water / 2]) top = Math.max(top, height(L.canalX(z) + o, z));
+      const level = top + 0.25;
+      for (let z = za; z < zb; z += 6) {
+        const z1 = Math.min(zb, z + 6), xm = L.canalX((z + z1) / 2), yaw = Math.atan2(L.canalX(z1) - L.canalX(z), z1 - z);
+        items.push({ kind: 'canalBed', x: xm, z: (z + z1) / 2, yaw, w: C.water + 2 * C.wall, d: z1 - z + 0.2, y: level - 1.1, fixedY: true });
+        items.push({ kind: 'canalWater', x: xm, z: (z + z1) / 2, yaw, w: C.water, d: z1 - z + 0.05, y: level, fixedY: true });
+      }
+      for (let z = za + 2; z < zb; z += 4) for (const side of [-1, 1])
+        items.push({ kind: 'canalWall', x: L.canalX(z) + side * (C.water / 2 + C.wall / 2), z, yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2, y: level - 1.1, fixedY: true, w: 4, d: C.wall, h: 2 });
+    }
     for (const b of L.BRIDGES) items.push({ kind: 'bridge', tag: b.kind, x: L.canalX(b.z), z: b.z, yaw: Math.PI / 2, w: C.water + 2 * C.wall });
     for (const [x, z, w, d, yaw] of L.STOREHOUSES) items.push({ kind: 'storehouse', x, z, yaw, w, d });
     for (const [x, z, w, d, floors, yaw] of L.MODERN) items.push({ kind: 'modern', x, z, yaw, w, d, h: floors * 3 });
@@ -332,7 +432,8 @@ const exporters: Record<string, () => Promise<Place>> = {
     items.push({ kind: 'shrine', ...L.SHRINE, yaw: L.SHRINE.yaw + Math.PI / 2 });
     items.push({ kind: 'shrineTorii', x: L.SHRINE.x - 7, z: L.SHRINE.z, yaw: L.SHRINE.yaw + Math.PI / 2 });
     items.push({ kind: 'jizo', ...L.JIZO, yaw: L.JIZO.yaw + Math.PI / 2 });
-    items.push({ kind: 'millWheel', x: S.MILL.x - 11, z: S.MILL.z - 4, yaw: 0 });
+    // ASTRA §3: the mill house of Stillwater at MILL (props.json has no farmhouse there)
+    items.push({ kind: 'millHouse', x: S.MILL.x, z: S.MILL.z, yaw: Math.PI / 2 });
     items.push({ kind: 'pond', x: S.POND.x, z: S.POND.z, yaw: 0, w: S.POND.w, d: S.POND.d });
     const trees: Tree[] = [];
     for (const [x, z, scale] of L.KAKI) trees.push({ species: 'Kaki', x, z, scale, yaw: hash(x, z) * 6.28 });
@@ -340,6 +441,13 @@ const exporters: Record<string, () => Promise<Place>> = {
     for (const [cx, cz, count] of L.BAMBOO) for (let i = 0; i < count; i++) {
       const a = hash(cx + i, cz) * 6.28, r = Math.sqrt(hash(cz, cx + i * 3)) * 5.5;
       trees.push({ species: 'Bamboo', x: cx + Math.cos(a) * r, z: cz + Math.sin(a) * r, scale: 0.8 + hash(i, cx) * 0.4, yaw: a });
+    }
+    // a tree on a footpath (one kaki stood on the path at (−1167 | 300)) steps 3 m aside
+    for (const t of trees) for (const line of [L.STREET, ...L.PATHS]) for (let i = 1; i < line.length; i++) {
+      const [ax, az] = line[i - 1]!, [bx, bz] = line[i]!, dx = bx - ax, dz = bz - az;
+      const u = Math.max(0, Math.min(1, ((t.x - ax) * dx + (t.z - az) * dz) / (dx * dx + dz * dz)));
+      const px = ax + dx * u, pz = az + dz * u, d = Math.hypot(t.x - px, t.z - pz), need = line === L.STREET ? L.STREET_WIDTH / 2 + 2.5 : 2.5;
+      if (d < need) { const len = Math.hypot(dx, dz), nx = -dz / len, nz = dx / len, s = (t.x - px) * nx + (t.z - pz) * nz >= 0 ? 1 : -1; t.x = px + nx * s * (need + 0.5); t.z = pz + nz * s * (need + 0.5); }
     }
     const clearCircles: [number, number, number][] = [];
     L.gasshoClearance((x: number, z: number, r: number) => clearCircles.push([x, z, r]));

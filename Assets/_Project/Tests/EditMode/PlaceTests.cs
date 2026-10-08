@@ -44,6 +44,7 @@ namespace JapanMap.Tests
             foreach (var p in PlaceImporter.Resolve(kit, PlaceSource.Load(kit.source)))
             {
                 if (p.prefab == null || !(p.rule.level || kit.instanced)) continue;
+                if (p.halfSize.x * p.halfSize.y * 4 < 6) continue; // lamps, poles, machines: their arms may reach over the road
                 var toLocal = Quaternion.Euler(0, -p.yaw, 0);
                 var half = p.halfSize - Vector2.one * 0.5f;
                 foreach (var road in network.roads.Where(r => r.type != "pfad")) // footpaths lead to the doors
