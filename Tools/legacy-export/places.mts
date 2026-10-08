@@ -24,7 +24,7 @@ interface Place {
   clearRects: [number, number, number, number][];
   spawn?: { x: number; z: number; yaw: number };
   /** Roads the prototype built inside the place (not in roads.json): control points, Three x/z. */
-  roads?: { id: string; type: string; width: number; points: [number, number][]; endY?: number }[];
+  roads?: { id: string; type: string; width: number; points: [number, number][]; endY?: number; extends?: string }[];
 }
 
 const r3 = (v: number): number => Math.round(v * 1000) / 1000;
@@ -226,6 +226,54 @@ const exporters: Record<string, () => Promise<Place>> = {
     return {
       place: 'funaura', title: 'Funaura', anchor: L.FUNAURA, items, trees, clearCircles, clearRects: [],
       roads: [{ id: 'funaura-river-road', type: 'village', width: 6.2, points: L.RIVER_ROAD.map(([x, z]: number[]) => [x, z]), endY: Q }],
+    };
+  },
+  /** KoedoTown.ts + koedoLayout.ts (DOERFER.md §4): one street in road coordinates (s along, o left). */
+  async koedo() {
+    const L = await src('world/settlements/koedo/koedoLayout.ts');
+    const dorf = roadsFile().roads.find((r: any) => r.id === 'dorf');
+    L.useRoadAxis(dorf.centerline, dorf.length / (dorf.centerline.length / 3 - 1));
+    const items: Item[] = [];
+    const house = (kind: string, tag: string, s: number, side: number, w: number, d: number, setback: number, skew: number): Item => {
+      const [x, z] = L.at(s, side * (L.FRONT + setback + d / 2));
+      return { kind, tag, x, z, yaw: L.faceRoad(s, side) + skew, w, d };
+    };
+    for (const h of L.HOUSES) items.push(house(h.kind, `${h.role}${h.low ? '/low' : ''}`, h.s, h.side, h.w, h.d, h.setback, h.skew));
+    items.push(house('brewery', '', L.BREWERY.s, -1, L.BREWERY.w, L.BREWERY.d, 0, 0));
+    { const [x, z] = L.at(L.TOWER.s, L.TOWER.o); items.push({ kind: 'bellTower', x, z, yaw: L.faceRoad(L.TOWER.s, 1) }); }
+    { // the plaza outside the bend, paved
+      const s = (L.PLAZA.s0 + L.PLAZA.s1) / 2, [x, z] = L.at(s, L.PLAZA.o / 2 + 3);
+      items.push({ kind: 'plaza', x, z, yaw: L.faceRoad(s, 1), w: L.PLAZA.s1 - L.PLAZA.s0, d: L.PLAZA.o });
+    }
+    // canal promenade: white storehouses facing west across the promenade to the water
+    const C = L.CANAL;
+    for (const [z, w, d, kind] of L.CANAL_ROW) items.push({ kind: kind === 'white' ? 'white' : kind, tag: 'canal', x: L.canalX(z) + C.water / 2 + C.wall + C.prom + d / 2, z, yaw: -Math.PI / 2, w, d });
+    items.push({ kind: 'canal', x: L.canalX((C.z0 + C.z1) / 2), z: (C.z0 + C.z1) / 2, yaw: 0, w: C.water + 2 * C.wall, d: C.z1 - C.z0 });
+    for (const b of L.BRIDGES) items.push({ kind: 'bridge', tag: b.kind, x: L.canalX(b.z), z: b.z, yaw: Math.PI / 2, w: C.water + 2 * C.wall });
+    for (const [x, z, w, d, yaw] of L.STOREHOUSES) items.push({ kind: 'storehouse', x, z, yaw, w, d });
+    for (const [x, z, w, d, floors, yaw] of L.MODERN) items.push({ kind: 'modern', x, z, yaw, w, d, h: floors * 3 });
+    { // beyond the street's end: the axis stops at S_END, so continue along its last direction
+      const f = L.frame(L.S_END), past = (m: number): [number, number] => [f.x + f.tx * m, f.z + f.tz * m];
+      const yaw = Math.atan2(-f.tx, -f.tz); // facing back up the street
+      const [x, z] = past(L.SHRINE.s - L.S_END + 2), [hx, hz] = past(L.SHRINE.s - L.S_END + 16);
+      items.push({ kind: 'shrineTorii', x, z, yaw }, { kind: 'shrineHall', x: hx, z: hz, yaw }); }
+    // street lamps on both pavements every 24 m (Ichibangai has its lanterns at the gutter line)
+    for (let s = 590; s < L.S_END - 4; s += 24) for (const side of [1, -1]) {
+      const [x, z] = L.at(s + (side > 0 ? 0 : 12), side * (L.roadHalf(s) + 0.9));
+      items.push({ kind: 'streetLamp', x, z, yaw: L.faceRoad(s, side) + Math.PI });
+    }
+    const trees: Tree[] = L.WILLOWS.map(([z, side, size]: number[]) => {
+      const x = L.canalX(z!) + side! * (C.water / 2 + C.wall + (side! > 0 ? 1.6 : C.dike / 2));
+      return { species: 'Willow', x, z: z!, scale: size!, yaw: hash(x, z!) * Math.PI * 2 };
+    });
+    const clearCircles: [number, number, number][] = [];
+    L.koedoClearance((x: number, z: number, r: number) => clearCircles.push([x, z, r]));
+    // Street B: the village road continues south from its end at (−190 | 90) — an extension, not a new road
+    const B: [number, number][] = [];
+    for (let s = L.JOIN + 1; s <= L.S_END; s += 4) { const f = L.frame(s); B.push([f.x, f.z]); }
+    return {
+      place: 'koedo', title: 'Koedo', anchor: { x: L.KOEDO.x, z: L.KOEDO.z }, items, trees, clearCircles, clearRects: [],
+      roads: [{ id: 'koedo-street-b', type: 'village', width: 2 * L.ROAD_HALF_B, points: B, extends: 'dorf' }],
     };
   },
 };

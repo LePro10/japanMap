@@ -1,0 +1,236 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 42c31839a3d8045998f78eea4bdf1720, type: 3}
+  m_Name: Koedo
+  m_EditorClassIdentifier: JapanMap.Editor::JapanMap.Editor.Places.PlaceKit
+  source: koedo
+  levelBlend: 4
+  rules:
+  - kind: kura
+    tag: imo
+    library:
+    - Koedo_Kura_2Bay_Imo
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 1
+    matchHeight: 0
+  - kind: kura
+    tag: pottery
+    library:
+    - Koedo_Kura_Corner_2Bay_Pottery
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 1
+    matchHeight: 0
+  - kind: kura
+    tag: 
+    library:
+    - Koedo_Kura_2Bay_Imo
+    - Koedo_Misegura_3Bay_Sake
+    - Kura_2Bay_Black
+    - Koedo_Kanban_2Bay_Souvenir
+    - Koedo_Kura_Corner_2Bay_Pottery
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 1
+    matchHeight: 0
+  - kind: machiya
+    tag: eel
+    library:
+    - Koedo_Machiya_2Bay_Unagi
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 1
+    matchHeight: 0
+  - kind: machiya
+    tag: tea
+    library:
+    - Koedo_Machiya_3Bay_Tea
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 1
+    matchHeight: 0
+  - kind: machiya
+    tag: candy
+    library:
+    - Koedo_Dagashi_1F
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 1
+    matchHeight: 0
+  - kind: machiya
+    tag: home/low
+    library:
+    - Koedo_Dagashi_1F
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 1
+    matchHeight: 0
+  - kind: machiya
+    tag: 
+    library:
+    - Koedo_Machiya_2Bay_Unagi
+    - Koedo_Machiya_3Bay_Tea
+    - Koedo_Kanban_2Bay_Souvenir
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 1
+    matchHeight: 0
+  - kind: white
+    tag: 
+    library:
+    - Kura_2Bay_White
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 1
+    matchHeight: 0
+  - kind: brewery
+    tag: 
+    library:
+    - Koedo_Misegura_3Bay_Sake
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 1
+    matchHeight: 0
+  - kind: bellTower
+    tag: 
+    library:
+    - Tera_Shoro
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: plaza
+    tag: 
+    library: []
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: Sand
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: storehouse
+    tag: 
+    library:
+    - Kura_2Bay_White
+    - Kura_2Bay_Black
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 1
+    matchHeight: 0
+  - kind: shrineTorii
+    tag: 
+    library:
+    - Torii_Stone_M
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: shrineHall
+    tag: 
+    library:
+    - Tera_Haiden
+    yaw: 0
+    scale: 1
+    level: 1
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  - kind: streetLamp
+    tag: 
+    library:
+    - StreetLight_Shotengai
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+  instanced: 0
+  lodDistanceScale: 1
+  cullDistanceScale: 1
+  shadowFromLastLod: 1
+  shellDistance: 0

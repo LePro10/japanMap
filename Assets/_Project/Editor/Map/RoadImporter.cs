@@ -137,8 +137,7 @@ namespace JapanMap.Editor.Map
 
         /// <summary>roads.json plus the roads the prototype's places built themselves (Places/PlaceRoads).</summary>
         public static List<Road> Load(MapImportSettings settings) =>
-            LegacySource.ReadJson<LegacySource.Roads>(settings, "roads/roads.json").roads
-                .Concat(Places.PlaceRoads.Load(settings)).ToList();
+            Places.PlaceRoads.Apply(LegacySource.ReadJson<LegacySource.Roads>(settings, "roads/roads.json").roads.ToList(), settings);
 
         static float Spacing(Road r)
         {

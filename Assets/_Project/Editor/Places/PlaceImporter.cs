@@ -123,8 +123,9 @@ namespace JapanMap.Editor.Places
                     var size = SizeOf(prefab);
                     var sx = module / size.x;
                     var sz = item.d > 0 ? Mathf.Clamp(item.d / size.z, 0.6f, 1.25f) : 1;
-                    // Front on the building line: depth the parcel cannot take goes behind, into the block.
-                    if (item.d > 0 && size.z * sz > item.d) centre += turn * new Vector3(0, 0, -(size.z * sz - item.d) / 2);
+                    // Front on the building line: depth the parcel cannot take goes behind, into the block; a
+                    // parcel deeper than the model (Koedo brewery, 40 m) keeps its yard behind the house.
+                    if (item.d > 0) centre += turn * new Vector3(0, 0, (item.d - size.z * sz) / 2);
                     list.Add(new Placement
                     {
                         item = item, rule = rule, prefab = prefab, position = centre, yaw = yaw + rule.yaw,

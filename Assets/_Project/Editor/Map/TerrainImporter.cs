@@ -97,7 +97,8 @@ namespace JapanMap.Editor.Map
             // the same ground: a terrain-only import once left the ring's cliff 4 m above the road.
             var types = settings.roadTypes.ToDictionary(t => t.type);
             var legacyRoads = RoadImporter.Load(settings);
-            var placeRoads = new HashSet<string>(legacyRoads.Where(r => r.tags != null && r.tags.Contains("place")).Select(r => r.id));
+            // place roads and extended roads.json roads (the extension is not baked into the heightmap either)
+            var placeRoads = new HashSet<string>(legacyRoads.Where(r => r.tags != null && (r.tags.Contains("place") || r.tags.Contains("extended"))).Select(r => r.id));
             var carve = TerrainCarve.UnderRoads(RoadImporter.NetworkRoads(legacyRoads, types), type => types[type].shoulder, settings, placeRoads);
             // Building pads of the places too (Phase 5): a terrain-only import must not undo them.
             var pads = Places.PlaceGround.Level(Places.PlaceImporter.Pads(), settings);

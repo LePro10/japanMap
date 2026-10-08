@@ -25,22 +25,41 @@ namespace JapanMap.Editor.Places
             public string id, type;
             public float width, endY;
             public bool hasEndY;
+            public string extends;
             public List<Vector2> points = new();
         }
 
-        public static List<LegacySource.Road> Load(MapImportSettings settings)
+        /// <summary>
+        /// <paramref name="roads"/> (roads.json) plus the places' roads. A road with "extends" continues an
+        /// existing one from its end (Koedo street B after the village road): appended to it, because two
+        /// roads meeting end to end would trim each other back and leave a gap.
+        /// </summary>
+        public static List<LegacySource.Road> Apply(List<LegacySource.Road> roads, MapImportSettings settings)
         {
-            var result = new List<LegacySource.Road>();
             var dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", PlaceSource.Dir));
-            if (!Directory.Exists(dir)) return result;
+            if (!Directory.Exists(dir)) return roads;
             System.Func<float, float, float> ground = null;
             foreach (var file in Directory.GetFiles(dir, "*.json").OrderBy(f => f))
             foreach (var spec in Parse(File.ReadAllText(file)))
             {
                 ground ??= TerrainImporter.RawGround(settings);
-                result.Add(Build(spec, ground));
+                var host = string.IsNullOrEmpty(spec.extends) ? null : roads.FirstOrDefault(r => r.id == spec.extends);
+                if (!string.IsNullOrEmpty(spec.extends) && host == null)
+                    Debug.LogWarning($"[Places] road {spec.id} extends unknown road '{spec.extends}' — added on its own");
+                if (host == null) { roads.Add(Build(spec, ground, float.NaN)); continue; }
+                var c = host.centerline;
+                var end = new Vector2(c[c.Length - 3], c[c.Length - 1]);
+                var startY = c[c.Length - 2];
+                spec.points.Insert(0, end);
+                var tail = Build(spec, ground, startY);
+                var n = tail.centerline.Length / 3;
+                host.centerline = c.Concat(tail.centerline.Skip(3)).ToArray();
+                host.widths = (host.widths ?? Enumerable.Repeat(spec.width, c.Length / 3).ToArray()).Concat(tail.widths.Skip(1)).ToArray();
+                host.banking = (host.banking ?? new float[c.Length / 3]).Concat(tail.banking.Skip(1)).ToArray();
+                host.length += tail.length;
+                host.tags = (host.tags ?? new string[0]).Concat(new[] { "extended" }).ToArray();
             }
-            return result;
+            return roads;
         }
 
         static IEnumerable<Spec> Parse(string raw)
@@ -55,6 +74,7 @@ namespace JapanMap.Editor.Places
                 spec.width = Num(body, "width", 5);
                 var end = Regex.Match(body, @"""endY""\s*:\s*(-?[\d.]+)");
                 spec.hasEndY = end.Success;
+                spec.extends = Regex.Match(body, @"""extends""\s*:\s*""([^""]+)""").Groups[1].Value;
                 if (end.Success) spec.endY = float.Parse(end.Groups[1].Value, CultureInfo.InvariantCulture);
                 foreach (Match p in Regex.Matches(m.Groups["pts"].Value, @"\[\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\]"))
                     spec.points.Add(new Vector2(float.Parse(p.Groups[1].Value, CultureInfo.InvariantCulture), float.Parse(p.Groups[2].Value, CultureInfo.InvariantCulture)));
@@ -68,7 +88,7 @@ namespace JapanMap.Editor.Places
             return m.Success ? float.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) : fallback;
         }
 
-        static LegacySource.Road Build(Spec spec, System.Func<float, float, float> ground)
+        static LegacySource.Road Build(Spec spec, System.Func<float, float, float> ground, float startY)
         {
             var dense = Resample(CatmullRom(spec.points), Spacing);
             var n = dense.Count;
@@ -90,6 +110,11 @@ namespace JapanMap.Editor.Places
             {
                 for (var i = 1; i < n; i++) y[i] = Mathf.Max(y[i], y[i - 1] - Spacing * grade);
                 for (var i = n - 2; i >= 0; i--) y[i] = Mathf.Max(y[i], y[i + 1] - Spacing * grade);
+            }
+            if (!float.IsNaN(startY))
+            {
+                const int blend = 10; // 20 m out of the host road's end height
+                for (var j = 0; j < Mathf.Min(blend, n); j++) y[j] = Mathf.Lerp(startY, y[j], j / (float)blend);
             }
             if (spec.hasEndY)
             {
