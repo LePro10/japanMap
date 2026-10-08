@@ -42,7 +42,7 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
   Fahrräder), `Nature` (Felsen, Laub, Erde, Töpfe — später Vegetation;
   nur deckend, Blatt-Karten mit Alpha brauchen in Aufgabe 4 ein eigenes
   Material), `Kura`, `Tokyo` (Fliesen- und ALC-Wände, Konbini, Schilder,
-  Neon), `TokyoSigns`, `Koedo` + `KoedoShop`, `Kiso` + `KisoShop`. Neuer Baustil = neuer Atlas.
+  Neon), `TokyoSigns`, `Koedo` + `KoedoShop`, `Kiso` + `KisoShop`, `Gassho` + `GasshoShop`. Neuer Baustil = neuer Atlas.
 - Atlas 1024², drei Karten passend zu URP/Lit:
   `T_<Stil>_BaseColor` (sRGB) · `T_<Stil>_MaskMap` (R Metall, G AO = 1,
   A Glätte; linear) · `T_<Stil>_Emission` (sRGB).
@@ -81,6 +81,7 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
 | Kupfer-Patina (Koedo) | `#5f8f7a` | | Bretterwand (Koedo) | `#3b2a1e` |
 | Senkrechte Bretter (Kiso) | `#4a3727` | | Lehmputz (Kiso) | `#b39a74` |
 | Schindeln (Kiso) | `#5f5a52` | | Dachsteine (Kiso) | `#6a6965` `#5e5850` `#525a46` |
+| Stroh alt / neu / bemoost (Gassho) | `#8a7658` `#ad9160` `#6c6455` | | Gras / Reisfeld-Schlamm (Gassho) | `#55602f` `#4a4034` |
 
 Gedämpfte Grundtöne, kräftige Farben nur als Akzent (Automat, Torii, Licht).
 
@@ -242,6 +243,52 @@ Korbgeflecht, Menütafel).
 - **Budget gemessen** (Kaede, Teile einzeln): Erdgeschoss-Öffnungen 1 134,
   Steine + Latten 950, Gitterfenster oben 682, Holzgerüst 288,
   Vorkragung 152, Udatsu 146 Dreiecke.
+
+## Gassho-Bausatz (Strohdachdorf Shirakawa-gō/Gokayama, ab 2026-10-08)
+
+`buildings/gassho_kit.py` (Module) + `buildings/gassho.py` (Häuser als Daten,
+`HOUSES`; ruhige Feld-Versionen über `field()`; kleine Bauten `SMALL`;
+Dorfstücke `PIECES`). Atlanten `Gassho` (Stroh 3 Töne in 2-m-Lagen 48 px/m,
+Schnittkante, Unterseite, Wände 1,5 m 64 px/m, Weg, Gras, Ishigaki,
+Reisfeld, Strohbündel-Bild) und `GasshoShop` (3 Innenräume, 4 Schilder,
+3 Standschilder, 3 Noren, 2 Wandlaternen, Menü, Schild 放水銃, Schreintafel).
+- **Lokaler Rahmen:** First entlang X, Giebel bei ±L/2, Seiten S/E/N/W;
+  `front` dreht das fertige Mesh, damit Giebel (`E`) oder Langseite (`S`)
+  zur Straße (−Y) zeigt.
+- **Strohdach** (`thatch_roof`): zwei Schalen, **Kern + 0,35-m-Haut**, damit
+  Traufe und Ortgang als gestufte Lagen sichtbar sind. ~60° steil, an der
+  Traufe ein Knick (flacher, 0,9 m dicke Schnittkante). Die Haut liegt in
+  **Lagen ≤ 2 m** den Hang hinab, jede 4 cm über der nächsten; Stroh-UVs
+  laufen mit `map_axes` am Hang entlang (nie gestreckt, Textur kachelt in U
+  und V). Tonflecken alt/neu/bemoost je Lage und Abschnitt
+  (`tone_patches`, Nordseite älter). First-Bündel mit gekreuzten Stangen,
+  Druckstangen an Ortgang und Traufe mit Seilbünden, äußeres Sparrenpaar
+  (sasu) und Pfettenköpfe am Giebel.
+- **Giebel** (`gable`): Bänder ≤ 1,5 m, Geschossbalken je Dachgeschoss
+  (alle 1,85 m), Fensterreihen (`wins(...)`: Shoji hell/dunkel, Bretter,
+  Gitter, Lüftung, optional Brett-Haube); Fenster, die nicht unter das Dach
+  passen, fallen weg.
+- **Erdgeschoss:** Kiso-`Sweep` mit 1,5-m-Streifen, Wandpfette ragt ins
+  Stroh (sonst Schlitz unter der Traufe). Module: `shoji` (Schiebe-Shoji mit
+  Brett unten), `mado` (Shoji hinter 5–6 Holzstäben), `amado`
+  (Sturmläden ≤ 0,9 m, Mittelriegel, Kasten), dazu Kiso/Koedo-Module.
+  **Engawa** (Bretter, Pfosten auf Steinen, Trittstein), **Schneebretter**
+  (yuki-gakoi, Felder teils offen), Vordach Brett oder Stroh (`pent`),
+  Traufkies mit Steinen.
+- **Kleine Bauten:** Speicher (itakura, auf Steinen, Tür mit Schloss,
+  Stufen), offener Holzschuppen, Feuerhütte des Löschwerfers (Mini-Gassho,
+  rote Tür, Standrohr), Bergschrein (hokora) auf Ishigaki-Sockel.
+- **Ausstattung:** Kakis (hoshigaki) bzw. Rettiche an Schnüren unter der
+  Traufe, Holzleiter am Dach, Strohgarben, Brennholz, Zuber, Washi-Trockenbretter.
+- **Dorfstücke:** `Road_8m` (Kiesweg, Steinrinne mit Ishigaki-Wänden,
+  Steinplatten-Brücke), `Paddy_8m` (Reisfeld-Rand mit Grasdamm, Stoppeln),
+  `Hasa_6m` (Trockengestell mit Strohbündeln).
+- **Budget gemessen** (Honke, Teile einzeln): Dach 1 916, Giebelfenster 616,
+  Fenster unten 368, Sturmläden 278, Traufsteine 224. Fasen an den
+  Sockel-/Schwellen-/Pfettenkanten kosteten **~900** (die Spaltenlinien der
+  Öffnungen zerschneiden jede Kante) → diese Kanten ohne Fase.
+- **Bilder:** `gassho.shots(ordner)`; Bodenplatte mit Löchern über Rinne
+  und Reisfeld (die liegen unter 0).
 
 ## Abnutzung
 

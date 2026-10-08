@@ -4,10 +4,19 @@ Plan: [docs/PLAN.md](../docs/PLAN.md), Abschnitt „Asset-Sprint". Regeln:
 [STYLE-KIT.md](STYLE-KIT.md) (verbindlich). Läuft parallel zur Unity-Sitzung,
 nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
-## Wo wir stehen (2026-10-08, Mittag)
+## Wo wir stehen (2026-10-08, Nachmittag)
 
+- **Aufgabe 3 — Gebäude, Gassho: Pilot fertig, wartet auf Freigabe.**
+  Strohdachdorf wie Shirakawa-gō/Gokayama: 5 Bauernhäuser + 2 ruhige
+  Feld-Versionen + 4 kleine Bauten + 3 Dorfstücke, je mit eigener
+  Ausstattung (Mesh `_Shop`). Bilder: `previews/Gassho_Overview.png`
+  (Dorfkern Augenhöhe/Gegenrichtung/von oben, Feldrand, je Stimmung und
+  neutral, Grau-Tests), `Gassho_Buildings.png` (alle 11 einzeln),
+  `Gassho_detail.png` (Nahaufnahmen: Eingang Minshuku, Giebel, Traufe,
+  Engawa mit Kakis, First, Café, Schneebretter, Washi-Werkstatt),
+  `Gassho_Back.png` (Rückseiten), `Gassho_clay_houses.png`, `Gassho_Pieces.png`.
 - **Aufgabe 3 — Gebäude, Kiso: freigegeben** (Mensch fragte nach der
-  nächsten Aufgabe, 2026-10-08). Nächster Baustil: **Gassho**.
+  nächsten Aufgabe, 2026-10-08).
   Eine Poststraße wie Tsumago/Narai: 7 Häuser + 3 ruhige Gassen-Versionen,
   jedes mit eigener Ladenausstattung (Mesh `_Shop`), dazu 4 Straßenstücke
   (Straße mit Wasserrinne, Steinstufen am Hang, Wassertrog, Wasserrad).
@@ -32,6 +41,31 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
   Wohnblock-Budget: a) gilt (als 3 Felder zählen), mit der Freigabe bestätigt.
   Danach Baustil für Baustil: Koedo (Kura ausbauen), Kiso, Gassho,
   Fischerdorf, Tempel — je Pilot + Freigabe.
+
+### Gassho-Pilot (Atlas `Gassho` + `GasshoShop`, Generator `buildings/gassho.py` + Bausatz `buildings/gassho_kit.py`)
+
+| FBX (`exports/buildings/`, Präfix `SM_Gassho_`) | Bau | Ausstattung | Dreiecke Bau LOD0 / LOD1 · Ausstattung LOD0 / LOD1 |
+|---|---|---|---|
+| L_Honke | Großes Haupthaus 20 × 11,5 m, First 15,4 m, Giebel zur Straße, 4 Dachgeschosse mit Fenstern, Brett-Vordach am Giebel, Shoji + Engawa an der Sonnenseite, Sturmläden | Kakis unter der Traufe, Leiter, Brennholz, Strohgarben, Zuber, Feuereimer, Töpfe | 4 768 / 1 455 · 1 566 / 494 |
+| M_Minshuku | Gasthaus 16 × 10 m, Eingang mit Herdraum (irori) hell, viele helle Fenster, Vordach auf Pfosten | Schild 民宿 かや乃 auf dem Vordach, Noren 民宿, Wandlaterne, Standschild, Bank, Kakis, Leiter, Brennholz | 4 554 / 1 423 · 1 134 / 484 |
+| M_Cafe | Café 14 × 9,5 m, **Langseite zur Straße**, offener Laden, Gitter, Shoji, Engawa | Wandschild 茶房 ゆい, Noren, Menü, Nobori 甘味処, rote Bank mit Schirm, Kakis, Brennholz | 3 763 / 1 145 · 988 / 434 |
+| S_Koya | Kleines Bauernhaus 11 × 7,6 m, 2 Dachgeschosse, **Schneebretter** halb aufgestellt, viel Moos | Strohgarben, Rettiche, Brennholz, Korb, Leiter | 3 350 / 1 101 · 896 / 232 |
+| M_Washi | Gokayama-Art 13 × 8,8 m, 62°, **Stroh-Vordach** über dem Giebel, Fenster mit Brett-Hauben, Werkstattladen | Schild 五箇山和紙, Noren 和紙, Standschild, Lampe, Washi-Trockenbretter | 3 931 / 1 141 · 610 / 358 |
+| L_Honke_Field · S_Koya_Field | Feld-Versionen: Läden zu (Sturmläden), alle Fenster dunkel | nur Bauernsachen | wie oben |
+| Itakura · Naya · Hosuiju · Hokora | Speicher auf Steinen (Schloss, Stufen) · offener Holzschuppen · Feuerhütte des Löschwerfers (Mini-Gassho, rote Tür 放水銃, Standrohr) · Bergschrein auf Ishigaki-Sockel | Korb/Zuber · Brennholz, Leiter · Schild · Tafel 山之神, Opfergaben | 768 · 562 · 388 · 240 |
+| Road_8m · Paddy_8m · Hasa_6m | Kiesweg mit Steinrinne und Plattenbrücke · Reisfeld-Rand mit Damm · Reis-Trockengestell mit Strohbündeln | — | 206 · 85 · 834 |
+
+- **Budget:** alle ≤ 5 000 (Honke 95 %, Minshuku 91 %), gemessen nach Teilen
+  (Stil-Kit „Gassho-Bausatz"). LOD1 23–33 % (Dach ohne Stufen/Stangen,
+  Fenster als Bild).
+- **Gemessen:** Bau 14 FBX, 0 Fehler, 0 Streck-Warnungen; nach den Bildern
+  steht nichts verschoben. **Ungeprüft:** alles in Unity.
+- Lichter: `LIGHT_` vor offenen Läden, hellen Shoji-Reihen und Wandlaternen.
+- Steinlaterne, Ishigaki-Mauer, Fahrrad, Torii, Bambuszaun, Fels in den
+  Bildern sind Requisiten aus Aufgabe 2.
+- **Offen / Ideen nach der Freigabe:** Wassermühle-Hütte; Stroh-Textur aus
+  der Nähe noch etwas „brettig"; Feuerwerfer als eigenes Objekt (für das
+  berühmte Wasserspiel); mehr Giebel-Varianten (Balkon).
 
 ### Kiso-Pilot (Atlas `Kiso` + `KisoShop`, Generator `buildings/kiso.py` + Bausatz `buildings/kiso_kit.py`)
 
@@ -242,7 +276,8 @@ Konventionen:
 
 ## Für dich
 
-1. Neue Sitzung für Gassho starten (Starttext in der Antwort vom 2026-10-08).
+1. Gassho-Pilot ansehen (`ArtSource/previews/Gassho_*.png`) und freigeben
+   oder Rückmeldung geben. Danach: Fischerdorf, dann Tempel.
 2. Der Unity-Sitzung bei Gelegenheit „Lichttest nach ArtSource/STATUS.md"
    sagen.
 
@@ -352,3 +387,15 @@ Konventionen:
     Grau-Test der Straße auf Augenhöhe.
   - **Kamera-Richtung in `P.shot`** zeigt vom Ziel *zur Kamera* — die
     Gassen-Kamera stand zweimal außerhalb der Gasse. Steht im Docstring.
+- 2026-10-08 Nachmittag (Gassho):
+  - **Fasen kosteten ~900 Dreiecke**, weil die Spaltenlinien der Öffnungen
+    jede waagrechte Profilkante zerschneiden (gemessen: 52 Stücke je Kante;
+    Zellen-UVs je Fläche verhindern das Verschmelzen). Sockel-, Schwellen-
+    und Pfettenkanten im Gassho-Sweep ohne Fase (Bausatz).
+  - **Stroh über 10 m Hang** passt in keinen Streifen: Dach in Lagen ≤ 2 m,
+    Textur in U und V kachelbar (`pnoise`), UVs am Hang entlang
+    (`map_axes`) — Werkzeug im Bausatz.
+  - **Blender stürzte ab**: nichts verloren, weil alles aus Skripten kommt;
+    Szene mit `build.run([...])` in einer Minute wieder da. Neu exportierte
+    Requisiten-FBX (Zeitstempel) mit `git checkout -- ArtSource/exports/props`
+    zurückgesetzt, sie gehörten nicht zur Aufgabe.

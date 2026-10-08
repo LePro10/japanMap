@@ -395,6 +395,555 @@
   "switchable": [],
   "attach": []
  },
+ "Gassho_Hasa_6m": {
+  "fbx": "buildings/SM_Gassho_Hasa_6m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Gassho_Hasa_6m_LOD0",
+   "SM_Gassho_Hasa_6m_LOD1"
+  ],
+  "tris": [
+   834,
+   328
+  ],
+  "materials": [
+   "M_Gassho_Atlas"
+  ],
+  "colliders": [
+   "COL_Gassho_Hasa_6m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Gassho_Hokora": {
+  "fbx": "buildings/SM_Gassho_Hokora.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Gassho_Hokora_LOD0",
+   "SM_Gassho_Hokora_LOD1",
+   "SM_Gassho_Hokora_Shop_LOD0",
+   "SM_Gassho_Hokora_Shop_LOD1"
+  ],
+  "tris": [
+   240,
+   96
+  ],
+  "materials": [
+   "M_GasshoShop_Atlas",
+   "M_Gassho_Atlas"
+  ],
+  "colliders": [
+   "COL_Gassho_Hokora"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Gassho_Hosuiju": {
+  "fbx": "buildings/SM_Gassho_Hosuiju.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Gassho_Hosuiju_LOD0",
+   "SM_Gassho_Hosuiju_LOD1",
+   "SM_Gassho_Hosuiju_Shop_LOD0",
+   "SM_Gassho_Hosuiju_Shop_LOD1"
+  ],
+  "tris": [
+   388,
+   200
+  ],
+  "materials": [
+   "M_GasshoShop_Atlas",
+   "M_Gassho_Atlas"
+  ],
+  "colliders": [
+   "COL_Gassho_Hosuiju"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Gassho_Itakura": {
+  "fbx": "buildings/SM_Gassho_Itakura.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Gassho_Itakura_LOD0",
+   "SM_Gassho_Itakura_LOD1",
+   "SM_Gassho_Itakura_Shop_LOD0",
+   "SM_Gassho_Itakura_Shop_LOD1"
+  ],
+  "tris": [
+   768,
+   358
+  ],
+  "materials": [
+   "M_GasshoShop_Atlas",
+   "M_Gassho_Atlas"
+  ],
+  "colliders": [
+   "COL_Gassho_Itakura"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Gassho_L_Honke": {
+  "fbx": "buildings/SM_Gassho_L_Honke.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Gassho_L_Honke_LOD0",
+   "SM_Gassho_L_Honke_LOD1",
+   "SM_Gassho_L_Honke_Shop_LOD0",
+   "SM_Gassho_L_Honke_Shop_LOD1"
+  ],
+  "tris": [
+   4768,
+   1455
+  ],
+  "materials": [
+   "M_GasshoShop_Atlas",
+   "M_Gassho_Atlas"
+  ],
+  "colliders": [
+   "COL_Gassho_L_Honke_Roof",
+   "COL_Gassho_L_Honke_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Gassho_L_Honke_Shop0",
+    "pos": [
+     -6.35,
+     4.9,
+     2.2
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Gassho_L_Honke_Field": {
+  "fbx": "buildings/SM_Gassho_L_Honke_Field.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Gassho_L_Honke_Field_LOD0",
+   "SM_Gassho_L_Honke_Field_LOD1",
+   "SM_Gassho_L_Honke_Field_Shop_LOD0",
+   "SM_Gassho_L_Honke_Field_Shop_LOD1"
+  ],
+  "tris": [
+   4768,
+   1455
+  ],
+  "materials": [
+   "M_GasshoShop_Atlas",
+   "M_Gassho_Atlas"
+  ],
+  "colliders": [
+   "COL_Gassho_L_Honke_Field_Roof",
+   "COL_Gassho_L_Honke_Field_Walls"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Gassho_M_Cafe": {
+  "fbx": "buildings/SM_Gassho_M_Cafe.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Gassho_M_Cafe_LOD0",
+   "SM_Gassho_M_Cafe_LOD1",
+   "SM_Gassho_M_Cafe_Shop_LOD0",
+   "SM_Gassho_M_Cafe_Shop_LOD1"
+  ],
+  "tris": [
+   3763,
+   1145
+  ],
+  "materials": [
+   "M_GasshoShop_Atlas",
+   "M_Gassho_Atlas"
+  ],
+  "colliders": [
+   "COL_Gassho_M_Cafe_Roof",
+   "COL_Gassho_M_Cafe_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Gassho_M_Cafe_Shop0",
+    "pos": [
+     -4.9,
+     -5.35,
+     2.2
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Gassho_M_Cafe_Shop1",
+    "pos": [
+     -0.8,
+     -5.35,
+     2.2
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Gassho_M_Cafe_Shop2",
+    "pos": [
+     4.0,
+     -5.35,
+     2.2
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Gassho_M_Cafe_Shop3",
+    "pos": [
+     -7.6,
+     -0.0,
+     2.2
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Gassho_M_Cafe_Andon4",
+    "pos": [
+     -3.0,
+     -5.17,
+     1.94
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.45
+    ],
+    "range": 3.5
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Gassho_M_Minshuku": {
+  "fbx": "buildings/SM_Gassho_M_Minshuku.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Gassho_M_Minshuku_LOD0",
+   "SM_Gassho_M_Minshuku_LOD1",
+   "SM_Gassho_M_Minshuku_Shop_LOD0",
+   "SM_Gassho_M_Minshuku_Shop_LOD1"
+  ],
+  "tris": [
+   4554,
+   1423
+  ],
+  "materials": [
+   "M_GasshoShop_Atlas",
+   "M_Gassho_Atlas"
+  ],
+  "colliders": [
+   "COL_Gassho_M_Minshuku_Roof",
+   "COL_Gassho_M_Minshuku_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Gassho_M_Minshuku_Shop0",
+    "pos": [
+     -3.1,
+     -8.6,
+     2.2
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Gassho_M_Minshuku_Shop1",
+    "pos": [
+     0.1,
+     -8.6,
+     2.2
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Gassho_M_Minshuku_Shop2",
+    "pos": [
+     -5.6,
+     3.6,
+     2.2
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Gassho_M_Minshuku_Shop3",
+    "pos": [
+     -1.7,
+     8.6,
+     2.2
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Gassho_M_Minshuku_Andon4",
+    "pos": [
+     -1.5,
+     -8.42,
+     1.99
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.45
+    ],
+    "range": 3.5
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Gassho_M_Washi": {
+  "fbx": "buildings/SM_Gassho_M_Washi.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Gassho_M_Washi_LOD0",
+   "SM_Gassho_M_Washi_LOD1",
+   "SM_Gassho_M_Washi_Shop_LOD0",
+   "SM_Gassho_M_Washi_Shop_LOD1"
+  ],
+  "tris": [
+   3931,
+   1141
+  ],
+  "materials": [
+   "M_GasshoShop_Atlas",
+   "M_Gassho_Atlas"
+  ],
+  "colliders": [
+   "COL_Gassho_M_Washi_Roof",
+   "COL_Gassho_M_Washi_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Gassho_M_Washi_Shop0",
+    "pos": [
+     -2.0,
+     -7.1,
+     2.17
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Gassho_M_Washi_Shop1",
+    "pos": [
+     2.15,
+     -7.1,
+     2.17
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Gassho_M_Washi_Shop2",
+    "pos": [
+     -5.0,
+     2.5,
+     2.17
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Gassho_Naya": {
+  "fbx": "buildings/SM_Gassho_Naya.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Gassho_Naya_LOD0",
+   "SM_Gassho_Naya_LOD1",
+   "SM_Gassho_Naya_Shop_LOD0",
+   "SM_Gassho_Naya_Shop_LOD1"
+  ],
+  "tris": [
+   562,
+   226
+  ],
+  "materials": [
+   "M_GasshoShop_Atlas",
+   "M_Gassho_Atlas"
+  ],
+  "colliders": [
+   "COL_Gassho_Naya"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Gassho_Paddy_8m": {
+  "fbx": "buildings/SM_Gassho_Paddy_8m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Gassho_Paddy_8m_LOD0",
+   "SM_Gassho_Paddy_8m_LOD1"
+  ],
+  "tris": [
+   85,
+   14
+  ],
+  "materials": [
+   "M_Gassho_Atlas"
+  ],
+  "colliders": [
+   "COL_Gassho_Paddy_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Gassho_Road_8m": {
+  "fbx": "buildings/SM_Gassho_Road_8m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Gassho_Road_8m_LOD0",
+   "SM_Gassho_Road_8m_LOD1"
+  ],
+  "tris": [
+   206,
+   34
+  ],
+  "materials": [
+   "M_Gassho_Atlas"
+  ],
+  "colliders": [
+   "COL_Gassho_Road_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Gassho_S_Koya": {
+  "fbx": "buildings/SM_Gassho_S_Koya.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Gassho_S_Koya_LOD0",
+   "SM_Gassho_S_Koya_LOD1",
+   "SM_Gassho_S_Koya_Shop_LOD0",
+   "SM_Gassho_S_Koya_Shop_LOD1"
+  ],
+  "tris": [
+   3350,
+   1101
+  ],
+  "materials": [
+   "M_GasshoShop_Atlas",
+   "M_Gassho_Atlas"
+  ],
+  "colliders": [
+   "COL_Gassho_S_Koya_Roof",
+   "COL_Gassho_S_Koya_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Gassho_S_Koya_Shop0",
+    "pos": [
+     -4.4,
+     2.0,
+     2.07
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Gassho_S_Koya_Field": {
+  "fbx": "buildings/SM_Gassho_S_Koya_Field.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Gassho_S_Koya_Field_LOD0",
+   "SM_Gassho_S_Koya_Field_LOD1",
+   "SM_Gassho_S_Koya_Field_Shop_LOD0",
+   "SM_Gassho_S_Koya_Field_Shop_LOD1"
+  ],
+  "tris": [
+   3350,
+   1101
+  ],
+  "materials": [
+   "M_GasshoShop_Atlas",
+   "M_Gassho_Atlas"
+  ],
+  "colliders": [
+   "COL_Gassho_S_Koya_Field_Roof",
+   "COL_Gassho_S_Koya_Field_Walls"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
  "Kiso_Chaya_1F_Gohei": {
   "fbx": "buildings/SM_Kiso_Chaya_1F_Gohei.fbx",
   "class": "buildings",

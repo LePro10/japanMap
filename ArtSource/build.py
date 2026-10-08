@@ -28,6 +28,7 @@ ASSETS = {
     'tokyo_center': 'buildings.tokyo_center',
     'koedo': 'buildings.koedo',
     'kiso': 'buildings.kiso',
+    'gassho': 'buildings.gassho',
 }
 
 # 3/4 front in the mood light, 3/4 front neutral, 3/4 back neutral (same as

@@ -743,6 +743,122 @@ def koshi_tex(lit=True):
     return gen
 
 
+def pnoise(w, h, cx, cy, rng):
+    """Value noise tileable in both x and y (cx, cy cells): thatch courses
+    are mapped band by band, the seams between bands must not show."""
+    cx, cy = max(1, int(cx)), max(1, int(cy))
+    g = rng.random((cy, cx))
+    xs = np.arange(w) / w * cx
+    ys = np.arange(h) / h * cy
+    x0 = np.floor(xs).astype(int); fx = xs - x0; x1 = (x0 + 1) % cx; x0 %= cx
+    y0 = np.floor(ys).astype(int); fy = ys - y0; y1 = (y0 + 1) % cy; y0 %= cy
+    fx = fx * fx * (3 - 2 * fx); fy = (fy * fy * (3 - 2 * fy))[:, None]
+    top = g[y0][:, x0] * (1 - fx) + g[y0][:, x1] * fx
+    bot = g[y1][:, x0] * (1 - fx) + g[y1][:, x1] * fx
+    return top * (1 - fy) + bot * fy
+
+
+def kaya(col='#7d6a4f', moss=0.0, ppm=48, course=True):
+    """Thatch (kaya, Miscanthus) of the gassho roofs, seen on the slope: a
+    fuzzy mass of short stems leaning down the slope (along V), light stem
+    ends as speckle, soft bundles, a faint shadow line under each course,
+    weathered grey with brown showing through, optional moss patches.
+    Tiles in U and V (courses of 2 m)."""
+    def gen(w, h, rng):
+        stems = pnoise(w, h, w / 2, h / 5, rng)               # short fibres (~10 cm) along V
+        fuzz = pnoise(w, h, w / 1.2, h / 1.5, rng)            # fibre-scale noise, isotropic
+        clumps = pnoise(w, h, w / 8, h / 12, rng)             # bundles
+        blot = 0.6 * pnoise(w, h, w / 48, 2, rng) + 0.4 * pnoise(w, h, w / 20, 4, rng)
+        f = (0.8 + 0.16 * stems + 0.14 * fuzz) * (0.9 + 0.14 * clumps) * (0.9 + 0.16 * blot)
+        speck = rng.random((h, w))
+        f = np.where(speck > 0.94, f * 1.18, np.where(speck < 0.06, f * 0.78, f))
+        v = vgrad(w, h)
+        if course:   # the course above overlaps the top of this one (soft shadow)
+            f *= 1 - 0.08 * smoothstep(0.9, 1.0, v) + 0.03 * smoothstep(0.06, 0.0, v)
+        rgb = srgb(col) * f[..., None]
+        grey = smoothstep(0.45, 0.75, blot)
+        rgb = rgb * (1 - 0.3 * grey[..., None]) + srgb('#7e786c') * (f * 0.3 * grey)[..., None]
+        sm = 0.1 + 0.04 * fuzz
+        if moss:
+            m = smoothstep(0.62 - 0.2 * moss, 0.82 - 0.2 * moss, 0.75 * pnoise(w, h, w / 40, 2, rng) + 0.25 * pnoise(w, h, w / 10, 5, rng))
+            m = 0.85 * m * (0.7 + 0.3 * fuzz)
+            mc = srgb('#4d5a2c') * (0.75 + 0.35 * fuzz)[..., None]
+            rgb = rgb * (1 - m[..., None]) + mc * m[..., None]
+            sm = sm * (1 - m) + 0.06 * m
+        return _out(rgb, sm)
+    return gen
+
+
+def kaya_edge(col='#6e5c42', ppm=48):
+    """Cut face of the thatch (eave and verge): stem ends as a dense light
+    speckle, darker layers parallel to the roof (lines of constant V every
+    ~15 cm), a dark band where the layers press together. Tiles in U."""
+    def gen(w, h, rng):
+        speck = value_noise(w, h, w, h, rng)
+        lay = value_noise(w, h, w // 6, max(2, int(h / ppm / 0.15)), rng)
+        f = (0.72 + 0.4 * speck) * (0.8 + 0.3 * lay)
+        v = vgrad(w, h) * h / ppm
+        f *= 1 - 0.25 * smoothstep(0.35, 0.0, np.abs(np.mod(v, 0.16) - 0.08) / 0.08)
+        rgb = srgb(col) * f[..., None]
+        rgb = rgb * (1 - 0.35 * smoothstep(0.8, 0.95, speck)[..., None]) + srgb('#b59a6a') * (0.35 * smoothstep(0.8, 0.95, speck))[..., None]
+        return _out(rgb, 0.1)
+    return gen
+
+
+def grass(col='#55602f', ppm=48, dry=0.35):
+    """Short grass of banks and verges: mottled green, dry straw patches,
+    blades as fine speckle, darker damp foot (V = 0). Tiles in U."""
+    def gen(w, h, rng):
+        n = fbm(w, h, w // 16, max(2, h // 16), rng, 4)
+        speck = rng.random((h, w))
+        f = 0.78 + 0.35 * n
+        f = np.where(speck > 0.9, f * 1.22, np.where(speck < 0.08, f * 0.7, f))
+        rgb = srgb(col) * f[..., None]
+        d = smoothstep(0.55, 0.75, fbm(w, h, w // 24, max(2, h // 24), rng, 3)) * dry
+        rgb = rgb * (1 - d[..., None]) + srgb('#9a8a5a') * (f * d)[..., None]
+        rgb *= grime(w, h, rng, 0.15, 0.15)[..., None]
+        return _out(rgb, 0.12)
+    return gen
+
+
+def paddy(ppm=48, row_m=0.3, hill_m=0.18):
+    """Harvested rice paddy: wet dark mud with puddles, rows of cut rice
+    stubble (hills every 18 cm in rows 30 cm apart, along U). Tiles in U and V."""
+    def gen(w, h, rng):
+        y, x = np.mgrid[0:h, 0:w].astype(float)
+        nx = max(1, round(w / (hill_m * ppm))); ny = max(1, round(h / (row_m * ppm)))
+        px, py = w / nx, h / ny
+        dx = np.mod(x, px) - px / 2; dy = np.mod(y, py) - py / 2
+        hill = smoothstep(2.6, 1.0, np.sqrt(dx * dx + dy * dy * 1.6))
+        n = pnoise(w, h, w / 16, h / 16, rng)
+        wet = smoothstep(0.6, 0.74, pnoise(w, h, w / 64, max(2, h / 48), rng) + 0.08 * n)
+        mud = srgb('#4a4034') * (0.8 + 0.3 * n)[..., None]
+        water = srgb('#20272a') * (0.9 + 0.15 * n)[..., None]
+        rgb = mud * (1 - wet[..., None]) + water * wet[..., None]
+        rgb = rgb * (1 - 0.8 * hill[..., None]) + srgb('#8f7c50') * (0.8 + 0.3 * n)[..., None] * (0.8 * hill[..., None])
+        return _out(rgb, 0.3 + 0.4 * wet * (1 - hill))
+    return gen
+
+
+def straw_bundle():
+    """One bundle of rice straw hung on a drying rack (LOD-friendly picture):
+    stalks as fine vertical lines, the rope tie near the top, golden-brown
+    ears hanging at the bottom with a ragged edge."""
+    def gen(w, h, rng):
+        u, v, rgb, emit = _canvas(w, h, '#c2a66e')
+        stalk = value_noise(w, h, w // 2, 2, rng)
+        f = 0.78 + 0.3 * stalk
+        rgb = rgb * f[..., None]
+        ear = v < 0.32 + 0.08 * value_noise(w, h, w // 3, 2, rng)
+        rgb[ear] = (srgb('#8f6e3a') * (0.75 + 0.35 * stalk[..., None]))[ear]
+        tie = (v > 0.8) & (v < 0.86)
+        rgb[tie] = srgb('#6e5a36')
+        edge = (u < 0.06) | (u > 0.94)
+        rgb[edge] *= 0.7
+        return _out(rgb, 0.18)
+    return gen
+
+
 # ── atlas layouts (pixel rects: x, y, w, h; y from the bottom) ──────────────
 
 def _cells(names_gens, x0, y0, cols, size=64, h=None):
@@ -1200,6 +1316,117 @@ LAYOUTS = {
             ('BOX_PURPLE',  flat('#5a2a6a', 0.4, dirt=0.05)),
             ('BOX_ORANGE',  flat('#d8642c', 0.4, dirt=0.05)),
             ('STRAW_DARK',  flat('#9a8452', 0.2, dirt=0.15)),
+        ], 0, 0, 16, 64, 32),
+    },
+    'Gassho': {   # gassho farmhouses: thatch 2 m courses at 48 px/m, walls 1.5 m strips at 64 px/m, ground 48 px/m
+        'KAYA':          _strip(928, 96, kaya('#8a7658'), ppm=48),
+        'KAYA_OLD':      _strip(832, 96, kaya('#6c6455', moss=0.8), ppm=48),
+        'KAYA_NEW':      _strip(736, 96, kaya('#ad9160'), ppm=48),
+        'WOOD_TATE':     _strip(640, 96, tate_ita('#4a3a2c'), ppm=64),
+        'WOOD_BOARD':    _strip(544, 96, wood_board('#433226'), ppm=64),
+        'ROAD':          _strip(480, 64, road_earth('#867c6c'), ppm=48),
+        'GRASS':         _strip(416, 64, grass(), ppm=48),
+        'ISHIGAKI':      _strip(352, 64, ishigaki(stone_m=(0.45, 0.3), ppm=48), ppm=48),
+        'PADDY':         _strip(288, 64, paddy(), ppm=48),
+        'KAYA_UNDER':    _strip(240, 48, kaya('#3e3326', course=False), ppm=48),
+        'KAYA_EDGE':     _strip(192, 48, kaya_edge(), ppm=48),
+        'STONE':         _strip(160, 32, stone('#7e7f80', dirt=0.3), ppm=64),
+        'WOOD':          _strip(128, 32, wood('#33261c'), ppm=48),
+        'WOOD_LIGHT':    _strip(96, 32, wood('#5a4430', smooth=0.3), ppm=48),
+        'SHOJI':         _rect(0, 0, 64, 64, shoji(lit=True)),
+        'SHOJI_DARK':    _rect(64, 0, 64, 64, shoji(lit=False)),
+        'KOSHI_LIT':     _rect(128, 0, 64, 64, koshi_tex(True)),
+        'KOSHI_DARK':    _rect(192, 0, 64, 64, koshi_tex(False)),
+        'HASA_STRAW':    _rect(0, 64, 64, 32, straw_bundle()),
+        **_cells([
+            ('IRON',        flat('#26272a', 0.4, 0.7, dirt=0.1)),
+            ('INTERIOR',    flat('#0b0a09', 0.2, dirt=0.0)),
+            ('LIGHT_WARM',  emissive('#ffb768')),
+            ('WOOD_FLAT',   flat('#33261c', 0.3, dirt=0.12)),
+            ('WOOD_LIGHT_FLAT', flat('#5a4430', 0.3, dirt=0.12)),
+            ('WOOD_BOARD_FLAT', flat('#433226', 0.25, dirt=0.15)),
+            ('WOOD_TATE_FLAT', flat('#4a3a2c', 0.2, dirt=0.15)),
+            ('WOOD_GREY_FLAT', flat('#5d5650', 0.2, dirt=0.1)),
+            ('STONE_FLAT',  flat('#7e7f80', 0.25, dirt=0.2)),
+            ('STONE_A',     flat('#6a6965', 0.2, dirt=0.25)),
+            ('STONE_B',     flat('#5e5850', 0.2, dirt=0.25)),
+            ('STONE_C',     flat('#525a46', 0.15, dirt=0.25)),
+            ('KAYA_FLAT',   flat('#6e5e46', 0.12, dirt=0.1)),
+            ('KAYA_RIDGE',  flat('#57503f', 0.12, dirt=0.05)),
+            ('ROPE',        flat('#8a7650', 0.15, dirt=0.05)),
+            ('BAMBOO',      flat('#a48d5e', 0.4, dirt=0.1)),
+            ('BAMBOO_DARK', flat('#6e6040', 0.35, dirt=0.1)),
+            ('WATER',       flat('#1a2528', 0.95, dirt=0.0)),
+            ('MOSS',        flat('#4d5a2c', 0.1, dirt=0.1)),
+            ('END_GRAIN',   flat('#7a5c40', 0.2, dirt=0.15)),
+            ('CHANNEL',     flat('#4a4842', 0.5, dirt=0.3)),
+            ('EARTH',       flat('#5a4a3a', 0.1, dirt=0.2)),
+            ('GRAVEL',      flat('#77746c', 0.15, dirt=0.15)),
+            ('STRAW',       flat('#c2a66e', 0.2, dirt=0.15)),
+            ('STRAW_DARK',  flat('#8e7a4c', 0.2, dirt=0.15)),
+            ('PLASTER_EARTH_FLAT', flat('#b39a74', 0.2, dirt=0.15)),
+            ('PLASTER_WHITE_FLAT', flat('#e2dccf', 0.25, dirt=0.1)),
+            ('TILE_DARK',   flat('#353b43', 0.4, dirt=0.15)),
+            ('GLASS',       flat('#1c242b', 0.92, dirt=0.0)),
+            ('RED',         flat('#a8231c', 0.45, dirt=0.1)),
+            ('LEAF',        flat('#3c5a2a', 0.3, dirt=0.0)),
+            ('BARK',        flat('#4a3a2c', 0.1, dirt=0.15)),
+            ('PAPER',       flat('#e8e0cc', 0.2, dirt=0.05)),
+            ('SNOWBOARD',   flat('#5a4c3e', 0.2, dirt=0.15)),
+        ], 256, 0, 12, 64, 32),
+    },
+    'GasshoShop': {   # dressing of the gassho village: interiors, boards, noren, persimmons, firewood, fire hut sign
+        **{f'INT_{k}': _rect(i * 256, 896, 256, 128, png(f'GA_INT_{k}', 0.6, emit=0.85))
+           for i, k in enumerate(('IRORI', 'CAFE', 'SHOP'))},
+        'KB0': _rect(768, 960, 256, 64, png('GA_KB0', 0.35)),
+        'KB1': _rect(768, 896, 256, 64, png('GA_KB1', 0.35)),
+        'KB2': _rect(0, 832, 256, 64, png('GA_KB2', 0.35)),
+        'KB3': _rect(256, 832, 256, 64, png('GA_KB3', 0.35)),
+        **{f'KV{i}': _rect(i * 64, 576, 64, 256, png(f'GA_KV{i}', 0.35)) for i in range(3)},
+        **{f'NOREN{i}': _rect(192 + i * 128, 736, 128, 96, png(f'GA_NOREN{i}', 0.15)) for i in range(3)},
+        'ANDON0':  _rect(576, 768, 64, 64, png('GA_ANDON0', 0.3, emit=0.85)),
+        'ANDON1':  _rect(640, 768, 64, 64, png('GA_ANDON1', 0.3, emit=0.85)),
+        'MENU':    _rect(704, 736, 64, 96, png('GA_MENU', 0.3)),
+        'HOSUI':   _rect(768, 768, 128, 64, png('GA_HOSUI', 0.4)),
+        'HOKORA':  _rect(896, 704, 64, 128, png('GA_HOKORA', 0.4)),
+        'LOGS':    _rect(512, 832, 128, 64, png('KI_LOGS', 0.15)),
+        'KAGO':    _rect(640, 832, 64, 64, png('KI_KAGO', 0.2)),
+        'BUCKET':  _rect(704, 832, 64, 32, png('KI_BUCKET', 0.5)),
+        'WARAJI':  _rect(192, 576, 64, 128, png('KI_WARAJI', 0.15)),
+        'NOBORI0': _rect(256, 672, 128, 32, png('GA_NOBORI0', 0.2)),
+        **_cells([
+            ('WOOD_DARK',   flat('#33261c', 0.3, dirt=0.12)),
+            ('WOOD_LIGHT',  flat('#8a6a48', 0.35, dirt=0.12)),
+            ('IRON',        flat('#26272a', 0.4, 0.7, dirt=0.1)),
+            ('BLACK',       flat('#151617', 0.4, dirt=0.0)),
+            ('WHITE',       flat('#efe9dc', 0.3, dirt=0.1)),
+            ('STRAW',       flat('#c9b07a', 0.2, dirt=0.15)),
+            ('STRAW_DARK',  flat('#9a8452', 0.2, dirt=0.15)),
+            ('BARK',        flat('#4a3a2c', 0.1, dirt=0.15)),
+            ('END_GRAIN',   flat('#a8845a', 0.2, dirt=0.1)),
+            ('STONE',       flat('#7e7f80', 0.25, dirt=0.2)),
+            ('POT_CLAY',    flat('#8a4a2c', 0.3, dirt=0.2)),
+            ('INDIGO',      flat('#24324a', 0.15, dirt=0.0)),
+            ('LEAF',        flat('#3c5a2a', 0.3, dirt=0.0)),
+            ('LIT_WARM',    emissive('#ffc985')),
+            ('NOREN_NAVY',  flat('#1d2a4a', 0.15, dirt=0.0)),
+            ('BUCKET_RED',  flat('#b3202a', 0.5, dirt=0.1)),
+            ('FELT_RED',    flat('#b3202a', 0.1, dirt=0.05)),
+            ('PARASOL_RED', flat('#c42a22', 0.3, dirt=0.05)),
+            ('BAMBOO',      flat('#a48d5e', 0.35, dirt=0.1)),
+            ('STEEL',       flat('#9a9ca0', 0.6, 1.0, dirt=0.1)),
+            ('PAPER',       flat('#f4ecd8', 0.2, dirt=0.05)),
+            ('KAKI',        flat('#d8661e', 0.45, dirt=0.0)),
+            ('KAKI_DRY',    flat('#9a3e16', 0.35, dirt=0.0)),
+            ('DAIKON',      flat('#e8e2cc', 0.3, dirt=0.05)),
+            ('GREEN',       flat('#5a7a2a', 0.3, dirt=0.0)),
+            ('ROPE',        flat('#8a7650', 0.15, dirt=0.05)),
+            ('RED',         flat('#b8261c', 0.5, dirt=0.05)),
+            ('HOSE_RED',    flat('#c43a22', 0.55, 0.3, dirt=0.05)),
+            ('BRASS',       flat('#a08440', 0.55, 0.9, dirt=0.05)),
+            ('WOOD_GREY',   flat('#6a625a', 0.2, dirt=0.1)),
+            ('ONION',       flat('#b07a40', 0.35, dirt=0.0)),
+            ('LACQUER_RED', flat('#8a1f1a', 0.7, dirt=0.03)),
         ], 0, 0, 16, 64, 32),
     },
 }
