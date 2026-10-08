@@ -42,7 +42,7 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
   Fahrräder), `Nature` (Felsen, Laub, Erde, Töpfe — später Vegetation;
   nur deckend, Blatt-Karten mit Alpha brauchen in Aufgabe 4 ein eigenes
   Material), `Kura`, `Tokyo` (Fliesen- und ALC-Wände, Konbini, Schilder,
-  Neon), `TokyoSigns`, `Koedo` + `KoedoShop`, `Kiso` + `KisoShop`, `Gassho` + `GasshoShop`, `Minato` + `MinatoShop`. Neuer Baustil = neuer Atlas.
+  Neon), `TokyoSigns`, `Koedo` + `KoedoShop`, `Kiso` + `KisoShop`, `Gassho` + `GasshoShop`, `Minato` + `MinatoShop`, `Tera` + `TeraShop`. Neuer Baustil = neuer Atlas.
 - Atlas 1024², drei Karten passend zu URP/Lit:
   `T_<Stil>_BaseColor` (sRGB) · `T_<Stil>_MaskMap` (R Metall, G AO = 1,
   A Glätte; linear) · `T_<Stil>_Emission` (sRGB).
@@ -83,6 +83,7 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
 | Schindeln (Kiso) | `#5f5a52` | | Dachsteine (Kiso) | `#6a6965` `#5e5850` `#525a46` |
 | Stroh alt / neu / bemoost (Gassho) | `#8a7658` `#ad9160` `#6c6455` | | Gras / Reisfeld-Schlamm (Gassho) | `#55602f` `#4a4034` |
 | Wellblech blau / rot / grau / Rost (Minato) | `#4f7f8c` `#8a3a2c` `#9a9d9e` `#6e3a1e` | | Boje orange / Fischkiste blau (Minato) | `#e8661a` / `#1f63b0` |
+| Tempelziegel / Kupfer-Patina / Zypressenrinde (Tera) | `#4a525c` / `#527a69` / `#5a3e2c` | | Zinnober-Anstrich / Lehmmauer ocker (Tera) | `#b5402a` / `#c39a5c` |
 
 Gedämpfte Grundtöne, kräftige Farben nur als Akzent (Automat, Torii, Licht).
 
@@ -335,6 +336,50 @@ Nobori, Menü, Fischkiste, Styroporbox, Himono, Tintenfisch, 2 Netze,
 - **Bilder:** `minato.shots(ordner)` stellt Szenen aus **verlinkten
   Kopien** auf (ein Haus darf mehrmals stehen, nichts wird verschoben) und
   löscht sie danach; Bühnenboden auf −3 m, Land als eigene Platte.
+
+## Tera-Bausatz (Tempel und Schreine, Kiyomizu-dera / Murō-ji / Dorfschrein, ab 2026-10-08)
+
+`buildings/tera_kit.py` (Module) + `buildings/tera.py` (Bauten als Daten
+`HALLS`, Sonderbauten Tor `SANMON` und Pagode `PAGODA`, Wegstücke `PIECES`,
+Detail-Sets `SETS`). Atlanten `Tera` (Ziegelfläche, Kupfer, Zypressenrinde in
+Bändern ≤ 2 bzw. 1,33 m, Putz, Lehmmauer mit weißen Linien, Bretter,
+Zinnober 1 m für Säulen, Traufkante mit Ziegelenden je Reihe, Kies,
+Steinpflaster, Ishigaki, Waldboden) und `TeraShop` (3 Innenräume, Tafeln
+青嵐寺 / 雨宮神社, 授与所, 3 Nobori, 2 Chōchin, 2 Ema, Opferkasten, Tafel 由緒,
+おみくじ, Glockenseil, Preisliste). Namen erfunden.
+- **Geschwungenes Dach** (`Roof`): ein Höhenfeld über dem Grundriss,
+  z = Traufe + g(d) + Eckhub. g ist konkav (flach an der Traufe, steil am
+  First: *sori*), der Eckhub hebt die Traufe zu den Ecken (*noki-zori*) und
+  klingt den Hang hinauf und entlang der Traufe ab. Arten: `hip`
+  (Walm, Pagoden-Ring mit `top`), `irimoya` (Walm unten, Giebel ab `dg`),
+  `gable`, `shed` (Vordach `kohai`). Jede Seite ein Gitter (a, d), an den
+  Graten abgeschnitten; die Ziegelreihen sind Kämme der Fläche (`pitch`,
+  `amp`), Kupfer/Rinde glatt mit dicker Kante. Grate (`kudamune`) decken die
+  Naht zwischen den Seiten. UVs in Bändern den Hang hinauf.
+- **Traufe:** Ziegelenden + zwei Bretter als ein Streifen, dessen Periode
+  genau eine Ziegelreihe ist (`FASCIA`); Untersicht bis zur Wandlinie;
+  Sparren mit weißen Enden; Eckbalken (*sumigi*) mit Metallkappe und
+  Windglocke. First mit Noshi-Lagen, Rundziegel, Onigawara (Größe folgt dem
+  Dach), Irimoya-Giebel mit Gitterlatten, Hafu-Brettern und Gegyo.
+- **Halle aus Daten** (`hall`): Steinpodest (oder Ishigaki), Rundsäulen auf
+  Basissteinen, Nageshi + Kopfriegel mit weißen Enden, je Feld ein Modul
+  (`lattice` Gittertür, `board` Brettür mit Nagelköpfen/Bändern oder offen,
+  `shitomi`, `renji` Stabfenster mit diagonalen Stäben, `plaster`,
+  `counter` Amulettschalter), **Konsolen** (*kumimono*) als gestufte
+  Geometrie (Lager, Arme, Endklötze, Pfette), Putzfelder dazwischen bis an
+  die Untersicht, Umgang mit Geländer (*kōran*) und Treppe mit Zwiebelknäufen.
+  Die Ecksätze gehören Vorder- und Rückwand (sonst doppelt gezählt).
+- **Zwei Dichten:** großer Tempelbezirk (`KEIDAI`: Tor, Sandō mit Fahnen
+  und Laternen, Halle, Pagode, Glockenturm, Brunnen, Amtshaus) und stiller
+  Bergschrein im Wald (`YAMA`: Torii, Kiesweg, Steintreppe, Haiden + Honden,
+  Bergtempel mit kleinem Tor). Bäume in diesen Bildern sind Platzhalter.
+- **Budget gemessen** mit `K.part_costs(T, [...], fn)` (neu im Kit):
+  Haupthalle vorher 12 955 → Konsolen 2 480, Dach 2 064, Sparren 1 248,
+  Geländer 1 166. Gekürzt: Wand-Arme nur auf der ersten Stufe, Ecksätze
+  einmal, Sparren alle 0,58 m, Nagelköpfe 4 je Leiste, Basissteine nur LOD0.
+- **Bodenstücke liegen ≥ 2 cm über 0** (Kies, Pflaster, Waldboden): der
+  Bühnenboden bei 0 verdeckt sonst alles (zweites Mal nach Kiso).
+- **Bilder:** `tera.shots(ordner)`.
 
 ## Abnutzung
 

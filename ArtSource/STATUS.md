@@ -4,7 +4,29 @@ Plan: [docs/PLAN.md](../docs/PLAN.md), Abschnitt „Asset-Sprint". Regeln:
 [STYLE-KIT.md](STYLE-KIT.md) (verbindlich). Läuft parallel zur Unity-Sitzung,
 nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
-## Wo wir stehen (2026-10-08, Abend)
+## Wo wir stehen (2026-10-08, Nacht)
+
+- **Aufgabe 3 — Gebäude, Tempel/Schrein („Tera"): Pilot fertig, wartet auf
+  Freigabe.** Letzter Baustil von Aufgabe 3. Zwei Dichten: **großer
+  Tempelbezirk** (Tor mit großer Laterne, Sandō mit Fahnen und
+  Steinlaternen, Haupthalle in Zinnober, Pagode, Glockenturm, Brunnenhaus,
+  Amulett-Schalter mit Ema- und Omikuji-Gestell, Lehmmauer mit weißen
+  Linien) und **stiller Bergschrein im Wald** (Steintorii, Kiesweg,
+  Steintreppe, Zinnober-Torii oben, Koma-inu, Haiden mit Vordach und
+  Honden mit Chigi/Katsuogi; daneben Bergtempel aus altem Holz mit
+  Rindendach und kleinem Tor). Bilder in `previews/`: `Tera_Overview.png`
+  (Bezirk: Augenhöhe Stimmung/neutral, Tor, Seite mit Pagode, von oben,
+  Grau; Bergschrein: Treppe Stimmung/neutral, Haiden, Bergtempel, von oben,
+  Grau), `Tera_Buildings.png` (alle 10 einzeln), `Tera_Back.png`,
+  `Tera_clay_houses.png`, `Tera_detail.png` (Nahaufnahmen: Traufe mit
+  Konsolen und Sparren von unten, Hallenfront mit Altar und Opferkasten,
+  Ecke mit Grat und Windglocke, Haiden-Front mit Shimenawa und Glocke,
+  Tempelglocke mit Stoßbalken, Chigi/Katsuogi, Brunnen mit Schöpfkellen,
+  Pagoden-Traufe, Tor mit Laterne, Amulett-Schalter), `Tera_Pieces.png`.
+  **Frage an dich:** drei Wahrzeichen über 5 000 Dreiecken (Tabelle unten).
+  Danach: Aufgabe 4 Vegetation (ersetzt auch die Platzhalter-Zedern).
+
+## Davor (2026-10-08, Abend)
 
 - **Aufgabe 3 — Gebäude, Fischerdorf/Hafen („Minato"): freigegeben**
   (Mensch: „Qualität gefällt mir", 2026-10-08). Zwei Dichten: **Hafenkern** (Kaimauer, Fischhalle,
@@ -57,6 +79,41 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
   Wohnblock-Budget: a) gilt (als 3 Felder zählen), mit der Freigabe bestätigt.
   Danach Baustil für Baustil: Koedo (Kura ausbauen), Kiso, Gassho,
   Fischerdorf, Tempel — je Pilot + Freigabe.
+
+### Tempel/Schrein-Pilot „Tera" (Atlas `Tera` + `TeraShop`, Generator `buildings/tera.py` + Bausatz `buildings/tera_kit.py`)
+
+| FBX (`exports/buildings/`, Präfix `SM_Tera_`) | Bau | Ausstattung | Dreiecke Bau LOD0 / LOD1 · Ausstattung LOD0 / LOD1 |
+|---|---|---|---|
+| Hondo | **Wahrzeichen.** Haupthalle 5 × 4 Felder (13,5 × 10,2 m, First 13 m): Steinpodest, Umgang mit Geländer, Treppe mit Zwiebelknäufen, Zinnober-Rundsäulen auf Basissteinen, Gittertüren (hell), Shitomi, offene Brettür mit Altarbild, Stabfenster, 2-stufige Konsolen, Irimoya-Ziegeldach mit Eckhub, Sparren, Eckbalken mit Windglocken | Altar-Innenbild, Tafel 青嵐寺, große rote Laterne, Opferkasten, 2 weiße Laternen, Räucherbecken, 2 Nobori, Besen | **9 343** / 2 682 · 1 038 / 504 |
+| Hondo_Yama | Bergtempel 3 × 3 Felder (Murō-ji): altes graues Holz, Ishigaki-Terrasse, 1-stufige Konsolen, Irimoya-Rindendach mit dicker Kante | Altar, Tafel, Opferkasten, kleines Räucherbecken, Besen | 5 700 / 2 222 · 410 / 228 |
+| Sanmon | **Wahrzeichen.** Zweigeschossiges Tor (rōmon) 3 Felder, Durchgang mit großer Laterne (wie Kaminarimon), Gitter in den Seitenfeldern, Umgang oben, Irimoya-Ziegeldach | Tafel 青嵐寺, große Laterne | **7 073** / 2 448 · 166 / 92 |
+| Pagoda_3 | **Wahrzeichen.** Dreistöckige Pagode 23,5 m: Podest mit Treppe, Konsolen je Stockwerk, Umgänge oben, Sōrin mit 9 Ringen, Flammenblech, Juwel | — | **9 072** / 4 412 |
+| Shoro | Glockenturm auf Ishigaki-Sockel mit Steintreppe, offen, Querbalken | Bronzeglocke (Bänder, Haken), Stoßbalken an zwei Seilen, Zugseil | 3 185 / 1 154 · 380 / 138 |
+| Yakuimon | Kleines Tor, 4 Pfosten, Ziegel-Satteldach, Torflügel offen | Besen | 1 341 / 552 · 12 / 12 |
+| Haiden | Gebetshalle 3 × 2 Felder, unbemaltes Holz, Umgang, Gittertür (hell), hochgeklappte Shitomi, **Vordach (kōhai)** über der Treppe auf 2 Pfosten, Irimoya-Kupferdach | Shimenawa mit Shide und Quasten, Glocke mit Seil (rot/weiß/violett), Opferkasten, Tafel 雨宮神社, 2 Laternen, Koma-inu-Paar | 4 865 / 2 025 · 1 218 / 498 |
+| Honden | Hauptschrein (shinmei): hoher Boden, Umgang, Treppe, Brettwände, Rinden-Satteldach, **Chigi** (gekreuzte Bretter) und 5 **Katsuogi**, freistehende Firstpfosten | kleine Shimenawa | 1 816 / 928 · 256 / 46 |
+| Temizuya | Brunnenhaus: 4 Pfosten, Kupfer-Satteldach, Steinbecken mit Wasser, Bronze-Auslauf | 5 Schöpfkellen auf Bambusstangen | 1 024 / 610 · 196 / 136 |
+| Juyosho | Amulett-Schalter 4 × 2 Felder: 3 Schalterfenster mit Ablage, Irimoya-Ziegeldach | Innenbild Amulette, Schild 授与所, Preistafel, Ema-Gestell, Omikuji-Gestell, 2 Nobori | 4 193 / 1 314 · 1 287 / 192 |
+| Wall_Tsuiji_4m · Wall_Suji_4m | Bezirksmauer: Ishigaki-Sockel, geböschter Putz (weiß / ocker mit 5 weißen Linien), Holzband, Ziegelkappe mit First | — | 476 / 204 |
+| Sando_8m · Path_Gravel_8m · Steps_Stone_8m | Sandō (Steinplatten, Bordsteine, Kies) · Bergweg (Kies, Trittsteine, Waldboden) · Steintreppe +2,4 m (16 Stufen, Ishigaki-Wangen, Absätze für Laternen) | — | 34 · 734 · 608 |
+| Komainu_Pair · Jokoro · Ema_Rack · Omikuji_Rack · Nobori_Row_8m · Chochin_Rack · Tatefuda | Detail-Sets (Atlas TeraShop): Wächter auf Sockeln · Räucherbecken mit Dach · Ema-Gestell · Omikuji-Gestell · 6 rote Fahnen · Laternengestell (LIGHT_) · Tafel 由緒 | — | 304 · 202 · 202 · 996 · 396 · 892 · 40 |
+
+- **Budget:** alle normalen Bauten ≤ 5 000 (Haiden 4 865, Juyosho 4 193).
+  **Drei Wahrzeichen darüber**, gemessen mit `K.part_costs` und gekürzt
+  (Haupthalle 12 955 → 9 343, Pagode 15 148 → 9 072, Tor 8 177 → 7 073).
+  Größte Posten Haupthalle: Dachfläche mit Ziegelreihen 1 832, Konsolen
+  1 456, Sparren 896, Geländer 818, Traufe 764, Säulen 720. Begründung: je
+  ein Bau pro Tempelbezirk, Blickfang und Ziel des Weges, größer als 2–3
+  Häuser (wie Wohnblock Tokyo, „als 3 Felder").
+- **Gemessen:** 22 FBX, 0 Fehler, 0 Streck-Warnungen. **Ungeprüft:** alles
+  in Unity (zwei Materialien je Bau: `M_Tera_Atlas`, `M_TeraShop_Atlas`).
+- Requisiten aus Aufgabe 2 in den Bildern: Steinlaternen, Torii (Stein,
+  Zinnober), Teehaus-Bank, Fahrrad, Felsen, Bambuszaun. **Zedern sind
+  Platzhalter** nur für die Vorschau (Aufgabe 4).
+- **Offen / Ideen nach der Freigabe:** Koma-inu noch kantig (runder,
+  Mähne); Niō-Figuren im Tor; Tor-Varianten (Torii-Reihe wie Fushimi Inari
+  als Stück); Kiesharken-Muster; Steinmauer-Ende; Kupferdach evtl. etwas
+  dunkler (frische Patina ist so hell, wirkt aber im Neutralbild grell).
 
 ### Fischerdorf/Hafen-Pilot „Minato" (Atlas `Minato` + `MinatoShop`, Generator `buildings/minato.py` + Bausatz `buildings/minato_kit.py`)
 
@@ -325,8 +382,12 @@ Konventionen:
 
 ## Für dich
 
-1. Neue Sitzung für den Tempel starten (Starttext in der Antwort vom
-   2026-10-08 Abend). Danach: Aufgabe 4 Vegetation.
+1. **Tempel-Pilot ansehen** (`previews/Tera_*.png`) und freigeben oder
+   Rückmeldung geben. Dazu die Frage: Dürfen Haupthalle (9 343), Pagode
+   (9 072) und Tor (7 073) als Wahrzeichen über 5 000 Dreiecken liegen?
+   Alternative: kleinere Haupthalle (3 × 3 Felder ≈ 5 700 wie der
+   Bergtempel) und Pagode ohne Sparren in allen Stockwerken.
+   Danach: Aufgabe 4 Vegetation.
 2. Der Unity-Sitzung bei Gelegenheit „Lichttest nach ArtSource/STATUS.md"
    sagen.
 
@@ -448,6 +509,21 @@ Konventionen:
     Szene mit `build.run([...])` in einer Minute wieder da. Neu exportierte
     Requisiten-FBX (Zeitstempel) mit `git checkout -- ArtSource/exports/props`
     zurückgesetzt, sie gehörten nicht zur Aufgabe.
+- 2026-10-08 Nacht (Tempel):
+  - **Traufbretter mit Punkten der falschen Dachseite:** eine Hilfsfunktion
+    in der Schleife über die Dachseiten griff erst später auf `side`/`cache`
+    zu (Python bindet spät) → Standardwerte binden. Gefunden über
+    Streck-Warnungen an der Traufe; alle Bausätze nach Funktionen in
+    Schleifen durchsucht (nur Tempel betroffen, sonst sofort benutzt).
+  - **Dreiecke je Teil messen war Handarbeit:** neu `K.part_costs(modul,
+    [namen], fn)` im Kit (Werkzeug) — Haupthalle 12 955 → 9 343 in zwei
+    Schritten.
+  - **Kies und Waldboden unsichtbar** (zweites Mal, nach Kiso): Bodenstücke
+    lagen auf 0 im Bühnenboden. Regel im Stil-Kit: Bodenstücke ≥ 2 cm über 0.
+  - **First auf kleinen Dächern so groß wie auf der Haupthalle:** Firsthöhe,
+    Grat und Onigawara folgen jetzt der Dachtiefe (`T.roof`).
+  - **Stehende Kamera in Tor/Torii-Säule:** Szenen-Bilder immer einmal
+    ansehen; Kameras in `tera.shots` korrigiert.
 - 2026-10-08 Abend (Fischerdorf/Hafen):
   - **Wellblech als Geometrie war zu teuer** (Fischerhaus 5 705): gemessen
     nach Teilen, dann Wellenabstand und verdeckte Rahmenflächen gekürzt

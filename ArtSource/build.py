@@ -30,6 +30,7 @@ ASSETS = {
     'kiso': 'buildings.kiso',
     'gassho': 'buildings.gassho',
     'minato': 'buildings.minato',
+    'tera': 'buildings.tera',
 }
 
 # 3/4 front in the mood light, 3/4 front neutral, 3/4 back neutral (same as

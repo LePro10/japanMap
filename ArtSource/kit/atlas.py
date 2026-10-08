@@ -989,6 +989,188 @@ def deck(col='#7a7166', board_m=0.2, ppm=64):
         return _out(rgb, 0.15 + 0.1 * tv)
     return gen
 
+
+# ── temple / shrine (Tera) ──────────────────────────────────────────────────
+
+def kawara(col='#4a525c', ppm=48, course_m=0.25, moss=0.25):
+    """Fired roof tiles (hongawara) on a temple roof, seen on the slope: the
+    round cover rows are geometry, the texture gives the courses (shadow
+    under each tile end), a tone per tile, lichen specks and moss low in the
+    valleys. Tiles in U and V (the roof is mapped in bands of <= 2 m)."""
+    def gen(w, h, rng):
+        y, x = np.mgrid[0:h, 0:w].astype(float)
+        ch = course_m * ppm
+        row = np.floor(y / ch); fy = np.mod(y, ch) / ch
+        tw = 0.3 * ppm
+        tv = (np.sin(row * 12.9898 + 4.1) * 43758.5453) % 1.0      # a tone per course only: the rows are geometry
+        n = pnoise(w, h, w / 32, h / 32, rng)
+        f = (0.92 + 0.08 * tv) * (0.88 + 0.2 * n)
+        f *= 1 - 0.38 * smoothstep(0.18, 0.0, fy)           # shadow under the tile end above
+        f *= 1 + 0.08 * smoothstep(0.8, 1.0, fy)            # glazed lit lip of the tile end
+        rgb = srgb(col) * f[..., None]
+        lich = smoothstep(0.93, 0.98, pnoise(w, h, w / 2, h / 2, rng)) * 0.5
+        rgb = rgb * (1 - lich[..., None]) + srgb('#9aa08a') * lich[..., None]
+        if moss:
+            m = smoothstep(0.66, 0.8, 0.7 * pnoise(w, h, w / 24, h / 24, rng) + 0.3 * pnoise(w, h, w / 6, h / 6, rng)) * moss * 2
+            m = np.clip(m, 0, 0.8)
+            rgb = rgb * (1 - m[..., None]) + srgb('#46542a') * m[..., None]
+        return _out(rgb, 0.42 - 0.1 * lich)
+    return gen
+
+
+def doban(col='#5f8f7a', ppm=48, seam_m=0.36, lap_m=0.33):
+    """Copper sheet roof (dōbuki, hira-buki) with green patina: standing seams
+    down the slope (along V) with a lit edge and a shadow, staggered cross
+    laps, brown copper showing in streaks, dark runs. Tiles in U and V."""
+    def gen(w, h, rng):
+        y, x = np.mgrid[0:h, 0:w].astype(float)
+        nx = max(1, round(w / (seam_m * ppm))); sw = w / nx
+        fx = np.mod(x, sw) / sw
+        col_i = np.floor(x / sw)
+        lh = lap_m * ppm
+        ny = max(1, round(h / lh)); lh = h / ny
+        fy = np.mod(y + (col_i % 2) * lh / 2, lh) / lh
+        tv = (np.sin((col_i * 17 + np.floor((y + (col_i % 2) * lh / 2) / lh) * 5) * 12.9898) * 43758.5453) % 1.0
+        pat = pnoise(w, h, w / 24, h / 24, rng)
+        rgb = srgb(col) * (0.88 + 0.14 * tv + 0.12 * pat)[..., None]
+        streak = smoothstep(0.65, 0.85, pnoise(w, h, w / 3, 2, rng)) * smoothstep(0.5, 0.8, pnoise(w, h, w / 16, h / 16, rng))
+        rgb = rgb * (1 - 0.45 * streak[..., None]) + srgb('#6a4a30') * (0.45 * streak)[..., None]
+        rgb *= (1 + 0.25 * smoothstep(0.06, 0.0, fx) - 0.4 * smoothstep(0.9, 1.0, fx))[..., None]
+        rgb *= (1 - 0.3 * smoothstep(0.08, 0.0, fy))[..., None]
+        return _out(rgb, 0.3 + 0.1 * streak, 0.2 * streak)
+    return gen
+
+
+def hiwada(col='#5a3e2c', ppm=48, moss=0.2):
+    """Cypress bark roof (hiwada-buki): a fine fibrous mass running down the
+    slope (along V), reddish brown weathering to silver grey in patches, a
+    faint course every ~0.4 m, moss. Tiles in U and V."""
+    def gen(w, h, rng):
+        fib = pnoise(w, h, w / 1.0, h / 8, rng)
+        fib2 = pnoise(w, h, w / 2.5, h / 3, rng)
+        blot = pnoise(w, h, w / 40, max(1, h / 32), rng)
+        y = np.mgrid[0:h, 0:w][0].astype(float)
+        cy = 0.4 * ppm; ny = max(1, round(h / cy)); cy = h / ny
+        fy = np.mod(y, cy) / cy
+        f = (0.78 + 0.2 * fib + 0.12 * fib2) * (0.88 + 0.2 * blot)
+        f *= 1 - 0.15 * smoothstep(0.12, 0.0, fy)
+        rgb = srgb(col) * f[..., None]
+        grey = smoothstep(0.5, 0.75, blot)
+        rgb = rgb * (1 - 0.4 * grey[..., None]) + srgb('#7a726a') * (f * 0.4 * grey)[..., None]
+        if moss:
+            m = smoothstep(0.7, 0.85, pnoise(w, h, w / 20, max(1, h / 16), rng)) * moss * 3
+            m = np.clip(m, 0, 0.75)
+            rgb = rgb * (1 - m[..., None]) + srgb('#4a5a2a') * m[..., None]
+        return _out(rgb, 0.12)
+    return gen
+
+
+def hiwada_edge(col='#7a5a40', ppm=64):
+    """Cut eave edge of a bark roof: thin pressed layers (lines of constant V),
+    lighter cut ends, dark band at the foot. Tiles in U."""
+    def gen(w, h, rng):
+        y = np.mgrid[0:h, 0:w][0].astype(float)
+        lay = value_noise(w, h, w // 3, max(2, int(h / 2)), rng)
+        sp = value_noise(w, h, w, h, rng)
+        f = (0.7 + 0.35 * lay) * (0.85 + 0.25 * sp)
+        f *= 1 - 0.25 * (np.mod(y, 3.0) < 1.0)
+        rgb = srgb(col) * f[..., None]
+        rgb *= grime(w, h, rng, 0.25, 0.2)[..., None]
+        return _out(rgb, 0.12)
+    return gen
+
+
+def nuri(col='#b5402a', ppm=64):
+    """Vermilion paint (shu-nuri) on timber, weathered: chalky lighter patches,
+    faint grain along U, darker worn spots, grime at the foot. Posts are
+    mapped rotated (U along the height)."""
+    def gen(w, h, rng):
+        g = value_noise(w, h, 8, max(8, h // 3), rng)
+        blot = fbm(w, h, w // 32, max(2, h // 32), rng, 4)
+        f = (0.88 + 0.1 * g) * (0.9 + 0.16 * blot)
+        rgb = srgb(col) * f[..., None]
+        chalk = smoothstep(0.62, 0.8, blot) * 0.35
+        rgb = rgb * (1 - chalk[..., None]) + srgb('#d8a08a') * chalk[..., None]
+        worn = smoothstep(0.9, 0.96, fbm(w, h, w // 6, max(2, h // 6), rng, 3)) * 0.6
+        rgb = rgb * (1 - worn[..., None]) + srgb('#4a3226') * worn[..., None]
+        rgb *= rain_streaks(w, h, rng, 0.08)[..., None]
+        return _out(rgb, 0.3 - 0.1 * chalk)
+    return gen
+
+
+def suji(col='#c39a5c', ppm=48, lines=(1.2, 1.32, 1.44, 1.56, 1.68), white='#e8e2d4'):
+    """Earthen wall (tsuchi-kabe): ochre clay plaster, mottled, rain runs,
+    splashed dark foot; optional white horizontal lines (suji-bei, the mark
+    of an imperial or high-rank temple) at fixed heights above the foot."""
+    def gen(w, h, rng):
+        v = vgrad(w, h) * h / ppm
+        n = fbm(w, h, w // 32, max(2, h // 32), rng, 4)
+        f = (0.88 + 0.18 * n) * rain_streaks(w, h, rng, 0.14) * grime(w, h, rng, 0.3, 0.2)
+        rgb = srgb(col) * f[..., None]
+        for z in lines or ():
+            ln = smoothstep(0.03, 0.02, np.abs(v - z))
+            sh = smoothstep(0.045, 0.03, np.abs(v - (z - 0.035))) * 0.35
+            rgb = rgb * (1 - sh[..., None])
+            rgb = rgb * (1 - ln[..., None]) + srgb(white) * (0.92 + 0.08 * n)[..., None] * ln[..., None]
+        return _out(rgb, 0.18)
+    return gen
+
+
+def fascia(col_tile='#3e454e', col_wood='#4a3626', ppm=80, period_m=0.4, tile_m=0.14, vermilion=False):
+    """Eave edge of a tile roof seen from the front, V 0 at the foot: two
+    boards (hirokomai + kaya-oi) and above them the tile ends - a round end
+    tile (with a raised disc) every period, mapped so one period = one tile
+    row of the geometry (the crests). Tiles in U."""
+    def gen(w, h, rng):
+        y, x = np.mgrid[0:h, 0:w].astype(float)
+        v = y / ppm
+        hb = h / ppm - tile_m
+        per = period_m * ppm
+        nper = max(1, round(w / per)); per = w / nper
+        fx = np.mod(x, per) / per
+        wood = srgb('#b5402a' if vermilion else col_wood) * (0.85 + 0.2 * value_noise(w, h, 8, 2, rng))[..., None]
+        rgb = wood.copy()
+        rgb *= (1 - 0.4 * (np.abs(v - hb * 0.45) < 0.008))[..., None]          # joint between the two boards
+        rgb *= (1 - 0.35 * smoothstep(0.02, 0.0, hb - v) * (v < hb))[..., None]  # shadow under the tiles
+        t = v >= hb
+        tv = (v - hb) / tile_m
+        disc = np.hypot((fx - 0.5) * per / ppm, (tv - 0.55) * tile_m) < 0.055
+        ring = np.abs(np.hypot((fx - 0.5) * per / ppm, (tv - 0.55) * tile_m) - 0.045) < 0.006
+        tc = srgb(col_tile) * (0.85 + 0.25 * value_noise(w, h, w // 8, 2, rng))[..., None]
+        tc = tc * (1 - 0.3 * (np.abs(fx - 0.5) > 0.42))[..., None]
+        tc[disc] *= 1.25
+        tc[ring] *= 0.7
+        rgb[t] = tc[t]
+        return _out(rgb, 0.35)
+    return gen
+
+
+def gravel(col='#a29f97', ppm=64):
+    """Fine grey temple gravel (jari): dense light and dark grains, a little
+    mottling. Tiles in U."""
+    def gen(w, h, rng):
+        sp = rng.random((h, w))
+        n = fbm(w, h, w // 16, max(2, h // 16), rng, 3)
+        grains = value_noise(w, h, w // 2, max(2, h // 2), rng)
+        f = (0.82 + 0.22 * grains) * (0.9 + 0.14 * n)
+        f = np.where(sp > 0.9, f * 1.2, np.where(sp < 0.08, f * 0.65, f))
+        return _out(srgb(col) * f[..., None], 0.12)
+    return gen
+
+
+def forest_floor(ppm=32):
+    """Mountain shrine ground: dark soil, cedar needles, moss cushions. Tiles in U."""
+    def gen(w, h, rng):
+        n = fbm(w, h, w // 16, max(2, h // 16), rng, 4)
+        m = smoothstep(0.5, 0.65, fbm(w, h, w // 24, max(2, h // 24), rng, 4))
+        sp = rng.random((h, w))
+        soil = srgb('#3e3226') * (0.8 + 0.3 * n)[..., None]
+        needles = np.where(sp[..., None] > 0.85, srgb('#6a4a2e'), soil)
+        moss = srgb('#4a5a2a') * (0.75 + 0.4 * value_noise(w, h, w // 2, max(2, h // 2), rng))[..., None]
+        rgb = needles * (1 - m[..., None]) + moss * m[..., None]
+        return _out(rgb, 0.1)
+    return gen
+
 # ── atlas layouts (pixel rects: x, y, w, h; y from the bottom) ──────────────
 
 def _cells(names_gens, x0, y0, cols, size=64, h=None):
@@ -1680,6 +1862,113 @@ LAYOUTS = {
             ('PAPER',       flat('#f4ecd8', 0.2, dirt=0.05)),
             ('CHALK_GREEN', flat('#22302a', 0.2, dirt=0.0)),
             ('ANTENNA',     flat('#dcdcd6', 0.5, 0.3, dirt=0.05)),
+            ('WOOD_GREY',   flat('#6a625a', 0.2, dirt=0.1)),
+        ], 0, 0, 16, 64, 32),
+    },
+    'Tera': {   # temples and shrines: roofs in bands <= 2 m (48 px/m), walls 2 m, posts 1 m (vermilion), ground
+        'KAWARA':        _strip(928, 96, kawara(), ppm=48),
+        'DOBAN':         _strip(864, 64, doban('#527a69', seam_m=0.3, lap_m=0.22), ppm=48),
+        'HIWADA':        _strip(800, 64, hiwada(), ppm=48),
+        'PLASTER':       _strip(704, 96, plaster('#e4ded0', dirt=0.22, streak=0.12), ppm=48),
+        'SUJI':          _strip(608, 96, suji(), ppm=48),
+        'BOARD':         _strip(512, 96, tate_ita('#5a4434', board_m=0.3, ppm=48), ppm=48),
+        'NURI':          _strip(448, 64, nuri(), ppm=64),
+        'WOOD':          _strip(416, 32, wood('#4a3626'), ppm=48),
+        'WOOD_OLD':      _strip(384, 32, wood('#5e5248', smooth=0.2), ppm=48),
+        'HIWADA_EDGE':   _strip(352, 32, hiwada_edge(), ppm=64),
+        'STONE':         _strip(320, 32, stone('#85857f', moss=0.3, dirt=0.25), ppm=64),
+        'ISHIGAKI':      _strip(256, 64, ishigaki('#7e7b74', stone_m=(0.45, 0.3), ppm=48), ppm=48),
+        'ISHIDATAMI':    _strip(192, 64, paving('#87847c', ppm=64, row_m=(0.35, 0.55), len_m=(0.45, 0.9)), ppm=64),
+        'FASCIA':        _strip(160, 32, fascia(), ppm=80),
+        'GRAVEL':        _strip(128, 32, gravel(), ppm=32),
+        'FOREST':        _strip(96, 32, forest_floor(), ppm=32),
+        'KOSHI_LIT':     _rect(0, 32, 64, 64, koshi_tex(True)),
+        'KOSHI_DARK':    _rect(64, 32, 64, 64, koshi_tex(False)),
+        'ONI':           _rect(128, 32, 64, 64, oni()),
+        'KAMON':         _rect(192, 32, 64, 64, kamon_b()),
+        **_cells([
+            ('TILE_A',      flat('#4d5560', 0.45, dirt=0.12)),
+            ('TILE_B',      flat('#454c56', 0.4, dirt=0.12)),
+            ('TILE_C',      flat('#555d68', 0.5, dirt=0.12)),
+            ('TILE_DARK',   flat('#353b43', 0.4, dirt=0.15)),
+            ('WOOD_FLAT',   flat('#4a3626', 0.3, dirt=0.12)),
+            ('WOOD_OLD_FLAT', flat('#5e5248', 0.2, dirt=0.12)),
+            ('BOARD_FLAT',  flat('#5a4434', 0.2, dirt=0.15)),
+            ('NURI_FLAT',   flat('#b5402a', 0.3, dirt=0.1)),
+            ('GOFUN',       flat('#e8e4d8', 0.3, dirt=0.08)),
+            ('OCHRE',       flat('#c8a050', 0.3, dirt=0.1)),
+            ('GOLD',        flat('#b8923a', 0.6, 0.9, dirt=0.05)),
+            ('BRONZE',      flat('#4a5a4a', 0.4, 0.6, dirt=0.1)),
+            ('COPPER_FLAT', flat('#527a69', 0.35, 0.1, dirt=0.12)),
+            ('HIWADA_FLAT', flat('#5a3e2c', 0.12, dirt=0.1)),
+            ('STONE_FLAT',  flat('#85857f', 0.25, dirt=0.2)),
+            ('STONE_DARK',  flat('#64645f', 0.2, dirt=0.2)),
+            ('PLASTER_FLAT', flat('#e4ded0', 0.25, dirt=0.12)),
+            ('SUJI_FLAT',   flat('#c39a5c', 0.2, dirt=0.15)),
+            ('INTERIOR',    flat('#0b0a09', 0.2, dirt=0.0)),
+            ('LIGHT_WARM',  emissive('#ffb768')),
+            ('IRON',        flat('#26272a', 0.4, 0.7, dirt=0.1)),
+            ('BLACK',       flat('#151617', 0.45, dirt=0.0)),
+            ('PAPER',       flat('#efe8d6', 0.2, dirt=0.05)),
+            ('GRAVEL_FLAT', flat('#a29f97', 0.12, dirt=0.1)),
+            ('MOSS',        flat('#4d5a2c', 0.1, dirt=0.1)),
+            ('END_GRAIN',   flat('#8a6a4a', 0.2, dirt=0.15)),
+            ('WATER',       flat('#1a2528', 0.95, dirt=0.0)),
+            ('BAMBOO',      flat('#a48d5e', 0.4, dirt=0.1)),
+            ('ROPE',        flat('#c2ad78', 0.15, dirt=0.05)),
+            ('LACQUER_BLACK', flat('#1c1a18', 0.6, dirt=0.03)),
+            ('GREEN',       flat('#2f5a4a', 0.3, dirt=0.1)),
+            ('EARTH',       flat('#5a4a3a', 0.1, dirt=0.2)),
+        ], 256, 0, 12, 64, 32),
+    },
+    'TeraShop': {   # dressing of temples and shrines: interiors, plaques, flags, lanterns, ema, offering box
+        **{f'INT_{k}': _rect(i * 256, 896, 256, 128, png(f'TE_INT_{k}', 0.6, emit=0.85)) for i, k in enumerate(('HONDO', 'HAIDEN', 'JUYO'))},
+        'GAKU0':    _rect(768, 960, 128, 64, png('TE_GAKU0', 0.6)),
+        'GAKU1':    _rect(768, 832, 64, 128, png('TE_GAKU1', 0.3)),
+        'SAISEN':   _rect(896, 896, 128, 64, png('TE_SAISEN', 0.45)),
+        'KB0':      _rect(0, 832, 256, 64, png('TE_KB0', 0.35)),
+        'KB1':      _rect(256, 832, 256, 64, png('TE_KB1', 0.35)),
+        **{f'NOBORI{i}': _rect(i * 128, 800, 128, 32, png(f'TE_NOBORI{i}', 0.2)) for i in range(3)},
+        'CHOCHIN0': _rect(384, 768, 128, 64, png('TE_CHOCHIN0', 0.3, emit=0.6)),
+        'CHOCHIN1': _rect(512, 768, 128, 64, png('TE_CHOCHIN1', 0.3, emit=0.6)),
+        'EMA0':     _rect(640, 768, 64, 64, png('TE_EMA0', 0.25)),
+        'EMA1':     _rect(704, 768, 64, 64, png('TE_EMA1', 0.25)),
+        'YUISHO':   _rect(832, 800, 128, 96, png('TE_YUISHO', 0.3)),
+        'OMIKUJI':  _rect(960, 864, 64, 32, png('TE_OMIKUJI', 0.3)),
+        'SUZU_O':   _rect(992, 736, 32, 128, png('TE_SUZU_O', 0.2)),
+        'PRICE':    _rect(0, 704, 64, 96, png('TE_PRICE', 0.3)),
+        **_cells([
+            ('WOOD_DARK',   flat('#33261c', 0.3, dirt=0.12)),
+            ('WOOD_LIGHT',  flat('#9a7a52', 0.35, dirt=0.12)),
+            ('WOOD_PALE',   flat('#c8a878', 0.3, dirt=0.1)),
+            ('IRON',        flat('#26272a', 0.4, 0.7, dirt=0.1)),
+            ('BLACK',       flat('#151617', 0.45, dirt=0.0)),
+            ('WHITE',       flat('#efe9dc', 0.3, dirt=0.1)),
+            ('PAPER',       flat('#f4f0e4', 0.2, dirt=0.03)),
+            ('STEEL',       flat('#9a9ca0', 0.6, 1.0, dirt=0.1)),
+            ('BRONZE',      flat('#4a5a4a', 0.4, 0.7, dirt=0.1)),
+            ('BRONZE_DARK', flat('#2e3a32', 0.35, 0.6, dirt=0.1)),
+            ('GOLD',        flat('#b8923a', 0.6, 0.9, dirt=0.05)),
+            ('BRASS',       flat('#a08440', 0.55, 0.9, dirt=0.05)),
+            ('ROPE',        flat('#c2ad78', 0.15, dirt=0.05)),
+            ('ROPE_DARK',   flat('#8a7a50', 0.15, dirt=0.05)),
+            ('RED',         flat('#b8261c', 0.4, dirt=0.05)),
+            ('NURI',        flat('#b5402a', 0.3, dirt=0.1)),
+            ('STONE',       flat('#85857f', 0.2, dirt=0.2)),
+            ('STONE_DARK',  flat('#64645f', 0.2, dirt=0.2)),
+            ('MOSS',        flat('#4d5a2c', 0.1, dirt=0.1)),
+            ('ASH',         flat('#9a948a', 0.1, dirt=0.05)),
+            ('LIT_WARM',    emissive('#ffc985')),
+            ('CANDLE',      emissive('#ffd27a')),
+            ('BAMBOO',      flat('#a48d5e', 0.4, dirt=0.1)),
+            ('BAMBOO_DARK', flat('#6e6040', 0.35, dirt=0.1)),
+            ('LEAF',        flat('#3c5a2a', 0.3, dirt=0.0)),
+            ('SAKAKI',      flat('#2a4a24', 0.45, dirt=0.0)),
+            ('PURPLE',      flat('#4a2a5a', 0.2, dirt=0.05)),
+            ('WATER',       flat('#1a2528', 0.95, dirt=0.0)),
+            ('LACQUER_RED', flat('#8a1f1a', 0.7, dirt=0.03)),
+            ('BROOM',       flat('#8a7a4a', 0.15, dirt=0.05)),
+            ('GREEN',       flat('#2f5a4a', 0.3, dirt=0.1)),
             ('WOOD_GREY',   flat('#6a625a', 0.2, dirt=0.1)),
         ], 0, 0, 16, 64, 32),
     },

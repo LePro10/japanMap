@@ -3519,6 +3519,703 @@
   "switchable": [],
   "attach": []
  },
+ "Tera_Chochin_Rack": {
+  "fbx": "buildings/SM_Tera_Chochin_Rack.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Chochin_Rack_LOD0",
+   "SM_Tera_Chochin_Rack_LOD1"
+  ],
+  "tris": [
+   892,
+   520
+  ],
+  "materials": [
+   "M_TeraShop_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Chochin_Rack"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tera_Chochin_Rack",
+    "pos": [
+     0.0,
+     -0.4,
+     2.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 4.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Ema_Rack": {
+  "fbx": "buildings/SM_Tera_Ema_Rack.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Ema_Rack_LOD0",
+   "SM_Tera_Ema_Rack_LOD1"
+  ],
+  "tris": [
+   202,
+   64
+  ],
+  "materials": [
+   "M_TeraShop_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Ema_Rack"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Haiden": {
+  "fbx": "buildings/SM_Tera_Haiden.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Haiden_LOD0",
+   "SM_Tera_Haiden_LOD1",
+   "SM_Tera_Haiden_Shop_LOD0",
+   "SM_Tera_Haiden_Shop_LOD1"
+  ],
+  "tris": [
+   4865,
+   2025
+  ],
+  "materials": [
+   "M_TeraShop_Atlas",
+   "M_Tera_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Haiden_Base",
+   "COL_Tera_Haiden_Hall",
+   "COL_Tera_Haiden_Roof"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tera_Haiden_0",
+    "pos": [
+     -2.7,
+     -3.0,
+     2.833
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 5.0
+   },
+   {
+    "name": "LIGHT_Tera_Haiden_1",
+    "pos": [
+     0.0,
+     -3.0,
+     2.35
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 5.0
+   },
+   {
+    "name": "LIGHT_Tera_Haiden_2",
+    "pos": [
+     2.7,
+     -3.0,
+     2.833
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 5.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Honden": {
+  "fbx": "buildings/SM_Tera_Honden.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Honden_LOD0",
+   "SM_Tera_Honden_LOD1",
+   "SM_Tera_Honden_Shop_LOD0",
+   "SM_Tera_Honden_Shop_LOD1"
+  ],
+  "tris": [
+   1816,
+   928
+  ],
+  "materials": [
+   "M_TeraShop_Atlas",
+   "M_Tera_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Honden_Base",
+   "COL_Tera_Honden_Hall",
+   "COL_Tera_Honden_Roof"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Hondo": {
+  "fbx": "buildings/SM_Tera_Hondo.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Hondo_LOD0",
+   "SM_Tera_Hondo_LOD1",
+   "SM_Tera_Hondo_Shop_LOD0",
+   "SM_Tera_Hondo_Shop_LOD1"
+  ],
+  "tris": [
+   9343,
+   2682
+  ],
+  "materials": [
+   "M_TeraShop_Atlas",
+   "M_Tera_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Hondo_Base",
+   "COL_Tera_Hondo_Hall",
+   "COL_Tera_Hondo_Roof"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tera_Hondo_0",
+    "pos": [
+     -3.0,
+     -5.7,
+     2.75
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 5.0
+   },
+   {
+    "name": "LIGHT_Tera_Hondo_1",
+    "pos": [
+     0.0,
+     -5.7,
+     2.75
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 5.0
+   },
+   {
+    "name": "LIGHT_Tera_Hondo_2",
+    "pos": [
+     3.0,
+     -5.7,
+     2.75
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 5.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Hondo_Yama": {
+  "fbx": "buildings/SM_Tera_Hondo_Yama.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Hondo_Yama_LOD0",
+   "SM_Tera_Hondo_Yama_LOD1",
+   "SM_Tera_Hondo_Yama_Shop_LOD0",
+   "SM_Tera_Hondo_Yama_Shop_LOD1"
+  ],
+  "tris": [
+   5700,
+   2222
+  ],
+  "materials": [
+   "M_TeraShop_Atlas",
+   "M_Tera_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Hondo_Yama_Base",
+   "COL_Tera_Hondo_Yama_Hall",
+   "COL_Tera_Hondo_Yama_Roof"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tera_Hondo_Yama_0",
+    "pos": [
+     0.0,
+     -4.35,
+     2.55
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 5.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Jokoro": {
+  "fbx": "buildings/SM_Tera_Jokoro.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Jokoro_LOD0",
+   "SM_Tera_Jokoro_LOD1"
+  ],
+  "tris": [
+   202,
+   182
+  ],
+  "materials": [
+   "M_TeraShop_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Jokoro"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Juyosho": {
+  "fbx": "buildings/SM_Tera_Juyosho.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Juyosho_LOD0",
+   "SM_Tera_Juyosho_LOD1",
+   "SM_Tera_Juyosho_Shop_LOD0",
+   "SM_Tera_Juyosho_Shop_LOD1"
+  ],
+  "tris": [
+   4193,
+   1314
+  ],
+  "materials": [
+   "M_TeraShop_Atlas",
+   "M_Tera_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Juyosho_Base",
+   "COL_Tera_Juyosho_Hall",
+   "COL_Tera_Juyosho_Roof"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tera_Juyosho_0",
+    "pos": [
+     -2.7,
+     -2.4,
+     2.1
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 5.0
+   },
+   {
+    "name": "LIGHT_Tera_Juyosho_1",
+    "pos": [
+     -0.9,
+     -2.4,
+     2.1
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 5.0
+   },
+   {
+    "name": "LIGHT_Tera_Juyosho_2",
+    "pos": [
+     0.9,
+     -2.4,
+     2.1
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 5.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Komainu_Pair": {
+  "fbx": "buildings/SM_Tera_Komainu_Pair.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Komainu_Pair_LOD0",
+   "SM_Tera_Komainu_Pair_LOD1"
+  ],
+  "tris": [
+   304,
+   204
+  ],
+  "materials": [
+   "M_TeraShop_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Komainu_Pair"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Nobori_Row_8m": {
+  "fbx": "buildings/SM_Tera_Nobori_Row_8m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Nobori_Row_8m_LOD0",
+   "SM_Tera_Nobori_Row_8m_LOD1"
+  ],
+  "tris": [
+   396,
+   108
+  ],
+  "materials": [
+   "M_TeraShop_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Omikuji_Rack": {
+  "fbx": "buildings/SM_Tera_Omikuji_Rack.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Omikuji_Rack_LOD0",
+   "SM_Tera_Omikuji_Rack_LOD1"
+  ],
+  "tris": [
+   996,
+   66
+  ],
+  "materials": [
+   "M_TeraShop_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Omikuji_Rack"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Pagoda_3": {
+  "fbx": "buildings/SM_Tera_Pagoda_3.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Pagoda_3_LOD0",
+   "SM_Tera_Pagoda_3_LOD1"
+  ],
+  "tris": [
+   9072,
+   4412
+  ],
+  "materials": [
+   "M_Tera_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Pagoda_3_Base",
+   "COL_Tera_Pagoda_3_Tower"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Path_Gravel_8m": {
+  "fbx": "buildings/SM_Tera_Path_Gravel_8m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Path_Gravel_8m_LOD0",
+   "SM_Tera_Path_Gravel_8m_LOD1"
+  ],
+  "tris": [
+   734,
+   284
+  ],
+  "materials": [
+   "M_Tera_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Sando_8m": {
+  "fbx": "buildings/SM_Tera_Sando_8m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Sando_8m_LOD0",
+   "SM_Tera_Sando_8m_LOD1"
+  ],
+  "tris": [
+   34,
+   26
+  ],
+  "materials": [
+   "M_Tera_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Sanmon": {
+  "fbx": "buildings/SM_Tera_Sanmon.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Sanmon_LOD0",
+   "SM_Tera_Sanmon_LOD1",
+   "SM_Tera_Sanmon_Shop_LOD0",
+   "SM_Tera_Sanmon_Shop_LOD1"
+  ],
+  "tris": [
+   7073,
+   2448
+  ],
+  "materials": [
+   "M_TeraShop_Atlas",
+   "M_Tera_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Sanmon_Post_10",
+   "COL_Tera_Sanmon_Post_11",
+   "COL_Tera_Sanmon_Post_12",
+   "COL_Tera_Sanmon_Post_13",
+   "COL_Tera_Sanmon_Post_14",
+   "COL_Tera_Sanmon_Post_15",
+   "COL_Tera_Sanmon_Post_4",
+   "COL_Tera_Sanmon_Post_5",
+   "COL_Tera_Sanmon_Post_6",
+   "COL_Tera_Sanmon_Post_7",
+   "COL_Tera_Sanmon_Post_8",
+   "COL_Tera_Sanmon_Post_9",
+   "COL_Tera_Sanmon_Side_E",
+   "COL_Tera_Sanmon_Side_W",
+   "COL_Tera_Sanmon_Upper"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Shoro": {
+  "fbx": "buildings/SM_Tera_Shoro.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Shoro_LOD0",
+   "SM_Tera_Shoro_LOD1",
+   "SM_Tera_Shoro_Shop_LOD0",
+   "SM_Tera_Shoro_Shop_LOD1"
+  ],
+  "tris": [
+   3185,
+   1154
+  ],
+  "materials": [
+   "M_TeraShop_Atlas",
+   "M_Tera_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Shoro_Base",
+   "COL_Tera_Shoro_Post_0",
+   "COL_Tera_Shoro_Post_1",
+   "COL_Tera_Shoro_Post_2",
+   "COL_Tera_Shoro_Post_3",
+   "COL_Tera_Shoro_Roof"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Steps_Stone_8m": {
+  "fbx": "buildings/SM_Tera_Steps_Stone_8m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Steps_Stone_8m_LOD0",
+   "SM_Tera_Steps_Stone_8m_LOD1"
+  ],
+  "tris": [
+   608,
+   240
+  ],
+  "materials": [
+   "M_Tera_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Steps_Stone_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Tatefuda": {
+  "fbx": "buildings/SM_Tera_Tatefuda.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Tatefuda_LOD0",
+   "SM_Tera_Tatefuda_LOD1"
+  ],
+  "tris": [
+   40,
+   40
+  ],
+  "materials": [
+   "M_TeraShop_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Tatefuda"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Temizuya": {
+  "fbx": "buildings/SM_Tera_Temizuya.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Temizuya_LOD0",
+   "SM_Tera_Temizuya_LOD1",
+   "SM_Tera_Temizuya_Shop_LOD0",
+   "SM_Tera_Temizuya_Shop_LOD1"
+  ],
+  "tris": [
+   1024,
+   610
+  ],
+  "materials": [
+   "M_TeraShop_Atlas",
+   "M_Tera_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Temizuya_Base",
+   "COL_Tera_Temizuya_Post_0",
+   "COL_Tera_Temizuya_Post_1",
+   "COL_Tera_Temizuya_Post_2",
+   "COL_Tera_Temizuya_Post_3",
+   "COL_Tera_Temizuya_Roof"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Wall_Suji_4m": {
+  "fbx": "buildings/SM_Tera_Wall_Suji_4m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Wall_Suji_4m_LOD0",
+   "SM_Tera_Wall_Suji_4m_LOD1"
+  ],
+  "tris": [
+   476,
+   204
+  ],
+  "materials": [
+   "M_Tera_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Wall_Suji_4m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Wall_Tsuiji_4m": {
+  "fbx": "buildings/SM_Tera_Wall_Tsuiji_4m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Wall_Tsuiji_4m_LOD0",
+   "SM_Tera_Wall_Tsuiji_4m_LOD1"
+  ],
+  "tris": [
+   476,
+   204
+  ],
+  "materials": [
+   "M_Tera_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Wall_Tsuiji_4m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tera_Yakuimon": {
+  "fbx": "buildings/SM_Tera_Yakuimon.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tera_Yakuimon_LOD0",
+   "SM_Tera_Yakuimon_LOD1",
+   "SM_Tera_Yakuimon_Shop_LOD0",
+   "SM_Tera_Yakuimon_Shop_LOD1"
+  ],
+  "tris": [
+   1341,
+   552
+  ],
+  "materials": [
+   "M_TeraShop_Atlas",
+   "M_Tera_Atlas"
+  ],
+  "colliders": [
+   "COL_Tera_Yakuimon_Base",
+   "COL_Tera_Yakuimon_Post_0",
+   "COL_Tera_Yakuimon_Post_1",
+   "COL_Tera_Yakuimon_Post_2",
+   "COL_Tera_Yakuimon_Post_3",
+   "COL_Tera_Yakuimon_Roof"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tera_Yakuimon_0",
+    "pos": [
+     0.0,
+     -1.55,
+     1.305
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 5.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
  "Tokyo_Center_6F_Brown": {
   "fbx": "buildings/SM_Tokyo_Center_6F_Brown.fbx",
   "class": "buildings",

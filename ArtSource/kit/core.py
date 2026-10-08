@@ -675,6 +675,48 @@ def light_marker(name, col, loc, color=(1.0, 0.72, 0.42), watts=10.0, unity_rang
     return ob
 
 
+def part_costs(module, names, fn):
+    """Triangles per part: wraps the named builder functions of `module`
+    (each takes the build context c with c.bm first), runs fn() and returns
+    {name: triangles before bevel}. Nested calls count to the outermost.
+    Measure first, then cut (STYLE-KIT: Budget messen statt raten)."""
+    from collections import defaultdict
+    cost, depth = defaultdict(int), [0]
+    tris = lambda bm: sum(len(f.verts) - 2 for f in bm.faces)
+    orig = {n: getattr(module, n) for n in names}
+
+    def wrap(n):
+        f = orig[n]
+
+        def g(c, *a, **k):
+            depth[0] += 1
+            t0 = tris(c.bm)
+            try:
+                return f(c, *a, **k)
+            finally:
+                depth[0] -= 1
+                if depth[0] == 0:
+                    cost[n] += tris(c.bm) - t0
+        return g
+    tables = [v for v in vars(module).values() if isinstance(v, dict) and any(x in orig.values() for x in v.values())]
+    saved = [(t, dict(t)) for t in tables]
+    try:
+        for n in names:
+            setattr(module, n, wrap(n))
+        for t, _ in saved:
+            for k, v in list(t.items()):
+                for n in names:
+                    if v is orig[n]:
+                        t[k] = getattr(module, n)
+        fn()
+    finally:
+        for n in names:
+            setattr(module, n, orig[n])
+        for t, old in saved:
+            t.clear(); t.update(old)
+    return dict(sorted(cost.items(), key=lambda x: -x[1]))
+
+
 # ── export ──────────────────────────────────────────────────────────────────
 
 def export_fbx(col, klass, filename):
