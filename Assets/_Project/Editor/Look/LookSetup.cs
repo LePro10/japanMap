@@ -39,6 +39,12 @@ namespace JapanMap.Editor.Look
         public static void Apply(LookProfile p)
         {
             Map.MapScene.OpenGameScene();
+            ApplyToActiveScene(p);
+        }
+
+        /// <summary>Same mood in any open scene (Game, Showroom).</summary>
+        public static void ApplyToActiveScene(LookProfile p)
+        {
             ApplySun(p);
             ApplySky(p);
             ApplyFog(p);
