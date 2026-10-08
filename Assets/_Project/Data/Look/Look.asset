@@ -21,7 +21,8 @@ MonoBehaviour:
   skyGround: {r: 0.4, g: 0.45, b: 0.53, a: 1}
   atmosphereThickness: 0.75
   skyExposure: 1.05
-  sunSize: 0.03
+  sunSize: 0.015
+  sunSizeConvergence: 8
   ambientSky: {r: 0.4, g: 0.47, b: 0.62, a: 1}
   ambientEquator: {r: 0.34, g: 0.37, b: 0.43, a: 1}
   ambientGround: {r: 0.12, g: 0.12, b: 0.13, a: 1}
@@ -36,6 +37,7 @@ MonoBehaviour:
   bloomThreshold: 1
   bloomIntensity: 0.6
   bloomScatter: 0.65
+  bloomClamp: 6
   vignette: 0.22
   shadowsTint: {r: 0.92, g: 0.97, b: 1.08, a: 0}
   wetAsphaltSmoothness: 0.58

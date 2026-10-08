@@ -42,7 +42,7 @@ namespace JapanMap.Editor.Vegetation
             // legacy 'pine' (Nadelbaum): cell 8, grass 0.35, slope 38°, 12–350 m, road 20 m
             new() { model = TreeBuilder.Species.Cedar, cellSize = 8, zoneWeights = new Vector4(0, 0.35f, 0, -1), minScale = 0.7f, maxScale = 1.25f, maxSlopeDeg = 38, minHeight = 12, maxHeight = 350, roadClearance = 16, lod0End = 45, lod1End = 140 },
             // legacy 'broadleaf': cell 11, grass 0.5, slope 27°, 6–190 m, road 22 m — mostly green, some autumn red
-            new() { model = TreeBuilder.Species.Maple, cellSize = 11, zoneWeights = new Vector4(0, 0.5f, 0, -1), minScale = 0.8f, maxScale = 1.5f, maxSlopeDeg = 27, minHeight = 6, maxHeight = 190, roadClearance = 18, variantWeights = new Vector3(0.9f, 0.07f, 0.03f) },
+            new() { model = TreeBuilder.Species.Maple, cellSize = 11, zoneWeights = new Vector4(0, 0.5f, 0, -1), minScale = 0.8f, maxScale = 1.5f, maxSlopeDeg = 27, minHeight = 6, maxHeight = 190, roadClearance = 18, variantWeights = new Vector3(0.96f, 0.03f, 0.01f) },
             // legacy 'bush': cell 5, grass 0.3, slope 42°, 2–400 m, road 16 m
             new() { model = TreeBuilder.Species.Bush, cellSize = 5, zoneWeights = new Vector4(0, 0.3f, 0, -1), minScale = 0.6f, maxScale = 1.35f, maxSlopeDeg = 42, minHeight = 2, maxHeight = 400, roadClearance = 12, lod0End = 10, lod1End = 30, maxDistance = 220, colliderRadius = 0 },
             // new (rule 15): a few cherries and bamboo groves in the low meadows

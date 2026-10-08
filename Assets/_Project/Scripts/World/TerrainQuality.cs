@@ -42,7 +42,7 @@ namespace JapanMap.World
         {
             var t = Array.Find(tiers, x => x.name == tierName);
             if (t.name == null) return;
-            foreach (var veg in FindObjectsByType<VegetationRenderer>(FindObjectsSortMode.None)) veg.maxDistance = t.treeDistance;
+            foreach (var veg in FindObjectsByType<VegetationRenderer>()) veg.maxDistance = t.treeDistance;
             foreach (var terrain in Terrain.activeTerrains)
             {
                 terrain.treeDistance = t.treeDistance;

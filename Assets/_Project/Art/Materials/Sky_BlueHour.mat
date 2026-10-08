@@ -29,8 +29,8 @@ Material:
     - _AtmosphereThickness: 0.75
     - _Exposure: 1.05
     - _SunDisk: 2
-    - _SunSize: 0.03
-    - _SunSizeConvergence: 6
+    - _SunSize: 0.015
+    - _SunSizeConvergence: 8
     m_Colors:
     - _GroundColor: {r: 0.4, g: 0.45, b: 0.53, a: 1}
     - _SkyTint: {r: 0.56, g: 0.6, b: 0.68, a: 1}

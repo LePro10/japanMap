@@ -32,6 +32,9 @@ namespace JapanMap.World
         /// <summary>Instances drawn in the last rendered camera (for tests and the debug overlay).</summary>
         public int LastDrawn { get; private set; }
         public int LastCalls { get; private set; }
+        /// <summary>CPU time of the last Draw (ms) — list building + submission.</summary>
+        public float LastMs { get; private set; }
+        readonly System.Diagnostics.Stopwatch _watch = new();
 
         void OnEnable()
         {
@@ -73,6 +76,7 @@ namespace JapanMap.World
         void Draw(ScriptableRenderContext ctx, Camera cam)
         {
             if (_matrices == null || cam.cameraType == CameraType.Preview || cam.cameraType == CameraType.Reflection) return;
+            _watch.Restart();
             GeometryUtility.CalculateFrustumPlanes(cam, _planes);
             var eye = cam.transform.position;
             var bias = Mathf.Max(0.25f, QualitySettings.lodBias);
@@ -141,6 +145,7 @@ namespace JapanMap.World
             }
             LastDrawn = drawn;
             LastCalls = calls;
+            LastMs = (float)_watch.Elapsed.TotalMilliseconds;
         }
 
         static float Sq(float x) => x * x;

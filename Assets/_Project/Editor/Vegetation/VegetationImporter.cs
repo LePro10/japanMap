@@ -74,6 +74,13 @@ namespace JapanMap.Editor.Vegetation
             return s;
         }
 
+        /// <summary>Batch: node Tools/unity-run.mjs JapanMap.Editor.Vegetation.VegetationImporter.Batch</summary>
+        public static void Batch()
+        {
+            TreeBuilder.Build();
+            ImportFromMenu();
+        }
+
         [MenuItem("JapanMap/Vegetation/Import")]
         public static void ImportFromMenu()
         {

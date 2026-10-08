@@ -169,3 +169,7 @@ MonoBehaviour:
     position: {x: -760, y: 30, z: -960}
     lookAt: {x: -850, y: 0, z: -1050}
     note: "S\xFCdk\xFCste mit Wellenbrecher und Steg."
+  - name: stadt-sonne
+    position: {x: 640, y: 32.35, z: -262}
+    lookAt: {x: 720.90173, y: 37.35, z: -320.77853}
+    note: "Gegenlicht: Sonne im Bild, Glanz auf nassem Asphalt. Pr\xFCft Bloom/Sonnenscheibe (ungedeckelt f\xFCllte sie das halbe Bild)."

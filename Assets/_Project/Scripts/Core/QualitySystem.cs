@@ -20,6 +20,9 @@ namespace JapanMap.Core
             var names = QualitySettings.names;
             var saved = PlayerPrefs.GetString(PrefsKey, "");
             var chosen = Array.IndexOf(names, saved) >= 0 ? saved : ChooseDefault(Application.isMobilePlatform, names);
+            // ?quality=Low in the page URL wins (tests: Tools/smoke.mjs --quality; support).
+            var fromUrl = FromUrl(Application.absoluteURL);
+            if (Array.IndexOf(names, fromUrl) >= 0) chosen = fromUrl;
             SetTier(chosen, save: false);
         }
 
@@ -34,6 +37,16 @@ namespace JapanMap.Core
             QualitySettings.SetQualityLevel(index, applyExpensiveChanges: true);
             if (save) PlayerPrefs.SetString(PrefsKey, tier);
             TierChanged?.Invoke(tier);
+        }
+
+        public static string FromUrl(string url)
+        {
+            if (string.IsNullOrEmpty(url)) return null;
+            var q = url.IndexOf('?');
+            if (q < 0) return null;
+            foreach (var part in url.Substring(q + 1).Split('&', '#'))
+                if (part.StartsWith("quality=", StringComparison.OrdinalIgnoreCase)) return part.Substring(8);
+            return null;
         }
 
         /// <summary>Phones get Low; everything else starts on High (auto-detection comes in Phase 10).</summary>

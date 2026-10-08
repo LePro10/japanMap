@@ -78,7 +78,7 @@ namespace JapanMap.Editor.Look
             }
             sky.SetFloat("_SunDisk", 2); // high quality
             sky.SetFloat("_SunSize", p.sunSize);
-            sky.SetFloat("_SunSizeConvergence", 6);
+            sky.SetFloat("_SunSizeConvergence", p.sunSizeConvergence);
             sky.SetFloat("_AtmosphereThickness", p.atmosphereThickness);
             sky.SetColor("_SkyTint", p.skyTint);
             sky.SetColor("_GroundColor", p.skyGround);
@@ -128,6 +128,7 @@ namespace JapanMap.Editor.Look
             bloom.threshold.Override(p.bloomThreshold);
             bloom.intensity.Override(p.bloomIntensity);
             bloom.scatter.Override(p.bloomScatter);
+            bloom.clamp.Override(p.bloomClamp);
             bloom.highQualityFiltering.Override(false);
 
             var vig = Get<Vignette>(profile);

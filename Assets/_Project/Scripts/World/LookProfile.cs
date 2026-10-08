@@ -25,7 +25,8 @@ namespace JapanMap.World
         public Color skyGround = new(0.22f, 0.24f, 0.28f);
         [Range(0, 5)] public float atmosphereThickness = 1.35f;
         [Range(0, 8)] public float skyExposure = 0.9f;
-        [Range(0, 1)] public float sunSize = 0.03f;
+        [Range(0, 1)] public float sunSize = 0.015f;
+        [Range(1, 10)] public float sunSizeConvergence = 8f;
 
         [Header("Ambient (trilight; cool sky against the warm sun)")]
         public Color ambientSky = new(0.36f, 0.43f, 0.58f);
@@ -47,6 +48,8 @@ namespace JapanMap.World
         public float bloomThreshold = 1.0f;
         public float bloomIntensity = 0.6f;
         [Range(0, 1)] public float bloomScatter = 0.65f;
+        [Tooltip("Brightest value bloom takes in. Unclamped, the sun disk (HDR) flooded half the screen when driving towards it.")]
+        public float bloomClamp = 6f;
         [Range(0, 1)] public float vignette = 0.22f;
         public Color shadowsTint = new(0.92f, 0.97f, 1.08f, 0f);
 

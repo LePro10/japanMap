@@ -9,6 +9,8 @@ namespace JapanMap.Tests
 
         [Test] public void Desktop_StartsHigh() => Assert.AreEqual("High", QualitySystem.ChooseDefault(false, Tiers));
         [Test] public void Mobile_StartsLow() => Assert.AreEqual("Low", QualitySystem.ChooseDefault(true, Tiers));
+        [Test] public void Url_SetsTier() => Assert.AreEqual("Low", QualitySystem.FromUrl("http://x/index.html?a=1&quality=Low#f"));
+        [Test] public void Url_WithoutQuery_IsNull() => Assert.IsNull(QualitySystem.FromUrl("http://x/index.html"));
         [Test] public void MissingTier_FallsBackToFirst() => Assert.AreEqual("A", QualitySystem.ChooseDefault(true, new[] { "A" }));
     }
 }

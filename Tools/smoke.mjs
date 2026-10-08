@@ -1,5 +1,5 @@
 // Tools/smoke — serve Builds/Web, load it in headless Chromium, read the console, take a picture.
-//   node Tools/smoke.mjs [--timeout 60] [--out Captures/web-smoke.png] [--gpu]
+//   node Tools/smoke.mjs [--timeout 60] [--out Captures/web-smoke.png] [--gpu] [--quality Low|Medium|High]
 // --gpu: real GPU (macOS: Metal) instead of SwiftShader, no vsync, and a 5 s frame-rate
 // measurement (rAF = Unity frames). Numbers are for THIS machine only, never for phones.
 // Green when: the page loads, Unity reports "[Boot] … systems up" (the Bootstrapper finished),
@@ -15,6 +15,7 @@ import { ROOT, arg, flag } from './lib/unity.mjs';
 const timeoutMs = Number(arg('timeout', 60)) * 1000;
 const out = join(ROOT, arg('out', 'Captures/web-smoke.png'));
 const port = 8091;
+const quality = arg('quality', '');
 
 const server = await serve(undefined, port);
 const errors = [];
@@ -45,7 +46,7 @@ try {
   page.on('dialog', (d) => { errors.push(`dialog: ${d.message()}`); d.dismiss(); });
 
   const t0 = Date.now();
-  await page.goto(`http://127.0.0.1:${port}/`);
+  await page.goto(`http://127.0.0.1:${port}/${quality ? `?quality=${quality}` : ''}`);
   let bootMs = null;
   while (Date.now() - t0 < timeoutMs) {
     if (logs.some((l) => l.includes('[Boot]'))) { bootMs = Date.now() - t0; break; }
@@ -82,7 +83,7 @@ try {
     return c ? c.getParameter(d ? d.UNMASKED_RENDERER_WEBGL : c.RENDERER) : 'no webgl2';
   });
   const green = bootMs !== null && errors.length === 0;
-  console.log(`SMOKE ${green ? 'GREEN' : 'RED'} · boot ${bootMs === null ? 'not reached' : (bootMs / 1000).toFixed(1) + ' s'}${fpsText} · console errors ${errors.length} · ${gl} · ${out}`);
+  console.log(`SMOKE ${green ? 'GREEN' : 'RED'}${quality ? ' · ' + quality : ''} · boot ${bootMs === null ? 'not reached' : (bootMs / 1000).toFixed(1) + ' s'}${fpsText} · console errors ${errors.length} · ${gl} · ${out}`);
   for (const e of errors.slice(0, 20)) console.log('  ' + e);
   const bootLine = logs.find((l) => l.includes('[Boot]'));
   if (bootLine) console.log('  ' + bootLine);

@@ -102,7 +102,7 @@ namespace JapanMap.Editor
                 // this every viewpoint measured the car's view (bench p4-veg: 9 identical rows).
                 foreach (var b in cam.GetComponents<Behaviour>())
                     if (b.GetType().Name.Contains("Cinemachine")) b.enabled = false;
-                foreach (var rig in Object.FindObjectsByType<JapanMap.Vehicles.CarCameraRig>(FindObjectsSortMode.None)) rig.enabled = false;
+                foreach (var rig in Object.FindObjectsByType<JapanMap.Vehicles.CarCameraRig>()) rig.enabled = false;
                 ViewpointTools.Load().Apply(_names[_index], cam.transform);
                 return;
             }

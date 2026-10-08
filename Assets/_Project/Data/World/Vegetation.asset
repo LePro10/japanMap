@@ -38,7 +38,7 @@ MonoBehaviour:
     minHeight: 6
     maxHeight: 190
     roadClearance: 18
-    variantWeights: {x: 0.9, y: 0.07, z: 0.03}
+    variantWeights: {x: 0.96, y: 0.03, z: 0.01}
     lod0End: 35
     lod1End: 110
     maxDistance: 3000
