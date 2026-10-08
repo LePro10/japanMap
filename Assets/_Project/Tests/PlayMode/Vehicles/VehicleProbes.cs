@@ -301,11 +301,11 @@ namespace JapanMap.Tests.Vehicles
                 r.Step(default);
                 var t = r.Car.transform;
                 // Lowest corner of the body box underside.
-                var size = def.bodySize;
+                var box = r.Car.GetComponent<BoxCollider>();
                 for (var cx = -1; cx <= 1; cx += 2)
                 for (var cz = -1; cz <= 1; cz += 2)
                 {
-                    var p = t.TransformPoint(new Vector3(cx * size.y * 0.5f, def.clearance, def.bodyCenterZ + cz * size.x * 0.5f));
+                    var p = t.TransformPoint(box.center + new Vector3(cx * box.size.x, -box.size.y, cz * box.size.z) * 0.5f);
                     lowest = Mathf.Min(lowest, p.y);
                 }
             }

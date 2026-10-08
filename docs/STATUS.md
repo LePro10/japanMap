@@ -3,7 +3,7 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-08 · **Phase:** 3 abgeschlossen (wartet auf deine Fahrgefühl-Abnahme), **Phase 4 (Look und Asset-Pipeline) ist als Nächstes dran**
+**Stand:** 2026-10-08 · **Phase:** 3 abgeschlossen, Fahrgefühl von dir freigegeben, **Phase 4 (Look und Asset-Pipeline) ist als Nächstes dran**
 
 Phase 2 (Karte) ✅ von dir geprüft, FPS im Browser 144 (Monitor-Deckel).
 
@@ -39,7 +39,8 @@ Bilder: `Captures/p3-drift.png`, `p3-touch-1.png`, `gate-p3.png`. Web: 289 fps (
 ## Offene Probleme / Gefunden
 
 - **Download 34,6 MB** (Ziel Handy 20 MB): +8,5 MB durch die zehn Autos (alle im Build, inkl. Tuning-Teile, Hachi 137 k Dreiecke) → nur gewähltes Auto laden (Addressables), Texturen/LOD (Phase 4/10).
-- **Straßendaten:** Höhenstufen an Kreuzungen (0,1–2,5 m) und 460 scharfe Kuppen-Knicke (+7 %→−7 % auf 2 m) → Phase 5. Spürbare Stöße auf dem Ring bei (135, 79, 646) und an der Kreuzung (512, 10, −734).
+- **Straßendaten:** Höhenstufen an Kreuzungen (0,1–2,5 m) und 460 scharfe Kuppen-Knicke (+7 %→−7 % auf 2 m) → Phase 5.
+- **Barrieren/Leitplanken zerbrechen noch nicht** (Prototyp: Smashables) → Phase 7. Bis dahin kann ein frontaler Treffer abrupt stoppen.
 - Wassertiefe wird nicht gemessen (Wasser ohne Collider) → kein Aquaplaning/Spritzwasser bis Phase 4.
 - `PathFollower` setzt nicht zurück, wenn er ansteht → für KI-Gegner (Phase 7) nachrüsten.
 - `Placeholders/torii.prefab` bekommt bei jedem EditMode-Lauf neue fileIDs → nicht committen; Ursache im PropImporter.

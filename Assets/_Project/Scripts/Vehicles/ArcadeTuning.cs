@@ -54,6 +54,10 @@ namespace JapanMap.Vehicles
         [Tooltip("Contact offset of the body box, m: contacts start this far before touching, so a hard landing " +
                  "(a 21 cm step per physics tick from 6 m) is caught before the body is in the ground.")]
         public float bodyContactOffset = 0.25f;
+        [Tooltip("Collision box bottom this far above the body's ride clearance, m (less nose-digging on dips).")]
+        public float bodyUnderLift = 0.1f;
+        [Tooltip("Collision box length as a share of the body length (bumper overhangs stay out of the ground).")]
+        public float bodyLengthShare = 0.88f;
 
         [Header("Off-road drive (legacy OFFROAD_DRIVE, ARCADE_CRAWL)")]
         [Tooltip("Below this speed (m/s) loose ground keeps a share of asphalt traction.")]

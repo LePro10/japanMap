@@ -84,8 +84,12 @@ namespace JapanMap.Vehicles
             _body = GetComponent<BoxCollider>();
             if (_body == null) _body = gameObject.AddComponent<BoxCollider>();
             var size = def.bodySize;
-            _body.size = new Vector3(size.y, size.z - def.clearance, size.x);
-            _body.center = new Vector3(0f, (size.z + def.clearance) * 0.5f, def.bodyCenterZ);
+            // Bottom raised and ends pulled in: the full-length box at ride clearance caught dips and
+            // kerbs with its front edge and stopped the car dead (owner's test drive). Wheels and springs
+            // carry the car over small bumps; the box is for walls, roofs and hard landings.
+            var bottom = def.clearance + tuning.bodyUnderLift;
+            _body.size = new Vector3(size.y, size.z - bottom, size.x * tuning.bodyLengthShare);
+            _body.center = new Vector3(0f, (size.z + bottom) * 0.5f, def.bodyCenterZ);
             _body.sharedMaterial = BodyMaterial;
             _body.contactOffset = tuning.bodyContactOffset;
 
