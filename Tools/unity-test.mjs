@@ -27,7 +27,7 @@ for (;;) {
   const s = d?.result?.summary ?? {};
   const ok = d?.status === 'succeeded' && s.failed === 0 && s.total > 0;
   console.log(`${ok ? 'PASS' : 'FAIL'} · ${mode}${group ? ' ' + group : ''} · ${s.passed}/${s.total} passed, ${s.failed} failed, ${s.skipped} skipped · ${Math.round(s.durationSeconds ?? 0)} s`);
-  for (const f of d?.result?.tests ?? d?.result?.failedTests ?? []) if (f.state !== 'Passed') console.log(`  ✗ ${f.fullName ?? f.name}: ${(f.message ?? '').slice(0, 400)}`);
+  for (const f of d?.result?.results ?? d?.result?.tests ?? []) if (f.state !== 'Passed') console.log(`  ✗ ${f.fullName ?? f.name}: ${(f.message ?? '').slice(0, 400)}`);
   if (!ok && s.total === 0) console.log('  (no tests matched — check the group regex)');
   process.exit(ok ? 0 : 1);
 }

@@ -79,6 +79,9 @@ MonoBehaviour:
   railTop: 0.85
   railOffset: 0.35
   railPostSpacing: 4
+  carveDepth: 0.03
+  carveBank: 2
+  carveMaxDepth: 8
   deckFrom: 2.5
   deckDepth: 1.35
   pierFrom: 4
@@ -101,103 +104,169 @@ MonoBehaviour:
     size: {x: 2, y: 1.7, z: 2.2}
     category: Concrete
     gate: 0
+    library: []
+    fitHeight: 0
   - id: delineator
     size: {x: 0.15, y: 1, z: 0.15}
     category: Marker
     gate: 0
+    library: []
+    fitHeight: 0
   - id: concreteWall
     size: {x: 8.42, y: 2.05, z: 0.44}
     category: Concrete
     gate: 0
+    library: []
+    fitHeight: 0
   - id: shed
     size: {x: 4.6, y: 2.9, z: 3.6}
     category: Wood
     gate: 0
+    library: []
+    fitHeight: 0
   - id: powerPole
     size: {x: 0.3, y: 9, z: 0.3}
     category: Wood
     gate: 0
+    library:
+    - UtilityPole_Plain
+    - UtilityPole_Plain
+    - UtilityPole_Transformer
+    - UtilityPole_Guy
+    fitHeight: 0
   - id: rock_moss_set_02
     size: {x: 3.5, y: 2, z: 3.5}
     category: Rock
     gate: 0
+    library:
+    - Rock_M_Moss
+    - Rock_Flat
+    - Rock_M_Moss
+    fitHeight: 1
   - id: boulder_01
     size: {x: 2.5, y: 1.8, z: 2.5}
     category: Rock
     gate: 0
+    library:
+    - Rock_L
+    - Rock_M
+    - Rock_Standing
+    fitHeight: 1
   - id: greenhouse
     size: {x: 7.1, y: 3.6, z: 14.3}
     category: Building
     gate: 0
+    library: []
+    fitHeight: 0
   - id: stoneLantern
     size: {x: 0.8, y: 2.24, z: 0.8}
     category: Stone
     gate: 0
+    library:
+    - StoneLantern
+    - StoneLantern
+    - StoneLantern_Yukimi
+    fitHeight: 0
   - id: farmhouse
     size: {x: 11.9, y: 7.5, z: 9.8}
     category: Building
     gate: 0
+    library: []
+    fitHeight: 0
   - id: warehouse
     size: {x: 21.52, y: 6.42, z: 13.3}
     category: Building
     gate: 0
+    library: []
+    fitHeight: 0
   - id: netRack
     size: {x: 2.91, y: 2.47, z: 4.6}
     category: Wood
     gate: 0
+    library: []
+    fitHeight: 0
   - id: torii
     size: {x: 6, y: 5, z: 0.8}
     category: Shrine
     gate: 1
+    library:
+    - Torii_Vermilion_M
+    fitHeight: 0
   - id: fishHut
     size: {x: 6.2, y: 3.77, z: 4.92}
     category: Wood
     gate: 0
+    library: []
+    fitHeight: 0
   - id: boat
     size: {x: 2, y: 1.2, z: 5.6}
     category: Wood
     gate: 0
+    library: []
+    fitHeight: 0
   - id: crateStack
     size: {x: 2.11, y: 1.23, z: 1.49}
     category: Wood
     gate: 0
+    library: []
+    fitHeight: 0
   - id: templeHall
     size: {x: 14, y: 7.7, z: 11}
     category: Shrine
     gate: 0
+    library: []
+    fitHeight: 0
   - id: templeStairs
     size: {x: 4.3, y: 2.5, z: 3.8}
     category: Stone
     gate: 0
+    library: []
+    fitHeight: 0
   - id: chozuya
     size: {x: 3.25, y: 2.9, z: 3.25}
     category: Shrine
     gate: 0
+    library: []
+    fitHeight: 0
   - id: bellTower
     size: {x: 3.54, y: 4.23, z: 3.54}
     category: Shrine
     gate: 0
+    library: []
+    fitHeight: 0
   - id: hokora
     size: {x: 1, y: 1.4, z: 1}
     category: Shrine
     gate: 0
+    library: []
+    fitHeight: 0
   - id: lighthouse
     size: {x: 3, y: 13.56, z: 3}
     category: Building
     gate: 0
+    library: []
+    fitHeight: 0
   - id: modular_wooden_pier
     size: {x: 3, y: 1, z: 10}
     category: Wood
     gate: 0
+    library: []
+    fitHeight: 0
   - id: coastal_cliff_04
     size: {x: 20, y: 12, z: 20}
     category: Rock
     gate: 0
+    library: []
+    fitHeight: 0
   - id: boatRamp
     size: {x: 5.25, y: 2.53, z: 11.58}
     category: Concrete
     gate: 0
+    library: []
+    fitHeight: 0
   - id: jetty
     size: {x: 2.59, y: 2.6, z: 14}
     category: Wood
     gate: 0
+    library: []
+    fitHeight: 0

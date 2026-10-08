@@ -28,6 +28,24 @@ namespace JapanMap.Tests
             }
         }
 
+        /// <summary>URP's validation (runs on reimport) silently dropped _EMISSION with GI flags None — signs went dark.</summary>
+        [Test]
+        public void AtlasMaterials_KeepEmissionAfterUrpValidation()
+        {
+            var lit = System.Type.GetType("UnityEditor.Rendering.Universal.ShaderGUI.LitShader, Unity.RenderPipelines.Universal.Editor");
+            Assert.IsNotNull(lit, "URP LitShader GUI not found");
+            var gui = System.Activator.CreateInstance(lit);
+            var paths = System.IO.Directory.GetFiles(LibraryImporter.MaterialDir, "M_*_Atlas.mat");
+            Assert.That(paths, Is.Not.Empty);
+            foreach (var path in paths)
+            {
+                var copy = new Material(UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(path));
+                lit.GetMethod("ValidateMaterial").Invoke(gui, new object[] { copy });
+                Assert.IsTrue(copy.IsKeywordEnabled("_EMISSION"), $"{path}: emission switched off by URP validation");
+                Object.DestroyImmediate(copy);
+            }
+        }
+
         [Test]
         public void UnapprovedStyles_StayOut()
         {

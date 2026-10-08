@@ -143,6 +143,10 @@ namespace JapanMap.Editor.Map
             public string category = "Concrete";
             [Tooltip("Two posts and a beam instead of a solid box; only the posts collide (you pass through a torii).")]
             public bool gate;
+            [Tooltip("Library models (Prefabs/Library/P_<name>) that replace the placeholder; one is picked per instance, stable by index. Empty = placeholder.")]
+            public string[] library = { };
+            [Tooltip("Scale the library model so its height matches size.y (natural objects like rocks); off = real-world size.")]
+            public bool fitHeight;
         }
 
         [System.Serializable]

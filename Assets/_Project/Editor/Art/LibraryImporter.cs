@@ -147,7 +147,8 @@ namespace JapanMap.Editor.Art
             mat.SetTexture("_EmissionMap", emission);
             mat.SetColor("_EmissionColor", Color.white * s.emissionStrength);
             mat.EnableKeyword("_EMISSION");
-            mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+            // Not None: URP's material validation (on every reimport) turns _EMISSION off when the GI flags are None.
+            mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
             mat.enableInstancing = true;
             EditorUtility.SetDirty(mat);
             return mat;

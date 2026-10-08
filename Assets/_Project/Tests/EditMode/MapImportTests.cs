@@ -204,8 +204,12 @@ namespace JapanMap.Tests
         {
             var props = GameObject.Find($"{MapScene.RootName}/{PropImporter.GroupName}");
             Assert.IsNotNull(props, "World/Props missing — run JapanMap/Map/Import Props");
-            var placed = props.GetComponentsInChildren<BoxCollider>().Select(c => c.transform).Distinct().ToList();
-            Assert.AreEqual(977, placed.Count, "props.json has 977 placements");
+            // One instance per placement under World/Props/<id>; library models may carry several colliders.
+            var placed = props.transform.Cast<Transform>().Sum(group => group.childCount);
+            Assert.AreEqual(977, placed, "props.json has 977 placements");
+            foreach (Transform group in props.transform)
+            foreach (Transform instance in group)
+                Assert.That(instance.GetComponentsInChildren<Collider>(), Is.Not.Empty, $"{instance.name} has no collider");
 
             // Expected position straight from the file: terrain or the fixed y (tetrapod piles, pier, jetty) + yOffset.
             var settings = MapImportSettings.LoadOrCreate();

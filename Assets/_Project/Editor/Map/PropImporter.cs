@@ -36,15 +36,22 @@ namespace JapanMap.Editor.Map
             var specs = settings.props.ToDictionary(p => p.id);
 
             Directory.CreateDirectory(PrefabDir);
-            var prefabs = new Dictionary<string, GameObject>();
+            var prefabs = new Dictionary<string, GameObject[]>();
+            var heights = new Dictionary<GameObject, float>();
+            var replaced = 0;
             foreach (var id in props.Select(p => p.id).Distinct().OrderBy(i => i))
             {
                 if (!specs.TryGetValue(id, out var spec))
                 {
                     Debug.LogWarning($"[Map] prop '{id}' has no size in MapImportSettings — using 2 m cube");
                     spec = new MapImportSettings.PropSpec { id = id };
+                    specs[id] = spec;
                 }
-                prefabs[id] = Placeholder(spec);
+                var library = (spec.library ?? new string[0]).Select(Art.LibraryImporter.LoadPrefab).Where(g => g != null).ToArray();
+                if (library.Length < (spec.library?.Length ?? 0))
+                    Debug.LogWarning($"[Map] prop '{id}': {spec.library.Length - library.Length} library models missing — run JapanMap/Art/Import Library");
+                foreach (var g in library) heights[g] = ModelHeight(g);
+                prefabs[id] = library.Length > 0 ? library : new[] { Placeholder(spec) };
             }
 
             var group = MapScene.FreshGroup(GroupName);
@@ -58,12 +65,21 @@ namespace JapanMap.Editor.Map
                     parent.SetParent(group, false);
                     parents[p.id] = parent;
                 }
-                var go = (GameObject)PrefabUtility.InstantiatePrefab(prefabs[p.id], parent);
-                go.name = $"{p.id}_{parent.childCount - 1:D3}";
+                var options = prefabs[p.id];
+                var index = parent.childCount;
+                var prefab = options[Variant(p, options.Length)];
+                var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+                go.name = $"{p.id}_{index:D3}";
                 go.transform.SetPositionAndRotation(Position(p, fixedY[i]), Rotation(settings, p.rot));
-                go.transform.localScale = Vector3.one * (p.scale > 0 ? p.scale : 1);
+                var scale = p.scale > 0 ? p.scale : 1;
+                if (heights.TryGetValue(prefab, out var h))
+                {
+                    replaced++;
+                    if (specs[p.id].fitHeight && h > 0.01f) scale *= specs[p.id].size.y / h;
+                }
+                go.transform.localScale = Vector3.one * scale;
             }
-            Debug.Log($"[Map] props imported: {props.Length} instances of {prefabs.Count} placeholder prefabs");
+            Debug.Log($"[Map] props imported: {props.Length} instances of {prefabs.Count} ids, {replaced} with library models");
             return group;
         }
 
@@ -79,6 +95,23 @@ namespace JapanMap.Editor.Map
             }
             world.y = y + p.yOffset;
             return world;
+        }
+
+        /// <summary>Stable pick from the position, so a re-import gives the same model at the same place.</summary>
+        public static int Variant(LegacySource.Prop p, int count)
+        {
+            if (count <= 1) return 0;
+            var h = Mathf.FloorToInt(p.x * 7.13f) * 73856093 ^ Mathf.FloorToInt(p.z * 5.71f) * 19349663;
+            return (int)((uint)h % (uint)count);
+        }
+
+        static float ModelHeight(GameObject prefab)
+        {
+            var max = 0f;
+            foreach (var mf in prefab.GetComponentsInChildren<MeshFilter>(true))
+                if (mf.sharedMesh != null && !mf.name.EndsWith("_LOD1"))
+                    max = Mathf.Max(max, mf.transform.localPosition.y + mf.sharedMesh.bounds.max.y);
+            return max;
         }
 
         public static Quaternion Rotation(MapImportSettings s, float rotDeg) =>
