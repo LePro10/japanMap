@@ -50,6 +50,8 @@ def _reload():
         importlib.reload(sys.modules[name])
 
 
+POLYS = {}   # last run: {asset: [(ngons, nonplanar, twisted) per LOD]}
+
 MANIFEST = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'exports', 'manifest.json')
 
 
@@ -95,6 +97,7 @@ def run(names=None, preview=True, export=True):
     from kit import core as K, preview as P
     out = []
     manifest = {}
+    POLYS.clear()
     for key in names or list(ASSETS):
         t = time.time()
         try:
@@ -113,6 +116,13 @@ def run(names=None, preview=True, export=True):
                 if vs:
                     dims = [max(c[a] for c in vs) - min(c[a] for c in vs) for a in range(3)]
                     line += ' · ' + ' x '.join(f'{d:.1f}' for d in dims) + ' m'
+                # Unity drops twisted n-gons on import (holes): count them before export
+                chk = [K.poly_check(o) for o in lods]
+                POLYS[col.name] = chk
+                if any(c[0] for c in chk):
+                    line += ' · ngons ' + '/'.join(str(c[0]) for c in chk)
+                if any(c[2] for c in chk):
+                    line += ' · WARN twisted ' + '/'.join(str(c[2]) for c in chk)
                 if export:
                     path, size = K.export_fbx(col, mod.KLASS, f'SM_{col.name}')
                     line += f' · fbx {size // 1024} KB'
@@ -131,5 +141,8 @@ def run(names=None, preview=True, export=True):
             out.append(f'{key}: FAILED\n' + traceback.format_exc())
     if manifest:
         _write_manifest(manifest)
+    bad = sum(c[2] for v in POLYS.values() for c in v)
+    out.append(f'twisted polygons (Unity drops them): {bad} in '
+               f'{sum(1 for v in POLYS.values() for c in v if c[2])} meshes')
     print('\n'.join(out))
     return out

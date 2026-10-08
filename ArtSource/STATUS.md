@@ -4,10 +4,25 @@ Plan: [docs/PLAN.md](../docs/PLAN.md), Abschnitt „Asset-Sprint". Regeln:
 [STYLE-KIT.md](STYLE-KIT.md) (verbindlich). Läuft parallel zur Unity-Sitzung,
 nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
-## Wo wir stehen (2026-10-08, Nachmittag/Abend)
+## Wo wir stehen (2026-10-08, Aufgabe 5a)
 
-- **Aufgabe 4 — Vegetation („Flora"): Pilot fertig, wartet auf Freigabe.**
-  Alle sechs Arten aus PLAN (Zeder, Ahorn, Kirsche, Bambus, Kiefer, Büsche)
+- **Aufgabe 4 — Vegetation („Flora"): freigegeben** (Mensch, 2026-10-08).
+- **5a Schritt 1 — Löcher: behoben.** Ursache: Das Kit triangulierte nur
+  n-Ecke > 4 und das **vor** der Fase. Der Bevel-Modifier entsteht erst beim
+  Export und macht an seinen Ecken neue n-Ecke (Tokyo-Mansion: 251 von 257
+  verdrehten Flächen), dazu kamen verdrehte Vierecke aus dem Bau (6).
+  `mesh_object` hängt jetzt einen **Triangulate-Modifier hinter die Fase**
+  (BEAUTY, Normalen bleiben). Neue Prüfung `K.poly_check` im Bauprotokoll
+  (`ngons …`, `WARN twisted …`, Summe am Ende). Gemessen: **vorher 1 579
+  verdrehte Flächen in 103 Meshes** (strenger als Unity, das 395 in 29
+  verwarf), **nachher 0 in allen 176 FBX**. FBX-Gegenprobe (Mansion neu
+  importiert): nur Dreiecke. Dreiecke LOD0 gesamt 381 641 → 381 587
+  (−54, entartete Flächen ohne Fläche fallen weg; je Asset 0–4). Schattierung
+  vorher/nachher gleich (Kura-Nahaufnahme).
+
+### Davor: Vegetation (Aufgabe 4)
+
+- Vegetation-Pilot (freigegeben): Alle sechs Arten aus PLAN (Zeder, Ahorn, Kirsche, Bambus, Kiefer, Büsche)
   mit japanischen Varianten, je LOD0/LOD1/LOD2 (LOD2 = Fernkörper ≤ 108
   Dreiecke statt Billboard, D18). 12 Bäume + 6 Büsche, **ein** Material
   `M_Flora_Atlas` (Alpha-Clip) je Modell. Bilder in `previews/`:
@@ -458,11 +473,7 @@ Konventionen:
 
 ## Für dich
 
-1. **Vegetation-Pilot ansehen** (`previews/Flora_Overview.png` zuerst,
-   dann `Flora_Trees.png`, `Flora_Bushes.png`, `Flora_detail.png`) und
-   freigeben oder sagen, was nicht passt (z. B. „Kirsche zu weiß",
-   „Bambus zu dicht"). Damit ist der Asset-Sprint inhaltlich durch
-   (Aufgaben 1–4); danach nur noch Nachbesserungen nach Rückmeldung.
+1. **Streugut ansehen** (Aufgabe 5a, kommt in dieser Sitzung) und freigeben.
 2. Falls du doch etwas gegen die drei Tempel-Wahrzeichen über 5 000
    Dreiecken hast (Haupthalle, Pagode, Tor): sag es, dann verkleinere ich sie.
 3. Der Unity-Sitzung sagen: „Vegetation aus ArtSource importieren
@@ -472,7 +483,8 @@ Konventionen:
 ## Für die Hauptsitzung (darf ich nicht ändern)
 
 - **Vegetation importieren** (ersetzt die vorläufigen Bäume aus
-  `Editor/Vegetation/TreeBuilder`, D18), nach Freigabe des Menschen:
+  `Editor/Vegetation/TreeBuilder`, D18) — **vom Menschen freigegeben
+  (2026-10-08)**:
   - 18 FBX in `exports/vegetation/` (`SM_Tree_*`, `SM_Bush_*`), je
     `_LOD0/_LOD1/_LOD2` + bei Bäumen `COL_` (Stammbox 3 m hoch). Atlas
     `T_Flora_{BaseColor,MaskMap,Emission}`; **BaseColor hat Alpha**.
@@ -492,11 +504,22 @@ Konventionen:
     Einzelstücke `Tree_Sugi_Shinboku` (an Schreinen) und
     `Tree_Sakura_Shidare` (Tempel).
   - Dreiecke LOD0 ≤ 5 522 (Bäume), LOD2 ≤ 108. Größen in der Tabelle oben.
+- **Alle FBX neu (2026-10-08, Aufgabe 5a), bitte „JapanMap/Art/Import
+  Library" neu laufen lassen.** Die FBX enthalten jetzt nur Dreiecke; die
+  395 verworfenen Polygone (Löcher) sollten im Import-Bericht verschwinden.
+  Dreieckszahlen fast gleich (−0 bis −4 je Asset).
 - **Alle FBX neu exportiert** (2026-10-08, Koedo): Die Triangulierung im
   Kit hat sich geändert (siehe Lektionen). Wer FBX schon importiert hat,
   importiert neu; Dreieckszahlen bleiben fast gleich.
 
 ## Gefunden / Lektionen (für docs/LESSONS.md)
+
+- 2026-10-08 (Aufgabe 5a, Löcher):
+  - **Unity verwarf 395 Polygone (Löcher):** die Triangulierung im Kit lag
+    vor der Fase, der Bevel-Modifier macht beim Export neue n-Ecke. Jetzt
+    Triangulate-Modifier als letzter im Stapel (Vorschau = FBX) und Prüfung
+    `K.poly_check` im Bauprotokoll (Werkzeug). Erst gemessen (Fase an/aus:
+    251 von 257 aus der Fase), dann behoben.
 
 - `mesh.materials.clear()` **nach** `bm.to_mesh()` setzt alle Material-Indizes
   auf 0. Deshalb bricht `mesh_object` ab, wenn ein Material-Slot unbenutzt bleibt.

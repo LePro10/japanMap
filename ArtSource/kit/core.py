@@ -630,6 +630,13 @@ def mesh_object(name, bm, col, mats, bevel=0.0, bevel_angle=35.0, smooth=True, h
         md.width = bevel; md.segments = bevel_segments
         md.limit_method = 'WEIGHT'; md.edge_weight = 'bevel_weight_edge'
         md.harden_normals = True; md.use_clamp_overlap = True
+    # export triangles only: the bevel makes new n-gons at its corners (Tokyo
+    # mansion: 251 twisted ones) and twisted quads pass the bmesh step above;
+    # Unity dropped them as 'self-intersecting' (holes). Last in the stack, so
+    # preview and FBX show the same triangles.
+    tri = ob.modifiers.new('Triangulate', 'TRIANGULATE')
+    tri.quad_method = 'BEAUTY'; tri.ngon_method = 'BEAUTY'; tri.min_vertices = 4
+    tri.keep_custom_normals = True
     if smooth:
         # hard edges stay crisp (also where the bevel skips), round parts smooth
         me.set_sharp_from_angle(angle=math.radians(bevel_angle))
@@ -657,6 +664,55 @@ def tri_count(ob):
         c.hide_viewport = True
     ob.hide_set(hid); ob.hide_viewport = hv
     return n
+
+
+def _seg_cross(a, b, c, d):
+    o = lambda p, q, r: (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+    return o(a, b, c) * o(a, b, d) < -1e-12 and o(c, d, a) * o(c, d, b) < -1e-12
+
+
+def poly_check(ob):
+    """Polygons in the exported mesh (after bevel) that Unity's FBX importer may
+    drop as 'self-intersecting': n > 3 and the outline, projected on its own
+    plane, crosses itself or collapses (twisted/degenerate). Also counts n-gons
+    and non-planar ones (> 1 mm) for the record. Returns (ngons, nonplanar, bad)."""
+    from mathutils import Vector
+    cols = [c for c in ob.users_collection if c.hide_viewport]
+    hid = ob.hide_get(); hv = ob.hide_viewport
+    for c in cols:
+        c.hide_viewport = False
+    ob.hide_set(False); ob.hide_viewport = False
+    bpy.context.view_layer.update()
+    ev = ob.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    m = ev.to_mesh()
+    ngons = nonplanar = bad = 0
+    for p in m.polygons:
+        if p.loop_total <= 3:
+            continue
+        ngons += 1
+        pts = [m.vertices[i].co.copy() for i in p.vertices]
+        n = Vector()
+        for i, a in enumerate(pts):  # Newell normal: robust for concave/twisted outlines
+            b = pts[(i + 1) % len(pts)]
+            n += Vector(((a.y - b.y) * (a.z + b.z), (a.z - b.z) * (a.x + b.x), (a.x - b.x) * (a.y + b.y)))
+        if n.length < 1e-9:
+            bad += 1; continue
+        n.normalize()
+        c = sum(pts, Vector()) / len(pts)
+        if max(abs((q - c).dot(n)) for q in pts) > 1e-3:
+            nonplanar += 1
+        t = n.orthogonal().normalized(); s = n.cross(t)
+        p2 = [((q - c).dot(t), (q - c).dot(s)) for q in pts]
+        k = len(p2)
+        if any((p2[i][0] - p2[(i + 1) % k][0]) ** 2 + (p2[i][1] - p2[(i + 1) % k][1]) ** 2 < 1e-12 for i in range(k)) or \
+           any(_seg_cross(p2[i], p2[(i + 1) % k], p2[j], p2[(j + 1) % k])
+               for i in range(k) for j in range(i + 2, k) if not (i == 0 and j == k - 1)):
+            bad += 1
+    ev.to_mesh_clear()
+    for c in cols:
+        c.hide_viewport = True
+    ob.hide_set(hid); ob.hide_viewport = hv
+    return ngons, nonplanar, bad
 
 
 def collider_box(name, col, x0, x1, y0, y1, z0, z1):

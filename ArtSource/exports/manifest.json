@@ -600,7 +600,7 @@
    "SM_Gassho_Itakura_Shop_LOD1"
   ],
   "tris": [
-   768,
+   766,
    358
   ],
   "materials": [
@@ -624,7 +624,7 @@
    "SM_Gassho_L_Honke_Shop_LOD1"
   ],
   "tris": [
-   4768,
+   4765,
    1455
   ],
   "materials": [
@@ -664,7 +664,7 @@
    "SM_Gassho_L_Honke_Field_Shop_LOD1"
   ],
   "tris": [
-   4768,
+   4765,
    1455
   ],
   "materials": [
@@ -689,7 +689,7 @@
    "SM_Gassho_M_Cafe_Shop_LOD1"
   ],
   "tris": [
-   3763,
+   3762,
    1145
   ],
   "materials": [
@@ -785,7 +785,7 @@
    "SM_Gassho_M_Minshuku_Shop_LOD1"
   ],
   "tris": [
-   4554,
+   4553,
    1423
   ],
   "materials": [
@@ -1015,7 +1015,7 @@
    "SM_Gassho_S_Koya_Shop_LOD1"
   ],
   "tris": [
-   3350,
+   3349,
    1101
   ],
   "materials": [
@@ -1055,7 +1055,7 @@
    "SM_Gassho_S_Koya_Field_Shop_LOD1"
   ],
   "tris": [
-   3350,
+   3349,
    1101
   ],
   "materials": [
@@ -1134,7 +1134,7 @@
    "SM_Kiso_Hatago_2Bay_Yamabuki_Shop_LOD1"
   ],
   "tris": [
-   4083,
+   4080,
    680
   ],
   "materials": [
@@ -1202,7 +1202,7 @@
    "SM_Kiso_Hatago_3Bay_Kaede_Shop_LOD1"
   ],
   "tris": [
-   4981,
+   4978,
    964
   ],
   "materials": [
@@ -1270,7 +1270,7 @@
    "SM_Kiso_Hatago_3Bay_Kaede_Lane_Shop_LOD1"
   ],
   "tris": [
-   4771,
+   4768,
    948
   ],
   "materials": [
@@ -1310,7 +1310,7 @@
    "SM_Kiso_Minka_2Bay_Ishigaki_Shop_LOD1"
   ],
   "tris": [
-   3839,
+   3838,
    880
   ],
   "materials": [
@@ -1675,7 +1675,7 @@
    "SM_Koedo_Dagashi_1F_Shop_LOD1"
   ],
   "tris": [
-   2923,
+   2922,
    623
   ],
   "materials": [
@@ -1715,7 +1715,7 @@
    "SM_Koedo_Kanban_2Bay_Souvenir_Shop_LOD1"
   ],
   "tris": [
-   2871,
+   2870,
    670
   ],
   "materials": [
@@ -1755,7 +1755,7 @@
    "SM_Koedo_Kura_2Bay_Imo_Shop_LOD1"
   ],
   "tris": [
-   4184,
+   4183,
    778
   ],
   "materials": [
@@ -1820,7 +1820,7 @@
    "SM_Koedo_Kura_Corner_2Bay_Pottery_Shop_LOD1"
   ],
   "tris": [
-   4905,
+   4901,
    983
   ],
   "materials": [
@@ -1860,7 +1860,7 @@
    "SM_Koedo_Machiya_2Bay_Unagi_Shop_LOD1"
   ],
   "tris": [
-   3405,
+   3404,
    737
   ],
   "materials": [
@@ -1954,7 +1954,7 @@
    "SM_Koedo_Machiya_3Bay_Tea_Shop_LOD1"
   ],
   "tris": [
-   4249,
+   4248,
    817
   ],
   "materials": [
@@ -2048,7 +2048,7 @@
    "SM_Koedo_Misegura_3Bay_Sake_Shop_LOD1"
   ],
   "tris": [
-   4271,
+   4270,
    792
   ],
   "materials": [
@@ -4352,7 +4352,7 @@
    "SM_Tokyo_Center_6F_Brown_Signs_LOD1"
   ],
   "tris": [
-   4446,
+   4444,
    1218
   ],
   "materials": [
@@ -4405,7 +4405,7 @@
    "SM_Tokyo_Center_6F_Narrow_Signs_LOD1"
   ],
   "tris": [
-   3456,
+   3454,
    1044
   ],
   "materials": [
@@ -4564,7 +4564,7 @@
    "SM_Tokyo_Center_8F_Glass_Signs_LOD1"
   ],
   "tris": [
-   4596,
+   4594,
    1424
   ],
   "materials": [
@@ -4891,7 +4891,7 @@
    "SM_Tokyo_Street_3F_Brown_Signs_LOD1"
   ],
   "tris": [
-   1958,
+   1956,
    536
   ],
   "materials": [
@@ -4944,7 +4944,7 @@
    "SM_Tokyo_Street_4F_Teal_Signs_LOD1"
   ],
   "tris": [
-   2972,
+   2970,
    840
   ],
   "materials": [
@@ -4997,7 +4997,7 @@
    "SM_Tokyo_Street_5F_Tile_Signs_LOD1"
   ],
   "tris": [
-   3126,
+   3124,
    880
   ],
   "materials": [
@@ -5050,7 +5050,7 @@
    "SM_Tokyo_Street_6F_Cream_Signs_LOD1"
   ],
   "tris": [
-   3520,
+   3518,
    1064
   ],
   "materials": [
@@ -5101,7 +5101,7 @@
    "SM_Tokyo_Zakkyo_5F_LOD1"
   ],
   "tris": [
-   4358,
+   4356,
    1212
   ],
   "materials": [
@@ -5823,7 +5823,7 @@
    "SM_VendingMachineSlim_Blue_LOD1"
   ],
   "tris": [
-   1270,
+   1269,
    224
   ],
   "materials": [
@@ -5860,7 +5860,7 @@
    "SM_VendingMachineSlim_Red_LOD1"
   ],
   "tris": [
-   1270,
+   1269,
    224
   ],
   "materials": [
@@ -5897,7 +5897,7 @@
    "SM_VendingMachineSlim_White_LOD1"
   ],
   "tris": [
-   1270,
+   1269,
    224
   ],
   "materials": [
@@ -5934,7 +5934,7 @@
    "SM_VendingMachine_Blue_LOD1"
   ],
   "tris": [
-   1270,
+   1269,
    224
   ],
   "materials": [
@@ -5971,7 +5971,7 @@
    "SM_VendingMachine_Red_LOD1"
   ],
   "tris": [
-   1270,
+   1269,
    224
   ],
   "materials": [
@@ -6008,7 +6008,7 @@
    "SM_VendingMachine_White_LOD1"
   ],
   "tris": [
-   1270,
+   1269,
    224
   ],
   "materials": [

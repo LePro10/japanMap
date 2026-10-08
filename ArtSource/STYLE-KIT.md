@@ -507,7 +507,9 @@ und **Grau ohne Textur** (`*_clay.png`) für den Silhouetten-Test.
 **Eingebaute Prüfungen:** Abbruch, wenn ein Material-Slot unbenutzt bleibt;
 Warnung bei gestreckten Streifen (mit Ort); Dreiecke werden auch für
 ausgeblendete Objekte mit Fasen gezählt; Rückseiten werden in der Vorschau
-ausgeblendet wie in Unity (verdrehte Flächen sieht man als Loch); konkave
-n-Ecke werden vor dem Export trianguliert; Atlas-Bereiche dürfen sich nicht
+ausgeblendet wie in Unity (verdrehte Flächen sieht man als Loch); **jedes
+Mesh wird als letzter Modifier (nach der Fase) trianguliert** — die Fase
+macht beim Export neue n-Ecke, Unity verwarf verdrehte davon als Löcher —
+und `K.poly_check` meldet `WARN twisted` je Mesh (muss 0 sein); Atlas-Bereiche dürfen sich nicht
 überlappen; das Manifest wirft Einträge ohne FBX-Datei hinaus
 (umbenannte/entfernte Assets).
