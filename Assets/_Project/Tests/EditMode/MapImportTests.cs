@@ -273,12 +273,16 @@ namespace JapanMap.Tests
         [TestCase(0f, 0f, "Terrain_0_0", 52.65f)]
         [TestCase(-552.21f, 343.88f, "Road_", 41.60f)] // pass road where it joins the ring
         [TestCase(640f, -262f, "Road_", 30.00f)]       // city street on the slab
-        [TestCase(820f, 954f, "templeHall", 162.35f)]  // roof of the placeholder hall
+        [TestCase(820f, 954f, "templeHall", 163.51f)] // roof collider of Tera_Haiden (placeholder box top was 162.35)
         public void Raycast_HitsTheRightSurface(float x, float z, string colliderPrefix, float height)
         {
             Physics.SyncTransforms();
             Assert.IsTrue(Physics.Raycast(new Vector3(x, 600, z), Vector3.down, out var hit, 1000), "nothing hit");
-            StringAssert.StartsWith(colliderPrefix, hit.collider.name);
+            // Library models carry their colliders on child objects (COL_*); the placed instance is the
+            // first ancestor directly under World/Props/<id>.
+            var t = hit.collider.transform;
+            while (t.parent != null && t.parent.parent != null && t.parent.parent.name != PropImporter.GroupName) t = t.parent;
+            StringAssert.StartsWith(colliderPrefix, t.parent != null && t.parent.parent != null && t.parent.parent.name == PropImporter.GroupName ? t.name : hit.collider.name);
             Assert.That(hit.point.y, Is.EqualTo(height).Within(0.05f));
         }
 

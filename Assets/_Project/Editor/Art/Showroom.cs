@@ -28,6 +28,9 @@ namespace JapanMap.Editor.Art
             ("tokyo", new[] { "Tokyo_Center", "Tokyo_Street", "Tokyo_Konbini", "Tokyo_Zakkyo", "Tokyo_Mansion" }),
             ("koedo", new[] { "Koedo", "Kura_" }),
             ("kiso", new[] { "Kiso" }),
+            ("gassho", new[] { "Gassho" }),
+            ("minato", new[] { "Minato" }),
+            ("tera", new[] { "Tera" }),
             ("vegetation", new[] { "Veg_Cedar", "Veg_Maple", "Veg_Cherry", "Veg_Bamboo", "Veg_Bush" }),
         };
 

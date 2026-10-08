@@ -25,7 +25,7 @@ namespace JapanMap.Tests
             ("terrain at origin checkpoint", 0f, 0f, 52.65f, 0.15f),
             ("pass road at the ring junction", -552.21f, 343.88f, 41.60f, 0.15f),
             ("city street on the slab", 640f, -262f, 30.00f, 0.1f),
-            ("roof of the temple hall placeholder", 820f, 954f, 162.35f, 0.15f),
+            ("roof of the temple hall (Tera_Haiden roof collider)", 820f, 954f, 163.51f, 0.15f),
         };
 
         [UnityTest]

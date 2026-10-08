@@ -70,7 +70,8 @@ namespace JapanMap.Editor.Map
                 var prefab = options[Variant(p, options.Length)];
                 var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
                 go.name = $"{p.id}_{index:D3}";
-                go.transform.SetPositionAndRotation(Position(p, fixedY[i]), Rotation(settings, p.rot));
+                var yaw = heights.ContainsKey(prefab) ? specs[p.id].libraryYaw : 0;
+                go.transform.SetPositionAndRotation(Position(p, fixedY[i]), Rotation(settings, p.rot) * Quaternion.Euler(0, yaw, 0));
                 var scale = p.scale > 0 ? p.scale : 1;
                 if (heights.TryGetValue(prefab, out var h))
                 {

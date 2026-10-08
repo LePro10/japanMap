@@ -147,6 +147,8 @@ namespace JapanMap.Editor.Map
             public string[] library = { };
             [Tooltip("Scale the library model so its height matches size.y (natural objects like rocks); off = real-world size.")]
             public bool fitHeight;
+            [Tooltip("Extra yaw (degrees) for library models whose long axis differs from the legacy prop (boats: length along X).")]
+            public float libraryYaw;
         }
 
         [System.Serializable]

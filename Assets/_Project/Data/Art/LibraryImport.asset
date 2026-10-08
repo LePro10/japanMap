@@ -24,6 +24,12 @@ MonoBehaviour:
   - KoedoShop
   - Kiso
   - KisoShop
+  - Gassho
+  - GasshoShop
+  - Minato
+  - MinatoShop
+  - Tera
+  - TeraShop
   excluded: []
   propLod0: 0.12
   propCull: 0.012
