@@ -6,7 +6,8 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
 ## Wo wir stehen (2026-10-08, Vormittag)
 
-- **Aufgabe 3 — Gebäude, Koedo: Pilot fertig, wartet auf Freigabe.**
+- **Aufgabe 3 — Gebäude, Koedo: freigegeben** (Mensch fragte nach der
+  nächsten Aufgabe, 2026-10-08). Nächster Baustil: **Kiso**.
   Ein Straßenzug wie Kawagoe-Ichibangai: 7 Häuser der Hauptstraße + 3
   ruhige Gassen-Versionen, jedes mit eigener Ladenausstattung (Mesh
   `_Shop`). Bilder: `previews/Koedo_Overview.png` (Straße auf Augenhöhe,
@@ -209,9 +210,7 @@ Konventionen:
 
 ## Für dich
 
-1. **Koedo-Pilot ansehen und freigeben** (oder sagen, was fehlt):
-   `ArtSource/previews/Koedo_Overview.png`, `Koedo_Buildings.png`,
-   `Koedo_detail.png`, `Koedo_Back.png`.
+1. Neue Sitzung für Kiso starten (Starttext in der Antwort vom 2026-10-08).
 2. Der Unity-Sitzung bei Gelegenheit „Lichttest nach ArtSource/STATUS.md"
    sagen.
 
