@@ -412,6 +412,22 @@ Fischerdorf/Hafen, Tempel. Je Baustil gilt:
 - Vegetation (Aufgabe 4) hat einen eigenen Atlas `Flora` mit Alpha und
   das Cutout-Material `M_Flora_Atlas` (`K.cutout_material`).
 
+## Nächste Aufgabe (5) — Nachlieferung für Phase 5 (Stand 2026-10-08)
+
+PLAN-Aufgaben 1–4 sind gebaut (4 wartet auf Freigabe). Die Hauptsitzung
+braucht für die Orte noch Modelle (`docs/STATUS.md`, „Für die
+Asset-Sitzung" und „Offene Probleme"). Drei Sitzungen, in dieser Reihenfolge:
+- **5a — Löcher + Streugut:** 395 sich selbst schneidende Polygone in 29
+  Meshes (Unity verwirft sie) → Ursache im Kit finden, alle FBX neu;
+  Tetrapod (372×), Leitpfosten (170×), Betonmauer (79×), Gewächshaus (30×),
+  Jizō, Grabsteine/Friedhof, Kido-Tor, weißes Molenfeuer, Slipanlage,
+  einzelne Nobori, Veranstaltungstafel.
+- **5b — fehlende Gebäude:** Autohaus Petal Motors, Werkstatt Open Bay,
+  Toki-no-Kane-Glockenturm, moderne Wohnhäuser, Brauhalle mit Schornstein,
+  Holz-Izakaya für Yokochō-Gassen, Mühlhaus mit Teich und Rinne.
+- **5c — Tokyo-Höhe + Rest:** Hochhäuser 40–154 m, Kino-/Hotel-/
+  Markthallen-Fronten, Kaki und Weide als Baumarten, Kei-Truck.
+
 ## Für die Unity-Sitzung: Lichttest (noch offen)
 
 Ziel: einmal unter echtem Licht prüfen (Blaue Stunde, Nebel, Nässe).
