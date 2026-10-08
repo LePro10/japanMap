@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4af2ed471d04f4eb2a0ac8986f460eee, type: 3}
+  m_Name: Look
+  m_EditorClassIdentifier: JapanMap.World::JapanMap.World.LookProfile
+  sunElevation: 7
+  sunAzimuth: 126
+  sunColor: {r: 1, g: 0.7, b: 0.48, a: 1}
+  sunIntensity: 1.3
+  shadowStrength: 0.75
+  skyTint: {r: 0.56, g: 0.6, b: 0.68, a: 1}
+  skyGround: {r: 0.4, g: 0.45, b: 0.53, a: 1}
+  atmosphereThickness: 0.75
+  skyExposure: 1.05
+  sunSize: 0.03
+  ambientSky: {r: 0.4, g: 0.47, b: 0.62, a: 1}
+  ambientEquator: {r: 0.34, g: 0.37, b: 0.43, a: 1}
+  ambientGround: {r: 0.12, g: 0.12, b: 0.13, a: 1}
+  reflectionIntensity: 1
+  fogColor: {r: 0.56, g: 0.62, b: 0.71, a: 1}
+  fogDensity: 0.0006
+  postExposure: 0.2
+  contrast: 12
+  saturation: -8
+  whiteBalanceTemperature: -8
+  whiteBalanceTint: 0
+  bloomThreshold: 1
+  bloomIntensity: 0.6
+  bloomScatter: 0.65
+  vignette: 0.22
+  shadowsTint: {r: 0.92, g: 0.97, b: 1.08, a: 0}
+  wetAsphaltSmoothness: 0.58
+  wetConcreteSmoothness: 0.5
