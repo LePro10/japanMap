@@ -4,7 +4,15 @@ Plan: [docs/PLAN.md](../docs/PLAN.md), Abschnitt „Asset-Sprint". Regeln:
 [STYLE-KIT.md](STYLE-KIT.md) (verbindlich). Läuft parallel zur Unity-Sitzung,
 nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
-## Wo wir stehen (2026-10-08, Nacht)
+## Wo wir stehen (2026-10-08, Vormittag)
+
+- **Aufgabe 3 — Gebäude, Koedo: Pilot fertig, wartet auf Freigabe.**
+  Ein Straßenzug wie Kawagoe-Ichibangai: 7 Häuser der Hauptstraße + 3
+  ruhige Gassen-Versionen, jedes mit eigener Ladenausstattung (Mesh
+  `_Shop`). Bilder: `previews/Koedo_Overview.png` (Straße auf Augenhöhe,
+  Gegenrichtung, von oben, Gasse), `Koedo_Buildings.png` (alle 10 einzeln),
+  `Koedo_detail.png` (Nahaufnahmen), `Koedo_Back.png` (Rückseiten +
+  Grau-Test Straße), `Koedo_clay_houses.png` (Grau-Test je Haus).
 
 - **Aufgabe 1 — Stil-Kit + Piloten:** freigegeben.
 - **Aufgabe 2 — Requisiten:** fertig (15 Gruppen, Tabelle unten).
@@ -20,6 +28,31 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
   Wohnblock-Budget: a) gilt (als 3 Felder zählen), mit der Freigabe bestätigt.
   Danach Baustil für Baustil: Koedo (Kura ausbauen), Kiso, Gassho,
   Fischerdorf, Tempel — je Pilot + Freigabe.
+
+### Koedo-Pilot (Atlas `Koedo` + `KoedoShop`, Generator `buildings/koedo.py` + Bausatz `buildings/koedo_kit.py`)
+
+| FBX (`exports/buildings/`, Präfix `SM_Koedo_`) | Haus | Ladenausstattung | Dreiecke Haus LOD0 / LOD1 · Laden LOD0 / LOD1 |
+|---|---|---|---|
+| Misegura_3Bay_Sake | Schwarze Laden-Kura 8,4 m, verputztes Vordach zwischen Brandwänden (Sodekabe), hoher First, große Oni, 2 Kura-Fenster (eins offen + Licht), Regenrinne, Feuerleiter | Dachschild 小江戸鶴, Noren さけ, Zedernkugel, Sakefässer, Standschild, Laterne, Feuereimer | 4 271 / 792 · 788 / 454 |
+| Kura_2Bay_Imo | Weiße Kura 6,2 m mit Namako-Sockel, Ziegel-Vordach auf Holzkragträgern | Wandschild 紅あか, Noren 甘味, Warenstufen, 2 Nobori さつまいも, Bank mit rotem Filz + Schirm, Menütafel | 4 184 / 778 · 654 / 212 |
+| Machiya_2Bay_Unagi | Holz-Machiya 5,6 m: Senbon-Gitter (leuchtend), Eingang, Mushiko-Fenster in schwarzem Putz, Sparren unter der Traufe | Dachschild 鰻 川よし, Noren うなぎ, Laterne, Standschild, Topfpflanzen, Wandlampe | 3 405 / 737 · 640 / 308 |
+| Kanban_2Bay_Souvenir | Kupferfront (Kanban-Kenchiku) mit Attika, Gesimsen, Lisenen; Shōwa-Glastüren, Holz-Schiebefenster | Schild みやげ 蔵屋, kurzer Noren, 2 Verkaufsstände, Nobori | 2 871 / 670 · 770 / 84 |
+| Kura_Corner_2Bay_Pottery | Schwarze Eck-Kura: Läden an zwei Straßen, Vordach ums Eck, Wappen am Giebel zur Seitenstraße | Dachschild 土の香, Töpferwaren-Stufen, Noren お茶 seitlich, Feuereimer, Lampe | 4 905 / 983 · 1 412 / 242 |
+| Dagashi_1F | Niedriger Süßwarenladen (Kashiya Yokochō), Bretterwand, niedriges Obergeschoss | Bonbongläser auf Stufen, Noren だがし, 2 Nobori, 2 Laternen, Schild 福まる | 2 923 / 623 · 1 942 / 284 |
+| Machiya_3Bay_Tea | Breite Holz-Machiya 8 m: Gitter + offener Laden, oben Shoji hinter Holzgeländer | Dachschild 松葉園, Noren お茶, Bambusrollos, Teekisten, Topfpflanzen | 4 249 / 817 · 688 / 244 |
+| …_Lane (Imo, Unagi, Tea) | Gassen-Versionen: Laden zu (Brandschutztüren aus Putz bzw. Bretter), Gitter dunkel | nur Schilder, Lampen, Topfpflanzen | 3 360–4 025 · 486–842 |
+
+- **Budget:** alle Häuser ≤ 5 000 (Eck-Kura 4 905 = 98 %: ohne Leiter,
+  vordere Fenster zu). LOD1 17–24 % (Kiste mit Dach, Ziegelreihen jede
+  zweite und dreieckig, Ladenpfosten bleiben) — unter dem Ziel 30–50 %,
+  aber die Silhouette steht; bei Bedarf mehr in LOD1.
+- **Rückseiten:** Tür (Kura: Brandschutztür aus Putz, Machiya: Bretter) mit
+  kleinem Vordach, Fallrohr, bei Machiya ein Mushiko-Fenster unten.
+- **Gemessen:** Gesamtbau 86 FBX, 0 Fehler, 0 Streck-Warnungen.
+  **Ungeprüft:** alles in Unity (zwei Materialien je Haus: `M_Koedo_Atlas`,
+  `M_KoedoShop_Atlas`; Emission der Innenräume im Nebel).
+- Lichter: `LIGHT_` vor jedem offenen Laden und jedem Gitter (warm).
+- Fahrräder und Pflanzkübel in den Bildern sind die Requisiten aus Aufgabe 2.
 
 ### Tokyo-Zentrum (Atlas `TokyoSigns` + `Tokyo`, Generator `buildings/tokyo_center.py`)
 
@@ -176,7 +209,9 @@ Konventionen:
 
 ## Für dich
 
-1. Neue Sitzung für Koedo starten (Startext in der Antwort vom 2026-10-08).
+1. **Koedo-Pilot ansehen und freigeben** (oder sagen, was fehlt):
+   `ArtSource/previews/Koedo_Overview.png`, `Koedo_Buildings.png`,
+   `Koedo_detail.png`, `Koedo_Back.png`.
 2. Der Unity-Sitzung bei Gelegenheit „Lichttest nach ArtSource/STATUS.md"
    sagen.
 
@@ -190,6 +225,9 @@ Konventionen:
 - **LESSONS.md:** die Zeilen unten eintragen.
 - Der Fehler in `montage.mjs` besteht weiter (2026-10-08 Abend: wieder
   umgangen mit relativem `--out`).
+- **Alle FBX neu exportiert** (2026-10-08, Koedo): Die Triangulierung im
+  Kit hat sich geändert (siehe Lektionen). Wer FBX schon importiert hat,
+  importiert neu; Dreieckszahlen bleiben fast gleich.
 
 ## Gefunden / Lektionen (für docs/LESSONS.md)
 
@@ -252,3 +290,23 @@ Konventionen:
     Grafiken ändern.
   - **Querkästen nur in der Brüstung wirkten klein**; Kabukichō-Kästen
     decken auch den unteren Fensterteil (0,7–1,25 m).
+- 2026-10-08 Vormittag (Koedo):
+  - **Loch neben einem Fenster:** Ear-Clipping zerlegte die U-förmige
+    Wandfläche um ein Fenster in lange Splitter, die Fase machte daraus ein
+    Loch. Das Kit trianguliert n-Ecke jetzt mit BEAUTY (Werkzeug, gilt für
+    alle Assets, alle FBX neu exportiert). Gefunden mit der Rückansicht.
+  - **Leere Rückseiten** fielen erst in der Rückansicht auf: jedes
+    Koedo-Haus bekommt hinten automatisch Tür, Vordach und Fallrohr
+    (`_back_ground`).
+  - **Requisite zweimal verschoben** (in Hauptstraße und Gasse) → Objekte
+    blieben versetzt liegen. Die Bilder macht jetzt `koedo.shots(ordner)`
+    im Repo; es prüft, dass jede Requisite nur in einer Szene steht, und
+    stellt alles zurück (nachgemessen: nichts verschoben).
+  - **Neue Kamera `P.shot`** (Augenhöhe, Nahaufnahme, auch Grau-Test) im
+    Kit statt Hilfsdatei: Straßenbilder sind jetzt ein Aufruf.
+  - **Budget messen statt raten:** Teile einzeln abschalten zeigte Leiter
+    176, offenes Kura-Fenster 222, Seitenvordach 322 Dreiecke.
+  - **`graphics.mjs` rendert alle Grafiken neu, die Schrift-Kanten weichen
+    dabei bitweise leicht ab:** 16 Tokyo-Schilder wurden „geändert", ohne
+    dass sich ihr SVG änderte. Nur die PNG des eigenen Stils committen
+    (hier `KO_*`), die anderen zurücksetzen.

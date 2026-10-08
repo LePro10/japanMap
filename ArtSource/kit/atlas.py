@@ -319,6 +319,37 @@ def oni():
 
 
 
+def kamon_b():
+    """Second (fictional) crest: three-leaf ring (mitsu-domoe style) on plaster."""
+    def gen(w, h, rng):
+        u, v, rgb, emit = _canvas(w, h, '#e2dccf')
+        x, y = u - 0.5, v - 0.5
+        r = np.hypot(x, y); a = np.arctan2(y, x)
+        ink = (r > 0.38) & (r < 0.44)
+        for k in range(3):
+            ak = a - k * 2 * np.pi / 3 + 4 * r
+            ink |= (np.cos(ak) > 0.55) & (r < 0.32) & (r > 0.06)
+        rgb[ink] = srgb('#1a1a1c')
+        return _out(rgb, 0.3)
+    return gen
+
+
+def shoji(lit=True):
+    """Shoji paper screen: thin wooden grid (kumiko) over paper, glowing warm
+    when lit from inside."""
+    def gen(w, h, rng):
+        u, v, rgb, emit = _canvas(w, h, '#efe4c8' if lit else '#b9b09c')
+        gx = np.mod(u * 3, 1.0); gy = np.mod(v * 4, 1.0)
+        bar = (np.minimum(gx, 1 - gx) < 0.045) | (np.minimum(gy, 1 - gy) < 0.035)
+        rgb[bar] = srgb('#4a3424')
+        e = None
+        if lit:
+            e = rgb * 0.9
+            e[bar] = 0
+        return _out(rgb, 0.2, 0.0, e)
+    return gen
+
+
 def png(name, smooth=0.45, emit=0.0, bg='#808080'):
     """Graphic rendered by kit/graphics.mjs (signs need real fonts)."""
     def gen(w, h, rng):
@@ -557,6 +588,50 @@ def alc(col='#d9d8d2', panel_m=0.6, ppm=96):
         f = (0.93 + 0.1 * nz) * (1 - 0.35 * j)
         f *= rain_streaks(w, h, rng, 0.13) * grime(w, h, rng, 0.2, 0.2)
         return _out(srgb(col) * f[..., None], 0.3)
+    return gen
+
+
+
+def wood_board(col='#3b2a1e', board_m=0.2, ppm=64):
+    """Lapped weatherboard (shitami-itabari) of town houses: horizontal
+    boards, each its own shade, dark shadow line under each lap, grain
+    along U, grime at the foot. Board count rounded so the strip tiles in V."""
+    def gen(w, h, rng):
+        y, x = np.mgrid[0:h, 0:w].astype(float)
+        bh = board_m * ppm
+        row = np.floor(y / bh)
+        fy = np.mod(y, bh) / bh
+        tv = (np.sin(row * 12.9898 + 3.1) * 43758.5453) % 1.0
+        g = value_noise(w, h, 8, max(8, int(h / 2)), rng)
+        f = (0.82 + 0.22 * tv) * (0.85 + 0.25 * g)
+        f *= 1 - 0.55 * smoothstep(0.16, 0.0, fy)          # shadow under the lap above
+        f *= 1 + 0.12 * smoothstep(0.75, 1.0, fy)          # lit lower edge of the board
+        f *= rain_streaks(w, h, rng, 0.08) * grime(w, h, rng, 0.22, 0.2)
+        return _out(srgb(col) * f[..., None], 0.25)
+    return gen
+
+
+def copper(col='#5f8f7a', plate_m=(0.24, 0.15), ppm=64):
+    """Patinated copper facade (dōban, kanban-kenchiku): plates in running
+    bond with folded seams, green patina with brown copper showing through
+    and dark runs under the seams."""
+    def gen(w, h, rng):
+        y, x = np.mgrid[0:h, 0:w].astype(float)
+        nx = max(1, round(w / (plate_m[0] * ppm)))
+        pw = w / nx; ph = plate_m[1] * ppm
+        row = np.floor(y / ph)
+        xs = x + (row % 2) * pw / 2
+        fx = np.mod(xs, pw); fy = np.mod(y, ph)
+        seam = np.maximum(smoothstep(1.6, 0.3, np.minimum(fx, pw - fx)), smoothstep(1.6, 0.3, fy))
+        pid = row * 37 + np.floor(xs / pw) % nx * 11
+        tv = (np.sin(pid * 12.9898) * 43758.5453) % 1.0
+        pat = fbm(w, h, w // 24, max(2, h // 24), rng, 4)
+        brown = 0.55 * smoothstep(0.7, 0.8, pat)          # a little bare copper, not rust blotches
+        rgb = srgb(col) * (0.9 + 0.14 * tv)[..., None] * (0.92 + 0.12 * fbm(w, h, w // 8, max(2, h // 8), rng, 3))[..., None]
+        rgb = rgb * (1 - brown[..., None]) + srgb('#7a5236') * brown[..., None]
+        rgb *= (1 - 0.45 * seam)[..., None]
+        rgb *= (rain_streaks(w, h, rng, 0.15) * grime(w, h, rng, 0.15, 0.2))[..., None]
+        return _out(rgb, 0.3 + 0.15 * brown, 0.25 * brown)
     return gen
 
 
@@ -811,6 +886,90 @@ LAYOUTS = {
             ('SIGN_BACK',    flat('#3b3e42', 0.4, 0.3, dirt=0.1)),
             ('SCREEN_OFF',   flat('#0c0e10', 0.8, dirt=0.0)),
         ], 0, 960, 16),
+    },
+    'Koedo': {   # kura town structure: walls 2 m strips (plaster 96 px/m, boards/copper 64 px/m)
+        'PLASTER_BLACK': _strip(832, 192, plaster('#1a1a1c', dirt=0.1, streak=0.08, smooth=0.55), ppm=96),
+        'PLASTER_WHITE': _strip(640, 192, plaster(), ppm=96),
+        'WOOD_BOARD':    _strip(512, 128, wood_board(), ppm=64),
+        'COPPER':        _strip(384, 128, copper(), ppm=64),
+        'NAMAKO':        _strip(256, 128, namako(period_px=32, joint_px=3.4), ppm=128),
+        'STONE':         _strip(208, 48, stone('#7e7f80', dirt=0.3), ppm=96),
+        'WOOD':          _strip(176, 32, wood('#3a281c'), ppm=48),        # 0.67 m: beams, posts (rotated)
+        'WOOD_LIGHT':    _strip(144, 32, wood('#7a5a3a', smooth=0.35), ppm=48),
+        'KAMON_A':       _rect(0, 80, 64, 64, kamon()),
+        'KAMON_B':       _rect(64, 80, 64, 64, kamon_b()),
+        'ONI':           _rect(128, 80, 64, 64, oni()),
+        'SHOJI':         _rect(192, 80, 64, 64, shoji(lit=True)),
+        'SHOJI_DARK':    _rect(256, 80, 64, 64, shoji(lit=False)),
+        **_cells([
+            ('IRON',        flat('#26272a', 0.4, 0.7, dirt=0.1)),
+            ('INTERIOR',    flat('#0b0a09', 0.2, dirt=0.0)),
+            ('LIGHT_WARM',  emissive('#ffb768')),
+            ('TILE_A',      flat('#4d5560', 0.45, dirt=0.12)),
+            ('TILE_B',      flat('#454c56', 0.4, dirt=0.12)),
+            ('TILE_C',      flat('#555d68', 0.5, dirt=0.12)),
+            ('TILE_DARK',   flat('#353b43', 0.4, dirt=0.15)),
+            ('PLASTER_WHITE_FLAT', flat('#e2dccf', 0.25, dirt=0.08)),
+            ('PLASTER_BLACK_FLAT', flat('#1a1a1c', 0.55, dirt=0.04)),
+            ('WOOD_FLAT',   flat('#3a281c', 0.3, dirt=0.12)),
+            ('WOOD_LIGHT_FLAT', flat('#7a5a3a', 0.35, dirt=0.12)),
+            ('COPPER_FLAT', flat('#5f8f7a', 0.35, 0.1, dirt=0.15)),
+            ('COPPER_PIPE', flat('#7a5236', 0.45, 0.6, dirt=0.1)),
+            ('STONE_FLAT',  flat('#7e7f80', 0.25, dirt=0.2)),
+            ('GLASS',       flat('#1c242b', 0.92, dirt=0.0)),
+            ('PAPER',       flat('#e8e0cc', 0.2, dirt=0.05)),
+            ('BRASS',       flat('#a08440', 0.55, 0.9, dirt=0.05)),
+            ('PLASTER_GREY_FLAT', flat('#8d8a84', 0.3, dirt=0.15)),
+            ('WOOD_BOARD_FLAT', flat('#3b2a1e', 0.25, dirt=0.15)),
+            ('MORTAR',      flat('#9c9890', 0.25, dirt=0.2)),
+        ], 384, 0, 10, 64, 32),
+    },
+    'KoedoShop': {   # shop dressing of the kura town: interiors, signboards, noren, flags, lanterns
+        **{f'INT_{k}': _rect((i % 4) * 256, 896 - (i // 4) * 128, 256, 128, png(f'KO_INT_{k}', 0.6, emit=0.85))
+           for i, k in enumerate(('SAKE', 'SWEETS', 'SOUVENIR', 'UNAGI', 'IMO', 'CRAFT'))},
+        **{f'KB{i}': _rect(512 + (i % 2) * 256, 768 + (i // 2) * 64, 256, 64, png(f'KO_KB{i}', 0.35)) for i in range(2)},
+        **{f'KB{i}': _rect((i - 2) * 256, 704, 256, 64, png(f'KO_KB{i}', 0.35)) for i in range(2, 6)},
+        **{f'KB{i}': _rect((i - 6) * 256, 384, 256, 64, png(f'KO_KB{i}', 0.35)) for i in range(6, 8)},
+        'INT_TEA': _rect(0, 256, 256, 128, png('KO_INT_TEA', 0.6, emit=0.85)),
+        **{f'KV{i}': _rect(i * 64, 448, 64, 256, png(f'KO_KV{i}', 0.35)) for i in range(4)},
+        **{f'NOREN{i}': _rect(256 + i * 128, 608, 128, 96, png(f'KO_NOREN{i}', 0.15)) for i in range(6)},
+        **{f'NOBORI{i}': _rect(256 + i * 128, 576, 128, 32, png(f'KO_NOBORI{i}', 0.2)) for i in range(4)},
+        'CHOCHIN0': _rect(256, 512, 128, 64, png('KO_CHOCHIN0', 0.3, emit=0.8)),
+        'CHOCHIN1': _rect(384, 512, 128, 64, png('KO_CHOCHIN1', 0.3, emit=0.8)),
+        'CANDY':    _rect(512, 512, 64, 64, png('KO_CANDY', 0.8)),
+        'SUDARE':   _rect(576, 448, 64, 128, png('KO_SUDARE', 0.2)),
+        'MENU':     _rect(640, 480, 64, 96, png('KO_MENU', 0.3)),
+        'BUCKET':   _rect(704, 544, 64, 32, png('KO_BUCKET', 0.5)),
+        **_cells([
+            ('WOOD_DARK',   flat('#3a281c', 0.3, dirt=0.12)),
+            ('WOOD_LIGHT',  flat('#9a7650', 0.35, dirt=0.12)),
+            ('LACQUER_RED', flat('#8a1f1a', 0.6, dirt=0.05)),
+            ('FELT_RED',    flat('#b3202a', 0.1, dirt=0.05)),
+            ('PARASOL_RED', flat('#c42a22', 0.3, dirt=0.05)),
+            ('IRON',        flat('#26272a', 0.4, 0.7, dirt=0.1)),
+            ('BRASS',       flat('#a08440', 0.55, 0.9, dirt=0.05)),
+            ('CEDAR',       flat('#5a5a2e', 0.15, dirt=0.1)),
+            ('STRAW',       flat('#c9b07a', 0.2, dirt=0.15)),
+            ('PAPER',       flat('#f4ecd8', 0.2, dirt=0.05)),
+            ('LIT_WARM',    emissive('#ffc985')),
+            ('NOREN_NAVY',  flat('#1d2a4a', 0.15, dirt=0.0)),
+            ('WHITE',       flat('#efe9dc', 0.3, dirt=0.1)),
+            ('BOX_PURPLE',  flat('#5a2a6a', 0.4, dirt=0.05)),
+            ('BOX_YELLOW',  flat('#e8b51a', 0.4, dirt=0.05)),
+            ('BOX_ORANGE',  flat('#d8642c', 0.4, dirt=0.05)),
+            ('GLASS_JAR',   flat('#cfe2e6', 0.9, dirt=0.0)),
+            ('POT_CLAY',    flat('#8a4a2c', 0.3, dirt=0.2)),
+            ('LEAF',        flat('#3c5a2a', 0.3, dirt=0.0)),
+            ('BLACK',       flat('#151617', 0.4, dirt=0.0)),
+            ('BUCKET_RED',  flat('#b3202a', 0.5, dirt=0.1)),
+            ('STONE',       flat('#7e7f80', 0.25, dirt=0.2)),
+            ('BAMBOO',      flat('#a48d5e', 0.35, dirt=0.1)),
+            ('INDIGO',      flat('#24324a', 0.15, dirt=0.0)),
+            ('GREEN_TEA',   flat('#4a6a2a', 0.3, dirt=0.05)),
+            ('STEEL',       flat('#9a9ca0', 0.6, 1.0, dirt=0.1)),
+            ('TIRE',        flat('#1a1a1b', 0.3, dirt=0.0)),
+            ('CHROME',      flat('#c8cacc', 0.8, 1.0, dirt=0.0)),
+        ], 0, 0, 16),
     },
     'Kura': {    # plaster strips 2 m tall at 128 px/m; namako at 256 px/m (1 m)
         'PLASTER_WHITE': _strip(768, 256, plaster()),

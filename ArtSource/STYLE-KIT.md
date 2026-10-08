@@ -42,7 +42,7 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
   Fahrräder), `Nature` (Felsen, Laub, Erde, Töpfe — später Vegetation;
   nur deckend, Blatt-Karten mit Alpha brauchen in Aufgabe 4 ein eigenes
   Material), `Kura`, `Tokyo` (Fliesen- und ALC-Wände, Konbini, Schilder,
-  Neon). Neuer Baustil = neuer Atlas (z. B. `Kiso`).
+  Neon), `TokyoSigns`, `Koedo` + `KoedoShop`. Neuer Baustil = neuer Atlas (z. B. `Kiso`).
 - Atlas 1024², drei Karten passend zu URP/Lit:
   `T_<Stil>_BaseColor` (sRGB) · `T_<Stil>_MaskMap` (R Metall, G AO = 1,
   A Glätte; linear) · `T_<Stil>_Emission` (sRGB).
@@ -78,6 +78,7 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
 | Fels | `#7f7e7a` | | Rückstrahler | `#f08a1c` |
 | Fliese beige / braun (Tokyo) | `#b9a78c` / `#6e5143` | | ALC-Platte | `#d9d8d2` |
 | Konbini blau / orange (fiktiv) | `#2d8fd6` / `#f39a1e` | | Neon pink / cyan | `#ff3fa4` / `#3fe6ff` |
+| Kupfer-Patina (Koedo) | `#5f8f7a` | | Bretterwand (Koedo) | `#3b2a1e` |
 
 Gedämpfte Grundtöne, kräftige Farben nur als Akzent (Automat, Torii, Licht).
 
@@ -154,6 +155,43 @@ Vorderseiten teilen sich dieselben Spaltenlinien (jede Linie schneidet
 jedes Geschoss der Wandhülle; 11 → 5 Spalten sparte ~650 Dreiecke).
 Vorschau der Schilder mit Emissionsstärke 1,6 statt 4 (sonst wäscht AgX
 die Farben pastellig aus).
+
+## Koedo-Bausatz (Kura-Stadt, ab 2026-10-08)
+
+`buildings/koedo_kit.py` (Module) + `buildings/koedo.py` (Häuser als Daten,
+`HOUSES`; Gassen-Versionen über `lane()`). Zwei Atlanten: `Koedo` (Bau:
+schwarzer/weißer Putz 96 px/m, Bretter und Kupfer 64 px/m, Namako, Stein,
+Holz 48 px/m, Wappen, Oni, Shoji) und `KoedoShop` (Ladenausstattung:
+7 Innenräume, 8 Dachschilder, 4 Standschilder, 6 Noren, 4 Nobori,
+2 Laternen, Bonbonglas, Bambusrollo, Menütafel, Feuereimer).
+- **Zwei Hausarten:** `kura` (Steinsockel 0,45 m, optional Namako,
+  Putzband, dreistufiges Putzgesims 0,40 m, schweres Dach) und `machiya`
+  (Steinschwelle, Bretterwand, Holz-Geschossbalken, leichtes Dach mit
+  sichtbaren Sparren). Wände je Seite und Geschoss wählbar (Kupferfront,
+  Bretter unten, Putz oben).
+- **Dach** (`gable_roof`): First entlang X, Ziegelreihen (rund), Ortgang-
+  Ziegel, Firststapel (Kura bis 1,25 m hoch), Onigawara je Haus skaliert;
+  kürzere Vordertraufe hinter einer Kupfer-Attika (`eave_front`).
+- **Vordach** (`hisashi`): Ziegellagen + Rundziegel, Wandanschluss,
+  Kragträger (dashi-geta, an der Wand höher) + Pfette, oder verputzt;
+  Brandwände (Sodekabe) je Ende wählbar.
+- **Öffnungen** (`op`): offener Laden (Pfosten, Sturz, Schwelle,
+  zur Seite geschobene Glastüren, Trittstein), geschlossener Laden
+  (Brandschutztüren aus Putz / Bretter), Senbon-Gitter vor Shoji,
+  Shōwa-Glasfront; oben Kura-Fenster mit dicken Türen (offen/zu),
+  Mushiko-Schlitze, Shoji hinter Holzgeländer, Holz-Schiebefenster.
+- **Ladenausstattung** als eigenes Mesh `SM_<Haus>_Shop_LOD0/1`:
+  Innenraum, Dachschild auf Pfosten im Vordach, Wandschild, Noren,
+  Nobori, Laternen, Zedernkugel, Warenstufen (Gläser, Kisten, Töpfe),
+  Sakefässer, Bank mit rotem Filz + Schirm, Feuereimer, Bambusrollo,
+  Topfpflanzen, Menütafel, Wandlampe.
+- **Rückseite** automatisch: Tür + kleines Vordach + Fallrohr (Machiya
+  zusätzlich ein Fenster unten) — eine leere Rückseite war ein Fehler.
+- **Zwei Dichten:** Hauptstraße (alles) und Gasse (`lane()`: Läden zu,
+  keine Fahnen/Stände, Pflanzen davor).
+- **Bilder:** `koedo.shots(ordner)` — Straße auf Augenhöhe, von oben,
+  Gasse, Grau-Test, jedes Haus vorne/hinten/grau, Nahaufnahmen;
+  Kamera `P.shot(...)` (auch für andere Stile).
 
 ## Abnutzung
 

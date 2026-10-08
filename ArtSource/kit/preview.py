@@ -244,3 +244,33 @@ def details(objs, name, direction=(1.0, -1.7, 0.6), mood=False, size=(480, 400),
     img.filepath_raw = path; img.file_format = 'PNG'; img.save()
     bpy.data.images.remove(img)
     return path
+
+
+def shot(cols, target, direction, dist, out, mood=False, size=(1024, 576), lens=35):
+    """Camera aimed at a point (street at eye level, close-ups of shop
+    fronts) on the preview stage; only the named collections render.
+    mood: True (blue hour), False (neutral) or 'clay'. out: full path of the PNG."""
+    from mathutils import Vector
+    sc = core.scene()
+    bpy.context.view_layer.update()
+    for c in sc.collection.children:
+        c.hide_render = c.name not in cols and c.name != STAGE
+    clay = mood == 'clay'          # grey only: silhouette test
+    mood = mood is True
+    cam = stage(mood)
+    _lights([o for c in cols for o in bpy.data.collections[c].all_objects], mood)
+    bpy.context.view_layer.material_override = _clay() if clay else None
+    d = Vector(direction).normalized()
+    cam.location = Vector(target) + d * dist
+    cam.rotation_euler = (-d).to_track_quat('-Z', 'Y').to_euler()
+    lens0 = cam.data.lens
+    cam.data.lens = lens
+    cam.data.clip_end = max(cam.data.clip_end, dist * 8)
+    sc.render.resolution_x, sc.render.resolution_y = size
+    sc.render.filepath = out
+    try:
+        bpy.ops.render.render(write_still=True)
+    finally:
+        cam.data.lens = lens0
+        bpy.context.view_layer.material_override = None
+    return out

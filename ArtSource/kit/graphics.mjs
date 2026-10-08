@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TOKYO } from './graphics_tokyo.mjs';
 import { SIGNS } from './graphics_signs.mjs';
+import { KOEDO } from './graphics_koedo.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(join(here, '../../Tools/package.json'));
@@ -97,6 +98,7 @@ const G = {
     <rect x="0" y="0" width="64" height="4" fill="#cfd2d4"/>`],
   ...TOKYO,
   ...Object.fromEntries(Object.entries(SIGNS).map(([k, v]) => [`SG_${k}`, v])),
+  ...Object.fromEntries(Object.entries(KOEDO).map(([k, v]) => [`KO_${k}`, v])),
 };
 
 mkdirSync(OUT, { recursive: true });

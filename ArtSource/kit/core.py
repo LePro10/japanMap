@@ -587,9 +587,11 @@ def mesh_object(name, bm, col, mats, bevel=0.0, bevel_angle=35.0, smooth=True, h
         # bevel pays per piece: merge flat neighbours back (same UVs/material only)
         bmesh.ops.dissolve_limit(bm, angle_limit=math.radians(0.5), use_dissolve_boundaries=False,
                                  verts=list(bm.verts), edges=list(bm.edges), delimit={'UV', 'MATERIAL'})
-    # concave n-gons (gables, onigawara) are split here, so Unity never has to guess
+    # concave n-gons (gables, onigawara) are split here, so Unity never has to guess.
+    # BEAUTY (ear clip + edge flips): plain ear clipping left long slivers in the
+    # U-shaped wall n-gons round a window, and the bevel turned them into holes
     bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 4],
-                          quad_method='BEAUTY', ngon_method='EAR_CLIP')
+                          quad_method='BEAUTY', ngon_method='BEAUTY')
     if bevel > 0:
         _bevel_weights(bm, math.radians(bevel_angle))
     me.materials.clear()  # before to_mesh: clearing afterwards resets every face to slot 0
