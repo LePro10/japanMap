@@ -20,6 +20,7 @@ namespace JapanMap.Gameplay.Traffic
         static readonly RaycastHit[] Hits = new RaycastHit[8];
 
         public VehicleController Car => _car;
+        public MeshRenderer BodyRenderer { get; set; }
         public PathFollower Pilot => _pilot;
         public int RoadIndex { get; set; } = -1;
         /// <summary>True when it should be placed anew (stuck, flipped, off its lane for long).</summary>

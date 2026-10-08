@@ -10,7 +10,7 @@ namespace JapanMap.Gameplay.Life
     public sealed class PedestrianSettings : ScriptableObject
     {
         [Header("Count (legacy high 90 / low 36 for the city alone; ours follow the player everywhere)")]
-        public int countHigh = 48;
+        public int countHigh = 40;
         public int countLow = 24;
 
         [Header("Where (legacy: people are where the player is)")]

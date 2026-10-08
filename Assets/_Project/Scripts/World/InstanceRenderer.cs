@@ -198,6 +198,31 @@ namespace JapanMap.World
             for (var k = used; k < _pool.Count; k++) _pool[k].enabled = false;
         }
 
+        /// <summary>
+        /// Hide or show one instance (a broken street lamp): its matrix collapses to a point, the
+        /// lists stay as they are.
+        /// </summary>
+        public void SetHidden(int index, bool hidden)
+        {
+            if (_matrices == null || index < 0 || index >= _matrices.Length) return;
+            _matrices[index] = hidden ? Matrix4x4.TRS(data.positions[index], Quaternion.identity, Vector3.zero) : data.Matrix(index);
+        }
+
+        public bool IsHidden(int index) => _matrices != null && _matrices[index].m00 == 0f && _matrices[index].m11 == 0f;
+
+        /// <summary>Indices of instances whose pivot lies in <paramref name="area"/>.</summary>
+        public void FindInstances(Bounds area, List<int> result)
+        {
+            if (data == null) return;
+            foreach (var chunk in data.chunks)
+            {
+                if (!chunk.bounds.Intersects(area)) continue;
+                foreach (var run in chunk.runs)
+                    for (var i = run.start; i < run.start + run.count; i++)
+                        if (area.Contains(data.positions[i])) result.Add(i);
+            }
+        }
+
         /// <summary>Colliders currently active (tests).</summary>
         public int ActiveColliders
         {

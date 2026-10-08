@@ -15,6 +15,8 @@ namespace JapanMap.Gameplay.Traffic
         public int countLow = 3;
         [Tooltip("Road types traffic uses (roads.json type).")]
         public string[] roadTypes = { "city" };
+        [Tooltip("Narrower roads get no traffic, m: two lanes of 1.9 m cars need room (takeshita, 7 m, jammed a car).")]
+        public float minRoadWidth = 8f;
         [Tooltip("Cruising speed, km/h (city streets).")]
         public float maxSpeedKmh = 40f;
         [Tooltip("Shortest look-ahead of the lane follower, m (PathFollower default 7 cut corners onto the pavement).")]
@@ -29,7 +31,9 @@ namespace JapanMap.Gameplay.Traffic
         public float gapBase = 5f;
         public float gapSeconds = 1.2f;
         [Tooltip("Stuck or knocked off the road this long → placed anew (out of sight), s.")]
-        public float stuckSeconds = 8f;
+        public float stuckSeconds = 5f;
+        [Tooltip("Only cars this close to the player cast shadows, m (draw calls per cascade; sakura-hof sat at the High budget).")]
+        public float shadowDistance = 40f;
         [Tooltip("Body colours of the stand-in cars (white, silver, black, taxi yellow, red).")]
         public Color[] colors =
         {

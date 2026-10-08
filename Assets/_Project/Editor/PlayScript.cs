@@ -92,6 +92,8 @@ namespace JapanMap.Editor
                 InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
                 _kb = InputSystem.AddDevice<Keyboard>("PlayScriptKeyboard");
                 _mouse = InputSystem.AddDevice<Mouse>("PlayScriptMouse");
+                InputSystem.EnableDevice(_kb);
+                InputSystem.EnableDevice(_mouse);
                 EditorApplication.update += Tick;
             }
             else if (change == PlayModeStateChange.ExitingPlayMode && _steps != null)
@@ -191,6 +193,39 @@ namespace JapanMap.Editor
                     Object.FindAnyObjectByType<JapanMap.OnFoot.WalkCameraRig>().SetLive(true);
                     return true;
                 }
+                case "ram":
+                {
+                    // For pictures only: the player's car on the road beside the street lamp nearest to
+                    // (x, z), aimed at it at kmh. Board first (press f). Hold w to keep the throttle.
+                    var smash = Object.FindAnyObjectByType<JapanMap.Gameplay.Smash.SmashSystem>();
+                    var near = new Vector3(F(1), 30f, F(2));
+                    JapanMap.Gameplay.Smash.Breakable lamp = null;
+                    foreach (var b in smash.Breakables)
+                        if (b.name.StartsWith("streetLamp") && !b.Broken && (lamp == null || (b.transform.position - near).sqrMagnitude < (lamp.transform.position - near).sqrMagnitude)) lamp = b;
+                    var pm = Object.FindAnyObjectByType<PlayerModeController>();
+                    var car = pm.Car;
+                    var roads = (JapanMap.World.RoadNetwork)Object.FindAnyObjectByType<JapanMap.Vehicles.VehicleRespawn>().Locator;
+                    var c = lamp.transform.position;
+                    roads.TryNearest(c, Vector3.forward, 30f, out var road, out var dir);
+                    var side = road - c;
+                    side.y = 0f;
+                    var from = c + side.normalized * 14f - dir * 4f; // from the far lane, almost square on
+                    var aim = c - from;
+                    aim.y = 0f;
+                    car.Place(from, Mathf.Atan2(aim.x, aim.z) * Mathf.Rad2Deg, fromAbove: 3f);
+                    car.Body.linearVelocity = aim.normalized * (F(3) / 3.6f);
+                    Object.FindAnyObjectByType<JapanMap.Vehicles.CarCameraRig>().Attach(car);
+                    return true;
+                }
+                case "view":
+                {
+                    // Main camera to a named viewpoint, game systems running (like the bench).
+                    var cam = Camera.main;
+                    foreach (var b in cam.GetComponents<Behaviour>())
+                        if (b.GetType().Name.Contains("Cinemachine")) b.enabled = false;
+                    Map.ViewpointTools.Load().Apply(a[1], cam.transform);
+                    return true;
+                }
                 case "probe":
                     Probe();
                     return true;
@@ -201,8 +236,8 @@ namespace JapanMap.Editor
                     return true;
                 case "crowd":
                     // crowd on|off: switch the pedestrians for an A/B measurement.
-                    var c = Object.FindAnyObjectByType<JapanMap.Gameplay.Life.PedestrianCrowd>(FindObjectsInactive.Include);
-                    if (c != null) c.gameObject.SetActive(a[1] == "on");
+                    var crowdSystem = Object.FindAnyObjectByType<JapanMap.Gameplay.Life.PedestrianCrowd>(FindObjectsInactive.Include);
+                    if (crowdSystem != null) crowdSystem.gameObject.SetActive(a[1] == "on");
                     return true;
                 default:
                     Log.AppendLine("  unknown command");
@@ -258,6 +293,8 @@ namespace JapanMap.Editor
                 }
                 Log.AppendLine($"  crowd {active}/{crowd.People.Count} active, {walking} walking, {knocked} knocked, nearest {nearest:0.0} m");
             }
+            var smashSystem = Object.FindAnyObjectByType<JapanMap.Gameplay.Smash.SmashSystem>();
+            if (smashSystem != null) Log.AppendLine($"  smash breaks={smashSystem.Breaks} pieces={smashSystem.LivePieces} worst={smashSystem.WorstBreakMs:0.00}ms");
             var traffic = Object.FindAnyObjectByType<JapanMap.Gameplay.Traffic.TrafficSystem>();
             if (traffic != null)
             {

@@ -16,13 +16,16 @@ MonoBehaviour:
   countLow: 3
   roadTypes:
   - city
+  minRoadWidth: 8
   maxSpeedKmh: 40
+  lookAheadMin: 4
   laneShare: 0.25
   spawnRange: {x: 70, y: 200}
   despawn: 260
   gapBase: 5
   gapSeconds: 1.2
-  stuckSeconds: 8
+  stuckSeconds: 5
+  shadowDistance: 40
   colors:
   - {r: 0.86, g: 0.86, b: 0.84, a: 1}
   - {r: 0.55, g: 0.57, b: 0.6, a: 1}

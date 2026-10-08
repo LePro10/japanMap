@@ -32,7 +32,8 @@ namespace JapanMap.Gameplay.Traffic
         void Start()
         {
             for (var r = 0; r < roads.roads.Count; r++)
-                if (System.Array.IndexOf(settings.roadTypes, roads.roads[r].type) >= 0 && roads.roads[r].points.Length > 1) _cityRoads.Add(r);
+                if (System.Array.IndexOf(settings.roadTypes, roads.roads[r].type) >= 0 && roads.roads[r].points.Length > 1
+                    && roads.roads[r].width >= settings.minRoadWidth) _cityRoads.Add(r);
             var tier = QualitySettings.names[QualitySettings.GetQualityLevel()];
             var count = tier == "Low" ? settings.countLow : settings.countHigh;
             for (var i = 0; i < count; i++) _cars.Add(Build(i));
@@ -44,12 +45,13 @@ namespace JapanMap.Gameplay.Traffic
             var car = PlayerCarSpawner.Build(StandInDefinition(def), fleet.tuning);
             car.name = "Traffic " + i;
             car.transform.SetParent(transform, false);
-            AddBody(car.transform, def, settings.colors[i % settings.colors.Length]);
+            var body = AddBody(car.transform, def, settings.colors[i % settings.colors.Length]);
             var pilot = car.gameObject.AddComponent<PathFollower>();
             pilot.maxSpeedKmh = settings.maxSpeedKmh;
             pilot.lookAheadMin = settings.lookAheadMin; // tight turns at crossings, not the racing line
             var t = car.gameObject.AddComponent<TrafficCar>();
             t.Bind(settings, car, pilot);
+            t.BodyRenderer = body;
             car.gameObject.SetActive(false);
             return t;
         }
@@ -63,7 +65,7 @@ namespace JapanMap.Gameplay.Traffic
             return d;
         }
 
-        void AddBody(Transform car, VehicleDefinition def, Color paint)
+        MeshRenderer AddBody(Transform car, VehicleDefinition def, Color paint)
         {
             var palette = StandInPalette.For(template);
             var len = def.bodySize.x;
@@ -88,7 +90,9 @@ namespace JapanMap.Gameplay.Traffic
             var go = new GameObject("Body (provisional)");
             go.transform.SetParent(car, false);
             go.AddComponent<MeshFilter>().sharedMesh = b.ToMesh("TrafficCar", skinned: false);
-            go.AddComponent<MeshRenderer>().sharedMaterial = palette.Material;
+            var r = go.AddComponent<MeshRenderer>();
+            r.sharedMaterial = palette.Material;
+            return r;
         }
 
         Vector3 Focus()
@@ -103,6 +107,13 @@ namespace JapanMap.Gameplay.Traffic
         {
             if (_cars.Count == 0) return;
             var focus = Focus();
+            var shadow2 = settings.shadowDistance * settings.shadowDistance;
+            foreach (var c in _cars)
+            {
+                if (!c.gameObject.activeSelf) continue;
+                var mode = (c.transform.position - focus).sqrMagnitude < shadow2 ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
+                if (c.BodyRenderer.shadowCastingMode != mode) c.BodyRenderer.shadowCastingMode = mode;
+            }
             // One car per frame: drive on, or place anew.
             var t = _cars[_next];
             _next = (_next + 1) % _cars.Count;

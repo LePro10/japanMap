@@ -12,7 +12,7 @@ namespace JapanMap.Editor.Life
 {
     /// <summary>
     /// Puts World/Life into Game.unity: the pedestrian crowd with its settings and stand-in looks, and
-    /// the city traffic.
+    /// the city traffic and the breakable props.
     /// Re-running replaces it. The NavMesh comes from <see cref="PedestrianNav.Bake"/>.
     /// </summary>
     public static class LifeSetup
@@ -57,6 +57,14 @@ namespace JapanMap.Editor.Life
             traffic.FindProperty("player").objectReferenceValue = Object.FindAnyObjectByType<PlayerModeController>();
             traffic.FindProperty("template").objectReferenceValue = PlayerSetup.StandInMaterial("Skin", new Color(0.73f, 0.58f, 0.45f));
             traffic.ApplyModifiedPropertiesWithoutUndo();
+
+            var smashGo = new GameObject("Smash");
+            smashGo.transform.SetParent(life, false);
+            var smash = new SerializedObject(smashGo.AddComponent<JapanMap.Gameplay.Smash.SmashSystem>());
+            smash.FindProperty("settings").objectReferenceValue = Asset<JapanMap.Gameplay.Smash.BreakableSettings>("BreakableSettings");
+            smash.FindProperty("player").objectReferenceValue = Object.FindAnyObjectByType<PlayerModeController>();
+            smash.FindProperty("template").objectReferenceValue = PlayerSetup.StandInMaterial("Skin", new Color(0.73f, 0.58f, 0.45f));
+            smash.ApplyModifiedPropertiesWithoutUndo();
             MapScene.Save();
             return "[Life] crowd set up";
         }

@@ -179,8 +179,12 @@ namespace JapanMap.Vehicles
         /// One driving step: springs, then the planar model, then forces. Called from FixedUpdate;
         /// tests call it directly before Physics.Simulate so a bench runs thousands of steps per frame.
         /// </summary>
+        /// <summary>Body velocity at the start of the last physics step — before any collision of that step (smashing gives it back).</summary>
+        public Vector3 VelocityBeforeStep { get; private set; }
+
         public void Simulate(float dt)
         {
+            VelocityBeforeStep = _rb.linearVelocity;
             var def = definition;
             var up = transform.up;
             // The car's own physics scene: the game's default one, or an isolated bench scene in tests.

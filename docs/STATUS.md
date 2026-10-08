@@ -41,7 +41,10 @@ Web: 0 Fehler, 47,69 MB; Browser-fps zuletzt Niedrig 178, Hoch 49 — **unter La
 - [x] 3. **Verkehr**: 6 NPC-Autos (Niedrig 3) auf Tokyos Straßen um den Spieler, linke Spur, 40 km/h, biegen an Straßenenden ab,
   halten vor Autos/Leuten, sind echte Fahrphysik-Körper (wegschiebbar). Kasten-Stellvertreter (vorläufig). Tests: 1 min 96–99 % auf
   der Fahrbahn, Wegschieben, Anhalten vor einer Person. Bench Hoch sakura-hof 1 499 (am Budget), Niedrig ≤ 341. Web 49,32 MB, 321 fps.
-- [ ] 4. Zerstörbares: Pfosten, Zäune, Automaten, Bäume, Hütten zerfallen in Teile
+- [x] 4. **Zerstörbares** (D24): 870 Pfosten/Laternen, 142 Automaten, 88 Gestelle/Zäune/Bänke, 75 Hütten zerfallen in Teile
+  (Kästen, vorläufig), Auto fährt weiter (40 → 41 km/h nach Laterne), Teil kommt nach 20 s außer Sicht zurück. **Kosten gemessen:**
+  Bruch ≤ 1,6 ms, Physik ≤ 0,7 ms mit vollem Pool (64 Stücke), Budget 2 ms ✓ (`Captures/smash-cost.txt`). Bäume noch nicht.
+  Bench Hoch ≤ 1 431, Niedrig ≤ 301. Web 49,32 MB, Niedrig 356 fps.
 - [ ] 5. Begehbare Läden, Arbeiter/Tiere im Fischerdorf
 
 ## Offen / Gefunden
@@ -62,6 +65,8 @@ Web: 0 Fehler, 47,69 MB; Browser-fps zuletzt Niedrig 178, Hoch 49 — **unter La
 - Funaura: Kei-Truck. Needle: Tribüne, Boxengebäude, Start-Ziel-Brücke, Reifenstapel. Viadukt: Brüstungsmauer.
 - **Verkehrsautos** (Phase 6): 3–4 leichte Stadtautos (Kei, Limousine, Taxi, Lieferwagen), ≤ 5 k Dreiecke, Maße wie Hachi
   (4,1 × 1,7 m), Räder als eigene Objekte. Bis dahin Kasten-Stellvertreter (`TrafficSystem.AddBody`).
+- **Vorzerlegte Modelle** (Phase 6): Laterne (3 Teile: Mast, Arm, Leuchte), Automat (Gehäuse, Tür, 4–6 Dosen-/Flaschenkisten),
+  Holzgestell/Zaun (Latten), Schuppen (Wände, Dach, Bretter) — je ≤ 1 k Dreiecke pro Teil, gleiche Ursprünge wie die ganzen Modelle.
 - **Spielfigur** (Phase 6): 1,72 m, Fahrerin/Fahrer der späten 80er (Jacke, Hose), ≤ 6 k Dreiecke, Ursprung zwischen den Füßen,
   +Z vorn; Animationen Stehen, Gehen (4,4 m/s), Rennen (7,5 m/s), Sprung, Rutschen (Hocke, Hüfte ~0,4 m). Bis dahin `StandInFigure`.
 

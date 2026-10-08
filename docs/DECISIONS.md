@@ -346,6 +346,21 @@ Stellvertreter-Figur als **ein Skinned Mesh** mit Farbpalette: 6 Einzelteile kos
 für 48 Leute, jetzt ~40; Schatten nur bis 30 m. Tokyo-Kollider bleiben vorerst GameObjects: das
 Backen braucht sie ohnehin, die Szene ist dadurch nicht gewachsen.
 
+## D24 — Zerstörbares: Namensliste, statische Kollider, Bruchstücke als Rigidbodies · 2026-10-09
+
+Was zerbricht, steht als Liste von Modellnamen in `Data/Life/BreakableSettings.asset` (Pfosten/Laternen,
+Automaten, Gestelle/Zäune/Bänke, Schuppen/Fischerhütten); `SmashSystem` hängt beim Start an jedes passende
+Objekt ein `Breakable` (1 175 Stück, 32 ms einmalig) — nichts wird in die Szene geschrieben. Der Treffer
+kommt über Unitys Kollisionsmeldung des statischen Kolliders; Bruch nur, wenn Tempo *in die Fläche* und
+Energie reichen (Prototyp `shouldBreak`, höchstens 2 je Schritt). Weil der Kollider das Auto in diesem
+Schritt schon gebremst hat, bekommt es seine Geschwindigkeit vom Schrittanfang zurück, minus Prototyp-
+Verlust. Tokyo-Stücke sind instanziert: ihre Instanzen werden ausgeblendet (1:1 je Kollider geprüft).
+Bruchstücke: Pool von 64 Unity-Rigidbodies auf der Debris-Ebene, kollidieren nicht mit Autos/Leuten
+(Prototyp: „kein neues Hindernis“), 7,5 s, dann versinken; das Objekt kommt nach 20 s außer Reichweite
+(120 m) zurück. **Nur das Spielerauto** zerbricht etwas — NPC-Autos räumten sonst an Ecken die Stadt ab.
+**Bäume** zerbrechen noch nicht (instanzierte Vegetation, eigener Weg nötig; Phase 7). Vorläufig:
+Bruchstücke sind Kästen in Artfarbe (vorzerlegte Meshes fehlen).
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

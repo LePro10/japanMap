@@ -41122,6 +41122,56 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 9.466, y: 12.08, z: 12.495}
   m_Center: {x: 0, y: 6.04, z: 0}
+--- !u!1 &269853451
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 269853452}
+  - component: {fileID: 269853453}
+  m_Layer: 0
+  m_Name: Smash
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &269853452
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 269853451}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 984885223}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &269853453
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 269853451}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97df24e625e5c4df8bd5f71cf6f91030, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Smash.SmashSystem
+  settings: {fileID: 11400000, guid: 0f32820da2a60437fa66fc530781b2f2, type: 2}
+  player: {fileID: 1493207663}
+  template: {fileID: 2100000, guid: 2b9586b1742c0412b8e4375fb52775bb, type: 2}
+  roots:
+  - World/Places
+  - World/Props
 --- !u!1 &270132267
 GameObject:
   m_ObjectHideFlags: 0
@@ -53458,62 +53508,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1224197105189705013, guid: e7fd076d5110949dd96514c283cdf5eb, type: 3}
   m_PrefabInstance: {fileID: 350624648}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &350698703
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 350698704}
-  - component: {fileID: 350698705}
-  m_Layer: 0
-  m_Name: Pedestrians
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &350698704
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 350698703}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1840860556}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &350698705
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 350698703}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 767aae68238484222bb83f6dc4ef4309, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Life.PedestrianCrowd
-  settings: {fileID: 11400000, guid: 54baf4bcbd75549a4bf65a8923911cd7, type: 2}
-  player: {fileID: 1493207663}
-  skin: {fileID: 2100000, guid: 2b9586b1742c0412b8e4375fb52775bb, type: 2}
-  tops:
-  - {fileID: 2100000, guid: cf77cffea1de042a985c5606f74d1830, type: 2}
-  - {fileID: 2100000, guid: 8b02d7530ba214352a4dade4d0f8c74c, type: 2}
-  - {fileID: 2100000, guid: cacfeda9c7110429eaf619d5e2a32938, type: 2}
-  - {fileID: 2100000, guid: 0cbce8a89f5984f4ab04e86cc6b6abbd, type: 2}
-  bottoms:
-  - {fileID: 2100000, guid: 8f5078b0dc8154d2d9ce9c00c45d3091, type: 2}
-  - {fileID: 2100000, guid: 808dae468bbe04d9aab4db4fbf592b5e, type: 2}
-  relocationsPerFrame: 3
 --- !u!1 &351117961
 GameObject:
   m_ObjectHideFlags: 0
@@ -102943,7 +102937,7 @@ Transform:
   - {fileID: 1086452902}
   - {fileID: 1443334163}
   - {fileID: 842165873}
-  - {fileID: 1840860556}
+  - {fileID: 984885223}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &708695062
@@ -143076,6 +143070,40 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.4, y: 6, z: 0.4}
   m_Center: {x: 0, y: 3, z: 0}
+--- !u!1 &984885222
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 984885223}
+  m_Layer: 0
+  m_Name: Life
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &984885223
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 984885222}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1759727112}
+  - {fileID: 1633156947}
+  - {fileID: 269853452}
+  m_Father: {fileID: 708005471}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &985049663
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -238729,55 +238757,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 10.213, y: 15.785, z: 4.766}
   m_Center: {x: 0, y: 7.8925, z: 0}
---- !u!1 &1616966731
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1616966732}
-  - component: {fileID: 1616966733}
-  m_Layer: 0
-  m_Name: Traffic
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1616966732
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1616966731}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1840860556}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1616966733
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1616966731}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 11a57e44a6b4541f2a027604e2621e1c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Traffic.TrafficSystem
-  settings: {fileID: 11400000, guid: 8e8ad51b42c0e4b6084499b8c33470b2, type: 2}
-  fleet: {fileID: 11400000, guid: e763cb0739ae741d4a4a1d8765862f38, type: 2}
-  roads: {fileID: 11400000, guid: b9d4082b9489141aa924de2b95c119e1, type: 2}
-  player: {fileID: 1493207663}
-  template: {fileID: 2100000, guid: 2b9586b1742c0412b8e4375fb52775bb, type: 2}
 --- !u!1 &1617208772
 GameObject:
   m_ObjectHideFlags: 0
@@ -241890,6 +241869,55 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6487476884293122818, guid: 6709bbfca4a8948f1addacc2d77871e6, type: 3}
   m_PrefabInstance: {fileID: 1633038112}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1633156946
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1633156947}
+  - component: {fileID: 1633156948}
+  m_Layer: 0
+  m_Name: Traffic
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1633156947
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1633156946}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 984885223}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1633156948
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1633156946}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11a57e44a6b4541f2a027604e2621e1c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Traffic.TrafficSystem
+  settings: {fileID: 11400000, guid: 8e8ad51b42c0e4b6084499b8c33470b2, type: 2}
+  fleet: {fileID: 11400000, guid: e763cb0739ae741d4a4a1d8765862f38, type: 2}
+  roads: {fileID: 11400000, guid: b9d4082b9489141aa924de2b95c119e1, type: 2}
+  player: {fileID: 1493207663}
+  template: {fileID: 2100000, guid: 2b9586b1742c0412b8e4375fb52775bb, type: 2}
 --- !u!1 &1633168571
 GameObject:
   m_ObjectHideFlags: 0
@@ -260851,6 +260879,62 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1224197105189705013, guid: e7fd076d5110949dd96514c283cdf5eb, type: 3}
   m_PrefabInstance: {fileID: 1758948470}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1759727111
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1759727112}
+  - component: {fileID: 1759727113}
+  m_Layer: 0
+  m_Name: Pedestrians
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1759727112
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1759727111}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 984885223}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1759727113
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1759727111}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 767aae68238484222bb83f6dc4ef4309, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Life.PedestrianCrowd
+  settings: {fileID: 11400000, guid: 54baf4bcbd75549a4bf65a8923911cd7, type: 2}
+  player: {fileID: 1493207663}
+  skin: {fileID: 2100000, guid: 2b9586b1742c0412b8e4375fb52775bb, type: 2}
+  tops:
+  - {fileID: 2100000, guid: cf77cffea1de042a985c5606f74d1830, type: 2}
+  - {fileID: 2100000, guid: 8b02d7530ba214352a4dade4d0f8c74c, type: 2}
+  - {fileID: 2100000, guid: cacfeda9c7110429eaf619d5e2a32938, type: 2}
+  - {fileID: 2100000, guid: 0cbce8a89f5984f4ab04e86cc6b6abbd, type: 2}
+  bottoms:
+  - {fileID: 2100000, guid: 8f5078b0dc8154d2d9ce9c00c45d3091, type: 2}
+  - {fileID: 2100000, guid: 808dae468bbe04d9aab4db4fbf592b5e, type: 2}
+  relocationsPerFrame: 3
 --- !u!1 &1760221539
 GameObject:
   m_ObjectHideFlags: 0
@@ -273104,39 +273188,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8755864598178514508, guid: 6016bb512df884af7a91c0158fc2c5bb, type: 3}
   m_PrefabInstance: {fileID: 1840768248}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1840860555
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1840860556}
-  m_Layer: 0
-  m_Name: Life
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1840860556
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1840860555}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 350698704}
-  - {fileID: 1616966732}
-  m_Father: {fileID: 708005471}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1841400215
 GameObject:
   m_ObjectHideFlags: 0

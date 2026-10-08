@@ -12,13 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9cbfd6858536a4850b711952c88de02d, type: 3}
   m_Name: PedestrianSettings
   m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Life.PedestrianSettings
-  countHigh: 48
+  countHigh: 40
   countLow: 24
   far: 160
   near: 110
   pop: 35
   wanderRadius: 35
   maxPause: 4
+  shadowDistance: 30
   speed: {x: 1.05, y: 1.55}
   height: 1.68
   radius: 0.3
