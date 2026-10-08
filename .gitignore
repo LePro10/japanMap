@@ -70,3 +70,6 @@ Thumbs.db
 
 # Referenzbilder (fremde Screenshots, v. a. Forza Horizon 6) — nur lokal, nie committen.
 /docs/refs/
+
+# Private copy of the prototype for Tools/export-places.mjs
+/Tools/.legacy-cache/

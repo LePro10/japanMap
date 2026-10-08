@@ -173,3 +173,15 @@ MonoBehaviour:
     position: {x: 640, y: 32.35, z: -262}
     lookAt: {x: 720.90173, y: 37.35, z: -320.77853}
     note: "Gegenlicht: Sonne im Bild, Glanz auf nassem Asphalt. Pr\xFCft Bloom/Sonnenscheibe (ungedeckelt f\xFCllte sie das halbe Bild)."
+  - name: sakura
+    position: {x: 550, y: 26.10823, z: -532}
+    lookAt: {x: 545, y: 30.074413, z: -476}
+    note: 'Sakura Commons: first view from the on-foot spawn S towards the car and both halls (legacy WP2)'
+  - name: sakura-hof
+    position: {x: 548, y: 28.91235, z: -497}
+    lookAt: {x: 512, y: 29.0079, z: -476}
+    note: 'Sakura Commons court: Petal Motors showroom with the fleet'
+  - name: sakura-luft
+    position: {x: 640, y: 88.21975, z: -610}
+    lookAt: {x: 550, y: 27.185207, z: -505}
+    note: 'Sakura Commons from the air: bowl, cherry ring, halls, exit east'

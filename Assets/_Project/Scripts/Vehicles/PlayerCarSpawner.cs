@@ -17,9 +17,11 @@ namespace JapanMap.Vehicles
         [SerializeField] VehicleRespawn respawn;
         [Tooltip("Car id from the fleet; empty = fleet default.")]
         [SerializeField] string carId = "";
-        [Tooltip("Where the game starts (the road nearest to it), Unity coordinates.")]
+        [Tooltip("Where the game starts, Unity coordinates.")]
         [SerializeField] Vector3 spawnPoint;
         [SerializeField] float spawnHeading;
+        [Tooltip("Put the first car on the road nearest to the spawn point. Off: exactly there (Sakura Commons court).")]
+        [SerializeField] bool snapToRoad = true;
 
         public VehicleController Current { get; private set; }
         public event Action<VehicleController> Spawned;
@@ -33,6 +35,7 @@ namespace JapanMap.Vehicles
         {
             var at = spawnPoint;
             var forward = Quaternion.Euler(0f, spawnHeading, 0f) * Vector3.forward;
+            var snap = snapToRoad || Current != null; // a replaced car goes to the road nearest to it, as before
             if (Current != null)
             {
                 at = Current.transform.position;
@@ -41,7 +44,7 @@ namespace JapanMap.Vehicles
             }
             var car = Build(def, fleet.tuning, fleet.effects);
             car.transform.SetParent(transform, true);
-            if (roadLocator is IRoadLocator locator && locator.TryNearest(at, forward, 600f, out var p, out var f))
+            if (snap && roadLocator is IRoadLocator locator && locator.TryNearest(at, forward, 600f, out var p, out var f))
                 car.Place(p, Mathf.Atan2(f.x, f.z) * Mathf.Rad2Deg, fromAbove: 3f);
             else
                 car.Place(at, Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg);

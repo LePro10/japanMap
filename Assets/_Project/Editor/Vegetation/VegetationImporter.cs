@@ -184,10 +184,42 @@ namespace JapanMap.Editor.Vegetation
                 if (terrain.GetComponent<TerrainCollider>() is { } col) col.terrainData = data;
             }
 
+            counts["placed in places"] = AuthoredTrees(protoIndex, instances);
             WriteData(protos, instances);
             EnsureQualityComponent(terrains);
             AssetDatabase.SaveAssets();
             return "[Vegetation] " + string.Join(", ", counts.Select(c => $"{c.Key} {c.Value}")) + $" — {counts.Values.Sum()} trees on {terrains.Length} tile(s)";
+        }
+
+        /// <summary>
+        /// Trees the prototype set by hand in its places (Sakura Commons ring, willows, kaki, …): same
+        /// renderer and prototypes as the scatter, so new tree models replace them too (D18).
+        /// </summary>
+        static int AuthoredTrees(Dictionary<(TreeBuilder.Species, int), int> protoIndex, List<(Vector2Int chunk, int proto, Vector3 pos, Vector3 shape)> instances)
+        {
+            var n = 0;
+            foreach (var kit in Places.PlaceImporter.Kits())
+            foreach (var t in Places.PlaceSource.Load(kit.source).trees)
+            {
+                if (!System.Enum.TryParse<TreeBuilder.Species>(t.species, out var species))
+                {
+                    Debug.LogWarning($"[Vegetation] {kit.name}: unknown tree species '{t.species}'");
+                    continue;
+                }
+                var variant = Places.PlaceImporter.Variant(t.x, t.z, TreeBuilder.Variants);
+                if (!protoIndex.TryGetValue((species, variant), out var proto) && !protoIndex.TryGetValue((species, 0), out proto))
+                {
+                    Debug.LogWarning($"[Vegetation] {kit.name}: species {species} is not scattered anywhere — add it to Vegetation.asset");
+                    continue;
+                }
+                var w = Places.PlaceSource.ToUnity(t.x, t.z);
+                w.y = Places.PlaceImporter.Ground(w) - 0.15f;
+                var chunk = new Vector2Int(Mathf.FloorToInt(w.x / ChunkSize), Mathf.FloorToInt(w.z / ChunkSize));
+                var scale = t.scale > 0 ? t.scale : 1;
+                instances.Add((chunk, proto, w, new Vector3(scale, scale, -t.yaw)));
+                n++;
+            }
+            return n;
         }
 
         static int PickVariant(Vector3 w, float roll)
@@ -326,7 +358,9 @@ namespace JapanMap.Editor.Vegetation
         sealed class Circles
         {
             readonly Dictionary<(int, int), List<Vector3>> _cells = new(); // x, z, radius
+            readonly List<Rect> _rects = new(); // x/z, Unity
             const float Cell = 32f;
+            public void Add(Rect r) => _rects.Add(r);
             public void Add(Vector3 c, float r)
             {
                 for (var x = Mathf.FloorToInt((c.x - r) / Cell); x <= Mathf.FloorToInt((c.x + r) / Cell); x++)
@@ -338,6 +372,8 @@ namespace JapanMap.Editor.Vegetation
             }
             public bool Blocks(Vector3 p)
             {
+                foreach (var r in _rects)
+                    if (r.Contains(new Vector2(p.x, p.z))) return true;
                 if (!_cells.TryGetValue((Mathf.FloorToInt(p.x / Cell), Mathf.FloorToInt(p.z / Cell)), out var l)) return false;
                 foreach (var c in l)
                     if ((p.x - c.x) * (p.x - c.x) + (p.z - c.y) * (p.z - c.y) < c.z * c.z) return true;
@@ -345,16 +381,26 @@ namespace JapanMap.Editor.Vegetation
             }
         }
 
-        /// <summary>Footprints of everything under World/Props (colliders' bounds) plus a margin.</summary>
+        /// <summary>Footprints of everything under World/Props and World/Places (colliders' bounds) plus a margin, and the places' clearings.</summary>
         static Circles PropCircles(float margin)
         {
             var c = new Circles();
-            var props = MapScene.Root().Find(PropImporter.GroupName);
-            if (props == null) return c;
-            foreach (var col in props.GetComponentsInChildren<Collider>())
+            foreach (var group in new[] { PropImporter.GroupName, Places.PlaceImporter.GroupName })
             {
-                var b = col.bounds;
-                c.Add(b.center, Mathf.Max(b.extents.x, b.extents.z) + margin);
+                var props = MapScene.Root().Find(group);
+                if (props == null) continue;
+                foreach (var col in props.GetComponentsInChildren<Collider>())
+                {
+                    var b = col.bounds;
+                    c.Add(b.center, Mathf.Max(b.extents.x, b.extents.z) + margin);
+                }
+            }
+            // Courts, streets and yards of the places (legacy *Clearance functions), Three → Unity.
+            foreach (var kit in Places.PlaceImporter.Kits())
+            {
+                var place = Places.PlaceSource.Load(kit.source);
+                foreach (var k in place.clearCircles) c.Add(new Vector3(k[0], 0, -k[1]), k[2]);
+                foreach (var r in place.clearRects) c.Add(Rect.MinMaxRect(r[0], -r[3], r[2], -r[1]));
             }
             return c;
         }

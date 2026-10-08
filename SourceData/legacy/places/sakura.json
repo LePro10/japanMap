@@ -1,0 +1,404 @@
+{
+ "place": "sakura",
+ "title": "Sakura Commons",
+ "anchor": {
+  "x": 550,
+  "z": 510
+ },
+ "items": [
+  {
+   "kind": "showroom",
+   "x": 514,
+   "z": 478,
+   "yaw": 0,
+   "w": 22,
+   "d": 14,
+   "tag": "Petal Motors"
+  },
+  {
+   "kind": "showroomFloor",
+   "x": 514,
+   "z": 478,
+   "yaw": 0,
+   "w": 22,
+   "d": 14
+  },
+  {
+   "kind": "court",
+   "x": 542,
+   "z": 490,
+   "yaw": 0,
+   "w": 78,
+   "d": 16
+  },
+  {
+   "kind": "bayApron",
+   "x": 572,
+   "z": 487,
+   "yaw": 0,
+   "w": 8.8,
+   "d": 4
+  },
+  {
+   "kind": "workshop",
+   "x": 572,
+   "z": 478,
+   "yaw": 0,
+   "w": 18,
+   "d": 14,
+   "tag": "Open Bay"
+  },
+  {
+   "kind": "eventBoard",
+   "x": 556,
+   "z": 493,
+   "yaw": 0,
+   "w": 4.1,
+   "d": 0.7
+  },
+  {
+   "kind": "stoneLantern",
+   "x": 534,
+   "z": 502,
+   "yaw": 0
+  },
+  {
+   "kind": "stoneLantern",
+   "x": 566,
+   "z": 502,
+   "yaw": 0
+  },
+  {
+   "kind": "stoneLantern",
+   "x": 539,
+   "z": 520,
+   "yaw": 0
+  },
+  {
+   "kind": "stoneLantern",
+   "x": 561,
+   "z": 520,
+   "yaw": 0
+  },
+  {
+   "kind": "bench",
+   "x": 540.5,
+   "z": 516.5,
+   "yaw": 0.4
+  },
+  {
+   "kind": "bench",
+   "x": 559.5,
+   "z": 516.5,
+   "yaw": -0.4
+  },
+  {
+   "kind": "lampPost",
+   "x": 526.4,
+   "z": 492,
+   "yaw": 0
+  },
+  {
+   "kind": "lampPost",
+   "x": 561.6,
+   "z": 492,
+   "yaw": 0
+  },
+  {
+   "kind": "showCar",
+   "x": 505.61,
+   "z": 474.4,
+   "yaw": 1.571,
+   "tag": "touge"
+  },
+  {
+   "kind": "showCar",
+   "x": 505.14,
+   "z": 477.333,
+   "yaw": 1.571,
+   "tag": "pip"
+  },
+  {
+   "kind": "showCar",
+   "x": 505.34,
+   "z": 480.267,
+   "yaw": 1.571,
+   "tag": "truck"
+  },
+  {
+   "kind": "showCar",
+   "x": 505.52,
+   "z": 483.2,
+   "yaw": 1.571,
+   "tag": "offroad"
+  },
+  {
+   "kind": "showCar",
+   "x": 522.44,
+   "z": 474.4,
+   "yaw": -1.571,
+   "tag": "torrent"
+  },
+  {
+   "kind": "showCar",
+   "x": 522.21,
+   "z": 477.333,
+   "yaw": -1.571,
+   "tag": "ribbon"
+  },
+  {
+   "kind": "showCar",
+   "x": 522.02,
+   "z": 480.267,
+   "yaw": -1.571,
+   "tag": "meridian"
+  },
+  {
+   "kind": "showCar",
+   "x": 522.085,
+   "z": 483.2,
+   "yaw": -1.571,
+   "tag": "morrow"
+  },
+  {
+   "kind": "showCar",
+   "x": 517.6,
+   "z": 474.1,
+   "yaw": 0,
+   "tag": "gt"
+  },
+  {
+   "kind": "showCar",
+   "x": 510.4,
+   "z": 474.1,
+   "yaw": 0,
+   "tag": "needle"
+  },
+  {
+   "kind": "flag",
+   "x": 607.513,
+   "z": 510,
+   "yaw": 1.571
+  },
+  {
+   "kind": "flag",
+   "x": 579.143,
+   "z": 560.477,
+   "yaw": 2.618
+  },
+  {
+   "kind": "flag",
+   "x": 519.076,
+   "z": 563.562,
+   "yaw": 3.665
+  },
+  {
+   "kind": "flag",
+   "x": 492.037,
+   "z": 510,
+   "yaw": 4.712
+  },
+  {
+   "kind": "flag",
+   "x": 519.188,
+   "z": 456.632,
+   "yaw": 5.76
+  },
+  {
+   "kind": "flag",
+   "x": 578.319,
+   "z": 460.95,
+   "yaw": 6.807
+  }
+ ],
+ "trees": [
+  {
+   "species": "Cherry",
+   "x": 611.513,
+   "z": 510,
+   "scale": 1.07,
+   "yaw": 2.759
+  },
+  {
+   "species": "Cherry",
+   "x": 610.919,
+   "z": 526.323,
+   "scale": 1.167,
+   "yaw": 3.98
+  },
+  {
+   "species": "Cherry",
+   "x": 601.17,
+   "z": 539.543,
+   "scale": 0.918,
+   "yaw": 0.853
+  },
+  {
+   "species": "Cherry",
+   "x": 592.133,
+   "z": 552.133,
+   "scale": 0.949,
+   "yaw": 1.245
+  },
+  {
+   "species": "Cherry",
+   "x": 581.143,
+   "z": 563.941,
+   "scale": 1.118,
+   "yaw": 3.366
+  },
+  {
+   "species": "Cherry",
+   "x": 567.026,
+   "z": 573.541,
+   "scale": 1.336,
+   "yaw": 6.112
+  },
+  {
+   "species": "Cherry",
+   "x": 550,
+   "z": 568.366,
+   "scale": 0.873,
+   "yaw": 0.288
+  },
+  {
+   "species": "Cherry",
+   "x": 533.213,
+   "z": 572.651,
+   "scale": 1.279,
+   "yaw": 5.388
+  },
+  {
+   "species": "Cherry",
+   "x": 517.076,
+   "z": 567.026,
+   "scale": 1.341,
+   "yaw": 6.164
+  },
+  {
+   "species": "Cherry",
+   "x": 508.927,
+   "z": 551.073,
+   "scale": 0.855,
+   "yaw": 0.068
+  },
+  {
+   "species": "Cherry",
+   "x": 498.935,
+   "z": 539.483,
+   "scale": 0.91,
+   "yaw": 0.758
+  },
+  {
+   "species": "Cherry",
+   "x": 488.897,
+   "z": 526.372,
+   "scale": 1.179,
+   "yaw": 4.13
+  },
+  {
+   "species": "Cherry",
+   "x": 488.037,
+   "z": 510,
+   "scale": 1.098,
+   "yaw": 3.113
+  },
+  {
+   "species": "Cherry",
+   "x": 487.261,
+   "z": 493.189,
+   "scale": 1.285,
+   "yaw": 5.461
+  },
+  {
+   "species": "Cherry",
+   "x": 494.091,
+   "z": 477.721,
+   "scale": 1.26,
+   "yaw": 5.151
+  },
+  {
+   "species": "Cherry",
+   "x": 503.539,
+   "z": 463.539,
+   "scale": 1.332,
+   "yaw": 6.052
+  },
+  {
+   "species": "Cherry",
+   "x": 517.188,
+   "z": 453.168,
+   "scale": 1.327,
+   "yaw": 5.988
+  },
+  {
+   "species": "Cherry",
+   "x": 534.936,
+   "z": 453.782,
+   "scale": 0.863,
+   "yaw": 0.158
+  },
+  {
+   "species": "Cherry",
+   "x": 550,
+   "z": 449.312,
+   "scale": 1.018,
+   "yaw": 2.111
+  },
+  {
+   "species": "Cherry",
+   "x": 565.535,
+   "z": 452.024,
+   "scale": 0.976,
+   "yaw": 1.587
+  },
+  {
+   "species": "Cherry",
+   "x": 580.319,
+   "z": 457.486,
+   "scale": 1.015,
+   "yaw": 2.072
+  },
+  {
+   "species": "Cherry",
+   "x": 592.572,
+   "z": 467.428,
+   "scale": 0.988,
+   "yaw": 1.733
+  },
+  {
+   "species": "Cherry",
+   "x": 603.727,
+   "z": 478.981,
+   "scale": 1.102,
+   "yaw": 3.172
+  },
+  {
+   "species": "Cherry",
+   "x": 613.188,
+   "z": 493.069,
+   "scale": 1.314,
+   "yaw": 5.825
+  }
+ ],
+ "clearCircles": [
+  [
+   550,
+   510,
+   55
+  ]
+ ],
+ "clearRects": [
+  [
+   550,
+   497,
+   730,
+   515
+  ]
+ ],
+ "spawn": {
+  "x": 550,
+  "z": 506,
+  "yaw": 1.5707963267948966
+ }
+}

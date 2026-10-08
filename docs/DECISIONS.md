@@ -246,6 +246,36 @@ statt von der Mitte gemessen (wächst mit der Breite, wie Prototyp P8.7);
 einige Kirschen und Bambushaine in tiefen Wiesen (im Prototyp nur in
 Städten). Laubbäume meist grün, 10 % Herbstfarben als Akzent.
 
+## D19 — Orte aus den Layout-Daten des Prototyps, gebaut aus der Bibliothek · 2026-10-08
+
+**Weg:** `Tools/export-places.mjs` führt die Layout-Module des Prototyps
+(`sakuraLobby.ts`, `koedoLayout.ts`, `kisoLayout.ts`, …) unverändert in einer
+privaten Kopie aus und schreibt je Ort `SourceData/legacy/places/<ort>.json`
+(Art, Lage, Drehung, Grundfläche, Bäume, Freiflächen, Start). In Unity ordnet
+je Ort ein `PlaceKit` (`Data/Places/*.asset`) jeder Art Bibliotheksmodelle zu;
+`Editor/Places/PlaceImporter` setzt sie unter `World/Places`. Kein
+GLB-Blockout (PLAN Aufgabe 1): Gebäude sind im Prototyp zu einem Mesh
+verschmolzen, ein GLB hätte keine Einzelhäuser und keine Arten. Die
+Layout-Daten haben beides.
+
+**Boden:** Unter Gebäuden wird das Gelände auf den Mittelwert der Grundfläche
+eingeebnet und über 4 m zurückgeblendet (`PlaceGround`, Teil des
+Terrain-Imports wie das Absenken unter Straßen). Höfe bekommen die
+Gelände-Schicht „Sand“ als Kies (Unity-Terrain-Layer, kein eigenes Mesh).
+
+**Vegetation:** Orte räumen Bäume frei (Kollider + Freiflächen des
+Prototyps) und bringen ihre gesetzten Bäume (Kirschring der Commons usw.) als
+Instanzen im selben Renderer mit — neue Baummodelle ersetzen sie mit (D18).
+
+**Fehlende Modelle** werden nicht nachgebaut, sondern gemeldet
+(Import-Bericht → STATUS „Für die Asset-Sitzung"). Stellvertreter aus der
+Bibliothek nur, wo sie das Bild nicht verfälschen.
+
+**Start (Regel 15, wie im Prototyp):** Das Spiel beginnt wieder in Sakura
+Commons (Auto 4 m nördlich des Startpunkts, Blick nach Osten zur Ausfahrt),
+nicht mehr auf der Stadtstraße. `PlayerCarSpawner.snapToRoad` aus, sonst
+spränge das Auto auf die nächste Straße.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

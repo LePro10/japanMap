@@ -3,7 +3,7 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-08 · **Phase:** 4 abgeschlossen (Optik-Abnahme durch dich offen), **Phase 5 (Orte) ist als Nächstes dran**
+**Stand:** 2026-10-08 · **Phase:** 5 (Orte) läuft · Phase 4 abgeschlossen (Optik-Abnahme durch dich offen)
 
 Phase 2 (Karte) ✅ · Phase 3 (Fahren) ✅ von dir freigegeben.
 
@@ -20,12 +20,23 @@ Phase 2 (Karte) ✅ · Phase 3 (Fahren) ✅ von dir freigegeben.
 Niedrig: 119–357 Draw Calls, ≤ 0,34 Mio. Dreiecke, ≤ 2 ms → **Budget Niedrig gehalten**. Konsole 0 Fehler.
 Tests im Editor: EditMode 53/53, PlayMode 139/139 (+4 auf Abruf). Web: 0 Fehler, Hoch 105 fps, Mittel 244, Niedrig 545 (M4).
 
-## Phase 5 — Orte (als Nächstes)
+## Phase 5 — Orte (läuft)
 
-- [ ] 1. Blockout aus dem Prototyp (Lagen der Städte/Dörfer)
-- [ ] 2. Bausätze: liegen aus dem Asset-Sprint in Unity bereit (Showroom)
-- [ ] 3. Orte bauen: Sakura Commons → Tokyo → Funaura → Koedo → Kiso → Gassho → Tempel → Needle Circuit
-- [ ] 4. Dichte: keine leeren Flächen; dabei Vegetation in den Orten freiräumen (Import neu laufen lassen)
+Weg (D19): Layout-Daten des Prototyps → `node Tools/export-places.mjs` → `SourceData/legacy/places/*.json`
+→ je Ort `Data/Places/<Ort>.asset` (Art → Bibliotheksmodell) → Menü „JapanMap/Places/Import All".
+Bilder vorher `Captures/p5-before/<ort>.png`, nachher `Captures/p5-after/<ort>.png`; Bench `Captures/bench-p5-<ort>-High|Low.txt`.
+
+- [x] 1. Blockout: statt GLB die Layout-Daten selbst (Gebäude sind im Prototyp zu einem Mesh verschmolzen)
+- [x] 2. Bausätze: Bibliothek (158 Prefabs) — fehlende Modelle unten unter „Für die Asset-Sitzung"
+- [ ] 3. Orte bauen:
+  - [x] **Sakura Commons** — Petal Motors (Kiso-Gasthaus als Stellvertreter) mit Kies-Ausstellungsfläche, Open Bay (Netzschuppen als Stellvertreter), Tafel, Laternen, Bänke, Kirschring (24), Start wieder hier (Blick Ost). Bench Hoch ≤ 1 159 DC / 3,77 M (davon Ort +39 DC / +63 k; Rest Wald, s. „Hoch kostet viel"), Niedrig ≤ 293 DC / 381 k ✓. Web Niedrig 392 fps, 0 Fehler
+  - [ ] Tokyo · [ ] Funaura · [ ] Koedo · [ ] Kiso · [ ] Gassho · [ ] Tempel · [ ] Needle Circuit
+- [ ] 4. Dichte: keine leeren Flächen; Vegetation in den Orten freiräumen (geschieht je Ort beim Import)
+
+### Für die Asset-Sitzung (fehlende Modelle, aus dem Import-Bericht)
+
+- **Sakura Commons:** Autohaus „Petal Motors" (22 × 14 m, offene Front, innen 10 Stellplätze), Werkstatt „Open Bay" (18 × 14 m, Einfahrt), Veranstaltungstafel (4 m), einzelne Nobori-Fahne (6×), Leute (6, Phase 6).
+  **Ausstellungsautos:** die Fahrzeugmodelle haben 120 k Dreiecke und ~120 Teil-Meshes je Auto (10 Autos = 1,23 M / 1 212 Draw Calls) → für die Ausstellung eine leichte Stufe (≤ 8 k, 1–2 Materialien).
 
 ## Offene Probleme / Gefunden
 
@@ -35,6 +46,7 @@ Tests im Editor: EditMode 53/53, PlayMode 139/139 (+4 auf Abruf). Web: 0 Fehler,
 - **Fahrtests nur im Batchmodus rot** (`PlayerDriveTests`, Gas bleibt 0): schon vor Phase 4 so, im Editor grün. Ursache offen (nicht der Fensterfokus allein).
 - **Niedrig:** Laternen beleuchten das Gelände kaum (Forward, 4 Lichter je Objekt; das Gelände ist ein Objekt) — bewusster Kompromiss.
 - Vegetation wächst noch dort, wo Phase 5 Orte baut (Gassho-Tal, Funaura) → beim Bau der Orte freiräumen.
+- Sakura Commons: die Zufahrt `commons-drive` beginnt als Asphaltkante mitten in der Schale (Startbild) — mit Tokyo/Stadtrand glätten.
 - Horizont vom Startpunkt (hoch oben): schmale grünliche Linie zwischen Himmel und Nebel.
 - Vorläufige Bäume: Zeder von unten gesehen (Stufen-Kegel) und Bambus noch grob → Sprint-Aufgabe 4 ersetzt sie.
 - Rest aus Phase 3: Straßen-Höhenstufen + Kuppen-Knicke (Phase 5), Leitplanken zerbrechen nicht (Phase 7), `PathFollower` ohne Zurücksetzen (Phase 7), Terrain-Dreiecke `pixelError` (jetzt je Stufe in `TerrainQuality`), Web-Seite Standardvorlage (Phase 9/10), zwölf alte Zweige `agent/*` (du entscheidest).

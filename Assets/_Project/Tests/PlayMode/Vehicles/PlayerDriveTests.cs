@@ -104,7 +104,8 @@ namespace JapanMap.Tests.Vehicles
             Assert.NotNull(car, "no car spawned");
             yield return new WaitForSeconds(0.5f);
             Assert.AreEqual(4, car.Telemetry.groundedWheels, "car does not stand on four wheels");
-            Assert.AreEqual(Surface.Asphalt, car.Telemetry.surface);
+            // The game starts on the Sakura Commons meadow (prototype WP2), not on a road.
+            Assert.AreNotEqual(Surface.Water, car.Telemetry.surface);
 
             var start = car.transform.position;
             Press(Key.W);

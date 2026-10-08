@@ -44,6 +44,8 @@
 | 2026-10-08 | 3 | MCP-Werkzeuge fehlten, weil der Editor nach Sitzungsstart kam | HTTP-Helfer wie im Skill `unity-verify` beschrieben; Skill um fertiges Skript ergänzt | Skill |
 | 2026-10-08 | 3 | Prototyp-Prüfstände ließen sich nicht starten (kein `three`), Zeit fürs Herausfinden | Rezept im Skill `legacy-port`; Ausgaben in `SourceData/bench/` | Skill |
 | 2026-10-08 | 3 | Mensch: Auto rammt mit der Front in Senken/Kanten und stoppt abrupt | Kollisionsbox höher und kürzer (`ArcadeTuning.bodyUnderLift`, `bodyLengthShare`); Ringfahrt zählt harte Karosserie-Stöße (3 → 0) | Test |
+| 2026-10-08 | 5 | Zehn Fahrzeugmodelle als Ausstellung: 1,23 Mio. Dreiecke, 1 212 Draw Calls an einem Ort | Test `EveryPlace_StaysInItsTriangleBudget` (≤ 600 k je Ort); Bench je Ort mit `Tools/bench.mjs` (Hoch + Niedrig in einem Lauf) | Test |
+| 2026-10-08 | 5 | Stellvertreter-Modell (Fischmarkthalle als Autohaus) sah erst im Nahbild falsch aus | Je Ort Nahbilder mit fester Kamera vor dem Commit; Bench-Werkzeug statt Handschritte | Werkzeug |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

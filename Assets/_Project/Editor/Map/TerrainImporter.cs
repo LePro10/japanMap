@@ -97,9 +97,11 @@ namespace JapanMap.Editor.Map
             // the same ground: a terrain-only import once left the ring's cliff 4 m above the road.
             var types = settings.roadTypes.ToDictionary(t => t.type);
             var carve = TerrainCarve.UnderRoads(RoadImporter.NetworkRoads(RoadImporter.Load(settings), types), type => types[type].shoulder, settings);
+            // Building pads of the places too (Phase 5): a terrain-only import must not undo them.
+            var pads = Places.PlaceGround.Level(Places.PlaceImporter.Pads(), settings);
             AssetDatabase.SaveAssets();
             Debug.Log($"[Map] terrain imported: {n}x{n} tiles, {tileRes}² samples each, {size.x:F1} m per tile; " +
-                      $"lowered under roads: {carve.texels} texels, deepest cut {carve.maxCut:F2} m, left alone (tunnel-deep) {carve.skipped}");
+                      $"lowered under roads: {carve.texels} texels, deepest cut {carve.maxCut:F2} m, left alone (tunnel-deep) {carve.skipped}; levelled under {pads.pads} building footprints");
             return tiles.Cast<Terrain>().ToArray();
         }
 

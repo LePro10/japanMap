@@ -17,7 +17,8 @@ namespace JapanMap.Editor.Vehicles
         public const string ObjectName = "Player";
         public const string InputPath = "Assets/_Project/Data/Input/Drive.inputactions";
         public const string CameraSettingsPath = FleetSeed.Dir + "/CarCameraSettings.asset";
-        // City street (viewpoint "stadt-strasse"): flat, wide, room to try a first drift.
+        // Fallback when no place defines a spawn: city street (viewpoint "stadt-strasse"). Normally
+        // Sakura Commons sets it (Places/PlaceImporter.ApplySpawn), as in the prototype.
         static readonly Vector3 SpawnPoint = new(640f, 30f, -262f);
 
         [MenuItem("JapanMap/Vehicles/Setup Player In Game Scene")]
@@ -57,6 +58,7 @@ namespace JapanMap.Editor.Vehicles
             var so = new SerializedObject(spawner);
             so.FindProperty("spawnPoint").vector3Value = SpawnPoint;
             so.ApplyModifiedPropertiesWithoutUndo();
+            Places.PlaceImporter.ApplySpawn();
 
             MapScene.Save();
             Debug.Log("[Player] set up in Game.unity");
