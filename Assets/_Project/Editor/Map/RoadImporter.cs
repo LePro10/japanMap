@@ -109,14 +109,19 @@ namespace JapanMap.Editor.Map
 
         public const string NetworkPath = MeshDir + "/RoadNetwork.asset";
 
-        /// <summary>Roads as runtime centrelines (Unity coordinates, full length — trims are a mesh matter).</summary>
+        /// <summary>
+        /// Roads as runtime centrelines (Unity coordinates, full length — trims are a mesh matter). Width is
+        /// the road's own (widest) carriageway like the mesh (<see cref="WidthAt"/>), not its type's: city
+        /// streets are 5–24 m, the type said 8 — carve, clearings and footprint checks used the wrong edge.
+        /// </summary>
         public static List<RoadNetwork.Road> NetworkRoads(List<Road> roads, Dictionary<string, MapImportSettings.RoadType> types) =>
             roads.Select(r =>
             {
                 var c = r.centerline;
                 var points = new Vector3[c.Length / 3];
                 for (var i = 0; i < points.Length; i++) points[i] = LegacySource.ToUnity(c[i * 3], c[i * 3 + 1], c[i * 3 + 2]);
-                return new RoadNetwork.Road { id = r.id, type = r.type, closed = r.closed, width = types[r.type].width, points = points };
+                var width = r.widths != null && r.widths.Length > 0 ? r.widths.Max() : types[r.type].width;
+                return new RoadNetwork.Road { id = r.id, type = r.type, closed = r.closed, width = width, points = points };
             }).ToList();
 
         /// <summary>Centrelines for runtime queries (respawn, later AI). Same asset GUID on every import.</summary>

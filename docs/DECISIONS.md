@@ -276,6 +276,35 @@ Commons (Auto 4 m nördlich des Startpunkts, Blick nach Osten zur Ausfahrt),
 nicht mehr auf der Stadtstraße. `PlayerCarSpawner.snapToRoad` aus, sonst
 spränge das Auto auf die nächste Straße.
 
+## D20 — Große Orte instanziert: Tokyo aus Fassadenmodulen, Hüllen in der Ferne · 2026-10-08
+
+**Warum:** Tokyo hat im Prototyp 2 583 Häuser + 102 Vorstadthäuser (`generateTokyo`,
+`generateSuburbs`, unverändert ausgeführt). Mit Fassadenmodulen sind das 3 321
+Modelle — als GameObjects tausende Draw Calls. Der Prototyp verschmolz je
+160-m-Kachel; verschmolzene Meshes würden hier den Download sprengen (jedes Haus
+eine Kopie). **Lösung:** derselbe Instanz-Renderer wie die Bäume (D18), jetzt
+`InstanceRenderer` mit `InstanceData` (Bäume: `VegetationData`, Orte:
+`PlaceInstanceData` mit voller Matrix). Ganz Tokyo: 39 Prototypen, ≈ 60 Aufrufe.
+Kollision: ein Box-Kollider je Prototyp-Haus (seine eigene Grundfläche/Höhe).
+
+**Fassaden füllen:** Ein Haus des Prototyps (bis 54 m Front) wird mit gleich
+breiten Modulen gefüllt; Modelle nach Höhe (± 25 %) und Breite (± 35 %)
+gewählt und genau auf das Maß gestreckt; die Front sitzt auf der Baulinie,
+überschüssige Tiefe geht nach hinten. Fassadenfamilie → Modelle im `PlaceKit`.
+
+**Kosten über die Entfernung, nicht die Anzahl:** LOD0 bis 40 % der
+Bibliotheks-Schwelle, ab 150 m (× lodBias) eine **Hülle** (Quader, 10
+Dreiecke, Fensterraster mit jedem dritten Fenster beleuchtet — wie die „Hülle"
+des Prototyps). Schatten wirft nur LOD0-Nähe und das mit dem LOD1-Mesh
+(Instanz-Aufrufe werden nicht je Kaskade aussortiert). Sichtweite je Stufe in
+`TerrainQuality.buildingDistance` (Hoch 2 500, Mittel 1 200, Niedrig 450 m).
+Gemessen: Tokyo-Dreiecke an `stadt-neon` Hoch 12,9 M → 3,1 M, Niedrig ≤ 545 k.
+
+**Nebenbefund (Regel 7):** `RoadNetwork` trug für jede Straße die Typbreite
+(Stadt 8 m), echte Breiten 5–24 m. Absenken, Freiräumen und Prüfungen nutzen
+jetzt die eigene Breite; dabei fiel auf, dass Straßenenden nicht weit genug
+abgesenkt waren (bis 0,39 m Gelände über dem Asphalt).
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

@@ -30,22 +30,25 @@ Bilder vorher `Captures/p5-before/<ort>.png`, nachher `Captures/p5-after/<ort>.p
 - [x] 2. Bausätze: Bibliothek (158 Prefabs) — fehlende Modelle unten unter „Für die Asset-Sitzung"
 - [ ] 3. Orte bauen:
   - [x] **Sakura Commons** — Petal Motors (Kiso-Gasthaus als Stellvertreter) mit Kies-Ausstellungsfläche, Open Bay (Netzschuppen als Stellvertreter), Tafel, Laternen, Bänke, Kirschring (24), Start wieder hier (Blick Ost). Bench Hoch ≤ 1 159 DC / 3,77 M (davon Ort +39 DC / +63 k; Rest Wald, s. „Hoch kostet viel"), Niedrig ≤ 293 DC / 381 k ✓. Web Niedrig 392 fps, 0 Fehler
-  - [ ] Tokyo · [ ] Funaura · [ ] Koedo · [ ] Kiso · [ ] Gassho · [ ] Tempel · [ ] Needle Circuit
+  - [x] **Tokyo** — 2 583 Stadthäuser + 102 Vorstadthäuser aus dem Prototyp-Generator, 3 321 Fassadenmodule instanziert (D20), Hüllen mit Fensterraster in der Ferne, 2 685 Kollider. Bench Niedrig ≤ 288 DC / 545 k ✓; **Hoch 3,1–3,7 M Dreiecke (Budget 3 M)** — Stadt +1,0–1,9 M, Rest Wald/Gelände (an `sakura` jetzt 4,8 M, weil die Stadt im Blick ist). Web Niedrig 377 fps, Hoch 134 fps, 0 Fehler
+  - [ ] Funaura · [ ] Koedo · [ ] Kiso · [ ] Gassho · [ ] Tempel · [ ] Needle Circuit
 - [ ] 4. Dichte: keine leeren Flächen; Vegetation in den Orten freiräumen (geschieht je Ort beim Import)
 
 ### Für die Asset-Sitzung (fehlende Modelle, aus dem Import-Bericht)
 
 - **Sakura Commons:** Autohaus „Petal Motors" (22 × 14 m, offene Front, innen 10 Stellplätze), Werkstatt „Open Bay" (18 × 14 m, Einfahrt), Veranstaltungstafel (4 m), einzelne Nobori-Fahne (6×), Leute (6, Phase 6).
+- **Tokyo:** Hochhäuser über 40 m (41 Türme bis 154 m, Hotel/Kino-Familie; jetzt 35-m-Modelle), Kino-/Hotel-/Markthallen-Fronten (Familien 4, 5, 7 nutzen Stellvertreter), Holz-Izakaya für die Yokochō-Gassen (jetzt Koedo/Kiso-Läden).
   **Ausstellungsautos:** die Fahrzeugmodelle haben 120 k Dreiecke und ~120 Teil-Meshes je Auto (10 Autos = 1,23 M / 1 212 Draw Calls) → für die Ausstellung eine leichte Stufe (≤ 8 k, 1–2 Materialien).
 
 ## Offene Probleme / Gefunden
 
-- **Download 43,0 MB** (Ziel Handy 20 MB). Unkomprimiert: Autos 71 MB (alle zehn im Build), Gelände 15, Straßen 10,5, Modell-Atlanten 8 + 6 neue Stile, Baumdaten 2 → nur gewähltes Auto laden (Addressables), Atlanten ohne Leuchten ohne Emission-Karte, Phase 10.
-- **Hoch kostet viel** (105 fps auf M4 gegen 244 auf Mittel: 4 Schatten-Kaskaden über Wald, MSAA, doppelte LOD-Weite) — auf iGPU-Laptops vermutlich unter 60 → Standardstufe in Phase 10 kalibrieren.
+- **Download 45,7 MB** (Ziel Handy 20 MB; Phase 5 bisher +2,7 MB). Unkomprimiert: Autos 71 MB (alle zehn im Build), Gelände 15, Straßen 10,5, Modell-Atlanten 8 + 6 neue Stile, Baumdaten 2 → nur gewähltes Auto laden (Addressables), Atlanten ohne Leuchten ohne Emission-Karte, Phase 10.
+- **Hoch kostet viel** (105 fps auf M4 gegen 244 auf Mittel: 4 Schatten-Kaskaden über Wald, MSAA, doppelte LOD-Weite) — auf iGPU-Laptops vermutlich unter 60 → Standardstufe in Phase 10 kalibrieren. Seit Tokyo an Stadt-Blickpunkten 3,1–4,8 M Dreiecke (Budget 3 M); Hebel: Wald-Schatten (Instanzen werden nicht je Kaskade aussortiert), lodBias 2.
 - **Löcher in Gebäuden:** Unity verwirft 395 sich selbst schneidende Polygone in 29 Meshes (Tokyo-Mansion 114, Gassho-Häuser je ~20, Kiso/Koedo 3–20) → Asset-Sitzung: vor dem Export triangulieren. Liste: Import-Bericht „JapanMap/Art/Import Library".
 - **Fahrtests nur im Batchmodus rot** (`PlayerDriveTests`, Gas bleibt 0): schon vor Phase 4 so, im Editor grün. Ursache offen (nicht der Fensterfokus allein).
 - **Niedrig:** Laternen beleuchten das Gelände kaum (Forward, 4 Lichter je Objekt; das Gelände ist ein Objekt) — bewusster Kompromiss.
 - Vegetation wächst noch dort, wo Phase 5 Orte baut (Gassho-Tal, Funaura) → beim Bau der Orte freiräumen.
+- `Game.unity` 7,1 MB: 2 685 Tokyo-Kollider als GameObjects → später zur Laufzeit aus `PlaceInstanceData` erzeugen (Szene klein, gleiches Verhalten).
 - Sakura Commons: die Zufahrt `commons-drive` beginnt als Asphaltkante mitten in der Schale (Startbild) — mit Tokyo/Stadtrand glätten.
 - Horizont vom Startpunkt (hoch oben): schmale grünliche Linie zwischen Himmel und Nebel.
 - Vorläufige Bäume: Zeder von unten gesehen (Stufen-Kegel) und Bambus noch grob → Sprint-Aufgabe 4 ersetzt sie.

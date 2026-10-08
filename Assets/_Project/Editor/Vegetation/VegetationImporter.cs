@@ -59,7 +59,7 @@ namespace JapanMap.Editor.Vegetation
             EditorUtility.SetDirty(data);
 
             var group = MapScene.FreshGroup(RendererName);
-            var veg = group.gameObject.AddComponent<VegetationRenderer>();
+            var veg = group.gameObject.AddComponent<InstanceRenderer>();
             veg.data = data;
             veg.Build();
         }
@@ -100,7 +100,7 @@ namespace JapanMap.Editor.Vegetation
             var clear = PropCircles(s.propClearance);
             var counts = new Dictionary<string, int>();
 
-            // Prototypes: every species × variant (drawn by VegetationRenderer, not as Terrain trees — D18).
+            // Prototypes: every species × variant (drawn by InstanceRenderer, not as Terrain trees — D18).
             var protoIndex = new Dictionary<(TreeBuilder.Species, int), int>();
             var protos = new List<VegetationData.Prototype>();
             var material = AssetDatabase.LoadAssetAtPath<Material>(TreeBuilder.MaterialPath);

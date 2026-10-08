@@ -36,6 +36,10 @@ namespace JapanMap.Editor.Places
             public string paint;
             [Tooltip("With paint: only paint, keep the ground's shape (a court in a bowl).")]
             public bool paintOnly;
+            [Tooltip("Tile the item's width with several models side by side (city frontages).")]
+            public bool fill;
+            [Tooltip("Pick among the models closest to the item's height (h).")]
+            public bool matchHeight;
         }
 
         [Tooltip("File name in SourceData/legacy/places without .json.")]
@@ -43,6 +47,16 @@ namespace JapanMap.Editor.Places
         [Tooltip("Margin (m) around a levelled footprint where the ground blends back to the natural slope.")]
         public float levelBlend = 4;
         public Rule[] rules = { };
+        [Tooltip("Draw the models instanced (InstanceRenderer + PlaceInstanceData) with one box collider per item, instead of a GameObject per model. For thousands of models (Tokyo).")]
+        public bool instanced;
+        [Tooltip("Instanced: LOD0 → LOD1 distance relative to the library LODGroup threshold (smaller = coarser sooner).")]
+        public float lodDistanceScale = 1;
+        [Tooltip("Instanced: cull distance relative to the library LODGroup threshold.")]
+        public float cullDistanceScale = 1;
+        [Tooltip("Instanced: shadows from LOD1 instead of the drawn LOD0.")]
+        public bool shadowFromLastLod = true;
+        [Tooltip("Instanced: beyond this distance (m, at lodBias 1) a building is a plain box shell (10 triangles) like the prototype's 'Hülle'. 0 = no shell.")]
+        public float shellDistance;
 
         public Rule Find(string kind, string tag)
         {

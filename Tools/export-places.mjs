@@ -22,8 +22,8 @@ if (!existsSync(join(CACHE, 'node_modules/three'))) {
 }
 mkdirSync(OUT, { recursive: true });
 const r = spawnSync('node', [
-  '--experimental-strip-types', '--no-warnings',
-  '--import', join(CACHE, 'tools/bench/register.mjs'),
+  '--no-warnings',
+  '--import', join(ROOT, 'Tools/legacy-export/register.mjs'),
   join(ROOT, 'Tools/legacy-export/places.mts'), CACHE, OUT, ...process.argv.slice(2),
-], { stdio: 'inherit' });
+], { stdio: 'inherit', env: { ...process.env, LEGACY_SRC: join(CACHE, 'src') } });
 process.exit(r.status ?? 1);

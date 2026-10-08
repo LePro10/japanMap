@@ -96,5 +96,8 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
   Klärung: im Editor laufen lassen.
 - **ViewpointBench** schaltet Cinemachine/CarCameraRig ab — sonst misst jeder
   Blickpunkt das Auto-Bild. Gleiche Zahlen an allen Blickpunkten = Messfehler.
+- **Bench je Ort:** `node Tools/bench.mjs <label> <blickpunkte>` misst Hoch und Niedrig in einem Lauf.
+  Für Versuche („Schatten aus") das geänderte Asset `EditorUtility.SetDirty` + `AssetDatabase.SaveAssets`
+  — sonst lädt Play die alte Fassung, und der Versuch misst nichts (gleiche Zahlen bis zur letzten Stelle).
 - **Stufen messen:** Editor `QualitySystem.SetTier("Low")` + `TerrainQuality.Apply`;
   Browser `node Tools/smoke.mjs --gpu --quality Low`.

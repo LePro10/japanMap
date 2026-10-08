@@ -46,6 +46,12 @@ namespace JapanMap.Editor.Map
                         var r1 = Mathf.Min(res - 1, Mathf.CeilToInt((Mathf.Max(a.z, b.z) + reach - origin.z) / cell));
                         var ab = new Vector2(b.x - a.x, b.z - a.z);
                         var len2 = Mathf.Max(ab.sqrMagnitude, 1e-6f);
+                        // At an open road's ends the ground reaches two texels past the end cap: the terrain
+                        // is bilinear between 1.5 m texels, and untouched texels just beyond the start lifted
+                        // the first metre of a 14 m avenue 0.39 m above the asphalt.
+                        var cap = 2f * cell / Mathf.Sqrt(len2);
+                        var tMin = !road.closed && i == 0 ? -Mathf.Max(0.25f, cap) : -0.25f;
+                        var tMax = !road.closed && i == segments - 1 ? 1f + Mathf.Max(0.25f, cap) : 1.25f;
                         for (var r = r0; r <= r1; r++)
                         for (var c = c0; c <= c1; c++)
                         {
@@ -55,7 +61,7 @@ namespace JapanMap.Editor.Map
                             // outside of bends). A clamped projection from the segment behind would hand an
                             // uphill road's lower end height to ground further on (measured 35 cm too deep).
                             var tRaw = ((x - a.x) * ab.x + (z - a.z) * ab.y) / len2;
-                            if (tRaw < -0.25f || tRaw > 1.25f) continue;
+                            if (tRaw < tMin || tRaw > tMax) continue;
                             var t = Mathf.Clamp01(tRaw);
                             var dx = x - (a.x + ab.x * t);
                             var dz = z - (a.z + ab.y * t);

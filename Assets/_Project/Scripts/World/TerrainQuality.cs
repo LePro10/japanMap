@@ -14,8 +14,10 @@ namespace JapanMap.World
         public struct Tier
         {
             public string name;
-            [Tooltip("Trees and bushes (VegetationRenderer) beyond this distance (m) are not drawn.")]
+            [Tooltip("Trees and bushes (InstanceRenderer with VegetationData) beyond this distance (m) are not drawn.")]
             public float treeDistance;
+            [Tooltip("Place models drawn instanced (Tokyo; InstanceRenderer with PlaceInstanceData) beyond this distance (m) are not drawn. 0 = no limit.")]
+            public float buildingDistance;
             [Tooltip("Grass and rice beyond this distance (m) are not drawn.")]
             public float detailDistance;
             [Range(0, 1)] public float detailDensity;
@@ -25,9 +27,9 @@ namespace JapanMap.World
 
         public Tier[] tiers =
         {
-            new() { name = "High", treeDistance = 1500, detailDistance = 90, detailDensity = 1f, pixelError = 5 },
-            new() { name = "Medium", treeDistance = 900, detailDistance = 60, detailDensity = 0.6f, pixelError = 8 },
-            new() { name = "Low", treeDistance = 500, detailDistance = 35, detailDensity = 0.3f, pixelError = 14 },
+            new() { name = "High", treeDistance = 1500, buildingDistance = 2500, detailDistance = 90, detailDensity = 1f, pixelError = 5 },
+            new() { name = "Medium", treeDistance = 900, buildingDistance = 1200, detailDistance = 60, detailDensity = 0.6f, pixelError = 8 },
+            new() { name = "Low", treeDistance = 500, buildingDistance = 450, detailDistance = 35, detailDensity = 0.3f, pixelError = 14 },
         };
 
         void OnEnable()
@@ -42,7 +44,11 @@ namespace JapanMap.World
         {
             var t = Array.Find(tiers, x => x.name == tierName);
             if (t.name == null) return;
-            foreach (var veg in FindObjectsByType<VegetationRenderer>()) veg.maxDistance = t.treeDistance;
+            foreach (var r in FindObjectsByType<InstanceRenderer>())
+            {
+                if (r.data is VegetationData) r.maxDistance = t.treeDistance;
+                else if (r.data is PlaceInstanceData) r.maxDistance = t.buildingDistance > 0 ? t.buildingDistance : 6000;
+            }
             foreach (var terrain in Terrain.activeTerrains)
             {
                 terrain.treeDistance = t.treeDistance;

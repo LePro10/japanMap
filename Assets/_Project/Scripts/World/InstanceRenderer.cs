@@ -5,18 +5,19 @@ using UnityEngine.Rendering;
 namespace JapanMap.World
 {
     /// <summary>
-    /// Draws <see cref="VegetationData"/> with GPU instancing: per camera, chunks are frustum-culled,
-    /// each instance gets its LOD by distance, and every (prototype, LOD) pair becomes one instanced
-    /// call. Terrain trees drew one call per tree (44 500 draw calls measured, DECISIONS D18).
-    /// Colliders exist only for trees near the main camera (pooled capsules).
+    /// Draws <see cref="InstanceData"/> (trees, place buildings) with GPU instancing: per camera, chunks
+    /// are frustum-culled, each instance gets its LOD by distance, and every (prototype, LOD) pair
+    /// becomes one instanced call. Terrain trees drew one call per tree (44 500 draw calls measured,
+    /// DECISIONS D18); Tokyo as GameObjects would have been ~5 000 objects (D20).
+    /// Tree colliders exist only near the main camera (pooled capsules); buildings bring their own.
     /// </summary>
     [ExecuteAlways]
-    public sealed class VegetationRenderer : MonoBehaviour
+    public sealed class InstanceRenderer : MonoBehaviour
     {
         const int Slice = 1023; // instances per call that every backend (WebGL2) accepts
 
-        public VegetationData data;
-        [Tooltip("Set per quality tier by TerrainQuality.")]
+        public InstanceData data;
+        [Tooltip("Set per quality tier by TerrainQuality (trees only; buildings use their prototypes' maxDistance).")]
         public float maxDistance = 1500;
         [Tooltip("Pooled tree colliders within this radius of the main camera (play mode).")]
         public float colliderRadius = 70;
@@ -122,15 +123,18 @@ namespace JapanMap.World
             for (var p = 0; p < data.prototypes.Length; p++)
             {
                 var proto = data.prototypes[p];
+                var proxy = proto.shadowProxyLod;
                 for (var l = 0; l < proto.lods.Length; l++)
                 {
                     var n = _counts[p * _lodsPer + l];
                     if (n == 0) continue;
-                    var rp = new RenderParams(proto.material)
+                    var byProxy = proxy > l && proxy < proto.lods.Length;
+                    var mat = proto.lodMaterials != null && l < proto.lodMaterials.Length && proto.lodMaterials[l] != null ? proto.lodMaterials[l] : proto.material;
+                    var rp = new RenderParams(mat)
                     {
                         camera = cam,
                         worldBounds = world,
-                        shadowCastingMode = l < proto.shadowLods ? ShadowCastingMode.On : ShadowCastingMode.Off,
+                        shadowCastingMode = !byProxy && l < proto.shadowLods ? ShadowCastingMode.On : ShadowCastingMode.Off,
                         receiveShadows = true,
                         layer = gameObject.layer,
                         lightProbeUsage = LightProbeUsage.Off,
@@ -139,6 +143,16 @@ namespace JapanMap.World
                     {
                         Graphics.RenderMeshInstanced(rp, proto.lods[l], 0, _lists[p * _lodsPer + l], Mathf.Min(Slice, n - s), s);
                         calls++;
+                    }
+                    if (byProxy)
+                    {
+                        rp.material = proto.lodMaterials != null && proxy < proto.lodMaterials.Length && proto.lodMaterials[proxy] != null ? proto.lodMaterials[proxy] : proto.material;
+                        rp.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+                        for (var s = 0; s < n; s += Slice)
+                        {
+                            Graphics.RenderMeshInstanced(rp, proto.lods[proxy], 0, _lists[p * _lodsPer + l], Mathf.Min(Slice, n - s), s);
+                            calls++;
+                        }
                     }
                     drawn += n;
                 }
@@ -172,7 +186,7 @@ namespace JapanMap.World
                             _pool.Add(go.AddComponent<CapsuleCollider>());
                         }
                         var c = _pool[used++];
-                        var s = data.shapes[i];
+                        var s = data is VegetationData v ? v.shapes[i] : Vector3.one;
                         c.radius = proto.colliderRadius * s.y;
                         c.height = proto.colliderHeight * s.x;
                         c.center = new Vector3(0, c.height / 2, 0);

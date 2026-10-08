@@ -16,8 +16,8 @@ namespace JapanMap.Tests
         [Test]
         public void Renderer_HasDataAndInstancedMaterial()
         {
-            var r = Object.FindAnyObjectByType<VegetationRenderer>();
-            Assert.IsNotNull(r, "no VegetationRenderer — run JapanMap/Vegetation/Import");
+            var r = Object.FindObjectsByType<InstanceRenderer>().FirstOrDefault(x => x.data is VegetationData);
+            Assert.IsNotNull(r, "no tree InstanceRenderer — run JapanMap/Vegetation/Import");
             Assert.IsNotNull(r.data);
             Assert.That(r.data.Count, Is.GreaterThan(20000), "forest missing");
             Assert.AreEqual(r.data.Count, r.data.chunks.Sum(c => c.runs.Sum(run => run.count)), "runs do not cover all instances");
@@ -41,7 +41,7 @@ namespace JapanMap.Tests
         [Test]
         public void NoTree_OnARoad()
         {
-            var r = Object.FindAnyObjectByType<VegetationRenderer>();
+            var r = Object.FindObjectsByType<InstanceRenderer>().FirstOrDefault(x => x.data is VegetationData);
             var network = UnityEditor.AssetDatabase.LoadAssetAtPath<RoadNetwork>(RoadImporter.NetworkPath);
             var hits = 0;
             for (var i = 0; i < r.data.Count; i += 7)

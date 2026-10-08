@@ -5,7 +5,7 @@
 //
 // Item: { kind, x, z, yaw, w?, d?, h?, y?, tag? } — kind is what the prototype built there (its own
 // vocabulary, e.g. 'kura', 'hatago'); Data/Places/<Place>.asset maps kinds to library models.
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -43,6 +43,25 @@ function hash(x: number, z: number): number {
   const n = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
   return n - Math.floor(n);
 }
+
+
+/** Baked terrain (SourceData/legacy/terrain, Unity layout: row 0 = south) as a Three-coordinate sampler. */
+function terrainSampler(): (x: number, z: number) => number {
+  const dir = join(OUT!, '..', 'terrain');
+  const info = JSON.parse(readFileSync(join(dir, 'terrain.json'), 'utf8'));
+  const res = info.import.resolution, raw = readFileSync(join(dir, info.file));
+  const data = new Uint16Array(raw.buffer, raw.byteOffset, res * res);
+  const { min, max } = info.heightMeters, step = info.metersPerSample;
+  const ox = info.unityTerrainPosition.x, oz = info.unityTerrainPosition.z;
+  const at = (c: number, r: number): number => min + (data[Math.min(res - 1, Math.max(0, r)) * res + Math.min(res - 1, Math.max(0, c))]! / 65535) * (max - min);
+  return (x: number, z: number): number => {
+    const u = (x - ox) / step, v = (-z - oz) / step;
+    const c = Math.floor(u), r = Math.floor(v), fu = u - c, fv = v - r;
+    return (at(c, r) * (1 - fu) + at(c + 1, r) * fu) * (1 - fv) + (at(c, r + 1) * (1 - fu) + at(c + 1, r + 1) * fu) * fv;
+  };
+}
+
+function roadsFile(): any { return JSON.parse(readFileSync(join(OUT!, '..', 'roads', 'roads.json'), 'utf8')); }
 
 const exporters: Record<string, () => Promise<Place>> = {
   /** sakuraLobby.ts + StuntSystem drift-zone ring + scatterChunk clearance + WP2 spawn. */
@@ -87,6 +106,65 @@ const exporters: Record<string, () => Promise<Place>> = {
       // WP2: the car starts 4 m north of the on-foot spawn, facing east (driver's side visible)
       spawn: { x: s.x, z: s.z - 4, yaw: Math.PI / 2 },
     };
+  },
+  /** CitySystem: generateTokyo (core) + generateSuburbs (WP6 terraces), fed like the prototype feeds them. */
+  async tokyo() {
+    const { CITY_DISTRICT, CITY_ROAD_LEVEL } = await src('config/city.config.ts');
+    const { generateTokyo } = await src('world/city/TokyoGenerator.ts');
+    const { generateSuburbs } = await src('world/city/TokyoSuburbs.ts');
+    const file = roadsFile();
+    const height = terrainSampler();
+    const roads: any[] = [], viaduct: any[] = [];
+    const margin = 40;
+    const near = (x: number, z: number) => x > CITY_DISTRICT.minX - margin && x < CITY_DISTRICT.maxX + margin && z > CITY_DISTRICT.minZ - margin && z < CITY_DISTRICT.maxZ + margin;
+    for (const road of file.roads) {
+      const l = road.centerline, width = road.widths[0] ?? 8;
+      let run: number[] = [], runElevated = false;
+      const flush = () => { if (run.length >= 4) (runElevated ? viaduct : roads).push({ points: run, width }); run = []; };
+      for (let i = 0; i < l.length; i += 3) {
+        const x = l[i], y = l[i + 1], z = l[i + 2];
+        if (!near(x, z)) { flush(); continue; }
+        const elevated = y > CITY_ROAD_LEVEL + 1.5;
+        if (run.length && elevated !== runElevated) { const px = run[run.length - 2]!, pz = run[run.length - 1]!; flush(); run.push(px, pz); }
+        runElevated = elevated;
+        run.push(x, z);
+      }
+      if (road.closed && run.length && !runElevated && l.length >= 3) run.push(l[0], l[2]);
+      flush();
+    }
+    const result = generateTokyo({ roads, viaduct, sampleTerrain: height });
+    // RoadNetwork.closestPoint, brute force over the 2 m centrelines
+    const toward = (x: number, z: number): [number, number] | null => {
+      let best = 90 * 90, bx = 0, bz = 0;
+      for (const road of file.roads) {
+        const l = road.centerline;
+        for (let i = 0; i < l.length; i += 3) {
+          const d = (l[i] - x) ** 2 + (l[i + 2] - z) ** 2;
+          if (d < best) { best = d; bx = l[i]; bz = l[i + 2]; }
+        }
+      }
+      if (best >= 90 * 90) return null;
+      const dx = bx - x, dz = bz - z, len = Math.hypot(dx, dz) || 1;
+      return [dx / len, dz / len];
+    };
+    const suburbs = generateSuburbs(file.urbanLots ?? [], toward);
+    const items: Item[] = [];
+    const frontYaw: Record<string, number> = { pz: 0, px: Math.PI / 2, nz: Math.PI, nx: -Math.PI / 2 };
+    for (const b of [...result.buildings, ...suburbs.buildings]) {
+      const rotated = b.yaw !== undefined;
+      const w = rotated ? b.w : (b.front === 'pz' || b.front === 'nz' ? b.maxX - b.minX : b.maxZ - b.minZ);
+      const d = rotated ? b.d : (b.front === 'pz' || b.front === 'nz' ? b.maxZ - b.minZ : b.maxX - b.minX);
+      items.push({
+        kind: String(b.id).startsWith('vorort') || String(b.id).includes('suburb') ? 'suburbHouse' : 'cityBuilding',
+        tag: `f${b.family}`,
+        x: rotated ? b.cx : (b.minX + b.maxX) / 2, z: rotated ? b.cz : (b.minZ + b.maxZ) / 2,
+        yaw: rotated ? b.yaw : frontYaw[b.front]!, w, d, h: b.height, y: b.baseY, fixedY: true,
+      });
+    }
+    console.log(`  tokyo stats: ${JSON.stringify(result.stats.byStyle)} onRoad ${result.stats.onRoad}, suburbs ${suburbs.buildings.length}, open lots ${result.openLots.length}`);
+    const sample = result.buildings.slice(0, 3).map((b: any) => b.id).join(', ') + ' … ' + suburbs.buildings.slice(0, 2).map((b: any) => b.id).join(', ');
+    console.log(`  ids: ${sample}`);
+    return { place: 'tokyo', title: 'Tokyo', anchor: { x: 620, z: 120 }, items, trees: [], clearCircles: [], clearRects: [] };
   },
 };
 

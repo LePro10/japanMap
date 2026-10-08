@@ -101,7 +101,7 @@ namespace JapanMap.Editor.Map
             var pads = Places.PlaceGround.Level(Places.PlaceImporter.Pads(), settings);
             AssetDatabase.SaveAssets();
             Debug.Log($"[Map] terrain imported: {n}x{n} tiles, {tileRes}² samples each, {size.x:F1} m per tile; " +
-                      $"lowered under roads: {carve.texels} texels, deepest cut {carve.maxCut:F2} m, left alone (tunnel-deep) {carve.skipped}; levelled under {pads.pads} building footprints");
+                      $"lowered under roads: {carve.texels} texels, deepest cut {carve.maxCut:F2} m, left alone (tunnel-deep) {carve.skipped}; levelled under {pads.pads} building footprints (max {pads.maxChange:F2} m, {pads.roadTexels} texels left to the roads)");
             return tiles.Cast<Terrain>().ToArray();
         }
 

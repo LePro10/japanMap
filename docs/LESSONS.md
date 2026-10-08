@@ -46,6 +46,10 @@
 | 2026-10-08 | 3 | Mensch: Auto rammt mit der Front in Senken/Kanten und stoppt abrupt | Kollisionsbox höher und kürzer (`ArcadeTuning.bodyUnderLift`, `bodyLengthShare`); Ringfahrt zählt harte Karosserie-Stöße (3 → 0) | Test |
 | 2026-10-08 | 5 | Zehn Fahrzeugmodelle als Ausstellung: 1,23 Mio. Dreiecke, 1 212 Draw Calls an einem Ort | Test `EveryPlace_StaysInItsTriangleBudget` (≤ 600 k je Ort); Bench je Ort mit `Tools/bench.mjs` (Hoch + Niedrig in einem Lauf) | Test |
 | 2026-10-08 | 5 | Stellvertreter-Modell (Fischmarkthalle als Autohaus) sah erst im Nahbild falsch aus | Je Ort Nahbilder mit fester Kamera vor dem Commit; Bench-Werkzeug statt Handschritte | Werkzeug |
+| 2026-10-08 | 5 | `RoadNetwork.width` war die Typbreite (8 m) statt der Straßenbreite (5–24 m); Häusertest schlug 143× falsch an, Geländetest sah nur 8 m | Netzbreite = eigene Breite; Test `Terrain_NeverPokesThroughARoad` tastet jetzt die volle Breite ab (fand 3 Stellen am Straßenanfang) | Test |
+| 2026-10-08 | 5 | Boden unter Orten wurde bei jedem Orts-Import erneut eingeebnet (± 0,85 m) | Einebnen nur im Gelände-Import vom Rohgelände; „Places/Import All" = ganzer Import (4 s); Fingerabdruck zweier Importe gleich | Werkzeug |
+| 2026-10-08 | 5 | Schatten-Abschalten „ohne Wirkung" gemessen — Asset nicht gespeichert, Play lud es neu | Für Bench-Versuche Asset `SetDirty` + `SaveAssets`; gleiche Zahlen bis auf die letzte Stelle = Versuch prüfen (LEGACY-MAP Lehre 5) | Skill |
+| 2026-10-08 | 5 | Prototyp-TypeScript lief nicht im Node-Strip-Modus (Parameter-Properties, `@/…mjs`) | Eigener Lader `Tools/legacy-export/alias-loader.mjs` übersetzt mit esbuild aus dem Prototyp | Werkzeug |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**
