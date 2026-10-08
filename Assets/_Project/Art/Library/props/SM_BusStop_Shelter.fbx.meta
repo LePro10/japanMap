@@ -7,6 +7,16 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: M_GasshoShop_Atlas
+    second: {fileID: 2100000, guid: c82c8ed035659406b87298449466547d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Gassho_Atlas
+    second: {fileID: 2100000, guid: f8a11d3bdfb2e4090b64b4b57af92af8, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: M_Glass
     second: {fileID: 2100000, guid: 5a625ac70b0fb4961a5233dd7b673009, type: 2}
   - first:
@@ -37,6 +47,16 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: M_MinatoShop_Atlas
+    second: {fileID: 2100000, guid: 7b55dd844f10d43f2bdb06478afae9e6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Minato_Atlas
+    second: {fileID: 2100000, guid: 9cd0d633351f843ecb7ac0fb3633d55b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: M_Nature_Atlas
     second: {fileID: 2100000, guid: df6225a388198428b806f2081fd3f4c2, type: 2}
   - first:
@@ -49,6 +69,16 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: M_Street_Atlas
     second: {fileID: 2100000, guid: ab51478b08a3e4f789cdfdcb9a70bf6d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_TeraShop_Atlas
+    second: {fileID: 2100000, guid: d3e5b4cd631284ddab724981e8eee495, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Tera_Atlas
+    second: {fileID: 2100000, guid: 129e3b0b40f4944c6a4bf63687d6065a, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
