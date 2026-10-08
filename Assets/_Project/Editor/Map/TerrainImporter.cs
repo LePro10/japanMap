@@ -93,9 +93,41 @@ namespace JapanMap.Editor.Map
                     tx > 0 ? tiles[tx - 1, tz] : null, tz < n - 1 ? tiles[tx, tz + 1] : null,
                     tx < n - 1 ? tiles[tx + 1, tz] : null, tz > 0 ? tiles[tx, tz - 1] : null);
 
+            // Part of the terrain itself, so every way to the terrain (Import All, terrain only, tests) gives
+            // the same ground: a terrain-only import once left the ring's cliff 4 m above the road.
+            var types = settings.roadTypes.ToDictionary(t => t.type);
+            var carve = TerrainCarve.UnderRoads(RoadImporter.NetworkRoads(RoadImporter.Load(settings), types), type => types[type].shoulder, settings);
             AssetDatabase.SaveAssets();
-            Debug.Log($"[Map] terrain imported: {n}x{n} tiles, {tileRes}² samples each, {size.x:F1} m per tile");
+            Debug.Log($"[Map] terrain imported: {n}x{n} tiles, {tileRes}² samples each, {size.x:F1} m per tile; " +
+                      $"lowered under roads: {carve.texels} texels, deepest cut {carve.maxCut:F2} m, left alone (tunnel-deep) {carve.skipped}");
             return tiles.Cast<Terrain>().ToArray();
+        }
+
+        /// <summary>
+        /// Height of the source heightmap at a Unity x/z (bilinear), before anything lowers it — for
+        /// decisions that must not depend on the carved ground (is this road a viaduct here?).
+        /// </summary>
+        public static Func<float, float, float> RawGround(MapImportSettings settings)
+        {
+            var info = LegacySource.ReadJson<LegacySource.TerrainInfo>(settings, "terrain/terrain.json");
+            var res = info.import.resolution;
+            var h = ReadRaw(LegacySource.PathOf(settings, "terrain/" + info.file), res);
+            var ox = info.unityTerrainPosition.x;
+            var oy = info.unityTerrainPosition.y;
+            var oz = info.unityTerrainPosition.z;
+            var cx = info.terrainSize.x / (res - 1);
+            var cz = info.terrainSize.z / (res - 1);
+            var sy = info.terrainSize.y;
+            return (x, z) =>
+            {
+                var u = Mathf.Clamp((x - ox) / cx, 0f, res - 1.001f);
+                var v = Mathf.Clamp((z - oz) / cz, 0f, res - 1.001f);
+                int c = (int)u, r = (int)v;
+                float fu = u - c, fv = v - r;
+                var a = Mathf.Lerp(h[r * res + c], h[r * res + c + 1], fu);
+                var b = Mathf.Lerp(h[(r + 1) * res + c], h[(r + 1) * res + c + 1], fu);
+                return oy + Mathf.Lerp(a, b, fv) * sy;
+            };
         }
 
         /// <summary>16-bit little-endian, row 0 = south edge (Unity z min), normalised to 0..1.</summary>

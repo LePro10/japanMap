@@ -100,6 +100,41 @@ namespace JapanMap.Tests
         }
 
         [Test]
+        public void Terrain_NeverPokesThroughARoad()
+        {
+            // Median and p95 hid it: on the ring the ground stood 4 m above the asphalt at a cliff and
+            // threw cars off (Phase 3 acceptance drive). Every lane position of every road is checked.
+            var network = UnityEditor.AssetDatabase.LoadAssetAtPath<JapanMap.World.RoadNetwork>(RoadImporter.NetworkPath);
+            var terrain = Terrain.activeTerrain;
+            Assert.NotNull(network);
+            Assert.NotNull(terrain);
+            var worst = 0f;
+            var worstAt = "";
+            var count = 0;
+            foreach (var road in network.roads)
+            {
+                var p = road.points;
+                for (var i = 0; i < p.Length - 1; i++)
+                {
+                    var f = p[i + 1] - p[i];
+                    f.y = 0f;
+                    if (f.sqrMagnitude < 1e-4f) continue;
+                    f.Normalize();
+                    var right = new Vector3(f.z, 0f, -f.x);
+                    for (var s = -road.width / 2f + 0.3f; s <= road.width / 2f - 0.3f; s += 1f)
+                    {
+                        var q = p[i] + right * s;
+                        var above = terrain.SampleHeight(q) + terrain.transform.position.y - q.y;
+                        if (above <= 0.15f) continue;
+                        count++;
+                        if (above > worst) { worst = above; worstAt = $"{road.id} at {q:F0}"; }
+                    }
+                }
+            }
+            Assert.AreEqual(0, count, $"terrain above the road surface by > 15 cm at {count} lane samples, worst {worst:F2} m ({worstAt})");
+        }
+
+        [Test]
         public void Roads_LieOnTheCarvedTerrain()
         {
             // Floating or sunken roads show up as a large p95; bridges/viaducts (> 1.5 m) are counted apart.

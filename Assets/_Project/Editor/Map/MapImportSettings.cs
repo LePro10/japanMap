@@ -76,6 +76,14 @@ namespace JapanMap.Editor.Map
         public float railOffset = 0.35f;
         public float railPostSpacing = 4f;
 
+        [Header("Terrain under roads (Phase 3: the 1.5 m heightmap poked up to 4 m through the ring at a cliff)")]
+        [Tooltip("Terrain is kept this far below the road centreline across road + shoulder, m.")]
+        public float carveDepth = 0.03f;
+        [Tooltip("Width of the 45° bank from the shoulder edge back up to the natural ground, m.")]
+        public float carveBank = 2f;
+        [Tooltip("Deeper cuts are left alone (a road that far below ground is a tunnel, not a bump), m.")]
+        public float carveMaxDepth = 8f;
+
         [Header("Viaducts (legacy ViaductSystem.ts)")]
         [Tooltip("Deck below road spans this far above ground; piers from pierFrom, every pierSpacing metres.")]
         public float deckFrom = 2.5f;

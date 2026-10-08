@@ -47,7 +47,7 @@ namespace JapanMap.Editor.Map
 
         public static Transform Import(MapImportSettings settings)
         {
-            var roads = ResolveTrims(Load(settings));
+            var roads = ResolveTrims(Load(settings), TerrainImporter.RawGround(settings));
             var types = settings.roadTypes.ToDictionary(t => t.type);
             var surface = new Dictionary<(int, int), Chunk>();
             var rails = new Dictionary<(int, int), Chunk>();
@@ -109,19 +109,23 @@ namespace JapanMap.Editor.Map
 
         public const string NetworkPath = MeshDir + "/RoadNetwork.asset";
 
-        /// <summary>Centrelines for runtime queries (respawn, later AI). Same asset GUID on every import.</summary>
-        static void SaveNetwork(List<Road> roads, Dictionary<string, MapImportSettings.RoadType> types)
-        {
-            var network = AssetDatabase.LoadAssetAtPath<RoadNetwork>(NetworkPath);
-            var created = network == null;
-            if (created) network = ScriptableObject.CreateInstance<RoadNetwork>();
-            network.roads = roads.Select(r =>
+        /// <summary>Roads as runtime centrelines (Unity coordinates, full length — trims are a mesh matter).</summary>
+        public static List<RoadNetwork.Road> NetworkRoads(List<Road> roads, Dictionary<string, MapImportSettings.RoadType> types) =>
+            roads.Select(r =>
             {
                 var c = r.centerline;
                 var points = new Vector3[c.Length / 3];
                 for (var i = 0; i < points.Length; i++) points[i] = LegacySource.ToUnity(c[i * 3], c[i * 3 + 1], c[i * 3 + 2]);
                 return new RoadNetwork.Road { id = r.id, type = r.type, closed = r.closed, width = types[r.type].width, points = points };
             }).ToList();
+
+        /// <summary>Centrelines for runtime queries (respawn, later AI). Same asset GUID on every import.</summary>
+        static void SaveNetwork(List<Road> roads, Dictionary<string, MapImportSettings.RoadType> types)
+        {
+            var network = AssetDatabase.LoadAssetAtPath<RoadNetwork>(NetworkPath);
+            var created = network == null;
+            if (created) network = ScriptableObject.CreateInstance<RoadNetwork>();
+            network.roads = NetworkRoads(roads, types);
             if (created) AssetDatabase.CreateAsset(network, NetworkPath);
             else EditorUtility.SetDirty(network);
         }
@@ -144,7 +148,7 @@ namespace JapanMap.Editor.Map
         /// An open road whose end lies within 2 m of another road's centreline is cut back to that
         /// road's edge + 1 m; junction trims from the file win if larger. At least 4 m stay.
         /// </summary>
-        public static List<Road> ResolveTrims(List<Road> roads)
+        public static List<Road> ResolveTrims(List<Road> roads, Func<float, float, float> ground = null)
         {
             foreach (var road in roads)
             {
@@ -160,6 +164,16 @@ namespace JapanMap.Editor.Map
                     var (dE, halfE) = Nearest(other, c[last], c[last + 2]);
                     if (dE < 2) trimEnd = Mathf.Max(trimEnd, halfE + 1);
                 }
+                // An end lying on another road's surface duplicates it; above it, it is a ramp across that
+                // road (legacy bellwood-edge ran 70 m along the ring, up to 3.4 m above it). Cut it back to
+                // where it leaves the other road.
+                var spacing = Spacing(road);
+                foreach (var other in roads)
+                {
+                    if (other == road) continue;
+                    trimStart = Mathf.Max(trimStart, OverlapRun(road, other, false, ground) * spacing);
+                    trimEnd = Mathf.Max(trimEnd, OverlapRun(road, other, true, ground) * spacing);
+                }
                 foreach (var j in road.junctions ?? Array.Empty<Road.Junction>())
                 {
                     if (j.trim <= 0) continue;
@@ -171,6 +185,62 @@ namespace JapanMap.Editor.Map
                 road.trimEnd = Mathf.Min(trimEnd, maxTrim);
             }
             return roads;
+        }
+
+        /// <summary>The other road this far above means a viaduct overhead, not an overlap, m (legacy deck from 2.5 m).</summary>
+        const float OverheadClearance = 2.5f;
+        /// <summary>Overlapping surfaces further apart in height than this are at different levels, m.</summary>
+        const float OverlapHeight = 0.1f; // body clearance is 0.10–0.32 m: a 0.3 m plate edge stopped a car dead (ring at the pit entry)
+
+        /// <summary>
+        /// How many samples, counted from one end of <paramref name="road"/>, lie on <paramref name="other"/>'s
+        /// surface (+1 so the cut clears it). That stretch is a duplicate surface — at another height a ramp
+        /// across the other road. 0 = the end does not lie on it.
+        /// </summary>
+        public static int OverlapRun(Road road, Road other, bool fromEnd, Func<float, float, float> groundAt = null)
+        {
+            var c = road.centerline;
+            var count = c.Length / 3;
+            var run = 0;
+            var ramp = 0;
+            var otherHalf = 0f;
+            for (var k = 0; k < count; k++)
+            {
+                var i = fromEnd ? count - 1 - k : k;
+                var (d, half, y) = NearestWithHeight(other, c[i * 3], c[i * 3 + 2]);
+                var ownHalf = (road.widths != null && i < road.widths.Length ? road.widths[i] : 8f) / 2;
+                var dy = c[i * 3 + 1] - y;
+                if (-dy > OverheadClearance) break; // the other road is a viaduct overhead
+                var onIt = d < half;
+                // Surfaces overlap at another level: a ramp or plate across the other road — unless this
+                // road is a viaduct here (its deck clears the ground), which may cross above.
+                var bridge = groundAt != null && c[i * 3 + 1] - groundAt(c[i * 3], -c[i * 3 + 2]) > OverheadClearance;
+                var across = d < half + ownHalf && Mathf.Abs(dy) > OverlapHeight && !bridge;
+                if (!onIt && !across) break;
+                if (across) ramp++;
+                otherHalf = Mathf.Max(otherHalf, half);
+                run++;
+            }
+            // Ordinary junctions reach about one width into the other road at its height and are trimmed
+            // elsewhere; cut here only a stretch at another level or an end running along the other road.
+            return ramp > 2 || run * Spacing(road) > 4f * otherHalf + 4f ? run + 1 : 0;
+        }
+
+        static (float d, float half, float y) NearestWithHeight(Road host, float x, float z)
+        {
+            var line = host.centerline;
+            var count = line.Length / 3;
+            var segments = host.closed ? count : count - 1;
+            var best = (d: float.PositiveInfinity, half: 4f, y: 0f);
+            for (var i = 0; i < segments; i++)
+            {
+                var j = (i + 1) % count;
+                var d = SegmentDistance(x, z, line[i * 3], line[i * 3 + 2], line[j * 3], line[j * 3 + 2]);
+                if (d >= best.d) continue;
+                var half = (host.widths != null && i < host.widths.Length ? host.widths[i] : 8f) / 2;
+                best = (d, half, (line[i * 3 + 1] + line[j * 3 + 1]) * 0.5f);
+            }
+            return best;
         }
 
         static (float d, float half) Nearest(Road host, float x, float z)
@@ -480,11 +550,13 @@ namespace JapanMap.Editor.Map
             MapImportSettings s, SegmentIndex index, Dictionary<(int, int), Chunk> chunks)
         {
             int decks = 0, piers = 0, noRoadBelow = 0, legsBlocked = 0;
+            // The source ground, not the one lowered under roads: a deck is where the road leaves the
+            // natural ground (carving under a crossing road must not turn its neighbour into a bridge).
+            var raw = TerrainImporter.RawGround(s);
             float Ground(float x, float z)
             {
                 var u = LegacySource.ToUnity(x, 0, z);
-                var t = TerrainImporter.TileAt(u);
-                return t == null ? 0 : t.SampleHeight(u) + t.transform.position.y;
+                return raw(u.x, u.z);
             }
             foreach (var road in roads)
             {
@@ -628,7 +700,7 @@ namespace JapanMap.Editor.Map
         public static List<Fit> MeasureFit(MapImportSettings settings)
         {
             var result = new List<Fit>();
-            var roads = ResolveTrims(Load(settings));
+            var roads = ResolveTrims(Load(settings), TerrainImporter.RawGround(settings));
             foreach (var group in roads.GroupBy(r => r.type))
             {
                 var deltas = new List<float>();
