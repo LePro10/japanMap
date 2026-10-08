@@ -35,7 +35,8 @@ Bilder vorher `Captures/p5-before/<ort>.png`, nachher `Captures/p5-after/<ort>.p
   - [x] **Koedo** — 46 Kura/Machiya an Straße A und der neuen Straße B (verlängert die Dorfstraße, D21), Brauerei, Glockenturm (Shōrō als Stellvertreter), Platz, weiße Kura am Kanal, Speicher, Hikawa-Schrein, 22 Laternen, Weiden (vorläufig). Bench Niedrig ≤ 235 DC / 274 k ✓; Hoch bis 5,0 M (Reisfeld-Gras + Wald im Blick, Ort selbst ≈ 0,5 M). Web 378 fps, 0 Fehler
   - [x] **Kiso-Juku** — 42 Häuser beidseits der Passstraße (Hatago, Soba, Sake, Läden, Minka, Kura), Honjin, Treppe mit Kiesweg den Hang hinauf, Wasserrad, Glocke, Teehaus, Hokora, Kōsatsu, Hinterhäuser, 222 gesetzte Bäume (Ahorn, Zedern, vorläufig). Bench Hoch ≤ 935 DC / 3,5 M, Niedrig ≤ 290 DC / 559 k ✓. Web 378 fps, 0 Fehler
   - [x] **Gassho & Stillwater** — 20 Gassho-/Kayabuki-Häuser und Itakura (mit der Langseite zur Straße und auf die Prototyp-Grundfläche skaliert), Dorfstraße, Fußwege, Mill Lane vom Feldweg bis Funaura (Funauras Straße setzt sie fort), 3 Wasserräder, Mühlrad, 22 Hasa-Gestelle, Feuerhäuschen, Schrein, 135 Bäume. Reisfeldwasser unter Ortsstraßen und Häusern trocken (wie `gasshoDry`). Bench Niedrig ≤ 239 DC / 378 k ✓; **Hoch 5,0–6,7 M / bis 1 431 DC** — davon Ort nur +0,3 M / +240 DC, Rest Reisgras + Wald (Grundwert 5,9–6,4 M, in Phase 4 hier nicht gemessen; `start`/`pass`/`reisfeld` unverändert wie Phase 4). Web 393 fps, 0 Fehler
-  - [ ] Tempel · [ ] Needle Circuit
+  - [x] **Bellwood-Schrein (Tempel)** — Kern aus `props.json` (Halle, Treppe, 9 Torii, Laternen, Brunnenhaus, Glocke) bleibt; neu (Regel 15, ASTRA §3): Honden, Komainu, Ema/Omikuji, Amulettstand, Laternengestelle, Pagode als Landmarke, Lehmmauer um den Hof, 3 Nobori, Zedernallee an den letzten 150 m des Sandō. Neuer Blickpunkt `tempel-hof`. Bench Hoch ≤ 625 DC / 3,7 M (Wald), Niedrig ≤ 148 DC / 333 k ✓. Web 384 fps, 0 Fehler
+  - [ ] Needle Circuit
 - [ ] 4. Dichte: keine leeren Flächen; Vegetation in den Orten freiräumen (geschieht je Ort beim Import)
 
 ### Für die Asset-Sitzung (fehlende Modelle, aus dem Import-Bericht)
@@ -50,7 +51,7 @@ Bilder vorher `Captures/p5-before/<ort>.png`, nachher `Captures/p5-after/<ort>.p
 
 ## Offene Probleme / Gefunden
 
-- **Download 47,1 MB** (Ziel Handy 20 MB; Phase 5 bisher +4,1 MB). Unkomprimiert: Autos 71 MB (alle zehn im Build), Gelände 15, Straßen 10,5, Modell-Atlanten 8 + 6 neue Stile, Baumdaten 2 → nur gewähltes Auto laden (Addressables), Atlanten ohne Leuchten ohne Emission-Karte, Phase 10.
+- **Download 47,3 MB** (Ziel Handy 20 MB; Phase 5 bisher +4,3 MB). Unkomprimiert: Autos 71 MB (alle zehn im Build), Gelände 15, Straßen 10,5, Modell-Atlanten 8 + 6 neue Stile, Baumdaten 2 → nur gewähltes Auto laden (Addressables), Atlanten ohne Leuchten ohne Emission-Karte, Phase 10.
 - **Hoch kostet viel** (105 fps auf M4 gegen 244 auf Mittel: 4 Schatten-Kaskaden über Wald, MSAA, doppelte LOD-Weite) — auf iGPU-Laptops vermutlich unter 60 → Standardstufe in Phase 10 kalibrieren. Seit Tokyo an Stadt-Blickpunkten 3,1–4,8 M Dreiecke (Budget 3 M); Hebel: Wald-Schatten (Instanzen werden nicht je Kaskade aussortiert), lodBias 2. **Reisfeld-Täler (Gassho) schon ohne Ort 6,4 M** — Reis-/Grasdichte auf Hoch.
 - **Löcher in Gebäuden:** Unity verwirft 395 sich selbst schneidende Polygone in 29 Meshes (Tokyo-Mansion 114, Gassho-Häuser je ~20, Kiso/Koedo 3–20) → Asset-Sitzung: vor dem Export triangulieren. Liste: Import-Bericht „JapanMap/Art/Import Library".
 - **Fahrtests nur im Batchmodus rot** (`PlayerDriveTests`, Gas bleibt 0): schon vor Phase 4 so, im Editor grün. Ursache offen (nicht der Fensterfokus allein).

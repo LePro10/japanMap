@@ -185,3 +185,7 @@ MonoBehaviour:
     position: {x: 640, y: 88.21975, z: -610}
     lookAt: {x: 550, y: 27.185207, z: -505}
     note: 'Sakura Commons from the air: bowl, cherry ring, halls, exit east'
+  - name: tempel-hof
+    position: {x: 826, y: 146.67595, z: 912}
+    lookAt: {x: 820, y: 159.65048, z: 954}
+    note: 'Bellwood temple courtyard from the top of the sando: hall, stairs, gate (Phase 5)'

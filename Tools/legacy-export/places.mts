@@ -357,6 +357,53 @@ const exporters: Record<string, () => Promise<Place>> = {
       ],
     };
   },
+  /**
+   * Bellwood shrine (ASTRA §3 "Bellwood Temple"): the prototype has the hall, stairs, nine torii,
+   * lanterns, chozuya and bell tower in props.json (imported by the prop importer). Added here (rule 15):
+   * honden behind the hall, komainu, ema/omikuji racks, amulet office, lantern racks, a pagoda as the
+   * landmark, walls around the precinct, nobori and cedars along the last 150 m of the sando.
+   */
+  async temple() {
+    const sando = roadsFile().roads.find((r: any) => r.id === 'sando');
+    const c = sando.centerline, n = c.length / 3;
+    const pt = (i: number): [number, number] => [c[i * 3], c[i * 3 + 2]];
+    const hall = { x: 820, z: -954 };
+    const items: Item[] = [
+      { kind: 'honden', x: 820, z: -968, yaw: 0 },
+      { kind: 'komainu', x: 820, z: -937.5, yaw: 0 },
+      { kind: 'omikuji', x: 806.5, z: -941, yaw: Math.PI / 2 },
+      { kind: 'ema', x: 833.5, z: -946, yaw: -Math.PI / 2 },
+      { kind: 'amuletOffice', x: 801, z: -935, yaw: Math.PI / 2 },
+      { kind: 'lanternRack', x: 826.5, z: -929, yaw: -Math.PI / 2 },
+      { kind: 'lanternRack', x: 813.5, z: -929, yaw: Math.PI / 2 },
+      { kind: 'pagoda', x: 851, z: -950, yaw: -Math.PI / 2 },
+    ];
+    // walls: west, east and north sides of the precinct, 4 m pieces, open towards the sando (south)
+    const wall = (x0: number, z0: number, x1: number, z1: number) => {
+      const len = Math.hypot(x1 - x0, z1 - z0), k = Math.round(len / 4), yaw = Math.atan2(-(z1 - z0), x1 - x0);
+      for (let i = 0; i < k; i++) items.push({ kind: 'wall', x: x0 + (x1 - x0) * (i + 0.5) / k, z: z0 + (z1 - z0) * (i + 0.5) / k, yaw });
+    };
+    wall(793, -928, 793, -980); wall(793, -980, 863, -980); wall(863, -980, 863, -928);
+    // last 150 m of the sando (2 m samples): nobori rows beside the path, cedars behind them
+    const trees: Tree[] = [];
+    const clearCircles: [number, number, number][] = [[hall.x, hall.z, 30]];
+    for (let i = n - 75; i < n - 4; i++) {
+      const [ax, az] = pt(i), [bx, bz] = pt(i + 1), len = Math.hypot(bx - ax, bz - az) || 1;
+      const tx = (bx - ax) / len, tz = (bz - az) / len, nx = -tz, nz = tx;
+      clearCircles.push([ax, az, 4.5]);
+      // a few nobori on the last 60 m, alternating sides — more hid the torii (first image)
+      if ((n - i) % 9 === 0 && n - i < 32) { const side = (n - i) % 18 === 0 ? 1 : -1;
+        items.push({ kind: 'nobori', x: ax + nx * side * 3.4, z: az + nz * side * 3.4, yaw: Math.atan2(-tz, tx) }); }
+      // cedars stop 28 m before the precinct, which stays open
+      if ((n - i) % 6 === 0 && n - i > 14) for (const side of [-1, 1]) {
+        for (const off of [7.5, 11.5]) {
+          const x = ax + nx * side * (off + hash(ax, side) * 1.5), z = az + nz * side * (off + hash(az, side) * 1.5);
+          trees.push({ species: 'Sugi', x, z, scale: 1.05 + hash(x, z) * 0.35, yaw: hash(z, x) * 6.28 });
+        }
+      }
+    }
+    return { place: 'temple', title: 'Bellwood Shrine', anchor: hall, items, trees, clearCircles, clearRects: [] };
+  },
 };
 
 for (const name of only.length ? only : Object.keys(exporters)) {
