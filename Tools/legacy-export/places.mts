@@ -276,6 +276,42 @@ const exporters: Record<string, () => Promise<Place>> = {
       roads: [{ id: 'koedo-street-b', type: 'village', width: 2 * L.ROAD_HALF_B, points: B, extends: 'dorf' }],
     };
   },
+  /** KisoJuku.ts + kisoLayout.ts (DOERFER.md): post town along the pass road (toge), s along, o left. */
+  async kiso() {
+    const L = await src('world/settlements/kiso/kisoLayout.ts');
+    const toge = roadsFile().roads.find((r: any) => r.id === 'toge');
+    L.useRoadAxis(toge.centerline, toge.length / (toge.centerline.length / 3 - 1));
+    const items: Item[] = [];
+    const so = (s: number, o: number) => L.at(s, o) as [number, number];
+    for (const h of L.HOUSES) {
+      const [x, z] = so(h.s, h.side * (L.FRONT + h.setback + h.d / 2));
+      items.push({ kind: h.kind === 'kura' ? 'kura' : 'house', tag: `${h.role}${h.low ? '/low' : ''}`, x, z, yaw: L.faceRoad(h.s, h.side), w: h.w, d: h.d });
+    }
+    { const H = L.HONJIN, [x, z] = so(H.s, H.houseO); items.push({ kind: 'honjin', x, z, yaw: L.faceRoad(H.s, 1), w: H.houseW, d: H.houseD }); }
+    // the stair up the hillside: stone steps at the foot, then a gravel path, segment by segment
+    for (let i = 1; i < L.STAIR.pts.length; i++) {
+      const [s0, o0] = L.STAIR.pts[i - 1]!, [s1, o1] = L.STAIR.pts[i]!;
+      const [ax, az] = so(s0, o0), [bx, bz] = so(s1, o1), len = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(len / 8));
+      for (let k = 0; k < n; k++) items.push({ kind: i <= 2 ? 'stairSteps' : 'stairPath', x: ax + (bx - ax) * (k + 0.5) / n, z: az + (bz - az) * (k + 0.5) / n, yaw: Math.atan2(bx - ax, bz - az) });
+    }
+    { const [x, z] = so(L.WHEEL.s, L.WHEEL.o); items.push({ kind: 'waterwheel', x, z, yaw: L.faceRoad(L.WHEEL.s, -1) + Math.PI / 2 }); }
+    { const [x, z] = so(L.WHEEL.s + 3, L.WHEEL.o + 2); items.push({ kind: 'trough', x, z, yaw: L.faceRoad(L.WHEEL.s, -1) }); }
+    { const [x, z] = so(L.BELL.s, L.BELL.o); items.push({ kind: 'bell', x, z, yaw: L.faceRoad(L.BELL.s, -1) }); }
+    { const T = L.TEAHOUSE, [x, z] = so(T.s, T.o); items.push({ kind: 'teahouse', x, z, yaw: L.faceRoad(T.s, -1), w: T.w, d: T.d }); }
+    { const [x, z] = so(L.HOKORA.s, L.HOKORA.o); items.push({ kind: 'hokora', x, z, yaw: L.faceRoad(L.HOKORA.s, -1) }); }
+    { const [x, z] = so(L.KOSATSU.s, L.KOSATSU.o); items.push({ kind: 'noticeBoard', x, z, yaw: L.faceRoad(L.KOSATSU.s, -1) }); }
+    for (const g of L.GATES) { const [x, z] = so(g.s, g.side * 6); items.push({ kind: 'gate', x, z, yaw: L.faceRoad(g.s, g.side) }); }
+    for (const [s, o, w, d, kind] of L.BACK) { const [x, z] = so(s, o); items.push({ kind: 'back', tag: kind, x, z, yaw: L.faceRoad(s, 1), w, d }); }
+    { const [x, z] = so(L.CEMETERY.s, L.CEMETERY.o); items.push({ kind: 'cemetery', x, z, yaw: L.faceRoad(L.CEMETERY.s, 1) }); }
+    const trees: Tree[] = [];
+    const add = (list: readonly (readonly number[])[], species: string) => {
+      for (const [s, o, scale] of list) { const [x, z] = so(s!, o!); trees.push({ species, x, z, scale: scale!, yaw: hash(x, z) * Math.PI * 2 }); }
+    };
+    add(L.MOMIJI, 'Momiji'); add(L.NIWAKI, 'Niwaki'); add(L.KAKI_TREES, 'Kaki'); add(L.FOREST, 'Sugi');
+    const clearCircles: [number, number, number][] = [];
+    L.kisoClearance((x: number, z: number, r: number) => clearCircles.push([x, z, r]));
+    return { place: 'kiso', title: 'Kiso-Juku', anchor: { x: L.KISO.x, z: L.KISO.z }, items, trees, clearCircles, clearRects: [] };
+  },
 };
 
 for (const name of only.length ? only : Object.keys(exporters)) {

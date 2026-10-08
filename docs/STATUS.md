@@ -33,7 +33,8 @@ Bilder vorher `Captures/p5-before/<ort>.png`, nachher `Captures/p5-after/<ort>.p
   - [x] **Tokyo** — 2 583 Stadthäuser + 102 Vorstadthäuser aus dem Prototyp-Generator, 3 321 Fassadenmodule instanziert (D20), Hüllen mit Fensterraster in der Ferne, 2 685 Kollider. Bench Niedrig ≤ 288 DC / 545 k ✓; **Hoch 3,1–3,7 M Dreiecke (Budget 3 M)** — Stadt +1,0–1,9 M, Rest Wald/Gelände (an `sakura` jetzt 4,8 M, weil die Stadt im Blick ist). Web Niedrig 377 fps, Hoch 134 fps, 0 Fehler
   - [x] **Funaura** — Kaiplatte (1,8 m), 21 Kaimauer-Stücke, 11 Bootshäuser, 40 Häuser, Fischhalle, Steg, 45 Molenstücke, rotes Feuer, 9 Boote, Kaikram, Ebisu-Schrein, 44 Kiefern (vorläufig als Zeder), Dorfstraße von Stillwater (D21). Bench Hoch ≤ 947 DC / 1,77 M ✓, Niedrig ≤ 309 DC / 356 k ✓. Web Niedrig 387 fps, 0 Fehler
   - [x] **Koedo** — 46 Kura/Machiya an Straße A und der neuen Straße B (verlängert die Dorfstraße, D21), Brauerei, Glockenturm (Shōrō als Stellvertreter), Platz, weiße Kura am Kanal, Speicher, Hikawa-Schrein, 22 Laternen, Weiden (vorläufig). Bench Niedrig ≤ 235 DC / 274 k ✓; Hoch bis 5,0 M (Reisfeld-Gras + Wald im Blick, Ort selbst ≈ 0,5 M). Web 378 fps, 0 Fehler
-  - [ ] Kiso · [ ] Gassho · [ ] Tempel · [ ] Needle Circuit
+  - [x] **Kiso-Juku** — 42 Häuser beidseits der Passstraße (Hatago, Soba, Sake, Läden, Minka, Kura), Honjin, Treppe mit Kiesweg den Hang hinauf, Wasserrad, Glocke, Teehaus, Hokora, Kōsatsu, Hinterhäuser, 222 gesetzte Bäume (Ahorn, Zedern, vorläufig). Bench Hoch ≤ 935 DC / 3,5 M, Niedrig ≤ 290 DC / 559 k ✓. Web 378 fps, 0 Fehler
+  - [ ] Gassho · [ ] Tempel · [ ] Needle Circuit
 - [ ] 4. Dichte: keine leeren Flächen; Vegetation in den Orten freiräumen (geschieht je Ort beim Import)
 
 ### Für die Asset-Sitzung (fehlende Modelle, aus dem Import-Bericht)
@@ -42,11 +43,12 @@ Bilder vorher `Captures/p5-before/<ort>.png`, nachher `Captures/p5-after/<ort>.p
 - **Tokyo:** Hochhäuser über 40 m (41 Türme bis 154 m, Hotel/Kino-Familie; jetzt 35-m-Modelle), Kino-/Hotel-/Markthallen-Fronten (Familien 4, 5, 7 nutzen Stellvertreter), Holz-Izakaya für die Yokochō-Gassen (jetzt Koedo/Kiso-Läden).
 - **Funaura:** weißes Molenfeuer, Kei-Truck (3×), Slipanlage, Kiefer (Kuromatsu) als Baumart.
 - **Koedo:** Kanal (Wasser, Mauern, Bogen- und Plattenbrücke — kommt mit „Dichte" aus Bibliotheksteilen), Toki-no-Kane-Glockenturm (16 m Holzturm), 6 moderne Wohnhäuser (2–3 Geschosse), Brauhalle mit Schornstein.
+- **Kiso-Juku:** Kido-Tore an beiden Ortsenden, Friedhof (Steine), Kaki-/Momiji-/Niwaki-Bäume als Arten.
   **Ausstellungsautos:** die Fahrzeugmodelle haben 120 k Dreiecke und ~120 Teil-Meshes je Auto (10 Autos = 1,23 M / 1 212 Draw Calls) → für die Ausstellung eine leichte Stufe (≤ 8 k, 1–2 Materialien).
 
 ## Offene Probleme / Gefunden
 
-- **Download 46,6 MB** (Ziel Handy 20 MB; Phase 5 bisher +3,6 MB). Unkomprimiert: Autos 71 MB (alle zehn im Build), Gelände 15, Straßen 10,5, Modell-Atlanten 8 + 6 neue Stile, Baumdaten 2 → nur gewähltes Auto laden (Addressables), Atlanten ohne Leuchten ohne Emission-Karte, Phase 10.
+- **Download 46,8 MB** (Ziel Handy 20 MB; Phase 5 bisher +3,8 MB). Unkomprimiert: Autos 71 MB (alle zehn im Build), Gelände 15, Straßen 10,5, Modell-Atlanten 8 + 6 neue Stile, Baumdaten 2 → nur gewähltes Auto laden (Addressables), Atlanten ohne Leuchten ohne Emission-Karte, Phase 10.
 - **Hoch kostet viel** (105 fps auf M4 gegen 244 auf Mittel: 4 Schatten-Kaskaden über Wald, MSAA, doppelte LOD-Weite) — auf iGPU-Laptops vermutlich unter 60 → Standardstufe in Phase 10 kalibrieren. Seit Tokyo an Stadt-Blickpunkten 3,1–4,8 M Dreiecke (Budget 3 M); Hebel: Wald-Schatten (Instanzen werden nicht je Kaskade aussortiert), lodBias 2.
 - **Löcher in Gebäuden:** Unity verwirft 395 sich selbst schneidende Polygone in 29 Meshes (Tokyo-Mansion 114, Gassho-Häuser je ~20, Kiso/Koedo 3–20) → Asset-Sitzung: vor dem Export triangulieren. Liste: Import-Bericht „JapanMap/Art/Import Library".
 - **Fahrtests nur im Batchmodus rot** (`PlayerDriveTests`, Gas bleibt 0): schon vor Phase 4 so, im Editor grün. Ursache offen (nicht der Fensterfokus allein).
