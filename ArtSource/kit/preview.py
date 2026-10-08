@@ -249,6 +249,7 @@ def details(objs, name, direction=(1.0, -1.7, 0.6), mood=False, size=(480, 400),
 def shot(cols, target, direction, dist, out, mood=False, size=(1024, 576), lens=35):
     """Camera aimed at a point (street at eye level, close-ups of shop
     fronts) on the preview stage; only the named collections render.
+    direction points from the target TO the camera (the camera looks along -direction).
     mood: True (blue hour), False (neutral) or 'clay'. out: full path of the PNG."""
     from mathutils import Vector
     sc = core.scene()

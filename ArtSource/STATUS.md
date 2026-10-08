@@ -4,16 +4,18 @@ Plan: [docs/PLAN.md](../docs/PLAN.md), Abschnitt „Asset-Sprint". Regeln:
 [STYLE-KIT.md](STYLE-KIT.md) (verbindlich). Läuft parallel zur Unity-Sitzung,
 nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
-## Wo wir stehen (2026-10-08, Vormittag)
+## Wo wir stehen (2026-10-08, Mittag)
 
-- **Aufgabe 3 — Gebäude, Koedo: freigegeben** (Mensch fragte nach der
-  nächsten Aufgabe, 2026-10-08). Nächster Baustil: **Kiso**.
-  Ein Straßenzug wie Kawagoe-Ichibangai: 7 Häuser der Hauptstraße + 3
-  ruhige Gassen-Versionen, jedes mit eigener Ladenausstattung (Mesh
-  `_Shop`). Bilder: `previews/Koedo_Overview.png` (Straße auf Augenhöhe,
-  Gegenrichtung, von oben, Gasse), `Koedo_Buildings.png` (alle 10 einzeln),
-  `Koedo_detail.png` (Nahaufnahmen), `Koedo_Back.png` (Rückseiten +
-  Grau-Test Straße), `Koedo_clay_houses.png` (Grau-Test je Haus).
+- **Aufgabe 3 — Gebäude, Kiso: Pilot fertig, wartet auf Freigabe.**
+  Eine Poststraße wie Tsumago/Narai: 7 Häuser + 3 ruhige Gassen-Versionen,
+  jedes mit eigener Ladenausstattung (Mesh `_Shop`), dazu 4 Straßenstücke
+  (Straße mit Wasserrinne, Steinstufen am Hang, Wassertrog, Wasserrad).
+  Bilder: `previews/Kiso_Overview.png` (Straße auf Augenhöhe, Gegenrichtung,
+  von oben, Stufen + Ishigaki-Haus, Gasse, Grau-Test), `Kiso_Buildings.png`
+  (alle 10 einzeln), `Kiso_detail.png` (Nahaufnahmen: Gitter,
+  Vorkragung, Steindach, Läden), `Kiso_Back.png` (Rückseiten),
+  `Kiso_clay_houses.png` (Grau-Test je Haus), `Kiso_Pieces.png`.
+- **Aufgabe 3 — Gebäude, Koedo: freigegeben** (2026-10-08).
 
 - **Aufgabe 1 — Stil-Kit + Piloten:** freigegeben.
 - **Aufgabe 2 — Requisiten:** fertig (15 Gruppen, Tabelle unten).
@@ -29,6 +31,35 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
   Wohnblock-Budget: a) gilt (als 3 Felder zählen), mit der Freigabe bestätigt.
   Danach Baustil für Baustil: Koedo (Kura ausbauen), Kiso, Gassho,
   Fischerdorf, Tempel — je Pilot + Freigabe.
+
+### Kiso-Pilot (Atlas `Kiso` + `KisoShop`, Generator `buildings/kiso.py` + Bausatz `buildings/kiso_kit.py`)
+
+| FBX (`exports/buildings/`, Präfix `SM_Kiso_`) | Haus | Ladenausstattung | Dreiecke Haus LOD0 / LOD1 · Laden LOD0 / LOD1 |
+|---|---|---|---|
+| Hatago_3Bay_Kaede | Großes Gasthaus 8,2 m: Obergeschoss 0,75 m vorkragend auf Balkenköpfen, zwei vorstehende Gitter (dejōshi), Eingang, Gitterfenster oben, Udatsu an beiden Enden, Schindeldach mit 3 + 1 Steinreihen, Kragarme + Pfette | Schild 旅籠 楓屋 an Eisenstangen, Noren 御宿, Wandlaterne, Chōchin, Standschild, Bank, Feuereimer, Brennholz hinten | 4 981 / 964 · 692 / 386 |
+| Hatago_2Bay_Yamabuki | Gasthaus mit Ziegeldach, offener Raum oben hinter Geländer, Bambusrollos, Senbon-Gitter unten, Bambusrinne | Noren, Wandlaterne 山吹, Chōchin, Feuereimer, Pflanzen | 4 083 / 680 · 672 / 350 |
+| Soba_2Bay_Kodama | Ohne Vorkragung: Schindel-Vordach mit Steinen auf Kragarmen, hochgeklappte Läden (age-do) an Eisenstangen, Klappbank, niedriges Obergeschoss | Dachschild そば処 木霊, Noren そば, Standschild, Nobori, Wandlaterne | 3 983 / 850 · 520 / 278 |
+| Shop_2Bay_Nushiya | Lackwaren/Kämme: Ziegeldach, Udatsu beidseits, Vorkragung 0,55 m | Schild 塗師屋, Lackschalen + Spanschachteln auf Stufen, Standschild お六櫛, Lampe | 3 995 / 764 · 1 480 / 152 |
+| Minka_2Bay_Ishigaki | Kramladen auf 1,5 m hohem Ishigaki-Sockel mit gepflasterter Terrasse und Steintreppe längs der Front, Schindel-Vordach mit Steinen | Strohsandalen, Körbe, Tragekörbe, Brennholz mit Brettdach, Dachschild 荒物 ひさご屋 | 3 839 / 880 · 664 / 222 |
+| Sake_3Bay_Yamagiri | Großer Sakeladen 8,6 m: Gitter, offener Laden, Bretterläden, Udatsu rechts, Bambusrinne + Fallrohr | Zedernkugel, Schild 山霧, Noren 酒, Fässer, Feuereimer, Lampe | 4 921 / 919 · 710 / 372 |
+| Chaya_1F_Gohei | Eingeschossiges Teehaus, tiefes Schindel-Vordach, hochgeklappte Läden über die ganze Breite | Dachschild 御休処, Bank mit rotem Filz + Schirm, Nobori 五平餅, Menütafel, Wandlaterne | 3 217 / 726 · 386 / 240 |
+| …_Lane (Kaede, Soba, Ishigaki) | Gassen-Versionen: Läden zu (Bretter), Gitter dunkel, ein Fenster oben hell | Schilder, Laternen, Feuereimer, Brennholz, Pflanzen | 3 579–4 771 · 474–606 |
+| Street_8m · Street_Steps_8m · Trough · Waterwheel | Erdstraße mit Wasserrinne (Granitborde, 2 Steinbrücken) · Steinstufen +1,44 m · Wassertrog mit Bambusrohr · Wasserrad mit Zulaufrinne | — | 336 · 704 · 212 · 804 |
+
+- **Budget:** alle Häuser ≤ 5 000 (Kaede 4 981, Sake 4 921 — nach Messung
+  der Teile gekürzt: Seitenpfosten alle 2,7 m, hintere Steinreihe
+  einfacher, Gitter etwas weiter). LOD1 15–21 % (Kiste mit Dach, Gitter
+  als Bild, Steine jede zweite Reihe).
+- **Gemessen:** Bau 14 FBX, 0 Fehler, 0 Streck-Warnungen; nach den Bildern
+  steht nichts verschoben (geprüft). **Ungeprüft:** alles in Unity (zwei
+  Materialien je Haus: `M_Kiso_Atlas`, `M_KisoShop_Atlas`).
+- Lichter: `LIGHT_` vor jedem offenen Laden, jedem hellen Gitter und an
+  jeder Wandlaterne.
+- Fahrrad, Pflanzkübel, Steinlaterne, Bambuszaun in den Bildern sind die
+  Requisiten aus Aufgabe 2.
+- **Offen / Ideen nach der Freigabe:** Wasserrad als eigenes Mesh zum
+  Drehen; Straßenstück für die schmale Gasse; mehr Varianten der
+  Ishigaki-Treppe (seitlich, mittig).
 
 ### Koedo-Pilot (Atlas `Koedo` + `KoedoShop`, Generator `buildings/koedo.py` + Bausatz `buildings/koedo_kit.py`)
 
@@ -210,7 +241,8 @@ Konventionen:
 
 ## Für dich
 
-1. Neue Sitzung für Kiso starten (Starttext in der Antwort vom 2026-10-08).
+1. **Kiso-Pilot ansehen und freigeben** (Bilder oben unter „Wo wir
+   stehen"). Danach geht es mit Gassho weiter.
 2. Der Unity-Sitzung bei Gelegenheit „Lichttest nach ArtSource/STATUS.md"
    sagen.
 
@@ -309,3 +341,14 @@ Konventionen:
     dabei bitweise leicht ab:** 16 Tokyo-Schilder wurden „geändert", ohne
     dass sich ihr SVG änderte. Nur die PNG des eigenen Stils committen
     (hier `KO_*`), die anderen zurücksetzen.
+- 2026-10-08 Mittag (Kiso):
+  - **`graphics.mjs` rendert jetzt nur einen Stil**, wenn man ein Präfix
+    angibt (`node ArtSource/kit/graphics.mjs KI_`): Die Lektion von
+    Koedo, andere PNG von Hand zurückzusetzen, ist damit ein Werkzeug.
+  - **Rinne unter dem Bühnenboden unsichtbar:** Der Vorschau-Boden liegt
+    bei z = 0 und deckt alles darunter. `kiso.shots` senkt ihn auf −0,45
+    und legt eine Bodenplatte mit Loch um die Straße.
+  - **Grau-Test von oben sagt wenig** (alles gleich grau, auch der Boden):
+    Grau-Test der Straße auf Augenhöhe.
+  - **Kamera-Richtung in `P.shot`** zeigt vom Ziel *zur Kamera* — die
+    Gassen-Kamera stand zweimal außerhalb der Gasse. Steht im Docstring.

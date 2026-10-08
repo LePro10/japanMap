@@ -395,6 +395,601 @@
   "switchable": [],
   "attach": []
  },
+ "Kiso_Chaya_1F_Gohei": {
+  "fbx": "buildings/SM_Kiso_Chaya_1F_Gohei.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kiso_Chaya_1F_Gohei_LOD0",
+   "SM_Kiso_Chaya_1F_Gohei_LOD1",
+   "SM_Kiso_Chaya_1F_Gohei_Shop_LOD0",
+   "SM_Kiso_Chaya_1F_Gohei_Shop_LOD1"
+  ],
+  "tris": [
+   3217,
+   726
+  ],
+  "materials": [
+   "M_KisoShop_Atlas",
+   "M_Kiso_Atlas"
+  ],
+  "colliders": [
+   "COL_Kiso_Chaya_1F_Gohei_Roof",
+   "COL_Kiso_Chaya_1F_Gohei_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Kiso_Chaya_1F_Gohei_Shop0",
+    "pos": [
+     0.0,
+     -3.6,
+     1.98
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Kiso_Chaya_1F_Gohei_Andon1",
+    "pos": [
+     2.52,
+     -3.42,
+     1.94
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.45
+    ],
+    "range": 3.5
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Kiso_Hatago_2Bay_Yamabuki": {
+  "fbx": "buildings/SM_Kiso_Hatago_2Bay_Yamabuki.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kiso_Hatago_2Bay_Yamabuki_LOD0",
+   "SM_Kiso_Hatago_2Bay_Yamabuki_LOD1",
+   "SM_Kiso_Hatago_2Bay_Yamabuki_Shop_LOD0",
+   "SM_Kiso_Hatago_2Bay_Yamabuki_Shop_LOD1"
+  ],
+  "tris": [
+   4083,
+   680
+  ],
+  "materials": [
+   "M_KisoShop_Atlas",
+   "M_Kiso_Atlas"
+  ],
+  "colliders": [
+   "COL_Kiso_Hatago_2Bay_Yamabuki_Roof",
+   "COL_Kiso_Hatago_2Bay_Yamabuki_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Kiso_Hatago_2Bay_Yamabuki_Shop0",
+    "pos": [
+     -1.4,
+     -5.1,
+     2.23
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Kiso_Hatago_2Bay_Yamabuki_Shop1",
+    "pos": [
+     1.65,
+     -5.1,
+     2.23
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Kiso_Hatago_2Bay_Yamabuki_Andon2",
+    "pos": [
+     0.25,
+     -4.92,
+     2.04
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.45
+    ],
+    "range": 3.5
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Kiso_Hatago_3Bay_Kaede": {
+  "fbx": "buildings/SM_Kiso_Hatago_3Bay_Kaede.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kiso_Hatago_3Bay_Kaede_LOD0",
+   "SM_Kiso_Hatago_3Bay_Kaede_LOD1",
+   "SM_Kiso_Hatago_3Bay_Kaede_Shop_LOD0",
+   "SM_Kiso_Hatago_3Bay_Kaede_Shop_LOD1"
+  ],
+  "tris": [
+   4981,
+   964
+  ],
+  "materials": [
+   "M_KisoShop_Atlas",
+   "M_Kiso_Atlas"
+  ],
+  "colliders": [
+   "COL_Kiso_Hatago_3Bay_Kaede_Roof",
+   "COL_Kiso_Hatago_3Bay_Kaede_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Kiso_Hatago_3Bay_Kaede_Shop0",
+    "pos": [
+     0.2,
+     -5.1,
+     2.28
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Kiso_Hatago_3Bay_Kaede_Shop1",
+    "pos": [
+     2.7,
+     -5.1,
+     2.28
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Kiso_Hatago_3Bay_Kaede_Andon2",
+    "pos": [
+     1.52,
+     -4.92,
+     2.09
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.45
+    ],
+    "range": 3.5
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Kiso_Hatago_3Bay_Kaede_Lane": {
+  "fbx": "buildings/SM_Kiso_Hatago_3Bay_Kaede_Lane.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kiso_Hatago_3Bay_Kaede_Lane_LOD0",
+   "SM_Kiso_Hatago_3Bay_Kaede_Lane_LOD1",
+   "SM_Kiso_Hatago_3Bay_Kaede_Lane_Shop_LOD0",
+   "SM_Kiso_Hatago_3Bay_Kaede_Lane_Shop_LOD1"
+  ],
+  "tris": [
+   4771,
+   948
+  ],
+  "materials": [
+   "M_KisoShop_Atlas",
+   "M_Kiso_Atlas"
+  ],
+  "colliders": [
+   "COL_Kiso_Hatago_3Bay_Kaede_Lane_Roof",
+   "COL_Kiso_Hatago_3Bay_Kaede_Lane_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Kiso_Hatago_3Bay_Kaede_Lane_Andon0",
+    "pos": [
+     1.52,
+     -4.92,
+     2.09
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.45
+    ],
+    "range": 3.5
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Kiso_Minka_2Bay_Ishigaki": {
+  "fbx": "buildings/SM_Kiso_Minka_2Bay_Ishigaki.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kiso_Minka_2Bay_Ishigaki_LOD0",
+   "SM_Kiso_Minka_2Bay_Ishigaki_LOD1",
+   "SM_Kiso_Minka_2Bay_Ishigaki_Shop_LOD0",
+   "SM_Kiso_Minka_2Bay_Ishigaki_Shop_LOD1"
+  ],
+  "tris": [
+   3839,
+   880
+  ],
+  "materials": [
+   "M_KisoShop_Atlas",
+   "M_Kiso_Atlas"
+  ],
+  "colliders": [
+   "COL_Kiso_Minka_2Bay_Ishigaki_Roof",
+   "COL_Kiso_Minka_2Bay_Ishigaki_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Kiso_Minka_2Bay_Ishigaki_Shop0",
+    "pos": [
+     -1.15,
+     -4.6,
+     3.58
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Kiso_Minka_2Bay_Ishigaki_Lane": {
+  "fbx": "buildings/SM_Kiso_Minka_2Bay_Ishigaki_Lane.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kiso_Minka_2Bay_Ishigaki_Lane_LOD0",
+   "SM_Kiso_Minka_2Bay_Ishigaki_Lane_LOD1",
+   "SM_Kiso_Minka_2Bay_Ishigaki_Lane_Shop_LOD0",
+   "SM_Kiso_Minka_2Bay_Ishigaki_Lane_Shop_LOD1"
+  ],
+  "tris": [
+   3619,
+   858
+  ],
+  "materials": [
+   "M_KisoShop_Atlas",
+   "M_Kiso_Atlas"
+  ],
+  "colliders": [
+   "COL_Kiso_Minka_2Bay_Ishigaki_Lane_Roof",
+   "COL_Kiso_Minka_2Bay_Ishigaki_Lane_Walls"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Kiso_Sake_3Bay_Yamagiri": {
+  "fbx": "buildings/SM_Kiso_Sake_3Bay_Yamagiri.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kiso_Sake_3Bay_Yamagiri_LOD0",
+   "SM_Kiso_Sake_3Bay_Yamagiri_LOD1",
+   "SM_Kiso_Sake_3Bay_Yamagiri_Shop_LOD0",
+   "SM_Kiso_Sake_3Bay_Yamagiri_Shop_LOD1"
+  ],
+  "tris": [
+   4921,
+   919
+  ],
+  "materials": [
+   "M_KisoShop_Atlas",
+   "M_Kiso_Atlas"
+  ],
+  "colliders": [
+   "COL_Kiso_Sake_3Bay_Yamagiri_Roof",
+   "COL_Kiso_Sake_3Bay_Yamagiri_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Kiso_Sake_3Bay_Yamagiri_Shop0",
+    "pos": [
+     -2.6,
+     -5.35,
+     2.38
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Kiso_Sake_3Bay_Yamagiri_Shop1",
+    "pos": [
+     0.45,
+     -5.35,
+     2.38
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Kiso_Shop_2Bay_Nushiya": {
+  "fbx": "buildings/SM_Kiso_Shop_2Bay_Nushiya.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kiso_Shop_2Bay_Nushiya_LOD0",
+   "SM_Kiso_Shop_2Bay_Nushiya_LOD1",
+   "SM_Kiso_Shop_2Bay_Nushiya_Shop_LOD0",
+   "SM_Kiso_Shop_2Bay_Nushiya_Shop_LOD1"
+  ],
+  "tris": [
+   3995,
+   764
+  ],
+  "materials": [
+   "M_KisoShop_Atlas",
+   "M_Kiso_Atlas"
+  ],
+  "colliders": [
+   "COL_Kiso_Shop_2Bay_Nushiya_Roof",
+   "COL_Kiso_Shop_2Bay_Nushiya_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Kiso_Shop_2Bay_Nushiya_Shop0",
+    "pos": [
+     -0.9,
+     -4.85,
+     2.23
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Kiso_Shop_2Bay_Nushiya_Shop1",
+    "pos": [
+     1.95,
+     -4.85,
+     2.23
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Kiso_Soba_2Bay_Kodama": {
+  "fbx": "buildings/SM_Kiso_Soba_2Bay_Kodama.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kiso_Soba_2Bay_Kodama_LOD0",
+   "SM_Kiso_Soba_2Bay_Kodama_LOD1",
+   "SM_Kiso_Soba_2Bay_Kodama_Shop_LOD0",
+   "SM_Kiso_Soba_2Bay_Kodama_Shop_LOD1"
+  ],
+  "tris": [
+   3983,
+   850
+  ],
+  "materials": [
+   "M_KisoShop_Atlas",
+   "M_Kiso_Atlas"
+  ],
+  "colliders": [
+   "COL_Kiso_Soba_2Bay_Kodama_Roof",
+   "COL_Kiso_Soba_2Bay_Kodama_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Kiso_Soba_2Bay_Kodama_Shop0",
+    "pos": [
+     -1.05,
+     -4.6,
+     2.18
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Kiso_Soba_2Bay_Kodama_Shop1",
+    "pos": [
+     2.1,
+     -4.6,
+     2.18
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Kiso_Soba_2Bay_Kodama_Andon2",
+    "pos": [
+     1.05,
+     -4.42,
+     1.99
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.45
+    ],
+    "range": 3.5
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Kiso_Soba_2Bay_Kodama_Lane": {
+  "fbx": "buildings/SM_Kiso_Soba_2Bay_Kodama_Lane.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kiso_Soba_2Bay_Kodama_Lane_LOD0",
+   "SM_Kiso_Soba_2Bay_Kodama_Lane_LOD1",
+   "SM_Kiso_Soba_2Bay_Kodama_Lane_Shop_LOD0",
+   "SM_Kiso_Soba_2Bay_Kodama_Lane_Shop_LOD1"
+  ],
+  "tris": [
+   3579,
+   794
+  ],
+  "materials": [
+   "M_KisoShop_Atlas",
+   "M_Kiso_Atlas"
+  ],
+  "colliders": [
+   "COL_Kiso_Soba_2Bay_Kodama_Lane_Roof",
+   "COL_Kiso_Soba_2Bay_Kodama_Lane_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Kiso_Soba_2Bay_Kodama_Lane_Andon0",
+    "pos": [
+     1.05,
+     -4.42,
+     1.99
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.45
+    ],
+    "range": 3.5
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Kiso_Street_8m": {
+  "fbx": "buildings/SM_Kiso_Street_8m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kiso_Street_8m_LOD0",
+   "SM_Kiso_Street_8m_LOD1"
+  ],
+  "tris": [
+   336,
+   294
+  ],
+  "materials": [
+   "M_Kiso_Atlas"
+  ],
+  "colliders": [
+   "COL_Kiso_Street_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Kiso_Street_Steps_8m": {
+  "fbx": "buildings/SM_Kiso_Street_Steps_8m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kiso_Street_Steps_8m_LOD0",
+   "SM_Kiso_Street_Steps_8m_LOD1"
+  ],
+  "tris": [
+   704,
+   688
+  ],
+  "materials": [
+   "M_Kiso_Atlas"
+  ],
+  "colliders": [
+   "COL_Kiso_Street_Steps_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Kiso_Trough": {
+  "fbx": "buildings/SM_Kiso_Trough.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kiso_Trough_LOD0",
+   "SM_Kiso_Trough_LOD1"
+  ],
+  "tris": [
+   212,
+   70
+  ],
+  "materials": [
+   "M_Kiso_Atlas"
+  ],
+  "colliders": [
+   "COL_Kiso_Trough"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Kiso_Waterwheel": {
+  "fbx": "buildings/SM_Kiso_Waterwheel.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Kiso_Waterwheel_LOD0",
+   "SM_Kiso_Waterwheel_LOD1"
+  ],
+  "tris": [
+   804,
+   564
+  ],
+  "materials": [
+   "M_Kiso_Atlas"
+  ],
+  "colliders": [
+   "COL_Kiso_Waterwheel"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
  "Koedo_Dagashi_1F": {
   "fbx": "buildings/SM_Koedo_Dagashi_1F.fbx",
   "class": "buildings",

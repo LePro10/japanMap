@@ -2,7 +2,8 @@
 // to PNG by the headless Chromium the Tools already use (Japanese text needs a
 // real font renderer; numpy cannot draw 止まれ). Output: ArtSource/kit/gfx/<name>.png,
 // committed, loaded by kit/atlas.py.
-//   node ArtSource/kit/graphics.mjs
+//   node ArtSource/kit/graphics.mjs [PREFIX]   e.g. KI_ - only that style: a full re-render
+//   changes the font edges of every other PNG bitwise (noise in git)
 // Designs follow the Japanese road sign standard in shape and colour, simplified.
 // Text and plates are fictional - no real operator or company names.
 import { createRequire } from 'node:module';
@@ -12,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { TOKYO } from './graphics_tokyo.mjs';
 import { SIGNS } from './graphics_signs.mjs';
 import { KOEDO } from './graphics_koedo.mjs';
+import { KISO } from './graphics_kiso.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(join(here, '../../Tools/package.json'));
@@ -99,17 +101,19 @@ const G = {
   ...TOKYO,
   ...Object.fromEntries(Object.entries(SIGNS).map(([k, v]) => [`SG_${k}`, v])),
   ...Object.fromEntries(Object.entries(KOEDO).map(([k, v]) => [`KO_${k}`, v])),
+  ...Object.fromEntries(Object.entries(KISO).map(([k, v]) => [`KI_${k}`, v])),
 };
 
 mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage({ deviceScaleFactor: 1 });
-  for (const [name, [w, h, body]] of Object.entries(G)) {
+  const only = process.argv[2] || '';
+  for (const [name, [w, h, body]] of Object.entries(G).filter(([n]) => n.startsWith(only))) {
     await page.setViewportSize({ width: w, height: h });
     await page.setContent(`<style>html,body{margin:0;background:transparent}</style>
       <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${body}</svg>`);
     await page.locator('svg').screenshot({ path: join(OUT, `${name}.png`), omitBackground: true });
   }
 } finally { await browser.close(); }
-console.log(`GRAPHICS OK · ${Object.keys(G).length} → ${OUT}`);
+console.log(`GRAPHICS OK · ${Object.keys(G).filter(n => n.startsWith(process.argv[2] || '')).length} → ${OUT}`);

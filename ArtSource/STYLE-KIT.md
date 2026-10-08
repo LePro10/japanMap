@@ -42,7 +42,7 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
   Fahrräder), `Nature` (Felsen, Laub, Erde, Töpfe — später Vegetation;
   nur deckend, Blatt-Karten mit Alpha brauchen in Aufgabe 4 ein eigenes
   Material), `Kura`, `Tokyo` (Fliesen- und ALC-Wände, Konbini, Schilder,
-  Neon), `TokyoSigns`, `Koedo` + `KoedoShop`. Neuer Baustil = neuer Atlas (z. B. `Kiso`).
+  Neon), `TokyoSigns`, `Koedo` + `KoedoShop`, `Kiso` + `KisoShop`. Neuer Baustil = neuer Atlas.
 - Atlas 1024², drei Karten passend zu URP/Lit:
   `T_<Stil>_BaseColor` (sRGB) · `T_<Stil>_MaskMap` (R Metall, G AO = 1,
   A Glätte; linear) · `T_<Stil>_Emission` (sRGB).
@@ -79,6 +79,8 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
 | Fliese beige / braun (Tokyo) | `#b9a78c` / `#6e5143` | | ALC-Platte | `#d9d8d2` |
 | Konbini blau / orange (fiktiv) | `#2d8fd6` / `#f39a1e` | | Neon pink / cyan | `#ff3fa4` / `#3fe6ff` |
 | Kupfer-Patina (Koedo) | `#5f8f7a` | | Bretterwand (Koedo) | `#3b2a1e` |
+| Senkrechte Bretter (Kiso) | `#4a3727` | | Lehmputz (Kiso) | `#b39a74` |
+| Schindeln (Kiso) | `#5f5a52` | | Dachsteine (Kiso) | `#6a6965` `#5e5850` `#525a46` |
 
 Gedämpfte Grundtöne, kräftige Farben nur als Akzent (Automat, Torii, Licht).
 
@@ -193,6 +195,54 @@ Holz 48 px/m, Wappen, Oni, Shoji) und `KoedoShop` (Ladenausstattung:
   Gasse, Grau-Test, jedes Haus vorne/hinten/grau, Nahaufnahmen;
   Kamera `P.shot(...)` (auch für andere Stile).
 
+## Kiso-Bausatz (Poststadt an der Nakasendō, ab 2026-10-08)
+
+`buildings/kiso_kit.py` (Module) + `buildings/kiso.py` (Häuser als Daten,
+`HOUSES`; Gassen-Versionen über `lane()`; Straßenstücke `PIECES`). Zwei
+Atlanten: `Kiso` (Bau: senkrechte Bretter `WOOD_TATE`, Stülpschalung,
+Lehmputz, Ishigaki, Erdstraße, Steinpflaster je 64 px/m, Schindeln 96 px/m,
+Holz 48 px/m, Gitterbild für LOD1, drei Dachstein-Töne, Wasser) und
+`KisoShop` (6 Innenräume, 7 Schilder, 4 Standschilder, 5 Noren,
+4 Wandlaternen, 2 Chōchin, 2 Nobori, Strohsandalen, Holzstirnseiten,
+Korbgeflecht, Menütafel).
+- **Zwei Wandzüge je Haus:** Erdgeschoss (Steinsockel, Schwelle, Sturz)
+  und Obergeschoss (Stirnbrett über den Balkenköpfen, Pfette) — das obere
+  um `P` nach vorn versetzt (**dashi-bari**: Untersicht aus Brettern,
+  Balkenköpfe mit Eisenband und Holznagel). `P = 0` ergibt Häuser mit
+  Schindel-Vordach (`board_hisashi`, Kragarme, Pfette, Steinreihe).
+- **Dach:** `board_roof` = flaches Schindeldach (Neigung 0,30–0,32) mit
+  Schindellagen, Untersicht aus Brettern, Sparren, Windbrettern,
+  Firstabdeckung + Firstbalken, Pfettenköpfe am Giebel, Kragarme
+  (udegi) mit Pfette (dashi-geta) unter der tiefen Traufe, Latten mit
+  Reihen von Steinen (vorne 2–3, hinten 1 einfachere Reihe). Oder
+  `tile_roof` (leichtes Koedo-Ziegeldach, mittig verschoben).
+- **Udatsu:** `sode_udatsu` an einem oder beiden Enden des Obergeschosses
+  (weißer Putz, dunkle Pfosten, kleines Ziegeldach).
+- **Öffnungen:** `dejoshi` (vorstehendes Gitter auf Brettsockel, Shoji
+  dahinter), `koshi_u` (Gitterfenster oben), `agedo` (offener Laden mit
+  hochgeklappten Läden an Eisenstangen + Klappbank), dazu aus Koedo
+  offener Laden, Bretterläden, Senbon-Gitter, Shoji hinter Geländer.
+- **Holzgerüst sichtbar:** Pfosten an den Ecken und zwischen Öffnungen,
+  an den Lehmputz-Seiten Pfosten (alle 2,7 m) + Nuki-Riegel; Giebel mit
+  Firstsäule und Riegel.
+- **Hang:** `plinth` = Ishigaki-Sockel (geböscht, Decksteine, gepflasterte
+  Terrasse, Steintreppe längs der Front mit Wange); Haus und Ausstattung
+  stehen auf `H`.
+- **Ausstattung** (`_Shop`-Mesh): Wandlaterne (kake-andon), Schild an
+  Eisenstangen, Noren, Chōchin, Zedernkugel, Fässer, Waren auf Stufen
+  (Lackschalen, Spanschachteln, Körbe), Strohsandalen, Tragekörbe,
+  Brennholzstapel mit Brettdach und Steinen, Bänke, Feuereimer, Pflanzen.
+- **Straße** (eigene FBX): `Street_8m` (Erdstraße in ≤ 2-m-Bändern,
+  Wasserrinne mit Granit-Bordsteinen und Steinplatten-Brücken,
+  Pflasterstreifen, Schürze bis −0,4 m), `Street_Steps_8m`
+  (Steinstufen +1,44 m, Rinne, Ishigaki-Seiten), `Trough` (Wassertrog mit
+  Bambusrohr), `Waterwheel` (ein Mesh, dreht sich nicht).
+- **Bilder:** `kiso.shots(ordner)`; für die Rinne senkt es den
+  Bühnenboden auf −0,45 und legt eine Bodenplatte mit Loch um die Straße.
+- **Budget gemessen** (Kaede, Teile einzeln): Erdgeschoss-Öffnungen 1 134,
+  Steine + Latten 950, Gitterfenster oben 682, Holzgerüst 288,
+  Vorkragung 152, Udatsu 146 Dreiecke.
+
 ## Abnutzung
 
 - **Schmutz unten:** jede Fläche wird zum Boden hin dunkler (Spritzwasser).
@@ -217,7 +267,8 @@ Holz 48 px/m, Wappen, Oni, Shoji) und `KoedoShop` (Ladenausstattung:
 Flache Grafiken mit Schrift entstehen als SVG in `kit/graphics.mjs` und
 werden mit dem Headless-Chrome der Tools gerendert (`node
 ArtSource/kit/graphics.mjs` → `kit/gfx/*.png`, committet; japanische Schrift
-über Hiragino). Der Atlas lädt sie als Rechteck (`png(...)`). Schildplatten
+über Hiragino). Nur den eigenen Stil rendern (`node ArtSource/kit/graphics.mjs KI_`):
+ein Gesamtlauf ändert die Schriftkanten aller anderen PNG bitweise. Der Atlas lädt sie als Rechteck (`png(...)`). Schildplatten
 folgen dem Umriss der Grafik, die UVs laufen über dieselben Pixelkoordinaten.
 **Keine echten Firmen- oder Betreibernamen** — Texte sind fiktiv oder
 allgemein (止まれ, 稲荷神社, „Sakura-dōri").

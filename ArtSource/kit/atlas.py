@@ -635,6 +635,114 @@ def copper(col='#5f8f7a', plate_m=(0.24, 0.15), ppm=64):
     return gen
 
 
+def tate_ita(col='#4a3727', board_m=0.24, ppm=64):
+    """Vertical board wall (tate-ita-bari) of the Kiso post towns: boards side
+    by side along U, grain running up, dark joints, each board its own shade,
+    silvery weathering in patches, rain runs and a splashed dark foot.
+    Board count rounded so the strip tiles in U."""
+    def gen(w, h, rng):
+        y, x = np.mgrid[0:h, 0:w].astype(float)
+        nb = max(3, round(w / (board_m * ppm))); bw = w / nb
+        i = np.floor(x / bw); fx = np.mod(x, bw) / bw
+        tv = (np.sin(i * 12.9898 + 1.7) * 43758.5453) % 1.0
+        grain = value_noise(w, h, max(8, w // 3), 3, rng)          # fine across, long up the board
+        knots = smoothstep(0.94, 0.985, value_noise(w, h, w // 6, max(2, h // 10), rng))
+        f = (0.8 + 0.25 * tv) * (0.84 + 0.26 * grain) * (1 - 0.35 * knots)
+        f *= 1 - 0.6 * np.maximum(smoothstep(0.05, 0.0, fx), smoothstep(0.95, 1.0, fx))
+        rgb = srgb(col) * f[..., None]
+        weather = smoothstep(0.6, 0.85, fbm(w, h, w // 32, max(2, h // 32), rng, 4) + 0.12 * vgrad(w, h))
+        rgb = rgb * (1 - 0.28 * weather[..., None]) + srgb('#6e675f') * (f * 0.28 * weather)[..., None]
+        rgb *= (rain_streaks(w, h, rng, 0.12) * grime(w, h, rng, 0.3, 0.18))[..., None]
+        return _out(rgb, 0.18 + 0.1 * tv)
+    return gen
+
+
+def shingle(col='#5f5a52', row_m=0.1, board_w=0.11, ppm=96):
+    """Board shingles (kureita) of the stone-weighted roofs: thin split boards
+    in rows along U, each row shading the one below, joints staggered per
+    row, silver-grey with brown showing through, moss specks. V runs up the slope."""
+    def gen(w, h, rng):
+        y, x = np.mgrid[0:h, 0:w].astype(float)
+        rh = row_m * ppm
+        row = np.floor(y / rh); fy = np.mod(y, rh) / rh
+        nbx = max(1, round(w / (board_w * ppm))); bw = w / nbx
+        shift = (np.sin(row * 78.233) * 43758.5453) % 1.0
+        xs = x + shift * bw
+        cell = np.floor(xs / bw) % nbx; fx = np.mod(xs, bw) / bw
+        tv = (np.sin(cell * 12.9898 + row * 4.1414) * 43758.5453) % 1.0
+        grain = value_noise(w, h, w // 2, max(2, h // 4), rng)
+        f = (0.76 + 0.32 * tv) * (0.85 + 0.22 * grain)
+        f *= 1 - 0.55 * smoothstep(0.2, 0.0, fy)
+        f *= 1 - 0.5 * np.maximum(smoothstep(0.07, 0.0, fx), smoothstep(0.93, 1.0, fx))
+        rgb = srgb(col) * f[..., None]
+        brown = smoothstep(0.6, 0.85, fbm(w, h, w // 40, max(2, h // 20), rng, 3))
+        rgb = rgb * (1 - 0.5 * brown[..., None]) + srgb('#6a4a32') * (f * 0.5 * brown)[..., None]
+        moss = smoothstep(0.72, 0.78, fbm(w, h, w // 24, max(2, h // 12), rng, 4))
+        rgb = rgb * (1 - 0.7 * moss[..., None]) + srgb('#4d5a2c') * (0.7 * moss)[..., None]
+        return _out(rgb, 0.15)
+    return gen
+
+
+def road_earth(col='#7c7265'):
+    """Packed earth and fine gravel of the post-town street: mottled, small
+    light and dark grit, no tyre tracks (any direction must work)."""
+    def gen(w, h, rng):
+        n = fbm(w, h, w // 16, max(2, h // 16), rng, 5)
+        speck = rng.random((h, w))
+        f = 0.85 + 0.28 * n
+        f = np.where(speck > 0.93, f * 1.25, np.where(speck < 0.05, f * 0.7, f))
+        return _out(srgb(col) * f[..., None], 0.12 + 0.1 * n)
+    return gen
+
+
+def paving(col='#7d7a74', ppm=64, row_m=(0.3, 0.55), len_m=(0.35, 0.8)):
+    """Stone paving of the slopes (ishidatami): rows of irregular slabs, each
+    its own tone, worn rounded edges, dark joints with moss. Tiles in U."""
+    def gen(w, h, rng):
+        W = w / ppm
+        X = (np.arange(w) + 0.5) / ppm
+        tone = np.ones((h, w)); dj = np.ones((h, w))
+        y = 0.0
+        while y * ppm < h:
+            rh = rng.uniform(*row_m)
+            a, b = int(y * ppm), min(h, int((y + rh) * ppm))
+            xs = [rng.uniform(0, 0.3)]
+            while xs[-1] < W - len_m[0] - 0.1:
+                xs.append(xs[-1] + rng.uniform(*len_m))
+            xs = np.array(xs)
+            k = np.searchsorted(xs, X) % len(xs)
+            dx = np.min(np.abs(((X[None, :] - xs[:, None]) + W / 2) % W - W / 2), axis=0)
+            tv = 0.78 + 0.34 * rng.random(len(xs))
+            Y = (np.arange(a, b) + 0.5) / ppm
+            dy = np.minimum(Y - y, y + rh - Y)
+            tone[a:b] = tv[k][None, :]
+            dj[a:b] = np.minimum(dx[None, :], dy[:, None])
+            y += rh
+        grain = fbm(w, h, w // 8, max(2, h // 8), rng, 3)
+        f = tone * (0.86 + 0.24 * grain) * (0.82 + 0.18 * smoothstep(0.0, 0.05, dj))
+        rgb = srgb(col) * f[..., None]
+        joint = smoothstep(0.022, 0.006, dj)
+        moss = smoothstep(0.55, 0.7, fbm(w, h, w // 32, max(2, h // 32), rng, 3)) * joint
+        jcol = srgb('#2a2824') * (1 - moss[..., None]) + srgb('#3e4a24') * moss[..., None]
+        rgb = rgb * (1 - joint[..., None]) + jcol * joint[..., None]
+        return _out(rgb, 0.15 + 0.1 * (1 - joint))
+    return gen
+
+
+def koshi_tex(lit=True):
+    """Lattice in front of shoji as one picture (LOD1 of the Kiso lattices)."""
+    def gen(w, h, rng):
+        u, v, rgb, emit = _canvas(w, h, '#efe4c8' if lit else '#9c937f')
+        dark = (np.mod(u * 22, 1.0) < 0.5) | (v < 0.06) | (v > 0.94)
+        rgb[dark] = srgb('#33261c')
+        e = None
+        if lit:
+            e = rgb * 0.8
+            e[dark] = 0
+        return _out(rgb, 0.25, 0.0, e)
+    return gen
+
+
 # ── atlas layouts (pixel rects: x, y, w, h; y from the bottom) ──────────────
 
 def _cells(names_gens, x0, y0, cols, size=64, h=None):
@@ -991,6 +1099,108 @@ LAYOUTS = {
             ('PLASTER_WHITE_FLAT', flat('#e2dccf', 0.25, dirt=0.08)),
             ('PLASTER_BLACK_FLAT', flat('#1a1a1c', 0.55, dirt=0.04)),
         ], 0, 0, 16),
+    },
+    'Kiso': {   # post-town structure: walls 2 m strips at 64 px/m, shingles 96 px/m, beams 48 px/m
+        'WOOD_TATE':     _strip(896, 128, tate_ita(), ppm=64),
+        'WOOD_BOARD':    _strip(768, 128, wood_board('#3e2d20'), ppm=64),
+        'PLASTER_EARTH': _strip(640, 128, plaster('#b39a74', dirt=0.3, streak=0.12, smooth=0.2), ppm=64),
+        'ISHIGAKI':      _strip(512, 128, ishigaki(stone_m=(0.5, 0.32), ppm=64), ppm=64),
+        'ROAD':          _strip(384, 128, road_earth(), ppm=64),
+        'PAVING':        _strip(256, 128, paving(), ppm=64),
+        'SHINGLE':       _strip(208, 48, shingle(), ppm=96),
+        'STONE':         _strip(160, 48, stone('#7e7f80', dirt=0.3), ppm=96),
+        'WOOD':          _strip(128, 32, wood('#33261c'), ppm=48),        # 0.67 m: beams, posts (rotated)
+        'WOOD_LIGHT':    _strip(96, 32, wood('#4e3a2a', smooth=0.3), ppm=48),
+        'ONI':           _rect(0, 32, 64, 64, oni()),
+        'KAMON_A':       _rect(64, 32, 64, 64, kamon()),
+        'SHOJI':         _rect(128, 32, 64, 64, shoji(lit=True)),
+        'SHOJI_DARK':    _rect(192, 32, 64, 64, shoji(lit=False)),
+        'KOSHI_LIT':     _rect(256, 32, 64, 64, koshi_tex(True)),
+        'KOSHI_DARK':    _rect(320, 32, 64, 64, koshi_tex(False)),
+        **_cells([
+            ('IRON',        flat('#26272a', 0.4, 0.7, dirt=0.1)),
+            ('INTERIOR',    flat('#0b0a09', 0.2, dirt=0.0)),
+            ('LIGHT_WARM',  emissive('#ffb768')),
+            ('TILE_A',      flat('#4d5560', 0.45, dirt=0.12)),
+            ('TILE_B',      flat('#454c56', 0.4, dirt=0.12)),
+            ('TILE_C',      flat('#555d68', 0.5, dirt=0.12)),
+            ('TILE_DARK',   flat('#353b43', 0.4, dirt=0.15)),
+            ('PLASTER_WHITE_FLAT', flat('#e2dccf', 0.25, dirt=0.1)),
+            ('PLASTER_EARTH_FLAT', flat('#b39a74', 0.2, dirt=0.15)),
+            ('WOOD_FLAT',   flat('#33261c', 0.3, dirt=0.12)),
+            ('WOOD_LIGHT_FLAT', flat('#4e3a2a', 0.3, dirt=0.12)),
+            ('WOOD_BOARD_FLAT', flat('#3e2d20', 0.25, dirt=0.15)),
+            ('WOOD_TATE_FLAT', flat('#45342a', 0.2, dirt=0.15)),
+            ('WOOD_GREY_FLAT', flat('#5d5650', 0.2, dirt=0.1)),
+            ('SHINGLE_EDGE', flat('#3d3832', 0.15, dirt=0.05)),
+            ('STONE_FLAT',  flat('#7e7f80', 0.25, dirt=0.2)),
+            ('STONE_A',     flat('#6a6965', 0.2, dirt=0.25)),
+            ('STONE_B',     flat('#5e5850', 0.2, dirt=0.25)),
+            ('STONE_C',     flat('#525a46', 0.15, dirt=0.25)),   # mossy
+            ('GLASS',       flat('#1c242b', 0.92, dirt=0.0)),
+        ], 384, 32, 10, 64, 32),
+        **_cells([
+            ('BAMBOO',      flat('#a48d5e', 0.4, dirt=0.1)),
+            ('BAMBOO_DARK', flat('#6e6040', 0.35, dirt=0.1)),
+            ('WATER',       flat('#1a2528', 0.95, dirt=0.0)),
+            ('MOSS',        flat('#4d5a2c', 0.1, dirt=0.1)),
+            ('PAPER',       flat('#e8e0cc', 0.2, dirt=0.05)),
+            ('END_GRAIN',   flat('#7a5c40', 0.2, dirt=0.15)),
+            ('CHANNEL',     flat('#4a4842', 0.5, dirt=0.3)),
+            ('EARTH',       flat('#5a4a3a', 0.1, dirt=0.2)),
+        ], 0, 0, 16, 64, 32),
+    },
+    'KisoShop': {   # shop dressing of the post town: interiors, boards, noren, wall lanterns, wares
+        **{f'INT_{k}': _rect((i % 4) * 256, 896 - (i // 4) * 128, 256, 128, png(f'KI_INT_{k}', 0.6, emit=0.85))
+           for i, k in enumerate(('INN', 'SOBA', 'CRAFT', 'SAKE', 'STRAW', 'GOHEI'))},
+        **{f'KB{i}': _rect(512 + (i % 2) * 256, 832 - (i // 2) * 64, 256, 64, png(f'KI_KB{i}', 0.35)) for i in range(4)},
+        **{f'KB{i}': _rect((i - 4) * 256, 704, 256, 64, png(f'KI_KB{i}', 0.35)) for i in range(4, 6)},
+        'KB6': _rect(0, 384, 256, 64, png('KI_KB6', 0.35)),
+        **{f'ANDON{i}': _rect(512 + i * 64, 704, 64, 64, png(f'KI_ANDON{i}', 0.3, emit=0.85)) for i in range(4)},
+        'CHOCHIN0': _rect(768, 704, 128, 64, png('KI_CHOCHIN0', 0.3, emit=0.8)),
+        'CHOCHIN1': _rect(896, 704, 128, 64, png('KI_CHOCHIN1', 0.3, emit=0.8)),
+        **{f'KV{i}': _rect(i * 64, 448, 64, 256, png(f'KI_KV{i}', 0.35)) for i in range(4)},
+        **{f'NOREN{i}': _rect(256 + i * 128, 608, 128, 96, png(f'KI_NOREN{i}', 0.15)) for i in range(5)},
+        'WARAJI':  _rect(256, 480, 64, 128, png('KI_WARAJI', 0.15)),
+        'LOGS':    _rect(320, 544, 128, 64, png('KI_LOGS', 0.15)),
+        'KAGO':    _rect(448, 544, 64, 64, png('KI_KAGO', 0.2)),
+        'MENU':    _rect(512, 512, 64, 96, png('KI_MENU', 0.3)),
+        'BUCKET':  _rect(576, 576, 64, 32, png('KI_BUCKET', 0.5)),
+        'SUDARE':  _rect(640, 480, 64, 128, png('KI_SUDARE', 0.2)),
+        'NOBORI0': _rect(704, 576, 128, 32, png('KI_NOBORI0', 0.2)),
+        'NOBORI1': _rect(704, 544, 128, 32, png('KI_NOBORI1', 0.2)),
+        **_cells([
+            ('WOOD_DARK',   flat('#33261c', 0.3, dirt=0.12)),
+            ('WOOD_LIGHT',  flat('#8a6a48', 0.35, dirt=0.12)),
+            ('LACQUER_RED', flat('#8a1f1a', 0.7, dirt=0.03)),
+            ('LACQUER_BLACK', flat('#1a1412', 0.75, dirt=0.03)),
+            ('FELT_RED',    flat('#b3202a', 0.1, dirt=0.05)),
+            ('PARASOL_RED', flat('#c42a22', 0.3, dirt=0.05)),
+            ('IRON',        flat('#26272a', 0.4, 0.7, dirt=0.1)),
+            ('BRASS',       flat('#a08440', 0.55, 0.9, dirt=0.05)),
+            ('CEDAR',       flat('#5a5a2e', 0.15, dirt=0.1)),
+            ('STRAW',       flat('#c9b07a', 0.2, dirt=0.15)),
+            ('PAPER',       flat('#f4ecd8', 0.2, dirt=0.05)),
+            ('LIT_WARM',    emissive('#ffc985')),
+            ('NOREN_NAVY',  flat('#1d2a4a', 0.15, dirt=0.0)),
+            ('WHITE',       flat('#efe9dc', 0.3, dirt=0.1)),
+            ('HINOKI',      flat('#c9a77a', 0.35, dirt=0.08)),
+            ('BARK',        flat('#4a3a2c', 0.1, dirt=0.15)),
+            ('END_GRAIN',   flat('#a8845a', 0.2, dirt=0.1)),
+            ('POT_CLAY',    flat('#8a4a2c', 0.3, dirt=0.2)),
+            ('LEAF',        flat('#3c5a2a', 0.3, dirt=0.0)),
+            ('BLACK',       flat('#151617', 0.4, dirt=0.0)),
+            ('BUCKET_RED',  flat('#b3202a', 0.5, dirt=0.1)),
+            ('STONE',       flat('#7e7f80', 0.25, dirt=0.2)),
+            ('BAMBOO',      flat('#a48d5e', 0.35, dirt=0.1)),
+            ('INDIGO',      flat('#24324a', 0.15, dirt=0.0)),
+            ('GREEN_TEA',   flat('#4a6a2a', 0.3, dirt=0.05)),
+            ('STEEL',       flat('#9a9ca0', 0.6, 1.0, dirt=0.1)),
+            ('BOX_YELLOW',  flat('#e8b51a', 0.4, dirt=0.05)),
+            ('BOX_PURPLE',  flat('#5a2a6a', 0.4, dirt=0.05)),
+            ('BOX_ORANGE',  flat('#d8642c', 0.4, dirt=0.05)),
+            ('STRAW_DARK',  flat('#9a8452', 0.2, dirt=0.15)),
+        ], 0, 0, 16, 64, 32),
     },
 }
 
