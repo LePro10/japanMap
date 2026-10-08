@@ -350,6 +350,25 @@ def shoji(lit=True):
     return gen
 
 
+def curtain(lit=True):
+    """Aluminium window seen from outside: lace curtain behind glass, lit
+    warm from inside or dusky; the glazing bar in the middle."""
+    def gen(w, h, rng):
+        u, v, rgb, emit = _canvas(w, h, '#e6d6b4' if lit else '#4a5056')
+        folds = 0.85 + 0.15 * np.sin(u * 40 + 2 * np.sin(v * 5))
+        rgb *= folds[..., None]
+        if not lit:   # dark glass with a sky reflection band at the top
+            rgb = rgb * (1 - 0.4 * smoothstep(0.6, 1.0, v))[..., None] + srgb('#8a9aa8') * (0.4 * smoothstep(0.6, 1.0, v))[..., None]
+        bar = np.abs(u - 0.5) < 0.03
+        rgb[bar] = srgb('#b4b7b8')
+        e = None
+        if lit:
+            e = rgb * 0.85
+            e[bar] = 0
+        return _out(rgb, 0.8 if not lit else 0.3, 0.0, e)
+    return gen
+
+
 def png(name, smooth=0.45, emit=0.0, bg='#808080'):
     """Graphic rendered by kit/graphics.mjs (signs need real fonts)."""
     def gen(w, h, rng):
@@ -858,6 +877,117 @@ def straw_bundle():
         return _out(rgb, 0.18)
     return gen
 
+
+
+def totan(col='#4f7f8c', rust=0.5, ppm=48, sheet_m=1.8, painted=True):
+    """Corrugated iron sheet (namitotan) of the fishing villages, one sheet
+    course of 1.8 m from V 0: faded paint (or bare zinc) with rust breaking
+    through - most at the foot, along the lap at the top and in runs below
+    the nail rows - salt bloom, a darker lap shadow at the top edge. The
+    corrugation itself is geometry (or LOD1 flat), the strip tiles in U."""
+    def gen(w, h, rng):
+        y, x = np.mgrid[0:h, 0:w].astype(float)
+        v = y / (sheet_m * ppm)                          # 0 at the sheet foot, 1 at its top
+        fade = fbm(w, h, w // 40, max(2, h // 24), rng, 4)
+        rgb = srgb(col) * (0.82 + 0.3 * fade)[..., None]
+        if painted:   # chalky faded paint, lighter in patches
+            rgb = rgb * (1 - 0.25 * smoothstep(0.55, 0.8, fade))[..., None] + srgb('#c9c7bf') * (0.25 * smoothstep(0.55, 0.8, fade))[..., None]
+        # rust: noise biased to the foot and the top lap, plus runs from the nail rows
+        rn = fbm(w, h, w // 20, max(2, h // 10), rng, 5)
+        bias = 0.32 * smoothstep(0.25, 0.0, v) + 0.1 * smoothstep(0.85, 1.0, v) * value_noise(w, h, w // 20, 1, rng)
+        nails = (np.abs(np.mod(x, 0.36 * ppm) - 0.18 * ppm) < 1.2) & ((np.abs(v - 0.06) < 0.012) | (np.abs(v - 0.93) < 0.012))
+        runs = smoothstep(0.7, 0.86, value_noise(w, h, w // 3, 1, rng)) * smoothstep(0.5, 0.75, value_noise(w, h, w // 30, max(2, h // 30), rng))
+        r = np.clip(smoothstep(0.86 - 0.3 * rust, 0.95 - 0.3 * rust, rn + 1.4 * bias) + 0.8 * rust * runs * smoothstep(1.0, 0.25, v), 0, 1)
+        rc = srgb('#6e3a1e') * (0.7 + 0.5 * fbm(w, h, w // 6, max(2, h // 6), rng, 3))[..., None]
+        rgb = rgb * (1 - r[..., None]) + rc * r[..., None]
+        rgb[nails] = srgb('#3a2a20')
+        salt = smoothstep(0.75, 0.9, fbm(w, h, w // 10, max(2, h // 10), rng, 4)) * 0.25
+        rgb = rgb * (1 - salt[..., None]) + srgb('#dcdad2') * salt[..., None]
+        rgb *= (1 - 0.35 * smoothstep(0.96, 1.0, v))[..., None]       # lap shadow
+        rgb *= grime(w, h, rng, 0.15, 0.15)[..., None]
+        return _out(rgb, 0.35 * (1 - r) + 0.1, 0.4 * (1 - r) * (0.3 if painted else 1.0))
+    return gen
+
+
+def quay(col='#8f8e88', ppm=48, water_v=0.3, blocks=False):
+    """Harbour wall seen from the water, V 0 at 0.6 m below the water line:
+    concrete with formwork lifts (or squared granite blocks laid diagonally,
+    kenchi-ishi tani-zumi), a dark wet band with green algae and white
+    barnacle speckle at the water line, salt-white runs above."""
+    def gen(w, h, rng):
+        y, x = np.mgrid[0:h, 0:w].astype(float)
+        v = y / h
+        n = fbm(w, h, w // 24, max(2, h // 24), rng, 5)
+        f = 0.82 + 0.3 * n
+        rgb = srgb(col) * f[..., None]
+        if blocks:   # squared stones laid diagonally: each its own tone, lit upper edges, shadowed lower edges, soft dark joints
+            P = 0.75 * ppm
+            a = np.mod(x + y, P); b = np.mod(x - y, P)
+            bid = np.floor((x + y) / P) * 31 + np.floor((x - y) / P) * 17
+            tv = (np.sin(bid * 12.9898) * 43758.5453) % 1.0
+            rgb *= (0.72 + 0.4 * tv)[..., None] * (0.88 + 0.24 * value_noise(w, h, w // 6, max(2, h // 6), rng))[..., None]
+            d = np.minimum(np.minimum(a, P - a), np.minimum(b, P - b))
+            top = np.minimum(P - a, P - b)            # distance to the two upper edges of the diamond
+            bot = np.minimum(a, b)
+            rgb *= (1 + 0.18 * smoothstep(5.0, 1.5, top))[..., None]
+            rgb *= (1 - 0.3 * smoothstep(5.0, 1.5, bot))[..., None]
+            rgb *= (1 - 0.55 * smoothstep(1.6, 0.3, d))[..., None]
+        else:   # formwork lifts every 0.6 m, tie holes
+            fy = np.mod(y, 0.6 * ppm)
+            rgb *= (1 - 0.25 * smoothstep(1.4, 0.3, np.minimum(fy, 0.6 * ppm - fy)))[..., None]
+            ties = (np.abs(np.mod(x, 0.9 * ppm) - 0.45 * ppm) < 1.4) & (np.abs(fy - 0.3 * ppm) < 1.4)
+            rgb[ties] *= 0.45
+        wet = smoothstep(water_v + 0.18, water_v + 0.06, v + 0.05 * value_noise(w, h, w // 12, 2, rng))
+        rgb = rgb * (1 - 0.55 * wet[..., None])
+        alg = wet * smoothstep(0.45, 0.65, fbm(w, h, w // 16, max(2, h // 8), rng, 4)) * smoothstep(water_v - 0.25, water_v, v)
+        rgb = rgb * (1 - 0.8 * alg[..., None]) + srgb('#2f4a26') * (0.8 * alg)[..., None]
+        band = smoothstep(water_v + 0.1, water_v + 0.02, v) * smoothstep(water_v - 0.12, water_v - 0.02, v)
+        sp = (rng.random((h, w)) > 0.9) & (band > 0.4)
+        rgb[sp] = rgb[sp] * 0.4 + srgb('#a8a49a') * 0.6
+        salt = (1 - rain_streaks(w, h, rng, 0.35)) * smoothstep(water_v + 0.2, water_v + 0.4, v)
+        rgb = rgb * (1 - salt[..., None]) + srgb('#d6d3ca') * salt[..., None]
+        return _out(rgb, 0.2 + 0.5 * wet, 0.0)
+    return gen
+
+
+def apron(col='#8e8c86', ppm=32, slab_m=4.0):
+    """Concrete apron of the quay (kishi-heki top): slabs with saw-cut joints,
+    hairline cracks, oil and rust stains, salt bloom. Tiles in U."""
+    def gen(w, h, rng):
+        y, x = np.mgrid[0:h, 0:w].astype(float)
+        n = fbm(w, h, w // 16, max(2, h // 16), rng, 5)
+        f = 0.84 + 0.26 * n
+        P = slab_m * ppm
+        jx = np.mod(x, P)
+        f *= 1 - 0.4 * smoothstep(1.2, 0.2, np.minimum(jx, P - jx))
+        f *= 1 - 0.4 * smoothstep(1.2, 0.2, np.minimum(y, h - y))
+        crack = smoothstep(0.012, 0.0, np.abs(fbm(w, h, w // 10, max(2, h // 10), rng, 3) - 0.5))
+        f *= 1 - 0.3 * crack
+        stain = smoothstep(0.7, 0.85, fbm(w, h, w // 12, max(2, h // 6), rng, 4))
+        rgb = srgb(col) * f[..., None]
+        rgb = rgb * (1 - 0.45 * stain[..., None]) + srgb('#3a3632') * (0.45 * stain)[..., None]
+        speck = rng.random((h, w))
+        rgb[speck > 0.97] *= 1.15
+        return _out(rgb, 0.18 + 0.2 * stain)
+    return gen
+
+
+def deck(col='#7a7166', board_m=0.2, ppm=64):
+    """Grey weathered deck planks of a pier: boards along U, gaps, bolt
+    heads at the joists, salt-silvered grain."""
+    def gen(w, h, rng):
+        y, x = np.mgrid[0:h, 0:w].astype(float)
+        bh = board_m * ppm
+        row = np.floor(y / bh); fy = np.mod(y, bh) / bh
+        tv = (np.sin(row * 12.9898 + 7.1) * 43758.5453) % 1.0
+        g = value_noise(w, h, w // 2, max(4, int(h / 3)), rng)
+        f = (0.8 + 0.25 * tv) * (0.84 + 0.24 * g)
+        f *= 1 - 0.75 * np.maximum(smoothstep(0.06, 0.0, fy), smoothstep(0.94, 1.0, fy))
+        bolts = (np.abs(np.mod(x, 1.0 * ppm) - 0.5 * ppm) < 1.5) & ((np.abs(fy - 0.25) < 0.06) | (np.abs(fy - 0.75) < 0.06))
+        rgb = srgb(col) * f[..., None]
+        rgb[bolts] = srgb('#3a2a20')
+        return _out(rgb, 0.15 + 0.1 * tv)
+    return gen
 
 # ── atlas layouts (pixel rects: x, y, w, h; y from the bottom) ──────────────
 
@@ -1427,6 +1557,130 @@ LAYOUTS = {
             ('WOOD_GREY',   flat('#6a625a', 0.2, dirt=0.1)),
             ('ONION',       flat('#b07a40', 0.35, dirt=0.0)),
             ('LACQUER_RED', flat('#8a1f1a', 0.7, dirt=0.03)),
+        ], 0, 0, 16, 64, 32),
+    },
+    'Minato': {   # fishing village + harbour: corrugated sheets 1.8 m courses (2 m strips 48 px/m), boards, quay walls, apron
+        'TOTAN_RUST':    _strip(928, 96, totan('#7a6a5a', rust=0.9, painted=False), ppm=48),
+        'TOTAN_BLUE':    _strip(832, 96, totan('#4f7f8c', rust=0.45), ppm=48),
+        'TOTAN_RED':     _strip(736, 96, totan('#8a3a2c', rust=0.4), ppm=48),
+        'TOTAN_GREY':    _strip(640, 96, totan('#9a9d9e', rust=0.3, painted=False), ppm=48),
+        'WOOD_TATE':     _strip(544, 96, tate_ita('#3e3026'), ppm=48),
+        'WOOD_BOARD':    _strip(448, 96, wood_board('#463428', board_m=0.21, ppm=48), ppm=48),
+        'QUAY':          _strip(352, 96, quay(), ppm=48),
+        'QUAY_STONE':    _strip(256, 96, quay('#86837c', blocks=True), ppm=48),
+        'APRON':         _strip(192, 64, apron(), ppm=32),
+        'DECK':          _strip(160, 32, deck(), ppm=64),
+        'WOOD':          _strip(128, 32, wood('#33261c'), ppm=48),
+        'STONE':         _strip(96, 32, stone('#7e7f80', dirt=0.3), ppm=64),
+        'SHOJI':         _rect(0, 0, 64, 64, shoji(lit=True)),
+        'SHOJI_DARK':    _rect(64, 0, 64, 64, shoji(lit=False)),
+        'ONI':           _rect(128, 0, 64, 64, oni()),
+        'CURTAIN_LIT':   _rect(192, 0, 64, 64, curtain(True)),
+        'CURTAIN':       _rect(0, 64, 64, 32, curtain(False)),
+        **_cells([
+            ('IRON',        flat('#26272a', 0.4, 0.7, dirt=0.1)),
+            ('INTERIOR',    flat('#0b0a09', 0.2, dirt=0.0)),
+            ('LIGHT_WARM',  emissive('#ffb768')),
+            ('TILE_A',      flat('#4d5560', 0.45, dirt=0.12)),
+            ('TILE_B',      flat('#454c56', 0.4, dirt=0.12)),
+            ('TILE_C',      flat('#555d68', 0.5, dirt=0.12)),
+            ('TILE_DARK',   flat('#353b43', 0.4, dirt=0.15)),
+            ('WOOD_FLAT',   flat('#33261c', 0.3, dirt=0.12)),
+            ('WOOD_TATE_FLAT', flat('#3e3026', 0.2, dirt=0.15)),
+            ('WOOD_BOARD_FLAT', flat('#463428', 0.25, dirt=0.15)),
+            ('WOOD_GREY_FLAT', flat('#6a645c', 0.2, dirt=0.1)),
+            ('STONE_FLAT',  flat('#7e7f80', 0.25, dirt=0.2)),
+            ('GLASS',       flat('#1c242b', 0.92, dirt=0.0)),
+            ('ALU',         flat('#b4b7b8', 0.55, 0.9, dirt=0.08)),
+            ('ALU_DARK',    flat('#4a4038', 0.5, 0.6, dirt=0.05)),
+            ('SHUTTER',     flat('#a4a6a4', 0.45, 0.6, dirt=0.3)),
+            ('CONC_FLAT',   flat('#8f8e88', 0.2, dirt=0.25)),
+            ('WATER',       flat('#1b2f33', 0.96, dirt=0.0)),
+            ('RUST',        flat('#6e3a1e', 0.2, 0.2, dirt=0.1)),
+            ('TOTAN_RUST_FLAT', flat('#6e4a34', 0.2, 0.2, dirt=0.15)),
+            ('TOTAN_BLUE_FLAT', flat('#4f7f8c', 0.35, 0.2, dirt=0.15)),
+            ('TOTAN_RED_FLAT',  flat('#7e3628', 0.35, 0.2, dirt=0.15)),
+            ('TOTAN_GREY_FLAT', flat('#959898', 0.4, 0.5, dirt=0.15)),
+            ('PAINT_WHITE', flat('#e6e5df', 0.4, dirt=0.12)),
+            ('PAINT_RED',   flat('#b8261c', 0.45, dirt=0.1)),
+            ('STEEL_GREEN', flat('#6f8f7a', 0.4, 0.3, dirt=0.15)),
+            ('RUBBER',      flat('#1a1a1b', 0.25, dirt=0.05)),
+            ('YELLOW',      flat('#e8b51a', 0.4, dirt=0.15)),
+            ('TETRA',       flat('#a3a19a', 0.15, dirt=0.3)),
+            ('PLASTER_WHITE_FLAT', flat('#dcd8cc', 0.25, dirt=0.15)),
+            ('GALV',        flat('#a3a7ab', 0.45, 0.8, dirt=0.1)),
+            ('ROPE',        flat('#c2b48a', 0.15, dirt=0.05)),
+            ('ALGAE',       flat('#2f4a26', 0.6, dirt=0.1)),
+            ('LIGHT_COOL',  emissive('#dff3ff')),
+            ('GLASS_FROST', flat('#b8c0c2', 0.6, dirt=0.05)),
+            ('GRAVEL',      flat('#77746c', 0.15, dirt=0.15)),
+        ], 256, 0, 12, 64, 32),
+    },
+    'MinatoShop': {   # dressing of the fishing village: interiors, signs, nets, crates, buoys, boats
+        **{f'INT_{k}': _rect((i % 4) * 256, 896, 256, 128, png(f'MI_INT_{k}', 0.6, emit=0.85))
+           for i, k in enumerate(('MARKET', 'SHOKUDO', 'FUNAGURA', 'SHOP'))},
+        **{f'KB{i}': _rect((i % 4) * 256, 832, 256, 64, png(f'MI_KB{i}', 0.35)) for i in range(4)},
+        **{f'KV{i}': _rect(i * 64, 576, 64, 256, png(f'MI_KV{i}', 0.35)) for i in range(2)},
+        **{f'NOREN{i}': _rect(128 + i * 128, 736, 128, 96, png(f'MI_NOREN{i}', 0.15)) for i in range(2)},
+        **{f'NOBORI{i}': _rect(128 + i * 128, 704, 128, 32, png(f'MI_NOBORI{i}', 0.2)) for i in range(2)},
+        'MENU':      _rect(384, 736, 64, 96, png('MI_MENU', 0.3)),
+        'FISHBOX':   _rect(448, 800, 64, 32, png('MI_FISHBOX', 0.45)),
+        'STYRO':     _rect(448, 768, 64, 32, png('MI_STYRO', 0.2)),
+        'HIMONO':    _rect(512, 768, 128, 64, png('MI_HIMONO', 0.3)),
+        'IKA':       _rect(640, 768, 64, 64, png('MI_IKA', 0.4)),
+        'NET_GREEN': _rect(704, 768, 128, 64, png('MI_NET_GREEN', 0.2)),
+        'NET_BLUE':  _rect(832, 768, 128, 64, png('MI_NET_BLUE', 0.2)),
+        'BOAT0':     _rect(384, 640, 256, 32, png('MI_BOAT0', 0.6)),
+        'BOAT1':     _rect(384, 608, 256, 32, png('MI_BOAT1', 0.6)),
+        **_cells([
+            ('WOOD_DARK',   flat('#33261c', 0.3, dirt=0.12)),
+            ('WOOD_LIGHT',  flat('#8a6a48', 0.35, dirt=0.12)),
+            ('IRON',        flat('#26272a', 0.4, 0.7, dirt=0.1)),
+            ('BLACK',       flat('#151617', 0.4, dirt=0.0)),
+            ('WHITE',       flat('#efe9dc', 0.3, dirt=0.1)),
+            ('STEEL',       flat('#9a9ca0', 0.6, 1.0, dirt=0.1)),
+            ('GALV',        flat('#a3a7ab', 0.45, 0.8, dirt=0.1)),
+            ('BAMBOO',      flat('#a48d5e', 0.35, dirt=0.1)),
+            ('LIT_WARM',    emissive('#ffc985')),
+            ('LIT_COOL',    emissive('#e8f6ff')),
+            ('NOREN_NAVY',  flat('#1d2a4a', 0.15, dirt=0.0)),
+            ('INDIGO',      flat('#24324a', 0.15, dirt=0.0)),
+            ('FELT_RED',    flat('#b3202a', 0.1, dirt=0.05)),
+            ('PARASOL_RED', flat('#c42a22', 0.3, dirt=0.05)),
+            ('LEAF',        flat('#3c5a2a', 0.3, dirt=0.0)),
+            ('POT_CLAY',    flat('#8a4a2c', 0.3, dirt=0.2)),
+            ('STONE',       flat('#7e7f80', 0.25, dirt=0.2)),
+            ('BUOY_ORANGE', flat('#e8661a', 0.55, dirt=0.15)),
+            ('BUOY_RED',    flat('#c42a1e', 0.55, dirt=0.15)),
+            ('BUOY_YELLOW', flat('#e8b81a', 0.55, dirt=0.15)),
+            ('BUOY_WHITE',  flat('#e8e6dc', 0.5, dirt=0.2)),
+            ('CRATE_BLUE',  flat('#1f63b0', 0.45, dirt=0.15)),
+            ('CRATE_YELLOW', flat('#e8b51a', 0.45, dirt=0.15)),
+            ('CRATE_RED',   flat('#b8302a', 0.45, dirt=0.15)),
+            ('STYRO_WHITE', flat('#eff0ec', 0.2, dirt=0.15)),
+            ('DRUM_BLUE',   flat('#1f4fa0', 0.45, dirt=0.15)),
+            ('BOOT_WHITE',  flat('#e8e6de', 0.5, dirt=0.25)),
+            ('BOOT_BLACK',  flat('#1c1c1e', 0.5, dirt=0.1)),
+            ('ROPE',        flat('#c2b48a', 0.15, dirt=0.05)),
+            ('ROPE_BLUE',   flat('#2a5aa0', 0.25, dirt=0.05)),
+            ('ROPE_GREEN',  flat('#3a7a4a', 0.25, dirt=0.05)),
+            ('NET_DARK',    flat('#1f3a2a', 0.2, dirt=0.05)),
+            ('HULL_WHITE',  flat('#eceae2', 0.55, dirt=0.18)),
+            ('HULL_BLUE',   flat('#1f4f90', 0.55, dirt=0.05)),
+            ('HULL_RED',    flat('#8a2a22', 0.35, dirt=0.05)),
+            ('DECK_GREY',   flat('#8a8c88', 0.3, dirt=0.2)),
+            ('FISH_SILVER', flat('#8a96a0', 0.7, 0.3, dirt=0.0)),
+            ('SQUID',       flat('#ead8be', 0.4, dirt=0.05)),
+            ('LAMP_GLASS',  flat('#e8eef0', 0.9, dirt=0.0)),
+            ('RUBBER',      flat('#1a1a1b', 0.25, dirt=0.05)),
+            ('RUST',        flat('#6e3a1e', 0.2, 0.2, dirt=0.1)),
+            ('PLASTIC_GREEN', flat('#3a8a4a', 0.45, dirt=0.1)),
+            ('GLASS',       flat('#1c242b', 0.92, dirt=0.0)),
+            ('BRASS',       flat('#a08440', 0.55, 0.9, dirt=0.05)),
+            ('PAPER',       flat('#f4ecd8', 0.2, dirt=0.05)),
+            ('CHALK_GREEN', flat('#22302a', 0.2, dirt=0.0)),
+            ('ANTENNA',     flat('#dcdcd6', 0.5, 0.3, dirt=0.05)),
+            ('WOOD_GREY',   flat('#6a625a', 0.2, dirt=0.1)),
         ], 0, 0, 16, 64, 32),
     },
 }

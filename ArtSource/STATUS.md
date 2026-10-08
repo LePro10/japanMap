@@ -4,8 +4,22 @@ Plan: [docs/PLAN.md](../docs/PLAN.md), Abschnitt „Asset-Sprint". Regeln:
 [STYLE-KIT.md](STYLE-KIT.md) (verbindlich). Läuft parallel zur Unity-Sitzung,
 nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
-## Wo wir stehen (2026-10-08, Nachmittag)
+## Wo wir stehen (2026-10-08, Abend)
 
+- **Aufgabe 3 — Gebäude, Fischerdorf/Hafen („Minato"): Pilot fertig, wartet
+  auf Freigabe.** Zwei Dichten: **Hafenkern** (Kaimauer, Fischhalle,
+  Imbiss, Laden, Netzschuppen, Tintenfischboote, Steg, Wellenbrecher mit
+  Leuchtturm) und **ruhige Bucht** (Reihe Bootshäuser wie Ine no Funaya,
+  Gasse dahinter, Fischerhäuser). Bilder in `previews/`:
+  `Minato_Overview.png` (Hafen vom Wasser, Kai-Straße, von oben, Bucht vom
+  Meer, Gasse, von oben; je Stimmung/neutral/grau), `Minato_Buildings.png`
+  (alle 10 einzeln), `Minato_Back.png` (Rückseiten),
+  `Minato_clay_houses.png` (Grau-Test), `Minato_detail.png`
+  (Nahaufnahmen: Bootsbucht, Balkon, Gasflaschen + Gitter, Anbau mit Netzen,
+  Traufe/Ortgang Wellblech, Imbiss-Front, Fischhalle innen, Kaimauer mit
+  Poller/Fender/Leiter, Lampen am Tintenfischboot, Trockengestell),
+  `Minato_Pieces.png` (Hafenstücke, Boote, Kleinkram-Sets).
+  **Nächster Baustil nach Freigabe: Tempel.**
 - **Aufgabe 3 — Gebäude, Gassho: freigegeben** (Mensch fragte nach der
   nächsten Aufgabe, 2026-10-08). Nächster Baustil: **Fischerdorf/Hafen**.
   Strohdachdorf wie Shirakawa-gō/Gokayama: 5 Bauernhäuser + 2 ruhige
@@ -42,6 +56,39 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
   Wohnblock-Budget: a) gilt (als 3 Felder zählen), mit der Freigabe bestätigt.
   Danach Baustil für Baustil: Koedo (Kura ausbauen), Kiso, Gassho,
   Fischerdorf, Tempel — je Pilot + Freigabe.
+
+### Fischerdorf/Hafen-Pilot „Minato" (Atlas `Minato` + `MinatoShop`, Generator `buildings/minato.py` + Bausatz `buildings/minato_kit.py`)
+
+| FBX (`exports/buildings/`, Präfix `SM_Minato_`) | Bau | Ausstattung | Dreiecke Bau LOD0 / LOD1 · Ausstattung LOD0 / LOD1 |
+|---|---|---|---|
+| Funaya_A | Bootshaus wie in Ine: 11 × 5,8 m, Giebel zum Meer, unten offene Bootsbucht (Slipanlage aus Beton mit Holzschienen bis unter Wasser, Steinfundamente ins Meer, Deckenbalken, Eckpfosten, Sturz), oben Wohnung mit Alu-Fenstern + Balkon (Geländer, Wäschestange), Bretterwände, Ziegeldach | Boot (Tenma) auf der Slip, Bojen-Netze, Netz über dem Geländer, Innenbild Bootslager, Reifen-Fender, Krabbenkörbe, Fass, Stiefel, Stangen | 3 492 / 1 115 · 1 229 / 569 |
+| Funaya_B | Älteres Bootshaus 10 × 5 m: niedriger Netzboden aus rostigem Wellblech, Bretterladen + Fenster zum Meer, Wellblechdach | Boot, Netz am Balken, Bojen, Krabbenkörbe | 2 104 / 610 · 959 / 434 |
+| Gyoka_Tin | Fischerhaus 9 × 6,4 m: oben blaues Wellblech (Profil als Geometrie, Lagen überlappend), unten Bretter, rotes Wellblechdach mit First- und Ortgangblech, Rinnen, Alu-Haustür mit Vordach, Fenstergitter, Haube, Balkon, Netzlager-Anbau, 2 Gasflaschen auf Sockel, Kerosintank + Boiler, Antenne | Netze + Bojen unterm Anbau, Krabbenkörbe, Fass, Stiefel, Töpfe | 4 987 / 1 432 · 954 / 347 |
+| Gyoka_Kawara | Älteres Fischerhaus 10 × 7 m: dunkle Bretter, Ziegeldach, Holz-Glasschiebetüren (hell), Fenster mit Hauben, Wellblech-Rückwand, Anbau | Fisch-Trockengestell (himono), Tintenfisch-Leine, Kühlbox, Stiefel, Netze | 4 551 / 1 504 · 794 / 318 |
+| Shokudo | Imbiss 海鮮食堂 かもめ: offener Laden mit Innenbild, Wellblech-Vordach über die ganze Front, Alu-Tür, oben graues Wellblech, blaues Dach | Schild, 2 Noren, 2 Nobori, Menütafel, Standschild, Kisten + Styroporboxen | 4 002 / 1 240 · 484 / 274 |
+| Shop_Ice | Angel- und Eisladen 釣具・氷: Scheinfassade aus Wellblech vor dem Dach, Rolltor halb offen mit Innenbild, Alu-Tür | Schild, Standschild 釣りエサ, Kühlbox, Styroporboxen, Seil, Bojen | 2 656 / 636 · 564 / 258 |
+| Amigoya | Netzschuppen 6,4 × 4,6 m, ganz aus rostigem Wellblech, weit offen, Anbau | Netzhaufen innen + davor, Bojen, Krabbenkörbe, Fass | 1 608 / 310 · 1 524 / 447 |
+| Ichiba | Fischhalle 24 × 12 m: Stahlrahmen alle 6 m, Faltblechdach (seppan), 2 Felder offen / 2 mit Rolltor, Wellblech auf Betonsockel, Büro mit Fenstern, Rolltore hinten/seitlich, Leuchtröhren (LIGHT_) | Schild 海猫港 魚市場, Kistenstapel, Styroporboxen, Fässer | 4 866 / 774 · 1 290 / 1 040 |
+| Funaya_A_Quiet · Gyoka_Tin_Quiet | Bucht-Versionen: Fenster dunkel, Läden zu | Netze, Bojen, Boote bleiben | wie oben |
+| Quay_8m · Quay_Stone_8m · Quay_Steps_8m | Kaimauer Beton (Poller, V-Fender, Leiter, Kante, 8 m Meer) · alte Steinmauer (Granitpoller, Reifen) · Treppe ins Wasser (Algen, Handlauf) | — | 258 · 144 · 246 |
+| Pier_8m · Breakwater_8m · Lighthouse_Red · Sea_8m | Steg auf Betonpfählen (Planken, Klampen, Reifen, Leiter) · Wellenbrecher mit Brüstung und Tetrapoden · kleiner roter Hafenleuchtturm (Galerie, Laterne, LIGHT_ rot) · Meer | — | 758 · 790 · 474 · 4 |
+| Boat_Ika · Boat_Skiff | Tintenfischboot 12 m (FRP-Rumpf mit Streifen, Steuerhaus, Radar, Antennen, 2 Reihen Lampen an Drähten, Fangmaschinen, Reifen, Stützsegel, Name 第八 海幸丸) · Tenma mit Außenborder | (Atlas MinatoShop) | 2 345 / 347 · 365 / 127 |
+| Gear_Market · Gear_Drying · Gear_Nets | Kleinkram-Sets zum Verteilen: Fischkisten + Styropor + Fässer + Kühlbox + Seil + Stiefel · 2 Trockengestelle + Tintenfisch-Leine · Netzhaufen + Krabbenkörbe + Bojen | (Atlas MinatoShop) | 614 · 330 · 758 |
+
+- **Budget:** alle Häuser ≤ 5 000 (Gyoka_Tin 4 987 nach Messung: Öffnungen
+  1 916, Wellblech-Wände +1 506 gegenüber Brettern, Dachlagen 528, Anbau 298,
+  Balkon 258 → Rahmen ohne verdeckte Flächen, Wellenabstand Wand 0,27 m /
+  Dach 0,34 m, Halle 0,36 m). LOD1 = glatte Bleche, keine Rahmen/Gitter.
+- **Gemessen:** 22 FBX, 0 Fehler, 0 Streck-Warnungen; Szenen räumen sich
+  selbst auf (verlinkte Kopien). **Ungeprüft:** alles in Unity (zwei
+  Materialien je Haus: `M_Minato_Atlas`, `M_MinatoShop_Atlas`; Wasser ist im
+  Atlas nur eine glänzende Fläche — echtes Wasser macht Unity).
+- **Wasserstand:** Kai-Oberkante z = 0, Meer z = −1,1 (`minato_kit.WATER_Z`).
+  Funaya-Ursprung: Mitte des Hauses; die Uferlinie liegt 1,9 m (A) bzw.
+  2,0 m (B) hinter der Mitte (landseitig) — so stehen sie im Bild.
+- **Offen / Ideen nach der Freigabe:** Wasser-Shader in Unity; Boote als
+  bewegliche Objekte; mehr Bucht-Häuser (Funaya mit weißem Putz, mit
+  Rolltor); Wellenbrecher-Kopf (Ende) als eigenes Stück; Kran/Winde am Kai.
 
 ### Gassho-Pilot (Atlas `Gassho` + `GasshoShop`, Generator `buildings/gassho.py` + Bausatz `buildings/gassho_kit.py`)
 
@@ -277,8 +324,8 @@ Konventionen:
 
 ## Für dich
 
-1. Neue Sitzung für das Fischerdorf starten (Starttext in der Antwort vom
-   2026-10-08). Danach: Tempel.
+1. Fischerdorf/Hafen ansehen (`previews/Minato_*.png`) und freigeben oder
+   Rückmeldung geben. Danach: Tempel.
 2. Der Unity-Sitzung bei Gelegenheit „Lichttest nach ArtSource/STATUS.md"
    sagen.
 
@@ -400,3 +447,18 @@ Konventionen:
     Szene mit `build.run([...])` in einer Minute wieder da. Neu exportierte
     Requisiten-FBX (Zeitstempel) mit `git checkout -- ArtSource/exports/props`
     zurückgesetzt, sie gehörten nicht zur Aufgabe.
+- 2026-10-08 Abend (Fischerdorf/Hafen):
+  - **Wellblech als Geometrie war zu teuer** (Fischerhaus 5 705): gemessen
+    nach Teilen, dann Wellenabstand und verdeckte Rahmenflächen gekürzt
+    (4 987). Dreieckswelle mit weichen Normalen liest sich als runde Welle.
+  - **Gestreckte Texturen** an senkrechten Holz-Leisten (Streifen 0,67 m):
+    Leisten jetzt `rotate=True`; Netzhaufen mit Rechteck-Grafik nicht über
+    `map_box` (Streifen-Funktion) mappen.
+  - **Schlitz unter der Traufe** (Dachunterseite lag über der Wand):
+    Blechdach-Platte so gebaut, dass die Unterseite an der Wandlinie auf der
+    Wandoberkante liegt; Giebel-Oberkante folgt derselben Linie.
+  - **Szenen mit verlinkten Kopien** (`minato._scene/_clear`): ein Haus kann
+    mehrmals stehen, nichts wird verschoben, alles wird gelöscht.
+  - **Steinmauer sah aus wie Maschendraht** (dünne dunkle Diagonal-Fugen):
+    größere Steine, Licht oben, Schatten unten, weiche Fugen.
+

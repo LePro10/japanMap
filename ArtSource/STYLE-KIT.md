@@ -42,7 +42,7 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
   Fahrräder), `Nature` (Felsen, Laub, Erde, Töpfe — später Vegetation;
   nur deckend, Blatt-Karten mit Alpha brauchen in Aufgabe 4 ein eigenes
   Material), `Kura`, `Tokyo` (Fliesen- und ALC-Wände, Konbini, Schilder,
-  Neon), `TokyoSigns`, `Koedo` + `KoedoShop`, `Kiso` + `KisoShop`, `Gassho` + `GasshoShop`. Neuer Baustil = neuer Atlas.
+  Neon), `TokyoSigns`, `Koedo` + `KoedoShop`, `Kiso` + `KisoShop`, `Gassho` + `GasshoShop`, `Minato` + `MinatoShop`. Neuer Baustil = neuer Atlas.
 - Atlas 1024², drei Karten passend zu URP/Lit:
   `T_<Stil>_BaseColor` (sRGB) · `T_<Stil>_MaskMap` (R Metall, G AO = 1,
   A Glätte; linear) · `T_<Stil>_Emission` (sRGB).
@@ -82,6 +82,7 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
 | Senkrechte Bretter (Kiso) | `#4a3727` | | Lehmputz (Kiso) | `#b39a74` |
 | Schindeln (Kiso) | `#5f5a52` | | Dachsteine (Kiso) | `#6a6965` `#5e5850` `#525a46` |
 | Stroh alt / neu / bemoost (Gassho) | `#8a7658` `#ad9160` `#6c6455` | | Gras / Reisfeld-Schlamm (Gassho) | `#55602f` `#4a4034` |
+| Wellblech blau / rot / grau / Rost (Minato) | `#4f7f8c` `#8a3a2c` `#9a9d9e` `#6e3a1e` | | Boje orange / Fischkiste blau (Minato) | `#e8661a` / `#1f63b0` |
 
 Gedämpfte Grundtöne, kräftige Farben nur als Akzent (Automat, Torii, Licht).
 
@@ -289,6 +290,51 @@ Reisfeld, Strohbündel-Bild) und `GasshoShop` (3 Innenräume, 4 Schilder,
   Öffnungen zerschneiden jede Kante) → diese Kanten ohne Fase.
 - **Bilder:** `gassho.shots(ordner)`; Bodenplatte mit Löchern über Rinne
   und Reisfeld (die liegen unter 0).
+
+## Minato-Bausatz (Fischerdorf/Hafen, Ine no Funaya / Sanriku / Noto, ab 2026-10-08)
+
+`buildings/minato_kit.py` (Module) + `buildings/minato.py` (Häuser als Daten,
+`HOUSES`; Bucht-Versionen über `quiet()`; Fischhalle `_hall`; Hafenstücke
+`PIECES`, Boote `BOATS`, Kleinkram-Sets `GEAR`). Atlanten `Minato`
+(Wellblech rostig/blau/rot/grau in 1,8-m-Lagen 48 px/m, Bretter senkrecht/
+waagrecht, Kaimauer Beton/Stein mit Algen- und Seepockenband an der
+Wasserlinie, Kai-Pflaster, Steg-Planken, Vorhang hinter Alu-Fenstern hell/
+dunkel) und `MinatoShop` (4 Innenräume, 4 Schilder, Standschilder, Noren,
+Nobori, Menü, Fischkiste, Styroporbox, Himono, Tintenfisch, 2 Netze,
+2 Bootsnamen; Zellen für Bojen, Kisten, Rumpf, Gummi).
+- **Wellblech als Geometrie** (`corr`): Profil (Welle, Faltblech, Rolltor-
+  Lamelle) an seinen Knoten abgetastet, Kamm nach außen; Dreieckswelle mit
+  weichen Normalen wirkt rund. UVs laufen entlang des Blechs (Rost läuft die
+  Rillen hinab). Wände in Lagen ≤ 1,8 m, jede 6 cm über der unteren und
+  12 mm weiter außen; Dächer in Lagen von der Traufe hoch. Abstand: Wand
+  0,27 m, Dach 0,34 m, Halle 0,36 m, Faltblech 0,5 m (eine Lage, Zelle).
+  LOD1 = glatte Fläche.
+- **Wände mit Öffnungen** (`wall` + `cut`): Rechtecke um die Öffnungen,
+  keine Profil-Sweeps; die Bleche enden an den Einfassungen (`trim`).
+  Eckbleche (`corner_trims`), Betonsockel mit Lüftungsgittern (`plinth`),
+  Gurtblech zwischen den Geschossen (`band`).
+- **Öffnungen:** Alu-Schiebefenster (Vorhang, Gitter men-goshi, Haube),
+  Alu-Haustür mit Vordach und Stufe, Holz-Glasschiebetüren, Rolltor
+  (Lamellen, Führungsschienen, Kasten, `open` = hochgezogen), offener
+  Laden, Bretterladen, Lüftung.
+- **Dächer:** Ziegel = `KK.gable_roof` (um Traufe/4 gesenkt, damit die
+  Untersicht auf der Wand sitzt); Blech = `tin_roof` (Platte mit Untersicht,
+  Lagen, Firstblech, Ortgangbleche, Rinnen). Giebelwand folgt der
+  Dachunterseite (`gable_top`/`tile_top`). Anbau `lean_to` (Pfetten, Pfosten
+  auf Betonfüßen).
+- **Japanisch, Pflicht im Bausatz:** Gasflaschen (LP) auf Sockel mit Kette,
+  Kerosintank auf Beinen + Boiler, Fenstergitter, Hauben über Fenstern,
+  Balkon mit Wäschestange, Yagi-Antenne, Fallrohre, Netze/Bojen/Krabbenkörbe,
+  Himono-Gestelle, Tintenfisch-Leinen, weiße Gummistiefel, Styroporboxen,
+  Reifen als Fender.
+- **Funaya:** Giebel zum Meer, Bootsbucht = Steinfundamente ins Meer,
+  Slip aus Beton bis unter Wasser, Innenwände + Decke + Rückwand (Bild
+  über die Ausstattung), Boot auf der Slip in der Ausstattung.
+- **Wasser:** Kai-Oberkante 0, Meer `WATER_Z = −1,1`; Kaimauer-Streifen
+  beginnen 0,6 m unter Wasser (Algenband an der richtigen Stelle).
+- **Bilder:** `minato.shots(ordner)` stellt Szenen aus **verlinkten
+  Kopien** auf (ein Haus darf mehrmals stehen, nichts wird verschoben) und
+  löscht sie danach; Bühnenboden auf −3 m, Land als eigene Platte.
 
 ## Abnutzung
 

@@ -15,6 +15,7 @@ import { SIGNS } from './graphics_signs.mjs';
 import { KOEDO } from './graphics_koedo.mjs';
 import { KISO } from './graphics_kiso.mjs';
 import { GASSHO } from './graphics_gassho.mjs';
+import { MINATO } from './graphics_minato.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(join(here, '../../Tools/package.json'));
@@ -104,6 +105,7 @@ const G = {
   ...Object.fromEntries(Object.entries(KOEDO).map(([k, v]) => [`KO_${k}`, v])),
   ...Object.fromEntries(Object.entries(KISO).map(([k, v]) => [`KI_${k}`, v])),
   ...Object.fromEntries(Object.entries(GASSHO).map(([k, v]) => [`GA_${k}`, v])),
+  ...Object.fromEntries(Object.entries(MINATO).map(([k, v]) => [`MI_${k}`, v])),
 };
 
 mkdirSync(OUT, { recursive: true });

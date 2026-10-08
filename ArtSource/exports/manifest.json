@@ -2011,6 +2011,877 @@
   "switchable": [],
   "attach": []
  },
+ "Minato_Amigoya": {
+  "fbx": "buildings/SM_Minato_Amigoya.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Amigoya_LOD0",
+   "SM_Minato_Amigoya_LOD1",
+   "SM_Minato_Amigoya_Shop_LOD0",
+   "SM_Minato_Amigoya_Shop_LOD1"
+  ],
+  "tris": [
+   1608,
+   310
+  ],
+  "materials": [
+   "M_MinatoShop_Atlas",
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Amigoya_Roof",
+   "COL_Minato_Amigoya_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Minato_Amigoya_Shop0",
+    "pos": [
+     -0.5,
+     -2.9,
+     1.275
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Boat_Ika": {
+  "fbx": "buildings/SM_Minato_Boat_Ika.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Boat_Ika_LOD0",
+   "SM_Minato_Boat_Ika_LOD1"
+  ],
+  "tris": [
+   2345,
+   347
+  ],
+  "materials": [
+   "M_MinatoShop_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Boat_Ika"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Boat_Skiff": {
+  "fbx": "buildings/SM_Minato_Boat_Skiff.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Boat_Skiff_LOD0",
+   "SM_Minato_Boat_Skiff_LOD1"
+  ],
+  "tris": [
+   365,
+   127
+  ],
+  "materials": [
+   "M_MinatoShop_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Boat_Skiff"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Breakwater_8m": {
+  "fbx": "buildings/SM_Minato_Breakwater_8m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Breakwater_8m_LOD0",
+   "SM_Minato_Breakwater_8m_LOD1"
+  ],
+  "tris": [
+   790,
+   262
+  ],
+  "materials": [
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Breakwater_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Funaya_A": {
+  "fbx": "buildings/SM_Minato_Funaya_A.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Funaya_A_LOD0",
+   "SM_Minato_Funaya_A_LOD1",
+   "SM_Minato_Funaya_A_Shop_LOD0",
+   "SM_Minato_Funaya_A_Shop_LOD1"
+  ],
+  "tris": [
+   3492,
+   1115
+  ],
+  "materials": [
+   "M_MinatoShop_Atlas",
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Funaya_A_Roof",
+   "COL_Minato_Funaya_A_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Minato_Funaya_A_Win0",
+    "pos": [
+     -1.35,
+     -5.9,
+     4.275
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 3.5
+   },
+   {
+    "name": "LIGHT_Minato_Funaya_A_Win1",
+    "pos": [
+     -3.3,
+     3.1,
+     4.275
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 3.5
+   },
+   {
+    "name": "LIGHT_Minato_Funaya_A_Win2",
+    "pos": [
+     -1.3,
+     5.9,
+     4.475
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 3.5
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Funaya_A_Quiet": {
+  "fbx": "buildings/SM_Minato_Funaya_A_Quiet.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Funaya_A_Quiet_LOD0",
+   "SM_Minato_Funaya_A_Quiet_LOD1",
+   "SM_Minato_Funaya_A_Quiet_Shop_LOD0",
+   "SM_Minato_Funaya_A_Quiet_Shop_LOD1"
+  ],
+  "tris": [
+   3492,
+   1115
+  ],
+  "materials": [
+   "M_MinatoShop_Atlas",
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Funaya_A_Quiet_Roof",
+   "COL_Minato_Funaya_A_Quiet_Walls"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Funaya_B": {
+  "fbx": "buildings/SM_Minato_Funaya_B.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Funaya_B_LOD0",
+   "SM_Minato_Funaya_B_LOD1",
+   "SM_Minato_Funaya_B_Shop_LOD0",
+   "SM_Minato_Funaya_B_Shop_LOD1"
+  ],
+  "tris": [
+   2104,
+   610
+  ],
+  "materials": [
+   "M_MinatoShop_Atlas",
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Funaya_B_Roof",
+   "COL_Minato_Funaya_B_Walls"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Gear_Drying": {
+  "fbx": "buildings/SM_Minato_Gear_Drying.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Gear_Drying_LOD0",
+   "SM_Minato_Gear_Drying_LOD1"
+  ],
+  "tris": [
+   330,
+   180
+  ],
+  "materials": [
+   "M_MinatoShop_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Gear_Drying"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Gear_Market": {
+  "fbx": "buildings/SM_Minato_Gear_Market.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Gear_Market_LOD0",
+   "SM_Minato_Gear_Market_LOD1"
+  ],
+  "tris": [
+   614,
+   372
+  ],
+  "materials": [
+   "M_MinatoShop_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Gear_Market"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Gear_Nets": {
+  "fbx": "buildings/SM_Minato_Gear_Nets.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Gear_Nets_LOD0",
+   "SM_Minato_Gear_Nets_LOD1"
+  ],
+  "tris": [
+   758,
+   329
+  ],
+  "materials": [
+   "M_MinatoShop_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Gear_Nets"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Gyoka_Kawara": {
+  "fbx": "buildings/SM_Minato_Gyoka_Kawara.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Gyoka_Kawara_LOD0",
+   "SM_Minato_Gyoka_Kawara_LOD1",
+   "SM_Minato_Gyoka_Kawara_Shop_LOD0",
+   "SM_Minato_Gyoka_Kawara_Shop_LOD1"
+  ],
+  "tris": [
+   4551,
+   1504
+  ],
+  "materials": [
+   "M_MinatoShop_Atlas",
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Gyoka_Kawara_Roof",
+   "COL_Minato_Gyoka_Kawara_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Minato_Gyoka_Kawara_Win0",
+    "pos": [
+     -3.3,
+     -3.9,
+     1.375
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 3.5
+   },
+   {
+    "name": "LIGHT_Minato_Gyoka_Kawara_Win1",
+    "pos": [
+     -0.1,
+     -3.9,
+     4.175
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 3.5
+   },
+   {
+    "name": "LIGHT_Minato_Gyoka_Kawara_Win2",
+    "pos": [
+     -5.4,
+     2.0,
+     1.725
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 3.5
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Gyoka_Tin": {
+  "fbx": "buildings/SM_Minato_Gyoka_Tin.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Gyoka_Tin_LOD0",
+   "SM_Minato_Gyoka_Tin_LOD1",
+   "SM_Minato_Gyoka_Tin_Shop_LOD0",
+   "SM_Minato_Gyoka_Tin_Shop_LOD1"
+  ],
+  "tris": [
+   4987,
+   1432
+  ],
+  "materials": [
+   "M_MinatoShop_Atlas",
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Gyoka_Tin_Roof",
+   "COL_Minato_Gyoka_Tin_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Minato_Gyoka_Tin_Win0",
+    "pos": [
+     -2.7,
+     -3.6,
+     4.075
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 3.5
+   },
+   {
+    "name": "LIGHT_Minato_Gyoka_Tin_Win1",
+    "pos": [
+     -4.9,
+     -0.2,
+     4.275
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 3.5
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Gyoka_Tin_Quiet": {
+  "fbx": "buildings/SM_Minato_Gyoka_Tin_Quiet.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Gyoka_Tin_Quiet_LOD0",
+   "SM_Minato_Gyoka_Tin_Quiet_LOD1",
+   "SM_Minato_Gyoka_Tin_Quiet_Shop_LOD0",
+   "SM_Minato_Gyoka_Tin_Quiet_Shop_LOD1"
+  ],
+  "tris": [
+   4987,
+   1432
+  ],
+  "materials": [
+   "M_MinatoShop_Atlas",
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Gyoka_Tin_Quiet_Roof",
+   "COL_Minato_Gyoka_Tin_Quiet_Walls"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Ichiba": {
+  "fbx": "buildings/SM_Minato_Ichiba.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Ichiba_LOD0",
+   "SM_Minato_Ichiba_LOD1",
+   "SM_Minato_Ichiba_Shop_LOD0",
+   "SM_Minato_Ichiba_Shop_LOD1"
+  ],
+  "tris": [
+   4866,
+   774
+  ],
+  "materials": [
+   "M_MinatoShop_Atlas",
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Ichiba"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Minato_Ichiba_Tube0",
+    "pos": [
+     -9.0,
+     -2.5,
+     4.5
+    ],
+    "color": [
+     0.87,
+     0.95,
+     1.0
+    ],
+    "range": 8.0
+   },
+   {
+    "name": "LIGHT_Minato_Ichiba_Tube1",
+    "pos": [
+     -9.0,
+     2.5,
+     4.5
+    ],
+    "color": [
+     0.87,
+     0.95,
+     1.0
+    ],
+    "range": 8.0
+   },
+   {
+    "name": "LIGHT_Minato_Ichiba_Tube2",
+    "pos": [
+     -3.0,
+     -2.5,
+     4.5
+    ],
+    "color": [
+     0.87,
+     0.95,
+     1.0
+    ],
+    "range": 8.0
+   },
+   {
+    "name": "LIGHT_Minato_Ichiba_Tube3",
+    "pos": [
+     -3.0,
+     2.5,
+     4.5
+    ],
+    "color": [
+     0.87,
+     0.95,
+     1.0
+    ],
+    "range": 8.0
+   },
+   {
+    "name": "LIGHT_Minato_Ichiba_Tube4",
+    "pos": [
+     3.0,
+     -2.5,
+     4.5
+    ],
+    "color": [
+     0.87,
+     0.95,
+     1.0
+    ],
+    "range": 8.0
+   },
+   {
+    "name": "LIGHT_Minato_Ichiba_Tube5",
+    "pos": [
+     3.0,
+     2.5,
+     4.5
+    ],
+    "color": [
+     0.87,
+     0.95,
+     1.0
+    ],
+    "range": 8.0
+   },
+   {
+    "name": "LIGHT_Minato_Ichiba_Tube6",
+    "pos": [
+     9.0,
+     -2.5,
+     4.5
+    ],
+    "color": [
+     0.87,
+     0.95,
+     1.0
+    ],
+    "range": 8.0
+   },
+   {
+    "name": "LIGHT_Minato_Ichiba_Tube7",
+    "pos": [
+     9.0,
+     2.5,
+     4.5
+    ],
+    "color": [
+     0.87,
+     0.95,
+     1.0
+    ],
+    "range": 8.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Lighthouse_Red": {
+  "fbx": "buildings/SM_Minato_Lighthouse_Red.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Lighthouse_Red_LOD0",
+   "SM_Minato_Lighthouse_Red_LOD1"
+  ],
+  "tris": [
+   474,
+   226
+  ],
+  "materials": [
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Lighthouse_Red"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Minato_Lighthouse_Red",
+    "pos": [
+     0.0,
+     0.0,
+     7.7
+    ],
+    "color": [
+     1.0,
+     0.2,
+     0.15
+    ],
+    "range": 12.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Pier_8m": {
+  "fbx": "buildings/SM_Minato_Pier_8m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Pier_8m_LOD0",
+   "SM_Minato_Pier_8m_LOD1"
+  ],
+  "tris": [
+   758,
+   228
+  ],
+  "materials": [
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Pier_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Quay_8m": {
+  "fbx": "buildings/SM_Minato_Quay_8m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Quay_8m_LOD0",
+   "SM_Minato_Quay_8m_LOD1"
+  ],
+  "tris": [
+   258,
+   140
+  ],
+  "materials": [
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Quay_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Quay_Steps_8m": {
+  "fbx": "buildings/SM_Minato_Quay_Steps_8m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Quay_Steps_8m_LOD0",
+   "SM_Minato_Quay_Steps_8m_LOD1"
+  ],
+  "tris": [
+   246,
+   104
+  ],
+  "materials": [
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Quay_Steps_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Quay_Stone_8m": {
+  "fbx": "buildings/SM_Minato_Quay_Stone_8m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Quay_Stone_8m_LOD0",
+   "SM_Minato_Quay_Stone_8m_LOD1"
+  ],
+  "tris": [
+   144,
+   36
+  ],
+  "materials": [
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Quay_Stone_8m"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Sea_8m": {
+  "fbx": "buildings/SM_Minato_Sea_8m.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Sea_8m_LOD0",
+   "SM_Minato_Sea_8m_LOD1"
+  ],
+  "tris": [
+   4,
+   4
+  ],
+  "materials": [
+   "M_Minato_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Shokudo": {
+  "fbx": "buildings/SM_Minato_Shokudo.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Shokudo_LOD0",
+   "SM_Minato_Shokudo_LOD1",
+   "SM_Minato_Shokudo_Shop_LOD0",
+   "SM_Minato_Shokudo_Shop_LOD1"
+  ],
+  "tris": [
+   4002,
+   1240
+  ],
+  "materials": [
+   "M_MinatoShop_Atlas",
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Shokudo_Roof",
+   "COL_Minato_Shokudo_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Minato_Shokudo_Shop0",
+    "pos": [
+     -1.9,
+     -4.35,
+     1.25
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Minato_Shokudo_Win1",
+    "pos": [
+     3.4,
+     -4.15,
+     1.525
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 3.5
+   },
+   {
+    "name": "LIGHT_Minato_Shokudo_Win2",
+    "pos": [
+     -2.8,
+     -4.15,
+     4.375
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 3.5
+   },
+   {
+    "name": "LIGHT_Minato_Shokudo_Win3",
+    "pos": [
+     -0.2,
+     -4.15,
+     4.375
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 3.5
+   },
+   {
+    "name": "LIGHT_Minato_Shokudo_Win4",
+    "pos": [
+     4.9,
+     -1.35,
+     1.525
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 3.5
+   },
+   {
+    "name": "LIGHT_Minato_Shokudo_Win5",
+    "pos": [
+     -4.9,
+     0.85,
+     4.375
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 3.5
+   },
+   {
+    "name": "LIGHT_Minato_Shokudo_Win6",
+    "pos": [
+     -1.0,
+     4.15,
+     1.725
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 3.5
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Minato_Shop_Ice": {
+  "fbx": "buildings/SM_Minato_Shop_Ice.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Minato_Shop_Ice_LOD0",
+   "SM_Minato_Shop_Ice_LOD1",
+   "SM_Minato_Shop_Ice_Shop_LOD0",
+   "SM_Minato_Shop_Ice_Shop_LOD1"
+  ],
+  "tris": [
+   2656,
+   636
+  ],
+  "materials": [
+   "M_MinatoShop_Atlas",
+   "M_Minato_Atlas"
+  ],
+  "colliders": [
+   "COL_Minato_Shop_Ice_Roof",
+   "COL_Minato_Shop_Ice_Walls"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Minato_Shop_Ice_Shop0",
+    "pos": [
+     -1.25,
+     -3.6,
+     1.35
+    ],
+    "color": [
+     1.0,
+     0.68,
+     0.4
+    ],
+    "range": 6.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
  "Planter_Concrete": {
   "fbx": "props/SM_Planter_Concrete.fbx",
   "class": "props",
