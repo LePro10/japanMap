@@ -6,7 +6,8 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
 ## Wo wir stehen (2026-10-08, Mittag)
 
-- **Aufgabe 3 — Gebäude, Kiso: Pilot fertig, wartet auf Freigabe.**
+- **Aufgabe 3 — Gebäude, Kiso: freigegeben** (Mensch fragte nach der
+  nächsten Aufgabe, 2026-10-08). Nächster Baustil: **Gassho**.
   Eine Poststraße wie Tsumago/Narai: 7 Häuser + 3 ruhige Gassen-Versionen,
   jedes mit eigener Ladenausstattung (Mesh `_Shop`), dazu 4 Straßenstücke
   (Straße mit Wasserrinne, Steinstufen am Hang, Wassertrog, Wasserrad).
@@ -241,8 +242,7 @@ Konventionen:
 
 ## Für dich
 
-1. **Kiso-Pilot ansehen und freigeben** (Bilder oben unter „Wo wir
-   stehen"). Danach geht es mit Gassho weiter.
+1. Neue Sitzung für Gassho starten (Starttext in der Antwort vom 2026-10-08).
 2. Der Unity-Sitzung bei Gelegenheit „Lichttest nach ArtSource/STATUS.md"
    sagen.
 
