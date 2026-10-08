@@ -48,6 +48,12 @@ namespace JapanMap.Vehicles
         [Tooltip("Centre of mass height as a share of the chassis CG height. Lower = harder to roll over; " +
                  "the visible body roll comes from the visuals, as in the prototype.")]
         public float physicsComHeightShare = 0.4f;
+        [Tooltip("Collision detection of the car body. Measured on the ring sag at 118 km/h: Speculative made ghost " +
+                 "contacts at road triangle edges (118 → 40 km/h), Dynamic and Discrete passed at 115.")]
+        public CollisionDetectionMode collisionMode = CollisionDetectionMode.ContinuousDynamic;
+        [Tooltip("Contact offset of the body box, m: contacts start this far before touching, so a hard landing " +
+                 "(a 21 cm step per physics tick from 6 m) is caught before the body is in the ground.")]
+        public float bodyContactOffset = 0.25f;
 
         [Header("Off-road drive (legacy OFFROAD_DRIVE, ARCADE_CRAWL)")]
         [Tooltip("Below this speed (m/s) loose ground keeps a share of asphalt traction.")]
@@ -107,6 +113,11 @@ namespace JapanMap.Vehicles
         public float airYaw = 2.2f;
         public float airPitch = 2.8f;
         public float airDamping = 1.4f;
+        [Tooltip("In the air, pitch and roll turn towards the ground below at this rate per rad of misalignment, 1/s " +
+                 "(legacy Vehicle.#updateAttitude: the car lands flat instead of nose first).")]
+        public float airLevelRate = 2.5f;
+        [Tooltip("How fast pitch/roll spin follows that level target, 1/s. 0 = free tumbling.")]
+        public float airAttitudeResponse = 6f;
 
         [Header("Nitro earning (legacy BOOST_EARN)")]
         public float boostEarnDrift = 0.34f;

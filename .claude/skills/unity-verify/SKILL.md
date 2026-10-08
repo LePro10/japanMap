@@ -61,9 +61,11 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
 - **Batchmode-PlayMode rendert nicht:** Render-Zähler (Draw Calls, Dreiecke)
   sind dort 0. Zahlen dazu nur im offenen Editor oder im Web-Dev-Build ablesen.
 - **Der Unity-MCP verbindet sich nur beim Start einer Claude-Sitzung.** Startet
-  der Editor später, ist er für diese Sitzung nur per HTTP erreichbar
-  (`POST http://127.0.0.1:8080/mcp`, JSON-RPC: `initialize` → Header
-  `mcp-session-id` → `tools/call`). Der Server startet mit dem Editor (~25 s).
+  der Editor später, ist er für diese Sitzung nur per HTTP erreichbar:
+  `node Tools/mcp-call.mjs <tool> '<json>'` (z. B. `refresh_unity`,
+  `run_tests` + `get_test_job`, `execute_code`; `list` zeigt alle). Der Server
+  startet mit dem Editor (~25 s). Fehlermeldungen von `get_test_job` enthalten
+  Zeilenumbrüche → in Python `json.loads(..., strict=False)`.
 - **Einen selbst gestarteten Editor schließen:** AppleScript `quit` greift
   nicht; `kill -TERM <pid>` beendet ihn sauber in ~2 s. **Danach auch den
   MCP-Server beenden** (`lsof -nP -iTCP:8080 -sTCP:LISTEN`, Prozesse

@@ -25,7 +25,6 @@ namespace JapanMap.Vehicles
         ArcadeDynamics _dyn;
         BoxCollider _body;
         readonly Wheel[] _wheels = new Wheel[WheelCount];
-        float _prevAirPitch, _prevAirRoll;
         bool _built;
 
         public VehicleDefinition Definition => definition;
@@ -73,9 +72,7 @@ namespace JapanMap.Vehicles
             _rb.linearDamping = 0f;
             _rb.angularDamping = 0.05f;
             _rb.interpolation = RigidbodyInterpolation.Interpolate;
-            // Speculative: contacts ahead of the motion. ContinuousDynamic missed a 6 m landing (PhysX only sweeps
-            // moves longer than the body, a 21 cm step went 9 cm into the ground).
-            _rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+            _rb.collisionDetectionMode = tuning.collisionMode;
             _rb.maxAngularVelocity = 20f;
             // Own layer: the wheels must not stand on this or another car's body, nor on water planes.
             var vehicleLayer = LayerMask.NameToLayer("Vehicle");
@@ -90,6 +87,7 @@ namespace JapanMap.Vehicles
             _body.size = new Vector3(size.y, size.z - def.clearance, size.x);
             _body.center = new Vector3(0f, (size.z + def.clearance) * 0.5f, def.bodyCenterZ);
             _body.sharedMaterial = BodyMaterial;
+            _body.contactOffset = tuning.bodyContactOffset;
 
             // Wheels from the model when linked, else from wheelbase and weight split. The centre of
             // mass sits where the axle loads split as frontWeight says.
@@ -162,7 +160,6 @@ namespace JapanMap.Vehicles
             _rb.linearVelocity = Vector3.zero;
             _rb.angularVelocity = Vector3.zero;
             _dyn.Reset();
-            _prevAirPitch = _prevAirRoll = 0f;
             Input = default;
             Physics.SyncTransforms();
         }
@@ -255,11 +252,22 @@ namespace JapanMap.Vehicles
             var w1 = w0 + n * (r.yawRate - Vector3.Dot(w0, n));
             if (airborne)
             {
-                // Air control adds to the momentum the car took off with instead of replacing it.
-                w1 += transform.right * -(r.pitchRate - _prevAirPitch) + transform.forward * -(r.rollRate - _prevAirRoll);
+                // Pitch and roll follow the ground below (else a crest tips the nose down and the car
+                // lands bumper first — measured on the ring: 17° nose down, 107 → 57 km/h). The player's
+                // air pitch and the stunt roll ride on top of that level target.
+                var below = physics.Raycast(transform.position + up * 0.5f, Vector3.down, out var g, 60f, groundMask, QueryTriggerInteraction.Ignore)
+                    ? g.normal
+                    : Vector3.up;
+                var level = Vector3.Cross(up, below) * tuning.airLevelRate;
+                var target = level + transform.right * -r.pitchRate + transform.forward * -r.rollRate;
+                var yawPart = up * Vector3.Dot(w1, up);
+                var tilt = w1 - yawPart;
+                var targetTilt = target - up * Vector3.Dot(target, up);
+                var rolling = Mathf.Abs(r.rollRate) > 0.1f; // a stunt roll keeps its own spin
+                if (!rolling) tilt += (targetTilt - tilt) * (1f - Mathf.Exp(-tuning.airAttitudeResponse * dt));
+                else tilt = targetTilt;
+                w1 = yawPart + tilt;
             }
-            _prevAirPitch = r.pitchRate;
-            _prevAirRoll = r.rollRate;
             _rb.angularVelocity = w1;
 
             Telemetry = new VehicleTelemetry

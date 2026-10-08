@@ -25,6 +25,14 @@
 | 2026-10-07 | 0 | Vier KI-Werkzeuge und zwölf parallele Agent-Zweige erzeugten Widersprüche | `CLAUDE.md` Regel 13: ein Agent zur Zeit auf `master` | Regel |
 | 2026-10-07 | 0 | Doku widersprach dem Code (`npm run roads` „ohne `--wp6`", obwohl längst mit) | Phasen-Tor Schritt 5: Doku-gegen-Code-Prüfung | Ablauf |
 | 2026-10-07 | 0 | Prototyp baute Physik, Kollision und Renderweg selbst (≈ 29 000 Zeilen, Hauptquelle der Bugs) | `CLAUDE.md` Regel 3: Standard vor Eigenbau, Begründung in DECISIONS.md | Regel |
+| 2026-10-08 | 3 | Rigidbody vor dem Collider gebaut → fast keine Trägheit, Auto drehte bei jedem Federstoß wild | `VehicleController.Build`: `ResetInertiaTensor()` nach dem Collider; Prüfstand `VehicleBenchTests` misst es mit | Test |
+| 2026-10-08 | 3 | Landung aus 6 m: ContinuousDynamic fing den 21-cm-Schritt nicht ab; Speculative bremste dafür an Fahrbahnkanten (118 → 40 km/h) | `ArcadeTuning.collisionMode` + `bodyContactOffset` als Regler, beide gemessen; Tests Landung + Ringfahrt | Test |
+| 2026-10-08 | 3 | Port vergaß die Luft-Lageregel des Prototyps → Nase kippte an Kuppen, Landung mit der Stoßstange | `airLevelRate`/`airAttitudeResponse`; Abnahmefahrt `AcceptanceDriveTests` | Test |
+| 2026-10-08 | 3 | Karten-Abnahme prüfte nur Median/p95 → Gelände ragte an 800 Stellen bis 4 m durch Straßen | `TerrainCarve` im Gelände-Import; Test `Terrain_NeverPokesThroughARoad` | Test |
+| 2026-10-08 | 3 | Absenken lag im Straßen-Import, ein Test importierte nur das Gelände → Absenkung still verloren | Schritt in `TerrainImporter.Import` verlegt: jeder Weg zum Gelände gleich | Test |
+| 2026-10-08 | 3 | Straßenenden lagen als Rampe auf anderen Straßen (bellwood-edge 3,4 m über dem Ring) und stoppten Autos | `RoadImporter.OverlapRun` kürzt solche Enden (Entscheidung nach Rohgelände) | Test |
+| 2026-10-08 | 3 | Fehler in der Spur war im ersten Ringtest nicht zu finden („Auto bleibt stehen") | Abnahmefahrt schreibt Sekundenspur + harte Karosserie-Kontakte (`BodyContactLog`) nach `Captures/` | Werkzeug |
+| 2026-10-08 | 3 | MCP-Werkzeuge fehlten, weil der Editor nach Sitzungsstart kam | HTTP-Helfer wie im Skill `unity-verify` beschrieben; Skill um fertiges Skript ergänzt | Skill |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

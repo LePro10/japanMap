@@ -28,6 +28,8 @@ MonoBehaviour:
   steepFull: 0.82
   steepNone: 0.64
   physicsComHeightShare: 0.4
+  collisionMode: 2
+  bodyContactOffset: 0.25
   driveRetainSpeed: 13.888889
   gradeAssist: 0.35
   capableGradeAssist: 0.75
@@ -61,6 +63,8 @@ MonoBehaviour:
   airYaw: 2.2
   airPitch: 2.8
   airDamping: 1.4
+  airLevelRate: 2.5
+  airAttitudeResponse: 6
   boostEarnDrift: 0.34
   boostEarnAir: 0.5
   boostEarnSmash: 0.12

@@ -174,6 +174,13 @@ Prototyp `g·sin θ·cos θ`).
 - *Asset-Store-Paket* (NWH, Edy's): kostet, eigenes Fahrgefühl statt des
   wiedererkennbaren; kein Kauf ohne Zustimmung.
 
+**Nachgemessen in der Abnahmefahrt (2026-10-08):** Kollisionsmodus
+`ContinuousDynamic` mit Kontaktabstand 0,25 m an der Karosserie. `Speculative`
+erzeugte Geisterkontakte an Fahrbahn-Dreieckskanten (Senke auf dem Ring:
+118 → 40 km/h), `ContinuousDynamic` allein ließ die Karosserie bei 6 m Fall
+9 cm in den Boden. Dazu die Luft-Lageregel des Prototyps (Nicken/Rollen folgen
+im Flug dem Boden darunter), sonst landet das Auto nach Kuppen mit der Nase.
+
 **Preis:** Räder sind keine Collider (seitlich können Reifen in eine Wand
 ragen); Schräglage/Nicken der Karosserie ist Optik (wie im Prototyp), der
 physikalische Schwerpunkt liegt tiefer (`ArcadeTuning.physicsComHeightShare`),
@@ -193,6 +200,23 @@ Name vom Modell. Die PS-/kg-Angaben im Car-Lab-Datenblatt sind damit nur
 Anzeige und werden in Phase 8 (Händler) angeglichen.
 Startauto vorerst **Hachi 86** (im Prototyp war Kite S das Startauto).
 Saat: Menü `JapanMap/Vehicles/Seed Fleet From Legacy` → `Data/Vehicles/*.asset`.
+
+## D17 — Gelände unter Straßen absenken, überlappende Straßenenden kürzen · 2026-10-08
+
+**Warum:** Die Phase-3-Abnahmefahrt blieb am Ring hängen. Gemessen: an 800
+Spurpunkten auf 32 Straßen lag das Gelände (1,5-m-Raster) über der Fahrbahn,
+am Ring an einer Felswand 4 m; 5 Straßenenden lagen als Rampe/Platte auf
+anderen Straßen (bellwood-edge 70 m auf dem Ring, bis 3,4 m höher; die
+Boxengassen-Einfahrt mit 0,3-m-Kante auf Karosseriehöhe). **Lösung:** Der
+Gelände-Import senkt das Gelände unter Fahrbahn + Bankett auf 3 cm unter die
+Mittellinie (45°-Böschung zurück, `MapImportSettings` „Terrain under roads“);
+der Straßen-Import kürzt Enden, die auf einer anderen Straße entlanglaufen oder
+sie in anderer Höhe (> 0,1 m) überdecken — außer unter einer Hochstraße. Ob
+eine Straße Hochstraße ist, entscheidet das **Rohgelände**, nicht das
+abgesenkte. Kleine Kartenkorrektur nach Regel 15 (Strecken bleiben, nur kaputte
+Stellen weg). **Offen (Phase 5):** Höhenstufen an Kreuzungen (Stadtstraßen
+treffen sich mit 0,1–2,5 m Unterschied) und 460 scharfe Kuppen-Knicke
+(+7 % → −7 % auf 2 m).
 
 ## Offen (in der genannten Phase entscheiden)
 

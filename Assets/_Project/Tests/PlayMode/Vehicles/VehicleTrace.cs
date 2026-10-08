@@ -59,5 +59,39 @@ namespace JapanMap.Tests.Vehicles
             }
             File.WriteAllText("Captures/vehicle-trace-landing.txt", sb.ToString());
         }
+
+        [UnityEngine.TestTools.UnityTest]
+        public System.Collections.IEnumerator TraceRingCrest()
+        {
+            UnityEngine.SceneManagement.SceneManager.LoadScene(JapanMap.Core.Bootstrapper.BootSceneName);
+            for (var f = 0; f < 60 && UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Game"; f++) yield return null;
+            for (var f = 0; f < 10; f++) yield return null;
+            var respawn = Object.FindAnyObjectByType<JapanMap.Vehicles.VehicleRespawn>();
+            var road = ((JapanMap.World.RoadNetwork)respawn.Locator).roads.Find(r => r.id == "ring");
+            var car = Object.FindAnyObjectByType<JapanMap.Vehicles.PlayerCarSpawner>().Current;
+            Object.FindAnyObjectByType<JapanMap.Vehicles.DriverInput>().Vehicle = null;
+            var p = road.points;
+            var start = 0;
+            for (var i = 0; i < p.Length; i++)
+                if ((new Vector2(p[i].x + 545f, p[i].z + 529f)).sqrMagnitude < (new Vector2(p[start].x + 545f, p[start].z + 529f)).sqrMagnitude) start = i;
+            car.Place(p[start], Mathf.Atan2(p[start + 1].x - p[start].x, p[start + 1].z - p[start].z) * Mathf.Rad2Deg, fromAbove: 3f);
+            car.Body.linearVelocity = (p[start + 1] - p[start]).normalized * (118f / 3.6f);
+            var pilot = car.gameObject.AddComponent<JapanMap.Vehicles.PathFollower>();
+            pilot.maxSpeedKmh = 120f;
+            pilot.Begin(car, p, true, start);
+            var sb = new StringBuilder();
+            var t0 = Time.time;
+            var log = car.gameObject.AddComponent<BodyContactLog>();
+            log.sb = sb;
+            log.time = () => Time.time - t0;
+            for (var i = 0; i < 200; i++)
+            {
+                yield return new WaitForFixedUpdate();
+                var t = car.Telemetry;
+                sb.AppendLine($"{Time.time - t0:F2} pos {car.transform.position:F2} kmh {t.speed * 3.6f:F1} vy {car.Body.linearVelocity.y:F2} wheels {t.groundedWheels} x=[{car.Wheels[0].compression:F2},{car.Wheels[1].compression:F2},{car.Wheels[2].compression:F2},{car.Wheels[3].compression:F2}] pitch {car.transform.eulerAngles.x:F1} slip {t.slip * Mathf.Rad2Deg:F1} steer {car.Input.steer:F2} off {pilot.Offset:F2}");
+            }
+            File.WriteAllText("Captures/vehicle-trace-crest.txt", sb.ToString());
+            if (JapanMap.Core.Bootstrapper.Instance != null) Object.Destroy(JapanMap.Core.Bootstrapper.Instance.gameObject);
+        }
     }
 }

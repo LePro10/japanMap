@@ -3,6 +3,7 @@
     "rootNamespace": "JapanMap.Tests",
     "references": [
         "JapanMap.Core",
+        "JapanMap.World",
         "JapanMap.DevTools",
         "JapanMap.Vehicles",
         "UnityEngine.TestRunner",

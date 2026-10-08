@@ -40,7 +40,7 @@ Alles per Menü `JapanMap/Map/Import All` (Regler: `Data/Map/MapImportSettings.a
 | 2026-10-07 | Release, leere Szene | 7,75 MB | 5,18 MB | 2,39 MB | 0,9 s |
 | 2026-10-07 | Release, ganze Karte | 25,81 MB | 5,28 MB | 20,34 MB | 1,6 s |
 
-## Phase 3 — Fahren (als Nächstes)
+## Phase 3 — Fahren
 
 - [x] 1. Ansatz: Rigidbody + Raycast-Federung + portiertes Arcade-Modell (D15, gemessen gegen WheelCollider); Zuordnung Modelle ↔ Fahrwerte (D16)
 - [x] 2. Hachi 86 (Kite-S-Werte) fahrbar inkl. Drift, Nitro, Respawn auf nächste Straße (R / Y / auf dem Dach)
@@ -50,7 +50,15 @@ Alles per Menü `JapanMap/Map/Import All` (Regler: `Data/Map/MapImportSettings.a
 - [x] 6. Alle zehn Autos als Datensätze (`Data/Vehicles/*.asset`, D16)
 - [x] 7. Fahrzeug-Optik: Räder drehen/lenken/federn, Karosserie neigt sich, Bremslicht, Reifenspuren, Rauch (Asphalt) / Staub (Gelände). Wasser-Spritzer fehlen (keine Wassertiefe)
 
+**Abnahme (Fahrt entlang der Mittellinie, `AcceptanceDriveTests`)**
+- Ring: 5 987 m, Ø 89 km/h, max. 0,9 m neben der Mitte, kein Stillstand, kein Respawn ✅
+- Bergpass-Abfahrt (toge, 228 → 35 m): 3 501 m, Ø 66 km/h, max. 2,4 m neben der Mitte ✅
+- Prüfstände: 134 Tests für alle zehn Autos ✅ · EditMode 43/43, PlayMode 140/140 (+4 auf Abruf)
+
 ## Offene Probleme / Gefunden
+
+- **Höhenstufen an Kreuzungen** (Stadtstraßen treffen sich mit 0,1–2,5 m Unterschied) und **460 scharfe Kuppen-Knicke** (+7 % → −7 % auf 2 m) in den Straßendaten → Phase 5 (Profil glätten, Kreuzungen angleichen). Zwei spürbare Stöße auf dem Ring: (135, 79, 646), Kreuzung (512, 10, −734).
+- Der Autopilot (`PathFollower`) setzt nicht zurück, wenn er irgendwo ansteht — reicht für Abnahme, für KI-Gegner (Phase 7) nachrüsten.
 
 - **`Placeholders/torii.prefab` ändert sich bei jedem EditMode-Lauf** (neue fileIDs durch den Import-Test) → nicht committen, Ursache im PropImporter suchen.
 - **Car-Lab-Modelle schwer:** Hachi 137 k Dreiecke inkl. Tuning-Teilen, GLBs zusammen 31 MB (PNG) → LOD/Texturgröße in Phase 4/10, Autos per Addressables nachladen.
