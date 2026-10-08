@@ -4,11 +4,12 @@ Plan: [docs/PLAN.md](../docs/PLAN.md), Abschnitt „Asset-Sprint". Regeln:
 [STYLE-KIT.md](STYLE-KIT.md) (verbindlich). Läuft parallel zur Unity-Sitzung,
 nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
-## Wo wir stehen (2026-10-08, Abend)
+## Wo wir stehen (2026-10-08, Nacht)
 
 - **Aufgabe 1 — Stil-Kit + Piloten:** freigegeben.
 - **Aufgabe 2 — Requisiten:** fertig (15 Gruppen, Tabelle unten).
-- **Aufgabe 3 — Gebäude, Tokyo: zwei Stufen, zur Freigabe (STOPP).**
+- **Aufgabe 3 — Gebäude, Tokyo: freigegeben** (Mensch: „gut genug“, 2026-10-08).
+  Nächster Baustil: **Koedo** (Kura ausbauen). Tokyo hat zwei Stufen:
   1. **Nebenstraße** (Pilot 1): Konbini, Zakkyo, Wohnblock — Bilder
      `previews/Tokyo_Overview.png`, `Tokyo_detail.png`.
   2. **Zentrum** (neu, nach Rückmeldung „zu wenig Schilder/Details für
@@ -16,8 +17,7 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
      Nebenstraßen-Versionen, jedes mit eigener Schilderhaut — Bilder
      `previews/Tokyo_Center_Overview.png` (Gasse) und
      `Tokyo_Center_Buildings.png` (alle 10 einzeln).
-  Wohnblock-Budget: Der Mensch hat nicht gewählt → Empfehlung a) gilt
-  vorläufig (als 3 Felder zählen).
+  Wohnblock-Budget: a) gilt (als 3 Felder zählen), mit der Freigabe bestätigt.
   Danach Baustil für Baustil: Koedo (Kura ausbauen), Kiso, Gassho,
   Fischerdorf, Tempel — je Pilot + Freigabe.
 
@@ -176,13 +176,8 @@ Konventionen:
 
 ## Für dich
 
-1. **Tokyo freigeben oder korrigieren:** zuerst
-   `ArtSource/previews/Tokyo_Center_Overview.png` (Gasse) und
-   `Tokyo_Center_Buildings.png`, dann die Nebenstraße
-   (`Tokyo_Overview.png`). Ist das Zentrum dicht genug? Was fehlt noch?
-2. **Wohnblock (8 283 Dreiecke):** a) so lassen (vorläufig gesetzt),
-   b) in 3 Feld-Module schneiden, c) abspecken — kurze Antwort genügt.
-3. Der Unity-Sitzung bei Gelegenheit „Lichttest nach ArtSource/STATUS.md"
+1. Neue Sitzung für Koedo starten (Startext in der Antwort vom 2026-10-08).
+2. Der Unity-Sitzung bei Gelegenheit „Lichttest nach ArtSource/STATUS.md"
    sagen.
 
 ## Für die Hauptsitzung (darf ich nicht ändern)
