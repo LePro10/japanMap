@@ -33,6 +33,7 @@
 | 2026-10-08 | 3 | Straßenenden lagen als Rampe auf anderen Straßen (bellwood-edge 3,4 m über dem Ring) und stoppten Autos | `RoadImporter.OverlapRun` kürzt solche Enden (Entscheidung nach Rohgelände) | Test |
 | 2026-10-08 | 3 | Fehler in der Spur war im ersten Ringtest nicht zu finden („Auto bleibt stehen") | Abnahmefahrt schreibt Sekundenspur + harte Karosserie-Kontakte (`BodyContactLog`) nach `Captures/` | Werkzeug |
 | 2026-10-08 | 3 | MCP-Werkzeuge fehlten, weil der Editor nach Sitzungsstart kam | HTTP-Helfer wie im Skill `unity-verify` beschrieben; Skill um fertiges Skript ergänzt | Skill |
+| 2026-10-08 | 3 | Prototyp-Prüfstände ließen sich nicht starten (kein `three`), Zeit fürs Herausfinden | Rezept im Skill `legacy-port`; Ausgaben in `SourceData/bench/` | Skill |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

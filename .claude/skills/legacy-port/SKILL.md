@@ -27,8 +27,26 @@ abgeschrieben — er löst Probleme, die Unity nicht hat.
 - **Verhalten** zuerst als Test beschreiben (was soll passieren, messbar),
   dann in Unity bauen, dann gegen den Test prüfen. Die Prüfstände unter
   `legacy/threejs/tools/bench/` sind Vorlagen für solche Tests.
+- **Nicht nur die Kerndatei portieren:** Verhalten steckt oft in der Datei
+  drumherum (Fahrmodell: `arcadeDynamics.ts` *und* `Vehicle.ts` mit Luft-Lage,
+  Haltekraft, Hangkraft). Vor dem Bauen alle Regeln der Umgebungsdatei als
+  Liste notieren und abhaken — die vergessene Luft-Lage kostete eine halbe
+  Abnahmefahrt.
 - **Bekannte Mängel nicht mitnehmen:** LEGACY-MAP.md listet sie; TODO.md
   des Eigentümers sagt, wie es richtig sein soll.
+
+## Prototyp-Prüfstände laufen lassen (Zahlen als Maßstab)
+
+`legacy/` hat keine `node_modules` und wird nicht angefasst. Kopie in den
+Scratchpad, nur `three` nachinstallieren, dann wie im Prototyp:
+
+```bash
+S=<scratchpad>/legacy; mkdir -p $S && rsync -a legacy/threejs/{src,tools,package.json,tsconfig.json} $S/
+cd $S && npm install --no-save --ignore-scripts three@$(node -p "require('./package.json').dependencies.three")
+node --experimental-strip-types --import ./tools/bench/register.mjs tools/bench/fleet.mts
+```
+
+Ergebnisse von `fleet`, `arcade`, `hill` liegen schon in `SourceData/bench/`.
 
 ## Prototyp laufen lassen
 
