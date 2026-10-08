@@ -8,12 +8,15 @@ import { execFileSync } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { compileIfChanged } from './lib/fresh.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const [label, views] = process.argv.slice(2);
 const tiersArg = process.argv.indexOf('--tiers');
 const tiers = (tiersArg > 0 ? process.argv[tiersArg + 1] : 'High,Low').split(',');
 if (!label || !views) { console.error('usage: node Tools/bench.mjs <label> <viewpoints> [--tiers High,Low]'); process.exit(2); }
+// Measure the code as it is on disk (a shadow fix measured as "no change" once: it was not compiled yet).
+if (!compileIfChanged()) { console.error('BENCH BLOCKED · editor is in play mode (the human may be playing)'); process.exit(2); }
 
 function exec(code) {
   const out = execFileSync('node', [join(ROOT, 'Tools/mcp-call.mjs'), 'execute_code', JSON.stringify({ action: 'execute', code })], { encoding: 'utf8' });

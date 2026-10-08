@@ -35,7 +35,9 @@ Web: 0 Fehler, 47,69 MB; Browser-fps zuletzt Niedrig 178, Hoch 49 — **unter La
   Maus (Klick fängt den Zeiger) / rechter Stick schaut; **F** ein/aus (aus nur < 5 km/h), **H** Auto rufen. Touch: Stick,
   Wischen = Blick, JUMP/SLIDE/CAR/CALL. Figur aus Grundformen (vorläufig). Bench Niedrig Sakura 290 DC (vorher 275).
   Werkzeug neu: `node Tools/play.mjs <ordner> "<skript>"` spielt das echte Spiel mit Tasten und macht Bilder.
-- [ ] 2. Fußgänger auf NavMesh (Gehwege, Plätze, Commons-Hof), nie auf der Fahrbahn; Rückstoß
+- [x] 2. **Fußgänger** (D23) auf NavMesh, 48 (Niedrig 24) um den Spieler. **Abnahme-Test 10 min: 55 515 Stichproben, 0 auf
+  der Fahrbahn** (`PedestrianTests`, Bericht `Captures/pedestrian-10min.txt`). Rückstoß: wegfliegen, Auto −5 %, wieder aufstehen.
+  Bench Hoch sakura-hof 1 492 DC (Budget 1 500, knapp), Niedrig ≤ 337. Web 49,32 MB (+1,6), Niedrig 308 fps (Blender lief).
 - [ ] 3. Wenig Verkehr in der Stadt
 - [ ] 4. Zerstörbares: Pfosten, Zäune, Automaten, Bäume, Hütten zerfallen in Teile
 - [ ] 5. Begehbare Läden, Arbeiter/Tiere im Fischerdorf
@@ -48,7 +50,8 @@ Web: 0 Fehler, 47,69 MB; Browser-fps zuletzt Niedrig 178, Hoch 49 — **unter La
 - **Download 47,7 MB** (Ziel Handy 20 MB; Phase 5 +4,7 MB). Autos 71 MB unkomprimiert → Addressables, Phase 10.
 - `Game.unity` 7,1 MB durch 2 685 Tokyo-Kollider → zur Laufzeit aus `PlaceInstanceData` erzeugen.
 - Sakura Commons: `commons-drive` beginnt als Asphaltkante in der Schale (Startbild).
-- Fahrtests nur im Batchmodus rot (`PlayerDriveTests`, seit Phase 3; im Editor grün). Löcher in Gebäude-FBX (Asset-Sitzung). Rest aus Phase 3/4: Leitplanken zerbrechen nicht, Fels ohne Triplanar, Wasser ohne Tiefe → Phase 7/10.
+- Fahrtests nur im Batchmodus rot (`PlayerDriveTests`): Ursache wohl gefunden (Input System schaltet die Tastatur ohne
+  Fenster-Fokus ab → Tests setzen `IgnoreFocus`); **im Batchmodus noch ungeprüft**. Löcher in Gebäude-FBX (Asset-Sitzung). Rest aus Phase 3/4: Leitplanken zerbrechen nicht, Fels ohne Triplanar, Wasser ohne Tiefe → Phase 7/10.
 
 ### Für die Asset-Sitzung (fehlende Modelle; Lagen stehen in den Daten, Import genügt)
 

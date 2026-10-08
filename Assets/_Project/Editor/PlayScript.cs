@@ -19,12 +19,14 @@ namespace JapanMap.Editor
     /// Commands, separated by ';':
     ///   wait 1.5 · hold w leftShift · release w · press f · mouse dx dy seconds (right button held)
     ///   shot name · frames name count interval · probe (player state into the result)
+    ///   place x z [yaw] (pictures only: walker to a spot, on the nearest NavMesh)
     /// </summary>
     [InitializeOnLoad]
     public static class PlayScript
     {
         const string KeyScript = "JapanMap.PlayScript.script";
         const string KeyOut = "JapanMap.PlayScript.out";
+        const string KeyScene = "JapanMap.PlayScript.scene";
 
         static List<string> _steps;
         static int _index;
@@ -39,6 +41,7 @@ namespace JapanMap.Editor
         static float _frameDt, _frameNext;
         static string _frameName;
         static InputSettings.EditorInputBehaviorInPlayMode _previousBehaviour;
+        static InputSettings.BackgroundBehavior _previousBackground;
 
         static PlayScript()
         {
@@ -56,6 +59,7 @@ namespace JapanMap.Editor
             SessionState.SetString(KeyScript, script);
             SessionState.SetString(KeyOut, outDir);
             EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo();
+            SessionState.SetString(KeyScene, UnityEngine.SceneManagement.SceneManager.GetActiveScene().path);
             EditorSceneManager.OpenScene("Assets/_Project/Scenes/Boot.unity");
             EditorApplication.isPlaying = true;
             return "started";
@@ -63,6 +67,14 @@ namespace JapanMap.Editor
 
         static void OnPlayMode(PlayModeStateChange change)
         {
+            if (change == PlayModeStateChange.EnteredEditMode && SessionState.GetString(KeyScene, "") != "")
+            {
+                // Back to the scene the agent had open (the other tools expect Game.unity).
+                var scene = SessionState.GetString(KeyScene, "");
+                SessionState.EraseString(KeyScene);
+                if (File.Exists(scene)) EditorSceneManager.OpenScene(scene);
+                return;
+            }
             if (change == PlayModeStateChange.EnteredPlayMode && SessionState.GetString(KeyScript, "") != "")
             {
                 _steps = new List<string>(SessionState.GetString(KeyScript, "").Split(';'));
@@ -75,6 +87,9 @@ namespace JapanMap.Editor
                 _previousBehaviour = InputSystem.settings.editorInputBehaviorInPlayMode;
                 // Without this the virtual keyboard only counts while the Game view has focus.
                 InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+                // …and without this a keyboard is reset and disabled while Unity is not the front app.
+                _previousBackground = InputSystem.settings.backgroundBehavior;
+                InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
                 _kb = InputSystem.AddDevice<Keyboard>("PlayScriptKeyboard");
                 _mouse = InputSystem.AddDevice<Mouse>("PlayScriptMouse");
                 EditorApplication.update += Tick;
@@ -149,8 +164,31 @@ namespace JapanMap.Editor
                     _frameDt = F(3);
                     _frameNext = now;
                     return false;
+                case "place":
+                {
+                    // For pictures only: put the walker somewhere (tests of behaviour use the real paths).
+                    var pm = Object.FindAnyObjectByType<PlayerModeController>();
+                    var at = new Vector3(F(1), 600f, F(2));
+                    if (Physics.Raycast(at, Vector3.down, out var g, 1200f, ~JapanMap.Core.GameLayers.NotGround)) at = g.point;
+                    if (UnityEngine.AI.NavMesh.SamplePosition(at, out var nh, 30f, 1)) at = nh.position;
+                    pm.Walker.Place(at, a.Length > 3 ? F(3) : 0f);
+                    pm.Walker.CameraHeading = a.Length > 3 ? F(3) : 0f;
+                    var rig = Object.FindAnyObjectByType<JapanMap.OnFoot.WalkCameraRig>();
+                    rig.SetLive(true);
+                    return true;
+                }
                 case "probe":
                     Probe();
+                    return true;
+                case "stats":
+                    // Last Game-view frame (the Game view must be open and visible).
+                    Log.AppendLine(string.Format(CultureInfo.InvariantCulture, "  stats drawCalls={0} setPass={1} tris={2:0}k frame={3:0.0}ms",
+                        UnityStats.drawCalls, UnityStats.setPassCalls, UnityStats.triangles / 1000f, UnityStats.frameTime * 1000f));
+                    return true;
+                case "crowd":
+                    // crowd on|off: switch the pedestrians for an A/B measurement.
+                    var c = Object.FindAnyObjectByType<JapanMap.Gameplay.Life.PedestrianCrowd>(FindObjectsInactive.Include);
+                    if (c != null) c.gameObject.SetActive(a[1] == "on");
                     return true;
                 default:
                     Log.AppendLine("  unknown command");
@@ -191,6 +229,21 @@ namespace JapanMap.Editor
                 w != null ? w.Speed : 0f, w != null && w.Grounded, w != null && w.Sliding,
                 car != null ? car.transform.position.ToString("0.00") : "-", car != null ? car.Body.linearVelocity.magnitude * 3.6f : 0f,
                 p.CarDistance, p.Prompt, p.Message));
+            var crowd = Object.FindAnyObjectByType<JapanMap.Gameplay.Life.PedestrianCrowd>();
+            if (crowd != null)
+            {
+                int active = 0, walking = 0, knocked = 0;
+                var nearest = float.PositiveInfinity;
+                foreach (var q in crowd.People)
+                {
+                    if (!q.gameObject.activeSelf) continue;
+                    active++;
+                    if (q.Current == JapanMap.Gameplay.Life.Pedestrian.State.Walking) walking++;
+                    if (q.Knocked) knocked++;
+                    if (w != null) nearest = Mathf.Min(nearest, Vector3.Distance(q.transform.position, w.transform.position));
+                }
+                Log.AppendLine($"  crowd {active}/{crowd.People.Count} active, {walking} walking, {knocked} knocked, nearest {nearest:0.0} m");
+            }
         }
 
         static void Finish(string how)
@@ -202,6 +255,7 @@ namespace JapanMap.Editor
             _kb = null;
             _mouse = null;
             InputSystem.settings.editorInputBehaviorInPlayMode = _previousBehaviour;
+            InputSystem.settings.backgroundBehavior = _previousBackground;
             _steps = null;
             Log.AppendLine(how);
             var outDir = SessionState.GetString(KeyOut, Capture.Dir);

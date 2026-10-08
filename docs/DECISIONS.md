@@ -331,6 +331,21 @@ Das Modul **Gameplay** darf `Vehicles` und `OnFoot` kennen (es verbindet beide);
 Physik-Ebenen stehen zentral in `Core/GameLayers` (Walker, Pedestrian, Debris sind nie
 Boden für Räder und Kameras). Figur vorerst aus Grundformen (`StandInFigure`, vorläufig).
 
+## D23 — Fußgänger: Unity-NavMesh je Ort, Fahrbahn exakt ausgeschnitten · 2026-10-08
+
+Fußgänger sind **NavMeshAgents** (AI Navigation) statt der Bordstein-Schleifen des Prototyps:
+sie gehen auf Gehwegen, Plätzen, im Commons-Hof und auf Dorfgrund und weichen einander aus.
+Gebacken wird je Ort ein `NavMeshSurface` (Volumen = Ort + 25 m, Tokyo = Stadtplatte) aus den
+Physik-Kollidern; Straßen-Meshes, Wasser und Tokyo-Hausdächer sind *Not Walkable*, dazu je
+Straßenstück eine Modifier-Box mit genau der Fahrbahnbreite des Straßennetzes — sonst war Gelände,
+das durch eine Straße ragt (commons-drive), begehbar. Die Abnahme prüft gegen dieselbe Definition
+(`RoadNetwork.CarriagewayAt`). Das Backen ist letzter Schritt von „Map/Import All". Kosten: +1,6 MB
+Download. Die Leute erscheinen wie im Prototyp nur um den Spieler (35–110 m, weg ab 160 m).
+Rückstoß = Unity-Rigidbody mit Wurfimpuls (Prototyp-Zahlen), Auto verliert 5 %.
+Stellvertreter-Figur als **ein Skinned Mesh** mit Farbpalette: 6 Einzelteile kosteten ~550 Draw Calls
+für 48 Leute, jetzt ~40; Schatten nur bis 30 m. Tokyo-Kollider bleiben vorerst GameObjects: das
+Backen braucht sie ohnehin, die Szene ist dadurch nicht gewachsen.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

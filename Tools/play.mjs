@@ -21,6 +21,12 @@ if (!compileIfChanged()) {
   console.error('PLAY BLOCKED · the editor is in play mode (the human may be playing) — ask before stopping it');
   process.exit(2);
 }
+// With compile errors Unity refuses to enter play mode and the run would wait for its timeout.
+const failed = mcp('execute_code', { action: 'execute', code: 'return EditorUtility.scriptCompilationFailed ? "failed" : "ok";' });
+if (failed?.data?.result !== 'ok') {
+  console.error('PLAY BLOCKED · scripts do not compile — see the console (node Tools/mcp-call.mjs read_console)');
+  process.exit(1);
+}
 const result = join(ROOT, outDir, 'result.txt');
 // A test run that just reported may still be restoring its scenes; entering play now breaks that.
 await new Promise((res) => setTimeout(res, 2500));

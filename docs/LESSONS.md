@@ -56,6 +56,10 @@
 | 2026-10-08 | 6 | Zwei UIDocuments auf einem Objekt → NullReference in Awake; der Spiel-Lauf sah gut aus, die Konsole las ich nicht | `Tools/play.mjs` leert die Konsole vorher und meldet Fehler des Laufs selbst; jedes Panel hat ein eigenes Unterobjekt | Werkzeug |
 | 2026-10-08 | 6 | Szene speichern hängte URP-Lichtdaten an 385 Laternen-Instanzen (Game.unity +3,7 MB) | `LibraryImporter` setzt `UniversalAdditionalLightData` am Prefab; `LibraryTests` prüft es | Test |
 | 2026-10-08 | 6 | Spielabläufe (Einsteigen, Rutschen) nur per Hand prüfbar | `node Tools/play.mjs <ordner> "<skript>"`: echtes Spiel ab Boot, virtuelle Tasten/Maus, Bilder, Zustandsproben | Werkzeug |
+| 2026-10-08 | 6 | Tastatur-Tests mal grün, mal rot: Input System sperrt die Tastatur, wenn Unity nicht vorne ist | Tests und PlayScript setzen `backgroundBehavior = IgnoreFocus` und Game-View-Fokus aus | Test |
+| 2026-10-08 | 6 | Bench maß alten Code („Schatten aus“ ohne Wirkung) | `bench.mjs` kompiliert vorher (`lib/fresh.mjs`); `play.mjs` bricht bei Kompilierfehlern sofort ab statt 3 min zu warten | Werkzeug |
+| 2026-10-08 | 6 | Fußgänger auf Fahrbahn, wo Gelände durch die Straße ragt | NavMesh schneidet Fahrbahnen exakt nach dem Straßennetz aus; 10-min-Test + `RoadNetworkTests` | Test |
+| 2026-10-08 | 6 | Python-`replace` mit leerem Suchtext zerschoss eine Datei | Ersetzungen mit `assert old in s` und Länge > 0; Diff-Größe vor dem Weiterarbeiten ansehen | Ablauf |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

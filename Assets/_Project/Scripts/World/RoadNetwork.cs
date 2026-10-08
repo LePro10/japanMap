@@ -61,6 +61,45 @@ namespace JapanMap.World
             return found;
         }
 
+        /// <summary>
+        /// The road (id) whose carriageway covers <paramref name="position"/>: within half its width of the
+        /// centreline (minus <paramref name="margin"/>) and within <paramref name="maxHeight"/> of it
+        /// vertically (a viaduct above or a road below does not count). Null if none.
+        /// </summary>
+        public string CarriagewayAt(Vector3 position, float margin = 0f, float maxHeight = 2.5f)
+        {
+            _grid ??= BuildGrid();
+            var cx = Mathf.FloorToInt(position.x / CellSize);
+            var cz = Mathf.FloorToInt(position.z / CellSize);
+            // Neighbour cells too: the grid holds segment boxes without the road's width.
+            for (var dx = -1; dx <= 1; dx++)
+            for (var dz = -1; dz <= 1; dz++)
+            {
+                if (!_grid.TryGetValue((cx + dx, cz + dz), out var list)) continue;
+                foreach (var (r, s) in list)
+                {
+                    var pts = roads[r].points;
+                    // An open road ends square at its first and last point (the mesh does), not round:
+                    // a point past either end plane belongs to no segment of it.
+                    if (!roads[r].closed && pts.Length > 1 && BeyondEnds(pts, position)) continue;
+                    var p = ClosestOnSegmentXZ(pts[s], pts[(s + 1) % pts.Length], position);
+                    var half = roads[r].width * 0.5f - margin;
+                    if (Sqr(p.x - position.x) + Sqr(p.z - position.z) < half * half && Mathf.Abs(p.y - position.y) < maxHeight)
+                        return roads[r].id;
+                }
+            }
+            return null;
+        }
+
+        static bool BeyondEnds(Vector3[] pts, Vector3 q)
+        {
+            var n = pts.Length;
+            var start = new Vector2(pts[1].x - pts[0].x, pts[1].z - pts[0].z);
+            var end = new Vector2(pts[n - 1].x - pts[n - 2].x, pts[n - 1].z - pts[n - 2].z);
+            return Vector2.Dot(new Vector2(q.x - pts[0].x, q.z - pts[0].z), start) < 0f
+                   || Vector2.Dot(new Vector2(q.x - pts[n - 1].x, q.z - pts[n - 1].z), end) > 0f;
+        }
+
         Dictionary<(int, int), List<(int, int)>> BuildGrid()
         {
             var grid = new Dictionary<(int, int), List<(int, int)>>();

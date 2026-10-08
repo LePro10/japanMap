@@ -18,12 +18,27 @@ namespace JapanMap.Tests.Vehicles
     {
         Keyboard _keyboard;
 
+        InputSettings.EditorInputBehaviorInPlayMode _focus;
+        InputSettings.BackgroundBehavior _background;
+
         [SetUp]
-        public void SetUp() => _keyboard = InputSystem.AddDevice<Keyboard>("TestKeyboard");
+        public void SetUp()
+        {
+            _keyboard = InputSystem.AddDevice<Keyboard>("TestKeyboard");
+            // Otherwise the virtual keys only count while the Game view has focus — the tests went red
+            // whenever the editor was in the background (and always in batch mode).
+            _focus = InputSystem.settings.editorInputBehaviorInPlayMode;
+            InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+            // …and a keyboard is reset and disabled while Unity is not the front app (touch kept working).
+            _background = InputSystem.settings.backgroundBehavior;
+            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+        }
 
         [TearDown]
         public void TearDown()
         {
+            InputSystem.settings.editorInputBehaviorInPlayMode = _focus;
+            InputSystem.settings.backgroundBehavior = _background;
             if (_keyboard != null) InputSystem.RemoveDevice(_keyboard);
             if (Bootstrapper.Instance != null) Object.Destroy(Bootstrapper.Instance.gameObject);
         }
