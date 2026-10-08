@@ -6,8 +6,8 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
 ## Wo wir stehen (2026-10-08, Abend)
 
-- **Aufgabe 3 — Gebäude, Fischerdorf/Hafen („Minato"): Pilot fertig, wartet
-  auf Freigabe.** Zwei Dichten: **Hafenkern** (Kaimauer, Fischhalle,
+- **Aufgabe 3 — Gebäude, Fischerdorf/Hafen („Minato"): freigegeben**
+  (Mensch: „Qualität gefällt mir", 2026-10-08). Zwei Dichten: **Hafenkern** (Kaimauer, Fischhalle,
   Imbiss, Laden, Netzschuppen, Tintenfischboote, Steg, Wellenbrecher mit
   Leuchtturm) und **ruhige Bucht** (Reihe Bootshäuser wie Ine no Funaya,
   Gasse dahinter, Fischerhäuser). Bilder in `previews/`:
@@ -19,7 +19,8 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
   Traufe/Ortgang Wellblech, Imbiss-Front, Fischhalle innen, Kaimauer mit
   Poller/Fender/Leiter, Lampen am Tintenfischboot, Trockengestell),
   `Minato_Pieces.png` (Hafenstücke, Boote, Kleinkram-Sets).
-  **Nächster Baustil nach Freigabe: Tempel.**
+  **Nächster Baustil: Tempel** (letzter Baustil von Aufgabe 3; danach
+  Aufgabe 4 Vegetation, ersetzt die vorläufigen Bäume aus D18).
 - **Aufgabe 3 — Gebäude, Gassho: freigegeben** (Mensch fragte nach der
   nächsten Aufgabe, 2026-10-08). Nächster Baustil: **Fischerdorf/Hafen**.
   Strohdachdorf wie Shirakawa-gō/Gokayama: 5 Bauernhäuser + 2 ruhige
@@ -324,8 +325,8 @@ Konventionen:
 
 ## Für dich
 
-1. Fischerdorf/Hafen ansehen (`previews/Minato_*.png`) und freigeben oder
-   Rückmeldung geben. Danach: Tempel.
+1. Neue Sitzung für den Tempel starten (Starttext in der Antwort vom
+   2026-10-08 Abend). Danach: Aufgabe 4 Vegetation.
 2. Der Unity-Sitzung bei Gelegenheit „Lichttest nach ArtSource/STATUS.md"
    sagen.
 
