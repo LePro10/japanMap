@@ -414,6 +414,24 @@ Schnitthecken-Streifen, Zellen für Fernstufe, Seil, Papier, Stützen.
 - **Bilder:** `trees.shots(ordner)` — Bergschrein (Tera) im Zedernwald,
   Tempelgarten, Kirschallee, Bambusweg, Reihen, LOD-Vergleich, Nahaufnahmen.
 
+## Streugut (Atlas `Scatter`, ab 2026-10-08)
+
+`kit/atlas_scatter.py` (Atlas), `props/scatter_kit.py` (Pfosten mit Kappe,
+Scheiben, Platten, Schrauben, Schellen mit Laschen, Fundamente,
+Ankerbolzen, `placed` = Teil verschieben/drehen/skalieren), Module
+`tetrapod`, `delineator`, `retaining_wall`, `greenhouse`, `jizo`,
+`cemetery`, `signage`; Szenen `props/scatter_shots.py`.
+- **Japanisch, Pflicht:** Beton mit Schalungsplatten 0,9 × 1,8 m und
+  P-con-Löchern, Entwässerungsrohre mit Läufen, Kenchi-Blöcke auf der
+  Spitze, Hanggitter mit Ankerköpfen, U-Rinne mit Gitterrost;
+  Rundstrahler auf weißem Pfosten, 矢羽根-Schneepfahl, ポストコーン;
+  Folientunnel mit Hausbändern und Kurbel; Jizō mit rotem Latz und Mütze;
+  Familiengrab mit Sotoba (Gorintō-Umriss), Gorintō; Nobori auf
+  Wassertank-Fuß.
+- **Viel gestellt → klein:** Tetrapod ~700 LOD0 (372×), Leitpfosten ~320.
+- Grafiken als Rechteck ohne Verzerrung messen: Fahnen 32 × 128 px für
+  0,6 × 1,8 m, Sotoba 32 × 128 px.
+
 ## Abnutzung
 
 - **Schmutz unten:** jede Fläche wird zum Boden hin dunkler (Spritzwasser).

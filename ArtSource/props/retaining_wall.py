@@ -53,7 +53,7 @@ def weep(c, x, z, y_face, n_face, stain=0.55):
         if down.z > 0:
             down = -down
         o = p + n * 0.003
-        pts = [o + t * 0.05, o - t * 0.05, o - t * 0.03 + down * stain, o + t * 0.03 + down * stain]
+        pts = [o + t * 0.07, o - t * 0.07, o - t * 0.1 + down * stain, o + t * 0.1 + down * stain]   # widening run-off
         quad(c, pts, 'CONC_DARK', n)
 
 

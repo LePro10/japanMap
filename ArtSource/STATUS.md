@@ -20,6 +20,35 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
   (−54, entartete Flächen ohne Fläche fallen weg; je Asset 0–4). Schattierung
   vorher/nachher gleich (Kura-Nahaufnahme).
 
+- **5a Schritt 2 — Streugut: fertig, wartet auf Freigabe.** Neuer Atlas
+  `Scatter` (Schalungsbeton mit Plattenfugen, P-con-Ankerlöchern,
+  Ausblühungen und schwarzen Algenläufen; Kenchi-Blöcke im Rautenverband;
+  Tetrapod-Beton mit nassem Fuß; Gewächshausfolie; polierter und alter
+  bemooster Granit; Gras für Hanggitter; Grafiken `SC_*`). Maße nach den
+  Unity-Platzhaltern (`MapImportSettings`). Alle FBX nur Dreiecke, 0 verdrehte Flächen.
+
+  | Gruppe | FBX (Präfix `SM_`) | Dreiecke LOD0 / LOD1 | Einsatz |
+  |---|---|---|---|
+  | Tetrapod | Tetrapod · Tetrapod_Tilted · Tetrapod_Pile (5 verhakt) | 712/112 · 712/112 · 3 560/560 | 372× Mole/Küste |
+  | Leitpfosten | Delineator_White / _Orange (Rundstrahler, Schelle) · SnowPole (矢羽根, 4,6 m) · PostCone | 318/156 · 598/230 · 324/114 | 170× Straßenrand |
+  | Stützmauer | Wall_Concrete_8m (Fuge, Rohre) · Wall_Kenchi_8m · Wall_Norimen_8m (Hanggitter, Anker, U-Rinne) | 418/192 · 298/128 · 2 060/338 | 79× Bergstraße |
+  | Gewächshaus | Greenhouse_Closed · _Open (Beete, Bögen innen) | 2 698/498 · 7 696/1 682 | 30× Felder |
+  | Jizō | Jizo (Latz, Mütze, Opfergaben) · Jizo_Roku (6 unter Dach) | 802/249 · 3 512/946 | Dorfrand, Gassho |
+  | Friedhof | Grave_Family · Grave_Old (Gorintō, Funagata) · Cemetery_Row_8m | 1 042/312 · 570/228 · 4 160/1 256 | Kiso, Dörfer |
+  | Fahnen/Tafel | Nobori_Red / _Blue / _Yellow (Wassertank-Fuß) · EventBoard_4m (+2 LIGHT_) | 404/54 · 608/200 | Sakura Commons |
+  | Kiso | Kiso_Kido (Tor über 6,4-m-Straße, Kollider nur Pfosten, 2 LIGHT_) | 1 695/468 | Kiso-Juku Ortsenden |
+  | Minato | Minato_Lighthouse_White (grünes Licht) · Minato_Slipway_8m (Rampe 1:8, Winde) | 474/226 · 578/266 | Funaura |
+
+  Bilder in `previews/`: `Scatter_Scenes.png` (Hafenmole mit Tetrapoden
+  und weißem Feuer, Bergstraße mit Leitpfosten/Schneepfählen/Mauern,
+  Feld mit Gewächshäusern, Dorfrand mit Jizō und Friedhof,
+  Kiso-Ortseingang mit Kido-Tor; je Stimmung | neutral),
+  `Scatter_Scenes_clay.png`, `Scatter_detail.png` (20 Nahaufnahmen der
+  Befestigung), je Gruppe vorne/hinten/Grau: `Tetrapod`, `Delineator`,
+  `RetainingWall`, `Greenhouse`, `Jizo`, `Cemetery`, `Signage` (+`_clay`),
+  `Scatter_Atlas.png`. Szenen neu: `from props import scatter_shots as SS;
+  SS.shots(ordner); SS.closeups(ordner)`.
+
 ### Davor: Vegetation (Aufgabe 4)
 
 - Vegetation-Pilot (freigegeben): Alle sechs Arten aus PLAN (Zeder, Ahorn, Kirsche, Bambus, Kiefer, Büsche)
@@ -473,7 +502,11 @@ Konventionen:
 
 ## Für dich
 
-1. **Streugut ansehen** (Aufgabe 5a, kommt in dieser Sitzung) und freigeben.
+1. **Streugut ansehen** (`previews/Scatter_Scenes.png` zuerst, dann
+   `Scatter_detail.png`) und freigeben oder sagen, was nicht passt. Zwei
+   Entscheidungen von mir: Das Kido-Tor überspannt die ganze Straße
+   (echte Tore waren schmaler, Autos müssen durch), und das weiße
+   Molenfeuer leuchtet grün (so ist es in Japan).
 2. Falls du doch etwas gegen die drei Tempel-Wahrzeichen über 5 000
    Dreiecken hast (Haupthalle, Pagode, Tor): sag es, dann verkleinere ich sie.
 3. Der Unity-Sitzung sagen: „Vegetation aus ArtSource importieren
@@ -504,6 +537,18 @@ Konventionen:
     Einzelstücke `Tree_Sugi_Shinboku` (an Schreinen) und
     `Tree_Sakura_Shidare` (Tempel).
   - Dreiecke LOD0 ≤ 5 522 (Bäume), LOD2 ≤ 108. Größen in der Tabelle oben.
+- **Streugut importieren** (Aufgabe 5a, nach Freigabe): neuer Atlas
+  `T_Scatter_{BaseColor,MaskMap,Emission}` → `M_Scatter_Atlas` (deckend,
+  Emission nur für LED-Strahler). 21 FBX in `exports/props/` + `Kiso_Kido`,
+  `Minato_Lighthouse_White`, `Minato_Slipway_8m` in `exports/buildings/`.
+  Platzhalter-Zuordnung: tetrapod → `Tetrapod` (gemischt mit `_Tilted`,
+  zufällige Drehung um Z; Haufen-Stellen → `Tetrapod_Pile`), delineator →
+  `Delineator_White` (Gassho/Pass: `SnowPole`), concreteWall →
+  `Wall_Concrete_8m` (8,4 m wie der Platzhalter; Abwechslung
+  `Wall_Kenchi_8m`; hohe Hänge `Wall_Norimen_8m`), greenhouse →
+  `Greenhouse_Closed` (jedes dritte `_Open`). Für Phase-5-Orte: Jizō
+  (Gassho), Friedhof/Kido-Tor (Kiso), weißes Molenfeuer/Slipanlage
+  (Funaura), Nobori ×6 + EventBoard (Sakura Commons).
 - **Alle FBX neu (2026-10-08, Aufgabe 5a), bitte „JapanMap/Art/Import
   Library" neu laufen lassen.** Die FBX enthalten jetzt nur Dreiecke; die
   395 verworfenen Polygone (Löcher) sollten im Import-Bericht verschwinden.
@@ -514,6 +559,14 @@ Konventionen:
 
 ## Gefunden / Lektionen (für docs/LESSONS.md)
 
+- 2026-10-08 (Aufgabe 5a, Streugut):
+  - **Gewächshaus-Giebel waren Dreiecke:** Profilpunkte in falscher
+    Reihenfolge (links vom First statt vom Boden). Gefunden im ersten Bild.
+  - **Szenen-Kamera stand im Tetrapod / Hangplateau wirkte als Überhang:**
+    Szenen immer einmal ansehen (wie Tera/Flora); Szenen jetzt als Code
+    in `props/scatter_shots.py`.
+  - **`montage.mjs --out` relativ** löst gegen das Repo auf; `../x.png`
+    landete außerhalb. Immer absolute Pfade für `--out` außerhalb des Repos.
 - 2026-10-08 (Aufgabe 5a, Löcher):
   - **Unity verwarf 395 Polygone (Löcher):** die Triangulierung im Kit lag
     vor der Fase, der Bevel-Modifier macht beim Export neue n-Ecke. Jetzt
