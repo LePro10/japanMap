@@ -1979,6 +1979,8 @@ from .atlas_flora import layout as _flora_layout   # noqa: E402 (needs the gener
 LAYOUTS['Flora'] = _flora_layout()
 from .atlas_scatter import layout as _scatter_layout   # noqa: E402
 LAYOUTS['Scatter'] = _scatter_layout()
+from .atlas_machi import layout as _machi_layout   # noqa: E402
+LAYOUTS.update(_machi_layout())
 
 
 def build_maps(name, seed=1):

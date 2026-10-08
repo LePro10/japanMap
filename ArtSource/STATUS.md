@@ -4,7 +4,57 @@ Plan: [docs/PLAN.md](../docs/PLAN.md), Abschnitt „Asset-Sprint". Regeln:
 [STYLE-KIT.md](STYLE-KIT.md) (verbindlich). Läuft parallel zur Unity-Sitzung,
 nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
-## Wo wir stehen (2026-10-08, Aufgabe 5a)
+## Wo wir stehen (2026-10-08, Aufgabe 5b)
+
+- **Aufgabe 5a — Löcher + Streugut: freigegeben** (Mensch, 2026-10-08).
+- **Aufgabe 5b — fehlende Gebäude: Pilot fertig, wartet auf Freigabe.**
+  17 FBX in `exports/buildings/`, alle nur Dreiecke, **0 verdrehte Flächen**
+  (`K.poly_check`), 0 Streck-Warnungen, keine fremden FBX/Texturen geändert.
+  Generatoren: `buildings/machi_kit.py` + `buildings/machi.py` (Autohaus,
+  Werkstatt, Wohnhäuser, Izakaya), `buildings/koedo_landmarks.py`
+  (Glockenturm, Brauerei), `buildings/mill.py` (Mühle, Teich); Bilder
+  `buildings/shots_5b.py` (`S5.shots(ordner)`).
+- **Neuer Atlas `Machi` + `MachiShop`** (Begründung: kein vorhandener hat
+  Keramik-Siding, Galvalume, Schieferdach, Showroom-Fliesen, Epoxid-Boden,
+  Ziegel; Minato und Tokyo sind voll). Wo ein vorhandener passt, ist er
+  genommen: Izakaya-Bau = `Minato` (Bretter, Wellblech), Glockenturm =
+  `Tera`/`TeraShop`, Brauerei = `Koedo`/`KoedoShop` (+ `Machi` nur für den
+  Ziegelschornstein), Mühle/Teich = `Gassho`/`GasshoShop`.
+
+### Bauten 5b (Präfix `SM_`, Maße = Grundfläche aus den Prototyp-Orten)
+
+| FBX | Was | Dreiecke Bau LOD0 / LOD1 · Ausstattung LOD0 / LOD1 |
+|---|---|---|
+| Machi_PetalMotors | **Autohaus 22 × 14 m** (Sakura Commons): offene Glasfront (M_Glass, Mittelfeld 3 m mit aufgeschobenen Automatiktüren), Showroom-Fliesen, **10 markierte Stellplätze** genau an den Show-Car-Plätzen des Prototyps (4 je Seitenwand, 2 hinten), Stromschienen mit 2 Spots je Stellplatz, Downlights, Theke mit Markenwand, 3 Verkaufstische mit Stühlen, Prospektständer, Pflanzen, Preistafel an jedem Stellplatz, Blende mit Schild ペタルモータース, Eckturm mit Pylon-Schild, **Vordach** über dem Eingang (ragt 1,6 m vor), 4 Nobori, Dachgeräte, Rückseite mit Tür, Fenstern, Außengeräten | 2 121 / 770 · 1 498 / 644 |
+| Machi_OpenBay | **Werkstatt 18 × 14 m**: Stahlhalle mit Galvalume (Kaku-nami) auf Blocksockel, **Einfahrt 8 m mit hochgezogenem Rolltor** (passt auf die 8,8-m-Bay-Schürze), 2-Säulen-**Hebebühne**, Epoxid-Boden mit gelben Linien, **Werkzeugwand** + roter Werkzeugwagen + Werkbank, Kompressor, Schlauchtrommel, **Reifenstapel** (innen und zum Verkauf draußen), **Ölfässer**, Reifenmontier- und Wuchtmaschine, Büro mit Empfangsfenster, Leuchtstoffröhren, Schild OPEN BAY 車検・整備・板金; Kollider ohne Tor (Autos fahren hinein) | 2 268 / 1 180 · 3 274 / 1 480 |
+| Machi_House_A … F | **6 moderne Fertighäuser** aus Daten (Parzellen 7,5–10 × 8–12 m wie im Prototyp, A/B/C/E/F 2 Geschosse, D 3 Geschosse): Keramik-Siding (Fliesen-, Rillen-, Holzoptik) je Geschoss, Schiefer-Satteldach (E mit Solarmodulen) / Pultdach Galvalume (B, F) / Flachdach mit Attika (D), Fenster mit **Rollladenkasten**, Haustür mit Vordach und Fliesenstufen, **Kastenbalkon mit Wäschestange + Wäsche/Futon**, **Klimageräte**, **Eco Cute**, Zählerkasten, Lüftungshauben, Fallrohre, Küchentür hinten, **Carport** (Alu + Polycarbonat, Schlitz-Einfahrt) bzw. Einbaugarage (D), **Funktionstorpfosten** mit Namensschild, Gegensprechanlage, **Briefkasten**, Blockmauer + Lamellenzaun | A 3 453 · B 3 030 · C 2 654 · D 4 341 · E 3 315 · F 3 107 (LOD1 50–60 %) · Ausstattung 110–462 |
+| Machi_Izakaya_A … E | **5 Holz-Izakaya** für Yokochō-Gassen, Breiten 3,0 / 3,6 / 4,2 / 4,8 / 3,3 m (Tiefe 6 m, 2 Geschosse, ~6 m hoch), **stehen als Reihe** (Seiten = Brandwände aus Blech; Kabel laufen 5 cm über die Seiten und verbinden sich): offene Front / Holz-Glasschiebetüren / Stehbar-Tresen, Blech-Vordach, **rote Laternen** (+ Laternenkette), **Noren**, beleuchtete Schilder, Blade-Schild oben, Fenster mit Gitter, Klimagerät, **Kabelgewirr** mit Zählerkasten, Bierkästen, Hocker, Menütafel, Poster; hinten Tür, Abluftrohr bis übers Dach, Gaszähler | 1 920–2 354 / 464–560 · 648–1 748 |
+| Koedo_TokiNoKane | **Glockenturm 16,7 m**, drei Geschosse aus dunklem Holz (Tera-Bausatz wie die Pagode): Steinsockel, unten Durchgang (vorn/hinten offen), Schürzendächer mit Ziegeln, Balkon mit Geländer und Gitterfenstern, offene Glockenstube mit **Glocke** und Stoßbalken, Walmdach mit Hōju-Spitze | **6 330** / 2 912 · 380 / 138 |
+| Koedo_Brewery | **Sake-Brauerei** (Parzelle 33,5 m breit): Brauhalle 19,5 × 10,5 m (unten schwarze Bretter, oben weißer Putz, Ziegeldach, Laden mit Noren さけ, Dachschild 小江戸鶴, **Sugidama**, Fässer, Laterne), weißes **Lagerhaus** (Kura mit Namako), Holztor dazwischen, Kesselhaus, **Ziegelschornstein 19 m** (verjüngt, Eisenbänder, Kappe), Holzbottiche im Hof | **9 975** / 2 240 · 1 318 / 644 |
+| Gassho_Mill | **Mühlhaus** mit Strohdach (Gassho-Bausatz) 7,6 × 5,4 m, **Wasserrad 4,2 m** am Westgiebel (Achse ins Haus, Lager auf Pfosten), Radgrube und Ablauf mit Ishigaki, **Holzrinne** 8 m auf Böcken zum Teich, Mühlsteine und Reisballen in der offenen Tür, Stroh, Brennholz | 3 643 / 1 240 · 504 / 210 |
+| Gassho_MillPond | **Mühlteich 22 × 14 m Wasser** (Wasser −0,3 m): Trockenmauer, einzelne Decksteine in drei Tönen, Grasrand, **Schütz** (Brettertor, Spindel, Handrad) am Auslass zur Rinne, Waschsteg, Schilf, Seerosen, Steine | 4 292 / 1 140 |
+
+- **Budget:** alle Häuser ≤ 5 000 (Bau; D 4 341). **Über 5 000 (Frage an
+  dich):** Glockenturm **6 330** (3 Geschosse mit je Konsolen + Ziegeldach;
+  Pagode war 9 072) und Brauerei **9 975** = drei Bauten in einem FBX
+  (Halle allein 6 021 nach Kürzung von 5 auf 3 Obergeschossfenster —
+  gemessen: Dach mit Ziegelreihen 2 405, Fasen +2 234; Lagerhaus 3 225;
+  Schornstein, Tor, Kesselhaus ~700). Pro Meter Straßenfront billiger als
+  ein normales Koedo-Haus.
+- **Gemessen:** 17 FBX, 0 verdrehte Flächen, 0 Streck-Warnungen; neue Prüfung
+  `PARCEL` im Bauprotokoll (Wohnhaus ragt über die Parzelle) hat House_D
+  (15 cm) gefunden → behoben. **Ungeprüft:** alles in Unity.
+- Bilder in `previews/`: `Bau5b_Sakura.png` (Autohaus + Werkstatt am Platz,
+  Stellvertreter-Autos nur fürs Bild), `Bau5b_Koedo.png` (Hauptstraße mit
+  Brauerei, Glockenturm an der Gasse, Wohnhäuser am Ortsrand),
+  `Bau5b_Yokocho.png` (Gasse mit zwei Izakaya-Reihen, Tokyo-Zentrum dahinter),
+  `Bau5b_Mill.png` (Teich, Mühle, Bauernhäuser, Reisfelder); je Augenhöhe
+  Stimmung | neutral, von oben, Grau. `Bau5b_Buildings.png` /
+  `Bau5b_Back.png` / `Bau5b_clay.png` / `Bau5b_mood.png` (jedes Haus vorne,
+  hinten, grau, Stimmung), `Bau5b_detail.png` (20 Nahaufnahmen),
+  `Machi_Atlas.png`.
+
+## Davor (2026-10-08, Aufgabe 5a)
 
 - **Aufgabe 4 — Vegetation („Flora"): freigegeben** (Mensch, 2026-10-08).
 - **5a Schritt 1 — Löcher: behoben.** Ursache: Das Kit triangulierte nur
@@ -20,7 +70,7 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
   (−54, entartete Flächen ohne Fläche fallen weg; je Asset 0–4). Schattierung
   vorher/nachher gleich (Kura-Nahaufnahme).
 
-- **5a Schritt 2 — Streugut: fertig, wartet auf Freigabe.** Neuer Atlas
+- **5a Schritt 2 — Streugut: freigegeben** (2026-10-08). Neuer Atlas
   `Scatter` (Schalungsbeton mit Plattenfugen, P-con-Ankerlöchern,
   Ausblühungen und schwarzen Algenläufen; Kenchi-Blöcke im Rautenverband;
   Tetrapod-Beton mit nassem Fuß; Gewächshausfolie; polierter und alter
@@ -461,7 +511,7 @@ Fischerdorf/Hafen, Tempel. Je Baustil gilt:
 PLAN-Aufgaben 1–4 sind gebaut (4 wartet auf Freigabe). Die Hauptsitzung
 braucht für die Orte noch Modelle (`docs/STATUS.md`, „Für die
 Asset-Sitzung" und „Offene Probleme"). Drei Sitzungen, in dieser Reihenfolge:
-- **5a — Löcher + Streugut:** 395 sich selbst schneidende Polygone in 29
+- **5a — Löcher + Streugut:** (freigegeben) 395 sich selbst schneidende Polygone in 29
   Meshes (Unity verwirft sie) → Ursache im Kit finden, alle FBX neu;
   Tetrapod (372×), Leitpfosten (170×), Betonmauer (79×), Gewächshaus (30×),
   Jizō, Grabsteine/Friedhof, Kido-Tor, weißes Molenfeuer, Slipanlage,
@@ -469,6 +519,7 @@ Asset-Sitzung" und „Offene Probleme"). Drei Sitzungen, in dieser Reihenfolge:
 - **5b — fehlende Gebäude:** Autohaus Petal Motors, Werkstatt Open Bay,
   Toki-no-Kane-Glockenturm, moderne Wohnhäuser, Brauhalle mit Schornstein,
   Holz-Izakaya für Yokochō-Gassen, Mühlhaus mit Teich und Rinne.
+  **Gebaut, wartet auf Freigabe** (oben).
 - **5c — Tokyo-Höhe + Rest:** Hochhäuser 40–154 m, Kino-/Hotel-/
   Markthallen-Fronten, Kaki und Weide als Baumarten, Kei-Truck.
 
@@ -502,18 +553,52 @@ Konventionen:
 
 ## Für dich
 
-1. **Streugut ansehen** (`previews/Scatter_Scenes.png` zuerst, dann
-   `Scatter_detail.png`) und freigeben oder sagen, was nicht passt. Zwei
-   Entscheidungen von mir: Das Kido-Tor überspannt die ganze Straße
-   (echte Tore waren schmaler, Autos müssen durch), und das weiße
-   Molenfeuer leuchtet grün (so ist es in Japan).
-2. Falls du doch etwas gegen die drei Tempel-Wahrzeichen über 5 000
-   Dreiecken hast (Haupthalle, Pagode, Tor): sag es, dann verkleinere ich sie.
-3. Der Unity-Sitzung sagen: „Vegetation aus ArtSource importieren
-   (ArtSource/STATUS.md, Abschnitt Für die Hauptsitzung)" — und weiterhin
-   den Lichttest.
+1. **Gebäude 5b ansehen** (`previews/Bau5b_Sakura.png`, `Bau5b_Koedo.png`,
+   `Bau5b_Yokocho.png`, `Bau5b_Mill.png` zuerst, dann `Bau5b_detail.png`)
+   und freigeben oder sagen, was nicht passt.
+2. **Budget-Frage:** Glockenturm 6 330 und Brauerei 9 975 Dreiecke (drei
+   Bauten in einem FBX, Halle allein 6 021) — so lassen, oder soll ich
+   kürzen (z. B. Brauerei-Halle ohne Fasen am Dach, Lagerhaus als eigenes
+   FBX)?
+3. **Entscheidungen von mir:** Autohaus-Vordach ragt 1,6 m über die
+   22 × 14-m-Grundfläche (sonst kein Vordach, weil die Stellplätze bis an
+   die Glasfront reichen); die Werkstatt hat **eine** 8-m-Einfahrt (passt
+   auf die 8,8-m-Schürze des Prototyps); Markennamen erfunden
+   (Petal Motors, Open Bay, 小江戸鶴, Sakura Lager, Izakaya-Namen).
+4. Der Unity-Sitzung sagen: „Gebäude 5b aus ArtSource importieren
+   (ArtSource/STATUS.md, Für die Hauptsitzung)" — erst nach deiner Freigabe.
 
 ## Für die Hauptsitzung (darf ich nicht ändern)
+
+- **Gebäude 5b importieren** (nach Freigabe): neue Atlanten
+  `T_Machi_*` → `M_Machi_Atlas` (deckend, Emission für Downlights/Röhren)
+  und `T_MachiShop_*` → `M_MachiShop_Atlas` (Emission 1,6 wie die anderen
+  Shop-Atlanten). Materialien je FBX stehen im Manifest; Autohaus und
+  Werkstatt nutzen zusätzlich `M_Glass` (Glasfront **beidseitig** als zwei
+  Flächen gebaut), die Brauerei `M_Koedo_Atlas` + `M_Machi_Atlas`
+  (Schornstein) + `M_KoedoShop_Atlas`, die Izakaya `M_Minato_Atlas` +
+  `M_MachiShop_Atlas`.
+  Zuordnung (Platzhalter → Modell): `showroom` → `Machi_PetalMotors`
+  (Mitte = Mitte der 22 × 14; **nur der Körper** ist 22 × 14, das Vordach
+  ragt 1,6 m nach vorn, die Außengeräte stehen 0,8 m hinter der Rückwand —
+  die Footprint-Mitte liegt 0,4 m vor der Körpermitte;
+  Stellplätze liegen genau unter den `showCar`-Punkten, wenn vorn = Platz
+  `court`), `workshop` → `Machi_OpenBay` (Tor vorn über `bayApron`),
+  `bellTower` → `Koedo_TokiNoKane`, `brewery` → `Koedo_Brewery` (eine
+  Anlage 33,3 m breit, n = 1 Modul; Hof hinten frei), `modern` →
+  `Machi_House_A…F` (je Parzellenmaß: A 8 × 9, B 9 × 8, C 7,5 × 8,
+  D 10 × 12 / 3 Geschosse = der `h: 9`-Eintrag, E 8 × 9, F 8,5 × 9),
+  Tokyo `f2` (schmale Holzläden) → `Machi_Izakaya_A…E` (Breiten 3,0–4,8 m,
+  Tiefe 6 m + 0,85 m Vordach + 0,3 m Traufe hinten), `pond` →
+  `Gassho_MillPond` (Wasser 22 × 14 bei −0,3 m), `millWheel` →
+  `Gassho_Mill`: **Bezugspunkt ist die Radachse (Ursprung)**, die Rinne
+  läuft 10,3 m nach +Y bis an den Teichrand (Teichmitte 17 m hinter dem
+  Rad, wie im Prototyp, wenn vorn = Prototyp +z wie beim Autohaus). Die
+  Grundflächen-Mitte der Mühle liegt bei (+4,1 / +2,2) m vom Rad → im
+  Platz-`offset` ausgleichen. Rad-Grube und Teich liegen unter 0 (Gelände
+  dort aussparen, wie bei Kiso-Rinne).
+  Kollider: Werkstatt ohne Tor (hineinfahrbar), Autohaus Körper + Vordach +
+  Turm, Glockenturm nur Pfosten unten (Durchgang).
 
 - **Vegetation importieren** (ersetzt die vorläufigen Bäume aus
   `Editor/Vegetation/TreeBuilder`, D18) — **vom Menschen freigegeben
@@ -558,6 +643,28 @@ Konventionen:
   importiert neu; Dreieckszahlen bleiben fast gleich.
 
 ## Gefunden / Lektionen (für docs/LESSONS.md)
+
+- 2026-10-08 (Aufgabe 5b, Gebäude):
+  - **Wohnhäuser ragten über die Parzelle** (Traufe, Eco Cute, Torpfosten
+    bis 0,9 m): erst per Hand gemessen, dann Prüfung `PARCEL` im
+    Bauprotokoll (`machi.build_house`, Werkzeug) — fand danach House_D (15 cm).
+  - **Ausstattung blieb am Ursprung**, als Brauhalle und Lager zu einer
+    Anlage verschoben wurden (Noren, Schild, Laden-Innenbild mitten im Hof):
+    Bau und Ausstattung immer gemeinsam verschieben. Gefunden in der
+    Nahaufnahme `c_brew_shop`.
+  - **Pultdach-Abschluss verdeckte die Izakaya-Schilder** (Dach ragte
+    0,25 m über die Scheinfassade): `shed_roof(hi_over=…)`.
+  - **Bühnenboden und Szenen-Rasen deckten Teich und Radgrube** (liegen unter
+    0): Szenenboden mit Löchern, Bühnenboden auf −1,2 m (wie Kiso/Gassho).
+  - **Szenen-Reihen überlappten** (Tokyo-Häuser hinter der Gasse standen in
+    den Izakaya, weil die Tiefe der gedrehten Häuser unterschätzt war):
+    `shots_5b.row` richtet an der echten Vorderkante aus; jede Szene einmal
+    von oben ansehen.
+  - **Mühle zeigte zuerst vom Teich weg:** Prototyp-Achsen (Teich auf der
+    Seite, auf der beim Autohaus der Platz liegt) vor dem Bau prüfen, nicht
+    danach.
+  - `zsh` teilt `$M` mit Leerzeichen nicht in Wörter — für Montage-Aufrufe
+    eine Shell-Funktion nehmen.
 
 - 2026-10-08 (Aufgabe 5a, Streugut):
   - **Gewächshaus-Giebel waren Dreiecke:** Profilpunkte in falscher

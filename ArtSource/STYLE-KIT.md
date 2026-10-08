@@ -42,7 +42,8 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
   Fahrräder), `Nature` (Felsen, Laub, Erde, Töpfe — später Vegetation;
   nur deckend, Blatt-Karten mit Alpha brauchen in Aufgabe 4 ein eigenes
   Material), `Kura`, `Tokyo` (Fliesen- und ALC-Wände, Konbini, Schilder,
-  Neon), `TokyoSigns`, `Koedo` + `KoedoShop`, `Kiso` + `KisoShop`, `Gassho` + `GasshoShop`, `Minato` + `MinatoShop`, `Tera` + `TeraShop`. Neuer Baustil = neuer Atlas.
+  Neon), `TokyoSigns`, `Koedo` + `KoedoShop`, `Kiso` + `KisoShop`, `Gassho` + `GasshoShop`, `Minato` + `MinatoShop`, `Tera` + `TeraShop`, `Machi` + `MachiShop` (moderne Stadt). Neuer Baustil = neuer Atlas,
+  aber erst prüfen, ob ein vorhandener passt (Izakaya = Minato, Brauerei = Koedo).
   Ausnahme Vegetation: `Flora` mit Alpha im BaseColor und **einem**
   Cutout-Material `M_Flora_Atlas` (Stamm, Laub und Fernstufe zusammen).
 - Atlas 1024², drei Karten passend zu URP/Lit:
@@ -431,6 +432,34 @@ Ankerbolzen, `placed` = Teil verschieben/drehen/skalieren), Module
 - **Viel gestellt → klein:** Tetrapod ~700 LOD0 (372×), Leitpfosten ~320.
 - Grafiken als Rechteck ohne Verzerrung messen: Fahnen 32 × 128 px für
   0,6 × 1,8 m, Sotoba 32 × 128 px.
+
+## Machi-Bausatz (moderne Stadt: Autohaus, Werkstatt, Fertighäuser, Izakaya, ab 2026-10-08)
+
+`buildings/machi_kit.py` (Module) + `buildings/machi.py` (Bauten als Daten:
+`DEALER`, `SHOP`, `HOUSES`, `IZAKAYA`), Szenen `buildings/shots_5b.py`.
+Atlanten `Machi` (Keramik-Siding Fliese/Rillen/Holz und Galvalume in
+1,5-m-Bändern 64 px/m, Schiefer, Showroom-Fliese, Epoxid, Ziegel 96 px/m)
+und `MachiShop` (Izakaya-Innenbilder, Schilder, rote Laternen, Noren,
+Händler-/Werkstatt-Grafiken `MA_*`, Namensschilder). Wiederverwendet: Minato
+(`edge_frame`, `cut`, Alu-Fenster/-Tür, Rolltor, Klimagerät, Fallrohr,
+Anbau) und Koedo (`C`, Schild, Noren, Laterne, Nobori, Innenbild).
+- **`wall` in Bändern ≤ Streifenhöhe**, Giebel Band für Band beschnitten
+  (`_clip`) — kein gestrecktes Siding im Giebel. Böden/Decken mit `floor`.
+- **Glas** (`glass`): zwei Flächen im gemeinsamen `M_Glass` (Slot 1) —
+  Schaufenster, durch die man ins modellierte Innere sieht.
+- **Japanisch, Pflicht:** Rollladenkasten über Fenstern, Haustür mit
+  Fliesenstufen und Vordach, Kastenbalkon mit Wäschestange und Wäsche/Futon,
+  Klimagerät, Eco Cute, Zählerkasten, Carport aus Alu + Polycarbonat mit
+  Schlitz-Einfahrt, Funktionstorpfosten (Namensschild, Gegensprechanlage,
+  Briefkasten, Licht), Blockmauer mit Lamellenzaun; Izakaya: rote Laternen,
+  Noren, Blech-Vordach, Kabelgewirr über die ganze Front (verbindet sich in
+  der Reihe), Bierkästen, Abluftrohr hinten.
+- **Wohnhäuser als Daten:** Parzelle W × D (= Prototyp), Körper
+  `Lb × Bb` bei `cx, cy`, Geschosshöhen, Siding je Geschoss, Dach
+  `gable`/`shed`/`flat`, Öffnungen `(Seite, u0, u1, Art, Geschoss, opt)`.
+  Prüfung `PARCEL`: nichts ragt über die Parzelle.
+- **Anlagen aus mehreren Häusern** (Brauerei): `koedo_landmarks._merge`
+  hängt fertige BMesh an; Ausstattung immer mit verschieben.
 
 ## Abnutzung
 
