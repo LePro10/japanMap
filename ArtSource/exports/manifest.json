@@ -4729,6 +4729,106 @@
   "switchable": [],
   "attach": []
  },
+ "Prop_KeiTruck_Crates": {
+  "fbx": "props/SM_Prop_KeiTruck_Crates.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Prop_KeiTruck_Crates_LOD0",
+   "SM_Prop_KeiTruck_Crates_LOD1",
+   "SM_Prop_KeiTruck_Crates_Shop_LOD0",
+   "SM_Prop_KeiTruck_Crates_Shop_LOD1"
+  ],
+  "tris": [
+   1812,
+   686
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Prop_KeiTruck_Crates_Bed",
+   "COL_Prop_KeiTruck_Crates_Cab"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Prop_KeiTruck_Empty": {
+  "fbx": "props/SM_Prop_KeiTruck_Empty.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Prop_KeiTruck_Empty_LOD0",
+   "SM_Prop_KeiTruck_Empty_LOD1",
+   "SM_Prop_KeiTruck_Empty_Shop_LOD0",
+   "SM_Prop_KeiTruck_Empty_Shop_LOD1"
+  ],
+  "tris": [
+   1516,
+   486
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Prop_KeiTruck_Empty_Bed",
+   "COL_Prop_KeiTruck_Empty_Cab"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Prop_KeiTruck_Nets": {
+  "fbx": "props/SM_Prop_KeiTruck_Nets.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Prop_KeiTruck_Nets_LOD0",
+   "SM_Prop_KeiTruck_Nets_LOD1",
+   "SM_Prop_KeiTruck_Nets_Shop_LOD0",
+   "SM_Prop_KeiTruck_Nets_Shop_LOD1"
+  ],
+  "tris": [
+   2150,
+   796
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Prop_KeiTruck_Nets_Bed",
+   "COL_Prop_KeiTruck_Nets_Cab"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Prop_KeiTruck_Straw": {
+  "fbx": "props/SM_Prop_KeiTruck_Straw.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Prop_KeiTruck_Straw_LOD0",
+   "SM_Prop_KeiTruck_Straw_LOD1",
+   "SM_Prop_KeiTruck_Straw_Shop_LOD0",
+   "SM_Prop_KeiTruck_Straw_Shop_LOD1"
+  ],
+  "tris": [
+   3654,
+   1988
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Prop_KeiTruck_Straw_Bed",
+   "COL_Prop_KeiTruck_Straw_Cab"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
  "RecycleBins": {
   "fbx": "props/SM_RecycleBins.fbx",
   "class": "props",
@@ -6349,6 +6449,171 @@
   "switchable": [],
   "attach": []
  },
+ "Tokyo_Cinema_Ginga_24": {
+  "fbx": "buildings/SM_Tokyo_Cinema_Ginga_24.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Cinema_Ginga_24_LOD0",
+   "SM_Tokyo_Cinema_Ginga_24_LOD1",
+   "SM_Tokyo_Cinema_Ginga_24_LOD2",
+   "SM_Tokyo_Cinema_Ginga_24_Shop_LOD0",
+   "SM_Tokyo_Cinema_Ginga_24_Shop_LOD1"
+  ],
+  "tris": [
+   250,
+   160,
+   50
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Cinema_Ginga_24"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Cinema_Ginga_24_Entrance",
+    "pos": [
+     0.0,
+     -8.8,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Cinema_Ginga_34": {
+  "fbx": "buildings/SM_Tokyo_Cinema_Ginga_34.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Cinema_Ginga_34_LOD0",
+   "SM_Tokyo_Cinema_Ginga_34_LOD1",
+   "SM_Tokyo_Cinema_Ginga_34_LOD2",
+   "SM_Tokyo_Cinema_Ginga_34_Shop_LOD0",
+   "SM_Tokyo_Cinema_Ginga_34_Shop_LOD1"
+  ],
+  "tris": [
+   292,
+   202,
+   74
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Cinema_Ginga_34"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Cinema_Ginga_34_Entrance",
+    "pos": [
+     0.0,
+     -9.771,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Hotel_Biz_34": {
+  "fbx": "buildings/SM_Tokyo_Hotel_Biz_34.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Hotel_Biz_34_LOD0",
+   "SM_Tokyo_Hotel_Biz_34_LOD1",
+   "SM_Tokyo_Hotel_Biz_34_LOD2",
+   "SM_Tokyo_Hotel_Biz_34_Shop_LOD0",
+   "SM_Tokyo_Hotel_Biz_34_Shop_LOD1"
+  ],
+  "tris": [
+   410,
+   216,
+   82
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Hotel_Biz_34"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Hotel_Biz_34_Entrance",
+    "pos": [
+     0.0,
+     -9.314,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Hotel_City_45": {
+  "fbx": "buildings/SM_Tokyo_Hotel_City_45.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Hotel_City_45_LOD0",
+   "SM_Tokyo_Hotel_City_45_LOD1",
+   "SM_Tokyo_Hotel_City_45_LOD2",
+   "SM_Tokyo_Hotel_City_45_Shop_LOD0",
+   "SM_Tokyo_Hotel_City_45_Shop_LOD1",
+   "SM_Tokyo_Hotel_City_45_Shop_LOD2"
+  ],
+  "tris": [
+   484,
+   274,
+   114
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Hotel_City_45"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Hotel_City_45_Entrance",
+    "pos": [
+     0.0,
+     -11.143,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
  "Tokyo_Konbini_3F": {
   "fbx": "buildings/SM_Tokyo_Konbini_3F.fbx",
   "class": "buildings",
@@ -6489,6 +6754,124 @@
      1.0
     ],
     "range": 6.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Market_A": {
+  "fbx": "buildings/SM_Tokyo_Market_A.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Market_A_Frame_LOD0",
+   "SM_Tokyo_Market_A_Frame_LOD1",
+   "SM_Tokyo_Market_A_LOD0",
+   "SM_Tokyo_Market_A_LOD1",
+   "SM_Tokyo_Market_A_Shop_LOD0",
+   "SM_Tokyo_Market_A_Shop_LOD1"
+  ],
+  "tris": [
+   220,
+   142
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas",
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Market_A_Back",
+   "COL_Tokyo_Market_A_L",
+   "COL_Tokyo_Market_A_R",
+   "COL_Tokyo_Market_A_Roof"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Market_A_Aisle",
+    "pos": [
+     0.0,
+     0.0,
+     6.6
+    ],
+    "color": [
+     1.0,
+     0.8,
+     0.55
+    ],
+    "range": 10.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Market_A_Gate",
+    "pos": [
+     0.0,
+     -7.0,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.6,
+     0.35
+    ],
+    "range": 7.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Market_B": {
+  "fbx": "buildings/SM_Tokyo_Market_B.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Market_B_Frame_LOD0",
+   "SM_Tokyo_Market_B_Frame_LOD1",
+   "SM_Tokyo_Market_B_LOD0",
+   "SM_Tokyo_Market_B_LOD1",
+   "SM_Tokyo_Market_B_Shop_LOD0",
+   "SM_Tokyo_Market_B_Shop_LOD1"
+  ],
+  "tris": [
+   340,
+   212
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas",
+   "M_Tokyo_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Market_B_Back",
+   "COL_Tokyo_Market_B_L",
+   "COL_Tokyo_Market_B_R",
+   "COL_Tokyo_Market_B_Roof"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Market_B_Aisle",
+    "pos": [
+     0.0,
+     0.0,
+     9.2
+    ],
+    "color": [
+     1.0,
+     0.8,
+     0.55
+    ],
+    "range": 10.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Market_B_Gate",
+    "pos": [
+     0.0,
+     -6.0,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.6,
+     0.35
+    ],
+    "range": 7.0
    }
   ],
   "switchable": [],
@@ -6782,6 +7165,1785 @@
   "switchable": [],
   "attach": []
  },
+ "Tokyo_Tower_Hotel_105": {
+  "fbx": "buildings/SM_Tokyo_Tower_Hotel_105.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Hotel_105_LOD0",
+   "SM_Tokyo_Tower_Hotel_105_LOD1",
+   "SM_Tokyo_Tower_Hotel_105_LOD2",
+   "SM_Tokyo_Tower_Hotel_105_Shop_LOD0",
+   "SM_Tokyo_Tower_Hotel_105_Shop_LOD1",
+   "SM_Tokyo_Tower_Hotel_105_Shop_LOD2"
+  ],
+  "tris": [
+   822,
+   436,
+   266
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Hotel_105"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_105_Aviation0",
+    "pos": [
+     -11.2,
+     -9.371,
+     105.6
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_105_Aviation1",
+    "pos": [
+     -11.2,
+     9.371,
+     105.6
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_105_Aviation2",
+    "pos": [
+     11.2,
+     -9.371,
+     105.6
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_105_Aviation3",
+    "pos": [
+     11.2,
+     9.371,
+     105.6
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_105_Aviation4",
+    "pos": [
+     -11.2,
+     -9.371,
+     57.4
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_105_Aviation5",
+    "pos": [
+     -11.2,
+     9.371,
+     57.4
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_105_Aviation6",
+    "pos": [
+     11.2,
+     -9.371,
+     57.4
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_105_Aviation7",
+    "pos": [
+     11.2,
+     9.371,
+     57.4
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_105_Entrance",
+    "pos": [
+     0.0,
+     -12.971,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Hotel_60": {
+  "fbx": "buildings/SM_Tokyo_Tower_Hotel_60.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Hotel_60_LOD0",
+   "SM_Tokyo_Tower_Hotel_60_LOD1",
+   "SM_Tokyo_Tower_Hotel_60_LOD2",
+   "SM_Tokyo_Tower_Hotel_60_Shop_LOD0",
+   "SM_Tokyo_Tower_Hotel_60_Shop_LOD1"
+  ],
+  "tris": [
+   552,
+   314,
+   146
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Hotel_60"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_60_Aviation0",
+    "pos": [
+     -6.914,
+     -8.743,
+     60.4
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_60_Aviation1",
+    "pos": [
+     -6.914,
+     8.743,
+     60.4
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_60_Aviation2",
+    "pos": [
+     6.914,
+     -8.743,
+     60.4
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_60_Aviation3",
+    "pos": [
+     6.914,
+     8.743,
+     60.4
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_60_Entrance",
+    "pos": [
+     0.0,
+     -11.143,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Hotel_80": {
+  "fbx": "buildings/SM_Tokyo_Tower_Hotel_80.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Hotel_80_LOD0",
+   "SM_Tokyo_Tower_Hotel_80_LOD1",
+   "SM_Tokyo_Tower_Hotel_80_LOD2",
+   "SM_Tokyo_Tower_Hotel_80_Shop_LOD0",
+   "SM_Tokyo_Tower_Hotel_80_Shop_LOD1",
+   "SM_Tokyo_Tower_Hotel_80_Shop_LOD2"
+  ],
+  "tris": [
+   672,
+   410,
+   202
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Hotel_80"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_80_Aviation0",
+    "pos": [
+     -7.743,
+     -11.4,
+     80.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_80_Aviation1",
+    "pos": [
+     -7.743,
+     11.4,
+     80.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_80_Aviation2",
+    "pos": [
+     7.743,
+     -11.4,
+     80.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_80_Aviation3",
+    "pos": [
+     7.743,
+     11.4,
+     80.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Hotel_80_Entrance",
+    "pos": [
+     0.0,
+     -14.8,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Mansion_110": {
+  "fbx": "buildings/SM_Tokyo_Tower_Mansion_110.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Mansion_110_LOD0",
+   "SM_Tokyo_Tower_Mansion_110_LOD1",
+   "SM_Tokyo_Tower_Mansion_110_LOD2",
+   "SM_Tokyo_Tower_Mansion_110_Shop_LOD0",
+   "SM_Tokyo_Tower_Mansion_110_Shop_LOD1"
+  ],
+  "tris": [
+   3566,
+   2048,
+   590
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Mansion_110"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_110_Aviation0",
+    "pos": [
+     -13.771,
+     -13.771,
+     115.0
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_110_Aviation1",
+    "pos": [
+     -13.771,
+     13.771,
+     115.0
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_110_Aviation2",
+    "pos": [
+     13.771,
+     -13.771,
+     115.0
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_110_Aviation3",
+    "pos": [
+     13.771,
+     13.771,
+     115.0
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_110_Aviation4",
+    "pos": [
+     -13.771,
+     -13.771,
+     58.5
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_110_Aviation5",
+    "pos": [
+     -13.771,
+     13.771,
+     58.5
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_110_Aviation6",
+    "pos": [
+     13.771,
+     -13.771,
+     58.5
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_110_Aviation7",
+    "pos": [
+     13.771,
+     13.771,
+     58.5
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_110_Entrance",
+    "pos": [
+     0.0,
+     -16.171,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Mansion_48": {
+  "fbx": "buildings/SM_Tokyo_Tower_Mansion_48.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Mansion_48_LOD0",
+   "SM_Tokyo_Tower_Mansion_48_LOD1",
+   "SM_Tokyo_Tower_Mansion_48_LOD2",
+   "SM_Tokyo_Tower_Mansion_48_Shop_LOD0",
+   "SM_Tokyo_Tower_Mansion_48_Shop_LOD1"
+  ],
+  "tris": [
+   1012,
+   628,
+   122
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Mansion_48"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_48_Entrance",
+    "pos": [
+     0.0,
+     -9.086,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Mansion_75": {
+  "fbx": "buildings/SM_Tokyo_Tower_Mansion_75.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Mansion_75_LOD0",
+   "SM_Tokyo_Tower_Mansion_75_LOD1",
+   "SM_Tokyo_Tower_Mansion_75_LOD2",
+   "SM_Tokyo_Tower_Mansion_75_Shop_LOD0",
+   "SM_Tokyo_Tower_Mansion_75_Shop_LOD1"
+  ],
+  "tris": [
+   1430,
+   828,
+   186
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Mansion_75"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_75_Aviation0",
+    "pos": [
+     -10.937,
+     -9.52,
+     77.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_75_Aviation1",
+    "pos": [
+     -10.937,
+     9.52,
+     77.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_75_Aviation2",
+    "pos": [
+     10.937,
+     -9.52,
+     77.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_75_Aviation3",
+    "pos": [
+     10.937,
+     9.52,
+     77.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_75_Entrance",
+    "pos": [
+     0.0,
+     -11.92,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Mansion_90": {
+  "fbx": "buildings/SM_Tokyo_Tower_Mansion_90.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Mansion_90_LOD0",
+   "SM_Tokyo_Tower_Mansion_90_LOD1",
+   "SM_Tokyo_Tower_Mansion_90_LOD2",
+   "SM_Tokyo_Tower_Mansion_90_Shop_LOD0",
+   "SM_Tokyo_Tower_Mansion_90_Shop_LOD1"
+  ],
+  "tris": [
+   2928,
+   1704,
+   478
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Mansion_90"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_90_Aviation0",
+    "pos": [
+     -10.937,
+     -10.937,
+     93.3
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_90_Aviation1",
+    "pos": [
+     -10.937,
+     10.937,
+     93.3
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_90_Aviation2",
+    "pos": [
+     10.937,
+     -10.937,
+     93.3
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_90_Aviation3",
+    "pos": [
+     10.937,
+     10.937,
+     93.3
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mansion_90_Entrance",
+    "pos": [
+     0.0,
+     -13.337,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Mixed_Glass_58": {
+  "fbx": "buildings/SM_Tokyo_Tower_Mixed_Glass_58.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Mixed_Glass_58_LOD0",
+   "SM_Tokyo_Tower_Mixed_Glass_58_LOD1",
+   "SM_Tokyo_Tower_Mixed_Glass_58_LOD2",
+   "SM_Tokyo_Tower_Mixed_Glass_58_Shop_LOD0",
+   "SM_Tokyo_Tower_Mixed_Glass_58_Shop_LOD1",
+   "SM_Tokyo_Tower_Mixed_Glass_58_Signs_LOD0",
+   "SM_Tokyo_Tower_Mixed_Glass_58_Signs_LOD1"
+  ],
+  "tris": [
+   306,
+   216,
+   122
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas",
+   "M_TokyoSigns_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Mixed_Glass_58"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Mixed_Glass_58_Entrance",
+    "pos": [
+     0.0,
+     -9.619,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Mixed_Ribbon_62": {
+  "fbx": "buildings/SM_Tokyo_Tower_Mixed_Ribbon_62.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Mixed_Ribbon_62_LOD0",
+   "SM_Tokyo_Tower_Mixed_Ribbon_62_LOD1",
+   "SM_Tokyo_Tower_Mixed_Ribbon_62_LOD2",
+   "SM_Tokyo_Tower_Mixed_Ribbon_62_Shop_LOD0",
+   "SM_Tokyo_Tower_Mixed_Ribbon_62_Shop_LOD1",
+   "SM_Tokyo_Tower_Mixed_Ribbon_62_Signs_LOD0",
+   "SM_Tokyo_Tower_Mixed_Ribbon_62_Signs_LOD1"
+  ],
+  "tris": [
+   380,
+   250,
+   138
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas",
+   "M_TokyoSigns_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Mixed_Ribbon_62"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Mixed_Ribbon_62_Aviation0",
+    "pos": [
+     -5.749,
+     -9.223,
+     60.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mixed_Ribbon_62_Aviation1",
+    "pos": [
+     -5.749,
+     9.223,
+     60.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mixed_Ribbon_62_Aviation2",
+    "pos": [
+     5.749,
+     -9.223,
+     60.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mixed_Ribbon_62_Aviation3",
+    "pos": [
+     5.749,
+     9.223,
+     60.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mixed_Ribbon_62_Entrance",
+    "pos": [
+     0.0,
+     -12.423,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Mixed_Tile_45": {
+  "fbx": "buildings/SM_Tokyo_Tower_Mixed_Tile_45.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Mixed_Tile_45_LOD0",
+   "SM_Tokyo_Tower_Mixed_Tile_45_LOD1",
+   "SM_Tokyo_Tower_Mixed_Tile_45_LOD2",
+   "SM_Tokyo_Tower_Mixed_Tile_45_Shop_LOD0",
+   "SM_Tokyo_Tower_Mixed_Tile_45_Shop_LOD1",
+   "SM_Tokyo_Tower_Mixed_Tile_45_Signs_LOD0",
+   "SM_Tokyo_Tower_Mixed_Tile_45_Signs_LOD1"
+  ],
+  "tris": [
+   266,
+   192,
+   106
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas",
+   "M_TokyoSigns_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Mixed_Tile_45"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Mixed_Tile_45_Entrance",
+    "pos": [
+     0.0,
+     -8.8,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Mixed_Tile_70": {
+  "fbx": "buildings/SM_Tokyo_Tower_Mixed_Tile_70.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Mixed_Tile_70_LOD0",
+   "SM_Tokyo_Tower_Mixed_Tile_70_LOD1",
+   "SM_Tokyo_Tower_Mixed_Tile_70_LOD2",
+   "SM_Tokyo_Tower_Mixed_Tile_70_Shop_LOD0",
+   "SM_Tokyo_Tower_Mixed_Tile_70_Shop_LOD1",
+   "SM_Tokyo_Tower_Mixed_Tile_70_Shop_LOD2",
+   "SM_Tokyo_Tower_Mixed_Tile_70_Signs_LOD0",
+   "SM_Tokyo_Tower_Mixed_Tile_70_Signs_LOD1"
+  ],
+  "tris": [
+   564,
+   434,
+   306
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas",
+   "M_TokyoSigns_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Mixed_Tile_70"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Mixed_Tile_70_Aviation0",
+    "pos": [
+     -6.371,
+     -9.286,
+     69.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mixed_Tile_70_Aviation1",
+    "pos": [
+     -6.371,
+     9.286,
+     69.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mixed_Tile_70_Aviation2",
+    "pos": [
+     6.371,
+     -9.286,
+     69.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mixed_Tile_70_Aviation3",
+    "pos": [
+     6.371,
+     9.286,
+     69.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Mixed_Tile_70_Entrance",
+    "pos": [
+     0.0,
+     -12.686,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Office_Blue_150": {
+  "fbx": "buildings/SM_Tokyo_Tower_Office_Blue_150.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Office_Blue_150_LOD0",
+   "SM_Tokyo_Tower_Office_Blue_150_LOD1",
+   "SM_Tokyo_Tower_Office_Blue_150_LOD2",
+   "SM_Tokyo_Tower_Office_Blue_150_Shop_LOD0",
+   "SM_Tokyo_Tower_Office_Blue_150_Shop_LOD1",
+   "SM_Tokyo_Tower_Office_Blue_150_Shop_LOD2"
+  ],
+  "tris": [
+   1862,
+   1126,
+   702
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Office_Blue_150"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Blue_150_Aviation0",
+    "pos": [
+     -13.91,
+     -13.91,
+     149.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Blue_150_Aviation1",
+    "pos": [
+     -13.91,
+     13.91,
+     149.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Blue_150_Aviation2",
+    "pos": [
+     13.91,
+     -13.91,
+     149.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Blue_150_Aviation3",
+    "pos": [
+     13.91,
+     13.91,
+     149.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Blue_150_Aviation4",
+    "pos": [
+     -19.41,
+     -19.41,
+     77.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Blue_150_Aviation5",
+    "pos": [
+     -19.41,
+     19.41,
+     77.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Blue_150_Aviation6",
+    "pos": [
+     19.41,
+     -19.41,
+     77.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Blue_150_Aviation7",
+    "pos": [
+     19.41,
+     19.41,
+     77.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Blue_150_Mast",
+    "pos": [
+     0.0,
+     0.0,
+     163.3
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 8.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Blue_150_Entrance",
+    "pos": [
+     0.0,
+     -21.81,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Office_Blue_48": {
+  "fbx": "buildings/SM_Tokyo_Tower_Office_Blue_48.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Office_Blue_48_LOD0",
+   "SM_Tokyo_Tower_Office_Blue_48_LOD1",
+   "SM_Tokyo_Tower_Office_Blue_48_LOD2",
+   "SM_Tokyo_Tower_Office_Blue_48_Shop_LOD0",
+   "SM_Tokyo_Tower_Office_Blue_48_Shop_LOD1"
+  ],
+  "tris": [
+   494,
+   300,
+   98
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Office_Blue_48"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Blue_48_Entrance",
+    "pos": [
+     0.0,
+     -8.857,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Office_Blue_75": {
+  "fbx": "buildings/SM_Tokyo_Tower_Office_Blue_75.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Office_Blue_75_LOD0",
+   "SM_Tokyo_Tower_Office_Blue_75_LOD1",
+   "SM_Tokyo_Tower_Office_Blue_75_LOD2",
+   "SM_Tokyo_Tower_Office_Blue_75_Shop_LOD0",
+   "SM_Tokyo_Tower_Office_Blue_75_Shop_LOD1"
+  ],
+  "tris": [
+   1162,
+   672,
+   358
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Office_Blue_75"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Blue_75_Aviation0",
+    "pos": [
+     -10.552,
+     -6.743,
+     73.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Blue_75_Aviation1",
+    "pos": [
+     -10.552,
+     6.743,
+     73.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Blue_75_Aviation2",
+    "pos": [
+     10.552,
+     -6.743,
+     73.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Blue_75_Aviation3",
+    "pos": [
+     10.552,
+     6.743,
+     73.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Blue_75_Entrance",
+    "pos": [
+     0.0,
+     -11.143,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Office_Dark_120": {
+  "fbx": "buildings/SM_Tokyo_Tower_Office_Dark_120.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Office_Dark_120_LOD0",
+   "SM_Tokyo_Tower_Office_Dark_120_LOD1",
+   "SM_Tokyo_Tower_Office_Dark_120_LOD2",
+   "SM_Tokyo_Tower_Office_Dark_120_Shop_LOD0",
+   "SM_Tokyo_Tower_Office_Dark_120_Shop_LOD1",
+   "SM_Tokyo_Tower_Office_Dark_120_Shop_LOD2"
+  ],
+  "tris": [
+   1402,
+   846,
+   250
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Office_Dark_120"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Dark_120_Aviation0",
+    "pos": [
+     -13.854,
+     -10.806,
+     121.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Dark_120_Aviation1",
+    "pos": [
+     -13.854,
+     10.806,
+     121.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Dark_120_Aviation2",
+    "pos": [
+     13.854,
+     -10.806,
+     121.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Dark_120_Aviation3",
+    "pos": [
+     13.854,
+     10.806,
+     121.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Dark_120_Aviation4",
+    "pos": [
+     -15.854,
+     -12.806,
+     65.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Dark_120_Aviation5",
+    "pos": [
+     -15.854,
+     12.806,
+     65.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Dark_120_Aviation6",
+    "pos": [
+     15.854,
+     -12.806,
+     65.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Dark_120_Aviation7",
+    "pos": [
+     15.854,
+     12.806,
+     65.8
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Dark_120_Entrance",
+    "pos": [
+     0.0,
+     -15.206,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Office_Dark_90": {
+  "fbx": "buildings/SM_Tokyo_Tower_Office_Dark_90.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Office_Dark_90_LOD0",
+   "SM_Tokyo_Tower_Office_Dark_90_LOD1",
+   "SM_Tokyo_Tower_Office_Dark_90_LOD2",
+   "SM_Tokyo_Tower_Office_Dark_90_Shop_LOD0",
+   "SM_Tokyo_Tower_Office_Dark_90_Shop_LOD1",
+   "SM_Tokyo_Tower_Office_Dark_90_Shop_LOD2"
+  ],
+  "tris": [
+   1174,
+   736,
+   358
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Office_Dark_90"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Dark_90_Aviation0",
+    "pos": [
+     -11.79,
+     -9.759,
+     89.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Dark_90_Aviation1",
+    "pos": [
+     -11.79,
+     9.759,
+     89.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Dark_90_Aviation2",
+    "pos": [
+     11.79,
+     -9.759,
+     89.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Dark_90_Aviation3",
+    "pos": [
+     11.79,
+     9.759,
+     89.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Dark_90_Entrance",
+    "pos": [
+     0.0,
+     -12.159,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Office_Silver_60": {
+  "fbx": "buildings/SM_Tokyo_Tower_Office_Silver_60.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Office_Silver_60_LOD0",
+   "SM_Tokyo_Tower_Office_Silver_60_LOD1",
+   "SM_Tokyo_Tower_Office_Silver_60_LOD2",
+   "SM_Tokyo_Tower_Office_Silver_60_Shop_LOD0",
+   "SM_Tokyo_Tower_Office_Silver_60_Shop_LOD1",
+   "SM_Tokyo_Tower_Office_Silver_60_Shop_LOD2"
+  ],
+  "tris": [
+   658,
+   404,
+   122
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Office_Silver_60"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Silver_60_Aviation0",
+    "pos": [
+     -11.76,
+     -7.417,
+     58.6
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Silver_60_Aviation1",
+    "pos": [
+     -11.76,
+     7.417,
+     58.6
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Silver_60_Aviation2",
+    "pos": [
+     11.76,
+     -7.417,
+     58.6
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Silver_60_Aviation3",
+    "pos": [
+     11.76,
+     7.417,
+     58.6
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Silver_60_Entrance",
+    "pos": [
+     0.0,
+     -9.817,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Tokyo_Tower_Office_Silver_85": {
+  "fbx": "buildings/SM_Tokyo_Tower_Office_Silver_85.fbx",
+  "class": "buildings",
+  "lods": [
+   "SM_Tokyo_Tower_Office_Silver_85_LOD0",
+   "SM_Tokyo_Tower_Office_Silver_85_LOD1",
+   "SM_Tokyo_Tower_Office_Silver_85_LOD2",
+   "SM_Tokyo_Tower_Office_Silver_85_Shop_LOD0",
+   "SM_Tokyo_Tower_Office_Silver_85_Shop_LOD1"
+  ],
+  "tris": [
+   1358,
+   786,
+   358
+  ],
+  "materials": [
+   "M_KosoShop_Atlas",
+   "M_Koso_Atlas"
+  ],
+  "colliders": [
+   "COL_Tokyo_Tower_Office_Silver_85"
+  ],
+  "lights": [
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Silver_85_Aviation0",
+    "pos": [
+     -16.971,
+     -14.366,
+     85.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Silver_85_Aviation1",
+    "pos": [
+     -16.971,
+     14.366,
+     85.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Silver_85_Aviation2",
+    "pos": [
+     16.971,
+     -14.366,
+     85.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Silver_85_Aviation3",
+    "pos": [
+     16.971,
+     14.366,
+     85.2
+    ],
+    "color": [
+     1.0,
+     0.1,
+     0.05
+    ],
+    "range": 6.0
+   },
+   {
+    "name": "LIGHT_Tokyo_Tower_Office_Silver_85_Entrance",
+    "pos": [
+     0.0,
+     -16.766,
+     4.0
+    ],
+    "color": [
+     1.0,
+     0.75,
+     0.5
+    ],
+    "range": 9.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
  "Tokyo_Zakkyo_5F": {
   "fbx": "buildings/SM_Tokyo_Zakkyo_5F.fbx",
   "class": "buildings",
@@ -6947,6 +9109,52 @@
    "LENS_Ped_Green_Ped",
    "LENS_Ped_Red_Ped"
   ],
+  "attach": []
+ },
+ "Tree_Kaki": {
+  "fbx": "vegetation/SM_Tree_Kaki.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Tree_Kaki_LOD0",
+   "SM_Tree_Kaki_LOD1",
+   "SM_Tree_Kaki_LOD2"
+  ],
+  "tris": [
+   4230,
+   1034,
+   48
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [
+   "COL_Tree_Kaki"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tree_Kaki_Bare": {
+  "fbx": "vegetation/SM_Tree_Kaki_Bare.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Tree_Kaki_Bare_LOD0",
+   "SM_Tree_Kaki_Bare_LOD1",
+   "SM_Tree_Kaki_Bare_LOD2"
+  ],
+  "tris": [
+   3199,
+   682,
+   48
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [
+   "COL_Tree_Kaki_Bare"
+  ],
+  "lights": [],
+  "switchable": [],
   "attach": []
  },
  "Tree_Matsu_Aka": {
@@ -7220,6 +9428,29 @@
   ],
   "colliders": [
    "COL_Tree_Take_Grove"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Tree_Yanagi": {
+  "fbx": "vegetation/SM_Tree_Yanagi.fbx",
+  "class": "vegetation",
+  "lods": [
+   "SM_Tree_Yanagi_LOD0",
+   "SM_Tree_Yanagi_LOD1",
+   "SM_Tree_Yanagi_LOD2"
+  ],
+  "tris": [
+   1854,
+   826,
+   48
+  ],
+  "materials": [
+   "M_Flora_Atlas"
+  ],
+  "colliders": [
+   "COL_Tree_Yanagi"
   ],
   "lights": [],
   "switchable": [],

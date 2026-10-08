@@ -218,7 +218,7 @@ def curtain(t, cu, reg, lod):
     rnd = random.Random(cu['seed'])
     u0, v0, u1, v1 = reg['uv']
     top, L, w = Vector(cu['top']), cu['length'], cu['width']
-    n = max(1, round(L / (w * 1.3)))
+    n = max(1, round(L / (w * cu.get('aspect', 1.3))))     # card height / width (willow strands: 5)
     h = L / n
     a0 = rnd.uniform(0, math.pi)
     out = []

@@ -397,6 +397,51 @@ def card_ajisai(leaf='#3f6a2c', flowers=('#5f7fc8', '#7c70c4', '#9a7ac8', '#b6c0
     return gen
 
 
+def card_kaki(leaf=(('#3d5a26', 3), ('#4a6a2c', 2), ('#5a7a30', 1), ('#a8582a', 0.4)), fruits=2):
+    """Persimmon (kaki) in autumn: broad glossy oval leaves (some already
+    turning orange) and the flattened orange fruits with their dark four-
+    lobed calyx, hanging in the leaves."""
+    base = card_leaves(list(leaf), n=48, size=(0.2, 0.12), rib=0.22, lit=0.28, power=0.65, twigs=5)
+
+    def gen(w, h, rng):
+        o = base(w, h, rng)
+        c = _Card(w, h)
+        c.rgb, c.a, c.sm = o['rgb'].copy(), o['alpha'].copy(), np.where(o['alpha'] > 0, 0.35, 0.0)
+        for p in _blob_points(rng, w, h, fruits, 0.36, 0.36, 0.5):
+            r = rng.uniform(0.12, 0.145) * w
+            col = srgb('#e8701a') * rng.uniform(0.9, 1.08)
+            c.stamp(p[0], p[1], 0, r, r * 0.86, _ellipse, col, 1.0, lit=0.25, smooth=0.6)
+            c.stamp(p[0] - r * 0.18, p[1] + r * 0.16, 0, r * 0.32, r * 0.22, _ellipse, srgb('#ffb060'), 1.0, lit=0.0, smooth=0.7)
+            c.stamp(p[0], p[1] + r * 0.4, rng.uniform(0, 6.3), r * 0.42, r * 0.42, _flower(4, srgb('#2e3a1c'), notch=False),
+                    srgb('#3a4a22'), 1.0, lit=0.05)
+        return c.finish(0.3)
+    return gen
+
+
+def card_yanagi(cols=('#8fb04a', '#a3c05a', '#7aa03e', '#b4c870'), strands=7):
+    """Weeping willow (yanagi): long thin twigs hanging from the top of the
+    (tall, narrow) card, set with narrow pale leaves the whole way down."""
+    def gen(w, h, rng):
+        c = _Card(w, h)
+        for i in range(strands):
+            x = (i + rng.uniform(0.2, 0.8)) / strands * w
+            p = np.array([x, h - 2.0]); a = -math.pi / 2 + rng.uniform(-0.08, 0.08)
+            L = rng.uniform(0.8, 0.98) * h
+            n = 24
+            for k in range(n):
+                a += rng.uniform(-0.05, 0.05)
+                q = p + L / n * np.array([math.cos(a), math.sin(a)])
+                c.line(p, q, 0.9, srgb('#5a5a2a'))
+                for sg in (-1, 1):
+                    lf = q + sg * np.array([rng.uniform(1.0, 2.5), 0])
+                    ll = rng.uniform(0.09, 0.13) * w * 1.6
+                    c.stamp(lf[0], lf[1] - ll * 0.3, -math.pi / 2 + sg * rng.uniform(0.15, 0.4), ll, ll * 0.16, _lance,
+                            srgb(cols[rng.integers(len(cols))]), rng.uniform(0.85, 1.1), lit=0.15, smooth=0.3)
+                p = q
+        return c.finish(0.25)
+    return gen
+
+
 def dense(card_gen, bg):
     """Opaque foliage tile for the crown cores: the same leaves as the card,
     painted over a dark background of the same plant (no alpha). A flat
@@ -488,4 +533,22 @@ def layout():
             ('BARK_SAKURA',  bark_smooth('#4a3634', lenticels='#8a7a6e', lichen=0.25)),
             ('BARK_TAKE',    bark_bamboo())]):
         reg[name] = _strip(736 + 48 * i, 48, gen, ppm=64)
+    # task 5c: persimmon (kaki) and weeping willow (yanagi) in the free slots,
+    # each with its own seed so the approved regions keep their pixels
+    new = {
+        'CARD_KAKI':    _rect(800, 320, CARD, CARD, card_kaki()),
+        'DENSE_KAKI':   _rect(720, 400, 80, 80, dense(card_kaki(fruits=1), '#24381a')),
+        'CARD_YANAGI':  _rect(960, 0, 64, 320, card_yanagi()),
+        'DENSE_YANAGI': _rect(960, 320, 64, 64, dense(card_yanagi(strands=5), '#3a5420')),
+    }
+    new.update(_cells([
+        ('FAR_KAKI',      flat('#3c5426', 0.25, dirt=0.3)),
+        ('FAR_KAKI_BARE', flat('#5e4a3a', 0.2, dirt=0.3)),
+        ('FAR_YANAGI',    flat('#78964a', 0.25, dirt=0.3)),
+        ('FRUIT_KAKI',    flat('#e2681a', 0.55, dirt=0.05)),
+        ('CALYX',         flat('#3a4a22', 0.3, dirt=0.0)),
+    ], 17 * 64 % 1024, 480 + 32, 16, 64, 32))
+    for k, (name, r) in enumerate(new.items()):
+        r['seed'] = 5300 + k
+        reg[name] = r
     return reg

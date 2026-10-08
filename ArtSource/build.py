@@ -2,6 +2,7 @@
 
     import sys; sys.path.insert(0, '<repo>/ArtSource')
     import build; build.run(['stone_lantern'])          # or build.run() for all
+    build.run(['trees:Kaki,Yanagi'])                    # only some assets of a module
 
 Each asset module: KLASS, NAME, build() -> (collection, [LOD meshes]),
 optional PREVIEW_VIEWS / preview(col) for a custom shot."""
@@ -42,6 +43,9 @@ ASSETS = {
     'machi': 'buildings.machi',
     'koedo_landmarks': 'buildings.koedo_landmarks',
     'mill': 'buildings.mill',
+    'koso': 'buildings.koso',
+    'shotengai': 'buildings.shotengai',
+    'kei_truck': 'props.kei_truck',
 }
 
 # 3/4 front in the mood light, 3/4 front neutral, 3/4 back neutral (same as
@@ -53,8 +57,8 @@ CLAY = [('clay', (1.0, -1.7, 0.6), 'clay'), ('clay back', (-1.2, 1.5, 0.7), 'cla
 
 
 def _reload():
-    import kit, kit.atlas_flora, kit.atlas_scatter, kit.atlas_machi, kit.atlas, kit.core, kit.preview, kit.organic
-    for m in (kit.atlas_flora, kit.atlas_scatter, kit.atlas_machi, kit.atlas, kit.core, kit.preview, kit.organic):
+    import kit, kit.atlas_flora, kit.atlas_scatter, kit.atlas_machi, kit.atlas_koso, kit.atlas, kit.core, kit.preview, kit.organic
+    for m in (kit.atlas_flora, kit.atlas_scatter, kit.atlas_machi, kit.atlas_koso, kit.atlas, kit.core, kit.preview, kit.organic):
         importlib.reload(m)
     for name in [n for n in sys.modules if n.endswith('_kit')]:   # shared style kits (buildings/tokyo_kit)
         importlib.reload(sys.modules[name])
@@ -110,10 +114,13 @@ def run(names=None, preview=True, export=True):
     POLYS.clear()
     for key in names or list(ASSETS):
         t = time.time()
+        # 'trees:Kaki,Yanagi' builds only those of a module: the others are not
+        # re-exported (an unchanged FBX of another task changes its bytes)
+        key, _, only = key.partition(':')
         try:
             mod = importlib.reload(importlib.import_module(ASSETS[key]))
             K.STRETCH.clear()
-            results = mod.build()
+            results = mod.build(only.split(',')) if only else mod.build()
             if K.STRETCH:  # a strip used on a surface taller than the strip
                 out.append(f'  WARN stretched strips: {sorted(set(K.STRETCH))}')
             if isinstance(results, tuple):

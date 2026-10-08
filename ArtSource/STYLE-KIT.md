@@ -42,7 +42,7 @@ Abnutzung. Ein Material je Baustil. **Prüfstein:** Im Grau-Bild ohne Textur
   Fahrräder), `Nature` (Felsen, Laub, Erde, Töpfe — später Vegetation;
   nur deckend, Blatt-Karten mit Alpha brauchen in Aufgabe 4 ein eigenes
   Material), `Kura`, `Tokyo` (Fliesen- und ALC-Wände, Konbini, Schilder,
-  Neon), `TokyoSigns`, `Koedo` + `KoedoShop`, `Kiso` + `KisoShop`, `Gassho` + `GasshoShop`, `Minato` + `MinatoShop`, `Tera` + `TeraShop`, `Machi` + `MachiShop` (moderne Stadt). Neuer Baustil = neuer Atlas,
+  Neon), `TokyoSigns`, `Koedo` + `KoedoShop`, `Kiso` + `KisoShop`, `Gassho` + `GasshoShop`, `Minato` + `MinatoShop`, `Tera` + `TeraShop`, `Machi` + `MachiShop` (moderne Stadt), `Koso` + `KosoShop` (Hochhäuser, Kino/Hotel/Markt, Kei-Truck). Neuer Baustil = neuer Atlas,
   aber erst prüfen, ob ein vorhandener passt (Izakaya = Minato, Brauerei = Koedo).
   Ausnahme Vegetation: `Flora` mit Alpha im BaseColor und **einem**
   Cutout-Material `M_Flora_Atlas` (Stamm, Laub und Fernstufe zusammen).
@@ -412,6 +412,11 @@ Schnitthecken-Streifen, Zellen für Fernstufe, Seil, Papier, Stützen.
   Mōsō-Bambus, Karikomi-Azalee, Ajisai, Kumazasa.
 - **Grau-Test:** Objekte mit Eigenschaft `cutout` behalten im Grau-Bild
   das Laub-Alpha (`P._clay`).
+- **Kaki und Weide (5c):** Kaki mit Laub (Karte mit Früchten + Früchte als
+  Geometrie) und kahl mit Zickzack-Zweigen und Früchten; Hängeweide mit
+  Vorhängen aus schmalen hohen Karten (`aspect` 5 in `curtain`). Neue Felder
+  in einem freigegebenen Atlas bekommen einen eigenen `seed` — die alten
+  bleiben pixelgleich (`atlas.build_maps`).
 - **Bilder:** `trees.shots(ordner)` — Bergschrein (Tera) im Zedernwald,
   Tempelgarten, Kirschallee, Bambusweg, Reihen, LOD-Vergleich, Nahaufnahmen.
 
@@ -460,6 +465,38 @@ Anbau) und Koedo (`C`, Schild, Noren, Laterne, Nobori, Innenbild).
   Prüfung `PARCEL`: nichts ragt über die Parzelle.
 - **Anlagen aus mehreren Häusern** (Brauerei): `koedo_landmarks._merge`
   hängt fertige BMesh an; Ausstattung immer mit verschieben.
+
+## Koso-Bausatz (Tokyo-Hochhäuser, Kino, Hotel, Markthalle, ab 2026-10-09)
+
+`buildings/koso.py` (Türme und Fronten als Daten `TOWERS`), `buildings/shotengai.py`
+(Markthalle), `props/kei_truck.py`; Atlas `kit/atlas_koso.py`, Grafiken
+`kit/graphics_koso.mjs`, Bilder `buildings/shots_5c.py`.
+- **Fassade als Geschoss-Streifen:** jeder Streifen ist **ein Geschoss**
+  hoch (`FLOORS`: Geschosshöhe, Fenstermodule je 1024 px). Jedes Geschoss je
+  Seite ist ein Viereck mit eigenem Versatz in **ganzen Modulen**
+  (`strip_map`): Fenster fluchten, Licht wiederholt sich nie, Höhe kostet
+  8 Dreiecke je Geschoss und Seite. Fassaden mit eingebautem Fensterlicht
+  (Emission je Modul, in Läufen wie in echten Büros), Vorhänge bei Hotel und
+  Wohnung.
+- **Form statt Raster:** Rücksprünge, Fasen-Ecken (mit LED-Band), Lamellen /
+  Pilaster als Geometrie, Technikgeschosse (Gitter 0,9 m zurück), Balkonbänder
+  der Tower-Mansion (Platte + Milchglas, innen + außen), Sockel und Krone.
+- **Japanisch, Pflicht:** H (Heliport) oder R (Rettungsfläche) auf jedem
+  Dach über 31 m, rote Flugwarnlichter ab 60 m (Mittelring ab 100 m),
+  Fassadenkran (Gondel), Urethan-grünes Dach, Technikgitter, 公開空地-Säulengang
+  mit Bänken und Kübeln, Namensstein, 定礎-Tafel, Feuerwehr-Einspeisung (送水口),
+  Ladeseite mit Rolltoren; Tower-Mansion mit offenem Kronenrahmen; Hotel mit
+  Vorfahrt unter dem Haus und senkrechtem Namensschild; gemischte Türme mit
+  Schilderhaut (TokyoSigns) am Sockel; Kino mit Marquee und Plakatkästen;
+  shōtengai mit rotem Torbogen, Tonnendach, Fahnen; Kei-Truck mit
+  Torii-Schutzgitter, Seil von Haken zu Haken, schwarzem Kei-Kennzeichen.
+- **Alles auf dem Grundstück:** Eingänge unter dem Haus, vorn höchstens 1 m
+  (senkrechte Schilder ab 7 m Höhe bis 1,9 m); Schilder nie seitlich (dort
+  steht das Nachbarhaus). Das Bauprotokoll B × T × H zeigt Überstände.
+- **LOD2 = Fern-Silhouette:** Schaft mit derselben Fassade, Krone als
+  Gitterband, Kronenschild bleibt.
+- **Vorschau-Dunst** für Fernbilder: `shots_5c.fog` (Emission in
+  Horizontfarbe; Eevee beleuchtet ein Welt-Volumen nicht).
 
 ## Abnutzung
 
@@ -537,6 +574,9 @@ import sys; sys.path.insert(0, '/Users/leandro/Documents/japanMap/ArtSource')
 import importlib, build; importlib.reload(build)
 build.run(['stone_lantern'])   # oder build.run() für alle
 ```
+
+`build.run(['trees:Kaki,Yanagi'])` baut nur einzelne Assets eines Moduls
+(andere FBX bleiben unberührt).
 
 Baut, zählt Dreiecke, meldet die Maße (B × T × H — ein verirrtes Teil fällt
 sofort auf), exportiert nach `exports/<klasse>/`, schreibt Atlanten

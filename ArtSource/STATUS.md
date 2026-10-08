@@ -4,10 +4,94 @@ Plan: [docs/PLAN.md](../docs/PLAN.md), Abschnitt „Asset-Sprint". Regeln:
 [STYLE-KIT.md](STYLE-KIT.md) (verbindlich). Läuft parallel zur Unity-Sitzung,
 nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
-## Wo wir stehen (2026-10-08, Aufgabe 5b)
+## Wo wir stehen (2026-10-09, Aufgabe 5c)
+
+- **Aufgabe 5b — fehlende Gebäude: freigegeben** (Mensch, 2026-10-08).
+- **Aufgabe 5c — Tokyo-Höhe + Rest: Pilot fertig, wartet auf Freigabe.**
+  33 neue FBX, alle nur Dreiecke, **0 verdrehte Flächen** (`K.poly_check`),
+  0 Streck-Warnungen. Keine fremden FBX neu exportiert (neu:
+  `build.run(['trees:Kaki,Yanagi'])` baut nur einzelne Assets eines Moduls).
+- **Neue Atlanten `Koso` + `KosoShop`** (高層 = Hochhaus; Begründung: Turmfassaden
+  brauchen Geschoss-Streifen mit Fensterraster und Licht, das hat kein
+  vorhandener Atlas; Tokyo/Machi/Minato sind voll). `Koso`: 6 Fassaden je ein
+  Geschoss hoch (Glas blau, Glas dunkel mit Lamellen, Hotel-Fertigteil,
+  Tower-Mansion hinter dem Balkon, Fliese braun, Alu-Fensterband), Lobby-Glas
+  6 m, Balkongeländer (Milchglas), Lüftungsgitter, 58 Zellen (auch Kei-Truck).
+  `KosoShop`: Grafiken `kit/graphics_koso.mjs` (KS_*): Kronenschilder, H/R
+  auf dem Dach, 6 Filmplakate, Marquee, Kino-/Hotel-Schilder, shōtengai-Bogen,
+  Fahnen, Ladenschilder, Stände, 定礎-Tafel, Kei-Kennzeichen, Netze.
+- **Flora erweitert** (Kaki, Weide) in freien Feldern; die alten Felder sind
+  **pixelgleich** (gemessen: 0 geänderte Pixel außerhalb der neuen Felder).
+
+### Tokyo-Türme 5c (`buildings/koso.py`, Präfix `SM_Tokyo_Tower_`)
+
+Türme sind Daten (`TOWERS`): Grundriss, Höhe, Fassadenart, Abschnitte
+(Rücksprünge, Fasen-Ecken, andere Fassade im Sockel), Sockel (Lobby mit
+Säulengang / Hotel-Vorfahrt / Läden mit Schilderhaut), Krone (Technik-Gitter,
+H/R-Feld, Kronenschild, Fassadenkran, Mast, Flugwarnlichter) und Startwert.
+**Die Höhe kostet fast nichts:** jedes Geschoss je Seite ist ein Viereck mit
+eigenem Versatz im Fassaden-Streifen (ganze Fenstermodule) — die Fenster
+fluchten, das Lichtmuster wiederholt sich nie. Gemessen: Schaft = 8 Dreiecke
+je Geschoss und Seite (150-m-Turm, 35 Geschosse, 8 Seiten = 560); der Rest
+geht in Sockel, Rücksprünge, Lamellen, Balkonbänder und Krone.
+
+| FBX | Art | B × T × H | Dreiecke LOD0 / LOD1 / LOD2 (+ Schilder/Schilderhaut LOD0) |
+|---|---|---|---|
+| Office_Blue_150 | Büro, Glas blau, 3 Rücksprünge, Fasen-Ecken mit LED, Technikgeschosse, Heliport H, Kronenschild NEO ASTRA, Fassadenkran, Mast (= Scramble-Tower des Prototyps) | 40 × 40 × 149 (Mast 163) | 1 862 / 1 126 / 702 (+30) |
+| Office_Dark_120 | Büro, Glas dunkel mit Lamellen, Rücksprung, Heliport, KAZEMORI | 33 × 26 × 121 | 1 402 / 846 / 250 (+26) |
+| Office_Dark_90 | Büro, Glas dunkel, Fasen, R-Feld, SORANO | 24 × 20 × 89 | 1 174 / 736 / 358 (+30) |
+| Office_Silver_85 / _60 | 80er-Büro, Alu-Fensterband, Lamellen | 35 × 30 × 85 / 24 × 16 × 58 | 1 358 / 786 / 358 · 658 / 404 / 122 |
+| Office_Blue_75 / _48 | Büro, Glas blau (75 mit Rücksprung + LED) | 26 × 18 × 73 / 21 × 14 × 49 | 1 162 / 672 / 358 · 494 / 300 / 98 |
+| Mansion_110 / _90 / _75 / _48 | Tower-Mansion: Balkonbänder rundum (Milchglas), offene Kronen-Rahmen, R-Feld, LED-Ecken (110, 90) | 28² × 111 · 23² × 90 · 23 × 20 × 74 · 17 × 14 × 49 | 3 566 / 2 048 / 590 · 2 928 · 1 430 · 1 012 |
+| Hotel_105 / _80 / _60 | Hotelturm: Fertigteil mit Lochfenstern + Vorhängen, Pilaster, Vorfahrt unter dem Haus, senkrechtes Namensschild, Kronenschild HOTEL MIZUHO | 26 × 22 × 105 · 18 × 26 × 81 · 15 × 18 × 60 | 822 · 672 · 552 (+84) |
+| Mixed_Tile_70 / _45, Mixed_Glass_58, Mixed_Ribbon_62 | gemischt: Ladensockel (Glas), Schilderhaut unten (Querkästen je Geschoss, 2 Schildertürme, Videowand, Aufsteller; Atlas TokyoSigns) | 16 × 21 × 70 · 10 × 14 × 46 · 11 × 15 × 56 · 14 × 21 × 61 | 564 · 266 · 306 · 380 (+ Schilderhaut 1 026–2 476) |
+
+- **Budget:** größter Turm komplett (Bau + Schilder) **3 576** (Mansion_110,
+  Balkonbänder 33 × 32 Dreiecke) — **alle unter 5 000**, keine
+  Wahrzeichen-Ausnahme nötig. Bewusst unter dem 40-%-Ziel: 41 Türme stehen
+  gleichzeitig im Bild, das Fensterraster liegt in der Textur (Auftrag).
+  Grau-Test zeigt deshalb glatte Schäfte — die Form steckt in Rücksprüngen,
+  Fasen, Lamellen, Balkonbändern, Sockel und Krone.
+- **LOD2 = Fern-Silhouette** (10–35 % von LOD0): Schaft mit derselben Fassade,
+  Krone als Gitterband, Kronenschild bleibt (leuchtet aus Kilometern).
+- **Flugwarnlichter:** rote leuchtende Kästen + `LIGHT_*_Aviation*` an den
+  Kronenecken ab 60 m, Mittelring ab 100 m, Mast-Licht (`unity_range` 6–8 m;
+  Blinken ist Sache von Unity).
+- Alles bleibt auf dem Grundstück: Säulengang und Vorfahrt liegen **unter**
+  dem Haus, vorn ragt höchstens 1 m (Pflanzkübel, Schilder, Marquee 1,2 m,
+  senkrechte Schilder 1,7–1,9 m ab 7 m Höhe).
+
+### Fronten 5c (Kino, Hotel, Markthalle)
+
+| FBX | Was | Dreiecke LOD0 / LOD1 (+ Schilder) |
+|---|---|---|
+| Tokyo_Cinema_Ginga_24 / _34 | Kino 銀河座 (10 × 14 × 23 / 13 × 16 × 33): Marquee mit Lauflichtern über den Türen, Kassenfenster, Plakatkästen auf Augenhöhe, **große beleuchtete Plakatkästen** (3 × 4,5 m, Lampen an Armen) über den Saalgeschossen, senkrechtes Schild mit Glühbirnen | 250 / 160 / 50 (+628) · 292 (+740) |
+| Tokyo_Hotel_Biz_34 / _City_45 | Business-Hotel SKY INN 22 / City-Hotel MIZUHO (11 × 15 × 35 / 15 × 18 × 45): **Vorfahrt** unter dem Haus (7 m tief, beleuchtete Decke, Poller, Pflaster), Namensblende, senkrechtes Schild | 410 (+62) · 484 (+82) |
+| Tokyo_Market_A / _B | **Markthalle / shōtengai** (10 × 12 × 7,6 / 12 × 10 × 10,2): roter Torbogen mit Namenstafel ひかり通り商店街, Glühbirnen, Laternen; Tonnendach aus Polycarbonat auf Stahlbögen; Gang mit 6/4 Ständen (Obst, Fisch, Süßes, Haushalt) und Schildern; 2 Straßenstände mit Markise und Kisten; Fahnen und Laternen unter dem Dach; Wohnungen oben (Fenster, Klimageräte) | Wände 220 · 340, Stahl/Dach 934 · 862, Schilder/Stände 382 |
+
+### Bäume und Kei-Truck 5c
+
+| FBX | Was | Dreiecke LOD0 / LOD1 / LOD2 |
+|---|---|---|
+| Tree_Kaki | Kaki mit Laub (Herbst), 8 × 7 m, glänzende Blätter, Früchte auf den Karten + ~20 als Geometrie | 4 230 / 1 034 / 48 |
+| Tree_Kaki_Bare | Kaki kahl im Frühwinter, Zickzack-Zweige, ~40 orange Früchte (das Gassho-Bild) | 3 199 / 682 / 48 |
+| Tree_Yanagi | Hängeweide am Kanal, 10 × 6,6 m, Vorhänge aus langen Zweig-Karten (Seitenverhältnis 1:5) bis fast ans Wasser | 1 854 / 826 / 48 |
+| Prop_KeiTruck_Empty / _Crates / _Nets / _Straw | Kei-Truck (Carry-Typ, ohne Marke) 3,39 × 1,47 × 1,77 m: Kabine als Loft (runde Ecken, eingezogene Seiten), Scheiben, Spiegel, Wischer, Kühlergrill, schwarzes Kei-Kennzeichen, Ladefläche mit 3 Bordwänden (Sicken, Scharniere), **Torii-Schutzgitter**, Seilhaken, Ladung mit Seil im Zickzack von Haken zu Haken (Fischkisten, Netze mit Schwimmern, Reisstroh-Bündel) | 1 516 · 1 812 · 2 150 · 3 654 / 486–1 988 |
+
+Bilder in `previews/`: **`Bau5c_Tokyo.png`** (Straße Augenhöhe, Kreuzung,
+von oben, Ferne im Dunst — Stimmung), `Bau5c_Tokyo_neutral.png` (neutral,
+Grau-Test Straße, oben neutral, LOD-Grau), **`Bau5c_Places.png`** (Weiden am
+Koedo-Kanal, Kaki am Gassho-Hof, Kei-Trucks am Funaura-Kai; je neutral +
+Stimmung), `Bau5c_LODs.png` (LOD0/1/2 von drei Türmen), `Bau5c_Towers.png` /
+`_back` / `_clay` / `_mood` (jeder Turm), `Bau5c_Fronts.png` (Kino, Hotel,
+Markt: vorn, hinten, grau, Stimmung), `Bau5c_Props.png` (Kei-Trucks, Bäume),
+`Bau5c_detail.png` (15 Nahaufnahmen), `Koso_Atlas.png`. Generator der Bilder:
+`buildings/shots_5c.py` (`S5c.shots(ordner)`).
+
+## Davor (2026-10-08, Aufgabe 5b)
 
 - **Aufgabe 5a — Löcher + Streugut: freigegeben** (Mensch, 2026-10-08).
-- **Aufgabe 5b — fehlende Gebäude: Pilot fertig, wartet auf Freigabe.**
+- **Aufgabe 5b — fehlende Gebäude: freigegeben** (Mensch, 2026-10-08).
   17 FBX in `exports/buildings/`, alle nur Dreiecke, **0 verdrehte Flächen**
   (`K.poly_check`), 0 Streck-Warnungen, keine fremden FBX/Texturen geändert.
   Generatoren: `buildings/machi_kit.py` + `buildings/machi.py` (Autohaus,
@@ -519,9 +603,11 @@ Asset-Sitzung" und „Offene Probleme"). Drei Sitzungen, in dieser Reihenfolge:
 - **5b — fehlende Gebäude:** Autohaus Petal Motors, Werkstatt Open Bay,
   Toki-no-Kane-Glockenturm, moderne Wohnhäuser, Brauhalle mit Schornstein,
   Holz-Izakaya für Yokochō-Gassen, Mühlhaus mit Teich und Rinne.
-  **Gebaut, wartet auf Freigabe** (oben).
+  **Freigegeben** (2026-10-08).
 - **5c — Tokyo-Höhe + Rest:** Hochhäuser 40–154 m, Kino-/Hotel-/
   Markthallen-Fronten, Kaki und Weide als Baumarten, Kei-Truck.
+  **Gebaut, wartet auf Freigabe** (oben). Danach ist die Liste aus
+  `docs/STATUS.md` (Stand 2026-10-08) abgearbeitet.
 
 ## Für die Unity-Sitzung: Lichttest (noch offen)
 
@@ -553,24 +639,72 @@ Konventionen:
 
 ## Für dich
 
-1. **Gebäude 5b ansehen** (`previews/Bau5b_Sakura.png`, `Bau5b_Koedo.png`,
-   `Bau5b_Yokocho.png`, `Bau5b_Mill.png` zuerst, dann `Bau5b_detail.png`)
-   und freigeben oder sagen, was nicht passt.
-2. **Budget-Frage:** Glockenturm 6 330 und Brauerei 9 975 Dreiecke (drei
-   Bauten in einem FBX, Halle allein 6 021) — so lassen, oder soll ich
-   kürzen (z. B. Brauerei-Halle ohne Fasen am Dach, Lagerhaus als eigenes
-   FBX)?
-3. **Entscheidungen von mir:** Autohaus-Vordach ragt 1,6 m über die
-   22 × 14-m-Grundfläche (sonst kein Vordach, weil die Stellplätze bis an
-   die Glasfront reichen); die Werkstatt hat **eine** 8-m-Einfahrt (passt
-   auf die 8,8-m-Schürze des Prototyps); Markennamen erfunden
-   (Petal Motors, Open Bay, 小江戸鶴, Sakura Lager, Izakaya-Namen).
-4. Der Unity-Sitzung sagen: „Gebäude 5b aus ArtSource importieren
-   (ArtSource/STATUS.md, Für die Hauptsitzung)" — erst nach deiner Freigabe.
+1. **5c ansehen** (zuerst `previews/Bau5c_Tokyo.png` und `Bau5c_Places.png`,
+   dann `Bau5c_Towers.png`, `Bau5c_Fronts.png`, `Bau5c_Props.png`,
+   `Bau5c_detail.png`) und freigeben oder sagen, was nicht passt.
+2. **Entscheidungen von mir:** 18 Türme + 2 Hotels + 2 Kinos statt 41
+   Einzelmodelle (die Karte hat 211 Häuser über 40 m, davon 36 über 60 m —
+   Unity streckt ±25 % Höhe / ±35 % Breite, die Startwerte sorgen für
+   Abwechslung); Hotel-Vorfahrt und Säulengang **unter** dem Haus statt davor
+   (die Front steht im Spiel auf der Baulinie); erfundene Namen (NEO ASTRA,
+   KAZEMORI, SORANO TOWER, HOTEL MIZUHO, SKY INN 22, Kino 銀河座 mit erfundenen
+   Filmen, ひかり通り商店街, Kennzeichen 舟浦 480); Kaki-/Weidenrinde nutzt die
+   Kiefernrinde `BARK_KURO` (im Flora-Atlas ist kein Streifen mehr frei; beide
+   Rinden sind dunkel und schuppig).
+3. **Vorschlag: neue fehlende Modelle** (aus `docs/STATUS.md`, Stand
+   2026-10-08, nach 5c noch offen) — als Aufgabe 6, Reihenfolge nach Nutzen:
+   - **Needle Circuit:** Tribüne, Boxengebäude, Start-Ziel-Brücke, Reifenstapel
+     (Stapel gibt es als Teil im Machi-Bausatz `tyre_stack`).
+   - **Hochstraße:** geschlossene Brüstungsmauer (Viadukt-Ränder, Stück 4–8 m
+     zum Biegen entlang der Spline wie die Leitplanke).
+   - **Koedo:** 2 Kanalbrücken (passen jetzt zu den Weiden am Kanal).
+   - **Sakura:** leichte Ausstellungsautos (≤ 8 k Dreiecke, 10 Stellplätze im
+     Autohaus); **Verkehrsautos** Phase 6: Kei, Limousine, Taxi, Lieferwagen
+     (≤ 5 k, 4,1 × 1,7 m, Räder eigene Objekte) — der Kei-Truck-Bausatz
+     (Loft-Kabine, Räder) ist ein guter Anfang.
+   - **Spielfigur** (Phase 6, ≤ 6 k, Fahrerin/Fahrer späte 80er, mit
+     Animationen) — größer: Rigging in Blender, eigene Sitzung.
+   - Phase 6/4–5: **Bruchstücke** für Zerstörbares (Pfosten, Zaunfelder,
+     Automat, Hütte in Teilen), **Arbeiter und Tiere** im Fischerdorf (Katzen,
+     Möwen); Tokyo-Sonderbauten des Prototyps: **Rundturm, Bahnhof, Kino-Turm
+     mit (erfundenem) Kaiju-Kopf** auf dem Dach.
+4. Der Unity-Sitzung sagen: „Modelle 5b und 5c aus ArtSource importieren
+   (ArtSource/STATUS.md, Für die Hauptsitzung)" — 5c erst nach deiner Freigabe.
 
 ## Für die Hauptsitzung (darf ich nicht ändern)
 
-- **Gebäude 5b importieren** (nach Freigabe): neue Atlanten
+- **Modelle 5c importieren** (nach Freigabe): neue Atlanten `T_Koso_*` →
+  `M_Koso_Atlas` (deckend, Emission für Fenster, Lobby, LED, Flugwarnlichter)
+  und `T_KosoShop_*` → `M_KosoShop_Atlas` (Emission 1,6 wie die anderen
+  Shop-Atlanten). **`T_Flora_BaseColor/MaskMap` neu importieren** (nur neue
+  Felder für Kaki/Weide; alte Felder pixelgleich, die Bäume ändern sich nicht).
+  - **Türme** `SM_Tokyo_Tower_*` (18): je `_LOD0/_LOD1/_LOD2` (+ `_Shop_LOD*`
+    Atlas KosoShop, bei `Mixed_*` + `_Signs_LOD0/1` Atlas TokyoSigns — in LOD2
+    gibt es keine Schilderhaut, `_Shop_LOD2` nur bei Türmen mit Kronenschild).
+    **LOD2 ist die Fern-Silhouette** (statt der Hülle aus D20: gleiche
+    Fassade, 50–700 Dreiecke). Zuordnung zu den Familien (Prototyp
+    `FACADE_FAMILY`): f5 hotel → `Hotel_*` + `Office_*`, f3 apartment →
+    `Mansion_*`, f0 shop / f4 cinema → `Mixed_*` (+ `Office_*`). **Ein Modell je
+    Grundstück** (nicht „fill" mit mehreren Modulen nebeneinander), nach Höhe
+    wählen: 46, 49, 49, 56, 58, 60, 61, 70, 73, 74, 81, 85, 89, 90, 105, 111,
+    121, 149 m. Ursprung = Mitte des Körpers am Boden, vorn −Z→+Z wie immer;
+    vorn ragen höchstens 1 m (Kübel) bzw. 1,9 m (senkrechte Schilder ab 7 m).
+    Kollider `COL_` = Körper bis Kronenoberkante. Lichter: `LIGHT_*_Aviation*`
+    (rot, Reichweite 6 m; bitte blinken lassen), `LIGHT_*_Mast`,
+    `LIGHT_*_Entrance`.
+  - **Fronten:** Familie 4 (Kino) → `Tokyo_Cinema_Ginga_24` / `_34`,
+    Familie 5 (Hotel, Höhen 25–45 m) → `Tokyo_Hotel_Biz_34` / `_City_45`,
+    Familie 7 → `Tokyo_Market_A` / `_B` (statt `Minato_Gyoka_*`). Die
+    Markthalle hat drei Meshes (`_LOD*` Atlas Tokyo, `_Frame_LOD*` Atlas Koso,
+    `_Shop_LOD*` Atlas KosoShop) und begehbare Kollider (Gang frei).
+  - **Kei-Truck** `SM_Prop_KeiTruck_Empty/_Crates/_Nets/_Straw` (Funaura:
+    Crates/Nets/Empty am Kai, Straw in Dörfern/Gassho), `_LOD0/1` + `_Shop_LOD0/1`
+    (Kennzeichen, Netze), Kollider Kabine + Ladefläche. Kein `LIGHT_` (parkt).
+  - **Bäume** `SM_Tree_Kaki`, `_Kaki_Bare` (Gassho-Höfe, Dörfer; im Herbst
+    gemischt), `SM_Tree_Yanagi` (Koedo-Kanal, Ufer): wie die anderen Flora-Bäume
+    (Cutout, Normals = Import, `COL_` Stamm).
+
+- **Gebäude 5b importieren** (vom Menschen freigegeben 2026-10-08): neue Atlanten
   `T_Machi_*` → `M_Machi_Atlas` (deckend, Emission für Downlights/Röhren)
   und `T_MachiShop_*` → `M_MachiShop_Atlas` (Emission 1,6 wie die anderen
   Shop-Atlanten). Materialien je FBX stehen im Manifest; Autohaus und
@@ -643,6 +777,32 @@ Konventionen:
   importiert neu; Dreieckszahlen bleiben fast gleich.
 
 ## Gefunden / Lektionen (für docs/LESSONS.md)
+
+- 2026-10-09 (Aufgabe 5c, Tokyo-Höhe):
+  - **Szenen verloren still Objekte:** `minato._place` (und
+    `scatter_shots._place`) verknüpfte Kopien, während es über
+    `all_objects` lief — der Iterator endet dann nach zwei Objekten:
+    Schilderhaut und `LIGHT_` fehlten in Szenenbildern (auch in 5b-Bildern
+    möglich). Gefunden in der Nahaufnahme `c_mixed_signs`; jetzt
+    `list(src.all_objects)`, ganze ArtSource nach derselben Ursache durchsucht.
+  - **Vorfahrt/Plaza ragten über die Grundfläche** (Hotel-Vordach 8 m, Plaza
+    4 m): im Spiel steht die Front auf der Baulinie → Eingänge unter das Haus.
+    Die Maße B × T × H im Bauprotokoll zeigten es (Tiefe > D).
+  - **Senkrechtes Schild 1:16 gestreckt** (Grafik 1:4 auf 1 × 16 m): `tate()`
+    leitet die Höhe aus der Breite ab.
+  - **Schild seitlich am Haus ragte ins Nachbarhaus** (Häuser stehen in Reihe):
+    senkrechte Schilder nur auf dem Vorderrahmen.
+  - **Neue Felder im freigegebenen Flora-Atlas** hätten die Zufallswerte
+    aller alphabetisch späteren Felder verschoben (Blätter neu gewürfelt):
+    `build_maps` nimmt bei Feldern mit eigenem `seed` keinen laufenden Index
+    (Werkzeug); gemessen: 0 Pixel außerhalb der neuen Felder geändert.
+  - **`build.run(['trees'])` hätte alle 18 Bäume neu exportiert:**
+    `build.run(['trees:Kaki,Yanagi'])` baut nur einzelne Assets (Werkzeug).
+  - **Netz-Grafik mit `map_box` gestreckt** (zweites Mal nach Minato): Netze
+    je Fläche mappen. **Dunst im Fernbild war schwarz:** Eevee beleuchtet ein
+    Welt-Volumen nicht und rechnet es nur bis 100 m — Dunst als Emission in
+    Horizontfarbe, `volumetric_end` hoch (`shots_5c.fog`).
+  - zsh trennt `$(ls …)` in einer Variablen nicht (bekannt): Arrays nehmen.
 
 - 2026-10-08 (Aufgabe 5b, Gebäude):
   - **Wohnhäuser ragten über die Parzelle** (Traufe, Eco Cute, Torpfosten

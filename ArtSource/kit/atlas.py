@@ -1981,6 +1981,8 @@ from .atlas_scatter import layout as _scatter_layout   # noqa: E402
 LAYOUTS['Scatter'] = _scatter_layout()
 from .atlas_machi import layout as _machi_layout   # noqa: E402
 LAYOUTS.update(_machi_layout())
+from .atlas_koso import layout as _koso_layout   # noqa: E402
+LAYOUTS.update(_koso_layout())
 
 
 def build_maps(name, seed=1):
@@ -1989,10 +1991,17 @@ def build_maps(name, seed=1):
     mask = np.zeros((SIZE, SIZE, 4), np.float32); mask[..., 1] = 1  # AO = 1
     emit = np.zeros((SIZE, SIZE, 4), np.float32); emit[..., 3] = 1
     base[..., :3] = 0.5
-    for i, (rname, reg) in enumerate(sorted(LAYOUTS[name].items())):
+    # regions added to an approved atlas carry their own 'seed': the running
+    # index of the others must not shift (it seeds their noise, cards and leaves)
+    i = -1
+    for rname, reg in sorted(LAYOUTS[name].items()):
         x, y, w, h = reg['rect']
         assert x + w <= SIZE and y + h <= SIZE, rname
-        rng = np.random.default_rng(seed * 1000 + i)
+        if 'seed' in reg:
+            rng = np.random.default_rng(reg['seed'])
+        else:
+            i += 1
+            rng = np.random.default_rng(seed * 1000 + i)
         o = reg['gen'](w, h, rng)
         base[y:y + h, x:x + w, :3] = o['rgb']
         mask[y:y + h, x:x + w, 0] = o['metal']

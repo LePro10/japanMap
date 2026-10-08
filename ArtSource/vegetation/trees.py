@@ -437,6 +437,110 @@ def bush_plan(kind, seed=20):
     return p
 
 
+# ── persimmon and willow (task 5c) ──────────────────────────────────────────
+
+def _fruit(t, c, r, lod):
+    """A kaki fruit: flattened octahedron-ish lump in orange, dark calyx cap."""
+    fs = TK.lump(t, c, (r * 2, r * 2, r * 1.6), TK.R('FRUIT_KAKI'), int(c[0] * 1000 + c[1] * 77) & 0xffff, subdiv=1, amp=0.05)
+    if lod == 0:
+        cap = TK.oct_core(t, (c[0], c[1], c[2] + r * 0.75), (r * 0.55, r * 0.55, r * 0.18), TK.R('CALYX'))
+        fs += cap
+    return fs
+
+
+def kaki(seed=30, bare=False):
+    """Persimmon (kaki) of a farm yard: short trunk, crooked zig-zag limbs, a
+    round spreading crown 7 m across. bare = early winter: no leaves, only
+    the orange fruit on the twigs - the classic picture of a Gassho yard."""
+    p = Plan(seed); rnd = p.rnd
+    trunk = curve(rnd, (0, 0, -0.1), (0.06, -0.04, 1), 1.8, 3, wobble=0.08)
+    p.branch(trunk, taper(3, 0.2, 0.15, flare=0.35), 'BARK_KURO', 0, sides=8)
+    tips = []
+    a0 = rnd.uniform(0, TAU)
+    maxl = 3 if bare else 2
+    for k in range(4):
+        az = a0 + k * TAU / 4 + rnd.uniform(-0.35, 0.35)
+        d = Vector((math.cos(az) * 0.65, math.sin(az) * 0.65, 0.8)).normalized()
+        _grow(p, trunk[-1], d, 2.4, 0.12, 1, maxl, 'BARK_KURO', None if bare else 'CARD_KAKI',
+              None if bare else 'DENSE_KAKI', {1: 0.85, 2: 0.95, 3: 0.9}, 0.6, 1.6, tips)
+    if bare:   # _grow puts clusters at the tips: a bare tree keeps only the twigs
+        p.clusters = []
+    c = sum(tips, Vector()) / len(tips)
+    c = Vector((c.x, c.y, 4.3))
+    if not bare:
+        fill_crown(p, c, 3.4, 2.3, 30, 1.6, 0.6, 'CARD_KAKI', 'DENSE_KAKI', 'BARK_KURO', zlow=-0.5)
+        fr = [cl['c'] + Vector((rnd.uniform(-0.5, 0.5), rnd.uniform(-0.5, 0.5), rnd.uniform(-0.6, -0.2)))
+              for cl in p.clusters[::2]]
+    else:
+        # the same crown envelope filled with bare twigs (fill_crown without its leaves)
+        n0 = len(p.branches)
+        fill_crown(p, c, 3.4, 2.3, 70, 1.0, 0.6, 'CARD_KAKI', None, 'BARK_KURO', zlow=-0.5)
+        p.clusters = []
+        zr = random.Random(seed + 1)      # own RNG: fill_crown's stream stays as it is for the other trees
+        for b in p.branches[n0:]:         # kaki twigs grow zig-zag, not straight
+            s_, m_, q_ = b['pts']
+            side = (q_ - s_).cross(Vector((0, 0, 1)))
+            side = side.normalized() if side.length > 1e-4 else Vector((1, 0, 0))
+            b['pts'] = [s_, s_.lerp(q_, 0.35) + side * zr.uniform(-0.25, 0.25), s_.lerp(q_, 0.7) - side * zr.uniform(-0.25, 0.25)
+                        + Vector((0, 0, zr.uniform(0.0, 0.3))), q_]
+            b['radii'] = [0.03, 0.024, 0.016, 0.01]
+        ends = [b['pts'][-1] for b in p.branches[n0:]] + tips
+        fr = [q - Vector((0, 0, 0.09)) for q in ends[::2]]
+
+    def fruit(t, fr=fr):
+        n = len(fr) if t.lod == 0 else len(fr) // 2
+        for q in fr[:n]:
+            _fruit(t, q, 0.06 if t.lod == 0 else 0.08, t.lod)   # a little larger than life: reads from the road
+    p.extras.append(fruit)
+    p.crown = (c - Vector((0, 0, 0.5)), 3.4)
+    p.far_trunk = (2.2, 0.2, 'BARK_DARK')
+    ext = max((Vector((x.x, x.y, 0)) - Vector((c.x, c.y, 0))).length for x in tips) + (0.3 if bare else 0.8)
+    cell = 'FAR_KAKI_BARE' if bare else 'FAR_KAKI'
+    p.far = [((c.x, c.y, c.z - 0.4), (ext * 2, ext * 2, 2.4 if bare else 3.0), cell),
+             ((c.x, c.y, c.z + 0.7), (ext * 1.3, ext * 1.3, 1.6), cell)]
+    return p
+
+
+def yanagi(seed=34):
+    """Weeping willow (shidare-yanagi) on a canal bank: a leaning trunk, a
+    few limbs rising and arching over, long strands hanging almost to the
+    water all round - the Koedo canal picture."""
+    p = Plan(seed); rnd = p.rnd
+    trunk = curve(rnd, (0, 0, -0.1), (0.18, -0.1, 1), 3.4, 4, wobble=0.07)
+    p.branch(trunk, taper(4, 0.3, 0.2, flare=0.3), 'BARK_KURO', 0, sides=10)
+    a0 = rnd.uniform(0, TAU)
+    anchors = []
+    for k in range(5):
+        az = a0 + k * TAU / 5 + rnd.uniform(-0.3, 0.3)
+        out = Vector((math.cos(az), math.sin(az), 0))
+        pts = [trunk[-1] - Vector((0, 0, 0.4 * (k % 2)))]
+        d = (out * 0.4 + Vector((0, 0, 1.0))).normalized()
+        L = 5.5 + rnd.uniform(-0.5, 0.5)
+        for i in range(5):     # rise, then arch outwards
+            d = (d + out * 0.35 - Vector((0, 0, 0.32 if i > 2 else 0.0))).normalized()
+            pts.append(pts[-1] + d * L / 5)
+        p.branch(pts, taper(5, 0.12, 0.035), 'BARK_KURO', 1)
+        for i in (1, 2, 3, 4, 5):
+            q = pts[i]
+            for j in range(5 if i > 1 else 3):
+                jit = Vector((rnd.uniform(-0.6, 0.6), rnd.uniform(-0.6, 0.6), rnd.uniform(-0.2, 0.3)))
+                top = q + jit
+                length = max(1.5, top.z - rnd.uniform(0.4, 1.6))
+                p.curtains.append(dict(top=top, length=length, width=rnd.uniform(0.38, 0.5), card='CARD_YANAGI',
+                                       aspect=5.0, seed=rnd.randrange(1 << 20)))
+            anchors.append(q)
+        for i in (2, 3):
+            p.cluster(pts[i] + Vector((0, 0, 0.25)), (1.4, 1.4, 0.9), 'CARD_YANAGI', 'DENSE_YANAGI', level=1, up=0.2,
+                      core_k=0.6)
+    c = sum(anchors, Vector()) / len(anchors)
+    p.crown = (Vector((c.x, c.y, c.z * 0.65)), 4.0)
+    p.far_trunk = (3.6, 0.28, 'BARK_DARK')
+    ext = max((Vector((x.x, x.y, 0)) - Vector((c.x, c.y, 0))).length for x in anchors) + 0.6
+    p.far = [((c.x, c.y, c.z * 0.55), (ext * 2, ext * 2, c.z * 1.0), 'FAR_YANAGI'),
+             ((c.x, c.y, c.z + 0.5), (ext * 1.2, ext * 1.2, 1.8), 'FAR_YANAGI')]
+    return p
+
+
 # ── table ───────────────────────────────────────────────────────────────────
 
 def _trunk_col(r):
@@ -457,6 +561,9 @@ TREES = {
     'Sakura_Leaf':     (lambda: sakura(12, 'CARD_SAKURA_LEAF', 'DENSE_LEAF', 'FAR_LEAF'), (3, 1), _trunk_col(0.32)),
     'Sakura_Shidare':  (lambda: shidare(), (3, 1), _trunk_col(0.34)),
     'Take_Grove':      (lambda: take(), (2, 0), (-1.9, 1.9, -1.9, 1.9, 0.0, 3.0)),
+    'Kaki':            (lambda: kaki(30), (3, 1), _trunk_col(0.2)),
+    'Kaki_Bare':       (lambda: kaki(30, bare=True), (3, 2), _trunk_col(0.2)),
+    'Yanagi':          (lambda: yanagi(), (2, 1), _trunk_col(0.3)),
 }
 BUSHES = {
     'Tsutsuji':        (lambda: bush_plan('tsutsuji'), (3, 1), None),

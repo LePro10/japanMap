@@ -742,7 +742,9 @@ def _place(tmp, cname, pos, rot):
         return []
     T = Matrix.Translation(Vector((pos[0], pos[1], pos[2] if len(pos) > 2 else 0.0))) @ Matrix.Rotation(rot, 4, 'Z')
     out = []
-    for o in src.all_objects:
+    # list(): linking a copy rebuilds all_objects and silently ends the loop
+    # (sign skins and LIGHT_ markers went missing in the scene pictures)
+    for o in list(src.all_objects):
         if o.name.startswith('COL_') or (o.type == 'MESH' and o.hide_render):
             continue
         n = o.copy()
