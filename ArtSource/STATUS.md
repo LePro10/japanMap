@@ -13,6 +13,10 @@ nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
   (Stimmung, neutral, Rückseite, Straßenhöhe) und
   [previews/Tokyo_detail.png](previews/Tokyo_detail.png) (Nahaufnahmen),
   dazu `Tokyo.png`, `Tokyo_clay.png`, `Tokyo_Signs.png`.
+  **Rückmeldung des Menschen:** für Tokyo-Zentrum zu wenig Schilder und
+  Details (Vorbild Kabukichō-Gasse). → Der Pilot gilt als Stufe
+  „Nebenstraße"; als Nächstes kommt die Stufe „Zentrum" (Stil-Kit
+  „Zwei Dichten"), Plan in der Antwort vom 2026-10-08.
   Danach Baustil für Baustil: Koedo (Kura ausbauen), Kiso, Gassho,
   Fischerdorf, Tempel — je Pilot + Freigabe.
 

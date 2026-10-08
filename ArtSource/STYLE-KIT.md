@@ -130,6 +130,14 @@ Vorbild für neue Baustile: `buildings/tokyo_kit.py` (Module) +
   (非常の際は…), Wäschestangen, Wassertank auf dem Dach, Fliesen
   (二丁掛) und ALC-Platten statt Ziegel/Putz.
 
+**Zwei Dichten (Rückmeldung 2026-10-08):** Der Pilot ist eine normale
+Tokyo-Wohn-/Nebenstraße. Das **Zentrum** (Shinjuku/Kabukichō-Art) braucht
+eine eigene, viel dichtere Stufe: 6–10 Geschosse, schmal; Schilder decken
+die Fassade fast ganz (je Geschoss ein Leuchtkasten quer, 2–3 senkrechte
+Schildertürme je Haus, auch seitlich), Dach-Billboards, Videowände,
+Leuchtkästen an den Pfeilern, Laternenketten. Maßstab: „vor lauter
+Schildern sieht man die Wand kaum".
+
 ## Abnutzung
 
 - **Schmutz unten:** jede Fläche wird zum Boden hin dunkler (Spritzwasser).
