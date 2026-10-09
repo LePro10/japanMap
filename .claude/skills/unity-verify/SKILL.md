@@ -96,7 +96,8 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
   zurück) — sonst rot, sobald Unity nicht das vordere Fenster ist (und im Batchmodus).
 - **Spielabläufe:** `node Tools/play.mjs <ordner> "<skript>"` (Tasten, Bilder, `probe`, `stats`, `place x z`,
   `view <blickpunkt>`, `tier Low`; Spielinhalt: `screen` (Bild **mit HUD**), `drive x z yaw` (Auto dort, Spieler drin),
-  `aim x z` (lenkt per A/D auf einen Punkt), `pace kmh`, `waitstunt`, `race <id> [auto]`, `timescale 4`; `probe` meldet Drift, Region,
+  `aim x z` (lenkt per A/D auf einen Punkt), `orbit x z r` (Kreis), `pace kmh`, `waitstunt`, `race <id> [auto]`, `timescale 4`;
+  Fortschritt: eigener frischer Speicherplatz je Lauf (`keepsave` als erster Befehl = Neustart-Test), `sparks n`, `garage pick/buy/fit Engine 2/paint Navy/close`; `probe` meldet Drift, Region,
   Entdeckung, Stunt, Rennteilnehmer). **Leben folgt dem Spieler, nicht der Kamera:** Fußgänger, Verkehr und
   Akteure erscheinen nur um die Figur. `ViewpointBench` misst sie deshalb nur in Sakura (Start); Kosten an
   einem anderen Ort: `play.mjs "place x z; wait 20; stats; crowd off; wait 1; stats"`. `view` nimmt die Figur mit.
@@ -109,5 +110,7 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
 - **Bench je Ort:** `node Tools/bench.mjs <label> <blickpunkte>` misst Hoch und Niedrig in einem Lauf.
   Für Versuche („Schatten aus") das geänderte Asset `EditorUtility.SetDirty` + `AssetDatabase.SaveAssets`
   — sonst lädt Play die alte Fassung, und der Versuch misst nichts (gleiche Zahlen bis zur letzten Stelle).
+- **Spielstand in Tests:** jede PlayMode-Testklasse, die das Spiel startet, trägt `[FreshSave]` (eigener Speicher im
+  Arbeitsspeicher; `SaveIsolationTests` prüft es). Einen gespeicherten Stand vor dem Start in `FreshSaveAttribute.Store` schreiben.
 - **Stufen messen:** Editor `QualitySystem.SetTier("Low")` + `TerrainQuality.Apply`;
   Browser `node Tools/smoke.mjs --gpu --quality Low`.

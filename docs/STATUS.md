@@ -3,94 +3,76 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-09 · **Phase:** 7 abgeschlossen (deine Abnahme offen) · **Phase 8 (Progression und Speichern) ist als Nächstes dran**
+**Stand:** 2026-10-10 · **Phase:** 8 abgeschlossen (deine Abnahme offen; PlayMode-Gesamtlauf + Blickpunktbilder des Tors stehen aus, s. u.) · **Phase 9 (UI, HUD, Ton) ist als Nächstes dran**
 
-Phase 2 ✅ · 3 ✅ freigegeben · 4 ✅ (Optik-Abnahme offen) · 5 ✅ (Abnahme offen) · 6 ✅ (Abnahme offen).
+Phase 2 ✅ · 3 ✅ freigegeben · 4 ✅ (Optik-Abnahme offen) · 5–7 ✅ (Abnahme offen).
 
-## Phase 7 — Spielinhalt ✅ (D26–D28)
+## Phase 8 — Progression und Speichern ✅ (D29–D32)
 
-- [x] 1. Drift-Wertung: Kette, ×2/×3/×4/×5 nach 6/18/42/90 s Drift, Crash bucht 50 %, Sakura Bowl + Rotor Court ×2 (`Captures/p7-1-*`)
-- [x] 2. Regionen: 8 lückenlos, 1,5 s + 4 m → „… explored · n/8 · +200 Sparks“, alle 8 +800 (`Captures/p7-2-region.png`)
-- [x] 3. Entdeckungen: 24 (3 je Region), Taste **E**, 6 Reihenfolge- + 2 Rhythmus-Rätsel, Lagen geprüft (`Captures/p7-3-*`)
-- [x] 4. Schanzen: 6 Körper mit Fundament, Gelände darunter abgesenkt, Tempo-Hinweis, Landepfeile; Stunt-Wertung, STUNT-Marke (`Captures/p7-4-*`)
-- [x] 5. Rennen: 8 Veranstaltungen, Leuchtpfeiler (E/E), Countdown hält alle, Kontrollpunkte, KI Mina/Joss/Ren, Ergebnis (`Captures/p7-5-race.png`)
+- [x] 1. Wirtschaft simuliert (`docs/ECONOMY.md`): Rennfahrer 3 297, gemischt 2 451, Drift geübt 2 206 Sparks/10 min (Ziel 2 400–3 600); Rennen zahlen nach Dauer, Drift 50:1
+- [x] 2. Garage an der Open Bay (**E**): 10 Autos (ASTRA-Preise, Mame K 2 400), Tuning 4 × Street/Sport, Setups, Lack/Felgen/Kit; Prüfstand `docs/TUNING.md`
+- [x] 3. Speichern: CrazyGames-SDK-Datenmodul + lokal; „Weiter“ im Auto an der letzten Parkstelle; kaputter Stand bricht nichts
+- [x] 4. Rekorde (**Tab**) mit Rekordbildern, 15 Meilensteine, Fotomodus (**P**, Enter = PNG 2560 px), Ring-Ziel je Auto (210–283 s)
 
-**Abnahme gemessen:** alle 8 Veranstaltungen KI gegen KI vom Start bis Ziel: **0 Rettungen, 0 Zurücksetzen**; Runden genau an der Linie
-(Neon 1476/2952 m bei 1476 m Runde, Needle 2168,8/4337,6 m, Ring 5987 m). Alle 6 Schanzen beim empfohlenen Tempo: 8–33 m, Absprung an der Kante.
-Tests: EditMode **100/100**, PlayMode **171/176** (4 Prüfstände auf Abruf; `TouchStick_Throttles` wackelt, s. u.).
-Bench (`Captures/bench-p7-gate*`): Niedrig ≤ 390 DC / 578 k ✓ (Funaura 388 — Schanzen erst ab 400 m ausgeblendet), Hoch wie Phase 6
-(sakura-hof 1 573 DC). Web **53,97 MB**, Browser Niedrig 235 / Hoch 55 fps (Vorschau lief vermutlich mit).
+**Abnahme gemessen:** Tuning je Teil allein (Hachi): Motor Sport 0–100 −11 %, Spitze +4 %; Bremsen Sport −10,6 % Weg; Reifen Sport +8 % Grip;
+Lenkung Sport −16 % Ansprache — kein Teil verschiebt fremde Zahlen. Neustart-Test: Sparks, Region, Fund, Bestzeit je Auto, Medaille, Auto, Parkstelle
+zurück, nichts doppelt bezahlt. Browser (`save-web.mjs`): localhost über das SDK neu geladen → Stand da.
+Tests: EditMode **112/112**; PlayMode zuletzt komplett **181/188** (6 auf Abruf, Touch-Test rot → zweiter Fix, danach 3× grün; Gesamtlauf nach dem Fix
+**abgebrochen, weil im Editor Play gedrückt wurde**). Bench Sakura Hoch 1 422 / Niedrig 332 DC (Phase 7: 1 390 / 336).
+Web **54,28 MB** (+0,31: SDK, Garage, Rekorde), Start 1,1 s, Browser Niedrig 356 fps, 0 Fehler.
 
-## Phase 8 — Progression und Speichern (als Nächstes, PLAN.md)
+## Phase 9 — UI, HUD, Ton (als Nächstes, PLAN.md)
 
-- [x] 1. Sparks-Wirtschaft simuliert (`docs/ECONOMY.md`, D29): Rennfahrer 3 297, gemischt 2 451, Drift geübt 2 206 je 10 min (`Captures/p8-1/`) · [x] 2. Garage an der Open Bay (E): Autohaus, Tuning 4×Street/Sport, Setup, Lack/Felgen/Kit; Prüfstand `docs/TUNING.md` (D30, `Captures/p8-2/`) · [x] 3. Speichern: CrazyGames-SDK + lokal (D31); Neustart-Test und Browser-Probe `save-web.mjs` grün · [x] 4. Rekorde (Tab) mit Bildern + 15 Meilensteinen, Fotomodus (P, 2560 px PNG), Ring-Ziel je Auto (D32)
+- [ ] 1. Menü (ESC pausiert alles): Weiter, Garage, Karte, Foto, Rekorde, Einstellungen · [ ] 2. HUD + Minimap, Handy-Layout
+- [ ] 3. Weltkarte, Teleport, Fotomodus fertig (Touch) · [ ] 4. Ton je Auto/Belag/Umgebung · [ ] 5. Touch erstklassig
 
 ## Offen / Gefunden
 
-- **Fußgänger-Test:** `PedestrianTests.TenMinutes…` 1× im Gesamtlauf rot (2 Fußgänger auf meiji-south bei t = 0 s), allein 2× grün.
-- **Gras auf der Schanze Petal Hop:** einzelne Halme stehen auf der Betonfläche (`Captures/p8-4/jump.png`, Bild 3).
-- **Gras in der Open Bay:** Gräser wachsen durch den Hallenboden (Streuung kennt die Halle nicht) — sichtbar in der Garage.
-- **Wackeliger Tastatur-Test:** `PlayerDriveTests.Keyboard_Drives…` 1× von 7 rot („W does not accelerate“); der Touch-Test war
-  ein ausgeschaltetes Test-Gerät (behoben, 3/3 grün).
-- **Nav-Assets** (`Data/Nav/*.asset`, LFS) hat Unity beim Speichern neu geschrieben (andere Größe) — nicht von dieser Sitzung
-  beabsichtigt, nicht committet; vor dem nächsten NavMesh-Bake prüfen.
-- **Mausfang im Browser:** in Headless-Chrome erreichen ohne SDK keine Tasten das Spiel (`save-web` prüft auf 127.0.0.1
-  darum nur den Start-Speicherstand); auf CrazyGames selbst ungeprüft → Phase 10 mit dem CrazyGames-QA-Tool.
-- **Probefahrt (ASTRA §6, 90 s jedes Auto)** und die zwei Car-Lab-Lackierungen je Auto (Texturen, Download) fehlen noch.
-
-- **ASTRA-Katalog:** E01 Sakura Starter, E08–E12, E15–E17 und die zwei Lieferfahrten brauchen Straßen/Orte, die nicht gebaut sind
-  (Harbour Outer Road, Crosslight, Terrace Track, Breakyard, Market Hall). Die **Markthalle** gehört an die Harbour Outer Road (Start E02/E17)
-  — erst mit dieser Straße sinnvoll (Phase 12 oder eigener Karten-Schritt).
-- **Sakura `commons-drive`** beginnt als Asphaltkante in der Schale — nicht behoben (Straßen-Import).
-- **Rennen vorläufig:** Karte/Ergebnis als Text (Phase 9: echtes UI, Kamerafahrt, Töne); Regionen-/Entdeckungsmeldungen erscheinen auch
-  im Rennen (ASTRA: erst danach); Fortschritt (Sparks, Funde, Bestzeiten) wird noch **nicht gespeichert** (Phase 8).
-- **Entdeckungen:** Hinweiskarte mit Postkarte und 80-m-Suchkreis fehlt (Phase 9, Karte). Ring-Zeitfahren: Bestzeit-Ziel gilt für den Kite
-  (250 s); Tabelle je Auto kommt mit Phase 8.
-- **Wackeliger Test:** `PlayerDriveTests.TouchStick_Throttles…` war 2× beim ersten Lauf nach Neuladen rot (Gas 0), danach 5× grün — Ursache offen.
-- **Kartenpunkte:** Kuppen-Knicke alter Straßen, Stadtplatte ohne Böschung, treppige Reisfeldränder; Viadukt-Brüstungsmauer (Modell).
-- **Hoch kostet viel** (Wald-Schatten, lodBias 2) → Phase 10. **Download 54 MB** (Desktop-Ziel 50, Handy 20) → Phase 10 (Addressables).
-- Funaura: die sechs Angler fehlen.
+- **Tor-Rest:** PlayMode-Gesamtlauf nach dem zweiten Touch-Fix und Blickpunktbilder Hoch/Niedrig — beim nächsten Start zuerst nachholen.
+- **Tests, die wackeln:** Touch-Test (Gerät aus + Layout nicht fertig, zwei Fixes); `Keyboard_Drives…` 1×/7 rot; `PedestrianTests.TenMinutes…`
+  1× im Gesamtlauf rot (2 Fußgänger auf meiji-south bei t = 0 s), allein grün.
+- **Gras** wächst durch den Boden der Open Bay und steht vereinzelt auf der Schanze Petal Hop (`Captures/p8-4/jump.png`).
+- **Unity schrieb selbst um (nicht committet):** `Data/Nav/*.asset` (andere Größe), `ProjectSettings` (`InputSystem_Actions` als preloaded).
+- **CrazyGames ungeprüft:** Mausfang, Foto-Download und Speichern im echten CrazyGames-Rahmen → Phase 10 mit dem QA-Tool. Headless-Chrome
+  bekommt ohne SDK keine Tasten (`save-web` prüft auf 127.0.0.1 nur den Start-Stand). „Choose progress“ bei Konto-Konflikten fehlt.
+- **Fehlt noch:** Probefahrt 90 s (ASTRA §6); zwei Car-Lab-Lackierungen je Auto (Texturen → Phase 10 Nachladen); Ride-Höhe +20 mm im Setup „Dirt“;
+  Produkt-Messungen (ASTRA §11) → Phase 10/11; Fotomodus/Rekorde/Garage per Touch → Phase 9.
+- **ASTRA-Katalog:** E01 Sakura Starter, E08–E12, E15–E17, Lieferfahrten brauchen ungebaute Straßen/Orte (Harbour Outer Road, Crosslight,
+  Terrace Track, Breakyard, Market Hall) — Phase 12 oder eigener Karten-Schritt.
+- **Rennen vorläufig:** Karte/Ergebnis als Text (Phase 9); Regions-/Fundmeldungen auch im Rennen (ASTRA: erst danach).
+- **Entdeckungen:** Hinweiskarte mit Postkarte und 80-m-Suchkreis fehlt (Phase 9, Karte). Funaura: die sechs Angler fehlen.
+- **Karte:** Kuppen-Knicke, Stadtplatte ohne Böschung, treppige Reisfeldränder, `commons-drive` beginnt als Asphaltkante.
+- **Hoch kostet viel** (Wald-Schatten, lodBias 2) → Phase 10. **Download 54 MB** (Desktop 50, Handy 20) → Phase 10 (Addressables).
 
 ### Für die Asset-Sitzung (Lagen stehen in den Daten, Import genügt)
 
-- **Garage (Open Bay, Sakura; Stellvertreter: das vorhandene Hallenmodell):** Werkbank 2,0 × 0,8 × 0,9 m; Reifenregal mit
-  Felgen 1,8 × 0,5 × 2,0 m; Lackmuster-Tafel 1,2 × 0,05 × 0,9 m (12 Felder); Motor auf Montagebock 0,9 × 0,6 × 1,0 m;
-  Schild „GARAGE · E“ über dem Tor 2,5 × 0,6 m. Je ≤ 1,5 k. Kein Gras in der Halle (Streu-Ausschluss 19 × 15 m um (572, −478)).
-
-- **Rennen:** Event-Pfeiler 6–8 m (je Art Farbe), Kontrollpunkt-Bogen (Straße + 2 m), Start-Ziel-Banner, Pokal 0,4 m; Needle: Tribüne, Boxen, Brücke. ≤ 2 k.
-- **Schanzen (Stellvertreter: Betonkeil + Kies-Landefläche + weiße Pfeile):** Absprung als Erdwall/Holzrampe je Ort (8–12 m breit, 0,9–3 m
-  hoch, 12–24 m lang, Maße in `Data/Gameplay/Ramps.asset`); Tempo-Schild 1,2 m; Lande-Chevron-Tafel; orange Absperrung. ≤ 1,5 k.
-- **Entdeckungen (Stellvertreter: bernsteinfarbene Raute + weiße Pfosten):** „Sparks-Laterne“ 0,4 m; Gründerplakette; Lichttafel + 3 Reifenstapel;
-  Getränkeregal; Fernrohr-Rahmen; Start-Tafel mit 3 Feldern; Zuschauer-Treppchen; Spielzeug-Schuppen; Reisschale; Schleuse mit 3 Schiebern;
-  Karten-Tafel; Grat-Tafel; rote Thermoskanne; Laternen-Plakette; Netzhaus-Seile; Gezeitentafel; Bank mit Hafenkarte; Lampen-Tafel;
-  Treibholz-Marke; Rettungsring-Schild. Je ≤ 1,5 k.
+- **Garage (Open Bay, Sakura; Stellvertreter: Hallenmodell):** Werkbank 2,0 × 0,8 × 0,9 m; Reifenregal mit Felgen 1,8 × 0,5 × 2,0 m;
+  Lackmuster-Tafel 1,2 × 0,05 × 0,9 m (12 Felder); Motor auf Montagebock 0,9 × 0,6 × 1,0 m; Schild „GARAGE · E“ 2,5 × 0,6 m über dem Tor. Je ≤ 1,5 k.
+- **Rennen:** Event-Pfeiler 6–8 m, Kontrollpunkt-Bogen, Start-Ziel-Banner, Pokal 0,4 m; Needle: Tribüne, Boxen, Brücke. ≤ 2 k.
+- **Schanzen (Stellvertreter: Betonkeil):** Erdwall/Holzrampe je Ort (Maße in `Data/Gameplay/Ramps.asset`), Tempo-Schild, Lande-Tafel, Absperrung. ≤ 1,5 k.
+- **Entdeckungen (Stellvertreter: Raute + Pfosten):** 20 kleine Props, Liste in `Data/Gameplay/Discoveries.asset` (je Karte `title`). Je ≤ 1,5 k.
 - **Aus Phase 6 offen:** Spielfigur, Passanten/Tiere, Verkehrsautos, vorzerlegte Props + Baum, Ladeninnere, Ausstellungsautos, Kanalbrücken, Turm-Fernstufe.
 
 ## Für dich (Mensch)
 
-1. **Phase 7 ausprobieren (~20 Min.):** `Boot` → ▶ Play. Du stehst zu Fuß in Sakura.
-   - **Entdeckungen:** 12 m links vom Start leuchtet eine bernsteinfarbene Raute → hingehen, **E**. An der Open Bay (rechts): Tafel mit **E**
-     lesen, dann die drei Pfosten in der Reihenfolge **2 → 1 → 3** (je hingehen + E). Die Rauten zeigen sich im Umkreis von 160 m.
-   - **Drift:** **F** ins Auto, in der Kirsch-Schale **Leertaste + lenken**. Oben erscheinen Punkte, ×-Stufe und „SPOT BONUS ×2“. 3 s ohne Drift
-     = gutgeschrieben (Sparks oben rechts); eine Wand halbiert die Kette.
-   - **Schanze Petal Hop:** von Sakura nach Südosten über die Ringstraße; unten erscheint „Petal Hop · 55–75 km/h“. Mit Vollgas (**Shift** = Nitro)
-     drüber → „Jump 15 m +147“. **Doppelt Leertaste** = Stunt-Modus (orange STUNT oben links): Dreher 180/360 im Gras oder in der Luft.
-   - **Rennen:** leuchtende Säulen am Straßenrand (blau = Rennen, gold = Zeitfahren, rosa = Drift). Daneben unter 15 km/h anhalten, **E** =
-     Karte, **E** = Start. Am nächsten: **Neon Circuit** in Tokyo, **Coast Loop** am Ring westlich von Koedo, **Needle Sprint/Open Seat**
-     am Rundkurs im Südwesten, **Tōge Descent/Drift Run** oben am Pass, **Tōge Climb** an seinem Fuß. **R** im Rennen = zurück auf die
-     Strecke (+3 s). Aussteigen bricht ab.
-   - Fühlt sich der Drift-Multiplikator richtig an (×2 nach 6 s, ×5 erst nach 90 s)? Sind die Gegner zu leicht/zu schwer?
-2. **Selbst im Browser spielen, ohne die Agenten zu stören:** im Projektordner `Vorschau.command` doppelklicken (öffnet
-   http://127.0.0.1:8092/, letzter Build). Fenster schließen = Ende. Nicht, während Tests/Bilder laufen (zwei Spiele rendern).
-   **Deine alte Vorschau läuft noch auf Port 8091** — Terminal-Fenster schließen; neu ist 8092.
-3. **Browser-Probe bei ruhigem Rechner** (Blender und Vorschau zu): `node Tools/smoke.mjs --gpu`.
-4. Noch offen aus früher: Abnahme Phase 5/6, Optik Phase 4, Hachi-Heckscheibe, alte Zweige `agent/*`.
-5. Commits liegen lokal; **Push** nur, wenn du es sagst.
+1. **Phase 8 ausprobieren (~20 Min.):** `Boot` → ▶ Play. Du stehst zu Fuß in Sakura.
+   - **Sparks verdienen:** ein paar Schritte = Region (+200); Rauten mit **E** (+100); im Auto (**F**) in der Kirsch-Schale **Leertaste + lenken** (Drift).
+   - **Garage:** zum Tor der **Open Bay** (die Halle mit dem blauen Hebebühnen-Rahmen, rechts vom Start) gehen oder langsam fahren → **E**.
+     Links Autos (Mame K kostet 2 400), rechts Teile, Setup, Lack, Felgen, Kit. **E** oder **Esc** = hinausfahren. Spürst du Motor Sport / Reifen?
+   - **Rekorde:** **Tab** (Tempo, Flugzeit, Sprung, Drift, Strecke mit Bild; Meilensteine; Bestzeiten je Auto). Sprung: Schanze **Petal Hop**
+     südöstlich über die Ringstraße mit Vollgas.
+   - **Foto:** **P** = Pause + freie Kamera (WASD, Q/E, rechte Maustaste, Mausrad), **Enter** = Foto → `Captures/Photos/`. **P** = zurück.
+   - **Speichern:** Play beenden, wieder starten → du sitzt im Auto an der letzten Parkstelle, alles ist noch da.
+   - Fühlt sich das Tempo richtig an (erstes Auto nach ~1 Sitzung, schnellstes nach ~19)?
+2. **Handy im WLAN** (ab jetzt diese Adresse): `node Tools/serve-web.mjs --lan` → die Zeile **„phone (use this): http://….local:8090/“** öffnen.
+   Eine nackte IP friert das Spiel ein (Seitensperre von CrazyGames).
+3. **Selbst im Browser spielen:** `Vorschau.command` (Port 8092, letzter Build). Nicht, während Tests/Bilder laufen.
+4. Noch offen aus früher: Abnahmen Phase 4–7, Hachi-Heckscheibe, alte Zweige `agent/*`. Commits liegen lokal; **Push** nur, wenn du es sagst.
 
 ## Web-Build
 
 | Datum | Typ | Gesamt | wasm | data | Boot (lokal) |
 |---|---|---|---|---|---|
-| 2026-10-09 | Release, Phase 6 (zu Fuß, NavMesh, Leben) | 49,34 MB | 5,73 MB | 43,40 MB | 0,8 s |
 | 2026-10-09 | Release, + Assets 5b/5c/Flora/Scatter (248 Modelle) | 53,91 MB | 5,74 MB | 47,97 MB | 0,8–0,9 s |
 | 2026-10-09 | Release, Phase 7 (Spielinhalt) | 53,97 MB | 5,76 MB | 48,02 MB | 0,8–1,1 s |
+| 2026-10-10 | Release, Phase 8 (CrazyGames-SDK, Garage, Speichern, Rekorde) | 54,28 MB | 5,99 MB | 48,10 MB | 1,1 s |
