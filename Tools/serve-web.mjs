@@ -1,9 +1,11 @@
 // Tools/serve-web — serve Builds/Web as static files.
 //   node Tools/serve-web.mjs [--port 8090] [--lan]
+//   node Tools/serve-web.mjs --preview   → copy of the last build in Builds/Preview on port 8092, for the human to
+//   play while agents keep working (their next build does not swap files under a running game; the editor is untouched).
 // Port 8090, not 8080: the Unity MCP listens on 8080. --lan binds 0.0.0.0 for the phone test.
 // Decompression Fallback is on, so any server works; br is still sent when accepted (faster start).
 import { createServer } from 'node:http';
-import { createReadStream, existsSync, statSync } from 'node:fs';
+import { cpSync, createReadStream, existsSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -34,14 +36,24 @@ export function serve(dir = join(ROOT, 'Builds', 'Web'), port = 8090, host = '12
     res.writeHead(200, headers);
     createReadStream(file).pipe(res);
   });
-  return new Promise((ok) => server.listen(port, host, () => ok(server)));
+  return new Promise((ok, fail) => { server.once("error", fail); server.listen(port, host, () => ok(server)); });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const port = Number(arg('port', 8090));
+  const preview = flag('preview');
+  const port = Number(arg('port', preview ? 8092 : 8090));
   const host = flag('lan') ? '0.0.0.0' : '127.0.0.1';
-  await serve(undefined, port, host);
-  console.log(`serving Builds/Web on http://127.0.0.1:${port}/`);
+  let dir = join(ROOT, 'Builds', 'Web');
+  if (preview) {
+    const copy = join(ROOT, 'Builds', 'Preview');
+    rmSync(copy, { recursive: true, force: true });
+    cpSync(dir, copy, { recursive: true });
+    dir = copy;
+    const report = join(dir, 'size-report.txt');
+    if (existsSync(report)) console.log(`build of ${readFileSync(report, 'utf8').split('\n')[0].replace(/^date\s+/, '')}`);
+  }
+  await serve(dir, port, host);
+  console.log(`serving ${preview ? 'Builds/Preview' : 'Builds/Web'} on http://127.0.0.1:${port}/`);
   if (flag('lan')) {
     for (const nets of Object.values(networkInterfaces()))
       for (const n of nets ?? []) if (n.family === 'IPv4' && !n.internal) console.log(`  phone: http://${n.address}:${port}/`);

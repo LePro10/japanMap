@@ -20,6 +20,7 @@ MonoBehaviour:
     width: 10
     height: 1
     riseLength: 14
+    kick: 0.5
     tableLength: 0
     downLength: 0
     landingLength: 30
@@ -35,6 +36,7 @@ MonoBehaviour:
     width: 12
     height: 2.2
     riseLength: 18
+    kick: 1
     tableLength: 16
     downLength: 18
     landingLength: 20
@@ -50,14 +52,15 @@ MonoBehaviour:
     width: 12
     height: 3
     riseLength: 24
+    kick: 0
     tableLength: 0
     downLength: 0
-    landingLength: 30
+    landingLength: 45
     landingWidth: 18
-    speedHint: "90\u2013120 km/h"
+    speedHint: "75\u201395 km/h"
     baseY: 24.259594
-    baseSlope: 0.0055542397
-    note: "ASTRA (\u2212800, 590) launching west; moved 25 m off the pit entry road."
+    baseSlope: 0.01855826
+    note: "ASTRA (\u2212800, 590) launching west; moved 25 m off the pit entry road. Hint lowered from ASTRA's 90\u2013120: at 110 km/h the car flew 56 m, past the 45 m apron (RampTests)."
   - id: terrace-roller
     title: Terrace Roller
     start: {x: -730, y: -580}
@@ -65,6 +68,7 @@ MonoBehaviour:
     width: 9
     height: 1.4
     riseLength: 16
+    kick: 0.5
     tableLength: 0
     downLength: 0
     landingLength: 22
@@ -80,6 +84,7 @@ MonoBehaviour:
     width: 10
     height: 1.8
     riseLength: 16
+    kick: 0.5
     tableLength: 0
     downLength: 0
     landingLength: 24
@@ -95,6 +100,7 @@ MonoBehaviour:
     width: 8
     height: 0.9
     riseLength: 12
+    kick: 0.5
     tableLength: 0
     downLength: 0
     landingLength: 30

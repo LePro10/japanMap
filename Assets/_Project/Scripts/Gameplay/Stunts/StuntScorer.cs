@@ -74,8 +74,12 @@ namespace JapanMap.Gameplay.Stunts
             _hit = false;
         }
 
+        /// <summary>Last body contact: collider name and normal (diagnostics, play scripts).</summary>
+        public string LastHit { get; private set; } = "";
+
         void OnTouched(Collision c)
         {
+            LastHit = $"{c.collider.name} n={(c.contactCount > 0 ? c.GetContact(0).normal : Vector3.zero):F2} v={c.relativeVelocity.magnitude * 3.6f:0} km/h";
             // The ground under a landing is no "hit": only contacts that push sideways or backwards count.
             var n = c.contactCount > 0 ? c.GetContact(0).normal : Vector3.up;
             if (n.y < 0.7f) _hit = true;

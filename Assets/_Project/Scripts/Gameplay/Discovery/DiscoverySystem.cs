@@ -150,13 +150,14 @@ namespace JapanMap.Gameplay.Discovery
             _target = card;
             _targetButton = button;
             Prompt = text;
-            if (hud != null) hud.SetPrompt(text);
+            if (hud != null) hud.SetPrompt(this, text);
         }
 
         /// <summary>Use (E, d-pad up, touch USE): inspect, read a puzzle hint, press a button.</summary>
         public void Use()
         {
             if (_target < 0) return;
+            if (hud != null && hud.PromptOwner != (object)this) return; // E belongs to another prompt now
             var c = set.cards[_target];
             switch (c.trigger)
             {

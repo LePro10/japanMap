@@ -14,10 +14,15 @@ import { ROOT, arg, flag } from './lib/unity.mjs';
 
 const timeoutMs = Number(arg('timeout', 60)) * 1000;
 const out = join(ROOT, arg('out', 'Captures/web-smoke.png'));
-const port = 8091;
+// 8091, or the next free port: a human's preview server once held 8091 and the smoke crashed (EADDRINUSE).
+let port = 8091;
 const quality = arg('quality', '');
 
-const server = await serve(undefined, port);
+let server;
+for (;; port++) {
+  try { server = await serve(undefined, port); break; }
+  catch (e) { if (e.code !== 'EADDRINUSE' || port > 8099) throw e; }
+}
 const errors = [];
 const logs = [];
 let browser;

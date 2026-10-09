@@ -102,6 +102,8 @@ namespace JapanMap.Editor.Map
             var carve = TerrainCarve.UnderRoads(RoadImporter.NetworkRoads(legacyRoads, types), type => types[type].shoulder, settings, placeRoads);
             // Building pads of the places too (Phase 5): a terrain-only import must not undo them.
             var pads = Places.PlaceGround.Level(Places.PlaceImporter.Pads(), settings);
+            // …and the ramps (Phase 7): their ground is lowered under the base line.
+            Content.RampBuilder.CarveTerrain(settings);
             AssetDatabase.SaveAssets();
             Debug.Log($"[Map] terrain imported: {n}x{n} tiles, {tileRes}² samples each, {size.x:F1} m per tile; " +
                       $"lowered under roads: {carve.texels} texels, deepest cut {carve.maxCut:F2} m, left alone (tunnel-deep) {carve.skipped}; levelled under {pads.pads} building footprints (max {pads.maxChange:F2} m, {pads.roadTexels} texels left to the roads)");

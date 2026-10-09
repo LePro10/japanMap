@@ -210,6 +210,24 @@ namespace JapanMap.Editor
                     _aim = a[1] == "off" ? null : new Vector3(F(1), 0f, F(2));
                     if (_aim == null) { Held.Remove(Key.A); Held.Remove(Key.D); }
                     return true;
+                case "race":
+                {
+                    // race id [auto]: start an event from where the player's car is (auto: the AI drives the player too).
+                    var rd = Object.FindAnyObjectByType<JapanMap.Gameplay.Races.RaceDirector>();
+                    rd.Autopilot = a.Length > 2 && a[2] == "auto";
+                    Log.AppendLine($"  race {a[1]} started={rd.Begin(a[1])}");
+                    return true;
+                }
+                case "pace":
+                {
+                    // pace kmh: the player's car moves forward at this speed now (setup, like a test's RamAt).
+                    var pmp = Object.FindAnyObjectByType<PlayerModeController>();
+                    pmp.Car.Body.linearVelocity = pmp.Car.transform.forward * F(1) / 3.6f;
+                    return true;
+                }
+                case "timescale":
+                    Time.timeScale = F(1);
+                    return true;
                 case "drive":
                 {
                     // Setup like a fast travel: the player's car at x z facing yaw, the player in it.
@@ -410,7 +428,12 @@ namespace JapanMap.Editor
             var stunts = Object.FindAnyObjectByType<JapanMap.Gameplay.Stunts.StuntScorer>();
             if (stunts != null)
                 Log.AppendLine(string.Format(CultureInfo.InvariantCulture, "  stunts count={0} last='{1}' points={2} dist={3:0.0} air={4:0.00}s inAir={5} landing='{6}'",
-                    stunts.Count, stunts.Last.title, stunts.Last.points, stunts.Last.distance, stunts.Last.airtime, stunts.Judge.InAir, stunts.Judge.LastLanding));
+                    stunts.Count, stunts.Last.title, stunts.Last.points, stunts.Last.distance, stunts.Last.airtime, stunts.Judge.InAir, stunts.Judge.LastLanding) + $" hit='{stunts.LastHit}'");
+            var raceDir = Object.FindAnyObjectByType<JapanMap.Gameplay.Races.RaceDirector>();
+            if (raceDir != null && raceDir.Current != JapanMap.Gameplay.Races.RaceDirector.State.Idle)
+                foreach (var e in raceDir.Entrants)
+                    Log.AppendLine(string.Format(CultureInfo.InvariantCulture, "  racer {0} at {1:0} m pos {2} kmh {3:0} rescues {4}",
+                        e.name, e.progress.Progress, e.car.transform.position.ToString("0"), e.car.Telemetry.speed * 3.6f, e.rescues));
             var crowd = Object.FindAnyObjectByType<JapanMap.Gameplay.Life.PedestrianCrowd>();
             if (crowd != null)
             {

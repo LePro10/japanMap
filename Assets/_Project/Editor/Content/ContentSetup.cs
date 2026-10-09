@@ -7,6 +7,7 @@ using JapanMap.Gameplay.Discovery;
 using JapanMap.Gameplay.Drift;
 using JapanMap.Gameplay.Economy;
 using JapanMap.Gameplay.Hud;
+using JapanMap.Gameplay.Races;
 using JapanMap.Gameplay.Regions;
 using JapanMap.Gameplay.Stunts;
 using JapanMap.Vehicles;
@@ -78,6 +79,21 @@ namespace JapanMap.Editor.Content
             Set(stunts, "driver", Object.FindAnyObjectByType<DriverInput>());
             Set(stunts, "wallet", wallet);
             Set(stunts, "hud", hud);
+
+            var races = Child<RaceDirector>(group, "Races");
+            Set(races, "set", RaceSeed.LoadOrCreate());
+            Set(races, "roads", AssetDatabase.LoadAssetAtPath<RoadNetwork>(RoadImporter.NetworkPath));
+            Set(races, "player", player);
+            Set(races, "spawner", Object.FindAnyObjectByType<PlayerCarSpawner>());
+            Set(races, "driver", Object.FindAnyObjectByType<DriverInput>());
+            Set(races, "respawn", respawn);
+            Set(races, "fleet", AssetDatabase.LoadAssetAtPath<VehicleFleet>(FleetSeed.FleetPath));
+            Set(races, "wallet", wallet);
+            Set(races, "hud", hud);
+            Set(races, "drift", drift);
+            Set(races, "stunts", stunts);
+            Set(races, "actions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(PlayerSetup.InputPath));
+            Set(races, "template", PlayerSetup.StandInMaterial("Skin", new Color(0.73f, 0.58f, 0.45f)));
 
             MapScene.Save();
             var msg = $"[Content] set up: {zones.zones.Length} drift zones, {flags} flags, {Regions().regions.Length} regions, {cards.cards.Length} discoveries";

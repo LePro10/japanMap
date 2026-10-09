@@ -1,0 +1,182 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e0433338856e9465991510665651441b, type: 3}
+  m_Name: RaceEvents
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Races.RaceEventSet
+  events:
+  - id: coast-loop
+    title: Coast Loop
+    blurb: One lap of the ring road. Sea on one side, rice fields on the other.
+    kind: 0
+    road: ring
+    reverse: 0
+    startOffset: 0
+    laps: 1
+    rivals: 3
+    rivalCar: hachi
+    loanCar: 
+    checkpointsPerLap: 12
+    completion: 650
+    bonus: 200
+    medals: {x: 0, y: 0, z: 0}
+    timeLimit: 0
+    note: Legacy coast-loop (ring, 1 lap). ASTRA E02 moves it to a Harbour Outer Road that is not built; the ring stays.
+  - id: toge-descent
+    title: "T\u014Dge Descent"
+    blurb: Four tight hairpins, forest bends and a downhill finish.
+    kind: 0
+    road: toge
+    reverse: 1
+    startOffset: 0
+    laps: 1
+    rivals: 3
+    rivalCar: hachi
+    loanCar: 
+    checkpointsPerLap: 8
+    completion: 700
+    bonus: 200
+    medals: {x: 0, y: 0, z: 0}
+    timeLimit: 0
+    note: Legacy touge-descent; ASTRA E03 Cinder Descent.
+  - id: neon-circuit
+    title: Neon Circuit
+    blurb: Two laps through the city block. Tight, wet, lit.
+    kind: 0
+    road: stadt
+    reverse: 0
+    startOffset: 0
+    laps: 2
+    rivals: 3
+    rivalCar: rotor
+    loanCar: 
+    checkpointsPerLap: 6
+    completion: 550
+    bonus: 150
+    medals: {x: 0, y: 0, z: 0}
+    timeLimit: 0
+    note: "Legacy neon-circuit (2 laps of 1.5 km); ASTRA E04 asks 3 laps of 0.9 km \u2014 same distance."
+  - id: toge-climb
+    title: "T\u014Dge Climb"
+    blurb: The same four hairpins, uphill. Bring torque.
+    kind: 0
+    road: toge
+    reverse: 0
+    startOffset: 0
+    laps: 1
+    rivals: 3
+    rivalCar: yama
+    loanCar: 
+    checkpointsPerLap: 8
+    completion: 750
+    bonus: 200
+    medals: {x: 0, y: 0, z: 0}
+    timeLimit: 0
+    note: Legacy touge-climb; ASTRA E05 Cinder Climb.
+  - id: ring-trial
+    title: Ring Time Trial
+    blurb: One lap, no rivals, no excuses.
+    kind: 1
+    road: ring
+    reverse: 0
+    startOffset: 2990
+    laps: 1
+    rivals: 0
+    rivalCar: 
+    loanCar: 
+    checkpointsPerLap: 12
+    completion: 850
+    bonus: 100
+    medals: {x: 250, y: 0, z: 0}
+    timeLimit: 0
+    note: 'Legacy ring-trial; ASTRA E06: 850 + 100 for the benchmark (Kite 250 s; per-car table in Phase 8), 50 within 10 %.'
+  - id: toge-drift
+    title: "T\u014Dge Drift Run"
+    blurb: Score as much as you can on the way down. Bank it at the bottom.
+    kind: 2
+    road: toge
+    reverse: 1
+    startOffset: 60
+    laps: 1
+    rivals: 0
+    rivalCar: 
+    loanCar: 
+    checkpointsPerLap: 8
+    completion: 600
+    bonus: 300
+    medals: {x: 15000, y: 35000, z: 70000}
+    timeLimit: 240
+    note: 'Legacy touge-drift; ASTRA E07: finish within 240 s, 600 + 100/200/300 for bronze/silver/gold at 15k/35k/70k.'
+  - id: needle-sprint
+    title: Needle Sprint
+    blurb: 'Two laps of the Needle circuit: the long straight, the prepared surface.'
+    kind: 0
+    road: needle-circuit
+    reverse: 0
+    startOffset: 0
+    laps: 2
+    rivals: 3
+    rivalCar: rotor
+    loanCar: 
+    checkpointsPerLap: 6
+    completion: 600
+    bonus: 200
+    medals: {x: 0, y: 0, z: 0}
+    timeLimit: 0
+    note: 'ASTRA E13: full circuit, two laps.'
+  - id: open-seat
+    title: Open Seat
+    blurb: One lap of the Needle in the Hanami SF-26, on loan.
+    kind: 1
+    road: needle-circuit
+    reverse: 0
+    startOffset: 1080
+    laps: 1
+    rivals: 0
+    rivalCar: 
+    loanCar: hanami
+    checkpointsPerLap: 6
+    completion: 300
+    bonus: 100
+    medals: {x: 70, y: 0, z: 0}
+    timeLimit: 0
+    note: 'ASTRA E14: one lap in a stock Needle 01 (fleet hanami), benchmark 70 s, lesser bonus to 77 s.'
+  rivals:
+  - name: Mina
+    gripShare: 0.48
+    maxKmh: 135
+    lookAheadSeconds: 0.55
+    lane: -0.35
+    paint: {r: 0.78, g: 0.06, b: 0.18, a: 1}
+  - name: Joss
+    gripShare: 0.54
+    maxKmh: 150
+    lookAheadSeconds: 0.45
+    lane: 0.35
+    paint: {r: 0.12, g: 0.56, b: 0.84, a: 1}
+  - name: Ren
+    gripShare: 0.51
+    maxKmh: 160
+    lookAheadSeconds: 0.5
+    lane: 0
+    paint: {r: 0.88, g: 0.7, b: 0, a: 1}
+  countdown: 3
+  checkpointSlack: 14
+  gridRow: 9
+  gridFirst: 7
+  sprintStart: 40
+  rescueMetres: 3
+  rescueSeconds: 5
+  recoverPenalty: 3
+  joinRadius: 12
+  joinKmh: 15
+  abortDistance: 150
+  abortSeconds: 10

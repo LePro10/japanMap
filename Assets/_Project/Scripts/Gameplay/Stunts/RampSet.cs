@@ -23,6 +23,8 @@ namespace JapanMap.Gameplay.Stunts
             [Tooltip("Lip height above the base line, m.")]
             public float height;
             public float riseLength;
+            [Tooltip("Kicker curve: 0 straight, 1 fully curved; the launch slope is (1 + kick) · height / length.")]
+            [Range(0f, 1f)] public float kick;
             [Tooltip("Flat top after the lip (a table: undershooting lands on it), m.")]
             public float tableLength;
             [Tooltip("Descending landing from table height to the base, m (0: none).")]

@@ -7,6 +7,9 @@
 
 | Datum | Phase | Was passiert ist | Vorkehrung (wo) | Art |
 |---|---|---|---|---|
+| 2026-10-09 | 7 | KI fuhr in Pass-Kehren mit Lenkung am Anschlag in die Felswand (Untersteuern) und wartete dort; Rangfolge in float (1e9 − Zeit) gab dem Letzten Platz 1 | `PathFollower`: Untersteuer-Gedächtnis + Zurücksetzen; `RaceProgress.IsAheadOf`; `RaceAcceptanceTests` zählt Rettungen, Zurücksetzen, Platz, Runde an der Linie | Test |
+| 2026-10-09 | 7 | ASTRA-Plätze auf Straße/Reisfeld/Hang; Lageprüfung sah Reisfeldwasser nicht; Gras ragte durch eine Schanze; 5 Fehlversuche, weil der Schanzentest den **ersten** Sprung zählte (Bodenwelle im Anlauf) | `DiscoveryTests` gegen Wasserflächen; Gelände unter Schanzen per `TerrainCarve` (auch im Gelände-Import), `RampPlacementTests`; `RampTests` wartet auf den Sprung **dieser** Schanze, Log mit Absprungort | Test |
+| 2026-10-09 | 7 | `play.mjs screen` zeigte spätere Frames; Sprünge/Rennen nicht reproduzierbar; neue `.cs` nicht kompiliert; `unity-exec` lief bei Kompilierfehler still auf altem Code | `screen` wartet; `drive`, `aim`, `pace`, `waitstunt`, `race`, `timescale`; `lib/fresh.mjs` frischt bei neuen `.cs` erzwungen auf; `unity-exec` bricht bei Kompilierfehlern ab | Werkzeug |
 | 2026-10-09 | 6 | Neue Modelle: `_LOD2` wurde mit LOD0 gezeichnet (Wald 45 M Dreiecke), Flora deckend (Blätter als Bretter), Regel-Versatz vom Ersatzmodell blieb (Autohaus auf der Straße) | `LibraryImporter` 3 Stufen + Cutout je Atlas; `LibraryTests` prüft Stufenzahl und Flora-Cutout; `PlaceTests` fand den Versatz — nach jedem Modelltausch Bench + alle Tests | Test |
 | 2026-10-09 | 6 | `refresh_unity` direkt aufgerufen → Neukompilieren und Karten-Import mitten im Spiel des Menschen | `Tools/mcp-call.mjs` verweigert `refresh_unity` im Play-Modus (Sperre im Werkzeug, nicht im Aufrufer) | Werkzeug |
 | 2026-10-09 | 6 | Zwei ScriptableObjects in einer Datei: Assets verloren ihr Skript, Läden wurden still nicht gebaut; zwei UIDocuments auf einem Objekt → NullReference | `ScriptFileTests` (eine Klasse je Datei); Panels als Unterobjekte; `play.mjs` meldet Konsolenfehler des Laufs | Test |
@@ -45,15 +48,12 @@
 | 2026-10-07 | 0 | Prototyp: 48 000 Tokens Anleitung bei jedem Start, zwölf parallele Agent-Zweige, Doku gegen Code widersprüchlich | `CLAUDE.md` ≤ 150 Zeilen, Lehren nur hier; Regel 13 ein Agent zur Zeit; Phasen-Tor Schritt 5 Doku-gegen-Code | Regel |
 | 2026-10-07 | 0 | Prototyp baute Physik, Kollision und Renderweg selbst (≈ 29 000 Zeilen, Hauptquelle der Bugs) | `CLAUDE.md` Regel 3: Standard vor Eigenbau, Begründung in DECISIONS.md | Regel |
 | 2026-10-08 | 3 | Rigidbody vor dem Collider gebaut → fast keine Trägheit, Auto drehte bei jedem Federstoß wild | `VehicleController.Build`: `ResetInertiaTensor()` nach dem Collider; Prüfstand `VehicleBenchTests` misst es mit | Test |
-| 2026-10-08 | 3 | Landung aus 6 m: ContinuousDynamic fing den 21-cm-Schritt nicht ab; Speculative bremste dafür an Fahrbahnkanten (118 → 40 km/h) | `ArcadeTuning.collisionMode` + `bodyContactOffset` als Regler, beide gemessen; Tests Landung + Ringfahrt | Test |
+| 2026-10-08 | 3 | Landung aus 6 m fing ContinuousDynamic nicht ab; Speculative bremste an Kanten; Mensch: Auto rammt mit der Front in Senken | `ArcadeTuning.collisionMode`, `bodyContactOffset`, `bodyUnderLift`, `bodyLengthShare` gemessen; Landungs- und Ringtest zählen harte Stöße (3 → 0) | Test |
 | 2026-10-08 | 3 | Port vergaß die Luft-Lageregel des Prototyps → Nase kippte an Kuppen, Landung mit der Stoßstange | `airLevelRate`/`airAttitudeResponse`; Abnahmefahrt `AcceptanceDriveTests` | Test |
-| 2026-10-08 | 3 | Karten-Abnahme prüfte nur Median/p95 → Gelände ragte an 800 Stellen bis 4 m durch Straßen | `TerrainCarve` im Gelände-Import; Test `Terrain_NeverPokesThroughARoad` | Test |
-| 2026-10-08 | 3 | Absenken lag im Straßen-Import, ein Test importierte nur das Gelände → Absenkung still verloren | Schritt in `TerrainImporter.Import` verlegt: jeder Weg zum Gelände gleich | Test |
+| 2026-10-08 | 3 | Karten-Abnahme prüfte nur Median/p95 (Gelände bis 4 m durch Straßen); Absenken lag im Straßen-Import und ging still verloren | `TerrainCarve` in `TerrainImporter.Import` (jeder Weg gleich); Test `Terrain_NeverPokesThroughARoad` | Test |
 | 2026-10-08 | 3 | Straßenenden lagen als Rampe auf anderen Straßen (bellwood-edge 3,4 m über dem Ring) und stoppten Autos | `RoadImporter.OverlapRun` kürzt solche Enden (Entscheidung nach Rohgelände) | Test |
 | 2026-10-08 | 3 | Fehler in der Spur war im ersten Ringtest nicht zu finden („Auto bleibt stehen") | Abnahmefahrt schreibt Sekundenspur + harte Karosserie-Kontakte (`BodyContactLog`) nach `Captures/` | Werkzeug |
-| 2026-10-08 | 3 | MCP-Werkzeuge fehlten, weil der Editor nach Sitzungsstart kam | HTTP-Helfer wie im Skill `unity-verify` beschrieben; Skill um fertiges Skript ergänzt | Skill |
-| 2026-10-08 | 3 | Prototyp-Prüfstände ließen sich nicht starten (kein `three`), Zeit fürs Herausfinden | Rezept im Skill `legacy-port`; Ausgaben in `SourceData/bench/` | Skill |
-| 2026-10-08 | 3 | Mensch: Auto rammt mit der Front in Senken/Kanten und stoppt abrupt | Kollisionsbox höher und kürzer (`ArcadeTuning.bodyUnderLift`, `bodyLengthShare`); Ringfahrt zählt harte Karosserie-Stöße (3 → 0) | Test |
+| 2026-10-08 | 3 | MCP fehlte (Editor nach Sitzungsstart); Prototyp-Prüfstände liefen nicht (kein `three`) | HTTP-Helfer `Tools/mcp-call.mjs` (Skill `unity-verify`); Rezept im Skill `legacy-port`, Ausgaben in `SourceData/bench/` | Skill |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

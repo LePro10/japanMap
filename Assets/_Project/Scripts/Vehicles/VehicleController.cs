@@ -22,6 +22,9 @@ namespace JapanMap.Vehicles
         /// <summary>Set by the player input, AI or a test before each physics step.</summary>
         public DriveInput Input;
 
+        /// <summary>Race countdown: the car stands on its brakes whatever the input says (ASTRA §8: movement begins at GO).</summary>
+        public bool HoldStill;
+
         Rigidbody _rb;
         ArcadeDynamics _dyn;
         BoxCollider _body;
@@ -255,7 +258,7 @@ namespace JapanMap.Vehicles
             // The body owns the yaw rate: a wall hit may have changed it since the last step.
             var w0 = _rb.angularVelocity;
             _dyn.YawRate = Vector3.Dot(w0, n);
-            var r = _dyn.Step(dt, Input, env);
+            var r = _dyn.Step(dt, HoldStill ? new DriveInput { brake = 1f, handbrake = true } : Input, env);
 
             _rb.AddForce(fwd * r.accelLong + right * r.accelLat, ForceMode.Acceleration);
             var w1 = w0 + n * (r.yawRate - Vector3.Dot(w0, n));

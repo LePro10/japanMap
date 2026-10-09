@@ -95,7 +95,9 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
   und `editorInputBehaviorInPlayMode = AllDeviceInputAlwaysGoesToGameView` (in SetUp setzen, in TearDown
   zurück) — sonst rot, sobald Unity nicht das vordere Fenster ist (und im Batchmodus).
 - **Spielabläufe:** `node Tools/play.mjs <ordner> "<skript>"` (Tasten, Bilder, `probe`, `stats`, `place x z`,
-  `view <blickpunkt>`, `tier Low`). **Leben folgt dem Spieler, nicht der Kamera:** Fußgänger, Verkehr und
+  `view <blickpunkt>`, `tier Low`; Spielinhalt: `screen` (Bild **mit HUD**), `drive x z yaw` (Auto dort, Spieler drin),
+  `aim x z` (lenkt per A/D auf einen Punkt), `pace kmh`, `waitstunt`, `race <id> [auto]`, `timescale 4`; `probe` meldet Drift, Region,
+  Entdeckung, Stunt, Rennteilnehmer). **Leben folgt dem Spieler, nicht der Kamera:** Fußgänger, Verkehr und
   Akteure erscheinen nur um die Figur. `ViewpointBench` misst sie deshalb nur in Sakura (Start); Kosten an
   einem anderen Ort: `play.mjs "place x z; wait 20; stats; crowd off; wait 1; stats"`. `view` nimmt die Figur mit.
 - **ViewpointBench** schaltet Cinemachine/CarCameraRig ab — sonst misst jeder

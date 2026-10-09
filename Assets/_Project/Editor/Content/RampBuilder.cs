@@ -3,6 +3,7 @@ using JapanMap.Editor.Map;
 using JapanMap.Editor.Places;
 using JapanMap.Editor.Vehicles;
 using JapanMap.Gameplay.Stunts;
+using JapanMap.World;
 using UnityEditor;
 using UnityEngine;
 
@@ -20,6 +21,9 @@ namespace JapanMap.Editor.Content
         const string MeshDir = "Assets/_Project/Art/Generated/Ramps";
         const float MaxBaseSlope = 0.05f;
         const float FoundationDepth = 0.6f;
+        const float ExitLength = 8f;
+        const float LeadIn = 6f;
+        const float CullDistance = 400f;
 
         [MenuItem("JapanMap/Content/Build Ramps")]
         public static string Build()
@@ -34,23 +38,32 @@ namespace JapanMap.Editor.Content
             if (!AssetDatabase.IsValidFolder("Assets/_Project/Art/Generated")) AssetDatabase.CreateFolder("Assets/_Project/Art", "Generated");
             if (!AssetDatabase.IsValidFolder(MeshDir)) AssetDatabase.CreateFolder("Assets/_Project/Art/Generated", "Ramps");
 
+            for (var i = 0; i < set.ramps.Length; i++) FitBase(ref set.ramps[i]);
+            var settings = MapImportSettings.LoadOrCreate();
+            var carve = CarveTerrain(settings);
             for (var i = 0; i < set.ramps.Length; i++)
             {
                 ref var r = ref set.ramps[i];
-                FitBase(ref r);
                 var root = new GameObject($"Ramp_{r.id}");
                 root.transform.SetParent(group, false);
                 // Meshes are built relative to the kicker foot on the base line.
                 root.transform.position = At(r, 0f, 0f) + Vector3.up * r.baseY;
-                var body = Part(root.transform, "Body", MeshAssets.Save($"{MeshDir}/Ramp_{r.id}.asset", BodyMesh(r)), new[] { top, side }, true);
+                var body = Part(root.transform, "Body", MeshAssets.Save($"{MeshDir}/Ramp_{r.id}.asset", BodyMesh(r, settings.carveDepth)), new[] { top, side }, true);
                 var landing = Part(root.transform, "Landing", MeshAssets.Save($"{MeshDir}/Ramp_{r.id}_Landing.asset", PadMesh(r)), new[] { pad, side }, true);
-                Part(root.transform, "Chevrons", MeshAssets.Save($"{MeshDir}/Ramp_{r.id}_Chevrons.asset", ChevronMesh(r)), new[] { chevron }, false);
+                var chev = Part(root.transform, "Chevrons", MeshAssets.Save($"{MeshDir}/Ramp_{r.id}_Chevrons.asset", ChevronMesh(r)), new[] { chevron }, false);
                 body.isStatic = landing.isStatic = true;
+                // Culled beyond CullDistance: each ramp is 5 draws plus shadows and, 40–70 m long, stayed "big on
+                // screen" for over a kilometre — +25 draw calls on Low at Funaura, behind hills (no occlusion yet).
+                var lod = root.AddComponent<LODGroup>();
+                lod.SetLODs(new[] { new LOD(0.5f, new Renderer[] { body.GetComponent<Renderer>(), landing.GetComponent<Renderer>(), chev.GetComponent<Renderer>() }) });
+                lod.RecalculateBounds();
+                // Unity: relative height = size / (2 · distance · tan(fov / 2)), fov 60° assumed.
+                lod.SetLODs(new[] { new LOD(lod.size / (2f * CullDistance * Mathf.Tan(30f * Mathf.Deg2Rad)), new Renderer[] { body.GetComponent<Renderer>(), landing.GetComponent<Renderer>(), chev.GetComponent<Renderer>() }) });
             }
             EditorUtility.SetDirty(set);
             AssetDatabase.SaveAssets();
             MapScene.Save();
-            var msg = $"[Ramps] built {set.ramps.Length}";
+            var msg = $"[Ramps] built {set.ramps.Length}; ground lowered at {carve.texels} texels (deepest {carve.maxCut:F2} m, {carve.skipped} too deep)";
             Debug.Log(msg);
             return msg;
         }
@@ -77,9 +90,14 @@ namespace JapanMap.Editor.Content
 
         static float Base(RampSet.Ramp r, float s) => r.baseY + r.baseSlope * s;
 
-        /// <summary>Base line through the terrain at the start, slope by least squares along the centre (clamped).</summary>
+        /// <summary>
+        /// Base line through the ground at the start, slope by least squares along the centre (clamped).
+        /// Fitted once (baseY 0 = not yet): the terrain is lowered under the ramp afterwards
+        /// (<see cref="CarveTerrain"/>), and a refit on carved ground would drift. Set baseY to 0 to refit.
+        /// </summary>
         static void FitBase(ref RampSet.Ramp r)
         {
+            if (r.baseY != 0f) return;
             r.baseY = PlaceImporter.Ground(At(r, 0f, 0f));
             double num = 0, den = 0;
             for (var s = 2f; s <= r.Length; s += 2f)
@@ -91,13 +109,52 @@ namespace JapanMap.Editor.Content
             r.baseSlope = Mathf.Clamp(den > 0 ? (float)(num / den) : 0f, -MaxBaseSlope, MaxBaseSlope);
         }
 
+        /// <summary>
+        /// Lowers the ground under every ramp and pad below their base line (the road carve, with its
+        /// bank): grass poked through the first Terrace Roller and the wheels drove on the field. Part of
+        /// the terrain import too, so a re-import keeps it.
+        /// </summary>
+        public static (int texels, float maxCut, int skipped) CarveTerrain(MapImportSettings settings)
+        {
+            var set = AssetDatabase.LoadAssetAtPath<RampSet>(Path);
+            if (set == null) return (0, 0f, 0);
+            var roads = new List<RoadNetwork.Road>();
+            var fills = new HashSet<string>();
+            foreach (var r in set.ramps)
+            {
+                if (r.baseY == 0f) continue;
+                var end = r.Length + ExitLength;
+                var pts = new List<Vector3>();
+                // From in front of the lead-in, level with the kicker's foot: the car rolls from ground that
+                // is exactly at the lead-in's height (a 0.35 m drop there let the body slam the ramp at 79 km/h).
+                for (var s = -LeadIn - 6f; s <= end; s += 4f) { var p = At(r, s, 0f); p.y = Base(r, Mathf.Max(0f, s)); pts.Add(p); }
+                roads.Add(new RoadNetwork.Road { id = "ramp-" + r.id, type = "ramp", closed = false, width = Mathf.Max(r.width, r.landingWidth) + 1f, points = pts.ToArray() });
+                fills.Add("ramp-" + r.id);
+            }
+            // Fill and cut: the ground under ramp and lead-in ends at the surface minus the carve depth.
+            return TerrainCarve.UnderRoads(roads, _ => 0f, settings, fills);
+        }
+
+        static float GroundLow(RampSet.Ramp r, float s)
+        {
+            var hw = r.width * 0.5f;
+            return Mathf.Min(PlaceImporter.Ground(At(r, s, -hw)), PlaceImporter.Ground(At(r, s, 0f)), PlaceImporter.Ground(At(r, s, hw)));
+        }
+
+        /// <summary>Ground across the width at s, highest of three probes (how long the lead-in must be).</summary>
+        static float GroundTop(RampSet.Ramp r, float s)
+        {
+            var hw = r.width * 0.5f;
+            return Mathf.Max(PlaceImporter.Ground(At(r, s, -hw)), PlaceImporter.Ground(At(r, s, 0f)), PlaceImporter.Ground(At(r, s, hw)));
+        }
+
         /// <summary>Height of the driving surface above the base line at s (kicker, table, down-slope).</summary>
         public static float Profile(RampSet.Ramp r, float s)
         {
             if (s <= r.riseLength)
             {
                 var t = Mathf.Clamp01(s / r.riseLength);
-                return r.height * (0.5f * t + 0.5f * t * t); // launch angle ≈ atan(1.5 h / L)
+                return r.height * ((1f - r.kick) * t + r.kick * t * t); // launch slope (1 + kick) · h / L
             }
             s -= r.riseLength;
             if (s <= r.tableLength) return r.height;
@@ -116,12 +173,16 @@ namespace JapanMap.Editor.Content
         }
 
         /// <summary>Kicker (+ table + down-slope): top surface (sub-mesh 0) and walls to the foundation (sub-mesh 1).</summary>
-        static Mesh BodyMesh(RampSet.Ramp r)
+        static Mesh BodyMesh(RampSet.Ramp r, float carveDepth)
         {
             var end = r.riseLength + r.tableLength + r.downLength;
             var hw = r.width * 0.5f;
+            // Lead-in: from the carved ground in front (base line minus the carve depth) up to the kicker's foot.
+            var lead = LeadIn;
+            var leadFrom = Base(r, 0f) - carveDepth - 0.02f;
+            float Top(float s) => s >= 0f ? Base(r, s) + Profile(r, s) : Mathf.Lerp(Base(r, 0f), leadFrom, -s / lead);
             var ss = new List<float>();
-            for (var s = 0f; s < end; s += 1f) ss.Add(s);
+            for (var s = -lead; s < end; s += 1f) ss.Add(s);
             ss.Add(end);
             var v = new List<Vector3>();
             var topTris = new List<int>();
@@ -132,16 +193,16 @@ namespace JapanMap.Editor.Content
             for (var i = 0; i < ss.Count - 1; i++)
             {
                 float s0 = ss[i], s1 = ss[i + 1];
-                float y0 = Base(r, s0) + Profile(r, s0), y1 = Base(r, s1) + Profile(r, s1);
-                float b0 = Bottom(r, s0, hw), b1 = Bottom(r, s1, hw);
+                float y0 = Top(s0), y1 = Top(s1);
+                float b0 = Mathf.Min(Bottom(r, s0, hw), y0 - 0.2f), b1 = Mathf.Min(Bottom(r, s1, hw), y1 - 0.2f);
                 Quad(v, topTris, L(s0, -hw, y0), L(s1, -hw, y1), L(s1, hw, y1), L(s0, hw, y0));
                 Quad(v, sideTris, L(s0, hw, b0), L(s0, hw, y0), L(s1, hw, y1), L(s1, hw, b1));
                 Quad(v, sideTris, L(s1, -hw, b1), L(s1, -hw, y1), L(s0, -hw, y0), L(s0, -hw, b0));
             }
             // Front face (usually a sliver: the kicker starts at the ground) and back face down to the foundation.
-            var yb = Base(r, 0f);
-            var bb = Bottom(r, 0f, hw);
-            Quad(v, sideTris, L(0f, -hw, bb), L(0f, -hw, yb), L(0f, hw, yb), L(0f, hw, bb));
+            var yb = Top(-lead);
+            var bb = Mathf.Min(Bottom(r, -lead, hw), yb - 0.2f);
+            Quad(v, sideTris, L(-lead, -hw, bb), L(-lead, -hw, yb), L(-lead, hw, yb), L(-lead, hw, bb));
             var ye = Base(r, end) + Profile(r, end);
             var be = Bottom(r, end, hw);
             Quad(v, sideTris, L(end, hw, be), L(end, hw, ye), L(end, -hw, ye), L(end, -hw, be));
@@ -168,9 +229,18 @@ namespace JapanMap.Editor.Content
                 Quad(v, sideTris, L(s, hw, b0), L(s, hw, y0), L(e, hw, y1), L(e, hw, b1));
                 Quad(v, sideTris, L(e, -hw, b1), L(e, -hw, y1), L(s, -hw, y0), L(s, -hw, b0));
             }
-            var ye = Base(r, s1) + 0.05f;
-            var be = Bottom(r, s1, hw);
-            Quad(v, sideTris, L(s1, hw, be), L(s1, hw, ye), L(s1, -hw, ye), L(s1, -hw, be));
+            // Exit: down to the ground over a few metres, so the pad's far edge is no unplanned jump
+            // (measured: Breakyard's pad ended 2–3 m above the field and launched cars 36 m).
+            var yEnd = Base(r, s1) + 0.05f;
+            // At most 1 in 8 down, so a car at speed stays on it.
+            var drop = Mathf.Max(0f, yEnd - PlaceImporter.Ground(At(r, s1 + ExitLength, 0f)));
+            var s2 = s1 + Mathf.Max(ExitLength, drop * 8f);
+            var g2 = Mathf.Min(PlaceImporter.Ground(At(r, s2, -hw)), PlaceImporter.Ground(At(r, s2, hw)), PlaceImporter.Ground(At(r, s2, 0f)));
+            var y2 = Mathf.Min(yEnd, g2 - 0.05f);
+            var bEnd = Bottom(r, s1, hw);
+            Quad(v, topTris, L(s1, -hw, yEnd), L(s2, -hw, y2), L(s2, hw, y2), L(s1, hw, yEnd));
+            Quad(v, sideTris, L(s1, hw, bEnd), L(s1, hw, yEnd), L(s2, hw, y2), L(s2, hw, y2 - 0.3f));
+            Quad(v, sideTris, L(s2, -hw, y2 - 0.3f), L(s2, -hw, y2), L(s1, -hw, yEnd), L(s1, -hw, bEnd));
             return Finish($"Ramp_{r.id}_Landing", v, topTris, sideTris);
         }
 

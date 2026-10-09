@@ -72,6 +72,9 @@ namespace JapanMap.Gameplay.Stunts
             _hasLast = true;
 
             // ── Air ──────────────────────────────────────────────────────────
+            // Off again after a mere bump (a hop on a rough run-up just before the lip): that is a new
+            // jump from here, not the bump's rebound — else the take-off sits before the ramp.
+            if (d.airborne && _touched && _airTime < _s.minAirtime) _inAir = _touched = false;
             if (d.airborne && !_inAir && !_touched)
             {
                 _inAir = true;
@@ -145,7 +148,7 @@ namespace JapanMap.Gameplay.Stunts
         {
             _inAir = _touched = false;
             var dist = Flat(_touchAt - _takeoff).magnitude;
-            LastLanding = $"air {_airTime:0.00} s, {dist:0.0} m, yaw {_airYaw:0}°";
+            LastLanding = $"air {_airTime:0.00} s, {dist:0.0} m, yaw {_airYaw:0}° from ({_takeoff.x:0}, {_takeoff.z:0})";
             if (_airTime < _s.minAirtime) { LastLanding += " — a bump"; return; }
             if (_dirtyLanding) { LastLanding += " — body hit"; return; }
             // Straight enough: the nose (or the tail, driving on in reverse) within the limit of the travel.

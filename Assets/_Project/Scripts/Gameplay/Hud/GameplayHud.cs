@@ -23,7 +23,7 @@ namespace JapanMap.Gameplay.Hud
 
         UIDocument _doc;
         VisualElement _driftBox, _bar, _barFill;
-        Label _points, _mult, _spot, _result, _sparks, _toast, _banner, _prompt, _hint, _stunt;
+        Label _points, _mult, _spot, _result, _sparks, _toast, _banner, _prompt, _hint, _stunt, _panel, _race, _count;
         VisualElement _useButton;
         bool _touchSeen;
         float _resultUntil, _toastUntil, _bannerUntil;
@@ -118,6 +118,27 @@ namespace JapanMap.Gameplay.Hud
             _prompt = Text(promptBox, 28, Color.white);
             _prompt.style.display = DisplayStyle.None;
 
+            _race = Text(Box(root), 26, Color.white);
+            _race.parent.style.top = 70;
+            _race.parent.style.left = 40;
+            _race.style.unityTextAlign = TextAnchor.UpperLeft;
+            Plate(_race);
+            _race.style.display = DisplayStyle.None;
+
+            var mid = Box(root);
+            mid.style.top = 300;
+            mid.style.left = mid.style.right = 0;
+            mid.style.alignItems = Align.Center;
+            _count = Text(mid, 120, Color.white);
+            _count.style.display = DisplayStyle.None;
+            _panel = Text(mid, 28, Color.white);
+            Plate(_panel);
+            _panel.style.paddingTop = _panel.style.paddingBottom = 18;
+            _panel.style.paddingLeft = _panel.style.paddingRight = 32;
+            _panel.style.maxWidth = 900;
+            _panel.style.whiteSpace = WhiteSpace.Normal;
+            _panel.style.display = DisplayStyle.None;
+
             _stunt = Text(Box(root), 24, new Color(1f, 0.55f, 0.15f));
             _stunt.text = "STUNT";
             _stunt.parent.style.top = 24;
@@ -163,14 +184,52 @@ namespace JapanMap.Gameplay.Hud
             _toastUntil = Time.time + toastSeconds;
         }
 
-        /// <summary>Context action of the moment ("E  Inspect …"); "" hides it.</summary>
-        public void SetPrompt(string text)
+        readonly Dictionary<object, string> _prompts = new();
+
+        /// <summary>
+        /// Context action of the moment ("E  Inspect …") from one source; "" withdraws it. Several sources
+        /// may ask; the first one in asking order shows, and only that one may act on Use
+        /// (<see cref="PromptOwner"/>) — one key, one meaning at a time.
+        /// </summary>
+        public void SetPrompt(object source, string text)
         {
             if (_prompt == null) return;
+            if (string.IsNullOrEmpty(text)) _prompts.Remove(source);
+            else _prompts[source] = text;
+            PromptOwner = null;
+            var shown = "";
+            foreach (var kv in _prompts) { PromptOwner = kv.Key; shown = kv.Value; break; }
             // On touch the USE button is the prompt; drop the key name.
-            _prompt.text = _touchSeen && text.StartsWith("E  ") ? text.Substring(3) : text;
-            _prompt.style.display = text != "" ? DisplayStyle.Flex : DisplayStyle.None;
-            _useButton.style.display = _touchSeen && text != "" ? DisplayStyle.Flex : DisplayStyle.None;
+            _prompt.text = _touchSeen && shown.StartsWith("E  ") ? shown.Substring(3) : shown;
+            _prompt.style.display = shown != "" ? DisplayStyle.Flex : DisplayStyle.None;
+            _useButton.style.display = _touchSeen && shown != "" ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>Who owns the prompt shown now (null: none).</summary>
+        public object PromptOwner { get; private set; }
+
+        /// <summary>Event card or result sheet in the middle of the screen; "" hides it.</summary>
+        public void ShowPanel(string text)
+        {
+            if (_panel == null) return;
+            _panel.text = text;
+            _panel.style.display = text != "" ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>Race lines (position, lap, time) top left; "" hides them.</summary>
+        public void SetRaceInfo(string text)
+        {
+            if (_race == null || _race.text == text) return;
+            _race.text = text;
+            _race.style.display = text != "" ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>3 – 2 – 1 – GO, big in the middle; "" hides it.</summary>
+        public void SetCountdown(string text)
+        {
+            if (_count == null || _count.text == text) return;
+            _count.text = text;
+            _count.style.display = text != "" ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         /// <summary>Hint line above the prompt (ramp speed); "" hides it.</summary>

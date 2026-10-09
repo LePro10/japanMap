@@ -3,6 +3,18 @@
 // a stale warning). Never while the editor is in play mode: a recompile there reloads scripts under a
 // running game (first version did that during the human's play session — NullReferenceExceptions).
 import { execFileSync } from 'node:child_process';
+import { existsSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const ROOT = new URL('../..', import.meta.url).pathname;
+// Scripts written since the last call: a new file was once not picked up by an "if dirty" refresh (the
+// editor's file watcher missed it while Unity was in the background) — "type does not exist" in Phase 7.
+const STAMP = join(ROOT, 'Library', 'agent-fresh.stamp');
+function scriptsChanged() {
+  if (!existsSync(STAMP)) return true;
+  const found = execFileSync('find', [join(ROOT, 'Assets'), '-name', '*.cs', '-newer', STAMP, '-print', '-quit'], { encoding: 'utf8' });
+  return found.trim() !== '';
+}
 
 const mcp = (tool, args) => JSON.parse(execFileSync('node', [new URL('../mcp-call.mjs', import.meta.url).pathname, tool, JSON.stringify(args)], { encoding: 'utf8', maxBuffer: 16 << 20 }));
 
@@ -17,6 +29,8 @@ export function compileIfChanged() {
     r = state();
   }
   if (r !== 'edit') return false;
-  mcp('refresh_unity', { mode: 'if_dirty', scope: 'all', compile: 'request', wait_for_ready: true });
+  const changed = scriptsChanged();
+  mcp('refresh_unity', { mode: changed ? 'force' : 'if_dirty', scope: changed ? 'scripts' : 'all', compile: 'request', wait_for_ready: true });
+  writeFileSync(STAMP, String(Date.now()));
   return true;
 }

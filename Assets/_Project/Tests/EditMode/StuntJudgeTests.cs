@@ -83,6 +83,20 @@ namespace JapanMap.Tests
         }
 
         [Test]
+        public void HopJustBeforeTheLip_StartsANewJumpAtTheLip()
+        {
+            Run(1f, 20f, false);
+            Run(0.1f, 20f, true);           // a bump on the run-up…
+            Run(0.2f, 20f, false);          // …0.2 s on the ground (not settled)…
+            var lip = _pos;
+            Run(0.8f, 20f, true, ramp: 4);  // …then the real take-off at the lip
+            Run(0.6f, 20f, false);
+            Assert.AreEqual(1, _got.Count);
+            Assert.AreEqual(4, _got[0].ramp, "the take-off belongs to the ramp");
+            Assert.AreEqual(16f, _got[0].distance, 0.6f, $"measured from the lip at {lip.z:0}");
+        }
+
+        [Test]
         public void Air360_Adds800()
         {
             Run(1.2f, 20f, true, yawRate: 300f); // 360°

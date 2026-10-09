@@ -3,86 +3,78 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-09 · **Phase:** 6 abgeschlossen, **alle fertigen Assets eingebaut** (D25) — deine Abnahme offen · **Phase 7 (Spielinhalt) ist als Nächstes dran**
+**Stand:** 2026-10-09 · **Phase:** 7 abgeschlossen (deine Abnahme offen) · **Phase 8 (Progression und Speichern) ist als Nächstes dran**
 
-Phase 2 ✅ · Phase 3 ✅ freigegeben · Phase 4 ✅ (Optik-Abnahme offen) · Phase 5 ✅ (Abnahme offen).
+Phase 2 ✅ · 3 ✅ freigegeben · 4 ✅ (Optik-Abnahme offen) · 5 ✅ (Abnahme offen) · 6 ✅ (Abnahme offen).
 
-## Phase 6 — Zu Fuß und Leben ✅ (D22–D24)
+## Phase 7 — Spielinhalt ✅ (D26–D28)
 
-Zu Fuß (F ein/aus, H Auto rufen, C rutschen), Fußgänger auf NavMesh, Verkehr in Tokyo, Zerstörbares (Pfosten, Automaten, Zäune,
-Hütten, Bäume), begehbare Läden, Arbeiter/Tiere — alles mit Stellvertreter-Figuren. **Abnahme gemessen:** Fußgänger 10 min, 45 987
-Stichproben, **0 auf der Fahrbahn**; Zerstörung Bruch ≤ 1,05 ms, Physik ≤ 0,36 ms (Budget 2 ms). Tests EditMode 63/63, PlayMode
-159/163 (4 auf Abruf). Bilder `Captures/p6-*`, Blickpunkte `Captures/p6-gate/`.
+- [x] 1. Drift-Wertung: Kette, ×2/×3/×4/×5 nach 6/18/42/90 s Drift, Crash bucht 50 %, Sakura Bowl + Rotor Court ×2 (`Captures/p7-1-*`)
+- [x] 2. Regionen: 8 lückenlos, 1,5 s + 4 m → „… explored · n/8 · +200 Sparks“, alle 8 +800 (`Captures/p7-2-region.png`)
+- [x] 3. Entdeckungen: 24 (3 je Region), Taste **E**, 6 Reihenfolge- + 2 Rhythmus-Rätsel, Lagen geprüft (`Captures/p7-3-*`)
+- [x] 4. Schanzen: 6 Körper mit Fundament, Gelände darunter abgesenkt, Tempo-Hinweis, Landepfeile; Stunt-Wertung, STUNT-Marke (`Captures/p7-4-*`)
+- [x] 5. Rennen: 8 Veranstaltungen, Karte am Leuchtpfeiler (E/E), Startaufstellung, Countdown hält alle, Kontrollpunkte, KI Mina/Joss/Ren,
+  Ergebnis + Sparks (`Captures/p7-5-race.png`)
 
-## Assets eingebaut (D25)
-
-5b, 5c, Flora, Scatter: Tokyo-Türme (40–150 m) + Kino/Hotel/Izakaya/Fertighäuser, Sakura Autohaus + Werkstatt, Koedo Brauerei,
-Funaura Kei-Trucks, **der ganze Wald aus echten Bäumen** (Sugi, Kiefer, Momiji, Kirsche, Bambus, Sträucher, Weide, Kaki),
-Leitpfosten, Tetrapoden, Gewächshäuser, Mauern, Nobori, Jizō, Friedhof. Vergleich `Captures/5c-vergleich.png`, `Captures/5c-after/`.
-Bench (`Captures/bench-p6-assets-*`): Niedrig ≤ 380 DC / ≤ 576 k ✓; Hoch wie vor dem Einbau (2,7–7 M, sakura-hof 1 524 DC).
-Web **53,9 MB** (+4,6), Browser Niedrig 240 / Hoch 65 fps (Blender lief).
-
-## Phase 7 — Spielinhalt (als Nächstes, PLAN.md)
-
-- [x] 1. Drift-Wertung (D26): Kette, ×2/×3/×4/×5 nach 6/18/42/90 s Drift, Sakura Bowl + Rotor Court ×2, Sparks; Bild `Captures/p7-1-drift*.png`
-- [x] 2. Regionen (8, lückenlos, Prototyp-Grenzen): 1,5 s am Boden + 4 m → „… explored · n/8 regions · +200 Sparks“, alle 8 +800; Bild `Captures/p7-2-region.png`
-- [x] 3. Entdeckungen (24, 3 je Region, ASTRA §9): 9× **E** untersuchen, 6 Reihenfolge- und 2 Rhythmus-Rätsel, 7 im Vorbeigehen/-fahren; +100 Sparks, Abzeichen-Namen; Lagen geprüft (trocken, eben, neben der Straße); Bilder `Captures/p7-3-*.png`
-- [x] 4. Schanzen (D27): 6 Körper mit Fundament, Tempo-Hinweis, Landepfeile; Stunt-Wertung (Sprung, Luft/Boden 180/360), STUNT-Marke; alle 6 sprungfähig (12–25 m); Bild `Captures/p7-4-*.png`
-- [ ] 5. Rennen mit KI-Gegnern (Coast Loop, Tōge, Neon Circuit, Ring, Drift Run); Abnahme: KI gegen KI ohne Hängenbleiben
+**Abnahme gemessen:** alle 8 Veranstaltungen KI gegen KI vom Start bis Ziel: **0 Rettungen, 0 Zurücksetzen**; Runden genau an der Linie
+(Neon 1476/2952 m bei 1476 m Runde, Needle 2168,8/4337,6 m, Ring 5987 m). Alle 6 Schanzen beim empfohlenen Tempo: 8–33 m, Absprung an der Kante.
+Tests: EditMode **99/99**, PlayMode **171/176** (4 Prüfstände auf Abruf; `TouchStick_Throttles` wackelt, s. u.).
+Bench (`Captures/bench-p7-gate*`): Niedrig ≤ 390 DC / 578 k ✓ (Funaura 388 — Schanzen erst ab 400 m ausgeblendet), Hoch wie Phase 6
+(sakura-hof 1 573 DC). Web **53,97 MB**, Browser Niedrig 235 / Hoch 55 fps (Vorschau lief vermutlich mit).
 
 ## Offen / Gefunden
 
-- **Kartenpunkte:** Kuppen-Knicke/Höhenstufen alter Straßen, Stadtplatte ohne Böschung, treppige Reisfeldränder; Viadukt-Brüstungsmauer (Modell).
-- **Sakura:** `commons-drive` beginnt als Asphaltkante in der Schale (Startbild) — nicht behoben (Straßen-Import, nicht Phase 6);
-  Fußgänger und Verkehr meiden sie bereits (NavMesh schneidet Fahrbahnen aus, Verkehr schließt sie aus).
-- **Tokyo-Kollider** bleiben GameObjects (das NavMesh-Backen braucht sie; Game.unity 10,3 MB, durch Phase 6 nicht gewachsen).
-- **Browser-fps** nur mit laufendem Blender gemessen → bei ruhigem Rechner `node Tools/smoke.mjs --gpu` wiederholen.
-- **Hoch kostet viel:** Wald-Schatten, lodBias 2, Reisgras, Figuren in allen Kaskaden; sakura-hof 1 524 DC → Phase 10. **Download 53,9 MB**
-  (Desktop-Ziel 50, Handy 20) → Phase 10 (Addressables). Markthalle (Tokyo_Market) braucht einen eigenen Ort (Phase 7).
-- Fahrtests im Batchmodus: Ursache wohl behoben (Tastatur ohne Fokus), **im Batchmodus ungeprüft**.
-- Funaura: die sechs Angler an den Molenfeuern fehlen (Plätze hängen am Lichter-Layout des Prototyps). Stillwater-Hafen (Tideglass) gibt es noch nicht.
+- **ASTRA-Katalog:** E01 Sakura Starter, E08–E12, E15–E17 und die zwei Lieferfahrten brauchen Straßen/Orte, die nicht gebaut sind
+  (Harbour Outer Road, Crosslight, Terrace Track, Breakyard, Market Hall). Die **Markthalle** gehört an die Harbour Outer Road (Start E02/E17)
+  — erst mit dieser Straße sinnvoll (Phase 12 oder eigener Karten-Schritt).
+- **Sakura `commons-drive`** beginnt als Asphaltkante in der Schale — nicht behoben (Straßen-Import).
+- **Rennen vorläufig:** Karte/Ergebnis als Text (Phase 9: echtes UI, Kamerafahrt, Töne); Regionen-/Entdeckungsmeldungen erscheinen auch
+  im Rennen (ASTRA: erst danach); Fortschritt (Sparks, Funde, Bestzeiten) wird noch **nicht gespeichert** (Phase 8).
+- **Entdeckungen:** Hinweiskarte mit Postkarte und 80-m-Suchkreis fehlt (Phase 9, Karte). Ring-Zeitfahren: Bestzeit-Ziel gilt für den Kite
+  (250 s); Tabelle je Auto kommt mit Phase 8.
+- **Wackeliger Test:** `PlayerDriveTests.TouchStick_Throttles…` war 2× beim ersten Lauf nach Neuladen rot (Gas 0), danach 5× grün — Ursache offen.
+- **Kartenpunkte:** Kuppen-Knicke alter Straßen, Stadtplatte ohne Böschung, treppige Reisfeldränder; Viadukt-Brüstungsmauer (Modell).
+- **Hoch kostet viel** (Wald-Schatten, lodBias 2) → Phase 10. **Download 54 MB** (Desktop-Ziel 50, Handy 20) → Phase 10 (Addressables).
+- Funaura: die sechs Angler fehlen. Tokyo-Kollider bleiben GameObjects (NavMesh).
 
 ### Für die Asset-Sitzung (Lagen stehen in den Daten, Import genügt)
 
-- **Schanzen (Stellvertreter: Betonkeil + Kies-Landefläche + weiße Pfeile):** Absprungkante als Erdwall/Holzrampe je
-  Ort (Breite 8–12 m, Höhe 0,9–3 m, Länge 12–24 m, Maße je Schanze in `Data/Gameplay/Ramps.asset`); Tempo-Schild
-  1,2 m („55–75“); Lande-Chevron-Tafel; orange Absperrung (Stunt-Veranstaltung). Je ≤ 1,5 k Dreiecke.
-- **Entdeckungen (Stellvertreter: bernsteinfarbene Raute + weiße Pfosten):** Marke „Sparks-Laterne“ 0,4 m (gespaltene
-  Raute, warm, ≤ 300 Dreiecke); Gründerplakette (Steinsockel 0,6 × 0,4 m); Lichttafel + 3 Reifenstapel (Ø 0,7 m);
-  Getränkeregal (Flasche/Karton/Dose, 1,2 m); Fernrohr-Rahmen 1,6 m; Start-Tafel mit 3 Zahlenfeldern (2 × 1,2 m);
-  Zuschauer-Treppchen 3 m; Spielzeug-Schuppen 0,5 m; Reisschale; Schleuse mit 3 Schiebern; Karten-Tafel am Schrein;
-  Grat-Tafel mit 3 Silhouetten; rote Thermoskanne; Laternen-Plakette; Netzhaus-Seile (1/2/3 Knoten); Gezeitentafel;
-  Bank mit Hafenkarte; Lampen-Tafel mit großem Knopf; Treibholz-Marke; Rettungsring-Schild. Je ≤ 1,5 k Dreiecke.
-
-- **Spielfigur:** 1,72 m, Fahrer:in späte 80er, ≤ 6 k Dreiecke, Ursprung zwischen den Füßen, +Z vorn; Stehen, Gehen, Rennen, Sprung, Rutschen.
-- **Leute/Tiere:** 4–6 Passanten, Fischer, Bauer, sitzende Pose; Katze 0,45 m, Ziege 1 m, Huhn 0,35 m; ≤ 3 k, Skinned.
-- **Verkehrsautos:** 3–4 Stadtautos (Kei, Limousine, Taxi, Lieferwagen) ≤ 5 k, 4,1 × 1,7 m, Räder eigene Objekte.
-- **Vorzerlegt:** Laterne (3 Teile), Automat, Holzgestell/Zaun, Schuppen — je Teil ≤ 1 k. **Ladeninnere:** Diner, Mart (Regale, Waren, Kasse).
-- Sakura: leichte Ausstellungsautos (≤ 8 k). Koedo: 2 Kanalbrücken. Needle: Tribüne, Boxen, Start-Ziel-Brücke.
-- **Nacharbeit:** `Tokyo_Tower_Mixed_Tile_70` Fernstufe 306 von 564 Dreiecken (54 %, Stil-Kit ≤ 35 %; im Test als Ausnahme vermerkt).
-  Vorzerlegter **Baum** (Stamm + Krone in 3–4 Teilen) — jetzt fliegen grüne Kästen.
+- **Rennen:** Startpfeiler/Event-Tafel 6–8 m (leuchtend, je Art Farbe), Kontrollpunkt-Bogen (Straßenbreite + 2 m, zwei Säulen 6 m), Start-Ziel-
+  Banner, Pokal (0,4 m) fürs Ergebnis. Needle: Tribüne, Boxen, Start-Ziel-Brücke. Je ≤ 2 k Dreiecke.
+- **Schanzen (Stellvertreter: Betonkeil + Kies-Landefläche + weiße Pfeile):** Absprung als Erdwall/Holzrampe je Ort (8–12 m breit, 0,9–3 m
+  hoch, 12–24 m lang, Maße in `Data/Gameplay/Ramps.asset`); Tempo-Schild 1,2 m; Lande-Chevron-Tafel; orange Absperrung. ≤ 1,5 k.
+- **Entdeckungen (Stellvertreter: bernsteinfarbene Raute + weiße Pfosten):** „Sparks-Laterne“ 0,4 m; Gründerplakette; Lichttafel + 3 Reifenstapel;
+  Getränkeregal; Fernrohr-Rahmen; Start-Tafel mit 3 Feldern; Zuschauer-Treppchen; Spielzeug-Schuppen; Reisschale; Schleuse mit 3 Schiebern;
+  Karten-Tafel; Grat-Tafel; rote Thermoskanne; Laternen-Plakette; Netzhaus-Seile; Gezeitentafel; Bank mit Hafenkarte; Lampen-Tafel;
+  Treibholz-Marke; Rettungsring-Schild. Je ≤ 1,5 k.
+- **Aus Phase 6 noch offen:** Spielfigur (1,72 m, Animationen), Passanten/Tiere, Verkehrsautos, vorzerlegte Laterne/Automat/Zaun/Schuppen/
+  Baum, Ladeninnere, leichte Ausstellungsautos, Koedo-Kanalbrücken; `Tokyo_Tower_Mixed_Tile_70` Fernstufe.
 
 ## Für dich (Mensch)
 
-1. **Neue Assets ansehen:** Sakura mit Autohaus und Skyline, Tokyo mit Türmen, Wald mit echten Bäumen (`Captures/5c-after/`).
-   Gefällt dir der Wald? (Er schaltet früh auf die Fernform, damit es bezahlbar bleibt — achte im Spiel auf „ploppende“ Bäume.)
-2. **Abnahme Phase 6 (~15 Min.):** `Boot` → ▶ Play. Du stehst **zu Fuß** in Sakura, das Auto 4 m vor dir.
-   - **WASD** laufen, **Shift** rennen, **Leertaste** springen, **C** beim Rennen = rutschen. **Mausklick** fängt die Maus → umschauen
-     (Esc gibt sie frei; alternativ rechte Maustaste halten). Mausrad = Abstand.
-   - **F** am Auto: einsteigen. Fahren, anhalten, **F**: aussteigen (über 5 km/h geht es absichtlich nicht).
-   - Weglaufen, **H**: das Auto kommt zu dir. Fühlt sich das Laufen/Rutschen gut an? Ist die Kamera angenehm?
-   - Nach Norden/Westen nach **Tokyo**: Fußgänger auf den Gehwegen, ein paar Autos. Fahr eine **Laterne** oder einen
-     **Automaten** um (ab ~25 km/h), einen **Baum** (ab ~40 km/h) und einen Fußgänger (fliegt, steht wieder auf). Schieb ein NPC-Auto weg.
-   - **Läden:** Diner an der Nishi-Shinjuku-Avenue (Westrand, Höhe Kabukichō), Corner Mart an der Aoi-dōri neben dem roten Tor — hineinlaufen.
-   - Handy/Tablet: Stick links, wischen rechts = Blick, JUMP/SLIDE, oben CAR/CALL.
-3. **Browser-Probe bei ruhigem Rechner** (Blender zu): `node Tools/smoke.mjs --gpu` — ich brauche die fps-Zahl.
-4. Noch offen aus früher: Abnahme Phase 5, Optik Phase 4, Hachi-Heckscheibe, alte Zweige `agent/*`.
+1. **Phase 7 ausprobieren (~20 Min.):** `Boot` → ▶ Play. Du stehst zu Fuß in Sakura.
+   - **Entdeckungen:** 12 m links vom Start leuchtet eine bernsteinfarbene Raute → hingehen, **E**. An der Open Bay (rechts): Tafel mit **E**
+     lesen, dann die drei Pfosten in der Reihenfolge **2 → 1 → 3** (je hingehen + E). Die Rauten zeigen sich im Umkreis von 160 m.
+   - **Drift:** **F** ins Auto, in der Kirsch-Schale **Leertaste + lenken**. Oben erscheinen Punkte, ×-Stufe und „SPOT BONUS ×2“. 3 s ohne Drift
+     = gutgeschrieben (Sparks oben rechts); eine Wand halbiert die Kette.
+   - **Schanze Petal Hop:** von Sakura nach Südosten über die Ringstraße; unten erscheint „Petal Hop · 55–75 km/h“. Mit Vollgas (**Shift** = Nitro)
+     drüber → „Jump 15 m +147“. **Doppelt Leertaste** = Stunt-Modus (orange STUNT oben links): Dreher 180/360 im Gras oder in der Luft.
+   - **Rennen:** leuchtende Säulen am Straßenrand (blau = Rennen, gold = Zeitfahren, rosa = Drift). Daneben unter 15 km/h anhalten, **E** =
+     Karte, **E** = Start. Am nächsten: **Neon Circuit** in Tokyo, **Coast Loop** am Ring westlich von Koedo, **Needle Sprint/Open Seat**
+     am Rundkurs im Südwesten, **Tōge Descent/Drift Run** oben am Pass, **Tōge Climb** an seinem Fuß. **R** im Rennen = zurück auf die
+     Strecke (+3 s). Aussteigen bricht ab.
+   - Fühlt sich der Drift-Multiplikator richtig an (×2 nach 6 s, ×5 erst nach 90 s)? Sind die Gegner zu leicht/zu schwer?
+2. **Selbst im Browser spielen, ohne die Agenten zu stören:** im Projektordner `Vorschau.command` doppelklicken (öffnet
+   http://127.0.0.1:8092/, letzter Build). Fenster schließen = Ende. Nicht, während Tests/Bilder laufen (zwei Spiele rendern).
+   **Deine alte Vorschau läuft noch auf Port 8091** — Terminal-Fenster schließen; neu ist 8092.
+3. **Browser-Probe bei ruhigem Rechner** (Blender und Vorschau zu): `node Tools/smoke.mjs --gpu`.
+4. Noch offen aus früher: Abnahme Phase 5/6, Optik Phase 4, Hachi-Heckscheibe, alte Zweige `agent/*`.
 5. Commits liegen lokal; **Push** nur, wenn du es sagst.
 
 ## Web-Build
 
 | Datum | Typ | Gesamt | wasm | data | Boot (lokal) |
 |---|---|---|---|---|---|
-| 2026-10-08 | Release, Phase 5 (8 Orte, 164 Modelle) | 47,69 MB | 5,53 MB | 41,96 MB | 1,2–1,3 s |
 | 2026-10-09 | Release, Phase 6 (zu Fuß, NavMesh, Leben) | 49,34 MB | 5,73 MB | 43,40 MB | 0,8 s |
 | 2026-10-09 | Release, + Assets 5b/5c/Flora/Scatter (248 Modelle) | 53,91 MB | 5,74 MB | 47,97 MB | 0,8–0,9 s |
+| 2026-10-09 | Release, Phase 7 (Spielinhalt) | 53,97 MB | 5,76 MB | 48,02 MB | 0,8–1,1 s |

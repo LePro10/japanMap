@@ -32,6 +32,13 @@ namespace JapanMap.Vehicles
 
         float[] _cum;
         float _lastS;
+        // Understeer memory: a car that ran wide at full lock takes bends slower for a while.
+        float _grip = 1f, _lastOffset;
+        // Stuck against something with the throttle open: reverse out instead of waiting.
+        float _stuckFor, _reverseFor, _lastSteer;
+
+        /// <summary>Times this driver reversed out of a stuck spot (diagnostics, tests).</summary>
+        public int Unsticks { get; private set; }
 
         public void Begin(VehicleController target, Vector3[] points, bool loop, int startSegment = 0)
         {
@@ -46,6 +53,8 @@ namespace JapanMap.Vehicles
             Travelled = 0f;
             _lastS = _cum[startSegment];
             Finished = false;
+            _grip = 1f;
+            _stuckFor = _reverseFor = 0f;
         }
 
         int Segments => closed ? path.Length : path.Length - 1;
@@ -101,8 +110,15 @@ namespace JapanMap.Vehicles
             var cap = spec.latG * ArcadeTuning.Gravity / Mathf.Max(v, car.Tuning.yawCapSpeed);
             var steer = Mathf.Clamp(yawNeeded / Mathf.Max(Mathf.Min(kinMax, cap), 0.05f), -1f, 1f);
 
+            // Running wide at full lock: the bend is too fast for this car here (measured on the pass:
+            // heavy cars at 40 km/h in a hairpin, steering ±1, line offset 1 → 4 m, then the rock face).
+            var dt = Time.fixedDeltaTime;
+            var wide = Mathf.Abs(steer) > 0.95f && Offset > 1.2f && Offset > _lastOffset;
+            _grip = wide ? Mathf.Max(0.45f, _grip - 1.5f * dt) : Mathf.Min(1f, _grip + 0.05f * dt);
+            _lastOffset = Offset;
+
             // Slowest bend within the braking distance decides the target speed.
-            var latA = car.Definition.arcade.latG * ArcadeTuning.Gravity * gripShare;
+            var latA = car.Definition.arcade.latG * ArcadeTuning.Gravity * gripShare * _grip;
             var vMax = maxSpeedKmh / 3.6f;
             var horizon = Mathf.Max(30f, speed * speed / (2f * 6f));
             // From the car itself: a bend that has already begun must count (starting at 10 m let a hairpin through at 56 km/h).
@@ -113,9 +129,27 @@ namespace JapanMap.Vehicles
                 // v² = vBend² + 2·a·d: how fast we may be now to make it at 6 m/s² braking.
                 vMax = Mathf.Min(vMax, Mathf.Sqrt(vBend * vBend + 2f * 6f * d));
             }
+            if (wide) vMax = Mathf.Min(vMax, speed - 3f); // brake now, a tighter arc follows
             TargetSpeed = vMax;
             // No steering in the air: the arcade air control would yaw the car into a bad landing.
             if (car.Telemetry.airborne) steer = 0f;
+
+            if (_reverseFor > 0f)
+            {
+                // Back out with the wheels turned the other way, then try again.
+                _reverseFor -= dt;
+                car.Input = new DriveInput { brake = 1f, steer = -_lastSteer };
+                return;
+            }
+            _stuckFor = !car.HoldStill && speed < 1f && car.Input.throttle > 0.5f ? _stuckFor + dt : 0f;
+            if (_stuckFor > 1.2f)
+            {
+                _stuckFor = 0f;
+                _reverseFor = 1.5f;
+                _lastSteer = Mathf.Sign(steer);
+                Unsticks++;
+            }
+
             var e = vMax - car.Telemetry.forwardSpeed;
             car.Input = e > 0f
                 ? new DriveInput { throttle = Mathf.Clamp01(e * 0.6f), steer = steer }

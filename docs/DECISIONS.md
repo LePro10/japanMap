@@ -396,6 +396,20 @@ Anlauf und Schanze ausgespart. Stunt-Wertung nach ASTRA §5 (Boden-180/360 nur i
 saubere Landung, Wiederholung 50 %), dazu **eigene Sprungpunkte (10 je Meter)**, damit ein einfacher Sprung
 etwas bringt. Prüfung: alle sechs Schanzen im PlayMode angefahren, 12–25 m Sprungweite.
 
+## D28 — Rennen: Strecken aus ganzen Straßen, KI = `PathFollower`, Fortschritt über Bogenlänge · 2026-10-09
+
+Acht Veranstaltungen (`Data/Gameplay/RaceEvents.asset`): die sechs des Prototyps (Coast Loop, Tōge Descent/
+Climb, Neon Circuit, Ring Time Trial, Tōge Drift Run) und aus dem ASTRA-Katalog Needle Sprint und Open Seat
+(Leihwagen Hanami). Weitere ASTRA-Veranstaltungen brauchen Straßen, die nicht gebaut sind (Harbour Outer Road,
+Crosslight, Terrace Track, Breakyard); Coast Loop bleibt deshalb auf dem Ring. Fortschritt = Summe vorzeichen-
+behafteter Schritte auf der Strecke (nie Differenz zweier Lagen), Kontrollpunkte als Kreise in Reihenfolge,
+eine Runde zählt erst an der Linie und nach allen Punkten (`RaceProgress`, Tests an der Naht). **Eigener Code**:
+Unity bietet keine Rennlogik; KI-Fahrer ist der vorhandene `PathFollower` (Phase 3) mit Spurversatz je Fahrer
+(skaliert mit der Straßenbreite), Abstandhalten, Untersteuer-Gedächtnis und Zurücksetzen statt Teleport.
+Keine versteckte Beschleunigung (ASTRA). Countdown hält jedes Auto (`VehicleController.HoldStill`); Verkehr ist
+während des Rennens aus. Auszahlung nach ASTRA §8 (Platz 100/65/35/0 %, Medaillen), Sparks erst ab Phase 8
+gespeichert. Abnahme: alle 8 KI gegen KI, 0 Rettungen, 0 Zurücksetzen, Runden auf ±2 m an der Linie.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,
