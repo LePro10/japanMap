@@ -1,32 +1,52 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace JapanMap.Gameplay.Economy
 {
     /// <summary>
-    /// The player's Sparks for this session. Scores convert at a fixed rate with a rolling cap, so
-    /// circling in the hub is never the fastest progress. PROVISIONAL: not saved until Phase 8.
+    /// The player's Sparks. Scores convert at a fixed rate with a rolling cap (<see cref="ScoreSparkBank"/>).
+    /// The balance is restored from the save by <c>Progress</c>; every change raises <see cref="Changed"/>.
     /// </summary>
     public sealed class SparksWallet : MonoBehaviour
     {
         [SerializeField] EconomySettings settings;
 
-        readonly Queue<(float at, int sparks)> _recent = new();
-        float _remainder;
+        readonly ScoreSparkBank _bank = new();
 
         public EconomySettings Settings => settings;
         public int Balance { get; private set; }
         /// <summary>amount, reason — for the HUD.</summary>
         public event Action<int, string> Earned;
+        /// <summary>Any change of the balance (earn, spend, load).</summary>
+        public event Action Changed;
+        /// <summary>When set, nothing is earned (secret practice turbo, test drives — ASTRA §9).</summary>
+        public bool Frozen { get; set; }
 
         public void Configure(EconomySettings s) => settings = s;
 
         public void Add(int amount, string reason)
         {
-            if (amount <= 0) return;
-            Balance += amount;
+            if (amount <= 0 || Frozen) return;
+            Balance = Mathf.Min(settings != null ? settings.maxBalance : int.MaxValue, Balance + amount);
             Earned?.Invoke(amount, reason);
+            Changed?.Invoke();
+        }
+
+        /// <summary>Pays <paramref name="amount"/> if the balance allows it; false leaves the balance untouched.</summary>
+        public bool Spend(int amount)
+        {
+            if (amount < 0 || amount > Balance) return false;
+            if (amount == 0) return true;
+            Balance -= amount;
+            Changed?.Invoke();
+            return true;
+        }
+
+        /// <summary>Balance from the save (clamped, never negative).</summary>
+        public void Restore(int balance)
+        {
+            Balance = Mathf.Clamp(balance, 0, settings != null ? settings.maxBalance : int.MaxValue);
+            Changed?.Invoke();
         }
 
         /// <summary>Converts banked drift/stunt score; returns the Sparks actually paid (cap applied).</summary>
@@ -34,16 +54,9 @@ namespace JapanMap.Gameplay.Economy
 
         public int AddScore(float score, string reason, float now)
         {
-            while (_recent.Count > 0 && now - _recent.Peek().at > settings.scoreCapWindow) _recent.Dequeue();
-            var used = 0;
-            foreach (var r in _recent) used += r.sparks;
-            _remainder += score / settings.scorePerSpark;
-            var whole = Mathf.FloorToInt(_remainder);
-            _remainder -= whole;
-            var paid = Mathf.Min(whole, Mathf.Max(0, settings.scoreSparkCap - used));
-            if (paid <= 0) return 0;
-            _recent.Enqueue((now, paid));
-            Add(paid, reason);
+            if (Frozen) return 0;
+            var paid = _bank.Convert(settings, score, now);
+            if (paid > 0) Add(paid, reason);
             return paid;
         }
     }

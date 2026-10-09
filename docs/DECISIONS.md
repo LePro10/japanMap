@@ -410,6 +410,20 @@ Keine versteckte Beschleunigung (ASTRA). Countdown hält jedes Auto (`VehicleCon
 während des Rennens aus. Auszahlung nach ASTRA §8 (Platz 100/65/35/0 %, Medaillen), Sparks erst ab Phase 8
 gespeichert. Abnahme: alle 8 KI gegen KI, 0 Rettungen, 0 Zurücksetzen, Runden auf ±2 m an der Linie.
 
+## D29 — Wirtschaft simuliert: Rennen zahlen nach Dauer, Drift 50:1, Mame K kaufbar · 2026-10-09
+
+**Warum:** Die Simulation (`EconomySim`, Tabelle `docs/ECONOMY.md`) mit den echten Quellen ergab mit den
+ASTRA-Zahlen nur 1 743 Sparks je 10 min für Rennfahrer und 1 273 gemischt (Ziel 2 400–3 600). ASTRA rechnet mit
+Rennen von 120–150 s; unsere dauern gemessen 62–238 s, dazu kommt die Anfahrt. **Lösung (zwei Regler):**
+(1) Rennen zahlen nach Zeit: gewöhnliches Ergebnis = 5,5 Sparks je Sekunde Zyklus (Anfahrt 60 s + Karte 15 s +
+Rennen + Ergebnis 10 s), 75 % Grundbetrag, Rest Platz/Medaille (`EconomySettings.eventSparksPerSecond`, Saat
+„Economy/Seed Prices And Times“). Jedes Rennen liegt jetzt bei 328–330 Sparks/min, kein Ausreißer.
+(2) Drift-Punkte 50 statt 100 je Spark; der Deckel 400 je 90 s bleibt (Driften allein max. 2 667 je 10 min).
+Ergebnis: Rennfahrer 3 297, gemischt 2 451, geübter Drifter 2 206 („nähert sich“, wie ASTRA es will).
+**Preise wie ASTRA §6** (Zuordnung D16). Ausnahme: Pip 650 war Belohnung von E01 Sakura Starter, das nicht
+gebaut ist; bis dahin kostet **Mame K 2 400** und ist nach der ersten Sitzung kaufbar. Test `EconomyTests`
+hält Spanne, Ausreißer und die Tabelle aktuell. **Eigener Code:** Unity hat keine Wirtschaftssimulation.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

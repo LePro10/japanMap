@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ef3e0e10bb59437fa94331c2e9d8568, type: 3}
+  m_Name: Tuning
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.TuningSettings
+  categories:
+  - id: 0
+    title: Engine
+    blurb: Drive force and top speed. Mass stays this car's.
+    streetPrice: 900
+    sportPrice: 2700
+  - id: 1
+    title: Brakes
+    blurb: Shorter stops. The heavy cars still need room.
+    streetPrice: 600
+    sportPrice: 1800
+  - id: 2
+    title: Steering
+    blurb: Quicker turn-in. High-speed lock is unchanged.
+    streetPrice: 600
+    sportPrice: 1800
+  - id: 3
+    title: Tyres
+    blurb: More road grip. Handbrake still breaks the rear.
+    streetPrice: 900
+    sportPrice: 2700
+  engineForce: {x: 1, y: 1.06, z: 1.12}
+  engineTopSpeed: {x: 1, y: 1.02, z: 1.04}
+  brakeDistance: {x: 1, y: 0.94, z: 0.89}
+  steeringDelay: {x: 1, y: 0.92, z: 0.85}
+  tyreGrip: {x: 1, y: 1.04, z: 1.08}
+  driftCatch: 0.85
+  driftLock: 1.1
+  dirtFalloff: 0.95
+  dirtLift: 0.02
+  safeCrawl: 0.9
+  palette:
+  - Cloud
+  - Ink
+  - Silver
+  - Sand
+  - Jade
+  - Deep Teal
+  - Navy
+  - Plum
+  - Rose
+  - Persimmon
+  - Amber
+  - Ice
+  paletteColors:
+  - {r: 0.86, g: 0.87, b: 0.88, a: 1}
+  - {r: 0.09, g: 0.1, b: 0.12, a: 1}
+  - {r: 0.62, g: 0.64, b: 0.66, a: 1}
+  - {r: 0.76, g: 0.68, b: 0.52, a: 1}
+  - {r: 0.33, g: 0.6, b: 0.47, a: 1}
+  - {r: 0.08, g: 0.38, b: 0.4, a: 1}
+  - {r: 0.1, g: 0.16, b: 0.33, a: 1}
+  - {r: 0.4, g: 0.2, b: 0.36, a: 1}
+  - {r: 0.85, g: 0.5, b: 0.58, a: 1}
+  - {r: 0.88, g: 0.4, b: 0.18, a: 1}
+  - {r: 0.95, g: 0.65, b: 0.15, a: 1}
+  - {r: 0.75, g: 0.88, b: 0.95, a: 1}
+  paintPrice: 120

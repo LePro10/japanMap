@@ -17,6 +17,8 @@ MonoBehaviour:
   category: 3
   legacyId: needle
   model: {fileID: 603326477844932168, guid: 9740e4081271f4184815db363bef6767, type: 3}
+  price: 54000
+  factoryPaint: Silver
   mass: 710
   wheelbase: 2.88
   frontWeight: 0.44

@@ -17,6 +17,8 @@ MonoBehaviour:
   category: 0
   legacyId: touge
   model: {fileID: -1967845482108973795, guid: efa03ac8162e1439e81231a0a1bd9699, type: 3}
+  price: 0
+  factoryPaint: Cloud
   mass: 1180
   wheelbase: 2.43
   frontWeight: 0.52

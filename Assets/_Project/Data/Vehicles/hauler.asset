@@ -17,6 +17,8 @@ MonoBehaviour:
   category: 1
   legacyId: truck
   model: {fileID: 2491861127262583478, guid: 8e63b37cede0f45fabee6cfe273c7785, type: 3}
+  price: 3600
+  factoryPaint: Persimmon
   mass: 1080
   wheelbase: 2.24
   frontWeight: 0.57

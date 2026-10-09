@@ -17,6 +17,8 @@ MonoBehaviour:
   category: 0
   legacyId: pip
   model: {fileID: 2311655142441783332, guid: 97a810bde7ff5494fa959b990ad3df31, type: 3}
+  price: 2400
+  factoryPaint: Jade
   mass: 820
   wheelbase: 2.12
   frontWeight: 0.61

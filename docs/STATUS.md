@@ -23,7 +23,7 @@ Bench (`Captures/bench-p7-gate*`): Niedrig ≤ 390 DC / 578 k ✓ (Funaura 388 �
 
 ## Phase 8 — Progression und Speichern (als Nächstes, PLAN.md)
 
-- [ ] 1. Sparks-Wirtschaft als Tabelle simuliert · [ ] 2. Autohaus, Garage, Tuning (messbar) · [ ] 3. Speichern (CrazyGames + lokal, ASTRA §9) · [ ] 4. Rekorde und Fotos
+- [x] 1. Sparks-Wirtschaft simuliert (`docs/ECONOMY.md`, D29): Rennfahrer 3 297, gemischt 2 451, Drift geübt 2 206 je 10 min (`Captures/p8-1/`) · [ ] 2. Autohaus, Garage, Tuning (messbar) · [ ] 3. Speichern (CrazyGames + lokal, ASTRA §9) · [ ] 4. Rekorde und Fotos
 
 ## Offen / Gefunden
 

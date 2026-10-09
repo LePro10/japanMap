@@ -17,6 +17,8 @@ MonoBehaviour:
   category: 1
   legacyId: offroad
   model: {fileID: -7350903048061135662, guid: df8f1d252e0204e07af6c0d6f3c1a5e9, type: 3}
+  price: 9000
+  factoryPaint: Sand
   mass: 1880
   wheelbase: 2.4
   frontWeight: 0.54

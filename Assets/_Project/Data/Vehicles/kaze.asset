@@ -17,6 +17,8 @@ MonoBehaviour:
   category: 2
   legacyId: ribbon
   model: {fileID: 6540835163501072439, guid: b12748b33e9514a9ba477d26ce5a14a5, type: 3}
+  price: 18000
+  factoryPaint: Plum
   mass: 1280
   wheelbase: 2.65
   frontWeight: 0.5

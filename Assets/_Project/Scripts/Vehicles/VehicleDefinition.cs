@@ -20,6 +20,10 @@ namespace JapanMap.Vehicles
         public string legacyId = "touge";
         [Tooltip("Car model prefab (GLB from the car lab, node layout in ArtSource/cars/README.legacy.md).")]
         public GameObject model;
+        [Tooltip("Dealer price in Sparks (ASTRA §6 table via the D16 pairing); 0 = owned from the start.")]
+        public int price;
+        [Tooltip("Factory paint, from the shared palette in Tuning.asset (ASTRA §6).")]
+        public string factoryPaint = "Cloud";
 
         [Header("Chassis")]
         public float mass = 1180f;

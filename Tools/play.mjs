@@ -3,7 +3,7 @@
 //   node Tools/play.mjs <outDir> "<script>"     e.g.
 //   node Tools/play.mjs Captures/p6-walk "wait 3; shot start; hold w; frames walk 6 0.3; release w; press f; wait 1; probe"
 // Commands (Editor/PlayScript.cs): wait s · hold key… · release key… · press key · mouse dx dy s ·
-// shot name · frames name n dt · probe. Keys are Input System names (w, f, space, leftShift).
+// shot name · frames name n dt · probe · aim x z · orbit x z r (circle anticlockwise). Keys are Input System names (w, f, space, leftShift).
 // Prints result.txt (log + probes). Never starts while the editor is already playing (the human may play).
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';

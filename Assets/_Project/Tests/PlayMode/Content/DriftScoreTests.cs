@@ -119,7 +119,7 @@ namespace JapanMap.Tests.Content
             Debug.Log($"[DriftTest] end {end} credit {credit:0} of {before:0}, contact {drift.LastContactKmh:0.0} km/h, sparks {wallet.Balance}");
             Assert.AreEqual(ChainEnd.Crash, end, $"wall hit {drift.LastContactKmh:0.0} km/h");
             Assert.AreEqual(before * 0.5f, credit, 1f);
-            Assert.AreEqual(Mathf.FloorToInt(credit / 100f), wallet.Balance - balance, "banked score paid at 100 per Spark");
+            Assert.AreEqual(Mathf.FloorToInt(credit / wallet.Settings.scorePerSpark), wallet.Balance - balance, "banked score paid at the settings rate");
             Press();
         }
         [UnityTest]

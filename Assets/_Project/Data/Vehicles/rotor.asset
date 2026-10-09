@@ -17,6 +17,8 @@ MonoBehaviour:
   category: 3
   legacyId: gt
   model: {fileID: -3624338741610695390, guid: ae592200c83a44d5f9a83d59ab79fca5, type: 3}
+  price: 42000
+  factoryPaint: Rose
   mass: 1240
   wheelbase: 2.62
   frontWeight: 0.44

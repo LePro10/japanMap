@@ -17,6 +17,8 @@ MonoBehaviour:
   category: 2
   legacyId: morrow
   model: {fileID: 8558441958396019507, guid: 9076037e48771407d9f86ebca63f35ba, type: 3}
+  price: 30000
+  factoryPaint: Amber
   mass: 1740
   wheelbase: 2.77
   frontWeight: 0.59

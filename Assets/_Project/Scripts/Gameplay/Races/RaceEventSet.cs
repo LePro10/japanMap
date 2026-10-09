@@ -40,6 +40,8 @@ namespace JapanMap.Gameplay.Races
             public Vector3 medals;
             [Tooltip("Drift: time limit, s (ASTRA E07: 240).")]
             public float timeLimit;
+            [Tooltip("Typical time from GO to the finish, s — measured with the autopilot in the default car; the economy table uses it.")]
+            public float typicalSeconds;
             [TextArea] public string note;
         }
 

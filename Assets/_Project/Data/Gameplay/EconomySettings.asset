@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 76316d2dd19fa49e0b2a264861ab75f1, type: 3}
   m_Name: EconomySettings
   m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Economy.EconomySettings
-  scorePerSpark: 100
+  scorePerSpark: 50
   scoreSparkCap: 400
   scoreCapWindow: 90
   regionReward: 200

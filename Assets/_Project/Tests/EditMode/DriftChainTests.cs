@@ -140,6 +140,7 @@ namespace JapanMap.Tests
         public void Wallet_ConvertsHundredToOne_KeepsRemainder_CapsPer90s()
         {
             var e = ScriptableObject.CreateInstance<EconomySettings>();
+            e.scorePerSpark = 100f; // the rule, at ASTRA's original rate
             var go = new GameObject("wallet");
             try
             {

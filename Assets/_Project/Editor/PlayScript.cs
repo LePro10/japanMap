@@ -41,6 +41,8 @@ namespace JapanMap.Editor
         static float _frameDt, _frameNext;
         static string _frameName;
         static Vector3? _aim;
+        static Vector3 _orbitCentre;
+        static float _orbitRadius;
         static int _waitFrom = -1, _loggedIndex = -1;
         static float _waitUntil;
         static InputSettings.EditorInputBehaviorInPlayMode _previousBehaviour;
@@ -85,6 +87,7 @@ namespace JapanMap.Editor
                 _index = 0;
                 _until = -1f;
                 _aim = null;
+                _orbitRadius = 0f;
                 _waitFrom = -1;
                 _loggedIndex = -1;
                 Held.Clear();
@@ -209,6 +212,13 @@ namespace JapanMap.Editor
                     // aim x z: steer the car towards a point with A/D like a player would; "aim off" stops.
                     _aim = a[1] == "off" ? null : new Vector3(F(1), 0f, F(2));
                     if (_aim == null) { Held.Remove(Key.A); Held.Remove(Key.D); }
+                    _orbitRadius = 0f;
+                    return true;
+                case "orbit":
+                    // orbit x z r: keep circling that centre anticlockwise at radius r (aims 40° ahead on the circle).
+                    _orbitCentre = new Vector3(F(1), 0f, F(2));
+                    _orbitRadius = F(3);
+                    _aim = _orbitCentre;
                     return true;
                 case "race":
                 {
@@ -361,6 +371,12 @@ namespace JapanMap.Editor
                 var pm = Object.FindAnyObjectByType<PlayerModeController>();
                 if (pm != null && pm.Car != null)
                 {
+                    if (_orbitRadius > 0f)
+                    {
+                        var rel = pm.Car.transform.position - _orbitCentre;
+                        var ang = Mathf.Atan2(rel.z, rel.x) + 40f * Mathf.Deg2Rad;
+                        _aim = _orbitCentre + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * _orbitRadius;
+                    }
                     var to = _aim.Value - pm.Car.transform.position;
                     to.y = 0f;
                     var err = Vector3.SignedAngle(pm.Car.transform.forward, to, Vector3.up);
