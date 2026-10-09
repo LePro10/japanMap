@@ -29,6 +29,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: millHouse
     tag: 
     library:
@@ -43,6 +45,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: gassho
     tag: soba
     library:
@@ -57,6 +61,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 1
+    minHeight: 0
+    fitFootprint: 0
   - kind: gassho
     tag: shop
     library:
@@ -71,6 +77,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 1
+    minHeight: 0
+    fitFootprint: 0
   - kind: gassho
     tag: hero
     library:
@@ -85,6 +93,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 1
+    minHeight: 0
+    fitFootprint: 0
   - kind: gassho
     tag: 
     library:
@@ -102,6 +112,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 1
+    minHeight: 0
+    fitFootprint: 0
   - kind: kayabuki
     tag: minshuku
     library:
@@ -116,6 +128,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 1
+    minHeight: 0
+    fitFootprint: 0
   - kind: kayabuki
     tag: 
     library:
@@ -130,6 +144,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 1
+    minHeight: 0
+    fitFootprint: 0
   - kind: kura
     tag: 
     library:
@@ -144,6 +160,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 1
+    minHeight: 0
+    fitFootprint: 0
   - kind: waterwheel
     tag: 
     library:
@@ -158,6 +176,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: millWheel
     tag: 
     library:
@@ -172,6 +192,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: rack
     tag: 
     library:
@@ -186,6 +208,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: fireHut
     tag: 
     library:
@@ -200,6 +224,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: shrine
     tag: 
     library:
@@ -214,6 +240,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: shrineTorii
     tag: 
     library:
@@ -228,6 +256,24 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
+  - kind: jizo
+    tag: 
+    library:
+    - Jizo
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   instanced: 0
   lodDistanceScale: 1
   cullDistanceScale: 1

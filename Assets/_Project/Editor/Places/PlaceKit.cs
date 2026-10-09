@@ -42,6 +42,10 @@ namespace JapanMap.Editor.Places
             public bool matchHeight;
             [Tooltip("Scale uniformly so the model (after 'yaw') fits the item's footprint w × d — no stretching (gassho roofs).")]
             public bool fitUniform;
+            [Tooltip("Only items at least this tall (h, m); 0 = any. Put such rules first: towers before the low fronts of the same kind.")]
+            public float minHeight;
+            [Tooltip("Stretch width and depth to the item's footprint, keep the height (towers: the height came from matchHeight).")]
+            public bool fitFootprint;
         }
 
         [Tooltip("File name in SourceData/legacy/places without .json.")]
@@ -60,10 +64,10 @@ namespace JapanMap.Editor.Places
         [Tooltip("Instanced: beyond this distance (m, at lodBias 1) a building is a plain box shell (10 triangles) like the prototype's 'Hülle'. 0 = no shell.")]
         public float shellDistance;
 
-        public Rule Find(string kind, string tag)
+        public Rule Find(string kind, string tag, float height = 0f)
         {
             foreach (var r in rules)
-                if (r.kind == kind && (string.IsNullOrEmpty(r.tag) || r.tag == tag)) return r;
+                if (r.kind == kind && (string.IsNullOrEmpty(r.tag) || r.tag == tag) && height >= r.minHeight) return r;
             return null;
         }
     }

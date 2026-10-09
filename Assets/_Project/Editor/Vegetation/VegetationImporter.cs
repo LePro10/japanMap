@@ -110,6 +110,12 @@ namespace JapanMap.Editor.Vegetation
                 if (protoIndex.ContainsKey((sp.model, v))) continue;
                 protoIndex[(sp.model, v)] = protos.Count;
                 var name = $"Veg_{sp.model}_{v}";
+                var real = v < sp.library.Length ? FromLibrary(sp.library[v], sp.libraryLodEnd.x, sp.libraryLodEnd.y, sp.maxDistance, sp.colliderRadius, sp.colliderHeight) : null;
+                if (real != null)
+                {
+                    protos.Add(real);
+                    continue;
+                }
                 protos.Add(new VegetationData.Prototype
                 {
                     name = name,
@@ -184,7 +190,7 @@ namespace JapanMap.Editor.Vegetation
                 if (terrain.GetComponent<TerrainCollider>() is { } col) col.terrainData = data;
             }
 
-            counts["placed in places"] = AuthoredTrees(protoIndex, instances);
+            counts["placed in places"] = AuthoredTrees(protoIndex, instances, protos);
             WriteData(protos, instances);
             EnsureQualityComponent(terrains);
             AssetDatabase.SaveAssets();
@@ -195,12 +201,33 @@ namespace JapanMap.Editor.Vegetation
         /// Trees the prototype set by hand in its places (Sakura Commons ring, willows, kaki, …): same
         /// renderer and prototypes as the scatter, so new tree models replace them too (D18).
         /// </summary>
-        static int AuthoredTrees(Dictionary<(TreeBuilder.Species, int), int> protoIndex, List<(Vector2Int chunk, int proto, Vector3 pos, Vector3 shape)> instances)
+        static int AuthoredTrees(Dictionary<(TreeBuilder.Species, int), int> protoIndex, List<(Vector2Int chunk, int proto, Vector3 pos, Vector3 shape)> instances, List<VegetationData.Prototype> protos)
         {
             var n = 0;
+            var own = new Dictionary<string, int>();
             foreach (var kit in Places.PlaceImporter.Kits())
             foreach (var t in Places.PlaceSource.Load(kit.source).trees)
             {
+                // A real model for a species the scatter does not have (willow, kaki, garden pine).
+                if (PlaceLibrary.TryGetValue(t.species, out var libName))
+                {
+                    if (!own.TryGetValue(libName, out var lp))
+                    {
+                        var real = FromLibrary(libName, 25f, 60f, 3000f, 0.35f, 4f);
+                        lp = real == null ? -1 : protos.Count;
+                        if (real != null) protos.Add(real);
+                        own[libName] = lp;
+                    }
+                    if (lp >= 0)
+                    {
+                        var at = Places.PlaceSource.ToUnity(t.x, t.z);
+                        at.y = Places.PlaceImporter.Ground(at) - 0.15f;
+                        var sc = t.scale > 0 ? t.scale : 1;
+                        instances.Add((new Vector2Int(Mathf.FloorToInt(at.x / ChunkSize), Mathf.FloorToInt(at.z / ChunkSize)), lp, at, new Vector3(sc, sc, -t.yaw)));
+                        n++;
+                        continue;
+                    }
+                }
                 if (!System.Enum.TryParse<TreeBuilder.Species>(t.species, out var species) &&
                     !(Stand.TryGetValue(t.species, out var stand) && System.Enum.TryParse(stand, out species)))
                 {
@@ -233,6 +260,52 @@ namespace JapanMap.Editor.Vegetation
         {
             ["Pine"] = "Cedar", ["Sugi"] = "Cedar", ["Willow"] = "Maple", ["Kaki"] = "Maple", ["Momiji"] = "Maple", ["Niwaki"] = "Bush", ["StreetTree"] = "Maple",
         };
+
+        /// <summary>Place species with their own library tree (asset sprint 4/5c, style Flora).</summary>
+        static readonly Dictionary<string, string> PlaceLibrary = new()
+        {
+            ["Willow"] = "Tree_Yanagi", ["Kaki"] = "Tree_Kaki_Bare", ["Pine"] = "Tree_Matsu_Niwa", ["Niwaki"] = "Tree_Matsu_Niwa",
+            ["Sugi"] = "Tree_Sugi_Shinboku", ["StreetTree"] = "Tree_Momiji_Green",
+        };
+
+        /// <summary>
+        /// A prototype from an imported library tree: its LOD meshes and materials; LOD1 casts the shadow
+        /// for LOD0 (a 5 k-triangle cedar shadow in every cascade would double the forest's cost). Null if
+        /// the model is not imported (style not approved) — then the provisional tree stays.
+        /// </summary>
+        static VegetationData.Prototype FromLibrary(string name, float lod0End, float lod1End, float maxDistance, float colliderRadius, float colliderHeight)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+            var prefab = Art.LibraryImporter.LoadPrefab(name);
+            if (prefab == null) return null;
+            var group = prefab.GetComponent<LODGroup>();
+            var lods = group != null ? group.GetLODs() : new[] { new LOD(0.01f, prefab.GetComponentsInChildren<Renderer>()) };
+            var meshes = new List<Mesh>();
+            var mats = new List<Material>();
+            foreach (var lod in lods)
+            {
+                var r = lod.renderers.FirstOrDefault(x => x != null && x.GetComponent<MeshFilter>() != null);
+                if (r == null) continue;
+                meshes.Add(r.GetComponent<MeshFilter>().sharedMesh);
+                mats.Add(r.sharedMaterial);
+            }
+            if (meshes.Count == 0) return null;
+            var ends = new List<float> { lod0End, lod1End };
+            while (ends.Count > meshes.Count - 1) ends.RemoveAt(ends.Count - 1);
+            return new VegetationData.Prototype
+            {
+                name = "Lib_" + name,
+                lods = meshes.ToArray(),
+                material = mats[0],
+                lodMaterials = mats.ToArray(),
+                lodEnd = ends.ToArray(),
+                maxDistance = maxDistance,
+                shadowLods = 2,
+                shadowProxyLod = meshes.Count > 2 ? 1 : -1,
+                colliderRadius = colliderRadius,
+                colliderHeight = colliderHeight,
+            };
+        }
 
         static int PickVariant(Vector3 w, float roll)
         {

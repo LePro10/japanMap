@@ -23,6 +23,9 @@ namespace JapanMap.Editor.Art
         public string[] excluded = { };
 
         [Header("LOD (screen-relative height where the level ends)")]
+        [Tooltip("Where the middle level ends when a model has _LOD2 (trees, towers).")]
+        public float propLod1 = 0.035f;
+        public float buildingLod1 = 0.07f;
         public float propLod0 = 0.12f;
         public float propCull = 0.012f;
         public float buildingLod0 = 0.22f;

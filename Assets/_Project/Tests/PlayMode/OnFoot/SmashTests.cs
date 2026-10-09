@@ -109,6 +109,45 @@ namespace JapanMap.Tests.OnFoot
         }
 
         [UnityTest]
+        public IEnumerator Tree_FallsAt50_StandsAt15()
+        {
+            yield return BootGame();
+            var smash = Object.FindAnyObjectByType<SmashSystem>();
+            var mode = Object.FindAnyObjectByType<PlayerModeController>();
+            mode.PressVehicle();
+            var car = mode.Car;
+            var veg = Object.FindObjectsByType<JapanMap.World.InstanceRenderer>(FindObjectsSortMode.None).First(r => r.data is JapanMap.World.VegetationData);
+            // A ring cherry of Sakura Commons with a trunk collider, on open ground.
+            var ring = new Vector3(550f, 0f, -510f);
+            var index = Enumerable.Range(0, veg.data.Count)
+                .Where(i => Mathf.Abs(new Vector2(veg.data.positions[i].x - ring.x, veg.data.positions[i].z - ring.z).magnitude - 62f) < 5f)
+                .OrderBy(i => veg.data.positions[i].x).First();
+            var tree = veg.data.positions[index];
+            var outward = new Vector3(tree.x - ring.x, 0f, tree.z - ring.z).normalized;
+
+            IEnumerator Ram(float kmh)
+            {
+                // From inside the ring, straight out at the trunk.
+                car.Place(tree - outward * 14f, Mathf.Atan2(outward.x, outward.z) * Mathf.Rad2Deg, fromAbove: 3f);
+                for (var i = 0; i < 5; i++) yield return new WaitForFixedUpdate();
+                car.Body.linearVelocity = outward * (kmh / 3.6f);
+                for (var i = 0; i < 90; i++)
+                {
+                    car.Input = new DriveInput { throttle = 0.3f };
+                    yield return new WaitForFixedUpdate();
+                }
+            }
+
+            yield return Ram(15f);
+            Assert.IsFalse(veg.IsHidden(index), "a tree stands a 15 km/h knock (legacy: trees only from ~40 km/h)");
+            Assert.That(car.Telemetry.speed * 3.6f, Is.LessThan(8f), "…and stops the car");
+            yield return Ram(50f);
+            Assert.IsTrue(veg.IsHidden(index), "50 km/h fells the tree");
+            Assert.That(smash.TreesBroken, Is.EqualTo(1));
+            Assert.That(smash.LivePieces, Is.GreaterThan(3), "trunk and crown pieces fly");
+        }
+
+        [UnityTest]
         public IEnumerator Cost_OfBreaks_AndDebris_WithinBudget()
         {
             yield return BootGame();

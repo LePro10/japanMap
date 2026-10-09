@@ -16,6 +16,92 @@ MonoBehaviour:
   levelBlend: 4
   rules:
   - kind: cityBuilding
+    tag: f3
+    library:
+    - Tokyo_Tower_Mansion_48
+    - Tokyo_Tower_Mansion_75
+    - Tokyo_Tower_Mansion_90
+    - Tokyo_Tower_Mansion_110
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 1
+    fitUniform: 0
+    minHeight: 40
+    fitFootprint: 1
+  - kind: cityBuilding
+    tag: f5
+    library:
+    - Tokyo_Hotel_City_45
+    - Tokyo_Tower_Hotel_60
+    - Tokyo_Tower_Hotel_80
+    - Tokyo_Tower_Hotel_105
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 1
+    fitUniform: 0
+    minHeight: 40
+    fitFootprint: 1
+  - kind: cityBuilding
+    tag: f4
+    library:
+    - Tokyo_Tower_Office_Blue_48
+    - Tokyo_Tower_Office_Silver_60
+    - Tokyo_Tower_Office_Blue_75
+    - Tokyo_Tower_Office_Silver_85
+    - Tokyo_Tower_Office_Dark_90
+    - Tokyo_Tower_Office_Dark_120
+    - Tokyo_Tower_Office_Blue_150
+    - Tokyo_Tower_Mixed_Glass_58
+    - Tokyo_Tower_Mixed_Ribbon_62
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 1
+    fitUniform: 0
+    minHeight: 40
+    fitFootprint: 1
+  - kind: cityBuilding
+    tag: 
+    library:
+    - Tokyo_Tower_Mixed_Tile_45
+    - Tokyo_Tower_Mixed_Glass_58
+    - Tokyo_Tower_Mixed_Ribbon_62
+    - Tokyo_Tower_Mixed_Tile_70
+    - Tokyo_Tower_Office_Silver_60
+    - Tokyo_Tower_Office_Blue_75
+    - Tokyo_Tower_Office_Dark_90
+    - Tokyo_Tower_Office_Dark_120
+    - Tokyo_Tower_Office_Blue_150
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 1
+    fitUniform: 0
+    minHeight: 40
+    fitFootprint: 1
+  - kind: cityBuilding
     tag: f0
     library:
     - Tokyo_Street_3F_Brown
@@ -37,6 +123,8 @@ MonoBehaviour:
     fill: 1
     matchHeight: 1
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: cityBuilding
     tag: f1
     library:
@@ -53,6 +141,8 @@ MonoBehaviour:
     fill: 1
     matchHeight: 1
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: cityBuilding
     tag: f2
     library:
@@ -60,6 +150,11 @@ MonoBehaviour:
     - Kiso_Soba_2Bay_Kodama
     - Koedo_Dagashi_1F
     - Tokyo_Street_3F_Brown
+    - Machi_Izakaya_A
+    - Machi_Izakaya_B
+    - Machi_Izakaya_C
+    - Machi_Izakaya_D
+    - Machi_Izakaya_E
     yaw: 0
     scale: 1
     level: 0
@@ -70,6 +165,8 @@ MonoBehaviour:
     fill: 1
     matchHeight: 1
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: cityBuilding
     tag: f3
     library:
@@ -87,6 +184,8 @@ MonoBehaviour:
     fill: 1
     matchHeight: 1
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: cityBuilding
     tag: f4
     library:
@@ -94,6 +193,8 @@ MonoBehaviour:
     - Tokyo_Center_7F_Concrete
     - Tokyo_Center_8F_Glass
     - Tokyo_Zakkyo_5F
+    - Tokyo_Cinema_Ginga_24
+    - Tokyo_Cinema_Ginga_34
     yaw: 0
     scale: 1
     level: 0
@@ -104,6 +205,8 @@ MonoBehaviour:
     fill: 1
     matchHeight: 1
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: cityBuilding
     tag: f5
     library:
@@ -111,6 +214,7 @@ MonoBehaviour:
     - Tokyo_Center_9F_Karaoke
     - Tokyo_Center_7F_Izakaya
     - Tokyo_Center_7F_Concrete
+    - Tokyo_Hotel_Biz_34
     yaw: 0
     scale: 1
     level: 0
@@ -121,6 +225,8 @@ MonoBehaviour:
     fill: 1
     matchHeight: 1
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: cityBuilding
     tag: f6
     library:
@@ -137,6 +243,8 @@ MonoBehaviour:
     fill: 1
     matchHeight: 1
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: cityBuilding
     tag: f7
     library:
@@ -152,12 +260,20 @@ MonoBehaviour:
     fill: 1
     matchHeight: 1
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: suburbHouse
     tag: f2
     library:
     - Koedo_Machiya_2Bay_Unagi
     - Koedo_Machiya_3Bay_Tea
     - Kiso_Minka_2Bay_Ishigaki
+    - Machi_House_A
+    - Machi_House_B
+    - Machi_House_C
+    - Machi_House_D
+    - Machi_House_E
+    - Machi_House_F
     yaw: 0
     scale: 1
     level: 0
@@ -168,6 +284,8 @@ MonoBehaviour:
     fill: 1
     matchHeight: 1
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: suburbHouse
     tag: f3
     library:
@@ -183,12 +301,20 @@ MonoBehaviour:
     fill: 1
     matchHeight: 1
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: suburbHouse
     tag: f6
     library:
     - Kiso_Minka_2Bay_Ishigaki
     - Kiso_Hatago_2Bay_Yamabuki
     - Koedo_Machiya_2Bay_Unagi
+    - Machi_House_A
+    - Machi_House_B
+    - Machi_House_C
+    - Machi_House_D
+    - Machi_House_E
+    - Machi_House_F
     yaw: 0
     scale: 1
     level: 0
@@ -199,6 +325,8 @@ MonoBehaviour:
     fill: 1
     matchHeight: 1
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: streetLamp
     tag: 
     library:
@@ -213,6 +341,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: avenueLamp
     tag: 
     library:
@@ -227,6 +357,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: utilityPole
     tag: 
     library:
@@ -243,6 +375,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: vending
     tag: 
     library:
@@ -262,6 +396,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: parkBench
     tag: 
     library:
@@ -276,6 +412,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: parkLamp
     tag: 
     library:
@@ -290,6 +428,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: cityShrine
     tag: 
     library:
@@ -304,6 +444,8 @@ MonoBehaviour:
     fill: 0
     matchHeight: 0
     fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   instanced: 1
   lodDistanceScale: 0.4
   cullDistanceScale: 0.6

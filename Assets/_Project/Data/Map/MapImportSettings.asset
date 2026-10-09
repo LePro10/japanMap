@@ -108,21 +108,28 @@ MonoBehaviour:
     size: {x: 2, y: 1.7, z: 2.2}
     category: Concrete
     gate: 0
-    library: []
+    library:
+    - Tetrapod
+    - Tetrapod_Tilted
+    - Tetrapod
     fitHeight: 0
     libraryYaw: 0
   - id: delineator
     size: {x: 0.15, y: 1, z: 0.15}
     category: Marker
     gate: 0
-    library: []
+    library:
+    - Delineator_White
+    - Delineator_Orange
+    - Delineator_White
     fitHeight: 0
     libraryYaw: 0
   - id: concreteWall
     size: {x: 8.42, y: 2.05, z: 0.44}
     category: Concrete
     gate: 0
-    library: []
+    library:
+    - Wall_Concrete_8m
     fitHeight: 0
     libraryYaw: 0
   - id: shed
@@ -170,7 +177,9 @@ MonoBehaviour:
     size: {x: 7.1, y: 3.6, z: 14.3}
     category: Building
     gate: 0
-    library: []
+    library:
+    - Greenhouse_Closed
+    - Greenhouse_Open
     fitHeight: 0
     libraryYaw: 0
   - id: stoneLantern

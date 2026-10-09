@@ -33,6 +33,10 @@ namespace JapanMap.Editor.Vegetation
             public float maxDistance = 3000;
             [Tooltip("Trunk collider near the player; 0 = drive through.")]
             public float colliderRadius = 0.35f, colliderHeight = 4f;
+            [Tooltip("Library models for the 3 variants (asset sprint, style Flora); empty or not imported = the provisional tree.")]
+            public string[] library = { };
+            [Tooltip("LOD0 / LOD1 end (m, lodBias 1) for the library models: the real trees have 700–1 500 triangles in LOD1 (the provisional ones 136), so they switch to the 50–110-triangle far LOD much earlier.")]
+            public Vector2 libraryLodEnd = new(25f, 60f);
         }
 
         public int seed = 20260727;

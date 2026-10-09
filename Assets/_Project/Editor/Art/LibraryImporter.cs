@@ -10,7 +10,7 @@ namespace JapanMap.Editor.Art
     /// <summary>
     /// Asset sprint → Unity. Reads ArtSource/exports/manifest.json, copies approved FBX and atlas
     /// textures to Art/Library/, makes one URP/Lit material per atlas and one prefab per asset
-    /// (Prefabs/Library/P_&lt;Name&gt;): LODGroup from _LOD0/_LOD1, BoxColliders from COL_ meshes,
+    /// (Prefabs/Library/P_&lt;Name&gt;): LODGroup from _LOD0/_LOD1/_LOD2, BoxColliders from COL_ meshes,
     /// point lights from LIGHT_ markers, LENS_ parts (traffic lights) switched to one state.
     /// Running it twice changes nothing; files are copied only when their bytes differ.
     /// Menu: JapanMap/Art/Import Library.
@@ -149,6 +149,15 @@ namespace JapanMap.Editor.Art
             mat.EnableKeyword("_EMISSION");
             // Not None: URP's material validation (on every reimport) turns _EMISSION off when the GI flags are None.
             mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+            // Flora (leaf cards with alpha, STYLE-KIT): one cutout material, both sides — opaque, the
+            // cards drew as pink planks (weeping cherries at Sakura, 2026-10-09).
+            var cutout = atlas == "Flora";
+            mat.SetFloat("_AlphaClip", cutout ? 1f : 0f);
+            mat.SetFloat("_Cutoff", 0.5f);
+            mat.SetFloat("_Cull", cutout ? (float)CullMode.Off : (float)CullMode.Back);
+            if (cutout) mat.EnableKeyword("_ALPHATEST_ON"); else mat.DisableKeyword("_ALPHATEST_ON");
+            mat.SetOverrideTag("RenderType", cutout ? "TransparentCutout" : "Opaque");
+            mat.renderQueue = cutout ? (int)RenderQueue.AlphaTest : -1;
             mat.enableInstancing = true;
             EditorUtility.SetDirty(mat);
             return mat;
@@ -202,12 +211,13 @@ namespace JapanMap.Editor.Art
                 }
 
                 var renderers = root.GetComponentsInChildren<MeshRenderer>(true);
-                var lod = new List<Renderer>[2] { new(), new() };
+                var lod = new List<Renderer>[3] { new(), new(), new() };
                 foreach (var r in renderers)
                 {
-                    if (r.name.EndsWith("_LOD0")) lod[0].Add(r);
-                    else if (r.name.EndsWith("_LOD1")) lod[1].Add(r);
-                    else lod[0].Add(r); // LENS_ etc. belong to the full detail level
+                    if (r.name.EndsWith("_LOD1")) lod[1].Add(r);
+                    // _LOD2 (asset sprint 4/5c: trees, towers) was filed under LOD0 and drawn on top of it.
+                    else if (r.name.EndsWith("_LOD2")) lod[2].Add(r);
+                    else lod[0].Add(r); // _LOD0, LENS_ etc. belong to the full detail level
                 }
                 if (lod[0].Count == 0) return $"{e.name}: no _LOD0 renderer";
 
@@ -215,9 +225,15 @@ namespace JapanMap.Editor.Art
                 foreach (var r in renderers) bounds.Encapsulate(r.bounds);
                 var building = e.cls == "buildings";
                 var group = root.GetComponent<LODGroup>() ?? root.AddComponent<LODGroup>(); // Unity adds one itself for _LODn names
-                var levels = new List<LOD> { new(building ? s.buildingLod0 : s.propLod0, lod[0].ToArray()) };
-                if (lod[1].Count > 0) levels.Add(new LOD(building ? s.buildingCull : s.propCull, lod[1].ToArray()));
-                else levels[0] = new LOD(building ? s.buildingCull : s.propCull, lod[0].ToArray());
+                var present = lod.Where(l => l.Count > 0).ToList();
+                // Screen heights: LOD0 → next at lod0, middle → far at lod1, last culled at cull.
+                var steps = new[] { building ? s.buildingLod0 : s.propLod0, building ? s.buildingLod1 : s.propLod1, building ? s.buildingCull : s.propCull };
+                var levels = new List<LOD>();
+                for (var i = 0; i < present.Count; i++)
+                {
+                    var last = i == present.Count - 1;
+                    levels.Add(new LOD(last ? steps[2] : steps[i], present[i].ToArray()));
+                }
                 group.SetLODs(levels.ToArray());
                 group.RecalculateBounds();
 

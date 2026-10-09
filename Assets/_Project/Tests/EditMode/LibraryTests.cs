@@ -9,6 +9,17 @@ namespace JapanMap.Tests
     public class LibraryTests
     {
         [Test]
+        public void FloraMaterial_IsCutout_AndTwoSided()
+        {
+            // Leaf cards drew as solid planks with the opaque default (weeping cherries, 2026-10-09).
+            var m = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Art/Library/Materials/M_Flora_Atlas.mat");
+            Assert.IsNotNull(m, "Flora not imported");
+            Assert.AreEqual(1f, m.GetFloat("_AlphaClip"), "alpha clip");
+            Assert.IsTrue(m.IsKeywordEnabled("_ALPHATEST_ON"));
+            Assert.AreEqual(0f, m.GetFloat("_Cull"), "both sides");
+        }
+
+        [Test]
         public void EveryApprovedAsset_HasAPrefabWithLodAndColliders()
         {
             var s = LibraryImporter.Settings();
@@ -20,7 +31,8 @@ namespace JapanMap.Tests
                 Assert.IsNotNull(p, $"{e.name}: no prefab — run JapanMap/Art/Import Library");
                 var lod = p.GetComponent<LODGroup>();
                 Assert.IsNotNull(lod, $"{e.name}: no LODGroup");
-                Assert.AreEqual(e.lods.Any(l => l.EndsWith("_LOD1")) ? 2 : 1, lod.lodCount, $"{e.name}: LOD levels");
+                var levels = (e.lods.Any(l => l.EndsWith("_LOD0")) ? 1 : 0) + (e.lods.Any(l => l.EndsWith("_LOD1")) ? 1 : 0) + (e.lods.Any(l => l.EndsWith("_LOD2")) ? 1 : 0);
+                Assert.AreEqual(Mathf.Max(1, levels), lod.lodCount, $"{e.name}: LOD levels (an _LOD2 must be its own level, not drawn with LOD0)");
                 Assert.AreEqual(e.colliders.Length, p.GetComponentsInChildren<BoxCollider>(true).Length, $"{e.name}: colliders");
                 Assert.AreEqual(e.lights?.Length ?? 0, p.GetComponentsInChildren<Light>(true).Length, $"{e.name}: lights");
                 // Else URP adds the data on every placed instance when a scene is saved (+3.7 MB Game.unity).

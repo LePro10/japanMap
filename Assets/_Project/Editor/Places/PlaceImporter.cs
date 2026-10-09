@@ -73,7 +73,7 @@ namespace JapanMap.Editor.Places
             var fleet = AssetDatabase.LoadAssetAtPath<VehicleFleet>(FleetSeed.FleetPath);
             foreach (var item in place.items)
             {
-                var rule = kit.Find(item.kind, item.tag);
+                var rule = kit.Find(item.kind, item.tag, item.h);
                 var yaw = PlaceSource.Yaw(item.yaw);
                 var turn = Quaternion.Euler(0, yaw, 0);
                 var at = PlaceSource.ToUnity(item.x, item.z);
@@ -89,6 +89,18 @@ namespace JapanMap.Editor.Places
                     continue;
                 }
                 var options = rule == null ? new GameObject[0] : rule.library.Select(n => Load(n, item, fleet)).Where(g => g != null).ToArray();
+                if (rule != null && rule.fitFootprint && item.w > 0 && item.d > 0)
+                {
+                    // A tower must fit its parcel within the stretch limit; else the parcel keeps the low
+                    // frontage (two towers hung over the 7 m takeshita lane).
+                    var fits = options.Where(o => item.w / SizeOf(o).x >= 0.6f && item.d / SizeOf(o).z >= 0.6f).ToArray();
+                    if (fits.Length > 0) options = fits;
+                    else
+                    {
+                        rule = kit.Find(item.kind, item.tag, 0f);
+                        options = rule == null ? new GameObject[0] : rule.library.Select(n => Load(n, item, fleet)).Where(g => g != null).ToArray();
+                    }
+                }
                 if (options.Length == 0)
                 {
                     if (missing != null)
@@ -116,10 +128,14 @@ namespace JapanMap.Editor.Places
                     var fx = across ? size.z : size.x;
                     var fz = across ? size.x : size.z;
                     if (rule.fitUniform && item.w > 0 && item.d > 0) scale *= Mathf.Min(item.w / fx, item.d / fz);
+                    var sv = Vector3.one * scale;
+                    // A tower keeps its height and fills the parcel (facade texels stretch at most ±40 %).
+                    if (rule.fitFootprint && item.w > 0 && item.d > 0)
+                        sv = new Vector3(Mathf.Clamp(item.w / size.x, 0.6f, 1.4f), 1f, Mathf.Clamp(item.d / size.z, 0.6f, 1.4f)) * scale;
                     list.Add(new Placement
                     {
-                        item = item, rule = rule, prefab = prefab, position = PivotFor(at, yaw + rule.yaw, prefab, Vector3.one * scale), centre = at, yaw = yaw + rule.yaw,
-                        scale = Vector3.one * scale, halfSize = new Vector2(size.x, size.z) * scale / 2,
+                        item = item, rule = rule, prefab = prefab, position = PivotFor(at, yaw + rule.yaw, prefab, sv), centre = at, yaw = yaw + rule.yaw,
+                        scale = sv, halfSize = new Vector2(size.x * sv.x, size.z * sv.z) / 2,
                     });
                     continue;
                 }
@@ -411,7 +427,10 @@ namespace JapanMap.Editor.Places
                     if (mf == null || mf.sharedMesh == null) break;
                     meshes.Add(mf.sharedMesh);
                     var last = l == lods.Length - 1;
-                    ends.Add(DistanceForScreen(size, lods[l].screenRelativeTransitionHeight) * (last ? kit.cullDistanceScale : kit.lodDistanceScale));
+                    var end = DistanceForScreen(size, lods[l].screenRelativeTransitionHeight) * (last ? kit.cullDistanceScale : kit.lodDistanceScale);
+                    // Full detail ends by 100 m whatever the size: a 90 m tower's screen share kept LOD0 to 147 m.
+                    if (l == 0 && !last) end = Mathf.Min(end, 100f);
+                    ends.Add(end);
                 }
                 if (meshes.Count == 0) continue;
                 if (meshes.Count == 1)

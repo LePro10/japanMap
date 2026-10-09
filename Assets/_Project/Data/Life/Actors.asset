@@ -15,15 +15,15 @@ MonoBehaviour:
   actors:
   - place: sakura
     kind: visitor
-    position: {x: 568.6, y: 25.651283, z: -486.6}
+    position: {x: 568.6, y: 26.69202, z: -486.6}
     yaw: 162.81126
   - place: sakura
     kind: visitor
-    position: {x: 511.8, y: 25.840504, z: -487.1}
+    position: {x: 511.8, y: 26.250568, z: -487.1}
     yaw: 202.91832
   - place: sakura
     kind: visitor
-    position: {x: 516.4, y: 25.870392, z: -486.8}
+    position: {x: 516.4, y: 26.297298, z: -486.8}
     yaw: 171.40564
   - place: sakura
     kind: visitor

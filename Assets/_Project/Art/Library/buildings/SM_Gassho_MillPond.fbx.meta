@@ -42,8 +42,28 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: M_KosoShop_Atlas
+    second: {fileID: 2100000, guid: 4906756fd5b8f4511930c52c81cbe7ee, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Koso_Atlas
+    second: {fileID: 2100000, guid: 340f3d4806c4a4965b31008dfab5544b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: M_Kura_Atlas
     second: {fileID: 2100000, guid: 3b6e105b5732647ef962c86b62480ed9, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_MachiShop_Atlas
+    second: {fileID: 2100000, guid: b5b6e0efdb98b4a02a647052196c0ef3, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Machi_Atlas
+    second: {fileID: 2100000, guid: dccd41971cc6d448c84a147e6718267b, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule

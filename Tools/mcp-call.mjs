@@ -22,6 +22,16 @@ if (!tool) {
 try {
   const init = await post({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'mcp-call', version: '1' } } });
   await post({ jsonrpc: '2.0', method: 'notifications/initialized' }, init.sid);
+  // Never compile under a running game (twice a recompile broke the human's play session, once by a
+  // direct call that bypassed lib/fresh.mjs). The guard lives here, so no caller can skip it.
+  if (tool === 'refresh_unity' && process.env.MCP_ALLOW_PLAY_REFRESH !== '1') {
+    const st = await post({ jsonrpc: '2.0', id: 9, method: 'tools/call', params: { name: 'execute_code', arguments: { action: 'execute', code: 'return EditorApplication.isPlayingOrWillChangePlaymode ? "play" : "edit";' } } }, init.sid);
+    const text = st.json?.result?.content?.map((c) => c.text).join('') ?? '';
+    if (text.includes('"play"')) {
+      console.error('MCP-CALL BLOCKED · refresh_unity while the editor is playing (the human may be playing) — ask first');
+      process.exit(2);
+    }
+  }
   const list = tool === 'list';
   const res = await post({ jsonrpc: '2.0', id: 2, method: list ? 'tools/list' : 'tools/call', params: list ? {} : { name: tool, arguments: JSON.parse(args || '{}') } }, init.sid);
   console.log(list ? res.json.result.tools.map((t) => t.name).join(' ') : res.json?.result?.content?.map((c) => c.text).join('\n') ?? JSON.stringify(res.json));

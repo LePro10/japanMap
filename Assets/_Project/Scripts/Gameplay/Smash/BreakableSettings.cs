@@ -43,6 +43,14 @@ namespace JapanMap.Gameplay.Smash
                     minSpeed = 7.8f, energy = 21000f, carLoss = 3.0f, split = new Vector3Int(3, 3, 2), mass = 600f, color = new Color(0.42f, 0.32f, 0.22f) },
         };
 
+        [Header("Trees (instanced vegetation; legacy TREE_BREAK_SPEED 7.8 / TREE_BREAK_ENERGY 21 000)")]
+        public Kind tree = new() { name = "tree", minSpeed = 7.8f, energy = 21000f, carLoss = 3.5f, split = new Vector3Int(1, 3, 1), mass = 400f, color = new Color(0.33f, 0.24f, 0.16f) };
+        [Tooltip("Crown pieces thrown from the top of the trunk (legacy DebrisFx: the tree tips over, then parts).")]
+        public int treeCrownPieces = 4;
+        public Color treeCrown = new(0.2f, 0.33f, 0.18f);
+        [Tooltip("Size of a crown piece, m.")]
+        public float treeCrownPiece = 1.4f;
+
         [Header("Limits (legacy breakables.ts / DebrisFx.ts)")]
         [Tooltip("Breaks per physics step at most — a drift must not tear down a whole row.")]
         public int maxBreaksPerStep = 2;

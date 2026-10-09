@@ -29,6 +29,11 @@ MonoBehaviour:
     maxDistance: 3000
     colliderRadius: 0.35
     colliderHeight: 4
+    library:
+    - Tree_Sugi
+    - Tree_Sugi_Young
+    - Tree_Matsu_Aka
+    libraryLodEnd: {x: 25, y: 60}
   - model: 1
     cellSize: 11
     zoneWeights: {x: 0, y: 0.5, z: 0, w: -1}
@@ -44,6 +49,11 @@ MonoBehaviour:
     maxDistance: 3000
     colliderRadius: 0.35
     colliderHeight: 4
+    library:
+    - Tree_Momiji_Green
+    - Tree_Momiji_Gold
+    - Tree_Momiji_Red
+    libraryLodEnd: {x: 25, y: 60}
   - model: 4
     cellSize: 5
     zoneWeights: {x: 0, y: 0.3, z: 0, w: -1}
@@ -59,6 +69,11 @@ MonoBehaviour:
     maxDistance: 220
     colliderRadius: 0
     colliderHeight: 4
+    library:
+    - Bush_Tama
+    - Bush_Yabu
+    - Bush_Tsutsuji
+    libraryLodEnd: {x: 25, y: 60}
   - model: 2
     cellSize: 24
     zoneWeights: {x: 0, y: 0.08, z: 0, w: -1}
@@ -74,6 +89,11 @@ MonoBehaviour:
     maxDistance: 3000
     colliderRadius: 0.35
     colliderHeight: 4
+    library:
+    - Tree_Sakura_Bloom
+    - Tree_Sakura_Leaf
+    - Tree_Sakura_Shidare
+    libraryLodEnd: {x: 25, y: 60}
   - model: 3
     cellSize: 7
     zoneWeights: {x: 0, y: 0.05, z: 0, w: -1}
@@ -89,6 +109,11 @@ MonoBehaviour:
     maxDistance: 3000
     colliderRadius: 0.6
     colliderHeight: 4
+    library:
+    - Tree_Take_Grove
+    - Tree_Take_Grove
+    - Tree_Take_Grove
+    libraryLodEnd: {x: 20, y: 45}
   detailResolution: 1024
   grassCoverage: 200
   riceCoverage: 255

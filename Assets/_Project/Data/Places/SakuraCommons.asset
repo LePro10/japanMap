@@ -25,6 +25,11 @@ MonoBehaviour:
     offset: {x: 0, y: 0}
     paint: Sand
     paintOnly: 1
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: bayApron
     tag: 
     library: []
@@ -35,6 +40,11 @@ MonoBehaviour:
     offset: {x: 0, y: 0}
     paint: Sand
     paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: showroomFloor
     tag: 
     library: []
@@ -45,21 +55,31 @@ MonoBehaviour:
     offset: {x: 0, y: 0}
     paint: Sand
     paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: showroom
     tag: 
     library:
-    - Kiso_Hatago_3Bay_Kaede
+    - Machi_PetalMotors
     yaw: 0
     scale: 1
     level: 1
     yOffset: 0
-    offset: {x: 0, y: -13.5}
+    offset: {x: 0, y: 0}
     paint: 
     paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: workshop
     tag: 
     library:
-    - Minato_Amigoya
+    - Machi_OpenBay
     yaw: 0
     scale: 1
     level: 1
@@ -67,17 +87,11 @@ MonoBehaviour:
     offset: {x: 0, y: 0}
     paint: 
     paintOnly: 0
-  - kind: eventBoard
-    tag: 
-    library:
-    - Tera_Tatefuda
-    yaw: 0
-    scale: 1.6
-    level: 0
-    yOffset: 0
-    offset: {x: 0, y: 0}
-    paint: 
-    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: stoneLantern
     tag: 
     library:
@@ -89,6 +103,11 @@ MonoBehaviour:
     offset: {x: 0, y: 0}
     paint: 
     paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: bench
     tag: 
     library:
@@ -100,6 +119,11 @@ MonoBehaviour:
     offset: {x: 0, y: 0}
     paint: 
     paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
   - kind: lampPost
     tag: 
     library:
@@ -111,3 +135,47 @@ MonoBehaviour:
     offset: {x: 0, y: 0}
     paint: 
     paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
+  - kind: flag
+    tag: 
+    library:
+    - Nobori_Red
+    - Nobori_Blue
+    - Nobori_Yellow
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
+  - kind: eventBoard
+    tag: 
+    library:
+    - EventBoard_4m
+    yaw: 0
+    scale: 1
+    level: 0
+    yOffset: 0
+    offset: {x: 0, y: 0}
+    paint: 
+    paintOnly: 0
+    fill: 0
+    matchHeight: 0
+    fitUniform: 0
+    minHeight: 0
+    fitFootprint: 0
+  instanced: 0
+  lodDistanceScale: 1
+  cullDistanceScale: 1
+  shadowFromLastLod: 1
+  shellDistance: 0

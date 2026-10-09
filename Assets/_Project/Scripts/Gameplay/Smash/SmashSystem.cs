@@ -44,6 +44,71 @@ namespace JapanMap.Gameplay.Smash
         public float WorstBreakMs { get; private set; }
         public int LivePieces { get { var n = 0; foreach (var p in _pieces) if (p.body.gameObject.activeSelf) n++; return n; } }
 
+        readonly List<(InstanceRenderer renderer, int index, float at, Vector3 position)> _trees = new();
+
+        public int TreesBroken { get; private set; }
+
+        void OnEnable() => InstanceCollider.Hit += OnInstanceHit;
+        void OnDisable() => InstanceCollider.Hit -= OnInstanceHit;
+
+        void OnInstanceHit(InstanceRenderer r, int index, Collision c)
+        {
+            var body = c.rigidbody;
+            if (body == null || !IsPlayerCar(body) || r.IsHidden(index)) return;
+            var kind = settings.tree;
+            var rel = c.relativeVelocity;
+            var n = c.contactCount > 0 ? c.GetContact(0).normal : -rel.normalized;
+            if (!Breakable.ShouldBreak(body.mass, Mathf.Abs(Vector3.Dot(rel, n)), kind.minSpeed, kind.energy)) return;
+            if (!TakeBreakSlot()) return;
+            _watch.Restart();
+            var trunk = c.GetContact(0).thisCollider as CapsuleCollider;
+            var h = trunk != null ? trunk.height : 4f;
+            var radius = trunk != null ? trunk.radius : 0.35f;
+            var at = r.data.positions[index];
+            r.SetHidden(index, true);
+            _trees.Add((r, index, Time.time, at));
+            Breaks++;
+            TreesBroken++;
+            GiveSpeedBack(body, kind.carLoss);
+            var bounds = new Bounds(at + Vector3.up * h * 0.5f, new Vector3(radius * 2f, h, radius * 2f));
+            SpawnPieces(kind, bounds, Quaternion.identity, body.linearVelocity);
+            var crown = _palette.Uv(settings.treeCrown);
+            for (var i = 0; i < settings.treeCrownPieces; i++)
+            {
+                var p = NextPiece(crown);
+                p.body.transform.SetPositionAndRotation(at + Vector3.up * (h + 0.5f) + Random.insideUnitSphere * 1.2f, Random.rotation);
+                p.body.transform.localScale = Vector3.one * settings.treeCrownPiece;
+                p.body.gameObject.SetActive(true);
+                p.body.mass = 30f;
+                p.body.linearVelocity = body.linearVelocity * settings.carry * 0.6f + Vector3.up * Random.Range(0.5f, 2f) + Random.insideUnitSphere * 1.5f;
+                p.body.angularVelocity = Random.insideUnitSphere * 4f;
+                p.bornAt = Time.time;
+            }
+            WorstBreakMs = Mathf.Max(WorstBreakMs, (float)_watch.Elapsed.TotalMilliseconds);
+        }
+
+        bool TakeBreakSlot()
+        {
+            if (Time.frameCount != _stepFrame)
+            {
+                _stepFrame = Time.frameCount;
+                _breaksThisStep = 0;
+            }
+            if (_breaksThisStep >= settings.maxBreaksPerStep) return false;
+            _breaksThisStep++;
+            return true;
+        }
+
+        // The static collider already stopped the car this step; give the speed back, minus the loss.
+        static void GiveSpeedBack(Rigidbody car, float loss)
+        {
+            var vc = car.GetComponent<JapanMap.Vehicles.VehicleController>();
+            if (vc == null) return;
+            var before = vc.VelocityBeforeStep;
+            var speed = before.magnitude;
+            if (speed > 0.1f) car.linearVelocity = before * (Mathf.Max(0f, speed - loss) / speed);
+        }
+
         void Start()
         {
             _palette = StandInPalette.For(template);
@@ -91,25 +156,13 @@ namespace JapanMap.Gameplay.Smash
 
         internal void Break(Breakable b, Rigidbody car, Vector3 relativeVelocity)
         {
-            if (Time.frameCount != _stepFrame)
-            {
-                _stepFrame = Time.frameCount;
-                _breaksThisStep = 0;
-            }
-            if (_breaksThisStep >= settings.maxBreaksPerStep) return;
-            _breaksThisStep++;
+            if (!TakeBreakSlot()) return;
             _watch.Restart();
             var kind = b.Kind;
             var bounds = b.Bounds;
             b.SetBroken(true);
             Breaks++;
-
-            // The static collider already stopped the car this step; give the speed back, minus the loss.
-            var vc = car.GetComponent<JapanMap.Vehicles.VehicleController>();
-            var before = vc != null ? vc.VelocityBeforeStep : relativeVelocity;
-            var speed = before.magnitude;
-            if (speed > 0.1f) car.linearVelocity = before * (Mathf.Max(0f, speed - kind.carLoss) / speed);
-
+            GiveSpeedBack(car, kind.carLoss);
             SpawnPieces(kind, bounds, b.Rotation, car.linearVelocity);
             WorstBreakMs = Mathf.Max(WorstBreakMs, (float)_watch.Elapsed.TotalMilliseconds);
         }
@@ -208,9 +261,16 @@ namespace JapanMap.Gameplay.Smash
             }
 
             // A few broken objects per frame: back when the player is far and some time has passed.
-            if (_all.Count == 0) return;
             var focus = Focus();
             var far2 = settings.respawnDistance * settings.respawnDistance;
+            for (var t = _trees.Count - 1; t >= 0; t--)
+            {
+                var tree = _trees[t];
+                if (Time.time - tree.at < settings.respawnSeconds || (tree.position - focus).sqrMagnitude < far2) continue;
+                tree.renderer.SetHidden(tree.index, false);
+                _trees.RemoveAt(t);
+            }
+            if (_all.Count == 0) return;
             for (var k = 0; k < 16; k++)
             {
                 var b = _all[_respawnCursor];

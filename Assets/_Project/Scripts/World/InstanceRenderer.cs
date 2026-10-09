@@ -179,11 +179,13 @@ namespace JapanMap.World
                     for (var i = run.start; i < run.start + run.count; i++)
                     {
                         if ((data.positions[i] - centre).sqrMagnitude > r2) continue;
+                        if (IsHidden(i)) continue; // a broken tree has no trunk to hit
                         if (used == _pool.Count)
                         {
                             var go = new GameObject("TreeCollider") { hideFlags = HideFlags.DontSave };
                             go.transform.SetParent(transform, false);
                             _pool.Add(go.AddComponent<CapsuleCollider>());
+                            go.AddComponent<InstanceCollider>().Owner = this;
                         }
                         var c = _pool[used++];
                         var s = data is VegetationData v ? v.shapes[i] : Vector3.one;
@@ -192,6 +194,7 @@ namespace JapanMap.World
                         c.center = new Vector3(0, c.height / 2, 0);
                         c.transform.position = data.positions[i];
                         c.enabled = true;
+                        c.GetComponent<InstanceCollider>().Index = i;
                     }
                 }
             }
@@ -206,6 +209,9 @@ namespace JapanMap.World
         {
             if (_matrices == null || index < 0 || index >= _matrices.Length) return;
             _matrices[index] = hidden ? Matrix4x4.TRS(data.positions[index], Quaternion.identity, Vector3.zero) : data.Matrix(index);
+            if (hidden)
+                foreach (var c in _pool)
+                    if (c != null && c.enabled && c.GetComponent<InstanceCollider>().Index == index) c.enabled = false;
         }
 
         public bool IsHidden(int index) => _matrices != null && _matrices[index].m00 == 0f && _matrices[index].m11 == 0f;

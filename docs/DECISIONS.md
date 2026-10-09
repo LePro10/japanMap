@@ -358,8 +358,20 @@ Verlust. Tokyo-Stücke sind instanziert: ihre Instanzen werden ausgeblendet (1:1
 Bruchstücke: Pool von 64 Unity-Rigidbodies auf der Debris-Ebene, kollidieren nicht mit Autos/Leuten
 (Prototyp: „kein neues Hindernis“), 7,5 s, dann versinken; das Objekt kommt nach 20 s außer Reichweite
 (120 m) zurück. **Nur das Spielerauto** zerbricht etwas — NPC-Autos räumten sonst an Ecken die Stadt ab.
-**Bäume** zerbrechen noch nicht (instanzierte Vegetation, eigener Weg nötig; Phase 7). Vorläufig:
+**Bäume** zerbrechen seit D25 (Pool-Kollider melden den Treffer). Vorläufig:
 Bruchstücke sind Kästen in Artfarbe (vorzerlegte Meshes fehlen).
+
+## D25 — Asset-Sprint 5b/5c, Flora, Scatter eingebaut; Türme nach Höhe, echte Fernstufe · 2026-10-09
+
+Freigegeben (Mensch): 5b `Machi`, 5c `Koso`, dazu `Flora`/`Scatter` („entscheide du“). Eingebaut: Sakura
+Autohaus + Werkstatt, Koedo Brauerei + moderne Häuser, Funaura Kei-Trucks, Tokyo **Türme** (Regel `minHeight 40`
+je Fassaden-Familie: f3 Wohnen → Mansion, f5 Hotel → Hoteltürme, f4 Kino → Büro, sonst gemischt/Büro;
+`fitFootprint` dehnt die Grundfläche um höchstens ±40 %, passt kein Turm, bleibt die Häuserzeile), Kino/Hotel-
+Fronten, Izakaya (f2 Holz), Fertighäuser in den Vororten; der ganze Wald aus echten Bäumen, Orts-Bäume (Weide,
+Kaki, Gartenkiefer, Shinboku) mit eigenem Modell; Leitpfosten, Tetrapoden, Gewächshäuser, Betonmauern, Nobori,
+Jizō, Friedhof. Die **Markthalle** steht nicht in der allgemeinen Ladenliste (sie kam ~120-mal) — sie braucht
+einen eigenen Ort. Zwei Fehler des Bibliotheks-Imports behoben: `_LOD2` wurde *in* LOD0 gezeichnet (Wald 20–45 M
+Dreiecke statt 2,7–7 M), Flora war deckend statt Cutout. Bäume zerbrechen jetzt auch (Prototyp-Schwellen).
 
 ## Offen (in der genannten Phase entscheiden)
 

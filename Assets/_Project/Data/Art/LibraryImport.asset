@@ -30,6 +30,12 @@ MonoBehaviour:
   - MinatoShop
   - Tera
   - TeraShop
+  - Machi
+  - MachiShop
+  - Koso
+  - KosoShop
+  - Flora
+  - Scatter
   excluded: []
   propLod0: 0.12
   propCull: 0.012

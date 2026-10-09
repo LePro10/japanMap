@@ -217,6 +217,36 @@ namespace JapanMap.Editor
                     Object.FindAnyObjectByType<JapanMap.Vehicles.CarCameraRig>().Attach(car);
                     return true;
                 }
+                case "ramtree":
+                {
+                    // For pictures only: the player's car 14 m from the nearest tree with a trunk, aimed at it, at kmh.
+                    var pmt = Object.FindAnyObjectByType<PlayerModeController>();
+                    var carT = pmt.Car;
+                    JapanMap.World.InstanceRenderer veg = null;
+                    foreach (var ir in Object.FindObjectsByType<JapanMap.World.InstanceRenderer>(FindObjectsSortMode.None))
+                        if (ir.data is JapanMap.World.VegetationData) veg = ir;
+                    var best = -1;
+                    var bestD = float.MaxValue;
+                    var from0 = carT.transform.position;
+                    foreach (var chunk in veg.data.chunks)
+                    foreach (var run in chunk.runs)
+                    {
+                        if (veg.data.prototypes[run.prototype].colliderRadius <= 0f) continue;
+                        for (var i = run.start; i < run.start + run.count; i++)
+                        {
+                            var dd = (veg.data.positions[i] - from0).sqrMagnitude;
+                            if (dd > 400f && dd < bestD) { bestD = dd; best = i; }
+                        }
+                    }
+                    var treeAt = veg.data.positions[best];
+                    var dir = treeAt - from0;
+                    dir.y = 0f;
+                    dir.Normalize();
+                    carT.Place(treeAt - dir * 14f, Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg, fromAbove: 3f);
+                    carT.Body.linearVelocity = dir * (F(1) / 3.6f);
+                    Object.FindAnyObjectByType<JapanMap.Vehicles.CarCameraRig>().Attach(carT);
+                    return true;
+                }
                 case "view":
                 {
                     // Main camera to a named viewpoint, game systems running (like the bench).
@@ -319,7 +349,7 @@ namespace JapanMap.Editor
                         Log.AppendLine($"    {t.name} at {t.position:F1} renderer={(t.GetComponentInChildren<Renderer>()?.enabled.ToString() ?? "none")}");
             }
             var smashSystem = Object.FindAnyObjectByType<JapanMap.Gameplay.Smash.SmashSystem>();
-            if (smashSystem != null) Log.AppendLine($"  smash breaks={smashSystem.Breaks} pieces={smashSystem.LivePieces} worst={smashSystem.WorstBreakMs:0.00}ms");
+            if (smashSystem != null) Log.AppendLine($"  smash breaks={smashSystem.Breaks} trees={smashSystem.TreesBroken} pieces={smashSystem.LivePieces} worst={smashSystem.WorstBreakMs:0.00}ms");
             var traffic = Object.FindAnyObjectByType<JapanMap.Gameplay.Traffic.TrafficSystem>();
             if (traffic != null)
             {
