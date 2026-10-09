@@ -13,14 +13,17 @@ Phase 2 ✅ · 3 ✅ freigegeben · 4 ✅ (Optik-Abnahme offen) · 5 ✅ (Abnahm
 - [x] 2. Regionen: 8 lückenlos, 1,5 s + 4 m → „… explored · n/8 · +200 Sparks“, alle 8 +800 (`Captures/p7-2-region.png`)
 - [x] 3. Entdeckungen: 24 (3 je Region), Taste **E**, 6 Reihenfolge- + 2 Rhythmus-Rätsel, Lagen geprüft (`Captures/p7-3-*`)
 - [x] 4. Schanzen: 6 Körper mit Fundament, Gelände darunter abgesenkt, Tempo-Hinweis, Landepfeile; Stunt-Wertung, STUNT-Marke (`Captures/p7-4-*`)
-- [x] 5. Rennen: 8 Veranstaltungen, Karte am Leuchtpfeiler (E/E), Startaufstellung, Countdown hält alle, Kontrollpunkte, KI Mina/Joss/Ren,
-  Ergebnis + Sparks (`Captures/p7-5-race.png`)
+- [x] 5. Rennen: 8 Veranstaltungen, Leuchtpfeiler (E/E), Countdown hält alle, Kontrollpunkte, KI Mina/Joss/Ren, Ergebnis (`Captures/p7-5-race.png`)
 
 **Abnahme gemessen:** alle 8 Veranstaltungen KI gegen KI vom Start bis Ziel: **0 Rettungen, 0 Zurücksetzen**; Runden genau an der Linie
 (Neon 1476/2952 m bei 1476 m Runde, Needle 2168,8/4337,6 m, Ring 5987 m). Alle 6 Schanzen beim empfohlenen Tempo: 8–33 m, Absprung an der Kante.
 Tests: EditMode **100/100**, PlayMode **171/176** (4 Prüfstände auf Abruf; `TouchStick_Throttles` wackelt, s. u.).
 Bench (`Captures/bench-p7-gate*`): Niedrig ≤ 390 DC / 578 k ✓ (Funaura 388 — Schanzen erst ab 400 m ausgeblendet), Hoch wie Phase 6
 (sakura-hof 1 573 DC). Web **53,97 MB**, Browser Niedrig 235 / Hoch 55 fps (Vorschau lief vermutlich mit).
+
+## Phase 8 — Progression und Speichern (als Nächstes, PLAN.md)
+
+- [ ] 1. Sparks-Wirtschaft als Tabelle simuliert · [ ] 2. Autohaus, Garage, Tuning (messbar) · [ ] 3. Speichern (CrazyGames + lokal, ASTRA §9) · [ ] 4. Rekorde und Fotos
 
 ## Offen / Gefunden
 
@@ -35,20 +38,18 @@ Bench (`Captures/bench-p7-gate*`): Niedrig ≤ 390 DC / 578 k ✓ (Funaura 388 �
 - **Wackeliger Test:** `PlayerDriveTests.TouchStick_Throttles…` war 2× beim ersten Lauf nach Neuladen rot (Gas 0), danach 5× grün — Ursache offen.
 - **Kartenpunkte:** Kuppen-Knicke alter Straßen, Stadtplatte ohne Böschung, treppige Reisfeldränder; Viadukt-Brüstungsmauer (Modell).
 - **Hoch kostet viel** (Wald-Schatten, lodBias 2) → Phase 10. **Download 54 MB** (Desktop-Ziel 50, Handy 20) → Phase 10 (Addressables).
-- Funaura: die sechs Angler fehlen. Tokyo-Kollider bleiben GameObjects (NavMesh).
+- Funaura: die sechs Angler fehlen.
 
 ### Für die Asset-Sitzung (Lagen stehen in den Daten, Import genügt)
 
-- **Rennen:** Startpfeiler/Event-Tafel 6–8 m (leuchtend, je Art Farbe), Kontrollpunkt-Bogen (Straßenbreite + 2 m, zwei Säulen 6 m), Start-Ziel-
-  Banner, Pokal (0,4 m) fürs Ergebnis. Needle: Tribüne, Boxen, Start-Ziel-Brücke. Je ≤ 2 k Dreiecke.
+- **Rennen:** Event-Pfeiler 6–8 m (je Art Farbe), Kontrollpunkt-Bogen (Straße + 2 m), Start-Ziel-Banner, Pokal 0,4 m; Needle: Tribüne, Boxen, Brücke. ≤ 2 k.
 - **Schanzen (Stellvertreter: Betonkeil + Kies-Landefläche + weiße Pfeile):** Absprung als Erdwall/Holzrampe je Ort (8–12 m breit, 0,9–3 m
   hoch, 12–24 m lang, Maße in `Data/Gameplay/Ramps.asset`); Tempo-Schild 1,2 m; Lande-Chevron-Tafel; orange Absperrung. ≤ 1,5 k.
 - **Entdeckungen (Stellvertreter: bernsteinfarbene Raute + weiße Pfosten):** „Sparks-Laterne“ 0,4 m; Gründerplakette; Lichttafel + 3 Reifenstapel;
   Getränkeregal; Fernrohr-Rahmen; Start-Tafel mit 3 Feldern; Zuschauer-Treppchen; Spielzeug-Schuppen; Reisschale; Schleuse mit 3 Schiebern;
   Karten-Tafel; Grat-Tafel; rote Thermoskanne; Laternen-Plakette; Netzhaus-Seile; Gezeitentafel; Bank mit Hafenkarte; Lampen-Tafel;
   Treibholz-Marke; Rettungsring-Schild. Je ≤ 1,5 k.
-- **Aus Phase 6 noch offen:** Spielfigur (1,72 m, Animationen), Passanten/Tiere, Verkehrsautos, vorzerlegte Laterne/Automat/Zaun/Schuppen/
-  Baum, Ladeninnere, leichte Ausstellungsautos, Koedo-Kanalbrücken; `Tokyo_Tower_Mixed_Tile_70` Fernstufe.
+- **Aus Phase 6 offen:** Spielfigur, Passanten/Tiere, Verkehrsautos, vorzerlegte Props + Baum, Ladeninnere, Ausstellungsautos, Kanalbrücken, Turm-Fernstufe.
 
 ## Für dich (Mensch)
 
