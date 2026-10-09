@@ -1,0 +1,371 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3bcb52ce5ebd3425bb7cc88cefbc4c36, type: 3}
+  m_Name: Discoveries
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Discovery.DiscoverySet
+  cards:
+  - id: SC1
+    region: commons
+    title: Founder's Plaque
+    hint: 
+    position: {x: 538, y: -496}
+    ground: 26.739788
+    yaw: 0
+    trigger: 0
+    buttons: []
+    answer: 
+    gaps: []
+    reward: 
+    note: "ASTRA SC1 S + (\u221212, \u221210)."
+  - id: SC2
+    region: commons
+    title: Open Bay light board
+    hint: 'Read the tyre stacks: two, one, three.'
+    position: {x: 582, y: -488}
+    ground: 26.36546
+    yaw: 0
+    trigger: 2
+    buttons:
+    - label: stack 1
+      offset: {x: -2.4, y: 2.5}
+    - label: stack 2
+      offset: {x: 0, y: 2.5}
+    - label: stack 3
+      offset: {x: 2.4, y: 2.5}
+    answer: 010000000000000002000000i
+    gaps: []
+    reward: Petal Stripe decal
+    note: "ASTRA SC2 S + (32, \u221218); tyre stacks as stand-in posts."
+  - id: SC3
+    region: commons
+    title: Petal Hop bench
+    hint: 
+    position: {x: 660, y: -556}
+    ground: 19.958641
+    yaw: 0
+    trigger: 1
+    buttons: []
+    answer: 
+    gaps: []
+    reward: 
+    note: ASTRA SC3 S + (110, 50), beside the Petal Hop ramp (Phase 7.4).
+  - id: NB1
+    region: neon
+    title: Diner window
+    hint: 
+    position: {x: 409, y: -28}
+    ground: 29.002346
+    yaw: 0
+    trigger: 0
+    buttons: []
+    answer: 
+    gaps: []
+    reward: 
+    note: "ASTRA NB1 diner window ledge (495, 35) \u2014 the diner as built stands at (420, \u221228), door on its west side. Moved from (407, -28) to (409, -28) by the placement check (road, water, slope)."
+  - id: NB2
+    region: neon
+    title: Corner Mart shelf
+    hint: Bottle. Carton. Can.
+    position: {x: 579, y: -46}
+    ground: 29.002346
+    yaw: 180
+    trigger: 2
+    buttons:
+    - label: can
+      offset: {x: -2.4, y: 2.5}
+    - label: bottle
+      offset: {x: 0, y: 2.5}
+    - label: carton
+      offset: {x: 2.4, y: 2.5}
+    answer: 010000000200000000000000i
+    gaps: []
+    reward: Night Grid decal
+    note: "ASTRA NB2 vending alcove (644, 145) \u2014 the mart as built: door at (578, \u221244). Moved from (578, -48) to (579, -46) by the placement check (road, water, slope)."
+  - id: NB3
+    region: neon
+    title: Crossing viewer
+    hint: 
+    position: {x: 652, y: -142}
+    ground: 29.002346
+    yaw: 0
+    trigger: 0
+    buttons: []
+    answer: 
+    gaps: []
+    reward: 
+    note: "ASTRA NB3 Beacon forecourt \u2014 no Beacon tower; a viewing frame at the scramble crossing (620, \u2212120) instead. Moved from (642, -142) to (652, -142) by the placement check (road, water, slope)."
+  - id: NW1
+    region: needle
+    title: Retired start board
+    hint: Count them home.
+    position: {x: -349, y: -589}
+    ground: 31.961285
+    yaw: 180
+    trigger: 2
+    buttons:
+    - label: panel 1
+      offset: {x: -2.4, y: 2.5}
+    - label: panel 2
+      offset: {x: 0, y: 2.5}
+    - label: panel 3
+      offset: {x: 2.4, y: 2.5}
+    answer: 020000000100000000000000i
+    gaps: []
+    reward: Pit Chevron decal
+    note: "ASTRA NW1 pit scoreboard (\u2212350, 570); 'set panels 3/2/1' as pressing them in that order. Moved from (-350, -570) to (-349,-589): dry ground (paddy check)."
+  - id: NW2
+    region: needle
+    title: Spectator stand
+    hint: 
+    position: {x: -620, y: -885}
+    ground: 4.852688
+    yaw: 0
+    trigger: 0
+    buttons: []
+    answer: 
+    gaps: []
+    reward: 
+    note: "ASTRA NW2 pedestrian stand (\u2212620, 885), behind the straight."
+  - id: NW3
+    region: needle
+    title: Toy shed
+    hint: 
+    position: {x: -1090, y: -551}
+    ground: 27.006603
+    yaw: 0
+    trigger: 0
+    buttons: []
+    answer: 
+    gaps: []
+    reward: 
+    note: "ASTRA NW3 Breakyard booth (\u22121090, 555); Breakyard itself is not built. Moved from (-1090, -555) to (-1090,-551): dry ground (paddy check)."
+  - id: ST1
+    region: stillwater
+    title: Rice tray
+    hint: 
+    position: {x: -480, y: -31}
+    ground: 23.998093
+    yaw: 0
+    trigger: 0
+    buttons: []
+    answer: 
+    gaps: []
+    reward: 
+    note: "ASTRA ST1 produce farmhouse (\u2212483.77, 25.28), porch toward the village road."
+  - id: ST2
+    region: stillwater
+    title: Mill sluice
+    hint: 'Water runs downhill: upper, middle, lower.'
+    position: {x: -1249, y: -402}
+    ground: 26.473286
+    yaw: 90
+    trigger: 2
+    buttons:
+    - label: lower gate
+      offset: {x: -2.4, y: 2.5}
+    - label: middle gate
+      offset: {x: 0, y: 2.5}
+    - label: upper gate
+      offset: {x: 2.4, y: 2.5}
+    answer: 020000000100000000000000i
+    gaps: []
+    reward: Mill Spoke decal
+    note: "ASTRA ST2 outer sluice (\u22121255, 405). The timed paddle puzzle became three gates in order (no timing on touch). Moved from (-1255, -405) to (-1254, -404) by the placement check (road, water, slope). Moved from (-1254, -404) to (-1249, -402) by the placement check (road, water, slope)."
+  - id: ST3
+    region: stillwater
+    title: Shallow Run bank
+    hint: 
+    position: {x: -898, y: -320}
+    ground: 20.99894
+    yaw: 0
+    trigger: 1
+    buttons: []
+    answer: 
+    gaps: []
+    reward: 
+    note: "ASTRA ST3 dry north bank (\u2212900, 320). Moved from (-900, -320) to (-898,-320): dry ground (paddy check)."
+  - id: CP1
+    region: cinder
+    title: Roadside map panel
+    hint: 
+    position: {x: -715, y: 1161}
+    ground: 178.6043
+    yaw: 0
+    trigger: 0
+    buttons: []
+    answer: 
+    gaps: []
+    reward: 
+    note: "ASTRA CP1 small shrine (\u2212718, \u22121161), beside it."
+  - id: CP2
+    region: cinder
+    title: Ridge panel
+    hint: Left peak, tall centre, right saddle.
+    position: {x: -620, y: 1211}
+    ground: 218.4079
+    yaw: 0
+    trigger: 2
+    buttons:
+    - label: left peak
+      offset: {x: -2.4, y: 2.5}
+    - label: tall centre
+      offset: {x: 0, y: 2.5}
+    - label: right saddle
+      offset: {x: 2.4, y: 2.5}
+    answer: 000000000100000002000000i
+    gaps: []
+    reward: Ridge Line decal
+    note: "ASTRA CP2 lookout (\u2212620, \u22121205). Moved from (-620, 1205) to (-620, 1211) by the placement check (road, water, slope)."
+  - id: CP3
+    region: cinder
+    title: Red thermos
+    hint: 
+    position: {x: -1340, y: 1328}
+    ground: 164.11034
+    yaw: 0
+    trigger: 1
+    buttons: []
+    answer: 
+    gaps: []
+    reward: 
+    note: 'ASTRA CP3: 60 % of the pass from its foot, 6 m outside the right shoulder (measured on the toge road).'
+  - id: BW1
+    region: bellwood
+    title: Lantern plaque
+    hint: 
+    position: {x: 843, y: 806}
+    ground: 131.30655
+    yaw: 0
+    trigger: 0
+    buttons: []
+    answer: 
+    gaps: []
+    reward: 
+    note: "ASTRA BW1: first torii of the approach (846, \u2212806 legacy), 3 m west."
+  - id: BW2
+    region: bellwood
+    title: Temple bell
+    hint: Two rings, pause, one ring.
+    position: {x: 819, y: 918}
+    ground: 144.15076
+    yaw: 0
+    trigger: 3
+    buttons: []
+    answer: 
+    gaps:
+    - {x: 0.05, y: 2}
+    - {x: 2, y: 6}
+    reward: Bell Arc decal
+    note: "ASTRA BW2 bell alcove \u2014 at the bell tower (814, 922) that exists. Moved from (817, 918) to (819, 918) by the placement check (road, water, slope)."
+  - id: BW3
+    region: bellwood
+    title: Viewing bench
+    hint: 
+    position: {x: 840, y: 964}
+    ground: 157.95203
+    yaw: 0
+    trigger: 1
+    buttons: []
+    answer: 
+    gaps: []
+    reward: 
+    note: 'ASTRA BW3: 20 m east and 10 m north of the hall (820, 954).'
+  - id: TH1
+    region: tideglass
+    title: Net House ropes
+    hint: 'Match the net diagram: two, one, three.'
+    position: {x: 784, y: -992}
+    ground: 0.51452637
+    yaw: 0
+    trigger: 2
+    buttons:
+    - label: 1 knot
+      offset: {x: -2.4, y: 2.5}
+    - label: 2 knots
+      offset: {x: 0, y: 2.5}
+    - label: 3 knots
+      offset: {x: 2.4, y: 2.5}
+    answer: 010000000000000002000000i
+    gaps: []
+    reward: Net Weave decal
+    note: ASTRA TH1 Net House loft (784, 1006), among the fish huts. Moved from (784, -1006) to (784, -992) by the placement check (road, water, slope).
+  - id: TH2
+    region: tideglass
+    title: Tide board
+    hint: 
+    position: {x: 790, y: -1012}
+    ground: 0.1561203
+    yaw: 0
+    trigger: 0
+    buttons: []
+    answer: 
+    gaps: []
+    reward: 
+    note: ASTRA TH2 working quay (795, 1025). Moved from (795, -1025) to (790, -1012) by the placement check (road, water, slope).
+  - id: TH3
+    region: tideglass
+    title: Harbour card
+    hint: 
+    position: {x: 830, y: -977}
+    ground: 0.95677567
+    yaw: 0
+    trigger: 1
+    buttons: []
+    answer: 
+    gaps: []
+    reward: 
+    note: ASTRA TH3 fish-market bench (830, 977).
+  - id: LS1
+    region: longshore
+    title: Lamp panel
+    hint: 'Three flashes: press three times, about a second apart.'
+    position: {x: -173, y: -1128}
+    ground: 0.52378845
+    yaw: 0
+    trigger: 3
+    buttons: []
+    answer: 
+    gaps:
+    - {x: 0.6, y: 1.6}
+    - {x: 0.6, y: 1.6}
+    reward: Lightkeeper decal
+    note: "ASTRA LS1: 15 m north of the lighthouse (\u2212180, 1160). Moved from (-180, -1145) to (-173, -1128) by the placement check (road, water, slope)."
+  - id: LS2
+    region: longshore
+    title: Driftwood marker
+    hint: 
+    position: {x: -1359, y: -1024}
+    ground: 1.0231705
+    yaw: 0
+    trigger: 1
+    buttons: []
+    answer: 
+    gaps: []
+    reward: 
+    note: "ASTRA LS2: 10 m inland from the river mouth (\u22121338, \u22121034), west bank (half width 17 m)."
+  - id: LS3
+    region: longshore
+    title: Lifering sign
+    hint: 
+    position: {x: 400, y: -1058}
+    ground: 0.6225319
+    yaw: 0
+    trigger: 1
+    buttons: []
+    answer: 
+    gaps: []
+    reward: 
+    note: "ASTRA LS3: beach at x 400, 8 m inland from the shoreline (measured: sea level at z \u22121066)."
+  useReach: 2.5
+  approachReach: 3
+  approachReachCar: 5
+  showDistance: 160

@@ -3,6 +3,7 @@ using JapanMap.Editor.Map;
 using JapanMap.Editor.Places;
 using JapanMap.Editor.Vehicles;
 using JapanMap.Gameplay;
+using JapanMap.Gameplay.Discovery;
 using JapanMap.Gameplay.Drift;
 using JapanMap.Gameplay.Economy;
 using JapanMap.Gameplay.Hud;
@@ -11,6 +12,7 @@ using JapanMap.Vehicles;
 using JapanMap.World;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 
 namespace JapanMap.Editor.Content
@@ -58,8 +60,18 @@ namespace JapanMap.Editor.Content
             Set(regions, "wallet", wallet);
             Set(regions, "hud", hud);
 
+            var cards = DiscoverySeed.LoadOrCreate();
+            WriteGround(cards);
+            var discovery = Child<DiscoverySystem>(group, "Discoveries");
+            Set(discovery, "set", cards);
+            Set(discovery, "player", player);
+            Set(discovery, "wallet", wallet);
+            Set(discovery, "hud", hud);
+            Set(discovery, "actions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(PlayerSetup.InputPath));
+            Set(discovery, "template", PlayerSetup.StandInMaterial("Skin", new Color(0.73f, 0.58f, 0.45f)));
+
             MapScene.Save();
-            var msg = $"[Content] set up: {zones.zones.Length} drift zones, {flags} flags, {Regions().regions.Length} regions";
+            var msg = $"[Content] set up: {zones.zones.Length} drift zones, {flags} flags, {Regions().regions.Length} regions, {cards.cards.Length} discoveries";
             Debug.Log(msg);
             return msg;
         }
@@ -88,6 +100,15 @@ namespace JapanMap.Editor.Content
             };
             AssetDatabase.CreateAsset(set, path);
             return set;
+        }
+
+        /// <summary>Terrain height under each card, so the token sits on the ground and never on a roof.</summary>
+        static void WriteGround(DiscoverySet set)
+        {
+            for (var i = 0; i < set.cards.Length; i++)
+                set.cards[i].ground = PlaceImporter.Ground(new Vector3(set.cards[i].position.x, 0f, set.cards[i].position.y));
+            EditorUtility.SetDirty(set);
+            AssetDatabase.SaveAssets();
         }
 
         static RegionSet.Box B(float x0, float x1, float z0, float z1) => new() { min = new Vector2(x0, z0), max = new Vector2(x1, z1) };

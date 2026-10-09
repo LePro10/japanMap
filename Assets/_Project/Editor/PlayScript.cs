@@ -162,7 +162,10 @@ namespace JapanMap.Editor
                     var screenPath = Path.Combine(SessionState.GetString(KeyOut, Capture.Dir), a[1] + ".png");
                     ScreenCapture.CaptureScreenshot(screenPath);
                     Log.AppendLine($"  screen {screenPath}");
-                    return true;
+                    // The file is written at the end of a later game frame: wait for it, or the next
+                    // command (place, press) is already in the picture.
+                    _until = now + 0.3f;
+                    return false;
                 case "shot":
                     Shot(a[1]);
                     return true;
@@ -340,6 +343,20 @@ namespace JapanMap.Editor
             var regionWatch = Object.FindAnyObjectByType<JapanMap.Gameplay.Regions.RegionWatch>();
             if (regionWatch != null && regionWatch.Regions != null)
                 Log.AppendLine($"  region current={(regionWatch.Current >= 0 ? regionWatch.Regions.regions[regionWatch.Current].id : "-")} explored=[{string.Join(",", regionWatch.Explored)}]");
+            var disc = Object.FindAnyObjectByType<JapanMap.Gameplay.Discovery.DiscoverySystem>();
+            if (disc != null)
+            {
+                var from = p.Current == PlayerModeController.Mode.Driving && car != null ? car.transform.position : w.transform.position;
+                var nearest = "";
+                var nd = float.PositiveInfinity;
+                foreach (var c in disc.Set.cards)
+                {
+                    var d = new Vector2(c.position.x - from.x, c.position.y - from.z).magnitude;
+                    if (d < nd) { nd = d; nearest = c.id; }
+                }
+                Log.AppendLine(string.Format(CultureInfo.InvariantCulture, "  discovery prompt='{0}' found=[{1}] nearest={2} {3:0.0} m",
+                    disc.Prompt, string.Join(",", disc.Found), nearest, nd));
+            }
             var crowd = Object.FindAnyObjectByType<JapanMap.Gameplay.Life.PedestrianCrowd>();
             if (crowd != null)
             {

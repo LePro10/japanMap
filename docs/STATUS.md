@@ -26,7 +26,7 @@ Web **53,9 MB** (+4,6), Browser Niedrig 240 / Hoch 65 fps (Blender lief).
 
 - [x] 1. Drift-Wertung (D26): Kette, ×2/×3/×4/×5 nach 6/18/42/90 s Drift, Sakura Bowl + Rotor Court ×2, Sparks; Bild `Captures/p7-1-drift*.png`
 - [x] 2. Regionen (8, lückenlos, Prototyp-Grenzen): 1,5 s am Boden + 4 m → „… explored · n/8 regions · +200 Sparks“, alle 8 +800; Bild `Captures/p7-2-region.png`
-- [ ] 3. Entdeckungen (24) statt anonymer Pickups, Easter Eggs
+- [x] 3. Entdeckungen (24, 3 je Region, ASTRA §9): 9× **E** untersuchen, 6 Reihenfolge- und 2 Rhythmus-Rätsel, 7 im Vorbeigehen/-fahren; +100 Sparks, Abzeichen-Namen; Lagen geprüft (trocken, eben, neben der Straße); Bilder `Captures/p7-3-*.png`
 - [ ] 4. Schanzen und Stunts (Fundament statt Geländeauflage), Stunt-Modus
 - [ ] 5. Rennen mit KI-Gegnern (Coast Loop, Tōge, Neon Circuit, Ring, Drift Run); Abnahme: KI gegen KI ohne Hängenbleiben
 
@@ -43,6 +43,13 @@ Web **53,9 MB** (+4,6), Browser Niedrig 240 / Hoch 65 fps (Blender lief).
 - Funaura: die sechs Angler an den Molenfeuern fehlen (Plätze hängen am Lichter-Layout des Prototyps). Stillwater-Hafen (Tideglass) gibt es noch nicht.
 
 ### Für die Asset-Sitzung (Lagen stehen in den Daten, Import genügt)
+
+- **Entdeckungen (Stellvertreter: bernsteinfarbene Raute + weiße Pfosten):** Marke „Sparks-Laterne“ 0,4 m (gespaltene
+  Raute, warm, ≤ 300 Dreiecke); Gründerplakette (Steinsockel 0,6 × 0,4 m); Lichttafel + 3 Reifenstapel (Ø 0,7 m);
+  Getränkeregal (Flasche/Karton/Dose, 1,2 m); Fernrohr-Rahmen 1,6 m; Start-Tafel mit 3 Zahlenfeldern (2 × 1,2 m);
+  Zuschauer-Treppchen 3 m; Spielzeug-Schuppen 0,5 m; Reisschale; Schleuse mit 3 Schiebern; Karten-Tafel am Schrein;
+  Grat-Tafel mit 3 Silhouetten; rote Thermoskanne; Laternen-Plakette; Netzhaus-Seile (1/2/3 Knoten); Gezeitentafel;
+  Bank mit Hafenkarte; Lampen-Tafel mit großem Knopf; Treibholz-Marke; Rettungsring-Schild. Je ≤ 1,5 k Dreiecke.
 
 - **Spielfigur:** 1,72 m, Fahrer:in späte 80er, ≤ 6 k Dreiecke, Ursprung zwischen den Füßen, +Z vorn; Stehen, Gehen, Rennen, Sprung, Rutschen.
 - **Leute/Tiere:** 4–6 Passanten, Fischer, Bauer, sitzende Pose; Katze 0,45 m, Ziege 1 m, Huhn 0,35 m; ≤ 3 k, Skinned.

@@ -23,7 +23,9 @@ namespace JapanMap.Gameplay.Hud
 
         UIDocument _doc;
         VisualElement _driftBox, _bar, _barFill;
-        Label _points, _mult, _spot, _result, _sparks, _toast, _banner;
+        Label _points, _mult, _spot, _result, _sparks, _toast, _banner, _prompt;
+        VisualElement _useButton;
+        bool _touchSeen;
         float _resultUntil, _toastUntil, _bannerUntil;
         readonly Queue<string> _toasts = new();
 
@@ -107,6 +109,32 @@ namespace JapanMap.Gameplay.Hud
             Plate(_toast);
             _banner = Text(toastBox, 24, Gold);
 
+            var promptBox = Box(root);
+            promptBox.style.bottom = 96;
+            promptBox.style.left = promptBox.style.right = 0;
+            promptBox.style.alignItems = Align.Center;
+            _prompt = Text(promptBox, 28, Color.white);
+            _prompt.style.display = DisplayStyle.None;
+
+            _useButton = new VisualElement();
+            _useButton.style.position = Position.Absolute;
+            _useButton.style.width = _useButton.style.height = 96;
+            _useButton.style.right = 460;
+            _useButton.style.top = 40;
+            _useButton.style.backgroundColor = new Color(1f, 0.68f, 0.25f, 0.45f);
+            _useButton.style.borderTopLeftRadius = _useButton.style.borderTopRightRadius = _useButton.style.borderBottomLeftRadius = _useButton.style.borderBottomRightRadius = 48;
+            var useLabel = Text(_useButton, 22, Color.white);
+            useLabel.text = "USE";
+            useLabel.style.flexGrow = 1;
+            _useButton.RegisterCallback<PointerDownEvent>(e =>
+            {
+                UsePressed?.Invoke();
+                e.StopPropagation();
+            });
+            _useButton.style.display = DisplayStyle.None;
+            root.Add(_useButton);
+            _touchSeen = Application.isMobilePlatform;
+
             if (drift != null) drift.ChainEnded += OnChainEnded;
             if (wallet != null) wallet.Earned += OnEarned;
         }
@@ -116,6 +144,28 @@ namespace JapanMap.Gameplay.Hud
             if (drift != null) drift.ChainEnded -= OnChainEnded;
             if (wallet != null) wallet.Earned -= OnEarned;
         }
+
+        /// <summary>Show a message now, replacing the current one (puzzle feedback).</summary>
+        public void Flash(string text)
+        {
+            LastToast = text;
+            _toast.text = text;
+            _toast.style.display = DisplayStyle.Flex;
+            _toastUntil = Time.time + toastSeconds;
+        }
+
+        /// <summary>Context action of the moment ("E  Inspect …"); "" hides it.</summary>
+        public void SetPrompt(string text)
+        {
+            if (_prompt == null) return;
+            // On touch the USE button is the prompt; drop the key name.
+            _prompt.text = _touchSeen && text.StartsWith("E  ") ? text.Substring(3) : text;
+            _prompt.style.display = text != "" ? DisplayStyle.Flex : DisplayStyle.None;
+            _useButton.style.display = _touchSeen && text != "" ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>Touch USE button pressed.</summary>
+        public event System.Action UsePressed;
 
         /// <summary>Queue a short message (region explored, discovery found).</summary>
         public void ShowToast(string text)
@@ -144,6 +194,8 @@ namespace JapanMap.Gameplay.Hud
 
         void Update()
         {
+            if (!_touchSeen && UnityEngine.InputSystem.Touchscreen.current != null
+                && UnityEngine.InputSystem.Touchscreen.current.primaryTouch.press.isPressed) _touchSeen = true;
             if (drift != null)
             {
                 var c = drift.Chain;
