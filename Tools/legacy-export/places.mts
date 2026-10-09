@@ -23,6 +23,10 @@ interface Place {
   clearCircles: [number, number, number][];
   clearRects: [number, number, number, number][];
   spawn?: { x: number; z: number; yaw: number };
+  /** Standing people and animals: legacy courtActors / FunauraVillage #buildActors / StillwaterVillage #actors (Three x/z, yaw). */
+  actors?: { kind: string; x: number; z: number; yaw: number }[];
+  /** Walk-in shop interiors (CityInteriorLayout + INTERIOR_SITES), boxes relative to the shop floor. */
+  interiors?: { id: string; floorY: number; boxes: { x: number; y: number; z: number; w: number; h: number; d: number; finish: string; solid: boolean; visible: boolean }[] }[];
   /** On-foot start (legacy walker.config rollWalkSpawn: sakura-bowl centre, heading π = towards the car). */
   walkSpawn?: { x: number; z: number; yaw: number };
   /** Roads the prototype built inside the place (not in roads.json): control points, Three x/z. */
@@ -111,6 +115,15 @@ const exporters: Record<string, () => Promise<Place>> = {
       // WP2: the car starts 4 m north of the on-foot spawn, facing east (driver's side visible)
       spawn: { x: s.x, z: s.z - 4, yaw: Math.PI / 2 },
       walkSpawn: { x: s.x, z: s.z, yaw: Math.PI },
+      // sakuraLobby.ts courtActors (not exported there): shop visitors and two on the benches
+      actors: [
+        { kind: 'visitor', x: B.x - 3.4, z: B.z + B.d / 2 + 1.6, yaw: 0.3 },
+        { kind: 'visitor', x: P.x - 2.2, z: P.z + P.d / 2 + 2.1, yaw: -0.4 },
+        { kind: 'visitor', x: P.x + 2.4, z: P.z + P.d / 2 + 1.8, yaw: 0.15 },
+        { kind: 'visitor', x: s.x - 12.4, z: s.z + 3.4, yaw: 1.1 },
+        { kind: 'seated', x: s.x - 9.2, z: s.z + 6.2, yaw: 0.4 },
+        { kind: 'seated', x: s.x + 9.3, z: s.z + 6.2, yaw: -0.4 },
+      ],
     };
   },
   /** CitySystem: generateTokyo (core) + generateSuburbs (WP6 terraces), fed like the prototype feeds them. */
@@ -312,8 +325,15 @@ const exporters: Record<string, () => Promise<Place>> = {
     const trees: Tree[] = L.PINES.map(([x, z, scale]: number[]) => ({ species: 'Pine', x, z, scale, yaw: hash(x!, z!) * Math.PI * 2 }));
     const clearCircles: [number, number, number][] = [];
     L.funauraClearance((x: number, z: number, r: number) => clearCircles.push([x, z, r]));
+    // FunauraVillage #buildActors: fishers at fixed work spots, cats on the quay (literal arrays there,
+    // without the six harbour-light anglers, whose spots come from the light layout)
+    const actors = [
+      ...[[-1183, 1093, 0.4], [-1178, 1097, 2.8], [-1172, 1092, -1.2], [-1186, 1099, 1.6], [-1178, 1140, 1.5], [-1182, 1160, -1.4],
+        [-1258, 1085, 3.1], [-1231, 1084, 0.2], [-1270, 1037, 3.2], [-1205, 1112, 3.0], [-1297, 1074.5, 0.8]].map(([x, z, yaw]) => ({ kind: 'fisher', x: x!, z: z!, yaw: yaw! })),
+      ...[[-1286, 1074, 1.2], [-1180, 1104, 2.4], [-1214.5, 922, 0.3], [-1249, 1074.5, -0.4], [-1178, 1165, 3.0], [-1310, 1089.5, 2.0]].map(([x, z, yaw]) => ({ kind: 'cat', x: x!, z: z!, yaw: yaw! })),
+    ];
     return {
-      place: 'funaura', title: 'Funaura', anchor: L.FUNAURA, items, trees, clearCircles, clearRects: [],
+      place: 'funaura', actors, title: 'Funaura', anchor: L.FUNAURA, items, trees, clearCircles, clearRects: [],
       roads: [{ id: 'funaura-river-road', type: 'village', width: 6.2, points: L.RIVER_ROAD.map(([x, z]: number[]) => [x, z]), endY: Q, extends: 'stillwater-mill-lane' }],
     };
   },
@@ -461,6 +481,13 @@ const exporters: Record<string, () => Promise<Place>> = {
     }
     return {
       place: 'gassho', title: 'Gassho & Stillwater', anchor: L.GASSHO, items, trees, clearCircles, clearRects: [],
+      // StillwaterVillage #actors (village group): goats, chickens and workers around the mill
+      actors: [
+        ...[[-1306, 392, 0.4], [-1302, 396, 2.4]].map(([x, z, yaw]) => ({ kind: 'goat', x: x!, z: z!, yaw: yaw! })),
+        ...[[-1284, 434, 0], [-1281, 436, 1.2], [-1286, 438, 2.1], [-1280, 432, 4]].map(([x, z, yaw]) => ({ kind: 'chicken', x: x!, z: z!, yaw: yaw! })),
+        ...[[-1242, 411, 2.8], [-1307, 439, 0.2], [-1311, 446, 1.2], [-1247, 381, 2], [-1250, 381, 0.5], [-1264.4, 397.3, 2.9], [-1269, 371, 0.4], [-1278, 410, 2.6]]
+          .map(([x, z, yaw]) => ({ kind: 'worker', x: x!, z: z!, yaw: yaw! })),
+      ],
       roads: [
         { id: 'stillwater-mill-lane', type: 'village', width: 6, points: S.MILL_LANE.map(([x, z]: number[]) => [x, z]) },
         { id: 'gassho-street', type: 'village', width: L.STREET_WIDTH, points: L.STREET.map(([x, z]: number[]) => [x, z]) },
@@ -548,6 +575,26 @@ const exporters: Record<string, () => Promise<Place>> = {
       items.push({ kind: 'barrier', x: bx + (-tz / len) * side * off, z: bz + (tx / len) * side * off, yaw: Math.atan2(-tz, tx), w: 4 * (radius + off) / radius + 0.1, d: 0.6, h: 0.9 });
     }
     return { place: 'needle', title: 'Needle Circuit', anchor: { x: -620, z: 760 }, items, trees: [], clearCircles, clearRects: [] };
+  },
+  /** CityInteriorLayout.ts: the two walk-in shops (diner, corner mart), moved to INTERIOR_SITES like CityInteriors.ts. */
+  async interiors() {
+    const { createInteriorLayout } = await src('world/city/CityInteriorLayout.ts');
+    const { INTERIOR_SITES, interiorOffset } = await src('config/tokyoLayout.mjs');
+    const layout = createInteriorLayout();
+    const sites = INTERIOR_SITES.map((site: any) => ({ id: site.id, floorY: 0, boxes: [] as any[] }));
+    for (const b of layout.boxes) {
+      const o = interiorOffset(b.x);
+      sites[INTERIOR_SITES.indexOf(o)].boxes.push({ x: b.x + o.dx, y: b.y - layout.floorY, z: b.z + o.dz, w: b.w, h: b.h, d: b.d, finish: b.finish, solid: false, visible: true });
+    }
+    // Collision is the layout's collider list (walls with door gaps, counters, stools), unseen boxes.
+    for (const c of layout.colliders) {
+      const x = (c.minX + c.maxX) / 2, z = (c.minZ + c.maxZ) / 2;
+      const site = INTERIOR_SITES.findIndex((s: any) => x >= s.minX - 2 && x <= s.maxX + 2 && z >= s.minZ - 2 && z <= s.maxZ + 2);
+      if (site < 0) continue;
+      sites[site].boxes.push({ x, y: (c.bottom + c.top) / 2 - layout.floorY, z, w: c.maxX - c.minX, h: c.top - c.bottom, d: c.maxZ - c.minZ, finish: 'none', solid: true, visible: false });
+    }
+    const centre = (s: any) => ({ x: (s.minX + s.maxX) / 2, z: (s.minZ + s.maxZ) / 2 });
+    return { place: 'interiors', title: 'Walk-in shops', anchor: centre(INTERIOR_SITES[0]), items: [], trees: [], clearCircles: [], clearRects: [], interiors: sites };
   },
 };
 

@@ -69,6 +69,40 @@ namespace JapanMap.OnFoot
             return t;
         }
 
+        /// <summary>Sitting on a bench: hips down, thighs forward, hands on the knees.</summary>
+        public void PoseSeated()
+        {
+            var k = _height / 1.72f;
+            _body.localPosition = new Vector3(0f, 0.5f * k, 0f);
+            _body.localRotation = Quaternion.Euler(-4f, 0f, 0f);
+            _legL.localRotation = _legR.localRotation = Quaternion.Euler(-85f, 0f, 0f);
+            _armL.localRotation = Quaternion.Euler(-40f, 0f, -4f);
+            _armR.localRotation = Quaternion.Euler(-40f, 0f, 4f);
+        }
+
+        /// <summary>Working at something in front (nets, boxes, tools): bent forward, arms pulling in turn.</summary>
+        public void PoseWork(float t)
+        {
+            var k = _height / 1.72f;
+            _body.localPosition = new Vector3(0f, 0.9f * k, 0f);
+            _body.localRotation = Quaternion.Euler(22f + Mathf.Sin(t * 1.7f) * 6f, 0f, 0f);
+            _legL.localRotation = Quaternion.Euler(-14f, 0f, 0f);
+            _legR.localRotation = Quaternion.Euler(-14f, 0f, 0f);
+            _armL.localRotation = Quaternion.Euler(-55f + Mathf.Sin(t * 1.7f) * 25f, 0f, -5f);
+            _armR.localRotation = Quaternion.Euler(-55f - Mathf.Sin(t * 1.7f) * 25f, 0f, 5f);
+        }
+
+        /// <summary>Standing and looking around: weight shifts, a slow turn of the upper body.</summary>
+        public void PoseIdle(float t)
+        {
+            var k = _height / 1.72f;
+            _body.localPosition = new Vector3(Mathf.Sin(t * 0.5f) * 0.02f, 0.92f * k, 0f);
+            _body.localRotation = Quaternion.Euler(0f, Mathf.Sin(t * 0.3f) * 14f, Mathf.Sin(t * 0.5f) * 2f);
+            _legL.localRotation = _legR.localRotation = Quaternion.identity;
+            _armL.localRotation = Quaternion.Euler(0f, 0f, -6f);
+            _armR.localRotation = Quaternion.Euler(0f, 0f, 6f);
+        }
+
         /// <summary>
         /// Pose for this frame. <paramref name="cycle"/> = metres walked, <paramref name="gait"/> 0…1
         /// (stand…run), <paramref name="slide"/> 0…1, <paramref name="air"/> = in the air.

@@ -293,6 +293,12 @@ namespace JapanMap.Editor
                 }
                 Log.AppendLine($"  crowd {active}/{crowd.People.Count} active, {walking} walking, {knocked} knocked, nearest {nearest:0.0} m");
             }
+            var shops = Object.FindAnyObjectByType<JapanMap.Gameplay.Life.ShopInteriors>();
+            if (shops != null)
+                foreach (var r in shops.GetComponentsInChildren<MeshRenderer>())
+                    Log.AppendLine($"  shop {r.transform.parent.name} bounds {r.bounds.center:F1} size {r.bounds.size:F1} visible={r.isVisible}");
+            var actorsSystem = Object.FindAnyObjectByType<JapanMap.Gameplay.Life.PlaceActors>();
+            if (actorsSystem != null) Log.AppendLine($"  actors {actorsSystem.Active}/{actorsSystem.Count} active");
             var smashSystem = Object.FindAnyObjectByType<JapanMap.Gameplay.Smash.SmashSystem>();
             if (smashSystem != null) Log.AppendLine($"  smash breaks={smashSystem.Breaks} pieces={smashSystem.LivePieces} worst={smashSystem.WorstBreakMs:0.00}ms");
             var traffic = Object.FindAnyObjectByType<JapanMap.Gameplay.Traffic.TrafficSystem>();

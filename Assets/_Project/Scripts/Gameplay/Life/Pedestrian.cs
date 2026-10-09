@@ -27,6 +27,8 @@ namespace JapanMap.Gameplay.Life
         Renderer _renderer;
 
         public State Current { get; private set; } = State.Walking;
+        /// <summary>False when someone else poses the figure (a place actor at work).</summary>
+        public bool OwnPose { get; set; } = true;
         public NavMeshAgent Agent => _agent;
         public bool Knocked => Current == State.Knocked;
         /// <summary>Hits since spawn (tests, later scoring).</summary>
@@ -98,7 +100,7 @@ namespace JapanMap.Gameplay.Life
                     break;
             }
 
-            if (Current != State.Knocked)
+            if (Current != State.Knocked && OwnPose)
             {
                 var v = _agent.velocity.magnitude;
                 _cycle += v * Time.deltaTime;

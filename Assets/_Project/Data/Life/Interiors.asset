@@ -1,0 +1,589 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e248970943d464100804d175793275b5, type: 3}
+  m_Name: Interiors
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Life.InteriorSet
+  interiors:
+  - id: diner
+    boxes:
+    - centre: {x: 420, y: 28.942347, z: -28}
+      size: {x: 16, y: 0.12, z: 16}
+      finish: wood
+      solid: 0
+      visible: 1
+    - centre: {x: 411.25, y: 28.942347, z: -28}
+      size: {x: 1.5, y: 0.12, z: 3}
+      finish: tile
+      solid: 0
+      visible: 1
+    - centre: {x: 412.12, y: 31.702347, z: -23.25}
+      size: {x: 0.24, y: 5.4, z: 6.5}
+      finish: plaster
+      solid: 0
+      visible: 1
+    - centre: {x: 412.12, y: 31.702347, z: -32.75}
+      size: {x: 0.24, y: 5.4, z: 6.5}
+      finish: plaster
+      solid: 0
+      visible: 1
+    - centre: {x: 412.12, y: 33.452347, z: -28}
+      size: {x: 0.24, y: 1.9, z: 3}
+      finish: plaster
+      solid: 0
+      visible: 1
+    - centre: {x: 427.88, y: 31.702347, z: -28}
+      size: {x: 0.24, y: 5.4, z: 16}
+      finish: plaster
+      solid: 0
+      visible: 1
+    - centre: {x: 420, y: 31.702347, z: -20.12}
+      size: {x: 16, y: 5.4, z: 0.24}
+      finish: plaster
+      solid: 0
+      visible: 1
+    - centre: {x: 420, y: 29.502346, z: -35.88}
+      size: {x: 16, y: 1, z: 0.24}
+      finish: plaster
+      solid: 0
+      visible: 1
+    - centre: {x: 420, y: 33.702347, z: -35.88}
+      size: {x: 16, y: 1.4, z: 0.24}
+      finish: plaster
+      solid: 0
+      visible: 1
+    - centre: {x: 412.2, y: 31.502346, z: -35.88}
+      size: {x: 0.18, y: 3, z: 0.24}
+      finish: wood
+      solid: 0
+      visible: 1
+    - centre: {x: 416, y: 31.502346, z: -35.88}
+      size: {x: 0.18, y: 3, z: 0.24}
+      finish: wood
+      solid: 0
+      visible: 1
+    - centre: {x: 420, y: 31.502346, z: -35.88}
+      size: {x: 0.18, y: 3, z: 0.24}
+      finish: wood
+      solid: 0
+      visible: 1
+    - centre: {x: 424, y: 31.502346, z: -35.88}
+      size: {x: 0.18, y: 3, z: 0.24}
+      finish: wood
+      solid: 0
+      visible: 1
+    - centre: {x: 427.8, y: 31.502346, z: -35.88}
+      size: {x: 0.18, y: 3, z: 0.24}
+      finish: wood
+      solid: 0
+      visible: 1
+    - centre: {x: 420, y: 34.552345, z: -28}
+      size: {x: 16.4, y: 0.3, z: 16.4}
+      finish: wood
+      solid: 0
+      visible: 1
+    - centre: {x: 420, y: 36.352345, z: -28}
+      size: {x: 15.8, y: 3.3, z: 15.8}
+      finish: plaster
+      solid: 0
+      visible: 1
+    - centre: {x: 420, y: 38.122345, z: -28}
+      size: {x: 16.8, y: 0.24, z: 16.8}
+      finish: dark
+      solid: 0
+      visible: 1
+    - centre: {x: 423, y: 29.532347, z: -21.1}
+      size: {x: 8, y: 1.06, z: 1.3}
+      finish: metal
+      solid: 0
+      visible: 1
+    - centre: {x: 423, y: 29.602346, z: -25}
+      size: {x: 8.4, y: 1.2, z: 1.2}
+      finish: wood
+      solid: 0
+      visible: 1
+    - centre: {x: 423, y: 30.252346, z: -25}
+      size: {x: 8.8, y: 0.1, z: 1.45}
+      finish: dark
+      solid: 0
+      visible: 1
+    - centre: {x: 415.2, y: 29.722345, z: -33.4}
+      size: {x: 2.2, y: 0.12, z: 1.25}
+      finish: wood
+      solid: 0
+      visible: 1
+    - centre: {x: 415.2, y: 29.342346, z: -33.4}
+      size: {x: 0.3, y: 0.68, z: 0.6}
+      finish: dark
+      solid: 0
+      visible: 1
+    - centre: {x: 415.2, y: 29.402346, z: -34.7}
+      size: {x: 2.25, y: 0.8, z: 0.55}
+      finish: red
+      solid: 0
+      visible: 1
+    - centre: {x: 415.2, y: 29.722345, z: -34.95}
+      size: {x: 2.25, y: 1.1, z: 0.18}
+      finish: red
+      solid: 0
+      visible: 1
+    - centre: {x: 420.5, y: 29.722345, z: -33.4}
+      size: {x: 2.2, y: 0.12, z: 1.25}
+      finish: wood
+      solid: 0
+      visible: 1
+    - centre: {x: 420.5, y: 29.342346, z: -33.4}
+      size: {x: 0.3, y: 0.68, z: 0.6}
+      finish: dark
+      solid: 0
+      visible: 1
+    - centre: {x: 420.5, y: 29.402346, z: -34.7}
+      size: {x: 2.25, y: 0.8, z: 0.55}
+      finish: red
+      solid: 0
+      visible: 1
+    - centre: {x: 420.5, y: 29.722345, z: -34.95}
+      size: {x: 2.25, y: 1.1, z: 0.18}
+      finish: red
+      solid: 0
+      visible: 1
+    - centre: {x: 425.5, y: 29.722345, z: -33.4}
+      size: {x: 2.2, y: 0.12, z: 1.25}
+      finish: wood
+      solid: 0
+      visible: 1
+    - centre: {x: 425.5, y: 29.342346, z: -33.4}
+      size: {x: 0.3, y: 0.68, z: 0.6}
+      finish: dark
+      solid: 0
+      visible: 1
+    - centre: {x: 425.5, y: 29.402346, z: -34.7}
+      size: {x: 2.25, y: 0.8, z: 0.55}
+      finish: red
+      solid: 0
+      visible: 1
+    - centre: {x: 425.5, y: 29.722345, z: -34.95}
+      size: {x: 2.25, y: 1.1, z: 0.18}
+      finish: red
+      solid: 0
+      visible: 1
+    - centre: {x: 412.12, y: 31.702347, z: -23.25}
+      size: {x: 0.24, y: 5.4, z: 6.5}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 412.12, y: 31.702347, z: -32.75}
+      size: {x: 0.24, y: 5.4, z: 6.5}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 412.12, y: 33.452347, z: -28}
+      size: {x: 0.24, y: 1.9, z: 3}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 427.88, y: 31.702347, z: -28}
+      size: {x: 0.24, y: 5.4, z: 16}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 420, y: 31.702347, z: -20.12}
+      size: {x: 16, y: 5.4, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 420, y: 29.502346, z: -35.88}
+      size: {x: 16, y: 1, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 420, y: 33.702347, z: -35.88}
+      size: {x: 16, y: 1.4, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 412.2, y: 31.502346, z: -35.88}
+      size: {x: 0.18, y: 3, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 416, y: 31.502346, z: -35.88}
+      size: {x: 0.18, y: 3, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 420, y: 31.502346, z: -35.88}
+      size: {x: 0.18, y: 3, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 424, y: 31.502346, z: -35.88}
+      size: {x: 0.18, y: 3, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 427.8, y: 31.502346, z: -35.88}
+      size: {x: 0.18, y: 3, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 420, y: 31.502346, z: -35.88}
+      size: {x: 16, y: 3, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 420, y: 34.552345, z: -28}
+      size: {x: 16.4, y: 0.3, z: 16.4}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 420, y: 36.352345, z: -28}
+      size: {x: 15.8, y: 3.3, z: 15.8}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 420, y: 38.122345, z: -28}
+      size: {x: 16.8, y: 0.24, z: 16.8}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 423, y: 29.532347, z: -21.1}
+      size: {x: 8, y: 1.06, z: 1.3}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 423, y: 29.602346, z: -25}
+      size: {x: 8.4, y: 1.2, z: 1.2}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 423, y: 30.252346, z: -25}
+      size: {x: 8.8, y: 0.1, z: 1.45}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 419.4, y: 29.382345, z: -26.65}
+      size: {x: 0.5, y: 0.76, z: 0.5}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 421.1, y: 29.382345, z: -26.65}
+      size: {x: 0.5, y: 0.76, z: 0.5}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 422.8, y: 29.382345, z: -26.65}
+      size: {x: 0.5, y: 0.76, z: 0.5}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 424.5, y: 29.382345, z: -26.65}
+      size: {x: 0.5, y: 0.76, z: 0.5}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 426.2, y: 29.382345, z: -26.65}
+      size: {x: 0.5, y: 0.76, z: 0.5}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 415.2, y: 29.722345, z: -33.4}
+      size: {x: 2.2, y: 0.12, z: 1.25}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 415.2, y: 29.342346, z: -33.4}
+      size: {x: 0.3, y: 0.68, z: 0.6}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 415.2, y: 29.402346, z: -34.7}
+      size: {x: 2.25, y: 0.8, z: 0.55}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 415.2, y: 29.722345, z: -34.95}
+      size: {x: 2.25, y: 1.1, z: 0.18}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 414.55, y: 29.502346, z: -32.2}
+      size: {x: 0.55, y: 1, z: 0.6}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 415.85, y: 29.502346, z: -32.2}
+      size: {x: 0.55, y: 1, z: 0.6}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 420.5, y: 29.722345, z: -33.4}
+      size: {x: 2.2, y: 0.12, z: 1.25}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 420.5, y: 29.342346, z: -33.4}
+      size: {x: 0.3, y: 0.68, z: 0.6}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 420.5, y: 29.402346, z: -34.7}
+      size: {x: 2.25, y: 0.8, z: 0.55}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 420.5, y: 29.722345, z: -34.95}
+      size: {x: 2.25, y: 1.1, z: 0.18}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 419.85, y: 29.502346, z: -32.2}
+      size: {x: 0.55, y: 1, z: 0.6}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 421.15, y: 29.502346, z: -32.2}
+      size: {x: 0.55, y: 1, z: 0.6}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 425.5, y: 29.722345, z: -33.4}
+      size: {x: 2.2, y: 0.12, z: 1.25}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 425.5, y: 29.342346, z: -33.4}
+      size: {x: 0.3, y: 0.68, z: 0.6}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 425.5, y: 29.402346, z: -34.7}
+      size: {x: 2.25, y: 0.8, z: 0.55}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 425.5, y: 29.722345, z: -34.95}
+      size: {x: 2.25, y: 1.1, z: 0.18}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 424.85, y: 29.502346, z: -32.2}
+      size: {x: 0.55, y: 1, z: 0.6}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 426.15, y: 29.502346, z: -32.2}
+      size: {x: 0.55, y: 1, z: 0.6}
+      finish: none
+      solid: 1
+      visible: 0
+  - id: mart
+    boxes:
+    - centre: {x: 578, y: 28.942347, z: -38.5}
+      size: {x: 12, y: 0.12, z: 9}
+      finish: tile
+      solid: 0
+      visible: 1
+    - centre: {x: 578, y: 28.942347, z: -43.75}
+      size: {x: 3, y: 0.12, z: 1.5}
+      finish: tile
+      solid: 0
+      visible: 1
+    - centre: {x: 572.12, y: 31.602346, z: -38.5}
+      size: {x: 0.24, y: 5.2, z: 9}
+      finish: plaster
+      solid: 0
+      visible: 1
+    - centre: {x: 583.88, y: 31.602346, z: -38.5}
+      size: {x: 0.24, y: 5.2, z: 9}
+      finish: plaster
+      solid: 0
+      visible: 1
+    - centre: {x: 578, y: 31.602346, z: -34.12}
+      size: {x: 12, y: 5.2, z: 0.24}
+      finish: plaster
+      solid: 0
+      visible: 1
+    - centre: {x: 574.25, y: 29.382345, z: -42.88}
+      size: {x: 4.5, y: 0.76, z: 0.24}
+      finish: green
+      solid: 0
+      visible: 1
+    - centre: {x: 574.25, y: 33.152348, z: -42.88}
+      size: {x: 4.5, y: 2.1, z: 0.24}
+      finish: plaster
+      solid: 0
+      visible: 1
+    - centre: {x: 581.75, y: 29.382345, z: -42.88}
+      size: {x: 4.5, y: 0.76, z: 0.24}
+      finish: green
+      solid: 0
+      visible: 1
+    - centre: {x: 581.75, y: 33.152348, z: -42.88}
+      size: {x: 4.5, y: 2.1, z: 0.24}
+      finish: plaster
+      solid: 0
+      visible: 1
+    - centre: {x: 578, y: 33.152348, z: -42.88}
+      size: {x: 3, y: 2.1, z: 0.24}
+      finish: plaster
+      solid: 0
+      visible: 1
+    - centre: {x: 578, y: 34.352345, z: -38.5}
+      size: {x: 12.5, y: 0.3, z: 9.5}
+      finish: plaster
+      solid: 0
+      visible: 1
+    - centre: {x: 578, y: 34.652348, z: -38.5}
+      size: {x: 12.8, y: 0.3, z: 9.8}
+      finish: dark
+      solid: 0
+      visible: 1
+    - centre: {x: 574.35, y: 29.882345, z: -38.75}
+      size: {x: 0.08, y: 1.76, z: 2.6}
+      finish: metal
+      solid: 0
+      visible: 1
+    - centre: {x: 581.65, y: 29.882345, z: -38.75}
+      size: {x: 0.08, y: 1.76, z: 2.6}
+      finish: metal
+      solid: 0
+      visible: 1
+    - centre: {x: 579, y: 30.252346, z: -34.41}
+      size: {x: 7.7, y: 2.5, z: 0.08}
+      finish: dark
+      solid: 0
+      visible: 1
+    - centre: {x: 579, y: 29.082346, z: -34.8}
+      size: {x: 7.7, y: 0.16, z: 0.85}
+      finish: dark
+      solid: 0
+      visible: 1
+    - centre: {x: 579, y: 31.452347, z: -34.8}
+      size: {x: 7.7, y: 0.1, z: 0.85}
+      finish: dark
+      solid: 0
+      visible: 1
+    - centre: {x: 574, y: 29.552345, z: -41.1}
+      size: {x: 2.1, y: 1.1, z: 0.85}
+      finish: green
+      solid: 0
+      visible: 1
+    - centre: {x: 583.2, y: 30.102346, z: -41.45}
+      size: {x: 1, y: 2.2, z: 1.1}
+      finish: red
+      solid: 0
+      visible: 1
+    - centre: {x: 572.12, y: 31.602346, z: -38.5}
+      size: {x: 0.24, y: 5.2, z: 9}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 583.88, y: 31.602346, z: -38.5}
+      size: {x: 0.24, y: 5.2, z: 9}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 578, y: 31.602346, z: -34.12}
+      size: {x: 12, y: 5.2, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 574.25, y: 29.382345, z: -42.88}
+      size: {x: 4.5, y: 0.76, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 574.25, y: 33.152348, z: -42.88}
+      size: {x: 4.5, y: 2.1, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 574.25, y: 30.932346, z: -42.88}
+      size: {x: 4.5, y: 2.34, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 581.75, y: 29.382345, z: -42.88}
+      size: {x: 4.5, y: 0.76, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 581.75, y: 33.152348, z: -42.88}
+      size: {x: 4.5, y: 2.1, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 581.75, y: 30.932346, z: -42.88}
+      size: {x: 4.5, y: 2.34, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 578, y: 33.152348, z: -42.88}
+      size: {x: 3, y: 2.1, z: 0.24}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 578, y: 34.352345, z: -38.5}
+      size: {x: 12.5, y: 0.3, z: 9.5}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 578, y: 34.652348, z: -38.5}
+      size: {x: 12.8, y: 0.3, z: 9.8}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 574.35, y: 29.902346, z: -38.75}
+      size: {x: 1.22, y: 1.8, z: 2.75}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 581.65, y: 29.902346, z: -38.75}
+      size: {x: 1.22, y: 1.8, z: 2.75}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 579, y: 30.252346, z: -34.8}
+      size: {x: 7.7, y: 2.5, z: 0.85}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 574, y: 29.552345, z: -41.1}
+      size: {x: 2.1, y: 1.1, z: 0.85}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 583.2, y: 30.102346, z: -41.45}
+      size: {x: 1, y: 2.2, z: 1.1}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 572.7, y: 29.852346, z: -35.25}
+      size: {x: 0.8, y: 1.7, z: 0.76}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 572.7, y: 29.852346, z: -36}
+      size: {x: 0.8, y: 1.7, z: 0.76}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 580.1, y: 29.372347, z: -42.25}
+      size: {x: 0.46, y: 0.74, z: 0.48}
+      finish: none
+      solid: 1
+      visible: 0
+    - centre: {x: 580.7, y: 29.372347, z: -42.25}
+      size: {x: 0.46, y: 0.74, z: 0.48}
+      finish: none
+      solid: 1
+      visible: 0

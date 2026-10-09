@@ -15,6 +15,8 @@ namespace JapanMap.Gameplay.Traffic
         public int countLow = 3;
         [Tooltip("Road types traffic uses (roads.json type).")]
         public string[] roadTypes = { "city" };
+        [Tooltip("Roads of the right type that still get no traffic: commons-drive is the dead end into the Sakura court (cars turned helplessly at its end).")]
+        public string[] excludeRoads = { "commons-drive" };
         [Tooltip("Narrower roads get no traffic, m: two lanes of 1.9 m cars need room (takeshita, 7 m, jammed a car).")]
         public float minRoadWidth = 8f;
         [Tooltip("Cruising speed, km/h (city streets).")]

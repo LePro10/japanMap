@@ -3229,6 +3229,92 @@
   ]
  ],
  "clearRects": [],
+ "actors": [
+  {
+   "kind": "goat",
+   "x": -1306,
+   "z": 392,
+   "yaw": 0.4
+  },
+  {
+   "kind": "goat",
+   "x": -1302,
+   "z": 396,
+   "yaw": 2.4
+  },
+  {
+   "kind": "chicken",
+   "x": -1284,
+   "z": 434,
+   "yaw": 0
+  },
+  {
+   "kind": "chicken",
+   "x": -1281,
+   "z": 436,
+   "yaw": 1.2
+  },
+  {
+   "kind": "chicken",
+   "x": -1286,
+   "z": 438,
+   "yaw": 2.1
+  },
+  {
+   "kind": "chicken",
+   "x": -1280,
+   "z": 432,
+   "yaw": 4
+  },
+  {
+   "kind": "worker",
+   "x": -1242,
+   "z": 411,
+   "yaw": 2.8
+  },
+  {
+   "kind": "worker",
+   "x": -1307,
+   "z": 439,
+   "yaw": 0.2
+  },
+  {
+   "kind": "worker",
+   "x": -1311,
+   "z": 446,
+   "yaw": 1.2
+  },
+  {
+   "kind": "worker",
+   "x": -1247,
+   "z": 381,
+   "yaw": 2
+  },
+  {
+   "kind": "worker",
+   "x": -1250,
+   "z": 381,
+   "yaw": 0.5
+  },
+  {
+   "kind": "worker",
+   "x": -1264.4,
+   "z": 397.3,
+   "yaw": 2.9
+  },
+  {
+   "kind": "worker",
+   "x": -1269,
+   "z": 371,
+   "yaw": 0.4
+  },
+  {
+   "kind": "worker",
+   "x": -1278,
+   "z": 410,
+   "yaw": 2.6
+  }
+ ],
  "roads": [
   {
    "id": "stillwater-mill-lane",

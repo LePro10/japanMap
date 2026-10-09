@@ -33,7 +33,8 @@ namespace JapanMap.Gameplay.Traffic
         {
             for (var r = 0; r < roads.roads.Count; r++)
                 if (System.Array.IndexOf(settings.roadTypes, roads.roads[r].type) >= 0 && roads.roads[r].points.Length > 1
-                    && roads.roads[r].width >= settings.minRoadWidth) _cityRoads.Add(r);
+                    && roads.roads[r].width >= settings.minRoadWidth
+                    && System.Array.IndexOf(settings.excludeRoads, roads.roads[r].id) < 0) _cityRoads.Add(r);
             var tier = QualitySettings.names[QualitySettings.GetQualityLevel()];
             var count = tier == "Low" ? settings.countLow : settings.countHigh;
             for (var i = 0; i < count; i++) _cars.Add(Build(i));

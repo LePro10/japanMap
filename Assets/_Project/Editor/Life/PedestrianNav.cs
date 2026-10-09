@@ -109,6 +109,21 @@ namespace JapanMap.Editor.Life
                     carved++;
                 }
             }
+            // Walk-in shops are built at runtime; their walls and counters go in as boxes from the data.
+            var shops = AssetDatabase.LoadAssetAtPath<JapanMap.Gameplay.Life.InteriorSet>(LifeImport.InteriorsPath);
+            if (shops != null)
+                foreach (var shop in shops.interiors)
+                foreach (var b in shop.boxes)
+                {
+                    if (!b.solid || !bounds.Contains(b.centre)) continue;
+                    sources.Add(new NavMeshBuildSource
+                    {
+                        shape = NavMeshBuildSourceShape.Box,
+                        size = b.size,
+                        transform = Matrix4x4.Translate(b.centre),
+                        area = NotWalkable, // an obstacle; nobody stands on a counter
+                    });
+                }
             var settings = NavMesh.GetSettingsByID(s.agentTypeID);
             settings.overrideVoxelSize = s.overrideVoxelSize;
             settings.voxelSize = s.voxelSize;

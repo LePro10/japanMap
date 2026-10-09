@@ -12,7 +12,7 @@ namespace JapanMap.Editor.Life
 {
     /// <summary>
     /// Puts World/Life into Game.unity: the pedestrian crowd with its settings and stand-in looks, and
-    /// the city traffic and the breakable props.
+    /// the city traffic, the breakable props, the place actors (people, animals) and the walk-in shops.
     /// Re-running replaces it. The NavMesh comes from <see cref="PedestrianNav.Bake"/>.
     /// </summary>
     public static class LifeSetup
@@ -65,6 +65,32 @@ namespace JapanMap.Editor.Life
             smash.FindProperty("player").objectReferenceValue = Object.FindAnyObjectByType<PlayerModeController>();
             smash.FindProperty("template").objectReferenceValue = PlayerSetup.StandInMaterial("Skin", new Color(0.73f, 0.58f, 0.45f));
             smash.ApplyModifiedPropertiesWithoutUndo();
+
+            Debug.Log(LifeImport.Import());
+            var actorsGo = new GameObject("Actors");
+            actorsGo.transform.SetParent(life, false);
+            var actors = new SerializedObject(actorsGo.AddComponent<PlaceActors>());
+            actors.FindProperty("data").objectReferenceValue = AssetDatabase.LoadAssetAtPath<ActorSet>(LifeImport.ActorsPath);
+            actors.FindProperty("pedestrians").objectReferenceValue = Asset<PedestrianSettings>("PedestrianSettings");
+            actors.FindProperty("player").objectReferenceValue = Object.FindAnyObjectByType<PlayerModeController>();
+            actors.FindProperty("skin").objectReferenceValue = PlayerSetup.StandInMaterial("Skin", new Color(0.73f, 0.58f, 0.45f));
+            // Work clothes: indigo, khaki, a red apron, faded blue.
+            Fill(actors.FindProperty("tops"), new[]
+            {
+                PlayerSetup.StandInMaterial("WorkIndigo", new Color(0.16f, 0.2f, 0.36f)),
+                PlayerSetup.StandInMaterial("WorkKhaki", new Color(0.5f, 0.46f, 0.32f)),
+                PlayerSetup.StandInMaterial("WorkApron", new Color(0.6f, 0.2f, 0.15f)),
+                PlayerSetup.StandInMaterial("WorkBlue", new Color(0.36f, 0.48f, 0.6f)),
+            });
+            actors.FindProperty("bottom").objectReferenceValue = PlayerSetup.StandInMaterial("PedBottomDark", new Color(0.12f, 0.12f, 0.14f));
+            actors.ApplyModifiedPropertiesWithoutUndo();
+
+            var shopsGo = new GameObject("Shops");
+            shopsGo.transform.SetParent(life, false);
+            var shops = new SerializedObject(shopsGo.AddComponent<ShopInteriors>());
+            shops.FindProperty("data").objectReferenceValue = AssetDatabase.LoadAssetAtPath<InteriorSet>(LifeImport.InteriorsPath);
+            shops.FindProperty("template").objectReferenceValue = PlayerSetup.StandInMaterial("Skin", new Color(0.73f, 0.58f, 0.45f));
+            shops.ApplyModifiedPropertiesWithoutUndo();
             MapScene.Save();
             return "[Life] crowd set up";
         }

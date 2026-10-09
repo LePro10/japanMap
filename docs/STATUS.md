@@ -45,7 +45,11 @@ Web: 0 Fehler, 47,69 MB; Browser-fps zuletzt Niedrig 178, Hoch 49 — **unter La
   (Kästen, vorläufig), Auto fährt weiter (40 → 41 km/h nach Laterne), Teil kommt nach 20 s außer Sicht zurück. **Kosten gemessen:**
   Bruch ≤ 1,6 ms, Physik ≤ 0,7 ms mit vollem Pool (64 Stücke), Budget 2 ms ✓ (`Captures/smash-cost.txt`). Bäume noch nicht.
   Bench Hoch ≤ 1 431, Niedrig ≤ 301. Web 49,32 MB, Niedrig 356 fps.
-- [ ] 5. Begehbare Läden, Arbeiter/Tiere im Fischerdorf
+- [x] 5. **Begehbare Läden**: Komorebi-Diner und Kōji Corner Mart in Tokyo (Prototyp-Grundrisse über `export-places interiors`,
+  Wände/Theken/Hocker als Kollider, auch im NavMesh), man läuft per W hinein (Test). **Akteure** aus den Ortsdaten: Sakura 4 Besucher
+  + 2 Sitzende, Funaura 11 Fischer + 6 Katzen, Stillwater 8 Arbeiter + 2 Ziegen + 4 Hühner; arbeiten/schauen/picken, Leute umfahrbar.
+  Alles Stellvertreter. Bench Niedrig ≤ 379 ✓; **Hoch sakura-hof 1 503 (Budget 1 500, +0,2 %)** → Phase 10 (Schatten-Kaskaden).
+  Web 49,34 MB, Niedrig 305 fps. Ladeninhalt ohne Schilder/Waren (Asset-Liste).
 
 ## Offen / Gefunden
 
@@ -67,6 +71,9 @@ Web: 0 Fehler, 47,69 MB; Browser-fps zuletzt Niedrig 178, Hoch 49 — **unter La
   (4,1 × 1,7 m), Räder als eigene Objekte. Bis dahin Kasten-Stellvertreter (`TrafficSystem.AddBody`).
 - **Vorzerlegte Modelle** (Phase 6): Laterne (3 Teile: Mast, Arm, Leuchte), Automat (Gehäuse, Tür, 4–6 Dosen-/Flaschenkisten),
   Holzgestell/Zaun (Latten), Schuppen (Wände, Dach, Bretter) — je ≤ 1 k Dreiecke pro Teil, gleiche Ursprünge wie die ganzen Modelle.
+- **Leute und Tiere** (Phase 6): 4–6 Passanten-Typen (Büro, Schuluniform, Jacke, älter), Arbeiter (Fischer mit Gummistiefeln,
+  Bauer mit Hut), sitzende Pose; Katze (0,45 m), Ziege (1 m lang), Huhn (0,35 m); ≤ 3 k Dreiecke, Skinned, Animationen Gehen/Stehen/
+  Arbeiten/Picken. **Ladeninnere:** Diner (Theke, Tische, Bänke, Speisekarte), Mart (Regale mit Waren, Kühlregal, Kasse).
 - **Spielfigur** (Phase 6): 1,72 m, Fahrerin/Fahrer der späten 80er (Jacke, Hose), ≤ 6 k Dreiecke, Ursprung zwischen den Füßen,
   +Z vorn; Animationen Stehen, Gehen (4,4 m/s), Rennen (7,5 m/s), Sprung, Rutschen (Hocke, Hüfte ~0,4 m). Bis dahin `StandInFigure`.
 

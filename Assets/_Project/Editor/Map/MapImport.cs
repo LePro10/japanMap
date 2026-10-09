@@ -24,6 +24,7 @@ namespace JapanMap.Editor.Map
             PropImporter.Import(s);
             Debug.Log(Places.PlaceImporter.Import());
             Vegetation.VegetationImporter.Import(Vegetation.VegetationImporter.Settings(), s);
+            Debug.Log(Life.LifeImport.Import()); // shop walls go into the NavMesh
             Debug.Log(Life.PedestrianNav.Bake(save: false));
         }
 

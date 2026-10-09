@@ -16,6 +16,8 @@ MonoBehaviour:
   countLow: 3
   roadTypes:
   - city
+  excludeRoads:
+  - commons-drive
   minRoadWidth: 8
   maxSpeedKmh: 40
   lookAheadMin: 4

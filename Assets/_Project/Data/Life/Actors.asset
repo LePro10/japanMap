@@ -1,0 +1,163 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a76e0cf21882d4f22a1eb8faa0ea5bb5, type: 3}
+  m_Name: Actors
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Life.ActorSet
+  actors:
+  - place: sakura
+    kind: visitor
+    position: {x: 568.6, y: 25.651283, z: -486.6}
+    yaw: 162.81126
+  - place: sakura
+    kind: visitor
+    position: {x: 511.8, y: 25.840504, z: -487.1}
+    yaw: 202.91832
+  - place: sakura
+    kind: visitor
+    position: {x: 516.4, y: 25.870392, z: -486.8}
+    yaw: 171.40564
+  - place: sakura
+    kind: visitor
+    position: {x: 537.6, y: 25.38182, z: -513.4}
+    yaw: 116.97464
+  - place: sakura
+    kind: seated
+    position: {x: 540.8, y: 26.166958, z: -516.2}
+    yaw: 157.08168
+  - place: sakura
+    kind: seated
+    position: {x: 559.3, y: 26.243893, z: -516.2}
+    yaw: 202.91832
+  - place: funaura
+    kind: fisher
+    position: {x: -1183, y: 1.8066139, z: -1093}
+    yaw: 157.08168
+  - place: funaura
+    kind: fisher
+    position: {x: -1178, y: 1.8066139, z: -1097}
+    yaw: 19.571817
+  - place: funaura
+    kind: fisher
+    position: {x: -1172, y: 1.8066139, z: -1092}
+    yaw: 248.75494
+  - place: funaura
+    kind: fisher
+    position: {x: -1186, y: 1.8066139, z: -1099}
+    yaw: 88.32675
+  - place: funaura
+    kind: fisher
+    position: {x: -1178, y: -1.9912567, z: -1140}
+    yaw: 94.05633
+  - place: funaura
+    kind: fisher
+    position: {x: -1182, y: -2.1520462, z: -1160}
+    yaw: 260.21408
+  - place: funaura
+    kind: fisher
+    position: {x: -1258, y: 1.8066139, z: -1085}
+    yaw: 2.383087
+  - place: funaura
+    kind: fisher
+    position: {x: -1231, y: 1.8066139, z: -1084}
+    yaw: 168.54085
+  - place: funaura
+    kind: fisher
+    position: {x: -1270, y: 0.8218498, z: -1037}
+    yaw: 356.6535
+  - place: funaura
+    kind: fisher
+    position: {x: -1205, y: -1.5738258, z: -1112}
+    yaw: 8.112659
+  - place: funaura
+    kind: fisher
+    position: {x: -1297, y: 1.8066139, z: -1074.5}
+    yaw: 134.16338
+  - place: funaura
+    kind: cat
+    position: {x: -1286, y: 1.8066139, z: -1074}
+    yaw: 111.24506
+  - place: funaura
+    kind: cat
+    position: {x: -1180, y: 1.8066139, z: -1104}
+    yaw: 42.490124
+  - place: funaura
+    kind: cat
+    position: {x: -1214.5, y: 9.600708, z: -922}
+    yaw: 162.81126
+  - place: funaura
+    kind: cat
+    position: {x: -1249, y: 1.8066139, z: -1074.5}
+    yaw: 202.91832
+  - place: funaura
+    kind: cat
+    position: {x: -1178, y: -2.287819, z: -1165}
+    yaw: 8.112659
+  - place: funaura
+    kind: cat
+    position: {x: -1310, y: 1.8066139, z: -1089.5}
+    yaw: 65.40844
+  - place: gassho
+    kind: goat
+    position: {x: -1306, y: 34.035336, z: -392}
+    yaw: 157.08168
+  - place: gassho
+    kind: goat
+    position: {x: -1302, y: 35.152714, z: -396}
+    yaw: 42.490124
+  - place: gassho
+    kind: chicken
+    position: {x: -1284, y: 29.814014, z: -434}
+    yaw: 180
+  - place: gassho
+    kind: chicken
+    position: {x: -1281, y: 29.029552, z: -436}
+    yaw: 111.24506
+  - place: gassho
+    kind: chicken
+    position: {x: -1286, y: 28.31075, z: -438}
+    yaw: 59.678867
+  - place: gassho
+    kind: chicken
+    position: {x: -1280, y: 29.405903, z: -432}
+    yaw: 310.8169
+  - place: gassho
+    kind: worker
+    position: {x: -1242, y: 26.068302, z: -411}
+    yaw: 19.571817
+  - place: gassho
+    kind: worker
+    position: {x: -1307, y: 30.930996, z: -439}
+    yaw: 168.54085
+  - place: gassho
+    kind: worker
+    position: {x: -1311, y: 30.650684, z: -446}
+    yaw: 111.24506
+  - place: gassho
+    kind: worker
+    position: {x: -1247, y: 26.932133, z: -381}
+    yaw: 65.40844
+  - place: gassho
+    kind: worker
+    position: {x: -1250, y: 26.932133, z: -381}
+    yaw: 151.35211
+  - place: gassho
+    kind: worker
+    position: {x: -1264.4, y: 26.963795, z: -397.3}
+    yaw: 13.842232
+  - place: gassho
+    kind: worker
+    position: {x: -1269, y: 24.927532, z: -371}
+    yaw: 157.08168
+  - place: gassho
+    kind: worker
+    position: {x: -1278, y: 28.110798, z: -410}
+    yaw: 31.030977
