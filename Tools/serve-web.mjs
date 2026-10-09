@@ -7,7 +7,7 @@
 import { createServer } from 'node:http';
 import { cpSync, createReadStream, existsSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
-import { networkInterfaces } from 'node:os';
+import { hostname, networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { ROOT, arg, flag } from './lib/unity.mjs';
 
@@ -56,6 +56,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   console.log(`serving ${preview ? 'Builds/Preview' : 'Builds/Web'} on http://127.0.0.1:${port}/`);
   if (flag('lan')) {
     for (const nets of Object.values(networkInterfaces()))
-      for (const n of nets ?? []) if (n.family === 'IPv4' && !n.internal) console.log(`  phone: http://${n.address}:${port}/`);
+      for (const n of nets ?? []) if (n.family === 'IPv4' && !n.internal) console.log(`  phone (IP): http://${n.address}:${port}/`);
+    // The CrazyGames site lock freezes the game on a bare IP; *.local is whitelisted (CrazyGamesSettings, D31).
+    console.log(`  phone (use this): http://${hostname().replace(/\.local$/, '')}.local:${port}/`);
   }
 }

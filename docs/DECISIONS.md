@@ -439,6 +439,24 @@ weicht einer weißen, getönt per `MaterialPropertyBlock` — kostet keinen Down
 je Auto aus dem Car-Lab (20 Texturen, mehrere MB) erst mit Nachladen (Phase 10). **Eigener Code:** Unity hat kein
 Garagen-/Shop-System; Cinemachine, UI Toolkit und der vorhandene Spawner sind Standard.
 
+## D31 — Speichern: CrazyGames-SDK (nur Laufzeit) + lokaler Rückfall; ein JSON-Stand mit Backup · 2026-10-09
+
+**Standard:** offizielles CrazyGames-Unity-SDK 5.33 (`Assets/ThirdParty/CrazySDK`), Datenmodul `CrazySDK.Data`
+(wie PlayerPrefs, 1 MB, Konto-Sync bei CrazyGames). Übernommen nur der Laufzeitteil: ohne Demo und ohne
+Editor-Bauwerkzeug (dessen DefineManager schreibt Projekt-Einstellungen); dazu eigene `CrazyGames.SDK.asmdef`
+(das Paket hat keine, unsere Module könnten es sonst nicht nutzen). **Ablauf:** `CrazyGamesPlatform` (Boot-System,
+`IBootGate`) startet das SDK, der Bootstrapper wartet höchstens 8 s darauf, dann liest `PlayerProgress` den Stand —
+bei CrazyGames/localhost aus dem Datenmodul, sonst lokal (PlayerPrefs = IndexedDB). Antwortet das SDK nicht in
+6 s: lokal weiter, Hinweis „sync pending“. **Seitensperre:** sie friert das Spiel auf fremden Adressen ein, auch auf
+127.0.0.1 und einer WLAN-IP; `127.0.0.1` und `local` (*.local) sind freigegeben (`CrazyGamesSettings`), `serve-web --lan`
+nennt die `.local`-Adresse. Auf diesen Testadressen startet das SDK nicht: seine Entwicklungs-Ebene über dem Spiel
+ließ den Mausfang der Laufkamera mit Fehlerdialog scheitern. **Format:** ein JSON-Wert (`ProgressStore`), Version,
+jeder Wert geprüft (`Sanitize`), letzter guter Stand als Backup, ein kaputter wird beiseitegelegt; Einmal-Belohnungen
+über Claim-Ids (nie doppelt nach Neustart). Gespeichert wird nach Kauf, Belohnung, Fund, Parken (eigenes Auto, nicht
+Leihwagen) — höchstens einmal je Sekunde; „Weiter“ setzt im gewählten Auto an der letzten Parkstelle fort (ASTRA §2).
+Nicht umgesetzt: „Choose progress“ bei Konto-Konflikten (das Datenmodul synchronisiert selbst; Phase 10 mit dem
+QA-Tool prüfen). Prüfung: `ProgressStoreTests`, `SaveRestartTests`, im Browser `Tools/save-web.mjs`.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

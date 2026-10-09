@@ -66,6 +66,7 @@ namespace JapanMap.Editor.Content
             Set(progress, "tuning", EconomySeed.Tuning());
             Set(progress, "spawner", spawner);
             Set(progress, "hud", hud);
+            Set(progress, "player", player);
 
             var garage = Child<GarageSystem>(group, "Garage");
             Set(garage, "settings", Asset<GarageSettings>("GarageSettings"));
@@ -81,6 +82,7 @@ namespace JapanMap.Editor.Content
             Set(regions, "player", player);
             Set(regions, "wallet", wallet);
             Set(regions, "hud", hud);
+            Set(regions, "progress", progress);
 
             var cards = DiscoverySeed.LoadOrCreate();
             WriteGround(cards);
@@ -89,6 +91,7 @@ namespace JapanMap.Editor.Content
             Set(discovery, "player", player);
             Set(discovery, "wallet", wallet);
             Set(discovery, "hud", hud);
+            Set(discovery, "progress", progress);
             Set(discovery, "actions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(PlayerSetup.InputPath));
             Set(discovery, "template", PlayerSetup.StandInMaterial("Skin", new Color(0.73f, 0.58f, 0.45f)));
 
@@ -110,6 +113,7 @@ namespace JapanMap.Editor.Content
             Set(races, "fleet", AssetDatabase.LoadAssetAtPath<VehicleFleet>(FleetSeed.FleetPath));
             Set(races, "wallet", wallet);
             Set(races, "hud", hud);
+            Set(races, "progress", progress);
             Set(races, "drift", drift);
             Set(races, "stunts", stunts);
             Set(races, "actions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(PlayerSetup.InputPath));

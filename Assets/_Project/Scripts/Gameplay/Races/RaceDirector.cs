@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using JapanMap.Gameplay.Drift;
 using JapanMap.Gameplay.Economy;
 using JapanMap.Gameplay.Hud;
+using JapanMap.Gameplay.Progress;
 using JapanMap.Gameplay.Stunts;
 using JapanMap.Vehicles;
 using JapanMap.World;
@@ -31,6 +32,8 @@ namespace JapanMap.Gameplay.Races
         [SerializeField] VehicleRespawn respawn;
         [SerializeField] VehicleFleet fleet;
         [SerializeField] SparksWallet wallet;
+        [Tooltip("Saved progress: finishes, medals and personal bests per car and parts.")]
+        [SerializeField] PlayerProgress progress;
         [SerializeField] GameplayHud hud;
         [SerializeField] DriftScorer drift;
         [SerializeField] StuntScorer stunts;
@@ -318,6 +321,7 @@ namespace JapanMap.Gameplay.Races
             Elapsed = 0f;
             _timer = set.countdown;
             Current = State.Countdown;
+            if (progress != null && progress.Data != null) { progress.Data.Event(id).runs++; progress.MarkDirty(); }
             ShowGates();
             return true;
         }
@@ -598,8 +602,9 @@ namespace JapanMap.Gameplay.Races
             result.medal = medal;
             Last = result;
             if (wallet != null && sparks > 0) wallet.Add(sparks, _event.title);
+            var best = Record(me, result, timedOut);
             var score = _event.kind == RaceKind.Drift ? $" · {result.score:N0} points" : "";
-            hud?.ShowPanel($"<b>{_event.title}</b>\n{medal} · {Clock(result.seconds)}{score}\n+{sparks} Sparks");
+            hud?.ShowPanel($"<b>{_event.title}</b>\n{medal} · {Clock(result.seconds)}{score}{best}\n+{sparks} Sparks");
             hud?.SetRaceInfo("");
             Current = State.Finished;
             _timer = resultSeconds;
@@ -607,6 +612,54 @@ namespace JapanMap.Gameplay.Races
             Debug.Log($"[Race] {_event.id} finished: {medal}, {result.seconds:0.0} s, {sparks} Sparks, rescues {Rescues}");
             Finished?.Invoke(result);
             ShowGates();
+        }
+
+        /// <summary>Medal tier of a result: race 1st/2nd/3rd = 3/2/1; time trial beaten = 3, within 10 % = 1; drift as scored.</summary>
+        public static int Tier(RaceEventSet.Event e, Result r, bool timedOut)
+        {
+            if (!r.completed || timedOut) return 0;
+            return e.kind switch
+            {
+                RaceKind.Race => r.place >= 1 && r.place <= 3 ? 4 - r.place : 0,
+                RaceKind.TimeTrial => r.seconds <= e.medals.x ? 3 : r.seconds <= e.medals.x * 1.1f ? 1 : 0,
+                _ => r.score >= e.medals.z ? 3 : r.score >= e.medals.y ? 2 : r.score >= e.medals.x ? 1 : 0,
+            };
+        }
+
+        /// <summary>
+        /// Saves the event result (ASTRA §9): finishes, best medal, personal best per car and fitted parts, and pays
+        /// the first bronze-or-better once (claim medal:id). Returns the " · New best" line for the result sheet.
+        /// </summary>
+        string Record(Entrant me, Result result, bool timedOut)
+        {
+            if (progress == null || progress.Data == null || !result.completed) return "";
+            var rec = progress.Data.Event(_event.id);
+            rec.finishes++;
+            var tier = Tier(_event, result, timedOut);
+            rec.bestTier = Mathf.Max(rec.bestTier, tier);
+            var carId = me.car.Definition.id;
+            var tune = progress.Owns(carId) ? progress.Car(carId).tune.Code : "loan";
+            BestEntry entry = null;
+            foreach (var b in rec.bests) if (b.car == carId && b.tune == tune && b.balance == ProgressData.CurrentBalance) entry = b;
+            var isDrift = _event.kind == RaceKind.Drift;
+            var better = entry == null || (isDrift ? result.score > entry.score : result.seconds < entry.seconds);
+            if (entry == null)
+            {
+                entry = new BestEntry { car = carId, tune = tune, balance = ProgressData.CurrentBalance };
+                rec.bests.Add(entry);
+            }
+            if (better)
+            {
+                entry.seconds = result.seconds;
+                entry.score = result.score;
+            }
+            var records = progress.Data.records;
+            records.races++;
+            if (_event.kind == RaceKind.Race && result.place == 1) records.wins++;
+            progress.MarkDirty();
+            if (tier > 0 && wallet != null) progress.Grant($"medal:{_event.id}", wallet.Settings.firstMedalReward, $"{_event.title} · first medal");
+            progress.Flush();
+            return better ? " · New best" : "";
         }
 
         public void Abort(string why)

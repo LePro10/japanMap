@@ -90,6 +90,28 @@ namespace JapanMap.Editor
                 AssetDatabase.CreateFolder(Root, "Settings");
         }
 
+        /// <summary>Adds a boot system under the Bootstrapper if it is missing (sibling index = init order).</summary>
+        public static string EnsureBootSystem<T>(string name, int index) where T : GameSystem
+        {
+            var scene = EditorSceneManager.OpenScene(BootScene, OpenSceneMode.Additive);
+            try
+            {
+                Bootstrapper boot = null;
+                foreach (var r in scene.GetRootGameObjects()) if (r.TryGetComponent(out boot)) break;
+                if (boot == null) return "no Bootstrapper";
+                if (boot.GetComponentInChildren<T>(true) != null) return $"{name} present";
+                var go = new GameObject(name, typeof(T));
+                go.transform.SetParent(boot.transform, false);
+                go.transform.SetSiblingIndex(index);
+                EditorSceneManager.SaveScene(scene);
+                return $"{name} added";
+            }
+            finally
+            {
+                if (UnityEngine.SceneManagement.SceneManager.sceneCount > 1) EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
         static void CreateScenes()
         {
             if (!File.Exists(BootScene))
@@ -101,6 +123,7 @@ namespace JapanMap.Editor
                 new GameObject("StatsOverlay", typeof(StatsOverlay)).transform.SetParent(boot.transform);
                 EditorSceneManager.SaveScene(scene, BootScene);
             }
+            EnsureBootSystem<JapanMap.Platform.CrazyGamesPlatform>("CrazyGamesPlatform", 0);
 
             if (!File.Exists(GameScene))
             {

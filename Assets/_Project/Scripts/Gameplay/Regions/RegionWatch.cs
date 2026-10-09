@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using JapanMap.Gameplay.Economy;
 using JapanMap.Gameplay.Hud;
+using JapanMap.Gameplay.Progress;
 using UnityEngine;
 
 namespace JapanMap.Gameplay.Regions
@@ -10,7 +11,7 @@ namespace JapanMap.Gameplay.Regions
     /// "Region explored": stay 1.5 s on the ground in a region and move at least 4 m inside it, then the
     /// region counts once, pays its Sparks and shows a toast. Airborne time freezes the count (a jump
     /// across a region does not discover it). Legacy game/regionExplore.ts RegionWatch, ASTRA §3.
-    /// PROVISIONAL memory: the explored set lives for the session until saving arrives (Phase 8).
+    /// The explored set is saved (PlayerProgress).
     /// </summary>
     public sealed class RegionWatch : MonoBehaviour
     {
@@ -18,6 +19,8 @@ namespace JapanMap.Gameplay.Regions
         [SerializeField] PlayerModeController player;
         [SerializeField] SparksWallet wallet;
         [SerializeField] GameplayHud hud;
+        [Tooltip("Saved progress: explored regions survive a reload and pay once (claim region:id).")]
+        [SerializeField] PlayerProgress progress;
 
         readonly HashSet<string> _explored = new();
         int _current = -1;
@@ -29,6 +32,12 @@ namespace JapanMap.Gameplay.Regions
         public IReadOnlyCollection<string> Explored => _explored;
         /// <summary>Region index, explored count — for HUD, map and tests.</summary>
         public event Action<int, int> RegionExplored;
+
+        void Start()
+        {
+            if (progress != null && progress.Data != null)
+                foreach (var id in progress.Data.regions) _explored.Add(id);
+        }
 
         void Update()
         {
@@ -80,13 +89,21 @@ namespace JapanMap.Gameplay.Regions
             var reward = wallet != null ? wallet.Settings.regionReward : 0;
             // Toast first: the HUD then knows the reward is already named and shows no second line.
             if (hud != null) hud.ShowToast($"{r.title} explored · {_explored.Count}/{total} regions · +{reward} Sparks");
-            if (wallet != null) wallet.Add(reward, r.title);
+            if (progress != null) progress.Data.regions.Add(r.id); // before the grant: the grant saves
+            Pay($"region:{r.id}", reward, r.title);
             if (_explored.Count == total && wallet != null)
             {
                 if (hud != null) hud.ShowToast($"All {total} regions explored · +{wallet.Settings.allRegionsReward} Sparks");
-                wallet.Add(wallet.Settings.allRegionsReward, "All regions");
+                Pay("regions:all", wallet.Settings.allRegionsReward, "All regions");
             }
             RegionExplored?.Invoke(i, _explored.Count);
+        }
+
+        /// <summary>Through the progress (once per claim, saved) when there is one, else straight into the wallet.</summary>
+        void Pay(string claim, int sparks, string reason)
+        {
+            if (progress != null) progress.Grant(claim, sparks, reason);
+            else if (wallet != null) wallet.Add(sparks, reason);
         }
     }
 }

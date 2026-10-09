@@ -21,13 +21,14 @@ namespace JapanMap.Gameplay.Progress
         [SerializeField] TuningSettings tuning;
         [SerializeField] PlayerCarSpawner spawner;
         [SerializeField] GameplayHud hud;
-        [Tooltip("Seconds between saves of the parked position (ASTRA: save on safe parking).")]
-        [SerializeField] float parkSaveSeconds = 30f;
+        [SerializeField] PlayerModeController player;
+        [Tooltip("A parked spot is saved when it is this far from the saved one, m (ASTRA: save on safe parking).")]
+        [SerializeField] float parkMoveMetres = 5f;
 
         ProgressData _data;
         ISaveStore _store;
         bool _dirty;
-        float _nextSave, _parkedFor, _nextParkSave;
+        float _nextSave, _parkedFor;
 
         public ProgressData Data => _data;
         public ProgressStore.Source LoadedFrom { get; private set; }
@@ -60,6 +61,30 @@ namespace JapanMap.Gameplay.Progress
                       $"{_data.discoveries.Count} cards, {_data.cars.FindAll(c => c.owned).Count} cars");
         }
 
+        /// <summary>
+        /// Continue (ASTRA §2 "Returning is different"): a returning player sits in the selected car at the last safe
+        /// parked spot; the first walking scene does not repeat. A spot that no longer has ground under it (world
+        /// update) is dropped and the game starts at S as on a first visit.
+        /// </summary>
+        System.Collections.IEnumerator Start()
+        {
+            yield return null; // the spawner builds the car in its Start
+            if (!_data.hasLastPosition || spawner == null || spawner.Current == null || player == null) yield break;
+            var p = _data.lastPosition;
+            if (!Physics.Raycast(p + Vector3.up * 3f, Vector3.down, out var hit, 8f, ~JapanMap.Core.GameLayers.NotGround, QueryTriggerInteraction.Ignore))
+            {
+                Debug.LogWarning($"[Save] last position {p} has no ground any more — starting at S");
+                _data.hasLastPosition = false;
+                yield break;
+            }
+            spawner.Current.Place(hit.point, _data.lastYaw, fromAbove: 3f);
+            player.Seat();
+            Resumed = true;
+        }
+
+        /// <summary>The game continued at the saved parked spot (tests).</summary>
+        public bool Resumed { get; private set; }
+
         void OnDestroy()
         {
             if (wallet != null) wallet.Changed -= OnWallet;
@@ -77,6 +102,7 @@ namespace JapanMap.Gameplay.Progress
 
         void OnWallet()
         {
+            if (_data.sparks == wallet.Balance) return; // the restore at load changes nothing: no save, no tick
             _data.sparks = wallet.Balance;
             MarkDirty();
         }
@@ -102,6 +128,8 @@ namespace JapanMap.Gameplay.Progress
             _nextSave = Time.unscaledTime + 1f;
             if (!ProgressStore.Save(_store, _data)) return false;
             SaveCount++;
+            // One line per save (saves are rare: grants, purchases, parking) — Tools/save-web.mjs reads it.
+            Debug.Log($"[Save] saved #{SaveCount} to {_store.Name}: {_data.sparks} Sparks, {_data.regions.Count} regions, {_data.discoveries.Count} cards");
             if (hud != null) hud.ShowSaved(_store.Name);
             return true;
         }
@@ -110,11 +138,14 @@ namespace JapanMap.Gameplay.Progress
         void TrackParking()
         {
             var car = spawner != null ? spawner.Current : null;
-            if (car == null || car.HoldStill) return;
+            // Not in a menu, not during a countdown, and never an event loan (Open Seat's Needle): only the player's
+            // own selected car leaves a safe spot to continue from.
+            if (car == null || car.HoldStill || car.Definition.id != _data.selectedCar) return;
             var still = car.Telemetry.speed < 0.5f && !car.Telemetry.airborne;
             _parkedFor = still ? _parkedFor + Time.deltaTime : 0f;
-            if (_parkedFor < 2f || Time.unscaledTime < _nextParkSave) return;
-            _nextParkSave = Time.unscaledTime + parkSaveSeconds;
+            if (_parkedFor < 2f) return;
+            var at = car.transform.position;
+            if (_data.hasLastPosition && (at - _data.lastPosition).sqrMagnitude < parkMoveMetres * parkMoveMetres) return;
             _data.hasLastPosition = true;
             _data.lastPosition = car.transform.position;
             _data.lastYaw = car.transform.eulerAngles.y;

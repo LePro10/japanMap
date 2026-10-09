@@ -23,15 +23,18 @@ Bench (`Captures/bench-p7-gate*`): Niedrig ≤ 390 DC / 578 k ✓ (Funaura 388 �
 
 ## Phase 8 — Progression und Speichern (als Nächstes, PLAN.md)
 
-- [x] 1. Sparks-Wirtschaft simuliert (`docs/ECONOMY.md`, D29): Rennfahrer 3 297, gemischt 2 451, Drift geübt 2 206 je 10 min (`Captures/p8-1/`) · [x] 2. Garage an der Open Bay (E): Autohaus, Tuning 4×Street/Sport, Setup, Lack/Felgen/Kit; Prüfstand `docs/TUNING.md` (D30, `Captures/p8-2/`) · [ ] 3. Speichern (CrazyGames + lokal, ASTRA §9) · [ ] 4. Rekorde und Fotos
+- [x] 1. Sparks-Wirtschaft simuliert (`docs/ECONOMY.md`, D29): Rennfahrer 3 297, gemischt 2 451, Drift geübt 2 206 je 10 min (`Captures/p8-1/`) · [x] 2. Garage an der Open Bay (E): Autohaus, Tuning 4×Street/Sport, Setup, Lack/Felgen/Kit; Prüfstand `docs/TUNING.md` (D30, `Captures/p8-2/`) · [x] 3. Speichern: CrazyGames-SDK + lokal (D31); Neustart-Test und Browser-Probe `save-web.mjs` grün · [ ] 4. Rekorde und Fotos
 
 ## Offen / Gefunden
 
+- **Fußgänger-Test:** `PedestrianTests.TenMinutes…` 1× im Gesamtlauf rot (2 Fußgänger auf meiji-south bei t = 0 s), allein 2× grün.
 - **Gras in der Open Bay:** Gräser wachsen durch den Hallenboden (Streuung kennt die Halle nicht) — sichtbar in der Garage.
 - **Wackeliger Tastatur-Test:** `PlayerDriveTests.Keyboard_Drives…` 1× von 7 rot („W does not accelerate“); der Touch-Test war
   ein ausgeschaltetes Test-Gerät (behoben, 3/3 grün).
 - **Nav-Assets** (`Data/Nav/*.asset`, LFS) hat Unity beim Speichern neu geschrieben (andere Größe) — nicht von dieser Sitzung
   beabsichtigt, nicht committet; vor dem nächsten NavMesh-Bake prüfen.
+- **Mausfang im Browser:** in Headless-Chrome erreichen ohne SDK keine Tasten das Spiel (`save-web` prüft auf 127.0.0.1
+  darum nur den Start-Speicherstand); auf CrazyGames selbst ungeprüft → Phase 10 mit dem CrazyGames-QA-Tool.
 - **Probefahrt (ASTRA §6, 90 s jedes Auto)** und die zwei Car-Lab-Lackierungen je Auto (Texturen, Download) fehlen noch.
 
 - **ASTRA-Katalog:** E01 Sakura Starter, E08–E12, E15–E17 und die zwei Lieferfahrten brauchen Straßen/Orte, die nicht gebaut sind

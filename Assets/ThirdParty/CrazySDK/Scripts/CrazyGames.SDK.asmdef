@@ -1,0 +1,9 @@
+{
+    "name": "CrazyGames.SDK",
+    "rootNamespace": "CrazyGames",
+    "references": [
+        "UnityEngine.UI"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

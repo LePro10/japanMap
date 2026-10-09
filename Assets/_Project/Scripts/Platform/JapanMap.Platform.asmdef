@@ -2,7 +2,8 @@
     "name": "JapanMap.Platform",
     "rootNamespace": "JapanMap.Platform",
     "references": [
-        "JapanMap.Core"
+        "JapanMap.Core",
+        "CrazyGames.SDK"
     ],
     "autoReferenced": true,
     "noEngineReferences": false

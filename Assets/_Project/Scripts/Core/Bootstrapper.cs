@@ -16,6 +16,8 @@ namespace JapanMap.Core
 
         [SerializeField] string firstScene = "Game";
         [SerializeField] bool loadFirstScene = true;
+        [Tooltip("Longest wait for boot gates (platform SDK) before the first scene loads anyway, s.")]
+        [SerializeField] float gateTimeout = 8f;
 
         readonly List<GameSystem> _systems = new();
 
@@ -40,7 +42,24 @@ namespace JapanMap.Core
             Instance = this;
             DontDestroyOnLoad(gameObject);
             InitializeSystems();
-            if (loadFirstScene) SceneManager.LoadScene(firstScene);
+            if (!loadFirstScene) return;
+            if (GatesReady()) SceneManager.LoadScene(firstScene);
+            else StartCoroutine(LoadWhenReady());
+        }
+
+        bool GatesReady()
+        {
+            foreach (var s in _systems)
+                if (s is IBootGate g && !g.Ready) return false;
+            return true;
+        }
+
+        System.Collections.IEnumerator LoadWhenReady()
+        {
+            var until = Time.realtimeSinceStartup + gateTimeout;
+            while (!GatesReady() && Time.realtimeSinceStartup < until) yield return null;
+            if (!GatesReady()) Debug.LogWarning("[Boot] a boot gate did not open in time — starting anyway");
+            SceneManager.LoadScene(firstScene);
         }
 
         void OnDestroy()

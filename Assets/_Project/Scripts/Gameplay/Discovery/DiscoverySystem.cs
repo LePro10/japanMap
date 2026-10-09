@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using JapanMap.Gameplay.Economy;
 using JapanMap.Gameplay.Hud;
+using JapanMap.Gameplay.Progress;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -10,8 +11,8 @@ namespace JapanMap.Gameplay.Discovery
     /// <summary>
     /// The discovery cards in the world: a glowing token at each card, labelled buttons for the
     /// puzzles, a "E  Inspect …" prompt when the player is close, and the reward once per card.
-    /// PROVISIONAL look: amber stand-in tokens and posts until the asset session delivers the props;
-    /// the found set lives for the session until saving arrives (Phase 8).
+    /// PROVISIONAL look: amber stand-in tokens and posts until the asset session delivers the props.
+    /// The found set is saved (PlayerProgress).
     /// </summary>
     public sealed class DiscoverySystem : MonoBehaviour
     {
@@ -19,6 +20,8 @@ namespace JapanMap.Gameplay.Discovery
         [SerializeField] PlayerModeController player;
         [SerializeField] SparksWallet wallet;
         [SerializeField] GameplayHud hud;
+        [Tooltip("Saved progress: found cards survive a reload and pay once (claim card:id).")]
+        [SerializeField] PlayerProgress progress;
         [SerializeField] InputActionAsset actions;
         [Tooltip("Lit material the stand-in token and buttons are tinted from.")]
         [SerializeField] Material template;
@@ -45,6 +48,9 @@ namespace JapanMap.Gameplay.Discovery
             _puzzles = new DiscoveryPuzzle[set.cards.Length];
             for (var i = 0; i < set.cards.Length; i++) _puzzles[i] = new DiscoveryPuzzle(set.cards[i]);
             Build();
+            // Cards found in an earlier session: no token, no prompt, no second payment.
+            if (progress != null && progress.Data != null)
+                foreach (var id in progress.Data.discoveries) _found.Add(id);
         }
 
         void OnEnable()
@@ -187,7 +193,13 @@ namespace JapanMap.Gameplay.Discovery
             var reward = wallet != null ? wallet.Settings.discoveryReward : 0;
             var extra = string.IsNullOrEmpty(c.reward) ? "" : $" · {c.reward} unlocked";
             Toast($"Discovery {_found.Count}/{set.cards.Length} · {c.title} · +{reward} Sparks{extra}");
-            if (wallet != null) wallet.Add(reward, c.title);
+            if (progress != null)
+            {
+                progress.Data.discoveries.Add(c.id);
+                if (!string.IsNullOrEmpty(c.reward)) progress.Data.decals.Add(c.reward);
+                progress.Grant($"card:{c.id}", reward, c.title);
+            }
+            else if (wallet != null) wallet.Add(reward, c.title);
             var inRegion = 0;
             var regionTotal = 0;
             foreach (var other in set.cards)
