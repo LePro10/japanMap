@@ -17,20 +17,31 @@ try {
   const errs = (call('read_console', { types: ['error'], count: 50 }).data ?? []).filter((m) => /error CS\d+/.test(String(m.message ?? m)));
   if (errs.length) { console.log(`FAIL · compile errors:\n  ${errs.slice(0, 5).map((m) => String(m.message ?? m).trim()).join('\n  ')}`); process.exit(1); }
 } catch (e) { console.error(`TEST BLOCKED · ${e.message}`); process.exit(2); }
+// A test file written just now is sometimes not in the test tree on the first run ("no tests matched",
+// twice in Phase 7): then refresh once more and run again.
+for (let attempt = 0; ; attempt++) {
 let job;
 try { job = call('run_tests', args).data?.job_id; } catch (e) { console.error(`TEST BLOCKED · ${e.message}`); process.exit(2); }
 if (!job) { console.error('TEST BLOCKED · no job id'); process.exit(2); }
 const t0 = Date.now();
+let retry = false;
 for (;;) {
   await new Promise((r) => setTimeout(r, 4000));
   let d;
   try { d = call('get_test_job', { job_id: job, include_failed_tests: true }).data; } catch { continue; } // domain reload
   if (d?.status === 'running' || d?.status === 'pending') { if (Date.now() - t0 > 1800e3) { console.error('TEST TIMEOUT'); process.exit(1); } continue; }
   const s = d?.result?.summary ?? {};
+  if (s.total === 0 && group && attempt === 0) {
+    call('refresh_unity', { mode: 'force', scope: 'scripts', compile: 'request', wait_for_ready: true });
+    retry = true;
+    break;
+  }
   if (!d?.result?.summary) console.log(`  (no summary — job status ${d?.status}: ${JSON.stringify(d).slice(0, 300)})`);
   const ok = d?.status === 'succeeded' && s.failed === 0 && s.total > 0;
   console.log(`${ok ? 'PASS' : 'FAIL'} · ${mode}${group ? ' ' + group : ''} · ${s.passed}/${s.total} passed, ${s.failed} failed, ${s.skipped} skipped · ${Math.round(s.durationSeconds ?? 0)} s`);
   for (const f of d?.result?.results ?? d?.result?.tests ?? []) if (f.state !== 'Passed') console.log(`  ✗ ${f.fullName ?? f.name}: ${(f.message ?? '').slice(0, 400)}`);
   if (!ok && s.total === 0) console.log('  (no tests matched — check the group regex)');
   process.exit(ok ? 0 : 1);
+}
+if (!retry) break;
 }

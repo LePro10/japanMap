@@ -18,7 +18,7 @@ Phase 2 ✅ · 3 ✅ freigegeben · 4 ✅ (Optik-Abnahme offen) · 5 ✅ (Abnahm
 
 **Abnahme gemessen:** alle 8 Veranstaltungen KI gegen KI vom Start bis Ziel: **0 Rettungen, 0 Zurücksetzen**; Runden genau an der Linie
 (Neon 1476/2952 m bei 1476 m Runde, Needle 2168,8/4337,6 m, Ring 5987 m). Alle 6 Schanzen beim empfohlenen Tempo: 8–33 m, Absprung an der Kante.
-Tests: EditMode **99/99**, PlayMode **171/176** (4 Prüfstände auf Abruf; `TouchStick_Throttles` wackelt, s. u.).
+Tests: EditMode **100/100**, PlayMode **171/176** (4 Prüfstände auf Abruf; `TouchStick_Throttles` wackelt, s. u.).
 Bench (`Captures/bench-p7-gate*`): Niedrig ≤ 390 DC / 578 k ✓ (Funaura 388 — Schanzen erst ab 400 m ausgeblendet), Hoch wie Phase 6
 (sakura-hof 1 573 DC). Web **53,97 MB**, Browser Niedrig 235 / Hoch 55 fps (Vorschau lief vermutlich mit).
 

@@ -29,6 +29,8 @@ Assets/_Project/Data/Terrain/*.asset filter=lfs diff=lfs merge=lfs -text
 # ── Generierte Meshes der Karten-Importer (groß, nur per Importer geändert)
 Assets/_Project/Data/Roads/*.asset filter=lfs diff=lfs merge=lfs -text
 Assets/_Project/Data/Water/*.asset filter=lfs diff=lfs merge=lfs -text
+# ── NavMesh-Daten: Unity speichert sie binär; als Text mit LF zerbrach Git sie (CRLF-Bytes, Phase 7)
+Assets/_Project/Data/Nav/*.asset filter=lfs diff=lfs merge=lfs -text
 
 # ── Binärdateien über Git LFS
 Assets/**/*.fbx   filter=lfs diff=lfs merge=lfs -text
