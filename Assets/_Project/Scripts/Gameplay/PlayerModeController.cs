@@ -111,12 +111,45 @@ namespace JapanMap.Gameplay
         /// <summary>F / B button / touch CAR: get out when slow enough, get in when close enough.</summary>
         public void PressVehicle()
         {
+            if (Suspended) return;
             if (Current == Mode.Driving) TryAlight();
             else TryBoard();
         }
 
+        /// <summary>
+        /// Hands the player to a menu scene (garage): no driving or walking input, no player camera. Off again
+        /// resumes in the car (<see cref="Seat"/> first when the menu put the player into it).
+        /// </summary>
+        public void SetSuspended(bool on)
+        {
+            Suspended = on;
+            if (on)
+            {
+                if (driver != null) driver.enabled = false;
+                if (driveTouch != null) driveTouch.Suppressed = true;
+                if (carCamera != null) carCamera.SetLive(false);
+                if (walkInput != null) walkInput.enabled = false;
+                if (walkTouch != null) walkTouch.Suppressed = true;
+                if (walkCamera != null) walkCamera.SetLive(false);
+                if (_walker != null) _walker.gameObject.SetActive(false);
+                return;
+            }
+            SetDriving();
+        }
+
+        public bool Suspended { get; private set; }
+
+        /// <summary>Into the car wherever it is (a menu moved it), without the boarding distance check.</summary>
+        public void Seat()
+        {
+            if (Current == Mode.Walking) SetDriving();
+        }
+
         /// <summary>H / d-pad down / touch CALL.</summary>
-        public void PressCall() => Say(CallCar());
+        public void PressCall()
+        {
+            if (!Suspended) Say(CallCar());
+        }
 
         public bool CanAlight => Current == Mode.Driving && Car != null && Car.Body.linearVelocity.magnitude * 3.6f <= walkerSettings.alightMaxKmh;
 

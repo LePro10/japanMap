@@ -17,6 +17,7 @@ namespace JapanMap.Tests.Content
     /// once); the Open Bay puzzle opens with the hinted order 2 → 1 → 3 after a wrong try; driving up
     /// to an approach card collects it from the car.
     /// </summary>
+    [FreshSave]
     public class DiscoveryPlayTests
     {
         Keyboard _kb;

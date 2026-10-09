@@ -17,6 +17,7 @@ namespace JapanMap.Tests.OnFoot
     /// on; at walking pace it stands. Each kind is found in the world. Cost of a break and of the
     /// debris physics measured against the budget (≤ 2 ms each).
     /// </summary>
+    [FreshSave]
     public class SmashTests
     {
         static float _later;

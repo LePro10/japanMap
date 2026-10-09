@@ -92,6 +92,13 @@ namespace JapanMap.Gameplay
         void Update()
         {
             if (player == null || _prompt == null) return;
+            // A menu scene (garage) owns the screen: no "F  Get out", no touch driving buttons.
+            if (player.Suspended)
+            {
+                _prompt.text = "";
+                _touch.style.display = DisplayStyle.None;
+                return;
+            }
             var message = Time.unscaledTime - player.MessageAt < messageSeconds ? player.Message : "";
             var text = message != "" ? message : player.Prompt;
             // On touch the button is the prompt; drop the key name.

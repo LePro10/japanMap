@@ -53,13 +53,27 @@ namespace JapanMap.Vehicles
         }
 
         /// <summary>Build with explicit data — used by spawners and tests before the first step.</summary>
-        public void Configure(VehicleDefinition def, ArcadeTuning arcadeTuning)
+        public void Configure(VehicleDefinition def, ArcadeTuning arcadeTuning) => Configure(def, arcadeTuning, null);
+
+        /// <summary>
+        /// Build with a tuned handling spec (TuningSettings.Apply) instead of the stock one; mass, chassis and
+        /// collision identity stay the car's own (ASTRA §6: tuning does not equalise weight).
+        /// </summary>
+        public void Configure(VehicleDefinition def, ArcadeTuning arcadeTuning, ArcadeSpec spec, float crawlShare = -1f)
         {
             definition = def;
             tuning = arcadeTuning;
+            _spec = spec;
+            _crawl = crawlShare;
             _built = false;
             Build();
         }
+
+        ArcadeSpec _spec;
+        float _crawl = -1f;
+
+        /// <summary>The handling this car drives with (tuned, or the definition's stock spec).</summary>
+        public ArcadeSpec Spec => _spec ?? definition.arcade;
 
         void Awake()
         {
@@ -130,7 +144,7 @@ namespace JapanMap.Vehicles
             _rb.ResetInertiaTensor();
             _rb.centerOfMass = new Vector3(0f, def.cgHeight * tuning.physicsComHeightShare, comZ);
 
-            _dyn = new ArcadeDynamics(def.arcade, tuning, def.dirtGrip, def.crawlShare, def.driveRetain);
+            _dyn = new ArcadeDynamics(_spec ?? def.arcade, tuning, def.dirtGrip, _crawl >= 0f ? _crawl : def.crawlShare, def.driveRetain);
             _dyn.SetChassis(def.wheelbase, def.mass);
         }
 

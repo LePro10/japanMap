@@ -7,6 +7,7 @@ namespace JapanMap.Tests.Vehicles
 {
     /// <summary>Step-by-step trace of one run to Captures/vehicle-trace.txt — for debugging the rig.</summary>
     [Explicit("Debug trace, start by name")]
+    [FreshSave]
     public class VehicleTrace
     {
         [Test]

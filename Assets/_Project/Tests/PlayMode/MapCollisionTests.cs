@@ -11,6 +11,7 @@ namespace JapanMap.Tests
     /// The real way for collision: boot the game, drop rigid bodies onto the imported map and see
     /// where they come to rest. Positions are fixed spots of the legacy map (Unity coordinates).
     /// </summary>
+    [FreshSave]
     public class MapCollisionTests
     {
         [TearDown]

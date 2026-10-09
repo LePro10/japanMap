@@ -23,7 +23,7 @@ namespace JapanMap.Tests.Vehicles
 
         static int _count;
 
-        public VehicleRig(VehicleDefinition def, ArcadeTuning tuning, Ground ground = Ground.Asphalt, float slopeDeg = 0f)
+        public VehicleRig(VehicleDefinition def, ArcadeTuning tuning, Ground ground = Ground.Asphalt, float slopeDeg = 0f, ArcadeSpec spec = null)
         {
             _scene = SceneManager.CreateScene($"VehicleRig{_count++}", new CreateSceneParameters(LocalPhysicsMode.Physics3D));
             _physics = _scene.GetPhysicsScene();
@@ -34,7 +34,7 @@ namespace JapanMap.Tests.Vehicles
             SceneManager.MoveGameObjectToScene(go, _scene);
             go.AddComponent<Rigidbody>();
             Car = go.AddComponent<VehicleController>();
-            Car.Configure(def, tuning);
+            Car.Configure(def, tuning, spec);
             Car.Place(Vector3.zero, 0f);
             // Let the springs settle before anything is measured.
             for (var i = 0; i < 60; i++) Step(default);

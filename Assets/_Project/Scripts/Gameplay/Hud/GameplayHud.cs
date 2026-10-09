@@ -23,6 +23,8 @@ namespace JapanMap.Gameplay.Hud
 
         UIDocument _doc;
         VisualElement _driftBox, _bar, _barFill;
+        Label _saved;
+        float _savedUntil;
         Label _points, _mult, _spot, _result, _sparks, _toast, _banner, _prompt, _hint, _stunt, _panel, _race, _count;
         VisualElement _useButton;
         bool _touchSeen;
@@ -100,6 +102,10 @@ namespace JapanMap.Gameplay.Hud
             _sparks = Text(Box(root), 30, Gold);
             _sparks.parent.style.top = 24;
             _sparks.parent.style.right = 40;
+            _sparks.parent.style.alignItems = Align.FlexEnd;
+            // ASTRA §9: a subtle "Saved" tick after purchases, grants and safe parking.
+            _saved = Text(_sparks.parent, 18, new Color(0.75f, 0.9f, 0.8f));
+            _saved.style.display = DisplayStyle.None;
 
             var toastBox = Box(root);
             toastBox.style.top = 190;
@@ -246,6 +252,24 @@ namespace JapanMap.Gameplay.Hud
             if (_stunt != null) _stunt.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
+        /// <summary>The small "✓ Saved" tick under the balance for a moment; names the store when it is only this device.</summary>
+        public void ShowSaved(string store)
+        {
+            if (_saved == null) return;
+            _saved.text = store == "CrazyGames" ? "✓ Saved" : "✓ Saved on this device";
+            _saved.style.display = DisplayStyle.Flex;
+            _savedUntil = Time.unscaledTime + 1.6f;
+        }
+
+        public string SavedText => _saved != null && _saved.style.display == DisplayStyle.Flex ? _saved.text : "";
+
+        /// <summary>Hides the whole driving HUD while a menu scene (garage) owns the screen.</summary>
+        public bool Hidden
+        {
+            get => _doc != null && _doc.rootVisualElement.style.display == DisplayStyle.None;
+            set { if (_doc != null) _doc.rootVisualElement.style.display = value ? DisplayStyle.None : DisplayStyle.Flex; }
+        }
+
         /// <summary>Touch USE button pressed.</summary>
         public event System.Action UsePressed;
 
@@ -276,6 +300,11 @@ namespace JapanMap.Gameplay.Hud
 
         void Update()
         {
+            if (_saved != null && _savedUntil > 0f && Time.unscaledTime >= _savedUntil)
+            {
+                _saved.style.display = DisplayStyle.None;
+                _savedUntil = 0f;
+            }
             if (!_touchSeen && UnityEngine.InputSystem.Touchscreen.current != null
                 && UnityEngine.InputSystem.Touchscreen.current.primaryTouch.press.isPressed) _touchSeen = true;
             if (drift != null)

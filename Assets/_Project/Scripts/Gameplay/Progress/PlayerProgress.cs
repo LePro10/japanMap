@@ -1,0 +1,270 @@
+using System;
+using JapanMap.Core.Save;
+using JapanMap.Gameplay.Economy;
+using JapanMap.Gameplay.Hud;
+using JapanMap.Vehicles;
+using UnityEngine;
+
+namespace JapanMap.Gameplay.Progress
+{
+    /// <summary>
+    /// The player's saved progress at runtime: loads it before anything spawns, owns the wallet balance,
+    /// pays one-time rewards exactly once (claim ids), records purchases, and saves after every change that
+    /// ASTRA §9 names (purchases, reward grants, discoveries, safe parking) — at most once per second.
+    /// It is also the car loadout: the spawner builds the selected car with its fitted parts and looks.
+    /// </summary>
+    [DefaultExecutionOrder(-100)]
+    public sealed class PlayerProgress : MonoBehaviour, ICarLoadout
+    {
+        [SerializeField] SparksWallet wallet;
+        [SerializeField] VehicleFleet fleet;
+        [SerializeField] TuningSettings tuning;
+        [SerializeField] PlayerCarSpawner spawner;
+        [SerializeField] GameplayHud hud;
+        [Tooltip("Seconds between saves of the parked position (ASTRA: save on safe parking).")]
+        [SerializeField] float parkSaveSeconds = 30f;
+
+        ProgressData _data;
+        ISaveStore _store;
+        bool _dirty;
+        float _nextSave, _parkedFor, _nextParkSave;
+
+        public ProgressData Data => _data;
+        public ProgressStore.Source LoadedFrom { get; private set; }
+        public string StoreName => _store?.Name ?? "";
+        public TuningSettings Tuning => tuning;
+        public VehicleFleet Fleet => fleet;
+        public SparksWallet Wallet => wallet;
+        /// <summary>Saves written in this session (tests, HUD).</summary>
+        public int SaveCount { get; private set; }
+        public event Action Changed;
+
+        void Awake()
+        {
+            _store = SaveStores.Current;
+            _data = ProgressStore.Load(_store, MaxBalance, out var source);
+            LoadedFrom = source;
+            if (fleet != null)
+            {
+                var starter = fleet.Default;
+                if (starter != null) _data.Car(starter.id).owned = true;
+                if (fleet.Get(_data.selectedCar) == null || !Owns(_data.selectedCar)) _data.selectedCar = starter != null ? starter.id : "";
+            }
+            if (wallet != null)
+            {
+                wallet.Restore(_data.sparks);
+                wallet.Changed += OnWallet;
+            }
+            if (spawner != null) spawner.Loadout = this;
+            Debug.Log($"[Save] progress from {source} ({_store.Name}): {_data.sparks} Sparks, {_data.regions.Count} regions, " +
+                      $"{_data.discoveries.Count} cards, {_data.cars.FindAll(c => c.owned).Count} cars");
+        }
+
+        void OnDestroy()
+        {
+            if (wallet != null) wallet.Changed -= OnWallet;
+            Flush();
+        }
+
+        void OnApplicationPause(bool paused)
+        {
+            if (paused) Flush();
+        }
+
+        void OnApplicationQuit() => Flush();
+
+        int MaxBalance => wallet != null && wallet.Settings != null ? wallet.Settings.maxBalance : 9_999_999;
+
+        void OnWallet()
+        {
+            _data.sparks = wallet.Balance;
+            MarkDirty();
+        }
+
+        public void MarkDirty()
+        {
+            _dirty = true;
+            Changed?.Invoke();
+        }
+
+        void Update()
+        {
+            _data.playSeconds += Time.unscaledDeltaTime;
+            TrackParking();
+            if (_dirty && Time.unscaledTime >= _nextSave) Flush();
+        }
+
+        /// <summary>Writes now if anything changed. Returns true when a save was written.</summary>
+        public bool Flush()
+        {
+            if (!_dirty || _data == null || _store == null) return false;
+            _dirty = false;
+            _nextSave = Time.unscaledTime + 1f;
+            if (!ProgressStore.Save(_store, _data)) return false;
+            SaveCount++;
+            if (hud != null) hud.ShowSaved(_store.Name);
+            return true;
+        }
+
+        /// <summary>Last safe position: the car stands still for 2 s (never mid-jump or mid-race).</summary>
+        void TrackParking()
+        {
+            var car = spawner != null ? spawner.Current : null;
+            if (car == null || car.HoldStill) return;
+            var still = car.Telemetry.speed < 0.5f && !car.Telemetry.airborne;
+            _parkedFor = still ? _parkedFor + Time.deltaTime : 0f;
+            if (_parkedFor < 2f || Time.unscaledTime < _nextParkSave) return;
+            _nextParkSave = Time.unscaledTime + parkSaveSeconds;
+            _data.hasLastPosition = true;
+            _data.lastPosition = car.transform.position;
+            _data.lastYaw = car.transform.eulerAngles.y;
+            MarkDirty();
+        }
+
+        // ── one-time rewards ─────────────────────────────────────────────────
+
+        public bool Claimed(string claim) => _data.claims.Contains(claim);
+
+        /// <summary>Pays <paramref name="sparks"/> once for this claim id. False (and nothing paid) if already claimed.</summary>
+        public bool Grant(string claim, int sparks, string reason)
+        {
+            if (Claimed(claim)) return false;
+            _data.claims.Add(claim);
+            if (wallet != null && sparks > 0) wallet.Add(sparks, reason);
+            MarkDirty();
+            Flush();
+            return true;
+        }
+
+        // ── garage ───────────────────────────────────────────────────────────
+
+        public bool Owns(string carId) => _data.Car(carId, false)?.owned == true;
+        public CarState Car(string carId) => _data.Car(carId);
+
+        public bool BuyCar(VehicleDefinition def)
+        {
+            if (def == null || Owns(def.id) || wallet == null || !wallet.Spend(def.price)) return false;
+            _data.Car(def.id).owned = true;
+            Purchased($"car:{def.id}");
+            return true;
+        }
+
+        public void Select(string carId)
+        {
+            if (!Owns(carId)) return;
+            _data.selectedCar = carId;
+            MarkDirty();
+            Flush();
+        }
+
+        /// <summary>Buy and fit tiers up to <paramref name="tier"/> (sequential; incremental prices). Downgrades are free.</summary>
+        public bool Fit(string carId, TuneCategory c, int tier)
+        {
+            if (!Owns(carId)) return false;
+            var state = Car(carId);
+            var have = state.tune[c];
+            if (tier <= have)
+            {
+                state.tune[c] = tier;
+                MarkDirty();
+                Flush();
+                return true;
+            }
+            var bought = Bought(carId, c);
+            var cost = 0;
+            for (var t = bought + 1; t <= tier; t++) cost += tuning.Price(c, t);
+            if (wallet == null || !wallet.Spend(cost)) return false;
+            for (var t = bought + 1; t <= tier; t++) _data.purchases.Add($"tune:{carId}:{c}:{t}");
+            state.tune[c] = tier;
+            Purchased(null);
+            return true;
+        }
+
+        /// <summary>Highest tier ever bought for this category (a refitted lower tier keeps the higher one owned).</summary>
+        public int Bought(string carId, TuneCategory c)
+        {
+            var b = 0;
+            for (var t = 1; t <= 2; t++) if (_data.purchases.Contains($"tune:{carId}:{c}:{t}")) b = t;
+            return b;
+        }
+
+        /// <summary>Price to fit this tier now (0 when already bought).</summary>
+        public int FitCost(string carId, TuneCategory c, int tier)
+        {
+            var cost = 0;
+            for (var t = Bought(carId, c) + 1; t <= tier; t++) cost += tuning.Price(c, t);
+            return cost;
+        }
+
+        public void SetSetup(string carId, CarSetupMode mode)
+        {
+            if (!Owns(carId)) return;
+            Car(carId).setup = mode;
+            MarkDirty();
+            Flush();
+        }
+
+        /// <summary>Applies a palette colour ("" = factory livery); buys it first if needed (ASTRA: once per car).</summary>
+        public bool Paint(VehicleDefinition def, string colour)
+        {
+            if (!Owns(def.id)) return false;
+            var state = Car(def.id);
+            var free = string.IsNullOrEmpty(colour) || colour == def.factoryPaint || state.paints.Contains(colour);
+            if (!free)
+            {
+                if (wallet == null || !wallet.Spend(tuning.paintPrice)) return false;
+                state.paints.Add(colour);
+                _data.purchases.Add($"paint:{def.id}:{colour}");
+            }
+            state.paint = colour;
+            Purchased(null);
+            return true;
+        }
+
+        /// <summary>Fits rim set / body kit option 0–2; options 1 and 2 are bought once per car.</summary>
+        public bool FitLook(string carId, bool kit, int option)
+        {
+            if (!Owns(carId)) return false;
+            var state = Car(carId);
+            var owned = kit ? state.aeroKits : state.wheelSets;
+            if (option > 0 && !owned.Contains(option))
+            {
+                if (wallet == null || !wallet.Spend(kit ? tuning.kitPrice : tuning.wheelPrice)) return false;
+                owned.Add(option);
+                _data.purchases.Add($"{(kit ? "kit" : "wheels")}:{carId}:{option}");
+            }
+            if (kit) state.aero = option;
+            else state.wheels = option;
+            Purchased(null);
+            return true;
+        }
+
+        void Purchased(string entry)
+        {
+            if (entry != null) _data.purchases.Add(entry);
+            MarkDirty();
+            Flush();
+        }
+
+        // ── ICarLoadout ──────────────────────────────────────────────────────
+
+        public string SelectedCar => _data?.selectedCar;
+
+        public ArcadeSpec SpecFor(VehicleDefinition def, out float crawlShare)
+        {
+            crawlShare = -1f;
+            var state = Owns(def.id) ? _data.Car(def.id, false) : null;
+            if (state == null || tuning == null) return null;
+            if (state.setup == CarSetupMode.SafeReturn) crawlShare = tuning.safeCrawl;
+            return tuning.Apply(def, state.tune, state.setup);
+        }
+
+        public void Dress(VehicleDefinition def, Transform model)
+        {
+            var state = Owns(def.id) ? _data.Car(def.id, false) : null;
+            if (state == null) return;
+            Color? paint = string.IsNullOrEmpty(state.paint) || tuning == null ? null : tuning.PaintColor(state.paint);
+            CarLooks.Apply(model, state.tune.engine, state.aero, state.wheels, paint);
+        }
+    }
+}

@@ -424,6 +424,21 @@ Ergebnis: Rennfahrer 3 297, gemischt 2 451, geübter Drifter 2 206 („nähert s
 gebaut ist; bis dahin kostet **Mame K 2 400** und ist nach der ersten Sitzung kaufbar. Test `EconomyTests`
 hält Spanne, Ausreißer und die Tabelle aktuell. **Eigener Code:** Unity hat keine Wirtschaftssimulation.
 
+## D30 — Garage an der Open Bay; Tuning nach tuning.config.ts; Optik aus den Car-Lab-Optionen · 2026-10-09
+
+**Garage:** Einfahrtszone vor dem Tor der Open Bay in Sakura (zu Fuß oder < 15 km/h), **E** öffnet. Das Auto
+steht dann auf dem Hallenboden, eine Cinemachine-Kamera (Priorität über Fahr-/Laufkamera) zeigt es, Spieler-
+Eingaben und Fahr-HUD sind aus (`PlayerModeController.SetSuspended`). Jede Änderung baut das **echte** Spielerauto
+über `PlayerCarSpawner.SpawnAt` neu — was in der Halle steht, fährt hinaus. Blatt in UI Toolkit aus Code wie das HUD
+(D05), vorläufig bis Phase 9. **Tuning:** `TuningSettings` mit den Faktoren und Preisen aus legacy `tuning.config.ts`
+(immer vom Serienwert, nie gestapelt; Motor löst den Luftwiderstand, damit die Spitze genau +2/+4 % steigt).
+Prüfstand `TuningBench` misst je Teil allein; Tabelle `docs/TUNING.md`. Gewicht und Karosserie bleiben (ASTRA).
+**Optik:** die Modelle haben je 3 Felgen, 3 Aero-Kits und 3 Motorteile (`*_o0..2`, Car-Lab); Felgen 450, Kit 900,
+Motorteil folgt der Motorstufe. Lack = ASTRA-Palette (12 Farben, 120 je Auto) als Uni-Lack: die Livery-Textur
+weicht einer weißen, getönt per `MaterialPropertyBlock` — kostet keinen Download. Die zwei zusätzlichen Liverys
+je Auto aus dem Car-Lab (20 Texturen, mehrere MB) erst mit Nachladen (Phase 10). **Eigener Code:** Unity hat kein
+Garagen-/Shop-System; Cinemachine, UI Toolkit und der vorhandene Spawner sind Standard.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

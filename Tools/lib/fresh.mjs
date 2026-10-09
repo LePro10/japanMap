@@ -30,7 +30,23 @@ export function compileIfChanged() {
   }
   if (r !== 'edit') return false;
   const changed = scriptsChanged();
-  mcp('refresh_unity', { mode: changed ? 'force' : 'if_dirty', scope: changed ? 'scripts' : 'all', compile: 'request', wait_for_ready: true });
+  // scope 'all': a 'scripts' refresh recompiles known scripts but does not import a brand-new .cs (no .meta
+  // yet) — twice in Phase 8 a new file stayed invisible ("type not found", "0 tests matched").
+  mcp('refresh_unity', { mode: changed ? 'force' : 'if_dirty', scope: 'all', compile: 'request', wait_for_ready: true });
   writeFileSync(STAMP, String(Date.now()));
+  if (changed) reportUncompiled();
   return true;
+}
+
+// Unity 6.6 once kept a new, imported script (MonoScript, right assembly) out of its compile list for good —
+// "type not found" although the file was there (Phase 8, CarLooks.cs). Name every such file with the remedy.
+function reportUncompiled() {
+  const ours = execFileSync('find', [join(ROOT, 'Assets', '_Project'), '-name', '*.cs'], { encoding: 'utf8' })
+    .split('\n').filter(Boolean).map((f) => f.slice(ROOT.length).replace(/^\//, ''));
+  const r = mcp('execute_code', { action: 'execute', code: 'var s = new System.Collections.Generic.List<string>(); foreach (var a in UnityEditor.Compilation.CompilationPipeline.GetAssemblies(UnityEditor.Compilation.AssembliesType.Editor)) s.AddRange(a.sourceFiles); return string.Join("\\n", s);' });
+  const known = new Set(String(r?.data?.result ?? '').split('\n'));
+  if (known.size < 10) return; // query failed; do not cry wolf
+  const missing = ours.filter((f) => !known.has(f));
+  for (const f of missing)
+    console.error(`UNCOMPILED · ${f} is not in any assembly — delete it and its .meta, refresh, then add it again under a new name`);
 }

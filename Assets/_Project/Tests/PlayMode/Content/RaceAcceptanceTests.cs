@@ -16,6 +16,7 @@ namespace JapanMap.Tests.Content
     /// autopilot), without a stuck car (no rescue), laps counted at the seam. Plus the join path:
     /// stop at a marker, E shows the card, E starts the countdown with every car held.
     /// </summary>
+    [FreshSave]
     public class RaceAcceptanceTests
     {
         Keyboard _kb;

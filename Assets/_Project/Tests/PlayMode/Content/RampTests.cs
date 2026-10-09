@@ -17,6 +17,7 @@ namespace JapanMap.Tests.Content
     /// Ramps (Phase 7.4): every ramp, met at its recommended speed (middle of the hint), launches at the
     /// lip — the car takes off at the lip, lands, and the stunt judge scores a jump from that ramp.
     /// </summary>
+    [FreshSave]
     public class RampTests
     {
         Keyboard _kb;

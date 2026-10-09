@@ -14,6 +14,7 @@ namespace JapanMap.Tests.Vehicles
     /// The game's own path: Boot → Game, the spawner puts the car on a road, a keyboard drives it
     /// through the Drive actions, R puts it back on the road.
     /// </summary>
+    [FreshSave]
     public class PlayerDriveTests
     {
         Keyboard _keyboard;
@@ -57,6 +58,9 @@ namespace JapanMap.Tests.Vehicles
         {
             yield return BootAndBoard();
             var touch = InputSystem.AddDevice<Touchscreen>("TestTouch");
+            // Like the keyboard in SetUp: added while Unity is in the background, a device comes up disabled —
+            // the cause of the "throttle 0 on the first run" flake (red in the Phase 7 and 8 full runs).
+            InputSystem.EnableDevice(touch);
             try
             {
                 var controls = Object.FindAnyObjectByType<DriveTouchControls>();

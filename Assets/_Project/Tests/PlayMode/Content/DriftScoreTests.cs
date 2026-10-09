@@ -18,6 +18,7 @@ namespace JapanMap.Tests.Content
     /// throttle + steer + handbrake through the keyboard inside Sakura Bowl → a chain with spot bonus;
     /// a wall hit at speed cuts it to half and pays the rest into the wallet.
     /// </summary>
+    [FreshSave]
     public class DriftScoreTests
     {
         Keyboard _kb;

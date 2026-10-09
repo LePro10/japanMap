@@ -12,6 +12,7 @@ namespace JapanMap.Tests
     /// Goes the real way: load Boot, let it bring up the systems and switch to Game.
     /// Any Debug.LogError or exception during these frames fails the test (Test Framework default).
     /// </summary>
+    [FreshSave]
     public class BootTests
     {
         [TearDown]

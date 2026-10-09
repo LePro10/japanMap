@@ -55,6 +55,8 @@ namespace JapanMap.Editor
         }
 
         /// <summary>Called from Tools/play.mjs in edit mode.</summary>
+        public const string AgentSlot = "agentplay.";
+
         public static string Begin(string script, string outDir)
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode) return "BLOCKED: editor is in play mode";
@@ -63,6 +65,12 @@ namespace JapanMap.Editor
             if (File.Exists(result)) File.Delete(result);
             SessionState.SetString(KeyScript, script);
             SessionState.SetString(KeyOut, outDir);
+            // Own save slot: a play script never reads or writes the human's progress. Fresh each run unless
+            // the script starts with "keepsave" (the save/restart check).
+            SessionState.SetString(JapanMap.Core.Save.SaveStores.SlotKey, AgentSlot);
+            if (!script.TrimStart().StartsWith("keepsave"))
+                foreach (var k in new[] { JapanMap.Gameplay.Progress.ProgressStore.Key, JapanMap.Gameplay.Progress.ProgressStore.BackupKey, JapanMap.Gameplay.Progress.ProgressStore.CorruptKey })
+                    PlayerPrefs.DeleteKey(AgentSlot + k);
             EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo();
             SessionState.SetString(KeyScene, UnityEngine.SceneManagement.SceneManager.GetActiveScene().path);
             EditorSceneManager.OpenScene("Assets/_Project/Scenes/Boot.unity");
@@ -72,6 +80,7 @@ namespace JapanMap.Editor
 
         static void OnPlayMode(PlayModeStateChange change)
         {
+            if (change == PlayModeStateChange.EnteredEditMode) SessionState.EraseString(JapanMap.Core.Save.SaveStores.SlotKey);
             if (change == PlayModeStateChange.EnteredEditMode && SessionState.GetString(KeyScene, "") != "")
             {
                 // Back to the scene the agent had open (the other tools expect Game.unity).
@@ -355,6 +364,34 @@ namespace JapanMap.Editor
                     var crowdSystem = Object.FindAnyObjectByType<JapanMap.Gameplay.Life.PedestrianCrowd>(FindObjectsInactive.Include);
                     if (crowdSystem != null) crowdSystem.gameObject.SetActive(a[1] == "on");
                     return true;
+                case "keepsave":
+                    return true; // marker only: Begin kept the agent slot's save
+                case "garage":
+                {
+                    // garage pick id | buy | fit Engine 2 | setup Drift | paint Navy | rims 1 | kit 1 | close — the sheet's own actions.
+                    var gs = Object.FindAnyObjectByType<JapanMap.Gameplay.Garage.GarageSystem>();
+                    if (gs == null || !gs.IsOpen) { Log.AppendLine("  garage: not open"); return true; }
+                    switch (a[1])
+                    {
+                        case "pick": gs.Pick(a[2]); break;
+                        case "buy": gs.Buy(); break;
+                        case "fit": gs.Fit((JapanMap.Vehicles.TuneCategory)System.Enum.Parse(typeof(JapanMap.Vehicles.TuneCategory), a[2], true), int.Parse(a[3])); break;
+                        case "setup": gs.Setup((JapanMap.Vehicles.CarSetupMode)System.Enum.Parse(typeof(JapanMap.Vehicles.CarSetupMode), a[2], true)); break;
+                        case "paint": gs.Paint(a.Length > 2 ? string.Join(" ", a, 2, a.Length - 2) : ""); break;
+                        case "rims": gs.Look(false, int.Parse(a[2])); break;
+                        case "kit": gs.Look(true, int.Parse(a[2])); break;
+                        case "close": gs.Close(); break;
+                    }
+                    Log.AppendLine($"  garage {a[1]} → '{gs.Status}'");
+                    return true;
+                }
+                case "sparks":
+                {
+                    // sparks n: setup like a loaded save — the balance a returning player would have.
+                    var pr = Object.FindAnyObjectByType<JapanMap.Gameplay.Progress.PlayerProgress>();
+                    pr.Wallet.Restore(int.Parse(a[1]));
+                    return true;
+                }
                 default:
                     Log.AppendLine("  unknown command");
                     return true;
@@ -414,6 +451,20 @@ namespace JapanMap.Editor
                 w != null ? w.Speed : 0f, w != null && w.Grounded, w != null && w.Sliding,
                 car != null ? car.transform.position.ToString("0.00") : "-", car != null ? car.Body.linearVelocity.magnitude * 3.6f : 0f,
                 p.CarDistance, p.Prompt, p.Message));
+            var prog = Object.FindAnyObjectByType<JapanMap.Gameplay.Progress.PlayerProgress>();
+            if (prog != null && prog.Data != null)
+            {
+                var sel = prog.Data.Car(prog.Data.selectedCar, false);
+                var spec = car != null ? car.Spec : null;
+                Log.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "  progress store={0} from={1} sparks={2} selected={3} tune={4} setup={5} paint='{6}' owned=[{7}] saves={8} carPower={9:0} carLatG={10:0.000}",
+                    prog.StoreName, prog.LoadedFrom, prog.Data.sparks, prog.Data.selectedCar, sel != null ? sel.tune.Code : "-",
+                    sel != null ? sel.setup.ToString() : "-", sel != null ? sel.paint : "",
+                    string.Join(",", prog.Data.cars.FindAll(c => c.owned).ConvertAll(c => c.id)), prog.SaveCount,
+                    spec != null ? spec.power / 1000f : 0f, spec != null ? spec.latG : 0f));
+            }
+            var gsp = Object.FindAnyObjectByType<JapanMap.Gameplay.Garage.GarageSystem>();
+            if (gsp != null) Log.AppendLine($"  garage open={gsp.IsOpen} shown={gsp.Shown} status='{gsp.Status}'");
             var drift = Object.FindAnyObjectByType<JapanMap.Gameplay.Drift.DriftScorer>();
             var wallet = Object.FindAnyObjectByType<JapanMap.Gameplay.Economy.SparksWallet>();
             if (drift != null)

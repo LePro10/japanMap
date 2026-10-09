@@ -16,6 +16,7 @@ namespace JapanMap.Tests.OnFoot
     /// north (WP2); F gets in; F does not get out while driving faster than 5 km/h; F gets out
     /// beside the stopped car; H brings the car back from far away. All through the keyboard.
     /// </summary>
+    [FreshSave]
     public class PlayerModeTests
     {
         Keyboard _kb;

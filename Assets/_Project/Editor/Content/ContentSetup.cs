@@ -6,7 +6,9 @@ using JapanMap.Gameplay;
 using JapanMap.Gameplay.Discovery;
 using JapanMap.Gameplay.Drift;
 using JapanMap.Gameplay.Economy;
+using JapanMap.Gameplay.Garage;
 using JapanMap.Gameplay.Hud;
+using JapanMap.Gameplay.Progress;
 using JapanMap.Gameplay.Races;
 using JapanMap.Gameplay.Regions;
 using JapanMap.Gameplay.Stunts;
@@ -55,6 +57,24 @@ namespace JapanMap.Editor.Content
             Set(hud, "panelSettings", AssetDatabase.LoadAssetAtPath<PanelSettings>(PlayerSetup.PanelPath));
             Set(hud, "drift", drift);
             Set(hud, "wallet", wallet);
+
+            // Progress first among the readers: it restores the balance and the car loadout before they start.
+            var spawner = Object.FindAnyObjectByType<PlayerCarSpawner>();
+            var progress = Child<PlayerProgress>(group, "Progress");
+            Set(progress, "wallet", wallet);
+            Set(progress, "fleet", AssetDatabase.LoadAssetAtPath<VehicleFleet>(FleetSeed.FleetPath));
+            Set(progress, "tuning", EconomySeed.Tuning());
+            Set(progress, "spawner", spawner);
+            Set(progress, "hud", hud);
+
+            var garage = Child<GarageSystem>(group, "Garage");
+            Set(garage, "settings", Asset<GarageSettings>("GarageSettings"));
+            Set(garage, "progress", progress);
+            Set(garage, "player", player);
+            Set(garage, "spawner", spawner);
+            Set(garage, "hud", hud);
+            Set(garage, "panelSettings", AssetDatabase.LoadAssetAtPath<PanelSettings>(PlayerSetup.PanelPath));
+            Set(garage, "actions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(PlayerSetup.InputPath));
 
             var regions = Child<RegionWatch>(group, "Regions");
             Set(regions, "regions", Regions());

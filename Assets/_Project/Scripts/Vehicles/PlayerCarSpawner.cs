@@ -27,8 +27,14 @@ namespace JapanMap.Vehicles
         public event Action<VehicleController> Spawned;
 
         public VehicleFleet Fleet => fleet;
+        /// <summary>Owned parts, setup and looks of the next car (the progress sets it in its Awake).</summary>
+        public ICarLoadout Loadout { get; set; }
 
-        void Start() => Spawn(string.IsNullOrEmpty(carId) ? fleet.Default : fleet.Get(carId));
+        void Start()
+        {
+            var id = !string.IsNullOrEmpty(carId) ? carId : Loadout?.SelectedCar;
+            Spawn(fleet.Get(id ?? "") ?? fleet.Default);
+        }
 
         /// <summary>Replace the current car with <paramref name="def"/> at the same spot (or at the spawn point).</summary>
         public VehicleController Spawn(VehicleDefinition def)
@@ -42,7 +48,7 @@ namespace JapanMap.Vehicles
                 forward = Current.transform.forward;
                 Destroy(Current.gameObject);
             }
-            var car = Build(def, fleet.tuning, fleet.effects);
+            var car = Build(def, fleet.tuning, fleet.effects, Loadout);
             car.transform.SetParent(transform, true);
             if (snap && roadLocator is IRoadLocator locator && locator.TryNearest(at, forward, 600f, out var p, out var f))
                 car.Place(p, Mathf.Atan2(f.x, f.z) * Mathf.Rad2Deg, fromAbove: 3f);
@@ -55,13 +61,28 @@ namespace JapanMap.Vehicles
             return car;
         }
 
+        /// <summary>Replace the current car with <paramref name="def"/> exactly here (garage bay), not snapped to a road.</summary>
+        public VehicleController SpawnAt(VehicleDefinition def, Vector3 position, float headingDegrees)
+        {
+            if (Current != null) Destroy(Current.gameObject);
+            var car = Build(def, fleet.tuning, fleet.effects, Loadout);
+            car.transform.SetParent(transform, true);
+            car.Place(position, headingDegrees, fromAbove: 2f);
+            Current = car;
+            if (driver != null) driver.Vehicle = car;
+            if (respawn != null) respawn.Vehicle = car;
+            Spawned?.Invoke(car);
+            return car;
+        }
+
         /// <summary>A complete car: physics root, controller, model and visuals.</summary>
-        public static VehicleController Build(VehicleDefinition def, ArcadeTuning tuning, VehicleEffectsSettings effects = null)
+        public static VehicleController Build(VehicleDefinition def, ArcadeTuning tuning, VehicleEffectsSettings effects = null, ICarLoadout loadout = null)
         {
             var root = new GameObject(def.displayName);
             root.AddComponent<Rigidbody>();
             var car = root.AddComponent<VehicleController>();
-            car.Configure(def, tuning);
+            var crawl = -1f;
+            car.Configure(def, tuning, loadout?.SpecFor(def, out crawl), crawl);
             if (def.model != null)
             {
                 var model = Instantiate(def.model, root.transform, false);
@@ -69,6 +90,7 @@ namespace JapanMap.Vehicles
                 foreach (var c in model.GetComponentsInChildren<Collider>()) Destroy(c);
                 root.AddComponent<VehicleVisuals>().Bind(car, model.transform);
                 if (effects != null) root.AddComponent<VehicleEffects>().Bind(car, model.transform, effects);
+                loadout?.Dress(def, model.transform);
             }
             return car;
         }

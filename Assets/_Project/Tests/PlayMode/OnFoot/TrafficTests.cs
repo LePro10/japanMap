@@ -14,6 +14,7 @@ namespace JapanMap.Tests.OnFoot
     /// City traffic (Phase 6.3): the cars spawned by the traffic system drive their lanes without
     /// getting stuck, the player's car can shove one away, and a car stops for a person on the road.
     /// </summary>
+    [FreshSave]
     public class TrafficTests
     {
         [TearDown]

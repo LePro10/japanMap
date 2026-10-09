@@ -16,6 +16,7 @@ namespace JapanMap.Tests.OnFoot
     /// Phase 6.5: the place actors (workers, fishers, visitors, animals) stand on the ground at their
     /// spots, the two walk-in shops exist, and the walker walks into the corner mart with W.
     /// </summary>
+    [FreshSave]
     public class LifeTests
     {
         Keyboard _kb;

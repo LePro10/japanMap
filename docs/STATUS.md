@@ -23,9 +23,16 @@ Bench (`Captures/bench-p7-gate*`): Niedrig ≤ 390 DC / 578 k ✓ (Funaura 388 �
 
 ## Phase 8 — Progression und Speichern (als Nächstes, PLAN.md)
 
-- [x] 1. Sparks-Wirtschaft simuliert (`docs/ECONOMY.md`, D29): Rennfahrer 3 297, gemischt 2 451, Drift geübt 2 206 je 10 min (`Captures/p8-1/`) · [ ] 2. Autohaus, Garage, Tuning (messbar) · [ ] 3. Speichern (CrazyGames + lokal, ASTRA §9) · [ ] 4. Rekorde und Fotos
+- [x] 1. Sparks-Wirtschaft simuliert (`docs/ECONOMY.md`, D29): Rennfahrer 3 297, gemischt 2 451, Drift geübt 2 206 je 10 min (`Captures/p8-1/`) · [x] 2. Garage an der Open Bay (E): Autohaus, Tuning 4×Street/Sport, Setup, Lack/Felgen/Kit; Prüfstand `docs/TUNING.md` (D30, `Captures/p8-2/`) · [ ] 3. Speichern (CrazyGames + lokal, ASTRA §9) · [ ] 4. Rekorde und Fotos
 
 ## Offen / Gefunden
+
+- **Gras in der Open Bay:** Gräser wachsen durch den Hallenboden (Streuung kennt die Halle nicht) — sichtbar in der Garage.
+- **Wackeliger Tastatur-Test:** `PlayerDriveTests.Keyboard_Drives…` 1× von 7 rot („W does not accelerate“); der Touch-Test war
+  ein ausgeschaltetes Test-Gerät (behoben, 3/3 grün).
+- **Nav-Assets** (`Data/Nav/*.asset`, LFS) hat Unity beim Speichern neu geschrieben (andere Größe) — nicht von dieser Sitzung
+  beabsichtigt, nicht committet; vor dem nächsten NavMesh-Bake prüfen.
+- **Probefahrt (ASTRA §6, 90 s jedes Auto)** und die zwei Car-Lab-Lackierungen je Auto (Texturen, Download) fehlen noch.
 
 - **ASTRA-Katalog:** E01 Sakura Starter, E08–E12, E15–E17 und die zwei Lieferfahrten brauchen Straßen/Orte, die nicht gebaut sind
   (Harbour Outer Road, Crosslight, Terrace Track, Breakyard, Market Hall). Die **Markthalle** gehört an die Harbour Outer Road (Start E02/E17)
@@ -41,6 +48,10 @@ Bench (`Captures/bench-p7-gate*`): Niedrig ≤ 390 DC / 578 k ✓ (Funaura 388 �
 - Funaura: die sechs Angler fehlen.
 
 ### Für die Asset-Sitzung (Lagen stehen in den Daten, Import genügt)
+
+- **Garage (Open Bay, Sakura; Stellvertreter: das vorhandene Hallenmodell):** Werkbank 2,0 × 0,8 × 0,9 m; Reifenregal mit
+  Felgen 1,8 × 0,5 × 2,0 m; Lackmuster-Tafel 1,2 × 0,05 × 0,9 m (12 Felder); Motor auf Montagebock 0,9 × 0,6 × 1,0 m;
+  Schild „GARAGE · E“ über dem Tor 2,5 × 0,6 m. Je ≤ 1,5 k. Kein Gras in der Halle (Streu-Ausschluss 19 × 15 m um (572, −478)).
 
 - **Rennen:** Event-Pfeiler 6–8 m (je Art Farbe), Kontrollpunkt-Bogen (Straße + 2 m), Start-Ziel-Banner, Pokal 0,4 m; Needle: Tribüne, Boxen, Brücke. ≤ 2 k.
 - **Schanzen (Stellvertreter: Betonkeil + Kies-Landefläche + weiße Pfeile):** Absprung als Erdwall/Holzrampe je Ort (8–12 m breit, 0,9–3 m

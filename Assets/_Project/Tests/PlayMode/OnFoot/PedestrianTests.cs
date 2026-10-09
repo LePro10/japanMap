@@ -20,6 +20,7 @@ namespace JapanMap.Tests.OnFoot
     /// And a car at speed throws a pedestrian, loses only a little speed, and the person gets up
     /// again on the pavement.
     /// </summary>
+    [FreshSave]
     public class PedestrianTests
     {
         [TearDown]

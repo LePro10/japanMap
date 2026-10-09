@@ -93,6 +93,10 @@ namespace JapanMap.Vehicles
         };
         [Tooltip("Any colour other than the factory paint, once per car.")]
         public int paintPrice = 120;
+        [Tooltip("Each optional rim set (the car lab's wheel options 1 and 2).")]
+        public int wheelPrice = 450;
+        [Tooltip("Each optional body kit (the car lab's aero options 1 and 2).")]
+        public int kitPrice = 900;
 
         public int Price(TuneCategory c, int tier)
         {
