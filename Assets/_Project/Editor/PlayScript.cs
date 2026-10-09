@@ -224,8 +224,21 @@ namespace JapanMap.Editor
                     foreach (var b in cam.GetComponents<Behaviour>())
                         if (b.GetType().Name.Contains("Cinemachine")) b.enabled = false;
                     Map.ViewpointTools.Load().Apply(a[1], cam.transform);
+                    // Life (crowd, traffic, actors) follows the player, not the camera: bring the walker
+                    // along, under the camera (out of the picture), so the viewpoint shows a living place.
+                    var pmv = Object.FindAnyObjectByType<PlayerModeController>();
+                    if (pmv != null && pmv.Current == PlayerModeController.Mode.Walking
+                        && Physics.Raycast(cam.transform.position + Vector3.up * 2f, Vector3.down, out var under, 60f, ~JapanMap.Core.GameLayers.NotGround))
+                    {
+                        pmv.Walker.Place(under.point - cam.transform.forward * 1.5f, cam.transform.eulerAngles.y);
+                    }
                     return true;
                 }
+                case "tier":
+                    // Quality tier for the rest of the run (High / Medium / Low), as the player would pick it.
+                    JapanMap.Core.QualitySystem.SetTier(a[1], save: false);
+                    foreach (var tq in Object.FindObjectsByType<JapanMap.World.TerrainQuality>(FindObjectsSortMode.None)) tq.Apply(a[1]);
+                    return true;
                 case "probe":
                     Probe();
                     return true;
@@ -298,7 +311,13 @@ namespace JapanMap.Editor
                 foreach (var r in shops.GetComponentsInChildren<MeshRenderer>())
                     Log.AppendLine($"  shop {r.transform.parent.name} bounds {r.bounds.center:F1} size {r.bounds.size:F1} visible={r.isVisible}");
             var actorsSystem = Object.FindAnyObjectByType<JapanMap.Gameplay.Life.PlaceActors>();
-            if (actorsSystem != null) Log.AppendLine($"  actors {actorsSystem.Active}/{actorsSystem.Count} active");
+            if (actorsSystem != null)
+            {
+                Log.AppendLine($"  actors {actorsSystem.Active}/{actorsSystem.Count} active");
+                foreach (Transform t in actorsSystem.transform)
+                    if (t.gameObject.activeSelf && w != null && Vector3.Distance(t.position, w.transform.position) < 60f)
+                        Log.AppendLine($"    {t.name} at {t.position:F1} renderer={(t.GetComponentInChildren<Renderer>()?.enabled.ToString() ?? "none")}");
+            }
             var smashSystem = Object.FindAnyObjectByType<JapanMap.Gameplay.Smash.SmashSystem>();
             if (smashSystem != null) Log.AppendLine($"  smash breaks={smashSystem.Breaks} pieces={smashSystem.LivePieces} worst={smashSystem.WorstBreakMs:0.00}ms");
             var traffic = Object.FindAnyObjectByType<JapanMap.Gameplay.Traffic.TrafficSystem>();

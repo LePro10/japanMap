@@ -3,95 +3,77 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-08 · **Phase:** 5 (Orte) abgeschlossen — deine Abnahme offen · **Phase 6 (Zu Fuß und Leben) ist als Nächstes dran**
+**Stand:** 2026-10-09 · **Phase:** 6 (Zu Fuß und Leben) abgeschlossen — deine Abnahme offen · **Phase 7 (Spielinhalt) ist als Nächstes dran**
 
-Phase 2 ✅ · Phase 3 ✅ von dir freigegeben · Phase 4 ✅ (deine Optik-Abnahme offen).
+Phase 2 ✅ · Phase 3 ✅ freigegeben · Phase 4 ✅ (Optik-Abnahme offen) · Phase 5 ✅ (Abnahme offen).
 
-## Phase 5 — Orte ✅
+## Phase 6 — Zu Fuß und Leben ✅
 
-Weg (D19–D21): Layout-Daten des Prototyps → `node Tools/export-places.mjs` → `SourceData/legacy/places/*.json`
-(reproduzierbar: Neu-Export bitgleich) → `Data/Places/<Ort>.asset` (Art → Bibliotheksmodell) → „JapanMap/Places/Import All".
-Bilder: vorher `Captures/p5-before/`, nachher `Captures/p5-after/`, Niedrig `Captures/p5-low/alle.png`,
-Vergleich je Ort `Captures/p5-<ort>-vorher-nachher.png`. Bench `Captures/bench-p5-*-High|Low.txt`, Gesamt `bench-p5-final-*`.
+Entscheidungen D22–D24. Bilder: `Captures/p6-1-vorher-nachher.png`, `p6-2-vorher-nachher.png`, `p6-traffic/near.png`,
+`p6-smash/seq.png`, `p6-5-nachher.png`; Blickpunkte Hoch/Niedrig `Captures/p6-gate/hoch.png`, `niedrig.png`.
 
-- [x] **Sakura Commons** — Start wieder hier (D19); Petal Motors + Kies-Ausstellungsfläche, Open Bay, Tafel, Laternen, Kirschring
-- [x] **Tokyo** — 2 685 Häuser aus dem Prototyp-Generator, 3 321 Fassadenmodule instanziert, Hüllen mit Fensterraster (D20); 717 Straßenmöbel nach Straßenklasse, Automaten, Parks
-- [x] **Funaura** — Kaiplatte, 11 Bootshäuser, Molen + 2 Feuer, Steg, Slip, Boote; eigene Zufahrt (D21)
-- [x] **Koedo** — Kura-Straßen A + B, Brauerei, Toki no Kane, Kanal mit Wasser und Ishigaki-Ufern, Schrein
-- [x] **Kiso-Juku** — 42 Häuser an der Passstraße, Honjin, Kido-Tore, Hangtreppe, Wasserrad
-- [x] **Gassho & Stillwater** — 20 Strohdachhäuser, Mill Lane bis Funaura, Mühlhaus + Teich, Wasserräder, Hasa
-- [x] **Bellwood-Schrein** — Honden, Pagode, Mauer, Komainu, Zedernallee am Sandō (Regel 15)
-- [x] **Needle Circuit** — Boxenhof, Leitplanken an engen Kurven, Lichter an der Geraden
-- [x] Dichte: Vegetation in allen Orten freigeräumt; Reisfeldwasser unter Ortsstraßen/Häusern trocken
+- [x] 1. **Zu Fuß:** Start in Sakura, Auto 4 m nördlich. Laufen 4,4 / Rennen 7,5 m/s, Sprung ~1 m, Rutschen (C), Kamera
+  (Cinemachine), **F** ein/aus (aus nur < 5 km/h), **H** Auto rufen. Touch-Knöpfe. Figur = Stellvertreter aus Kästen.
+- [x] 2. **Fußgänger** auf NavMesh (40, Niedrig 24) um den Spieler; Rückstoß (fliegen, Auto −5 %, aufstehen).
+- [x] 3. **Verkehr:** 6 NPC-Autos (Niedrig 3) in Tokyo, linke Spur, halten vor Leuten/Autos, wegschiebbar. Kästen.
+- [x] 4. **Zerstörbares:** 870 Pfosten/Laternen, 142 Automaten, 88 Gestelle/Zäune, 75 Hütten zerfallen in Teile. Bäume noch nicht.
+- [x] 5. **Begehbare Läden** (Diner, Corner Mart in Tokyo) und **Akteure**: Sakura-Besucher, Funaura-Fischer/Katzen,
+  Stillwater-Arbeiter/Ziegen/Hühner.
 
-**Abnahme (gemessen, Editor M4, 10 Blickpunkte):** Niedrig ≤ 347 Draw Calls / ≤ 572 k Dreiecke ✓ (Budget 400 / 800 k).
-Hoch ≤ 1 289 Draw Calls ✓, Dreiecke 1,6–6,8 M ✗ an 6 von 10 Punkten (Budget 3 M) — Orte selbst +0,03…1,9 M, der Rest Wald und
-Reisgras (an `start`/`pass`/`reisfeld` gleich wie Phase 4). Konsole 0 Fehler. Tests: EditMode 59/59, PlayMode 140/144 (4 auf Abruf).
-Web: 0 Fehler, 47,69 MB; Browser-fps zuletzt Niedrig 178, Hoch 49 — **unter Last gemessen** (Blender lief, siehe unten).
+**Abnahme (gemessen):** Fußgänger-Test 10 min Simulation an 6 Orten: **45 987 Stichproben, 0 auf der Fahrbahn**
+(`Captures/pedestrian-10min.txt`). Zerstörung: **Bruch ≤ 0,91 ms, Physik ≤ 0,36 ms mit vollem Pool (64 Stücke)**, Budget 2 ms ✓
+(`Captures/smash-cost.txt`). Verkehr 1 min: 97–100 % auf der Fahrbahn. Tests EditMode 62/62, PlayMode 158/162 (4 auf Abruf),
+Konsole 0 Fehler. Bench Niedrig ≤ 379 DC / ≤ 474 k ✓; **Hoch sakura-hof 1 503 DC (Budget 1 500, +0,2 %)** ✗ — Figuren mit
+Schatten im Hof, vor Phase 6 schon 1 471 → Phase 10 (Schatten-Kaskaden). Web 49,34 MB (+1,6 MB NavMesh), Start 0,8 s,
+Niedrig 305 fps (Blender lief parallel).
 
-## Phase 6 — Zu Fuß und Leben (als Nächstes)
+## Phase 7 — Spielinhalt (als Nächstes, PLAN.md)
 
-- [x] 1. **Zu Fuß** (D22): Start in Sakura, Auto 4 m nördlich. WASD/Stick, Shift rennen, Leertaste springen, **C rutschen**,
-  Maus (Klick fängt den Zeiger) / rechter Stick schaut; **F** ein/aus (aus nur < 5 km/h), **H** Auto rufen. Touch: Stick,
-  Wischen = Blick, JUMP/SLIDE/CAR/CALL. Figur aus Grundformen (vorläufig). Bench Niedrig Sakura 290 DC (vorher 275).
-  Werkzeug neu: `node Tools/play.mjs <ordner> "<skript>"` spielt das echte Spiel mit Tasten und macht Bilder.
-- [x] 2. **Fußgänger** (D23) auf NavMesh, 48 (Niedrig 24) um den Spieler. **Abnahme-Test 10 min: 55 515 Stichproben, 0 auf
-  der Fahrbahn** (`PedestrianTests`, Bericht `Captures/pedestrian-10min.txt`). Rückstoß: wegfliegen, Auto −5 %, wieder aufstehen.
-  Bench Hoch sakura-hof 1 492 DC (Budget 1 500, knapp), Niedrig ≤ 337. Web 49,32 MB (+1,6), Niedrig 308 fps (Blender lief).
-- [x] 3. **Verkehr**: 6 NPC-Autos (Niedrig 3) auf Tokyos Straßen um den Spieler, linke Spur, 40 km/h, biegen an Straßenenden ab,
-  halten vor Autos/Leuten, sind echte Fahrphysik-Körper (wegschiebbar). Kasten-Stellvertreter (vorläufig). Tests: 1 min 96–99 % auf
-  der Fahrbahn, Wegschieben, Anhalten vor einer Person. Bench Hoch sakura-hof 1 499 (am Budget), Niedrig ≤ 341. Web 49,32 MB, 321 fps.
-- [x] 4. **Zerstörbares** (D24): 870 Pfosten/Laternen, 142 Automaten, 88 Gestelle/Zäune/Bänke, 75 Hütten zerfallen in Teile
-  (Kästen, vorläufig), Auto fährt weiter (40 → 41 km/h nach Laterne), Teil kommt nach 20 s außer Sicht zurück. **Kosten gemessen:**
-  Bruch ≤ 1,6 ms, Physik ≤ 0,7 ms mit vollem Pool (64 Stücke), Budget 2 ms ✓ (`Captures/smash-cost.txt`). Bäume noch nicht.
-  Bench Hoch ≤ 1 431, Niedrig ≤ 301. Web 49,32 MB, Niedrig 356 fps.
-- [x] 5. **Begehbare Läden**: Komorebi-Diner und Kōji Corner Mart in Tokyo (Prototyp-Grundrisse über `export-places interiors`,
-  Wände/Theken/Hocker als Kollider, auch im NavMesh), man läuft per W hinein (Test). **Akteure** aus den Ortsdaten: Sakura 4 Besucher
-  + 2 Sitzende, Funaura 11 Fischer + 6 Katzen, Stillwater 8 Arbeiter + 2 Ziegen + 4 Hühner; arbeiten/schauen/picken, Leute umfahrbar.
-  Alles Stellvertreter. Bench Niedrig ≤ 379 ✓; **Hoch sakura-hof 1 503 (Budget 1 500, +0,2 %)** → Phase 10 (Schatten-Kaskaden).
-  Web 49,34 MB, Niedrig 305 fps. Ladeninhalt ohne Schilder/Waren (Asset-Liste).
+- [ ] 1. Drift-Wertung (Kette, Multiplikator bis ×5, Driftzonen ×2)
+- [ ] 2. Zonen/Regionen (8), „Region erkundet" + Belohnung
+- [ ] 3. Entdeckungen (24) statt anonymer Pickups, Easter Eggs
+- [ ] 4. Schanzen und Stunts (Fundament statt Geländeauflage), Stunt-Modus
+- [ ] 5. Rennen mit KI-Gegnern (Coast Loop, Tōge, Neon Circuit, Ring, Drift Run); Abnahme: KI gegen KI ohne Hängenbleiben
 
 ## Offen / Gefunden
 
-- **Deine Kartenpunkte:** Höhen an Einmündungen ✓ für alle neuen Ortsstraßen. **Nicht erledigt:** Kuppen-Knicke und Höhenstufen der alten Straßen, Stadtplatte ohne Böschung (Felskante neben der Platte, `Captures/look-viadukt.png`), treppige Reisfeldränder. Hochstraße: Leitplanken sind auf allen 204 Viadukt-Rändern schon da, eine geschlossene Brüstungsmauer fehlt (kein Modell).
-- **Browser-fps** zuletzt Hoch 49 statt 134, Niedrig 178 statt ~380 — gemessen, während Blender lief; Editor-Bench am selben Punkt unverändert. Ursache ungeprüft → bei ruhigem Rechner `node Tools/smoke.mjs --gpu` wiederholen; bleibt es, gegen einen Build von `9500ab6` messen.
-- **Hoch kostet viel:** Wald-Schatten (Instanzen werden nicht je Kaskade aussortiert), lodBias 2, Reisgras (Gassho-Tal ohne Ort 6,4 M) → Phase 10.
-- **Download 47,7 MB** (Ziel Handy 20 MB; Phase 5 +4,7 MB). Autos 71 MB unkomprimiert → Addressables, Phase 10.
-- `Game.unity` 7,1 MB durch 2 685 Tokyo-Kollider → zur Laufzeit aus `PlaceInstanceData` erzeugen.
-- Sakura Commons: `commons-drive` beginnt als Asphaltkante in der Schale (Startbild).
-- Fahrtests nur im Batchmodus rot (`PlayerDriveTests`): Ursache wohl gefunden (Input System schaltet die Tastatur ohne
-  Fenster-Fokus ab → Tests setzen `IgnoreFocus`); **im Batchmodus noch ungeprüft**. Löcher in Gebäude-FBX (Asset-Sitzung). Rest aus Phase 3/4: Leitplanken zerbrechen nicht, Fels ohne Triplanar, Wasser ohne Tiefe → Phase 7/10.
+- **Kartenpunkte:** Kuppen-Knicke/Höhenstufen alter Straßen, Stadtplatte ohne Böschung, treppige Reisfeldränder; Viadukt-Brüstungsmauer (Modell).
+- **Sakura:** `commons-drive` beginnt als Asphaltkante in der Schale (Startbild) — nicht behoben (Straßen-Import, nicht Phase 6);
+  Fußgänger und Verkehr meiden sie bereits (NavMesh schneidet Fahrbahnen aus, Verkehr schließt sie aus).
+- **Tokyo-Kollider** bleiben GameObjects (das NavMesh-Backen braucht sie; Game.unity 10,3 MB, durch Phase 6 nicht gewachsen).
+- **Browser-fps** nur mit laufendem Blender gemessen → bei ruhigem Rechner `node Tools/smoke.mjs --gpu` wiederholen.
+- **Hoch kostet viel:** Wald-Schatten, lodBias 2, Reisgras, kleine Figuren in allen Kaskaden → Phase 10. **Download 49,3 MB** (Handy-Ziel 20 MB) → Phase 10.
+- Fahrtests im Batchmodus: Ursache wohl behoben (Tastatur ohne Fokus), **im Batchmodus ungeprüft**. Bäume zerbrechen nicht (Phase 7).
+- Funaura: die sechs Angler an den Molenfeuern fehlen (Plätze hängen am Lichter-Layout des Prototyps). Stillwater-Hafen (Tideglass) gibt es noch nicht.
 
-### Für die Asset-Sitzung (fehlende Modelle; Lagen stehen in den Daten, Import genügt)
+### Für die Asset-Sitzung (Lagen stehen in den Daten, Import genügt)
 
-- Sakura: Autohaus Petal Motors (22 × 14 m), Werkstatt Open Bay (18 × 14 m), **leichte Ausstellungsautos** (≤ 8 k Dreiecke; die Fahrmodelle haben 120 k).
-- Tokyo: Hochhäuser 40–154 m (41 Stück), Kino-/Hotel-/Markthallen-Fronten, Holz-Izakaya für Yokochō. Koedo: 2 Kanalbrücken, 6 moderne Wohnhäuser, Brauhalle.
-- Funaura: Kei-Truck. Needle: Tribüne, Boxengebäude, Start-Ziel-Brücke, Reifenstapel. Viadukt: Brüstungsmauer.
-- **Verkehrsautos** (Phase 6): 3–4 leichte Stadtautos (Kei, Limousine, Taxi, Lieferwagen), ≤ 5 k Dreiecke, Maße wie Hachi
-  (4,1 × 1,7 m), Räder als eigene Objekte. Bis dahin Kasten-Stellvertreter (`TrafficSystem.AddBody`).
-- **Vorzerlegte Modelle** (Phase 6): Laterne (3 Teile: Mast, Arm, Leuchte), Automat (Gehäuse, Tür, 4–6 Dosen-/Flaschenkisten),
-  Holzgestell/Zaun (Latten), Schuppen (Wände, Dach, Bretter) — je ≤ 1 k Dreiecke pro Teil, gleiche Ursprünge wie die ganzen Modelle.
-- **Leute und Tiere** (Phase 6): 4–6 Passanten-Typen (Büro, Schuluniform, Jacke, älter), Arbeiter (Fischer mit Gummistiefeln,
-  Bauer mit Hut), sitzende Pose; Katze (0,45 m), Ziege (1 m lang), Huhn (0,35 m); ≤ 3 k Dreiecke, Skinned, Animationen Gehen/Stehen/
-  Arbeiten/Picken. **Ladeninnere:** Diner (Theke, Tische, Bänke, Speisekarte), Mart (Regale mit Waren, Kühlregal, Kasse).
-- **Spielfigur** (Phase 6): 1,72 m, Fahrerin/Fahrer der späten 80er (Jacke, Hose), ≤ 6 k Dreiecke, Ursprung zwischen den Füßen,
-  +Z vorn; Animationen Stehen, Gehen (4,4 m/s), Rennen (7,5 m/s), Sprung, Rutschen (Hocke, Hüfte ~0,4 m). Bis dahin `StandInFigure`.
+- **Spielfigur:** 1,72 m, Fahrer:in späte 80er, ≤ 6 k Dreiecke, Ursprung zwischen den Füßen, +Z vorn; Stehen, Gehen, Rennen, Sprung, Rutschen.
+- **Leute/Tiere:** 4–6 Passanten, Fischer, Bauer, sitzende Pose; Katze 0,45 m, Ziege 1 m, Huhn 0,35 m; ≤ 3 k, Skinned.
+- **Verkehrsautos:** 3–4 Stadtautos (Kei, Limousine, Taxi, Lieferwagen) ≤ 5 k, 4,1 × 1,7 m, Räder eigene Objekte.
+- **Vorzerlegt:** Laterne (3 Teile), Automat, Holzgestell/Zaun, Schuppen — je Teil ≤ 1 k. **Ladeninnere:** Diner, Mart (Regale, Waren, Kasse).
+- Sakura: leichte Ausstellungsautos (≤ 8 k). Koedo: 2 Kanalbrücken, Brauhalle. Needle: Tribüne, Boxen, Start-Ziel-Brücke.
 
 ## Für dich (Mensch)
 
-1. **Dein laufendes Spiel:** Ich habe aus Versehen neu kompiliert, während Play lief → das Auto wirft Fehler. Bitte **Play stoppen und aus `Boot` neu starten**. (Ist behoben: Werkzeuge kompilieren nie mehr im Play-Modus.)
-2. **Abnahme Phase 5 (~15 Min.):** `Boot` → ▶ Play. Du startest jetzt in **Sakura Commons** (wie im Prototyp), Blick nach Osten.
-   - Links die Holzhalle „Petal Motors" mit Kieshof, die Tafel, Laternen, Kirschring. Fahr Richtung Westen/Norden → **Tokyo**: Neon-Straßen, Laternen, Bäume auf Boulevards. Würde ich hier fahren wollen?
-   - Schneller per Bild: `Captures/p5-<ort>-vorher-nachher.png` für sakura, tokyo, funaura, koedo, kiso, gassho, tempel, needle; Handy-Stufe `Captures/p5-low/alle.png`.
-   - Wichtigste Fragen: Wirken **Funaura** (Bootshäuser am Wasser) und **Gassho** (Strohdächer zwischen Reisfeldern) wie im Prototyp, nur schöner? Stören die **Stellvertreter** (Autohaus = Gasthaus, Garagen = Blechhallen)?
-3. **Freigabe Asset-Stile „Scatter" und „Flora"** (`ArtSource/STATUS.md`): Tafel, Nobori, Jizō, Gräber, Tetrapoden, Leitpfosten, Gewächshäuser, Mauern — und die **echten Bäume**. Sag „freigegeben", dann trage ich sie ein und importiere.
-4. **Browser-Probe bei ruhigem Rechner** (Blender zu): `node Tools/smoke.mjs --gpu` — ich brauche die fps-Zahl.
-5. Noch offen aus früher: Optik-Abnahme Phase 4; Hachi-Heckscheibe (Phase 3); zwölf alte Zweige `agent/*`.
-6. Commits liegen lokal; **Push** nur, wenn du es sagst.
+1. **Asset-Aufgabe 5c freigeben?** Die Asset-Sitzung ist fertig (18 Hochhäuser, Kino/Hotel/Markthalle, Kaki, Weide, Kei-Truck;
+   `ArtSource/STATUS.md`). Sag „5c freigegeben", dann importiere ich und setze sie in Tokyo/Funaura ein.
+2. **Abnahme Phase 6 (~15 Min.):** `Boot` → ▶ Play. Du stehst **zu Fuß** in Sakura, das Auto 4 m vor dir.
+   - **WASD** laufen, **Shift** rennen, **Leertaste** springen, **C** beim Rennen = rutschen. **Mausklick** fängt die Maus → umschauen
+     (Esc gibt sie frei; alternativ rechte Maustaste halten). Mausrad = Abstand.
+   - **F** am Auto: einsteigen. Fahren, anhalten, **F**: aussteigen (über 5 km/h geht es absichtlich nicht).
+   - Weglaufen, **H**: das Auto kommt zu dir. Fühlt sich das Laufen/Rutschen gut an? Ist die Kamera angenehm?
+   - Nach Norden/Westen nach **Tokyo**: Fußgänger auf den Gehwegen, ein paar Autos. Fahr eine **Laterne** oder einen
+     **Automaten** um (ab ~25 km/h) und einen Fußgänger (fliegt, steht wieder auf). Schieb ein NPC-Auto weg.
+   - **Läden:** Diner an der Nishi-Shinjuku-Avenue (Westrand, Höhe Kabukichō), Corner Mart an der Aoi-dōri neben dem roten Tor — hineinlaufen.
+   - Handy/Tablet: Stick links, wischen rechts = Blick, JUMP/SLIDE, oben CAR/CALL.
+3. **Browser-Probe bei ruhigem Rechner** (Blender zu): `node Tools/smoke.mjs --gpu` — ich brauche die fps-Zahl.
+4. Noch offen aus früher: Abnahme Phase 5, Optik Phase 4, Asset-Stile „Scatter"/„Flora", Hachi-Heckscheibe, alte Zweige `agent/*`.
+5. Commits liegen lokal; **Push** nur, wenn du es sagst.
 
 ## Web-Build
 
 | Datum | Typ | Gesamt | wasm | data | Boot (lokal) |
 |---|---|---|---|---|---|
-| 2026-10-08 | Release, Phase 4 (Look, Vegetation, 158 Modelle) | 43,01 MB | 5,53 MB | 37,29 MB | 0,8–1,1 s |
 | 2026-10-08 | Release, Phase 5 (8 Orte, 164 Modelle) | 47,69 MB | 5,53 MB | 41,96 MB | 1,2–1,3 s |
+| 2026-10-09 | Release, Phase 6 (zu Fuß, NavMesh, Leben) | 49,34 MB | 5,73 MB | 43,40 MB | 0,8 s |

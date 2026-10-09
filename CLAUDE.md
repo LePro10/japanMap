@@ -45,7 +45,7 @@ Alle einmal ausgeführt (2026-10-07). Einrichtung einmalig: `cd Tools && npm ins
 | Zweck | Editor **zu** (Batchmode) | Editor **offen** (Unity-MCP) |
 |---|---|---|
 | Prüfen: kompilieren, EditMode + PlayMode | `node Tools/verify.mjs` (`--edit` nur EditMode) — eine Zeile GREEN/RED, ~15 s | `node Tools/unity-test.mjs EditMode\|PlayMode [Gruppe]`; C# ausführen: `node Tools/unity-exec.mjs datei.cs` |
-| Bild der Main Camera → `Captures/` | `node Tools/capture.mjs [--scene … --out …]`, `--viewpoint <name\|all>` | `execute_menu_item` „JapanMap/Capture Main Camera"; `ViewpointTools.Capture("pass")` |
+| Bild der Main Camera → `Captures/` | `node Tools/capture.mjs [--scene … --out …]`, `--viewpoint <name\|all>` | `execute_menu_item` „JapanMap/Capture Main Camera"; `ViewpointTools.Capture("pass")`; **echtes Spiel mit Tasten:** `node Tools/play.mjs <ordner> "<skript>"` |
 | Web-Build + `Builds/Web/size-report.txt` | `node Tools/build-web.mjs` (`--dev` mit F1-Overlay) | Menü „JapanMap/Build Web (Release)" |
 | Rauchprobe im Headless-Chrome; ausliefern | `node Tools/smoke.mjs` (baut nicht); `--gpu` = echte GPU + FPS, `--quality Low`; `node Tools/serve-web.mjs` → Port **8090** (Handy: `--lan`) | — |
 | Karte/Look/Modelle neu importieren | `node Tools/unity-run.mjs <Klasse.Methode>` | Menüs „JapanMap/Map/Import All“, „Look/Apply“, „Art/Import Library“, „Art/Build Showroom“ |

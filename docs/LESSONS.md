@@ -7,6 +7,11 @@
 
 | Datum | Phase | Was passiert ist | Vorkehrung (wo) | Art |
 |---|---|---|---|---|
+| 2026-10-09 | 6 | Blickpunkt-Bilder und Bench zeigten keine Arbeiter/Leute: das Leben folgt dem Spieler, nicht der Kamera | `play.mjs view` nimmt die Figur mit; Skill `unity-verify`: Kosten am Ort per `place` + `stats` | Werkzeug |
+| 2026-10-09 | 6 | Zwei ScriptableObjects in einer Datei: Assets verloren ihr Skript, Läden wurden still nicht gebaut; zwei UIDocuments auf einem Objekt → NullReference | `ScriptFileTests` (eine Klasse je Datei); Panels als Unterobjekte; `play.mjs` meldet Konsolenfehler des Laufs | Test |
+| 2026-10-08 | 6 | Tastatur-Tests mal grün, mal rot (Unity im Hintergrund sperrt die Tastatur; Gerät kam deaktiviert) | Tests/PlayScript: `IgnoreFocus` + Game-View-Fokus aus, Gerät danach anlegen und einschalten; Skill `unity-verify` | Test |
+| 2026-10-08 | 6 | Werkzeuge maßen alten Code, liefen in den Testläufer oder warteten 3 min auf Kompilierfehler | `lib/fresh.mjs` kompiliert vor bench/play/exec/test, wartet bis 20 s auf Edit-Modus; `play.mjs` bricht bei Kompilierfehlern ab; neu `play.mjs` (echtes Spiel, Tasten, Bilder, Proben) | Werkzeug |
+| 2026-10-08 | 6 | Fußgänger auf der Fahrbahn (Gelände ragt durch Straße); Szene +3,7 MB durch URP-Lichtdaten an 385 Instanzen; Python-Ersetzung mit leerem Suchtext | NavMesh schneidet Fahrbahnen nach Straßennetz aus + 10-min-Test; Bibliotheks-Lichter mit URP-Daten (`LibraryTests`); `assert old in s` | Test |
 | 2026-10-08 | 5 | `unity-exec`/`unity-test` liefen dreimal auf altem Code (Änderung nicht kompiliert); erste Abhilfe kompilierte während eines laufenden Spiels (NullReference) | `Tools/lib/fresh.mjs`: kompiliert vor jedem Aufruf, nie im Play-Modus | Werkzeug |
 | 2026-10-08 | 5 | Brüstungen gebaut für einen offenen STATUS-Punkt, der längst erledigt war (Leitplanken auf allen Viadukten) | Skill `unity-verify`: offenen Punkt erst im Bild bestätigen, dann bauen | Skill |
 | 2026-10-08 | 5 | Leitplanken als Einzelstücke mit Lücken: Modelle mit Ursprung am Ende (Zäune, Planken) wurden symmetrisch vermessen und versetzt gesetzt | Echte Grundfläche + Mittelpunkt je Modell (`CentreOf`), Platzierung gleicht den Versatz aus; Prüfungen und Einebnen nehmen den Mittelpunkt | Werkzeug |
@@ -35,13 +40,9 @@
 | 2026-10-07 | 2 | Warnung „All SubShaders stripped“ war nur notiert, nicht geprüft — ein gestrippter Shader ist im Browser unsichtbar, im Editor aber da | `WebBuild` sammelt die Warnungen und scheitert bei unbekannten Shadern (`WebBuildTests`) | Werkzeug |
 | 2026-10-07 | 1 | Editor per `kill` beendet, MCP-Server lief verwaist weiter; der nächste Editor meldete sich nicht an | Skill `unity-verify`, Falle "Editor schließen" | Skill |
 | 2026-10-07 | 1 | Web-Player liefert „Draw Calls"/„Batches" als 0, obwohl gezeichnet wird — eine falsche Budgetzahl | Overlay zeigt „n/a" (`StatsOverlay.Snapshot.Count`), Test in `FrameTimeStatsTests` | Test |
-| 2026-10-07 | 1 | Capture im Editor ohne gespeicherte Szene schrieb `Captures/.png` | Fallback-Name in `Capture.FromMenu` | Werkzeug |
-| 2026-10-07 | 1 | Rauchprobe meldete Unitys absichtlich abgebrochenen Brotli-Stream als Fehler | Filter nur für `ERR_ABORTED` auf `*.unityweb` in `Tools/smoke.mjs` | Werkzeug |
-| 2026-10-07 | 1 | Web-Server (launch.json) und Unity-MCP wollten beide Port 8080 | `Tools/serve-web.mjs` auf 8090, launch.json angepasst | Werkzeug |
+| 2026-10-07 | 1 | Capture ohne gespeicherte Szene schrieb `Captures/.png`; Web-Server und MCP wollten Port 8080; Rauchprobe hielt Unitys abgebrochenen Brotli-Stream für einen Fehler | Fallback-Name in `Capture.FromMenu`; `serve-web.mjs` auf 8090; Filter `ERR_ABORTED` auf `*.unityweb` in `smoke.mjs` | Werkzeug |
 | 2026-10-07 | 1 | Editor per AppleScript schließen griff nicht; Unity-MCP verbindet sich nicht in eine laufende Sitzung; Batch-PlayMode rendert nicht (Zähler 0) | Skill `unity-verify`, „Bekannte Fallen" | Skill |
-| 2026-10-07 | 0 | Prototyp-Anleitung wuchs auf 48 000 Tokens Fehlergeschichten und wurde bei jedem Start geladen | `CLAUDE.md` hat Budget 150 Zeilen; Lehren nur hier, als Zeile | Regel |
-| 2026-10-07 | 0 | Vier KI-Werkzeuge und zwölf parallele Agent-Zweige erzeugten Widersprüche | `CLAUDE.md` Regel 13: ein Agent zur Zeit auf `master` | Regel |
-| 2026-10-07 | 0 | Doku widersprach dem Code (`npm run roads` „ohne `--wp6`", obwohl längst mit) | Phasen-Tor Schritt 5: Doku-gegen-Code-Prüfung | Ablauf |
+| 2026-10-07 | 0 | Prototyp: 48 000 Tokens Anleitung bei jedem Start, zwölf parallele Agent-Zweige, Doku gegen Code widersprüchlich | `CLAUDE.md` ≤ 150 Zeilen, Lehren nur hier; Regel 13 ein Agent zur Zeit; Phasen-Tor Schritt 5 Doku-gegen-Code | Regel |
 | 2026-10-07 | 0 | Prototyp baute Physik, Kollision und Renderweg selbst (≈ 29 000 Zeilen, Hauptquelle der Bugs) | `CLAUDE.md` Regel 3: Standard vor Eigenbau, Begründung in DECISIONS.md | Regel |
 | 2026-10-08 | 3 | Rigidbody vor dem Collider gebaut → fast keine Trägheit, Auto drehte bei jedem Federstoß wild | `VehicleController.Build`: `ResetInertiaTensor()` nach dem Collider; Prüfstand `VehicleBenchTests` misst es mit | Test |
 | 2026-10-08 | 3 | Landung aus 6 m: ContinuousDynamic fing den 21-cm-Schritt nicht ab; Speculative bremste dafür an Fahrbahnkanten (118 → 40 km/h) | `ArcadeTuning.collisionMode` + `bodyContactOffset` als Regler, beide gemessen; Tests Landung + Ringfahrt | Test |
@@ -53,14 +54,6 @@
 | 2026-10-08 | 3 | MCP-Werkzeuge fehlten, weil der Editor nach Sitzungsstart kam | HTTP-Helfer wie im Skill `unity-verify` beschrieben; Skill um fertiges Skript ergänzt | Skill |
 | 2026-10-08 | 3 | Prototyp-Prüfstände ließen sich nicht starten (kein `three`), Zeit fürs Herausfinden | Rezept im Skill `legacy-port`; Ausgaben in `SourceData/bench/` | Skill |
 | 2026-10-08 | 3 | Mensch: Auto rammt mit der Front in Senken/Kanten und stoppt abrupt | Kollisionsbox höher und kürzer (`ArcadeTuning.bodyUnderLift`, `bodyLengthShare`); Ringfahrt zählt harte Karosserie-Stöße (3 → 0) | Test |
-| 2026-10-08 | 6 | Zwei UIDocuments auf einem Objekt → NullReference in Awake; der Spiel-Lauf sah gut aus, die Konsole las ich nicht | `Tools/play.mjs` leert die Konsole vorher und meldet Fehler des Laufs selbst; jedes Panel hat ein eigenes Unterobjekt | Werkzeug |
-| 2026-10-08 | 6 | Szene speichern hängte URP-Lichtdaten an 385 Laternen-Instanzen (Game.unity +3,7 MB) | `LibraryImporter` setzt `UniversalAdditionalLightData` am Prefab; `LibraryTests` prüft es | Test |
-| 2026-10-08 | 6 | Spielabläufe (Einsteigen, Rutschen) nur per Hand prüfbar | `node Tools/play.mjs <ordner> "<skript>"`: echtes Spiel ab Boot, virtuelle Tasten/Maus, Bilder, Zustandsproben | Werkzeug |
-| 2026-10-08 | 6 | Tastatur-Tests mal grün, mal rot: Input System sperrt die Tastatur, wenn Unity nicht vorne ist | Tests und PlayScript setzen `backgroundBehavior = IgnoreFocus` und Game-View-Fokus aus | Test |
-| 2026-10-08 | 6 | Bench maß alten Code („Schatten aus“ ohne Wirkung) | `bench.mjs` kompiliert vorher (`lib/fresh.mjs`); `play.mjs` bricht bei Kompilierfehlern sofort ab statt 3 min zu warten | Werkzeug |
-| 2026-10-08 | 6 | Fußgänger auf Fahrbahn, wo Gelände durch die Straße ragt | NavMesh schneidet Fahrbahnen exakt nach dem Straßennetz aus; 10-min-Test + `RoadNetworkTests` | Test |
-| 2026-10-08 | 6 | Python-`replace` mit leerem Suchtext zerschoss eine Datei | Ersetzungen mit `assert old in s` und Länge > 0; Diff-Größe vor dem Weiterarbeiten ansehen | Ablauf |
-| 2026-10-08 | 6 | Bench direkt nach Tests: „already in play mode“, 10 min ohne Bericht | `lib/fresh.mjs` wartet bis 20 s auf den Edit-Modus, bevor es „Mensch spielt“ annimmt (bench, play, exec, test) | Werkzeug |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

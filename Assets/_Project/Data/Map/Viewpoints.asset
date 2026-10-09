@@ -201,3 +201,15 @@ MonoBehaviour:
     position: {x: -500, y: 161.22272, z: -1000}
     lookAt: {x: -620, y: 24.136314, z: -720}
     note: 'Needle Circuit from the sea: straight, Sea Bend, esses, hairpin'
+  - name: laden-diner
+    position: {x: 398, y: 31.202347, z: -22}
+    lookAt: {x: 418, y: 30.602346, z: -29}
+    note: 'Phase 6: walk-in diner from the Nishi-Shinjuku pavement (runtime-built, capture in play)'
+  - name: laden-mart
+    position: {x: 575, y: 31.002346, z: -56}
+    lookAt: {x: 579, y: 30.202347, z: -39}
+    note: 'Phase 6: corner mart, open south front (runtime-built, capture in play)'
+  - name: stillwater-hof
+    position: {x: -1247, y: 29.65991, z: -368}
+    lookAt: {x: -1248, y: 27.932133, z: -386}
+    note: 'Phase 6: Stillwater workers, goats, chickens (runtime actors: put the walker there first, capture in play)'
