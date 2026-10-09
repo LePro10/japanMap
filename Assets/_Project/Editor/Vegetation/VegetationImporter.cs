@@ -487,6 +487,15 @@ namespace JapanMap.Editor.Vegetation
                 foreach (var k in place.clearCircles) c.Add(new Vector3(k[0], 0, -k[1]), k[2]);
                 foreach (var r in place.clearRects) c.Add(Rect.MinMaxRect(r[0], -r[3], r[2], -r[1]));
             }
+            // Ramps with their 40 m run-up and landing: a chain of circles along the jump line.
+            var ramps = AssetDatabase.LoadAssetAtPath<JapanMap.Gameplay.Stunts.RampSet>(Content.RampBuilder.Path);
+            if (ramps != null)
+                foreach (var r in ramps.ramps)
+                {
+                    var radius = Mathf.Max(r.width, r.landingWidth) * 0.5f + 4f;
+                    for (var s = -40f; s <= r.Length + 6f; s += radius * 0.8f)
+                        c.Add(new Vector3(r.start.x, 0f, r.start.y) + r.Forward * s, radius);
+                }
             return c;
         }
 

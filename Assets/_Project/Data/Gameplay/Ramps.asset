@@ -1,0 +1,107 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bdc6d9ec684b40f0b2bcce895fd9aa5, type: 3}
+  m_Name: Ramps
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Stunts.RampSet
+  ramps:
+  - id: petal-hop
+    title: Petal Hop
+    start: {x: 685, y: -607}
+    yaw: 180
+    width: 10
+    height: 1
+    riseLength: 14
+    tableLength: 0
+    downLength: 0
+    landingLength: 30
+    landingWidth: 14
+    speedHint: "55\u201375 km/h"
+    baseY: 16.544949
+    baseSlope: 0.011894361
+    note: 'ASTRA: S + (95, 45) launching south; that spot is the ring road. Moved 69 m south-east, still south.'
+  - id: breakyard-table
+    title: Breakyard Table
+    start: {x: -1110, y: -650}
+    yaw: 135
+    width: 12
+    height: 2.2
+    riseLength: 18
+    tableLength: 16
+    downLength: 18
+    landingLength: 20
+    landingWidth: 16
+    speedHint: "70\u201395 km/h"
+    baseY: 33.631306
+    baseSlope: -0.016634643
+    note: "ASTRA (\u22121030, 580) launching east; paddies there. Moved 106 m, launching south-east."
+  - id: needle-service-bank
+    title: Needle Service Bank
+    start: {x: -792, y: -614}
+    yaw: -90
+    width: 12
+    height: 3
+    riseLength: 24
+    tableLength: 0
+    downLength: 0
+    landingLength: 30
+    landingWidth: 18
+    speedHint: "90\u2013120 km/h"
+    baseY: 24.259594
+    baseSlope: 0.0055542397
+    note: "ASTRA (\u2212800, 590) launching west; moved 25 m off the pit entry road."
+  - id: terrace-roller
+    title: Terrace Roller
+    start: {x: -730, y: -580}
+    yaw: 90
+    width: 9
+    height: 1.4
+    riseLength: 16
+    tableLength: 0
+    downLength: 0
+    landingLength: 22
+    landingWidth: 13
+    speedHint: "60\u201385 km/h"
+    baseY: 26.212261
+    baseSlope: 0.03675848
+    note: "ASTRA (\u2212680, 380) eastbound off Terrace Track (never built); paddies there. Moved 206 m to the dry field east of the circuit; first try (\u2212740, \u2212550) had a ditch in its run-up (RampTests)."
+  - id: market-loading-bank
+    title: Market Loading Bank
+    start: {x: 326, y: -574}
+    yaw: 0
+    width: 10
+    height: 1.8
+    riseLength: 16
+    tableLength: 0
+    downLength: 0
+    landingLength: 24
+    landingWidth: 14
+    speedHint: "65\u201390 km/h"
+    baseY: 26.232563
+    baseSlope: 0.006870037
+    note: ASTRA (390, 590) northbound; slope there. Moved 66 m west, still northbound.
+  - id: harbour-slip
+    title: Harbour Slip
+    start: {x: 700, y: -896}
+    yaw: 135
+    width: 8
+    height: 0.9
+    riseLength: 12
+    tableLength: 0
+    downLength: 0
+    landingLength: 30
+    landingWidth: 18
+    speedHint: "45\u201365 km/h"
+    baseY: 9.260239
+    baseSlope: -0.027610764
+    note: "ASTRA (700, 920) south-east toward a 30 \xD7 18 m pad; moved 24 m inland."
+  hintDistance: 60
+  lipReach: 8

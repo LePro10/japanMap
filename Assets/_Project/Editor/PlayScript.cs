@@ -19,7 +19,7 @@ namespace JapanMap.Editor
     /// Commands, separated by ';':
     ///   wait 1.5 · hold w leftShift · release w · press f · mouse dx dy seconds (right button held)
     ///   shot name · frames name count interval · probe (player state into the result)
-    ///   place x z [yaw] (pictures only: walker to a spot, on the nearest NavMesh)
+    ///   place x z [yaw] (pictures only: walker to a spot, on the nearest NavMesh) · drive x z [yaw] (car there, player in it)
     /// </summary>
     [InitializeOnLoad]
     public static class PlayScript
@@ -40,6 +40,9 @@ namespace JapanMap.Editor
         static int _frames, _frameTotal;
         static float _frameDt, _frameNext;
         static string _frameName;
+        static Vector3? _aim;
+        static int _waitFrom = -1, _loggedIndex = -1;
+        static float _waitUntil;
         static InputSettings.EditorInputBehaviorInPlayMode _previousBehaviour;
         static InputSettings.BackgroundBehavior _previousBackground;
 
@@ -81,6 +84,9 @@ namespace JapanMap.Editor
                 SessionState.EraseString(KeyScript);
                 _index = 0;
                 _until = -1f;
+                _aim = null;
+                _waitFrom = -1;
+                _loggedIndex = -1;
                 Held.Clear();
                 Log.Clear();
                 _frames = 0;
@@ -122,7 +128,8 @@ namespace JapanMap.Editor
             {
                 var step = _steps[_index++].Trim();
                 if (step.Length == 0) continue;
-                Log.AppendLine($"[{now:0.00}] {step}");
+                if (_index - 1 != _loggedIndex) Log.AppendLine($"[{now:0.00}] {step}"); // a waiting step logs once
+                _loggedIndex = _index - 1;
                 if (!Run(step, now)) return; // the step waits
             }
             Finish("done");
@@ -186,6 +193,35 @@ namespace JapanMap.Editor
                     pm.Walker.CameraHeading = a.Length > 3 ? F(3) : 0f;
                     var rig = Object.FindAnyObjectByType<JapanMap.OnFoot.WalkCameraRig>();
                     rig.SetLive(true);
+                    return true;
+                }
+                case "waitstunt":
+                {
+                    // Wait (at most 10 s) until the stunt judge scores something new.
+                    var sc = Object.FindAnyObjectByType<JapanMap.Gameplay.Stunts.StuntScorer>();
+                    if (sc == null) return true;
+                    if (_waitFrom < 0) { _waitFrom = sc.Count; _waitUntil = now + 10f; }
+                    if (sc.Count > _waitFrom || now > _waitUntil) { _waitFrom = -1; return true; }
+                    _index--; // run this step again next tick
+                    return false;
+                }
+                case "aim":
+                    // aim x z: steer the car towards a point with A/D like a player would; "aim off" stops.
+                    _aim = a[1] == "off" ? null : new Vector3(F(1), 0f, F(2));
+                    if (_aim == null) { Held.Remove(Key.A); Held.Remove(Key.D); }
+                    return true;
+                case "drive":
+                {
+                    // Setup like a fast travel: the player's car at x z facing yaw, the player in it.
+                    var pm = Object.FindAnyObjectByType<PlayerModeController>();
+                    var yaw = a.Length > 3 ? F(3) : 0f;
+                    pm.Car.Place(new Vector3(F(1), 0f, F(2)), yaw, fromAbove: 300f);
+                    if (pm.Current == PlayerModeController.Mode.Walking)
+                    {
+                        pm.Walker.Place(pm.Car.transform.position + pm.Car.transform.right * 2.2f + Vector3.up, yaw);
+                        Physics.SyncTransforms();
+                        pm.TryBoard();
+                    }
                     return true;
                 }
                 case "nearcar":
@@ -302,6 +338,20 @@ namespace JapanMap.Editor
         static void PushInput(float now)
         {
             if (_kb == null) return;
+            if (_aim.HasValue)
+            {
+                var pm = Object.FindAnyObjectByType<PlayerModeController>();
+                if (pm != null && pm.Car != null)
+                {
+                    var to = _aim.Value - pm.Car.transform.position;
+                    to.y = 0f;
+                    var err = Vector3.SignedAngle(pm.Car.transform.forward, to, Vector3.up);
+                    Held.Remove(Key.A);
+                    Held.Remove(Key.D);
+                    if (err > 2f) Held.Add(Key.D);
+                    else if (err < -2f) Held.Add(Key.A);
+                }
+            }
             var keys = new Key[Held.Count];
             Held.CopyTo(keys);
             InputSystem.QueueStateEvent(_kb, new KeyboardState(keys));
@@ -357,6 +407,10 @@ namespace JapanMap.Editor
                 Log.AppendLine(string.Format(CultureInfo.InvariantCulture, "  discovery prompt='{0}' found=[{1}] nearest={2} {3:0.0} m",
                     disc.Prompt, string.Join(",", disc.Found), nearest, nd));
             }
+            var stunts = Object.FindAnyObjectByType<JapanMap.Gameplay.Stunts.StuntScorer>();
+            if (stunts != null)
+                Log.AppendLine(string.Format(CultureInfo.InvariantCulture, "  stunts count={0} last='{1}' points={2} dist={3:0.0} air={4:0.00}s inAir={5} landing='{6}'",
+                    stunts.Count, stunts.Last.title, stunts.Last.points, stunts.Last.distance, stunts.Last.airtime, stunts.Judge.InAir, stunts.Judge.LastLanding));
             var crowd = Object.FindAnyObjectByType<JapanMap.Gameplay.Life.PedestrianCrowd>();
             if (crowd != null)
             {

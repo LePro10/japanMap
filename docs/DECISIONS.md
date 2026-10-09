@@ -384,6 +384,18 @@ dafür nichts hat (reine Spielregel). Zonen: Sakura Bowl (Prototyp, Kirschring) 
 Sternkreuzung westlich von Tokyo (ASTRA-Name; ersetzt die Harbour Pan des Prototyps, eine Hangwiese mit 8,5 m
 Höhenunterschied). Anzeige vorläufig bis Phase 9; Sparks werden ab Phase 8 gespeichert.
 
+## D27 — Schanzen als erzeugte Körper mit Fundament; Plätze per Suche; Stunt-Wertung · 2026-10-09
+
+Die sechs Schanzen aus ASTRA §4 werden aus Daten (`Data/Gameplay/Ramps.asset`) als **ein starrer Körper**
+gebaut (`RampBuilder`): gerade Grundlinie, an das Gelände angepasst (höchstens 5 % Neigung), Seitenwände bis
+0,6 m unter den tiefsten Boden, dazu Landefläche und weiße Pfeile. Keine Geländeauflage (Lehre aus dem Prototyp).
+**Eigener Code statt ProBuilder**, weil die Form aus Zahlen kommt und bei jeder Änderung gleich neu entstehen
+soll. Die ASTRA-Plätze lagen auf dem Ring, im Reisfeld oder am Hang. Eine Suche (eben, frei, 40 m Anlauf, Straße
+in der Nähe) hat sie um 25–206 m versetzt; Begründung je Schanze in den Daten. Vegetation wird entlang
+Anlauf und Schanze ausgespart. Stunt-Wertung nach ASTRA §5 (Boden-180/360 nur im Stunt-Modus, Luft-360 +800,
+saubere Landung, Wiederholung 50 %), dazu **eigene Sprungpunkte (10 je Meter)**, damit ein einfacher Sprung
+etwas bringt. Prüfung: alle sechs Schanzen im PlayMode angefahren, 12–25 m Sprungweite.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

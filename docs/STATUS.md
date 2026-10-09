@@ -27,7 +27,7 @@ Web **53,9 MB** (+4,6), Browser Niedrig 240 / Hoch 65 fps (Blender lief).
 - [x] 1. Drift-Wertung (D26): Kette, ×2/×3/×4/×5 nach 6/18/42/90 s Drift, Sakura Bowl + Rotor Court ×2, Sparks; Bild `Captures/p7-1-drift*.png`
 - [x] 2. Regionen (8, lückenlos, Prototyp-Grenzen): 1,5 s am Boden + 4 m → „… explored · n/8 regions · +200 Sparks“, alle 8 +800; Bild `Captures/p7-2-region.png`
 - [x] 3. Entdeckungen (24, 3 je Region, ASTRA §9): 9× **E** untersuchen, 6 Reihenfolge- und 2 Rhythmus-Rätsel, 7 im Vorbeigehen/-fahren; +100 Sparks, Abzeichen-Namen; Lagen geprüft (trocken, eben, neben der Straße); Bilder `Captures/p7-3-*.png`
-- [ ] 4. Schanzen und Stunts (Fundament statt Geländeauflage), Stunt-Modus
+- [x] 4. Schanzen (D27): 6 Körper mit Fundament, Tempo-Hinweis, Landepfeile; Stunt-Wertung (Sprung, Luft/Boden 180/360), STUNT-Marke; alle 6 sprungfähig (12–25 m); Bild `Captures/p7-4-*.png`
 - [ ] 5. Rennen mit KI-Gegnern (Coast Loop, Tōge, Neon Circuit, Ring, Drift Run); Abnahme: KI gegen KI ohne Hängenbleiben
 
 ## Offen / Gefunden
@@ -44,6 +44,9 @@ Web **53,9 MB** (+4,6), Browser Niedrig 240 / Hoch 65 fps (Blender lief).
 
 ### Für die Asset-Sitzung (Lagen stehen in den Daten, Import genügt)
 
+- **Schanzen (Stellvertreter: Betonkeil + Kies-Landefläche + weiße Pfeile):** Absprungkante als Erdwall/Holzrampe je
+  Ort (Breite 8–12 m, Höhe 0,9–3 m, Länge 12–24 m, Maße je Schanze in `Data/Gameplay/Ramps.asset`); Tempo-Schild
+  1,2 m („55–75“); Lande-Chevron-Tafel; orange Absperrung (Stunt-Veranstaltung). Je ≤ 1,5 k Dreiecke.
 - **Entdeckungen (Stellvertreter: bernsteinfarbene Raute + weiße Pfosten):** Marke „Sparks-Laterne“ 0,4 m (gespaltene
   Raute, warm, ≤ 300 Dreiecke); Gründerplakette (Steinsockel 0,6 × 0,4 m); Lichttafel + 3 Reifenstapel (Ø 0,7 m);
   Getränkeregal (Flasche/Karton/Dose, 1,2 m); Fernrohr-Rahmen 1,6 m; Start-Tafel mit 3 Zahlenfeldern (2 × 1,2 m);

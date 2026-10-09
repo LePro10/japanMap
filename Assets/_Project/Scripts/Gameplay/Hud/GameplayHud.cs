@@ -23,7 +23,7 @@ namespace JapanMap.Gameplay.Hud
 
         UIDocument _doc;
         VisualElement _driftBox, _bar, _barFill;
-        Label _points, _mult, _spot, _result, _sparks, _toast, _banner, _prompt;
+        Label _points, _mult, _spot, _result, _sparks, _toast, _banner, _prompt, _hint, _stunt;
         VisualElement _useButton;
         bool _touchSeen;
         float _resultUntil, _toastUntil, _bannerUntil;
@@ -113,8 +113,17 @@ namespace JapanMap.Gameplay.Hud
             promptBox.style.bottom = 96;
             promptBox.style.left = promptBox.style.right = 0;
             promptBox.style.alignItems = Align.Center;
+            _hint = Text(promptBox, 26, Gold);
+            _hint.style.display = DisplayStyle.None;
             _prompt = Text(promptBox, 28, Color.white);
             _prompt.style.display = DisplayStyle.None;
+
+            _stunt = Text(Box(root), 24, new Color(1f, 0.55f, 0.15f));
+            _stunt.text = "STUNT";
+            _stunt.parent.style.top = 24;
+            _stunt.parent.style.left = 40;
+            Plate(_stunt);
+            _stunt.style.display = DisplayStyle.None;
 
             _useButton = new VisualElement();
             _useButton.style.position = Position.Absolute;
@@ -162,6 +171,20 @@ namespace JapanMap.Gameplay.Hud
             _prompt.text = _touchSeen && text.StartsWith("E  ") ? text.Substring(3) : text;
             _prompt.style.display = text != "" ? DisplayStyle.Flex : DisplayStyle.None;
             _useButton.style.display = _touchSeen && text != "" ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>Hint line above the prompt (ramp speed); "" hides it.</summary>
+        public void SetHint(string text)
+        {
+            if (_hint == null || _hint.text == text) return;
+            _hint.text = text;
+            _hint.style.display = text != "" ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>The small orange STUNT tag while Stunt mode is armed (ASTRA §5).</summary>
+        public void SetStuntTag(bool on)
+        {
+            if (_stunt != null) _stunt.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         /// <summary>Touch USE button pressed.</summary>

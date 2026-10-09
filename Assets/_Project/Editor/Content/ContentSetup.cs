@@ -8,6 +8,7 @@ using JapanMap.Gameplay.Drift;
 using JapanMap.Gameplay.Economy;
 using JapanMap.Gameplay.Hud;
 using JapanMap.Gameplay.Regions;
+using JapanMap.Gameplay.Stunts;
 using JapanMap.Vehicles;
 using JapanMap.World;
 using UnityEditor;
@@ -69,6 +70,14 @@ namespace JapanMap.Editor.Content
             Set(discovery, "hud", hud);
             Set(discovery, "actions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(PlayerSetup.InputPath));
             Set(discovery, "template", PlayerSetup.StandInMaterial("Skin", new Color(0.73f, 0.58f, 0.45f)));
+
+            var stunts = Child<StuntScorer>(group, "Stunts");
+            Set(stunts, "settings", Asset<StuntSettings>("StuntSettings"));
+            Set(stunts, "ramps", RampBuilder.LoadOrCreate());
+            Set(stunts, "player", player);
+            Set(stunts, "driver", Object.FindAnyObjectByType<DriverInput>());
+            Set(stunts, "wallet", wallet);
+            Set(stunts, "hud", hud);
 
             MapScene.Save();
             var msg = $"[Content] set up: {zones.zones.Length} drift zones, {flags} flags, {Regions().regions.Length} regions, {cards.cards.Length} discoveries";

@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a412cbf6c362146ad83cb0446ff4acb2, type: 3}
+  m_Name: StuntSettings
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Stunts.StuntSettings
+  spinMinKmh: 35
+  spinStartRate: 1.6
+  spinEndRate: 0.6
+  range180: {x: 150, y: 210}
+  end180Kmh: 20
+  points180: 300
+  range360: {x: 330, y: 390}
+  keep360: 0.25
+  points360: 600
+  minAirtime: 0.5
+  pointsPerMetre: 10
+  pointsAir360: 800
+  pointsAir180: 300
+  settle: 0.25
+  landingMaxAngle: 45
+  cleanAfter: 0.5
+  repeatShare: 0.5
+  freshDistance: 200
