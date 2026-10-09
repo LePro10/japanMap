@@ -373,6 +373,17 @@ Jizō, Friedhof. Die **Markthalle** steht nicht in der allgemeinen Ladenliste (s
 einen eigenen Ort. Zwei Fehler des Bibliotheks-Imports behoben: `_LOD2` wurde *in* LOD0 gezeichnet (Wald 20–45 M
 Dreiecke statt 2,7–7 M), Flora war deckend statt Cutout. Bäume zerbrechen jetzt auch (Prototyp-Schwellen).
 
+## D26 — Drift-Wertung nach ASTRA §5, eigener Code; Driftzonen Sakura Bowl + Rotor Court · 2026-10-09
+
+Drift-Kette nach ASTRA §5 statt der Prototyp-Formel: 100 Punkte/s bei 30 km/h und 20°, Tempo bis 2× (100 km/h),
+Winkel bis 1,5× (50°), über 70° kein Drift. Multiplikator in **Stufen nach Driftzeit 6/18/42/90 s** (Abstände
+verdoppeln sich — der Wunsch aus TODO.md: ×5 ist ein langer Lauf), gilt nur für neu verdiente Punkte. 3 s
+Verbindungszeit, Richtungswechsel +150, Crash (≥ 10 km/h Verlust, gemessen über 0,1 s) bucht 50 %, Streifen
+kürzt die Verbindungszeit auf 0,5 s. Sparks: 100 Punkte = 1, höchstens 400 je 90 s. **Eigener Code**, weil Unity
+dafür nichts hat (reine Spielregel). Zonen: Sakura Bowl (Prototyp, Kirschring) und **Rotor Court** an der offenen
+Sternkreuzung westlich von Tokyo (ASTRA-Name; ersetzt die Harbour Pan des Prototyps, eine Hangwiese mit 8,5 m
+Höhenunterschied). Anzeige vorläufig bis Phase 9; Sparks werden ab Phase 8 gespeichert.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

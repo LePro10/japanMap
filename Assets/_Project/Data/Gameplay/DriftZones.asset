@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2058ac02b76349559d8c7b10bc2227b, type: 3}
+  m_Name: DriftZones
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Drift.DriftZoneSet
+  zones:
+  - id: sakura-bowl
+    title: Sakura Bowl
+    center: {x: 550, y: -508}
+    radius: 62
+    size: {x: 0, y: 0}
+    yaw: 0
+    note: 'legacy stunt.config.ts DRIFT_ZONES sakura-bowl (550 | 510) r 62, Unity z mirrored. The cherry ring of Sakura Commons marks it. Measured 2026-10-09: 6.2 m height range within 60 m.'
+  - id: rotor-court
+    title: Rotor Court
+    center: {x: 180, y: -280}
+    radius: 0
+    size: {x: 70, y: 55}
+    yaw: 0
+    note: "ASTRA \xA75: Rotor Court 70 \xD7 55 m about (180, 280), replaces legacy harbour-pan (a sloped meadow, 8.5 m range). Here the open star junction west of Tokyo: asphalt, 6.5 m range within 60 m. Red nobori mark it."

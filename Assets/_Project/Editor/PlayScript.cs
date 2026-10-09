@@ -157,6 +157,12 @@ namespace JapanMap.Editor
                     _mouseUntil = now + F(3);
                     _until = _mouseUntil;
                     return false;
+                case "screen":
+                    // Game view with the UI Toolkit overlay (HUD) — 'shot' renders the camera only.
+                    var screenPath = Path.Combine(SessionState.GetString(KeyOut, Capture.Dir), a[1] + ".png");
+                    ScreenCapture.CaptureScreenshot(screenPath);
+                    Log.AppendLine($"  screen {screenPath}");
+                    return true;
                 case "shot":
                     Shot(a[1]);
                     return true;
@@ -321,6 +327,16 @@ namespace JapanMap.Editor
                 w != null ? w.Speed : 0f, w != null && w.Grounded, w != null && w.Sliding,
                 car != null ? car.transform.position.ToString("0.00") : "-", car != null ? car.Body.linearVelocity.magnitude * 3.6f : 0f,
                 p.CarDistance, p.Prompt, p.Message));
+            var drift = Object.FindAnyObjectByType<JapanMap.Gameplay.Drift.DriftScorer>();
+            var wallet = Object.FindAnyObjectByType<JapanMap.Gameplay.Economy.SparksWallet>();
+            if (drift != null)
+            {
+                var ch = drift.Chain;
+                Log.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "  drift active={0} pending={1:0} banked={2:0} mult={3} driftTime={4:0.0} zone={5} slipDeg={6:0} sparks={7}",
+                    ch.Active, ch.Pending, ch.Banked, ch.Multiplier, ch.DriftTime, drift.Zone,
+                    car != null ? Mathf.Abs(car.Telemetry.slip) * Mathf.Rad2Deg : 0f, wallet != null ? wallet.Balance : 0));
+            }
             var crowd = Object.FindAnyObjectByType<JapanMap.Gameplay.Life.PedestrianCrowd>();
             if (crowd != null)
             {

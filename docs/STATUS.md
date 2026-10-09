@@ -24,7 +24,7 @@ Web **53,9 MB** (+4,6), Browser Niedrig 240 / Hoch 65 fps (Blender lief).
 
 ## Phase 7 — Spielinhalt (als Nächstes, PLAN.md)
 
-- [ ] 1. Drift-Wertung (Kette, Multiplikator bis ×5, Driftzonen ×2)
+- [x] 1. Drift-Wertung (D26): Kette, ×2/×3/×4/×5 nach 6/18/42/90 s Drift, Sakura Bowl + Rotor Court ×2, Sparks; Bild `Captures/p7-1-drift*.png`
 - [ ] 2. Zonen/Regionen (8), „Region erkundet" + Belohnung
 - [ ] 3. Entdeckungen (24) statt anonymer Pickups, Easter Eggs
 - [ ] 4. Schanzen und Stunts (Fundament statt Geländeauflage), Stunt-Modus
