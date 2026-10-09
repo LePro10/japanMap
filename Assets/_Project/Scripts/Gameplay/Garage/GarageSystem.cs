@@ -67,6 +67,8 @@ namespace JapanMap.Gameplay.Garage
 
         void OnEnable()
         {
+            _escape.Enable();
+            _escape.performed += OnEscape;
             BuildUi();
             if (_use != null)
             {
@@ -76,8 +78,18 @@ namespace JapanMap.Gameplay.Garage
             if (hud != null) hud.UsePressed += Use;
         }
 
+        // Esc as an action: a short press between two frames still counts (play scripts, tests).
+        readonly InputAction _escape = new("Escape", InputActionType.Button, "<Keyboard>/escape");
+
+        void OnEscape(InputAction.CallbackContext _)
+        {
+            if (IsOpen) Close();
+        }
+
         void OnDisable()
         {
+            _escape.performed -= OnEscape;
+            _escape.Disable();
             if (_use != null) _use.performed -= OnUse;
             if (hud != null) hud.UsePressed -= Use;
         }
@@ -86,11 +98,7 @@ namespace JapanMap.Gameplay.Garage
 
         void Update()
         {
-            if (IsOpen)
-            {
-                if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) Close();
-                return;
-            }
+            if (IsOpen) return;
             var near = InReach();
             if (hud != null) hud.SetPrompt(this, near ? "E  Garage · cars and tuning" : "");
         }

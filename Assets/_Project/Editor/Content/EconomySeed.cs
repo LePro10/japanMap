@@ -81,6 +81,32 @@ namespace JapanMap.Editor.Content
             }
         }
 
+        /// <summary>
+        /// Ring Time Trial benchmark per car from Captures/ring-bench.json (RingBenchmarkReport: autopilot in every car)
+        /// × 1.1, rounded — the rule that gave the Hachi 86 its 250 s (228 s measured).
+        /// </summary>
+        [MenuItem("JapanMap/Economy/Seed Ring Benchmarks")]
+        public static string SeedRingBenchmarks()
+        {
+            var json = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "Captures/ring-bench.json"));
+            var list = new System.Collections.Generic.List<RaceEventSet.CarTime>();
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(json,
+                         "\"car\":\"(\\w+)\",\"seconds\":([0-9.]+),\"completed\":true"))
+                list.Add(new RaceEventSet.CarTime
+                {
+                    car = m.Groups[1].Value,
+                    seconds = Mathf.Round(float.Parse(m.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture) * 1.1f),
+                });
+            var events = RaceSeed.LoadOrCreate();
+            for (var i = 0; i < events.events.Length; i++)
+                if (events.events[i].id == "ring-trial") events.events[i].benchByCar = list.ToArray();
+            EditorUtility.SetDirty(events);
+            AssetDatabase.SaveAssets();
+            var text = string.Join(", ", list.ConvertAll(c => $"{c.car} {c.seconds:0}"));
+            Debug.Log("[Economy] ring benchmarks: " + text);
+            return text;
+        }
+
         public static TuningSettings Tuning()
         {
             var t = AssetDatabase.LoadAssetAtPath<TuningSettings>(TuningPath);

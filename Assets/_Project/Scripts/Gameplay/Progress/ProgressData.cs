@@ -49,7 +49,7 @@ namespace JapanMap.Gameplay.Progress
 
     /// <summary>Headline driving records (ASTRA §11) and what was set where.</summary>
     [Serializable]
-    public sealed class Records
+    public sealed class DrivingRecords
     {
         public float topKmh, airtime, jumpMetres, bankedChain, distanceKm;
         public int races, wins;
@@ -88,7 +88,7 @@ namespace JapanMap.Gameplay.Progress
         public List<string> discoveries = new();
         public List<string> decals = new();
         public List<EventRecord> events = new();
-        public Records records = new();
+        public DrivingRecords records = new();
         public bool hasLastPosition;
         public Vector3 lastPosition;
         public float lastYaw;
@@ -147,7 +147,7 @@ namespace JapanMap.Gameplay.Progress
                 e.bests ??= new List<BestEntry>();
                 e.bests.RemoveAll(b => b == null || !Finite(b.seconds) || !Finite(b.score) || b.seconds < 0f || b.seconds > 3600f || b.score < 0f);
             }
-            records ??= new Records();
+            records ??= new DrivingRecords();
             records.topKmh = Plain(records.topKmh, 600f);
             records.airtime = Plain(records.airtime, 60f);
             records.jumpMetres = Plain(records.jumpMetres, 2000f);

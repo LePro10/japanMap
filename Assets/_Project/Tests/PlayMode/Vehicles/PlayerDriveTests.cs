@@ -66,7 +66,11 @@ namespace JapanMap.Tests.Vehicles
                 var controls = Object.FindAnyObjectByType<DriveTouchControls>();
                 Assert.NotNull(controls, "no touch controls in the Game scene");
                 controls.SetVisible(true);
-                yield return null;
+                // Wait for UI Toolkit's layout: one frame was not always enough under load (full runs, the first run
+                // after a reload) — the finger then landed beside a stick still at (0, 0): "throttle 0".
+                for (var f = 0; f < 60 && !(controls.Stick.worldBound.width > 1f && controls.Stick.panel.visualTree.worldBound.height > 1f); f++)
+                    yield return null;
+                Assert.Greater(controls.Stick.worldBound.width, 1f, "touch stick never laid out");
                 var car = Object.FindAnyObjectByType<PlayerCarSpawner>().Current;
                 var root = controls.Stick.panel.visualTree.worldBound;
                 var scale = Screen.height / root.height;

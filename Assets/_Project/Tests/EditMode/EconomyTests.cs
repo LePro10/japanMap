@@ -57,6 +57,19 @@ namespace JapanMap.Tests
         }
 
         [Test]
+        public void RingTrial_HasABenchmarkForEveryCar()
+        {
+            var fleet = AssetDatabase<VehicleFleet>(JapanMap.Editor.Vehicles.FleetSeed.FleetPath);
+            var ring = RaceSeed.LoadOrCreate().Find("ring-trial").Value;
+            foreach (var v in fleet.vehicles)
+            {
+                var b = RaceEventSet.Benchmark(ring, v.id);
+                Assert.That(b, Is.InRange(150f, 400f), $"{v.id}: run the RingBenchmarkReport, then Economy/Seed Ring Benchmarks");
+                Assert.IsTrue(System.Array.Exists(ring.benchByCar, c => c.car == v.id), $"{v.id} has no own benchmark");
+            }
+        }
+
+        [Test]
         public void Table_IsCurrent()
         {
             var path = Path.Combine(Directory.GetCurrentDirectory(), EconomySeed.TablePath);

@@ -41,6 +41,8 @@ namespace JapanMap.Editor
         static float _frameDt, _frameNext;
         static string _frameName;
         static Vector3? _aim;
+        static float _clock;
+        static int _lastFrame = -1;
         static Vector3 _orbitCentre;
         static float _orbitRadius;
         static int _waitFrom = -1, _loggedIndex = -1;
@@ -97,6 +99,7 @@ namespace JapanMap.Editor
                 _until = -1f;
                 _aim = null;
                 _orbitRadius = 0f;
+                _clock = 0f;
                 _waitFrom = -1;
                 _loggedIndex = -1;
                 Held.Clear();
@@ -123,7 +126,15 @@ namespace JapanMap.Editor
         static void Tick()
         {
             if (!EditorApplication.isPlaying || _steps == null) return;
-            var now = Time.time;
+            // Game time, but it keeps running while the game is paused (photo mode sets timeScale 0 — a "wait"
+            // on Time.time never ended there). Under timescale 4 a "wait 1" is still one game second.
+            var frame = Time.frameCount;
+            if (frame != _lastFrame)
+            {
+                _clock += Time.timeScale > 0f ? Time.deltaTime : Time.unscaledDeltaTime;
+                _lastFrame = frame;
+            }
+            var now = _clock;
             PushInput(now);
             if (_frames > 0)
             {
@@ -462,6 +473,16 @@ namespace JapanMap.Editor
                     sel != null ? sel.setup.ToString() : "-", sel != null ? sel.paint : "",
                     string.Join(",", prog.Data.cars.FindAll(c => c.owned).ConvertAll(c => c.id)), prog.SaveCount,
                     spec != null ? spec.power / 1000f : 0f, spec != null ? spec.latG : 0f));
+            }
+            var rk = Object.FindAnyObjectByType<JapanMap.Gameplay.Records.RecordKeeper>();
+            var ph = Object.FindAnyObjectByType<JapanMap.Gameplay.Records.PhotoMode>();
+            if (rk != null && prog != null && prog.Data != null)
+            {
+                var r = prog.Data.records;
+                Log.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "  records top={0:0.0} air={1:0.00} jump={2:0.0} chain={3:0} km={4:0.00} cards={5} taken={6} photo={7} last='{8}' {9}",
+                    r.topKmh, r.airtime, r.jumpMetres, r.bankedChain, r.distanceKm, r.cards.Count, rk.CardsTaken,
+                    ph != null && ph.IsOpen, ph != null ? ph.LastPhoto : "", ph != null ? ph.LastSize.ToString() : ""));
             }
             var gsp = Object.FindAnyObjectByType<JapanMap.Gameplay.Garage.GarageSystem>();
             if (gsp != null) Log.AppendLine($"  garage open={gsp.IsOpen} shown={gsp.Shown} status='{gsp.Status}'");

@@ -36,13 +36,31 @@ namespace JapanMap.Gameplay.Races
             public int completion;
             [Tooltip("Placement / medal bonus maximum; places pay 100/65/35/0 % (ASTRA).")]
             public int bonus;
-            [Tooltip("Drift: bronze/silver/gold score. Time trial: benchmark seconds in x.")]
+            [Tooltip("Drift: bronze/silver/gold score. Time trial: benchmark seconds in x (cars without their own).")]
             public Vector3 medals;
+            [Tooltip("Time trial: benchmark per car (autopilot time × 1.1, measured — RingBenchmarkReport); a car not listed uses medals.x.")]
+            public CarTime[] benchByCar;
             [Tooltip("Drift: time limit, s (ASTRA E07: 240).")]
             public float timeLimit;
             [Tooltip("Typical time from GO to the finish, s — measured with the autopilot in the default car; the economy table uses it.")]
             public float typicalSeconds;
             [TextArea] public string note;
+        }
+
+        [Serializable]
+        public struct CarTime
+        {
+            public string car;
+            public float seconds;
+        }
+
+        /// <summary>Time-trial benchmark for this car (ASTRA: records compare by car).</summary>
+        public static float Benchmark(in Event e, string carId)
+        {
+            if (e.benchByCar != null)
+                foreach (var b in e.benchByCar)
+                    if (b.car == carId && b.seconds > 0f) return b.seconds;
+            return e.medals.x;
         }
 
         [Serializable]

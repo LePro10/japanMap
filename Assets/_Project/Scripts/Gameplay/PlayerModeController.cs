@@ -122,10 +122,14 @@ namespace JapanMap.Gameplay
         /// </summary>
         public void SetSuspended(bool on)
         {
+            if (on == Suspended) return;
             Suspended = on;
             if (on)
             {
+                _resumeWalking = Current == Mode.Walking;
+                if (_walker != null) { _resumeAt = _walker.transform.position; _resumeYaw = _walker.transform.eulerAngles.y; }
                 if (driver != null) driver.enabled = false;
+                if (Car != null) Car.Input = new DriveInput { handbrake = true }; // a held W must not drive on under a menu
                 if (driveTouch != null) driveTouch.Suppressed = true;
                 if (carCamera != null) carCamera.SetLive(false);
                 if (walkInput != null) walkInput.enabled = false;
@@ -134,8 +138,14 @@ namespace JapanMap.Gameplay
                 if (_walker != null) _walker.gameObject.SetActive(false);
                 return;
             }
-            SetDriving();
+            // Back to the mode the menu interrupted (the garage seats the player first, so it resumes driving).
+            if (_resumeWalking && Current == Mode.Walking) SetWalking(_resumeAt, _resumeYaw);
+            else SetDriving();
         }
+
+        bool _resumeWalking;
+        Vector3 _resumeAt;
+        float _resumeYaw;
 
         public bool Suspended { get; private set; }
 

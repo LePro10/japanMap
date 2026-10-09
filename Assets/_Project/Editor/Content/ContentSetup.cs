@@ -10,6 +10,7 @@ using JapanMap.Gameplay.Garage;
 using JapanMap.Gameplay.Hud;
 using JapanMap.Gameplay.Progress;
 using JapanMap.Gameplay.Races;
+using JapanMap.Gameplay.Records;
 using JapanMap.Gameplay.Regions;
 using JapanMap.Gameplay.Stunts;
 using JapanMap.Vehicles;
@@ -118,6 +119,32 @@ namespace JapanMap.Editor.Content
             Set(races, "stunts", stunts);
             Set(races, "actions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(PlayerSetup.InputPath));
             Set(races, "template", PlayerSetup.StandInMaterial("Skin", new Color(0.73f, 0.58f, 0.45f)));
+
+            var keeper = Child<RecordKeeper>(group, "Records");
+            Set(keeper, "progress", progress);
+            Set(keeper, "player", player);
+            Set(keeper, "stunts", stunts);
+            Set(keeper, "drift", drift);
+            Set(keeper, "regions", regions);
+            Set(keeper, "hud", hud);
+
+            var sheet = Child<RecordsSheet>(group, "RecordsSheet");
+            Set(sheet, "progress", progress);
+            Set(sheet, "player", player);
+            Set(sheet, "events", RaceSeed.LoadOrCreate());
+            Set(sheet, "cards", cards);
+            Set(sheet, "regions", Regions());
+            Set(sheet, "hud", hud);
+            Set(sheet, "panelSettings", AssetDatabase.LoadAssetAtPath<PanelSettings>(PlayerSetup.PanelPath));
+            Set(sheet, "actions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(PlayerSetup.InputPath));
+
+            var photo = Child<PhotoMode>(group, "Photo");
+            Set(photo, "player", player);
+            Set(photo, "progress", progress);
+            Set(photo, "regions", regions);
+            Set(photo, "hud", hud);
+            Set(photo, "panelSettings", AssetDatabase.LoadAssetAtPath<PanelSettings>(PlayerSetup.PanelPath));
+            Set(photo, "actions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(PlayerSetup.InputPath));
 
             MapScene.Save();
             var msg = $"[Content] set up: {zones.zones.Length} drift zones, {flags} flags, {Regions().regions.Length} regions, {cards.cards.Length} discoveries";

@@ -457,6 +457,22 @@ Leihwagen) — höchstens einmal je Sekunde; „Weiter“ setzt im gewählten Au
 Nicht umgesetzt: „Choose progress“ bei Konto-Konflikten (das Datenmodul synchronisiert selbst; Phase 10 mit dem
 QA-Tool prüfen). Prüfung: `ProgressStoreTests`, `SaveRestartTests`, im Browser `Tools/save-web.mjs`.
 
+## D32 — Rekorde, Meilensteine, Rekordbilder, Fotomodus; Ring-Ziel je Auto · 2026-10-10
+
+**Rekorde** (`RecordKeeper`, ASTRA §11 + Wunsch „Analytics“ in legacy TODO.md): Höchsttempo (0,5 s gehalten auf dem
+Boden), Flugzeit und Sprungweite nur bei sauberer Landung (Stunt-Wertung), längste gebuchte Driftkette, gefahrene
+Strecke. Nur das eigene gewählte Auto zählt — Leihwagen (Open Seat) und Menüs nicht (ASTRA §9). 15 Meilensteine je
+100 Sparks einmal (Claim-Id). **Rekordbild** 320 × 180 JPEG im eigenen Speicher-Schlüssel (nicht im Fortschritts-JSON,
+ASTRA), aufgenommen beim nächsten ruhigen Moment (Auto steht 1 s), nicht im Rekord-Frame. **Rekorde-Blatt** (Tab):
+Fahren mit Bildern, Meilensteine, je Veranstaltung beste Medaille und Bestzeit je Auto/Teile, Entdeckungs-Album —
+vorläufig, in Phase 9 der Records-Reiter. **Fotomodus** (P): pausiert (timeScale 0), Cinemachine aus, freie Kamera
+mit Leine 100 m / 40 m, WASD/QE/rechte Maustaste/Mausrad, Enter = PNG ohne HUD in 2560 px Breite (Handy 1920), im
+Browser als Download (`JapanMapDownload.jslib`), Name `japanMap_Ort_Auto_Datum.png`. Touch-Bedienung erst Phase 9.
+Produkt-Messungen (ASTRA §11 Analytics für Entwickler) nicht in Phase 8 — brauchen ein Ziel (CrazyGames/Backend).
+**Ring-Zeitfahren:** Ziel je Auto = Autopilot-Zeit × 1,1 (`RingBenchmarkReport`, `RaceEventSet.benchByCar`) — wie
+bisher beim Hachi (228 → 250 s). **Eigener Code:** Unity hat keine Rekord-/Fotomodus-Bausteine; Kamera, Render-
+Texture und Input System sind Standard.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

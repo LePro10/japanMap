@@ -23,11 +23,12 @@ Bench (`Captures/bench-p7-gate*`): Niedrig ≤ 390 DC / 578 k ✓ (Funaura 388 �
 
 ## Phase 8 — Progression und Speichern (als Nächstes, PLAN.md)
 
-- [x] 1. Sparks-Wirtschaft simuliert (`docs/ECONOMY.md`, D29): Rennfahrer 3 297, gemischt 2 451, Drift geübt 2 206 je 10 min (`Captures/p8-1/`) · [x] 2. Garage an der Open Bay (E): Autohaus, Tuning 4×Street/Sport, Setup, Lack/Felgen/Kit; Prüfstand `docs/TUNING.md` (D30, `Captures/p8-2/`) · [x] 3. Speichern: CrazyGames-SDK + lokal (D31); Neustart-Test und Browser-Probe `save-web.mjs` grün · [ ] 4. Rekorde und Fotos
+- [x] 1. Sparks-Wirtschaft simuliert (`docs/ECONOMY.md`, D29): Rennfahrer 3 297, gemischt 2 451, Drift geübt 2 206 je 10 min (`Captures/p8-1/`) · [x] 2. Garage an der Open Bay (E): Autohaus, Tuning 4×Street/Sport, Setup, Lack/Felgen/Kit; Prüfstand `docs/TUNING.md` (D30, `Captures/p8-2/`) · [x] 3. Speichern: CrazyGames-SDK + lokal (D31); Neustart-Test und Browser-Probe `save-web.mjs` grün · [x] 4. Rekorde (Tab) mit Bildern + 15 Meilensteinen, Fotomodus (P, 2560 px PNG), Ring-Ziel je Auto (D32)
 
 ## Offen / Gefunden
 
 - **Fußgänger-Test:** `PedestrianTests.TenMinutes…` 1× im Gesamtlauf rot (2 Fußgänger auf meiji-south bei t = 0 s), allein 2× grün.
+- **Gras auf der Schanze Petal Hop:** einzelne Halme stehen auf der Betonfläche (`Captures/p8-4/jump.png`, Bild 3).
 - **Gras in der Open Bay:** Gräser wachsen durch den Hallenboden (Streuung kennt die Halle nicht) — sichtbar in der Garage.
 - **Wackeliger Tastatur-Test:** `PlayerDriveTests.Keyboard_Drives…` 1× von 7 rot („W does not accelerate“); der Touch-Test war
   ein ausgeschaltetes Test-Gerät (behoben, 3/3 grün).

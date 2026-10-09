@@ -28,6 +28,7 @@ MonoBehaviour:
     completion: 1330
     bonus: 680
     medals: {x: 0, y: 0, z: 0}
+    benchByCar: []
     timeLimit: 0
     typicalSeconds: 237.5
     note: Legacy coast-loop (ring, 1 lap). ASTRA E02 moves it to a Harbour Outer Road that is not built; the ring stays.
@@ -46,6 +47,7 @@ MonoBehaviour:
     completion: 1120
     bonus: 570
     medals: {x: 0, y: 0, z: 0}
+    benchByCar: []
     timeLimit: 0
     typicalSeconds: 186.6
     note: Legacy touge-descent; ASTRA E03 Cinder Descent.
@@ -64,6 +66,7 @@ MonoBehaviour:
     completion: 860
     bonus: 440
     medals: {x: 0, y: 0, z: 0}
+    benchByCar: []
     timeLimit: 0
     typicalSeconds: 123.1
     note: "Legacy neon-circuit (2 laps of 1.5 km); ASTRA E04 asks 3 laps of 0.9 km \u2014 same distance."
@@ -82,6 +85,7 @@ MonoBehaviour:
     completion: 1200
     bonus: 620
     medals: {x: 0, y: 0, z: 0}
+    benchByCar: []
     timeLimit: 0
     typicalSeconds: 206.2
     note: Legacy touge-climb; ASTRA E05 Cinder Climb.
@@ -100,6 +104,27 @@ MonoBehaviour:
     completion: 1290
     bonus: 860
     medals: {x: 250, y: 0, z: 0}
+    benchByCar:
+    - car: mame
+      seconds: 267
+    - car: hachi
+      seconds: 251
+    - car: hauler
+      seconds: 283
+    - car: yama
+      seconds: 271
+    - car: kumo
+      seconds: 243
+    - car: kaze
+      seconds: 243
+    - car: raiden
+      seconds: 235
+    - car: suprema
+      seconds: 244
+    - car: rotor
+      seconds: 221
+    - car: hanami
+      seconds: 210
     timeLimit: 0
     typicalSeconds: 228
     note: 'Legacy ring-trial; ASTRA E06: 850 + 100 for the benchmark (Kite 250 s; per-car table in Phase 8), 50 within 10 %.'
@@ -118,6 +143,7 @@ MonoBehaviour:
     completion: 1070
     bonus: 530
     medals: {x: 15000, y: 35000, z: 70000}
+    benchByCar: []
     timeLimit: 240
     typicalSeconds: 174.3
     note: 'Legacy touge-drift; ASTRA E07: finish within 240 s, 600 + 100/200/300 for bronze/silver/gold at 15k/35k/70k.'
@@ -136,6 +162,7 @@ MonoBehaviour:
     completion: 930
     bonus: 470
     medals: {x: 0, y: 0, z: 0}
+    benchByCar: []
     timeLimit: 0
     typicalSeconds: 139.4
     note: 'ASTRA E13: full circuit, two laps.'
@@ -154,6 +181,7 @@ MonoBehaviour:
     completion: 600
     bonus: 400
     medals: {x: 70, y: 0, z: 0}
+    benchByCar: []
     timeLimit: 0
     typicalSeconds: 61.5
     note: 'ASTRA E14: one lap in a stock Needle 01 (fleet hanami), benchmark 70 s, lesser bonus to 77 s.'

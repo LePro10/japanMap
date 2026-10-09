@@ -65,6 +65,8 @@ namespace JapanMap.Gameplay.Races
             public int sparks;
             public string medal;
             public bool completed;
+            /// <summary>Car the result was driven in (time-trial benchmark, records by car).</summary>
+            public string car;
         }
 
         readonly List<Entrant> _entrants = new();
@@ -236,6 +238,7 @@ namespace JapanMap.Gameplay.Races
         /// <summary>Use (E): join shows the card, a second press starts.</summary>
         public void Use()
         {
+            if (player != null && player.Suspended) return; // a menu (garage, records, photo) owns E now
             if (hud != null && hud.PromptOwner != (object)this) return;
             if (Current == State.Idle && _cardEvent >= 0)
             {
@@ -251,12 +254,21 @@ namespace JapanMap.Gameplay.Races
             }
         }
 
+        /// <summary>The car the player would drive this event in: its loan, or the own car.</summary>
+        string CardCar(in RaceEventSet.Event e) => !string.IsNullOrEmpty(e.loanCar) ? e.loanCar : player != null && player.Car != null ? player.Car.Definition.id : "";
+
+        string CardCarName(in RaceEventSet.Event e)
+        {
+            var def = fleet != null ? fleet.Get(CardCar(e)) : null;
+            return def != null ? def.displayName : "car";
+        }
+
         string Card(in RaceEventSet.Event e)
         {
             var t = TrackOf(e, out _);
             var km = (t.Closed ? t.Length * Mathf.Max(1, e.laps) : t.Length - set.sprintStart) / 1000f;
             var format = e.kind == RaceKind.Drift ? $"Drift score · {e.medals.x:N0} / {e.medals.y:N0} / {e.medals.z:N0} for bronze, silver, gold · {e.timeLimit:0} s"
-                : e.kind == RaceKind.TimeTrial ? $"Time trial · beat {e.medals.x:0} s"
+                : e.kind == RaceKind.TimeTrial ? $"Time trial · beat {RaceEventSet.Benchmark(e, CardCar(e)):0} s in the {CardCarName(e)}"
                 : $"Race · {e.rivals} rivals";
             var laps = t.Closed ? $" · {e.laps} lap{(e.laps > 1 ? "s" : "")}" : "";
             var car = string.IsNullOrEmpty(e.loanCar) ? "" : $"\nLoan car: {fleet.Get(e.loanCar)?.displayName}";
@@ -564,7 +576,7 @@ namespace JapanMap.Gameplay.Races
 
         void Finish(Entrant me, bool timedOut)
         {
-            var result = new Result { eventId = _event.id, seconds = me.progress.Finished ? me.progress.FinishTime : Elapsed + _penalty, completed = !timedOut };
+            var result = new Result { eventId = _event.id, seconds = me.progress.Finished ? me.progress.FinishTime : Elapsed + _penalty, completed = !timedOut, car = me.car.Definition.id };
             if (drift != null) drift.Chain.Bank();
             var sparks = 0;
             var medal = "";
@@ -582,7 +594,7 @@ namespace JapanMap.Gameplay.Races
                 case RaceKind.TimeTrial:
                 {
                     result.place = 1;
-                    var bench = _event.medals.x;
+                    var bench = RaceEventSet.Benchmark(_event, me.car.Definition.id);
                     var bonus = result.seconds <= bench ? _event.bonus : result.seconds <= bench * 1.1f ? _event.bonus / 2 : 0;
                     sparks = _event.completion + bonus;
                     medal = bonus == _event.bonus ? "Benchmark beaten" : bonus > 0 ? "Within 10 %" : "Finished";
@@ -621,7 +633,7 @@ namespace JapanMap.Gameplay.Races
             return e.kind switch
             {
                 RaceKind.Race => r.place >= 1 && r.place <= 3 ? 4 - r.place : 0,
-                RaceKind.TimeTrial => r.seconds <= e.medals.x ? 3 : r.seconds <= e.medals.x * 1.1f ? 1 : 0,
+                RaceKind.TimeTrial => r.seconds <= RaceEventSet.Benchmark(e, r.car) ? 3 : r.seconds <= RaceEventSet.Benchmark(e, r.car) * 1.1f ? 1 : 0,
                 _ => r.score >= e.medals.z ? 3 : r.score >= e.medals.y ? 2 : r.score >= e.medals.x ? 1 : 0,
             };
         }

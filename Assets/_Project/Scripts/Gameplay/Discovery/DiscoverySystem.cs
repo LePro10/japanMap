@@ -162,7 +162,7 @@ namespace JapanMap.Gameplay.Discovery
         /// <summary>Use (E, d-pad up, touch USE): inspect, read a puzzle hint, press a button.</summary>
         public void Use()
         {
-            if (_target < 0) return;
+            if (_target < 0 || (player != null && player.Suspended)) return; // a menu owns E now
             if (hud != null && hud.PromptOwner != (object)this) return; // E belongs to another prompt now
             var c = set.cards[_target];
             switch (c.trigger)
