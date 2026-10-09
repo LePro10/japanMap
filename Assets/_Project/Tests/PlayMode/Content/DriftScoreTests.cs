@@ -3,6 +3,7 @@ using JapanMap.Core;
 using JapanMap.Gameplay;
 using JapanMap.Gameplay.Drift;
 using JapanMap.Gameplay.Economy;
+using JapanMap.Gameplay.Regions;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -107,6 +108,7 @@ namespace JapanMap.Tests.Content
             _wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
             _wall.transform.localScale = new Vector3(12f, 4f, 1f);
             _wall.transform.SetPositionAndRotation(car.transform.position + dir * Mathf.Max(5f, v.magnitude * 0.35f) + Vector3.up, Quaternion.LookRotation(dir));
+            var balance = wallet.Balance; // the drive also explores Sakura Commons (+200)
             Press(Key.W);
             var t = 0f;
             while (end == ChainEnd.None && t < 3f)
@@ -117,8 +119,28 @@ namespace JapanMap.Tests.Content
             Debug.Log($"[DriftTest] end {end} credit {credit:0} of {before:0}, contact {drift.LastContactKmh:0.0} km/h, sparks {wallet.Balance}");
             Assert.AreEqual(ChainEnd.Crash, end, $"wall hit {drift.LastContactKmh:0.0} km/h");
             Assert.AreEqual(before * 0.5f, credit, 1f);
-            Assert.AreEqual(Mathf.FloorToInt(credit / 100f), wallet.Balance, "banked score paid at 100 per Spark");
+            Assert.AreEqual(Mathf.FloorToInt(credit / 100f), wallet.Balance - balance, "banked score paid at 100 per Spark");
             Press();
+        }
+        [UnityTest]
+        public IEnumerator WalkingInSakuraCommons_ExploresIt_Once_For200Sparks()
+        {
+            yield return BootGame();
+            var watch = Object.FindAnyObjectByType<RegionWatch>();
+            var wallet = Object.FindAnyObjectByType<SparksWallet>();
+            var hud = Object.FindAnyObjectByType<JapanMap.Gameplay.Hud.GameplayHud>();
+            yield return Seconds(1f);
+            Assert.AreEqual(0, watch.Explored.Count, "standing still explores nothing");
+            Press(Key.D);
+            yield return Seconds(3f);
+            Press();
+            CollectionAssert.AreEqual(new[] { "commons" }, watch.Explored);
+            Assert.AreEqual(200, wallet.Balance);
+            StringAssert.StartsWith("Sakura Commons explored · 1/8 regions", hud.LastToast);
+            Press(Key.A);
+            yield return Seconds(3f);
+            Press();
+            Assert.AreEqual(200, wallet.Balance, "a region pays once");
         }
     }
 }

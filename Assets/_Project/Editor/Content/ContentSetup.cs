@@ -6,6 +6,7 @@ using JapanMap.Gameplay;
 using JapanMap.Gameplay.Drift;
 using JapanMap.Gameplay.Economy;
 using JapanMap.Gameplay.Hud;
+using JapanMap.Gameplay.Regions;
 using JapanMap.Vehicles;
 using JapanMap.World;
 using UnityEditor;
@@ -51,8 +52,14 @@ namespace JapanMap.Editor.Content
             Set(hud, "drift", drift);
             Set(hud, "wallet", wallet);
 
+            var regions = Child<RegionWatch>(group, "Regions");
+            Set(regions, "regions", Regions());
+            Set(regions, "player", player);
+            Set(regions, "wallet", wallet);
+            Set(regions, "hud", hud);
+
             MapScene.Save();
-            var msg = $"[Content] set up: {zones.zones.Length} drift zones, {flags} flags";
+            var msg = $"[Content] set up: {zones.zones.Length} drift zones, {flags} flags, {Regions().regions.Length} regions";
             Debug.Log(msg);
             return msg;
         }
@@ -78,6 +85,44 @@ namespace JapanMap.Editor.Content
                     note = "ASTRA §5: Rotor Court 70 × 55 m about (180, 280), replaces legacy harbour-pan (a sloped meadow, 8.5 m " +
                            "range). Here the open star junction west of Tokyo: asphalt, 6.5 m range within 60 m. Red nobori mark it.",
                 },
+            };
+            AssetDatabase.CreateAsset(set, path);
+            return set;
+        }
+
+        static RegionSet.Box B(float x0, float x1, float z0, float z1) => new() { min = new Vector2(x0, z0), max = new Vector2(x1, z1) };
+
+        /// <summary>
+        /// Eight regions from legacy navigationMapRegions.ts regionAt, z mirrored (legacy z ≥ a ∧ z &lt; b → Unity
+        /// −b &lt; z ≤ −a; the one-point difference on a border does not matter). Map edge ±1600 covers the margin.
+        /// </summary>
+        static RegionSet Regions()
+        {
+            var path = $"{Dir}/Regions.asset";
+            var set = AssetDatabase.LoadAssetAtPath<RegionSet>(path);
+            if (set != null) return set;
+            const float E = 1600f;
+            static Color C(string hex) => ColorUtility.TryParseHtmlString(hex, out var c) ? c : Color.white;
+            set = ScriptableObject.CreateInstance<RegionSet>();
+            set.regions = new[]
+            {
+                new RegionSet.Region { id = "commons", title = "Sakura Commons", detail = "Car court under petals", color = C("#e8a9c0"),
+                    circleCenter = new Vector2(550f, -506f), circleRadius = 180f, labelAt = new Vector2(550f, -506f) },
+                new RegionSet.Region { id = "needle", title = "Needle Works", detail = "Circuit and pit court", color = C("#c44536"),
+                    boxes = new[] { B(-1160f, -80f, -940f, -540f) }, labelAt = new Vector2(-620f, -740f) },
+                new RegionSet.Region { id = "tideglass", title = "Tideglass Harbour", detail = "Working ocean port", color = C("#3d8fd1"),
+                    boxes = new[] { B(520f, 1100f, -E, -780f) }, labelAt = new Vector2(810f, -1158f) },
+                new RegionSet.Region { id = "neon", title = "Neo Tokyo", detail = "Scramble, alleys and neon", color = C("#9b6bb3"),
+                    boxes = new[] { B(-80f, 1490f, -960f, 1000f) },
+                    except = new[] { B(620f, 1040f, 520f, 1000f), B(560f, 1040f, -960f, -780f) }, labelAt = new Vector2(800f, -100f) },
+                new RegionSet.Region { id = "cinder", title = "Cinder Pass", detail = "Hairpins in the cloud", color = C("#7a8490"),
+                    boxes = new[] { B(-E, -80f, 250f, E) }, labelAt = new Vector2(-536f, 495f) },
+                new RegionSet.Region { id = "bellwood", title = "Bellwood", detail = "Temple forest and ridges", color = C("#5f8f4a"),
+                    boxes = new[] { B(-E, E, 520f, E) }, labelAt = new Vector2(790f, 760f) },
+                new RegionSet.Region { id = "stillwater", title = "Stillwater Terraces", detail = "Paddies and mill village", color = C("#c4a35a"),
+                    boxes = new[] { B(-E, -80f, -620f, E) }, labelAt = new Vector2(-760f, -180f) },
+                new RegionSet.Region { id = "longshore", title = "Longshore", detail = "Coast, lighthouse, horizon", color = C("#2aa3a8"),
+                    labelAt = new Vector2(80f, -1280f) },
             };
             AssetDatabase.CreateAsset(set, path);
             return set;

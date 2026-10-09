@@ -25,7 +25,7 @@ Web **53,9 MB** (+4,6), Browser Niedrig 240 / Hoch 65 fps (Blender lief).
 ## Phase 7 — Spielinhalt (als Nächstes, PLAN.md)
 
 - [x] 1. Drift-Wertung (D26): Kette, ×2/×3/×4/×5 nach 6/18/42/90 s Drift, Sakura Bowl + Rotor Court ×2, Sparks; Bild `Captures/p7-1-drift*.png`
-- [ ] 2. Zonen/Regionen (8), „Region erkundet" + Belohnung
+- [x] 2. Regionen (8, lückenlos, Prototyp-Grenzen): 1,5 s am Boden + 4 m → „… explored · n/8 regions · +200 Sparks“, alle 8 +800; Bild `Captures/p7-2-region.png`
 - [ ] 3. Entdeckungen (24) statt anonymer Pickups, Easter Eggs
 - [ ] 4. Schanzen und Stunts (Fundament statt Geländeauflage), Stunt-Modus
 - [ ] 5. Rennen mit KI-Gegnern (Coast Loop, Tōge, Neon Circuit, Ring, Drift Run); Abnahme: KI gegen KI ohne Hängenbleiben

@@ -104,6 +104,7 @@ namespace JapanMap.Gameplay.Hud
             toastBox.style.left = toastBox.style.right = 0;
             toastBox.style.alignItems = Align.Center;
             _toast = Text(toastBox, 30, Color.white);
+            Plate(_toast);
             _banner = Text(toastBox, 24, Gold);
 
             if (drift != null) drift.ChainEnded += OnChainEnded;
@@ -135,6 +136,8 @@ namespace JapanMap.Gameplay.Hud
 
         void OnEarned(int amount, string reason)
         {
+            // A toast that already names the reward (region, discovery) needs no second line.
+            if (_toasts.Count > 0 || Time.time < _toastUntil) return;
             _banner.text = $"+{amount} Sparks · {reason}";
             _bannerUntil = Time.time + toastSeconds;
         }
@@ -167,6 +170,7 @@ namespace JapanMap.Gameplay.Hud
             {
                 _toast.text = _toasts.Count > 0 ? _toasts.Dequeue() : "";
                 if (_toast.text != "") _toastUntil = Time.time + toastSeconds;
+                _toast.style.display = _toast.text != "" ? DisplayStyle.Flex : DisplayStyle.None;
             }
             _banner.style.display = Time.time < _bannerUntil ? DisplayStyle.Flex : DisplayStyle.None;
         }
@@ -175,6 +179,14 @@ namespace JapanMap.Gameplay.Hud
         {
             e.style.position = Position.Absolute;
             e.style.left = e.style.right = e.style.top = e.style.bottom = 0;
+        }
+
+        static void Plate(VisualElement e)
+        {
+            e.style.backgroundColor = new Color(0.03f, 0.04f, 0.08f, 0.55f);
+            e.style.paddingLeft = e.style.paddingRight = 22;
+            e.style.paddingTop = e.style.paddingBottom = 6;
+            e.style.borderTopLeftRadius = e.style.borderTopRightRadius = e.style.borderBottomLeftRadius = e.style.borderBottomRightRadius = 12;
         }
 
         static VisualElement Box(VisualElement parent)

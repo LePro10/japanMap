@@ -337,6 +337,9 @@ namespace JapanMap.Editor
                     ch.Active, ch.Pending, ch.Banked, ch.Multiplier, ch.DriftTime, drift.Zone,
                     car != null ? Mathf.Abs(car.Telemetry.slip) * Mathf.Rad2Deg : 0f, wallet != null ? wallet.Balance : 0));
             }
+            var regionWatch = Object.FindAnyObjectByType<JapanMap.Gameplay.Regions.RegionWatch>();
+            if (regionWatch != null && regionWatch.Regions != null)
+                Log.AppendLine($"  region current={(regionWatch.Current >= 0 ? regionWatch.Regions.regions[regionWatch.Current].id : "-")} explored=[{string.Join(",", regionWatch.Explored)}]");
             var crowd = Object.FindAnyObjectByType<JapanMap.Gameplay.Life.PedestrianCrowd>();
             if (crowd != null)
             {
