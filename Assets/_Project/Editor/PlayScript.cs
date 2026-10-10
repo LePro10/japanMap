@@ -38,6 +38,7 @@ namespace JapanMap.Editor
         // tap: a left click at a UI element, through the virtual mouse (the real path, rule 6).
         static Vector2 _tapPos;
         static int _tapPhase; // 2 = press on next push, 1 = release on next push
+        static int _scrollLeft; // wheel notches still to send (negative = zoom in)
         static float _mouseUntil;
         static readonly StringBuilder Log = new();
         static int _frames, _frameTotal;
@@ -415,6 +416,27 @@ namespace JapanMap.Editor
                     _until = now + 0.25f;
                     return false;
                 }
+                case "tapmap":
+                {
+                    // tapmap <x> <z>: a click on the world map at a world point (opens that pin's card).
+                    var menu = Object.FindAnyObjectByType<JapanMap.Gameplay.Menu.GameMenu>();
+                    var view = (menu?.Current as JapanMap.Gameplay.Menu.MapScreen)?.View;
+                    if (view == null) { Log.AppendLine("  tapmap: the map is not open"); return true; }
+                    var local = view.ToLocal(new Vector2(F(1), F(2)));
+                    var root = view.panel.visualTree.worldBound;
+                    var scale = 1f / JapanMap.Core.Ui.UiPanel.Scale;
+                    var c = view.worldBound.position + local;
+                    _tapPos = new Vector2(c.x * scale, (root.height - c.y) * scale);
+                    _tapPhase = 2;
+                    Log.AppendLine($"  tapmap {F(1)} {F(2)} at {_tapPos}");
+                    _until = now + 0.3f;
+                    return false;
+                }
+                case "scroll":
+                    // scroll <n>: n mouse-wheel notches at the last tap position (positive zooms the map in).
+                    _scrollLeft = int.Parse(a[1]);
+                    _until = now + 0.1f * Mathf.Abs(_scrollLeft) + 0.2f;
+                    return false;
                 case "gameview":
                     // gameview <w> <h>: the Game view resolution (phone portrait 390 844, landscape 844 390).
                     GameViewSize(int.Parse(a[1]), int.Parse(a[2]));
@@ -425,7 +447,7 @@ namespace JapanMap.Editor
                     // text: what the open menu page says, into the log.
                     var menu = Object.FindAnyObjectByType<JapanMap.Gameplay.Menu.GameMenu>();
                     Log.AppendLine($"  menu open={menu?.IsOpen} page={menu?.Current?.Title} · ui {JapanMap.Core.Ui.UiPanel.Form} size {JapanMap.Core.Ui.UiPanel.Size} scale {JapanMap.Core.Ui.UiPanel.Scale:0.00} screen {Screen.width}x{Screen.height}");
-                    foreach (var d in Object.FindObjectsByType<UnityEngine.UIElements.UIDocument>())
+                    if (a.Length > 1 && a[1] == "docs") foreach (var d in Object.FindObjectsByType<UnityEngine.UIElements.UIDocument>())
                         Log.AppendLine($"    doc {d.name}: {(d.panelSettings != null ? d.panelSettings.name + " " + d.panelSettings.scaleMode : "none")} root {d.rootVisualElement?.panel?.visualTree.worldBound}");
                     Log.AppendLine(menu?.Text);
                     return true;
@@ -474,6 +496,7 @@ namespace JapanMap.Editor
             var moving = now < _mouseUntil;
             var ms = new MouseState { delta = moving ? _mouseDelta : Vector2.zero, position = _tapPos };
             ms = ms.WithButton(MouseButton.Right, moving);
+            if (_scrollLeft != 0) { ms.scroll = new Vector2(0f, _scrollLeft > 0 ? 120f : -120f); _scrollLeft -= System.Math.Sign(_scrollLeft); }
             if (_tapPhase == 2) { ms = ms.WithButton(MouseButton.Left, true); _tapPhase = 1; }
             else if (_tapPhase == 1) _tapPhase = 0;
             InputSystem.QueueStateEvent(_mouse, ms);

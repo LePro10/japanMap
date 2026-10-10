@@ -116,7 +116,7 @@ namespace JapanMap.Gameplay.Menu
             // The six destinations in ASTRA order: Play, Cars, Map, Records, Photo, Settings.
             Add(new PlayScreen(progress, races, travel, garage));
             if (garage != null) Add(garage.Screen);
-            Add(new MapScreen(regions, travel));
+            Add(new MapScreen(map, travel));
             if (records != null) Add(records.Screen);
             if (photo != null) Add(new PhotoScreen(photo));
             Add(new SettingsScreen(actions, progress));

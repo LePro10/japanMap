@@ -44,8 +44,9 @@ namespace JapanMap.Core.Ui
         {
             if (_stack.Count == 0) return false;
             var (owner, close) = _stack[^1];
+            // Off the stack first: a close action that only goes one level down puts itself back (photo result → framing).
+            Pop(owner);
             close?.Invoke();
-            Pop(owner); // the close action usually pops itself; make sure
             return true;
         }
     }

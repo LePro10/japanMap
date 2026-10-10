@@ -93,11 +93,17 @@ namespace JapanMap.Tests.Content
 
             // Sparks earned: the balance appears for about two seconds.
             var wallet = Object.FindAnyObjectByType<JapanMap.Gameplay.Economy.SparksWallet>();
+            // Other earnings (the region explored on the drive) restart the two seconds: wait from the last one.
+            var lastEarn = Time.unscaledTime;
+            void OnEarned(int a, string r) => lastEarn = Time.unscaledTime;
+            wallet.Earned += OnEarned;
             wallet.Add(10, "test");
             yield return null;
             yield return null;
             Assert.AreEqual(DisplayStyle.Flex, hud.Sparks.resolvedStyle.display, "balance shows after earning");
-            yield return new WaitForSecondsRealtime(2.6f);
+            for (var w = 0f; Time.unscaledTime - lastEarn < 2.6f && w < 15f; w += Time.unscaledDeltaTime) yield return null;
+            yield return null;
+            wallet.Earned -= OnEarned;
             Assert.AreEqual(DisplayStyle.None, hud.Sparks.resolvedStyle.display, "and goes again");
 
             // Held notices (an event runs) wait; released, they show.

@@ -34,7 +34,11 @@ Web **54,28 MB** (+0,31: SDK, Garage, Rekorde), Start 1,1 s, Browser Niedrig 356
   Rotbereich, Schaltpause 70–220 ms). Tests `HudTests`, `GearboxTests` (3), Rennkarte in `JoinAtTheMarker`.
   Minikarte zeichnet nur Straßenbündel im Ausschnitt (erst +150 k Dreiecke → +21 k). Bench Niedrig Sakura 338 DC / 555 k;
   Web 54,38 MB, Niedrig 299–337 fps (3 Läufe), 0 Fehler.
-- [ ] 3. Weltkarte, Teleport, Fotomodus fertig (Touch) · [ ] 4. Ton je Auto/Belag/Umgebung · [ ] 5. Touch erstklassig
+- [x] 3. **Weltkarte** (M / Map): ganze Insel mit Relief, Regionen, Straßen; Ziehen/Rad/Zwei-Finger-Zoom; Filter; Karten für Ereignis
+  (Go to the start), Reiseziel (Travel nach Erkundung, 7 Punkte auf Straßen), Region/Land (Wegpunkt → Pfeil im HUD), **Hinweis mit
+  Postkarte (live gerendert) und 80-m-Suchkreis**. **Fotomodus fertig:** Touch-Feld, Blick ziehen, Hoch/Runter, Zwei-Finger-Bildwinkel,
+  Leiste Capture/(3840)/Hide UI/Reset/Exit, Ergebnis mit Download PNG/Retake/Return; ESC eine Ebene. Test `MapTests`.
+  Bench Niedrig Sakura 344 DC / 555 k; Web 54,40 MB, Niedrig 299–351 fps, Speichern grün. · [ ] 4. Ton je Auto/Belag/Umgebung · [ ] 5. Touch erstklassig
 
 ## Offen / Gefunden
 
@@ -52,7 +56,8 @@ Web **54,28 MB** (+0,31: SDK, Garage, Rekorde), Start 1,1 s, Browser Niedrig 356
 - **ASTRA-Katalog:** E01 Sakura Starter, E08–E12, E15–E17, Lieferfahrten brauchen ungebaute Straßen/Orte (Harbour Outer Road, Crosslight,
   Terrace Track, Breakyard, Market Hall) — Phase 12 oder eigener Karten-Schritt.
 - **Rennen vorläufig:** Karte/Ergebnis als Text (Phase 9); Regions-/Fundmeldungen auch im Rennen (ASTRA: erst danach).
-- **Entdeckungen:** Hinweiskarte mit Postkarte und 80-m-Suchkreis fehlt (Phase 9, Karte). Funaura: die sechs Angler fehlen.
+- **Entdeckungen:** Funaura: die sechs Angler fehlen. **Leuchtturm-Reiseziel** wartet auf eine Longshore-Straße.
+- **Fotomodus:** „Capture High" ohne Mehrfach-Abtastung (ein Bild in 2560 px; ASTRA wünscht mehrere versetzte Samples) → bei Bedarf Phase 10.
 - **Karte:** Kuppen-Knicke, Stadtplatte ohne Böschung, treppige Reisfeldränder, `commons-drive` beginnt als Asphaltkante.
 - **Hoch kostet viel** (Wald-Schatten, lodBias 2) → Phase 10. **Download 54 MB** (Desktop 50, Handy 20) → Phase 10 (Addressables).
 

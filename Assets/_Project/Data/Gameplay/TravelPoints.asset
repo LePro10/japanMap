@@ -16,48 +16,42 @@ MonoBehaviour:
   - id: commons
     title: Sakura Commons
     region: 
-    at: {x: 552, y: -500}
-    heading: 180
+    at: {x: 546.6895, y: -502.27505}
+    heading: 156.80942
     icon: 9
   - id: rotor
     title: Rotor Court
     region: neon
     at: {x: 180, y: -280}
-    heading: 0
+    heading: 12.696488
     icon: 20
   - id: needle
     title: Needle pits
     region: needle
-    at: {x: -610, y: -740}
-    heading: 90
+    at: {x: -627.7518, y: -674.6834}
+    heading: 74.79539
     icon: 11
   - id: cinder
     title: Cinder Lookout
     region: cinder
-    at: {x: -536, y: 495}
-    heading: 0
+    at: {x: -577.13025, y: 370.02777}
+    heading: -71.78285
     icon: 10
   - id: temple
     title: Temple forecourt
     region: bellwood
-    at: {x: 828, y: 900}
-    heading: 0
+    at: {x: 829.35364, y: 900.24396}
+    heading: -10.217702
     icon: 13
   - id: stillwater
     title: Stillwater Village
     region: stillwater
-    at: {x: -1213, y: -348}
-    heading: 0
+    at: {x: -1198, y: -344}
+    heading: -77.76637
     icon: 14
   - id: harbour
     title: Harbour entrance
     region: tideglass
-    at: {x: 810, y: -1158}
-    heading: 180
+    at: {x: 722, y: -962}
+    heading: 142.90036
     icon: 12
-  - id: lighthouse
-    title: Lighthouse turnout
-    region: longshore
-    at: {x: 80, y: -1280}
-    heading: 90
-    icon: 15

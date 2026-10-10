@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
+using JapanMap.Core.Ui;
 using JapanMap.Gameplay.Hud;
 using JapanMap.Gameplay.Progress;
 using JapanMap.Gameplay.Regions;
+using JapanMap.UI;
 using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -12,11 +15,13 @@ using UnityEngine.UIElements;
 namespace JapanMap.Gameplay.Records
 {
     /// <summary>
-    /// Photo mode (P), ASTRA §11: the game pauses, a free camera starts at the current view and stays within a
-    /// 100 m horizontal / 40 m vertical leash around the player. WASD move, Q/E down/up, right-drag look, wheel
-    /// changes the speed, Enter saves a PNG without HUD at 2560 px wide (1920 on phones, same framing), Esc or P
-    /// leaves. No reward, and nothing in the world moves or is discovered while it is open.
-    /// PROVISIONAL: desktop controls only; touch controls come with the UI of Phase 9.
+    /// Photo mode (P or the Photo tab), ASTRA §11: the game pauses, a free camera starts at the current view inside a
+    /// 100 m / 40 m leash around the player. Desktop: WASD, Q/E down/up, right-drag look, wheel = speed, Enter =
+    /// capture, Esc = exit. Touch: a movement pad on the left, look by dragging on the right, large Up/Down buttons,
+    /// two-finger pinch for the framing (field of view), Capture / Hide UI / Reset camera / Exit in a bottom strip.
+    /// A capture renders a PNG without HUD at 2560 px wide (phone 1920; desktop may choose 3840), same framing, and
+    /// shows the result: Download PNG (a deliberate tap in the browser), Retake, Return to game. If the large target
+    /// cannot be made, the preview stays and "Capture smaller" offers the screen size. No reward; nothing moves.
     /// </summary>
     public sealed class PhotoMode : MonoBehaviour
     {
@@ -30,18 +35,33 @@ namespace JapanMap.Gameplay.Records
         [SerializeField] Vector2 leash = new(100f, 40f);
         [Tooltip("Capture width on desktop and on phones, px (ASTRA: 2560 / 1920); height keeps the screen's framing.")]
         [SerializeField] Vector2Int captureWidth = new(2560, 1920);
+        [Tooltip("The explicit large option on desktop, px (ASTRA: 3840).")]
+        [SerializeField] int captureWidthLarge = 3840;
         [Tooltip("Camera speed range, m/s (mouse wheel), and the start value.")]
         [SerializeField] Vector3 speed = new(2f, 40f, 8f);
         [SerializeField] float lookDegreesPerPixel = 0.15f;
+        [Tooltip("Field of view range for the pinch, degrees.")]
+        [SerializeField] Vector2 fovRange = new(20f, 80f);
 
         UIDocument _doc;
-        Label _hint;
+        VisualElement _root, _strip, _pad, _knob, _lookArea, _result, _resultImage, _touchLayer;
+        Label _hint, _resultText;
+        Button _hide;
         InputAction _toggle, _shoot;
         CinemachineBrain _brain;
-        Vector3 _anchor;
-        float _yaw, _pitch, _speed, _savedScale = 1f;
+        Vector3 _anchor, _startPos;
+        Quaternion _startRot;
+        float _yaw, _pitch, _speed, _savedScale = 1f, _fov, _startFov, _pinchStart, _fovAtPinch;
+        Vector2 _padAxes;
+        int _padPointer = -1;
+        float _vertical;
+        bool _uiHidden;
+        readonly Dictionary<int, Vector2> _look = new();
+        byte[] _png;
+        Texture2D _preview;
 
         public bool IsOpen { get; private set; }
+        public bool ShowingResult => _result != null && _result.style.display == DisplayStyle.Flex;
         /// <summary>Path or file name of the last photo (tests, toast).</summary>
         public string LastPhoto { get; private set; } = "";
         public Vector2Int LastSize { get; private set; }
@@ -53,7 +73,7 @@ namespace JapanMap.Gameplay.Records
         void Awake()
         {
             _doc = gameObject.AddComponent<UIDocument>();
-            _doc.panelSettings = Core.Ui.UiPanel.Get(panelSettings);
+            _doc.panelSettings = UiPanel.Get(panelSettings);
             _doc.sortingOrder = 8;
             if (actions != null) _toggle = actions.FindActionMap("Player", true).FindAction("Photo", true);
             // Actions, not wasPressedThisFrame: a short press between two frames still counts.
@@ -63,20 +83,8 @@ namespace JapanMap.Gameplay.Records
 
         void OnEnable()
         {
-            var root = _doc.rootVisualElement;
-            root.Clear();
-            root.pickingMode = PickingMode.Ignore;
-            _hint = new Label("Photo mode   ·   WASD move · Q/E down/up · right-drag look · wheel speed · Enter save photo · Esc/P back");
-            _hint.style.position = Position.Absolute;
-            _hint.style.bottom = 24;
-            _hint.style.left = _hint.style.right = 0;
-            _hint.style.unityTextAlign = TextAnchor.MiddleCenter;
-            _hint.style.fontSize = 18;
-            _hint.style.color = Color.white;
-            _hint.style.backgroundColor = new Color(0f, 0f, 0f, 0.45f);
-            _hint.style.paddingTop = _hint.style.paddingBottom = 6;
-            _hint.style.display = DisplayStyle.None;
-            root.Add(_hint);
+            Build();
+            UiPanel.Changed += Build;
             if (_toggle != null)
             {
                 _toggle.Enable();
@@ -88,14 +96,16 @@ namespace JapanMap.Gameplay.Records
 
         void OnDisable()
         {
+            UiPanel.Changed -= Build;
             if (_toggle != null) _toggle.performed -= OnToggle;
             _shoot.performed -= OnShoot;
             _shoot.Disable();
+            if (_preview != null) Destroy(_preview);
         }
 
         void OnShoot(InputAction.CallbackContext _)
         {
-            if (IsOpen) Capture();
+            if (IsOpen && !ShowingResult) Capture();
         }
 
         void OnToggle(InputAction.CallbackContext _)
@@ -103,6 +113,173 @@ namespace JapanMap.Gameplay.Records
             if (IsOpen) Close();
             else Open();
         }
+
+        // ── the screen ───────────────────────────────────────────────────────
+
+        void Build()
+        {
+            var open = IsOpen;
+            _root = _doc.rootVisualElement;
+            _root.Clear();
+            _root.AddToClassList("jm-fill");
+            _root.pickingMode = PickingMode.Ignore;
+            _root.EnableInClassList("jm-phone", UiPanel.IsPhone);
+            var safe = UiPanel.Safe;
+
+            // Touch: look by dragging anywhere that is not a control; pinch = framing.
+            _lookArea = Ui.Box(_root, "jm-fill");
+            _lookArea.name = "photo-look";
+            _lookArea.RegisterCallback<PointerDownEvent>(e => { _look[e.pointerId] = e.position; _lookArea.CapturePointer(e.pointerId); if (_look.Count == 2) { _pinchStart = Pinch(); _fovAtPinch = _fov; } });
+            _lookArea.RegisterCallback<PointerMoveEvent>(e =>
+            {
+                if (!_look.TryGetValue(e.pointerId, out var last) || !IsOpen || ShowingResult) return;
+                _look[e.pointerId] = e.position;
+                if (_look.Count >= 2)
+                {
+                    var d = Pinch();
+                    if (_pinchStart > 1f && d > 1f) _fov = Mathf.Clamp(_fovAtPinch * _pinchStart / d, fovRange.x, fovRange.y);
+                    return;
+                }
+                // Mouse look stays on the right button (desktop); touch looks with any finger here.
+                if (e.pointerType == "mouse") return;
+                var delta = (Vector2)e.position - last;
+                _yaw += delta.x * lookDegreesPerPixel * 1.4f;
+                _pitch = Mathf.Clamp(_pitch + delta.y * lookDegreesPerPixel * 1.4f, -85f, 85f);
+            });
+            void Up(int id) { _look.Remove(id); if (_lookArea.HasPointerCapture(id)) _lookArea.ReleasePointer(id); }
+            _lookArea.RegisterCallback<PointerUpEvent>(e => Up(e.pointerId));
+            _lookArea.RegisterCallback<PointerCancelEvent>(e => Up(e.pointerId));
+
+            _touchLayer = Ui.Box(_root, "jm-fill");
+            _touchLayer.pickingMode = PickingMode.Ignore;
+            // Movement pad, lower left.
+            var padSize = UiPanel.IsPhone ? 128f : 150f;
+            _pad = Ui.Box(_touchLayer, "jm-touch");
+            _pad.name = "photo-pad";
+            _pad.style.width = _pad.style.height = padSize;
+            _pad.style.left = 16 + safe.x;
+            _pad.style.bottom = (UiPanel.IsPhone ? 84 : 90) + safe.w;
+            _knob = Ui.Box(_pad, "jm-touch");
+            _knob.pickingMode = PickingMode.Ignore;
+            _knob.style.width = _knob.style.height = padSize * 0.42f;
+            _knob.style.left = _knob.style.top = padSize * 0.29f;
+            _pad.RegisterCallback<PointerDownEvent>(e => { if (_padPointer >= 0) return; _padPointer = e.pointerId; _pad.CapturePointer(e.pointerId); Pad(e.position); e.StopPropagation(); });
+            _pad.RegisterCallback<PointerMoveEvent>(e => { if (e.pointerId == _padPointer) Pad(e.position); });
+            void PadUp(int id)
+            {
+                if (id != _padPointer) return;
+                _pad.ReleasePointer(id);
+                _padPointer = -1;
+                _padAxes = Vector2.zero;
+                _knob.style.left = _knob.style.top = padSize * 0.29f;
+            }
+            _pad.RegisterCallback<PointerUpEvent>(e => PadUp(e.pointerId));
+            _pad.RegisterCallback<PointerCancelEvent>(e => PadUp(e.pointerId));
+
+            // Up / Down, large, lower right.
+            Hold(_touchLayer, "UP", 64f, right: 16 + safe.z, bottom: 164 + safe.w, on => _vertical = on ? 1f : _vertical > 0f ? 0f : _vertical);
+            Hold(_touchLayer, "DOWN", 64f, right: 16 + safe.z, bottom: 88 + safe.w, on => _vertical = on ? -1f : _vertical < 0f ? 0f : _vertical);
+
+            // Bottom strip: Capture, Hide UI, Reset camera, Exit.
+            _strip = Ui.Row(_root, "jm-wrap");
+            _strip.name = "photo-strip";
+            _strip.style.position = Position.Absolute;
+            _strip.style.left = 0;
+            _strip.style.right = 0;
+            _strip.style.bottom = 12 + safe.w;
+            _strip.style.justifyContent = Justify.Center;
+            Ui.Button(_strip, "Capture", Capture, "jm-btn--primary");
+            if (!UiPanel.IsPhone) Ui.Button(_strip, $"Capture {captureWidthLarge}", () => Capture(captureWidthLarge));
+            _hide = Ui.Button(_strip, "Hide UI", ToggleUi);
+            Ui.Button(_strip, UiPanel.IsPhone ? "Reset" : "Reset camera", ResetCamera);
+            Ui.Button(_strip, "Exit", Close);
+
+            _hint = new Label(UiPanel.IsPhone ? "Photo · left pad moves · drag to look · pinch to frame" : "Photo  ·  WASD move · Q/E down/up · right-drag look · wheel speed · Enter capture · Esc exit");
+            _hint.AddToClassList("jm-small");
+            _hint.AddToClassList("jm-plate");
+            _hint.style.position = Position.Absolute;
+            _hint.style.top = 12 + safe.y;
+            _hint.style.alignSelf = Align.Center;
+            _hint.style.maxWidth = Length.Percent(92);
+            _hint.pickingMode = PickingMode.Ignore;
+            _root.Add(_hint);
+
+            // Result: the picture, its size, Download / Retake / Return.
+            _result = Ui.Box(_root, "jm-fill", "jm-center");
+            _result.style.backgroundColor = new Color(0f, 0f, 0f, 0.6f);
+            var panel = Ui.Box(_result, "jm-panel", "jm-sheet");
+            panel.style.maxWidth = 900;
+            Ui.H2(panel, "Photo");
+            _resultImage = Ui.Box(panel, "jm-pic");
+            _resultImage.style.height = UiPanel.IsPortrait ? 200 : 300;
+            _resultImage.style.marginBottom = 8;
+            _resultText = Ui.Small(panel, "");
+            var row = Ui.Row(panel, "jm-wrap");
+            Ui.Button(row, "Download PNG", Download, "jm-btn--primary");
+            Ui.Button(row, "Retake", () => Ui.Show(_result, false));
+            Ui.Button(row, "Return to game", Close);
+            Ui.Show(_result, false);
+
+            ShowControls(open);
+        }
+
+        void ShowControls(bool open)
+        {
+            _root.style.display = open ? DisplayStyle.Flex : DisplayStyle.None;
+            var touch = UiPanel.IsPhone || Touchscreen.current != null;
+            Ui.Show(_touchLayer, open && touch && !_uiHidden);
+            Ui.Show(_strip, open && !_uiHidden);
+            Ui.Show(_hint, open && !_uiHidden);
+        }
+
+        void Hold(VisualElement parent, string label, float size, float right, float bottom, Action<bool> changed)
+        {
+            var b = Ui.Box(parent, "jm-touch");
+            b.style.width = b.style.height = size;
+            b.style.right = right;
+            b.style.bottom = bottom;
+            b.Add(new Label(label) { pickingMode = PickingMode.Ignore });
+            var pointer = -1;
+            b.RegisterCallback<PointerDownEvent>(e => { if (pointer >= 0) return; pointer = e.pointerId; b.CapturePointer(pointer); changed(true); b.AddToClassList("jm-touch--down"); e.StopPropagation(); });
+            void Up(int id) { if (id != pointer) return; b.ReleasePointer(id); pointer = -1; changed(false); b.RemoveFromClassList("jm-touch--down"); }
+            b.RegisterCallback<PointerUpEvent>(e => Up(e.pointerId));
+            b.RegisterCallback<PointerCancelEvent>(e => Up(e.pointerId));
+        }
+
+        void Pad(Vector2 pointer)
+        {
+            var r = _pad.worldBound;
+            var off = (pointer - r.center) / (r.width * 0.5f);
+            if (off.magnitude > 1f) off.Normalize();
+            _padAxes = off.magnitude < 0.12f ? Vector2.zero : new Vector2(off.x, -off.y);
+            _knob.style.left = _pad.resolvedStyle.width * (0.29f + off.x * 0.3f);
+            _knob.style.top = _pad.resolvedStyle.height * (0.29f + off.y * 0.3f);
+        }
+
+        float Pinch()
+        {
+            var e = _look.Values.GetEnumerator();
+            e.MoveNext();
+            var a = e.Current;
+            e.MoveNext();
+            return Vector2.Distance(a, e.Current);
+        }
+
+        void ToggleUi()
+        {
+            _uiHidden = !_uiHidden;
+            // A small "Show UI" stays so a finger can bring the controls back.
+            _hide.text = _uiHidden ? "Show UI" : "Hide UI";
+            ShowControls(true);
+            if (_uiHidden)
+            {
+                Ui.Show(_strip, true);
+                foreach (var c in _strip.Children()) Ui.Show(c, c == _hide);
+            }
+            else foreach (var c in _strip.Children()) Ui.Show(c, true);
+        }
+
+        // ── open / close ─────────────────────────────────────────────────────
 
         public void Open()
         {
@@ -113,34 +290,65 @@ namespace JapanMap.Gameplay.Records
                 : player.Walker != null ? player.Walker.transform.position : cam.transform.position;
             _savedScale = Time.timeScale;
             Time.timeScale = 0f;
+            AudioListener.pause = true;
             player.SetSuspended(true);
             // The camera is ours while the game is paused: Cinemachine would hold it at the last shot.
             _brain = cam.GetComponent<CinemachineBrain>();
             if (_brain != null) _brain.enabled = false;
-            var e = cam.transform.eulerAngles;
+            _startPos = cam.transform.position;
+            _startRot = cam.transform.rotation;
+            _startFov = _fov = cam.fieldOfView;
+            ResetCamera();
+            _speed = speed.z;
+            _uiHidden = false;
+            if (hud != null) hud.Hidden = true;
+            ShowControls(true);
+            Ui.Show(_result, false);
+            UiStack.Push(this, Back); // Esc: result → back to framing; framing → leave
+            UnityEngine.Cursor.lockState = CursorLockMode.None;
+            UnityEngine.Cursor.visible = true;
+        }
+
+        void Back()
+        {
+            if (ShowingResult)
+            {
+                Ui.Show(_result, false);
+                UiStack.Push(this, Back);
+                return;
+            }
+            Close();
+        }
+
+        void ResetCamera()
+        {
+            var cam = Camera.main;
+            if (cam == null) return;
+            cam.transform.SetPositionAndRotation(_startPos, _startRot);
+            var e = _startRot.eulerAngles;
             _yaw = e.y;
             _pitch = e.x > 180f ? e.x - 360f : e.x;
-            _speed = speed.z;
-            if (hud != null) hud.Hidden = true;
-            _hint.style.display = DisplayStyle.Flex;
-            Core.Ui.UiStack.Push(this, Close); // Esc leaves (the menu routes it)
+            _fov = _startFov;
         }
 
         public void Close()
         {
             if (!IsOpen) return;
             IsOpen = false;
-            Core.Ui.UiStack.Pop(this);
-            _hint.style.display = DisplayStyle.None;
+            UiStack.Pop(this);
+            var cam = Camera.main;
+            if (cam != null) cam.fieldOfView = _startFov;
             if (_brain != null) _brain.enabled = true;
-            Time.timeScale = _savedScale;
+            Time.timeScale = _savedScale <= 0f ? 1f : _savedScale;
+            AudioListener.pause = false;
             if (hud != null) hud.Hidden = false;
+            ShowControls(false);
             player.SetSuspended(false);
         }
 
         void Update()
         {
-            if (!IsOpen) return;
+            if (!IsOpen || ShowingResult) return;
             var kb = Keyboard.current;
             var mouse = Mouse.current;
             var dt = Time.unscaledDeltaTime;
@@ -155,7 +363,7 @@ namespace JapanMap.Gameplay.Records
                 var wheel = mouse.scroll.ReadValue().y;
                 if (Mathf.Abs(wheel) > 0.01f) _speed = Mathf.Clamp(_speed * (wheel > 0f ? 1.2f : 1f / 1.2f), speed.x, speed.y);
             }
-            var move = Vector3.zero;
+            var move = new Vector3(_padAxes.x, _vertical, _padAxes.y);
             if (kb != null)
             {
                 if (kb.wKey.isPressed) move.z += 1f;
@@ -166,6 +374,8 @@ namespace JapanMap.Gameplay.Records
                 if (kb.qKey.isPressed) move.y -= 1f;
             }
             Step(move, dt);
+            var cam = Camera.main;
+            if (cam != null) cam.fieldOfView = _fov;
         }
 
         /// <summary>One camera step: move along the view's heading, then hold it inside the leash.</summary>
@@ -182,16 +392,24 @@ namespace JapanMap.Gameplay.Records
             t.SetPositionAndRotation(_anchor + off, rot);
         }
 
-        /// <summary>Renders the paused view into a large target (no HUD) and saves it as a PNG.</summary>
-        public void Capture()
+        // ── capture ──────────────────────────────────────────────────────────
+
+        public void Capture() => Capture(Application.isMobilePlatform || UiPanel.IsPhone ? captureWidth.y : captureWidth.x);
+
+        /// <summary>Renders the paused view into a large target (no HUD), keeps the PNG and shows the result.</summary>
+        public void Capture(int width)
         {
             var cam = Camera.main;
-            var width = Application.isMobilePlatform ? captureWidth.y : captureWidth.x;
+            if (cam == null) return;
             var height = Mathf.RoundToInt(width * (float)Screen.height / Mathf.Max(1, Screen.width));
+            var smaller = false;
             // Memory guard (ASTRA: check before allocating): fall back to the screen size if the large one fails.
-            RenderTexture rt;
-            try { rt = RenderTexture.GetTemporary(width, height, 24, RenderTextureFormat.ARGB32); }
-            catch (Exception)
+            RenderTexture rt = null;
+            if (width > SystemInfo.maxTextureSize || height > SystemInfo.maxTextureSize) smaller = true;
+            else
+                try { rt = RenderTexture.GetTemporary(width, height, 24, RenderTextureFormat.ARGB32); }
+                catch (Exception) { smaller = true; }
+            if (smaller || rt == null)
             {
                 width = Screen.width;
                 height = Screen.height;
@@ -199,17 +417,16 @@ namespace JapanMap.Gameplay.Records
             }
             var old = cam.targetTexture;
             var active = RenderTexture.active;
-            byte[] png;
             try
             {
                 cam.targetTexture = rt;
                 cam.Render();
                 RenderTexture.active = rt;
-                var tex = new Texture2D(width, height, TextureFormat.RGB24, false);
-                tex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-                tex.Apply();
-                png = tex.EncodeToPNG();
-                Destroy(tex);
+                if (_preview != null) Destroy(_preview);
+                _preview = new Texture2D(width, height, TextureFormat.RGB24, false) { name = "Photo (runtime)" };
+                _preview.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+                _preview.Apply();
+                _png = _preview.EncodeToPNG();
             }
             finally
             {
@@ -217,19 +434,37 @@ namespace JapanMap.Gameplay.Records
                 RenderTexture.active = active;
                 RenderTexture.ReleaseTemporary(rt);
             }
-            var name = FileName();
             LastSize = new Vector2Int(width, height);
-#if UNITY_WEBGL && !UNITY_EDITOR
-            JapanMapDownload(name, png, png.Length, "image/png");
+            var name = FileName();
             LastPhoto = name;
-#else
+#if !UNITY_WEBGL || UNITY_EDITOR
+            // Editor and desktop: straight into Captures/Photos; the browser downloads on a deliberate tap.
             var dir = Path.Combine(Application.dataPath, "..", "Captures", "Photos");
             Directory.CreateDirectory(dir);
             LastPhoto = Path.GetFullPath(Path.Combine(dir, name));
-            File.WriteAllBytes(LastPhoto, png);
+            File.WriteAllBytes(LastPhoto, _png);
 #endif
-            if (hud != null) hud.Flash($"Photo saved · {name}");
-            Debug.Log($"[Photo] {name} {width}×{height}, {png.Length / 1024} KB");
+            Audio.Sfx.Play("UI_Click");
+            _resultImage.style.backgroundImage = new StyleBackground(_preview);
+            _resultText.text = $"{width} × {height} px · {_png.Length / 1024:N0} KB{(smaller ? " · smaller: the large size was not available" : "")}"
+#if !UNITY_WEBGL || UNITY_EDITOR
+                + $"\nSaved: {LastPhoto}"
+#endif
+                ;
+            Ui.Show(_result, true);
+            Debug.Log($"[Photo] {name} {width}×{height}, {_png.Length / 1024} KB");
+        }
+
+        /// <summary>Hands the PNG to the browser (or saves it again on desktop).</summary>
+        public void Download()
+        {
+            if (_png == null) return;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            JapanMapDownload(Path.GetFileName(LastPhoto), _png, _png.Length, "image/png");
+#else
+            File.WriteAllBytes(LastPhoto, _png);
+#endif
+            if (hud != null) hud.Flash($"Photo saved · {Path.GetFileName(LastPhoto)}");
         }
 
         /// <summary>japanMap_place_car_YYYY-MM-DD_HH-mm-ss.png (ASTRA §11).</summary>

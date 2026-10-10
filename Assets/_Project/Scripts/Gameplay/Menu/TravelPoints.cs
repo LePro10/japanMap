@@ -6,7 +6,7 @@ namespace JapanMap.Gameplay.Menu
 {
     /// <summary>
     /// Free travel destinations (ASTRA §10): Commons, Rotor Court, Needle pits, Cinder Lookout, Temple forecourt,
-    /// Stillwater Village, Harbour entrance, Lighthouse turnout — each after its region is discovered (Commons
+    /// Stillwater Village, Harbour entrance (Lighthouse turnout once Longshore has a road) — each after its region is discovered (Commons
     /// always). The first point is Sakura Commons. Positions snap to the nearest road at arrival.
     /// </summary>
     [CreateAssetMenu(menuName = "JapanMap/Gameplay/Travel Points")]

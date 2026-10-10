@@ -7,7 +7,7 @@ using UnityEngine;
 namespace JapanMap.Editor.Content
 {
     /// <summary>
-    /// First fill of Data/Gameplay/TravelPoints.asset: the eight free-travel destinations of ASTRA §10 at the places
+    /// First fill of Data/Gameplay/TravelPoints.asset: the free-travel destinations of ASTRA §10 (seven: the lighthouse waits for its road) at the places
     /// they name (bounds of the built places, region labels for harbour/lighthouse/lookout). Each unlocks with the
     /// region its point lies in (Commons: always). Runs only when the asset is missing.
     /// </summary>
@@ -15,17 +15,31 @@ namespace JapanMap.Editor.Content
     {
         public const string TravelPath = ContentSetup.Dir + "/TravelPoints.asset";
 
-        public static TravelPoints TravelPoints()
+        /// <summary>Loads the asset; creates it (or refills it with <paramref name="refill"/>) from the list below.</summary>
+        public static TravelPoints TravelPoints(bool refill = false)
         {
             var set = AssetDatabase.LoadAssetAtPath<TravelPoints>(TravelPath);
-            if (set != null) return set;
-            set = ScriptableObject.CreateInstance<TravelPoints>();
+            if (set != null && !refill) return set;
+            var created = set == null;
+            if (created) set = ScriptableObject.CreateInstance<TravelPoints>();
             var regions = AssetDatabase.LoadAssetAtPath<RegionSet>(ContentSetup.Dir + "/Regions.asset");
-            TravelPoints.Point P(string id, string title, float x, float z, float heading, Icon icon, bool always = false) => new()
+            var roads = AssetDatabase.LoadAssetAtPath<JapanMap.World.RoadNetwork>(JapanMap.Editor.Map.RoadImporter.NetworkPath);
+            // Each point sits on the nearest road (the harbour and lighthouse labels lie over the sea), facing along it;
+            // it unlocks with the region of that road point.
+            TravelPoints.Point P(string id, string title, float x, float z, float heading, Icon icon, bool always = false)
             {
-                id = id, title = title, at = new Vector2(x, z), heading = heading, icon = icon,
-                region = always || regions == null ? "" : regions.regions[regions.IndexAt(new Vector3(x, 0f, z))].id,
-            };
+                var at = new Vector3(x, 0f, z);
+                if (roads != null && roads.TryNearest(at, Quaternion.Euler(0f, heading, 0f) * Vector3.forward, 800f, out var road, out var fwd))
+                {
+                    at = road;
+                    heading = Mathf.Atan2(fwd.x, fwd.z) * Mathf.Rad2Deg;
+                }
+                return new TravelPoints.Point
+                {
+                    id = id, title = title, at = new Vector2(at.x, at.z), heading = heading, icon = icon,
+                    region = always || regions == null ? "" : regions.regions[regions.IndexAt(at)].id,
+                };
+            }
             set.points = new[]
             {
                 P("commons", "Sakura Commons", 552f, -500f, 180f, Icon.Wheel, always: true),
@@ -35,9 +49,10 @@ namespace JapanMap.Editor.Content
                 P("temple", "Temple forecourt", 828f, 900f, 0f, Icon.Torii),
                 P("stillwater", "Stillwater Village", -1213f, -348f, 0f, Icon.Sheaf),
                 P("harbour", "Harbour entrance", 810f, -1158f, 180f, Icon.Lantern),
-                P("lighthouse", "Lighthouse turnout", 80f, -1280f, 90f, Icon.Lighthouse),
+                // "Lighthouse turnout" (ASTRA) waits for a Longshore road — the nearest road today lies 450 m inland.
             };
-            AssetDatabase.CreateAsset(set, TravelPath);
+            if (created) AssetDatabase.CreateAsset(set, TravelPath);
+            else EditorUtility.SetDirty(set);
             AssetDatabase.SaveAssets();
             return set;
         }

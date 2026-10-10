@@ -598,10 +598,19 @@ namespace JapanMap.Gameplay.Hud
             var g = car.Gearbox;
             var t = car.Telemetry;
             _instrument.Set(g.Rpm, g.Spec.redline, g.Spec.limiter, Vehicles.Gearbox.Label(g.Gear), GameOptions.Speed(t.speed), GameOptions.SpeedUnit, t.boost, t.boosting);
-            if (_target.HasValue)
+            // The race checkpoint, else the player's waypoint (cleared on arrival).
+            Vector3? aim = _target;
+            if (!aim.HasValue && map != null && map.Waypoint.HasValue)
+            {
+                var w = map.Waypoint.Value;
+                var p = car.transform.position;
+                if (new Vector2(w.x - p.x, w.y - p.z).magnitude < 30f) map.Waypoint = null;
+                else aim = new Vector3(w.x, p.y, w.y);
+            }
+            if (aim.HasValue)
             {
                 var cam = Camera.main;
-                var to = _target.Value - car.transform.position;
+                var to = aim.Value - car.transform.position;
                 var fwd = cam != null ? cam.transform.forward : car.transform.forward;
                 var ang = Vector3.SignedAngle(new Vector3(fwd.x, 0f, fwd.z), new Vector3(to.x, 0f, to.z), Vector3.up);
                 _arrow.style.rotate = new Rotate(new Angle(ang, AngleUnit.Degree));
@@ -610,6 +619,7 @@ namespace JapanMap.Gameplay.Hud
                 _arrow.style.top = size.y * (UiPanel.IsPortrait ? 0.42f : 0.36f);
                 _arrow.style.display = DisplayStyle.Flex;
             }
+            else _arrow.style.display = DisplayStyle.None;
         }
 
         void UpdateMap()

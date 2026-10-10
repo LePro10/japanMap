@@ -206,6 +206,9 @@ namespace JapanMap.Gameplay.Map
             {
                 var icon = new UiIcon(Icon.Diamond, 20f) { pickingMode = PickingMode.Ignore };
                 icon.style.position = Position.Absolute;
+                // A dark badge: icons stay readable over white roads and light terrain.
+                icon.style.backgroundColor = new Color(0.024f, 0.078f, 0.1f, 0.78f);
+                icon.style.paddingLeft = icon.style.paddingRight = icon.style.paddingTop = icon.style.paddingBottom = 3;
                 _icons.Add(icon);
                 _pins.Add(icon);
             }
@@ -228,6 +231,7 @@ namespace JapanMap.Gameplay.Map
                 if (icon.Kind != pin.icon) icon.Kind = pin.icon;
                 if (icon.Tint != pin.color) icon.Tint = pin.color;
                 icon.style.width = icon.style.height = s;
+                icon.style.borderTopLeftRadius = icon.style.borderTopRightRadius = icon.style.borderBottomLeftRadius = icon.style.borderBottomRightRadius = s * 0.5f;
                 icon.style.left = at.x - s * 0.5f;
                 icon.style.top = at.y - s * 0.5f;
                 icon.style.rotate = new Rotate(new Angle(pin.heading, AngleUnit.Degree));
