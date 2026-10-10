@@ -26,6 +26,11 @@ namespace JapanMap.Audio
         /// <summary>Summed linear volume of all engine layers last frame (tests: tuning must be measurable).</summary>
         public float LayerLevel { get; private set; }
         public float IntakeLevel => _intake != null ? _intake.volume : 0f;
+        /// <summary>Summed volume of the on-load and the off-load loops (tests: load must be heard).</summary>
+        public float OnLevel { get; private set; }
+        public float OffLevel { get; private set; }
+        /// <summary>Pitch of the loudest loop (tests: pitch follows rpm).</summary>
+        public float MainPitch { get; private set; }
         public float DeepLevel => _deep != null ? _deep.volume : 0f;
         [Tooltip("Street intake layer and Sport deep layer, linear share of the main loop.")]
         public Vector2 tierLayers = new(0.22f, 0.3f);
@@ -102,6 +107,7 @@ namespace JapanMap.Audio
             var off = Mathf.Sqrt(1f - _load) * _bank.offGain;
 
             var level = 0f;
+            float onSum = 0f, offSum = 0f, loud = 0f;
             for (var i = 0; i < steps.Length; i++)
             {
                 var w = i == lo ? wLo : 0f;
@@ -111,7 +117,12 @@ namespace JapanMap.Audio
                 Set(_on[i], w * on * gain, pitch);
                 Set(_off[i], w * off * gain, pitch);
                 level += _on[i].volume + _off[i].volume;
+                onSum += _on[i].volume;
+                offSum += _off[i].volume;
+                if (_on[i].volume + _off[i].volume > loud) { loud = _on[i].volume + _off[i].volume; MainPitch = pitch; }
             }
+            OnLevel = onSum;
+            OffLevel = offSum;
             Set(_idle, idleW * gain, Mathf.Clamp(rpm / _bank.idleRpm, 0.5f, 2f));
             level += _idle.volume;
 

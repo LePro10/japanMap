@@ -61,6 +61,7 @@ namespace JapanMap.Vehicles
         ShiftStrategy _shift;
         float[] _tops = Array.Empty<float>();
         float _throttle, _shiftLeft, _cooldown, _cut;
+        bool _cutArmed = true;
         bool _shiftUp;
 
         public int Gear { get; private set; } = 1;
@@ -184,14 +185,19 @@ namespace JapanMap.Vehicles
             {
                 _cut = Mathf.Max(0f, _cut - dt);
                 load = 0f;
-                rpm -= s.revFall * 0.6f * dt;
+                // No fuel: the revs only fall during the cut (the step above would have pushed them up again).
+                rpm = Rpm - s.revFall * 1.5f * dt;
             }
-            else if (rpm >= s.limiter && t > 0.3f)
+            else if (rpm >= s.limiter && t > 0.3f && _cutArmed)
             {
                 _cut = _shift.limiterCut;
+                _cutArmed = false;
                 LimiterHits++;
                 load = 0f;
             }
+            // Re-arm only below the limiter: the engine bounces off it (cut, fire, cut) instead of staying cut — measured
+            // in Phase 9: load 0 in every frame at the limiter, the engine went near silent.
+            if (rpm < s.limiter - 150f) _cutArmed = true;
             rpm = Mathf.Clamp(rpm, s.idle * 0.92f, s.limiter + 80f);
             Rpm = float.IsFinite(rpm) ? rpm : s.idle;
             Load = Mathf.Clamp01(load);

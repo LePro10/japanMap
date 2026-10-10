@@ -3,7 +3,8 @@
 // OnAudioFilterRead), but it can pitch and crossfade loops. Not recordings: the human checks them with
 // headphones; real CC0/own recordings replace them (STATUS "Für die Asset-Sitzung").
 //   node --experimental-strip-types --import ./Tools/legacy-export/register.mjs Tools/legacy-export/render-audio.mts <outDir>
-// Per car (legacy id): idle + 4 rpm steps × (on load, off load); world: roll/skid per surface, wind.
+// Per car (legacy id): idle 1.0 s + 4 rpm steps × (on load 0.8 s, off load 1.0 s); world: roll/skid per surface, wind.
+// Lengths are a download trade-off (Phase 9: 130 stand-ins +1.7 MB); longer loops repeat less audibly.
 // Every loop starts with 1024 samples of silence and carries a `smpl` loop chunk after it (Unity manual
 // "Audio in Web": the AAC encoder alters the first 1024 samples, which clicks at the loop point otherwise).
 import fs from 'node:fs';
@@ -99,9 +100,14 @@ function writeWav(name: string, data: Float32Array, looped: boolean): { peak: nu
   return { peak, rms: Math.sqrt(sum / data.length) };
 }
 
+// Redline per car from ASTRA §6 (the Unity gearbox uses it: VehicleDefinition.gearbox); idle stays legacy.
+const ASTRA_REDLINE: Record<string, number> = {
+  touge: 7000, pip: 6500, truck: 6000, offroad: 5500, torrent: 7500, ribbon: 7200, meridian: 6800, morrow: 6500, gt: 8500, needle: 10500,
+};
+
 const rows: string[] = [];
 for (const [legacy, id] of Object.entries(CARS)) {
-  const g = GEARBOX[legacy as keyof typeof GEARBOX];
+  const g = { ...GEARBOX[legacy as keyof typeof GEARBOX], redline: ASTRA_REDLINE[legacy]! };
   const voice = ENGINE_VOICES[legacy as keyof typeof ENGINE_VOICES];
   const base = { idle: g.idle, redline: g.redline, on: 1, starter: 0, cabin: 0, drive: 0, speed: 0 };
   const take = (tag: string, rpm: number, load: number, throttle: number, seconds: number) => {
@@ -111,10 +117,10 @@ for (const [legacy, id] of Object.entries(CARS)) {
     const m = writeWav(`SFX_STANDIN_Engine_${id}_${tag}.wav`, loop(s, 1.5, seconds), true);
     rows.push(`${id} ${tag} rpm ${Math.round(rpm)} peak ${m.peak.toFixed(2)} rms ${m.rms.toFixed(3)}`);
   };
-  take('idle', g.idle, 0.05, 0, 1.2);
+  take('idle', g.idle, 0.05, 0, 1.0);
   STEPS.forEach((f, i) => {
-    take(`on${i}`, g.redline * f, 1, 1, 1.0);
-    take(`off${i}`, g.redline * f, 0, 0, 1.4);
+    take(`on${i}`, g.redline * f, 1, 1, 0.8);
+    take(`off${i}`, g.redline * f, 0, 0, 1.0);
   });
   // Lift-off at high revs: blow-off / overrun crackle once (Ribbon "audible boost release", ASTRA §6).
   const mixer = new VehicleMixer(SR);

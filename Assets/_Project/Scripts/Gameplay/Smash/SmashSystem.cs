@@ -48,6 +48,12 @@ namespace JapanMap.Gameplay.Smash
 
         public int TreesBroken { get; private set; }
 
+        /// <summary>Something broke: kind name ("tree", "post", "fence", …), where, and the impact speed (sound).</summary>
+        public static event System.Action<string, Vector3, float> Broke;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetBroke() => Broke = null;
+
         void OnEnable() => InstanceCollider.Hit += OnInstanceHit;
         void OnDisable() => InstanceCollider.Hit -= OnInstanceHit;
 
@@ -69,6 +75,7 @@ namespace JapanMap.Gameplay.Smash
             _trees.Add((r, index, Time.time, at));
             Breaks++;
             TreesBroken++;
+            Broke?.Invoke("tree", at, rel.magnitude);
             GiveSpeedBack(body, kind.carLoss);
             var bounds = new Bounds(at + Vector3.up * h * 0.5f, new Vector3(radius * 2f, h, radius * 2f));
             SpawnPieces(kind, bounds, Quaternion.identity, body.linearVelocity);
@@ -162,6 +169,7 @@ namespace JapanMap.Gameplay.Smash
             var bounds = b.Bounds;
             b.SetBroken(true);
             Breaks++;
+            Broke?.Invoke(kind.name, bounds.center, relativeVelocity.magnitude);
             GiveSpeedBack(car, kind.carLoss);
             SpawnPieces(kind, bounds, b.Rotation, car.linearVelocity);
             WorstBreakMs = Mathf.Max(WorstBreakMs, (float)_watch.Elapsed.TotalMilliseconds);

@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac77122cbf5b840f5aad4f58bcbea7b4, type: 3}
+  m_Name: Engine_rotor
+  m_EditorClassIdentifier: JapanMap.Audio::JapanMap.Audio.EngineSoundBank
+  carId: rotor
+  idle: {fileID: 8300000, guid: 69ca8fc2cd62646eb8622d84e864a669, type: 3}
+  idleRpm: 1000
+  steps:
+  - rpm: 2550
+    onLoad: {fileID: 8300000, guid: 60a9ffd40dd0d4f40a93ac5edb5c1fc9, type: 3}
+    offLoad: {fileID: 8300000, guid: e5e9b08860ad34b85984e759c8d5c965, type: 3}
+  - rpm: 4250
+    onLoad: {fileID: 8300000, guid: 916621d1b20214ba89716a487458c264, type: 3}
+    offLoad: {fileID: 8300000, guid: 78c72e40d5949464ebd92c1d926be111, type: 3}
+  - rpm: 5950
+    onLoad: {fileID: 8300000, guid: 328110a71e45c42989e0b8c2692e096c, type: 3}
+    offLoad: {fileID: 8300000, guid: c2e4088aa6b454d3f9771c196e1c6a5c, type: 3}
+  - rpm: 7820
+    onLoad: {fileID: 8300000, guid: 07b5f6f90e8e54a8ca8549970b626535, type: 3}
+    offLoad: {fileID: 8300000, guid: 1d7447eb28f0f42bc8b4c9e4de88392e, type: 3}
+  lift: {fileID: 8300000, guid: d53d1a9bb964f4b9fbe011af325da0f1, type: 3}
+  gain: 1
+  offGain: 1.4

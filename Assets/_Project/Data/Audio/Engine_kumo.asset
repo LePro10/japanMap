@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac77122cbf5b840f5aad4f58bcbea7b4, type: 3}
+  m_Name: Engine_kumo
+  m_EditorClassIdentifier: JapanMap.Audio::JapanMap.Audio.EngineSoundBank
+  carId: kumo
+  idle: {fileID: 8300000, guid: 8e83200304c514092816e23642cf8341, type: 3}
+  idleRpm: 950
+  steps:
+  - rpm: 2250
+    onLoad: {fileID: 8300000, guid: 73e28a36d1aff4c35b6e77175ea388ba, type: 3}
+    offLoad: {fileID: 8300000, guid: 04c80d38a5605421280415b60d147ba7, type: 3}
+  - rpm: 3750
+    onLoad: {fileID: 8300000, guid: 199622ceb2d92450d8ad232ef95e32db, type: 3}
+    offLoad: {fileID: 8300000, guid: 712e34ebaea1f4bf19b5b4b365a521dd, type: 3}
+  - rpm: 5250
+    onLoad: {fileID: 8300000, guid: 8d71b15da3b194ec38585a110b0f67f3, type: 3}
+    offLoad: {fileID: 8300000, guid: a7a2c94704ea0483a8042833f4907de5, type: 3}
+  - rpm: 6900
+    onLoad: {fileID: 8300000, guid: 3fb137f6256f44dc3bd38b6a180d827c, type: 3}
+    offLoad: {fileID: 8300000, guid: 80888ca18986646b2bda82f3c15823f1, type: 3}
+  lift: {fileID: 8300000, guid: 39f5ff7f2886c44d79173de902f83dfa, type: 3}
+  gain: 1
+  offGain: 1.4

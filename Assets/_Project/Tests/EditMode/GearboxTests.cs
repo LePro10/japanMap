@@ -77,6 +77,26 @@ namespace JapanMap.Tests
         }
 
         [Test]
+        public void Limiter_Bounces_LoadIsNotStuckAtZero()
+        {
+            var g = new Gearbox();
+            g.Configure(Hachi, ShiftStrategy.Default, 57f);
+            // Standing, full throttle (against a wall, or the handbrake on): the free engine reaches the limiter.
+            var loaded = 0;
+            var frames = 0;
+            for (var t = 0f; t < 4f; t += 1f / 60f)
+            {
+                g.Step(1f / 60f, 0f, 1f, 0f, false, 1f, 0f);
+                if (t < 1.5f) continue;
+                frames++;
+                if (g.Load > 0.5f) loaded++;
+                Assert.LessOrEqual(g.Rpm, 7300f + 80f);
+            }
+            Assert.Greater(g.LimiterHits, 5, "it bounces off the limiter");
+            Assert.Greater(loaded, frames / 4, $"loaded in {loaded}/{frames} frames: the limiter must not hold the load at 0");
+        }
+
+        [Test]
         public void Reverse_Neutral_AndPartThrottle()
         {
             var g = new Gearbox();

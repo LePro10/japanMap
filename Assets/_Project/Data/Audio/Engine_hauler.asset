@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac77122cbf5b840f5aad4f58bcbea7b4, type: 3}
+  m_Name: Engine_hauler
+  m_EditorClassIdentifier: JapanMap.Audio::JapanMap.Audio.EngineSoundBank
+  carId: hauler
+  idle: {fileID: 8300000, guid: ce9d6e65f32f249cda39e538bd90c8c0, type: 3}
+  idleRpm: 720
+  steps:
+  - rpm: 1800.0001
+    onLoad: {fileID: 8300000, guid: b1b3309037fbc438681017ec0003bd2a, type: 3}
+    offLoad: {fileID: 8300000, guid: 6c23615dff1ff48fcbabadeb8f0b9825, type: 3}
+  - rpm: 3000
+    onLoad: {fileID: 8300000, guid: 0edfe74a3e84347bfad26cfbba60025c, type: 3}
+    offLoad: {fileID: 8300000, guid: d1c66d1b1e4d54f429d60af57ec352e8, type: 3}
+  - rpm: 4200
+    onLoad: {fileID: 8300000, guid: 52a3488735f534d39a9b33e93c83c8e4, type: 3}
+    offLoad: {fileID: 8300000, guid: 47527b23aec05465b9fb26b4317997aa, type: 3}
+  - rpm: 5520
+    onLoad: {fileID: 8300000, guid: 747b4c6ef36034a29b1a9d884dd0871f, type: 3}
+    offLoad: {fileID: 8300000, guid: cd4c10b3a37964138b656c6e0d0a48da, type: 3}
+  lift: {fileID: 8300000, guid: d90cd1ad912144c79b1cb64d8ed8b858, type: 3}
+  gain: 1
+  offGain: 1.4

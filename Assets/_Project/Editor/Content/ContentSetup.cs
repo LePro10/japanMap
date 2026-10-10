@@ -177,6 +177,25 @@ namespace JapanMap.Editor.Content
             Set(hud, "map", map);
             Set(menu, "map", map);
 
+            // Sound: the bank player first (others ask it for clips), then the car's sound.
+            JapanMap.Editor.Audio.AudioSetup.Build();
+            var sfx = Child<JapanMap.Audio.Sfx>(group, "Sound");
+            Set(sfx, "bank", AssetDatabase.LoadAssetAtPath<JapanMap.Audio.SoundBank>(JapanMap.Editor.Audio.AudioSetup.BankPath));
+            sfx.transform.SetAsFirstSibling();
+            var carAudio = Child<CarAudio>(group, "CarSound");
+            Set(carAudio, "spawner", spawner);
+            Set(carAudio, "player", player);
+            Set(carAudio, "progress", progress);
+            Set(carAudio, "discoveries", discovery);
+            var banks = new List<JapanMap.Audio.EngineSoundBank>();
+            foreach (var guid in AssetDatabase.FindAssets("t:JapanMap.Audio.EngineSoundBank", new[] { JapanMap.Editor.Audio.AudioSetup.DataDir }))
+                banks.Add(AssetDatabase.LoadAssetAtPath<JapanMap.Audio.EngineSoundBank>(AssetDatabase.GUIDToAssetPath(guid)));
+            var so = new SerializedObject(carAudio);
+            var arr = so.FindProperty("banks");
+            arr.arraySize = banks.Count;
+            for (var i = 0; i < banks.Count; i++) arr.GetArrayElementAtIndex(i).objectReferenceValue = banks[i];
+            so.ApplyModifiedPropertiesWithoutUndo();
+
             MapScene.Save();
             var msg = $"[Content] set up: {zones.zones.Length} drift zones, {flags} flags, {Regions().regions.Length} regions, {cards.cards.Length} discoveries";
             Debug.Log(msg);

@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac77122cbf5b840f5aad4f58bcbea7b4, type: 3}
+  m_Name: Engine_mame
+  m_EditorClassIdentifier: JapanMap.Audio::JapanMap.Audio.EngineSoundBank
+  carId: mame
+  idle: {fileID: 8300000, guid: c69578b4fc2f34d0491379d9b5966f62, type: 3}
+  idleRpm: 900
+  steps:
+  - rpm: 1950.0001
+    onLoad: {fileID: 8300000, guid: 91a905370de9e4a929909f0e041b531d, type: 3}
+    offLoad: {fileID: 8300000, guid: 8cf68c1cdb40c4749af06490142029c0, type: 3}
+  - rpm: 3250
+    onLoad: {fileID: 8300000, guid: 976261b34bdf5441499824888e27e41c, type: 3}
+    offLoad: {fileID: 8300000, guid: c1e9ee12666754ba284bbee05d0407b5, type: 3}
+  - rpm: 4550
+    onLoad: {fileID: 8300000, guid: babf8580cd0ca480097678fbdda51860, type: 3}
+    offLoad: {fileID: 8300000, guid: 1c2442fe6611b4f84a3f73351548974c, type: 3}
+  - rpm: 5980
+    onLoad: {fileID: 8300000, guid: 9f98029f7628b45c1ae9735ab9d7f234, type: 3}
+    offLoad: {fileID: 8300000, guid: f9b5635adb7504348be414452506ba24, type: 3}
+  lift: {fileID: 8300000, guid: 4bdeb3428d1274bcba10f155770c9a87, type: 3}
+  gain: 1
+  offGain: 1.4

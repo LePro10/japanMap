@@ -63,6 +63,13 @@ Web **54,28 MB** (+0,31: SDK, Garage, Rekorde), Start 1,1 s, Browser Niedrig 356
 
 ### Für die Asset-Sitzung (Lagen stehen in den Daten, Import genügt)
 
+- **Töne (nur CC0 oder eigene Aufnahmen; Name = Ersatz, Datei nach `Assets/_Project/Art/Audio/<Name>.wav`, mono, 44,1/48 kHz):**
+  Motor je Auto (`Engine_<auto>_idle` 1,0 s; `_on0…3` 0,8 s Last und `_off0…3` 1,0 s Schub bei 30/50/70/92 % der Drehzahlgrenze;
+  `Lift_<auto>` 0,9 s), nahtlose Schleifen, 1024 Samples Stille vorn. Welt-Schleifen 3–6 s: `Ambience_Workshop` (Werkzeuge,
+  Commons), `Ambience_NeonHum` (Trafos, Gespräche, Tokyo), `Ambience_Harbour` (Netze, Taue, Boote), `Ambience_Waterwheel`
+  (Wasserrad, Bewässerung, Hühner), `Ambience_PassWind` (Wind, Vögel). Musik: 2–4 ruhige Instrumental-Phrasen à 20–40 s.
+  Stellvertreter (`StandIn/SFX_STANDIN_*`) sind synthetisch aus dem Prototyp — Klang ungeprüft.
+
 - **Garage (Open Bay, Sakura; Stellvertreter: Hallenmodell):** Werkbank 2,0 × 0,8 × 0,9 m; Reifenregal mit Felgen 1,8 × 0,5 × 2,0 m;
   Lackmuster-Tafel 1,2 × 0,05 × 0,9 m (12 Felder); Motor auf Montagebock 0,9 × 0,6 × 1,0 m; Schild „GARAGE · E“ 2,5 × 0,6 m über dem Tor. Je ≤ 1,5 k.
 - **Rennen:** Event-Pfeiler 6–8 m, Kontrollpunkt-Bogen, Start-Ziel-Banner, Pokal 0,4 m; Needle: Tribüne, Boxen, Brücke. ≤ 2 k.

@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac77122cbf5b840f5aad4f58bcbea7b4, type: 3}
+  m_Name: Engine_suprema
+  m_EditorClassIdentifier: JapanMap.Audio::JapanMap.Audio.EngineSoundBank
+  carId: suprema
+  idle: {fileID: 8300000, guid: c3a4c09c1eb104be8aa61c4cd9dc3a2e, type: 3}
+  idleRpm: 650
+  steps:
+  - rpm: 1950.0001
+    onLoad: {fileID: 8300000, guid: 71a2a7a96669646698b37cb7326ee87f, type: 3}
+    offLoad: {fileID: 8300000, guid: 121d90f8d9cdd4ae4931fbd7538fb130, type: 3}
+  - rpm: 3250
+    onLoad: {fileID: 8300000, guid: 79f189d13ae8e4d32a007e61d514b541, type: 3}
+    offLoad: {fileID: 8300000, guid: 06589b3fcf3ef44c5b7f47709fb0b534, type: 3}
+  - rpm: 4550
+    onLoad: {fileID: 8300000, guid: 3a57a7d8a77a24def89e566a11784b3f, type: 3}
+    offLoad: {fileID: 8300000, guid: 699f1ca723d184de5b921d7112a7135e, type: 3}
+  - rpm: 5980
+    onLoad: {fileID: 8300000, guid: 6c78a69eed47240c39a25dfd95881209, type: 3}
+    offLoad: {fileID: 8300000, guid: a0cf4250b6b7a4057a69b30e55bdf7e0, type: 3}
+  lift: {fileID: 8300000, guid: f26fb91fdd89a4153ad2784b321ffd95, type: 3}
+  gain: 1
+  offGain: 1.4

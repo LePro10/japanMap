@@ -489,6 +489,22 @@ genau eine. **Standard:** UI Toolkit mit einem USS-Thema (`Data/UI/Game.uss`, ü
 Neubelegung mit dem Rebinding des Input Systems, Einstellungen in PlayerPrefs. **Eigener Code:** Unity hat kein
 Spielmenü-Gerüst; die Seiten bauen sich aus Code (wie das HUD, D05), Symbole sind Painter2D-Stellvertreter.
 
+## D34 — Ton: Schleifen-Mix statt Synthese, Stellvertreter aus dem Prototyp-Synthesizer, eigene Lautstärkegruppen · 2026-10-10
+
+**Grenzen geprüft (Regel 3, Unity-Handbuch „Audio in Web“):** im Browser nur AudioSource-Grundfunktionen (Lautstärke,
+Tonhöhe, Schleife, 3D), AudioMixer **nur Lautstärke**, keine Effekte/Filter, kein `OnAudioFilterRead`, AAC verändert die
+ersten 1024 Samples (Knacken am Schleifenpunkt). Darum: **Motor als Schleifen-Mix** (`EngineSound`: je Auto Leerlauf + 4
+Drehzahlstufen × Last/Schub, Nachbarstufen überblendet und auf die Drehzahl gestimmt), gespeist vom **Getriebe** (`Gearbox`,
+legacy Gearbox.ts, ASTRA-§6-Tabelle; wirkt auf keine Kraft). Tuning hörbar als **Ebenen**, nicht als Transposition (Street:
+Ansaug-Ebene eine Oktave höher, Sport: tiefere Last-Ebene, kräftigeres Abblasen). Jede Schleife beginnt mit 1024 Samples
+Stille und trägt `smpl`-Schleifenpunkte dahinter (Handbuch-Rezept; im Editor gemessen: Neustart bei der Schleifenmarke).
+**Klänge:** keine Aufnahmen vorhanden, keine ungeprüften KI-Töne → **Stellvertreter** offline gerendert aus dem eigenen
+Synthesizer des Prototyps (`Tools/legacy-export/render-audio.mts` = legacy src/audio/dsp, `render-shots.mjs` = oneShots.ts
+im Headless-Chrome), Name `SFX_STANDIN_*`; eine Aufnahme gleichen Namens in `Art/Audio/` ersetzt ihn ohne Code. **Regler:**
+fünf Gruppen + Stumm (`SoundMix`) als eigene Verstärkung je Quelle statt AudioMixer — im Browser könnte der Mixer ohnehin nur
+Lautstärke, und sein Asset lässt sich aus Code nicht anlegen. Pause: `AudioListener.pause` (UI-Töne ausgenommen).
+**Download:** +1,42 MB (22 kHz, kurze Schleifen); Phase 10 lädt die neun nicht gefahrenen Motorbänke nach.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

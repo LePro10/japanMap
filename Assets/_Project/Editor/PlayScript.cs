@@ -432,6 +432,14 @@ namespace JapanMap.Editor
                     _until = now + 0.3f;
                     return false;
                 }
+                case "record":
+                {
+                    // record <seconds> <name>: what the listener hears → <out>/<name>.wav (editor only).
+                    var path = Path.Combine(SessionState.GetString(KeyOut, Capture.Dir), a[2] + ".wav");
+                    var rec = JapanMap.DevTools.AudioCapture.Begin(Path.GetFullPath(path), F(1));
+                    Log.AppendLine(rec != null ? $"  record {F(1)} s → {path}" : "  record: no AudioListener");
+                    return true;
+                }
                 case "scroll":
                     // scroll <n>: n mouse-wheel notches at the last tap position (positive zooms the map in).
                     _scrollLeft = int.Parse(a[1]);
@@ -592,6 +600,12 @@ namespace JapanMap.Editor
                     r.topKmh, r.airtime, r.jumpMetres, r.bankedChain, r.distanceKm, r.cards.Count, rk.CardsTaken,
                     ph != null && ph.IsOpen, ph != null ? ph.LastPhoto : "", ph != null ? ph.LastSize.ToString() : ""));
             }
+            var ca = Object.FindAnyObjectByType<JapanMap.Gameplay.CarAudio>();
+            if (ca != null && ca.Engine != null && car != null)
+                Log.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "  sound gear={0} rpm={1:0} load={2:0.00} tier={3} engine={4:0.000} on={5:0.000} off={6:0.000} pitch={7:0.00} skid={8:0.000} running={9} impact='{10}' last='{11}'",
+                    JapanMap.Vehicles.Gearbox.Label(car.Gearbox.Gear), car.Gearbox.Rpm, car.Gearbox.Load, ca.Engine.Tier, ca.Engine.LayerLevel, ca.Engine.OnLevel,
+                    ca.Engine.OffLevel, ca.Engine.MainPitch, ca.Tyres != null ? ca.Tyres.SkidLevel : 0f, ca.Engine.Running, ca.LastImpact, JapanMap.Audio.Sfx.Last));
             var gsp = Object.FindAnyObjectByType<JapanMap.Gameplay.Garage.GarageSystem>();
             if (gsp != null) Log.AppendLine($"  garage open={gsp.IsOpen} shown={gsp.Shown} status='{gsp.Status}'");
             var drift = Object.FindAnyObjectByType<JapanMap.Gameplay.Drift.DriftScorer>();

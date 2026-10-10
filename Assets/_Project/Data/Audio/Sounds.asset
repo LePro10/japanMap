@@ -1,0 +1,200 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bf290edf928345838fdc38795679e86, type: 3}
+  m_Name: Sounds
+  m_EditorClassIdentifier: JapanMap.Audio::JapanMap.Audio.SoundBank
+  entries:
+  - name: Roll_Asphalt
+    group: 1
+    clip: {fileID: 8300000, guid: eabc8cb7e25534885841dda40ec6c4fb, type: 3}
+    volume: 1
+    pitchJitter: 0
+  - name: Roll_Gravel
+    group: 1
+    clip: {fileID: 8300000, guid: 0ca4b7b9f33ef4b5bb00206653dea279, type: 3}
+    volume: 0.8
+    pitchJitter: 0
+  - name: Roll_Grass
+    group: 1
+    clip: {fileID: 8300000, guid: 0425e45da0c3b42d88f8ab032f1c744f, type: 3}
+    volume: 0.8
+    pitchJitter: 0
+  - name: Roll_Water
+    group: 1
+    clip: {fileID: 8300000, guid: 3791162252ad64d0db118d0a15aa5fe3, type: 3}
+    volume: 0.35
+    pitchJitter: 0
+  - name: Skid_Asphalt
+    group: 1
+    clip: {fileID: 8300000, guid: 06a195a759cc34aa889f1b54ddb8eeac, type: 3}
+    volume: 1
+    pitchJitter: 0
+  - name: Impact_Car_Soft
+    group: 1
+    clip: {fileID: 8300000, guid: c5cb73867300941e6932147a8804c20d, type: 3}
+    volume: 0.6
+    pitchJitter: 0.08
+  - name: Impact_Car_Mid
+    group: 1
+    clip: {fileID: 8300000, guid: b1f2f322a269544e3ad06bccc9cb5a35, type: 3}
+    volume: 0.75
+    pitchJitter: 0.08
+  - name: Impact_Car_Hard
+    group: 1
+    clip: {fileID: 8300000, guid: 7b296ed4c411143a8bc32caecc1a72f3, type: 3}
+    volume: 0.9
+    pitchJitter: 0.06
+  - name: Land_Thump
+    group: 1
+    clip: {fileID: 8300000, guid: 6d772647d2b8944278e8ab86c4740d59, type: 3}
+    volume: 0.7
+    pitchJitter: 0.08
+  - name: Splash
+    group: 1
+    clip: {fileID: 8300000, guid: 4ac6e52a2555c4f0980baa7c1e783b1d, type: 3}
+    volume: 0.8
+    pitchJitter: 0.08
+  - name: Break_Rail
+    group: 1
+    clip: {fileID: 8300000, guid: 4f2a705440489472b951d884900b65ad, type: 3}
+    volume: 0.7
+    pitchJitter: 0.06
+  - name: Break_Tree
+    group: 1
+    clip: {fileID: 8300000, guid: e3193644fa95f46a48fc0130586fa000, type: 3}
+    volume: 0.8
+    pitchJitter: 0.06
+  - name: Break_Wood
+    group: 1
+    clip: {fileID: 8300000, guid: 801e5946aa74349e1b78bd6f087817fd, type: 3}
+    volume: 0.8
+    pitchJitter: 0.1
+  - name: Break_Cone
+    group: 1
+    clip: {fileID: 8300000, guid: f6c1639b160654001896b9a115da9daf, type: 3}
+    volume: 0.8
+    pitchJitter: 0.1
+  - name: Break_Barrel
+    group: 1
+    clip: {fileID: 8300000, guid: b5168c56d06194c9393945b525be36fa, type: 3}
+    volume: 0.7
+    pitchJitter: 0.08
+  - name: Wind
+    group: 2
+    clip: {fileID: 8300000, guid: 0209f1e1df1994467b80eafa72ac6c46, type: 3}
+    volume: 1
+    pitchJitter: 0
+  - name: Whoosh_Up
+    group: 2
+    clip: {fileID: 8300000, guid: ea5a71d8602294f5cb736a563f8026c6, type: 3}
+    volume: 0.8
+    pitchJitter: 0.05
+  - name: Whoosh_Down
+    group: 2
+    clip: {fileID: 8300000, guid: 6fb3da24d71c0458185154cfa40091ce, type: 3}
+    volume: 0.8
+    pitchJitter: 0.05
+  - name: Bell_Checkpoint
+    group: 4
+    clip: {fileID: 8300000, guid: 94381beacfeda49bda8ff29bd6917231, type: 3}
+    volume: 1
+    pitchJitter: 0
+  - name: Bell_Lap
+    group: 4
+    clip: {fileID: 8300000, guid: 6b78e4375d3604c94a9c4bfe01f14d75, type: 3}
+    volume: 1
+    pitchJitter: 0
+  - name: Bell_LapBest
+    group: 4
+    clip: {fileID: 8300000, guid: 5535d86242d92433eb54dc8fdbf9aafd, type: 3}
+    volume: 1
+    pitchJitter: 0
+  - name: Bell_Finish
+    group: 4
+    clip: {fileID: 8300000, guid: e61d56a772c4442a69f7932ab06c9665, type: 3}
+    volume: 1
+    pitchJitter: 0
+  - name: Bell_Win
+    group: 4
+    clip: {fileID: 8300000, guid: fad0b4c81ea3b416883723b0608cbfd0, type: 3}
+    volume: 1
+    pitchJitter: 0
+  - name: Bell_Discovery
+    group: 4
+    clip: {fileID: 8300000, guid: 0e8981a8912114553bf32f49ffa9c544, type: 3}
+    volume: 1
+    pitchJitter: 0
+  - name: Bell_Sparks
+    group: 4
+    clip: {fileID: 8300000, guid: 0bbc98873651c499c8f984d28d1f8b75, type: 3}
+    volume: 0.6
+    pitchJitter: 0.03
+  - name: Countdown_Tick
+    group: 4
+    clip: {fileID: 8300000, guid: d1b333d6046f84332a02fa1f46ae5e59, type: 3}
+    volume: 1
+    pitchJitter: 0
+  - name: Countdown_Go
+    group: 4
+    clip: {fileID: 8300000, guid: 0c2cc0a0a74e04e2cbf2926e73fa421d, type: 3}
+    volume: 1
+    pitchJitter: 0
+  - name: UI_Click
+    group: 4
+    clip: {fileID: 8300000, guid: 7bc6b2b152bea4b79b413c92ec896f05, type: 3}
+    volume: 0.8
+    pitchJitter: 0.04
+  ambience:
+  - name: TempleBell
+    at: {x: 828, y: 940}
+    radius: 420
+    clip: {fileID: 8300000, guid: 89d96cdb4c3194c1ab5e43677c6d1077, type: 3}
+    loop: 0
+    gap: {x: 30, y: 55}
+    volume: 0.8
+  - name: Workshop
+    at: {x: 572, y: -481}
+    radius: 120
+    clip: {fileID: 0}
+    loop: 1
+    gap: {x: 0, y: 0}
+    volume: 0.5
+  - name: NeonHum
+    at: {x: 700, y: -100}
+    radius: 600
+    clip: {fileID: 0}
+    loop: 1
+    gap: {x: 0, y: 0}
+    volume: 0.4
+  - name: Harbour
+    at: {x: -1233, y: -1054}
+    radius: 260
+    clip: {fileID: 0}
+    loop: 1
+    gap: {x: 0, y: 0}
+    volume: 0.5
+  - name: Waterwheel
+    at: {x: -1213, y: -348}
+    radius: 220
+    clip: {fileID: 0}
+    loop: 1
+    gap: {x: 0, y: 0}
+    volume: 0.5
+  - name: PassWind
+    at: {x: -536, y: 495}
+    radius: 700
+    clip: {fileID: 0}
+    loop: 1
+    gap: {x: 0, y: 0}
+    volume: 0.5
+  music: []
+  musicGap: {x: 20, y: 40}

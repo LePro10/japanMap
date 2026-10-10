@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac77122cbf5b840f5aad4f58bcbea7b4, type: 3}
+  m_Name: Engine_hanami
+  m_EditorClassIdentifier: JapanMap.Audio::JapanMap.Audio.EngineSoundBank
+  carId: hanami
+  idle: {fileID: 8300000, guid: 30ee2131cf2504febacaaeedee95f8da, type: 3}
+  idleRpm: 1500
+  steps:
+  - rpm: 3150.0002
+    onLoad: {fileID: 8300000, guid: 373b47ead7dc64da9b3b2e7c86555a7b, type: 3}
+    offLoad: {fileID: 8300000, guid: cc6df09a6d7aa4173a1bc826900a3193, type: 3}
+  - rpm: 5250
+    onLoad: {fileID: 8300000, guid: d8c5945c9e33f43d0b0e10a39bbc0a81, type: 3}
+    offLoad: {fileID: 8300000, guid: 421f72fff425e4006b502734d9980fcc, type: 3}
+  - rpm: 7350
+    onLoad: {fileID: 8300000, guid: 1295f5434a0a04e659b5d2a4f0405ac5, type: 3}
+    offLoad: {fileID: 8300000, guid: 7963959598ca640b9bdb089e126f89ac, type: 3}
+  - rpm: 9660
+    onLoad: {fileID: 8300000, guid: 992c913a5b4124d8ba59c33ce34c5167, type: 3}
+    offLoad: {fileID: 8300000, guid: cbe4a80808c7d4e32954c25b5f28d42b, type: 3}
+  lift: {fileID: 8300000, guid: e3b8b6cd7b90f407ca479999194a74ce, type: 3}
+  gain: 1
+  offGain: 1.4
