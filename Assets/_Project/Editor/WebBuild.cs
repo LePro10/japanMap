@@ -109,10 +109,11 @@ namespace JapanMap.Editor
             sb.AppendLine($"unity       {UnityEngine.Application.unityVersion}");
             sb.AppendLine($"type        {(development ? "development" : "release")}");
             sb.AppendLine($"build time  {seconds:F0} s");
-            sb.AppendLine($"total       {total / 1048576.0:F2} MB in {files.Count} files");
+            // Decimal MB as CrazyGames and the browser count them (MiB under-reported by 5 % until Phase 10).
+            sb.AppendLine($"total       {total / 1e6:F2} MB in {files.Count} files");
             sb.AppendLine("largest:");
             foreach (var f in files.Take(10))
-                sb.AppendLine($"  {f.Length / 1048576.0,8:F2} MB  {Path.GetRelativePath(OutputDir, f.FullName).Replace('\\', '/')}");
+                sb.AppendLine($"  {f.Length / 1e6,8:F2} MB  {Path.GetRelativePath(OutputDir, f.FullName).Replace('\\', '/')}");
             return sb.ToString();
         }
     }

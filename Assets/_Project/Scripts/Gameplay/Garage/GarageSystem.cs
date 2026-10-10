@@ -37,6 +37,11 @@ namespace JapanMap.Gameplay.Garage
         VehicleDefinition _testReturnCar;
         Vector3 _testReturnAt;
         float _testReturnYaw, _testLeft;
+        // Long loan (ASTRA §12): the same return path as a test drive, longer, with a warning and a safe stop.
+        bool _loan, _warned;
+        float _overFor;
+        string _testCar = "";
+        readonly System.Collections.Generic.HashSet<string> _tested = new();
 
         public bool IsOpen { get; private set; }
         /// <summary>The car is on the Open Bay floor (garage opened with E).</summary>
@@ -47,6 +52,15 @@ namespace JapanMap.Gameplay.Garage
         public float TestDriveSeconds => settings.testDriveSeconds;
         public bool TestDriving => _testReturnCar != null;
         public float TestDriveLeft => _testLeft;
+        /// <summary>The borrowed car is a long loan (ad or Sparks), not the free test drive.</summary>
+        public bool Lending => TestDriving && _loan;
+        /// <summary>Car on test drive or loan ("" when none).</summary>
+        public string TestCar => TestDriving ? _testCar : "";
+        /// <summary>This car had its free test drive this session (the loan offers follow it, ASTRA §12).</summary>
+        public bool WasTested(string id) => _tested.Contains(id);
+        /// <summary>Loan warning and end settings (set by <see cref="Economy.RewardedOffers"/>).</summary>
+        public float LoanWarnSeconds { get; set; } = 30f;
+        public float LoanStopSeconds { get; set; } = 20f;
         public CarsScreen Screen => _screen;
         public event Action<bool> OpenChanged;
 
@@ -109,12 +123,7 @@ namespace JapanMap.Gameplay.Garage
 
         void Update()
         {
-            if (TestDriving)
-            {
-                _testLeft -= Time.deltaTime;
-                hud?.SetActivity($"TEST DRIVE  {Mathf.CeilToInt(Mathf.Max(0f, _testLeft))} s");
-                if (_testLeft <= 0f) EndTestDrive();
-            }
+            if (TestDriving) TickBorrowed();
             if (_apply && !IsOpen && (GameMenu.Instance == null || !GameMenu.Instance.IsOpen)) TryApply();
             if (IsOpen) return;
             if (hud != null) hud.SetPrompt(this, InReach() ? "E  Garage · cars and tuning" : "");
@@ -281,21 +290,93 @@ namespace JapanMap.Gameplay.Garage
             _testReturnAt = own.transform.position;
             _testReturnYaw = own.transform.eulerAngles.y;
             _testLeft = settings.testDriveSeconds;
+            _loan = false;
+            _testCar = id;
+            _tested.Add(id);
+            if (progress.Wallet != null) progress.Wallet.Frozen = true; // test drives earn nothing (ASTRA §9)
             spawner.SpawnAt(def, settings.testDriveAt, settings.testDriveHeading);
             player.Seat();
             hud?.Flash($"Test drive · {def.displayName} · {settings.testDriveSeconds:0} s");
             return true;
         }
 
-        public void EndTestDrive()
+        /// <param name="here">Own car back where the borrowed one stands (an event starts here), not at the old spot.</param>
+        public void EndTestDrive(bool here = false)
         {
             if (!TestDriving) return;
+            if (here && player.Car != null)
+            {
+                _testReturnAt = player.Car.transform.position;
+                _testReturnYaw = player.Car.transform.eulerAngles.y;
+            }
             var def = _testReturnCar;
+            var wasLoan = _loan;
             _testReturnCar = null;
+            _loan = false;
+            if (progress != null && progress.Wallet != null) progress.Wallet.Frozen = false;
             spawner.SpawnAt(def, _testReturnAt, _testReturnYaw);
             player.Seat();
             hud?.SetActivity("");
-            hud?.Flash("Test drive over");
+            hud?.Flash(wasLoan ? "Loan over · back in your own car" : "Test drive over");
+        }
+
+        /// <summary>
+        /// Long loan (ASTRA §12): free driving and photos in a car not owned for <paramref name="seconds"/> of active
+        /// time (menus and photos pause it), no Sparks/records/discoveries; it starts where the own car stands.
+        /// </summary>
+        public bool Borrow(string id, float seconds)
+        {
+            var def = progress.Fleet.Get(id);
+            if (def == null || player == null || player.Car == null || TestDriving) return false;
+            if (IsOpen) Close();
+            var own = player.Car;
+            _testReturnCar = own.Definition;
+            _testReturnAt = own.transform.position;
+            _testReturnYaw = own.transform.eulerAngles.y;
+            _testLeft = seconds;
+            _loan = true;
+            _warned = false;
+            _overFor = 0f;
+            _testCar = id;
+            if (progress.Wallet != null) progress.Wallet.Frozen = true;
+            spawner.SpawnAt(def, _testReturnAt, _testReturnYaw);
+            player.Seat();
+            hud?.Flash($"Loan · {def.displayName} · {seconds / 60f:0} min");
+            return true;
+        }
+
+        void TickBorrowed()
+        {
+            _testLeft -= Time.deltaTime;
+            if (!_loan)
+            {
+                hud?.SetActivity($"TEST DRIVE  {Mathf.CeilToInt(Mathf.Max(0f, _testLeft))} s");
+                if (_testLeft <= 0f) EndTestDrive();
+                return;
+            }
+            if (_testLeft > 0f)
+            {
+                var left = Mathf.CeilToInt(_testLeft);
+                hud?.SetActivity($"LOAN  {left / 60}:{left % 60:00}");
+                if (!_warned && _testLeft <= LoanWarnSeconds)
+                {
+                    _warned = true;
+                    hud?.Flash($"Loan ends in {LoanWarnSeconds:0} s");
+                }
+                return;
+            }
+            // Over: never swap the car at speed. First a chance to stop, then the car brakes itself to a stop.
+            var car = player != null ? player.Car : null;
+            var moving = car != null && player.Current == PlayerModeController.Mode.Driving && car.Telemetry.speed > 1f;
+            if (!moving)
+            {
+                if (car != null) car.HoldStill = false;
+                EndTestDrive();
+                return;
+            }
+            _overFor += Time.deltaTime;
+            hud?.SetActivity("LOAN OVER · please stop");
+            if (_overFor >= LoanStopSeconds) car.HoldStill = true;
         }
 
         void Say(string text) => _status = text;

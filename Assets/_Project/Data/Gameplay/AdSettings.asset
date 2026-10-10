@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c8fb95fd95804a488e66361a4043f1c, type: 3}
+  m_Name: AdSettings
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Economy.AdSettings
+  resultBonus: 300
+  minEventSeconds: 45
+  firstVisitMinutes: 5
+  resultPerWindow: 3
+  resultWindowMinutes: 30
+  loanSeconds: 600
+  loanPrice: 600
+  loanWarnSeconds: 30
+  loanStopSeconds: 20
+  loanAdGapMinutes: 20
+  rewardedGapMinutes: 5

@@ -1,6 +1,8 @@
 using System.Text;
 using JapanMap.Audio;
 using JapanMap.Core;
+using JapanMap.Core.Platform;
+using JapanMap.Core.Save;
 using JapanMap.Core.Ui;
 using JapanMap.Gameplay.Progress;
 using JapanMap.UI;
@@ -202,9 +204,74 @@ namespace JapanMap.Gameplay.Menu
         {
             if (_progress == null) return;
             var store = _progress.StoreName;
-            Ui.Text(p, store == "CrazyGames" ? "Saved to your CrazyGames account." : $"Saved on this device ({store}).");
+            var platform = GamePlatform.Current;
+            var user = platform.User;
+            if (store == "CrazyGames")
+                Ui.Text(p, user != null ? $"Saved to your CrazyGames account ({user.Name})." : "Saved in this browser as a guest.");
+            else Ui.Text(p, $"Saved on this device ({store}).");
             Ui.Small(p, $"{_progress.SaveCount} saves this session. Progress saves after purchases, rewards, discoveries and parking.");
             t.AppendLine($"store {store}");
+            if (user == null && platform.AccountsAvailable)
+            {
+                Ui.Button(p, "Log in to keep progress on every device", () => platform.LogIn(_ => Menu.Rebuild()));
+                t.AppendLine("login offered");
+            }
+            if (SaveSync.Pending != null)
+            {
+                Ui.Button(p, "Choose progress", () => ShowChoice(Menu), "jm-btn--primary");
+                t.AppendLine("choice pending");
+            }
+            var recovery = SaveSync.Recovery(SaveStores.Current);
+            if (recovery != null)
+            {
+                Ui.H2(p, "Recovery copy");
+                Ui.Small(p, Describe(recovery));
+                Ui.Button(p, "Switch to the recovery copy", () =>
+                {
+                    var sheet = Menu.Sheet("Switch progress?", out var close);
+                    Ui.Text(sheet, "The progress you play now becomes the recovery copy. Nothing is added together.");
+                    var row = Ui.Row(sheet, "jm-wrap");
+                    Ui.Button(row, "Switch", () => { close(); Menu.Close(); SaveSync.SwapRecovery(SaveStores.Current); }, "jm-btn--primary");
+                    Ui.Button(row, "Cancel", close);
+                });
+                t.AppendLine("recovery copy");
+            }
+        }
+
+        static string Describe(SaveSummary s) =>
+            $"{s.Cars} car{(s.Cars == 1 ? "" : "s")} · {s.sparks:N0} Sparks · {s.Played} played · saved {s.Saved}";
+
+        /// <summary>
+        /// "Choose progress" (ASTRA §9/§10): the two copies side by side — cars, balance, playtime, date — and two clearly
+        /// named choices. The chosen copy is kept whole (no sums, no rewards again); the other stays as recovery copy.
+        /// </summary>
+        public static void ShowChoice(GameMenu menu)
+        {
+            var c = SaveSync.Pending;
+            if (c == null || menu == null) return;
+            var settings = menu.Screen<SettingsScreen>();
+            if (settings != null) settings._page = 4; // Progress
+            menu.Open(settings);
+            var account = GamePlatform.Current.User != null ? "Your account" : "This browser";
+            var sheet = menu.Sheet("Choose progress", out var close);
+            Ui.Text(sheet, "There are two saved games. Pick the one to keep playing — the other is kept as a recovery copy.");
+            var row = Ui.Row(sheet, "jm-wrap");
+            void Card(string title, SaveSummary s, bool keepAccount)
+            {
+                var card = Ui.Box(row, "jm-panel");
+                card.style.minWidth = 200;
+                Ui.H2(card, title);
+                Ui.Text(card, $"{s.Cars} car{(s.Cars == 1 ? "" : "s")} · {s.sparks:N0} Sparks");
+                Ui.Small(card, $"{s.Played} played · saved {s.Saved}");
+                Ui.Button(card, keepAccount ? $"Keep {account.ToLowerInvariant()}" : "Keep this device", () =>
+                {
+                    close();
+                    menu.Close();
+                    SaveSync.Resolve(keepAccount);
+                }, "jm-btn--primary");
+            }
+            Card(account, c.Account, true);
+            Card("This device", c.Device, false);
         }
     }
 }

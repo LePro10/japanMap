@@ -1,4 +1,5 @@
 using System;
+using JapanMap.Core.Platform;
 using UnityEngine;
 
 namespace JapanMap.Audio
@@ -36,7 +37,17 @@ namespace JapanMap.Audio
             _volume = new float[Defaults.Length];
             for (var i = 0; i < Defaults.Length; i++) _volume[i] = PlayerPrefs.GetFloat(Prefix + (SoundGroup)i, Defaults[i]);
             _muted = PlayerPrefs.GetInt(Prefix + "muted", 0) == 1;
-            AudioListener.volume = _muted ? 0f : 1f;
+            GamePlatform.Changed += ApplyListener;
+            ApplyListener();
+        }
+
+        /// <summary>Silent while the player muted, the portal asks for it (CrazyGames muteAudio) or an ad runs.</summary>
+        static void ApplyListener() => AudioListener.volume = _muted || GamePlatform.Muted ? 0f : 1f;
+
+        /// <summary>Sound actually audible (tests).</summary>
+        public static bool Audible
+        {
+            get { Load(); return AudioListener.volume > 0f; }
         }
 
         public static float Volume(SoundGroup g)
@@ -64,7 +75,7 @@ namespace JapanMap.Audio
                 Load();
                 _muted = value;
                 PlayerPrefs.SetInt(Prefix + "muted", value ? 1 : 0);
-                AudioListener.volume = value ? 0f : 1f;
+                ApplyListener();
                 Changed?.Invoke();
             }
         }

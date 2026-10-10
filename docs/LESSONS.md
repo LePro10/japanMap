@@ -54,6 +54,8 @@
 | 2026-10-08 | 3 | Karten-Abnahme prüfte nur Median/p95 (Gelände bis 4 m durch Straßen); Absenken lag im Straßen-Import und ging still verloren | `TerrainCarve` in `TerrainImporter.Import` (jeder Weg gleich); Test `Terrain_NeverPokesThroughARoad` | Test |
 | 2026-10-08 | 3 | Straßenenden lagen als Rampe auf anderen Straßen (bellwood-edge 3,4 m über dem Ring) und stoppten Autos | `RoadImporter.OverlapRun` kürzt solche Enden (Entscheidung nach Rohgelände) | Test |
 | 2026-10-08 | 3 | MCP fehlte (Editor nach Sitzungsstart); Prototyp-Prüfstände liefen nicht (kein `three`) | HTTP-Helfer `Tools/mcp-call.mjs` (Skill `unity-verify`); Rezept im Skill `legacy-port`, Ausgaben in `SourceData/bench/` | Skill |
+| 2026-10-10 | 10 | Größenbericht rechnete MiB, schrieb „MB“ (56 statt 58,6 MB); Startdownload bis gameplayStart war nie gemessen | `WebBuild` meldet Dezimal-MB; `Tools/sdk-web.mjs` misst Bytes auf der Leitung bis zum ersten gameplayStart (echtes SDK auf localhost) | Werkzeug |
+| 2026-10-10 | 10 | Ein Rennen im Spielablauf „mit wait 40“ abgewartet — war nicht fertig | `play.mjs waitrace` wartet auf das Ergebnis statt Zeit zu raten | Werkzeug |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

@@ -232,6 +232,17 @@ namespace JapanMap.Editor
                     _index--; // run this step again next tick
                     return false;
                 }
+                case "waitrace":
+                {
+                    // Wait (at most 300 s real time) until the running event has finished and shows its result.
+                    var rd = Object.FindAnyObjectByType<JapanMap.Gameplay.Races.RaceDirector>();
+                    if (rd == null) return true;
+                    if (_waitFrom < 0) { _waitFrom = 0; _waitUntil = now + 300f; }
+                    var over = rd.Current == JapanMap.Gameplay.Races.RaceDirector.State.Finished || rd.Current == JapanMap.Gameplay.Races.RaceDirector.State.Idle;
+                    if (over || now > _waitUntil) { _waitFrom = -1; Log.AppendLine($"  race {rd.Current} after {rd.Last.seconds:0.0} s"); return true; }
+                    _index--;
+                    return false;
+                }
                 case "aim":
                     // aim x z: steer the car towards a point with A/D like a player would; "aim off" stops.
                     _aim = a[1] == "off" ? null : new Vector3(F(1), 0f, F(2));
@@ -465,6 +476,35 @@ namespace JapanMap.Editor
                     if (a.Length > 1 && a[1] == "docs") foreach (var d in Object.FindObjectsByType<UnityEngine.UIElements.UIDocument>())
                         Log.AppendLine($"    doc {d.name}: {(d.panelSettings != null ? d.panelSettings.name + " " + d.panelSettings.scaleMode : "none")} root {d.rootVisualElement?.panel?.visualTree.worldBound}");
                     Log.AppendLine(menu?.Text);
+                    return true;
+                }
+                case "played":
+                {
+                    // played s: setup like a returning save — total play time (rewarded offers wait 5 min, ASTRA §12).
+                    var pr = Object.FindAnyObjectByType<JapanMap.Gameplay.Progress.PlayerProgress>();
+                    pr.Data.playSeconds = F(1);
+                    return true;
+                }
+                case "ads":
+                    // ads fill|unfilled|off: the editor's simulated ad answer.
+                    JapanMap.Core.Platform.OfflinePlatform.Simulate = (JapanMap.Core.Platform.OfflinePlatform.AdSim)System.Enum.Parse(
+                        typeof(JapanMap.Core.Platform.OfflinePlatform.AdSim), a[1], true);
+                    return true;
+                case "conflict":
+                {
+                    // conflict sparks minutes: another copy on "this device" disagrees with the saved one (a login onto an
+                    // account with progress) — the reconciliation the platform runs, with that device copy.
+                    var pr = Object.FindAnyObjectByType<JapanMap.Gameplay.Progress.PlayerProgress>();
+                    pr.MarkDirty();
+                    pr.Flush();
+                    var other = new JapanMap.Gameplay.Progress.ProgressData { sparks = int.Parse(a[1]), playSeconds = F(2) * 60f, savedAt = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds() };
+                    other.Car("hachi").owned = true;
+                    other.Car("mame").owned = true;
+                    var device = new JapanMap.Core.Save.MemoryStore();
+                    device.Write(JapanMap.Core.Save.SaveSync.Key, JsonUtility.ToJson(other));
+                    device.Write(JapanMap.Core.Save.SaveSync.OwnerKey, "guest");
+                    var c = JapanMap.Core.Save.SaveSync.Reconcile(device, JapanMap.Core.Save.SaveStores.Current, "user:demo");
+                    Log.AppendLine($"  conflict raised={c != null}");
                     return true;
                 }
                 case "sparks":

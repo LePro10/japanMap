@@ -24,11 +24,15 @@ Blickpunkte `Captures/p9-gate-HL.png` (gleich wie P8); Handy-Bilder `Captures/p9
 
 ## Phase 10 — Plattform und Leistung (als Nächstes, PLAN.md)
 
-- [ ] 1. CrazyGames-SDK komplett · [ ] 2. Start ≤ 20 MB (Addressables) · [ ] 3. Speicher/Chromebook/iOS · [ ] 4. Auto-Qualität, WebGPU · [ ] 5. Profiling · [ ] 6. CI
+- [x] 1. CrazyGames-SDK komplett (D35): gameplayStart/Stop aus Welt + UI-Stapel + Werbung, muteAudio → SoundMix, Nutzer/Login,
+  „Choose progress“ + Wiederherstellungskopie, Rewarded nach ASTRA §12 (+300, Leihwagen 10 min/600 Sparks), „No ad available“.
+  Browser (echtes SDK, localhost): `Tools/sdk-web.mjs` grün; Speichern grün. **Start bis gameplayStart: 52,3 MB** (Ziel 20).
+- [ ] 2. Start ≤ 20 MB (Addressables) · [ ] 3. Speicher/Chromebook/iOS · [ ] 4. Auto-Qualität, WebGPU · [ ] 5. Profiling · [ ] 6. CI
 
 ## Offen / Gefunden
 
-- **Wackeln:** `Keyboard_Drives…` 1×/7 rot; `PedestrianTests.TenMinutes…` 1× im Gesamtlauf rot, allein grün. Ring-Senke bei (508, −738):
+- **Wackeln:** Klick-/Touch-Tests (`MenuTests`, `MapTests`, `TouchMenuTests`, Touch-Pad) im langen Lauf nach dem Unity-Absturz 2× rot,
+  einzeln und in jeder Teilgruppe grün (Fokus/Verdeckung der Spielansicht?); `Keyboard_Drives…` 1×/7 rot; `PedestrianTests.TenMinutes…` 1× im Gesamtlauf rot, allein grün. Ring-Senke bei (508, −738):
   Karosserie setzt bei ~110 km/h auf, Abnahmefahrt knapp (2,4–5,5 m von 6) → Straßenprofil glätten (Phase 10/12).
 - **Unity schreibt selbst um (nicht committet):** `Data/Nav/*.asset`, `ProjectSettings`. **CrazyGames ungeprüft:** Mausfang, Foto-Download,
   Speichern im echten Rahmen, „Choose progress“ → Phase 10 mit dem QA-Tool.

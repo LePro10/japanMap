@@ -120,6 +120,14 @@ namespace JapanMap.Editor.Content
             Set(races, "actions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(PlayerSetup.InputPath));
             Set(races, "template", PlayerSetup.StandInMaterial("Skin", new Color(0.73f, 0.58f, 0.45f)));
 
+            var offers = Child<RewardedOffers>(group, "RewardedOffers");
+            Set(offers, "settings", Asset<AdSettings>("AdSettings"));
+            Set(offers, "wallet", wallet);
+            Set(offers, "progress", progress);
+            Set(offers, "hud", hud);
+            Set(offers, "races", races);
+            Set(offers, "garage", garage);
+
             var keeper = Child<RecordKeeper>(group, "Records");
             Set(keeper, "progress", progress);
             Set(keeper, "player", player);

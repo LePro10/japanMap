@@ -120,7 +120,12 @@ namespace JapanMap.Gameplay.Menu
             if (records != null) Add(records.Screen);
             if (photo != null) Add(new PhotoScreen(photo));
             Add(new SettingsScreen(actions, progress));
+            // Two saves disagree (found at boot or after a login): the choice comes first (ASTRA §9).
+            Core.Save.SaveSync.ConflictRaised += OnConflict;
+            if (Core.Save.SaveSync.Pending != null) OnConflict(Core.Save.SaveSync.Pending);
         }
+
+        void OnConflict(Core.Save.SaveConflict _) => SettingsScreen.ShowChoice(this);
 
         void OnEnable()
         {
@@ -150,6 +155,7 @@ namespace JapanMap.Gameplay.Menu
 
         void OnDestroy()
         {
+            Core.Save.SaveSync.ConflictRaised -= OnConflict;
             if (Instance == this) Instance = null;
             // The scene's UI goes with the menu: no close action of a destroyed overlay may stay on the stack.
             UiStack.Clear();

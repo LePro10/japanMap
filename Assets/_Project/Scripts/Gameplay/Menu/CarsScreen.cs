@@ -26,6 +26,9 @@ namespace JapanMap.Gameplay.Menu
         int _filter;
         Page _page;
         string _text = "";
+        // Cars whose loan ad found no ad: "No ad available" once, then the ad button stays away (ASTRA §12).
+        readonly HashSet<string> _noAd = new();
+        string _loanNote = "";
 
         public CarsScreen(GarageSystem garage, PlayerProgress progress)
         {
@@ -99,6 +102,48 @@ namespace JapanMap.Gameplay.Menu
             _text = t.ToString();
         }
 
+        /// <summary>After its free test drive: borrow the car for 10 minutes by ad, or for Sparks (ASTRA §12).</summary>
+        void LoanOffers(VisualElement p, VisualElement actions, VehicleDefinition def, StringBuilder t)
+        {
+            var offers = Economy.RewardedOffers.Instance;
+            if (offers == null) return;
+            var (ad, buy) = offers.LoanOffers(def.id);
+            if (ad && !_noAd.Contains(def.id))
+            {
+                Ui.Button(actions, offers.LoanAdLabel, () => offers.BorrowByAd(def.id, rewarded =>
+                {
+                    if (rewarded) { Menu.Close(); return; }
+                    _noAd.Add(def.id);
+                    _loanNote = Economy.RewardedOffers.NoAd;
+                    Menu.Rebuild();
+                }));
+                t.AppendLine(offers.LoanAdLabel);
+            }
+            if (buy)
+            {
+                var id = def.id;
+                Ui.Button(actions, offers.LoanBuyLabel, () =>
+                {
+                    if (_progress.Wallet.Balance < offers.Settings.loanPrice)
+                    {
+                        _loanNote = $"{offers.Settings.loanPrice - _progress.Wallet.Balance:N0} Sparks to go for the loan.";
+                        Menu.Rebuild();
+                        return;
+                    }
+                    Menu.Close();
+                    offers.BorrowForSparks(id);
+                });
+                t.AppendLine(offers.LoanBuyLabel);
+            }
+            if (ad || buy) Ui.Small(p, "A loan is for driving and photos: no Sparks, records or discoveries.");
+            if (_loanNote != "")
+            {
+                Ui.Small(p, _loanNote);
+                t.AppendLine(_loanNote);
+                _loanNote = "";
+            }
+        }
+
         void Detail(VisualElement col, VehicleDefinition def, StringBuilder t)
         {
             var p = Ui.Box(col, "jm-panel");
@@ -130,6 +175,7 @@ namespace JapanMap.Gameplay.Menu
                 Ui.Button(actions, $"Test drive · {_garage.TestDriveSeconds:0} s", () => { Menu.Close(); _garage.TestDrive(def.id); });
                 if (!afford) Ui.Small(p, $"{def.price - _progress.Wallet.Balance:N0} Sparks to go.");
                 t.AppendLine(afford ? "can buy" : "cannot afford");
+                LoanOffers(p, actions, def, t);
                 return;
             }
             var driving = _progress.Data.selectedCar == def.id;

@@ -437,6 +437,26 @@ namespace JapanMap.Gameplay.Hud
             _sheetArgs = (title, body, buttons);
         }
 
+        /// <summary>Adds a button to the open sheet (a rewarded offer on the result). Ignored when no sheet is open.</summary>
+        public void AddSheetButton(string label, Action action)
+        {
+            if (_sheetArgs.title == null) return;
+            var list = new System.Collections.Generic.List<(string, Action)>(_sheetArgs.buttons) { (label, action) };
+            ShowSheet(_sheetArgs.title, _sheetArgs.body, list.ToArray());
+        }
+
+        /// <summary>The open sheet with another body and without the button <paramref name="drop"/> (offer answered).</summary>
+        public void ReviseSheet(string body, string drop)
+        {
+            if (_sheetArgs.title == null) return;
+            var list = new System.Collections.Generic.List<(string label, Action action)>(_sheetArgs.buttons);
+            list.RemoveAll(b => b.label == drop);
+            ShowSheet(_sheetArgs.title, body, list.ToArray());
+        }
+
+        /// <summary>Body of the open sheet ("" when none).</summary>
+        public string SheetBody => _sheetArgs.title == null ? "" : _sheetArgs.body;
+
         public void HideSheet()
         {
             if (_sheet == null) return;

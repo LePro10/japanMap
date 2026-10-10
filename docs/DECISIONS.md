@@ -505,6 +505,33 @@ fünf Gruppen + Stumm (`SoundMix`) als eigene Verstärkung je Quelle statt Audio
 Lautstärke, und sein Asset lässt sich aus Code nicht anlegen. Pause: `AudioListener.pause` (UI-Töne ausgenommen).
 **Download:** +1,42 MB (22 kHz, kurze Schleifen); Phase 10 lädt die neun nicht gefahrenen Motorbänke nach.
 
+## D35 — CrazyGames-SDK komplett: Plattform-Schnittstelle in Core, Spielpausen aus dem UI-Stapel, „Choose progress“ selbst · 2026-10-10
+
+**Standard (Regel 3):** CrazyGames-Unity-SDK 5.33 (D31) für alles; eigener Code nur, wo das SDK nichts anbietet.
+**Schnittstelle:** `Core.Platform.GamePlatform` (Werbung, gameplayStart/Stop, happytime, Nutzer, Portal-Stumm) — das Spiel
+kennt das SDK nicht (Module hängen nur an Core); `Platform.CrazyPortal` setzt sie um, sonst `OfflinePlatform` (Editor:
+simulierte Werbung `Fill/Unfilled/Off` für Tests und `play.mjs ads …`; Browser außerhalb CrazyGames: Werbung aus).
+**Laden:** `loadingStart/Stop` gibt es für Unity nicht (Doku: „not supported for Unity“, der Unity-Lader ist das Laden).
+**gameplayStart/Stop** wird aus dem Zustand abgeleitet statt an jeder Stelle gerufen: Spiel läuft = Welt bereit
+(`WorldReady`, PlayerProgress) **und** UI-Stapel leer (Menü, Garage, Fotomodus, Blätter liegen alle darauf) **und**
+`timeScale > 0` **und** keine Werbung — eine Regel, die neue Bildschirme automatisch richtig behandelt. **Ton:** Portal-
+`muteAudio` (Einstellung + Änderungs-Hörer) und laufende Werbung schalten über `SoundMix` stumm (für Unity-Einreichungen
+stummt CrazyGames ohnehin selbst; doppelt schadet nicht). **Werbung (ASTRA §12):** nur Rewarded; Ergebnis-Bonus fest +300 nach
+Ereignis ≥ 45 s, Leihwagen 10 min (oder 600 Sparks) erst nach der Probefahrt des Autos; Regeln auf **aktiver Spielzeit**
+(`AdPolicy`, Werte in `Data/Gameplay/AdSettings.asset`): erst nach 5 min Spielzeit, höchstens 1 Rewarded je 5 min,
+Ergebnis-Bonus 3 je 30 min, Leih-Werbung 1 je 20 min. Kein Angebot auf dem Fahr-HUD; das Ergebnis bleibt stehen, bis
+gewählt ist. Keine Werbung = „No ad available“ einmal, nichts gutgeschrieben, nichts abgezogen. **Keine Midgame-Werbung**
+(ASTRA erlaubt eine, verlangt sie nicht — vorerst weggelassen, zu wenig Nutzen gegen Absprung-Risiko). Leihwagen:
+Wallet eingefroren (auch bei der Probefahrt, ASTRA §9), Warnung 30 s vorher, danach 20 s zum Anhalten, dann bremst das
+Auto selbst (`HoldStill`), nie Tausch bei Tempo; ein Ereignis beendet ihn am Ort. **„Choose progress“:** das SDK hat keinen
+Konflikt-Dialog (Doku: beim Login wird ein vorhandener Konto-Stand geladen — der Gast-Stand wäre stumm weg). Darum
+spiegelt `MirroredStore` jeden Konto-Speicherstand mit Besitzer auf das Gerät (PlayerPrefs); `SaveSync.Reconcile` vergleicht
+beim Start und nach Login: Konto leer → Gerät hochladen; beide da, verschieden, Gerät ≥ 1 min Spiel, nicht nur ältere Kopie
+desselben Spielers → Blatt mit Autos/Sparks/Spielzeit/Datum, ganze Kopie behalten, die andere als **Wiederherstellung**
+(Settings → Progress, umschaltbar). Bis zur Wahl wird nicht gespeichert. Prüfung: `PlatformRulesTests` (5),
+`PlatformTests` (3, echter Rennen-/Probefahrt-Weg), Browser `Tools/sdk-web.mjs` (echtes SDK auf localhost). Offen bis
+QA-Tool/Live: Werbung im echten Rahmen, Login-Ablauf mit echtem Konto.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

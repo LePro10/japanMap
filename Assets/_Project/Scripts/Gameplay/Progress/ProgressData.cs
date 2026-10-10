@@ -190,7 +190,7 @@ namespace JapanMap.Gameplay.Progress
     /// </summary>
     public static class ProgressStore
     {
-        public const string Key = "japanmap.progress.v1";
+        public const string Key = JapanMap.Core.Save.SaveSync.Key;
         public const string BackupKey = "japanmap.progress.backup";
         public const string CorruptKey = "japanmap.progress.corrupt";
 

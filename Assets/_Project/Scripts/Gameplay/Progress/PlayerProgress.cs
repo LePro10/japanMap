@@ -1,4 +1,5 @@
 using System;
+using JapanMap.Core.Platform;
 using JapanMap.Core.Save;
 using JapanMap.Gameplay.Economy;
 using JapanMap.Gameplay.Hud;
@@ -68,7 +69,9 @@ namespace JapanMap.Gameplay.Progress
         /// </summary>
         System.Collections.IEnumerator Start()
         {
+            SaveSync.Resolved += OnSaveResolved;
             yield return null; // the spawner builds the car in its Start
+            GamePlatform.WorldReady = true;
             if (!_data.hasLastPosition || spawner == null || spawner.Current == null || player == null) yield break;
             var p = _data.lastPosition;
             if (!Physics.Raycast(p + Vector3.up * 3f, Vector3.down, out var hit, 8f, ~JapanMap.Core.GameLayers.NotGround, QueryTriggerInteraction.Ignore))
@@ -82,11 +85,20 @@ namespace JapanMap.Gameplay.Progress
             Resumed = true;
         }
 
+        /// <summary>A copy was chosen (Choose progress, recovery swap): the game starts again on it, like a reload.</summary>
+        void OnSaveResolved()
+        {
+            _dirty = false;
+            UnityEngine.SceneManagement.SceneManager.LoadScene(gameObject.scene.name);
+        }
+
         /// <summary>The game continued at the saved parked spot (tests).</summary>
         public bool Resumed { get; private set; }
 
         void OnDestroy()
         {
+            GamePlatform.WorldReady = false;
+            SaveSync.Resolved -= OnSaveResolved;
             if (wallet != null) wallet.Changed -= OnWallet;
             Flush();
         }
@@ -124,6 +136,8 @@ namespace JapanMap.Gameplay.Progress
         public bool Flush()
         {
             if (!_dirty || _data == null || _store == null) return false;
+            // Two copies disagree and the player has not chosen yet: writing now would decide for them.
+            if (SaveSync.Pending != null) return false;
             _dirty = false;
             _nextSave = Time.unscaledTime + 1f;
             if (!ProgressStore.Save(_store, _data)) return false;

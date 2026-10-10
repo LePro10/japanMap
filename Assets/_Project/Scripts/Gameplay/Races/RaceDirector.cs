@@ -93,6 +93,10 @@ namespace JapanMap.Gameplay.Races
         /// <summary>Tests and the acceptance drive: the player's car is driven by the AI as well.</summary>
         public bool Autopilot { get; set; }
         public event Action<Result> Finished;
+        /// <summary>The result sheet stays until a button is pressed (a rewarded offer is on it).</summary>
+        public bool HoldResult { get; set; }
+        /// <summary>An event is about to start (id): a test drive or loan ends first (ASTRA §12, events use the own car).</summary>
+        public event Action<string> Beginning;
 
         public int Rescues
         {
@@ -308,6 +312,7 @@ namespace JapanMap.Gameplay.Races
         {
             var found = set.Find(id);
             if (found == null || player == null || player.Current != PlayerModeController.Mode.Driving || player.Car == null) return false;
+            Beginning?.Invoke(id);
             if (Current == State.Countdown || Current == State.Running) Cleanup();
             _event = found.Value;
             _track = TrackOf(_event, out _startArc);
@@ -443,6 +448,7 @@ namespace JapanMap.Gameplay.Races
             }
             if (Current == State.Finished)
             {
+                if (HoldResult) return; // an offer on the sheet waits for the player's choice
                 _timer -= Time.fixedDeltaTime;
                 if (_timer <= 0f) Cleanup();
                 return;
@@ -755,6 +761,7 @@ namespace JapanMap.Gameplay.Races
             if (hud != null) hud.HoldNotices = false;
             _gateA.SetActive(false);
             _gateB.SetActive(false);
+            HoldResult = false;
             Current = State.Idle;
         }
     }
