@@ -131,3 +131,7 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
   per Addressables (Editor sofort, Browser nach gameplayStart). Wer Gruppen in Game.unity neu baut: am Ende
   `StreamingSetup.Apply()` (MapImport.ImportAll tut es). Autos haben `modelAsset` statt `model` (`CarModels.Get`).
 - **Jede Komponente in einer Datei ihres Namens** — sonst speichert die Szene ein lokales Skript-Objekt (`ScriptFileTests`).
+- **Qualitätsstufen vergleichen nur im Play-Modus** (`play.mjs "tier High; view <bp>; shot x"`): `TerrainQuality` (Gras, Bäume)
+  greift im Edit-Modus nicht — `views.mjs` zeigte Grasdichte 0,6 und 1,0 gleich.
+- **Editor zu?** Nur `Tools/lib` (`editorIsOpen`) entscheidet; `compile.mjs`/`unity-test.mjs` brauchen den offenen Editor und warten
+  sonst. Bei geschlossenem Editor: `verify.mjs`, `build-web.mjs`, `unity-run.mjs` (Batchmode).

@@ -35,15 +35,22 @@ Blickpunkte `Captures/p9-gate-HL.png` (gleich wie P8); Handy-Bilder `Captures/p9
 - [x] 4. Auto-Qualität (D38): Erstwahl nach GPU, Messung im Spiel, nur abwärts; Settings Auto/Recalibrate. **WebGPU zeichnet
   schwarz** (Validierungsfehler im Lit-Shader) → WebGL2 bleibt. „Hoch 56 fps“ war der 60-Hz-Takt (ohne Takt 133–147 fps).
   Start jetzt **18,4 MB**.
-- [ ] 5. Profiling (+ Ring-Senke) · [ ] 6. CI
+- [x] 5a. **Ring-Senke behoben** (D39): Straßenprofile mit Mindestradius je Typ; Test fährt mit 86–118 km/h durch, 0 Aufsetzer
+  (vorher 8). [x] 5b. **Profiling alle 50 Blickpunkte** (`Captures/bench-p10-gate-*.txt`): Hoch max 1 819 DC / 5,9 M Dreiecke / 6,8 ms CPU,
+  18 über Budget (fast nur Dreiecke, ländlich); Niedrig max 432 DC / 593 k, 2 knapp über 400 DC. Gemessen je ein Regler: 2 Kaskaden
+  −3…16 %, lodBias 1,5 −4…13 %, **Gras/Reis ist der große Posten** (ohne: Gassho 6,6 → 2,5 M); Dichte 0,6 sichtbar lichter →
+  verworfen; **Gras-Sichtweite Hoch 90 → 70 m** übernommen (gleiches Bild, gassho-gasse −41 %). Rest offen bis Gerätetest (P11).
+- [ ] 6. CI (GameCI) — optional, braucht deine Unity-Lizenz als GitHub-Secret → Phase 12
 
 ## Offen / Gefunden
 
+- **Klick/Touch-Tests in langen Editor-Läufen:** `UiPanel.Size` veraltet, wenn die Spielansicht ihre Größe ändert (gemessen: Panel
+  1 839×914 ×1,25, Bildschirm 1 469×684 → Tipp landet außerhalb); einzeln grün. Ursache für das Wackeln. Behebung: Panel-Größe je Bild
+  neu lesen oder Tests setzen die Spielansicht fest (`gameview`). `DiscoveryPlayTests.Inspect_Puzzle…` 1× im Batch rot, einzeln grün.
 - **Wackeln:** Klick-/Touch-Tests (`MenuTests`, `MapTests`, `TouchMenuTests`, Touch-Pad) im langen Lauf nach dem Unity-Absturz 2× rot,
   einzeln und in jeder Teilgruppe grün (Fokus/Verdeckung der Spielansicht?); im Batchmode immer rot (zeichnet nicht), dazu
   Foto-Breite; `TrafficCar_StopsForAPerson` 1× im Batch-Gesamtlauf rot, allein grün. **Unity stürzte 2× ab** (UI-Skia; PhysX
-  beim CharacterController im Test) — Editor lädt Streaming-Szenen seitdem synchron, Absturz nicht wieder gesehen; `Keyboard_Drives…` 1×/7 rot; `PedestrianTests.TenMinutes…` 1× im Gesamtlauf rot, allein grün. Ring-Senke bei (508, −738):
-  Karosserie setzt bei ~110 km/h auf, Abnahmefahrt knapp (2,4–5,5 m von 6) → Straßenprofil glätten (Phase 10/12).
+  beim CharacterController im Test) — Editor lädt Streaming-Szenen seitdem synchron, Absturz nicht wieder gesehen; `Keyboard_Drives…` 1×/7 rot; `PedestrianTests.TenMinutes…` 1× im Gesamtlauf rot, allein grün. Ring-Senke: behoben (D39).
 - **Unity schreibt selbst um (nicht committet):** `Data/Nav/*.asset`, `ProjectSettings`. **CrazyGames ungeprüft:** Mausfang, Foto-Download,
   Speichern im echten Rahmen, „Choose progress“ → Phase 10 mit dem QA-Tool.
 - **Fehlt:** Car-Lab-Lackierungen (Nachladen, P10); Ride-Höhe +20 mm „Dirt“; Produkt-Messungen (ASTRA §11); Gegner-Motoren hörbar;

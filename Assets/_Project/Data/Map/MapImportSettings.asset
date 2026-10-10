@@ -46,31 +46,37 @@ MonoBehaviour:
   riverWidthFactor: 0.78
   roadTypes:
   - type: highway
+    minVerticalRadius: 300
     width: 9
     shoulder: 1.6
     textureLength: 8
     gravel: 0
   - type: mountain
+    minVerticalRadius: 150
     width: 6.5
     shoulder: 1
     textureLength: 7
     gravel: 0
   - type: village
+    minVerticalRadius: 100
     width: 5
     shoulder: 0.8
     textureLength: 6
     gravel: 0
   - type: city
+    minVerticalRadius: 80
     width: 8
     shoulder: 1.2
     textureLength: 8
     gravel: 0
   - type: dirt
+    minVerticalRadius: 80
     width: 4
     shoulder: 0.6
     textureLength: 5
     gravel: 0
   - type: pfad
+    minVerticalRadius: 0
     width: 1.8
     shoulder: 0
     textureLength: 3
@@ -86,6 +92,7 @@ MonoBehaviour:
   carveDepth: 0.03
   carveBank: 2
   carveMaxDepth: 8
+  carveGapFill: 1
   deckFrom: 2.5
   deckDepth: 1.35
   pierFrom: 4

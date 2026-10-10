@@ -81,7 +81,10 @@ namespace JapanMap.Tests.Content
             var menu = Object.FindAnyObjectByType<GameMenu>();
 
             yield return TapAt(ui.MenuButton);
-            Assert.IsTrue(menu.IsOpen, "the touch MENU button opens the menu");
+            var player = Object.FindAnyObjectByType<PlayerModeController>();
+            Assert.IsTrue(menu.IsOpen, $"the touch MENU button opens the menu (stack {JapanMap.Core.Ui.UiStack.Count} top {JapanMap.Core.Ui.UiStack.Top}, " +
+                $"suspended {player?.Suspended}, ad {JapanMap.Core.Platform.GamePlatform.AdRunning}, timeScale {Time.timeScale}, " +
+                $"button {ui.MenuButton?.worldBound}, panel {JapanMap.Core.Ui.UiPanel.Size} x{JapanMap.Core.Ui.UiPanel.Scale}, screen {UnityEngine.Screen.width}x{UnityEngine.Screen.height})");
             Assert.AreEqual(0f, Time.timeScale, "and pauses");
             for (var f = 0; f < 5; f++) yield return null;
             yield return TapAt(menu.Root.Q<Button>("tab-records"));

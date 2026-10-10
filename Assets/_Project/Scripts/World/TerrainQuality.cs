@@ -27,7 +27,7 @@ namespace JapanMap.World
 
         public Tier[] tiers =
         {
-            new() { name = "High", treeDistance = 1500, buildingDistance = 2500, detailDistance = 90, detailDensity = 1f, pixelError = 5 },
+            new() { name = "High", treeDistance = 1500, buildingDistance = 2500, detailDistance = 70, detailDensity = 1f, pixelError = 5 },
             new() { name = "Medium", treeDistance = 900, buildingDistance = 1200, detailDistance = 60, detailDensity = 0.6f, pixelError = 8 },
             new() { name = "Low", treeDistance = 500, buildingDistance = 450, detailDistance = 35, detailDensity = 0.3f, pixelError = 14 },
         };

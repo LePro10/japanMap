@@ -17,6 +17,15 @@ namespace JapanMap.Editor.Map
     {
         /// <param name="fills">Roads that also raise the ground to their surface (an embankment with a 45° bank):
         /// the places' own roads, which — unlike roads.json — are not baked into the heightmap.</param>
+        /// <summary>Fast roads only: their profiles move most (RoadProfile); filling under slow streets lifted ground
+        /// through a neighbouring footpath (sando, 0.19 m).</summary>
+        static bool GapFills(RoadNetwork.Road road, MapImportSettings s)
+        {
+            foreach (var t in s.roadTypes)
+                if (t.type == road.type) return t.minVerticalRadius >= 150f;
+            return false;
+        }
+
         public static (int texels, float maxCut, int skipped) UnderRoads(IList<RoadNetwork.Road> roads, Func<string, float> shoulderOf, MapImportSettings s, ISet<string> fills = null)
         {
             int changed = 0, skipped = 0;
@@ -37,7 +46,10 @@ namespace JapanMap.Editor.Map
                 {
                     var p = road.points;
                     var fill = fills != null && fills.Contains(road.id);
-                    if (pass == 0 && !fill) continue;
+                    // Every road fills small gaps under its core (a dip evened out by RoadProfile lifted the ring
+                    // up to 0.74 m off the ground); bridges and viaducts stand much higher and stay as they are.
+                    var gapOnly = pass == 0 && !fill;
+                    if (gapOnly && (s.carveGapFill <= 0f || !GapFills(road, s))) continue;
                     var cutting = pass == 1;
                     var half = road.width / 2f;
                     var shoulder = shoulderOf(road.type);
@@ -84,6 +96,7 @@ namespace JapanMap.Editor.Map
                             if (!cutting)
                             {
                                 var floor = surface - Mathf.Max(0f, d - core);
+                                if (gapOnly && (d > core || floor - world > s.carveGapFill)) continue;
                                 if (world < floor)
                                 {
                                     h[r, c] = (floor - origin.y) / size.y;

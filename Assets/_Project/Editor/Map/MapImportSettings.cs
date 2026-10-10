@@ -83,6 +83,8 @@ namespace JapanMap.Editor.Map
         public float carveBank = 2f;
         [Tooltip("Deeper cuts are left alone (a road that far below ground is a tunnel, not a bump), m.")]
         public float carveMaxDepth = 8f;
+        [Tooltip("Ground below a road's core by up to this much is raised to it (m); larger gaps are bridges and stay.")]
+        public float carveGapFill = 1f;
 
         [Header("Viaducts (legacy ViaductSystem.ts)")]
         [Tooltip("Deck below road spans this far above ground; piers from pierFrom, every pierSpacing metres.")]
@@ -159,6 +161,9 @@ namespace JapanMap.Editor.Map
             public float shoulder = 1f;
             public float textureLength = 8f;
             public bool gravel;
+            [Tooltip("Smallest vertical radius of a dip or crest, m (0 = keep the data). At 120 km/h a 46 m dip pulled 2.6 g " +
+                     "and the body hit the road (Phase 10); ~v²/(0.35 g) for the road's speed.")]
+            public float minVerticalRadius;
         }
 
         [System.Serializable]

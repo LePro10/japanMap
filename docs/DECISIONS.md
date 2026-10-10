@@ -589,6 +589,20 @@ nach Regel 5 nichts geändert (Wald-Schatten, lodBias 2 bleiben); `sdk-web` mark
 Regler bleiben als URL-Messhilfen: `?treeshadows=0 ?lodbias= ?msaa= ?cascades= ?shadowdist=`. **Start** nach dieser
 Aufgabe: 18,4 MB (Gras/Reis als eigene Datei nach gameplayStart, Built-in-Shader und unbenutzte Post-Varianten raus).
 
+## D39 — Straßenprofile: Senken und Kuppen nicht enger als der Straßentyp erlaubt · 2026-10-10
+
+**Warum:** Auf dem Ring bei (541, −710) / (508, −738) ging die Steigung mit einem Senken-Radius von **46 m** in die Ebene
+über; bei 110 km/h sind das ~2,6 g zusätzlich, jede Karosserie setzte auf (offen seit Phase 8). Der Prototyp hat mehrere
+solcher Knicke (Ring 43–62 m, „Kuppen-Knicke“ in STATUS). **Wie:** `RoadProfile` beim Laden der Straßen (eine Stelle für
+Mesh, Gelände-Aushub und Laufzeit-Netz): jede Station, die enger biegt als `minVerticalRadius` ihres Typs
+(`MapImportSettings`: highway 300 m, Rennstrecken 300 m, city 80, mountain 150, village 100, dirt 80, Pfad aus), wird
+schrittweise zur Grenze hin ausgeglichen; nur die Höhe ändert sich, der Verlauf bleibt. Nebenstraßen, die eine geglättete
+Straße treffen, übernehmen deren Änderung und lassen sie über 20 m auslaufen (keine Stufe an Kreuzungen); Fußwege bleiben
+exakt. Das Gelände hebt sich unter schnellen Straßen bis 1 m an die Fahrbahn heran (`carveGapFill`), Brücken bleiben.
+**Gemessen:** größte Höhenänderung < 1,5 m (Ring 0,74), Straßen-Gelände-Abstand Ring |p95| 0,139 m (wie vorher),
+`RingDipTests`: mit den alten Daten 8 Aufsetzer mit Stößen bis 1 600, mit Glättung keiner (86–118 km/h). Kleine Verbesserung
+nach Regel 15 (Strecke wiedererkennbar, nur weicher).
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

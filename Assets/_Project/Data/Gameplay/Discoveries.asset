@@ -108,7 +108,7 @@ MonoBehaviour:
     title: Retired start board
     hint: Count them home.
     position: {x: -349, y: -589}
-    ground: 31.961285
+    ground: 31.933071
     yaw: 180
     trigger: 2
     buttons:

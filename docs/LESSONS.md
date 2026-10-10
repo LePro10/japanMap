@@ -62,6 +62,10 @@
 | 2026-10-10 | 10 | Größenmessung zählte das streamend kompilierte WASM (6,7 MB) nicht | `sdk-web` zählt empfangene Datenstücke statt „fertig“-Ereignisse | Werkzeug |
 | 2026-10-10 | 10 | Unkomprimierte Größen im Build-Bericht täuschen (Splash 2,7 MB = 0 MB auf der Leitung; Shader 12 MB echt) | `Tools/data-sizes.mjs` (Inhalt von Web.data einzeln komprimiert) und Versuchs-Builds ohne eine Gruppe | Werkzeug |
 | 2026-10-10 | 10 | Bauen bei offenem Editor = Menü + Warten von Hand | `build-web.mjs` nutzt den offenen Editor selbst (MCP) | Werkzeug |
+| 2026-10-10 | 10 | WebGPU „115 fps“ waren schwarze Bilder (Validierungsfehler als Warnung); Headless-Screenshot von WebGPU unbrauchbar | `sdk-web --probe` (Spiel liest eigenes Bild zurück, rot wenn schwarz), WebGPU-Validierung = Fehler | Werkzeug |
+| 2026-10-10 | 10 | Browser-FPS sprangen je Lauf zwischen ~57 (Bildschirmtakt) und ~140 — Regler-Vergleiche maßen den Takt | `sdk-web --fps` markiert gedeckelte Läufe „CAPPED“ | Werkzeug |
+| 2026-10-10 | 10 | Optik im Edit-Modus verglichen, aber Geländequalität greift erst im Play-Modus (Grasdichte sah gleich aus, war es nicht) | Vergleiche der Qualitätsstufen mit `play.mjs … tier High; view …; shot` | Skill |
+| 2026-10-10 | 10 | `compile.mjs` bei geschlossenem Editor wartete endlos; eigene `pgrep -f`-Prüfung fand die eigene Warteschleife | Editor-Erkennung nur über `Tools/lib` (`editorIsOpen`), Batch-Werkzeuge (`verify`, `build-web`, `unity-run`) bei geschlossenem Editor | Skill |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**
