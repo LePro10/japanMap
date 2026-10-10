@@ -23,6 +23,14 @@
     <canvas id="unity-canvas" tabindex="-1"></canvas>
     <div id="loading">JAPANMAP<div class="bar"><div class="fill"></div></div></div>
     <div id="message"></div>
+    <script>
+      // A refused pointer lock (page without focus, frame without permission, a click during load) is not an error:
+      // the game runs on and the next click asks again. Registered before Unity's loader so its error dialog never
+      // sees it (Phase 8 and 10: "not valid for pointer lock" became a full error dialog).
+      function benignLock(reason) { return /pointer ?lock/i.test(String(reason && (reason.message || reason))); }
+      window.addEventListener('unhandledrejection', function (e) { if (benignLock(e.reason)) { e.preventDefault(); e.stopImmediatePropagation(); console.warn('[Page] pointer lock refused'); } });
+      window.addEventListener('error', function (e) { if (benignLock(e.error || e.message)) { e.preventDefault(); e.stopImmediatePropagation(); console.warn('[Page] pointer lock refused'); } });
+    </script>
     <script src="Build/{{{ LOADER_FILENAME }}}"></script>
     <script>
       // Pixel ratio (CrazyGames requirement): 1 on iOS and on phones with 4 GB or less, at most 2 elsewhere.

@@ -26,3 +26,6 @@ sind. Was nicht erfüllbar ist, steht offen in STATUS.md — nicht abgehakt.
 8. **Commit** „Phase N abgeschlossen". Push nur nach Zustimmung.
 9. Dem Menschen in einfachen Worten berichten: was jetzt geht, was gemessen
    wurde, was offen ist, was er tun soll.
+10. **Ohne Nachfrage den fertigen Prompt für die nächste Phase** mitschicken
+    (Codeblock zum Kopieren; gibt es keine nächste Phase: einen Prompt für ein
+    Review aller Phasen). Der Mensch hat das ausdrücklich so gewünscht.

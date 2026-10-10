@@ -119,13 +119,13 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1001 &892399131
+--- !u!1001 &1483616177
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 2079515628}
+    m_TransformParent: {fileID: 1710363615}
     m_Modifications:
     - target: {fileID: 858578207546702848, guid: 2b906c8e0729b4792a8bd94f2c9e7470, type: 3}
       propertyPath: m_LocalPosition.x
@@ -176,12 +176,12 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 2b906c8e0729b4792a8bd94f2c9e7470, type: 3}
---- !u!4 &892399132 stripped
+--- !u!4 &1483616178 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 858578207546702848, guid: 2b906c8e0729b4792a8bd94f2c9e7470, type: 3}
-  m_PrefabInstance: {fileID: 892399131}
+  m_PrefabInstance: {fileID: 1483616177}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &2079515627
+--- !u!1 &1710363614
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -189,7 +189,7 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 2079515628}
+  - component: {fileID: 1710363615}
   m_Layer: 0
   m_Name: Props_chozuya
   m_TagString: Untagged
@@ -197,24 +197,24 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &2079515628
+--- !u!4 &1710363615
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2079515627}
+  m_GameObject: {fileID: 1710363614}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 892399132}
+  - {fileID: 1483616178}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 2079515628}
+  - {fileID: 1710363615}
