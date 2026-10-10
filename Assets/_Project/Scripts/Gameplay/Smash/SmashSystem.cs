@@ -128,28 +128,36 @@ namespace JapanMap.Gameplay.Smash
             foreach (var path in roots)
             {
                 var root = GameObject.Find(path);
-                if (root == null) continue;
-                foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
-                {
-                    if (child.GetComponent<Collider>() == null && child.GetComponentInChildren<Collider>() == null) continue;
-                    var kind = settings.Find(child.name);
-                    if (kind == null) continue;
-                    // The breakable sits on the outermost object of that name (a prefab instance with
-                    // collider children, or a Tokyo collider box) — not again on its children.
-                    if (child.parent != null && child.parent.GetComponent<Breakable>() != null) continue;
-                    if (IsGroup(child, kind)) continue; // "shed" holding shed_000…065: the children break, not the group
-                    var b = child.gameObject.AddComponent<Breakable>();
-                    var instances = child.parent != null && child.parent.name == "Colliders"
-                        ? child.parent.parent.GetComponentInChildren<InstanceRenderer>()
-                        : null;
-                    b.Bind(this, kind, instances);
-                    _all.Add(b);
-                }
+                if (root != null) Scan(root);
             }
             // Pool and meshes now, not on the first hit (first break cost 2.1 ms creating them).
             foreach (var k in settings.kinds) CubeWithUv(_palette.Uv(k.color));
             for (var i = 0; i < settings.maxPieces; i++) CreatePiece();
             UnityEngine.Debug.Log($"[Smash] {_all.Count} breakables in {watch.ElapsedMilliseconds} ms");
+        }
+
+        /// <summary>Makes everything breakable under <paramref name="root"/> — at start, and for a place streamed in later (D36).</summary>
+        public int Scan(GameObject root)
+        {
+            var before = _all.Count;
+            foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (child.GetComponent<Collider>() == null && child.GetComponentInChildren<Collider>() == null) continue;
+                var kind = settings.Find(child.name);
+                if (kind == null) continue;
+                // The breakable sits on the outermost object of that name (a prefab instance with
+                // collider children, or a Tokyo collider box) — not again on its children.
+                if (child.parent != null && child.parent.GetComponent<Breakable>() != null) continue;
+                if (child.GetComponent<Breakable>() != null) continue;
+                if (IsGroup(child, kind)) continue; // "shed" holding shed_000…065: the children break, not the group
+                var b = child.gameObject.AddComponent<Breakable>();
+                var instances = child.parent != null && child.parent.name == "Colliders"
+                    ? child.parent.parent.GetComponentInChildren<InstanceRenderer>()
+                    : null;
+                b.Bind(this, kind, instances);
+                _all.Add(b);
+            }
+            return _all.Count - before;
         }
 
         internal bool IsPlayerCar(Rigidbody body) => player != null && player.Car != null && player.Car.Body == body;

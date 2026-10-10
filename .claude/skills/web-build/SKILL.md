@@ -60,9 +60,14 @@ Referenz leerer Build (2026-10-07): Release **7,75 MB** (wasm 5,18, data 2,39).
 | Zeit bis spielbar | ≤ 20 s |
 | Geräte | 4-GB-Chromebook flüssig; Safari muss laufen |
 
-Hebel, wenn es zu groß wird: Texturen (Größe, Kompression), Addressables
-(Welt nachladen statt im Startpaket), ungenutzte Pakete entfernen, Code
-Stripping, Audio komprimieren. Immer messen, welcher Hebel wie viel bringt.
+**Start messen nur mit `node Tools/sdk-web.mjs`** (Bytes auf der Leitung bis gameplayStart, auch WASM und Gelände-Datei;
+Phase 10: 18,9 MB). `size-report.txt` „start" ist eine Näherung; dort „MB" = 10⁶ Byte.
+
+Hebel, gemessen in Phase 10 (D36): `data.unity3d` ist innen immer LZ4 — Brotli außen hilft kaum, nur weniger Inhalt.
+Größter Posten waren **Shader** (Varianten: URP-Funktionen aus, die niemand nutzt; `Editor/ShaderStripping.cs`, Bericht
+`Builds/shader-variants.txt`), dann Welt-Teile (Addressables), Gelände (gzip-Datei), Crunch. Unkomprimierte Zahlen im
+Build-Bericht täuschen — `node Tools/data-sizes.mjs` oder ein Versuchs-Build ohne die Gruppe. **LZMA-Bündel laden im
+Browser nicht.** Neue Inhalte, die nicht in den Start gehören: als eigene Szene/Adresse (`StreamingSetup`).
 
 ## Handy-Test
 

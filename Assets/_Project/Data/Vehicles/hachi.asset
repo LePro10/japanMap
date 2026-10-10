@@ -16,7 +16,13 @@ MonoBehaviour:
   displayName: Hachi 86
   category: 0
   legacyId: touge
-  model: {fileID: -1967845482108973795, guid: efa03ac8162e1439e81231a0a1bd9699, type: 3}
+  model: {fileID: 0}
+  modelAsset:
+    m_AssetGUID: efa03ac8162e1439e81231a0a1bd9699
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_SubObjectGUID: 
+    m_EditorAssetChanged: 0
   price: 0
   blurb: Light nose, a progressive rear slide, and an easy catch.
   factoryPaint: Cloud

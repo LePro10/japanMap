@@ -16,7 +16,13 @@ MonoBehaviour:
   displayName: Kumo STi 22
   category: 2
   legacyId: torrent
-  model: {fileID: 1464532425044276665, guid: 0442fa0f89ee842b8995d66df898cfcc, type: 3}
+  model: {fileID: 0}
+  modelAsset:
+    m_AssetGUID: 0442fa0f89ee842b8995d66df898cfcc
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_SubObjectGUID: 
+    m_EditorAssetChanged: 0
   price: 15000
   blurb: All-wheel punch and short, catchable slides on loose ground.
   factoryPaint: Deep Teal

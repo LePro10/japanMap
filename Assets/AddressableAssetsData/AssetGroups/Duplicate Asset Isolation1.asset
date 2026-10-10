@@ -1,0 +1,123 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Duplicate Asset Isolation1
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: Duplicate Asset Isolation1
+  m_GUID: 0e2ff0f719bc84959a82f70ffab9eaa0
+  m_SerializeEntries:
+  - m_GUID: 03c52670e4d3e4e84b715f4155ff0558
+    m_Address: Assets/_Project/Art/Library/Textures/T_Nature_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1d9c432cdec264c79842be3b138acf65
+    m_Address: Assets/_Project/Art/Materials/Placeholder_Wood.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 25940623e0a3d4a4ab978106fb20e3c9
+    m_Address: Assets/ThirdParty/PolyHaven/Textures/asphalt_02/asphalt_02_diff.jpg
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 27987600b0e674b268a3baad1c1e6c28
+    m_Address: Assets/ThirdParty/PolyHaven/Textures/brown_mud_02/brown_mud_02_diff.jpg
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 34c5c9e7369a04bdea5b7d6c2c76f4ba
+    m_Address: Assets/ThirdParty/PolyHaven/Textures/brown_mud_02/brown_mud_02_nor_gl.jpg
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3f5122edd6d0048c6b414e22a483cb35
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Tera_Haiden.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 413de6c217a0d4d1eadf0567f1ac9c0d
+    m_Address: Assets/_Project/Art/Library/Textures/T_Nature_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4460926366ee6428cb924fce5bf6d795
+    m_Address: Assets/_Project/Art/Materials/Road_Gravel.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4add76ca2e4f54c36a0bf6143f1eb3c7
+    m_Address: Assets/_Project/Art/Materials/Placeholder_Marker.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5fd7b198952a044118ee8e2a20b8f6bb
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Tera_Shoro.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 618c17e794a9646b080dfc563ae4b30b
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Minato_Gear_Nets.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7adf76213ca854c5bb25b1a6db9cccca
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Minato_Gear_Drying.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8d216e4bfcaf547fb8b875a15863b5c6
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Minato_Gear_Market.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 99e4f1e1bdefc4613884b23ed32d3087
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Minato_Boat_Skiff.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cd27feef2639642408ddd5e95280f354
+    m_Address: Assets/ThirdParty/PolyHaven/Textures/asphalt_02/asphalt_02_nor_gl.jpg
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: df6225a388198428b806f2081fd3f4c2
+    m_Address: Assets/_Project/Art/Library/Materials/M_Nature_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ee76e65734eaf47e1bacefcf88ba9c5b
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Minato_Lighthouse_Red.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f5562ae6a96db4c38aef50b79fa322c4
+    m_Address: Assets/_Project/Art/Library/Textures/T_Nature_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f649173e12f134915a2b051d9d2b5b0d
+    m_Address: Assets/_Project/Art/Materials/Road_Asphalt.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: f93b1925722a949958f60082c8ffb0e4, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 2c69b18f6291d4ad4a7323299b7a6868, type: 2}
+    - {fileID: 11400000, guid: 399bb826e9033485a8e0e119ec6d10d0, type: 2}
+    m_SchemaDisplayOrder:
+    - Duplicate Asset Isolation1_BundledAssetGroupSchema
+    - Duplicate Asset Isolation1_ContentUpdateGroupSchema
+  m_IncludeInBuild: 1
+  m_IncludeInBuildMigrated: 1

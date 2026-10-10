@@ -56,6 +56,12 @@
 | 2026-10-08 | 3 | MCP fehlte (Editor nach Sitzungsstart); Prototyp-Prüfstände liefen nicht (kein `three`) | HTTP-Helfer `Tools/mcp-call.mjs` (Skill `unity-verify`); Rezept im Skill `legacy-port`, Ausgaben in `SourceData/bench/` | Skill |
 | 2026-10-10 | 10 | Größenbericht rechnete MiB, schrieb „MB“ (56 statt 58,6 MB); Startdownload bis gameplayStart war nie gemessen | `WebBuild` meldet Dezimal-MB; `Tools/sdk-web.mjs` misst Bytes auf der Leitung bis zum ersten gameplayStart (echtes SDK auf localhost) | Werkzeug |
 | 2026-10-10 | 10 | Ein Rennen im Spielablauf „mit wait 40“ abgewartet — war nicht fertig | `play.mjs waitrace` wartet auf das Ergebnis statt Zeit zu raten | Werkzeug |
+| 2026-10-10 | 10 | LZMA-Bündel laden im Browser nicht („format 1“); das Boot-Tor zählte „fehlgeschlagen“ als „fertig“, das Spiel lief auf flachem Platzhalter | Gelände als gzip-Datei; Tor `Required`, Fehlschlag = 3 Versuche + Fehler im Log; `sdk-web` wird rot bei Konsolenfehlern | Werkzeug |
+| 2026-10-10 | 10 | Release-Build übernahm Shader aus dem Cache und überging neue Strip-Regeln (Größe gleich bis aufs Byte) | `WebBuild`: Release immer `CleanBuildCache` + Addressables-Cache leeren; `Builds/shader-variants.txt` je Build | Werkzeug |
+| 2026-10-10 | 10 | Eine Boot-Komponente lag in der Datei einer anderen Klasse — in der Szene ein lokales Skript-Objekt statt Verweis | `ScriptFileTests` fing es; Boot-Eintrag neu angelegt | Test |
+| 2026-10-10 | 10 | Größenmessung zählte das streamend kompilierte WASM (6,7 MB) nicht | `sdk-web` zählt empfangene Datenstücke statt „fertig“-Ereignisse | Werkzeug |
+| 2026-10-10 | 10 | Unkomprimierte Größen im Build-Bericht täuschen (Splash 2,7 MB = 0 MB auf der Leitung; Shader 12 MB echt) | `Tools/data-sizes.mjs` (Inhalt von Web.data einzeln komprimiert) und Versuchs-Builds ohne eine Gruppe | Werkzeug |
+| 2026-10-10 | 10 | Bauen bei offenem Editor = Menü + Warten von Hand | `build-web.mjs` nutzt den offenen Editor selbst (MCP) | Werkzeug |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

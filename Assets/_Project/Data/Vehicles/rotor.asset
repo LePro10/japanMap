@@ -16,7 +16,13 @@ MonoBehaviour:
   displayName: Rotor FD
   category: 3
   legacyId: gt
-  model: {fileID: -3624338741610695390, guid: ae592200c83a44d5f9a83d59ab79fca5, type: 3}
+  model: {fileID: 0}
+  modelAsset:
+    m_AssetGUID: ae592200c83a44d5f9a83d59ab79fca5
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_SubObjectGUID: 
+    m_EditorAssetChanged: 0
   price: 42000
   blurb: Low mid-engine wedge. Precise at speed; respect an abrupt lift.
   factoryPaint: Rose

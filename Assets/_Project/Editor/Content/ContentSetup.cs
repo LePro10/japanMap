@@ -128,6 +128,11 @@ namespace JapanMap.Editor.Content
             Set(offers, "races", races);
             Set(offers, "garage", garage);
 
+            // The rest of the world after the start download (D36); its place list comes from StreamingSetup.WireScene.
+            var streamer = Child<JapanMap.Gameplay.Content.ContentStreamer>(group, "Streaming");
+            Set(streamer, "fleet", AssetDatabase.LoadAssetAtPath<VehicleFleet>(FleetSeed.FleetPath));
+            Set(streamer, "player", player);
+
             var keeper = Child<RecordKeeper>(group, "Records");
             Set(keeper, "progress", progress);
             Set(keeper, "player", player);
@@ -203,8 +208,11 @@ namespace JapanMap.Editor.Content
             arr.arraySize = banks.Count;
             for (var i = 0; i < banks.Count; i++) arr.GetArrayElementAtIndex(i).objectReferenceValue = banks[i];
             so.ApplyModifiedPropertiesWithoutUndo();
+            Set(streamer, "carAudio", carAudio);
+            Set(streamer, "smash", Object.FindAnyObjectByType<JapanMap.Gameplay.Smash.SmashSystem>());
 
             MapScene.Save();
+            StreamingSetup.WireScene(); // starter bank only, streamed places
             var msg = $"[Content] set up: {zones.zones.Length} drift zones, {flags} flags, {Regions().regions.Length} regions, {cards.cards.Length} discoveries";
             Debug.Log(msg);
             return msg;

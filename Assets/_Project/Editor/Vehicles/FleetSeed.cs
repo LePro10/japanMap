@@ -131,6 +131,8 @@ namespace JapanMap.Editor.Vehicles
                 LinkModel(def);
                 EditorUtility.SetDirty(def);
             }
+            // Linking sets every model directly; only the starter may stay so (start download, D36).
+            Content.StreamingSetup.Cars(Content.StreamingSetup.Settings());
             AssetDatabase.SaveAssets();
         }
 

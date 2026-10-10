@@ -16,7 +16,13 @@ MonoBehaviour:
   displayName: Hanami SF-26
   category: 3
   legacyId: needle
-  model: {fileID: 603326477844932168, guid: 9740e4081271f4184815db363bef6767, type: 3}
+  model: {fileID: 0}
+  modelAsset:
+    m_AssetGUID: 9740e4081271f4184815db363bef6767
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_SubObjectGUID: 
+    m_EditorAssetChanged: 0
   price: 54000
   blurb: Exposed wheels and featherweight response. Grip builds with speed.
   factoryPaint: Silver

@@ -532,6 +532,31 @@ desselben Spielers → Blatt mit Autos/Sparks/Spielzeit/Datum, ganze Kopie behal
 `PlatformTests` (3, echter Rennen-/Probefahrt-Weg), Browser `Tools/sdk-web.mjs` (echtes SDK auf localhost). Offen bis
 QA-Tool/Live: Werbung im echten Rahmen, Login-Ablauf mit echtem Konto.
 
+## D36 — Start ≤ 20 MB: Addressables für Orte, Welt-Teile und Autos; Gelände als gzip-Datei; Crunch; Shader-Varianten · 2026-10-10
+
+**Gemessen** (Werkzeug `Tools/sdk-web.mjs`: Bytes auf der Leitung bis zum ersten `gameplayStart`, echtes SDK auf localhost):
+**58,6 → 18,9 MB** (der alte Größenbericht rechnete MiB als „MB“: 55,9 war 58,6). Schritte, je ein Regler und ein Build:
+Autos + 7 Orte als Addressables (44,9) · Crunch für alle eigenen/PolyHaven-Texturen, Qualität 50 (36,7) · URP-Vorlage-
+Funktionen aus, die nichts nutzt — Licht-Cookies, Licht-Ebenen, Zusatzlicht-Schatten, LOD-Überblendung, gemessen: 0 von
+798 Lichtern, 0 von 1 765 LOD-Gruppen (32,1) · eigene Shader-Regeln für Web: Terrain-Add-Pass (≤ 4 Schichten),
+`DOTS_INSTANCING_ON` (kein BRG auf WebGL2), Varianten ohne Nebel (das Spiel hat immer Nebel) (31,2) · Welt-Teile streamen:
+Straßenkacheln außerhalb 350 m vom Start, Props, Orts-NavMeshes, Vegetation (23,1) · Gelände als Datei (21,5) · Startauto
+streamt auch (20,5) · Boden-Normal-Maps 512 px (18,9). **Ohne Wirkung, trotzdem behalten:** Unity-Splash aus (±0 MB, aber
+Sekunden bis Spiel), „Optimize Mesh Data“ (Start ±0, Bündel −1,2 MB). **Warum so:** Unity packt `data.unity3d` für Web
+immer mit LZ4 (Doku: Standard für WebGL, nicht abschaltbar), Brotli außen findet darin fast nichts — nur weniger Inhalt
+hilft. **Gelände:** 16-bit-Höhen schrumpfen unter LZ4 kaum (8 MB); `TerrainPayload` schreibt Höhen als Rest einer
+Ebenen-Vorhersage (Byte-Ebenen), Splat/Gras/Löcher als Differenzen, verlustfrei (Test), gzip 3,9 MB; der Browser entpackt
+mit `DecompressionStream` (jslib), ungepackte Kopie für alte Browser. Der Build lässt in Game.unity einen 33²-Platzhalter
+derselben Geländedaten (`StreamedTerrainBuild`), `StreamedTerrain` füllt ihn vor allem anderen; Boot wartet darauf
+(`IBootGate.Required`, ohne Zeitlimit). **Verworfen:** LZMA-Bündel (Browser: „format 1 not supported“), .NET-`GZipStream`
+(bekannter Einfrier-Fehler in Unity-6-Web-Release). **Laufzeit:** `ContentStreamer` lädt nach dem ersten gameplayStart
+(oder 8 s Menü) eins nach dem anderen, nächstgelegen zuerst, dann Autos + Motorbänke; ein Auto ohne Modell fährt mit
+grauem Platzhalter-Körper (`PendingModel`), Physik unberührt. Lokal mit GPU: alle 58 Szenen 2 s nach dem Start; gesamt
+63 MB auf der Leitung, 104 Dateien. Im Editor öffnen die ausgelagerten Szenen mit Game.unity (`PlaceScenesInEditor`),
+Werkzeuge/Tests sehen die ganze Welt (`MapScene.Part/Parts`); `MapImport.ImportAll` lagert am Ende neu aus.
+**Release-Builds bauen sauber** (Cache übersprang einmal neue Shader-Regeln). Risiko: Wer in den ersten Sekunden auf eine
+noch fehlende Straßenkachel fährt, fährt auf dem Gelände darunter — mit gedrosseltem Netz in Phase 11 prüfen.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

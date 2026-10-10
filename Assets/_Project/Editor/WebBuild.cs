@@ -41,7 +41,9 @@ namespace JapanMap.Editor
                 scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray(),
                 locationPathName = OutputDir,
                 target = BuildTarget.WebGL,
-                options = development ? BuildOptions.Development : BuildOptions.None,
+                // Release builds start clean: the incremental cache once skipped new shader stripping rules (Phase 10,
+                // same size to the byte) — a release must never ship a stale cache.
+                options = development ? BuildOptions.Development : BuildOptions.CleanBuildCache,
             };
 
             var stripped = new List<string>();
@@ -52,6 +54,15 @@ namespace JapanMap.Editor
             }
 
             var clock = Stopwatch.StartNew();
+            // Streamed content first (D36): cars and places as bundles under StreamingAssets/aa, not in the start data.
+            Content.StreamingSetup.Settings();
+            if (!development) UnityEditor.Build.Pipeline.Utilities.BuildCache.PurgeCache(false);
+            UnityEditor.AddressableAssets.Settings.AddressableAssetSettings.BuildPlayerContent(out var content);
+            if (!string.IsNullOrEmpty(content.Error))
+            {
+                Debug.LogError($"[WebBuild] Addressables content build failed: {content.Error}");
+                return false;
+            }
             UnityEngine.Application.logMessageReceivedThreaded += Collect;
             BuildReport report;
             try { report = BuildPipeline.BuildPlayer(options); }
@@ -82,7 +93,8 @@ namespace JapanMap.Editor
         static readonly Regex StrippedShader = new(@"Shader '([^']+)': All SubShaders were stripped", RegexOptions.Compiled);
 
         // Unity's own GPU-occlusion debug shaders are always stripped on Web; nothing of ours uses them.
-        static readonly string[] KnownStrippedPrefixes = { "Hidden/Core/Debug" };
+        // The terrain add pass goes on purpose while the terrain has four layers or fewer (ShaderStripping).
+        static readonly string[] KnownStrippedPrefixes = { "Hidden/Core/Debug", ShaderStripping.TerrainAddPass };
 
         public static string StrippedShaderName(string logMessage)
         {
@@ -111,6 +123,10 @@ namespace JapanMap.Editor
             sb.AppendLine($"build time  {seconds:F0} s");
             // Decimal MB as CrazyGames and the browser count them (MiB under-reported by 5 % until Phase 10).
             sb.AppendLine($"total       {total / 1e6:F2} MB in {files.Count} files");
+            // The start download: everything but the streamed bundles (CrazyGames counts up to the first gameplayStart).
+            // Streamed later: the Addressables bundles and the plain terrain copy (only for browsers without gzip streams).
+            var streamed = files.Where(f => f.FullName.Replace('\\', '/').Contains("/StreamingAssets/aa/") || f.Name == JapanMap.World.StreamedTerrain.PlainName).Sum(f => f.Length);
+            sb.AppendLine($"start       {(total - streamed) / 1e6:F2} MB (streamed later {streamed / 1e6:F2} MB)");
             sb.AppendLine("largest:");
             foreach (var f in files.Take(10))
                 sb.AppendLine($"  {f.Length / 1e6,8:F2} MB  {Path.GetRelativePath(OutputDir, f.FullName).Replace('\\', '/')}");

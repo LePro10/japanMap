@@ -58,10 +58,45 @@ namespace JapanMap.Gameplay
             if (spawner != null && spawner.Current != null) Bind(spawner.Current);
         }
 
+        // Banks not in the start download (every car but the starter, D36) arrive by address "engine/<id>".
+        readonly System.Collections.Generic.Dictionary<string, EngineSoundBank> _streamed = new();
+        readonly System.Collections.Generic.HashSet<string> _asked = new();
+
+        /// <summary>The car's bank; while a streamed one is on its way, the first bank stands in and the right one follows.</summary>
         EngineSoundBank BankFor(string carId)
         {
             foreach (var b in banks) if (b != null && b.carId == carId) return b;
+            if (_streamed.TryGetValue(carId, out var got)) return got;
+            RequestBank(carId);
+            if (_streamed.TryGetValue(carId, out got)) return got; // the editor answers at once
             return banks.Length > 0 ? banks[0] : null;
+        }
+
+        public static string BankAddress(string carId) => "engine/" + carId;
+
+        void RequestBank(string carId)
+        {
+            if (!_asked.Add(carId)) return;
+            var op = UnityEngine.AddressableAssets.Addressables.LoadAssetAsync<EngineSoundBank>(BankAddress(carId));
+            op.Completed += h =>
+            {
+                if (h.Status != UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationStatus.Succeeded)
+                {
+                    Debug.LogWarning($"[Content] engine bank {carId} failed");
+                    _asked.Remove(carId);
+                    return;
+                }
+                _streamed[carId] = h.Result;
+                if (_car != null && _engine != null && _car.Definition.id == carId) _engine.Bind(h.Result);
+            };
+            if (Application.isEditor && CarModels.EditorSync) op.WaitForCompletion();
+        }
+
+        /// <summary>Starts the download of a car's sound (the background loader, the garage).</summary>
+        public void Prefetch(string carId)
+        {
+            foreach (var b in banks) if (b != null && b.carId == carId) return;
+            RequestBank(carId);
         }
 
         void Bind(VehicleController car)

@@ -18,8 +18,16 @@ namespace JapanMap.Vehicles
         public VehicleCategory category = VehicleCategory.Street;
         [Tooltip("Legacy game fleet id these driving numbers come from.")]
         public string legacyId = "touge";
-        [Tooltip("Car model prefab (GLB from the car lab, node layout in ArtSource/cars/README.legacy.md).")]
+        [Tooltip("Car model prefab (GLB from the car lab, node layout in ArtSource/cars/README.legacy.md). Only the starter car: " +
+                 "a direct reference puts the model into the start download.")]
         public GameObject model;
+        [Tooltip("The same model by address, loaded in the background (every car but the starter, D36). Set by JapanMap/Content/Setup Streaming.")]
+        public UnityEngine.AddressableAssets.AssetReferenceGameObject modelAsset;
+
+#if UNITY_EDITOR
+        /// <summary>The model for editor tools, whichever way it is referenced.</summary>
+        public GameObject EditorModel => model != null ? model : modelAsset?.editorAsset;
+#endif
         [Tooltip("Dealer price in Sparks (ASTRA §6 table via the D16 pairing); 0 = owned from the start.")]
         public int price;
         [Tooltip("One-line role for the showroom (legacy vehicles.config.ts blurb).")]

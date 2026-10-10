@@ -62,6 +62,7 @@ namespace JapanMap.Gameplay.Traffic
         {
             var d = Instantiate(def);
             d.model = null;
+            d.modelAsset = null; // no streamed model either (it would download and never match this copy)
             d.displayName = "Traffic";
             return d;
         }

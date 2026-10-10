@@ -22,6 +22,13 @@ namespace JapanMap.Vehicles
         [SerializeField] float spawnHeading;
         [Tooltip("Put the first car on the road nearest to the spawn point. Off: exactly there (Sakura Commons court).")]
         [SerializeField] bool snapToRoad = true;
+        [Tooltip("URP material of the plain body a car shows while its model downloads (D36). Unity's default is pink on the web.")]
+        [SerializeField] Material standInMaterial;
+
+        void Awake()
+        {
+            if (standInMaterial != null) PendingModel.Material = standInMaterial;
+        }
 
         public VehicleController Current { get; private set; }
         public event Action<VehicleController> Spawned;
@@ -83,16 +90,23 @@ namespace JapanMap.Vehicles
             var car = root.AddComponent<VehicleController>();
             var crawl = -1f;
             car.Configure(def, tuning, loadout?.SpecFor(def, out crawl), crawl);
-            if (def.model != null)
-            {
-                var model = Instantiate(def.model, root.transform, false);
-                model.name = "Model";
-                foreach (var c in model.GetComponentsInChildren<Collider>()) Destroy(c);
-                root.AddComponent<VehicleVisuals>().Bind(car, model.transform);
-                if (effects != null) root.AddComponent<VehicleEffects>().Bind(car, model.transform, effects);
-                loadout?.Dress(def, model.transform);
-            }
+            if (!CarModels.HasModel(def)) return car;
+            CarModels.Request(def);
+            var prefab = CarModels.Get(def);
+            if (prefab != null) AttachModel(car, prefab, effects, loadout);
+            else root.AddComponent<PendingModel>().Wait(car, effects, loadout); // drives now, looks right when the model lands
             return car;
+        }
+
+        /// <summary>Puts the model under a built car: visuals (wheels, steering), effects and the owner's parts and paint.</summary>
+        public static void AttachModel(VehicleController car, GameObject prefab, VehicleEffectsSettings effects, ICarLoadout loadout)
+        {
+            var model = Instantiate(prefab, car.transform, false);
+            model.name = "Model";
+            foreach (var c in model.GetComponentsInChildren<Collider>()) Destroy(c);
+            car.gameObject.AddComponent<VehicleVisuals>().Bind(car, model.transform);
+            if (effects != null) car.gameObject.AddComponent<VehicleEffects>().Bind(car, model.transform, effects);
+            loadout?.Dress(car.Definition, model.transform);
         }
     }
 }

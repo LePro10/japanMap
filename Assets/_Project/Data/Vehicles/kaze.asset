@@ -16,7 +16,13 @@ MonoBehaviour:
   displayName: Kaze 35 Drift
   category: 2
   legacyId: ribbon
-  model: {fileID: 6540835163501072439, guid: b12748b33e9514a9ba477d26ce5a14a5, type: 3}
+  model: {fileID: 0}
+  modelAsset:
+    m_AssetGUID: b12748b33e9514a9ba477d26ce5a14a5
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_SubObjectGUID: 
+    m_EditorAssetChanged: 0
   price: 18000
   blurb: Wide steering range and a loose rear. Hold the slide, then countersteer.
   factoryPaint: Plum

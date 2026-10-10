@@ -51,6 +51,9 @@ namespace JapanMap.Core.Platform
         static IGamePlatform _current;
         static bool _playing, _portalMuted;
         static float _savedScale = 1f;
+        static float _lastStart = -10f;
+        /// <summary>CrazyGames throttles a gameplayStart within 1 s of the last one and logs it as an error (QA tool).</summary>
+        const float StartGap = 1.05f;
         static bool _savedPause;
 
         /// <summary>Any change of <see cref="Muted"/>, <see cref="AdRunning"/> or the user.</summary>
@@ -63,6 +66,7 @@ namespace JapanMap.Core.Platform
         {
             _current = null;
             _playing = _portalMuted = false;
+            _lastStart = -10f;
             AdRunning = false;
             WorldReady = false;
             GameplayStarts = GameplayStops = 0;
@@ -119,8 +123,10 @@ namespace JapanMap.Core.Platform
         {
             var want = ShouldPlay;
             if (want == _playing) return;
+            // A menu opened and closed within a second: play resumes, the event follows once the gap allows it.
+            if (want && Time.unscaledTime - _lastStart < StartGap) return;
             _playing = want;
-            if (want) { GameplayStarts++; Current.GameplayStart(); }
+            if (want) { GameplayStarts++; _lastStart = Time.unscaledTime; Current.GameplayStart(); }
             else { GameplayStops++; Current.GameplayStop(); }
         }
 

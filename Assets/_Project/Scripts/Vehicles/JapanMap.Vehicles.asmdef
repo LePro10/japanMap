@@ -4,7 +4,9 @@
     "references": [
         "JapanMap.Core",
         "Unity.InputSystem",
-        "Unity.Cinemachine"
+        "Unity.Cinemachine",
+        "Unity.Addressables",
+        "Unity.ResourceManager"
     ],
     "autoReferenced": true,
     "noEngineReferences": false

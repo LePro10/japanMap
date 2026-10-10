@@ -28,7 +28,15 @@ namespace JapanMap.Tests
             Assert.NotNull(new SerializedObject(sfx).FindProperty("bank").objectReferenceValue, "sound bank wired");
             var car = Object.FindAnyObjectByType<JapanMap.Gameplay.CarAudio>();
             Assert.NotNull(car, "car sound in the scene");
-            Assert.AreEqual(10, new SerializedObject(car).FindProperty("banks").arraySize, "an engine bank per car");
+            // The starter's bank is in the start download; every other car's bank streams by address (D36).
+            Assert.AreEqual(1, new SerializedObject(car).FindProperty("banks").arraySize, "the starter's engine bank in the scene");
+            var settings = UnityEditor.AddressableAssets.AddressableAssetSettingsDefaultObject.Settings;
+            foreach (var guid in AssetDatabase.FindAssets("t:JapanMap.Audio.EngineSoundBank", new[] { JapanMap.Editor.Audio.AudioSetup.DataDir }))
+            {
+                var bank = AssetDatabase.LoadAssetAtPath<JapanMap.Audio.EngineSoundBank>(AssetDatabase.GUIDToAssetPath(guid));
+                if (bank.carId == "hachi") continue;
+                Assert.AreEqual(JapanMap.Gameplay.CarAudio.BankAddress(bank.carId), settings.FindAssetEntry(guid)?.address, $"{bank.carId}: engine bank by address");
+            }
         }
 
         [Test]

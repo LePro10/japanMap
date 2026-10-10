@@ -16,7 +16,13 @@ MonoBehaviour:
   displayName: Yama Cruiser 250
   category: 1
   legacyId: offroad
-  model: {fileID: -7350903048061135662, guid: df8f1d252e0204e07af6c0d6f3c1a5e9, type: 3}
+  model: {fileID: 0}
+  modelAsset:
+    m_AssetGUID: df8f1d252e0204e07af6c0d6f3c1a5e9
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_SubObjectGUID: 
+    m_EditorAssetChanged: 0
   price: 9000
   blurb: Heavy turn-in, tall tyres and long travel. Explore beyond the asphalt.
   factoryPaint: Sand

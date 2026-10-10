@@ -16,7 +16,13 @@ MonoBehaviour:
   displayName: Mame K
   category: 0
   legacyId: pip
-  model: {fileID: 2311655142441783332, guid: 97a810bde7ff5494fa959b990ad3df31, type: 3}
+  model: {fileID: 0}
+  modelAsset:
+    m_AssetGUID: 97a810bde7ff5494fa959b990ad3df31
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_SubObjectGUID: 
+    m_EditorAssetChanged: 0
   price: 2400
   blurb: Tiny footprint. Quick turn-in and short, safe handbrake rotations.
   factoryPaint: Jade

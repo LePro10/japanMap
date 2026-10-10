@@ -16,7 +16,13 @@ MonoBehaviour:
   displayName: Suprema RZ
   category: 2
   legacyId: morrow
-  model: {fileID: 8558441958396019507, guid: 9076037e48771407d9f86ebca63f35ba, type: 3}
+  model: {fileID: 0}
+  modelAsset:
+    m_AssetGUID: 9076037e48771407d9f86ebca63f35ba
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_SubObjectGUID: 
+    m_EditorAssetChanged: 0
   price: 30000
   blurb: Big low-end shove, heavy nose and a squirming rear. Leave braking room.
   factoryPaint: Amber

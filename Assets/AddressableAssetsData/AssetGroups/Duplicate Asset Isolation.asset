@@ -1,0 +1,508 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Duplicate Asset Isolation
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: Duplicate Asset Isolation
+  m_GUID: b1e011332c7854fbbb6ca3ba99a1f442
+  m_SerializeEntries:
+  - m_GUID: 005bcd4b356c94af88e0ce0c2b18e3cd
+    m_Address: Assets/_Project/Art/Library/Textures/T_GasshoShop_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0346c765322294b3987fb442855f8e2b
+    m_Address: Assets/_Project/Art/Library/Textures/T_Koso_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 03cfd4ff2e5a640cd826b4521f1ac87b
+    m_Address: Assets/_Project/Art/Library/props/SM_StreetLight_Shotengai.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 081eb67a96a9c49b282a2cedc9901af9
+    m_Address: Assets/_Project/Art/Library/Textures/T_Minato_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0b3a9caf1c27146ff843adc126afe714
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Koedo_Machiya_2Bay_Unagi.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 129ad8dd6ccc74788b2a7722726b5a17
+    m_Address: Assets/_Project/Art/Library/Textures/T_KisoShop_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 129e3b0b40f4944c6a4bf63687d6065a
+    m_Address: Assets/_Project/Art/Library/Materials/M_Tera_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1623fbf07cde442358202e20a69d0046
+    m_Address: Assets/_Project/Art/Library/Textures/T_MachiShop_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 199e555b92e6e4fd6be3352889ec5310
+    m_Address: Assets/_Project/Art/Library/Textures/T_Koedo_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1b0f54f2df3bc44ffa0173b7d543dcf6
+    m_Address: Assets/_Project/Art/Library/Textures/T_Kura_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1da462ee7f0454beba5556788cc6005a
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Koedo_Dagashi_1F.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1e8ca87e5744641369186c363de0cda7
+    m_Address: Assets/_Project/Art/Library/Textures/T_Machi_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 24143df743eac4fc0ae470e754b10a28
+    m_Address: Assets/_Project/Art/Library/Textures/T_Minato_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 25b6a4ad8388c40379b425d608d10829
+    m_Address: Assets/_Project/Art/Library/Textures/T_Kiso_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2868c2bf6c1a74bcca60c360494b65e8
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Machi_House_A.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 292c84d4bdace4686bf1771fc8bcdeaa
+    m_Address: Assets/_Project/Art/Library/Textures/T_KoedoShop_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2c26d617f4a554c5aa610f791de1ffbf
+    m_Address: Assets/_Project/Art/Library/Textures/T_Kura_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 340f3d4806c4a4965b31008dfab5544b
+    m_Address: Assets/_Project/Art/Library/Materials/M_Koso_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 36e335017ad71d54fbb10842863188ae
+    m_Address: Packages/com.unity.render-pipelines.core/Runtime/RenderPipelineResources/FallbackShader.shader
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3ade3475fae714fd186ccf8d6f9b4ecd
+    m_Address: Assets/_Project/Art/Library/Textures/T_Street_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3b6e105b5732647ef962c86b62480ed9
+    m_Address: Assets/_Project/Art/Library/Materials/M_Kura_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3db2d055ba7eb4675b5f94378cc2af6c
+    m_Address: Assets/_Project/Art/Library/Textures/T_KisoShop_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 41bd6e4432d054fae9ca4c57c1e77c69
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Kiso_Minka_2Bay_Ishigaki.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 427c64e2eb3e84472a7368a2fbfc93fd
+    m_Address: Assets/_Project/Art/Library/props/SM_StreetLight_Road.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 44690b28665794d9eb565b1388f4fc20
+    m_Address: Assets/_Project/Art/Library/Textures/T_KosoShop_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4864d18329c0a42d0b847275d89b418e
+    m_Address: Assets/_Project/Art/Library/Textures/T_Scatter_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 48cf4b0705f6e4d5783204724d1b9c52
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Machi_House_E.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4906756fd5b8f4511930c52c81cbe7ee
+    m_Address: Assets/_Project/Art/Library/Materials/M_KosoShop_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5337dbad126ec4de997bec782ce4346c
+    m_Address: Assets/_Project/Art/Library/Textures/T_Kura_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 538b078cb84644e29b755844a51aad48
+    m_Address: Assets/_Project/Art/Library/Materials/M_Kiso_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 54b2837808e3c46939405065a6e1aebc
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Kiso_Soba_2Bay_Kodama.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5889f809e43d84313a0083822a01951c
+    m_Address: Assets/_Project/Art/Library/Textures/T_GasshoShop_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5a593f4ee18034f3dbfc3c622091f993
+    m_Address: Assets/_Project/Art/Library/Textures/T_TeraShop_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5d378d3dcab514cd8b7e2db714b39519
+    m_Address: Assets/_Project/Art/Library/Materials/M_Koedo_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5fabe51c205d24197b17242ffa025acf
+    m_Address: Assets/_Project/Art/Library/Materials/M_KisoShop_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 67ba342c34bc447ebadfc688c43c2c2b
+    m_Address: Assets/_Project/Art/Library/Textures/T_Street_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 73df9c2b2470e474684bd26861b2caaf
+    m_Address: Assets/_Project/Art/Library/Textures/T_KoedoShop_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 74c05077a729446f391ff9d288f6ca5e
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Kiso_Hatago_2Bay_Yamabuki.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7a7e8ae94c1754567bde2073ba041fcd
+    m_Address: Assets/_Project/Art/Library/Textures/T_Props_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7b55dd844f10d43f2bdb06478afae9e6
+    m_Address: Assets/_Project/Art/Library/Materials/M_MinatoShop_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7e6ac8397da654daeafc810966b5ea61
+    m_Address: Assets/_Project/Art/Library/Textures/T_TeraShop_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 812ad5f47f00a4f8199c5640b16075c7
+    m_Address: Assets/_Project/Art/Library/Textures/T_Props_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 858c243c2a67b4dd5b2b8a805044bf94
+    m_Address: Assets/_Project/Art/Library/Textures/T_Kiso_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 889a81fd639724f7c8d1502184fcd9ff
+    m_Address: Assets/_Project/Art/Library/Textures/T_Machi_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8b59befa05c294deea5f65987725733a
+    m_Address: Assets/_Project/Art/Library/Materials/M_Props_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8cb556a86d08345a1a7dccde0d3e7bbf
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Machi_House_C.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8d2ac72afd6294d18ad0549df1b9ed96
+    m_Address: Assets/_Project/Art/Library/Textures/T_Kiso_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8ecc67c07abb141ecafc45c29872dbd1
+    m_Address: Assets/_Project/Art/Library/Textures/T_GasshoShop_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8eeb40481ab3a4f5bb99a233c1f35492
+    m_Address: Assets/_Project/Art/Library/Textures/T_MinatoShop_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 90989e6e1649f46e5adcc570e74c0cc5
+    m_Address: Assets/_Project/Art/Library/Textures/T_MinatoShop_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9136d0cde2f3d4dcc8758eb6a2d6907d
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Kiso_Waterwheel.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 933532a4fcc9baf4fa0491de14d08ed7
+    m_Address: Packages/com.unity.render-pipelines.universal/Shaders/Lit.shader
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9463076d32a96472492ffd2959eaa1f8
+    m_Address: Assets/_Project/Art/Library/Textures/T_KosoShop_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 952544c87074144c7963a2f09c41e412
+    m_Address: Assets/_Project/Art/Library/Textures/T_Gassho_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 956f67b5a2d1b442f88d2a82feff1406
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Kura_2Bay_Black.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 97a096689c9e047e5880ab3f818fe8f8
+    m_Address: Assets/_Project/Art/Library/Textures/T_Street_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9cd0d633351f843ecb7ac0fb3633d55b
+    m_Address: Assets/_Project/Art/Library/Materials/M_Minato_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9d35436bd8dfe4d8c894196a5e06a540
+    m_Address: Assets/_Project/Art/Library/Materials/M_Scatter_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9e214d52ca73343eca37bbd430fc5baa
+    m_Address: Assets/_Project/Art/Library/Textures/T_Koso_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9e4b30d2346414bedbaffd80db1cd5ed
+    m_Address: Assets/_Project/Art/Library/Textures/T_Koedo_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a242d9914a5a746ed953ea5e6798153c
+    m_Address: Assets/_Project/Art/Library/Textures/T_Minato_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a436279d4a481415d86f7035b215f6a3
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Kura_2Bay_White.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a47ab2044af2f4ca0b809c511814237a
+    m_Address: Assets/_Project/Art/Library/Textures/T_Tera_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a7c7704ab25884418bf4153a2a7f7f15
+    m_Address: Assets/_Project/Art/Library/Textures/T_Tera_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a92c229af1dc24f77a295ec8fa2d20fe
+    m_Address: Assets/_Project/Art/Library/Materials/M_KoedoShop_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a97b477aa2aa044e8968cbbcb2ce003e
+    m_Address: Assets/_Project/Art/Library/Textures/T_MachiShop_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a9901898127b84e9d8aa07c52070224b
+    m_Address: Assets/_Project/Art/Library/Textures/T_Props_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ab51478b08a3e4f789cdfdcb9a70bf6d
+    m_Address: Assets/_Project/Art/Library/Materials/M_Street_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ad7d91c5262164bd197add7508951523
+    m_Address: Assets/_Project/Art/Library/Textures/T_KoedoShop_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: add3d9855bea1436ca760d8a871d8d51
+    m_Address: Assets/_Project/Art/Library/Textures/T_Scatter_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b56ed93cb5628483bbf3317b78c26275
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Minato_Gyoka_Kawara.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b5b6e0efdb98b4a02a647052196c0ef3
+    m_Address: Assets/_Project/Art/Library/Materials/M_MachiShop_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b9d29dfa1474148e792ac720cbd45122
+    m_Address: Packages/com.unity.cloud.gltfast/Runtime/Shader/glTF-pbrMetallicRoughness.shadergraph
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bcea3b301aac647a78e61ae8edb4c44e
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Machi_House_F.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c18c97ae1ce021b4980c5d19a54f0d3c
+    m_Address: Packages/com.unity.cloud.gltfast/Runtime/Shader/URP/glTF-pbrMetallicRoughness-Clearcoat.shadergraph
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c414eb1931f3c4a058b9b86fec050bcf
+    m_Address: Assets/_Project/Art/Library/Textures/T_Tera_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c82c8ed035659406b87298449466547d
+    m_Address: Assets/_Project/Art/Library/Materials/M_GasshoShop_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cd133edec7dad465a8021f93ec33dfcd
+    m_Address: Assets/_Project/Art/Library/Textures/T_Koso_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d0c31833da9294682ace8eb144893b4e
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Minato_Gyoka_Tin.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d2ec7b8dde4694aa69dd3f5d9b8efcc7
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Koedo_Machiya_3Bay_Tea.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d3e5b4cd631284ddab724981e8eee495
+    m_Address: Assets/_Project/Art/Library/Materials/M_TeraShop_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dac6b66bf38ff4fe0a50564f3339730d
+    m_Address: Assets/_Project/Art/Library/Textures/T_KisoShop_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dbf6b9e7439fd463cb00e8cc0c0717e0
+    m_Address: Assets/_Project/Art/Library/buildings/SM_Gassho_Hokora.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dccd41971cc6d448c84a147e6718267b
+    m_Address: Assets/_Project/Art/Library/Materials/M_Machi_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: df7aaa94e8a854624a838fd2b0b1ab93
+    m_Address: Assets/_Project/Art/Library/Textures/T_MachiShop_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e013a48607cae46258e238d315733c3e
+    m_Address: Assets/_Project/Art/Library/Textures/T_MinatoShop_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e037f464aaf3542f9863825c26f7dbb5
+    m_Address: Assets/_Project/Art/Library/Textures/T_Gassho_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e1d3c73f3824a4d7f8a1c1e0db98085c
+    m_Address: Assets/_Project/Art/Library/props/SM_Torii_Stone_M.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e25a4ffcc7c5444a39043ed486ce3a0f
+    m_Address: Assets/_Project/Art/Library/Textures/T_Scatter_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e36961c2297d04e918aca50817768991
+    m_Address: Assets/_Project/Art/Library/Textures/T_TeraShop_BaseColor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e6e9a19c3678ded42a3bc431ebef7dbd
+    m_Address: Packages/com.unity.render-pipelines.universal/Shaders/Utils/FallbackError.shader
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ea68449759bcc4f80b0670a4cc25013a
+    m_Address: Assets/_Project/Art/Library/Textures/T_Gassho_MaskMap.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f089ded573e4d4b898511d7e00cf0e5e
+    m_Address: Assets/_Project/Art/Library/Textures/T_Machi_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f3d812f1fa4db440cbe24bd9d32f7ea5
+    m_Address: Assets/_Project/Art/Library/Textures/T_KosoShop_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f8a11d3bdfb2e4090b64b4b57af92af8
+    m_Address: Assets/_Project/Art/Library/Materials/M_Gassho_Atlas.mat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fe61b2f1f514743c686449be8f9d0cc0
+    m_Address: Assets/_Project/Art/Library/Textures/T_Koedo_Emission.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: f93b1925722a949958f60082c8ffb0e4, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: cb8f2fddc8abc4ed9b9ba7ee211486df, type: 2}
+    - {fileID: 11400000, guid: 41a9d14a097954e2a8050678aad10cd5, type: 2}
+    m_SchemaDisplayOrder:
+    - Duplicate Asset Isolation_BundledAssetGroupSchema
+    - Duplicate Asset Isolation_ContentUpdateGroupSchema
+  m_IncludeInBuild: 1
+  m_IncludeInBuildMigrated: 1

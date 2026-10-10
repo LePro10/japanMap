@@ -1,0 +1,123 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Cars
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: Cars
+  m_GUID: 995216aa9e2aa412f851e0281413736d
+  m_SerializeEntries:
+  - m_GUID: 01b28a319e6e04b6686307d34bfe03b9
+    m_Address: engine/mame
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0442fa0f89ee842b8995d66df898cfcc
+    m_Address: car/kumo
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2a9e059d593d34f98b2b50ab2d04541a
+    m_Address: engine/hanami
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 34cbe76a257824d5a8357f31800843b5
+    m_Address: engine/kaze
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 45d16e1a2f2494cedbda46cf5f7fe69a
+    m_Address: engine/suprema
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 49199a8823b174732b033efc308b15d5
+    m_Address: engine/hauler
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 642921cacd4fd4dbebc841d9f2bea5cd
+    m_Address: engine/rotor
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 70a6b79edce0f47b887d65a23e7de986
+    m_Address: car/raiden
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 787ea4ab2af914c6dafe37c6b2d3df7f
+    m_Address: engine/kumo
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8e63b37cede0f45fabee6cfe273c7785
+    m_Address: car/hauler
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9076037e48771407d9f86ebca63f35ba
+    m_Address: car/suprema
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9740e4081271f4184815db363bef6767
+    m_Address: car/hanami
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 97a810bde7ff5494fa959b990ad3df31
+    m_Address: car/mame
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ae592200c83a44d5f9a83d59ab79fca5
+    m_Address: car/rotor
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b12748b33e9514a9ba477d26ce5a14a5
+    m_Address: car/kaze
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c8645a4d05f2743a1a86a12453001ec4
+    m_Address: engine/yama
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: df8f1d252e0204e07af6c0d6f3c1a5e9
+    m_Address: car/yama
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: efa03ac8162e1439e81231a0a1bd9699
+    m_Address: car/hachi
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f88142dadc0c04922b00ef40189c972e
+    m_Address: engine/raiden
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: f93b1925722a949958f60082c8ffb0e4, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 498f68277449c42ffb1c23aed7ea6b21, type: 2}
+    - {fileID: 11400000, guid: 737dd08d4cefc49df9d5d4894193c59f, type: 2}
+    m_SchemaDisplayOrder:
+    - Cars_BundledAssetGroupSchema
+    - Cars_ContentUpdateGroupSchema
+  m_IncludeInBuild: 1
+  m_IncludeInBuildMigrated: 1

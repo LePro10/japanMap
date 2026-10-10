@@ -1,0 +1,283 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: World
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: World
+  m_GUID: 2090715cd9aff43448310a1dfb699479
+  m_SerializeEntries:
+  - m_GUID: 072461217763943b694762cfdca0a7a3
+    m_Address: world/Roads_Road_2_m2
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1a2d0f3c65a0f4c7f9855bddb40eef0c
+    m_Address: world/Nav_Nav_KisomJuku
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1b64d470f261f40a79d6334f748b3bf5
+    m_Address: world/Roads_Viaducts
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1bfcc0db6b21749129e7f101aad8a1f7
+    m_Address: world/Roads_Road_1_0
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1fc76cd477fa343abafae0c55d707af5
+    m_Address: world/Props_rock_moss_set_02
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 26554d89bc56e40ff8935c677949dd4c
+    m_Address: world/Roads_Road_m3_m1
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2995912bec7904839942c822a7a49bc7
+    m_Address: world/Props_netRack
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2a12ea608b6a74ef7991adb07d7e4ead
+    m_Address: world/Props_boulder_01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3991bd3a9bef1411eaffd17db9ffb943
+    m_Address: world/Roads_Guardrails
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3d84c4c3d2b4e476188aef0758adc771
+    m_Address: world/Nav_Nav_Funaura
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 485629f07d6a44e309975e1e6e427c09
+    m_Address: world/Roads_Road_m3_1
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4bdf39668e9a64566bb744068a2cd1d2
+    m_Address: world/Roads_Road_m2_m1
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4c942700d99c14aa3a2a3d81eb9f5b03
+    m_Address: world/Props_crateStack
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4ec80e94f98d64964818aa378746ab8f
+    m_Address: world/Props_tetrapod
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 509e4fb6b773641b587d8c6e8489c94a
+    m_Address: world/Roads_Road_m3_m3
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 50be105c463f6461786bdff0557e09c0
+    m_Address: world/Roads_CitySlab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 50c4c2b08133942eca66eb47e45df73f
+    m_Address: world/Roads_Road_m2_0
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 57fc3b54773364170ba0ddcf01a8884a
+    m_Address: world/Roads_Road_m2_m2
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5868f23e457b446fcb678d2120a70033
+    m_Address: world/Nav_Nav_Tokyo
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 59f50d78e77e741e48bfc492d465d275
+    m_Address: world/Props_hokora
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5f1fdbbd767c0453f9232e4b40a25313
+    m_Address: world/Roads_Road_0_0
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6f8176a4907f240ddb60a23c194b5881
+    m_Address: world/Roads_Road_m1_0
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6fe69ac43c0c540ab8664cb297eb361e
+    m_Address: world/Props_fishHut
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7039980e89d054df2b00c8beb59ad75b
+    m_Address: world/Props_boat
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7d4fb138b354046aaac28d16cb6aceb1
+    m_Address: world/Props_bellTower
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 800279773e65f40ee9109ea900d10815
+    m_Address: world/Roads_Road_m3_0
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8442b7daeae2248508a227649ce2eceb
+    m_Address: world/Roads_Road_m2_2
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 883fdb75ea6a84ccfb3a54912d4b64da
+    m_Address: world/Props_boatRamp
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8d330cedcf64b430592f030c476fed31
+    m_Address: world/Props_torii
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 908297a6d3f784c1dbdcd1b98510df4a
+    m_Address: world/Roads_Road_1_1
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 95ada7b53a492464c9bbb10994665537
+    m_Address: world/Props_lighthouse
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 99e01dbdcd7ca41a2b3677c4587359df
+    m_Address: world/Vegetation
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9c86eb642717a4debaff35c2f1a0033a
+    m_Address: world/Props_coastal_cliff_04
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9f9b81fa4f7be4031a1d678226dac65a
+    m_Address: world/Roads_Road_m1_m1
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a27359bc52f7b4f3594fc5ad8708e1c7
+    m_Address: world/Roads_Road_2_1
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a3d03b942543446da9645bf0bfc6bb75
+    m_Address: world/Roads_Road_m3_2
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b43123fd4d91b43ada9113f3d57878ad
+    m_Address: world/Props_jetty
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bb4cdb883c63642aeb4e7cae9d8f7ac3
+    m_Address: world/Nav_Nav_Koedo
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c4c286afcba4c4dd2b914ecbcc25dd0a
+    m_Address: world/Props_delineator
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c555b537f2e764a53b711744cce9f47a
+    m_Address: world/Nav_Nav_GasshoStillwater
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c92fe760b93b8473a970554a4b304775
+    m_Address: world/Nav_Nav_BellwoodShrine
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ca0af3c3ea33049d6bef24a6852be37b
+    m_Address: world/Roads_Road_m3_m2
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ce83e1a8ec1534840a3485b7e95494ac
+    m_Address: world/Roads_Road_m1_m2
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cf1c497e379a34ce9866a3ee4fce6266
+    m_Address: world/Roads_Road_0_1
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d011e56191a96427ca43c3b5285386f3
+    m_Address: world/Props_chozuya
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d6acc95dc513d4c409db0e3234017c85
+    m_Address: world/Roads_Road_2_m1
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: db5fd97266b224c6cb730bd532838d45
+    m_Address: world/Roads_Road_2_0
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: db7666e153ad3434eaf310f9ccdef0d7
+    m_Address: world/Props_templeHall
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e6fa36537b63346f7942924434c47d8e
+    m_Address: world/Props_templeStairs
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e7cc54a33d2b643e08c9ce9b356e4834
+    m_Address: world/Props_modular_wooden_pier
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f40d4c2feb1014630950f285b1fbe5e1
+    m_Address: world/Props_stoneLantern
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: f93b1925722a949958f60082c8ffb0e4, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 76ce31cf1ba18428fb167a3d31af16a8, type: 2}
+    - {fileID: 11400000, guid: a668e29be9e46481da203ba9e5f2a9e5, type: 2}
+    m_SchemaDisplayOrder:
+    - World_BundledAssetGroupSchema
+    - World_ContentUpdateGroupSchema
+  m_IncludeInBuild: 1
+  m_IncludeInBuildMigrated: 1

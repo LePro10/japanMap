@@ -37,9 +37,13 @@ namespace JapanMap.Audio
         [Tooltip("Lift-off plays when the throttle closes above this share of the top step rpm.")]
         public float liftRpmShare = 0.55f;
 
+        readonly List<AudioSource> _own = new();
+
         public void Bind(EngineSoundBank bank)
         {
-            foreach (var s in GetComponents<AudioSource>()) Destroy(s);
+            // Only our own sources: the tyres and impacts live on the same car (a streamed bank rebinds later, D36).
+            foreach (var s in _own) if (s != null) Destroy(s);
+            _own.Clear();
             _on.Clear();
             _off.Clear();
             _bank = bank;
@@ -53,6 +57,7 @@ namespace JapanMap.Audio
             _intake = Loop(null);
             _deep = Loop(null);
             _lift = gameObject.AddComponent<AudioSource>();
+            _own.Add(_lift);
             _lift.playOnAwake = false;
             _lift.clip = bank.lift;
             _lift.spatialBlend = 0f;
@@ -61,6 +66,7 @@ namespace JapanMap.Audio
         AudioSource Loop(AudioClip clip)
         {
             var a = gameObject.AddComponent<AudioSource>();
+            _own.Add(a);
             a.clip = clip;
             a.loop = true;
             a.playOnAwake = false;

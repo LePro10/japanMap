@@ -3,12 +3,13 @@
 //   * bytes transferred (compressed, as on the wire) from the first request to the first "[Platform] gameplayStart"
 //     — what CrazyGames counts for the mobile homepage (≤ 20 MB) — split into our files and others (SDK script)
 //   * gameplayStop on Escape (menu), gameplayStart again on Escape
-//   node Tools/sdk-web.mjs [--host localhost|127.0.0.1] [--timeout 120] [--gpu] [--param quality=Low]
+//   node Tools/sdk-web.mjs [--host localhost|127.0.0.1] [--timeout 120] [--gpu] [--param quality=Low] [--stream] [--mem] [--logs <regex>] [--dir Builds/Preview] [--shot Captures/x.png]
 // localhost runs the real SDK (local environment, needs internet); 127.0.0.1 is our test host without SDK.
 // Does not build. Prints one line SDK GREEN/RED with the numbers; exit 1 when red.
 import { chromium } from 'playwright-core';
 import { serve } from './serve-web.mjs';
-import { arg, flag } from './lib/unity.mjs';
+import { join } from 'node:path';
+import { ROOT, arg, flag } from './lib/unity.mjs';
 
 const host = arg('host', 'localhost');
 const timeoutMs = Number(arg('timeout', 120)) * 1000;
@@ -16,7 +17,7 @@ const extra = arg('param', '');
 let port = 8094;
 let server;
 for (;; port++) {
-  try { server = await serve(undefined, port, '127.0.0.1'); break; }
+  try { server = await serve(arg('dir', '') ? join(ROOT, arg('dir', '')) : undefined, port, '127.0.0.1'); break; }
   catch (e) { if (e.code !== 'EADDRINUSE' || port > 8099) throw e; }
 }
 const angle = process.platform === 'darwin' ? 'metal' : process.platform === 'win32' ? 'd3d11' : 'vulkan';
@@ -35,13 +36,14 @@ try {
   page.on('console', (m) => { logs.push({ t: Date.now(), text: m.text().split('\n')[0] }); if (m.type() === 'error') errors.push(m.text().split('\n')[0]); });
   page.on('pageerror', (e) => errors.push(e.message));
 
-  // Wire bytes per request (encodedDataLength = compressed size incl. headers), with the time they finished.
+  // Wire bytes as they arrive (dataReceived chunks, compressed size), each with its time: 'loadingFinished' of the
+  // streamed-compiled wasm came after gameplayStart, and a whole 6.7 MB file went uncounted (Phase 10).
   const cdp = await context.newCDPSession(page);
   await cdp.send('Network.enable');
   const urls = new Map();
   const done = [];
   cdp.on('Network.requestWillBeSent', (e) => urls.set(e.requestId, e.request.url));
-  cdp.on('Network.loadingFinished', (e) => done.push({ t: Date.now(), url: urls.get(e.requestId) ?? '', bytes: e.encodedDataLength }));
+  cdp.on('Network.dataReceived', (e) => done.push({ t: Date.now(), url: urls.get(e.requestId) ?? '', bytes: e.encodedDataLength }));
 
   const waitLog = async (re, after, ms) => {
     const t0 = Date.now();
@@ -75,16 +77,50 @@ try {
     await page.keyboard.press('Escape');
     const again = await waitLog(/\[Platform\] gameplayStart/, tEsc2, 10000);
     const ok = stop && again && errors.length === 0;
-    red = !ok;
+    red = red || !ok;
     // Later downloads (background content) for the total.
     await page.waitForTimeout(3000);
+    if (flag('stream')) {
+      // --stream: wait until the background loader has gone quiet (no new "[Content] … in" line for 15 s, at most 4 min),
+      // count what arrived, and take a picture of the game as it is then.
+      const t1 = Date.now();
+      let last = Date.now(), seen = 0;
+      while (Date.now() - t1 < 240000 && Date.now() - last < 15000) {
+        const n = logs.filter((l) => /\[Content\] (place|world)\/.* in /.test(l.text)).length;
+        if (n !== seen) { seen = n; last = Date.now(); }
+        await page.waitForTimeout(1000);
+      }
+      const failed = logs.filter((l) => /\[Content\].*(failed|did not)/.test(l.text)).map((l) => l.text);
+      const total = done.filter((d) => d.url.includes(`:${port}/`)).reduce((s, d) => s + d.bytes, 0);
+      await page.screenshot({ path: join(ROOT, arg('shot', 'Captures/sdk-web-streamed.png')) });
+      console.log(`STREAM ${failed.length ? 'RED' : 'GREEN'} · ${seen} scenes streamed in ${((last - t1) / 1000).toFixed(0)} s · ${MB(total)} MB on the wire in all${failed.length ? ' · ' + failed.slice(0, 3).join(' | ') : ''} · Captures/sdk-web-streamed.png`);
+      if (failed.length) red = true;
+    }
     const all = done.filter((d) => d.url.includes(`:${port}/`)).reduce((s, d) => s + d.bytes, 0);
     console.log(`SDK ${ok ? 'GREEN' : 'RED'} · ${host} · start download ${MB(ours)} MB ours + ${MB(other)} MB other until gameplayStart ` +
       `(${((start.t - t0) / 1000).toFixed(1)} s) · ours after 3 s more ${MB(all)} MB · menu stop ${stop ? 'yes' : 'NO'} · start again ${again ? 'yes' : 'NO'} · ${platform}` +
       `${errors.length ? ` · ${errors.length} console errors: ${errors.slice(0, 3).join(' | ')}` : ''}`);
-    const big = before.filter((d) => d.bytes > 200000).sort((a, b) => b.bytes - a.bytes);
-    for (const d of big) console.log(`  ${MB(d.bytes).padStart(6)} MB  ${d.url.replace(/^https?:\/\/[^/]+\//, '')}`);
+    const per = new Map();
+    for (const d of before) per.set(d.url, (per.get(d.url) ?? 0) + d.bytes);
+    for (const [url, bytes] of [...per].filter(([, b]) => b > 200000).sort((a, b) => b[1] - a[1]))
+      console.log(`  ${MB(bytes).padStart(6)} MB  ${url.replace(/^https?:\/\/[^/]+\//, '')}`);
   }
+  // --mem: memory as the game reports it (template exposes window.unityInstance): WASM heap total/used, JS heap.
+  if (flag('mem')) {
+    const m = await page.evaluate(() => {
+      const i = window.unityInstance;
+      const info = i && i.GetMetricsInfo ? i.GetMetricsInfo() : null;
+      const pm = performance.memory;
+      return { info, js: pm ? pm.usedJSHeapSize : null };
+    });
+    const f = (b) => (b == null ? '?' : (b / 1048576).toFixed(0) + ' MiB');
+    const i = m.info || {};
+    console.log(`MEM · WASM heap ${f(i.totalWASMHeapSize)} (used ${f(i.usedWASMHeapSize)}) · JS heap ${f(m.js)}` +
+      `${i.totalWASMHeapSize ? '' : ' · no metrics (old template?)'}`);
+  }
+  // --logs <regex>: the console lines that match, after the run (e.g. --logs "Content|Exception").
+  const pattern = arg('logs', '');
+  if (pattern) for (const l of logs.filter((l) => new RegExp(pattern).test(l.text)).slice(0, 60)) console.log('  log ' + l.text);
   await context.close();
 } finally {
   await browser.close();

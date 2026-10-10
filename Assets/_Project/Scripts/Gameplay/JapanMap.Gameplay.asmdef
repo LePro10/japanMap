@@ -9,7 +9,9 @@
         "Unity.InputSystem",
         "Unity.Cinemachine",
         "JapanMap.UI",
-        "JapanMap.Audio"
+        "JapanMap.Audio",
+        "Unity.Addressables",
+        "Unity.ResourceManager"
     ],
     "autoReferenced": true,
     "noEngineReferences": false

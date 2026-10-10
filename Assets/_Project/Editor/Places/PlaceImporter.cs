@@ -186,7 +186,7 @@ namespace JapanMap.Editor.Places
         static GameObject Load(string name, PlaceSource.Item item, VehicleFleet fleet)
         {
             if (name != FleetCar) return Art.LibraryImporter.LoadPrefab(name);
-            return fleet == null ? null : fleet.vehicles.FirstOrDefault(v => v.legacyId == item.tag)?.model;
+            return fleet == null ? null : fleet.vehicles.FirstOrDefault(v => v.legacyId == item.tag)?.EditorModel;
         }
 
         /// <summary>Stable pick from the position, so a re-import gives the same model at the same place.</summary>

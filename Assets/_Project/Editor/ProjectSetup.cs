@@ -74,6 +74,13 @@ namespace JapanMap.Editor
             PlayerSettings.SetGraphicsAPIs(BuildTarget.WebGL, new[] { GraphicsDeviceType.OpenGLES3 });
             PlayerSettings.SetManagedStrippingLevel(web, ManagedStrippingLevel.High);
             PlayerSettings.SetIl2CppCodeGeneration(web, Il2CppCodeGeneration.OptimizeSize);
+            // No Unity splash (optional for every plan since Unity 6): 2.7 MB logo texture and seconds before play (D36).
+            PlayerSettings.SplashScreen.show = false;
+            // Own page (Assets/WebGLTemplates/JapanMap): full frame, no selection, pixel ratio 1 on iOS/low-memory phones,
+            // errors without alert() — CrazyGames requirements (D37).
+            PlayerSettings.WebGL.template = "PROJECT:JapanMap";
+            // Optimize Mesh Data: vertex channels no material reads (UV2+, colours, tangents) leave the build (D36).
+            PlayerSettings.stripUnusedMeshComponents = true;
         }
 
         /// <summary>The URP template puts its assets in Assets/Settings; ours live under _Project.</summary>
@@ -124,6 +131,8 @@ namespace JapanMap.Editor
                 EditorSceneManager.SaveScene(scene, BootScene);
             }
             EnsureBootSystem<JapanMap.Platform.CrazyGamesPlatform>("CrazyGamesPlatform", 0);
+            // The terrain bundle loads beside the SDK, before the game scene (D36).
+            EnsureBootSystem<JapanMap.World.StartContentGate>("StartContent", 1);
 
             if (!File.Exists(GameScene))
             {

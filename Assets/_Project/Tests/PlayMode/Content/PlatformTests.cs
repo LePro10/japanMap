@@ -97,12 +97,21 @@ namespace JapanMap.Tests.Content
             yield return Tap(Key.Escape);
             Assert.IsFalse(GamePlatform.Playing, "the menu is a break: gameplayStop");
             yield return Tap(Key.Escape);
+            yield return new WaitForSecondsRealtime(1.2f);
             Assert.IsTrue(GamePlatform.Playing, "closing the menu starts gameplay again");
             Assert.AreEqual(starts + 1, GamePlatform.GameplayStarts);
+
+            // Menu open and shut at once, twice: the second start keeps CrazyGames' one-second gap (no throttle error).
+            yield return Tap(Key.Escape);
+            yield return Tap(Key.Escape);
+            var at = Time.realtimeSinceStartup;
+            while (!GamePlatform.Playing && Time.realtimeSinceStartup - at < 3f) yield return null;
+            Assert.IsTrue(GamePlatform.Playing);
 
             yield return Tap(Key.P);
             Assert.IsFalse(GamePlatform.Playing, "photo mode is a break");
             while (UiStack.Count > 0) yield return Tap(Key.Escape);
+            yield return new WaitForSecondsRealtime(1.2f);
             Assert.IsTrue(GamePlatform.Playing);
 
             GamePlatform.PortalMuted = true;
@@ -121,7 +130,7 @@ namespace JapanMap.Tests.Content
             Assert.AreEqual(AdOutcome.Rewarded, outcome);
             Assert.AreEqual(1f, Time.timeScale, "time runs again after the ad");
             Assert.AreEqual(1f, AudioListener.volume);
-            yield return null;
+            yield return new WaitForSecondsRealtime(1.2f);
             Assert.IsTrue(GamePlatform.Playing);
         }
 

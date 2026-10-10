@@ -1,0 +1,63 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Places
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: Places
+  m_GUID: b19f9cfa8c765473488d02a3d8413dfb
+  m_SerializeEntries:
+  - m_GUID: 1e23fd6d517d34f2e996e333f8633ae1
+    m_Address: place/BellwoodShrine
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2a33a86fbee694415894af6269f13bd4
+    m_Address: place/Funaura
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 47d5685dbc5ec474195f3f7f77e8bd03
+    m_Address: place/GasshoStillwater
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 572e6ecb4c13b4b2db87a4fe76a19335
+    m_Address: place/Koedo
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 79ea0d1aaffa6422c97a598870928898
+    m_Address: place/KisoJuku
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 85af6f5c7e041464e968c5c73e56fcfe
+    m_Address: place/NeedleCircuit
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e91f388af996148989e19078b7534888
+    m_Address: place/Tokyo
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: f93b1925722a949958f60082c8ffb0e4, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 1ef6f3af524e74ae7af37aa68497c8d2, type: 2}
+    - {fileID: 11400000, guid: bf7114f6af34540c69765bd16cd4ca00, type: 2}
+    m_SchemaDisplayOrder:
+    - Places_BundledAssetGroupSchema
+    - Places_ContentUpdateGroupSchema
+  m_IncludeInBuild: 1
+  m_IncludeInBuildMigrated: 1

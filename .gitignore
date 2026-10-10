@@ -73,3 +73,6 @@ Thumbs.db
 
 # Private copy of the prototype for Tools/export-places.mjs
 /Tools/.legacy-cache/
+
+# Test-runner scenes left behind when Unity crashes mid-run (Phase 10)
+Assets/InitTestScene*

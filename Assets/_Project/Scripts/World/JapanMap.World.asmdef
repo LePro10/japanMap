@@ -2,7 +2,9 @@
     "name": "JapanMap.World",
     "rootNamespace": "JapanMap.World",
     "references": [
-        "JapanMap.Core"
+        "JapanMap.Core",
+        "Unity.Addressables",
+        "Unity.ResourceManager"
     ],
     "autoReferenced": true,
     "noEngineReferences": false

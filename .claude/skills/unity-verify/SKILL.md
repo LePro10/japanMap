@@ -124,3 +124,10 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
   Play/Reload verloren (Phase 9: Grastest erst nach `AssetDatabase.SaveAssets` grün).
 - **Kein Werkzeug hinter einem anderen in derselben Hintergrund-Kette** (`compile … ; unity-test …`): bricht das erste ab,
   startet das zweite unbemerkt und ließ einmal den Editor im Play-Modus zurück.
+
+- **Die Welt liegt in mehreren Szenen (ab Phase 10, D36):** Orte außer Sakura in `Scenes/Places/`, Straßenkacheln, Props,
+  Orts-NavMeshes und Vegetation in `Scenes/World/`. Im Editor öffnen sie mit Game.unity (`PlaceScenesInEditor`); Code und
+  Tests finden Teile mit `MapScene.Part(gruppe, kind)` / `Parts(gruppe)`, nicht `GameObject.Find("World/…")`. Play lädt sie
+  per Addressables (Editor sofort, Browser nach gameplayStart). Wer Gruppen in Game.unity neu baut: am Ende
+  `StreamingSetup.Apply()` (MapImport.ImportAll tut es). Autos haben `modelAsset` statt `model` (`CarModels.Get`).
+- **Jede Komponente in einer Datei ihres Namens** — sonst speichert die Szene ein lokales Skript-Objekt (`ScriptFileTests`).

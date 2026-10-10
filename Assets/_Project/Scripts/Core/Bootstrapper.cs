@@ -47,10 +47,10 @@ namespace JapanMap.Core
             else StartCoroutine(LoadWhenReady());
         }
 
-        bool GatesReady()
+        bool GatesReady(bool requiredOnly = false)
         {
             foreach (var s in _systems)
-                if (s is IBootGate g && !g.Ready) return false;
+                if (s is IBootGate g && !g.Ready && (!requiredOnly || g.Required)) return false;
             return true;
         }
 
@@ -58,6 +58,12 @@ namespace JapanMap.Core
         {
             var until = Time.realtimeSinceStartup + gateTimeout;
             while (!GatesReady() && Time.realtimeSinceStartup < until) yield return null;
+            if (!GatesReady(requiredOnly: true))
+            {
+                // Required content (the terrain) has no fallback: the game waits for it, however slow the line.
+                Debug.Log("[Boot] waiting for required start content");
+                while (!GatesReady(requiredOnly: true)) yield return null;
+            }
             if (!GatesReady()) Debug.LogWarning("[Boot] a boot gate did not open in time — starting anyway");
             SceneManager.LoadScene(firstScene);
         }

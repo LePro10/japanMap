@@ -149,12 +149,13 @@ namespace JapanMap.Tests
         [Test]
         public void Roads_SurfacesFaceUp()
         {
-            var roads = GameObject.Find($"{MapScene.RootName}/{RoadImporter.GroupName}");
-            Assert.IsNotNull(roads, "World/Roads missing — run JapanMap/Map/Import Roads");
+            // Tiles in Game.unity or in their streamed scenes (D36: "Roads_<tile>").
+            var parts = MapScene.Parts(RoadImporter.GroupName).ToList();
+            Assert.IsNotEmpty(parts, "World/Roads missing — run JapanMap/Map/Import Roads");
             int checkedTris = 0, folded = 0;
-            foreach (Transform child in roads.transform)
+            foreach (var child in parts)
             {
-                if (!child.name.StartsWith("Road_") && child.name != "CitySlab") continue;
+                if (!child.name.Contains("Road_") && !child.name.Contains("CitySlab")) continue;
                 var m = child.GetComponent<MeshFilter>().sharedMesh;
                 var v = m.vertices;
                 for (var s = 0; s < m.subMeshCount; s++)
@@ -202,12 +203,12 @@ namespace JapanMap.Tests
         [Test]
         public void Props_AllPlacedOnTheGround()
         {
-            var props = GameObject.Find($"{MapScene.RootName}/{PropImporter.GroupName}");
-            Assert.IsNotNull(props, "World/Props missing — run JapanMap/Map/Import Props");
-            // One instance per placement under World/Props/<id>; library models may carry several colliders.
-            var placed = props.transform.Cast<Transform>().Sum(group => group.childCount);
+            // One instance per placement under World/Props/<id> (or its streamed scene); models may carry several colliders.
+            var groups = MapScene.Parts(PropImporter.GroupName).ToList();
+            Assert.IsNotEmpty(groups, "World/Props missing — run JapanMap/Map/Import Props");
+            var placed = groups.Sum(group => group.childCount);
             Assert.AreEqual(977, placed, "props.json has 977 placements");
-            foreach (Transform group in props.transform)
+            foreach (var group in groups)
             foreach (Transform instance in group)
                 Assert.That(instance.GetComponentsInChildren<Collider>(), Is.Not.Empty, $"{instance.name} has no collider");
 
@@ -222,7 +223,7 @@ namespace JapanMap.Tests
                 var p = file[k];
                 seen.TryGetValue(p.id, out var i);
                 seen[p.id] = i + 1;
-                var t = props.transform.Find(p.id).GetChild(i);
+                var t = MapScene.Part(PropImporter.GroupName, p.id).GetChild(i);
                 var expected = new Vector3(p.x, 0, -p.z);
                 if (fixedY[k]) expected.y = p.y + p.yOffset;
                 else
@@ -239,8 +240,8 @@ namespace JapanMap.Tests
         {
             // The rotation formula of the README, checked on the one clearly directed prop: the foot of
             // the stairs (front, +Z) faces away from the hall.
-            var stairs = GameObject.Find($"{MapScene.RootName}/{PropImporter.GroupName}/templeStairs").transform.GetChild(0);
-            var hall = GameObject.Find($"{MapScene.RootName}/{PropImporter.GroupName}/templeHall").transform.GetChild(0);
+            var stairs = MapScene.Part(PropImporter.GroupName, "templeStairs").GetChild(0);
+            var hall = MapScene.Part(PropImporter.GroupName, "templeHall").GetChild(0);
             Assert.That(Vector3.Dot(stairs.forward, hall.position - stairs.position), Is.LessThan(0f));
             Assert.That(Vector3.Dot(hall.forward, stairs.position - hall.position), Is.GreaterThan(0f), "hall faces the stairs");
         }
@@ -248,7 +249,7 @@ namespace JapanMap.Tests
         [Test]
         public void Props_ToriiCanBePassedThrough()
         {
-            var torii = GameObject.Find($"{MapScene.RootName}/{PropImporter.GroupName}/torii").transform.GetChild(0);
+            var torii = MapScene.Part(PropImporter.GroupName, "torii").GetChild(0);
             var centre = torii.position + Vector3.up * 1.5f;
             foreach (var c in torii.GetComponents<BoxCollider>())
                 Assert.IsFalse(c.bounds.Contains(centre), "a collider blocks the middle of the torii");
@@ -258,7 +259,11 @@ namespace JapanMap.Tests
         public void Colliders_HaveNoHugeTriangles()
         {
             // PhysX gets unstable with triangle edges above 500 m (warning seen on the first city slab).
-            foreach (var mc in GameObject.Find(MapScene.RootName).GetComponentsInChildren<MeshCollider>())
+            var colliders = new System.Collections.Generic.List<MeshCollider>(GameObject.Find(MapScene.RootName).GetComponentsInChildren<MeshCollider>());
+            for (var k = 0; k < UnityEngine.SceneManagement.SceneManager.sceneCount; k++)
+                foreach (var r in UnityEngine.SceneManagement.SceneManager.GetSceneAt(k).GetRootGameObjects())
+                    if (r.name != MapScene.RootName) colliders.AddRange(r.GetComponentsInChildren<MeshCollider>());
+            foreach (var mc in colliders)
             {
                 var v = mc.sharedMesh.vertices;
                 var t = mc.sharedMesh.triangles;
@@ -280,9 +285,13 @@ namespace JapanMap.Tests
             Assert.IsTrue(Physics.Raycast(new Vector3(x, 600, z), Vector3.down, out var hit, 1000), "nothing hit");
             // Library models carry their colliders on child objects (COL_*); the placed instance is the
             // first ancestor directly under World/Props/<id>.
+            // A streamed prop group is the root of its scene ("Props_<id>", D36), a streamed road tile is named "Roads_<tile>".
+            bool IsPropGroup(Transform g) => g != null && (g.parent != null ? g.parent.name == PropImporter.GroupName : g.name.StartsWith("Props_"));
             var t = hit.collider.transform;
-            while (t.parent != null && t.parent.parent != null && t.parent.parent.name != PropImporter.GroupName) t = t.parent;
-            StringAssert.StartsWith(colliderPrefix, t.parent != null && t.parent.parent != null && t.parent.parent.name == PropImporter.GroupName ? t.name : hit.collider.name);
+            while (t.parent != null && !IsPropGroup(t.parent)) t = t.parent;
+            var name = IsPropGroup(t.parent) ? t.name : hit.collider.name;
+            if (name.StartsWith("Roads_")) name = name.Substring("Roads_".Length);
+            StringAssert.StartsWith(colliderPrefix, name);
             Assert.That(hit.point.y, Is.EqualTo(height).Within(0.05f));
         }
 

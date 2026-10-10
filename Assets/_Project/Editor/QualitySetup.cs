@@ -85,6 +85,12 @@ namespace JapanMap.Editor
             // No public setter for main-light shadows; serialized field instead.
             var so = new SerializedObject(asset);
             so.FindProperty("m_MainLightShadowsSupported").boolValue = t.Shadows;
+            // Template features the game never uses (measured Phase 10: 0 cookie lights, 0 point/spot shadows, 0 custom
+            // light layers, 0 cross-fading LOD groups). Each one doubles shader variants — off = smaller start download (D36).
+            so.FindProperty("m_SupportsLightCookies").boolValue = false;
+            so.FindProperty("m_AdditionalLightShadowsSupported").boolValue = false;
+            so.FindProperty("m_SupportsLightLayers").boolValue = false;
+            so.FindProperty("m_EnableLODCrossFade").boolValue = false;
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(asset);
             return asset;
