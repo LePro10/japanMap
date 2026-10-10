@@ -32,7 +32,10 @@ Blickpunkte `Captures/p9-gate-HL.png` (gleich wie P8); Handy-Bilder `Captures/p9
   (Lit 600 → 50); eigenes Web-Template. Gesamt 63 MB auf der Leitung, 94 Dateien. Prüfen: `node Tools/sdk-web.mjs --stream --gpu`.
 - [x] 3. Speicher (D37): WASM-Heap Hoch 592 MiB, Niedrig 493 MiB (Budgets 1,5 GB / 768 MB); Chromebook-Profil (CPU ÷4) 4,2 s bis
   Spiel; Safari/WebKit läuft; eigenes Template (DPR 1 iOS/≤ 4 GB, kein Markieren). ASTC für Handys erst nach Gerätetest (P11).
-- [ ] 4. Auto-Qualität, WebGPU · [ ] 5. Profiling · [ ] 6. CI
+- [x] 4. Auto-Qualität (D38): Erstwahl nach GPU, Messung im Spiel, nur abwärts; Settings Auto/Recalibrate. **WebGPU zeichnet
+  schwarz** (Validierungsfehler im Lit-Shader) → WebGL2 bleibt. „Hoch 56 fps“ war der 60-Hz-Takt (ohne Takt 133–147 fps).
+  Start jetzt **18,4 MB**.
+- [ ] 5. Profiling (+ Ring-Senke) · [ ] 6. CI
 
 ## Offen / Gefunden
 

@@ -27,6 +27,54 @@ namespace JapanMap.Editor
         static readonly ShaderKeyword Fog = new("FOG_EXP2");
         public const string TerrainAddPass = "Hidden/Universal Render Pipeline/Terrain/Lit (Add Pass)";
         static int _terrainLayers;
+        // Post-processing keywords no profile/pipeline asset can switch on (checked at every build, so a later change keeps them).
+        static readonly List<string> _unusedPost = new();
+        static bool _postChecked;
+
+        /// <summary>
+        /// Which post keywords nothing can switch on — worked out on the first shader of a build, not in the build's
+        /// pre-step (the list stayed empty there once: the rules never matched, Phase 10).
+        /// </summary>
+        static void CheckPost()
+        {
+            if (_postChecked) return;
+            _postChecked = true;
+            _unusedPost.Clear();
+            var pipelines = AssetDatabase.FindAssets("t:UniversalRenderPipelineAsset", new[] { "Assets/_Project" })
+                .Select(g => AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset>(AssetDatabase.GUIDToAssetPath(g)))
+                .Where(a => a != null).ToList();
+            // As URP resolves a parameter: the game's own look volume (Data/Look) first, then the pipeline's base profile
+            // (the URP template's sample profile, part of the approved look), then the component's default.
+            var look = AssetDatabase.FindAssets("t:VolumeProfile", new[] { "Assets/_Project/Data/Look" })
+                .Select(g => AssetDatabase.LoadAssetAtPath<VolumeProfile>(AssetDatabase.GUIDToAssetPath(g))).Where(p => p != null).ToList();
+            var bases = pipelines.Select(p => p.volumeProfile).Where(p => p != null).Distinct().ToList();
+            bool Used<T, TV>(System.Func<T, VolumeParameter<TV>> param, System.Func<TV, bool> on) where T : VolumeComponent
+            {
+                bool? From(IEnumerable<VolumeProfile> set)
+                {
+                    foreach (var p in set)
+                        if (p.TryGet<T>(out var c) && c.active && param(c).overrideState) return on(param(c).value);
+                    return null;
+                }
+                var fromLook = From(look);
+                if (fromLook.HasValue) return fromLook.Value;
+                // Every tier has its own base: used if any tier's base switches it on.
+                return bases.Any(b => From(new[] { b }) == true);
+            }
+            if (!Used<UnityEngine.Rendering.Universal.Tonemapping, UnityEngine.Rendering.Universal.TonemappingMode>(t => t.mode, m => m == UnityEngine.Rendering.Universal.TonemappingMode.Neutral))
+                _unusedPost.Add("_TONEMAP_NEUTRAL");
+            if (!Used<UnityEngine.Rendering.Universal.Bloom, bool>(b => b.highQualityFiltering, v => v))
+                _unusedPost.Add("_BLOOM_HQ");
+            if (!Used<UnityEngine.Rendering.Universal.FilmGrain, float>(f => f.intensity, v => v > 0f))
+                _unusedPost.Add("_FILM_GRAIN");
+            if (!pipelines.Any(a => a.upscalingFilter == UnityEngine.Rendering.Universal.UpscalingFilterSelection.FSR))
+                _unusedPost.Add("_RCAS"); // FSR sharpening
+        }
+        /// <summary>Built-in render pipeline shaders Unity still adds; URP never draws with them.</summary>
+        public static readonly string[] BuiltInOnly =
+            { "Hidden/Internal-DeferredShading", "Hidden/Internal-DeferredReflections", "Hidden/Internal-ScreenSpaceShadows",
+              "Hidden/Internal-DepthNormalsTexture", "Legacy Shaders/Diffuse" };
+        static readonly ShaderKeyword LegacyLightmaps = new("USE_LEGACY_LIGHTMAPS");
 
         public void OnPreprocessBuild(BuildReport report)
         {
@@ -35,6 +83,7 @@ namespace JapanMap.Editor
             _terrainLayers = AssetDatabase.FindAssets("t:TerrainData")
                 .Select(g => AssetDatabase.LoadAssetAtPath<TerrainData>(AssetDatabase.GUIDToAssetPath(g)))
                 .Where(t => t != null).Select(t => t.terrainLayers.Length).DefaultIfEmpty(0).Max();
+            _postChecked = false;
         }
 
         public void OnProcessShader(Shader shader, ShaderSnippetData snippet, IList<ShaderCompilerData> data)
@@ -42,6 +91,7 @@ namespace JapanMap.Editor
             if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.WebGL) return;
             var key = $"{shader.name} | {snippet.passName}";
             if (!Report.TryGetValue(key, out var r)) r = (0, 0, new Dictionary<string, int>());
+            CheckPost();
             var hasFog = false;
             foreach (var d in data) if (d.shaderKeywordSet.IsEnabled(Fog)) { hasFog = true; break; }
             for (var i = data.Count - 1; i >= 0; i--)
@@ -66,10 +116,17 @@ namespace JapanMap.Editor
         static bool Strip(Shader shader, ShaderCompilerData d, bool hasFog)
         {
             if (shader.name == TerrainAddPass && _terrainLayers <= 4) return true;
+            if (System.Array.IndexOf(BuiltInOnly, shader.name) >= 0) return true;
             // BatchRendererGroup / GPU resident drawer: not available on WebGL2.
             if (d.shaderKeywordSet.IsEnabled(Dots)) return true;
             // The game scene always has exponential-squared fog (LookSetup); streamed places draw with the active scene's.
             if (hasFog && !d.shaderKeywordSet.IsEnabled(Fog)) return true;
+            // No lightmaps anywhere in the project (all light is realtime).
+            if (d.shaderKeywordSet.IsEnabled(LegacyLightmaps)) return true;
+            // Post-processing keywords are local to their shader: compare names, not global keywords.
+            if (_unusedPost.Count > 0)
+                foreach (var k in d.shaderKeywordSet.GetShaderKeywords())
+                    if (_unusedPost.Contains(k.name)) return true;
             return false;
         }
 
@@ -77,6 +134,7 @@ namespace JapanMap.Editor
         {
             if (report.summary.platform != BuildTarget.WebGL) return;
             var sb = new StringBuilder();
+            sb.AppendLine($"unused post keywords (stripped): {string.Join(", ", _unusedPost)}");
             foreach (var kv in Report.OrderByDescending(k => k.Value.kept))
             {
                 sb.AppendLine($"{kv.Value.kept,5} kept {kv.Value.stripped,5} stripped  {kv.Key}");

@@ -303,6 +303,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 37d8b3eafe1ea4b4084267bc7c4efb8c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: JapanMap.Core::JapanMap.Core.QualitySystem
+  calibration: {fileID: 11400000, guid: 985dfe459f98447ba9481d029f5958c1, type: 2}
 --- !u!1 &801797235
 GameObject:
   m_ObjectHideFlags: 0

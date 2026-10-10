@@ -3,7 +3,7 @@
 //   * bytes transferred (compressed, as on the wire) from the first request to the first "[Platform] gameplayStart"
 //     — what CrazyGames counts for the mobile homepage (≤ 20 MB) — split into our files and others (SDK script)
 //   * gameplayStop on Escape (menu), gameplayStart again on Escape
-//   node Tools/sdk-web.mjs [--host localhost|127.0.0.1] [--timeout 120] [--gpu] [--param quality=Low] [--stream] [--mem] [--fps] [--cpu 4] [--browser webkit] [--logs <regex>] [--dir Builds/Preview] [--shot Captures/x.png]
+//   node Tools/sdk-web.mjs [--host localhost|127.0.0.1] [--timeout 120] [--gpu] [--param quality=Low] [--stream] [--mem] [--fps] [--probe] [--novsync] [--cpu 4] [--browser webkit] [--logs <regex>] [--dir Builds/Preview] [--shot Captures/x.png]
 // localhost runs the real SDK (local environment, needs internet); 127.0.0.1 is our test host without SDK.
 // Does not build. Prints one line SDK GREEN/RED with the numbers; exit 1 when red.
 import { chromium, webkit } from 'playwright-core';
@@ -25,7 +25,9 @@ const angle = process.platform === 'darwin' ? 'metal' : process.platform === 'wi
 const useWebkit = arg('browser', 'chromium') === 'webkit';
 const browser = useWebkit ? await webkit.launch() : await chromium.launch({
   args: flag('gpu')
-    ? [`--use-angle=${angle}`, '--enable-gpu', '--ignore-gpu-blocklist']
+    ? [`--use-angle=${angle}`, '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu',
+       // --novsync: frames as fast as the GPU goes (the display caps at 60 otherwise; compare costs, not this machine's screen)
+       ...(flag('novsync') ? ['--disable-gpu-vsync', '--disable-frame-rate-limit'] : [])]
     : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
 });
 const MB = (b) => (b / 1e6).toFixed(2);
@@ -35,7 +37,12 @@ try {
   const page = await context.newPage();
   const logs = [];
   const errors = [];
-  page.on('console', (m) => { logs.push({ t: Date.now(), text: m.text().split('\n')[0] }); if (m.type() === 'error') errors.push(m.text().split('\n')[0]); });
+  page.on('console', (m) => {
+    const text = m.text().split('\n')[0];
+    logs.push({ t: Date.now(), text });
+    // WebGPU reports broken draws as warnings ("Validation: … invalid") — then the frame is black (Phase 10).
+    if (m.type() === 'error' || /^Validation:|\[Invalid /.test(text)) errors.push(text);
+  });
   page.on('pageerror', (e) => errors.push(e.message));
 
   const cdp = useWebkit ? null : await context.newCDPSession(page);
@@ -62,7 +69,8 @@ try {
   };
 
   const t0 = Date.now();
-  await page.goto(`http://${host}:${port}/${extra ? `?${extra}` : ''}`, { waitUntil: 'commit' });
+  const query = [extra, flag('probe') ? 'probe=frame' : ''].filter(Boolean).join('&');
+  await page.goto(`http://${host}:${port}/${query ? `?${query}` : ''}`, { waitUntil: 'commit' });
   const start = await waitLog(/\[Platform\] gameplayStart/, t0, timeoutMs);
   if (!start) {
     red = true;
@@ -111,14 +119,26 @@ try {
     for (const [url, bytes] of [...per].filter(([, b]) => b > 200000).sort((a, b) => b[1] - a[1]))
       console.log(`  ${MB(bytes).padStart(6)} MB  ${url.replace(/^https?:\/\/[^/]+\//, '')}`);
   }
-  // --fps: frame rate over 5 s where Unity renders (requestAnimationFrame), as smoke --gpu does.
+  // --fps: frame rate over 8 s where Unity renders (requestAnimationFrame), as smoke --gpu does.
   if (flag('fps')) {
     const r = await page.evaluate(() => new Promise((ok) => {
       const t0 = performance.now(); let last = t0, n = 0, worst = 0;
-      const tick = (now) => { n++; worst = Math.max(worst, now - last); last = now; if (now - t0 < 5000) requestAnimationFrame(tick); else ok({ fps: n / ((now - t0) / 1000), worst }); };
+      const tick = (now) => { n++; worst = Math.max(worst, now - last); last = now; if (now - t0 < 8000) requestAnimationFrame(tick); else ok({ fps: n / ((now - t0) / 1000), worst }); };
       requestAnimationFrame(tick);
     }));
-    console.log(`FPS · ${r.fps.toFixed(0)} fps (worst frame ${r.worst.toFixed(0)} ms)${arg('cpu', '') ? ' · CPU ÷' + arg('cpu', '') : ''}`);
+    // A run that sits at 55–61 fps with a ~33 ms worst frame was held by the display clock, not by the game
+    // (Phase 10: every setting gave either ~57 or ~140 — the 57s were capped). Such a run measures nothing.
+    const capped = r.fps > 54 && r.fps < 62 && r.worst > 30;
+    console.log(`FPS · ${r.fps.toFixed(0)} fps (worst frame ${r.worst.toFixed(0)} ms)${capped ? ' · CAPPED by the display clock — repeat' : ''}${arg('cpu', '') ? ' · CPU ÷' + arg('cpu', '') : ''}`);
+  }
+  // --probe: the game reads back its own frame (?probe=frame, DevTools/FrameProbe): something must be drawn.
+  if (flag('probe')) {
+    const t1 = Date.now();
+    let line = null;
+    while (!line && Date.now() - t1 < 20000) { line = logs.find((l) => /\[Probe\] frame/.test(l.text)); await page.waitForTimeout(500); }
+    const lit = line ? Number(/lit (\d+)%/.exec(line.text)?.[1] ?? 0) : 0;
+    if (!line || lit < 5) red = true;
+    console.log(`PROBE ${line && lit >= 5 ? 'GREEN' : 'RED'} · ${line ? line.text.replace(/^.*\[Probe\] /, '') : 'no frame read back (build without FrameProbe?)'}`);
   }
   // --mem: memory as the game reports it (template exposes window.unityInstance): WASM heap total/used, JS heap.
   if (flag('mem')) {

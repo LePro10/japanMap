@@ -40,6 +40,20 @@ namespace JapanMap.World
 
         void OnDisable() => QualitySystem.TierChanged -= Apply;
 
+        /// <summary>
+        /// Measurement knobs for one browser build (A/B, rule 5 — one knob per measurement), never settings:
+        /// ?msaa=1|2|4, ?cascades=1..4, ?shadowdist=metres on the tier's pipeline asset.
+        /// </summary>
+        static void ApplyUrlKnobs()
+        {
+            if (QualitySettings.renderPipeline is not UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset urp) return;
+            var url = Application.absoluteURL;
+            if (int.TryParse(QualitySystem.UrlParam(url, "msaa"), out var msaa)) urp.msaaSampleCount = msaa;
+            if (int.TryParse(QualitySystem.UrlParam(url, "cascades"), out var cascades)) urp.shadowCascadeCount = cascades;
+            if (float.TryParse(QualitySystem.UrlParam(url, "shadowdist"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var dist))
+                urp.shadowDistance = dist;
+        }
+
         public void Apply(string tierName)
         {
             var t = Array.Find(tiers, x => x.name == tierName);
@@ -49,6 +63,7 @@ namespace JapanMap.World
                 if (r.data is VegetationData) r.maxDistance = t.treeDistance;
                 else if (r.data is PlaceInstanceData) r.maxDistance = t.buildingDistance > 0 ? t.buildingDistance : 6000;
             }
+            ApplyUrlKnobs();
             foreach (var terrain in Terrain.activeTerrains)
             {
                 terrain.treeDistance = t.treeDistance;

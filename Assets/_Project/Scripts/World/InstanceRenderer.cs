@@ -22,6 +22,11 @@ namespace JapanMap.World
         [Tooltip("Pooled tree colliders within this radius of the main camera (play mode).")]
         public float colliderRadius = 70;
 
+        /// <summary>?treeshadows=0: trees cast no shadows — measurement knob for one browser build (A/B, Phase 10).
+        /// Read on first draw: Unity forbids the page URL in a MonoBehaviour's static/field initialiser.</summary>
+        static bool? _treeShadows;
+        static bool TreeShadows => _treeShadows ??= Core.QualitySystem.UrlParam(Application.absoluteURL, "treeshadows") != "0";
+
         Matrix4x4[] _matrices;
         Matrix4x4[][] _lists;  // [prototype * 4 + lod]
         int[] _counts;
@@ -128,13 +133,14 @@ namespace JapanMap.World
                 {
                     var n = _counts[p * _lodsPer + l];
                     if (n == 0) continue;
-                    var byProxy = proxy > l && proxy < proto.lods.Length;
+                    var shadows = TreeShadows || !(data is VegetationData);
+                    var byProxy = shadows && proxy > l && proxy < proto.lods.Length;
                     var mat = proto.lodMaterials != null && l < proto.lodMaterials.Length && proto.lodMaterials[l] != null ? proto.lodMaterials[l] : proto.material;
                     var rp = new RenderParams(mat)
                     {
                         camera = cam,
                         worldBounds = world,
-                        shadowCastingMode = !byProxy && l < proto.shadowLods ? ShadowCastingMode.On : ShadowCastingMode.Off,
+                        shadowCastingMode = shadows && !byProxy && l < proto.shadowLods ? ShadowCastingMode.On : ShadowCastingMode.Off,
                         receiveShadows = true,
                         layer = gameObject.layer,
                         lightProbeUsage = LightProbeUsage.Off,

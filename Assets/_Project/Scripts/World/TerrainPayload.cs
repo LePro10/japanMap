@@ -13,6 +13,7 @@ namespace JapanMap.World
     public static class TerrainPayload
     {
         const int Magic = 0x32544D4A; // "JMT2" (with holes)
+        const int DetailMagic = 0x31444D4A; // "JMD1"
         /// <summary>Unity keeps heights as 16-bit steps of 1/32766 of the terrain height.</summary>
         const float HeightSteps = 32766f;
 
@@ -64,7 +65,25 @@ namespace JapanMap.World
             return g;
         }
 
-        public static byte[] Encode(Grids g)
+        /// <summary>
+        /// The grass/rice density alone (D38): optional detail, it comes after the first gameplayStart (0.45 MB less at the
+        /// start; ASTRA §13 "optional detail must never become a driving dependency").
+        /// </summary>
+        public static byte[] EncodeDetails(Grids g)
+        {
+            using var ms = new MemoryStream();
+            using var w = new BinaryWriter(ms);
+            w.Write(DetailMagic);
+            w.Write(g.detailRes); w.Write(g.detailPatch); w.Write(g.detailLayers);
+            WriteRows(w, g.details, g.detailRes);
+            w.Flush();
+            return ms.ToArray();
+        }
+
+        public static byte[] Encode(Grids g) => Encode(g, true);
+
+        /// <param name="withDetails">False: the grass grid travels in its own file (<see cref="EncodeDetails"/>).</param>
+        public static byte[] Encode(Grids g, bool withDetails)
         {
             using var ms = new MemoryStream();
             using var w = new BinaryWriter(ms);
@@ -86,7 +105,8 @@ namespace JapanMap.World
             w.Write(lo);
             w.Write(hi);
             WriteRows(w, g.alphas, g.alphaRes);
-            WriteRows(w, g.details, g.detailRes);
+            w.Write(withDetails);
+            if (withDetails) WriteRows(w, g.details, g.detailRes);
             w.Write(g.holeRes);
             WriteRows(w, g.holes, g.holeRes);
             w.Flush();
@@ -131,9 +151,20 @@ namespace JapanMap.World
                 g.heights[i] = (ushort)(Predict(g.heights, n, x, y) + res);
             }
             g.alphas = ReadRows(r, g.layers * g.alphaRes * g.alphaRes, g.alphaRes);
-            g.details = ReadRows(r, g.detailLayers * g.detailRes * g.detailRes, g.detailRes);
+            g.details = r.ReadBoolean() ? ReadRows(r, g.detailLayers * g.detailRes * g.detailRes, g.detailRes) : null;
             g.holeRes = r.ReadInt32();
             g.holes = ReadRows(r, g.holeRes * g.holeRes, g.holeRes);
+            return g;
+        }
+
+        /// <summary>Reads a grass file into <paramref name="g"/> (or a new grid set).</summary>
+        public static Grids DecodeDetails(byte[] data, Grids g = null)
+        {
+            using var r = new BinaryReader(new MemoryStream(data));
+            if (r.ReadInt32() != DetailMagic) throw new InvalidDataException("not a terrain detail file");
+            g ??= new Grids();
+            g.detailRes = r.ReadInt32(); g.detailPatch = r.ReadInt32(); g.detailLayers = r.ReadInt32();
+            g.details = ReadRows(r, g.detailLayers * g.detailRes * g.detailRes, g.detailRes);
             return g;
         }
 
@@ -186,6 +217,12 @@ namespace JapanMap.World
                 solid[y, x] = g.holes[y * hr + x] != 0;
             td.SetHoles(0, 0, solid);
 
+            if (g.details != null) ApplyDetails(g, td);
+        }
+
+        /// <summary>Grass and rice density (may come later than the ground).</summary>
+        public static void ApplyDetails(Grids g, TerrainData td)
+        {
             td.SetDetailResolution(g.detailRes, g.detailPatch);
             var dr = g.detailRes;
             for (var l = 0; l < g.detailLayers; l++)

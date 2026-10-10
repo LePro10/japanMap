@@ -19,7 +19,30 @@ namespace JapanMap.Editor
     /// </summary>
     public static class WebBuild
     {
-        public const string OutputDir = "Builds/Web";
+        public const string DefaultDir = "Builds/Web";
+        /// <summary>Where the current build goes (Builds/Web; the WebGPU trial goes to Builds/WebGPU).</summary>
+        static string OutputDir = DefaultDir;
+
+        /// <summary>
+        /// Trial (D38): the same release build with WebGPU first and WebGL2 as fallback, into Builds/WebGPU — to compare the
+        /// start download and the frame rate. Graphics APIs are put back afterwards.
+        /// </summary>
+        public static void BatchWebGpu()
+        {
+            var web = BuildTarget.WebGL;
+            var apis = PlayerSettings.GetGraphicsAPIs(web);
+            OutputDir = "Builds/WebGPU";
+            try
+            {
+                PlayerSettings.SetGraphicsAPIs(web, new[] { UnityEngine.Rendering.GraphicsDeviceType.WebGPU, UnityEngine.Rendering.GraphicsDeviceType.OpenGLES3 });
+                if (!Build(false)) EditorApplication.Exit(1);
+            }
+            finally
+            {
+                PlayerSettings.SetGraphicsAPIs(web, apis);
+                OutputDir = DefaultDir;
+            }
+        }
 
         public static void Batch()
         {
@@ -94,7 +117,8 @@ namespace JapanMap.Editor
 
         // Unity's own GPU-occlusion debug shaders are always stripped on Web; nothing of ours uses them.
         // The terrain add pass goes on purpose while the terrain has four layers or fewer (ShaderStripping).
-        static readonly string[] KnownStrippedPrefixes = { "Hidden/Core/Debug", ShaderStripping.TerrainAddPass };
+        static readonly string[] KnownStrippedPrefixes =
+            new[] { "Hidden/Core/Debug", ShaderStripping.TerrainAddPass }.Concat(ShaderStripping.BuiltInOnly).ToArray();
 
         public static string StrippedShaderName(string logMessage)
         {
@@ -125,7 +149,8 @@ namespace JapanMap.Editor
             sb.AppendLine($"total       {total / 1e6:F2} MB in {files.Count} files");
             // The start download: everything but the streamed bundles (CrazyGames counts up to the first gameplayStart).
             // Streamed later: the Addressables bundles and the plain terrain copy (only for browsers without gzip streams).
-            var streamed = files.Where(f => f.FullName.Replace('\\', '/').Contains("/StreamingAssets/aa/") || f.Name == JapanMap.World.StreamedTerrain.PlainName).Sum(f => f.Length);
+            var streamed = files.Where(f => f.FullName.Replace('\\', '/').Contains("/StreamingAssets/aa/") || f.Name == JapanMap.World.StreamedTerrain.PlainName
+                || f.Name.StartsWith("terrain-detail")).Sum(f => f.Length);
             sb.AppendLine($"start       {(total - streamed) / 1e6:F2} MB (streamed later {streamed / 1e6:F2} MB)");
             sb.AppendLine("largest:");
             foreach (var f in files.Take(10))

@@ -571,6 +571,24 @@ WASM** bleibt 2048 MiB (gebraucht ~600). **Handy-Texturen:** Handy-GPUs können 
 echtes Android-Handy (Phase 11) zu viel Speicher oder lange Ladezeit zeigt. iOS schaltet CrazyGames für Unity-Spiele ohnehin
 erst nach genug Spielen frei.
 
+## D38 — Qualität automatisch (Erstwahl nach GPU + Messung im Spiel, nur abwärts); WebGPU vorerst nicht; „Hoch zu teuer“ war der Bildschirmtakt · 2026-10-10
+
+**Auto** (Standard; Unity hat dafür nichts fürs Web, Adaptive Performance nur Android): Erstwahl nach Gerät — Handy und
+Software-/Handy-GPUs Niedrig, Intel-Grafik (ohne Arc) Mittel, sonst Hoch; dann im echten Spiel (nicht im Menü, nicht während
+des Nachladens) 4 s Anlauf + 6 s Messung, Median unter 45 fps → eine Stufe runter, nie hoch (kein Pendeln); Ergebnis gemerkt.
+Werte in `Data/Core/QualityCalibration.asset`. Settings: Auto / Hoch / Mittel / Niedrig (Hand-Wahl schaltet Auto ab),
+„Recalibrate“. Gemessen im Browser: M4 → Hoch, 59 fps, bleibt; SwiftShader → Niedrig; CPU ÷8 → 22 fps → Mittel.
+**WebGPU** (Unity 6.6, mit WebGL2-Rückfall): baut und startet (19,6 MB Start nach Gras-Datei), zeichnet aber **nichts** —
+WebGPU-Validierung „Invalid BindGroup Universal Render Pipeline/Lit“, jedes Bild schwarz; die zunächst gemessenen 115 fps
+waren leere Bilder. Darum WebGL2; `WebBuild.BatchWebGpu` baut den Versuch nach `Builds/WebGPU` für einen späteren Neuversuch
+(Phase 12). `sdk-web` wertet WebGPU-Validierung als Fehler, `--probe` liest ein Bild zurück (`DevTools/FrameProbe`, rot wenn
+schwarz). **„Hoch kostet zu viel“ (Phase 9: 56 fps):** Jede Einstellung (Hoch, ohne Baumschatten, lodBias 1,5, MSAA 1,
+2 Kaskaden, 80 m Schatten, Mittel) lief entweder bei ~57 fps mit 36-ms-Ausreißern oder bei 133–147 fps — die 57er sind der
+60-Hz-Takt, der im Test-Chrome nicht immer abschaltbar ist, nicht die Kosten. Kein Regler wirkte über das Streuen hinaus →
+nach Regel 5 nichts geändert (Wald-Schatten, lodBias 2 bleiben); `sdk-web` markiert gedeckelte Läufe („CAPPED“).
+Regler bleiben als URL-Messhilfen: `?treeshadows=0 ?lodbias= ?msaa= ?cascades= ?shadowdist=`. **Start** nach dieser
+Aufgabe: 18,4 MB (Gras/Reis als eigene Datei nach gameplayStart, Built-in-Shader und unbenutzte Post-Varianten raus).
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

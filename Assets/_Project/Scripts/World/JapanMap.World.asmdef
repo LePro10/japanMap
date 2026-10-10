@@ -4,7 +4,8 @@
     "references": [
         "JapanMap.Core",
         "Unity.Addressables",
-        "Unity.ResourceManager"
+        "Unity.ResourceManager",
+        "Unity.RenderPipelines.Universal.Runtime"
     ],
     "autoReferenced": true,
     "noEngineReferences": false

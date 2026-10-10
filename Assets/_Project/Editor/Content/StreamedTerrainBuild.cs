@@ -17,7 +17,7 @@ namespace JapanMap.Editor.Content
     public sealed class StreamedTerrainBuild : IProcessSceneWithReport, IPostprocessBuildWithReport
     {
         public int callbackOrder => 0;
-        static byte[] _payload;
+        static byte[] _payload, _details;
 
         public void OnProcessScene(Scene scene, BuildReport report)
         {
@@ -28,7 +28,9 @@ namespace JapanMap.Editor.Content
                 var terrain = st.GetComponent<Terrain>();
                 var full = terrain.terrainData;
                 if (full == null) continue;
-                _payload = TerrainPayload.Encode(TerrainPayload.Read(full));
+                var grids = TerrainPayload.Read(full);
+                _payload = TerrainPayload.Encode(grids, withDetails: false);
+                _details = TerrainPayload.EncodeDetails(grids);
                 // Same layers, prototypes and settings; only the grids shrink (refilled at runtime).
                 var lite = Object.Instantiate(full);
                 lite.name = full.name + " (placeholder)";
@@ -48,12 +50,17 @@ namespace JapanMap.Editor.Content
             if (report.summary.platform != BuildTarget.WebGL || _payload == null) return;
             var dir = Path.Combine(report.summary.outputPath, "StreamingAssets");
             Directory.CreateDirectory(dir);
-            File.WriteAllBytes(Path.Combine(dir, StreamedTerrain.PlainName), _payload);
-            using (var file = File.Create(Path.Combine(dir, StreamedTerrain.FileName)))
-            using (var gz = new GZipStream(file, System.IO.Compression.CompressionLevel.Optimal))
-                gz.Write(_payload, 0, _payload.Length);
+            void Write(string plain, string packed, byte[] bytes)
+            {
+                File.WriteAllBytes(Path.Combine(dir, plain), bytes);
+                using var file = File.Create(Path.Combine(dir, packed));
+                using var gz = new GZipStream(file, System.IO.Compression.CompressionLevel.Optimal);
+                gz.Write(bytes, 0, bytes.Length);
+            }
+            Write(StreamedTerrain.PlainName, StreamedTerrain.FileName, _payload);
+            Write(StreamedTerrain.DetailPlainName, StreamedTerrain.DetailName, _details);
             Debug.Log($"[WebBuild] terrain file {_payload.Length / 1e6:0.00} MB raw → {new FileInfo(Path.Combine(dir, StreamedTerrain.FileName)).Length / 1e6:0.00} MB gzip");
-            _payload = null;
+            _payload = _details = null;
         }
     }
 }

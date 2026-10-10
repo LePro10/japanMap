@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text;
 using JapanMap.Audio;
 using JapanMap.Core;
@@ -181,10 +182,20 @@ namespace JapanMap.Gameplay.Menu
         void Graphics(VisualElement p, StringBuilder t)
         {
             var names = QualitySystem.Tiers;
-            var current = System.Array.IndexOf(names, QualitySettings.names[QualitySettings.GetQualityLevel()]);
-            Ui.ChoiceRow(p, "Quality", names, current, i => QualitySystem.SetTier(names[i]));
-            Ui.Small(p, "High: shadows and long view distance. Low: for phones and Chromebooks.");
-            t.AppendLine($"Quality {(current >= 0 ? names[current] : "?")}");
+            var options = new[] { QualitySystem.Auto }.Concat(names).ToArray();
+            var current = QualitySystem.IsAuto ? 0 : 1 + System.Array.IndexOf(names, QualitySystem.Current);
+            Ui.ChoiceRow(p, "Quality", options, current, i =>
+            {
+                if (i == 0) QualitySystem.Recalibrate();
+                else QualitySystem.SetTier(names[i - 1]);
+                Menu.Rebuild();
+            });
+            var state = !QualitySystem.IsAuto ? $"{QualitySystem.Current}, chosen by you."
+                : QualitySystem.Settled ? $"Auto: {QualitySystem.Current}{(QualitySystem.MeasuredFps > 0 ? $" ({QualitySystem.MeasuredFps:0} fps measured)" : "")}."
+                : $"Auto: {QualitySystem.Current} for now — measured after a few seconds of driving.";
+            Ui.Small(p, state + " High: shadows and long view distance. Low: for phones and Chromebooks.");
+            Ui.Button(p, "Recalibrate", () => { QualitySystem.Recalibrate(); Menu.Rebuild(); });
+            t.AppendLine($"Quality {(QualitySystem.IsAuto ? "Auto " : "")}{QualitySystem.Current}");
         }
 
         void Access(VisualElement p, StringBuilder t)

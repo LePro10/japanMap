@@ -20,6 +20,11 @@ namespace JapanMap.World
         /// <summary>File names under StreamingAssets: gzip, and the plain copy for browsers without DecompressionStream.</summary>
         public const string FileName = "terrain.jmtz";
         public const string PlainName = "terrain.jmt";
+        /// <summary>Grass and rice density, fetched after the first gameplayStart (<see cref="FetchDetails"/>).</summary>
+        public const string DetailName = "terrain-detail.jmtz";
+        public const string DetailPlainName = "terrain-detail.jmt";
+        static StreamedTerrain _placed;
+        static bool _detailsAsked;
         const int Tries = 3;
 
         [Tooltip("Set by the build: the terrain data here is a placeholder, its grids come from the file.")]
@@ -35,6 +40,8 @@ namespace JapanMap.World
             _grids = null;
             _asked = _failed = false;
             _tries = 0;
+            _placed = null;
+            _detailsAsked = false;
         }
 
         /// <summary>The file is here (or nothing has to come: editor, a build without a streamed terrain).</summary>
@@ -72,9 +79,35 @@ namespace JapanMap.World
         static extern void JM_FetchBytes(string url, string plainUrl, int id, Action<int, IntPtr, int> callback);
 #endif
 
+        /// <summary>The grass file (optional detail): the content streamer asks for it once the game is being played.</summary>
+        public static void FetchDetails()
+        {
+            if (_detailsAsked || !NeedsFile || _placed == null) return;
+            _detailsAsked = true;
+            var root = Application.streamingAssetsPath + "/";
+#if UNITY_WEBGL && !UNITY_EDITOR
+            JM_FetchBytes(root + DetailName, root + DetailPlainName, 1, OnBytes);
+#endif
+        }
+
         [AOT.MonoPInvokeCallback(typeof(Action<int, IntPtr, int>))]
         static void OnBytes(int id, IntPtr ptr, int length)
         {
+            if (id == 1)
+            {
+                if (length < 0) { Debug.LogWarning("[Content] grass file did not arrive — the ground stays bare"); return; }
+                var b = new byte[length];
+                Marshal.Copy(ptr, b, 0, length);
+                Marshal.FreeHGlobal(ptr);
+                if (_placed == null) return;
+                try
+                {
+                    TerrainPayload.ApplyDetails(TerrainPayload.DecodeDetails(b), _placed.GetComponent<Terrain>().terrainData);
+                    Debug.Log($"[Content] grass {length / 1e6f:0.0} MB");
+                }
+                catch (Exception e) { Debug.LogWarning($"[Content] grass file unreadable: {e.Message}"); }
+                return;
+            }
             if (length < 0)
             {
                 if (++_tries < Tries) { Fetch(); return; }
@@ -97,6 +130,11 @@ namespace JapanMap.World
             }
         }
 
+        void OnDestroy()
+        {
+            if (_placed == this) { _placed = null; _detailsAsked = false; }
+        }
+
         void Awake()
         {
             if (!placeholder) return;
@@ -107,6 +145,7 @@ namespace JapanMap.World
             }
             var terrain = GetComponent<Terrain>();
             TerrainPayload.Apply(_grids, terrain.terrainData);
+            _placed = this;
             terrain.Flush();
             _grids = null; // the managed copy is not needed any more (WASM heap)
         }

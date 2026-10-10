@@ -62,6 +62,7 @@ namespace JapanMap.Gameplay.Content
 
         void OnDestroy()
         {
+            Core.QualitySystem.Hold = false;
             if (Instance == this) Instance = null;
         }
 
@@ -100,6 +101,8 @@ namespace JapanMap.Gameplay.Content
         void Update()
         {
             if (Application.isEditor) return; // the editor loaded everything in Start
+            // Frames while the world streams in are not the game's real frame rate: auto quality waits (D38).
+            Core.QualitySystem.Hold = !AllPlaces || _busy != null;
             if (!_started)
             {
                 if (!GamePlatform.WorldReady) return;
@@ -108,6 +111,7 @@ namespace JapanMap.Gameplay.Content
                 if (GamePlatform.GameplayStarts == 0 && Time.unscaledTime - _readySince < startAfterAtMost) return;
                 _started = true;
                 Debug.Log($"[Content] start download done — streaming {places.Length} places, then cars");
+                World.StreamedTerrain.FetchDetails(); // grass: small, independent of the scene queue
             }
             if (_busy != null) return;
             var next = NearestMissing();

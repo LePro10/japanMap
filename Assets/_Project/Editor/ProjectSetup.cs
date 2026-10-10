@@ -79,6 +79,7 @@ namespace JapanMap.Editor
             // Own page (Assets/WebGLTemplates/JapanMap): full frame, no selection, pixel ratio 1 on iOS/low-memory phones,
             // errors without alert() — CrazyGames requirements (D37).
             PlayerSettings.WebGL.template = "PROJECT:JapanMap";
+            TrimGraphicsSettings();
             // Optimize Mesh Data: vertex channels no material reads (UV2+, colours, tangents) leave the build (D36).
             PlayerSettings.stripUnusedMeshComponents = true;
         }
@@ -98,6 +99,61 @@ namespace JapanMap.Editor
         }
 
         /// <summary>Adds a boot system under the Bootstrapper if it is missing (sibling index = init order).</summary>
+        /// <summary>
+        /// Built-in-pipeline shaders the URP template keeps "always included" (deferred, screen-space shadows, depth-normals,
+        /// legacy diffuse) and lightmap variants (no lightmaps here) — compiled for every graphics API into the start
+        /// download for nothing (D38).
+        /// </summary>
+        static void TrimGraphicsSettings()
+        {
+            var gs = new SerializedObject(AssetDatabase.LoadAssetAtPath<Object>("ProjectSettings/GraphicsSettings.asset"));
+            var list = gs.FindProperty("m_AlwaysIncludedShaders");
+            for (var i = list.arraySize - 1; i >= 0; i--)
+            {
+                var shader = list.GetArrayElementAtIndex(i).objectReferenceValue as Shader;
+                if (shader == null) continue;
+                var n = shader.name;
+                if (n.StartsWith("Hidden/Internal-Deferred") || n.StartsWith("Hidden/Internal-ScreenSpaceShadows") ||
+                    n.StartsWith("Hidden/Internal-DepthNormalsTexture") || n.StartsWith("Legacy Shaders/"))
+                    list.DeleteArrayElementAtIndex(i);
+            }
+            gs.FindProperty("m_LightmapStripping").intValue = 1; // custom: keep none
+            foreach (var k in new[] { "m_LightmapKeepPlain", "m_LightmapKeepDirCombined", "m_LightmapKeepDynamicPlain",
+                                      "m_LightmapKeepDynamicDirCombined", "m_LightmapKeepShadowMask", "m_LightmapKeepSubtractive" })
+                gs.FindProperty(k).boolValue = false;
+            gs.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        public const string QualityCalibrationPath = "Assets/_Project/Data/Core/QualityCalibration.asset";
+
+        /// <summary>Auto quality's thresholds and GPU hints as data (D38), wired to the Boot scene's QualitySystem.</summary>
+        static void WireQualityCalibration()
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<QualityCalibration>(QualityCalibrationPath);
+            if (asset == null)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(QualityCalibrationPath));
+                asset = ScriptableObject.CreateInstance<QualityCalibration>();
+                AssetDatabase.CreateAsset(asset, QualityCalibrationPath);
+            }
+            var scene = EditorSceneManager.OpenScene(BootScene, OpenSceneMode.Additive);
+            try
+            {
+                foreach (var r in scene.GetRootGameObjects())
+                foreach (var q in r.GetComponentsInChildren<QualitySystem>(true))
+                {
+                    var so = new SerializedObject(q);
+                    so.FindProperty("calibration").objectReferenceValue = asset;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                }
+                EditorSceneManager.SaveScene(scene);
+            }
+            finally
+            {
+                if (UnityEngine.SceneManagement.SceneManager.sceneCount > 1) EditorSceneManager.CloseScene(scene, true);
+            }
+        }
+
         public static string EnsureBootSystem<T>(string name, int index) where T : GameSystem
         {
             var scene = EditorSceneManager.OpenScene(BootScene, OpenSceneMode.Additive);
@@ -133,6 +189,7 @@ namespace JapanMap.Editor
             EnsureBootSystem<JapanMap.Platform.CrazyGamesPlatform>("CrazyGamesPlatform", 0);
             // The terrain bundle loads beside the SDK, before the game scene (D36).
             EnsureBootSystem<JapanMap.World.StartContentGate>("StartContent", 1);
+            WireQualityCalibration();
 
             if (!File.Exists(GameScene))
             {

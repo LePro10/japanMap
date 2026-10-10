@@ -21,7 +21,10 @@ namespace JapanMap.Tests
         public void TerrainFile_RestoresTheRealTerrainExactly()
         {
             var full = AssetDatabase.LoadAssetAtPath<TerrainData>(TerrainPath);
-            var bytes = TerrainPayload.Encode(TerrainPayload.Read(full));
+            // As the build ships it: the ground file without grass, the grass in its own file (D38).
+            var grids = TerrainPayload.Read(full);
+            var bytes = TerrainPayload.Encode(grids, withDetails: false);
+            var grass = TerrainPayload.EncodeDetails(grids);
             // What the build ships: the same data with tiny grids, filled from the file at runtime.
             var lite = Object.Instantiate(full);
             try
@@ -31,6 +34,7 @@ namespace JapanMap.Tests
                 lite.SetDetailResolution(16, 8);
                 lite.size = full.size;
                 TerrainPayload.Apply(TerrainPayload.Decode(bytes), lite);
+                TerrainPayload.ApplyDetails(TerrainPayload.DecodeDetails(grass), lite);
 
                 Assert.AreEqual(full.heightmapResolution, lite.heightmapResolution);
                 Assert.AreEqual(full.size, lite.size);
