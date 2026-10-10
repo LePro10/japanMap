@@ -36,7 +36,7 @@ namespace JapanMap.Gameplay.Records
 
         UIDocument _doc;
         Label _hint;
-        InputAction _toggle, _shoot, _back;
+        InputAction _toggle, _shoot;
         CinemachineBrain _brain;
         Vector3 _anchor;
         float _yaw, _pitch, _speed, _savedScale = 1f;
@@ -53,13 +53,12 @@ namespace JapanMap.Gameplay.Records
         void Awake()
         {
             _doc = gameObject.AddComponent<UIDocument>();
-            _doc.panelSettings = panelSettings;
+            _doc.panelSettings = Core.Ui.UiPanel.Get(panelSettings);
             _doc.sortingOrder = 8;
             if (actions != null) _toggle = actions.FindActionMap("Player", true).FindAction("Photo", true);
             // Actions, not wasPressedThisFrame: a short press between two frames still counts.
             _shoot = new InputAction("PhotoShoot", InputActionType.Button, "<Keyboard>/enter");
             _shoot.AddBinding("<Keyboard>/numpadEnter");
-            _back = new InputAction("PhotoBack", InputActionType.Button, "<Keyboard>/escape");
         }
 
         void OnEnable()
@@ -85,8 +84,6 @@ namespace JapanMap.Gameplay.Records
             }
             _shoot.Enable();
             _shoot.performed += OnShoot;
-            _back.Enable();
-            _back.performed += OnBack;
         }
 
         void OnDisable()
@@ -94,18 +91,11 @@ namespace JapanMap.Gameplay.Records
             if (_toggle != null) _toggle.performed -= OnToggle;
             _shoot.performed -= OnShoot;
             _shoot.Disable();
-            _back.performed -= OnBack;
-            _back.Disable();
         }
 
         void OnShoot(InputAction.CallbackContext _)
         {
             if (IsOpen) Capture();
-        }
-
-        void OnBack(InputAction.CallbackContext _)
-        {
-            if (IsOpen) Close();
         }
 
         void OnToggle(InputAction.CallbackContext _)
@@ -133,12 +123,14 @@ namespace JapanMap.Gameplay.Records
             _speed = speed.z;
             if (hud != null) hud.Hidden = true;
             _hint.style.display = DisplayStyle.Flex;
+            Core.Ui.UiStack.Push(this, Close); // Esc leaves (the menu routes it)
         }
 
         public void Close()
         {
             if (!IsOpen) return;
             IsOpen = false;
+            Core.Ui.UiStack.Pop(this);
             _hint.style.display = DisplayStyle.None;
             if (_brain != null) _brain.enabled = true;
             Time.timeScale = _savedScale;

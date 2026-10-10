@@ -22,6 +22,8 @@ namespace JapanMap.Vehicles
         public GameObject model;
         [Tooltip("Dealer price in Sparks (ASTRA §6 table via the D16 pairing); 0 = owned from the start.")]
         public int price;
+        [Tooltip("One-line role for the showroom (legacy vehicles.config.ts blurb).")]
+        [TextArea] public string blurb = "";
         [Tooltip("Factory paint, from the shared palette in Tuning.asset (ASTRA §6).")]
         public string factoryPaint = "Cloud";
 
@@ -70,6 +72,9 @@ namespace JapanMap.Vehicles
         public float driveRetain = 0.65f;
         [Tooltip("Crawl assist share on loose ground.")]
         public float crawlShare = 0.5f;
+
+        [Header("Gearbox (sound and HUD only — no force)")]
+        public GearboxSpec gearbox = new() { gears = 5, idle = 850f, redline = 7000f, limiter = 7300f, shiftTime = 0.14f, revRise = 11000f, revFall = 5200f, spread = 0.72f };
 
         [Header("Handling")]
         public ArcadeSpec arcade = new();

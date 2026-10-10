@@ -161,7 +161,9 @@ namespace JapanMap.Vehicles
             _pivot.SetPositionAndRotation(carT.position, Quaternion.Euler(0f, (_heading + _orbit + back) * Mathf.Rad2Deg, 0f));
             var speed = t.speed;
             var fast = Mathf.Clamp01(speed / s.fovSpeed);
-            _follow.FollowOffset = new Vector3(0f, s.height, -(s.distance + s.distanceFast * fast)) * _zoom;
+            // Settings "chase distance" 4–8 m, default 6 (ASTRA): scales the whole offset around the data's own distance.
+            var chase = Core.GameOptions.ChaseDistance / 6f;
+            _follow.FollowOffset = new Vector3(0f, s.height, -(s.distance + s.distanceFast * fast)) * (_zoom * chase);
             var ahead = Mathf.Min(s.lookAheadMax, Mathf.Max(0f, t.forwardSpeed) * s.lookAhead);
             _lookAt.localPosition = new Vector3(0f, s.targetHeight, back > 0f ? -ahead : ahead);
 

@@ -53,7 +53,7 @@ namespace JapanMap.OnFoot
             var host = new GameObject("WalkTouchUi");
             host.transform.SetParent(transform, false);
             _doc = host.AddComponent<UIDocument>();
-            _doc.panelSettings = panelSettings;
+            _doc.panelSettings = Core.Ui.UiPanel.Get(panelSettings);
             _doc.sortingOrder = 1;
         }
 

@@ -10,7 +10,9 @@
         "JapanMap.OnFoot",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "JapanMap.UI",
+        "JapanMap.Audio"
     ],
     "includePlatforms": [],
     "overrideReferences": true,

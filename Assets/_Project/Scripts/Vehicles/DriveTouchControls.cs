@@ -54,7 +54,7 @@ namespace JapanMap.Vehicles
             var host = new GameObject("DriveTouchUi");
             host.transform.SetParent(transform, false);
             _doc = host.AddComponent<UIDocument>();
-            _doc.panelSettings = panelSettings;
+            _doc.panelSettings = Core.Ui.UiPanel.Get(panelSettings);
         }
 
         void OnEnable()

@@ -12,7 +12,9 @@
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "Unity.RenderPipelines.Core.Runtime",
-        "Unity.RenderPipelines.Universal.Runtime"
+        "Unity.RenderPipelines.Universal.Runtime",
+        "JapanMap.UI",
+        "JapanMap.Audio"
     ],
     "includePlatforms": [
         "Editor"

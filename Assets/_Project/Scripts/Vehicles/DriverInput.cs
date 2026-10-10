@@ -118,7 +118,7 @@ namespace JapanMap.Vehicles
             {
                 throttle = Mathf.Clamp01(_throttle.ReadValue<float>() + Mathf.Max(0f, _touchAxes.y)),
                 brake = Mathf.Clamp01(_brake.ReadValue<float>() + Mathf.Max(0f, -_touchAxes.y)),
-                steer = Mathf.Clamp(_steer.ReadValue<float>() + _touchAxes.x, -1f, 1f),
+                steer = Mathf.Clamp((_steer.ReadValue<float>() + _touchAxes.x) * Core.GameOptions.Steering, -1f, 1f), // Settings: 50–150 %
                 handbrake = _handbrake.IsPressed() || _touchHandbrake,
                 boost = _boost.IsPressed() || _touchBoost,
                 stunt = _stuntArmed,

@@ -51,7 +51,7 @@ namespace JapanMap.Gameplay.Hud
         void Awake()
         {
             _doc = gameObject.AddComponent<UIDocument>();
-            _doc.panelSettings = panelSettings;
+            _doc.panelSettings = Core.Ui.UiPanel.Get(panelSettings);
             _doc.sortingOrder = 3;
         }
 
@@ -238,6 +238,9 @@ namespace JapanMap.Gameplay.Hud
             _count.style.display = text != "" ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
+        /// <summary>Activity line (test drive countdown) — top left with the race lines; "" hides it.</summary>
+        public void SetActivity(string text) => SetRaceInfo(text);
+
         /// <summary>Hint line above the prompt (ramp speed); "" hides it.</summary>
         public void SetHint(string text)
         {
@@ -267,7 +270,7 @@ namespace JapanMap.Gameplay.Hud
         public bool Hidden
         {
             get => _doc != null && _doc.rootVisualElement.style.display == DisplayStyle.None;
-            set { if (_doc != null) _doc.rootVisualElement.style.display = value ? DisplayStyle.None : DisplayStyle.Flex; }
+            set { if (_doc != null && _doc.rootVisualElement != null) _doc.rootVisualElement.style.display = value ? DisplayStyle.None : DisplayStyle.Flex; }
         }
 
         /// <summary>Touch USE button pressed.</summary>

@@ -35,6 +35,9 @@ namespace JapanMap.Editor
         static Mouse _mouse;
         static readonly HashSet<Key> Held = new();
         static Vector2 _mouseDelta;
+        // tap: a left click at a UI element, through the virtual mouse (the real path, rule 6).
+        static Vector2 _tapPos;
+        static int _tapPhase; // 2 = press on next push, 1 = release on next push
         static float _mouseUntil;
         static readonly StringBuilder Log = new();
         static int _frames, _frameTotal;
@@ -316,7 +319,7 @@ namespace JapanMap.Editor
                     var pmt = Object.FindAnyObjectByType<PlayerModeController>();
                     var carT = pmt.Car;
                     JapanMap.World.InstanceRenderer veg = null;
-                    foreach (var ir in Object.FindObjectsByType<JapanMap.World.InstanceRenderer>(FindObjectsSortMode.None))
+                    foreach (var ir in Object.FindObjectsByType<JapanMap.World.InstanceRenderer>())
                         if (ir.data is JapanMap.World.VegetationData) veg = ir;
                     var best = -1;
                     var bestD = float.MaxValue;
@@ -360,7 +363,7 @@ namespace JapanMap.Editor
                 case "tier":
                     // Quality tier for the rest of the run (High / Medium / Low), as the player would pick it.
                     JapanMap.Core.QualitySystem.SetTier(a[1], save: false);
-                    foreach (var tq in Object.FindObjectsByType<JapanMap.World.TerrainQuality>(FindObjectsSortMode.None)) tq.Apply(a[1]);
+                    foreach (var tq in Object.FindObjectsByType<JapanMap.World.TerrainQuality>()) tq.Apply(a[1]);
                     return true;
                 case "probe":
                     Probe();
@@ -394,6 +397,37 @@ namespace JapanMap.Editor
                         case "close": gs.Close(); break;
                     }
                     Log.AppendLine($"  garage {a[1]} → '{gs.Status}'");
+                    return true;
+                }
+                case "tap":
+                {
+                    // tap <button text or name>: clicks the first visible UI Toolkit button with that text.
+                    var label = string.Join(" ", a, 1, a.Length - 1);
+                    var hit = FindButton(label);
+                    if (hit == null) { Log.AppendLine($"  tap: no visible button '{label}'"); return true; }
+                    // Screen.* in this editor callback is the editor window, not the Game view: use the panel's own size.
+                    var root = hit.panel.visualTree.worldBound;
+                    var scale = 1f / JapanMap.Core.Ui.UiPanel.Scale;
+                    var c = hit.worldBound.center;
+                    _tapPos = new Vector2(c.x * scale, (root.height - c.y) * scale);
+                    _tapPhase = 2;
+                    Log.AppendLine($"  tap '{label}' at {_tapPos} (element {hit.worldBound}, panel {root}, screen {Screen.width}x{Screen.height})");
+                    _until = now + 0.25f;
+                    return false;
+                }
+                case "gameview":
+                    // gameview <w> <h>: the Game view resolution (phone portrait 390 844, landscape 844 390).
+                    GameViewSize(int.Parse(a[1]), int.Parse(a[2]));
+                    _until = now + 0.5f;
+                    return false;
+                case "text":
+                {
+                    // text: what the open menu page says, into the log.
+                    var menu = Object.FindAnyObjectByType<JapanMap.Gameplay.Menu.GameMenu>();
+                    Log.AppendLine($"  menu open={menu?.IsOpen} page={menu?.Current?.Title} · ui {JapanMap.Core.Ui.UiPanel.Form} size {JapanMap.Core.Ui.UiPanel.Size} scale {JapanMap.Core.Ui.UiPanel.Scale:0.00} screen {Screen.width}x{Screen.height}");
+                    foreach (var d in Object.FindObjectsByType<UnityEngine.UIElements.UIDocument>())
+                        Log.AppendLine($"    doc {d.name}: {(d.panelSettings != null ? d.panelSettings.name + " " + d.panelSettings.scaleMode : "none")} root {d.rootVisualElement?.panel?.visualTree.worldBound}");
+                    Log.AppendLine(menu?.Text);
                     return true;
                 }
                 case "sparks":
@@ -438,9 +472,60 @@ namespace JapanMap.Editor
             Held.CopyTo(keys);
             InputSystem.QueueStateEvent(_kb, new KeyboardState(keys));
             var moving = now < _mouseUntil;
-            var ms = new MouseState { delta = moving ? _mouseDelta : Vector2.zero };
+            var ms = new MouseState { delta = moving ? _mouseDelta : Vector2.zero, position = _tapPos };
             ms = ms.WithButton(MouseButton.Right, moving);
+            if (_tapPhase == 2) { ms = ms.WithButton(MouseButton.Left, true); _tapPhase = 1; }
+            else if (_tapPhase == 1) _tapPhase = 0;
             InputSystem.QueueStateEvent(_mouse, ms);
+        }
+
+        static UnityEngine.UIElements.VisualElement FindButton(string label)
+        {
+            foreach (var doc in Object.FindObjectsByType<UnityEngine.UIElements.UIDocument>())
+            {
+                if (doc.rootVisualElement == null || doc.rootVisualElement.resolvedStyle.display == UnityEngine.UIElements.DisplayStyle.None) continue;
+                UnityEngine.UIElements.VisualElement found = null;
+                UnityEngine.UIElements.UQueryExtensions.Query<UnityEngine.UIElements.Button>(doc.rootVisualElement).ForEach(b =>
+                {
+                    if (found != null || b.worldBound.width < 1f) return;
+                    var text = b.text;
+                    if (string.IsNullOrEmpty(text)) { var l = UnityEngine.UIElements.UQueryExtensions.Q<UnityEngine.UIElements.Label>(b); text = l?.text ?? ""; }
+                    if (text == label || b.name == label || text.StartsWith(label)) found = b;
+                });
+                if (found != null) return found;
+            }
+            return null;
+        }
+
+        /// <summary>Sets the Game view to a fixed resolution (adds it as a custom size once).</summary>
+        static void GameViewSize(int w, int h)
+        {
+            var asm = typeof(UnityEditor.Editor).Assembly;
+            var sizesType = asm.GetType("UnityEditor.GameViewSizes");
+            var single = typeof(ScriptableSingleton<>).MakeGenericType(sizesType).GetProperty("instance").GetValue(null);
+            var group = sizesType.GetMethod("GetGroup").Invoke(single, new object[] { (int)UnityEditor.GameViewSizeGroupType.Standalone });
+            var groupType = group.GetType();
+            var count = (int)groupType.GetMethod("GetTotalCount").Invoke(group, null);
+            var index = -1;
+            for (var i = 0; i < count; i++)
+            {
+                var size = groupType.GetMethod("GetGameViewSize").Invoke(group, new object[] { i });
+                var st = size.GetType();
+                if ((int)st.GetProperty("width").GetValue(size) == w && (int)st.GetProperty("height").GetValue(size) == h) { index = i; break; }
+            }
+            if (index < 0)
+            {
+                var sizeType = asm.GetType("UnityEditor.GameViewSize");
+                var kind = asm.GetType("UnityEditor.GameViewSizeType");
+                var ctor = sizeType.GetConstructor(new[] { kind, typeof(int), typeof(int), typeof(string) });
+                var size = ctor.Invoke(new object[] { System.Enum.Parse(kind, "FixedResolution"), w, h, $"{w}x{h}" });
+                groupType.GetMethod("AddCustomSize").Invoke(group, new[] { size });
+                index = count;
+            }
+            var gv = EditorWindow.GetWindow(asm.GetType("UnityEditor.GameView"));
+            gv.GetType().GetMethod("SizeSelectionCallback", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                ?.Invoke(gv, new object[] { index, null });
+            Log.AppendLine($"  gameview {w}x{h} (size {index})");
         }
 
         static void Shot(string name)

@@ -28,7 +28,7 @@ namespace JapanMap.Gameplay
             var host = new GameObject("PlayerPromptUi");
             host.transform.SetParent(transform, false);
             _doc = host.AddComponent<UIDocument>();
-            _doc.panelSettings = panelSettings;
+            _doc.panelSettings = Core.Ui.UiPanel.Get(panelSettings);
             _doc.sortingOrder = 2;
         }
 

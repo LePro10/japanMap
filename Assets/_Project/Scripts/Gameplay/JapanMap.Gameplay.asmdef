@@ -7,7 +7,9 @@
         "JapanMap.Vehicles",
         "JapanMap.OnFoot",
         "Unity.InputSystem",
-        "Unity.Cinemachine"
+        "Unity.Cinemachine",
+        "JapanMap.UI",
+        "JapanMap.Audio"
     ],
     "autoReferenced": true,
     "noEngineReferences": false

@@ -13,6 +13,9 @@ namespace JapanMap.Vehicles
     {
         public const float Gravity = 9.81f;
 
+        [Tooltip("Shift strategy of the heard/shown gearbox, all cars (ASTRA §6; acts on no force).")]
+        public ShiftStrategy shift = ShiftStrategy.Default;
+
         [Serializable]
         public struct PerSurface
         {

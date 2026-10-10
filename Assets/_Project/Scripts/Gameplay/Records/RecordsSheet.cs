@@ -1,20 +1,19 @@
 using System.Collections.Generic;
 using JapanMap.Gameplay.Discovery;
-using JapanMap.Gameplay.Economy;
-using JapanMap.Gameplay.Hud;
+using JapanMap.Gameplay.Menu;
 using JapanMap.Gameplay.Progress;
 using JapanMap.Gameplay.Races;
 using JapanMap.Gameplay.Regions;
+using JapanMap.UI;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 
 namespace JapanMap.Gameplay.Records
 {
     /// <summary>
-    /// The Records sheet (Tab), ASTRA §10/§11 "Analytics becomes player-readable Records": the five driving records
-    /// with their card pictures, the milestones, every event's best medal and best time per car, the discovery album
-    /// (eight regions × three). PROVISIONAL look until the menu of Phase 9, where it becomes the Records tab.
+    /// The Records tab of the menu (ASTRA §10/§11 "Analytics becomes player-readable Records"): sub-tabs Driving
+    /// (five records with their card pictures, distance, milestones), Events (best medal, best time per car and
+    /// parts) and Discoveries (eight regions × three). Tab opens it. Holds the data references for its page.
     /// </summary>
     public sealed class RecordsSheet : MonoBehaviour
     {
@@ -23,66 +22,14 @@ namespace JapanMap.Gameplay.Records
         [SerializeField] RaceEventSet events;
         [SerializeField] DiscoverySet cards;
         [SerializeField] RegionSet regions;
-        [SerializeField] GameplayHud hud;
-        [SerializeField] PanelSettings panelSettings;
-        [SerializeField] InputActionAsset actions;
 
-        UIDocument _doc;
-        VisualElement _root, _body;
-        InputAction _toggle;
-        readonly List<Texture2D> _textures = new();
+        RecordsScreen _screen;
 
-        public bool IsOpen { get; private set; }
-        /// <summary>Text of the open sheet (tests read what the player reads).</summary>
-        public string Text { get; private set; } = "";
+        public bool IsOpen => GameMenu.Instance != null && GameMenu.Instance.IsOpen && GameMenu.Instance.Current == Screen;
+        /// <summary>Text of the open page (tests read what the player reads).</summary>
+        public string Text => _screen?.Text ?? "";
 
-        void Awake()
-        {
-            _doc = gameObject.AddComponent<UIDocument>();
-            _doc.panelSettings = panelSettings;
-            _doc.sortingOrder = 7;
-            if (actions != null) _toggle = actions.FindActionMap("Player", true).FindAction("Records", true);
-        }
-
-        void OnEnable()
-        {
-            _escape.Enable();
-            _escape.performed += OnEscape;
-            _root = _doc.rootVisualElement;
-            _root.Clear();
-            _root.style.position = Position.Absolute;
-            _root.style.left = _root.style.right = _root.style.top = _root.style.bottom = 40;
-            _root.style.backgroundColor = new Color(0.04f, 0.05f, 0.09f, 0.94f);
-            _root.style.borderTopLeftRadius = _root.style.borderTopRightRadius = _root.style.borderBottomLeftRadius = _root.style.borderBottomRightRadius = 12;
-            _root.style.paddingLeft = _root.style.paddingRight = _root.style.paddingTop = _root.style.paddingBottom = 20;
-            _root.style.display = DisplayStyle.None;
-            var scroll = new ScrollView();
-            scroll.style.flexGrow = 1;
-            _root.Add(scroll);
-            _body = scroll;
-            if (_toggle != null)
-            {
-                _toggle.Enable();
-                _toggle.performed += OnToggle;
-            }
-        }
-
-        // Esc as an action: a short press between two frames still counts (play scripts, tests).
-        readonly InputAction _escape = new("Escape", InputActionType.Button, "<Keyboard>/escape");
-
-        void OnEscape(InputAction.CallbackContext _)
-        {
-            if (IsOpen) Close();
-        }
-
-        void OnDisable()
-        {
-            _escape.performed -= OnEscape;
-            _escape.Disable();
-            if (_toggle != null) _toggle.performed -= OnToggle;
-        }
-
-        void OnToggle(InputAction.CallbackContext _) => Toggle();
+        public RecordsScreen Screen => _screen ??= new RecordsScreen(progress, events, cards, regions);
 
         public void Toggle()
         {
@@ -90,137 +37,152 @@ namespace JapanMap.Gameplay.Records
             else Open();
         }
 
-        public void Open()
-        {
-            if (IsOpen || player == null || player.Suspended) return; // not over the garage or photo mode
-            IsOpen = true;
-            player.SetSuspended(true);
-            if (hud != null) hud.Hidden = true;
-            Fill();
-            _root.style.display = DisplayStyle.Flex;
-        }
+        public void Open() => GameMenu.Instance?.Open(Screen);
 
         public void Close()
         {
-            if (!IsOpen) return;
-            IsOpen = false;
-            _root.style.display = DisplayStyle.None;
-            if (hud != null) hud.Hidden = false;
-            player.SetSuspended(false);
-            foreach (var t in _textures) Destroy(t);
+            if (IsOpen) GameMenu.Instance.Close();
+        }
+    }
+
+    public sealed class RecordsScreen : MenuScreen
+    {
+        static readonly string[] Tabs = { "Driving", "Events", "Discoveries" };
+        readonly PlayerProgress _progress;
+        readonly RaceEventSet _events;
+        readonly DiscoverySet _cards;
+        readonly RegionSet _regions;
+        readonly List<Texture2D> _textures = new();
+        int _tab;
+        string _text = "";
+
+        public RecordsScreen(PlayerProgress progress, RaceEventSet events, DiscoverySet cards, RegionSet regions)
+        {
+            _progress = progress;
+            _events = events;
+            _cards = cards;
+            _regions = regions;
+        }
+
+        public override string Title => "Records";
+        public override Icon Icon => Icon.Records;
+        public override string Text => _text;
+
+        public override void Closed()
+        {
+            foreach (var t in _textures) Object.Destroy(t);
             _textures.Clear();
         }
 
-        void Fill()
+        public override void Build(VisualElement body)
         {
-            _body.Clear();
-            var text = new System.Text.StringBuilder();
-            var d = progress.Data;
+            Closed();
+            var d = _progress.Data;
             var r = d.records;
-            Heading("Records", 30);
-            Line($"{progress.Wallet.Balance:N0} Sparks  ·  {d.cars.FindAll(c => c.owned).Count}/{progress.Fleet.vehicles.Length} cars  ·  " +
-                 $"{r.races} events finished, {r.wins} won  ·  saved: {progress.StoreName}   (Tab / Esc closes)", 16, new Color(0.8f, 0.85f, 0.9f));
+            var text = new System.Text.StringBuilder();
+            Ui.H1(body, "Records");
+            Ui.Small(body, $"{_progress.Wallet.Balance:N0} Sparks  ·  {d.cars.FindAll(c => c.owned).Count}/{_progress.Fleet.vehicles.Length} cars  ·  " +
+                           $"{r.races} events finished, {r.wins} won  ·  saved: {_progress.StoreName}");
+            var tabs = Ui.Row(body, "jm-wrap");
+            tabs.style.marginTop = 10;
+            for (var i = 0; i < Tabs.Length; i++)
+            {
+                var index = i;
+                var b = Ui.Button(tabs, Tabs[i], () => { _tab = index; Menu.Rebuild(); });
+                Ui.On(b, i == _tab);
+            }
 
-            Heading("Driving", 22);
-            var tiles = Row();
+            // The driving records always go into the text (tests and the screen reader read all of them).
             foreach (var kind in RecordKeeper.Headline)
             {
-                var tile = new VisualElement();
-                tile.style.width = 200;
-                tile.style.marginRight = 10;
-                var pic = new VisualElement();
-                pic.style.width = 200;
-                pic.style.height = 112;
-                pic.style.backgroundColor = new Color(0.12f, 0.13f, 0.18f);
-                var tex = RecordKeeper.LoadCard(kind);
-                if (tex != null)
-                {
-                    _textures.Add(tex);
-                    pic.style.backgroundImage = new StyleBackground(tex);
-                }
-                tile.Add(pic);
                 var value = RecordKeeper.Value(r, kind);
-                var card = d.records.cards.Find(c => c.kind == kind.ToString());
-                AddLabel(tile, RecordKeeper.Title(kind), 15, new Color(0.75f, 0.8f, 0.85f));
-                AddLabel(tile, value > 0f ? RecordKeeper.Format(kind, value) : "—", 22, Color.white);
-                if (card != null) AddLabel(tile, $"{card.car}{(card.place != "" ? " · " + card.place : "")}", 13, new Color(0.7f, 0.72f, 0.78f));
-                tiles.Add(tile);
                 text.AppendLine($"{RecordKeeper.Title(kind)} {(value > 0f ? RecordKeeper.Format(kind, value) : "-")}");
             }
 
-            Heading("Milestones", 22);
-            var e = progress.Wallet.Settings;
-            var ms = Row();
-            ms.style.flexWrap = Wrap.Wrap;
-            var got = 0;
-            foreach (var m in e.milestones)
+            if (_tab == 0)
             {
-                var done = progress.Claimed($"milestone:{m.kind}:{m.threshold}");
-                if (done) got++;
-                var l = AddLabel(ms, $"{(done ? "✓" : "○")} {RecordKeeper.Title(m.kind)} {RecordKeeper.Format(m.kind, m.threshold)}", 15,
-                    done ? new Color(0.6f, 0.95f, 0.7f) : new Color(0.6f, 0.62f, 0.68f));
-                l.style.width = 250;
-            }
-            text.AppendLine($"Milestones {got}/{e.milestones.Length}");
-
-            Heading("Events", 22);
-            foreach (var ev in events.events)
-            {
-                var rec = d.events.Find(x => x.id == ev.id);
-                var medal = rec == null || rec.finishes == 0 ? "not finished"
-                    : rec.bestTier switch { 3 => "Gold", 2 => "Silver", 1 => "Bronze", _ => "finished" };
-                var bests = "";
-                if (rec != null)
-                    foreach (var b in rec.bests)
+                Ui.H2(body, "Driving");
+                var tiles = Ui.Row(body, "jm-wrap");
+                foreach (var kind in RecordKeeper.Headline)
+                {
+                    var tile = Ui.Box(tiles, "jm-tile");
+                    tile.style.width = 200;
+                    var pic = Ui.Box(tile, "jm-pic");
+                    pic.style.width = 180;
+                    pic.style.height = 101;
+                    var tex = RecordKeeper.LoadCard(kind);
+                    if (tex != null)
                     {
-                        var car = progress.Fleet.Get(b.car);
-                        var name = car != null ? car.displayName : b.car;
-                        bests += ev.kind == RaceKind.Drift ? $"   {name} ({b.tune}) {b.score:N0} pts" : $"   {name} ({b.tune}) {Clock(b.seconds)}";
+                        _textures.Add(tex);
+                        pic.style.backgroundImage = new StyleBackground(tex);
                     }
-                Line($"{ev.title} · {medal}{(rec != null ? $" · {rec.finishes}× finished" : "")}{bests}", 16, Color.white);
-                text.AppendLine($"{ev.title} {medal}{bests}");
-            }
+                    var value = RecordKeeper.Value(r, kind);
+                    var card = d.records.cards.Find(c => c.kind == kind.ToString());
+                    Ui.Small(tile, RecordKeeper.Title(kind));
+                    Ui.Text(tile, value > 0f ? RecordKeeper.Format(kind, value) : "—", "jm-h2");
+                    if (card != null) Ui.Small(tile, $"{card.car}{(card.place != "" ? " · " + card.place : "")}");
+                }
 
-            Heading($"Discoveries · {d.discoveries.Count}/{cards.cards.Length}", 22);
-            foreach (var region in regions.regions)
-            {
-                var row = "";
-                foreach (var c in cards.cards)
-                    if (c.region == region.id) row += d.discoveries.Contains(c.id) ? $"  ✓ {c.title}" : "  ○ ???";
-                Line($"{region.title}:{row}", 15, d.regions.Contains(region.id) ? Color.white : new Color(0.55f, 0.57f, 0.62f));
+                Ui.H2(body, "Milestones");
+                var e = _progress.Wallet.Settings;
+                var ms = Ui.Row(body, "jm-wrap");
+                var got = 0;
+                foreach (var m in e.milestones)
+                {
+                    var done = _progress.Claimed($"milestone:{m.kind}:{m.threshold}");
+                    if (done) got++;
+                    var l = Ui.Text(ms, $"{(done ? "✓" : "○")} {RecordKeeper.Title(m.kind)} {RecordKeeper.Format(m.kind, m.threshold)}", done ? "jm-ok" : "jm-dim");
+                    l.style.width = 250;
+                    l.style.minHeight = 28;
+                }
+                text.AppendLine($"Milestones {got}/{e.milestones.Length}");
             }
-            text.AppendLine($"Discoveries {d.discoveries.Count}/{cards.cards.Length}");
-            Text = text.ToString();
+            else if (_tab == 1)
+            {
+                Ui.H2(body, "Events");
+                foreach (var ev in _events.events)
+                {
+                    var rec = d.events.Find(x => x.id == ev.id);
+                    var medal = rec == null || rec.finishes == 0 ? "not finished"
+                        : rec.bestTier switch { 3 => "Gold", 2 => "Silver", 1 => "Bronze", _ => "finished" };
+                    var panel = Ui.Box(body, "jm-panel");
+                    panel.style.marginBottom = 8;
+                    Ui.Text(panel, $"<b>{ev.title}</b>  ·  {medal}{(rec != null ? $" · {rec.finishes}× finished" : "")}");
+                    var bests = "";
+                    if (rec != null)
+                        foreach (var b in rec.bests)
+                        {
+                            var car = _progress.Fleet.Get(b.car);
+                            var name = car != null ? car.displayName : b.car;
+                            var line = ev.kind == RaceKind.Drift ? $"{name} ({b.tune}) {b.score:N0} pts" : $"{name} ({b.tune}) {Clock(b.seconds)}";
+                            Ui.Small(panel, line);
+                            bests += "   " + line;
+                        }
+                    text.AppendLine($"{ev.title} {medal}{bests}");
+                }
+            }
+            else
+            {
+                Ui.H2(body, $"Discoveries · {d.discoveries.Count}/{_cards.cards.Length}");
+                foreach (var region in _regions.regions)
+                {
+                    var known = d.regions.Contains(region.id);
+                    var row = Ui.Row(body, "jm-wrap");
+                    var title = Ui.Text(row, region.title, known ? "jm-body" : "jm-dim");
+                    title.style.width = 200;
+                    foreach (var c in _cards.cards)
+                    {
+                        if (c.region != region.id) continue;
+                        var found = d.discoveries.Contains(c.id);
+                        var chip = Ui.Text(row, found ? "✓ " + c.title : "○ ???", found ? "jm-sakura" : "jm-dim");
+                        chip.style.width = 220;
+                    }
+                }
+                text.AppendLine($"Discoveries {d.discoveries.Count}/{_cards.cards.Length}");
+            }
+            _text = text.ToString();
         }
 
         static string Clock(float s) => $"{Mathf.FloorToInt(s / 60f)}:{s % 60f:00.0}";
-
-        VisualElement Row()
-        {
-            var r = new VisualElement();
-            r.style.flexDirection = FlexDirection.Row;
-            r.style.marginBottom = 6;
-            _body.Add(r);
-            return r;
-        }
-
-        void Heading(string text, float size)
-        {
-            var l = AddLabel(_body, text, size, Color.white);
-            l.style.unityFontStyleAndWeight = FontStyle.Bold;
-            l.style.marginTop = 10;
-        }
-
-        void Line(string text, float size, Color color) => AddLabel(_body, text, size, color);
-
-        static Label AddLabel(VisualElement parent, string text, float size, Color color)
-        {
-            var l = new Label(text);
-            l.style.fontSize = size;
-            l.style.color = color;
-            l.style.whiteSpace = WhiteSpace.Normal;
-            parent.Add(l);
-            return l;
-        }
     }
 }

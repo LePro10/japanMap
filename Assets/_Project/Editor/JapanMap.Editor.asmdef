@@ -12,7 +12,9 @@
         "Unity.RenderPipelines.Universal.Runtime",
         "Unity.InputSystem",
         "Unity.AI.Navigation",
-        "JapanMap.Platform"
+        "JapanMap.Platform",
+        "JapanMap.UI",
+        "JapanMap.Audio"
     ],
     "includePlatforms": [
         "Editor"

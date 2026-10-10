@@ -25,5 +25,12 @@ namespace JapanMap.Gameplay.Garage
         public Vector3 cameraAt = new(576.5f, 28.6f, -489.5f);
         public Vector3 lookAt = new(572f, 27.6f, -481f);
         public float fieldOfView = 45f;
+        [Tooltip("Free test drive of a car not owned, s (ASTRA §6/§10: 90).")]
+        public float testDriveSeconds = 90f;
+        [Tooltip("Where a test drive starts (the practice spur out of the court) and its heading.")]
+        public Vector3 testDriveAt = new(572f, 27f, -492f);
+        public float testDriveHeading = 180f;
+        [Tooltip("Changes made in the menu reach the car once it is slower than this, km/h (never swap a car at speed).")]
+        public float applyBelowKmh = 8f;
     }
 }

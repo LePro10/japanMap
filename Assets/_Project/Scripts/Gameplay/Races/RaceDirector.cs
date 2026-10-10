@@ -82,6 +82,8 @@ namespace JapanMap.Gameplay.Races
         VehicleDefinition _ownCar;
 
         public State Current { get; private set; } = State.Idle;
+        /// <summary>Join markers (position, event index) — map pins, travel.</summary>
+        public IReadOnlyList<(Vector3 at, int index)> Markers => _markers;
         public RaceEventSet Set => set;
         public RaceEventSet.Event Event => _event;
         public RaceTrack Track => _track;

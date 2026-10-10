@@ -117,7 +117,7 @@ namespace JapanMap.Tests.OnFoot
             var mode = Object.FindAnyObjectByType<PlayerModeController>();
             mode.PressVehicle();
             var car = mode.Car;
-            var veg = Object.FindObjectsByType<JapanMap.World.InstanceRenderer>(FindObjectsSortMode.None).First(r => r.data is JapanMap.World.VegetationData);
+            var veg = Object.FindObjectsByType<JapanMap.World.InstanceRenderer>().First(r => r.data is JapanMap.World.VegetationData);
             // A ring cherry of Sakura Commons with a trunk collider, on open ground.
             var ring = new Vector3(550f, 0f, -510f);
             var index = Enumerable.Range(0, veg.data.Count)

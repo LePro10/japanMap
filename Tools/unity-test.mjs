@@ -14,7 +14,9 @@ try { compileIfChanged(); } catch (e) { console.error(`(compile check skipped: $
 const args = { mode, include_failed_tests: true, init_timeout: 120000, ...(group ? { group_names: [group] } : {}) };
 // A compile error makes Unity run the last good assemblies — tests would silently pass on old code.
 try {
-  const errs = (call('read_console', { types: ['error'], count: 50 }).data ?? []).filter((m) => /error CS\d+/.test(String(m.message ?? m)));
+  const logged = call('read_console', { types: ['error'], count: 50 }).data;
+  // read_console sometimes answers with an object instead of a list (once, right after a test run).
+  const errs = (Array.isArray(logged) ? logged : []).filter((m) => /error CS\d+/.test(String(m.message ?? m)));
   if (errs.length) { console.log(`FAIL · compile errors:\n  ${errs.slice(0, 5).map((m) => String(m.message ?? m).trim()).join('\n  ')}`); process.exit(1); }
 } catch (e) { console.error(`TEST BLOCKED · ${e.message}`); process.exit(2); }
 // A test file written just now is sometimes not in the test tree on the first run ("no tests matched",

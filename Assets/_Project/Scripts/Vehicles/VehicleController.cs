@@ -146,7 +146,12 @@ namespace JapanMap.Vehicles
 
             _dyn = new ArcadeDynamics(_spec ?? def.arcade, tuning, def.dirtGrip, _crawl >= 0f ? _crawl : def.crawlShare, def.driveRetain);
             _dyn.SetChassis(def.wheelbase, def.mass);
+            _gearbox.Configure(def.gearbox, tuning.shift, (_spec ?? def.arcade).TopSpeed(def.mass));
         }
+
+        readonly Gearbox _gearbox = new();
+        /// <summary>Gear, rpm and load as heard and shown (acts on no force).</summary>
+        public Gearbox Gearbox => _gearbox;
 
         static PhysicsMaterial _bodyMaterial;
         static PhysicsMaterial BodyMaterial => _bodyMaterial != null
@@ -295,6 +300,9 @@ namespace JapanMap.Vehicles
                 w1 = yawPart + tilt;
             }
             _rb.angularVelocity = w1;
+
+            var held = HoldStill ? new DriveInput { brake = 1f } : Input;
+            _gearbox.Step(dt, env.vLong, held.throttle, held.brake, airborne, r.wheelspin, r.skid);
 
             Telemetry = new VehicleTelemetry
             {

@@ -3,7 +3,7 @@
 //   node Tools/play.mjs <outDir> "<script>"     e.g.
 //   node Tools/play.mjs Captures/p6-walk "wait 3; shot start; hold w; frames walk 6 0.3; release w; press f; wait 1; probe"
 // Commands (Editor/PlayScript.cs): wait s · hold key… · release key… · press key · mouse dx dy s ·
-// shot name · frames name n dt · probe · aim x z · orbit x z r (circle anticlockwise) · sparks n · garage pick id/buy/fit Engine 2/setup Drift/paint Navy/rims 1/kit 1/close. Keys are Input System names (w, f, space, leftShift).
+// shot name · screen name (with UI) · tap <button text> (real mouse click) · gameview w h · text (menu page) · frames name n dt · probe · aim x z · orbit x z r (circle anticlockwise) · sparks n · garage pick id/buy/fit Engine 2/setup Drift/paint Navy/rims 1/kit 1/close. Keys are Input System names (w, f, space, leftShift).
 // Prints result.txt (log + probes). Never starts while the editor is already playing (the human may play).
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -50,5 +50,7 @@ while (!existsSync(result)) {
 await new Promise((res) => setTimeout(res, 300));
 console.log(readFileSync(result, 'utf8'));
 // Errors the run caused (a NullReference in Awake hid behind a passing walk once — read them every time).
-const errors = mcp('read_console', { types: ['error'], count: 10 })?.data ?? [];
-console.log(errors.length ? `CONSOLE ERRORS ${errors.length}:\n  ${errors.map((e) => String(e.message ?? e).split('\n')[0]).join('\n  ')}` : 'CONSOLE 0 errors');
+const errors = mcp('read_console', { types: ['error'], count: 10, format: 'detailed', include_stacktrace: true })?.data ?? [];
+// With the first stack line: "NullReferenceException" alone named no place (Phase 9).
+const where = (e) => typeof e === 'string' ? e.split('\n')[0] : `${String(e.message).split('\n')[0]}  @ ${String(e.stackTrace ?? '').split('\n')[0]}`;
+console.log(errors.length ? `CONSOLE ERRORS ${errors.length}:\n  ${errors.map(where).join('\n  ')}` : 'CONSOLE 0 errors');

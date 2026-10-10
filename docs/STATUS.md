@@ -3,7 +3,7 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-10 · **Phase:** 8 abgeschlossen (deine Abnahme offen; PlayMode-Gesamtlauf + Blickpunktbilder des Tors stehen aus, s. u.) · **Phase 9 (UI, HUD, Ton) ist als Nächstes dran**
+**Stand:** 2026-10-10 · **Phase:** 9 (UI, HUD, Ton) in Arbeit · Phase 8 abgeschlossen, Tor-Rest nachgeholt
 
 Phase 2 ✅ · 3 ✅ freigegeben · 4 ✅ (Optik-Abnahme offen) · 5–7 ✅ (Abnahme offen).
 
@@ -21,15 +21,21 @@ Tests: EditMode **112/112**; PlayMode zuletzt komplett **181/188** (6 auf Abruf,
 **abgebrochen, weil im Editor Play gedrückt wurde**). Bench Sakura Hoch 1 422 / Niedrig 332 DC (Phase 7: 1 390 / 336).
 Web **54,28 MB** (+0,31: SDK, Garage, Rekorde), Start 1,1 s, Browser Niedrig 356 fps, 0 Fehler.
 
-## Phase 9 — UI, HUD, Ton (als Nächstes, PLAN.md)
+## Phase 9 — UI, HUD, Ton (PLAN.md, D33)
 
-- [ ] 1. Menü (ESC pausiert alles): Weiter, Garage, Karte, Foto, Rekorde, Einstellungen · [ ] 2. HUD + Minimap, Handy-Layout
+- [x] 1. Menü (ESC pausiert alles: Zeit, Physik, Ton): Play, Cars (Besitz/Autohaus, Kaufen-Blatt, Tune, Lack, **Probefahrt 90 s**),
+  Map (Reisen), Records (3 Reiter), Photo, Settings (Steuerung + Tastenbelegung, Ton 5 Regler, Grafik, Bedienhilfen, Speicherstand).
+  Desktop-Leiste, Handy hochkant Reiter unten, Handy quer schmale Leiste. Test `MenuTests` (ESC → Pause, Mausklick-Reiter, nichts bewegt sich).
+  Bench Sakura Hoch 1 370 / Niedrig 334 DC; Web 54,36 MB, Start 0,8 s, Niedrig 263 fps (P8: 356 — Ursache offen, s. u.)
+- [ ] 2. HUD + Minimap, Handy-Layout
 - [ ] 3. Weltkarte, Teleport, Fotomodus fertig (Touch) · [ ] 4. Ton je Auto/Belag/Umgebung · [ ] 5. Touch erstklassig
 
 ## Offen / Gefunden
 
-- **Tor-Rest:** PlayMode-Gesamtlauf nach dem zweiten Touch-Fix und Blickpunktbilder Hoch/Niedrig — beim nächsten Start zuerst nachholen.
-- **Tests, die wackeln:** Touch-Test (Gerät aus + Layout nicht fertig, zwei Fixes); `Keyboard_Drives…` 1×/7 rot; `PedestrianTests.TenMinutes…`
+- **Tor-Rest Phase 8 nachgeholt:** PlayMode 179/188 (6 auf Abruf), rot: Touch-Test (3. Mal, allein grün), 2 Fußgänger-Tests (allein grün);
+  Blickpunkte Hoch/Niedrig `Captures/p8-gate-HL.png` (unverändert gegenüber Phase 7).
+- **Browser-FPS gefallen** (356 → 263 Niedrig, Editor Sakura 3,2 → 3,9 ms) seit dem Menü — A/B-Messung der UI-Dokumente steht aus.
+- **Tests, die wackeln:** Touch-Test (im Gesamtlauf rot, allein grün — reihenfolgeabhängig, Aufgabe 5); `Keyboard_Drives…` 1×/7 rot; `PedestrianTests.TenMinutes…`
   1× im Gesamtlauf rot (2 Fußgänger auf meiji-south bei t = 0 s), allein grün.
 - **Gras** wächst durch den Boden der Open Bay und steht vereinzelt auf der Schanze Petal Hop (`Captures/p8-4/jump.png`).
 - **Unity schrieb selbst um (nicht committet):** `Data/Nav/*.asset` (andere Größe), `ProjectSettings` (`InputSystem_Actions` als preloaded).

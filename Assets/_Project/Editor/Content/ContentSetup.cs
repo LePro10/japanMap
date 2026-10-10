@@ -8,6 +8,7 @@ using JapanMap.Gameplay.Drift;
 using JapanMap.Gameplay.Economy;
 using JapanMap.Gameplay.Garage;
 using JapanMap.Gameplay.Hud;
+using JapanMap.Gameplay.Menu;
 using JapanMap.Gameplay.Progress;
 using JapanMap.Gameplay.Races;
 using JapanMap.Gameplay.Records;
@@ -75,7 +76,6 @@ namespace JapanMap.Editor.Content
             Set(garage, "player", player);
             Set(garage, "spawner", spawner);
             Set(garage, "hud", hud);
-            Set(garage, "panelSettings", AssetDatabase.LoadAssetAtPath<PanelSettings>(PlayerSetup.PanelPath));
             Set(garage, "actions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(PlayerSetup.InputPath));
 
             var regions = Child<RegionWatch>(group, "Regions");
@@ -134,9 +134,6 @@ namespace JapanMap.Editor.Content
             Set(sheet, "events", RaceSeed.LoadOrCreate());
             Set(sheet, "cards", cards);
             Set(sheet, "regions", Regions());
-            Set(sheet, "hud", hud);
-            Set(sheet, "panelSettings", AssetDatabase.LoadAssetAtPath<PanelSettings>(PlayerSetup.PanelPath));
-            Set(sheet, "actions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(PlayerSetup.InputPath));
 
             var photo = Child<PhotoMode>(group, "Photo");
             Set(photo, "player", player);
@@ -145,6 +142,26 @@ namespace JapanMap.Editor.Content
             Set(photo, "hud", hud);
             Set(photo, "panelSettings", AssetDatabase.LoadAssetAtPath<PanelSettings>(PlayerSetup.PanelPath));
             Set(photo, "actions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(PlayerSetup.InputPath));
+
+            var travel = Child<Travel>(group, "Travel");
+            Set(travel, "points", MenuSeed.TravelPoints());
+            Set(travel, "player", player);
+            Set(travel, "races", races);
+            Set(travel, "regions", regions);
+            Set(travel, "roads", AssetDatabase.LoadAssetAtPath<RoadNetwork>(RoadImporter.NetworkPath));
+
+            var menu = Child<GameMenu>(group, "Menu");
+            Set(menu, "panelSettings", AssetDatabase.LoadAssetAtPath<PanelSettings>(PlayerSetup.PanelPath));
+            Set(menu, "player", player);
+            Set(menu, "hud", hud);
+            Set(menu, "actions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(PlayerSetup.InputPath));
+            Set(menu, "progress", progress);
+            Set(menu, "races", races);
+            Set(menu, "travel", travel);
+            Set(menu, "garage", garage);
+            Set(menu, "records", sheet);
+            Set(menu, "photo", photo);
+            Set(menu, "regions", regions);
 
             MapScene.Save();
             var msg = $"[Content] set up: {zones.zones.Length} drift zones, {flags} flags, {Regions().regions.Length} regions, {cards.cards.Length} discoveries";

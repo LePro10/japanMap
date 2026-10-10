@@ -473,6 +473,22 @@ Produkt-Messungen (ASTRA §11 Analytics für Entwickler) nicht in Phase 8 — br
 bisher beim Hachi (228 → 250 s). **Eigener Code:** Unity hat keine Rekord-/Fotomodus-Bausteine; Kamera, Render-
 Texture und Input System sind Standard.
 
+## D33 — Menü und Oberflächen-Maßstab: ein Menü aus Code + USS, CSS-Pixel, ESC-Stapel · 2026-10-10
+
+**Menü** (`GameMenu`, ASTRA §10): sechs Ziele Play, Cars, Map, Records, Photo, Settings; ESC pausiert **alles**
+(`timeScale` 0, `AudioListener.pause`, Spieler-Eingaben aus) — die Open Bay (E) öffnet dasselbe Menü auf Cars, aber
+ohne Pause, weil sie ein Ort in der Welt ist. Desktop: Leiste links 184 px mit „Continue“ unten; Handy hochkant: Continue
+über sechs Reitern unten; **Handy quer: schmale Leiste links** statt Reiterzeile (abweichend von ASTRA: 390 px Höhe
+ließen der Seite sonst nur ~130 px). Die vorläufigen Blätter aus Phase 8 sind Seiten: Garage → Cars (Besitz/Autohaus,
+Kaufen-Blatt mit Kontostand vorher/nachher, Tune, Appearance, Probefahrt 90 s; außerhalb der Halle erreicht eine
+Änderung das Auto, sobald es steht), Rekorde → Records (Driving/Events/Discoveries). **Maßstab:** alle Dokumente teilen
+eine Laufzeit-Kopie von `HudPanel.asset` in **CSS-Pixeln** (`UiPanel`: Gerätepixelverhältnis × Desktop-Anpassung ×
+UI-Größe 90–130 %), damit ASTRAs Zahlen (48-px-Ziele, 16-px-Text, 112-px-Minikarte) direkt gelten; das Asset bleibt
+unverändert. Sichere Ränder per jslib. **ESC-Stapel** (`UiStack`): jede offene Ebene legt ihr Schließen ab, ESC schließt
+genau eine. **Standard:** UI Toolkit mit einem USS-Thema (`Data/UI/Game.uss`, über `RuntimeTheme.tss` für alle), Tasten-
+Neubelegung mit dem Rebinding des Input Systems, Einstellungen in PlayerPrefs. **Eigener Code:** Unity hat kein
+Spielmenü-Gerüst; die Seiten bauen sich aus Code (wie das HUD, D05), Symbole sind Painter2D-Stellvertreter.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

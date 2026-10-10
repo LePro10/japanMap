@@ -1,0 +1,63 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f067fad8b39104bd29b53e8d85a2826f, type: 3}
+  m_Name: TravelPoints
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Menu.TravelPoints
+  points:
+  - id: commons
+    title: Sakura Commons
+    region: 
+    at: {x: 552, y: -500}
+    heading: 180
+    icon: 9
+  - id: rotor
+    title: Rotor Court
+    region: neon
+    at: {x: 180, y: -280}
+    heading: 0
+    icon: 20
+  - id: needle
+    title: Needle pits
+    region: needle
+    at: {x: -610, y: -740}
+    heading: 90
+    icon: 11
+  - id: cinder
+    title: Cinder Lookout
+    region: cinder
+    at: {x: -536, y: 495}
+    heading: 0
+    icon: 10
+  - id: temple
+    title: Temple forecourt
+    region: bellwood
+    at: {x: 828, y: 900}
+    heading: 0
+    icon: 13
+  - id: stillwater
+    title: Stillwater Village
+    region: stillwater
+    at: {x: -1213, y: -348}
+    heading: 0
+    icon: 14
+  - id: harbour
+    title: Harbour entrance
+    region: tideglass
+    at: {x: 810, y: -1158}
+    heading: 180
+    icon: 12
+  - id: lighthouse
+    title: Lighthouse turnout
+    region: longshore
+    at: {x: 80, y: -1280}
+    heading: 90
+    icon: 15
