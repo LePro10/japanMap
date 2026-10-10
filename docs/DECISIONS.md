@@ -557,6 +557,20 @@ Werkzeuge/Tests sehen die ganze Welt (`MapScene.Part/Parts`); `MapImport.ImportA
 **Release-Builds bauen sauber** (Cache übersprang einmal neue Shader-Regeln). Risiko: Wer in den ersten Sekunden auf eine
 noch fehlende Straßenkachel fährt, fährt auf dem Gelände darunter — mit gedrosseltem Netz in Phase 11 prüfen.
 
+## D37 — Eigenes Web-Template; Speicher gemessen statt geschätzt; Handy-Texturen (ASTC) erst nach Gerätetest · 2026-10-10
+
+**Template** `Assets/WebGLTemplates/JapanMap` (aus Unitys „Minimal“): Leinwand füllt den Rahmen, nichts markierbar, kein
+Langdruck-Menü, kein Scrollen (CrazyGames-Vorgaben), **Pixelverhältnis 1 auf iOS und Handys mit ≤ 4 GB**
+(`navigator.deviceMemory`), sonst höchstens 2 (`?dpr=` für Tests), Fehler als Hinweis in der Seite statt `alert()`,
+`window.unityInstance` für Messungen (`GetMetricsInfo`). **Speicher** (alles nachgeladen, `sdk-web --stream --mem`):
+Hoch 592 MiB WASM-Heap (505 benutzt), Niedrig 493 (441); JS-Heap 50–90 MiB — Budgets 1,5 GB / 768 MB eingehalten.
+Chromebook-Profil (CPU ÷4, Niedrig): 4,2 s bis gameplayStart, 60 fps (Mac-GPU; die schwache Chromebook-GPU prüft nur ein
+echtes Gerät). **Safari:** WebKit 26.6 (Playwright) lädt, entpackt das Gelände, streamt alles, SDK grün. **Höchstgrenze
+WASM** bleibt 2048 MiB (gebraucht ~600). **Handy-Texturen:** Handy-GPUs können kein DXT; Unity entpackt dann in Software
+(läuft, mehr Speicher). Unitys Weg wäre ein zweiter Build mit ASTC und eigene Addressables-Bündel je Format — erst wenn ein
+echtes Android-Handy (Phase 11) zu viel Speicher oder lange Ladezeit zeigt. iOS schaltet CrazyGames für Unity-Spiele ohnehin
+erst nach genug Spielen frei.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

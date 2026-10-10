@@ -30,7 +30,9 @@ Blickpunkte `Captures/p9-gate-HL.png` (gleich wie P8); Handy-Bilder `Captures/p9
 - [x] 2. **Start 18,9 MB** bis gameplayStart (vorher 58,6; D36): Orte, Straßenkacheln, Props, NavMeshes, Vegetation, alle Autos
   + Motorbänke per Addressables nach dem Start (lokal 2 s); Gelände als gzip-Datei (verlustfrei); Crunch; Shader-Varianten
   (Lit 600 → 50); eigenes Web-Template. Gesamt 63 MB auf der Leitung, 94 Dateien. Prüfen: `node Tools/sdk-web.mjs --stream --gpu`.
-- [ ] 3. Speicher/Chromebook/iOS · [ ] 4. Auto-Qualität, WebGPU · [ ] 5. Profiling · [ ] 6. CI
+- [x] 3. Speicher (D37): WASM-Heap Hoch 592 MiB, Niedrig 493 MiB (Budgets 1,5 GB / 768 MB); Chromebook-Profil (CPU ÷4) 4,2 s bis
+  Spiel; Safari/WebKit läuft; eigenes Template (DPR 1 iOS/≤ 4 GB, kein Markieren). ASTC für Handys erst nach Gerätetest (P11).
+- [ ] 4. Auto-Qualität, WebGPU · [ ] 5. Profiling · [ ] 6. CI
 
 ## Offen / Gefunden
 
