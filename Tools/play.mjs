@@ -8,7 +8,7 @@
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
-import { compileIfChanged } from './lib/fresh.mjs';
+import { compileIfChanged, compileFailed } from './lib/fresh.mjs';
 
 const [outDir, script, timeoutArg] = process.argv.slice(2);
 if (!outDir || !script) {
@@ -22,8 +22,7 @@ if (!compileIfChanged()) {
   process.exit(2);
 }
 // With compile errors Unity refuses to enter play mode and the run would wait for its timeout.
-const failed = mcp('execute_code', { action: 'execute', code: 'return EditorUtility.scriptCompilationFailed ? "failed" : "ok";' });
-if (failed?.data?.result !== 'ok') {
+if (compileFailed()) {
   console.error('PLAY BLOCKED · scripts do not compile — see the console (node Tools/mcp-call.mjs read_console)');
   process.exit(1);
 }

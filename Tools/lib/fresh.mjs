@@ -50,3 +50,19 @@ function reportUncompiled() {
   for (const f of missing)
     console.error(`UNCOMPILED · ${f} is not in any assembly — delete it and its .meta, refresh, then add it again under a new name`);
 }
+
+/**
+ * true if the editor's scripts do not compile. Right after a web build the editor reports a failed compile until
+ * it recompiles for the editor (twice in Phase 9 a play script was blocked by that): recompile once, then ask again.
+ */
+export function compileFailed() {
+  const ask = () => mcp('execute_code', { action: 'execute', code: 'return EditorUtility.scriptCompilationFailed ? "failed" : "ok";' })?.data?.result === 'failed';
+  if (!ask()) return false;
+  mcp('refresh_unity', { mode: 'force', scope: 'scripts', compile: 'request', wait_for_ready: true });
+  for (let i = 0; i < 60; i++) {
+    const s = mcp('execute_code', { action: 'execute', code: 'return EditorApplication.isCompiling || EditorApplication.isUpdating ? "busy" : "idle";' })?.data?.result;
+    if (s === 'idle') break;
+    execFileSync('sleep', ['1']);
+  }
+  return ask();
+}
