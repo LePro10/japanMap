@@ -51,6 +51,7 @@ namespace JapanMap.Gameplay.Menu
         [SerializeField] RecordsSheet records;
         [SerializeField] PhotoMode photo;
         [SerializeField] Regions.RegionWatch regions;
+        [SerializeField] Map.MapSystem map;
 
         UIDocument _doc;
         VisualElement _root, _rail, _tabs, _content, _body;

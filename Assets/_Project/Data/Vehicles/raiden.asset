@@ -18,6 +18,7 @@ MonoBehaviour:
   legacyId: meridian
   model: {fileID: 5178551124810577399, guid: 70a6b79edce0f47b887d65a23e7de986, type: 3}
   price: 27000
+  blurb: Long, planted and composed. Sweep through fast bends; brake for tight ones.
   factoryPaint: Navy
   mass: 1660
   wheelbase: 2.91
@@ -43,6 +44,15 @@ MonoBehaviour:
   dirtGrip: 0.7
   driveRetain: 0.65
   crawlShare: 0.5
+  gearbox:
+    gears: 7
+    idle: 700
+    redline: 6800
+    limiter: 7100
+    shiftTime: 0.1
+    revRise: 9000
+    revFall: 4600
+    spread: 0.72
   arcade:
     latG: 1.03
     latGrip: 11

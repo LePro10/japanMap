@@ -27,14 +27,20 @@ Web **54,28 MB** (+0,31: SDK, Garage, Rekorde), Start 1,1 s, Browser Niedrig 356
   Map (Reisen), Records (3 Reiter), Photo, Settings (Steuerung + Tastenbelegung, Ton 5 Regler, Grafik, Bedienhilfen, Speicherstand).
   Desktop-Leiste, Handy hochkant Reiter unten, Handy quer schmale Leiste. Test `MenuTests` (ESC → Pause, Mausklick-Reiter, nichts bewegt sich).
   Bench Sakura Hoch 1 370 / Niedrig 334 DC; Web 54,36 MB, Start 0,8 s, Niedrig 263 fps (P8: 356 — Ursache offen, s. u.)
-- [ ] 2. HUD + Minimap, Handy-Layout
+- [x] 2. HUD nach ASTRA-Maßen je Format: Minikarte (Vektor-Straßen, Regionen, Gelände, nordwärts; 480 m Auto / 160 m zu Fuß / 700 m
+  über 180 km/h), Instrument (Drehzahlbogen mit Rotbereich je Auto, **Gang aus dem Getriebe**, Tempo, eigener Nitro-Bogen),
+  Driftkette bei 20 %, Sparks nur 2 s nach Verdienst, Checkpoint-Pfeil, Rennkarte/Ergebnis als Blatt mit Knöpfen (Start/Back,
+  Free drive/Retry), **Meldungen erst nach dem Rennen**, Kamera hochkant 0,6 m zurück. Getriebe je Auto nach ASTRA §6 (Gänge,
+  Rotbereich, Schaltpause 70–220 ms). Tests `HudTests`, `GearboxTests` (3), Rennkarte in `JoinAtTheMarker`.
+  Minikarte zeichnet nur Straßenbündel im Ausschnitt (erst +150 k Dreiecke → +21 k). Bench Niedrig Sakura 338 DC / 555 k;
+  Web 54,38 MB, Niedrig 299–337 fps (3 Läufe), 0 Fehler.
 - [ ] 3. Weltkarte, Teleport, Fotomodus fertig (Touch) · [ ] 4. Ton je Auto/Belag/Umgebung · [ ] 5. Touch erstklassig
 
 ## Offen / Gefunden
 
 - **Tor-Rest Phase 8 nachgeholt:** PlayMode 179/188 (6 auf Abruf), rot: Touch-Test (3. Mal, allein grün), 2 Fußgänger-Tests (allein grün);
   Blickpunkte Hoch/Niedrig `Captures/p8-gate-HL.png` (unverändert gegenüber Phase 7).
-- **Browser-FPS gefallen** (356 → 263 Niedrig, Editor Sakura 3,2 → 3,9 ms) seit dem Menü — A/B-Messung der UI-Dokumente steht aus.
+- **Browser-FPS streuen stark:** derselbe Build Niedrig 231–333 fps; ohne UI (`--param noui=1`) 232–296 → kein UI-Kostenanteil messbar.
 - **Tests, die wackeln:** Touch-Test (im Gesamtlauf rot, allein grün — reihenfolgeabhängig, Aufgabe 5); `Keyboard_Drives…` 1×/7 rot; `PedestrianTests.TenMinutes…`
   1× im Gesamtlauf rot (2 Fußgänger auf meiji-south bei t = 0 s), allein grün.
 - **Gras** wächst durch den Boden der Open Bay und steht vereinzelt auf der Schanze Petal Hop (`Captures/p8-4/jump.png`).

@@ -18,6 +18,7 @@ MonoBehaviour:
   legacyId: truck
   model: {fileID: 2491861127262583478, guid: 8e63b37cede0f45fabee6cfe273c7785, type: 3}
   price: 3600
+  blurb: Forward cab, empty bed, soft bounce. Pull through village lanes.
   factoryPaint: Persimmon
   mass: 1080
   wheelbase: 2.24
@@ -43,6 +44,15 @@ MonoBehaviour:
   dirtGrip: 0.75
   driveRetain: 0.85
   crawlShare: 0.5
+  gearbox:
+    gears: 4
+    idle: 720
+    redline: 6000
+    limiter: 6300
+    shiftTime: 0.22
+    revRise: 5200
+    revFall: 3200
+    spread: 0.85
   arcade:
     latG: 0.78
     latGrip: 6

@@ -18,6 +18,7 @@ MonoBehaviour:
   legacyId: pip
   model: {fileID: 2311655142441783332, guid: 97a810bde7ff5494fa959b990ad3df31, type: 3}
   price: 2400
+  blurb: Tiny footprint. Quick turn-in and short, safe handbrake rotations.
   factoryPaint: Jade
   mass: 820
   wheelbase: 2.12
@@ -43,6 +44,15 @@ MonoBehaviour:
   dirtGrip: 0.7
   driveRetain: 0.65
   crawlShare: 0.5
+  gearbox:
+    gears: 5
+    idle: 900
+    redline: 6500
+    limiter: 6800
+    shiftTime: 0.14
+    revRise: 9000
+    revFall: 5000
+    spread: 0.74
   arcade:
     latG: 0.9
     latGrip: 10

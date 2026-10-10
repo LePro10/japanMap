@@ -18,6 +18,7 @@ MonoBehaviour:
   legacyId: touge
   model: {fileID: -1967845482108973795, guid: efa03ac8162e1439e81231a0a1bd9699, type: 3}
   price: 0
+  blurb: Light nose, a progressive rear slide, and an easy catch.
   factoryPaint: Cloud
   mass: 1180
   wheelbase: 2.43
@@ -43,6 +44,15 @@ MonoBehaviour:
   dirtGrip: 0.7
   driveRetain: 0.65
   crawlShare: 0.5
+  gearbox:
+    gears: 5
+    idle: 850
+    redline: 7000
+    limiter: 7300
+    shiftTime: 0.14
+    revRise: 11000
+    revFall: 5200
+    spread: 0.72
   arcade:
     latG: 0.95
     latGrip: 9

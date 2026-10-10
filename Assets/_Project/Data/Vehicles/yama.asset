@@ -18,6 +18,7 @@ MonoBehaviour:
   legacyId: offroad
   model: {fileID: -7350903048061135662, guid: df8f1d252e0204e07af6c0d6f3c1a5e9, type: 3}
   price: 9000
+  blurb: Heavy turn-in, tall tyres and long travel. Explore beyond the asphalt.
   factoryPaint: Sand
   mass: 1880
   wheelbase: 2.4
@@ -43,6 +44,15 @@ MonoBehaviour:
   dirtGrip: 0.85
   driveRetain: 0.85
   crawlShare: 0.5
+  gearbox:
+    gears: 5
+    idle: 750
+    redline: 5500
+    limiter: 5800
+    shiftTime: 0.14
+    revRise: 6800
+    revFall: 3800
+    spread: 0.8
   arcade:
     latG: 0.82
     latGrip: 6.8

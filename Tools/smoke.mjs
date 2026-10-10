@@ -17,6 +17,7 @@ const out = join(ROOT, arg('out', 'Captures/web-smoke.png'));
 // 8091, or the next free port: a human's preview server once held 8091 and the smoke crashed (EADDRINUSE).
 let port = 8091;
 const quality = arg('quality', '');
+const extra = arg('param', '');
 
 let server;
 for (;; port++) {
@@ -51,7 +52,8 @@ try {
   page.on('dialog', (d) => { errors.push(`dialog: ${d.message()}`); d.dismiss(); });
 
   const t0 = Date.now();
-  await page.goto(`http://127.0.0.1:${port}/${quality ? `?quality=${quality}` : ''}`);
+  const query = [quality ? `quality=${quality}` : '', extra].filter(Boolean).join('&');
+  await page.goto(`http://127.0.0.1:${port}/${query ? `?${query}` : ''}`);
   let bootMs = null;
   while (Date.now() - t0 < timeoutMs) {
     if (logs.some((l) => l.includes('[Boot]'))) { bootMs = Date.now() - t0; break; }
@@ -88,7 +90,7 @@ try {
     return c ? c.getParameter(d ? d.UNMASKED_RENDERER_WEBGL : c.RENDERER) : 'no webgl2';
   });
   const green = bootMs !== null && errors.length === 0;
-  console.log(`SMOKE ${green ? 'GREEN' : 'RED'}${quality ? ' · ' + quality : ''} · boot ${bootMs === null ? 'not reached' : (bootMs / 1000).toFixed(1) + ' s'}${fpsText} · console errors ${errors.length} · ${gl} · ${out}`);
+  console.log(`SMOKE ${green ? 'GREEN' : 'RED'}${quality ? ' · ' + quality : ''}${extra ? ' · ' + extra : ''} · boot ${bootMs === null ? 'not reached' : (bootMs / 1000).toFixed(1) + ' s'}${fpsText} · console errors ${errors.length} · ${gl} · ${out}`);
   for (const e of errors.slice(0, 20)) console.log('  ' + e);
   const bootLine = logs.find((l) => l.includes('[Boot]'));
   if (bootLine) console.log('  ' + bootLine);

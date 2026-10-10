@@ -200,7 +200,7 @@ namespace JapanMap.Gameplay.Races
                 case State.Card:
                     if (NearMarker() != _cardEvent)
                     {
-                        hud.ShowPanel("");
+                        hud.HideSheet();
                         Current = State.Idle;
                     }
                     break;
@@ -242,18 +242,34 @@ namespace JapanMap.Gameplay.Races
         {
             if (player != null && player.Suspended) return; // a menu (garage, records, photo) owns E now
             if (hud != null && hud.PromptOwner != (object)this) return;
-            if (Current == State.Idle && _cardEvent >= 0)
-            {
-                var e = set.events[_cardEvent];
-                hud.ShowPanel(Card(e));
-                hud.SetPrompt(this, "E  Start  ·  drive away to cancel");
-                Current = State.Card;
-            }
-            else if (Current == State.Card)
-            {
-                hud.ShowPanel("");
-                Begin(set.events[_cardEvent].id);
-            }
+            if (Current == State.Idle && _cardEvent >= 0) ShowCard(_cardEvent);
+            else if (Current == State.Card) StartCard();
+        }
+
+        /// <summary>The event card (ASTRA §10): route, length, mode, car, rewards; Start / Back.</summary>
+        void ShowCard(int index)
+        {
+            var e = set.events[index];
+            _cardEvent = index;
+            CardText(e, out var title, out var body);
+            hud.ShowSheet(title, body, ("Start  (E)", StartCard), ("Back", CloseCard));
+            hud.SetPrompt(this, "E  Start  ·  drive away to cancel");
+            Current = State.Card;
+        }
+
+        void StartCard()
+        {
+            if (Current != State.Card || _cardEvent < 0) return;
+            hud.HideSheet();
+            Begin(set.events[_cardEvent].id);
+        }
+
+        void CloseCard()
+        {
+            if (Current != State.Card) return;
+            hud.HideSheet();
+            hud.SetPrompt(this, "");
+            Current = State.Idle;
         }
 
         /// <summary>The car the player would drive this event in: its loan, or the own car.</summary>
@@ -263,6 +279,14 @@ namespace JapanMap.Gameplay.Races
         {
             var def = fleet != null ? fleet.Get(CardCar(e)) : null;
             return def != null ? def.displayName : "car";
+        }
+
+        void CardText(in RaceEventSet.Event e, out string title, out string body)
+        {
+            var text = Card(e);
+            var nl = text.IndexOf('\n');
+            title = e.title;
+            body = nl > 0 ? text.Substring(nl + 1) : "";
         }
 
         string Card(in RaceEventSet.Event e)
@@ -332,11 +356,15 @@ namespace JapanMap.Gameplay.Races
                 _entrants.Add(e);
             }
             _penalty = _offTrack = 0f;
+            _lastPassed = -1;
             Elapsed = 0f;
             _timer = set.countdown;
             Current = State.Countdown;
             if (progress != null && progress.Data != null) { progress.Data.Event(id).runs++; progress.MarkDirty(); }
             ShowGates();
+            Audio.Sfx.Play("Countdown_Tick");
+            hud?.SetPrompt(this, "");
+            if (hud != null) hud.HoldNotices = true; // region/discovery notices wait for the result (ASTRA §10)
             return true;
         }
 
@@ -398,8 +426,11 @@ namespace JapanMap.Gameplay.Races
         {
             if (Current == State.Countdown)
             {
+                var before = Mathf.CeilToInt(_timer);
                 _timer -= Time.fixedDeltaTime;
-                hud?.SetCountdown(_timer > 0f ? Mathf.CeilToInt(_timer).ToString() : "GO");
+                var now = Mathf.CeilToInt(_timer);
+                if (now != before) Audio.Sfx.Play(now > 0 ? "Countdown_Tick" : "Countdown_Go");
+                hud?.SetCountdown(_timer > 0f ? now.ToString() : "GO");
                 foreach (var e in _entrants) e.progress.Update(e.car.transform.position, 0f);
                 if (_timer <= 0f)
                 {
@@ -568,9 +599,13 @@ namespace JapanMap.Gameplay.Races
                 var p = me.progress.CheckpointPoint(k);
                 var d = new Vector2(p.x - me.car.transform.position.x, p.z - me.car.transform.position.z).magnitude;
                 lines.Add($"CHECKPOINT {d:0} m");
+                hud.SetTarget(p);
+                if (k != _lastPassed) { if (_lastPassed >= 0 && Current == State.Running) Audio.Sfx.Play("Bell_Checkpoint"); _lastPassed = k; }
             }
             hud.SetRaceInfo(string.Join("\n", lines));
         }
+
+        int _lastPassed = -1;
 
         static string Clock(float s) => $"{Mathf.FloorToInt(s / 60f)}:{s % 60f:00.0}";
 
@@ -618,8 +653,12 @@ namespace JapanMap.Gameplay.Races
             if (wallet != null && sparks > 0) wallet.Add(sparks, _event.title);
             var best = Record(me, result, timedOut);
             var score = _event.kind == RaceKind.Drift ? $" · {result.score:N0} points" : "";
-            hud?.ShowPanel($"<b>{_event.title}</b>\n{medal} · {Clock(result.seconds)}{score}{best}\n+{sparks} Sparks");
+            var id = _event.id;
+            hud?.ShowSheet(_event.title, $"{medal} · {Clock(result.seconds)}{score}{best}\n+{sparks} Sparks",
+                ("Free drive", () => { _timer = 0f; Cleanup(); }), ("Retry", () => { Cleanup(); Begin(id); }));
             hud?.SetRaceInfo("");
+            hud?.SetTarget(null);
+            Audio.Sfx.Play(result.place == 1 && _event.kind == RaceKind.Race ? "Bell_Win" : "Bell_Finish");
             Current = State.Finished;
             _timer = resultSeconds;
             if (me.pilot == null) me.car.Input = new DriveInput { brake = 0.4f };
@@ -711,7 +750,9 @@ namespace JapanMap.Gameplay.Races
             if (stunts != null) stunts.PaysSparks = true;
             hud?.SetRaceInfo("");
             hud?.SetCountdown("");
-            hud?.ShowPanel("");
+            hud?.HideSheet();
+            hud?.SetTarget(null);
+            if (hud != null) hud.HoldNotices = false;
             _gateA.SetActive(false);
             _gateB.SetActive(false);
             Current = State.Idle;

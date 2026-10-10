@@ -1,45 +1,68 @@
+using System;
 using System.Collections.Generic;
+using JapanMap.Core;
+using JapanMap.Core.Ui;
 using JapanMap.Gameplay.Drift;
 using JapanMap.Gameplay.Economy;
+using JapanMap.Gameplay.Map;
+using JapanMap.UI;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace JapanMap.Gameplay.Hud
 {
     /// <summary>
-    /// Game-content HUD: drift chain (points, ×1…×5 with progress to the next step, SPOT BONUS),
-    /// Sparks balance and a queue of short toasts (region explored, discovery). PROVISIONAL until the
-    /// HUD of Phase 9; UI Toolkit built in code like the other runtime panels (D05).
+    /// The driving and walking HUD (ASTRA §10 "Driving HUD layouts"), four groups: navigation (north-up minimap with
+    /// the region name), car instruments (rpm arc, gear, speed, nitro arc), the temporary skill score (drift chain at
+    /// 20 % height) and activity status (race lines, test drive). Sparks show for 2 s when earned, not permanently.
+    /// Layouts per form factor at ASTRA's reference sizes: desktop 190 px map lower left / 220 × 180 instrument lower
+    /// right; phone landscape 112 px map top left / 144 × 118 instrument right, 138 px above the bottom; phone portrait
+    /// map top left / 132 × 112 instrument top right, strips between y 140 and 220. During an event the region,
+    /// discovery and purchase notices wait until the result has gone (ASTRA: "after the finish line").
     /// </summary>
     public sealed class GameplayHud : MonoBehaviour
     {
         [SerializeField] PanelSettings panelSettings;
         [SerializeField] DriftScorer drift;
         [SerializeField] SparksWallet wallet;
+        [SerializeField] PlayerModeController player;
+        [SerializeField] MapSystem map;
         [Tooltip("Seconds a toast stays (ASTRA §3: 2.5 s).")]
         [SerializeField] float toastSeconds = 2.5f;
         [Tooltip("Seconds the result of a chain stays.")]
         [SerializeField] float chainResultSeconds = 1.8f;
+        [Tooltip("Seconds the balance shows after Sparks were earned (ASTRA §10: 2 s).")]
+        [SerializeField] float sparksSeconds = 2f;
+        [Tooltip("Minimap width in metres: in the car, on foot, and above fastKmh (ASTRA: 480 / 160 / 700).")]
+        [SerializeField] Vector3 minimapSpan = new(480f, 160f, 700f);
+        [SerializeField] float fastKmh = 180f;
 
         UIDocument _doc;
-        VisualElement _driftBox, _bar, _barFill;
-        Label _saved;
-        float _savedUntil;
-        Label _points, _mult, _spot, _result, _sparks, _toast, _banner, _prompt, _hint, _stunt, _panel, _race, _count;
-        VisualElement _useButton;
-        bool _touchSeen;
-        float _resultUntil, _toastUntil, _bannerUntil;
+        VisualElement _root, _nav, _driftBox, _bar, _barFill, _useButton, _sheet, _sheetButtons, _arrow;
+        Label _saved, _points, _mult, _spot, _result, _sparks, _toast, _banner, _prompt, _hint, _stunt, _race, _count, _region, _sheetTitle, _sheetBody;
+        Instrument _instrument;
+        MapView _minimap;
+        readonly List<MapPin> _pins = new();
+        float _savedUntil, _resultUntil, _toastUntil, _bannerUntil, _sparksUntil, _span;
+        bool _touchSeen, _held;
+        string _activity = "", _raceLines = "";
         readonly Queue<string> _toasts = new();
+        readonly Dictionary<object, string> _prompts = new();
+        FormFactor _builtFor;
 
-        static readonly Color Gold = new(1f, 0.82f, 0.35f);
-        static readonly Color Rose = new(1f, 0.55f, 0.7f);
+        static readonly Color Gold = new(0.95f, 0.77f, 0.42f);
+        static readonly Color Rose = new(0.91f, 0.66f, 0.75f);
 
         internal Label Points => _points;
         internal Label Result => _result;
         internal Label Toast => _toast;
         internal Label Sparks => _sparks;
+        public Instrument Instrument => _instrument;
+        public MapView Minimap => _minimap;
         /// <summary>Last toast shown or queued (tests, play scripts).</summary>
         public string LastToast { get; private set; } = "";
+        /// <summary>Text of the event card / result sheet ("" = none).</summary>
+        public string SheetText { get; private set; } = "";
 
         public void Configure(PanelSettings panel, DriftScorer d, SparksWallet w)
         {
@@ -51,39 +74,82 @@ namespace JapanMap.Gameplay.Hud
         void Awake()
         {
             _doc = gameObject.AddComponent<UIDocument>();
-            _doc.panelSettings = Core.Ui.UiPanel.Get(panelSettings);
+            _doc.panelSettings = UiPanel.Get(panelSettings);
             _doc.sortingOrder = 3;
         }
 
         void OnEnable()
         {
-            var root = _doc.rootVisualElement;
-            root.Clear();
-            root.pickingMode = PickingMode.Ignore;
-            Fill(root);
+            Build();
+            UiPanel.Changed += OnLayout;
+            if (drift != null) drift.ChainEnded += OnChainEnded;
+            if (wallet != null) wallet.Earned += OnEarned;
+        }
 
-            _driftBox = Box(root);
-            _driftBox.style.top = 70;
+        void OnDisable()
+        {
+            UiPanel.Changed -= OnLayout;
+            if (drift != null) drift.ChainEnded -= OnChainEnded;
+            if (wallet != null) wallet.Earned -= OnEarned;
+        }
+
+        void OnLayout()
+        {
+            if (_builtFor != UiPanel.Form) Build();
+            else Place();
+        }
+
+        // ── build ─────────────────────────────────────────────────────────────
+
+        void Build()
+        {
+            _builtFor = UiPanel.Form;
+            var hidden = _root != null && _root.style.display == DisplayStyle.None;
+            var doc = _doc.rootVisualElement;
+            doc.Clear();
+            doc.pickingMode = PickingMode.Ignore;
+            Fill(doc);
+            _root = new VisualElement { pickingMode = PickingMode.Ignore, name = "hud" };
+            Fill(_root);
+            doc.Add(_root);
+            var phone = UiPanel.IsPhone;
+            var k = phone ? 0.62f : 1f; // phone type scale; touch targets keep their size elsewhere
+
+            // Navigation: the minimap and the region name.
+            _nav = Box(_root);
+            if (map != null)
+            {
+                _minimap = new MapView(map.Roads, map.Regions, map.Bounds, map.EnsureBase()) { pickingMode = PickingMode.Ignore, name = "minimap" };
+                _minimap.style.borderTopLeftRadius = _minimap.style.borderTopRightRadius = _minimap.style.borderBottomLeftRadius = _minimap.style.borderBottomRightRadius = 12;
+                _minimap.style.borderTopWidth = _minimap.style.borderBottomWidth = _minimap.style.borderLeftWidth = _minimap.style.borderRightWidth = 2;
+                _minimap.style.borderTopColor = _minimap.style.borderBottomColor = _minimap.style.borderLeftColor = _minimap.style.borderRightColor = new Color(0.95f, 0.77f, 0.42f, 0.35f);
+                _nav.Add(_minimap);
+            }
+            _region = Text(_nav, 15f, new Color(0.9f, 0.92f, 0.92f));
+            _region.style.marginTop = 4;
+            _region.style.unityTextAlign = TextAnchor.MiddleLeft;
+
+            _instrument = new Instrument { name = "instrument" };
+            _instrument.style.position = Position.Absolute;
+            _root.Add(_instrument);
+
+            // Score: one large number and multiplier at 20 % height, a thin progress line, one reason.
+            _driftBox = Box(_root);
             _driftBox.style.left = _driftBox.style.right = 0;
             _driftBox.style.alignItems = Align.Center;
-            _driftBox.style.alignSelf = Align.Center;
             var plate = new VisualElement { pickingMode = PickingMode.Ignore };
-            // Dark plate: the bowl and the city are full of bright neon behind the numbers.
+            plate.AddToClassList("jm-plate");
             plate.style.alignItems = Align.Center;
-            plate.style.backgroundColor = new Color(0.03f, 0.04f, 0.08f, 0.55f);
-            plate.style.paddingLeft = plate.style.paddingRight = 22;
-            plate.style.paddingTop = plate.style.paddingBottom = 6;
-            plate.style.borderTopLeftRadius = plate.style.borderTopRightRadius = plate.style.borderBottomLeftRadius = plate.style.borderBottomRightRadius = 12;
             _driftBox.Add(plate);
             var row = new VisualElement { pickingMode = PickingMode.Ignore };
             row.style.flexDirection = FlexDirection.Row;
             row.style.alignItems = Align.FlexEnd;
             plate.Add(row);
-            _points = Text(row, 54, Color.white);
-            _mult = Text(row, 40, Gold);
+            _points = Text(row, 54f * k, Color.white);
+            _mult = Text(row, 40f * k, Gold);
             _mult.style.marginLeft = 14;
             _bar = new VisualElement { pickingMode = PickingMode.Ignore };
-            _bar.style.width = 220;
+            _bar.style.width = 220 * k;
             _bar.style.height = 6;
             _bar.style.marginTop = 4;
             _bar.style.backgroundColor = new Color(1f, 1f, 1f, 0.2f);
@@ -92,94 +158,196 @@ namespace JapanMap.Gameplay.Hud
             _barFill.style.backgroundColor = Gold;
             _bar.Add(_barFill);
             plate.Add(_bar);
-            _spot = Text(plate, 22, Rose);
+            _spot = Text(plate, 22f * k, Rose);
             _spot.text = "SPOT BONUS ×2";
-            _result = Text(Box(root), 34, Color.white);
-            _result.parent.style.top = 70;
+            _result = Text(Box(_root), 34f * k, Color.white);
             _result.parent.style.left = _result.parent.style.right = 0;
             _result.parent.style.alignItems = Align.Center;
 
-            _sparks = Text(Box(root), 30, Gold);
-            _sparks.parent.style.top = 24;
-            _sparks.parent.style.right = 40;
-            _sparks.parent.style.alignItems = Align.FlexEnd;
-            // ASTRA §9: a subtle "Saved" tick after purchases, grants and safe parking.
-            _saved = Text(_sparks.parent, 18, new Color(0.75f, 0.9f, 0.8f));
+            // Sparks: top right, only for a moment after earning.
+            var sparksBox = Box(_root);
+            sparksBox.style.alignItems = Align.FlexEnd;
+            _sparks = Text(sparksBox, 30f * k, Gold);
+            _saved = Text(sparksBox, 16f, new Color(0.75f, 0.9f, 0.8f));
             _saved.style.display = DisplayStyle.None;
+            sparksBox.name = "sparks";
 
-            var toastBox = Box(root);
-            toastBox.style.top = 190;
+            var toastBox = Box(_root);
+            toastBox.name = "toasts";
             toastBox.style.left = toastBox.style.right = 0;
             toastBox.style.alignItems = Align.Center;
-            _toast = Text(toastBox, 30, Color.white);
-            Plate(_toast);
-            _banner = Text(toastBox, 24, Gold);
+            _toast = Text(toastBox, 28f * k, Color.white);
+            _toast.AddToClassList("jm-plate");
+            _toast.style.whiteSpace = WhiteSpace.Normal;
+            _toast.style.maxWidth = Length.Percent(80);
+            _banner = Text(toastBox, 22f * k, Gold);
 
-            var promptBox = Box(root);
-            promptBox.style.bottom = 96;
+            var promptBox = Box(_root);
+            promptBox.name = "prompt";
             promptBox.style.left = promptBox.style.right = 0;
             promptBox.style.alignItems = Align.Center;
-            _hint = Text(promptBox, 26, Gold);
+            _hint = Text(promptBox, 24f * k, Gold);
             _hint.style.display = DisplayStyle.None;
-            _prompt = Text(promptBox, 28, Color.white);
+            _prompt = Text(promptBox, 26f * k, Color.white);
             _prompt.style.display = DisplayStyle.None;
 
-            _race = Text(Box(root), 26, Color.white);
-            _race.parent.style.top = 70;
-            _race.parent.style.left = 40;
+            _race = Text(Box(_root), 24f * k, Color.white);
+            _race.parent.name = "activity";
             _race.style.unityTextAlign = TextAnchor.UpperLeft;
-            Plate(_race);
+            _race.AddToClassList("jm-plate");
             _race.style.display = DisplayStyle.None;
 
-            var mid = Box(root);
-            mid.style.top = 300;
+            // Next checkpoint direction: just above the car's forward sightline.
+            _arrow = new VisualElement { pickingMode = PickingMode.Ignore, name = "arrow" };
+            _arrow.style.position = Position.Absolute;
+            _arrow.style.width = _arrow.style.height = 44 * (phone ? 0.8f : 1f);
+            _arrow.generateVisualContent += DrawArrow;
+            _arrow.style.display = DisplayStyle.None;
+            _root.Add(_arrow);
+
+            var mid = Box(_root);
+            mid.name = "middle";
             mid.style.left = mid.style.right = 0;
             mid.style.alignItems = Align.Center;
-            _count = Text(mid, 120, Color.white);
+            _count = Text(mid, 120f * k, Color.white);
             _count.style.display = DisplayStyle.None;
-            _panel = Text(mid, 28, Color.white);
-            Plate(_panel);
-            _panel.style.paddingTop = _panel.style.paddingBottom = 18;
-            _panel.style.paddingLeft = _panel.style.paddingRight = 32;
-            _panel.style.maxWidth = 900;
-            _panel.style.whiteSpace = WhiteSpace.Normal;
-            _panel.style.display = DisplayStyle.None;
 
-            _stunt = Text(Box(root), 24, new Color(1f, 0.55f, 0.15f));
+            _stunt = Text(Box(_root), 22f * k, new Color(1f, 0.55f, 0.15f));
             _stunt.text = "STUNT";
-            _stunt.parent.style.top = 24;
-            _stunt.parent.style.left = 40;
-            Plate(_stunt);
+            _stunt.parent.name = "stunt";
+            _stunt.AddToClassList("jm-plate");
             _stunt.style.display = DisplayStyle.None;
 
-            _useButton = new VisualElement();
-            _useButton.style.position = Position.Absolute;
-            _useButton.style.width = _useButton.style.height = 96;
-            _useButton.style.right = 460;
-            _useButton.style.top = 40;
-            _useButton.style.backgroundColor = new Color(1f, 0.68f, 0.25f, 0.45f);
-            _useButton.style.borderTopLeftRadius = _useButton.style.borderTopRightRadius = _useButton.style.borderBottomLeftRadius = _useButton.style.borderBottomRightRadius = 48;
-            var useLabel = Text(_useButton, 22, Color.white);
-            useLabel.text = "USE";
-            useLabel.style.flexGrow = 1;
+            // Event card / result sheet with real buttons (ASTRA: Start / Back, Retry / Free drive).
+            _sheet = new VisualElement { name = "sheet" };
+            _sheet.AddToClassList("jm-panel");
+            _sheet.style.position = Position.Absolute;
+            _sheetTitle = new Label { name = "sheet-title" };
+            _sheetTitle.AddToClassList("jm-h2");
+            _sheet.Add(_sheetTitle);
+            _sheetBody = new Label { enableRichText = true };
+            _sheetBody.AddToClassList("jm-body");
+            _sheet.Add(_sheetBody);
+            _sheetButtons = new VisualElement();
+            _sheetButtons.AddToClassList("jm-row");
+            _sheetButtons.AddToClassList("jm-wrap");
+            _sheetButtons.style.marginTop = 10;
+            _sheet.Add(_sheetButtons);
+            _sheet.style.display = DisplayStyle.None;
+            _root.Add(_sheet);
+
+            _useButton = new VisualElement { name = "use" };
+            _useButton.AddToClassList("jm-touch");
+            _useButton.style.width = _useButton.style.height = 64;
+            _useButton.style.backgroundColor = new Color(0.95f, 0.77f, 0.42f, 0.45f);
+            var useLabel = new Label("USE") { pickingMode = PickingMode.Ignore };
+            _useButton.Add(useLabel);
             _useButton.RegisterCallback<PointerDownEvent>(e =>
             {
                 UsePressed?.Invoke();
                 e.StopPropagation();
             });
             _useButton.style.display = DisplayStyle.None;
-            root.Add(_useButton);
-            _touchSeen = Application.isMobilePlatform;
+            _root.Add(_useButton);
+            _touchSeen = _touchSeen || Application.isMobilePlatform;
 
-            if (drift != null) drift.ChainEnded += OnChainEnded;
-            if (wallet != null) wallet.Earned += OnEarned;
+            Place();
+            if (hidden) _root.style.display = DisplayStyle.None;
+            // A rebuild (rotation, window size) keeps what was shown.
+            RefreshPrompt();
+            _race.text = "";
+            RefreshActivity();
+            var count = _countText; _countText = null; SetCountdown(count ?? "");
+            var hint = _hintText; _hintText = null; SetHint(hint ?? "");
+            SetStuntTag(_stuntOn);
+            SetTarget(_target);
+            if (_sheetArgs.title != null) ShowSheet(_sheetArgs.title, _sheetArgs.body, _sheetArgs.buttons);
         }
 
-        void OnDisable()
+        string _countText, _hintText;
+        bool _stuntOn;
+        (string title, string body, (string label, Action action)[] buttons) _sheetArgs;
+
+        /// <summary>Positions every group for the form factor, inside the safe area.</summary>
+        void Place()
         {
-            if (drift != null) drift.ChainEnded -= OnChainEnded;
-            if (wallet != null) wallet.Earned -= OnEarned;
+            var safe = UiPanel.Safe;
+            var form = UiPanel.Form;
+            var size = UiPanel.Size;
+            float L(float v) => v + safe.x;
+            float T(float v) => v + safe.y;
+            float R(float v) => v + safe.z;
+            float B(float v) => v + safe.w;
+            float map, ix, iy;
+            switch (form)
+            {
+                case FormFactor.PhoneLandscape:
+                    map = 112f; ix = 144f; iy = 118f;
+                    Pos(_nav, left: L(12), top: T(12));
+                    Pos(_instrument, right: R(12), bottom: B(138));
+                    Pos(_race.parent, left: L(136), top: T(12));
+                    Pos(_driftBox, top: T(size.y * 0.16f));
+                    Pos(_result.parent, top: T(size.y * 0.16f + 58f));
+                    Pos(_sparks.parent, right: R(170), top: T(12));
+                    Pos(_toast.parent, top: T(size.y * 0.36f));
+                    Pos(_prompt.parent, bottom: B(150));
+                    Pos(_stunt.parent, left: L(136), top: T(62));
+                    Pos(_count.parent, top: T(size.y * 0.25f));
+                    Pos(_sheet, top: T(40));
+                    Pos(_useButton, right: R(170), bottom: B(150));
+                    break;
+                case FormFactor.PhonePortrait:
+                    map = 112f; ix = 132f; iy = 112f;
+                    Pos(_nav, left: L(12), top: T(12));
+                    Pos(_instrument, right: R(12), top: T(12));
+                    Pos(_race.parent, left: L(12), top: T(150));
+                    Pos(_driftBox, top: T(178));
+                    Pos(_result.parent, top: T(178));
+                    Pos(_sparks.parent, right: R(12), top: T(128));
+                    Pos(_toast.parent, top: T(230));
+                    Pos(_prompt.parent, bottom: B(200));
+                    Pos(_stunt.parent, right: R(12), top: T(170));
+                    Pos(_count.parent, top: T(size.y * 0.3f));
+                    Pos(_sheet, top: T(150));
+                    Pos(_useButton, right: R(16), bottom: B(200));
+                    break;
+                default:
+                    map = 190f; ix = 220f; iy = 180f;
+                    Pos(_nav, left: L(24), bottom: B(24));
+                    Pos(_instrument, right: R(24), bottom: B(24));
+                    Pos(_race.parent, left: L(24), top: T(24));
+                    Pos(_driftBox, top: T(size.y * 0.2f - 30f));
+                    Pos(_result.parent, top: T(size.y * 0.2f - 20f));
+                    Pos(_sparks.parent, right: R(32), top: T(24));
+                    Pos(_toast.parent, top: T(size.y * 0.32f));
+                    Pos(_prompt.parent, bottom: B(110));
+                    Pos(_stunt.parent, left: L(24), bottom: B(260));
+                    Pos(_count.parent, top: T(size.y * 0.28f));
+                    Pos(_sheet, top: T(size.y * 0.22f));
+                    Pos(_useButton, right: R(280), bottom: B(40));
+                    break;
+            }
+            // The sheet: centred, ASTRA widths (desktop 560 px, phone 60 % / portrait 92 %).
+            var sheetW = form == FormFactor.Desktop ? 560f : size.x * (form == FormFactor.PhonePortrait ? 0.92f : 0.6f);
+            _sheet.style.width = sheetW;
+            _sheet.style.left = (size.x - sheetW) * 0.5f;
+            if (_minimap != null) _minimap.style.width = _minimap.style.height = map;
+            _region.style.width = map;
+            _instrument.style.width = ix;
+            _instrument.style.height = iy;
         }
+
+        static void Pos(VisualElement e, float? left = null, float? top = null, float? right = null, float? bottom = null)
+        {
+            e.style.left = left.HasValue ? left.Value : StyleKeyword.Auto;
+            e.style.top = top.HasValue ? top.Value : StyleKeyword.Auto;
+            e.style.right = right.HasValue ? right.Value : StyleKeyword.Auto;
+            e.style.bottom = bottom.HasValue ? bottom.Value : StyleKeyword.Auto;
+            // Centred groups span the width.
+            if (!left.HasValue && !right.HasValue && e.style.position == Position.Absolute && e.name != "sheet") { e.style.left = 0; e.style.right = 0; }
+        }
+
+        // ── API (unchanged for the game systems) ──────────────────────────────
 
         /// <summary>Show a message now, replacing the current one (puzzle feedback).</summary>
         public void Flash(string text)
@@ -190,18 +358,20 @@ namespace JapanMap.Gameplay.Hud
             _toastUntil = Time.time + toastSeconds;
         }
 
-        readonly Dictionary<object, string> _prompts = new();
-
         /// <summary>
-        /// Context action of the moment ("E  Inspect …") from one source; "" withdraws it. Several sources
-        /// may ask; the first one in asking order shows, and only that one may act on Use
-        /// (<see cref="PromptOwner"/>) — one key, one meaning at a time.
+        /// Context action of the moment ("E  Inspect …") from one source; "" withdraws it. Several sources may ask;
+        /// the first one in asking order shows, and only that one may act on Use (<see cref="PromptOwner"/>).
         /// </summary>
         public void SetPrompt(object source, string text)
         {
-            if (_prompt == null) return;
             if (string.IsNullOrEmpty(text)) _prompts.Remove(source);
             else _prompts[source] = text;
+            RefreshPrompt();
+        }
+
+        void RefreshPrompt()
+        {
+            if (_prompt == null) return;
             PromptOwner = null;
             var shown = "";
             foreach (var kv in _prompts) { PromptOwner = kv.Key; shown = kv.Value; break; }
@@ -214,18 +384,61 @@ namespace JapanMap.Gameplay.Hud
         /// <summary>Who owns the prompt shown now (null: none).</summary>
         public object PromptOwner { get; private set; }
 
-        /// <summary>Event card or result sheet in the middle of the screen; "" hides it.</summary>
+        /// <summary>Plain text panel (legacy callers); "" hides it.</summary>
         public void ShowPanel(string text)
         {
-            if (_panel == null) return;
-            _panel.text = text;
-            _panel.style.display = text != "" ? DisplayStyle.Flex : DisplayStyle.None;
+            if (string.IsNullOrEmpty(text)) { HideSheet(); return; }
+            var nl = text.IndexOf('\n');
+            ShowSheet(nl > 0 ? text.Substring(0, nl).Replace("<b>", "").Replace("</b>", "") : text, nl > 0 ? text.Substring(nl + 1) : "");
+        }
+
+        /// <summary>
+        /// Event card or result sheet: title, body, and buttons (label, action). Buttons are touch targets; the first
+        /// is the primary one.
+        /// </summary>
+        public void ShowSheet(string title, string body, params (string label, Action action)[] buttons)
+        {
+            if (_sheet == null) return;
+            _sheetTitle.text = title;
+            _sheetBody.text = body;
+            _sheetButtons.Clear();
+            for (var i = 0; i < buttons.Length; i++)
+            {
+                var b = buttons[i];
+                Ui.Button(_sheetButtons, b.label, b.action, i == 0 ? "jm-btn--primary" : "jm-btn");
+            }
+            _sheet.style.display = DisplayStyle.Flex;
+            SheetText = $"{title}\n{body}";
+            _sheetArgs = (title, body, buttons);
+        }
+
+        public void HideSheet()
+        {
+            if (_sheet == null) return;
+            _sheet.style.display = DisplayStyle.None;
+            SheetText = "";
+            _sheetArgs = default;
         }
 
         /// <summary>Race lines (position, lap, time) top left; "" hides them.</summary>
         public void SetRaceInfo(string text)
         {
-            if (_race == null || _race.text == text) return;
+            _raceLines = text ?? "";
+            RefreshActivity();
+        }
+
+        /// <summary>Activity line (test drive countdown) with the race lines; "" hides it.</summary>
+        public void SetActivity(string text)
+        {
+            _activity = text ?? "";
+            RefreshActivity();
+        }
+
+        void RefreshActivity()
+        {
+            if (_race == null) return;
+            var text = _activity != "" && _raceLines != "" ? _activity + "\n" + _raceLines : _activity + _raceLines;
+            if (_race.text == text) return;
             _race.text = text;
             _race.style.display = text != "" ? DisplayStyle.Flex : DisplayStyle.None;
         }
@@ -233,18 +446,17 @@ namespace JapanMap.Gameplay.Hud
         /// <summary>3 – 2 – 1 – GO, big in the middle; "" hides it.</summary>
         public void SetCountdown(string text)
         {
-            if (_count == null || _count.text == text) return;
+            if (_count == null || _countText == text) return;
+            _countText = text;
             _count.text = text;
             _count.style.display = text != "" ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
-        /// <summary>Activity line (test drive countdown) — top left with the race lines; "" hides it.</summary>
-        public void SetActivity(string text) => SetRaceInfo(text);
-
         /// <summary>Hint line above the prompt (ramp speed); "" hides it.</summary>
         public void SetHint(string text)
         {
-            if (_hint == null || _hint.text == text) return;
+            if (_hint == null || _hintText == text) return;
+            _hintText = text;
             _hint.text = text;
             _hint.style.display = text != "" ? DisplayStyle.Flex : DisplayStyle.None;
         }
@@ -252,8 +464,18 @@ namespace JapanMap.Gameplay.Hud
         /// <summary>The small orange STUNT tag while Stunt mode is armed (ASTRA §5).</summary>
         public void SetStuntTag(bool on)
         {
+            _stuntOn = on;
             if (_stunt != null) _stunt.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
         }
+
+        /// <summary>Direction to the next checkpoint (world position), null hides the arrow.</summary>
+        public void SetTarget(Vector3? target)
+        {
+            _target = target;
+            if (_arrow != null) _arrow.style.display = target.HasValue ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        Vector3? _target;
 
         /// <summary>The small "✓ Saved" tick under the balance for a moment; names the store when it is only this device.</summary>
         public void ShowSaved(string store)
@@ -266,15 +488,25 @@ namespace JapanMap.Gameplay.Hud
 
         public string SavedText => _saved != null && _saved.style.display == DisplayStyle.Flex ? _saved.text : "";
 
-        /// <summary>Hides the whole driving HUD while a menu scene (garage) owns the screen.</summary>
+        /// <summary>Hides the whole HUD while a menu owns the screen.</summary>
         public bool Hidden
         {
-            get => _doc != null && _doc.rootVisualElement.style.display == DisplayStyle.None;
-            set { if (_doc != null && _doc.rootVisualElement != null) _doc.rootVisualElement.style.display = value ? DisplayStyle.None : DisplayStyle.Flex; }
+            get => _root != null && _root.style.display == DisplayStyle.None;
+            set { if (_root != null) _root.style.display = value ? DisplayStyle.None : DisplayStyle.Flex; }
+        }
+
+        /// <summary>
+        /// Notices wait (region explored, discovery, purchase) — during an event until its result has gone
+        /// (ASTRA §10). Queued toasts show after.
+        /// </summary>
+        public bool HoldNotices
+        {
+            get => _held;
+            set => _held = value;
         }
 
         /// <summary>Touch USE button pressed.</summary>
-        public event System.Action UsePressed;
+        public event Action UsePressed;
 
         /// <summary>Queue a short message (region explored, discovery found).</summary>
         public void ShowToast(string text)
@@ -295,64 +527,133 @@ namespace JapanMap.Gameplay.Hud
 
         void OnEarned(int amount, string reason)
         {
+            _sparksUntil = Time.unscaledTime + sparksSeconds;
+            Audio.Sfx.Play("Bell_Sparks", 0.6f);
             // A toast that already names the reward (region, discovery) needs no second line.
-            if (_toasts.Count > 0 || Time.time < _toastUntil) return;
+            if (_held || _toasts.Count > 0 || Time.time < _toastUntil) return;
             _banner.text = $"+{amount} Sparks · {reason}";
             _bannerUntil = Time.time + toastSeconds;
         }
 
         void Update()
         {
+            if (_root == null) return;
             if (_saved != null && _savedUntil > 0f && Time.unscaledTime >= _savedUntil)
             {
                 _saved.style.display = DisplayStyle.None;
                 _savedUntil = 0f;
             }
             if (!_touchSeen && UnityEngine.InputSystem.Touchscreen.current != null
-                && UnityEngine.InputSystem.Touchscreen.current.primaryTouch.press.isPressed) _touchSeen = true;
-            if (drift != null)
+                && UnityEngine.InputSystem.Touchscreen.current.primaryTouch.press.isPressed)
             {
-                var c = drift.Chain;
-                var showChain = c.Active && c.Pending >= 1f;
-                _driftBox.style.display = showChain ? DisplayStyle.Flex : DisplayStyle.None;
-                if (showChain)
-                {
-                    _points.text = c.Pending.ToString("N0");
-                    _mult.text = $"×{c.Multiplier}";
-                    _barFill.style.width = Length.Percent(c.NextStepProgress * 100f);
-
-                    // Fading link time: the chain is still alive but about to bank.
-                    _points.style.opacity = c.Scoring ? 1f : 0.55f;
-                }
-                _spot.style.display = drift.Zone >= 0 ? DisplayStyle.Flex : DisplayStyle.None;
-                if (drift.Zone >= 0 && !showChain) _driftBox.style.display = DisplayStyle.Flex;
-                _points.style.display = _mult.style.display = showChain ? DisplayStyle.Flex : DisplayStyle.None;
-                _bar.style.display = showChain && c.Multiplier < 5 ? DisplayStyle.Flex : DisplayStyle.None;
-                _result.parent.style.display = !showChain && Time.time < _resultUntil ? DisplayStyle.Flex : DisplayStyle.None;
+                _touchSeen = true;
+                RefreshPrompt();
             }
-            if (wallet != null) _sparks.text = $"{wallet.Balance:N0} Sparks";
+            UpdateDrift();
+            UpdateCar();
+            UpdateMap();
+            if (wallet != null)
+            {
+                _sparks.text = $"{wallet.Balance:N0} Sparks";
+                var show = Time.unscaledTime < _sparksUntil || _savedUntil > 0f;
+                _sparks.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+            }
 
             if (Time.time >= _toastUntil)
             {
-                _toast.text = _toasts.Count > 0 ? _toasts.Dequeue() : "";
+                _toast.text = !_held && _toasts.Count > 0 ? _toasts.Dequeue() : "";
                 if (_toast.text != "") _toastUntil = Time.time + toastSeconds;
                 _toast.style.display = _toast.text != "" ? DisplayStyle.Flex : DisplayStyle.None;
             }
             _banner.style.display = Time.time < _bannerUntil ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
+        void UpdateDrift()
+        {
+            if (drift == null) return;
+            var c = drift.Chain;
+            var showChain = c.Active && c.Pending >= 1f;
+            _driftBox.style.display = showChain ? DisplayStyle.Flex : DisplayStyle.None;
+            if (showChain)
+            {
+                _points.text = c.Pending.ToString("N0");
+                _mult.text = $"×{c.Multiplier}";
+                _barFill.style.width = Length.Percent(c.NextStepProgress * 100f);
+                // Fading link time: the chain is still alive but about to bank.
+                _points.style.opacity = c.Scoring ? 1f : 0.55f;
+            }
+            _spot.style.display = drift.Zone >= 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            if (drift.Zone >= 0 && !showChain) _driftBox.style.display = DisplayStyle.Flex;
+            _points.style.display = _mult.style.display = showChain ? DisplayStyle.Flex : DisplayStyle.None;
+            _bar.style.display = showChain && c.Multiplier < 5 ? DisplayStyle.Flex : DisplayStyle.None;
+            _result.parent.style.display = !showChain && Time.time < _resultUntil ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        void UpdateCar()
+        {
+            var car = player != null && player.Current == PlayerModeController.Mode.Driving ? player.Car : null;
+            // On foot: no rpm, speed or nitro (ASTRA §10).
+            _instrument.style.display = car != null ? DisplayStyle.Flex : DisplayStyle.None;
+            if (car == null) { _arrow.style.display = DisplayStyle.None; return; }
+            var g = car.Gearbox;
+            var t = car.Telemetry;
+            _instrument.Set(g.Rpm, g.Spec.redline, g.Spec.limiter, Vehicles.Gearbox.Label(g.Gear), GameOptions.Speed(t.speed), GameOptions.SpeedUnit, t.boost, t.boosting);
+            if (_target.HasValue)
+            {
+                var cam = Camera.main;
+                var to = _target.Value - car.transform.position;
+                var fwd = cam != null ? cam.transform.forward : car.transform.forward;
+                var ang = Vector3.SignedAngle(new Vector3(fwd.x, 0f, fwd.z), new Vector3(to.x, 0f, to.z), Vector3.up);
+                _arrow.style.rotate = new Rotate(new Angle(ang, AngleUnit.Degree));
+                var size = UiPanel.Size;
+                _arrow.style.left = size.x * 0.5f - _arrow.resolvedStyle.width * 0.5f;
+                _arrow.style.top = size.y * (UiPanel.IsPortrait ? 0.42f : 0.36f);
+                _arrow.style.display = DisplayStyle.Flex;
+            }
+        }
+
+        void UpdateMap()
+        {
+            if (_minimap == null || map == null) return;
+            var driving = map.Driving;
+            var kmh = driving && player.Car != null ? player.Car.Telemetry.speed * 3.6f : 0f;
+            var target = !driving ? minimapSpan.y : Mathf.Lerp(minimapSpan.x, minimapSpan.z, Mathf.InverseLerp(fastKmh - 40f, fastKmh, kmh));
+            _span = _span <= 0f ? target : Mathf.Lerp(_span, target, 1f - Mathf.Exp(-Time.unscaledDeltaTime * 2f)); // expands smoothly
+            var p = map.PlayerPosition;
+            _minimap.Look(new Vector2(p.x, p.z), _span);
+            map.CollectPins(_pins, MapFilter.All, minimap: true);
+            _minimap.SetPins(_pins);
+            var rw = map.RegionWatch;
+            if (rw != null && rw.Current >= 0)
+            {
+                var title = rw.Regions.regions[rw.Current].title;
+                if (_region.text != title) _region.text = title;
+            }
+        }
+
+        void DrawArrow(MeshGenerationContext ctx)
+        {
+            var r = _arrow.contentRect;
+            var p = ctx.painter2D;
+            var c = r.center;
+            var s = r.width * 0.5f;
+            p.fillColor = new Color(0.4f, 0.84f, 0.96f, 0.95f);
+            p.strokeColor = new Color(0.02f, 0.08f, 0.1f, 0.8f);
+            p.lineWidth = 2f;
+            p.BeginPath();
+            p.MoveTo(c + new Vector2(0f, -s));
+            p.LineTo(c + new Vector2(s * 0.75f, s * 0.7f));
+            p.LineTo(c + new Vector2(0f, s * 0.35f));
+            p.LineTo(c + new Vector2(-s * 0.75f, s * 0.7f));
+            p.ClosePath();
+            p.Fill();
+            p.Stroke();
+        }
+
         static void Fill(VisualElement e)
         {
             e.style.position = Position.Absolute;
             e.style.left = e.style.right = e.style.top = e.style.bottom = 0;
-        }
-
-        static void Plate(VisualElement e)
-        {
-            e.style.backgroundColor = new Color(0.03f, 0.04f, 0.08f, 0.55f);
-            e.style.paddingLeft = e.style.paddingRight = 22;
-            e.style.paddingTop = e.style.paddingBottom = 6;
-            e.style.borderTopLeftRadius = e.style.borderTopRightRadius = e.style.borderBottomLeftRadius = e.style.borderBottomRightRadius = 12;
         }
 
         static VisualElement Box(VisualElement parent)

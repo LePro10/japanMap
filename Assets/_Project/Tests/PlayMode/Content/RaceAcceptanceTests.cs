@@ -164,11 +164,17 @@ namespace JapanMap.Tests.Content
             yield return new WaitForSeconds(0.6f);
             yield return Tap(Key.E);
             Assert.AreEqual(RaceDirector.State.Card, race.Current, "E at the marker shows the card");
+            var hud = Object.FindAnyObjectByType<JapanMap.Gameplay.Hud.GameplayHud>();
+            StringAssert.StartsWith(e.title, hud.SheetText, "the card names the event");
+            StringAssert.Contains("Sparks", hud.SheetText, "the card shows the reward");
             yield return Tap(Key.E);
             Assert.AreEqual(RaceDirector.State.Countdown, race.Current, "E on the card starts");
+            Assert.AreEqual("", hud.SheetText, "the card closes at the start");
+            Assert.IsTrue(hud.HoldNotices, "notices wait while the event runs (ASTRA §10)");
             Assert.AreEqual(e.id, race.Event.id);
             Assert.IsTrue(player.Car.HoldStill);
             race.Abort("test over");
+            Assert.IsFalse(hud.HoldNotices, "notices flow again after the event");
         }
     }
 }

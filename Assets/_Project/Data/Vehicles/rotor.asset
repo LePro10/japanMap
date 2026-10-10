@@ -18,6 +18,7 @@ MonoBehaviour:
   legacyId: gt
   model: {fileID: -3624338741610695390, guid: ae592200c83a44d5f9a83d59ab79fca5, type: 3}
   price: 42000
+  blurb: Low mid-engine wedge. Precise at speed; respect an abrupt lift.
   factoryPaint: Rose
   mass: 1240
   wheelbase: 2.62
@@ -43,6 +44,15 @@ MonoBehaviour:
   dirtGrip: 0.65
   driveRetain: 0.65
   crawlShare: 0.85
+  gearbox:
+    gears: 7
+    idle: 1000
+    redline: 8500
+    limiter: 8800
+    shiftTime: 0.09
+    revRise: 16000
+    revFall: 8000
+    spread: 0.68
   arcade:
     latG: 1.22
     latGrip: 13

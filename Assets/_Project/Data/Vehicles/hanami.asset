@@ -18,6 +18,7 @@ MonoBehaviour:
   legacyId: needle
   model: {fileID: 603326477844932168, guid: 9740e4081271f4184815db363bef6767, type: 3}
   price: 54000
+  blurb: Exposed wheels and featherweight response. Grip builds with speed.
   factoryPaint: Silver
   mass: 710
   wheelbase: 2.88
@@ -43,6 +44,15 @@ MonoBehaviour:
   dirtGrip: 0.65
   driveRetain: 0.65
   crawlShare: 0.85
+  gearbox:
+    gears: 6
+    idle: 1500
+    redline: 10500
+    limiter: 10800
+    shiftTime: 0.07
+    revRise: 22000
+    revFall: 11000
+    spread: 0.66
   arcade:
     latG: 1.35
     latGrip: 15

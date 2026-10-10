@@ -163,6 +163,20 @@ namespace JapanMap.Editor.Content
             Set(menu, "photo", photo);
             Set(menu, "regions", regions);
 
+            var map = Child<JapanMap.Gameplay.Map.MapSystem>(group, "Map");
+            Set(map, "roads", AssetDatabase.LoadAssetAtPath<RoadNetwork>(RoadImporter.NetworkPath));
+            Set(map, "regions", regions);
+            Set(map, "player", player);
+            Set(map, "progress", progress);
+            Set(map, "races", races);
+            Set(map, "discoveries", discovery);
+            Set(map, "driftZones", zones);
+            Set(map, "garage", Asset<GarageSettings>("GarageSettings"));
+            Set(map, "travel", travel);
+            Set(hud, "player", player);
+            Set(hud, "map", map);
+            Set(menu, "map", map);
+
             MapScene.Save();
             var msg = $"[Content] set up: {zones.zones.Length} drift zones, {flags} flags, {Regions().regions.Length} regions, {cards.cards.Length} discoveries";
             Debug.Log(msg);

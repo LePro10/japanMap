@@ -18,6 +18,7 @@ MonoBehaviour:
   legacyId: torrent
   model: {fileID: 1464532425044276665, guid: 0442fa0f89ee842b8995d66df898cfcc, type: 3}
   price: 15000
+  blurb: All-wheel punch and short, catchable slides on loose ground.
   factoryPaint: Deep Teal
   mass: 1320
   wheelbase: 2.52
@@ -43,6 +44,15 @@ MonoBehaviour:
   dirtGrip: 0.85
   driveRetain: 0.65
   crawlShare: 0.5
+  gearbox:
+    gears: 6
+    idle: 950
+    redline: 7500
+    limiter: 7800
+    shiftTime: 0.14
+    revRise: 12500
+    revFall: 6500
+    spread: 0.7
   arcade:
     latG: 1.06
     latGrip: 10.5

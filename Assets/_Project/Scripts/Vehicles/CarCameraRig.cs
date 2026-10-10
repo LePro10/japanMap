@@ -164,6 +164,8 @@ namespace JapanMap.Vehicles
             // Settings "chase distance" 4–8 m, default 6 (ASTRA): scales the whole offset around the data's own distance.
             var chase = Core.GameOptions.ChaseDistance / 6f;
             _follow.FollowOffset = new Vector3(0f, s.height, -(s.distance + s.distanceFast * fast)) * (_zoom * chase);
+            // Phone portrait: 0.6 m back and 0.3 m up to show the coming turn above the car (ASTRA §10).
+            if (Core.Ui.UiPanel.IsPortrait) _follow.FollowOffset += new Vector3(0f, 0.3f, -0.6f);
             var ahead = Mathf.Min(s.lookAheadMax, Mathf.Max(0f, t.forwardSpeed) * s.lookAhead);
             _lookAt.localPosition = new Vector3(0f, s.targetHeight, back > 0f ? -ahead : ahead);
 
