@@ -31,6 +31,30 @@ namespace JapanMap.Tests
         }
 
         /// <summary>Terrain trees drew one call per tree (44 500 measured); they must stay empty.</summary>
+        /// <summary>Grass kept clear of standing buildings and ramps (it grew through the Open Bay floor and on Petal Hop until Phase 9).</summary>
+        [Test]
+        public void Grass_NotInTheOpenBay_NorOnARamp_ButOnTheLawn()
+        {
+            var t = Terrain.activeTerrain;
+            var d = t.terrainData;
+            int Grass(float x, float z)
+            {
+                var r = d.detailResolution;
+                var px = Mathf.FloorToInt((x - t.transform.position.x) / d.size.x * r);
+                var pz = Mathf.FloorToInt((z - t.transform.position.z) / d.size.z * r);
+                return d.GetDetailLayer(px, pz, 1, 1, 0)[0, 0];
+            }
+            var garage = UnityEditor.AssetDatabase.LoadAssetAtPath<JapanMap.Gameplay.Garage.GarageSettings>("Assets/_Project/Data/Gameplay/GarageSettings.asset");
+            Assert.AreEqual(0, Grass(garage.bay.x, garage.bay.z), "grass inside the Open Bay");
+            var ramps = UnityEditor.AssetDatabase.LoadAssetAtPath<JapanMap.Gameplay.Stunts.RampSet>(JapanMap.Editor.Content.RampBuilder.Path);
+            foreach (var r in ramps.ramps)
+            {
+                var mid = new Vector3(r.start.x, 0f, r.start.y) + r.Forward * (r.Length * 0.5f);
+                Assert.AreEqual(0, Grass(mid.x, mid.z), $"grass on ramp {r.id}");
+            }
+            Assert.Greater(Grass(530f, -530f), 0, "the Sakura Commons lawn keeps its grass");
+        }
+
         [Test]
         public void Terrain_HasNoTreeInstances()
         {

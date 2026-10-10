@@ -87,6 +87,7 @@ namespace JapanMap.Tests.Content
         public IEnumerator Map_TravelByClick_LockedStaysLocked_ClueCircleHoldsTheCard()
         {
             SceneManager.LoadScene(Bootstrapper.BootSceneName);
+            yield return null; // the previous test's Game scene is still active this frame
             for (var w = 0f; SceneManager.GetActiveScene().name != "Game" && w < 10f; w += Time.unscaledDeltaTime) yield return null;
             for (var f = 0; f < 10; f++) yield return null;
             yield return Tap(Key.F);

@@ -45,20 +45,19 @@ Web **54,28 MB** (+0,31: SDK, Garage, Rekorde), Start 1,1 s, Browser Niedrig 356
 - **Tor-Rest Phase 8 nachgeholt:** PlayMode 179/188 (6 auf Abruf), rot: Touch-Test (3. Mal, allein grün), 2 Fußgänger-Tests (allein grün);
   Blickpunkte Hoch/Niedrig `Captures/p8-gate-HL.png` (unverändert gegenüber Phase 7).
 - **Browser-FPS streuen stark:** derselbe Build Niedrig 231–333 fps; ohne UI (`--param noui=1`) 232–296 → kein UI-Kostenanteil messbar.
-- **Tests, die wackeln:** Touch-Test (im Gesamtlauf rot, allein grün — reihenfolgeabhängig, Aufgabe 5); `Keyboard_Drives…` 1×/7 rot; `PedestrianTests.TenMinutes…`
+- **Tests, die wackeln:** alter Touch-Test ersetzt (neues Layout, Diagnose „welches Element bekommt den Finger"); `Keyboard_Drives…` 1×/7 rot; `PedestrianTests.TenMinutes…`
   1× im Gesamtlauf rot (2 Fußgänger auf meiji-south bei t = 0 s), allein grün.
-- **Gras** wächst durch den Boden der Open Bay und steht vereinzelt auf der Schanze Petal Hop (`Captures/p8-4/jump.png`).
 - **Unity schrieb selbst um (nicht committet):** `Data/Nav/*.asset` (andere Größe), `ProjectSettings` (`InputSystem_Actions` als preloaded).
 - **CrazyGames ungeprüft:** Mausfang, Foto-Download und Speichern im echten CrazyGames-Rahmen → Phase 10 mit dem QA-Tool. Headless-Chrome
   bekommt ohne SDK keine Tasten (`save-web` prüft auf 127.0.0.1 nur den Start-Stand). „Choose progress“ bei Konto-Konflikten fehlt.
-- **Fehlt noch:** Probefahrt 90 s (ASTRA §6); zwei Car-Lab-Lackierungen je Auto (Texturen → Phase 10 Nachladen); Ride-Höhe +20 mm im Setup „Dirt“;
-  Produkt-Messungen (ASTRA §11) → Phase 10/11; Fotomodus/Rekorde/Garage per Touch → Phase 9.
+- **Fehlt noch:** zwei Car-Lab-Lackierungen je Auto (Texturen → Phase 10 Nachladen); Ride-Höhe +20 mm im Setup „Dirt“;
+  Produkt-Messungen (ASTRA §11) → Phase 10/11; Gegner-Motoren hörbar (Prototyp hatte sie) → Phase 10/12.
 - **ASTRA-Katalog:** E01 Sakura Starter, E08–E12, E15–E17, Lieferfahrten brauchen ungebaute Straßen/Orte (Harbour Outer Road, Crosslight,
   Terrace Track, Breakyard, Market Hall) — Phase 12 oder eigener Karten-Schritt.
-- **Rennen vorläufig:** Karte/Ergebnis als Text (Phase 9); Regions-/Fundmeldungen auch im Rennen (ASTRA: erst danach).
 - **Entdeckungen:** Funaura: die sechs Angler fehlen. **Leuchtturm-Reiseziel** wartet auf eine Longshore-Straße.
 - **Fotomodus:** „Capture High" ohne Mehrfach-Abtastung (ein Bild in 2560 px; ASTRA wünscht mehrere versetzte Samples) → bei Bedarf Phase 10.
-- **Karte:** Kuppen-Knicke, Stadtplatte ohne Böschung, treppige Reisfeldränder, `commons-drive` beginnt als Asphaltkante.
+- **Karte:** Ring-Senke bei (508, −738): die Karosserie setzt bei ~110 km/h auf; die Abnahmefahrt besteht knapp (5,5 m von 6 m;
+  mit der neuen Baumliste statt 0,9 m) → Phase 10/12 Straßenprofil glätten. Kuppen-Knicke, Stadtplatte ohne Böschung, treppige Reisfeldränder, `commons-drive` beginnt als Asphaltkante.
 - **Hoch kostet viel** (Wald-Schatten, lodBias 2) → Phase 10. **Download 54 MB** (Desktop 50, Handy 20) → Phase 10 (Addressables).
 
 ### Für die Asset-Sitzung (Lagen stehen in den Daten, Import genügt)

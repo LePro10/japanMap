@@ -119,7 +119,13 @@ namespace JapanMap.Gameplay.Hud
             _nav = Box(_root);
             if (map != null)
             {
-                _minimap = new MapView(map.Roads, map.Regions, map.Bounds, map.EnsureBase()) { pickingMode = PickingMode.Ignore, name = "minimap" };
+                _minimap = new MapView(map.Roads, map.Regions, map.Bounds, map.EnsureBase()) { name = "minimap" };
+                // A tap on the minimap opens the world map (ASTRA §10: "M, minimap tap").
+                _minimap.RegisterCallback<PointerDownEvent>(e =>
+                {
+                    Menu.GameMenu.Instance?.Open<Menu.MapScreen>();
+                    e.StopPropagation();
+                });
                 _minimap.style.borderTopLeftRadius = _minimap.style.borderTopRightRadius = _minimap.style.borderBottomLeftRadius = _minimap.style.borderBottomRightRadius = 12;
                 _minimap.style.borderTopWidth = _minimap.style.borderBottomWidth = _minimap.style.borderLeftWidth = _minimap.style.borderRightWidth = 2;
                 _minimap.style.borderTopColor = _minimap.style.borderBottomColor = _minimap.style.borderLeftColor = _minimap.style.borderRightColor = new Color(0.95f, 0.77f, 0.42f, 0.35f);
@@ -288,7 +294,7 @@ namespace JapanMap.Gameplay.Hud
                     Pos(_race.parent, left: L(136), top: T(12));
                     Pos(_driftBox, top: T(size.y * 0.16f));
                     Pos(_result.parent, top: T(size.y * 0.16f + 58f));
-                    Pos(_sparks.parent, right: R(170), top: T(12));
+                    Pos(_sparks.parent, right: R(12), top: T(66)); // under the touch button row
                     Pos(_toast.parent, top: T(size.y * 0.36f));
                     Pos(_prompt.parent, bottom: B(150));
                     Pos(_stunt.parent, left: L(136), top: T(62));
@@ -303,19 +309,30 @@ namespace JapanMap.Gameplay.Hud
                     Pos(_race.parent, left: L(12), top: T(150));
                     Pos(_driftBox, top: T(178));
                     Pos(_result.parent, top: T(178));
-                    Pos(_sparks.parent, right: R(12), top: T(128));
+                    Pos(_sparks.parent, left: L(12), top: T(150)); // under the region name; the right has the button row
                     Pos(_toast.parent, top: T(230));
-                    Pos(_prompt.parent, bottom: B(200));
+                    Pos(_prompt.parent, bottom: B(300)); // above the touch controls and the player prompt
                     Pos(_stunt.parent, right: R(12), top: T(170));
                     Pos(_count.parent, top: T(size.y * 0.3f));
                     Pos(_sheet, top: T(150));
-                    Pos(_useButton, right: R(16), bottom: B(200));
+                    Pos(_useButton, right: R(16), bottom: B(250)); // above CALL / CAR
                     break;
                 default:
                     map = 190f; ix = 220f; iy = 180f;
-                    Pos(_nav, left: L(24), bottom: B(24));
-                    Pos(_instrument, right: R(24), bottom: B(24));
-                    Pos(_race.parent, left: L(24), top: T(24));
+                    // With touch (a tablet, a touch laptop) the lower corners belong to the pad and the buttons: the map
+                    // and the instrument go up, the race lines beside the map (else a finger on the pad hit the minimap).
+                    if (_touchSeen)
+                    {
+                        Pos(_nav, left: L(24), top: T(24));
+                        Pos(_instrument, right: R(24), top: T(80));
+                        Pos(_race.parent, left: L(24 + 190 + 16), top: T(24));
+                    }
+                    else
+                    {
+                        Pos(_nav, left: L(24), bottom: B(24));
+                        Pos(_instrument, right: R(24), bottom: B(24));
+                        Pos(_race.parent, left: L(24), top: T(24));
+                    }
                     Pos(_driftBox, top: T(size.y * 0.2f - 30f));
                     Pos(_result.parent, top: T(size.y * 0.2f - 20f));
                     Pos(_sparks.parent, right: R(32), top: T(24));
@@ -379,6 +396,14 @@ namespace JapanMap.Gameplay.Hud
             _prompt.text = _touchSeen && shown.StartsWith("E  ") ? shown.Substring(3) : shown;
             _prompt.style.display = shown != "" ? DisplayStyle.Flex : DisplayStyle.None;
             _useButton.style.display = _touchSeen && shown != "" ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>Shows the touch USE button as if the screen had been touched (screenshots of the phone layout).</summary>
+        public void ShowTouch()
+        {
+            _touchSeen = true;
+            RefreshPrompt();
+            Place();
         }
 
         /// <summary>Who owns the prompt shown now (null: none).</summary>
@@ -481,7 +506,7 @@ namespace JapanMap.Gameplay.Hud
         public void ShowSaved(string store)
         {
             if (_saved == null) return;
-            _saved.text = store == "CrazyGames" ? "✓ Saved" : "✓ Saved on this device";
+            _saved.text = store == "CrazyGames" || UiPanel.IsPhone ? "✓ Saved" : "✓ Saved on this device";
             _saved.style.display = DisplayStyle.Flex;
             _savedUntil = Time.unscaledTime + 1.6f;
         }
@@ -548,6 +573,7 @@ namespace JapanMap.Gameplay.Hud
             {
                 _touchSeen = true;
                 RefreshPrompt();
+                Place();
             }
             UpdateDrift();
             UpdateCar();

@@ -114,3 +114,13 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
   Arbeitsspeicher; `SaveIsolationTests` prüft es). Einen gespeicherten Stand vor dem Start in `FreshSaveAttribute.Store` schreiben.
 - **Stufen messen:** Editor `QualitySystem.SetTier("Low")` + `TerrainQuality.Apply`;
   Browser `node Tools/smoke.mjs --gpu --quality Low`.
+
+- **Test hängt bei Zeit 0:** Unitys Test-Zeitlimit zählt Spielzeit — ein Test, der ein Menü/den Fotomodus offen lässt,
+  wartet ewig. `unity-test.mjs` bricht nach 60 s Pause ab und nennt die offene Seite. In Tests `WaitForSecondsRealtime`
+  nehmen, wo das Spiel pausiert sein kann.
+- **`Screen.*` in einem Editor-Callback** (PlayScript, `EditorApplication.update`) ist das Editorfenster, nicht die
+  Spielansicht — für UI-Koordinaten `UiPanel.Size`/`UiPanel.Scale` nehmen.
+- **Nach einem Import** (Vegetation, Karte) `git status` auf die erwarteten Assets prüfen: ungespeichert = beim nächsten
+  Play/Reload verloren (Phase 9: Grastest erst nach `AssetDatabase.SaveAssets` grün).
+- **Kein Werkzeug hinter einem anderen in derselben Hintergrund-Kette** (`compile … ; unity-test …`): bricht das erste ab,
+  startet das zweite unbemerkt und ließ einmal den Editor im Play-Modus zurück.

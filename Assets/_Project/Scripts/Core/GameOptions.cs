@@ -32,6 +32,8 @@ namespace JapanMap.Core
         /// <summary>Index into UiPanel.Scales (0 = 90 %, 1 = 100 %…).</summary>
         public static int UiScale { get => Mathf.Clamp(I("uiscale", 1), 0, 3); set => SetI("uiscale", Mathf.Clamp(value, 0, 3)); }
         public static bool AutoThrottle { get => I("autothrottle", 1) == 1; set => SetI("autothrottle", value ? 1 : 0); }
+        /// <summary>Touch button scale, 1.0–1.4 (ASTRA: 100–140 %).</summary>
+        public static float ButtonScale { get => Mathf.Clamp(F("btnscale", 1f), 1f, 1.4f); set => SetF("btnscale", Mathf.Clamp(value, 1f, 1.4f)); }
         public static bool LeftHanded { get => I("lefthand", 0) == 1; set => SetI("lefthand", value ? 1 : 0); }
         public static bool ReducedMotion { get => I("reduced", 0) == 1; set => SetI("reduced", value ? 1 : 0); }
         /// <summary>Key overrides of the Input System (JSON from SaveBindingOverridesAsJson).</summary>
@@ -44,7 +46,7 @@ namespace JapanMap.Core
 
         public static void ResetAll()
         {
-            foreach (var k in new[] { "steer", "chase", "shake", "mph", "uiscale", "autothrottle", "lefthand", "reduced", "bindings" }) PlayerPrefs.DeleteKey(P + k);
+            foreach (var k in new[] { "steer", "chase", "shake", "mph", "uiscale", "autothrottle", "lefthand", "reduced", "bindings", "btnscale" }) PlayerPrefs.DeleteKey(P + k);
             Changed?.Invoke();
         }
     }

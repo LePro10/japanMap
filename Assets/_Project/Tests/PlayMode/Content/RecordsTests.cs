@@ -68,6 +68,7 @@ namespace JapanMap.Tests.Content
         static IEnumerator BootInCar(RecordsTests t)
         {
             SceneManager.LoadScene(Bootstrapper.BootSceneName);
+            yield return null; // the previous test's Game scene is still active this frame
             var waited = 0f;
             while (SceneManager.GetActiveScene().name != "Game" && waited < 10f)
             {
@@ -196,6 +197,7 @@ namespace JapanMap.Tests.Content
         public IEnumerator WriteRingTimes()
         {
             SceneManager.LoadScene(Bootstrapper.BootSceneName);
+            yield return null; // the previous test's Game scene is still active this frame
             while (SceneManager.GetActiveScene().name != "Game") yield return null;
             for (var f = 0; f < 10; f++) yield return null;
             var spawner = Object.FindAnyObjectByType<PlayerCarSpawner>();

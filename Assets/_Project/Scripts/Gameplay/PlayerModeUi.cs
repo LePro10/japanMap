@@ -1,3 +1,6 @@
+using JapanMap.Core;
+using JapanMap.Core.Ui;
+using JapanMap.Gameplay.Menu;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
@@ -5,8 +8,9 @@ using UnityEngine.UIElements;
 namespace JapanMap.Gameplay
 {
     /// <summary>
-    /// Minimal prompt line ("F  Get in", call messages) and, on touch devices, CAR and CALL buttons.
-    /// PROVISIONAL until the HUD of Phase 9; UI Toolkit like the touch controls (D05).
+    /// The prompt line ("F  Get in", call messages) and, on touch devices, the buttons both modes share (ASTRA §10):
+    /// MENU (48 px, the corner — the touch Escape), CAR (get in / get out), and on foot CALL with the car's distance
+    /// beside it. Sizes in CSS px, inside the safe area, mirrored for the left hand.
     /// </summary>
     public sealed class PlayerModeUi : MonoBehaviour
     {
@@ -16,11 +20,15 @@ namespace JapanMap.Gameplay
         [SerializeField] float messageSeconds = 3.5f;
 
         UIDocument _doc;
-        Label _prompt;
-        VisualElement _touch, _call;
+        Label _prompt, _distance;
+        VisualElement _touch, _call, _car, _carOut, _menu;
         bool _touchSeen;
 
         internal Label PromptLabel => _prompt;
+        internal VisualElement MenuButton => _menu;
+
+        /// <summary>Shows the touch buttons as if the screen had been touched (screenshots of the phone layout).</summary>
+        public void ShowTouch() => _touchSeen = true;
 
         void Awake()
         {
@@ -28,26 +36,44 @@ namespace JapanMap.Gameplay
             var host = new GameObject("PlayerPromptUi");
             host.transform.SetParent(transform, false);
             _doc = host.AddComponent<UIDocument>();
-            _doc.panelSettings = Core.Ui.UiPanel.Get(panelSettings);
+            _doc.panelSettings = UiPanel.Get(panelSettings);
             _doc.sortingOrder = 2;
         }
 
         void OnEnable()
+        {
+            Build();
+            UiPanel.Changed += Build;
+            GameOptions.Changed += Build;
+            _touchSeen = _touchSeen || Application.isMobilePlatform;
+        }
+
+        void OnDisable()
+        {
+            UiPanel.Changed -= Build;
+            GameOptions.Changed -= Build;
+        }
+
+        void Build()
         {
             var doc = _doc.rootVisualElement;
             doc.Clear();
             doc.pickingMode = PickingMode.Ignore;
             doc.style.position = Position.Absolute;
             doc.style.left = doc.style.right = doc.style.top = doc.style.bottom = 0;
+            var safe = UiPanel.Safe;
+            var phone = UiPanel.IsPhone;
 
             _prompt = new Label { name = "player-prompt", pickingMode = PickingMode.Ignore };
             _prompt.style.position = Position.Absolute;
             _prompt.style.left = _prompt.style.right = 0;
-            _prompt.style.bottom = 36;
+            // Above the touch controls on a phone (they take the lower 140 / 180 px).
+            _prompt.style.bottom = safe.w + (UiPanel.IsPortrait ? 262f : phone ? 150f : 36f);
             _prompt.style.unityTextAlign = TextAnchor.MiddleCenter;
             _prompt.style.color = Color.white;
-            _prompt.style.fontSize = 30;
+            _prompt.style.fontSize = phone ? 18f : 26f;
             _prompt.style.unityFontStyleAndWeight = FontStyle.Bold;
+            _prompt.style.whiteSpace = WhiteSpace.Normal;
             _prompt.style.textShadow = new TextShadow { offset = new Vector2(0f, 2f), blurRadius = 6f, color = new Color(0f, 0f, 0f, 0.8f) };
             doc.Add(_prompt);
 
@@ -55,44 +81,50 @@ namespace JapanMap.Gameplay
             _touch.style.position = Position.Absolute;
             _touch.style.left = _touch.style.right = _touch.style.top = _touch.style.bottom = 0;
             doc.Add(_touch);
-            var car = Round("CAR", 96, new Color(1f, 0.85f, 0.4f, 0.4f), () => player.PressVehicle());
-            car.style.right = 240;
-            car.style.top = 40;
-            _call = Round("CALL", 84, new Color(1f, 1f, 1f, 0.25f), () => player.PressCall());
-            _call.style.right = 350;
-            _call.style.top = 40;
-            _touchSeen = Application.isMobilePlatform;
+            var k = GameOptions.ButtonScale;
+            var mirror = GameOptions.LeftHanded;
+            var outer = (mirror ? safe.x : safe.z) + 12f;
+            // MENU: the corner, always (pauses like Escape).
+            _menu = TouchKit.Tap(_touch, 48f, "MENU", () => GameMenu.Instance?.Escape());
+            _menu.name = "touch-menu";
+            // Portrait: the instrument has the corner, the button row sits under it (RESET, CAM, OUT beside MENU).
+            var row = safe.y + (UiPanel.IsPortrait ? 136f : 12f);
+            Corner(_menu, outer, row, mirror);
+            // CAR and CALL above the right-hand group (on foot JUMP/SLIDE, in the car BOOST).
+            var bottom = safe.w + (UiPanel.IsPortrait ? 28f : 20f) + 64f * k * 2f + 24f;
+            _car = TouchKit.Tap(_touch, 56f * k, "CAR", () => player.PressVehicle(), "jm-touch--on");
+            _car.name = "touch-car";
+            TouchKit.Place(_car, outer + 4f, bottom, rightSide: true, mirror);
+            // In the car the right thumb's corner is the instrument and the drive group: get out sits in the top row,
+            // beside RESET and CAM.
+            _carOut = TouchKit.Tap(_touch, 48f, "OUT", () => player.PressVehicle());
+            _carOut.name = "touch-out";
+            Corner(_carOut, outer + 56f * 3f, row, mirror);
+            _call = TouchKit.Tap(_touch, 56f * k, "CALL", () => player.PressCall());
+            _call.name = "touch-call";
+            TouchKit.Place(_call, outer + 4f + 56f * k + 8f, bottom, rightSide: true, mirror);
+            _distance = new Label { pickingMode = PickingMode.Ignore };
+            _distance.AddToClassList("jm-small");
+            _distance.style.position = Position.Absolute;
+            _distance.style.width = 56f * k;
+            _distance.style.unityTextAlign = TextAnchor.MiddleCenter;
+            TouchKit.Place(_distance, outer + 4f + 56f * k + 8f, bottom - 20f, rightSide: true, mirror);
+            _touch.Add(_distance);
         }
 
-        VisualElement Round(string label, float size, Color fill, System.Action pressed)
+        static void Corner(VisualElement e, float outer, float top, bool mirror)
         {
-            var b = new VisualElement();
-            b.style.position = Position.Absolute;
-            b.style.width = b.style.height = size;
-            b.style.backgroundColor = fill;
-            b.style.borderTopLeftRadius = b.style.borderTopRightRadius = b.style.borderBottomLeftRadius = b.style.borderBottomRightRadius = size / 2f;
-            b.style.borderTopWidth = b.style.borderBottomWidth = b.style.borderLeftWidth = b.style.borderRightWidth = 3;
-            b.style.borderTopColor = b.style.borderBottomColor = b.style.borderLeftColor = b.style.borderRightColor = new Color(1f, 1f, 1f, 0.6f);
-            var t = new Label(label) { pickingMode = PickingMode.Ignore };
-            t.style.flexGrow = 1;
-            t.style.unityTextAlign = TextAnchor.MiddleCenter;
-            t.style.color = Color.white;
-            t.style.fontSize = size * 0.22f;
-            t.style.unityFontStyleAndWeight = FontStyle.Bold;
-            b.Add(t);
-            b.RegisterCallback<PointerDownEvent>(e =>
-            {
-                pressed();
-                e.StopPropagation();
-            });
-            _touch.Add(b);
-            return b;
+            e.style.position = Position.Absolute;
+            e.style.top = top;
+            e.style.right = mirror ? StyleKeyword.Auto : outer;
+            e.style.left = mirror ? outer : StyleKeyword.Auto;
         }
 
         void Update()
         {
             if (player == null || _prompt == null) return;
-            // A menu scene (garage) owns the screen: no "F  Get out", no touch driving buttons.
+            if (!_touchSeen && Touchscreen.current != null && Touchscreen.current.primaryTouch.press.isPressed) _touchSeen = true;
+            // A menu or the garage owns the screen: no "F  Get out", no touch buttons.
             if (player.Suspended)
             {
                 _prompt.text = "";
@@ -102,12 +134,18 @@ namespace JapanMap.Gameplay
             var message = Time.unscaledTime - player.MessageAt < messageSeconds ? player.Message : "";
             var text = message != "" ? message : player.Prompt;
             // On touch the button is the prompt; drop the key name.
-            if (_touchSeen && text.StartsWith("F  ")) text = "Tap CAR to " + text.Substring(3).ToLowerInvariant();
+            if (_touchSeen && text.StartsWith("F  "))
+                text = (player.Current == PlayerModeController.Mode.Walking ? "Tap CAR to " : "Tap OUT to ") + text.Substring(3).ToLowerInvariant();
             _prompt.text = text;
 
-            if (!_touchSeen && Touchscreen.current != null && Touchscreen.current.primaryTouch.press.isPressed) _touchSeen = true;
             _touch.style.display = _touchSeen ? DisplayStyle.Flex : DisplayStyle.None;
-            _call.style.display = player.Current == PlayerModeController.Mode.Walking ? DisplayStyle.Flex : DisplayStyle.None;
+            var walking = player.Current == PlayerModeController.Mode.Walking;
+            _call.style.display = walking ? DisplayStyle.Flex : DisplayStyle.None;
+            _distance.style.display = walking ? DisplayStyle.Flex : DisplayStyle.None;
+            if (walking) _distance.text = float.IsInfinity(player.CarDistance) ? "" : $"{player.CarDistance:0} m";
+            // In the car, OUT only when it can (slow enough).
+            _car.style.display = walking ? DisplayStyle.Flex : DisplayStyle.None;
+            _carOut.style.display = !walking && player.CanAlight ? DisplayStyle.Flex : DisplayStyle.None;
         }
     }
 }

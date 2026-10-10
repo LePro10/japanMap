@@ -70,6 +70,7 @@ namespace JapanMap.Tests.Audio
         public IEnumerator Engine_FollowsTheGearbox_SportEngineIsHeard_SliderSilences()
         {
             SceneManager.LoadScene(Bootstrapper.BootSceneName);
+            yield return null; // the previous test's Game scene is still active this frame
             for (var w = 0f; SceneManager.GetActiveScene().name != "Game" && w < 10f; w += Time.unscaledDeltaTime) yield return null;
             for (var f = 0; f < 10; f++) yield return null;
             yield return Tap(Key.F);

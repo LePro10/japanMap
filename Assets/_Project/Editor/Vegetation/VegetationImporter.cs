@@ -185,7 +185,9 @@ namespace JapanMap.Editor.Vegetation
                     }
                     counts[sp.model.ToString()] = counts.GetValueOrDefault(sp.model.ToString()) + placed;
                 }
-                Details(terrain, s, map, roads, clear, Weight);
+                // Grass keeps clear of buildings and ramps too (it grew through the Open Bay floor and on Petal Hop:
+                // only trees had asked) — without the trees' margin, or every lamp post would stand on a bald patch.
+                Details(terrain, s, map, roads, PropCircles(0.5f, buildingsOnly: true), Weight);
                 EditorUtility.SetDirty(data);
                 if (terrain.GetComponent<TerrainCollider>() is { } col) col.terrainData = data;
             }
@@ -335,6 +337,7 @@ namespace JapanMap.Editor.Vegetation
             {
                 var w = new Vector3(origin.x + (x + 0.5f) / res * size.x, 0, origin.z + (z + 0.5f) / res * size.z);
                 if (roads.Sample(w) < s.grassRoadClearance) continue;
+                if (clear.Blocks(w)) continue;
                 var city = 1 - CityBlend(map, w, s.cityFade);
                 if (city <= 0) continue;
                 var g = weight(w, 1) * 1f + weight(w, 2) * 0.06f;
@@ -467,20 +470,24 @@ namespace JapanMap.Editor.Vegetation
         }
 
         /// <summary>Footprints of everything under World/Props and World/Places (colliders' bounds) plus a margin, and the places' clearings.</summary>
-        static Circles PropCircles(float margin)
+        static Circles PropCircles(float margin, bool buildingsOnly = false)
         {
             var c = new Circles();
-            foreach (var group in new[] { PropImporter.GroupName, Places.PlaceImporter.GroupName })
+            foreach (var group in buildingsOnly ? new[] { Places.PlaceImporter.GroupName } : new[] { PropImporter.GroupName, Places.PlaceImporter.GroupName })
             {
                 var props = MapScene.Root().Find(group);
                 if (props == null) continue;
                 foreach (var col in props.GetComponentsInChildren<Collider>())
                 {
                     var b = col.bounds;
+                    // Grass: only standing structures (a hall, a shrine) — a court floor or a road slab is a lawn's edge.
+                    if (buildingsOnly && (b.size.y < 1.5f || Mathf.Max(b.extents.x, b.extents.z) > 30f)) continue;
                     c.Add(b.center, Mathf.Max(b.extents.x, b.extents.z) + margin);
                 }
             }
-            // Courts, streets and yards of the places (legacy *Clearance functions), Three → Unity.
+            // Courts, streets and yards of the places (legacy *Clearance functions), Three → Unity — trees only: grass
+            // belongs on a court's lawn.
+            if (!buildingsOnly)
             foreach (var kit in Places.PlaceImporter.Kits())
             {
                 var place = Places.PlaceSource.Load(kit.source);
@@ -493,7 +500,7 @@ namespace JapanMap.Editor.Vegetation
                 foreach (var r in ramps.ramps)
                 {
                     var radius = Mathf.Max(r.width, r.landingWidth) * 0.5f + 4f;
-                    for (var s = -80f; s <= r.Length + 6f; s += radius * 0.8f)
+                    for (var s = buildingsOnly ? 0f : -80f; s <= r.Length + 6f; s += radius * 0.8f)
                         c.Add(new Vector3(r.start.x, 0f, r.start.y) + r.Forward * s, radius);
                 }
             return c;

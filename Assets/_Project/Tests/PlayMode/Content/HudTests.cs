@@ -64,6 +64,7 @@ namespace JapanMap.Tests.Content
         public IEnumerator Instrument_ShowsTheGearboxGear_MinimapZoomsOnFoot_SparksShowBriefly()
         {
             SceneManager.LoadScene(Bootstrapper.BootSceneName);
+            yield return null; // the previous test's Game scene is still active this frame
             for (var w = 0f; SceneManager.GetActiveScene().name != "Game" && w < 10f; w += Time.unscaledDeltaTime) yield return null;
             for (var f = 0; f < 10; f++) yield return null;
             var hud = Object.FindAnyObjectByType<GameplayHud>();
@@ -101,7 +102,8 @@ namespace JapanMap.Tests.Content
             yield return null;
             yield return null;
             Assert.AreEqual(DisplayStyle.Flex, hud.Sparks.resolvedStyle.display, "balance shows after earning");
-            for (var w = 0f; Time.unscaledTime - lastEarn < 2.6f && w < 15f; w += Time.unscaledDeltaTime) yield return null;
+            // …and the "Saved" tick, which keeps the balance up with it.
+            for (var w = 0f; (Time.unscaledTime - lastEarn < 2.6f || hud.SavedText != "") && w < 20f; w += Time.unscaledDeltaTime) yield return null;
             yield return null;
             wallet.Earned -= OnEarned;
             Assert.AreEqual(DisplayStyle.None, hud.Sparks.resolvedStyle.display, "and goes again");

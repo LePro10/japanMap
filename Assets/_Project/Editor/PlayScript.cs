@@ -440,6 +440,13 @@ namespace JapanMap.Editor
                     Log.AppendLine(rec != null ? $"  record {F(1)} s → {path}" : "  record: no AudioListener");
                     return true;
                 }
+                case "touch":
+                    // touch: show every touch control as after a first touch (pictures of the phone layouts).
+                    foreach (var d in Object.FindObjectsByType<JapanMap.Vehicles.DriveTouchControls>()) d.SetVisible(true);
+                    foreach (var w in Object.FindObjectsByType<JapanMap.OnFoot.WalkTouchControls>()) w.SetVisible(true);
+                    foreach (var u in Object.FindObjectsByType<JapanMap.Gameplay.PlayerModeUi>()) u.ShowTouch();
+                    foreach (var h in Object.FindObjectsByType<JapanMap.Gameplay.Hud.GameplayHud>()) h.ShowTouch();
+                    return true;
                 case "scroll":
                     // scroll <n>: n mouse-wheel notches at the last tap position (positive zooms the map in).
                     _scrollLeft = int.Parse(a[1]);

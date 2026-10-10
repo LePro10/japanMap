@@ -27,8 +27,22 @@ try { job = call('run_tests', args).data?.job_id; } catch (e) { console.error(`T
 if (!job) { console.error('TEST BLOCKED · no job id'); process.exit(2); }
 const t0 = Date.now();
 let retry = false;
+let paused = 0;
 for (;;) {
   await new Promise((r) => setTimeout(r, 4000));
+  // A test that opened the menu (timeScale 0) waits forever: Unity's test timeout counts game time. Twice in
+  // Phase 9 a run hung 30 min this way — after 60 s paused, name it and stop.
+  if (mode === 'PlayMode') {
+    try {
+      const st = call('execute_code', { action: 'execute', code: 'if (!EditorApplication.isPlaying) return "-"; var m = UnityEngine.Object.FindAnyObjectByType<JapanMap.Gameplay.Menu.GameMenu>(); return Time.timeScale == 0f ? "paused " + (m != null && m.IsOpen ? "menu " + m.Current?.Title : "no menu") : "-";' })?.data?.result ?? '-';
+      paused = String(st).startsWith('paused') ? paused + 1 : 0;
+      if (paused >= 15) {
+        console.log(`FAIL · ${mode} · HANG: the game has been paused for 60 s (${st}) — a test opened a menu or photo mode and waits on game time`);
+        call('manage_editor', { action: 'stop' });
+        process.exit(1);
+      }
+    } catch { /* domain reload */ }
+  }
   let d;
   try { d = call('get_test_job', { job_id: job, include_failed_tests: true }).data; } catch { continue; } // domain reload
   if (d?.status === 'running' || d?.status === 'pending') { if (Date.now() - t0 > 1800e3) { console.error('TEST TIMEOUT'); process.exit(1); } continue; }

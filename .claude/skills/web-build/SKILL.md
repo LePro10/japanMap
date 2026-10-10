@@ -41,6 +41,8 @@ Referenz leerer Build (2026-10-07): Release **7,75 MB** (wasm 5,18, data 2,39).
 
 ## Fallen
 
+- **FPS streuen ±20 % zwischen Läufen** desselben Builds (Phase 9: 231–354). Mindestens drei Läufe, Spanne melden;
+  für eine Ursache A/B mit `--param` (z. B. `noui=1`) im selben Build.
 - Ohne `--gpu` läuft die Rauchprobe auf **SwiftShader** (Software): FPS dort sind wertlos.
   Mit `--gpu` gelten sie für **diesen Rechner** (M4: leere Karte P2 = 250 fps) —
   nie für Handy oder Chromebook; die prüft der Mensch.

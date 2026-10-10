@@ -60,11 +60,22 @@ namespace JapanMap.OnFoot
         void OnEnable()
         {
             Build(_doc.rootVisualElement);
+            Core.Ui.UiPanel.Changed += Rebuild;
+            Core.GameOptions.Changed += Rebuild;
             SetVisible(_revealed || forceVisible || Application.isMobilePlatform);
+        }
+
+        // A rebuild (rotation, options) keeps the hidden/shown state — once both pads showed in the car.
+        void Rebuild()
+        {
+            Build(_doc.rootVisualElement);
+            Refresh();
         }
 
         void OnDisable()
         {
+            Core.Ui.UiPanel.Changed -= Rebuild;
+            Core.GameOptions.Changed -= Rebuild;
             if (input != null) input.SetTouch(Vector2.zero, Vector2.zero, false, false);
         }
 
@@ -126,10 +137,15 @@ namespace JapanMap.OnFoot
             _lookPad.RegisterCallback<PointerCancelEvent>(e => LookUp(e.pointerId));
             _root.Add(_lookPad);
 
+            // ASTRA §10 sizes in CSS px (the drive pad's 128 px, 56–64 px buttons), mirrored for the left hand.
+            var k = Core.GameOptions.ButtonScale;
+            var mirror = Core.GameOptions.LeftHanded;
+            var safe = Core.Ui.UiPanel.Safe;
+            var bottom = safe.w + (Core.Ui.UiPanel.IsPortrait ? 28f : 20f);
+            stickRadius = 64f * k;
             var d = stickRadius * 2f;
             _stickBase = Circle(d, new Color(1f, 1f, 1f, 0.12f), new Color(1f, 1f, 1f, 0.35f));
-            _stickBase.style.left = 90;
-            _stickBase.style.bottom = 90;
+            Core.Ui.TouchKit.Place(_stickBase, (mirror ? safe.z : safe.x) + 16f, bottom, rightSide: false, mirror);
             _knob = Circle(d * 0.42f, new Color(1f, 1f, 1f, 0.45f), new Color(1f, 1f, 1f, 0.7f));
             _knob.pickingMode = PickingMode.Ignore;
             _stickBase.Add(_knob);
@@ -150,12 +166,13 @@ namespace JapanMap.OnFoot
             _stickBase.RegisterCallback<PointerCancelEvent>(e => ReleaseStick(e.pointerId));
             _root.Add(_stickBase);
 
-            var jump = Button("JUMP", 170, new Color(0.3f, 0.75f, 0.5f, 0.45f), on => _jump = on);
-            jump.style.right = 80;
-            jump.style.bottom = 80;
-            var slide = Button("SLIDE", 130, new Color(0.95f, 0.45f, 0.2f, 0.45f), on => _slide = on);
-            slide.style.right = 280;
-            slide.style.bottom = 60;
+            var outer = (mirror ? safe.x : safe.z) + 16f;
+            var jump = Button("JUMP", 64f * k, new Color(0.3f, 0.75f, 0.5f, 0.45f), on => _jump = on);
+            Core.Ui.TouchKit.Place(jump, outer, bottom, rightSide: true, mirror);
+            var slide = Button("SLIDE", 56f * k, new Color(0.95f, 0.45f, 0.2f, 0.45f), on => _slide = on);
+            Core.Ui.TouchKit.Place(slide, outer + 64f * k + 8f * k, bottom, rightSide: true, mirror);
+            _lookPad.style.right = mirror ? StyleKeyword.Auto : 0;
+            _lookPad.style.left = mirror ? 0 : StyleKeyword.Auto;
         }
 
         static void Fill(VisualElement e)

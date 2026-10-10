@@ -84,9 +84,32 @@ namespace JapanMap.Vehicles
         {
             if (handbrake && !_touchHandbrake) NoteHandbrakeTap();
             _touchAxes = axes;
+            _touchThrottle = Mathf.Max(0f, axes.y);
+            _touchBrake = Mathf.Max(0f, -axes.y);
             _touchHandbrake = handbrake;
             _touchBoost = boost;
         }
+
+        /// <summary>Touch layout of ASTRA §10: steer from the pad, throttle (auto or pedal) and brake separately.</summary>
+        public void SetTouch(float steer, float throttle, float brake, bool handbrake, bool boost)
+        {
+            if (handbrake && !_touchHandbrake) NoteHandbrakeTap();
+            _touchAxes = new Vector2(steer, 0f);
+            _touchThrottle = Mathf.Clamp01(throttle);
+            _touchBrake = Mathf.Clamp01(brake);
+            _touchHandbrake = handbrake;
+            _touchBoost = boost;
+        }
+
+        /// <summary>The touch STUNT toggle (keyboard: a handbrake double tap).</summary>
+        public void ToggleStunt()
+        {
+            _stuntArmed = !_stuntArmed;
+            _stuntLived = false;
+            if (_stuntArmed) _trickPulse = true;
+        }
+
+        float _touchThrottle, _touchBrake;
 
         public void PressRespawn() => RespawnPressed?.Invoke();
         public void PressCamera() => CameraPressed?.Invoke();
@@ -94,6 +117,7 @@ namespace JapanMap.Vehicles
         void ClearTouch()
         {
             _touchAxes = Vector2.zero;
+            _touchThrottle = _touchBrake = 0f;
             _touchHandbrake = _touchBoost = false;
         }
 
@@ -116,8 +140,8 @@ namespace JapanMap.Vehicles
             if (vehicle == null) return;
             var input = new DriveInput
             {
-                throttle = Mathf.Clamp01(_throttle.ReadValue<float>() + Mathf.Max(0f, _touchAxes.y)),
-                brake = Mathf.Clamp01(_brake.ReadValue<float>() + Mathf.Max(0f, -_touchAxes.y)),
+                throttle = Mathf.Clamp01(_throttle.ReadValue<float>() + _touchThrottle),
+                brake = Mathf.Clamp01(_brake.ReadValue<float>() + _touchBrake),
                 steer = Mathf.Clamp((_steer.ReadValue<float>() + _touchAxes.x) * Core.GameOptions.Steering, -1f, 1f), // Settings: 50–150 %
                 handbrake = _handbrake.IsPressed() || _touchHandbrake,
                 boost = _boost.IsPressed() || _touchBoost,

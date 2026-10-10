@@ -23,6 +23,10 @@ namespace JapanMap.Audio
         AudioSource _music;
         float _nextMusic;
         int _next;
+        // Own random numbers: sound must never draw from UnityEngine.Random — that moved the traffic and the crowd and
+        // made the ring acceptance drive nondeterministic (Phase 9; legacy lesson 13: display never drives simulation).
+        static readonly System.Random Rng = new(9);
+        static float R(float a, float b) => a + (float)Rng.NextDouble() * (b - a);
 
         /// <summary>Last sound played (tests, play scripts).</summary>
         public static string Last { get; private set; } = "";
@@ -60,12 +64,12 @@ namespace JapanMap.Audio
                 a.volume = 0f;
                 if (a.loop && a.clip != null) a.Play();
                 _ambience[i] = a;
-                _nextAmbience[i] = Random.Range(3f, 10f);
+                _nextAmbience[i] = R(3f, 10f);
             }
             _music = gameObject.AddComponent<AudioSource>();
             _music.playOnAwake = false;
             _music.ignoreListenerPause = true;
-            _nextMusic = Random.Range(4f, 10f);
+            _nextMusic = R(4f, 10f);
         }
 
         void OnDestroy()
@@ -82,7 +86,7 @@ namespace JapanMap.Audio
             if (e.clip == null) return;
             var s = _instance.Voice();
             s.clip = e.clip;
-            s.pitch = 1f + Random.Range(-e.pitchJitter, e.pitchJitter);
+            s.pitch = 1f + R(-e.pitchJitter, e.pitchJitter);
             s.ignoreListenerPause = e.group == SoundGroup.UI;
             s.spatialBlend = at.HasValue ? 0.8f : 0f;
             if (at.HasValue) s.transform.position = at.Value;
@@ -134,7 +138,7 @@ namespace JapanMap.Audio
                     {
                         a.volume = near * z.volume * world;
                         a.Play();
-                        _nextAmbience[i] = Random.Range(z.gap.x, z.gap.y) + z.clip.length;
+                        _nextAmbience[i] = R(z.gap.x, z.gap.y) + z.clip.length;
                     }
                 }
             }
@@ -146,9 +150,9 @@ namespace JapanMap.Audio
                     _nextMusic -= Time.unscaledDeltaTime;
                     if (_nextMusic <= 0f)
                     {
-                        _music.clip = bank.music[Random.Range(0, bank.music.Length)];
+                        _music.clip = bank.music[Rng.Next(bank.music.Length)];
                         if (_music.clip != null) _music.Play();
-                        _nextMusic = Random.Range(bank.musicGap.x, bank.musicGap.y);
+                        _nextMusic = R(bank.musicGap.x, bank.musicGap.y);
                     }
                 }
             }

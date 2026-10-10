@@ -102909,10 +102909,10 @@ Transform:
   - {fileID: 1301375433}
   - {fileID: 467184538}
   - {fileID: 614692262}
-  - {fileID: 728211269}
   - {fileID: 591663127}
   - {fileID: 1365367685}
   - {fileID: 921595435}
+  - {fileID: 1026564973}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &708061081
@@ -106067,53 +106067,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 728077087}
   m_Mesh: {fileID: 4300000, guid: 72a5867c389c643ba8716b8f92f40f01, type: 2}
---- !u!1 &728211268
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 728211269}
-  - component: {fileID: 728211270}
-  m_Layer: 0
-  m_Name: Vegetation
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &728211269
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 728211268}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 708005471}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &728211270
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 728211268}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 54a3287f7635943c5b464e38a1ef45a6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: JapanMap.World::JapanMap.World.InstanceRenderer
-  data: {fileID: 11400000, guid: 19e78765e569949159dc5b213fec7bd9, type: 2}
-  maxDistance: 1500
-  colliderRadius: 70
 --- !u!1 &728569499
 GameObject:
   m_ObjectHideFlags: 0
@@ -153591,6 +153544,53 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 11.025, y: 17.15, z: 12.46}
   m_Center: {x: 0, y: 8.575, z: 0}
+--- !u!1 &1026564972
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1026564973}
+  - component: {fileID: 1026564974}
+  m_Layer: 0
+  m_Name: Vegetation
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1026564973
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1026564972}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 708005471}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1026564974
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1026564972}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 54a3287f7635943c5b464e38a1ef45a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.World::JapanMap.World.InstanceRenderer
+  data: {fileID: 11400000, guid: 19e78765e569949159dc5b213fec7bd9, type: 2}
+  maxDistance: 1500
+  colliderRadius: 70
 --- !u!1 &1026711492
 GameObject:
   m_ObjectHideFlags: 0
@@ -221601,8 +221601,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.DriveTouchControls
   driver: {fileID: 1493207671}
   panelSettings: {fileID: 11400000, guid: a0208705cf2e24b24b2cdab2ddae1aa1, type: 2}
-  stickRadius: 110
   deadZone: 0.12
+  reverseHold: 0.4
   forceVisible: 0
 --- !u!114 &1493207668
 MonoBehaviour:

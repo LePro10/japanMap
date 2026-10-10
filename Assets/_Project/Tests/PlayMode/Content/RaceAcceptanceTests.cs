@@ -63,6 +63,7 @@ namespace JapanMap.Tests.Content
         static IEnumerator BootGame()
         {
             SceneManager.LoadScene(Bootstrapper.BootSceneName);
+            yield return null; // the previous test's Game scene is still active this frame
             var waited = 0f;
             while (SceneManager.GetActiveScene().name != "Game" && waited < 10f)
             {
