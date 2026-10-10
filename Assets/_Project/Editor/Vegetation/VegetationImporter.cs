@@ -95,6 +95,9 @@ namespace JapanMap.Editor.Vegetation
             var terrains = Terrain.activeTerrains;
             if (terrains.Length == 0) throw new System.InvalidOperationException("no terrain — run JapanMap/Map/Import All");
 
+            // Colliders built in the same pass (ImportAll builds the places just before) have empty bounds until the
+            // physics scene syncs: then nothing kept clear — trees and grass grew into the Open Bay (Phase 9).
+            Physics.SyncTransforms();
             var bounds = WorldBounds(terrains);
             var roads = RoadEdgeDistance(bounds, s.species.Max(x => x.roadClearance) + FieldCell * 2);
             var clear = PropCircles(s.propClearance);

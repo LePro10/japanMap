@@ -33,7 +33,15 @@ try {
     }
   }
   const list = tool === 'list';
-  const res = await post({ jsonrpc: '2.0', id: 2, method: list ? 'tools/list' : 'tools/call', params: list ? {} : { name: tool, arguments: JSON.parse(args || '{}') } }, init.sid);
+  // Right after a build or a domain reload the editor is briefly not attached ("no_unity_session"): wait and
+  // retry up to 60 s instead of failing the caller (bench and views failed on it in Phase 9).
+  let res;
+  for (let attempt = 0; ; attempt++) {
+    res = await post({ jsonrpc: '2.0', id: 2, method: list ? 'tools/list' : 'tools/call', params: list ? {} : { name: tool, arguments: JSON.parse(args || '{}') } }, init.sid);
+    const text = res.json?.result?.content?.map((c) => c.text).join('') ?? '';
+    if (!text.includes('no_unity_session') || attempt >= 60) break;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
   console.log(list ? res.json.result.tools.map((t) => t.name).join(' ') : res.json?.result?.content?.map((c) => c.text).join('\n') ?? JSON.stringify(res.json));
 } catch (e) {
   console.error(`MCP-CALL BLOCKED · ${URL} not reachable (${e.message}) — is the Unity editor open with the MCP server started?`);
