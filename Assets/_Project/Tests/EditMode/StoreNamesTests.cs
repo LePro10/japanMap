@@ -42,5 +42,11 @@ namespace JapanMap.Tests
                 .Select(x => $"{x.f}:{x.i + 1}").ToList();
             CollectionAssert.IsEmpty(hits, "project name in a game string: " + string.Join(", ", hits));
         }
+
+        // The loading screen and tab title come from the page template: {{{ PRODUCT_NAME }}}, never a written name.
+        [Test]
+        public void PageTemplate_ShowsNoProjectName() =>
+            Assert.IsFalse(Regex.IsMatch(File.ReadAllText("Assets/WebGLTemplates/JapanMap/index.html"), @">\s*japan ?map", RegexOptions.IgnoreCase),
+                "the page shows the project name — use {{{ PRODUCT_NAME }}}");
     }
 }

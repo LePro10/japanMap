@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Runtime.InteropServices;
 using CrazyGames;
 using JapanMap.Core;
 using JapanMap.Core.Platform;
@@ -23,7 +24,7 @@ namespace JapanMap.Platform
         [SerializeField] float initTimeout = 6f;
 
         public bool Ready { get; private set; }
-        /// <summary>"crazygames", "local", "local (sdk timeout)" — for logs and tests.</summary>
+        /// <summary>"crazygames", "local", "local (sdk timeout)", "local (sdk blocked)" — for logs and tests.</summary>
         public static string Mode { get; private set; } = "local";
 
         // Domain reload may be disabled.
@@ -88,12 +89,24 @@ namespace JapanMap.Platform
 
         IEnumerator Timeout()
         {
-            yield return new WaitForSecondsRealtime(initTimeout);
+            // A blocked SDK script never answers: start at once rather than after the whole timeout.
+            var until = Time.realtimeSinceStartup + initTimeout;
+            while (!Ready && Time.realtimeSinceStartup < until && !SdkScriptFailed()) yield return null;
             if (Ready) yield break;
-            Mode = "local (sdk timeout)";
+            var blocked = SdkScriptFailed();
+            Mode = blocked ? "local (sdk blocked)" : "local (sdk timeout)";
             Ready = true;
-            Debug.LogWarning("[Platform] CrazyGames SDK did not answer — saved on this device, sync pending");
+            Debug.LogWarning(blocked
+                ? $"[Platform] CrazyGames SDK blocked after {Time.realtimeSinceStartup - (until - initTimeout):0.0} s — saved on this device, sync pending"
+                : "[Platform] CrazyGames SDK did not answer — saved on this device, sync pending");
         }
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+        [DllImport("__Internal")] static extern bool JapanMapSdkScriptFailed();
+        static bool SdkScriptFailed() => JapanMapSdkScriptFailed();
+#else
+        static bool SdkScriptFailed() => false;
+#endif
 
         void Update()
         {

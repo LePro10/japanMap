@@ -21,7 +21,7 @@
   </head>
   <body>
     <canvas id="unity-canvas" tabindex="-1"></canvas>
-    <div id="loading">JAPANMAP<div class="bar"><div class="fill"></div></div></div>
+    <div id="loading">{{{ PRODUCT_NAME.toUpperCase() }}}<div class="bar"><div class="fill"></div></div></div>
     <div id="message"></div>
     <script>
       // A refused pointer lock (page without focus, frame without permission, a click during load) is not an error:
@@ -30,6 +30,13 @@
       function benignLock(reason) { return /pointer ?lock/i.test(String(reason && (reason.message || reason))); }
       window.addEventListener('unhandledrejection', function (e) { if (benignLock(e.reason)) { e.preventDefault(); e.stopImmediatePropagation(); console.warn('[Page] pointer lock refused'); } });
       window.addEventListener('error', function (e) { if (benignLock(e.error || e.message)) { e.preventDefault(); e.stopImmediatePropagation(); console.warn('[Page] pointer lock refused'); } });
+      // An SDK script the browser refused (ad blocker): the game reads this (JapanMapSdk.jslib) and starts at once
+      // instead of waiting out the SDK timeout on a black screen (6 s, Phase 11). Resource errors only reach a
+      // capturing listener.
+      window.addEventListener('error', function (e) {
+        var t = e.target;
+        if (t && t.tagName === 'SCRIPT' && /sdk\.crazygames\.com/.test(t.src)) { window.__jmSdkFailed = true; console.warn('[Page] CrazyGames SDK script blocked'); }
+      }, true);
     </script>
     <script src="Build/{{{ LOADER_FILENAME }}}"></script>
     <script>

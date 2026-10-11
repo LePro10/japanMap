@@ -54,6 +54,7 @@
 | 2026-10-08 | 3 | Rigidbody vor Collider (keine Trägheit); Landung aus 6 m/Kanten-Bremse/vergessene Luft-Lage; ein Fehler in der Ringfahrt war nicht auffindbar | `ResetInertiaTensor` nach dem Collider, `ArcadeTuning`-Regler + Landungs-/Ringtests, Abnahmefahrt schreibt Spur + harte Kontakte | Test/Werkzeug |
 | 2026-10-08 | 3 | Karten-Abnahme prüfte nur Median/p95 (Gelände bis 4 m durch Straßen), Absenken ging still verloren; Straßenenden lagen als Rampe auf anderen Straßen | `TerrainCarve` in `TerrainImporter.Import`, Test `Terrain_NeverPokesThroughARoad`; `RoadImporter.OverlapRun` kürzt solche Enden | Test |
 | 2026-10-08 | 3 | MCP fehlte (Editor nach Sitzungsstart); Prototyp-Prüfstände liefen nicht (kein `three`) | HTTP-Helfer `Tools/mcp-call.mjs` (Skill `unity-verify`); Rezept im Skill `legacy-port`, Ausgaben in `SourceData/bench/` | Skill |
+| 2026-10-11 | 11 | Projektname „JAPANMAP“ stand im Menü, auf dem Ladebildschirm und im Fotonamen; Autonamen trugen Markenkürzel; gesperrtes SDK-Skript hielt den Start 6 s schwarz (niemand hörte auf den Ladefehler) | Name nur aus `Application.productName`/`{{{ PRODUCT_NAME }}}`; `StoreNamesTests` (Marken, Projektname in Spieltexten und Seite); Seite merkt sich den Skriptfehler (`JapanMapSdk.jslib`), `sdk-web --adblock sdk` ist rot, wenn gewartet wird | Test + Werkzeug |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

@@ -113,7 +113,9 @@ try {
     const tEsc2 = Date.now();
     await page.keyboard.press('Escape');
     const again = await waitLog(/\[Platform\] gameplayStart/, tEsc2, 10000);
-    const ok = stop && again && errors.length === 0;
+    // A blocked SDK script must not hold the start for the whole SDK timeout (6 s black screen, Phase 11).
+    const waited = adblock === 'sdk' && !/SDK blocked/.test(platform);
+    const ok = stop && again && errors.length === 0 && !waited;
     red = red || !ok;
     // Later downloads (background content) for the total.
     await page.waitForTimeout(3000);
@@ -136,7 +138,8 @@ try {
     const all = done.filter((d) => d.url.includes(`:${port}/`)).reduce((s, d) => s + d.bytes, 0);
     console.log(`SDK ${ok ? 'GREEN' : 'RED'} · ${host} · start download ${MB(ours)} MB ours + ${MB(other)} MB other until gameplayStart ` +
       `(${((start.t - t0) / 1000).toFixed(1)} s) · ours after 3 s more ${MB(all)} MB · menu stop ${stop ? 'yes' : 'NO'} · start again ${again ? 'yes' : 'NO'} · ${platform}` +
-      `${errors.length ? ` · ${errors.length} console errors: ${errors.slice(0, 3).join(' | ')}` : ''}`);
+      `${errors.length ? ` · ${errors.length} console errors: ${errors.slice(0, 3).join(' | ')}` : ''}` +
+      `${waited ? ' · blocked SDK was waited for, not detected' : ''}`);
     const per = new Map();
     for (const d of before) per.set(d.url, (per.get(d.url) ?? 0) + d.bytes);
     for (const [url, bytes] of [...per].filter(([, b]) => b > 200000).sort((a, b) => b[1] - a[1]))
