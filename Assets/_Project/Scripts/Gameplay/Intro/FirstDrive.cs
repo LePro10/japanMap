@@ -129,7 +129,7 @@ namespace JapanMap.Gameplay.Intro
                         Go(Beat.Air);
                         _slowTarget = settings.airSlow;
                         _ui.Slow(true);
-                        _ui.Prompt(IntroOverlay.Roll, "Double-tap to roll", _ui.Touch ? "Tap STUNT in the air" : "Space twice in the air", big: true);
+                        _ui.Prompt(IntroOverlay.Roll, _ui.Touch ? "Tap to roll" : "Double-tap to roll", _ui.Touch ? "STUNT, while you fly" : "Space twice in the air", big: true);
                     }
                     else if ((along > 30f || _t > settings.nitroStall) && !tel.airborne)
                     {

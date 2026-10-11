@@ -26,6 +26,8 @@ MonoBehaviour:
     landingLength: 30
     landingWidth: 14
     speedHint: "55\u201375 km/h"
+    clearBefore: 0
+    clearAfter: 0
     baseY: 16.544949
     baseSlope: 0.011894361
     note: 'ASTRA: S + (95, 45) launching south; that spot is the ring road. Moved 69 m south-east, still south.'
@@ -42,6 +44,8 @@ MonoBehaviour:
     landingLength: 20
     landingWidth: 16
     speedHint: "70\u201395 km/h"
+    clearBefore: 0
+    clearAfter: 0
     baseY: 33.631306
     baseSlope: -0.016634643
     note: "ASTRA (\u22121030, 580) launching east; paddies there. Moved 106 m, launching south-east."
@@ -58,6 +62,8 @@ MonoBehaviour:
     landingLength: 45
     landingWidth: 18
     speedHint: "75\u201395 km/h"
+    clearBefore: 0
+    clearAfter: 0
     baseY: 24.259594
     baseSlope: 0.01855826
     note: "ASTRA (\u2212800, 590) launching west; moved 25 m off the pit entry road. Hint lowered from ASTRA's 90\u2013120: at 110 km/h the car flew 56 m, past the 45 m apron (RampTests)."
@@ -74,6 +80,8 @@ MonoBehaviour:
     landingLength: 22
     landingWidth: 13
     speedHint: "60\u201385 km/h"
+    clearBefore: 0
+    clearAfter: 0
     baseY: 26.212261
     baseSlope: 0.03675848
     note: "ASTRA (\u2212680, 380) eastbound off Terrace Track (never built); paddies there. Moved 206 m to the dry field east of the circuit; first try (\u2212740, \u2212550) had a ditch in its run-up (RampTests)."
@@ -90,6 +98,8 @@ MonoBehaviour:
     landingLength: 24
     landingWidth: 14
     speedHint: "65\u201390 km/h"
+    clearBefore: 0
+    clearAfter: 0
     baseY: 26.232563
     baseSlope: 0.006870037
     note: ASTRA (390, 590) northbound; slope there. Moved 66 m west, still northbound.
@@ -106,12 +116,14 @@ MonoBehaviour:
     landingLength: 30
     landingWidth: 18
     speedHint: "45\u201365 km/h"
+    clearBefore: 0
+    clearAfter: 0
     baseY: 9.260239
     baseSlope: -0.027610764
     note: "ASTRA (700, 920) south-east toward a 30 \xD7 18 m pad; moved 24 m inland."
   - id: coast-kicker
     title: Coast Kicker
-    start: {x: 412.87, y: -781.99}
+    start: {x: 405.57, y: -785.27}
     yaw: 245.8
     width: 12
     height: 4.2
@@ -124,8 +136,8 @@ MonoBehaviour:
     speedHint: "110\u2013140 km/h"
     clearBefore: 135
     clearAfter: 115
-    baseY: 13.37294
-    baseSlope: -0.0048523825
-    note: "Prototype intro ramp (stunt.config coast-kicker, lip 392.8 | -791 in Unity axes): the First Drive jump. Peak 16\xB0 like the prototype (kick 0.5); landing on the coast meadow ~70 m on."
+    baseY: 12.165314
+    baseSlope: 0.05
+    note: "Prototype intro ramp (stunt.config coast-kicker, lip 392.8 | -791 in Unity axes): the First Drive jump. Peak 16\xB0 like the prototype (kick 0.5); landing on the coast meadow ~70 m on. Foot 8 m seaward of the prototype: its lead-in fill raised the ground over lantern-south-5 (MapImportTests)."
   hintDistance: 60
   lipReach: 8

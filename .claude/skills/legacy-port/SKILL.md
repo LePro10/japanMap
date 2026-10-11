@@ -53,3 +53,10 @@ Ergebnisse von `fleet`, `arcade`, `hill` liegen schon in `SourceData/bench/`.
 Nur wenn nötig (z. B. GLB-Export eines Ortes, Vergleichsbild). Befehle und
 Export-Snippet in LEGACY-MAP.md. Danach Dev-Server wieder beenden; nie zwei
 Spiel-Instanzen gleichzeitig rendern.
+
+## Erste Minute vergleichen (Pflicht vor jedem Phasenende)
+
+Das Intro „First Drive“ des Prototyps ging beim Port verloren, und niemand merkte es, bis der Mensch am Handy spielte
+(2026-10-11). Darum vor jedem Phasen-Tor: Was erlebt ein **neuer Spieler** in den ersten 60 s im Prototyp
+(`src/main.ts` → Start-Ablauf, `src/game/intro/`, `src/ui/`), und was im Spiel (`node Tools/play.mjs … "intro; …"`
+bzw. Browser mit frischem Profil)? Jede Stufe, die es im Prototyp gab und hier fehlt, ist ein Fund in STATUS.md.

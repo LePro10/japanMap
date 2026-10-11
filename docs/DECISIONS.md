@@ -638,3 +638,23 @@ Abstand zu einer Rewarded-Werbung; Schalter `midgame` = aus. Das SDK taktet zus�
 `IGamePlatform.RequestMidgame` → `GamePlatform.ShowMidgame` (pausiert + stumm wie Rewarded, `done` kommt immer) →
 `RewardedOffers.AtBreak`. Ohne Werbung/AdBlock: geht sofort weiter. **Prüfung:** `PlatformRulesTests.Midgame_…`,
 `PlatformTests.Midgame_AtTravel_…`. Im Basic Launch zeigt CrazyGames keine Werbung; echte Prüfung im QA-Tool (Demo-Werbung).
+
+## D43 — „First Drive“ zurück, Handy = klein **und** Touch, Start wartet aufs Auto · 2026-10-11
+
+**Anlass:** Handy-Bilder des Menschen (Schwarz, Kiste als Auto, Anzeigen übereinander, kein Intro) und „Wo ist unser
+Intro mit den Jumps hin?“. **Intro:** Das Prototyp-Intro (`FirstDrive.ts`, `intro.config.ts`) war nie portiert. Jetzt
+`Gameplay/Intro/FirstDrive` + `IntroOverlay`, Werte in `Data/Gameplay/IntroSettings.asset` (unverändert aus dem
+Prototyp): neuer Spieler (Spielstand ohne `intro:first-drive`, < 60 s Spielzeit) startet im rollenden Auto 150 m vor
+dem wieder gebauten **Coast Kicker** (Ramps.asset, 4,2 m, Anlauf/Landung baumfrei über `clearBefore/After`), Spurhilfe
+auf dem Anlauf, Zeitlupe 0,16 in der Luft, Doppeltipp-Rolle, Drift als Wende, Heimweg zur Sakura Commons; 3.000 Sparks
+(reicht für das erste Teil, nicht für das Mame K). Jede Stufe geht nach einer Frist allein weiter; Tab halten / SKIP →
+Reise zur Commons im Auto. Verkehr hält Abstand zur Linie (`TrafficSystem.KeepOut`). Das ist die Abhilfe zu H2 (Start im
+Auto) — vom Menschen ausdrücklich verlangt, darum ohne weitere Rückfrage. **Handy-Form:** `UiPanel` rechnete mit
+`window.devicePixelRatio` (2,6/3), die Seite zeichnet mit höchstens 2 (iOS 1) → UI 1,3–3× zu groß; jetzt der Faktor des
+Canvas. Und „Handy“ heißt jetzt kurze Seite < 600 **und** Touch — der CrazyGames-Rahmen 907×510 auf kleinen
+Bildschirmen bekam vorher das Handy-Layout ohne MENU-Knopf und ohne Tasten-Einblendung. **Start:** Ladebildschirm deckt
+alles bis zum ersten gameplayStart; die Welt gilt erst mit dem echten Startauto als bereit (≤ 12 s, Auto hält still).
+Ehrlich gezählt: 20,9 MB bis gameplayStart (vorher 18,4 + Kiste); die Auto-Shader liegen dafür in `CarShared`, sonst zog
+das Auto 4,4 MB Gebäude mit. Rest über 20 MB = Startauto mit 176 000 Eckpunkten → Asset-Sitzung (≤ 40 000).
+**Wachen:** `UiLayoutProbe` + `sizes-web` mit Android/iPhone-Profilen (rot bei Überlappung), `SceneLinkTests`,
+`IntroTests`, WebBuild bricht bei Splash-Logo oder Baumdaten im Start ab.

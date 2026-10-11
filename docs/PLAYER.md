@@ -61,6 +61,18 @@ Fehler auf einmal: schwarzer Bildschirm, eine Kiste statt Auto, Anzeigen überei
 4. **B6 + B7:** Menü und Handy-HUD neu gestalten (eine Linie, eine Schrift, klare Hierarchie, weniger Knöpfe).
 5. **Messen:** `sizes-web`, Handy-Link, deine Zahlen nach dem Launch (Conversion, Spielzeit Handy/Desktop).
 
+## 5b. Umgesetzt (2026-10-11 abends, gemessen)
+
+| Befund | Erledigt | Beleg |
+|---|---|---|
+| B1, B8 | Pixelfaktor aus dem Canvas; Handy = klein **und** Touch; Überlappungs-Prüfung | `sizes-web` grün: 7 Desktop + Android + iPhone + hochkant, 0 Überlappungen |
+| B2, B3 | Ladebildschirm bis Welt + Auto da; Auto-Shader eigenes Paket | 20,85 MB bis gameplayStart (Rest: Auto 176 000 Eckpunkte → Asset-Sitzung) |
+| B4, B5 | Intro „First Drive“ portiert, Coast Kicker gebaut | `IntroTests`, Bildserien `Captures/intro1-4` (Sprung 68 m, Zeitlupe, Rolle) |
+| B6 | Menü neu (Rennspiel-Pause, eine Formsprache) | `Captures/menu3`, `menu4` |
+| B7 | Handy-HUD jetzt in richtiger Größe, Intro ohne Kinobalken auf dem Handy | `Captures/p11-sizes/phones2.png` |
+
+Offen: weniger Knöpfe auf dem Handy (B7 nur entschärft), neue Store-Videos aus dem Intro, Startauto verschlanken.
+
 ## 6. Grundsätze für alles Weitere
 
 - **Die erste Minute ist ein Film, den der Spieler steuert** — nie ein Formular.

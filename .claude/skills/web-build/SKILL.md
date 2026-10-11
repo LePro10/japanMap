@@ -73,6 +73,12 @@ Browser nicht.** Neue Inhalte, die nicht in den Start gehören: als eigene Szene
 
 ## Handy-Test
 
-Braucht den Menschen: Build im WLAN ausliefern (`-a 0.0.0.0`), Adresse und
-genaue Prüfliste in STATUS.md „Für dich" schreiben (lädt? FPS gefühlt?
-Touch bedienbar? Ton?).
+Vorher selbst: `node Tools/sizes-web.mjs` prüft Android (DPR 2,625), iPhone (DPR 3) und hochkant mit Touch und
+meldet jede HUD-Überlappung (`?uicheck=1`) — rot heißt: nicht an den Menschen geben. Pixelfaktor 1 allein hat
+2026-10-11 ein völlig zerschossenes Handy-HUD als grün gemeldet.
+
+Dann der Mensch: `node Tools/serve-web.mjs --preview --public` gibt eine Internet-Adresse (Cloudflare-Tunnel,
+`*.trycloudflare.com` steht in der Site-Lock-Whitelist) — funktioniert auch im Mobilfunk; im WLAN reicht `--lan`
+(`*.local`, nie die nackte IP: Site-Lock friert ein). Neuer Build für dieselbe Adresse: `Builds/Web` nach
+`Builds/Preview` kopieren, der Server läuft weiter. Adresse und genaue Prüfliste in STATUS.md „Für dich" (lädt?
+FPS gefühlt? Touch bedienbar? Ton?).
