@@ -248,6 +248,16 @@ namespace JapanMap.Editor
                     _index--; // run this step again next tick
                     return false;
                 }
+                case "waitbeat":
+                {
+                    // Wait (at most 25 s real time) until the intro reaches a beat (Title, Gas, Nitro, Air, Landed, Drift, Home, Off).
+                    var fd = Object.FindAnyObjectByType<JapanMap.Gameplay.Intro.FirstDrive>();
+                    if (fd == null) return true;
+                    if (_waitFrom < 0) { _waitFrom = 0; _waitUntil = now + 25f; }
+                    if (fd.Current.ToString() == a[1] || now > _waitUntil) { _waitFrom = -1; Log.AppendLine($"  intro {fd.Current}"); return true; }
+                    _index--;
+                    return false;
+                }
                 case "waitrace":
                 {
                     // Wait (at most 300 s real time) until the running event has finished and shows its result.
@@ -284,6 +294,14 @@ namespace JapanMap.Editor
                     // pace kmh: the player's car moves forward at this speed now (setup, like a test's RamAt).
                     var pmp = Object.FindAnyObjectByType<PlayerModeController>();
                     pmp.Car.Body.linearVelocity = pmp.Car.transform.forward * F(1) / 3.6f;
+                    return true;
+                }
+                case "intro":
+                {
+                    // The first drive as a new player gets it (editor and tests start like returning players).
+                    var fd = Object.FindAnyObjectByType<JapanMap.Gameplay.Intro.FirstDrive>();
+                    if (fd == null) { Debug.LogError("[PlayScript] intro: no FirstDrive in the scene"); return true; }
+                    fd.Begin();
                     return true;
                 }
                 case "timescale":

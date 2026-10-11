@@ -503,7 +503,9 @@ namespace JapanMap.Editor.Vegetation
                 foreach (var r in ramps.ramps)
                 {
                     var radius = Mathf.Max(r.width, r.landingWidth) * 0.5f + 4f;
-                    for (var s = buildingsOnly ? 0f : -80f; s <= r.Length + 6f; s += radius * 0.8f)
+                    var before = Mathf.Max(80f, r.clearBefore);
+                    var after = Mathf.Max(r.Length + 6f, r.clearAfter);
+                    for (var s = buildingsOnly ? 0f : -before; s <= after; s += radius * 0.8f)
                         c.Add(new Vector3(r.start.x, 0f, r.start.y) + r.Forward * s, radius);
                 }
             return c;

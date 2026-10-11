@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 063472fd9174248db8d995acbd89a37a, type: 3}
+  m_Name: IntroSettings
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Intro.IntroSettings
+  rampId: coast-kicker
+  runUp: 150
+  startSpeed: 26.5
+  airSlow: 0.16
+  rollSlow: 0.5
+  airWait: 2.8
+  slowRate: 8
+  titleSeconds: 2.6
+  nitroAt: 95
+  autoNitroAt: 40
+  nitroStall: 7
+  turnSpeed: 18
+  driftHold: 0.7
+  driftTimeout: 14
+  homeRadius: 35
+  assistCross: 0.09
+  assistHeading: 1.5
+  assistMax: 0.55
+  playerSteer: 0.35
+  rewardLanding: 500
+  rewardRoll: 500
+  rewardDrift: 500
+  rewardHome: 1500
+  skipHold: 0.9

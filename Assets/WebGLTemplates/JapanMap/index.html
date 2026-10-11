@@ -11,8 +11,12 @@
         -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
       #unity-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; touch-action: none;
         background: #0d1422; }
-      #loading { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(60vw, 360px);
-        font: 600 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; color: #c9d6ea; letter-spacing: .08em; text-align: center; }
+      /* Covers the whole frame until the game is playable: nothing half-built shows through (2026-10-11). */
+      #loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        background: radial-gradient(ellipse at 50% 60%, #1b2a48 0%, #0d1422 70%); z-index: 2;
+        font: 700 clamp(16px, 3.2vw, 28px)/1.2 system-ui, -apple-system, "Segoe UI", sans-serif; color: #e8eef8; letter-spacing: .32em; text-align: center; }
+      #loading .sub { margin-top: 10px; font-weight: 500; font-size: 12px; letter-spacing: .18em; color: #8fa3c4; }
+      #loading .bar { width: min(60vw, 360px); }
       #loading .bar { margin-top: 12px; height: 4px; border-radius: 2px; background: #1e2a40; overflow: hidden; }
       #loading .fill { height: 100%; width: 0; background: #ffb27a; transition: width .2s; }
       #message { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: 90vw; padding: 10px 14px;
@@ -21,7 +25,7 @@
   </head>
   <body>
     <canvas id="unity-canvas" tabindex="-1"></canvas>
-    <div id="loading">{{{ PRODUCT_NAME.toUpperCase() }}}<div class="bar"><div class="fill"></div></div></div>
+    <div id="loading">{{{ PRODUCT_NAME.toUpperCase() }}}<div class="sub">BLUE HOUR AFTER THE RAIN</div><div class="bar"><div class="fill"></div></div></div>
     <div id="message"></div>
     <script>
       // A refused pointer lock (page without focus, frame without permission, a click during load) is not an error:
@@ -70,9 +74,18 @@
         // Errors as a quiet note in the page, never alert(): a modal dialog in the portal frame stops everything.
         showBanner: function (msg, type) { if (type === 'error') show(msg); else console.warn(msg); },
       }, function (progress) {
-        fill.style.width = (100 * progress) + '%';
+        // Unity's own files are 85 % of the bar; the rest is the world and the car (StreamedTerrain, CarModels).
+        fill.style.width = (85 * progress) + '%';
       }).then(function (instance) {
-        document.getElementById('loading').style.display = 'none';
+        // The loading screen stays until the game is playable (JapanMapLoaded at the first gameplayStart): it went
+        // with Unity's files before, and players saw black, then a grey box for a car (human, 2026-10-11).
+        var loading = document.getElementById('loading');
+        var crawl = setInterval(function () {
+          var w = parseFloat(fill.style.width) || 85;
+          fill.style.width = Math.min(99, w + (99 - w) * 0.06) + '%';
+        }, 200);
+        window.__jmLoaded = function () { clearInterval(crawl); fill.style.width = '100%'; setTimeout(function () { loading.style.display = 'none'; }, 150); };
+        setTimeout(window.__jmLoaded, 45000); // never a loading screen forever
         window.unityInstance = instance; // tools read GetMetricsInfo() (memory)
       }).catch(function (message) {
         show(String(message));

@@ -61,6 +61,8 @@ namespace JapanMap.Gameplay.Hud
         internal Label Toast => _toast;
         internal Label Sparks => _sparks;
         public Instrument Instrument => _instrument;
+        /// <summary>The HUD's root: full-screen layers of other systems (the intro) live here.</summary>
+        public VisualElement Root => _root;
         public MapView Minimap => _minimap;
         /// <summary>Last toast shown or queued (tests, play scripts).</summary>
         public string LastToast { get; private set; } = "";

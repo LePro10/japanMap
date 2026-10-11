@@ -109,5 +109,23 @@ MonoBehaviour:
     baseY: 9.260239
     baseSlope: -0.027610764
     note: "ASTRA (700, 920) south-east toward a 30 \xD7 18 m pad; moved 24 m inland."
+  - id: coast-kicker
+    title: Coast Kicker
+    start: {x: 412.87, y: -781.99}
+    yaw: 245.8
+    width: 12
+    height: 4.2
+    riseLength: 22
+    kick: 0.5
+    tableLength: 0
+    downLength: 0
+    landingLength: 8
+    landingWidth: 14
+    speedHint: "110\u2013140 km/h"
+    clearBefore: 135
+    clearAfter: 115
+    baseY: 13.37294
+    baseSlope: -0.0048523825
+    note: "Prototype intro ramp (stunt.config coast-kicker, lip 392.8 | -791 in Unity axes): the First Drive jump. Peak 16\xB0 like the prototype (kick 0.5); landing on the coast meadow ~70 m on."
   hintDistance: 60
   lipReach: 8

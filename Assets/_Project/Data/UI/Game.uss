@@ -187,3 +187,52 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-touch--brake { background-color: rgba(196, 69, 54, 0.38); }
 .jm-touch--boost { background-color: rgba(102, 215, 244, 0.35); }
 .jm-touch--on { border-color: var(--amber-hot); background-color: rgba(232, 186, 127, 0.4); }
+
+/* ── Intro "First Drive" (FirstDrive / IntroOverlay; prototype introOverlay.css) ───────────────────────── */
+.jm-intro__bar { position: absolute; left: 0; right: 0; height: 0; background-color: rgb(0, 0, 0);
+    transition-property: height; transition-duration: 0.6s; transition-timing-function: ease-in-out-sine; }
+.jm-intro__bar--top { top: 0; }
+.jm-intro__bar--bottom { bottom: 0; }
+.jm-intro__bar--on { height: 11%; }
+.jm-intro__title { position: absolute; left: 0; right: 0; top: 30%; align-items: center; opacity: 0; translate: 0 12px;
+    transition-property: opacity, translate; transition-duration: 0.7s; }
+.jm-intro__title--on { opacity: 1; translate: 0 0; }
+.jm-intro__kicker { font-size: 13px; letter-spacing: 6px; color: var(--amber); -unity-font-style: bold; }
+.jm-intro__name { font-size: 64px; letter-spacing: 14px; color: var(--paper); -unity-font-style: bold;
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.85); margin-top: 4px; }
+.jm-intro__sub { font-size: 16px; color: var(--paper-dim); margin-top: 6px; -unity-font-style: italic; }
+.jm-intro__prompt { position: absolute; left: 0; right: 0; top: 58%; align-items: center; opacity: 0; scale: 0.92 0.92;
+    transition-property: opacity, scale; transition-duration: 0.25s; }
+.jm-intro__prompt--on { opacity: 1; scale: 1 1; }
+.jm-intro__prompt--big { top: 50%; }
+.jm-intro__prompt--big .jm-intro__key { font-size: 30px; min-width: 120px; height: 62px; }
+.jm-intro__prompt--hit .jm-intro__key { background-color: var(--amber-hot); color: var(--ink); border-color: var(--paper); }
+.jm-intro__keys { flex-direction: row; align-items: center; }
+.jm-intro__key { font-size: 22px; -unity-font-style: bold; color: var(--paper); min-width: 64px; height: 50px; padding: 0 16px;
+    -unity-text-align: middle-center; background-color: rgba(6, 20, 26, 0.82); border-width: 2px; border-color: var(--paper);
+    border-bottom-width: 5px; border-radius: 10px; transition-property: background-color, color; transition-duration: 0.15s; }
+.jm-intro__plus { font-size: 20px; color: var(--paper-dim); margin: 0 8px; }
+.jm-intro__label { font-size: 26px; -unity-font-style: bold; color: var(--paper); margin-top: 10px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9); }
+.jm-intro__hint { font-size: 15px; color: var(--paper-dim); margin-top: 2px; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9); }
+.jm-intro__toast { position: absolute; left: 0; right: 0; top: 34%; -unity-text-align: middle-center; font-size: 34px;
+    -unity-font-style: bold; color: var(--paper); text-shadow: 0 3px 16px rgba(0, 0, 0, 0.9); display: none; }
+.jm-intro__toast--gold { color: var(--amber-hot); }
+.jm-intro__slow { position: absolute; left: 0; right: 0; top: 13%; align-items: center; opacity: 0;
+    transition-property: opacity; transition-duration: 0.3s; }
+.jm-intro__slow--on { opacity: 1; }
+.jm-intro__slow Label { font-size: 13px; letter-spacing: 8px; color: var(--nitro); -unity-font-style: bold; }
+.jm-intro__steps { position: absolute; left: 0; right: 0; bottom: 3%; flex-direction: row; justify-content: center; }
+.jm-intro__step { margin: 0 10px; border-top-width: 3px; border-color: rgba(246, 239, 228, 0.25); padding-top: 4px; width: 64px; }
+.jm-intro__step Label { font-size: 11px; letter-spacing: 2px; color: rgba(246, 239, 228, 0.45); -unity-text-align: middle-center; }
+.jm-intro__step--done { border-color: var(--amber); }
+.jm-intro__step--done Label { color: var(--amber); }
+.jm-intro__step--now { border-color: var(--paper); }
+.jm-intro__step--now Label { color: var(--paper); }
+.jm-intro__skip { position: absolute; right: 16px; top: 3%; height: 36px; padding: 0 14px; border-radius: 18px;
+    background-color: rgba(6, 20, 26, 0.7); border-width: 1px; border-color: rgba(246, 239, 228, 0.35); overflow: hidden; }
+.jm-intro__skip Label { font-size: 12px; letter-spacing: 2px; color: var(--paper-dim); -unity-font-style: bold; }
+.jm-intro__skipfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background-color: rgba(232, 186, 127, 0.35); }
+.jm-phone .jm-intro__name { font-size: 40px; letter-spacing: 8px; }
+.jm-phone .jm-intro__label { font-size: 20px; }
+.jm-phone .jm-intro__toast { font-size: 24px; }

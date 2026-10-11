@@ -24,6 +24,8 @@ namespace JapanMap.Vehicles
         bool _stuntArmed, _stuntLived, _trickPulse;
 
         public event Action RespawnPressed;
+        /// <summary>Rewrites the player's input before the car gets it (the intro's run-up assist); null = none.</summary>
+        public Func<DriveInput, DriveInput> Assist;
         public event Action CameraPressed;
 
         public bool StuntArmed => _stuntArmed;
@@ -149,6 +151,7 @@ namespace JapanMap.Vehicles
                 trick = _trickPulse,
             };
             _trickPulse = false;
+            if (Assist != null) input = Assist(input);
             vehicle.Input = input;
         }
 

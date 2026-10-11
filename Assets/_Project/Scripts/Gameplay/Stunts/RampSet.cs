@@ -33,6 +33,9 @@ namespace JapanMap.Gameplay.Stunts
             public float landingWidth;
             [Tooltip("Shown on approach, ASTRA's recommended speed.")]
             public string speedHint;
+            [Tooltip("Kept free of trees before the foot / after it, m (0: the default 80 m run-up and the ramp's length). " +
+                     "The intro's jump needs 130 m of run-up and ~90 m of flight.")]
+            public float clearBefore, clearAfter;
             [Header("Written by the builder")]
             [Tooltip("Base line height at the start and its rise per metre along the ramp (fitted to the terrain).")]
             public float baseY;

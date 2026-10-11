@@ -27,6 +27,11 @@ namespace JapanMap.Gameplay.Traffic
         int _next;
 
         public IReadOnlyList<TrafficCar> Cars => _cars;
+        /// <summary>
+        /// A zone traffic stays out of (null = none): cars inside go, none is placed there. The intro's run-up crosses
+        /// the coast road — a pickup rammed the player's car at the start (2026-10-11).
+        /// </summary>
+        public System.Func<Vector3, bool> KeepOut;
         public RoadNetwork Roads => roads;
 
         void Start()
@@ -113,6 +118,7 @@ namespace JapanMap.Gameplay.Traffic
             foreach (var c in _cars)
             {
                 if (!c.gameObject.activeSelf) continue;
+                if (KeepOut != null && KeepOut(c.transform.position)) { c.gameObject.SetActive(false); continue; }
                 var mode = (c.transform.position - focus).sqrMagnitude < shadow2 ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
                 if (c.BodyRenderer.shadowCastingMode != mode) c.BodyRenderer.shadowCastingMode = mode;
             }
@@ -137,7 +143,7 @@ namespace JapanMap.Gameplay.Traffic
                 if (d < settings.spawnRange.x || d > settings.spawnRange.y) continue;
                 var forward = Random.value < 0.5f;
                 var lane = Lane(r, i, forward, out var start);
-                if (lane.Length < 2 || Occupied(lane[0], t)) continue;
+                if (lane.Length < 2 || Occupied(lane[0], t) || (KeepOut != null && KeepOut(lane[0]))) continue;
                 t.gameObject.SetActive(true);
                 var dir = lane[1] - lane[0];
                 t.Car.Place(lane[0], Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg, fromAbove: 3f);

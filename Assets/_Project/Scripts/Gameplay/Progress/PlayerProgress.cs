@@ -25,6 +25,8 @@ namespace JapanMap.Gameplay.Progress
         [SerializeField] PlayerModeController player;
         [Tooltip("A parked spot is saved when it is this far from the saved one, m (ASTRA: save on safe parking).")]
         [SerializeField] float parkMoveMetres = 5f;
+        [Tooltip("Longest wait for the starter car's model before play starts anyway (it swaps in when it lands), s.")]
+        [SerializeField] float startCarWait = 12f;
 
         ProgressData _data;
         ISaveStore _store;
@@ -71,6 +73,18 @@ namespace JapanMap.Gameplay.Progress
         {
             SaveSync.Resolved += OnSaveResolved;
             yield return null; // the spawner builds the car in its Start
+            // The starter car streams (D36). Until its model lands the car is a grey box — the first thing a new player
+            // saw on the human's phone (2026-10-11). The world counts as ready (gameplayStart, the page's loading screen
+            // goes) only with the real car, at most startCarWait seconds; after that the box drives and swaps in place.
+            var def = spawner != null && spawner.Current != null ? spawner.Current.Definition : null;
+            var held = def != null && !CarModels.Ready(def) ? spawner.Current : null;
+            if (held != null) held.HoldStill = true; // waiting under the loading screen: the car must not roll off
+            for (var until = Time.realtimeSinceStartup + startCarWait; def != null && !CarModels.Ready(def) && Time.realtimeSinceStartup < until;)
+            {
+                CarModels.Request(def);
+                yield return null;
+            }
+            if (held != null) held.HoldStill = false;
             GamePlatform.WorldReady = true;
             if (!_data.hasLastPosition || spawner == null || spawner.Current == null || player == null) yield break;
             var p = _data.lastPosition;

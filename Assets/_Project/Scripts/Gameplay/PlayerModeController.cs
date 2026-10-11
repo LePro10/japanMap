@@ -51,6 +51,8 @@ namespace JapanMap.Gameplay
         public InputActionAsset Actions => actions;
         public WalkerMotor Walker => _walker;
         public VehicleController Car => spawner != null ? spawner.Current : null;
+        /// <summary>The car's input reader (the intro hangs its run-up assist on it).</summary>
+        public DriverInput Driver => driver;
         /// <summary>The prompt the HUD shows now ("" = none).</summary>
         public string Prompt { get; private set; } = "";
         /// <summary>Last message from a call (shown for a few seconds).</summary>

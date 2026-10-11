@@ -197,6 +197,18 @@ namespace JapanMap.Editor.Content
             Set(guide, "map", map);
             Set(guide, "hud", hud);
 
+            // The first drive (intro) for new players: rolling start, the coast kicker, slow motion, home.
+            var intro = Child<JapanMap.Gameplay.Intro.FirstDrive>(group, "Intro");
+            Set(intro, "settings", Asset<JapanMap.Gameplay.Intro.IntroSettings>("IntroSettings"));
+            Set(intro, "ramps", AssetDatabase.LoadAssetAtPath<JapanMap.Gameplay.Stunts.RampSet>(RampBuilder.Path));
+            Set(intro, "player", player);
+            Set(intro, "progress", progress);
+            Set(intro, "wallet", wallet);
+            Set(intro, "hud", hud);
+            Set(intro, "map", map);
+            Set(intro, "travel", travel);
+            Set(intro, "traffic", Object.FindAnyObjectByType<JapanMap.Gameplay.Traffic.TrafficSystem>());
+
             // Sound: the bank player first (others ask it for clips), then the car's sound.
             JapanMap.Editor.Audio.AudioSetup.Build();
             var sfx = Child<JapanMap.Audio.Sfx>(group, "Sound");
