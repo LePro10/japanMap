@@ -48,6 +48,7 @@ namespace JapanMap.Gameplay
         bool _promptShown;
 
         public Mode Current { get; private set; } = Mode.Driving;
+        public InputActionAsset Actions => actions;
         public WalkerMotor Walker => _walker;
         public VehicleController Car => spawner != null ? spawner.Current : null;
         /// <summary>The prompt the HUD shows now ("" = none).</summary>

@@ -1,6 +1,7 @@
 using JapanMap.Core;
 using JapanMap.Core.Ui;
 using JapanMap.Gameplay.Menu;
+using JapanMap.Gameplay.Progress;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
@@ -18,6 +19,10 @@ namespace JapanMap.Gameplay
         [SerializeField] PanelSettings panelSettings;
         [Tooltip("Seconds a call message stays.")]
         [SerializeField] float messageSeconds = 3.5f;
+        [Tooltip("Desktop key overlay for new players (CrazyGames quality guide: show the controls as a keyboard overlay, "
+            + "in gameplay). Shown until the save has this much play time, s; 0 = never.")]
+        [SerializeField] float keyHintsUntil = 240f;
+        [SerializeField] PlayerProgress progress;
 
         UIDocument _doc;
         Label _prompt, _distance;
@@ -25,10 +30,12 @@ namespace JapanMap.Gameplay
         bool _touchSeen;
         bool _wasLocked, _wasWalking;
         float _lockedSince;
-        VisualElement _deskMenu;
+        VisualElement _deskMenu, _keys;
+        PlayerModeController.Mode? _keysMode;
 
         internal Label PromptLabel => _prompt;
         internal VisualElement MenuButton => _menu;
+        internal VisualElement KeyHints => _keys;
 
         /// <summary>Shows the touch buttons as if the screen had been touched (screenshots of the phone layout).</summary>
         public void ShowTouch() => _touchSeen = true;
@@ -97,6 +104,17 @@ namespace JapanMap.Gameplay
             }
             Corner(_deskMenu, safe.z + 24f, safe.y + 24f, false);
 
+            // Desktop key overlay for the first minutes, under the prompt line. Filled per mode in Update.
+            _keys = new VisualElement { name = "key-hints", pickingMode = PickingMode.Ignore };
+            _keys.style.position = Position.Absolute;
+            _keys.style.left = _keys.style.right = 0;
+            _keys.style.bottom = safe.w + 6f;
+            _keys.style.flexDirection = FlexDirection.Row;
+            _keys.style.justifyContent = Justify.Center;
+            _keys.style.alignItems = Align.Center;
+            doc.Add(_keys);
+            _keysMode = null;
+
             _touch = new VisualElement { pickingMode = PickingMode.Ignore };
             _touch.style.position = Position.Absolute;
             _touch.style.left = _touch.style.right = _touch.style.top = _touch.style.bottom = 0;
@@ -132,6 +150,68 @@ namespace JapanMap.Gameplay
             _touch.Add(_distance);
         }
 
+        void UpdateKeyHints()
+        {
+            if (_keys == null) return;
+            var show = !_touchSeen && !UiPanel.IsPhone && !player.Suspended && progress != null && progress.Data != null
+                && progress.Data.playSeconds < keyHintsUntil;
+            _keys.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+            if (!show || _keysMode == player.Current) return;
+            _keysMode = player.Current;
+            _keys.Clear();
+            if (player.Current == PlayerModeController.Mode.Walking)
+            {
+                Hint("W A S D", "walk");
+                Hint("Mouse", "look");
+                Hint(Key("Walk", "Jump", "Space"), "jump"); // getting in has its own prompt line ("F  Get in")
+            }
+            else
+            {
+                Hint(Key("Drive", "Throttle", "W"), "gas");
+                Hint(Key("Drive", "Brake", "S"), "brake");
+                Hint("A D", "steer");
+                Hint(Key("Drive", "Handbrake", "Space"), "drift");
+                Hint(Key("Player", "Map", "M"), "map");
+            }
+        }
+
+        /// <summary>One keycap and its word ("[Space] drift").</summary>
+        void Hint(string key, string what)
+        {
+            var cap = new Label(key) { pickingMode = PickingMode.Ignore };
+            cap.style.fontSize = 16f;
+            cap.style.unityFontStyleAndWeight = FontStyle.Bold;
+            cap.style.color = Color.white;
+            cap.style.backgroundColor = new Color(0.04f, 0.12f, 0.14f, 0.78f);
+            cap.style.borderTopWidth = cap.style.borderBottomWidth = cap.style.borderLeftWidth = cap.style.borderRightWidth = 1f;
+            cap.style.borderBottomWidth = 3f; // a key's lower edge
+            cap.style.borderTopColor = cap.style.borderBottomColor = cap.style.borderLeftColor = cap.style.borderRightColor =
+                new Color(1f, 1f, 1f, 0.55f);
+            cap.style.borderTopLeftRadius = cap.style.borderTopRightRadius = cap.style.borderBottomLeftRadius =
+                cap.style.borderBottomRightRadius = 5f;
+            cap.style.paddingLeft = cap.style.paddingRight = 7f;
+            cap.style.paddingTop = cap.style.paddingBottom = 2f;
+            cap.style.marginLeft = 14f;
+            _keys.Add(cap);
+            var word = new Label(what) { pickingMode = PickingMode.Ignore };
+            word.style.fontSize = 17f;
+            word.style.color = Color.white;
+            word.style.marginLeft = 6f;
+            word.style.textShadow = new TextShadow { offset = new Vector2(0f, 1f), blurRadius = 4f, color = new Color(0f, 0f, 0f, 0.9f) };
+            _keys.Add(word);
+        }
+
+        /// <summary>The key an action is bound to now (Settings → Controls may have moved it).</summary>
+        string Key(string map, string action, string fallback)
+        {
+            var a = player.Actions != null ? player.Actions.FindActionMap(map, false)?.FindAction(action, false) : null;
+            if (a == null) return fallback;
+            for (var i = 0; i < a.bindings.Count; i++)
+                if (!a.bindings[i].isComposite && !a.bindings[i].isPartOfComposite && a.bindings[i].effectivePath.StartsWith("<Keyboard>"))
+                    return a.GetBindingDisplayString(i);
+            return fallback;
+        }
+
         static void Corner(VisualElement e, float outer, float top, bool mirror)
         {
             e.style.position = Position.Absolute;
@@ -156,6 +236,7 @@ namespace JapanMap.Gameplay
             _wasLocked = locked;
             _wasWalking = walkingNow;
             if (_deskMenu != null) _deskMenu.style.display = !_touchSeen && !player.Suspended && !UiPanel.IsPhone ? DisplayStyle.Flex : DisplayStyle.None;
+            UpdateKeyHints();
             // A menu or the garage owns the screen: no "F  Get out", no touch buttons.
             if (player.Suspended)
             {

@@ -84,6 +84,7 @@ namespace JapanMap.Editor.Vehicles
             Set(mode, "bottom", StandInMaterial("Trousers", new Color(0.16f, 0.17f, 0.2f)));
             Set(ui, "player", mode);
             Set(ui, "panelSettings", hud);
+            Set(ui, "progress", Object.FindAnyObjectByType<JapanMap.Gameplay.Progress.PlayerProgress>());
 
             var so = new SerializedObject(spawner);
             so.FindProperty("spawnPoint").vector3Value = SpawnPoint;

@@ -4,6 +4,7 @@ using JapanMap.Core;
 using JapanMap.Core.Ui;
 using JapanMap.Gameplay;
 using JapanMap.Gameplay.Menu;
+using JapanMap.Gameplay.Progress;
 using JapanMap.Gameplay.Records;
 using NUnit.Framework;
 using UnityEngine;
@@ -189,6 +190,37 @@ namespace JapanMap.Tests.Content
             for (var f = 0; f < 3; f++) yield return null;
             Assert.IsTrue(menu.IsOpen, "losing the mouse capture pauses like Escape");
             menu.Close();
+        }
+
+        /// <summary>
+        /// The desktop key overlay (CrazyGames quality guide: "show the user how to control the game with a keyboard
+        /// overlay"): a new player sees walk keys on foot and drive keys in the car; a returning player sees none.
+        /// </summary>
+        [UnityTest, Timeout(90000)]
+        public IEnumerator KeyHints_ShowNewPlayersTheKeys_PerMode([Values(false, true)] bool returning)
+        {
+            if (returning) ProgressStore.Save(FreshSaveAttribute.Store, new ProgressData { playSeconds = 600f });
+            SceneManager.LoadScene(Bootstrapper.BootSceneName);
+            yield return null;
+            for (var w = 0f; SceneManager.GetActiveScene().name != "Game" && w < 10f; w += Time.unscaledDeltaTime) yield return null;
+            for (var f = 0; f < 10; f++) yield return null;
+            var ui = Object.FindAnyObjectByType<PlayerModeUi>();
+            var player = Object.FindAnyObjectByType<PlayerModeController>();
+            Assume.That(player.Current, Is.EqualTo(PlayerModeController.Mode.Walking), "the game starts on foot");
+            var keys = ui.KeyHints;
+            string Words() => string.Join(" ", keys.Query<Label>().ToList().Select(l => l.text));
+            if (returning)
+            {
+                Assert.AreEqual(DisplayStyle.None, keys.resolvedStyle.display, "no overlay once the save has 10 min of play");
+                yield break;
+            }
+            Assert.AreEqual(DisplayStyle.Flex, keys.resolvedStyle.display, "a new player sees the keys");
+            StringAssert.Contains("walk", Words());
+            player.PressVehicle();
+            for (var w = 0f; player.Current != PlayerModeController.Mode.Driving && w < 5f; w += Time.unscaledDeltaTime) yield return null;
+            for (var f = 0; f < 3; f++) yield return null;
+            StringAssert.Contains("drift", Words(), "in the car the drive keys");
+            StringAssert.Contains("Space", Words());
         }
     }
 }

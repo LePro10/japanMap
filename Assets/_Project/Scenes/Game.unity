@@ -19576,6 +19576,8 @@ MonoBehaviour:
   player: {fileID: 1493207663}
   panelSettings: {fileID: 11400000, guid: a0208705cf2e24b24b2cdab2ddae1aa1, type: 2}
   messageSeconds: 3.5
+  keyHintsUntil: 240
+  progress: {fileID: 31690191}
 --- !u!114 &1493207663
 MonoBehaviour:
   m_ObjectHideFlags: 0
