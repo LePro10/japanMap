@@ -64,6 +64,11 @@ namespace JapanMap.Tests.Content
                     foreach (var (at, _) in races.Markers) nearest = Mathf.Min(nearest, Vector2.Distance(map.Waypoint.Value, new Vector2(at.x, at.z)));
                     Assert.Less(nearest, 0.1f, "on an event start");
                     StringAssert.AreNotEqualIgnoringCase("", guide.LastGoal);
+                    // The goal stays readable under the arrow, not only as a passing toast (human, 2026-10-11).
+                    yield return new WaitForSeconds(6f);
+                    var hud = Object.FindAnyObjectByType<JapanMap.Gameplay.Hud.GameplayHud>();
+                    StringAssert.StartsWith(guide.LastGoal + " · ", hud.GoalLabel, "goal name + distance under the arrow");
+                    StringAssert.EndsWith("m", hud.GoalLabel);
                     break;
                 case Start.TwoEventsDone:
                     Assert.IsFalse(map.Waypoint.HasValue, "two finished events: the player knows the way");

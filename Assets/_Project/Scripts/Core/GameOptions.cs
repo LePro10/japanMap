@@ -43,6 +43,9 @@ namespace JapanMap.Core
 
         public static string Speed(float metresPerSecond) => Mph ? $"{metresPerSecond * 2.23694f:0}" : $"{metresPerSecond * 3.6f:0}";
         public static string SpeedUnit => Mph ? "mph" : "km/h";
+        /// <summary>A distance in the player's unit: "420 m" / "1.2 km", or "0.3 mi".</summary>
+        public static string Distance(float metres) => Mph ? $"{metres / 1609.34f:0.0} mi"
+            : metres < 1000f ? $"{Mathf.Round(metres / 10f) * 10f:0} m" : $"{metres / 1000f:0.0} km";
 
         public static void ResetAll()
         {

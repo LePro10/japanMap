@@ -39,6 +39,9 @@ namespace JapanMap.Gameplay.Hud
 
         UIDocument _doc;
         VisualElement _root, _nav, _driftBox, _bar, _barFill, _useButton, _sheet, _sheetButtons, _arrow;
+        Label _goal;
+        string _goalTitle = "";
+        Vector2? _goalAt;
         Label _saved, _points, _mult, _spot, _result, _sparks, _toast, _banner, _prompt, _hint, _stunt, _race, _count, _region, _sheetTitle, _sheetBody;
         Instrument _instrument;
         MapView _minimap;
@@ -206,10 +209,17 @@ namespace JapanMap.Gameplay.Hud
             // Next checkpoint direction: just above the car's forward sightline.
             _arrow = new VisualElement { pickingMode = PickingMode.Ignore, name = "arrow" };
             _arrow.style.position = Position.Absolute;
-            _arrow.style.width = _arrow.style.height = 44 * (phone ? 0.8f : 1f);
+            _arrow.style.width = _arrow.style.height = 56 * (phone ? 0.8f : 1f); // 44 was easy to miss (human, 2026-10-11)
             _arrow.generateVisualContent += DrawArrow;
             _arrow.style.display = DisplayStyle.None;
             _root.Add(_arrow);
+            // What the arrow points at, for as long as it points: the "Next: …" toast alone was gone before players
+            // read it (human, 2026-10-11: "seh ich fast nicht").
+            _goal = Text(_root, 22f * k, Color.white);
+            _goal.name = "goal";
+            _goal.AddToClassList("jm-plate");
+            _goal.style.position = Position.Absolute;
+            _goal.style.display = DisplayStyle.None;
 
             var mid = Box(_root);
             mid.name = "middle";
@@ -365,6 +375,16 @@ namespace JapanMap.Gameplay.Hud
         }
 
         // ── API (unchanged for the game systems) ──────────────────────────────
+
+        /// <summary>Name the waypoint at <paramref name="at"/> under the arrow until it is reached or replaced.</summary>
+        public void SetGoal(string title, Vector2 at)
+        {
+            _goalTitle = title ?? "";
+            _goalAt = at;
+        }
+
+        /// <summary>Text under the arrow ("" = hidden) — tests.</summary>
+        public string GoalLabel => _goal != null && _goal.style.display == DisplayStyle.Flex ? _goal.text : "";
 
         /// <summary>Show a message now, replacing the current one (puzzle feedback).</summary>
         public void Flash(string text)
@@ -640,7 +660,7 @@ namespace JapanMap.Gameplay.Hud
             var car = player != null && player.Current == PlayerModeController.Mode.Driving ? player.Car : null;
             // On foot: no rpm, speed or nitro (ASTRA §10).
             _instrument.style.display = car != null ? DisplayStyle.Flex : DisplayStyle.None;
-            if (car == null) { _arrow.style.display = DisplayStyle.None; return; }
+            if (car == null) { _arrow.style.display = _goal.style.display = DisplayStyle.None; return; }
             var g = car.Gearbox;
             var t = car.Telemetry;
             _instrument.Set(g.Rpm, g.Spec.redline, g.Spec.limiter, Vehicles.Gearbox.Label(g.Gear), GameOptions.Speed(t.speed), GameOptions.SpeedUnit, t.boost, t.boosting);
@@ -653,6 +673,16 @@ namespace JapanMap.Gameplay.Hud
                 if (new Vector2(w.x - p.x, w.y - p.z).magnitude < 30f) map.Waypoint = null;
                 else aim = new Vector3(w.x, p.y, w.y);
             }
+            // The label belongs to the waypoint, not to race checkpoints (the race panel names those).
+            var labelled = !_target.HasValue && aim.HasValue;
+            if (labelled)
+            {
+                var flat = new Vector2(aim.Value.x - car.transform.position.x, aim.Value.z - car.transform.position.z);
+                var named = _goalAt.HasValue && map.Waypoint == _goalAt && _goalTitle != "";
+                var text = named ? $"{_goalTitle} · {GameOptions.Distance(flat.magnitude)}" : GameOptions.Distance(flat.magnitude);
+                if (_goal.text != text) _goal.text = text;
+            }
+            _goal.style.display = labelled ? DisplayStyle.Flex : DisplayStyle.None;
             if (aim.HasValue)
             {
                 var cam = Camera.main;
@@ -664,6 +694,12 @@ namespace JapanMap.Gameplay.Hud
                 _arrow.style.left = size.x * 0.5f - _arrow.resolvedStyle.width * 0.5f;
                 _arrow.style.top = size.y * (UiPanel.IsPortrait ? 0.42f : 0.36f);
                 _arrow.style.display = DisplayStyle.Flex;
+                if (labelled)
+                {
+                    _goal.style.left = 0;
+                    _goal.style.right = 0;
+                    _goal.style.top = size.y * (UiPanel.IsPortrait ? 0.42f : 0.36f) + _arrow.resolvedStyle.height + 6f;
+                }
             }
             else _arrow.style.display = DisplayStyle.None;
         }

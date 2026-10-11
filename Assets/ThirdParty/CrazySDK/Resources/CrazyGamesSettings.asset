@@ -15,6 +15,7 @@ MonoBehaviour:
   whitelistedDomains:
   - 127.0.0.1
   - local
+  - trycloudflare.com
   pauseGameDuringAd: 1
   accountAvailableResponse: 0
   linkAccountResponse: 0

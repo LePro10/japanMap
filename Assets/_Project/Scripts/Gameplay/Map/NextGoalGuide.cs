@@ -53,7 +53,11 @@ namespace JapanMap.Gameplay.Map
                 _guidedAt = finished;
                 _driven = 0f;
                 LastGoal = races.Set.events[index].title;
-                if (hud != null) hud.Flash($"Next: {LastGoal} · follow the arrow");
+                if (hud != null)
+                {
+                    hud.Flash($"Next: {LastGoal} · follow the arrow");
+                    hud.SetGoal(LastGoal, _set.Value);
+                }
                 Debug.Log($"[Guide] next goal {LastGoal}");
                 return;
             }
