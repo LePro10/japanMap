@@ -15,8 +15,8 @@
 | 5 | **Kategorie / Tags** | Kategorie **Driving** (Unterkategorie, falls gefragt: *Car*); Tags §5 | ✅ |
 | 6 | **Ausrichtung** | **Querformat (Landscape)**; Hochformat: ja, unterstützt (das Spiel hat ein Hochkant-Layout) | ✅ |
 | 7 | **Geräte** | Desktop ✅, Handy ✅ (Touch). iOS schaltet CrazyGames für Unity selbst erst später frei. | ✅ |
-| 8 | **Cover** | 3 Bilder, nur der Spielname als Text: `Captures/launch/cover-1920x1080.png`, `cover-800x1200.png`, `cover-800x800.png` (Titel setzt du oder ich, sobald der Name feststeht) | Bilder ✅, Titel offen |
-| 9 | **Vorschau-Videos** | 2 Videos, je 15–20 s, **ohne Ton**, erstes Bild = Cover: quer 1920×1080, hochkant 1080×1620 — `Captures/launch/preview-landscape.mp4`, `preview-portrait.mp4` | siehe STATUS |
+| 8 | **Cover** | 3 Bilder, nur der Spielname als Text: `Captures/launch/cover-1920x1080-title.png`, `cover-800x1200-title.png`, `cover-800x800-title.png` (Titel jetzt Vorschlag „Ameagari Drive“; anderer Name: `node Tools/store-media.mjs --title "Name"`, 10 s) | ✅ Entwurf |
+| 9 | **Vorschau-Videos** | 2 Videos, 15,7 s, ohne Ton, erstes Bild = Cover: `Captures/launch/preview-landscape.mp4` (1920×1080, 28,7 MB), `preview-portrait.mp4` (1080×1620, 18,6 MB). Inhalt: Einsteigen, Drift in der Sakura-Schüssel, Neon-Avenue. Neu drehen: `node Tools/store-media.mjs --shoot --title "Name"` (Editor offen, ~10 min) | ✅ Entwurf |
 | 10 | **SDK / Launch-Art** | **Basic Launch** zuerst (Werbung ist dort aus; das Spiel blendet die Werbe-Knöpfe dann selbst aus). Full Launch später, wenn CrazyGames das Spiel auswählt. | ✅ |
 | 11 | **Alter** | PEGI 12 / 13+: keine Gewalt (Fußgänger werden nur weggeschubst und stehen wieder auf), kein Chat, keine Käufe | ✅ |
 | 12 | **Sprache** | Englisch | ✅ |

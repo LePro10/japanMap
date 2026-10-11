@@ -140,6 +140,9 @@ namespace JapanMap.Editor
                 _lastFrame = frame;
             }
             var now = _clock;
+            // The world first: a car placed before its road tile arrived stood on the terrain under the road (Phase 11).
+            var streamer = JapanMap.Gameplay.Content.ContentStreamer.Instance;
+            if (_index == 0 && streamer != null && !streamer.AllPlaces) return;
             PushInput(now);
             if (_frames > 0)
             {
@@ -365,6 +368,17 @@ namespace JapanMap.Editor
                     carT.Place(treeAt - dir * 14f, Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg, fromAbove: 3f);
                     carT.Body.linearVelocity = dir * (F(1) / 3.6f);
                     Object.FindAnyObjectByType<JapanMap.Vehicles.CarCameraRig>().Attach(carT);
+                    return true;
+                }
+                case "cam":
+                {
+                    // cam x y z lx ly lz: main camera at a point looking at another (store pictures; like the photo camera).
+                    var cam = Camera.main;
+                    foreach (var b in cam.GetComponents<Behaviour>())
+                        if (b.GetType().Name.Contains("Cinemachine")) b.enabled = false;
+                    var from = new Vector3(F(1), F(2), F(3));
+                    cam.transform.SetPositionAndRotation(from, Quaternion.LookRotation(new Vector3(F(4), F(5), F(6)) - from));
+                    if (a.Length > 7) cam.fieldOfView = F(7);
                     return true;
                 }
                 case "view":
