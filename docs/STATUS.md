@@ -19,14 +19,14 @@ Handy-Link testen, dann hochladen
   - **Ziel lesbar:** „<Rennen> · 620 m“ bleibt unter dem Pfeil; Pfeil größer.
 - [ ] 2b. **Basic Launch** (du lädst hoch) · [ ] 2c. Zahlen nach 7 Tagen → H1–H5 prüfen (LAUNCH.md §7b)
 
-**Gemessen (2026-10-11 abends):** Build 82,2 MB · **20,85 MB bis gameplayStart** (18,4 Spiel + 2,4 Startauto, ehrlich
+**Gemessen (2026-10-11 abends):** Build 82,2 MB · **20,6 MB bis gameplayStart** (18,4 Spiel + 2,4 Startauto, ehrlich
 gezählt; vorher 18,4 + Kiste) · 5,8 s lokal · Handy-Netz 5 Mbit/s ≈ 34 s, 20 Mbit/s ≈ 11 s (H1: nur Bytes zählen) ·
 Rauchprobe Niedrig 390–402 fps (3×) · Speichern lokal + SDK grün · SDK gesperrt grün · Streaming 58 Szenen grün ·
-**sizes-web grün: 7 Desktop-Größen + Android (2,625) + iPhone (3) + hochkant, 0 Überlappungen** · Tests: siehe Commit.
+**sizes-web grün: 7 Desktop-Größen + Android (2,625) + iPhone (3) + hochkant, 0 Überlappungen** · EditMode 143/143 · PlayMode 204/211, 0 rot (7 auf Abruf).
 
 ## Offen / Gefunden
 
-- **Start 20,85 MB** (Marke 20 MB): Rest ist das Startauto Hachi mit **176 000 Eckpunkten** → Asset-Sitzung (unten).
+- **Start 20,6 MB** (Marke 20 MB): Rest ist das Startauto Hachi mit **176 000 Eckpunkten** → Asset-Sitzung (unten).
 - Midgame-Werbung zeigt CrazyGames erst nach dem Full Launch; im QA-Tool als Demo prüfbar.
 - Leistung: WebGPU später; Handy DXT→ASTC nur nach Messung (D37); Hoch-Budget (20/50 Blickpunkte > 3 M) nach deinem
   iGPU-Test. Niedrig-DC funaura-mole 504.
@@ -68,4 +68,4 @@ Rauchprobe Niedrig 390–402 fps (3×) · Speichern lokal + SDK grün · SDK ges
 | Datum | Typ | Gesamt | Start bis gameplayStart | Boot (lokal) |
 |---|---|---|---|---|
 | 2026-10-11 | Release, Phase 11/2 (Name, Lotse, SDK-Sofortstart) | 82,2 MB in 96 Dateien | 18,45 MB | 0,5 s |
-| 2026-10-11 | Release, Phase 11/3 (Intro, Handy-UI, Menü, Start mit Auto) | 82,2 MB in 97 Dateien | 20,85 MB (inkl. Startauto) | 0,8 s |
+| 2026-10-11 | Release, Phase 11/3 (Intro, Handy-UI, Menü, Start mit Auto) | 82,2 MB in 97 Dateien | 20,6 MB (inkl. Startauto) | 0,8 s |
