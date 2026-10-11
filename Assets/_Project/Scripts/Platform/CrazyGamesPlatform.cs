@@ -115,7 +115,8 @@ namespace JapanMap.Platform
         public string Name => "CrazyGames";
         // Ads are off during a Basic Launch and may be blocked; the request itself reports it (adsDisabledBasicLaunch,
         // adblock) and the offer then says "No ad available" once (ASTRA §12).
-        public bool AdsEnabled => CrazySDK.IsInitialized;
+        public bool AdsEnabled => CrazySDK.IsInitialized && !AdBlocked;
+        public bool AdBlocked => CrazySDK.IsInitialized && CrazySDK.Ad.AdblockStatus == AdblockStatus.Present;
 
         public void RequestRewarded(Action<AdOutcome> done)
         {

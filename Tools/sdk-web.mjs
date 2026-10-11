@@ -3,7 +3,10 @@
 //   * bytes transferred (compressed, as on the wire) from the first request to the first "[Platform] gameplayStart"
 //     — what CrazyGames counts for the mobile homepage (≤ 20 MB) — split into our files and others (SDK script)
 //   * gameplayStop on Escape (menu), gameplayStart again on Escape
-//   node Tools/sdk-web.mjs [--host localhost|127.0.0.1] [--timeout 120] [--gpu] [--param quality=Low] [--stream] [--mem] [--fps] [--probe] [--novsync] [--cpu 4] [--browser webkit] [--logs <regex>] [--dir Builds/Preview] [--shot Captures/x.png]
+//   * --adblock: requests to ad networks fail as with an ad blocker (CrazyGames: the game must stay fully playable,
+//     no dead rewarded buttons); --adblock sdk also blocks the CrazyGames SDK script itself (the strictest lists do).
+//     Then also checks: the game still reaches gameplayStart, and a rewarded request answers (adError) instead of hanging.
+//   node Tools/sdk-web.mjs [--net <Mbit/s>] [--adblock [sdk]] [--host localhost|127.0.0.1] [--timeout 120] [--gpu] [--param quality=Low] [--stream] [--mem] [--fps] [--probe] [--novsync] [--cpu 4] [--browser webkit] [--logs <regex>] [--dir Builds/Preview] [--shot Captures/x.png]
 // localhost runs the real SDK (local environment, needs internet); 127.0.0.1 is our test host without SDK.
 // Does not build. Prints one line SDK GREEN/RED with the numbers; exit 1 when red.
 import { chromium, webkit } from 'playwright-core';
@@ -41,12 +44,32 @@ try {
     const text = m.text().split('\n')[0];
     logs.push({ t: Date.now(), text });
     // WebGPU reports broken draws as warnings ("Validation: … invalid") — then the frame is black (Phase 10).
+    // A request our own --adblock refused is the blocker working, not a game error.
+    if (process.argv.includes('--adblock') && /ERR_BLOCKED_BY_CLIENT|Failed to load resource/.test(text)) return;
     if (m.type() === 'error' || /^Validation:|\[Invalid /.test(text)) errors.push(text);
   });
   page.on('pageerror', (e) => errors.push(e.message));
 
+  // --adblock: what uBlock/AdBlock Plus lists block (ad networks; with "sdk" also the portal SDK).
+  const adblock = process.argv.includes('--adblock') ? (arg('adblock', '') === 'sdk' ? 'sdk' : 'ads') : '';
+  const blocked = [];
+  if (adblock) {
+    const ads = /googlesyndication|doubleclick|googleadservices|imasdk\.googleapis|adservice\.google|amazon-adsystem|adnxs|pubmatic|rubiconproject|criteo|prebid|\/ads?\.js|adsbygoogle|aniview|playwire|gampad|\/pagead\//i;
+    const sdk = /sdk\.crazygames\.com|crazygames\.com\/sdk/i;
+    await context.route('**/*', (r) => {
+      const u = r.request().url();
+      if (ads.test(u) || (adblock === 'sdk' && sdk.test(u))) { blocked.push(u); return r.abort('blockedbyclient'); }
+      return r.continue();
+    });
+  }
   const cdp = useWebkit ? null : await context.newCDPSession(page);
   // --cpu N: CPU N times slower (Chromebook profile: 4).
+  // --net M: a slow line of M Mbit/s down, 70 ms latency (CrazyGames players on phones; streamed content arrives late).
+  if (cdp && Number(arg('net', 0)) > 0) {
+    await cdp.send('Network.enable');
+    const bps = (Number(arg('net', 0)) * 1e6) / 8;
+    await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 70, downloadThroughput: bps, uploadThroughput: bps / 4 });
+  }
   if (cdp && Number(arg('cpu', 1)) > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: Number(arg('cpu', 1)) });
   // Wire bytes as they arrive (dataReceived chunks, compressed size), each with its time: 'loadingFinished' of the
   // streamed-compiled wasm came after gameplayStart, and a whole 6.7 MB file went uncounted (Phase 10).
@@ -119,6 +142,30 @@ try {
     for (const [url, bytes] of [...per].filter(([, b]) => b > 200000).sort((a, b) => b[1] - a[1]))
       console.log(`  ${MB(bytes).padStart(6)} MB  ${url.replace(/^https?:\/\/[^/]+\//, '')}`);
   }
+  // --adblock: what the SDK thinks, and whether a rewarded request answers (the game's own button then is hidden, D40).
+  if (adblock) {
+    const r = await page.evaluate(() => new Promise((ok) => {
+      const sdk = window.CrazyGames && window.CrazyGames.SDK;
+      if (!sdk) return ok({ sdk: false });
+      const out = { sdk: true, env: sdk.environment };
+      const done = (k, v) => { if (!out.answer) { out.answer = k; out.detail = v; ok(out); } };
+      Promise.resolve(sdk.ad && sdk.ad.hasAdblock ? sdk.ad.hasAdblock() : null).then((b) => { out.hasAdblock = b; })
+        .catch((e) => { out.hasAdblock = 'error ' + e; })
+        .finally(() => {
+          try {
+            sdk.ad.requestAd('rewarded', { adStarted: () => { out.started = true; }, adFinished: () => done('finished'),
+              adError: (e) => done('error', e && (e.code || e.message || String(e))) });
+          } catch (e) { done('threw', String(e)); }
+          setTimeout(() => done('no answer in 20 s'), 20000);
+        });
+    }));
+    const ads = logs.filter((l) => /\[Ads\]|adblock|Adblock/.test(l.text)).map((l) => l.text).slice(0, 4);
+    const answered = !r.sdk || (r.answer && r.answer !== 'no answer in 20 s');
+    if (!answered) red = true;
+    console.log(`ADBLOCK ${answered ? 'GREEN' : 'RED'} · ${adblock === 'sdk' ? 'SDK and ads' : 'ads'} blocked (${blocked.length} requests) · ` +
+      (r.sdk ? `SDK ${r.env} · hasAdblock ${r.hasAdblock} · rewarded: ${r.answer}${r.detail ? ' (' + r.detail + ')' : ''}${r.started ? ' · started' : ''}` : 'no SDK on the page') +
+      `${ads.length ? ' · ' + ads.join(' | ') : ''}`);
+  }
   // --fps: frame rate over 8 s where Unity renders (requestAnimationFrame), as smoke --gpu does.
   if (flag('fps')) {
     const r = await page.evaluate(() => new Promise((ok) => {
@@ -135,7 +182,9 @@ try {
   if (flag('probe')) {
     const t1 = Date.now();
     let line = null;
-    while (!line && Date.now() - t1 < 20000) { line = logs.find((l) => /\[Probe\] frame/.test(l.text)); await page.waitForTimeout(500); }
+    // The frame after gameplayStart: a probe taken while the boot still waits (blocked SDK: 6 s) is the black loading frame.
+    const after = start ? start.t : 0;
+    while (!line && Date.now() - t1 < 20000) { line = logs.find((l) => l.t >= after && /\[Probe\] frame/.test(l.text)); await page.waitForTimeout(500); }
     const lit = line ? Number(/lit (\d+)%/.exec(line.text)?.[1] ?? 0) : 0;
     if (!line || lit < 5) red = true;
     console.log(`PROBE ${line && lit >= 5 ? 'GREEN' : 'RED'} · ${line ? line.text.replace(/^.*\[Probe\] /, '') : 'no frame read back (build without FrameProbe?)'}`);

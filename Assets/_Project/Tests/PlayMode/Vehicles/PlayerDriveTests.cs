@@ -83,11 +83,28 @@ namespace JapanMap.Tests.Vehicles
                 Vector2 ToScreen(Vector2 p) => new(p.x * px, (root.height - p.y) * px);
                 // Which element would take a finger here — the full runs once failed with "throttle 0", and the
                 // message must say whether another panel covered the control.
-                string Under(VisualElement e) => $"{e.name} at {e.worldBound.center}: picked '{controls.Stick.panel.Pick(e.worldBound.center)?.name}'";
+                string Under(VisualElement e)
+                {
+                    var hit = controls.Stick.panel.Pick(e.worldBound.center);
+                    var path = "";
+                    for (var v = hit; v != null && path.Length < 300; v = v.parent) path += $"/{v.GetType().Name}#{v.name}.{string.Join(".", v.GetClasses())}";
+                    return $"{e.name} at {e.worldBound.center} of {e.panel?.visualTree.worldBound.size} (button in panel: {e.panel != null}), " +
+                        $"screen {UnityEngine.Screen.width}x{UnityEngine.Screen.height}, UiPanel {JapanMap.Core.Ui.UiPanel.Size} x{JapanMap.Core.Ui.UiPanel.Scale}, picked {path}";
+                }
                 void Finger(int id, UnityEngine.InputSystem.TouchPhase phase, Vector2 at)
                 {
                     InputSystem.QueueStateEvent(touch, new TouchState { touchId = id, phase = phase, position = at });
                     InputSystem.Update();
+                }
+
+                // UI Toolkit dispatches a queued touch in its next panel update (once per frame), the car reads it in
+                // FixedUpdate: on a slow frame (4K Game view) two fixed steps ran before the touch arrived — wait for
+                // two frame boundaries, then a fixed step.
+                IEnumerator Settle()
+                {
+                    yield return null;
+                    yield return null;
+                    yield return new WaitForFixedUpdate();
                 }
 
                 yield return new WaitForSeconds(0.5f);
@@ -102,36 +119,32 @@ namespace JapanMap.Tests.Vehicles
 
                 var drift = ToScreen(controls.DriftButton.worldBound.center);
                 Finger(2, UnityEngine.InputSystem.TouchPhase.Began, drift);
-                yield return new WaitForFixedUpdate();
-                yield return new WaitForFixedUpdate();
+                yield return Settle();
                 Assert.IsTrue(car.Input.handbrake, $"a second finger on Drift pulls the handbrake ({Under(controls.DriftButton)})");
                 Assert.That(car.Input.throttle, Is.GreaterThan(0.9f), "the throttle stays");
                 Finger(2, UnityEngine.InputSystem.TouchPhase.Ended, drift);
-                yield return new WaitForFixedUpdate();
+                yield return Settle();
                 Assert.IsFalse(car.Input.handbrake);
 
                 // Slide from Boost onto Drift with one finger.
                 var boost = ToScreen(controls.BoostButton.worldBound.center);
                 Finger(3, UnityEngine.InputSystem.TouchPhase.Began, boost);
-                yield return new WaitForFixedUpdate();
-                yield return new WaitForFixedUpdate();
+                yield return Settle();
                 Assert.IsTrue(car.Input.boost, $"Boost ({Under(controls.BoostButton)})");
                 Finger(3, UnityEngine.InputSystem.TouchPhase.Moved, (boost + drift) * 0.5f);
                 Finger(3, UnityEngine.InputSystem.TouchPhase.Moved, drift);
-                yield return new WaitForFixedUpdate();
-                yield return new WaitForFixedUpdate();
+                yield return Settle();
                 Assert.IsFalse(car.Input.boost, "sliding off Boost releases it");
                 Assert.IsTrue(car.Input.handbrake, "sliding onto Drift applies it");
                 Finger(3, UnityEngine.InputSystem.TouchPhase.Ended, drift);
                 Finger(1, UnityEngine.InputSystem.TouchPhase.Ended, stick);
-                yield return new WaitForFixedUpdate();
+                yield return Settle();
                 Assert.That(car.Input.throttle, Is.GreaterThan(0.9f), "auto-throttle keeps going without a finger");
 
                 // Brake: overrides, stops, disengages; held on at rest it reverses only after 0.4 s.
                 var brake = ToScreen(controls.BrakeButton.worldBound.center);
                 Finger(4, UnityEngine.InputSystem.TouchPhase.Began, brake);
-                yield return new WaitForFixedUpdate();
-                yield return new WaitForFixedUpdate();
+                yield return Settle();
                 Assert.AreEqual(0f, car.Input.throttle, $"Brake overrides the auto-throttle ({Under(controls.BrakeButton)})");
                 Assert.AreEqual(1f, car.Input.brake);
                 for (var t = 0f; t < 8f && Mathf.Abs(car.Telemetry.forwardSpeed) > 0.5f; t += Time.deltaTime) yield return null;
@@ -142,8 +155,7 @@ namespace JapanMap.Tests.Vehicles
                 yield return new WaitForSeconds(0.6f);
                 Assert.AreEqual(1f, car.Input.brake, "held 0.4 s at rest: reverse");
                 Finger(4, UnityEngine.InputSystem.TouchPhase.Ended, brake);
-                yield return new WaitForFixedUpdate();
-                yield return new WaitForFixedUpdate();
+                yield return Settle();
                 Assert.AreEqual(0f, car.Input.throttle, "after the stop the car waits for the pad again");
             }
             finally

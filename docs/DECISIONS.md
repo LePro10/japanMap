@@ -603,6 +603,16 @@ exakt. Das Gelände hebt sich unter schnellen Straßen bis 1 m an die Fahrbahn h
 `RingDipTests`: mit den alten Daten 8 Aufsetzer mit Stößen bis 1 600, mit Glättung keiner (86–118 km/h). Kleine Verbesserung
 nach Regel 15 (Strecke wiedererkennbar, nur weicher).
 
+## D40 — Mit AdBlocker: kein toter Werbe-Knopf, Hinweis statt Popup; Töne vorgeladen · 2026-10-11
+
+CrazyGames (Werbe-Regeln): Spieler mit AdBlocker nie blockieren oder benachteiligen, keine Rewarded-Knöpfe, die nichts
+tun, Hinweis ohne Popup. Bisher stand „Watch ad …“ auch mit AdBlocker da und sagte erst nach dem Klick „No ad
+available“. Jetzt meldet die Plattform `AdBlocked` (SDK `AdblockStatus.Present`); dann sind die Werbe-Angebote aus, auf
+der Autoseite steht „Ad options are off while an ad blocker is active.“, das Leihen für Sparks bleibt. Ergebnis-Bonus
+erscheint einfach nicht (er ist ein Extra). Geprüft: `PlatformTests.AdBlocker_…`, im Browser `sdk-web.mjs --adblock`.
+Töne: `preloadAudioData` an für alle Clips (vorher entpackte der erste Abspielvorgang jedes Tons den Clip: 1–1,5 ms
+Ruckler beim ersten Bruch/Aufprall; Smash-Kosten 2,35 → 1,2 ms). Kostet Ladezeit, keine Download-Größe.
+
 ## Offen (in der genannten Phase entscheiden)
 
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,

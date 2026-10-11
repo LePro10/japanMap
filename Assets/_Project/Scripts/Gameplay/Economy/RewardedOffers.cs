@@ -18,6 +18,8 @@ namespace JapanMap.Gameplay.Economy
     public sealed class RewardedOffers : MonoBehaviour
     {
         public const string NoAd = "No ad available";
+        /// <summary>Shown where an ad option would be (CrazyGames: a notice, not a popup, and no dead ad button).</summary>
+        public const string AdBlockedNote = "Ad options are off while an ad blocker is active.";
 
         [SerializeField] AdSettings settings;
         [SerializeField] SparksWallet wallet;

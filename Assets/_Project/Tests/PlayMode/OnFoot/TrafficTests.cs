@@ -100,22 +100,61 @@ namespace JapanMap.Tests.OnFoot
             Assert.That(moved, Is.GreaterThan(2f), $"the traffic car must give way (moved {moved:F1} m)");
         }
 
+        /// <summary>The lane point 30 m ahead along the car's path, if the path stays within 1.5 m of the car's heading to 35 m.</summary>
+        static bool StraightAhead(TrafficCar c, out Vector3 spot)
+        {
+            spot = Vector3.zero;
+            var path = c.Pilot.path;
+            if (path == null || path.Length < 2) return false;
+            var pos = c.transform.position;
+            var fwd = c.transform.forward;
+            fwd.y = 0f;
+            fwd.Normalize();
+            var start = 0;
+            for (var i = 1; i < path.Length; i++)
+                if ((path[i] - pos).sqrMagnitude < (path[start] - pos).sqrMagnitude) start = i;
+            var walked = 0f;
+            var prev = pos;
+            for (var k = 1; k < path.Length && walked < 35f; k++)
+            {
+                var p = path[(start + k) % path.Length];
+                if (!c.Pilot.closed && start + k >= path.Length) return false;
+                var seg = Vector3.Distance(prev, p);
+                var d = p - pos;
+                d.y = 0f;
+                var along = Vector3.Dot(d, fwd);
+                if (along < 0f || (d - fwd * along).magnitude > 1.5f) return false;
+                if (walked < 30f && walked + seg >= 30f) spot = Vector3.Lerp(prev, p, (30f - walked) / seg);
+                walked += seg;
+                prev = p;
+            }
+            return walked >= 35f;
+        }
+
         [UnityTest]
         public IEnumerator TrafficCar_StopsForAPersonOnTheRoad()
         {
             yield return BootInTokyo();
             var traffic = Object.FindAnyObjectByType<TrafficSystem>();
             var mode = Object.FindAnyObjectByType<PlayerModeController>();
+            // A car whose lane runs straight for the next 35 m, and the person on that lane 30 m ahead: placed straight
+            // ahead of a car before a bend, the person stood beside its route and it rightly drove past (full-run flake).
             TrafficCar npc = null;
-            for (var t = 0f; t < 20f && npc == null; t += 0.5f)
+            var spot = Vector3.zero;
+            for (var t = 0f; t < 30f && npc == null; t += 0.5f)
             {
                 yield return new WaitForSeconds(0.5f);
-                npc = traffic.Cars.FirstOrDefault(c => c.gameObject.activeSelf && c.Car.Telemetry.speed * 3.6f > 25f);
+                foreach (var c in traffic.Cars)
+                {
+                    if (!c.gameObject.activeSelf || c.Car.Telemetry.speed * 3.6f < 25f || c.Pilot == null) continue;
+                    if (!StraightAhead(c, out spot)) continue;
+                    npc = c;
+                    break;
+                }
             }
-            Assert.NotNull(npc, "no traffic car at speed");
-            var ahead = npc.transform.position + npc.transform.forward * 30f + Vector3.up * 20f;
-            Physics.Raycast(ahead, Vector3.down, out var g, 60f, ~GameLayers.NotGround);
-            mode.Walker.Place(g.point, npc.transform.eulerAngles.y + 180f);
+            Assert.NotNull(npc, "no traffic car at speed on a straight");
+            Physics.Raycast(spot + Vector3.up * 3f, Vector3.down, out var g, 10f, ~GameLayers.NotGround);
+            mode.Walker.Place(g.collider != null ? g.point : spot, npc.transform.eulerAngles.y + 180f);
             var person = mode.Walker.transform;
             var closest = float.PositiveInfinity;
             for (var i = 0; i < 300; i++)

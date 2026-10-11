@@ -135,6 +135,11 @@ namespace JapanMap.Gameplay.Menu
                 });
                 t.AppendLine(offers.LoanBuyLabel);
             }
+            if (buy && !ad && Core.Platform.GamePlatform.Current.AdBlocked)
+            {
+                Ui.Small(p, Economy.RewardedOffers.AdBlockedNote);
+                t.AppendLine(Economy.RewardedOffers.AdBlockedNote);
+            }
             if (ad || buy) Ui.Small(p, "A loan is for driving and photos: no Sparks, records or discoveries.");
             if (_loanNote != "")
             {

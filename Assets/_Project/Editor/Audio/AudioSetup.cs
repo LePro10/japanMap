@@ -36,6 +36,9 @@ namespace JapanMap.Editor.Audio
             s.quality = 0.2f;
             s.sampleRateSetting = AudioSampleRateSetting.OverrideSampleRate;
             s.sampleRateOverride = 22050;
+            // Loaded with the scene: without it the first play of each one-shot decoded the clip on the spot
+            // (1.0–1.5 ms hitch on the first break, impact or bell; measured in Phase 11).
+            s.preloadAudioData = true;
             importer.defaultSampleSettings = s;
         }
 

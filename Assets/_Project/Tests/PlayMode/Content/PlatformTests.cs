@@ -231,5 +231,38 @@ namespace JapanMap.Tests.Content
             Assert.AreEqual("hachi", player.Car.Definition.id, "back in the own car");
             Assert.IsFalse(Object.FindAnyObjectByType<PlayerProgress>().Wallet.Frozen, "earning again");
         }
+            /// <summary>
+        /// With an ad blocker (CrazyGames ad rules): no "Watch ad" button that would do nothing, a short notice on the page
+        /// instead of a popup, and the Sparks loan stays — nobody is blocked or penalised.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AdBlocker_NoDeadAdButton_NoticeOnThePage_SparksLoanStays()
+        {
+            OfflinePlatform.Simulate = OfflinePlatform.AdSim.Blocked;
+            SaveWith(1000, 900f);
+            yield return BootInCar();
+            var garage = Object.FindAnyObjectByType<GarageSystem>();
+            var offers = RewardedOffers.Instance;
+            Assert.IsTrue(garage.TestDrive("mame"));
+            yield return new WaitForSeconds(0.3f);
+            garage.EndTestDrive();
+            yield return new WaitForSeconds(0.3f);
+            Assert.AreEqual((false, true), offers.LoanOffers("mame"), "no ad offer, the Sparks loan stays");
+            var menu = Object.FindAnyObjectByType<GameMenu>();
+            garage.Pick("mame");
+            menu.Open<CarsScreen>();
+            yield return null;
+            StringAssert.Contains(RewardedOffers.AdBlockedNote, menu.Text, "a notice where the ad option would be");
+            StringAssert.Contains(offers.LoanBuyLabel, menu.Text);
+            StringAssert.DoesNotContain(offers.LoanAdLabel, menu.Text, "no dead ad button");
+            menu.Close();
+            var requests = OfflinePlatform.Requests;
+            var outcome = (AdOutcome?)null;
+            GamePlatform.ShowRewarded(o => outcome = o);
+            Assert.AreEqual(AdOutcome.Unavailable, outcome, "a request anyway answers at once");
+            Assert.AreEqual(requests, OfflinePlatform.Requests, "and never reaches the portal");
+            Assert.IsFalse(GamePlatform.AdRunning);
+            Assert.AreEqual(1f, Time.timeScale, "nothing stays paused");
+        }
     }
 }

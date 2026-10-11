@@ -48,7 +48,10 @@ namespace JapanMap.Audio
             _instance = this;
             for (var i = 0; i < voices; i++)
             {
-                var a = gameObject.AddComponent<AudioSource>();
+                // Each voice on its own object: on one shared object, placing a new sound moved every playing one.
+                var v = new GameObject($"Voice {i}");
+                v.transform.SetParent(transform, false);
+                var a = v.AddComponent<AudioSource>();
                 a.playOnAwake = false;
                 _pool.Add(a);
             }

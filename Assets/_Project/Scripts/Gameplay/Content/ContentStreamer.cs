@@ -36,6 +36,9 @@ namespace JapanMap.Gameplay.Content
         [SerializeField] Smash.SmashSystem smash;
         [Tooltip("Seconds after the world is ready before streaming starts even if gameplayStart never comes (menu left open).")]
         [SerializeField] float startAfterAtMost = 8f;
+        [Tooltip("Road tiles count as this fraction of their distance: they are small (< 1 s on 5 Mbit/s) and the player drives on " +
+                 "bare terrain until they come; a nearby place like Tokyo took 19 s first (Phase 11, measured).")]
+        [SerializeField, Range(0.05f, 1f)] float roadDistanceFactor = 0.2f;
 
         readonly HashSet<string> _loaded = new();
         readonly HashSet<string> _failed = new();
@@ -57,6 +60,8 @@ namespace JapanMap.Gameplay.Content
         public bool AllPlaces => _loaded.Count + _failed.Count >= places.Length;
         /// <summary>A place arrived (address) — systems that scan the world add it.</summary>
         public event Action<string, Scene> PlaceLoaded;
+
+        const string RoadPrefix = "world/Roads_";
 
         void Awake() => Instance = this;
 
@@ -114,6 +119,9 @@ namespace JapanMap.Gameplay.Content
                 World.StreamedTerrain.FetchDetails(); // grass: small, independent of the scene queue
             }
             if (_busy != null) return;
+            // The own car's model first: a place loading beside it shares the line (stand-in car for 21 s at 5 Mbit/s).
+            var own = player != null && player.Car != null ? player.Car.Definition : null;
+            if (own != null && CarModels.IsLoading(own)) return;
             var next = NearestMissing();
             if (next != null) { Load(next); return; }
             PrefetchNextCar();
@@ -128,6 +136,7 @@ namespace JapanMap.Gameplay.Content
             {
                 if (_loaded.Contains(p.address) || _failed.Contains(p.address) || p.address == _busy) continue;
                 var d = (new Vector2(p.centre.x, p.centre.z) - new Vector2(at.x, at.z)).sqrMagnitude;
+                if (p.address.StartsWith(RoadPrefix)) d *= roadDistanceFactor * roadDistanceFactor;
                 if (d < bestD) { bestD = d; best = p.address; }
             }
             return best;

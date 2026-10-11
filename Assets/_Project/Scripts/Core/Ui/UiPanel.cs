@@ -24,7 +24,6 @@ namespace JapanMap.Core.Ui
         static PanelSettings _runtime;
         static float _userScale = 1f;
         static Vector2Int _lastScreen;
-        static float _lastScale;
 
         public static FormFactor Form { get; private set; } = FormFactor.Desktop;
         public static bool IsPhone => Form != FormFactor.Desktop;
@@ -92,21 +91,27 @@ namespace JapanMap.Core.Ui
             var screen = new Vector2Int(Screen.width, Screen.height);
             if (!force && screen == _lastScreen) return;
             _lastScreen = screen;
-            var dpr = DevicePixelRatio();
+            Apply(screen, DevicePixelRatio(), SafeInsetsPixels());
+        }
+
+        /// <summary>
+        /// Recomputes everything for a screen size. Always updates Size and Safe: they change with the screen even
+        /// when the scale stays clamped (a window resized between 864 and 684 px high keeps scale 0.8) — an early
+        /// return on "same scale" once kept a stale Size, and HUD layout and touch tests used the old screen.
+        /// </summary>
+        internal static void Apply(Vector2Int screen, float dpr, Vector4 safePixels)
+        {
             var css = new Vector2(screen.x, screen.y) / dpr;
             var shortSide = Mathf.Min(css.x, css.y);
             var form = _forced ?? (shortSide < PhoneShortSide ? (css.y > css.x ? FormFactor.PhonePortrait : FormFactor.PhoneLandscape) : FormFactor.Desktop);
             // Desktop sizes in ASTRA are for 1920 × 1080; a smaller window shrinks them a little, never below 80 %.
             var fit = form == FormFactor.Desktop ? Mathf.Clamp(css.y / 1080f, 0.8f, 1.5f) : 1f;
             var scale = dpr * fit * _userScale;
-            if (!force && Mathf.Approximately(scale, _lastScale) && form == Form) return;
-            _lastScale = scale;
             Form = form;
             if (_runtime != null) _runtime.scale = scale;
             Scale = 1f / scale;
             Size = new Vector2(screen.x, screen.y) / scale;
-            var s = SafeInsetsPixels();
-            Safe = s / scale;
+            Safe = safePixels / scale;
             Changed?.Invoke();
         }
 

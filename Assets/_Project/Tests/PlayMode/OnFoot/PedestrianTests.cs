@@ -84,7 +84,9 @@ namespace JapanMap.Tests.OnFoot
                         var on = roads.CarriagewayAt(ped.transform.position);
                         if (on == null) continue;
                         violations++;
-                        if (worst == "") worst = $"{on} at {ped.transform.position:F1}, t={t:F0}s";
+                        // State, NavMesh and distance to the player: the full runs once failed at t = 0 on a Tokyo crossing.
+                        if (worst == "") worst = $"{on} at {ped.transform.position:F1}, t={t:F1}s, {ped.Current}, onNavMesh {ped.Agent.isOnNavMesh}, " +
+                            $"agent {ped.Agent.nextPosition:F1}, player {mode.Walker.transform.position:F0}, frame {Time.frameCount}";
                     }
                     activeSum += active;
                     checks++;

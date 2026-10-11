@@ -93,7 +93,7 @@ namespace JapanMap.Editor.Content
             if (old != null) s.RemoveGroup(old);
             var game = MapScene.OpenGameScene();
             var n = 0;
-            foreach (var t in Object.FindObjectsByType<Terrain>(FindObjectsSortMode.None))
+            foreach (var t in Object.FindObjectsByType<Terrain>())
             {
                 if (t.gameObject.scene != game || t.terrainData == null) continue;
                 if (t.GetComponent<JapanMap.World.StreamedTerrain>() == null) t.gameObject.AddComponent<JapanMap.World.StreamedTerrain>();

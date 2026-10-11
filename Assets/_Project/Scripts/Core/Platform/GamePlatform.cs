@@ -30,6 +30,11 @@ namespace JapanMap.Core.Platform
         string Name { get; }
         /// <summary>Rewarded ads can be offered at all (false: hide every "Watch ad" action, ASTRA §12).</summary>
         bool AdsEnabled { get; }
+        /// <summary>
+        /// The player's ad blocker stops ads (CrazyGames: never penalise, no dead rewarded buttons, a short notice instead
+        /// of a popup). AdsEnabled is then false.
+        /// </summary>
+        bool AdBlocked { get; }
         /// <summary>Shows a rewarded ad. <paramref name="done"/> always comes, once, on the main thread.</summary>
         void RequestRewarded(Action<AdOutcome> done);
         void GameplayStart();
@@ -177,7 +182,7 @@ namespace JapanMap.Core.Platform
     /// </summary>
     public sealed class OfflinePlatform : IGamePlatform
     {
-        public enum AdSim { Fill, Unfilled, Off }
+        public enum AdSim { Fill, Unfilled, Off, Blocked }
 
         /// <summary>Editor ad simulation (tests, play scripts).</summary>
         public static AdSim Simulate = AdSim.Fill;
@@ -198,7 +203,8 @@ namespace JapanMap.Core.Platform
         }
 
         public string Name => Application.isEditor ? "Editor" : "Offline";
-        public bool AdsEnabled => Application.isEditor && Simulate != AdSim.Off;
+        public bool AdsEnabled => Application.isEditor && Simulate != AdSim.Off && Simulate != AdSim.Blocked;
+        public bool AdBlocked => Application.isEditor && Simulate == AdSim.Blocked;
 
         public void RequestRewarded(Action<AdOutcome> done)
         {

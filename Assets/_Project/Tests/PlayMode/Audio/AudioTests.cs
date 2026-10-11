@@ -112,5 +112,24 @@ namespace JapanMap.Tests.Audio
             Assert.AreEqual(0f, audio.Engine.LayerLevel, 1e-5f, "Engine slider at 0: silent");
             Press();
         }
+            /// <summary>Two sounds at two places stay at their places (all voices once shared one object: a new sound moved the old).</summary>
+        [UnityTest, Timeout(60000)]
+        public IEnumerator PositionedSounds_KeepTheirOwnPlace()
+        {
+            SceneManager.LoadScene(Bootstrapper.BootSceneName);
+            yield return null;
+            for (var w = 0f; SceneManager.GetActiveScene().name != "Game" && w < 10f; w += Time.unscaledDeltaTime) yield return null;
+            for (var f = 0; f < 5; f++) yield return null;
+            var a = new Vector3(10f, 0f, 0f);
+            var b = new Vector3(-30f, 0f, 50f);
+            Sfx.Play("Impact_Car_Hard", 1f, a);
+            Sfx.Play("Impact_Car_Hard", 1f, b);
+            var at = new System.Collections.Generic.List<Vector3>();
+            foreach (var s in Object.FindAnyObjectByType<Sfx>().GetComponentsInChildren<AudioSource>())
+                if (s.isPlaying && s.clip != null && s.clip.name.Contains("Impact_Car_Hard")) at.Add(s.transform.position);
+            Assert.AreEqual(2, at.Count, "two voices play");
+            Assert.That(at, Has.Some.Matches<Vector3>(p => (p - a).sqrMagnitude < 0.01f), "the first sound stays where it was played");
+            Assert.That(at, Has.Some.Matches<Vector3>(p => (p - b).sqrMagnitude < 0.01f));
+        }
     }
 }

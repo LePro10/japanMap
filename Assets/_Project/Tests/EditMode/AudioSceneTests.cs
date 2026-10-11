@@ -62,6 +62,19 @@ namespace JapanMap.Tests
             Assert.AreEqual(10, n);
         }
 
+        /// <summary>Every clip loads with the scene: on-demand loading decoded each one-shot at its first play (1–1.5 ms hitch).</summary>
+        [Test]
+        public void EveryClip_IsPreloaded()
+        {
+            var lazy = new System.Collections.Generic.List<string>();
+            foreach (var guid in AssetDatabase.FindAssets("t:AudioClip", new[] { AudioSetup.ArtDir }))
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                if (AssetImporter.GetAtPath(path) is AudioImporter imp && !imp.defaultSampleSettings.preloadAudioData) lazy.Add(path);
+            }
+            Assert.IsEmpty(lazy, $"{lazy.Count} clips load only on first play — reimport Art/Audio");
+        }
+
         [Test]
         public void SoundBank_NamesEverySoundTheGamePlays()
         {
