@@ -64,7 +64,7 @@ Kurzfassung (falls ein Feld nur ~160 Zeichen nimmt):
 > **Car:** W / ↑ accelerate · S / ↓ brake and reverse · A D / ← → steer · Space handbrake (drift) · Shift boost ·
 > R reset to the road · C camera · B look back · mouse wheel zoom
 > **On foot:** WASD move · mouse look · Shift run · Space jump · C slide (while running)
-> **Anywhere:** F get in / out · H call your car · E interact · M map · Tab records · P photo mode · Esc menu
+> **Anywhere:** F get in / out · H call your car · E interact · M map · Tab records · P photo mode · Esc or the MENU button: menu
 > **Gamepad** supported. **Touch:** on-screen pad and buttons (auto-throttle: touch the pad to drive).
 > Keys can be changed in Settings → Controls.
 

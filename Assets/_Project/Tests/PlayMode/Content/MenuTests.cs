@@ -158,5 +158,37 @@ namespace JapanMap.Tests.Content
             yield return Tap(Key.Escape);
             Assert.IsFalse(menu.IsOpen);
         }
+            /// <summary>
+        /// Escape is not enough on the web (CrazyGames: in fullscreen it leaves fullscreen; with the mouse captured it only frees
+        /// the mouse, and the key never reaches the game). A click on the desktop MENU button opens the menu, and the browser
+        /// freeing the captured mouse while walking opens it too.
+        /// </summary>
+        [UnityTest, Timeout(90000)]
+        public IEnumerator DesktopMenuButton_AndFreedMouse_OpenTheMenu()
+        {
+            SceneManager.LoadScene(Bootstrapper.BootSceneName);
+            yield return null;
+            for (var w = 0f; SceneManager.GetActiveScene().name != "Game" && w < 10f; w += Time.unscaledDeltaTime) yield return null;
+            for (var f = 0; f < 10; f++) yield return null;
+            var menu = Object.FindAnyObjectByType<GameMenu>();
+            var ui = Object.FindAnyObjectByType<JapanMap.Gameplay.PlayerModeUi>();
+            var button = ui.GetComponentInChildren<UIDocument>().rootVisualElement.Q("desk-menu");
+            Assert.NotNull(button, "a MENU button on the desktop HUD");
+            Assert.AreEqual(DisplayStyle.Flex, button.resolvedStyle.display, "shown without touch");
+            yield return Click(button);
+            Assert.IsTrue(menu.IsOpen, "a click on MENU opens the menu");
+            menu.Close();
+            for (var f = 0; f < 5; f++) yield return null;
+            Assert.IsFalse(menu.IsOpen);
+
+            // The browser frees the captured mouse (Escape while walking): the menu opens.
+            UnityEngine.Cursor.lockState = CursorLockMode.Locked;
+            for (var f = 0; f < 3; f++) yield return null;
+            Assume.That(UnityEngine.Cursor.lockState, Is.EqualTo(CursorLockMode.Locked), "the editor refused the mouse capture");
+            UnityEngine.Cursor.lockState = CursorLockMode.None;
+            for (var f = 0; f < 3; f++) yield return null;
+            Assert.IsTrue(menu.IsOpen, "losing the mouse capture pauses like Escape");
+            menu.Close();
+        }
     }
 }

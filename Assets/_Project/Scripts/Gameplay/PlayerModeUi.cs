@@ -23,6 +23,8 @@ namespace JapanMap.Gameplay
         Label _prompt, _distance;
         VisualElement _touch, _call, _car, _carOut, _menu;
         bool _touchSeen;
+        bool _wasLocked, _wasWalking;
+        VisualElement _deskMenu;
 
         internal Label PromptLabel => _prompt;
         internal VisualElement MenuButton => _menu;
@@ -77,6 +79,23 @@ namespace JapanMap.Gameplay
             _prompt.style.textShadow = new TextShadow { offset = new Vector2(0f, 2f), blurRadius = 6f, color = new Color(0f, 0f, 0f, 0.8f) };
             doc.Add(_prompt);
 
+            // Desktop: a menu button too. Escape is not enough on the web — in CrazyGames' fullscreen it leaves fullscreen,
+            // with the mouse captured it only frees the mouse; neither key press reaches the game (CrazyGames: restricted keys).
+            _deskMenu = TouchKit.Tap(doc, 44f, "MENU · Esc", () => GameMenu.Instance?.Escape());
+            _deskMenu.name = "desk-menu";
+            _deskMenu.style.width = 132f;
+            // Readable over a bright sky: the dark panel colour of the menu, not the see-through touch style.
+            _deskMenu.style.backgroundColor = new Color(0.04f, 0.12f, 0.14f, 0.82f);
+            _deskMenu.style.borderTopColor = _deskMenu.style.borderBottomColor = _deskMenu.style.borderLeftColor =
+                _deskMenu.style.borderRightColor = new Color(0.95f, 0.78f, 0.45f, 0.9f);
+            foreach (var l in _deskMenu.Query<Label>().ToList())
+            {
+                l.style.color = Color.white;
+                l.style.fontSize = 16f;
+                l.style.unityFontStyleAndWeight = FontStyle.Bold;
+            }
+            Corner(_deskMenu, safe.z + 24f, safe.y + 24f, false);
+
             _touch = new VisualElement { pickingMode = PickingMode.Ignore };
             _touch.style.position = Position.Absolute;
             _touch.style.left = _touch.style.right = _touch.style.top = _touch.style.bottom = 0;
@@ -124,6 +143,14 @@ namespace JapanMap.Gameplay
         {
             if (player == null || _prompt == null) return;
             if (!_touchSeen && Touchscreen.current != null && Touchscreen.current.primaryTouch.press.isPressed) _touchSeen = true;
+            // The browser freed the captured mouse (Escape while walking; the key itself never reaches the game): pause as
+            // Escape would. Our own releases (menu, photo mode, getting in) happen with something on the UI stack or a mode change.
+            var locked = UnityEngine.Cursor.lockState == CursorLockMode.Locked;
+            var walkingNow = player.Current == PlayerModeController.Mode.Walking;
+            if (_wasLocked && !locked && _wasWalking && walkingNow && UiStack.Count == 0 && !player.Suspended) GameMenu.Instance?.Open();
+            _wasLocked = locked;
+            _wasWalking = walkingNow;
+            if (_deskMenu != null) _deskMenu.style.display = !_touchSeen && !player.Suspended && !UiPanel.IsPhone ? DisplayStyle.Flex : DisplayStyle.None;
             // A menu or the garage owns the screen: no "F  Get out", no touch buttons.
             if (player.Suspended)
             {

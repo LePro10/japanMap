@@ -335,7 +335,7 @@ namespace JapanMap.Gameplay.Hud
                     }
                     Pos(_driftBox, top: T(size.y * 0.2f - 30f));
                     Pos(_result.parent, top: T(size.y * 0.2f - 20f));
-                    Pos(_sparks.parent, right: R(32), top: T(24));
+                    Pos(_sparks.parent, right: R(32), top: T(_touchSeen ? 24 : 84)); // under the desktop MENU button
                     Pos(_toast.parent, top: T(size.y * 0.32f));
                     Pos(_prompt.parent, bottom: B(110));
                     Pos(_stunt.parent, left: L(24), bottom: B(260));

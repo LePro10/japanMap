@@ -116,7 +116,7 @@
 | **AdBlock:** keine toten Rewarded-Knöpfe, Hinweis statt Popup | `PlatformTests.AdBlocker_NoDeadAdButton_…` (D40) | ✅ |
 | AdBlock mit echtem SDK (Werbe-Server gesperrt) | lokal meldet das SDK immer „kein AdBlocker“ und spielt Demo-Werbung | 👤 QA-Tool mit AdBlocker |
 | Werbung (Demo), Login, Speichern im Rahmen, Mausfang, Foto-Download | nur im CrazyGames-QA-Tool | 👤 |
-| **Esc im Vollbild** | CrazyGames: „Escape beendet den Vollbildmodus“ — unser Menü liegt auf Esc. Prüfen, ob das Menü im Vollbild aufgeht | 👤 QA-Tool |
+| **Esc im Vollbild / bei gefangener Maus** | CrazyGames: „Escape beendet den Vollbildmodus“; bei gefangener Maus gibt Esc nur die Maus frei. **Neu:** Desktop-Knopf „MENU · Esc“ oben rechts + Menü öffnet, wenn der Browser die Maus freigibt — `MenuTests.DesktopMenuButton_AndFreedMouse_OpenTheMenu`, Bild `Captures/p11-deskmenu/corner.png` | ✅ · 👤 im QA-Tool gegenprüfen |
 | Handy: Touch, Speicher (DXT→ASTC nur bei Bedarf, D37) | — | 👤 Gerät |
 | Physik gleich bei 60/144/165 Hz | §3 | ✅ |
 
@@ -126,6 +126,7 @@
 - Erster Abspielvorgang jedes Tons entpackte den Clip (1–1,5 ms Ruckler) → alle Töne vorgeladen.
 - Alle 3D-Töne hingen an einem Objekt: ein neuer Ton verschob alle laufenden → je Stimme ein Objekt.
 - Werbe-Knopf mit AdBlocker tat nichts → ausgeblendet + Hinweis (D40).
+- Esc erreichte das Spiel im Vollbild/bei gefangener Maus nicht → Desktop-Knopf MENU + Pause bei freigegebener Maus.
 - Langsames Netz: Tokyo lud vor Straßen und eigenem Auto → Reihenfolge geändert.
 - Werkzeuge: `bench` maß bei zufälliger Fenstergröße (4K → 2–3× Dreiecke) → immer 1920×1080; `sdk-web` nahm die
   schwarze Ladebild-Probe → Probe nach gameplayStart; neue Schalter `--adblock [sdk]`, `--net <Mbit/s>`;
