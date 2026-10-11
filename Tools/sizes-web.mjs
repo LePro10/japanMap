@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Tools/sizes-web — the build at CrazyGames' check sizes, device pixel ratio 1 (their readability rule): desktop
-// 907×510, 1216×684, 1280×720, 1920×1080; mobile 800×450; tablet 1080×607. Per size a picture of the HUD and one
-// of the menu (Escape), then one montage. Real path: the page loads, the game starts, Escape opens the menu.
+// 907×510, 1216×684, 1280×720, 1920×1080; mobile 800×450; tablet 1080×607 — plus a tablet held upright (820×1180;
+// the map squeezed its card there, Phase 11). Per size a picture of the HUD, the menu (Escape) and the map page (M),
+// then one montage. Real path: the page loads, the game starts, Escape opens the menu.
 //   node Tools/sizes-web.mjs [--sizes 907x510,800x450] [--out Captures/p11-sizes]   (does not build)
 // Prints SIZES GREEN/RED (red: no gameplayStart, a console error, or the menu did not open).
 import { chromium } from 'playwright-core';
@@ -11,7 +12,7 @@ import { join } from 'node:path';
 import { serve } from './serve-web.mjs';
 import { ROOT, arg } from './lib/unity.mjs';
 
-const sizes = arg('sizes', '907x510,1216x684,1280x720,1920x1080,800x450,1080x607').split(',').map((s) => s.split('x').map(Number));
+const sizes = arg('sizes', '907x510,1216x684,1280x720,1920x1080,800x450,1080x607,820x1180').split(',').map((s) => s.split('x').map(Number));
 const out = join(ROOT, arg('out', 'Captures/p11-sizes'));
 mkdirSync(out, { recursive: true });
 let port = 8095, server;
@@ -42,7 +43,11 @@ try {
     const menuOpen = logs.some((l) => /\[Platform\] gameplayStop/.test(l));
     const menu = join(out, `${w}x${h}-menu.png`);
     await page.screenshot({ path: menu });
-    shots.push(hud, menu);
+    await page.keyboard.press('m');
+    await page.waitForTimeout(1200);
+    const map = join(out, `${w}x${h}-map.png`);
+    await page.screenshot({ path: map });
+    shots.push(hud, menu, map);
     const ok = started && menuOpen && errors.length === 0;
     red ||= !ok;
     console.log(`  ${w}x${h} · ${started ? 'started' : 'NO START'} · menu ${menuOpen ? 'open' : 'NOT OPEN'} · ${errors.length} errors${errors.length ? ': ' + errors.slice(0, 2).join(' | ') : ''}`);

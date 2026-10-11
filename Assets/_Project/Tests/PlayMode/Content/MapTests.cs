@@ -118,7 +118,7 @@ namespace JapanMap.Tests.Content
             StringAssert.StartsWith("travel:commons", screen.Selected, $"a click on the Commons pin selects it ({screen.Text})");
             var button = menu.Root.Query<Button>().ToList().First(b => b.text == "Travel");
             yield return Click(button);
-            Assert.IsFalse(menu.IsOpen, "travel closes the menu");
+            Assert.IsFalse(menu.IsOpen, $"travel closes the menu (page {menu.Current?.Title}: {menu.Text.Replace("\n", " | ")}; travel button {button.worldBound}, enabled {button.enabledInHierarchy})");
             yield return new WaitForSeconds(0.5f);
             var at = player.Car.transform.position;
             Assert.Less(Vector2.Distance(new Vector2(at.x, at.z), commons.at), 30f, $"the car is at Sakura Commons ({at})");

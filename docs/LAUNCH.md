@@ -33,7 +33,12 @@ Arbeitstitel „japanMap“ ist kein Spielname. CrazyGames verlangt einen eigene
 2. **Blue Hour Japan** — die Stimmung als Name, englisch verständlich.
 3. **Touge Hour** — Bergpass + blaue Stunde, klingt nach Drift.
 
-Empfehlung: **Ameagari Drive** (eigen, suchbar, beschreibt das Spiel).
+Empfehlung: **Ameagari Drive** (eigen, suchbar, beschreibt das Spiel). Suche 2026-10-11: es gibt „Ameagari no Hanaby“
+(2018, Jump'n'Run, PC) — anderes Genre, anderer Name; „Blue Hour Japan“/„Touge Hour“: kein Spiel gefunden.
+
+**Autonamen prüfen (du entscheidest, Regel 15):** „Raiden GT-R34“, „Kumo STi 22“, „Suprema RZ“, „Rotor FD“, „Hachi 86“
+spielen deutlich auf echte Modelle an (GT-R und STI sind Marken von Nissan/Subaru). CrazyGames verlangt eigene Namen
+und Inhalte. Vorschlag: Ziffern/Kürzel tauschen (z. B. „Raiden R4“, „Kumo S22“), Optik bleibt. Ohne dein Wort ändere ich nichts.
 
 ## 3. Beschreibung (Englisch, zum Einfügen)
 
@@ -83,3 +88,23 @@ Kurzfassung (falls ein Feld nur ~160 Zeichen nimmt):
 | Kein eigener Vollbild-Knopf, keine fremden Links/Werbung, PEGI 12 | QA.md §11 |
 | Basic Launch: Werbung aus, aber Werbe-Code darf nicht hängen, keine toten Rewarded-Knöpfe | QA.md §12 |
 | Full Launch: SDK gameplayStart/Stop, Datenmodul, Nutzer-Modul, direkt ins Spiel, AdBlock spielbar | QA.md §10, §12 |
+
+## 7. Nach dem Launch: Zahlen, die du mir gibst
+
+CrazyGames zeigt im Developer-Portal (Spiel → Analytics) Zahlen je Tag. Bitte nach **7 Tagen** (und wieder nach 14)
+als Bildschirmfoto oder abgetippt schicken:
+
+| Zahl im Portal | Wofür |
+|---|---|
+| Gameplays / Plays je Tag, davon Handy/Desktop | Basis; Verteilung der Geräte |
+| **Durchschnittliche Spielzeit** (avg. playtime) je Gerät | Hauptmaß für Einnahmen |
+| **Retention** Tag 1 / Tag 7 | Wiederkehr |
+| Anteil, der das Spiel überhaupt startet (Load → Gameplay; „conversion“ o. ä.) | Ladeabbruch (Startgröße, Zeit) |
+| Bewertung (Daumen) und Kommentare | Was Spieler stört |
+| Browser/Länder, falls angezeigt | Safari/Handy-Probleme |
+
+Auswertung (Phase 11/3): Absprungstellen sind dort, wo die Zeit endet — (1) **vor dem Spiel** (Startanteil niedrig →
+Ladezeit/Größe), (2) **in der ersten Minute** (Spielzeit < 2 min → Einstieg: zu Fuß starten, Auto finden, Steuerung),
+(3) **nach dem ersten Ziel** (Spielzeit 2–8 min, Tag-1-Wiederkehr < 10 % → was danach fehlt: Rennen, Sparks, Garage).
+Für jede der drei größten Stellen: Ursache messen, beheben, wieder messen. Dann Full Launch (CrazyGames wählt aus; das
+SDK und die Werbung sind schon fertig).

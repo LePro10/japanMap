@@ -45,6 +45,7 @@ namespace JapanMap.Editor
         static float _frameDt, _frameNext;
         static string _frameName;
         static int _shotW = 960, _shotH = 540;
+        static Vector2 _viewBefore;
         static Vector3? _aim;
         static float _clock;
         static int _lastFrame = -1;
@@ -491,6 +492,9 @@ namespace JapanMap.Editor
                     return false;
                 case "gameview":
                     // gameview <w> <h>: the Game view resolution (phone portrait 390 844, landscape 844 390).
+                    // Remember the size before the first change: a script left the Game view upright and the menu tests
+                    // laid out for a tall window afterwards (MapTests red, Phase 11).
+                    if (_viewBefore == Vector2.zero) _viewBefore = UnityEditor.Handles.GetMainGameViewSize();
                     GameViewSize(int.Parse(a[1]), int.Parse(a[2]));
                     _until = now + 0.5f;
                     return false;
@@ -767,6 +771,7 @@ namespace JapanMap.Editor
             EditorApplication.update -= Tick;
             Time.captureFramerate = 0;
             _shotW = 960; _shotH = 540;
+            if (_viewBefore != Vector2.zero) { GameViewSize((int)_viewBefore.x, (int)_viewBefore.y); _viewBefore = Vector2.zero; }
             if (_kb != null) InputSystem.RemoveDevice(_kb);
             if (_mouse != null) InputSystem.RemoveDevice(_mouse);
             _kb = null;

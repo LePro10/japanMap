@@ -61,6 +61,7 @@ namespace JapanMap.Gameplay.Menu
         InputAction _menu, _records, _map;
         float _savedScale = 1f;
         FormFactor _builtFor;
+        bool _builtTall;
 
         public bool IsOpen { get; private set; }
         public MenuScreen Current { get; private set; }
@@ -183,6 +184,9 @@ namespace JapanMap.Gameplay.Menu
         void OnLayout()
         {
             if (_builtFor != UiPanel.Form) BuildShell();
+            // A tablet turned while a page is open: pages that lay out by the window's shape (the map) build again.
+            else if (IsOpen && _builtTall != UiPanel.Size.y > UiPanel.Size.x) Rebuild();
+            _builtTall = UiPanel.Size.y > UiPanel.Size.x;
         }
 
         public void Open<T>() where T : MenuScreen
@@ -270,6 +274,7 @@ namespace JapanMap.Gameplay.Menu
         {
             if (_root == null) return;
             _builtFor = UiPanel.Form;
+            _builtTall = UiPanel.Size.y > UiPanel.Size.x;
             _root.EnableInClassList("jm-phone", UiPanel.IsPhone);
             _root.EnableInClassList("jm-portrait", UiPanel.IsPortrait);
             _root.EnableInClassList("jm-landscape", UiPanel.Form == FormFactor.PhoneLandscape);

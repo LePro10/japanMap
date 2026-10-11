@@ -82,16 +82,24 @@ namespace JapanMap.Gameplay.Menu
 
             var cols = Ui.Box(body, "jm-cols");
             var side = UiPanel.Size;
+            // A tall desktop window (a tablet held upright: 820 × 1180 is not a phone) stacks the card under the map like
+            // a phone in portrait; side by side the card was squeezed to a strip and Travel could not be pressed (Phase 11).
+            var stacked = UiPanel.IsPortrait || side.y > side.x;
+            if (stacked) cols.style.flexDirection = FlexDirection.Column;
             // The square frame: as large as the page allows, never squeezed.
-            var square = UiPanel.IsPortrait ? side.x - 24f : Mathf.Min(side.y - (UiPanel.IsPhone ? 90f : 150f), side.x * 0.62f);
+            var square = UiPanel.IsPortrait ? side.x - 24f
+                : stacked ? Mathf.Min(side.x - 300f, side.y * 0.55f)
+                : Mathf.Min(side.y - (UiPanel.IsPhone ? 90f : 150f), side.x * 0.62f);
             _view = new MapView(_map.Roads, _map.Regions, _map.Bounds, _map.EnsureBase()) { name = "worldmap" };
             _view.style.width = _view.style.height = square;
             _view.style.flexShrink = 0;
             _view.style.borderTopLeftRadius = _view.style.borderTopRightRadius = _view.style.borderBottomLeftRadius = _view.style.borderBottomRightRadius = 10;
             cols.Add(_view);
             _card = Ui.Box(cols, "jm-col");
-            _card.style.marginLeft = UiPanel.IsPortrait ? 0 : 16;
-            _card.style.marginTop = UiPanel.IsPortrait ? 12 : 0;
+            _card.style.marginLeft = stacked ? 0 : 16;
+            _card.style.marginTop = stacked ? 12 : 0;
+            // Stacked, the column's flex basis 0 left the card one line high with its text spilling out.
+            if (stacked) { _card.style.flexGrow = 0; _card.style.flexShrink = 0; _card.style.flexBasis = StyleKeyword.Auto; }
             if (_span < 0f)
             {
                 _span = _map.Bounds.width;

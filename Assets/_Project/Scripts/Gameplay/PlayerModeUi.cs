@@ -24,6 +24,7 @@ namespace JapanMap.Gameplay
         VisualElement _touch, _call, _car, _carOut, _menu;
         bool _touchSeen;
         bool _wasLocked, _wasWalking;
+        float _lockedSince;
         VisualElement _deskMenu;
 
         internal Label PromptLabel => _prompt;
@@ -147,7 +148,11 @@ namespace JapanMap.Gameplay
             // Escape would. Our own releases (menu, photo mode, getting in) happen with something on the UI stack or a mode change.
             var locked = UnityEngine.Cursor.lockState == CursorLockMode.Locked;
             var walkingNow = player.Current == PlayerModeController.Mode.Walking;
-            if (_wasLocked && !locked && _wasWalking && walkingNow && UiStack.Count == 0 && !player.Suspended) GameMenu.Instance?.Open();
+            // Only a capture that was really held: a refused request flips back at once (editor without focus, a browser
+            // that denies pointer lock) — that opened the menu right after a Travel click (MapTests, Phase 11).
+            if (locked && !_wasLocked) _lockedSince = Time.unscaledTime;
+            var held = Time.unscaledTime - _lockedSince >= 0.25f;
+            if (_wasLocked && !locked && held && _wasWalking && walkingNow && UiStack.Count == 0 && !player.Suspended) GameMenu.Instance?.Open();
             _wasLocked = locked;
             _wasWalking = walkingNow;
             if (_deskMenu != null) _deskMenu.style.display = !_touchSeen && !player.Suspended && !UiPanel.IsPhone ? DisplayStyle.Flex : DisplayStyle.None;

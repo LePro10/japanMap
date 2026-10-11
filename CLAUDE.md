@@ -47,16 +47,16 @@ Alle einmal ausgeführt (2026-10-07). Einrichtung einmalig: `cd Tools && npm ins
 | Prüfen: kompilieren, EditMode + PlayMode | `node Tools/verify.mjs` (`--edit` nur EditMode) — eine Zeile GREEN/RED, ~15 s | `node Tools/compile.mjs`; `node Tools/unity-test.mjs EditMode\|PlayMode [Gruppe]`; C#: `node Tools/unity-exec.mjs datei.cs` |
 | Bild der Main Camera → `Captures/` | `node Tools/capture.mjs [--scene … --out …]`, `--viewpoint <name\|all>` | `execute_menu_item` „JapanMap/Capture Main Camera"; `ViewpointTools.Capture("pass")`; **echtes Spiel:** `node Tools/play.mjs <ordner> "<skript>"` (Tasten, `tap <Knopf>`, `gameview 390 844`, `touch`, `record s name`) |
 | Web-Build + `Builds/Web/size-report.txt` (Start/nachgeladen getrennt) | `node Tools/build-web.mjs` (`--dev` mit F1-Overlay; nutzt auch den offenen Editor) · Inhalt von Web.data: `node Tools/data-sizes.mjs` | Menü „JapanMap/Build Web (Release)" |
-| Rauchprobe im Headless-Chrome; ausliefern | `node Tools/smoke.mjs` (baut nicht); `--gpu` = echte GPU + FPS, `--quality Low`; Speichern im Browser: `node Tools/save-web.mjs`; echtes SDK + MB bis gameplayStart: `node Tools/sdk-web.mjs` (`--stream --gpu`: alles nachgeladen?); `node Tools/serve-web.mjs` → Port **8090** (Handy: `--lan`; Mensch spielt nebenher: `--preview`, 8092; 8091 = Rauchprobe) | — |
+| Rauchprobe im Headless-Chrome; ausliefern | `node Tools/smoke.mjs` (baut nicht); `--gpu` = echte GPU + FPS, `--quality Low`; Speichern im Browser: `node Tools/save-web.mjs`; echtes SDK + MB bis gameplayStart: `node Tools/sdk-web.mjs` (`--stream --gpu`: alles nachgeladen?; `--adblock [sdk]`, `--net 5` Mbit/s); CrazyGames-Prüfgrößen: `node Tools/sizes-web.mjs`; `node Tools/serve-web.mjs` → Port **8090** (Handy: `--lan`; Mensch spielt nebenher: `--preview`, 8092; 8091 = Rauchprobe) | — |
 | Karte/Look/Modelle neu importieren | `node Tools/unity-run.mjs <Klasse.Methode>` | Menüs „JapanMap/Map/Import All“, „Look/Apply“, „Art/Import Library“, „Art/Build Showroom“ |
 | Bilder nebeneinander (alt/neu), Ausschnitt, Ton-Pegel | `node Tools/montage.mjs --out Captures/x.png a.png b.png …`; `node Tools/crop.mjs`; `node Tools/audio-stats.mjs x.wav` | `node Tools/views.mjs <ordner> <name> <blickpunkt…>`; Nahbild: `node Tools/look.mjs` |
 | Draw Calls/Dreiecke je Blickpunkt (Editor offen) | — | `node Tools/bench.mjs <label> <blickpunkte>` (Hoch + Niedrig) |
 | Orte aus dem Prototyp exportieren / bauen | `node Tools/export-places.mjs [ort]` | Menü „JapanMap/Places/Import All" |
-| Arbeitsschleife messen | `node Tools/measure-loop.mjs` | — |
+| Arbeitsschleife messen; Store-Cover/-Videos | `node Tools/measure-loop.mjs` | `node Tools/store-media.mjs [--shoot] [--title "Name"]` |
 | Einstellungen erzwingen | `-executeMethod JapanMap.Editor.ProjectSetup.Apply` | Menü „JapanMap/Setup/Apply Project Settings" |
 
-Die Batch-Werkzeuge melden `BLOCKED` (Exit 2), wenn der Editor das Projekt
-offen hat — dann den MCP nehmen, nicht den Editor schließen, ohne zu fragen.
+Die Batch-Werkzeuge melden `BLOCKED` (Exit 2), wenn der Editor offen ist — dann den MCP
+nehmen. Hängt Editor/MCP: `node Tools/editor-restart.mjs` — selbst, **nicht fragen**.
 Play immer aus `Boot.unity` starten (sie startet die Systeme). Port 8080 gehört
 dem Unity-MCP. Der MCP verbindet sich nur beim Start einer Claude-Sitzung.
 
@@ -133,7 +133,7 @@ CLAUDE.md: Geschichte gehört in `git log`.
 - Braucht der Mensch etwas zu tun (installieren, anmelden, Fahrgefühl
   prüfen, Handy testen, Kauf im Asset Store), sammle es gebündelt in
   STATUS.md unter „Für dich" — mit genauer Anleitung — statt mittendrin zu
-  fragen. Nur bei echten Blockaden sofort fragen.
+  fragen. Nur bei echten Blockaden fragen (hängende Werkzeuge: selbst lösen).
 - Ein Durchlauf darf das Kontingent nicht sinnlos fressen: Bilder klein
   halten (≈ 512–1024 px), keine Endlosschleifen — nach drei Fehlversuchen
   notieren und anders angehen.

@@ -95,8 +95,12 @@ namespace JapanMap.Editor.Life
                     var a = pts[i];
                     var b = pts[(i + 1) % pts.Length];
                     var mid = (a + b) * 0.5f;
-                    if (!bounds.Contains(mid)) continue;
                     var flat = new Vector3(b.x - a.x, 0f, b.z - a.z);
+                    // The piece's whole box, not its middle: a middle just outside the volume left half a width of
+                    // carriageway walkable inside it (meiji-south by Sakura Commons, Phase 11).
+                    var reach = bounds;
+                    reach.Expand(flat.magnitude + road.width * 1.5f);
+                    if (!reach.Contains(mid)) continue;
                     if (flat.sqrMagnitude < 1e-4f) continue;
                     sources.Add(new NavMeshBuildSource
                     {

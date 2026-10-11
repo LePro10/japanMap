@@ -183,7 +183,7 @@ namespace JapanMap.Tests.Content
 
             // The browser frees the captured mouse (Escape while walking): the menu opens.
             UnityEngine.Cursor.lockState = CursorLockMode.Locked;
-            for (var f = 0; f < 3; f++) yield return null;
+            yield return new WaitForSecondsRealtime(0.4f); // held, not a refused request
             Assume.That(UnityEngine.Cursor.lockState, Is.EqualTo(CursorLockMode.Locked), "the editor refused the mouse capture");
             UnityEngine.Cursor.lockState = CursorLockMode.None;
             for (var f = 0; f < 3; f++) yield return null;
