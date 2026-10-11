@@ -9,8 +9,8 @@
 
 | Lauf | Befehl | Ergebnis |
 |---|---|---|
-| EditMode | `node Tools/unity-test.mjs EditMode` | ✅ 136/136 |
-| PlayMode gesamt | `node Tools/unity-test.mjs PlayMode` | ✅ 191/199 + 7 „nur auf Abruf“; 1 rot (Verkehr, Testfehler) → behoben, 3× grün; neu seitdem: Bildraten-Test, AdBlock-Test, Ton-Ort-Test (je grün) |
+| EditMode | `node Tools/unity-test.mjs EditMode` | ✅ 137/137 (neu: `PedestrianNavTests`) |
+| PlayMode gesamt | `node Tools/unity-test.mjs PlayMode` | ✅ Gate: 196/203 + 7 „nur auf Abruf“, 0 rot (vorher gefundene Rote: Verkehr-Test, Fußgänger-NavMesh, Kartenreise — behoben) |
 | Web-Build | `node Tools/build-web.mjs` | ✅ 82,2 MB in 96 Dateien, Start 18,46 MB |
 | SDK + Nachladen + Bild | `node Tools/sdk-web.mjs --stream --probe` | ✅ 18,44 MB bis gameplayStart, 58 Szenen in 34 s, Bild 72 % hell |
 | Rauchprobe Niedrig 3× | `node Tools/smoke.mjs --gpu --quality Low` | ✅ 396 / 358 / 355 fps, 0 Fehler |
@@ -67,7 +67,7 @@
 
 | Abnahme | Beleg | |
 |---|---|---|
-| 10 min Simulation, kein Fußgänger auf der Fahrbahn | `PedestrianTests.TenMinutes_…`: 42 028 Stichproben, Ø 40 aktiv, 0 auf der Fahrbahn (Gesamtlauf und einzeln) | ✅ |
+| 10 min Simulation, kein Fußgänger auf der Fahrbahn | `PedestrianTests.TenMinutes_…`: Gate 44 712 Stichproben, 0 auf der Fahrbahn; zwischendurch 52 Treffer → NavMesh-Ausschnitt behoben, `PedestrianNavTests` tastet jede Fahrbahn quer ab | ✅ |
 | Zerstörung ≤ 2 ms | `SmashTests.Cost_…`: schlimmster Bruch 1,19–1,27 ms (vorher 2,1–2,35), Physik 0,6–0,7 ms bei 64 Teilen | ✅ |
 | Verkehr hält vor Personen | `TrafficTests.TrafficCar_StopsForAPersonOnTheRoad` 3× grün | ✅ |
 
