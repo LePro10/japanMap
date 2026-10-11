@@ -2,12 +2,15 @@
 //   node Tools/serve-web.mjs [--port 8090] [--lan]
 //   node Tools/serve-web.mjs --preview   → copy of the last build in Builds/Preview on port 8092, for the human to
 //   play while agents keep working (their next build does not swap files under a running game; the editor is untouched).
+//   node Tools/serve-web.mjs --preview --public → also a temporary https address on the internet (Cloudflare quick
+//   tunnel, no account; `brew install cloudflared`) for phones outside the home network. Ends with this process.
 // Port 8090, not 8080: the Unity MCP listens on 8080. --lan binds 0.0.0.0 for the phone test.
 // Decompression Fallback is on, so any server works; br is still sent when accepted (faster start).
 import { createServer } from 'node:http';
 import { cpSync, createReadStream, existsSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { hostname, networkInterfaces } from 'node:os';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { ROOT, arg, flag } from './lib/unity.mjs';
 
@@ -59,5 +62,18 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       for (const n of nets ?? []) if (n.family === 'IPv4' && !n.internal) console.log(`  phone (IP): http://${n.address}:${port}/`);
     // The CrazyGames site lock freezes the game on a bare IP; *.local is whitelisted (CrazyGamesSettings, D31).
     console.log(`  phone (use this): http://${hostname().replace(/\.local$/, '')}.local:${port}/`);
+  }
+  if (flag('public')) {
+    // The site lock lets the game run here (checked 2026-10-11: save and map start on *.trycloudflare.com).
+    const tunnel = spawn('cloudflared', ['tunnel', '--url', `http://127.0.0.1:${port}`], { stdio: ['ignore', 'ignore', 'pipe'] });
+    tunnel.on('error', () => console.error('PUBLIC FAILED · cloudflared missing: brew install cloudflared'));
+    let shown = false;
+    tunnel.stderr.on('data', (d) => {
+      const m = !shown && String(d).match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
+      if (m) { shown = true; console.log(`  internet (any phone): ${m[0]}/`); }
+    });
+    const stop = () => { tunnel.kill(); process.exit(0); };
+    process.on('SIGINT', stop);
+    process.on('SIGTERM', stop);
   }
 }
