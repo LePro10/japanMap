@@ -29,7 +29,7 @@ namespace JapanMap.Editor.Content
             ("morrow", 30000, "Amber"), ("gt", 42000, "Rose"), ("needle", 54000, "Silver"),
         };
 
-        /// <summary>GO to finish with the autopilot in Hachi 86, Phase 7 gate runs 2026-10-09 (Logs/Editor.log "[Race] … finished").</summary>
+        /// <summary>GO to finish with the autopilot in Hachi H8, Phase 7 gate runs 2026-10-09 (Logs/Editor.log "[Race] … finished").</summary>
         static readonly (string id, float seconds)[] Measured =
         {
             ("coast-loop", 237.5f), ("toge-descent", 186.6f), ("neon-circuit", 123.1f), ("toge-climb", 206.2f),
@@ -83,7 +83,7 @@ namespace JapanMap.Editor.Content
 
         /// <summary>
         /// Ring Time Trial benchmark per car from Captures/ring-bench.json (RingBenchmarkReport: autopilot in every car)
-        /// × 1.1, rounded — the rule that gave the Hachi 86 its 250 s (228 s measured).
+        /// × 1.1, rounded — the rule that gave the Hachi H8 its 250 s (228 s measured).
         /// </summary>
         [MenuItem("JapanMap/Economy/Seed Ring Benchmarks")]
         public static string SeedRingBenchmarks()

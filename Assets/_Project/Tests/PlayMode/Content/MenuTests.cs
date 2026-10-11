@@ -130,7 +130,7 @@ namespace JapanMap.Tests.Content
             Assert.NotNull(cars, "Cars tab");
             yield return Click(cars);
             Assert.AreEqual("Cars", menu.Current.Title, "a click on Cars shows Cars");
-            StringAssert.Contains("Hachi 86", menu.Text);
+            StringAssert.Contains("Hachi H8", menu.Text);
             yield return Click(menu.Root.Q<Button>("tab-settings"));
             Assert.AreEqual("Settings", menu.Current.Title);
             StringAssert.Contains("Steering 100 %", menu.Text);

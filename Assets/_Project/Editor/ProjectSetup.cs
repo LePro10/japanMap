@@ -24,6 +24,7 @@ namespace JapanMap.Editor
         public const string ScenesDir = Root + "/Scenes";
         public const string BootScene = ScenesDir + "/Boot.unity";
         public const string GameScene = ScenesDir + "/Game.unity";
+        public const string ProductName = "Ameagari Drive";
 
         [MenuItem("JapanMap/Setup/Apply Project Settings")]
         public static void Apply()
@@ -48,7 +49,8 @@ namespace JapanMap.Editor
             VersionControlSettings.mode = "Visible Meta Files";
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.companyName = "japanMap";
-            PlayerSettings.productName = "japanMap";
+            // The store name (LAUNCH.md §2): the browser tab title and CrazyGames read it from the build.
+            PlayerSettings.productName = ProductName;
             // Headless smoke tests and unfocused editors must keep ticking.
             PlayerSettings.runInBackground = true;
 

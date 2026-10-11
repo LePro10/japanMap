@@ -39,16 +39,16 @@ Gerechnet mit dem Mittel der Ziel-Profile: **2.874 Sparks/Sitzung**. Einmal-Geld
 
 | Kauf | Preis | Sitzungen |
 |---|---:|---:|
-| Hachi 86 | Start | — |
+| Hachi H8 | Start | — |
 | Mame K | 2.400 | 0,8 |
 | Mini Hauler | 3.600 | 1,3 |
 | Yama Cruiser 250 | 9.000 | 3,1 |
-| Kumo STi 22 | 15.000 | 5,2 |
+| Kumo S22 | 15.000 | 5,2 |
 | Kaze 35 Drift | 18.000 | 6,3 |
-| Raiden GT-R34 | 27.000 | 9,4 |
-| Suprema RZ | 30.000 | 10,4 |
-| Rotor FD | 42.000 | 14,6 |
-| Hanami SF-26 | 54.000 | 18,8 |
+| Raiden R4 | 27.000 | 9,4 |
+| Suprema Z7 | 30.000 | 10,4 |
+| Rotor R7 | 42.000 | 14,6 |
+| Hanami S26 | 54.000 | 18,8 |
 | Street-Paket (4 Teile, ein Auto) | 3.000 | 1,0 |
 | Volles Tuning (Street + Sport, ein Auto) | 12.000 | 4,2 |
 | Lackfarbe | 120 | 0,04 |

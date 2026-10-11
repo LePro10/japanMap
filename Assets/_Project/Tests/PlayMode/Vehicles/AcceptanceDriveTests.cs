@@ -14,7 +14,7 @@ using Object = UnityEngine.Object;
 namespace JapanMap.Tests.Vehicles
 {
     /// <summary>
-    /// Phase 3 acceptance: the player's car (Hachi 86) does a lap of the ring and the mountain pass
+    /// Phase 3 acceptance: the player's car (Hachi H8) does a lap of the ring and the mountain pass
     /// descent on the real map, driven along the centreline by <see cref="PathFollower"/> — no
     /// getting stuck, no respawn, staying on the road. Game time runs 10× fast.
     /// Writes Captures/acceptance-drive.txt.

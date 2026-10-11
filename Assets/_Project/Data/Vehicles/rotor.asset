@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: rotor
   m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleDefinition
   id: rotor
-  displayName: Rotor FD
+  displayName: Rotor R7
   category: 3
   legacyId: gt
   model: {fileID: 0}

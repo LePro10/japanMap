@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: kumo
   m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleDefinition
   id: kumo
-  displayName: Kumo STi 22
+  displayName: Kumo S22
   category: 2
   legacyId: torrent
   model: {fileID: 0}

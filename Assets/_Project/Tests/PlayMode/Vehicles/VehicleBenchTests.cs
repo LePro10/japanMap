@@ -138,7 +138,7 @@ namespace JapanMap.Tests.Vehicles
             Assert.That(w.along, Is.GreaterThan(60f));
         }
 
-        // ── Stunt mode (legacy probes were Kite S only → Hachi 86) ─────────
+        // ── Stunt mode (legacy probes were Kite S only → Hachi H8) ─────────
 
         [Test]
         public void Stunt_SingleTapDrifts_ButNo360()

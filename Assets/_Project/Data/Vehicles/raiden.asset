@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: raiden
   m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleDefinition
   id: raiden
-  displayName: Raiden GT-R34
+  displayName: Raiden R4
   category: 2
   legacyId: meridian
   model: {fileID: 0}

@@ -171,7 +171,7 @@ namespace JapanMap.Tests.Content
             yield return Tap(Key.Enter);
             Assert.IsTrue(File.Exists(photo.LastPhoto), $"photo file {photo.LastPhoto}");
             Assert.AreEqual(2560, photo.LastSize.x, "desktop capture width (ASTRA §11)");
-            StringAssert.StartsWith("japanMap_", Path.GetFileName(photo.LastPhoto));
+            StringAssert.StartsWith("Ameagari-Drive_", Path.GetFileName(photo.LastPhoto), "the store name, not the project name");
             File.Delete(photo.LastPhoto);
 
             yield return Tap(Key.P);
@@ -187,7 +187,7 @@ namespace JapanMap.Tests.Content
 {
     /// <summary>
     /// Ring Time Trial benchmark per car (STATUS open item): the autopilot drives the trial in every car of the fleet;
-    /// the benchmark is that time × 1.1 (Hachi 86: 228 s → 250 s, the existing target). Writes Captures/ring-bench.json
+    /// the benchmark is that time × 1.1 (Hachi H8: 228 s → 250 s, the existing target). Writes Captures/ring-bench.json
     /// for "JapanMap/Economy/Seed Ring Benchmarks". Explicit: about ten minutes.
     /// </summary>
     [FreshSave, Explicit("Report, start by name")]

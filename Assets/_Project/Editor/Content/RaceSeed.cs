@@ -35,7 +35,7 @@ namespace JapanMap.Editor.Content
             driftRun.medals = new Vector3(15000f, 35000f, 70000f);
             driftRun.timeLimit = 240f;
             driftRun.startOffset = 60f; // below the descent's grid
-            var openSeat = E("open-seat", "Open Seat", "One lap of the Needle in the Hanami SF-26, on loan.", K.TimeTrial, "needle-circuit", false, 1, 0, "", 6, 300, 100,
+            var openSeat = E("open-seat", "Open Seat", "One lap of the Needle in the Hanami S26, on loan.", K.TimeTrial, "needle-circuit", false, 1, 0, "", 6, 300, 100,
                 "ASTRA E14: one lap in a stock Needle 01 (fleet hanami), benchmark 70 s, lesser bonus to 77 s.");
             openSeat.loanCar = "hanami";
             openSeat.medals = new Vector3(70f, 0f, 0f);

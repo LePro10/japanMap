@@ -467,12 +467,12 @@ namespace JapanMap.Gameplay.Records
             if (hud != null) hud.Flash($"Photo saved · {Path.GetFileName(LastPhoto)}");
         }
 
-        /// <summary>japanMap_place_car_YYYY-MM-DD_HH-mm-ss.png (ASTRA §11).</summary>
+        /// <summary>Ameagari-Drive_place_car_YYYY-MM-DD_HH-mm-ss.png (ASTRA §11); the prefix is the build's product name.</summary>
         string FileName()
         {
             var place = regions != null && regions.Current >= 0 ? regions.Regions.regions[regions.Current].title : "Japan";
             var car = player.Car != null ? player.Car.Definition.displayName : "onfoot";
-            return $"japanMap_{Clean(place)}_{Clean(car)}_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.png";
+            return $"{Clean(Application.productName)}_{Clean(place)}_{Clean(car)}_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.png";
         }
 
         static string Clean(string s)

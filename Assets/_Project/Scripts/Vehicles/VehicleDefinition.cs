@@ -14,7 +14,7 @@ namespace JapanMap.Vehicles
     {
         [Header("Identity")]
         public string id = "hachi";
-        public string displayName = "Hachi 86";
+        public string displayName = "Hachi H8";
         public VehicleCategory category = VehicleCategory.Street;
         [Tooltip("Legacy game fleet id these driving numbers come from.")]
         public string legacyId = "touge";

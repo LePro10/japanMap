@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: suprema
   m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleDefinition
   id: suprema
-  displayName: Suprema RZ
+  displayName: Suprema Z7
   category: 2
   legacyId: morrow
   model: {fileID: 0}

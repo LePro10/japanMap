@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: hachi
   m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleDefinition
   id: hachi
-  displayName: Hachi 86
+  displayName: Hachi H8
   category: 0
   legacyId: touge
   model: {fileID: 0}

@@ -25,6 +25,7 @@ namespace JapanMap.Tests
         [Test] public void Serialization_IsForceText() => Assert.AreEqual(SerializationMode.ForceText, EditorSettings.serializationMode);
         [Test] public void MetaFiles_AreVisible() => Assert.AreEqual("Visible Meta Files", VersionControlSettings.mode);
         [Test] public void ColorSpace_IsLinear() => Assert.AreEqual(ColorSpace.Linear, PlayerSettings.colorSpace);
+        [Test] public void ProductName_IsTheStoreName() => Assert.AreEqual(ProjectSetup.ProductName, PlayerSettings.productName);
 
         [Test]
         public void InputHandling_IsNewInputSystemOnly()

@@ -618,3 +618,12 @@ Ruckler beim ersten Bruch/Aufprall; Smash-Kosten 2,35 → 1,2 ms). Kostet Ladeze
 - **Unity-Version:** 6.6 (wie im Probelauf) oder auf die nächste LTS (6.7) gehen,
   sobald verfügbar (Phase 1 oder 10).
 - **Spielname:** Arbeitstitel „japanMap"; der Probelauf schlug „Ameagari" vor.
+
+## D41 — Spielname „Ameagari Drive“, Autonamen ohne Markenkürzel · 2026-10-11
+
+Der Eigentümer hat gewählt: **Ameagari Drive** („nach dem Regen“ + was man tut). Steht in
+`ProjectSetup.ProductName` (Build-Titel), Cover und Videos. Autonamen verlieren die Kürzel, die auf echte
+Modelle zeigen (CrazyGames: eigene Namen); Optik und Fahrwerte bleiben: Hachi 86 → **Hachi H8**,
+Kumo STi 22 → **Kumo S22**, Raiden GT-R34 → **Raiden R4**, Suprema RZ → **Suprema Z7**, Rotor FD → **Rotor R7**,
+Hanami SF-26 → **Hanami S26** (SF-26 = Ferraris F1-Wagen). Gespeichert wird die Auto-ID, Spielstände bleiben
+gültig. Wache: `StoreNamesTests` (Marken-/Kürzelliste), `ProjectSettingsTests.ProductName_IsTheStoreName`.

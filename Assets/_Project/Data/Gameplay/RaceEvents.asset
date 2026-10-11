@@ -168,7 +168,7 @@ MonoBehaviour:
     note: 'ASTRA E13: full circuit, two laps.'
   - id: open-seat
     title: Open Seat
-    blurb: One lap of the Needle in the Hanami SF-26, on loan.
+    blurb: One lap of the Needle in the Hanami S26, on loan.
     kind: 1
     road: needle-circuit
     reverse: 0

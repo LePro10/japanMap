@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: hanami
   m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleDefinition
   id: hanami
-  displayName: Hanami SF-26
+  displayName: Hanami S26
   category: 3
   legacyId: needle
   model: {fileID: 0}

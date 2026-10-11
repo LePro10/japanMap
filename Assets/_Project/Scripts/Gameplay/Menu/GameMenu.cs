@@ -314,7 +314,7 @@ namespace JapanMap.Gameplay.Menu
             }
             else
             {
-                if (!UiPanel.IsPhone) Ui.Text(_rail, "JAPANMAP", "jm-brand");
+                if (!UiPanel.IsPhone) Ui.Text(_rail, Application.productName.ToUpperInvariant(), "jm-brand");
                 _rail.Add(_tabs);
                 _rail.Add(_continue);
             }
