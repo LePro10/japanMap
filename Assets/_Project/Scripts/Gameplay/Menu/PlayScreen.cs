@@ -120,23 +120,13 @@ namespace JapanMap.Gameplay.Menu
             return best;
         }
 
-        /// <summary>Nearest event without a medal yet, else the nearest one.</summary>
         int Recommend()
         {
             var p = Menu.Player;
             if (p == null) return -1;
             var at = p.Current == PlayerModeController.Mode.Driving && p.Car != null ? p.Car.transform.position
                 : p.Walker != null ? p.Walker.transform.position : Vector3.zero;
-            var best = -1;
-            var bestD = float.MaxValue;
-            foreach (var (pos, index) in _races.Markers)
-            {
-                var ev = _races.Set.events[index];
-                var rec = _progress?.Data.events.Find(x => x.id == ev.id);
-                var d = Vector3.Distance(pos, at) + (rec != null && rec.bestTier > 0 ? 5000f : 0f);
-                if (d < bestD) { bestD = d; best = index; }
-            }
-            return best;
+            return _races.Recommend(at, _progress?.Data);
         }
     }
 }

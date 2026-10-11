@@ -190,6 +190,13 @@ namespace JapanMap.Editor.Content
             Set(hud, "map", map);
             Set(menu, "map", map);
 
+            var guide = Child<JapanMap.Gameplay.Map.NextGoalGuide>(group, "NextGoal");
+            Set(guide, "player", player);
+            Set(guide, "progress", progress);
+            Set(guide, "races", races);
+            Set(guide, "map", map);
+            Set(guide, "hud", hud);
+
             // Sound: the bank player first (others ask it for clips), then the car's sound.
             JapanMap.Editor.Audio.AudioSetup.Build();
             var sfx = Child<JapanMap.Audio.Sfx>(group, "Sound");

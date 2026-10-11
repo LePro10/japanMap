@@ -98,6 +98,20 @@ namespace JapanMap.Gameplay.Races
         /// <summary>An event is about to start (id): a test drive or loan ends first (ASTRA §12, events use the own car).</summary>
         public event Action<string> Beginning;
 
+        /// <summary>Nearest event without a medal yet, else the nearest one (Play page, first-goal guide); -1 = none.</summary>
+        public int Recommend(Vector3 at, ProgressData data)
+        {
+            var best = -1;
+            var bestD = float.MaxValue;
+            foreach (var (pos, index) in _markers)
+            {
+                var rec = data?.events.Find(x => x.id == set.events[index].id);
+                var d = Vector3.Distance(pos, at) + (rec != null && rec.bestTier > 0 ? 5000f : 0f);
+                if (d < bestD) { bestD = d; best = index; }
+            }
+            return best;
+        }
+
         public int Rescues
         {
             get { var n = 0; foreach (var e in _entrants) n += e.rescues; return n; }

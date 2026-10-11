@@ -9436,6 +9436,7 @@ Transform:
   - {fileID: 928700104}
   - {fileID: 350829866}
   - {fileID: 1499631794}
+  - {fileID: 920903801}
   m_Father: {fileID: 708005471}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &671427876
@@ -12385,6 +12386,57 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 3328313177619878061, guid: 7c4096d6810354d7997112d2d3812f97, type: 3}
   m_PrefabInstance: {fileID: 916806875}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &920903800
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 920903801}
+  - component: {fileID: 920903802}
+  m_Layer: 0
+  m_Name: NextGoal
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &920903801
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 920903800}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 670375935}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &920903802
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 920903800}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 23d3ab33a9b86476db433a30413fded7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Map.NextGoalGuide
+  player: {fileID: 1493207663}
+  progress: {fileID: 31690191}
+  races: {fileID: 1589719629}
+  map: {fileID: 350829865}
+  hud: {fileID: 1349307506}
+  afterDriving: 25
+  untilFinished: 2
 --- !u!1001 &925933092
 PrefabInstance:
   m_ObjectHideFlags: 0
