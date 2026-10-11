@@ -22,4 +22,7 @@ MonoBehaviour:
   loanWarnSeconds: 30
   loanStopSeconds: 20
   loanAdGapMinutes: 20
+  midgame: 1
+  midgameFirstMinutes: 3
+  midgameGapMinutes: 3
   rewardedGapMinutes: 5

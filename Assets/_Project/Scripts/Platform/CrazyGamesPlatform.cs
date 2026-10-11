@@ -147,6 +147,23 @@ namespace JapanMap.Platform
                 });
         }
 
+        // The SDK paces midgame ads itself too (none within 3 min of the last); an error or "no fill" just goes on.
+        public void RequestMidgame(Action done)
+        {
+            CrazySDK.Ad.RequestAd(CrazyAdType.Midgame,
+                () => Debug.Log("[Ads] midgame started"),
+                error =>
+                {
+                    Debug.Log($"[Ads] midgame unavailable: {error?.code} {error?.message}");
+                    done();
+                },
+                () =>
+                {
+                    Debug.Log("[Ads] midgame finished");
+                    done();
+                });
+        }
+
         // Logged: Tools/sdk-web.mjs measures the download up to the first gameplayStart (CrazyGames' start-size rule).
         public void GameplayStart()
         {

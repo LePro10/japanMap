@@ -134,6 +134,39 @@ namespace JapanMap.Tests.Content
             Assert.IsTrue(GamePlatform.Playing);
         }
 
+        [UnityTest, Timeout(90000)]
+        public IEnumerator Midgame_AtTravel_PausedAndMuted_PacedByActivePlay()
+        {
+            yield return BootInCar();
+            var offers = RewardedOffers.Instance;
+            var travel = Object.FindAnyObjectByType<Travel>();
+            Assert.NotNull(offers);
+            Assert.NotNull(travel);
+            var asked = OfflinePlatform.MidgameRequests;
+
+            travel.ToCommons();
+            yield return null;
+            Assert.AreEqual(asked, OfflinePlatform.MidgameRequests, "no midgame in the first three minutes");
+            Assert.IsFalse(GamePlatform.AdRunning);
+
+            offers.Policy.Active = offers.Settings.midgameFirstMinutes * 60f + 1f; // three minutes of driving, skipped
+            travel.ToCommons();
+            yield return null;
+            Assert.AreEqual(asked + 1, OfflinePlatform.MidgameRequests, "travel is a break: a midgame ad");
+            Assert.IsTrue(GamePlatform.AdRunning);
+            Assert.AreEqual(0f, Time.timeScale, "paused during the ad");
+            Assert.AreEqual(0f, AudioListener.volume, "silent during the ad");
+            yield return new WaitForSecondsRealtime(0.8f);
+            Assert.IsFalse(GamePlatform.AdRunning);
+            Assert.AreEqual(1f, Time.timeScale, "time runs again");
+            Assert.AreEqual(1f, AudioListener.volume);
+
+            travel.ToCommons();
+            yield return null;
+            Assert.AreEqual(asked + 1, OfflinePlatform.MidgameRequests, "at most one per three active minutes");
+            Assert.AreEqual(1, offers.MidgamesAsked);
+        }
+
         [UnityTest, Timeout(600000)]
         public IEnumerator ResultBonus_AfterARealEvent_AddsExactly300_ThenNoAdAvailable()
         {

@@ -114,6 +114,32 @@ namespace JapanMap.Gameplay.Economy
             });
         }
 
+        /// <summary>Midgame ads asked for at breaks this session (tests).</summary>
+        public int MidgamesAsked { get; private set; }
+
+        /// <summary>
+        /// A natural break (result left, travel): a midgame ad if the pacing allows, then <paramref name="then"/>.
+        /// Never on the driving HUD; with ads off or blocked <paramref name="then"/> runs at once.
+        /// </summary>
+        public void AtBreak(Action then)
+        {
+            if (!GamePlatform.Current.AdsEnabled || GamePlatform.AdRunning || !_policy.CanShowMidgame)
+            {
+                then?.Invoke();
+                return;
+            }
+            _policy.MidgameAsked();
+            MidgamesAsked++;
+            GamePlatform.ShowMidgame(then);
+        }
+
+        /// <summary>Runs <paramref name="then"/> after a break ad, or at once without the offers system.</summary>
+        public static void Break(Action then)
+        {
+            if (Instance != null) Instance.AtBreak(then);
+            else then?.Invoke();
+        }
+
         /// <summary>The loan offers for a car page: (ad allowed, Sparks loan allowed). Both false = no loan here.</summary>
         public (bool ad, bool buy) LoanOffers(string carId)
         {

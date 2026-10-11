@@ -53,6 +53,27 @@ namespace JapanMap.Tests
             Assert.IsTrue(p.CanOfferLoanAd(900f));
         }
 
+        [Test]
+        public void Midgame_NotInTheFirstThreeMinutes_ThreeMinuteGap_AlsoAfterARewardedAd_AndSwitchable()
+        {
+            var p = new AdPolicy(_s);
+            p.Active = 2 * 60f;
+            Assert.IsFalse(p.CanShowMidgame, "the first minutes decide whether a player stays");
+            p.Active = 3 * 60f;
+            Assert.IsTrue(p.CanShowMidgame);
+            p.MidgameAsked();
+            p.Active += 2 * 60f;
+            Assert.IsFalse(p.CanShowMidgame, "one midgame per three active minutes");
+            p.Active += 60f;
+            Assert.IsTrue(p.CanShowMidgame);
+            p.ResultWatched();
+            Assert.IsFalse(p.CanShowMidgame, "no midgame right after a rewarded ad");
+            p.Active += 3 * 60f;
+            Assert.IsTrue(p.CanShowMidgame);
+            _s.midgame = false;
+            Assert.IsFalse(p.CanShowMidgame, "the data switch turns them off");
+        }
+
         static string Json(int sparks, float play, long at, string owned = "hachi") =>
             $"{{\"version\":1,\"sparks\":{sparks},\"playSeconds\":{play},\"savedAt\":{at},\"cars\":[{{\"id\":\"{owned}\",\"owned\":true}}]}}";
 

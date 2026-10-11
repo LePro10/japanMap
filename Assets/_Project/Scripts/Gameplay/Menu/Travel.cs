@@ -87,6 +87,8 @@ namespace JapanMap.Gameplay.Menu
             if (player == null || player.Car == null) return;
             player.Seat();
             player.Car.Place(at, yaw, fromAbove: 40f);
+            // Travel is a break: a midgame ad may cover the arrival while the place streams in (D42).
+            Economy.RewardedOffers.Break(null);
         }
     }
 }

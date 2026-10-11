@@ -29,6 +29,14 @@ namespace JapanMap.Gameplay.Economy
         [Tooltip("At most one loan by ad per this many minutes (ASTRA: 20).")]
         public float loanAdGapMinutes = 20f;
 
+        [Header("Midgame ads (only at breaks: result left, travel)")]
+        [Tooltip("Off = never (D35 until 2026-10-11). The human chose them for revenue (D42).")]
+        public bool midgame = true;
+        [Tooltip("No midgame before this much active play this session, min — the first minutes decide whether a player stays.")]
+        public float midgameFirstMinutes = 3f;
+        [Tooltip("At most one midgame per this many active minutes; also counts from the last rewarded ad (CrazyGames: ≥ 3).")]
+        public float midgameGapMinutes = 3f;
+
         [Header("All rewarded ads")]
         [Tooltip("At most one rewarded ad per this many minutes (ASTRA: 5).")]
         public float rewardedGapMinutes = 5f;

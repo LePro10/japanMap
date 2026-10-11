@@ -627,3 +627,14 @@ Modelle zeigen (CrazyGames: eigene Namen); Optik und Fahrwerte bleiben: Hachi 86
 Kumo STi 22 → **Kumo S22**, Raiden GT-R34 → **Raiden R4**, Suprema RZ → **Suprema Z7**, Rotor FD → **Rotor R7**,
 Hanami SF-26 → **Hanami S26** (SF-26 = Ferraris F1-Wagen). Gespeichert wird die Auto-ID, Spielstände bleiben
 gültig. Wache: `StoreNamesTests` (Marken-/Kürzelliste), `ProjectSettingsTests.ProductName_IsTheStoreName`.
+
+## D42 — Midgame-Werbung an echten Pausen (löst „keine Midgame“ aus D35 ab) · 2026-10-11
+
+**Der Mensch:** „Midgame-Werbung eigentlich schon“ (Einnahmen). **Wo:** nur an Pausen, die der Spieler selbst wählt:
+Ergebnis verlassen („Free drive“/„Retry“ — die Werbung kommt vor dem Neustart, nie im Lauf) und Reise (die Werbung
+deckt die Ankunft, das Nachladen läuft weiter). Nie auf dem Fahr-HUD, nie ungefragt mitten im Fahren. **Taktung**
+(`AdSettings.asset`, aktive Spielzeit wie D35): nicht in den ersten 3 min der Sitzung, höchstens 1 je 3 min, und 3 min
+Abstand zu einer Rewarded-Werbung; Schalter `midgame` = aus. Das SDK taktet zusätzlich selbst. **Weg:**
+`IGamePlatform.RequestMidgame` → `GamePlatform.ShowMidgame` (pausiert + stumm wie Rewarded, `done` kommt immer) →
+`RewardedOffers.AtBreak`. Ohne Werbung/AdBlock: geht sofort weiter. **Prüfung:** `PlatformRulesTests.Midgame_…`,
+`PlatformTests.Midgame_AtTravel_…`. Im Basic Launch zeigt CrazyGames keine Werbung; echte Prüfung im QA-Tool (Demo-Werbung).

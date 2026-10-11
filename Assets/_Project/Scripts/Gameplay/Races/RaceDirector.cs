@@ -675,7 +675,9 @@ namespace JapanMap.Gameplay.Races
             var score = _event.kind == RaceKind.Drift ? $" · {result.score:N0} points" : "";
             var id = _event.id;
             hud?.ShowSheet(_event.title, $"{medal} · {Clock(result.seconds)}{score}{best}\n+{sparks} Sparks",
-                ("Free drive", () => { _timer = 0f; Cleanup(); }), ("Retry", () => { Cleanup(); Begin(id); }));
+                // Leaving the result is a real break: a midgame ad may come first (D42), never during the run.
+                ("Free drive", () => { _timer = 0f; Cleanup(); Economy.RewardedOffers.Break(null); }),
+                ("Retry", () => { Cleanup(); Economy.RewardedOffers.Break(() => Begin(id)); }));
             hud?.SetRaceInfo("");
             hud?.SetTarget(null);
             Audio.Sfx.Play(result.place == 1 && _event.kind == RaceKind.Race ? "Bell_Win" : "Bell_Finish");

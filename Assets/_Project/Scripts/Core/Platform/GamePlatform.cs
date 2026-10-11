@@ -37,6 +37,8 @@ namespace JapanMap.Core.Platform
         bool AdBlocked { get; }
         /// <summary>Shows a rewarded ad. <paramref name="done"/> always comes, once, on the main thread.</summary>
         void RequestRewarded(Action<AdOutcome> done);
+        /// <summary>Shows a midgame (interstitial) ad if the portal has one. <paramref name="done"/> always comes, once.</summary>
+        void RequestMidgame(Action done);
         void GameplayStart();
         void GameplayStop();
         void HappyTime();
@@ -139,7 +141,16 @@ namespace JapanMap.Core.Platform
         /// Shows a rewarded ad with everything paused and muted, then restores time and sound and reports.
         /// Only one at a time; a second request while one runs is Unavailable.
         /// </summary>
-        public static void ShowRewarded(Action<AdOutcome> done)
+        public static void ShowRewarded(Action<AdOutcome> done) => Show(Current.RequestRewarded, done);
+
+        /// <summary>
+        /// A midgame ad at a natural break (result left, travel), paused and muted like a rewarded one. Pacing is the
+        /// caller's (<c>AdPolicy</c>); <paramref name="done"/> always comes, also when no ad was shown.
+        /// </summary>
+        public static void ShowMidgame(Action done) =>
+            Show(answer => Current.RequestMidgame(() => answer(AdOutcome.Unavailable)), _ => done?.Invoke());
+
+        static void Show(Action<Action<AdOutcome>> request, Action<AdOutcome> done)
         {
             if (AdRunning || !Current.AdsEnabled)
             {
@@ -154,7 +165,7 @@ namespace JapanMap.Core.Platform
             Changed?.Invoke();
             Tick();
             var answered = false;
-            Current.RequestRewarded(outcome =>
+            request(outcome =>
             {
                 if (answered) return; // the SDK may report error after finish; the first answer counts
                 answered = true;
@@ -192,6 +203,8 @@ namespace JapanMap.Core.Platform
         static Action<AdOutcome> _pending;
         static float _pendingUntil;
         public static int Requests { get; private set; }
+        /// <summary>Simulated midgame ads requested (tests).</summary>
+        public static int MidgameRequests { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics()
@@ -199,7 +212,7 @@ namespace JapanMap.Core.Platform
             Simulate = AdSim.Fill;
             SimSeconds = 1f;
             _pending = null;
-            Requests = 0;
+            Requests = MidgameRequests = 0;
         }
 
         public string Name => Application.isEditor ? "Editor" : "Offline";
@@ -210,6 +223,13 @@ namespace JapanMap.Core.Platform
         {
             Requests++;
             _pending = done;
+            _pendingUntil = Time.realtimeSinceStartup + SimSeconds;
+        }
+
+        public void RequestMidgame(Action done)
+        {
+            MidgameRequests++;
+            _pending = _ => done();
             _pendingUntil = Time.realtimeSinceStartup + SimSeconds;
         }
 

@@ -11,7 +11,7 @@ namespace JapanMap.Gameplay.Economy
     {
         readonly AdSettings _s;
         readonly List<float> _results = new();
-        float _lastRewarded = float.NegativeInfinity, _lastLoanAd = float.NegativeInfinity;
+        float _lastRewarded = float.NegativeInfinity, _lastLoanAd = float.NegativeInfinity, _lastMidgame = float.NegativeInfinity;
 
         public AdPolicy(AdSettings settings) => _s = settings;
 
@@ -34,6 +34,15 @@ namespace JapanMap.Gameplay.Economy
 
         public bool CanOfferLoanAd(float totalPlaySeconds) =>
             totalPlaySeconds >= _s.firstVisitMinutes * 60f && GapOk && Active - _lastLoanAd >= _s.loanAdGapMinutes * 60f;
+
+        /// <summary>A midgame ad may come at this break: on, past the first minutes, the gap since any ad kept.</summary>
+        public bool CanShowMidgame =>
+            _s.midgame && Active >= _s.midgameFirstMinutes * 60f
+            && Active - _lastMidgame >= _s.midgameGapMinutes * 60f
+            && Active - _lastRewarded >= _s.midgameGapMinutes * 60f;
+
+        /// <summary>A midgame ad was asked for (shown or not: the portal's "no fill" is not retried at once).</summary>
+        public void MidgameAsked() => _lastMidgame = Active;
 
         /// <summary>A result-bonus ad was watched.</summary>
         public void ResultWatched()
