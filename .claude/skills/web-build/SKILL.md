@@ -62,6 +62,8 @@ Referenz leerer Build (2026-10-07): Release **7,75 MB** (wasm 5,18, data 2,39).
 
 **Start messen nur mit `node Tools/sdk-web.mjs`** (Bytes auf der Leitung bis gameplayStart, auch WASM und Gelände-Datei;
 Phase 10: 18,9 MB). `size-report.txt` „start" ist eine Näherung; dort „MB" = 10⁶ Byte.
+**Zeiten vergleichen nur mit denselben Schaltern und abwechselnd** (vorher/nachher/vorher …): `--stream --probe` misst
+2,0 s, ohne Schalter 4,4 s für denselben Build (Phase 11: ein Gewinn wurde so zu groß gemeldet).
 
 Hebel, gemessen in Phase 10 (D36): `data.unity3d` ist innen immer LZ4 — Brotli außen hilft kaum, nur weniger Inhalt.
 Größter Posten waren **Shader** (Varianten: URP-Funktionen aus, die niemand nutzt; `Editor/ShaderStripping.cs`, Bericht

@@ -107,3 +107,25 @@ Ladezeit/Größe), (2) **in der ersten Minute** (Spielzeit < 2 min → Einstieg:
 (3) **nach dem ersten Ziel** (Spielzeit 2–8 min, Tag-1-Wiederkehr < 10 % → was danach fehlt: Rennen, Sparks, Garage).
 Für jede der drei größten Stellen: Ursache messen, beheben, wieder messen. Dann Full Launch (CrazyGames wählt aus; das
 SDK und die Werbung sind schon fertig).
+
+**CrazyGames-Maßstäbe** (docs.crazygames.com/resources/basic-launch-metrics, 2026-10-11): *Conversion* = Anteil, der
+**≥ 1 min** spielt (Top-Spiele 80 %+); Laden < 10 s; Build < 20 MB; Ø Spielzeit 10+ min; Tag-1-Wiederkehr 10–15 %.
+Basic Launch endet nach ≥ 7 Tagen **und** ≥ 500 Plays (sonst nach 21 Tagen); CrazyGames entscheidet über Full Launch.
+
+### 7a. Vor deinen Zahlen schon behoben (gemessen, 2026-10-11)
+
+| Stelle | Ursache (gemessen) | Behoben | Nachher |
+|---|---|---|---|
+| 1 vor dem Spiel | SDK vom AdBlocker gesperrt → Warten aufs 6-s-Timeout (7,7 s statt 4,4 s bis spielbar, gleiche Messart) | Seite merkt den Skriptfehler, Spiel startet sofort (`sdk-web --adblock sdk` wird rot bei Warten) | 4,2 s gesperrt / 4,4 s normal (je 2× abwechselnd) |
+| 2 erste Minute | Desktop: keine Tastenerklärung im Spiel (nur „F Get in“); CrazyGames verlangt „keyboard overlay“ | Tastenkappen je Modus bis 4 min Spielzeit (`MenuTests.KeyHints_…`) | Bild `Captures/p11-keys/crops2.png` |
+| 3 nach dem ersten Ziel | Ziele nur im Pausenmenü; beim Fahren zeigte nichts zum nächsten Rennen | Lotse: nach 25 s Fahrt Pfeil + „Next: <Rennen>“ bis 2 Rennen beendet (`NextGoalTests`) | Bild `Captures/p11-goal/flash.png` |
+
+### 7b. Hypothesen, die nur deine Zahlen prüfen können
+
+| # | Wenn die Zahl so aussieht … | … vermute ich | Prüfplan (ich messe dann) | Mögliche Abhilfe |
+|---|---|---|---|---|
+| H1 | Conversion Handy deutlich < Desktop | Start 18,4 MB bei langsamem Netz: 5 Mbit/s + CPU ÷4 = **34 s** bis spielbar | `sdk-web --net 5 --cpu 4` je Datei; Länder/Browser aus dem Portal | Startdownload weiter teilen (Gelände-Kachel, Tokyo nachladen), Ladebalken mit Prozent |
+| H2 | Conversion gesamt < 70 % | Start zu Fuß: Spieler findet Auto/„F“ nicht oder versteht das Ziel nicht | Kommentare; Spielzeit-Verteilung < 1 min; play.mjs Erstbild Handy hochkant | Start direkt im Auto (Regeländerung → nur mit deinem Wort, D-Eintrag) |
+| H3 | Ø Spielzeit 2–8 min, Tag 1 < 10 % | nach dem ersten Auto fehlt ein nächstes Ziel (Mame K 2.400, dann Mini Hauler 3.600) | ECONOMY.md „Sitzungen bis Kauf“, Records-Zahlen im Spielstand | Lotse auch auf Autokauf zeigen; Tagesziel; Preise (nur mit Zustimmung) |
+| H4 | Handy-Spielzeit ≪ Desktop | Ruckeln/Hitze auf echten Geräten (iGPU-/Handy-Test fehlt) | dein Geräte-Test + `smoke --gpu --quality Low` | Niedrig-Stufe enger, DXT→ASTC (D37) |
+| H5 | Viele Abbrüche in Safari | iOS/WebKit-Speicher | Portal-Browserzahlen; `sdk-web --browser webkit` | ASTC, kleinere Texturen |
