@@ -576,12 +576,13 @@ namespace JapanMap.Editor
         }
 
         /// <summary>Sets the Game view to a fixed resolution (adds it as a custom size once).</summary>
-        static void GameViewSize(int w, int h)
+        internal static void GameViewSize(int w, int h)
         {
             var asm = typeof(UnityEditor.Editor).Assembly;
             var sizesType = asm.GetType("UnityEditor.GameViewSizes");
             var single = typeof(ScriptableSingleton<>).MakeGenericType(sizesType).GetProperty("instance").GetValue(null);
-            var group = sizesType.GetMethod("GetGroup").Invoke(single, new object[] { (int)UnityEditor.GameViewSizeGroupType.Standalone });
+            // The group of the active build target (WebGL here): a size added to Standalone is not offered in the Game view.
+            var group = sizesType.GetProperty("currentGroup").GetValue(single);
             var groupType = group.GetType();
             var count = (int)groupType.GetMethod("GetTotalCount").Invoke(group, null);
             var index = -1;

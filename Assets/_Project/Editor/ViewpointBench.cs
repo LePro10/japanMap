@@ -43,6 +43,9 @@ namespace JapanMap.Editor
             if (File.Exists(ReportPath(label))) File.Delete(ReportPath(label));
             EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo();
             EditorSceneManager.OpenScene(ProjectSetup.BootScene, OpenSceneMode.Single);
+            // LOD stages follow the screen height: a 4K Game view drew 2–3× the triangles of the Phase 10 run (Phase 11).
+            // Budgets are for 1080p, so every bench renders at 1920 × 1080.
+            PlayScript.GameViewSize(1920, 1080);
             EditorApplication.EnterPlaymode();
         }
 
@@ -56,7 +59,7 @@ namespace JapanMap.Editor
                 _index = -1;
                 _frame = 0;
                 _report = new StringBuilder();
-                _report.AppendLine($"bench {label} · {System.DateTime.Now:yyyy-MM-dd HH:mm} · {SystemInfo.graphicsDeviceName} · quality {QualitySettings.names[QualitySettings.GetQualityLevel()]}");
+                _report.AppendLine($"bench {label} · {System.DateTime.Now:yyyy-MM-dd HH:mm} · {SystemInfo.graphicsDeviceName} · quality {QualitySettings.names[QualitySettings.GetQualityLevel()]} · Game view {UnityEditor.Handles.GetMainGameViewSize().x:0}x{UnityEditor.Handles.GetMainGameViewSize().y:0}");
                 _report.AppendLine($"{"viewpoint",-14} {"drawCalls",9} {"setPass",8} {"tris k",8} {"ms",6}");
                 EditorApplication.update += Step;
             }
