@@ -51,6 +51,9 @@ fragen — es sei denn, der Agent hat ihn selbst geöffnet.
 Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
 
 ## Bekannte Fallen
+- **Gegenversuch mit altem Code nie per `git checkout <rev> -- <ordner>`**, solange ungesicherte Änderungen darin
+  liegen — das Zurückholen mit `git checkout HEAD` löscht sie (Phase 11: ein frischer Test ging so verloren und der
+  nächste Commit behauptete ihn). Vorher committen oder `git stash`; danach `git status` gegen die Erwartung prüfen.
 
 - **Editor hängt / MCP antwortet nicht** („Unknown tool“, `{success:false}`, 0 % CPU): **nicht fragen, nicht warten** —
   `node Tools/editor-restart.mjs` (verweigert nur im Play-Modus; beendet Editor + MCP-Server, öffnet neu, wartet bis

@@ -191,6 +191,28 @@ namespace JapanMap.Vehicles
             Physics.SyncTransforms();
         }
 
+        /// <summary>
+        /// A road streamed in over a car that already stood on the terrain below it (travel or respawn before the tile
+        /// arrived): the one-sided road collider then holds the car underneath. A surface less than
+        /// <paramref name="maxAbove"/> m above the car is never a bridge (the roof would be inside it): lift the car onto
+        /// it, speed kept. True when lifted.
+        /// </summary>
+        public bool LiftOntoSurfaceAbove(float maxAbove = 2f)
+        {
+            if (!_built) return false;
+            var at = _rb.position;
+            _body.enabled = false;
+            var found = gameObject.scene.GetPhysicsScene().Raycast(at + Vector3.up * (maxAbove + 0.5f), Vector3.down, out var hit,
+                maxAbove + 0.5f, groundMask, QueryTriggerInteraction.Ignore);
+            _body.enabled = true;
+            if (!found || hit.point.y < at.y + 0.2f) return false;
+            var up = hit.point.y - at.y + 0.05f;
+            _rb.position = at + Vector3.up * up;
+            transform.position = _rb.position;
+            Physics.SyncTransforms();
+            return true;
+        }
+
         void FixedUpdate()
         {
             if (!_built) return;

@@ -44,6 +44,7 @@ namespace JapanMap.Editor
         static int _frames, _frameTotal;
         static float _frameDt, _frameNext;
         static string _frameName;
+        static int _shotW = 960, _shotH = 540;
         static Vector3? _aim;
         static float _clock;
         static int _lastFrame = -1;
@@ -144,9 +145,10 @@ namespace JapanMap.Editor
             {
                 if (now >= _frameNext)
                 {
-                    Shot($"{_frameName}-{_frameTotal - _frames + 1:00}");
+                    Shot($"{_frameName}-{_frameTotal - _frames + 1:000}");
                     _frames--;
                     _frameNext = now + _frameDt;
+                    if (_frames == 0) { _shotW = 960; _shotH = 540; }
                 }
                 return;
             }
@@ -201,9 +203,19 @@ namespace JapanMap.Editor
                     _until = now + 0.3f;
                     return false;
                 case "shot":
+                    // shot name [w h]: the camera only (no UI) at that size (store covers: 1920 1080, 800 1200, 800 800).
+                    if (a.Length > 3) { _shotW = int.Parse(a[2]); _shotH = int.Parse(a[3]); }
                     Shot(a[1]);
+                    _shotW = 960; _shotH = 540;
+                    return true;
+                case "capture":
+                    // capture fps: game time advances exactly 1/fps per frame however slow the frame (video frames for
+                    // the store trailer without stutter); capture 0 = real time again.
+                    Time.captureFramerate = int.Parse(a[1]);
                     return true;
                 case "frames":
+                    // frames name n dt [w h]
+                    if (a.Length > 5) { _shotW = int.Parse(a[4]); _shotH = int.Parse(a[5]); }
                     _frameName = a[1];
                     _frames = _frameTotal = int.Parse(a[2]);
                     _frameDt = F(3);
@@ -610,7 +622,7 @@ namespace JapanMap.Editor
         static void Shot(string name)
         {
             var path = Path.Combine(SessionState.GetString(KeyOut, Capture.Dir), name + ".png");
-            Capture.Render(Camera.main, path, 960, 540);
+            Capture.Render(Camera.main, path, _shotW, _shotH);
             Log.AppendLine($"  shot {path}");
         }
 
@@ -739,6 +751,8 @@ namespace JapanMap.Editor
         {
             if (_steps == null) return;
             EditorApplication.update -= Tick;
+            Time.captureFramerate = 0;
+            _shotW = 960; _shotH = 540;
             if (_kb != null) InputSystem.RemoveDevice(_kb);
             if (_mouse != null) InputSystem.RemoveDevice(_mouse);
             _kb = null;

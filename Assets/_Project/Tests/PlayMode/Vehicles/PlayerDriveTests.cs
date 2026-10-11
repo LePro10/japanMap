@@ -178,6 +178,99 @@ namespace JapanMap.Tests.Vehicles
         }
 
         /// <summary>The game starts on foot beside the car (Phase 6): F gets in, the real way.</summary>
+        /// <summary>
+        /// CrazyGames: physics must behave the same on 60, 144 and 165 Hz screens. The real path at 30 and 144 frames per
+        /// second: boot, get in with F, hold W for 3 s of game time — speed and distance must match.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SameDrive_At30And144Fps()
+        {
+            var results = new System.Collections.Generic.List<(float kmh, float metres, int frames)>();
+            var vsync = QualitySettings.vSyncCount;
+            var target = Application.targetFrameRate;
+            try
+            {
+                foreach (var fps in new[] { 30, 144 })
+                {
+                    QualitySettings.vSyncCount = 0;
+                    Application.targetFrameRate = fps;
+                    yield return BootAndBoard();
+                    var car = Object.FindAnyObjectByType<PlayerCarSpawner>().Current;
+                    yield return new WaitForSeconds(0.5f);
+                    var start = car.transform.position;
+                    var t0 = Time.time;
+                    var frames = 0;
+                    Press(Key.W);
+                    while (Time.time - t0 < 3f) { frames++; yield return null; }
+                    // Read at an exact fixed step: frames end at different points between two physics steps.
+                    yield return new WaitForFixedUpdate();
+                    var kmh = car.Telemetry.speed * 3.6f;
+                    var metres = Vector3.Distance(start, car.transform.position);
+                    var elapsed = Time.time - t0;
+                    Press();
+                    results.Add((kmh / elapsed * 3f, metres / (elapsed * elapsed) * 9f, frames));
+                    if (Bootstrapper.Instance != null) Object.Destroy(Bootstrapper.Instance.gameObject);
+                    yield return null;
+                }
+            }
+            finally
+            {
+                QualitySettings.vSyncCount = vsync;
+                Application.targetFrameRate = target;
+            }
+            var (slow, fast) = (results[0], results[1]);
+            var line = $"30 fps: {slow.kmh:F1} km/h, {slow.metres:F1} m ({slow.frames} frames) · 144 fps: {fast.kmh:F1} km/h, {fast.metres:F1} m ({fast.frames} frames)";
+            Debug.Log("[Hz] " + line);
+            Assert.That(fast.frames, Is.GreaterThan(slow.frames * 2), "the frame rates really differed: " + line);
+            Assert.That(fast.kmh, Is.EqualTo(slow.kmh).Within(4).Percent, line);
+            Assert.That(fast.metres, Is.EqualTo(slow.metres).Within(6).Percent, line);
+        }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// On a slow line the road tiles arrive after the start. R (respawn) before the tile is there puts the car on the
+        /// terrain 1 m below the road; when the tile arrives the one-sided road held the car underneath (only its roof
+        /// showed, Phase 11). Now the arriving tile lifts it onto the road, and it drives.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator RoadTileArrivingOverTheCar_LiftsItOntoTheRoad()
+        {
+            yield return BootAndBoard();
+            var car = Object.FindAnyObjectByType<PlayerCarSpawner>().Current;
+            string[] tiles = { "Assets/_Project/Scenes/World/Roads_CitySlab.unity", "Assets/_Project/Scenes/World/Roads_Road_2_0.unity" };
+            car.Place(new Vector3(1123f, 30f, 137f), 180f, fromAbove: 3f); // setup: a Tokyo street of that tile
+            yield return new WaitForSeconds(0.5f);
+            Assert.That(car.transform.position.y, Is.GreaterThan(29.9f), "on the road while its tiles are loaded");
+            // The tiles are not there yet (slow line): unload them, then respawn the real way.
+            foreach (var tile in tiles)
+            {
+                var scene = SceneManager.GetSceneByPath(tile);
+                Assert.IsTrue(scene.IsValid() && scene.isLoaded, $"{tile} is a streamed scene");
+                yield return SceneManager.UnloadSceneAsync(scene);
+            }
+            Physics.SyncTransforms();
+            Press(Key.R);
+            yield return null;
+            Press();
+            yield return new WaitForSeconds(0.5f);
+            Assert.That(car.transform.position.y, Is.LessThan(29.5f), "without the tiles the respawn lands on the terrain below the road");
+            // The tiles arrive through the streamer's arrival path.
+            foreach (var tile in tiles)
+            {
+                var load = UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(tile, new LoadSceneParameters(LoadSceneMode.Additive));
+                while (!load.isDone) yield return null;
+                JapanMap.Gameplay.Content.ContentStreamer.Instance.Arrive("world/" + System.IO.Path.GetFileNameWithoutExtension(tile), SceneManager.GetSceneByPath(tile));
+            }
+            yield return new WaitForFixedUpdate();
+            Assert.That(car.transform.position.y, Is.GreaterThan(29.9f), "lifted onto the arriving road");
+            Press(Key.W);
+            yield return new WaitForSeconds(2f);
+            Press();
+            Assert.That(car.Telemetry.speed * 3.6f, Is.GreaterThan(15f), "and it drives");
+            Assert.That(car.transform.position.y, Is.GreaterThan(29.8f), "on the road, not under it");
+        }
+#endif
+
         IEnumerator BootAndBoard()
         {
             yield return BootGame();

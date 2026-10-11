@@ -40,7 +40,7 @@
 |---|---|---|
 | Prüfstände grün für alle 10 Autos | `VehicleBenchTests` (im PlayMode-Gesamtlauf) | ✅ |
 | Ring-Runde + Pass-Abfahrt ohne Hängenbleiben | `AcceptanceDriveTests`, `RingDipTests` (0 Aufsetzer) | ✅ |
-| Gleiches Fahren bei jeder Bildrate (CrazyGames 144/165 Hz) | **neu** `PlayerDriveTests.SameDrive_At30And144Fps`: 46,0 / 46,0 km/h, 17,7 / 17,5 m bei 91 / 195 Bildern in 3 s | ✅ |
+| Gleiches Fahren bei jeder Bildrate (CrazyGames 144/165 Hz) | **neu** `PlayerDriveTests.SameDrive_At30And144Fps`: 46,2 / 46,2 km/h, 17,6 / 17,7 m bei 90 / 416 Bildern in 3 s (≈ 30 / 139 fps) | ✅ |
 | Fahrgefühl | — | 👤 offen seit Phase 3 |
 
 ## Phase 4 — Look
@@ -104,6 +104,7 @@
 | Start ≤ 20 MB bis gameplayStart | 18,44 MB (`sdk-web`) | ✅ |
 | Gesamt ≤ 250 MB / ≤ 1 500 Dateien | 82,2 MB / 96 | ✅ |
 | Laden ≤ 20 s | lokal 1,5–4,4 s; Chromebook-Profil (CPU ÷4) 4,0 s; **5 Mbit/s: 30,9 s** (18,4 MB brauchen dort physikalisch 29,5 s) | ⚠️ langsames Netz |
+| Auto unter später geladener Straße gefangen (R oder Reise vor dem Nachladen) | **gefunden beim Cover-Dreh**, behoben: ankommende Kachel hebt Autos auf die Fahrbahn — `PlayerDriveTests.RoadTileArrivingOverTheCar_LiftsItOntoTheRoad` | ✅ |
 | Nachladen bei langsamem Netz | **neu** `sdk-web --net 5 --stream`: alle 58 Szenen in 70 s; eigenes Auto nach 14,6 s (vorher 20,9), Straßen direkt danach (vorher erst nach Tokyo) | ✅ |
 | Chrome/Edge | Chromium headless, alle Läufe | ✅ |
 | Safari | `sdk-web --browser webkit --probe`: läuft, Bild 72 % | ✅ (WebKit; echtes iPhone 👤) |

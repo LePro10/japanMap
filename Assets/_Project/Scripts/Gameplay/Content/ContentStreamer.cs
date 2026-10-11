@@ -176,7 +176,7 @@ namespace JapanMap.Gameplay.Content
             };
         }
 
-        void Arrive(string address, Scene scene)
+        internal void Arrive(string address, Scene scene)
         {
             _loaded.Add(address);
             foreach (var root in scene.GetRootGameObjects())
@@ -184,6 +184,10 @@ namespace JapanMap.Gameplay.Content
             // Draw distances of the tier now in force reach the new place's instanced buildings.
             var tq = FindAnyObjectByType<World.TerrainQuality>();
             if (tq != null) tq.Apply(QualitySettings.names[QualitySettings.GetQualityLevel()]);
+            // A car may already stand on the terrain under the new roads (travel, respawn): lift it onto them.
+            Physics.SyncTransforms();
+            foreach (var car in FindObjectsByType<VehicleController>())
+                if (car.LiftOntoSurfaceAbove()) Debug.Log($"[Content] {car.name} lifted onto {address}");
             PlaceLoaded?.Invoke(address, scene);
         }
 
