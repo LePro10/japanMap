@@ -50,7 +50,7 @@ try {
     const started = logs.some((l) => /\[Platform\] gameplayStart/.test(l));
     await page.waitForTimeout(4000); // first content and the HUD's first layout
     for (const t0b = Date.now(); !logs.some((l) => l.startsWith('[UiCheck]')) && Date.now() - t0b < 5000;) await page.waitForTimeout(250);
-    const uiCheck = logs.find((l) => l.startsWith('[UiCheck]')) ?? '[UiCheck] no report';
+    const uiCheck = (logs.find((l) => l.startsWith('[UiCheck]')) ?? '[UiCheck] no report').trim();
     const hud = join(out, `${name}-hud.png`);
     await page.screenshot({ path: hud });
     await page.evaluate(() => { const c = document.querySelector('canvas'); c.tabIndex = 1; c.focus(); });

@@ -143,7 +143,7 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-phone .jm-card .jm-btn { margin-top: 8px; }
 .jm-phone .jm-foot { margin-top: 10px; }
 .jm-portrait .jm-cards { flex-direction: column; }
-.jm-portrait .jm-card { margin: 0 0 10px 0; }
+.jm-portrait .jm-card { margin: 0 0 10px 0; flex-basis: auto; flex-grow: 0; flex-shrink: 0; }
 .jm-content > ScrollView { flex-grow: 1; }
 .jm-back { position: absolute; }
 
@@ -259,24 +259,27 @@ Label { color: var(--paper); font-size: 16px; }
     transition-property: opacity; transition-duration: 0.3s; }
 .jm-intro__slow--on { opacity: 1; }
 .jm-intro__slow Label { font-size: 13px; letter-spacing: 8px; color: var(--nitro); -unity-font-style: bold; }
-.jm-intro__steps { position: absolute; left: 25%; right: 25%; bottom: 3%; flex-direction: row; justify-content: center; }
+/* In the top letterbox bar: the bottom belongs to the key overlay, the top-right corner to MENU. */
+.jm-intro__steps { position: absolute; left: 32%; right: 32%; top: 3.6%; flex-direction: row; justify-content: center; }
+.jm-intro__steps--off { display: none; }
 .jm-intro__step { margin: 0 10px; border-top-width: 3px; border-color: rgba(246, 239, 228, 0.25); padding-top: 4px; width: 64px; }
 .jm-intro__step Label { font-size: 11px; letter-spacing: 2px; color: rgba(246, 239, 228, 0.45); -unity-text-align: middle-center; }
 .jm-intro__step--done { border-color: var(--amber); }
 .jm-intro__step--done Label { color: var(--amber); }
 .jm-intro__step--now { border-color: var(--paper); }
 .jm-intro__step--now Label { color: var(--paper); }
-.jm-intro__skip { position: absolute; right: 16px; top: 3%; height: 36px; padding: 0 14px; border-radius: 18px;
+.jm-intro__skip { position: absolute; left: 16px; top: 2.5%; height: 36px; padding: 0 14px; border-radius: 18px;
     background-color: rgba(6, 20, 26, 0.7); border-width: 1px; border-color: rgba(246, 239, 228, 0.35); overflow: hidden; }
 .jm-intro__skip Label { font-size: 12px; letter-spacing: 2px; color: var(--paper-dim); -unity-font-style: bold; }
 .jm-intro__skipfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background-color: rgba(232, 186, 127, 0.35); }
 /* Phones: no letterbox (it covered the touch controls and the top row), no step row, skip at the top centre. */
 .jm-phone .jm-intro__bar--on { height: 0; }
 .jm-phone .jm-intro__steps { display: none; }
-.jm-phone .jm-intro__skip { right: auto; left: 50%; translate: -50% 0; top: 8px; }
+.jm-phone .jm-intro__skip { left: 50%; translate: -50% 0; top: 8px; }
+.jm-portrait .jm-intro__skip { top: auto; bottom: 236px; }
 .jm-phone .jm-intro__title { top: 22%; }
-.jm-phone .jm-intro__prompt { top: 40%; }
-.jm-phone .jm-intro__prompt--big { top: 34%; }
+.jm-phone .jm-intro__prompt { top: 30%; left: 30%; right: 30%; }
+.jm-phone .jm-intro__prompt--big { top: 26%; }
 .jm-phone .jm-intro__name { font-size: 40px; letter-spacing: 8px; }
 .jm-phone .jm-intro__label { font-size: 20px; }
 .jm-phone .jm-intro__toast { font-size: 24px; }

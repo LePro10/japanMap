@@ -108,9 +108,11 @@ namespace JapanMap.Gameplay
             // Desktop key overlay for the first minutes, under the prompt line. Filled per mode in Update.
             _keys = new VisualElement { name = "key-hints", pickingMode = PickingMode.Ignore };
             _keys.style.position = Position.Absolute;
-            _keys.style.left = _keys.style.right = 0;
+            // Clear of the dial (bottom right, ~220 px) and the minimap: narrow windows wrap the keys upwards.
+            _keys.style.left = _keys.style.right = 250f;
             _keys.style.bottom = safe.w + 6f;
             _keys.style.flexDirection = FlexDirection.Row;
+            _keys.style.flexWrap = Wrap.Wrap;
             _keys.style.justifyContent = Justify.Center;
             _keys.style.alignItems = Align.Center;
             doc.Add(_keys);

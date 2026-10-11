@@ -14,6 +14,10 @@ mergeInto(LibraryManager.library, {
   JapanMapLoaded: function () {
     if (window.__jmLoaded) window.__jmLoaded();
   },
+  // A touch screen (phone, tablet; also touch laptops — they get the phone layout only when small).
+  JapanMapHasTouch: function () {
+    return (navigator.maxTouchPoints || 0) > 0 || ('ontouchstart' in window) || (window.matchMedia && matchMedia('(pointer: coarse)').matches);
+  },
   JapanMapSafeInset: function (side) {
     if (!window.__jmSafe) {
       var d = document.createElement('div');

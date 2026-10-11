@@ -103,7 +103,9 @@ namespace JapanMap.Core.Ui
         {
             var css = new Vector2(screen.x, screen.y) / dpr;
             var shortSide = Mathf.Min(css.x, css.y);
-            var form = _forced ?? (shortSide < PhoneShortSide ? (css.y > css.x ? FormFactor.PhonePortrait : FormFactor.PhoneLandscape) : FormFactor.Desktop);
+            // A phone is small *and* touch: CrazyGames' desktop frame is 907 × 510 on smaller screens, and a desktop player
+            // there got the phone layout — no key overlay, no MENU button (2026-10-11, sizes-web).
+            var form = _forced ?? (shortSide < PhoneShortSide && TouchDevice() ? (css.y > css.x ? FormFactor.PhonePortrait : FormFactor.PhoneLandscape) : FormFactor.Desktop);
             // Desktop sizes in ASTRA are for 1920 × 1080; a smaller window shrinks them a little, never below 80 %.
             var fit = form == FormFactor.Desktop ? Mathf.Clamp(css.y / 1080f, 0.8f, 1.5f) : 1f;
             var scale = dpr * fit * _userScale;
@@ -137,7 +139,18 @@ namespace JapanMap.Core.Ui
 #endif
         }
 
+        /// <summary>The browser reports a touch screen (editor: yes — its phone layouts are tested by Game view size).</summary>
+        static bool TouchDevice()
+        {
 #if UNITY_WEBGL && !UNITY_EDITOR
+            return JapanMapHasTouch();
+#else
+            return true;
+#endif
+        }
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+        [DllImport("__Internal")] static extern bool JapanMapHasTouch();
         [DllImport("__Internal")] static extern float JapanMapDevicePixelRatio();
         [DllImport("__Internal")] static extern float JapanMapSafeInset(int side);
 #endif

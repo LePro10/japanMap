@@ -38,7 +38,8 @@ namespace JapanMap.Gameplay.Intro
             _root = new VisualElement { name = "intro", pickingMode = PickingMode.Ignore };
             _root.AddToClassList("jm-intro");
             _root.AddToClassList("jm-fill");
-            parent.Add(_root);
+            // Under the HUD: the letterbox frames the picture, the dial and minimap stay readable on top of it.
+            parent.Insert(0, _root);
 
             _top = Bar("jm-intro__bar--top");
             _bottom = Bar("jm-intro__bar--bottom");
@@ -110,6 +111,9 @@ namespace JapanMap.Gameplay.Intro
 
         void Tick()
         {
+            // The form factor settles after the first frames (and changes on rotation): classes follow it.
+            _root.EnableInClassList("jm-phone", UiPanel.IsPhone);
+            _root.EnableInClassList("jm-portrait", UiPanel.IsPortrait);
             if (_toast.style.display == DisplayStyle.Flex && Time.unscaledTime > _toastUntil) _toast.style.display = DisplayStyle.None;
             if (_hideAt > 0f && Time.unscaledTime > _hideAt) { _hideAt = -1f; _root.style.display = DisplayStyle.None; }
         }
@@ -131,7 +135,7 @@ namespace JapanMap.Gameplay.Intro
             Cinema(false);
             Prompt(null, null, null);
             _skip.style.display = DisplayStyle.None;
-            _steps.style.display = DisplayStyle.None;
+            _steps.AddToClassList("jm-intro__steps--off");
             Slow(false);
             if (delay <= 0f) _root.style.display = DisplayStyle.None;
             else _hideAt = Time.unscaledTime + delay;
@@ -141,7 +145,7 @@ namespace JapanMap.Gameplay.Intro
         {
             _top.EnableInClassList("jm-intro__bar--on", on);
             _bottom.EnableInClassList("jm-intro__bar--on", on);
-            _steps.style.display = DisplayStyle.Flex;
+            _steps.RemoveFromClassList("jm-intro__steps--off"); // a class, not an inline style: phones hide the row in USS
         }
 
         public void Title(bool on) => _title.EnableInClassList("jm-intro__title--on", on);

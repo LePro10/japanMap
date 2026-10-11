@@ -20,6 +20,9 @@ namespace JapanMap.Core.Ui
             "intro-prompt", "intro-steps", "intro-skip",
         };
 
+        /// <summary>Full-width rows and lines whose content is centred: they cover what they fill, not their row.</summary>
+        static readonly HashSet<string> Rows = new() { "player-prompt", "key-hints", "goal", "intro-prompt", "intro-steps" };
+
         /// <summary>Overlaps smaller than this (panel px) are touching edges, not covering.</summary>
         const float Slack = 2f;
 
@@ -63,7 +66,9 @@ namespace JapanMap.Core.Ui
             var touch = e.ClassListContains("jm-touch");
             if (touch || Named.Contains(e.name))
             {
-                var r = e.worldBound;
+                if (e is Label lab && string.IsNullOrEmpty(lab.text)) return; // an empty line covers nothing
+                // A full-width row (key overlay, prompt) covers only what its children fill.
+                var r = touch || !Rows.Contains(e.name) ? e.worldBound : Filled(e);
                 if (r.width > 1f && r.height > 1f)
                 {
                     var label = touch ? "touch:" + Label(e) : e.name;
@@ -72,6 +77,35 @@ namespace JapanMap.Core.Ui
                 return; // parts inside a block belong to it
             }
             foreach (var c in e.Children()) Collect(c, into);
+        }
+
+        static Rect Filled(VisualElement e)
+        {
+            if (e is Label text && e.childCount == 0) return TextRect(text);
+            if (e.childCount == 0) return e.worldBound;
+            var any = false;
+            var r = default(Rect);
+            foreach (var c in e.Children())
+            {
+                if (c.resolvedStyle.display == DisplayStyle.None) continue;
+                var b = c is Label l && string.IsNullOrEmpty(l.text) ? default : c.worldBound;
+                if (b.width < 1f || b.height < 1f) continue;
+                r = any ? Rect.MinMaxRect(Mathf.Min(r.xMin, b.xMin), Mathf.Min(r.yMin, b.yMin), Mathf.Max(r.xMax, b.xMax), Mathf.Max(r.yMax, b.yMax)) : b;
+                any = true;
+            }
+            return any ? r : default;
+        }
+
+        // A centred line of text covers its text, not the whole row it is laid out in.
+        static Rect TextRect(Label l)
+        {
+            var b = l.worldBound;
+            var size = l.MeasureTextSize(l.text, b.width, VisualElement.MeasureMode.AtMost, b.height, VisualElement.MeasureMode.Undefined);
+            var w = Mathf.Min(b.width, size.x);
+            var align = l.resolvedStyle.unityTextAlign;
+            var centred = align == TextAnchor.MiddleCenter || align == TextAnchor.UpperCenter || align == TextAnchor.LowerCenter;
+            var x = centred ? b.center.x - w * 0.5f : b.xMin;
+            return new Rect(x, b.yMin, w, b.height);
         }
 
         static string Label(VisualElement e)
