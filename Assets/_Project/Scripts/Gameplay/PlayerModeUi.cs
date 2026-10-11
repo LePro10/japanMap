@@ -76,7 +76,8 @@ namespace JapanMap.Gameplay
 
             _prompt = new Label { name = "player-prompt", pickingMode = PickingMode.Ignore };
             _prompt.style.position = Position.Absolute;
-            _prompt.style.left = _prompt.style.right = 0;
+            // Centred between the stick and the dial on phones (full width ran under the dial, UiLayoutProbe).
+            _prompt.style.left = _prompt.style.right = phone && !UiPanel.IsPortrait ? Length.Percent(22) : 0;
             // Above the touch controls on a phone (they take the lower 140 / 180 px).
             _prompt.style.bottom = safe.w + (UiPanel.IsPortrait ? 262f : phone ? 150f : 36f);
             _prompt.style.unityTextAlign = TextAnchor.MiddleCenter;

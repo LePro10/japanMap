@@ -69,6 +69,9 @@ namespace JapanMap.Editor.Content
             Set(progress, "spawner", spawner);
             Set(progress, "hud", hud);
             Set(progress, "player", player);
+            // The player's prompt UI (PlayerSetup) reads the save for its key overlay; this group is rebuilt fresh, so the
+            // link is set again here (lost once: the overlay never showed after a content rebuild, 2026-10-11).
+            foreach (var pui in Object.FindObjectsByType<PlayerModeUi>(FindObjectsInactive.Include)) Set(pui, "progress", progress);
 
             var garage = Child<GarageSystem>(group, "Garage");
             Set(garage, "settings", Asset<GarageSettings>("GarageSettings"));

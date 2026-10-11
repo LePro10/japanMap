@@ -86,6 +86,9 @@ namespace JapanMap.Editor.Vegetation
         {
             Debug.Log(Import(Settings(), MapImportSettings.LoadOrCreate()));
             MapScene.Save();
+            // The import puts the trees back into Game.unity; streaming moves them out of the start download again
+            // (forgotten once: start 18.4 → 21.3 MB, 2026-10-11; WebBuild now refuses that build).
+            Content.StreamingSetup.Apply();
         }
 
         public static string Import(VegetationSettings s, MapImportSettings map)

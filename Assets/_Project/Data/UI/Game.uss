@@ -35,12 +35,13 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-big { font-size: 40px; -unity-font-style: bold; }
 .jm-shadow { text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8); }
 
+/* One surface language (2026-10-11): near-opaque dark ink, square-ish corners, hairlines instead of boxes. */
 .jm-panel {
-    background-color: var(--panel);
+    background-color: rgba(7, 15, 20, 0.92);
     border-width: 1px;
-    border-color: var(--line);
-    border-radius: 12px;
-    padding: 16px;
+    border-color: rgba(246, 239, 228, 0.08);
+    border-radius: 4px;
+    padding: 18px;
 }
 .jm-plate {
     background-color: rgba(6, 20, 26, 0.62);
@@ -58,56 +59,91 @@ Label { color: var(--paper); font-size: 16px; }
     min-width: 48px;
     padding: 0 16px;
     margin: 0 8px 8px 0;
-    border-radius: 10px;
-    border-width: 2px;
-    border-color: rgba(246, 239, 228, 0.12);
-    background-color: rgba(18, 50, 59, 0.95);
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: rgba(246, 239, 228, 0.18);
+    background-color: rgba(246, 239, 228, 0.06);
     color: var(--paper);
     font-size: 16px;
     -unity-font-style: bold;
     -unity-text-align: middle-center;
     white-space: normal;
 }
-.jm-btn:hover, .jm-btn:hover:enabled { background-color: rgb(26, 70, 80); }
-.jm-btn:active, .jm-btn:active:enabled, .jm-btn:hover:active:enabled { background-color: rgb(14, 40, 48); }
+.jm-btn:hover, .jm-btn:hover:enabled { background-color: rgba(246, 239, 228, 0.13); }
+.jm-btn:active, .jm-btn:active:enabled, .jm-btn:hover:active:enabled { background-color: rgba(246, 239, 228, 0.03); }
 .jm-btn:focus { border-color: var(--amber-hot); }
 .jm-btn:disabled { opacity: 0.45; }
 .jm-btn--primary { background-color: var(--amber); color: var(--ink); border-color: var(--amber-hot); min-height: 56px; font-size: 18px; }
 .jm-btn--primary:hover, .jm-btn--primary:hover:enabled { background-color: var(--amber-hot); }
-.jm-btn--on:hover:enabled { background-color: rgb(48, 72, 62); }
-.jm-btn--on { border-color: var(--amber-hot); background-color: rgb(40, 60, 52); }
+.jm-btn--on:hover:enabled { background-color: rgba(232, 186, 127, 0.2); }
+.jm-btn--on { border-color: var(--amber-hot); background-color: rgba(232, 186, 127, 0.14); color: var(--amber-hot); }
 .jm-btn--danger { background-color: rgba(196, 69, 54, 0.85); }
 .jm-btn--wide { flex-grow: 1; }
 .jm-btn--swatch { min-width: 48px; width: 48px; height: 48px; padding: 0; border-radius: 24px; }
 
 /* Menu shell: desktop left rail 184 px with Continue at the bottom; phone bottom tab row. */
-.jm-menu { background-color: rgba(4, 12, 16, 0.35); }
+/* Menu (2026-10-11 redesign; human: "AI-Slop"): a racing-game pause screen, not a dashboard. The game stays
+   faintly visible; one rail with the name, Resume first, typographic entries with an amber edge; pages use
+   kicker + display type + flat tiles, no boxed borders. */
+.jm-menu { background-color: rgba(3, 9, 13, 0.84); }
 .jm-shell { flex-direction: row; flex-grow: 1; }
 .jm-rail {
-    width: 184px;
-    background-color: var(--panel-solid);
+    width: 248px;
+    background-color: rgba(2, 7, 10, 0.55);
     border-right-width: 1px;
-    border-color: var(--line);
-    padding: 16px 12px;
+    border-color: rgba(246, 239, 228, 0.08);
+    padding: 36px 0 24px 0;
 }
-.jm-rail .jm-tab { flex-direction: row; height: 52px; margin-bottom: 6px; border-radius: 10px; padding-left: 10px; }
-.jm-rail .jm-tab Label { margin-left: 10px; font-size: 17px; }
-.jm-rail .jm-continue { margin-top: auto; }
-.jm-brand { font-size: 15px; color: var(--amber); -unity-font-style: bold; margin-bottom: 14px; letter-spacing: 2px; }
+.jm-rail .jm-tab { flex-direction: row; justify-content: flex-start; height: 48px; margin: 0; border-radius: 0; padding-left: 32px; }
+.jm-rail .jm-tab Label { margin-left: 14px; font-size: 15px; letter-spacing: 3px; }
+.jm-rail .jm-continue { margin: 0 24px 22px 24px; }
+.jm-brand { font-size: 20px; color: var(--paper); -unity-font-style: bold; letter-spacing: 6px; margin: 0 24px 2px 32px; }
+.jm-brand-sub { font-size: 10px; color: var(--amber); letter-spacing: 3px; margin: 0 24px 28px 32px; }
 .jm-tab {
     align-items: center;
     justify-content: center;
     background-color: rgba(0, 0, 0, 0);
-    border-width: 2px;
+    border-width: 0;
+    border-left-width: 3px;
     border-color: rgba(0, 0, 0, 0);
 }
-.jm-tab:hover, .jm-tab:hover:enabled, .jm-tab:active:enabled, .jm-tab:hover:active:enabled { background-color: rgba(26, 107, 118, 0.35); }
-.jm-tab--on:hover:enabled, .jm-tab--on:active:enabled { background-color: rgba(232, 186, 127, 0.22); }
-.jm-tab:focus { border-color: var(--amber-hot); }
-.jm-tab--on { background-color: rgba(232, 186, 127, 0.16); }
+.jm-tab:hover, .jm-tab:hover:enabled, .jm-tab:active:enabled, .jm-tab:hover:active:enabled { background-color: rgba(246, 239, 228, 0.05); }
+.jm-tab--on:hover:enabled, .jm-tab--on:active:enabled { background-color: rgba(232, 186, 127, 0.1); }
+.jm-tab:focus { border-left-color: var(--paper); }
+.jm-tab--on { background-color: rgba(232, 186, 127, 0.07); border-left-color: var(--amber-hot); }
 .jm-tab--on Label { color: var(--amber-hot); }
-.jm-tab Label { color: var(--paper); -unity-font-style: bold; }
-.jm-content { flex-grow: 1; padding: 24px 28px; }
+.jm-tab Label { color: rgba(246, 239, 228, 0.78); -unity-font-style: bold; }
+.jm-tab UiIcon, .jm-tab > VisualElement { opacity: 0.8; }
+.jm-content { flex-grow: 1; padding: 40px 48px; }
+/* Page parts */
+.jm-kicker { font-size: 11px; letter-spacing: 4px; color: var(--amber); -unity-font-style: bold; margin-bottom: 6px; }
+.jm-display { font-size: 46px; color: var(--paper); -unity-font-style: bold; letter-spacing: 1px; }
+.jm-lede { font-size: 18px; color: var(--amber-hot); -unity-font-style: bold; margin-top: 2px; }
+.jm-cards { flex-direction: row; margin-top: 28px; }
+.jm-card { flex-grow: 1; flex-basis: 0; background-color: rgba(7, 15, 20, 0.92); border-radius: 4px; padding: 20px 22px;
+    border-left-width: 3px; border-color: rgba(246, 239, 228, 0.12); margin-right: 16px; }
+.jm-card:last-child { margin-right: 0; }
+.jm-card--accent { border-left-color: var(--amber-hot); background-color: rgba(18, 22, 20, 0.94); }
+.jm-card-title { font-size: 24px; color: var(--paper); -unity-font-style: bold; margin-bottom: 4px; }
+.jm-card .jm-btn { margin-top: 16px; }
+.jm-meter { height: 6px; background-color: rgba(246, 239, 228, 0.12); border-radius: 3px; margin: 14px 0 8px 0; overflow: hidden; }
+.jm-meter > VisualElement { height: 100%; background-color: var(--amber-hot); }
+.jm-btn--ghost { background-color: rgba(0, 0, 0, 0); border-width: 1px; border-color: rgba(246, 239, 228, 0.25); }
+.jm-btn--ghost:hover, .jm-btn--ghost:hover:enabled { background-color: rgba(246, 239, 228, 0.08); }
+.jm-foot { flex-direction: row; align-items: center; margin-top: 22px; }
+.jm-foot > Label { margin-left: 16px; }
+.jm-phone .jm-display { font-size: 24px; }
+.jm-phone .jm-lede { font-size: 14px; }
+.jm-phone .jm-kicker { font-size: 9px; letter-spacing: 3px; margin-bottom: 2px; }
+.jm-phone .jm-card .jm-small { display: none; }
+.jm-phone .jm-meter { margin: 8px 0 4px 0; }
+.jm-phone .jm-cards { margin-top: 12px; }
+.jm-phone .jm-card { padding: 12px 14px; margin-right: 10px; }
+.jm-phone .jm-card-title { font-size: 17px; }
+.jm-phone .jm-card .jm-btn { margin-top: 8px; }
+.jm-phone .jm-foot { margin-top: 10px; }
+.jm-portrait .jm-cards { flex-direction: column; }
+.jm-portrait .jm-card { margin: 0 0 10px 0; }
 .jm-content > ScrollView { flex-grow: 1; }
 .jm-back { position: absolute; }
 
@@ -116,15 +152,16 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-portrait .jm-shell { flex-direction: column-reverse; }
 .jm-portrait .jm-rail { width: auto; flex-direction: column; border-right-width: 0; border-top-width: 1px; padding: 8px 12px; }
 .jm-portrait .jm-tabs { flex-direction: row; flex-wrap: wrap; }
-.jm-portrait .jm-rail .jm-tab { flex-direction: column; flex-grow: 1; flex-basis: 0; min-width: 52px; height: 56px; margin: 0; padding-left: 0; border-radius: 8px; }
-.jm-portrait .jm-rail .jm-tab Label { margin-left: 0; font-size: 12px; }
+.jm-portrait .jm-rail .jm-tab { flex-direction: column; flex-grow: 1; flex-basis: 0; min-width: 52px; height: 56px; margin: 0; padding-left: 0; border-radius: 0; border-left-width: 0; border-top-width: 3px; }
+.jm-portrait .jm-tab--on { border-top-color: var(--amber-hot); }
+.jm-portrait .jm-rail .jm-tab Label { margin-left: 0; font-size: 10px; letter-spacing: 1px; }
 .jm-portrait .jm-continue { margin: 0 0 8px 0; }
 /* Phone landscape: 390 px are too few for a bottom row — a narrow rail like the desktop one (better than ASTRA's
    bottom row there: the page keeps the full height). */
-.jm-landscape .jm-rail { width: 132px; padding: 6px; }
-.jm-landscape .jm-rail .jm-tab { flex-direction: row; justify-content: flex-start; height: 48px; margin: 0; padding-left: 8px; border-radius: 8px; }
-.jm-landscape .jm-rail .jm-tab Label { margin-left: 8px; font-size: 14px; }
-.jm-landscape .jm-continue { min-height: 48px; font-size: 15px; margin: 4px 0 0 0; padding: 0 4px; }
+.jm-landscape .jm-rail { width: 150px; padding: 8px 0; }
+.jm-landscape .jm-rail .jm-tab { flex-direction: row; justify-content: flex-start; height: 44px; margin: 0; padding-left: 14px; border-radius: 0; }
+.jm-landscape .jm-rail .jm-tab Label { margin-left: 8px; font-size: 12px; letter-spacing: 2px; }
+.jm-landscape .jm-continue { min-height: 44px; font-size: 14px; margin: 0 10px 8px 10px; padding: 0 4px; }
 .jm-phone .jm-brand { display: none; }
 .jm-phone .jm-content { padding: 10px 12px; }
 
@@ -142,16 +179,16 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-phone .jm-col { margin-right: 0; flex-basis: auto; }
 
 .jm-tile {
-    background-color: rgba(18, 50, 59, 0.9);
-    border-radius: 10px;
+    background-color: rgba(246, 239, 228, 0.05);
+    border-radius: 4px;
     padding: 10px;
     margin: 0 10px 10px 0;
     border-width: 2px;
     border-color: rgba(0, 0, 0, 0);
 }
-.jm-tile:hover:enabled, .jm-tile:active:enabled { background-color: rgba(26, 70, 80, 0.95); }
+.jm-tile:hover:enabled, .jm-tile:active:enabled { background-color: rgba(246, 239, 228, 0.1); }
 .jm-tile--on { border-color: var(--amber-hot); }
-.jm-pic { background-color: rgb(14, 34, 40); border-radius: 6px; -unity-background-scale-mode: scale-and-crop; }
+.jm-pic { background-color: rgb(10, 18, 22); border-radius: 2px; -unity-background-scale-mode: scale-and-crop; }
 .jm-chip { background-color: rgba(232, 186, 127, 0.16); border-radius: 12px; padding: 2px 10px; margin-right: 6px; font-size: 14px; color: var(--amber); }
 
 /* Settings rows */
@@ -201,7 +238,7 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-intro__name { font-size: 64px; letter-spacing: 14px; color: var(--paper); -unity-font-style: bold;
     text-shadow: 0 4px 24px rgba(0, 0, 0, 0.85); margin-top: 4px; }
 .jm-intro__sub { font-size: 16px; color: var(--paper-dim); margin-top: 6px; -unity-font-style: italic; }
-.jm-intro__prompt { position: absolute; left: 0; right: 0; top: 58%; align-items: center; opacity: 0; scale: 0.92 0.92;
+.jm-intro__prompt { position: absolute; left: 22%; right: 22%; top: 58%; align-items: center; opacity: 0; scale: 0.92 0.92;
     transition-property: opacity, scale; transition-duration: 0.25s; }
 .jm-intro__prompt--on { opacity: 1; scale: 1 1; }
 .jm-intro__prompt--big { top: 50%; }
@@ -222,7 +259,7 @@ Label { color: var(--paper); font-size: 16px; }
     transition-property: opacity; transition-duration: 0.3s; }
 .jm-intro__slow--on { opacity: 1; }
 .jm-intro__slow Label { font-size: 13px; letter-spacing: 8px; color: var(--nitro); -unity-font-style: bold; }
-.jm-intro__steps { position: absolute; left: 0; right: 0; bottom: 3%; flex-direction: row; justify-content: center; }
+.jm-intro__steps { position: absolute; left: 25%; right: 25%; bottom: 3%; flex-direction: row; justify-content: center; }
 .jm-intro__step { margin: 0 10px; border-top-width: 3px; border-color: rgba(246, 239, 228, 0.25); padding-top: 4px; width: 64px; }
 .jm-intro__step Label { font-size: 11px; letter-spacing: 2px; color: rgba(246, 239, 228, 0.45); -unity-text-align: middle-center; }
 .jm-intro__step--done { border-color: var(--amber); }
@@ -233,6 +270,13 @@ Label { color: var(--paper); font-size: 16px; }
     background-color: rgba(6, 20, 26, 0.7); border-width: 1px; border-color: rgba(246, 239, 228, 0.35); overflow: hidden; }
 .jm-intro__skip Label { font-size: 12px; letter-spacing: 2px; color: var(--paper-dim); -unity-font-style: bold; }
 .jm-intro__skipfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background-color: rgba(232, 186, 127, 0.35); }
+/* Phones: no letterbox (it covered the touch controls and the top row), no step row, skip at the top centre. */
+.jm-phone .jm-intro__bar--on { height: 0; }
+.jm-phone .jm-intro__steps { display: none; }
+.jm-phone .jm-intro__skip { right: auto; left: 50%; translate: -50% 0; top: 8px; }
+.jm-phone .jm-intro__title { top: 22%; }
+.jm-phone .jm-intro__prompt { top: 40%; }
+.jm-phone .jm-intro__prompt--big { top: 34%; }
 .jm-phone .jm-intro__name { font-size: 40px; letter-spacing: 8px; }
 .jm-phone .jm-intro__label { font-size: 20px; }
 .jm-phone .jm-intro__toast { font-size: 24px; }

@@ -293,7 +293,7 @@ namespace JapanMap.Gameplay.Menu
             _content.Add(scroll);
             _body = scroll.contentContainer;
 
-            _continue = Ui.Button(null, "Continue", Close, "jm-btn--primary", "jm-continue");
+            _continue = Ui.Button(null, "Resume", Close, "jm-btn--primary", "jm-continue");
             _tabs = Ui.Box(null, "jm-tabs");
             _tabButtons.Clear();
             foreach (var s in _screens)
@@ -303,7 +303,7 @@ namespace JapanMap.Gameplay.Menu
                 tab.text = "";
                 tab.AddToClassList("jm-tab");
                 tab.Add(new UiIcon(s.Icon, UiPanel.IsPhone ? 22f : 24f));
-                tab.Add(new Label(UiPanel.IsPhone ? s.Short : s.Title) { pickingMode = PickingMode.Ignore });
+                tab.Add(new Label((UiPanel.IsPhone ? s.Short : s.Title).ToUpperInvariant()) { pickingMode = PickingMode.Ignore });
                 _tabs.Add(tab);
                 _tabButtons.Add(tab);
             }
@@ -314,9 +314,14 @@ namespace JapanMap.Gameplay.Menu
             }
             else
             {
-                if (!UiPanel.IsPhone) Ui.Text(_rail, Application.productName.ToUpperInvariant(), "jm-brand");
-                _rail.Add(_tabs);
+                if (!UiPanel.IsPhone)
+                {
+                    Ui.Text(_rail, Application.productName.ToUpperInvariant(), "jm-brand");
+                    Ui.Text(_rail, "BLUE HOUR AFTER THE RAIN", "jm-brand-sub");
+                }
+                // Resume first: it is what most players open the menu for (and where their eye starts).
                 _rail.Add(_continue);
+                _rail.Add(_tabs);
             }
             if (Current != null) Show(Current);
         }

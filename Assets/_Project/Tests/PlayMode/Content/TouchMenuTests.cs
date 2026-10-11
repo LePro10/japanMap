@@ -92,7 +92,7 @@ namespace JapanMap.Tests.Content
             var events = menu.Root.Query<Button>().ToList().First(b => b.text == "Events");
             yield return TapAt(events);
             StringAssert.Contains("not finished", menu.Text, "a tap on a sub-tab works");
-            var cont = menu.Root.Query<Button>().ToList().First(b => b.text == "Continue");
+            var cont = menu.Root.Query<Button>().ToList().First(b => b.text == "Resume");
             yield return TapAt(cont);
             Assert.IsFalse(menu.IsOpen, "Continue resumes");
             Assert.AreEqual(1f, Time.timeScale);

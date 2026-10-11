@@ -17,6 +17,7 @@ namespace JapanMap.Core.Ui
         static readonly HashSet<string> Named = new()
         {
             "instrument", "minimap", "player-prompt", "key-hints", "desk-menu", "goal", "activity",
+            "intro-prompt", "intro-steps", "intro-skip",
         };
 
         /// <summary>Overlaps smaller than this (panel px) are touching edges, not covering.</summary>

@@ -1,4 +1,5 @@
 using System.Text;
+using JapanMap.Core.Ui;
 using JapanMap.Gameplay.Progress;
 using JapanMap.Gameplay.Races;
 using JapanMap.UI;
@@ -35,57 +36,36 @@ namespace JapanMap.Gameplay.Menu
         public override void Build(VisualElement body)
         {
             var t = new StringBuilder();
-            Ui.H1(body, "Paused");
             var p = Menu.Player;
             var car = p != null && p.Car != null ? p.Car.Definition : null;
             var balance = _progress != null ? _progress.Wallet.Balance : 0;
-            var cols = Ui.Box(body, "jm-cols");
-            var left = Ui.Box(cols, "jm-col");
-            var right = Ui.Box(cols, "jm-col");
 
-            var carCard = Ui.Box(left, "jm-panel");
-            Ui.Small(carCard, p != null && p.Current == PlayerModeController.Mode.Walking ? "On foot · your car" : "Driving");
-            Ui.Text(carCard, car != null ? car.displayName : "—", "jm-h1");
-            Ui.Text(carCard, $"{balance:N0} Sparks", "jm-body", "jm-amber");
+            // Hero: what you drive and what you have — the two facts a returning glance looks for.
+            Ui.Text(body, p != null && p.Current == PlayerModeController.Mode.Walking ? "PAUSED  ·  ON FOOT" : "PAUSED", "jm-kicker");
+            Ui.Text(body, car != null ? car.displayName : "—", "jm-display");
+            Ui.Text(body, $"{balance:N0} Sparks", "jm-lede");
             t.AppendLine($"car {car?.displayName} · {balance} Sparks");
 
-            // Pinned goal: the cheapest car not owned yet (ASTRA: purchase progress on Play).
-            var goal = Goal();
-            if (goal != null)
-            {
-                var g = Ui.Box(left, "jm-panel");
-                g.style.marginTop = 12;
-                Ui.Small(g, "Next car");
-                Ui.Text(g, $"{goal.displayName} · {goal.price:N0} Sparks", "jm-h2");
-                var bar = Ui.Box(g);
-                bar.style.height = 8;
-                bar.style.backgroundColor = new Color(1f, 1f, 1f, 0.12f);
-                bar.style.borderTopLeftRadius = bar.style.borderTopRightRadius = bar.style.borderBottomLeftRadius = bar.style.borderBottomRightRadius = 4;
-                var fill = Ui.Box(bar);
-                fill.style.height = Length.Percent(100);
-                fill.style.width = Length.Percent(Mathf.Clamp01(balance / (float)Mathf.Max(1, goal.price)) * 100f);
-                fill.style.backgroundColor = new Color(0.95f, 0.77f, 0.42f);
-                Ui.Small(g, balance >= goal.price ? "You can buy it now — Cars." : $"{goal.price - balance:N0} Sparks to go");
-                t.AppendLine($"goal {goal.displayName}");
-            }
-
+            var tiles = Ui.Box(body, "jm-cards");
+            // First tile: the next thing to do (an event, or the event / test drive in progress).
             if (_garage != null && _garage.TestDriving)
             {
-                var e = Ui.Box(right, "jm-panel");
-                Ui.Small(e, "Test drive");
-                Ui.Text(e, $"{Mathf.CeilToInt(_garage.TestDriveLeft)} s left in the {car?.displayName}", "jm-h2");
+                var e = Ui.Box(tiles, "jm-card", "jm-card--accent");
+                Ui.Text(e, "TEST DRIVE", "jm-kicker");
+                Ui.Text(e, $"{Mathf.CeilToInt(_garage.TestDriveLeft)} s left", "jm-card-title");
+                Ui.Small(e, $"in the {car?.displayName}");
                 Ui.Button(e, "End test drive", () => { Menu.Close(); _garage.EndTestDrive(); });
                 t.AppendLine("test drive");
             }
             else if (_races != null && (_races.Current == RaceDirector.State.Running || _races.Current == RaceDirector.State.Countdown))
             {
-                var e = Ui.Box(right, "jm-panel");
-                Ui.Small(e, "In an event");
-                Ui.Text(e, _races.Event.title, "jm-h2");
-                var row = Ui.Row(e, "jm-wrap");
+                var e = Ui.Box(tiles, "jm-card", "jm-card--accent");
+                Ui.Text(e, "IN AN EVENT", "jm-kicker");
+                Ui.Text(e, _races.Event.title, "jm-card-title");
+                var row = Ui.Row(e, "jm-wrap", "jm-gap");
                 var id = _races.Event.id;
-                Ui.Button(row, "Restart event", () => { Menu.Close(); _races.Abort("restarted"); _races.Begin(id); });
-                Ui.Button(row, "Leave event", () => { Menu.Close(); _races.Abort("left"); });
+                Ui.Button(row, "Restart", () => { Menu.Close(); _races.Abort("restarted"); _races.Begin(id); }, "jm-btn--primary");
+                Ui.Button(row, "Leave event", () => { Menu.Close(); _races.Abort("left"); }, "jm-btn--ghost");
                 t.AppendLine($"in event {_races.Event.title}");
             }
             else if (_races != null)
@@ -94,20 +74,35 @@ namespace JapanMap.Gameplay.Menu
                 if (rec >= 0)
                 {
                     var ev = _races.Set.events[rec];
-                    var e = Ui.Box(right, "jm-panel");
-                    Ui.Small(e, "Nearby event");
-                    Ui.Text(e, ev.title, "jm-h2");
+                    var e = Ui.Box(tiles, "jm-card", "jm-card--accent");
+                    Ui.Text(e, "NEXT EVENT", "jm-kicker");
+                    Ui.Text(e, ev.title, "jm-card-title");
                     Ui.Small(e, ev.blurb);
-                    var reward = Ui.Text(e, $"Finish {ev.completion} Sparks · up to +{ev.bonus}", "jm-body", "jm-amber");
-                    reward.style.marginTop = 6;
-                    Ui.Button(e, "Go to the start", () => { Menu.Close(); _travel.ToEvent(rec); });
+                    var reward = Ui.Text(e, $"+{ev.completion:N0} Sparks  ·  up to +{ev.completion + ev.bonus:N0}", "jm-body", "jm-amber");
+                    reward.style.marginTop = 8;
+                    Ui.Button(e, "Go to the start", () => { Menu.Close(); _travel.ToEvent(rec); }, "jm-btn--primary");
                     t.AppendLine($"event {ev.title}");
                 }
             }
-            var small = Ui.Row(right, "jm-wrap");
-            small.style.marginTop = 12;
-            Ui.Button(small, "Go to Sakura Commons", () => { Menu.Close(); _travel.ToCommons(); });
-            Ui.Small(right, "Esc / Continue resumes exactly where you are.");
+
+            // Second tile: the pinned purchase goal (ASTRA: purchase progress on Play).
+            var goal = Goal();
+            if (goal != null)
+            {
+                var g = Ui.Box(tiles, "jm-card");
+                Ui.Text(g, "NEXT CAR", "jm-kicker");
+                Ui.Text(g, goal.displayName, "jm-card-title");
+                Ui.Text(g, $"{goal.price:N0} Sparks", "jm-body", "jm-amber");
+                var bar = Ui.Box(g, "jm-meter");
+                var fill = Ui.Box(bar);
+                fill.style.width = Length.Percent(Mathf.Clamp01(balance / (float)Mathf.Max(1, goal.price)) * 100f);
+                Ui.Small(g, balance >= goal.price ? "You can buy it now — see Cars." : $"{goal.price - balance:N0} Sparks to go");
+                t.AppendLine($"goal {goal.displayName}");
+            }
+
+            var foot = Ui.Box(body, "jm-foot");
+            Ui.Button(foot, "Go to Sakura Commons", () => { Menu.Close(); _travel.ToCommons(); }, "jm-btn--ghost");
+            if (!UiPanel.IsPhone) Ui.Small(foot, "Esc resumes exactly where you are.");
             _text = t.ToString();
         }
 

@@ -55,7 +55,7 @@ namespace JapanMap.Gameplay.Intro
             _title.Add(Text("An island, a car and a road to the sea.", "jm-intro__sub"));
             _root.Add(_title);
 
-            _prompt = new VisualElement { pickingMode = PickingMode.Ignore };
+            _prompt = new VisualElement { name = "intro-prompt", pickingMode = PickingMode.Ignore };
             _prompt.AddToClassList("jm-intro__prompt");
             _keys = new VisualElement { pickingMode = PickingMode.Ignore };
             _keys.AddToClassList("jm-intro__keys");
@@ -69,7 +69,7 @@ namespace JapanMap.Gameplay.Intro
             _toast = Text("", "jm-intro__toast");
             _root.Add(_toast);
 
-            _steps = new VisualElement { pickingMode = PickingMode.Ignore };
+            _steps = new VisualElement { name = "intro-steps", pickingMode = PickingMode.Ignore };
             _steps.AddToClassList("jm-intro__steps");
             foreach (var s in StepNames)
             {
@@ -80,7 +80,7 @@ namespace JapanMap.Gameplay.Intro
             }
             _root.Add(_steps);
 
-            _skip = new Button(() => skip()) { text = "" };
+            _skip = new Button(() => skip()) { text = "", name = "intro-skip" };
             _skip.AddToClassList("jm-intro__skip");
             _skip.Add(new Label(Touch ? "SKIP INTRO" : "HOLD TAB TO SKIP"));
             _skipFill = new VisualElement { pickingMode = PickingMode.Ignore };

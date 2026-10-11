@@ -139,7 +139,8 @@ namespace JapanMap.Editor
                 .ToList();
 
         // Assets nobody sees that still cost start download (the splash logo stayed in with the splash off, D36).
-        static readonly string[] ForbiddenInStart = { "Splash Screen Unity Logo" };
+        // Streamed world content too: the vegetation import once left 2 MB of trees in Game.unity (fix: Setup Streaming).
+        static readonly string[] ForbiddenInStart = { "Splash Screen Unity Logo", "Data/World/VegetationInstances.asset" };
 
         /// <summary>The largest assets inside Web.data (raw, before Brotli): the start download is where a hidden
         /// 2.7 MB texture hurt slow phones most, and the file sizes alone never showed what it was.</summary>
