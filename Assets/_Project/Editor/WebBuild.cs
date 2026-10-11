@@ -99,9 +99,15 @@ namespace JapanMap.Editor
                 return false;
             }
 
-            var text = SizeReport(development, clock.Elapsed.TotalSeconds);
+            var text = SizeReport(development, clock.Elapsed.TotalSeconds) + StartDataReport(report, out var forbidden);
             File.WriteAllText(Path.Combine(OutputDir, "size-report.txt"), text);
             Debug.Log("[WebBuild] done\n" + text);
+
+            if (forbidden.Count > 0)
+            {
+                Debug.LogError("[WebBuild] start data holds what must not ship: " + string.Join(", ", forbidden));
+                return false;
+            }
 
             // A fully stripped shader renders nothing (or pink) in the browser while the editor looks fine.
             var broken = UnexpectedStrippedShaders(stripped);
@@ -131,6 +137,28 @@ namespace JapanMap.Editor
                 .Where(n => !KnownStrippedPrefixes.Any(n.StartsWith))
                 .OrderBy(n => n)
                 .ToList();
+
+        // Assets nobody sees that still cost start download (the splash logo stayed in with the splash off, D36).
+        static readonly string[] ForbiddenInStart = { "Splash Screen Unity Logo" };
+
+        /// <summary>The largest assets inside Web.data (raw, before Brotli): the start download is where a hidden
+        /// 2.7 MB texture hurt slow phones most, and the file sizes alone never showed what it was.</summary>
+        static string StartDataReport(BuildReport report, out List<string> forbidden)
+        {
+            var bySource = new Dictionary<string, ulong>();
+            foreach (var pack in report.packedAssets)
+                foreach (var c in pack.contents)
+                {
+                    bySource.TryGetValue(c.sourceAssetPath, out var size);
+                    bySource[c.sourceAssetPath] = size + c.packedSize;
+                }
+            forbidden = bySource.Keys.Where(k => ForbiddenInStart.Any(k.Contains)).ToList();
+            var sb = new StringBuilder();
+            sb.AppendLine($"start data  {bySource.Values.Aggregate(0UL, (a, b) => a + b) / 1e6:F2} MB raw, largest:");
+            foreach (var kv in bySource.OrderByDescending(kv => kv.Value).Take(12))
+                sb.AppendLine($"  {kv.Value / 1e6,8:F2} MB  {kv.Key}");
+            return sb.ToString();
+        }
 
         static string SizeReport(bool development, double seconds)
         {

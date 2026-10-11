@@ -18,11 +18,13 @@
 - [ ] 2b. **Basic Launch** (du lädst hoch) · [ ] 2c. Spielzeit/Wiederkehr nach 7 Tagen (Zahlen von dir, LAUNCH.md §7)
 - [x] 3a–c. **Drei Absprungstellen vorab** (LAUNCH.md §7a, ohne deine Zahlen gemessen): gesperrtes SDK startet sofort
   (7,7 → 4,2 s, normal 4,4 s); Tastenkappen für neue Desktop-Spieler; Pfeil „Next: <Rennen>“ nach 25 s Fahrt.
+- [x] 3d-Vorab (ohne deine Zahlen): H1 Handy-Start gemessen — 5 Mbit/s 33,6 s, 20 Mbit/s 11,4 s, reine Bytezahl; Gelände-
+  Vorladen brachte 0 s (verworfen), Unity-Logo raus (−0,04 MB), Build-Bericht zeigt jetzt den Inhalt der Startdaten.
 - [ ] 3d. Mit deinen Zahlen: Hypothesen H1–H5 prüfen (LAUNCH.md §7b), dann Full Launch (CrazyGames entscheidet).
 - [ ] Geräte-Test (Handy, Tablet, Chromebook/iGPU) — Anleitung unten.
 
 **Gemessen (2026-10-11, Teil 2):** EditMode 141/141 · PlayMode 201/208 + 7 auf Abruf, **0 rot** · Build 82,2 MB / 96 Dateien,
-**Start 18,45 MB** bis gameplayStart · Rauchprobe Niedrig 354–364 fps (3×), Hoch 106–110 fps (M4), 0 Fehler · Speichern
+**Start 18,42 MB** bis gameplayStart (Teil 3) · Rauchprobe Niedrig 354–364 fps (3×), Hoch 106–110 fps (M4), 0 Fehler · Speichern
 lokal + SDK grün · Streaming 58 Szenen grün · SDK gesperrt: 4,2 s (normal 4,4 s, gleiche Messart) · 5 Mbit/s + CPU ÷4:
 34 s bis spielbar (H1) · 7 Prüfgrößen grün (`Captures/p11-sizes/`).
 Budgets bei 1080p: Niedrig 3/50 Blickpunkte über 400 Draw-Calls (max 504 funaura-mole), Dreiecke alle < 800 k;

@@ -78,6 +78,9 @@ namespace JapanMap.Editor
             PlayerSettings.SetIl2CppCodeGeneration(web, Il2CppCodeGeneration.OptimizeSize);
             // No Unity splash (optional for every plan since Unity 6): 2.7 MB logo texture and seconds before play (D36).
             PlayerSettings.SplashScreen.show = false;
+            // show=false alone still packs the logo texture into globalgamemanagers (measured 2026-10-11, 2.7 MB raw);
+            // only showUnityLogo=false drops it. WebBuild fails if it comes back.
+            PlayerSettings.SplashScreen.showUnityLogo = false;
             // Own page (Assets/WebGLTemplates/JapanMap): full frame, no selection, pixel ratio 1 on iOS/low-memory phones,
             // errors without alert() — CrazyGames requirements (D37).
             PlayerSettings.WebGL.template = "PROJECT:JapanMap";

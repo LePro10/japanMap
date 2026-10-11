@@ -542,7 +542,7 @@ Funktionen aus, die nichts nutzt — Licht-Cookies, Licht-Ebenen, Zusatzlicht-Sc
 `DOTS_INSTANCING_ON` (kein BRG auf WebGL2), Varianten ohne Nebel (das Spiel hat immer Nebel) (31,2) · Welt-Teile streamen:
 Straßenkacheln außerhalb 350 m vom Start, Props, Orts-NavMeshes, Vegetation (23,1) · Gelände als Datei (21,5) · Startauto
 streamt auch (20,5) · Boden-Normal-Maps 512 px (18,9). **Ohne Wirkung, trotzdem behalten:** Unity-Splash aus (±0 MB, aber
-Sekunden bis Spiel), „Optimize Mesh Data“ (Start ±0, Bündel −1,2 MB). **Warum so:** Unity packt `data.unity3d` für Web
+Sekunden bis Spiel; das Logo blieb bis 2026-10-11 trotzdem drin — erst `showUnityLogo = false` nimmt es raus, −0,04 MB), „Optimize Mesh Data“ (Start ±0, Bündel −1,2 MB). **Warum so:** Unity packt `data.unity3d` für Web
 immer mit LZ4 (Doku: Standard für WebGL, nicht abschaltbar), Brotli außen findet darin fast nichts — nur weniger Inhalt
 hilft. **Gelände:** 16-bit-Höhen schrumpfen unter LZ4 kaum (8 MB); `TerrainPayload` schreibt Höhen als Rest einer
 Ebenen-Vorhersage (Byte-Ebenen), Splat/Gras/Löcher als Differenzen, verlustfrei (Test), gzip 3,9 MB; der Browser entpackt
