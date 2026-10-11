@@ -1,0 +1,98 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: CarShared
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: CarShared
+  m_GUID: bf00ee4a918204207aa75eb64aacd37c
+  m_SerializeEntries:
+  - m_GUID: 0011ac3bd216c4242baafcf7d0ee237b
+    m_Address: Packages/com.unity.cloud.gltfast/Runtime/Shader/SubGraphs/PBR_metallic_roughness.shadersubgraph
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 04256d74e79e741c5a94eebba619687e
+    m_Address: Packages/com.unity.cloud.gltfast/Runtime/Shader/SubGraphs/MetallicRoughness.shadersubgraph
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 18406ca198f2c334fba4ef90d55e8525
+    m_Address: Packages/com.unity.cloud.gltfast/Runtime/Shader/SubGraphs/Clearcoat.shadersubgraph
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 30d0f0e3f526585408342f8854723a88
+    m_Address: Packages/com.unity.cloud.gltfast/Runtime/Shader/Includes/Normal.cginc
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 34bce5e04fd5d474286972968941bb2a
+    m_Address: Packages/com.unity.cloud.gltfast/Runtime/Shader/SubGraphs/ScreenGrab.shadersubgraph
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3d23f3f9d39dc4621898db0a20884fcd
+    m_Address: Packages/com.unity.cloud.gltfast/Runtime/Shader/SubGraphs/Normal.shadersubgraph
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8128dba25d89b4e0e99b91d27f058f07
+    m_Address: Packages/com.unity.cloud.gltfast/Runtime/Shader/SubGraphs/BaseColor.shadersubgraph
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8b71ed958f7c7a948b89b79fbc75f945
+    m_Address: Packages/com.unity.cloud.gltfast/Runtime/Shader/SubGraphs/PBR_metallic_roughness_advanced.shadersubgraph
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9a44a43ef44bd4a9dbc883ebde01cc72
+    m_Address: Packages/com.unity.cloud.gltfast/Runtime/Shader/SubGraphs/TextureTransform.shadersubgraph
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a61e32a8ab2b744a3837d668b8fc3155
+    m_Address: Packages/com.unity.cloud.gltfast/Runtime/Shader/SubGraphs/Occlusion.shadersubgraph
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b07ab7368cb744626bd2239241a24105
+    m_Address: Packages/com.unity.cloud.gltfast/Runtime/Shader/Includes/Emission.cginc
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b9d29dfa1474148e792ac720cbd45122
+    m_Address: Packages/com.unity.cloud.gltfast/Runtime/Shader/glTF-pbrMetallicRoughness.shadergraph
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c18c97ae1ce021b4980c5d19a54f0d3c
+    m_Address: Packages/com.unity.cloud.gltfast/Runtime/Shader/URP/glTF-pbrMetallicRoughness-Clearcoat.shadergraph
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c65a0769f13ae46a28263a75eed49ecc
+    m_Address: Packages/com.unity.cloud.gltfast/Runtime/Shader/SubGraphs/Emission.shadersubgraph
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: f93b1925722a949958f60082c8ffb0e4, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 78f2cb7987078493a9cdafad45d5d05c, type: 2}
+    - {fileID: 11400000, guid: af19925e06cfd40f5bbcb6bffc656dfe, type: 2}
+    m_SchemaDisplayOrder:
+    - CarShared_BundledAssetGroupSchema
+    - CarShared_ContentUpdateGroupSchema
+  m_IncludeInBuild: 1
+  m_IncludeInBuildMigrated: 1

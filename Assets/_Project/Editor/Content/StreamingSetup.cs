@@ -52,6 +52,7 @@ namespace JapanMap.Editor.Content
             var settings = Settings();
             report.Append(" " + StartContent(settings));
             report.Append(" · " + Cars(settings));
+            report.Append(" · " + CarShared(settings));
             report.Append(" · " + SplitPlaces(settings));
             report.Append(" · " + Isolate(settings));
             report.Append(" · " + WireScene());
@@ -140,6 +141,38 @@ namespace JapanMap.Editor.Content
             }
             s.SetDirty(AddressableAssetSettings.ModificationEvent.BatchModification, null, true, true);
             return $"{n} cars streamed (engine bank of {starter.id} in the start download)";
+        }
+
+        const string CarSharedGroup = "CarShared";
+
+        /// <summary>
+        /// What the car models share with other content (glTF and Lit shaders, materials) in one small bundle of its own.
+        /// Without it the duplicate isolation put those shaders into the 4.4 MB bundle of buildings, and the starter car —
+        /// waited for before play since 2026-10-11 — pulled the buildings in too (start 18.4 → 25.1 MB until gameplayStart).
+        /// </summary>
+        static string CarShared(AddressableAssetSettings s)
+        {
+            var fleet = AssetDatabase.LoadAssetAtPath<VehicleFleet>(Vehicles.FleetSeed.FleetPath);
+            var group = Group(s, CarSharedGroup);
+            group.GetSchema<BundledAssetGroupSchema>().BundleMode = BundledAssetGroupSchema.BundlePackingMode.PackTogether;
+            var models = new HashSet<string>();
+            foreach (var def in fleet.vehicles)
+                if (def != null && def.modelAsset != null && def.modelAsset.editorAsset != null)
+                    models.Add(AssetDatabase.GetAssetPath(def.modelAsset.editorAsset));
+            var n = 0;
+            foreach (var model in models)
+                foreach (var dep in AssetDatabase.GetDependencies(model, true))
+                {
+                    if (models.Contains(dep) || dep.EndsWith(".cs") || dep.EndsWith(".asmdef")) continue;
+                    var guid = AssetDatabase.AssetPathToGUID(dep);
+                    var had = s.FindAssetEntry(guid);
+                    // Addressed on purpose elsewhere: leave it; moved there by an earlier isolation run: take it.
+                    if (had != null && had.parentGroup != group && !had.parentGroup.Name.StartsWith("Duplicate Asset Isolation")) continue;
+                    if (had == null || had.parentGroup != group) n++;
+                    s.CreateOrMoveEntry(guid, group, false, false);
+                }
+            s.SetDirty(AddressableAssetSettings.ModificationEvent.BatchModification, null, true, true);
+            return $"car shared: {group.entries.Count} assets ({n} new)";
         }
 
         public static string SceneName(string title) => new string(title.Where(char.IsLetterOrDigit).ToArray());
