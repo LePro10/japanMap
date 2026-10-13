@@ -20,6 +20,7 @@
 | 10 | **SDK / Launch-Art** | **Basic Launch** zuerst (Werbung ist dort aus; das Spiel blendet die Werbe-Knöpfe dann selbst aus). Full Launch später, wenn CrazyGames das Spiel auswählt. | ✅ |
 | 11 | **Alter** | PEGI 12 / 13+: keine Gewalt (Fußgänger werden nur weggeschubst und stehen wieder auf), kein Chat, keine Käufe | ✅ |
 | 12 | **Sprache** | Englisch | ✅ |
+| 13 | **Progress Save / Datenmodul** | Im Portal das Häkchen **„Progress Save“** setzen. Ohne Häkchen ist das CrazyGames-Speichern aus (`dataModuleDisabled`), der Fortschritt bliebe nur lokal im Browser. | ⬜ du |
 
 Vor dem Hochladen: QA-Tool von CrazyGames (Portal → Spiel → „Preview/QA“) durchklicken: Werbung (Demo), Login,
 Speichern im Rahmen, Mausfang, Esc im Vollbild (siehe QA.md, Punkte „nur im QA-Tool“).

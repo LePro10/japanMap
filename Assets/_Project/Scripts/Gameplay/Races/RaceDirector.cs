@@ -686,6 +686,9 @@ namespace JapanMap.Gameplay.Races
             }
             result.sparks = sparks;
             result.medal = medal;
+            // CrazyGames' "happy time" (confetti around the frame) for a real achievement only, used sparingly.
+            var won = !timedOut && (_event.kind == RaceKind.Race ? result.place == 1 : medal == "Benchmark beaten" || medal == "Gold");
+            if (won) Core.Platform.GamePlatform.Current?.HappyTime();
             Last = result;
             if (wallet != null && sparks > 0) wallet.Add(sparks, _event.title);
             var best = Record(me, result, timedOut);
