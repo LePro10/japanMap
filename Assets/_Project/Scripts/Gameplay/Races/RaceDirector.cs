@@ -694,7 +694,11 @@ namespace JapanMap.Gameplay.Races
             var best = Record(me, result, timedOut);
             var score = _event.kind == RaceKind.Drift ? $" · {result.score:N0} points" : "";
             var id = _event.id;
-            hud?.ShowSheet(_event.title, $"{medal} · {Clock(result.seconds)}{score}{best}\n+{sparks} Sparks",
+            var medalTier = _event.kind == RaceKind.Race ? (result.place == 1 ? 3 : result.place == 2 ? 2 : result.place == 3 ? 1 : 0)
+                : _event.kind == RaceKind.Drift ? (medal == "Gold" ? 3 : medal == "Silver" ? 2 : medal == "Bronze" ? 1 : 0)
+                : medal == "Benchmark beaten" ? 3 : medal == "Within 10 %" ? 2 : timedOut ? 0 : 1;
+            var main = _event.kind == RaceKind.Drift ? $"{result.score:N0} pts" : Clock(result.seconds);
+            hud?.ShowResult(_event.title, medal, medalTier, main, sparks, $"{medal} · {Clock(result.seconds)}{score}{best}\n+{sparks} Sparks",
                 // Leaving the result is a real break: a midgame ad may come first (D42), never during the run.
                 ("Free drive", () => { _timer = 0f; Cleanup(); Economy.RewardedOffers.Break(null); }),
                 ("Retry", () => { Cleanup(); Economy.RewardedOffers.Break(() => Begin(id)); }));

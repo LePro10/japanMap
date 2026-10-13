@@ -249,6 +249,23 @@ namespace JapanMap.Gameplay.Hud
             _sheetTitle = new Label { name = "sheet-title" };
             _sheetTitle.AddToClassList("jm-h2");
             _sheet.Add(_sheetTitle);
+            // Result hero (ShowResult): medal, the big number, the reward counting up.
+            _hero = new VisualElement { name = "result-hero", pickingMode = PickingMode.Ignore };
+            _hero.AddToClassList("jm-result");
+            _medal = new Label { pickingMode = PickingMode.Ignore };
+            _medal.AddToClassList("jm-medal");
+            _hero.Add(_medal);
+            var heroText = new VisualElement { pickingMode = PickingMode.Ignore };
+            heroText.AddToClassList("jm-result__text");
+            _heroMain = new Label { pickingMode = PickingMode.Ignore };
+            _heroMain.AddToClassList("jm-result__main");
+            heroText.Add(_heroMain);
+            _heroReward = new Label { pickingMode = PickingMode.Ignore };
+            _heroReward.AddToClassList("jm-result__reward");
+            heroText.Add(_heroReward);
+            _hero.Add(heroText);
+            _hero.style.display = DisplayStyle.None;
+            _sheet.Add(_hero);
             _sheetBody = new Label { enableRichText = true };
             _sheetBody.AddToClassList("jm-body");
             _sheet.Add(_sheetBody);
@@ -451,6 +468,50 @@ namespace JapanMap.Gameplay.Hud
         /// </summary>
         public void ShowSheet(string title, string body, params (string label, Action action)[] buttons)
         {
+            if (_hero != null) _hero.style.display = DisplayStyle.None;
+            _sheetBody?.RemoveFromClassList("jm-small");
+            ShowSheetCore(title, body, buttons);
+        }
+
+        /// <summary>
+        /// The result of an event as a moment, not a text block (owner 2026-10-13, ASTRA §10 "medal, personal best,
+        /// reward breakdown"): medal badge, the time or score large, the Sparks counting up; body and buttons below.
+        /// <paramref name="tier"/>: 3 gold, 2 silver, 1 bronze, 0 none.
+        /// </summary>
+        public void ShowResult(string title, string medal, int tier, string main, int sparks, string body, params (string label, Action action)[] buttons)
+        {
+            ShowSheetCore(title, body, buttons);
+            if (_hero == null) return;
+            _hero.style.display = DisplayStyle.Flex;
+            _sheetBody.AddToClassList("jm-small"); // the hero says it large; the line below is the detail
+            _medal.text = medal.ToUpperInvariant();
+            foreach (var c in new[] { "jm-medal--gold", "jm-medal--silver", "jm-medal--bronze", "jm-medal--none" }) _medal.RemoveFromClassList(c);
+            _medal.AddToClassList(tier >= 3 ? "jm-medal--gold" : tier == 2 ? "jm-medal--silver" : tier == 1 ? "jm-medal--bronze" : "jm-medal--none");
+            _heroMain.text = main;
+            Pop(_medal, 1.6f);
+            // Count the reward up over a second (real time: the result can show while the game is slowed).
+            _countFrom = Time.unscaledTime;
+            _countTo = sparks;
+            _heroReward.text = sparks > 0 ? "+0 Sparks" : "";
+            if (sparks > 0) Audio.Sfx.Play("Bell_Sparks", 0.5f);
+        }
+
+        float _countFrom;
+        int _countTo;
+        VisualElement _hero;
+        Label _medal, _heroMain, _heroReward;
+
+        void TickResult()
+        {
+            if (_hero == null || _hero.style.display != DisplayStyle.Flex || _countTo <= 0) return;
+            var t = Mathf.Clamp01((Time.unscaledTime - _countFrom) / 1.1f);
+            var shown = Mathf.RoundToInt(_countTo * (1f - (1f - t) * (1f - t)));
+            var text = $"+{shown:N0} Sparks";
+            if (_heroReward.text != text) _heroReward.text = text;
+        }
+
+        void ShowSheetCore(string title, string body, (string label, Action action)[] buttons)
+        {
             if (_sheet == null) return;
             _sheetTitle.text = title;
             _sheetBody.text = body;
@@ -470,7 +531,7 @@ namespace JapanMap.Gameplay.Hud
         {
             if (_sheetArgs.title == null) return;
             var list = new System.Collections.Generic.List<(string, Action)>(_sheetArgs.buttons) { (label, action) };
-            ShowSheet(_sheetArgs.title, _sheetArgs.body, list.ToArray());
+            ShowSheetCore(_sheetArgs.title, _sheetArgs.body, list.ToArray());
         }
 
         /// <summary>The open sheet with another body and without the button <paramref name="drop"/> (offer answered).</summary>
@@ -479,7 +540,7 @@ namespace JapanMap.Gameplay.Hud
             if (_sheetArgs.title == null) return;
             var list = new System.Collections.Generic.List<(string label, Action action)>(_sheetArgs.buttons);
             list.RemoveAll(b => b.label == drop);
-            ShowSheet(_sheetArgs.title, body, list.ToArray());
+            ShowSheetCore(_sheetArgs.title, body, list.ToArray());
         }
 
         /// <summary>Body of the open sheet ("" when none).</summary>
@@ -642,6 +703,7 @@ namespace JapanMap.Gameplay.Hud
                 Place();
             }
             UpdateDrift();
+            TickResult();
             UpdateCar();
             UpdateMap();
             if (wallet != null)

@@ -327,3 +327,22 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-hud-text { -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; }
 .jm-hud-text.jm-num { -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); letter-spacing: 1px; }
 .jm-anim { transition-property: scale, opacity, translate; transition-duration: 0.22s; transition-timing-function: ease-out-back; }
+
+/* Result hero (GameplayHud.ShowResult). */
+.jm-result { flex-direction: row; align-items: center; margin: 8px 0 14px 0; }
+.jm-medal {
+    width: 96px; height: 96px; border-radius: 48px; border-width: 3px;
+    -unity-text-align: middle-center; white-space: normal; font-size: 15px; letter-spacing: 1px;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset");
+    margin-right: 20px; padding: 6px;
+}
+.jm-medal--gold { background-color: rgba(243, 197, 106, 0.22); border-color: #f3c56a; color: #f3c56a; }
+.jm-medal--silver { background-color: rgba(201, 210, 218, 0.18); border-color: #c9d2da; color: #e3e9ee; }
+.jm-medal--bronze { background-color: rgba(201, 139, 91, 0.2); border-color: #c98b5b; color: #e0a578; }
+.jm-medal--none { background-color: rgba(246, 239, 228, 0.06); border-color: rgba(246, 239, 228, 0.25); color: var(--paper-dim); }
+.jm-result__text { flex-grow: 1; }
+.jm-result__main { font-size: 52px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); }
+.jm-result__reward { font-size: 28px; color: var(--amber-hot); -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); }
+.jm-phone .jm-medal { width: 64px; height: 64px; border-radius: 32px; font-size: 11px; margin-right: 12px; }
+.jm-phone .jm-result__main { font-size: 32px; }
+.jm-phone .jm-result__reward { font-size: 20px; }
