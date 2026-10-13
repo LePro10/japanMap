@@ -32,6 +32,9 @@ for (const pid of editors) if (sh(`ps -p ${pid} -o pid=`)) sh(`kill -KILL ${pid}
 for (const pid of sh(`lsof -nP -iTCP:8080 -sTCP:LISTEN -t`).split('\n').filter(Boolean)) sh(`kill -TERM ${pid}`);
 sh(`pkill -f 'mcp-for-unity --transport http'`);
 sh(`rm -f '${ROOT}/Temp/UnityLockfile'`);
+// The new editor must start its MCP server by itself: MCP for Unity does that only with "Auto-Start on Editor Load"
+// on (EditorPrefs, written while no editor runs). Without it the restart killed the server and none came back (2026-10-13).
+sh(`defaults write com.unity3d.UnityEditor5.x MCPForUnity.AutoStartOnLoad -int 1`);
 console.log(`stopped editor ${editors.join(',') || '(none)'} and the MCP server — starting the editor`);
 spawn(unityPath(), ['-projectPath', ROOT], { detached: true, stdio: 'ignore' }).unref();
 // The editor starts its MCP server itself (~25 s after the project is open); importing can take minutes.
