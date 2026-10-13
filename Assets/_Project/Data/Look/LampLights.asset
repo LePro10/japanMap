@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4a70078756be4acaa0a8ac6d98a579d, type: 3}
+  m_Name: LampLights
+  m_EditorClassIdentifier: JapanMap.World::JapanMap.World.LampLightSettings
+  kinds:
+  - prefix: streetLamp
+    height: 6
+    poolRadius: 7
+    poolColor: {r: 1.3, g: 0.9, b: 0.55, a: 1}
+    lightColor: {r: 1, g: 0.78, b: 0.52, a: 1}
+    lightIntensity: 5
+    lightRange: 16
+  - prefix: avenueLamp
+    height: 6
+    poolRadius: 8
+    poolColor: {r: 0.9, g: 1, b: 1.15, a: 1}
+    lightColor: {r: 0.85, g: 0.92, b: 1, a: 1}
+    lightIntensity: 5
+    lightRange: 18
+  - prefix: parkLamp
+    height: 4
+    poolRadius: 5
+    poolColor: {r: 1.3, g: 0.9, b: 0.55, a: 1}
+    lightColor: {r: 1, g: 0.78, b: 0.52, a: 1}
+    lightIntensity: 3
+    lightRange: 11
+  - prefix: lampPost
+    height: 4.5
+    poolRadius: 5
+    poolColor: {r: 1.3, g: 0.9, b: 0.55, a: 1}
+    lightColor: {r: 1, g: 0.78, b: 0.52, a: 1}
+    lightIntensity: 3
+    lightRange: 12
+  - prefix: stoneLantern
+    height: 1.2
+    poolRadius: 2.5
+    poolColor: {r: 1.2, g: 0.6, b: 0.25, a: 1}
+    lightColor: {r: 1, g: 0.6, b: 0.3, a: 1}
+    lightIntensity: 1.2
+    lightRange: 5
+  - prefix: harbourLight
+    height: 9
+    poolRadius: 9
+    poolColor: {r: 0.9, g: 1, b: 1.15, a: 1}
+    lightColor: {r: 0.85, g: 0.92, b: 1, a: 1}
+    lightIntensity: 6
+    lightRange: 22
+  - prefix: trackLight
+    height: 8
+    poolRadius: 10
+    poolColor: {r: 0.9, g: 1, b: 1.15, a: 1}
+    lightColor: {r: 0.85, g: 0.92, b: 1, a: 1}
+    lightIntensity: 7
+    lightRange: 24
+  lights: {x: 12, y: 6, z: 0}
+  poolDistance: 320
+  pickInterval: 0.5
