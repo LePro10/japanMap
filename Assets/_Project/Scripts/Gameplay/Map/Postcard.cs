@@ -23,23 +23,16 @@ namespace JapanMap.Gameplay.Map
             go.transform.position = spot + back * 18f + Vector3.up * 6f;
             go.transform.LookAt(spot);
             cam.fieldOfView = 50f;
-            var rt = RenderTexture.GetTemporary(width, height, 24, RenderTextureFormat.ARGB32);
-            var active = RenderTexture.active;
             Texture2D tex;
             try
             {
-                cam.targetTexture = rt;
-                cam.Render();
-                RenderTexture.active = rt;
-                tex = new Texture2D(width, height, TextureFormat.RGB24, false) { name = "Postcard (runtime)" };
-                tex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+                // Same picture as the game view, bloom included (Core.CameraShot).
+                tex = Core.CameraShot.Render(cam, width, height);
+                tex.name = "Postcard (runtime)";
                 tex.Apply(false, true);
             }
             finally
             {
-                cam.targetTexture = null;
-                RenderTexture.active = active;
-                RenderTexture.ReleaseTemporary(rt);
                 Object.Destroy(go);
             }
             return tex;

@@ -400,37 +400,16 @@ namespace JapanMap.Gameplay.Records
             var cam = Camera.main;
             if (cam == null) return;
             var height = Mathf.RoundToInt(width * (float)Screen.height / Mathf.Max(1, Screen.width));
-            var smaller = false;
+            var smaller = width > SystemInfo.maxTextureSize || height > SystemInfo.maxTextureSize;
             // Memory guard (ASTRA: check before allocating): fall back to the screen size if the large one fails.
-            RenderTexture rt = null;
-            if (width > SystemInfo.maxTextureSize || height > SystemInfo.maxTextureSize) smaller = true;
-            else
-                try { rt = RenderTexture.GetTemporary(width, height, 24, RenderTextureFormat.ARGB32); }
+            if (!smaller)
+                try { Shoot(cam, width, height); }
                 catch (Exception) { smaller = true; }
-            if (smaller || rt == null)
+            if (smaller)
             {
                 width = Screen.width;
                 height = Screen.height;
-                rt = RenderTexture.GetTemporary(width, height, 24, RenderTextureFormat.ARGB32);
-            }
-            var old = cam.targetTexture;
-            var active = RenderTexture.active;
-            try
-            {
-                cam.targetTexture = rt;
-                cam.Render();
-                RenderTexture.active = rt;
-                if (_preview != null) Destroy(_preview);
-                _preview = new Texture2D(width, height, TextureFormat.RGB24, false) { name = "Photo (runtime)" };
-                _preview.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-                _preview.Apply();
-                _png = _preview.EncodeToPNG();
-            }
-            finally
-            {
-                cam.targetTexture = old;
-                RenderTexture.active = active;
-                RenderTexture.ReleaseTemporary(rt);
+                Shoot(cam, width, height);
             }
             LastSize = new Vector2Int(width, height);
             var name = FileName();
@@ -451,6 +430,15 @@ namespace JapanMap.Gameplay.Records
                 ;
             Ui.Show(_result, true);
             Debug.Log($"[Photo] {name} {width}×{height}, {_png.Length / 1024} KB");
+        }
+
+        void Shoot(Camera cam, int width, int height)
+        {
+            // HDR render + gamma blit: the 8-bit target of before lost the bloom (photos without neon glow).
+            if (_preview != null) Destroy(_preview);
+            _preview = Core.CameraShot.Render(cam, width, height);
+            _preview.name = "Photo (runtime)";
+            _png = _preview.EncodeToPNG();
         }
 
         /// <summary>Hands the PNG to the browser (or saves it again on desktop).</summary>

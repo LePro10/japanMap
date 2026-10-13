@@ -34,9 +34,9 @@ MonoBehaviour:
   saturation: -8
   whiteBalanceTemperature: -8
   whiteBalanceTint: 0
-  bloomThreshold: 1
-  bloomIntensity: 0.6
-  bloomScatter: 0.65
+  bloomThreshold: 0.8
+  bloomIntensity: 1
+  bloomScatter: 0.7
   bloomClamp: 6
   vignette: 0.22
   shadowsTint: {r: 0.92, g: 0.97, b: 1.08, a: 0}

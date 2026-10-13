@@ -55,24 +55,8 @@ namespace JapanMap.Editor
                 return null;
             }
 
-            var rt = RenderTexture.GetTemporary(width, height, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-            var previousTarget = camera.targetTexture;
-            var previousActive = RenderTexture.active;
-            var image = new Texture2D(width, height, TextureFormat.RGB24, false);
-            try
-            {
-                camera.targetTexture = rt;
-                camera.Render();
-                RenderTexture.active = rt;
-                image.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-                image.Apply();
-            }
-            finally
-            {
-                camera.targetTexture = previousTarget;
-                RenderTexture.active = previousActive;
-                RenderTexture.ReleaseTemporary(rt);
-            }
+            // HDR target + gamma blit: an 8-bit target lost the bloom (JapanMap.Core.CameraShot).
+            var image = JapanMap.Core.CameraShot.Render(camera, width, height);
 
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output)));
             File.WriteAllBytes(output, image.EncodeToPNG());

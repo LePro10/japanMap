@@ -192,27 +192,11 @@ namespace JapanMap.Gameplay.Records
         {
             var cam = Camera.main;
             if (cam == null) return;
-            var rt = RenderTexture.GetTemporary(cardSize.x, cardSize.y, 24);
-            var old = cam.targetTexture;
-            var active = RenderTexture.active;
-            try
-            {
-                cam.targetTexture = rt;
-                cam.Render();
-                RenderTexture.active = rt;
-                var tex = new Texture2D(cardSize.x, cardSize.y, TextureFormat.RGB24, false);
-                tex.ReadPixels(new Rect(0, 0, cardSize.x, cardSize.y), 0, 0);
-                tex.Apply();
-                var jpg = tex.EncodeToJPG(cardQuality);
-                Destroy(tex);
-                SaveStores.Current.Write(CardKeyPrefix + kind, Convert.ToBase64String(jpg));
-            }
-            finally
-            {
-                cam.targetTexture = old;
-                RenderTexture.active = active;
-                RenderTexture.ReleaseTemporary(rt);
-            }
+            // Same picture as the game view, bloom included (Core.CameraShot).
+            var tex = Core.CameraShot.Render(cam, cardSize.x, cardSize.y);
+            var jpg = tex.EncodeToJPG(cardQuality);
+            Destroy(tex);
+            SaveStores.Current.Write(CardKeyPrefix + kind, Convert.ToBase64String(jpg));
             var cards = Data.cards;
             cards.RemoveAll(c => c.kind == kind.ToString());
             var place = regions != null && regions.Current >= 0 ? regions.Regions.regions[regions.Current].title : "";

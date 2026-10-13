@@ -40,5 +40,13 @@ namespace JapanMap.Editor.Art
         [Header("Emission")]
         [Tooltip("Multiplier on the emission atlas (HDR). Set against a measured reference in the final image.")]
         public float emissionStrength = 2f;
+        [Tooltip("Emission of the Tokyo sign atlas: neon tubes and light boxes must cross the bloom threshold (legacy " +
+                 "neonEmissive 5.5 with bloom threshold 1.05).")]
+        public float signEmission = 5f;
+        [Tooltip("Emission of the shop atlases (lanterns, noren lights, shop signs).")]
+        public float shopEmission = 3f;
+
+        public float EmissionFor(string atlas) =>
+            atlas == "TokyoSigns" ? signEmission : atlas.EndsWith("Shop") ? shopEmission : emissionStrength;
     }
 }

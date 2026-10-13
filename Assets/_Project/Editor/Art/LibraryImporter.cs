@@ -124,6 +124,28 @@ namespace JapanMap.Editor.Art
         }
 
         public static string MaterialPath(string atlas) => $"{MaterialDir}/M_{atlas}_Atlas.mat";
+
+        /// <summary>Emission strengths only, without a library import (light levels are tuned against the image).</summary>
+        [MenuItem("JapanMap/Art/Apply Emission")]
+        public static string ApplyEmission()
+        {
+            var s = AssetDatabase.LoadAssetAtPath<LibraryImportSettings>(LibraryImportSettings.AssetPath);
+            var n = 0;
+            foreach (var guid in AssetDatabase.FindAssets("t:Material", new[] { MaterialDir }))
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                var file = Path.GetFileNameWithoutExtension(path);
+                if (!file.StartsWith("M_") || !file.EndsWith("_Atlas")) continue;
+                var atlas = file.Substring(2, file.Length - 8);
+                var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+                if (mat.GetTexture("_EmissionMap") == null) continue;
+                mat.SetColor("_EmissionColor", Color.white * s.EmissionFor(atlas));
+                EditorUtility.SetDirty(mat);
+                n++;
+            }
+            AssetDatabase.SaveAssets();
+            return $"[Library] emission applied to {n} atlas materials";
+        }
         public static string GlassPath => $"{MaterialDir}/M_Glass.mat";
 
         static Material AtlasMaterial(string atlas, LibraryImportSettings s)
@@ -145,7 +167,7 @@ namespace JapanMap.Editor.Art
             mat.EnableKeyword("_METALLICSPECGLOSSMAP");
             var emission = Tex("Emission");
             mat.SetTexture("_EmissionMap", emission);
-            mat.SetColor("_EmissionColor", Color.white * s.emissionStrength);
+            mat.SetColor("_EmissionColor", Color.white * s.EmissionFor(atlas));
             mat.EnableKeyword("_EMISSION");
             // Not None: URP's material validation (on every reimport) turns _EMISSION off when the GI flags are None.
             mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
