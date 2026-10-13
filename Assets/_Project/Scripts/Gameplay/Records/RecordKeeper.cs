@@ -36,6 +36,9 @@ namespace JapanMap.Gameplay.Records
         [SerializeField] int cardQuality = 75;
         [Tooltip("A higher top speed is announced only this much above the last announcement, km/h (no toast flood).")]
         [SerializeField] float speedToastStep = 10f;
+        [Tooltip("A record is announced (toast, card picture) only from: top speed km/h, airtime s, jump m, drift chain " +
+                 "points — \"New record · Top speed 10 km/h\" in the first seconds was noise (2026-10-13). Still saved below.")]
+        [SerializeField] Vector4 announceFrom = new(80f, 1f, 12f, 1500f);
 
         readonly Queue<(float t, float kmh)> _speeds = new();
         readonly HashSet<MilestoneKind> _pendingCards = new();
@@ -168,6 +171,14 @@ namespace JapanMap.Gameplay.Records
                 case MilestoneKind.BankedChain: Data.bankedChain = value; break;
                 default: Data.distanceKm = value; break;
             }
+            announce &= value >= kind switch
+            {
+                MilestoneKind.TopSpeedKmh => announceFrom.x,
+                MilestoneKind.AirtimeSeconds => announceFrom.y,
+                MilestoneKind.JumpMetres => announceFrom.z,
+                MilestoneKind.BankedChain => announceFrom.w,
+                _ => 0f,
+            };
             if (announce && hud != null)
             {
                 hud.ShowToast($"New record · {Title(kind)} {Format(kind, value)}");

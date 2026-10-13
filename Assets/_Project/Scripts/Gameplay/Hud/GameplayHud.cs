@@ -159,6 +159,8 @@ namespace JapanMap.Gameplay.Hud
             _points = Text(row, 54f * k, Color.white);
             _mult = Text(row, 40f * k, Gold);
             _mult.style.marginLeft = 14;
+            _points.AddToClassList("jm-num");
+            _mult.AddToClassList("jm-num");
             _bar = new VisualElement { pickingMode = PickingMode.Ignore };
             _bar.style.width = 220 * k;
             _bar.style.height = 6;
@@ -174,11 +176,14 @@ namespace JapanMap.Gameplay.Hud
             _result = Text(Box(_root), 34f * k, Color.white);
             _result.parent.style.left = _result.parent.style.right = 0;
             _result.parent.style.alignItems = Align.Center;
+            _result.AddToClassList("jm-num");
 
             // Sparks: top right, only for a moment after earning.
             var sparksBox = Box(_root);
             sparksBox.style.alignItems = Align.FlexEnd;
             _sparks = Text(sparksBox, 30f * k, Gold);
+            _sparks.AddToClassList("jm-num");
+            _sparks.AddToClassList("jm-plate");
             _saved = Text(sparksBox, 16f, new Color(0.75f, 0.9f, 0.8f));
             _saved.style.display = DisplayStyle.None;
             sparksBox.name = "sparks";
@@ -227,7 +232,8 @@ namespace JapanMap.Gameplay.Hud
             mid.name = "middle";
             mid.style.left = mid.style.right = 0;
             mid.style.alignItems = Align.Center;
-            _count = Text(mid, 120f * k, Color.white);
+            _count = Text(mid, 140f * k, Color.white);
+            _count.AddToClassList("jm-num");
             _count.style.display = DisplayStyle.None;
 
             _stunt = Text(Box(_root), 22f * k, new Color(1f, 0.55f, 0.15f));
@@ -590,6 +596,24 @@ namespace JapanMap.Gameplay.Hud
                 : $"+{credit:N0}";
             _result.style.color = reason == ChainEnd.Crash ? new Color(1f, 0.45f, 0.4f) : new Color(0.6f, 1f, 0.65f);
             _resultUntil = Time.time + chainResultSeconds;
+            Pop(_result, 1.3f);
+        }
+
+        /// <summary>
+        /// A short "pop": the element starts larger (or smaller) and eases to its size — every reward and every step of
+        /// the chain is felt, not just read (ASTRA "juice"; there was no motion in the HUD at all).
+        /// </summary>
+        public static void Pop(VisualElement e, float from = 0.82f)
+        {
+            if (e == null) return;
+            e.AddToClassList("jm-anim");
+            e.style.transitionDuration = new StyleList<TimeValue>(new System.Collections.Generic.List<TimeValue> { new(0f) });
+            e.style.scale = new Scale(new Vector3(from, from, 1f));
+            e.schedule.Execute(() =>
+            {
+                e.style.transitionDuration = StyleKeyword.Null;
+                e.style.scale = new Scale(Vector3.one);
+            });
         }
 
         void OnEarned(int amount, string reason)
@@ -630,7 +654,7 @@ namespace JapanMap.Gameplay.Hud
             if (Time.time >= _toastUntil)
             {
                 _toast.text = !_held && _toasts.Count > 0 ? _toasts.Dequeue() : "";
-                if (_toast.text != "") _toastUntil = Time.time + toastSeconds;
+                if (_toast.text != "") { _toastUntil = Time.time + toastSeconds; Pop(_toast); }
                 _toast.style.display = _toast.text != "" ? DisplayStyle.Flex : DisplayStyle.None;
             }
             _banner.style.display = Time.time < _bannerUntil ? DisplayStyle.Flex : DisplayStyle.None;
@@ -645,7 +669,8 @@ namespace JapanMap.Gameplay.Hud
             if (showChain)
             {
                 _points.text = c.Pending.ToString("N0");
-                _mult.text = $"×{c.Multiplier}";
+                var mult = $"×{c.Multiplier}";
+                if (_mult.text != mult) { _mult.text = mult; Pop(_mult, 1.5f); }
                 _barFill.style.width = Length.Percent(c.NextStepProgress * 100f);
                 // Fading link time: the chain is still alive but about to bank.
                 _points.style.opacity = c.Scoring ? 1f : 0.55f;
@@ -763,7 +788,7 @@ namespace JapanMap.Gameplay.Hud
             var l = new Label { pickingMode = PickingMode.Ignore, enableRichText = true };
             l.style.fontSize = size;
             l.style.color = color;
-            l.style.unityFontStyleAndWeight = FontStyle.Bold;
+            l.AddToClassList("jm-hud-text"); // Barlow SemiBold (Game.uss), not a synthesized bold
             l.style.unityTextAlign = TextAnchor.MiddleCenter;
             l.style.textShadow = new TextShadow { offset = new Vector2(0f, 2f), blurRadius = 6f, color = new Color(0f, 0f, 0f, 0.8f) };
             parent.Add(l);

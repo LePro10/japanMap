@@ -30,8 +30,8 @@ namespace JapanMap.Gameplay.Hud
         {
             pickingMode = PickingMode.Ignore;
             generateVisualContent += Draw;
-            _gear = Add(new Label("N"), 0.3f);
-            _speed = Add(new Label("0"), 0.25f);
+            _gear = Add(new Label("N"), 0.19f);
+            _speed = Add(new Label("0"), 0.34f);
             _unit = Add(new Label("km/h"), 0.07f);
             _unit.style.color = new Color(0.72f, 0.77f, 0.78f);
             RegisterCallback<GeometryChangedEvent>(_ => Layout());
@@ -43,7 +43,8 @@ namespace JapanMap.Gameplay.Hud
             l.style.position = Position.Absolute;
             l.style.left = l.style.right = 0;
             l.style.unityTextAlign = TextAnchor.MiddleCenter;
-            l.style.unityFontStyleAndWeight = FontStyle.Bold;
+            l.AddToClassList("jm-hud-text");
+            if (size > 0.1f) l.AddToClassList("jm-num"); // gear and speed in the display face, the unit in the text face
             l.style.color = new Color(0.965f, 0.937f, 0.894f);
             l.userData = size;
             Add(l);
@@ -60,9 +61,9 @@ namespace JapanMap.Gameplay.Hud
             }
             // Gear in the arc's centre, speed below it, unit under the speed — placed from the fitted centre.
             Fit(r, out var c, out var rad);
-            _gear.style.top = c.y - rad * 0.62f;
-            _speed.style.top = c.y - rad * 0.02f;
-            _unit.style.top = c.y + rad * 0.62f;
+            _gear.style.top = c.y - rad * 0.84f;
+            _speed.style.top = c.y - rad * 0.36f;
+            _unit.style.top = c.y + rad * 0.5f;
             foreach (var l in new[] { _gear, _speed, _unit }) l.style.fontSize = Mathf.Max(11f, (float)l.userData * rad * 2f);
         }
 

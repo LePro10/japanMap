@@ -322,3 +322,8 @@ Label { color: var(--paper); font-size: 16px; }
 
 /* Desktop pause: the page keeps to the left 60 %, the car turns in the free right side (MenuCamera). */
 .jm-desktop.jm-page--narrow .jm-content { max-width: 1040px; }
+
+/* HUD text and motion. */
+.jm-hud-text { -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; }
+.jm-hud-text.jm-num { -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); letter-spacing: 1px; }
+.jm-anim { transition-property: scale, opacity, translate; transition-duration: 0.22s; transition-timing-function: ease-out-back; }
