@@ -96,6 +96,12 @@ namespace JapanMap.Gameplay.Races
         public float rescueSeconds = 5f;
         [Tooltip("An AI car slows to the car ahead in its lane within this distance, m.")]
         public float followGap = 18f;
+        [Tooltip("Rubber band: over this gap to the player, m, a rival gets its full push or brake (legacy catchUp.ts).")]
+        public float bandRange = 120f;
+        [Tooltip("Rubber band: speed cap change at full gap (+ behind the player, − ahead), share.")]
+        public float bandSpeed = 0.16f;
+        [Tooltip("Rubber band: grip share change in bends at full gap.")]
+        public float bandGrip = 0.12f;
         [Tooltip("Recover (R) in an event adds this, s (ASTRA §5).")]
         public float recoverPenalty = 3f;
         [Tooltip("Join: marker radius and speed below which the event can be joined (ASTRA: 12 m, 15 km/h).")]

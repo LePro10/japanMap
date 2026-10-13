@@ -559,6 +559,18 @@ namespace JapanMap.Gameplay.Races
         void KeepGap(Entrant e)
         {
             var cap = e.isPlayer ? 170f : RivalOf(e).maxKmh;
+            if (!e.isPlayer)
+            {
+                // Rubber band (legacy catchUp.ts; the owner: "NPCs too weak"): a rival far behind the player pushes
+                // harder and corners braver, one far ahead eases off — the race stays a race at both ends.
+                var me = _entrants.Find(x => x.isPlayer);
+                if (me != null)
+                {
+                    var behind = Mathf.Clamp((me.progress.Progress - e.progress.Progress) / Mathf.Max(1f, set.bandRange), -1f, 1f);
+                    cap *= 1f + set.bandSpeed * behind;
+                    e.pilot.gripShare = Mathf.Clamp(RivalOf(e).gripShare + set.bandGrip * behind, 0.35f, 0.72f);
+                }
+            }
             var fwd = e.car.transform.forward;
             var p = e.car.transform.position;
             foreach (var o in _entrants)

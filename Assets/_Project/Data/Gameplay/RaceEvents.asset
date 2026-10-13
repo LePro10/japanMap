@@ -187,20 +187,20 @@ MonoBehaviour:
     note: 'ASTRA E14: one lap in a stock Needle 01 (fleet hanami), benchmark 70 s, lesser bonus to 77 s.'
   rivals:
   - name: Mina
-    gripShare: 0.48
-    maxKmh: 135
+    gripShare: 0.53
+    maxKmh: 148
     lookAheadSeconds: 0.55
     lane: -0.35
     paint: {r: 0.78, g: 0.06, b: 0.18, a: 1}
   - name: Joss
-    gripShare: 0.54
-    maxKmh: 150
+    gripShare: 0.57
+    maxKmh: 162
     lookAheadSeconds: 0.45
     lane: 0.35
     paint: {r: 0.12, g: 0.56, b: 0.84, a: 1}
   - name: Ren
-    gripShare: 0.51
-    maxKmh: 160
+    gripShare: 0.6
+    maxKmh: 175
     lookAheadSeconds: 0.5
     lane: 0
     paint: {r: 0.88, g: 0.7, b: 0, a: 1}
