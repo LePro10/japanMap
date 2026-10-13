@@ -18,11 +18,11 @@ namespace JapanMap.World
         [Tooltip("The camera must be lower than this above the plane, m (from high up the puddles are specks).")]
         public float maxCameraHeight = 220f;
         [Tooltip("Render scale of the mirror per quality tier (High, Medium, Low); 0 = off.")]
-        public Vector3 scale = new(0.5f, 0.33f, 0f);
+        public Vector3 scale = new(0.5f, 0f, 0f);
         [Tooltip("Longest side of the mirror target, px (legacy: 1280).")]
         public int maxSize = 1280;
         [Tooltip("What the mirror sees, m (the far city is fog anyway).")]
-        public float farClip = 600f;
+        public float farClip = 280f;
         [Tooltip("Strength of the mirror in the puddles (legacy 0.85).")]
         [Range(0, 1)] public float strength = 0.85f;
         [Tooltip("Ripple distortion of the mirror image, in screen share.")]

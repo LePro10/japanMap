@@ -208,7 +208,8 @@ namespace JapanMap.Editor.Map
             var folder = File.Exists(own + "_diff.jpg") ? own : $"{TextureDir}/{spec.texture}/{spec.texture}";
             layer.diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(folder + "_diff.jpg")
                 ?? throw new FileNotFoundException(folder + "_diff.jpg");
-            layer.normalMapTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(folder + "_nor_gl.jpg");
+            var normals = string.IsNullOrEmpty(spec.normalFrom) ? folder : $"{TextureDir}/{spec.normalFrom}/{spec.normalFrom}";
+            layer.normalMapTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(normals + "_nor_gl.jpg");
             layer.tileSize = new Vector2(spec.tileMeters, spec.tileMeters);
             var tint = spec.tint.maxColorComponent > 0 ? spec.tint : Color.white; // assets from before the field read black
             layer.diffuseRemapMin = new Vector4(spec.floor.r, spec.floor.g, spec.floor.b, 0);

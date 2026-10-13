@@ -186,6 +186,9 @@ namespace JapanMap.Editor.Look
             Wet("Road_Asphalt", p, p.wetAsphaltSmoothness, p.puddleCover);
             Wet("Road_Concrete", p, p.wetConcreteSmoothness, p.puddleCoverCity);
             Wet("City_Slab", p, p.wetConcreteSmoothness, p.puddleCoverCity);
+            // Paths and verges: wet earth with fewer, muddier puddles (also: the road meshes carry no tangents now,
+            // and this shader builds its own).
+            Wet("Road_Gravel", p, 0.3f, p.puddleCover * 0.6f);
         }
 
         public const string WetShader = "JapanMap/Wet Surface";

@@ -15,11 +15,11 @@ MonoBehaviour:
   planeY: 29.97
   region: {x: 800, y: -100, z: 620, w: 470}
   maxCameraHeight: 220
-  scale: {x: 0.5, y: 0.33, z: 0}
+  scale: {x: 0.5, y: 0, z: 0}
   maxSize: 1280
-  farClip: 600
+  farClip: 280
   strength: 0.85
   distortion: 0.012
   layers:
     serializedVersion: 2
-    m_Bits: 4294967247
+    m_Bits: 4294963663

@@ -24,21 +24,25 @@ MonoBehaviour:
     tileMeters: 17.6
     tint: {r: 0.9, g: 0.92, b: 0.9, a: 1}
     floor: {r: 0, g: 0, b: 0, a: 1}
+    normalFrom: rock_face_03
   - name: Grass
     texture: aerial_grass_rock
     tileMeters: 11
     tint: {r: 0.78, g: 1, b: 0.62, a: 1}
     floor: {r: 0, g: 0, b: 0, a: 1}
+    normalFrom: 
   - name: Sand
     texture: coast_sand_01
     tileMeters: 8.25
     tint: {r: 1, g: 1, b: 1, a: 1}
     floor: {r: 0, g: 0, b: 0, a: 1}
+    normalFrom: 
   - name: Paddy
     texture: brown_mud_02
     tileMeters: 12.1
     tint: {r: 1, g: 1, b: 1, a: 1}
     floor: {r: 0, g: 0, b: 0, a: 1}
+    normalFrom: 
   seaExtent: 8000
   paddyDepth: 0.1
   paddyLevelTolerance: 0.08
@@ -95,6 +99,7 @@ MonoBehaviour:
     minVerticalRadius: 0
   roadSurfaceOffset: 0.06
   roadShoulderDrop: 0.22
+  roadVerge: 1.4
   roadBankGain: 20
   roadChunk: 512
   railBottom: 0.5

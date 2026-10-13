@@ -86,7 +86,12 @@ namespace JapanMap.Tests
         {
             var water = GameObject.Find($"{MapScene.RootName}/{WaterImporter.GroupName}");
             Assert.IsNotNull(water, "World/Water missing — run JapanMap/Map/Import Water");
-            var filters = water.GetComponentsInChildren<MeshFilter>();
+            var list = new System.Collections.Generic.List<MeshFilter>(water.GetComponentsInChildren<MeshFilter>());
+            // The paddies stream in their own scene (Water_Paddies, start download 2026-10-13).
+            var paddies = UnityEngine.SceneManagement.SceneManager.GetSceneByName("Water_Paddies");
+            if (paddies.IsValid() && paddies.isLoaded)
+                foreach (var root in paddies.GetRootGameObjects()) list.AddRange(root.GetComponentsInChildren<MeshFilter>());
+            var filters = list.ToArray();
             Assert.That(filters.Length, Is.GreaterThanOrEqualTo(3));
             foreach (var f in filters)
             {

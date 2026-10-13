@@ -192,6 +192,31 @@ namespace JapanMap.Editor.Map
             return (outV, outT);
         }
 
+        /// <summary>
+        /// No discovery stands in a paddy: the shore now reaches the dams (marching squares), and two cards and their
+        /// buttons ended up under water (DiscoveryTests, 2026-10-13). Texels within 4 m of a card or button go dry.
+        /// </summary>
+        static void DryDiscoveries(bool[] wet, int res)
+        {
+            var set = AssetDatabase.LoadAssetAtPath<JapanMap.Gameplay.Discovery.DiscoverySet>("Assets/_Project/Data/Gameplay/Discoveries.asset");
+            if (set == null) return;
+            const float worldSize = 3072f, half = worldSize / 2f, reach = 4f;
+            var step = worldSize / (res - 1);
+            void Dry(Vector3 p)
+            {
+                int i0 = Mathf.Max(0, Mathf.FloorToInt((p.x - reach + half) / step)), i1 = Mathf.Min(res - 1, Mathf.CeilToInt((p.x + reach + half) / step));
+                int j0 = Mathf.Max(0, Mathf.FloorToInt((p.z - reach + half) / step)), j1 = Mathf.Min(res - 1, Mathf.CeilToInt((p.z + reach + half) / step));
+                for (var j = j0; j <= j1; j++)
+                for (var i = i0; i <= i1; i++)
+                    if (new Vector2(-half + i * step - p.x, -half + j * step - p.z).magnitude <= reach) wet[j * res + i] = false;
+            }
+            foreach (var c in set.cards)
+            {
+                Dry(new Vector3(c.position.x, 0f, c.position.y));
+                for (var b = 0; b < c.buttons.Length; b++) Dry(set.ButtonPosition(c, b));
+            }
+        }
+
         static bool CellWet(bool[] mask, int res, int i, int j) =>
             mask[j * res + i] && mask[j * res + i + 1] && mask[(j + 1) * res + i] && mask[(j + 1) * res + i + 1];
 
@@ -208,6 +233,7 @@ namespace JapanMap.Editor.Map
                 var wet = new bool[px.Length];
                 for (var k = 0; k < px.Length; k++) wet[k] = px[k].r > 127;
                 Places.PlaceImporter.Dry(wet, res, settings);
+                DryDiscoveries(wet, res);
                 return wet;
             }
             finally { UnityEngine.Object.DestroyImmediate(tex); }

@@ -265,6 +265,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f193ab7cd112245b3975db7897157ac8
+    m_Address: world/Water_Paddies
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: f40d4c2feb1014630950f285b1fbe5e1
     m_Address: world/Props_stoneLantern
     m_ReadOnly: 0

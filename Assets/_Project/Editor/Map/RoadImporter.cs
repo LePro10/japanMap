@@ -857,7 +857,7 @@ namespace JapanMap.Editor.Map
                 mesh.SetTriangles(t, s);
             }
             mesh.RecalculateNormals();
-            mesh.RecalculateTangents();
+            // No tangents: the wet surface shader builds its own frame (8 bytes per vertex out of the start download).
             mesh.RecalculateBounds();
             return mesh;
         }

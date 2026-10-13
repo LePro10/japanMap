@@ -199,6 +199,8 @@ namespace JapanMap.Editor.Content
             new Rule { group = "Props", dir = WorldDir, prefix = "Props_", keepNearStart = true },
             new Rule { group = "Navigation", dir = WorldDir, prefix = "Nav_", keep = t => t.name.Contains(StartPlace) },
             new Rule { group = "Vegetation", dir = WorldDir, prefix = "", whole = true },
+            // The paddy water (≈100 000 vertices since the shores follow the dams) streams in; sea and river stay.
+            new Rule { group = "Water", dir = WorldDir, prefix = "Water_", keep = t => t.name != "Paddies" },
         };
 
         /// <summary>Scene/root name prefix of a group's streamed parts (null: the group does not stream by parts).</summary>

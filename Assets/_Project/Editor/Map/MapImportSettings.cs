@@ -186,6 +186,8 @@ namespace JapanMap.Editor.Map
             [Tooltip("Colour added under the texture (TerrainLayer diffuseRemapMin): pulls a texture towards a hue, e.g. the " +
                      "red sandstone towards wet, mossy Japanese rock.")]
             public Color floor = Color.black;
+            [Tooltip("Normal map from this third-party texture instead (own colour variants reuse the original's normals).")]
+            public string normalFrom = "";
         }
 
         public static MapImportSettings LoadOrCreate()
