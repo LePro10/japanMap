@@ -42,7 +42,7 @@ namespace JapanMap.Editor.Map
         {
             public readonly List<Vector3> v = new();
             public readonly List<Vector2> uv = new();
-            // Road data for the wet surface shader (UV3): lateral m, arc m, half width m, marking style.
+            // Road data for the wet surface shader (UV3): lateral m, texture length m, half width m, marking style.
             public readonly List<Vector4> road = new();
             public readonly List<int>[] t = { new(), new() };
         }
@@ -364,7 +364,9 @@ namespace JapanMap.Editor.Map
                     var across = (lateral[k] + total / 2) / total;
                     // Paths sample a calm band at the texture edge (legacy: the asphalt crack at u≈0.5 read as a seam).
                     uvs[st][k] = new Vector2(type.gravel ? 0.08f + across * 0.3f : across, arc / type.textureLength);
-                    data[st][k] = new Vector4(lateral[k], arc, width / 2, style);
+                    // y = texture length: the shader gets the distance along the road as UV0.y × y (UV0 is 32-bit, this
+                    // channel 16-bit — kilometres of arc in a half float would lose the dashes).
+                    data[st][k] = new Vector4(lateral[k], type.textureLength, width / 2, style);
                 }
                 if (verge > 0f)
                 {
@@ -864,7 +866,7 @@ namespace JapanMap.Editor.Map
         {
             var path = $"{MeshDir}/{name}.asset";
             written.Add(path);
-            return MeshAssets.Save(path, mesh);
+            return MeshAssets.Save(path, mesh, compact: true);
         }
 
         static GameObject Add(Transform parent, string name, Mesh mesh, Material[] materials)

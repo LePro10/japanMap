@@ -142,9 +142,12 @@ namespace JapanMap.Editor.Map
 
             foreach (var kv in chunks)
             {
-                var mesh = new Mesh { indexFormat = IndexFormat.UInt32 };
-                mesh.SetVertices(kv.Value.v);
-                mesh.SetTriangles(kv.Value.t, 0);
+                // Weld: strips and shore polygons share their corners (to the millimetre, same level) — the unwelded
+                // mesh was 191 000 vertices map-wide and part of the start download (2026-10-13).
+                var (v, t) = Weld(kv.Value.v, kv.Value.t);
+                var mesh = new Mesh { indexFormat = v.Count > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16 };
+                mesh.SetVertices(v);
+                mesh.SetTriangles(t, 0);
                 mesh.RecalculateNormals();
                 mesh.RecalculateBounds();
                 yield return ($"Paddy_{kv.Key.Item1}_{kv.Key.Item2}", mesh);
@@ -165,6 +168,28 @@ namespace JapanMap.Editor.Map
                     Mathf.Min(t.SampleHeight(new Vector3(X(ci), 0, Z(cj))), t.SampleHeight(new Vector3(X(ci + 1), 0, Z(cj)))),
                     Mathf.Min(t.SampleHeight(new Vector3(X(ci), 0, Z(cj + 1))), t.SampleHeight(new Vector3(X(ci + 1), 0, Z(cj + 1))))) + y;
             }
+        }
+
+        static (List<Vector3>, List<int>) Weld(List<Vector3> v, List<int> t)
+        {
+            var map = new Dictionary<(int, int, int), int>();
+            var outV = new List<Vector3>();
+            var remap = new int[v.Count];
+            for (var k = 0; k < v.Count; k++)
+            {
+                var p = v[k];
+                var key = (Mathf.RoundToInt(p.x * 1000f), Mathf.RoundToInt(p.y * 1000f), Mathf.RoundToInt(p.z * 1000f));
+                if (!map.TryGetValue(key, out var idx)) { idx = outV.Count; outV.Add(p); map[key] = idx; }
+                remap[k] = idx;
+            }
+            var outT = new List<int>(t.Count);
+            for (var k = 0; k < t.Count; k += 3)
+            {
+                int a = remap[t[k]], b = remap[t[k + 1]], c = remap[t[k + 2]];
+                if (a == b || b == c || a == c) continue; // degenerate after welding
+                outT.Add(a); outT.Add(b); outT.Add(c);
+            }
+            return (outV, outT);
         }
 
         static bool CellWet(bool[] mask, int res, int i, int j) =>
@@ -325,7 +350,7 @@ namespace JapanMap.Editor.Map
             return mesh;
         }
 
-        static Mesh SaveMesh(string name, Mesh mesh) => MeshAssets.Save($"{MeshDir}/{name}.asset", mesh);
+        static Mesh SaveMesh(string name, Mesh mesh) => MeshAssets.Save($"{MeshDir}/{name}.asset", mesh, compact: true);
 
         static GameObject Add(Transform parent, string name, Mesh mesh, Material material)
         {

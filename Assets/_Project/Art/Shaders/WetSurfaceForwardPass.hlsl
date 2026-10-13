@@ -32,7 +32,7 @@ struct Attributes
     float2 texcoord     : TEXCOORD0;
     float2 staticLightmapUV   : TEXCOORD1;
     float2 dynamicLightmapUV  : TEXCOORD2;
-    float4 roadData     : TEXCOORD3; // lateral m, arc m, half width m, marking style
+    float4 roadData     : TEXCOORD3; // lateral m, texture length m, half width m, marking style
     UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
@@ -188,7 +188,8 @@ Varyings LitPassVertex(Attributes input)
     #endif
 
     output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
-    output.roadData = input.roadData;
+    // UV3 carries the texture length in y; the distance along the road is UV0.y × that (see RoadImporter).
+    output.roadData = float4(input.roadData.x, input.texcoord.y * input.roadData.y, input.roadData.z, input.roadData.w);
 
     // already normalized from normal transform to WS.
     output.normalWS = normalInput.normalWS;
