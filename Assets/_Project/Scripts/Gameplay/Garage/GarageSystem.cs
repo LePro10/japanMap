@@ -216,7 +216,11 @@ namespace JapanMap.Gameplay.Garage
         /// <summary>Outside the bay: rebuild the player's car with its new parts as soon as it stands still.</summary>
         public void ApplySoon()
         {
-            if (!IsOpen) _apply = true;
+            if (IsOpen) return;
+            _apply = true;
+            // In the pause menu the car stands still and turns in front of the camera (MenuCamera): show the change
+            // on it now, not after closing — paint, rims and kits are bought to be seen.
+            if (GameMenu.Instance != null && GameMenu.Instance.IsOpen) TryApply();
         }
 
         void TryApply()

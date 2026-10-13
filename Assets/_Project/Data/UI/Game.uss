@@ -170,11 +170,11 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-phone .jm-content { padding: 10px 12px; }
 
 /* Dark, thin scrollbars (Unity's default is a light grey bar). */
-.unity-scroller--vertical { width: 10px; }
+.unity-scroller--vertical { width: 6px; }
 .unity-scroller--horizontal { height: 10px; }
 .unity-scroller__low-button, .unity-scroller__high-button { display: none; }
 .unity-scroller .unity-base-slider__tracker { background-color: rgba(246, 239, 228, 0.06); border-width: 0; }
-.unity-scroller .unity-base-slider__dragger { background-color: rgba(232, 186, 127, 0.5); border-width: 0; border-radius: 5px; }
+.unity-scroller .unity-base-slider__dragger { background-color: rgba(246, 239, 228, 0.22); border-width: 0; border-radius: 5px; }
 .unity-scroller .unity-base-slider__dragger-border { display: none; }
 
 .jm-cols { flex-direction: row; flex-grow: 1; }
@@ -346,3 +346,37 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-phone .jm-medal { width: 64px; height: 64px; border-radius: 32px; font-size: 11px; margin-right: 12px; }
 .jm-phone .jm-result__main { font-size: 32px; }
 .jm-phone .jm-result__reward { font-size: 20px; }
+
+/* Garage (CarsScreen Tune / Appearance). */
+.jm-perf { padding: 16px 18px 10px 18px; margin-top: 10px; }
+.jm-stat { flex-direction: row; align-items: center; height: 26px; }
+.jm-stat__name { width: 120px; font-size: 14px; color: var(--paper-dim); }
+.jm-stat__track { flex-grow: 1; height: 8px; border-radius: 4px; background-color: rgba(246, 239, 228, 0.1); overflow: hidden; }
+.jm-stat__fill, .jm-stat__ghost { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; transition: width 0.18s ease-out; }
+.jm-stat__fill { background-color: var(--amber-hot); }
+.jm-stat__ghost { background-color: #7fd18b; }
+.jm-stat__ghost--down { background-color: #e0675a; }
+.jm-stat__value { width: 96px; -unity-text-align: middle-right; font-size: 16px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); }
+.jm-stat__value--up { color: #7fd18b; }
+.jm-stat__value--down { color: #e0675a; }
+.jm-part { background-color: rgba(7, 15, 20, 0.88); border-radius: 4px; padding: 8px 14px 10px 14px; margin-top: 6px; border-left-width: 3px; border-color: rgba(232, 186, 127, 0.5); }
+.jm-part__title { font-size: 20px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); margin-right: 10px; }
+.jm-seg { flex-direction: row; margin-top: 6px; }
+.jm-seg__item {
+    flex-grow: 1; flex-basis: 0; min-height: 40px; margin: 0 6px 0 0; border-radius: 3px; border-width: 1px;
+    border-color: rgba(246, 239, 228, 0.16); background-color: rgba(246, 239, 228, 0.05); color: var(--paper);
+    font-size: 14px; letter-spacing: 1px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; -unity-text-align: middle-center;
+}
+.jm-seg__item:hover:enabled { background-color: rgba(246, 239, 228, 0.12); border-color: rgba(246, 239, 228, 0.35); }
+.jm-seg__item--on { background-color: rgba(232, 186, 127, 0.2); border-color: var(--amber-hot); color: var(--amber-hot); }
+.jm-seg__item:disabled { opacity: 0.4; }
+.jm-seg__item--on:disabled { opacity: 1; background-color: rgba(232, 186, 127, 0.2); color: var(--amber-hot); border-color: var(--amber-hot); }
+.jm-phone .jm-stat__name { width: 84px; font-size: 12px; }
+.jm-phone .jm-stat__value { width: 70px; font-size: 13px; }
+.jm-phone .jm-seg__item { font-size: 12px; min-height: 40px; }
+
+/* Scroll bars: a thin, quiet line (the theme's dragger drew a 14 px amber bar next to every long page). */
+.jm-menu .unity-scroller--vertical { width: 6px; min-width: 6px; border-width: 0; background-color: rgba(0, 0, 0, 0); }
+.jm-menu .unity-scroller--vertical .unity-base-slider__dragger,
+.jm-menu .unity-scroller--vertical .unity-slider__dragger { background-color: rgba(246, 239, 228, 0.22); border-width: 0; width: 6px; left: 0; margin-top: 0; border-radius: 3px; }
+.jm-menu .unity-scroller--vertical .unity-base-slider__tracker { background-color: rgba(0, 0, 0, 0); border-width: 0; }

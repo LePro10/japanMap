@@ -27,6 +27,8 @@ namespace JapanMap.Gameplay.Menu
         /// <summary>Tab does not open a page but an action (Photo).</summary>
         public virtual bool Action => false;
         public virtual void Update() { }
+        /// <summary>The page keeps to the left so the car can be seen on the right (MenuCamera).</summary>
+        public virtual bool Narrow => false;
     }
 
     /// <summary>
@@ -280,7 +282,7 @@ namespace JapanMap.Gameplay.Menu
             if (Current != null && Current != screen) Current.Closed();
             Current = screen;
             // Pages that leave the right side to the car (MenuCamera); the map and lists need the whole width.
-            _root.EnableInClassList("jm-page--narrow", screen is PlayScreen);
+            _root.EnableInClassList("jm-page--narrow", screen is PlayScreen || screen.Narrow);
             for (var i = 0; i < _screens.Count; i++) Ui.On(_tabButtons[i], _screens[i] == screen, "jm-tab--on");
             Rebuild();
         }
@@ -289,6 +291,7 @@ namespace JapanMap.Gameplay.Menu
         public void Rebuild()
         {
             if (_body == null || Current == null) return;
+            _root.EnableInClassList("jm-page--narrow", Current is PlayScreen || Current.Narrow);
             _body.Clear();
             Current.Build(_body);
         }

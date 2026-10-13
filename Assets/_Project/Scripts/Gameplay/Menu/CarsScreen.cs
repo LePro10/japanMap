@@ -51,6 +51,9 @@ namespace JapanMap.Gameplay.Menu
 
         public override void Closed() => _page = Page.List;
 
+        /// <summary>Tune and Appearance keep to the left: the car turns on the right and shows every change.</summary>
+        public override bool Narrow => _page != Page.List;
+
         /// <summary>Straight to the tuning page of the selected car (Play tile "Tune your car").</summary>
         public void ShowTune()
         {
@@ -214,41 +217,142 @@ namespace JapanMap.Gameplay.Menu
             Ui.Button(row, "Back", close, "jm-btn--wide");
         }
 
+        // ── Tune: performance bars with a preview, parts as cards (2026-10-13: "Tuning gibt es noch gar nicht") ──
+
+        /// <summary>The car's stats as 0…1 against the best any car reaches fully tuned (bars compare across the fleet).</summary>
+        float[] Stats(VehicleDefinition def, CarTune tune, CarSetupMode setup)
+        {
+            var s = _progress.Tuning.Apply(def, tune, setup);
+            return new[] { s.TopSpeed(def.mass), s.power / def.mass, s.latG, s.brakeG, s.steerRate };
+        }
+
+        float[] _fleetMax;
+
+        float[] FleetMax()
+        {
+            if (_fleetMax != null) return _fleetMax;
+            _fleetMax = new float[5];
+            var full = new CarTune { engine = 2, brakes = 2, steering = 2, tyres = 2 };
+            foreach (var v in _progress.Fleet.vehicles)
+            {
+                if (v == null) continue;
+                var st = Stats(v, full, CarSetupMode.Road);
+                for (var i = 0; i < 5; i++) _fleetMax[i] = Mathf.Max(_fleetMax[i], st[i]);
+            }
+            return _fleetMax;
+        }
+
+        static readonly string[] StatNames = { "Top speed", "Acceleration", "Grip", "Braking", "Response" };
+
+        sealed class StatBar
+        {
+            public VisualElement Fill, Ghost;
+            public Label Value;
+        }
+
         void BuildTune(VisualElement body, VehicleDefinition def, StringBuilder t)
         {
             var state = _progress.Car(def.id);
-            Ui.H2(body, "Performance parts");
+            var max = FleetMax();
+            var now = Stats(def, state.tune, state.setup);
+
+            // Performance: five bars; hovering a part shows where it would take the car (green up, red down).
+            var perf = Ui.Box(body, "jm-panel", "jm-perf");
+            Ui.Text(perf, "PERFORMANCE", "jm-kicker");
+            var bars = new StatBar[5];
+            for (var i = 0; i < 5; i++)
+            {
+                var row = Ui.Row(perf, "jm-stat");
+                Ui.Text(row, StatNames[i], "jm-stat__name");
+                var track = Ui.Box(row, "jm-stat__track");
+                var ghost = Ui.Box(track, "jm-stat__ghost");
+                var fill = Ui.Box(track, "jm-stat__fill");
+                fill.style.width = Length.Percent(Mathf.Clamp01(now[i] / max[i]) * 100f);
+                ghost.style.width = 0;
+                var value = Ui.Text(row, StatText(i, now[i]), "jm-stat__value");
+                bars[i] = new StatBar { Fill = fill, Ghost = ghost, Value = value };
+                t.AppendLine($"{StatNames[i]} {StatText(i, now[i])}");
+            }
+            void Preview(CarTune? tune, CarSetupMode? setup)
+            {
+                var then = tune.HasValue || setup.HasValue ? Stats(def, tune ?? state.tune, setup ?? state.setup) : now;
+                for (var i = 0; i < 5; i++)
+                {
+                    var a = Mathf.Clamp01(now[i] / max[i]);
+                    var b = Mathf.Clamp01(then[i] / max[i]);
+                    var up = b >= a;
+                    bars[i].Ghost.style.width = Length.Percent((up ? b : a) * 100f);
+                    bars[i].Fill.style.width = Length.Percent((up ? a : b) * 100f);
+                    bars[i].Ghost.EnableInClassList("jm-stat__ghost--down", !up);
+                    bars[i].Value.text = StatText(i, then[i]);
+                    bars[i].Value.EnableInClassList("jm-stat__value--up", then[i] > now[i] * 1.004f);
+                    bars[i].Value.EnableInClassList("jm-stat__value--down", then[i] < now[i] * 0.996f);
+                }
+            }
+
+            Ui.Text(body, "PARTS", "jm-kicker").style.marginTop = 18;
             foreach (var c in CarTune.All)
             {
                 var info = _progress.Tuning.Info(c);
-                var row = Ui.Row(body, "jm-setting", "jm-wrap");
-                var name = Ui.Text(row, info.title);
+                var card = Ui.Box(body, "jm-part");
+                var head = Ui.Row(card);
+                Ui.Text(head, info.title, "jm-part__title");
+                Ui.Text(head, Tier(state.tune[c]).ToUpperInvariant(), "jm-chip");
+                Ui.Text(card, info.blurb, "jm-small");
+                var seg = Ui.Row(card, "jm-seg");
                 for (var tier = 0; tier <= 2; tier++)
                 {
                     var k = tier;
                     var cost = _progress.FitCost(def.id, c, k);
                     var fitted = state.tune[c] == k;
-                    var label = Tier(k) + (cost > 0 ? $" · {cost:N0}" : fitted ? " ✓" : "");
-                    var b = Ui.Button(row, label, () => { _garage.Fit(c, k); _garage.ApplySoon(); Menu.Rebuild(); });
-                    Ui.On(b, fitted);
+                    var label = Tier(k).ToUpperInvariant() + (fitted ? " ✓" : cost > 0 ? $" · {cost:N0}" : "");
+                    var b = Ui.Button(seg, label, () => { _garage.Fit(c, k); _garage.ApplySoon(); Menu.Rebuild(); }, "jm-seg__item");
+                    Ui.On(b, fitted, "jm-seg__item--on");
                     b.SetEnabled(!fitted && cost <= _progress.Wallet.Balance);
-                    t.AppendLine($"{info.title} {label}");
+                    var preview = state.tune;
+                    preview[c] = k;
+                    b.RegisterCallback<PointerEnterEvent>(_ => Preview(preview, null));
+                    b.RegisterCallback<PointerLeaveEvent>(_ => Preview(null, null));
+                    b.RegisterCallback<FocusInEvent>(_ => Preview(preview, null));
+                    t.AppendLine($"{info.title} {Tier(k)}{(cost > 0 ? $" · {cost:N0}" : fitted ? " ✓" : "")}");
                 }
             }
-            Ui.H2(body, "Setup (free)");
-            var setups = Ui.Row(body, "jm-wrap");
+
+            Ui.Text(body, "SETUP · FREE", "jm-kicker").style.marginTop = 18;
+            var setups = Ui.Row(body, "jm-seg");
             foreach (var m in TuningSettings.SetupsFor(def))
             {
                 var mode = m;
-                Ui.On(Ui.Button(setups, SetupName(m), () => { _garage.Setup(mode); _garage.ApplySoon(); Menu.Rebuild(); }), state.setup == m);
+                var b = Ui.Button(setups, SetupName(m).ToUpperInvariant(), () => { _garage.Setup(mode); _garage.ApplySoon(); Menu.Rebuild(); }, "jm-seg__item");
+                Ui.On(b, state.setup == m, "jm-seg__item--on");
+                b.RegisterCallback<PointerEnterEvent>(_ => Preview(null, mode));
+                b.RegisterCallback<PointerLeaveEvent>(_ => Preview(null, null));
             }
-            Ui.Small(body, _garage.Status);
+            Ui.Small(body, SetupHint(state.setup));
+            if (_garage.Status != "") Ui.Text(body, _garage.Status, "jm-body", "jm-amber");
         }
+
+        static string SetupHint(CarSetupMode m) => m switch
+        {
+            CarSetupMode.Drift => "Drift: the rear lets go easier and the wheels turn further — for long slides.",
+            CarSetupMode.Dirt => "Dirt: a little higher and calmer at speed — for gravel and forest tracks.",
+            CarSetupMode.SafeReturn => "Safe Return: crawls home on loose ground without spinning out.",
+            _ => "Road: balanced grip for tarmac.",
+        };
+
+        static string StatText(int i, float v) => i switch
+        {
+            0 => $"{Core.GameOptions.Speed(v)} {Core.GameOptions.SpeedUnit}",
+            1 => $"{v:0} W/kg",
+            2 => $"{v:0.00} g",
+            3 => $"{v:0.00} g",
+            _ => $"{v:0.0}",
+        };
 
         void BuildLook(VisualElement body, VehicleDefinition def, StringBuilder t)
         {
             var state = _progress.Car(def.id);
-            Ui.H2(body, $"Paint · {_progress.Tuning.paintPrice} per new colour");
+            Ui.Text(body, $"PAINT · {_progress.Tuning.paintPrice} SPARKS PER NEW COLOUR", "jm-kicker");
             var paints = Ui.Row(body, "jm-wrap");
             Ui.On(Ui.Button(paints, "Factory", () => Paint("")), state.paint == "");
             foreach (var colour in _progress.Tuning.palette)
@@ -261,9 +365,9 @@ namespace JapanMap.Gameplay.Menu
                 Ui.On(sw, state.paint == colour);
                 sw.SetEnabled(mine || _progress.Wallet.Balance >= _progress.Tuning.paintPrice);
             }
-            LookRow(body, "Rims", false, state.wheels, state.wheelSets, _progress.Tuning.wheelPrice);
-            LookRow(body, "Body kit", true, state.aero, state.aeroKits, _progress.Tuning.kitPrice);
-            Ui.Small(body, _garage.Status);
+            LookRow(body, "RIMS", false, state.wheels, state.wheelSets, _progress.Tuning.wheelPrice);
+            LookRow(body, "BODY KIT", true, state.aero, state.aeroKits, _progress.Tuning.kitPrice);
+            if (_garage.Status != "") Ui.Text(body, _garage.Status, "jm-body", "jm-amber");
             t.AppendLine($"paint {state.paint}");
         }
 
@@ -276,17 +380,22 @@ namespace JapanMap.Gameplay.Menu
 
         void LookRow(VisualElement body, string title, bool kit, int fitted, List<int> owned, int price)
         {
-            Ui.H2(body, $"{title} · {price} each");
-            var row = Ui.Row(body, "jm-wrap");
+            Ui.Text(body, $"{title} · {price} SPARKS EACH", "jm-kicker").style.marginTop = 18;
+            var row = Ui.Row(body, "jm-seg");
             for (var o = 0; o <= 2; o++)
             {
                 var option = o;
                 var mine = o == 0 || owned.Contains(o);
-                var b = Ui.Button(row, o == 0 ? "Factory" : $"Option {o}{(mine ? "" : $" · {price}")}", () => { _garage.Look(kit, option); _garage.ApplySoon(); Menu.Rebuild(); });
-                Ui.On(b, fitted == o);
+                var label = (kit ? KitNames : RimNames)[o].ToUpperInvariant() + (fitted == o ? " ✓" : mine ? "" : $" · {price:N0}");
+                var b = Ui.Button(row, label, () => { _garage.Look(kit, option); _garage.ApplySoon(); Menu.Rebuild(); }, "jm-seg__item");
+                Ui.On(b, fitted == o, "jm-seg__item--on");
                 b.SetEnabled(fitted != o && (mine || _progress.Wallet.Balance >= price));
             }
         }
+
+        // The car lab's wheel and aero options 1 and 2, named for what they are (not "Option 1").
+        static readonly string[] RimNames = { "Factory", "Street rims", "Sport rims" };
+        static readonly string[] KitNames = { "Factory", "Street kit", "Aero kit" };
 
         static string Tier(int t) => t == 0 ? "Stock" : t == 1 ? "Street" : "Sport";
         static string SetupName(CarSetupMode m) => m == CarSetupMode.SafeReturn ? "Safe Return" : m.ToString();
