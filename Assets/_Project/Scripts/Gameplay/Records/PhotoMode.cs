@@ -16,8 +16,8 @@ namespace JapanMap.Gameplay.Records
 {
     /// <summary>
     /// Photo mode (P or the Photo tab), ASTRA §11: the game pauses, a free camera starts at the current view inside a
-    /// 100 m / 40 m leash around the player. Desktop: WASD, Q/E down/up, right-drag look, wheel = speed, Enter =
-    /// capture, Esc = exit. Touch: a movement pad on the left, look by dragging on the right, large Up/Down buttons,
+    /// 100 m / 40 m leash around the player. Desktop: WASD, Space/E up, C/Q down, Shift fast, drag with any mouse
+    /// button to look (a trackpad has no comfortable right-drag), wheel = zoom, Enter = capture, Esc = exit. Touch: a movement pad on the left, look by dragging on the right, large Up/Down buttons,
     /// two-finger pinch for the framing (field of view), Capture / Hide UI / Reset camera / Exit in a bottom strip.
     /// A capture renders a PNG without HUD at 2560 px wide (phone 1920; desktop may choose 3840), same framing, and
     /// shows the result: Download PNG (a deliberate tap in the browser), Retake, Return to game. If the large target
@@ -37,11 +37,13 @@ namespace JapanMap.Gameplay.Records
         [SerializeField] Vector2Int captureWidth = new(2560, 1920);
         [Tooltip("The explicit large option on desktop, px (ASTRA: 3840).")]
         [SerializeField] int captureWidthLarge = 3840;
-        [Tooltip("Camera speed range, m/s (mouse wheel), and the start value.")]
+        [Tooltip("Camera speed: slowest, fastest (Shift), start value, m/s.")]
         [SerializeField] Vector3 speed = new(2f, 40f, 8f);
         [SerializeField] float lookDegreesPerPixel = 0.15f;
-        [Tooltip("Field of view range for the pinch, degrees.")]
-        [SerializeField] Vector2 fovRange = new(20f, 80f);
+        [Tooltip("Field of view range for the wheel and the pinch, degrees (legacy: 18–90).")]
+        [SerializeField] Vector2 fovRange = new(18f, 90f);
+        [Tooltip("Field of view change per wheel notch, as a factor.")]
+        [SerializeField] float zoomPerNotch = 1.08f;
 
         UIDocument _doc;
         VisualElement _root, _strip, _pad, _knob, _lookArea, _result, _resultImage, _touchLayer;
@@ -140,11 +142,17 @@ namespace JapanMap.Gameplay.Records
                     if (_pinchStart > 1f && d > 1f) _fov = Mathf.Clamp(_fovAtPinch * _pinchStart / d, fovRange.x, fovRange.y);
                     return;
                 }
-                // Mouse look stays on the right button (desktop); touch looks with any finger here.
-                if (e.pointerType == "mouse") return;
+                // Any pointer drags the view: mouse (any button), pen, finger.
                 var delta = (Vector2)e.position - last;
                 _yaw += delta.x * lookDegreesPerPixel * 1.4f;
                 _pitch = Mathf.Clamp(_pitch + delta.y * lookDegreesPerPixel * 1.4f, -85f, 85f);
+            });
+            // Wheel up = closer (narrower view), like every photo mode (UI Toolkit: delta.y < 0 is wheel up).
+            _lookArea.RegisterCallback<WheelEvent>(e =>
+            {
+                if (!IsOpen || ShowingResult || Mathf.Abs(e.delta.y) < 0.01f) return;
+                _fov = Mathf.Clamp(_fov * (e.delta.y < 0f ? 1f / zoomPerNotch : zoomPerNotch), fovRange.x, fovRange.y);
+                e.StopPropagation();
             });
             void Up(int id) { _look.Remove(id); if (_lookArea.HasPointerCapture(id)) _lookArea.ReleasePointer(id); }
             _lookArea.RegisterCallback<PointerUpEvent>(e => Up(e.pointerId));
@@ -194,7 +202,7 @@ namespace JapanMap.Gameplay.Records
             Ui.Button(_strip, UiPanel.IsPhone ? "Reset" : "Reset camera", ResetCamera);
             Ui.Button(_strip, "Exit", Close);
 
-            _hint = new Label(UiPanel.IsPhone ? "Photo · left pad moves · drag to look · pinch to frame" : "Photo  ·  WASD move · Q/E down/up · right-drag look · wheel speed · Enter capture · Esc exit");
+            _hint = new Label(UiPanel.IsPhone ? "Photo · left pad moves · drag to look · pinch to frame" : "Photo  ·  drag to look · WASD move · Space/C up/down · Shift fast · wheel zoom · Enter capture · Esc exit");
             _hint.AddToClassList("jm-small");
             _hint.AddToClassList("jm-plate");
             _hint.style.position = Position.Absolute;
@@ -350,19 +358,7 @@ namespace JapanMap.Gameplay.Records
         {
             if (!IsOpen || ShowingResult) return;
             var kb = Keyboard.current;
-            var mouse = Mouse.current;
             var dt = Time.unscaledDeltaTime;
-            if (mouse != null)
-            {
-                if (mouse.rightButton.isPressed)
-                {
-                    var d = mouse.delta.ReadValue();
-                    _yaw += d.x * lookDegreesPerPixel;
-                    _pitch = Mathf.Clamp(_pitch - d.y * lookDegreesPerPixel, -85f, 85f);
-                }
-                var wheel = mouse.scroll.ReadValue().y;
-                if (Mathf.Abs(wheel) > 0.01f) _speed = Mathf.Clamp(_speed * (wheel > 0f ? 1.2f : 1f / 1.2f), speed.x, speed.y);
-            }
             var move = new Vector3(_padAxes.x, _vertical, _padAxes.y);
             if (kb != null)
             {
@@ -370,9 +366,11 @@ namespace JapanMap.Gameplay.Records
                 if (kb.sKey.isPressed) move.z -= 1f;
                 if (kb.dKey.isPressed) move.x += 1f;
                 if (kb.aKey.isPressed) move.x -= 1f;
-                if (kb.eKey.isPressed) move.y += 1f;
-                if (kb.qKey.isPressed) move.y -= 1f;
+                if (kb.eKey.isPressed || kb.spaceKey.isPressed) move.y += 1f;
+                if (kb.qKey.isPressed || kb.cKey.isPressed) move.y -= 1f;
             }
+            var fast = kb != null && kb.shiftKey.isPressed;
+            _speed = fast ? speed.y * 0.5f : speed.z;
             Step(move, dt);
             var cam = Camera.main;
             if (cam != null) cam.fieldOfView = _fov;

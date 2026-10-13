@@ -84,6 +84,55 @@ namespace JapanMap.Tests.Content
         IEnumerator Click(VisualElement e) => ClickAt(e, e.worldBound.center);
 
         [UnityTest, Timeout(90000)]
+        public IEnumerator PhotoMode_LeftDragLooks_WheelZooms()
+        {
+            // The owner's trackpad has no comfortable right-drag: a plain left drag must turn the camera (P11 polish).
+            SceneManager.LoadScene(Bootstrapper.BootSceneName);
+            yield return null;
+            for (var w = 0f; SceneManager.GetActiveScene().name != "Game" && w < 10f; w += Time.unscaledDeltaTime) yield return null;
+            for (var f = 0; f < 10; f++) yield return null;
+            var photo = Object.FindAnyObjectByType<PhotoMode>();
+            yield return Tap(Key.P);
+            Assert.IsTrue(photo.IsOpen, "P opens photo mode");
+            // The overlay lays out in the frames after opening (a hand is never faster than this).
+            for (var f = 0; f < 5; f++) yield return null;
+            var cam = Camera.main;
+            var yaw0 = cam.transform.eulerAngles.y;
+            var fov0 = cam.fieldOfView;
+            // Left button down in the middle of the screen, then move 300 px to the right in steps.
+            _mouse.MakeCurrent();
+            var at = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            InputSystem.QueueStateEvent(_mouse, new MouseState { position = at });
+            InputSystem.Update();
+            yield return null;
+            for (var i = 0; i <= 10; i++)
+            {
+                var p = at + new Vector2(30f * i, 0f);
+                InputSystem.QueueStateEvent(_mouse, new MouseState { position = p, delta = new Vector2(i == 0 ? 0f : 30f, 0f) }.WithButton(UnityEngine.InputSystem.LowLevel.MouseButton.Left));
+                InputSystem.Update();
+                yield return null;
+            }
+            InputSystem.QueueStateEvent(_mouse, new MouseState { position = at + new Vector2(300f, 0f) });
+            InputSystem.Update();
+            yield return null;
+            var turned = Mathf.Abs(Mathf.DeltaAngle(yaw0, cam.transform.eulerAngles.y));
+            Assert.Greater(turned, 10f, $"a left drag turns the photo camera (turned {turned:0.0}°)");
+            // Wheel up: closer (narrower field of view).
+            for (var i = 0; i < 3; i++)
+            {
+                InputSystem.QueueStateEvent(_mouse, new MouseState { position = at, scroll = new Vector2(0f, 120f) });
+                InputSystem.Update();
+                yield return null;
+                InputSystem.QueueStateEvent(_mouse, new MouseState { position = at });
+                InputSystem.Update();
+                yield return null;
+            }
+            Assert.Less(cam.fieldOfView, fov0 - 2f, $"wheel up zooms in ({fov0:0} → {cam.fieldOfView:0})");
+            yield return Tap(Key.P);
+            Assert.IsFalse(photo.IsOpen);
+        }
+
+        [UnityTest, Timeout(90000)]
         public IEnumerator Map_TravelByClick_LockedStaysLocked_ClueCircleHoldsTheCard()
         {
             SceneManager.LoadScene(Bootstrapper.BootSceneName);
