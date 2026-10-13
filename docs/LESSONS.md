@@ -61,6 +61,10 @@
 | 2026-10-08 | 3 | MCP fehlte (Editor nach Sitzungsstart); Prototyp-Prüfstände liefen nicht (kein `three`) | HTTP-Helfer `Tools/mcp-call.mjs` (Skill `unity-verify`); Rezept im Skill `legacy-port`, Ausgaben in `SourceData/bench/` | Skill |
 | 2026-10-13 | 11 | Spielläufe/Tests der Agenten machten im Editor Ton — störte den Menschen | `Editor/EditorSilence.cs`: Editor immer stumm (Aufnahme mit `record` geht weiter), Menü „JapanMap/Sound in Editor“ schaltet zurück | Werkzeug |
 | 2026-10-13 | 11 | Editor-Neustart: neuer Editor ohne MCP (Auto-Start aus; aus der Sandbox gestartet ohne Netz) | `editor-restart.mjs` setzt `MCPForUnity.AutoStartOnLoad`; Neustart nur außerhalb der Sandbox | Werkzeug |
+| 2026-10-13 | 11 | Bloom fehlte in allen Kamera-Renders (Fotos, Karten, Agenten-Bilder): 8-Bit-Ziel | `Core.CameraShot` (HDR + Gamma-Blit) überall; `LookTests.CameraShot_KeepsTheBloom` | Test |
+| 2026-10-13 | 11 | Neuimport verlor die gebackenen Probes (Bake lief im Hold, Szenen zu) | Bake nach dem Hold in `MapImport.ImportAll`; `LookTests.EveryPlace_HasBakedReflectionProbes` | Test |
+| 2026-10-13 | 11 | Menü-Einblenden mit Verschiebung ließ einen Klick direkt nach dem Öffnen daneben gehen | nur Deckkraft-Übergänge für Seiten, die man sofort anklickt (MapTests deckt es ab) | Test |
+| 2026-10-13 | 11 | Neuer Datenkanal (UV3, float) machte den Start-Download 1,3 MB größer | `MeshAssets.Compact` (16-Bit-Normalen/Kanäle), Größe nach jeder Mesh-Änderung messen (`build-web`) | Werkzeug |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

@@ -73,3 +73,23 @@ Start ≤ 20 MB (Hachi auf ≤ 40 k Eckpunkte) · neue Store-Videos aus dem Intr
 - Berge grün/bewaldet statt rotbraun (Lage bleibt, nur Oberfläche).
 - Tagesbonus/Tagesaufgabe und Preise (erster Kauf) — Wirtschaft ändert sich.
 - Schriftarten (Vorschlag oben, alle kostenlos/OFL).
+
+## 5. Umgesetzt (2026-10-13, je Punkt gemessen/Bild angesehen)
+
+| Block | Erledigt | Beleg |
+|---|---|---|
+| A | Fotomodus: Ziehen mit jeder Maustaste, Rad = Zoom, Space/C, Shift | `MapTests.PhotoMode_LeftDragLooks_WheelZooms` |
+| A | Tacho im Rahmen; Weltmarken „TUNE & CARS“ + Event-Starts; Garage-Kachel; Intro endet an der Open Bay; HappyTime bei Siegen | `MenuTests.Tuning_IsFound_…`, Bilder `Captures/a2-*`, `a3-*` |
+| B | Nasse Straße (Pfützen, Markierungen, Bankett-Ton) als eigener Shader | `LookTests`, `Captures/b1-wet` |
+| B | Planarspiegel Tokyo (Hoch ½, Mittel ⅓, Niedrig aus), 31 Reflection Probes | `Captures/b2-planar`, `b3-probes` |
+| B | Bloom fehlte in Fotos/Aufnahmen (8-Bit-Ziel) → `CameraShot`; Neon 5 / Läden 3 | `LookTests.CameraShot_KeepsTheBloom` |
+| B | Reisfelder per Marching Squares; Moos-Fels statt roter Schlucht; Himmel mit Wolken, kein Horizontstreifen | `Captures/b5-paddy`, `b6-rock`, `b7-sky` |
+| B | Kies-Bankett an Straßenrändern; SSAO 0,9; Laternen-Lichtflecken + nächste Punktlichter | `Captures/b8-edge`, `b10-lamps` |
+| B | Start-Download: Straßen 64→44 B/Eckpunkt, Reisfeld verschweißt | Build: Start 19,15 MB, Hoch 133 fps, Niedrig 383 fps |
+| C | Schriften Saira Condensed + Barlow (OFL); Pausenmenü mit Kamerafahrt, Verlauf, Einblenden, Q/E | `Captures/c1-fonts`, `c2-menu` |
+| C | HUD: Zahlen-Schrift, Pop-Animationen, Rekord-Meldungen erst ab sinnvollen Werten | `Captures/c3-hud` |
+| C | Ergebnis mit Medaille, großer Zeit, hochzählenden Sparks | `Captures/c4-result`, `RaceAcceptanceTests` |
+| C/D | Garage: Leistungsbalken mit Vorschau, Teile-Karten, Setups mit Erklärung, Live-Änderung am Auto | `Captures/c5-garage`, `GarageTests` |
+| E | Tagesbonus mit Serie + tägliche Herausforderung | `DailyTests`, `Captures/e1-daily` |
+| E | KI: Gummiband + mutigere Gegner | `RaceAcceptanceTests` 2× grün |
+| C | Ladebildschirm: Spielschrift, Regen, Tipps | Build |
