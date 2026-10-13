@@ -59,6 +59,7 @@
 | 2026-10-08 | 3 | Rigidbody vor Collider (keine Trägheit); Landung aus 6 m/Kanten-Bremse/vergessene Luft-Lage; ein Fehler in der Ringfahrt war nicht auffindbar | `ResetInertiaTensor` nach dem Collider, `ArcadeTuning`-Regler + Landungs-/Ringtests, Abnahmefahrt schreibt Spur + harte Kontakte | Test/Werkzeug |
 | 2026-10-08 | 3 | Karten-Abnahme prüfte nur Median/p95 (Gelände bis 4 m durch Straßen), Absenken ging still verloren; Straßenenden lagen als Rampe auf anderen Straßen | `TerrainCarve` in `TerrainImporter.Import`, Test `Terrain_NeverPokesThroughARoad`; `RoadImporter.OverlapRun` kürzt solche Enden | Test |
 | 2026-10-08 | 3 | MCP fehlte (Editor nach Sitzungsstart); Prototyp-Prüfstände liefen nicht (kein `three`) | HTTP-Helfer `Tools/mcp-call.mjs` (Skill `unity-verify`); Rezept im Skill `legacy-port`, Ausgaben in `SourceData/bench/` | Skill |
+| 2026-10-13 | 11 | Spielläufe/Tests der Agenten machten im Editor Ton — störte den Menschen | `Editor/EditorSilence.cs`: Editor immer stumm (Aufnahme mit `record` geht weiter), Menü „JapanMap/Sound in Editor“ schaltet zurück | Werkzeug |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**
