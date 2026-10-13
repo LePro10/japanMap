@@ -58,10 +58,12 @@ namespace JapanMap.Gameplay.Hud
                 var size = (float)l.userData * r.height;
                 l.style.fontSize = Mathf.Max(10f, size);
             }
-            // Gear in the arc's centre, speed below it, unit under the speed.
-            _gear.style.top = r.height * 0.22f;
-            _speed.style.top = r.height * 0.54f;
-            _unit.style.top = r.height * 0.8f;
+            // Gear in the arc's centre, speed below it, unit under the speed — placed from the fitted centre.
+            Fit(r, out var c, out var rad);
+            _gear.style.top = c.y - rad * 0.62f;
+            _speed.style.top = c.y - rad * 0.02f;
+            _unit.style.top = c.y + rad * 0.62f;
+            foreach (var l in new[] { _gear, _speed, _unit }) l.style.fontSize = Mathf.Max(11f, (float)l.userData * rad * 2f);
         }
 
         /// <summary>One frame of the car: rpm, redline and limiter (rpm), gear label, speed text, nitro 0…1.</summary>
@@ -94,8 +96,7 @@ namespace JapanMap.Gameplay.Hud
             var r = contentRect;
             if (r.width < 4f) return;
             var p = ctx.painter2D;
-            var c = new Vector2(r.width * 0.5f, r.height * 0.56f);
-            var rad = Mathf.Min(r.width * 0.5f - 10f, r.height * 0.5f);
+            Fit(r, out var c, out var rad);
             var w = Mathf.Max(4f, rad * 0.13f);
 
             // Plate behind the numbers: the city is full of bright neon.
@@ -117,6 +118,15 @@ namespace JapanMap.Gameplay.Hud
             var nw = w * 0.6f;
             Arc(p, c, nr, 35f, 145f, nw, NitroTrack);
             if (_nitro > 0.005f) Arc(p, c, nr, 145f - 110f * _nitro, 145f, nw, _boosting ? Color.white : Nitro);
+        }
+
+        /// <summary>Centre and arc radius so the plate (rad + w) and the nitro arc below (rad + 1.9 w) stay inside the
+        /// box — the old fixed centre at 56 % drew 20–30 px past the bottom edge.</summary>
+        static void Fit(Rect r, out Vector2 c, out float rad)
+        {
+            const float Below = 1.247f, Above = 1.13f; // outer extent below / above the centre, in arc radii (w = 0.13 rad)
+            rad = Mathf.Min((r.width * 0.5f - 2f) / Below, (r.height - 2f) / (Below + Above));
+            c = new Vector2(r.width * 0.5f, 1f + Above * rad);
         }
 
         static void Arc(Painter2D p, Vector2 c, float r, float from, float to, float width, Color color)
