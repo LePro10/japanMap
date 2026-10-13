@@ -183,10 +183,13 @@ namespace JapanMap.Gameplay.Intro
                         Pay(settings.rewardHome, "Welcome home");
                         _ui.Toast($"Welcome to Sakura Commons  +{settings.rewardHome}", gold: true);
                         Finish(skipped: false);
+                        if (_garage != null) hud.Flash("Spend your Sparks: the Open Bay tunes your car  ·  E");
                     }
                     break;
             }
         }
+
+        Garage.GarageSystem _garage;
 
         /// <summary>From the start: the first visit (or a test).</summary>
         public void Begin()
@@ -206,6 +209,10 @@ namespace JapanMap.Gameplay.Intro
             if (traffic != null) traffic.KeepOut = OnLine;
             if (map != null) map.Waypoint = null;
             _home = travel != null && travel.Points != null && travel.Points.points.Length > 0 ? travel.Points.points[0].at : new Vector2(546.7f, -502.3f);
+            // Home is the Open Bay inside the Commons: the first Sparks are meant to be spent there (legacy coached
+            // the bay after the intro; players never found tuning without it).
+            _garage = Object.FindAnyObjectByType<Garage.GarageSystem>();
+            if (_garage != null) _home = _garage.Entry;
             Earned = 0;
             Rolled = Skipped = _boosted = _nitroAck = false;
             _tabHeld = 0f;

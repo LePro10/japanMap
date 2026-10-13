@@ -123,6 +123,18 @@ namespace JapanMap.Gameplay.Races
             BuildMarkers();
         }
 
+        void Start()
+        {
+            // Labels over the beacons (the pins live in the HUD, which may wake after us).
+            if (WorldPins.Instance == null) return;
+            foreach (var (at, i) in _markers)
+            {
+                var e = set.events[i];
+                var color = e.kind == RaceKind.Drift ? new Color(1f, 0.45f, 0.7f) : e.kind == RaceKind.TimeTrial ? new Color(1f, 0.8f, 0.3f) : new Color(0.3f, 0.85f, 1f);
+                _pins.Add(WorldPins.Instance.Add(this, at + Vector3.up * 4f, e.title.ToUpperInvariant(), KindName(e.kind), color));
+            }
+        }
+
         void OnEnable()
         {
             _use.Enable();
@@ -198,6 +210,10 @@ namespace JapanMap.Gameplay.Races
             return go;
         }
 
+        readonly List<object> _pins = new();
+
+        static string KindName(RaceKind k) => k == RaceKind.Drift ? "Drift event" : k == RaceKind.TimeTrial ? "Time trial" : "Race";
+
         static Vector3 Right(Vector3 tangent) => new(tangent.z, 0f, -tangent.x);
 
         // ── Join and card ───────────────────────────────────────────────────
@@ -237,6 +253,7 @@ namespace JapanMap.Gameplay.Races
                 var at = _markers[i].at;
                 var on = Current != State.Countdown && Current != State.Running && (new Vector2(at.x - p.x, at.z - p.z)).sqrMagnitude < max;
                 if (_beacons[i].activeSelf != on) _beacons[i].SetActive(on);
+                if (i < _pins.Count) WorldPins.Instance?.SetVisible(_pins[i], on);
             }
         }
 

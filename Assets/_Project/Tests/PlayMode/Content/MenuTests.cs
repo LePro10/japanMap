@@ -99,6 +99,27 @@ namespace JapanMap.Tests.Content
         }
 
         [UnityTest, Timeout(90000)]
+        public IEnumerator Tuning_IsFound_PlayTileOpensTuning_AndAPinMarksTheOpenBay()
+        {
+            // Owner (2026-10-13): "Tuning gibt es noch gar nicht" — it existed, nobody found it.
+            yield return BootInCar(this);
+            var menu = Object.FindAnyObjectByType<GameMenu>();
+            var pins = Object.FindAnyObjectByType<JapanMap.Gameplay.Hud.WorldPins>();
+            Assert.NotNull(pins, "world pins in the HUD");
+            for (var f = 0; f < 5; f++) yield return null;
+            CollectionAssert.Contains(pins.Shown().ToArray(), "TUNE & CARS", "the Open Bay is marked from the Commons");
+            yield return Tap(Key.Escape);
+            for (var f = 0; f < 5; f++) yield return null;
+            var tune = menu.Root.Query<Button>().ToList().FirstOrDefault(b => b.text == "Tune now");
+            Assert.NotNull(tune, "Play shows a garage tile with Tune now");
+            yield return Click(tune);
+            Assert.AreEqual("Cars", menu.Current.Title);
+            StringAssert.Contains("Engine", menu.Text, "the tuning page lists the parts");
+            yield return Tap(Key.Escape);
+            yield return Tap(Key.Escape);
+        }
+
+        [UnityTest, Timeout(90000)]
         public IEnumerator Escape_PausesEverything_TabsByClick_EscapeResumesWhereItWas()
         {
             yield return BootInCar(this);

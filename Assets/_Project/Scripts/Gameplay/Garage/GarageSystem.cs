@@ -62,6 +62,8 @@ namespace JapanMap.Gameplay.Garage
         public float LoanWarnSeconds { get; set; } = 30f;
         public float LoanStopSeconds { get; set; } = 20f;
         public CarsScreen Screen => _screen;
+        /// <summary>Middle of the entry zone in front of the bay (x, z).</summary>
+        public Vector2 Entry => settings.entry;
         public event Action<bool> OpenChanged;
 
         public void Configure(GarageSettings s, PlayerProgress p, PlayerModeController pm, PlayerCarSpawner sp, GameplayHud h)
@@ -87,9 +89,14 @@ namespace JapanMap.Gameplay.Garage
             _screen = new CarsScreen(this, progress);
         }
 
+        object _pin;
+
         void Start()
         {
             if (GameMenu.Instance != null) GameMenu.Instance.OpenChanged += OnMenu;
+            // Seen from across the court: players follow what they see, not the map (legacy Open Bay marker).
+            if (WorldPins.Instance != null)
+                _pin = WorldPins.Instance.Add(this, new Vector3(settings.entry.x, settings.exit.y, settings.entry.y), "TUNE & CARS", "Open Bay", new Color(0.95f, 0.77f, 0.42f));
         }
 
         void OnEnable()
@@ -125,6 +132,7 @@ namespace JapanMap.Gameplay.Garage
         {
             if (TestDriving) TickBorrowed();
             if (_apply && !IsOpen && (GameMenu.Instance == null || !GameMenu.Instance.IsOpen)) TryApply();
+            if (_pin != null) WorldPins.Instance.SetVisible(_pin, !IsOpen && !TestDriving);
             if (IsOpen) return;
             if (hud != null) hud.SetPrompt(this, InReach() ? "E  Garage · cars and tuning" : "");
         }

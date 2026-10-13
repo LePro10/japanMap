@@ -51,6 +51,13 @@ namespace JapanMap.Gameplay.Menu
 
         public override void Closed() => _page = Page.List;
 
+        /// <summary>Straight to the tuning page of the selected car (Play tile "Tune your car").</summary>
+        public void ShowTune()
+        {
+            _page = Page.Tune;
+            GameMenu.Instance?.Show(this);
+        }
+
         public override void Build(VisualElement body)
         {
             var t = new StringBuilder();

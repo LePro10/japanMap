@@ -100,6 +100,20 @@ namespace JapanMap.Gameplay.Menu
                 t.AppendLine($"goal {goal.displayName}");
             }
 
+            // Third tile: the garage — tuning was there but nobody found it (owner, 2026-10-13).
+            if (_garage != null && car != null && !_garage.TestDriving)
+            {
+                var g = Ui.Box(tiles, "jm-card");
+                Ui.Text(g, "GARAGE", "jm-kicker");
+                Ui.Text(g, $"Tune your {car.displayName}", "jm-card-title");
+                var fitted = 0;
+                var state = _progress.Car(car.id);
+                foreach (var c in Vehicles.CarTune.All) if (state.tune[c] > 0) fitted++;
+                Ui.Small(g, fitted == 0 ? "Engine, brakes, suspension, tyres · paint, rims, kits" : $"{fitted} of 4 parts upgraded · paint, rims, kits");
+                Ui.Button(g, "Tune now", () => _garage.Screen.ShowTune(), "jm-btn--primary");
+                t.AppendLine("garage tile");
+            }
+
             var foot = Ui.Box(body, "jm-foot");
             Ui.Button(foot, "Go to Sakura Commons", () => { Menu.Close(); _travel.ToCommons(); }, "jm-btn--ghost");
             if (!UiPanel.IsPhone) Ui.Small(foot, "Esc resumes exactly where you are.");

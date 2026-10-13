@@ -17537,6 +17537,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1367629326}
   - component: {fileID: 1367629325}
+  - component: {fileID: 1367629327}
   m_Layer: 0
   m_Name: Hud
   m_TagString: Untagged
@@ -17581,6 +17582,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1646343668}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1367629327
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1367629324}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfd34f815eb744184bc524b0e4c68ec9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Hud.WorldPins
+  hud: {fileID: 1367629325}
+  range: {x: 7, y: 260}
+  solidUntil: 140
+  lift: 4.5
 --- !u!1001 &1370699010
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -22947,6 +22964,7 @@ MonoBehaviour:
   speed: {x: 2, y: 40, z: 8}
   lookDegreesPerPixel: 0.15
   fovRange: {x: 18, y: 90}
+  zoomPerNotch: 1.08
 --- !u!4 &1715855290
 Transform:
   m_ObjectHideFlags: 0

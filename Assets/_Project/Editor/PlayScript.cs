@@ -666,6 +666,8 @@ namespace JapanMap.Editor
         {
             var p = Object.FindAnyObjectByType<PlayerModeController>();
             if (p == null) { Log.AppendLine("  probe: no PlayerModeController"); return; }
+            var pins = Object.FindAnyObjectByType<JapanMap.Gameplay.Hud.WorldPins>();
+            Log.AppendLine(pins == null ? "  pins: none" : $"  pins shown=[{string.Join(", ", pins.Shown())}] {pins.Debug}");
             var w = p.Walker;
             var car = p.Car;
             Log.AppendLine(string.Format(CultureInfo.InvariantCulture,

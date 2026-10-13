@@ -283,3 +283,19 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-phone .jm-intro__name { font-size: 40px; letter-spacing: 8px; }
 .jm-phone .jm-intro__label { font-size: 20px; }
 .jm-phone .jm-intro__toast { font-size: 24px; }
+
+/* World pins (WorldPins.cs): label over a place, stem and dot on the spot. */
+.jm-pin { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
+.jm-pin__inner { position: absolute; width: 320px; left: -160px; bottom: -5px; align-items: center; }
+.jm-pin__plate {
+    background-color: rgba(4, 12, 16, 0.9);
+    border-left-width: 3px;
+    border-radius: 3px;
+    padding: 6px 12px 7px 10px;
+    align-items: flex-start;
+}
+.jm-pin__title { font-size: 15px; -unity-font-style: bold; letter-spacing: 2px; color: var(--paper); }
+.jm-pin__sub { font-size: 12px; color: var(--paper-dim); margin-right: 8px; }
+.jm-pin__dist { font-size: 12px; color: var(--amber); -unity-font-style: bold; }
+.jm-pin__stem { width: 2px; height: 26px; opacity: 0.7; }
+.jm-pin__dot { width: 10px; height: 10px; border-radius: 5px; }
