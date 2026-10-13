@@ -45,6 +45,10 @@ namespace JapanMap.Editor.Map
         public float paddyLevelTolerance = 0.08f;
         [Tooltip("Paddy water is split into square chunks of this size so whole chunks are culled.")]
         public float paddyChunk = 256f;
+        [Tooltip("Paddy shore: water stops this far short of the dam's middle, m (legacy bankInset 0.25).")]
+        public float paddyBankInset = 0.25f;
+        [Tooltip("Paddy shore where the dry side lies lower (a terrace edge), m (legacy dropInset 0.55).")]
+        public float paddyDropInset = 0.55f;
         [Tooltip("Legacy water.config RIVER: surfaceRise, edgeSink, minDepth, maxDepth, widthFactor.")]
         public float riverSurfaceRise = 0.9f;
         public float riverEdgeSink = 0.2f;
@@ -177,6 +181,9 @@ namespace JapanMap.Editor.Map
             public float tileMeters = 11f;
             [Tooltip("Multiplier on the texture colour (TerrainLayer diffuseRemapMax). Legacy GROUND_TINT pulled grass towards #5a6b35.")]
             public Color tint = Color.white;
+            [Tooltip("Colour added under the texture (TerrainLayer diffuseRemapMin): pulls a texture towards a hue, e.g. the " +
+                     "red sandstone towards wet, mossy Japanese rock.")]
+            public Color floor = Color.black;
         }
 
         public static MapImportSettings LoadOrCreate()

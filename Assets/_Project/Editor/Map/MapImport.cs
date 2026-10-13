@@ -28,6 +28,9 @@ namespace JapanMap.Editor.Map
                 Content.PlaceScenesInEditor.Hold = false;
                 Content.PlaceScenesInEditor.OpenAll();
             }
+            // The places' scenes are new: their reflection probes are baked again from the finished world (after the
+            // hold, so the place scenes are open — inside it the bake found none and the probes were lost).
+            Debug.Log(Look.ReflectionProbeBaker.BakeAll());
         }
 
         static void ImportAllHeld(MapImportSettings s)
@@ -42,8 +45,6 @@ namespace JapanMap.Editor.Map
             Debug.Log(Life.PedestrianNav.Bake(save: false));
             // Last: the places (now back in Game.unity) move into their streamed scenes again (D36).
             Debug.Log(Content.StreamingSetup.Apply());
-            // The places' scenes are new: their reflection probes are baked again from the finished world.
-            Debug.Log(Look.ReflectionProbeBaker.BakeAll());
         }
 
         /// <summary>

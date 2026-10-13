@@ -119,13 +119,13 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1001 &682362865
+--- !u!1001 &267697189
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 729760399}
+    m_TransformParent: {fileID: 2034623839}
     m_Modifications:
     - target: {fileID: 5236436196969678381, guid: 10e32cf1468694ae4b78e17fa4c58ac8, type: 3}
       propertyPath: m_Name
@@ -176,12 +176,12 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 10e32cf1468694ae4b78e17fa4c58ac8, type: 3}
---- !u!4 &682362866 stripped
+--- !u!4 &267697190 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6071366100537453358, guid: 10e32cf1468694ae4b78e17fa4c58ac8, type: 3}
-  m_PrefabInstance: {fileID: 682362865}
+  m_PrefabInstance: {fileID: 267697189}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &729760398
+--- !u!1 &2034623838
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -189,7 +189,7 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 729760399}
+  - component: {fileID: 2034623839}
   m_Layer: 0
   m_Name: Props_hokora
   m_TagString: Untagged
@@ -197,24 +197,24 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &729760399
+--- !u!4 &2034623839
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 729760398}
+  m_GameObject: {fileID: 2034623838}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 682362866}
+  - {fileID: 267697190}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 729760399}
+  - {fileID: 2034623839}

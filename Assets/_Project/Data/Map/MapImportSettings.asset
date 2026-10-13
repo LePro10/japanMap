@@ -20,25 +20,31 @@ MonoBehaviour:
   checkpointTolerance: 0.1
   splatLayers:
   - name: Rock
-    texture: rock_face_03
+    texture: rock_moss
     tileMeters: 17.6
-    tint: {r: 0.85, g: 0.85, b: 0.9, a: 1}
+    tint: {r: 0.9, g: 0.92, b: 0.9, a: 1}
+    floor: {r: 0, g: 0, b: 0, a: 1}
   - name: Grass
     texture: aerial_grass_rock
     tileMeters: 11
     tint: {r: 0.78, g: 1, b: 0.62, a: 1}
+    floor: {r: 0, g: 0, b: 0, a: 1}
   - name: Sand
     texture: coast_sand_01
     tileMeters: 8.25
     tint: {r: 1, g: 1, b: 1, a: 1}
+    floor: {r: 0, g: 0, b: 0, a: 1}
   - name: Paddy
     texture: brown_mud_02
     tileMeters: 12.1
     tint: {r: 1, g: 1, b: 1, a: 1}
+    floor: {r: 0, g: 0, b: 0, a: 1}
   seaExtent: 8000
   paddyDepth: 0.1
   paddyLevelTolerance: 0.08
   paddyChunk: 256
+  paddyBankInset: 0.25
+  paddyDropInset: 0.55
   riverSurfaceRise: 0.9
   riverEdgeSink: 0.2
   riverMinDepth: 0.35
@@ -46,47 +52,47 @@ MonoBehaviour:
   riverWidthFactor: 0.78
   roadTypes:
   - type: highway
-    minVerticalRadius: 300
     width: 9
     shoulder: 1.6
     textureLength: 8
     gravel: 0
     markings: 1
+    minVerticalRadius: 300
   - type: mountain
-    minVerticalRadius: 150
     width: 6.5
     shoulder: 1
     textureLength: 7
     gravel: 0
     markings: 1
+    minVerticalRadius: 150
   - type: village
-    minVerticalRadius: 100
     width: 5
     shoulder: 0.8
     textureLength: 6
     gravel: 0
     markings: 2
+    minVerticalRadius: 100
   - type: city
-    minVerticalRadius: 80
     width: 8
     shoulder: 1.2
     textureLength: 8
     gravel: 0
     markings: 1
-  - type: dirt
     minVerticalRadius: 80
+  - type: dirt
     width: 4
     shoulder: 0.6
     textureLength: 5
     gravel: 0
     markings: 0
+    minVerticalRadius: 80
   - type: pfad
-    minVerticalRadius: 0
     width: 1.8
     shoulder: 0
     textureLength: 3
     gravel: 1
     markings: 0
+    minVerticalRadius: 0
   roadSurfaceOffset: 0.06
   roadShoulderDrop: 0.22
   roadBankGain: 20

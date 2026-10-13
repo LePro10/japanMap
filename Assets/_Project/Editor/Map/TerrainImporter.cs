@@ -18,6 +18,7 @@ namespace JapanMap.Editor.Map
         public const string DataDir = "Assets/_Project/Data/Terrain";
         public const string LayerDir = DataDir + "/Layers";
         public const string TextureDir = "Assets/ThirdParty/PolyHaven/Textures";
+        public const string OwnTextureDir = "Assets/_Project/Art/Terrain";
 
         [MenuItem("JapanMap/Map/Import Terrain")]
         public static void ImportFromMenu()
@@ -182,6 +183,16 @@ namespace JapanMap.Editor.Map
             finally { UnityEngine.Object.DestroyImmediate(tex); }
         }
 
+        /// <summary>Layer colours and tiling only (the terrain keeps its layer assets). Menu: JapanMap/Map/Refresh Terrain Layers.</summary>
+        [MenuItem("JapanMap/Map/Refresh Terrain Layers")]
+        public static string RefreshLayers()
+        {
+            var s = MapImportSettings.LoadOrCreate();
+            foreach (var spec in s.splatLayers) LoadOrCreateLayer(spec);
+            AssetDatabase.SaveAssets();
+            return $"[Map] {s.splatLayers.Length} terrain layers refreshed";
+        }
+
         static TerrainLayer LoadOrCreateLayer(MapImportSettings.SplatLayer spec)
         {
             Directory.CreateDirectory(LayerDir);
@@ -192,13 +203,15 @@ namespace JapanMap.Editor.Map
                 layer = new TerrainLayer();
                 AssetDatabase.CreateAsset(layer, path);
             }
-            var folder = $"{TextureDir}/{spec.texture}/{spec.texture}";
+            // Own texture variants (Art/Terrain, made by ArtSource/terrain) before the third-party originals.
+            var own = $"{OwnTextureDir}/{spec.texture}/{spec.texture}";
+            var folder = File.Exists(own + "_diff.jpg") ? own : $"{TextureDir}/{spec.texture}/{spec.texture}";
             layer.diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(folder + "_diff.jpg")
                 ?? throw new FileNotFoundException(folder + "_diff.jpg");
             layer.normalMapTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(folder + "_nor_gl.jpg");
             layer.tileSize = new Vector2(spec.tileMeters, spec.tileMeters);
             var tint = spec.tint.maxColorComponent > 0 ? spec.tint : Color.white; // assets from before the field read black
-            layer.diffuseRemapMin = Vector4.zero;
+            layer.diffuseRemapMin = new Vector4(spec.floor.r, spec.floor.g, spec.floor.b, 0);
             layer.diffuseRemapMax = new Vector4(tint.r, tint.g, tint.b, 1);
             EditorUtility.SetDirty(layer);
             return layer;

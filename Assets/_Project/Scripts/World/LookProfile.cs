@@ -28,6 +28,19 @@ namespace JapanMap.World
         [Range(0, 1)] public float sunSize = 0.015f;
         [Range(1, 10)] public float sunSizeConvergence = 8f;
 
+        [Header("Blue hour sky (JapanMap/Blue Hour Sky)")]
+        public Color skyZenith = new(0.10f, 0.18f, 0.38f);
+        public Color skyHorizon = new(0.55f, 0.62f, 0.74f);
+        [Range(0.5f, 8)] public float skyHorizonSharpness = 2.6f;
+        [Range(0, 4)] public float sunGlow = 1.1f;
+        [Range(1, 64)] public float sunGlowWidth = 7f;
+        public Color cloudShadow = new(0.30f, 0.35f, 0.46f);
+        public Color cloudLit = new(1.0f, 0.72f, 0.58f);
+        [Range(0, 1)] public float cloudCover = 0.48f;
+        [Range(0.01f, 0.5f)] public float cloudSoftness = 0.2f;
+        public float cloudScale = 1.6f;
+        public float cloudSpeed = 0.004f;
+
         [Header("Ambient (trilight; cool sky against the warm sun)")]
         public Color ambientSky = new(0.36f, 0.43f, 0.58f);
         public Color ambientEquator = new(0.30f, 0.32f, 0.38f);

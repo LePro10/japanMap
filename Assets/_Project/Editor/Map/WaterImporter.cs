@@ -98,6 +98,48 @@ namespace JapanMap.Editor.Map
                 }
             }
 
+            // Edge cells (legacy RicePaddy.ts marching squares): the old rule "all four texels wet" stopped the water a
+            // whole 3 m cell short of every dam and drew the parcels as axis-aligned staircases. Now a cell with some wet
+            // corners gets the wet part of the cell — corners plus points on the crossing edges — so the shore runs
+            // diagonally. The edge point sits paddyBankInset short of the middle (water never climbs the dam), further
+            // back (paddyDropInset) where the dry side drops below the water (no water hanging over a terrace edge).
+            var bankT = Mathf.Clamp(0.5f - settings.paddyBankInset / step, 0.1f, 0.5f);
+            var dropT = Mathf.Clamp(0.5f - settings.paddyDropInset / step, 0.05f, 0.5f);
+            var polygon = new List<Vector3>(6);
+            for (var j = 0; j < res - 1; j++)
+            for (var i = 0; i < res - 1; i++)
+            {
+                if (CellWet(mask, res, i, j)) continue; // full cells are in the strips above
+                var ci = new[] { i, i + 1, i + 1, i };
+                var cj = new[] { j, j, j + 1, j + 1 };
+                var wet = new bool[4];
+                var any = 0;
+                for (var k = 0; k < 4; k++) if (wet[k] = mask[cj[k] * res + ci[k]]) any++;
+                if (any == 0) continue;
+                var floor = float.MaxValue;
+                for (var k = 0; k < 4; k++) if (wet[k]) floor = Mathf.Min(floor, Ground(ci[k], cj[k]));
+                var level = floor + settings.paddyDepth;
+                polygon.Clear();
+                for (var k = 0; k < 4; k++)
+                {
+                    var n = (k + 1) % 4;
+                    var pk = new Vector3(X(ci[k]), level, Z(cj[k]));
+                    var pn = new Vector3(X(ci[n]), level, Z(cj[n]));
+                    if (wet[k]) polygon.Add(pk);
+                    if (wet[k] == wet[n]) continue;
+                    // From the wet corner towards the dry one.
+                    var (w, d, dk) = wet[k] ? (pk, pn, n) : (pn, pk, k);
+                    var t = Ground(ci[dk], cj[dk]) < level ? dropT : bankT;
+                    polygon.Add(Vector3.Lerp(w, d, t));
+                }
+                if (polygon.Count < 3) continue;
+                var key = ((int)Mathf.Floor((X(i) + half) / settings.paddyChunk), (int)Mathf.Floor((Z(j) + half) / settings.paddyChunk));
+                if (!chunks.TryGetValue(key, out var c)) chunks[key] = c = (new List<Vector3>(), new List<int>());
+                var b0 = c.v.Count;
+                c.v.AddRange(polygon);
+                for (var k = 1; k < polygon.Count - 1; k++) AddUpFacing(c.v, c.t, b0, b0 + k, b0 + k + 1);
+            }
+
             foreach (var kv in chunks)
             {
                 var mesh = new Mesh { indexFormat = IndexFormat.UInt32 };
@@ -106,6 +148,12 @@ namespace JapanMap.Editor.Map
                 mesh.RecalculateNormals();
                 mesh.RecalculateBounds();
                 yield return ($"Paddy_{kv.Key.Item1}_{kv.Key.Item2}", mesh);
+            }
+
+            float Ground(int gi, int gj)
+            {
+                var t = TerrainImporter.TileAt(new Vector3(X(gi), 0, Z(gj)));
+                return t.SampleHeight(new Vector3(X(gi), 0, Z(gj))) + t.transform.position.y;
             }
 
             // Lowest of the four corner heights; the parcel floor is flat, so this is the floor.

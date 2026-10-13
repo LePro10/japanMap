@@ -70,18 +70,29 @@ namespace JapanMap.Editor.Look
 
         static void ApplySky(LookProfile p)
         {
+            var shader = Shader.Find(SkyShader) ?? throw new System.InvalidOperationException($"shader {SkyShader} missing");
             var sky = AssetDatabase.LoadAssetAtPath<Material>(SkyPath);
             if (sky == null)
             {
-                sky = new Material(Shader.Find("Skybox/Procedural"));
+                sky = new Material(shader);
                 AssetDatabase.CreateAsset(sky, SkyPath);
             }
-            sky.SetFloat("_SunDisk", 2); // high quality
+            if (sky.shader != shader) sky.shader = shader;
+            sky.SetColor("_ZenithColor", p.skyZenith);
+            sky.SetColor("_HorizonColor", p.skyHorizon);
+            sky.SetColor("_GroundColor", p.fogColor); // below the horizon the sky is the fog: no band behind the sea
+            sky.SetFloat("_HorizonSharpness", p.skyHorizonSharpness);
+            sky.SetVector("_SunDirection", p.TowardsSun());
+            sky.SetColor("_SunColor", p.sunColor);
             sky.SetFloat("_SunSize", p.sunSize);
-            sky.SetFloat("_SunSizeConvergence", p.sunSizeConvergence);
-            sky.SetFloat("_AtmosphereThickness", p.atmosphereThickness);
-            sky.SetColor("_SkyTint", p.skyTint);
-            sky.SetColor("_GroundColor", p.skyGround);
+            sky.SetFloat("_SunGlow", p.sunGlow);
+            sky.SetFloat("_SunGlowWidth", p.sunGlowWidth);
+            sky.SetColor("_CloudColor", p.cloudShadow);
+            sky.SetColor("_CloudLit", p.cloudLit);
+            sky.SetFloat("_CloudCover", p.cloudCover);
+            sky.SetFloat("_CloudSoftness", p.cloudSoftness);
+            sky.SetFloat("_CloudScale", p.cloudScale);
+            sky.SetFloat("_CloudSpeed", p.cloudSpeed);
             sky.SetFloat("_Exposure", p.skyExposure);
             EditorUtility.SetDirty(sky);
             RenderSettings.skybox = sky;
@@ -178,6 +189,7 @@ namespace JapanMap.Editor.Look
         }
 
         public const string WetShader = "JapanMap/Wet Surface";
+        public const string SkyShader = "JapanMap/Blue Hour Sky";
 
         static void Wet(string name, LookProfile p, float smoothness, float cover)
         {

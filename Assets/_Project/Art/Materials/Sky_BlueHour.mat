@@ -8,12 +8,12 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Sky_BlueHour
-  m_Shader: {fileID: 106, guid: 0000000000000000f000000000000000, type: 0}
+  m_Shader: {fileID: 4800000, guid: 9bf62419f12cb401992231e7b59370f8, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords:
+  m_ValidKeywords: []
+  m_InvalidKeywords:
   - _SUNDISK_HIGH_QUALITY
-  m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -27,12 +27,25 @@ Material:
     m_Ints: []
     m_Floats:
     - _AtmosphereThickness: 0.75
-    - _Exposure: 1.05
+    - _CloudCover: 0.48
+    - _CloudScale: 1.6
+    - _CloudSoftness: 0.2
+    - _CloudSpeed: 0.004
+    - _Exposure: 1
+    - _HorizonSharpness: 2.6
     - _SunDisk: 2
+    - _SunGlow: 1.1
+    - _SunGlowWidth: 7
     - _SunSize: 0.015
     - _SunSizeConvergence: 8
     m_Colors:
-    - _GroundColor: {r: 0.4, g: 0.45, b: 0.53, a: 1}
+    - _CloudColor: {r: 0.3, g: 0.35, b: 0.46, a: 1}
+    - _CloudLit: {r: 1, g: 0.72, b: 0.58, a: 1}
+    - _GroundColor: {r: 0.56, g: 0.62, b: 0.71, a: 1}
+    - _HorizonColor: {r: 0.55, g: 0.62, b: 0.74, a: 1}
     - _SkyTint: {r: 0.56, g: 0.6, b: 0.68, a: 1}
+    - _SunColor: {r: 1, g: 0.7, b: 0.48, a: 1}
+    - _SunDirection: {r: 0.8029867, g: 0.12186935, b: -0.58340394, a: 0}
+    - _ZenithColor: {r: 0.1, g: 0.18, b: 0.38, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

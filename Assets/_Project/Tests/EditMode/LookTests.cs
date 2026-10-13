@@ -70,14 +70,17 @@ namespace JapanMap.Tests
             ball.GetComponent<Renderer>().sharedMaterial = mat;
             try
             {
-                cam.transform.SetPositionAndRotation(new Vector3(0f, 900f, 0f), Quaternion.Euler(-80f, 0f, 0f)); // the dark sky above everything
+                cam.transform.SetPositionAndRotation(new Vector3(0f, 900f, 0f), Quaternion.Euler(-80f, 0f, 0f)); // the sky above everything
                 ball.transform.position = cam.transform.position + cam.transform.forward * 20f;
+                // Beside the ball (radius ≈ 0.5 m at 20 m in a 60° view ≈ 6 px): 20 px off-centre, with and without it.
                 var tex = JapanMap.Core.CameraShot.Render(cam, 256, 256);
-                // Beside the ball (radius ≈ 0.5 m at 20 m in a 60° view ≈ 6 px): 20 px off-centre.
                 var beside = tex.GetPixel(148, 128).grayscale;
-                var far = tex.GetPixel(250, 250).grayscale;
                 Object.DestroyImmediate(tex);
-                Assert.Greater(beside, far + 0.05f, $"no glow beside the bright ball (beside {beside:0.000}, far {far:0.000})");
+                ball.SetActive(false);
+                tex = JapanMap.Core.CameraShot.Render(cam, 256, 256);
+                var without = tex.GetPixel(148, 128).grayscale;
+                Object.DestroyImmediate(tex);
+                Assert.Greater(beside, without + 0.05f, $"no glow beside the bright ball (with {beside:0.000}, without {without:0.000})");
             }
             finally
             {
