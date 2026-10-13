@@ -75,8 +75,11 @@ namespace JapanMap.Gameplay.Garage
             hud = h;
         }
 
+        public static GarageSystem Instance { get; private set; }
+
         void Awake()
         {
+            Instance = this;
             if (actions != null) _use = actions.FindActionMap("Player", true).FindAction("Use", true);
             var camGo = new GameObject("GarageCamera");
             camGo.transform.SetParent(transform, false);
@@ -117,6 +120,7 @@ namespace JapanMap.Gameplay.Garage
 
         void OnDestroy()
         {
+            if (Instance == this) Instance = null;
             if (GameMenu.Instance != null) GameMenu.Instance.OpenChanged -= OnMenu;
         }
 

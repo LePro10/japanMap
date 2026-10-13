@@ -85,6 +85,27 @@ namespace JapanMap.Gameplay.Menu
                 }
             }
 
+            // Daily challenge: the reason to drive today, and to come back tomorrow.
+            var daily = Progress.DailySystem.Instance;
+            if (daily != null && daily.Settings != null)
+            {
+                var c = daily.Challenge;
+                var d = Ui.Box(tiles, "jm-card", "jm-card--daily");
+                Ui.Text(d, daily.Streak > 1 ? $"DAILY CHALLENGE · DAY {daily.Streak}" : "DAILY CHALLENGE", "jm-kicker");
+                Ui.Text(d, string.Format(c.title, c.target), "jm-card-title");
+                if (daily.ChallengeDone) Ui.Text(d, $"Done · +{c.reward:N0} Sparks earned", "jm-body", "jm-ok");
+                else
+                {
+                    Ui.Text(d, $"+{c.reward:N0} Sparks", "jm-body", "jm-amber");
+                    var dbar = Ui.Box(d, "jm-meter");
+                    var dfill = Ui.Box(dbar);
+                    dfill.style.width = Length.Percent(Mathf.Clamp01(daily.ChallengeProgress / Mathf.Max(0.001f, c.target)) * 100f);
+                }
+                var left = daily.Left;
+                Ui.Small(d, $"New challenge in {(int)left.TotalHours} h {left.Minutes:00} min");
+                t.AppendLine($"daily {string.Format(c.title, c.target)} {(daily.ChallengeDone ? "done" : "")}");
+            }
+
             // Second tile: the pinned purchase goal (ASTRA: purchase progress on Play).
             var goal = Goal();
             if (goal != null)

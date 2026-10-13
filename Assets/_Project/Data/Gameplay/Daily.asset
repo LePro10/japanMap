@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55067022619354afb9db918511aded70, type: 3}
+  m_Name: Daily
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Progress.DailySettings
+  streakRewards: 2c01000090010000f40100008a02000020030000e8030000dc050000i
+  delay: 4
+  challenges:
+  - goal: 0
+    title: Hit {0:0} km/h
+    target: 170
+    reward: 700
+  - goal: 1
+    title: Bank a {0:N0} point drift chain
+    target: 4000
+    reward: 800
+  - goal: 2
+    title: Jump {0:0} m off a ramp
+    target: 35
+    reward: 700
+  - goal: 3
+    title: Stay {0:0.0} s in the air
+    target: 2.2
+    reward: 700
+  - goal: 4
+    title: Finish {0:0} events
+    target: 2
+    reward: 900
+  - goal: 5
+    title: Drive {0:0} km
+    target: 8
+    reward: 600
+  - goal: 6
+    title: Find {0:0} discovery
+    target: 1
+    reward: 800

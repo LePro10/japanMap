@@ -93,6 +93,13 @@ namespace JapanMap.Gameplay.Progress
         public Vector3 lastPosition;
         public float lastYaw;
         public float playSeconds;
+        [Tooltip("Daily bonus: the last day it was paid (yyyy-MM-dd, local) and the streak of days in a row.")]
+        public string dailyDay = "";
+        public int dailyStreak;
+        [Tooltip("Daily challenge: its day, the best/summed progress so far, done.")]
+        public string challengeDay = "";
+        public float challengeProgress;
+        public bool challengeDone;
         public long savedAt;
 
         public CarState Car(string id, bool create = true)
@@ -138,6 +145,10 @@ namespace JapanMap.Gameplay.Progress
                 c.aero = Mathf.Clamp(c.aero, 0, 2);
             }
             events ??= new List<EventRecord>();
+            dailyDay ??= "";
+            challengeDay ??= "";
+            dailyStreak = Mathf.Clamp(dailyStreak, 0, 3650);
+            if (float.IsNaN(challengeProgress) || challengeProgress < 0f) challengeProgress = 0f;
             events.RemoveAll(e => e == null || string.IsNullOrEmpty(e.id));
             foreach (var e in events)
             {

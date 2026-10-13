@@ -17378,6 +17378,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1282093638}
   - component: {fileID: 1282093637}
+  - component: {fileID: 1282093639}
   m_Layer: 0
   m_Name: Progress
   m_TagString: Untagged
@@ -17420,6 +17421,26 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1646343668}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1282093639
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1282093636}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 36ee4c04c642d47ab9daa70823c4f955, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Progress.DailySystem
+  settings: {fileID: 11400000, guid: d62b3fd1e716346d5b7ba13cd528ea8d, type: 2}
+  progress: {fileID: 1282093637}
+  player: {fileID: 1493207663}
+  hud: {fileID: 1367629325}
+  drift: {fileID: 138953789}
+  stunts: {fileID: 102596446}
+  races: {fileID: 800296458}
+  discovery: {fileID: 1111092022}
 --- !u!1001 &1283518842
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -18314,6 +18335,7 @@ MonoBehaviour:
   cardSize: {x: 320, y: 180}
   cardQuality: 75
   speedToastStep: 10
+  announceFrom: {x: 80, y: 1, z: 12, w: 1500}
 --- !u!1 &1326448330
 GameObject:
   m_ObjectHideFlags: 0
