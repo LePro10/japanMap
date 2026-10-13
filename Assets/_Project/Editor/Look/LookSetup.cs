@@ -166,19 +166,45 @@ namespace JapanMap.Editor.Look
             cam.clearFlags = CameraClearFlags.Skybox;
         }
 
-        /// <summary>After rain: paved surfaces become glossy and mirror the sky (cheap: skybox reflections, no SSR in URP).</summary>
+        /// <summary>
+        /// After rain: paved surfaces use the wet surface shader — a glossy film with mirror puddles, road paint and a
+        /// gravel shoulder from the road data channel (legacy road_puddles). Values from the profile.
+        /// </summary>
         static void ApplyWet(LookProfile p)
         {
-            SetSmoothness("Road_Asphalt", p.wetAsphaltSmoothness);
-            SetSmoothness("Road_Concrete", p.wetConcreteSmoothness);
-            SetSmoothness("City_Slab", p.wetConcreteSmoothness);
+            Wet("Road_Asphalt", p, p.wetAsphaltSmoothness, p.puddleCover);
+            Wet("Road_Concrete", p, p.wetConcreteSmoothness, p.puddleCoverCity);
+            Wet("City_Slab", p, p.wetConcreteSmoothness, p.puddleCoverCity);
         }
 
-        static void SetSmoothness(string name, float value)
+        public const string WetShader = "JapanMap/Wet Surface";
+
+        static void Wet(string name, LookProfile p, float smoothness, float cover)
         {
             var mat = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/{name}.mat");
             if (mat == null) { Debug.LogWarning($"[Look] material {name} missing"); return; }
-            mat.SetFloat("_Smoothness", value);
+            var shader = Shader.Find(WetShader);
+            if (shader == null) { Debug.LogError($"[Look] shader {WetShader} missing"); return; }
+            if (mat.shader != shader) mat.shader = shader; // same property names as Lit: textures and colours stay
+            mat.SetFloat("_Smoothness", smoothness);
+            mat.SetFloat("_BumpScale", p.asphaltNormal);
+            mat.SetFloat("_WetDarken", p.wetDarken);
+            mat.SetFloat("_PuddleCover", cover);
+            mat.SetFloat("_PuddleSoftness", p.puddleSoftness);
+            mat.SetFloat("_PuddleSmoothness", p.puddleSmoothness);
+            mat.SetFloat("_PuddleDarken", p.puddleDarken);
+            mat.SetFloat("_PuddleFlatten", 1f);
+            mat.SetFloat("_PuddleEdgeBias", p.puddleEdgeBias);
+            mat.SetFloat("_PuddleScale", p.puddleScale.x);
+            mat.SetFloat("_PuddleDetail", p.puddleScale.y);
+            mat.SetColor("_MarkColor", p.markColor);
+            mat.SetFloat("_MarkWidth", p.markWidth);
+            mat.SetFloat("_MarkInset", p.markInset);
+            mat.SetFloat("_DashLength", p.dash.x);
+            mat.SetFloat("_DashGap", p.dash.y);
+            mat.SetFloat("_MarkWear", p.markWear);
+            mat.SetColor("_ShoulderColor", p.shoulderTint);
+            mat.SetFloat("_ShoulderSmoothness", p.shoulderSmoothness);
             EditorUtility.SetDirty(mat);
         }
     }

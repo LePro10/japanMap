@@ -42,6 +42,8 @@ namespace JapanMap.Editor.Map
         {
             public readonly List<Vector3> v = new();
             public readonly List<Vector2> uv = new();
+            // Road data for the wet surface shader (UV3): lateral m, arc m, half width m, marking style.
+            public readonly List<Vector4> road = new();
             public readonly List<int>[] t = { new(), new() };
         }
 
@@ -105,6 +107,32 @@ namespace JapanMap.Editor.Map
             AssetDatabase.SaveAssets();
             Debug.Log($"[Map] roads imported: {roads.Count} roads, {surface.Count} surface chunks ({surfaceTris} tris), {rails.Count} rail chunks ({railTris} tris), viaducts: {decks} deck spans, {piers} piers");
             return group;
+        }
+
+        /// <summary>
+        /// Rewrites only the road surface mesh assets in place (same paths, same GUIDs): the streamed road scenes keep
+        /// pointing at them. For changes to vertex data (UV3 road data) without a full map import.
+        /// </summary>
+        [MenuItem("JapanMap/Map/Refresh Road Meshes")]
+        public static string RefreshSurfaceMeshes()
+        {
+            var settings = MapImportSettings.LoadOrCreate();
+            var roads = ResolveTrims(Load(settings), TerrainImporter.RawGround(settings));
+            var types = settings.roadTypes.ToDictionary(t => t.type);
+            var surface = new Dictionary<(int, int), Chunk>();
+            foreach (var road in roads) BuildSurface(road, types[road.type], settings, surface);
+            var written = new HashSet<string>();
+            var missing = 0;
+            foreach (var kv in surface)
+            {
+                var path = $"{MeshDir}/Road_{kv.Key.Item1}_{kv.Key.Item2}.asset";
+                if (AssetDatabase.LoadAssetAtPath<Mesh>(path) == null) missing++;
+                Save($"Road_{kv.Key.Item1}_{kv.Key.Item2}", ToMesh(kv.Value), written);
+            }
+            AssetDatabase.SaveAssets();
+            var msg = $"[Map] road meshes refreshed: {surface.Count} chunks, {missing} new (new ones need Import All)";
+            Debug.Log(msg);
+            return msg;
         }
 
         public const string NetworkPath = MeshDir + "/RoadNetwork.asset";
@@ -296,6 +324,8 @@ namespace JapanMap.Editor.Map
             var stations = closed ? count + 1 : count;
             var rows = new Vector3[stations][];
             var uvs = new Vector2[stations][];
+            var data = new Vector4[stations][];
+            var style = type.gravel ? 0 : type.markings;
 
             for (var st = 0; st < stations; st++)
             {
@@ -319,6 +349,7 @@ namespace JapanMap.Editor.Map
                 var total = width + 2 * type.shoulder;
                 rows[st] = new Vector3[lateral.Length];
                 uvs[st] = new Vector2[lateral.Length];
+                data[st] = new Vector4[lateral.Length];
                 for (var k = 0; k < lateral.Length; k++)
                 {
                     var up = lateral[k] * sin + vertical[k] + s.roadSurfaceOffset;
@@ -326,6 +357,7 @@ namespace JapanMap.Editor.Map
                     var across = (lateral[k] + total / 2) / total;
                     // Paths sample a calm band at the texture edge (legacy: the asphalt crack at u≈0.5 read as a seam).
                     uvs[st][k] = new Vector2(type.gravel ? 0.08f + across * 0.3f : across, arc / type.textureLength);
+                    data[st][k] = new Vector4(lateral[k], arc, width / 2, style);
                 }
             }
 
@@ -340,6 +372,8 @@ namespace JapanMap.Editor.Map
                 chunk.v.AddRange(rows[st + 1]);
                 chunk.uv.AddRange(uvs[st]);
                 chunk.uv.AddRange(uvs[st + 1]);
+                chunk.road.AddRange(data[st]);
+                chunk.road.AddRange(data[st + 1]);
                 for (var k = 0; k < lanes - 1; k++)
                 {
                     int a = b0 + k, b = a + 1, c = a + lanes, d = c + 1;
@@ -774,6 +808,7 @@ namespace JapanMap.Editor.Map
             var mesh = new Mesh { indexFormat = IndexFormat.UInt32 };
             mesh.SetVertices(v);
             mesh.SetUVs(0, c.uv);
+            if (c.road.Count == c.v.Count) mesh.SetUVs(3, c.road);
             mesh.subMeshCount = c.t.Length;
             for (var s = 0; s < c.t.Length; s++)
             {

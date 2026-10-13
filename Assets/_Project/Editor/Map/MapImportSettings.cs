@@ -161,6 +161,8 @@ namespace JapanMap.Editor.Map
             public float shoulder = 1f;
             public float textureLength = 8f;
             public bool gravel;
+            [Tooltip("Road paint drawn by the wet surface shader: 0 none, 1 edge lines + dashed centre line, 2 edge lines only.")]
+            public int markings;
             [Tooltip("Smallest vertical radius of a dip or crest, m (0 = keep the data). At 120 km/h a 46 m dip pulled 2.6 g " +
                      "and the body hit the road (Phase 10); ~v²/(0.35 g) for the road's speed.")]
             public float minVerticalRadius;

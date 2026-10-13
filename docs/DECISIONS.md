@@ -658,3 +658,21 @@ Ehrlich gezählt: 20,9 MB bis gameplayStart (vorher 18,4 + Kiste); die Auto-Shad
 das Auto 4,4 MB Gebäude mit. Rest über 20 MB = Startauto mit 176 000 Eckpunkten → Asset-Sitzung (≤ 40 000).
 **Wachen:** `UiLayoutProbe` + `sizes-web` mit Android/iPhone-Profilen (rot bei Überlappung), `SceneLinkTests`,
 `IntroTests`, WebBuild bricht bei Splash-Logo oder Baumdaten im Start ab.
+
+## D44 — Politur 2026-10-13: Freigaben, nasse Straße, Spiegel
+
+**Freigabe des Menschen** („alles komplett autonom durchimplementieren … eigene Ideen einbringen“): die drei offenen
+Fragen aus [POLISH.md](POLISH.md) §4 gelten als entschieden — Berge dürfen grün/bewaldet werden (Lage bleibt),
+Tagesbonus/Tagesaufgabe und kleine Preisanpassungen sind erlaubt, Schriften unter OFL.
+
+**Nasse Straße = eigener Shader** (`Art/Shaders/WetSurface.shader`), weil URP Lit keine Pfützenmaske kann und Shader
+Graph für Agenten schlecht wartbar ist: erzeugt aus URP-17-`Lit.shader` (gleiche Eigenschaften, SRP-Batcher-fähig),
+plus Pfützen aus Welt-Rauschen (Prototyp `road_puddles.glsl`), Fahrbahnmarkierungen und Bankett aus einem
+Straßen-Datenkanal (UV3, `RoadImporter`) — Markierungen kosten so keinen Draw Call. Bei einem URP-Update die drei
+Kopien neu erzeugen (Kommentar in den Dateien); `LookTests` wacht über Shader und Datenkanal.
+
+**Spiegel:** Tokyo bekommt die Planarspiegelung des Prototyps (`World/PlanarReflection`, halbe Auflösung Hoch, ⅓
+Mittel, aus auf Niedrig, nur über der Stadtplatte) — SSR hatte im Prototyp nur 19 % der Neons erfasst; URPs neues SSR
+ist experimentell (Define) und nicht für WebGL gedacht. Alle Orte bekommen gebackene Box-Reflection-Probes in ihrer
+eigenen Szene (`ReflectionProbeBaker`, 31 Stück, je ~160 KB DXT5-crunched, laden mit dem Ort), sonst spiegeln
+Pfützen nur den hellen Himmel und wirken wie Eis.

@@ -40,5 +40,21 @@ MonoBehaviour:
   bloomClamp: 6
   vignette: 0.22
   shadowsTint: {r: 0.92, g: 0.97, b: 1.08, a: 0}
-  wetAsphaltSmoothness: 0.58
-  wetConcreteSmoothness: 0.5
+  wetAsphaltSmoothness: 0.42
+  wetConcreteSmoothness: 0.4
+  asphaltNormal: 0.6
+  wetDarken: 0.8
+  puddleCover: 0.38
+  puddleCoverCity: 0.45
+  puddleSoftness: 0.04
+  puddleSmoothness: 0.96
+  puddleDarken: 0.45
+  puddleEdgeBias: 0.25
+  puddleScale: {x: 17, y: 3}
+  markColor: {r: 0.82, g: 0.82, b: 0.78, a: 1}
+  markWidth: 0.15
+  markInset: 0.3
+  dash: {x: 3, y: 5}
+  markWear: 0.6
+  shoulderTint: {r: 0.62, g: 0.56, b: 0.48, a: 1}
+  shoulderSmoothness: 0.25

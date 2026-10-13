@@ -51,36 +51,42 @@ MonoBehaviour:
     shoulder: 1.6
     textureLength: 8
     gravel: 0
+    markings: 1
   - type: mountain
     minVerticalRadius: 150
     width: 6.5
     shoulder: 1
     textureLength: 7
     gravel: 0
+    markings: 1
   - type: village
     minVerticalRadius: 100
     width: 5
     shoulder: 0.8
     textureLength: 6
     gravel: 0
+    markings: 2
   - type: city
     minVerticalRadius: 80
     width: 8
     shoulder: 1.2
     textureLength: 8
     gravel: 0
+    markings: 1
   - type: dirt
     minVerticalRadius: 80
     width: 4
     shoulder: 0.6
     textureLength: 5
     gravel: 0
+    markings: 0
   - type: pfad
     minVerticalRadius: 0
     width: 1.8
     shoulder: 0
     textureLength: 3
     gravel: 1
+    markings: 0
   roadSurfaceOffset: 0.06
   roadShoulderDrop: 0.22
   roadBankGain: 20

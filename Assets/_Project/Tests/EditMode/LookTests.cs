@@ -39,5 +39,38 @@ namespace JapanMap.Tests
             Assert.AreEqual(LookSetup.VolumePath, UnityEditor.AssetDatabase.GetAssetPath(vol.sharedProfile));
             Assert.IsTrue(Camera.main.GetComponent<UniversalAdditionalCameraData>().renderPostProcessing, "post-processing off on the main camera");
         }
+
+        [Test]
+        public void WetSurfaces_UseTheWetShader_AndRoadsCarryTheirData()
+        {
+            // Puddles, paint and shoulder need both the shader and the road data channel (UV3); a re-import that drops
+            // either leaves a plain glossy road again (2026-10-13).
+            foreach (var name in new[] { "Road_Asphalt", "Road_Concrete", "City_Slab" })
+            {
+                var mat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>($"Assets/_Project/Art/Materials/{name}.mat");
+                Assert.AreEqual(LookSetup.WetShader, mat.shader.name, $"{name} is not on the wet shader — run JapanMap/Look/Apply");
+            }
+            var road = UnityEditor.AssetDatabase.LoadAssetAtPath<Mesh>(RoadImporter.MeshDir + "/Road_0_0.asset");
+            var data = new System.Collections.Generic.List<Vector4>();
+            road.GetUVs(3, data);
+            Assert.AreEqual(road.vertexCount, data.Count, "road mesh without UV3 road data — run JapanMap/Map/Refresh Road Meshes");
+            Assert.That(data.Exists(d => d.z > 1f && d.w > 0.5f), "no road with paint in Road_0_0");
+        }
+
+        [Test]
+        public void EveryPlace_HasBakedReflectionProbes()
+        {
+            // Without them the puddles mirror only the bright sky and read as ice.
+            foreach (var path in JapanMap.Editor.Content.StreamingSetup.StreamedScenes())
+            {
+                if (!path.StartsWith(JapanMap.Editor.Content.StreamingSetup.PlaceDir)) continue;
+                var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(path);
+                if (!scene.IsValid() || !scene.isLoaded) scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(path, UnityEditor.SceneManagement.OpenSceneMode.Additive);
+                var probes = new System.Collections.Generic.List<ReflectionProbe>();
+                foreach (var root in scene.GetRootGameObjects()) probes.AddRange(root.GetComponentsInChildren<ReflectionProbe>());
+                Assert.IsNotEmpty(probes, $"{scene.name}: no reflection probe — run JapanMap/Look/Bake Place Reflections");
+                foreach (var probe in probes) Assert.IsNotNull(probe.customBakedTexture, $"{scene.name}/{probe.name}: no baked cubemap");
+            }
+        }
     }
 }

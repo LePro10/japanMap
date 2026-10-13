@@ -31,6 +31,13 @@ namespace JapanMap.Editor.Map
             var uv = new List<Vector2>();
             mesh.GetUVs(0, uv);
             if (uv.Count > 0) existing.SetUVs(0, uv);
+            // Extra channels (UV3 = road data for the wet surface shader); cleared above when absent.
+            var data = new List<Vector4>();
+            for (var ch = 1; ch < 4; ch++)
+            {
+                mesh.GetUVs(ch, data);
+                if (data.Count > 0) existing.SetUVs(ch, data);
+            }
             existing.subMeshCount = mesh.subMeshCount;
             for (var s = 0; s < mesh.subMeshCount; s++) existing.SetTriangles(mesh.GetTriangles(s), s);
             existing.RecalculateBounds();

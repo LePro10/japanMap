@@ -56,6 +56,29 @@ namespace JapanMap.World
         [Header("Wet surfaces")]
         [Range(0, 1)] public float wetAsphaltSmoothness = 0.72f;
         [Range(0, 1)] public float wetConcreteSmoothness = 0.6f;
+        [Tooltip("Asphalt normal map strength between the puddles (1 = texture as authored).")]
+        [Range(0, 2)] public float asphaltNormal = 0.6f;
+        [Tooltip("Albedo multiplier of the wet film on every paved surface.")]
+        [Range(0.3f, 1)] public float wetDarken = 0.8f;
+        [Header("Puddles (legacy road_puddles: roughness 0.045, flat normal, albedo × 0.42)")]
+        [Range(0, 1)] public float puddleCover = 0.32f;
+        [Tooltip("Puddle cover on the city slab and concrete (flat, more water stands).")]
+        [Range(0, 1)] public float puddleCoverCity = 0.4f;
+        [Range(0.005f, 0.3f)] public float puddleSoftness = 0.04f;
+        [Range(0, 1)] public float puddleSmoothness = 0.96f;
+        [Range(0, 1)] public float puddleDarken = 0.45f;
+        [Range(0, 1)] public float puddleEdgeBias = 0.25f;
+        [Tooltip("Size of the puddle patches and of their ragged edges, m.")]
+        public Vector2 puddleScale = new(17f, 3f);
+        [Header("Road paint and shoulder")]
+        public Color markColor = new(0.82f, 0.82f, 0.78f);
+        public float markWidth = 0.15f;
+        public float markInset = 0.3f;
+        [Tooltip("Centre line: dash and gap length, m.")]
+        public Vector2 dash = new(3f, 5f);
+        [Range(0, 1)] public float markWear = 0.6f;
+        public Color shoulderTint = new(0.62f, 0.56f, 0.48f);
+        [Range(0, 1)] public float shoulderSmoothness = 0.25f;
 
         /// <summary>Unit vector from the scene towards the sun.</summary>
         public Vector3 TowardsSun()
