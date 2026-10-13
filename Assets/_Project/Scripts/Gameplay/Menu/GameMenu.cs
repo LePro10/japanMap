@@ -58,7 +58,7 @@ namespace JapanMap.Gameplay.Menu
         Button _continue;
         readonly List<MenuScreen> _screens = new();
         readonly List<VisualElement> _tabButtons = new();
-        InputAction _menu, _records, _map;
+        InputAction _menu, _records, _map, _prevTab, _nextTab;
         float _savedScale = 1f;
         FormFactor _builtFor;
         bool _builtTall;
@@ -98,6 +98,11 @@ namespace JapanMap.Gameplay.Menu
             // Actions so a short press between two frames counts (play scripts, tests).
             _menu = new InputAction("Menu", InputActionType.Button, "<Keyboard>/escape");
             _menu.AddBinding("<Gamepad>/start");
+            // Actions too: a press between two frames still counts.
+            _prevTab = new InputAction("MenuPrevTab", InputActionType.Button, "<Keyboard>/q");
+            _prevTab.AddBinding("<Gamepad>/leftShoulder");
+            _nextTab = new InputAction("MenuNextTab", InputActionType.Button, "<Keyboard>/e");
+            _nextTab.AddBinding("<Gamepad>/rightShoulder");
             UiPanel.UserScale = UiPanel.Scales[Core.GameOptions.UiScale];
             Ui.Clicked += () => Audio.Sfx.Play("UI_Click");
             if (actions != null)
@@ -135,10 +140,16 @@ namespace JapanMap.Gameplay.Menu
             if (theme != null) _root.styleSheets.Add(theme);
             _root.AddToClassList("jm-fill");
             _root.AddToClassList("jm-menu");
+            // Dark behind the rail and the text, clear on the right where the car turns (MenuCamera).
+            _root.style.backgroundImage = new StyleBackground(Backdrop());
             _root.style.display = DisplayStyle.None;
             BuildShell();
             _menu.Enable();
             _menu.performed += OnMenuKey;
+            _prevTab.Enable();
+            _prevTab.performed += OnPrevTab;
+            _nextTab.Enable();
+            _nextTab.performed += OnNextTab;
             if (_records != null) { _records.Enable(); _records.performed += OnRecordsKey; }
             if (_map != null) { _map.Enable(); _map.performed += OnMapKey; }
             UiPanel.Changed += OnLayout;
@@ -148,6 +159,10 @@ namespace JapanMap.Gameplay.Menu
         {
             _menu.performed -= OnMenuKey;
             _menu.Disable();
+            _prevTab.performed -= OnPrevTab;
+            _prevTab.Disable();
+            _nextTab.performed -= OnNextTab;
+            _nextTab.Disable();
             if (_records != null) _records.performed -= OnRecordsKey;
             if (_map != null) _map.performed -= OnMapKey;
             UiPanel.Changed -= OnLayout;
@@ -163,6 +178,8 @@ namespace JapanMap.Gameplay.Menu
         }
 
         void OnMenuKey(InputAction.CallbackContext _) => Escape();
+        void OnPrevTab(InputAction.CallbackContext _) => StepTab(-1);
+        void OnNextTab(InputAction.CallbackContext _) => StepTab(1);
         void OnRecordsKey(InputAction.CallbackContext _) => Toggle<RecordsScreen>();
         void OnMapKey(InputAction.CallbackContext _) => Toggle<MapScreen>();
 
@@ -216,6 +233,9 @@ namespace JapanMap.Gameplay.Menu
                 if (player != null && !player.Suspended) { player.SetSuspended(true); _suspendedByMe = true; }
                 if (hud != null) hud.Hidden = true;
                 _root.style.display = DisplayStyle.Flex;
+                _root.RemoveFromClassList("jm-menu--in");
+                // Next frame: from display none a transition has no start value.
+                _root.schedule.Execute(() => _root.AddToClassList("jm-menu--in"));
                 UnityEngine.Cursor.lockState = CursorLockMode.None;
                 UnityEngine.Cursor.visible = true;
                 UiStack.Push(this, Close);
@@ -234,6 +254,7 @@ namespace JapanMap.Gameplay.Menu
             IsOpen = false;
             Current?.Closed();
             _root.style.display = DisplayStyle.None;
+            _root.RemoveFromClassList("jm-menu--in");
             UiStack.Pop(this);
             if (_paused)
             {
@@ -258,6 +279,8 @@ namespace JapanMap.Gameplay.Menu
             }
             if (Current != null && Current != screen) Current.Closed();
             Current = screen;
+            // Pages that leave the right side to the car (MenuCamera); the map and lists need the whole width.
+            _root.EnableInClassList("jm-page--narrow", screen is PlayScreen);
             for (var i = 0; i < _screens.Count; i++) Ui.On(_tabButtons[i], _screens[i] == screen, "jm-tab--on");
             Rebuild();
         }
@@ -329,6 +352,42 @@ namespace JapanMap.Gameplay.Menu
         void Update()
         {
             if (IsOpen) Current?.Update();
+        }
+
+        /// <summary>Q / E (and the shoulder buttons) step through the tabs, as in every racing game's menu.</summary>
+        void StepTab(int step)
+        {
+            if (!IsOpen || _screens.Count == 0) return;
+            if (garage != null && garage.IsOpen) return; // E drives out of the Open Bay there
+            if (_root.panel?.focusController?.focusedElement is TextField) return;
+            {
+                var i = _screens.IndexOf(Current);
+                for (var n = 0; n < _screens.Count; n++)
+                {
+                    i = (i + step + _screens.Count) % _screens.Count;
+                    if (!_screens[i].Action) break; // Photo is an action, not a page
+                }
+                Audio.Sfx.Play("UI_Click");
+                Show(_screens[i]);
+            }
+        }
+
+        static Texture2D _backdrop;
+
+        /// <summary>Horizontal fade: 92 % ink under the rail and text, 30 % at the right edge.</summary>
+        static Texture2D Backdrop()
+        {
+            if (_backdrop != null) return _backdrop;
+            const int w = 256;
+            _backdrop = new Texture2D(w, 1, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, name = "MenuBackdrop" };
+            for (var x = 0; x < w; x++)
+            {
+                var t = x / (float)(w - 1);
+                var a = Mathf.Lerp(0.92f, 0.3f, Mathf.SmoothStep(0.25f, 0.95f, t));
+                _backdrop.SetPixel(x, 0, new Color(0.012f, 0.035f, 0.05f, a));
+            }
+            _backdrop.Apply();
+            return _backdrop;
         }
 
         // ── shared bits for the pages ──────────────────────────────────────────

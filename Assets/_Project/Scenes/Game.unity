@@ -21046,6 +21046,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1592361039}
   - component: {fileID: 1592361040}
+  - component: {fileID: 1592361041}
   m_Layer: 0
   m_Name: Menu
   m_TagString: Untagged
@@ -21093,6 +21094,25 @@ MonoBehaviour:
   photo: {fileID: 1715855289}
   regions: {fileID: 1000208308}
   map: {fileID: 679660561}
+--- !u!114 &1592361041
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1592361038}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe2bf0293cee944f59f98757eb92d6ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Menu.MenuCamera
+  menu: {fileID: 1592361040}
+  player: {fileID: 1493207663}
+  garage: {fileID: 1544864028}
+  orbit: {x: 7.6, y: 1.6}
+  spin: 6
+  frameRight: 0.34
+  blend: 0.7
 --- !u!1001 &1592624932
 PrefabInstance:
   m_ObjectHideFlags: 0
