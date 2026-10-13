@@ -34,9 +34,9 @@ Material:
     - _Exposure: 1
     - _HorizonSharpness: 2.6
     - _SunDisk: 2
-    - _SunGlow: 1.1
+    - _SunGlow: 0.8
     - _SunGlowWidth: 7
-    - _SunSize: 0.015
+    - _SunSize: 0.0005
     - _SunSizeConvergence: 8
     m_Colors:
     - _CloudColor: {r: 0.3, g: 0.35, b: 0.46, a: 1}

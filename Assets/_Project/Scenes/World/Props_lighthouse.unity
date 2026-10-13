@@ -119,13 +119,13 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1001 &1315439776
+--- !u!1001 &544384213
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 1653836313}
+    m_TransformParent: {fileID: 1347739478}
     m_Modifications:
     - target: {fileID: 2720262013340423150, guid: 503e4d55651fc4078ae75d4cc9128a13, type: 3}
       propertyPath: m_Name
@@ -176,12 +176,12 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 503e4d55651fc4078ae75d4cc9128a13, type: 3}
---- !u!4 &1315439777 stripped
+--- !u!4 &544384214 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6952706874756339281, guid: 503e4d55651fc4078ae75d4cc9128a13, type: 3}
-  m_PrefabInstance: {fileID: 1315439776}
+  m_PrefabInstance: {fileID: 544384213}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1653836312
+--- !u!1 &1347739477
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -189,7 +189,7 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1653836313}
+  - component: {fileID: 1347739478}
   m_Layer: 0
   m_Name: Props_lighthouse
   m_TagString: Untagged
@@ -197,24 +197,24 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1653836313
+--- !u!4 &1347739478
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1653836312}
+  m_GameObject: {fileID: 1347739477}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1315439777}
+  - {fileID: 544384214}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 1653836313}
+  - {fileID: 1347739478}

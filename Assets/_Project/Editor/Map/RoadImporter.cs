@@ -326,6 +326,12 @@ namespace JapanMap.Editor.Map
             var uvs = new Vector2[stations][];
             var data = new Vector4[stations][];
             var style = type.gravel ? 0 : type.markings;
+            // Verge (2026-10-13): beyond the shoulder a gravel strip falls onto the carved ground, so the road no
+            // longer ends in a hard edge with the 1.5 m terrain grid zig-zagging into it. Outer edge on the terrain.
+            var verge = type.gravel ? 0f : s.roadVerge;
+            var arcs = new float[stations];
+            var vergeL = new Vector3[stations][];
+            var vergeR = new Vector3[stations][];
 
             for (var st = 0; st < stations; st++)
             {
@@ -344,6 +350,7 @@ namespace JapanMap.Editor.Map
                 float cos = Mathf.Cos(bank), sin = Mathf.Sin(bank);
 
                 var arc = closed && st == count ? road.length : (i + skipStart) * spacing;
+                arcs[st] = arc;
                 var width = WidthAt(road, type, i + skipStart);
                 var (lateral, vertical) = CrossSection(width, type.shoulder, kerbs, s.roadShoulderDrop);
                 var total = width + 2 * type.shoulder;
@@ -358,6 +365,12 @@ namespace JapanMap.Editor.Map
                     // Paths sample a calm band at the texture edge (legacy: the asphalt crack at u≈0.5 read as a seam).
                     uvs[st][k] = new Vector2(type.gravel ? 0.08f + across * 0.3f : across, arc / type.textureLength);
                     data[st][k] = new Vector4(lateral[k], arc, width / 2, style);
+                }
+                if (verge > 0f)
+                {
+                    var last = lateral.Length - 1;
+                    vergeL[st] = new[] { rows[st][0], OnGround(center + right * ((lateral[0] - verge) * cos)) };
+                    vergeR[st] = new[] { rows[st][last], OnGround(center + right * ((lateral[last] + verge) * cos)) };
                 }
             }
 
@@ -380,7 +393,32 @@ namespace JapanMap.Editor.Map
                     // a→b→c: (b−a)×(c−a) = right × tangent = up in Three space.
                     chunk.t[sub].AddRange(new[] { a, b, c, b, d, c });
                 }
+                if (verge > 0f)
+                {
+                    // Left strip runs outer → inner, right strip inner → outer: same winding as the road (up-facing).
+                    AddStrip(chunk, new[] { vergeL[st][1], vergeL[st][0] }, new[] { vergeL[st + 1][1], vergeL[st + 1][0] }, arcs[st], arcs[st + 1], type.textureLength);
+                    AddStrip(chunk, vergeR[st], vergeR[st + 1], arcs[st], arcs[st + 1], type.textureLength);
+                }
             }
+        }
+
+        /// <summary>A Three-space point dropped onto the carved terrain (Unity's terrain is mirrored in z), a hair above it.</summary>
+        static Vector3 OnGround(Vector3 three)
+        {
+            var u = LegacySource.ToUnity(three.x, three.y, three.z);
+            var t = TerrainImporter.TileAt(u);
+            if (t == null) return three;
+            return new Vector3(three.x, t.SampleHeight(u) + t.transform.position.y + 0.04f, three.z);
+        }
+
+        /// <summary>A two-point-wide strip between two stations into the gravel submesh.</summary>
+        static void AddStrip(Chunk chunk, Vector3[] from, Vector3[] to, float arcFrom, float arcTo, float textureLength)
+        {
+            var b = chunk.v.Count;
+            chunk.v.AddRange(new[] { from[0], from[1], to[0], to[1] });
+            chunk.uv.AddRange(new[] { new Vector2(0f, arcFrom / textureLength), new Vector2(0.25f, arcFrom / textureLength), new Vector2(0f, arcTo / textureLength), new Vector2(0.25f, arcTo / textureLength) });
+            chunk.road.AddRange(new[] { Vector4.zero, Vector4.zero, Vector4.zero, Vector4.zero });
+            chunk.t[Gravel].AddRange(new[] { b, b + 1, b + 2, b + 1, b + 3, b + 2 });
         }
 
         static Vector3 RightHanded(Vector3 a, Vector3 b) =>

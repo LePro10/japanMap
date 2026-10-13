@@ -70,6 +70,8 @@ namespace JapanMap.Editor.Map
         public float roadSurfaceOffset = 0.06f;
         [Tooltip("Outer shoulder edge lies this much lower, so the road does not end in a knife edge.")]
         public float roadShoulderDrop = 0.22f;
+        [Tooltip("Gravel verge beyond the shoulder down onto the terrain, m (0 = none; paths have none).")]
+        public float roadVerge = 1.4f;
         [Tooltip("Banking reaches its maximum at this curvature × max (legacy BANK_GAIN 20 = full at 20 m radius).")]
         public float roadBankGain = 20f;
         [Tooltip("Roads are merged into square chunks of this size (fewer draw calls, still culled).")]
