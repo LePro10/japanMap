@@ -26,6 +26,8 @@ Rauchprobe Niedrig 390–402 fps (3×) · Speichern lokal + SDK grün · SDK ges
 
 ## Offen / Gefunden
 
+- **Politur-Plan 2026-10-13 → [POLISH.md](POLISH.md)** (Analyse: Spiegelungen, Tokyo, Straßenränder, Reisfelder, UI, Tuning, Fotomodus, Wiederkommen). Wartet auf dein Go.
+
 - **Start 20,6 MB** (Marke 20 MB): Rest ist das Startauto Hachi mit **176 000 Eckpunkten** → Asset-Sitzung (unten).
 - Midgame-Werbung zeigt CrazyGames erst nach dem Full Launch; im QA-Tool als Demo prüfbar.
 - Leistung: WebGPU später; Handy DXT→ASTC nur nach Messung (D37); Hoch-Budget (20/50 Blickpunkte > 3 M) nach deinem
