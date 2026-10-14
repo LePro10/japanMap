@@ -24,9 +24,9 @@ anspielen (Desktop + Handy), dann hochladen
   Ladebildschirm; Autos vereinfacht, Startauto 2,3 → 1,1 MB.
 - [ ] 2b. **Basic Launch** (du lädst hoch) · [ ] 2c. Zahlen nach 7 Tagen → H1–H5 prüfen (LAUNCH.md §7b)
 
-**Gemessen (2026-10-14):** Build 85 MB · **20,01 MB bis gameplayStart** (vorher 20,6) · alle 59 Szenen in 18–20 s ·
-Rauchprobe Hoch 130 fps, Niedrig 429 fps, 0 Fehler · Chromebook-Profil (CPU ÷4, Niedrig) 49 fps · Tokyo Draw Calls
-Mittel 584–662 (vorher 948–1026), Niedrig ≈ 230 · EditMode 146/146 · Renn-Abnahme 2× 9/9.
+**Gemessen (2026-10-14):** Build 85 MB · **19,62 MB bis gameplayStart** (vorher 20,6) · alle 59 Szenen in 18–20 s ·
+Rauchprobe Hoch 143 fps, Niedrig 352–429 fps, 0 Fehler · Chromebook-Profil (CPU ÷4, Niedrig) 49 fps · Tokyo Draw Calls
+Mittel 584–662 (vorher 948–1026), Niedrig ≈ 230 · EditMode 146/146 · PlayMode 207/214, 0 rot (7 auf Abruf) · Renn-Abnahme 2× 9/9.
 
 ## Offen / Gefunden
 

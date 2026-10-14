@@ -65,6 +65,9 @@
 | 2026-10-13 | 11 | Neuimport verlor die gebackenen Probes (Bake lief im Hold, Szenen zu) | Bake nach dem Hold in `MapImport.ImportAll`; `LookTests.EveryPlace_HasBakedReflectionProbes` | Test |
 | 2026-10-13 | 11 | Menü-Einblenden mit Verschiebung ließ einen Klick direkt nach dem Öffnen daneben gehen | nur Deckkraft-Übergänge für Seiten, die man sofort anklickt (MapTests deckt es ab) | Test |
 | 2026-10-13 | 11 | Neuer Datenkanal (UV3, float) machte den Start-Download 1,3 MB größer | `MeshAssets.Compact` (16-Bit-Normalen/Kanäle), Größe nach jeder Mesh-Änderung messen (`build-web`) | Werkzeug |
+| 2026-10-14 | 11 | Optische Zusatz-Geometrie (Bankett) mit Kollider stoppte ein Auto an einer Schanze | Bankett als eigenes Mesh ohne Kollider; `RampTests` fand es | Test |
+| 2026-10-14 | 11 | Größen-Optimierung (Tangenten weg) brachte 0,02 MB, kostete Optik | erst messen, was es spart (`build-web`), dann gegen Bild abwägen | Skill |
+| 2026-10-14 | 11 | Tagesbonus zahlte in Tests mit, Sparks-Erwartungen falsch | `FreshSave` schaltet `DailySystem.AutoBonus` ab | Test |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**
