@@ -33,6 +33,9 @@ namespace JapanMap.Editor.Map
             var group = MapScene.FreshGroup(GroupName);
 
             var sea = Material("Water_Sea", new Color32(0x1d, 0x3b, 0x52, 255), 0.9f);
+            // Waves, glint and shore foam (Art/Shaders/Sea.shader) instead of a flat lit mirror.
+            var seaShader = Shader.Find("JapanMap/Sea");
+            if (seaShader != null && sea.shader != seaShader) { sea.shader = seaShader; EditorUtility.SetDirty(sea); }
             var paddy = Material("Water_Paddy", new Color32(0x2b, 0x30, 0x26, 255), 0.94f);
             var river = Material("Water_River", new Color32(0x24, 0x3c, 0x40, 255), 0.9f);
 

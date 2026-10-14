@@ -41,8 +41,13 @@ namespace JapanMap.World
             if (_mirror != null) Destroy(_mirror.gameObject);
         }
 
+        static readonly int DepthAvailableId = Shader.PropertyToID("_JM_DepthAvailable");
+
         void OnTier(string tier)
         {
+            // Effects that read the scene depth (sea foam) only where the tier renders a depth texture (not Low).
+            var urp = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
+            Shader.SetGlobalFloat(DepthAvailableId, urp != null && urp.supportsCameraDepthTexture ? 1f : 0f);
             var i = System.Array.IndexOf(QualitySystem.Tiers, tier);
             _scale = settings == null ? 0f : i == 0 ? settings.scale.x : i == 1 ? settings.scale.y : i == 2 ? settings.scale.z : settings.scale.y;
         }
