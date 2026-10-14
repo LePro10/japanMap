@@ -26,6 +26,9 @@ namespace JapanMap.Gameplay.Progress
         bool _bonusChecked;
         float _metres;
 
+        /// <summary>False: the bonus is never paid by itself (tests that count Sparks; CheckBonus still works).</summary>
+        public static bool AutoBonus = true;
+
         /// <summary>Overrides today's date (tests).</summary>
         public static Func<DateTime> Now = () => DateTime.Now;
 
@@ -85,7 +88,7 @@ namespace JapanMap.Gameplay.Progress
                 progress.MarkDirty();
             }
             _since += Time.unscaledDeltaTime;
-            if (!_bonusChecked && _since > settings.delay && !Busy()) CheckBonus();
+            if (AutoBonus && !_bonusChecked && _since > settings.delay && !Busy()) CheckBonus();
             if (!OwnCar || Time.timeScale <= 0f) return;
             var kmh = player.Car.Telemetry.speed * 3.6f;
             if (Challenge.goal == DailyGoal.TopSpeed) Report(kmh, max: true);

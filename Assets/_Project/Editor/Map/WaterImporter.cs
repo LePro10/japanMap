@@ -218,6 +218,19 @@ namespace JapanMap.Editor.Map
                 Dry(new Vector3(c.position.x, 0f, c.position.y));
                 for (var b = 0; b < c.buttons.Length; b++) Dry(set.ButtonPosition(c, b));
             }
+            // Ramp run-ups and landings in the terraces stay dry: water there slowed the car to 14 km/h at the
+            // Terrace Roller's lip (RampTests, 2026-10-14).
+            var ramps = AssetDatabase.LoadAssetAtPath<JapanMap.Gameplay.Stunts.RampSet>("Assets/_Project/Data/Gameplay/Ramps.asset");
+            if (ramps == null) return;
+            foreach (var r in ramps.ramps)
+            {
+                var start = new Vector3(r.start.x, 0f, r.start.y);
+                var fwd = r.Forward;
+                var side = Vector3.Cross(Vector3.up, fwd);
+                for (var a = -100f; a <= r.Length + 30f; a += 2f)
+                for (var w = -r.width; w <= r.width; w += 2f)
+                    Dry(start + fwd * a + side * w);
+            }
         }
 
         static bool CellWet(bool[] mask, int res, int i, int j) =>

@@ -45,6 +45,11 @@ namespace JapanMap.Editor.Map
             // Road data for the wet surface shader (UV3): lateral m, texture length m, half width m, marking style.
             public readonly List<Vector4> road = new();
             public readonly List<int>[] t = { new(), new() };
+            // Verge strips: drawn only. With a collider they put 10 cm steps beside the terrain and stopped a car on
+            // the Terrace Roller run-up (RampTests, 2026-10-14) — the carved terrain under them is the ground.
+            public Chunk Verge => _verge ??= new Chunk();
+            Chunk _verge;
+            public bool HasVerge => _verge != null && _verge.v.Count > 0;
         }
 
         public static Transform Import(MapImportSettings settings)
@@ -78,6 +83,11 @@ namespace JapanMap.Editor.Map
                 surfaceTris += mesh.triangles.Length / 3;
                 var go = Add(group, name, mesh, new[] { asphalt, gravel });
                 go.AddComponent<MeshCollider>().sharedMesh = mesh;
+                if (kv.Value.HasVerge)
+                {
+                    var verge = Save($"Verge_{kv.Key.Item1}_{kv.Key.Item2}", ToMesh(kv.Value.Verge), written);
+                    Add(go.transform, "Verge", verge, new[] { asphalt, gravel }); // no collider
+                }
             }
             var railGroup = new GameObject("Guardrails").transform;
             railGroup.SetParent(group, false);
@@ -128,6 +138,7 @@ namespace JapanMap.Editor.Map
                 var path = $"{MeshDir}/Road_{kv.Key.Item1}_{kv.Key.Item2}.asset";
                 if (AssetDatabase.LoadAssetAtPath<Mesh>(path) == null) missing++;
                 Save($"Road_{kv.Key.Item1}_{kv.Key.Item2}", ToMesh(kv.Value), written);
+                if (kv.Value.HasVerge) Save($"Verge_{kv.Key.Item1}_{kv.Key.Item2}", ToMesh(kv.Value.Verge), written);
             }
             AssetDatabase.SaveAssets();
             var msg = $"[Map] road meshes refreshed: {surface.Count} chunks, {missing} new (new ones need Import All)";
@@ -414,8 +425,9 @@ namespace JapanMap.Editor.Map
         }
 
         /// <summary>A two-point-wide strip between two stations into the gravel submesh.</summary>
-        static void AddStrip(Chunk chunk, Vector3[] from, Vector3[] to, float arcFrom, float arcTo, float textureLength)
+        static void AddStrip(Chunk road, Vector3[] from, Vector3[] to, float arcFrom, float arcTo, float textureLength)
         {
+            var chunk = road.Verge;
             var b = chunk.v.Count;
             chunk.v.AddRange(new[] { from[0], from[1], to[0], to[1] });
             chunk.uv.AddRange(new[] { new Vector2(0f, arcFrom / textureLength), new Vector2(0.25f, arcFrom / textureLength), new Vector2(0f, arcTo / textureLength), new Vector2(0.25f, arcTo / textureLength) });
@@ -857,7 +869,9 @@ namespace JapanMap.Editor.Map
                 mesh.SetTriangles(t, s);
             }
             mesh.RecalculateNormals();
-            // No tangents: the wet surface shader builds its own frame (8 bytes per vertex out of the start download).
+            // Tangents stay: without them the asphalt normal map drew dark bands across the road, and they cost only
+            // 0.02 MB of the start download as 16-bit (measured 2026-10-14).
+            mesh.RecalculateTangents();
             mesh.RecalculateBounds();
             return mesh;
         }

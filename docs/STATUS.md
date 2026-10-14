@@ -3,8 +3,8 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-11 abends · **Phase 11 (Launch):** erster Eindruck neu gebaut (Intro, Handy, Menü) · **jetzt bist du dran:**
-Handy-Link testen, dann hochladen
+**Stand:** 2026-10-14 · **Phase 11 (Launch):** große Politur durch ([POLISH.md](POLISH.md) §5) · **jetzt bist du dran:**
+anspielen (Desktop + Handy), dann hochladen
 
 ## Phase 11 — Launch
 
@@ -17,16 +17,21 @@ Handy-Link testen, dann hochladen
   - **Kiste statt Auto / Schwarz** → Ladebildschirm deckt alles, bis Welt und Auto da sind.
   - **Menü** neu: Rennspiel-Pause statt Dashboard (Resume oben, große Auto-Zeile, zwei Karten, eine Formsprache).
   - **Ziel lesbar:** „<Rennen> · 620 m“ bleibt unter dem Pfeil; Pfeil größer.
+- [x] 3e. **Politur** (2026-10-13/14, D44): nasse Straße + Tokyo-Spiegel + Probes, Neon/Bloom (auch in Fotos), Himmel mit
+  Wolken, Moos-Fels, Reisfeld-Ufer, Kies-Bankett, Laternenlicht, Meer mit Wellen; UI mit echten Schriften, Pausenmenü mit
+  Kamerafahrt, HUD-Animationen, Ergebnis mit Medaille, Garage mit Leistungsbalken + Live-Vorschau, Tuning auffindbar
+  (Weltmarken, Kachel, Intro → Open Bay), Fotomodus mit Maus/Zoom, Tagesbonus + Tages-Challenge, KI mit Gummiband,
+  Ladebildschirm; Autos vereinfacht, Startauto 2,3 → 1,1 MB.
 - [ ] 2b. **Basic Launch** (du lädst hoch) · [ ] 2c. Zahlen nach 7 Tagen → H1–H5 prüfen (LAUNCH.md §7b)
 
-**Gemessen (2026-10-11 abends):** Build 82,2 MB · **20,6 MB bis gameplayStart** (18,4 Spiel + 2,4 Startauto, ehrlich
-gezählt; vorher 18,4 + Kiste) · 5,8 s lokal · Handy-Netz 5 Mbit/s ≈ 34 s, 20 Mbit/s ≈ 11 s (H1: nur Bytes zählen) ·
-Rauchprobe Niedrig 390–402 fps (3×) · Speichern lokal + SDK grün · SDK gesperrt grün · Streaming 58 Szenen grün ·
-**sizes-web grün: 7 Desktop-Größen + Android (2,625) + iPhone (3) + hochkant, 0 Überlappungen** · EditMode 143/143 · PlayMode 204/211, 0 rot (7 auf Abruf).
+**Gemessen (2026-10-14):** Build 85 MB · **20,01 MB bis gameplayStart** (vorher 20,6) · alle 59 Szenen in 18–20 s ·
+Rauchprobe Hoch 130 fps, Niedrig 429 fps, 0 Fehler · Chromebook-Profil (CPU ÷4, Niedrig) 49 fps · Tokyo Draw Calls
+Mittel 584–662 (vorher 948–1026), Niedrig ≈ 230 · EditMode 146/146 · Renn-Abnahme 2× 9/9.
 
 ## Offen / Gefunden
 
-- **Politur-Plan 2026-10-13 → [POLISH.md](POLISH.md)** (Analyse: Spiegelungen, Tokyo, Straßenränder, Reisfelder, UI, Tuning, Fotomodus, Wiederkommen). Wartet auf dein Go.
+- Politur offen ([POLISH.md](POLISH.md)): Kabel zwischen Masten, Touch-Knöpfe mit Icons, Musik/Umgebungstöne (Clips fehlen),
+  3D-Hebebühne in der Garage, Geist der Bestzeit, Feinregler Fahrhöhe/Sturz, Store-Videos aus dem neuen Look.
 
 - **Start 20,6 MB** (Marke 20 MB): Rest ist das Startauto Hachi mit **176 000 Eckpunkten** → Asset-Sitzung (unten).
 - Midgame-Werbung zeigt CrazyGames erst nach dem Full Launch; im QA-Tool als Demo prüfbar.
@@ -50,11 +55,10 @@ Rauchprobe Niedrig 390–402 fps (3×) · Speichern lokal + SDK grün · SDK ges
 
 ## Für dich (Mensch)
 
-1. **Handy-Test jetzt (5 Min.):** https://commissioner-wow-south-berkeley.trycloudflare.com/ — läuft, solange dein Mac
-   an ist und der Server läuft (neu starten: `node Tools/serve-web.mjs --preview --public`, dann gibt es eine neue
-   Adresse). **Privater Tab** = neuer Spieler → Intro. Quer halten. Prüfe: Ladebalken bis zum Bild (kein Schwarz, keine
-   Kiste)? Intro verständlich, Sprung + Zeitlupe, „Tap STUNT“ in der Luft, SKIP? Danach Menü (MENU-Knopf) — gefällt es?
-   Schreib mir je Punkt ok / was stört.
+1. **Neue Version anspielen (10 Min.):** Terminal: `node Tools/serve-web.mjs --preview`, dann http://127.0.0.1:8092
+   im privaten Fenster. Prüfe: Tokyo bei Regen-Spiegelung (Hoch), Pausenmenü (Esc) mit Kamerafahrt, Garage („Tune now“),
+   Fotomodus (P, mit Maus ziehen, Mausrad), Rennen bis zum Ergebnis, Meer an der Küste. Handy: `--preview --public`.
+   Sag je Punkt ok / was stört.
 2. **Desktop genauso:** http://127.0.0.1:8092 (privates Fenster) — Tab halten überspringt das Intro.
 3. **CrazyGames-QA-Tool** (developer.crazygames.com → ZIP vom **Inhalt** von `Builds/Web`): (a) Werbung im Ergebnis-
    Bildschirm, (b) AdBlocker an: Sofortstart, kein „Watch ad“, (c) Vollbild, dann Esc und MENU, (d) Login + Speichern,

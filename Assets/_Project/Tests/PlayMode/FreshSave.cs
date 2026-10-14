@@ -21,11 +21,14 @@ namespace JapanMap.Tests
         {
             Store = new MemoryStore();
             SaveStores.Current = Store;
+            // A fresh save would get today's daily bonus a few seconds in: tests that count Sparks expect only theirs.
+            JapanMap.Gameplay.Progress.DailySystem.AutoBonus = false;
             yield break;
         }
 
         public IEnumerator AfterTest(ITest test)
         {
+            JapanMap.Gameplay.Progress.DailySystem.AutoBonus = true;
             yield break;
         }
     }

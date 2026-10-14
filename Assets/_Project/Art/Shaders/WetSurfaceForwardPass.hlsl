@@ -195,11 +195,7 @@ Varyings LitPassVertex(Attributes input)
     output.normalWS = normalInput.normalWS;
 #if defined(REQUIRES_WORLD_SPACE_TANGENT_INTERPOLATOR) || defined(REQUIRES_TANGENT_SPACE_VIEW_DIR_INTERPOLATOR)
     real sign = input.tangentOS.w * GetOddNegativeScale();
-    // The road meshes carry no tangents (start download, 2026-10-13): the asphalt normal map is an isotropic noise,
-    // so any frame in the surface plane will do — built from the normal and world z.
-    float3 derived = cross(float3(0, 0, 1), output.normalWS);
-    derived = dot(derived, derived) < 1e-4 ? float3(1, 0, 0) : normalize(derived);
-    half4 tangentWS = half4(derived, 1.0);
+    half4 tangentWS = half4(normalInput.tangentWS.xyz, sign);
 #endif
 #if defined(REQUIRES_WORLD_SPACE_TANGENT_INTERPOLATOR)
     output.tangentWS = tangentWS;
