@@ -199,7 +199,15 @@ def hammer(c):
     c.box(Vector((0, -0.01, 0.22)), (0.018, 0.06, 0.02), 'METAL_STEEL', W0)
 
 
+def baton(c):
+    """Red LED light baton of the traffic guard (yūdōtō): grip, glowing tube."""
+    c.tube([Vector((0, 0, 0.05)), Vector((0, 0, -0.1))], 0.018, 6, 'ROD_BLACK', W0)
+    c.loft([dict(c=(0, 0, -0.1), a=0.02, f=0.02, k=0.02, w=W0, reg='BATON_LIT'),
+            dict(c=(0, 0, -0.52), a=0.017, f=0.017, k=0.017, w=W0, reg='BATON_LIT', cap=0.012)], c.n(8, 6, 4))
+
+
 PROPS = {
+    'Baton': (baton, 'Right', 'hang'),
     'Umbrella_Vinyl_Open': (lambda c: umbrella_open(c, 'PLASTIC_WHITE', glass=True), 'Right', 'up'),
     'Umbrella_Vinyl_Closed': (lambda c: umbrella_closed(c, 'PLASTIC_WHITE', glass=True), 'Right', 'hang'),
     'Umbrella_Black_Open': (lambda c: umbrella_open(c, 'UMBRELLA_BLACK', rib='METAL_STEEL', handle='WOOD_HANDLE'), 'Right', 'up'),

@@ -110,7 +110,7 @@ PALETTE = [
     ('TAIL_GREEN', C('#1f3a34', 0.6)), ('COMB_RED', C('#c3201d', 0.4)), ('BEAK_YELLOW', C('#d9a62b', 0.4)),
     ('CROW', C('#121316', 0.55)), ('CROW_BEAK', C('#0c0c0e', 0.7)), ('SHIBA_RED', C('#c27a3e', 0.2)),
     ('SHIBA_CREAM', C('#eadfca', 0.2)), ('COLLAR_RED', C('#b12a2c', 0.45)), ('PIGEON_GREY', C('#7f8590', 0.3)),
-    ('PIGEON_NECK', C('#4f6b62', 0.6)),
+    ('PIGEON_NECK', C('#4f6b62', 0.6)), ('BATON_LIT', emissive('#ff3a2a')),
 ]
 
 

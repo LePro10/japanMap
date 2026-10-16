@@ -643,6 +643,48 @@ def fingerless(c, o, reg):
     pass
 
 
-EXTRAS = dict(tie=tie, glasses=glasses, mask=mask, briefcase=briefcase, lanyard=lanyard, shoulder_bag=shoulder_bag,
+def randoseru(c, o, reg):
+    """The Japanese school satchel: a stiff leather box high on the back with a
+    rounded flap, metal clasp, side hook, shoulder straps; often a charm hangs on it."""
+    puff = o['top'].get('puff', 0)
+    yb = by(c, 1.25, 0, puff) - 0.005
+    wt = W(Chest=0.7, Spine=0.3)
+    zc = c.z(1.22)
+    h, w, d = 0.15, 0.13, 0.09
+    c.box(Vector((0, yb + d, zc)), (w, d, h), reg, wt)
+    if c.lod < 2:
+        # the flap rounds over the top and comes down the back to the clasp
+        # rounded top-back edge where the flap folds over
+        c.tube([Vector((-w - 0.004, yb + 2 * d - 0.025, zc + h - 0.02)), Vector((w + 0.004, yb + 2 * d - 0.025, zc + h - 0.02))],
+               0.032, c.n(8, 6, 4), reg, wt)
+        c.box(Vector((0, yb + 2 * d + 0.012, zc + 0.02)), (w + 0.004, 0.006, h * 0.85), reg, wt)
+        c.box(Vector((0, yb + 2 * d + 0.02, zc - 0.07)), (0.022, 0.006, 0.016), 'BUTTON_GOLD', wt)
+        for s in (1, -1):
+            pts = [Vector((s * 0.07, yb + 0.02, zc + h - 0.01)), Vector((s * 0.09, 0.0, c.z(1.46))),
+                   on_front(c, 1.32, s * 0.1, puff, 0.008), on_front(c, 1.16, s * 0.11, puff, 0.004),
+                   Vector((s * 0.12, yb * 0.5, c.z(1.08))), Vector((s * 0.09, yb + 0.02, zc - h + 0.02))]
+            c.tube(pts, 0.011, 3, reg, lambda i: W(Chest=1) if i < 4 else wt, caps=False)
+        if c.lod == 0:
+            c.box(Vector((w + 0.01, yb + d, zc - 0.05)), (0.008, 0.012, 0.012), 'METAL_STEEL', wt)        # side hook
+            c.tube([Vector((w + 0.012, yb + d, zc - 0.06)), Vector((w + 0.02, yb + d, zc - 0.12))], 0.003, 3, 'SCARF_RED', wt)
+            c.box(Vector((w + 0.02, yb + d, zc - 0.14)), (0.012, 0.012, 0.016), 'HELMET_YELLOW', wt)        # charm (omamori bell)
+
+
+def xbelt(c, o, reg):
+    """Traffic guard's crossed reflective belt over the uniform."""
+    puff = o['top'].get('puff', 0) + 0.02
+    for s in (1, -1):
+        pts_f = [on_front(c, zf, s * x, puff, 0.004) for zf, x in ((1.43, 0.11), (1.25, 0.03), (1.05, -0.09))]
+        c.loft([dict(c=p, a=0.022, f=0.003, k=0.003, w=B.torso_w(zf), reg=reg) for p, zf in zip(pts_f, (1.43, 1.25, 1.05))], 4)
+        pts_b = [Vector((p.x, by(c, zf, p.x, puff) + 0.004, p.z)) for p, zf in zip(pts_f, (1.43, 1.25, 1.05))]
+        c.loft([dict(c=p, a=0.022, f=0.003, k=0.003, w=B.torso_w(zf), reg=reg) for p, zf in zip(pts_b, (1.43, 1.25, 1.05))], 4)
+    w, f, k = B.interp(c.body['torso'], 1.03)
+    s = 1.12 + puff
+    c.loft([dict(c=(0, 0.004, c.z(1.01)), d=Z, a=w * s, f=f * s, k=k * s, w=B.torso_w(1.01), reg=reg),
+            dict(c=(0, 0.004, c.z(1.05)), d=Z, a=w * s, f=f * s, k=k * s, w=B.torso_w(1.05), reg=reg)], c.n(14, 10, 6),
+           cap0=False, cap1=False, p=2.5)
+
+
+EXTRAS = dict(randoseru=randoseru, xbelt=xbelt, tie=tie, glasses=glasses, mask=mask, briefcase=briefcase, lanyard=lanyard, shoulder_bag=shoulder_bag,
               tote=tote, backpack=backpack, school_bag=school_bag, eco_bag=eco_bag, kinchaku=kinchaku, hivis=hivis,
               neck_towel=neck_towel, tool_belt=tool_belt, bib_apron=bib_apron, maekake=maekake, fingerless=fingerless)

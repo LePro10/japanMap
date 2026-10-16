@@ -2224,6 +2224,48 @@
   "switchable": [],
   "attach": []
  },
+ "Hito_KidBoy": {
+  "fbx": "characters/SM_Hito_KidBoy.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_KidBoy_LOD0",
+   "SM_Hito_KidBoy_LOD1",
+   "SM_Hito_KidBoy_LOD2"
+  ],
+  "tris": [
+   2659,
+   1869,
+   742
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_KidGirl": {
+  "fbx": "characters/SM_Hito_KidGirl.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_KidGirl_LOD0",
+   "SM_Hito_KidGirl_LOD1",
+   "SM_Hito_KidGirl_LOD2"
+  ],
+  "tris": [
+   2739,
+   1901,
+   710
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
  "Hito_Obaachan": {
   "fbx": "characters/SM_Hito_Obaachan.fbx",
   "class": "characters",
@@ -2278,6 +2320,25 @@
    2325,
    1731,
    618
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Prop_Baton": {
+  "fbx": "characters/SM_Hito_Prop_Baton.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Prop_Baton_LOD0",
+   "SM_Hito_Prop_Baton_LOD1"
+  ],
+  "tris": [
+   56,
+   48
   ],
   "materials": [
    "M_Figures_Atlas"
@@ -2651,6 +2712,27 @@
    2603,
    1805,
    672
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_TrafficGuard": {
+  "fbx": "characters/SM_Hito_TrafficGuard.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_TrafficGuard_LOD0",
+   "SM_Hito_TrafficGuard_LOD1",
+   "SM_Hito_TrafficGuard_LOD2"
+  ],
+  "tris": [
+   2491,
+   1809,
+   786
   ],
   "materials": [
    "M_Figures_Atlas"

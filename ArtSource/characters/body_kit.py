@@ -569,9 +569,11 @@ def hat(c, o):
         sy = 1 if back else -1
         c.box(Vector((0, sy * (f * 1.12 + 0.045), hz(1.655))), (w * 0.85, 0.05, 0.005), ht.get('bill', reg), W(Head=1),
               rot=Matrix.Rotation(math.radians(-8 * sy), 3, 'X'))
+        if ht.get('badge') and c.lod < 2:
+            c.box(Vector((0, -f * 1.1, hz(1.69))), (0.012, 0.004, 0.014), 'BUTTON_GOLD', W(Head=1))
     elif kind in ('sunhat', 'bucket', 'flat'):
         top = {'sunhat': 1.77, 'bucket': 1.77, 'flat': 1.735}[kind]
-        brim_r = {'sunhat': 0.2, 'bucket': 0.12, 'flat': 0.0}[kind]
+        brim_r = ht.get('brim', {'sunhat': 0.2, 'bucket': 0.12, 'flat': 0.0}[kind])
         rr = [dict(c=(0, 0.006, hz(1.66)), d=Z, a=w * 1.14, f=f * 1.1, k=b * 1.12, w=W(Head=1), reg=reg),
               dict(c=(0, 0.006, hz(top - 0.03)), d=Z, a=w * 1.05, f=f * 1.0, k=b * 1.04, w=W(Head=1),
                    reg=ht.get('band', reg) if kind == 'sunhat' else reg),

@@ -246,6 +246,20 @@ def bow(u):
     return p
 
 
+def wave(u):
+    """Traffic guard waving cars on with the light baton (right arm sweeps out
+    and in, front of the body), the left hand stops the other lane."""
+    p = idle(u)
+    a = TAU * u
+    p['RightUpperArm'] = [35 + 25 * S(a), 0, -55 + 20 * C(a)]
+    p['RightLowerArm'] = [25 + 10 * S(a), 0, 0]
+    p['LeftUpperArm'] = [70, 0, 10]
+    p['LeftLowerArm'] = [15, 0, 0]
+    p['LeftHand'] = [-60, 0, 0]
+    add(p, 'Head', y=-10 * S(a))
+    return p
+
+
 # name: (function, seconds, loop, forward speed m/s for root motion matching)
 CLIPS = {
     'Idle': (idle, 4.0, True, 0.0),
@@ -261,6 +275,7 @@ CLIPS = {
     'Phone': (phone, 4.0, True, 0.0),
     'Sweep': (sweep, 1.8, True, 0.0),
     'Bow': (bow, 3.0, True, 0.0),
+    'Wave': (wave, 1.4, True, 0.0),
 }
 
 

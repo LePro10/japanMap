@@ -1,4 +1,8 @@
 {
+ "Baton": {
+  "hand": "RightHand",
+  "axis": "hang"
+ },
  "Briefcase": {
   "hand": "RightHand",
   "axis": "hang"
