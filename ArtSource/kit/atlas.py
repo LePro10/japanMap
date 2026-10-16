@@ -1987,6 +1987,8 @@ from .atlas_figures import layout as _figures_layout   # noqa: E402
 LAYOUTS.update(_figures_layout())
 from .atlas_traffic import layout as _traffic_layout   # noqa: E402
 LAYOUTS.update(_traffic_layout())
+from .atlas_details import layout as _details_layout   # noqa: E402
+LAYOUTS.update(_details_layout())
 
 
 def build_maps(name, seed=1):

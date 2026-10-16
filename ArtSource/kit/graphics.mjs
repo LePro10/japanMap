@@ -20,6 +20,7 @@ import { TERA } from './graphics_tera.mjs';
 import { SCATTER } from './graphics_scatter.mjs';
 import { MACHI } from './graphics_machi.mjs';
 import { KOSO } from './graphics_koso.mjs';
+import { DETAILS } from './graphics_details.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(join(here, '../../Tools/package.json'));
@@ -114,6 +115,7 @@ const G = {
   ...Object.fromEntries(Object.entries(SCATTER).map(([k, v]) => [`SC_${k}`, v])),
   ...Object.fromEntries(Object.entries(MACHI).map(([k, v]) => [`MA_${k}`, v])),
   ...Object.fromEntries(Object.entries(KOSO).map(([k, v]) => [`KS_${k}`, v])),
+  ...Object.fromEntries(Object.entries(DETAILS).map(([k, v]) => [`DT_${k}`, v])),
 };
 
 mkdirSync(OUT, { recursive: true });

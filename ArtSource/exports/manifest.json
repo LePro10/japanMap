@@ -6244,6 +6244,420 @@
   "switchable": [],
   "attach": []
  },
+ "Street_Barricade_Frog": {
+  "fbx": "props/SM_Street_Barricade_Frog.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_Barricade_Frog_LOD0",
+   "SM_Street_Barricade_Frog_LOD1",
+   "SM_Street_Barricade_Frog_LOD2"
+  ],
+  "tris": [
+   2916,
+   1320,
+   228
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_Barricade_Monkey": {
+  "fbx": "props/SM_Street_Barricade_Monkey.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_Barricade_Monkey_LOD0",
+   "SM_Street_Barricade_Monkey_LOD1",
+   "SM_Street_Barricade_Monkey_LOD2"
+  ],
+  "tris": [
+   3076,
+   1480,
+   348
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_Cone": {
+  "fbx": "props/SM_Street_Cone.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_Cone_LOD0",
+   "SM_Street_Cone_LOD1",
+   "SM_Street_Cone_LOD2"
+  ],
+  "tris": [
+   196,
+   120,
+   76
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_ConeBar_Set": {
+  "fbx": "props/SM_Street_ConeBar_Set.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_ConeBar_Set_LOD0",
+   "SM_Street_ConeBar_Set_LOD1",
+   "SM_Street_ConeBar_Set_LOD2"
+  ],
+  "tris": [
+   822,
+   460,
+   328
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_CurveMirror_Double": {
+  "fbx": "props/SM_Street_CurveMirror_Double.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_CurveMirror_Double_LOD0",
+   "SM_Street_CurveMirror_Double_LOD1",
+   "SM_Street_CurveMirror_Double_LOD2"
+  ],
+  "tris": [
+   440,
+   242,
+   132
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_CurveMirror_Round": {
+  "fbx": "props/SM_Street_CurveMirror_Round.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_CurveMirror_Round_LOD0",
+   "SM_Street_CurveMirror_Round_LOD1",
+   "SM_Street_CurveMirror_Round_LOD2"
+  ],
+  "tris": [
+   264,
+   130,
+   76
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_Daruma": {
+  "fbx": "props/SM_Street_Daruma.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_Daruma_LOD0",
+   "SM_Street_Daruma_LOD1",
+   "SM_Street_Daruma_LOD2"
+  ],
+  "tris": [
+   552,
+   268,
+   148
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_GarbageStation": {
+  "fbx": "props/SM_Street_GarbageStation.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_GarbageStation_LOD0",
+   "SM_Street_GarbageStation_LOD1",
+   "SM_Street_GarbageStation_LOD2"
+  ],
+  "tris": [
+   3054,
+   882,
+   108
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_HydrantSign": {
+  "fbx": "props/SM_Street_HydrantSign.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_HydrantSign_LOD0",
+   "SM_Street_HydrantSign_LOD1",
+   "SM_Street_HydrantSign_LOD2"
+  ],
+  "tris": [
+   128,
+   86,
+   80
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_Koinobori": {
+  "fbx": "props/SM_Street_Koinobori.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_Koinobori_LOD0",
+   "SM_Street_Koinobori_LOD1",
+   "SM_Street_Koinobori_LOD2"
+  ],
+  "tris": [
+   698,
+   520,
+   208
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_KojiBoard": {
+  "fbx": "props/SM_Street_KojiBoard.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_KojiBoard_LOD0",
+   "SM_Street_KojiBoard_LOD1",
+   "SM_Street_KojiBoard_LOD2"
+  ],
+  "tris": [
+   544,
+   224,
+   84
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_ManekiNeko": {
+  "fbx": "props/SM_Street_ManekiNeko.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_ManekiNeko_LOD0",
+   "SM_Street_ManekiNeko_LOD1",
+   "SM_Street_ManekiNeko_LOD2"
+  ],
+  "tris": [
+   480,
+   468,
+   228
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_Manhole_Design": {
+  "fbx": "props/SM_Street_Manhole_Design.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_Manhole_Design_LOD0",
+   "SM_Street_Manhole_Design_LOD1",
+   "SM_Street_Manhole_Design_LOD2"
+  ],
+  "tris": [
+   184,
+   120,
+   36
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_PhoneBooth": {
+  "fbx": "props/SM_Street_PhoneBooth.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_PhoneBooth_LOD0",
+   "SM_Street_PhoneBooth_LOD1",
+   "SM_Street_PhoneBooth_LOD2"
+  ],
+  "tris": [
+   644,
+   204,
+   204
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [
+   {
+    "name": "LIGHT_Street_PhoneBooth_Sign",
+    "pos": [
+     0.0,
+     0.0,
+     2.25
+    ],
+    "color": [
+     0.9,
+     1.0,
+     0.9
+    ],
+    "range": 3.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_PostBox_Round": {
+  "fbx": "props/SM_Street_PostBox_Round.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_PostBox_Round_LOD0",
+   "SM_Street_PostBox_Round_LOD1",
+   "SM_Street_PostBox_Round_LOD2"
+  ],
+  "tris": [
+   368,
+   186,
+   126
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_SmokingStand": {
+  "fbx": "props/SM_Street_SmokingStand.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_SmokingStand_LOD0",
+   "SM_Street_SmokingStand_LOD1",
+   "SM_Street_SmokingStand_LOD2"
+  ],
+  "tris": [
+   222,
+   160,
+   110
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_SuperCub_Delivery": {
+  "fbx": "props/SM_Street_SuperCub_Delivery.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_SuperCub_Delivery_LOD0",
+   "SM_Street_SuperCub_Delivery_LOD1",
+   "SM_Street_SuperCub_Delivery_LOD2"
+  ],
+  "tris": [
+   1752,
+   880,
+   308
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_Tanuki": {
+  "fbx": "props/SM_Street_Tanuki.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_Tanuki_LOD0",
+   "SM_Street_Tanuki_LOD1",
+   "SM_Street_Tanuki_LOD2"
+  ],
+  "tris": [
+   1572,
+   768,
+   460
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Street_UmbrellaStand": {
+  "fbx": "props/SM_Street_UmbrellaStand.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Street_UmbrellaStand_LOD0",
+   "SM_Street_UmbrellaStand_LOD1",
+   "SM_Street_UmbrellaStand_LOD2"
+  ],
+  "tris": [
+   716,
+   412,
+   380
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
  "Tera_Chochin_Rack": {
   "fbx": "buildings/SM_Tera_Chochin_Rack.fbx",
   "class": "buildings",
