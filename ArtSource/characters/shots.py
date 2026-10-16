@@ -167,3 +167,86 @@ def scene(name='Hito_Scene', cast=None, target=(0, 0, 1.0), direction=(0.35, -1.
         for o in list(tmp.objects):
             bpy.data.objects.remove(o)
     return out
+
+
+def street(name='Sprint6_Street', mood=True, size=(1280, 640), target=(0.5, 1.0, 1.1), direction=(0.55, -1.0, 0.18), dist=11.0):
+    """The whole sprint in one picture: a wet street corner at blue hour with
+    traffic, people with their props, animals and the small details."""
+    import math
+    from characters import anim_kit as AK, hand_props as HP
+    from kit import core as K
+    tmp = K.collection('Sprint6_Scene')
+
+    def put(src, loc, yaw=0.0):
+        o = bpy.data.objects[src].copy()
+        tmp.objects.link(o)
+        o.hide_render = False; o.hide_set(False)
+        o.location = loc
+        o.rotation_euler = (0, 0, math.radians(yaw))
+        # paint slot: tint per car like Unity will
+        return o
+    # road along X at y in [-3, 3], pavement y > 3.2
+    cars = [('SM_Traffic_Taxi_JPN_LOD0', (-4.5, -1.5, 0), 90), ('SM_Traffic_Kei_Tall_LOD0', (2.5, -1.4, 0), 90),
+            ('SM_Traffic_Truck_2t_LOD0', (8.0, 1.6, 0), -90), ('SM_Traffic_Kei_Van_LOD0', (-10.5, 1.5, 0), -90)]
+    for src, loc, yaw in cars:
+        put(src, loc, yaw)
+    details = [('SM_Street_CurveMirror_Round_LOD0', (-1.0, 3.5, 0), 180), ('SM_Street_PostBox_Round_LOD0', (1.2, 4.2, 0), 180),
+               ('SM_Street_Barricade_Frog_LOD0', (5.2, 3.6, 0), 180), ('SM_Street_KojiBoard_LOD0', (7.5, 3.8, 0), 200),
+               ('SM_Street_UmbrellaStand_LOD0', (-3.2, 5.2, 0), 180), ('SM_Street_SuperCub_Delivery_LOD0', (-6.0, 3.9, 0), 90),
+               ('SM_Street_Manhole_Design_LOD0', (0.5, -0.2, 0), 0), ('SM_Street_GarbageStation_LOD0', (3.5, 5.6, 0), 180),
+               ('SM_Street_PhoneBooth_LOD0', (-8.5, 4.6, 0), 180), ('SM_Street_ConeBar_Set_LOD0', (9.0, 2.9, 0), 0)]
+    for src, loc, yaw in details:
+        put(src, loc, yaw)
+    for src, loc, yaw in (('SM_Animal_Cat_Loaf_Calico_LOD0', (0.2, 4.6, 0.0), 160), ('SM_Animal_Crow_LOD0', (3.0, 5.0, 0), 120),
+                          ('SM_Animal_Shiba_Stand_LOD0', (-1.8, 4.4, 0), 100)):
+        put(src, loc, yaw)
+    cast = [('Salaryman', 'WalkUmbrella', 0.1, (-2.4, 4.3, 0), 90, [('Umbrella_Black_Open', 'Right')]),
+            ('OfficeLady', 'WalkUmbrella', 0.55, (-0.6, 5.0, 0), -90, [('Umbrella_Vinyl_Open', 'Right')]),
+            ('KidBoy', 'Walk', 0.3, (0.9, 3.8, 0), 90, []), ('KidGirl', 'Walk', 0.8, (1.6, 4.4, 0), 90, []),
+            ('TrafficGuard', 'Wave', 0.25, (6.6, 2.7, 0), 180, [('Baton', 'Right')]),
+            ('Worker', 'Work', 0.3, (8.6, 4.4, 0), 210, [('Hammer', 'Right')]),
+            ('Driver', 'Idle', 0.4, (4.0, 3.5, 0), 160, []),
+            ('Obaachan', 'Walk', 0.6, (-4.6, 4.8, 0), -90, [('EcoBag', 'Left')]),
+            ('Schoolgirl', 'Phone', 0.3, (-7.4, 3.8, 0), 160, [('Phone', 'Right')])]
+    cols = ['Sprint6_Scene']
+    for fig, clip, u, pos, yaw, props in cast:
+        rig = bpy.data.objects[f'Rig_{fig}']
+        rig.location = pos; rig.rotation_euler = (0, 0, math.radians(yaw))
+        for l in range(3):
+            o = bpy.data.objects[f'SM_Hito_{fig}_LOD{l}']
+            o.hide_render = l != 0; o.hide_set(l != 0)
+        bpy.context.view_layer.update()
+        AK.pose(rig, clip, u)
+        for prop, side in props:
+            hold(rig, prop, side, HP.PROPS[prop][2], tmp)
+        cols.append(f'Hito_{fig}')
+    # kerb and pavement as plain boxes so the street reads
+    import bmesh
+    bm = bmesh.new()
+    K.box(bm, -14, 14, 3.0, 8.0, 0.0, 0.15)
+    K.box(bm, -14, 14, 2.95, 3.12, 0.0, 0.17)
+    me = bpy.data.meshes.new('_pavement'); bm.to_mesh(me); bm.free()
+    pv = bpy.data.objects.new('_pavement', me); tmp.objects.link(pv)
+    pm = bpy.data.materials.get('_pave') or bpy.data.materials.new('_pave')
+    pm.use_nodes = True
+    next(n for n in pm.node_tree.nodes if n.type == 'BSDF_PRINCIPLED').inputs['Base Color'].default_value = (0.32, 0.31, 0.3, 1)
+    me.materials.append(pm)
+    for o in tmp.objects:
+        if o is not pv and (o.name.startswith('SM_Street') or o.name.startswith('SM_Animal') or o.name.startswith('SM_Hito_Prop')):
+            if o.location.y > 3.0:
+                o.location.z += 0.15
+    for fig, *_ in cast:
+        r = bpy.data.objects[f'Rig_{fig}']
+        if r.location.y > 3.0:
+            r.location.z = 0.15
+    bpy.context.view_layer.update()
+    try:
+        out = P.shot(cols, target, direction, dist, os.path.join(P.PREV_DIR, name + '.png'), mood=mood, size=size, lens=32)
+    finally:
+        for fig, *_ in cast:
+            rig = bpy.data.objects[f'Rig_{fig}']
+            AK.rest(rig); rig.location = (0, 0, 0); rig.rotation_euler = (0, 0, 0)
+        for o in list(tmp.objects):
+            bpy.data.objects.remove(o)
+        bpy.data.meshes.remove(me)
+    return out

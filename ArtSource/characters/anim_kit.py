@@ -242,7 +242,7 @@ def bow(u):
     # the legs hang from the hips: undo the hip pitch so they stay upright
     add(p, 'LeftUpperLeg', x=22 * k); add(p, 'RightUpperLeg', x=22 * k)
     p['LeftUpperArm'] = [8 + 14 * k, 0, -8]; p['RightUpperArm'] = [8 + 14 * k, 0, 8]
-    p['_loc'] = (0.0, -0.01 * k, -0.05 * k)
+    p['_loc'] = (0.0, -0.01 * k, 0.0)        # moving the hips back would drag the feet
     return p
 
 
@@ -384,6 +384,10 @@ def export(col_name='Hito_Anims', body='M'):
     from kit import core as K
     col = K.collection(col_name)
     rig = FK.make_rig('Rig_Anims', col, FK.BODIES[body])
+    test_res = test(rig)
+    if any(v[1] != 'ok' for v in test_res.values()):
+        raise ValueError(f'bone axes changed: {test_res}')
+    feet_check(rig)
     info = build_all(rig)
     out_dir = os.path.join(K.ART, 'exports', 'characters')
     os.makedirs(out_dir, exist_ok=True)
@@ -412,3 +416,31 @@ def export(col_name='Hito_Anims', body='M'):
     with open(os.path.join(out_dir, 'anims.json'), 'w') as f:
         json.dump(info, f, indent=1)
     return path, os.path.getsize(path), info
+
+
+# clips in which both feet must stay planted (a hip pitch not undone in the
+# thighs swung the legs back and the whole body tipped over: Bow, 2026-10-16)
+PLANTED = ['Idle', 'Phone', 'Bow', 'Fish', 'Wave', 'Sweep']
+
+
+def feet_check(rig, tol=0.06):
+    """For every planted clip: each foot keeps its place over the whole clip
+    (no sliding) and stays on the ground (height within tol of rest). A stance
+    with one foot forward is fine. Returns {clip: worst metres}; raises on a bad clip."""
+    rest(rig)
+    base_z = {s: (rig.matrix_world @ rig.pose.bones[s + 'Foot'].head).z for s in ('Left', 'Right')}
+    out = {}
+    for name in PLANTED:
+        first, worst = {}, 0.0
+        for k in range(9):
+            pose(rig, name, k / 8)
+            for s in ('Left', 'Right'):
+                p = (rig.matrix_world @ rig.pose.bones[s + 'Foot'].head).copy()
+                first.setdefault(s, p)
+                worst = max(worst, (p - first[s]).length, abs(p.z - base_z[s]))
+        out[name] = round(worst, 3)
+    rest(rig)
+    bad = {k: v for k, v in out.items() if v > tol}
+    if bad:
+        raise ValueError(f'feet slide or leave the ground in planted clips: {bad}')
+    return out

@@ -47,14 +47,16 @@ Mittel 584–662 (vorher 948–1026), Niedrig ≈ 230 · EditMode 146/146 · Pla
 - **Töne** (CC0/eigen, `Assets/_Project/Art/Audio/<Name>.wav`, mono 44,1/48 kHz): Motor je Auto (`Engine_<auto>_idle`
   1,0 s; `_on0…3` 0,8 s / `_off0…3` 1,0 s bei 30/50/70/92 % Drehzahl; `Lift_<auto>` 0,9 s); Welt 3–6 s `Ambience_Workshop`,
   `_NeonHum`, `_Harbour`, `_Waterwheel`, `_PassWind`; Musik 2–4 Phrasen à 20–40 s; **Intro:** `Whoosh_SlowMo` 0,6 s.
-- **Garage** (Werkbank 2,0×0,8×0,9 m, Reifenregal 1,8×0,5×2,0, Lacktafel 1,2×0,05×0,9, Motor auf Bock 0,9×0,6×1,0,
-  Schild 2,5×0,6; je ≤ 1,5 k) · **Rennen** (Pfeiler 6–8 m, Kontrollbogen, Banner, Pokal 0,4 m; ≤ 2 k) · **Schanzen**
-  (`Ramps.asset`, neu: Coast Kicker 22×12×4,2 m) · **20 Entdeckungs-Props** · Spielfigur, Passanten, Verkehrsautos,
-  Ladeninnere, Kanalbrücken · **Icons** 22 SVG 24×24 + Menü-Symbol (☰).
+- **Erledigt 2026-10-16 (Asset-Sprint 6, nur Blender → `ArtSource/exports/`, noch nicht in Unity):** 18 Figuren auf einem
+  Humanoid-Skelett + 14 Clips + 15 Handprops, 14 Tiere, 10 Verkehrsautos, 19 Straßendetails, 9 Renn-, 8 Garagen-,
+  14 Entdeckungs-Props ([ArtSource/STATUS.md](../ArtSource/STATUS.md) Aufgabe 6). **Nächster Schritt (Unity-Sitzung):**
+  importieren, StandInFigure/Tier-/Verkehrs-Kisten ersetzen (Anleitung dort). Offen: Schanzen-Deko, Ladeninnere, Icons.
 - Optional: neutrale Nummernschilder (`86-86`, `34-34`, `80-80` in `ArtSource/cars/blender/cars.py` → z. B. `21-07`).
 
 ## Für dich (Mensch)
 
+0. **Neue Assets ansehen (5 Min.):** Bilder in `ArtSource/previews/`: `Sprint6_Street.png` (Gesamtbild), `Hito_People_1–3`,
+   `Hito_Scene`, `Animals`, `Traffic`, `StreetDetails`, `RaceProps`, `GarageProps`, `DiscoveryProps`. Sag: Stil ok / was stört.
 1. **Neue Version anspielen (10 Min.):** Terminal: `node Tools/serve-web.mjs --preview`, dann http://127.0.0.1:8092
    im privaten Fenster. Prüfe: Tokyo bei Regen-Spiegelung (Hoch), Pausenmenü (Esc) mit Kamerafahrt, Garage („Tune now“),
    Fotomodus (P, mit Maus ziehen, Mausrad), Rennen bis zum Ergebnis, Meer an der Küste. Handy: `--preview --public`.

@@ -82,6 +82,12 @@ auslesen und gegen Budget halten.
   „JapanMap/Art/Build Showroom"), freigegebene Stile stehen in
   `Data/Art/LibraryImport.asset`.
 
+## Figuren und Clips
+
+Menschen/Tiere: `ArtSource/characters/` (STYLE-KIT „Figuren-Bausatz“), Figuren sind Daten in `people.py`.
+Clips nur über `anim_kit.export()` — es prüft Knochenachsen und dass Füße in stehenden Clips nicht rutschen.
+Handgegenstände nie ins Figuren-Mesh, sondern `hand_props.py`.
+
 ## Ändern
 
 Immer die Quelle ändern (Skript/`.blend`) und neu exportieren — nie das

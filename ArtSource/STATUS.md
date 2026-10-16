@@ -4,6 +4,51 @@ Plan: [docs/PLAN.md](../docs/PLAN.md), Abschnitt „Asset-Sprint". Regeln:
 [STYLE-KIT.md](STYLE-KIT.md) (verbindlich). Läuft parallel zur Unity-Sitzung,
 nur in `ArtSource/` und Blender; Commits nur `git add ArtSource/…`.
 
+## Aufgabe 6 — Figuren, Tiere, Verkehr, Details (2026-10-16): fertig in Blender, wartet auf Freigabe + Unity-Import
+
+Auftrag des Menschen: „fehlende und unterschätzte Assets — Charakter, NPCs, kleine Details“. Alles, was im Spiel
+noch Kisten-Platzhalter war (`StandInFigure`, Tier-Kisten in `PlaceActors`, Verkehrs-Kisten in `TrafficSystem`),
+plus die Listen „Garage / Rennen / Entdeckungs-Props“ aus docs/STATUS.md. **108 FBX-Dateien neu, 0 verdrehte
+Flächen, alles nur Dreiecke, jedes Asset mit 2–3 LODs.** Gesamtbild: **`previews/Sprint6_Street.png`**.
+
+| Gruppe | Generator | FBX (`exports/…`) | Dreiecke LOD0 | Bilder |
+|---|---|---|---|---|
+| Spielfigur Driver/DriverF (Jacke mit Regentropfen-Emblem) + 16 Leute: Salaryman ×2, Office Lady, Gakuran-Schüler, Matrosen-Schülerin, Obaachan, Ojiichan, Casual ×2, Yukata, Bauarbeiter (Tobi-Hose, Jika-Tabi, Helm, Warnweste), Fischer (Gummischürze, weiße Stiefel, Hachimaki), Ladenbesitzer (Happi, Maekake), Schulkinder ×2 (gelber Hut, Randoseru), Verkehrsposten | `characters/people.py` + `figure_kit`/`body_kit`/`extras_kit` | `characters/SM_Hito_<Name>.fbx` | 2 300–3 100 (LOD1 ~70 %, LOD2 ~25 %) | `Hito_People_1–3`, `Hito_Scene` |
+| 14 Clips: Idle, Walk, WalkUmbrella, Run, Slide, Jump, Fall, Sit, Work, Fish, Phone, Sweep, Bow (Ojigi), Wave | `characters/anim_kit.py` | `characters/SM_Hito_Anims.fbx` + `anims.json` (Frames, Loop, m/s) | — | — |
+| 15 Handprops: Vinyl-/schwarzer/roter Schirm offen + 2 zu, Aktenkoffer, Handy, Besen, Angel, Öko-/Konbini-Tasche, Kinchaku, Stock, Hammer, Leuchtstab | `characters/hand_props.py` | `characters/SM_Hito_Prop_*.fbx` + `hand_props.json` (Hand, Achse) | 34–624 | `Hito_HandProps` |
+| 14 Tiere: 6 Katzen (Mike, Kuro, Kijitora, Chatora, Hachiware; sitzend, Kastensitz, laufend, schlafend), Henne, Hahn, Ziege, Krähe (Boden/Draht), Taube, Shiba ×2 | `characters/animals.py` | `characters/SM_Animal_*.fbx` | 470–1 300 | `Animals` |
+| 10 Verkehrsautos: Kei hoch/klein/Van, Kompakt, Limousine, Minivan, JPN-Taxi, Limousinen-Taxi, 2-t-Koffer-Lkw, Gemeindebus | `props/traffic_cars.py` | `traffic/SM_Traffic_*.fbx` + `traffic.json` (Maße, Farbmix) | 1 550–2 180 | `Traffic` |
+| 19 Straßendetails: Kurvenspiegel ×2, Frosch-/Affen-Absperrung, Hütchen, Hütchen+Stangen, 工事中-Schild, runder Briefkasten, Telefonzelle, Super Cub, Schirmständer, Raucherecke, Müllplatz mit Krähennetz, Design-Gullydeckel, Hydrantenschild, Tanuki, Maneki-Neko, Daruma, Koinobori | `props/street_details.py` | `props/SM_Street_*.fbx` | 128–3 076 | `StreetDetails` |
+| 9 Renn-Props: Start/Ziel-Portal mit Startampel, Checkpoint-Luftbogen, Pylon 6/8 m, Reifenstapel, Bannerzaun, Pokal, Podest, Zielflagge | `props/race_props.py` | `props/SM_Race_*.fbx` | 46–1 944 | `RaceProps` |
+| 8 Garagen-Props: Werkbank, Reifenregal, Farbtafel, Motor auf Ständer, Leuchtschild, Werkzeugwagen, Wagenheber, 2-Säulen-Hebebühne | `props/garage_props.py` | `props/SM_Garage_*.fbx` | 140–1 804 | `GarageProps` |
+| 14 Entdeckungs-Props (zu `Discoveries.asset`) | `props/discovery_props.py` | `props/SM_Discovery_*.fbx` | 90–1 044 | `DiscoveryProps` |
+
+**Neue Atlanten:** `Figures` (Farbzellen + Emblem), `Traffic` (Zier, Glas, Lampen, Kennzeichen), `Details` (Zellen,
+Grafiken `DT_*` aus `kit/graphics_details.mjs`, Stein-Streifen). Neues Material **`M_TrafficPaint`** (Lack, in Unity je
+Auto tönen; Farbmix in `traffic.json`).
+
+### Für den Unity-Import (nächste Unity-Sitzung)
+
+- **Figuren:** FBX mit Armatur `Rig` (21 Knochen, Namen = `HumanBodyBones`). Import: Rig **Humanoid** (Avatar aus
+  `SM_Hito_Anims.fbx`, alle Körper teilen ihn über die Namen), **Bake Axis Conversion an** (Export ohne „Apply
+  Transform“, das ist in Blender mit Armaturen kaputt). Clips aus `SM_Hito_Anims.fbx` (`Rig|Walk` …), Loop laut
+  `anims.json`. Ein Material (`M_Figures_Atlas`) je Figur. Die Zellen sind flach: Atlas in Unity auf 256 px reicht.
+- **Handprops:** an `LeftHand`/`RightHand`; Griff = 75 mm vom Handgelenk entlang des Knochens, 12 mm zur Handfläche.
+  `hang` = Prop-−Z entlang der Hand; `up` (offene Schirme, Handy, Angel) in der Welt aufrecht halten.
+- **Wer was spielt:** worker → Worker + `Work` (+ Hammer), fisher → Fisher + `Fish` (+ FishingRod), seated →
+  Obaachan/Ojiichan + `Sit`, visitor/Menge → Passanten + `Walk`/`WalkUmbrella`/`Phone`; Shopkeeper `Sweep` (+ Broom)
+  oder `Bow`; Verkehrsposten `Wave` (+ Baton) an Baustellen; Spieler `Idle/Walk/Run/Slide/Jump/Fall`.
+- **Tiere:** statisch je Pose; cat → `Cat_*` zufällig, chicken → Henne/Hahn, goat → Goat. Krähen/Tauben/Shiba neu.
+- **Verkehr:** `SM_Traffic_*` ersetzt `TrafficSystem.AddBody`; Räder sind Teil des Körpers (stehen 2 cm vor der
+  Karosserie), Ursprung = Mitte Radstand am Boden, Front −Y → +Z. Kollider `COL_Traffic_*`.
+
+### Prüfungen (neu)
+
+- `anim_kit.test` (Knochenachsen) und **`anim_kit.feet_check`** (Füße rutschen in stehenden Clips nicht, bleiben am
+  Boden) laufen bei jedem `anim_kit.export()` und brechen sonst ab. Anlass: beim Verbeugen kippte der ganze Körper
+  (Beine erben die Hüftdrehung, Oberschenkel müssen sie ausgleichen).
+- Rück-Import geprüft: Worker-FBX → 21 Knochen, 3 gewichtete LODs; Anims-FBX → 14 Clips.
+
 ## Wo wir stehen (2026-10-09, Aufgabe 5c)
 
 - **Aufgabe 5b — fehlende Gebäude: freigegeben** (Mensch, 2026-10-08).

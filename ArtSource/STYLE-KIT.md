@@ -498,6 +498,35 @@ Anbau) und Koedo (`C`, Schild, Noren, Laterne, Nobori, Innenbild).
 - **Vorschau-Dunst** für Fernbilder: `shots_5c.fog` (Emission in
   Horizontfarbe; Eevee beleuchtet ein Welt-Volumen nicht).
 
+## Figuren-Bausatz (Menschen, Tiere, ab 2026-10-16)
+
+`characters/figure_kit.py` (Skelett, Profil-Lofts, Gewichte) + `body_kit.py` (Körper, Kleidung, Haare, Hüte,
+Schuhe) + `extras_kit.py` (Kragen, Revers, Taschen, Schürzen, Westen) + `people.py` (Figuren als Daten) +
+`anim_kit.py` (Clips) + `hand_props.py`; Tiere `animals.py`. Atlas `Figures` (nur Farbzellen + Emblem).
+- **Ein Skelett** mit `HumanBodyBones`-Namen; alle Körper (M, F, OLD_F, OLD_M, KID) haben dieselben
+  Knochen-**Richtungen** und Rolls, nur Längen ändern sich → ein Clip-Satz für alle. Rolls: lokales Z nach vorn
+  (Füße: nach oben) ⇒ +X heißt überall „nach vorn/beugen“.
+- **Körper = Lofts** aus Superellipsen-Ringen entlang der Knochen; jeder Ring trägt seine Gewichte. Säume sind
+  Stufen (zwei Ringe auf einer Höhe), Kragen/Gürtel geschlossene Bänder, Haare eine Schale mit Lippe.
+- **Japanisch, Pflicht:** weiße Maske, Gakuran mit Goldknöpfen, Matrosenkragen mit Schleife, Tobi-Hose + Jika-Tabi,
+  Gummischürze + weiße Stiefel, Tenugui/Hachimaki, Maekake, Happi, Yukata mit Obi und Geta, Randoseru + gelber
+  Schulhut, Kreuzgurt des Verkehrspostens, Vinylschirm.
+- **Handgegenstände nie ins Figuren-Mesh** (sonst hält der Salaryman beim Telefonieren den Koffer ans Ohr): eigene
+  FBX, Ursprung = Griff.
+- **Hüftdrehung im Clip:** die Beine hängen an der Hüfte und drehen mit — Oberschenkel gleichen aus.
+  `anim_kit.feet_check` prüft das bei jedem Export.
+- Budget: Figur LOD0 2 300–3 100, LOD1 ~70 %, LOD2 ~25 % (48 Passanten gleichzeitig); Tier ≤ 1 300.
+
+## Verkehrsautos und Details (ab 2026-10-16)
+
+- `props/traffic_cars.py`: Seitenprofil statt Modellieren — Unterbau-Loft (abgerundeter Kasten) + Kabine
+  (Trapez, Glas/Säule je Segment), Räder 2 cm vor der Karosserie vor einem dunklen Radhaus (kein Ausschnitt nötig).
+  **Lack = zweites Material `M_TrafficPaint`** (Unity tönt je Auto), Taxis/Bus fest aus dem Atlas. Kennzeichen
+  nach Art: weiß (privat), gelb (Kei), grün (gewerblich/Taxi), schwarz (Kei gewerblich).
+- `props/detail_kit.py`: gemeinsame Schleife und Formen für Atlas `Details`; Kugeln (`blob`) nur über 14 cm
+  Radius mit 320 Dreiecken, sonst 80 — die Affen-Absperrung lag sonst bei 5 500.
+- Schilder mit Schrift: `kit/graphics_details.mjs` (`DT_*`, `node ArtSource/kit/graphics.mjs DT_`).
+
 ## Abnutzung
 
 - **Schmutz unten:** jede Fläche wird zum Boden hin dunkler (Spritzwasser).

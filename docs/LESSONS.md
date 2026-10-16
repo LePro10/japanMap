@@ -69,6 +69,10 @@
 | 2026-10-14 | 11 | Größen-Optimierung (Tangenten weg) brachte 0,02 MB, kostete Optik | erst messen, was es spart (`build-web`), dann gegen Bild abwägen | Skill |
 | 2026-10-14 | 11 | Tagesbonus zahlte in Tests mit, Sparks-Erwartungen falsch | `FreshSave` schaltet `DailySystem.AutoBonus` ab | Test |
 | 2026-10-16 | 11 | Zu Fuß „Drive this car“ gewählt: Auto wurde irgendwo außer Sicht getauscht, Mensch fand keinen Weg einzusteigen | anderes Auto kommt zum Fußgänger, man sitzt drin (`GarageSystem.TryApply`, geprüft mit `play.mjs` über die Menü-Knöpfe) | Werkzeug |
+| 2026-10-16 | Asset 6 | Verbeugen kippte den ganzen Körper (Beine erben die Hüftdrehung); dasselbe beim Rutschen | `anim_kit.feet_check` bei jedem Clip-Export (stehende Clips: Füße rutschen nicht, bleiben am Boden; fand danach noch 6 cm Rutschen) | Test |
+| 2026-10-16 | Asset 6 | Aktenkoffer fest im Figuren-Mesh hätte jeden Clip mit der rechten Hand verdorben | Handgegenstände als eigene FBX mit Griff-Ursprung (`hand_props.json`), Regel im STYLE-KIT | Skill |
+| 2026-10-16 | Asset 6 | Frische Blender-Sitzung: `build._reload` brach mit Zirkel-Import ab | `kit.atlas` zuerst importieren (build.py) | Werkzeug |
+| 2026-10-16 | Asset 6 | FBX „Apply Transform“ ist mit Armaturen kaputt | `core.export_fbx` schaltet es für Rigs ab, Rig heißt beim Export immer `Rig` | Werkzeug |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**
