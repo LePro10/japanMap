@@ -24,6 +24,8 @@ namespace JapanMap.Gameplay.Hud
     {
         [Tooltip("Speed post-processing (chromatic fringe, distortion, vignette, motion blur on High) — SpeedPost.")]
         [SerializeField] UnityEngine.Rendering.VolumeProfile speedProfile;
+        [Tooltip("The route tape on the road (RouteGuide, shader JapanMap/GuideLine).")]
+        [SerializeField] Material guideMaterial;
         [SerializeField] PanelSettings panelSettings;
         [SerializeField] DriftScorer drift;
         [SerializeField] SparksWallet wallet;
@@ -87,6 +89,7 @@ namespace JapanMap.Gameplay.Hud
         void Awake()
         {
             gameObject.AddComponent<SpeedPost>().Bind(player, speedProfile);
+            gameObject.AddComponent<RouteGuide>().Bind(player, map, this, guideMaterial);
             _doc = gameObject.AddComponent<UIDocument>();
             _doc.panelSettings = UiPanel.Get(panelSettings);
             _doc.sortingOrder = 3;
@@ -633,6 +636,8 @@ namespace JapanMap.Gameplay.Hud
         }
 
         Vector3? _target;
+        /// <summary>The race checkpoint the arrow points at (null outside events).</summary>
+        public Vector3? Target => _target;
 
         /// <summary>The small "✓ Saved" tick under the balance for a moment; names the store when it is only this device.</summary>
         public void ShowSaved(string store)
@@ -839,6 +844,8 @@ namespace JapanMap.Gameplay.Hud
             _minimap.Look(new Vector2(p.x, p.z), _span);
             map.CollectPins(_pins, MapFilter.All, minimap: true);
             _minimap.SetPins(_pins);
+            var guide = RouteGuide.Instance;
+            if (guide != null) _minimap.SetRoute(guide.Path, guide.Version);
             var rw = map.RegionWatch;
             if (rw != null && rw.Current >= 0)
             {

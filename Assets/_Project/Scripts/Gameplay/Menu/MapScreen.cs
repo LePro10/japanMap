@@ -127,6 +127,8 @@ namespace JapanMap.Gameplay.Menu
                     _pins[i] = p;
                 }
             _view.SetPins(_pins);
+            var guide = Map.RouteGuide.Instance;
+            if (guide != null) _view.SetRoute(guide.Path, guide.Version);
             Apply();
         }
 

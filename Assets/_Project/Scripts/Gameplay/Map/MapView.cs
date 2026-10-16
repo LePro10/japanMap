@@ -64,6 +64,13 @@ namespace JapanMap.Gameplay.Map
             if (baseImage != null) _world.style.backgroundImage = new StyleBackground(baseImage);
             Add(_world);
             if (roads != null) AddRoads(roads);
+            _route = new VisualElement { pickingMode = PickingMode.Ignore, name = "route" };
+            _route.style.position = Position.Absolute;
+            _route.style.left = _route.style.top = 0;
+            _route.style.width = bounds.width;
+            _route.style.height = bounds.height;
+            _route.generateVisualContent += DrawRoute;
+            _world.Add(_route);
             _circles = new VisualElement { pickingMode = PickingMode.Ignore };
             _circles.style.position = Position.Absolute;
             _circles.style.left = _circles.style.top = _circles.style.right = _circles.style.bottom = 0;
@@ -153,6 +160,52 @@ namespace JapanMap.Gameplay.Map
                 }
         }
 
+        // ── the planned route (RouteGuide), above the roads ─────────────────────
+        readonly VisualElement _route;
+        readonly List<Vector2> _routePts = new();
+        int _routeVersion = -1;
+        float _routeScale;
+
+        /// <summary>The route to draw (world points); redrawn only when <paramref name="version"/> changes.</summary>
+        public void SetRoute(IReadOnlyList<Vector3> route, int version)
+        {
+            if (version == _routeVersion) return;
+            _routeVersion = version;
+            _routePts.Clear();
+            if (route != null)
+            {
+                var prev = new Vector2(float.MaxValue, 0f);
+                for (var i = 0; i < route.Count; i++)
+                {
+                    var q = new Vector2(route[i].x, route[i].z);
+                    if (i > 0 && i < route.Count - 1 && (q - prev).sqrMagnitude < Spacing * Spacing) continue;
+                    _routePts.Add(Layer(q));
+                    prev = q;
+                }
+            }
+            _route.MarkDirtyRepaint();
+        }
+
+        void DrawRoute(MeshGenerationContext ctx)
+        {
+            if (_routePts.Count < 2) return;
+            var p = ctx.painter2D;
+            // Widths in screen pixels: the layer is scaled by pixels-per-metre.
+            var k = Mathf.Max(0.01f, PixelsPerMetre);
+            _routeScale = k;
+            p.lineJoin = LineJoin.Round;
+            p.lineCap = LineCap.Round;
+            for (var pass = 0; pass < 2; pass++)
+            {
+                p.strokeColor = pass == 0 ? new Color(0.01f, 0.05f, 0.08f, 0.85f) : new Color(0.33f, 0.85f, 1f, 1f);
+                p.lineWidth = (pass == 0 ? 8f : 4.5f) / k;
+                p.BeginPath();
+                p.MoveTo(_routePts[0]);
+                for (var i = 1; i < _routePts.Count; i++) p.LineTo(_routePts[i]);
+                p.Stroke();
+            }
+        }
+
         /// <summary>Centre (world x/z) and the metres shown across the width.</summary>
         public void Look(Vector2 centre, float span)
         {
@@ -181,6 +234,8 @@ namespace JapanMap.Gameplay.Map
             }
             PlacePins();
             _circles.MarkDirtyRepaint();
+            // The route's line width is in screen pixels: redraw when the zoom changed noticeably.
+            if (_routePts.Count > 1 && Mathf.Abs(k - _routeScale) > _routeScale * 0.15f) _route.MarkDirtyRepaint();
         }
 
         /// <summary>World x/z → this element's local pixels.</summary>

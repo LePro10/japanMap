@@ -17353,6 +17353,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Hud.GameplayHud
   speedProfile: {fileID: 11400000, guid: ddfe5932cfea441cea04e26c7b28d2e3, type: 2}
+  guideMaterial: {fileID: 2100000, guid: dc93dc4badad846c989b715dbcaa3579, type: 2}
   panelSettings: {fileID: 11400000, guid: a0208705cf2e24b24b2cdab2ddae1aa1, type: 2}
   drift: {fileID: 138953789}
   wallet: {fileID: 1001937142}
