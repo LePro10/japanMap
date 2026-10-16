@@ -102,6 +102,9 @@ namespace JapanMap.Editor.Map
         [Header("City slab (legacy city.mjs CITY_DISTRICT.parts, CITY_GROUND_Y 30 − dropBelowRoad 0.03)")]
         [Tooltip("The city streets lie at 30 m on a slab; the carved terrain below is at 29.0 m.")]
         public float citySlabY = 29.97f;
+        [Tooltip("Embankment around the slab: how far it runs out and how far it drops, m (it ends in the terrain).")]
+        public float citySkirtRun = 6f;
+        public float citySkirtDrop = 3f;
         [Tooltip("Rectangles in Three coordinates: x = minX, y = minZ, width/height = size.")]
         public Rect[] cityParts =
         {

@@ -73,7 +73,7 @@ namespace JapanMap.Editor.Map
 
             var written = new HashSet<string>();
             var slab = Save("CitySlab", ToMesh(CitySlab(settings)), written);
-            Add(group, "CitySlab", slab, new[] { Material("City_Slab", null, new Color(0.22f, 0.23f, 0.24f)) })
+            Add(group, "CitySlab", slab, new[] { Material("City_Slab", null, new Color(0.22f, 0.23f, 0.24f)), Material("City_Embankment", "aerial_grass_rock", new Color(0.85f, 0.85f, 0.8f)) })
                 .AddComponent<MeshCollider>().sharedMesh = slab;
             int surfaceTris = 0, railTris = 0;
             foreach (var kv in surface.OrderBy(k => k.Key))
@@ -731,9 +731,10 @@ namespace JapanMap.Editor.Map
         // ── City slab ──────────────────────────────────────────────────────────
 
         /// <summary>
-        /// The district's asphalt plane (legacy CitySystem): flat at citySlabY over each part, with a
-        /// vertical curtain down into the terrain so the 1 m step to the carved ground is closed.
-        /// The proper city ground with its skirt comes with the city in Phase 5.
+        /// The district's asphalt plane (legacy CitySystem): flat at citySlabY over each part, with an
+        /// earth embankment (submesh 1) sloping out and down into the terrain. It was a vertical curtain in the
+        /// slab's wet material: where the ground falls away it stood 1–1.5 m high as a black band with a white
+        /// mirror glow on top (owner's screenshot at Sakura Commons, 2026-10-16) and was a wall for cars.
         /// </summary>
         static Chunk CitySlab(MapImportSettings s)
         {
@@ -760,17 +761,33 @@ namespace JapanMap.Editor.Map
                 }
 
                 var corners = new[] { new Vector2(r.xMin, r.yMin), new Vector2(r.xMax, r.yMin), new Vector2(r.xMax, r.yMax), new Vector2(r.xMin, r.yMax) };
+                // Winding sense of the top's first triangle (a, d, b) in this space.
+                var topSense = Vector3.Cross(chunk.v[b0 + nx + 2] - chunk.v[b0], chunk.v[b0 + 1] - chunk.v[b0]).y;
+                var centre = new Vector2((r.xMin + r.xMax) * 0.5f, (r.yMin + r.yMax) * 0.5f);
                 for (var e = 0; e < 4; e++)
                 {
                     Vector2 ea = corners[e], eb = corners[(e + 1) % 4];
+                    var along = (eb - ea).normalized;
+                    var outward = new Vector2(along.y, -along.x);
+                    if (Vector2.Dot(outward, (ea + eb) * 0.5f - centre) < 0f) outward = -outward;
+                    // Corners: the slope's foot widens along the edge so neighbouring slopes meet without a gap.
+                    var run = outward * s.citySkirtRun;
                     var pieces = Mathf.CeilToInt(Vector2.Distance(ea, eb) / cell);
                     for (var k = 0; k < pieces; k++)
                     {
                         Vector2 a = Vector2.Lerp(ea, eb, (float)k / pieces), b = Vector2.Lerp(ea, eb, (float)(k + 1) / pieces);
+                        Vector2 fa = a + run - (k == 0 ? along * s.citySkirtRun : Vector2.zero);
+                        Vector2 fb = b + run + (k == pieces - 1 ? along * s.citySkirtRun : Vector2.zero);
+                        var drop = y - s.citySkirtDrop;
                         var c0 = chunk.v.Count;
-                        chunk.v.AddRange(new[] { new Vector3(a.x, y, a.y), new Vector3(b.x, y, b.y), new Vector3(b.x, y - 3, b.y), new Vector3(a.x, y - 3, a.y) });
-                        chunk.uv.AddRange(new[] { Vector2.zero, Vector2.right, Vector2.one, Vector2.up });
-                        chunk.t[0].AddRange(new[] { c0, c0 + 1, c0 + 2, c0, c0 + 2, c0 + 3, c0, c0 + 2, c0 + 1, c0, c0 + 3, c0 + 2 });
+                        chunk.v.AddRange(new[] { new Vector3(a.x, y, a.y), new Vector3(b.x, y, b.y), new Vector3(fb.x, drop, fb.y), new Vector3(fa.x, drop, fa.y) });
+                        // World-scale UVs (4 m tiles) for the earth texture.
+                        chunk.uv.AddRange(new[] { a / 4f, b / 4f, fb / 4f, fa / 4f });
+                        // Same winding sense as the slab top (a, d, b), so the slope faces up after the mirroring too.
+                        var n = Vector3.Cross(chunk.v[c0 + 1] - chunk.v[c0], chunk.v[c0 + 2] - chunk.v[c0]).y;
+                        chunk.t[1].AddRange(n * topSense > 0f
+                            ? new[] { c0, c0 + 1, c0 + 2, c0, c0 + 2, c0 + 3 }
+                            : new[] { c0, c0 + 2, c0 + 1, c0, c0 + 3, c0 + 2 });
                     }
                 }
             }
