@@ -794,6 +794,300 @@
   "switchable": [],
   "attach": []
  },
+ "Discovery_Bell_Small": {
+  "fbx": "props/SM_Discovery_Bell_Small.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Discovery_Bell_Small_LOD0",
+   "SM_Discovery_Bell_Small_LOD1",
+   "SM_Discovery_Bell_Small_LOD2"
+  ],
+  "tris": [
+   624,
+   268,
+   192
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Discovery_Binoculars_Coin": {
+  "fbx": "props/SM_Discovery_Binoculars_Coin.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Discovery_Binoculars_Coin_LOD0",
+   "SM_Discovery_Binoculars_Coin_LOD1",
+   "SM_Discovery_Binoculars_Coin_LOD2"
+  ],
+  "tris": [
+   374,
+   178,
+   172
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Discovery_Bleacher_Small": {
+  "fbx": "props/SM_Discovery_Bleacher_Small.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Discovery_Bleacher_Small_LOD0",
+   "SM_Discovery_Bleacher_Small_LOD1",
+   "SM_Discovery_Bleacher_Small_LOD2"
+  ],
+  "tris": [
+   540,
+   276,
+   252
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Discovery_Driftwood_Marker": {
+  "fbx": "props/SM_Discovery_Driftwood_Marker.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Discovery_Driftwood_Marker_LOD0",
+   "SM_Discovery_Driftwood_Marker_LOD1",
+   "SM_Discovery_Driftwood_Marker_LOD2"
+  ],
+  "tris": [
+   726,
+   194,
+   68
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Discovery_LanternPlaque": {
+  "fbx": "props/SM_Discovery_LanternPlaque.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Discovery_LanternPlaque_LOD0",
+   "SM_Discovery_LanternPlaque_LOD1",
+   "SM_Discovery_LanternPlaque_LOD2"
+  ],
+  "tris": [
+   148,
+   36,
+   36
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Discovery_LifeRing_Post": {
+  "fbx": "props/SM_Discovery_LifeRing_Post.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Discovery_LifeRing_Post_LOD0",
+   "SM_Discovery_LifeRing_Post_LOD1",
+   "SM_Discovery_LifeRing_Post_LOD2"
+  ],
+  "tris": [
+   400,
+   168,
+   168
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Discovery_LookoutPanel": {
+  "fbx": "props/SM_Discovery_LookoutPanel.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Discovery_LookoutPanel_LOD0",
+   "SM_Discovery_LookoutPanel_LOD1",
+   "SM_Discovery_LookoutPanel_LOD2"
+  ],
+  "tris": [
+   100,
+   36,
+   36
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Discovery_MapPanel": {
+  "fbx": "props/SM_Discovery_MapPanel.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Discovery_MapPanel_LOD0",
+   "SM_Discovery_MapPanel_LOD1",
+   "SM_Discovery_MapPanel_LOD2"
+  ],
+  "tris": [
+   276,
+   84,
+   84
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Discovery_NetHouse_Ropes": {
+  "fbx": "props/SM_Discovery_NetHouse_Ropes.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Discovery_NetHouse_Ropes_LOD0",
+   "SM_Discovery_NetHouse_Ropes_LOD1",
+   "SM_Discovery_NetHouse_Ropes_LOD2"
+  ],
+  "tris": [
+   1044,
+   732,
+   240
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Discovery_Plaque_Founder": {
+  "fbx": "props/SM_Discovery_Plaque_Founder.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Discovery_Plaque_Founder_LOD0",
+   "SM_Discovery_Plaque_Founder_LOD1",
+   "SM_Discovery_Plaque_Founder_LOD2"
+  ],
+  "tris": [
+   120,
+   24,
+   24
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Discovery_RiceTray_Rack": {
+  "fbx": "props/SM_Discovery_RiceTray_Rack.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Discovery_RiceTray_Rack_LOD0",
+   "SM_Discovery_RiceTray_Rack_LOD1",
+   "SM_Discovery_RiceTray_Rack_LOD2"
+  ],
+  "tris": [
+   536,
+   216,
+   216
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Discovery_StartBoard_Retired": {
+  "fbx": "props/SM_Discovery_StartBoard_Retired.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Discovery_StartBoard_Retired_LOD0",
+   "SM_Discovery_StartBoard_Retired_LOD1",
+   "SM_Discovery_StartBoard_Retired_LOD2"
+  ],
+  "tris": [
+   292,
+   172,
+   68
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Discovery_Thermos_Red": {
+  "fbx": "props/SM_Discovery_Thermos_Red.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Discovery_Thermos_Red_LOD0",
+   "SM_Discovery_Thermos_Red_LOD1",
+   "SM_Discovery_Thermos_Red_LOD2"
+  ],
+  "tris": [
+   510,
+   198,
+   138
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Discovery_TideBoard": {
+  "fbx": "props/SM_Discovery_TideBoard.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Discovery_TideBoard_LOD0",
+   "SM_Discovery_TideBoard_LOD1",
+   "SM_Discovery_TideBoard_LOD2"
+  ],
+  "tris": [
+   90,
+   46,
+   40
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
  "EventBoard_4m": {
   "fbx": "props/SM_EventBoard_4m.fbx",
   "class": "props",
