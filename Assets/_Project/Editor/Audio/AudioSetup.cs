@@ -9,7 +9,7 @@ namespace JapanMap.Editor.Audio
 {
     /// <summary>
     /// Sound import (one rule for every clip under Art/Audio) and the banks: an engine bank per car from the stand-in
-    /// loops (rpm steps as rendered by Tools/legacy-export/render-audio.mts: 30/50/70/92 % of the car's redline), and
+    /// loops (rpm steps as rendered by Tools/render-sounds.mjs: 30/50/70/92 % of the car's redline), and
     /// the game's sound bank with every name, group and level. Missing clips stay empty slots (silent) so the asset
     /// session can drop recordings in by name. Re-running keeps hand-tuned levels of existing entries.
     /// </summary>
@@ -97,6 +97,7 @@ namespace JapanMap.Editor.Audio
             E("Wind", SoundGroup.World, 1f);
             E("Whoosh_Up", SoundGroup.World, 0.8f, 0.05f);
             E("Whoosh_Down", SoundGroup.World, 0.8f, 0.05f);
+            E("Boost_Burst", SoundGroup.World, 0.9f, 0.04f);
             // Signals (UI group: they play over the paused menu and duck the music)
             E("Bell_Checkpoint", SoundGroup.UI, 1f);
             E("Bell_Lap", SoundGroup.UI, 1f);

@@ -103,6 +103,11 @@ MonoBehaviour:
     clip: {fileID: 8300000, guid: 6fb3da24d71c0458185154cfa40091ce, type: 3}
     volume: 0.8
     pitchJitter: 0.05
+  - name: Boost_Burst
+    group: 2
+    clip: {fileID: 8300000, guid: 43affccf512b049c2848d36f5fe8d0a4, type: 3}
+    volume: 0.9
+    pitchJitter: 0.04
   - name: Bell_Checkpoint
     group: 4
     clip: {fileID: 8300000, guid: 94381beacfeda49bda8ff29bd6917231, type: 3}

@@ -33,6 +33,7 @@ namespace JapanMap.Gameplay
         TyreSound _tyres;
         ContactRelay _contacts;
         bool _wasAirborne, _wasBoosting;
+        float _lastBurst;
         float _airVy, _lastImpact;
 
         public EngineSound Engine => _engine;
@@ -158,8 +159,11 @@ namespace JapanMap.Gameplay
                 _airVy = 0f;
             }
             _wasAirborne = t.airborne;
-            if (t.boosting && !_wasBoosting) Sfx.Play("Whoosh_Up", 0.7f);
+            // A breath when the nitro opens (quiet: it is tapped often), a whump for the burst.
+            if (t.boosting && !_wasBoosting) Sfx.Play("Whoosh_Up", 0.35f);
             _wasBoosting = t.boosting;
+            if (t.burst > 0.97f && _lastBurst <= 0f) Sfx.Play("Boost_Burst", 0.6f + 0.4f * t.burstCharge);
+            _lastBurst = t.burst;
         }
     }
 }

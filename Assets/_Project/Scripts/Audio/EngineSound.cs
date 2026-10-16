@@ -7,7 +7,7 @@ namespace JapanMap.Audio
     /// Loop-crossfade engine (the standard way when the platform has no DSP: Unity's web audio plays, pitches and
     /// fades clips, nothing more). Every frame: rpm picks the two neighbouring steps (equal-power crossfade), load
     /// fades on-load against off-load, each source is pitched to rpm / its recorded rpm. Tuning is audible as
-    /// layers, not as a transposition (ASTRA §6): Street adds an intake layer an octave up, Sport a deeper loaded
+    /// layers, not as a transposition (ASTRA §6): Street adds a detuned double of the loaded loop, Sport a deeper loaded
     /// harmonic an octave down and a stronger lift-off. Gearbox shifts are heard as the load cut and pitch drop
     /// they already are in the rpm/load numbers.
     /// </summary>
@@ -33,7 +33,7 @@ namespace JapanMap.Audio
         public float MainPitch { get; private set; }
         public float DeepLevel => _deep != null ? _deep.volume : 0f;
         [Tooltip("Street intake layer and Sport deep layer, linear share of the main loop.")]
-        public Vector2 tierLayers = new(0.22f, 0.3f);
+        public Vector2 tierLayers = new(0.3f, 0.14f);
         [Tooltip("Lift-off plays when the throttle closes above this share of the top step rpm.")]
         public float liftRpmShare = 0.55f;
 
@@ -134,7 +134,9 @@ namespace JapanMap.Audio
 
             // Tuning layers ride on the strongest loaded step.
             var main = wHi > wLo ? hi : lo;
-            Layer(_intake, Tier >= 1, steps[main].onLoad, rpm / steps[main].rpm * 2f, tierLayers.x * on * (1f - idleW) * gain);
+            // Street: the same loop a hair detuned — a fuller, louder engine (the old octave-up copy whined).
+            // Sport: a quiet sub-octave for weight under the louder note.
+            Layer(_intake, Tier >= 1, steps[main].onLoad, rpm / steps[main].rpm * 1.007f, tierLayers.x * on * (1f - idleW) * gain);
             Layer(_deep, Tier >= 2, steps[main].onLoad, rpm / steps[main].rpm * 0.5f, tierLayers.y * on * (1f - idleW) * gain);
             level += _intake.volume + _deep.volume;
             LayerLevel = level;
