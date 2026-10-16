@@ -8,8 +8,9 @@ namespace JapanMap.Gameplay.Smash
     /// <summary>
     /// A post, fence, vending machine or hut that a car can knock down. Sits on the object's static
     /// collider; Unity reports the car's hit here. Breaking hides the object (its renderers, or its
-    /// instances in an InstanceRenderer), switches the collider off, throws debris and gives the car
-    /// back the speed the collision took, minus a little (legacy SmashField: the car drives through).
+    /// instances in an InstanceRenderer), switches the collider off, lets the object itself tumble away with a few
+    /// chips, and gives the car back the speed the collision took, minus a little (legacy SmashField: the car drives
+    /// through).
     /// </summary>
     public sealed class Breakable : MonoBehaviour
     {
@@ -64,6 +65,9 @@ namespace JapanMap.Gameplay.Smash
 
         internal Bounds Bounds => _colliders.Length > 0 ? _colliders[0].bounds : new Bounds(transform.position, Vector3.one);
         internal Quaternion Rotation => transform.rotation;
+        internal Renderer[] Renderers => _renderers;
+        internal InstanceRenderer Instances => _instances;
+        internal List<int> InstanceIds => _instanceIds;
 
         internal void SetBroken(bool broken)
         {
@@ -72,6 +76,9 @@ namespace JapanMap.Gameplay.Smash
             foreach (var c in _colliders) c.enabled = !broken;
             foreach (var r in _renderers) r.enabled = !broken;
             foreach (var i in _instanceIds) _instances.SetHidden(i, broken);
+            // A lamp lying in the road does not light it.
+            if (name.IndexOf("Lamp", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                LampLights.Instance?.Darken(transform.position, 2f, broken);
         }
     }
 }

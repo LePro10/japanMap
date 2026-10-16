@@ -222,6 +222,30 @@ namespace JapanMap.World
 
         public bool IsHidden(int index) => _matrices != null && _matrices[index].m00 == 0f && _matrices[index].m11 == 0f;
 
+        /// <summary>
+        /// What one instance looks like (full-detail mesh, material, world matrix) — so a broken tree or lamp can
+        /// fall as itself instead of as stand-in boxes.
+        /// </summary>
+        public bool TryGetVisual(int index, out Mesh mesh, out Material material, out Matrix4x4 matrix)
+        {
+            mesh = null;
+            material = null;
+            matrix = Matrix4x4.identity;
+            if (data == null || index < 0 || index >= data.Count) return false;
+            foreach (var chunk in data.chunks)
+            foreach (var run in chunk.runs)
+            {
+                if (index < run.start || index >= run.start + run.count) continue;
+                var proto = data.prototypes[run.prototype];
+                if (proto.lods == null || proto.lods.Length == 0) return false;
+                mesh = proto.lods[0];
+                material = proto.material;
+                matrix = data.Matrix(index);
+                return mesh != null && material != null;
+            }
+            return false;
+        }
+
         /// <summary>Indices of instances whose pivot lies in <paramref name="area"/>.</summary>
         public void FindInstances(Bounds area, List<int> result)
         {

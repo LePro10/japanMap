@@ -170,17 +170,18 @@ namespace JapanMap.Tests.OnFoot
                 yield return null;
             }
             yield return new WaitForFixedUpdate();
-            var pieces = smash.LivePieces;
+            var pieces = smash.LivePieces + smash.LiveChunks;
             using var physics = ProfilerRecorder.StartNew(ProfilerCategory.Physics, "Physics.Simulate", 64);
             for (var i = 0; i < 60; i++) yield return new WaitForFixedUpdate();
             var simMs = 0.0;
             var n = physics.Count;
             for (var i = 0; i < n; i++) simMs = System.Math.Max(simMs, physics.GetSample(i).Value / 1e6);
-            var line = $"smash cost: worst break {smash.WorstBreakMs:F2} ms, worst physics step {simMs:F2} ms with {pieces} pieces ({n} samples)";
+            var line = $"smash cost: worst break {smash.WorstBreakMs:F2} ms ({smash.WorstDetail}), worst physics step {simMs:F2} ms with {pieces} pieces ({n} samples)";
             Debug.Log(line);
             System.IO.File.WriteAllText("Captures/smash-cost.txt", line + "\n");
             Assert.That(smash.WorstBreakMs, Is.LessThan(2f), line);
-            Assert.That(pieces, Is.EqualTo(64), "the pool must be full for the worst case");
+            // Chips and whole objects: the broken things fly as themselves now, a hut is one body, not 18 boxes.
+            Assert.That(pieces, Is.GreaterThanOrEqualTo(45), "many bodies in flight for the worst case");
             Assert.That(simMs, Is.LessThan(2f), line);
         }
     }

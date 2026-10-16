@@ -51,6 +51,22 @@ namespace JapanMap.Gameplay.Smash
         [Tooltip("Size of a crown piece, m.")]
         public float treeCrownPiece = 1.4f;
 
+        [Header("Falling objects (the broken thing itself, not boxes)")]
+        [Tooltip("Whole objects in flight at once (a felled tree, a lamp post, a vending machine), recycled oldest first.")]
+        public int maxChunks = 10;
+        [Tooltip("Seconds a fallen object lies before it sinks away.")]
+        public float chunkLife = 12f;
+        [Tooltip("Tip-over spin of a tree at the hit, rad/s (it then falls under gravity).")]
+        public float treeTip = 0.9f;
+        [Tooltip("Small chips per break: edge size range, m.")]
+        public Vector2 chipSize = new(0.07f, 0.28f);
+        [Tooltip("Chips per break.")]
+        public int chips = 7;
+        [Tooltip("Soft particle material for the dust puff and the leaves (Particles/Unlit, alpha).")]
+        public Material puffMaterial;
+        public Color dustColor = new(0.55f, 0.5f, 0.42f, 0.55f);
+        public Color leafColor = new(0.24f, 0.36f, 0.18f, 0.95f);
+
         [Header("Limits (legacy breakables.ts / DebrisFx.ts)")]
         [Tooltip("Breaks per physics step at most — a drift must not tear down a whole row.")]
         public int maxBreaksPerStep = 2;

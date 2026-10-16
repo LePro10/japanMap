@@ -17,7 +17,25 @@ namespace JapanMap.World
         [SerializeField] LampLightSettings settings;
         [SerializeField] Material poolMaterial;
 
-        struct Lamp { public Vector3 head; public Vector3 ground; public int kind; public Scene scene; }
+        struct Lamp { public Vector3 head; public Vector3 ground; public int kind; public Scene scene; public bool dark; }
+
+        public static LampLights Instance { get; private set; }
+
+        /// <summary>A knocked-down lamp goes dark (its pool and its point light), and lights again when it stands again.</summary>
+        public void Darken(Vector3 at, float radius, bool dark)
+        {
+            var r2 = radius * radius;
+            for (var i = 0; i < _lamps.Count; i++)
+            {
+                var l = _lamps[i];
+                var d = l.ground - at;
+                d.y = 0f;
+                if (d.sqrMagnitude > r2) continue;
+                l.dark = dark;
+                _lamps[i] = l;
+            }
+            _nextPick = 0f;
+        }
 
         readonly List<Lamp> _lamps = new();
         readonly List<Light> _lights = new();
@@ -32,6 +50,7 @@ namespace JapanMap.World
 
         void OnEnable()
         {
+            Instance = this;
             SceneManager.sceneLoaded += OnLoaded;
             SceneManager.sceneUnloaded += OnUnloaded;
             QualitySystem.TierChanged += OnTier;
@@ -41,6 +60,7 @@ namespace JapanMap.World
 
         void OnDisable()
         {
+            if (Instance == this) Instance = null;
             SceneManager.sceneLoaded -= OnLoaded;
             SceneManager.sceneUnloaded -= OnUnloaded;
             QualitySystem.TierChanged -= OnTier;
@@ -109,7 +129,7 @@ namespace JapanMap.World
             foreach (var list in _pools) list.Clear();
             foreach (var l in _lamps)
             {
-                if ((l.ground - cp).sqrMagnitude > max) continue;
+                if (l.dark || (l.ground - cp).sqrMagnitude > max) continue;
                 var r = settings.kinds[l.kind].poolRadius;
                 // Slightly above the ground: the pool lies on the road (5 cm clears the road surface offset).
                 _pools[l.kind].Add(Matrix4x4.TRS(l.ground + Vector3.up * 0.12f, Quaternion.identity, new Vector3(r * 2f, 1f, r * 2f)));
@@ -138,6 +158,7 @@ namespace JapanMap.World
             _nearest.Clear();
             for (var i = 0; i < _lamps.Count; i++)
             {
+                if (_lamps[i].dark) continue;
                 var d = (_lamps[i].head - cp).sqrMagnitude;
                 if (_nearest.Count < _lightCount) { _nearest.Add((d, i)); continue; }
                 var worst = 0;
