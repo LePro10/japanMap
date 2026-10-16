@@ -1,4 +1,298 @@
 {
+ "Animal_Cat_Curl_Ginger": {
+  "fbx": "characters/SM_Animal_Cat_Curl_Ginger.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Animal_Cat_Curl_Ginger_LOD0",
+   "SM_Animal_Cat_Curl_Ginger_LOD1",
+   "SM_Animal_Cat_Curl_Ginger_LOD2"
+  ],
+  "tris": [
+   468,
+   358,
+   170
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Animal_Cat_Loaf_Black": {
+  "fbx": "characters/SM_Animal_Cat_Loaf_Black.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Animal_Cat_Loaf_Black_LOD0",
+   "SM_Animal_Cat_Loaf_Black_LOD1",
+   "SM_Animal_Cat_Loaf_Black_LOD2"
+  ],
+  "tris": [
+   484,
+   346,
+   128
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Animal_Cat_Loaf_Calico": {
+  "fbx": "characters/SM_Animal_Cat_Loaf_Calico.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Animal_Cat_Loaf_Calico_LOD0",
+   "SM_Animal_Cat_Loaf_Calico_LOD1",
+   "SM_Animal_Cat_Loaf_Calico_LOD2"
+  ],
+  "tris": [
+   484,
+   346,
+   128
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Animal_Cat_Sit_Calico": {
+  "fbx": "characters/SM_Animal_Cat_Sit_Calico.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Animal_Cat_Sit_Calico_LOD0",
+   "SM_Animal_Cat_Sit_Calico_LOD1",
+   "SM_Animal_Cat_Sit_Calico_LOD2"
+  ],
+  "tris": [
+   984,
+   668,
+   328
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Animal_Cat_Sit_Tuxedo": {
+  "fbx": "characters/SM_Animal_Cat_Sit_Tuxedo.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Animal_Cat_Sit_Tuxedo_LOD0",
+   "SM_Animal_Cat_Sit_Tuxedo_LOD1",
+   "SM_Animal_Cat_Sit_Tuxedo_LOD2"
+  ],
+  "tris": [
+   984,
+   668,
+   328
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Animal_Cat_Walk_Tabby": {
+  "fbx": "characters/SM_Animal_Cat_Walk_Tabby.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Animal_Cat_Walk_Tabby_LOD0",
+   "SM_Animal_Cat_Walk_Tabby_LOD1",
+   "SM_Animal_Cat_Walk_Tabby_LOD2"
+  ],
+  "tris": [
+   744,
+   540,
+   280
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Animal_Chicken_Hen": {
+  "fbx": "characters/SM_Animal_Chicken_Hen.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Animal_Chicken_Hen_LOD0",
+   "SM_Animal_Chicken_Hen_LOD1",
+   "SM_Animal_Chicken_Hen_LOD2"
+  ],
+  "tris": [
+   744,
+   612,
+   400
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Animal_Chicken_Rooster": {
+  "fbx": "characters/SM_Animal_Chicken_Rooster.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Animal_Chicken_Rooster_LOD0",
+   "SM_Animal_Chicken_Rooster_LOD1",
+   "SM_Animal_Chicken_Rooster_LOD2"
+  ],
+  "tris": [
+   828,
+   696,
+   484
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Animal_Crow": {
+  "fbx": "characters/SM_Animal_Crow.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Animal_Crow_LOD0",
+   "SM_Animal_Crow_LOD1",
+   "SM_Animal_Crow_LOD2"
+  ],
+  "tris": [
+   652,
+   528,
+   324
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Animal_Crow_Perch": {
+  "fbx": "characters/SM_Animal_Crow_Perch.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Animal_Crow_Perch_LOD0",
+   "SM_Animal_Crow_Perch_LOD1",
+   "SM_Animal_Crow_Perch_LOD2"
+  ],
+  "tris": [
+   592,
+   468,
+   360
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Animal_Goat": {
+  "fbx": "characters/SM_Animal_Goat.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Animal_Goat_LOD0",
+   "SM_Animal_Goat_LOD1",
+   "SM_Animal_Goat_LOD2"
+  ],
+  "tris": [
+   716,
+   544,
+   420
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Animal_Pigeon": {
+  "fbx": "characters/SM_Animal_Pigeon.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Animal_Pigeon_LOD0",
+   "SM_Animal_Pigeon_LOD1",
+   "SM_Animal_Pigeon_LOD2"
+  ],
+  "tris": [
+   572,
+   444,
+   332
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Animal_Shiba_Sit": {
+  "fbx": "characters/SM_Animal_Shiba_Sit.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Animal_Shiba_Sit_LOD0",
+   "SM_Animal_Shiba_Sit_LOD1",
+   "SM_Animal_Shiba_Sit_LOD2"
+  ],
+  "tris": [
+   1132,
+   724,
+   424
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Animal_Shiba_Stand": {
+  "fbx": "characters/SM_Animal_Shiba_Stand.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Animal_Shiba_Stand_LOD0",
+   "SM_Animal_Shiba_Stand_LOD1",
+   "SM_Animal_Shiba_Stand_LOD2"
+  ],
+  "tris": [
+   1292,
+   820,
+   472
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
  "Barrier_GuardPipe_2m": {
   "fbx": "props/SM_Barrier_GuardPipe_2m.fbx",
   "class": "props",

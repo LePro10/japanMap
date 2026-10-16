@@ -48,6 +48,7 @@ ASSETS = {
     'kei_truck': 'props.kei_truck',
     'people': 'characters.people',
     'hand_props': 'characters.hand_props',
+    'animals': 'characters.animals',
 }
 
 # 3/4 front in the mood light, 3/4 front neutral, 3/4 back neutral (same as
