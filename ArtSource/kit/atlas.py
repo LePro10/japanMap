@@ -1985,6 +1985,8 @@ from .atlas_koso import layout as _koso_layout   # noqa: E402
 LAYOUTS.update(_koso_layout())
 from .atlas_figures import layout as _figures_layout   # noqa: E402
 LAYOUTS.update(_figures_layout())
+from .atlas_traffic import layout as _traffic_layout   # noqa: E402
+LAYOUTS.update(_traffic_layout())
 
 
 def build_maps(name, seed=1):

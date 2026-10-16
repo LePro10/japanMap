@@ -1,0 +1,128 @@
+{
+ "Kei_Tall": {
+  "size": [
+   1.75,
+   3.49,
+   1.84
+  ],
+  "paint": true
+ },
+ "Kei_Hatch": {
+  "size": [
+   1.75,
+   3.49,
+   1.55
+  ],
+  "paint": true
+ },
+ "Kei_Van": {
+  "size": [
+   1.75,
+   3.49,
+   1.97
+  ],
+  "paint": true
+ },
+ "Compact": {
+  "size": [
+   1.98,
+   4.1,
+   1.58
+  ],
+  "paint": true
+ },
+ "Sedan": {
+  "size": [
+   2.04,
+   4.7,
+   1.5
+  ],
+  "paint": true
+ },
+ "Minivan": {
+  "size": [
+   1.98,
+   4.79,
+   1.92
+  ],
+  "paint": true
+ },
+ "Taxi_JPN": {
+  "size": [
+   1.98,
+   4.5,
+   1.92
+  ],
+  "paint": false
+ },
+ "Taxi_Sedan": {
+  "size": [
+   1.98,
+   4.8,
+   1.69
+  ],
+  "paint": false
+ },
+ "Truck_2t": {
+  "size": [
+   2.42,
+   6.27,
+   2.73
+  ],
+  "paint": true
+ },
+ "Bus_Mini": {
+  "size": [
+   2.48,
+   7.37,
+   3.04
+  ],
+  "paint": false
+ },
+ "_colours": {
+  "pearl_white": [
+   "#e9e8e3",
+   0.3
+  ],
+  "silver": [
+   "#a9acb0",
+   0.18
+  ],
+  "black": [
+   "#17181a",
+   0.16
+  ],
+  "grey": [
+   "#5d6166",
+   0.08
+  ],
+  "navy": [
+   "#22314f",
+   0.06
+  ],
+  "red": [
+   "#9b1f22",
+   0.05
+  ],
+  "beige": [
+   "#c9b996",
+   0.05
+  ],
+  "kei_mint": [
+   "#9fcfc0",
+   0.04
+  ],
+  "kei_pink": [
+   "#e3b6b8",
+   0.02
+  ],
+  "brown": [
+   "#5b4434",
+   0.03
+  ],
+  "blue": [
+   "#3d6ea5",
+   0.03
+  ]
+ }
+}

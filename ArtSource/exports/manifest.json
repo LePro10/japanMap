@@ -9988,6 +9988,243 @@
   ],
   "attach": []
  },
+ "Traffic_Bus_Mini": {
+  "fbx": "traffic/SM_Traffic_Bus_Mini.fbx",
+  "class": "traffic",
+  "lods": [
+   "SM_Traffic_Bus_Mini_LOD0",
+   "SM_Traffic_Bus_Mini_LOD1",
+   "SM_Traffic_Bus_Mini_LOD2"
+  ],
+  "tris": [
+   1550,
+   694,
+   382
+  ],
+  "materials": [
+   "M_Traffic_Atlas"
+  ],
+  "colliders": [
+   "COL_Traffic_Bus_Mini"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Traffic_Compact": {
+  "fbx": "traffic/SM_Traffic_Compact.fbx",
+  "class": "traffic",
+  "lods": [
+   "SM_Traffic_Compact_LOD0",
+   "SM_Traffic_Compact_LOD1",
+   "SM_Traffic_Compact_LOD2"
+  ],
+  "tris": [
+   1542,
+   700,
+   394
+  ],
+  "materials": [
+   "M_TrafficPaint",
+   "M_Traffic_Atlas"
+  ],
+  "colliders": [
+   "COL_Traffic_Compact"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Traffic_Kei_Hatch": {
+  "fbx": "traffic/SM_Traffic_Kei_Hatch.fbx",
+  "class": "traffic",
+  "lods": [
+   "SM_Traffic_Kei_Hatch_LOD0",
+   "SM_Traffic_Kei_Hatch_LOD1",
+   "SM_Traffic_Kei_Hatch_LOD2"
+  ],
+  "tris": [
+   1612,
+   700,
+   394
+  ],
+  "materials": [
+   "M_TrafficPaint",
+   "M_Traffic_Atlas"
+  ],
+  "colliders": [
+   "COL_Traffic_Kei_Hatch"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Traffic_Kei_Tall": {
+  "fbx": "traffic/SM_Traffic_Kei_Tall.fbx",
+  "class": "traffic",
+  "lods": [
+   "SM_Traffic_Kei_Tall_LOD0",
+   "SM_Traffic_Kei_Tall_LOD1",
+   "SM_Traffic_Kei_Tall_LOD2"
+  ],
+  "tris": [
+   1642,
+   710,
+   394
+  ],
+  "materials": [
+   "M_TrafficPaint",
+   "M_Traffic_Atlas"
+  ],
+  "colliders": [
+   "COL_Traffic_Kei_Tall"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Traffic_Kei_Van": {
+  "fbx": "traffic/SM_Traffic_Kei_Van.fbx",
+  "class": "traffic",
+  "lods": [
+   "SM_Traffic_Kei_Van_LOD0",
+   "SM_Traffic_Kei_Van_LOD1",
+   "SM_Traffic_Kei_Van_LOD2"
+  ],
+  "tris": [
+   1656,
+   782,
+   394
+  ],
+  "materials": [
+   "M_TrafficPaint",
+   "M_Traffic_Atlas"
+  ],
+  "colliders": [
+   "COL_Traffic_Kei_Van"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Traffic_Minivan": {
+  "fbx": "traffic/SM_Traffic_Minivan.fbx",
+  "class": "traffic",
+  "lods": [
+   "SM_Traffic_Minivan_LOD0",
+   "SM_Traffic_Minivan_LOD1",
+   "SM_Traffic_Minivan_LOD2"
+  ],
+  "tris": [
+   1612,
+   710,
+   394
+  ],
+  "materials": [
+   "M_TrafficPaint",
+   "M_Traffic_Atlas"
+  ],
+  "colliders": [
+   "COL_Traffic_Minivan"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Traffic_Sedan": {
+  "fbx": "traffic/SM_Traffic_Sedan.fbx",
+  "class": "traffic",
+  "lods": [
+   "SM_Traffic_Sedan_LOD0",
+   "SM_Traffic_Sedan_LOD1",
+   "SM_Traffic_Sedan_LOD2"
+  ],
+  "tris": [
+   1576,
+   714,
+   394
+  ],
+  "materials": [
+   "M_TrafficPaint",
+   "M_Traffic_Atlas"
+  ],
+  "colliders": [
+   "COL_Traffic_Sedan"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Traffic_Taxi_JPN": {
+  "fbx": "traffic/SM_Traffic_Taxi_JPN.fbx",
+  "class": "traffic",
+  "lods": [
+   "SM_Traffic_Taxi_JPN_LOD0",
+   "SM_Traffic_Taxi_JPN_LOD1",
+   "SM_Traffic_Taxi_JPN_LOD2"
+  ],
+  "tris": [
+   1684,
+   758,
+   418
+  ],
+  "materials": [
+   "M_Traffic_Atlas"
+  ],
+  "colliders": [
+   "COL_Traffic_Taxi_JPN"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Traffic_Taxi_Sedan": {
+  "fbx": "traffic/SM_Traffic_Taxi_Sedan.fbx",
+  "class": "traffic",
+  "lods": [
+   "SM_Traffic_Taxi_Sedan_LOD0",
+   "SM_Traffic_Taxi_Sedan_LOD1",
+   "SM_Traffic_Taxi_Sedan_LOD2"
+  ],
+  "tris": [
+   1670,
+   762,
+   418
+  ],
+  "materials": [
+   "M_Traffic_Atlas"
+  ],
+  "colliders": [
+   "COL_Traffic_Taxi_Sedan"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Traffic_Truck_2t": {
+  "fbx": "traffic/SM_Traffic_Truck_2t.fbx",
+  "class": "traffic",
+  "lods": [
+   "SM_Traffic_Truck_2t_LOD0",
+   "SM_Traffic_Truck_2t_LOD1",
+   "SM_Traffic_Truck_2t_LOD2"
+  ],
+  "tris": [
+   2180,
+   970,
+   564
+  ],
+  "materials": [
+   "M_TrafficPaint",
+   "M_Traffic_Atlas"
+  ],
+  "colliders": [
+   "COL_Traffic_Truck_2t"
+  ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
  "Tree_Kaki": {
   "fbx": "vegetation/SM_Tree_Kaki.fbx",
   "class": "vegetation",
