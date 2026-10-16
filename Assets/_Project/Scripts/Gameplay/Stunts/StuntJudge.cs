@@ -9,6 +9,8 @@ namespace JapanMap.Gameplay.Stunts
         public Vector3 position;
         /// <summary>Nose direction, world.</summary>
         public Vector3 forward;
+        /// <summary>Roof direction, world (zero = unknown: no roll or flip judged).</summary>
+        public Vector3 up;
         /// <summary>Body velocity, world.</summary>
         public Vector3 velocity;
         public bool airborne;
@@ -18,6 +20,8 @@ namespace JapanMap.Gameplay.Stunts
         public bool bodyHit;
         /// <summary>Ramp whose lip is within reach (−1: none).</summary>
         public int rampAtLip;
+        /// <summary>The car did a stunt hop in this step (a jump from it pays only its tricks).</summary>
+        public bool hop;
     }
 
     /// <summary>A scored stunt: title for the HUD, points after the repeat rule, jump data.</summary>
@@ -41,10 +45,11 @@ namespace JapanMap.Gameplay.Stunts
 
         // Air
         bool _inAir, _touched;
-        float _airTime, _airYaw, _settleTime, _sinceTouch;
-        Vector3 _takeoff, _touchAt, _lastFwd;
+        float _airTime, _airYaw, _airRoll, _airFlip, _settleTime, _sinceTouch;
+        Vector3 _takeoff, _touchAt, _lastFwd, _lastFwd3, _lastUp;
         int _ramp = -1;
-        bool _dirtyLanding, _rebound;
+        bool _dirtyLanding, _rebound, _fromHop;
+        float _sinceHop = 99f;
 
         // Ground spin
         bool _spinning;
@@ -70,6 +75,9 @@ namespace JapanMap.Gameplay.Stunts
             if (_hasLast) _travelSince += Flat(d.position - _lastPos).magnitude;
             _lastPos = d.position;
             _hasLast = true;
+            _sinceHop = d.hop ? 0f : _sinceHop + dt;
+            // A hop is a new take-off: an earlier landing that never settled (a wheel hanging on rough grass) ends here.
+            if (d.hop) _inAir = _touched = false;
 
             // ── Air ──────────────────────────────────────────────────────────
             // Off again after a mere bump (a hop on a rough run-up just before the lip): that is a new
@@ -78,7 +86,10 @@ namespace JapanMap.Gameplay.Stunts
             if (d.airborne && !_inAir && !_touched)
             {
                 _inAir = true;
-                _airTime = _airYaw = 0f;
+                _airTime = _airYaw = _airRoll = _airFlip = 0f;
+                _fromHop = _sinceHop < 0.3f;
+                _lastFwd3 = d.forward;
+                _lastUp = d.up;
                 _takeoff = d.position;
                 _ramp = d.rampAtLip;
                 _lastFwd = fwd;
@@ -89,8 +100,22 @@ namespace JapanMap.Gameplay.Stunts
                 if (d.airborne)
                 {
                     _airTime += dt;
-                    _airYaw += Vector3.SignedAngle(_lastFwd, fwd, Vector3.up);
+                    if (d.up != Vector3.zero && _lastUp != Vector3.zero)
+                    {
+                        // The step's rotation split into the body's own axes: yaw about the roof, roll about the
+                        // nose, flip about the cross axis (a flip turned the flat heading round and read as a 180).
+                        var now = Quaternion.LookRotation(d.forward, d.up);
+                        (now * Quaternion.Inverse(Quaternion.LookRotation(_lastFwd3, _lastUp))).ToAngleAxis(out var ang, out var axis);
+                        if (ang > 180f) ang -= 360f;
+                        var w = axis * ang;
+                        _airYaw += Vector3.Dot(w, d.up);
+                        _airRoll += Vector3.Dot(w, d.forward);
+                        _airFlip += Vector3.Dot(w, Vector3.Cross(d.up, d.forward));
+                    }
+                    else _airYaw += Vector3.SignedAngle(_lastFwd, fwd, Vector3.up);
                     _lastFwd = fwd;
+                    _lastUp = d.up;
+                    _lastFwd3 = d.forward;
                 }
                 else if (!_touched)
                 {
@@ -159,11 +184,20 @@ namespace JapanMap.Gameplay.Stunts
                 if (Mathf.Min(a, 180f - a) > _s.landingMaxAngle) { LastLanding += $" — landed {a:0}° off"; return; }
             }
             var turned = Mathf.Abs(_airYaw);
-            var points = Mathf.RoundToInt(dist * _s.pointsPerMetre);
-            var title = $"Jump {dist:0} m";
+            // Off a ramp every metre pays; a hop from flat ground pays only for what is done in the air.
+            var points = _fromHop ? 0 : Mathf.RoundToInt(dist * _s.pointsPerMetre);
+            var tricks = new System.Collections.Generic.List<string>();
             var key = "jump";
-            if (In(turned, _s.range360)) { points += _s.pointsAir360; title = $"Air 360 · {dist:0} m"; key = "air360"; }
-            else if (In(turned, _s.range180)) { points += _s.pointsAir180; title = $"Air 180 · {dist:0} m"; key = "air180"; }
+            if (In(turned, _s.range360)) { points += _s.pointsAir360; tricks.Add("Air 360"); key = "air360"; }
+            else if (In(turned, _s.range180)) { points += _s.pointsAir180; tricks.Add("Air 180"); key = "air180"; }
+            // Whole rolls and flips, each one paid (a double roll is two).
+            var rolls = Mathf.FloorToInt((Mathf.Abs(_airRoll) + 360f - _s.fullTurn) / 360f);
+            var flips = Mathf.FloorToInt((Mathf.Abs(_airFlip) + 360f - _s.fullTurn) / 360f);
+            if (rolls > 0) { points += rolls * _s.pointsRoll; tricks.Add(_fromHop ? (rolls > 1 ? $"{rolls}× Kickflip" : "Kickflip") : rolls > 1 ? $"{rolls}× Barrel roll" : "Barrel roll"); key += "+roll" + rolls; }
+            if (flips > 0) { points += flips * _s.pointsFlip; tricks.Add(flips > 1 ? $"{flips}× {(_airFlip < 0 ? "Backflip" : "Frontflip")}" : _airFlip < 0 ? "Backflip" : "Frontflip"); key += "+flip" + flips; }
+            LastLanding += $", roll {_airRoll:0}°, flip {_airFlip:0}°{(_fromHop ? ", from a hop" : "")}";
+            if (points <= 0) { LastLanding += " — a hop"; return; }
+            var title = tricks.Count > 0 ? $"{string.Join(" + ", tricks)} · {dist:0} m" : $"Jump {dist:0} m";
             Emit(key, title, points, _ramp, dist, _airTime);
         }
 

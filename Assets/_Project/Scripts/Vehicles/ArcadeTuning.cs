@@ -174,6 +174,20 @@ namespace JapanMap.Vehicles
         public float stuntTrickYawCap = 6.8f;
         public float stuntAirRoll = 7.2f;
         public float stuntTrickAbort = 5.5f;
+        [Tooltip("Air tricks: the roll/flip must end this long before touchdown, s (the car lands level, not mid-roll).")]
+        public float stuntLandMargin = 0.22f;
+        [Tooltip("Air tricks may speed up to this multiple of stuntAirRoll to finish in time; a trick that cannot is not started.")]
+        public float stuntAirRateMax = 2.2f;
+        [Tooltip("Ground double tap without steering: upward kick, m/s (a hop to roll from).")]
+        public float stuntHopSpeed = 6.5f;
+        [Tooltip("Nose-up kick of the hop, rad/s.")]
+        public float stuntHopPitch = 0.6f;
+        [Tooltip("Lateral grip share while a ground spin turns (the car keeps sliding where it went, as a spinning car does).")]
+        public float stuntTrickLatGrip = 0.18f;
+        [Tooltip("On touchdown the travel direction turns this share towards the nose (arcade landing help).")]
+        [Range(0f, 1f)] public float landAlign = 0.65f;
+        [Tooltip("…only when the nose is within this angle of the travel, degrees.")]
+        public float landAlignMaxAngle = 70f;
 
         /// <summary>Wheel load a slope still carries, 0…1, smooth between steepNone and steepFull.</summary>
         public float SlopeSupport(float normalY)

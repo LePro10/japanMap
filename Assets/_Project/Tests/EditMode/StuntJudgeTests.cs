@@ -96,6 +96,53 @@ namespace JapanMap.Tests
             Assert.AreEqual(16f, _got[0].distance, 0.6f, $"measured from the lip at {lip.z:0}");
         }
 
+        /// <summary>Air roll (rollRate °/s about the nose) and flip (°/s nose up) — the body attitude, as the car reports it.</summary>
+        void RunTrick(float seconds, float speed, float rollRate, float flipRate, bool hop = false)
+        {
+            var roll = 0f;
+            var pitch = 0f;
+            for (var t = 0f; t < seconds - 1e-4f; t += Dt)
+            {
+                _pos += Vector3.forward * speed * Dt;
+                roll += rollRate * Dt;
+                pitch += flipRate * Dt;
+                var q = Quaternion.Euler(-pitch, 0f, -roll);
+                _j.Step(Dt, new StuntSample
+                {
+                    position = _pos,
+                    forward = q * Vector3.forward,
+                    up = q * Vector3.up,
+                    velocity = Vector3.forward * speed,
+                    airborne = true,
+                    hop = hop && t < Dt * 0.5f,
+                });
+            }
+        }
+
+        [Test]
+        public void BarrelRoll_AndBackflip_AreScored_AndAHopAlonePaysNothing()
+        {
+            Run(0.5f, 20f, false);
+            RunTrick(1f, 20f, 360f, 0f);
+            Run(0.6f, 20f, false);
+            Assert.AreEqual(1, _got.Count, _j.LastLanding);
+            StringAssert.StartsWith("Barrel roll", _got[0].title);
+            Assert.AreEqual(_s.pointsRoll + 200, _got[0].points, 5);
+
+            Run(5f, 20f, false);
+            RunTrick(1f, 20f, 0f, 360f);
+            Run(0.6f, 20f, false);
+            Assert.AreEqual(2, _got.Count, _j.LastLanding);
+            StringAssert.StartsWith("Backflip", _got[1].title);
+
+            // A stunt hop from flat ground with nothing done in the air: no points for the distance.
+            Run(5f, 20f, false);
+            _j.Step(Dt, new StuntSample { position = _pos, forward = Vector3.forward, up = Vector3.up, velocity = Vector3.forward * 20f, groundedWheels = 4, hop = true });
+            Run(1f, 20f, true);
+            Run(0.6f, 20f, false);
+            Assert.AreEqual(2, _got.Count, "a hop alone: " + _j.LastLanding);
+        }
+
         [Test]
         public void Air360_Adds800()
         {

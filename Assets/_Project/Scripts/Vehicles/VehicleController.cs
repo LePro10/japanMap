@@ -149,6 +149,25 @@ namespace JapanMap.Vehicles
             _gearbox.Configure(def.gearbox, tuning.shift, (_spec ?? def.arcade).TopSpeed(def.mass));
         }
 
+        float _airTime;
+
+        /// <summary>
+        /// Arcade landing help: on touchdown the travel turns most of the way towards the nose when they are within
+        /// landAlignMaxAngle, speed kept — a slightly crooked landing rolls on instead of hooking sideways.
+        /// </summary>
+        void AlignOnLanding(Vector3 n)
+        {
+            var v = _rb.linearVelocity;
+            var vn = Vector3.Dot(v, n);
+            var flat = v - n * vn;
+            var fwd = Vector3.ProjectOnPlane(transform.forward, n).normalized;
+            if (flat.sqrMagnitude < 4f || fwd.sqrMagnitude < 0.5f) return;
+            var angle = Vector3.SignedAngle(flat, fwd, n);
+            if (Mathf.Abs(angle) > tuning.landAlignMaxAngle) return;
+            flat = Quaternion.AngleAxis(angle * tuning.landAlign, n) * flat;
+            _rb.linearVelocity = flat + n * vn;
+        }
+
         readonly Gearbox _gearbox = new();
         /// <summary>Gear, rpm and load as heard and shown (acts on no force).</summary>
         public Gearbox Gearbox => _gearbox;
@@ -283,6 +302,21 @@ namespace JapanMap.Vehicles
             var v = _rb.linearVelocity;
             var surface = airborne ? Surface.Asphalt : SurfaceOf(_wheels[bestWheel]);
 
+            // Air: when do the wheels come down? From the ground below and the vertical speed (ballistic).
+            var toLand = 0f;
+            RaycastHit below = default;
+            var hasBelow = airborne && physics.Raycast(transform.position + up * 0.5f, Vector3.down, out below, 60f, groundMask, QueryTriggerInteraction.Ignore);
+            if (hasBelow)
+            {
+                // The root sits on the ground at rest; the wheels reach a little below it, so the root's height is the fall.
+                // Minus the body's half width: mid-roll the door, not the wheel, meets the ground first.
+                var h = Mathf.Max(0f, below.distance - 0.5f - def.bodySize.y * 0.25f);
+                var vy = _rb.linearVelocity.y;
+                // At least one step: 0 means "unknown" to the dynamics, and "now" is not unknown.
+                toLand = Mathf.Max(dt, (vy + Mathf.Sqrt(vy * vy + 2f * ArcadeTuning.Gravity * h)) / ArcadeTuning.Gravity);
+            }
+            else if (airborne) toLand = 3f; // nothing within 60 m: a long fall
+
             var env = new PlanarEnv
             {
                 vLong = Vector3.Dot(v, fwd),
@@ -294,6 +328,7 @@ namespace JapanMap.Vehicles
                 support = airborne ? 0f : tuning.SlopeSupport(n.y),
                 // What gravity actually does along forward once the springs carry the normal part.
                 slopeAccel = airborne ? 0f : -ArcadeTuning.Gravity * fwd.y,
+                timeToLand = toLand,
             };
 
             // The body owns the yaw rate: a wall hit may have changed it since the last step.
@@ -308,18 +343,42 @@ namespace JapanMap.Vehicles
                 // Pitch and roll follow the ground below (else a crest tips the nose down and the car
                 // lands bumper first — measured on the ring: 17° nose down, 107 → 57 km/h). The player's
                 // air pitch and the stunt roll ride on top of that level target.
-                var below = physics.Raycast(transform.position + up * 0.5f, Vector3.down, out var g, 60f, groundMask, QueryTriggerInteraction.Ignore)
-                    ? g.normal
-                    : Vector3.up;
-                var level = Vector3.Cross(up, below) * tuning.airLevelRate;
-                var target = level + transform.right * -r.pitchRate + transform.forward * -r.rollRate;
+                var belowN = hasBelow ? below.normal : Vector3.up;
+                var level = Vector3.Cross(up, belowN) * tuning.airLevelRate;
                 var yawPart = up * Vector3.Dot(w1, up);
                 var tilt = w1 - yawPart;
-                var targetTilt = target - up * Vector3.Dot(target, up);
-                var rolling = Mathf.Abs(r.rollRate) > 0.1f; // a stunt roll keeps its own spin
-                if (!rolling) tilt += (targetTilt - tilt) * (1f - Mathf.Exp(-tuning.airAttitudeResponse * dt));
-                else tilt = targetTilt;
+                var rolling = Mathf.Abs(r.rollRate) > 0.1f;
+                var flipping = Mathf.Abs(r.flipRate) > 0.1f;
+                if (rolling || flipping)
+                {
+                    // A trick spins exactly about one axis at the asked rate (so it ends where the dynamics counted
+                    // it ends); only the other axis is levelled — the full level term fought the roll upside down
+                    // and the car came out of it crooked.
+                    var fwdT = transform.forward;
+                    var rightT = transform.right;
+                    tilt = rolling
+                        ? rightT * (Vector3.Dot(fwdT, belowN) * tuning.airLevelRate) + rightT * -r.pitchRate + fwdT * -r.rollRate
+                        : -fwdT * (Vector3.Dot(rightT, belowN) * tuning.airLevelRate) + rightT * -r.flipRate;
+                }
+                else
+                {
+                    var target = level + transform.right * -r.pitchRate;
+                    var targetTilt = target - up * Vector3.Dot(target, up);
+                    tilt += (targetTilt - tilt) * (1f - Mathf.Exp(-tuning.airAttitudeResponse * dt));
+                }
                 w1 = yawPart + tilt;
+                _airTime += dt;
+            }
+            else
+            {
+                if (_airTime > 0.25f) AlignOnLanding(n);
+                _airTime = 0f;
+            }
+            if (r.hop)
+            {
+                // Hop: an upward kick and a little nose-up — the start of an air trick from flat ground.
+                _rb.linearVelocity += n * tuning.stuntHopSpeed;
+                w1 += transform.right * -tuning.stuntHopPitch;
             }
             _rb.angularVelocity = w1;
 
@@ -350,6 +409,7 @@ namespace JapanMap.Vehicles
                 trick = r.trick,
                 burst = r.burst,
                 burstCharge = r.burstCharge,
+                hop = r.hop,
             };
         }
 
@@ -392,5 +452,7 @@ namespace JapanMap.Vehicles
         public float stunt, spin, trick;
         /// <summary>Nitro burst 1 → 0 while it runs (0 = none); the tank share it carries.</summary>
         public float burst, burstCharge;
+        /// <summary>A stunt hop started in this step.</summary>
+        public bool hop;
     }
 }

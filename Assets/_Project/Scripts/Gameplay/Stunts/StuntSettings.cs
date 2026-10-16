@@ -32,6 +32,12 @@ namespace JapanMap.Gameplay.Stunts
         [Tooltip("ASTRA: airborne 360, 800 points. An air 180 pays this (ours).")]
         public int pointsAir360 = 800;
         public int pointsAir180 = 300;
+        [Tooltip("A full barrel roll in the air (ours; the intro teaches it).")]
+        public int pointsRoll = 700;
+        [Tooltip("A full flip (nose over) in the air.")]
+        public int pointsFlip = 900;
+        [Tooltip("Turned this much about the car's long / cross axis counts as one full roll / flip, degrees.")]
+        public float fullTurn = 320f;
         [Tooltip("Wheels down (three of four: rough grass) this long before a landing counts, s (ASTRA: 0.25).")]
         public float settle = 0.25f;
         [Tooltip("Landing must be within this angle of the travel direction, degrees (ASTRA: 45).")]

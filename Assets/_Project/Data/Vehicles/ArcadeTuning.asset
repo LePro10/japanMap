@@ -110,3 +110,10 @@ MonoBehaviour:
   stuntTrickYawCap: 6.8
   stuntAirRoll: 7.2
   stuntTrickAbort: 5.5
+  stuntLandMargin: 0.22
+  stuntAirRateMax: 2.2
+  stuntHopSpeed: 6.5
+  stuntHopPitch: 0.6
+  stuntTrickLatGrip: 0.18
+  landAlign: 0.65
+  landAlignMaxAngle: 70

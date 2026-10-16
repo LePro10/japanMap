@@ -53,8 +53,9 @@ namespace JapanMap.Vehicles
         float _spin;
         float _trickRemain;
         float _trickSign;
-        bool _trickAir;
-        float _rollRate;
+        bool _trickAir, _trickFlip, _hopPulse;
+        float _kickflipWait, _kickflipSign = 1f;
+        float _rollRate, _flipRate;
         float _burstT, _burstLen, _burstCharge;
 
         public ArcadeDynamics(ArcadeSpec spec, ArcadeTuning tuning, float looseBonus, float crawlShare = 0.5f, float driveRetain = 0.65f)
@@ -103,8 +104,9 @@ namespace JapanMap.Vehicles
             _drift = _driftArm = _yawRate = _pitchRate = _driftSign = 0f;
             _gripSmoothed = float.NaN;
             _wasAirborne = false;
-            _landTimer = _stuntBlend = _spin = _trickRemain = _trickSign = _rollRate = 0f;
-            _trickAir = false;
+            _landTimer = _stuntBlend = _spin = _trickRemain = _trickSign = _rollRate = _flipRate = 0f;
+            _trickAir = _trickFlip = _hopPulse = false;
+            _kickflipWait = 0f;
             _burstT = _burstLen = _burstCharge = 0f;
         }
 
@@ -167,21 +169,61 @@ namespace JapanMap.Vehicles
             var want = initiate ? 1f : sustain ? Math.Max(powerSlide, liftSlide) : 0f;
 
             // Double tap: remaining rotation done by motion, not by teleporting the heading.
+            // Ground: steering → 360 spin, steering + brake → 180, straight → a hop (to roll from).
+            // Air: barrel roll towards the steering; brake held without steering → backflip. An air trick that cannot
+            // finish before touchdown is not started — no more landing on the roof or mid-roll.
             if (input.trick && (env.airborne || speed > t.stuntMinSpeed))
             {
+                var steered = Math.Abs(input.steer) > 0.3f;
                 var sign = Math.Abs(input.steer) > 0.1f ? Math.Sign(input.steer) : _driftSign != 0f ? _driftSign : 1f;
-                _trickSign = sign;
-                _trickAir = env.airborne;
-                _trickRemain = Math.Min(_trickRemain + t.stuntTrickAngle, t.stuntTrickAngle * 2f);
-                if (!env.airborne)
+                // A wheel off the ground for a moment on rough grass is not a jump: tricks there are ground tricks.
+                var inAir = env.airborne && !(env.timeToLand > 0f && env.timeToLand < 0.25f);
+                if (inAir)
                 {
+                    var flip = !steered && input.brake > 0.5f;
+                    var carried = _trickAir && _trickFlip == flip ? _trickRemain : 0f;
+                    var total = Math.Min(carried + t.stuntTrickAngle, t.stuntTrickAngle * 2f);
+                    if (AirTrickFits(total, env.timeToLand))
+                    {
+                        _trickSign = flip ? 1f : sign;
+                        _trickAir = true;
+                        _trickFlip = flip;
+                        _trickRemain = total;
+                        _stuntBlend = Math.Max(_stuntBlend, 0.9f);
+                    }
+                }
+                else if (!steered)
+                {
+                    // Kickflip: a hop, and the barrel roll starts as soon as the wheels are off (alternating sides).
+                    _hopPulse = true;
+                    _kickflipWait = 0.35f;
+                    _kickflipSign = -_kickflipSign;
+                    _stuntBlend = Math.Max(_stuntBlend, 0.9f);
+                }
+                else
+                {
+                    _trickSign = sign;
+                    _trickAir = false;
+                    _trickFlip = false;
+                    _trickRemain = input.brake > 0.5f ? t.stuntTrickAngle * 0.5f : t.stuntTrickAngle;
                     _drift = Math.Max(_drift, 0.62f);
                     _driftSign = sign;
                     _stuntBlend = Math.Max(_stuntBlend, 0.85f);
                 }
-                else
+            }
+            if (_kickflipWait > 0f)
+            {
+                _kickflipWait -= dt;
+                if (env.airborne && env.timeToLand > 0.3f && !input.trick)
                 {
-                    _stuntBlend = Math.Max(_stuntBlend, 0.9f);
+                    _kickflipWait = 0f;
+                    if (AirTrickFits(t.stuntTrickAngle, env.timeToLand))
+                    {
+                        _trickAir = true;
+                        _trickFlip = false;
+                        _trickSign = _kickflipSign;
+                        _trickRemain = t.stuntTrickAngle;
+                    }
                 }
             }
             var inTrick = _trickRemain > 0.12f;
@@ -212,9 +254,9 @@ namespace JapanMap.Vehicles
             var aLatMax = LatAccel(grip, speed) * latMul;
             var yawTarget = YawTarget(env.vLong, env.vLat, speed, aLatMax, input);
 
-            _rollRate = 0f;
+            _rollRate = _flipRate = 0f;
             var trickFrac = _trickRemain / t.stuntTrickAngle;
-            var trickEnv = MathF.Sin(MathF.PI * Math.Min(1f, Math.Max(0.07f, 1f - trickFrac)));
+            var trickEnv = MathF.Sin(MathF.PI * Math.Min(1f, Math.Max(0.07f, 1f - Math.Min(1f, trickFrac))));
 
             if (env.airborne)
             {
@@ -227,9 +269,14 @@ namespace JapanMap.Vehicles
                 _pitchRate *= MathF.Exp(-t.airDamping * dt);
                 if (_trickRemain > 0f && _trickAir)
                 {
-                    var rate = _trickSign * t.stuntAirRoll * (0.62f + 0.38f * trickEnv);
-                    _rollRate = rate;
-                    _trickRemain = Math.Max(0f, _trickRemain - Math.Abs(rate) * dt);
+                    // Fast enough to finish before touchdown, never past the last degree (no overshoot to land crooked).
+                    var rate = t.stuntAirRoll * (0.62f + 0.38f * trickEnv);
+                    if (env.timeToLand > 0f) rate = Math.Max(rate, _trickRemain / Math.Max(0.08f, env.timeToLand - t.stuntLandMargin));
+                    rate = Math.Min(Math.Min(rate, t.stuntAirRoll * t.stuntAirRateMax), _trickRemain / dt);
+                    if (_trickFlip) _flipRate = rate;
+                    else _rollRate = _trickSign * rate;
+                    _trickRemain = Math.Max(0f, _trickRemain - rate * dt);
+                    if (_trickRemain < 1e-3f) _trickRemain = 0f;
                 }
             }
             else
@@ -271,12 +318,15 @@ namespace JapanMap.Vehicles
                 Math.Max(_stuntBlend * Math.Max(_spin, 0.12f), _trickRemain > 0.2f ? 1f : 0f));
             _yawRate = Clamp(_yawRate, -yawCap, yawCap);
             _pitchRate = Clamp(_pitchRate, -2.5f, 2.5f);
-            _rollRate = Clamp(_rollRate, -9f, 9f);
+            _rollRate = Clamp(_rollRate, -14f, 14f);
+            _flipRate = Clamp(_flipRate, -14f, 14f);
 
             // ── Lateral: tyres pull lateral speed to zero, rate k, at most aLatMax ─
             var stuntK = Lerp(t.stuntLatGrip, t.stuntSpinLatGrip, _spin);
             var k = Lerp(spec.latGrip, spec.driftLatGrip, _drift) * grip * latMul * Lerp(1f, stuntK, _stuntBlend) *
                     (_burstLen > 0f ? t.burstLatGrip : 1f);
+            // A spinning car keeps sliding where it went: the tyres barely pull the travel round with the nose.
+            if (!env.airborne && !_trickAir && _trickRemain > 0.3f) k *= t.stuntTrickLatGrip;
             var accelLat = env.airborne ? 0f : -env.vLat * (1f - MathF.Exp(-k * dt)) / dt;
             var latBudget = aLatMax * (1f - 0.25f * _drift);
             accelLat = Clamp(accelLat, -latBudget, latBudget);
@@ -327,6 +377,8 @@ namespace JapanMap.Vehicles
                 yawRate = -_yawRate,
                 pitchRate = env.airborne ? _pitchRate : 0f,
                 rollRate = env.airborne ? _rollRate : 0f,
+                flipRate = env.airborne ? _flipRate : 0f,
+                hop = TakeHop(),
                 drift = _drift,
                 slip = slip,
                 skid = skid,
@@ -409,6 +461,22 @@ namespace JapanMap.Vehicles
                 target += -slip * t.stuntCounterCatch * _stuntBlend;
             }
             return target;
+        }
+
+        bool TakeHop()
+        {
+            var h = _hopPulse;
+            _hopPulse = false;
+            return h;
+        }
+
+        /// <summary>An air trick of <paramref name="angle"/> rad fits when it can end stuntLandMargin before touchdown at
+        /// no more than stuntAirRateMax × the normal rate. Unknown landing time (0): it fits.</summary>
+        bool AirTrickFits(float angle, float timeToLand)
+        {
+            if (timeToLand <= 0f) return true;
+            var left = timeToLand - _t.stuntLandMargin;
+            return left > 0.1f && angle / left <= _t.stuntAirRoll * _t.stuntAirRateMax;
         }
 
         /// <summary>

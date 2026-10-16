@@ -47,6 +47,8 @@ namespace JapanMap.Vehicles
         public float support;
         /// <summary>Signed downhill acceleration along forward, m/s².</summary>
         public float slopeAccel;
+        /// <summary>Air only: estimated seconds until the wheels touch down (0 = unknown).</summary>
+        public float timeToLand;
     }
 
     /// <summary>What one planar step reports.</summary>
@@ -61,6 +63,10 @@ namespace JapanMap.Vehicles
         public float pitchRate;
         /// <summary>Air only, rad/s, positive = rolling right side down.</summary>
         public float rollRate;
+        /// <summary>Air only: flip trick, rad/s, positive = nose up (a backflip).</summary>
+        public float flipRate;
+        /// <summary>Edge: a ground hop starts in this step (the body gets an upward kick).</summary>
+        public bool hop;
         public float drift;
         /// <summary>Slip angle, rad. Positive = velocity points right of the nose.</summary>
         public float slip;

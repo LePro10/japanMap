@@ -25,6 +25,9 @@ MonoBehaviour:
   pointsPerMetre: 10
   pointsAir360: 800
   pointsAir180: 300
+  pointsRoll: 700
+  pointsFlip: 900
+  fullTurn: 320
   settle: 0.25
   landingMaxAngle: 45
   cleanAfter: 0.5
