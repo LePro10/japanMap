@@ -11,7 +11,9 @@
         "JapanMap.UI",
         "JapanMap.Audio",
         "Unity.Addressables",
-        "Unity.ResourceManager"
+        "Unity.ResourceManager",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Core.Runtime"
     ],
     "autoReferenced": true,
     "noEngineReferences": false

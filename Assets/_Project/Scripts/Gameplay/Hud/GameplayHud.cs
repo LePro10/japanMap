@@ -22,6 +22,8 @@ namespace JapanMap.Gameplay.Hud
     /// </summary>
     public sealed class GameplayHud : MonoBehaviour
     {
+        [Tooltip("Speed post-processing (chromatic fringe, distortion, vignette, motion blur on High) — SpeedPost.")]
+        [SerializeField] UnityEngine.Rendering.VolumeProfile speedProfile;
         [SerializeField] PanelSettings panelSettings;
         [SerializeField] DriftScorer drift;
         [SerializeField] SparksWallet wallet;
@@ -84,6 +86,7 @@ namespace JapanMap.Gameplay.Hud
 
         void Awake()
         {
+            gameObject.AddComponent<SpeedPost>().Bind(player, speedProfile);
             _doc = gameObject.AddComponent<UIDocument>();
             _doc.panelSettings = UiPanel.Get(panelSettings);
             _doc.sortingOrder = 3;
@@ -252,7 +255,7 @@ namespace JapanMap.Gameplay.Hud
             burstBox.style.alignItems = Align.Center;
             _burstTag = Text(burstBox, 44f * k, new Color(0.55f, 0.9f, 1f));
             _burstTag.text = "NITRO BURST";
-            _burstTag.AddToClassList("jm-num");
+            // Barlow, not Saira: Saira's atlas drew the letter-spaced space as a bar ("NITRO|BURST").
             _burstTag.style.letterSpacing = 8f * k;
             _burstTag.style.display = DisplayStyle.None;
 

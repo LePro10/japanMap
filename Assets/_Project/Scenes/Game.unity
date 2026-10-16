@@ -17352,6 +17352,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2840cae4b9ccf49da867425749d3cc35, type: 3}
   m_Name: 
   m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Hud.GameplayHud
+  speedProfile: {fileID: 11400000, guid: ddfe5932cfea441cea04e26c7b28d2e3, type: 2}
   panelSettings: {fileID: 11400000, guid: a0208705cf2e24b24b2cdab2ddae1aa1, type: 2}
   drift: {fileID: 138953789}
   wallet: {fileID: 1001937142}
