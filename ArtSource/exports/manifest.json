@@ -929,6 +929,204 @@
   "switchable": [],
   "attach": []
  },
+ "Garage_CarLift": {
+  "fbx": "props/SM_Garage_CarLift.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Garage_CarLift_LOD0",
+   "SM_Garage_CarLift_LOD1",
+   "SM_Garage_CarLift_LOD2"
+  ],
+  "tris": [
+   816,
+   288,
+   220
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Garage_EngineStand": {
+  "fbx": "props/SM_Garage_EngineStand.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Garage_EngineStand_LOD0",
+   "SM_Garage_EngineStand_LOD1",
+   "SM_Garage_EngineStand_LOD2"
+  ],
+  "tris": [
+   952,
+   536,
+   272
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Garage_FloorJack": {
+  "fbx": "props/SM_Garage_FloorJack.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Garage_FloorJack_LOD0",
+   "SM_Garage_FloorJack_LOD1",
+   "SM_Garage_FloorJack_LOD2"
+  ],
+  "tris": [
+   284,
+   220,
+   220
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Garage_GarageSign": {
+  "fbx": "props/SM_Garage_GarageSign.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Garage_GarageSign_LOD0",
+   "SM_Garage_GarageSign_LOD1",
+   "SM_Garage_GarageSign_LOD2"
+  ],
+  "tris": [
+   188,
+   60,
+   12
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [
+   {
+    "name": "LIGHT_Garage_GarageSign_Sign",
+    "pos": [
+     0.0,
+     -0.5,
+     0.3
+    ],
+    "color": [
+     1.0,
+     0.8,
+     0.6
+    ],
+    "range": 3.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Garage_PaintBoard": {
+  "fbx": "props/SM_Garage_PaintBoard.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Garage_PaintBoard_LOD0",
+   "SM_Garage_PaintBoard_LOD1",
+   "SM_Garage_PaintBoard_LOD2"
+  ],
+  "tris": [
+   140,
+   84,
+   60
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Garage_TireRack": {
+  "fbx": "props/SM_Garage_TireRack.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Garage_TireRack_LOD0",
+   "SM_Garage_TireRack_LOD1",
+   "SM_Garage_TireRack_LOD2"
+  ],
+  "tris": [
+   1804,
+   672,
+   312
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Garage_ToolCabinet": {
+  "fbx": "props/SM_Garage_ToolCabinet.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Garage_ToolCabinet_LOD0",
+   "SM_Garage_ToolCabinet_LOD1",
+   "SM_Garage_ToolCabinet_LOD2"
+  ],
+  "tris": [
+   628,
+   268,
+   268
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Garage_Workbench": {
+  "fbx": "props/SM_Garage_Workbench.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Garage_Workbench_LOD0",
+   "SM_Garage_Workbench_LOD1",
+   "SM_Garage_Workbench_LOD2"
+  ],
+  "tris": [
+   1036,
+   316,
+   204
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [
+   {
+    "name": "LIGHT_Garage_Workbench_Strip",
+    "pos": [
+     0.0,
+     0.25,
+     1.9
+    ],
+    "color": [
+     0.9,
+     0.95,
+     1.0
+    ],
+    "range": 3.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
  "Gassho_Hasa_6m": {
   "fbx": "buildings/SM_Gassho_Hasa_6m.fbx",
   "class": "buildings",
@@ -5702,6 +5900,210 @@
    "COL_Prop_KeiTruck_Straw_Bed",
    "COL_Prop_KeiTruck_Straw_Cab"
   ],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Race_Arch_Checkpoint": {
+  "fbx": "props/SM_Race_Arch_Checkpoint.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Race_Arch_Checkpoint_LOD0",
+   "SM_Race_Arch_Checkpoint_LOD1",
+   "SM_Race_Arch_Checkpoint_LOD2"
+  ],
+  "tris": [
+   1816,
+   672,
+   136
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Race_BannerFence_4m": {
+  "fbx": "props/SM_Race_BannerFence_4m.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Race_BannerFence_4m_LOD0",
+   "SM_Race_BannerFence_4m_LOD1",
+   "SM_Race_BannerFence_4m_LOD2"
+  ],
+  "tris": [
+   498,
+   254,
+   156
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Race_Flag_Checker": {
+  "fbx": "props/SM_Race_Flag_Checker.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Race_Flag_Checker_LOD0",
+   "SM_Race_Flag_Checker_LOD1",
+   "SM_Race_Flag_Checker_LOD2"
+  ],
+  "tris": [
+   46,
+   34,
+   28
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Race_Gantry_StartFinish": {
+  "fbx": "props/SM_Race_Gantry_StartFinish.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Race_Gantry_StartFinish_LOD0",
+   "SM_Race_Gantry_StartFinish_LOD1",
+   "SM_Race_Gantry_StartFinish_LOD2"
+  ],
+  "tris": [
+   1944,
+   1608,
+   392
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [
+   {
+    "name": "LIGHT_Race_Gantry_StartFinish_Start",
+    "pos": [
+     0.0,
+     -0.4,
+     4.88
+    ],
+    "color": [
+     1.0,
+     0.15,
+     0.1
+    ],
+    "range": 8.0
+   }
+  ],
+  "switchable": [],
+  "attach": []
+ },
+ "Race_Podium": {
+  "fbx": "props/SM_Race_Podium.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Race_Podium_LOD0",
+   "SM_Race_Podium_LOD1",
+   "SM_Race_Podium_LOD2"
+  ],
+  "tris": [
+   224,
+   96,
+   96
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Race_Pylon_6": {
+  "fbx": "props/SM_Race_Pylon_6.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Race_Pylon_6_LOD0",
+   "SM_Race_Pylon_6_LOD1",
+   "SM_Race_Pylon_6_LOD2"
+  ],
+  "tris": [
+   246,
+   138,
+   132
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Race_Pylon_8": {
+  "fbx": "props/SM_Race_Pylon_8.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Race_Pylon_8_LOD0",
+   "SM_Race_Pylon_8_LOD1",
+   "SM_Race_Pylon_8_LOD2"
+  ],
+  "tris": [
+   246,
+   138,
+   132
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Race_Trophy": {
+  "fbx": "props/SM_Race_Trophy.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Race_Trophy_LOD0",
+   "SM_Race_Trophy_LOD1",
+   "SM_Race_Trophy_LOD2"
+  ],
+  "tris": [
+   456,
+   322,
+   126
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Race_TyreStack": {
+  "fbx": "props/SM_Race_TyreStack.fbx",
+  "class": "props",
+  "lods": [
+   "SM_Race_TyreStack_LOD0",
+   "SM_Race_TyreStack_LOD1",
+   "SM_Race_TyreStack_LOD2"
+  ],
+  "tris": [
+   1176,
+   840,
+   360
+  ],
+  "materials": [
+   "M_Details_Atlas"
+  ],
+  "colliders": [],
   "lights": [],
   "switchable": [],
   "attach": []
