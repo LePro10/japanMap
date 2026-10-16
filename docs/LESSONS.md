@@ -68,6 +68,7 @@
 | 2026-10-14 | 11 | Optische Zusatz-Geometrie (Bankett) mit Kollider stoppte ein Auto an einer Schanze | Bankett als eigenes Mesh ohne Kollider; `RampTests` fand es | Test |
 | 2026-10-14 | 11 | Größen-Optimierung (Tangenten weg) brachte 0,02 MB, kostete Optik | erst messen, was es spart (`build-web`), dann gegen Bild abwägen | Skill |
 | 2026-10-14 | 11 | Tagesbonus zahlte in Tests mit, Sparks-Erwartungen falsch | `FreshSave` schaltet `DailySystem.AutoBonus` ab | Test |
+| 2026-10-16 | 11 | Zu Fuß „Drive this car“ gewählt: Auto wurde irgendwo außer Sicht getauscht, Mensch fand keinen Weg einzusteigen | anderes Auto kommt zum Fußgänger, man sitzt drin (`GarageSystem.TryApply`, geprüft mit `play.mjs` über die Menü-Knöpfe) | Werkzeug |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

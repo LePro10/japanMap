@@ -236,8 +236,13 @@ namespace JapanMap.Gameplay.Garage
             var def = progress.Fleet.Get(progress.Data.selectedCar) ?? progress.Fleet.Default;
             var t = car.transform;
             var walking = player.Current == PlayerModeController.Mode.Walking;
+            var otherCar = car.Definition != null && car.Definition.id != def.id;
             spawner.SpawnAt(def, t.position, t.eulerAngles.y);
             if (!walking) player.Seat();
+            // On foot, "Drive this car" swapped a car parked somewhere out of sight and the human stood there unable to
+            // get in (2026-10-16): a different car comes to the walker and they sit in it. A new paint or part does not
+            // pull a walker into the car.
+            else if (otherCar && player.CallCar() is var said && said.StartsWith("Your car")) player.Seat();
             Debug.Log($"[Garage] applied {def.id} where it stood");
         }
 
