@@ -1983,6 +1983,8 @@ from .atlas_machi import layout as _machi_layout   # noqa: E402
 LAYOUTS.update(_machi_layout())
 from .atlas_koso import layout as _koso_layout   # noqa: E402
 LAYOUTS.update(_koso_layout())
+from .atlas_figures import layout as _figures_layout   # noqa: E402
+LAYOUTS.update(_figures_layout())
 
 
 def build_maps(name, seed=1):

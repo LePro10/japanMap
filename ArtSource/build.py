@@ -46,6 +46,8 @@ ASSETS = {
     'koso': 'buildings.koso',
     'shotengai': 'buildings.shotengai',
     'kei_truck': 'props.kei_truck',
+    'people': 'characters.people',
+    'hand_props': 'characters.hand_props',
 }
 
 # 3/4 front in the mood light, 3/4 front neutral, 3/4 back neutral (same as
@@ -57,8 +59,8 @@ CLAY = [('clay', (1.0, -1.7, 0.6), 'clay'), ('clay back', (-1.2, 1.5, 0.7), 'cla
 
 
 def _reload():
-    import kit, kit.atlas_flora, kit.atlas_scatter, kit.atlas_machi, kit.atlas_koso, kit.atlas, kit.core, kit.preview, kit.organic
-    for m in (kit.atlas_flora, kit.atlas_scatter, kit.atlas_machi, kit.atlas_koso, kit.atlas, kit.core, kit.preview, kit.organic):
+    import kit, kit.atlas, kit.atlas_flora, kit.atlas_scatter, kit.atlas_machi, kit.atlas_koso, kit.atlas_figures, kit.atlas, kit.core, kit.preview, kit.organic
+    for m in (kit.atlas_flora, kit.atlas_scatter, kit.atlas_machi, kit.atlas_koso, kit.atlas_figures, kit.atlas, kit.core, kit.preview, kit.organic):
         importlib.reload(m)
     for name in [n for n in sys.modules if n.endswith('_kit')]:   # shared style kits (buildings/tokyo_kit)
         importlib.reload(sys.modules[name])

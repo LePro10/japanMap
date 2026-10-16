@@ -807,12 +807,27 @@ def export_fbx(col, klass, filename):
     hidden = [o for o in objs if o.hide_get()]
     for o in objs:
         o.hide_set(False); o.select_set(True)
+    # figures (task 6) bring their rig: skinned meshes need the armature in the same FBX.
+    # Apply Transform is 'known broken with armatures' (Blender manual): off for rigs,
+    # Unity imports those with 'Bake Axis Conversion' instead
+    types = {'MESH', 'EMPTY'} | ({'ARMATURE'} if any(o.type == 'ARMATURE' for o in objs) else set())
+    # every figure FBX names its armature 'Rig' (one clip set binds to all; Blender
+    # needs unique object names, so the rig is renamed just for the export)
+    renamed = []
+    rigs = [o for o in objs if o.type == 'ARMATURE']
+    if len(rigs) == 1 and rigs[0].name != 'Rig':
+        clash = bpy.data.objects.get('Rig')
+        if clash:
+            renamed.append((clash, clash.name)); clash.name = '_rig_tmp'
+        renamed.append((rigs[0], rigs[0].name)); rigs[0].name = 'Rig'
     bpy.ops.export_scene.fbx(
-        filepath=path, use_selection=True, object_types={'MESH', 'EMPTY'},
+        filepath=path, use_selection=True, object_types=types, use_armature_deform_only=True,
         apply_scale_options='FBX_SCALE_ALL', axis_forward='-Z', axis_up='Y',
-        bake_space_transform=True, use_mesh_modifiers=True, mesh_smooth_type='OFF',
+        bake_space_transform='ARMATURE' not in types, use_mesh_modifiers=True, mesh_smooth_type='OFF',
         use_tspace=False, path_mode='STRIP', embed_textures=False, add_leaf_bones=False,
         bake_anim=False)
+    for o, n in reversed(renamed):
+        o.name = n
     for o in hidden:
         o.hide_set(True)
     return path, os.path.getsize(path)

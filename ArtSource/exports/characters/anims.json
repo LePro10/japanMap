@@ -1,0 +1,80 @@
+{
+ "Idle": {
+  "frames": 120,
+  "fps": 30,
+  "loop": true,
+  "speed": 0.0
+ },
+ "Walk": {
+  "frames": 32,
+  "fps": 30,
+  "loop": true,
+  "speed": 1.35
+ },
+ "WalkUmbrella": {
+  "frames": 33,
+  "fps": 30,
+  "loop": true,
+  "speed": 1.25
+ },
+ "Run": {
+  "frames": 20,
+  "fps": 30,
+  "loop": true,
+  "speed": 4.2
+ },
+ "Slide": {
+  "frames": 30,
+  "fps": 30,
+  "loop": true,
+  "speed": 0.0
+ },
+ "Jump": {
+  "frames": 24,
+  "fps": 30,
+  "loop": false,
+  "speed": 0.0
+ },
+ "Fall": {
+  "frames": 36,
+  "fps": 30,
+  "loop": true,
+  "speed": 0.0
+ },
+ "Sit": {
+  "frames": 120,
+  "fps": 30,
+  "loop": true,
+  "speed": 0.0
+ },
+ "Work": {
+  "frames": 48,
+  "fps": 30,
+  "loop": true,
+  "speed": 0.0
+ },
+ "Fish": {
+  "frames": 90,
+  "fps": 30,
+  "loop": true,
+  "speed": 0.0
+ },
+ "Phone": {
+  "frames": 120,
+  "fps": 30,
+  "loop": true,
+  "speed": 0.0
+ },
+ "Sweep": {
+  "frames": 54,
+  "fps": 30,
+  "loop": true,
+  "speed": 0.0
+ },
+ "Bow": {
+  "frames": 90,
+  "fps": 30,
+  "loop": true,
+  "speed": 0.0
+ }
+}

@@ -1333,6 +1333,589 @@
   "switchable": [],
   "attach": []
  },
+ "Hito_Casual": {
+  "fbx": "characters/SM_Hito_Casual.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Casual_LOD0",
+   "SM_Hito_Casual_LOD1",
+   "SM_Hito_Casual_LOD2"
+  ],
+  "tris": [
+   2671,
+   1897,
+   672
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_CasualF": {
+  "fbx": "characters/SM_Hito_CasualF.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_CasualF_LOD0",
+   "SM_Hito_CasualF_LOD1",
+   "SM_Hito_CasualF_LOD2"
+  ],
+  "tris": [
+   2435,
+   1769,
+   616
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Driver": {
+  "fbx": "characters/SM_Hito_Driver.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Driver_LOD0",
+   "SM_Hito_Driver_LOD1",
+   "SM_Hito_Driver_LOD2"
+  ],
+  "tris": [
+   2515,
+   1769,
+   636
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_DriverF": {
+  "fbx": "characters/SM_Hito_DriverF.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_DriverF_LOD0",
+   "SM_Hito_DriverF_LOD1",
+   "SM_Hito_DriverF_LOD2"
+  ],
+  "tris": [
+   2487,
+   1781,
+   600
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Fisher": {
+  "fbx": "characters/SM_Hito_Fisher.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Fisher_LOD0",
+   "SM_Hito_Fisher_LOD1",
+   "SM_Hito_Fisher_LOD2"
+  ],
+  "tris": [
+   2863,
+   2021,
+   764
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Obaachan": {
+  "fbx": "characters/SM_Hito_Obaachan.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Obaachan_LOD0",
+   "SM_Hito_Obaachan_LOD1",
+   "SM_Hito_Obaachan_LOD2"
+  ],
+  "tris": [
+   2351,
+   1633,
+   694
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_OfficeLady": {
+  "fbx": "characters/SM_Hito_OfficeLady.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_OfficeLady_LOD0",
+   "SM_Hito_OfficeLady_LOD1",
+   "SM_Hito_OfficeLady_LOD2"
+  ],
+  "tris": [
+   2603,
+   1909,
+   584
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Ojiichan": {
+  "fbx": "characters/SM_Hito_Ojiichan.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Ojiichan_LOD0",
+   "SM_Hito_Ojiichan_LOD1",
+   "SM_Hito_Ojiichan_LOD2"
+  ],
+  "tris": [
+   2325,
+   1731,
+   618
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Prop_Briefcase": {
+  "fbx": "characters/SM_Hito_Prop_Briefcase.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Prop_Briefcase_LOD0",
+   "SM_Hito_Prop_Briefcase_LOD1"
+  ],
+  "tris": [
+   80,
+   44
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Prop_Broom": {
+  "fbx": "characters/SM_Hito_Prop_Broom.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Prop_Broom_LOD0",
+   "SM_Hito_Prop_Broom_LOD1"
+  ],
+  "tris": [
+   200,
+   88
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Prop_Cane": {
+  "fbx": "characters/SM_Hito_Prop_Cane.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Prop_Cane_LOD0",
+   "SM_Hito_Prop_Cane_LOD1"
+  ],
+  "tris": [
+   96,
+   88
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Prop_EcoBag": {
+  "fbx": "characters/SM_Hito_Prop_EcoBag.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Prop_EcoBag_LOD0",
+   "SM_Hito_Prop_EcoBag_LOD1"
+  ],
+  "tris": [
+   116,
+   48
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Prop_FishingRod": {
+  "fbx": "characters/SM_Hito_Prop_FishingRod.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Prop_FishingRod_LOD0",
+   "SM_Hito_Prop_FishingRod_LOD1"
+  ],
+  "tris": [
+   146,
+   96
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Prop_Hammer": {
+  "fbx": "characters/SM_Hito_Prop_Hammer.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Prop_Hammer_LOD0",
+   "SM_Hito_Prop_Hammer_LOD1"
+  ],
+  "tris": [
+   36,
+   36
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Prop_Kinchaku": {
+  "fbx": "characters/SM_Hito_Prop_Kinchaku.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Prop_Kinchaku_LOD0",
+   "SM_Hito_Prop_Kinchaku_LOD1"
+  ],
+  "tris": [
+   76,
+   60
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Prop_KonbiniBag": {
+  "fbx": "characters/SM_Hito_Prop_KonbiniBag.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Prop_KonbiniBag_LOD0",
+   "SM_Hito_Prop_KonbiniBag_LOD1"
+  ],
+  "tris": [
+   84,
+   72
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Prop_Phone": {
+  "fbx": "characters/SM_Hito_Prop_Phone.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Prop_Phone_LOD0",
+   "SM_Hito_Prop_Phone_LOD1"
+  ],
+  "tris": [
+   34,
+   22
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Prop_Umbrella_Black_Open": {
+  "fbx": "characters/SM_Hito_Prop_Umbrella_Black_Open.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Prop_Umbrella_Black_Open_LOD0",
+   "SM_Hito_Prop_Umbrella_Black_Open_LOD1"
+  ],
+  "tris": [
+   624,
+   312
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Prop_Umbrella_Navy_Closed": {
+  "fbx": "characters/SM_Hito_Prop_Umbrella_Navy_Closed.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Prop_Umbrella_Navy_Closed_LOD0",
+   "SM_Hito_Prop_Umbrella_Navy_Closed_LOD1"
+  ],
+  "tris": [
+   168,
+   84
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Prop_Umbrella_Red_Open": {
+  "fbx": "characters/SM_Hito_Prop_Umbrella_Red_Open.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Prop_Umbrella_Red_Open_LOD0",
+   "SM_Hito_Prop_Umbrella_Red_Open_LOD1"
+  ],
+  "tris": [
+   624,
+   312
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Prop_Umbrella_Vinyl_Closed": {
+  "fbx": "characters/SM_Hito_Prop_Umbrella_Vinyl_Closed.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Prop_Umbrella_Vinyl_Closed_LOD0",
+   "SM_Hito_Prop_Umbrella_Vinyl_Closed_LOD1"
+  ],
+  "tris": [
+   168,
+   84
+  ],
+  "materials": [
+   "M_Figures_Atlas",
+   "M_Glass"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Prop_Umbrella_Vinyl_Open": {
+  "fbx": "characters/SM_Hito_Prop_Umbrella_Vinyl_Open.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Prop_Umbrella_Vinyl_Open_LOD0",
+   "SM_Hito_Prop_Umbrella_Vinyl_Open_LOD1"
+  ],
+  "tris": [
+   624,
+   312
+  ],
+  "materials": [
+   "M_Figures_Atlas",
+   "M_Glass"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Salaryman": {
+  "fbx": "characters/SM_Hito_Salaryman.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Salaryman_LOD0",
+   "SM_Hito_Salaryman_LOD1",
+   "SM_Hito_Salaryman_LOD2"
+  ],
+  "tris": [
+   2457,
+   1791,
+   672
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_SalarymanB": {
+  "fbx": "characters/SM_Hito_SalarymanB.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_SalarymanB_LOD0",
+   "SM_Hito_SalarymanB_LOD1",
+   "SM_Hito_SalarymanB_LOD2"
+  ],
+  "tris": [
+   2443,
+   1737,
+   672
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Schoolgirl": {
+  "fbx": "characters/SM_Hito_Schoolgirl.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Schoolgirl_LOD0",
+   "SM_Hito_Schoolgirl_LOD1",
+   "SM_Hito_Schoolgirl_LOD2"
+  ],
+  "tris": [
+   2535,
+   1809,
+   568
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Shopkeeper": {
+  "fbx": "characters/SM_Hito_Shopkeeper.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Shopkeeper_LOD0",
+   "SM_Hito_Shopkeeper_LOD1",
+   "SM_Hito_Shopkeeper_LOD2"
+  ],
+  "tris": [
+   2763,
+   1981,
+   684
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Student": {
+  "fbx": "characters/SM_Hito_Student.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Student_LOD0",
+   "SM_Hito_Student_LOD1",
+   "SM_Hito_Student_LOD2"
+  ],
+  "tris": [
+   2603,
+   1805,
+   672
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Worker": {
+  "fbx": "characters/SM_Hito_Worker.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Worker_LOD0",
+   "SM_Hito_Worker_LOD1",
+   "SM_Hito_Worker_LOD2"
+  ],
+  "tris": [
+   3103,
+   2197,
+   774
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
+ "Hito_Yukata": {
+  "fbx": "characters/SM_Hito_Yukata.fbx",
+  "class": "characters",
+  "lods": [
+   "SM_Hito_Yukata_LOD0",
+   "SM_Hito_Yukata_LOD1",
+   "SM_Hito_Yukata_LOD2"
+  ],
+  "tris": [
+   2723,
+   1933,
+   800
+  ],
+  "materials": [
+   "M_Figures_Atlas"
+  ],
+  "colliders": [],
+  "lights": [],
+  "switchable": [],
+  "attach": []
+ },
  "Jizo": {
   "fbx": "props/SM_Jizo.fbx",
   "class": "props",

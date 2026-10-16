@@ -1,0 +1,58 @@
+{
+ "Briefcase": {
+  "hand": "RightHand",
+  "axis": "hang"
+ },
+ "Broom": {
+  "hand": "LeftHand",
+  "axis": "hang"
+ },
+ "Cane": {
+  "hand": "LeftHand",
+  "axis": "hang"
+ },
+ "EcoBag": {
+  "hand": "LeftHand",
+  "axis": "hang"
+ },
+ "FishingRod": {
+  "hand": "RightHand",
+  "axis": "up"
+ },
+ "Hammer": {
+  "hand": "RightHand",
+  "axis": "up"
+ },
+ "Kinchaku": {
+  "hand": "LeftHand",
+  "axis": "hang"
+ },
+ "KonbiniBag": {
+  "hand": "LeftHand",
+  "axis": "hang"
+ },
+ "Phone": {
+  "hand": "RightHand",
+  "axis": "up"
+ },
+ "Umbrella_Black_Open": {
+  "hand": "RightHand",
+  "axis": "up"
+ },
+ "Umbrella_Navy_Closed": {
+  "hand": "RightHand",
+  "axis": "hang"
+ },
+ "Umbrella_Red_Open": {
+  "hand": "RightHand",
+  "axis": "up"
+ },
+ "Umbrella_Vinyl_Closed": {
+  "hand": "RightHand",
+  "axis": "hang"
+ },
+ "Umbrella_Vinyl_Open": {
+  "hand": "RightHand",
+  "axis": "up"
+ }
+}
