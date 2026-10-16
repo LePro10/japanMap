@@ -48,6 +48,13 @@ namespace JapanMap.Gameplay.Progress
             _store = SaveStores.Current;
             _data = ProgressStore.Load(_store, MaxBalance, out var source);
             LoadedFrom = source;
+            if (fleet != null && UnlockAllFromUrl(Application.absoluteURL))
+            {
+                // The human's preview (serve-web --preview adds ?unlock=all): every car and full Sparks to try everything.
+                foreach (var v in fleet.vehicles) if (v != null) _data.Car(v.id).owned = true;
+                _data.sparks = MaxBalance;
+                Debug.Log("[Save] unlock=all: all cars owned, Sparks full");
+            }
             if (fleet != null)
             {
                 var starter = fleet.Default;
@@ -123,6 +130,17 @@ namespace JapanMap.Gameplay.Progress
         }
 
         void OnApplicationQuit() => Flush();
+
+        /// <summary>
+        /// ?unlock=all, honoured only off the store (localhost, *.local, quick tunnel): a player on CrazyGames
+        /// cannot unlock anything by editing the URL.
+        /// </summary>
+        public static bool UnlockAllFromUrl(string url)
+        {
+            if (JapanMap.Core.QualitySystem.UrlParam(url, "unlock") != "all") return false;
+            var host = url.Contains("://") ? url.Substring(url.IndexOf("://", StringComparison.Ordinal) + 3).Split('/', ':', '?')[0] : "";
+            return host == "127.0.0.1" || host == "localhost" || host.EndsWith(".local") || host.EndsWith(".trycloudflare.com");
+        }
 
         int MaxBalance => wallet != null && wallet.Settings != null ? wallet.Settings.maxBalance : 9_999_999;
 

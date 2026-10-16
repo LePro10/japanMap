@@ -13,6 +13,16 @@ namespace JapanMap.Tests
     /// </summary>
     public class ProgressStoreTests
     {
+        [Test]
+        public void UnlockAll_OnlyOffTheStore()
+        {
+            Assert.IsTrue(PlayerProgress.UnlockAllFromUrl("http://127.0.0.1:8092/?unlock=all"));
+            Assert.IsTrue(PlayerProgress.UnlockAllFromUrl("http://leandros-mac-mini.local:8092/?unlock=all"));
+            Assert.IsFalse(PlayerProgress.UnlockAllFromUrl("http://127.0.0.1:8092/"));
+            Assert.IsFalse(PlayerProgress.UnlockAllFromUrl("https://games.crazygames.com/en_US/japan/index.html?unlock=all"));
+            Assert.IsFalse(PlayerProgress.UnlockAllFromUrl("https://localhost.evil.com/?unlock=all"));
+        }
+
         const int Max = 9_999_999;
 
         static ProgressData Sample()

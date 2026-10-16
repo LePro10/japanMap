@@ -1,13 +1,13 @@
 // Tools/serve-web — serve Builds/Web as static files.
 //   node Tools/serve-web.mjs [--port 8090] [--lan]
 //   node Tools/serve-web.mjs --preview   → copy of the last build in Builds/Preview on port 8092, for the human to
-//   play while agents keep working (their next build does not swap files under a running game; the editor is untouched).
+//   play (every car unlocked, full Sparks; --no-unlock = fresh save) while agents keep working (their next build does not swap files under a running game; the editor is untouched).
 //   node Tools/serve-web.mjs --preview --public → also a temporary https address on the internet (Cloudflare quick
 //   tunnel, no account; `brew install cloudflared`) for phones outside the home network. Ends with this process.
 // Port 8090, not 8080: the Unity MCP listens on 8080. --lan binds 0.0.0.0 for the phone test.
 // Decompression Fallback is on, so any server works; br is still sent when accepted (faster start).
 import { createServer } from 'node:http';
-import { cpSync, createReadStream, existsSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { cpSync, createReadStream, existsSync, readFileSync, rmSync, writeFileSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { hostname, networkInterfaces } from 'node:os';
 import { spawn } from 'node:child_process';
@@ -52,6 +52,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     rmSync(copy, { recursive: true, force: true });
     cpSync(dir, copy, { recursive: true });
     dir = copy;
+    // The human's preview has every car and full Sparks (PlayerProgress honours ?unlock=all only off the store).
+    // replaceState runs before the loader, so Application.absoluteURL already carries it; --no-unlock plays a fresh save.
+    if (!flag('no-unlock')) {
+      const html = join(dir, 'index.html');
+      writeFileSync(html, readFileSync(html, 'utf8').replace('<head>',
+        `<head>\n    <script>if (!/[?&]unlock=/.test(location.search)) history.replaceState(null, '', location.pathname + (location.search ? location.search + '&' : '?') + 'unlock=all' + location.hash);</script>`));
+    }
     const report = join(dir, 'size-report.txt');
     if (existsSync(report)) console.log(`build of ${readFileSync(report, 'utf8').split('\n')[0].replace(/^date\s+/, '')}`);
   }
