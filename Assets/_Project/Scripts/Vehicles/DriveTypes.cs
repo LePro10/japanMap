@@ -27,6 +27,8 @@ namespace JapanMap.Vehicles
         public bool stunt;
         /// <summary>Edge: double tap in this step starts a 360 (ground yaw / air roll).</summary>
         public bool trick;
+        /// <summary>Edge: boost double tap in this step dumps the whole tank into one burst.</summary>
+        public bool burst;
     }
 
     /// <summary>What the planar dynamics needs to know about ground and attitude.</summary>
@@ -72,5 +74,9 @@ namespace JapanMap.Vehicles
         public float stunt;
         public float spin;
         public float trick;
+        /// <summary>Nitro burst: 1 at the kick, fading to 0 at its end (effects, camera, sound).</summary>
+        public float burst;
+        /// <summary>Tank share that went into the running burst, 0…1.</summary>
+        public float burstCharge;
     }
 }

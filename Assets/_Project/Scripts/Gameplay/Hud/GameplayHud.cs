@@ -44,6 +44,9 @@ namespace JapanMap.Gameplay.Hud
         Vector2? _goalAt;
         Label _saved, _points, _mult, _spot, _result, _sparks, _toast, _banner, _prompt, _hint, _stunt, _race, _count, _region, _sheetTitle, _sheetBody;
         Instrument _instrument;
+        SpeedLines _lines;
+        Label _burstTag;
+        float _burstShown;
         MapView _minimap;
         readonly List<MapPin> _pins = new();
         float _savedUntil, _resultUntil, _toastUntil, _bannerUntil, _sparksUntil, _span;
@@ -61,6 +64,9 @@ namespace JapanMap.Gameplay.Hud
         internal Label Toast => _toast;
         internal Label Sparks => _sparks;
         public Instrument Instrument => _instrument;
+        /// <summary>The cockpit view has its own speed display on the dashboard: the HUD gauge steps aside.</summary>
+        public static bool CockpitShowsSpeed { get; set; }
+        public SpeedLines Lines => _lines;
         /// <summary>The HUD's root: full-screen layers of other systems (the intro) live here.</summary>
         public VisualElement Root => _root;
         public MapView Minimap => _minimap;
@@ -119,6 +125,9 @@ namespace JapanMap.Gameplay.Hud
             doc.Add(_root);
             var phone = UiPanel.IsPhone;
             var k = phone ? 0.62f : 1f; // phone type scale; touch targets keep their size elsewhere
+            // Speed streaks first: behind every other HUD element.
+            _lines = new SpeedLines { name = "speed-lines" };
+            _root.Add(_lines);
 
             // Navigation: the minimap and the region name.
             _nav = Box(_root);
@@ -235,6 +244,17 @@ namespace JapanMap.Gameplay.Hud
             _count = Text(mid, 140f * k, Color.white);
             _count.AddToClassList("jm-num");
             _count.style.display = DisplayStyle.None;
+
+            var burstBox = Box(_root);
+            burstBox.name = "burst";
+            burstBox.style.left = burstBox.style.right = 0;
+            burstBox.style.top = Length.Percent(phone ? 18f : 22f);
+            burstBox.style.alignItems = Align.Center;
+            _burstTag = Text(burstBox, 44f * k, new Color(0.55f, 0.9f, 1f));
+            _burstTag.text = "NITRO BURST";
+            _burstTag.AddToClassList("jm-num");
+            _burstTag.style.letterSpacing = 8f * k;
+            _burstTag.style.display = DisplayStyle.None;
 
             _stunt = Text(Box(_root), 22f * k, new Color(1f, 0.55f, 0.15f));
             _stunt.text = "STUNT";
@@ -748,10 +768,22 @@ namespace JapanMap.Gameplay.Hud
         {
             var car = player != null && player.Current == PlayerModeController.Mode.Driving ? player.Car : null;
             // On foot: no rpm, speed or nitro (ASTRA §10).
-            _instrument.style.display = car != null ? DisplayStyle.Flex : DisplayStyle.None;
-            if (car == null) { _arrow.style.display = _goal.style.display = DisplayStyle.None; return; }
+            _instrument.style.display = car != null && !CockpitShowsSpeed ? DisplayStyle.Flex : DisplayStyle.None;
+            if (car == null)
+            {
+                _arrow.style.display = _goal.style.display = DisplayStyle.None;
+                _lines.Tick(0f, 0f, false, Time.deltaTime);
+                _burstTag.style.display = DisplayStyle.None;
+                return;
+            }
             var g = car.Gearbox;
             var t = car.Telemetry;
+            _lines.Tick(Mathf.InverseLerp(26f, 62f, t.speed), t.burst, t.boosting, Time.deltaTime);
+            // "NITRO BURST" pops at the kick and fades with the burst.
+            if (t.burst > 0.97f && _burstShown <= 0f) { _burstTag.style.display = DisplayStyle.Flex; Pop(_burstTag, 1.6f); }
+            _burstShown = t.burst;
+            _burstTag.style.opacity = Mathf.Clamp01(t.burst * 1.6f);
+            if (t.burst <= 0f) _burstTag.style.display = DisplayStyle.None;
             _instrument.Set(g.Rpm, g.Spec.redline, g.Spec.limiter, Vehicles.Gearbox.Label(g.Gear), GameOptions.Speed(t.speed), GameOptions.SpeedUnit, t.boost, t.boosting);
             // The race checkpoint, else the player's waypoint (cleared on arrival).
             Vector3? aim = _target;

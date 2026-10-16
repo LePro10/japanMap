@@ -119,6 +119,9 @@ namespace JapanMap.Gameplay.Hud
             var nw = w * 0.6f;
             Arc(p, c, nr, 35f, 145f, nw, NitroTrack);
             if (_nitro > 0.005f) Arc(p, c, nr, 145f - 110f * _nitro, 145f, nw, _boosting ? Color.white : Nitro);
+            // Burst threshold (a boost double tap needs a quarter tank): a tick across the arc, white once reached.
+            var tick = 145f - 110f * 0.25f;
+            Arc(p, c, nr, tick - 1.2f, tick + 1.2f, nw * 1.9f, _nitro >= 0.25f ? new Color(1f, 1f, 1f, 0.9f) : new Color(1f, 1f, 1f, 0.3f));
         }
 
         /// <summary>Centre and arc radius so the plate (rad + w) and the nitro arc below (rad + 1.9 w) stay inside the

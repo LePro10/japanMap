@@ -131,6 +131,24 @@ namespace JapanMap.Vehicles
         public float boostEarnAir = 0.5f;
         public float boostEarnSmash = 0.12f;
 
+        [Header("Nitro burst (boost double tap: the whole tank at once)")]
+        [Tooltip("Seconds between two boost taps that count as a double tap.")]
+        public float burstTapWindow = 0.3f;
+        [Tooltip("Tank share needed for a burst (less does nothing — no half-hearted pop).")]
+        public float burstMinTank = 0.25f;
+        [Tooltip("Speed added by the kick with a full tank, m/s (a near-instant jump, not a push).")]
+        public float burstKickSpeed = 8.5f;
+        [Tooltip("Seconds the kick takes.")]
+        public float burstKickTime = 0.16f;
+        [Tooltip("Push after the kick with a full tank, m/s², fading to 0 over the burst.")]
+        public float burstAccel = 4.5f;
+        [Tooltip("Burst length with a full tank, s (a 25 % tank lasts 62 % of it).")]
+        public float burstDuration = 1.8f;
+        [Tooltip("Share of the burst that still pushes in the air.")]
+        public float burstAirShare = 0.45f;
+        [Tooltip("Lateral grip multiplier during the burst (a rocket goes straight).")]
+        public float burstLatGrip = 1.25f;
+
         [Header("Stunt mode (legacy STUNT)")]
         public float stuntTapWindow = 0.28f;
         public float stuntEnterRate = 14f;
@@ -168,5 +186,8 @@ namespace JapanMap.Vehicles
 
         public bool IsStuntDoubleTap(float previousTapAt, float now) =>
             previousTapAt >= 0f && now - previousTapAt <= stuntTapWindow;
+
+        public bool IsBurstDoubleTap(float previousTapAt, float now) =>
+            previousTapAt >= 0f && now - previousTapAt <= burstTapWindow;
     }
 }

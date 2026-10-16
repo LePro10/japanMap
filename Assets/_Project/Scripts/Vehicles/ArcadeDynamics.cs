@@ -55,6 +55,7 @@ namespace JapanMap.Vehicles
         float _trickSign;
         bool _trickAir;
         float _rollRate;
+        float _burstT, _burstLen, _burstCharge;
 
         public ArcadeDynamics(ArcadeSpec spec, ArcadeTuning tuning, float looseBonus, float crawlShare = 0.5f, float driveRetain = 0.65f)
         {
@@ -67,6 +68,8 @@ namespace JapanMap.Vehicles
 
         public ArcadeSpec Spec => _spec;
         public float Boost => _boost;
+        /// <summary>A nitro burst is running.</summary>
+        public bool Bursting => _burstLen > 0f;
         public float Drift => _drift;
         public float SteerAngle => _steerAngle;
         public float Grip => _gripSmoothed;
@@ -102,6 +105,7 @@ namespace JapanMap.Vehicles
             _wasAirborne = false;
             _landTimer = _stuntBlend = _spin = _trickRemain = _trickSign = _rollRate = 0f;
             _trickAir = false;
+            _burstT = _burstLen = _burstCharge = 0f;
         }
 
         public PlanarResult Step(float dt, in DriveInput input, in PlanarEnv env)
@@ -271,14 +275,15 @@ namespace JapanMap.Vehicles
 
             // ── Lateral: tyres pull lateral speed to zero, rate k, at most aLatMax ─
             var stuntK = Lerp(t.stuntLatGrip, t.stuntSpinLatGrip, _spin);
-            var k = Lerp(spec.latGrip, spec.driftLatGrip, _drift) * grip * latMul * Lerp(1f, stuntK, _stuntBlend);
+            var k = Lerp(spec.latGrip, spec.driftLatGrip, _drift) * grip * latMul * Lerp(1f, stuntK, _stuntBlend) *
+                    (_burstLen > 0f ? t.burstLatGrip : 1f);
             var accelLat = env.airborne ? 0f : -env.vLat * (1f - MathF.Exp(-k * dt)) / dt;
             var latBudget = aLatMax * (1f - 0.25f * _drift);
             accelLat = Clamp(accelLat, -latBudget, latBudget);
 
             // ── Longitudinal ─────────────────────────────────────────────────
             var lng = Longitudinal(input, env, grip, dt);
-            var accelLong = lng.accel;
+            var accelLong = lng.accel + BurstStep(dt, input, env);
 
             // Static friction at standstill holds the car on a slope. Not in reverse: brake at
             // standstill engages reverse, and holding against it would leave the car stuck (legacy fix).
@@ -301,7 +306,8 @@ namespace JapanMap.Vehicles
                         input.handbrake && speed > t.driftMinSpeed ? 0.7f : 0f));
 
             // ── Nitro: burns while used, earned by drifting and airtime ────────
-            if (lng.boosting)
+            if (_burstLen > 0f) { } // the tank went into the burst; nothing burns or refills until it ends
+            else if (lng.boosting)
             {
                 _boost = Math.Max(0f, _boost - dt / spec.boostCapacity);
             }
@@ -331,6 +337,8 @@ namespace JapanMap.Vehicles
                 stunt = _stuntBlend,
                 spin = _spin,
                 trick = _trickRemain / t.stuntTrickAngle,
+                burst = _burstLen > 0f ? 1f - _burstT / _burstLen : 0f,
+                burstCharge = _burstLen > 0f ? _burstCharge : 0f,
             };
         }
 
@@ -403,6 +411,34 @@ namespace JapanMap.Vehicles
             return target;
         }
 
+        /// <summary>
+        /// Nitro burst: a boost double tap dumps the whole tank into a near-instant kick (Δv over
+        /// burstKickTime) and a fading push. Same total Δv budget as burning the tank slowly, but now — for
+        /// the run-up to a ramp. Needs burstMinTank; scales with the tank share.
+        /// </summary>
+        float BurstStep(float dt, in DriveInput input, in PlanarEnv env)
+        {
+            var t = _t;
+            if (input.burst && _burstLen <= 0f && _boost >= t.burstMinTank && env.vLong > -0.5f && input.brake < 0.5f)
+            {
+                _burstCharge = _boost;
+                _boost = 0f;
+                _burstT = 0f;
+                _burstLen = t.burstDuration * (0.5f + 0.5f * _burstCharge);
+            }
+            if (_burstLen <= 0f) return 0f;
+            _burstT += dt;
+            if (_burstT >= _burstLen)
+            {
+                _burstT = _burstLen = _burstCharge = 0f;
+                return 0f;
+            }
+            var frac = _burstT / _burstLen;
+            var accel = _burstT <= t.burstKickTime ? t.burstKickSpeed * _burstCharge / t.burstKickTime : 0f;
+            accel += t.burstAccel * _burstCharge * (1f - frac) * (1f - frac);
+            return accel * (env.airborne ? t.burstAirShare : Math.Max(0.3f, env.support));
+        }
+
         struct Longitudinal_
         {
             public float accel, wheelspin;
@@ -445,7 +481,7 @@ namespace JapanMap.Vehicles
             }
 
             // Support scales the nitro: on a wall it does nothing (no gluing a coupe to a cliff).
-            var boosting = input.boost && _boost > 0f && !reverse && env.vLong > -0.5f && throttle > 0.02f &&
+            var boosting = input.boost && _boost > 0f && _burstLen <= 0f && !reverse && env.vLong > -0.5f && throttle > 0.02f &&
                            brake < 0.05f && !input.handbrake && env.support > 0.05f;
             var boostAccel = boosting ? spec.boostAccel * env.support : 0f;
 

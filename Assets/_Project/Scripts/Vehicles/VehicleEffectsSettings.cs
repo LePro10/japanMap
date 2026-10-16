@@ -23,6 +23,22 @@ namespace JapanMap.Vehicles
         public Color smokeColor = new(0.85f, 0.85f, 0.88f, 1f);
         public Color dustColor = new(0.62f, 0.52f, 0.38f, 1f);
 
+        [Header("Nitro flames and burst")]
+        [Tooltip("Additive particle material (exhaust flame, burst light streaks).")]
+        public Material flameMaterial;
+        [Tooltip("Additive ring (burst shock wave).")]
+        public Material shockMaterial;
+        public Color flameCore = new(0.75f, 0.92f, 1f, 1f);
+        public Color flameEdge = new(0.25f, 0.55f, 1f, 1f);
+        public Color burstFlame = new(1f, 0.62f, 0.25f, 1f);
+        [Tooltip("Flame particles per second while boosting / at the burst peak.")]
+        public float flameRate = 70f;
+        public float burstFlameRate = 260f;
+        [Tooltip("Shock ring end size, m.")]
+        public float shockSize = 5.5f;
+        [Tooltip("Rear light at the burst, intensity at the peak (0 = no light).")]
+        public float burstLight = 2.5f;
+
         [Header("Tail lights (multiplier on the model's emission)")]
         public float tailIdle = 0.35f;
         public float tailBrake = 3f;

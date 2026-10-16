@@ -12,6 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 240db4bf72197468495033af58cbfb69, type: 3}
   m_Name: ArcadeTuning
   m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.ArcadeTuning
+  shift:
+    up: {x: 0.5, y: 0.92}
+    down: {x: 0.26, y: 0.42}
+    brakeDown: 0.74
+    hold: 0.5
+    topGearMargin: 1.05
+    launch: 0.5
+    limiterCut: 0.055
   surfaceGrip:
     asphalt: 1
     gravel: 1
@@ -30,6 +38,8 @@ MonoBehaviour:
   physicsComHeightShare: 0.4
   collisionMode: 2
   bodyContactOffset: 0.25
+  bodyUnderLift: 0.1
+  bodyLengthShare: 0.88
   driveRetainSpeed: 13.888889
   gradeAssist: 0.35
   capableGradeAssist: 0.75
@@ -68,6 +78,14 @@ MonoBehaviour:
   boostEarnDrift: 0.34
   boostEarnAir: 0.5
   boostEarnSmash: 0.12
+  burstTapWindow: 0.3
+  burstMinTank: 0.25
+  burstKickSpeed: 8.5
+  burstKickTime: 0.16
+  burstAccel: 4.5
+  burstDuration: 1.8
+  burstAirShare: 0.45
+  burstLatGrip: 1.25
   stuntTapWindow: 0.28
   stuntEnterRate: 14
   stuntFall: 8.5

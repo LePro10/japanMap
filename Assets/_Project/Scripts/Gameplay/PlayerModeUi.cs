@@ -174,6 +174,8 @@ namespace JapanMap.Gameplay
                 Hint(Key("Drive", "Brake", "S"), "brake");
                 Hint("A D", "steer");
                 Hint(Key("Drive", "Handbrake", "Space"), "drift");
+                Hint(Key("Drive", "Boost", "Shift"), "nitro");
+                Hint(Key("Drive", "Boost", "Shift") + " ×2", "burst");
                 Hint(Key("Player", "Map", "M"), "map");
             }
         }

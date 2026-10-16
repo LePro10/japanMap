@@ -20,8 +20,8 @@ namespace JapanMap.Vehicles
         InputAction _throttle, _brake, _steer, _handbrake, _boost, _respawn, _camera, _lookBack, _look, _zoom;
         Vector2 _touchAxes;
         bool _touchHandbrake, _touchBoost;
-        float _tapAt = float.NegativeInfinity;
-        bool _stuntArmed, _stuntLived, _trickPulse;
+        float _tapAt = float.NegativeInfinity, _boostTapAt = float.NegativeInfinity;
+        bool _stuntArmed, _stuntLived, _trickPulse, _burstPulse;
 
         public event Action RespawnPressed;
         /// <summary>Rewrites the player's input before the car gets it (the intro's run-up assist); null = none.</summary>
@@ -58,6 +58,7 @@ namespace JapanMap.Vehicles
         {
             actions.FindActionMap("Drive").Enable();
             _handbrake.started += OnHandbrakeDown;
+            _boost.started += OnBoostDown;
             _respawn.performed += OnRespawn;
             _camera.performed += OnCamera;
         }
@@ -65,6 +66,7 @@ namespace JapanMap.Vehicles
         void OnDisable()
         {
             _handbrake.started -= OnHandbrakeDown;
+            _boost.started -= OnBoostDown;
             _respawn.performed -= OnRespawn;
             _camera.performed -= OnCamera;
             actions.FindActionMap("Drive").Disable();
@@ -78,6 +80,23 @@ namespace JapanMap.Vehicles
         }
 
         void OnHandbrakeDown(InputAction.CallbackContext _) => NoteHandbrakeTap();
+        void OnBoostDown(InputAction.CallbackContext _) => NoteBoostTap();
+
+        /// <summary>Boost double tap → one burst pulse (the whole tank at once).</summary>
+        void NoteBoostTap()
+        {
+            var now = Time.unscaledTime;
+            if (vehicle != null && vehicle.Tuning.IsBurstDoubleTap(_boostTapAt, now))
+            {
+                _burstPulse = true;
+                _boostTapAt = float.NegativeInfinity;
+                return;
+            }
+            _boostTapAt = now;
+        }
+
+        /// <summary>The touch BURST action (a double tap on BOOST does the same).</summary>
+        public void PressBurst() => _burstPulse = true;
         void OnRespawn(InputAction.CallbackContext _) => RespawnPressed?.Invoke();
         void OnCamera(InputAction.CallbackContext _) => CameraPressed?.Invoke();
 
@@ -85,6 +104,7 @@ namespace JapanMap.Vehicles
         public void SetTouch(Vector2 axes, bool handbrake, bool boost)
         {
             if (handbrake && !_touchHandbrake) NoteHandbrakeTap();
+            if (boost && !_touchBoost) NoteBoostTap();
             _touchAxes = axes;
             _touchThrottle = Mathf.Max(0f, axes.y);
             _touchBrake = Mathf.Max(0f, -axes.y);
@@ -96,6 +116,7 @@ namespace JapanMap.Vehicles
         public void SetTouch(float steer, float throttle, float brake, bool handbrake, bool boost)
         {
             if (handbrake && !_touchHandbrake) NoteHandbrakeTap();
+            if (boost && !_touchBoost) NoteBoostTap();
             _touchAxes = new Vector2(steer, 0f);
             _touchThrottle = Mathf.Clamp01(throttle);
             _touchBrake = Mathf.Clamp01(brake);
@@ -149,8 +170,9 @@ namespace JapanMap.Vehicles
                 boost = _boost.IsPressed() || _touchBoost,
                 stunt = _stuntArmed,
                 trick = _trickPulse,
+                burst = _burstPulse,
             };
-            _trickPulse = false;
+            _trickPulse = _burstPulse = false;
             if (Assist != null) input = Assist(input);
             vehicle.Input = input;
         }

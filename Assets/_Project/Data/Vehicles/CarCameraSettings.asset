@@ -27,6 +27,12 @@ MonoBehaviour:
   fovSpeed: 45
   fovBoost: 9
   fovRate: 3.5
+  burstFov: 14
+  burstPullBack: 2.4
+  burstShake: 0.18
+  speedShake: 0.035
+  speedShakeRange: {x: 22, y: 55}
+  cockpitBurstPitch: 2.5
   orbitSpeed: 2.4
   recenterRate: 0.8
   zoomMin: 0.42

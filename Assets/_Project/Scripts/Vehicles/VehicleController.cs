@@ -348,6 +348,8 @@ namespace JapanMap.Vehicles
                 stunt = r.stunt,
                 spin = r.spin,
                 trick = r.trick,
+                burst = r.burst,
+                burstCharge = r.burstCharge,
             };
         }
 
@@ -388,5 +390,7 @@ namespace JapanMap.Vehicles
         public float support;
         public float accelLong, accelLat;
         public float stunt, spin, trick;
+        /// <summary>Nitro burst 1 → 0 while it runs (0 = none); the tank share it carries.</summary>
+        public float burst, burstCharge;
     }
 }

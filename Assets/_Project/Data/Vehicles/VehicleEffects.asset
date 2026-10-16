@@ -21,5 +21,14 @@ MonoBehaviour:
   dustFullSpeed: 20
   smokeColor: {r: 0.85, g: 0.85, b: 0.88, a: 1}
   dustColor: {r: 0.62, g: 0.52, b: 0.38, a: 1}
+  flameMaterial: {fileID: 2100000, guid: 076a60ea26e114f59b5d2a12ed3e09ba, type: 2}
+  shockMaterial: {fileID: 2100000, guid: b05e534540686413887d5439d6dbdc4a, type: 2}
+  flameCore: {r: 0.75, g: 0.92, b: 1, a: 1}
+  flameEdge: {r: 0.25, g: 0.55, b: 1, a: 1}
+  burstFlame: {r: 1, g: 0.62, b: 0.25, a: 1}
+  flameRate: 70
+  burstFlameRate: 260
+  shockSize: 5.5
+  burstLight: 2.5
   tailIdle: 0.35
   tailBrake: 3

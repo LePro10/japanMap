@@ -30,6 +30,42 @@ namespace JapanMap.Tests
             Assert.That(r.steerAngle, Is.GreaterThan(0f));
         }
 
+        /// <summary>Burst: the whole tank goes at once — a kick of several m/s inside a quarter second, then nothing more.</summary>
+        [Test]
+        public void BoostDoubleTap_DumpsTheTankIntoAQuickKick_AndNeedsAMinimumTank()
+        {
+            var m = Model();
+            var v = 20f;
+            var dv = 0f;
+            var r = m.Step(0.02f, new DriveInput { throttle = 1f, burst = true }, Flat(v));
+            Assert.That(r.burst, Is.GreaterThan(0.9f), "the burst starts on the pulse");
+            Assert.That(r.boost, Is.EqualTo(0f), "the tank is spent");
+            var plain = Model();
+            for (var i = 0; i < 12; i++) // 0.24 s
+            {
+                var a = m.Step(0.02f, new DriveInput { throttle = 1f }, Flat(v)).accelLong;
+                var b = plain.Step(0.02f, new DriveInput { throttle = 1f }, Flat(v)).accelLong;
+                dv += (a - b) * 0.02f;
+            }
+            Assert.That(dv, Is.GreaterThan(6f), "a speed bump, not a slow push");
+            Assert.That(dv, Is.LessThan(14f), "not a teleport either");
+            var total = dv;
+            for (var i = 0; i < 200; i++)
+            {
+                var res = m.Step(0.02f, new DriveInput { throttle = 1f }, Flat(v));
+                total += (res.accelLong - plain.Step(0.02f, new DriveInput { throttle = 1f }, Flat(v)).accelLong) * 0.02f;
+                if (res.burst <= 0f) break;
+            }
+            Assert.That(total, Is.LessThan(15f), "about one tank of nitro, not more (not overpowered)");
+
+            // A near-empty tank does nothing.
+            var low = Model();
+            for (var i = 0; i < 200; i++) low.Step(0.02f, new DriveInput { throttle = 1f, boost = true }, Flat(v));
+            Assert.That(low.Boost, Is.LessThan(0.25f));
+            var none = low.Step(0.02f, new DriveInput { throttle = 1f, burst = true }, Flat(v));
+            Assert.That(none.burst, Is.EqualTo(0f));
+        }
+
         [Test]
         public void LateralSpeed_IsPulledTowardsZero_WhenGripping()
         {

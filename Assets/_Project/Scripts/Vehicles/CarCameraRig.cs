@@ -25,7 +25,7 @@ namespace JapanMap.Vehicles
         Transform _pivot, _lookAt, _eye;
         CinemachineCamera _chase, _cockpit;
         CinemachineFollow _follow;
-        float _heading, _orbit, _zoom = 1f, _fov;
+        float _heading, _orbit, _zoom = 1f, _fov, _punch, _seed;
         GameObject _hideInCockpit;
         bool _live = true;
 
@@ -166,12 +166,25 @@ namespace JapanMap.Vehicles
             _follow.FollowOffset = new Vector3(0f, s.height, -(s.distance + s.distanceFast * fast)) * (_zoom * chase);
             // Phone portrait: 0.6 m back and 0.3 m up to show the coming turn above the car (ASTRA §10).
             if (Core.Ui.UiPanel.IsPortrait) _follow.FollowOffset += new Vector3(0f, 0.3f, -0.6f);
-            var ahead = Mathf.Min(s.lookAheadMax, Mathf.Max(0f, t.forwardSpeed) * s.lookAhead);
-            _lookAt.localPosition = new Vector3(0f, s.targetHeight, back > 0f ? -ahead : ahead);
+            // Burst punch: snaps in at the kick and eases out with the burst (FOV, pull-back, shake).
+            var punchTarget = t.burst > 0f ? Mathf.Clamp01(t.burst * 1.15f) * (0.6f + 0.4f * t.burstCharge) : 0f;
+            _punch = snap ? punchTarget : punchTarget > _punch ? punchTarget : _punch + (punchTarget - _punch) * (1f - Mathf.Exp(-2.2f * dt));
+            _follow.FollowOffset += new Vector3(0f, -0.25f * _punch, -s.burstPullBack * _punch) * _zoom;
 
-            var fovTarget = Mathf.Lerp(s.fov, s.fovFast, fast) + (t.boosting ? s.fovBoost : 0f);
+            var ahead = Mathf.Min(s.lookAheadMax, Mathf.Max(0f, t.forwardSpeed) * s.lookAhead);
+            // Shake: a road buzz that grows with speed, a hit at the burst. Moves the look target only, so the
+            // horizon trembles without the camera leaving its place.
+            _seed += dt * (9f + 10f * fast);
+            var buzz = s.speedShake * Mathf.Clamp01(Mathf.InverseLerp(s.speedShakeRange.x, s.speedShakeRange.y, speed)) * (t.airborne ? 0.2f : 1f);
+            var amp = buzz + s.burstShake * _punch * _punch;
+            var jitter = amp > 1e-4f
+                ? new Vector3(Mathf.PerlinNoise(_seed, 0.3f) - 0.5f, Mathf.PerlinNoise(0.7f, _seed * 1.3f) - 0.5f, 0f) * (2f * amp) * Core.GameOptions.CameraShake
+                : Vector3.zero;
+            _lookAt.localPosition = new Vector3(0f, s.targetHeight, back > 0f ? -ahead : ahead) + jitter;
+
+            var fovTarget = Mathf.Lerp(s.fov, s.fovFast, fast) + (t.boosting || t.burst > 0f ? s.fovBoost : 0f);
             _fov = snap ? fovTarget : _fov + (fovTarget - _fov) * (1f - Mathf.Exp(-s.fovRate * dt));
-            _chase.Lens.FieldOfView = _fov;
+            _chase.Lens.FieldOfView = _fov + s.burstFov * _punch;
         }
 
         void UpdateCockpit()
@@ -182,8 +195,8 @@ namespace JapanMap.Vehicles
             // Turn the head into the slide so a drift stays readable from inside.
             var yaw = t.slip * s.cockpitDriftLook * Mathf.Rad2Deg;
             var back = driver != null && driver.LookBackHeld ? 180f : 0f;
-            _cockpit.transform.rotation = _car.transform.rotation * Quaternion.Euler(-s.cockpitLookPitch * Mathf.Rad2Deg, yaw + back, 0f);
-            _cockpit.Lens.FieldOfView = s.cockpitFov + (t.boosting ? s.cockpitFovBoost : 0f);
+            _cockpit.transform.rotation = _car.transform.rotation * Quaternion.Euler(-s.cockpitLookPitch * Mathf.Rad2Deg - s.cockpitBurstPitch * _punch, yaw + back, 0f);
+            _cockpit.Lens.FieldOfView = s.cockpitFov + (t.boosting || t.burst > 0f ? s.cockpitFovBoost : 0f) + s.burstFov * 0.6f * _punch;
         }
     }
 }
