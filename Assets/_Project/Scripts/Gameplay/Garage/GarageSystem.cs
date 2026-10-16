@@ -62,6 +62,7 @@ namespace JapanMap.Gameplay.Garage
         public float LoanWarnSeconds { get; set; } = 30f;
         public float LoanStopSeconds { get; set; } = 20f;
         public CarsScreen Screen => _screen;
+        public GarageSettings Settings => settings;
         /// <summary>Middle of the entry zone in front of the bay (x, z).</summary>
         public Vector2 Entry => settings.entry;
         public event Action<bool> OpenChanged;

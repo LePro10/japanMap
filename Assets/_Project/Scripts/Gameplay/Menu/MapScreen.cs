@@ -19,6 +19,9 @@ namespace JapanMap.Gameplay.Menu
     /// </summary>
     public sealed class MapScreen : MenuScreen
     {
+        /// <summary>The map needs the whole width.</summary>
+        public override bool Narrow => false;
+
         static readonly string[] FilterNames = { "All", "Events", "Places", "Discoveries" };
         readonly MapSystem _map;
         readonly Travel _travel;

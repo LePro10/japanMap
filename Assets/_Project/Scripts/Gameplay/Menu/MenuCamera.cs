@@ -27,7 +27,8 @@ namespace JapanMap.Gameplay.Menu
         bool _active;
         Vector3 _fromPos;
         Quaternion _fromRot;
-        float _fov, _yaw, _t;
+        float _fov, _yaw, _t, _shift;
+        const float Fov = 44f;
 
         public bool Active => _active;
 
@@ -116,11 +117,16 @@ namespace JapanMap.Gameplay.Menu
             if (Physics.Linecast(centre, pos, out var hit, Core.GameLayers.CameraObstacles, QueryTriggerInteraction.Ignore))
                 pos = hit.point + (centre - pos).normalized * 0.4f;
             var right = rot * Vector3.right;
-            // Look left of the subject so it sits right of centre, clear of the menu rail.
-            var look = Quaternion.LookRotation(centre - right * (dist * frameRight) - pos, Vector3.up);
+            // Look left of the subject so it sits in the middle of the screen part the page leaves free: with the
+            // page covering share s from the left, that middle is s of the half width right of centre.
+            var covered = menu != null ? menu.CoveredShare : 0f;
+            var halfW = Mathf.Tan(Mathf.Atan(Mathf.Tan(Fov * 0.5f * Mathf.Deg2Rad) * cam.aspect));
+            var shift = covered >= 0.99f ? 0f : covered > 0.01f ? covered * halfW : frameRight;
+            _shift = _t < 0.05f ? shift : Mathf.Lerp(_shift, shift, 1f - Mathf.Exp(-6f * dt));
+            var look = Quaternion.LookRotation(centre - right * (dist * _shift) - pos, Vector3.up);
             var k = blend <= 0f ? 1f : Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(_t / blend));
             cam.transform.SetPositionAndRotation(Vector3.Lerp(_fromPos, pos, k), Quaternion.Slerp(_fromRot, look, k));
-            cam.fieldOfView = Mathf.Lerp(_fov, 48f, k);
+            cam.fieldOfView = Mathf.Lerp(_fov, Fov, k);
         }
     }
 }

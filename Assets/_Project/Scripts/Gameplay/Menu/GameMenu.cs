@@ -27,8 +27,9 @@ namespace JapanMap.Gameplay.Menu
         /// <summary>Tab does not open a page but an action (Photo).</summary>
         public virtual bool Action => false;
         public virtual void Update() { }
-        /// <summary>The page keeps to the left so the car can be seen on the right (MenuCamera).</summary>
-        public virtual bool Narrow => false;
+        /// <summary>The page keeps to a glass column on the left so the car can be seen on the right (MenuCamera).
+        /// Every page but the map (owner 2026-10-17: "das Menü überdeckt das Auto").</summary>
+        public virtual bool Narrow => true;
     }
 
     /// <summary>
@@ -282,7 +283,7 @@ namespace JapanMap.Gameplay.Menu
             if (Current != null && Current != screen) Current.Closed();
             Current = screen;
             // Pages that leave the right side to the car (MenuCamera); the map and lists need the whole width.
-            _root.EnableInClassList("jm-page--narrow", screen is PlayScreen || screen.Narrow);
+            SetPageWidth(screen);
             for (var i = 0; i < _screens.Count; i++) Ui.On(_tabButtons[i], _screens[i] == screen, "jm-tab--on");
             Rebuild();
         }
@@ -291,9 +292,40 @@ namespace JapanMap.Gameplay.Menu
         public void Rebuild()
         {
             if (_body == null || Current == null) return;
-            _root.EnableInClassList("jm-page--narrow", Current is PlayScreen || Current.Narrow);
+            SetPageWidth(Current);
+            RefreshSparks();
             _body.Clear();
             Current.Build(_body);
+        }
+
+        Label _sparks;
+
+        void SetPageWidth(MenuScreen screen)
+        {
+            var narrow = screen is PlayScreen || screen.Narrow;
+            _root.EnableInClassList("jm-page--narrow", narrow);
+            _root.EnableInClassList("jm-page--wide", !narrow);
+            // Narrow: dark only behind the column, the right half clear for the car. Wide (map): evenly dark.
+            _root.style.backgroundImage = new StyleBackground(Backdrop(narrow && !UiPanel.IsPortrait));
+        }
+
+        /// <summary>Share of the screen width the open page covers from the left (0 = none, 1 = all) — MenuCamera puts
+        /// the car in the middle of what is left.</summary>
+        public float CoveredShare
+        {
+            get
+            {
+                if (!IsOpen || _content == null || Current == null) return 0f;
+                if (!(Current is PlayScreen || Current.Narrow)) return 1f;
+                if (UiPanel.IsPortrait) return 0f; // phones upright: the page is below, the car above
+                var w = _root.resolvedStyle.width;
+                return w > 1f ? Mathf.Clamp01(_content.worldBound.xMax / w) : 0.45f;
+            }
+        }
+
+        void RefreshSparks()
+        {
+            if (_sparks != null && progress != null) _sparks.text = $"{progress.Wallet.Balance:N0} Sparks";
         }
 
         void BuildShell()
@@ -311,6 +343,7 @@ namespace JapanMap.Gameplay.Menu
             _root.style.paddingTop = safe.y;
             _root.style.paddingRight = safe.z;
             _root.style.paddingBottom = safe.w;
+            _sparks = null;
             var shell = Ui.Box(_root, "jm-shell");
             _rail = Ui.Box(shell, "jm-rail");
             _content = Ui.Box(shell, "jm-content");
@@ -338,16 +371,28 @@ namespace JapanMap.Gameplay.Menu
                 _rail.Add(_continue);
                 _rail.Add(_tabs);
             }
-            else
+            else if (UiPanel.IsPhone)
             {
-                if (!UiPanel.IsPhone)
-                {
-                    Ui.Text(_rail, Application.productName.ToUpperInvariant(), "jm-brand");
-                    Ui.Text(_rail, "BLUE HOUR AFTER THE RAIN", "jm-brand-sub");
-                }
                 // Resume first: it is what most players open the menu for (and where their eye starts).
                 _rail.Add(_continue);
                 _rail.Add(_tabs);
+            }
+            else
+            {
+                // Desktop top bar: name · Q tabs E · Sparks · Resume — every destination visible in one line,
+                // nothing over the car.
+                var brand = Ui.Box(_rail, "jm-brandbox");
+                Ui.Text(brand, Application.productName.ToUpperInvariant(), "jm-brand");
+                Ui.Text(brand, "BLUE HOUR AFTER THE RAIN", "jm-brand-sub");
+                Ui.Text(_rail, "Q", "jm-keyhint");
+                _rail.Add(_tabs);
+                _tabs.style.flexGrow = 0;
+                Ui.Text(_rail, "E", "jm-keyhint");
+                Ui.Box(_rail).style.flexGrow = 1;
+                _sparks = Ui.Text(_rail, "", "jm-sparks");
+                RefreshSparks();
+                _rail.Add(_continue);
+                Ui.Text(_rail, "Esc", "jm-keyhint");
             }
             if (Current != null) Show(Current);
         }
@@ -375,22 +420,24 @@ namespace JapanMap.Gameplay.Menu
             }
         }
 
-        static Texture2D _backdrop;
+        static Texture2D _backdrop, _backdropWide;
 
-        /// <summary>Horizontal fade: 92 % ink under the rail and text, 30 % at the right edge.</summary>
-        static Texture2D Backdrop()
+        /// <summary>Horizontal fade. Narrow pages: 60 % ink behind the column, clear from 58 % of the width (the car).
+        /// Wide pages: 72 % everywhere.</summary>
+        static Texture2D Backdrop(bool narrow = true)
         {
-            if (_backdrop != null) return _backdrop;
+            if (narrow && _backdrop != null) return _backdrop;
+            if (!narrow && _backdropWide != null) return _backdropWide;
             const int w = 256;
-            _backdrop = new Texture2D(w, 1, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, name = "MenuBackdrop" };
+            var tex = new Texture2D(w, 1, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, name = narrow ? "MenuBackdrop" : "MenuBackdropWide" };
             for (var x = 0; x < w; x++)
             {
                 var t = x / (float)(w - 1);
-                var a = Mathf.Lerp(0.92f, 0.3f, Mathf.SmoothStep(0.25f, 0.95f, t));
-                _backdrop.SetPixel(x, 0, new Color(0.012f, 0.035f, 0.05f, a));
+                var a = narrow ? Mathf.Lerp(0.62f, 0f, Mathf.SmoothStep(0.3f, 0.58f, t)) : 0.72f;
+                tex.SetPixel(x, 0, new Color(0.01f, 0.03f, 0.05f, a));
             }
-            _backdrop.Apply();
-            return _backdrop;
+            tex.Apply();
+            return narrow ? _backdrop = tex : _backdropWide = tex;
         }
 
         // ── shared bits for the pages ──────────────────────────────────────────

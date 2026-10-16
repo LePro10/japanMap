@@ -43,7 +43,7 @@ namespace JapanMap.Gameplay.Menu
             // Hero: what you drive and what you have — the two facts a returning glance looks for.
             Ui.Text(body, p != null && p.Current == PlayerModeController.Mode.Walking ? "PAUSED  ·  ON FOOT" : "PAUSED", "jm-kicker");
             Ui.Text(body, car != null ? car.displayName : "—", "jm-display");
-            Ui.Text(body, $"{balance:N0} Sparks", "jm-lede");
+            if (UiPanel.IsPhone) Ui.Text(body, $"{balance:N0} Sparks", "jm-lede"); // desktop: in the top bar
             t.AppendLine($"car {car?.displayName} · {balance} Sparks");
 
             var tiles = Ui.Box(body, "jm-cards");
@@ -76,13 +76,32 @@ namespace JapanMap.Gameplay.Menu
                     var ev = _races.Set.events[rec];
                     var e = Ui.Box(tiles, "jm-card", "jm-card--accent");
                     Ui.Text(e, "NEXT EVENT", "jm-kicker");
-                    Ui.Text(e, ev.title, "jm-card-title");
-                    Ui.Small(e, ev.blurb);
-                    var reward = Ui.Text(e, $"+{ev.completion:N0} Sparks  ·  up to +{ev.completion + ev.bonus:N0}", "jm-body", "jm-amber");
-                    reward.style.marginTop = 8;
-                    Ui.Button(e, "Go to the start", () => { Menu.Close(); _travel.ToEvent(rec); }, "jm-btn--primary");
+                    var row = Ui.Box(e, "jm-card-row");
+                    var left = Ui.Box(row);
+                    left.style.flexShrink = 1;
+                    Ui.Text(left, ev.title, "jm-card-title");
+                    Ui.Small(left, ev.blurb);
+                    Ui.Text(left, $"+{ev.completion:N0} Sparks  ·  up to +{ev.completion + ev.bonus:N0}", "jm-body", "jm-amber");
+                    Ui.Button(row, "Go to the start", () => { Menu.Close(); _travel.ToEvent(rec); }, "jm-btn--primary");
                     t.AppendLine($"event {ev.title}");
                 }
+            }
+
+            // Second tile: the garage — tuning was there but nobody found it (owner, 2026-10-13).
+            if (_garage != null && car != null && !_garage.TestDriving)
+            {
+                var g = Ui.Box(tiles, "jm-card");
+                Ui.Text(g, "GARAGE", "jm-kicker");
+                var row = Ui.Box(g, "jm-card-row");
+                var left = Ui.Box(row);
+                left.style.flexShrink = 1;
+                Ui.Text(left, $"Tune your {car.displayName}", "jm-card-title");
+                var fitted = 0;
+                var state = _progress.Car(car.id);
+                foreach (var c in Vehicles.CarTune.All) if (state.tune[c] > 0) fitted++;
+                Ui.Small(left, fitted == 0 ? "Engine, brakes, suspension, tyres · paint, rims, kits" : $"{fitted} of 4 parts upgraded · paint, rims, kits");
+                Ui.Button(row, "Tune now", () => _garage.Screen.ShowTune(), "jm-btn--primary");
+                t.AppendLine("garage tile");
             }
 
             // Daily challenge: the reason to drive today, and to come back tomorrow.
@@ -119,20 +138,6 @@ namespace JapanMap.Gameplay.Menu
                 fill.style.width = Length.Percent(Mathf.Clamp01(balance / (float)Mathf.Max(1, goal.price)) * 100f);
                 Ui.Small(g, balance >= goal.price ? "You can buy it now — see Cars." : $"{goal.price - balance:N0} Sparks to go");
                 t.AppendLine($"goal {goal.displayName}");
-            }
-
-            // Third tile: the garage — tuning was there but nobody found it (owner, 2026-10-13).
-            if (_garage != null && car != null && !_garage.TestDriving)
-            {
-                var g = Ui.Box(tiles, "jm-card");
-                Ui.Text(g, "GARAGE", "jm-kicker");
-                Ui.Text(g, $"Tune your {car.displayName}", "jm-card-title");
-                var fitted = 0;
-                var state = _progress.Car(car.id);
-                foreach (var c in Vehicles.CarTune.All) if (state.tune[c] > 0) fitted++;
-                Ui.Small(g, fitted == 0 ? "Engine, brakes, suspension, tyres · paint, rims, kits" : $"{fitted} of 4 parts upgraded · paint, rims, kits");
-                Ui.Button(g, "Tune now", () => _garage.Screen.ShowTune(), "jm-btn--primary");
-                t.AppendLine("garage tile");
             }
 
             var foot = Ui.Box(body, "jm-foot");

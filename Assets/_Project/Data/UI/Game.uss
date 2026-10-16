@@ -8,11 +8,13 @@
     --ink-3: #12323b;
     --panel: rgba(10, 36, 44, 0.9);
     --panel-solid: rgb(10, 32, 40);
-    --line: rgba(232, 186, 127, 0.22);
+    --line: rgba(94, 214, 245, 0.22);
     --paper: #f6efe4;
     --paper-dim: #b7c4c8;
-    --amber: #e8ba7f;
-    --amber-hot: #f3c56a;
+    /* 2026-10-17 (owner: "dieser komische braune Look"): the accent is the blue hour's cyan; gold only for Sparks. */
+    --amber: #5ed6f5;
+    --amber-hot: #8fe6ff;
+    --gold: #ffd166;
     --sakura: #e8a9c0;
     --nitro: #66d7f4;
     --vermilion: #c44536;
@@ -76,8 +78,8 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-btn:disabled { opacity: 0.45; }
 .jm-btn--primary { background-color: var(--amber); color: var(--ink); border-color: var(--amber-hot); min-height: 56px; font-size: 18px; }
 .jm-btn--primary:hover, .jm-btn--primary:hover:enabled { background-color: var(--amber-hot); }
-.jm-btn--on:hover:enabled { background-color: rgba(232, 186, 127, 0.2); }
-.jm-btn--on { border-color: var(--amber-hot); background-color: rgba(232, 186, 127, 0.14); color: var(--amber-hot); }
+.jm-btn--on:hover:enabled { background-color: rgba(94, 214, 245, 0.2); }
+.jm-btn--on { border-color: var(--amber-hot); background-color: rgba(94, 214, 245, 0.14); color: var(--amber-hot); }
 .jm-btn--danger { background-color: rgba(196, 69, 54, 0.85); }
 .jm-btn--wide { flex-grow: 1; }
 .jm-btn--swatch { min-width: 48px; width: 48px; height: 48px; padding: 0; border-radius: 24px; }
@@ -112,9 +114,9 @@ Label { color: var(--paper); font-size: 16px; }
     border-color: rgba(0, 0, 0, 0);
 }
 .jm-tab:hover, .jm-tab:hover:enabled, .jm-tab:active:enabled, .jm-tab:hover:active:enabled { background-color: rgba(246, 239, 228, 0.05); }
-.jm-tab--on:hover:enabled, .jm-tab--on:active:enabled { background-color: rgba(232, 186, 127, 0.1); }
+.jm-tab--on:hover:enabled, .jm-tab--on:active:enabled { background-color: rgba(94, 214, 245, 0.1); }
 .jm-tab:focus { border-left-color: var(--paper); }
-.jm-tab--on { background-color: rgba(232, 186, 127, 0.07); border-left-color: var(--amber-hot); }
+.jm-tab--on { background-color: rgba(94, 214, 245, 0.07); border-left-color: var(--amber-hot); }
 .jm-tab--on Label { color: var(--amber-hot); }
 .jm-tab Label { color: rgba(246, 239, 228, 0.78); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; }
 .jm-tab UiIcon, .jm-tab > VisualElement { opacity: 0.8; }
@@ -193,7 +195,7 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-tile:hover:enabled, .jm-tile:active:enabled { background-color: rgba(246, 239, 228, 0.1); }
 .jm-tile--on { border-color: var(--amber-hot); }
 .jm-pic { background-color: rgb(10, 18, 22); border-radius: 2px; -unity-background-scale-mode: scale-and-crop; }
-.jm-chip { background-color: rgba(232, 186, 127, 0.16); border-radius: 12px; padding: 2px 10px; margin-right: 6px; font-size: 14px; color: var(--amber); }
+.jm-chip { background-color: rgba(94, 214, 245, 0.16); border-radius: 12px; padding: 2px 10px; margin-right: 6px; font-size: 14px; color: var(--amber); }
 
 /* Settings rows */
 .jm-setting { flex-direction: row; align-items: center; min-height: 52px; border-bottom-width: 1px; border-color: rgba(246, 239, 228, 0.08); }
@@ -227,7 +229,7 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-touch--drift { background-color: rgba(232, 120, 60, 0.35); }
 .jm-touch--brake { background-color: rgba(196, 69, 54, 0.38); }
 .jm-touch--boost { background-color: rgba(102, 215, 244, 0.35); }
-.jm-touch--on { border-color: var(--amber-hot); background-color: rgba(232, 186, 127, 0.4); }
+.jm-touch--on { border-color: var(--amber-hot); background-color: rgba(94, 214, 245, 0.4); }
 
 /* ── Intro "First Drive" (FirstDrive / IntroOverlay; prototype introOverlay.css) ───────────────────────── */
 .jm-intro__bar { position: absolute; left: 0; right: 0; height: 0; background-color: rgb(0, 0, 0);
@@ -275,7 +277,7 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-intro__skip { position: absolute; left: 16px; top: 2.5%; height: 36px; padding: 0 14px; border-radius: 18px;
     background-color: rgba(6, 20, 26, 0.7); border-width: 1px; border-color: rgba(246, 239, 228, 0.35); overflow: hidden; }
 .jm-intro__skip Label { font-size: 12px; letter-spacing: 2px; color: var(--paper-dim); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; }
-.jm-intro__skipfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background-color: rgba(232, 186, 127, 0.35); }
+.jm-intro__skipfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background-color: rgba(94, 214, 245, 0.35); }
 /* Phones: no letterbox (it covered the touch controls and the top row), no step row, skip at the top centre. */
 .jm-phone .jm-intro__bar--on { height: 0; }
 .jm-phone .jm-intro__steps { display: none; }
@@ -336,7 +338,7 @@ Label { color: var(--paper); font-size: 16px; }
     -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset");
     margin-right: 20px; padding: 6px;
 }
-.jm-medal--gold { background-color: rgba(243, 197, 106, 0.22); border-color: #f3c56a; color: #f3c56a; }
+.jm-medal--gold { background-color: rgba(143, 230, 255, 0.22); border-color: #f3c56a; color: #f3c56a; }
 .jm-medal--silver { background-color: rgba(201, 210, 218, 0.18); border-color: #c9d2da; color: #e3e9ee; }
 .jm-medal--bronze { background-color: rgba(201, 139, 91, 0.2); border-color: #c98b5b; color: #e0a578; }
 .jm-medal--none { background-color: rgba(246, 239, 228, 0.06); border-color: rgba(246, 239, 228, 0.25); color: var(--paper-dim); }
@@ -359,7 +361,7 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-stat__value { width: 96px; -unity-text-align: middle-right; font-size: 16px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); }
 .jm-stat__value--up { color: #7fd18b; }
 .jm-stat__value--down { color: #e0675a; }
-.jm-part { background-color: rgba(7, 15, 20, 0.88); border-radius: 4px; padding: 8px 14px 10px 14px; margin-top: 6px; border-left-width: 3px; border-color: rgba(232, 186, 127, 0.5); }
+.jm-part { background-color: rgba(7, 15, 20, 0.88); border-radius: 4px; padding: 8px 14px 10px 14px; margin-top: 6px; border-left-width: 3px; border-color: rgba(94, 214, 245, 0.5); }
 .jm-part__title { font-size: 20px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); margin-right: 10px; }
 .jm-seg { flex-direction: row; margin-top: 6px; }
 .jm-seg__item {
@@ -368,9 +370,9 @@ Label { color: var(--paper); font-size: 16px; }
     font-size: 14px; letter-spacing: 1px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; -unity-text-align: middle-center;
 }
 .jm-seg__item:hover:enabled { background-color: rgba(246, 239, 228, 0.12); border-color: rgba(246, 239, 228, 0.35); }
-.jm-seg__item--on { background-color: rgba(232, 186, 127, 0.2); border-color: var(--amber-hot); color: var(--amber-hot); }
+.jm-seg__item--on { background-color: rgba(94, 214, 245, 0.2); border-color: var(--amber-hot); color: var(--amber-hot); }
 .jm-seg__item:disabled { opacity: 0.4; }
-.jm-seg__item--on:disabled { opacity: 1; background-color: rgba(232, 186, 127, 0.2); color: var(--amber-hot); border-color: var(--amber-hot); }
+.jm-seg__item--on:disabled { opacity: 1; background-color: rgba(94, 214, 245, 0.2); color: var(--amber-hot); border-color: var(--amber-hot); }
 .jm-phone .jm-stat__name { width: 84px; font-size: 12px; }
 .jm-phone .jm-stat__value { width: 70px; font-size: 13px; }
 .jm-phone .jm-seg__item { font-size: 12px; min-height: 40px; }
@@ -386,3 +388,86 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-desktop.jm-page--narrow .jm-card { flex-grow: 0; flex-basis: auto; width: 48%; margin-right: 2%; margin-bottom: 14px; }
 .jm-card--daily { border-left-color: #7fd18b; }
 .jm-card--daily .jm-meter > VisualElement { background-color: #7fd18b; }
+
+
+/* ── Menu redesign 2026-10-17 ───────────────────────────────────────────────────────────────────────────────
+   Owner: brown, cluttered, no pictures, the menu covers the car. Now: a top bar (brand · tabs · Sparks · Resume),
+   one glass column on the left, the car turning in the free right half (MenuCamera frames it there); navy glass,
+   white type, cyan accent, gold only for money. */
+.jm-amber, .jm-lede, .jm-chip, .jm-value { color: var(--gold); }
+.jm-chip { background-color: rgba(255, 209, 102, 0.12); }
+.jm-btn { border-radius: 8px; border-color: rgba(255, 255, 255, 0.14); background-color: rgba(255, 255, 255, 0.06); }
+.jm-btn:hover, .jm-btn:hover:enabled { background-color: rgba(255, 255, 255, 0.14); border-color: rgba(255, 255, 255, 0.3); }
+.jm-btn--primary { background-color: var(--amber); color: #04131c; border-color: var(--amber-hot); }
+.jm-btn--primary:hover, .jm-btn--primary:hover:enabled { background-color: var(--amber-hot); }
+.jm-btn--on { background-color: rgba(94, 214, 245, 0.16); color: var(--amber-hot); border-color: var(--amber); }
+.jm-panel, .jm-card, .jm-part { background-color: rgba(8, 17, 28, 0.88); border-radius: 10px; border-width: 1px; border-color: rgba(255, 255, 255, 0.07); }
+.jm-card { border-left-width: 1px; border-top-width: 3px; border-top-color: rgba(255, 255, 255, 0.12); padding: 18px 20px; }
+.jm-card--accent { border-top-color: var(--amber); background-color: rgba(8, 22, 34, 0.92); }
+.jm-card--daily { border-top-color: #7fd18b; border-left-color: rgba(255, 255, 255, 0.07); }
+.jm-kicker { color: var(--amber); }
+.jm-tile { background-color: rgba(255, 255, 255, 0.05); border-radius: 10px; border-width: 2px; border-color: rgba(255, 255, 255, 0.04); padding: 0; overflow: hidden; }
+.jm-tile:hover:enabled { background-color: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.18); }
+.jm-tile--on { border-color: var(--amber); background-color: rgba(94, 214, 245, 0.1); }
+
+/* Desktop shell: top bar, then the glass column. */
+.jm-desktop .jm-shell { flex-direction: column; }
+.jm-desktop .jm-rail {
+    width: auto; height: 76px; flex-direction: row; align-items: center; padding: 0 28px 0 32px;
+    background-color: rgba(3, 8, 14, 0.72); border-right-width: 0; border-bottom-width: 1px; border-color: rgba(255, 255, 255, 0.07);
+}
+.jm-desktop .jm-brandbox { margin-right: 28px; }
+.jm-desktop .jm-brand { margin: 0; font-size: 22px; letter-spacing: 5px; }
+.jm-desktop .jm-brand-sub { margin: 0; font-size: 10px; letter-spacing: 3px; color: var(--amber); }
+.jm-desktop .jm-tabs { flex-direction: row; align-items: center; flex-grow: 1; }
+.jm-desktop .jm-rail .jm-tab {
+    flex-direction: row; height: 76px; padding: 0 18px; margin: 0; border-radius: 0;
+    border-left-width: 0; border-bottom-width: 3px; border-color: rgba(0, 0, 0, 0);
+}
+.jm-desktop .jm-rail .jm-tab Label { margin-left: 10px; font-size: 16px; letter-spacing: 3px; }
+.jm-desktop .jm-tab--on { border-bottom-color: var(--amber); background-color: rgba(94, 214, 245, 0.08); }
+.jm-desktop .jm-tab:focus { border-bottom-color: rgba(255, 255, 255, 0.6); }
+.jm-keyhint { font-size: 12px; color: rgba(246, 239, 228, 0.55); border-width: 1px; border-bottom-width: 2px; border-color: rgba(246, 239, 228, 0.35);
+    border-radius: 4px; padding: 1px 6px; margin: 0 10px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); }
+.jm-phone .jm-keyhint { display: none; }
+.jm-sparks { font-size: 22px; color: var(--gold); margin-right: 18px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); }
+.jm-phone .jm-sparks { display: none; }
+.jm-desktop .jm-rail .jm-continue { margin: 0; min-width: 150px; min-height: 46px; }
+.jm-desktop .jm-content { padding: 0; margin: 22px 0 22px 32px; }
+.jm-desktop.jm-page--narrow .jm-content {
+    width: 44%; min-width: 520px; max-width: 700px; flex-grow: 0;
+    background-color: rgba(5, 12, 20, 0.8); border-radius: 14px; border-width: 1px; border-color: rgba(255, 255, 255, 0.08);
+    padding: 26px 28px;
+}
+.jm-desktop.jm-page--wide .jm-content { margin-right: 32px; }
+/* The play page in a narrow column: cards one under the other, full width. */
+.jm-desktop.jm-page--narrow .jm-cards { flex-direction: column; flex-wrap: nowrap; margin-top: 18px; }
+.jm-desktop.jm-page--narrow .jm-card { width: auto; flex-grow: 0; flex-basis: auto; margin: 0 0 12px 0; }
+.jm-desktop.jm-page--narrow .jm-display { font-size: 46px; }
+.jm-card-row { flex-direction: row; align-items: center; justify-content: space-between; }
+.jm-card-row .jm-btn { margin: 0 0 0 12px; min-width: 150px; }
+
+/* Car cards with a picture (CarPortraits: the car photographed in the Open Bay). */
+.jm-cargrid { flex-direction: row; flex-wrap: wrap; margin-top: 12px; }
+.jm-carcard { width: 48%; margin: 0 2% 12px 0; }
+.jm-phone .jm-carcard { width: 47%; }
+.jm-carpic { height: 128px; background-color: rgb(9, 18, 28); -unity-background-scale-mode: scale-and-crop; }
+.jm-phone .jm-carpic { height: 84px; }
+.jm-carcard__text { padding: 8px 12px 10px 12px; }
+.jm-carcard__name { font-size: 20px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); }
+.jm-carcard__tag { font-size: 13px; color: var(--paper-dim); }
+.jm-carcard__tag--price { color: var(--gold); }
+.jm-carcard__tag--driving { color: var(--amber); }
+.jm-hero { height: 200px; border-radius: 10px; margin: 6px 0 12px 0; -unity-background-scale-mode: scale-and-crop; background-color: rgb(9, 18, 28); }
+.jm-phone .jm-hero { height: 120px; }
+.jm-specs { flex-direction: row; flex-wrap: wrap; margin: 10px 0 4px 0; }
+.jm-spec { width: 33%; padding: 6px 10px 8px 0; border-top-width: 1px; border-color: rgba(255, 255, 255, 0.07); }
+.jm-phone .jm-spec { width: 50%; }
+.jm-spec__name { font-size: 11px; letter-spacing: 2px; color: var(--paper-dim); }
+.jm-spec__value { font-size: 19px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); white-space: normal; }
+.jm-card-row .jm-btn--primary { min-height: 48px; font-size: 16px; }
+.jm-desktop.jm-page--narrow .jm-card-title { font-size: 25px; }
+.jm-card .jm-small { margin-top: 2px; }
+.jm-desktop.jm-page--narrow .jm-card { padding: 14px 18px; margin-bottom: 10px; }
+.jm-desktop.jm-page--narrow .jm-display { font-size: 40px; }
+.jm-desktop.jm-page--narrow .jm-card .jm-meter { margin: 8px 0 6px 0; }
