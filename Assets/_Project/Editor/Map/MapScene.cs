@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -60,7 +62,11 @@ namespace JapanMap.Editor.Map
         {
             var root = Root();
             var old = root.Find(name);
-            if (old != null) Object.DestroyImmediate(old.gameObject);
+            if (old != null)
+            {
+                RememberLinksInto(old);
+                Object.DestroyImmediate(old.gameObject);
+            }
             var group = new GameObject(name).transform;
             group.SetParent(root, false);
             return group;
@@ -76,6 +82,43 @@ namespace JapanMap.Editor.Map
             return root.transform;
         }
 
-        public static void Save() => EditorSceneManager.SaveScene(OpenGameScene());
+        public static void Save()
+        {
+            Relink();
+            EditorSceneManager.SaveScene(OpenGameScene());
+        }
+
+        // Links from outside a group into it (FirstDrive.traffic, ContentStreamer.smash) died when a setup
+        // rebuilt the group (2026-10-16, Life). They are remembered by type and set again on Save.
+        static readonly List<(Object owner, string path, System.Type type)> Pending = new();
+
+        static void RememberLinksInto(Transform group)
+        {
+            foreach (var mb in Object.FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (mb == null || mb.transform.IsChildOf(group)) continue;
+                var it = new SerializedObject(mb).GetIterator();
+                while (it.Next(true))
+                    if (it.propertyType == SerializedPropertyType.ObjectReference && it.objectReferenceValue is Component c
+                        && c != null && c.transform.IsChildOf(group))
+                        Pending.Add((mb, it.propertyPath, c.GetType()));
+            }
+        }
+
+        static void Relink()
+        {
+            foreach (var (owner, path, type) in Pending)
+            {
+                if (owner == null) continue;
+                var so = new SerializedObject(owner);
+                var p = so.FindProperty(path);
+                if (p == null || p.objectReferenceValue != null) continue;
+                var target = Object.FindAnyObjectByType(type, FindObjectsInactive.Include);
+                if (target == null) continue;
+                p.objectReferenceValue = target;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+            Pending.Clear();
+        }
     }
 }

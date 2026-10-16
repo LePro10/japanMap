@@ -1,0 +1,348 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 908fe73ce19ef4bc2a0403bf7aa41778, type: 3}
+  m_Name: FigureSet
+  m_EditorClassIdentifier: JapanMap.OnFoot::JapanMap.OnFoot.FigureSet
+  player: {fileID: 4769495727969082140, guid: b1228a6bb2d6940689fbf5031bfbb317, type: 3}
+  clips:
+  - name: Idle
+    speed: 0
+    loop: 1
+  - name: Walk
+    speed: 1.35
+    loop: 1
+  - name: WalkUmbrella
+    speed: 1.25
+    loop: 1
+  - name: Run
+    speed: 4.2
+    loop: 1
+  - name: Slide
+    speed: 0
+    loop: 1
+  - name: Jump
+    speed: 0
+    loop: 0
+  - name: Fall
+    speed: 0
+    loop: 1
+  - name: Sit
+    speed: 0
+    loop: 1
+  - name: Work
+    speed: 0
+    loop: 1
+  - name: Fish
+    speed: 0
+    loop: 1
+  - name: Phone
+    speed: 0
+    loop: 1
+  - name: Sweep
+    speed: 0
+    loop: 1
+  - name: Bow
+    speed: 0
+    loop: 1
+  - name: Wave
+    speed: 0
+    loop: 1
+  props:
+  - name: Baton
+    prefab: {fileID: 1621727468842229273, guid: 987fd2641689040558e41ded699e9fd9, type: 3}
+    rightHand: 1
+    upright: 0
+  - name: Briefcase
+    prefab: {fileID: 3169080541460615416, guid: c2df90795866842188469c884bdf43f6, type: 3}
+    rightHand: 1
+    upright: 0
+  - name: Broom
+    prefab: {fileID: 7725575256841220982, guid: 36ffecd1e7a27438b928a4b7b972c392, type: 3}
+    rightHand: 0
+    upright: 0
+  - name: Cane
+    prefab: {fileID: 3806653023001131452, guid: 5b54950eeedde41498b4297187fce392, type: 3}
+    rightHand: 0
+    upright: 0
+  - name: EcoBag
+    prefab: {fileID: 3500872432682767719, guid: a79c335e65c824619b33749d1db07cb7, type: 3}
+    rightHand: 0
+    upright: 0
+  - name: FishingRod
+    prefab: {fileID: 5208190215470076638, guid: 5b303bf6b8f074e99bbeeb4373fa0eda, type: 3}
+    rightHand: 1
+    upright: 1
+  - name: Hammer
+    prefab: {fileID: 8925348098959276587, guid: 31431a42e896046a8b9997d9ca84a745, type: 3}
+    rightHand: 1
+    upright: 1
+  - name: Kinchaku
+    prefab: {fileID: 3996976914674007650, guid: a16f1c9b7f831466c87156853f3eb4b7, type: 3}
+    rightHand: 0
+    upright: 0
+  - name: KonbiniBag
+    prefab: {fileID: 1940560270416468967, guid: a67ef6f28fc2d43be920fa08e0174b90, type: 3}
+    rightHand: 0
+    upright: 0
+  - name: Phone
+    prefab: {fileID: 4553364527052062521, guid: 753c73f48ba274f9bbd0ecae713a527c, type: 3}
+    rightHand: 1
+    upright: 1
+  - name: Umbrella_Black_Open
+    prefab: {fileID: 5152027623435869498, guid: 616e451a8b27c4baaa85d4df0034bcfa, type: 3}
+    rightHand: 1
+    upright: 1
+  - name: Umbrella_Navy_Closed
+    prefab: {fileID: 1967826965106449820, guid: 5b524dc187d8d44f3977b1e6cb5d0111, type: 3}
+    rightHand: 1
+    upright: 0
+  - name: Umbrella_Red_Open
+    prefab: {fileID: 7578910115075154132, guid: 56faf83b76f8946f6a423f6bbb93f79a, type: 3}
+    rightHand: 1
+    upright: 1
+  - name: Umbrella_Vinyl_Closed
+    prefab: {fileID: 1317661678350010309, guid: 9400c7905565f44dcb441d1c3dd96fcf, type: 3}
+    rightHand: 1
+    upright: 0
+  - name: Umbrella_Vinyl_Open
+    prefab: {fileID: 1090247404665912827, guid: b1ed4bf22d0864b6796114b880c41eff, type: 3}
+    rightHand: 1
+    upright: 1
+  looks:
+  - role: crowd
+    bodies:
+    - {fileID: 1318221068603273260, guid: c0897c875d9124fc48359657b5e9bf40, type: 3}
+    - {fileID: 7196283427192108126, guid: cc5b55cf77a2a41e8ba7bab33c6cbfb0, type: 3}
+    - {fileID: 7653508515097437477, guid: d9e88be8736264c11bb06cbd82c60806, type: 3}
+    - {fileID: 1049073717323839012, guid: ca74fa2ad6fb04eb18a7f6a2617492f4, type: 3}
+    - {fileID: 3691802421391633057, guid: f6b44b28753c5449d8b19ff4dc7f6046, type: 3}
+    - {fileID: 3997454027723580206, guid: d165b8e0b593f43ee9490450aaedf31b, type: 3}
+    - {fileID: 6055127958714258806, guid: 376aba2d9f45c4900b38b12986037916, type: 3}
+    - {fileID: 4036175193561576430, guid: 785271fe0944d4cbdbadb042949bf891, type: 3}
+    clip: WalkUmbrella
+    prop: Umbrella_Vinyl_Open
+    weight: 0.14
+  - role: crowd
+    bodies:
+    - {fileID: 1318221068603273260, guid: c0897c875d9124fc48359657b5e9bf40, type: 3}
+    - {fileID: 7196283427192108126, guid: cc5b55cf77a2a41e8ba7bab33c6cbfb0, type: 3}
+    - {fileID: 7653508515097437477, guid: d9e88be8736264c11bb06cbd82c60806, type: 3}
+    - {fileID: 1049073717323839012, guid: ca74fa2ad6fb04eb18a7f6a2617492f4, type: 3}
+    - {fileID: 3691802421391633057, guid: f6b44b28753c5449d8b19ff4dc7f6046, type: 3}
+    - {fileID: 3997454027723580206, guid: d165b8e0b593f43ee9490450aaedf31b, type: 3}
+    - {fileID: 6055127958714258806, guid: 376aba2d9f45c4900b38b12986037916, type: 3}
+    - {fileID: 4036175193561576430, guid: 785271fe0944d4cbdbadb042949bf891, type: 3}
+    clip: WalkUmbrella
+    prop: Umbrella_Black_Open
+    weight: 0.06
+  - role: crowd
+    bodies:
+    - {fileID: 1318221068603273260, guid: c0897c875d9124fc48359657b5e9bf40, type: 3}
+    - {fileID: 7196283427192108126, guid: cc5b55cf77a2a41e8ba7bab33c6cbfb0, type: 3}
+    - {fileID: 7653508515097437477, guid: d9e88be8736264c11bb06cbd82c60806, type: 3}
+    - {fileID: 1049073717323839012, guid: ca74fa2ad6fb04eb18a7f6a2617492f4, type: 3}
+    - {fileID: 3691802421391633057, guid: f6b44b28753c5449d8b19ff4dc7f6046, type: 3}
+    - {fileID: 3997454027723580206, guid: d165b8e0b593f43ee9490450aaedf31b, type: 3}
+    - {fileID: 6055127958714258806, guid: 376aba2d9f45c4900b38b12986037916, type: 3}
+    - {fileID: 4036175193561576430, guid: 785271fe0944d4cbdbadb042949bf891, type: 3}
+    clip: WalkUmbrella
+    prop: Umbrella_Red_Open
+    weight: 0.04
+  - role: crowd
+    bodies:
+    - {fileID: 1318221068603273260, guid: c0897c875d9124fc48359657b5e9bf40, type: 3}
+    - {fileID: 7196283427192108126, guid: cc5b55cf77a2a41e8ba7bab33c6cbfb0, type: 3}
+    - {fileID: 7653508515097437477, guid: d9e88be8736264c11bb06cbd82c60806, type: 3}
+    - {fileID: 1049073717323839012, guid: ca74fa2ad6fb04eb18a7f6a2617492f4, type: 3}
+    - {fileID: 3691802421391633057, guid: f6b44b28753c5449d8b19ff4dc7f6046, type: 3}
+    - {fileID: 3997454027723580206, guid: d165b8e0b593f43ee9490450aaedf31b, type: 3}
+    - {fileID: 6055127958714258806, guid: 376aba2d9f45c4900b38b12986037916, type: 3}
+    - {fileID: 4036175193561576430, guid: 785271fe0944d4cbdbadb042949bf891, type: 3}
+    clip: Walk
+    prop: Umbrella_Vinyl_Closed
+    weight: 0.16
+  - role: crowd
+    bodies:
+    - {fileID: 1318221068603273260, guid: c0897c875d9124fc48359657b5e9bf40, type: 3}
+    - {fileID: 7196283427192108126, guid: cc5b55cf77a2a41e8ba7bab33c6cbfb0, type: 3}
+    - {fileID: 7653508515097437477, guid: d9e88be8736264c11bb06cbd82c60806, type: 3}
+    - {fileID: 1049073717323839012, guid: ca74fa2ad6fb04eb18a7f6a2617492f4, type: 3}
+    - {fileID: 3691802421391633057, guid: f6b44b28753c5449d8b19ff4dc7f6046, type: 3}
+    - {fileID: 3997454027723580206, guid: d165b8e0b593f43ee9490450aaedf31b, type: 3}
+    - {fileID: 6055127958714258806, guid: 376aba2d9f45c4900b38b12986037916, type: 3}
+    - {fileID: 4036175193561576430, guid: 785271fe0944d4cbdbadb042949bf891, type: 3}
+    clip: Walk
+    prop: Umbrella_Navy_Closed
+    weight: 0.08
+  - role: crowd
+    bodies:
+    - {fileID: 1318221068603273260, guid: c0897c875d9124fc48359657b5e9bf40, type: 3}
+    - {fileID: 7196283427192108126, guid: cc5b55cf77a2a41e8ba7bab33c6cbfb0, type: 3}
+    - {fileID: 7653508515097437477, guid: d9e88be8736264c11bb06cbd82c60806, type: 3}
+    clip: Walk
+    prop: Briefcase
+    weight: 0.14
+  - role: crowd
+    bodies:
+    - {fileID: 1318221068603273260, guid: c0897c875d9124fc48359657b5e9bf40, type: 3}
+    - {fileID: 7196283427192108126, guid: cc5b55cf77a2a41e8ba7bab33c6cbfb0, type: 3}
+    - {fileID: 7653508515097437477, guid: d9e88be8736264c11bb06cbd82c60806, type: 3}
+    - {fileID: 1049073717323839012, guid: ca74fa2ad6fb04eb18a7f6a2617492f4, type: 3}
+    - {fileID: 3691802421391633057, guid: f6b44b28753c5449d8b19ff4dc7f6046, type: 3}
+    - {fileID: 3997454027723580206, guid: d165b8e0b593f43ee9490450aaedf31b, type: 3}
+    - {fileID: 6055127958714258806, guid: 376aba2d9f45c4900b38b12986037916, type: 3}
+    - {fileID: 4036175193561576430, guid: 785271fe0944d4cbdbadb042949bf891, type: 3}
+    clip: Walk
+    prop: KonbiniBag
+    weight: 0.1
+  - role: crowd
+    bodies:
+    - {fileID: 1318221068603273260, guid: c0897c875d9124fc48359657b5e9bf40, type: 3}
+    - {fileID: 7196283427192108126, guid: cc5b55cf77a2a41e8ba7bab33c6cbfb0, type: 3}
+    - {fileID: 7653508515097437477, guid: d9e88be8736264c11bb06cbd82c60806, type: 3}
+    - {fileID: 1049073717323839012, guid: ca74fa2ad6fb04eb18a7f6a2617492f4, type: 3}
+    - {fileID: 3691802421391633057, guid: f6b44b28753c5449d8b19ff4dc7f6046, type: 3}
+    - {fileID: 3997454027723580206, guid: d165b8e0b593f43ee9490450aaedf31b, type: 3}
+    - {fileID: 6055127958714258806, guid: 376aba2d9f45c4900b38b12986037916, type: 3}
+    - {fileID: 4036175193561576430, guid: 785271fe0944d4cbdbadb042949bf891, type: 3}
+    clip: Walk
+    prop: EcoBag
+    weight: 0.06
+  - role: crowd
+    bodies:
+    - {fileID: 1318221068603273260, guid: c0897c875d9124fc48359657b5e9bf40, type: 3}
+    - {fileID: 7196283427192108126, guid: cc5b55cf77a2a41e8ba7bab33c6cbfb0, type: 3}
+    - {fileID: 7653508515097437477, guid: d9e88be8736264c11bb06cbd82c60806, type: 3}
+    - {fileID: 1049073717323839012, guid: ca74fa2ad6fb04eb18a7f6a2617492f4, type: 3}
+    - {fileID: 3691802421391633057, guid: f6b44b28753c5449d8b19ff4dc7f6046, type: 3}
+    - {fileID: 3997454027723580206, guid: d165b8e0b593f43ee9490450aaedf31b, type: 3}
+    - {fileID: 6055127958714258806, guid: 376aba2d9f45c4900b38b12986037916, type: 3}
+    - {fileID: 4036175193561576430, guid: 785271fe0944d4cbdbadb042949bf891, type: 3}
+    clip: Walk
+    prop: 
+    weight: 0.12
+  - role: crowd
+    bodies:
+    - {fileID: 2790690130993989228, guid: 219006b1ac3d7450fb5c031970845f48, type: 3}
+    - {fileID: 4634449810827343485, guid: 9f66a43be32bc46d49065d7a56e824b9, type: 3}
+    clip: Walk
+    prop: Cane
+    weight: 0.05
+  - role: crowd
+    bodies:
+    - {fileID: 2790690130993989228, guid: 219006b1ac3d7450fb5c031970845f48, type: 3}
+    - {fileID: 4634449810827343485, guid: 9f66a43be32bc46d49065d7a56e824b9, type: 3}
+    clip: Walk
+    prop: Kinchaku
+    weight: 0.03
+  - role: crowd
+    bodies:
+    - {fileID: 4650934751410380522, guid: a6513f2176ff5460aa83ebe9def8f895, type: 3}
+    - {fileID: 5148152160405457502, guid: 3c4634a80b6f748d9af15d52dc16df73, type: 3}
+    clip: Walk
+    prop: 
+    weight: 0.04
+  - role: worker
+    bodies:
+    - {fileID: 8940987152848759151, guid: 89d4fcef796864a1899fc43819edbcb3, type: 3}
+    clip: Work
+    prop: Hammer
+    weight: 1
+  - role: fisher
+    bodies:
+    - {fileID: 4334338627184346973, guid: c425aadee1ea04d17b331fc83d7c743c, type: 3}
+    clip: Fish
+    prop: FishingRod
+    weight: 1
+  - role: seated
+    bodies:
+    - {fileID: 2790690130993989228, guid: 219006b1ac3d7450fb5c031970845f48, type: 3}
+    - {fileID: 4634449810827343485, guid: 9f66a43be32bc46d49065d7a56e824b9, type: 3}
+    clip: Sit
+    prop: 
+    weight: 1
+  - role: visitor
+    bodies:
+    - {fileID: 1318221068603273260, guid: c0897c875d9124fc48359657b5e9bf40, type: 3}
+    - {fileID: 7196283427192108126, guid: cc5b55cf77a2a41e8ba7bab33c6cbfb0, type: 3}
+    - {fileID: 7653508515097437477, guid: d9e88be8736264c11bb06cbd82c60806, type: 3}
+    - {fileID: 1049073717323839012, guid: ca74fa2ad6fb04eb18a7f6a2617492f4, type: 3}
+    - {fileID: 3691802421391633057, guid: f6b44b28753c5449d8b19ff4dc7f6046, type: 3}
+    - {fileID: 3997454027723580206, guid: d165b8e0b593f43ee9490450aaedf31b, type: 3}
+    - {fileID: 6055127958714258806, guid: 376aba2d9f45c4900b38b12986037916, type: 3}
+    - {fileID: 4036175193561576430, guid: 785271fe0944d4cbdbadb042949bf891, type: 3}
+    clip: Phone
+    prop: Phone
+    weight: 0.3
+  - role: visitor
+    bodies:
+    - {fileID: 1318221068603273260, guid: c0897c875d9124fc48359657b5e9bf40, type: 3}
+    - {fileID: 7196283427192108126, guid: cc5b55cf77a2a41e8ba7bab33c6cbfb0, type: 3}
+    - {fileID: 7653508515097437477, guid: d9e88be8736264c11bb06cbd82c60806, type: 3}
+    - {fileID: 1049073717323839012, guid: ca74fa2ad6fb04eb18a7f6a2617492f4, type: 3}
+    - {fileID: 3691802421391633057, guid: f6b44b28753c5449d8b19ff4dc7f6046, type: 3}
+    - {fileID: 3997454027723580206, guid: d165b8e0b593f43ee9490450aaedf31b, type: 3}
+    - {fileID: 6055127958714258806, guid: 376aba2d9f45c4900b38b12986037916, type: 3}
+    - {fileID: 4036175193561576430, guid: 785271fe0944d4cbdbadb042949bf891, type: 3}
+    clip: Idle
+    prop: KonbiniBag
+    weight: 0.25
+  - role: visitor
+    bodies:
+    - {fileID: 2790690130993989228, guid: 219006b1ac3d7450fb5c031970845f48, type: 3}
+    - {fileID: 4634449810827343485, guid: 9f66a43be32bc46d49065d7a56e824b9, type: 3}
+    clip: Idle
+    prop: Cane
+    weight: 0.15
+  - role: visitor
+    bodies:
+    - {fileID: 8749266758917771914, guid: 250b08b0a068c48fbb35824dcb0fbd68, type: 3}
+    clip: Sweep
+    prop: Broom
+    weight: 0.15
+  - role: visitor
+    bodies:
+    - {fileID: 8749266758917771914, guid: 250b08b0a068c48fbb35824dcb0fbd68, type: 3}
+    clip: Bow
+    prop: 
+    weight: 0.15
+  animals:
+  - kind: cat
+    prefabs:
+    - {fileID: 3743422816424960676, guid: 1b1e0db6f0c0f4cc88198c3a31490003, type: 3}
+    - {fileID: 6115851603996353094, guid: 7212fd6eeed1341bdb86b91c93ac2538, type: 3}
+    - {fileID: 2281005593025698237, guid: 7e5507b935a604849a18dc39a7e069a4, type: 3}
+    - {fileID: 4006711891669334342, guid: 7605b29532bf14ce8a6976c7564c84a8, type: 3}
+    - {fileID: 2008518205664658492, guid: dd0f0bddc807743458cbd675e07848f0, type: 3}
+    - {fileID: 5450877212577039465, guid: 22e32b7ffd9a84a86b9043b493fede0a, type: 3}
+  - kind: chicken
+    prefabs:
+    - {fileID: 9134732004933731095, guid: 1ca37ee3af6c1454f8124a18ceb11046, type: 3}
+    - {fileID: 2344898108879079580, guid: 92e2f01d7b31b4e4481f0fc9f519bd86, type: 3}
+  - kind: goat
+    prefabs:
+    - {fileID: 440182379651328671, guid: f0368ff8f50d04fbfaaee42a0ffb7120, type: 3}
+  - kind: crow
+    prefabs:
+    - {fileID: 7295962420439738928, guid: 601ad0e21e3db469f9b16868fb8297f1, type: 3}
+    - {fileID: 2308949857945392004, guid: e7c396c868029429eb70cd3cf7fdeb1d, type: 3}
+  - kind: pigeon
+    prefabs:
+    - {fileID: 7666556921384757122, guid: 7d5cba370fd0644dea32a7ed4943f414, type: 3}
+  - kind: dog
+    prefabs:
+    - {fileID: 608527990149214483, guid: 76ccf6aa0ae324f2e89c711dfa8789d5, type: 3}
+    - {fileID: 7682458678907450072, guid: 28aa8e5a06941479695695a6aedff5f0, type: 3}
+  standBelow: 0.15
+  runFrom: 2.6
+  rateRange: {x: 0.6, y: 1.9}
+  fade: 0.2

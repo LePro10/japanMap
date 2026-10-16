@@ -22,7 +22,8 @@ namespace JapanMap.DevTools
         {
             var listener = FindAnyObjectByType<AudioListener>();
             if (listener == null) return null;
-            var c = listener.gameObject.GetComponent<AudioCapture>() ?? listener.gameObject.AddComponent<AudioCapture>();
+            var c = listener.gameObject.GetComponent<AudioCapture>();
+            if (c == null) c = listener.gameObject.AddComponent<AudioCapture>(); // Unity fake-null defeats ??
             c._path = path;
             c._rate = AudioSettings.outputSampleRate;
             c._until = Time.unscaledTime + seconds;

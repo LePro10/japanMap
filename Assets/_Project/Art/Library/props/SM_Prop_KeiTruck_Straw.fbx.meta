@@ -7,6 +7,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: M_Flora_Atlas
+    second: {fileID: 2100000, guid: b308f2a1d79604be2bd16cb36cd212fa, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: M_GasshoShop_Atlas
     second: {fileID: 2100000, guid: c82c8ed035659406b87298449466547d, type: 2}
   - first:
@@ -84,6 +89,11 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: M_Props_Atlas
     second: {fileID: 2100000, guid: 8b59befa05c294deea5f65987725733a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Scatter_Atlas
+    second: {fileID: 2100000, guid: 9d35436bd8dfe4d8c894196a5e06a540, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule

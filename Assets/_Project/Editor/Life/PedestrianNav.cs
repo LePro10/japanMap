@@ -169,7 +169,8 @@ namespace JapanMap.Editor.Life
         static void Mark(Transform root, int area)
         {
             if (root == null) return;
-            var m = root.GetComponent<NavMeshModifier>() ?? root.gameObject.AddComponent<NavMeshModifier>();
+            var m = root.GetComponent<NavMeshModifier>();
+            if (m == null) m = root.gameObject.AddComponent<NavMeshModifier>(); // Unity fake-null defeats ??
             m.overrideArea = true;
             m.area = area;
             m.applyToChildren = true;

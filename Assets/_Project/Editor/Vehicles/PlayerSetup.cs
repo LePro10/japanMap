@@ -79,9 +79,7 @@ namespace JapanMap.Editor.Vehicles
             Set(mode, "walkCamera", walkRig);
             Set(mode, "walkTouch", walkTouch);
             Set(mode, "actions", actions);
-            Set(mode, "skin", StandInMaterial("Skin", new Color(0.73f, 0.58f, 0.45f)));
-            Set(mode, "top", StandInMaterial("Jacket", new Color(0.2f, 0.36f, 0.42f)));
-            Set(mode, "bottom", StandInMaterial("Trousers", new Color(0.16f, 0.17f, 0.2f)));
+            Set(mode, "figures", AssetDatabase.LoadAssetAtPath<JapanMap.OnFoot.FigureSet>(JapanMap.Editor.Art.FigureImporter.PlayerFigurePath));
             Set(ui, "player", mode);
             Set(ui, "panelSettings", hud);
             Set(ui, "progress", Object.FindAnyObjectByType<JapanMap.Gameplay.Progress.PlayerProgress>());

@@ -171,7 +171,8 @@ namespace JapanMap.Editor.Look
         {
             var cam = Camera.main;
             if (cam == null) return;
-            var data = cam.GetComponent<UniversalAdditionalCameraData>() ?? cam.gameObject.AddComponent<UniversalAdditionalCameraData>();
+            var data = cam.GetComponent<UniversalAdditionalCameraData>();
+            if (data == null) data = cam.gameObject.AddComponent<UniversalAdditionalCameraData>(); // Unity fake-null defeats ??
             data.renderPostProcessing = true;
             data.antialiasing = AntialiasingMode.FastApproximateAntialiasing;
             cam.clearFlags = CameraClearFlags.Skybox;

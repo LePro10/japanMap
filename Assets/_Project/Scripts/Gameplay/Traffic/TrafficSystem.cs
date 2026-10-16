@@ -9,9 +9,9 @@ namespace JapanMap.Gameplay.Traffic
     /// <summary>
     /// Keeps a few NPC cars on the city streets around the player: placed on a lane 70–200 m away,
     /// driving road after road (at a road's end it turns into one that starts there), taken away and
-    /// placed anew when far, stuck or knocked off. Built at runtime like the player's car; the body
-    /// is a PROVISIONAL box stand-in (the fleet models have 120 k triangles; light traffic cars are
-    /// on the asset list).
+    /// placed anew when far, stuck or knocked off. Built at runtime like the player's car, with the
+    /// driving numbers of the default car and a light traffic model (asset sprint 6: kei cars, taxis,
+    /// a 2-t truck, a community bus; ~1 600 triangles) painted from the street's colour mix.
     /// </summary>
     public sealed class TrafficSystem : MonoBehaviour
     {
@@ -19,10 +19,10 @@ namespace JapanMap.Gameplay.Traffic
         [SerializeField] VehicleFleet fleet;
         [SerializeField] RoadNetwork roads;
         [SerializeField] PlayerModeController player;
-        [Tooltip("Lit material the stand-in palette is made from.")]
-        [SerializeField] Material template;
 
         readonly List<TrafficCar> _cars = new();
+        readonly Dictionary<string, Material> _paints = new();
+        TrafficLooks _looks;
         readonly List<int> _cityRoads = new();
         int _next;
 
@@ -40,66 +40,98 @@ namespace JapanMap.Gameplay.Traffic
                 if (System.Array.IndexOf(settings.roadTypes, roads.roads[r].type) >= 0 && roads.roads[r].points.Length > 1
                     && roads.roads[r].width >= settings.minRoadWidth
                     && System.Array.IndexOf(settings.excludeRoads, roads.roads[r].id) < 0) _cityRoads.Add(r);
-            var tier = QualitySettings.names[QualitySettings.GetQualityLevel()];
-            var count = tier == "Low" ? settings.countLow : settings.countHigh;
-            for (var i = 0; i < count; i++) _cars.Add(Build(i));
+            StartCoroutine(Life.LifeContent.Load<TrafficLooks>(Life.LifeContent.Traffic, looks =>
+            {
+                _looks = looks;
+                var tier = QualitySettings.names[QualitySettings.GetQualityLevel()];
+                var count = tier == "Low" ? settings.countLow : settings.countHigh;
+                for (var i = 0; i < count; i++) _cars.Add(Build(i));
+            }));
         }
 
         TrafficCar Build(int i)
         {
             var def = fleet.Default;
-            var car = PlayerCarSpawner.Build(StandInDefinition(def), fleet.tuning);
-            car.name = "Traffic " + i;
+            var model = Pick(_looks.models, m => m.prefab != null ? m.weight : 0f);
+            var car = PlayerCarSpawner.Build(TrafficDefinition(def, model), fleet.tuning);
+            car.name = $"Traffic {i} {model.name}";
             car.transform.SetParent(transform, false);
-            var body = AddBody(car.transform, def, settings.colors[i % settings.colors.Length]);
             var pilot = car.gameObject.AddComponent<PathFollower>();
             pilot.maxSpeedKmh = settings.maxSpeedKmh;
             pilot.lookAheadMin = settings.lookAheadMin; // tight turns at crossings, not the racing line
             var t = car.gameObject.AddComponent<TrafficCar>();
             t.Bind(settings, car, pilot);
-            t.BodyRenderer = body;
+            t.BodyRenderers = AddBody(car, model);
             car.gameObject.SetActive(false);
             return t;
         }
 
-        // Same driving numbers as the default car, without its 120 k-triangle model.
-        static VehicleDefinition StandInDefinition(VehicleDefinition def)
+        // Same driving numbers as the default car, without its 120 k-triangle model; body box and axles of the traffic model.
+        static VehicleDefinition TrafficDefinition(VehicleDefinition def, TrafficLooks.Model model)
         {
             var d = Instantiate(def);
             d.model = null;
             d.modelAsset = null; // no streamed model either (it would download and never match this copy)
             d.displayName = "Traffic";
+            d.wheelPositions = new Vector3[0];
+            d.bodySize = new Vector3(model.size.y, model.size.x, model.size.z);
+            d.wheelbase = model.wheelbase;
+            d.bodyCenterZ = AxleMiddle(d);
             return d;
         }
 
-        MeshRenderer AddBody(Transform car, VehicleDefinition def, Color paint)
+        /// <summary>Where the axles' middle lies from the car's root (the root is the centre of mass along Z).</summary>
+        static float AxleMiddle(VehicleDefinition d) => d.wheelbase * (0.5f - d.frontWeight);
+
+        Renderer[] AddBody(VehicleController car, TrafficLooks.Model model)
         {
-            var palette = StandInPalette.For(template);
-            var len = def.bodySize.x;
-            var wid = def.bodySize.y * 0.9f;
-            var b = new BoxMeshBuilder();
-            var body = palette.Uv(paint);
-            var glass = palette.Uv(new Color(0.1f, 0.12f, 0.15f));
-            var tyre = palette.Uv(new Color(0.05f, 0.05f, 0.05f));
-            var lamp = palette.Uv(new Color(1f, 0.95f, 0.8f));
-            var tail = palette.Uv(new Color(0.8f, 0.05f, 0.05f));
-            var z = def.bodyCenterZ;
-            b.Box(0, new Vector3(0f, 0.62f, z), new Vector3(wid, 0.6f, len), body);
-            b.Box(0, new Vector3(0f, 1.15f, z - 0.25f), new Vector3(wid * 0.86f, 0.5f, len * 0.5f), glass);
-            b.Box(0, new Vector3(0f, 1.41f, z - 0.25f), new Vector3(wid * 0.84f, 0.04f, len * 0.46f), body);
-            foreach (var sx in new[] { -1f, 1f })
+            var body = Instantiate(model.prefab, car.transform, false);
+            body.name = "Body";
+            body.transform.localPosition = new Vector3(0f, 0f, AxleMiddle(car.Definition));
+            // The car has its own body box; the model's COL_ box would double it.
+            foreach (var c in body.GetComponentsInChildren<Collider>(true)) Destroy(c);
+            var renderers = body.GetComponentsInChildren<Renderer>(true);
+            if (model.paint && _looks.paintMaterial != null && _looks.paints.Length > 0)
             {
-                foreach (var sz in new[] { -1f, 1f })
-                    b.Box(0, new Vector3(sx * (wid * 0.5f - 0.12f), def.wheelRadius, z + sz * def.wheelbase * 0.5f), new Vector3(0.26f, def.wheelRadius * 2f, def.wheelRadius * 2f), tyre);
-                b.Box(0, new Vector3(sx * wid * 0.32f, 0.72f, z + len * 0.5f + 0.01f), new Vector3(0.3f, 0.12f, 0.04f), lamp);
-                b.Box(0, new Vector3(sx * wid * 0.36f, 0.75f, z - len * 0.5f - 0.01f), new Vector3(0.32f, 0.1f, 0.04f), tail);
+                var paint = Paint(Pick(_looks.paints, p => p.weight));
+                foreach (var r in renderers)
+                {
+                    var mats = r.sharedMaterials;
+                    for (var k = 0; k < mats.Length; k++)
+                        if (mats[k] == _looks.paintMaterial) mats[k] = paint;
+                    r.sharedMaterials = mats;
+                }
             }
-            var go = new GameObject("Body (provisional)");
-            go.transform.SetParent(car, false);
-            go.AddComponent<MeshFilter>().sharedMesh = b.ToMesh("TrafficCar", skinned: false);
-            var r = go.AddComponent<MeshRenderer>();
-            r.sharedMaterial = palette.Material;
-            return r;
+            return renderers;
+        }
+
+        /// <summary>One material per colour, shared by every car of that colour (keeps them batched).</summary>
+        Material Paint(TrafficLooks.Paint p)
+        {
+            if (_paints.TryGetValue(p.name, out var m)) return m;
+            m = new Material(_looks.paintMaterial) { name = "TrafficPaint " + p.name };
+            m.SetColor("_BaseColor", p.color);
+            _paints[p.name] = m;
+            return m;
+        }
+
+        static T Pick<T>(T[] items, System.Func<T, float> weight)
+        {
+            var total = 0f;
+            foreach (var x in items) total += weight(x);
+            var at = Random.value * total;
+            foreach (var x in items)
+            {
+                at -= weight(x);
+                if (at <= 0f && weight(x) > 0f) return x;
+            }
+            foreach (var x in items) if (weight(x) > 0f) return x;
+            return items[0];
+        }
+
+        void OnDestroy()
+        {
+            foreach (var m in _paints.Values) Destroy(m);
         }
 
         Vector3 Focus()
@@ -120,7 +152,8 @@ namespace JapanMap.Gameplay.Traffic
                 if (!c.gameObject.activeSelf) continue;
                 if (KeepOut != null && KeepOut(c.transform.position)) { c.gameObject.SetActive(false); continue; }
                 var mode = (c.transform.position - focus).sqrMagnitude < shadow2 ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
-                if (c.BodyRenderer.shadowCastingMode != mode) c.BodyRenderer.shadowCastingMode = mode;
+                foreach (var r in c.BodyRenderers)
+                    if (r.shadowCastingMode != mode) r.shadowCastingMode = mode;
             }
             // One car per frame: drive on, or place anew.
             var t = _cars[_next];

@@ -27,7 +27,12 @@ Flächen, alles nur Dreiecke, jedes Asset mit 2–3 LODs.** Gesamtbild: **`previ
 Grafiken `DT_*` aus `kit/graphics_details.mjs`, Stein-Streifen). Neues Material **`M_TrafficPaint`** (Lack, in Unity je
 Auto tönen; Farbmix in `traffic.json`).
 
-### Für den Unity-Import (nächste Unity-Sitzung)
+### Für den Unity-Import — **erledigt 2026-10-16** (Unity: `Editor/Art/FigureImporter`, D45)
+
+Gelernt beim Import: Körper haben `Rig` über `Hips`, die Anims-Datei nicht → „Copy From Other“ geht nicht, jeder
+Körper hat seinen eigenen Avatar (Clips laufen trotzdem auf allen). Mit Bake Axis Conversion schauen die Körper nach
+−Z; Unity dreht sie im Prefab um 180°. Beides ist im Importer abgefangen, im Export muss nichts geändert werden.
+
 
 - **Figuren:** FBX mit Armatur `Rig` (21 Knochen, Namen = `HumanBodyBones`). Import: Rig **Humanoid** (Avatar aus
   `SM_Hito_Anims.fbx`, alle Körper teilen ihn über die Namen), **Bake Axis Conversion an** (Export ohne „Apply

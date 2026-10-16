@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using JapanMap.OnFoot;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -14,10 +15,7 @@ namespace JapanMap.Gameplay.Life
     {
         [SerializeField] PedestrianSettings settings;
         [SerializeField] PlayerModeController player;
-        [SerializeField] Material skin;
-        [Tooltip("One look per material; the crowd cycles through them.")]
-        [SerializeField] Material[] tops = { };
-        [SerializeField] Material[] bottoms = { };
+        FigureSet _figures; // streamed (LifeContent.Figures): looks of role "crowd"
         [Tooltip("Relocations tried per frame (spreads the NavMesh queries).")]
         [SerializeField] int relocationsPerFrame = 3;
 
@@ -27,14 +25,23 @@ namespace JapanMap.Gameplay.Life
         public IReadOnlyList<Pedestrian> People => _people;
         public PedestrianSettings Settings => settings;
 
-        void Start()
+        void Start() => StartCoroutine(LifeContent.Load<FigureSet>(LifeContent.Figures, f =>
+        {
+            _figures = f;
+            Build();
+        }));
+
+        void Build()
         {
             var tier = QualitySettings.names[QualitySettings.GetQualityLevel()];
             var count = tier == "Low" ? settings.countLow : settings.countHigh;
             for (var i = 0; i < count; i++)
             {
                 var speed = Mathf.Lerp(settings.speed.x, settings.speed.y, Random.value);
-                var p = Pedestrian.Build(transform, settings, skin, tops[i % tops.Length], bottoms[(i / tops.Length) % bottoms.Length], speed);
+                // Spread evenly over the weighted looks, bodies drawn at random.
+                if (!_figures.TryLook("crowd", (i + 0.5f) / count, out var look)) break;
+                var body = look.bodies[Random.Range(0, look.bodies.Length)];
+                var p = Pedestrian.Build(transform, settings, _figures, look, body, speed);
                 p.gameObject.SetActive(false);
                 _people.Add(p);
             }

@@ -676,3 +676,16 @@ Mittel, aus auf Niedrig, nur über der Stadtplatte) — SSR hatte im Prototyp nu
 ist experimentell (Define) und nicht für WebGL gedacht. Alle Orte bekommen gebackene Box-Reflection-Probes in ihrer
 eigenen Szene (`ReflectionProbeBaker`, 31 Stück, je ~160 KB DXT5-crunched, laden mit dem Ort), sonst spiegeln
 Pfützen nur den hellen Himmel und wirken wie Eis.
+
+## D45 — Figuren, Tiere, Verkehr aus Asset-Sprint 6 · 2026-10-16
+
+- **Figuren = Humanoid + Animator** (Unity-Standard): jeder Körper eigener Avatar (Kinder haben andere
+  Proportionen; „Copy From Other“ scheiterte an der Hierarchie), die 14 Clips aus `SM_Hito_Anims.fbx` laufen
+  auf allen. Ein Animator-Zustand je Clip; `HitoFigure` wählt den Clip und passt die Wiedergabe an die
+  Laufgeschwindigkeit an (statt Blend Tree: Spieler läuft 4,4–7,5 m/s, Clips sind für 1,35/4,2 m/s gemacht).
+  Offscreen: `CullUpdateTransforms`.
+- **Wer was spielt** steht im Asset `Data/Life/FigureSet` (Rollen, Gewichte, Handprops, Tiere), nicht im Code.
+  Passanten: nach dem Regen ~24 % mit offenem Schirm (`WalkUmbrella`), ~24 % mit zugeklapptem.
+- **Verkehr:** 10 eigene Modelle (Gewichte + Radstand in `TrafficSettings`), Lack = Kopie von `M_TrafficPaint`
+  je Farbe des Mix (geteilt, bleibt im SRP-Batcher), Kollisionsbox aus den Modellmaßen.
+- Die Kisten-Figur `StandInFigure` ist gelöscht.

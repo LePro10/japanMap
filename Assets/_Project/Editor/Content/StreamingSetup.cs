@@ -53,6 +53,7 @@ namespace JapanMap.Editor.Content
             report.Append(" " + StartContent(settings));
             report.Append(" · " + Cars(settings));
             report.Append(" · " + CarShared(settings));
+            report.Append(" · " + Life(settings));
             report.Append(" · " + SplitPlaces(settings));
             report.Append(" · " + Isolate(settings));
             report.Append(" · " + WireScene());
@@ -141,6 +142,29 @@ namespace JapanMap.Editor.Content
             }
             s.SetDirty(AddressableAssetSettings.ModificationEvent.BatchModification, null, true, true);
             return $"{n} cars streamed (engine bank of {starter.id} in the start download)";
+        }
+
+        /// <summary>
+        /// People, animals and traffic models by address (LifeContent): 1.3 MB on the wire that the first seconds do
+        /// not need. The player's body (PlayerFigure) stays linked from the scene.
+        /// </summary>
+        static string Life(AddressableAssetSettings s)
+        {
+            var group = Group(s, "Life");
+            var n = 0;
+            foreach (var (path, address) in new[]
+                     {
+                         (Art.FigureImporter.FigureSetPath, JapanMap.Gameplay.Life.LifeContent.Figures),
+                         (Art.FigureImporter.TrafficLooksPath, JapanMap.Gameplay.Life.LifeContent.Traffic),
+                     })
+            {
+                var guid = AssetDatabase.AssetPathToGUID(path);
+                if (string.IsNullOrEmpty(guid)) continue;
+                s.CreateOrMoveEntry(guid, group, false, false).address = address;
+                n++;
+            }
+            s.SetDirty(AddressableAssetSettings.ModificationEvent.BatchModification, null, true, true);
+            return $"life looks: {n} streamed";
         }
 
         const string CarSharedGroup = "CarShared";

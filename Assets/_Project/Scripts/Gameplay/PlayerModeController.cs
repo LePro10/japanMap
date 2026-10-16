@@ -32,8 +32,8 @@ namespace JapanMap.Gameplay
         [SerializeField] WalkerInput walkInput;
         [SerializeField] WalkCameraRig walkCamera;
         [SerializeField] WalkTouchControls walkTouch;
-        [Tooltip("Stand-in materials until the asset session delivers a player model.")]
-        [SerializeField] Material skin, top, bottom;
+        [Tooltip("The player's body (FigureSet.player) and its clips.")]
+        [SerializeField] FigureSet figures;
 
         [Header("Start")]
         [SerializeField] InputActionAsset actions;
@@ -44,7 +44,7 @@ namespace JapanMap.Gameplay
 
         InputAction _vehicle, _call;
         WalkerMotor _walker;
-        StandInFigure _figure;
+        HitoFigure _figure;
         bool _promptShown;
 
         public Mode Current { get; private set; } = Mode.Driving;
@@ -104,7 +104,7 @@ namespace JapanMap.Gameplay
             go.AddComponent<CharacterController>();
             _walker = go.AddComponent<WalkerMotor>();
             _walker.Configure(walkerSettings);
-            _figure = StandInFigure.Build(go.transform, walkerSettings.height, skin, top, bottom);
+            _figure = HitoFigure.Spawn(figures, figures.player, go.transform);
             if (walkInput != null) walkInput.Motor = _walker;
             if (walkCamera != null) walkCamera.Bind(_walker, walkInput);
             if (walkTouch != null) walkTouch.Input = walkInput;
@@ -256,11 +256,19 @@ namespace JapanMap.Gameplay
             ModeChanged?.Invoke(Current);
         }
 
+        /// <summary>Clip from the walker's state: slide, jump (rising), fall, else stand/walk/run at its speed.</summary>
+        void PoseFigure()
+        {
+            if (_walker.Sliding) _figure.Play("Slide");
+            else if (!_walker.Grounded) _figure.Play(_walker.Jumping ? "Jump" : "Fall");
+            else _figure.Move(_walker.Speed);
+        }
+
         void Update()
         {
             if (Current == Mode.Walking && _walker != null)
             {
-                _figure.Pose(_walker.Cycle, Mathf.Clamp01(_walker.Speed / walkerSettings.runSpeed), _walker.Lean, _walker.SlideAmount, !_walker.Grounded);
+                PoseFigure();
                 _promptShown = CanBoard;
                 Prompt = _promptShown ? "F  Get in" : "";
             }

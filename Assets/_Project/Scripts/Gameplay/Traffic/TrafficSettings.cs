@@ -36,11 +36,5 @@ namespace JapanMap.Gameplay.Traffic
         public float stuckSeconds = 5f;
         [Tooltip("Only cars this close to the player cast shadows, m (draw calls per cascade; sakura-hof sat at the High budget).")]
         public float shadowDistance = 40f;
-        [Tooltip("Body colours of the stand-in cars (white, silver, black, taxi yellow, red).")]
-        public Color[] colors =
-        {
-            new(0.86f, 0.86f, 0.84f), new(0.55f, 0.57f, 0.6f), new(0.08f, 0.08f, 0.09f),
-            new(0.85f, 0.65f, 0.12f), new(0.55f, 0.1f, 0.1f),
-        };
     }
 }

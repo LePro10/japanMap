@@ -17,7 +17,7 @@ namespace JapanMap.Editor.Art
 
         [Tooltip("Atlases of approved styles (ArtSource/STATUS.md). M_<Atlas>_Atlas; M_Glass is always allowed.")]
         public string[] approvedAtlases =
-            { "Props", "Street", "Nature", "Kura", "Tokyo", "TokyoSigns", "Koedo", "KoedoShop", "Kiso", "KisoShop" };
+            { "Props", "Street", "Nature", "Kura", "Tokyo", "TokyoSigns", "Koedo", "KoedoShop", "Kiso", "KisoShop", "Figures", "Traffic", "Details" };
 
         [Tooltip("Single assets to leave out even if their style is approved.")]
         public string[] excluded = { };

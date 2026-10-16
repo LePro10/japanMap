@@ -151,6 +151,25 @@ namespace JapanMap.Tests
             }
         }
 
+        /// <summary>
+        /// The city slab ends in a slope, never a wall: its vertical curtain showed as a black band with a white glow
+        /// wherever the ground fell away (owner's screenshot at Sakura Commons, 2026-10-16).
+        /// </summary>
+        [Test]
+        public void CitySlab_HasNoVerticalEdge()
+        {
+            var slab = MapScene.Parts(RoadImporter.GroupName).FirstOrDefault(t => t.name.Contains("CitySlab"));
+            Assert.NotNull(slab, "CitySlab missing — run JapanMap/Map/Import Roads");
+            var m = slab.GetComponent<MeshFilter>().sharedMesh;
+            var v = m.vertices;
+            var t = m.triangles;
+            for (var i = 0; i < t.Length; i += 3)
+            {
+                var n = Vector3.Cross(v[t[i + 1]] - v[t[i]], v[t[i + 2]] - v[t[i]]).normalized;
+                Assert.That(n.y, Is.GreaterThan(0.3f), $"CitySlab triangle {i / 3} is steep or faces down (normal {n})");
+            }
+        }
+
         [Test]
         public void Roads_SurfacesFaceUp()
         {

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using JapanMap.Gameplay;
 using UnityEditor;
@@ -387,6 +388,27 @@ namespace JapanMap.Editor
                     carT.Place(treeAt - dir * 14f, Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg, fromAbove: 3f);
                     carT.Body.linearVelocity = dir * (F(1) / 3.6f);
                     Object.FindAnyObjectByType<JapanMap.Vehicles.CarCameraRig>().Attach(carT);
+                    return true;
+                }
+                case "figcam":
+                {
+                    // figcam me|n angle dist [height]: camera beside a figure (the walker, or the n-th nearest
+                    // other person), angle 0 = in front, 90 = its right side; for checking clips and props.
+                    var pmf = Object.FindAnyObjectByType<PlayerModeController>();
+                    var me = pmf.Walker.transform.position;
+                    var figs = Object.FindObjectsByType<JapanMap.OnFoot.HitoFigure>(FindObjectsSortMode.None)
+                        .Where(f => !f.transform.IsChildOf(pmf.Walker.transform))
+                        .OrderBy(f => (f.transform.position - me).sqrMagnitude).ToList();
+                    var who = a[1] == "me" ? pmf.Walker.transform : figs.Count > int.Parse(a[1]) ? figs[int.Parse(a[1])].transform : null;
+                    if (who == null) { Log.AppendLine("  figcam: nobody"); return true; }
+                    var cam = Camera.main;
+                    foreach (var b in cam.GetComponents<Behaviour>())
+                        if (b.GetType().Name.Contains("Cinemachine")) b.enabled = false;
+                    var look = who.position + Vector3.up * (a.Length > 4 ? F(4) : 1.1f);
+                    var dir = Quaternion.Euler(0f, who.eulerAngles.y + F(2), 0f) * Vector3.forward;
+                    cam.transform.SetPositionAndRotation(look + dir * F(3) + Vector3.up * 0.3f, Quaternion.LookRotation(-dir - Vector3.up * 0.3f / F(3)));
+                    var fig = who.GetComponentInChildren<JapanMap.OnFoot.HitoFigure>();
+                    Log.AppendLine($"  figcam {who.name} clip={(fig != null ? fig.Clip : "-")}");
                     return true;
                 }
                 case "cam":

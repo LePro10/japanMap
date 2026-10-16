@@ -97,7 +97,7 @@ namespace JapanMap.Tests.OnFoot
                 yield return new WaitForFixedUpdate();
             }
             var moved = Vector3.Distance(npc.transform.position, start);
-            Assert.That(moved, Is.GreaterThan(2f), $"the traffic car must give way (moved {moved:F1} m)");
+            Assert.That(moved, Is.GreaterThan(2f), $"the traffic car must give way (moved {moved:F1} m, {npc.name})");
         }
 
         /// <summary>The lane point 30 m ahead along the car's path, if the path stays within 1.5 m of the car's heading to 35 m.</summary>

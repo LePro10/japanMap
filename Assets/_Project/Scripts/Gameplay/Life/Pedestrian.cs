@@ -7,7 +7,7 @@ namespace JapanMap.Gameplay.Life
 {
     /// <summary>
     /// One pedestrian: a NavMeshAgent that wanders the pavement it stands on (the NavMesh has no
-    /// carriageways, D23), a trigger capsule a car can hit, and a stand-in figure. A hit above walking
+    /// carriageways, D23), a trigger capsule a car can hit, and a figure from the asset sprint. A hit above walking
     /// pace turns the body into a plain Rigidbody thrown with the car (legacy CityPedestrians #knock:
     /// "bei Vollgas fliegen sie fast"); after lying a while the person stands up on the nearest pavement.
     /// </summary>
@@ -19,22 +19,23 @@ namespace JapanMap.Gameplay.Life
         NavMeshAgent _agent;
         Rigidbody _rb;
         CapsuleCollider _body;
-        StandInFigure _figure;
+        HitoFigure _figure;
         Transform _pose;
-        float _pauseUntil, _downFor, _knockedFor, _cycle;
+        string _walkClip = "Walk";
+        float _pauseUntil, _downFor, _knockedFor;
         bool _fixedSpot;
-
-        Renderer _renderer;
 
         public State Current { get; private set; } = State.Walking;
         /// <summary>False when someone else poses the figure (a place actor at work).</summary>
         public bool OwnPose { get; set; } = true;
+        public HitoFigure Figure => _figure;
         public NavMeshAgent Agent => _agent;
         public bool Knocked => Current == State.Knocked;
         /// <summary>Hits since spawn (tests, later scoring).</summary>
         public int Hits { get; private set; }
 
-        public static Pedestrian Build(Transform parent, PedestrianSettings s, Material skin, Material top, Material bottom, float speed)
+        /// <summary>A person of <paramref name="look"/> (body <paramref name="body"/>, its walk clip and hand prop).</summary>
+        public static Pedestrian Build(Transform parent, PedestrianSettings s, FigureSet figures, FigureSet.Look look, GameObject body, float speed)
         {
             var go = new GameObject("Pedestrian");
             go.SetActive(false); // the agent attaches when the crowd places it on the NavMesh
@@ -64,8 +65,9 @@ namespace JapanMap.Gameplay.Life
             p._agent.areaMask = 1 << 0; // Walkable only
             p._pose = new GameObject("Pose").transform;
             p._pose.SetParent(go.transform, false);
-            p._figure = StandInFigure.Build(p._pose, s.height, skin, top, bottom);
-            p._renderer = p._figure.GetComponent<Renderer>();
+            p._figure = HitoFigure.Spawn(figures, body, p._pose);
+            p._figure.Hold(look.prop);
+            if (!string.IsNullOrEmpty(look.clip)) p._walkClip = look.clip;
             return p;
         }
 
@@ -102,17 +104,11 @@ namespace JapanMap.Gameplay.Life
 
             if (Current != State.Knocked && OwnPose)
             {
-                var v = _agent.velocity.magnitude;
-                _cycle += v * Time.deltaTime;
-                _figure.Pose(_cycle, Mathf.Clamp01(v / 2.6f), 0f, 0f, false);
+                _figure.Move(_agent.velocity.magnitude, _walkClip);
             }
         }
 
-        public void CastShadows(bool on)
-        {
-            var mode = on ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
-            if (_renderer.shadowCastingMode != mode) _renderer.shadowCastingMode = mode;
-        }
+        public void CastShadows(bool on) => _figure.CastShadows(on);
 
         void NewTarget()
         {
@@ -152,7 +148,7 @@ namespace JapanMap.Gameplay.Life
             _rb.linearVelocity = new Vector3(carVelocity.x * _s.carry, _s.launchUp + speed * _s.launchUpPerSpeed, carVelocity.z * _s.carry);
             var side = Vector3.Cross(Vector3.up, new Vector3(carVelocity.x, 0f, carVelocity.z).normalized);
             _rb.angularVelocity = side * (_s.spin + speed * _s.spinPerSpeed) * (Random.value < 0.5f ? -1f : 1f);
-            _figure.Pose(_cycle, 0f, 0f, 0f, true);
+            _figure.Play("Fall");
         }
 
         void UpdateKnocked()

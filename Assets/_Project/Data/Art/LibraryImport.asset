@@ -36,7 +36,12 @@ MonoBehaviour:
   - KosoShop
   - Flora
   - Scatter
+  - Figures
+  - Traffic
+  - Details
   excluded: []
+  propLod1: 0.035
+  buildingLod1: 0.07
   propLod0: 0.12
   propCull: 0.012
   buildingLod0: 0.22
@@ -44,3 +49,5 @@ MonoBehaviour:
   lightIntensity: 1.5
   shadowMinHeight: 2.5
   emissionStrength: 2
+  signEmission: 5
+  shopEmission: 3

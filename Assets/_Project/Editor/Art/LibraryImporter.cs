@@ -48,8 +48,9 @@ namespace JapanMap.Editor.Art
         public static string Import(LibraryImportSettings s)
         {
             var manifest = Manifest(s);
-            var approved = manifest.entries.Where(e => IsApproved(s, e)).ToList();
-            var skipped = manifest.entries.Count - approved.Count;
+            // Skinned bodies come in through FigureImporter (Humanoid), not as static library props.
+            var approved = manifest.entries.Where(e => IsApproved(s, e) && !FigureImporter.IsBody(e.name)).ToList();
+            var skipped = manifest.entries.Count(e => !IsApproved(s, e));
             var atlases = approved.SelectMany(e => e.Atlases).Distinct().OrderBy(a => a).ToList();
 
             Directory.CreateDirectory(TextureDir);
@@ -70,6 +71,7 @@ namespace JapanMap.Editor.Art
             // Materials must exist before the FBX import so LibraryModelRules can remap to them.
             foreach (var a in atlases) AtlasMaterial(a, s);
             GlassMaterial();
+            PaintMaterial();
             AssetDatabase.SaveAssets();
 
             // Unity drops self-intersecting n-gons on import (holes in the model) and only logs it.
@@ -205,6 +207,25 @@ namespace JapanMap.Editor.Art
             return mat;
         }
 
+        public static string PaintPath => $"{MaterialDir}/M_TrafficPaint.mat";
+
+        /// <summary>
+        /// Body paint of the traffic cars (asset sprint 6): one plain lit material the FBX slot maps to;
+        /// TrafficSystem tints a copy per colour of the mix (traffic.json).
+        /// </summary>
+        static Material PaintMaterial()
+        {
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(PaintPath);
+            if (mat != null) return mat;
+            mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            mat.SetColor("_BaseColor", new Color(0.82f, 0.82f, 0.8f)); // Blender: roughness 0.28, not metallic
+            mat.SetFloat("_Smoothness", 0.72f);
+            mat.SetFloat("_Metallic", 0f);
+            mat.enableInstancing = true;
+            AssetDatabase.CreateAsset(mat, PaintPath);
+            return mat;
+        }
+
         /// <summary>Returns null on success, else a one-line problem.</summary>
         static string BuildPrefab(LibraryManifest.Entry e, LibraryImportSettings s)
         {
@@ -246,7 +267,8 @@ namespace JapanMap.Editor.Art
                 var bounds = renderers[0].bounds;
                 foreach (var r in renderers) bounds.Encapsulate(r.bounds);
                 var building = e.cls == "buildings";
-                var group = root.GetComponent<LODGroup>() ?? root.AddComponent<LODGroup>(); // Unity adds one itself for _LODn names
+                var group = root.GetComponent<LODGroup>();
+                if (group == null) group = root.AddComponent<LODGroup>(); // Unity adds one itself for _LODn names; fake-null defeats ??
                 var present = lod.Where(l => l.Count > 0).ToList();
                 // Screen heights: LOD0 → next at lod0, middle → far at lod1, last culled at cull.
                 var steps = new[] { building ? s.buildingLod0 : s.propLod0, building ? s.buildingLod1 : s.propLod1, building ? s.buildingCull : s.propCull };
@@ -337,7 +359,8 @@ namespace JapanMap.Editor.Art
             if (!assetPath.StartsWith(LibraryImporter.ArtDir + "/")) return;
             var t = (TextureImporter)assetImporter;
             t.sRGBTexture = !assetPath.EndsWith("_MaskMap.png");
-            t.maxTextureSize = TextureImportRules.MaxSize;
+            // Figures atlas: flat colour cells, 256 px carry them (ArtSource/STATUS.md, task 6).
+            t.maxTextureSize = assetPath.Contains("/T_Figures_") ? 256 : TextureImportRules.MaxSize;
             t.mipmapEnabled = true;
             t.anisoLevel = 4;
         }

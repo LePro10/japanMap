@@ -32,6 +32,10 @@ namespace JapanMap.Editor.Art
             ("minato", new[] { "Minato" }),
             ("tera", new[] { "Tera" }),
             ("vegetation", new[] { "Veg_Cedar", "Veg_Maple", "Veg_Cherry", "Veg_Bamboo", "Veg_Bush" }),
+            ("people", new[] { "Hito_" }),
+            ("animals", new[] { "Animal_" }),
+            ("traffic", new[] { "Traffic_" }),
+            ("details", new[] { "Street_", "Race_", "Garage_", "Discovery_" }),
         };
 
         [MenuItem("JapanMap/Art/Build Showroom")]
@@ -78,13 +82,14 @@ namespace JapanMap.Editor.Art
 
         static Bounds Bounds(GameObject prefab)
         {
-            var rs = prefab.GetComponentsInChildren<MeshRenderer>(true).Where(r => r.name.Contains("_LOD0") || !r.name.Contains("_LOD")).ToArray();
+            var rs = prefab.GetComponentsInChildren<Renderer>(true).Where(r => r.name.Contains("_LOD0") || !r.name.Contains("_LOD")).ToArray();
             var b = new Bounds(Vector3.zero, Vector3.zero);
             foreach (var r in rs)
             {
-                var mf = r.GetComponent<MeshFilter>();
-                if (mf == null || mf.sharedMesh == null) continue;
-                var mb = mf.sharedMesh.bounds;
+                // Skinned figures (asset sprint 6) carry their mesh on the renderer, not a MeshFilter.
+                var mesh = r is SkinnedMeshRenderer smr ? smr.sharedMesh : r.TryGetComponent<MeshFilter>(out var mf) ? mf.sharedMesh : null;
+                if (mesh == null) continue;
+                var mb = mesh.bounds;
                 var m = r.transform.localToWorldMatrix * prefab.transform.worldToLocalMatrix;
                 foreach (var corner in Corners(mb)) b.Encapsulate(m.MultiplyPoint3x4(corner));
             }

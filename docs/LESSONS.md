@@ -73,6 +73,12 @@
 | 2026-10-16 | Asset 6 | Aktenkoffer fest im Figuren-Mesh hätte jeden Clip mit der rechten Hand verdorben | Handgegenstände als eigene FBX mit Griff-Ursprung (`hand_props.json`), Regel im STYLE-KIT | Skill |
 | 2026-10-16 | Asset 6 | Frische Blender-Sitzung: `build._reload` brach mit Zirkel-Import ab | `kit.atlas` zuerst importieren (build.py) | Werkzeug |
 | 2026-10-16 | Asset 6 | FBX „Apply Transform“ ist mit Armaturen kaputt | `core.export_fbx` schaltet es für Rigs ab, Rig heißt beim Export immer `Rig` | Werkzeug |
+| 2026-10-16 | Unity-Import 6 | Humanoid „Copy From Other“ scheiterte still (Körper haben `Rig` über `Hips`, die Anims-Datei nicht) → kein Animator | `FigureImporter`: jeder Körper eigener Avatar, Prüfung „kein humanoider Avatar“ bricht den Import ab; `sourceAvatar` **vor** `avatarSetup` setzen (sonst springt es zurück) | Werkzeug |
+| 2026-10-16 | Unity-Import 6 | Mit Bake Axis Conversion schauen die Figuren nach −Z (Bild: Rücken zur Kamera) | Prefab = neutrale Wurzel + `Model` um 180° gedreht; Nahbild Vorder-/Rückseite gehört zur Prüfung | Werkzeug |
+| 2026-10-16 | Unity-Import 6 | Neuaufbau der Life-Gruppe ließ `FirstDrive.traffic` / `ContentStreamer.smash` leer | `MapScene.FreshGroup` merkt sich Links von außen in die Gruppe, `MapScene.Save` setzt sie nach Typ neu (Klasse, nicht nur Life) | Werkzeug |
+| 2026-10-16 | Unity-Import 6 | `GetComponent<T>() ?? AddComponent<T>()` greift im Editor nicht (Unity-Fake-null) | an allen 5 Stellen durch `if (x == null)` ersetzt | Werkzeug |
+| 2026-10-16 | Unity-Import 6 | Neue Figuren/Verkehr im Start: 19,6 → 21,0 MB; als Bundle sofort geladen sogar 26,5 MB (gemeinsame Abhängigkeiten vor gameplayStart) | `LifeContent` lädt Figuren/Verkehr per Adresse erst nach gameplayStart (wie ContentStreamer); Spieler eigener schlanker Animator (6 Clips) | Werkzeug |
+| 2026-10-16 | Unity-Import 6 | Schwarzer Streifen am Stadtrand (senkrechter Plattenrand im Nass-Material), vom Menschen gefunden | Böschung statt Kante; Test `CitySlab_HasNoVerticalEdge` | Test |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**
