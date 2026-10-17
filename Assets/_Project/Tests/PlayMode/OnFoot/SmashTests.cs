@@ -209,6 +209,9 @@ namespace JapanMap.Tests.OnFoot
             var mode = Object.FindAnyObjectByType<PlayerModeController>();
             mode.PressVehicle();
             var car = mode.Car;
+            // The garbage of the tests before (a full run: 200 boots) is not this break's work: collect it before measuring.
+            System.GC.Collect();
+            yield return null;
             // Six lamps in a row: the debris pool fills up (6 × 3 pieces), then the physics is measured.
             var lamps = smash.Breakables.Where(b => b.name.StartsWith("streetLamp")).OrderBy(b => (b.transform.position - new Vector3(653f, 30f, -300f)).sqrMagnitude).Take(6).ToList();
             foreach (var l in lamps) yield return RamAt(car, l, 45f, (_, _) => { });

@@ -58,6 +58,7 @@ namespace JapanMap.Tests.Content
 
         IEnumerator TapAt(VisualElement e)
         {
+            yield return UiSettle.Wait(e);
             var id = ++_id;
             var at = Screen(e);
             Finger(id, UnityEngine.InputSystem.TouchPhase.Began, at);

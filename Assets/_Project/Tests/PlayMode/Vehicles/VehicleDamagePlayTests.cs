@@ -317,6 +317,9 @@ namespace JapanMap.Tests.Vehicles
             yield return Settle(d);
             d.Repair();
             d.ResetCost();
+            // The garbage of the tests before (a full run: 200 boots) is not this hit's work: collect it before measuring.
+            System.GC.Collect();
+            yield return null;
             yield return RamHouse(car, 110f);
             yield return Settle(d);
             var line = $"damage cost: hit {d.WorstHitMs:F2} ms ({d.WorstDetail}), crumple frame {d.WorstWorkMs:F2} ms, crush {d.Deformer.MaxDisplacement:F2} m";

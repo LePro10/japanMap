@@ -67,6 +67,7 @@ namespace JapanMap.Tests.Content
         /// <summary>A left click at an element, through the mouse device (UI Toolkit's own input path).</summary>
         IEnumerator Click(VisualElement e)
         {
+            yield return UiSettle.Wait(e);
             var root = e.panel.visualTree.worldBound;
             var px = 1f / UiPanel.Scale;
             var c = e.worldBound.center;

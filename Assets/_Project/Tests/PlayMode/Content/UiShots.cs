@@ -31,6 +31,16 @@ namespace JapanMap.Tests.Content
         {
             TitleScreen.RunInEditor = false;
             Unlocks.Query = null;
+            // The shared runtime panel drew into the shot's texture: back to the screen, or every later test's clicks and
+            // taps miss the UI (screen input is not mapped into a panel with a target texture).
+            var ps = UiPanel.Get(null);
+            if (ps != null && ps.targetTexture != null)
+            {
+                var rt = ps.targetTexture;
+                ps.targetTexture = null;
+                rt.Release();
+                UnityEngine.Object.Destroy(rt);
+            }
             UiPanel.ForcedForm = null;
             Time.timeScale = 1f;
             AudioListener.pause = false;

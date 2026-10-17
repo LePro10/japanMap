@@ -87,6 +87,7 @@ namespace JapanMap.Tests.Content
         /// </summary>
         static IEnumerator Click(VisualElement e)
         {
+            yield return UiSettle.Wait(e);
             var at = e.worldBound.center;
             var root = e.panel.visualTree;
             foreach (var type in new[] { EventType.MouseDown, EventType.MouseUp })

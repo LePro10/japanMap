@@ -73,9 +73,10 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
 - Mit abgeschaltetem Domain Reload bleiben statische Felder zwischen
   Play-Sitzungen erhalten → statische Zustände explizit zurücksetzen.
 
-- **Batchmode im Projekt-Worktree (zweiter Agent): Geräte-Mausklicks erreichen UI Toolkit nicht** (MenuTests,
-  MapTests, TouchMenuTests rot — auch ohne eigene Änderung, D48). Neue UI-Tests klicken über Panel-Pointer-Events
-  (`TitleTests.Click`), Tastatur über eigene InputActions. Diese Rotfälle nicht „reparieren", sondern melden.
+- **Klicks/Taps in Tests erst auf ruhige UI** (`yield return UiSettle.Wait(e)` vor dem Zielen): das Menü schiebt Seiten
+  240 ms herein und lässt Kacheln nacheinander aufsteigen (D48) — ein Klick auf ein bewegtes Element trifft den Nachbarn
+  (Cars-Tab → Play, Commons-Pin → Drift-Pin). Das war die Ursache der roten MenuTests/MapTests nach Runde 1, nicht der
+  Batchmode. Neue UI-Tests klicken trotzdem gern über Panel-Pointer-Events (`TitleTests.Click`).
 - **UIDocument nie unter ein anderes UIDocument hängen** (wird in dessen Baum geschachtelt, unsichtbar mit ihm).
 - **Batchmode-PlayMode rendert nicht:** Render-Zähler (Draw Calls, Dreiecke)
   sind dort 0. Zahlen dazu nur im offenen Editor oder im Web-Dev-Build ablesen.

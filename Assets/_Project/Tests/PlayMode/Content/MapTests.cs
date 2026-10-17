@@ -65,11 +65,14 @@ namespace JapanMap.Tests.Content
             yield return null;
         }
 
-        IEnumerator ClickAt(VisualElement anyInPanel, Vector2 panelPoint)
+        /// <summary>A click where <paramref name="panelPoint"/> says, asked only after the element stopped moving.</summary>
+        IEnumerator ClickAt(VisualElement anyInPanel, System.Func<Vector2> panelPoint)
         {
+            yield return UiSettle.Wait(anyInPanel);
             var root = anyInPanel.panel.visualTree.worldBound;
             var px = 1f / UiPanel.Scale;
-            var at = new Vector2(panelPoint.x * px, (root.height - panelPoint.y) * px);
+            var p = panelPoint();
+            var at = new Vector2(p.x * px, (root.height - p.y) * px);
             _mouse.MakeCurrent();
             foreach (var down in new[] { false, true, false })
             {
@@ -81,7 +84,7 @@ namespace JapanMap.Tests.Content
             }
         }
 
-        IEnumerator Click(VisualElement e) => ClickAt(e, e.worldBound.center);
+        IEnumerator Click(VisualElement e) => ClickAt(e, () => e.worldBound.center);
 
         [UnityTest, Timeout(90000)]
         public IEnumerator PhotoMode_LeftDragLooks_WheelZooms()
@@ -163,7 +166,7 @@ namespace JapanMap.Tests.Content
             // Click the Commons travel pin (zoomed in so it is the nearest one), then Travel.
             screen.Select("");
             var commons = travel.Points.points.First(p => p.id == "commons");
-            yield return ClickAt(screen.View, screen.View.worldBound.position + screen.View.ToLocal(commons.at));
+            yield return ClickAt(screen.View, () => screen.View.worldBound.position + screen.View.ToLocal(commons.at));
             StringAssert.StartsWith("travel:commons", screen.Selected, $"a click on the Commons pin selects it ({screen.Text})");
             var button = menu.Root.Query<Button>().ToList().First(b => b.text == "Travel");
             yield return Click(button);
