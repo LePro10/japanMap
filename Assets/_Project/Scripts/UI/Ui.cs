@@ -96,6 +96,16 @@ namespace JapanMap.UI
             }
         }
 
+        /// <summary>
+        /// GLSL smoothstep: 0 below <paramref name="edge0"/>, 1 above <paramref name="edge1"/>. Not Mathf.SmoothStep — that
+        /// one interpolates between its first two arguments, and the menu fade never went clear over the car (D48).
+        /// </summary>
+        public static float Smooth(float edge0, float edge1, float x)
+        {
+            var t = Mathf.Clamp01((x - edge0) / (edge1 - edge0));
+            return t * t * (3f - 2f * t);
+        }
+
         public static VisualElement Spacer(VisualElement parent, float height)
         {
             var s = Box(parent);

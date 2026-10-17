@@ -1,3 +1,5 @@
+@import url("/Assets/_Project/Data/UI/Menu.uss");
+@import url("/Assets/_Project/Data/UI/Title.uss");
 /* Game UI theme — "blue hour after rain" (legacy src/ui/theme.css, ASTRA §10).
    Dark ink panels, warm white type, amber = money/selection, sakura = discovery, nitro = boost,
    vermilion only for braking/errors. Sizes in CSS px (UiPanel): body ≥ 16, secondary 14, targets ≥ 48. */
@@ -84,93 +86,6 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-btn--wide { flex-grow: 1; }
 .jm-btn--swatch { min-width: 48px; width: 48px; height: 48px; padding: 0; border-radius: 24px; }
 
-/* Menu shell: desktop left rail 184 px with Continue at the bottom; phone bottom tab row. */
-/* Menu (2026-10-11 redesign; human: "AI-Slop"): a racing-game pause screen, not a dashboard. The game stays
-   faintly visible; one rail with the name, Resume first, typographic entries with an amber edge; pages use
-   kicker + display type + flat tiles, no boxed borders. */
-/* The backdrop is a fade texture (GameMenu.Backdrop): the car circles on the right (MenuCamera). */
-.jm-menu { background-color: rgba(0, 0, 0, 0); -unity-background-scale-mode: stretch-to-fill; opacity: 0; transition: opacity 0.22s ease-out; }
-.jm-menu--in { opacity: 1; }
-.jm-phone.jm-menu { background-color: rgba(3, 9, 13, 0.72); }
-.jm-shell { flex-direction: row; flex-grow: 1; }
-.jm-rail {
-    width: 248px;
-    background-color: rgba(2, 7, 10, 0.55);
-    border-right-width: 1px;
-    border-color: rgba(246, 239, 228, 0.08);
-    padding: 36px 0 24px 0;
-}
-.jm-rail .jm-tab { flex-direction: row; justify-content: flex-start; height: 48px; margin: 0; border-radius: 0; padding-left: 32px; }
-.jm-rail .jm-tab Label { margin-left: 14px; font-size: 15px; letter-spacing: 3px; }
-.jm-rail .jm-continue { margin: 0 24px 22px 24px; }
-.jm-brand { font-size: 20px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; letter-spacing: 6px; margin: 0 24px 2px 32px; }
-.jm-brand-sub { font-size: 10px; color: var(--amber); letter-spacing: 3px; margin: 0 24px 28px 32px; }
-.jm-tab {
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(0, 0, 0, 0);
-    border-width: 0;
-    border-left-width: 3px;
-    border-color: rgba(0, 0, 0, 0);
-}
-.jm-tab:hover, .jm-tab:hover:enabled, .jm-tab:active:enabled, .jm-tab:hover:active:enabled { background-color: rgba(246, 239, 228, 0.05); }
-.jm-tab--on:hover:enabled, .jm-tab--on:active:enabled { background-color: rgba(94, 214, 245, 0.1); }
-.jm-tab:focus { border-left-color: var(--paper); }
-.jm-tab--on { background-color: rgba(94, 214, 245, 0.07); border-left-color: var(--amber-hot); }
-.jm-tab--on Label { color: var(--amber-hot); }
-.jm-tab Label { color: rgba(246, 239, 228, 0.78); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; }
-.jm-tab UiIcon, .jm-tab > VisualElement { opacity: 0.8; }
-.jm-content { flex-grow: 1; padding: 40px 48px; }
-/* Page parts */
-.jm-kicker { font-size: 11px; letter-spacing: 4px; color: var(--amber); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; margin-bottom: 6px; }
-.jm-display { font-size: 46px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; letter-spacing: 1px; }
-.jm-lede { font-size: 18px; color: var(--amber-hot); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; margin-top: 2px; }
-.jm-cards { flex-direction: row; margin-top: 28px; }
-.jm-card { flex-grow: 1; flex-basis: 0; background-color: rgba(7, 15, 20, 0.92); border-radius: 4px; padding: 20px 22px;
-    border-left-width: 3px; border-color: rgba(246, 239, 228, 0.12); margin-right: 16px; }
-.jm-card:last-child { margin-right: 0; }
-.jm-card--accent { border-left-color: var(--amber-hot); background-color: rgba(18, 22, 20, 0.94); }
-.jm-card-title { font-size: 24px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; margin-bottom: 4px; }
-.jm-card .jm-btn { margin-top: 16px; }
-.jm-meter { height: 6px; background-color: rgba(246, 239, 228, 0.12); border-radius: 3px; margin: 14px 0 8px 0; overflow: hidden; }
-.jm-meter > VisualElement { height: 100%; background-color: var(--amber-hot); }
-.jm-btn--ghost { background-color: rgba(0, 0, 0, 0); border-width: 1px; border-color: rgba(246, 239, 228, 0.25); }
-.jm-btn--ghost:hover, .jm-btn--ghost:hover:enabled { background-color: rgba(246, 239, 228, 0.08); }
-.jm-foot { flex-direction: row; align-items: center; margin-top: 22px; }
-.jm-foot > Label { margin-left: 16px; }
-.jm-phone .jm-display { font-size: 24px; }
-.jm-phone .jm-lede { font-size: 14px; }
-.jm-phone .jm-kicker { font-size: 9px; letter-spacing: 3px; margin-bottom: 2px; }
-.jm-phone .jm-card .jm-small { display: none; }
-.jm-phone .jm-meter { margin: 8px 0 4px 0; }
-.jm-phone .jm-cards { margin-top: 12px; }
-.jm-phone .jm-card { padding: 12px 14px; margin-right: 10px; }
-.jm-phone .jm-card-title { font-size: 17px; }
-.jm-phone .jm-card .jm-btn { margin-top: 8px; }
-.jm-phone .jm-foot { margin-top: 10px; }
-.jm-portrait .jm-cards { flex-direction: column; }
-.jm-portrait .jm-card { margin: 0 0 10px 0; flex-basis: auto; flex-grow: 0; flex-shrink: 0; }
-.jm-content > ScrollView { flex-grow: 1; }
-.jm-back { position: absolute; }
-
-.jm-tabs { flex-direction: column; }
-/* Phone portrait: Continue above a bottom row of six icon tabs (ASTRA §10). */
-.jm-portrait .jm-shell { flex-direction: column-reverse; }
-.jm-portrait .jm-rail { width: auto; flex-direction: column; border-right-width: 0; border-top-width: 1px; padding: 8px 12px; }
-.jm-portrait .jm-tabs { flex-direction: row; flex-wrap: wrap; }
-.jm-portrait .jm-rail .jm-tab { flex-direction: column; flex-grow: 1; flex-basis: 0; min-width: 52px; height: 56px; margin: 0; padding-left: 0; border-radius: 0; border-left-width: 0; border-top-width: 3px; }
-.jm-portrait .jm-tab--on { border-top-color: var(--amber-hot); }
-.jm-portrait .jm-rail .jm-tab Label { margin-left: 0; font-size: 10px; letter-spacing: 1px; }
-.jm-portrait .jm-continue { margin: 0 0 8px 0; }
-/* Phone landscape: 390 px are too few for a bottom row — a narrow rail like the desktop one (better than ASTRA's
-   bottom row there: the page keeps the full height). */
-.jm-landscape .jm-rail { width: 150px; padding: 8px 0; }
-.jm-landscape .jm-rail .jm-tab { flex-direction: row; justify-content: flex-start; height: 44px; margin: 0; padding-left: 14px; border-radius: 0; }
-.jm-landscape .jm-rail .jm-tab Label { margin-left: 8px; font-size: 12px; letter-spacing: 2px; }
-.jm-landscape .jm-continue { min-height: 44px; font-size: 14px; margin: 0 10px 8px 10px; padding: 0 4px; }
-.jm-phone .jm-brand { display: none; }
-.jm-phone .jm-content { padding: 10px 12px; }
-
 /* Dark, thin scrollbars (Unity's default is a light grey bar). */
 .unity-scroller--vertical { width: 6px; }
 .unity-scroller--horizontal { height: 10px; }
@@ -184,6 +99,8 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-col { flex-grow: 1; flex-basis: 0; margin-right: 16px; }
 .jm-phone .jm-col { margin-right: 0; flex-basis: auto; }
 
+.jm-panel, .jm-part { background-color: rgba(8, 17, 28, 0.88); border-radius: 10px; border-width: 1px; border-color: rgba(255, 255, 255, 0.07); }
+.jm-kicker { color: var(--amber); }
 .jm-tile {
     background-color: rgba(246, 239, 228, 0.05);
     border-radius: 4px;
@@ -322,8 +239,6 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-rail .jm-tab Label { font-size: 17px; letter-spacing: 3px; }
 .jm-pin__title { font-size: 17px; letter-spacing: 2px; }
 
-/* Desktop pause: the page keeps to the left 60 %, the car turns in the free right side (MenuCamera). */
-.jm-desktop.jm-page--narrow .jm-content { max-width: 1040px; }
 
 /* HUD text and motion. */
 .jm-hud-text { -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; }
@@ -383,13 +298,6 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-menu .unity-scroller--vertical .unity-slider__dragger { background-color: rgba(246, 239, 228, 0.22); border-width: 0; width: 6px; left: 0; margin-top: 0; border-radius: 3px; }
 .jm-menu .unity-scroller--vertical .unity-base-slider__tracker { background-color: rgba(0, 0, 0, 0); border-width: 0; }
 
-/* Play page: four cards as a 2 × 2 grid on desktop (event, daily, next car, garage). */
-.jm-desktop.jm-page--narrow .jm-cards { flex-wrap: wrap; }
-.jm-desktop.jm-page--narrow .jm-card { flex-grow: 0; flex-basis: auto; width: 48%; margin-right: 2%; margin-bottom: 14px; }
-.jm-card--daily { border-left-color: #7fd18b; }
-.jm-card--daily .jm-meter > VisualElement { background-color: #7fd18b; }
-
-
 /* ── Menu redesign 2026-10-17 ───────────────────────────────────────────────────────────────────────────────
    Owner: brown, cluttered, no pictures, the menu covers the car. Now: a top bar (brand · tabs · Sparks · Resume),
    one glass column on the left, the car turning in the free right half (MenuCamera frames it there); navy glass,
@@ -401,51 +309,9 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-btn--primary { background-color: var(--amber); color: #04131c; border-color: var(--amber-hot); }
 .jm-btn--primary:hover, .jm-btn--primary:hover:enabled { background-color: var(--amber-hot); }
 .jm-btn--on { background-color: rgba(94, 214, 245, 0.16); color: var(--amber-hot); border-color: var(--amber); }
-.jm-panel, .jm-card, .jm-part { background-color: rgba(8, 17, 28, 0.88); border-radius: 10px; border-width: 1px; border-color: rgba(255, 255, 255, 0.07); }
-.jm-card { border-left-width: 1px; border-top-width: 3px; border-top-color: rgba(255, 255, 255, 0.12); padding: 18px 20px; }
-.jm-card--accent { border-top-color: var(--amber); background-color: rgba(8, 22, 34, 0.92); }
-.jm-card--daily { border-top-color: #7fd18b; border-left-color: rgba(255, 255, 255, 0.07); }
-.jm-kicker { color: var(--amber); }
 .jm-tile { background-color: rgba(255, 255, 255, 0.05); border-radius: 10px; border-width: 2px; border-color: rgba(255, 255, 255, 0.04); padding: 0; overflow: hidden; }
 .jm-tile:hover:enabled { background-color: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.18); }
 .jm-tile--on { border-color: var(--amber); background-color: rgba(94, 214, 245, 0.1); }
-
-/* Desktop shell: top bar, then the glass column. */
-.jm-desktop .jm-shell { flex-direction: column; }
-.jm-desktop .jm-rail {
-    width: auto; height: 76px; flex-direction: row; align-items: center; padding: 0 28px 0 32px;
-    background-color: rgba(3, 8, 14, 0.72); border-right-width: 0; border-bottom-width: 1px; border-color: rgba(255, 255, 255, 0.07);
-}
-.jm-desktop .jm-brandbox { margin-right: 28px; }
-.jm-desktop .jm-brand { margin: 0; font-size: 22px; letter-spacing: 5px; }
-.jm-desktop .jm-brand-sub { margin: 0; font-size: 10px; letter-spacing: 3px; color: var(--amber); }
-.jm-desktop .jm-tabs { flex-direction: row; align-items: center; flex-grow: 1; }
-.jm-desktop .jm-rail .jm-tab {
-    flex-direction: row; height: 76px; padding: 0 18px; margin: 0; border-radius: 0;
-    border-left-width: 0; border-bottom-width: 3px; border-color: rgba(0, 0, 0, 0);
-}
-.jm-desktop .jm-rail .jm-tab Label { margin-left: 10px; font-size: 16px; letter-spacing: 3px; }
-.jm-desktop .jm-tab--on { border-bottom-color: var(--amber); background-color: rgba(94, 214, 245, 0.08); }
-.jm-desktop .jm-tab:focus { border-bottom-color: rgba(255, 255, 255, 0.6); }
-.jm-keyhint { font-size: 12px; color: rgba(246, 239, 228, 0.55); border-width: 1px; border-bottom-width: 2px; border-color: rgba(246, 239, 228, 0.35);
-    border-radius: 4px; padding: 1px 6px; margin: 0 10px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); }
-.jm-phone .jm-keyhint { display: none; }
-.jm-sparks { font-size: 22px; color: var(--gold); margin-right: 18px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); }
-.jm-phone .jm-sparks { display: none; }
-.jm-desktop .jm-rail .jm-continue { margin: 0; min-width: 150px; min-height: 46px; }
-.jm-desktop .jm-content { padding: 0; margin: 22px 0 22px 32px; }
-.jm-desktop.jm-page--narrow .jm-content {
-    width: 44%; min-width: 520px; max-width: 700px; flex-grow: 0;
-    background-color: rgba(5, 12, 20, 0.8); border-radius: 14px; border-width: 1px; border-color: rgba(255, 255, 255, 0.08);
-    padding: 26px 28px;
-}
-.jm-desktop.jm-page--wide .jm-content { margin-right: 32px; }
-/* The play page in a narrow column: cards one under the other, full width. */
-.jm-desktop.jm-page--narrow .jm-cards { flex-direction: column; flex-wrap: nowrap; margin-top: 18px; }
-.jm-desktop.jm-page--narrow .jm-card { width: auto; flex-grow: 0; flex-basis: auto; margin: 0 0 12px 0; }
-.jm-desktop.jm-page--narrow .jm-display { font-size: 46px; }
-.jm-card-row { flex-direction: row; align-items: center; justify-content: space-between; }
-.jm-card-row .jm-btn { margin: 0 0 0 12px; min-width: 150px; }
 
 /* Car cards with a picture (CarPortraits: the car photographed in the Open Bay). */
 .jm-cargrid { flex-direction: row; flex-wrap: wrap; margin-top: 12px; }
@@ -465,9 +331,3 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-phone .jm-spec { width: 50%; }
 .jm-spec__name { font-size: 11px; letter-spacing: 2px; color: var(--paper-dim); }
 .jm-spec__value { font-size: 19px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); white-space: normal; }
-.jm-card-row .jm-btn--primary { min-height: 48px; font-size: 16px; }
-.jm-desktop.jm-page--narrow .jm-card-title { font-size: 25px; }
-.jm-card .jm-small { margin-top: 2px; }
-.jm-desktop.jm-page--narrow .jm-card { padding: 14px 18px; margin-bottom: 10px; }
-.jm-desktop.jm-page--narrow .jm-display { font-size: 40px; }
-.jm-desktop.jm-page--narrow .jm-card .jm-meter { margin: 8px 0 6px 0; }

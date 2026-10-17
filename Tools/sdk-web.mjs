@@ -92,7 +92,9 @@ try {
   };
 
   const t0 = Date.now();
-  const query = [extra, flag('probe') ? 'probe=frame' : ''].filter(Boolean).join('&');
+  // title=off: the measurement runs to gameplayStart without a click (the title adds no download: the world is loaded
+  // before it shows, D48); --param title=on measures with the title (then press Enter in the page).
+  const query = [extra.includes('title=') ? '' : 'title=off', extra, flag('probe') ? 'probe=frame' : ''].filter(Boolean).join('&');
   await page.goto(`http://${host}:${port}/${query ? `?${query}` : ''}`, { waitUntil: 'commit' });
   const start = await waitLog(/\[Platform\] gameplayStart/, t0, timeoutMs);
   if (!start) {

@@ -53,6 +53,9 @@ namespace JapanMap.Gameplay.Intro
         static void ResetStatics() => RunInEditor = false;
 
         public Beat Current { get; private set; } = Beat.Off;
+        public IntroSettings Settings => settings;
+        /// <summary>A new player gets the intro once the title has gone (the title says START GAME, not CONTINUE).</summary>
+        public bool WillRun => !_began && Wanted();
         /// <summary>Sparks paid by the intro this run (tests).</summary>
         public int Earned { get; private set; }
         public bool Rolled { get; private set; }
@@ -79,8 +82,8 @@ namespace JapanMap.Gameplay.Intro
 
         void Update()
         {
-            // The first frame the world is ready: before it shows (the page's loading screen goes at gameplayStart).
-            if (!_began && GamePlatform.WorldReady)
+            // The first frame the world is ready and the title has gone (StartFlow): the title is the first picture.
+            if (!_began && GamePlatform.WorldReady && !StartFlow.Holding)
             {
                 _began = true;
                 if (Wanted()) Begin();

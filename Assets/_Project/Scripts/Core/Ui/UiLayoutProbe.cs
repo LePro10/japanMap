@@ -18,10 +18,11 @@ namespace JapanMap.Core.Ui
         {
             "instrument", "minimap", "player-prompt", "key-hints", "desk-menu", "goal", "activity",
             "intro-prompt", "intro-steps", "intro-skip",
+            "title-name", "title-menu", "title-foot", "title-tag",
         };
 
         /// <summary>Full-width rows and lines whose content is centred: they cover what they fill, not their row.</summary>
-        static readonly HashSet<string> Rows = new() { "player-prompt", "key-hints", "goal", "intro-prompt", "intro-steps" };
+        static readonly HashSet<string> Rows = new() { "player-prompt", "key-hints", "goal", "intro-prompt", "intro-steps", "title-foot" };
 
         /// <summary>Overlaps smaller than this (panel px) are touching edges, not covering.</summary>
         const float Slack = 2f;
@@ -60,9 +61,11 @@ namespace JapanMap.Core.Ui
             return sb.ToString();
         }
 
-        static void Collect(VisualElement e, List<(string, Rect)> into)
+        static void Collect(VisualElement e, List<(string, Rect)> into, float opacity = 1f)
         {
-            if (e.resolvedStyle.display == DisplayStyle.None || e.resolvedStyle.visibility == Visibility.Hidden || e.resolvedStyle.opacity <= 0.01f) return;
+            // Opacity multiplies down the tree: a part inside a parent fading out (the title leaving) covers nothing.
+            opacity *= e.resolvedStyle.opacity;
+            if (e.resolvedStyle.display == DisplayStyle.None || e.resolvedStyle.visibility == Visibility.Hidden || opacity <= 0.05f) return;
             var touch = e.ClassListContains("jm-touch");
             if (touch || Named.Contains(e.name))
             {
@@ -76,7 +79,7 @@ namespace JapanMap.Core.Ui
                 }
                 return; // parts inside a block belong to it
             }
-            foreach (var c in e.Children()) Collect(c, into);
+            foreach (var c in e.Children()) Collect(c, into, opacity);
         }
 
         static Rect Filled(VisualElement e)

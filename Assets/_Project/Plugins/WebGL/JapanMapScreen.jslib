@@ -10,9 +10,14 @@ mergeInto(LibraryManager.library, {
     if (w > 0 && c.width > 0) return c.width / w;
     return window.devicePixelRatio || 1;
   },
-  // The game is really playable (first gameplayStart): the page's loading screen goes (index.html keeps it until then).
+  // Something playable is on screen (the title, or the first gameplayStart): the page's loading screen goes
+  // (index.html keeps it until then). PageBridge.cs.
   JapanMapLoaded: function () {
     if (window.__jmLoaded) window.__jmLoaded();
+  },
+  // Loading after Unity's own files: share 0..1 of the game's start (boot gates, scene, start car) and a short line.
+  JapanMapLoadProgress: function (share, stage) {
+    if (window.__jmProgress) window.__jmProgress(share, UTF8ToString(stage));
   },
   // A touch screen (phone, tablet; also touch laptops — they get the phone layout only when small).
   JapanMapHasTouch: function () {

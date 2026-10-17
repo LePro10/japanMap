@@ -122,8 +122,9 @@ namespace JapanMap.Core.Platform
         /// <summary>
         /// Real play: the world is ready, nothing is open (menu, garage, photo mode, sheets all sit on the
         /// <see cref="UiStack"/>), time runs and no ad is showing. CrazyGames: stop "on every game break".
+        /// The title (and the frame it decides in) is no play either (<see cref="StartFlow"/>, D48).
         /// </summary>
-        public static bool ShouldPlay => WorldReady && UiStack.Count == 0 && Time.timeScale > 0f && !AdRunning;
+        public static bool ShouldPlay => WorldReady && !StartFlow.Holding && UiStack.Count == 0 && Time.timeScale > 0f && !AdRunning;
 
         /// <summary>Sends gameplayStart/Stop on every change of <see cref="ShouldPlay"/>. Called each frame by the platform system.</summary>
         public static void Tick()

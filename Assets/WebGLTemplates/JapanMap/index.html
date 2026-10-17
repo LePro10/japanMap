@@ -11,31 +11,107 @@
         -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
       #unity-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; touch-action: none;
         background: #0d1422; }
-      /* Covers the whole frame until the game is playable: nothing half-built shows through (2026-10-11).
-         Same face and palette as the game (Saira Condensed, ink + amber, Game.uss) and a little rain: the first
-         seconds belong to the mood, not to a progress bar (2026-10-13). */
+      /* Covers the whole frame until something playable stands (the title, D48): nothing half-built shows through.
+         Motion graphics instead of a bar on black: an endless wet road at blue hour runs towards the viewer, neon
+         streaks pass, the name rises letter by letter; a real progress line (Unity's files, then the game's own boot
+         stages from PageBridge.cs) with the stage in words, and one tip at a time. CSS only — no image, no download. */
       @font-face { font-family: "JMDisplay"; src: url("TemplateData/display.ttf") format("truetype"); font-display: swap; }
-      #loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-        background: radial-gradient(ellipse at 50% 120%, #2b3a63 0%, #101a30 45%, #06141a 80%); z-index: 2; overflow: hidden;
-        font: 700 clamp(30px, 7vw, 64px)/1 "JMDisplay", system-ui, -apple-system, "Segoe UI", sans-serif; color: #f6efe4;
-        letter-spacing: .12em; text-align: center; }
-      #loading .jp { font: 500 clamp(12px, 1.6vw, 16px)/1 system-ui, sans-serif; letter-spacing: .6em; color: #e8ba7f; margin-bottom: 14px; opacity: .85; }
-      #loading .sub { margin-top: 12px; font: 600 clamp(11px, 1.3vw, 13px)/1 system-ui, sans-serif; letter-spacing: .32em; color: #b7c4c8; }
-      #loading .bar { width: min(60vw, 380px); margin-top: 28px; height: 3px; border-radius: 2px; background: rgba(246,239,228,.12); overflow: hidden; }
-      #loading .fill { height: 100%; width: 0; background: linear-gradient(90deg, #e8ba7f, #f3c56a); transition: width .25s; box-shadow: 0 0 12px #f3c56a; }
-      #loading .tip { margin-top: 18px; min-height: 1.4em; font: 500 clamp(12px, 1.4vw, 15px)/1.4 system-ui, sans-serif; letter-spacing: .04em; color: #b7c4c8; transition: opacity .4s; }
-      #loading .rain { position: absolute; inset: -20% 0 0 0; pointer-events: none; opacity: .35;
-        background-image: repeating-linear-gradient(100deg, rgba(180,200,255,.0) 0 22px, rgba(180,200,255,.35) 22px 23px, rgba(180,200,255,0) 23px 61px);
+      #loading { position: fixed; inset: 0; z-index: 2; overflow: hidden; color: #f6efe4; text-align: center;
+        background: linear-gradient(180deg, #0a1630 0%, #18284d 46%, #3a3a5c 56%, #0b1a24 56.2%, #06141a 100%);
+        font-family: "JMDisplay", system-ui, -apple-system, "Segoe UI", sans-serif; transition: opacity .5s ease-out; }
+      #loading.done { opacity: 0; pointer-events: none; }
+      /* The low sun behind the city: warm only at the horizon (ART-DIRECTION: cold sky, warm light). */
+      #loading .sun { position: absolute; left: 50%; top: 56%; width: 120vmax; height: 40vmax; transform: translate(-50%, -50%);
+        background: radial-gradient(ellipse at 50% 50%, rgba(255,179,122,.45) 0%, rgba(232,186,127,.12) 22%, rgba(0,0,0,0) 55%); }
+      /* Skyline silhouette: a row of blocks drawn by gradients. */
+      #loading .city { position: absolute; left: 0; right: 0; top: 41%; height: 15.2%; opacity: .9;
+        background:
+          linear-gradient(#0d1a2c, #0d1a2c) 4% 100% / 5% 55% no-repeat, linear-gradient(#0f1d31, #0f1d31) 10% 100% / 3% 80% no-repeat,
+          linear-gradient(#0c182a, #0c182a) 15% 100% / 6% 40% no-repeat, linear-gradient(#0e1b2e, #0e1b2e) 23% 100% / 4% 95% no-repeat,
+          linear-gradient(#0c1829, #0c1829) 30% 100% / 7% 60% no-repeat, linear-gradient(#0f1e33, #0f1e33) 66% 100% / 5% 85% no-repeat,
+          linear-gradient(#0c182a, #0c182a) 72% 100% / 8% 50% no-repeat, linear-gradient(#0e1c30, #0e1c30) 81% 100% / 3% 100% no-repeat,
+          linear-gradient(#0c1829, #0c1829) 86% 100% / 6% 65% no-repeat, linear-gradient(#0d1a2c, #0d1a2c) 94% 100% / 5% 45% no-repeat; }
+      #loading .city::after { content: ""; position: absolute; inset: 0;
+        background: radial-gradient(circle, rgba(255,214,150,.8) 0 1px, transparent 1.6px) 0 0 / 14px 11px;
+        -webkit-mask: linear-gradient(#000, #000); mask: linear-gradient(#000, #000); opacity: .25; }
+      /* The road: a plane tipped away, dashes and kerbs running at the viewer, the wet surface catching the sun. */
+      #loading .road { position: absolute; left: 50%; top: 56%; width: 300vmax; height: 120vh; transform-origin: 50% 0;
+        transform: translateX(-50%) perspective(260px) rotateX(78deg);
+        background:
+          repeating-linear-gradient(180deg, rgba(246,239,228,.8) 0 40px, transparent 40px 110px) 50% 0 / .22% 100% no-repeat,
+          linear-gradient(90deg, transparent 45.9%, rgba(94,214,245,.9) 45.9% 46%, transparent 46% 54%, rgba(94,214,245,.9) 54% 54.1%, transparent 54.1%),
+          radial-gradient(ellipse 6% 40% at 50% 0%, rgba(255,179,122,.32), rgba(15,30,45,0) 100%),
+          linear-gradient(180deg, #111c2b, #05090e 60%);
+        animation: jmroad .55s linear infinite; }
+      @keyframes jmroad { from { background-position: 50% 0, 0 0, 0 0, 0 0; } to { background-position: 50% 110px, 0 0, 0 0, 0 0; } }
+      /* Ink under the progress and the tip: they read on any part of the road. */
+      #loading .floor { position: absolute; left: 0; right: 0; bottom: 0; height: 42%; background: linear-gradient(0deg, rgba(4,10,16,.92) 0%, rgba(4,10,16,.7) 45%, rgba(4,10,16,0) 100%); }
+      #loading .haze { position: absolute; left: 0; right: 0; top: 50%; height: 14%; background: linear-gradient(180deg, rgba(58,58,92,0), rgba(143,158,181,.22), rgba(6,20,26,0)); }
+      /* Neon streaks: light trails of passing cars. */
+      #loading .streak { position: absolute; height: 2px; width: 34vw; left: -40vw; border-radius: 2px; opacity: .9;
+        background: linear-gradient(90deg, rgba(94,214,245,0), rgba(143,230,255,.95)); box-shadow: 0 0 12px rgba(94,214,245,.8);
+        animation: jmstreak 2.6s cubic-bezier(.5,0,.3,1) infinite; }
+      #loading .streak.s2 { top: 71%; width: 22vw; animation-duration: 3.3s; animation-delay: .9s; background: linear-gradient(90deg, rgba(255,209,102,0), rgba(255,209,102,.9)); box-shadow: 0 0 12px rgba(255,180,90,.7); }
+      #loading .streak.s1 { top: 62%; }
+      #loading .streak.s3 { top: 84%; height: 3px; width: 44vw; animation-duration: 2.1s; animation-delay: 1.6s; }
+      @keyframes jmstreak { from { transform: translateX(0); } to { transform: translateX(160vw); } }
+      #loading .rain { position: absolute; inset: -20% 0 0 0; pointer-events: none; opacity: .22;
+        background-image: repeating-linear-gradient(100deg, rgba(180,200,255,0) 0 22px, rgba(180,200,255,.35) 22px 23px, rgba(180,200,255,0) 23px 61px);
         background-size: 240px 240px; animation: jmrain .6s linear infinite; }
       @keyframes jmrain { from { background-position: 0 0; } to { background-position: -42px 240px; } }
-      @media (prefers-reduced-motion: reduce) { #loading .rain { animation: none; } }
+      /* The name: letters rise in one after another (the game's title picks the same face up). */
+      #loading .brand { position: absolute; left: 0; right: 0; top: 14%; }
+      #loading .jp { font: 500 clamp(12px, 1.6vw, 16px)/1 system-ui, sans-serif; letter-spacing: .6em; color: #e8ba7f; margin-bottom: 10px; opacity: 0; animation: jmfade .8s ease-out .1s forwards; }
+      #loading .name { font-weight: 700; font-size: clamp(46px, 10vw, 128px); line-height: .95; letter-spacing: .02em; text-shadow: 0 6px 30px rgba(0,0,0,.55); }
+      #loading .name span { display: inline-block; opacity: 0; transform: translateY(.35em); animation: jmrise .7s cubic-bezier(.2,1.4,.4,1) forwards; }
+      #loading .second { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 6px; opacity: 0; animation: jmfade .6s ease-out .7s forwards; }
+      #loading .second i { display: block; height: 3px; width: 0; background: #8fe6ff; box-shadow: 0 0 10px #5ed6f5; animation: jmline .7s ease-out .65s forwards; }
+      #loading .second span { font-size: clamp(18px, 3.4vw, 42px); letter-spacing: .5em; color: #8fe6ff; margin-right: -.5em; }
+      #loading .sub { margin-top: 14px; font: 600 clamp(10px, 1.2vw, 13px)/1 system-ui, sans-serif; letter-spacing: .32em; color: #b7c4c8; opacity: 0; animation: jmfade .6s ease-out .9s forwards; }
+      @keyframes jmrise { to { opacity: 1; transform: translateY(0); } }
+      @keyframes jmfade { to { opacity: 1; } }
+      @keyframes jmline { to { width: clamp(40px, 7vw, 96px); } }
+      /* Progress: a thin neon line with a glowing head, the stage in words and the percentage. */
+      #loading .foot { position: absolute; left: 50%; bottom: max(7vh, 34px); transform: translateX(-50%); width: min(78vw, 520px); }
+      #loading .meter { position: relative; height: 3px; border-radius: 2px; background: rgba(246,239,228,.14); }
+      #loading .fill { height: 100%; width: 0; border-radius: 2px; background: linear-gradient(90deg, #1a6b76, #5ed6f5); transition: width .3s ease-out; }
+      #loading .head { position: absolute; top: 50%; left: 0; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%;
+        background: #fff; box-shadow: 0 0 10px #8fe6ff, 0 0 22px #5ed6f5; transition: left .3s ease-out; }
+      #loading .row { display: flex; justify-content: space-between; margin-top: 12px; font: 600 clamp(11px, 1.3vw, 13px)/1 system-ui, sans-serif; letter-spacing: .22em; text-transform: uppercase; color: #b7c4c8; }
+      #loading .pct { font-family: "JMDisplay", system-ui, sans-serif; font-weight: 700; letter-spacing: .08em; color: #f6efe4; font-variant-numeric: tabular-nums; }
+      #loading .tip { margin-top: 18px; min-height: 2.8em; font: 500 clamp(12px, 1.4vw, 15px)/1.4 system-ui, sans-serif; color: #dfe7ea; transition: opacity .35s, transform .35s; }
+      #loading .tip b { display: inline-block; margin-right: 10px; padding: 2px 7px; border: 1px solid rgba(94,214,245,.6); border-radius: 3px;
+        font: 700 11px/1.3 "JMDisplay", system-ui, sans-serif; letter-spacing: .18em; color: #8fe6ff; vertical-align: 1px; }
+      #loading .tip.out { opacity: 0; transform: translateY(6px); }
+      @media (max-aspect-ratio: 3/4) { #loading .brand { top: 20%; } }
+      /* Phones on their side (≈390 px high): the name stays above the horizon, the foot below the road's middle. */
+      @media (max-height: 480px) {
+        #loading .brand { top: 5%; }
+        #loading .jp { margin-bottom: 4px; }
+        #loading .name { font-size: min(13vh, 10vw); }
+        #loading .second span { font-size: min(5vh, 3.4vw); }
+        #loading .sub { display: none; }
+        #loading .foot { bottom: 18px; }
+        #loading .tip { margin-top: 10px; min-height: 1.4em; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #loading .rain, #loading .road, #loading .streak { animation: none; }
+        #loading .streak { display: none; }
+        #loading .name span, #loading .jp, #loading .second, #loading .sub { animation-duration: .01s; animation-delay: 0s; }
+      }
       #message { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: 90vw; padding: 10px 14px;
         border-radius: 8px; background: #2a1620; color: #ffd7d7; font: 14px/1.4 system-ui, sans-serif; display: none; }
     </style>
   </head>
   <body>
     <canvas id="unity-canvas" tabindex="-1"></canvas>
-    <div id="loading"><div class="rain"></div><div class="jp">雨上がり</div>{{{ PRODUCT_NAME.toUpperCase() }}}<div class="sub">BLUE HOUR AFTER THE RAIN</div><div class="bar"><div class="fill"></div></div><div class="tip"></div></div>
+    <div id="loading" data-name="{{{ PRODUCT_NAME.toUpperCase() }}}">
+      <div class="sun"></div><div class="city"></div><div class="haze"></div><div class="road"></div>
+      <div class="streak s1"></div><div class="streak s2"></div><div class="streak s3"></div><div class="rain"></div><div class="floor"></div>
+      <div class="brand"><div class="jp">雨上がり</div><div class="name"></div><div class="second"><i></i><span></span><i></i></div><div class="sub">BLUE HOUR AFTER THE RAIN</div></div>
+      <div class="foot"><div class="meter"><div class="fill"></div><div class="head"></div></div>
+        <div class="row"><span class="stage">Downloading</span><span class="pct">0 %</span></div><div class="tip"></div></div>
+    </div>
     <div id="message"></div>
     <script>
       // A refused pointer lock (page without focus, frame without permission, a click during load) is not an error:
@@ -64,14 +140,33 @@
       var forced = new URLSearchParams(location.search).get('dpr');
       if (forced) dpr = parseFloat(forced);
 
-      var fill = document.querySelector('#loading .fill');
+      // The name letter by letter (first word), the second word under a neon rule — like the game's title.
+      var loadingEl = document.getElementById('loading');
+      var words = (loadingEl.getAttribute('data-name') || '').split(' ');
+      var nameEl = loadingEl.querySelector('.name');
+      words[0].split('').forEach(function (ch, i) { var sp = document.createElement('span'); sp.textContent = ch; sp.style.animationDelay = (0.1 + 0.05 * i) + 's'; nameEl.appendChild(sp); });
+      loadingEl.querySelector('.second span').textContent = words.slice(1).join(' ');
+      if (words.length < 2) loadingEl.querySelector('.second').style.display = 'none';
+
+      var fill = loadingEl.querySelector('.fill'), head = loadingEl.querySelector('.head');
+      var stageEl = loadingEl.querySelector('.stage'), pctEl = loadingEl.querySelector('.pct');
+      var shown = 0, stage = 'Downloading';
+      // Never backwards; Unity's files are the first 70 %, the game's boot stages (PageBridge.cs) the rest.
+      function setProgress(p, text) {
+        shown = Math.max(shown, Math.min(100, p));
+        fill.style.width = shown + '%'; head.style.left = shown + '%';
+        pctEl.textContent = Math.floor(shown) + ' %';
+        if (text) { stage = text; stageEl.textContent = text; }
+      }
+      window.__jmProgress = function (share, text) { setProgress(70 + 29 * share, text); };
       // One line at a time while loading: the controls players ask for first.
-      var tips = ['Shift — nitro. Hit a ramp fast.', 'Space — handbrake drift. Chain drifts for Sparks.', 'Spend Sparks at the Open Bay: tune and paint your car.',
-        'Double-tap Space in the air for a barrel roll.', 'M — map and fast travel. P — photo mode.', 'Come back tomorrow: daily bonus and a new challenge.'];
-      var tipEl = document.querySelector('#loading .tip'), tipAt = Math.floor(Math.random() * tips.length);
-      function nextTip() { tipEl.style.opacity = 0; setTimeout(function () { tipEl.textContent = tips[tipAt++ % tips.length]; tipEl.style.opacity = 1; }, 400); }
+      var tips = ['Shift — nitro. Hit a ramp fast.', 'Shift twice — burst the whole tank at once.', 'Space — handbrake drift. Chain drifts for Sparks.',
+        'Spend Sparks at the Open Bay: tune and paint your car.', 'Double-tap Space in the air for a barrel roll.',
+        'M — map and fast travel. P — photo mode.', 'Come back tomorrow: daily bonus and a new challenge.'];
+      var tipEl = loadingEl.querySelector('.tip'), tipAt = Math.floor(Math.random() * tips.length);
+      function nextTip() { tipEl.classList.add('out'); setTimeout(function () { tipEl.innerHTML = '<b>TIP</b>' + tips[tipAt++ % tips.length]; tipEl.classList.remove('out'); }, 350); }
       nextTip();
-      var tipTimer = setInterval(nextTip, 3200);
+      var tipTimer = setInterval(nextTip, 3600);
       function show(text) { var m = document.getElementById('message'); m.textContent = text; m.style.display = 'block'; }
       createUnityInstance(document.querySelector('#unity-canvas'), {
         arguments: [],
@@ -91,17 +186,18 @@
         // Errors as a quiet note in the page, never alert(): a modal dialog in the portal frame stops everything.
         showBanner: function (msg, type) { if (type === 'error') show(msg); else console.warn(msg); },
       }, function (progress) {
-        // Unity's own files are 85 % of the bar; the rest is the world and the car (StreamedTerrain, CarModels).
-        fill.style.width = (85 * progress) + '%';
+        // Unity's own files: the first 70 % (the rest is the world and the car: StreamedTerrain, CarModels).
+        setProgress(70 * progress, progress < 1 ? 'Downloading' : 'Starting the engine');
       }).then(function (instance) {
-        // The loading screen stays until the game is playable (JapanMapLoaded at the first gameplayStart): it went
-        // with Unity's files before, and players saw black, then a grey box for a car (human, 2026-10-11).
-        var loading = document.getElementById('loading');
-        var crawl = setInterval(function () {
-          var w = parseFloat(fill.style.width) || 85;
-          fill.style.width = Math.min(99, w + (99 - w) * 0.06) + '%';
-        }, 200);
-        window.__jmLoaded = function () { clearInterval(crawl); clearInterval(tipTimer); fill.style.width = '100%'; setTimeout(function () { loading.style.display = 'none'; }, 150); };
+        // The loading screen stays until something playable stands (PageBridge: the title, or the first gameplayStart):
+        // it went with Unity's files once, and players saw black, then a grey box for a car (human, 2026-10-11).
+        var crawl = setInterval(function () { setProgress(shown + (99 - shown) * 0.02); }, 250); // a slow line never looks stuck
+        window.__jmLoaded = function () {
+          clearInterval(crawl); clearInterval(tipTimer); setProgress(100, 'Ready');
+          // A soft fade into the title (same face, same blue) instead of a cut.
+          setTimeout(function () { loadingEl.classList.add('done'); }, 120);
+          setTimeout(function () { loadingEl.style.display = 'none'; }, 700);
+        };
         setTimeout(window.__jmLoaded, 45000); // never a loading screen forever
         window.unityInstance = instance; // tools read GetMetricsInfo() (memory)
       }).catch(function (message) {

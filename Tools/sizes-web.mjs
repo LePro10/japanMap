@@ -44,7 +44,7 @@ try {
     const errors = [];
     page.on('console', (m) => { logs.push(m.text()); if (m.type() === 'error') errors.push(m.text().split('\n')[0]); });
     page.on('pageerror', (e) => errors.push(e.message));
-    await page.goto(`http://127.0.0.1:${port}/?uicheck=1`);
+    await page.goto(`http://127.0.0.1:${port}/?uicheck=1&title=off`); // the HUD check needs play, not the title (D48)
     const t0 = Date.now();
     while (!logs.some((l) => /\[Platform\] gameplayStart/.test(l)) && Date.now() - t0 < 60000) await page.waitForTimeout(250);
     const started = logs.some((l) => /\[Platform\] gameplayStart/.test(l));
