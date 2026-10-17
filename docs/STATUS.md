@@ -3,8 +3,8 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-16 · **Phase 11 (Launch):** Politur durch, **echte Figuren, Tiere und Verkehr im Spiel** (D45) ·
-**jetzt bist du dran:** anspielen (Desktop + Handy), dann hochladen
+**Stand:** 2026-10-17 · **Phase 11 (Launch):** deine Wunschliste umgesetzt (D46): Nitro-Burst, Stunts, Zerbrechen, Menü,
+Ton, Tempo-Effekte, Navi am Boden, Straßen/Reisfelder, Cockpit · **jetzt bist du dran:** anspielen (Liste „Für dich" Punkt 0)
 
 ## Phase 11 — Launch
 
@@ -13,36 +13,38 @@
 - [x] 3d. **Erster Eindruck** (D43): Intro „First Drive“, Handy-Anzeigen, Ladebildschirm, neues Pausenmenü, Ziel lesbar.
 - [x] 3e. **Politur** (D44): nasse Straße, Tokyo-Spiegel, Neon, Himmel, Meer, neue UI, Garage, Fotomodus, Tagesbonus.
 - [ ] 2b. **Basic Launch** (du lädst hoch) · [ ] 2c. Zahlen nach 7 Tagen → H1–H5 prüfen (LAUNCH.md §7b)
-- [x] 3f. **Asset-Sprint 6 in Unity** (2026-10-16, D45): Spieler, 40 Passanten und 37 Ortsfiguren sind echte Figuren
-  (18 Körper, Humanoid, 14 Clips, Schirme/Taschen/Angel/Besen in der Hand), Katzen/Hühner/Ziegen echte Modelle,
-  Verkehr 10 Modelle im japanischen Farbmix; Details/Renn-/Garagen-/Entdeckungs-Props in Bibliothek + Showroom.
-  Figuren/Verkehr laden **nach** gameplayStart nach; nur die Spielerfigur ist im Start. Bilder: `Captures/s6-me.png`,
-  `s6-peds.png`, `s6-traffic-near.png`, `s6-poses.png`. Dazu: schwarzer Streifen am Stadtrand weg (Böschung statt Kante).
+- [x] 3f. **Asset-Sprint 6 in Unity** (D45): echte Figuren, Tiere, Verkehr (nach gameplayStart nachgeladen).
+- [x] 3g. **Wunschliste 2026-10-17** (D46): Shift ×2 = Nitro-Burst (Flammen, Druckwelle, Kamera-Stoß, Schlieren) ·
+  Stunts landen gerade, neu Kickflip/Backflip/180 · Bäume kippen, Dinge fallen als sie selbst · Menü neu (Leiste oben,
+  Auto rechts frei, Autofotos aus der Garage) · Ton neu gerendert · Speed-Effekte · Navi-Band am Boden + Route auf
+  Karte · schwarze Bänder mit Schein weg · Einmündungen/Kiesrand/Reisufer · Cockpit mit Lenkrad, Tacho, Head-up.
 
-**Gemessen (2026-10-16):** Build 78 MB · **20,13–20,16 MB bis gameplayStart** (14.10.: 19,62; neue Figuren davon ~0,15 MB)
-· Chromebook-Profil (CPU ÷4, Niedrig) 48 fps (vorher 49) · Rauchprobe Niedrig 440 fps, 0 Fehler · Tokyo-Straße Niedrig 241 DC
-(vorher ≈ 230), Hoch 1013 · EditMode 148/148 · PlayMode 200/214 (7 auf Abruf; 7 Klick-/Touch-Tests rot direkt nach dem Bench, einzeln alle grün).
+**Gemessen (2026-10-17):** Build 78,2 MB · **20,25 MB bis gameplayStart** (16.10.: 20,13) · Rauchprobe 0 Fehler, Niedrig
+340 fps (M4) · EditMode 151/151 · PlayMode 207/214 (7 auf Abruf, 0 rot) · schlimmster Bruch 1,44 ms · Route: Graph 33 ms,
+Suche 5 ms. **Nicht gemessen:** Chromebook-Profil-FPS mit den neuen Effekten (Speed-Volume ist nur Uber-Pass + Blur auf Hoch).
 
 ## Offen / Gefunden
 
+- Neu (2026-10-17): Cockpit-Anzeigen nur am Hachi geprüft (Position aus `eye`/`steering_wheel` der Modelle) — andere Autos
+  ansehen. Seitenstraßen enden an schrägen Einmündungen noch rechteckig (Überlappung statt Kreuzungsfläche).
+  `AcceptanceDriveTests.RingLap` einmal im Gesamtlauf rot (9,8 m neben der Bahn), einzeln und im nächsten Gesamtlauf grün.
 - Politur offen ([POLISH.md](POLISH.md)): Kabel zwischen Masten, Touch-Knöpfe mit Icons, Musik/Umgebungstöne (Clips fehlen),
   3D-Hebebühne in der Garage, Geist der Bestzeit, Feinregler Fahrhöhe/Sturz, Store-Videos aus dem neuen Look.
 
-- **Start 20,13 MB** (Marke 20 MB, 0,13 drüber): Rest ist das Startauto Hachi mit **176 000 Eckpunkten** → Asset-Sitzung (unten).
+- **Start 20,25 MB** (Marke 20 MB): Rest ist das Startauto Hachi mit **176 000 Eckpunkten** → Asset-Sitzung (unten).
 - Funaura: Passanten laufen im Hafenbecken (Kopf über Wasser) — NavMesh unter der Wasserfläche (war mit Kisten-Figuren auch so).
 - `bench.mjs` vor einem PlayMode-Lauf lässt 7 Klick-/Touch-Tests rot werden (Game-Ansicht verstellt); einzeln grün.
 - Krähen, Tauben, Shiba und Verkehrsposten (Wave) sind importiert, haben aber noch keinen Platz in der Welt (ActorSet kennt sie nicht).
 - Midgame-Werbung zeigt CrazyGames erst nach dem Full Launch; im QA-Tool als Demo prüfbar.
 - Leistung: WebGPU später; Handy DXT→ASTC nur nach Messung (D37); Hoch-Budget (20/50 Blickpunkte > 3 M) nach deinem
   iGPU-Test. Niedrig-DC funaura-mole 504.
-- Aus früher: Ride-Höhe „Dirt“, ASTRA §11-Messungen, Gegner-Motoren, Leuchtturm, Funaura-Angler, Musik/Welt-Töne;
-  ASTRA E01/E08–E12/E15–E17 → Phase 12; Stadtplatte ohne Böschung, treppige Reisfeldränder, `commons-drive`-Kante. CI → Phase 12.
+- Aus früher: Ride-Höhe „Dirt“, ASTRA §11, Gegner-Motoren, Leuchtturm, Angler, Musik; ASTRA E01/E08–E17 → Phase 12; CI → Phase 12.
 
 ### Für die Asset-Sitzung (Maße stehen in den Daten)
 
 - **Zuerst: Hachi (Startauto) auf ≤ 40 000 Eckpunkte** (`ArtSource/cars`, heute 176 000 = 2,3 MB im Startdownload);
   danach alle Autos ≤ 60 000. Ziel: Start ≤ 20 MB.
-- **Töne** (CC0/eigen, `Assets/_Project/Art/Audio/<Name>.wav`, mono 44,1/48 kHz): Motor je Auto (`Engine_<auto>_idle`
+- **Töne** (heute aus `Tools/render-sounds.mjs`; echte Aufnahmen gleichen Namens ersetzen sie — CC0/eigen, `Assets/_Project/Art/Audio/<Name>.wav`, mono 44,1/48 kHz): Motor je Auto (`Engine_<auto>_idle`
   1,0 s; `_on0…3` 0,8 s / `_off0…3` 1,0 s bei 30/50/70/92 % Drehzahl; `Lift_<auto>` 0,9 s); Welt 3–6 s `Ambience_Workshop`,
   `_NeonHum`, `_Harbour`, `_Waterwheel`, `_PassWind`; Musik 2–4 Phrasen à 20–40 s; **Intro:** `Whoosh_SlowMo` 0,6 s.
 - **Asset-Sprint 6 ist in Unity** (2026-10-16, Import: Menü „JapanMap/Art/Import Figures + Traffic“). Die Props
@@ -52,14 +54,15 @@
 
 ## Für dich (Mensch)
 
-0. **Neue Figuren im Spiel ansehen (5 Min.):** `Captures/s6-me.png` (du zu Fuß), `s6-peds.png` (Tokyo, Fischerdorf),
-   `s6-poses.png`; im Spiel: aussteigen (F), durch Tokyo laufen. Sag: Stil/Bewegung ok / was stört. Auch: ist der
-   schwarze Streifen am Stadtrand überall weg (`Captures/streak-final.png`)?
-1. **Neue Version anspielen (10 Min.):** Terminal: `node Tools/serve-web.mjs --preview`, dann http://127.0.0.1:8092
-   im privaten Fenster. Prüfe: Tokyo bei Regen-Spiegelung (Hoch), Pausenmenü (Esc) mit Kamerafahrt, Garage („Tune now“),
-   Fotomodus (P, mit Maus ziehen, Mausrad), Rennen bis zum Ergebnis, Meer an der Küste. Handy: `--preview --public`.
-   Sag je Punkt ok / was stört.
-2. **Desktop genauso:** http://127.0.0.1:8092 (privates Fenster) — Tab halten überspringt das Intro.
+0. **Die neue Fassung anspielen (15 Min.):** `node Tools/serve-web.mjs --preview`, http://127.0.0.1:8092 (privates Fenster).
+   Bitte je Punkt „ok" oder was stört: (a) **Shift zweimal schnell** = Nitro-Burst (vor einer Schanze), (b) **Stunts**:
+   Leertaste doppelt — geradeaus = Kickflip, mit Lenken = 360, Lenken+S = 180, in der Luft = Rolle, S+doppelt = Backflip,
+   (c) Baum/Laterne umfahren, (d) **Esc-Menü** (Auto rechts sichtbar? Autos-Seite mit Fotos), (e) **Ton mit Kopfhörern**
+   (Motor, Reifen, Burst-Wumms), (f) ab ~100 km/h Schlieren/Unschärfe — zu viel/zu wenig?, (g) Karte (M) → Punkt antippen →
+   „Set waypoint here": Band auf der Straße + Linie auf der Karte, (h) Straßen außerhalb Tokyos + Reisfelder,
+   (i) **C** = Cockpit: Lenkrad, Tacho, Anzeige auf der Scheibe. Bilder vorab: `Captures/cockpit/c1.png`,
+   `Captures/menu/play.png`, `Captures/nav/m.png`, `Captures/roads/k2.png`, `Captures/smash/t.png`.
+1. **Handy:** dieselbe Liste mit `--preview --public` (Touch: BOOST doppelt = Burst, STUNT-Knopf).
 3. **CrazyGames-QA-Tool** (developer.crazygames.com → ZIP vom **Inhalt** von `Builds/Web`): (a) Werbung im Ergebnis-
    Bildschirm, (b) AdBlocker an: Sofortstart, kein „Watch ad“, (c) Vollbild, dann Esc und MENU, (d) Login + Speichern,
    (e) Foto (P → Enter). Je Punkt ok / was falsch war.
@@ -73,6 +76,5 @@
 
 | Datum | Typ | Gesamt | Start bis gameplayStart | Boot (lokal) |
 |---|---|---|---|---|
-| 2026-10-11 | Release, Phase 11/2 (Name, Lotse, SDK-Sofortstart) | 82,2 MB in 96 Dateien | 18,45 MB | 0,5 s |
-| 2026-10-11 | Release, Phase 11/3 (Intro, Handy-UI, Menü, Start mit Auto) | 82,2 MB in 97 Dateien | 20,6 MB (inkl. Startauto) | 0,8 s |
 | 2026-10-16 | Release, Asset-Sprint 6 (Figuren, Tiere, Verkehr nachgeladen) | 78,2 MB in 102 Dateien | 20,13 MB | 1,1 s |
+| 2026-10-17 | Release, Wunschliste (Burst, Menü, Navi, Cockpit, Straßen) | 78,2 MB in 102 Dateien | 20,25 MB | 0,8 s |
