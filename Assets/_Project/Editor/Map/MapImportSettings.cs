@@ -49,6 +49,8 @@ namespace JapanMap.Editor.Map
         public float paddyBankInset = 0.25f;
         [Tooltip("Paddy shore where the dry side lies lower (a terrace edge), m (legacy dropInset 0.55).")]
         public float paddyDropInset = 0.55f;
+        [Tooltip("A dry corner this much above the water counts as dam: the water runs on under it, m.")]
+        public float paddyDamClear = 0.04f;
         [Tooltip("Legacy water.config RIVER: surfaceRise, edgeSink, minDepth, maxDepth, widthFactor.")]
         public float riverSurfaceRise = 0.9f;
         public float riverEdgeSink = 0.2f;
@@ -84,8 +86,16 @@ namespace JapanMap.Editor.Map
 
         [Header("Terrain under roads (Phase 3: the 1.5 m heightmap poked up to 4 m through the ring at a cliff)")]
         [Tooltip("Terrain is kept this far below the road centreline across road + shoulder, m.")]
-        public float carveDepth = 0.03f;
-        [Tooltip("Width of the 45° bank from the shoulder edge back up to the natural ground, m.")]
+        public float carveDepth = 0.06f;
+        [Tooltip("Extra depth per metre from the centre line under the carriageway (banked bends), m/m.")]
+        public float carveBankSlope = 0.04f;
+        [Tooltip("Ground under the inner edge of the gravel verge, below the shoulder edge, m.")]
+        public float carveVergeMargin = 0.16f;
+        [Tooltip("Rise of the ground under the verge per metre outwards (the verge itself meets the ground at its outer edge). " +
+                 "1 = the old 45° bank, only carveVergeMargin lower: a gentler rise widened every cut and dug a 36 cm step in " +
+                 "front of the Terrace Roller ramp.")]
+        public float carveVergeRise = 1f;
+        [Tooltip("Width of the 45° bank from the verge's outer edge back up to the natural ground, m.")]
         public float carveBank = 2f;
         [Tooltip("Deeper cuts are left alone (a road that far below ground is a tunnel, not a bump), m.")]
         public float carveMaxDepth = 8f;

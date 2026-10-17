@@ -18,7 +18,7 @@ MonoBehaviour:
     title: Founder's Plaque
     hint: 
     position: {x: 538, y: -496}
-    ground: 26.739788
+    ground: 26.710255
     yaw: 0
     trigger: 0
     buttons: []
@@ -108,7 +108,7 @@ MonoBehaviour:
     title: Retired start board
     hint: Count them home.
     position: {x: -349, y: -589}
-    ground: 31.933071
+    ground: 31.903286
     yaw: 180
     trigger: 2
     buttons:

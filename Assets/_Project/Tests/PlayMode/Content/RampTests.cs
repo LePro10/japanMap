@@ -100,6 +100,7 @@ namespace JapanMap.Tests.Content
                 pilot.Begin(car, line, false);
                 var before = stunts.Count;
                 var lipKmh = 0f;
+                var trace = new System.Text.StringBuilder();
                 var landings = new List<string>();
                 // Bumps on the natural run-up may score their own little jump first: wait for this ramp's.
                 StuntResult? mine = null;
@@ -110,12 +111,13 @@ namespace JapanMap.Tests.Content
                     var l = stunts.Judge.LastLanding;
                     if (l != "" && (landings.Count == 0 || landings[^1] != l)) landings.Add(l);
                     if (Vector3.Dot(car.transform.position - foot, r.Forward) < r.riseLength) lipKmh = car.Telemetry.speed * 3.6f;
+                    if (Time.frameCount % 6 == 0) trace.Append($"{Vector3.Dot(car.transform.position - foot, r.Forward):0}:{car.Telemetry.speed * 3.6f:0}{(car.Telemetry.airborne ? "a" : "")} ");
                     yield return null;
                 }
                 stunts.Scored -= OnScored;
                 Object.Destroy(pilot);
                 var got = mine ?? default;
-                var entry = $"{r.id}: lip {lipKmh:0} km/h → {(mine != null ? got.title : "no jump from this ramp")} (ramp {got.ramp}, air {got.airtime:0.00} s) · {stunts.Judge.LastLanding} · along {Vector3.Dot(car.transform.position - foot, r.Forward):0} m · all: {string.Join(" / ", landings)}";
+                var entry = $"{r.id}: lip {lipKmh:0} km/h → {(mine != null ? got.title : "no jump from this ramp")} (ramp {got.ramp}, air {got.airtime:0.00} s) · {stunts.Judge.LastLanding} · along {Vector3.Dot(car.transform.position - foot, r.Forward):0} m · all: {string.Join(" / ", landings)} · trace {trace}";
                 report.Add(entry);
                 if (mine == null || got.distance < 5f) failed.Add(entry);
                 yield return new WaitForSeconds(0.3f);

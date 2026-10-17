@@ -147,3 +147,7 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
   greift im Edit-Modus nicht — `views.mjs` zeigte Grasdichte 0,6 und 1,0 gleich.
 - **Editor zu?** Nur `Tools/lib` (`editorIsOpen`) entscheidet; `compile.mjs`/`unity-test.mjs` brauchen den offenen Editor und warten
   sonst. Bei geschlossenem Editor: `verify.mjs`, `build-web.mjs`, `unity-run.mjs` (Batchmode).
+- **`play.mjs` mit `record`:** der Befehl kehrt sofort zurück — danach `wait <Sekunden>`, sonst endet das Spiel vor
+  der Aufnahme und es entsteht keine WAV.
+- **Neue Felder an Objekten, die ein Setup-Skript baut** (`ContentSetup` baut z. B. das HUD neu): den Link auch im
+  Setup-Skript setzen (`Set(hud, "feld", asset)`), nicht nur in der Szene — sonst ist er nach dem nächsten Setup weg.

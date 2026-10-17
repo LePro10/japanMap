@@ -54,7 +54,12 @@ namespace JapanMap.Editor.Map
                     var half = road.width / 2f;
                     var shoulder = shoulderOf(road.type);
                     var core = half + shoulder;
-                    var reach = core + s.carveBank;
+                    // Beyond the shoulder the gravel verge runs down onto the ground: keep the ground under it too, or the
+                    // 1.5 m terrain grid pokes through it in a saw-tooth (owner 2026-10-17: "Übergang zum Dreck").
+                    var verge = shoulder > 0f ? s.roadVerge : 0f;
+                    // Only highway and mountain roads bank in bends (RoadImporter: banking data).
+                    var bankSlope = road.type == "highway" || road.type == "mountain" ? s.carveBankSlope : 0f;
+                    var reach = core + verge + s.carveBank;
                     var segments = road.closed ? p.Length : p.Length - 1;
                     for (var i = 0; i < segments; i++)
                     {
@@ -89,8 +94,13 @@ namespace JapanMap.Editor.Map
                             if (d > reach) continue;
                             // The road mesh drops by roadShoulderDrop across the shoulder; follow it.
                             var drop = shoulder > 0f ? s.roadShoulderDrop * Mathf.Clamp01((d - half) / shoulder) : 0f;
-                            var surface = Mathf.LerpUnclamped(a.y, b.y, tRaw) - s.carveDepth - drop;
-                            var allowed = surface + Mathf.Max(0f, d - core);
+                            // A little more below the edges than the centre: banked bends tilt the deck by a few degrees.
+                            var surface = Mathf.LerpUnclamped(a.y, b.y, tRaw) - s.carveDepth - drop - Mathf.Min(d, core) * bankSlope;
+                            var allowed = d <= core
+                                ? surface
+                                : d <= core + verge
+                                    ? surface - s.carveVergeMargin + (d - core) * s.carveVergeRise
+                                    : surface - s.carveVergeMargin + verge * s.carveVergeRise + (d - core - verge);
                             var world = origin.y + h[r, c] * size.y;
                             var cut = world - allowed;
                             if (!cutting)

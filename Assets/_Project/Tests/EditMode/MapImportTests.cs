@@ -143,11 +143,15 @@ namespace JapanMap.Tests
         public void Roads_LieOnTheCarvedTerrain()
         {
             // Floating or sunken roads show up as a large p95; bridges/viaducts (> 1.5 m) are counted apart.
-            foreach (var f in RoadImporter.MeasureFit(MapImportSettings.LoadOrCreate()))
+            var s = MapImportSettings.LoadOrCreate();
+            foreach (var f in RoadImporter.MeasureFit(s))
             {
                 Assert.That(f.samples, Is.GreaterThan(100), f.type);
-                Assert.That(Mathf.Abs(f.median), Is.LessThan(0.05f), $"{f.type}: median {f.median:F3} m");
-                Assert.That(f.p95Abs, Is.LessThan(0.15f), $"{f.type}: |p95| {f.p95Abs:F3} m");
+                // The ground is kept carveDepth below the road (deeper since 2026-10-17: grass poked through banked edges).
+                Assert.That(Mathf.Abs(f.median), Is.LessThan(s.carveDepth + 0.03f), $"{f.type}: median {f.median:F3} m");
+                // 0.25: where a side road's verge meets the ring the ground is kept a little lower under the ring too
+                // (verge margin, 2026-10-17) — under the deck, unseen; a floating road is more than that.
+                Assert.That(f.p95Abs, Is.LessThan(0.25f), $"{f.type}: |p95| {f.p95Abs:F3} m");
             }
         }
 

@@ -23,6 +23,7 @@ namespace JapanMap.Editor.Content
         const float FoundationDepth = 0.6f;
         const float ExitLength = 8f;
         const float LeadIn = 6f;
+        const float BlendLength = 14f;
         const float CullDistance = 400f;
 
         [MenuItem("JapanMap/Content/Build Ramps")]
@@ -127,6 +128,21 @@ namespace JapanMap.Editor.Content
                 var pts = new List<Vector3>();
                 // From in front of the lead-in, level with the kicker's foot: the car rolls from ground that
                 // is exactly at the lead-in's height (a 0.35 m drop there let the body slam the ramp at 79 km/h).
+                // Before that a ramp of ground eases from the natural height to the lead-in's over BlendLength: the lead-in
+                // filled 0.36 m above the ground in front of the Terrace Roller, and that step stopped the car dead.
+                // Only where the ground in front lies below the lead-in (a step up into it); ramps whose run-up comes down
+                // onto the lead-in keep their old ground — moving that crest made Market Loading Bank and Breakyard
+                // take off early.
+                var stepUp = PlaceImporter.Ground(At(r, -LeadIn - 8f, 0f)) < Base(r, 0f) - 0.05f;
+                for (var s = -LeadIn - 6f - BlendLength; stepUp && s < -LeadIn - 6f; s += 2f)
+                {
+                    var p = At(r, s, 0f);
+                    var t = Mathf.SmoothStep(0f, 1f, (s + LeadIn + 6f + BlendLength) / BlendLength);
+                    // Fill only: a hump in front of a ramp stays (cutting it moved the crest and the car took off early).
+                    var ground = PlaceImporter.Ground(p);
+                    p.y = Mathf.Max(Mathf.Lerp(ground, Base(r, 0f), t), ground + settings.carveDepth);
+                    pts.Add(p);
+                }
                 for (var s = -LeadIn - 6f; s <= end; s += 4f) { var p = At(r, s, 0f); p.y = Base(r, Mathf.Max(0f, s)); pts.Add(p); }
                 roads.Add(new RoadNetwork.Road { id = "ramp-" + r.id, type = "ramp", closed = false, width = Mathf.Max(r.width, r.landingWidth) + 1f, points = pts.ToArray() });
                 fills.Add("ramp-" + r.id);

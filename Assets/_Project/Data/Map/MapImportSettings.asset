@@ -106,7 +106,7 @@ MonoBehaviour:
   railTop: 0.85
   railOffset: 0.35
   railPostSpacing: 4
-  carveDepth: 0.03
+  carveDepth: 0.06
   carveBank: 2
   carveMaxDepth: 8
   carveGapFill: 1

@@ -260,7 +260,11 @@ namespace JapanMap.Editor.Map
                 // Surfaces overlap at another level: a ramp or plate across the other road — unless this
                 // road is a viaduct here (its deck clears the ground), which may cross above.
                 var bridge = groundAt != null && c[i * 3 + 1] - groundAt(c[i * 3], -c[i * 3 + 2]) > OverheadClearance;
-                var across = d < half + ownHalf && Mathf.Abs(dy) > OverlapHeight && !bridge;
+                // Only a surface lying ON the other carriageway at another level is a plate across it. The mouth of an
+                // ordinary junction (centreline beside the other road, own edges overlapping its edge) is not: counting
+                // it cut every side road ~14 m short and left grass between it and the road it joins (owner 2026-10-17:
+                // "Kreuzungen sehen schlecht aus").
+                var across = onIt && Mathf.Abs(dy) > OverlapHeight && !bridge;
                 if (!onIt && !across) break;
                 if (across) ramp++;
                 otherHalf = Mathf.Max(otherHalf, half);

@@ -77,7 +77,7 @@ namespace JapanMap.Editor.Map
         /// </summary>
         static IEnumerable<(string, Mesh)> PaddyMeshes(MapImportSettings settings)
         {
-            var mask = PaddyMask(settings, out var res);
+            var mask = PaddyMask(settings, out var res, out var keptDry);
             const float worldSize = 3072f, half = worldSize / 2f; // legacy WORLD.size: the mask spans the original 2048² map
             var step = worldSize / (res - 1);
             float X(int i) => -half + i * step;
@@ -122,16 +122,24 @@ namespace JapanMap.Editor.Map
                 var floor = float.MaxValue;
                 for (var k = 0; k < 4; k++) if (wet[k]) floor = Mathf.Min(floor, Ground(ci[k], cj[k]));
                 var level = floor + settings.paddyDepth;
+                // A dry corner that stands above the water (the dam) is covered too: the water runs on under the earth,
+                // and the shore is where the dam rises out of it — a soft line along the ground instead of a straight
+                // cut 0.25 m short of the dam (owner 2026-10-17: "eckig abgeschnitten"). Only where the dry side lies
+                // lower (a terrace edge) does the water stop short, so it never hangs in the air.
+                var cover = new bool[4];
+                // Texels dried on purpose (places, discoveries, ramp run-ups) are never water, dam or not.
+                for (var k = 0; k < 4; k++)
+                    cover[k] = wet[k] || (!keptDry[cj[k] * res + ci[k]] && Ground(ci[k], cj[k]) > level + settings.paddyDamClear);
                 polygon.Clear();
                 for (var k = 0; k < 4; k++)
                 {
                     var n = (k + 1) % 4;
                     var pk = new Vector3(X(ci[k]), level, Z(cj[k]));
                     var pn = new Vector3(X(ci[n]), level, Z(cj[n]));
-                    if (wet[k]) polygon.Add(pk);
-                    if (wet[k] == wet[n]) continue;
-                    // From the wet corner towards the dry one.
-                    var (w, d, dk) = wet[k] ? (pk, pn, n) : (pn, pk, k);
+                    if (cover[k]) polygon.Add(pk);
+                    if (cover[k] == cover[n]) continue;
+                    // From the covered corner towards the low dry one.
+                    var (w, d, dk) = cover[k] ? (pk, pn, n) : (pn, pk, k);
                     var t = Ground(ci[dk], cj[dk]) < level ? dropT : bankT;
                     polygon.Add(Vector3.Lerp(w, d, t));
                 }
@@ -237,7 +245,7 @@ namespace JapanMap.Editor.Map
             mask[j * res + i] && mask[j * res + i + 1] && mask[(j + 1) * res + i] && mask[(j + 1) * res + i + 1];
 
         /// <summary>paddy.png → wet flags, index j * res + i with j south → north (PNG row 0 is north).</summary>
-        static bool[] PaddyMask(MapImportSettings settings, out int res)
+        static bool[] PaddyMask(MapImportSettings settings, out int res, out bool[] keptDry)
         {
             var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false, true);
             try
@@ -248,8 +256,11 @@ namespace JapanMap.Editor.Map
                 var px = tex.GetPixels32(); // Texture2D row 0 = last PNG row = south
                 var wet = new bool[px.Length];
                 for (var k = 0; k < px.Length; k++) wet[k] = px[k].r > 127;
+                var raw = (bool[])wet.Clone();
                 Places.PlaceImporter.Dry(wet, res, settings);
                 DryDiscoveries(wet, res);
+                keptDry = new bool[wet.Length];
+                for (var k = 0; k < wet.Length; k++) keptDry[k] = raw[k] && !wet[k];
                 return wet;
             }
             finally { UnityEngine.Object.DestroyImmediate(tex); }
