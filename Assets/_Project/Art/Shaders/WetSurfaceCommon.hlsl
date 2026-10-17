@@ -35,8 +35,9 @@ half JmLine(float distance, half width)
 }
 
 // Returns the puddle share (0…1) for the mirror.
-half ApplyWetSurface(inout SurfaceData s, float3 positionWS, float4 road)
+half ApplyWetSurface(inout SurfaceData s, float3 positionWS, float4 road, half flat)
 {
+    SurfaceData dry = s;
     float2 xz = positionWS.xz;
     bool isRoad = road.z > 0.01;
     float edge = isRoad ? saturate(abs(road.x) / road.z) : 0.0;   // 0 centre … 1 carriageway edge
@@ -82,7 +83,11 @@ half ApplyWetSurface(inout SurfaceData s, float3 positionWS, float4 road)
     s.albedo *= lerp(1.0h, _PuddleDarken, puddle);
     s.normalTS = normalize(lerp(s.normalTS, half3(0, 0, 1), puddle * _PuddleFlatten));
     s.occlusion = lerp(s.occlusion, 1.0h, puddle * 0.5h);
-    return puddle;
+    // Steep faces: back to the dry surface (no film, no puddle, no paint: markings lie on the flat).
+    s.albedo = lerp(dry.albedo, s.albedo, flat);
+    s.smoothness = lerp(min(dry.smoothness, 0.35h), s.smoothness, flat);
+    s.normalTS = normalize(lerp(dry.normalTS, s.normalTS, flat));
+    return puddle * flat;
 }
 
 // The city mirror (PlanarReflection.cs): x = plane height, y = strength, z = ripple distortion, w = 1 when rendered.

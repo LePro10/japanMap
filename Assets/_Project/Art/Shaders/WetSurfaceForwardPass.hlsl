@@ -255,7 +255,10 @@ void LitPassFragment(
 
     SurfaceData surfaceData;
     InitializeStandardLitSurfaceData(input.uv, surfaceData);
-    half puddle = ApplyWetSurface(surfaceData, input.positionWS, input.roadData);
+    // Water lies only on what faces up: a steep face (a slab's side, a kerb, an embankment) stays dry. A mirror puddle
+    // on a vertical face turned black with a white glare above it (owner 2026-10-17: "schwarz überbeleuchtete Dinger").
+    half flat = (half)saturate(normalize(input.normalWS).y * 3.3 - 2.3);
+    half puddle = ApplyWetSurface(surfaceData, input.positionWS, input.roadData, flat);
 
 #ifdef LOD_FADE_CROSSFADE
     LODFadeCrossFade(input.positionCS);
