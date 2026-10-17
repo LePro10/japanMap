@@ -88,6 +88,26 @@ MonoBehaviour:
     clip: {fileID: 8300000, guid: b5168c56d06194c9393945b525be36fa, type: 3}
     volume: 0.7
     pitchJitter: 0.08
+  - name: Crunch_Metal
+    group: 1
+    clip: {fileID: 8300000, guid: 01eed64df139f4f56b0c2f3c8ea4f058, type: 3}
+    volume: 0.9
+    pitchJitter: 0.08
+  - name: Glass_Shatter
+    group: 1
+    clip: {fileID: 8300000, guid: 3e384853ef6964c18b3472ed34a1ab77, type: 3}
+    volume: 0.7
+    pitchJitter: 0.08
+  - name: Wheel_Off
+    group: 1
+    clip: {fileID: 8300000, guid: 60e4e03dcad5c4356987286ca901f7e1, type: 3}
+    volume: 0.85
+    pitchJitter: 0.06
+  - name: Scrape_Metal
+    group: 1
+    clip: {fileID: 8300000, guid: db1eab4c9aafa4d00a2f9fcc6402a679, type: 3}
+    volume: 0.8
+    pitchJitter: 0
   - name: Wind
     group: 2
     clip: {fileID: 8300000, guid: 0209f1e1df1994467b80eafa72ac6c46, type: 3}

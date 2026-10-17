@@ -76,6 +76,8 @@ namespace JapanMap.Gameplay.Smash
             var radius = trunk != null ? trunk.radius : 0.35f;
             var at = r.data.positions[index];
             r.SetHidden(index, true);
+            // The car felt a share of it: a trunk at speed leaves a deep fold (D47).
+            JapanMap.Vehicles.VehicleDamage.Soften(body, c.GetContact(0).thisCollider, Mathf.Abs(Vector3.Dot(rel, n)) * kind.carDamage);
             _trees.Add((r, index, Time.time, at));
             Breaks++;
             TreesBroken++;
@@ -189,9 +191,10 @@ namespace JapanMap.Gameplay.Smash
             return false;
         }
 
-        internal void Break(Breakable b, Rigidbody car, Vector3 relativeVelocity)
+        internal void Break(Breakable b, Rigidbody car, Vector3 relativeVelocity, float approach = 0f, Collider touched = null)
         {
             if (!TakeBreakSlot()) return;
+            JapanMap.Vehicles.VehicleDamage.Soften(car, touched, approach * b.Kind.carDamage);
             _watch.Restart();
             var kind = b.Kind;
             var bounds = b.Bounds;

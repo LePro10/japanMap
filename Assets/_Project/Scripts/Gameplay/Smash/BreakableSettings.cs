@@ -24,6 +24,9 @@ namespace JapanMap.Gameplay.Smash
             public float energy = 9000f;
             [Tooltip("Speed the car loses, m/s (legacy cone 0.15, crate 0.45, barrel 0.9).")]
             public float carLoss = 0.9f;
+            [Tooltip("Share of the approach speed the car's body feels as a hit when this breaks (D47): a sign or a fence " +
+                     "almost nothing, a lamp post a dent, a tree a deep one.")]
+            [Range(0f, 1f)] public float carDamage = 0.3f;
             [Tooltip("Debris pieces: count along x, y, z of the collider box.")]
             public Vector3Int split = new(1, 3, 1);
             [Tooltip("Mass of the whole object, kg (pieces share it).")]
@@ -33,18 +36,22 @@ namespace JapanMap.Gameplay.Smash
 
         public Kind[] kinds =
         {
-            new() { name = "post", match = new[] { "delineator", "streetLamp", "avenueLamp", "parkLamp", "lampPost", "bicycle" },
-                    minSpeed = 4.6f, energy = 9000f, carLoss = 0.9f, split = new Vector3Int(1, 3, 1), mass = 60f, color = new Color(0.32f, 0.33f, 0.35f) },
+            new() { name = "post", match = new[] { "streetLamp", "avenueLamp", "parkLamp", "lampPost" },
+                    minSpeed = 4.6f, energy = 9000f, carLoss = 0.9f, carDamage = 0.35f, split = new Vector3Int(1, 3, 1), mass = 60f, color = new Color(0.32f, 0.33f, 0.35f) },
+            new() { name = "light", match = new[] { "delineator" },
+                    minSpeed = 4.6f, energy = 9000f, carLoss = 0.3f, carDamage = 0.03f, split = new Vector3Int(1, 2, 1), mass = 8f, color = new Color(0.9f, 0.45f, 0.15f) },
+            new() { name = "bike", match = new[] { "bicycle" },
+                    minSpeed = 4.6f, energy = 9000f, carLoss = 0.5f, carDamage = 0.08f, split = new Vector3Int(1, 2, 1), mass = 20f, color = new Color(0.7f, 0.7f, 0.72f) },
             new() { name = "vending", match = new[] { "vending" },
-                    minSpeed = 6.0f, energy = 15000f, carLoss = 2.0f, split = new Vector3Int(2, 3, 1), mass = 250f, color = new Color(0.82f, 0.84f, 0.86f) },
+                    minSpeed = 6.0f, energy = 15000f, carLoss = 2.0f, carDamage = 0.45f, split = new Vector3Int(2, 3, 1), mass = 250f, color = new Color(0.82f, 0.84f, 0.86f) },
             new() { name = "fence", match = new[] { "rack", "netRack", "squidRack", "dryingNet", "lanternRack", "crateStack", "bench", "parkBench", "yardGear" },
-                    minSpeed = 1.4f, energy = 0f, carLoss = 0.45f, split = new Vector3Int(3, 2, 1), mass = 40f, color = new Color(0.45f, 0.33f, 0.2f) },
+                    minSpeed = 1.4f, energy = 0f, carLoss = 0.45f, carDamage = 0.06f, split = new Vector3Int(3, 2, 1), mass = 40f, color = new Color(0.45f, 0.33f, 0.2f) },
             new() { name = "hut", match = new[] { "shed", "fishHut" },
-                    minSpeed = 7.8f, energy = 21000f, carLoss = 3.0f, split = new Vector3Int(3, 3, 2), mass = 600f, color = new Color(0.42f, 0.32f, 0.22f) },
+                    minSpeed = 7.8f, energy = 21000f, carLoss = 3.0f, carDamage = 0.6f, split = new Vector3Int(3, 3, 2), mass = 600f, color = new Color(0.42f, 0.32f, 0.22f) },
         };
 
         [Header("Trees (instanced vegetation; legacy TREE_BREAK_SPEED 7.8 / TREE_BREAK_ENERGY 21 000)")]
-        public Kind tree = new() { name = "tree", minSpeed = 7.8f, energy = 21000f, carLoss = 3.5f, split = new Vector3Int(1, 3, 1), mass = 400f, color = new Color(0.33f, 0.24f, 0.16f) };
+        public Kind tree = new() { name = "tree", minSpeed = 7.8f, energy = 21000f, carLoss = 3.5f, carDamage = 0.55f, split = new Vector3Int(1, 3, 1), mass = 400f, color = new Color(0.33f, 0.24f, 0.16f) };
         [Tooltip("Crown pieces thrown from the top of the trunk (legacy DebrisFx: the tree tips over, then parts).")]
         public int treeCrownPieces = 4;
         public Color treeCrown = new(0.2f, 0.33f, 0.18f);

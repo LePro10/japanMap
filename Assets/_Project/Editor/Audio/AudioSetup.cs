@@ -93,6 +93,11 @@ namespace JapanMap.Editor.Audio
             E("Break_Wood", SoundGroup.Tyres, 0.8f, 0.1f);
             E("Break_Cone", SoundGroup.Tyres, 0.8f, 0.1f);
             E("Break_Barrel", SoundGroup.Tyres, 0.7f, 0.08f);
+            // Car damage (D47)
+            E("Crunch_Metal", SoundGroup.Tyres, 0.9f, 0.08f);
+            E("Glass_Shatter", SoundGroup.Tyres, 0.7f, 0.08f);
+            E("Wheel_Off", SoundGroup.Tyres, 0.85f, 0.06f);
+            E("Scrape_Metal", SoundGroup.Tyres, 0.8f);
             // World
             E("Wind", SoundGroup.World, 1f);
             E("Whoosh_Up", SoundGroup.World, 0.8f, 0.05f);

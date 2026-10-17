@@ -15,24 +15,44 @@ MonoBehaviour:
   kinds:
   - name: post
     match:
-    - delineator
     - streetLamp
     - avenueLamp
     - parkLamp
     - lampPost
-    - bicycle
     minSpeed: 4.6
     energy: 9000
     carLoss: 0.9
+    carDamage: 0.35
     split: {x: 1, y: 3, z: 1}
     mass: 60
     color: {r: 0.32, g: 0.33, b: 0.35, a: 1}
+  - name: light
+    match:
+    - delineator
+    minSpeed: 4.6
+    energy: 9000
+    carLoss: 0.3
+    carDamage: 0.03
+    split: {x: 1, y: 2, z: 1}
+    mass: 8
+    color: {r: 0.9, g: 0.45, b: 0.15, a: 1}
+  - name: bike
+    match:
+    - bicycle
+    minSpeed: 4.6
+    energy: 9000
+    carLoss: 0.5
+    carDamage: 0.08
+    split: {x: 1, y: 2, z: 1}
+    mass: 20
+    color: {r: 0.7, g: 0.7, b: 0.72, a: 1}
   - name: vending
     match:
     - vending
     minSpeed: 6
     energy: 15000
     carLoss: 2
+    carDamage: 0.45
     split: {x: 2, y: 3, z: 1}
     mass: 250
     color: {r: 0.82, g: 0.84, b: 0.86, a: 1}
@@ -50,6 +70,7 @@ MonoBehaviour:
     minSpeed: 1.4
     energy: 0
     carLoss: 0.45
+    carDamage: 0.06
     split: {x: 3, y: 2, z: 1}
     mass: 40
     color: {r: 0.45, g: 0.33, b: 0.2, a: 1}
@@ -60,6 +81,7 @@ MonoBehaviour:
     minSpeed: 7.8
     energy: 21000
     carLoss: 3
+    carDamage: 0.6
     split: {x: 3, y: 3, z: 2}
     mass: 600
     color: {r: 0.42, g: 0.32, b: 0.22, a: 1}
@@ -69,6 +91,7 @@ MonoBehaviour:
     minSpeed: 7.8
     energy: 21000
     carLoss: 3.5
+    carDamage: 0.55
     split: {x: 1, y: 3, z: 1}
     mass: 400
     color: {r: 0.33, g: 0.24, b: 0.16, a: 1}

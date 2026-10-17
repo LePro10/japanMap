@@ -56,6 +56,7 @@ namespace JapanMap.Vehicles
                 Destroy(Current.gameObject);
             }
             var car = Build(def, fleet.tuning, fleet.effects, Loadout);
+            VehicleDamage.Attach(car, fleet.damage); // a new car is a whole car
             car.transform.SetParent(transform, true);
             if (snap && roadLocator is IRoadLocator locator && locator.TryNearest(at, forward, 600f, out var p, out var f))
                 car.Place(p, Mathf.Atan2(f.x, f.z) * Mathf.Rad2Deg, fromAbove: 3f);
@@ -73,6 +74,7 @@ namespace JapanMap.Vehicles
         {
             if (Current != null) Destroy(Current.gameObject);
             var car = Build(def, fleet.tuning, fleet.effects, Loadout);
+            VehicleDamage.Attach(car, fleet.damage);
             car.transform.SetParent(transform, true);
             car.Place(position, headingDegrees, fromAbove: 2f);
             Current = car;

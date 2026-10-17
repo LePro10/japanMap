@@ -291,6 +291,34 @@ if (!only || only === 'fx') {
     writeWav('Break_Cone', peakTo(shot(0.45, (t) => bp.run(noise()) * env(t, 0.002, 0.05) * 2 + lp.run(noise()) * env(t, 0.002, 0.04) + Math.sin(2 * Math.PI * 240 * t) * env(t, 0.002, 0.04) * 0.4), 0.7), false); }
   { const m = modes([[95, 0.3, 0.5], [233, 0.25, 0.4], [611, 0.15, 0.25]]), lp = new Biquad('lp', 220, 0.8), glass = new Biquad('hp', 4000, 0.7); let left = 0;
     writeWav('Break_Barrel', peakTo(shot(1.0, (t) => { if (left <= 0 && t > 0.05 && rnd() < 60 / SR * Math.exp(-t * 3)) left = Math.round(SR * 0.004); const tink = left-- > 0 ? glass.run(noise()) : glass.run(0); return m(t) + lp.run(noise()) * env(t, 0.003, 0.08) * 1.6 + tink * 0.6; }), 0.8), false); }
+  // Car damage (D47) — after everything else, so the sounds above keep their random numbers.
+  // Body crumple: a deep thump, sheet metal folding (dense crackle that thins out), panel modes creaking, a plastic snap.
+  { const lp = new Biquad('lp', 170, 0.8), cr = new Biquad('bp', 1500, 0.9), cr2 = new Biquad('bp', 3200, 1.1), snap = new Biquad('hp', 2500, 0.7);
+    const m = modes([[212, 0.35, 0.25], [527, 0.28, 0.2], [1163, 0.18, 0.14], [1894, 0.12, 0.1], [2761, 0.08, 0.06]]); let left = 0, amp = 0;
+    writeWav('Crunch_Metal', peakTo(shot(1.2, (t) => {
+      const rate = 900 * Math.exp(-t * 5) + 40 * Math.exp(-t * 1.5);
+      if (left <= 0 && rnd() < rate / SR) { left = Math.round(SR * (0.0008 + rnd() * 0.004)); amp = 0.3 + rnd(); }
+      const grain = left-- > 0 ? noise() * amp : 0;
+      return Math.sin(2 * Math.PI * (48 - 10 * Math.min(1, t / 0.2)) * t) * env(t, 0.004, 0.11) * 1.3 + lp.run(noise()) * env(t, 0.002, 0.07) * 1.6
+        + cr.run(grain) * 1.3 + cr2.run(grain) * 0.6 + m(t) * 0.7 + snap.run(noise()) * env(t, 0.001, 0.015) * 0.8;
+    }), 0.88), false); }
+  // Glass: the crack, then many small panes tinkling down, thinning out.
+  { const crack = new Biquad('hp', 1800, 0.7), t1 = new Biquad('bp', 4200, 9), t2 = new Biquad('bp', 6100, 11), t3 = new Biquad('bp', 3100, 8); let left = 0, which = 0;
+    writeWav('Glass_Shatter', peakTo(shot(1.1, (t) => {
+      const rate = 260 * Math.exp(-t * 3.2) + 15;
+      if (left <= 0 && rnd() < rate / SR) { left = Math.round(SR * 0.0012); which = rnd() * 3 | 0; }
+      const k = left-- > 0 ? noise() : 0;
+      const tink = which === 0 ? t1.run(k) + t2.run(0) + t3.run(0) : which === 1 ? t1.run(0) + t2.run(k) + t3.run(0) : t1.run(0) + t2.run(0) + t3.run(k);
+      return crack.run(noise()) * env(t, 0.0005, 0.02) * 1.4 + tink * 2.2;
+    }), 0.8), false); }
+  // A wheel tears off: hub clank, then the tyre bouncing away.
+  { const m = modes([[410, 0.12, 0.4], [930, 0.09, 0.3], [1710, 0.06, 0.2], [2650, 0.04, 0.1]]), lp = new Biquad('lp', 140, 0.8);
+    const thud = (t, at, a) => (t > at ? Math.sin(2 * Math.PI * 70 * (t - at)) * env(t - at, 0.003, 0.05) * a : 0);
+    writeWav('Wheel_Off', peakTo(shot(0.9, (t) => m(t) + lp.run(noise()) * env(t, 0.002, 0.05) * 1.2 + thud(t, 0.28, 0.9) + thud(t, 0.5, 0.6) + thud(t, 0.66, 0.35)), 0.85), false); }
+  // Metal grinding on the road (a hub without its wheel, a door along a wall): rough band of noise, uneven, low rumble.
+  { const bp = new Biquad('bp', 2100, 1.6), bp2 = new Biquad('bp', 900, 1.2), lp = new Biquad('lp', 220, 0.7), am = new OnePole(9), am2 = new OnePole(23);
+    writeWav('Scrape_Metal', norm(bed(1.6, () => { const a = 0.55 + 0.45 * Math.abs(am.run(noise() * 5)); const b = 0.6 + 0.4 * Math.abs(am2.run(noise() * 4));
+      return bp.run(noise()) * a * 1.1 + bp2.run(noise()) * b * 0.7 + lp.run(noise()) * 0.6; }), 0.11), true); }
 }
 
 fs.writeFileSync(path.join(outDir, 'render-report.txt'), rows.join('\n') + '\n');

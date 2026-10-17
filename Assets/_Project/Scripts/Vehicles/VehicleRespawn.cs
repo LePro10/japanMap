@@ -60,11 +60,12 @@ namespace JapanMap.Vehicles
             if (_flipped > flippedSeconds || t.position.y < killHeight) Respawn();
         }
 
-        /// <summary>Nearest road point, facing the road direction closest to the current heading.</summary>
+        /// <summary>Nearest road point, facing the road direction closest to the current heading. The car comes back repaired (D47).</summary>
         public void Respawn()
         {
             if (vehicle == null) return;
             _flipped = 0f;
+            if (vehicle.TryGetComponent<VehicleDamage>(out var damage)) damage.Repair();
             var t = vehicle.transform;
             var heading = Vector3.ProjectOnPlane(t.forward, Vector3.up);
             if (heading.sqrMagnitude < 1e-4f) heading = Vector3.forward;

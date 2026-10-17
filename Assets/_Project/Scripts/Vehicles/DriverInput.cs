@@ -17,7 +17,7 @@ namespace JapanMap.Vehicles
         [SerializeField] InputActionAsset actions;
         [SerializeField] VehicleController vehicle;
 
-        InputAction _throttle, _brake, _steer, _handbrake, _boost, _respawn, _camera, _lookBack, _look, _zoom;
+        InputAction _throttle, _brake, _steer, _handbrake, _boost, _respawn, _camera, _lookBack, _look, _zoom, _repair;
         Vector2 _touchAxes;
         bool _touchHandbrake, _touchBoost;
         float _tapAt = float.NegativeInfinity, _boostTapAt = float.NegativeInfinity;
@@ -52,6 +52,7 @@ namespace JapanMap.Vehicles
             _lookBack = map.FindAction("LookBack", true);
             _look = map.FindAction("Look", true);
             _zoom = map.FindAction("Zoom", true);
+            _repair = map.FindAction("Repair", false); // T / d-pad left: fix the car where it stands (D47)
         }
 
         void OnEnable()
@@ -61,6 +62,7 @@ namespace JapanMap.Vehicles
             _boost.started += OnBoostDown;
             _respawn.performed += OnRespawn;
             _camera.performed += OnCamera;
+            if (_repair != null) _repair.performed += OnRepair;
         }
 
         void OnDisable()
@@ -69,6 +71,7 @@ namespace JapanMap.Vehicles
             _boost.started -= OnBoostDown;
             _respawn.performed -= OnRespawn;
             _camera.performed -= OnCamera;
+            if (_repair != null) _repair.performed -= OnRepair;
             actions.FindActionMap("Drive").Disable();
             ClearTouch();
         }
@@ -135,6 +138,19 @@ namespace JapanMap.Vehicles
         float _touchThrottle, _touchBrake;
 
         public void PressRespawn() => RespawnPressed?.Invoke();
+
+        /// <summary>Repair in place, free and at once (key T, d-pad left, the HUD's REPAIR button).</summary>
+        public void PressRepair()
+        {
+            if (vehicle != null && vehicle.TryGetComponent<VehicleDamage>(out var damage) && damage.NeedsRepair)
+            {
+                damage.Repair();
+                RepairPressed?.Invoke();
+            }
+        }
+
+        public event Action RepairPressed;
+        void OnRepair(InputAction.CallbackContext _) => PressRepair();
         public void PressCamera() => CameraPressed?.Invoke();
 
         void ClearTouch()

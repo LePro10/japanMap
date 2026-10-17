@@ -116,3 +116,7 @@ Break_Wood                 peak 0.80 rms 0.051
 Break_Rail                 peak 0.80 rms 0.109
 Break_Cone                 peak 0.70 rms 0.071
 Break_Barrel               peak 0.80 rms 0.119
+Crunch_Metal               peak 0.88 rms 0.098
+Glass_Shatter              peak 0.80 rms 0.045
+Wheel_Off                  peak 0.85 rms 0.161
+Scrape_Metal               peak 0.44 rms 0.110

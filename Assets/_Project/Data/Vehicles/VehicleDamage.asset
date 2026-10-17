@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 13aeb8ceb8e4f4ab0a0d9f5efb453603, type: 3}
+  m_Name: VehicleDamage
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.VehicleDamageSettings
+  dentFrom: 2.5
+  scuffFrom: 1.2
+  depthPerDeltaV: 0.012
+  depthPerDeltaV2: 0.0006
+  maxDepth: 0.85
+  radiusBase: 0.26
+  radiusPerDeltaV: 0.036
+  radiusOverObject: 0.25
+  crumple: 0.65
+  maxDisplacement: 1
+  undersideShare: 0.2
+  gatherSteps: 3
+  wheelBendPush: 0.04
+  wheelOffPush: 0.1
+  wheelOffDeltaV: 20
+  maxWobble: 7
+  pullPerBend: 0.7
+  maxPull: 0.07
+  hubRadius: 0.12
+  hubFriction: 0.75
+  looseWheelMass: 18
+  looseWheelLife: 25
+  glassCrackDeltaV: 6
+  glassBreakDeltaV: 13
+  scrapeSpeed: 4
+  scratchEvery: 0.9
+  sparkMaterial: {fileID: 2100000, guid: 076a60ea26e114f59b5d2a12ed3e09ba, type: 2}
+  debrisMaterial: {fileID: 2100000, guid: 36714ba7365694371a5e555a8fe2a0fe, type: 2}
+  decalMaterial: {fileID: 2100000, guid: 7e6952c7be77a4646b2bb627f7e77e36, type: 2}
+  sparkColor: {r: 1, g: 0.72, b: 0.32, a: 1}
+  plasticColor: {r: 0.07, g: 0.07, b: 0.075, a: 1}
+  glassColor: {r: 0.78, g: 0.88, b: 0.92, a: 0.9}
+  maxMarks: 24
+  sparksPerDeltaV: 2.2
+  bitsPerDeltaV: 0.9
+  mediumEffects: 0.7
+  lowEffects: 0.35
+  collideOnLow: 0

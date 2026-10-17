@@ -94,6 +94,7 @@ namespace JapanMap.Gameplay.Hud
             gameObject.AddComponent<SpeedPost>().Bind(player, speedProfile);
             gameObject.AddComponent<RouteGuide>().Bind(player, map, this, guideMaterial);
             gameObject.AddComponent<CockpitDisplay>().Bind(player, panelSettings, null, cockpitScreen, cockpitHud);
+            gameObject.AddComponent<RepairPrompt>().Bind(player, panelSettings); // D47: free repair, only while hurt
             _doc = gameObject.AddComponent<UIDocument>();
             _doc.panelSettings = UiPanel.Get(panelSettings);
             _doc.sortingOrder = 3;

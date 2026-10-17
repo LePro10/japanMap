@@ -50,6 +50,20 @@ namespace JapanMap.Vehicles
             public Vector3 contact, normal;
             public Collider hitCollider;
             public int hitTriangle;
+            /// <summary>Torn off in a crash (D47): the hub is left — a short leg that scrapes the road.</summary>
+            public bool missing;
+            public float hubRadius, hubFriction;
+        }
+
+        /// <summary>A bent wheel pulls a little (share of full lock, + = right). Set by <see cref="VehicleDamage"/>; no hidden damage.</summary>
+        public float SteerBias;
+
+        /// <summary>Wheel <paramref name="i"/> lost (or back): that corner sits on its hub and drags.</summary>
+        public void SetWheelMissing(int i, bool missing, float hubRadius = 0.12f, float friction = 0.75f)
+        {
+            _wheels[i].missing = missing;
+            _wheels[i].hubRadius = hubRadius;
+            _wheels[i].hubFriction = friction;
         }
 
         /// <summary>Build with explicit data — used by spawners and tests before the first step.</summary>
@@ -257,7 +271,6 @@ namespace JapanMap.Vehicles
 
             // ── Springs ───────────────────────────────────────────────────────
             var s0 = def.StaticCompression;
-            var reach = def.travel + def.wheelRadius;
             var normalSum = Vector3.zero;
             var grounded = 0;
             var bestLoad = -1f;
@@ -265,6 +278,8 @@ namespace JapanMap.Vehicles
             for (var i = 0; i < WheelCount; i++)
             {
                 ref var w = ref _wheels[i];
+                // A lost wheel leaves its hub: the same spring on a much shorter leg, so that corner sags.
+                var reach = def.travel + (w.missing ? w.hubRadius : def.wheelRadius);
                 // The ray starts where the bump stop begins and ends where the spring is unloaded.
                 var origin = transform.TransformPoint(w.local + Vector3.up * (def.travel - s0));
                 w.grounded = false;
@@ -281,6 +296,13 @@ namespace JapanMap.Vehicles
                 var spring = w.stiffness * x + w.stiffness * def.bumpStopFactor * over - w.damping * Vector3.Dot(pointVel, hit.normal);
                 var force = Mathf.Min(w.cap, Mathf.Max(0f, spring));
                 _rb.AddForceAtPosition(hit.normal * force, hit.point, ForceMode.Force);
+                if (w.missing && force > 0f)
+                {
+                    // The hub grinds along the road: friction against the slide, at that corner — the car pulls to it.
+                    var slide = pointVel - hit.normal * Vector3.Dot(pointVel, hit.normal);
+                    var sp = slide.magnitude;
+                    if (sp > 1e-3f) _rb.AddForceAtPosition(-slide / sp * (w.hubFriction * force * Mathf.Min(1f, sp / 0.5f)), hit.point, ForceMode.Force);
+                }
                 w.grounded = true;
                 w.compression = x;
                 w.load = force;
@@ -336,7 +358,9 @@ namespace JapanMap.Vehicles
             // The body owns the yaw rate: a wall hit may have changed it since the last step.
             var w0 = _rb.angularVelocity;
             _dyn.YawRate = Vector3.Dot(w0, n);
-            var r = _dyn.Step(dt, HoldStill ? new DriveInput { brake = 1f, handbrake = true } : Input, env);
+            var drive = Input;
+            if (SteerBias != 0f) drive.steer = Mathf.Clamp(drive.steer + SteerBias, -1f, 1f);
+            var r = _dyn.Step(dt, HoldStill ? new DriveInput { brake = 1f, handbrake = true } : drive, env);
 
             _rb.AddForce(fwd * r.accelLong + right * r.accelLat, ForceMode.Acceleration);
             var w1 = w0 + n * (r.yawRate - Vector3.Dot(w0, n));

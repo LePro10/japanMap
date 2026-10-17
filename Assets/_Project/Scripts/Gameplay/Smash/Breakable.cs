@@ -56,7 +56,7 @@ namespace JapanMap.Gameplay.Smash
             var n = c.contactCount > 0 ? c.GetContact(0).normal : -rel.normalized;
             var approach = Mathf.Abs(Vector3.Dot(rel, n));
             if (!ShouldBreak(body.mass, approach, _kind.minSpeed, _kind.energy)) return;
-            _system.Break(this, body, rel);
+            _system.Break(this, body, rel, approach, c.contactCount > 0 ? c.GetContact(0).thisCollider : null);
         }
 
         /// <summary>Legacy breakables.ts shouldBreak: speed and energy must both suffice.</summary>

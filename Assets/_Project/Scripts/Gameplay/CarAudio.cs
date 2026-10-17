@@ -29,6 +29,7 @@ namespace JapanMap.Gameplay
         [SerializeField] float landingSpeed = 3f;
 
         VehicleController _car;
+        VehicleDamage _damage;
         EngineSound _engine;
         TyreSound _tyres;
         ContactRelay _contacts;
@@ -109,6 +110,8 @@ namespace JapanMap.Gameplay
             _tyres = car.gameObject.AddComponent<TyreSound>();
             _contacts = car.gameObject.AddComponent<ContactRelay>();
             _contacts.Touched += OnContact;
+            _damage = car.GetComponent<VehicleDamage>();
+            if (_damage != null) _damage.Impacted += OnDamage;
             _wasAirborne = false;
         }
 
@@ -116,8 +119,16 @@ namespace JapanMap.Gameplay
 
         void OnBroke(string kind, Vector3 at, float speed)
         {
-            var name = kind switch { "tree" => "Break_Tree", "post" => "Break_Rail", "vending" => "Break_Barrel", "cone" => "Break_Cone", _ => "Break_Wood" };
+            var name = kind switch { "tree" => "Break_Tree", "post" => "Break_Rail", "bike" => "Break_Rail", "vending" => "Break_Barrel", "cone" => "Break_Cone", "light" => "Break_Cone", _ => "Break_Wood" };
             Sfx.Play(name, Mathf.Clamp01(0.4f + speed / 25f), at);
+        }
+
+        /// <summary>What the body took (D47): a crumple layer on a real dent, glass, a wheel tearing off.</summary>
+        void OnDamage(VehicleDamage.Impact hit)
+        {
+            if (hit.dent > 0.04f) Sfx.Play("Crunch_Metal", Mathf.Clamp01(0.35f + hit.dent * 1.3f), hit.point);
+            if (hit.glassBroke || hit.glassCracked) Sfx.Play("Glass_Shatter", hit.glassBroke ? 1f : 0.45f, hit.point);
+            if (hit.wheelLost >= 0) Sfx.Play("Wheel_Off", 1f, hit.point);
         }
 
         void OnContact(Collision c)
@@ -148,6 +159,7 @@ namespace JapanMap.Gameplay
             var slip = Mathf.Max(t.skid, Mathf.Abs(t.slip) * 1.7f, t.wheelspin > 1f ? Mathf.Min(1f, (t.wheelspin - 1f) * 1.1f) * 0.9f : 0f);
             var ground = t.surface switch { Surface.Gravel => TyreSound.Ground.Gravel, Surface.Terrain => TyreSound.Ground.Grass, Surface.Water => TyreSound.Ground.Water, _ => TyreSound.Ground.Asphalt };
             _tyres.Drive(t.speed, slip, ground, t.airborne);
+            _tyres.Scrape = _damage != null ? _damage.Scrape : 0f;
 
             var vy = _car.Body.linearVelocity.y;
             if (t.airborne) _airVy = Mathf.Min(_airVy, vy);

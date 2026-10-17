@@ -8,6 +8,8 @@ namespace JapanMap.Vehicles
     {
         public ArcadeTuning tuning;
         public VehicleEffectsSettings effects;
+        [Tooltip("How the player's car takes visible damage (D47); empty = none.")]
+        public VehicleDamageSettings damage;
         public VehicleDefinition[] vehicles;
         [Tooltip("Car the player starts in.")]
         public string defaultId = "hachi";

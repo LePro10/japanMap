@@ -18,7 +18,36 @@ namespace JapanMap.Vehicles
         readonly Transform[] _spin = new Transform[4];
         readonly Vector3[] _wheelRest = new Vector3[4];
         readonly float[] _spinAngle = new float[4];
+        readonly float[] _wobble = new float[4];
+        readonly bool[] _detached = new bool[4];
+        readonly Transform[] _wheelParent = new Transform[4];
+        readonly Quaternion[] _wheelRestRot = new Quaternion[4];
         float _roll, _pitch;
+
+        public Transform BodyRoot => _body;
+        public Transform Wheel(int i) => _wheel[i];
+
+        /// <summary>A bent wheel wobbles as it turns (degrees of tilt, 0 = true).</summary>
+        public void SetWobble(int i, float degrees) => _wobble[i] = degrees;
+
+        /// <summary>The wheel leaves the car (D47): its node stops following the spring; the caller re-parents it.</summary>
+        public Transform Detach(int i)
+        {
+            if (_wheel[i] == null || _detached[i]) return null;
+            _detached[i] = true;
+            return _wheel[i];
+        }
+
+        /// <summary>Back on its hub, as modelled.</summary>
+        public void Reattach(int i)
+        {
+            if (_wheel[i] == null) return;
+            _detached[i] = false;
+            _wobble[i] = 0f;
+            _wheel[i].SetParent(_wheelParent[i], false);
+            _wheel[i].localPosition = _wheelRest[i];
+            _wheel[i].localRotation = _wheelRestRot[i];
+        }
 
         public void Bind(VehicleController car, Transform model)
         {
@@ -32,6 +61,8 @@ namespace JapanMap.Vehicles
                 _wheel[i] = Find(model, WheelNames[i]);
                 if (_wheel[i] == null) continue;
                 _wheelRest[i] = _wheel[i].localPosition;
+                _wheelRestRot[i] = _wheel[i].localRotation;
+                _wheelParent[i] = _wheel[i].parent;
                 _spin[i] = Find(_wheel[i], "spin_" + WheelNames[i].Substring(6));
             }
         }
@@ -59,12 +90,12 @@ namespace JapanMap.Vehicles
 
             for (var i = 0; i < 4; i++)
             {
-                if (_wheel[i] == null) continue;
+                if (_wheel[i] == null || _detached[i]) continue;
                 var w = _car.Wheels[i];
                 // Spring travel relative to the static ride height; a wheel in the air hangs down.
                 var lift = w.grounded ? Mathf.Clamp(w.compression - s0, -def.travel, def.travel) : -s0;
                 _wheel[i].localPosition = _wheelRest[i] + Vector3.up * lift;
-                _wheel[i].localRotation = i < 2 ? Quaternion.Euler(0f, t.steerAngle * Mathf.Rad2Deg, 0f) : Quaternion.identity;
+                var steer = i < 2 ? Quaternion.Euler(0f, t.steerAngle * Mathf.Rad2Deg, 0f) : Quaternion.identity;
                 if (_spin[i] != null)
                 {
                     // Handbrake locks the rear wheels.
@@ -72,6 +103,13 @@ namespace JapanMap.Vehicles
                     if (!locked) _spinAngle[i] += t.forwardSpeed / def.wheelRadius * Mathf.Rad2Deg * dt;
                     _spin[i].localRotation = Quaternion.Euler(_spinAngle[i] % 360f, 0f, 0f);
                 }
+                // A bent rim: the wheel plane tilts about an axis that turns with the wheel — it wobbles.
+                if (_wobble[i] > 0f)
+                {
+                    var a = _spinAngle[i] * Mathf.Deg2Rad;
+                    steer *= Quaternion.AngleAxis(_wobble[i], new Vector3(0f, Mathf.Cos(a), Mathf.Sin(a)));
+                }
+                _wheel[i].localRotation = steer;
             }
 
             if (_body != null)

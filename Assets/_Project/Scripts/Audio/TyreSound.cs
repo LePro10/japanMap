@@ -15,20 +15,24 @@ namespace JapanMap.Audio
         static readonly string[] RollNames = { "Roll_Asphalt", "Roll_Gravel", "Roll_Grass", "Roll_Water" };
         readonly AudioSource[] _roll = new AudioSource[4];
         readonly float[] _rollW = new float[4];
-        AudioSource _skid, _wind;
-        float _speed, _slip, _skidEnv;
+        AudioSource _skid, _wind, _scrape;
+        float _speed, _slip, _skidEnv, _scrapeEnv;
         Ground _ground;
         bool _air;
 
         public float SkidLevel => _skid != null ? _skid.volume : 0f;
         public float RollLevel(Ground g) => _roll[(int)g] != null ? _roll[(int)g].volume : 0f;
         public bool Running { get; set; } = true;
+        /// <summary>Metal grinding on the road or a wall right now, 0…1 (a lost wheel's hub, a door along a rail — D47).</summary>
+        public float Scrape { get; set; }
+        public float ScrapeLevel => _scrape != null ? _scrape.volume : 0f;
 
         void Start()
         {
             for (var i = 0; i < 4; i++) _roll[i] = Loop(RollNames[i]);
             _skid = Loop("Skid_Asphalt");
             _wind = Loop("Wind");
+            _scrape = Loop("Scrape_Metal");
         }
 
         AudioSource Loop(string name)
@@ -74,6 +78,9 @@ namespace JapanMap.Audio
             _skidEnv = Mathf.MoveTowards(_skidEnv, target, dt / (target > _skidEnv ? 0.05f : 0.12f));
             _skid.volume = _skidEnv * Level(bank, "Skid_Asphalt") * tyres;
             _skid.pitch = Mathf.Clamp(0.85f + _speed / 80f, 0.7f, 1.4f);
+            _scrapeEnv = Mathf.MoveTowards(_scrapeEnv, Running ? Mathf.Clamp01(Scrape) : 0f, dt / (Scrape > _scrapeEnv ? 0.03f : 0.15f));
+            _scrape.volume = _scrapeEnv * Level(bank, "Scrape_Metal") * tyres;
+            _scrape.pitch = Mathf.Clamp(0.75f + _speed / 40f, 0.7f, 1.5f);
             _wind.volume = Running ? Mathf.Clamp01((_speed - 8f) / 45f) * Level(bank, "Wind") * SoundMix.Gain(SoundGroup.World) : 0f;
             _wind.pitch = Mathf.Clamp(0.7f + _speed / 70f, 0.6f, 1.6f);
         }

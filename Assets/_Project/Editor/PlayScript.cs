@@ -591,6 +591,86 @@ namespace JapanMap.Editor
                     pr.Wallet.Restore(int.Parse(a[1]));
                     return true;
                 }
+                case "carcam":
+                {
+                    // carcam angle dist [height]: camera beside the player's car, angle 0 = in front, 90 = its right (damage pictures).
+                    var pmc = Object.FindAnyObjectByType<PlayerModeController>();
+                    var camC = Camera.main;
+                    foreach (var b in camC.GetComponents<Behaviour>())
+                        if (b.GetType().Name.Contains("Cinemachine")) b.enabled = false;
+                    var ct = pmc.Car.transform;
+                    var lookC = ct.position + Vector3.up * 0.7f;
+                    var dirC = Quaternion.Euler(0f, ct.eulerAngles.y + F(1), 0f) * Vector3.forward;
+                    var up = a.Length > 3 ? F(3) : 1.2f;
+                    camC.transform.SetPositionAndRotation(lookC + dirC * F(2) + Vector3.up * up, Quaternion.LookRotation(lookC - (lookC + dirC * F(2) + Vector3.up * up)));
+                    return true;
+                }
+                case "ramwall":
+                {
+                    // ramwall kmh: the player's car 16 m before the nearest flat building wall, square on, at kmh (D47 pictures).
+                    var pmw = Object.FindAnyObjectByType<PlayerModeController>();
+                    var carW = pmw.Car;
+                    var o = carW.transform.position + Vector3.up * 1f;
+                    var mask = ~JapanMap.Core.GameLayers.NotGround;
+                    RaycastHit best = default;
+                    var found = false;
+                    for (var kw = 0; kw < 36; kw++)
+                    {
+                        var d = Quaternion.Euler(0f, kw * 10f, 0f) * Vector3.forward;
+                        if (!Physics.Raycast(o, d, out var h, 80f, mask, QueryTriggerInteraction.Ignore)) continue;
+                        if (h.distance < 10f || h.collider is TerrainCollider || Mathf.Abs(h.normal.y) > 0.2f) continue;
+                        if (h.collider.GetComponentInParent<JapanMap.Gameplay.Smash.Breakable>() != null) continue;
+                        // A wall, not a post: the face goes on either side.
+                        var side = Vector3.Cross(Vector3.up, h.normal).normalized;
+                        var wide = true;
+                        foreach (var s in new[] { -1.2f, 1.2f })
+                            if (!Physics.Raycast(h.point + h.normal * 3f + side * s, -h.normal, out var h2, 4f, mask, QueryTriggerInteraction.Ignore) || Mathf.Abs(h2.distance - 3f) > 0.3f) wide = false;
+                        if (!wide) continue;
+                        if (!found || h.distance < best.distance) { best = h; found = true; }
+                    }
+                    if (!found) { Log.AppendLine("  ramwall: no wall within 80 m"); return true; }
+                    var nW = new Vector3(best.normal.x, 0f, best.normal.z).normalized;
+                    carW.Place(best.point + nW * 16f, Mathf.Atan2(-nW.x, -nW.z) * Mathf.Rad2Deg, fromAbove: 3f);
+                    carW.Body.linearVelocity = -nW * (F(1) / 3.6f);
+                    Object.FindAnyObjectByType<JapanMap.Vehicles.CarCameraRig>().Attach(carW);
+                    Log.AppendLine($"  ramwall {best.collider.name} at {best.point:F1}");
+                    return true;
+                }
+                case "testwall":
+                {
+                    // testwall kmh [angle]: pictures only — the car on the nearest road, a concrete block 18 m ahead (turned by
+                    // angle, 0 = square on), the car at kmh towards it. A clean, repeatable crash for before/after images.
+                    if (a[1] == "off") { Object.DestroyImmediate(GameObject.Find("PlayScriptWall")); return true; } // testwall off: out of the picture
+                    var pmt2 = Object.FindAnyObjectByType<PlayerModeController>();
+                    var carT2 = pmt2.Car;
+                    var roadsT = (JapanMap.World.RoadNetwork)Object.FindAnyObjectByType<JapanMap.Vehicles.VehicleRespawn>().Locator;
+                    roadsT.TryNearest(carT2.transform.position, carT2.transform.forward, 200f, out var rp, out var rd);
+                    rd.y = 0f;
+                    rd.Normalize();
+                    carT2.Place(rp, Mathf.Atan2(rd.x, rd.z) * Mathf.Rad2Deg, fromAbove: 3f);
+                    var wall = GameObject.Find("PlayScriptWall") ?? GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    wall.name = "PlayScriptWall";
+                    wall.transform.SetPositionAndRotation(carT2.transform.position + rd * 18f + Vector3.up * 1.5f,
+                        Quaternion.LookRotation(rd) * Quaternion.Euler(0f, a.Length > 2 ? F(2) : 0f, 0f));
+                    wall.transform.localScale = new Vector3(10f, 4f, 1f);
+                    carT2.Body.linearVelocity = rd * (F(1) / 3.6f);
+                    Object.FindAnyObjectByType<JapanMap.Vehicles.CarCameraRig>().Attach(carT2);
+                    Physics.SyncTransforms();
+                    return true;
+                }
+                case "repair":
+                    // repair: the in-place repair as the key T does it.
+                    Object.FindAnyObjectByType<JapanMap.Vehicles.DriverInput>().PressRepair();
+                    return true;
+                case "damage":
+                {
+                    // damage: the player's car damage into the result (deepest crush, wheels, marks, worst hit cost).
+                    var pmd = Object.FindAnyObjectByType<PlayerModeController>();
+                    var dmg = pmd.Car.GetComponent<JapanMap.Vehicles.VehicleDamage>();
+                    Log.AppendLine(dmg == null ? "  damage: none on this car" :
+                        $"  damage {dmg.Damage01:F2}: last hit {dmg.LastHitMs:F2} ms, crush {dmg.Deformer?.MaxDisplacement:F2} m, hits {dmg.Hits}, last Δv {dmg.Last.deltaV:F1} m/s dent {dmg.Last.dent:F2}, wheels lost {dmg.WheelsLost} bent {dmg.BentWheels}, marks {dmg.Marks?.Count}, worst {dmg.WorstHitMs:F2} ms ({dmg.WorstDetail}), frame {dmg.WorstWorkMs:F2} ms");
+                    return true;
+                }
                 default:
                     Log.AppendLine("  unknown command");
                     return true;
