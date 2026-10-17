@@ -61,9 +61,18 @@ try {
     if (errors.length) break;
     await page.waitForTimeout(250);
   }
-  // A few seconds of runtime to catch errors that only appear after the first frames.
+  // A few seconds of runtime to catch errors that only appear after the first frames — with the title (D48): it
+  // must stand and the page's loading screen must go; then Enter starts the game (headless keys may not arrive).
+  let title = '';
   if (bootMs !== null) {
     await page.waitForTimeout(2000);
+    if (!extra.includes('title=off')) {
+      for (const t1 = Date.now(); !logs.some((l) => l.includes('[Title] shown')) && Date.now() - t1 < 30000;) await page.waitForTimeout(250);
+      title = logs.some((l) => l.includes('[Title] shown')) ? (logs.some((l) => l.includes('[Page] loaded')) ? ' · title ok' : ' · title shown, page loader stayed') : ' · no title';
+      await page.evaluate(() => { const c = document.querySelector('canvas'); c.tabIndex = 1; c.focus(); });
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(1500);
+    }
     // F1 shows the stats overlay in development builds (release builds ignore it).
     await page.locator('canvas').first().click();
     await page.keyboard.press('F1');
@@ -91,7 +100,7 @@ try {
     return c ? c.getParameter(d ? d.UNMASKED_RENDERER_WEBGL : c.RENDERER) : 'no webgl2';
   });
   const green = bootMs !== null && errors.length === 0;
-  console.log(`SMOKE ${green ? 'GREEN' : 'RED'}${quality ? ' · ' + quality : ''}${extra ? ' · ' + extra : ''} · boot ${bootMs === null ? 'not reached' : (bootMs / 1000).toFixed(1) + ' s'}${fpsText} · console errors ${errors.length} · ${gl} · ${out}`);
+  console.log(`SMOKE ${green ? 'GREEN' : 'RED'}${quality ? ' · ' + quality : ''}${extra ? ' · ' + extra : ''} · boot ${bootMs === null ? 'not reached' : (bootMs / 1000).toFixed(1) + ' s'}${title}${fpsText} · console errors ${errors.length} · ${gl} · ${out}`);
   for (const e of errors.slice(0, 20)) console.log('  ' + e);
   const bootLine = logs.find((l) => l.includes('[Boot]'));
   if (bootLine) console.log('  ' + bootLine);

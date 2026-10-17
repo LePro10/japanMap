@@ -7,6 +7,7 @@ namespace JapanMap.UI
     {
         None, Play, Car, Map, Records, Photo, Settings, Back, Close,
         Wheel, Flag, Circuit, Lantern, Torii, Sheaf, Lighthouse, Diamond, Clue, Spark, Ramp, Drift, Garage,
+        Lock, Tune, Daily, Home,
     }
 
     /// <summary>
@@ -149,6 +150,25 @@ namespace JapanMap.UI
                 case Icon.Drift:
                     Poly(false, false, -0.8f, 0.6f, -0.2f, 0.1f, 0.2f, -0.5f, 0.8f, -0.7f);
                     Circle(0.5f, 0.45f, 0.18f, true); break;
+                case Icon.Lock:
+                    p.BeginPath();
+                    p.Arc(P(0f, -0.25f), s * 0.5f * 0.38f, 180f, 360f);
+                    p.Stroke();
+                    Poly(false, false, -0.38f, -0.25f, -0.38f, 0f); Poly(false, false, 0.38f, -0.25f, 0.38f, 0f);
+                    Poly(true, true, -0.62f, 0f, 0.62f, 0f, 0.62f, 0.8f, -0.62f, 0.8f); break;
+                case Icon.Tune:
+                    // A wrench: jaw ring and handle.
+                    Circle(-0.4f, -0.4f, 0.32f, false);
+                    Poly(false, false, -0.17f, -0.17f, 0.7f, 0.7f); break;
+                case Icon.Daily:
+                    Poly(false, true, -0.75f, -0.55f, 0.75f, -0.55f, 0.75f, 0.75f, -0.75f, 0.75f);
+                    Poly(false, false, -0.75f, -0.15f, 0.75f, -0.15f);
+                    Poly(false, false, -0.4f, -0.8f, -0.4f, -0.4f); Poly(false, false, 0.4f, -0.8f, 0.4f, -0.4f);
+                    Circle(0.3f, 0.3f, 0.14f, true); break;
+                case Icon.Home:
+                    Poly(false, true, -0.75f, -0.05f, 0f, -0.75f, 0.75f, -0.05f);
+                    Poly(false, false, -0.55f, -0.2f, -0.55f, 0.75f, 0.55f, 0.75f, 0.55f, -0.2f);
+                    Poly(true, true, -0.15f, 0.75f, -0.15f, 0.3f, 0.15f, 0.3f, 0.15f, 0.75f); break;
             }
         }
     }

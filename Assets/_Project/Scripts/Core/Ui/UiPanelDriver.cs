@@ -9,14 +9,8 @@ namespace JapanMap.Core.Ui
     /// </summary>
     public sealed class UiPanelDriver : MonoBehaviour
     {
-#if UNITY_WEBGL && !UNITY_EDITOR
-        [System.Runtime.InteropServices.DllImport("__Internal")] static extern void JapanMapLoaded();
-        static void PageLoaded() => JapanMapLoaded();
-#else
-        static void PageLoaded() { }
-#endif
-
-        bool _noUi, _uiCheck, _loaded;
+        // The page's loading screen is PageBridge's (it goes with the title or the first gameplayStart).
+        bool _noUi, _uiCheck;
         float _next, _played;
 
         void Start()
@@ -29,11 +23,6 @@ namespace JapanMap.Core.Ui
         void Update()
         {
             UiPanel.Refresh();
-            if (!_loaded && Platform.GamePlatform.Playing)
-            {
-                _loaded = true;
-                PageLoaded();
-            }
             // ?uicheck=1: one layout report after 4 s of real play (Tools/sizes-web.mjs, phone profiles).
             if (_uiCheck && Platform.GamePlatform.Playing && (_played += Time.unscaledDeltaTime) > 4f)
             {

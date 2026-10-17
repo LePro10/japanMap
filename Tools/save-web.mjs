@@ -38,7 +38,7 @@ try {
     const errors = [];
     page.on('console', (m) => { logs.push(m.text().split('\n')[0]); if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
-    const url = `http://${host}:${port}/`;
+    const url = `http://${host}:${port}/?title=off`; // straight into the game (the title waits for a click, D48)
     const fail = (why) => { red = true; console.log(`SAVE RED · ${host} · ${why}${errors.length ? ' · errors: ' + errors.slice(0, 3).join(' | ') : ''}`); };
 
     await page.goto(url);

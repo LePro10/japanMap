@@ -86,6 +86,13 @@
 | 2026-10-17 | Session Burst/Menü/Navi | Alter Ton-Render lief nicht mehr (esbuild fehlt) | `Tools/render-sounds.mjs` ohne Abhängigkeiten | Werkzeug |
 | 2026-10-17 | Rückmeldung Straßen | Querbänder auf nasser Straße: jedes Segment eigene Ecken → RecalculateNormals flach je Segment | `ToMesh(smooth)` glättet Nähte; schwarze Leitplanken-Dreiecke (Normale 0 durch Rücken-an-Rücken-Flächen) → eigene Ecken je Seite + Prüfung Normale ≠ 0 | Werkzeug |
 | 2026-10-17 | Rückmeldung Cockpit | Nach Autowechsel blieb das Cockpit-Bild am Sitz des alten Autos (umgehängte Cinemachine-Kamera) | Cockpit-Kamera wird je Auto neu gebaut; `probe` zeigt Kamera-Position relativ zum Auto | Werkzeug |
+| 2026-10-17 | D48 Titel/Menü | `Mathf.SmoothStep(a, b, t)` als GLSL-`smoothstep` benutzt: Menü-Verlauf ließ 26 % Tinte über dem Auto | `Ui.Smooth` (GLSL-Semantik) + Test `MenuUiTests.Fades_AreClearOverTheCar`; ganzes Projekt durchsucht (2 Stellen) | Test |
+| 2026-10-17 | D48 Titel/Menü | Zweiter Agent ohne Editor konnte UI nicht sehen (play.mjs/gameview nur mit offenem Editor) | `node Tools/ui-shots.mjs`: Titel + Menü in allen Formfaktoren im Batchmode (Panel → RenderTexture, mit Kamera zusammengesetzt) inkl. Layout-Sonde | Werkzeug |
+| 2026-10-17 | D48 Titel/Menü | UIDocument unter einem anderen UIDocument wird in dessen Baum gehängt (Titel unsichtbar mit geschlossenem Menü) | Titel-Objekt eigenständig in der Szene; `ui-shots` hätte es sofort gezeigt (leere UI-Ebene) | Werkzeug |
+| 2026-10-17 | D48 Titel/Menü | Ladeseite nur mit Web-Build prüfbar | `node Tools/loader-preview.mjs`: Vorlage mit Stub-Loader im Headless-Browser, 3 Formfaktoren × 4 Momente | Werkzeug |
+| 2026-10-17 | D48 Titel/Menü | Im Projekt-Worktree kommen Geräte-Mausklicks im Batchmode nicht bei UI Toolkit an (MenuTests/MapTests rot, schon vor D48) | neue UI-Tests klicken über Panel-Pointer-Events (Trefferprüfung bleibt); Tastatur über eigene InputActions; `verify.mjs --filter` für Teilläufe | Test |
+| 2026-10-17 | D48 Titel/Menü | Titel und gameplayStart im selben Frame: Plattform-Tick vor der Titel-Entscheidung → Start+Stopp | `StartFlow.Holding` bis der Titel entschieden hat, in `GamePlatform.ShouldPlay`; Test `Title_HoldsGameplay…` | Test |
+| 2026-10-17 | D48 Titel/Menü | Layout-Sonde meldete Teile in ausblendenden Eltern als Überdeckung | `UiLayoutProbe` multipliziert die Deckkraft den Baum hinab; Titel-Teile benannt und geprüft | Test |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

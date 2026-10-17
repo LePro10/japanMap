@@ -14,6 +14,9 @@ Sichtbaren ein Bild angesehen. Ungeprüftes wird als ungeprüft gemeldet.
 |---|---|
 | `node Tools/verify.mjs` → eine Zeile GREEN/RED (Kompilierfehler, fehlgeschlagene Tests, verwaiste `.meta`) | MCP: `refresh_unity` (compile) → `read_console` (error, warning) → `run_tests` + `get_test_job` |
 | `node Tools/capture.mjs` | MCP: `manage_scene` load → `execute_menu_item` „JapanMap/Capture Main Camera" |
+| UI (Titel, Menü, alle Formfaktoren): `node Tools/ui-shots.mjs` → `Captures/ui/` | `play.mjs` mit `gameview 390 844` + `screen` |
+| Ladeseite ohne Build: `node Tools/loader-preview.mjs` → `Captures/loader/` | dasselbe |
+| Teillauf: `node Tools/verify.mjs --filter "TitleTests\|MenuUiTests" [--play]` (ohne Zählsperre) | `node Tools/unity-test.mjs` |
 
 Batchmode auf ein offenes Projekt scheitert (Sperre); die Werkzeuge melden
 dann `BLOCKED` (Exit 2). Nicht den Editor schließen, ohne den Menschen zu
@@ -70,6 +73,10 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
 - Mit abgeschaltetem Domain Reload bleiben statische Felder zwischen
   Play-Sitzungen erhalten → statische Zustände explizit zurücksetzen.
 
+- **Batchmode im Projekt-Worktree (zweiter Agent): Geräte-Mausklicks erreichen UI Toolkit nicht** (MenuTests,
+  MapTests, TouchMenuTests rot — auch ohne eigene Änderung, D48). Neue UI-Tests klicken über Panel-Pointer-Events
+  (`TitleTests.Click`), Tastatur über eigene InputActions. Diese Rotfälle nicht „reparieren", sondern melden.
+- **UIDocument nie unter ein anderes UIDocument hängen** (wird in dessen Baum geschachtelt, unsichtbar mit ihm).
 - **Batchmode-PlayMode rendert nicht:** Render-Zähler (Draw Calls, Dreiecke)
   sind dort 0. Zahlen dazu nur im offenen Editor oder im Web-Dev-Build ablesen.
 - **Der Unity-MCP verbindet sich nur beim Start einer Claude-Sitzung.** Startet

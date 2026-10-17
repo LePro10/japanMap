@@ -14,6 +14,7 @@ namespace JapanMap.Gameplay.Menu
         public override string Title => "Photo";
         public override Icon Icon => Icon.Photo;
         public override bool Action => true;
+        public override Core.FeatureId? Feature => Core.FeatureId.Photo;
 
         public override void Build(VisualElement body) => _photo.Open();
     }

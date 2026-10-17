@@ -21,6 +21,7 @@ namespace JapanMap.Gameplay.Menu
     {
         /// <summary>The map needs the whole width.</summary>
         public override bool Narrow => false;
+        public override Core.FeatureId? Feature => Core.FeatureId.Map;
 
         static readonly string[] FilterNames = { "All", "Events", "Places", "Discoveries" };
         readonly MapSystem _map;
@@ -319,6 +320,7 @@ namespace JapanMap.Gameplay.Menu
                 Ui.Small(p, open ? "Free travel — you arrive in your car on the road." : "Discover this region first: drive there once and travel opens.");
                 var b = Ui.Button(p, "Travel", () => { Menu.Close(); _travel.To(id); }, "jm-btn--primary");
                 b.SetEnabled(open);
+                MenuTiles.Gate(b, Core.FeatureId.FastTravel);
                 Ui.Button(p, "Set waypoint", () => { _map.Waypoint = point.at; Refresh(); });
                 t.AppendLine($"travel {point.title} {(open ? "open" : "locked")}");
             }

@@ -38,6 +38,7 @@ namespace JapanMap.Gameplay.Menu
 
         public override string Title => "Cars";
         public override Icon Icon => Icon.Car;
+        public override Core.FeatureId? Feature => Core.FeatureId.Garage;
         public override string Text => _text;
         string Shown => _garage.Shown;
 
@@ -57,6 +58,7 @@ namespace JapanMap.Gameplay.Menu
         /// <summary>Straight to the tuning page of the selected car (Play tile "Tune your car").</summary>
         public void ShowTune()
         {
+            if (!Core.Unlocks.IsUnlocked(Core.FeatureId.Tuning)) return;
             _page = Page.Tune;
             GameMenu.Instance?.Show(this);
         }
@@ -202,8 +204,8 @@ namespace JapanMap.Gameplay.Menu
             if (state == null)
             {
                 var afford = _progress.Wallet.Balance >= def.price;
-                Ui.Button(actions, $"Buy · {def.price:N0} Sparks", () => PurchaseSheet(def), afford ? "jm-btn--primary" : "jm-btn");
-                Ui.Button(actions, $"Test drive · {_garage.TestDriveSeconds:0} s", () => { Menu.Close(); _garage.TestDrive(def.id); });
+                MenuTiles.Gate(Ui.Button(actions, $"Buy · {def.price:N0} Sparks", () => PurchaseSheet(def), afford ? "jm-btn--primary" : "jm-btn"), Core.FeatureId.CarShop);
+                MenuTiles.Gate(Ui.Button(actions, $"Test drive · {_garage.TestDriveSeconds:0} s", () => { Menu.Close(); _garage.TestDrive(def.id); }), Core.FeatureId.TestDrive);
                 if (!afford) Ui.Small(p, $"{def.price - _progress.Wallet.Balance:N0} Sparks to go.");
                 t.AppendLine(afford ? "can buy" : "cannot afford");
                 LoanOffers(p, actions, def, t);
@@ -211,8 +213,8 @@ namespace JapanMap.Gameplay.Menu
             }
             var driving = _progress.Data.selectedCar == def.id;
             Ui.Button(actions, driving ? "Driving ✓" : "Drive this car", () => { _garage.Pick(def.id); _garage.ApplySoon(); Menu.Rebuild(); }, driving ? "jm-btn--on" : "jm-btn--primary");
-            Ui.Button(actions, "Tune", () => { _page = Page.Tune; Menu.Rebuild(); });
-            Ui.Button(actions, "Appearance", () => { _page = Page.Look; Menu.Rebuild(); });
+            MenuTiles.Gate(Ui.Button(actions, "Tune", () => { _page = Page.Tune; Menu.Rebuild(); }), Core.FeatureId.Tuning);
+            MenuTiles.Gate(Ui.Button(actions, "Appearance", () => { _page = Page.Look; Menu.Rebuild(); }), Core.FeatureId.Paint);
             if (!_garage.InBay) Ui.Small(p, "Changes reach your car as soon as it stands still. The Open Bay in Sakura Commons shows it on the floor.");
         }
 

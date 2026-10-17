@@ -58,5 +58,25 @@ namespace JapanMap.Gameplay.Intro
 
         [Tooltip("Hold Tab this long to skip, s.")]
         public float skipHold = 0.9f;
+
+        [Header("Title screen (before the intro or Continue)")]
+        [Tooltip("Show the title at all (off: straight into the game as before D48). URL ?title=off/on overrides.")]
+        public bool titleScreen = true;
+        [Tooltip("Title camera: distance from the car, m, breathing between x and y over the dolly period.")]
+        public Vector2 titleDistance = new(11f, 8f);
+        [Tooltip("Title camera height above the car's centre, m.")]
+        public float titleHeight = 1.6f;
+        [Tooltip("Degrees per second the title camera circles the car (slow: a living backdrop, not a turntable).")]
+        public float titleSpin = 2.5f;
+        [Tooltip("Seconds for one dolly in-and-out.")]
+        public float titleDollyPeriod = 40f;
+        [Tooltip("Field of view of the title shot, degrees (long lens = calm).")]
+        public float titleFov = 34f;
+        [Tooltip("Car sits this far right of the screen centre (share of the half width), clear of the title column.")]
+        public float titleFrameRight = 0.42f;
+        [Tooltip("Continue: seconds the camera flies from the title shot into the chase camera.")]
+        public float flyInSeconds = 1.4f;
+        [Tooltip("Start game (into the intro): seconds of each half of the wipe (cover, then reveal).")]
+        public float wipeSeconds = 0.38f;
     }
 }

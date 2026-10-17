@@ -110,8 +110,9 @@ namespace JapanMap.Tests.Content
             CollectionAssert.Contains(pins.Shown().ToArray(), "TUNE & CARS", "the Open Bay is marked from the Commons");
             yield return Tap(Key.Escape);
             for (var f = 0; f < 5; f++) yield return null;
-            var tune = menu.Root.Query<Button>().ToList().FirstOrDefault(b => b.text == "Tune now");
-            Assert.NotNull(tune, "Play shows a garage tile with Tune now");
+            var tune = menu.Root.Q<Button>("tile-tune");
+            Assert.NotNull(tune, "Play shows a garage tile (Tune now)");
+            StringAssert.Contains("TUNE NOW", string.Join(" ", tune.Query<Label>().ToList().Select(l => l.text)));
             yield return Click(tune);
             Assert.AreEqual("Cars", menu.Current.Title);
             StringAssert.Contains("Engine", menu.Text, "the tuning page lists the parts");

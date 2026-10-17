@@ -53,6 +53,7 @@ namespace JapanMap.Gameplay.Menu
         {
             if (player == null || Camera.main == null) return false;
             if (garage != null && garage.IsOpen) return false;
+            if (Core.Ui.StartFlow.Holding) return false; // the title owns the camera (Settings over the title)
             return Subject(out _, out _);
         }
 
@@ -110,7 +111,9 @@ namespace JapanMap.Gameplay.Menu
             var dt = Time.unscaledDeltaTime;
             _t += dt;
             _yaw += spin * dt;
-            var dist = orbit.x * scale;
+            // Phones upright see a third of the width: farther, or the car leaves the window above the page.
+            var portrait = Core.Ui.UiPanel.IsPortrait;
+            var dist = orbit.x * scale * (portrait ? 2.2f : 1f);
             var rot = Quaternion.Euler(12f, _yaw + 180f, 0f);
             var pos = centre - rot * Vector3.forward * dist + Vector3.up * (orbit.y * scale - 0.7f * scale);
             // Keep the camera out of the ground and walls (a wall behind the car: come closer).
@@ -121,9 +124,11 @@ namespace JapanMap.Gameplay.Menu
             // page covering share s from the left, that middle is s of the half width right of centre.
             var covered = menu != null ? menu.CoveredShare : 0f;
             var halfW = Mathf.Tan(Mathf.Atan(Mathf.Tan(Fov * 0.5f * Mathf.Deg2Rad) * cam.aspect));
-            var shift = covered >= 0.99f ? 0f : covered > 0.01f ? covered * halfW : frameRight;
+            var shift = portrait || covered >= 0.99f ? 0f : covered > 0.01f ? covered * halfW : frameRight;
             _shift = _t < 0.05f ? shift : Mathf.Lerp(_shift, shift, 1f - Mathf.Exp(-6f * dt));
-            var look = Quaternion.LookRotation(centre - right * (dist * _shift) - pos, Vector3.up);
+            // Phones upright: the page starts below the top third (Menu.uss), the car sits in that window.
+            var lift = portrait && covered < 0.99f ? dist * 0.26f : 0f;
+            var look = Quaternion.LookRotation(centre - right * (dist * _shift) - Vector3.up * lift - pos, Vector3.up);
             var k = blend <= 0f ? 1f : Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(_t / blend));
             cam.transform.SetPositionAndRotation(Vector3.Lerp(_fromPos, pos, k), Quaternion.Slerp(_fromRot, look, k));
             cam.fieldOfView = Mathf.Lerp(_fov, Fov, k);
