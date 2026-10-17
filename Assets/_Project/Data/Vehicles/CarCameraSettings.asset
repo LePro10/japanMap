@@ -38,7 +38,7 @@ MonoBehaviour:
   zoomMin: 0.42
   zoomMax: 2.4
   zoomStep: 0.1
-  cockpitFov: 62
+  cockpitFov: 68
   cockpitFovBoost: 2
   cockpitNear: 0.1
   cockpitLookPitch: -0.12

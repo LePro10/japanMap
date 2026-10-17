@@ -57,6 +57,11 @@ namespace JapanMap.Editor.Content
 
             var hud = Child<GameplayHud>(group, "Hud");
             Set(hud, "panelSettings", AssetDatabase.LoadAssetAtPath<PanelSettings>(PlayerSetup.PanelPath));
+            // Speed post-processing (SpeedPost) and the route tape (RouteGuide) — 2026-10-17.
+            Set(hud, "speedProfile", AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.VolumeProfile>("Assets/_Project/Data/Look/SpeedVolume.asset"));
+            Set(hud, "guideMaterial", AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Art/Materials/GuideLine.mat"));
+            Set(hud, "cockpitScreen", AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Art/Materials/CockpitScreen.mat"));
+            Set(hud, "cockpitHud", AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Art/Materials/CockpitHud.mat"));
             Set(hud, "drift", drift);
             Set(hud, "wallet", wallet);
 
@@ -232,6 +237,23 @@ namespace JapanMap.Editor.Content
             so.ApplyModifiedPropertiesWithoutUndo();
             Set(streamer, "carAudio", carAudio);
             Set(streamer, "smash", Object.FindAnyObjectByType<JapanMap.Gameplay.Smash.SmashSystem>());
+
+            // Added by later sessions straight into the scene and lost by the next Setup (2026-10-17): built here now.
+            var daily = progress.gameObject.AddComponent<JapanMap.Gameplay.Progress.DailySystem>();
+            Set(daily, "settings", Asset<JapanMap.Gameplay.Progress.DailySettings>("Daily"));
+            Set(daily, "progress", progress);
+            Set(daily, "player", player);
+            Set(daily, "hud", hud);
+            Set(daily, "drift", drift);
+            Set(daily, "stunts", stunts);
+            Set(daily, "races", races);
+            Set(daily, "discovery", discovery);
+            var pins = hud.gameObject.AddComponent<JapanMap.Gameplay.Hud.WorldPins>();
+            Set(pins, "hud", hud);
+            var menuCam = menu.gameObject.AddComponent<MenuCamera>();
+            Set(menuCam, "menu", menu);
+            Set(menuCam, "player", player);
+            Set(menuCam, "garage", garage);
 
             MapScene.Save();
             StreamingSetup.WireScene(); // starter bank only, streamed places

@@ -25,7 +25,7 @@ namespace JapanMap.Vehicles
         Transform _pivot, _lookAt, _eye;
         CinemachineCamera _chase, _cockpit;
         CinemachineFollow _follow;
-        float _heading, _orbit, _zoom = 1f, _fov, _punch, _seed;
+        float _heading, _orbit, _zoom = 1f, _fov, _punch, _seed, _lean, _surge;
         GameObject _hideInCockpit;
         bool _live = true;
 
@@ -195,7 +195,11 @@ namespace JapanMap.Vehicles
             // Turn the head into the slide so a drift stays readable from inside.
             var yaw = t.slip * s.cockpitDriftLook * Mathf.Rad2Deg;
             var back = driver != null && driver.LookBackHeld ? 180f : 0f;
-            _cockpit.transform.rotation = _car.transform.rotation * Quaternion.Euler(-s.cockpitLookPitch * Mathf.Rad2Deg - s.cockpitBurstPitch * _punch, yaw + back, 0f);
+            // The head follows the forces a little: leans out of a bend, sinks back under power, dips on the brakes.
+            var k = 1f - Mathf.Exp(-6f * Time.deltaTime);
+            _lean += (Mathf.Clamp(t.accelLat * s.cockpitLean, -6f, 6f) - _lean) * k;
+            _surge += (Mathf.Clamp(t.accelLong * s.cockpitSurge, -3f, 3f) - _surge) * k;
+            _cockpit.transform.rotation = _car.transform.rotation * Quaternion.Euler(-s.cockpitLookPitch * Mathf.Rad2Deg - s.cockpitBurstPitch * _punch - _surge, yaw + back, _lean);
             _cockpit.Lens.FieldOfView = s.cockpitFov + (t.boosting || t.burst > 0f ? s.cockpitFovBoost : 0f) + s.burstFov * 0.6f * _punch;
         }
     }

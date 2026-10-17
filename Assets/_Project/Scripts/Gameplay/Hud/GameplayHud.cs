@@ -26,6 +26,9 @@ namespace JapanMap.Gameplay.Hud
         [SerializeField] UnityEngine.Rendering.VolumeProfile speedProfile;
         [Tooltip("The route tape on the road (RouteGuide, shader JapanMap/GuideLine).")]
         [SerializeField] Material guideMaterial;
+        [Tooltip("Cockpit view: the cluster screen (unlit) and the windscreen head-up display (additive) — CockpitDisplay.")]
+        [SerializeField] Material cockpitScreen;
+        [SerializeField] Material cockpitHud;
         [SerializeField] PanelSettings panelSettings;
         [SerializeField] DriftScorer drift;
         [SerializeField] SparksWallet wallet;
@@ -90,6 +93,7 @@ namespace JapanMap.Gameplay.Hud
         {
             gameObject.AddComponent<SpeedPost>().Bind(player, speedProfile);
             gameObject.AddComponent<RouteGuide>().Bind(player, map, this, guideMaterial);
+            gameObject.AddComponent<CockpitDisplay>().Bind(player, panelSettings, null, cockpitScreen, cockpitHud);
             _doc = gameObject.AddComponent<UIDocument>();
             _doc.panelSettings = UiPanel.Get(panelSettings);
             _doc.sortingOrder = 3;

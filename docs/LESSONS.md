@@ -79,6 +79,11 @@
 | 2026-10-16 | Unity-Import 6 | `GetComponent<T>() ?? AddComponent<T>()` greift im Editor nicht (Unity-Fake-null) | an allen 5 Stellen durch `if (x == null)` ersetzt | Werkzeug |
 | 2026-10-16 | Unity-Import 6 | Neue Figuren/Verkehr im Start: 19,6 → 21,0 MB; als Bundle sofort geladen sogar 26,5 MB (gemeinsame Abhängigkeiten vor gameplayStart) | `LifeContent` lädt Figuren/Verkehr per Adresse erst nach gameplayStart (wie ContentStreamer); Spieler eigener schlanker Animator (6 Clips) | Werkzeug |
 | 2026-10-16 | Unity-Import 6 | Schwarzer Streifen am Stadtrand (senkrechter Plattenrand im Nass-Material), vom Menschen gefunden | Böschung statt Kante; Test `CitySlab_HasNoVerticalEdge` | Test |
+| 2026-10-17 | Session Burst/Menü/Navi | Nasses Material auf steilen Flächen → schwarze Bänder mit weißem Schein (Klasse, nicht nur Stadtrand) | Shader macht nur nach oben zeigende Flächen nass | Werkzeug |
+| 2026-10-17 | Session Burst/Menü/Navi | Seitenstraßen 14 m vor der Einmündung abgeschnitten (Rampen-Regel zählte normale Einmündungen) | `OverlapRun` zählt nur Flächen *auf* der anderen Fahrbahn; Graph-Test `RouteGraphTests` | Test |
+| 2026-10-17 | Session Burst/Menü/Navi | Neue HUD-Felder per Szene gesetzt — `ContentSetup` baut das HUD neu und hätte sie gelöscht | Felder in `ContentSetup.Set(...)` eingetragen; Regel: neue Szenen-Links immer auch im Setup-Skript | Werkzeug |
+| 2026-10-17 | Session Burst/Menü/Navi | `play.mjs "record …"` ohne `wait` danach: Spiel endet vor der Aufnahme | im Skript immer `record s name; wait s` | Skill |
+| 2026-10-17 | Session Burst/Menü/Navi | Alter Ton-Render lief nicht mehr (esbuild fehlt) | `Tools/render-sounds.mjs` ohne Abhängigkeiten | Werkzeug |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

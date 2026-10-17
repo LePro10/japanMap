@@ -66,5 +66,9 @@ namespace JapanMap.Vehicles
         public float cockpitLookPitch = -0.12f;
         [Tooltip("Share of the drift slip the head turns into, 0…1.")]
         public float cockpitDriftLook = 0.65f;
+        [Tooltip("Head roll per m/s² of lateral acceleration in the cockpit (the body leans out of the bend), degrees.")]
+        public float cockpitLean = 0.35f;
+        [Tooltip("Head pitch per m/s² of longitudinal acceleration (pressed back, thrown forward), degrees.")]
+        public float cockpitSurge = 0.18f;
     }
 }

@@ -689,3 +689,22 @@ Pfützen nur den hellen Himmel und wirken wie Eis.
 - **Verkehr:** 10 eigene Modelle (Gewichte + Radstand in `TrafficSettings`), Lack = Kopie von `M_TrafficPaint`
   je Farbe des Mix (geteilt, bleibt im SRP-Batcher), Kollisionsbox aus den Modellmaßen.
 - Die Kisten-Figur `StandInFigure` ist gelöscht.
+
+## D46 — Session 2026-10-17: Burst, Stunts, Zerbrechen, Menü, Ton, Navi, Straßen, Cockpit
+
+Auftrag des Menschen (eine Sitzung, autonom). Was gewählt wurde und warum:
+- **Nitro-Burst (Shift doppelt)**: der ganze Tank als Kick (Δv über 0,16 s) + abklingender Schub. Gleiches
+  Δv-Budget wie langsam verbrannt — nur sofort; braucht 25 % Tank. Regler in `ArcadeTuning` (Nitro burst).
+- **Stunts**: Lufttricks drehen exakt um eine Achse und werden nur gestartet, wenn sie vor dem Aufsetzen fertig
+  werden (Landezeit aus Höhe + Fallgeschwindigkeit). Boden: Kickflip (geradeaus), 360 (Lenken), 180 (Lenken +
+  Bremse); Luft: Rolle, Backflip (Bremse). Landehilfe dreht die Fahrt bis 70° zur Nase. **Spielregel geändert**:
+  der Doppeltipp ohne Lenken war ein 360, ist jetzt ein Kickflip (Mensch: „immer nur einmal drehen").
+- **Zerbrechen**: das Objekt selbst fällt (eigenes Mesh als Körper, Baum kippt am Fuß) statt Kisten.
+- **Menü**: Leiste oben + Glas-Spalte links, Cyan statt Tan/Braun; Autofotos im echten Open Bay zur Laufzeit
+  (`CarPortraits`, kein Download).
+- **Ton**: eigener Synthesizer `Tools/render-sounds.mjs` (Eigenbau, weil keine freien Aufnahmen ohne Download/
+  Zustimmung vorliegen und der alte Prototyp-Render nicht mehr lief). Echte Aufnahmen ersetzen ihn per Dateiname.
+- **Navi**: eigener Graph + A* (`RouteGraph`) — das NavMesh ist für Fußgänger, Unity hat keine Straßen-Routen.
+- **Straßen**: Einmündungen nicht mehr 14 m vor der Hauptstraße abgeschnitten; Gelände unter dem Kiesrand
+  abgesenkt (kein Sägezahn); Reiswasser läuft unter den Damm (weiches Ufer statt eckiger Kante).
+- **Nass nur auf Flachem** (Shader): steile Flächen trocken — schwarze Bänder mit weißem Schein weg.
