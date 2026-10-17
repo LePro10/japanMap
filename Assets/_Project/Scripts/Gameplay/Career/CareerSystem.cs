@@ -144,6 +144,8 @@ namespace JapanMap.Gameplay.Career
                 _autoHooked = AutoDrive.Current;
                 if (_autoHooked != null) _autoHooked.Arrived += OnArrived;
             }
+            _ui.Attach(_hud.Root);
+            _ui.Quiet(UiPanel.IsPhone && _drift != null && _drift.Chain.Active);
             var introOn = _intro != null && _intro.Current != FirstDrive.Beat.Off;
             var inEvent = _races != null && _races.Current != RaceDirector.State.Idle;
             // Banners wait while the HUD is hidden (menu, garage): they are the moment, not a log.

@@ -118,6 +118,12 @@ namespace JapanMap.Gameplay.Intro
             if (_hideAt > 0f && Time.unscaledTime > _hideAt) { _hideAt = -1f; _root.style.display = DisplayStyle.None; }
         }
 
+        /// <summary>Follows the HUD to its new root after a form-factor change (rotation): else the intro vanished mid-jump.</summary>
+        public void Attach(VisualElement host)
+        {
+            if (host != null && _root.parent != host) host.Insert(0, _root);
+        }
+
         public void Show()
         {
             _hideAt = -1f;

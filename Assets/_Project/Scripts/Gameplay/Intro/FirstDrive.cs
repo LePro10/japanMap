@@ -95,6 +95,7 @@ namespace JapanMap.Gameplay.Intro
                 _began = true;
                 if (Wanted()) Begin();
             }
+            if (_ui != null && hud != null) _ui.Attach(hud.Root); // also while it fades out after the end
             if (Current == Beat.Off) return;
             var real = Mathf.Min(0.1f, Time.unscaledDeltaTime);
             // Menu, garage or ad open: no deadline runs, and the slow motion must not outlive the menu.

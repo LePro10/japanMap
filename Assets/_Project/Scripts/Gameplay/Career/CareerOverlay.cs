@@ -146,6 +146,18 @@ namespace JapanMap.Gameplay.Career
             _root.EnableInClassList("jm-career--away", !on);
         }
 
+        /// <summary>
+        /// The HUD builds a new root when the form factor changes (rotation, a forced form): the overlay follows it, or it
+        /// would hang off the old tree, invisible, with its scheduler stopped. Called every frame by the owner.
+        /// </summary>
+        public void Attach(VisualElement host)
+        {
+            if (host != null && _root.parent != host) host.Add(_root);
+        }
+
+        /// <summary>The card dims (a drift on a phone runs under it); the goal stays readable.</summary>
+        public void Quiet(bool on) => _card.EnableInClassList("jm-career__card--quiet", on && _hasGoal);
+
         public void Queue(Banner b) => _queue.Enqueue(b);
 
         /// <summary>No banner before this real time (the intro's last words stay readable).</summary>
