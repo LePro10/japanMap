@@ -61,7 +61,10 @@ namespace JapanMap.Vehicles
         readonly GameObject[] _loose = new GameObject[VehicleController.WheelCount];
         readonly float[] _looseAt = new float[VehicleController.WheelCount];
         readonly Dictionary<Collider, float> _slid = new();
-        int _seed, _dentFrame = -1;
+        int _seed, _dentFrame = -1, _hitFrame = -1;
+        double _tGlass;
+        int _marksWarmFrame;
+        readonly Queue<(Vector3 at, Vector3 into, Vector3 along, float radius, DamageMarks.Tile tile)> _markQueue = new();
         Collider _other;
         float _depth, _shoulder = 0.5f, _spread;
         bool _hullBaked;
@@ -263,6 +266,7 @@ namespace JapanMap.Vehicles
             if (!_bound || deltaV < _s.scuffFrom) return hit;
             _watch.Restart();
             Hits++;
+            _hitFrame = Time.frameCount;
             _seed++;
             var bodyT = _deformer.Body;
             var bp = bodyT.InverseTransformPoint(point);
@@ -284,18 +288,22 @@ namespace JapanMap.Vehicles
                 _dentFrame = Time.frameCount;
             }
             var tDent = _watch.Elapsed.TotalMilliseconds;
+            _tGlass = tDent;
             // The paint at the hit: streaks from a graze, crumpled paint from a dent.
             var tile = deltaV >= _s.dentFrom * 1.6f ? DamageMarks.Tile.Scuff : (_seed & 1) == 0 ? DamageMarks.Tile.Scratch : DamageMarks.Tile.Scratch2;
             if (shell != null && _paintSub >= 0)
             {
                 var markAt = bp;
                 if (Mathf.Abs(bd.y) < 0.6f) markAt.y = Mathf.Max(markAt.y, _shoulder * 0.85f); // from the box's low corner up onto the paint
-                hit.scratched = _marks.Add(shell, _paintSub, markAt, bd, along, Mathf.Clamp(radius * 0.85f, 0.25f, 0.6f), tile);
+                // Painted on in a following frame (searching the paint's ~8 000 faces cost ~0.5–2 ms in the hit's frame).
+                _markQueue.Enqueue((markAt, bd, along, Mathf.Clamp(radius * 0.85f, 0.25f, 0.6f), tile));
+                hit.scratched = true;
             }
             if (shell != null && _glassSub >= 0 && deltaV >= _s.glassCrackDeltaV)
             {
                 var crack = deltaV >= _s.glassBreakDeltaV ? DamageMarks.Tile.Shatter : (_seed & 1) == 0 ? DamageMarks.Tile.Crack : DamageMarks.Tile.Crack2;
                 hit.glassCracked = _marks.Add(shell, _glassSub, bp, bd, along, Mathf.Clamp(radius * 0.9f, 0.35f, 0.7f), crack);
+                _tGlass = _watch.Elapsed.TotalMilliseconds;
                 if (hit.glassCracked && deltaV >= _s.glassBreakDeltaV)
                     hit.glassBroke = _deformer.RemoveTriangles(shell, _glassSub, bp + bd * 0.05f, radius * 0.55f) > 0;
             }
@@ -307,7 +315,7 @@ namespace JapanMap.Vehicles
             if (total > WorstHitMs)
             {
                 WorstHitMs = total;
-                WorstDetail = $"Δv {deltaV:F1}: {_deformer.Timing}, marks {tMarks - tDent:F2}, wheels+fx {total - tMarks:F2} ms";
+                WorstDetail = $"Δv {deltaV:F1}: {_deformer.Timing}, marks {tMarks - tDent:F2} (crack {_tGlass - tDent:F2}: {_marks.LastAdd}), wheels+fx {total - tMarks:F2} ms";
             }
             Last = hit;
             Impacted?.Invoke(hit);
@@ -493,8 +501,9 @@ namespace JapanMap.Vehicles
                     _spread = (_spread + 0.618034f) % 1f;
                     at.z = Mathf.Lerp(lo, hi, _spread);
                     at.y = Mathf.Max(at.y, _shoulder);
-                    _marks.Add(shell, _paintSub, at, bodyT.InverseTransformDirection(-outward), bodyT.InverseTransformDirection(slide), 0.38f,
-                        (_seed++ & 1) == 0 ? DamageMarks.Tile.Scratch : DamageMarks.Tile.Scratch2);
+                    if (_markQueue.Count < 4)
+                        _markQueue.Enqueue((at, bodyT.InverseTransformDirection(-outward), bodyT.InverseTransformDirection(slide), 0.38f,
+                            (_seed++ & 1) == 0 ? DamageMarks.Tile.Scratch : DamageMarks.Tile.Scratch2));
                 }
             }
             _slid[c.collider] = metres;
@@ -522,7 +531,12 @@ namespace JapanMap.Vehicles
 
         void Update()
         {
-            if (_bound && _deformer.Busy)
+            if (_bound && _markQueue.Count > 0 && Time.frameCount != _hitFrame)
+            {
+                var m = _markQueue.Dequeue();
+                _marks.Add(_deformer.Shell, _paintSub, m.at, m.into, m.along, m.radius, m.tile);
+            }
+            else if (_bound && _deformer.Busy)
             {
                 // Crumpling within the frame budget; the marks follow the sheet once it has settled.
                 var budget = Time.frameCount == _dentFrame ? _s.frameBudgetMs * 0.5f : _s.frameBudgetMs;
@@ -530,6 +544,8 @@ namespace JapanMap.Vehicles
                 if (!_deformer.Busy && _marks.Count > 0) _marks.Rebuild();
             }
             // Ahead of the first hit, one piece a frame: the body's vertices, then the marks texture.
+            else if (_bound && !_marks.Warmed && !_deformer.Busy && _deformer.Shell != null && _deformer.Shell.ready && DamageMarks.AtlasReady) _marks.Warm();
+            else if (_bound && _marks.Warmed && _marks.Count == 0 && _marksWarmFrame++ == 2) _marks.Rebuild(); // the empty warm-up mark goes again
             else if (_bound && !_deformer.PrepareNext() && !_deformer.CopyNext() && !DamageMarks.WarmAtlas() && !_hullBaked)
             {
                 // The loose wheels' collider cooked and their bodies made now, not in the crash (~1 ms each there).
@@ -560,7 +576,13 @@ namespace JapanMap.Vehicles
         /// <summary>Every queued crush done now, normals and marks too (tests).</summary>
         public void FinishNow()
         {
-            if (!_bound || !_deformer.Busy) return;
+            if (!_bound) return;
+            while (_markQueue.Count > 0)
+            {
+                var m = _markQueue.Dequeue();
+                _marks.Add(_deformer.Shell, _paintSub, m.at, m.into, m.along, m.radius, m.tile);
+            }
+            if (!_deformer.Busy) return;
             _deformer.Finish();
             if (_marks.Count > 0) _marks.Rebuild();
         }
@@ -574,6 +596,7 @@ namespace JapanMap.Vehicles
             _pending.Clear();
             _soft.Clear();
             _slid.Clear();
+            _markQueue.Clear();
             Scrape = 0f;
             if (_bound)
             {

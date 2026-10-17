@@ -81,6 +81,23 @@ namespace JapanMap.Vehicles
             }
         }
 
+        /// <summary>Parts read and copied, of all (diagnostics).</summary>
+        public string Readiness
+        {
+            get
+            {
+                int ready = 0, copied = 0, active = 0;
+                foreach (var p in _parts)
+                {
+                    if (!p.filter.gameObject.activeInHierarchy) continue;
+                    active++;
+                    if (p.ready) ready++;
+                    if (p.work != null) copied++;
+                }
+                return $"{ready}/{active} read, {copied} copied";
+            }
+        }
+
         /// <summary>
         /// The main shell: the car-lab "body" node (".009" suffixes aside), else the part with the most vertices. Not
         /// simply the largest: the formula car's engine has more vertices than its body.

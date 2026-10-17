@@ -38,6 +38,8 @@ namespace JapanMap.Vehicles
         int _next;
 
         public int Count => _marks.Count;
+        public string LastAdd { get; private set; } = "";
+        readonly System.Diagnostics.Stopwatch _sw = new();
 
         static Material _material;
         static RenderTexture _atlas;
@@ -90,6 +92,7 @@ namespace JapanMap.Vehicles
         public bool Add(CarBodyDeformer.Part part, int subMesh, Vector3 bodyPoint, Vector3 into, Vector3 along, float radius, Tile tile)
         {
             if (part == null || subMesh < 0) return false;
+            _sw.Restart();
             _ = Atlas; // normally drawn in the frames after the car was built
             _body.Prepare(part);
             if (subMesh >= part.subMeshes.Length) return false;
@@ -121,6 +124,7 @@ namespace JapanMap.Vehicles
                 tris.Add(Index(b, verts));
                 tris.Add(Index(cc, verts));
             }
+            var tFaces = _sw.Elapsed.TotalMilliseconds;
             if (tris.Count == 0) return false;
             var col = (int)tile % Cols;
             var row = (int)tile / Cols;
@@ -142,7 +146,9 @@ namespace JapanMap.Vehicles
                 _marks[_next] = mark; // the oldest goes
                 _next = (_next + 1) % _max;
             }
+            var tUv = _sw.Elapsed.TotalMilliseconds;
             Rebuild();
+            LastAdd = $"faces {tFaces:F2}, uv {tUv - tFaces:F2}, rebuild {_sw.Elapsed.TotalMilliseconds - tUv:F2} ms";
             return true;
 
             int Index(int vi, List<int> list)
@@ -191,6 +197,24 @@ namespace JapanMap.Vehicles
             _go.SetActive(true);
         }
 
+        /// <summary>
+        /// The marks object drawn once, empty, ahead of the first crash: its first appearance cost ~2 ms in that frame
+        /// (renderer, material, mesh set up). Marks the car with nothing visible.
+        /// </summary>
+        public void Warm()
+        {
+            if (_warmed) return;
+            _warmed = true;
+            _mesh.SetVertices(new[] { Vector3.zero, Vector3.zero, Vector3.zero });
+            _mesh.SetNormals(new[] { Vector3.up, Vector3.up, Vector3.up });
+            _mesh.SetUVs(0, new[] { Vector2.zero, Vector2.zero, Vector2.zero });
+            _mesh.SetTriangles(new[] { 0, 1, 2 }, 0);
+            _go.SetActive(true);
+        }
+
+        bool _warmed;
+        public bool Warmed => _warmed;
+
         public void Clear()
         {
             _marks.Clear();
@@ -215,6 +239,9 @@ namespace JapanMap.Vehicles
         static Color[] _px;
         static int _drawn;
         static System.Random _atlasRng;
+
+        /// <summary>The marks texture is drawn and on the GPU.</summary>
+        public static bool AtlasReady => _atlas != null && _atlas.IsCreated();
 
         /// <summary>Draws one more tile of the atlas ahead of the first mark (spread over frames); false when done.</summary>
         public static bool WarmAtlas()
