@@ -10,6 +10,7 @@ namespace JapanMap.Core
     public enum FeatureId
     {
         Races, Garage, Tuning, Paint, CarShop, TestDrive, Map, FastTravel, Waypoints, Records, Photo, Daily, Stunts, Nitro,
+        AutoDrive,
     }
 
     /// <summary>Answers "is this feature open yet, and if not, what opens it?" — implemented by the progression system.</summary>

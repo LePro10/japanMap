@@ -745,6 +745,7 @@ Fahren, aber kein innerer Schaden; nie nervig — Reparatur gratis und sofort.
   federn zurück (wie echte). Dafür sind 31 Bibliotheksmodelle lesbar (+5,6 MB Speicher, kein Download).
 - Bekannt/offen: Türen und Haube fallen nicht ab (Loft-Karosserie hätte Löcher) — stattdessen hängt die Stoßstange
   nach harten Front-/Heckaufprallen an einer Seite herunter. Gegner/Verkehr bekommen keinen Schaden.
+
 ## D48 — Titelbildschirm, Ladeseite mit echtem Fortschritt, Menü als Kacheln mit Sperren · 2026-10-17
 
 Anlass: Mensch findet das Menü „grottenschlecht", will Lade-, Titel- und Hauptmenü wie große Rennspiele. Stil: [UI-STYLE.md](UI-STYLE.md).
