@@ -33,6 +33,12 @@ namespace JapanMap.Gameplay.Menu
         public override Icon Icon => Icon.Play;
         public override string Text => _text;
 
+        // The tiles' car photos are taken in the Open Bay, one per frame while the page is open (as on Cars).
+        public override void Update()
+        {
+            if (_garage != null) Garage.CarPortraits.Pump(_garage.Settings, Menu.Player != null ? Menu.Player.Car : null);
+        }
+
         public override void Build(VisualElement body)
         {
             var t = new StringBuilder();
@@ -102,7 +108,7 @@ namespace JapanMap.Gameplay.Menu
                 {
                     Name = "tile-tune", Icon = Icon.Tune, Kicker = "GARAGE", Title = $"Tune your {car.displayName}",
                     Body = fitted == 0 ? "Engine, brakes, suspension, tyres · paint, rims, kits" : $"{fitted} of 4 parts upgraded · paint, rims, kits",
-                    Action = "Tune now", Feature = Core.FeatureId.Tuning, Click = () => _garage.Screen.ShowTune(),
+                    Action = "Tune now", Feature = Core.FeatureId.Tuning, Click = () => _garage.Screen.ShowTune(), Car = car,
                 });
                 t.AppendLine("garage tile");
             }
@@ -134,7 +140,7 @@ namespace JapanMap.Gameplay.Menu
                     Name = "tile-nextcar", Icon = Icon.Car, Kicker = "NEXT CAR", Title = goal.displayName, Value = $"{goal.price:N0} Sparks",
                     Meter = Mathf.Clamp01(balance / (float)Mathf.Max(1, goal.price)),
                     Note = balance >= goal.price ? "You can buy it now." : $"{goal.price - balance:N0} Sparks to go",
-                    Action = "See cars", Feature = Core.FeatureId.CarShop,
+                    Action = "See cars", Feature = Core.FeatureId.CarShop, Car = goal,
                     Click = () => { var cars = Menu.Screen<CarsScreen>(); if (cars != null) Menu.Show(cars); },
                 });
                 t.AppendLine($"goal {goal.displayName}");

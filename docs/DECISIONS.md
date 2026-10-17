@@ -714,3 +714,20 @@ Auftrag des Menschen (eine Sitzung, autonom). Was gewählt wurde und warum:
   Nitro lädt überall ×0,7, im Rennen nochmals ×0,7 und der Burst ×0,65 (`ArcadeTuning` „Nitro balance").
   Straßen: Normalen über Segmentnähte geglättet (keine Querbänder), weniger/weichere Pfützen (`Look.asset`),
   Kreuzungen ohne Linien, Seitenstraße endet unter der Hauptfahrbahn statt davor, Kiesrand blendet in Bodenfarbe.
+
+## D48 — Titelbildschirm, Ladeseite mit echtem Fortschritt, Menü als Kacheln mit Sperren · 2026-10-17
+
+Anlass: Mensch findet das Menü „grottenschlecht", will Lade-, Titel- und Hauptmenü wie große Rennspiele. Stil: [UI-STYLE.md](UI-STYLE.md).
+- **Titel = die echte Welt** (`Gameplay/Menu/TitleScreen`, von `GameMenu` zur Laufzeit gebaut — keine Szenenänderung):
+  Kamera kreist ums Auto, START GAME (neu → Wischblende ins Intro) / CONTINUE (Spielstand → Kamera fliegt zum Auto,
+  sofort fahrbar) + Settings über dem Titel. Einmal je Sitzung; Editor/Tests ohne Titel (`RunInEditor`), `?title=off/on`.
+  Kein gerendertes Bild: kostet 0 MB und zeigt, was der Spieler bekommt. Regler in `IntroSettings` („Title screen").
+- **gameplayStart erst nach dem Titel** (`Core/Ui/StartFlow`, `GamePlatform.ShouldPlay`): ein Titel ist keine
+  Spielzeit (CrazyGames). Die Ladeseite geht dafür schon mit dem Titel (`PageBridge`), nicht erst beim gameplayStart.
+  Startdownload unverändert — die Welt lädt vor dem Titel. Web-Werkzeuge messen mit `?title=off`, `smoke` prüft den Titel.
+- **Ladeseite** bleibt HTML/CSS (steht vor Unitys Dateien, 0 Bytes extra): Bewegung statt Balken, Fortschritt in
+  Stufen (Unity-Dateien 70 %, dann Boot-Tore/Szene/Startauto über `JapanMapLoadProgress`).
+- **Menü**: Kacheln (`MenuTiles`) statt Karten mit Knöpfen; eigene Fokus-Navigation nach Lage (UI Toolkits Ring ist
+  linear, sein Event-System wird an der Wurzel abgefangen, damit ein Druck genau einmal wirkt).
+- **Freischalten**: `Core/Unlocks` (`FeatureId`, `IUnlockQuery`, Standard `AllUnlocked`). Menüs fragen nur ab und
+  zeigen gesperrt statt zu verstecken; die Karriere (nächste Runde) setzt `Unlocks.Query`.

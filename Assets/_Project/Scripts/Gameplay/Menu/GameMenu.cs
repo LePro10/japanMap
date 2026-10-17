@@ -346,18 +346,19 @@ namespace JapanMap.Gameplay.Menu
         public void Show(MenuScreen screen)
         {
             if (screen == null) return;
-            if (screen.Action)
-            {
-                Close();
-                screen.Build(null);
-                return;
-            }
+            // Locked first: a locked action tab (Photo) must not run either.
             if (screen.Feature.HasValue && !Core.Unlocks.IsUnlocked(screen.Feature.Value))
             {
                 var tab = _tabButtons[_screens.IndexOf(screen)];
                 MenuTiles.Deny(tab, screen.Feature.Value);
                 if (Current != null && Current != screen) return;
                 screen = _screens[0]; // opened straight onto a locked page (M for a locked map): Play instead
+            }
+            if (screen.Action)
+            {
+                Close();
+                screen.Build(null);
+                return;
             }
             var index = _screens.IndexOf(screen);
             var changed = Current != screen;
@@ -632,7 +633,7 @@ namespace JapanMap.Gameplay.Menu
         /// <summary>Q / E (and the shoulder buttons) step through the tabs, as in every racing game's menu.</summary>
         void StepTab(int step)
         {
-            if (!IsOpen || _screens.Count == 0) return;
+            if (!IsOpen || _screens.Count == 0 || _fromTitle) return; // over the title there is only Settings
             if (garage != null && garage.IsOpen) return; // E drives out of the Open Bay there
             if (_root.panel?.focusController?.focusedElement is TextField) return;
             {
@@ -640,7 +641,9 @@ namespace JapanMap.Gameplay.Menu
                 for (var n = 0; n < _screens.Count; n++)
                 {
                     i = (i + step + _screens.Count) % _screens.Count;
-                    if (!_screens[i].Action) break; // Photo is an action, not a page
+                    var f = _screens[i].Feature;
+                    // Photo is an action, not a page; a locked tab is stepped over (or Q/E would stop at it).
+                    if (!_screens[i].Action && (!f.HasValue || Core.Unlocks.IsUnlocked(f.Value))) break;
                 }
                 Audio.Sfx.Play("UI_Click");
                 Show(_screens[i]);

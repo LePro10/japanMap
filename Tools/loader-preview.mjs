@@ -1,5 +1,6 @@
 // Tools/loader-preview — pictures of the page's loading screen (WebGLTemplates/JapanMap/index.html) without a web build:
-//   node Tools/loader-preview.mjs [--out Captures/loader]   → <out>/<form>-<moment>.png for desktop, phone upright, phone on its side
+//   node Tools/loader-preview.mjs [--out Captures/loader] [--template old.html]   → <out>/<form>-<moment>.png for desktop,
+//   phone upright, phone on its side (--template: another index.html, e.g. `git show HEAD~1:…/index.html` for before/after)
 // The template's tokens are filled in, Unity's loader is a stub that reports progress like a real start (files, then the
 // game's boot stages through window.__jmProgress, then __jmLoaded). Only a static page — no game, no GPU load.
 import { chromium } from 'playwright-core';
@@ -15,7 +16,7 @@ mkdirSync(join(dir, 'TemplateData'), { recursive: true });
 mkdirSync(join(dir, 'Build'), { recursive: true });
 const tpl = join(ROOT, 'Assets/WebGLTemplates/JapanMap');
 copyFileSync(join(tpl, 'TemplateData/display.ttf'), join(dir, 'TemplateData/display.ttf'));
-let html = readFileSync(join(tpl, 'index.html'), 'utf8')
+let html = readFileSync(arg('template') ? resolve(arg('template')) : join(tpl, 'index.html'), 'utf8')
   .replace(/^#if .*$|^#endif.*$/gm, '')
   .replace(/\{\{\{ PRODUCT_NAME\.toUpperCase\(\) \}\}\}/g, 'AMEAGARI DRIVE')
   .replace(/\{\{\{ JSON\.stringify\((\w+)\) \}\}\}/g, '"x"')
@@ -50,7 +51,7 @@ try {
       await page.waitForTimeout(Math.max(0, at - (Date.now() - t0)));
       const file = join(out, `${name}-${moment}.png`);
       await page.screenshot({ path: file });
-      const state = await page.evaluate(() => { const l = document.getElementById('loading'); return `${getComputedStyle(l).display}/${l.querySelector('.pct').textContent}/${l.querySelector('.stage').textContent}`; });
+      const state = await page.evaluate(() => { const l = document.getElementById('loading'); return `${getComputedStyle(l).display}/${l.querySelector('.pct')?.textContent ?? '-'}/${l.querySelector('.stage')?.textContent ?? '-'}`; });
       shots.push(`${file.replace(ROOT + '/', '')} · ${state}`);
     }
     if (errors.length) shots.push(`  errors (${name}): ${errors.join(' | ')}`);

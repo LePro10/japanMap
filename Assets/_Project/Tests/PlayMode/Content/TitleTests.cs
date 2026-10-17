@@ -206,6 +206,14 @@ namespace JapanMap.Tests.Content
             StringAssert.Contains("Unlocks: Finish the first drive", menu.NoticeText, "it says why");
             yield return Tap(Key.M);
             Assert.AreEqual("Play", menu.Current.Title, "M does not open a locked map either");
+            yield return Tap(Key.E);
+            Assert.AreEqual("Cars", menu.Current.Title, "E steps to the next tab");
+            yield return Tap(Key.E);
+            Assert.AreEqual("Records", menu.Current.Title, "E steps over the locked map");
+            yield return Tap(Key.Q);
+            yield return Tap(Key.Q);
+            Assert.AreEqual("Play", menu.Current.Title, "Q back to Play, over the map again");
+            for (var f = 0; f < 5; f++) yield return null;
 
             // Arrows: from the hero tile down into the grid, right to the neighbour; Enter opens the focused tile.
             var tiles = menu.Root.Query<Button>(className: "jm-card").ToList();

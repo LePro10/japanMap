@@ -32,6 +32,8 @@ namespace JapanMap.Gameplay.Menu
             public string Style = "";
             public FeatureId? Feature;
             public Action Click;
+            /// <summary>A car whose Open Bay photo fills the tile's right side (CarPortraits; arrives when taken).</summary>
+            public Vehicles.VehicleDefinition Car;
         }
 
         /// <summary>A tile as one button: the whole surface is the target (48 px rule holds everywhere).</summary>
@@ -41,6 +43,15 @@ namespace JapanMap.Gameplay.Menu
             if (!string.IsNullOrEmpty(s.Name)) b.name = s.Name;
             b.AddToClassList("jm-card");
             if (!string.IsNullOrEmpty(s.Style)) b.AddToClassList(s.Style);
+            if (s.Car != null)
+            {
+                // The car's own photo behind the right half, fading into the tile: the tile shows what it is about.
+                b.AddToClassList("jm-card--pic");
+                var pic = Ui.Box(b, "jm-card__pic");
+                var tex = Garage.CarPortraits.Get(s.Car, got => pic.style.backgroundImage = new StyleBackground(got));
+                if (tex != null) pic.style.backgroundImage = new StyleBackground(tex);
+                Ui.Box(b, "jm-card__picfade").style.backgroundImage = new StyleBackground(Fade());
+            }
             Ui.Box(b, "jm-card__edge"); // the neon line that lights up on focus
             var head = Ui.Row(b, "jm-card__head");
             if (s.Icon != Icon.None)
@@ -108,6 +119,19 @@ namespace JapanMap.Gameplay.Menu
             badge.Add(icon);
             var label = Ui.Text(badge, Unlocks.Hint(feature), "jm-lock__label");
             label.pickingMode = PickingMode.Ignore;
+        }
+
+        static UnityEngine.Texture2D _fade;
+
+        /// <summary>White, opaque on the left to clear on the right; tinted to the tile's colour in USS.</summary>
+        static UnityEngine.Texture2D Fade()
+        {
+            if (_fade != null) return _fade;
+            const int w = 64;
+            _fade = new UnityEngine.Texture2D(w, 1, UnityEngine.TextureFormat.RGBA32, false) { wrapMode = UnityEngine.TextureWrapMode.Clamp, name = "TileFade" };
+            for (var x = 0; x < w; x++) _fade.SetPixel(x, 0, new UnityEngine.Color(1f, 1f, 1f, 1f - Ui.Smooth(0.35f, 1f, x / (float)(w - 1))));
+            _fade.Apply();
+            return _fade;
         }
 
         /// <summary>Last locked feature someone tried (tests read it).</summary>
