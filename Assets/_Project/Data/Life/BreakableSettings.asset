@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Smash.BreakableSettings
   kinds:
   - name: post
+    way: 1
     match:
     - streetLamp
     - avenueLamp
@@ -27,6 +28,7 @@ MonoBehaviour:
     mass: 60
     color: {r: 0.32, g: 0.33, b: 0.35, a: 1}
   - name: light
+    way: 3
     match:
     - delineator
     minSpeed: 4.6
@@ -37,6 +39,7 @@ MonoBehaviour:
     mass: 8
     color: {r: 0.9, g: 0.45, b: 0.15, a: 1}
   - name: bike
+    way: 0
     match:
     - bicycle
     minSpeed: 4.6
@@ -47,6 +50,7 @@ MonoBehaviour:
     mass: 20
     color: {r: 0.7, g: 0.7, b: 0.72, a: 1}
   - name: vending
+    way: 0
     match:
     - vending
     minSpeed: 6
@@ -57,6 +61,7 @@ MonoBehaviour:
     mass: 250
     color: {r: 0.82, g: 0.84, b: 0.86, a: 1}
   - name: fence
+    way: 2
     match:
     - rack
     - netRack
@@ -75,6 +80,7 @@ MonoBehaviour:
     mass: 40
     color: {r: 0.45, g: 0.33, b: 0.2, a: 1}
   - name: hut
+    way: 0
     match:
     - shed
     - fishHut
@@ -87,6 +93,7 @@ MonoBehaviour:
     color: {r: 0.42, g: 0.32, b: 0.22, a: 1}
   tree:
     name: tree
+    way: 0
     match: []
     minSpeed: 7.8
     energy: 21000
@@ -98,7 +105,14 @@ MonoBehaviour:
   treeCrownPieces: 4
   treeCrown: {r: 0.2, g: 0.33, b: 0.18, a: 1}
   treeCrownPiece: 1.4
-  maxChunks: 10
+  kinkUntil: 18
+  kinkAngle: 82
+  breakHeight: {x: 0.35, y: 0.95}
+  planksPerMetre: 1.6
+  flexTimes: {x: 0.35, y: 1.1}
+  maxStumps: 16
+  freshWood: {r: 0.82, g: 0.66, b: 0.45, a: 1}
+  maxChunks: 16
   chunkLife: 12
   treeTip: 0.9
   chipSize: {x: 0.07, y: 0.28}

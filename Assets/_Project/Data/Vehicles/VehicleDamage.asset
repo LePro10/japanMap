@@ -20,16 +20,20 @@ MonoBehaviour:
   radiusBase: 0.26
   radiusPerDeltaV: 0.036
   radiusOverObject: 0.25
+  narrowDepth: 1.5
+  narrowBelow: 0.6
   crumple: 0.65
   maxDisplacement: 1
   undersideShare: 0.2
   gatherSteps: 3
+  frameBudgetMs: 1
   wheelBendPush: 0.04
   wheelOffPush: 0.1
   wheelOffDeltaV: 20
   maxWobble: 7
   pullPerBend: 0.7
   maxPull: 0.07
+  lostWheelPull: 0.12
   hubRadius: 0.12
   hubFriction: 0.75
   looseWheelMass: 18
@@ -37,7 +41,7 @@ MonoBehaviour:
   glassCrackDeltaV: 6
   glassBreakDeltaV: 13
   scrapeSpeed: 4
-  scratchEvery: 0.9
+  scratchEvery: 1.5
   sparkMaterial: {fileID: 2100000, guid: 076a60ea26e114f59b5d2a12ed3e09ba, type: 2}
   debrisMaterial: {fileID: 2100000, guid: 36714ba7365694371a5e555a8fe2a0fe, type: 2}
   decalMaterial: {fileID: 2100000, guid: 7e6952c7be77a4646b2bb627f7e77e36, type: 2}

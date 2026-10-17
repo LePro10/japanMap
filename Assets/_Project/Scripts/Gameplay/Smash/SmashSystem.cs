@@ -84,17 +84,34 @@ namespace JapanMap.Gameplay.Smash
             Broke?.Invoke("tree", at, rel.magnitude);
             var carVelocity = body.linearVelocity;
             GiveSpeedBack(body, kind.carLoss);
-            // The tree itself snaps at the foot and tips over the way the car pushed it (it used to burst into three
-            // trunk-sized boxes: "aus einem Baum wird ein riesen Pfosten"). Gravity does the rest.
+            // The trunk snaps where the bumper met it: a splintered stump stays, the top falls the way the car pushed it,
+            // rolling over its crown (D47; before: the whole tree tipped over from the foot).
             if (r.TryGetVisual(index, out var mesh, out var mat, out var m))
             {
                 var push = Flat(carVelocity);
                 if (push.sqrMagnitude < 0.01f) push = Flat(-n);
                 push.Normalize();
+                var pos = (Vector3)m.GetColumn(3);
+                var scale = m.lossyScale;
+                var hitY = c.contactCount > 0 ? c.GetContact(0).point.y - pos.y : 0.5f;
+                // Two heights only (a low bumper, a tall one): a cut tree top is nearly the whole tree, so few are kept.
+                var cutAt = (hitY < 0.6f ? 0.45f : 0.75f) / Mathf.Max(0.01f, scale.y);
                 var ch = NextChunk();
-                var pos = m.GetColumn(3);
-                ch.Show(mesh, new[] { mat }, (Vector3)pos + Vector3.up * 0.15f, m.rotation, m.lossyScale, settings.chunkLife);
-                ch.Capsule(radius * 1.4f, h);
+                if (MeshCutter.TryCut(mesh, cutAt, true, _palette.Uv(settings.freshWood), out var cut))
+                {
+                    var mats = new[] { mat, _palette.Material };
+                    ShowStump((r, index), cut.below, mats, pos, m.rotation, scale);
+                    ch.Show(cut.above, mats, pos + Vector3.up * 0.03f, m.rotation, scale, settings.chunkLife);
+                    ch.Capsule(radius * 1.4f, h, cut.height * scale.y);
+                    // The crown is what it lands on.
+                    var crown = cut.above.bounds;
+                    ch.Crown(crown.center + Vector3.up * crown.extents.y * 0.25f, Mathf.Min(crown.extents.x, crown.extents.z) * 0.55f);
+                }
+                else
+                {
+                    ch.Show(mesh, new[] { mat }, pos + Vector3.up * 0.15f, m.rotation, scale, settings.chunkLife);
+                    ch.Capsule(radius * 1.4f, h);
+                }
                 ch.body.mass = kind.mass;
                 ch.body.linearVelocity = push * Mathf.Min(4f, carVelocity.magnitude * 0.12f);
                 // Tip axis: horizontal, across the push; a little random twist so a row of trees does not fall alike.
@@ -154,7 +171,18 @@ namespace JapanMap.Gameplay.Smash
                 c.Box();
                 c.go.SetActive(false);
             }
+            // Stumps made now, and the hinge path run once (the first kinked lamp paid ~3 ms for them).
+            for (var i = 0; i < settings.maxStumps; i++) NewStump();
+            var first = _chunks[0];
+            first.Show(warm, new[] { _palette.Material }, new Vector3(0f, -500f, 0f), Quaternion.identity, Vector3.one, 0f);
+            first.Hinge(new Vector3(0f, -500f, 0f), Vector3.right, 80f);
+            first.Crown(Vector3.zero, 0.5f);
+            first.Show(warm, new[] { _palette.Material }, new Vector3(0f, -500f, 0f), Quaternion.identity, Vector3.one, 0f);
+            first.go.SetActive(false);
+            MeshCutter.InUse = MeshShown;
+            QueueKinkCuts();
             if (_puff != null) { _puff.Emit(new ParticleSystem.EmitParams { position = new Vector3(0f, -500f, 0f) }, 1); _puff.Clear(); }
+            MeshCutter.Warm();
             UnityEngine.Debug.Log($"[Smash] {_all.Count} breakables in {watch.ElapsedMilliseconds} ms");
         }
 
@@ -191,7 +219,7 @@ namespace JapanMap.Gameplay.Smash
             return false;
         }
 
-        internal void Break(Breakable b, Rigidbody car, Vector3 relativeVelocity, float approach = 0f, Collider touched = null)
+        internal void Break(Breakable b, Rigidbody car, Vector3 relativeVelocity, float approach = 0f, Collider touched = null, Vector3? contact = null)
         {
             if (!TakeBreakSlot()) return;
             JapanMap.Vehicles.VehicleDamage.Soften(car, touched, approach * b.Kind.carDamage);
@@ -204,7 +232,16 @@ namespace JapanMap.Gameplay.Smash
             var carVelocity = car.linearVelocity;
             GiveSpeedBack(car, kind.carLoss);
             var t0 = _watch.Elapsed.TotalMilliseconds;
-            ThrowObject(b, kind, carVelocity);
+            var pieces = VisualsOf(b);
+            var done = kind.way switch
+            {
+                BreakableSettings.Way.Kink => pieces.Count > 0 && Kink(b, pieces[0], kind, approach, carVelocity, contact ?? bounds.center),
+                BreakableSettings.Way.Planks => pieces.Count > 0 && Planks(pieces[0], kind, carVelocity),
+                _ => false,
+            };
+            // A lamp's second mesh (its head, when modelled apart) goes with the falling part as a loose piece.
+            if (done) for (var i = 1; i < pieces.Count; i++) Launch(NextChunk(), pieces[i].mesh, pieces[i].mats, pieces[i].pos, pieces[i].rot, pieces[i].scale, kind, carVelocity, bounds.center);
+            else ThrowObject(b, kind, carVelocity, pieces);
             var t1 = _watch.Elapsed.TotalMilliseconds;
             // Chips and dust a frame later: one frame does not carry the whole break (budget 2 ms).
             _later.Add((kind, bounds, carVelocity, false));
@@ -212,21 +249,29 @@ namespace JapanMap.Gameplay.Smash
             WorstBreakMs = Mathf.Max(WorstBreakMs, (float)_watch.Elapsed.TotalMilliseconds);
         }
 
-        /// <summary>
-        /// The broken object flies as itself: each of its meshes (or its instance's mesh) becomes a loose body with the
-        /// car's momentum, a hop and a tumble. The two biggest meshes — a bench is one, a lamp post with its head two.
-        /// </summary>
-        void ThrowObject(Breakable b, BreakableSettings.Kind kind, Vector3 carVelocity)
+        struct Visual
         {
-            var thrown = 0;
-            var filters = 0;
-            // The two biggest meshes (a lamp: pole and head); small trims vanish with the chips.
+            public Mesh mesh;
+            public Material[] mats;
+            public Vector3 pos, scale;
+            public Quaternion rot;
+        }
+
+        readonly List<Visual> _visuals = new();
+
+        /// <summary>
+        /// What the broken thing looks like: its two biggest meshes of the nearest LOD (a lamp: pole and head; before, LOD0
+        /// and LOD1 flew as two copies of the same object), or its instances' meshes.
+        /// </summary>
+        List<Visual> VisualsOf(Breakable b)
+        {
+            _visuals.Clear();
             Renderer first = null, second = null;
             float firstSize = 0f, secondSize = 0f;
             foreach (var r in b.Renderers)
             {
                 if (r == null || !(r is MeshRenderer) || !r.TryGetComponent<MeshFilter>(out var f) || f.sharedMesh == null) continue;
-                filters++;
+                if (IsFarLod(r)) continue;
                 var size = r.bounds.size.sqrMagnitude;
                 if (size > firstSize) { second = first; secondSize = firstSize; first = r; firstSize = size; }
                 else if (size > secondSize) { second = r; secondSize = size; }
@@ -235,20 +280,237 @@ namespace JapanMap.Gameplay.Smash
             {
                 if (r == null) continue;
                 var t = r.transform;
-                Launch(NextChunk(), r.GetComponent<MeshFilter>().sharedMesh, r.sharedMaterials, t.position, t.rotation, t.lossyScale, kind, carVelocity, b.Bounds.center);
-                thrown++;
+                _visuals.Add(new Visual { mesh = r.GetComponent<MeshFilter>().sharedMesh, mats = r.sharedMaterials, pos = t.position, rot = t.rotation, scale = t.lossyScale });
             }
-            if (filters == 0 && b.Instances != null)
+            if (_visuals.Count == 0 && b.Instances != null)
                 foreach (var id in b.InstanceIds)
                 {
-                    if (thrown >= 2) break;
+                    if (_visuals.Count >= 2) break;
                     if (!b.Instances.TryGetVisual(id, out var mesh, out var mat, out var m)) continue;
-                    Launch(NextChunk(), mesh, new[] { mat }, m.GetColumn(3), m.rotation, m.lossyScale, kind, carVelocity, b.Bounds.center);
-                    thrown++;
+                    _visuals.Add(new Visual { mesh = mesh, mats = new[] { mat }, pos = m.GetColumn(3), rot = m.rotation, scale = m.lossyScale });
                 }
-            // Nothing to show (a bare collider): fall back to the old blocks, smaller.
-            if (thrown == 0) SpawnPieces(kind, b.Bounds, b.Rotation, carVelocity);
+            return _visuals;
         }
+
+        /// <summary>A renderer of LOD 1 or further (by its LOD group, or the library's "_LODn" names).</summary>
+        static bool IsFarLod(Renderer r)
+        {
+            var group = r.GetComponentInParent<LODGroup>();
+            if (group != null)
+            {
+                var lods = group.GetLODs();
+                for (var i = 1; i < lods.Length; i++)
+                    foreach (var x in lods[i].renderers)
+                        if (x == r) return true;
+                return false;
+            }
+            var n = r.name;
+            var at = n.LastIndexOf("_LOD", System.StringComparison.Ordinal);
+            return at >= 0 && at + 4 < n.Length && n[at + 4] != '0';
+        }
+
+        /// <summary>The broken object flies as itself: each of its meshes becomes a loose body with the car's momentum, a hop and a tumble.</summary>
+        void ThrowObject(Breakable b, BreakableSettings.Kind kind, Vector3 carVelocity, List<Visual> pieces)
+        {
+            foreach (var v in pieces) Launch(NextChunk(), v.mesh, v.mats, v.pos, v.rot, v.scale, kind, carVelocity, b.Bounds.center);
+            // Nothing to show (a bare collider): fall back to the old blocks, smaller.
+            if (pieces.Count == 0) SpawnPieces(kind, b.Bounds, b.Rotation, carVelocity);
+        }
+
+        /// <summary>
+        /// A post hit by a bumper: it kinks there — the stub stays, the rest folds over on a hinge the way the car went
+        /// and hangs. Hit harder than <see cref="BreakableSettings.kinkUntil"/>, it snaps off at the kink and flies.
+        /// </summary>
+        bool Kink(Breakable b, Visual v, BreakableSettings.Kind kind, float approach, Vector3 carVelocity, Vector3 contact)
+        {
+            var hitY = contact.y - v.pos.y;
+            var at = Mathf.Clamp(hitY, settings.breakHeight.x, settings.breakHeight.y) / Mathf.Max(0.01f, v.scale.y);
+            if (!MeshCutter.TryCut(v.mesh, at, false, default, out var cut)) return false;
+            ShowStump(b, cut.below, v.mats, v.pos, v.rot, v.scale);
+            var push = Flat(carVelocity);
+            if (push.sqrMagnitude < 0.01f) push = Flat(b.transform.position - contact);
+            push.Normalize();
+            var axis = Vector3.Cross(Vector3.up, push);
+            var ch = NextChunk();
+            ch.Show(cut.above, v.mats, v.pos, v.rot, v.scale, settings.chunkLife);
+            // A thin pole, not the box around pole and arm (the box's far edge struck the road after 20° of the fold).
+            var top = cut.above.bounds.max.y * v.scale.y;
+            ch.Capsule(0.12f, top, cut.height * v.scale.y);
+            ch.body.mass = Mathf.Max(5f, kind.mass * 0.7f);
+            var hinge = v.pos + v.rot * Vector3.Scale(v.scale, cut.centre);
+            if (approach < settings.kinkUntil)
+            {
+                // The joint allows the negative turn about its axis — measured: with this axis that folds the post the way the
+                // car pushed it (SmashTests checks the lean).
+                ch.Hinge(hinge, axis, settings.kinkAngle);
+                ch.body.angularVelocity = axis * Mathf.Lerp(1.5f, 4.5f, approach / settings.kinkUntil);
+            }
+            else
+            {
+                ch.body.linearVelocity = carVelocity * settings.carry * Random.Range(0.7f, 1f) + Vector3.up * Random.Range(1.5f, 3f);
+                ch.body.angularVelocity = axis * Random.Range(4f, 7f) + Random.insideUnitSphere * 1.5f;
+            }
+            return true;
+        }
+
+        /// <summary>A bench or a rack bursts into planks along its length, each its own body.</summary>
+        bool Planks(Visual v, BreakableSettings.Kind kind, Vector3 carVelocity)
+        {
+            var size = Vector3.Scale(v.mesh.bounds.size, v.scale);
+            var count = Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(size.x, size.z) * settings.planksPerMetre), 2, 6);
+            if (!MeshCutter.TrySlices(v.mesh, count, out var slices)) return false;
+            PlanksThrown = slices.Length;
+            foreach (var slice in slices)
+            {
+                var ch = NextChunk();
+                ch.Show(slice, v.mats, v.pos + Vector3.up * 0.04f, v.rot, v.scale, settings.chunkLife);
+                ch.Box();
+                ch.body.mass = Mathf.Max(3f, kind.mass / slices.Length);
+                ch.body.linearVelocity = carVelocity * settings.carry * Random.Range(0.45f, 1.05f) + Vector3.up * Random.Range(1.2f, 3.8f) + Random.insideUnitSphere * 1.6f;
+                ch.body.angularVelocity = Random.insideUnitSphere * 7f;
+            }
+            return true;
+        }
+
+        // ── flexible posts ──────────────────────────────────────────────────
+
+        sealed class Flexer
+        {
+            public Breakable b;
+            public Vector3 axis;
+            public Quaternion rest;
+            public float at;
+        }
+
+        readonly List<Flexer> _flexing = new();
+
+        /// <summary>A plastic post bends flat under the car and springs back up (it never breaks). Hits at walking pace do nothing.</summary>
+        internal void Flex(Breakable b, Rigidbody car, Vector3 relativeVelocity, Collider touched)
+        {
+            if (b.Flexing || b.Broken) return;
+            var kind = b.Kind;
+            JapanMap.Vehicles.VehicleDamage.Soften(car, touched, relativeVelocity.magnitude * kind.carDamage);
+            var push = Flat(car.linearVelocity);
+            if (push.sqrMagnitude < 0.01f) push = Flat(relativeVelocity);
+            push.Normalize();
+            GiveSpeedBack(car, kind.carLoss);
+            foreach (var c in b.Colliders) c.enabled = false;
+            b.Flexing = true;
+            b.Flexed++;
+            _flexing.Add(new Flexer { b = b, axis = Vector3.Cross(Vector3.up, push), rest = b.transform.rotation, at = Time.time });
+            Broke?.Invoke(kind.name, b.transform.position, relativeVelocity.magnitude);
+        }
+
+        void UpdateFlex()
+        {
+            for (var i = _flexing.Count - 1; i >= 0; i--)
+            {
+                var f = _flexing[i];
+                if (f.b == null) { _flexing.RemoveAt(i); continue; }
+                var t = Time.time - f.at;
+                const float flat = 84f;
+                float angle;
+                var hold = settings.flexTimes.x;
+                var back = settings.flexTimes.y;
+                if (t < 0.07f) angle = flat * Mathf.SmoothStep(0f, 1f, t / 0.07f);            // pushed down by the bumper
+                else if (t < hold) angle = flat;                                            // under the car
+                else
+                {
+                    var u = t - hold;                                                       // springs back, overshoots, settles
+                    angle = flat * Mathf.Exp(-5f * u / back) * Mathf.Cos(u / back * Mathf.PI * 2.2f);
+                }
+                f.b.transform.rotation = Quaternion.AngleAxis(angle, f.axis) * f.rest;
+                if (t < hold + back) continue;
+                f.b.transform.rotation = f.rest;
+                // Upright again — its collider back once the car is off it (else it would shove the car).
+                var clear = true;
+                foreach (var c in f.b.Colliders)
+                {
+                    var bb = c.bounds;
+                    if (Physics.CheckBox(bb.center, bb.extents, Quaternion.identity, 1 << GameLayers.Layer(GameLayers.Vehicle), QueryTriggerInteraction.Ignore)) clear = false;
+                }
+                if (!clear) continue;
+                foreach (var c in f.b.Colliders) c.enabled = true;
+                f.b.Flexing = false;
+                _flexing.RemoveAt(i);
+            }
+        }
+
+        // ── stumps and stubs ────────────────────────────────────────────────
+
+        readonly List<(object owner, GameObject go)> _stumps = new();
+        int _nextStump;
+
+        GameObject NewStump()
+        {
+            var go = new GameObject("Stump");
+            go.transform.SetParent(transform, false);
+            go.AddComponent<MeshFilter>();
+            var r = go.AddComponent<MeshRenderer>();
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+            go.SetActive(false);
+            _stumps.Add((null, go));
+            return go;
+        }
+
+        /// <summary>What stays standing of a broken trunk or post (no collider: the car has gone through it).</summary>
+        void ShowStump(object owner, Mesh mesh, Material[] mats, Vector3 pos, Quaternion rot, Vector3 scale)
+        {
+            GameObject go = null;
+            for (var i = 0; i < _stumps.Count; i++)
+                if (!_stumps[i].go.activeSelf) { go = _stumps[i].go; _stumps[i] = (owner, go); break; }
+            if (go == null)
+            {
+                go = _stumps[_nextStump].go; // all standing: the oldest goes
+                _stumps[_nextStump] = (owner, go);
+                _nextStump = (_nextStump + 1) % _stumps.Count;
+            }
+            go.GetComponent<MeshFilter>().sharedMesh = mesh;
+            go.GetComponent<MeshRenderer>().sharedMaterials = mats;
+            go.transform.SetPositionAndRotation(pos, rot);
+            go.transform.localScale = scale;
+            go.SetActive(true);
+        }
+
+        /// <summary>A cached cut piece still on screen (the cutter keeps those when it trims its cache).</summary>
+        bool MeshShown(Mesh m)
+        {
+            foreach (var s in _stumps)
+                if (s.go.activeSelf && s.go.GetComponent<MeshFilter>().sharedMesh == m) return true;
+            foreach (var c in _chunks)
+                if (c.go.activeSelf && c.filter.sharedMesh == m) return true;
+            return false;
+        }
+
+        // Kinked posts are few kinds of mesh: their cuts are made in idle frames ahead of the first hit.
+        readonly Queue<(Mesh mesh, float height)> _kinkCuts = new();
+
+        void QueueKinkCuts()
+        {
+            var seen = new HashSet<Mesh>();
+            foreach (var b in _all)
+            {
+                if (b.Kind.way != BreakableSettings.Way.Kink) continue;
+                var v = VisualsOf(b);
+                if (v.Count == 0 || !seen.Add(v[0].mesh)) continue;
+                for (var h = settings.breakHeight.x; h <= settings.breakHeight.y + 1e-3f; h += 0.1f)
+                    _kinkCuts.Enqueue((v[0].mesh, h / Mathf.Max(0.01f, v[0].scale.y)));
+            }
+        }
+
+        void HideStump(object owner)
+        {
+            for (var i = 0; i < _stumps.Count; i++)
+                if (_stumps[i].go.activeSelf && Equals(_stumps[i].owner, owner)) _stumps[i].go.SetActive(false);
+        }
+
+        public int LiveStumps { get { var n = 0; foreach (var s in _stumps) if (s.go.activeSelf) n++; return n; } }
+        public int Flexing => _flexing.Count;
+        /// <summary>Kinked tops hanging on their hinge now (tests).</summary>
+        public int Hinged { get { var n = 0; foreach (var c in _chunks) if (c.go.activeSelf && c.hinged) n++; return n; } }
+        public IEnumerable<Transform> HingedTops { get { foreach (var c in _chunks) if (c.go.activeSelf && c.hinged) yield return c.go.transform; } }
+        /// <summary>Planks thrown by the last bench or rack.</summary>
+        public int PlanksThrown { get; private set; }
 
         void Launch(Chunk ch, Mesh mesh, Material[] mats, Vector3 pos, Quaternion rot, Vector3 scale, BreakableSettings.Kind kind, Vector3 carVelocity, Vector3 hitCentre)
         {
@@ -320,10 +582,16 @@ namespace JapanMap.Gameplay.Smash
             public Rigidbody body;
             public BoxCollider box;
             public CapsuleCollider capsule;
+            public SphereCollider crown;
+            public ConfigurableJoint joint;
+            public bool hinged;
             public float bornAt, life;
 
             public void Show(Mesh mesh, Material[] mats, Vector3 pos, Quaternion rot, Vector3 scale, float lifetime)
             {
+                // A recycled body: no hinge, no crown from its last life.
+                if (hinged) Free();
+                if (crown != null) crown.enabled = false;
                 body.isKinematic = false;
                 go.transform.SetPositionAndRotation(pos, rot);
                 go.transform.localScale = scale;
@@ -345,8 +613,8 @@ namespace JapanMap.Gameplay.Smash
                 body.ResetInertiaTensor();
             }
 
-            /// <summary>A tree: a trunk capsule from the foot up (local units — the mesh is unscaled in y by the instance).</summary>
-            public void Capsule(float radius, float height)
+            /// <summary>A tree: a trunk capsule from <paramref name="bottom"/> up to its top (world metres; the mesh may be scaled by the instance).</summary>
+            public void Capsule(float radius, float height, float bottom = 0f)
             {
                 box.enabled = false;
                 capsule.enabled = true;
@@ -355,15 +623,56 @@ namespace JapanMap.Gameplay.Smash
                 var sx = Mathf.Max(0.01f, s.x);
                 capsule.direction = 1;
                 capsule.radius = radius / sx;
-                capsule.height = height / sy;
-                capsule.center = new Vector3(0f, height * 0.5f / sy, 0f);
+                var len = Mathf.Max(radius * 2.2f, height - bottom);
+                capsule.height = len / sy;
+                capsule.center = new Vector3(0f, (bottom + len * 0.5f) / sy, 0f);
                 body.ResetCenterOfMass();
                 body.ResetInertiaTensor();
+            }
+
+            /// <summary>A sphere for a tree's crown (mesh space): the top lands on its leaves, not through them.</summary>
+            public void Crown(Vector3 centre, float radius)
+            {
+                crown.enabled = true;
+                crown.center = centre;
+                crown.radius = Mathf.Max(0.3f, radius);
+                body.ResetCenterOfMass();
+                body.ResetInertiaTensor();
+            }
+
+            /// <summary>Holds the piece to the world at a point (a kinked post folds about it, up to <paramref name="max"/> degrees).</summary>
+            public void Hinge(Vector3 worldAnchor, Vector3 worldAxis, float max)
+            {
+                // A joint made once with the chunk and switched between free and hinge: adding one in the break cost ~0.5 ms.
+                var j = joint;
+                j.autoConfigureConnectedAnchor = false;
+                j.anchor = go.transform.InverseTransformPoint(worldAnchor);
+                j.axis = go.transform.InverseTransformDirection(worldAxis);
+                j.secondaryAxis = go.transform.InverseTransformDirection(Vector3.up);
+                j.connectedAnchor = worldAnchor;
+                j.xMotion = j.yMotion = j.zMotion = ConfigurableJointMotion.Locked;
+                j.angularXMotion = ConfigurableJointMotion.Limited;
+                j.angularYMotion = j.angularZMotion = ConfigurableJointMotion.Locked;
+                // Folds one way only, to max; a little bounce at the end.
+                j.lowAngularXLimit = new SoftJointLimit { limit = -max };
+                j.highAngularXLimit = new SoftJointLimit { limit = 3f };
+                j.angularXLimitSpring = new SoftJointLimitSpring { spring = 0f, damper = 0f };
+                hinged = true;
+            }
+
+            /// <summary>No hold: the joint lets everything go.</summary>
+            public void Free()
+            {
+                var j = joint;
+                j.xMotion = j.yMotion = j.zMotion = ConfigurableJointMotion.Free;
+                j.angularXMotion = j.angularYMotion = j.angularZMotion = ConfigurableJointMotion.Free;
+                hinged = false;
             }
         }
 
         readonly List<Chunk> _chunks = new();
         int _nextChunk;
+
 
         Chunk NextChunk()
         {
@@ -388,6 +697,10 @@ namespace JapanMap.Gameplay.Smash
             c.body.interpolation = RigidbodyInterpolation.Interpolate;
             c.body.angularDamping = 0.4f;
             c.body.linearDamping = 0.05f;
+            c.joint = c.go.AddComponent<ConfigurableJoint>();
+            c.Free();
+            c.crown = c.go.AddComponent<SphereCollider>();
+            c.crown.enabled = false;
             c.go.SetActive(false);
             _chunks.Add(c);
         }
@@ -507,6 +820,12 @@ namespace JapanMap.Gameplay.Smash
 
         void Update()
         {
+            UpdateFlex();
+            if (_kinkCuts.Count > 0 && _stepFrame != Time.frameCount)
+            {
+                var (mesh, h) = _kinkCuts.Dequeue();
+                if (!MeshCutter.Has(mesh, h, false)) MeshCutter.TryCut(mesh, h, false, default, out _);
+            }
             foreach (var l in _later)
             {
                 if (l.tree)
@@ -556,6 +875,7 @@ namespace JapanMap.Gameplay.Smash
                 var tree = _trees[t];
                 if (Time.time - tree.at < settings.respawnSeconds || (tree.position - focus).sqrMagnitude < far2) continue;
                 tree.renderer.SetHidden(tree.index, false);
+                HideStump((tree.renderer, tree.index));
                 _trees.RemoveAt(t);
             }
             if (_all.Count == 0) return;
@@ -564,7 +884,11 @@ namespace JapanMap.Gameplay.Smash
                 var b = _all[_respawnCursor];
                 _respawnCursor = (_respawnCursor + 1) % _all.Count;
                 if (!b.Broken || Time.time - b.BrokenAt < settings.respawnSeconds) continue;
-                if ((b.transform.position - focus).sqrMagnitude > far2) b.SetBroken(false);
+                if ((b.transform.position - focus).sqrMagnitude > far2)
+                {
+                    b.SetBroken(false);
+                    HideStump(b);
+                }
             }
         }
     }

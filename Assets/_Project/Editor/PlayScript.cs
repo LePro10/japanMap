@@ -51,6 +51,7 @@ namespace JapanMap.Editor
         static float _clock;
         static int _lastFrame = -1;
         static Vector3 _orbitCentre;
+        static Vector3 _lastTarget, _lastDir = Vector3.forward;
         static float _orbitRadius;
         static int _waitFrom = -1, _loggedIndex = -1;
         static float _waitUntil;
@@ -387,6 +388,8 @@ namespace JapanMap.Editor
                     dir.Normalize();
                     carT.Place(treeAt - dir * 14f, Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg, fromAbove: 3f);
                     carT.Body.linearVelocity = dir * (F(1) / 3.6f);
+                    _lastTarget = treeAt;
+                    _lastDir = dir;
                     Object.FindAnyObjectByType<JapanMap.Vehicles.CarCameraRig>().Attach(carT);
                     return true;
                 }
@@ -658,6 +661,119 @@ namespace JapanMap.Editor
                     Physics.SyncTransforms();
                     return true;
                 }
+                case "testrail":
+                {
+                    // testrail kmh: pictures only — a 40 m wall along the right of the road, the car at kmh angled 7° into it
+                    // (a scrape: sparks, scratches along the side).
+                    var pmr = Object.FindAnyObjectByType<PlayerModeController>();
+                    var carR = pmr.Car;
+                    var roadsR = (JapanMap.World.RoadNetwork)Object.FindAnyObjectByType<JapanMap.Vehicles.VehicleRespawn>().Locator;
+                    roadsR.TryNearest(carR.transform.position, carR.transform.forward, 200f, out var rpR, out var rdR);
+                    rdR.y = 0f;
+                    rdR.Normalize();
+                    var right = Vector3.Cross(Vector3.up, rdR);
+                    var wallR = GameObject.Find("PlayScriptWall") ?? GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    wallR.name = "PlayScriptWall";
+                    wallR.transform.SetPositionAndRotation(rpR + rdR * 22f + right * 2.6f + Vector3.up * 1.2f, Quaternion.LookRotation(rdR));
+                    wallR.transform.localScale = new Vector3(1f, 3f, 40f);
+                    var headR = Quaternion.AngleAxis(7f, Vector3.up) * rdR;
+                    carR.Place(rpR, Mathf.Atan2(headR.x, headR.z) * Mathf.Rad2Deg, fromAbove: 3f);
+                    carR.Body.linearVelocity = headR * (F(1) / 3.6f);
+                    Object.FindAnyObjectByType<JapanMap.Vehicles.CarCameraRig>().Attach(carR);
+                    Physics.SyncTransforms();
+                    return true;
+                }
+                case "markscheck":
+                {
+                    // markscheck: diagnostics — the car's damage marks drawn opaque red, and where they are.
+                    var pmk = Object.FindAnyObjectByType<PlayerModeController>();
+                    var marksT = pmk.Car.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == "DamageMarks");
+                    if (marksT == null) { Log.AppendLine("  markscheck: none"); return true; }
+                    var mr0 = marksT.GetComponent<MeshRenderer>();
+                    var tex0 = mr0.sharedMaterial.GetTexture("_BaseMap");
+                    var mode = a.Length > 1 ? a[1] : "red";
+                    Log.AppendLine($"  markscheck {mode}: texture {(tex0 != null ? tex0.name + " " + tex0.GetType().Name : "none")}, material {mr0.sharedMaterial.name} queue {mr0.sharedMaterial.renderQueue}");
+                    if (mode == "red") mr0.sharedMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { color = Color.red };
+                    else if (mode == "tex") { var mt = new Material(Shader.Find("Universal Render Pipeline/Unlit")); mt.SetTexture("_BaseMap", tex0); mr0.sharedMaterial = mt; }
+                    else if (mode == "black")
+                    {
+                        // The marks' own material, its colour black: shows where alpha is.
+                        var mb = new Material(mr0.sharedMaterial);
+                        mb.SetColor("_BaseColor", Color.black);
+                        mr0.sharedMaterial = mb;
+                    }
+                    var mm = marksT.GetComponent<MeshFilter>().sharedMesh;
+                    Log.AppendLine($"  markscheck active {marksT.gameObject.activeInHierarchy} verts {mm.vertexCount} bounds {mm.bounds} layer {marksT.gameObject.layer}");
+                    return true;
+                }
+                case "ramkind":
+                {
+                    // ramkind <kind> kmh: pictures only — the car on the road beside the nearest unbroken thing of that kind
+                    // (post, light, fence, bike, vending, hut), 12 m off, aimed at it (as SmashTests.RamAt).
+                    var smashK = Object.FindAnyObjectByType<JapanMap.Gameplay.Smash.SmashSystem>();
+                    var pmK = Object.FindAnyObjectByType<PlayerModeController>();
+                    var carK = pmK.Car;
+                    var here = carK.transform.position;
+                    var target = smashK.Breakables.Where(b => b.Kind.name == a[1] && !b.Broken && !b.Flexing)
+                        .OrderBy(b => (b.transform.position - here).sqrMagnitude).FirstOrDefault();
+                    if (target == null) { Log.AppendLine($"  ramkind: no {a[1]}"); return true; }
+                    var cK = target.transform.position;
+                    var roadsK = (JapanMap.World.RoadNetwork)Object.FindAnyObjectByType<JapanMap.Vehicles.VehicleRespawn>().Locator;
+                    roadsK.TryNearest(cK, Vector3.forward, 30f, out var roadK, out var dirK);
+                    carK.Place(roadK - dirK * 12f, 0f, fromAbove: 3f);
+                    var aimK = cK - carK.transform.position;
+                    aimK.y = 0f;
+                    carK.Place(carK.transform.position, Mathf.Atan2(aimK.x, aimK.z) * Mathf.Rad2Deg, fromAbove: 1f);
+                    carK.Body.linearVelocity = aimK.normalized * (F(2) / 3.6f);
+                    Object.FindAnyObjectByType<JapanMap.Vehicles.CarCameraRig>().Attach(carK);
+                    _lastTarget = target.transform.position;
+                    _lastDir = aimK.normalized;
+                    Log.AppendLine($"  ramkind {target.name} at {cK:F1}");
+                    return true;
+                }
+                case "ramring":
+                {
+                    // ramring kmh: pictures only — the ring cherry of Sakura Commons that SmashTests rams, from inside the ring.
+                    var vegR = Object.FindObjectsByType<JapanMap.World.InstanceRenderer>().First(r => r.data is JapanMap.World.VegetationData);
+                    var ringC = new Vector3(550f, 0f, -510f);
+                    var idx = Enumerable.Range(0, vegR.data.Count)
+                        .Where(i => Mathf.Abs(new Vector2(vegR.data.positions[i].x - ringC.x, vegR.data.positions[i].z - ringC.z).magnitude - 62f) < 5f)
+                        .OrderBy(i => vegR.data.positions[i].x).First();
+                    var treeR = vegR.data.positions[idx];
+                    var outR = new Vector3(treeR.x - ringC.x, 0f, treeR.z - ringC.z).normalized;
+                    var carRR = Object.FindAnyObjectByType<PlayerModeController>().Car;
+                    carRR.Place(treeR - outR * 14f, Mathf.Atan2(outR.x, outR.z) * Mathf.Rad2Deg, fromAbove: 3f);
+                    carRR.Body.linearVelocity = outR * (F(1) / 3.6f);
+                    Object.FindAnyObjectByType<JapanMap.Vehicles.CarCameraRig>().Attach(carRR);
+                    _lastTarget = treeR;
+                    _lastDir = outR;
+                    Log.AppendLine($"  ramring tree {idx} at {treeR:F1}, out {outR:F2}");
+                    return true;
+                }
+                case "targetcam":
+                {
+                    // targetcam angle dist height: camera at the last ramkind target (what broke), angle 0 = from the road side.
+                    var camT = Camera.main;
+                    foreach (var bh in camT.GetComponents<Behaviour>())
+                        if (bh.GetType().Name.Contains("Cinemachine")) bh.enabled = false;
+                    var lookT = _lastTarget + Vector3.up * (a.Length > 3 ? F(3) * 0.5f : 0.8f);
+                    // "r90": relative to the ramming direction (r90 = from its right side), else a world heading.
+                    var rel = a[1].StartsWith("r");
+                    var angT = float.Parse(rel ? a[1].Substring(1) : a[1], CultureInfo.InvariantCulture);
+                    var baseYaw = rel ? Mathf.Atan2(_lastDir.x, _lastDir.z) * Mathf.Rad2Deg : 0f;
+                    var dirT = Quaternion.Euler(0f, baseYaw + angT, 0f) * Vector3.forward;
+                    var camPos = lookT + dirT * F(2) + Vector3.up * (a.Length > 3 ? F(3) : 1.5f);
+                    // Not inside a wall: in front of whatever is between (like the follow camera).
+                    var toCam = camPos - lookT;
+                    if (Physics.Raycast(lookT, toCam.normalized, out var block, toCam.magnitude, JapanMap.Core.GameLayers.CameraObstacles, QueryTriggerInteraction.Ignore))
+                        camPos = block.point - toCam.normalized * 0.3f;
+                    camT.transform.SetPositionAndRotation(camPos, Quaternion.LookRotation(lookT - camPos));
+                    return true;
+                }
+                case "freeze":
+                    // freeze: pictures only — the player's car stops where it is (kinematic) so close-ups do not drift.
+                    Object.FindAnyObjectByType<PlayerModeController>().Car.Body.isKinematic = a.Length < 2 || a[1] != "off";
+                    return true;
                 case "repair":
                     // repair: the in-place repair as the key T does it.
                     Object.FindAnyObjectByType<JapanMap.Vehicles.DriverInput>().PressRepair();
@@ -889,7 +1005,7 @@ namespace JapanMap.Editor
                         Log.AppendLine($"    {t.name} at {t.position:F1} renderer={(t.GetComponentInChildren<Renderer>()?.enabled.ToString() ?? "none")}");
             }
             var smashSystem = Object.FindAnyObjectByType<JapanMap.Gameplay.Smash.SmashSystem>();
-            if (smashSystem != null) Log.AppendLine($"  smash breaks={smashSystem.Breaks} trees={smashSystem.TreesBroken} pieces={smashSystem.LivePieces} worst={smashSystem.WorstBreakMs:0.00}ms");
+            if (smashSystem != null) Log.AppendLine($"  smash breaks={smashSystem.Breaks} trees={smashSystem.TreesBroken} pieces={smashSystem.LivePieces} stumps={smashSystem.LiveStumps} flexing={smashSystem.Flexing} worst={smashSystem.WorstBreakMs:0.00}ms ({smashSystem.WorstDetail})");
             var traffic = Object.FindAnyObjectByType<JapanMap.Gameplay.Traffic.TrafficSystem>();
             if (traffic != null)
             {

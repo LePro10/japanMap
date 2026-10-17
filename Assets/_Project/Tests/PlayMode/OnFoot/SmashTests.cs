@@ -147,6 +147,58 @@ namespace JapanMap.Tests.OnFoot
             Assert.IsTrue(veg.IsHidden(index), "50 km/h fells the tree");
             Assert.That(smash.TreesBroken, Is.EqualTo(1));
             Assert.That(smash.LivePieces, Is.GreaterThan(3), "trunk and crown pieces fly");
+            // D47: the trunk snapped where the bumper met it — a splintered stump stays, the top falls.
+            Assert.That(smash.LiveStumps, Is.EqualTo(1), "a stump stays");
+            Assert.That(smash.LiveChunks, Is.GreaterThanOrEqualTo(1), "the top falls as its own body");
+        }
+
+        /// <summary>
+        /// D47, how things give way: a street lamp at 40 km/h kinks — its stub stands, the rest folds over on a hinge and
+        /// hangs, the car drives on; a bench bursts into planks; a plastic delineator bends flat under the car and stands
+        /// up again (never broken, its collider back once the car has gone).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Lamp_Kinks_Bench_Splinters_Delineator_SpringsBack()
+        {
+            yield return BootGame();
+            var smash = Object.FindAnyObjectByType<SmashSystem>();
+            var mode = Object.FindAnyObjectByType<PlayerModeController>();
+            mode.PressVehicle();
+            var car = mode.Car;
+
+            var lamp = Lamp(smash, new Vector3(700f, 30f, -200f));
+            var chunks0 = smash.LiveChunks;
+            yield return RamAt(car, lamp, 40f, (_, _) => { });
+            Assert.IsTrue(lamp.Broken, "the lamp gave way");
+            Assert.That(smash.LiveStumps, Is.GreaterThanOrEqualTo(1), "its stub stands");
+            Assert.That(smash.Hinged, Is.GreaterThanOrEqualTo(1), "the top hangs on at the kink");
+            var top = smash.HingedTops.First();
+            var lean = Vector3.ProjectOnPlane(top.up, Vector3.up);
+            var way = Vector3.ProjectOnPlane(car.transform.forward, Vector3.up).normalized;
+            Debug.Log($"[SmashTest] kinked top leans {Vector3.Angle(top.up, Vector3.up):F0}°, along the car {Vector3.Dot(lean.normalized, way):F2}");
+            // In a street it folds until a facade stops it (~20°); in the open to the hinge's limit.
+            Assert.That(Vector3.Angle(top.up, Vector3.up), Is.GreaterThan(10f), "…and has folded over");
+            Assert.That(Vector3.Dot(lean.normalized, way), Is.GreaterThan(0.3f), "the way the car pushed it");
+
+            var bench = smash.Breakables.Where(b => b.Kind.name == "fence" && b.name.StartsWith("bench") && !b.Broken)
+                .OrderBy(b => (b.transform.position - car.transform.position).sqrMagnitude).First();
+            var before = smash.LiveChunks;
+            yield return RamAt(car, bench, 35f, (_, _) => { });
+            Assert.IsTrue(bench.Broken, "the bench broke");
+            Assert.That(smash.PlanksThrown, Is.GreaterThanOrEqualTo(2), "into planks, each flying on its own");
+
+            var post = smash.Breakables.Where(b => b.Kind.name == "light" && b.GetComponentInChildren<Renderer>() != null)
+                .OrderBy(b => (b.transform.position - car.transform.position).sqrMagnitude).First();
+            var upright = post.transform.rotation;
+            yield return RamAt(car, post, 45f, (_, _) => { });
+            Assert.That(post.Flexed, Is.GreaterThan(0), "the delineator bent");
+            Assert.IsFalse(post.Broken, "…and did not break");
+            car.Place(car.transform.position + car.transform.forward * 30f, car.transform.eulerAngles.y, fromAbove: 3f); // off it
+            var waited = 0f;
+            while (post.Flexing && waited < 4f) { waited += Time.deltaTime; yield return null; }
+            Assert.IsFalse(post.Flexing, "it stands up again");
+            Assert.That(Quaternion.Angle(post.transform.rotation, upright), Is.LessThan(0.5f), "upright as before");
+            Assert.IsTrue(post.GetComponentInChildren<Collider>().enabled, "with its collider back");
         }
 
         [UnityTest]

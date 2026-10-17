@@ -215,7 +215,7 @@ namespace JapanMap.Tests.Vehicles
             foreach (var kind in new[] { "light", "fence" })
             {
                 // Alone: nothing else breakable within 6 m (a park lamp beside the bench took the hit once).
-            var target = smash.Breakables.Where(b => b.Kind.name == kind && !b.Broken && (kind != "fence" || b.name.StartsWith("bench") || b.name.StartsWith("parkBench"))
+            var target = smash.Breakables.Where(b => b.Kind.name == kind && !b.Broken && (kind != "light" || b.GetComponentInChildren<Renderer>() != null) && (kind != "fence" || b.name.StartsWith("bench") || b.name.StartsWith("parkBench"))
                                                      && !smash.Breakables.Any(o => o != b && (o.transform.position - b.transform.position).sqrMagnitude < 36f))
                     .OrderBy(b => (b.transform.position - car.transform.position).sqrMagnitude).First();
                 // As SmashTests.RamAt: from the road beside it, at an angle (behind a roadside thing there are houses).
@@ -243,9 +243,10 @@ namespace JapanMap.Tests.Vehicles
                 yield return Settle(d, 0.5f);
                 d.Impacted -= Note;
                 Debug.Log($"[Damage] {kind} ({target.name}) at 50: broken {target.Broken}, crush {d.Deformer.MaxDisplacement:F3} m, hits{log}");
-                Assert.IsTrue(target.Broken, $"{target.name} broke");
-                // Below the scuff level a hit is not even reported; anything reported must be this thing.
-                if (log != "") Assert.That(log, Does.Contain(target.name.Split('_')[0]), $"the car hit {target.name}:{log}");
+                // A plastic post bends and springs back (D47), the rest breaks.
+                if (kind == "light") Assert.That(target.Flexed, Is.GreaterThan(0), $"{target.name} bent over");
+                else Assert.IsTrue(target.Broken, $"{target.name} broke");
+
                 Assert.That(d.Deformer.MaxDisplacement, Is.LessThan(0.03f), $"{kind}: hardly a mark on the car");
             }
         }

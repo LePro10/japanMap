@@ -12,10 +12,25 @@ namespace JapanMap.Gameplay.Smash
     [CreateAssetMenu(menuName = "JapanMap/Life/Breakable Settings", fileName = "BreakableSettings")]
     public sealed class BreakableSettings : ScriptableObject
     {
+        /// <summary>How a thing gives way (D47).</summary>
+        public enum Way
+        {
+            /// <summary>Flies off whole (a vending machine, a bicycle, a hut).</summary>
+            Throw,
+            /// <summary>A post: kinks at the bumper and folds over, still standing on its stub; snaps off and flies when hit hard.</summary>
+            Kink,
+            /// <summary>A bench, a rack: bursts into planks along its length.</summary>
+            Planks,
+            /// <summary>A flexible plastic post: bends flat under the car and springs back up — never breaks.</summary>
+            Flex,
+        }
+
         [Serializable]
         public class Kind
         {
             public string name;
+            [Tooltip("How it gives way (D47).")]
+            public Way way = Way.Throw;
             [Tooltip("Collider objects or prefab instances whose name starts with one of these.")]
             public string[] match = { };
             [Tooltip("Speed into the surface needed, m/s (legacy RAIL 4.6, TREE 7.8, toys 1.4).")]
@@ -36,15 +51,15 @@ namespace JapanMap.Gameplay.Smash
 
         public Kind[] kinds =
         {
-            new() { name = "post", match = new[] { "streetLamp", "avenueLamp", "parkLamp", "lampPost" },
+            new() { name = "post", way = Way.Kink, match = new[] { "streetLamp", "avenueLamp", "parkLamp", "lampPost" },
                     minSpeed = 4.6f, energy = 9000f, carLoss = 0.9f, carDamage = 0.35f, split = new Vector3Int(1, 3, 1), mass = 60f, color = new Color(0.32f, 0.33f, 0.35f) },
-            new() { name = "light", match = new[] { "delineator" },
+            new() { name = "light", way = Way.Flex, match = new[] { "delineator" },
                     minSpeed = 4.6f, energy = 9000f, carLoss = 0.3f, carDamage = 0.03f, split = new Vector3Int(1, 2, 1), mass = 8f, color = new Color(0.9f, 0.45f, 0.15f) },
             new() { name = "bike", match = new[] { "bicycle" },
                     minSpeed = 4.6f, energy = 9000f, carLoss = 0.5f, carDamage = 0.08f, split = new Vector3Int(1, 2, 1), mass = 20f, color = new Color(0.7f, 0.7f, 0.72f) },
             new() { name = "vending", match = new[] { "vending" },
                     minSpeed = 6.0f, energy = 15000f, carLoss = 2.0f, carDamage = 0.45f, split = new Vector3Int(2, 3, 1), mass = 250f, color = new Color(0.82f, 0.84f, 0.86f) },
-            new() { name = "fence", match = new[] { "rack", "netRack", "squidRack", "dryingNet", "lanternRack", "crateStack", "bench", "parkBench", "yardGear" },
+            new() { name = "fence", way = Way.Planks, match = new[] { "rack", "netRack", "squidRack", "dryingNet", "lanternRack", "crateStack", "bench", "parkBench", "yardGear" },
                     minSpeed = 1.4f, energy = 0f, carLoss = 0.45f, carDamage = 0.06f, split = new Vector3Int(3, 2, 1), mass = 40f, color = new Color(0.45f, 0.33f, 0.2f) },
             new() { name = "hut", match = new[] { "shed", "fishHut" },
                     minSpeed = 7.8f, energy = 21000f, carLoss = 3.0f, carDamage = 0.6f, split = new Vector3Int(3, 3, 2), mass = 600f, color = new Color(0.42f, 0.32f, 0.22f) },
@@ -58,9 +73,24 @@ namespace JapanMap.Gameplay.Smash
         [Tooltip("Size of a crown piece, m.")]
         public float treeCrownPiece = 1.4f;
 
+        [Header("Breaking apart (D47)")]
+        [Tooltip("A post folds over (kinks) below this speed into it, m/s; faster it snaps off and flies.")]
+        public float kinkUntil = 18f;
+        [Tooltip("How far a kinked post folds over, degrees.")]
+        public float kinkAngle = 82f;
+        [Tooltip("Height range of a break above the foot, m (the bumper meets a trunk or a post there).")]
+        public Vector2 breakHeight = new(0.35f, 0.95f);
+        [Tooltip("Planks a bench or rack bursts into, per metre of its length (2…6).")]
+        public float planksPerMetre = 1.6f;
+        [Tooltip("A flexible post: seconds flat under the car, then the spring back (s).")]
+        public Vector2 flexTimes = new(0.35f, 1.1f);
+        [Tooltip("Stumps and stubs left standing at once (oldest goes).")]
+        public int maxStumps = 16;
+        public Color freshWood = new(0.82f, 0.66f, 0.45f);
+
         [Header("Falling objects (the broken thing itself, not boxes)")]
         [Tooltip("Whole objects in flight at once (a felled tree, a lamp post, a vending machine), recycled oldest first.")]
-        public int maxChunks = 10;
+        public int maxChunks = 16;
         [Tooltip("Seconds a fallen object lies before it sinks away.")]
         public float chunkLife = 12f;
         [Tooltip("Tip-over spin of a tree at the hit, rad/s (it then falls under gravity).")]

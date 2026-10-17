@@ -27,6 +27,10 @@ namespace JapanMap.Vehicles
         public float radiusPerDeltaV = 0.036f;
         [Tooltip("The dent is no wider than the thing hit plus this, m (a trunk leaves a narrow fold).")]
         public float radiusOverObject = 0.25f;
+        [Tooltip("A narrow thing (a trunk, a pole) concentrates the hit: up to this many times deeper than a wall at the same speed change.")]
+        public float narrowDepth = 1.5f;
+        [Tooltip("Half width below which a thing counts as narrow, m.")]
+        public float narrowBelow = 0.6f;
         [Tooltip("Wrinkles (0 = smooth dent, 1 = crumpled sheet).")]
         [Range(0f, 1f)] public float crumple = 0.65f;
         [Tooltip("Total move of any vertex from its modelled place, m.")]
@@ -67,7 +71,7 @@ namespace JapanMap.Vehicles
         [Tooltip("Sliding speed along a wall or on a hub that throws sparks, m/s.")]
         public float scrapeSpeed = 4f;
         [Tooltip("Metres of sliding between two scratch marks.")]
-        public float scratchEvery = 0.9f;
+        public float scratchEvery = 1.5f;
 
         [Header("Look")]
         [Tooltip("Additive streak material for sparks.")]
@@ -99,6 +103,9 @@ namespace JapanMap.Vehicles
             var x = Mathf.Max(0f, deltaV - dentFrom);
             return Mathf.Min(maxDepth, x * depthPerDeltaV + x * x * depthPerDeltaV2);
         }
+
+        /// <summary>Depth factor for a thing <paramref name="objectHalfWidth"/> m wide each side (1 for a wall).</summary>
+        public float Narrow(float objectHalfWidth) => 1f + (narrowDepth - 1f) * Mathf.Clamp01((narrowBelow - objectHalfWidth) / narrowBelow);
 
         /// <summary>Dent radius of a hit of <paramref name="deltaV"/> m/s against something <paramref name="objectHalfWidth"/> m wide each side.</summary>
         public float Radius(float deltaV, float objectHalfWidth) =>

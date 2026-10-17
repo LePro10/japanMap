@@ -7,6 +7,16 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: M_Details_Atlas
+    second: {fileID: 2100000, guid: d6436fdfd95e741988f629c883b6c06e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Figures_Atlas
+    second: {fileID: 2100000, guid: 1d20af07cb939463b8d12fb8bd449315, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: M_Flora_Atlas
     second: {fileID: 2100000, guid: b308f2a1d79604be2bd16cb36cd212fa, type: 2}
   - first:
@@ -119,6 +129,16 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: M_Tokyo_Atlas
     second: {fileID: 2100000, guid: 748193f2b1d5442c2a19b10de8a4429b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_TrafficPaint
+    second: {fileID: 2100000, guid: 87f46bd7fb8214e22ab6d14de13615f5, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Traffic_Atlas
+    second: {fileID: 2100000, guid: 13ae2950c084445ffb336e38c05b8c1c, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
@@ -146,7 +166,7 @@ ModelImporter:
     extraExposedTransformPaths: []
     extraUserProperties: []
     clipAnimations: []
-    isReadable: 0
+    isReadable: 1
   meshes:
     lODScreenPercentages:
     - 0.25

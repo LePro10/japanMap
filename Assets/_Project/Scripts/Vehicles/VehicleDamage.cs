@@ -63,6 +63,7 @@ namespace JapanMap.Vehicles
         readonly Dictionary<Collider, float> _slid = new();
         int _seed, _dentFrame = -1;
         Collider _other;
+        float _depth, _shoulder = 0.5f, _spread;
         bool _hullBaked;
 
         readonly Stopwatch _watch = new();
@@ -155,6 +156,9 @@ namespace JapanMap.Vehicles
                     if (_glassSub < 0 && n.EndsWith("_glass")) _glassSub = i;
                 }
                 if (_paintSub >= 0 && mats[_paintSub].HasProperty("baseColorFactor")) _paint = mats[_paintSub].GetColor("baseColorFactor");
+                // Height of the widest part of the body (where a wall touches it), from the shell's bounds.
+                var b = shell.shared.bounds;
+                _shoulder = b.min.y + b.size.y * 0.42f;
             }
             _marks = new DamageMarks(_deformer, _s.decalMaterial, Mathf.Max(4, Mathf.RoundToInt(_s.maxMarks * _s.EffectShare(QualitySystem.Current))));
             _fx = new DamageEffects(transform, _s);
@@ -229,7 +233,8 @@ namespace JapanMap.Vehicles
             // A landing on the floor pan is not a crash.
             if (transform.InverseTransformDirection(dir).y > 0.6f) deltaV *= _s.undersideShare;
             var tangent = p.relative - dir * Vector3.Dot(p.relative, dir);
-            var half = HalfWidth(p.other, dir);
+            // The thing may be gone by now (a place streamed out, a broken prop): then it counts as wide.
+            var half = p.other != null ? HalfWidth(p.other, dir) : 10f;
             _other = p.other;
             Take(point, dir, deltaV, half, tangent, p.soft);
             _other = null;
@@ -269,7 +274,7 @@ namespace JapanMap.Vehicles
             var knee = 0.03f;
             if (deltaV >= _s.dentFrom)
             {
-                var depth = _s.Depth(deltaV);
+                var depth = _depth = Mathf.Min(_s.maxDepth, _s.Depth(deltaV) * _s.Narrow(halfWidth));
                 knee = CarBodyDeformer.Knee(depth);
                 var dent = new CarBodyDeformer.Dent { point = bp, dir = bd, depth = depth, radius = radius, crumple = _s.crumple, seed = _seed };
                 // The crush plane now; the vertices move over the next frames within the frame budget (a crash crumples
@@ -282,7 +287,11 @@ namespace JapanMap.Vehicles
             // The paint at the hit: streaks from a graze, crumpled paint from a dent.
             var tile = deltaV >= _s.dentFrom * 1.6f ? DamageMarks.Tile.Scuff : (_seed & 1) == 0 ? DamageMarks.Tile.Scratch : DamageMarks.Tile.Scratch2;
             if (shell != null && _paintSub >= 0)
-                hit.scratched = _marks.Add(shell, _paintSub, bp, bd, along, Mathf.Clamp(radius * 0.85f, 0.25f, 0.6f), tile);
+            {
+                var markAt = bp;
+                if (Mathf.Abs(bd.y) < 0.6f) markAt.y = Mathf.Max(markAt.y, _shoulder * 0.85f); // from the box's low corner up onto the paint
+                hit.scratched = _marks.Add(shell, _paintSub, markAt, bd, along, Mathf.Clamp(radius * 0.85f, 0.25f, 0.6f), tile);
+            }
             if (shell != null && _glassSub >= 0 && deltaV >= _s.glassCrackDeltaV)
             {
                 var crack = deltaV >= _s.glassBreakDeltaV ? DamageMarks.Tile.Shatter : (_seed & 1) == 0 ? DamageMarks.Tile.Crack : DamageMarks.Tile.Crack2;
@@ -318,7 +327,7 @@ namespace JapanMap.Vehicles
                 var o = q - bp;
                 var d = Vector3.Dot(o, bd);
                 var lat = (o - bd * d).magnitude;
-                var push = CarBodyDeformer.Field(d, lat, plane, knee, radius, CarBodyDeformer.MaxPush(_s.Depth(deltaV)));
+                var push = CarBodyDeformer.Field(d, lat, plane, knee, radius, CarBodyDeformer.MaxPush(_depth));
                 if (push < 0.005f) continue;
                 _bend[i] += push;
                 if (_bend[i] >= _s.wheelOffPush && deltaV >= _s.wheelOffDeltaV)
@@ -427,7 +436,9 @@ namespace JapanMap.Vehicles
 
         void Fly(in Impact hit, Vector3 point, Vector3 dir, float deltaV, Vector3 slide)
         {
-            var outward = -dir;
+            // The thing hit is on the far side of the contact: sparks and bits spray up and back off it, along any slide.
+            var sl = slide.sqrMagnitude > 1f ? slide.normalized * 0.4f : Vector3.zero;
+            var outward = (dir * 0.45f + Vector3.up * 0.8f - sl).normalized;
             var sparks = Mathf.RoundToInt(Mathf.Min(60f, deltaV * _s.sparksPerDeltaV));
             _fx.Sparks(point, outward, sparks, 3f + deltaV * 0.35f);
             if (deltaV >= _s.dentFrom)
@@ -445,24 +456,44 @@ namespace JapanMap.Vehicles
         {
             if (!_bound) return;
             var k = c.GetContact(0);
-            var rel = c.relativeVelocity;
+            // The car's own motion along the surface at the contact (the collision's relative velocity has no fixed sign).
+            var rel = _car.Body.GetPointVelocity(k.point) - (c.rigidbody != null ? c.rigidbody.GetPointVelocity(k.point) : Vector3.zero);
             var slide = rel - k.normal * Vector3.Dot(rel, k.normal);
             var speed = slide.magnitude;
             if (speed < _s.scrapeSpeed) return;
             Scrape = Mathf.Max(Scrape, Mathf.Clamp01(speed / 25f));
             var outward = k.normal;
             if (Vector3.Dot(outward, _car.Body.worldCenterOfMass - k.point) > 0f) outward = -outward;
-            _fx.Sparks(k.point, outward - slide.normalized * 0.6f, Mathf.Max(1, Mathf.RoundToInt(speed * 0.12f)), 2.5f);
+            // Off the wall, trailing behind the slide (the wall's side of the contact would swallow them).
+            var spray = (-slide / speed + Vector3.up * 0.35f - outward * 0.35f).normalized;
+            _fx.Sparks(k.point, spray, Mathf.Max(1, Mathf.RoundToInt(speed * 0.15f)), 2f + speed * 0.25f);
             _slid.TryGetValue(c.collider, out var metres);
             metres += speed * Time.fixedDeltaTime;
-            if (metres >= _s.scratchEvery)
+            // The floor pan on the road (a landing, a kerb) throws sparks but leaves no mark on the paint.
+            var underneath = transform.InverseTransformDirection(outward).y < -0.6f;
+            if (metres >= _s.scratchEvery && !underneath)
             {
                 metres = 0f;
                 var shell = _deformer.Shell;
                 if (shell != null && _paintSub >= 0)
                 {
                     var bodyT = _deformer.Body;
-                    _marks.Add(shell, _paintSub, bodyT.InverseTransformPoint(k.point), bodyT.InverseTransformDirection(-outward), bodyT.InverseTransformDirection(slide), 0.32f,
+                    // The physics box touches with its corners (low, at the sill); a wall scrapes the widest part of the
+                    // body — the shoulder line — so the mark goes there.
+                    // Along the side between the box's touching corners — a scrape marks the whole flank, not two ends.
+                    var lo = float.MaxValue;
+                    var hi = float.MinValue;
+                    for (var i = 0; i < c.contactCount; i++)
+                    {
+                        var z = bodyT.InverseTransformPoint(c.GetContact(i).point).z;
+                        lo = Mathf.Min(lo, z);
+                        hi = Mathf.Max(hi, z);
+                    }
+                    var at = bodyT.InverseTransformPoint(k.point);
+                    _spread = (_spread + 0.618034f) % 1f;
+                    at.z = Mathf.Lerp(lo, hi, _spread);
+                    at.y = Mathf.Max(at.y, _shoulder);
+                    _marks.Add(shell, _paintSub, at, bodyT.InverseTransformDirection(-outward), bodyT.InverseTransformDirection(slide), 0.38f,
                         (_seed++ & 1) == 0 ? DamageMarks.Tile.Scratch : DamageMarks.Tile.Scratch2);
                 }
             }

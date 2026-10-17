@@ -103,7 +103,8 @@ namespace JapanMap.Vehicles
             u.Normalize();
             var v = Vector3.Cross(dir, u);
             var info = part.subMeshes[subMesh];
-            var r2 = radius * radius;
+            // A little beyond the tile's circle: the faces at the rim carry alpha 0 there, so the mark has no edge.
+            var r2 = radius * radius * 1.5f;
             _map.Clear();
             var verts = new List<int>();
             var tris = new List<int>();
@@ -286,44 +287,59 @@ namespace JapanMap.Vehicles
                 case Tile.Scratch:
                 case Tile.Scratch2:
                 {
-                    // Bare metal streaks along u, a dark rim on some, denser in the middle.
-                    var n = tile == Tile.Scratch ? 46 : 30;
+                    // A scraped band: a grey haze of abraded paint, dark grooves (primer, the wall's grime) and bright
+                    // metal in the deepest ones — readable on white paint as on black. Denser in the middle, along u.
+                    var n = tile == Tile.Scratch ? 70 : 46;
+                    for (var i = 0; i < 14; i++)
+                    {
+                        var y = c.y + Gauss(rng) * 14f;
+                        var len = R(rng, 50f, 110f);
+                        var x0 = c.x - len * 0.5f + Gauss(rng) * 8f;
+                        Line(px, w, ox, oy, new Vector2(x0, y), new Vector2(x0 + len, y + R(rng, -2f, 2f)), R(rng, 5f, 11f), new Color(0.38f, 0.38f, 0.39f, 0.42f));
+                    }
                     for (var i = 0; i < n; i++)
                     {
-                        var y = c.y + Gauss(rng) * 22f;
+                        var y = c.y + Gauss(rng) * 20f;
                         var len = R(rng, 18f, 100f);
                         var x0 = c.x + Gauss(rng) * 18f - len * 0.5f;
-                        var slope = R(rng, -0.06f, 0.06f);
-                        var bright = R(rng, 0.62f, 0.92f);
-                        var width = R(rng, 0.45f, tile == Tile.Scratch ? 1.3f : 2.2f);
-                        if (rng.NextDouble() < 0.3) Line(px, w, ox, oy, new Vector2(x0, y + 1.1f), new Vector2(x0 + len, y + 1.1f + slope * len), width * 0.9f, new Color(0.12f, 0.11f, 0.1f, 0.5f));
-                        Line(px, w, ox, oy, new Vector2(x0, y), new Vector2(x0 + len, y + slope * len), width, new Color(bright, bright, bright * 1.02f, R(rng, 0.55f, 1f)));
+                        var slope = R(rng, -0.05f, 0.05f);
+                        var width = R(rng, 0.5f, tile == Tile.Scratch ? 1.4f : 2.3f);
+                        var dark = rng.NextDouble() < 0.55;
+                        var v = dark ? R(rng, 0.06f, 0.22f) : R(rng, 0.7f, 0.95f);
+                        Line(px, w, ox, oy, new Vector2(x0, y), new Vector2(x0 + len, y + slope * len), width, new Color(v, v, v * 1.02f, dark ? R(rng, 0.7f, 0.95f) : R(rng, 0.6f, 1f)));
                     }
                     break;
                 }
                 case Tile.Scuff:
                 {
-                    // Crumpled paint: dark creases, chipped flakes of primer and metal.
-                    for (var i = 0; i < 16; i++)
+                    // Crumpled, scraped paint: an irregular abraded area (noise, not circles) of dull grey, chipped
+                    // flakes with jagged edges showing primer and bare metal, dark creases where the sheet folded.
+                    Haze(px, w, ox, oy, rng, 0.055f, 0.3f, new Color(0.36f, 0.36f, 0.37f, 0.55f));
+                    for (var i = 0; i < 46; i++)
+                    {
+                        var p = c + new Vector2(Gauss(rng), Gauss(rng)) * 24f;
+                        var metal = rng.NextDouble() < 0.5;
+                        var col = metal ? new Color(0.8f, 0.8f, 0.82f, 0.95f) : new Color(0.5f, 0.51f, 0.5f, 0.9f);
+                        // A flake: a few short thick strokes from one point, each its own angle — a jagged chip.
+                        var size = R(rng, 1.5f, 5f);
+                        for (var k = 0; k < 4; k++)
+                        {
+                            var a = R(rng, 0f, Mathf.PI * 2f);
+                            Line(px, w, ox, oy, p, p + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * size * R(rng, 0.6f, 1.3f), size * R(rng, 0.5f, 0.9f), col);
+                        }
+                    }
+                    for (var i = 0; i < 18; i++)
                     {
                         var p = c + new Vector2(Gauss(rng), Gauss(rng)) * 26f;
                         var a = R(rng, 0f, Mathf.PI * 2f);
                         var q = p;
-                        for (var s = 0; s < 6; s++)
+                        for (var k = 0; k < 6; k++)
                         {
                             a += R(rng, -0.7f, 0.7f);
                             var next = q + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * R(rng, 4f, 11f);
-                            Line(px, w, ox, oy, q, next, R(rng, 0.8f, 1.8f), new Color(0.05f, 0.05f, 0.05f, 0.75f));
+                            Line(px, w, ox, oy, q, next, R(rng, 0.8f, 1.8f), new Color(0.04f, 0.04f, 0.04f, 0.8f));
                             q = next;
                         }
-                    }
-                    for (var i = 0; i < 70; i++)
-                    {
-                        var p = c + new Vector2(Gauss(rng), Gauss(rng)) * 24f;
-                        var size = R(rng, 1f, 4.5f);
-                        var metal = rng.NextDouble() < 0.55;
-                        var col = metal ? new Color(0.78f, 0.78f, 0.8f, 0.95f) : new Color(0.55f, 0.56f, 0.55f, 0.9f);
-                        Blob(px, w, ox, oy, p, size, col);
                     }
                     break;
                 }
@@ -401,9 +417,49 @@ namespace JapanMap.Vehicles
                     for (var x = 0; x < TileSize; x++)
                     {
                         float dx = x + 0.5f - h, dy = y + 0.5f - h;
-                        _fade[y * TileSize + x] = 1f - Mathf.SmoothStep(0.55f, 0.98f, Mathf.Sqrt(dx * dx + dy * dy) / h);
+                        _fade[y * TileSize + x] = 1f - Mathf.SmoothStep(0.5f, 0.92f, Mathf.Sqrt(dx * dx + dy * dy) / h);
                     }
                 return _fade;
+            }
+        }
+
+        /// <summary>An irregular patch around the tile centre: value noise above a threshold, fading outwards.</summary>
+        static void Haze(Color[] px, int w, int ox, int oy, System.Random rng, float freq, float threshold, Color col)
+        {
+            var seed = rng.Next();
+            var h = TileSize * 0.5f;
+            for (var y = 0; y < TileSize; y++)
+                for (var x = 0; x < TileSize; x++)
+                {
+                    float dx = (x - h) / h, dy = (y - h) / h;
+                    var r2 = dx * dx + dy * dy;
+                    if (r2 > 0.7f) continue; // nothing can show out there (and the tile fades anyway)
+                    var r = Mathf.Sqrt(r2);
+                    var n = 0.7f * Value(x * freq, y * freq, seed) + 0.3f * Value(x * freq * 2.7f, y * freq * 2.7f, seed + 1);
+                    var v = n - threshold - r * 0.45f;
+                    if (v <= 0f) continue;
+                    Over(px, (oy + y) * w + ox + x, col, Mathf.Clamp01(v * 6f));
+                }
+        }
+
+        static float Value(float x, float y, int seed)
+        {
+            var x0 = Mathf.FloorToInt(x);
+            var y0 = Mathf.FloorToInt(y);
+            float fx = x - x0, fy = y - y0;
+            fx = fx * fx * (3f - 2f * fx);
+            fy = fy * fy * (3f - 2f * fy);
+            float a = Cell(x0, y0, seed), b = Cell(x0 + 1, y0, seed), c = Cell(x0, y0 + 1, seed), d = Cell(x0 + 1, y0 + 1, seed);
+            return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+        }
+
+        static float Cell(int x, int y, int seed)
+        {
+            unchecked
+            {
+                var h = x * 374761393 + y * 668265263 + seed * 1274126177;
+                h = (h ^ (h >> 13)) * 1274126177;
+                return ((h ^ (h >> 16)) & 0xffff) / 65535f;
             }
         }
 

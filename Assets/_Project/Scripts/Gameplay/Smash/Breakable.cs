@@ -22,6 +22,9 @@ namespace JapanMap.Gameplay.Smash
         readonly List<int> _instanceIds = new();
 
         public bool Broken { get; private set; }
+        /// <summary>Bent over right now (a flexible post under the car).</summary>
+        public bool Flexing { get; internal set; }
+        public int Flexed { get; internal set; }
         public float BrokenAt { get; private set; }
         public BreakableSettings.Kind Kind => _kind;
 
@@ -55,8 +58,16 @@ namespace JapanMap.Gameplay.Smash
             var rel = c.relativeVelocity;
             var n = c.contactCount > 0 ? c.GetContact(0).normal : -rel.normalized;
             var approach = Mathf.Abs(Vector3.Dot(rel, n));
+            var contact = c.contactCount > 0 ? c.GetContact(0).point : transform.position;
+            var touched = c.contactCount > 0 ? c.GetContact(0).thisCollider : null;
+            // A flexible post bends at any speed and springs back; nothing breaks.
+            if (_kind.way == BreakableSettings.Way.Flex && _renderers.Length > 0)
+            {
+                if (approach >= 1f) _system.Flex(this, body, rel, touched);
+                return;
+            }
             if (!ShouldBreak(body.mass, approach, _kind.minSpeed, _kind.energy)) return;
-            _system.Break(this, body, rel, approach, c.contactCount > 0 ? c.GetContact(0).thisCollider : null);
+            _system.Break(this, body, rel, approach, touched, contact);
         }
 
         /// <summary>Legacy breakables.ts shouldBreak: speed and energy must both suffice.</summary>
@@ -66,6 +77,7 @@ namespace JapanMap.Gameplay.Smash
         internal Bounds Bounds => _colliders.Length > 0 ? _colliders[0].bounds : new Bounds(transform.position, Vector3.one);
         internal Quaternion Rotation => transform.rotation;
         internal Renderer[] Renderers => _renderers;
+        internal Collider[] Colliders => _colliders;
         internal InstanceRenderer Instances => _instances;
         internal List<int> InstanceIds => _instanceIds;
 

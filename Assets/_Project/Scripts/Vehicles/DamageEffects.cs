@@ -109,7 +109,7 @@ namespace JapanMap.Vehicles
             var ps = Base(parent, "DamageSparks", 400, 1.1f, 0.65f);
             var main = ps.main;
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.18f, 0.55f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.018f, 0.04f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.03f, 0.065f);
             main.startColor = new ParticleSystem.MinMaxGradient(s.sparkColor, Color.white);
             var shape = ps.shape;
             shape.enabled = true;
@@ -128,8 +128,8 @@ namespace JapanMap.Vehicles
             var r = ps.GetComponent<ParticleSystemRenderer>();
             r.sharedMaterial = s.sparkMaterial;
             r.renderMode = ParticleSystemRenderMode.Stretch;
-            r.velocityScale = 0.045f;
-            r.lengthScale = 1.5f;
+            r.velocityScale = 0.06f;
+            r.lengthScale = 2.2f;
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             r.receiveShadows = false;
             ps.Play();

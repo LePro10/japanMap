@@ -326,6 +326,19 @@ namespace JapanMap.Editor.Art
     /// <summary>Import settings for library FBX: metres, no animation/cameras, materials remapped to the atlas materials.</summary>
     public sealed class LibraryModelRules : AssetPostprocessor
     {
+        /// <summary>Models whose meshes the smash system cuts (SmashSystem / MeshCutter).</summary>
+        public static readonly string[] Breakable =
+        {
+            "SM_Tree_", "SM_StreetLight_", "SM_Bench_", "SM_Delineator_", "SM_Bicycle_", "SM_Minato_Gear_", "SM_Gassho_Hasa", "SM_Tera_Chochin_Rack",
+        };
+
+        public static bool BreaksApart(string modelName)
+        {
+            foreach (var p in Breakable)
+                if (modelName.StartsWith(p, System.StringComparison.Ordinal)) return true;
+            return false;
+        }
+
         void OnPreprocessModel()
         {
             if (!assetPath.StartsWith(LibraryImporter.ArtDir + "/")) return;
@@ -338,7 +351,9 @@ namespace JapanMap.Editor.Art
             m.importLights = false;
             m.importBlendShapes = false;
             m.importVisibility = false;
-            m.isReadable = false;
+            // Things a car breaks are cut apart at runtime (a trunk snaps at the bumper, a lamp post kinks, a bench
+            // splinters — D47): their meshes stay readable (+5.6 MB memory for all of them, no download).
+            m.isReadable = BreaksApart(Path.GetFileNameWithoutExtension(assetPath));
             m.meshCompression = ModelImporterMeshCompression.Medium;
             m.optimizeMeshPolygons = true;
             m.optimizeMeshVertices = true;
