@@ -68,6 +68,13 @@ namespace JapanMap.Gameplay.Intro
         float _playerThrottle;
         Vector2 _home;
 
+        void Awake()
+        {
+            // The career follows the first drive (D50); built here at runtime so no scene has to change.
+            if (settings != null && settings.career != null)
+                gameObject.AddComponent<Career.CareerSystem>().Bind(settings.career, progress, player, hud, map, travel, this);
+        }
+
         void Start() => _baseFixed = Time.fixedDeltaTime;
 
         bool Wanted()

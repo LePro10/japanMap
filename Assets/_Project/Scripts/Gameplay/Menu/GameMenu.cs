@@ -492,8 +492,25 @@ namespace JapanMap.Gameplay.Menu
             SetPageWidth(Current);
             RefreshSparks();
             _body.Clear();
+            CareerChip(_body);
             Current.Build(_body);
             MenuTiles.Stagger(_body);
+        }
+
+        /// <summary>
+        /// The career goal at the top of every page but Play (which has its own tile): the Open Bay and the map are where
+        /// most goals are done, and there the HUD card is hidden (D50).
+        /// </summary>
+        void CareerChip(VisualElement body)
+        {
+            var career = Career.CareerSystem.Instance;
+            var step = career != null && career.Active ? career.Chain.Current : null;
+            if (step == null || Current is PlayScreen || step.Value.goal == Career.CareerGoal.IntroDone) return;
+            var chip = Ui.Row(body, "jm-career-chip", "jm-rise");
+            chip.name = "career-chip";
+            Ui.Text(chip, "CAREER", "jm-career-chip__kicker");
+            Ui.Text(chip, Career.CareerChain.Title(step.Value), "jm-career-chip__goal");
+            if (step.Value.reward > 0) Ui.Text(chip, $"+{step.Value.reward:N0}", "jm-career-chip__reward");
         }
 
         Label _sparks;

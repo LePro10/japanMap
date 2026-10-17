@@ -1,5 +1,6 @@
 @import url("/Assets/_Project/Data/UI/Menu.uss");
 @import url("/Assets/_Project/Data/UI/Title.uss");
+@import url("/Assets/_Project/Data/UI/Career.uss");
 /* Game UI theme — "blue hour after rain" (legacy src/ui/theme.css, ASTRA §10).
    Dark ink panels, warm white type, amber = money/selection, sakura = discovery, nitro = boost,
    vermilion only for braking/errors. Sizes in CSS px (UiPanel): body ≥ 16, secondary 14, targets ≥ 48. */

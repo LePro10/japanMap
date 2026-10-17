@@ -121,7 +121,7 @@ namespace JapanMap.Editor.Content
             ContentSetup.Asset<DriftSettings>("DriftSettings"),
             RaceSeed.LoadOrCreate(),
             AssetDatabase.LoadAssetAtPath<VehicleFleet>(FleetSeed.FleetPath),
-            Tuning());
+            Tuning()) { Career = ContentSetup.Asset<JapanMap.Gameplay.Career.CareerSettings>("Career") };
 
         [MenuItem("JapanMap/Economy/Write Table")]
         public static string WriteTable()

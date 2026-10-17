@@ -56,6 +56,9 @@ namespace JapanMap.Gameplay.Economy
         readonly VehicleFleet _fleet;
         readonly TuningSettings _tuning;
 
+        /// <summary>The career's one-time rewards (D50); null = no career section.</summary>
+        public Career.CareerSettings Career;
+
         /// <summary>Time around an event: drive to the next beacon, read the card, look at the result, s.</summary>
         public float travelSeconds = 60f, joinSeconds = 15f, resultSeconds = 10f;
 
@@ -190,7 +193,7 @@ namespace JapanMap.Gameplay.Economy
             list.Add(new Profile
             {
                 name = "Erste Sitzung", ordinary = false, sparks = firstEvent.sparks + firstDrift,
-                oneTime = 3 * _e.regionReward + 2 * _e.discoveryReward + _e.firstMedalReward + 2 * MilestoneReward(),
+                oneTime = 3 * _e.regionReward + 2 * _e.discoveryReward + _e.firstMedalReward + 2 * MilestoneReward() + CareerWithin(Session),
                 how = $"3 Regionen + 2 Entdeckungen (4 min), 1 Veranstaltung ({firstEvent.title}) mit erster Medaille, 2 Meilensteine, Rest gelegentlich driften",
             });
             return list;
@@ -202,7 +205,24 @@ namespace JapanMap.Gameplay.Economy
 
         int MilestoneReward() => _e.milestones.Length > 0 ? _e.milestones[0].reward : 0;
 
-        public int OneTimeTotal() =>
+        /// <summary>Career Sparks of the steps a first-time player finishes within <paramref name="seconds"/> (their typical times).</summary>
+        public int CareerWithin(float seconds)
+        {
+            if (Career == null) return 0;
+            var t = 0f;
+            var n = 0;
+            foreach (var s in Career.steps)
+            {
+                t += s.typicalSeconds;
+                if (t > seconds) break;
+                n += s.reward;
+            }
+            return n;
+        }
+
+        public int CareerTotal() => Career == null ? 0 : Career.completeReward + Career.steps.Sum(s => s.reward);
+
+        public int OneTimeTotal() => CareerTotal() +
             _e.regionReward * 8 + _e.allRegionsReward + _e.discoveryReward * 24 + _e.firstMedalReward * _events.events.Length
             + _e.milestones.Sum(m => m.reward);
 
@@ -275,6 +295,26 @@ namespace JapanMap.Gameplay.Economy
             sb.AppendLine($"Nach der ersten Sitzung: {N(after1)} Sparks → günstigstes Auto ({cheapest.displayName}, {N(cheapest.price)}) " +
                           (after1 >= cheapest.price ? "**sofort** kaufbar." : $"nach etwa {Mathf.CeilToInt((cheapest.price - after1) / (float)unit) + 1} Sitzungen."));
             sb.AppendLine($"Street-Paket für das Startauto ({N(StreetTunePrice())}) " + (after1 >= StreetTunePrice() ? "ebenfalls sofort." : "in Sitzung 2."));
+            if (Career == null) return sb.ToString();
+            sb.AppendLine();
+            sb.AppendLine("## Karriere (einmalig, D50)");
+            sb.AppendLine();
+            sb.AppendLine($"Kette aus `Data/Gameplay/Career.asset` (docs/CAREER.md). Zusammen **{N(CareerTotal())} Sparks** " +
+                          $"(davon {N(Career.completeReward)} für „Career complete“), in der ersten Sitzung {N(CareerWithin(Session))}. " +
+                          $"Überspringen zahlt {N(Career.skipSparks)}. Kaufschritte füllen einmal auf, falls das Geld fehlt.");
+            sb.AppendLine();
+            sb.AppendLine("| # | Kapitel | Ziel | Sparks | Summe | ab Minute |");
+            sb.AppendLine("|---:|---|---|---:|---:|---:|");
+            var sum = 0;
+            var at = 0f;
+            for (var i = 0; i < Career.steps.Length; i++)
+            {
+                var s = Career.steps[i];
+                sum += s.reward;
+                sb.AppendLine($"| {i + 1} | {s.chapter} | {JapanMap.Gameplay.Career.CareerChain.Title(s)}{(s.fund ? " (Startgeld)" : "")} | {N(s.reward)} | {N(sum)} | {(at / 60f).ToString("0", ci)} |");
+                at += s.typicalSeconds;
+            }
+            sb.AppendLine($"| — | — | Career complete | {N(Career.completeReward)} | {N(sum + Career.completeReward)} | {(at / 60f).ToString("0", ci)} |");
             return sb.ToString();
         }
     }

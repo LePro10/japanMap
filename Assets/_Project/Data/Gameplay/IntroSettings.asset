@@ -35,4 +35,14 @@ MonoBehaviour:
   rewardRoll: 500
   rewardDrift: 500
   rewardHome: 1500
+  career: {fileID: 11400000, guid: 3bc82befc0bdd4df3a3010de63d15c54, type: 2}
   skipHold: 0.9
+  titleScreen: 1
+  titleDistance: {x: 11, y: 8}
+  titleHeight: 1.6
+  titleSpin: 2.5
+  titleDollyPeriod: 40
+  titleFov: 34
+  titleFrameRight: 0.42
+  flyInSeconds: 1.4
+  wipeSeconds: 0.38
