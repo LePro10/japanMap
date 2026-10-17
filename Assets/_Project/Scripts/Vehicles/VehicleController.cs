@@ -91,7 +91,7 @@ namespace JapanMap.Vehicles
             _rb.angularDamping = 0.05f;
             _rb.interpolation = RigidbodyInterpolation.Interpolate;
             _rb.collisionDetectionMode = tuning.collisionMode;
-            _rb.maxAngularVelocity = 20f;
+            _rb.maxAngularVelocity = 30f; // a corkscrew turns about two axes at once (20 clipped it short)
             // Own layer: the wheels must not stand on this or another car's body, nor on water planes.
             var vehicleLayer = LayerMask.NameToLayer("Vehicle");
             if (vehicleLayer >= 0) gameObject.layer = vehicleLayer;
@@ -150,6 +150,8 @@ namespace JapanMap.Vehicles
         }
 
         float _airTime;
+        Vector3 _takeoffFwd;
+        bool _holdHeading;
 
         /// <summary>
         /// Arcade landing help: on touchdown the travel turns most of the way towards the nose when they are within
@@ -366,13 +368,32 @@ namespace JapanMap.Vehicles
                     var targetTilt = target - up * Vector3.Dot(target, up);
                     tilt += (targetTilt - tilt) * (1f - Mathf.Exp(-tuning.airAttitudeResponse * dt));
                 }
+                // Corkscrew: the spin goes round the world's vertical while the body rolls — about the rolling body's
+                // own up axis the two tangled and the car came down sideways.
+                if (r.airTrick == AirTrick.Corkscrew) yawPart = Vector3.up * r.yawRate;
                 w1 = yawPart + tilt;
+                // Rolls and flips (the kickflip too) land facing where the car took off: the world heading is held at
+                // the take-off direction for the rest of the jump (owner 2026-10-17: "landet in die Richtung, von der man
+                // abgesprungen ist"). Helicopter and corkscrew turn on purpose.
+                if (_airTime <= 0f) _takeoffFwd = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
+                if (r.airTrick == AirTrick.Roll || r.airTrick == AirTrick.Backflip || r.airTrick == AirTrick.Frontflip) _holdHeading = true;
+                if (r.airTrick == AirTrick.Helicopter || r.airTrick == AirTrick.Corkscrew) _holdHeading = false;
+                if (_holdHeading && _takeoffFwd.sqrMagnitude > 0.5f)
+                {
+                    // Heading from the nose, or from the roof when the nose points up or down mid-flip.
+                    var flat = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
+                    if (flat.sqrMagnitude < 0.04f) flat = Vector3.ProjectOnPlane(-transform.up * Mathf.Sign(transform.forward.y), Vector3.up);
+                    var err = Vector3.SignedAngle(flat.normalized, _takeoffFwd, Vector3.up) * Mathf.Deg2Rad;
+                    if (Vector3.Dot(transform.up, Vector3.up) < -0.2f) err = 0f; // upside down mid-flip the flat nose flips; wait
+                    w1 = w1 - Vector3.up * Vector3.Dot(w1, Vector3.up) + Vector3.up * Mathf.Clamp(err * 6f, -5f, 5f);
+                }
                 _airTime += dt;
             }
             else
             {
                 if (_airTime > 0.25f) AlignOnLanding(n);
                 _airTime = 0f;
+                _holdHeading = false;
             }
             if (r.hop)
             {
@@ -410,6 +431,7 @@ namespace JapanMap.Vehicles
                 burst = r.burst,
                 burstCharge = r.burstCharge,
                 hop = r.hop,
+                airTrick = r.airTrick,
             };
         }
 
@@ -454,5 +476,6 @@ namespace JapanMap.Vehicles
         public float burst, burstCharge;
         /// <summary>A stunt hop started in this step.</summary>
         public bool hop;
+        public AirTrick airTrick;
     }
 }

@@ -51,14 +51,14 @@ MonoBehaviour:
   bloomClamp: 6
   vignette: 0.22
   shadowsTint: {r: 0.92, g: 0.97, b: 1.08, a: 0}
-  wetAsphaltSmoothness: 0.42
-  wetConcreteSmoothness: 0.4
+  wetAsphaltSmoothness: 0.3
+  wetConcreteSmoothness: 0.3
   asphaltNormal: 0.6
   wetDarken: 0.8
-  puddleCover: 0.38
-  puddleCoverCity: 0.45
+  puddleCover: 0.22
+  puddleCoverCity: 0.3
   puddleSoftness: 0.04
-  puddleSmoothness: 0.96
+  puddleSmoothness: 0.9
   puddleDarken: 0.45
   puddleEdgeBias: 0.25
   puddleScale: {x: 17, y: 3}

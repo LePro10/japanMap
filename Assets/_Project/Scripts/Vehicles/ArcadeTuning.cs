@@ -136,18 +136,27 @@ namespace JapanMap.Vehicles
         public float burstTapWindow = 0.3f;
         [Tooltip("Tank share needed for a burst (less does nothing — no half-hearted pop).")]
         public float burstMinTank = 0.25f;
-        [Tooltip("Speed added by the kick with a full tank, m/s (a near-instant jump, not a push).")]
-        public float burstKickSpeed = 8.5f;
+        [Tooltip("Speed added by the kick with a FULL tank, m/s; it grows with the square of the tank share (half a tank " +
+                 "gives a quarter: the old full-tank kick was 8.5 — owner 2026-10-17: full ≈ twice as strong, low weaker).")]
+        public float burstKickSpeed = 17f;
         [Tooltip("Seconds the kick takes.")]
         public float burstKickTime = 0.16f;
-        [Tooltip("Push after the kick with a full tank, m/s², fading to 0 over the burst.")]
-        public float burstAccel = 4.5f;
+        [Tooltip("Push after the kick with a FULL tank, m/s², fading to 0 over the burst (also × tank share²).")]
+        public float burstAccel = 9f;
         [Tooltip("Burst length with a full tank, s (a 25 % tank lasts 62 % of it).")]
         public float burstDuration = 1.8f;
         [Tooltip("Share of the burst that still pushes in the air.")]
         public float burstAirShare = 0.45f;
         [Tooltip("Lateral grip multiplier during the burst (a rocket goes straight).")]
         public float burstLatGrip = 1.25f;
+
+        [Header("Nitro balance")]
+        [Tooltip("All nitro earning (passive, drift, air) × this — 0.7: the tank fills slower (owner 2026-10-17).")]
+        public float nitroEarn = 0.7f;
+        [Tooltip("During an event: nitro earning × this on top.")]
+        public float raceNitroEarn = 0.7f;
+        [Tooltip("During an event: burst strength × this.")]
+        public float raceBurst = 0.65f;
 
         [Header("Stunt mode (legacy STUNT)")]
         public float stuntTapWindow = 0.28f;

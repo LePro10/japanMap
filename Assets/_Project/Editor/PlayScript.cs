@@ -577,6 +577,13 @@ namespace JapanMap.Editor
                     Log.AppendLine($"  conflict raised={c != null}");
                     return true;
                 }
+                case "testdrive":
+                {
+                    // testdrive id: the garage's free test drive in that car (any car, the real path).
+                    var gs = Object.FindAnyObjectByType<JapanMap.Gameplay.Garage.GarageSystem>();
+                    Log.AppendLine($"  testdrive {a[1]} → {(gs != null && gs.TestDrive(a[1]))}");
+                    return true;
+                }
                 case "sparks":
                 {
                     // sparks n: setup like a loaded save — the balance a returning player would have.
@@ -692,6 +699,16 @@ namespace JapanMap.Editor
             Log.AppendLine(pins == null ? "  pins: none" : $"  pins shown=[{string.Join(", ", pins.Shown())}] {pins.Debug}");
             var w = p.Walker;
             var car = p.Car;
+            var rig = Object.FindAnyObjectByType<JapanMap.Vehicles.CarCameraRig>();
+            if (rig != null)
+            {
+                var cock = GameObject.Find("CockpitCamera");
+                var chase = GameObject.Find("ChaseCamera");
+                Log.AppendLine($"  rig mode {rig.Current} cockpitCam {(cock != null ? cock.transform.parent?.name : "inactive/missing")} chaseCam {(chase != null)}"
+                    + (cock != null && p.Car != null ? $" vcam car-local {p.Car.transform.InverseTransformPoint(cock.transform.position)} parent root {cock.transform.root.name} parent car-local {p.Car.transform.InverseTransformPoint(cock.transform.parent.position)}" : ""));
+            }
+            if (car != null && Camera.main != null)
+                Log.AppendLine($"  camera at car-local {car.transform.InverseTransformPoint(Camera.main.transform.position)} fwd·car {Vector3.Dot(Camera.main.transform.forward, car.transform.forward):0.00} car {car.Definition.id}");
             Log.AppendLine(string.Format(CultureInfo.InvariantCulture,
                 "  probe mode={0} walker={1} speed={2:0.00} grounded={3} sliding={4} car={5} carKmh={6:0.0} carDist={7:0.00} prompt='{8}' msg='{9}'",
                 p.Current, w != null && w.gameObject.activeInHierarchy ? w.transform.position.ToString("0.00") : "-",

@@ -31,6 +31,9 @@ namespace JapanMap.Vehicles
         public bool burst;
     }
 
+    /// <summary>The trick the car is turning in the air.</summary>
+    public enum AirTrick { None, Roll, Backflip, Frontflip, Helicopter, Corkscrew }
+
     /// <summary>What the planar dynamics needs to know about ground and attitude.</summary>
     public struct PlanarEnv
     {
@@ -67,6 +70,8 @@ namespace JapanMap.Vehicles
         public float flipRate;
         /// <summary>Edge: a ground hop starts in this step (the body gets an upward kick).</summary>
         public bool hop;
+        /// <summary>The air trick turning right now (None between tricks).</summary>
+        public AirTrick airTrick;
         public float drift;
         /// <summary>Slip angle, rad. Positive = velocity points right of the nose.</summary>
         public float slip;

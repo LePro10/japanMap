@@ -33,14 +33,19 @@ Shader "JapanMap/Light Pool"
             CBUFFER_END
 
             struct Attributes { float4 positionOS : POSITION; float2 uv : TEXCOORD0; UNITY_VERTEX_INPUT_INSTANCE_ID };
-            struct Varyings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; half fog : TEXCOORD1; UNITY_VERTEX_OUTPUT_STEREO };
+            struct Varyings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; half fog : TEXCOORD1; half facing : TEXCOORD2; UNITY_VERTEX_OUTPUT_STEREO };
 
             Varyings Vert(Attributes v)
             {
                 Varyings o;
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
-                o.positionCS = TransformObjectToHClip(v.positionOS.xyz);
+                float3 ws = TransformObjectToWorld(v.positionOS.xyz);
+                o.positionCS = TransformWorldToHClip(ws);
+                // Seen edge-on from afar a flat pool squeezes into one glowing line across the horizon (owner
+                // 2026-10-17): fade it out at grazing angles.
+                half3 view = (half3)normalize(GetCameraPositionWS() - ws);
+                o.facing = (half)saturate((abs(view.y) - 0.06) / 0.22);
                 o.uv = v.uv * 2.0 - 1.0;
                 o.fog = ComputeFogFactor(o.positionCS.z);
                 return o;
@@ -49,7 +54,7 @@ Shader "JapanMap/Light Pool"
             half4 Frag(Varyings i) : SV_Target
             {
                 half r = saturate(1.0 - length(i.uv));
-                half3 c = _Color.rgb * pow(r, _Falloff);
+                half3 c = _Color.rgb * pow(r, _Falloff) * i.facing;
                 // Additive: fog towards black, not towards the fog colour.
                 c = MixFogColor(c, half3(0, 0, 0), i.fog);
                 return half4(c, 1);

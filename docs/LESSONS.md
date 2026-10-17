@@ -84,6 +84,8 @@
 | 2026-10-17 | Session Burst/Menü/Navi | Neue HUD-Felder per Szene gesetzt — `ContentSetup` baut das HUD neu und hätte sie gelöscht | Felder in `ContentSetup.Set(...)` eingetragen; Regel: neue Szenen-Links immer auch im Setup-Skript | Werkzeug |
 | 2026-10-17 | Session Burst/Menü/Navi | `play.mjs "record …"` ohne `wait` danach: Spiel endet vor der Aufnahme | im Skript immer `record s name; wait s` | Skill |
 | 2026-10-17 | Session Burst/Menü/Navi | Alter Ton-Render lief nicht mehr (esbuild fehlt) | `Tools/render-sounds.mjs` ohne Abhängigkeiten | Werkzeug |
+| 2026-10-17 | Rückmeldung Straßen | Querbänder auf nasser Straße: jedes Segment eigene Ecken → RecalculateNormals flach je Segment | `ToMesh(smooth)` glättet Nähte; schwarze Leitplanken-Dreiecke (Normale 0 durch Rücken-an-Rücken-Flächen) → eigene Ecken je Seite + Prüfung Normale ≠ 0 | Werkzeug |
+| 2026-10-17 | Rückmeldung Cockpit | Nach Autowechsel blieb das Cockpit-Bild am Sitz des alten Autos (umgehängte Cinemachine-Kamera) | Cockpit-Kamera wird je Auto neu gebaut; `probe` zeigt Kamera-Position relativ zum Auto | Werkzeug |
 
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**

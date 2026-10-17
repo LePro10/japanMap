@@ -122,20 +122,20 @@ Material:
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.005
-    - _PuddleCover: 0.38
+    - _PuddleCover: 0.22
     - _PuddleDarken: 0.45
     - _PuddleDetail: 3
     - _PuddleEdgeBias: 0.25
     - _PuddleFlatten: 1
     - _PuddleScale: 17
-    - _PuddleSmoothness: 0.96
+    - _PuddleSmoothness: 0.9
     - _PuddleSoftness: 0.04
     - _QueueOffset: 0
     - _ReceiveShadows: 1
     - _ScreenSpaceReflections: 1
     - _ScreenSpaceReflectionsContributeTransparent: 1
     - _ShoulderSmoothness: 0.25
-    - _Smoothness: 0.42
+    - _Smoothness: 0.3
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1

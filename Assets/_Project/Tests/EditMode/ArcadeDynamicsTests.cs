@@ -47,8 +47,8 @@ namespace JapanMap.Tests
                 var b = plain.Step(0.02f, new DriveInput { throttle = 1f }, Flat(v)).accelLong;
                 dv += (a - b) * 0.02f;
             }
-            Assert.That(dv, Is.GreaterThan(6f), "a speed bump, not a slow push");
-            Assert.That(dv, Is.LessThan(14f), "not a teleport either");
+            Assert.That(dv, Is.GreaterThan(12f), "a full tank: a big speed bump, not a slow push");
+            Assert.That(dv, Is.LessThan(24f), "not a teleport either");
             var total = dv;
             for (var i = 0; i < 200; i++)
             {
@@ -56,7 +56,19 @@ namespace JapanMap.Tests
                 total += (res.accelLong - plain.Step(0.02f, new DriveInput { throttle = 1f }, Flat(v)).accelLong) * 0.02f;
                 if (res.burst <= 0f) break;
             }
-            Assert.That(total, Is.LessThan(15f), "about one tank of nitro, not more (not overpowered)");
+            Assert.That(total, Is.LessThan(30f), "bounded");
+
+            // Half a tank: the strength grows with the square of the tank (half → a quarter of the full kick).
+            var half = Model();
+            for (var i = 0; i < 125; i++) half.Step(0.02f, new DriveInput { throttle = 1f, boost = true }, Flat(v)); // 2.5 s of 5
+            var halfPlain = Model();
+            for (var i = 0; i < 125; i++) halfPlain.Step(0.02f, new DriveInput { throttle = 1f, boost = true }, Flat(v));
+            half.Step(0.02f, new DriveInput { throttle = 1f, burst = true }, Flat(v));
+            halfPlain.Step(0.02f, new DriveInput { throttle = 1f }, Flat(v));
+            var dvHalf = 0f;
+            for (var i = 0; i < 12; i++)
+                dvHalf += (half.Step(0.02f, new DriveInput { throttle = 1f }, Flat(v)).accelLong - halfPlain.Step(0.02f, new DriveInput { throttle = 1f }, Flat(v)).accelLong) * 0.02f;
+            Assert.That(dvHalf, Is.InRange(dv * 0.15f, dv * 0.4f), $"half a tank {dvHalf:0.0} vs full {dv:0.0}");
 
             // A near-empty tank does nothing.
             var low = Model();

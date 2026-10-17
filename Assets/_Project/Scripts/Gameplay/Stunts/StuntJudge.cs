@@ -22,6 +22,8 @@ namespace JapanMap.Gameplay.Stunts
         public int rampAtLip;
         /// <summary>The car did a stunt hop in this step (a jump from it pays only its tricks).</summary>
         public bool hop;
+        /// <summary>The air trick the car is turning (from the dynamics; None between tricks).</summary>
+        public JapanMap.Vehicles.AirTrick airTrick;
     }
 
     /// <summary>A scored stunt: title for the HUD, points after the repeat rule, jump data.</summary>
@@ -86,6 +88,8 @@ namespace JapanMap.Gameplay.Stunts
             if (d.airborne && !_inAir && !_touched)
             {
                 _inAir = true;
+                _done.Clear();
+                _lastTrick = JapanMap.Vehicles.AirTrick.None;
                 _airTime = _airYaw = _airRoll = _airFlip = 0f;
                 _fromHop = _sinceHop < 0.3f;
                 _lastFwd3 = d.forward;
@@ -99,6 +103,9 @@ namespace JapanMap.Gameplay.Stunts
             {
                 if (d.airborne)
                 {
+                    // A trick counts when it finishes in the air (its turn left to do reached zero).
+                    if (_lastTrick != JapanMap.Vehicles.AirTrick.None && d.airTrick != _lastTrick) _done.Add(_lastTrick);
+                    _lastTrick = d.airTrick;
                     _airTime += dt;
                     if (d.up != Vector3.zero && _lastUp != Vector3.zero)
                     {
@@ -108,7 +115,8 @@ namespace JapanMap.Gameplay.Stunts
                         (now * Quaternion.Inverse(Quaternion.LookRotation(_lastFwd3, _lastUp))).ToAngleAxis(out var ang, out var axis);
                         if (ang > 180f) ang -= 360f;
                         var w = axis * ang;
-                        _airYaw += Vector3.Dot(w, d.up);
+                        // Yaw about the world's vertical (a corkscrew spins round it while the body rolls).
+                        _airYaw += Vector3.Dot(w, Vector3.up);
                         _airRoll += Vector3.Dot(w, d.forward);
                         _airFlip += Vector3.Dot(w, Vector3.Cross(d.up, d.forward));
                     }
@@ -184,6 +192,7 @@ namespace JapanMap.Gameplay.Stunts
                 if (Mathf.Min(a, 180f - a) > _s.landingMaxAngle) { LastLanding += $" — landed {a:0}° off"; return; }
             }
             var turned = Mathf.Abs(_airYaw);
+            if (_done.Count > 0) { ScoreTricks(dist); return; }
             // Off a ramp every metre pays; a hop from flat ground pays only for what is done in the air.
             var points = _fromHop ? 0 : Mathf.RoundToInt(dist * _s.pointsPerMetre);
             var tricks = new System.Collections.Generic.List<string>();
@@ -197,8 +206,57 @@ namespace JapanMap.Gameplay.Stunts
             if (flips > 0) { points += flips * _s.pointsFlip; tricks.Add(flips > 1 ? $"{flips}× {(_airFlip < 0 ? "Backflip" : "Frontflip")}" : _airFlip < 0 ? "Backflip" : "Frontflip"); key += "+flip" + flips; }
             LastLanding += $", roll {_airRoll:0}°, flip {_airFlip:0}°{(_fromHop ? ", from a hop" : "")}";
             if (points <= 0) { LastLanding += " — a hop"; return; }
+            // A spin and a roll together is the corkscrew; two or more tricks in one jump pay a combo bonus.
+            if (tricks.Count == 2 && tricks[0] == "Air 360" && tricks[1].EndsWith("Barrel roll")) { tricks.Clear(); tricks.Add("Corkscrew"); }
+            if (tricks.Count >= 2)
+            {
+                points = Mathf.RoundToInt(points * _s.comboBonus);
+                tricks[0] = "Combo · " + tricks[0];
+                key += "+combo";
+            }
             var title = tricks.Count > 0 ? $"{string.Join(" + ", tricks)} · {dist:0} m" : $"Jump {dist:0} m";
             Emit(key, title, points, _ramp, dist, _airTime);
+        }
+
+        readonly System.Collections.Generic.List<JapanMap.Vehicles.AirTrick> _done = new();
+        JapanMap.Vehicles.AirTrick _lastTrick;
+
+        /// <summary>The tricks the car itself finished in the air, by name — the body's measured turns blur when two
+        /// axes turn at once (a corkscrew read as 300° and 296°).</summary>
+        void ScoreTricks(float dist)
+        {
+            var points = _fromHop ? 0 : Mathf.RoundToInt(dist * _s.pointsPerMetre);
+            var names = new System.Collections.Generic.List<string>();
+            var key = "tricks";
+            foreach (var kind in new[] { JapanMap.Vehicles.AirTrick.Roll, JapanMap.Vehicles.AirTrick.Backflip, JapanMap.Vehicles.AirTrick.Frontflip,
+                         JapanMap.Vehicles.AirTrick.Helicopter, JapanMap.Vehicles.AirTrick.Corkscrew })
+            {
+                var n = _done.FindAll(x => x == kind).Count;
+                if (n == 0) continue;
+                var each = kind switch
+                {
+                    JapanMap.Vehicles.AirTrick.Roll => _s.pointsRoll,
+                    JapanMap.Vehicles.AirTrick.Helicopter => _s.pointsAir360,
+                    JapanMap.Vehicles.AirTrick.Corkscrew => _s.pointsCorkscrew,
+                    _ => _s.pointsFlip,
+                };
+                points += n * each;
+                var name = kind switch
+                {
+                    JapanMap.Vehicles.AirTrick.Roll => _fromHop ? "Kickflip" : "Barrel roll",
+                    JapanMap.Vehicles.AirTrick.Helicopter => "Helicopter",
+                    _ => kind.ToString(),
+                };
+                names.Add(n > 1 ? $"{n}× {name}" : name);
+                key += "+" + kind + n;
+            }
+            if (_done.Count >= 2)
+            {
+                points = Mathf.RoundToInt(points * _s.comboBonus);
+                names[0] = "Combo · " + names[0];
+            }
+            LastLanding += $", tricks {string.Join(" ", _done)}";
+            Emit(key, $"{string.Join(" + ", names)} · {dist:0} m", points, _ramp, dist, _airTime);
         }
 
         void Emit(string trick, string title, int points, int ramp, float dist, float airtime)

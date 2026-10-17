@@ -69,6 +69,7 @@ namespace JapanMap.Gameplay.Hud
             if (_doc != null) _doc.rootVisualElement.style.display = Active ? DisplayStyle.Flex : DisplayStyle.None;
             if (car == null) return;
             TurnWheel(car);
+            UpdateArms(Active);
             if (Active) Fill(car);
         }
 
@@ -78,6 +79,8 @@ namespace JapanMap.Gameplay.Hud
             if (_clusterQuad != null) Destroy(_clusterQuad);
             if (_hudQuad != null) Destroy(_hudQuad);
             if (_light != null) Destroy(_light.gameObject);
+            foreach (var g in _arms) if (g != null) Destroy(g);
+            _arms.Clear();
             _wheel = null;
             if (car == null) return;
             var eye = VehicleVisuals.FindPrefix(car.transform, "eye");
@@ -85,7 +88,10 @@ namespace JapanMap.Gameplay.Hud
             if (_wheel != null)
             {
                 _wheelRest = _wheel.localRotation;
-                _wheelAxis = ColumnAxis(_wheel);
+                // The column points at the driver's chest: from the wheel towards the eye, a little down.
+                _wheelAxis = eye != null
+                    ? _wheel.InverseTransformDirection((eye.position - car.transform.up * 0.25f - _wheel.position).normalized)
+                    : ColumnAxis(_wheel);
             }
             if (eye == null || _screenMat == null) return;
             EnsurePanel();
@@ -95,12 +101,26 @@ namespace JapanMap.Gameplay.Hud
             var fwd = car.transform.forward;
             // Behind the wheel's upper rim, tilted to the eye; without a wheel node, low in front of the eye.
             var wheelAt = _wheel != null ? _wheel.position : eye.position + fwd * 0.62f - up * 0.22f;
-            var clusterAt = wheelAt + up * 0.13f + fwd * 0.15f;
-            _clusterQuad = Quad("CockpitCluster", body, clusterAt, eye.position, up, 0.3f, 0.15f, new Rect(0f, 0f, 0.5f, 1f), _screenMat);
-            // The head-up display: on the windscreen line, a little below the driver's straight-ahead view.
-            // Above the cluster in the view (straight ahead it sat right behind it, hidden).
-            var hudAt = eye.position + fwd * 0.9f + up * 0.085f;
-            _hudQuad = Quad("CockpitHud", body, hudAt, eye.position, up, 0.28f, 0.14f, new Rect(0.5f, 0f, 0.5f, 1f), _hudMat != null ? _hudMat : _screenMat);
+            var track = car.Definition != null && car.Definition.category.ToString() == "Track";
+            Vector3 clusterAt;
+            if (track && _wheel != null)
+            {
+                // Race car: the display sits on the wheel itself and turns with it (like a formula wheel).
+                clusterAt = wheelAt + (eye.position - wheelAt).normalized * 0.04f + up * 0.01f;
+                _clusterQuad = Quad("CockpitCluster", _wheel, clusterAt, eye.position, up, 0.17f, 0.085f, new Rect(0f, 0f, 0.5f, 1f), _screenMat);
+            }
+            else
+            {
+                // Road car: in the dash behind the wheel's upper rim, never closer than 0.55 m to the eye.
+                clusterAt = wheelAt + up * 0.12f + fwd * 0.16f;
+                var toCluster = clusterAt - eye.position;
+                if (toCluster.magnitude < 0.55f) clusterAt = eye.position + toCluster.normalized * 0.55f;
+                _clusterQuad = Quad("CockpitCluster", body, clusterAt, eye.position, up, 0.24f, 0.12f, new Rect(0f, 0f, 0.5f, 1f), _screenMat);
+            }
+            // The head-up display: small, a little below the straight-ahead view, far enough to sit on the road.
+            var hudAt = eye.position + fwd * 1.3f + up * 0.03f;
+            _hudQuad = Quad("CockpitHud", body, hudAt, eye.position, up, 0.26f, 0.13f, new Rect(0.5f, 0f, 0.5f, 1f), _hudMat != null ? _hudMat : _screenMat);
+            BuildArms(car, eye, up, fwd);
             // A faint cool light from the instruments onto the wheel and the dash.
             var lightGo = new GameObject("CockpitLight");
             lightGo.transform.SetParent(body, false);
@@ -114,6 +134,80 @@ namespace JapanMap.Gameplay.Hud
             _light.enabled = false;
             _clusterQuad.SetActive(false);
             _hudQuad.SetActive(false);
+        }
+
+        // ── the driver's arms and gloves on the wheel (reference: driving games' cockpit view) ──────────────────
+
+        readonly System.Collections.Generic.List<GameObject> _arms = new();
+        readonly Transform[] _hand = new Transform[2], _arm = new Transform[2];
+        readonly Vector3[] _shoulderLocal = new Vector3[2];
+        Transform _armBase;
+
+        void BuildArms(VehicleController car, Transform eye, Vector3 up, Vector3 fwd)
+        {
+            if (_wheel == null) return;
+            // Materials from the car itself: tyre rubber for the gloves, the interior trim for the sleeves.
+            Material glove = null, sleeve = null;
+            foreach (var r in car.GetComponentsInChildren<Renderer>(true))
+            foreach (var m in r.sharedMaterials)
+            {
+                if (m == null) continue;
+                if (glove == null && m.name.EndsWith("_tire")) glove = m;
+                if (sleeve == null && (m.name.EndsWith("_interior") || m.name.EndsWith("_seat"))) sleeve = m;
+            }
+            if (glove == null || sleeve == null) return;
+            var right = car.transform.right;
+            var axis = _wheel.TransformDirection(_wheelAxis);
+            var upP = Vector3.ProjectOnPlane(up, axis).normalized;
+            var rightP = Vector3.ProjectOnPlane(right, axis).normalized;
+            var mf = _wheel.GetComponentInChildren<MeshFilter>();
+            var radius = mf != null && mf.sharedMesh != null ? Mathf.Max(mf.sharedMesh.bounds.size.x, mf.sharedMesh.bounds.size.z) * 0.45f : 0.17f;
+            _armBase = eye.parent;
+            for (var i = 0; i < 2; i++)
+            {
+                var side = i == 0 ? -1f : 1f;
+                var a = 58f * Mathf.Deg2Rad;
+                var at = _wheel.position + (upP * Mathf.Cos(a) + rightP * (Mathf.Sin(a) * side)) * radius + axis * 0.025f;
+                var hand = Part(PrimitiveType.Sphere, glove, "Glove");
+                hand.transform.position = at;
+                hand.transform.rotation = Quaternion.LookRotation(-axis, upP * Mathf.Cos(a) + rightP * (Mathf.Sin(a) * side));
+                hand.transform.localScale = new Vector3(0.075f, 0.11f, 0.06f);
+                hand.transform.SetParent(_wheel, true); // the hands turn with the wheel
+                _hand[i] = hand.transform;
+                var arm = Part(PrimitiveType.Capsule, sleeve, "Sleeve");
+                arm.transform.SetParent(_armBase, true);
+                _arm[i] = arm.transform;
+                _shoulderLocal[i] = _armBase.InverseTransformPoint(eye.position - up * 0.42f + right * (0.22f * side) - fwd * 0.08f);
+            }
+        }
+
+        GameObject Part(PrimitiveType type, Material m, string name)
+        {
+            var go = GameObject.CreatePrimitive(type);
+            go.name = name;
+            Destroy(go.GetComponent<Collider>());
+            var r = go.GetComponent<MeshRenderer>();
+            r.sharedMaterial = m;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            go.SetActive(false);
+            _arms.Add(go);
+            return go;
+        }
+
+        void UpdateArms(bool show)
+        {
+            foreach (var g in _arms) if (g != null && g.activeSelf != show) g.SetActive(show);
+            if (!show || _armBase == null) return;
+            for (var i = 0; i < 2; i++)
+            {
+                if (_hand[i] == null || _arm[i] == null) continue;
+                var s = _armBase.TransformPoint(_shoulderLocal[i]);
+                var h = _hand[i].position;
+                var d = h - s;
+                _arm[i].position = s + d * 0.5f;
+                _arm[i].rotation = Quaternion.FromToRotation(Vector3.up, d.normalized);
+                _arm[i].localScale = new Vector3(0.1f, d.magnitude * 0.5f, 0.1f);
+            }
         }
 
         static GameObject Quad(string name, Transform parent, Vector3 at, Vector3 eye, Vector3 up, float w, float h, Rect uv, Material mat)

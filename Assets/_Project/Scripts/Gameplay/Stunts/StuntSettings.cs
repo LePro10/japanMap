@@ -36,8 +36,12 @@ namespace JapanMap.Gameplay.Stunts
         public int pointsRoll = 700;
         [Tooltip("A full flip (nose over) in the air.")]
         public int pointsFlip = 900;
+        [Tooltip("A corkscrew (roll and spin at once).")]
+        public int pointsCorkscrew = 1200;
+        [Tooltip("Two or more tricks in one jump: points × this.")]
+        public float comboBonus = 1.5f;
         [Tooltip("Turned this much about the car's long / cross axis counts as one full roll / flip, degrees.")]
-        public float fullTurn = 320f;
+        public float fullTurn = 300f;
         [Tooltip("Wheels down (three of four: rough grass) this long before a landing counts, s (ASTRA: 0.25).")]
         public float settle = 0.25f;
         [Tooltip("Landing must be within this angle of the travel direction, degrees (ASTRA: 45).")]

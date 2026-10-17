@@ -25,6 +25,7 @@ Shader "JapanMap/Wet Surface"
         [Header(Shoulder)]
         _ShoulderColor("Shoulder tint", Color) = (0.62, 0.56, 0.48, 1)
         _ShoulderSmoothness("Shoulder smoothness", Range(0, 1)) = 0.25
+        _VergeColor("Verge fades into (ground colour)", Color) = (0.16, 0.17, 0.1, 1)
         // Specular vs Metallic workflow
         _WorkflowMode("WorkflowMode", Float) = 1.0
 

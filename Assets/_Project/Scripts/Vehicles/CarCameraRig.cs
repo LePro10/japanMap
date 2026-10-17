@@ -64,10 +64,7 @@ namespace JapanMap.Vehicles
             _chase.Lens.FieldOfView = _fov = settings.fov;
             _chase.Lens.NearClipPlane = 0.3f;
 
-            _cockpit = new GameObject("CockpitCamera").AddComponent<CinemachineCamera>();
-            _cockpit.Lens.FieldOfView = settings.cockpitFov;
-            _cockpit.Lens.NearClipPlane = settings.cockpitNear;
-            _cockpit.gameObject.SetActive(false);
+            MakeCockpit();
 
             if (spawner != null) spawner.Spawned += Attach;
             if (driver != null) driver.CameraPressed += Toggle;
@@ -84,8 +81,22 @@ namespace JapanMap.Vehicles
             if (spawner != null && spawner.Current != null) Attach(spawner.Current);
         }
 
+        /// <summary>
+        /// A fresh cockpit camera per car. Re-parenting the old one into the next car left the picture at the previous
+        /// car's seat (the brain kept the old pose): in the race car the view sat behind the roll hoop (owner 2026-10-17).
+        /// </summary>
+        void MakeCockpit()
+        {
+            if (_cockpit != null) Destroy(_cockpit.gameObject);
+            _cockpit = new GameObject("CockpitCamera").AddComponent<CinemachineCamera>();
+            _cockpit.Lens.FieldOfView = settings.cockpitFov;
+            _cockpit.Lens.NearClipPlane = settings.cockpitNear;
+            _cockpit.gameObject.SetActive(false);
+        }
+
         public void Attach(VehicleController car)
         {
+            MakeCockpit();
             _car = car;
             _heading = Mathf.Atan2(car.transform.forward.x, car.transform.forward.z);
             _orbit = 0f;

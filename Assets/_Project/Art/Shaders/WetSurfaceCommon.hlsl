@@ -38,6 +38,17 @@ half JmLine(float distance, half width)
 half ApplyWetSurface(inout SurfaceData s, float3 positionWS, float4 road, half flat)
 {
     SurfaceData dry = s;
+    // Verge (road data z = −1, x = 0 at the shoulder … 1 on the ground): the gravel fades into the ground's colour with a
+    // ragged edge, matt — no puddles, no film glare (owner 2026-10-17: "Übergang zum Dreck … besserer Fade").
+    if (road.z < -0.5)
+    {
+        float2 vxz = positionWS.xz;
+        half f = (half)saturate(smoothstep(0.15, 0.95, road.x + (JmValueNoise(vxz / 0.9) - 0.5) * 0.5));
+        s.albedo = lerp(s.albedo * 0.85h, _VergeColor.rgb, f);
+        s.smoothness = lerp(min(s.smoothness, 0.3h), 0.08h, f);
+        s.normalTS = normalize(lerp(s.normalTS, half3(0, 0, 1), f * 0.5h));
+        return 0;
+    }
     float2 xz = positionWS.xz;
     bool isRoad = road.z > 0.01;
     float edge = isRoad ? saturate(abs(road.x) / road.z) : 0.0;   // 0 centre … 1 carriageway edge

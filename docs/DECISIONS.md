@@ -708,3 +708,9 @@ Auftrag des Menschen (eine Sitzung, autonom). Was gewählt wurde und warum:
 - **Straßen**: Einmündungen nicht mehr 14 m vor der Hauptstraße abgeschnitten; Gelände unter dem Kiesrand
   abgesenkt (kein Sägezahn); Reiswasser läuft unter den Damm (weiches Ufer statt eckiger Kante).
 - **Nass nur auf Flachem** (Shader): steile Flächen trocken — schwarze Bänder mit weißem Schein weg.
+- **Nachtrag (Rückmeldung 2026-10-17):** Lufttricks per Doppeltipp Leertaste: Lenken = Rolle, S = Backflip, W = Frontflip,
+  Lenken+S = Korkenzieher, nichts = Helikopter (flache 360); zwei Tricks in einem Sprung = Combo ×1,5. Rollen/Salti
+  (auch der Kickflip) landen in Absprungrichtung. Burst-Stärke ∝ Tankanteil² (halb = alter voller Burst, voll = doppelt);
+  Nitro lädt überall ×0,7, im Rennen nochmals ×0,7 und der Burst ×0,65 (`ArcadeTuning` „Nitro balance").
+  Straßen: Normalen über Segmentnähte geglättet (keine Querbänder), weniger/weichere Pfützen (`Look.asset`),
+  Kreuzungen ohne Linien, Seitenstraße endet unter der Hauptfahrbahn statt davor, Kiesrand blendet in Bodenfarbe.

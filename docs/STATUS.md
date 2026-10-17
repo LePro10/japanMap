@@ -8,16 +8,18 @@ Ton, Tempo-Effekte, Navi am Boden, Straßen/Reisfelder, Cockpit · **jetzt bist 
 
 ## Phase 11 — Launch
 
-- [x] 1. QA-Durchgang → [QA.md](QA.md) · [x] 2a. Store-Material → [LAUNCH.md](LAUNCH.md) · [x] Name „Ameagari Drive“ (D41)
-- [x] 3a–c. Drei Absprungstellen vorab (SDK-Sofortstart, Tastenkappen, Lotse) · [x] Midgame-Werbung an Pausen (D42)
-- [x] 3d. **Erster Eindruck** (D43): Intro „First Drive“, Handy-Anzeigen, Ladebildschirm, neues Pausenmenü, Ziel lesbar.
-- [x] 3e. **Politur** (D44): nasse Straße, Tokyo-Spiegel, Neon, Himmel, Meer, neue UI, Garage, Fotomodus, Tagesbonus.
+- [x] 1. QA · 2a. Store-Material · Name (D41) · 3a–c Absprungstellen · Midgame-Werbung (D42) · 3d Erster Eindruck (D43) · 3e Politur (D44)
 - [ ] 2b. **Basic Launch** (du lädst hoch) · [ ] 2c. Zahlen nach 7 Tagen → H1–H5 prüfen (LAUNCH.md §7b)
-- [x] 3f. **Asset-Sprint 6 in Unity** (D45): echte Figuren, Tiere, Verkehr (nach gameplayStart nachgeladen).
+- [x] 3f. Asset-Sprint 6 (D45): echte Figuren, Tiere, Verkehr.
 - [x] 3g. **Wunschliste 2026-10-17** (D46): Shift ×2 = Nitro-Burst (Flammen, Druckwelle, Kamera-Stoß, Schlieren) ·
   Stunts landen gerade, neu Kickflip/Backflip/180 · Bäume kippen, Dinge fallen als sie selbst · Menü neu (Leiste oben,
   Auto rechts frei, Autofotos aus der Garage) · Ton neu gerendert · Speed-Effekte · Navi-Band am Boden + Route auf
   Karte · schwarze Bänder mit Schein weg · Einmündungen/Kiesrand/Reisufer · Cockpit mit Lenkrad, Tacho, Head-up.
+
+- [x] 3h. **Rückmeldung 2026-10-17 (2):** Straßen überall ruhiger (keine Querbänder, weniger/weichere Pfützen, Kiesrand
+  blendet ins Gelände, Kreuzungen ohne Linien, Einmündungen nahtlos), schwarze Leitplanken-Dreiecke + Lichtlinie am
+  Horizont weg · Cockpit: Kamera nach Autowechsel richtig, Arme/Handschuhe am Lenkrad, Rennwagen-Display am Lenkrad ·
+  Lufttricks Frontflip/Helikopter/Korkenzieher + Combo, Kickflip landet geradeaus · Burst ∝ Tank² · Nitro langsamer, im Rennen gedämpft.
 
 **Gemessen (2026-10-17):** Build 78,2 MB · **20,25 MB bis gameplayStart** (16.10.: 20,13) · Rauchprobe 0 Fehler, Niedrig
 340 fps (M4) · EditMode 151/151 · PlayMode 207/214 (7 auf Abruf, 0 rot) · schlimmster Bruch 1,44 ms · Route: Graph 33 ms,
@@ -27,15 +29,13 @@ Suche 5 ms. **Nicht gemessen:** Chromebook-Profil-FPS mit den neuen Effekten (Sp
 
 - Neu (2026-10-17): Cockpit-Anzeigen nur am Hachi geprüft (Position aus `eye`/`steering_wheel` der Modelle) — andere Autos
   ansehen. Seitenstraßen enden an schrägen Einmündungen noch rechteckig (Überlappung statt Kreuzungsfläche).
-  `AcceptanceDriveTests.RingLap` einmal im Gesamtlauf rot (9,8 m neben der Bahn), einzeln und im nächsten Gesamtlauf grün.
+  Wackelig im Gesamtlauf (einzeln grün): `AcceptanceDriveTests.RingLap`, `SmashTests.Tree_FallsAt50`.
 - Politur offen ([POLISH.md](POLISH.md)): Kabel zwischen Masten, Touch-Knöpfe mit Icons, Musik/Umgebungstöne (Clips fehlen),
   3D-Hebebühne in der Garage, Geist der Bestzeit, Feinregler Fahrhöhe/Sturz, Store-Videos aus dem neuen Look.
 
 - **Start 20,25 MB** (Marke 20 MB): Rest ist das Startauto Hachi mit **176 000 Eckpunkten** → Asset-Sitzung (unten).
 - Funaura: Passanten laufen im Hafenbecken (Kopf über Wasser) — NavMesh unter der Wasserfläche (war mit Kisten-Figuren auch so).
-- `bench.mjs` vor einem PlayMode-Lauf lässt 7 Klick-/Touch-Tests rot werden (Game-Ansicht verstellt); einzeln grün.
 - Krähen, Tauben, Shiba und Verkehrsposten (Wave) sind importiert, haben aber noch keinen Platz in der Welt (ActorSet kennt sie nicht).
-- Midgame-Werbung zeigt CrazyGames erst nach dem Full Launch; im QA-Tool als Demo prüfbar.
 - Leistung: WebGPU später; Handy DXT→ASTC nur nach Messung (D37); Hoch-Budget (20/50 Blickpunkte > 3 M) nach deinem
   iGPU-Test. Niedrig-DC funaura-mole 504.
 - Aus früher: Ride-Höhe „Dirt“, ASTRA §11, Gegner-Motoren, Leuchtturm, Angler, Musik; ASTRA E01/E08–E17 → Phase 12; CI → Phase 12.
@@ -50,7 +50,6 @@ Suche 5 ms. **Nicht gemessen:** Chromebook-Profil-FPS mit den neuen Effekten (Sp
 - **Asset-Sprint 6 ist in Unity** (2026-10-16, Import: Menü „JapanMap/Art/Import Figures + Traffic“). Die Props
   (Straßendetails, Rennen, Garage, Entdeckungen) liegen als Prefabs bereit, sind aber noch nicht in der Welt platziert.
   Offen: Schanzen-Deko, Ladeninnere, Icons.
-- Optional: neutrale Nummernschilder (`86-86`, `34-34`, `80-80` in `ArtSource/cars/blender/cars.py` → z. B. `21-07`).
 
 ## Für dich (Mensch)
 
@@ -60,7 +59,8 @@ Suche 5 ms. **Nicht gemessen:** Chromebook-Profil-FPS mit den neuen Effekten (Sp
    (c) Baum/Laterne umfahren, (d) **Esc-Menü** (Auto rechts sichtbar? Autos-Seite mit Fotos), (e) **Ton mit Kopfhörern**
    (Motor, Reifen, Burst-Wumms), (f) ab ~100 km/h Schlieren/Unschärfe — zu viel/zu wenig?, (g) Karte (M) → Punkt antippen →
    „Set waypoint here": Band auf der Straße + Linie auf der Karte, (h) Straßen außerhalb Tokyos + Reisfelder,
-   (i) **C** = Cockpit: Lenkrad, Tacho, Anzeige auf der Scheibe. Bilder vorab: `Captures/cockpit/c1.png`,
+   (i) **C** = Cockpit (auch nach Autowechsel), Hände am Lenkrad, (j) Lufttricks: Leertaste doppelt + A/D Rolle, + S Backflip,
+   + W Frontflip, ohne Taste Helikopter, A/D+S Korkenzieher; zwei in einem Sprung = Combo; (k) Burst mit vollem Tank. Bilder vorab: `Captures/cockpit/c1.png`,
    `Captures/menu/play.png`, `Captures/nav/m.png`, `Captures/roads/k2.png`, `Captures/smash/t.png`.
 1. **Handy:** dieselbe Liste mit `--preview --public` (Touch: BOOST doppelt = Burst, STUNT-Knopf).
 3. **CrazyGames-QA-Tool** (developer.crazygames.com → ZIP vom **Inhalt** von `Builds/Web`): (a) Werbung im Ergebnis-

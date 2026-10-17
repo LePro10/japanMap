@@ -66,6 +66,7 @@ namespace JapanMap.Gameplay.Stunts
                 forward = _car.transform.forward,
                 up = _car.transform.up,
                 hop = t.hop,
+                airTrick = t.airTrick,
                 velocity = _car.Body.linearVelocity,
                 airborne = t.airborne,
                 groundedWheels = t.groundedWheels,

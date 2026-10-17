@@ -23,6 +23,10 @@ namespace JapanMap.Vehicles
     /// </summary>
     public sealed class ArcadeDynamics
     {
+        /// <summary>Nitro earning and burst strength multipliers for the moment (races damp both — balance, 2026-10-17).</summary>
+        public float NitroEarnScale { get; set; } = 1f;
+        public float BurstScale { get; set; } = 1f;
+
         // Guard against P/v → ∞ at standstill; launchForce is smaller from here anyway.
         const float PowerSpeedFloor = 4f;
 
@@ -53,7 +57,9 @@ namespace JapanMap.Vehicles
         float _spin;
         float _trickRemain;
         float _trickSign;
-        bool _trickAir, _trickFlip, _hopPulse;
+        bool _trickAir, _hopPulse;
+        /// <summary>Air trick in progress (see <see cref="AirTrick"/>).</summary>
+        AirTrick _trickKind;
         float _kickflipWait, _kickflipSign = 1f;
         float _rollRate, _flipRate;
         float _burstT, _burstLen, _burstCharge;
@@ -105,7 +111,8 @@ namespace JapanMap.Vehicles
             _gripSmoothed = float.NaN;
             _wasAirborne = false;
             _landTimer = _stuntBlend = _spin = _trickRemain = _trickSign = _rollRate = _flipRate = 0f;
-            _trickAir = _trickFlip = _hopPulse = false;
+            _trickAir = _hopPulse = false;
+            _trickKind = AirTrick.Roll;
             _kickflipWait = 0f;
             _burstT = _burstLen = _burstCharge = 0f;
         }
@@ -172,7 +179,8 @@ namespace JapanMap.Vehicles
             // Ground: steering → 360 spin, steering + brake → 180, straight → a hop (to roll from).
             // Air: barrel roll towards the steering; brake held without steering → backflip. An air trick that cannot
             // finish before touchdown is not started — no more landing on the roof or mid-roll.
-            if (input.trick && (env.airborne || speed > t.stuntMinSpeed))
+            // A kickflip (straight, on the ground) works from walking pace; spins need speed.
+            if (input.trick && (env.airborne || speed > t.stuntMinSpeed || (Math.Abs(input.steer) <= 0.3f && speed > 2f)))
             {
                 var steered = Math.Abs(input.steer) > 0.3f;
                 var sign = Math.Abs(input.steer) > 0.1f ? Math.Sign(input.steer) : _driftSign != 0f ? _driftSign : 1f;
@@ -180,14 +188,19 @@ namespace JapanMap.Vehicles
                 var inAir = env.airborne && !(env.timeToLand > 0f && env.timeToLand < 0.25f);
                 if (inAir)
                 {
-                    var flip = !steered && input.brake > 0.5f;
-                    var carried = _trickAir && _trickFlip == flip ? _trickRemain : 0f;
+                    // Steering → barrel roll; brake → backflip; steering + brake → corkscrew (roll and spin at once);
+                    // gas alone → frontflip; nothing → helicopter (a flat 360). The same one again extends it to a double.
+                    var braking = input.brake > 0.5f;
+                    var kind = steered ? (braking ? AirTrick.Corkscrew : AirTrick.Roll)
+                        : braking ? AirTrick.Backflip
+                        : input.throttle > 0.5f ? AirTrick.Frontflip : AirTrick.Helicopter;
+                    var carried = _trickAir && _trickKind == kind ? _trickRemain : 0f;
                     var total = Math.Min(carried + t.stuntTrickAngle, t.stuntTrickAngle * 2f);
                     if (AirTrickFits(total, env.timeToLand))
                     {
-                        _trickSign = flip ? 1f : sign;
+                        _trickSign = kind == AirTrick.Backflip ? 1f : kind == AirTrick.Frontflip ? -1f : sign;
                         _trickAir = true;
-                        _trickFlip = flip;
+                        _trickKind = kind;
                         _trickRemain = total;
                         _stuntBlend = Math.Max(_stuntBlend, 0.9f);
                     }
@@ -204,7 +217,7 @@ namespace JapanMap.Vehicles
                 {
                     _trickSign = sign;
                     _trickAir = false;
-                    _trickFlip = false;
+                    _trickKind = AirTrick.Roll;
                     _trickRemain = input.brake > 0.5f ? t.stuntTrickAngle * 0.5f : t.stuntTrickAngle;
                     _drift = Math.Max(_drift, 0.62f);
                     _driftSign = sign;
@@ -220,7 +233,7 @@ namespace JapanMap.Vehicles
                     if (AirTrickFits(t.stuntTrickAngle, env.timeToLand))
                     {
                         _trickAir = true;
-                        _trickFlip = false;
+                        _trickKind = AirTrick.Roll;
                         _trickSign = _kickflipSign;
                         _trickRemain = t.stuntTrickAngle;
                     }
@@ -273,8 +286,23 @@ namespace JapanMap.Vehicles
                     var rate = t.stuntAirRoll * (0.62f + 0.38f * trickEnv);
                     if (env.timeToLand > 0f) rate = Math.Max(rate, _trickRemain / Math.Max(0.08f, env.timeToLand - t.stuntLandMargin));
                     rate = Math.Min(Math.Min(rate, t.stuntAirRoll * t.stuntAirRateMax), _trickRemain / dt);
-                    if (_trickFlip) _flipRate = rate;
-                    else _rollRate = _trickSign * rate;
+                    switch (_trickKind)
+                    {
+                        case AirTrick.Backflip:
+                        case AirTrick.Frontflip:
+                            _flipRate = _trickSign * rate;
+                            break;
+                        case AirTrick.Helicopter:
+                            _yawRate = -_trickSign * rate; // legacy sign: positive = left
+                            break;
+                        case AirTrick.Corkscrew:
+                            _rollRate = _trickSign * rate;
+                            _yawRate = -_trickSign * rate;
+                            break;
+                        default:
+                            _rollRate = _trickSign * rate;
+                            break;
+                    }
                     _trickRemain = Math.Max(0f, _trickRemain - rate * dt);
                     if (_trickRemain < 1e-3f) _trickRemain = 0f;
                 }
@@ -316,6 +344,8 @@ namespace JapanMap.Vehicles
             }
             var yawCap = Lerp(spec.maxYawRate, _trickRemain > 0.2f ? t.stuntTrickYawCap : t.stuntMaxYawRate,
                 Math.Max(_stuntBlend * Math.Max(_spin, 0.12f), _trickRemain > 0.2f ? 1f : 0f));
+            // A helicopter or corkscrew turns as fast as it must to finish in time.
+            if (env.airborne && _trickAir && _trickRemain > 0f) yawCap = Math.Max(yawCap, t.stuntAirRoll * t.stuntAirRateMax);
             _yawRate = Clamp(_yawRate, -yawCap, yawCap);
             _pitchRate = Clamp(_pitchRate, -2.5f, 2.5f);
             _rollRate = Clamp(_rollRate, -14f, 14f);
@@ -367,7 +397,7 @@ namespace JapanMap.Vehicles
                 if (env.airborne) earn += t.boostEarnAir;
                 else if (_drift > 0.15f && slipAmount > 0.12f) earn += t.boostEarnDrift * slipAmount;
                 earn += spec.boostRefill;
-                _boost = Math.Min(1f, _boost + earn * dt);
+                _boost = Math.Min(1f, _boost + earn * t.nitroEarn * NitroEarnScale * dt);
             }
 
             return new PlanarResult
@@ -389,6 +419,7 @@ namespace JapanMap.Vehicles
                 stunt = _stuntBlend,
                 spin = _spin,
                 trick = _trickRemain / t.stuntTrickAngle,
+                airTrick = _trickAir && _trickRemain > 0f ? _trickKind : AirTrick.None,
                 burst = _burstLen > 0f ? 1f - _burstT / _burstLen : 0f,
                 burstCharge = _burstLen > 0f ? _burstCharge : 0f,
             };
@@ -502,8 +533,10 @@ namespace JapanMap.Vehicles
                 return 0f;
             }
             var frac = _burstT / _burstLen;
-            var accel = _burstT <= t.burstKickTime ? t.burstKickSpeed * _burstCharge / t.burstKickTime : 0f;
-            accel += t.burstAccel * _burstCharge * (1f - frac) * (1f - frac);
+            // Square of the tank share: just over the line it is mild, half a tank is the old full burst, full is twice that.
+            var strength = _burstCharge * _burstCharge * BurstScale;
+            var accel = _burstT <= t.burstKickTime ? t.burstKickSpeed * strength / t.burstKickTime : 0f;
+            accel += t.burstAccel * strength * (1f - frac) * (1f - frac);
             return accel * (env.airborne ? t.burstAirShare : Math.Max(0.3f, env.support));
         }
 

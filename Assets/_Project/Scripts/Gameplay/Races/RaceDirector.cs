@@ -220,6 +220,15 @@ namespace JapanMap.Gameplay.Races
 
         void Update()
         {
+            // Balance (owner 2026-10-17: "in Rennen nerfen"): during an event the nitro fills slower and the burst is
+            // milder — the player's car only; the values live in ArcadeTuning.
+            var car = player != null ? player.Car : null;
+            if (car != null && car.Dynamics != null)
+            {
+                var racing = Current == State.Countdown || Current == State.Running;
+                car.Dynamics.NitroEarnScale = racing ? car.Tuning.raceNitroEarn : 1f;
+                car.Dynamics.BurstScale = racing ? car.Tuning.raceBurst : 1f;
+            }
             ShowNearBeacons();
             if (hud == null) return;
             switch (Current)

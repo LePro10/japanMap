@@ -60,7 +60,7 @@ namespace JapanMap.Editor.Map
             var rails = new Dictionary<(int, int), Chunk>();
             var index = new SegmentIndex(roads, types);
 
-            foreach (var road in roads) BuildSurface(road, types[road.type], settings, surface);
+            foreach (var road in roads) BuildSurface(road, types[road.type], settings, surface, index);
             foreach (var road in roads) BuildRails(road, types[road.type], settings, index, rails);
             var viaducts = new Dictionary<(int, int), Chunk>();
             var (decks, piers) = BuildViaducts(roads, types, settings, index, viaducts);
@@ -72,20 +72,20 @@ namespace JapanMap.Editor.Map
             var rail = Material("Road_Guardrail", null, new Color(0.62f, 0.64f, 0.66f));
 
             var written = new HashSet<string>();
-            var slab = Save("CitySlab", ToMesh(CitySlab(settings)), written);
+            var slab = Save("CitySlab", ToMesh(CitySlab(settings), smooth: true), written);
             Add(group, "CitySlab", slab, new[] { Material("City_Slab", null, new Color(0.22f, 0.23f, 0.24f)), Material("City_Embankment", "aerial_grass_rock", new Color(0.85f, 0.85f, 0.8f)) })
                 .AddComponent<MeshCollider>().sharedMesh = slab;
             int surfaceTris = 0, railTris = 0;
             foreach (var kv in surface.OrderBy(k => k.Key))
             {
                 var name = $"Road_{kv.Key.Item1}_{kv.Key.Item2}";
-                var mesh = Save(name, ToMesh(kv.Value), written);
+                var mesh = Save(name, ToMesh(kv.Value, smooth: true), written);
                 surfaceTris += mesh.triangles.Length / 3;
                 var go = Add(group, name, mesh, new[] { asphalt, gravel });
                 go.AddComponent<MeshCollider>().sharedMesh = mesh;
                 if (kv.Value.HasVerge)
                 {
-                    var verge = Save($"Verge_{kv.Key.Item1}_{kv.Key.Item2}", ToMesh(kv.Value.Verge), written);
+                    var verge = Save($"Verge_{kv.Key.Item1}_{kv.Key.Item2}", ToMesh(kv.Value.Verge, smooth: true), written);
                     Add(go.transform, "Verge", verge, new[] { asphalt, gravel }); // no collider
                 }
             }
@@ -130,15 +130,16 @@ namespace JapanMap.Editor.Map
             var roads = ResolveTrims(Load(settings), TerrainImporter.RawGround(settings));
             var types = settings.roadTypes.ToDictionary(t => t.type);
             var surface = new Dictionary<(int, int), Chunk>();
-            foreach (var road in roads) BuildSurface(road, types[road.type], settings, surface);
+            var index = new SegmentIndex(roads, types);
+            foreach (var road in roads) BuildSurface(road, types[road.type], settings, surface, index);
             var written = new HashSet<string>();
             var missing = 0;
             foreach (var kv in surface)
             {
                 var path = $"{MeshDir}/Road_{kv.Key.Item1}_{kv.Key.Item2}.asset";
                 if (AssetDatabase.LoadAssetAtPath<Mesh>(path) == null) missing++;
-                Save($"Road_{kv.Key.Item1}_{kv.Key.Item2}", ToMesh(kv.Value), written);
-                if (kv.Value.HasVerge) Save($"Verge_{kv.Key.Item1}_{kv.Key.Item2}", ToMesh(kv.Value.Verge), written);
+                Save($"Road_{kv.Key.Item1}_{kv.Key.Item2}", ToMesh(kv.Value, smooth: true), written);
+                if (kv.Value.HasVerge) Save($"Verge_{kv.Key.Item1}_{kv.Key.Item2}", ToMesh(kv.Value.Verge, smooth: true), written);
             }
             AssetDatabase.SaveAssets();
             var msg = $"[Map] road meshes refreshed: {surface.Count} chunks, {missing} new (new ones need Import All)";
@@ -205,9 +206,11 @@ namespace JapanMap.Editor.Map
                 {
                     if (other == road) continue;
                     var (dS, halfS) = Nearest(other, c[0], c[2]);
-                    if (dS < 2) trimStart = Mathf.Max(trimStart, halfS + 1);
+                    // Into the other carriageway by half a metre (the side road lies a hair lower there, RoadImporter
+                    // junctionSink): cut back to its edge + 1 m left grass between the two (owner 2026-10-17).
+                    if (dS < 2) trimStart = Mathf.Max(trimStart, halfS - 0.5f);
                     var (dE, halfE) = Nearest(other, c[last], c[last + 2]);
-                    if (dE < 2) trimEnd = Mathf.Max(trimEnd, halfE + 1);
+                    if (dE < 2) trimEnd = Mathf.Max(trimEnd, halfE - 0.5f);
                 }
                 // An end lying on another road's surface duplicates it; above it, it is a ramp across that
                 // road (legacy bellwood-edge ran 70 m along the ring, up to 3.4 m above it). Cut it back to
@@ -222,8 +225,11 @@ namespace JapanMap.Editor.Map
                 foreach (var j in road.junctions ?? Array.Empty<Road.Junction>())
                 {
                     if (j.trim <= 0) continue;
-                    if (j.at == "start") trimStart = Mathf.Max(trimStart, j.trim);
-                    else trimEnd = Mathf.Max(trimEnd, j.trim);
+                    // The file's junction trims ended roads at the other road's edge and beyond: at most into its lane now.
+                    var other = roads.Find(o => o.id == j.with);
+                    var cap = other != null ? Nearest(other, j.at == "start" ? c[0] : c[last], j.at == "start" ? c[2] : c[last + 2]).half - 0.5f : j.trim;
+                    if (j.at == "start") trimStart = Mathf.Max(trimStart, Mathf.Min(j.trim, cap));
+                    else trimEnd = Mathf.Max(trimEnd, Mathf.Min(j.trim, cap));
                 }
                 var maxTrim = Mathf.Max(0, road.length / 2 - 4);
                 road.trimStart = Mathf.Min(trimStart, maxTrim);
@@ -323,7 +329,7 @@ namespace JapanMap.Editor.Map
 
         // ── Surface (legacy RoadMeshBuilder.ts) ────────────────────────────────
 
-        static void BuildSurface(Road road, MapImportSettings.RoadType type, MapImportSettings s, Dictionary<(int, int), Chunk> chunks)
+        static void BuildSurface(Road road, MapImportSettings.RoadType type, MapImportSettings s, Dictionary<(int, int), Chunk> chunks, SegmentIndex index = null)
         {
             var full = road.centerline;
             var fullCount = full.Length / 3;
@@ -368,20 +374,30 @@ namespace JapanMap.Editor.Map
                 arcs[st] = arc;
                 var width = WidthAt(road, type, i + skipStart);
                 var (lateral, vertical) = CrossSection(width, type.shoulder, kerbs, s.roadShoulderDrop);
+                // Junctions (owner 2026-10-17: "Kreuzungen, es sind immer so Striche"): no road keeps its lines inside
+                // the crossing, and the lesser road lies a hair lower there, so the two surfaces do not flicker.
+                var stationStyle = style;
+                var sink = 0f;
+                if (index != null && index.InJunction(center.x, center.y, center.z, road, s.junctionMargin, out var otherHalf))
+                {
+                    stationStyle = 0;
+                    if (otherHalf > width / 2 + 0.25f || (Mathf.Abs(otherHalf - width / 2) <= 0.25f && !closed && (i < 6 || i > count - 7)))
+                        sink = s.junctionSink;
+                }
                 var total = width + 2 * type.shoulder;
                 rows[st] = new Vector3[lateral.Length];
                 uvs[st] = new Vector2[lateral.Length];
                 data[st] = new Vector4[lateral.Length];
                 for (var k = 0; k < lateral.Length; k++)
                 {
-                    var up = lateral[k] * sin + vertical[k] + s.roadSurfaceOffset;
+                    var up = lateral[k] * sin + vertical[k] + s.roadSurfaceOffset - sink;
                     rows[st][k] = center + right * (lateral[k] * cos) + roadUp * up;
                     var across = (lateral[k] + total / 2) / total;
                     // Paths sample a calm band at the texture edge (legacy: the asphalt crack at u≈0.5 read as a seam).
                     uvs[st][k] = new Vector2(type.gravel ? 0.08f + across * 0.3f : across, arc / type.textureLength);
                     // y = texture length: the shader gets the distance along the road as UV0.y × y (UV0 is 32-bit, this
                     // channel 16-bit — kilometres of arc in a half float would lose the dashes).
-                    data[st][k] = new Vector4(lateral[k], type.textureLength, width / 2, style);
+                    data[st][k] = new Vector4(lateral[k], type.textureLength, width / 2, stationStyle);
                 }
                 if (verge > 0f)
                 {
@@ -412,9 +428,14 @@ namespace JapanMap.Editor.Map
                 }
                 if (verge > 0f)
                 {
+                    // No verge across another road (a junction mouth): it laid a dark gravel band over the asphalt.
+                    bool Free(Vector3 a1, Vector3 a2) => index == null
+                        || (!index.InJunction(a1.x, a1.y, a1.z, road, 0.5f, out _) && !index.InJunction(a2.x, a2.y, a2.z, road, 0.5f, out _));
                     // Left strip runs outer → inner, right strip inner → outer: same winding as the road (up-facing).
-                    AddStrip(chunk, new[] { vergeL[st][1], vergeL[st][0] }, new[] { vergeL[st + 1][1], vergeL[st + 1][0] }, arcs[st], arcs[st + 1], type.textureLength);
-                    AddStrip(chunk, vergeR[st], vergeR[st + 1], arcs[st], arcs[st + 1], type.textureLength);
+                    if (Free(vergeL[st][1], vergeL[st + 1][1]))
+                        AddStrip(chunk, new[] { vergeL[st][1], vergeL[st][0] }, new[] { vergeL[st + 1][1], vergeL[st + 1][0] }, arcs[st], arcs[st + 1], type.textureLength, outerFirst: true);
+                    if (Free(vergeR[st][1], vergeR[st + 1][1]))
+                        AddStrip(chunk, vergeR[st], vergeR[st + 1], arcs[st], arcs[st + 1], type.textureLength, outerFirst: false);
                 }
             }
         }
@@ -429,13 +450,16 @@ namespace JapanMap.Editor.Map
         }
 
         /// <summary>A two-point-wide strip between two stations into the gravel submesh.</summary>
-        static void AddStrip(Chunk road, Vector3[] from, Vector3[] to, float arcFrom, float arcTo, float textureLength)
+        static void AddStrip(Chunk road, Vector3[] from, Vector3[] to, float arcFrom, float arcTo, float textureLength, bool outerFirst)
         {
             var chunk = road.Verge;
             var b = chunk.v.Count;
             chunk.v.AddRange(new[] { from[0], from[1], to[0], to[1] });
             chunk.uv.AddRange(new[] { new Vector2(0f, arcFrom / textureLength), new Vector2(0.25f, arcFrom / textureLength), new Vector2(0f, arcTo / textureLength), new Vector2(0.25f, arcTo / textureLength) });
-            chunk.road.AddRange(new[] { Vector4.zero, Vector4.zero, Vector4.zero, Vector4.zero });
+            // Road data z = −1 marks the verge for the shader, x = 0 at the shoulder … 1 on the ground: it fades into the
+            // terrain's colour there instead of ending as a hard gravel strip (owner 2026-10-17: "besserer Fade").
+            float f0 = outerFirst ? 1f : 0f, f1 = 1f - f0;
+            chunk.road.AddRange(new[] { new Vector4(f0, 0f, -1f, 0f), new Vector4(f1, 0f, -1f, 0f), new Vector4(f0, 0f, -1f, 0f), new Vector4(f1, 0f, -1f, 0f) });
             chunk.t[Gravel].AddRange(new[] { b, b + 1, b + 2, b + 1, b + 3, b + 2 });
         }
 
@@ -513,11 +537,21 @@ namespace JapanMap.Editor.Map
                 chunk.uv.Add(new Vector2(u, 0));
                 chunk.uv.Add(new Vector2(u, 1));
             }
+            // The back face gets its own vertices: front and back triangles on shared vertices summed their normals to
+            // zero, and a zero normal renders black with a bloom halo ("schwarze Dreiecke in der Luft", owner 2026-10-17).
+            var back0 = chunk.v.Count;
+            for (var k = 0; k < run.Count * 2; k++)
+            {
+                chunk.v.Add(chunk.v[b0 + k]);
+                chunk.uv.Add(chunk.uv[b0 + k]);
+            }
             for (var i = 0; i < run.Count - 1; i++)
             {
                 int a = b0 + i * 2, b = a + 1, c = a + 2, d = a + 3;
+                int ba = back0 + i * 2, bb = ba + 1, bc = ba + 2, bd = ba + 3;
                 // Both sides: the band is seen from the road and from the valley.
-                chunk.t[0].AddRange(new[] { a, b, c, b, d, c, a, c, b, b, c, d });
+                chunk.t[0].AddRange(new[] { a, b, c, b, d, c });
+                chunk.t[0].AddRange(new[] { ba, bc, bb, bb, bc, bd });
             }
 
             var length = run[run.Count - 1].dist - run[0].dist;
@@ -590,6 +624,32 @@ namespace JapanMap.Editor.Map
                         }
                     }
                 }
+            }
+
+            /// <summary>
+            /// Inside a junction: this point lies within another road's half width + <paramref name="margin"/> at about
+            /// the same height (a bridge over it is no junction). <paramref name="otherHalf"/> = that road's half width.
+            /// </summary>
+            public bool InJunction(float x, float y, float z, Road self, float margin, out float otherHalf)
+            {
+                otherHalf = 0f;
+                if (!_cells.TryGetValue((Mathf.FloorToInt(x / Cell), Mathf.FloorToInt(z / Cell)), out var list)) return false;
+                var found = false;
+                foreach (var (road, i, h, _) in list)
+                {
+                    if (road == self) continue;
+                    var line = road.centerline;
+                    var j = (i + 1) % (line.Length / 3);
+                    float ax = line[i * 3], az = line[i * 3 + 2], dx = line[j * 3] - ax, dz = line[j * 3 + 2] - az;
+                    var q = dx * dx + dz * dz;
+                    var t = q > 0 ? Mathf.Clamp01(((x - ax) * dx + (z - az) * dz) / q) : 0;
+                    var d = Vector2.Distance(new Vector2(ax + dx * t, az + dz * t), new Vector2(x, z));
+                    var oy = Mathf.Lerp(line[i * 3 + 1], line[j * 3 + 1], t);
+                    if (d > h + margin || Mathf.Abs(oy - y) > 1.5f) continue;
+                    found = true;
+                    otherHalf = Mathf.Max(otherHalf, h);
+                }
+                return found;
             }
 
             /// <summary>Nearest point on another road's centreline within this cell, with that road's half width.</summary>
@@ -874,7 +934,38 @@ namespace JapanMap.Editor.Map
             return c;
         }
 
-        static Mesh ToMesh(Chunk c)
+        /// <summary>
+        /// Road surfaces are built segment by segment with their own vertices, so RecalculateNormals shaded every 2–4 m
+        /// segment flat — on the wet, mirror-like asphalt that read as light and dark bands across the road (owner
+        /// 2026-10-17). <paramref name="smooth"/> averages the normals of vertices at the same place; and any normal that
+        /// came out zero (faces back to back) points up instead of rendering black.
+        /// </summary>
+        static void FixNormals(Mesh mesh, bool smooth)
+        {
+            var v = mesh.vertices;
+            var n = mesh.normals;
+            if (smooth)
+            {
+                var sum = new Dictionary<(int, int, int), Vector3>();
+                (int, int, int) Key(Vector3 p) => (Mathf.RoundToInt(p.x * 200f), Mathf.RoundToInt(p.y * 200f), Mathf.RoundToInt(p.z * 200f));
+                for (var i = 0; i < v.Length; i++)
+                {
+                    var k = Key(v[i]);
+                    sum[k] = sum.TryGetValue(k, out var acc) ? acc + n[i] : n[i];
+                }
+                for (var i = 0; i < v.Length; i++)
+                {
+                    var avg = sum[Key(v[i])];
+                    // Only across a seam of nearly the same slope: the edge of a shoulder or a kerb stays crisp.
+                    if (avg.sqrMagnitude > 1e-6f && Vector3.Dot(avg.normalized, n[i]) > 0.9f) n[i] = avg.normalized;
+                }
+            }
+            for (var i = 0; i < n.Length; i++)
+                if (float.IsNaN(n[i].x) || n[i].sqrMagnitude < 0.25f) n[i] = Vector3.up;
+            mesh.normals = n;
+        }
+
+        static Mesh ToMesh(Chunk c, bool smooth = false)
         {
             var v = new List<Vector3>(c.v);
             LegacySource.MirrorVertices(v);
@@ -890,6 +981,7 @@ namespace JapanMap.Editor.Map
                 mesh.SetTriangles(t, s);
             }
             mesh.RecalculateNormals();
+            FixNormals(mesh, smooth);
             // Tangents stay: without them the asphalt normal map drew dark bands across the road, and they cost only
             // 0.02 MB of the start download as 16-bit (measured 2026-10-14).
             mesh.RecalculateTangents();

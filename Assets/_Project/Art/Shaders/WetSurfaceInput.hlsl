@@ -51,6 +51,7 @@ float _DashGap;
 half _MarkWear;
 half4 _ShoulderColor;
 half _ShoulderSmoothness;
+half4 _VergeColor;
 UNITY_TEXTURE_STREAMING_DEBUG_VARS;
 CBUFFER_END
 

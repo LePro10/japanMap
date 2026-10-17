@@ -129,7 +129,7 @@ namespace JapanMap.Gameplay.Intro
                         Go(Beat.Air);
                         _slowTarget = settings.airSlow;
                         _ui.Slow(true);
-                        _ui.Prompt(IntroOverlay.Roll, _ui.Touch ? "Tap to roll" : "Double-tap to roll", _ui.Touch ? "STUNT, while you fly" : "Space twice in the air", big: true);
+                        _ui.Prompt(IntroOverlay.Roll, _ui.Touch ? "Tap to roll" : "Double-tap to roll", _ui.Touch ? "STUNT, while you fly" : "Space twice · A/D roll · S flip", big: true);
                     }
                     else if ((along > 30f || _t > settings.nitroStall) && !tel.airborne)
                     {
@@ -145,7 +145,15 @@ namespace JapanMap.Gameplay.Intro
                         Rolled = true;
                         _ui.Hit();
                         _slowTarget = settings.rollSlow;
-                        _ui.Toast("Barrel roll!", gold: false);
+                        var trickName = tel.airTrick switch
+                        {
+                            Vehicles.AirTrick.Backflip => "Backflip!",
+                            Vehicles.AirTrick.Frontflip => "Frontflip!",
+                            Vehicles.AirTrick.Helicopter => "Helicopter!",
+                            Vehicles.AirTrick.Corkscrew => "Corkscrew!",
+                            _ => "Barrel roll!",
+                        };
+                        _ui.Toast(trickName, gold: false);
                         Pay(settings.rewardRoll, "Barrel roll");
                     }
                     if (!Rolled && _t > settings.airWait) { _slowTarget = 1f; _ui.Prompt(null, null, null); }
