@@ -90,9 +90,11 @@ dem Unity-MCP. Der MCP verbindet sich nur beim Start einer Claude-Sitzung.
     Tokens) — gezielt suchen.
 12. **Leistung zählt ab Tag 1.** Budgets in docs/PLAN.md; nach größeren
     Änderungen Web-Build bauen und Größe/FPS notieren.
-13. **Ein Agent zur Zeit in Unity.** Einzige Ausnahme: der Asset-Sprint
-    (PLAN.md) in einer zweiten Sitzung, nur in `ArtSource/` und Blender,
-    Commits nur mit eigenen Dateien. Subagenten für Recherche sind ok.
+13. **Ein Agent zur Zeit im offenen Editor.** Ausnahmen: der Asset-Sprint
+    (PLAN.md) nur in `ArtSource/` und Blender; ein zweiter Agent in einer
+    eigenen Projektkopie (`git worktree` `../japanMap-cli`, eigener Zweig,
+    nur Batchmode, kein MCP, keine Spiel-Instanz) — der leitende Agent führt
+    zusammen. Subagenten für Recherche sind ok.
     Darum committet **jede** Sitzung nur ihre eigenen Pfade (`git add <pfad>`,
     nie `-A`/`commit -a`) und liest vor einem DECISIONS-Eintrag die höchste
     Nummer neu.
