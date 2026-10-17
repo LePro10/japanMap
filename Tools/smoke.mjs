@@ -1,5 +1,6 @@
 // Tools/smoke — serve Builds/Web, load it in headless Chromium, read the console, take a picture.
-//   node Tools/smoke.mjs [--timeout 60] [--out Captures/web-smoke.png] [--gpu] [--quality Low|Medium|High]
+//   node Tools/smoke.mjs [--timeout 60] [--out Captures/web-smoke.png] [--gpu] [--quality Low|Medium|High] [--log]
+// --log: the whole console in order (an error's neighbours say where it came from — release builds give no stack).
 // --gpu: real GPU (macOS: Metal) instead of SwiftShader, no vsync, and a 5 s frame-rate
 // measurement (rAF = Unity frames). Numbers are for THIS machine only, never for phones.
 // Green when: the page loads, Unity reports "[Boot] … systems up" (the Bootstrapper finished),
@@ -94,6 +95,7 @@ try {
   for (const e of errors.slice(0, 20)) console.log('  ' + e);
   const bootLine = logs.find((l) => l.includes('[Boot]'));
   if (bootLine) console.log('  ' + bootLine);
+  if (flag('log')) for (const l of logs) console.log('  | ' + l.split('\n')[0]);
   process.exitCode = green ? 0 : 1;
 } finally {
   await browser?.close();

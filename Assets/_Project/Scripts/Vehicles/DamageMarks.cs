@@ -205,6 +205,7 @@ namespace JapanMap.Vehicles
         {
             if (_warmed) return;
             _warmed = true;
+            _mesh.Clear();
             _mesh.SetVertices(new[] { Vector3.zero, Vector3.zero, Vector3.zero });
             _mesh.SetNormals(new[] { Vector3.up, Vector3.up, Vector3.up });
             _mesh.SetUVs(0, new[] { Vector2.zero, Vector2.zero, Vector2.zero });

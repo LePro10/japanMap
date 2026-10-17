@@ -714,3 +714,34 @@ Auftrag des Menschen (eine Sitzung, autonom). Was gewählt wurde und warum:
   Nitro lädt überall ×0,7, im Rennen nochmals ×0,7 und der Burst ×0,65 (`ArcadeTuning` „Nitro balance").
   Straßen: Normalen über Segmentnähte geglättet (keine Querbänder), weniger/weichere Pfützen (`Look.asset`),
   Kreuzungen ohne Linien, Seitenstraße endet unter der Hauptfahrbahn statt davor, Kiesrand blendet in Bodenfarbe.
+
+## D47 — Schaden am Auto und Zerbrechen mit dem eigenen Modell · 2026-10-17
+
+Wunsch des Menschen: Delle genau dort, wo das Auto trifft, so stark wie der Aufprall („wie BeamNG"); Bäume
+splittern statt umzufallen; Laternen, Schilder, Zäune passend; Rad kann abfallen; sichtbarer Schaden wirkt aufs
+Fahren, aber kein innerer Schaden; nie nervig — Reparatur gratis und sofort.
+
+- **Kein Soft-Body, sondern ein Verformungsfeld je Aufprall** (`CarBodyDeformer`, eigener Code: Unity hat keine
+  Karosserie-Verformung, Asset-Store-Pakete zielen auf Desktop und eigene Fahrphysik). Unity-Physik liefert Ort,
+  Richtung und Impuls (`OnCollisionEnter/Stay`, 3 Schritte gesammelt); Härte = Impuls/Masse (Δv), damit leichte und
+  schwere Autos gleich verbeulen. Knautschebene „Tiefe hinter der eigenen Oberfläche" (nicht hinter dem kürzeren
+  Physik-Kasten), weicher Knick, Falten aus glattem Rauschen, Ausbeulen von Haube/Kotflügeln, Tiefe wächst
+  quadratisch (Baum 60 ≈ 0,13 m, Wand 60 ≈ 0,23 m, Wand 110 ≈ 0,7 m), schmale Dinge drücken tiefer.
+  **Kein Käfig nötig:** Die Karosserie hat nur ~13 000 Ecken (das „176 000" in STATUS ist das ganze Auto mit allen
+  Tuning-Varianten, gemessen 44 000) — das Feld läuft direkt, verteilt auf Bilder (≤ 1 ms je Bild).
+- **Normalen** = modellierte Normale, gedreht wie ihre Flächen (Kanten bleiben wie modelliert).
+- **Kratzer/Glas** als Decal-Netz aus den Lack-/Glasflächen am Treffpunkt, Textur zur Laufzeit gezeichnet
+  (0 Byte Download); Scheiben brechen bei Δv ≥ 13 heraus.
+- **Räder:** Feld am Reifen ≥ 4 cm → verbogen (eiert, zieht ≤ 7 % Lenkung); ≥ 10 cm und Δv ≥ 20 m/s → ab (rollt
+  davon, Ecke sitzt auf der Nabe, schleift mit Reibung und Funken, zieht 12 % zur Seite — über die Lenkung, weil das
+  Arcade-Gierverhalten die Reibung sonst aufhebt). Motor/Lenkung/Leistung bleiben heil.
+- **Nur das Auto des Spielers** (Rennen der Gegner bleiben unverändert). Reparatur: Respawn, neues Auto/Garage,
+  Taste **T** (neu, Gamepad Steuerkreuz links), REPAIR-Knopf oben in der Mitte nur bei echtem Schaden.
+- **Kleinkram zählt kaum:** `BreakableSettings.carDamage` = Anteil der Anfahrgeschwindigkeit, den das Auto spürt,
+  wenn das Ding nachgibt (Leitpfosten 0,03, Bank 0,06, Fahrrad 0,08, Laterne 0,35, Automat 0,45, Baum 0,55, Hütte 0,6).
+- **Zerbrechen mit dem eigenen Modell** (`MeshCutter`): Stamm auf Stoßstangenhöhe geschnitten (Flächen am Schnitt
+  geteilt), Splitterkranz, Stumpf bleibt, Krone fällt; Laterne knickt und klappt am Gelenk um (ab 65 km/h bricht
+  sie ab); Bank/Gestell in Latten; **Spielregel geändert (klein):** Plastik-Leitpfosten brechen nicht mehr, sie
+  federn zurück (wie echte). Dafür sind 31 Bibliotheksmodelle lesbar (+5,6 MB Speicher, kein Download).
+- Bekannt/offen: Türen und Haube fallen nicht ab (Loft-Karosserie hätte Löcher) — stattdessen hängt die Stoßstange
+  nach harten Front-/Heckaufprallen an einer Seite herunter. Gegner/Verkehr bekommen keinen Schaden.

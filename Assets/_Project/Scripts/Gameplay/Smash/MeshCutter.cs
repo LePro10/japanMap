@@ -226,7 +226,8 @@ namespace JapanMap.Gameplay.Smash
                 var a = ring[k];
                 var bb = ring[(k + 1) % spikes];
                 var m = (a + bb) * 0.5f;
-                var tip = Vector3.Lerp(m, c, R(0.1f, 0.6f)) + Vector3.up * dir * r * R(0.5f, 2.2f);
+                // Fibres a hand long, longer on a thick trunk — not stakes (0.8 m on a cherry looked like a fence).
+                var tip = Vector3.Lerp(m, c, R(0.1f, 0.6f)) + Vector3.up * dir * R(0.05f, 0.24f) * (0.6f + r);
                 // Both faces: a fibre is seen from inside and out.
                 b.Raw(sub, a, bb, tip, uv);
                 b.Raw(sub, bb, a, tip, uv);

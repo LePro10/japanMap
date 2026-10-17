@@ -151,3 +151,13 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
   der Aufnahme und es entsteht keine WAV.
 - **Neue Felder an Objekten, die ein Setup-Skript baut** (`ContentSetup` baut z. B. das HUD neu): den Link auch im
   Setup-Skript setzen (`Set(hud, "feld", asset)`), nicht nur in der Szene — sonst ist er nach dem nächsten Setup weg.
+- **`car.Input` im PlayMode-Test wirkt beim Spielerauto nicht:** `DriverInput` (Ausführungsreihenfolge −200) schreibt
+  jeden Physikschritt seine Eingabe darüber. Gas/Lenken über die virtuelle Tastatur (`KeyboardState(Key.W)`) — der echte
+  Weg; `car.Input` nur bei Autos ohne DriverInput (Verkehr, Prüfstand).
+- **Kosten nie im ersten Aufruf nach dem Kompilieren messen:** der Editor übersetzt jede Methode beim ersten Aufruf
+  (1–4 ms extra); ein Aufwärm-Durchlauf, dann messen (das Web hat das nicht).
+- **Crash-Bilder (D47):** `play.mjs "…; testwall 90 [winkel]; wait 2.5; damage; testwall off; freeze; carcam 35 4 1.4; shot a"`
+  (Betonblock auf der nächsten Straße), `testrail 80` (Schrammen entlang einer Wand), `ramkind post|light|fence 45`,
+  `ramtree 60` / `ramring 60`, danach `targetcam r90 8 2.5` (relativ zur Fahrtrichtung, weicht Wänden aus); vorher/nachher:
+  `testwall 0` → `carcam …; shot vor` → `pace 110`.
+

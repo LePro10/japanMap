@@ -264,6 +264,42 @@ namespace JapanMap.Vehicles
             public Dent dent;
             public float plane, knee, buckleLen, buckleAmp, maxTotal;
             public int part, index;
+            public Droop droop; // a hanging bumper instead of a crush
+        }
+
+        /// <summary>A bumper torn at one side, hanging down at the other (body space).</summary>
+        public sealed class Droop
+        {
+            /// <summary>+1 the front, −1 the rear.</summary>
+            public float end;
+            /// <summary>The side that hangs: +1 right (+X), −1 left.</summary>
+            public float side;
+            public float amount;
+            public float endZ, zone, top, halfWidth;
+        }
+
+        /// <summary>
+        /// Queues a hanging bumper after a hard hit at an end (D47 "Stoßstange verbogen"): the lowest part of that end, by its
+        /// modelled shape, swings down on the far side, still held at the near one — dragging, not torn off (no hole).
+        /// </summary>
+        public void EnqueueDroop(float end, float side, float amount, float maxTotal)
+        {
+            var shell = Shell;
+            if (shell == null) return;
+            Prepare(shell);
+            var b = shell.restBounds; // the modelled body, mesh space ≈ body space (the shell sits at the body root)
+            _jobs.Enqueue(new Job
+            {
+                maxTotal = maxTotal,
+                droop = new Droop
+                {
+                    end = end, side = side, amount = amount,
+                    endZ = end > 0f ? b.max.z : b.min.z,
+                    zone = Mathf.Min(0.4f, b.size.z * 0.09f),
+                    top = b.min.y + b.size.y * 0.4f,
+                    halfWidth = Mathf.Max(0.3f, b.extents.x),
+                },
+            });
         }
 
         readonly Queue<Job> _jobs = new();
@@ -294,6 +330,59 @@ namespace JapanMap.Vehicles
 
         /// <summary>The soft knee of the crush for a depth (also used to ask the field at a wheel).</summary>
         public static float Knee(float depth) => Mathf.Max(0.025f, depth * 0.3f);
+
+        bool StepDroop(Job job, float budgetMs)
+        {
+            var dr = job.droop;
+            var max2 = job.maxTotal * job.maxTotal;
+            var maxSeen = _maxDisplacement * _maxDisplacement;
+            for (; job.part < _parts.Count; job.part++, job.index = 0)
+            {
+                var p = _parts[job.part];
+                if (!p.filter.gameObject.activeInHierarchy) continue;
+                Prepare(p);
+                var toBody = ToBody(p);
+                var fromBody = toBody.inverse;
+                // Down, and a little out of the end: the bumper sags away from the body.
+                var downL = fromBody.MultiplyVector(Vector3.down);
+                var outL = fromBody.MultiplyVector(Vector3.forward * dr.end);
+                var i = job.index;
+                for (; i < p.pos.Length; i++)
+                {
+                    if ((i & 1023) == 1023 && _sw.Elapsed.TotalMilliseconds > budgetMs)
+                    {
+                        job.index = i;
+                        _maxDisplacement = Mathf.Sqrt(maxSeen);
+                        return false;
+                    }
+                    var r = toBody.MultiplyPoint3x4(p.rest[i]); // by the modelled shape: the bumper is found even crushed
+                    var along = (r.z - dr.endZ) * dr.end; // 0 at the very end, negative inwards
+                    if (along < -dr.zone || r.y > dr.top) continue;
+                    var wz = Smooth(1f + along / dr.zone);
+                    var wy = Smooth((dr.top - r.y) / 0.08f);
+                    var wx = Smooth((r.x * dr.side / dr.halfWidth + 1f) * 0.5f); // 0 at the held side, 1 at the hanging one
+                    var w = wz * wy * wx * wx;
+                    if (w < 1e-3f) continue;
+                    var next = p.pos[i] + (downL * 1f + outL * 0.3f) * (dr.amount * w);
+                    var total = next - p.rest[i];
+                    var t2 = total.sqrMagnitude;
+                    if (t2 > max2)
+                    {
+                        next = p.rest[i] + total * (job.maxTotal / Mathf.Sqrt(t2));
+                        t2 = max2;
+                    }
+                    p.pos[i] = next;
+                    if (!p.moved[i]) p.movedList.Add(i);
+                    p.moved[i] = true;
+                    p.dirty = true;
+                    p.normalCursor = -1;
+                    LastMoved++;
+                    if (t2 > maxSeen) maxSeen = t2;
+                }
+            }
+            _maxDisplacement = Mathf.Sqrt(maxSeen);
+            return true;
+        }
 
         /// <summary>Parts moved but not yet re-normalled and uploaded.</summary>
         public bool Pending
@@ -381,6 +470,7 @@ namespace JapanMap.Vehicles
         /// <summary>One job across the parts; false when the budget ran out before its end.</summary>
         bool Step(Job job, float budgetMs)
         {
+            if (job.droop != null) return StepDroop(job, budgetMs);
             var dent = job.dent;
             var plane = job.plane;
             var knee = job.knee;

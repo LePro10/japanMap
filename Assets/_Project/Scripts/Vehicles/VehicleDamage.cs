@@ -30,6 +30,8 @@ namespace JapanMap.Vehicles
             /// <summary>Wheel index torn off by this hit, −1 none.</summary>
             public int wheelLost;
             public int wheelsBent;
+            /// <summary>The bumper at that end now hangs down.</summary>
+            public bool bumperHangs;
             /// <summary>The thing hit broke and the car drove through (sign, tree, lamp).</summary>
             public bool brokeThrough;
             /// <summary>What was hit (null for a hit given by hand).</summary>
@@ -62,6 +64,7 @@ namespace JapanMap.Vehicles
         readonly float[] _looseAt = new float[VehicleController.WheelCount];
         readonly Dictionary<Collider, float> _slid = new();
         int _seed, _dentFrame = -1, _hitFrame = -1;
+        readonly bool[] _drooped = new bool[2]; // front, rear: once per end until repaired
         double _tGlass;
         int _marksWarmFrame;
         readonly Queue<(Vector3 at, Vector3 into, Vector3 along, float radius, DamageMarks.Tile tile)> _markQueue = new();
@@ -285,6 +288,14 @@ namespace JapanMap.Vehicles
                 // over ~0.1 s anyway).
                 plane = _deformer.Enqueue(dent, _s.maxDisplacement);
                 if (!float.IsNaN(plane)) hit.dent = depth;
+                // A hard hit square on an end leaves that bumper hanging down at the side it was hit.
+                if (!float.IsNaN(plane) && deltaV >= _s.droopFrom && Mathf.Abs(bd.z) > 0.7f && !_drooped[bd.z < 0f ? 0 : 1])
+                {
+                    _drooped[bd.z < 0f ? 0 : 1] = true;
+                    var side = Mathf.Abs(bp.x) > 0.15f ? Mathf.Sign(bp.x) : ((_seed & 1) == 0 ? 1f : -1f); // torn off its clips where it was hit
+                    _deformer.EnqueueDroop(bd.z < 0f ? 1f : -1f, side, Mathf.Min(_s.droopMax, 0.06f + (deltaV - _s.droopFrom) * 0.02f), _s.maxDisplacement);
+                    hit.bumperHangs = true;
+                }
                 _dentFrame = Time.frameCount;
             }
             var tDent = _watch.Elapsed.TotalMilliseconds;
@@ -597,6 +608,7 @@ namespace JapanMap.Vehicles
             _soft.Clear();
             _slid.Clear();
             _markQueue.Clear();
+            _drooped[0] = _drooped[1] = false;
             Scrape = 0f;
             if (_bound)
             {

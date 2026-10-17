@@ -43,6 +43,12 @@ namespace JapanMap.Vehicles
                  "in the frame of the hit itself).")]
         public float frameBudgetMs = 1f;
 
+        [Header("Hanging bumper")]
+        [Tooltip("From this speed change a hit at the front or rear leaves the bumper hanging down at one side, m/s.")]
+        public float droopFrom = 16f;
+        [Tooltip("How far it hangs at most, m.")]
+        public float droopMax = 0.22f;
+
         [Header("Wheels")]
         [Tooltip("Push at the tyre that bends a wheel, m.")]
         public float wheelBendPush = 0.04f;

@@ -90,3 +90,12 @@
 Arten: **Test** (automatisch geprüft) · **Werkzeug** (Skript übernimmt den
 Schritt) · **Skill** (Ablauf angepasst) · **Regel** (CLAUDE.md) · **Ablauf**
 (Phasen-Tor / Sitzungsablauf).
+
+| Datum | Anlass | Fehler / Sackgasse | Vorkehrung | Art |
+|---|---|---|---|---|
+| 2026-10-17 | Schaden (D47) | Formelwagen: „größtes Mesh = Karosserie" griff den Motor (mehr Ecken als die Karosserie) | `CarBodyDeformer.Shell` nach Knotenname `body`; `VehicleDamageTests.EveryFleetCar_HasWhatDamageNeeds` prüft alle Autos (lesbar, Lack, vier Räder) | Test |
+| 2026-10-17 | Schaden (D47) | PlayMode-Test setzte `car.Input` — DriverInput (Reihenfolge −200) überschreibt das jeden Schritt, das Auto rollte nur aus | im Test die virtuelle Tastatur (W) nehmen; Falle in Skill `unity-verify` | Skill |
+| 2026-10-17 | Schaden (D47) | Kostenmessungen direkt nach dem Kompilieren zeigten 2–5 ms: Editor übersetzt Code beim ersten Aufruf (im Web nicht) | Kostentests fahren erst einen Aufwärm-Crash, dann `ResetCost()` | Test |
+| 2026-10-17 | Zerbrechen (D47) | Bäume/Laternen schnitten still nicht (Meshes nicht lesbar), Fallback sah aus wie vorher | `SmashCutTests.EveryBreakableMesh_IsReadable` + Schnitt-Tests (Stumpf, Krone, Latten) | Test |
+| 2026-10-17 | Web-Build | Release-Build meldete Mesh-Fehler ohne Stack — Ursache nur über die Reihenfolge der Konsole zu finden | `node Tools/smoke.mjs --log` gibt die ganze Konsole in Reihenfolge aus | Werkzeug |
+| 2026-10-17 | Bilder vom Schaden | Kamera landete in Wänden/Bäumen, Auto rollte aus dem Bild | PlayScript: `testwall`/`testrail`/`ramkind`/`ramring`, `carcam`, `targetcam r90 …` (weicht Hindernissen aus), `freeze`, `damage`, `markscheck` | Werkzeug |

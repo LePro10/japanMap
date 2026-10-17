@@ -27,6 +27,8 @@ MonoBehaviour:
   undersideShare: 0.2
   gatherSteps: 3
   frameBudgetMs: 1
+  droopFrom: 16
+  droopMax: 0.22
   wheelBendPush: 0.04
   wheelOffPush: 0.1
   wheelOffDeltaV: 20
