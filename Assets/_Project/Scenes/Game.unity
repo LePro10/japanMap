@@ -19624,7 +19624,7 @@ MonoBehaviour:
   figures: {fileID: 11400000, guid: 230e848644e40484ea73fe8efe31f63e, type: 2}
   actions: {fileID: -944628639613478452, guid: 43bdcf87b6e88458eaa485d47f827223, type: 3}
   startOnFoot: 1
-  walkSpawn: {x: 550, y: 27.334103, z: -510}
+  walkSpawn: {x: 550, y: 27.30431, z: -510}
   walkSpawnYaw: 360
 --- !u!114 &1493207664
 MonoBehaviour:
@@ -19723,8 +19723,8 @@ MonoBehaviour:
   driver: {fileID: 1493207671}
   respawn: {fileID: 1493207670}
   carId: 
-  spawnPoint: {x: 550, y: 27.175266, z: -506}
-  spawnHeading: 90
+  spawnPoint: {x: 546.9056, y: 27.206387, z: -508.36453}
+  spawnHeading: 336.7822
   snapToRoad: 0
   standInMaterial: {fileID: 2100000, guid: bc0dd7dbeef914d39b9a52b21048f2dd, type: 2}
 --- !u!114 &1493207670
