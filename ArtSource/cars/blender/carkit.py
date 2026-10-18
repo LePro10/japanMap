@@ -790,6 +790,9 @@ def build_wheel(name, cfg, mats, side=1):
             return 0.0
     np_ = len(prof)
     bm_lathe(bm, prof, cfg.get('segs', 64), mat_of=(lambda i: 6 if cfg.get('stripe') and i in (1, np_ - 3) else 0), radial_mod=mod)
+    # Das Profil läuft von innen (-x) nach außen (+x): so zeigen die Flächen zur Achse. Ohne Umkehr sah man
+    # im Spiel (Rückseiten-Culling) den Reifen von innen (D52). Bis hier enthält bm nur den Reifen.
+    bmesh.ops.reverse_faces(bm, faces=list(bm.faces))
     a = w / 2
     dish = cfg.get('dish', 0.0)
     lip = max(cfg.get('lip', 0.012), 0.008)

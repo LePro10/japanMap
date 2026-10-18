@@ -3,23 +3,16 @@ using UnityEngine;
 namespace JapanMap.Vehicles
 {
     /// <summary>
-    /// Simple car effects (fine polish in Phase 4/9): brake lights, skid marks and tyre smoke / dust
+    /// Simple car effects (fine polish in Phase 4/9): skid marks and tyre smoke / dust
     /// at the rear wheels. Driven by <see cref="VehicleTelemetry"/>: skid for marks and smoke, the
-    /// surface for the colour (grey smoke on asphalt, brown dust off-road).
+    /// surface for the colour (grey smoke on asphalt, brown dust off-road). Brake lights: <see cref="Headlights"/> (D52).
     /// </summary>
     public sealed class VehicleEffects : MonoBehaviour
     {
-        static readonly int EmissiveFactor = Shader.PropertyToID("emissiveFactor");
-
         VehicleController _car;
         VehicleEffectsSettings _s;
         readonly TrailRenderer[] _marks = new TrailRenderer[2];
         readonly ParticleSystem[] _smoke = new ParticleSystem[2];
-        Renderer[] _tailRenderers = System.Array.Empty<Renderer>();
-        int[] _tailIndex = System.Array.Empty<int>();
-        Color[] _tailBase = System.Array.Empty<Color>();
-        MaterialPropertyBlock _mpb;
-        float _brakeGlow;
         ParticleSystem[] _flames = System.Array.Empty<ParticleSystem>();
         ParticleSystem _shock;
         Light _burstLight;
@@ -32,8 +25,6 @@ namespace JapanMap.Vehicles
         {
             _car = car;
             _s = settings;
-            _mpb = new MaterialPropertyBlock();
-            FindTailLights(model);
             for (var i = 0; i < 2; i++)
             {
                 _marks[i] = MakeMark(i);
@@ -194,27 +185,6 @@ namespace JapanMap.Vehicles
             }
         }
 
-        void FindTailLights(Transform model)
-        {
-            var renderers = new System.Collections.Generic.List<Renderer>();
-            var index = new System.Collections.Generic.List<int>();
-            var colors = new System.Collections.Generic.List<Color>();
-            foreach (var r in model.GetComponentsInChildren<Renderer>(true))
-            {
-                var mats = r.sharedMaterials;
-                for (var m = 0; m < mats.Length; m++)
-                {
-                    if (mats[m] == null || !mats[m].name.EndsWith("_tail") || !mats[m].HasProperty(EmissiveFactor)) continue;
-                    renderers.Add(r);
-                    index.Add(m);
-                    colors.Add(mats[m].GetColor(EmissiveFactor));
-                }
-            }
-            _tailRenderers = renderers.ToArray();
-            _tailIndex = index.ToArray();
-            _tailBase = colors.ToArray();
-        }
-
         TrailRenderer MakeMark(int i)
         {
             var go = new GameObject(i == 0 ? "SkidMarkL" : "SkidMarkR");
@@ -273,18 +243,6 @@ namespace JapanMap.Vehicles
         {
             if (_car == null) return;
             var t = _car.Telemetry;
-            var input = _car.Input;
-
-            // Brake light: braking forward (not reverse) or handbrake.
-            var braking = (input.brake > 0.1f && t.forwardSpeed > 0.5f) || input.handbrake;
-            _brakeGlow = Mathf.MoveTowards(_brakeGlow, braking ? 1f : 0f, Time.deltaTime * 12f);
-            for (var k = 0; k < _tailRenderers.Length; k++)
-            {
-                _tailRenderers[k].GetPropertyBlock(_mpb, _tailIndex[k]);
-                _mpb.SetColor(EmissiveFactor, _tailBase[k] * Mathf.Lerp(_s.tailIdle, _s.tailBrake, _brakeGlow));
-                _tailRenderers[k].SetPropertyBlock(_mpb, _tailIndex[k]);
-            }
-
             UpdateNitro(t);
             var loose = t.surface == Surface.Terrain || t.surface == Surface.Gravel;
             for (var i = 0; i < 2; i++)

@@ -112,6 +112,15 @@
                     "processors": "",
                     "interactions": "hold(duration=0.45)",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "Headlights",
+                    "type": "Button",
+                    "id": "9c7a384c-a0e0-459d-ab11-11dfc4f5e70a",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -453,6 +462,28 @@
                     "processors": "",
                     "groups": "Gamepad",
                     "action": "AutoDrive",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "6b1688b4-d5db-442c-8949-d6fd90e3ecb4",
+                    "path": "<Keyboard>/l",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "Headlights",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "8bade779-2c7c-4d98-86b9-b91291cb9b30",
+                    "path": "<Gamepad>/leftShoulder",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "Headlights",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

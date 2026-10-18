@@ -77,8 +77,17 @@ namespace JapanMap.Vehicles
             return null;
         }
 
-        /// <summary>Car-lab tuning slots: option 0 is the stock part, _o1/_o2 are upgrades.</summary>
-        public static bool IsTuningOption(Transform t) => t.name.EndsWith("_o1") || t.name.EndsWith("_o2");
+        /// <summary>
+        /// Car-lab tuning slots: option 0 is the stock part, _o1/_o2 are upgrades. Blender's duplicate suffix is ignored
+        /// ("wheelmesh_RR_o2.007"): without that, cars without a loadout (rivals) showed two rims in one wheel (D52).
+        /// </summary>
+        public static bool IsTuningOption(Transform t)
+        {
+            var n = t.name;
+            var dot = n.IndexOf('.');
+            if (dot > 0) n = n.Substring(0, dot);
+            return n.EndsWith("_o1") || n.EndsWith("_o2");
+        }
 
         void LateUpdate()
         {

@@ -39,8 +39,7 @@ namespace JapanMap.Vehicles
         [Tooltip("Rear light at the burst, intensity at the peak (0 = no light).")]
         public float burstLight = 2.5f;
 
-        [Header("Tail lights (multiplier on the model's emission)")]
-        public float tailIdle = 0.35f;
-        public float tailBrake = 3f;
+        [Tooltip("Lamps of the car-lab cars: glass, brake and reversing lights, the player's headlights (D52).")]
+        public HeadlightSettings headlights;
     }
 }

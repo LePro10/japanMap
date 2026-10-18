@@ -32,7 +32,7 @@ namespace JapanMap.Gameplay.Menu
         static readonly (string map, string action, string label)[] Keys =
         {
             ("Drive", "Throttle", "Throttle"), ("Drive", "Brake", "Brake / reverse"), ("Drive", "Handbrake", "Handbrake / drift"),
-            ("Drive", "Boost", "Boost"), ("Drive", "Respawn", "Recover"), ("Drive", "Camera", "Camera"),
+            ("Drive", "Boost", "Boost"), ("Drive", "Respawn", "Recover"), ("Drive", "Camera", "Camera"), ("Drive", "Headlights", "Headlights"),
             ("Player", "Vehicle", "Enter / exit car"), ("Player", "Use", "Use"), ("Player", "CallCar", "Call car"),
             ("Walk", "Jump", "Jump"), ("Walk", "Sprint", "Run"), ("Walk", "Slide", "Slide"),
         };
