@@ -1,0 +1,84 @@
+/* Career (D50, CareerOverlay.cs): the goal card top left and the UNLOCKED banner. Cyan = the goal (selection colour),
+   gold only for Sparks (UI-STYLE.md). Motion short and directed: the card rises in from the left, ticks green, banners
+   pop in from slightly smaller. */
+.jm-career { transition-property: opacity; transition-duration: 0.25s; }
+.jm-career--away { opacity: 0; }
+
+.jm-career__card { position: absolute; left: 24px; top: 24px; width: 340px; padding: 12px 16px 12px 16px;
+    background-color: rgba(7, 17, 28, 0.82); border-radius: 10px; border-left-width: 3px; border-color: var(--amber);
+    opacity: 1; translate: 0 0;
+    transition-property: opacity, translate, border-color; transition-duration: 0.28s; transition-timing-function: ease-out-cubic; }
+.jm-career__card--out { opacity: 0; translate: -24px 0; transition-duration: 0s; }
+.jm-career__card--done { border-color: var(--leaf); }
+
+.jm-career__head { flex-direction: row; justify-content: space-between; align-items: center; }
+.jm-career__kicker, .jm-career__count { font-size: 12px; letter-spacing: 3px; color: var(--amber);
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); -unity-font-style: normal; }
+.jm-career__count { color: var(--paper-dim); letter-spacing: 1px; }
+
+.jm-career__row { flex-direction: row; align-items: center; margin-top: 4px; }
+.jm-career__check { width: 22px; height: 22px; border-radius: 11px; border-width: 2px; border-color: rgba(246, 239, 228, 0.55);
+    margin-right: 10px; align-items: center; justify-content: center; flex-shrink: 0;
+    transition-property: background-color, border-color, scale; transition-duration: 0.22s; }
+.jm-career__tick { font-size: 14px; color: var(--ink); opacity: 0; -unity-text-align: middle-center; padding: 0; margin: 0; }
+.jm-career__card--done .jm-career__check { background-color: var(--leaf); border-color: var(--leaf); }
+.jm-career__card--done .jm-career__tick { opacity: 1; }
+.jm-career__title { flex-grow: 1; flex-shrink: 1; font-size: 21px; color: var(--paper); white-space: normal;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6); }
+.jm-career__reward { font-size: 17px; color: var(--gold); margin-left: 8px; flex-shrink: 0;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); -unity-font-style: normal;
+    transition-property: scale, color; transition-duration: 0.22s; }
+.jm-career__card--done .jm-career__reward { color: #fff2c4; }
+.jm-career__hint { font-size: 14px; color: var(--paper-dim); margin-top: 2px; margin-left: 32px; white-space: normal; }
+
+.jm-career__meter { height: 4px; margin: 8px 0 0 32px; border-radius: 2px; background-color: rgba(246, 239, 228, 0.16); overflow: hidden; }
+.jm-career__fill { height: 100%; width: 0; background-color: var(--amber); border-radius: 2px;
+    transition-property: width, background-color; transition-duration: 0.18s; }
+.jm-career__card--done .jm-career__fill { background-color: var(--leaf); }
+
+.jm-career__dots { flex-direction: row; margin: 8px 0 0 32px; }
+.jm-career__dot { width: 18px; height: 3px; margin-right: 5px; border-radius: 2px; background-color: rgba(246, 239, 228, 0.22);
+    transition-property: background-color; transition-duration: 0.3s; }
+.jm-career__dot--now { background-color: var(--paper); }
+.jm-career__dot--done { background-color: var(--amber); }
+
+/* The banner: right, under the Sparks balance — the middle belongs to the drift score and the toasts (shots D50). */
+.jm-career__banner { position: absolute; right: 24px; top: 168px; width: 380px; padding: 14px 22px 16px 22px;
+    align-items: center; background-color: rgba(6, 18, 28, 0.9); border-radius: 12px; border-width: 1px; border-color: var(--line);
+    opacity: 0; scale: 0.9 0.9; overflow: hidden;
+    transition-property: opacity, scale; transition-duration: 0.26s; transition-timing-function: ease-out-back; }
+.jm-career__banner--on { opacity: 1; scale: 1 1; }
+.jm-career__banner-edge { position: absolute; left: 0; right: 0; top: 0; height: 3px; background-color: var(--amber); }
+.jm-career__banner--gold .jm-career__banner-edge { background-color: var(--gold); }
+.jm-career__banner-head { flex-direction: row; align-items: center; }
+.jm-career__banner-icon { width: 22px; height: 22px; margin-right: 8px; }
+.jm-career__banner-kicker { font-size: 13px; letter-spacing: 6px; color: var(--amber);
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); -unity-font-style: normal; }
+.jm-career__banner--gold .jm-career__banner-kicker { color: var(--gold); }
+.jm-career__banner-title { font-size: 40px; letter-spacing: 3px; color: var(--paper); margin-top: 2px; -unity-text-align: middle-center;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); -unity-font-style: normal;
+    text-shadow: 0 3px 16px rgba(0, 0, 0, 0.8); }
+.jm-career__banner-body { font-size: 15px; color: var(--paper-dim); -unity-text-align: middle-center; white-space: normal; }
+
+/* Phones: a smaller card beside / under the minimap, a narrower banner. */
+.jm-phone .jm-career__card { padding: 8px 10px 8px 10px; }
+.jm-phone .jm-career__title { font-size: 16px; }
+.jm-phone .jm-career__hint { font-size: 12px; margin-left: 30px; }
+.jm-phone .jm-career__kicker, .jm-phone .jm-career__count { font-size: 10px; letter-spacing: 2px; }
+.jm-phone .jm-career__reward { font-size: 14px; }
+.jm-phone .jm-career__banner { right: auto; left: 12px; top: 150px; width: 300px; padding: 10px 14px 12px 14px; }
+.jm-phone .jm-career__banner-title { font-size: 28px; }
+.jm-phone .jm-career__banner-body { font-size: 12px; }
+.jm-portrait .jm-career__banner { left: 50%; margin-left: -150px; top: 46%; }
+/* Phones: while a drift chain runs the card steps back (the score in the middle is the moment). */
+.jm-career__card--quiet { opacity: 0.3; }
+
+/* The goal at the top of a menu page (GameMenu.CareerChip). */
+.jm-career-chip { flex-direction: row; align-items: center; align-self: flex-start; margin-bottom: 12px; padding: 6px 14px 6px 12px;
+    background-color: rgba(7, 17, 28, 0.8); border-radius: 8px; border-left-width: 3px; border-color: var(--amber); }
+.jm-career-chip__kicker { font-size: 12px; letter-spacing: 3px; color: var(--amber); margin-right: 10px;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); -unity-font-style: normal; }
+.jm-career-chip__goal { font-size: 16px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; }
+.jm-career-chip__reward { font-size: 15px; color: var(--gold); margin-left: 10px;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); -unity-font-style: normal; }

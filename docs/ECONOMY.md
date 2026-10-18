@@ -14,7 +14,7 @@ Ziel (ASTRA §9): **2.400–3.600 Sparks** je gewöhnlicher 10-Minuten-Sitzung, 
 | Drift, geübt | 2.206 |  | nähert sich (Deckel) | Ketten 25 s mit 60 km/h, 35°, Seitenwechsel alle 3 s, jede 5. Kette ein Crash; in der Driftzone |
 | Gemischt | 2.451 |  | ja | 5 min Veranstaltungen + 5 min gelegentlich driften |
 | Drift, gelegentlich | 1.591 |  | — | Ketten 6 s mit 45 km/h, 22°, jede 4. Kette ein Crash; in der Driftzone — Einstieg, kein Ziel-Profil |
-| Erste Sitzung | 1.878 | 1.150 | — | 3 Regionen + 2 Entdeckungen (4 min), 1 Veranstaltung (Coast Loop) mit erster Medaille, 2 Meilensteine, Rest gelegentlich driften |
+| Erste Sitzung | 1.878 | 2.850 | — | 3 Regionen + 2 Entdeckungen (4 min), 1 Veranstaltung (Coast Loop) mit erster Medaille, 2 Meilensteine, Rest gelegentlich driften |
 
 ## Veranstaltungen je Minute
 
@@ -35,7 +35,7 @@ Median 330 Sparks/min (mit Anfahrt). ASTRA §11: mehr als 1.5× Median = neu abs
 
 Reines Driften ist durch den Deckel (400 je 90 s) auf höchstens 2.667 je 10 min begrenzt — Absicht: Kreisen im Hof soll nie der schnellste Weg sein.
 
-Gerechnet mit dem Mittel der Ziel-Profile: **2.874 Sparks/Sitzung**. Einmal-Geld im ganzen Spiel: 7.500.
+Gerechnet mit dem Mittel der Ziel-Profile: **2.874 Sparks/Sitzung**. Einmal-Geld im ganzen Spiel: 12.900.
 
 | Kauf | Preis | Sitzungen |
 |---|---:|---:|
@@ -56,5 +56,33 @@ Gerechnet mit dem Mittel der Ziel-Profile: **2.874 Sparks/Sitzung**. Einmal-Geld
 
 ## Erster Kauf
 
-Nach der ersten Sitzung: 3.028 Sparks → günstigstes Auto (Mame K, 2.400) **sofort** kaufbar.
+Nach der ersten Sitzung: 4.728 Sparks → günstigstes Auto (Mame K, 2.400) **sofort** kaufbar.
 Street-Paket für das Startauto (3.000) ebenfalls sofort.
+
+## Karriere (einmalig, D50)
+
+Kette aus `Data/Gameplay/Career.asset` (docs/CAREER.md). Zusammen **5.400 Sparks** (davon 1.000 für „Career complete“), in der ersten Sitzung 1.700. Überspringen zahlt 3.000. Kaufschritte füllen einmal auf, falls das Geld fehlt.
+
+| # | Kapitel | Ziel | Sparks | Summe | ab Minute |
+|---:|---|---|---:|---:|---:|
+| 1 | First Drive | Finish the first drive | 0 | 0 | 0 |
+| 2 | Open Bay | Drive into the Open Bay | 100 | 100 | 2 |
+| 3 | Open Bay | Buy your first upgrade (Startgeld) | 300 | 400 | 2 |
+| 4 | Open Bay | Give it a new colour (Startgeld) | 200 | 600 | 3 |
+| 5 | Street Skills | Bank a 2,000 point drift | 200 | 800 | 3 |
+| 6 | Street Skills | Pull a stunt | 200 | 1.000 | 4 |
+| 7 | Street Skills | Fire a nitro burst | 200 | 1.200 | 4 |
+| 8 | Street Skills | Hit 160 km/h | 200 | 1.400 | 5 |
+| 9 | First Race | Open the map | 100 | 1.500 | 5 |
+| 10 | First Race | Let the car drive you there | 200 | 1.700 | 6 |
+| 11 | First Race | Get to the start | 0 | 1.700 | 6 |
+| 12 | First Race | Finish your first race | 500 | 2.200 | 7 |
+| 13 | Every Day | Check today's challenge | 100 | 2.300 | 11 |
+| 14 | Every Day | Look at your records | 100 | 2.400 | 11 |
+| 15 | Picture It | Take a photo | 200 | 2.600 | 12 |
+| 16 | Go Places | Fast travel anywhere | 100 | 2.700 | 12 |
+| 17 | Second Car | Test drive another car | 200 | 2.900 | 13 |
+| 18 | Second Car | Buy your second car (Startgeld) | 500 | 3.400 | 14 |
+| 19 | Make a Name | Finish 3 different events | 500 | 3.900 | 15 |
+| 20 | Make a Name | Take silver or better | 500 | 4.400 | 23 |
+| — | — | Career complete | 1.000 | 5.400 | 27 |

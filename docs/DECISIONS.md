@@ -795,3 +795,25 @@ weiche Übernahme nach RDR2/GTA-Mod.
 - **Navi verbessert (klein, Regel 15):** `RouteGraph` kennt Breite und Kreuzungsart je Punkt und meidet Straßenenden an
   Kreuzungen mit Höhenstufe (150 m Aufschlag). Anlass: hill-steps-west liegt neben der Einmündung von west-works-03-2
   1,3 m höher — eine Kante, an der jedes Auto hängen bleibt (Kartenfehler, siehe Abschlussbericht).
+
+## D50 — Karriere: langer Einstieg mit Freischaltungen nach dem Intro · 2026-10-18
+
+Anlass: Mensch will einen langen, nie langweiligen, überspringbaren Einstieg, der jede Funktion kennenlernen lässt
+(„der wichtigste Teil, dass der User dranbleibt"). Entwurf, Recherche und Tabelle: [CAREER.md](CAREER.md).
+- **Kette als Daten** (`Data/Gameplay/Career.asset`, `Gameplay/Career/CareerSettings`): 20 Schritte in 9 Kapiteln,
+  je Ziel, Text für Tasten **und** Touch, Sparks, Freischaltungen, Wegpunkt, Startgeld-Flag, geschätzte Dauer.
+  Zustand nur Claims im Spielstand (`career:<id>`, `career:on`, `career:done`), jeder Schritt sofort gespeichert.
+- **Abhaken über echte Ereignisse/Fakten** (`DriftScorer.ChainEnded`, `StuntScorer.Count`, Telemetrie Burst/Tempo,
+  Käufe in `purchases`, beendete Veranstaltungen, `Travel.Travelled`, `PhotoMode.LastPhoto`, Menü-Seite offen,
+  `AutoDrive.Current`). Wer etwas vorher schon getan hat, bekommt den Schritt sofort.
+- **Keine Sackgasse:** Kaufschritte füllen einmal bis zum günstigsten Kauf auf; ohne Auto-Drive (Agent A) wird der
+  Schritt übersprungen; `CareerChain.Problems()` (EditMode) verbietet Schritte, die auf später freigeschaltete Dinge warten.
+- **Gebaut zur Laufzeit von `FirstDrive`** (über `IntroSettings.career`) — keine Szenenänderung. Setzt `Unlocks.Query`,
+  schaltet den alten `NextGoalGuide` während der Karriere ab (eine Stimme).
+- **Alte Spielstände gelten als fertig** (es gibt noch keine Spieler); Editor/Tests ohne Karriere außer mit
+  `CareerSystem.RunInEditor`; `?career=off/on`, `?unlock=all` = fertig.
+- **Überspringen** im Titel (SKIP TUTORIAL, zweiter Druck bestätigt) und auf der Play-Seite (Bestätigungsblatt):
+  alles frei + 3.000 Sparks, Intro gilt als gesehen.
+- **Wirtschaft:** 5.400 Sparks einmalig (≤ 2 Sitzungen, kein Schritt über der kleinsten Rennprämie), Tabelle in
+  ECONOMY.md von `EconomySim` erzeugt. Rennen sind weiter ohne Freischaltung fahrbar (Beacons in der Welt); gesperrt
+  sind nur Menü-Wege — bewusst, damit Neugier nie bestraft wird.

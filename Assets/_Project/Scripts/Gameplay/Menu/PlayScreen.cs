@@ -81,19 +81,25 @@ namespace JapanMap.Gameplay.Menu
                 });
                 t.AppendLine($"in event {_races.Event.title}");
             }
-            else if (_races != null)
+            else
             {
-                var rec = Recommend();
+                // During the career its goal leads; the next event steps down to a half tile.
+                var career = CareerTile(grid, t);
+                var rec = _races != null ? Recommend() : -1;
                 if (rec >= 0)
                 {
                     var ev = _races.Set.events[rec];
-                    Hero(grid, new MenuTiles.Spec
+                    var spec = new MenuTiles.Spec
                     {
                         Name = "tile-event", Icon = Icon.Flag, Kicker = "NEXT EVENT", Title = ev.title, Body = ev.blurb,
                         Value = $"+{ev.completion:N0} Sparks  ·  up to +{ev.completion + ev.bonus:N0}", Action = "Go to the start",
-                        Style = "jm-card--accent", Feature = Core.FeatureId.Races,
+                        Style = career ? "" : "jm-card--accent",
+                        // The tile travels there: with events open but fast travel not yet (career), it waits for fast travel.
+                        Feature = Core.Unlocks.IsUnlocked(Core.FeatureId.Races) ? Core.FeatureId.FastTravel : Core.FeatureId.Races,
                         Click = () => { Menu.Close(); _travel.ToEvent(rec); },
-                    });
+                    };
+                    if (career) Half(grid, spec);
+                    else Hero(grid, spec);
                     t.AppendLine($"event {ev.title}");
                 }
             }
@@ -152,8 +158,48 @@ namespace JapanMap.Gameplay.Menu
                 Action = "Go to Sakura Commons", Feature = Core.FeatureId.FastTravel,
                 Click = () => { Menu.Close(); _travel.ToCommons(); },
             });
+            if (CareerOn)
+            {
+                // Skip lives here and on the title, never in the way: a plain text button under the tiles, with a question.
+                var skip = Ui.Button(body, "Skip tutorial · unlock everything", ConfirmSkip, "jm-btn", "jm-rise");
+                skip.name = "career-skip";
+            }
             if (!UiPanel.IsPhone) Ui.Small(body, "Esc resumes exactly where you are.").AddToClassList("jm-pagefoot");
             _text = t.ToString();
+        }
+
+        static bool CareerOn => Career.CareerSystem.Instance != null && Career.CareerSystem.Instance.Active;
+
+        /// <summary>The career's current goal as the page's hero (one voice leads): chapter, goal, how far, "Show me".</summary>
+        bool CareerTile(VisualElement grid, StringBuilder t)
+        {
+            var career = Career.CareerSystem.Instance;
+            var step = CareerOn ? career.Chain.Current : null;
+            if (step == null) return false;
+            var chain = career.Chain;
+            chain.Chapter(chain.Index, out var chapter, out var chapters, out _, out _);
+            var s = step.Value;
+            Hero(grid, new MenuTiles.Spec
+            {
+                Name = "tile-career", Icon = Icon.Flag, Kicker = $"CAREER · CHAPTER {chapter} OF {chapters} · {s.chapter.ToUpperInvariant()}",
+                Title = Career.CareerChain.Title(s), Body = Career.CareerOverlay.Touch ? s.touchHint : s.hint,
+                Value = s.reward > 0 ? $"+{s.reward:N0} Sparks" : "", Meter = chain.Index / (float)chain.Count,
+                Note = $"Step {chain.Index + 1} of {chain.Count}", Action = "Back to it", Style = "jm-card--accent",
+                Click = () => Menu.Close(),
+            });
+            t.AppendLine($"career {chain.Index + 1}/{chain.Count} {Career.CareerChain.Title(s)}");
+            return true;
+        }
+
+        void ConfirmSkip()
+        {
+            var career = Career.CareerSystem.Instance;
+            if (career == null) return;
+            var sheet = Menu.Sheet("Skip the tutorial?", out var close);
+            Ui.Text(sheet, $"Everything unlocks now — garage, map, events, photo mode, every car in the dealer — and you get {career.Settings.skipSparks:N0} Sparks to start. The career's own rewards are not paid.");
+            var row = Ui.Row(sheet, "jm-wrap");
+            Ui.Button(row, "Skip and unlock all", () => { close(); career.Skip(); Menu.Rebuild(); }, "jm-btn--primary").name = "career-skip-yes";
+            Ui.Button(row, "Keep playing", close).name = "career-skip-no";
         }
 
         static void Hero(VisualElement grid, MenuTiles.Spec s) => Add(grid, s, "jm-card--hero");

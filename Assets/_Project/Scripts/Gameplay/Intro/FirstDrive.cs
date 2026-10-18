@@ -68,6 +68,13 @@ namespace JapanMap.Gameplay.Intro
         float _playerThrottle;
         Vector2 _home;
 
+        void Awake()
+        {
+            // The career follows the first drive (D50); built here at runtime so no scene has to change.
+            if (settings != null && settings.career != null)
+                gameObject.AddComponent<Career.CareerSystem>().Bind(settings.career, progress, player, hud, map, travel, this);
+        }
+
         void Start() => _baseFixed = Time.fixedDeltaTime;
 
         bool Wanted()
@@ -88,6 +95,7 @@ namespace JapanMap.Gameplay.Intro
                 _began = true;
                 if (Wanted()) Begin();
             }
+            if (_ui != null && hud != null) _ui.Attach(hud.Root); // also while it fades out after the end
             if (Current == Beat.Off) return;
             var real = Mathf.Min(0.1f, Time.unscaledDeltaTime);
             // Menu, garage or ad open: no deadline runs, and the slow motion must not outlive the menu.

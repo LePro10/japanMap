@@ -56,6 +56,9 @@ namespace JapanMap.Gameplay.Intro
         public int rewardDrift = 500;
         public int rewardHome = 1500;
 
+        [Tooltip("The career that follows the first drive (D50, Data/Gameplay/Career.asset); empty = none, everything open.")]
+        public Career.CareerSettings career;
+
         [Tooltip("Hold Tab this long to skip, s.")]
         public float skipHold = 0.9f;
 

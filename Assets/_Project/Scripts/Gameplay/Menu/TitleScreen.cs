@@ -261,6 +261,13 @@ namespace JapanMap.Gameplay.Menu
             _start.name = "title-start";
             _settings = Entry(list, "SETTINGS", "Sound, controls, graphics", OpenSettings, primary: false);
             _settings.name = "title-settings";
+            // A new player may skip the whole tutorial (career, D50): a second press confirms (no dialog over the title).
+            var career = Career.CareerSystem.Instance;
+            if (!Continue && career != null && career.Active)
+            {
+                _skip = Entry(list, "SKIP TUTORIAL", "Unlock everything, start with Sparks", SkipTutorial, primary: false);
+                _skip.name = "title-skip";
+            }
 
             var foot = Ui.Row(_root, "jm-title__foot");
             foot.name = "title-foot";
@@ -338,7 +345,30 @@ namespace JapanMap.Gameplay.Menu
             if (!Inputs) return;
             var b = _root.panel?.focusController?.focusedElement as Button;
             if (b == _settings) OpenSettings();
+            else if (b != null && b == _skip) SkipTutorial();
             else Begin();
+        }
+
+        Button _skip;
+        bool _skipArmed;
+
+        /// <summary>SKIP TUTORIAL: the first press asks, the second skips the career and starts like a returning player.</summary>
+        public void SkipTutorial()
+        {
+            var career = Career.CareerSystem.Instance;
+            if (Current != State.Shown || _skip == null || career == null) return;
+            var label = _skip.Q<Label>(className: "jm-title__btn-label");
+            var meta = _skip.Q<Label>(className: "jm-title__btn-meta");
+            if (!_skipArmed)
+            {
+                _skipArmed = true;
+                Tick();
+                if (label != null) label.text = "SKIP TUTORIAL?";
+                if (meta != null) meta.text = $"Press again: all unlocked, +{career.Settings.skipSparks:N0} Sparks";
+                return;
+            }
+            career.Skip();
+            Begin(); // the first drive is marked seen: CONTINUE's fly-in, the car is drivable at once
         }
 
         void OpenSettings()
