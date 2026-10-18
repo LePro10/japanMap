@@ -16,7 +16,8 @@
         "JapanMap.UI",
         "JapanMap.Audio",
         "Unity.Addressables",
-        "Unity.Addressables.Editor"
+        "Unity.Addressables.Editor",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [
         "Editor"

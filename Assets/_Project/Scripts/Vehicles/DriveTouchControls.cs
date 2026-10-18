@@ -27,7 +27,7 @@ namespace JapanMap.Vehicles
         [SerializeField] bool forceVisible;
 
         UIDocument _doc;
-        VisualElement _root, _stunt, _auto;
+        VisualElement _root, _stunt, _auto, _lights;
         TouchKit.Stick _stick;
         TouchKit.Group _group;
         bool _handbrake, _boost, _brake, _pedal, _revealed, _suppressed, _engaged;
@@ -39,6 +39,7 @@ namespace JapanMap.Vehicles
         internal VisualElement BoostButton { get; private set; }
         /// <summary>AUTO: drive to the waypoint by itself (D49); shown while a waypoint is set.</summary>
         internal VisualElement AutoButton => _auto;
+        internal VisualElement LightsButton => _lights;
         internal Vector2 Axes => _stick != null ? _stick.Axes : Vector2.zero;
         /// <summary>Auto-throttle running (the pad was touched since boarding / the last stop).</summary>
         public bool Engaged => _engaged;
@@ -123,6 +124,7 @@ namespace JapanMap.Vehicles
             }
             driver.SetTouch(_stick.Axes.x, throttle, brake, _handbrake, _boost);
             _stunt.EnableInClassList("jm-touch--on", driver.StuntArmed);
+            _lights.EnableInClassList("jm-touch--on", HeadlightSwitch.On);
         }
 
         public void SetVisible(bool on)
@@ -189,8 +191,11 @@ namespace JapanMap.Vehicles
             var cam = TouchKit.Tap(_root, 48f, "CAM", () => driver?.PressCamera());
             _auto = TouchKit.Tap(_root, 48f, "AUTO", () => AutoDrive.Current?.SetActive(!AutoDrive.IsActive));
             _auto.name = "touch-auto";
+            // Headlights (D52): a tap toggles, a double tap is the high beam — as the L key.
+            _lights = TouchKit.Tap(_root, 48f, "LIGHT", HeadlightSwitch.Press);
+            _lights.name = "touch-lights";
             var outerRow = (mirror ? safe.x : safe.z) + 12f;
-            foreach (var (b, i) in new[] { (reset, 1), (cam, 2), (_auto, 3) })
+            foreach (var (b, i) in new[] { (reset, 1), (cam, 2), (_lights, 3), (_auto, 4) })
             {
                 b.style.position = Position.Absolute;
                 b.style.top = top;

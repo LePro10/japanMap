@@ -108,6 +108,7 @@ namespace JapanMap.Vehicles
             foreach (var c in model.GetComponentsInChildren<Collider>()) Destroy(c);
             car.gameObject.AddComponent<VehicleVisuals>().Bind(car, model.transform);
             if (effects != null) car.gameObject.AddComponent<VehicleEffects>().Bind(car, model.transform, effects);
+            if (effects != null && effects.headlights != null) car.gameObject.AddComponent<Headlights>().Bind(car, model.transform, effects.headlights);
             loadout?.Dress(car.Definition, model.transform);
         }
     }

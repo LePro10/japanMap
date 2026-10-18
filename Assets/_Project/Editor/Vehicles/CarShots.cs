@@ -48,6 +48,27 @@ namespace JapanMap.Editor.Vehicles
             return (cam, car);
         }
 
+        /// <summary>Traffic models (asset sprint 6) from the front and the back: do their lamps glow (HEAD_LIT / TAIL_LIT)?</summary>
+        public static void Traffic()
+        {
+            Directory.CreateDirectory(Out);
+            foreach (var path in Directory.GetFiles("Assets/_Project/Prefabs/Library", "P_Traffic_*.prefab"))
+            {
+                var (cam, car) = Stage("hachi");
+                Object.DestroyImmediate(car);
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                var name = Path.GetFileNameWithoutExtension(path).Substring(10);
+                foreach (var (tag, z) in new[] { ("front", 7f), ("rear", -7f) })
+                {
+                    var eye = new Vector3(2.5f, 1.4f, z);
+                    cam.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(new Vector3(0f, 0.8f, 0f) - eye));
+                    Capture.Render(cam, $"{Out}/traffic-{name}-{tag}.png", 384, 256);
+                }
+                Object.DestroyImmediate(go);
+            }
+        }
+
         /// <summary>Front-left and rear-right wheel from outside, low, slightly from the front/rear.</summary>
         public static void Wheels()
         {

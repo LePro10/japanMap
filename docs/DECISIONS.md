@@ -817,3 +817,36 @@ Anlass: Mensch will einen langen, nie langweiligen, überspringbaren Einstieg, d
 - **Wirtschaft:** 5.400 Sparks einmalig (≤ 2 Sitzungen, kein Schritt über der kleinsten Rennprämie), Tabelle in
   ECONOMY.md von `EconomySim` erzeugt. Rennen sind weiter ohne Freischaltung fahrbar (Beacons in der Welt); gesperrt
   sind nur Menü-Wege — bewusst, damit Neugier nie bestraft wird.
+
+## D52 — Reifen von außen sichtbar, Scheinwerfer mit echtem Licht je Qualitätsstufe · 2026-10-18
+
+Anlass: Mensch: „beim Rad wird die äußere Schicht nicht geladen, als sähe ich den Reifen von innen" und „Scheinwerfer
+per Standard an, umschaltbar, man sieht wirklich etwas".
+- **Reifen:** Ursache im Generator (`carkit.build_wheel`): das Reifenprofil der Drehfläche lief von innen nach außen, alle
+  Flächen zeigten zur Achse — bei allen zehn Autos. Der Three.js-Prototyp zeichnete Rad-Materialien doppelseitig und
+  verdeckte das; Unity culled Rückseiten. Behoben an der Quelle (Generator kehrt die Wicklung um) und für die vorhandenen
+  Modelle in `Tools/convert-cars.mjs` (`--fix`: dreht falsche Reifen in den Unity-GLBs, Vereinfachung bleibt). Wache:
+  `CarModelTests.TyresFaceOutward` (jedes Rad jedes Autos, wie Unity es rendert, inkl. negativer Skalierung).
+  Verkehrsautos richten ihre Reifenflächen einzeln aus — nicht betroffen.
+- **Doppelte Radnetze geteilt** (`share` in convert-cars): ganze Netze mit gleicher Geometrie **und** gleichen
+  Materialien (links vorn = links hinten, Bremssättel); Knoten, Attribute, Extras bleiben. Alle Autos 17,1 → 14,0 MB,
+  Hachi 1,83 → 1,43 MB, Rad-Nahbilder pixelgleich. gltf-transform `dedup` ging nicht: glTFast gab danach einer
+  Serienfelge die Materialien einer Tuning-Felge.
+- **Nur die Serienfelge ohne Loadout:** `IsTuningOption` übersah den Blender-Suffix (`_o2.007`) — Gegner zeigten zwei
+  bis drei Felgen übereinander. Wache: `CarModelTests.OneRimPerWheel_WithoutLoadout`.
+- **Scheinwerfer (`Vehicles/Headlights`, Daten `Data/Vehicles/Headlights.asset`):** alle Car-Lab-Autos steuern ihre
+  Lampengläser (Material-Kopien je Auto, Emission): Scheinwerfer nach Schalter, Rücklicht mit ihnen, Bremslicht ×4,5
+  (Bremse, Handbremse, Gas beim Zurückrollen), Rückfahrlicht als Leuchtpunkte (die Modelle haben kein Rückfahrglas),
+  Klappscheinwerfer (popup_L/R) öffnen sich, Formelwagen bekommt ein rotes Regenlicht. Positionen aus den
+  `*_head`/`*_tail`-Teilnetzen der Modelle. Das Bremslicht ist aus `VehicleEffects` hierher gezogen (ein Besitzer je
+  Material).
+- **Echtes Licht nur am Spielerauto** (Kind des `PlayerCarSpawner`), je Stufe: Hoch zwei Spots + schwache Lichtkegel,
+  Mittel ein Spot, Niedrig keiner; auf allen Stufen ein **Lichtbild auf der Straße** (additiv, folgt der Fahrbahn per
+  18 Bodenstrahlen). Grund: die nasse Straße spiegelt Spotlicht fast nur nach vorn — der Fahrer sieht vom Spot allein
+  wenig. **Keine Light-Cookies**: sie verdoppeln die Lit-Shader-Varianten (D36, Startdownload); das Muster kommt aus
+  der Textur des Lichtbilds (Fächer, links weiter — Linksverkehr). Keine Schatten für die Spots.
+- **Schalter (`HeadlightSwitch`):** Standard an, **L** / Gamepad **LB** / Touch **LIGHT**; zweimal schnell = Fernlicht;
+  Zustand in PlayerPrefs (`jm.opt.lights`), übersteht Autowechsel und Neustart. In den Tastenbelegungen umbelegbar.
+- **Gegner** leuchten immer (nur Emission), **Verkehr** hat schon leuchtende Atlas-Lampen (HEAD_LIT/TAIL_LIT).
+- Gemessen (M4, Batchmode, Verfolgerblick 1280×720): Hoch 6,10 → 6,18 ms, Mittel 5,87 → 5,42, Niedrig 2,65 → 2,71 —
+  im Rauschen. Zusätzliche Draw Calls: Hoch 3, Mittel 1, Niedrig 1 (+2 beim Rückwärtsfahren). Schwache Geräte ungemessen.

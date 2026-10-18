@@ -30,5 +30,4 @@ MonoBehaviour:
   burstFlameRate: 260
   shockSize: 5.5
   burstLight: 2.5
-  tailIdle: 0.35
-  tailBrake: 3
+  headlights: {fileID: 11400000, guid: f121151ddd13c4891a528dfe0df94b74, type: 2}
