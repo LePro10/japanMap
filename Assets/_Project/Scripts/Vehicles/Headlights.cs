@@ -56,6 +56,7 @@ namespace JapanMap.Vehicles
         Material _reverseMat, _rainMat;
 
         float _head, _tail, _reverse, _beam, _popupT, _poolFade;
+        bool _nearCamera; // the view from the seat (last frame's camera)
 
         /// <summary>The player's car: real light, follows the switch. Others are always lit and glow only.</summary>
         public bool IsPlayer => _player;
@@ -69,6 +70,8 @@ namespace JapanMap.Vehicles
         public int LampMaterialCount => _lamps.Count;
         public int ActiveSpots { get { var n = 0; foreach (var l in _spots) if (l != null && l.enabled) n++; return n; } }
         public bool PoolVisible => _pool != null && _pool.enabled;
+        /// <summary>Brightness of the beam pattern now (tier × lamps × the seat boost).</summary>
+        public float PoolLevel { get; private set; }
         public int ActiveCones { get { var n = 0; foreach (var c in _cones) if (c != null && c.enabled) n++; return n; } }
 
         public void Bind(VehicleController car, Transform model, HeadlightSettings settings)
@@ -259,9 +262,9 @@ namespace JapanMap.Vehicles
                 if (g == null || !g.enabled) continue;
                 g.transform.rotation = Quaternion.LookRotation(cam.transform.position - g.transform.position, cam.transform.up) * Quaternion.Euler(90f, 0f, 0f);
             }
+            var near = _nearCamera = (cam.transform.position - transform.position).sqrMagnitude < _s.coneHideDistance * _s.coneHideDistance;
             if (_cones.Length > 0)
             {
-                var near = (cam.transform.position - transform.position).sqrMagnitude < _s.coneHideDistance * _s.coneHideDistance;
                 var lit = _head > 0.5f * _s.headOn && !near;
                 foreach (var c in _cones) c.enabled = lit;
             }
@@ -306,7 +309,8 @@ namespace JapanMap.Vehicles
             {
                 // Off the ground (a jump) the pattern would float: it fades with the wheels that touch.
                 _poolFade = Mathf.MoveTowards(_poolFade, t.groundedWheels >= 3 ? 1f : 0f, Time.deltaTime * 6f);
-                var strength = Pick(_s.poolStrength, _tier) * on * _poolFade * Mathf.Lerp(1f, 1.3f, _beam);
+                var strength = Pick(_s.poolStrength, _tier) * on * _poolFade * Mathf.Lerp(1f, 1.3f, _beam) * (_nearCamera ? _s.seatPoolBoost : 1f);
+                PoolLevel = strength;
                 _pool.enabled = strength > 0.01f;
                 _poolMat.SetColor(ColorId, _s.poolColor * strength);
                 if (_pool.enabled) LayPool(Vector2.Lerp(_s.lowPool, _s.highPool, _beam));

@@ -28,6 +28,7 @@ namespace JapanMap.Editor
         const string KeyScript = "JapanMap.PlayScript.script";
         const string KeyOut = "JapanMap.PlayScript.out";
         const string KeyScene = "JapanMap.PlayScript.scene";
+        const string KeyLights = "JapanMap.PlayScript.lights";
 
         static List<string> _steps;
         static int _index;
@@ -81,6 +82,11 @@ namespace JapanMap.Editor
             if (!script.TrimStart().StartsWith("keepsave"))
                 foreach (var k in new[] { JapanMap.Gameplay.Progress.ProgressStore.Key, JapanMap.Gameplay.Progress.ProgressStore.BackupKey, JapanMap.Gameplay.Progress.ProgressStore.CorruptKey })
                     PlayerPrefs.DeleteKey(AgentSlot + k);
+            // The headlight switch lives in the editor's PlayerPrefs like the human's other options: a run starts with the
+            // default (on) and gives the human's setting back afterwards (runs that pressed L left it off, Round 4).
+            const string lights = JapanMap.Vehicles.HeadlightSwitch.PrefsKey;
+            SessionState.SetInt(KeyLights, PlayerPrefs.HasKey(lights) ? PlayerPrefs.GetInt(lights) : -1);
+            PlayerPrefs.DeleteKey(lights);
             EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo();
             SessionState.SetString(KeyScene, UnityEngine.SceneManagement.SceneManager.GetActiveScene().path);
             EditorSceneManager.OpenScene("Assets/_Project/Scenes/Boot.unity");
@@ -91,6 +97,13 @@ namespace JapanMap.Editor
         static void OnPlayMode(PlayModeStateChange change)
         {
             if (change == PlayModeStateChange.EnteredEditMode) SessionState.EraseString(JapanMap.Core.Save.SaveStores.SlotKey);
+            if (change == PlayModeStateChange.EnteredEditMode && SessionState.GetInt(KeyLights, -2) != -2)
+            {
+                var was = SessionState.GetInt(KeyLights, -1);
+                SessionState.EraseInt(KeyLights);
+                if (was < 0) PlayerPrefs.DeleteKey(JapanMap.Vehicles.HeadlightSwitch.PrefsKey);
+                else PlayerPrefs.SetInt(JapanMap.Vehicles.HeadlightSwitch.PrefsKey, was);
+            }
             if (change == PlayModeStateChange.EnteredEditMode && SessionState.GetString(KeyScene, "") != "")
             {
                 // Back to the scene the agent had open (the other tools expect Game.unity).

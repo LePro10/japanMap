@@ -199,6 +199,31 @@ namespace JapanMap.Tests.Vehicles
             Press();
         }
 
+        /// <summary>
+        /// From the seat (camera key C) the beam on the road stays visible: the pattern brightens by the seat boost — the road
+        /// was only ~15 % brighter with the lights on before (Round 4) — and the cones hide (no haze over the windscreen).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Cockpit_BeamOnTheRoadBrightens_ConesHide()
+        {
+            yield return BootAndBoard();
+            QualitySystem.SetTier("High", save: false);
+            var lights = Lights(out var car);
+            var s = Settings(lights);
+            yield return new WaitForSeconds(0.5f);
+            var chase = lights.PoolLevel;
+            Assert.That(chase, Is.GreaterThan(0.1f), "the beam lies on the road behind the chase camera");
+            Assert.That(lights.ActiveCones, Is.GreaterThan(0), "cones from outside");
+            yield return Tap(Key.C);
+            yield return new WaitForSeconds(0.3f);
+            Assert.AreEqual(CarCameraRig.Mode.Cockpit, Object.FindAnyObjectByType<CarCameraRig>().Current);
+            Assert.That(lights.PoolLevel, Is.EqualTo(chase * s.seatPoolBoost).Within(0.02f), "brighter from the seat");
+            Assert.AreEqual(0, lights.ActiveCones, "no cones from the seat");
+            yield return Tap(Key.C);
+            yield return new WaitForSeconds(0.3f);
+            Assert.That(lights.PoolLevel, Is.EqualTo(chase).Within(0.02f), "back to normal outside");
+        }
+
         [UnityTest]
         public IEnumerator Tiers_SetTheRealLights_RivalsOnlyGlow()
         {

@@ -27,7 +27,7 @@ MonoBehaviour:
   highPitch: 0.8
   beamMaterial: {fileID: 2100000, guid: 754af8fae04b24e3fafe9c9fc98fd6e6, type: 2}
   poolStart: 0.1
-  lowPool: {x: 28, y: 12}
+  lowPool: {x: 40, y: 13}
   highPool: {x: 44, y: 14}
   poolColor: {r: 0.95, g: 0.82, b: 0.62, a: 1}
   coneMaterial: {fileID: 2100000, guid: 778e11f643e9a4c808399f4dac78f2aa, type: 2}

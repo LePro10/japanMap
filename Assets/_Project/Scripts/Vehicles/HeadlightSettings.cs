@@ -42,10 +42,13 @@ namespace JapanMap.Vehicles
         [Tooltip("Pattern starts this far ahead of the lamps, m.")]
         public float poolStart = 0.1f;
         [Tooltip("Length and far width of the pattern, low beam, m.")]
-        public Vector2 lowPool = new(28f, 12f);
+        public Vector2 lowPool = new(40f, 13f);
         public Vector2 highPool = new(44f, 14f);
         [Tooltip("Pattern colour (HDR, additive), multiplied by the tier's strength.")]
         public Color poolColor = new(0.95f, 0.82f, 0.62f);
+        [Tooltip("From the driver's seat (camera within coneHideDistance) the pattern lies flat to the eye and the grazing fade "
+            + "dims its far half: the road was only ~15 % brighter with the lights on (Round 4). Multiplier there.")]
+        public float seatPoolBoost = 2.4f;
 
         [Header("Light cones (High only)")]
         public Material coneMaterial;
