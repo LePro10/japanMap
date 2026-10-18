@@ -166,6 +166,42 @@ namespace JapanMap.Tests.Content
             intro.Skip();
         }
 
+        /// <summary>
+        /// One voice at a time on a new player's start (Round 4): the daily bonus toast waits for the title and the whole
+        /// intro (it lay over the intro's title), and auto-drive is not offered while the intro leads home (the career
+        /// unlocks it later, D50). After the intro the bonus comes.
+        /// </summary>
+        [UnityTest, Timeout(120000)]
+        public IEnumerator NewPlayer_DailyToastAndAutoDrive_WaitForTheIntro()
+        {
+            TitleScreen.RunInEditor = true;
+            FirstDrive.RunInEditor = true;
+            Gameplay.Progress.DailySystem.AutoBonus = true; // FreshSave turns it off; restored by its teardown
+            yield return Boot();
+            yield return UntilTitle();
+            var title = TitleScreen.Instance;
+            var intro = UnityEngine.Object.FindAnyObjectByType<FirstDrive>();
+            var hud = UnityEngine.Object.FindAnyObjectByType<Gameplay.Hud.GameplayHud>();
+            var map = UnityEngine.Object.FindAnyObjectByType<Gameplay.Map.MapSystem>();
+            yield return new WaitForSecondsRealtime(4.5f); // past the bonus delay, under the title
+            Assert.That(hud.LastToast, Does.Not.Contain("Daily drive"), "no bonus toast under the title");
+            yield return Tap(Key.Enter);
+            for (var w = 0f; intro.Current == FirstDrive.Beat.Off && w < 3f; w += Time.unscaledDeltaTime) yield return null;
+            Assert.AreNotEqual(FirstDrive.Beat.Off, intro.Current, "the first drive runs");
+            var car = UnityEngine.Object.FindAnyObjectByType<PlayerModeController>().Car;
+            map.Waypoint = new Vector2(car.transform.position.x + 300f, car.transform.position.z);
+            for (var w = 0f; w < 5f && intro.Current != FirstDrive.Beat.Off; w += Time.unscaledDeltaTime)
+            {
+                Assert.That(hud.LastToast, Does.Not.Contain("Daily drive"), $"no bonus toast during the intro ({intro.Current})");
+                Assert.AreNotEqual(DisplayStyle.Flex, Gameplay.Map.AutoDriver.Instance.OfferPill.resolvedStyle.display, $"no auto-drive offer during the intro ({intro.Current})");
+                yield return null;
+            }
+            map.Waypoint = null;
+            intro.Skip();
+            for (var w = 0f; w < 8f && !hud.LastToast.Contains("Daily drive"); w += Time.unscaledDeltaTime) yield return null;
+            Assert.That(hud.LastToast, Does.Contain("Daily drive"), "after the intro the bonus comes");
+        }
+
         [UnityTest, Timeout(120000)]
         public IEnumerator Title_Settings_OverTheTitle_EscapeReturns()
         {

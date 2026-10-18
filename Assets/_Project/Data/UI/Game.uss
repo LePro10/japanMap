@@ -176,7 +176,8 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-intro__label { font-size: 26px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; color: var(--paper); margin-top: 10px;
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9); }
 .jm-intro__hint { font-size: 15px; color: var(--paper-dim); margin-top: 2px; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9); }
-.jm-intro__toast { position: absolute; left: 0; right: 0; top: 34%; -unity-text-align: middle-center; font-size: 34px;
+/* Under the HUD's toast line (~34 %): a stunt's "Frontflip · 29 m" and "Stuck the landing" came at once and overlapped. */
+.jm-intro__toast { position: absolute; left: 0; right: 0; top: 41%; -unity-text-align: middle-center; font-size: 34px;
     -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; color: var(--paper); text-shadow: 0 3px 16px rgba(0, 0, 0, 0.9); display: none; }
 .jm-intro__toast--gold { color: var(--amber-hot); }
 .jm-intro__slow { position: absolute; left: 0; right: 0; top: 13%; align-items: center; opacity: 0;

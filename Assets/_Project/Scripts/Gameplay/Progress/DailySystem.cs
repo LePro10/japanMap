@@ -99,11 +99,13 @@ namespace JapanMap.Gameplay.Progress
             }
         }
 
-        /// <summary>The intro, a menu or an event card hold the bonus back: one voice at a time.</summary>
+        /// <summary>The title, the intro, a menu or an event card hold the bonus back: one voice at a time.</summary>
         bool Busy()
         {
+            // The wipe from START GAME into the intro too: the toast lay over the intro's title (Round 4).
+            if (Core.Ui.StartFlow.Holding) return true;
             var intro = FindAnyObjectByType<Intro.FirstDrive>();
-            if (intro != null && intro.Current != Intro.FirstDrive.Beat.Off) return true;
+            if (intro != null && (intro.Current != Intro.FirstDrive.Beat.Off || intro.WillRun)) return true;
             return Menu.GameMenu.Instance != null && Menu.GameMenu.Instance.IsOpen;
         }
 

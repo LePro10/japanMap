@@ -139,6 +139,15 @@ namespace JapanMap.Gameplay.Map
             Begin();
         }
 
+        /// <summary>The first drive leads home on its own waypoint; the career unlocks auto-drive later (D50) — no offer before.</summary>
+        bool IntroRunning()
+        {
+            if (_intro == null) _intro = FindAnyObjectByType<Intro.FirstDrive>();
+            return _intro != null && _intro.Current != Intro.FirstDrive.Beat.Off;
+        }
+
+        Intro.FirstDrive _intro;
+
         bool Racing()
         {
             var races = _map != null ? _map.Races : null;
@@ -150,7 +159,7 @@ namespace JapanMap.Gameplay.Map
             why = "";
             if (!Unlocks.IsUnlocked(FeatureId.AutoDrive)) { why = Unlocks.Hint(FeatureId.AutoDrive); return false; }
             if (_player == null || _player.Current != PlayerModeController.Mode.Driving || _player.Car == null) { why = "Get in your car first"; return false; }
-            if (StartFlow.Holding) return false;
+            if (StartFlow.Holding || IntroRunning()) return false;
             if (Racing()) { why = "Not during an event"; return false; }
             if (!HasDestination) { why = "Set a waypoint on the map first"; return false; }
             return true;
@@ -542,7 +551,7 @@ namespace JapanMap.Gameplay.Map
             }
             // The offer: only where it can start, never over a menu or the intro.
             var menu = GameMenu.Instance != null && GameMenu.Instance.IsOpen;
-            var offer = !IsActive && !menu && HasDestination && Unlocks.IsUnlocked(FeatureId.AutoDrive) && !StartFlow.Holding && !Racing()
+            var offer = !IsActive && !menu && HasDestination && Unlocks.IsUnlocked(FeatureId.AutoDrive) && !StartFlow.Holding && !IntroRunning() && !Racing()
                 && _player != null && _player.Current == PlayerModeController.Mode.Driving && !UiPanel.IsPhone;
             _prompt.style.display = offer ? DisplayStyle.Flex : DisplayStyle.None;
             // From the seat the centre lies over the instruments (D51): into the dashboard's dark right corner, above the
