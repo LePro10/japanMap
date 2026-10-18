@@ -291,7 +291,7 @@ namespace JapanMap.Editor.Places
                     go.transform.localScale = p.scale;
                     if (p.rule.library.Contains(FleetCar)) PrepareShowCar(go);
                 }
-                if (place.hasSpawn) SetSpawn(place.spawn);
+                if (place.hasSpawn) SetSpawn(place.spawn, place.hasWalkSpawn ? PlaceSource.ToUnity(place.walkSpawn.x, place.walkSpawn.z) : null);
                 foreach (var m in missing) missingAll[$"{place.title}: {m.Key}"] = m.Value;
                 report.Append($"\n[Places] {place.title}: {placed.Count(p => p.prefab != null)} models from {placed.Where(p => p.prefab != null).Select(p => p.prefab).Distinct().Count()} prefabs, {place.trees.Length} trees" +
                               (missing.Count > 0 ? $", {missing.Values.Sum()} without model" : ""));
@@ -666,6 +666,14 @@ namespace JapanMap.Editor.Places
                 GameObjectUtility.SetStaticEditorFlags(t.gameObject, (StaticEditorFlags)~0 & ~StaticEditorFlags.ContributeGI);
         }
 
+        /// <summary>Only the start (car and walker) again, into Game.unity. Batch: <c>node Tools/unity-run.mjs JapanMap.Editor.Places.PlaceImporter.ApplySpawnAndSave</c>.</summary>
+        [MenuItem("JapanMap/Places/Apply Spawn")]
+        public static void ApplySpawnAndSave()
+        {
+            MapScene.OpenGameScene();
+            if (ApplySpawn()) MapScene.Save();
+        }
+
         /// <summary>Spawn from the place that has one (PlayerSetup calls this too). False: none found.</summary>
         public static bool ApplySpawn()
         {
@@ -673,26 +681,92 @@ namespace JapanMap.Editor.Places
             {
                 var place = PlaceSource.Load(kit.source);
                 if (!place.hasSpawn) continue;
-                SetSpawn(place.spawn);
+                SetSpawn(place.spawn, place.hasWalkSpawn ? PlaceSource.ToUnity(place.walkSpawn.x, place.walkSpawn.z) : null);
                 if (place.hasWalkSpawn) SetWalkSpawn(place.walkSpawn);
                 return true;
             }
             return false;
         }
 
-        /// <summary>The player's car starts here (prototype: Sakura Commons, WP2). Placed as is, not snapped to a road.</summary>
-        static void SetSpawn(PlaceSource.Spawn s)
+        /// <summary>
+        /// The player's car starts here (prototype: Sakura Commons, WP2), not snapped to a road's centre. On a road it
+        /// stands in the left lane facing the way out (<see cref="AlongRoad"/>).
+        /// </summary>
+        static void SetSpawn(PlaceSource.Spawn s, Vector3? walker)
         {
             var spawner = Object.FindAnyObjectByType<PlayerCarSpawner>();
             if (spawner == null) { Debug.LogWarning("[Places] no PlayerCarSpawner in Game.unity — spawn not set"); return; }
             var at = PlaceSource.ToUnity(s.x, s.z);
+            // Unity heading: clockwise from +Z; legacy yaw counter-clockwise from +Z with z mirrored.
+            var heading = Mathf.Repeat(PlaceSource.Yaw(s.yaw), 360f);
+            var network = AssetDatabase.LoadAssetAtPath<RoadNetwork>(RoadImporter.NetworkPath);
+            if (network != null) (at, heading) = AlongRoad(network, at, heading, walker);
             at.y = Ground(at);
             var so = new SerializedObject(spawner);
             so.FindProperty("spawnPoint").vector3Value = at;
-            // Unity heading: clockwise from +Z; legacy yaw counter-clockwise from +Z with z mirrored.
-            so.FindProperty("spawnHeading").floatValue = Mathf.Repeat(PlaceSource.Yaw(s.yaw), 360f);
+            so.FindProperty("spawnHeading").floatValue = heading;
             so.FindProperty("snapToRoad").boolValue = false;
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// A start on a road (within its half width): in the left lane (Japan drives on the left; Auto-Drive's lane, a
+        /// quarter of the width, at most 2.2 m) facing the end that joins other roads — the prototype parked the car
+        /// across commons-drive facing east, and Auto-Drive began every trip with a three-point turn (D54). Off any
+        /// road, or on one open at both ends with no way out preferred: the given place and heading.
+        /// </summary>
+        /// <param name="walker">The session starts on foot here: the car stays within <see cref="BoardReach"/> of it.</param>
+        public static (Vector3 at, float heading) AlongRoad(RoadNetwork network, Vector3 at, float heading, Vector3? walker = null)
+        {
+            RoadNetwork.Road road = default;
+            var best = float.MaxValue;
+            var seg = -1;
+            foreach (var r in network.roads)
+            {
+                if (r.points == null || r.closed) continue;
+                for (var i = 0; i < r.points.Length - 1; i++)
+                {
+                    var d = DistanceXZ(at, r.points[i], r.points[i + 1], out _);
+                    if (d >= best || d > r.width / 2) continue;
+                    best = d;
+                    road = r;
+                    seg = i;
+                }
+            }
+            if (seg < 0) return (at, heading);
+            var a = road.points[seg];
+            var b = road.points[seg + 1];
+            DistanceXZ(at, a, b, out var t);
+            var centre = Vector3.Lerp(a, b, t);
+            var forward = new Vector3(b.x - a.x, 0f, b.z - a.z).normalized;
+            bool Joins(Vector3 end) => network.roads.Any(o => o.id != road.id && o.points != null
+                && o.points.Where((_, k) => k < o.points.Length - 1).Select((p, k) => DistanceXZ(end, p, o.points[k + 1], out _)).Any(d => d < 2f));
+            bool outAtEnd = Joins(road.points[^1]), outAtStart = Joins(road.points[0]);
+            if (outAtStart && !outAtEnd) forward = -forward;
+            else if (outAtStart == outAtEnd && Vector3.Dot(forward, Quaternion.Euler(0f, heading, 0f) * Vector3.forward) < 0f) forward = -forward;
+            var left = new Vector3(-forward.z, 0f, forward.x);
+            var lane = Mathf.Min(road.width * 0.25f, 2.2f);
+            var spot = centre + left * lane;
+            if (walker is Vector3 w)
+            {
+                // Along the lane towards the walker until F reaches the car (4.3 m away it did not: 43 PlayMode tests).
+                var flat = new Vector3(spot.x - w.x, 0f, spot.z - w.z);
+                var along = Vector3.Dot(flat, forward);
+                var across = flat - forward * along;
+                if (flat.magnitude > BoardReach && across.magnitude < BoardReach)
+                    spot -= forward * (along - Mathf.Sign(along) * Mathf.Sqrt(BoardReach * BoardReach - across.sqrMagnitude));
+            }
+            return (spot, Mathf.Repeat(Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg, 360f));
+        }
+
+        /// <summary>The start car's distance from the walk spawn at most, m: inside WalkerSettings.boardRange (4.2) with room.</summary>
+        const float BoardReach = 3.5f;
+
+        static float DistanceXZ(Vector3 p, Vector3 a, Vector3 b, out float t)
+        {
+            var ab = new Vector2(b.x - a.x, b.z - a.z);
+            t = ab.sqrMagnitude > 1e-6f ? Mathf.Clamp01(Vector2.Dot(new Vector2(p.x - a.x, p.z - a.z), ab) / ab.sqrMagnitude) : 0f;
+            return (new Vector2(a.x, a.z) + ab * t - new Vector2(p.x, p.z)).magnitude;
         }
 
         /// <summary>The session starts on foot here (legacy rollWalkSpawn), the car beside it.</summary>

@@ -213,3 +213,7 @@ MonoBehaviour:
     position: {x: -1247, y: 29.65991, z: -368}
     lookAt: {x: -1248, y: 27.932133, z: -386}
     note: 'Phase 6: Stillwater workers, goats, chickens (runtime actors: put the walker there first, capture in play)'
+  - name: einmuendung-hang
+    position: {x: 313.5, y: 44.6, z: 359.5}
+    lookAt: {x: 300.5, y: 44.3, z: 372.5}
+    note: "D54: west-works-03-2 m\xFCndet in hill-steps-west — hier stand eine 1,3-m-Kante (Auto-Drive blieb h\xE4ngen)."

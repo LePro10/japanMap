@@ -79,7 +79,7 @@ namespace JapanMap.Tests.OnFoot
         static float Flat(Vector3 a, Vector3 b) => new Vector2(a.x - b.x, a.z - b.z).magnitude;
 
         [UnityTest]
-        public IEnumerator StartsOnFoot_InSakuraCommons_WithTheCarFourMetresNorth()
+        public IEnumerator StartsOnFoot_InSakuraCommons_WithTheCarBeside()
         {
             yield return BootGame();
             var mode = Object.FindAnyObjectByType<PlayerModeController>();
@@ -89,8 +89,8 @@ namespace JapanMap.Tests.OnFoot
             var w = mode.Walker.transform.position;
             var c = mode.Car.transform.position;
             Assert.That(Flat(w, new Vector3(550f, 0f, -510f)), Is.LessThan(0.5f), $"walker starts at the commons centre, is at {w}");
-            Assert.That(c.z - w.z, Is.EqualTo(4f).Within(0.4f), "car 4 m north");
-            Assert.That(Mathf.Abs(c.x - w.x), Is.LessThan(0.4f));
+            // Prototype: 4 m north, facing east; since D54 in the drive's left lane facing the way out — still a few steps away.
+            Assert.That(Flat(c, w), Is.InRange(3f, 6f), $"car a few metres from the walker, is at {c}");
             Assert.IsTrue(mode.Walker.Grounded, "walker stands on the ground");
             Assert.That(mode.Car.Telemetry.speed, Is.LessThan(0.3f), "parked car stays");
             Assert.AreEqual("F  Get in", mode.Prompt);

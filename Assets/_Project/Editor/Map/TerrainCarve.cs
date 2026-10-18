@@ -53,7 +53,9 @@ namespace JapanMap.Editor.Map
                     var cutting = pass == 1;
                     var half = road.width / 2f;
                     var shoulder = shoulderOf(road.type);
-                    var core = half + shoulder;
+                    // At least one texel each side: the ground is bilinear between 1.5 m texels, and beside a 1.8 m footpath
+                    // an uncut neighbour lifted it 0.16 m through kuestenpfad where D54 lowered the path to a road crossing.
+                    var core = Mathf.Max(half + shoulder, cell);
                     // Beyond the shoulder the gravel verge runs down onto the ground: keep the ground under it too, or the
                     // 1.5 m terrain grid pokes through it in a saw-tooth (owner 2026-10-17: "Übergang zum Dreck").
                     var verge = shoulder > 0f ? s.roadVerge : 0f;

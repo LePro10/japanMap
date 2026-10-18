@@ -47,5 +47,31 @@ namespace JapanMap.Tests
             }
             Assert.AreEqual(0, hits, $"{hits}/{probes} carriageway probes on the pedestrian NavMesh, first {first}");
         }
+
+        /// <summary>
+        /// Nobody walks under the sea: Funaura's passers-by crossed the harbour basin with their heads above the water —
+        /// the sea has no collider, its floor was walkable (D54).
+        /// </summary>
+        [Test]
+        public void NoNavMesh_UnderTheSea()
+        {
+            MapScene.OpenGameScene();
+            foreach (var f in System.IO.Directory.GetFiles("Assets/_Project/Scenes/World", "Nav_*.unity"))
+                EditorSceneManager.OpenScene(f, OpenSceneMode.Additive);
+            var sea = MapScene.Part(WaterImporter.GroupName, "Sea");
+            Assert.NotNull(sea, "no sea");
+            var level = sea.GetComponent<Renderer>().bounds.max.y;
+            var t = NavMesh.CalculateTriangulation();
+            Assert.That(t.vertices.Length, Is.GreaterThan(1000), "the NavMesh is loaded");
+            var below = 0;
+            var first = "";
+            foreach (var v in t.vertices)
+            {
+                if (v.y >= level - 0.1f) continue;
+                below++;
+                if (first == "") first = v.ToString("F1");
+            }
+            Assert.AreEqual(0, below, $"{below} NavMesh vertices under the sea (level {level:F2}), first {first}");
+        }
     }
 }

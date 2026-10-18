@@ -90,6 +90,22 @@ namespace JapanMap.Tests
         }
 
         [Test]
+        public void SlopedMouth_IsALevelCrossing_NotAStep()
+        {
+            // A side road climbing 10 % from the main road: node to node (up to 9 m apart) that was 0.8 m — 24 such mouths
+            // on the map were "steps" and cost Auto-Drive 150 m detours each (D54). Compared at one place it is level.
+            var main = Road("main", 0f, new Vector2(-200f, 0f), new Vector2(200f, 0f));
+            var side = new RoadNetwork.Road { id = "side", type = "city", width = 8f, points = new[] { new Vector3(0f, 0f, 0f), new Vector3(0f, 20f, 200f) } };
+            var g = new RouteGraph(Net(main, side));
+            var path = new List<Vector3>();
+            var widths = new List<float>();
+            var crossings = new List<Crossing>();
+            Assert.IsTrue(g.Find(new Vector3(-190f, 0f, 0f), new Vector3(0f, 19f, 190f), path, widths, crossings));
+            Assert.IsTrue(crossings.Contains(Crossing.Level), "the mouth is found");
+            Assert.IsFalse(crossings.Contains(Crossing.Step), "and it is level");
+        }
+
+        [Test]
         public void Route_GoesRoundACrossingWithAHeightStep_WhenThereIsAWay()
         {
             // A side road starting 1.2 m above the main road (an embankment the car hits) and a level one 10 m beside it;

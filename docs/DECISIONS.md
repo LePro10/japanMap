@@ -909,3 +909,44 @@ mit Titel, Intro, Karriere im Editor).
   unter der HUD-Meldungszeile (Stunt und „Stuck the landing" überlagerten sich).
 - **Agenten-Läufe** starten mit dem Standard-Lichtschalter und geben dem Menschen seinen Wert zurück (PlayerPrefs sind
   im Editor geteilt).
+
+## D54 — Einmündungen ohne Kanten, Startauto in der linken Spur · 2026-10-18
+
+Anlass: Auto-Drive (D49) blieb bei (300, 372) hängen — hill-steps-west lag neben der Einmündung von west-works-03-2
+1,3 m höher. **Ursache im Import**, nicht in den Quelldaten (dort treffen sich beide Mittellinien auf 44,14 m):
+(1) die Seitenstraße fällt schon ab der Mitte der Hauptstraße mit 13,7 % — am flachen Rand der Hauptstraße lag sie 0,6 m
+tiefer; (2) `OverlapRun` hielt das für eine Rampe quer über die Hauptstraße und kürzte 4 m mehr — dazwischen nur Gelände.
+**Klasse:** eine neue Prüfung (`Editor/Map/JunctionCheck`, fährt jedes Straßenende per Raycast auf drei Spuren ab) fand
+**47 Stufen > 0,25 m** an der ganzen Karte (bis 3,85 m). Behoben an der Quelle:
+- `RoadProfile` Schritt 3: wo eine Straße auf der Fläche einer größeren liegt (Typ, dann Breite, dann Länge; Mitte oder
+  eine Kante), übernimmt sie deren Höhe und läuft weich (Smoothstep, ≥ 20 m, ≤ +5 % Steigung) in ihr Profil zurück; ein
+  Straßenende gibt immer der Straße nach, in die es mündet; Ecken, an denen nur Enden zusammentreffen, sind Fixpunkte;
+  danach wird das Profil mit festgehaltenen Mündungen wieder geglättet (Radius je Typ). „Gleiche Ebene" bis 1,5 m — mehr
+  ist eine andere Ebene daneben (Boxengasse, bellwood-edge am Ring).
+- `ResolveTrims`: gekürzt wird bis zur letzten Reihe, deren **beide Ecken** in der Hauptstraße liegen (sonst: auf ihrer
+  Fläche mit Bankett, sonst gar nicht); an Ecken nur aus Enden behält die breiteste ihr Ende; „hinter dem Ende" einer
+  Straße zählt nicht als „auf ihr" (lantern-north verlor 16 m); Fußwege sind nie Hauptstraße einer Straße.
+- `TerrainCarve`: flacher Kern mindestens eine Rasterzelle (1,5 m) — sonst ragte neben 1,8-m-Wegen Gelände durch.
+- Neu ohne Szenen-Neuschreiben: `RoadImporter.RefreshProfiles` (Meshes, Leitplanken, Netz, Gelände an Ort und Stelle,
+  danach Prüfung) und `TerrainImporter.RefreshHeights`. Import All listet die Stufen am Ende.
+- Überhöhte/schnelle Hauptstraßen (Highway, Bergstraße): eine flache Mündungsreihe passt nicht auf ihre geneigten Spuren
+  (lantern-south lag 0,4 m über dem Ring, Karosserie traf bei 115 km/h — RingDipTests, Intro-Anlauf). Dort zählt eine Reihe
+  nur, wenn die Hauptstraße unter beiden Ecken ≤ 10 cm abweicht; passt keine, wird wie vor D54 gekürzt.
+- Versucht und verworfen: Eckpunkte jeder Mündung auf die Höhe der Hauptstraße ziehen (zu grober Querschnitt, Dreiecke
+  überspannten den Rand: 10 statt 4 Stellen).
+**Ergebnis:** 47 → 8 Stellen, alle ≤ 0,5 m und im Test gedeckelt (dürfen nicht wachsen): fünf Mündungen am Ring
+(south-market-05-2 0,50, needle-approach 0,48, needle-approach-2 0,33, lantern-south 0,29, south-market-02 0,28 — gab es vor
+D54 genauso; Zielkonflikt mit der Ring-Senke), Ecke east-lantern-05/-10 (0,47; drei Straßen mit Gegen-Steigung und
+rain-garden-drive-2 überlappen), lantern-north/bellwood-edge (0,27), west-works-03 (0,26; steil, fast parallel zur
+Hauptstraße). Lösung dafür: Mündungen mit feinerem Querschnitt verwinden — später. Größte Höhenänderung 1,61 m
+(needle-pit-exit, dort war eine 2,45-m-Stufe). Pass (toge): an der Ring-Mündung ein Knick 1/39 m (Abbiegetempo).
+**RouteGraph:** Der 150-m-Aufschlag bleibt als billige Sicherung; die Stufen-Erkennung vergleicht jetzt am selben Punkt
+(Höhe der anderen Straße dort interpoliert, beide Richtungen) statt Knoten zu Knoten bis 9 m — sonst waren 24 geneigte
+Mündungen „Stufen" und Auto-Drive fuhr Umwege. Heute: 0 Stufen-Knoten.
+**Startauto:** Prototyp-Platz (550 | −506, Blick Ost) stand quer auf der Sackgasse commons-drive. `PlaceImporter.AlongRoad`
+stellt einen Startplatz auf einer Straße in die **linke Spur** (wie Auto-Drive: ¼ Breite, ≤ 2,2 m) mit Blick zum Ende, das an
+andere Straßen anschließt, höchstens 3,5 m vom Start des Läufers (Einsteigen mit F reicht 4,2 m): (546,9 | −508,4), 337°.
+Intro unberührt (es setzt das Auto selbst an die Schanze).
+**Funaura:** Das Meer ist eine Fläche ohne Collider; der NavMesh-Bau sah darunter den Hafenboden als begehbar. `PedestrianNav`
+markiert jetzt alles unter der Meeresoberfläche als nicht begehbar; `PedestrianNav.RefreshData` backt die Nav-Daten in die
+vorhandenen Assets (gleiche GUIDs, keine Szene). Test `PedestrianNavTests.NoNavMesh_UnderTheSea`.

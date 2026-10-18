@@ -112,17 +112,38 @@ namespace JapanMap.Tests
             }
         }
 
-        /// <summary>Prototype WP2: the game starts in Sakura Commons, car 4 m north of the bowl's spawn, facing east, not snapped to a road.</summary>
+        /// <summary>
+        /// Prototype WP2: the game starts in Sakura Commons beside the bowl's spawn, not snapped to a road's centre. Since D54
+        /// the car stands on commons-drive in the left lane facing the way out to the city (it was across the drive facing
+        /// east: Auto-Drive began with a three-point turn).
+        /// </summary>
         [Test]
-        public void Spawn_IsInSakuraCommons()
+        public void Spawn_IsInSakuraCommons_InTheLeftLaneFacingTheWayOut()
         {
             var spawner = Object.FindAnyObjectByType<PlayerCarSpawner>();
             Assert.IsNotNull(spawner);
             var so = new SerializedObject(spawner);
             var at = so.FindProperty("spawnPoint").vector3Value;
-            Assert.That(Vector2.Distance(new Vector2(at.x, at.z), new Vector2(550, -506)), Is.LessThan(1f), $"spawn at {at}");
-            Assert.That(Mathf.DeltaAngle(so.FindProperty("spawnHeading").floatValue, 90), Is.InRange(-1f, 1f), "not facing east");
+            Assert.That(Vector2.Distance(new Vector2(at.x, at.z), new Vector2(550, -506)), Is.LessThan(5f), $"spawn at {at}");
             Assert.IsFalse(so.FindProperty("snapToRoad").boolValue, "the court spawn must not jump to the nearest road");
+            var network = AssetDatabase.LoadAssetAtPath<JapanMap.World.RoadNetwork>(JapanMap.Editor.Map.RoadImporter.NetworkPath);
+            var drive = network.roads.First(r => r.id == "commons-drive").points;
+            var outward = drive[^1] - drive[0];
+            outward.y = 0f;
+            var heading = so.FindProperty("spawnHeading").floatValue;
+            Assert.That(Mathf.Abs(Mathf.DeltaAngle(heading, Mathf.Atan2(outward.x, outward.z) * Mathf.Rad2Deg)), Is.LessThan(5f), $"facing up the drive, heading {heading}");
+            var forward = Quaternion.Euler(0f, heading, 0f) * Vector3.forward;
+            var side = Vector3.Dot(at - drive[0], Vector3.Cross(Vector3.up, forward)); // + = right of the centreline
+            Assert.That(side, Is.InRange(-2.4f, -1.5f), "left of the centreline (Japan drives on the left)");
+        }
+
+        [Test]
+        public void AlongRoad_OffTheRoad_KeepsPlaceAndHeading()
+        {
+            var network = AssetDatabase.LoadAssetAtPath<JapanMap.World.RoadNetwork>(JapanMap.Editor.Map.RoadImporter.NetworkPath);
+            var (at, heading) = JapanMap.Editor.Places.PlaceImporter.AlongRoad(network, new Vector3(-1500f, 0f, -1500f), 42f);
+            Assert.AreEqual(new Vector3(-1500f, 0f, -1500f), at, "the map corner has no road");
+            Assert.AreEqual(42f, heading);
         }
 
         /// <summary>The court is clear: no scattered tree within the 55 m bowl, but the 24 cherries of the ring are there.</summary>

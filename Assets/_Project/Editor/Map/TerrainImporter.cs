@@ -94,6 +94,49 @@ namespace JapanMap.Editor.Map
                     tx > 0 ? tiles[tx - 1, tz] : null, tz < n - 1 ? tiles[tx, tz + 1] : null,
                     tx < n - 1 ? tiles[tx + 1, tz] : null, tz > 0 ? tiles[tx, tz - 1] : null);
 
+            Shape(settings, n, tileRes, size);
+            return tiles.Cast<Terrain>().ToArray();
+        }
+
+        /// <summary>
+        /// The heights again, into the terrain data that is there (same assets, same objects — Game.unity unchanged):
+        /// source heightmap, then carved under the roads, pads and ramps. For a change to road profiles (D54).
+        /// </summary>
+        [MenuItem("JapanMap/Map/Refresh Terrain Heights")]
+        public static string RefreshHeights()
+        {
+            var settings = MapImportSettings.LoadOrCreate();
+            MapScene.OpenGameScene();
+            var info = LegacySource.ReadJson<LegacySource.TerrainInfo>(settings, "terrain/terrain.json");
+            var res = info.import.resolution;
+            var heights = ReadRaw(LegacySource.PathOf(settings, "terrain/" + info.file), res);
+            var n = settings.tilesPerSide;
+            var cells = (res - 1) / n;
+            var tileRes = cells + 1;
+            var tiles = 0;
+            for (var tz = 0; tz < n; tz++)
+            for (var tx = 0; tx < n; tx++)
+            {
+                var data = AssetDatabase.LoadAssetAtPath<TerrainData>(TileAssetPath(n, tx, tz));
+                if (data == null || data.heightmapResolution != tileRes) throw new InvalidOperationException($"tile {tx},{tz} missing or resized — run Import All");
+                var block = new float[tileRes, tileRes];
+                for (var r = 0; r < tileRes; r++)
+                for (var c = 0; c < tileRes; c++)
+                    block[r, c] = heights[(tz * cells + r) * res + tx * cells + c];
+                data.SetHeights(0, 0, block);
+                EditorUtility.SetDirty(data);
+                tiles++;
+            }
+            var size = new Vector3(info.terrainSize.x / n, info.terrainSize.y, info.terrainSize.z / n);
+            Shape(settings, n, tileRes, size);
+            var msg = $"[Map] terrain heights refreshed in place: {tiles} tiles";
+            Debug.Log(msg);
+            return msg;
+        }
+
+        /// <summary>Carving under roads, building pads, ramps — on the source heights already in the tiles.</summary>
+        static void Shape(MapImportSettings settings, int n, int tileRes, Vector3 size)
+        {
             // Part of the terrain itself, so every way to the terrain (Import All, terrain only, tests) gives
             // the same ground: a terrain-only import once left the ring's cliff 4 m above the road.
             var types = settings.roadTypes.ToDictionary(t => t.type);
@@ -108,7 +151,6 @@ namespace JapanMap.Editor.Map
             AssetDatabase.SaveAssets();
             Debug.Log($"[Map] terrain imported: {n}x{n} tiles, {tileRes}² samples each, {size.x:F1} m per tile; " +
                       $"lowered under roads: {carve.texels} texels, deepest cut {carve.maxCut:F2} m, left alone (tunnel-deep) {carve.skipped}; levelled under {pads.pads} building footprints (max {pads.maxChange:F2} m, {pads.roadTexels} texels left to the roads)");
-            return tiles.Cast<Terrain>().ToArray();
         }
 
         /// <summary>
