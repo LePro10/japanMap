@@ -42,10 +42,10 @@ MonoBehaviour:
   cockpitMinHorizontalFov: 74
   cockpitFovBoost: 2
   cockpitBurstPitch: 2.5
-  headDriftLook: 0.8
+  headDriftLook: 0.7
   headYawLead: 0.12
   headSteerLook: 0.35
-  headLookMax: 42
+  headLookMax: 35
   headLookRate: 5.5
   headLeanRate: 6
   headRoll: 3.5

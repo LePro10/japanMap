@@ -137,6 +137,7 @@ namespace JapanMap.Vehicles
             _cockpit.Lens.FieldOfView = Spec.fov;
             _cockpit.Lens.NearClipPlane = Spec.near;
             _head.Reset();
+            if (Cinematic != null) Cinematic.EyeOffset = Spec.eyeOffset;
             if (_damage != null) _damage.Impacted -= OnImpact;
             _damage = car.GetComponent<VehicleDamage>();
             if (_damage != null) _damage.Impacted += OnImpact;

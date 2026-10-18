@@ -37,6 +37,9 @@ namespace JapanMap.Vehicles
         public int Cuts { get; private set; }
         /// <summary>Raised on every cut with the new shot.</summary>
         public event Action<CineShot> Cut;
+        /// <summary>The car's seat correction from its cockpit data (D51): the cockpit shot sits where the player's cockpit view sits.</summary>
+        public Vector3 EyeOffset { get; set; }
+
         /// <summary>The posed Cinemachine camera (tests, pictures).</summary>
         public Transform CameraTransform => _cam != null ? _cam.transform : null;
 
@@ -233,7 +236,7 @@ namespace JapanMap.Vehicles
             switch (s.kind)
             {
                 case CineShot.Cockpit:
-                    pos = _eye != null ? _eye.position : car.TransformPoint(new Vector3(-0.35f, 1.1f, 0f));
+                    pos = (_eye != null ? _eye.position : car.TransformPoint(new Vector3(-0.35f, 1.1f, 0f))) + car.rotation * EyeOffset;
                     rot = car.rotation * Quaternion.Euler(4f, 0f, 0f);
                     return;
                 case CineShot.Wheel:

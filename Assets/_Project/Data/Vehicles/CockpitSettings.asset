@@ -22,7 +22,7 @@ MonoBehaviour:
     wheelSize: 0.36
     wheelRatio: 11
     wheelMax: 240
-    wheelOffset: {x: 0, y: 0, z: 0}
+    wheelOffset: {x: 0, y: -0.065, z: -0.02}
     cluster: 1
     clusterOffset: {x: 0, y: 0, z: 0}
     clusterScale: 1
@@ -42,7 +42,7 @@ MonoBehaviour:
     wheelSize: 0.36
     wheelRatio: 11
     wheelMax: 240
-    wheelOffset: {x: 0, y: 0, z: 0}
+    wheelOffset: {x: 0, y: -0.065, z: -0.02}
     cluster: 1
     clusterOffset: {x: 0, y: 0, z: 0}
     clusterScale: 1
@@ -61,7 +61,7 @@ MonoBehaviour:
     wheelSize: 0.36
     wheelRatio: 11
     wheelMax: 240
-    wheelOffset: {x: 0, y: 0, z: 0}
+    wheelOffset: {x: 0, y: -0.065, z: -0.02}
     cluster: 1
     clusterOffset: {x: 0, y: 0, z: 0}
     clusterScale: 1
@@ -80,7 +80,7 @@ MonoBehaviour:
     wheelSize: 0.36
     wheelRatio: 11
     wheelMax: 240
-    wheelOffset: {x: 0, y: 0, z: 0}
+    wheelOffset: {x: 0, y: -0.065, z: -0.02}
     cluster: 1
     clusterOffset: {x: 0, y: 0, z: 0}
     clusterScale: 1
@@ -91,7 +91,7 @@ MonoBehaviour:
     shake: 1.2
     hide: []
   - carId: yama
-    eyeOffset: {x: 0, y: 0, z: 0.12}
+    eyeOffset: {x: 0, y: 0.07, z: 0.12}
     fov: 58
     pitch: 4.75
     near: 0.06
@@ -99,7 +99,7 @@ MonoBehaviour:
     wheelSize: 0.36
     wheelRatio: 11
     wheelMax: 240
-    wheelOffset: {x: 0, y: 0, z: 0}
+    wheelOffset: {x: 0, y: -0.065, z: -0.02}
     cluster: 2
     clusterOffset: {x: 0, y: 0, z: 0}
     clusterScale: 1
@@ -118,7 +118,7 @@ MonoBehaviour:
     wheelSize: 0.36
     wheelRatio: 11
     wheelMax: 240
-    wheelOffset: {x: 0, y: -0.045, z: -0.02}
+    wheelOffset: {x: 0, y: -0.065, z: -0.02}
     cluster: 2
     clusterOffset: {x: 0, y: 0, z: 0}
     clusterScale: 1
@@ -137,7 +137,7 @@ MonoBehaviour:
     wheelSize: 0.36
     wheelRatio: 11
     wheelMax: 240
-    wheelOffset: {x: 0, y: -0.045, z: -0.02}
+    wheelOffset: {x: 0, y: -0.065, z: -0.02}
     cluster: 1
     clusterOffset: {x: 0, y: 0, z: 0}
     clusterScale: 1
@@ -156,7 +156,7 @@ MonoBehaviour:
     wheelSize: 0.36
     wheelRatio: 11
     wheelMax: 240
-    wheelOffset: {x: 0, y: -0.045, z: -0.02}
+    wheelOffset: {x: 0, y: -0.065, z: -0.02}
     cluster: 2
     clusterOffset: {x: 0, y: 0, z: 0}
     clusterScale: 1
@@ -175,7 +175,7 @@ MonoBehaviour:
     wheelSize: 0.36
     wheelRatio: 11
     wheelMax: 240
-    wheelOffset: {x: 0, y: -0.045, z: -0.02}
+    wheelOffset: {x: 0, y: -0.065, z: -0.02}
     cluster: 1
     clusterOffset: {x: 0, y: 0, z: 0}
     clusterScale: 1
@@ -194,7 +194,7 @@ MonoBehaviour:
     wheelSize: 0.36
     wheelRatio: 11
     wheelMax: 240
-    wheelOffset: {x: 0, y: -0.045, z: -0.02}
+    wheelOffset: {x: 0, y: -0.065, z: -0.02}
     cluster: 1
     clusterOffset: {x: 0, y: 0, z: 0}
     clusterScale: 1

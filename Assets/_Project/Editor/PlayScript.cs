@@ -551,6 +551,18 @@ namespace JapanMap.Editor
                     }
                     return true;
                 }
+                case "crack":
+                {
+                    // crack [dv]: pictures only — a hit on the windscreen in front of the driver (the damage's own Take), Δv default 9.
+                    var pmw = Object.FindAnyObjectByType<PlayerModeController>();
+                    var dmgW = pmw.Car.GetComponent<JapanMap.Vehicles.VehicleDamage>();
+                    var eyeW = JapanMap.Vehicles.VehicleVisuals.FindPrefix(pmw.Car.transform, "eye");
+                    var ctW = pmw.Car.transform;
+                    var hitW = eyeW.position + ctW.forward * 0.75f + ctW.up * 0.02f;
+                    var impW = dmgW.Take(hitW, -ctW.forward, a.Length > 1 ? F(1) : 9f, 0.3f, ctW.right);
+                    Log.AppendLine($"  crack → glass cracked {impW.glassCracked} broke {impW.glassBroke}");
+                    return true;
+                }
                 case "cockpit":
                 {
                     // cockpit: the seat in use (D51) — spec, the parts from the seat, where they sit before the camera, the head.
@@ -784,6 +796,8 @@ namespace JapanMap.Editor
                     Log.AppendLine($"  markscheck {mode}: texture {(tex0 != null ? tex0.name + " " + tex0.GetType().Name : "none")}, material {mr0.sharedMaterial.name} queue {mr0.sharedMaterial.renderQueue}");
                     if (mode == "red") mr0.sharedMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { color = Color.red };
                     else if (mode == "tex") { var mt = new Material(Shader.Find("Universal Render Pipeline/Unlit")); mt.SetTexture("_BaseMap", tex0); mr0.sharedMaterial = mt; }
+                    else if (mode == "cullback") mr0.sharedMaterial.SetFloat("_Cull", 2f); // one-sided again: the A/B of D51's double-sided cracks
+                    else if (mode == "culloff") mr0.sharedMaterial.SetFloat("_Cull", 0f);
                     else if (mode == "black")
                     {
                         // The marks' own material, its colour black: shows where alpha is.

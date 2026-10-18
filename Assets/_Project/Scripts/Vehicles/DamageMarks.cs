@@ -81,6 +81,8 @@ namespace JapanMap.Vehicles
             if (_atlas != null && _atlas.IsCreated()) _material.SetTexture("_BaseMap", _atlas);
             // After the car's own glass (also transparent): a crack is on the pane, not behind it.
             _material.renderQueue = template.renderQueue + 2;
+            // Both faces: a cracked windscreen shows from the driver's seat too (D51); paint marks lie under the body there.
+            if (_material.HasProperty("_Cull")) _material.SetFloat("_Cull", (float)UnityEngine.Rendering.CullMode.Off);
             return _material;
         }
 

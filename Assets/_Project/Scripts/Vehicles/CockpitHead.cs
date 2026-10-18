@@ -31,6 +31,8 @@ namespace JapanMap.Vehicles
         public Vector3 Euler;
         /// <summary>Head offset in the car's frame, m.</summary>
         public Vector3 Offset;
+        /// <summary>The shaking part of <see cref="Euler"/> (kicks and buzz), degrees — zero with the option off.</summary>
+        public Vector3 Shake;
         /// <summary>Pad rumble, 0…1, before any option: high motor = tyres and ground, low motor = hits.</summary>
         public float RumbleHigh, RumbleLow;
 
@@ -41,7 +43,7 @@ namespace JapanMap.Vehicles
 
         public void Reset()
         {
-            Euler = Offset = _lean = _kick = _kickVel = Vector3.zero;
+            Euler = Offset = Shake = _lean = _kick = _kickVel = Vector3.zero;
             _yaw = _yawVel = _buzzEnv = _hit = 0f;
             RumbleHigh = RumbleLow = 0f;
         }
@@ -50,6 +52,7 @@ namespace JapanMap.Vehicles
         public void Step(float dt, in Input i, CarCameraSettings s, float shake, float look = 1f, float lean = 1f, float shakeCar = 1f)
         {
             if (dt <= 0f) return;
+            dt = Mathf.Min(dt, 0.1f);
             _t += dt;
 
             // ── look: towards the travel, a little ahead of the yaw, a little into the steering ──
@@ -60,9 +63,13 @@ namespace JapanMap.Vehicles
             target = Mathf.Clamp(target, -s.headLookMax, s.headLookMax);
             // Critically damped: smooth in and out of a slide, no overshoot that would read as a wobble.
             var w = s.headLookRate;
-            var acc = w * w * (target - _yaw) - 2f * w * _yawVel;
-            _yawVel += acc * dt;
-            _yaw += _yawVel * dt;
+            var lookSteps = Mathf.CeilToInt(dt * 120f);
+            for (var n = 0; n < lookSteps; n++)
+            {
+                var hk = dt / lookSteps;
+                _yawVel += (w * w * (target - _yaw) - 2f * w * _yawVel) * hk;
+                _yaw += _yawVel * hk;
+            }
 
             // ── g-forces: the body leans out of a bend, sinks back under power, dips on the brakes ──
             var k = 1f - Mathf.Exp(-s.headLeanRate * dt);
@@ -86,9 +93,17 @@ namespace JapanMap.Vehicles
             if (i.bump > s.bumpFrom) kicks.x += Mathf.Min(s.bumpKickMax, (i.bump - s.bumpFrom) * s.bumpKick) * (Hash(_t * 7f) > 0.5f ? 1f : -1f);
             _kickVel += kicks * (s.kickFrequency * shake * shakeCar);
             _hit = Mathf.Max(_hit * Mathf.Exp(-s.rumbleFade * dt), Mathf.Clamp01(kicks.magnitude / Mathf.Max(1e-3f, s.impactKickMax)));
+            // "Camera shake" Off stills the head at once, also a kick still ringing from before the switch.
+            if (shake <= 0f) _kick = _kickVel = Vector3.zero;
+            // Semi-implicit in steps of at most 1/120 s: one long frame (a hitch, the test runner) made the spring blow up.
             var kw = s.kickFrequency;
-            _kickVel += (-kw * kw * _kick - 2f * s.kickDamping * kw * _kickVel) * dt;
-            _kick += _kickVel * dt;
+            var steps = Mathf.CeilToInt(dt * 120f);
+            var h = dt / steps;
+            for (var n = 0; n < steps; n++)
+            {
+                _kickVel += (-kw * kw * _kick - 2f * s.kickDamping * kw * _kickVel) * h;
+                _kick += _kickVel * h;
+            }
 
             // ── buzz: speed, ground, tyres ──
             var road = Mathf.Clamp01(Mathf.InverseLerp(s.buzzSpeed.x, s.buzzSpeed.y, i.speed));
@@ -100,6 +115,7 @@ namespace JapanMap.Vehicles
             var amp = _buzzEnv * shake * shakeCar;
             var buzz = new Vector3(Noise(_t * f, 0.3f), Noise(0.7f, _t * f * 1.3f), Noise(_t * f * 0.9f, 5.1f)) * amp;
 
+            Shake = _kick + new Vector3(buzz.x, buzz.y * 0.5f, buzz.z * 0.6f);
             Euler = new Vector3(
                 -s.headSurge * _lean.z + _kick.x + buzz.x,
                 _yaw + _kick.y + buzz.y * 0.5f,

@@ -42,6 +42,8 @@ namespace JapanMap.Gameplay.Hud
         readonly List<GameObject> _seatOnly = new();
         readonly List<GameObject> _built = new();
         readonly List<Renderer> _modelWheel = new();
+        Transform _movedWheel;
+        Vector3 _movedFrom;
 
         public bool Active { get; private set; }
         /// <summary>Cluster and head-up quads (tests: never over the road).</summary>
@@ -96,6 +98,8 @@ namespace JapanMap.Gameplay.Hud
             _built.Clear();
             foreach (var r in _modelWheel) if (r != null) r.enabled = true;
             _modelWheel.Clear();
+            if (_movedWheel != null) _movedWheel.localPosition = _movedFrom;
+            _movedWheel = null;
             _clusterQuad = _hudQuad = null;
             _light = null;
             _wheel = null;
@@ -153,6 +157,10 @@ namespace JapanMap.Gameplay.Hud
             {
                 _wheel = modelWheel;
                 if (_wheel == null) return;
+                // The models' wheels reach up to the eye line: lowered a little, the road shows over the rim.
+                _movedWheel = _wheel;
+                _movedFrom = _wheel.localPosition;
+                _wheel.position += car.transform.rotation * _spec.wheelOffset;
                 _wheelRest = _wheel.localRotation;
                 // The column points at the driver's chest: from the wheel towards the eye, a little down.
                 _wheelAxis = _wheel.InverseTransformDirection((eye - up * 0.25f - _wheel.position).normalized);
