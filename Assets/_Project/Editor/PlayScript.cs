@@ -513,6 +513,44 @@ namespace JapanMap.Editor
                     _until = now + 0.3f;
                     return false;
                 }
+                case "waypoint":
+                    // waypoint x z: the map's waypoint (as "Set waypoint here"); waypoint off clears it.
+                {
+                    var map = Object.FindAnyObjectByType<JapanMap.Gameplay.Map.MapSystem>();
+                    if (map != null) map.Waypoint = a[1] == "off" ? null : new Vector2(F(1), F(2));
+                    Log.AppendLine($"  waypoint {map?.Waypoint}");
+                    return true;
+                }
+                case "adprobe":
+                    // adprobe: one line of the auto-drive pilot (position, speed, target, input, turns, replans).
+                {
+                    var ad = JapanMap.Gameplay.Map.AutoDriver.Instance;
+                    var p = ad != null ? ad.Pilot : null;
+                    if (p == null || p.car == null) { Log.AppendLine("  adprobe: -"); return true; }
+                    var c = p.car;
+                    var ahead = c.transform.InverseTransformPoint(p.Ahead(6f));
+                    Log.AppendLine($"  adprobe on={ad.IsActive} at ({c.transform.position.x:0.0}, {c.transform.position.z:0.0}) kmh {c.Telemetry.forwardSpeed * 3.6f:0} target {p.TargetSpeed * 3.6f:0} " +
+                                   $"in {c.Input.throttle:0.0}/{c.Input.brake:0.0}/{c.Input.steer:0.00} ahead6 ({ahead.x:0.0}, {ahead.z:0.0}) s {p.Position:0}/{p.Length:0} off {p.Offset:0.0} " +
+                                   $"cap {p.speedCap * 3.6f:0} lat {p.lateral:0.0} turns {p.Turns} unsticks {p.Unsticks} replans {ad.Replans} recoveries {ad.Recoveries} stop '{ad.LastStop}'" +
+                                   (p.pointLimit != null ? $" limited {System.Linq.Enumerable.Count(p.pointLimit, x => x < 100f)}/{p.pointLimit.Length}" : ""));
+                    return true;
+                }
+                case "autodrive":
+                    // autodrive [off]: auto-drive to the waypoint (D49), as holding G; logs a refusal.
+                {
+                    var auto = JapanMap.Core.AutoDrive.Current;
+                    auto?.SetActive(a.Length < 2 || a[1] != "off");
+                    var ad = auto as JapanMap.Gameplay.Map.AutoDriver;
+                    Log.AppendLine($"  autodrive {(auto != null && auto.IsActive ? "on" : "off")} {ad?.Refusal}");
+                    if (ad != null && ad.IsActive)
+                    {
+                        var car = ad.Pilot.car.transform;
+                        Log.Append($"  car ({car.position.x:0.0}, {car.position.z:0.0}) fwd ({car.forward.x:0.00}, {car.forward.z:0.00}) route");
+                        for (var i = 0; i < Mathf.Min(16, ad.Route.Count); i++) Log.Append($" ({ad.Route[i].x:0.0}, {ad.Route[i].z:0.0})");
+                        Log.AppendLine();
+                    }
+                    return true;
+                }
                 case "record":
                 {
                     // record <seconds> <name>: what the listener hears → <out>/<name>.wav (editor only).

@@ -38,7 +38,8 @@ namespace JapanMap.Gameplay.Hud
             if (_volume == null) return;
             var car = _player != null && _player.Current == PlayerModeController.Mode.Driving ? _player.Car : null;
             var target = 0f;
-            if (car != null && !_player.Suspended && !Core.GameOptions.ReducedMotion)
+            // Not under the cinematic camera (D49): a clean picture, and no motion-blur smear on its hard cuts.
+            if (car != null && !_player.Suspended && !Core.GameOptions.ReducedMotion && !Core.AutoDrive.IsActive)
             {
                 var t = car.Telemetry;
                 // From about 90 km/h, full at 220; the burst adds its punch on top.

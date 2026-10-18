@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d51aa913dfe574344a02b22ddfc792df, type: 3}
+  m_Name: AutoDriveSettings
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Map.AutoDriveSettings
+  maxSpeedKmh: 95
+  gripShare: 0.5
+  braking: 5
+  lookAheadMin: 4.5
+  lookAheadSeconds: 0.5
+  laneShare: 0.25
+  minLaneWidth: 6
+  cornerStart: 20
+  cornerFull: 60
+  crossingReach: 18
+  crossingKmh: 50
+  spacing: 3
+  gapBase: 5
+  gapSeconds: 1.1
+  passAfter: 2.5
+  takeoverSteer: 0.2
+  takeoverPedal: 0.25
+  arriveRadius: 12
+  arriveHold: 1.2
+  offRoute: 14
+  replanSeconds: 1.5
+  stuckSeconds: 8
+  letterbox: 0.11
+  letterboxSeconds: 0.6

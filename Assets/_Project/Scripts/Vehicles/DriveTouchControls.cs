@@ -27,7 +27,7 @@ namespace JapanMap.Vehicles
         [SerializeField] bool forceVisible;
 
         UIDocument _doc;
-        VisualElement _root, _stunt;
+        VisualElement _root, _stunt, _auto;
         TouchKit.Stick _stick;
         TouchKit.Group _group;
         bool _handbrake, _boost, _brake, _pedal, _revealed, _suppressed, _engaged;
@@ -37,6 +37,8 @@ namespace JapanMap.Vehicles
         internal VisualElement DriftButton { get; private set; }
         internal VisualElement BrakeButton { get; private set; }
         internal VisualElement BoostButton { get; private set; }
+        /// <summary>AUTO: drive to the waypoint by itself (D49); shown while a waypoint is set.</summary>
+        internal VisualElement AutoButton => _auto;
         internal Vector2 Axes => _stick != null ? _stick.Axes : Vector2.zero;
         /// <summary>Auto-throttle running (the pad was touched since boarding / the last stop).</summary>
         public bool Engaged => _engaged;
@@ -94,6 +96,13 @@ namespace JapanMap.Vehicles
             var speed = car != null ? car.Telemetry.forwardSpeed : 0f;
             var auto = GameOptions.AutoThrottle;
             if (_stick.Held) _engaged = true;
+            // Driving itself: the auto-throttle must not hand control back by itself — only a real touch of pad or brake does.
+            var autoDrive = AutoDrive.IsActive;
+            if (autoDrive && !_stick.Held) _engaged = false;
+            _root.style.opacity = autoDrive ? 0.4f : 1f;
+            var offer = AutoDrive.Current != null && (autoDrive || AutoDrive.Current.HasDestination) && Unlocks.IsUnlocked(FeatureId.AutoDrive);
+            _auto.style.display = offer ? DisplayStyle.Flex : DisplayStyle.None;
+            _auto.EnableInClassList("jm-touch--on", autoDrive);
             float throttle, brake = 0f;
             if (_brake)
             {
@@ -178,8 +187,10 @@ namespace JapanMap.Vehicles
             var top = safe.y + (UiPanel.IsPortrait ? 136f : 12f);
             var reset = TouchKit.Tap(_root, 48f, "RESET", () => driver?.PressRespawn());
             var cam = TouchKit.Tap(_root, 48f, "CAM", () => driver?.PressCamera());
+            _auto = TouchKit.Tap(_root, 48f, "AUTO", () => AutoDrive.Current?.SetActive(!AutoDrive.IsActive));
+            _auto.name = "touch-auto";
             var outerRow = (mirror ? safe.x : safe.z) + 12f;
-            foreach (var (b, i) in new[] { (reset, 1), (cam, 2) })
+            foreach (var (b, i) in new[] { (reset, 1), (cam, 2), (_auto, 3) })
             {
                 b.style.position = Position.Absolute;
                 b.style.top = top;

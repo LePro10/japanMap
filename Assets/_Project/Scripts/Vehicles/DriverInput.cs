@@ -17,7 +17,7 @@ namespace JapanMap.Vehicles
         [SerializeField] InputActionAsset actions;
         [SerializeField] VehicleController vehicle;
 
-        InputAction _throttle, _brake, _steer, _handbrake, _boost, _respawn, _camera, _lookBack, _look, _zoom, _repair;
+        InputAction _throttle, _brake, _steer, _handbrake, _boost, _respawn, _camera, _lookBack, _look, _zoom, _repair, _autoDrive;
         Vector2 _touchAxes;
         bool _touchHandbrake, _touchBoost;
         float _tapAt = float.NegativeInfinity, _boostTapAt = float.NegativeInfinity;
@@ -53,6 +53,7 @@ namespace JapanMap.Vehicles
             _look = map.FindAction("Look", true);
             _zoom = map.FindAction("Zoom", true);
             _repair = map.FindAction("Repair", false); // T / d-pad left: fix the car where it stands (D47)
+            _autoDrive = map.FindAction("AutoDrive", false); // hold G / d-pad right: drive to the waypoint (D49)
         }
 
         void OnEnable()
@@ -63,6 +64,11 @@ namespace JapanMap.Vehicles
             _respawn.performed += OnRespawn;
             _camera.performed += OnCamera;
             if (_repair != null) _repair.performed += OnRepair;
+            if (_autoDrive != null)
+            {
+                _autoDrive.performed += OnAutoDrive;
+                _autoDrive.started += OnAutoDriveDown;
+            }
         }
 
         void OnDisable()
@@ -72,6 +78,11 @@ namespace JapanMap.Vehicles
             _respawn.performed -= OnRespawn;
             _camera.performed -= OnCamera;
             if (_repair != null) _repair.performed -= OnRepair;
+            if (_autoDrive != null)
+            {
+                _autoDrive.performed -= OnAutoDrive;
+                _autoDrive.started -= OnAutoDriveDown;
+            }
             actions.FindActionMap("Drive").Disable();
             ClearTouch();
         }
@@ -150,6 +161,16 @@ namespace JapanMap.Vehicles
         }
 
         public event Action RepairPressed;
+
+        /// <summary>The auto-drive key was held (G / d-pad right, 0.45 s): start driving to the waypoint.</summary>
+        public event Action AutoDriveHeld;
+        /// <summary>The auto-drive key went down (a tap while the car drives itself hands control back at once).</summary>
+        public event Action AutoDriveDown;
+        void OnAutoDrive(InputAction.CallbackContext _) => AutoDriveHeld?.Invoke();
+        void OnAutoDriveDown(InputAction.CallbackContext _) => AutoDriveDown?.Invoke();
+
+        /// <summary>What the player asked for in the last physics step, before any assist (auto-drive takeover).</summary>
+        public DriveInput Raw { get; private set; }
         void OnRepair(InputAction.CallbackContext _) => PressRepair();
         public void PressCamera() => CameraPressed?.Invoke();
 
@@ -189,6 +210,7 @@ namespace JapanMap.Vehicles
                 burst = _burstPulse,
             };
             _trickPulse = _burstPulse = false;
+            Raw = input;
             if (Assist != null) input = Assist(input);
             vehicle.Input = input;
         }

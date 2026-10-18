@@ -1,0 +1,87 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f80f4a02345741a28d4d22a5e7880fa, type: 3}
+  m_Name: CinematicCameraSettings
+  m_EditorClassIdentifier: JapanMap.Vehicles::JapanMap.Vehicles.CinematicCameraSettings
+  shots:
+  - kind: 0
+    weight: 0.9
+    seconds: {x: 4, y: 6}
+    fov: {x: 62, y: 58}
+    offset: {x: 0, y: 0, z: 0}
+    damping: 0
+    handheld: 0.35
+    randomSide: 0
+  - kind: 1
+    weight: 1
+    seconds: {x: 4, y: 6}
+    fov: {x: 40, y: 34}
+    offset: {x: 0.6, y: 0.75, z: 8}
+    damping: 0.25
+    handheld: 0.5
+    randomSide: 1
+  - kind: 2
+    weight: 1.3
+    seconds: {x: 4.5, y: 7}
+    fov: {x: 38, y: 32}
+    offset: {x: 6, y: 0.9, z: 0.6}
+    damping: 0.35
+    handheld: 0.6
+    randomSide: 1
+  - kind: 3
+    weight: 1
+    seconds: {x: 5, y: 7}
+    fov: {x: 30, y: 26}
+    offset: {x: 0.8, y: 0.8, z: -13}
+    damping: 0.45
+    handheld: 0.7
+    randomSide: 1
+  - kind: 4
+    weight: 0.8
+    seconds: {x: 5, y: 8}
+    fov: {x: 26, y: 22}
+    offset: {x: 0, y: 9, z: -30}
+    damping: 0.8
+    handheld: 0.5
+    randomSide: 0
+  - kind: 5
+    weight: 1
+    seconds: {x: 6, y: 8}
+    fov: {x: 34, y: 30}
+    offset: {x: 22, y: 28, z: -26}
+    damping: 1.2
+    handheld: 0.8
+    randomSide: 1
+  - kind: 6
+    weight: 1.5
+    seconds: {x: 4, y: 7}
+    fov: {x: 34, y: 46}
+    offset: {x: 6.5, y: 1, z: 60}
+    damping: 0
+    handheld: 0.4
+    randomSide: 1
+  - kind: 7
+    weight: 0.7
+    seconds: {x: 3.5, y: 5}
+    fov: {x: 56, y: 52}
+    offset: {x: 1.3, y: 0.38, z: -2.2}
+    damping: 0
+    handheld: 0.25
+    randomSide: 1
+  firstShot: 5
+  clearance: 0.4
+  occlusionGrace: 0.25
+  minGroundHeight: 0.3
+  orbitSpeed: 7
+  roadsidePassed: 30
+  handheldFrequency: 0.35
+  aimHeight: 0.75

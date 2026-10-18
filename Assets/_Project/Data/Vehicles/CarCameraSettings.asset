@@ -38,8 +38,11 @@ MonoBehaviour:
   zoomMin: 0.42
   zoomMax: 2.4
   zoomStep: 0.1
+  cinematic: {fileID: 11400000, guid: 956f1ec7f06d145479c65910ffd0a7ef, type: 2}
   cockpitFov: 68
   cockpitFovBoost: 2
   cockpitNear: 0.1
   cockpitLookPitch: -0.12
   cockpitDriftLook: 0.65
+  cockpitLean: 0.35
+  cockpitSurge: 0.18

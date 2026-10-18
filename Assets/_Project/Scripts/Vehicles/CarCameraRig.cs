@@ -31,6 +31,8 @@ namespace JapanMap.Vehicles
 
         public Mode Current { get; private set; } = Mode.Chase;
         public CinemachineCamera Chase => _chase;
+        /// <summary>The auto-drive camera (null without settings).</summary>
+        public CinematicCamera Cinematic { get; private set; }
 
         void Awake()
         {
@@ -65,6 +67,12 @@ namespace JapanMap.Vehicles
             _chase.Lens.NearClipPlane = 0.3f;
 
             MakeCockpit();
+            if (settings.cinematic != null)
+            {
+                Cinematic = gameObject.AddComponent<CinematicCamera>();
+                // Cinematic shots show the driver except from the driver's own eye; ending gives the seat back to the player's mode.
+                Cinematic.Init(settings.cinematic, _chase.Lens, show => { if (_hideInCockpit != null) _hideInCockpit.SetActive(Cinematic.Showing ? show : _live && Current != Mode.Cockpit); });
+            }
 
             if (spawner != null) spawner.Spawned += Attach;
             if (driver != null) driver.CameraPressed += Toggle;
@@ -97,6 +105,7 @@ namespace JapanMap.Vehicles
         public void Attach(VehicleController car)
         {
             MakeCockpit();
+            if (Cinematic != null) Cinematic.End(); // a new car: auto-drive ends with the old one
             _car = car;
             _heading = Mathf.Atan2(car.transform.forward.x, car.transform.forward.z);
             _orbit = 0f;
@@ -112,6 +121,12 @@ namespace JapanMap.Vehicles
 
         public void Toggle()
         {
+            // While the car drives itself the camera button switches between the cinematic picture and the player's camera.
+            if (Cinematic != null && Cinematic.Running)
+            {
+                Cinematic.ToggleShowing();
+                return;
+            }
             Current = Current == Mode.Chase ? Mode.Cockpit : Mode.Chase;
             ApplyMode();
         }

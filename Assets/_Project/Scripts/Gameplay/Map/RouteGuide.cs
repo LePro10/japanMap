@@ -29,6 +29,8 @@ namespace JapanMap.Gameplay.Map
         GameObject _go;
 
         public static RouteGuide Instance { get; private set; }
+        /// <summary>The road graph (built on first use, ~30 ms; shared with auto-drive).</summary>
+        public RouteGraph Graph => _graph ??= _map != null ? new RouteGraph(_map.Roads) : null;
         /// <summary>The planned route (empty when there is none).</summary>
         public IReadOnlyList<Vector3> Path => _path;
         /// <summary>Changes whenever the route is planned again (map views redraw).</summary>
@@ -105,8 +107,7 @@ namespace JapanMap.Gameplay.Map
 
         void Plan(Vector3 from, Vector3 to)
         {
-            _graph ??= new RouteGraph(_map.Roads);
-            OnRoad = _graph.Find(from, to, _path);
+            OnRoad = Graph.Find(from, to, _path);
             _arcs.Clear();
             var a = 0f;
             for (var i = 0; i < _path.Count; i++)

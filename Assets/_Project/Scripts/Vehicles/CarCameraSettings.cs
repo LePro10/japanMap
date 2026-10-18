@@ -58,6 +58,10 @@ namespace JapanMap.Vehicles
         [Tooltip("Zoom change per mouse wheel notch.")]
         public float zoomStep = 0.1f;
 
+        [Header("Cinematic (auto-drive, D49)")]
+        [Tooltip("Shot list of the cinematic camera while the car drives itself; none = auto-drive keeps the chase camera.")]
+        public CinematicCameraSettings cinematic;
+
         [Header("Cockpit")]
         public float cockpitFov = 62f;
         public float cockpitFovBoost = 2f;

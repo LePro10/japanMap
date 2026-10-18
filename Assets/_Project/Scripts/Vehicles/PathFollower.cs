@@ -19,6 +19,18 @@ namespace JapanMap.Vehicles
         [Tooltip("Look-ahead distance = max(min, speed × seconds).")]
         public float lookAheadMin = 7f;
         public float lookAheadSeconds = 0.5f;
+        [Tooltip("Open paths: brake to a stop at the last point instead of rolling past it (auto-drive arrival).")]
+        public bool stopAtEnd;
+        [Tooltip("Braking used for bends and the stop at the end, m/s².")]
+        public float braking = 6f;
+        [Tooltip("Slow down while the point ahead is far off the nose (a turn from standstill, a U-turn): a tight turn, not a wide arc over the verge.")]
+        public bool slowForHeading;
+        [Tooltip("Drive this far left (+) or right (−) of the polyline, m: a lane on a centreline path.")]
+        public float lateral;
+        /// <summary>Speed limit at each path point, m/s (null = none): crossings, the planner brakes for them like for bends.</summary>
+        [System.NonSerialized] public float[] pointLimit;
+        /// <summary>Extra speed limit from outside (traffic ahead), m/s; infinity = none. Reset by nobody — the owner sets it each step.</summary>
+        [System.NonSerialized] public float speedCap = float.PositiveInfinity;
 
         int _segment;
         /// <summary>Distance driven along the path since Begin, m.</summary>
@@ -37,8 +49,14 @@ namespace JapanMap.Vehicles
         // Stuck against something with the throttle open: reverse out instead of waiting.
         float _stuckFor, _reverseFor, _lastSteer;
 
+        /// <summary>Three-point turns made (slowForHeading; diagnostics, tests).</summary>
+        public int Turns { get; private set; }
         /// <summary>Times this driver reversed out of a stuck spot (diagnostics, tests).</summary>
         public int Unsticks { get; private set; }
+        /// <summary>Arc length of the car's closest point on the path, m (open paths: Length − Position is what is left).</summary>
+        public float Position => _lastS;
+        /// <summary>Path point <paramref name="distance"/> m ahead of the car, lane offset included (cameras, tests).</summary>
+        public Vector3 Ahead(float distance) => path == null ? Vector3.zero : PointAhead(_segment, _along, distance);
 
         public void Begin(VehicleController target, Vector3[] points, bool loop, int startSegment = 0)
         {
@@ -85,7 +103,9 @@ namespace JapanMap.Vehicles
             var s1 = P(_segment + 1);
             var seg = s1 - s0;
             var along = Mathf.Clamp01(Vector3.Dot(pos - s0, seg) / Mathf.Max(seg.sqrMagnitude, 1e-4f));
+            _along = along;
             var onLine = s0 + seg * along;
+            if (lateral != 0f) onLine += Left(seg) * lateral;
             Offset = new Vector2(pos.x - onLine.x, pos.z - onLine.z).magnitude;
             // Progress: arc length of the closest point, unwrapped across the lap seam.
             var here = _cum[_segment % path.Length] + seg.magnitude * along;
@@ -113,23 +133,48 @@ namespace JapanMap.Vehicles
             // Running wide at full lock: the bend is too fast for this car here (measured on the pass:
             // heavy cars at 40 km/h in a hairpin, steering ±1, line offset 1 → 4 m, then the rock face).
             var dt = Time.fixedDeltaTime;
-            var wide = Mathf.Abs(steer) > 0.95f && Offset > 1.2f && Offset > _lastOffset;
+            // Only when moving: at a standstill (a turn from rest) "running wide" made the target negative and the car froze.
+            var wide = Mathf.Abs(steer) > 0.95f && Offset > 1.2f && Offset > _lastOffset && speed > 3f;
             _grip = wide ? Mathf.Max(0.45f, _grip - 1.5f * dt) : Mathf.Min(1f, _grip + 0.05f * dt);
             _lastOffset = Offset;
 
             // Slowest bend within the braking distance decides the target speed.
             var latA = car.Definition.arcade.latG * ArcadeTuning.Gravity * gripShare * _grip;
             var vMax = maxSpeedKmh / 3.6f;
-            var horizon = Mathf.Max(30f, speed * speed / (2f * 6f));
+            var horizon = Mathf.Max(30f, speed * speed / (2f * braking));
             // From the car itself: a bend that has already begun must count (starting at 10 m let a hairpin through at 56 km/h).
             for (var d = 0f; d <= horizon; d += 5f)
             {
                 var c = Curvature(_segment, along, d);
                 var vBend = c > 1e-4f ? Mathf.Sqrt(latA / c) : vMax;
+                if (pointLimit != null) vBend = Mathf.Min(vBend, LimitAt(here + d));
                 // v² = vBend² + 2·a·d: how fast we may be now to make it at 6 m/s² braking.
-                vMax = Mathf.Min(vMax, Mathf.Sqrt(vBend * vBend + 2f * 6f * d));
+                vMax = Mathf.Min(vMax, Mathf.Sqrt(vBend * vBend + 2f * braking * d));
             }
+            if (stopAtEnd && !closed)
+            {
+                // Arrive: the speed from which the remaining distance is a comfortable stop (2 m short of the point).
+                var left = Mathf.Max(0f, Length - here - 2f);
+                vMax = Mathf.Min(vMax, Mathf.Sqrt(2f * braking * 0.6f * left));
+            }
+            vMax = Mathf.Min(vMax, speedCap);
             if (wide) vMax = Mathf.Min(vMax, speed - 3f); // brake now, a tighter arc follows
+            if (slowForHeading)
+            {
+                // 30° off the nose: 12 m/s; 90° and more: walking pace with full lock.
+                var off = Mathf.Abs(Mathf.Atan2(local.x, local.z)) * Mathf.Rad2Deg;
+                if (off > 30f) vMax = Mathf.Min(vMax, Mathf.Lerp(12f, 3.5f, (off - 30f) / 60f));
+                // Behind: pure pursuit circles round a point behind the car (its arc never closes) — full lock towards it.
+                if (local.z < 0f) steer = local.x >= 0f ? 1f : -1f;
+                // The way on is behind: a three-point turn — back up with the wheels the other way, then forward. A circle
+                // at full lock needs 11 m and the road has 9 (auto-drive out of the Commons, round over the grass).
+                if (off > 115f && speed < 3f && _reverseFor <= 0f)
+                {
+                    _reverseFor = 1.4f;
+                    _lastSteer = Mathf.Sign(local.x);
+                    Turns++;
+                }
+            }
             TargetSpeed = vMax;
             // No steering in the air: the arcade air control would yaw the car into a bad landing.
             if (car.Telemetry.airborne) steer = 0f;
@@ -156,7 +201,39 @@ namespace JapanMap.Vehicles
                 : new DriveInput { brake = Mathf.Clamp01(-e * 0.3f), steer = steer };
         }
 
+        float _along;
+
+        /// <summary>The point limit at arc length <paramref name="s"/> (the nearer point of its segment).</summary>
+        float LimitAt(float s)
+        {
+            if (pointLimit == null || pointLimit.Length == 0 || _cum == null) return float.PositiveInfinity;
+            if (closed && Length > 0f) s = Mathf.Repeat(s, Length);
+            var lo = 0;
+            var hi = Mathf.Min(_cum.Length, pointLimit.Length) - 1;
+            if (s >= _cum[hi]) return pointLimit[hi];
+            while (hi - lo > 1)
+            {
+                var mid = (lo + hi) / 2;
+                if (_cum[mid] <= s) lo = mid; else hi = mid;
+            }
+            return Mathf.Min(pointLimit[lo], pointLimit[hi]);
+        }
+
+        /// <summary>Horizontal left of a direction (lane offset; Japan drives on the left).</summary>
+        static Vector3 Left(Vector3 dir)
+        {
+            dir.y = 0f;
+            var n = dir.sqrMagnitude > 1e-6f ? dir.normalized : Vector3.forward;
+            return new Vector3(-n.z, 0f, n.x);
+        }
+
         Vector3 PointAhead(int segment, float along, float distance)
+        {
+            var p = PointOnLine(segment, along, distance, out var dir);
+            return lateral != 0f ? p + Left(dir) * lateral : p;
+        }
+
+        Vector3 PointOnLine(int segment, float along, float distance, out Vector3 dir)
         {
             var a = P(segment);
             var b = P(segment + 1);
@@ -167,10 +244,15 @@ namespace JapanMap.Vehicles
             {
                 distance -= rest;
                 s++;
-                if (!closed && s >= Segments) return P(Segments);
+                if (!closed && s >= Segments)
+                {
+                    dir = P(Segments) - P(Segments - 1);
+                    return P(Segments);
+                }
                 cur = P(s);
                 rest = Vector3.Distance(P(s), P(s + 1));
             }
+            dir = P(s + 1) - P(s);
             return cur + (P(s + 1) - cur).normalized * distance;
         }
 

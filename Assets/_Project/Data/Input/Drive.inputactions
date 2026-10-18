@@ -103,6 +103,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "AutoDrive",
+                    "type": "Button",
+                    "id": "40ab9f82-3364-4b79-9b0c-0d5c73256bc2",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "hold(duration=0.45)",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -422,6 +431,28 @@
                     "processors": "",
                     "groups": "Gamepad",
                     "action": "Repair",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "2e509320-73ef-4ee0-b3ac-6b8a524e8e33",
+                    "path": "<Keyboard>/g",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "AutoDrive",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "2fed580e-63ef-45ce-98a5-2c059c7ec80c",
+                    "path": "<Gamepad>/dpad/right",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "AutoDrive",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

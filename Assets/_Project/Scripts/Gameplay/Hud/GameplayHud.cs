@@ -29,6 +29,8 @@ namespace JapanMap.Gameplay.Hud
         [Tooltip("Cockpit view: the cluster screen (unlit) and the windscreen head-up display (additive) — CockpitDisplay.")]
         [SerializeField] Material cockpitScreen;
         [SerializeField] Material cockpitHud;
+        [Tooltip("Auto-drive to the waypoint (D49): pace, lane, traffic, takeover, letterbox — AutoDriver.")]
+        [SerializeField] AutoDriveSettings autoDrive;
         [SerializeField] PanelSettings panelSettings;
         [SerializeField] DriftScorer drift;
         [SerializeField] SparksWallet wallet;
@@ -95,6 +97,7 @@ namespace JapanMap.Gameplay.Hud
             gameObject.AddComponent<RouteGuide>().Bind(player, map, this, guideMaterial);
             gameObject.AddComponent<CockpitDisplay>().Bind(player, panelSettings, null, cockpitScreen, cockpitHud);
             gameObject.AddComponent<RepairPrompt>().Bind(player, panelSettings); // D47: free repair, only while hurt
+            gameObject.AddComponent<AutoDriver>().Bind(autoDrive != null ? autoDrive : ScriptableObject.CreateInstance<AutoDriveSettings>(), player, map, this, panelSettings);
             _doc = gameObject.AddComponent<UIDocument>();
             _doc.panelSettings = UiPanel.Get(panelSettings);
             _doc.sortingOrder = 3;
@@ -804,7 +807,8 @@ namespace JapanMap.Gameplay.Hud
             {
                 var w = map.Waypoint.Value;
                 var p = car.transform.position;
-                if (new Vector2(w.x - p.x, w.y - p.z).magnitude < 30f) map.Waypoint = null;
+                // Auto-drive (D49) owns its waypoint: it clears it when the car has stopped there.
+                if (new Vector2(w.x - p.x, w.y - p.z).magnitude < 30f && !AutoDrive.IsActive) map.Waypoint = null;
                 else aim = new Vector3(w.x, p.y, w.y);
             }
             // The label belongs to the waypoint, not to race checkpoints (the race panel names those).

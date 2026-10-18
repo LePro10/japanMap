@@ -300,6 +300,9 @@ namespace JapanMap.Gameplay.Menu
                 _travel.ToEvent(index);
             }, "jm-btn--primary");
             Ui.Button(row, "Set waypoint", () => SetWaypoint(index));
+            if (!running)
+                foreach (var (at, i) in _map.Races.Markers)
+                    if (i == index) { AutoDriveButton(row, new Vector2(at.x, at.z)); break; }
             t.AppendLine($"event {e.title}");
         }
 
@@ -321,7 +324,8 @@ namespace JapanMap.Gameplay.Menu
                 var b = Ui.Button(p, "Travel", () => { Menu.Close(); _travel.To(id); }, "jm-btn--primary");
                 b.SetEnabled(open);
                 MenuTiles.Gate(b, Core.FeatureId.FastTravel);
-                Ui.Button(p, "Set waypoint", () => { _map.Waypoint = point.at; Refresh(); });
+                    Ui.Button(p, "Set waypoint", () => { _map.Waypoint = point.at; Refresh(); });
+                AutoDriveButton(p, point.at);
                 t.AppendLine($"travel {point.title} {(open ? "open" : "locked")}");
             }
         }
@@ -365,8 +369,23 @@ namespace JapanMap.Gameplay.Menu
             Ui.Text(p, $"Discoveries {found}/{cards}", "jm-body", "jm-sakura");
             // A selected empty point can be a waypoint but not a teleport (ASTRA).
             Ui.Button(p, "Set waypoint here", () => { _map.Waypoint = at; Refresh(); }, "jm-btn--primary");
+            AutoDriveButton(p, at);
             if (_map.Waypoint.HasValue) Ui.Button(p, "Clear waypoint", () => { _map.Waypoint = null; Refresh(); });
             t.AppendLine($"region {region.title} {(known ? "explored" : "unexplored")} {found}/{cards}");
+        }
+
+        /// <summary>"Auto-drive": set the waypoint here, close the map and let the car drive there (D49). Only from the car.</summary>
+        void AutoDriveButton(VisualElement parent, Vector2 target)
+        {
+            var auto = Core.AutoDrive.Current;
+            if (auto == null || !_map.Driving || !Core.Unlocks.IsUnlocked(Core.FeatureId.AutoDrive)) return;
+            var b = Ui.Button(parent, "Auto-drive", () =>
+            {
+                _map.Waypoint = target;
+                Menu.Close();
+                auto.SetActive(true);
+            });
+            b.name = "map-autodrive";
         }
     }
 }
