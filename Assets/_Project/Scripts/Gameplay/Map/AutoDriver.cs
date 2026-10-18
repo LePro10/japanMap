@@ -64,6 +64,8 @@ namespace JapanMap.Gameplay.Map
         /// <summary>Why it last handed control back (tests, diagnostics).</summary>
         public string LastStop { get; private set; } = "";
         public static AutoDriver Instance { get; private set; }
+        /// <summary>The "AUTO-DRIVE · hold G" offer (tests: where it sits).</summary>
+        internal VisualElement OfferPill => _prompt;
         /// <summary>Driving itself with the cinematic picture on screen (the route tape and the HUD stay out of it).</summary>
         public bool Cinematic => IsActive && _rig != null && _rig.Cinematic != null && _rig.Cinematic.Showing;
 
@@ -543,7 +545,13 @@ namespace JapanMap.Gameplay.Map
             var offer = !IsActive && !menu && HasDestination && Unlocks.IsUnlocked(FeatureId.AutoDrive) && !StartFlow.Holding && !Racing()
                 && _player != null && _player.Current == PlayerModeController.Mode.Driving && !UiPanel.IsPhone;
             _prompt.style.display = offer ? DisplayStyle.Flex : DisplayStyle.None;
-            _prompt.style.bottom = 150f + UiPanel.Safe.w;
+            // From the seat the centre lies over the instruments (D51): into the dashboard's dark right corner, above the
+            // prompt line (PlayerModeUi puts "F  Get out" there too).
+            var seat = GameplayHud.CockpitShowsSpeed;
+            _prompt.style.bottom = (seat ? 112f : 150f) + UiPanel.Safe.w;
+            _prompt.style.left = seat ? StyleKeyword.Auto : Length.Percent(50);
+            _prompt.style.right = seat ? 40f + UiPanel.Safe.z : StyleKeyword.Auto;
+            _prompt.style.translate = seat ? new Translate(0, 0) : new Translate(Length.Percent(-50), 0);
         }
     }
 }

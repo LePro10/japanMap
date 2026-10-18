@@ -127,6 +127,33 @@ namespace JapanMap.Tests.Vehicles
             var front = shell.rest.Max(v => v.z);
             var movedRear = Enumerable.Range(0, shell.rest.Length).Count(i => shell.rest[i].z < front - 2f && (shell.pos[i] - shell.rest[i]).sqrMagnitude > 1e-6f);
             Assert.That(movedRear, Is.EqualTo(0), "the rear is untouched");
+            // Round 4: square on at 60 the windscreen cracks too — the hit's own crack stays at the bumper, far from it.
+            Assert.That(d.ScreenCracks, Is.EqualTo(1), "the windscreen cracked");
+            var screen = d.ScreenCentre(0);
+            Assert.IsTrue(screen.HasValue, "the car has a windscreen");
+            var eye = VehicleVisuals.FindPrefix(car.transform, "eye");
+            var local = car.transform.InverseTransformPoint(d.Deformer.Body.TransformPoint(screen.Value));
+            var eyeLocal = car.transform.InverseTransformPoint(eye.position);
+            Assert.That(local.z - eyeLocal.z, Is.InRange(0.2f, 1.6f), $"the windscreen centre {local:F2} lies ahead of the eye {eyeLocal:F2}");
+        }
+
+        /// <summary>Only a hard hit on the nose or tail reaches the windscreen / rear window; a side hit or a light knock does not.</summary>
+        [UnityTest]
+        public IEnumerator Windscreen_CracksOnHardEndHits_NotFromTheSide_NorLight()
+        {
+            yield return BootGame();
+            var car = Board();
+            var d = car.GetComponent<VehicleDamage>();
+            var t = car.transform;
+            var nose = t.position + t.forward * 2f + t.up * 0.5f;
+            Assert.IsFalse(d.Take(nose, -t.forward, 8f, 10f, t.right).screenCracked, "a light knock leaves the windscreen");
+            Assert.IsFalse(d.Take(t.position + t.right + t.up * 0.5f, -t.right, 20f, 10f, t.forward).screenCracked, "a side hit leaves it");
+            Assert.IsTrue(d.Take(nose, -t.forward, 16f, 10f, t.right).screenCracked, "a hard hit on the nose cracks it");
+            Assert.IsTrue(d.Take(t.position - t.forward * 2f + t.up * 0.5f, t.forward, 16f, 10f, t.right).screenCracked, "a hard hit on the tail cracks the rear window");
+            Assert.That(d.ScreenCracks, Is.EqualTo(2));
+            yield return Settle(d);
+            d.Repair();
+            Assert.That(d.ScreenCracks, Is.EqualTo(0), "repair clears them");
         }
 
         [UnityTest]

@@ -32,6 +32,7 @@ namespace JapanMap.Gameplay
         float _lockedSince;
         VisualElement _deskMenu, _keys;
         PlayerModeController.Mode? _keysMode;
+        bool? _promptInCockpit;
 
         internal Label PromptLabel => _prompt;
         internal VisualElement MenuButton => _menu;
@@ -76,11 +77,8 @@ namespace JapanMap.Gameplay
 
             _prompt = new Label { name = "player-prompt", pickingMode = PickingMode.Ignore };
             _prompt.style.position = Position.Absolute;
-            // Centred between the stick and the dial on phones (full width ran under the dial, UiLayoutProbe).
-            _prompt.style.left = _prompt.style.right = phone && !UiPanel.IsPortrait ? Length.Percent(22) : 0;
-            // Above the touch controls on a phone (they take the lower 140 / 180 px).
-            _prompt.style.bottom = safe.w + (UiPanel.IsPortrait ? 262f : phone ? 150f : 36f);
-            _prompt.style.unityTextAlign = TextAnchor.MiddleCenter;
+            _promptInCockpit = null;
+            PlacePrompt(false);
             _prompt.style.color = Color.white;
             _prompt.style.fontSize = phone ? 18f : 26f;
             _prompt.style.unityFontStyleAndWeight = FontStyle.Bold;
@@ -226,9 +224,44 @@ namespace JapanMap.Gameplay
             e.style.left = mirror ? outer : StyleKeyword.Auto;
         }
 
+        /// <summary>
+        /// Where the prompt line sits. From the seat the usual place lies over the instruments and the wheel (D51): there
+        /// it moves to the dashboard's dark right corner on a desktop (the screen gauge has stepped aside), up under the
+        /// roof on a phone (the pedals take the lower corners).
+        /// </summary>
+        void PlacePrompt(bool cockpit)
+        {
+            if (_promptInCockpit == cockpit) return;
+            _promptInCockpit = cockpit;
+            var safe = UiPanel.Safe;
+            var phone = UiPanel.IsPhone;
+            var s = _prompt.style;
+            s.top = s.bottom = s.left = s.right = StyleKeyword.Auto;
+            if (cockpit && !phone)
+            {
+                s.right = safe.z + 40f;
+                s.bottom = safe.w + 64f;
+                s.unityTextAlign = TextAnchor.MiddleRight;
+                return;
+            }
+            if (cockpit)
+            {
+                s.left = s.right = Length.Percent(18);
+                s.top = safe.y + UiPanel.Size.y * (UiPanel.IsPortrait ? 0.26f : 0.14f);
+                s.unityTextAlign = TextAnchor.MiddleCenter;
+                return;
+            }
+            // Centred between the stick and the dial on phones (full width ran under the dial, UiLayoutProbe).
+            s.left = s.right = phone && !UiPanel.IsPortrait ? Length.Percent(22) : 0;
+            // Above the touch controls on a phone (they take the lower 140 / 180 px).
+            s.bottom = safe.w + (UiPanel.IsPortrait ? 262f : phone ? 150f : 36f);
+            s.unityTextAlign = TextAnchor.MiddleCenter;
+        }
+
         void Update()
         {
             if (player == null || _prompt == null) return;
+            PlacePrompt(Hud.GameplayHud.CockpitShowsSpeed);
             if (!_touchSeen && Touchscreen.current != null && Touchscreen.current.primaryTouch.press.isPressed) _touchSeen = true;
             // The browser freed the captured mouse (Escape while walking; the key itself never reaches the game): pause as
             // Escape would. Our own releases (menu, photo mode, getting in) happen with something on the UI stack or a mode change.

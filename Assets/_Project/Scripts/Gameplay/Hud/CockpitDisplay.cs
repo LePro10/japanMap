@@ -134,15 +134,21 @@ namespace JapanMap.Gameplay.Hud
             }
             if (_spec.arms) BuildArms(car, eye, up, fwd, right);
             // A soft cool fill from the driver's chest onto the wheel, the hands and the dash, so the cabin reads at night
-            // (off on Low). Close to the instruments it burnt the wheel white.
+            // (off on Low). Close to the instruments it burnt the wheel white; as a point light it lit the roll cage
+            // overhead from 30 cm — Kaze's and Raiden's pink cages glared magenta. A spot down onto the dash leaves roof
+            // and pillars to the world's light.
             var lightGo = new GameObject("CockpitLight");
             lightGo.transform.SetParent(body, false);
             lightGo.transform.position = eye - up * 0.12f + fwd * 0.05f;
+            var tilt = 38f * Mathf.Deg2Rad;
+            lightGo.transform.rotation = Quaternion.LookRotation(fwd * Mathf.Cos(tilt) - up * Mathf.Sin(tilt), up);
             _light = lightGo.AddComponent<Light>();
-            _light.type = LightType.Point;
-            _light.color = new Color(0.62f, 0.82f, 1f);
-            _light.intensity = 1.1f;
-            _light.range = 1.6f;
+            _light.type = LightType.Spot;
+            _light.spotAngle = 92f;
+            _light.innerSpotAngle = 50f;
+            _light.color = new Color(0.66f, 0.82f, 1f);
+            _light.intensity = 1.3f;
+            _light.range = 1.5f;
             _light.shadows = LightShadows.None;
             _light.enabled = false;
             _seatOnly.Add(lightGo);

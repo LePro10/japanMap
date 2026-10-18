@@ -72,6 +72,11 @@ namespace JapanMap.Vehicles
         [Header("Glass")]
         public float glassCrackDeltaV = 6f;
         public float glassBreakDeltaV = 13f;
+        [Tooltip("A hard hit square on the nose (or tail) cracks the windscreen (rear window) too, Δv m/s — the hit point on the "
+            + "bumper is too far away for the crack round it. The pane stays in (laminated): the driver keeps seeing out.")]
+        public float windscreenCrackDeltaV = 11f;
+        [Tooltip("From here the windscreen crack is a shattered web, Δv m/s.")]
+        public float windscreenShatterDeltaV = 19f;
 
         [Header("Scrapes")]
         [Tooltip("Sliding speed along a wall or on a hub that throws sparks, m/s.")]

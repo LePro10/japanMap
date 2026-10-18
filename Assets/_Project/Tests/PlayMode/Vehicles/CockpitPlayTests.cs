@@ -139,6 +139,64 @@ namespace JapanMap.Tests.Vehicles
             Debug.Log("[Cockpit] 15 m ahead on screen:" + report);
         }
 
+        /// <summary>
+        /// From the seat the prompt line ("F  Get out") and the auto-drive offer stay off the instruments (they lay right on
+        /// the screen of the Kaze, Round 4), and the cabin light falls on the dash, not on the roll cage overhead (the pink
+        /// cages of Kaze and Raiden glared magenta under a point light 30 cm away).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Seat_PromptsKeepOffTheInstruments_LightMissesTheRoof()
+        {
+            yield return BootGame();
+            var player = Object.FindAnyObjectByType<PlayerModeController>();
+            var garage = Object.FindAnyObjectByType<GarageSystem>();
+            var rig = Object.FindAnyObjectByType<CarCameraRig>();
+            var display = Object.FindAnyObjectByType<CockpitDisplay>();
+            var ui = Object.FindAnyObjectByType<PlayerModeUi>();
+            var map = Object.FindAnyObjectByType<Gameplay.Map.MapSystem>();
+            foreach (var id in new[] { "kaze", "hachi" })
+            {
+                if (garage.TestDriving) garage.EndTestDrive();
+                yield return null;
+                Assert.IsTrue(garage.TestDrive(id), $"test drive {id}");
+                var until = Time.realtimeSinceStartup + 10f;
+                while ((player.Car == null || player.Car.Definition.id != id || VehicleVisuals.FindPrefix(player.Car.transform, "eye") == null) && Time.realtimeSinceStartup < until) yield return null;
+                yield return IntoCockpit(rig);
+                // Standing still: "F  Get out" may show; a waypoint makes the auto-drive offer show.
+                map.Waypoint = new Vector2(player.Car.transform.position.x + 300f, player.Car.transform.position.z);
+                for (var f = 0; f < 30 && (ui.PromptLabel.text == "" || player.Car.Telemetry.speed > 0.4f); f++) yield return new WaitForSeconds(0.1f);
+                for (var f = 0; f < 3; f++) yield return null;
+                var cam = Camera.main;
+                var panel = ui.PromptLabel.panel;
+                var r = display.Cluster.GetComponent<Renderer>().bounds;
+                // The instrument screen on the panel: its bounds' corners, through the camera.
+                var min = new Vector2(float.MaxValue, float.MaxValue);
+                var max = new Vector2(float.MinValue, float.MinValue);
+                for (var c = 0; c < 8; c++)
+                {
+                    var w = new Vector3((c & 1) == 0 ? r.min.x : r.max.x, (c & 2) == 0 ? r.min.y : r.max.y, (c & 4) == 0 ? r.min.z : r.max.z);
+                    var p = UnityEngine.UIElements.RuntimePanelUtils.CameraTransformWorldToPanel(panel, w, cam);
+                    min = Vector2.Min(min, p);
+                    max = Vector2.Max(max, p);
+                }
+                var gauges = Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+                Assert.IsNotEmpty(ui.PromptLabel.text, $"{id}: a prompt to check");
+                Assert.IsFalse(ui.PromptLabel.worldBound.Overlaps(gauges), $"{id}: '{ui.PromptLabel.text}' {ui.PromptLabel.worldBound} over the instruments {gauges}");
+                var pill = Gameplay.Map.AutoDriver.Instance.OfferPill;
+                if (pill.resolvedStyle.display == UnityEngine.UIElements.DisplayStyle.Flex)
+                    Assert.IsFalse(pill.worldBound.Overlaps(gauges), $"{id}: the auto-drive offer {pill.worldBound} over the instruments {gauges}");
+                else Assert.Fail($"{id}: no auto-drive offer shown with a waypoint set");
+                map.Waypoint = null;
+
+                var light = display.GetComponentsInChildren<Light>(true).FirstOrDefault(l => l.name == "CockpitLight")
+                    ?? player.Car.GetComponentsInChildren<Light>(true).First(l => l.name == "CockpitLight");
+                Assert.AreEqual(LightType.Spot, light.type, $"{id}: the cabin light is a spot");
+                var roof = cam.transform.position + player.Car.transform.up * 0.3f;
+                var toRoof = Vector3.Angle(light.transform.forward, roof - light.transform.position);
+                Assert.That(toRoof, Is.GreaterThan(light.spotAngle * 0.5f), $"{id}: the roof above the head is outside the light's cone");
+            }
+        }
+
         [UnityTest]
         public IEnumerator Drift_HeadLooksWhereTheCarGoes_PadBuzzes_ShakeOffMeansStill()
         {

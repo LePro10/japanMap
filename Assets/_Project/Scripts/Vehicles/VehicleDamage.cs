@@ -27,6 +27,8 @@ namespace JapanMap.Vehicles
             /// <summary>Largest vertex push of this hit, m.</summary>
             public float dent;
             public bool scratched, glassCracked, glassBroke;
+            /// <summary>A hard end-on hit cracked the windscreen (front) or rear window.</summary>
+            public bool screenCracked;
             /// <summary>Wheel index torn off by this hit, −1 none.</summary>
             public int wheelLost;
             public int wheelsBent;
@@ -71,6 +73,9 @@ namespace JapanMap.Vehicles
         Collider _other;
         float _depth, _shoulder = 0.5f, _spread;
         bool _hullBaked;
+        // Windscreen [0] and rear window [1] in body space: centre and outward normal (zero normal = none), found once.
+        readonly Vector3[] _screenAt = new Vector3[2], _screenOut = new Vector3[2];
+        bool _screensFound;
 
         readonly Stopwatch _watch = new();
 
@@ -318,6 +323,7 @@ namespace JapanMap.Vehicles
                 if (hit.glassCracked && deltaV >= _s.glassBreakDeltaV)
                     hit.glassBroke = _deformer.RemoveTriangles(shell, _glassSub, bp + bd * 0.05f, radius * 0.55f) > 0;
             }
+            if (shell != null && _glassSub >= 0 && deltaV >= _s.windscreenCrackDeltaV) CrackScreen(ref hit, dir, deltaV);
             var tMarks = _watch.Elapsed.TotalMilliseconds;
             if (!float.IsNaN(plane)) Wheels(ref hit, bp, bd, plane, knee, radius, deltaV, dir);
             Fly(hit, point, dir, deltaV, slide);
@@ -331,6 +337,94 @@ namespace JapanMap.Vehicles
             Last = hit;
             Impacted?.Invoke(hit);
             return hit;
+        }
+
+        /// <summary>
+        /// A hard hit square on the nose cracks the windscreen (on the tail the rear window): the crush runs back through
+        /// the body into the pane, far from the bumper where the hit's own crack lies.
+        /// </summary>
+        void CrackScreen(ref Impact hit, Vector3 worldDir, float deltaV)
+        {
+            var along = Vector3.Dot(worldDir, _car.transform.forward);
+            if (Mathf.Abs(along) < 0.7f) return;
+            var end = along < 0f ? 0 : 1; // pushed backwards = hit on the nose
+            FindScreens();
+            if (_screenOut[end] == Vector3.zero) return;
+            var bodyT = _deformer.Body;
+            var right = bodyT.InverseTransformDirection(_car.transform.right);
+            var tile = deltaV >= _s.windscreenShatterDeltaV ? DamageMarks.Tile.Shatter : (_seed & 1) == 0 ? DamageMarks.Tile.Crack : DamageMarks.Tile.Crack2;
+            var radius = Mathf.Lerp(0.42f, 0.7f, Mathf.InverseLerp(_s.windscreenCrackDeltaV, _s.windscreenShatterDeltaV, deltaV));
+            // A little off centre, like a real stone or crush point; the pane stays in (laminated glass).
+            var at = _screenAt[end] + right * ((_seed % 5 - 2) * 0.08f);
+            if (!_marks.Add(_deformer.Shell, _glassSub, at, -_screenOut[end], right, radius, tile)) return;
+            hit.screenCracked = true;
+            hit.glassCracked = true;
+            ScreenCracks++;
+            _fx.Bits(bodyT.TransformPoint(at), bodyT.TransformDirection(_screenOut[end]), 8, _s.glassColor, Color.white, 0.02f);
+        }
+
+        /// <summary>Windscreen and rear window: glass faces high on the body looking forward (back) and up, area-weighted.</summary>
+        void FindScreens()
+        {
+            if (_screensFound) return;
+            _screensFound = true;
+            var shell = _deformer.Shell;
+            _deformer.Prepare(shell);
+            if (_glassSub >= shell.subMeshes.Length) return;
+            var bodyT = _deformer.Body;
+            var toBody = _deformer.PartToBody(shell);
+            var fwd = bodyT.InverseTransformDirection(_car.transform.forward);
+            var up = bodyT.InverseTransformDirection(_car.transform.up);
+            // Height range of the whole shell along the car's up: the panes sit in its upper half, the lamp lenses below.
+            float lo = float.MaxValue, hi = float.MinValue;
+            foreach (var v in shell.rest)
+            {
+                var h = Vector3.Dot(toBody.MultiplyPoint3x4(v), up);
+                lo = Mathf.Min(lo, h);
+                hi = Mathf.Max(hi, h);
+            }
+            var minH = lo + (hi - lo) * 0.55f;
+            var sum = new Vector3[2];
+            var nSum = new Vector3[2];
+            var area = new float[2];
+            var info = shell.subMeshes[_glassSub];
+            for (var k = info.indexStart; k < info.indexStart + info.indexCount; k += 3)
+            {
+                var a = toBody.MultiplyPoint3x4(shell.rest[shell.tris[k]]);
+                var b = toBody.MultiplyPoint3x4(shell.rest[shell.tris[k + 1]]);
+                var c = toBody.MultiplyPoint3x4(shell.rest[shell.tris[k + 2]]);
+                var centre = (a + b + c) / 3f;
+                if (Vector3.Dot(centre, up) < minH) continue;
+                var n = Vector3.Cross(b - a, c - a);
+                var twice = n.magnitude;
+                if (twice < 1e-8f) continue;
+                n /= twice;
+                var f = Vector3.Dot(n, fwd);
+                // Either winding: a pane may be modelled one-sided either way round; facing up and to an end is what counts.
+                if (Vector3.Dot(n, up) < 0f) { n = -n; f = -f; }
+                if (Vector3.Dot(n, up) < 0.15f || Mathf.Abs(f) < 0.3f) continue;
+                var end = f > 0f ? 0 : 1;
+                sum[end] += centre * twice;
+                nSum[end] += n * twice;
+                area[end] += twice;
+            }
+            for (var e = 0; e < 2; e++)
+            {
+                if (area[e] <= 0f) continue;
+                _screenAt[e] = sum[e] / area[e];
+                _screenOut[e] = nSum[e].normalized;
+            }
+        }
+
+        /// <summary>Windscreen / rear-window cracks since the last repair.</summary>
+        public int ScreenCracks { get; private set; }
+
+        /// <summary>Windscreen (0) / rear window (1) centre in body space, or null (tests, tools).</summary>
+        public Vector3? ScreenCentre(int end)
+        {
+            if (!_bound) return null;
+            FindScreens();
+            return _screenOut[end] == Vector3.zero ? null : _screenAt[end];
         }
 
         void Wheels(ref Impact hit, Vector3 bp, Vector3 bd, float plane, float knee, float radius, float deltaV, Vector3 worldDir)
@@ -609,6 +703,7 @@ namespace JapanMap.Vehicles
             _slid.Clear();
             _markQueue.Clear();
             _drooped[0] = _drooped[1] = false;
+            ScreenCracks = 0;
             Scrape = 0f;
             if (_bound)
             {

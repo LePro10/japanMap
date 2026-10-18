@@ -113,12 +113,23 @@ namespace JapanMap.Tests.OnFoot
             NavMesh.SamplePosition(tokyo, out var stand, 40f, NavMesh.AllAreas);
             mode.Walker.Place(stand.position, 0f);
             yield return new WaitForSeconds(3f);
-            var ped = crowd.People.Where(p => p.gameObject.activeSelf).OrderBy(p => Vector3.Distance(p.transform.position, stand.position)).First();
-            ped.Agent.isStopped = true; // a still target, so the shot is deterministic
-
+            // A person with a free run-up: from the west only, a lamp or a vending machine on the line stopped the car short
+            // in some runs (the crowd wanders, so the nearest person changes) — closest 6.8 m, car standing.
             var car = mode.Car;
+            Pedestrian ped = null;
+            var from = Vector3.zero;
+            foreach (var p in crowd.People.Where(p => p.gameObject.activeSelf && !p.Knocked).OrderBy(p => Vector3.Distance(p.transform.position, stand.position)))
+            {
+                for (var k = 0; k < 8 && ped == null; k++)
+                {
+                    var dir = Quaternion.Euler(0f, k * 45f, 0f) * Vector3.right;
+                    if (FreeRunUp(p, dir, 14f, car)) { ped = p; from = p.transform.position - dir * 14f; }
+                }
+                if (ped != null) break;
+            }
+            Assert.NotNull(ped, "no person with a free 14 m run-up near the Tokyo stop");
+            ped.Agent.isStopped = true; // a still target, so the shot is deterministic
             var target = ped.transform.position;
-            var from = target - Vector3.right * 14f;
             car.Place(from, 90f, fromAbove: 3f);
             yield return new WaitForFixedUpdate();
             var aim = target - car.transform.position;
@@ -127,15 +138,20 @@ namespace JapanMap.Tests.OnFoot
             car.Body.linearVelocity = aim.normalized * 14f; // ~50 km/h
             var body = ped.GetComponent<Rigidbody>();
             var rest = body.worldCenterOfMass.y;
-            float before = 0f, peak = rest;
+            float before = 0f, peak = rest, closest = float.MaxValue, fastest = 0f;
             var hit = false;
             for (var i = 0; i < 200 && !hit; i++)
             {
                 before = car.Body.linearVelocity.magnitude;
                 yield return new WaitForFixedUpdate();
                 hit = ped.Knocked;
+                closest = Mathf.Min(closest, Vector3.Distance(car.Body.worldCenterOfMass, ped.transform.position));
+                fastest = Mathf.Max(fastest, car.Body.linearVelocity.magnitude);
             }
-            Assert.IsTrue(hit, "the car must hit the pedestrian");
+            // The numbers say why when it misses (ran past, stopped short, or the person was never in the way).
+            Assert.IsTrue(hit, $"the car must hit the pedestrian: closest {closest:F2} m, fastest {fastest * 3.6f:F0} km/h, car at " +
+                $"{car.transform.position:F1}, person at {ped.transform.position:F1} (started {target:F1}), active {ped.gameObject.activeSelf}, " +
+                $"mode {mode.Current}, kinematic {car.Body.isKinematic}, frozen {car.Body.constraints}");
             var after = car.Body.linearVelocity.magnitude;
             for (var i = 0; i < 60; i++)
             {
@@ -153,6 +169,23 @@ namespace JapanMap.Tests.OnFoot
             Assert.IsFalse(ped.Knocked, "gets up again");
             Assert.IsTrue(ped.Agent.isOnNavMesh, "back on the pavement NavMesh");
             Assert.IsNull(roads.CarriagewayAt(ped.transform.position), "not standing on the road");
+        }
+
+        /// <summary>A car-sized box from <paramref name="length"/> m before the person up to them hits nothing solid.</summary>
+        static bool FreeRunUp(Pedestrian p, Vector3 dir, float length, VehicleController car)
+        {
+            var at = p.transform.position;
+            var start = at - dir * length;
+            var g = Ground(start);
+            if (Mathf.Abs(g - at.y) > 1.5f) return false; // a slope or a wall's top, not the same street
+            var half = new Vector3(1.1f, 0.6f, 0.5f);
+            var rot = Quaternion.LookRotation(dir);
+            var mask = ~(GameLayers.NotGround | (1 << GameLayers.Layer(GameLayers.Vehicle)));
+            // Above the kerb and the road's bumps; up to just before the person (their trigger is ignored anyway).
+            var origin = new Vector3(start.x, Mathf.Max(g, at.y) + 0.9f, start.z);
+            foreach (var h in Physics.BoxCastAll(origin, half, dir, rot, length - 0.6f, mask, QueryTriggerInteraction.Ignore))
+                if (!h.collider.transform.IsChildOf(p.transform) && !h.collider.transform.IsChildOf(car.transform)) return false;
+            return true;
         }
 
         static float Ground(Vector3 at) =>
