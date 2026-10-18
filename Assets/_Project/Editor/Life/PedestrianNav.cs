@@ -59,7 +59,10 @@ namespace JapanMap.Editor.Life
                 s.overrideVoxelSize = true;
                 s.voxelSize = 0.15f; // half the agent radius: 2 m pavements stay open, data stays small
                 s.minRegionArea = 4f;
-                Build(s, bounds, network);
+                var data = Build(s, bounds, network, SeaLevel());
+                s.RemoveData();
+                s.navMeshData = data;
+                s.AddData();
                 var path = $"{Dir}/Nav_{Safe(name)}.asset";
                 AssetDatabase.DeleteAsset(path);
                 AssetDatabase.CreateAsset(s.navMeshData, path);
@@ -78,7 +81,41 @@ namespace JapanMap.Editor.Life
         /// network's carriageway (centre ± half width). The road meshes alone are not enough: where the
         /// terrain pokes through a road (commons-drive), its top was walkable.
         /// </summary>
-        static void Build(NavMeshSurface s, Bounds bounds, JapanMap.World.RoadNetwork network)
+        /// <summary>
+        /// The NavMesh data again, into the assets that are there (same GUIDs — the streamed Nav scenes keep pointing at
+        /// them, no scene is written): for a change to roads, terrain or the rules here. Batch:
+        /// <c>node Tools/unity-run.mjs JapanMap.Editor.Life.PedestrianNav.RefreshData</c>.
+        /// </summary>
+        [MenuItem("JapanMap/Life/Refresh Pedestrian NavMesh Data")]
+        public static string RefreshData()
+        {
+            MapScene.OpenGameScene();
+            SetAgent();
+            var network = AssetDatabase.LoadAssetAtPath<JapanMap.World.RoadNetwork>(RoadImporter.NetworkPath);
+            var sea = SeaLevel();
+            var report = new List<string>();
+            foreach (var s in Object.FindObjectsByType<NavMeshSurface>(FindObjectsInactive.Include))
+            {
+                if (s.navMeshData == null || !s.name.StartsWith("Nav_")) continue;
+                var data = Build(s, new Bounds(s.center, s.size), network, sea);
+                EditorUtility.CopySerialized(data, s.navMeshData);
+                EditorUtility.SetDirty(s.navMeshData);
+                report.Add(s.name);
+            }
+            AssetDatabase.SaveAssets();
+            var line = $"[Nav] data refreshed in place: {string.Join(", ", report)} (sea level {sea?.ToString("F2") ?? "none"})";
+            Debug.Log(line);
+            return line;
+        }
+
+        /// <summary>Height of the sea surface (a quad without collider over the whole map), or null.</summary>
+        static float? SeaLevel()
+        {
+            var sea = MapScene.Part(WaterImporter.GroupName, "Sea");
+            return sea != null && sea.TryGetComponent<Renderer>(out var r) ? r.bounds.max.y : null;
+        }
+
+        static NavMeshData Build(NavMeshSurface s, Bounds bounds, JapanMap.World.RoadNetwork network, float? seaLevel)
         {
             var sources = new List<NavMeshBuildSource>();
             var markups = new List<NavMeshBuildMarkup>();
@@ -128,15 +165,26 @@ namespace JapanMap.Editor.Life
                         area = NotWalkable, // an obstacle; nobody stands on a counter
                     });
                 }
+            // Below the sea: the sea is a surface without a collider, and the harbour floor under it was walkable —
+            // Funaura's passers-by walked in the basin with their heads above the water. The quays stand above it.
+            if (seaLevel != null && bounds.min.y < seaLevel.Value)
+            {
+                var depth = seaLevel.Value + 0.05f - bounds.min.y;
+                sources.Add(new NavMeshBuildSource
+                {
+                    shape = NavMeshBuildSourceShape.ModifierBox,
+                    size = new Vector3(bounds.size.x, depth, bounds.size.z),
+                    transform = Matrix4x4.Translate(new Vector3(bounds.center.x, bounds.min.y + depth / 2f, bounds.center.z)),
+                    area = NotWalkable,
+                });
+            }
             var settings = NavMesh.GetSettingsByID(s.agentTypeID);
             settings.overrideVoxelSize = s.overrideVoxelSize;
             settings.voxelSize = s.voxelSize;
             settings.minRegionArea = s.minRegionArea;
             var data = NavMeshBuilder.BuildNavMeshData(settings, sources, new Bounds(Vector3.zero, Vector3.one), Vector3.zero, Quaternion.identity);
             NavMeshBuilder.UpdateNavMeshData(data, settings, sources, bounds);
-            s.RemoveData();
-            s.navMeshData = data;
-            s.AddData();
+            return data;
         }
 
         static string Safe(string n) => n.Replace(" ", "").Replace("&", "");
