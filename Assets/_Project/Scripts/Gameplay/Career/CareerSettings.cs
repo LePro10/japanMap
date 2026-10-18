@@ -80,7 +80,7 @@ namespace JapanMap.Gameplay.Career
                 unlocks = new[] { FeatureId.Map, FeatureId.Waypoints, FeatureId.Races }, typicalSeconds = 40 },
             new() { id = "open-map", chapter = "First Race", title = "Open the map", hint = "M", touchHint = "MENU · Map",
                 goal = CareerGoal.MapOpen, reward = 100, unlocks = new[] { FeatureId.AutoDrive }, typicalSeconds = 20 },
-            new() { id = "auto-drive", chapter = "First Race", title = "Let the car drive you there", hint = "Auto-drive · steer to take over",
+            new() { id = "auto-drive", chapter = "First Race", title = "Let the car drive you there", hint = "Hold G · steer to take over",
                 touchHint = "AUTO · steer to take over", goal = CareerGoal.AutoDrive, reward = 200, waypoint = CareerTarget.NextEvent, typicalSeconds = 30 },
             new() { id = "reach-race", chapter = "First Race", title = "Get to the start", hint = "Follow the arrow to the beacon",
                 touchHint = "Follow the arrow to the beacon", goal = CareerGoal.ReachEvent, amount = 30, waypoint = CareerTarget.NextEvent, typicalSeconds = 60 },

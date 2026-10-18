@@ -124,7 +124,7 @@ MonoBehaviour:
   - id: auto-drive
     chapter: First Race
     title: Let the car drive you there
-    hint: "Auto-drive \xB7 steer to take over"
+    hint: "Hold G \xB7 steer to take over"
     touchHint: "AUTO \xB7 steer to take over"
     goal: 9
     amount: 0
