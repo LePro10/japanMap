@@ -64,6 +64,8 @@ namespace JapanMap.Gameplay.Map
         /// <summary>Why it last handed control back (tests, diagnostics).</summary>
         public string LastStop { get; private set; } = "";
         public static AutoDriver Instance { get; private set; }
+        /// <summary>Driving itself with the cinematic picture on screen (the route tape and the HUD stay out of it).</summary>
+        public bool Cinematic => IsActive && _rig != null && _rig.Cinematic != null && _rig.Cinematic.Showing;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics() => Instance = null;
@@ -524,7 +526,10 @@ namespace JapanMap.Gameplay.Map
             _top.style.display = _bottom.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
             _info.style.display = IsActive && k > 0.6f ? DisplayStyle.Flex : DisplayStyle.None;
             _info.style.opacity = Mathf.Clamp01((k - 0.6f) / 0.4f);
-            _info.style.bottom = Mathf.Max(8f, (h - 20f) * 0.5f) + UiPanel.Safe.w * 0.5f;
+            // Phone upright: in the top bar — the bottom one holds the pad and the pedals.
+            var top = UiPanel.IsPortrait;
+            _info.style.top = top ? Mathf.Max(8f, (h - 20f) * 0.5f) + UiPanel.Safe.y * 0.5f : StyleKeyword.Auto;
+            _info.style.bottom = top ? StyleKeyword.Auto : Mathf.Max(8f, (h - 20f) * 0.5f) + UiPanel.Safe.w * 0.5f;
             if (IsActive && _pilot != null)
             {
                 var left = Mathf.Max(0f, _pilot.Length - _pilot.Position);

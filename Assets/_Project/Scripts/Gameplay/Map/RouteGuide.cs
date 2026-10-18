@@ -89,8 +89,9 @@ namespace JapanMap.Gameplay.Map
             var off = Flat(from - PointAt(_arc));
             _offFor = off > 30f ? _offFor + Time.unscaledDeltaTime : 0f;
             if (_offFor > 1f) { _offFor = 0f; Plan(from, aim.Value); Track(from); }
-            // On the road only from the car; on foot the map and the arrow guide.
-            Fade(car != null ? 1f : 0f);
+            // On the road only from the car; on foot the map and the arrow guide; not in the auto-drive film (D49).
+            var film = AutoDriver.Instance != null && AutoDriver.Instance.Cinematic;
+            Fade(car != null && !film ? 1f : 0f);
             if (car == null) return;
             if (Mathf.Abs(_arc - _builtArc) > 1.5f || Time.unscaledTime - _builtAt > 0.5f) Build();
             _mat.SetFloat(ArcId, _arc);

@@ -120,12 +120,26 @@ namespace JapanMap.Vehicles
         {
             var s = _s.shots[_shot];
             var k = Mathf.Clamp01(_shotTime / Mathf.Max(0.1f, _shotLength));
-            _cam.Lens.FieldOfView = Mathf.Lerp(s.fov.x, s.fov.y, k * k * (3f - 2f * k));
+            _cam.Lens.FieldOfView = Fit(Mathf.Lerp(s.fov.x, s.fov.y, k * k * (3f - 2f * k)));
             _cam.Lens.NearClipPlane = s.kind == CineShot.Cockpit ? 0.06f : 0.2f;
             // Handheld: slow sway in yaw, pitch and a little roll.
             var h = s.handheld * GameOptions.CameraShake;
             var sway = Quaternion.Euler((Mathf.PerlinNoise(_seed, 1.7f) - 0.5f) * 2f * h, (Mathf.PerlinNoise(3.1f, _seed) - 0.5f) * 2f * h, (Mathf.PerlinNoise(_seed * 0.7f, 5.3f) - 0.5f) * h);
             _cam.transform.SetPositionAndRotation(pos, rot * sway);
+        }
+
+        /// <summary>
+        /// The shot list's lenses are vertical FOV on 16:9. A narrower screen (a phone upright) keeps most of the width
+        /// instead of the height — otherwise a 34° tracking shot became a close-up of a tree.
+        /// </summary>
+        static float Fit(float fov)
+        {
+            var cam = Camera.main;
+            var aspect = cam != null ? cam.aspect : 16f / 9f;
+            if (aspect >= 16f / 9f - 0.01f) return fov;
+            var halfH = Mathf.Atan(Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad) * (16f / 9f));
+            var keepWidth = 2f * Mathf.Atan(Mathf.Tan(halfH) / aspect) * Mathf.Rad2Deg;
+            return Mathf.Min(100f, Mathf.Lerp(fov, keepWidth, 0.75f));
         }
 
         /// <summary>Picks the next shot: weighted, not one of the last two, and only where its first pose is clear.</summary>

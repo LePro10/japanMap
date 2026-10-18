@@ -762,3 +762,36 @@ Anlass: Mensch findet das Menü „grottenschlecht", will Lade-, Titel- und Haup
   linear, sein Event-System wird an der Wurzel abgefangen, damit ein Druck genau einmal wirkt).
 - **Freischalten**: `Core/Unlocks` (`FeatureId`, `IUnlockQuery`, Standard `AllUnlocked`). Menüs fragen nur ab und
   zeigen gesperrt statt zu verstecken; die Karriere (nächste Runde) setzt `Unlocks.Query`.
+
+## D49 — Auto-Drive zum Wegpunkt mit Kino-Kamera („wie Forza Horizon 6") · 2026-10-18
+
+**Recherche** (Quellen: [Forza-Support Barrierefreiheit FH6](https://support.forza.net/hc/en-us/articles/51644264237075-Forza-Horizon-6-Accessibility-Support),
+[Shacknews FH6-Tasten](https://www.shacknews.com/article/149195/fh6-controls-keybindings), [Playday-Vorschau](https://playday.one/2026/04/08/forza-horizon-6-hands-on-preview/),
+[GameGeeker](https://gamegeeker.com/news/forza-horizon-6-ai-autodrive-controversy), [RDR2-Autopilot](https://www.rdr2.org/guides/red-dead-redemption-2-horse-autopilot-guide/),
+[GTA-V-Mod Cinematic Drive](https://www.gta5-mods.com/pt/scripts/cinematic-drive-with-auto-pilot-red-dead-redemption-2-cinematic-camera)):
+FH6 startet AutoDrive nach Wegpunkt auf der Karte über ANNA (Gamepad Steuerkreuz, PC Taste), Lenken/Gas/Bremse übernimmt
+sofort, eigene Taste schaltet eine Kino-Kamera (HUD weg, Blickwinkel wechseln selbst: „von oben bis zur Nahaufnahme der
+Räder"). Fahrstil umstritten (zu brav bis rücksichtslos). Schnittlängen, Letterbox, Ankunft: nicht belegt — Letterbox und
+weiche Übernahme nach RDR2/GTA-Mod.
+
+**Umsetzung:**
+- **Auslösen:** G halten (0,45 s), Steuerkreuz rechts halten, Touch **AUTO** (oben, nur mit Wegpunkt), Karte „Auto-drive"
+  auf jeder Karte mit Wegpunkt (setzt ihn und fährt), Hinweis-Pille „AUTO-DRIVE · hold G" am Desktop. Nicht im Rennen
+  (auch Startkarte/Countdown), nicht unter Titel/Intro, gesperrt über `Unlocks` (`FeatureId.AutoDrive`). `Core.IAutoDrive`
+  implementiert `Gameplay/Map/AutoDriver`, `AutoDrive.Current` wird beim Start gesetzt.
+- **Fahren:** echte Physik über `PathFollower` (wie Verkehr/Gegner), Navi-Route (`RouteGraph`), linke Spur (25 % der
+  Breite, ≤ 2,2 m; schmale Straßen Mitte; zur Mitte in engen Kurven und an Kreuzungen mit Höhenstufe), bis 95 km/h,
+  bremst für Kurven, Fahrzeuge, Fußgänger (Abstand 5 m + 1,1 s), überholt nach 2,5 s Stehen auf der rechten Spur,
+  Dreipunktwende wenn der Weg hinten liegt, neu planen bei 14 m Abweichung, nach 8 s ohne Fortschritt zurück auf die
+  Route. Ankunft: bremst weich, 1,2 s Halten, Wegpunkt weg, „You have arrived". Übernahme: Lenken > 0,2 oder Pedal > 0,25
+  (erst nachdem einmal losgelassen wurde) oder G antippen.
+- **Kino-Kamera** (`Vehicles/CinematicCamera`, Einstellungen `Data/Vehicles/CinematicCameraSettings`): eine zusätzliche
+  Cinemachine-Kamera (kein Render-Ziel, keine zweite Kamera), harte Schnitte alle 4–8 s zwischen Cockpit, Nase, Seite,
+  tiefer und hoher Tele-Verfolgung, Helikopter, Straßenrand-Vorbeifahrt, Rad; Brennweiten-Fahrt, Handkamera (folgt der
+  Einstellung „Camera shake"), erste Einstellung Helikopter. Jede Pose wird vor dem Zeigen geprüft (Kugel 0,4 m frei,
+  nicht unter Gelände/Wasser, Sichtlinie zum Auto; Pfosten 0,25 s geduldet) — sonst sofort der nächste Schnitt.
+  Hochkant hält das Objektiv die Bildbreite. **C** schaltet zur Spielerkamera und zurück. Letterbox (11 %), HUD,
+  Tastenleiste, Navi-Band und Tempo-Effekte aus; eine Zeile „AUTO-DRIVE · 1,2 km to waypoint · Steer … to take control".
+- **Navi verbessert (klein, Regel 15):** `RouteGraph` kennt Breite und Kreuzungsart je Punkt und meidet Straßenenden an
+  Kreuzungen mit Höhenstufe (150 m Aufschlag). Anlass: hill-steps-west liegt neben der Einmündung von west-works-03-2
+  1,3 m höher — eine Kante, an der jedes Auto hängen bleibt (Kartenfehler, siehe Abschlussbericht).

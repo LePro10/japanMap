@@ -156,7 +156,8 @@ namespace JapanMap.Gameplay
         void UpdateKeyHints()
         {
             if (_keys == null) return;
-            var show = !_touchSeen && !UiPanel.IsPhone && !player.Suspended && progress != null && progress.Data != null
+            // Not under the auto-drive letterbox (D49): the picture is the film, the take-over line says what to press.
+            var show = !_touchSeen && !UiPanel.IsPhone && !player.Suspended && !Core.AutoDrive.IsActive && progress != null && progress.Data != null
                 && progress.Data.playSeconds < keyHintsUntil;
             _keys.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
             if (!show || _keysMode == player.Current) return;
@@ -250,7 +251,7 @@ namespace JapanMap.Gameplay
                 return;
             }
             var message = Time.unscaledTime - player.MessageAt < messageSeconds ? player.Message : "";
-            var text = message != "" ? message : player.Prompt;
+            var text = Core.AutoDrive.IsActive ? "" : message != "" ? message : player.Prompt;
             // On touch the button is the prompt; drop the key name.
             if (_touchSeen && text.StartsWith("F  "))
                 text = (player.Current == PlayerModeController.Mode.Walking ? "Tap CAR to " : "Tap OUT to ") + text.Substring(3).ToLowerInvariant();

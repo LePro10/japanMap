@@ -531,7 +531,7 @@ namespace JapanMap.Editor
                     var ahead = c.transform.InverseTransformPoint(p.Ahead(6f));
                     Log.AppendLine($"  adprobe on={ad.IsActive} at ({c.transform.position.x:0.0}, {c.transform.position.z:0.0}) kmh {c.Telemetry.forwardSpeed * 3.6f:0} target {p.TargetSpeed * 3.6f:0} " +
                                    $"in {c.Input.throttle:0.0}/{c.Input.brake:0.0}/{c.Input.steer:0.00} ahead6 ({ahead.x:0.0}, {ahead.z:0.0}) s {p.Position:0}/{p.Length:0} off {p.Offset:0.0} " +
-                                   $"cap {p.speedCap * 3.6f:0} lat {p.lateral:0.0} turns {p.Turns} unsticks {p.Unsticks} replans {ad.Replans} recoveries {ad.Recoveries} stop '{ad.LastStop}'" +
+                                   $"shot {Object.FindAnyObjectByType<JapanMap.Vehicles.CarCameraRig>()?.Cinematic?.Current} cap {p.speedCap * 3.6f:0} lat {p.lateral:0.0} turns {p.Turns} unsticks {p.Unsticks} replans {ad.Replans} recoveries {ad.Recoveries} stop '{ad.LastStop}'" +
                                    (p.pointLimit != null ? $" limited {System.Linq.Enumerable.Count(p.pointLimit, x => x < 100f)}/{p.pointLimit.Length}" : ""));
                     return true;
                 }
