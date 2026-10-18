@@ -551,6 +551,38 @@ namespace JapanMap.Editor
                     }
                     return true;
                 }
+                case "cockpit":
+                {
+                    // cockpit: the seat in use (D51) — spec, the parts from the seat, where they sit before the camera, the head.
+                    var rigC = Object.FindAnyObjectByType<JapanMap.Vehicles.CarCameraRig>();
+                    var cd = Object.FindAnyObjectByType<JapanMap.Gameplay.Hud.CockpitDisplay>();
+                    var camK = Camera.main;
+                    Log.AppendLine($"  cockpit mode {rigC.Current} spec '{rigC.Spec.carId}' wheel {rigC.Spec.wheel} cluster {rigC.Spec.cluster} active {cd?.Active} fov {camK.fieldOfView:0.0}");
+                    if (cd != null)
+                        foreach (var g in cd.SeatParts)
+                            if (g != null)
+                            {
+                                var vp = camK.WorldToViewportPoint(g.transform.position);
+                                Log.AppendLine($"    {g.name} active {g.activeInHierarchy} viewport ({vp.x:0.00}, {vp.y:0.00}, {vp.z:0.00})");
+                            }
+                    if (cd?.Wheel != null) { var vw = camK.WorldToViewportPoint(cd.Wheel.position); Log.AppendLine($"    wheel {cd.Wheel.name} viewport ({vw.x:0.00}, {vw.y:0.00}, {vw.z:0.00})"); }
+                    var hd = rigC.Head;
+                    Log.AppendLine($"    head euler {hd.Euler} offset {hd.Offset} rumble {rigC.Rumble}");
+                    return true;
+                }
+                case "car":
+                {
+                    // car <id> [x z yaw]: pictures only — the player in that car (no test-drive timer), at x z or where the car stands.
+                    var pmv = Object.FindAnyObjectByType<PlayerModeController>();
+                    var spv = Object.FindAnyObjectByType<JapanMap.Vehicles.PlayerCarSpawner>();
+                    var prv = Object.FindAnyObjectByType<JapanMap.Gameplay.Progress.PlayerProgress>();
+                    var defv = prv.Fleet.Get(a[1]);
+                    var atv = a.Length > 3 ? new Vector3(F(2), 0f, F(3)) : pmv.Car.transform.position;
+                    spv.SpawnAt(defv, atv, a.Length > 4 ? F(4) : pmv.Car.transform.eulerAngles.y);
+                    pmv.Seat();
+                    Log.AppendLine($"  car {a[1]} → {pmv.Car?.Definition?.id}");
+                    return true;
+                }
                 case "career":
                 {
                     // career <stepId>: setup like a save mid-career — the steps before it claimed, the career started there.

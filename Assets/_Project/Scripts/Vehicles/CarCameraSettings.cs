@@ -45,9 +45,6 @@ namespace JapanMap.Vehicles
         public float speedShake = 0.035f;
         [Tooltip("Speed (m/s) from which the buzz starts and at which it is full.")]
         public Vector2 speedShakeRange = new(22f, 55f);
-        [Tooltip("Cockpit: the head is pressed back at the burst, degrees of pitch up.")]
-        public float cockpitBurstPitch = 2.5f;
-
         [Header("Look and zoom")]
         [Tooltip("Orbit speed of the right stick, rad/s.")]
         public float orbitSpeed = 2.4f;
@@ -62,17 +59,72 @@ namespace JapanMap.Vehicles
         [Tooltip("Shot list of the cinematic camera while the car drives itself; none = auto-drive keeps the chase camera.")]
         public CinematicCameraSettings cinematic;
 
-        [Header("Cockpit")]
-        public float cockpitFov = 62f;
+        [Header("Cockpit seat (D51)")]
+        [Tooltip("Eye, field of view, wheel and instruments per car.")]
+        public CockpitSettings cockpits;
+        [Tooltip("Narrowest horizontal view in the cockpit, degrees: a phone held upright widens the vertical view to keep it.")]
+        public float cockpitMinHorizontalFov = 74f;
         public float cockpitFovBoost = 2f;
-        public float cockpitNear = 0.1f;
-        [Tooltip("Look down from the eye line, rad.")]
-        public float cockpitLookPitch = -0.12f;
-        [Tooltip("Share of the drift slip the head turns into, 0…1.")]
-        public float cockpitDriftLook = 0.65f;
-        [Tooltip("Head roll per m/s² of lateral acceleration in the cockpit (the body leans out of the bend), degrees.")]
-        public float cockpitLean = 0.35f;
-        [Tooltip("Head pitch per m/s² of longitudinal acceleration (pressed back, thrown forward), degrees.")]
-        public float cockpitSurge = 0.18f;
+        [Tooltip("Cockpit: the head is pressed back at the burst, degrees of pitch up.")]
+        public float cockpitBurstPitch = 2.5f;
+
+        [Header("Cockpit head: look (D51)")]
+        [Tooltip("Share of the slide angle the head turns into (0 = eyes on the nose, 1 = eyes on the travel).")]
+        public float headDriftLook = 0.8f;
+        [Tooltip("The head turns ahead of the yaw: seconds of yaw rate.")]
+        public float headYawLead = 0.12f;
+        [Tooltip("Degrees of head turn per degree of front-wheel angle (looking into the bend).")]
+        public float headSteerLook = 0.35f;
+        public float headLookMax = 42f;
+        [Tooltip("Head turn response, rad/s (critically damped).")]
+        public float headLookRate = 5.5f;
+
+        [Header("Cockpit head: g-forces (D51)")]
+        [Tooltip("Response of the lean to the forces, 1/s.")]
+        public float headLeanRate = 6f;
+        [Tooltip("Head roll per g sideways, degrees.")]
+        public float headRoll = 3.5f;
+        [Tooltip("Head pitch per g along the car (back under power, down on the brakes), degrees.")]
+        public float headSurge = 2.2f;
+        [Tooltip("Head shift per g, m (out of the bend, back under power).")]
+        public float headShift = 0.035f;
+        public float headSink = 0.012f;
+
+        [Header("Cockpit head: kicks and buzz (D51, scaled by the Camera shake option)")]
+        [Tooltip("Pitch kick of a gear change, degrees.")]
+        public float shiftKick = 0.9f;
+        [Tooltip("Pitch kick per m/s of touchdown speed, degrees; and its cap.")]
+        public float landingKick = 0.45f;
+        public float landingKickMax = 4f;
+        [Tooltip("Kick per m/s of crash Δv, degrees; and its cap.")]
+        public float impactKick = 0.45f;
+        public float impactKickMax = 6f;
+        [Tooltip("Suspension speed (sum of the wheels, m/s) from which a bump or kerb kicks.")]
+        public float bumpFrom = 0.9f;
+        public float bumpKick = 0.9f;
+        public float bumpKickMax = 1.6f;
+        [Tooltip("Spring of the kicks: frequency rad/s, damping ratio.")]
+        public float kickFrequency = 16f;
+        public float kickDamping = 0.38f;
+        [Tooltip("Road buzz at full speed, degrees.")]
+        public float buzz = 0.1f;
+        [Tooltip("Speed (m/s) at which the buzz starts and is full.")]
+        public Vector2 buzzSpeed = new(6f, 55f);
+        [Tooltip("Buzz factor on gravel and open ground.")]
+        public float buzzGravel = 2.6f;
+        public float buzzTerrain = 3.6f;
+        [Tooltip("Tyre shudder, degrees: drifting, wheelspin, the nitro burst.")]
+        public float buzzDrift = 0.22f;
+        public float buzzWheelspin = 0.14f;
+        public float buzzBurst = 0.3f;
+        [Tooltip("Buzz frequency, Hz-ish (Perlin steps per second).")]
+        public float buzzFrequency = 24f;
+
+        [Header("Pad rumble (D51, Vibration option)")]
+        [Tooltip("Motor speeds at full signal: low motor (hits, landings, kerbs), high motor (tyres, ground).")]
+        public float rumbleLow = 0.85f;
+        public float rumbleHigh = 0.35f;
+        [Tooltip("How fast a hit's rumble fades, 1/s.")]
+        public float rumbleFade = 7f;
     }
 }

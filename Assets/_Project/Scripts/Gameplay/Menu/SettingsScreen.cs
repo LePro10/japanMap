@@ -85,6 +85,7 @@ namespace JapanMap.Gameplay.Menu
             Ui.SliderRow(p, "Steering", 50f, 150f, GameOptions.Steering * 100f, v => $"{v:0} %", v => GameOptions.Steering = Mathf.Round(v) / 100f);
             Ui.SliderRow(p, "Chase distance", 4f, 8f, GameOptions.ChaseDistance, v => $"{v:0.0} m", v => GameOptions.ChaseDistance = v);
             Ui.ChoiceRow(p, "Camera shake", new[] { "Off", "Low", "Full" }, GameOptions.CameraShake, i => GameOptions.CameraShake = i);
+            Ui.ChoiceRow(p, "Controller vibration", new[] { "Off", "On" }, GameOptions.Vibration ? 1 : 0, i => GameOptions.Vibration = i == 1);
             Ui.ChoiceRow(p, "Touch throttle", new[] { "Auto", "Pedal" }, GameOptions.AutoThrottle ? 0 : 1, i => GameOptions.AutoThrottle = i == 0);
             Ui.ChoiceRow(p, "Touch hand", new[] { "Right", "Left" }, GameOptions.LeftHanded ? 1 : 0, i => GameOptions.LeftHanded = i == 1);
             Ui.SliderRow(p, "Touch buttons", 100f, 140f, GameOptions.ButtonScale * 100f, v => $"{v:0} %", v => GameOptions.ButtonScale = Mathf.Round(v) / 100f);

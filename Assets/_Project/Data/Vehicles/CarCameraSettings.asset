@@ -32,17 +32,44 @@ MonoBehaviour:
   burstShake: 0.18
   speedShake: 0.035
   speedShakeRange: {x: 22, y: 55}
-  cockpitBurstPitch: 2.5
   orbitSpeed: 2.4
   recenterRate: 0.8
   zoomMin: 0.42
   zoomMax: 2.4
   zoomStep: 0.1
   cinematic: {fileID: 11400000, guid: 956f1ec7f06d145479c65910ffd0a7ef, type: 2}
-  cockpitFov: 68
+  cockpits: {fileID: 11400000, guid: 8373c61db5d504dd6bb8124a7c749469, type: 2}
+  cockpitMinHorizontalFov: 74
   cockpitFovBoost: 2
-  cockpitNear: 0.1
-  cockpitLookPitch: -0.12
-  cockpitDriftLook: 0.65
-  cockpitLean: 0.35
-  cockpitSurge: 0.18
+  cockpitBurstPitch: 2.5
+  headDriftLook: 0.8
+  headYawLead: 0.12
+  headSteerLook: 0.35
+  headLookMax: 42
+  headLookRate: 5.5
+  headLeanRate: 6
+  headRoll: 3.5
+  headSurge: 2.2
+  headShift: 0.035
+  headSink: 0.012
+  shiftKick: 0.9
+  landingKick: 0.45
+  landingKickMax: 4
+  impactKick: 0.45
+  impactKickMax: 6
+  bumpFrom: 0.9
+  bumpKick: 0.9
+  bumpKickMax: 1.6
+  kickFrequency: 16
+  kickDamping: 0.38
+  buzz: 0.1
+  buzzSpeed: {x: 6, y: 55}
+  buzzGravel: 2.6
+  buzzTerrain: 3.6
+  buzzDrift: 0.22
+  buzzWheelspin: 0.14
+  buzzBurst: 0.3
+  buzzFrequency: 24
+  rumbleLow: 0.85
+  rumbleHigh: 0.35
+  rumbleFade: 7
