@@ -817,3 +817,38 @@ Anlass: Mensch will einen langen, nie langweiligen, überspringbaren Einstieg, d
 - **Wirtschaft:** 5.400 Sparks einmalig (≤ 2 Sitzungen, kein Schritt über der kleinsten Rennprämie), Tabelle in
   ECONOMY.md von `EconomySim` erzeugt. Rennen sind weiter ohne Freischaltung fahrbar (Beacons in der Welt); gesperrt
   sind nur Menü-Wege — bewusst, damit Neugier nie bestraft wird.
+
+## D51 — Cockpit je Auto: Sitz aus Messung, eigene Lenkräder, Kopf, der mitschaut · 2026-10-18
+
+**Anlass** (Mensch): „Die First-Person-View sieht sehr schlecht aus, man sieht zum Teil nicht raus, überall gleich,
+so ein Geschwindigkeitsding mitten im Screen … beim F1 tief sitzen, echtes F1-Lenkrad, beim Driften mitschauen."
+Bestandsaufnahme (`Captures/cockpit-before/`): dicke Arm-Röhren mitten im Bild, eine zweite Tacho-Fläche über dem
+Armaturenbrett plus Head-up auf der Scheibe, Modell-Lenkräder bis auf Augenhöhe, beim F1 das Auge über dem Helm
+(Halo quer durchs Bild), alle Autos mit derselben Kamera.
+
+**Umsetzung:**
+- **Daten je Auto** `Data/Vehicles/CockpitSettings.asset` (`CockpitSpec`): Augpunkt-Versatz, FOV, Neigung, Nah-Ebene,
+  Lenkrad (Modell / gebaut: rund, Sport mit flachem Boden, Formel-Yoke mit Display, Schaltlichtern, Wippen), Einschlag,
+  Instrumente (analog / digital / am Lenkrad), Anteil Blick, Lehne, Rütteln. Verknüpft über `CarCameraSettings.cockpits`.
+- **Sitz aus Messung, nicht geraten:** `CockpitView` schießt Sichtstrahlen gegen die gezeichneten Dreiecke des Autos
+  (Glas ausgenommen) → „Straße sichtbar ab x m", Fensterband oben/unten. Ergebnis: Sportwagen 20 cm nach vorn
+  (vergrößert das Fenster in beide Richtungen; anheben holt nur das Dach ins Bild), Neigung so, dass der Horizont bei
+  ~42 % Bildhöhe liegt, Modell-Lenkräder 6,5 cm tiefer. F1 (hanami): Auge 19 cm tiefer (unter dem Halo-Bogen, über dem
+  Monocoque), Yoke 7 cm höher, ±45° Einschlag. Straße sichtbar ab 3–12 m je Auto.
+- **Instrumente** liegen auf den Modell-Instrumenten (Material `…_gauge`/`…_screen`): Rundinstrumente (`AnalogCluster`,
+  Painter2D) in Hachi, Mame, Hauler, Kumo, Rotor, Suprema; Digital in Yama, Kaze, Raiden; Formel am Lenkrad. Head-up auf
+  der Scheibe abgeschafft (Option `headUp` nur noch tief über der Haube, Test verbietet Überdeckung der Straße).
+- **Arme** mit Ellbogen, Schultern hinter/unter der Kamera — nur Unterarme und Handschuhe im Bild.
+- **Kopf** (`CockpitHead`, Werte in `CarCameraSettings`): Blick in Fahrtrichtung (70 % des Driftwinkels, Gier-Vorhalt
+  0,12 s, Lenkeinschlag), bis 35°, kritisch gedämpft; G-Kräfte (Rollen, Nicken, Versatz); Stöße beim Schalten, Landen,
+  Aufprall (D47), Bodenwellen/Bordsteine (Federweg-Geschwindigkeit); Brummen nach Tempo, Belag (Kies ×2,6, Gelände
+  ×3,6), Drift, Durchdrehen, Burst. Rütteln folgt „Camera shake" (Aus = sofort still, auch „Reduced motion"), der Blick nicht.
+  Federn in 1/120-s-Schritten (ein langes Bild ließ sie aufschaukeln).
+- **Rumble** (Input System `SetMotorSpeeds`): tiefer Motor = Stöße, hoher = Reifen/Belag; neue Option „Controller
+  vibration"; aus bei Pause, Fokusverlust, zu Fuß, Kino-Bild. Im Browser ungeprüft (Unity-WebGL-Gamepads haben ggf. kein Haptik).
+- **Hochkant-Handy:** Cockpit hält mindestens 74° Bildbreite (vertikales FOV wächst, bis 100°).
+- **Schaden:** Riss-Folien (`DamageMarks`) beidseitig — Scheibenrisse auch vom Sitz aus (A/B `Captures/cockpit-crash/ab.png`).
+- **Kino-Kamera** (D49) nimmt für ihre Cockpit-Einstellung den korrigierten Sitz.
+- **Verfolgerkamera beim Driften** geprüft (`Captures/chase-drift/`): folgt schon der Fahrtrichtung (velocityBlend 0,55),
+  zeigt die Flanke — unverändert gelassen.
+- **Kosten:** Cockpit-Zusätze ≈ 10 Draw Calls (Lenkrad 3, Arme 6, Anzeige 1), Licht auf Niedrig aus.

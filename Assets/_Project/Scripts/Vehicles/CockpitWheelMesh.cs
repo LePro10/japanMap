@@ -59,13 +59,13 @@ namespace JapanMap.Vehicles
             var half = r * Mathf.Sin(flat * Mathf.Deg2Rad);
             b.Capsule(Grip, new Vector3(-half, y, 0f), new Vector3(half, y, 0f), t, 12);
             // Top centre marker.
-            b.Box(Accent, new Vector3(0f, r, -t * 0.2f), new Vector3(0.03f, t * 2.15f, t * 2.15f), Quaternion.identity);
+            b.Box(Accent, new Vector3(0f, r, -t * 0.15f), new Vector3(0.022f, t * 2.05f, t * 1.4f), Quaternion.identity);
             // Spokes at 3, 9 and 6 o'clock, a flat hub plate.
             b.Box(Trim, new Vector3(-r * 0.55f, -r * 0.05f, 0.015f), new Vector3(r * 0.8f, r * 0.2f, 0.02f), Quaternion.Euler(0f, 0f, -6f));
             b.Box(Trim, new Vector3(r * 0.55f, -r * 0.05f, 0.015f), new Vector3(r * 0.8f, r * 0.2f, 0.02f), Quaternion.Euler(0f, 0f, 6f));
             b.Box(Trim, new Vector3(0f, -r * 0.5f, 0.015f), new Vector3(r * 0.24f, r * 0.7f, 0.02f), Quaternion.identity);
             b.Cylinder(Trim, Vector3.forward * 0.03f, r * 0.28f, 0.05f, 24);
-            b.Box(Accent, new Vector3(0f, 0f, -0.002f), new Vector3(r * 0.3f, r * 0.12f, 0.006f), Quaternion.identity);
+            b.Box(Grip, new Vector3(0f, 0f, -0.002f), new Vector3(r * 0.3f, r * 0.12f, 0.006f), Quaternion.identity); // the horn pad, dark (an accent here glowed in the middle)
         }
 
         static void Formula(Builder b, float r)
@@ -104,7 +104,17 @@ namespace JapanMap.Vehicles
                 var m = new Mesh { name = name, subMeshCount = 3 };
                 m.SetVertices(_v);
                 m.SetNormals(_n);
-                for (var i = 0; i < 3; i++) m.SetTriangles(_t[i], i);
+                for (var i = 0; i < 3; i++)
+                {
+                    // Each face turned to look along its normals (clockwise fronts): the primitives need not mind their winding.
+                    var t = _t[i];
+                    for (var k = 0; k < t.Count; k += 3)
+                    {
+                        var face = Vector3.Cross(_v[t[k + 1]] - _v[t[k]], _v[t[k + 2]] - _v[t[k]]);
+                        if (Vector3.Dot(face, _n[t[k]] + _n[t[k + 1]] + _n[t[k + 2]]) < 0f) (t[k + 1], t[k + 2]) = (t[k + 2], t[k + 1]);
+                    }
+                    m.SetTriangles(t, i);
+                }
                 m.RecalculateBounds();
                 return m;
             }

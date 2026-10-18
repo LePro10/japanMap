@@ -196,6 +196,20 @@ namespace JapanMap.Tests
                 for (var i = 0; i < 3; i++) Assert.Greater(m.GetIndexCount(i), 0, $"{kind} part {i}");
                 Assert.Less(m.vertexCount, 6000, $"{kind}: light enough for the web");
                 Assert.That(m.bounds.size.x, Is.InRange(0.25f, 0.45f), $"{kind}: wheel sized");
+                // Faces wound so their front looks out (Unity draws clockwise fronts): a wrong turn hides the rim from the driver.
+                var v = m.vertices;
+                var n = m.normals;
+                for (var sub = 0; sub < 3; sub++)
+                {
+                    var t = m.GetTriangles(sub);
+                    var inward = 0;
+                    for (var i = 0; i < t.Length; i += 3)
+                    {
+                        var face = Vector3.Cross(v[t[i + 1]] - v[t[i]], v[t[i + 2]] - v[t[i]]);
+                        if (face.sqrMagnitude > 1e-14f && Vector3.Dot(face, n[t[i]] + n[t[i + 1]] + n[t[i + 2]]) < 0f) inward++;
+                    }
+                    Assert.AreEqual(0, inward, $"{kind} part {sub}: faces turned inside out");
+                }
                 Object.DestroyImmediate(m);
             }
         }
