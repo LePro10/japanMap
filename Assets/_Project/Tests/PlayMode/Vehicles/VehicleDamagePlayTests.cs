@@ -261,7 +261,8 @@ namespace JapanMap.Tests.Vehicles
 
             IEnumerator Wreck()
             {
-                yield return RamHouse(car, 110f);
+                // Corner first like the wheel-loss test: head-on at 110 tore a wheel off only sometimes (red in the full run).
+                yield return RamHouse(car, 110f, 25f);
                 yield return Settle(d);
                 Assert.That(d.NeedsRepair, "wrecked");
                 Assert.That(d.WheelsLost, Is.GreaterThan(0));

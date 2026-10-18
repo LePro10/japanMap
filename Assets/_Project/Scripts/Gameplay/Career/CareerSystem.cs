@@ -99,7 +99,7 @@ namespace JapanMap.Gameplay.Career
         {
             if (_drift != null) _drift.ChainEnded -= OnChain;
             if (_travel != null) _travel.Travelled -= OnTravel;
-            if (AutoDrive.Current != null) AutoDrive.Current.Arrived -= OnArrived;
+            if (_autoHooked != null) _autoHooked.Arrived -= OnArrived;
             if (Active) Unlocks.Query = null;
             if (Instance == this) Instance = null;
         }
@@ -130,7 +130,7 @@ namespace JapanMap.Gameplay.Career
             Unlocks.Query = _chain;
             // One voice: the career points the way now; the old first-goal guide waits until the career is over.
             if (_guide != null) { _guideWasOn = _guide.enabled; _guide.enabled = false; }
-            if (AutoDrive.Current != null) AutoDrive.Current.Arrived += OnArrived;
+            // Arrived is hooked in Update (auto-drive may register after us); hooking here too counted it twice.
             Debug.Log($"[Career] on · step {_chain.Index + 1}/{_chain.Count}");
         }
 

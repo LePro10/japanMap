@@ -551,6 +551,25 @@ namespace JapanMap.Editor
                     }
                     return true;
                 }
+                case "career":
+                {
+                    // career <stepId>: setup like a save mid-career — the steps before it claimed, the career started there.
+                    var cs = Object.FindAnyObjectByType<JapanMap.Gameplay.Career.CareerSystem>();
+                    var prc = Object.FindAnyObjectByType<JapanMap.Gameplay.Progress.PlayerProgress>();
+                    if (cs == null || prc == null) { Log.AppendLine("  career: no career system"); return true; }
+                    JapanMap.Gameplay.Career.CareerSystem.RunInEditor = true;
+                    var claims = prc.Data.claims;
+                    if (!claims.Contains(JapanMap.Gameplay.Career.CareerChain.On)) claims.Add(JapanMap.Gameplay.Career.CareerChain.On);
+                    foreach (var st in cs.Settings.steps)
+                    {
+                        if (st.id == a[1]) break;
+                        var c = JapanMap.Gameplay.Career.CareerChain.Claim(st);
+                        if (!claims.Contains(c)) claims.Add(c);
+                    }
+                    if (!cs.Active) typeof(JapanMap.Gameplay.Career.CareerSystem).GetMethod("Start", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(cs, null);
+                    Log.AppendLine($"  career {(cs.Active ? "on" : "off")} at step {cs.Step + 1}: {cs.Chain?.Index}");
+                    return true;
+                }
                 case "record":
                 {
                     // record <seconds> <name>: what the listener hears → <out>/<name>.wav (editor only).

@@ -2,7 +2,7 @@
 // Play the real game (Boot.unity) in the open editor and drive it like a player, then stop:
 //   node Tools/play.mjs <outDir> "<script>"     e.g.
 //   node Tools/play.mjs Captures/p6-walk "wait 3; shot start; hold w; frames walk 6 0.3; release w; press f; wait 1; probe"
-// Commands (Editor/PlayScript.cs): waypoint x z · autodrive [off] · figcam me|n angle dist (camera beside a figure) · wait s · hold key… · release key… · press key · mouse dx dy s ·
+// Commands (Editor/PlayScript.cs): career <stepId> (save mid-career) · waypoint x z · autodrive [off] · figcam me|n angle dist (camera beside a figure) · wait s · hold key… · release key… · press key · mouse dx dy s ·
 // shot name [w h] · cam x y z lx ly lz [fov] · capture fps · frames name n dt [w h] · screen name (with UI) · tap <button text> (real mouse click) · tapmap x z (click on the world map) · record s name (game sound → WAV) · gameview w h · text (menu page) · frames name n dt · probe · waitrace (until the event shows its result) · played s · ads fill|unfilled|off · conflict sparks min · aim x z · orbit x z r (circle anticlockwise) · sparks n · garage pick id/buy/fit Engine 2/setup Drift/paint Navy/rims 1/kit 1/close. Keys are Input System names (w, f, space, leftShift).
 // Prints result.txt (log + probes). Never starts while the editor is already playing (the human may play).
 import { existsSync, readFileSync, rmSync } from 'node:fs';
