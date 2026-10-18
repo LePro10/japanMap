@@ -139,6 +139,33 @@ namespace JapanMap.Tests
             Assert.AreEqual(0, count, $"terrain above the road surface by > 15 cm at {count} lane samples, worst {worst:F2} m ({worstAt})");
         }
 
+        /// <summary>
+        /// Where roads meet a car finds no kerb: every road end that runs into another is driven with raycasts along three
+        /// lanes (JunctionCheck). hill-steps-west stood 1.3 m above the mouth of west-works-03-2 and Auto-Drive got stuck
+        /// (D49); 47 such steps over 0.25 m before D54, up to 3.85 m. Eight are known and capped (they must not grow):
+        /// mouths onto the banked, sloping ring that a flat row cannot follow (cut as before D54, else the body hits the
+        /// mouth at 115 km/h — RingDipTests), and streets with opposite grades overlapping. Fix: warped mouths (D54).
+        /// </summary>
+        [Test]
+        public void Junctions_HaveNoStepACarHits()
+        {
+            var known = new System.Collections.Generic.Dictionary<string, float>
+            {
+                ["south-market-05-2 → ring"] = 0.55f,
+                ["needle-approach → ring"] = 0.55f,
+                ["needle-approach-2 → ring"] = 0.4f,
+                ["lantern-south → ring"] = 0.35f,
+                ["south-market-02 → ring"] = 0.35f,
+                ["east-lantern-05 → east-lantern-10"] = 0.5f,
+                ["lantern-north → bellwood-edge"] = 0.3f,
+                ["west-works-03 → west-works-road"] = 0.3f,
+            };
+            var network = UnityEditor.AssetDatabase.LoadAssetAtPath<JapanMap.World.RoadNetwork>(RoadImporter.NetworkPath);
+            var steps = JunctionCheck.Find(network, JunctionCheck.Limit);
+            var bad = steps.Where(st => !known.TryGetValue($"{st.road} → {st.host}", out var cap) || st.height > cap).ToList();
+            Assert.IsEmpty(bad, $"steps over {JunctionCheck.Limit} m where roads meet:\n  " + string.Join("\n  ", bad));
+        }
+
         [Test]
         public void Roads_LieOnTheCarvedTerrain()
         {

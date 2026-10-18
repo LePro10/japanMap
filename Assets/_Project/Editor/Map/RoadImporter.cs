@@ -147,6 +147,36 @@ namespace JapanMap.Editor.Map
             return msg;
         }
 
+        /// <summary>
+        /// After a change to road heights (RoadProfile): surface and guardrail meshes, the runtime network and the carved
+        /// terrain, all in place — no scene is rewritten (Import All gives every object a new ID). Batch:
+        /// <c>node Tools/unity-run.mjs JapanMap.Editor.Map.RoadImporter.RefreshProfiles</c>.
+        /// </summary>
+        [MenuItem("JapanMap/Map/Refresh Road Profiles")]
+        public static void RefreshProfiles()
+        {
+            var settings = MapImportSettings.LoadOrCreate();
+            RefreshSurfaceMeshes();
+            var roads = ResolveTrims(Load(settings), TerrainImporter.RawGround(settings));
+            var types = settings.roadTypes.ToDictionary(t => t.type);
+            var index = new SegmentIndex(roads, types);
+            var rails = new Dictionary<(int, int), Chunk>();
+            foreach (var road in roads) BuildRails(road, types[road.type], settings, index, rails);
+            var written = new HashSet<string>();
+            var missing = 0;
+            foreach (var kv in rails)
+            {
+                var name = $"Rail_{kv.Key.Item1}_{kv.Key.Item2}";
+                if (AssetDatabase.LoadAssetAtPath<Mesh>($"{MeshDir}/{name}.asset") == null) missing++;
+                Save(name, ToMesh(kv.Value), written);
+            }
+            SaveNetwork(roads, types);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[Map] rails refreshed: {rails.Count} chunks, {missing} new (new ones need Import All)");
+            TerrainImporter.RefreshHeights();
+            JunctionCheck.Report();
+        }
+
         public const string NetworkPath = MeshDir + "/RoadNetwork.asset";
 
         /// <summary>
@@ -196,22 +226,24 @@ namespace JapanMap.Editor.Map
         /// </summary>
         public static List<Road> ResolveTrims(List<Road> roads, Func<float, float, float> ground = null)
         {
+            var shoulders = MapImportSettings.LoadOrCreate().roadTypes.ToDictionary(t => t.type, t => t.shoulder);
+            float ShoulderOf(Road r) => shoulders.TryGetValue(r.type ?? "", out var v) ? v : 0f;
             foreach (var road in roads)
             {
                 if (road.closed || road.centerline.Length < 12) continue;
                 var c = road.centerline;
                 var last = c.Length - 3;
                 float trimStart = road.trimStart, trimEnd = road.trimEnd;
-                foreach (var other in roads)
-                {
-                    if (other == road) continue;
-                    var (dS, halfS) = Nearest(other, c[0], c[2]);
-                    // Into the other carriageway by half a metre (the side road lies a hair lower there, RoadImporter
-                    // junctionSink): cut back to its edge + 1 m left grass between the two (owner 2026-10-17).
-                    if (dS < 2) trimStart = Mathf.Max(trimStart, halfS - 0.5f);
-                    var (dE, halfE) = Nearest(other, c[last], c[last + 2]);
-                    if (dE < 2) trimEnd = Mathf.Max(trimEnd, halfE - 0.5f);
-                }
+                // An end on another road keeps its last row inside that road's carriageway, both corners half a metre in
+                // (the side road lies a hair lower there, junctionSink): cut back to its edge + 1 m left grass between the
+                // two (owner 2026-10-17), and cut by the centreline an oblique mouth's far corner ended beside the other
+                // road over bare ground (D54). The file's trims ended there too, so here they do not count.
+                // Where every road ends (a grid corner) one keeps its end whole, or all were cut and left a hole of bare
+                // ground in the middle (east-lantern-05/-10/-08, 0.9 m deep).
+                var hostS = RoadProfile.HostOfEnd(roads, road, false, out var keepS);
+                var hostE = RoadProfile.HostOfEnd(roads, road, true, out var keepE);
+                if (hostS != null || keepS) trimStart = hostS != null ? MouthTrim(road, hostS, false, ShoulderOf(hostS), road.trimStart) : 0f;
+                if (hostE != null || keepE) trimEnd = hostE != null ? MouthTrim(road, hostE, true, ShoulderOf(hostE), road.trimEnd) : 0f;
                 // An end lying on another road's surface duplicates it; above it, it is a ramp across that
                 // road (legacy bellwood-edge ran 70 m along the ring, up to 3.4 m above it). Cut it back to
                 // where it leaves the other road.
@@ -224,7 +256,7 @@ namespace JapanMap.Editor.Map
                 }
                 foreach (var j in road.junctions ?? Array.Empty<Road.Junction>())
                 {
-                    if (j.trim <= 0) continue;
+                    if (j.trim <= 0 || (j.at == "start" ? hostS != null || keepS : hostE != null || keepE)) continue;
                     // The file's junction trims ended roads at the other road's edge and beyond: at most into its lane now.
                     var other = roads.Find(o => o.id == j.with);
                     var cap = other != null ? Nearest(other, j.at == "start" ? c[0] : c[last], j.at == "start" ? c[2] : c[last + 2]).half - 0.5f : j.trim;
@@ -236,6 +268,51 @@ namespace JapanMap.Editor.Map
                 road.trimEnd = Mathf.Min(trimEnd, maxTrim);
             }
             return roads;
+        }
+
+        /// <summary>
+        /// Length to cut from one end of <paramref name="road"/> that lies on <paramref name="host"/>: up to the last row
+        /// whose corners both lie half a metre inside the host's carriageway — or, where no row fits there (a road wider
+        /// than the host, an oblique mouth), both on its surface with the shoulder. A row with a corner outside left a strip
+        /// of bare ground between the two roads (lantern-south-5 at the ring, 0.8 m deep). None fits: not cut.
+        /// </summary>
+        static float MouthTrim(Road road, Road host, bool fromEnd, float hostShoulder, float fileTrim)
+        {
+            var c = road.centerline;
+            var n = c.Length / 3;
+            // A banked road (highway, mountain road) tilts away under a flat mouth: a wide one that fits nowhere on it is cut
+            // as before D54 (the file's trim, its edge less half a metre) — uncut, lantern-south's mouths lay 0.4 m above
+            // the ring's lanes and the body hit them at 115 km/h (RingDipTests).
+            var banked = host.type == "highway" || host.type == "mountain";
+            var least = banked ? Mathf.Max(fileTrim, RoadProfile.Surface(host, c[fromEnd ? (n - 1) * 3 : 0], c[fromEnd ? (n - 1) * 3 + 2 : 2]).half - 0.5f) : 0f;
+            int Last(float inset)
+            {
+                var keep = -1;
+                for (var k = 0; k < n / 2; k++)
+                {
+                    var i = fromEnd ? n - 1 - k : k;
+                    var (tx, tz) = RoadProfile.Tangent(c, n, i);
+                    var own = (road.widths != null && i < road.widths.Length ? road.widths[i] : 8f) / 2;
+                    var inside = true;
+                    foreach (var side in new[] { -own, own })
+                    {
+                        // Beyond the host's end is not inside it: a road going on from there is not cut.
+                        var (d, half, hy, _, beyond) = RoadProfile.Surface(host, c[i * 3] + tz * side, c[i * 3 + 2] - tx * side);
+                        // …and the host lies at the row's height under both corners: a flat row along a climbing road (a
+                        // slant mouth) stands above its lanes.
+                        inside &= !beyond && d <= half + inset && Mathf.Abs(hy - c[i * 3 + 1]) <= 0.1f;
+                    }
+                    if (!inside) break;
+                    keep = k;
+                }
+                return keep;
+            }
+            var rows = Last(-0.5f);
+            // On its surface with the shoulder — not on a banked or fast road: its lanes tilt and climb under a flat row.
+            if (rows < 0 && !banked) rows = Last(hostShoulder - 0.3f);
+            if (rows >= 0) return rows * Spacing(road);
+            // Not even that (a wide road at a slant): uncut, flat on the host to its centre — on a banked one cut as before.
+            return least;
         }
 
         /// <summary>The other road this far above means a viaduct overhead, not an overlap, m (legacy deck from 2.5 m).</summary>
@@ -258,7 +335,9 @@ namespace JapanMap.Editor.Map
             for (var k = 0; k < count; k++)
             {
                 var i = fromEnd ? count - 1 - k : k;
-                var (d, half, y) = NearestWithHeight(other, c[i * 3], c[i * 3 + 2]);
+                // Beyond the other road's end is not on it (lantern-north going on from meiji-dori's end lost 16 m).
+                var (d, half, y, _, beyond) = RoadProfile.Surface(other, c[i * 3], c[i * 3 + 2]);
+                if (beyond) d = float.PositiveInfinity;
                 var ownHalf = (road.widths != null && i < road.widths.Length ? road.widths[i] : 8f) / 2;
                 var dy = c[i * 3 + 1] - y;
                 if (-dy > OverheadClearance) break; // the other road is a viaduct overhead
@@ -279,23 +358,6 @@ namespace JapanMap.Editor.Map
             // Ordinary junctions reach about one width into the other road at its height and are trimmed
             // elsewhere; cut here only a stretch at another level or an end running along the other road.
             return ramp > 2 || run * Spacing(road) > 4f * otherHalf + 4f ? run + 1 : 0;
-        }
-
-        static (float d, float half, float y) NearestWithHeight(Road host, float x, float z)
-        {
-            var line = host.centerline;
-            var count = line.Length / 3;
-            var segments = host.closed ? count : count - 1;
-            var best = (d: float.PositiveInfinity, half: 4f, y: 0f);
-            for (var i = 0; i < segments; i++)
-            {
-                var j = (i + 1) % count;
-                var d = SegmentDistance(x, z, line[i * 3], line[i * 3 + 2], line[j * 3], line[j * 3 + 2]);
-                if (d >= best.d) continue;
-                var half = (host.widths != null && i < host.widths.Length ? host.widths[i] : 8f) / 2;
-                best = (d, half, (line[i * 3 + 1] + line[j * 3 + 1]) * 0.5f);
-            }
-            return best;
         }
 
         static (float d, float half) Nearest(Road host, float x, float z)

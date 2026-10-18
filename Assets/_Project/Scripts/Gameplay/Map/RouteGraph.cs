@@ -106,7 +106,9 @@ namespace JapanMap.Gameplay.Map
 
         /// <summary>
         /// The crossing at a node; <see cref="Crossing.Step"/> when the other road lies more than 0.6 m higher or lower
-        /// right beside it (an embankment or kerb in the lane: hill-steps-west beside west-works-03-2).
+        /// right there (an embankment or kerb in the lane: hill-steps-west beside west-works-03-2 before D54). Its height
+        /// is taken at this node's own place: node to node, up to 9 m apart, every sloped mouth looked like a step (24 of
+        /// them after the map fix, each a 150 m detour for Auto-Drive).
         /// </summary>
         public Crossing CrossingAt(int node)
         {
@@ -118,9 +120,40 @@ namespace JapanMap.Gameplay.Map
                 if (_road[to] == _road[node]) continue;
                 var b = Direction(to);
                 if (Mathf.Abs(Vector2.Dot(a, b)) >= 0.9f) continue; // within ~25°, either way along: a join or a neighbour
-                kind = Mathf.Abs(_pos[to].y - _pos[node].y) > 0.6f ? Crossing.Step : kind == Crossing.None ? Crossing.Level : kind;
+                // Either way round: the point of one may lie beyond the other's end (a T-junction's mouth).
+                var dy = Mathf.Min(Mathf.Abs(HeightOfRoadAt(to, _pos[node]) - _pos[node].y), Mathf.Abs(HeightOfRoadAt(node, _pos[to]) - _pos[to].y));
+                kind = dy > 0.6f ? Crossing.Step : kind == Crossing.None ? Crossing.Level : kind;
             }
             return kind;
+        }
+
+        /// <summary>
+        /// Height of the road through <paramref name="node"/> where it passes closest to <paramref name="p"/> (xz), looked
+        /// for up to three nodes along it either way (a link spans up to 9 m).
+        /// </summary>
+        float HeightOfRoadAt(int node, Vector3 p)
+        {
+            var best = float.MaxValue;
+            var y = _pos[node].y;
+            var seen = new HashSet<int> { node };
+            var ring = new List<int> { node };
+            for (var hop = 0; hop < 3 && ring.Count > 0; hop++)
+            {
+                var next = new List<int>();
+                foreach (var n in ring)
+                foreach (var (to, _) in _edges[n])
+                {
+                    if (_road[to] != _road[node]) continue;
+                    Vector3 a = _pos[n], b = _pos[to];
+                    var ab = new Vector2(b.x - a.x, b.z - a.z);
+                    var t = ab.sqrMagnitude > 1e-6f ? Mathf.Clamp01(Vector2.Dot(new Vector2(p.x - a.x, p.z - a.z), ab) / ab.sqrMagnitude) : 0f;
+                    var d = (new Vector2(a.x, a.z) + ab * t - new Vector2(p.x, p.z)).sqrMagnitude;
+                    if (d < best) { best = d; y = Mathf.Lerp(a.y, b.y, t); }
+                    if (seen.Add(to)) next.Add(to);
+                }
+                ring = next;
+            }
+            return y;
         }
 
         /// <summary>Along its own road at a node (xz, unit).</summary>
@@ -237,8 +270,8 @@ namespace JapanMap.Gameplay.Map
                 closed[cur] = true;
                 foreach (var (to, cost) in _edges[cur])
                 {
-                    // A crossing with an embankment or kerb beside it (map data: hill-steps-west 1.3 m above
-                    // west-works-03-2 at their junction) stops a car: the route goes round when it can.
+                    // A crossing with an embankment or kerb beside it stops a car: the route goes round when it can. A safety
+                    // net since D54 (the importer levels junctions and checks them: JunctionCheck), cheap — kept.
                     // Paid once, on the way into those last metres — not by a road that only passes such a crossing.
                     var tentative = gScore[cur] + cost + (_step[to] && !_step[cur] ? StepPenalty : 0f);
                     if (tentative >= gScore[to]) continue;

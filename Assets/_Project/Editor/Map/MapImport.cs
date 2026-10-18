@@ -31,6 +31,8 @@ namespace JapanMap.Editor.Map
             // The places' scenes are new: their reflection probes are baked again from the finished world (after the
             // hold, so the place scenes are open — inside it the bake found none and the probes were lost).
             Debug.Log(Look.ReflectionProbeBaker.BakeAll());
+            // Kerbs where roads meet (D54): listed after every import; MapImportTests fails on them.
+            JunctionCheck.Report();
         }
 
         static void ImportAllHeld(MapImportSettings s)
