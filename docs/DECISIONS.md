@@ -885,3 +885,27 @@ per Standard an, umschaltbar, man sieht wirklich etwas".
 - **Gegner** leuchten immer (nur Emission), **Verkehr** hat schon leuchtende Atlas-Lampen (HEAD_LIT/TAIL_LIT).
 - Gemessen (M4, Batchmode, Verfolgerblick 1280×720): Hoch 6,10 → 6,18 ms, Mittel 5,87 → 5,42, Niedrig 2,65 → 2,71 —
   im Rauschen. Zusätzliche Draw Calls: Hoch 3, Mittel 1, Niedrig 1 (+2 beim Rückwärtsfahren). Schwache Geräte ungemessen.
+
+## D53 — Feinschliff nach Runde 1–3: Frontscheibe, Cockpit-Licht, eine Stimme beim Erststart · 2026-10-18
+
+Anlass: Gesamtprüfung nach dem Zusammenführen von D47–D52, echter Durchlauf mit `play.mjs` (neu: `fresh` = Erststart
+mit Titel, Intro, Karriere im Editor).
+- **Frontscheibe (D47-Ergänzung):** ein harter Treffer genau auf Nase oder Heck (|Richtung · Fahrzeugachse| ≥ 0,7,
+  Δv ≥ 11 m/s, Spinnennetz ab 19) reißt die Front- bzw. Heckscheibe — der eigene Riss des Treffers liegt an der
+  Stoßstange und erreichte die Scheibe nie. Lage der Scheiben einmal je Auto aus den Glasflächen (obere Hälfte, zur
+  Fahrtrichtung und nach oben geneigt, flächengewichtet). Die Scheibe **bleibt drin** (Verbundglas): der Fahrer sieht
+  weiter hinaus. Werte in `VehicleDamageSettings` (`windscreenCrackDeltaV`, `windscreenShatterDeltaV`). Baum mit 55
+  (Δv 7,8) lässt sie heil, Wand mit 60–75 reißt sie.
+- **Cockpit-Licht als Spot** statt Punktlicht: es lag 30 cm unter dem Dach und ließ die pinken Käfige von Kaze und
+  Raiden grell magenta glühen; jetzt 38° nach vorn-unten auf Lenkrad und Armaturen, Dach und Säulen bekommen nur das
+  Licht der Welt.
+- **HUD im Cockpit:** „F Get out" und „AUTO-DRIVE · hold G" lagen über den Instrumenten — am Desktop rechts unten
+  (dort steht sonst die Tacho-Anzeige, die im Cockpit ausweicht), am Handy oben unter dem Dach.
+- **Scheinwerfer vom Sitz:** das Lichtbild auf der Straße liegt vom Auge flach und die Haube verdeckt die ersten
+  ~9 m — aus dem Cockpit (Kamera < 2,5 m vom Auto, wie die Lichtkegel-Grenze) ×2,4 (`seatPoolBoost`), Abblendlicht
+  40 statt 28 m lang. Kino-Kamera nutzt dieselbe Regel für ihre Cockpit-Einstellung.
+- **Erststart, eine Stimme zur Zeit:** Daily-Bonus wartet auf Titel, Wischblende und Intro (lag über dem Intro-Titel);
+  Auto-Drive wird im Intro nicht angeboten (die Karriere schaltet es erst bei Schritt 9 frei); Intro-Meldungen stehen
+  unter der HUD-Meldungszeile (Stunt und „Stuck the landing" überlagerten sich).
+- **Agenten-Läufe** starten mit dem Standard-Lichtschalter und geben dem Menschen seinen Wert zurück (PlayerPrefs sind
+  im Editor geteilt).
