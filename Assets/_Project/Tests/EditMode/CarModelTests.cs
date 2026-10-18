@@ -52,6 +52,26 @@ namespace JapanMap.Tests
             Assert.That(checkedWheels, Is.GreaterThanOrEqualTo(4), $"{id}: no tyre submesh found (material *_tire)");
         }
 
+        /// <summary>Without a loadout (rivals) only the stock rim shows: one wheel mesh per wheel after the visuals bind.</summary>
+        [TestCaseSource(nameof(Cars))]
+        public void OneRimPerWheel_WithoutLoadout(string id)
+        {
+            var car = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>($"{CarDir}/{id}.glb"));
+            try
+            {
+                foreach (var t in car.GetComponentsInChildren<Transform>(true))
+                    if (VehicleVisuals.IsTuningOption(t)) t.gameObject.SetActive(false);
+                foreach (var w in new[] { "FL", "FR", "RL", "RR" })
+                {
+                    var spin = VehicleVisuals.FindPrefix(car.transform, "spin_" + w);
+                    var shown = 0;
+                    foreach (Transform c in spin) if (c.gameObject.activeInHierarchy && c.name.StartsWith("wheelmesh_")) shown++;
+                    Assert.AreEqual(1, shown, $"{id} {w}: rims shown");
+                }
+            }
+            finally { Object.DestroyImmediate(car); }
+        }
+
         /// <summary>Tread faces must point away from the axle, flank faces away from the wheel's centre plane.</summary>
         static float OutwardShare(Mesh mesh, int sub, Matrix4x4 toCar, Vector3 centre, Vector3 axis)
         {
