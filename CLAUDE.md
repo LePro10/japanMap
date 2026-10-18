@@ -94,11 +94,10 @@ dem Unity-MCP. Der MCP verbindet sich nur beim Start einer Claude-Sitzung.
     (PLAN.md) nur in `ArtSource/` und Blender; ein zweiter Agent in einer
     eigenen Projektkopie (`git worktree` `../japanMap-cli`, eigener Zweig,
     nur Batchmode, kein MCP, keine Spiel-Instanz) — der leitende Agent führt
-    zusammen. Subagenten für Recherche sind ok.
+    zusammen: `node Tools/merge-agent.mjs <zweig>`. Subagenten für Recherche sind ok.
     Darum committet **jede** Sitzung nur ihre eigenen Pfade (`git add <pfad>`,
     nie `-A`/`commit -a`) und liest vor einem DECISIONS-Eintrag die höchste
     Nummer neu.
-
 14. **Mitdenken und gleich verbessern.** Bei Bug oder Unschönem die Ursache
     suchen. Klein: sofort beheben, prüfen, im Commit nennen. Größer: unter
     „Gefunden" in STATUS.md, bei der Aufgabe bleiben. Verbesserungen vorschlagen.
