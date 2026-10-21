@@ -56,10 +56,11 @@ namespace JapanMap.Gameplay.Map
         /// <summary>Player's waypoint (world x/z), or null.</summary>
         public Vector2? Waypoint { get; set; }
 
-        public static readonly Color Paper = new(0.965f, 0.937f, 0.894f);
-        public static readonly Color Amber = new(0.95f, 0.77f, 0.42f);
-        public static readonly Color Sakura = new(0.91f, 0.66f, 0.75f);
-        public static readonly Color Nitro = new(0.4f, 0.84f, 0.96f);
+        // Pin colours by kind ("Night Meet", D55): races momo, time trials mikan, drift sora, places paper, finds shu.
+        public static readonly Color Paper = UI.Palette.Washi;
+        public static readonly Color Amber = UI.Palette.Momo;
+        public static readonly Color Sakura = UI.Palette.Shu;
+        public static readonly Color Nitro = UI.Palette.Sora;
 
         public Vector3 PlayerPosition => player == null ? Vector3.zero
             : player.Current == PlayerModeController.Mode.Driving && player.Car != null ? player.Car.transform.position
@@ -145,7 +146,7 @@ namespace JapanMap.Gameplay.Map
                         pins.Add(new MapPin { at = p.at, icon = p.icon, color = travel.Unlocked(p) ? Paper : new Color(1f, 1f, 1f, 0.35f), size = 22f, id = "travel:" + p.id });
                 if (driftZones != null)
                     foreach (var z in driftZones.zones)
-                        if (Near(z.center)) pins.Add(new MapPin { at = z.center, icon = Icon.Drift, color = Sakura, size = 18f, id = "drift:" + z.id });
+                        if (Near(z.center)) pins.Add(new MapPin { at = z.center, icon = Icon.Drift, color = UI.Palette.Sora, size = 18f, id = "drift:" + z.id });
             }
             if (filter is MapFilter.All or MapFilter.Events && races != null && !racing)
                 foreach (var (at, index) in races.Markers)
@@ -155,7 +156,7 @@ namespace JapanMap.Gameplay.Map
                     var done = rec != null && rec.bestTier >= 3;
                     var p = new Vector2(at.x, at.z);
                     if (minimap && (done || !Near(p))) continue;
-                    pins.Add(new MapPin { at = p, icon = e.road == "needle-circuit" ? Icon.Circuit : Icon.Flag, color = done ? new Color(1f, 1f, 1f, 0.5f) : Amber, size = 22f, id = "event:" + index });
+                    pins.Add(new MapPin { at = p, icon = e.road == "needle-circuit" ? Icon.Circuit : Icon.Flag, color = done ? new Color(0.62f, 0.58f, 0.71f, 0.85f) : e.kind == RaceKind.TimeTrial ? UI.Palette.Mikan : e.kind == RaceKind.Drift ? UI.Palette.Sora : Amber, size = 24f, id = "event:" + index });
                 }
             if (filter is MapFilter.All or MapFilter.Discoveries && discoveries != null && discoveries.Set != null)
             {
@@ -190,7 +191,7 @@ namespace JapanMap.Gameplay.Map
                         pins.Add(new MapPin { at = new Vector2(e.car.transform.position.x, e.car.transform.position.z), icon = Icon.Car, color = Nitro, size = 14f, heading = e.car.transform.eulerAngles.y });
             }
 
-            if (Waypoint.HasValue) pins.Add(new MapPin { at = Waypoint.Value, icon = Icon.Flag, color = Nitro, size = 22f, id = "waypoint" });
+            if (Waypoint.HasValue) pins.Add(new MapPin { at = Waypoint.Value, icon = Icon.Flag, color = UI.Palette.Momo, size = 24f, id = "waypoint" });
             // The parked car when on foot, then the player arrow on top.
             if (!Driving && player != null && player.Car != null)
             {

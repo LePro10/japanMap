@@ -229,8 +229,11 @@ namespace JapanMap.Gameplay.Menu
                 }).Every(period).StartingIn(400 + 700 * i);
             }
 
+            // 雨上がり standing tall at the right edge, outlined in neon pink (D55); behind the column, in front of the shade.
+            var tall = Ui.Text(_root, string.Join("\n", UI.Jp.Title.ToCharArray()), "jm-title__tall", "nm-jp");
+            tall.pickingMode = PickingMode.Ignore;
             _block = Ui.Box(_root, "jm-title__block");
-            var kicker = Ui.Text(_block, "OPEN-WORLD DRIVING  ·  JAPAN", "jm-title__kicker");
+            var kicker = Ui.Text(_block, "OPEN-WORLD JAPAN", "jm-title__kicker");
             kicker.pickingMode = PickingMode.Ignore;
             // The name letter by letter: each rises in with a small delay (the logo reveal the page's loader began).
             var name = Application.productName.ToUpperInvariant();
@@ -253,7 +256,10 @@ namespace JapanMap.Gameplay.Menu
                 Ui.Box(row, "jm-title__rule").pickingMode = PickingMode.Ignore;
                 Ui.Text(row, second, "jm-title__word").pickingMode = PickingMode.Ignore;
             }
-            Ui.Text(_block, "Blue hour after the rain. An island, a car and a road to the sea.", "jm-title__sub").pickingMode = PickingMode.Ignore;
+            // The brand is the picture: no sentence under it (CrazyGames: limit text). A red 雨 seal beside the name.
+            var seal = new UI.Hanko(UI.Jp.Rain, 84f);
+            seal.AddToClassList("jm-title__seal");
+            logo.Add(seal);
 
             var list = Ui.Box(_block, "jm-title__menu");
             list.name = "title-menu";
@@ -268,6 +274,7 @@ namespace JapanMap.Gameplay.Menu
             {
                 _skip = Entry(list, "SKIP TUTORIAL", "Unlock everything, start with Sparks", SkipTutorial, primary: false);
                 _skip.name = "title-skip";
+                _skip.AddToClassList("jm-title__btn--quiet"); // a quiet text line: the intro has "hold Tab" too
             }
 
             var foot = Ui.Row(_root, "jm-title__foot");

@@ -374,3 +374,8 @@ Label { color: var(--washi); font-size: 16px; }
 .nm-stamp__name { font-size: 12px; color: var(--washi); -unity-text-align: upper-center; white-space: normal; margin-top: 6px; }
 .nm-stamp--open .nm-stamp__name { color: var(--washi-dim); }
 .nm-region { margin-top: 14px; }
+
+/* Choice buttons in a settings row: outline, the chosen one in paper. */
+.jm-setting .jm-btn { background-color: rgba(0, 0, 0, 0); border-color: rgba(245, 239, 228, 0.3); min-width: 64px; }
+.jm-setting .jm-btn:hover:enabled, .jm-setting .jm-btn:focus { background-color: rgba(245, 239, 228, 0.1); border-color: var(--washi); }
+.jm-setting .jm-btn.jm-btn--on, .jm-setting .jm-btn.jm-btn--on:hover:enabled { background-color: var(--washi); color: var(--sumi); border-color: var(--washi); }

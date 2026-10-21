@@ -76,38 +76,35 @@ namespace JapanMap.Gameplay.Menu
         public override void Build(VisualElement body)
         {
             if (_map == null) { Ui.H1(body, "Map"); return; }
-            var head = Ui.Row(body, "jm-wrap");
-            Ui.H1(head, "Map");
-            for (var i = 0; i < FilterNames.Length; i++)
-            {
-                var f = (MapFilter)i;
-                Ui.On(Ui.Button(head, FilterNames[i], () => { _filter = f; Refresh(); Menu.Rebuild(); }), _filter == f);
-            }
-            Ui.Button(head, "Me", () => { var p = _map.PlayerPosition; _centre = new Vector2(p.x, p.z); Apply(); });
-            if (_travel != null) Ui.Button(head, "Go to Sakura Commons", () => { Menu.Close(); _travel.ToCommons(); });
-
-            var cols = Ui.Box(body, "jm-cols");
+            // FH-style (D55): the map takes the page; filters as chips over it, the selection as a ticket at the right.
+            var stage = Ui.Box(body, "nm-mapstage");
             var side = UiPanel.Size;
-            // A tall desktop window (a tablet held upright: 820 × 1180 is not a phone) stacks the card under the map like
-            // a phone in portrait; side by side the card was squeezed to a strip and Travel could not be pressed (Phase 11).
             var stacked = UiPanel.IsPortrait || side.y > side.x;
-            if (stacked) cols.style.flexDirection = FlexDirection.Column;
-            // The square frame: as large as the page allows, never squeezed.
-            var square = UiPanel.IsPortrait ? side.x - 24f
-                : stacked ? Mathf.Min(side.x - 300f, side.y * 0.55f)
-                : Mathf.Min(side.y - (UiPanel.IsPhone ? 90f : 150f), side.x * 0.62f);
+            stage.style.height = UiPanel.IsPortrait ? side.x - 24f : Mathf.Max(260f, side.y - (UiPanel.IsPhone ? 70f : 170f));
             _view = new MapView(_map.Roads, _map.Regions, _map.Bounds, _map.EnsureBase()) { name = "worldmap" };
             _map.ArtLoaded -= OnArt;
             _map.ArtLoaded += OnArt;
-            _view.style.width = _view.style.height = square;
-            _view.style.flexShrink = 0;
-            _view.style.borderTopLeftRadius = _view.style.borderTopRightRadius = _view.style.borderBottomLeftRadius = _view.style.borderBottomRightRadius = 10;
-            cols.Add(_view);
-            _card = Ui.Box(cols, "jm-col");
-            _card.style.marginLeft = stacked ? 0 : 16;
-            _card.style.marginTop = stacked ? 12 : 0;
-            // Stacked, the column's flex basis 0 left the card one line high with its text spilling out.
-            if (stacked) { _card.style.flexGrow = 0; _card.style.flexShrink = 0; _card.style.flexBasis = StyleKeyword.Auto; }
+            _view.AddToClassList("nm-worldmap");
+            stage.Add(_view);
+            if (_map.Regions != null)
+            {
+                var labels = new List<(Vector2, string, string)>();
+                foreach (var r in _map.Regions.regions) labels.Add((r.labelAt, r.title, Jp.Region(r.title)));
+                _view.SetLabels(labels);
+            }
+            var head = Ui.Row(stage, "jm-wrap", "nm-mapchips");
+            for (var i = 0; i < FilterNames.Length; i++)
+            {
+                var f = (MapFilter)i;
+                Ui.On(Ui.Button(head, FilterNames[i], () => { _filter = f; Refresh(); Menu.Rebuild(); }, "nm-chip"), _filter == f, "nm-chip--on");
+            }
+            Ui.Button(head, "Me", () => { var p = _map.PlayerPosition; _centre = new Vector2(p.x, p.z); Apply(); }, "nm-chip");
+            if (_travel != null) Ui.Button(head, "Go home", () => { Menu.Close(); _travel.ToCommons(); }, "nm-chip");
+            var compass = Ui.Text(stage, Jp.North, "nm-compass", "nm-jp");
+            compass.pickingMode = PickingMode.Ignore;
+            Ui.Show(compass, !UiPanel.IsPhone);
+            var aside = stacked || UiPanel.IsPhone || Menu.Aside == null ? body : Menu.Aside;
+            _card = Ui.Box(aside, "nm-mapcard");
             if (_span < 0f)
             {
                 _span = _map.Bounds.width;
@@ -237,7 +234,10 @@ namespace JapanMap.Gameplay.Menu
             if (_card == null) return;
             _card.Clear();
             var t = new StringBuilder();
-            var panel = Ui.Box(_card, "jm-panel");
+            var panel = new Ticket { Perforation = false };
+            panel.AddToClassList("nm-mapcard__ticket");
+            panel.pickingMode = PickingMode.Position;
+            _card.Add(panel);
             var parts = _selected.Split(':');
             switch (parts[0])
             {

@@ -1,24 +1,19 @@
-/* Title screen (D48, TitleScreen.cs, docs/UI-STYLE.md): the live world behind, ink on the left for the title column,
-   the name rising in letter by letter (0.12 s + 45 ms each), neon streaks drifting through, START / CONTINUE as one
-   big entry that slides right and lights cyan when focused. Out: the column slides away (0.3 s), then the camera flies
-   to the car — or a diagonal wipe covers the jump into the first drive. Imported by Game.uss, scoped under .jm-title. */
+/* Title screen (D48, TitleScreen.cs) in "Night Meet" (D55): the live world behind, night on the left for the column,
+   雨上がり standing tall at the right edge in a pink outline, the name rising in letter by letter with a hard pink
+   shadow and a red 雨 seal, one big pink START / CONTINUE, Settings small, Skip as a quiet line. Out: the column slides
+   away, then the camera flies to the car — or a diagonal pink-ink-paper wipe covers the jump into the first drive.
+   Imported by Game.uss, scoped under .jm-title. */
 
 .jm-title .jm-title__shade { -unity-background-scale-mode: stretch-to-fill; transition: opacity 0.5s ease-out-cubic; }
-.jm-title .jm-title__floor {
-    position: absolute; left: 0; right: 0; bottom: 0; height: 240px;
-    -unity-background-scale-mode: stretch-to-fill; transition: opacity 0.5s ease-out-cubic;
-}
+.jm-title .jm-title__floor { position: absolute; left: 0; right: 0; bottom: 0; height: 240px; -unity-background-scale-mode: stretch-to-fill; transition: opacity 0.5s ease-out-cubic; }
 
 /* Neon streaks: a light trail runs left to right, jumps back unseen, runs again (TitleScreen cycles the class). */
 .jm-title .jm-title__streaks { overflow: hidden; transition: opacity 0.4s ease-out-cubic; }
-.jm-title .jm-title__streak {
-    position: absolute; left: -40%; height: 2px; width: 34%;
-    -unity-background-scale-mode: stretch-to-fill; transition-property: left; transition-duration: 0s;
-}
-.jm-title .jm-title__streak--0 { top: 23%; -unity-background-image-tint-color: rgba(94, 214, 245, 0.75); }
-.jm-title .jm-title__streak--1 { top: 61%; height: 1px; width: 22%; -unity-background-image-tint-color: rgba(255, 209, 102, 0.55); }
-.jm-title .jm-title__streak--2 { top: 78%; height: 3px; width: 40%; -unity-background-image-tint-color: rgba(143, 230, 255, 0.45); }
-.jm-title .jm-title__streak--3 { top: 11%; height: 1px; width: 18%; -unity-background-image-tint-color: rgba(232, 169, 192, 0.55); }
+.jm-title .jm-title__streak { position: absolute; left: -40%; height: 2px; width: 34%; -unity-background-scale-mode: stretch-to-fill; transition-property: left; transition-duration: 0s; }
+.jm-title .jm-title__streak--0 { top: 23%; -unity-background-image-tint-color: rgba(255, 46, 122, 0.75); }
+.jm-title .jm-title__streak--1 { top: 61%; height: 1px; width: 22%; -unity-background-image-tint-color: rgba(140, 151, 255, 0.6); }
+.jm-title .jm-title__streak--2 { top: 78%; height: 3px; width: 40%; -unity-background-image-tint-color: rgba(255, 92, 151, 0.45); }
+.jm-title .jm-title__streak--3 { top: 11%; height: 1px; width: 18%; -unity-background-image-tint-color: rgba(245, 239, 228, 0.5); }
 .jm-title .jm-title__streak--go { left: 115%; transition-timing-function: ease-in-out-sine; }
 .jm-title .jm-title__streak--0.jm-title__streak--go { transition-duration: 2.4s; }
 .jm-title .jm-title__streak--1.jm-title__streak--go { transition-duration: 3.1s; }
@@ -26,106 +21,112 @@
 .jm-title .jm-title__streak--3.jm-title__streak--go { transition-duration: 3.6s; }
 .jm-title.jm-calm .jm-title__streaks { display: none; }
 
+/* 雨上がり, tall at the right edge. */
+.jm-title .jm-title__tall { position: absolute; right: 3%; top: 6%; font-size: 112px; -unity-line-height: 100%; color: rgba(0, 0, 0, 0);
+    -unity-text-outline-width: 1.5px; -unity-text-outline-color: rgba(255, 46, 122, 0.75); -unity-text-align: upper-center;
+    opacity: 0; translate: 0 -20px; transition: opacity 0.8s ease-out-cubic 0.3s, translate 0.9s ease-out-cubic 0.3s; }
+.jm-title.jm-title--in .jm-title__tall { opacity: 1; translate: 0 0; }
+.jm-title.jm-title--out .jm-title__tall { opacity: 0; }
+
 /* The column */
-.jm-title .jm-title__block { position: absolute; left: 7%; top: 17%; width: 640px; transition: opacity 0.3s ease-in-cubic, translate 0.3s ease-in-cubic; }
-.jm-title .jm-title__kicker {
-    font-size: 15px; letter-spacing: 7px; color: var(--amber); margin-bottom: 4px; opacity: 0;
-    -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); -unity-font-style: normal;
-    transition: opacity 0.5s ease-out-cubic 0.05s;
-}
+.jm-title .jm-title__block { position: absolute; left: 7%; top: 16%; width: 660px; transition: opacity 0.3s ease-in-cubic, translate 0.3s ease-in-cubic; }
+.jm-title .jm-title__kicker { font-size: 14px; letter-spacing: 7px; color: var(--momo); margin-bottom: 6px; opacity: 0;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; transition: opacity 0.5s ease-out-cubic 0.05s; }
 .jm-title .jm-title__logo { flex-direction: row; align-items: flex-end; }
 .jm-title .jm-title__letter {
-    font-size: 136px; color: var(--paper); margin: 0; padding: 0; -unity-text-align: lower-left;
-    -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); -unity-font-style: normal;
-    text-shadow: 0 6px 26px rgba(0, 0, 0, 0.55);
+    font-size: 150px; color: #ffffff; margin: 0; padding: 0; -unity-text-align: lower-left;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal;
+    text-shadow: 8px 8px 0 var(--momo);
     opacity: 0; translate: 0 46px;
     transition-property: opacity, translate; transition-duration: 0.45s, 0.6s; transition-timing-function: ease-out-cubic, ease-out-back;
 }
-.jm-title .jm-title__second { flex-direction: row; align-items: center; margin-top: -14px; opacity: 0; transition: opacity 0.5s ease-out-cubic 0.6s; }
-.jm-title .jm-title__rule { width: 0; height: 3px; margin-right: 18px; background-color: var(--amber-hot); transition: width 0.6s ease-out-cubic 0.55s; }
-.jm-title .jm-title__word {
-    font-size: 46px; letter-spacing: 22px; color: var(--amber-hot);
-    -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); -unity-font-style: normal;
-}
-.jm-title .jm-title__sub { font-size: 18px; color: var(--paper-dim); margin-top: 14px; white-space: normal; opacity: 0; transition: opacity 0.5s ease-out-cubic 0.75s; }
-.jm-title .jm-title__menu { margin-top: 44px; width: 460px; opacity: 0; translate: -24px 0; transition: opacity 0.4s ease-out-cubic 0.85s, translate 0.5s ease-out-cubic 0.85s; }
+.jm-title .jm-title__seal { margin: 0 0 110px 18px; opacity: 0; transition: opacity 0.3s ease-out-cubic 0.75s; }
+.jm-title.jm-title--in .jm-title__seal { opacity: 1; }
+.jm-title .jm-title__second { flex-direction: row; align-items: center; margin-top: -6px; opacity: 0; transition: opacity 0.5s ease-out-cubic 0.6s; }
+.jm-title .jm-title__rule { width: 0; height: 5px; margin-right: 18px; background-color: var(--momo); transition: width 0.6s ease-out-cubic 0.55s; }
+.jm-title .jm-title__word { font-size: 54px; letter-spacing: 20px; color: rgba(0, 0, 0, 0);
+    -unity-text-outline-width: 1.5px; -unity-text-outline-color: var(--washi);
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal; }
+.jm-title .jm-title__sub { display: none; }
+.jm-title .jm-title__menu { margin-top: 48px; width: 470px; opacity: 0; translate: -24px 0; transition: opacity 0.4s ease-out-cubic 0.85s, translate 0.5s ease-out-cubic 0.85s; }
 
 .jm-title.jm-title--in .jm-title__kicker, .jm-title.jm-title--in .jm-title__letter, .jm-title.jm-title--in .jm-title__second,
-.jm-title.jm-title--in .jm-title__sub, .jm-title.jm-title--in .jm-title__menu { opacity: 1; translate: 0 0; }
+.jm-title.jm-title--in .jm-title__menu { opacity: 1; translate: 0 0; }
 .jm-title.jm-title--in .jm-title__rule { width: 96px; }
 .jm-title.jm-calm .jm-title__letter { translate: 0 0; }
 
-/* Entries */
+/* Entries: START is pink paper-edge thick; Settings an outline; Skip a quiet line. */
 .jm-title .jm-title__btn {
-    flex-direction: row; align-items: center; justify-content: flex-start; min-height: 64px; margin: 0 0 10px 0;
-    padding: 0 20px 0 0; border-radius: 6px; border-width: 1px; border-color: rgba(255, 255, 255, 0.1);
-    background-color: rgba(5, 14, 24, 0.72); overflow: hidden;
+    flex-direction: row; align-items: center; justify-content: flex-start; min-height: 58px; margin: 0 0 12px 0;
+    padding: 0 20px 0 20px; border-radius: 10px; border-width: 2px; border-color: rgba(245, 239, 228, 0.55);
+    background-color: rgba(18, 14, 30, 0.55); overflow: hidden; align-self: flex-start; min-width: 260px;
     transition: translate 0.14s ease-out-cubic, background-color 0.14s ease-out-cubic, border-color 0.14s ease-out-cubic, scale 0.1s ease-out-cubic;
 }
-.jm-title .jm-title__btn--primary { min-height: 88px; background-color: rgba(8, 30, 46, 0.86); border-color: rgba(94, 214, 245, 0.4); }
-.jm-title .jm-title__btn-bar { width: 4px; align-self: stretch; margin-right: 20px; background-color: rgba(94, 214, 245, 0.4); transition: width 0.14s ease-out-cubic, background-color 0.14s ease-out-cubic; }
+.jm-title .jm-title__btn--primary { min-height: 92px; align-self: stretch; background-color: var(--momo); border-color: var(--momo);
+    border-bottom-width: 7px; border-bottom-color: #a8114a; }
+.jm-title .jm-title__btn-bar { display: none; }
 .jm-title .jm-title__btn-text { flex-grow: 1; }
-.jm-title .jm-title__btn-label {
-    font-size: 26px; letter-spacing: 4px; color: var(--paper); -unity-text-align: middle-left;
-    -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); -unity-font-style: normal;
-}
-.jm-title .jm-title__btn--primary .jm-title__btn-label { font-size: 36px; letter-spacing: 6px; }
-.jm-title .jm-title__btn-meta { font-size: 14px; color: var(--paper-dim); -unity-text-align: middle-left; margin-top: -2px; }
+.jm-title .jm-title__btn-label { font-size: 24px; letter-spacing: 2px; color: var(--washi); -unity-text-align: middle-left;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal; }
+.jm-title .jm-title__btn--primary .jm-title__btn-label { font-size: 44px; color: #ffffff; text-shadow: 4px 4px 0 #a8114a; }
+.jm-title .jm-title__btn-meta { font-size: 13px; color: var(--washi-dim); -unity-text-align: middle-left; margin-top: 0; }
+.jm-title .jm-title__btn--primary .jm-title__btn-meta { color: rgba(255, 255, 255, 0.88); font-size: 14px; }
+.jm-title .jm-title__btn--minor .jm-title__btn-meta { display: none; }
 .jm-title .jm-title__btn-arrow { opacity: 0; translate: -10px 0; transition: opacity 0.14s ease-out-cubic, translate 0.14s ease-out-cubic; }
-.jm-title .jm-title__btn:hover, .jm-title .jm-title__btn:focus {
-    translate: 12px 0; background-color: rgba(94, 214, 245, 0.18); border-color: var(--amber-hot);
-}
-.jm-title .jm-title__btn--primary:hover, .jm-title .jm-title__btn--primary:focus { background-color: var(--amber); border-color: var(--amber-hot); }
-.jm-title .jm-title__btn--primary:hover .jm-title__btn-label, .jm-title .jm-title__btn--primary:focus .jm-title__btn-label,
-.jm-title .jm-title__btn--primary:hover .jm-title__btn-meta, .jm-title .jm-title__btn--primary:focus .jm-title__btn-meta { color: #04131c; }
-.jm-title .jm-title__btn:hover .jm-title__btn-bar, .jm-title .jm-title__btn:focus .jm-title__btn-bar { width: 8px; background-color: #ffffff; }
+.jm-title .jm-title__btn:hover, .jm-title .jm-title__btn:focus { translate: 10px 0; border-color: var(--washi); background-color: rgba(245, 239, 228, 0.12); }
+.jm-title .jm-title__btn--primary:hover, .jm-title .jm-title__btn--primary:focus { background-color: var(--momo-hot); border-color: var(--washi); border-bottom-color: var(--washi); }
 .jm-title .jm-title__btn:hover .jm-title__btn-arrow, .jm-title .jm-title__btn:focus .jm-title__btn-arrow { opacity: 1; translate: 0 0; }
 .jm-title .jm-title__btn:active { scale: 0.98 0.98; }
+.jm-title .jm-title__btn--quiet { min-height: 40px; border-width: 0; background-color: rgba(0, 0, 0, 0); padding-left: 2px; }
+.jm-title .jm-title__btn--quiet .jm-title__btn-label { font-size: 14px; letter-spacing: 2px; color: var(--washi-dim);
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); }
+.jm-title .jm-title__btn--quiet:hover, .jm-title .jm-title__btn--quiet:focus { background-color: rgba(0, 0, 0, 0); translate: 6px 0; }
+.jm-title .jm-title__btn--quiet:hover .jm-title__btn-label, .jm-title .jm-title__btn--quiet:focus .jm-title__btn-label { color: var(--washi); }
 
-/* Foot */
-/* Right, beside the version tag: on the left it lay over the last entry (UI audit 2026-10-21). */
+/* Foot: right, beside the version tag (on the left it lay over the last entry, UI audit 2026-10-21). */
 .jm-title .jm-title__foot { position: absolute; right: 96px; bottom: 26px; flex-direction: row; align-items: center; transition: opacity 0.3s ease-out-cubic; }
 .jm-title .jm-title__hint { flex-direction: row; align-items: center; margin-right: 18px; }
 .jm-title .jm-title__hint .jm-keyhint { margin: 0 8px 0 0; }
-.jm-title .jm-title__hint-label { font-size: 14px; color: var(--paper-dim); }
+.jm-title .jm-title__hint-label { font-size: 14px; color: var(--washi); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; }
 .jm-title.jm-touch .jm-title__foot, .jm-title.jm-phone .jm-title__foot { display: none; }
-.jm-title .jm-title__tag { position: absolute; right: 28px; bottom: 28px; font-size: 12px; color: rgba(246, 239, 228, 0.4); }
+.jm-title .jm-title__tag { position: absolute; right: 28px; bottom: 28px; font-size: 12px; color: rgba(245, 239, 228, 0.4); }
 
 /* Out */
 .jm-title.jm-title--out .jm-title__block { opacity: 0; translate: -70px 0; }
 .jm-title.jm-title--out .jm-title__shade, .jm-title.jm-title--out .jm-title__floor, .jm-title.jm-title--out .jm-title__streaks,
 .jm-title.jm-title--out .jm-title__foot, .jm-title.jm-title--out .jm-title__tag { opacity: 0; }
 
-/* Wipe: a tilted ink band with a neon edge sweeps over (cover), then on out to the right (reveal). */
+/* Wipe: a tilted band — pink, a line of ink, paper — sweeps over (cover), then on out to the right (reveal). */
 .jm-title .jm-title__wipe {
     position: absolute; top: -40%; bottom: -40%; left: 0; width: 170%; translate: -110% 0; rotate: 12deg;
-    background-color: #050f17; transition-property: translate; transition-timing-function: ease-in-out-cubic;
-    visibility: hidden; /* a tall phone saw its corner: shown only once START is pressed */
+    background-color: var(--yoru); transition-property: translate; transition-timing-function: ease-in-out-cubic;
+    visibility: hidden; border-right-width: 34px; border-color: var(--momo); /* a tall phone saw its corner: shown only once START is pressed */
 }
 .jm-title .jm-title__wipe--armed { visibility: visible; }
-.jm-title .jm-title__wipe-edge { position: absolute; right: 0; top: 0; bottom: 0; width: 10px; background-color: var(--amber-hot); }
+.jm-title .jm-title__wipe-edge { position: absolute; right: 0; top: 0; bottom: 0; width: 12px; background-color: var(--washi); }
 .jm-title .jm-title__wipe--cover { translate: -20% 0; }
 .jm-title .jm-title__wipe--reveal { translate: 75% 0; }
 
 /* Phone on its side: 390 px high — name, START and Settings must fit with the safe area (UiLayoutProbe checks). */
-.jm-title.jm-phone .jm-title__block { left: 6%; top: 6%; width: 340px; }
-.jm-title.jm-phone .jm-title__letter { font-size: 52px; translate: 0 24px; }
+.jm-title.jm-phone .jm-title__block { left: 6%; top: 6%; width: 360px; }
+.jm-title.jm-phone .jm-title__letter { font-size: 58px; translate: 0 24px; text-shadow: 4px 4px 0 var(--momo); }
+.jm-title.jm-phone .jm-title__seal { width: 40px; height: 40px; margin-bottom: 40px; margin-left: 10px; }
 .jm-title.jm-phone .jm-title__kicker { font-size: 11px; letter-spacing: 4px; margin-bottom: 0; }
-.jm-title.jm-phone .jm-title__second { margin-top: -6px; }
-.jm-title.jm-phone .jm-title__word { font-size: 20px; letter-spacing: 10px; }
-.jm-title.jm-phone .jm-title__sub { display: none; }
-.jm-title.jm-phone .jm-title__menu { margin-top: 14px; width: 300px; }
+.jm-title.jm-phone .jm-title__second { margin-top: -2px; }
+.jm-title.jm-phone .jm-title__word { font-size: 22px; letter-spacing: 9px; }
+.jm-title.jm-phone .jm-title__tall { font-size: 56px; }
+.jm-title.jm-phone .jm-title__menu { margin-top: 14px; width: 310px; }
 .jm-title.jm-phone .jm-title__btn { min-height: 46px; margin-bottom: 8px; }
-.jm-title.jm-phone .jm-title__btn--primary { min-height: 58px; }
-.jm-title.jm-phone .jm-title__btn-label { font-size: 18px; letter-spacing: 3px; }
-.jm-title.jm-phone .jm-title__btn--primary .jm-title__btn-label { font-size: 24px; letter-spacing: 4px; }
+.jm-title.jm-phone .jm-title__btn--primary { min-height: 60px; }
+.jm-title.jm-phone .jm-title__btn-label { font-size: 18px; }
+.jm-title.jm-phone .jm-title__btn--primary .jm-title__btn-label { font-size: 28px; }
 .jm-title.jm-phone .jm-title__btn-meta { font-size: 12px; }
-.jm-title.jm-phone .jm-title__btn--minor .jm-title__btn-meta { display: none; }
 .jm-title.jm-phone .jm-title__tag { right: 14px; bottom: 10px; }
 .jm-title.jm-phone.jm-title--in .jm-title__rule { width: 48px; }
 
 /* Phone upright: name and entries at the bottom, the car above them. */
 .jm-title.jm-portrait .jm-title__block { left: 20px; right: 20px; top: auto; bottom: 36px; width: auto; }
-.jm-title.jm-portrait .jm-title__letter { font-size: 62px; }
+.jm-title.jm-portrait .jm-title__letter { font-size: 64px; }
 .jm-title.jm-portrait .jm-title__menu { width: auto; margin-top: 22px; }
 .jm-title.jm-portrait .jm-title__floor { height: 70%; }
+.jm-title.jm-portrait .jm-title__tall { top: 4%; right: 4%; }

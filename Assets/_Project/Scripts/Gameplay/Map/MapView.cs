@@ -40,7 +40,8 @@ namespace JapanMap.Gameplay.Map
         /// <summary>Road vertex spacing on the map, m.</summary>
         const float Spacing = 8f;
 
-        readonly VisualElement _world, _pins, _circles;
+        readonly VisualElement _world, _pins, _circles, _labels;
+        readonly List<(Vector2 at, VisualElement label)> _labelData = new();
         readonly List<UiIcon> _icons = new();
         readonly List<MapPin> _pinData = new();
         readonly Rect _bounds; // world x/z extent
@@ -79,6 +80,11 @@ namespace JapanMap.Gameplay.Map
             _circles.style.left = _circles.style.top = _circles.style.right = _circles.style.bottom = 0;
             _circles.generateVisualContent += DrawCircles;
             Add(_circles);
+            // Region names on the land (world map only, SetLabels): spaced caps with the Japanese name under them.
+            _labels = new VisualElement { pickingMode = PickingMode.Ignore };
+            _labels.style.position = Position.Absolute;
+            _labels.style.left = _labels.style.top = _labels.style.right = _labels.style.bottom = 0;
+            Add(_labels);
             _pins = new VisualElement { pickingMode = PickingMode.Ignore };
             _pins.style.position = Position.Absolute;
             _pins.style.left = _pins.style.top = _pins.style.right = _pins.style.bottom = 0;
@@ -264,6 +270,30 @@ namespace JapanMap.Gameplay.Map
             return new Vector2(_centre.x + (local.x - r.width * 0.5f) / k, _centre.y - (local.y - r.height * 0.5f) / k);
         }
 
+        /// <summary>Place names on the map: world x/z, English title, Japanese name.</summary>
+        public void SetLabels(List<(Vector2 at, string en, string jp)> labels)
+        {
+            _labels.Clear();
+            _labelData.Clear();
+            foreach (var (at, en, jp) in labels)
+            {
+                var box = new VisualElement { pickingMode = PickingMode.Ignore };
+                box.AddToClassList("nm-maplabel");
+                var a = new Label(en.ToUpperInvariant()) { pickingMode = PickingMode.Ignore };
+                a.AddToClassList("nm-maplabel__en");
+                box.Add(a);
+                if (!string.IsNullOrEmpty(jp))
+                {
+                    var b = new Label(jp) { pickingMode = PickingMode.Ignore };
+                    b.AddToClassList("nm-maplabel__jp");
+                    box.Add(b);
+                }
+                _labels.Add(box);
+                _labelData.Add((at, box));
+            }
+            PlacePins();
+        }
+
         public void SetPins(List<MapPin> pins)
         {
             _pinData.Clear();
@@ -272,8 +302,7 @@ namespace JapanMap.Gameplay.Map
             {
                 var icon = new UiIcon(Icon.Diamond, 20f) { pickingMode = PickingMode.Ignore };
                 icon.style.position = Position.Absolute;
-                // A dark badge: icons stay readable over white roads and light terrain.
-                icon.style.backgroundColor = new Color(0.024f, 0.078f, 0.1f, 0.78f);
+                // A plaque (colour per kind, PlacePins): icons stay readable over white roads and the dark land.
                 icon.style.paddingLeft = icon.style.paddingRight = icon.style.paddingTop = icon.style.paddingBottom = 3;
                 _icons.Add(icon);
                 _pins.Add(icon);
@@ -284,6 +313,13 @@ namespace JapanMap.Gameplay.Map
         void PlacePins()
         {
             var r = contentRect;
+            foreach (var (at, label) in _labelData)
+            {
+                var p = ToLocal(at);
+                // Centred on the spot (translate -50 % in USS): the labels need no measured width.
+                label.style.left = p.x;
+                label.style.top = p.y;
+            }
             for (var i = 0; i < _icons.Count; i++)
             {
                 var icon = _icons[i];
@@ -295,7 +331,14 @@ namespace JapanMap.Gameplay.Map
                 icon.style.display = inside ? DisplayStyle.Flex : DisplayStyle.None;
                 if (!inside) continue;
                 if (icon.Kind != pin.icon) icon.Kind = pin.icon;
-                if (icon.Tint != pin.color) icon.Tint = pin.color;
+                // Plaques in the kind's colour with an ink icon and rim (D55); the player stays a bare white arrow.
+                var player = string.IsNullOrEmpty(pin.id) && pin.icon == Icon.Play;
+                var tint = player ? Color.white : UI.Palette.Sumi;
+                if (icon.Tint != tint) icon.Tint = tint;
+                icon.style.backgroundColor = player ? new Color(0f, 0f, 0f, 0f) : pin.color;
+                var rim = player ? 0f : Mathf.Max(1.5f, s * 0.09f);
+                icon.style.borderTopWidth = icon.style.borderBottomWidth = icon.style.borderLeftWidth = icon.style.borderRightWidth = rim;
+                icon.style.borderTopColor = icon.style.borderBottomColor = icon.style.borderLeftColor = icon.style.borderRightColor = UI.Palette.Sumi;
                 icon.style.width = icon.style.height = s;
                 icon.style.borderTopLeftRadius = icon.style.borderTopRightRadius = icon.style.borderBottomLeftRadius = icon.style.borderBottomRightRadius = s * 0.5f;
                 icon.style.left = at.x - s * 0.5f;

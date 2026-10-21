@@ -254,3 +254,28 @@
 .jm-menu .nm-back { min-height: 40px; margin-right: 14px; }
 .jm-menu .nm-pagehead__sub { font-size: 14px; letter-spacing: 3px; color: var(--momo); margin-left: 14px;
     -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; }
+
+/* ── map page (MapScreen): the map takes the page, chips over it, the selection as a ticket at the right ──── */
+.jm-menu .nm-mapstage { border-radius: 12px; overflow: hidden; border-width: 1px; border-color: var(--line); }
+.jm-menu .nm-worldmap { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.jm-menu .nm-mapchips { position: absolute; left: 16px; bottom: 12px; }
+.jm-menu .nm-mapchips .nm-chip { background-color: rgba(23, 18, 31, 0.86); color: var(--washi); }
+.jm-menu .nm-mapchips .nm-chip--on { background-color: var(--washi); color: var(--sumi); }
+.jm-menu .nm-compass { position: absolute; right: 16px; top: 16px; width: 48px; height: 48px; border-radius: 24px;
+    background-color: rgba(23, 18, 31, 0.86); color: var(--washi); font-size: 20px; -unity-text-align: middle-center;
+    border-top-width: 3px; border-color: var(--momo); }
+.nm-maplabel { position: absolute; translate: -50% -50%; align-items: center; }
+.nm-maplabel__en { font-size: 18px; letter-spacing: 4px; color: var(--washi); -unity-text-align: middle-center;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 1); }
+.nm-maplabel__jp { font-size: 11px; letter-spacing: 3px; color: var(--momo); -unity-text-align: middle-center; margin-top: 2px;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Dela Gothic JP SDF.asset"); -unity-font-style: normal; text-shadow: 0 0 5px rgba(0, 0, 0, 1); }
+.jm-menu .nm-aside .nm-mapcard { width: 420px; align-self: flex-end; }
+.jm-menu .nm-mapcard__ticket { padding: 16px 24px 12px 24px; }
+.jm-menu .nm-mapcard__ticket .jm-h2 { font-size: 32px; color: var(--sumi); margin-top: 0; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); }
+.jm-menu .nm-mapcard__ticket .jm-body, .jm-menu .nm-mapcard__ticket Label { color: var(--sumi); }
+.jm-menu .nm-mapcard__ticket .jm-small { color: rgba(23, 18, 31, 0.65); }
+.jm-menu .nm-mapcard__ticket .jm-amber, .jm-menu .nm-mapcard__ticket .jm-sakura { color: var(--momo); }
+.jm-menu .nm-mapcard__ticket .jm-btn { border-color: rgba(23, 18, 31, 0.35); color: var(--sumi); }
+.jm-menu .nm-mapcard__ticket .jm-btn--primary { color: #ffffff; border-color: var(--momo); }
+.jm-menu .nm-mapcard__ticket .jm-pic { border-radius: 6px; }
