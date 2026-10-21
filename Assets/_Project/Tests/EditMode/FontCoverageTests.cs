@@ -16,7 +16,7 @@ namespace JapanMap.Tests
     /// </summary>
     public class FontCoverageTests
     {
-        const string Font = "Assets/_Project/Art/Fonts/Barlow-Medium SDF.asset";
+        const string Font = "Assets/_Project/Art/Fonts/Archivo Body SDF.asset"; // Editor/Ui/UiFonts.Body
 
         [Test]
         public void EveryCharacterInUiStrings_IsInTheUiFont()
@@ -27,13 +27,15 @@ namespace JapanMap.Tests
             foreach (var (c, where) in UiCharacters())
                 if (!Covered(font, c, new HashSet<FontAsset>()))
                     missing.AppendLine($"'{c}' U+{(int)c:X4} in {where}");
-            Assert.IsEmpty(missing.ToString(), "Characters the UI font cannot draw (boxes in the browser): use a drawn UiIcon or a plain word.");
+            Assert.IsEmpty(missing.ToString(), "Characters the UI font cannot draw (boxes in the browser): use a drawn UiIcon or a plain word; new Japanese text needs \"JapanMap/UI/Build Fonts\".");
         }
 
         static bool Covered(FontAsset font, char c, HashSet<FontAsset> seen)
         {
             if (font == null || !seen.Add(font)) return false;
-            if (font.sourceFontFile != null && FontEngine.LoadFontFace(font.sourceFontFile) == FontEngineError.Success
+            // A static atlas (the Japanese one) has no font file in the build: what it holds is what it can draw.
+            if (font.atlasPopulationMode == AtlasPopulationMode.Static) { if (font.characterLookupTable.ContainsKey(c)) return true; }
+            else if (font.sourceFontFile != null && FontEngine.LoadFontFace(font.sourceFontFile) == FontEngineError.Success
                 && FontEngine.TryGetGlyphIndex(c, out var index) && index != 0) return true;
             if (font.fallbackFontAssetTable != null)
                 foreach (var f in font.fallbackFontAssetTable)
