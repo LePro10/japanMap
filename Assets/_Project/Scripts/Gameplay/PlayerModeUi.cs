@@ -61,6 +61,9 @@ namespace JapanMap.Gameplay
 
         void OnDisable()
         {
+            _hKey?.Disable();
+            _hKey?.Dispose();
+            _hKey = null;
             UiPanel.Changed -= Build;
             GameOptions.Changed -= Build;
         }
@@ -80,10 +83,11 @@ namespace JapanMap.Gameplay
             _promptInCockpit = null;
             PlacePrompt(false);
             _prompt.style.color = Color.white;
-            _prompt.style.fontSize = phone ? 18f : 26f;
-            _prompt.style.unityFontStyleAndWeight = FontStyle.Bold;
+            _prompt.style.fontSize = phone ? 18f : 22f;
             _prompt.style.whiteSpace = WhiteSpace.Normal;
-            _prompt.style.textShadow = new TextShadow { offset = new Vector2(0f, 2f), blurRadius = 6f, color = new Color(0f, 0f, 0f, 0.8f) };
+            _prompt.enableRichText = true;
+            _prompt.AddToClassList("nm-hud-prompt");
+            _prompt.AddToClassList("jm-hud-text");
             doc.Add(_prompt);
 
             // Desktop: a menu button too. Escape is not enough on the web — in CrazyGames' fullscreen it leaves fullscreen,
@@ -91,16 +95,7 @@ namespace JapanMap.Gameplay
             _deskMenu = TouchKit.Tap(doc, 44f, "MENU · Esc", () => GameMenu.Instance?.Escape());
             _deskMenu.name = "desk-menu";
             _deskMenu.style.width = 132f;
-            // Readable over a bright sky: the dark panel colour of the menu, not the see-through touch style.
-            _deskMenu.style.backgroundColor = new Color(0.04f, 0.12f, 0.14f, 0.82f);
-            _deskMenu.style.borderTopColor = _deskMenu.style.borderBottomColor = _deskMenu.style.borderLeftColor =
-                _deskMenu.style.borderRightColor = new Color(0.95f, 0.78f, 0.45f, 0.9f);
-            foreach (var l in _deskMenu.Query<Label>().ToList())
-            {
-                l.style.color = Color.white;
-                l.style.fontSize = 16f;
-                l.style.unityFontStyleAndWeight = FontStyle.Bold;
-            }
+            _deskMenu.AddToClassList("nm-deskmenu"); // Hud.uss: ink, paper rim, readable over a bright sky
             Corner(_deskMenu, safe.z + 24f, safe.y + 24f, false);
 
             // Desktop key overlay for the first minutes, under the prompt line. Filled per mode in Update.
@@ -115,6 +110,13 @@ namespace JapanMap.Gameplay
             _keys.style.alignItems = Align.Center;
             doc.Add(_keys);
             _keysMode = null;
+
+            // K: every key at any time (H calls the car) (owner 2026-10-21: lights, cockpit, auto-drive, repair, photo were never found).
+            _allKeys = new VisualElement { name = "all-keys", pickingMode = PickingMode.Ignore };
+            _allKeys.AddToClassList("nm-glass");
+            _allKeys.AddToClassList("nm-allkeys");
+            _allKeys.style.display = DisplayStyle.None;
+            doc.Add(_allKeys);
 
             _touch = new VisualElement { pickingMode = PickingMode.Ignore };
             _touch.style.position = Position.Absolute;
@@ -151,8 +153,58 @@ namespace JapanMap.Gameplay
             _touch.Add(_distance);
         }
 
+        VisualElement _allKeys;
+        UnityEngine.InputSystem.InputAction _hKey;
+        bool _allShown;
+
+        /// <summary>K toggles the full key list (desktop); it also closes with the menu.</summary>
+        void UpdateAllKeys()
+        {
+            if (_allKeys == null) return;
+            if (_hKey == null)
+            {
+                // A callback, not WasPressedThisFrame: a short press between two frames still counts (as GameMenu's keys).
+                _hKey = new UnityEngine.InputSystem.InputAction("AllKeys", UnityEngine.InputSystem.InputActionType.Button, "<Keyboard>/k");
+                _hKey.performed += _ => { if (!player.Suspended && !UiPanel.IsPhone) _allShown = !_allShown; };
+                _hKey.Enable();
+            }
+            if (player.Suspended) _allShown = false;
+            _allKeys.style.display = _allShown ? DisplayStyle.Flex : DisplayStyle.None;
+            if (!_allShown || _allKeys.childCount > 0) return;
+            UI.Nm.Kicker(_allKeys, "All keys", "操作");
+            var cols = new VisualElement { pickingMode = PickingMode.Ignore };
+            cols.AddToClassList("nm-allkeys__cols");
+            _allKeys.Add(cols);
+            VisualElement Col()
+            {
+                var c = new VisualElement { pickingMode = PickingMode.Ignore };
+                c.AddToClassList("nm-allkeys__col");
+                cols.Add(c);
+                return c;
+            }
+            void Row(VisualElement col, string key, string what) => UI.Nm.Hint(col, key, what).AddToClassList("nm-allkeys__row");
+            var drive = Col();
+            Row(drive, Key("Drive", "Throttle", "W"), "Gas");
+            Row(drive, Key("Drive", "Brake", "S"), "Brake / reverse");
+            Row(drive, "A D", "Steer");
+            Row(drive, Key("Drive", "Handbrake", "Space"), "Drift");
+            Row(drive, Key("Drive", "Boost", "Shift"), "Nitro (twice: burst)");
+            Row(drive, Key("Drive", "Respawn", "R"), "Back on the road");
+            Row(drive, Key("Drive", "Repair", "T"), "Repair");
+            var more = Col();
+            Row(more, Key("Drive", "Camera", "C"), "Camera · cockpit");
+            Row(more, Key("Drive", "Headlights", "L"), "Lights (twice: high beam)");
+            Row(more, Key("Drive", "AutoDrive", "G").Replace("Hold ", ""), "Hold: auto-drive to the waypoint");
+            Row(more, Key("Player", "Vehicle", "F"), "Get in / out");
+            Row(more, Key("Player", "Map", "M"), "Map");
+            Row(more, Key("Player", "Records", "Tab"), "Records");
+            Row(more, Key("Player", "Photo", "P"), "Photo mode");
+            Row(more, "Esc", "Menu");
+        }
+
         void UpdateKeyHints()
         {
+            UpdateAllKeys();
             if (_keys == null) return;
             // Not under the auto-drive letterbox (D49): the picture is the film, the take-over line says what to press.
             var show = !_touchSeen && !UiPanel.IsPhone && !player.Suspended && !Core.AutoDrive.IsActive && progress != null && progress.Data != null
@@ -177,33 +229,11 @@ namespace JapanMap.Gameplay
                 Hint(Key("Drive", "Boost", "Shift") + " ×2", "burst");
                 Hint(Key("Player", "Map", "M"), "map");
             }
+            Hint("K", "all keys");
         }
 
-        /// <summary>One keycap and its word ("[Space] drift").</summary>
-        void Hint(string key, string what)
-        {
-            var cap = new Label(key) { pickingMode = PickingMode.Ignore };
-            cap.style.fontSize = 16f;
-            cap.style.unityFontStyleAndWeight = FontStyle.Bold;
-            cap.style.color = Color.white;
-            cap.style.backgroundColor = new Color(0.04f, 0.12f, 0.14f, 0.78f);
-            cap.style.borderTopWidth = cap.style.borderBottomWidth = cap.style.borderLeftWidth = cap.style.borderRightWidth = 1f;
-            cap.style.borderBottomWidth = 3f; // a key's lower edge
-            cap.style.borderTopColor = cap.style.borderBottomColor = cap.style.borderLeftColor = cap.style.borderRightColor =
-                new Color(1f, 1f, 1f, 0.55f);
-            cap.style.borderTopLeftRadius = cap.style.borderTopRightRadius = cap.style.borderBottomLeftRadius =
-                cap.style.borderBottomRightRadius = 5f;
-            cap.style.paddingLeft = cap.style.paddingRight = 7f;
-            cap.style.paddingTop = cap.style.paddingBottom = 2f;
-            cap.style.marginLeft = 14f;
-            _keys.Add(cap);
-            var word = new Label(what) { pickingMode = PickingMode.Ignore };
-            word.style.fontSize = 17f;
-            word.style.color = Color.white;
-            word.style.marginLeft = 6f;
-            word.style.textShadow = new TextShadow { offset = new Vector2(0f, 1f), blurRadius = 4f, color = new Color(0f, 0f, 0f, 0.9f) };
-            _keys.Add(word);
-        }
+        /// <summary>One keycap and its word ("[Space] drift"), Night Meet caps (UI/NightMeet.cs).</summary>
+        void Hint(string key, string what) => UI.Nm.Hint(_keys, key, what);
 
         /// <summary>The key an action is bound to now (Settings → Controls may have moved it).</summary>
         string Key(string map, string action, string fallback)
@@ -288,7 +318,7 @@ namespace JapanMap.Gameplay
             // On touch the button is the prompt; drop the key name.
             if (_touchSeen && text.StartsWith("F  "))
                 text = (player.Current == PlayerModeController.Mode.Walking ? "Tap CAR to " : "Tap OUT to ") + text.Substring(3).ToLowerInvariant();
-            _prompt.text = text;
+            _prompt.text = Hud.GameplayHud.KeyCap(text);
 
             _touch.style.display = _touchSeen ? DisplayStyle.Flex : DisplayStyle.None;
             var walking = player.Current == PlayerModeController.Mode.Walking;

@@ -1,1 +1,83 @@
-/* Driving and walking HUD "Night Meet" (D55): no boxes — type with a shadow on the picture (docs/refs FH6). */
+/* Driving and walking HUD "Night Meet" (D55): no boxes — type with a shadow straight on the picture, like the FH6
+   references in docs/refs. Japanese only beside the English. Placement: GameplayHud.Place (per form factor). */
+
+/* Minimap: a see-through ring with a thin paper rim; the region name over it, its kana beside. */
+.nm-minimap { border-radius: 999px; border-width: 2px; border-color: rgba(245, 239, 228, 0.6); opacity: 0.9; }
+.nm-region-row { flex-direction: row; align-items: center; margin-top: 6px; }
+.jm-hud-text.nm-region-row__en { -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal;
+    -unity-text-align: middle-left; letter-spacing: 1px; margin-right: 8px; }
+.nm-region-row__jp { -unity-text-align: middle-left; }
+
+/* The instrument (Instrument.cs draws the arc). */
+.jm-hud-text.jm-instrument__tick { color: rgba(245, 239, 228, 0.85); -unity-text-align: middle-center;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Title SDF.asset"); -unity-font-style: normal; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); }
+.jm-instrument__tick--red { color: #ff5c97; }
+.jm-hud-text.jm-instrument__gear { color: #ffffff; -unity-text-align: middle-center;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8); }
+.jm-instrument__gear--flash { color: #ff2e7a; }
+.jm-hud-text.jm-instrument__speed { color: #ffffff; -unity-text-align: lower-right;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal;
+    text-shadow: 4px 4px 0 rgba(23, 18, 31, 0.85); }
+.jm-hud-text.jm-instrument__unit { color: #f5efe4; letter-spacing: 3px; -unity-text-align: lower-right;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9); }
+
+/* Skill score: a telop (variety-TV caption) — white with a pink outline and a hard ink shadow. */
+.nm-score { align-items: center; rotate: -3deg; }
+.nm-score__points { -unity-text-outline-width: 4px; -unity-text-outline-color: #ff2e7a; text-shadow: 5px 5px 0 #17121f; }
+.nm-score__mult { color: #ffffff; -unity-text-outline-width: 3px; -unity-text-outline-color: #17121f; text-shadow: 3px 3px 0 #ff2e7a; }
+.jm-hud-text.nm-score__spot { -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal;
+    -unity-text-outline-width: 3px; -unity-text-outline-color: #ff9a3c; text-shadow: 3px 3px 0 #17121f; margin-top: 4px; }
+.nm-score__result { -unity-text-outline-width: 3px; -unity-text-outline-color: #ff2e7a; text-shadow: 4px 4px 0 #17121f; rotate: -3deg; }
+.nm-telop-hud { -unity-text-outline-width: 4px; -unity-text-outline-color: #ff2e7a; text-shadow: 5px 5px 0 #17121f; rotate: -4deg; }
+.nm-telop-hud--sora { -unity-text-outline-color: #8c97ff; }
+.nm-hud-stunt { -unity-text-outline-width: 3px; -unity-text-outline-color: #ff9a3c; text-shadow: 3px 3px 0 #17121f; rotate: -3deg; letter-spacing: 2px; }
+.nm-count { -unity-text-outline-width: 6px; -unity-text-outline-color: #ff2e7a; text-shadow: 8px 8px 0 #17121f; rotate: -4deg; }
+.nm-low .nm-score__points, .nm-low .nm-telop-hud, .nm-low .nm-count { text-shadow: none; }
+
+/* Sparks: the number on the picture, the save line small under it. */
+.nm-hud-sparks { -unity-text-align: middle-right; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9); }
+.nm-hud-saved { -unity-text-align: middle-right; letter-spacing: 1px; }
+
+/* The one notice lane: an ink strip, a red stamp for finds, records and done goals. */
+.nm-toast { flex-direction: row; align-items: center; background-color: rgba(23, 18, 31, 0.88); border-radius: 8px; padding: 8px 20px 8px 10px;
+    max-width: 70%; border-left-width: 4px; border-color: #ff2e7a; }
+.nm-toast__stamp { margin-right: 12px; }
+.jm-hud-text.nm-toast__text { -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Title SDF.asset"); -unity-font-style: normal;
+    -unity-text-align: middle-left; text-shadow: none; }
+.jm-hud-text.nm-banner { -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Title SDF.asset"); -unity-font-style: normal; margin-top: 8px; }
+.jm-phone .nm-toast { padding: 6px 14px 6px 8px; }
+
+/* The context action: a key cap (rich-text mark) and the verb. */
+.jm-hud-text.nm-hud-prompt { -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9); }
+.jm-hud-text.nm-hud-hint { -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Title SDF.asset"); -unity-font-style: normal; color: #ff9a3c;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9); margin-bottom: 6px; }
+
+/* Race lines: big italic, top left, no plate. */
+.jm-hud-text.nm-hud-race { -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal;
+    text-shadow: 3px 3px 0 rgba(23, 18, 31, 0.85); }
+
+/* The arrow's target: the name under the arrow, italic with a hard shadow (it spans the width: no plate). */
+.jm-hud-text.nm-hud-goal { -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal;
+    text-shadow: 3px 3px 0 rgba(23, 18, 31, 0.9); letter-spacing: 1px; }
+
+/* Event card and result sheet. */
+.nm-sheet { border-radius: 10px; padding: 22px 24px 16px 24px; }
+.nm-sheet .jm-h2 { font-size: 30px; margin-top: 0; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); }
+.nm-sheet--result { background-color: rgba(18, 14, 30, 0.9); border-left-width: 6px; border-color: #ff2e7a; }
+.nm-sheet--result .jm-h2 { font-size: 16px; letter-spacing: 4px; color: #ff2e7a; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); }
+.jm-medal { align-items: center; }
+.jm-medal__name { font-size: 12px; letter-spacing: 3px; color: #f5efe4; margin-top: 6px; -unity-text-align: middle-center;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; }
+.nm-sheet .nm-hanko { background-color: #f5efe4; border-radius: 999px; }
+
+/* Desktop MENU button (PlayerModeUi): ink with a paper rim. */
+.nm-deskmenu { background-color: rgba(23, 18, 31, 0.6); border-color: rgba(245, 239, 228, 0.7); border-width: 2px; border-radius: 22px; }
+.nm-deskmenu Label { color: #ffffff; font-size: 15px; letter-spacing: 2px;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal; }
+
+/* K: every key, in two columns, right of the middle. */
+.nm-allkeys { position: absolute; right: 270px; bottom: 120px; padding: 16px 22px 10px 22px; }
+.nm-allkeys__cols { flex-direction: row; margin-top: 10px; }
+.nm-allkeys__col { margin-right: 26px; }
+.nm-allkeys__row { margin-bottom: 8px; }
+.nm-allkeys .nm-hint__label { text-shadow: none; }

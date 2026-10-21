@@ -80,6 +80,39 @@ namespace JapanMap.Gameplay.Hud
                 p.LineTo(b);
                 p.Stroke();
             }
+            if (_burst > 0.05f) MangaLines(p, r, c);
+        }
+
+        /// <summary>
+        /// The burst as a manga panel (D55): tapered ink wedges from the screen edge towards the vanishing point, their
+        /// tips flickering in and out each frame-step. Filled triangles only (~40), no texture, so Low keeps it.
+        /// </summary>
+        void MangaLines(Painter2D p, Rect r, Vector2 c)
+        {
+            var step = Mathf.FloorToInt(_t * 14f); // new tips about 14 times a second: the hand-drawn flicker
+            var half = new Vector2(r.width, r.height) * 0.5f;
+            const int n = 44;
+            for (var i = 0; i < n; i++)
+            {
+                var h = Mathf.Abs(Mathf.Sin((i + 1) * 12.9898f + step * 78.233f) * 43758.5453f) % 1f;
+                var ang = (i + h * 0.6f) / n * Mathf.PI * 2f;
+                var d = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
+                // Where the ray leaves the screen (a box, not a circle: wedges reach every corner).
+                var tx = Mathf.Abs(d.x) > 1e-4f ? half.x / Mathf.Abs(d.x) : float.MaxValue;
+                var ty = Mathf.Abs(d.y) > 1e-4f ? half.y / Mathf.Abs(d.y) : float.MaxValue;
+                var edge = Mathf.Min(tx, ty) * 1.05f;
+                var tip = edge * Mathf.Lerp(0.5f, 0.78f, h) * (1f - 0.12f * _burst);
+                var nrm = new Vector2(-d.y, d.x);
+                var width = Mathf.Lerp(5f, 16f, h) * (0.6f + 0.6f * _burst);
+                var outer = c + d * edge;
+                p.fillColor = new Color(1f, 1f, 1f, Mathf.Clamp01(0.5f * _burst * (0.5f + 0.5f * h)));
+                p.BeginPath();
+                p.MoveTo(c + d * tip);
+                p.LineTo(outer + nrm * width);
+                p.LineTo(outer - nrm * width);
+                p.ClosePath();
+                p.Fill();
+            }
         }
     }
 }

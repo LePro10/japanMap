@@ -4,22 +4,25 @@ using UnityEngine.UIElements;
 namespace JapanMap.Gameplay.Hud
 {
     /// <summary>
-    /// The instrument cluster (ASTRA §10 "Driving HUD layouts"): a 180° rpm arc above with a car-specific red segment,
-    /// the gear in its centre (flashes once on a shift), large speed below, and a separate blue 100-unit nitro arc on
-    /// the outside lower edge — never two look-alike half circles. Drawn with Painter2D (sharp at any scale, no
-    /// texture). It shows the gearbox's own gear; it never invents one from speed.
+    /// The instrument cluster, "Night Meet" (D55, after the FH6 references in docs/refs): no plate — a thin 225° rpm arc
+    /// from lower left over the top to the right with a tick and number per 1000 rpm, the car's red zone in momo pink,
+    /// the gear in a ring in the middle (flashes once on a shift), and the speed as a big italic number in the open lower
+    /// right with the unit over it. Nitro is a thin sora bar under the number with the burst mark at a quarter.
+    /// Drawn with Painter2D (sharp at any scale, no texture). It shows the gearbox's own gear; it never invents one.
     /// </summary>
     public sealed class Instrument : VisualElement
     {
-        static readonly Color Track = new(0.965f, 0.937f, 0.894f, 0.16f);
-        static readonly Color Needle = new(0.965f, 0.937f, 0.894f, 0.95f);
-        static readonly Color Red = new(0.86f, 0.33f, 0.27f, 0.95f);
-        static readonly Color Nitro = new(0.4f, 0.84f, 0.96f, 0.95f);
-        static readonly Color NitroTrack = new(0.4f, 0.84f, 0.96f, 0.18f);
-        static readonly Color Plate = new(0.024f, 0.078f, 0.1f, 0.62f);
+        static readonly Color Paper = new(0.961f, 0.937f, 0.894f, 0.95f);
+        static readonly Color Track = new(0.961f, 0.937f, 0.894f, 0.22f);
+        static readonly Color Shade = new(0.07f, 0.055f, 0.12f, 0.45f);
+        static readonly Color Red = new(1f, 0.18f, 0.48f, 1f);
+        static readonly Color Nitro = new(0.55f, 0.59f, 1f, 1f);
+        static readonly Color NitroTrack = new(0.55f, 0.59f, 1f, 0.22f);
+        const float From = 135f, Sweep = 225f; // Painter2D: clockwise, 0° = +x, y down
 
         readonly Label _gear, _speed, _unit;
-        float _rpm01, _red01 = 0.85f, _nitro = 1f, _flashUntil;
+        readonly Label[] _ticks = new Label[12];
+        float _rpm01, _red01 = 0.85f, _nitro = 1f, _flashUntil, _max = 8000f;
         bool _boosting;
         string _gearText = "";
 
@@ -30,23 +33,23 @@ namespace JapanMap.Gameplay.Hud
         {
             pickingMode = PickingMode.Ignore;
             generateVisualContent += Draw;
-            _gear = Add(new Label("N"), 0.19f);
-            _speed = Add(new Label("0"), 0.34f);
-            _unit = Add(new Label("km/h"), 0.07f);
-            _unit.style.color = new Color(0.72f, 0.77f, 0.78f);
+            for (var i = 0; i < _ticks.Length; i++)
+            {
+                _ticks[i] = Add(new Label(i.ToString()), "jm-instrument__tick");
+                _ticks[i].style.position = Position.Absolute;
+            }
+            _gear = Add(new Label("N"), "jm-instrument__gear");
+            _speed = Add(new Label("0"), "jm-instrument__speed");
+            _unit = Add(new Label("km/h"), "jm-instrument__unit");
             RegisterCallback<GeometryChangedEvent>(_ => Layout());
         }
 
-        Label Add(Label l, float size)
+        Label Add(Label l, string cls)
         {
             l.pickingMode = PickingMode.Ignore;
             l.style.position = Position.Absolute;
-            l.style.left = l.style.right = 0;
-            l.style.unityTextAlign = TextAnchor.MiddleCenter;
             l.AddToClassList("jm-hud-text");
-            if (size > 0.1f) l.AddToClassList("jm-num"); // gear and speed in the display face, the unit in the text face
-            l.style.color = new Color(0.965f, 0.937f, 0.894f);
-            l.userData = size;
+            l.AddToClassList(cls);
             Add(l);
             return l;
         }
@@ -54,17 +57,40 @@ namespace JapanMap.Gameplay.Hud
         void Layout()
         {
             var r = contentRect;
-            foreach (var l in new[] { _gear, _speed, _unit })
-            {
-                var size = (float)l.userData * r.height;
-                l.style.fontSize = Mathf.Max(10f, size);
-            }
-            // Gear in the arc's centre, speed below it, unit under the speed — placed from the fitted centre.
+            if (r.width < 4f) return;
             Fit(r, out var c, out var rad);
-            _gear.style.top = c.y - rad * 0.84f;
-            _speed.style.top = c.y - rad * 0.36f;
-            _unit.style.top = c.y + rad * 0.5f;
-            foreach (var l in new[] { _gear, _speed, _unit }) l.style.fontSize = Mathf.Max(11f, (float)l.userData * rad * 2f);
+            var gs = rad * 0.5f;
+            _gear.style.left = c.x - gs * 0.5f;
+            _gear.style.top = c.y - gs * 0.5f;
+            _gear.style.width = _gear.style.height = gs;
+            _gear.style.fontSize = gs * 0.62f;
+            _speed.style.right = 0;
+            _speed.style.bottom = rad * 0.08f;
+            _speed.style.fontSize = rad * 1.02f;
+            _unit.style.right = rad * 0.06f;
+            _unit.style.bottom = rad * 1.02f;
+            _unit.style.fontSize = Mathf.Max(10f, rad * 0.15f);
+            PlaceTicks(c, rad);
+        }
+
+        void PlaceTicks(Vector2 c, float rad)
+        {
+            var n = Mathf.Clamp(Mathf.RoundToInt(_max / 1000f), 1, _ticks.Length - 1);
+            var fs = Mathf.Max(9f, rad * 0.15f);
+            for (var i = 0; i < _ticks.Length; i++)
+            {
+                var on = i <= n;
+                _ticks[i].style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
+                if (!on) continue;
+                var a = (From + Sweep * i / n) * Mathf.Deg2Rad;
+                var at = c + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * rad * 0.74f;
+                _ticks[i].text = i.ToString();
+                _ticks[i].style.fontSize = fs;
+                _ticks[i].style.left = at.x - fs * 0.5f;
+                _ticks[i].style.top = at.y - fs * 0.62f;
+                _ticks[i].style.width = fs;
+                _ticks[i].EnableInClassList("jm-instrument__tick--red", i / (float)n >= _red01 - 0.001f);
+            }
         }
 
         /// <summary>One frame of the car: rpm, redline and limiter (rpm), gear label, speed text, nitro 0…1.</summary>
@@ -79,13 +105,21 @@ namespace JapanMap.Gameplay.Hud
                 _gearText = gear;
                 _gear.text = gear;
             }
-            _gear.style.color = Time.unscaledTime < _flashUntil ? new Color(0.95f, 0.77f, 0.42f) : new Color(0.965f, 0.937f, 0.894f);
+            _gear.EnableInClassList("jm-instrument__gear--flash", Time.unscaledTime < _flashUntil);
             if (_speed.text != speed) _speed.text = speed;
-            if (_unit.text != unit) _unit.text = unit;
-            if (Mathf.Abs(r01 - _rpm01) > 0.002f || Mathf.Abs(red - _red01) > 0.001f || Mathf.Abs(nitro - _nitro) > 0.004f || boosting != _boosting)
+            var u = unit.ToUpperInvariant();
+            if (_unit.text != u) _unit.text = u;
+            if (!Mathf.Approximately(max, _max) || Mathf.Abs(red - _red01) > 0.001f)
+            {
+                _max = max;
+                _red01 = red;
+                Fit(contentRect, out var c, out var rad);
+                PlaceTicks(c, rad);
+                MarkDirtyRepaint();
+            }
+            if (Mathf.Abs(r01 - _rpm01) > 0.002f || Mathf.Abs(nitro - _nitro) > 0.004f || boosting != _boosting)
             {
                 _rpm01 = r01;
-                _red01 = red;
                 _nitro = nitro;
                 _boosting = boosting;
                 MarkDirtyRepaint();
@@ -98,39 +132,72 @@ namespace JapanMap.Gameplay.Hud
             if (r.width < 4f) return;
             var p = ctx.painter2D;
             Fit(r, out var c, out var rad);
-            var w = Mathf.Max(4f, rad * 0.13f);
-
-            // Plate behind the numbers: the city is full of bright neon.
-            p.fillColor = Plate;
-            p.BeginPath();
-            p.Arc(c, rad + w, 0f, 360f);
-            p.Fill();
-
+            var w = Mathf.Max(2f, rad * 0.035f);
             p.lineCap = LineCap.Butt;
-            // rpm arc: 180° from left (180°) over the top to right (360°); Painter2D angles run clockwise, 0° = +x.
-            Arc(p, c, rad, 180f, 360f, w, Track);
-            Arc(p, c, rad, 180f + 180f * _red01, 360f, w, new Color(Red.r, Red.g, Red.b, 0.35f));
-            var to = 180f + 180f * _rpm01;
-            Arc(p, c, rad, 180f, Mathf.Min(to, 180f + 180f * _red01), w, Needle);
-            if (_rpm01 > _red01) Arc(p, c, rad, 180f + 180f * _red01, to, w, Red);
-
-            // Nitro: its own arc outside, along the lower edge (30°…150°, clockwise = below the centre).
-            var nr = rad + w * 1.6f;
-            var nw = w * 0.6f;
-            Arc(p, c, nr, 35f, 145f, nw, NitroTrack);
-            if (_nitro > 0.005f) Arc(p, c, nr, 145f - 110f * _nitro, 145f, nw, _boosting ? Color.white : Nitro);
-            // Burst threshold (a boost double tap needs a quarter tank): a tick across the arc, white once reached.
-            var tick = 145f - 110f * 0.25f;
-            Arc(p, c, nr, tick - 1.2f, tick + 1.2f, nw * 1.9f, _nitro >= 0.25f ? new Color(1f, 1f, 1f, 0.9f) : new Color(1f, 1f, 1f, 0.3f));
+            // A faint dark band under the arc: readable over bright neon without a plate.
+            Arc(p, c, rad, From, From + Sweep, w * 5f, Shade);
+            Arc(p, c, rad, From, From + Sweep, w, Track);
+            var red = From + Sweep * _red01;
+            Arc(p, c, rad - w * 1.5f, red, From + Sweep, w * 3.2f, new Color(Red.r, Red.g, Red.b, 0.55f));
+            var to = From + Sweep * _rpm01;
+            Arc(p, c, rad, From, Mathf.Min(to, red), w * 2.2f, Paper);
+            if (to > red) Arc(p, c, rad, red, to, w * 2.6f, Red);
+            // Ticks: one per 1000 rpm, inwards.
+            var n = Mathf.Clamp(Mathf.RoundToInt(_max / 1000f), 1, _ticks.Length - 1);
+            p.lineWidth = Mathf.Max(1.5f, w * 0.9f);
+            for (var i = 0; i <= n; i++)
+            {
+                var a = (From + Sweep * i / n) * Mathf.Deg2Rad;
+                var d = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+                p.strokeColor = i / (float)n >= _red01 - 0.001f ? Red : Paper;
+                p.BeginPath();
+                p.MoveTo(c + d * (rad - w * 0.5f));
+                p.LineTo(c + d * (rad - w * 4.5f));
+                p.Stroke();
+            }
+            // Needle: a short bright line at the rpm.
+            var na = to * Mathf.Deg2Rad;
+            var nd = new Vector2(Mathf.Cos(na), Mathf.Sin(na));
+            p.strokeColor = to > red ? Red : Color.white;
+            p.lineWidth = Mathf.Max(2f, w * 1.6f);
+            p.BeginPath();
+            p.MoveTo(c + nd * (rad * 0.56f));
+            p.LineTo(c + nd * (rad + w * 2f));
+            p.Stroke();
+            // Gear ring.
+            p.strokeColor = Paper;
+            p.lineWidth = Mathf.Max(1.5f, w);
+            p.BeginPath();
+            p.Arc(c, rad * 0.25f, 0f, 360f);
+            p.Stroke();
+            // Nitro: a thin bar under the speed, burst mark at a quarter.
+            var bw = r.width * 0.62f;
+            var x0 = r.width - bw;
+            var y = r.height - Mathf.Max(3f, w * 1.5f);
+            var bh = Mathf.Max(3f, w * 1.4f);
+            Bar(p, x0, y, bw, bh, NitroTrack);
+            if (_nitro > 0.005f) Bar(p, x0, y, bw * _nitro, bh, _boosting ? Color.white : Nitro);
+            Bar(p, x0 + bw * 0.25f - 1f, y - bh * 0.5f, 2f, bh * 2f, _nitro >= 0.25f ? Color.white : new Color(1f, 1f, 1f, 0.35f));
         }
 
-        /// <summary>Centre and arc radius so the plate (rad + w) and the nitro arc below (rad + 1.9 w) stay inside the
-        /// box — the old fixed centre at 56 % drew 20–30 px past the bottom edge.</summary>
+        static void Bar(Painter2D p, float x, float y, float w, float h, Color color)
+        {
+            if (w < 0.5f) return;
+            p.fillColor = color;
+            p.BeginPath();
+            p.MoveTo(new Vector2(x, y));
+            p.LineTo(new Vector2(x + w, y));
+            p.LineTo(new Vector2(x + w, y + h));
+            p.LineTo(new Vector2(x, y + h));
+            p.ClosePath();
+            p.Fill();
+        }
+
+        /// <summary>Arc centre and radius: the arc sits in the upper left of the box, the speed in the open lower right.</summary>
         static void Fit(Rect r, out Vector2 c, out float rad)
         {
-            const float Below = 1.247f, Above = 1.13f; // outer extent below / above the centre, in arc radii (w = 0.13 rad)
-            rad = Mathf.Min((r.width * 0.5f - 2f) / Below, (r.height - 2f) / (Below + Above));
-            c = new Vector2(r.width * 0.5f, 1f + Above * rad);
+            rad = Mathf.Min(r.width * 0.36f, r.height * 0.42f);
+            c = new Vector2(rad * 1.12f, rad * 1.1f);
         }
 
         static void Arc(Painter2D p, Vector2 c, float r, float from, float to, float width, Color color)

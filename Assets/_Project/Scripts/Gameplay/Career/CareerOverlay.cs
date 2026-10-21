@@ -24,6 +24,7 @@ namespace JapanMap.Gameplay.Career
         }
 
         readonly VisualElement _root, _card, _check, _meter, _fill, _dots, _banner, _bannerIcon;
+        readonly Hanko _bannerStamp;
         readonly Label _kicker, _title, _hint, _reward, _count, _bKicker, _bTitle, _bBody;
         readonly Queue<Banner> _queue = new();
         float _bannerUntil, _notBefore;
@@ -45,8 +46,10 @@ namespace JapanMap.Gameplay.Career
             _root.AddToClassList("jm-fill");
             parent.Add(_root);
 
-            _card = Box(_root, "jm-career__card");
-            _card.name = "career-card";
+            // The goal is a kippu (train ticket, D55): paper, two notches, a perforation above the meter.
+            _card = new Ticket { name = "career-card", pickingMode = PickingMode.Ignore };
+            _card.AddToClassList("jm-career__card");
+            _root.Add(_card);
             var head = Box(_card, "jm-career__head");
             _kicker = Text(head, "", "jm-career__kicker");
             _count = Text(head, "", "jm-career__count");
@@ -62,8 +65,13 @@ namespace JapanMap.Gameplay.Career
             _fill = Box(_meter, "jm-career__fill");
             _dots = Box(_card, "jm-career__dots");
 
-            _banner = Box(_root, "jm-career__banner");
-            _banner.name = "career-banner";
+            // Something new unlocked: a paper ticket with a red 新 (new) stamp pressed onto it.
+            _banner = new Ticket { name = "career-banner", pickingMode = PickingMode.Ignore, Perforation = false };
+            _banner.AddToClassList("jm-career__banner");
+            _root.Add(_banner);
+            _bannerStamp = new Hanko(Jp.New, 58f);
+            _bannerStamp.AddToClassList("jm-career__banner-stamp");
+            _banner.Add(_bannerStamp);
             Box(_banner, "jm-career__banner-edge");
             var bHead = Box(_banner, "jm-career__banner-head");
             _bannerIcon = Box(bHead, "jm-career__banner-icon");
@@ -183,9 +191,11 @@ namespace JapanMap.Gameplay.Career
             _bBody.text = b.body ?? "";
             _bBody.style.display = string.IsNullOrEmpty(b.body) ? DisplayStyle.None : DisplayStyle.Flex;
             _bannerIcon.Clear();
-            if (b.icon != Icon.None) _bannerIcon.Add(new UiIcon(b.icon, 22f));
+            if (b.icon != Icon.None) _bannerIcon.Add(new UiIcon(b.icon, 22f) { Tint = Palette.Sumi });
             _banner.EnableInClassList("jm-career__banner--gold", b.gold);
             _banner.AddToClassList("jm-career__banner--on");
+            _bannerStamp.Word = b.gold ? Jp.Done : Jp.New;
+            _bannerStamp.Stamp(Core.GameOptions.ReducedMotion);
             _bannerUntil = now + _bannerSeconds;
             LastBanner = $"{b.kicker} {b.title}";
             if (!string.IsNullOrEmpty(b.sound)) Audio.Sfx.Play(b.sound);

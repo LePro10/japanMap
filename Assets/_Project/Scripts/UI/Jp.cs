@@ -34,6 +34,9 @@ namespace JapanMap.UI
         public const string Mine = "愛車";
         public const string Finish = "完";
         public const string Rain = "雨";
+        public const string Gold = "金";
+        public const string Silver = "銀";
+        public const string Bronze = "銅";
         public static string Place(int position) => position >= 1 && position <= 9 ? "一二三四五六七八九"[position - 1] + "位" : Finish;
 
         // Brand and screens.

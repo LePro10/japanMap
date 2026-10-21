@@ -51,6 +51,9 @@ namespace JapanMap.Gameplay.Hud
         Label _goal;
         string _goalTitle = "";
         Vector2? _goalAt;
+        Label _regionJp;
+        VisualElement _toastRow;
+        UI.Hanko _toastStamp;
         Label _saved, _points, _mult, _spot, _result, _sparks, _toast, _banner, _prompt, _hint, _stunt, _race, _count, _region, _sheetTitle, _sheetBody;
         Instrument _instrument;
         SpeedLines _lines;
@@ -156,14 +159,18 @@ namespace JapanMap.Gameplay.Hud
                     Menu.GameMenu.Instance?.Open<Menu.MapScreen>();
                     e.StopPropagation();
                 });
-                _minimap.style.borderTopLeftRadius = _minimap.style.borderTopRightRadius = _minimap.style.borderBottomLeftRadius = _minimap.style.borderBottomRightRadius = 12;
-                _minimap.style.borderTopWidth = _minimap.style.borderBottomWidth = _minimap.style.borderLeftWidth = _minimap.style.borderRightWidth = 2;
-                _minimap.style.borderTopColor = _minimap.style.borderBottomColor = _minimap.style.borderLeftColor = _minimap.style.borderRightColor = new Color(0.95f, 0.77f, 0.42f, 0.35f);
+                // A see-through ring like FH6 (docs/refs): the world shows around the roads, a thin paper rim.
+                _minimap.AddToClassList("nm-minimap");
                 _nav.Add(_minimap);
             }
-            _region = Text(_nav, 15f, new Color(0.9f, 0.92f, 0.92f));
-            _region.style.marginTop = 4;
-            _region.style.unityTextAlign = TextAnchor.MiddleLeft;
+            var regionRow = new VisualElement { pickingMode = PickingMode.Ignore };
+            regionRow.AddToClassList("nm-region-row");
+            _nav.Add(regionRow);
+            _region = Text(regionRow, 18f * k, Color.white);
+            _region.AddToClassList("nm-region-row__en");
+            _regionJp = Text(regionRow, 12f * k, UI.Palette.Momo);
+            _regionJp.AddToClassList("nm-region-row__jp");
+            _regionJp.AddToClassList("nm-jp");
 
             _instrument = new Instrument { name = "instrument" };
             _instrument.style.position = Position.Absolute;
@@ -174,7 +181,7 @@ namespace JapanMap.Gameplay.Hud
             _driftBox.style.left = _driftBox.style.right = 0;
             _driftBox.style.alignItems = Align.Center;
             var plate = new VisualElement { pickingMode = PickingMode.Ignore };
-            plate.AddToClassList("jm-plate");
+            plate.AddToClassList("nm-score");
             plate.style.alignItems = Align.Center;
             _driftBox.Add(plate);
             var row = new VisualElement { pickingMode = PickingMode.Ignore };
@@ -186,6 +193,8 @@ namespace JapanMap.Gameplay.Hud
             _mult.style.marginLeft = 14;
             _points.AddToClassList("jm-num");
             _mult.AddToClassList("jm-num");
+            _points.AddToClassList("nm-score__points");
+            _mult.AddToClassList("nm-score__mult");
             _bar = new VisualElement { pickingMode = PickingMode.Ignore };
             _bar.style.width = 220 * k;
             _bar.style.height = 6;
@@ -193,23 +202,26 @@ namespace JapanMap.Gameplay.Hud
             _bar.style.backgroundColor = new Color(1f, 1f, 1f, 0.2f);
             _barFill = new VisualElement { pickingMode = PickingMode.Ignore };
             _barFill.style.height = Length.Percent(100);
-            _barFill.style.backgroundColor = Gold;
+            _barFill.style.backgroundColor = UI.Palette.Momo;
             _bar.Add(_barFill);
             plate.Add(_bar);
-            _spot = Text(plate, 22f * k, Rose);
+            _spot = Text(plate, 22f * k, Color.white);
+            _spot.AddToClassList("nm-score__spot");
             _spot.text = "SPOT BONUS ×2";
             _result = Text(Box(_root), 34f * k, Color.white);
             _result.parent.style.left = _result.parent.style.right = 0;
             _result.parent.style.alignItems = Align.Center;
             _result.AddToClassList("jm-num");
+            _result.AddToClassList("nm-score__result");
 
             // Sparks: top right, only for a moment after earning.
             var sparksBox = Box(_root);
             sparksBox.style.alignItems = Align.FlexEnd;
-            _sparks = Text(sparksBox, 30f * k, Gold);
+            _sparks = Text(sparksBox, 30f * k, Color.white);
             _sparks.AddToClassList("jm-num");
-            _sparks.AddToClassList("jm-plate");
-            _saved = Text(sparksBox, 16f, new Color(0.75f, 0.9f, 0.8f));
+            _sparks.AddToClassList("nm-hud-sparks");
+            _saved = Text(sparksBox, 13f, UI.Palette.WashiDim);
+            _saved.AddToClassList("nm-hud-saved");
             _saved.style.display = DisplayStyle.None;
             sparksBox.name = "sparks";
 
@@ -217,25 +229,35 @@ namespace JapanMap.Gameplay.Hud
             toastBox.name = "toasts";
             toastBox.style.left = toastBox.style.right = 0;
             toastBox.style.alignItems = Align.Center;
-            _toast = Text(toastBox, 28f * k, Color.white);
-            _toast.AddToClassList("jm-plate");
+            // One notice lane: an ink strip with a hanko when the notice is a find, a record or a done goal.
+            _toastRow = new VisualElement { pickingMode = PickingMode.Ignore, name = "toast-row" };
+            _toastRow.AddToClassList("nm-toast");
+            toastBox.Add(_toastRow);
+            _toastStamp = new UI.Hanko(UI.Jp.Found, phone ? 30f : 44f);
+            _toastStamp.AddToClassList("nm-toast__stamp");
+            _toastRow.Add(_toastStamp);
+            _toast = Text(_toastRow, 22f * k, Color.white);
+            _toast.AddToClassList("nm-toast__text");
             _toast.style.whiteSpace = WhiteSpace.Normal;
-            _toast.style.maxWidth = Length.Percent(80);
-            _banner = Text(toastBox, 22f * k, Gold);
+            _toastRow.style.display = DisplayStyle.None;
+            _banner = Text(toastBox, 18f * k, Color.white);
+            _banner.AddToClassList("nm-banner");
 
             var promptBox = Box(_root);
             promptBox.name = "prompt";
             promptBox.style.left = promptBox.style.right = 0;
             promptBox.style.alignItems = Align.Center;
-            _hint = Text(promptBox, 24f * k, Gold);
+            _hint = Text(promptBox, 20f * k, Color.white);
+            _hint.AddToClassList("nm-hud-hint");
             _hint.style.display = DisplayStyle.None;
-            _prompt = Text(promptBox, 26f * k, Color.white);
+            _prompt = Text(promptBox, 22f * k, Color.white);
+            _prompt.AddToClassList("nm-hud-prompt");
             _prompt.style.display = DisplayStyle.None;
 
             _race = Text(Box(_root), 24f * k, Color.white);
             _race.parent.name = "activity";
             _race.style.unityTextAlign = TextAnchor.UpperLeft;
-            _race.AddToClassList("jm-plate");
+            _race.AddToClassList("nm-hud-race");
             _race.style.display = DisplayStyle.None;
 
             // Next checkpoint direction: just above the car's forward sightline.
@@ -249,7 +271,7 @@ namespace JapanMap.Gameplay.Hud
             // read it (human, 2026-10-11: "seh ich fast nicht").
             _goal = Text(_root, 22f * k, Color.white);
             _goal.name = "goal";
-            _goal.AddToClassList("jm-plate");
+            _goal.AddToClassList("nm-hud-goal");
             _goal.style.position = Position.Absolute;
             _goal.style.display = DisplayStyle.None;
 
@@ -257,8 +279,9 @@ namespace JapanMap.Gameplay.Hud
             mid.name = "middle";
             mid.style.left = mid.style.right = 0;
             mid.style.alignItems = Align.Center;
-            _count = Text(mid, 140f * k, Color.white);
+            _count = Text(mid, 150f * k, Color.white);
             _count.AddToClassList("jm-num");
+            _count.AddToClassList("nm-count");
             _count.style.display = DisplayStyle.None;
 
             var burstBox = Box(_root);
@@ -266,21 +289,24 @@ namespace JapanMap.Gameplay.Hud
             burstBox.style.left = burstBox.style.right = 0;
             burstBox.style.top = Length.Percent(phone ? 18f : 22f);
             burstBox.style.alignItems = Align.Center;
-            _burstTag = Text(burstBox, 44f * k, new Color(0.55f, 0.9f, 1f));
-            _burstTag.text = "NITRO BURST";
-            // Barlow, not Saira: Saira's atlas drew the letter-spaced space as a bar ("NITRO|BURST").
-            _burstTag.style.letterSpacing = 8f * k;
+            _burstTag = Text(burstBox, 64f * k, Color.white);
+            _burstTag.text = "BURST!!";
+            _burstTag.AddToClassList("jm-num");
+            _burstTag.AddToClassList("nm-telop-hud");
+            _burstTag.AddToClassList("nm-telop-hud--sora");
             _burstTag.style.display = DisplayStyle.None;
 
-            _stunt = Text(Box(_root), 22f * k, new Color(1f, 0.55f, 0.15f));
+            _stunt = Text(Box(_root), 26f * k, Color.white);
             _stunt.text = "STUNT";
             _stunt.parent.name = "stunt";
-            _stunt.AddToClassList("jm-plate");
+            _stunt.AddToClassList("jm-num");
+            _stunt.AddToClassList("nm-hud-stunt");
             _stunt.style.display = DisplayStyle.None;
 
             // Event card / result sheet with real buttons (ASTRA: Start / Back, Retry / Free drive).
             _sheet = new VisualElement { name = "sheet" };
             _sheet.AddToClassList("jm-panel");
+            _sheet.AddToClassList("nm-sheet");
             _sheet.style.position = Position.Absolute;
             _sheetTitle = new Label { name = "sheet-title" };
             _sheetTitle.AddToClassList("jm-h2");
@@ -288,9 +314,15 @@ namespace JapanMap.Gameplay.Hud
             // Result hero (ShowResult): medal, the big number, the reward counting up.
             _hero = new VisualElement { name = "result-hero", pickingMode = PickingMode.Ignore };
             _hero.AddToClassList("jm-result");
+            // The place or medal as a big red stamp (金 銀 銅, 完 = finished), the medal's name under it.
+            var stampBox = new VisualElement { pickingMode = PickingMode.Ignore };
+            stampBox.AddToClassList("jm-medal");
+            _stamp = new UI.Hanko(UI.Jp.Finish, phone ? 72f : 112f);
+            stampBox.Add(_stamp);
             _medal = new Label { pickingMode = PickingMode.Ignore };
-            _medal.AddToClassList("jm-medal");
-            _hero.Add(_medal);
+            _medal.AddToClassList("jm-medal__name");
+            stampBox.Add(_medal);
+            _hero.Add(stampBox);
             var heroText = new VisualElement { pickingMode = PickingMode.Ignore };
             heroText.AddToClassList("jm-result__text");
             _heroMain = new Label { pickingMode = PickingMode.Ignore };
@@ -455,8 +487,7 @@ namespace JapanMap.Gameplay.Hud
         public void Flash(string text)
         {
             LastToast = text;
-            _toast.text = text;
-            _toast.style.display = DisplayStyle.Flex;
+            ShowToastNow(text);
             _toastUntil = Time.time + toastSeconds;
         }
 
@@ -478,10 +509,21 @@ namespace JapanMap.Gameplay.Hud
             var shown = "";
             foreach (var kv in _prompts) { PromptOwner = kv.Key; shown = kv.Value; break; }
             // On touch the USE button is the prompt; drop the key name.
-            _prompt.text = _touchSeen && shown.StartsWith("E  ") ? shown.Substring(3) : shown;
+            _prompt.text = KeyCap(_touchSeen && shown.StartsWith("E  ") ? shown.Substring(3) : shown);
             _prompt.style.display = shown != "" ? DisplayStyle.Flex : DisplayStyle.None;
             _useButton.style.display = _touchSeen && shown != "" ? DisplayStyle.Flex : DisplayStyle.None;
         }
+
+        /// <summary>"F  Get out" → the key as a paper cap, then the action (rich text: the mark is the cap's paper).</summary>
+        internal static string KeyCap(string prompt)
+        {
+            var i = prompt.IndexOf("  ", System.StringComparison.Ordinal);
+            if (i <= 0 || i > 12) return prompt;
+            return $"<mark=#f5efe4F0><color=#17121f> {prompt.Substring(0, i)} </color></mark>  {prompt.Substring(i + 2)}";
+        }
+
+        /// <summary>The prompt as the player reads it, without the key cap's markup (tests).</summary>
+        public string PromptText => _prompt == null ? "" : System.Text.RegularExpressions.Regex.Replace(_prompt.text, "<[^>]+>", "").Trim();
 
         /// <summary>Shows the touch USE button as if the screen had been touched (screenshots of the phone layout).</summary>
         public void ShowTouch()
@@ -509,6 +551,8 @@ namespace JapanMap.Gameplay.Hud
         public void ShowSheet(string title, string body, params (string label, Action action)[] buttons)
         {
             if (_hero != null) _hero.style.display = DisplayStyle.None;
+            _sheet?.RemoveFromClassList("nm-sheet--result");
+            if (_sheetBody != null) _sheetBody.style.display = DisplayStyle.Flex;
             _sheetBody?.RemoveFromClassList("jm-small");
             ShowSheetCore(title, body, buttons);
         }
@@ -525,10 +569,14 @@ namespace JapanMap.Gameplay.Hud
             _hero.style.display = DisplayStyle.Flex;
             _sheetBody.AddToClassList("jm-small"); // the hero says it large; the line below is the detail
             _medal.text = medal.ToUpperInvariant();
-            foreach (var c in new[] { "jm-medal--gold", "jm-medal--silver", "jm-medal--bronze", "jm-medal--none" }) _medal.RemoveFromClassList(c);
-            _medal.AddToClassList(tier >= 3 ? "jm-medal--gold" : tier == 2 ? "jm-medal--silver" : tier == 1 ? "jm-medal--bronze" : "jm-medal--none");
+            // A place ("4th") stamps 四位; a medal 金 銀 銅; anything else 完 (finished).
+            var place = medal.Length >= 3 && char.IsDigit(medal[0]) && int.TryParse(medal.Substring(0, medal.Length - 2), out var n) ? n : 0;
+            _stamp.Word = place > 0 ? UI.Jp.Place(place) : tier >= 3 ? UI.Jp.Gold : tier == 2 ? UI.Jp.Silver : tier == 1 ? UI.Jp.Bronze : UI.Jp.Finish;
+            // The hero says it all large; the line below repeated it (UI audit 2026-10-21). SheetText keeps it for tests.
+            _sheetBody.style.display = DisplayStyle.None;
+            _stamp.Stamp(Core.GameOptions.ReducedMotion);
+            _sheet.AddToClassList("nm-sheet--result");
             _heroMain.text = main;
-            Pop(_medal, 1.6f);
             // Count the reward up over a second (real time: the result can show while the game is slowed).
             _countFrom = Time.unscaledTime;
             _countTo = sparks;
@@ -540,6 +588,7 @@ namespace JapanMap.Gameplay.Hud
         int _countTo;
         VisualElement _hero;
         Label _medal, _heroMain, _heroReward;
+        UI.Hanko _stamp;
 
         void TickResult()
         {
@@ -688,8 +737,7 @@ namespace JapanMap.Gameplay.Hud
                     _toasts.Clear();
                     _toasts.Enqueue(_toast.text);
                     foreach (var t in rest) _toasts.Enqueue(t);
-                    _toast.text = "";
-                    _toast.style.display = DisplayStyle.None;
+                    ShowToastNow("");
                     _toastUntil = 0f;
                 }
                 if (value) _bannerUntil = 0f;
@@ -737,6 +785,24 @@ namespace JapanMap.Gameplay.Hud
 
         void OnMapArt(Texture2D art) => _minimap?.SetBase(art);
 
+        /// <summary>The notice lane now: text, and a hanko when the notice is a find, a record or a done goal.</summary>
+        void ShowToastNow(string text)
+        {
+            if (_toast == null) return;
+            _toast.text = text;
+            _toastRow.style.display = text != "" ? DisplayStyle.Flex : DisplayStyle.None;
+            if (text == "") return;
+            var l = text.ToLowerInvariant();
+            var word = l.Contains("explored") || l.Contains("discover") || l.Contains("found") ? UI.Jp.Found
+                : l.Contains("record") || l.Contains("milestone") || l.Contains("best") ? UI.Jp.Best
+                : l.Contains("complete") || l.Contains("done") || l.Contains("unlocked") ? UI.Jp.Done
+                : l.Contains("daily") ? UI.Jp.Daily : "";
+            _toastStamp.style.display = word != "" ? DisplayStyle.Flex : DisplayStyle.None;
+            if (word == "") return;
+            _toastStamp.Word = word;
+            _toastStamp.Stamp(Core.GameOptions.ReducedMotion);
+        }
+
         void OnEarned(int amount, string reason)
         {
             _sparksUntil = Time.unscaledTime + sparksSeconds;
@@ -775,9 +841,9 @@ namespace JapanMap.Gameplay.Hud
 
             if (Time.time >= _toastUntil)
             {
-                _toast.text = !_held && _toasts.Count > 0 ? _toasts.Dequeue() : "";
-                if (_toast.text != "") { _toastUntil = Time.time + toastSeconds; Pop(_toast); }
-                _toast.style.display = _toast.text != "" ? DisplayStyle.Flex : DisplayStyle.None;
+                var next = !_held && _toasts.Count > 0 ? _toasts.Dequeue() : "";
+                ShowToastNow(next);
+                if (next != "") { _toastUntil = Time.time + toastSeconds; Pop(_toastRow); }
             }
             _banner.style.display = Time.time < _bannerUntil ? DisplayStyle.Flex : DisplayStyle.None;
         }
@@ -883,7 +949,7 @@ namespace JapanMap.Gameplay.Hud
             if (rw != null && rw.Current >= 0)
             {
                 var title = rw.Regions.regions[rw.Current].title;
-                if (_region.text != title) _region.text = title;
+                if (_region.text != title) { _region.text = title.ToUpperInvariant(); _regionJp.text = UI.Jp.Region(title); }
             }
         }
 
