@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using JapanMap.Core.Ui;
 using JapanMap.Gameplay.Garage;
 using JapanMap.Gameplay.Progress;
 using JapanMap.UI;
@@ -22,7 +23,7 @@ namespace JapanMap.Gameplay.Menu
         static readonly string[] Filters = { "All", "Street", "Utility", "Sport", "Track" };
         readonly GarageSystem _garage;
         readonly PlayerProgress _progress;
-        bool _showroom;
+        bool _showroom = true; // every car by default: the dealer is where the next goal is
         int _filter;
         Page _page;
         string _text = "";
@@ -70,53 +71,68 @@ namespace JapanMap.Gameplay.Menu
             var t = new StringBuilder();
             if (string.IsNullOrEmpty(Shown)) _garage.Pick(_progress.Data.selectedCar);
             var def = _progress.Fleet.Get(Shown) ?? _progress.Fleet.Default;
-            var head = Ui.Row(body, "jm-wrap");
-            if (_page != Page.List) Ui.Button(head, "‹ Back", () => Back());
-            Ui.H1(head, _page == Page.Tune ? $"Tune · {def.displayName}" : _page == Page.Look ? $"Appearance · {def.displayName}" : "Cars");
-            var bal = Ui.Text(head, $"{_progress.Wallet.Balance:N0} Sparks", "jm-h2", "jm-amber");
-            bal.style.marginLeft = 16;
-            if (_garage.InBay) Ui.Small(body, "Open Bay · what you see on the floor drives out.");
+            var aside = UiPanel.IsPhone || Menu.Aside == null ? body : Menu.Aside;
+            if (_page != Page.List)
+            {
+                var head = Ui.Row(body, "jm-wrap");
+                Ui.Button(head, "‹ Back", () => Back(), "nm-back");
+                Ui.Text(head, _page == Page.Tune ? "Tune" : "Appearance", "jm-h1");
+                Ui.Text(head, def.displayName.ToUpperInvariant(), "nm-pagehead__sub");
+            }
+            if (_garage.InBay) Ui.Small(body, "Open Bay · the car on the floor drives out.");
             t.AppendLine($"balance {_progress.Wallet.Balance}");
 
             if (_page == Page.Tune) { BuildTune(body, def, t); _text = t.ToString(); return; }
             if (_page == Page.Look) { BuildLook(body, def, t); _text = t.ToString(); return; }
 
-            // Selected car first: its photo from the Open Bay, values and what to do with it; below, every car as a
-            // picture card (owner 2026-10-17: no pictures, could not find anything).
-            Detail(body, def, t);
-
-            var sw = Ui.Row(body, "jm-wrap");
-            sw.style.marginTop = 18;
-            Ui.On(Ui.Button(sw, "Owned", () => { _showroom = false; Menu.Rebuild(); }), !_showroom);
-            Ui.On(Ui.Button(sw, "Showroom", () => { _showroom = true; Menu.Rebuild(); }), _showroom);
-            Ui.Box(sw).style.width = 14;
-            for (var i = 0; i < Filters.Length; i++)
+            // Garage (D55): a list with pictures on the left that never jumps; the chosen car's paper card at the right
+            // over the car, its one main button always in the same place (owner 2026-10-21: "klicke auf ein Auto und
+            // muss nochmal nach oben scrollen").
+            var chips = Ui.Row(body, "jm-wrap", "nm-chips");
+            Chip(chips, $"All {_progress.Fleet.vehicles.Length}", _showroom && _filter == 0, () => { _showroom = true; _filter = 0; });
+            var mine = 0;
+            foreach (var v in _progress.Fleet.vehicles) if (v != null && _progress.Owns(v.id)) mine++;
+            Chip(chips, $"Mine {mine}", !_showroom, () => { _showroom = false; _filter = 0; });
+            for (var i = 1; i < Filters.Length; i++)
             {
                 var index = i;
-                Ui.On(Ui.Button(sw, Filters[i], () => { _filter = index; Menu.Rebuild(); }), _filter == i);
+                Chip(chips, Filters[i], _showroom && _filter == i, () => { _showroom = true; _filter = index; });
             }
 
-            var grid = Ui.Box(body, "jm-cargrid");
-            foreach (var v in _progress.Fleet.vehicles)
+            var list = Ui.Box(body, "nm-carlist");
+            // Yours first, then the dealer by price.
+            var cars = new List<VehicleDefinition>();
+            foreach (var v in _progress.Fleet.vehicles) if (v != null) cars.Add(v);
+            cars.Sort((a, b) => _progress.Owns(a.id) != _progress.Owns(b.id) ? (_progress.Owns(a.id) ? -1 : 1) : a.price.CompareTo(b.price));
+            foreach (var v in cars)
             {
-                if (v == null) continue;
                 var owned = _progress.Owns(v.id);
                 if (!_showroom && !owned) continue;
                 if (_filter > 0 && v.category.ToString() != Filters[_filter]) continue;
                 var id = v.id;
-                var card = Ui.Button(grid, "", () => OnCard(id), "jm-tile", "jm-carcard");
-                card.name = "car-" + v.id;
-                Ui.On(card, v.id == Shown, "jm-tile--on");
-                Picture(Ui.Box(card, "jm-carpic"), v);
-                var text = Ui.Box(card, "jm-carcard__text");
-                Ui.Text(text, v.displayName, "jm-carcard__name");
+                var row = Ui.Button(list, "", () => OnCard(id), "nm-carrow");
+                row.name = "car-" + v.id;
+                Ui.On(row, v.id == Shown, "nm-carrow--on");
+                Picture(Ui.Box(row, "nm-carrow__pic"), v);
+                var text = Ui.Box(row, "nm-carrow__text");
+                Ui.Text(text, v.displayName.ToUpperInvariant(), "nm-carrow__name");
                 var driving = _progress.Data.selectedCar == v.id;
-                var tag = driving ? "Driving" : owned ? "Owned" : $"{v.price:N0} Sparks";
-                Ui.Text(text, $"{v.category} · {tag}", "jm-carcard__tag", driving ? "jm-carcard__tag--driving" : owned ? "jm-carcard__tag" : "jm-carcard__tag--price");
-                t.AppendLine($"{v.displayName} {tag}");
+                Ui.Text(text, $"{v.category}{(owned ? " · yours" : "")}".ToUpperInvariant(), "nm-carrow__sub");
+                var tag = driving ? "Driving" : owned ? "Owned" : $"{v.price:N0}";
+                var tagLabel = Ui.Text(row, tag, "nm-carrow__tag", driving ? "nm-carrow__tag--driving" : owned ? "nm-carrow__tag--owned" : "nm-carrow__tag--price");
+                if (!owned) { var sp = new UiIcon(Icon.Spark, 13f) { Tint = Palette.Momo }; sp.AddToClassList("nm-carrow__spark"); row.Add(sp); }
+                foreach (var c in row.Query<VisualElement>().ToList()) if (c != row) c.pickingMode = PickingMode.Ignore;
+                t.AppendLine($"{v.displayName} {(driving ? "Driving" : owned ? "Owned" : $"{v.price:N0} Sparks")}");
             }
-            if (grid.childCount == 0) Ui.Small(body, "No car in this filter yet — the Showroom has all ten.");
+            if (list.childCount == 0) Ui.Small(body, "No car here yet.");
+            Detail(aside, def, t);
             _text = t.ToString();
+        }
+
+        void Chip(VisualElement row, string label, bool on, System.Action pick)
+        {
+            var b = Ui.Button(row, label, () => { pick(); Menu.Rebuild(); }, "nm-chip");
+            Ui.On(b, on, "nm-chip--on");
         }
 
         VisualElement _body;
@@ -135,7 +151,8 @@ namespace JapanMap.Gameplay.Menu
             if (owned) _garage.ApplySoon();
             Menu.Rebuild();
             if (scroll == null) return;
-            var to = owned ? offset : Vector2.zero;
+            // The detail sits in the aside (desktop): the list stays where it was. Phones show it on top: scroll up.
+            var to = owned || !UiPanel.IsPhone ? offset : Vector2.zero;
             scroll.scrollOffset = to;
             scroll.schedule.Execute(() => scroll.scrollOffset = to); // again once the rebuilt page has its layout
         }
@@ -198,46 +215,58 @@ namespace JapanMap.Gameplay.Menu
 
         void Detail(VisualElement col, VehicleDefinition def, StringBuilder t)
         {
-            var p = Ui.Box(col);
-            Picture(Ui.Box(p, "jm-hero"), def);
-            Ui.Text(p, def.displayName, "jm-h1");
-            Ui.Small(p, $"{def.category}{(string.IsNullOrEmpty(def.blurb) ? "" : " · " + def.blurb)}");
+            var p = Ui.Box(col, "nm-paper", "nm-cardetail");
+            p.pickingMode = PickingMode.Position;
             var state = _progress.Owns(def.id) ? _progress.Car(def.id) : null;
+            var driving = state != null && _progress.Data.selectedCar == def.id;
+            var head = Ui.Row(p, "nm-cardetail__head");
+            var names = Ui.Box(head, "jm-grow");
+            Ui.Text(names, def.displayName.ToUpperInvariant(), "nm-cardetail__name");
+            Ui.Text(names, $"{def.category}{(string.IsNullOrEmpty(def.blurb) ? "" : " · " + def.blurb)}", "nm-cardetail__sub");
+            if (driving) head.Add(new Hanko(Jp.Mine, 54f));
+            // Not the car on the stage: its Open Bay photo (the car behind the menu is the one you drive).
+            if (!driving) Picture(Ui.Box(p, "nm-cardetail__pic"), def);
             var spec = _progress.Tuning.Apply(def, state?.tune ?? default, state?.setup ?? CarSetupMode.Road);
             var stock = def.arcade;
-            // Values in a compact grid of label-over-value cells (six rows of a table pushed the buttons off screen).
-            var stats = Ui.Box(p, "jm-specs");
-            void Stat(string name, string value)
+            var max = FleetMax();
+            var stats = Ui.Box(p, "nm-cardetail__stats");
+            void Stat(string name, float now, float of, string value)
             {
-                var cell = Ui.Box(stats, "jm-spec");
-                Ui.Text(cell, name.ToUpperInvariant(), "jm-spec__name");
-                Ui.Text(cell, value, "jm-spec__value");
+                var row = Ui.Row(stats, "nm-statrow");
+                Ui.Text(row, name, "nm-statrow__name");
+                var track = Ui.Box(row, "nm-statrow__track");
+                var fill = Ui.Add(track, new Slant { Fill = Palette.Sumi, Lean = 5f }, "nm-statrow__fill");
+                fill.style.width = Length.Percent(Mathf.Clamp01(now / Mathf.Max(0.001f, of)) * 100f);
+                Ui.Text(row, value, "nm-statrow__value");
                 t.AppendLine($"{name} {value}");
             }
-            Stat("Top speed", $"{Core.GameOptions.Speed(spec.TopSpeed(def.mass))} {Core.GameOptions.SpeedUnit}{Delta(spec.TopSpeed(def.mass), stock.TopSpeed(def.mass))}");
-            Stat("Power", $"{spec.power / 1000f:0} kW{Delta(spec.power, stock.power)}");
-            Stat("Grip", $"{spec.latG:0.00} g{Delta(spec.latG, stock.latG)}");
-            Stat("Braking", $"{spec.brakeG:0.00} g{Delta(spec.brakeG, stock.brakeG)}");
-            Stat("Dirt grip · clearance", $"{def.dirtGrip * 100f:0} % · {def.clearance * 100f:0} cm");
-            Stat("Gearbox", $"{def.gearbox.gears} gears · redline {def.gearbox.redline:N0} rpm");
+            var top = spec.TopSpeed(def.mass);
+            Stat("Top speed", top, max[0], $"{Core.GameOptions.Speed(top)} {Core.GameOptions.SpeedUnit}{Delta(top, stock.TopSpeed(def.mass))}");
+            Stat("Power", spec.power / def.mass, max[1], $"{spec.power / 1000f:0} kW{Delta(spec.power, stock.power)}");
+            Stat("Grip", spec.latG, max[2], $"{spec.latG:0.00} g{Delta(spec.latG, stock.latG)}");
+            Stat("Braking", spec.brakeG, max[3], $"{spec.brakeG:0.00} g{Delta(spec.brakeG, stock.brakeG)}");
+            t.AppendLine($"Dirt grip · clearance {def.dirtGrip * 100f:0} % · {def.clearance * 100f:0} cm");
+            t.AppendLine($"Gearbox {def.gearbox.gears} gears · redline {def.gearbox.redline:N0} rpm");
 
-            var actions = Ui.Row(p, "jm-wrap");
-            actions.style.marginTop = 10;
+            var actions = Ui.Row(p, "nm-cardetail__acts");
             if (state == null)
             {
                 var afford = _progress.Wallet.Balance >= def.price;
-                MenuTiles.Gate(Ui.Button(actions, $"Buy · {def.price:N0} Sparks", () => PurchaseSheet(def), afford ? "jm-btn--primary" : "jm-btn"), Core.FeatureId.CarShop);
-                MenuTiles.Gate(Ui.Button(actions, $"Test drive · {_garage.TestDriveSeconds:0} s", () => { Menu.Close(); _garage.TestDrive(def.id); }), Core.FeatureId.TestDrive);
-                if (!afford) Ui.Small(p, $"{def.price - _progress.Wallet.Balance:N0} Sparks to go.");
+                MenuTiles.Gate(Ui.Button(actions, $"Test drive · {_garage.TestDriveSeconds:0} s", () => { Menu.Close(); _garage.TestDrive(def.id); }, "nm-btn--ink"), Core.FeatureId.TestDrive);
+                var buy = Ui.Button(actions, afford ? $"Buy · {def.price:N0} Sparks" : $"{def.price - _progress.Wallet.Balance:N0} Sparks to go", () => PurchaseSheet(def), "jm-btn--primary", "jm-btn--wide");
+                buy.name = "car-buy";
+                buy.SetEnabled(afford);
+                MenuTiles.Gate(buy, Core.FeatureId.CarShop);
                 t.AppendLine(afford ? "can buy" : "cannot afford");
                 LoanOffers(p, actions, def, t);
                 return;
             }
-            var driving = _progress.Data.selectedCar == def.id;
-            Ui.Button(actions, driving ? "Driving" : "Drive this car", () => { _garage.Pick(def.id); _garage.ApplySoon(); Menu.Rebuild(); }, driving ? "jm-btn--on" : "jm-btn--primary");
-            MenuTiles.Gate(Ui.Button(actions, "Tune", () => { _page = Page.Tune; Menu.Rebuild(); }), Core.FeatureId.Tuning);
-            MenuTiles.Gate(Ui.Button(actions, "Appearance", () => { _page = Page.Look; Menu.Rebuild(); }), Core.FeatureId.Paint);
-            if (!_garage.InBay) Ui.Small(p, "Changes reach your car as soon as it stands still. The Open Bay in Sakura Commons shows it on the floor.");
+            MenuTiles.Gate(Ui.Button(actions, "Tune", () => { _page = Page.Tune; Menu.Rebuild(); }, "nm-btn--ink"), Core.FeatureId.Tuning);
+            MenuTiles.Gate(Ui.Button(actions, "Paint", () => { _page = Page.Look; Menu.Rebuild(); }, "nm-btn--ink"), Core.FeatureId.Paint);
+            var go = Ui.Button(actions, driving ? "Driving" : "Drive this car", () => { _garage.Pick(def.id); _garage.ApplySoon(); Menu.Rebuild(); },
+                driving ? "jm-btn--on" : "jm-btn--primary", "jm-btn--wide");
+            go.name = "car-drive";
+            go.SetEnabled(!driving);
         }
 
         void PurchaseSheet(VehicleDefinition def)

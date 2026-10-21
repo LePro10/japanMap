@@ -36,6 +36,8 @@ namespace JapanMap.Gameplay.Menu
             public Vehicles.VehicleDefinition Car;
             /// <summary>A picture that fills the tile (postcard, map art).</summary>
             public UnityEngine.Texture2D Picture;
+            /// <summary>A postcard id (PostcardSet.EventId / PlaceId) whose picture fills the tile once streamed in.</summary>
+            public string Postcard;
             /// <summary>The kicker's Japanese word (UI/Jp.cs).</summary>
             public string Jp = "";
         }
@@ -59,6 +61,12 @@ namespace JapanMap.Gameplay.Menu
             {
                 var tex = Garage.CarPortraits.Get(s.Car, got => pic.style.backgroundImage = new StyleBackground(got));
                 if (tex != null) pic.style.backgroundImage = new StyleBackground(tex);
+            }
+            if (!string.IsNullOrEmpty(s.Postcard))
+            {
+                // A postcard (PostcardSet, streamed): it may arrive after the tile is built.
+                b.AddToClassList("jm-card--pic");
+                PostcardSet.Request(s.Postcard, tex => pic.style.backgroundImage = new StyleBackground(tex));
             }
             if (s.Picture != null || s.Car != null) b.AddToClassList("jm-card--pic");
             Ui.Box(b, "nm-tile__fade").style.backgroundImage = new StyleBackground(Nm.FadeUp());

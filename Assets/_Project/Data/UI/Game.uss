@@ -199,9 +199,10 @@ Label { color: var(--washi); font-size: 16px; }
 .jm-phone .jm-value { width: 52px; }
 .jm-setting .unity-slider { flex-grow: 1; margin-right: 12px; min-width: 120px; }
 .jm-setting .unity-base-slider__input { flex-grow: 1; }
-.unity-slider .unity-base-slider__tracker { background-color: rgba(245, 239, 228, 0.18); border-width: 0; height: 6px; margin-top: -3px; border-radius: 3px; }
-.unity-slider .unity-base-slider__dragger { background-color: var(--momo); border-width: 3px; border-color: var(--washi); width: 24px; height: 24px; margin-top: -12px; border-radius: 12px; }
-.unity-slider .unity-base-slider__dragger-border { display: none; }
+/* Setting sliders only: a scroller is a slider too, and it turned into a fat pink bar. */
+.jm-setting .unity-slider .unity-base-slider__tracker { background-color: rgba(245, 239, 228, 0.18); border-width: 0; height: 6px; margin-top: -3px; border-radius: 3px; }
+.jm-setting .unity-slider .unity-base-slider__dragger { background-color: var(--momo); border-width: 3px; border-color: var(--washi); width: 24px; height: 24px; margin-top: -12px; border-radius: 12px; }
+.jm-setting .unity-slider .unity-base-slider__dragger-border { display: none; }
 .jm-value { width: 64px; -unity-text-align: middle-right; color: var(--washi);
     -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal; font-size: 18px; }
 
@@ -342,3 +343,34 @@ Label { color: var(--washi); font-size: 16px; }
 .jm-phone .jm-spec { width: 50%; }
 .jm-spec__name { font-size: 11px; letter-spacing: 2px; color: var(--washi-dim); }
 .jm-spec__value { font-size: 20px; color: var(--washi); white-space: normal; }
+
+/* ── sub-tabs on a page (Settings, Records): big italic words, the open one in paper with a pink slant ──── */
+.nm-tabs { flex-direction: row; margin: 4px 0 14px 0; }
+.nm-tab__holder { margin-right: 22px; }
+.nm-tab { background-color: rgba(0, 0, 0, 0); border-width: 0; padding: 0; margin: 0; min-height: 40px; min-width: 0;
+    font-size: 24px; color: rgba(245, 239, 228, 0.45); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal; }
+.nm-tab:hover:enabled, .nm-tab:focus { background-color: rgba(0, 0, 0, 0); color: var(--washi); }
+.nm-tab.jm-btn--on, .nm-tab.jm-btn--on:hover:enabled { background-color: rgba(0, 0, 0, 0); color: #ffffff; }
+.nm-tab__bar { height: 5px; margin-top: 2px; }
+
+/* The save line at the foot of Settings. */
+.nm-save { flex-direction: row; flex-wrap: wrap; align-items: center; margin-top: 18px; padding-top: 12px; border-top-width: 1px; border-color: var(--line); }
+.nm-save Label { font-size: 13px; color: var(--washi-dim); margin-right: 12px; }
+.nm-save .jm-btn { min-height: 40px; font-size: 13px; }
+
+/* Records: best values as big numbers, milestones and discoveries as a grid of stamps. */
+.nm-stats { flex-direction: row; flex-wrap: wrap; margin: 6px 0 10px 0; }
+.nm-stat { width: 33%; padding: 8px 12px 10px 0; }
+.jm-phone .nm-stat { width: 50%; }
+.nm-stat__label { font-size: 11px; letter-spacing: 2px; color: var(--washi-dim); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; }
+.nm-stat__value { flex-direction: row; align-items: flex-end; }
+.nm-num { font-size: 44px; color: var(--washi); }
+.jm-phone .nm-num { font-size: 30px; }
+.nm-unit { font-size: 14px; color: var(--washi-dim); margin: 0 0 8px 6px; }
+.nm-stamps { flex-direction: row; flex-wrap: wrap; margin: 6px 0 12px 0; }
+.nm-stamp { width: 96px; align-items: center; margin: 0 6px 12px 0; }
+.nm-stamp--open { opacity: 0.45; }
+.nm-stamp__q { font-size: 22px; color: var(--washi-dim); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal; }
+.nm-stamp__name { font-size: 12px; color: var(--washi); -unity-text-align: upper-center; white-space: normal; margin-top: 6px; }
+.nm-stamp--open .nm-stamp__name { color: var(--washi-dim); }
+.nm-region { margin-top: 14px; }

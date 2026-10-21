@@ -510,6 +510,7 @@ namespace JapanMap.Gameplay.Menu
             SetPageWidth(Current);
             RefreshSparks();
             _body.Clear();
+            _aside?.Clear();
             CareerChip(_body);
             Current.Build(_body);
             MenuTiles.Stagger(_body);
@@ -661,6 +662,10 @@ namespace JapanMap.Gameplay.Menu
                 Ui.Text(_carName, "", "nm-carname__name").pickingMode = PickingMode.Ignore;
                 Ui.Text(_carName, "", "nm-carname__sub").pickingMode = PickingMode.Ignore;
             }
+            // The page's aside: a fixed panel at the right, over the car (car details, the map's ticket) — it never
+            // scrolls with the page, so a list click can show its result without the list jumping.
+            _aside = Ui.Box(_root, "nm-aside");
+            _aside.pickingMode = PickingMode.Ignore;
             _notice = Ui.Text(_root, "", "jm-notice");
             _notice.pickingMode = PickingMode.Ignore;
             if (Current != null) Show(Current);
@@ -672,7 +677,10 @@ namespace JapanMap.Gameplay.Menu
         }
 
         Label _superword;
-        VisualElement _carName;
+        VisualElement _carName, _aside;
+
+        /// <summary>The fixed panel at the right of the page (cleared on every rebuild).</summary>
+        public VisualElement Aside => _aside;
 
         void RefreshCarName(MenuScreen screen)
         {

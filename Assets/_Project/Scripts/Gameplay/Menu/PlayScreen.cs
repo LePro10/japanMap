@@ -101,6 +101,7 @@ namespace JapanMap.Gameplay.Menu
                     var spec = new MenuTiles.Spec
                     {
                         Name = "tile-event", Kicker = "Next event", Jp = Jp.Race, Title = ev.title, Value = $"+{ev.completion:N0} Sparks",
+                        Postcard = PostcardSet.EventId(ev.id),
                         // The tile travels there: with events open but fast travel not yet (career), it waits for fast travel.
                         Feature = Core.Unlocks.IsUnlocked(Core.FeatureId.Races) ? Core.FeatureId.FastTravel : Core.FeatureId.Races,
                         Click = () => { Menu.Close(); _travel.ToEvent(rec); },

@@ -11,8 +11,8 @@ namespace JapanMap.Editor.Ui
 {
     /// <summary>
     /// The UI fonts of "Night Meet" (D55), reproducible: four dynamic Archivo cuts (empty in git, cleared on build — the
-    /// glyphs a screen needs are rendered at runtime) and Dela Gothic One as a STATIC atlas of exactly the Japanese
-    /// characters the game's strings use: its source file is 2.5 MB and must not reach the build. Fallbacks: every Archivo
+    /// glyphs a screen needs are rendered at runtime) and Dela Gothic One as a SUBSET font of exactly the Japanese
+    /// characters the game's strings use (the full file is 2.5 MB and stays in ArtSource). Fallbacks: every Archivo
     /// cut → Dela (kana, kanji) → Saira Condensed (arrows). Menu "JapanMap/UI/Build Fonts"; run again when new Japanese
     /// text appears (FontCoverageTests says so).
     /// </summary>
@@ -52,6 +52,7 @@ namespace JapanMap.Editor.Ui
                     report.Append($" created {fa.name};");
                 }
                 SetField(fa, "m_ClearDynamicDataOnBuild", so => so.boolValue = true);
+                fa.ClearFontAssetData(true); // play runs render glyphs into the asset; git keeps it empty
                 fa.fallbackFontAssetTable = new List<FontAsset> { jp, saira }.Where(f => f != null).ToList();
                 EditorUtility.SetDirty(fa);
             }
@@ -60,21 +61,42 @@ namespace JapanMap.Editor.Ui
             return report.ToString();
         }
 
-        /// <summary>The static Japanese atlas: rebuilt from scratch so it holds exactly today's characters.</summary>
+        /// <summary>Full Dela Gothic One (2.5 MB) — outside Assets, so it never reaches a build.</summary>
+        public const string JpSource = "ArtSource/Fonts/DelaGothicOne-Regular.ttf";
+        /// <summary>The subset the game ships: exactly the Japanese characters of the game's strings (a few KB).</summary>
+        public const string JpSubset = Dir + "DelaGothicOne-UI.ttf";
+
+        /// <summary>
+        /// The Japanese font: a subset of Dela Gothic One with today's characters (fontTools: python3 -m pip install
+        /// fonttools), as a dynamic asset like the others. A static atlas without its font file drew nothing in UI
+        /// Toolkit (2026-10-21), and with the full file the build would carry 2.5 MB.
+        /// </summary>
         static FontAsset BuildJapanese(StringBuilder report)
         {
             var chars = JapaneseCharacters();
-            var font = AssetDatabase.LoadAssetAtPath<Font>(Dir + "DelaGothicOne-Regular.ttf");
-            if (AssetDatabase.LoadAssetAtPath<FontAsset>(Jp) != null) AssetDatabase.DeleteAsset(Jp);
-            var fa = FontAsset.CreateFontAsset(font, 72, 8, GlyphRenderMode.SDFAA, 1024, 1024, AtlasPopulationMode.Dynamic, false);
-            fa.name = Path.GetFileNameWithoutExtension(Jp);
-            var ok = fa.TryAddCharacters(chars, out var missing);
-            fa.atlasPopulationMode = AtlasPopulationMode.Static;
-            Save(fa, Jp);
-            // The build carries the atlas, not the 2.5 MB font: drop the runtime reference (the editor one stays).
-            SetField(fa, "m_SourceFontFile", so => so.objectReferenceValue = null);
-            SetField(fa, "m_ClearDynamicDataOnBuild", so => so.boolValue = false); // its glyphs are the content
-            report.Append($" JP static {chars.Length} chars{(ok ? "" : $", missing '{missing}'")};");
+            var psi = new System.Diagnostics.ProcessStartInfo("python3",
+                $"-m fontTools.subset \"{JpSource}\" --text=\"{chars}\" --output-file=\"{JpSubset}\" --layout-features=* --no-hinting")
+            { UseShellExecute = false, RedirectStandardError = true, CreateNoWindow = true };
+            using (var p = System.Diagnostics.Process.Start(psi))
+            {
+                var err = p.StandardError.ReadToEnd();
+                p.WaitForExit();
+                if (p.ExitCode != 0) { report.Append($" JP subset FAILED ({err.Trim()}) — python3 -m pip install fonttools;"); return AssetDatabase.LoadAssetAtPath<FontAsset>(Jp); }
+            }
+            AssetDatabase.ImportAsset(JpSubset, ImportAssetOptions.ForceUpdate);
+            var font = AssetDatabase.LoadAssetAtPath<Font>(JpSubset);
+            var fa = AssetDatabase.LoadAssetAtPath<FontAsset>(Jp);
+            if (fa != null && fa.atlasPopulationMode == AtlasPopulationMode.Dynamic && fa.sourceFontFile == font)
+                fa.ClearFontAssetData(true); // same asset, same GUID: only the glyphs a play run rendered go
+            else
+            {
+                if (fa != null) AssetDatabase.DeleteAsset(Jp);
+                fa = FontAsset.CreateFontAsset(font, 72, 8, GlyphRenderMode.SDFAA, 1024, 1024, AtlasPopulationMode.Dynamic, true);
+                fa.name = Path.GetFileNameWithoutExtension(Jp);
+                Save(fa, Jp);
+            }
+            SetField(fa, "m_ClearDynamicDataOnBuild", so => so.boolValue = true);
+            report.Append($" JP subset {chars.Length} chars, {new FileInfo(JpSubset).Length / 1024} KB;");
             return AssetDatabase.LoadAssetAtPath<FontAsset>(Jp);
         }
 
