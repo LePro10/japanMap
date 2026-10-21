@@ -41,6 +41,9 @@ Referenz leerer Build (2026-10-07): Release **7,75 MB** (wasm 5,18, data 2,39).
 
 ## Fallen
 
+- **Immer stumm.** Playwright-Werkzeuge sind es von selbst. Im eingebauten Browser der App (hörbar beim Menschen!)
+  nach jedem Laden **vor dem ersten Klick** per JS: `for (const C of [window.AudioContext, window.webkitAudioContext].filter(Boolean))
+  C.prototype.resume = function(){ return this.suspend(); }` — Unity schaltet Ton erst mit dem ersten Klick frei.
 - **FPS streuen ±20 % zwischen Läufen** desselben Builds (Phase 9: 231–354). Mindestens drei Läufe, Spanne melden;
   für eine Ursache A/B mit `--param` (z. B. `noui=1`) im selben Build.
 - Ohne `--gpu` läuft die Rauchprobe auf **SwiftShader** (Software): FPS dort sind wertlos.

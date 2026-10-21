@@ -3,8 +3,8 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-18 · **Phase 11 (Launch):** Wunschliste 2026-10-17 (3) umgesetzt in 4 Agenten-Runden (D47–D54):
-Schaden, Titel/Menü, Auto-Drive, Karriere, Cockpit, Reifen, Scheinwerfer · **Pause auf deinen Wunsch** · **jetzt bist du dran:** anspielen (Punkt 0)
+**Stand:** 2026-10-21 · **Phase 11 (Launch):** **UI-Neubau geplant** (Befund + Entwürfe: https://claude.ai/artifact/Um9YHs4PmbEL5AtV4s9aoS,
+Bilder `Captures/ui-audit/`) · **jetzt bist du dran:** 4 Entscheidungen (Für dich, Punkt U) · danach Etappe 1 = 9 UI-Fehler
 
 ## Phase 11 — Launch
 
@@ -25,6 +25,12 @@ einzeln grün: TouchMenu, Touch_AutoThrottle, RingLap) · Build 76,4 MB · **20,
 
 ## Offen / Gefunden
 
+- **UI-Befund 2026-10-21 (9 Fehler, Etappe 1):** Einstellungen vom Titel liegen unter dem Titel (Ebene 30 > 20, unbedienbar) ·
+  Autos: Liste unter dem Bildrand, Klick baut die Seite neu, „Drive" oben · gesperrter Textknopf bricht senkrecht um
+  („Appearance · Unlocks…") · Titel-Tastenleiste über „Skip tutorial" · Kapitel-Banner über Sparks, zwei Toasts übereinander ·
+  Countdown unter Toast, „F Get out" im Countdown · Handy hochkant: Knöpfe über Minikarte/Tacho · „Repair (T)" über Intro-Leiste ·
+  Records-Zeile unter Kopfleiste, Notice rechts abgeschnitten. Ungeprüft: Mausrad scrollt das Menü im Browser nicht.
+  Ursache der Klasse: keine festen HUD-Zonen, jede UI-Ebene setzt sich selbst; Menü ruft bei fast jedem Klick `Rebuild()`.
 - Neu (2026-10-18): Gesamtlauf PlayMode hat 3 reihenfolge-abhängige Rote (einzeln grün): `TouchMenuTests`,
   `PlayerDriveTests.Touch_AutoThrottle`, `AcceptanceDriveTests.RingLap` (6,8 m neben der Mitte bei (482, −751)) →
   Ursache suchen (welcher Test vorher Zustand hinterlässt). Verkehrstest knapp (93–99 % auf der Fahrbahn, Soll 95 %).
@@ -53,29 +59,23 @@ einzeln grün: TouchMenu, Touch_AutoThrottle, RingLap) · Build 76,4 MB · **20,
 
 ## Für dich (Mensch)
 
-0. **Die neue Fassung anspielen (20 Min.):** `node Tools/serve-web.mjs --preview`, http://127.0.0.1:8092 (privates Fenster).
-   Bitte je Punkt „ok" oder was stört: (a) **Ladeseite + Titel** → START GAME (Wischblende ins Intro), (b) **Karriere**:
-   die ersten 3–4 Kapitel — wo wird es zäh, stört die Zielkarte oben links?, (c) **Crash**: mit 100 km/h in Hauswand,
-   Baum, Laterne, Leitpfosten — Dellen, Rad ab, Frontscheibe; dann **T** = Reparatur, (d) **Auto-Drive**: Karte (M) →
-   Punkt → „Auto-drive" oder Wegpunkt + **G halten**; **C** wechselt Kino/normal, Lenken übernimmt — Tempo und
-   Kameramischung ok?, (e) **Cockpit** (C) in Hachi, Kaze, Hanami (F1), Hauler: Sitzhöhe, Sicht, Blick in den Drift
-   (Leertaste) zu stark/schwach?, (f) **Licht**: nachts L, zweimal L = Fernlicht, Bremslicht — reicht die Sicht?,
-   (g) **Reifen** von außen ansehen, (h) Esc-Menü mit Kacheln. Bilder vorab: `Captures/damage/final/wall.png`,
-   `Captures/ad-cine/sheet.png`, `Captures/cockpit-after/m3.png`, `Captures/autodrive-cinematic.mp4`.
-1. **Handy:** dieselbe Liste mit `--preview --public` (Touch: BOOST doppelt = Burst, STUNT-Knopf).
+U. **UI-Neubau entscheiden** (Seite oben, ganz unten „Was du entscheiden musst"): (1) Look A Nachtglas oder B Straßenschild,
+   (2) Gesperrtes verstecken + „New"-Punkt oder Schloss lassen (Regeländerung D48/D50), (3) Handy hochkant nur Menü, Fahren quer?,
+   (4) Etappe 1 (die 9 Fehler) sofort starten? Meine Empfehlung: A · verstecken · nur quer · ja.
+0. **Anspielen (20 Min.)** — Spiel-Teile (UI kommt neu, das brauchst du nicht bewerten): `node Tools/serve-web.mjs --preview`,
+   http://127.0.0.1:8092: (c) **Crash** mit 100 km/h, dann **T**, (d) **Auto-Drive** (M → Punkt → „Auto-drive", G halten, C),
+   (e) **Cockpit** (C) in Hachi/Kaze/Hanami/Hauler, (f) **Licht** (L, 2× L), (g) Reifen. Je Punkt „ok" oder was stört.
+   **Handy:** dasselbe mit `--preview --public` (BOOST doppelt = Burst, STUNT-Knopf).
 3. **CrazyGames-QA-Tool** (developer.crazygames.com → ZIP vom **Inhalt** von `Builds/Web`): (a) Werbung im Ergebnis-
    Bildschirm, (b) AdBlocker an: Sofortstart, kein „Watch ad“, (c) Vollbild, dann Esc und MENU, (d) Login + Speichern,
    (e) Foto (P → Enter). Je Punkt ok / was falsch war.
 4. **Hochladen = Basic Launch:** LAUNCH.md §1. Cover/Videos zeigen noch nicht das Intro — sag Bescheid, wenn ich neue
    aus dem Intro schneiden soll (`Tools/store-media.mjs`; der Sprung in Zeitlupe wäre ein starkes Vorschauvideo).
-5. **Auszahlung** (Tipalti, Portal → Account → Billing) · **Geräte-Test** (Handy, Tablet, Laptop mit Intel/AMD-Grafik).
-6. **Nach 7 Tagen und ≥ 500 Plays:** Zahlen aus LAUNCH.md §7 → ich prüfe H1–H5.
+5. **Auszahlung** (Tipalti, Portal → Account → Billing) · **Geräte-Test** · **nach 7 Tagen/≥ 500 Plays:** LAUNCH.md §7 → H1–H5.
 7. Noch offen von früher: Abnahmen Phase 4–10 (Fahrgefühl, Ton), alte Zweige `agent/*`. **Push** nur auf dein Wort.
 
 ## Web-Build
 
 | Datum | Typ | Gesamt | Start bis gameplayStart | Boot (lokal) |
 |---|---|---|---|---|
-| 2026-10-16 | Release, Asset-Sprint 6 (Figuren, Tiere, Verkehr nachgeladen) | 78,2 MB in 102 Dateien | 20,13 MB | 1,1 s |
-| 2026-10-17 | Release, Wunschliste (Burst, Menü, Navi, Cockpit, Straßen) | 78,2 MB in 102 Dateien | 20,25 MB | 0,8 s |
 | 2026-10-18 | Release, Runden 1–4 (Schaden, Titel, Auto-Drive, Karriere, Cockpit, Licht, Einmündungen) | 76,4 MB in 102 Dateien | 20,28 MB | 3,7 s (Rauchprobe) |
