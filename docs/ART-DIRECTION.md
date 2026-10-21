@@ -1,5 +1,16 @@
 # Art Direction
 
+## UI (D55, Richtung „Night Meet" — wartet auf das Ok des Menschen)
+
+**Vor jeder UI- oder Look-Arbeit zuerst die Bilder in `docs/refs/` ansehen** (FH6: HUD, Karte, Ereigniskarte).
+Rückmeldung des Menschen (2026-10-21): kreativ und mutig, **nicht** an den alten UI-Farben orientieren, japanisch mit
+„verrückten" Elementen, Aufbau wie Forza Horizon 6. Daraus:
+- **HUD wie FH6 ohne Kästen:** Schrift mit Schatten direkt auf dem Bild, Minikarte als durchsichtiger Kreis mit dünnem
+  Rand, Tacho als dünner Bogen mit roter Zone und riesiger kursiver Zahl, Punkte frei oben in der Mitte.
+- **Japanische Elemente** im Menü, in Meldungen und bei Erfolgen (Ticket, Hanko, Telop, Katakana, Speedlines, Blenden),
+  je mit genau einer Aufgabe. Entwürfe: https://claude.ai/artifact/Um9YHs4PmbEL5AtV4s9aoS
+- **Karte:** Offline-Render `JapanMap/Map/Bake Map Art` (`MapArtBaker`) in derselben Palette.
+
 ## Stimmung
 
 **„Blaue Stunde nach Regen" in Japan.** Tiefe Sonne knapp über dem Horizont,

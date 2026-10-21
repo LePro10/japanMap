@@ -3,8 +3,8 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-21 · **Phase 11 (Launch):** **UI-Neubau geplant** (Befund + Entwürfe: https://claude.ai/artifact/Um9YHs4PmbEL5AtV4s9aoS,
-Bilder `Captures/ui-audit/`) · **jetzt bist du dran:** 4 Entscheidungen (Für dich, Punkt U) · danach Etappe 1 = 9 UI-Fehler
+**Stand:** 2026-10-21 · **Phase 11 (Launch) · UI-Neubau (D55):** Etappe 1 fertig (9 Fehler), neue Karte im Spiel ·
+Richtung „Night Meet": https://claude.ai/artifact/Um9YHs4PmbEL5AtV4s9aoS · **jetzt bist du dran:** Punkt U
 
 ## Phase 11 — Launch
 
@@ -12,25 +12,20 @@ Bilder `Captures/ui-audit/`) · **jetzt bist du dran:** 4 Entscheidungen (Für d
 - [ ] 2b. **Basic Launch** (du lädst hoch) · [ ] 2c. Zahlen nach 7 Tagen → H1–H5 prüfen (LAUNCH.md §7b)
 - [x] 3f. Asset-Sprint 6 (D45): echte Figuren, Tiere, Verkehr.
 - [x] 3g./3h. Wunschliste + Rückmeldung 2026-10-17 (D46): Burst, Stunts, Menü, Ton, Navi-Band, Straßen, Cockpit (Details: git log).
-- [x] 3i. **Wunschliste 2026-10-17 (3)** (je Runde ein Agent im Editor + einer in der Projektkopie `../japanMap-cli`):
-  Schaden mit Dellen am Treffpunkt, Räder fallen ab, Bäume brechen (D47) · Ladeseite mit Bewegung, Titel mit START/
-  CONTINUE, Menü als Kacheln mit Sperren (D48) · Auto-Drive zum Wegpunkt (G halten) mit Kino-Kamera (D49) · Karriere:
-  20 Schritte/9 Kapitel, überspringbar (D50) · Cockpit je Auto, F1 tief mit F1-Lenkrad, Kopf schaut in den Drift,
-  Vibration (D51) · Reifen nicht mehr von innen, Scheinwerfer an (L) (D52) · Feinschliff Frontscheibe/HUD/Licht im
-  Cockpit (D53) · Einmündungen ohne Kanten (47 → 8 Stufen ≤ 0,5 m), Startauto in Fahrtrichtung, Funaura-NavMesh (D54).
+- [x] 3i. Wunschliste 2026-10-17 (3), D47–D54: Schaden, Titel/Menü-Kacheln, Auto-Drive, Karriere, Cockpit, Reifen/Licht,
+  Einmündungen (Details: git log). · [ ] 3j. **UI-Neubau (D55)**: Etappe 1 ✔, Karten-Render ✔, Etappen 2–6 offen.
 
-**Gemessen (2026-10-18, nach Runde 4):** EditMode 227/227 · PlayMode 231/244 (10 auf Abruf, 3 rot nur im Gesamtlauf,
-einzeln grün: TouchMenu, Touch_AutoThrottle, RingLap) · Build 76,4 MB · **20,28 MB bis gameplayStart** (9,9 s, SDK grün) · Rauchprobe 0 Fehler (meldet „page loader stayed“: Signal `[Page] loaded` fehlt, im Bild aber keine Ladeseite).
-**Nicht gemessen:** Chromebook-/Handy-FPS mit Scheinwerfern + Cockpit, Gamepad-Vibration im Browser.
+**Gemessen (2026-10-21, UI Etappe 1):** EditMode-Gruppen 45/45 (Gesamtlauf nur in der Projektkopie, LESSONS) · PlayMode
+UI/Meldungen/Rennen/Karte 48/48 · Web 76,96 MB, Start 19,18 MB · Rest wie 2026-10-18 (EditMode 227, PlayMode 231/244).
+**Nicht gemessen:** Chromebook-/Handy-FPS mit Scheinwerfern + Cockpit, Gamepad-Vibration im Browser, SDK-Lauf nach D55.
 
 ## Offen / Gefunden
 
-- **UI-Befund 2026-10-21 (9 Fehler, Etappe 1):** Einstellungen vom Titel liegen unter dem Titel (Ebene 30 > 20, unbedienbar) ·
-  Autos: Liste unter dem Bildrand, Klick baut die Seite neu, „Drive" oben · gesperrter Textknopf bricht senkrecht um
-  („Appearance · Unlocks…") · Titel-Tastenleiste über „Skip tutorial" · Kapitel-Banner über Sparks, zwei Toasts übereinander ·
-  Countdown unter Toast, „F Get out" im Countdown · Handy hochkant: Knöpfe über Minikarte/Tacho · „Repair (T)" über Intro-Leiste ·
-  Records-Zeile unter Kopfleiste, Notice rechts abgeschnitten. Ungeprüft: Mausrad scrollt das Menü im Browser nicht.
-  Ursache der Klasse: keine festen HUD-Zonen, jede UI-Ebene setzt sich selbst; Menü ruft bei fast jedem Klick `Rebuild()`.
+- **UI-Neubau (D55):** Etappe 1 erledigt (Titel/Einstellungen, Garage-Klick, gesperrte Knöpfe, Meldungen, Countdown,
+  Repair im Intro, Hochkant-Spalte, Seiten oben, Schrift-Test). Karte: Offline-Render nachgeladen (0,57 MB), Markierungen
+  und Kartenseite noch im alten Stil. **Als Nächstes:** Etappe 2 Fundament „Night Meet" (Schriften Archivo + Dela Gothic
+  One, Farben, Bausteine, HUD-Zonen) → Karte fertig (Markierungen, Ticket, Legende) → HUD → Menü/Garage → Titel/Ergebnis.
+  Gefunden: Hochkant-Knopfreihe (LIGHT/CAM/RESET/MENU) zu eng, Beschriftungen überlappen sich.
 - Neu (2026-10-18): Gesamtlauf PlayMode hat 3 reihenfolge-abhängige Rote (einzeln grün): `TouchMenuTests`,
   `PlayerDriveTests.Touch_AutoThrottle`, `AcceptanceDriveTests.RingLap` (6,8 m neben der Mitte bei (482, −751)) →
   Ursache suchen (welcher Test vorher Zustand hinterlässt). Verkehrstest knapp (93–99 % auf der Fahrbahn, Soll 95 %).
@@ -59,9 +54,10 @@ einzeln grün: TouchMenu, Touch_AutoThrottle, RingLap) · Build 76,4 MB · **20,
 
 ## Für dich (Mensch)
 
-U. **UI-Neubau entscheiden** (Seite oben, ganz unten „Was du entscheiden musst"): (1) Look A Nachtglas oder B Straßenschild,
-   (2) Gesperrtes verstecken + „New"-Punkt oder Schloss lassen (Regeländerung D48/D50), (3) Handy hochkant nur Menü, Fahren quer?,
-   (4) Etappe 1 (die 9 Fehler) sofort starten? Meine Empfehlung: A · verstecken · nur quer · ja.
+U. **UI-Neubau** (Seite oben, unten „Noch zu entscheiden"): (1) passt „Night Meet" (Farben, Schrift, sechs Elemente)?
+   (2) Gesperrtes verstecken + pinker „NEW"-Punkt statt Schloss (ändert D48/D50)? (3) Handy hochkant nur Menü, Fahren quer?
+   Meine Empfehlung: ja · verstecken · nur quer. Kurz anspielen (`node Tools/serve-web.mjs --preview`, :8092): Titel →
+   Settings → Back; Esc → Cars → ein Auto antippen; M = neue Karte.
 0. **Anspielen (20 Min.)** — Spiel-Teile (UI kommt neu, das brauchst du nicht bewerten): `node Tools/serve-web.mjs --preview`,
    http://127.0.0.1:8092: (c) **Crash** mit 100 km/h, dann **T**, (d) **Auto-Drive** (M → Punkt → „Auto-drive", G halten, C),
    (e) **Cockpit** (C) in Hachi/Kaze/Hanami/Hauler, (f) **Licht** (L, 2× L), (g) Reifen. Je Punkt „ok" oder was stört.
@@ -79,3 +75,4 @@ U. **UI-Neubau entscheiden** (Seite oben, ganz unten „Was du entscheiden musst
 | Datum | Typ | Gesamt | Start bis gameplayStart | Boot (lokal) |
 |---|---|---|---|---|
 | 2026-10-18 | Release, Runden 1–4 (Schaden, Titel, Auto-Drive, Karriere, Cockpit, Licht, Einmündungen) | 76,4 MB in 102 Dateien | 20,28 MB | 3,7 s (Rauchprobe) |
+| 2026-10-21 | Release, UI Etappe 1 + Karten-Render (nachgeladen) | 76,96 MB in 103 Dateien | 19,18 MB (Bericht „start") | — |
