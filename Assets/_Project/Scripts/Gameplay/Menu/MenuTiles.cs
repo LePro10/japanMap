@@ -106,8 +106,14 @@ namespace JapanMap.Gameplay.Menu
             b.AddToClassList("jm-locked");
             if (b is Button plain && plain.ClassListContains("jm-btn"))
             {
-                // A text button keeps its label and says why after it; the padlock sits in its left padding.
-                plain.text = $"{plain.text}  ·  {Unlocks.Hint(feature)}";
+                // A text button keeps its label; the padlock sits in its left padding and a click says why (Deny). The hint
+                // in the label made it so long that the row squeezed it to one letter per line (UI audit 2026-10-21).
+                plain.tooltip = Unlocks.Hint(feature);
+                // The label moves into a child: a Button with children is measured by them, not by its text, so the
+                // padlock child alone made it ~50 px wide and the text ran out of (or wrapped inside) it.
+                var caption = new Label(plain.text) { pickingMode = PickingMode.Ignore };
+                plain.text = "";
+                plain.Add(caption);
                 var small = new UiIcon(Icon.Lock, 13f);
                 small.AddToClassList("jm-lock-icon");
                 plain.Add(small);

@@ -164,6 +164,9 @@ namespace JapanMap.Gameplay
             if (!Suspended) Say(CallCar());
         }
 
+        /// <summary>An event is on: the car keeps its "Get out" key, but the prompt does not invite it (UI audit 2026-10-21).</summary>
+        public bool QuietPrompts { get; set; }
+
         public bool CanAlight => Current == Mode.Driving && Car != null && Car.Body.linearVelocity.magnitude * 3.6f <= walkerSettings.alightMaxKmh;
 
         public float CarDistance => Car == null || _walker == null ? float.PositiveInfinity
@@ -275,7 +278,7 @@ namespace JapanMap.Gameplay
             else
             {
                 _promptShown = false;
-                Prompt = CanAlight && Car.Telemetry.speed < 0.5f ? "F  Get out" : "";
+                Prompt = CanAlight && !QuietPrompts && Car.Telemetry.speed < 0.5f ? "F  Get out" : "";
             }
         }
 

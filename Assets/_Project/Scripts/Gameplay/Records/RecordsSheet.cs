@@ -131,7 +131,7 @@ namespace JapanMap.Gameplay.Records
                 {
                     var done = _progress.Claimed($"milestone:{m.kind}:{m.threshold}");
                     if (done) got++;
-                    var l = Ui.Text(ms, $"{(done ? "✓" : "○")} {RecordKeeper.Title(m.kind)} {RecordKeeper.Format(m.kind, m.threshold)}", done ? "jm-ok" : "jm-dim");
+                    var l = Mark(ms, done, $"{RecordKeeper.Title(m.kind)} {RecordKeeper.Format(m.kind, m.threshold)}", done ? "jm-ok" : "jm-dim");
                     l.style.width = 250;
                     l.style.minHeight = 28;
                 }
@@ -174,7 +174,7 @@ namespace JapanMap.Gameplay.Records
                     {
                         if (c.region != region.id) continue;
                         var found = d.discoveries.Contains(c.id);
-                        var chip = Ui.Text(row, found ? "✓ " + c.title : "○ ???", found ? "jm-sakura" : "jm-dim");
+                        var chip = Mark(row, found, found ? c.title : "???", found ? "jm-sakura" : "jm-dim");
                         chip.style.width = 220;
                     }
                 }
@@ -184,5 +184,15 @@ namespace JapanMap.Gameplay.Records
         }
 
         static string Clock(float s) => $"{Mathf.FloorToInt(s / 60f)}:{s % 60f:00.0}";
+        /// <summary>A done / not-yet line: drawn tick or ring, then the text (the fonts have no ✓ or ○).</summary>
+        static VisualElement Mark(VisualElement parent, bool done, string text, string cls)
+        {
+            var row = Ui.Row(parent);
+            var icon = new UiIcon(done ? Icon.Check : Icon.Ring, 14f) { Tint = done ? new Color(0.56f, 0.75f, 0.42f) : new Color(0.72f, 0.77f, 0.78f) };
+            icon.style.marginRight = 6;
+            row.Add(icon);
+            Ui.Text(row, text, cls);
+            return row;
+        }
     }
 }

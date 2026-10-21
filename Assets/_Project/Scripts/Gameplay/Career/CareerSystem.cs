@@ -287,7 +287,7 @@ namespace JapanMap.Gameplay.Career
             if (menu != null && menu.IsOpen)
             {
                 var opened = s.unlocks != null && s.unlocks.Length > 0 && _s.Info(s.unlocks[0]) is { } first ? $"  ·  UNLOCKED: {first.name}" : "";
-                menu.Notice($"✓ {CareerChain.Title(s)}{(s.reward > 0 ? $"  +{s.reward:N0} Sparks" : "")}{opened}");
+                menu.Notice($"Done · {CareerChain.Title(s)}{(s.reward > 0 ? $"  +{s.reward:N0} Sparks" : "")}{opened}");
             }
             Debug.Log($"[Career] done {s.id} +{s.reward}");
         }

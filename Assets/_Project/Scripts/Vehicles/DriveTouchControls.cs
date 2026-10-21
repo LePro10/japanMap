@@ -186,7 +186,7 @@ namespace JapanMap.Vehicles
 
             // Recover and camera: small, at the top edge (the menu button sits in the corner).
             // One row with MENU (PlayerModeUi): the top corner, in portrait under the instrument.
-            var top = safe.y + (UiPanel.IsPortrait ? 136f : 12f);
+            var top = safe.y + (UiPanel.IsPortrait ? UiPanel.PortraitButtonRow : 12f);
             var reset = TouchKit.Tap(_root, 48f, "RESET", () => driver?.PressRespawn());
             var cam = TouchKit.Tap(_root, 48f, "CAM", () => driver?.PressCamera());
             _auto = TouchKit.Tap(_root, 48f, "AUTO", () => AutoDrive.Current?.SetActive(!AutoDrive.IsActive));

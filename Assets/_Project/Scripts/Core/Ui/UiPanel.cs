@@ -32,6 +32,13 @@ namespace JapanMap.Core.Ui
         public static Vector2 Size { get; private set; } = new(1920f, 1080f);
         /// <summary>Safe-area insets in panel units: left, top, right, bottom.</summary>
         public static Vector4 Safe { get; private set; }
+
+        /// <summary>
+        /// Phones upright: top of the touch button row (Recover, Camera, Menu) under the minimap, region name and Sparks,
+        /// in panel px below the safe area. One value for the three owners (DriveTouchControls, PlayerModeUi, GameplayHud
+        /// lays out below it): at 136 the row lay over the region name and the balance (UI audit 2026-10-21).
+        /// </summary>
+        public const float PortraitButtonRow = 200f;
         /// <summary>Panel units per device pixel (1 / scale).</summary>
         public static float Scale { get; private set; } = 1f;
         /// <summary>Forces a form factor (tests, screenshots of the phone layouts in the editor); null = measure.</summary>

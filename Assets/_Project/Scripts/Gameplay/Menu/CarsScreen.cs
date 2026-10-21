@@ -66,6 +66,7 @@ namespace JapanMap.Gameplay.Menu
         public override void Build(VisualElement body)
         {
             Garage.CarPortraits.ClearWaiting(); // the old page's pictures are gone
+            _body = body;
             var t = new StringBuilder();
             if (string.IsNullOrEmpty(Shown)) _garage.Pick(_progress.Data.selectedCar);
             var def = _progress.Fleet.Get(Shown) ?? _progress.Fleet.Default;
@@ -103,7 +104,7 @@ namespace JapanMap.Gameplay.Menu
                 if (!_showroom && !owned) continue;
                 if (_filter > 0 && v.category.ToString() != Filters[_filter]) continue;
                 var id = v.id;
-                var card = Ui.Button(grid, "", () => { _garage.Pick(id); Menu.Rebuild(); }, "jm-tile", "jm-carcard");
+                var card = Ui.Button(grid, "", () => OnCard(id), "jm-tile", "jm-carcard");
                 card.name = "car-" + v.id;
                 Ui.On(card, v.id == Shown, "jm-tile--on");
                 Picture(Ui.Box(card, "jm-carpic"), v);
@@ -116,6 +117,27 @@ namespace JapanMap.Gameplay.Menu
             }
             if (grid.childCount == 0) Ui.Small(body, "No car in this filter yet — the Showroom has all ten.");
             _text = t.ToString();
+        }
+
+        VisualElement _body;
+
+        /// <summary>
+        /// A card click (owner 2026-10-21: "klicke auf ein Auto und muss nochmal nach oben scrollen, selecten"): an owned
+        /// car is driven at once and the list stays where it was; a car not owned scrolls up to its detail, where Buy and
+        /// Test drive are.
+        /// </summary>
+        void OnCard(string id)
+        {
+            var scroll = _body?.GetFirstAncestorOfType<ScrollView>();
+            var offset = scroll != null ? scroll.scrollOffset : Vector2.zero;
+            var owned = _progress.Owns(id);
+            _garage.Pick(id);
+            if (owned) _garage.ApplySoon();
+            Menu.Rebuild();
+            if (scroll == null) return;
+            var to = owned ? offset : Vector2.zero;
+            scroll.scrollOffset = to;
+            scroll.schedule.Execute(() => scroll.scrollOffset = to); // again once the rebuilt page has its layout
         }
 
         /// <summary>The car's photo into <paramref name="e"/> now, or as soon as it is taken.</summary>
@@ -212,7 +234,7 @@ namespace JapanMap.Gameplay.Menu
                 return;
             }
             var driving = _progress.Data.selectedCar == def.id;
-            Ui.Button(actions, driving ? "Driving ✓" : "Drive this car", () => { _garage.Pick(def.id); _garage.ApplySoon(); Menu.Rebuild(); }, driving ? "jm-btn--on" : "jm-btn--primary");
+            Ui.Button(actions, driving ? "Driving" : "Drive this car", () => { _garage.Pick(def.id); _garage.ApplySoon(); Menu.Rebuild(); }, driving ? "jm-btn--on" : "jm-btn--primary");
             MenuTiles.Gate(Ui.Button(actions, "Tune", () => { _page = Page.Tune; Menu.Rebuild(); }), Core.FeatureId.Tuning);
             MenuTiles.Gate(Ui.Button(actions, "Appearance", () => { _page = Page.Look; Menu.Rebuild(); }), Core.FeatureId.Paint);
             if (!_garage.InBay) Ui.Small(p, "Changes reach your car as soon as it stands still. The Open Bay in Sakura Commons shows it on the floor.");
@@ -323,7 +345,7 @@ namespace JapanMap.Gameplay.Menu
                     var k = tier;
                     var cost = _progress.FitCost(def.id, c, k);
                     var fitted = state.tune[c] == k;
-                    var label = Tier(k).ToUpperInvariant() + (fitted ? " ✓" : cost > 0 ? $" · {cost:N0}" : "");
+                    var label = Tier(k).ToUpperInvariant() + (fitted ? "" : cost > 0 ? $" · {cost:N0}" : ""); // fitted: the segment is lit
                     var b = Ui.Button(seg, label, () => { _garage.Fit(c, k); _garage.ApplySoon(); Menu.Rebuild(); }, "jm-seg__item");
                     Ui.On(b, fitted, "jm-seg__item--on");
                     b.SetEnabled(!fitted && cost <= _progress.Wallet.Balance);
@@ -332,7 +354,7 @@ namespace JapanMap.Gameplay.Menu
                     b.RegisterCallback<PointerEnterEvent>(_ => Preview(preview, null));
                     b.RegisterCallback<PointerLeaveEvent>(_ => Preview(null, null));
                     b.RegisterCallback<FocusInEvent>(_ => Preview(preview, null));
-                    t.AppendLine($"{info.title} {Tier(k)}{(cost > 0 ? $" · {cost:N0}" : fitted ? " ✓" : "")}");
+                    t.AppendLine($"{info.title} {Tier(k)}{(cost > 0 ? $" · {cost:N0}" : fitted ? " fitted" : "")}");
                 }
             }
 
@@ -404,7 +426,7 @@ namespace JapanMap.Gameplay.Menu
             {
                 var option = o;
                 var mine = o == 0 || owned.Contains(o);
-                var label = (kit ? KitNames : RimNames)[o].ToUpperInvariant() + (fitted == o ? " ✓" : mine ? "" : $" · {price:N0}");
+                var label = (kit ? KitNames : RimNames)[o].ToUpperInvariant() + (fitted == o || mine ? "" : $" · {price:N0}");
                 var b = Ui.Button(row, label, () => { _garage.Look(kit, option); _garage.ApplySoon(); Menu.Rebuild(); }, "jm-seg__item");
                 Ui.On(b, fitted == o, "jm-seg__item--on");
                 b.SetEnabled(fitted != o && (mine || _progress.Wallet.Balance >= price));

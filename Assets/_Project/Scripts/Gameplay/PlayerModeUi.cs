@@ -127,7 +127,7 @@ namespace JapanMap.Gameplay
             _menu = TouchKit.Tap(_touch, 48f, "MENU", () => GameMenu.Instance?.Escape());
             _menu.name = "touch-menu";
             // Portrait: the instrument has the corner, the button row sits under it (RESET, CAM, OUT beside MENU).
-            var row = safe.y + (UiPanel.IsPortrait ? 136f : 12f);
+            var row = safe.y + (UiPanel.IsPortrait ? UiPanel.PortraitButtonRow : 12f);
             Corner(_menu, outer, row, mirror);
             // CAR and CALL above the right-hand group (on foot JUMP/SLIDE, in the car BOOST).
             var bottom = safe.w + (UiPanel.IsPortrait ? 28f : 20f) + 64f * k * 2f + 24f;

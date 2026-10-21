@@ -375,13 +375,17 @@ namespace JapanMap.Gameplay.Hud
                     map = 112f; ix = 132f; iy = 112f;
                     Pos(_nav, left: L(12), top: T(12));
                     Pos(_instrument, right: R(12), top: T(12));
-                    Pos(_race.parent, left: L(12), top: T(150));
-                    Pos(_driftBox, top: T(178));
-                    Pos(_result.parent, top: T(178));
+                    // One column, top down (UI audit 2026-10-21: race lines lay on Sparks and the button row): map and
+                    // instrument · region name · Sparks · touch button row (UiPanel.PortraitButtonRow, ~52 px) · race
+                    // lines left, stunt right · drift score · toasts.
+                    var below = UiPanel.PortraitButtonRow + 64f;
                     Pos(_sparks.parent, left: L(12), top: T(150)); // under the region name; the right has the button row
-                    Pos(_toast.parent, top: T(230));
+                    Pos(_race.parent, left: L(12), top: T(below));
+                    Pos(_stunt.parent, right: R(12), top: T(below));
+                    Pos(_driftBox, top: T(below + 120f));
+                    Pos(_result.parent, top: T(below + 120f));
+                    Pos(_toast.parent, top: T(below + 190f));
                     Pos(_prompt.parent, bottom: B(300)); // above the touch controls and the player prompt
-                    Pos(_stunt.parent, right: R(12), top: T(170));
                     Pos(_count.parent, top: T(size.y * 0.3f));
                     Pos(_sheet, top: T(150));
                     Pos(_useButton, right: R(16), bottom: B(250)); // above CALL / CAR
@@ -647,11 +651,11 @@ namespace JapanMap.Gameplay.Hud
         /// <summary>The race checkpoint the arrow points at (null outside events).</summary>
         public Vector3? Target => _target;
 
-        /// <summary>The small "✓ Saved" tick under the balance for a moment; names the store when it is only this device.</summary>
+        /// <summary>The small "Saved" line under the balance for a moment; names the store when it is only this device.</summary>
         public void ShowSaved(string store)
         {
             if (_saved == null) return;
-            _saved.text = store == "CrazyGames" || UiPanel.IsPhone ? "✓ Saved" : "✓ Saved on this device";
+            _saved.text = store == "CrazyGames" || UiPanel.IsPhone ? "Saved" : "Saved on this device"; // no ✓: not in the font
             _saved.style.display = DisplayStyle.Flex;
             _savedUntil = Time.unscaledTime + 1.6f;
         }
@@ -672,7 +676,23 @@ namespace JapanMap.Gameplay.Hud
         public bool HoldNotices
         {
             get => _held;
-            set => _held = value;
+            set
+            {
+                // A toast already on screen goes back to the front of the queue: it lay on the countdown's "3" (UI audit
+                // 2026-10-21) because holding only stopped the next one.
+                if (value && !_held && _toast != null && _toast.text != "")
+                {
+                    var rest = _toasts.ToArray();
+                    _toasts.Clear();
+                    _toasts.Enqueue(_toast.text);
+                    foreach (var t in rest) _toasts.Enqueue(t);
+                    _toast.text = "";
+                    _toast.style.display = DisplayStyle.None;
+                    _toastUntil = 0f;
+                }
+                if (value) _bannerUntil = 0f;
+                _held = value;
+            }
         }
 
         /// <summary>Touch USE button pressed.</summary>

@@ -52,7 +52,9 @@ namespace JapanMap.Gameplay.Career
             _count = Text(head, "", "jm-career__count");
             var row = Box(_card, "jm-career__row");
             _check = Box(row, "jm-career__check");
-            Text(_check, "✓", "jm-career__tick");
+            var tick = new UiIcon(Icon.Check, 14f) { Tint = new Color(0.02f, 0.08f, 0.1f) }; // the font has no ✓
+            tick.AddToClassList("jm-career__tick");
+            _check.Add(tick);
             _title = Text(row, "", "jm-career__title");
             _reward = Text(row, "", "jm-career__reward");
             _hint = Text(_card, "", "jm-career__hint");
@@ -202,7 +204,7 @@ namespace JapanMap.Gameplay.Career
                     s.left = safe.x + 136f; s.top = safe.y + 12f; s.width = 260f;
                     break;
                 case FormFactor.PhonePortrait:
-                    s.left = safe.x + 12f; s.top = safe.y + 196f; s.width = Mathf.Min(260f, UiPanel.Size.x * 0.62f);
+                    s.left = safe.x + 12f; s.top = safe.y + UiPanel.PortraitButtonRow + 64f; s.width = Mathf.Min(260f, UiPanel.Size.x * 0.62f);
                     break;
                 default:
                     // With touch the minimap moves to the top left (GameplayHud): the card goes beside it.

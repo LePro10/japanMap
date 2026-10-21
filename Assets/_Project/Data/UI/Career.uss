@@ -43,8 +43,9 @@
 .jm-career__dot--now { background-color: var(--paper); }
 .jm-career__dot--done { background-color: var(--amber); }
 
-/* The banner: right, under the Sparks balance — the middle belongs to the drift score and the toasts (shots D50). */
-.jm-career__banner { position: absolute; right: 24px; top: 168px; width: 380px; padding: 14px 22px 16px 22px;
+/* The banner: right, under the Sparks balance and its "Saved" line (at 168 px it covered both, UI audit 2026-10-21) —
+   the middle belongs to the drift score and the toasts (shots D50). */
+.jm-career__banner { position: absolute; right: 24px; top: 204px; width: 380px; padding: 14px 22px 16px 22px;
     align-items: center; background-color: rgba(6, 18, 28, 0.9); border-radius: 12px; border-width: 1px; border-color: var(--line);
     opacity: 0; scale: 0.9 0.9; overflow: hidden;
     transition-property: opacity, scale; transition-duration: 0.26s; transition-timing-function: ease-out-back; }

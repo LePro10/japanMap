@@ -15,6 +15,8 @@
 .jm-grow { flex-grow: 1; }
 .jm-lock-icon { position: absolute; left: 8px; top: 50%; translate: 0 -50%; }
 .jm-btn.jm-locked { opacity: 0.6; padding-left: 28px; }
+/* A wrapping row wraps its buttons, never squeezes them (a squeezed label broke one letter per line, 2026-10-21). */
+.jm-wrap > .jm-btn { flex-shrink: 0; white-space: nowrap; }
 
 /* Shell */
 .jm-menu { background-color: rgba(0, 0, 0, 0); -unity-background-scale-mode: stretch-to-fill; opacity: 0; transition: opacity 0.2s ease-out-cubic; }

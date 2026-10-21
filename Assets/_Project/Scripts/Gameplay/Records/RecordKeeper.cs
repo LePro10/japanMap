@@ -192,8 +192,11 @@ namespace JapanMap.Gameplay.Records
                     if (m.kind == kind && before < m.threshold && value >= m.threshold)
                     {
                         var label = $"{Title(kind)} {Format(kind, m.threshold)}";
-                        if (progress.Grant($"milestone:{kind}:{m.threshold}", m.reward, label) && hud != null)
-                            hud.ShowToast($"Milestone · {label} · +{m.reward} Sparks");
+                        var claim = $"milestone:{kind}:{m.threshold}";
+                        if (progress.Claimed(claim)) continue;
+                        // Toast before the grant: it names the reward, so the HUD adds no second Sparks line.
+                        hud?.ShowToast($"Milestone · {label} · +{m.reward} Sparks");
+                        progress.Grant(claim, m.reward, label);
                     }
             NewRecord?.Invoke(kind, value);
         }

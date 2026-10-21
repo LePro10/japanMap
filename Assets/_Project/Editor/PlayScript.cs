@@ -519,6 +519,19 @@ namespace JapanMap.Editor
                     _until = now + 0.25f;
                     return false;
                 }
+                case "reveal":
+                {
+                    // reveal <button text or name>: scrolls its page until the button is in view, as a player would with
+                    // the wheel (a scrolled-off card could not be tapped; the wheel notches jumped to the end, 2026-10-21).
+                    var label = string.Join(" ", a, 1, a.Length - 1);
+                    var hit = FindButton(label);
+                    var sv = hit?.GetFirstAncestorOfType<UnityEngine.UIElements.ScrollView>();
+                    if (sv == null) { Log.AppendLine($"  reveal: no button '{label}' in a scroll view"); return true; }
+                    sv.ScrollTo(hit);
+                    Log.AppendLine($"  reveal '{label}' → scroll {sv.scrollOffset}");
+                    _until = now + 0.3f;
+                    return false;
+                }
                 case "tapmap":
                 {
                     // tapmap <x> <z>: a click on the world map at a world point (opens that pin's card).

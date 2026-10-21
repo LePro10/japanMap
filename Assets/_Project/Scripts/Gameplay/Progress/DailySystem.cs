@@ -120,10 +120,11 @@ namespace JapanMap.Gameplay.Progress
             Data.dailyDay = today;
             var rewards = settings.streakRewards;
             var reward = rewards[Mathf.Clamp(Data.dailyStreak - 1, 0, rewards.Length - 1)];
-            progress.Grant($"daily:{today}", reward, "Daily drive");
+            // Toast first: it names the reward, so the HUD skips its own "+300 Sparks · Daily drive" line (both showed at once).
             hud?.ShowToast(Data.dailyStreak > 1
                 ? $"Day {Data.dailyStreak} in a row · Daily drive +{reward:N0} Sparks"
                 : $"Daily drive · +{reward:N0} Sparks · come back tomorrow for more");
+            progress.Grant($"daily:{today}", reward, "Daily drive");
             progress.MarkDirty();
             return true;
         }
@@ -160,8 +161,8 @@ namespace JapanMap.Gameplay.Progress
             if (Data.challengeProgress >= c.target)
             {
                 Data.challengeDone = true;
-                progress.Grant($"challenge:{Today}", c.reward, "Daily challenge");
                 hud?.ShowToast($"Daily challenge complete · {string.Format(c.title, c.target)} · +{c.reward:N0} Sparks");
+                progress.Grant($"challenge:{Today}", c.reward, "Daily challenge");
                 Core.Platform.GamePlatform.Current?.HappyTime();
             }
             if (Mathf.Abs(Data.challengeProgress - before) > 0.001f) progress.MarkDirty();

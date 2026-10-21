@@ -70,12 +70,14 @@ namespace JapanMap.Tests
             Assert.IsFalse(open.ClassListContains("jm-locked"));
             Assert.IsNull(open.Q<Label>(className: "jm-lock__label"));
             Assert.IsFalse(ran);
-            // A locked text button keeps its label and adds the reason.
+            // A locked text button keeps its label (in a child, so the button is measured by it) and gives the reason as
+            // a tooltip and on a click — in the label it squeezed the button to one letter per line (UI audit 2026-10-21).
             var buy = Ui.Button(null, "Buy", () => ran = true);
             Unlocks.Query = new Lock(FeatureId.CarShop);
             MenuTiles.Gate(buy, FeatureId.CarShop);
-            StringAssert.StartsWith("Buy", buy.text);
-            StringAssert.Contains("Unlocks:", buy.text);
+            Assert.IsTrue(buy.ClassListContains("jm-locked"));
+            Assert.AreEqual("Buy", buy.Q<Label>()?.text, "the label stays as it was");
+            StringAssert.Contains("Unlocks:", buy.tooltip);
         }
 
         [Test]

@@ -176,6 +176,7 @@ namespace JapanMap.Gameplay.Menu
         /// <summary>Back from Settings: the focus returns where it was.</summary>
         public void Refocus()
         {
+            if (_root != null && Current == State.Shown) _root.style.display = DisplayStyle.Flex;
             if (Current == State.Shown) _settings?.Focus();
         }
 
@@ -374,7 +375,11 @@ namespace JapanMap.Gameplay.Menu
         void OpenSettings()
         {
             Audio.Sfx.Play("UI_Click");
+            // The title's panel draws above the menu's (30 > 20): hidden while Settings is open, or both showed at once
+            // and the title took the clicks (UI audit 2026-10-21). Refocus shows it again.
+            if (_root != null) _root.style.display = DisplayStyle.None;
             _menu.OpenFromTitle();
+            if (_menu == null || !_menu.IsOpen) Refocus();
         }
 
         // ── start ───────────────────────────────────────────────────────────────────────────────────────

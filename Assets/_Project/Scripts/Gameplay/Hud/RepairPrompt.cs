@@ -86,12 +86,18 @@ namespace JapanMap.Gameplay.Hud
         /// <summary>The pill's action: repair now (tests press it like a player).</summary>
         public void Press() => _player?.Driver?.PressRepair();
 
+        Intro.FirstDrive _intro;
+        bool _introLooked;
+
         void Update()
         {
             if (_pill == null) return;
             var car = _player != null ? _player.Car : null;
             var damage = car != null ? car.GetComponent<VehicleDamage>() : null;
-            var show = damage != null && !_player.Suspended && _player.Current == PlayerModeController.Mode.Driving
+            // Not during the first drive: its step bar owns the top centre (the pill lay on it, UI audit 2026-10-21).
+            if (!_introLooked) { _intro = FindAnyObjectByType<Intro.FirstDrive>(); _introLooked = true; }
+            var intro = _intro != null && _intro.Current != Intro.FirstDrive.Beat.Off;
+            var show = damage != null && !intro && !_player.Suspended && _player.Current == PlayerModeController.Mode.Driving
                        && (damage.Damage01 >= ShowFrom || damage.BentWheels > 0 || damage.WheelsLost > 0);
             _pill.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
             // The key hint only where there is a keyboard.

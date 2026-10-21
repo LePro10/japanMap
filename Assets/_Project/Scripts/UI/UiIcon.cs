@@ -7,7 +7,7 @@ namespace JapanMap.UI
     {
         None, Play, Car, Map, Records, Photo, Settings, Back, Close,
         Wheel, Flag, Circuit, Lantern, Torii, Sheaf, Lighthouse, Diamond, Clue, Spark, Ramp, Drift, Garage,
-        Lock, Tune, Daily, Home,
+        Lock, Tune, Daily, Home, Check, Ring,
     }
 
     /// <summary>
@@ -165,6 +165,9 @@ namespace JapanMap.UI
                     Poly(false, false, -0.75f, -0.15f, 0.75f, -0.15f);
                     Poly(false, false, -0.4f, -0.8f, -0.4f, -0.4f); Poly(false, false, 0.4f, -0.8f, 0.4f, -0.4f);
                     Circle(0.3f, 0.3f, 0.14f, true); break;
+                // Done / not yet (records, career): drawn, because the UI fonts have no ✓ or ○ (boxes in the browser).
+                case Icon.Check: Poly(false, false, -0.6f, 0.05f, -0.15f, 0.5f, 0.65f, -0.45f); break;
+                case Icon.Ring: Circle(0f, 0f, 0.55f, false); break;
                 case Icon.Home:
                     Poly(false, true, -0.75f, -0.05f, 0f, -0.75f, 0.75f, -0.05f);
                     Poly(false, false, -0.55f, -0.2f, -0.55f, 0.75f, 0.55f, 0.75f, 0.55f, -0.2f);

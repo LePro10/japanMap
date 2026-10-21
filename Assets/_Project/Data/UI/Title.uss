@@ -83,7 +83,8 @@
 .jm-title .jm-title__btn:active { scale: 0.98 0.98; }
 
 /* Foot */
-.jm-title .jm-title__foot { position: absolute; left: 7%; bottom: 34px; flex-direction: row; align-items: center; transition: opacity 0.3s ease-out-cubic; }
+/* Right, beside the version tag: on the left it lay over the last entry (UI audit 2026-10-21). */
+.jm-title .jm-title__foot { position: absolute; right: 96px; bottom: 26px; flex-direction: row; align-items: center; transition: opacity 0.3s ease-out-cubic; }
 .jm-title .jm-title__hint { flex-direction: row; align-items: center; margin-right: 18px; }
 .jm-title .jm-title__hint .jm-keyhint { margin: 0 8px 0 0; }
 .jm-title .jm-title__hint-label { font-size: 14px; color: var(--paper-dim); }

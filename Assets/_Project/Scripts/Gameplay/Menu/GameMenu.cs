@@ -63,6 +63,7 @@ namespace JapanMap.Gameplay.Menu
 
         UIDocument _doc;
         VisualElement _root, _rail, _tabs, _content, _body, _marker, _page;
+        ScrollView _scroll;
         Label _notice;
         Button _continue;
         int _shownIndex = -1;
@@ -300,6 +301,7 @@ namespace JapanMap.Gameplay.Menu
             if (settings == null) return;
             _fromTitle = true;
             _root.AddToClassList("jm-menu--title");
+            BuildShell(); // the key legend: no "Switch tab", Esc = Back
             if (_continue != null) _continue.text = "Back";
             AllowOverSuspended = true;
             Open(settings, pause: false);
@@ -336,6 +338,7 @@ namespace JapanMap.Gameplay.Menu
             {
                 _fromTitle = false;
                 _root.RemoveFromClassList("jm-menu--title");
+                BuildShell();
                 if (_continue != null) _continue.text = "Resume";
                 Title?.Refocus();
             }
@@ -369,6 +372,9 @@ namespace JapanMap.Gameplay.Menu
             for (var i = 0; i < _screens.Count; i++) Ui.On(_tabButtons[i], _screens[i] == screen, "jm-tab--on");
             MoveMarker();
             Rebuild();
+            // All pages share one scroll view: a new page starts at its top (Records opened half under the bar where
+            // the Cars list had been scrolled, UI audit 2026-10-21).
+            if (changed && _scroll != null) _scroll.scrollOffset = Vector2.zero;
             if (changed && _page != null)
             {
                 // From the side the tab lies on (Q left, E right), as the eye expects; first open rises from below.
@@ -570,6 +576,7 @@ namespace JapanMap.Gameplay.Menu
             var scroll = new ScrollView(ScrollViewMode.Vertical) { horizontalScrollerVisibility = ScrollerVisibility.Hidden };
             scroll.style.flexGrow = 1;
             _page.Add(scroll);
+            _scroll = scroll;
             _body = scroll.contentContainer;
 
             _continue = Ui.Button(null, _fromTitle ? "Back" : "Resume", Close, "jm-btn--primary", "jm-continue");
@@ -632,7 +639,7 @@ namespace JapanMap.Gameplay.Menu
                     Ui.Text(h, k, "jm-keyhint");
                     Ui.Text(h, what, "jm-legend__label");
                 }
-                Key("Q  E", "Switch tab");
+                if (!_fromTitle) Key("Q  E", "Switch tab");
                 Key("↑ ↓ ← →", "Move");
                 Key("Enter", "Select");
                 Key("Esc", _fromTitle ? "Back" : "Resume");

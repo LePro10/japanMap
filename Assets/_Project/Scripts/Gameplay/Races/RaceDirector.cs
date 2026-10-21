@@ -410,6 +410,7 @@ namespace JapanMap.Gameplay.Races
             Audio.Sfx.Play("Countdown_Tick");
             hud?.SetPrompt(this, "");
             if (hud != null) hud.HoldNotices = true; // region/discovery notices wait for the result (ASTRA §10)
+            if (player != null) player.QuietPrompts = true; // no "F  Get out" over the countdown (getting out ends the event)
             return true;
         }
 
@@ -820,6 +821,7 @@ namespace JapanMap.Gameplay.Races
             hud?.HideSheet();
             hud?.SetTarget(null);
             if (hud != null) hud.HoldNotices = false;
+            if (player != null) player.QuietPrompts = false;
             _gateA.SetActive(false);
             _gateB.SetActive(false);
             HoldResult = false;
