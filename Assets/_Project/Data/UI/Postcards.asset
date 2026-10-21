@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60302252c3fa94d1896023b54198a717, type: 3}
+  m_Name: Postcards
+  m_EditorClassIdentifier: JapanMap.Gameplay::JapanMap.Gameplay.Menu.PostcardSet
+  cards:
+  - id: event/coast-loop
+    image: {fileID: 2800000, guid: e7477b08dcb594d0c862efa91a5062e7, type: 3}
+  - id: event/toge-descent
+    image: {fileID: 2800000, guid: 57141ec2eb02f4717864176be2f0b621, type: 3}
+  - id: event/neon-circuit
+    image: {fileID: 2800000, guid: b18ba33ec078d466e91c5547e39e8171, type: 3}
+  - id: event/toge-climb
+    image: {fileID: 2800000, guid: 8074e390704734827860aef4b631f5ed, type: 3}
+  - id: event/ring-trial
+    image: {fileID: 2800000, guid: 8c36047a913c74a87a6cc882437c8a0e, type: 3}
+  - id: event/toge-drift
+    image: {fileID: 2800000, guid: 3bd4db7603f4f48e583823a86252d00a, type: 3}
+  - id: event/needle-sprint
+    image: {fileID: 2800000, guid: 89fd5a56d68e24dcf807107713568d1a, type: 3}
+  - id: event/open-seat
+    image: {fileID: 2800000, guid: 0256644d134c1479c86ee0cd3e68b4a9, type: 3}
+  - id: place/commons
+    image: {fileID: 2800000, guid: 872c12329e727482795e2433cf7f7fe6, type: 3}
+  - id: place/rotor
+    image: {fileID: 2800000, guid: be38c5d8d7732440d8e1e8b1f6b54aad, type: 3}
+  - id: place/needle
+    image: {fileID: 2800000, guid: f5cf24607e71245a3a1e2a0efcadd165, type: 3}
+  - id: place/cinder
+    image: {fileID: 2800000, guid: 71ab203001e174fa6b254903ae2926a3, type: 3}
+  - id: place/temple
+    image: {fileID: 2800000, guid: 073de5af3c4294336895b6a95afe8cb6, type: 3}
+  - id: place/stillwater
+    image: {fileID: 2800000, guid: 2bae2cf3ab32d4640a4fd9c7c8cc2860, type: 3}
+  - id: place/harbour
+    image: {fileID: 2800000, guid: 4464bf8d63c6d4bf480b99096d7027be, type: 3}
