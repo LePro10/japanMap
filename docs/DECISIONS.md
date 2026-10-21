@@ -950,3 +950,23 @@ Intro unberührt (es setzt das Auto selbst an die Schanze).
 **Funaura:** Das Meer ist eine Fläche ohne Collider; der NavMesh-Bau sah darunter den Hafenboden als begehbar. `PedestrianNav`
 markiert jetzt alles unter der Meeresoberfläche als nicht begehbar; `PedestrianNav.RefreshData` backt die Nav-Daten in die
 vorhandenen Assets (gleiche GUIDs, keine Szene). Test `PedestrianNavTests.NoNavMesh_UnderTheSea`.
+
+## D55 — UI-Neubau: Befund, Richtung „Night Meet", Etappe 1 (2026-10-21)
+
+**Auftrag (Mensch):** Menü, Esc-Menü, HUD, Karte „komplett überarbeiten", sehr kreativ, weg von den alten Farben, japanisch,
+Aufbau wie Forza Horizon 6. Befund und Entwürfe: https://claude.ai/artifact/Um9YHs4PmbEL5AtV4s9aoS (Runde 2), Bilder
+`Captures/ui-audit/`, `Captures/ui-fix/`, `Captures/map-art/`.
+**Befund:** keine festen Bildschirm-Zonen (jede UI-Ebene setzt sich selbst → Überlappungen), sechs Kastenformen, Sparks in
+drei Farben, zu viel Text, 4 von 6 Reitern für Neue gesperrt, die Hälfte der Tasten nirgends gezeigt.
+**Richtung (Vorschlag, wartet auf „ok"):** „Night Meet" — Nacht-Violett, Washi-Papier, Momo-Pink für Aktion, Sora, Mikan,
+Shu nur für Hanko-Stempel; Archivo + Dela Gothic One; Kippu-Tickets, Hanko, Telop, Riesen-Katakana, Manga-Speedlines,
+schräge Wischblenden. Offen beim Menschen: Gesperrtes verstecken (Regeländerung zu D48/D50), Handy hochkant nur Menü.
+**Etappe 1 (umgesetzt, look-unabhängig):** Einstellungen über dem Titel (Titel versteckt sich), Auto-Karte = sofort fahren
+bzw. hoch zum Kauf, gesperrte Textknöpfe (Label als Kind; Grund als Tooltip/Klick), Titel-Tastenleiste rechts, Kapitel-
+Banner unter „Saved", Meldung vor dem Geld (Tagesbonus, Tagesaufgabe, Meilensteine: keine Doppelzeile), Meldungen beim
+Rennstart zurückgestellt, kein „F Get out" im Countdown/Rennen, Repair-Pille nicht im Intro, Hochkant-Spalte ohne
+Überlappung (`UiPanel.PortraitButtonRow` statt dreimal 136), neue Menüseite beginnt oben, ✓/○ als gezeichnete Icons,
+Pfeile über Saira als Ersatzschrift. Test `FontCoverageTests`.
+**Karte — eigenes Werkzeug statt Standard:** Unity hat keine Karten-Darstellung, Asset-Store-Karten kennen unsere Daten
+(Gelände, Straßennetz, Instanz-Gebäude, Vegetation) nicht; `Editor/Map/MapArtBaker` backt sie offline in 2,3 s
+(Höhenlinien, 6 805 Gebäude, 32 594 Bäume, Reisfelder, Küstenringe). Einbau ins Spiel (nachgeladen, 20-MB-Grenze) in Etappe 3.
