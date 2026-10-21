@@ -148,6 +148,8 @@ namespace JapanMap.Gameplay.Hud
             if (map != null)
             {
                 _minimap = new MapView(map.Roads, map.Regions, map.Bounds, map.EnsureBase()) { name = "minimap" };
+                map.ArtLoaded -= OnMapArt;
+                map.ArtLoaded += OnMapArt;
                 // A tap on the minimap opens the world map (ASTRA §10: "M, minimap tap").
                 _minimap.RegisterCallback<PointerDownEvent>(e =>
                 {
@@ -732,6 +734,8 @@ namespace JapanMap.Gameplay.Hud
                 e.style.scale = new Scale(Vector3.one);
             });
         }
+
+        void OnMapArt(Texture2D art) => _minimap?.SetBase(art);
 
         void OnEarned(int amount, string reason)
         {

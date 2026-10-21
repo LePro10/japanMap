@@ -19,6 +19,8 @@ namespace JapanMap.Gameplay.Menu
     /// </summary>
     public sealed class MapScreen : MenuScreen
     {
+        void OnArt(Texture2D art) => _view?.SetBase(art);
+
         /// <summary>The map needs the whole width.</summary>
         public override bool Narrow => false;
         public override Core.FeatureId? Feature => Core.FeatureId.Map;
@@ -95,6 +97,8 @@ namespace JapanMap.Gameplay.Menu
                 : stacked ? Mathf.Min(side.x - 300f, side.y * 0.55f)
                 : Mathf.Min(side.y - (UiPanel.IsPhone ? 90f : 150f), side.x * 0.62f);
             _view = new MapView(_map.Roads, _map.Regions, _map.Bounds, _map.EnsureBase()) { name = "worldmap" };
+            _map.ArtLoaded -= OnArt;
+            _map.ArtLoaded += OnArt;
             _view.style.width = _view.style.height = square;
             _view.style.flexShrink = 0;
             _view.style.borderTopLeftRadius = _view.style.borderTopRightRadius = _view.style.borderBottomLeftRadius = _view.style.borderBottomRightRadius = 10;

@@ -30,10 +30,13 @@ namespace JapanMap.Gameplay.Map
     /// </summary>
     public sealed class MapView : VisualElement
     {
-        static readonly Color RoadMain = new(0.957f, 0.945f, 0.918f);
-        static readonly Color RoadLocal = new(0.81f, 0.84f, 0.85f);
-        static readonly Color RoadDirt = new(0.77f, 0.6f, 0.36f);
-        static readonly Color Outline = new(0.03f, 0.07f, 0.08f, 0.82f);
+        // "Night Meet" palette (D55): paper highway, lilac-grey city and lanes, mikan for passes and dirt, ink casing.
+        static readonly Color RoadMain = new(0.961f, 0.937f, 0.894f);
+        static readonly Color RoadCity = new(0.81f, 0.78f, 0.87f);
+        static readonly Color RoadLocal = new(0.62f, 0.58f, 0.71f);
+        static readonly Color RoadDirt = new(1f, 0.6f, 0.24f);
+        static readonly Color Outline = new(0.043f, 0.035f, 0.078f, 0.9f);
+        static readonly Color Route = new(1f, 0.18f, 0.48f);
         /// <summary>Road vertex spacing on the map, m.</summary>
         const float Spacing = 8f;
 
@@ -61,7 +64,7 @@ namespace JapanMap.Gameplay.Map
             _world.style.width = bounds.width;
             _world.style.height = bounds.height;
             _world.style.transformOrigin = new TransformOrigin(0, 0);
-            if (baseImage != null) _world.style.backgroundImage = new StyleBackground(baseImage);
+            SetBase(baseImage);
             Add(_world);
             if (roads != null) AddRoads(roads);
             _route = new VisualElement { pickingMode = PickingMode.Ignore, name = "route" };
@@ -81,6 +84,12 @@ namespace JapanMap.Gameplay.Map
             _pins.style.left = _pins.style.top = _pins.style.right = _pins.style.bottom = 0;
             Add(_pins);
             RegisterCallback<GeometryChangedEvent>(_ => Apply());
+        }
+
+        /// <summary>The land under the roads: the runtime bake first, the offline art (MapSystem.ArtLoaded) once streamed in.</summary>
+        public void SetBase(Texture2D image)
+        {
+            if (image != null) _world.style.backgroundImage = new StyleBackground(image);
         }
 
         /// <summary>World x/z → map layer pixels (1 px = 1 m, north up).</summary>
@@ -138,9 +147,11 @@ namespace JapanMap.Gameplay.Map
                 {
                     var r = roads.roads[i];
                     var dirt = r.type == "dirt" || r.type == "path" || r.type == "pfad" || r.type == "gravel";
-                    var main = r.width >= 9f || r.type == "highway";
-                    var width = main ? 9f : dirt ? 4.5f : 6f;
-                    p.strokeColor = pass == 0 ? Outline : dirt ? RoadDirt : main ? RoadMain : RoadLocal;
+                    var touge = r.type == "mountain"; // the touge: paved, but its own colour (as the baked art, MapArtBaker)
+                    var highway = r.type == "highway";
+                    var main = r.width >= 9f || highway;
+                    var width = highway ? 11f : main || touge ? 9f : dirt ? 4.5f : 6f;
+                    p.strokeColor = pass == 0 ? Outline : dirt || touge ? RoadDirt : highway ? RoadMain : main ? RoadCity : RoadLocal;
                     p.lineWidth = pass == 0 ? width + 5f : width;
                     p.BeginPath();
                     // A point every ~8 m: finer costs triangles on every frame (measured +100 k at one per point).
@@ -197,7 +208,7 @@ namespace JapanMap.Gameplay.Map
             p.lineCap = LineCap.Round;
             for (var pass = 0; pass < 2; pass++)
             {
-                p.strokeColor = pass == 0 ? new Color(0.01f, 0.05f, 0.08f, 0.85f) : new Color(0.33f, 0.85f, 1f, 1f);
+                p.strokeColor = pass == 0 ? Outline : Route;
                 p.lineWidth = (pass == 0 ? 8f : 4.5f) / k;
                 p.BeginPath();
                 p.MoveTo(_routePts[0]);
@@ -336,9 +347,10 @@ namespace JapanMap.Gameplay.Map
             var h = Mathf.CeilToInt(bounds.height / metresPerPixel);
             var tex = new Texture2D(w, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, name = "MapBase (runtime)" };
             var px = new Color32[w * h];
-            var land = new Color(0.15f, 0.23f, 0.19f);
-            var high = new Color(0.33f, 0.34f, 0.29f);
-            var water = new Color(0.09f, 0.25f, 0.4f);
+            // Same palette as the offline art (MapArtBaker): the swap when it streams in should not jump.
+            var land = new Color(0.114f, 0.098f, 0.192f);
+            var high = new Color(0.216f, 0.188f, 0.31f);
+            var water = new Color(0.05f, 0.045f, 0.11f);
             var heights = new float[w * h];
             for (var y = 0; y < h; y++)
             for (var x = 0; x < w; x++)
@@ -351,8 +363,6 @@ namespace JapanMap.Gameplay.Map
             for (var x = 0; x < w; x++)
             {
                 var hgt = heights[y * w + x];
-                var wx = bounds.xMin + (x + 0.5f) * metresPerPixel;
-                var wz = bounds.yMin + (y + 0.5f) * metresPerPixel;
                 Color c;
                 if (hgt < waterLevel) c = water;
                 else
@@ -362,12 +372,7 @@ namespace JapanMap.Gameplay.Map
                     var dx = heights[y * w + Mathf.Min(w - 1, x + 1)] - heights[y * w + Mathf.Max(0, x - 1)];
                     var dz = heights[Mathf.Min(h - 1, y + 1) * w + x] - heights[Mathf.Max(0, y - 1) * w + x];
                     c *= Mathf.Clamp(1f + (-dx + dz) / (metresPerPixel * 6f), 0.7f, 1.3f);
-                    if (regions != null)
-                    {
-                        var region = regions.regions[regions.IndexAt(new Vector3(wx, 0f, wz))];
-                        c = Color.Lerp(c, region.color, 0.2f);
-                    }
-                    c.a = 1f;
+                    c.a = 1f; // no region tints: the boxes read as debug rectangles (UI audit 2026-10-21)
                 }
                 px[y * w + x] = c;
             }

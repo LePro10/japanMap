@@ -54,6 +54,7 @@ namespace JapanMap.Editor.Content
             report.Append(" · " + Cars(settings));
             report.Append(" · " + CarShared(settings));
             report.Append(" · " + Life(settings));
+            report.Append(" · " + MapArt(settings));
             report.Append(" · " + SplitPlaces(settings));
             report.Append(" · " + Isolate(settings));
             report.Append(" · " + WireScene());
@@ -142,6 +143,16 @@ namespace JapanMap.Editor.Content
             }
             s.SetDirty(AddressableAssetSettings.ModificationEvent.BatchModification, null, true, true);
             return $"{n} cars streamed (engine bank of {starter.id} in the start download)";
+        }
+
+        /// <summary>The offline map art (MapArtBaker, ~1 MB crunched) by address: the minimap starts on the runtime bake.</summary>
+        public static string MapArt(AddressableAssetSettings s)
+        {
+            var guid = AssetDatabase.AssetPathToGUID(Map.MapArtBaker.ArtPath);
+            if (string.IsNullOrEmpty(guid)) return "map art: not baked";
+            s.CreateOrMoveEntry(guid, Group(s, "Map"), false, false).address = JapanMap.Gameplay.Map.MapSystem.ArtAddress;
+            s.SetDirty(AddressableAssetSettings.ModificationEvent.BatchModification, null, true, true);
+            return "map art: streamed";
         }
 
         /// <summary>

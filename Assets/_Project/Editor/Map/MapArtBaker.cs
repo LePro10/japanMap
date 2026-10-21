@@ -16,6 +16,29 @@ namespace JapanMap.Editor.Map
     public static class MapArtBaker
     {
         static readonly Rect Bounds = new(-1536f, -1537.5f, 3072f, 3072f); // MapSystem.bounds
+        /// <summary>The art the game streams (MapSystem.ArtAddress): no roads — the game draws them as vectors on top.</summary>
+        public const string ArtPath = "Assets/_Project/Art/Map/MapArt.png";
+        public const int ArtSize = 2048;
+
+        /// <summary>Bakes the game's map art, sets its import and streams it (group "Map", address map/art).</summary>
+        [MenuItem("JapanMap/Map/Bake Map Art")]
+        public static string BakeArt()
+        {
+            var report = Bake(ArtSize, ArtPath, false);
+            AssetDatabase.ImportAsset(ArtPath, ImportAssetOptions.ForceUpdate);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(ArtPath);
+            importer.textureType = TextureImporterType.Default;
+            importer.sRGBTexture = true;
+            importer.mipmapEnabled = true; // the minimap shows it small
+            importer.wrapMode = TextureWrapMode.Clamp;
+            importer.maxTextureSize = ArtSize;
+            importer.alphaSource = TextureImporterAlphaSource.None;
+            importer.SaveAndReimport();
+            report += " · " + Content.StreamingSetup.MapArt(Content.StreamingSetup.Settings());
+            AssetDatabase.SaveAssets();
+            Debug.Log(report);
+            return report;
+        }
 
         // Palette (see the UI proposal): night violet land, ink water with periwinkle shore, paper roads.
         static readonly Color LandLow = Hex("1d1931"), LandHigh = Hex("37304f");

@@ -38,7 +38,11 @@ namespace JapanMap.Gameplay.Map
         [Tooltip("Search circle of a clue, m (ASTRA/STATUS: 80).")]
         [SerializeField] float clueRadius = 80f;
 
-        Texture2D _base;
+        Texture2D _base, _art;
+        /// <summary>Address of the offline map art (MapArtBaker, streamed group "Map"): relief, contours, buildings, trees.</summary>
+        public const string ArtAddress = "map/art";
+        /// <summary>The offline art arrived: views swap their base image (the minimap is built before it streams in).</summary>
+        public event System.Action<Texture2D> ArtLoaded;
         public Rect Bounds => bounds;
         public RoadNetwork Roads => roads;
         public RegionSet Regions => regions != null ? regions.Regions : null;
@@ -74,8 +78,16 @@ namespace JapanMap.Gameplay.Map
 
         public bool Driving => player != null && player.Current == PlayerModeController.Mode.Driving;
 
+        void Start() => StartCoroutine(Life.LifeContent.Load<Texture2D>(ArtAddress, t =>
+        {
+            _art = t;
+            ArtLoaded?.Invoke(t);
+            Debug.Log($"[Map] art {t.width}×{t.height} streamed in");
+        }));
+
         public Texture2D EnsureBase()
         {
+            if (_art != null) return _art;
             if (_base != null) return _base;
             var sea = GameObject.Find("World/Water/Sea");
             var level = sea != null && sea.TryGetComponent<Renderer>(out var r) ? r.bounds.max.y : 0.5f;
