@@ -3,8 +3,8 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-21 · **Phase 11 (Launch) · UI-Neubau (D55):** Etappe 1 fertig (9 Fehler), neue Karte im Spiel ·
-Richtung „Night Meet": https://claude.ai/artifact/Um9YHs4PmbEL5AtV4s9aoS · **jetzt bist du dran:** Punkt U
+**Stand:** 2026-10-21 · **Phase 11 (Launch) · UI-Neubau „Night Meet" umgesetzt (D55/D56)** — Menü, Garage, Karte, Titel,
+HUD, Einstellungen, Ladeseite: https://claude.ai/artifact/Um9YHs4PmbEL5AtV4s9aoS · **jetzt bist du dran:** Punkt U
 
 ## Phase 11 — Launch
 
@@ -13,19 +13,19 @@ Richtung „Night Meet": https://claude.ai/artifact/Um9YHs4PmbEL5AtV4s9aoS · **
 - [x] 3f. Asset-Sprint 6 (D45): echte Figuren, Tiere, Verkehr.
 - [x] 3g./3h. Wunschliste + Rückmeldung 2026-10-17 (D46): Burst, Stunts, Menü, Ton, Navi-Band, Straßen, Cockpit (Details: git log).
 - [x] 3i. Wunschliste 2026-10-17 (3), D47–D54: Schaden, Titel/Menü-Kacheln, Auto-Drive, Karriere, Cockpit, Reifen/Licht,
-  Einmündungen (Details: git log). · [ ] 3j. **UI-Neubau (D55)**: Etappe 1 ✔, Karten-Render ✔, Etappen 2–6 offen.
+  Einmündungen (Details: git log). · [x] 3j. **UI-Neubau (D55/D56)**: alle Etappen umgesetzt (Agent B: Einstellungen,
+  Ladeseite, Postkarten, Stempelbuch).
 
-**Gemessen (2026-10-21, UI Etappe 1):** EditMode-Gruppen 45/45 (Gesamtlauf nur in der Projektkopie, LESSONS) · PlayMode
-UI/Meldungen/Rennen/Karte 48/48 · Web 76,96 MB, Start 19,18 MB · Rest wie 2026-10-18 (EditMode 227, PlayMode 231/244).
-**Nicht gemessen:** Chromebook-/Handy-FPS mit Scheinwerfern + Cockpit, Gamepad-Vibration im Browser, SDK-Lauf nach D55.
+**Gemessen (2026-10-21, nach D56):** EditMode-Gruppen 54/54 · PlayMode UI 32/32, Spiel 44/44, Rennen 9/9 (Discovery und
+Smash nur im Gruppenlauf rot, einzeln grün) · Web 77,73 MB, Start 19,28 MB, **20,36 MB bis gameplayStart** (SDK grün) ·
+Rauchprobe 0 Fehler · M4: Low 312/344 fps (fahren/Menü), High 85/88.
+**Nicht gemessen:** Chromebook/Handy-FPS mit Milchglas (auf Low aus), Gamepad im neuen Menü, EditMode-Gesamtlauf (Kopie).
 
 ## Offen / Gefunden
 
-- **UI-Neubau (D55):** Etappe 1 erledigt (Titel/Einstellungen, Garage-Klick, gesperrte Knöpfe, Meldungen, Countdown,
-  Repair im Intro, Hochkant-Spalte, Seiten oben, Schrift-Test). Karte: Offline-Render nachgeladen (0,57 MB), Markierungen
-  und Kartenseite noch im alten Stil. **Als Nächstes:** Etappe 2 Fundament „Night Meet" (Schriften Archivo + Dela Gothic
-  One, Farben, Bausteine, HUD-Zonen) → Karte fertig (Markierungen, Ticket, Legende) → HUD → Menü/Garage → Titel/Ergebnis.
-  Gefunden: Hochkant-Knopfreihe (LIGHT/CAM/RESET/MENU) zu eng, Beschriftungen überlappen sich.
+- **UI (D56):** Start bis gameplayStart 20,36 MB (Ziel ≤ 20): Schnitt „Archivo Title" durch „Display" ersetzen und Barlow/Saira
+  prüfen spart ~0,1–0,2 MB · Handy hochkant: Knopfreihe eng, Tacho-Zahl nah am Bogen · Records-Seite (Agent B) noch ohne
+  eigenes Bild geprüft · Touch-Knöpfe noch mit Wörtern statt Symbolen · Kino-/Cockpit-Ansichten nicht neu gestaltet.
 - Neu (2026-10-18): Gesamtlauf PlayMode hat 3 reihenfolge-abhängige Rote (einzeln grün): `TouchMenuTests`,
   `PlayerDriveTests.Touch_AutoThrottle`, `AcceptanceDriveTests.RingLap` (6,8 m neben der Mitte bei (482, −751)) →
   Ursache suchen (welcher Test vorher Zustand hinterlässt). Verkehrstest knapp (93–99 % auf der Fahrbahn, Soll 95 %).
@@ -54,10 +54,10 @@ UI/Meldungen/Rennen/Karte 48/48 · Web 76,96 MB, Start 19,18 MB · Rest wie 2026
 
 ## Für dich (Mensch)
 
-U. **UI-Neubau** (Seite oben, unten „Noch zu entscheiden"): (1) passt „Night Meet" (Farben, Schrift, sechs Elemente)?
-   (2) Gesperrtes verstecken + pinker „NEW"-Punkt statt Schloss (ändert D48/D50)? (3) Handy hochkant nur Menü, Fahren quer?
-   Meine Empfehlung: ja · verstecken · nur quer. Kurz anspielen (`node Tools/serve-web.mjs --preview`, :8092): Titel →
-   Settings → Back; Esc → Cars → ein Auto antippen; M = neue Karte.
+U. **Neues UI anspielen (15 Min.):** http://127.0.0.1:8092 (läuft schon; sonst `node Tools/serve-web.mjs --preview`), privates
+   Fenster. Bitte je Punkt „ok" oder was stört: Titel · Esc-Menü (Kacheln, Q/E) · Garage (Auto antippen, kaufen) · Karte (M,
+   Punkt antippen) · Fahren (Tacho, Minikarte, Drift-Telop, Burst = Shift doppelt, K = alle Tasten) · ein Rennen bis zum
+   Ergebnis · Einstellungen. Gesperrtes ist jetzt ausgeblendet (pinker Punkt = neu frei).
 0. **Anspielen (20 Min.)** — Spiel-Teile (UI kommt neu, das brauchst du nicht bewerten): `node Tools/serve-web.mjs --preview`,
    http://127.0.0.1:8092: (c) **Crash** mit 100 km/h, dann **T**, (d) **Auto-Drive** (M → Punkt → „Auto-drive", G halten, C),
    (e) **Cockpit** (C) in Hachi/Kaze/Hanami/Hauler, (f) **Licht** (L, 2× L), (g) Reifen. Je Punkt „ok" oder was stört.
@@ -75,4 +75,4 @@ U. **UI-Neubau** (Seite oben, unten „Noch zu entscheiden"): (1) passt „Night
 | Datum | Typ | Gesamt | Start bis gameplayStart | Boot (lokal) |
 |---|---|---|---|---|
 | 2026-10-18 | Release, Runden 1–4 (Schaden, Titel, Auto-Drive, Karriere, Cockpit, Licht, Einmündungen) | 76,4 MB in 102 Dateien | 20,28 MB | 3,7 s (Rauchprobe) |
-| 2026-10-21 | Release, UI Etappe 1 + Karten-Render (nachgeladen) | 76,96 MB in 103 Dateien | 19,18 MB (Bericht „start") | — |
+| 2026-10-21 | Release, UI „Night Meet" komplett (D56) | 77,73 MB in 104 Dateien | 20,36 MB (SDK) | 2,6 s (Rauchprobe) |
