@@ -89,8 +89,17 @@ namespace JapanMap.Tests.Content
             foreach (var f in Forms) yield return Shot($"menu-play-{f.name}", f.form, f.w, f.h, 1.2f);
             menu.Show(menu.Screen<CarsScreen>());
             yield return Shot("menu-cars-desktop", FormFactor.Desktop, 1280, 720, 1.2f);
-            menu.Show(menu.Screen<SettingsScreen>());
+            var settings = menu.Screen<SettingsScreen>();
+            menu.Show(settings);
             yield return Shot("menu-settings-desktop", FormFactor.Desktop, 1280, 720, 1.0f);
+            settings.ShowPage(1);
+            yield return Shot("menu-settings-display", FormFactor.Desktop, 1280, 720, 0.6f);
+            settings.ShowPage(2);
+            yield return Shot("menu-settings-sound", FormFactor.Desktop, 1280, 720, 0.6f);
+            settings.ShowPage(0, keys: true);
+            yield return Shot("menu-settings-keys", FormFactor.Desktop, 1280, 720, 0.6f);
+            settings.ShowPage(0);
+            yield return Shot("menu-settings-portrait", FormFactor.PhonePortrait, 390, 844, 1.0f);
 
             // What the career will lock: map, races, tuning, the car shop.
             Unlocks.Query = new LockSome(FeatureId.Map, FeatureId.Races, FeatureId.Tuning, FeatureId.CarShop, FeatureId.FastTravel);

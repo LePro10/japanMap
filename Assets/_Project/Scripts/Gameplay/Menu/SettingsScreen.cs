@@ -14,19 +14,25 @@ using UnityEngine.UIElements;
 namespace JapanMap.Gameplay.Menu
 {
     /// <summary>
-    /// Settings (ASTRA §10): Controls (steering, chase distance, camera shake, key bindings, touch), Audio (five
-    /// sliders, master mute), Graphics (quality tier), Accessibility (UI scale, units, reduced motion), Progress
-    /// (save status). Values are always visible and apply at once; per device (<see cref="GameOptions"/>).
+    /// Settings (ASTRA §10, tidied D55): three tabs — Controls (steering, camera, shake; vibration only with a gamepad,
+    /// the touch rows only on touch devices; "Change keys" opens the key list as its own level), Display (quality first,
+    /// UI scale, units, reduced motion) and Sound (master, five groups). The save line sits at the foot of every page.
+    /// Values are always visible and apply at once; per device (<see cref="GameOptions"/>).
     /// Key rebinding uses the Input System's interactive rebinding; Escape cancels a capture.
     /// </summary>
     public sealed class SettingsScreen : MenuScreen
     {
-        static readonly string[] Pages = { "Controls", "Audio", "Graphics", "Accessibility", "Progress" };
+        public static readonly string[] Pages = { "Controls", "Display", "Sound" };
         readonly InputActionAsset _actions;
         readonly PlayerProgress _progress;
         int _page;
+        bool _keys;
         string _text = "";
         InputActionRebindingExtensions.RebindingOperation _rebind;
+
+        // Camera presets over GameOptions.ChaseDistance (4–8 m): three words instead of a metre slider nobody reads.
+        static readonly string[] CameraNames = { "Near", "Mid", "Far" };
+        static readonly float[] CameraDistances = { 4.5f, 6f, 7.5f };
 
         // Rebindable actions (ASTRA §10 list; Map/Menu/Photo keys stay fixed so the player can never lock themselves out).
         static readonly (string map, string action, string label)[] Keys =
@@ -47,53 +53,132 @@ namespace JapanMap.Gameplay.Menu
         public override Icon Icon => Icon.Settings;
         public override string Text => _text;
 
+        /// <summary>The tab shown (0 Controls, 1 Display, 2 Sound).</summary>
+        public int Page => _page;
+        /// <summary>The key list ("Change keys") is open.</summary>
+        public bool KeysOpen => _keys;
+
+        /// <summary>Shows a tab (or the key list) — pictures of every page (UiShots).</summary>
+        public void ShowPage(int page, bool keys = false)
+        {
+            _page = Mathf.Clamp(page, 0, Pages.Length - 1);
+            _keys = keys;
+            Menu?.Rebuild();
+        }
+
+        /// <summary>Touch rows only where there is touch: a desktop player never needs "Touch hand".</summary>
+        public static bool HasTouch => Touchscreen.current != null || UiPanel.IsPhone;
+
         float _cancelledAt = -1f;
 
-        // Escape during a key capture cancels the capture, not the menu.
-        public override bool Back() => _rebind != null || Time.unscaledTime - _cancelledAt < 0.25f;
+        // Escape during a key capture cancels the capture, not the menu; on the key list it goes back to Controls.
+        public override bool Back()
+        {
+            if (_rebind != null || Time.unscaledTime - _cancelledAt < 0.25f) return true;
+            if (!_keys) return false;
+            _keys = false;
+            Menu.Rebuild();
+            return true;
+        }
 
         public override void Closed()
         {
             _rebind?.Cancel();
             _rebind = null;
+            _keys = false;
         }
 
         public override void Build(VisualElement body)
         {
             var t = new StringBuilder();
-            Ui.H1(body, "Settings");
-            var tabs = Ui.Row(body, "jm-wrap");
-            for (var i = 0; i < Pages.Length; i++)
+            if (_keys)
             {
-                var index = i;
-                Ui.On(Ui.Button(tabs, Pages[i], () => { _page = index; Menu.Rebuild(); }), _page == i);
+                var head = Ui.Row(body, "jm-wrap");
+                Ui.Button(head, "‹ Back", () => Back()).name = "settings-keys-back";
+                Ui.H1(head, "Keys");
+                t.AppendLine("page Keys");
+                KeyList(Ui.Box(body, "jm-panel"), t);
             }
-            var page = Ui.Box(body, "jm-panel");
-            switch (_page)
+            else
             {
-                case 0: Controls(page, t); break;
-                case 1: Sound(page, t); break;
-                case 2: Graphics(page, t); break;
-                case 3: Access(page, t); break;
-                default: Progress(page, t); break;
+                Ui.H1(body, "Settings");
+                var tabs = Ui.Row(body, "jm-wrap", "nm-tabs");
+                for (var i = 0; i < Pages.Length; i++)
+                {
+                    var index = i;
+                    // A holder per tab: a child inside the button would stop it measuring its text (clipped label).
+                    var holder = Ui.Box(tabs, "nm-tab__holder");
+                    var tab = Ui.Button(holder, Pages[i], () => { _page = index; Menu.Rebuild(); }, "nm-tab");
+                    tab.name = "settings-tab-" + Pages[i].ToLowerInvariant();
+                    Ui.On(tab, _page == i);
+                    if (_page == i) Underline(holder);
+                }
+                t.AppendLine("tabs " + string.Join(" ", Pages));
+                t.AppendLine("page " + Pages[_page]);
+                var page = Ui.Box(body, "jm-panel");
+                switch (_page)
+                {
+                    case 0: Controls(page, t); break;
+                    case 1: Display(page, t); break;
+                    default: Sound(page, t); break;
+                }
             }
+            Saved(body, t);
             _text = t.ToString();
+        }
+
+        /// <summary>The slanted pink bar under the open tab (the same stroke as the menu's tab marker).</summary>
+        static void Underline(VisualElement holder)
+        {
+            var bar = Ui.Add(holder, new Slant { Lean = 4f }, "nm-tab__bar");
+            bar.style.position = Position.Absolute;
+            bar.style.left = 6;
+            bar.style.right = 6;
+            bar.style.bottom = 2;
+            bar.style.height = 4;
         }
 
         void Controls(VisualElement p, StringBuilder t)
         {
             Ui.SliderRow(p, "Steering", 50f, 150f, GameOptions.Steering * 100f, v => $"{v:0} %", v => GameOptions.Steering = Mathf.Round(v) / 100f);
-            Ui.SliderRow(p, "Chase distance", 4f, 8f, GameOptions.ChaseDistance, v => $"{v:0.0} m", v => GameOptions.ChaseDistance = v);
+            var cam = NearestCamera(GameOptions.ChaseDistance);
+            Ui.ChoiceRow(p, "Camera", CameraNames, cam, i => GameOptions.ChaseDistance = CameraDistances[i]);
             Ui.ChoiceRow(p, "Camera shake", new[] { "Off", "Low", "Full" }, GameOptions.CameraShake, i => GameOptions.CameraShake = i);
-            Ui.ChoiceRow(p, "Controller vibration", new[] { "Off", "On" }, GameOptions.Vibration ? 1 : 0, i => GameOptions.Vibration = i == 1);
-            Ui.ChoiceRow(p, "Touch throttle", new[] { "Auto", "Pedal" }, GameOptions.AutoThrottle ? 0 : 1, i => GameOptions.AutoThrottle = i == 0);
-            Ui.ChoiceRow(p, "Touch hand", new[] { "Right", "Left" }, GameOptions.LeftHanded ? 1 : 0, i => GameOptions.LeftHanded = i == 1);
-            Ui.SliderRow(p, "Touch buttons", 100f, 140f, GameOptions.ButtonScale * 100f, v => $"{v:0} %", v => GameOptions.ButtonScale = Mathf.Round(v) / 100f);
             t.AppendLine($"Steering {GameOptions.Steering * 100f:0} %");
-            t.AppendLine($"Chase distance {GameOptions.ChaseDistance:0.0} m");
+            t.AppendLine($"Camera {CameraNames[cam]}");
+            if (Gamepad.current != null)
+            {
+                Ui.ChoiceRow(p, "Controller vibration", new[] { "Off", "On" }, GameOptions.Vibration ? 1 : 0, i => GameOptions.Vibration = i == 1);
+                t.AppendLine($"Controller vibration {(GameOptions.Vibration ? "On" : "Off")}");
+            }
+            if (HasTouch)
+            {
+                Ui.ChoiceRow(p, "Touch throttle", new[] { "Auto", "Pedal" }, GameOptions.AutoThrottle ? 0 : 1, i => GameOptions.AutoThrottle = i == 0);
+                Ui.ChoiceRow(p, "Touch hand", new[] { "Right", "Left" }, GameOptions.LeftHanded ? 1 : 0, i => GameOptions.LeftHanded = i == 1);
+                Ui.SliderRow(p, "Touch buttons", 100f, 140f, GameOptions.ButtonScale * 100f, v => $"{v:0} %", v => GameOptions.ButtonScale = Mathf.Round(v) / 100f);
+                t.AppendLine($"Touch throttle {(GameOptions.AutoThrottle ? "Auto" : "Pedal")}");
+                t.AppendLine($"Touch buttons {GameOptions.ButtonScale * 100f:0} %");
+            }
+            if (!UiPanel.IsPhone)
+            {
+                var keys = Ui.Button(p, "Change keys", () => { _keys = true; Menu.Rebuild(); }, "jm-btn--wide");
+                keys.name = "settings-keys";
+                t.AppendLine("Change keys");
+            }
+        }
 
-            Ui.H2(p, "Keys");
-            Ui.Small(p, "Select an action, then press the new key. Esc cancels. A key used twice is swapped.");
+        /// <summary>The preset closest to the saved distance (older saves hold any value from the old 4–8 m slider).</summary>
+        public static int NearestCamera(float distance)
+        {
+            var best = 0;
+            for (var i = 1; i < CameraDistances.Length; i++)
+                if (Mathf.Abs(CameraDistances[i] - distance) < Mathf.Abs(CameraDistances[best] - distance)) best = i;
+            return best;
+        }
+
+        void KeyList(VisualElement p, StringBuilder t)
+        {
+            Ui.Small(p, "Pick an action, then press the new key. Esc cancels.");
             foreach (var (map, name, label) in Keys)
             {
                 var action = _actions?.FindActionMap(map, false)?.FindAction(name, false);
@@ -169,6 +254,8 @@ namespace JapanMap.Gameplay.Menu
 
         void Sound(VisualElement p, StringBuilder t)
         {
+            Ui.ChoiceRow(p, "All sound", new[] { "On", "Muted" }, SoundMix.Muted ? 1 : 0, i => SoundMix.Muted = i == 1);
+            t.AppendLine($"All sound {(SoundMix.Muted ? "Muted" : "On")}");
             foreach (SoundGroup g in System.Enum.GetValues(typeof(SoundGroup)))
             {
                 var group = g;
@@ -176,31 +263,26 @@ namespace JapanMap.Gameplay.Menu
                 Ui.SliderRow(p, title, 0f, 100f, SoundMix.Volume(g) * 100f, v => $"{v:0} %", v => SoundMix.SetVolume(group, v / 100f));
                 t.AppendLine($"{title} {SoundMix.Volume(g) * 100f:0} %");
             }
-            Ui.ChoiceRow(p, "All sound", new[] { "On", "Muted" }, SoundMix.Muted ? 1 : 0, i => SoundMix.Muted = i == 1);
-            Ui.Small(p, "Sounds are stand-ins until the recordings arrive.");
         }
 
-        void Graphics(VisualElement p, StringBuilder t)
+        void Display(VisualElement p, StringBuilder t)
         {
             var names = QualitySystem.Tiers;
             var options = new[] { QualitySystem.Auto }.Concat(names).ToArray();
             var current = QualitySystem.IsAuto ? 0 : 1 + System.Array.IndexOf(names, QualitySystem.Current);
+            // Auto measures anew on every tap (it replaces the old "Recalibrate" button).
             Ui.ChoiceRow(p, "Quality", options, current, i =>
             {
                 if (i == 0) QualitySystem.Recalibrate();
                 else QualitySystem.SetTier(names[i - 1]);
                 Menu.Rebuild();
             });
-            var state = !QualitySystem.IsAuto ? $"{QualitySystem.Current}, chosen by you."
-                : QualitySystem.Settled ? $"Auto: {QualitySystem.Current}{(QualitySystem.MeasuredFps > 0 ? $" ({QualitySystem.MeasuredFps:0} fps measured)" : "")}."
-                : $"Auto: {QualitySystem.Current} for now — measured after a few seconds of driving.";
-            Ui.Small(p, state + " High: shadows and long view distance. Low: for phones and Chromebooks.");
-            Ui.Button(p, "Recalibrate", () => { QualitySystem.Recalibrate(); Menu.Rebuild(); });
+            var state = !QualitySystem.IsAuto ? $"{QualitySystem.Current} · chosen by you"
+                : QualitySystem.Settled ? $"Auto · {QualitySystem.Current}{(QualitySystem.MeasuredFps > 0 ? $" · {QualitySystem.MeasuredFps:0} fps" : "")}"
+                : $"Auto · {QualitySystem.Current} · measuring while you drive";
+            Ui.Small(p, state);
             t.AppendLine($"Quality {(QualitySystem.IsAuto ? "Auto " : "")}{QualitySystem.Current}");
-        }
 
-        void Access(VisualElement p, StringBuilder t)
-        {
             var labels = new[] { "90 %", "100 %", "115 %", "130 %" };
             Ui.ChoiceRow(p, "UI scale", labels, GameOptions.UiScale, i =>
             {
@@ -212,39 +294,45 @@ namespace JapanMap.Gameplay.Menu
             t.AppendLine($"UI scale {labels[GameOptions.UiScale]} · {GameOptions.SpeedUnit}");
         }
 
-        void Progress(VisualElement p, StringBuilder t)
+        /// <summary>
+        /// One line at the foot of every page: where progress is saved, and only the buttons that can do something now
+        /// (log in, choose between two copies, the recovery copy).
+        /// </summary>
+        void Saved(VisualElement body, StringBuilder t)
         {
             if (_progress == null) return;
             var store = _progress.StoreName;
             var platform = GamePlatform.Current;
             var user = platform.User;
-            if (store == "CrazyGames")
-                Ui.Text(p, user != null ? $"Saved to your CrazyGames account ({user.Name})." : "Saved in this browser as a guest.");
-            else Ui.Text(p, $"Saved on this device ({store}).");
-            Ui.Small(p, $"{_progress.SaveCount} saves this session. Progress saves after purchases, rewards, discoveries and parking.");
+            var row = Ui.Row(body, "jm-wrap", "nm-save");
+            row.style.alignItems = Align.Center;
+            row.style.marginTop = 10;
+            var where = store == "CrazyGames"
+                ? user != null ? $"Saved to your CrazyGames account · {user.Name}" : "Saved in this browser as a guest"
+                : "Saved on this device";
+            Ui.Small(row, where).style.marginRight = 12;
             t.AppendLine($"store {store}");
             if (user == null && platform.AccountsAvailable)
             {
-                Ui.Button(p, "Log in to keep progress on every device", () => platform.LogIn(_ => Menu.Rebuild()));
+                Ui.Button(row, "Log in", () => platform.LogIn(_ => Menu.Rebuild()));
                 t.AppendLine("login offered");
             }
             if (SaveSync.Pending != null)
             {
-                Ui.Button(p, "Choose progress", () => ShowChoice(Menu), "jm-btn--primary");
+                Ui.Button(row, "Choose progress", () => ShowChoice(Menu), "jm-btn--primary");
                 t.AppendLine("choice pending");
             }
             var recovery = SaveSync.Recovery(SaveStores.Current);
             if (recovery != null)
             {
-                Ui.H2(p, "Recovery copy");
-                Ui.Small(p, Describe(recovery));
-                Ui.Button(p, "Switch to the recovery copy", () =>
+                Ui.Button(row, "Recovery copy", () =>
                 {
-                    var sheet = Menu.Sheet("Switch progress?", out var close);
-                    Ui.Text(sheet, "The progress you play now becomes the recovery copy. Nothing is added together.");
-                    var row = Ui.Row(sheet, "jm-wrap");
-                    Ui.Button(row, "Switch", () => { close(); Menu.Close(); SaveSync.SwapRecovery(SaveStores.Current); }, "jm-btn--primary");
-                    Ui.Button(row, "Cancel", close);
+                    var sheet = Menu.Sheet("Recovery copy", out var close);
+                    Ui.Text(sheet, Describe(recovery));
+                    Ui.Small(sheet, "Switching makes the progress you play now the recovery copy. Nothing is added together.");
+                    var buttons = Ui.Row(sheet, "jm-wrap");
+                    Ui.Button(buttons, "Switch", () => { close(); Menu.Close(); SaveSync.SwapRecovery(SaveStores.Current); }, "jm-btn--primary");
+                    Ui.Button(buttons, "Cancel", close);
                 });
                 t.AppendLine("recovery copy");
             }
@@ -262,7 +350,7 @@ namespace JapanMap.Gameplay.Menu
             var c = SaveSync.Pending;
             if (c == null || menu == null) return;
             var settings = menu.Screen<SettingsScreen>();
-            if (settings != null) settings._page = 4; // Progress
+            if (settings != null) settings._keys = false; // the save line with "Choose progress" is on every tab
             menu.Open(settings);
             var account = GamePlatform.Current.User != null ? "Your account" : "This browser";
             var sheet = menu.Sheet("Choose progress", out var close);
