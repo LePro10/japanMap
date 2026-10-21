@@ -237,12 +237,12 @@ namespace JapanMap.Tests.Content
             for (var f = 0; f < 5; f++) yield return null;
             Assert.IsTrue(menu.IsOpen);
             var map = menu.Root.Q<Button>("tab-map");
-            Assert.IsTrue(map.ClassListContains("jm-tab--locked"), "the locked tab shows it");
-            yield return Click(map);
-            Assert.AreEqual("Play", menu.Current.Title, "a locked tab does not open");
-            StringAssert.Contains("Unlocks: Finish the first drive", menu.NoticeText, "it says why");
+            // D56: a locked tab is not shown (it appears with a pink dot once the career opens it).
+            Assert.IsTrue(map.ClassListContains("jm-tab--locked"), "the tab knows it is locked");
+            Assert.AreEqual(DisplayStyle.None, map.style.display.value, "a locked tab is hidden");
             yield return Tap(Key.M);
-            Assert.AreEqual("Play", menu.Current.Title, "M does not open a locked map either");
+            Assert.AreEqual("Play", menu.Current.Title, "M does not open a locked map");
+            StringAssert.Contains("Unlocks: Finish the first drive", menu.NoticeText, "it says why");
             yield return Tap(Key.E);
             Assert.AreEqual("Cars", menu.Current.Title, "E steps to the next tab");
             yield return Tap(Key.E);

@@ -215,7 +215,7 @@ Label { color: var(--washi); font-size: 16px; }
     position: absolute; border-radius: 999px; border-width: 2px; border-color: rgba(245, 239, 228, 0.6);
     background-color: rgba(18, 14, 30, 0.42); align-items: center; justify-content: center;
 }
-.jm-touch Label { font-size: 13px; color: var(--washi); -unity-text-align: middle-center; letter-spacing: 1px; }
+.jm-touch Label { font-size: 11px; color: var(--washi); -unity-text-align: middle-center; letter-spacing: 0; white-space: nowrap; }
 .jm-touch--down { background-color: rgba(245, 239, 228, 0.35); }
 .jm-touch--drift { background-color: rgba(255, 154, 60, 0.42); border-color: var(--mikan); }
 .jm-touch--brake { background-color: rgba(232, 64, 42, 0.42); border-color: var(--shu); }

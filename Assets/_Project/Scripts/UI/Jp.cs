@@ -45,6 +45,8 @@ namespace JapanMap.UI
         public const string Result = "結果";
         public const string Loading = "読込中";
         public const string North = "北";
+        public const string Landscape = "横向き";
+        public const string Controls = "操作";
 
         // Map pin glyphs.
         public const string PinHome = "家";

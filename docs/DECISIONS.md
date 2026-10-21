@@ -970,3 +970,17 @@ Pfeile über Saira als Ersatzschrift. Test `FontCoverageTests`.
 **Karte — eigenes Werkzeug statt Standard:** Unity hat keine Karten-Darstellung, Asset-Store-Karten kennen unsere Daten
 (Gelände, Straßennetz, Instanz-Gebäude, Vegetation) nicht; `Editor/Map/MapArtBaker` backt sie offline in 2,3 s
 (Höhenlinien, 6 805 Gebäude, 32 594 Bäume, Reisfelder, Küstenringe). Einbau ins Spiel (nachgeladen, 20-MB-Grenze) in Etappe 3.
+
+## D56 — „Night Meet" umgesetzt: neues UI in allen Etappen (2026-10-21)
+
+**Auftrag (Mensch):** „bitte jetzt komplett autonom alles alle phasen implementieren". Damit gelten auch die beiden offenen
+Fragen aus D55 als entschieden (meine Empfehlungen): **gesperrte Reiter und Kacheln werden ausgeblendet** und erscheinen mit
+pinkem Punkt, sobald die Karriere sie öffnet (ändert die Anzeige aus D48/D50, nicht die Freischalt-Regeln); **Fahren
+hochkant** bleibt möglich, ein Papier-Hinweis „Turn your phone" erscheint 5 s beim Drehen.
+**Umgesetzt:** Schriften Archivo + Dela Gothic One (Teilschrift 21 KB, `JapanMap/UI/Build Fonts`), Bausteine
+`UI/NightMeet.cs` (Ticket, Hanko, Slant, Telop, Key), Theme in `Data/UI/Game.uss` (+ Menu/Title/Career/Hud.uss), Menü mit
+Kana-Reitern und Bildkacheln, Garage mit fester Liste und Papierkarte (`GameMenu.Aside`), Kartenseite mit Ortsnamen und
+Plaketten, Titel, HUD ohne Kästen (Tacho, runde Minikarte, Telop, Manga-Speedlines, Meldungen mit Stempel, Taste K für
+alle Tasten), Ergebnis mit Platz-Stempel. Agent B: Einstellungen (3 Reiter), Ladeseite, Postkarten, Stempelbuch.
+**Leistung:** Milchglas (`backdrop-filter`), Telop-Schatten und Riesenwörter fallen auf „Low" weg (`nm-low`, `Nm.Tier`).
+**Taste:** K = alle Tasten (H ist „Auto rufen").

@@ -81,3 +81,7 @@
 .nm-allkeys__col { margin-right: 26px; }
 .nm-allkeys__row { margin-bottom: 8px; }
 .nm-allkeys .nm-hint__label { text-shadow: none; }
+
+/* Phones upright while driving: turn the phone (PlayerModeUi). */
+.nm-turnphone { position: absolute; left: 12%; right: 12%; top: 40%; padding: 14px 22px 16px 22px; }
+.nm-turnphone .nm-ticket__title { font-size: 28px; }

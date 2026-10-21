@@ -58,7 +58,17 @@ namespace JapanMap.Gameplay.Menu
             Waiting.Add((id, done));
             if (_loading) return;
             _loading = true;
-            Loader.Run(LifeContent.Load<PostcardSet>(Address, Arrived));
+            PostcardLoader.Run(LifeContent.Load<PostcardSet>(Address, Arrived));
+        }
+
+        /// <summary>The load coroutine ended: LifeContent warns and never calls back on a failed load — stop asking for the
+        /// rest of the session.</summary>
+        internal static void LoadEnded()
+        {
+            if (_set != null) return;
+            _loading = false;
+            _failed = true;
+            Waiting.Clear();
         }
 
         static void Arrived(PostcardSet set)
@@ -83,33 +93,6 @@ namespace JapanMap.Gameplay.Menu
             Waiting.Clear();
         }
 
-        /// <summary>A hidden host for the load coroutine: the requester (a menu tile) may be rebuilt before it ends.</summary>
-        sealed class Loader : MonoBehaviour
-        {
-            static Loader _host;
 
-            public static void Run(System.Collections.IEnumerator work)
-            {
-                if (_host == null)
-                {
-                    var go = new GameObject("PostcardLoader") { hideFlags = HideFlags.HideAndDontSave };
-                    DontDestroyOnLoad(go);
-                    _host = go.AddComponent<Loader>();
-                }
-                _host.StartCoroutine(Watch(work));
-            }
-
-            static System.Collections.IEnumerator Watch(System.Collections.IEnumerator work)
-            {
-                yield return work;
-                // LifeContent warns and never calls back on a failed load: stop asking for the rest of the session.
-                if (_set == null)
-                {
-                    _loading = false;
-                    _failed = true;
-                    Waiting.Clear();
-                }
-            }
-        }
     }
 }

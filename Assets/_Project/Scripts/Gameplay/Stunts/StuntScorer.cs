@@ -41,7 +41,7 @@ namespace JapanMap.Gameplay.Stunts
             Last = r;
             Count++;
             if (PaysSparks && wallet != null) wallet.AddScore(r.points, r.title);
-            if (hud != null) hud.Flash($"{r.title}  +{r.points:N0}{(r.repeat ? "  (repeat)" : "")}");
+            if (hud != null) hud.ShowSkill($"{r.title}  +{r.points:N0}{(r.repeat ? "  (repeat)" : "")}");
             Scored?.Invoke(r);
         }
 

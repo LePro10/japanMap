@@ -118,6 +118,17 @@ namespace JapanMap.Gameplay
             _allKeys.style.display = DisplayStyle.None;
             doc.Add(_allKeys);
 
+            // Phones upright while driving: a paper note to turn the phone (D55 — the road needs the width); it goes
+            // by itself and comes back on the next turn upright.
+            _turn = new UI.Ticket { name = "turn-phone", pickingMode = PickingMode.Ignore, Perforation = false };
+            _turn.AddToClassList("nm-turnphone");
+            UI.Nm.Kicker(_turn, "Best in landscape", UI.Jp.Landscape);
+            var tl = new Label("Turn your phone") { pickingMode = PickingMode.Ignore };
+            tl.AddToClassList("nm-ticket__title");
+            _turn.Add(tl);
+            _turn.style.display = DisplayStyle.None;
+            doc.Add(_turn);
+
             _touch = new VisualElement { pickingMode = PickingMode.Ignore };
             _touch.style.position = Position.Absolute;
             _touch.style.left = _touch.style.right = _touch.style.top = _touch.style.bottom = 0;
@@ -153,7 +164,9 @@ namespace JapanMap.Gameplay
             _touch.Add(_distance);
         }
 
-        VisualElement _allKeys;
+        VisualElement _allKeys, _turn;
+        float _turnUntil;
+        bool _wasUpright;
         UnityEngine.InputSystem.InputAction _hKey;
         bool _allShown;
 
@@ -171,7 +184,7 @@ namespace JapanMap.Gameplay
             if (player.Suspended) _allShown = false;
             _allKeys.style.display = _allShown ? DisplayStyle.Flex : DisplayStyle.None;
             if (!_allShown || _allKeys.childCount > 0) return;
-            UI.Nm.Kicker(_allKeys, "All keys", "操作");
+            UI.Nm.Kicker(_allKeys, "All keys", UI.Jp.Controls);
             var cols = new VisualElement { pickingMode = PickingMode.Ignore };
             cols.AddToClassList("nm-allkeys__cols");
             _allKeys.Add(cols);
@@ -202,9 +215,19 @@ namespace JapanMap.Gameplay
             Row(more, "Esc", "Menu");
         }
 
+        void UpdateTurnHint()
+        {
+            if (_turn == null) return;
+            var upright = UiPanel.IsPortrait && player.Current == PlayerModeController.Mode.Driving && !player.Suspended;
+            if (upright && !_wasUpright) _turnUntil = Time.unscaledTime + 5f;
+            _wasUpright = upright;
+            _turn.style.display = upright && Time.unscaledTime < _turnUntil ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
         void UpdateKeyHints()
         {
             UpdateAllKeys();
+            UpdateTurnHint();
             if (_keys == null) return;
             // Not under the auto-drive letterbox (D49): the picture is the film, the take-over line says what to press.
             var show = !_touchSeen && !UiPanel.IsPhone && !player.Suspended && !Core.AutoDrive.IsActive && progress != null && progress.Data != null

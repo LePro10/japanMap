@@ -110,6 +110,7 @@ namespace JapanMap.Gameplay.Hud
         {
             Build();
             UiPanel.Changed += OnLayout;
+            QualitySystem.TierChanged += OnTier;
             if (drift != null) drift.ChainEnded += OnChainEnded;
             if (wallet != null) wallet.Earned += OnEarned;
         }
@@ -117,9 +118,12 @@ namespace JapanMap.Gameplay.Hud
         void OnDisable()
         {
             UiPanel.Changed -= OnLayout;
+            QualitySystem.TierChanged -= OnTier;
             if (drift != null) drift.ChainEnded -= OnChainEnded;
             if (wallet != null) wallet.Earned -= OnEarned;
         }
+
+        void OnTier(string tier) { if (_root != null) UI.Nm.Tier(_root, tier); }
 
         void OnLayout()
         {
@@ -139,6 +143,7 @@ namespace JapanMap.Gameplay.Hud
             Fill(doc);
             _root = new VisualElement { pickingMode = PickingMode.Ignore, name = "hud" };
             Fill(_root);
+            UI.Nm.Tier(_root, QualitySystem.Current); // Low: no telop shadows (an extra text pass each)
             doc.Add(_root);
             var phone = UiPanel.IsPhone;
             var k = phone ? 0.62f : 1f; // phone type scale; touch targets keep their size elsewhere
@@ -482,6 +487,19 @@ namespace JapanMap.Gameplay.Hud
 
         /// <summary>Text under the arrow ("" = hidden) — tests.</summary>
         public string GoalLabel => _goal != null && _goal.style.display == DisplayStyle.Flex ? _goal.text : "";
+
+        /// <summary>
+        /// A skill moment (stunt landed) as a telop at the score's place, not in the notice lane (D55: telop for skill
+        /// only, the lane for information). Also kept as the last toast for callers that read it.
+        /// </summary>
+        public void ShowSkill(string text)
+        {
+            LastToast = text;
+            if (_result == null) return;
+            _result.text = text;
+            _resultUntil = Time.time + chainResultSeconds;
+            Pop(_result, 1.5f);
+        }
 
         /// <summary>Show a message now, replacing the current one (puzzle feedback).</summary>
         public void Flash(string text)

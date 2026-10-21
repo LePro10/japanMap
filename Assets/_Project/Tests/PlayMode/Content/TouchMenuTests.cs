@@ -98,11 +98,14 @@ namespace JapanMap.Tests.Content
             Assert.IsFalse(menu.IsOpen, "Continue resumes");
             Assert.AreEqual(1f, Time.timeScale);
 
-            // Photo mode by finger: the Photo tab, the pad moves the camera, Capture, Return to game.
+            // Photo mode by finger: the Play page's Photo tile (D55: an action, not a desktop tab), the pad moves the
+            // camera, Capture, Return to game.
             yield return TapAt(ui.MenuButton);
-            yield return TapAt(menu.Root.Q<Button>("tab-photo"));
+            yield return TapAt(menu.Root.Q<Button>("tab-play"));
+            for (var f = 0; f < 5; f++) yield return null;
+            yield return TapAt(menu.Root.Q<Button>("tile-photo"));
             var photo = Object.FindAnyObjectByType<PhotoMode>();
-            Assert.IsTrue(photo.IsOpen, "the Photo tab starts photo mode");
+            Assert.IsTrue(photo.IsOpen, "the Photo tile starts photo mode");
             for (var f = 0; f < 5; f++) yield return null;
             var pad = photo.GetComponent<UIDocument>().rootVisualElement.Q<VisualElement>("photo-pad");
             Assert.NotNull(pad);

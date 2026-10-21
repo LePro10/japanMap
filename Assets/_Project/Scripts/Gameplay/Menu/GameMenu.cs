@@ -198,7 +198,10 @@ namespace JapanMap.Gameplay.Menu
             if (_records != null) { _records.Enable(); _records.performed += OnRecordsKey; }
             if (_map != null) { _map.Enable(); _map.performed += OnMapKey; }
             UiPanel.Changed += OnLayout;
+            Core.QualitySystem.TierChanged += OnTier;
         }
+
+        void OnTier(string tier) { if (_root != null) Nm.Tier(_root, tier); }
 
         void OnDisable()
         {
@@ -214,6 +217,7 @@ namespace JapanMap.Gameplay.Menu
             if (_records != null) _records.performed -= OnRecordsKey;
             if (_map != null) _map.performed -= OnMapKey;
             UiPanel.Changed -= OnLayout;
+            Core.QualitySystem.TierChanged -= OnTier;
             if (IsOpen) Close();
         }
 
@@ -573,6 +577,7 @@ namespace JapanMap.Gameplay.Menu
             _root.EnableInClassList("jm-landscape", UiPanel.Form == FormFactor.PhoneLandscape);
             _root.EnableInClassList("jm-desktop", !UiPanel.IsPhone);
             _root.EnableInClassList("jm-calm", Core.GameOptions.ReducedMotion);
+            Nm.Tier(_root, Core.QualitySystem.Current); // Low: no blur, no giant word (perf on weak devices)
             _root.Clear();
             var safe = UiPanel.Safe;
             _root.style.paddingLeft = safe.x;

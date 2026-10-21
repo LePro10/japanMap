@@ -88,6 +88,8 @@ namespace JapanMap.Gameplay.Menu
             // Garage (D55): a list with pictures on the left that never jumps; the chosen car's paper card at the right
             // over the car, its one main button always in the same place (owner 2026-10-21: "klicke auf ein Auto und
             // muss nochmal nach oben scrollen").
+            // Phones have no aside: the chosen car's card comes first, the list under it (a list click scrolls up to it).
+            if (aside == body) Detail(body, def, t);
             var chips = Ui.Row(body, "jm-wrap", "nm-chips");
             Chip(chips, $"All {_progress.Fleet.vehicles.Length}", _showroom && _filter == 0, () => { _showroom = true; _filter = 0; });
             var mine = 0;
@@ -125,7 +127,7 @@ namespace JapanMap.Gameplay.Menu
                 t.AppendLine($"{v.displayName} {(driving ? "Driving" : owned ? "Owned" : $"{v.price:N0} Sparks")}");
             }
             if (list.childCount == 0) Ui.Small(body, "No car here yet.");
-            Detail(aside, def, t);
+            if (aside != body) Detail(aside, def, t);
             _text = t.ToString();
         }
 
@@ -152,7 +154,7 @@ namespace JapanMap.Gameplay.Menu
             Menu.Rebuild();
             if (scroll == null) return;
             // The detail sits in the aside (desktop): the list stays where it was. Phones show it on top: scroll up.
-            var to = owned || !UiPanel.IsPhone ? offset : Vector2.zero;
+            var to = !UiPanel.IsPhone ? offset : Vector2.zero;
             scroll.scrollOffset = to;
             scroll.schedule.Execute(() => scroll.scrollOffset = to); // again once the rebuilt page has its layout
         }
