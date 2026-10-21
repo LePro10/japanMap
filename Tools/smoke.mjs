@@ -68,7 +68,13 @@ try {
     await page.waitForTimeout(2000);
     if (!extra.includes('title=off')) {
       for (const t1 = Date.now(); !logs.some((l) => l.includes('[Title] shown')) && Date.now() - t1 < 30000;) await page.waitForTimeout(250);
-      title = logs.some((l) => l.includes('[Title] shown')) ? (logs.some((l) => l.includes('[Page] loaded')) ? ' · title ok' : ' · title shown, page loader stayed') : ' · no title';
+      // PageBridge logs "[Page] loaded" a frame or more after the title: give it a moment (an instant check reported a
+      // loader that had already gone), and ask the page itself whether its loading screen went.
+      for (const t2 = Date.now(); !logs.some((l) => l.includes('[Page] loaded')) && Date.now() - t2 < 5000;) await page.waitForTimeout(250);
+      const loaderGone = await page.evaluate(() => { const l = document.getElementById('loading'); return !l || getComputedStyle(l).display === 'none' || l.classList.contains('done'); });
+      title = logs.some((l) => l.includes('[Title] shown'))
+        ? (logs.some((l) => l.includes('[Page] loaded')) && loaderGone ? ' · title ok' : ` · title shown, page loader stayed (log ${logs.some((l) => l.includes('[Page] loaded')) ? 'yes' : 'no'}, page ${loaderGone ? 'gone' : 'shown'})`)
+        : ' · no title';
       await page.evaluate(() => { const c = document.querySelector('canvas'); c.tabIndex = 1; c.focus(); });
       await page.keyboard.press('Enter');
       await page.waitForTimeout(1500);

@@ -5,112 +5,115 @@
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>{{{ PRODUCT_NAME }}}</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="preload" href="TemplateData/display.woff2" as="font" type="font/woff2" crossorigin>
     <style>
       /* CrazyGames: the game fills its frame, nothing selectable, no long-press menu, no page scroll (D37). */
-      html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0d1422;
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #120e1e;
         -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
       #unity-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; touch-action: none;
-        background: #0d1422; }
+        background: #120e1e; }
       /* Covers the whole frame until something playable stands (the title, D48): nothing half-built shows through.
-         Motion graphics instead of a bar on black: an endless wet road at blue hour runs towards the viewer, neon
-         streaks pass, the name rises letter by letter; a real progress line (Unity's files, then the game's own boot
-         stages from PageBridge.cs) with the stage in words, and one tip at a time. CSS only — no image, no download. */
-      @font-face { font-family: "JMDisplay"; src: url("TemplateData/display.ttf") format("truetype"); font-display: swap; }
-      #loading { position: fixed; inset: 0; z-index: 2; overflow: hidden; color: #f6efe4; text-align: center;
-        background: linear-gradient(180deg, #0a1630 0%, #18284d 46%, #3a3a5c 56%, #0b1a24 56.2%, #06141a 100%);
+         "Night Meet" (D55): night violet, washi-white type, momo pink for progress, one shu hanko. The name in Archivo
+         Condensed Black Italic (TemplateData/display.woff2, cut to capitals and digits: ArtSource/web/loader_assets.py);
+         the Japanese words are SVG paths — no CJK font in the start download. A real progress bar (Unity's files, then
+         the game's boot stages from PageBridge.cs) with the stage in words, and one tip at a time. */
+      @font-face { font-family: "JMDisplay"; src: url("TemplateData/display.woff2") format("woff2"); font-display: block; }
+      #loading { position: fixed; inset: 0; z-index: 2; overflow: hidden; color: #f5efe4; text-align: left;
+        background: radial-gradient(120% 90% at 30% 38%, #2a1d40 0%, #1e1830 38%, #120e1e 78%) #120e1e;
         font-family: "JMDisplay", system-ui, -apple-system, "Segoe UI", sans-serif; transition: opacity .5s ease-out; }
       #loading.done { opacity: 0; pointer-events: none; }
-      /* The low sun behind the city: warm only at the horizon (ART-DIRECTION: cold sky, warm light). */
-      #loading .sun { position: absolute; left: 50%; top: 56%; width: 120vmax; height: 40vmax; transform: translate(-50%, -50%);
-        background: radial-gradient(ellipse at 50% 50%, rgba(255,179,122,.45) 0%, rgba(232,186,127,.12) 22%, rgba(0,0,0,0) 55%); }
-      /* Skyline silhouette: a row of blocks drawn by gradients. */
-      #loading .city { position: absolute; left: 0; right: 0; top: 41%; height: 15.2%; opacity: .9;
-        background:
-          linear-gradient(#0d1a2c, #0d1a2c) 4% 100% / 5% 55% no-repeat, linear-gradient(#0f1d31, #0f1d31) 10% 100% / 3% 80% no-repeat,
-          linear-gradient(#0c182a, #0c182a) 15% 100% / 6% 40% no-repeat, linear-gradient(#0e1b2e, #0e1b2e) 23% 100% / 4% 95% no-repeat,
-          linear-gradient(#0c1829, #0c1829) 30% 100% / 7% 60% no-repeat, linear-gradient(#0f1e33, #0f1e33) 66% 100% / 5% 85% no-repeat,
-          linear-gradient(#0c182a, #0c182a) 72% 100% / 8% 50% no-repeat, linear-gradient(#0e1c30, #0e1c30) 81% 100% / 3% 100% no-repeat,
-          linear-gradient(#0c1829, #0c1829) 86% 100% / 6% 65% no-repeat, linear-gradient(#0d1a2c, #0d1a2c) 94% 100% / 5% 45% no-repeat; }
-      #loading .city::after { content: ""; position: absolute; inset: 0;
-        background: radial-gradient(circle, rgba(255,214,150,.8) 0 1px, transparent 1.6px) 0 0 / 14px 11px;
-        -webkit-mask: linear-gradient(#000, #000); mask: linear-gradient(#000, #000); opacity: .25; }
-      /* The road: a plane tipped away, dashes and kerbs running at the viewer, the wet surface catching the sun. */
-      #loading .road { position: absolute; left: 50%; top: 56%; width: 300vmax; height: 120vh; transform-origin: 50% 0;
-        transform: translateX(-50%) perspective(260px) rotateX(78deg);
-        background:
-          repeating-linear-gradient(180deg, rgba(246,239,228,.8) 0 40px, transparent 40px 110px) 50% 0 / .22% 100% no-repeat,
-          linear-gradient(90deg, transparent 45.9%, rgba(94,214,245,.9) 45.9% 46%, transparent 46% 54%, rgba(94,214,245,.9) 54% 54.1%, transparent 54.1%),
-          radial-gradient(ellipse 6% 40% at 50% 0%, rgba(255,179,122,.32), rgba(15,30,45,0) 100%),
-          linear-gradient(180deg, #111c2b, #05090e 60%);
-        animation: jmroad .55s linear infinite; }
-      @keyframes jmroad { from { background-position: 50% 0, 0 0, 0 0, 0 0; } to { background-position: 50% 110px, 0 0, 0 0, 0 0; } }
-      /* Ink under the progress and the tip: they read on any part of the road. */
-      #loading .floor { position: absolute; left: 0; right: 0; bottom: 0; height: 42%; background: linear-gradient(0deg, rgba(4,10,16,.92) 0%, rgba(4,10,16,.7) 45%, rgba(4,10,16,0) 100%); }
-      #loading .haze { position: absolute; left: 0; right: 0; top: 50%; height: 14%; background: linear-gradient(180deg, rgba(58,58,92,0), rgba(143,158,181,.22), rgba(6,20,26,0)); }
-      /* Neon streaks: light trails of passing cars. */
-      #loading .streak { position: absolute; height: 2px; width: 34vw; left: -40vw; border-radius: 2px; opacity: .9;
-        background: linear-gradient(90deg, rgba(94,214,245,0), rgba(143,230,255,.95)); box-shadow: 0 0 12px rgba(94,214,245,.8);
-        animation: jmstreak 2.6s cubic-bezier(.5,0,.3,1) infinite; }
-      #loading .streak.s2 { top: 71%; width: 22vw; animation-duration: 3.3s; animation-delay: .9s; background: linear-gradient(90deg, rgba(255,209,102,0), rgba(255,209,102,.9)); box-shadow: 0 0 12px rgba(255,180,90,.7); }
-      #loading .streak.s1 { top: 62%; }
-      #loading .streak.s3 { top: 84%; height: 3px; width: 44vw; animation-duration: 2.1s; animation-delay: 1.6s; }
-      @keyframes jmstreak { from { transform: translateX(0); } to { transform: translateX(160vw); } }
-      #loading .rain { position: absolute; inset: -20% 0 0 0; pointer-events: none; opacity: .22;
-        background-image: repeating-linear-gradient(100deg, rgba(180,200,255,0) 0 22px, rgba(180,200,255,.35) 22px 23px, rgba(180,200,255,0) 23px 61px);
+      /* Manga speed lines from behind the name, faded out before the edges. */
+      #loading .speed { position: absolute; left: 34%; top: 38%; width: 240vmax; height: 240vmax; transform: translate(-50%, -50%);
+        background: repeating-conic-gradient(from 0deg, rgba(245,239,228,.07) 0deg .5deg, rgba(245,239,228,0) .5deg 4.5deg);
+        -webkit-mask: radial-gradient(circle, transparent 9%, #000 18%, transparent 40%); mask: radial-gradient(circle, transparent 9%, #000 18%, transparent 40%);
+        animation: jmspin 60s linear infinite; }
+      @keyframes jmspin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+      #loading .rain { position: absolute; inset: -20% 0 0 0; pointer-events: none; opacity: .18;
+        background-image: repeating-linear-gradient(100deg, rgba(196,186,255,0) 0 22px, rgba(196,186,255,.4) 22px 23px, rgba(196,186,255,0) 23px 61px);
         background-size: 240px 240px; animation: jmrain .6s linear infinite; }
       @keyframes jmrain { from { background-position: 0 0; } to { background-position: -42px 240px; } }
-      /* The name: letters rise in one after another (the game's title picks the same face up). */
-      #loading .brand { position: absolute; left: 0; right: 0; top: 14%; }
-      #loading .jp { font: 500 clamp(12px, 1.6vw, 16px)/1 system-ui, sans-serif; letter-spacing: .6em; color: #e8ba7f; margin-bottom: 10px; opacity: 0; animation: jmfade .8s ease-out .1s forwards; }
-      #loading .name { font-weight: 700; font-size: clamp(46px, 10vw, 128px); line-height: .95; letter-spacing: .02em; text-shadow: 0 6px 30px rgba(0,0,0,.55); }
-      #loading .name span { display: inline-block; opacity: 0; transform: translateY(.35em); animation: jmrise .7s cubic-bezier(.2,1.4,.4,1) forwards; }
-      #loading .second { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 6px; opacity: 0; animation: jmfade .6s ease-out .7s forwards; }
-      #loading .second i { display: block; height: 3px; width: 0; background: #8fe6ff; box-shadow: 0 0 10px #5ed6f5; animation: jmline .7s ease-out .65s forwards; }
-      #loading .second span { font-size: clamp(18px, 3.4vw, 42px); letter-spacing: .5em; color: #8fe6ff; margin-right: -.5em; }
-      #loading .sub { margin-top: 14px; font: 600 clamp(10px, 1.2vw, 13px)/1 system-ui, sans-serif; letter-spacing: .32em; color: #b7c4c8; opacity: 0; animation: jmfade .6s ease-out .9s forwards; }
-      @keyframes jmrise { to { opacity: 1; transform: translateY(0); } }
+      /* Light trails: pink and sora streaks across the lower half, like cars passing a night meet. */
+      #loading .streak { position: absolute; height: 2px; width: 34vw; left: -40vw; opacity: .85; transform: skewX(-24deg);
+        background: linear-gradient(90deg, rgba(255,46,122,0), #ff2e7a); box-shadow: 0 0 12px rgba(255,46,122,.7);
+        animation: jmstreak 2.8s cubic-bezier(.5,0,.3,1) infinite; }
+      #loading .streak.s1 { top: 63%; }
+      #loading .streak.s2 { top: 72%; width: 22vw; animation-duration: 3.4s; animation-delay: .9s;
+        background: linear-gradient(90deg, rgba(140,151,255,0), #8c97ff); box-shadow: 0 0 12px rgba(140,151,255,.7); }
+      #loading .streak.s3 { top: 86%; height: 3px; width: 44vw; animation-duration: 2.2s; animation-delay: 1.6s; }
+      @keyframes jmstreak { from { transform: translateX(0) skewX(-24deg); } to { transform: translateX(160vw) skewX(-24deg); } }
+      /* 雨上がり, upright and huge on the right: pink outline only, behind everything. */
+      #loading .tate { position: absolute; right: 5vw; top: 50%; height: min(84vh, 150vw); transform: translateY(-50%); overflow: visible;
+        opacity: 0; animation: jmfade 1.2s ease-out .3s forwards; }
+      #loading .tate path { fill: none; stroke: #ff2e7a; stroke-width: 1.4px; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+      /* The name: letters rise in one after another, the hanko presses in after them. */
+      #loading .brand { position: absolute; left: 8vw; right: 8vw; top: 18%; }
+      #loading .line1 { display: flex; align-items: center; gap: clamp(10px, 1.6vw, 22px); }
+      #loading .name { font-weight: 900; font-style: italic; font-size: clamp(54px, 11vw, 148px); line-height: .9; letter-spacing: -.01em;
+        text-shadow: 0 6px 30px rgba(0,0,0,.55); white-space: nowrap; }
+      #loading .name span { display: inline-block; opacity: 0; transform: translateY(.35em) skewX(-6deg); animation: jmrise .7s cubic-bezier(.2,1.4,.4,1) forwards; }
+      #loading .hanko { flex: none; width: clamp(48px, 7.4vw, 96px); height: clamp(48px, 7.4vw, 96px); opacity: 0; transform: rotate(-12deg) scale(1.7);
+        animation: jmstamp .26s cubic-bezier(.3,1.6,.5,1) .95s forwards; }
+      #loading .hanko .ring { fill: none; stroke: #e8402a; }
+      #loading .hanko path { fill: #e8402a; }
+      @keyframes jmstamp { to { opacity: .95; transform: rotate(-12deg) scale(1); } }
+      /* The second word on a slanted pink band, the tagline beside it. */
+      #loading .second { display: flex; align-items: center; gap: 18px; margin-top: clamp(10px, 1.6vw, 20px); opacity: 0; animation: jmslide .5s cubic-bezier(.2,1,.3,1) .7s forwards; }
+      #loading .second span { display: inline-block; padding: .08em .7em .12em .5em; background: #ff2e7a; color: #120e1e; transform: skewX(-14deg);
+        font-weight: 900; font-style: italic; font-size: clamp(22px, 3.6vw, 46px); line-height: 1; letter-spacing: .14em; }
+      #loading .sub { font: 600 clamp(10px, 1.15vw, 13px)/1.3 system-ui, sans-serif; letter-spacing: .3em; color: #a49cb8; }
+      @keyframes jmrise { to { opacity: 1; transform: translateY(0) skewX(-6deg); } }
       @keyframes jmfade { to { opacity: 1; } }
-      @keyframes jmline { to { width: clamp(40px, 7vw, 96px); } }
-      /* Progress: a thin neon line with a glowing head, the stage in words and the percentage. */
-      #loading .foot { position: absolute; left: 50%; bottom: max(7vh, 34px); transform: translateX(-50%); width: min(78vw, 520px); }
-      #loading .meter { position: relative; height: 3px; border-radius: 2px; background: rgba(246,239,228,.14); }
-      #loading .fill { height: 100%; width: 0; border-radius: 2px; background: linear-gradient(90deg, #1a6b76, #5ed6f5); transition: width .3s ease-out; }
-      #loading .head { position: absolute; top: 50%; left: 0; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%;
-        background: #fff; box-shadow: 0 0 10px #8fe6ff, 0 0 22px #5ed6f5; transition: left .3s ease-out; }
-      #loading .row { display: flex; justify-content: space-between; margin-top: 12px; font: 600 clamp(11px, 1.3vw, 13px)/1 system-ui, sans-serif; letter-spacing: .22em; text-transform: uppercase; color: #b7c4c8; }
-      #loading .pct { font-family: "JMDisplay", system-ui, sans-serif; font-weight: 700; letter-spacing: .08em; color: #f6efe4; font-variant-numeric: tabular-nums; }
-      #loading .tip { margin-top: 18px; min-height: 2.8em; font: 500 clamp(12px, 1.4vw, 15px)/1.4 system-ui, sans-serif; color: #dfe7ea; transition: opacity .35s, transform .35s; }
-      #loading .tip b { display: inline-block; margin-right: 10px; padding: 2px 7px; border: 1px solid rgba(94,214,245,.6); border-radius: 3px;
-        font: 700 11px/1.3 "JMDisplay", system-ui, sans-serif; letter-spacing: .18em; color: #8fe6ff; vertical-align: 1px; }
+      @keyframes jmslide { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+      /* Progress: a slanted pink bar on a dim track, the stage in words, the percentage big and italic. */
+      #loading .foot { position: absolute; left: 8vw; bottom: max(8vh, 36px); width: min(84vw, 560px); }
+      #loading .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+      #loading .stage { font-weight: 900; font-style: italic; font-size: clamp(13px, 1.5vw, 17px); letter-spacing: .16em; text-transform: uppercase; color: #f5efe4; }
+      #loading .pct { font-weight: 900; font-style: italic; font-size: clamp(28px, 3.6vw, 44px); line-height: .8; color: #ff2e7a; font-variant-numeric: tabular-nums; }
+      #loading .meter { position: relative; height: 10px; transform: skewX(-24deg); background: rgba(245,239,228,.12); }
+      #loading .fill { height: 100%; width: 0; background: #ff2e7a; box-shadow: 0 0 16px rgba(255,46,122,.55); transition: width .3s ease-out; }
+      #loading .head { position: absolute; top: -4px; bottom: -4px; left: 0; width: 4px; margin-left: -2px; background: #f5efe4; transition: left .3s ease-out; }
+      #loading .tip { margin-top: 18px; min-height: 2.8em; font: 500 clamp(12px, 1.4vw, 15px)/1.4 system-ui, sans-serif; color: #e4dcef; transition: opacity .35s, transform .35s; }
+      /* Key-cap look of the game's hints: paper on ink. */
+      #loading .tip b { display: inline-block; margin-right: 10px; padding: 3px 7px 2px; border-radius: 3px; background: #f5efe4; color: #17121f;
+        font: italic 900 11px/1.2 "JMDisplay", system-ui, sans-serif; letter-spacing: .14em; vertical-align: 1px; }
       #loading .tip.out { opacity: 0; transform: translateY(6px); }
-      @media (max-aspect-ratio: 3/4) { #loading .brand { top: 20%; } }
-      /* Phones on their side (≈390 px high): the name stays above the horizon, the foot below the road's middle. */
+      /* Phones upright: the upright word under the name (beside it, it ran through the name). */
+      @media (max-aspect-ratio: 3/4) {
+        #loading .brand { top: 16%; left: 7vw; }
+        #loading .name { font-size: 15vw; }
+        #loading .tate { right: 6vw; top: 34%; height: 44vh; transform: none; }
+        #loading .second { flex-direction: column; align-items: flex-start; gap: 12px; }
+        #loading .foot { left: 7vw; width: 86vw; }
+      }
+      /* Phones on their side (≈390 px high): name at the top, the foot below. */
       @media (max-height: 480px) {
-        #loading .brand { top: 5%; }
-        #loading .jp { margin-bottom: 4px; }
-        #loading .name { font-size: min(13vh, 10vw); }
-        #loading .second span { font-size: min(5vh, 3.4vw); }
+        #loading .brand { top: 9%; }
+        #loading .name { font-size: min(17vh, 11vw); }
+        #loading .second span { font-size: min(6.5vh, 3.6vw); }
         #loading .sub { display: none; }
         #loading .foot { bottom: 18px; }
         #loading .tip { margin-top: 10px; min-height: 1.4em; }
       }
       @media (prefers-reduced-motion: reduce) {
-        #loading .rain, #loading .road, #loading .streak { animation: none; }
+        #loading .rain, #loading .speed, #loading .streak { animation: none; }
         #loading .streak { display: none; }
-        #loading .name span, #loading .jp, #loading .second, #loading .sub { animation-duration: .01s; animation-delay: 0s; }
+        #loading .name span, #loading .second, #loading .hanko, #loading .tate { animation-duration: .01s; animation-delay: 0s; }
       }
       #message { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: 90vw; padding: 10px 14px;
-        border-radius: 8px; background: #2a1620; color: #ffd7d7; font: 14px/1.4 system-ui, sans-serif; display: none; }
+        border-radius: 8px; background: #2a1420; color: #ffd7e4; font: 14px/1.4 system-ui, sans-serif; display: none; }
     </style>
   </head>
   <body>
     <canvas id="unity-canvas" tabindex="-1"></canvas>
     <div id="loading" data-name="{{{ PRODUCT_NAME.toUpperCase() }}}">
-      <div class="sun"></div><div class="city"></div><div class="haze"></div><div class="road"></div>
-      <div class="streak s1"></div><div class="streak s2"></div><div class="streak s3"></div><div class="rain"></div><div class="floor"></div>
-      <div class="brand"><div class="jp">雨上がり</div><div class="name"></div><div class="second"><i></i><span></span><i></i></div><div class="sub">BLUE HOUR AFTER THE RAIN</div></div>
-      <div class="foot"><div class="meter"><div class="fill"></div><div class="head"></div></div>
-        <div class="row"><span class="stage">Downloading</span><span class="pct">0 %</span></div><div class="tip"></div></div>
+      <div class="speed"></div><div class="rain"></div>
+      <svg class="tate" viewBox="-20 -20 1040 4040" aria-hidden="true"><path transform="translate(0 0)" d="M958 299H604V320H953V710Q953 783 938 816Q923 849 870 864Q817 878 698 879Q694 835 686 804Q678 772 660 738Q640 729 604 716V871H398V752L386 772Q332 737 252 715V871H52V320H398V299H32V131H958ZM252 544 287 466H252ZM398 466H315Q363 486 398 505ZM604 537 636 466H604ZM753 466H664Q725 493 753 508ZM280 605Q340 624 398 653V604L386 623Q356 605 326 593Q297 581 252 565V666ZM604 659 628 605Q703 633 753 660V593L734 623Q706 605 676 593Q647 581 604 566ZM722 731Q740 731 746 728Q753 726 753 719V680Z"/><path transform="translate(0 1000)" d="M595 466V657H950V872H50V657H344V121H595V259H935V466Z"/><path transform="translate(0 2000)" d="M760 742Q755 602 740 497Q725 392 693 279L663 286Q688 311 698 355Q707 399 707 472Q707 603 703 668Q699 732 688 766Q676 800 652 826Q626 854 557 870Q488 885 361 892Q345 782 320 721Q298 789 261 882Q135 837 1 812Q65 716 101 632Q137 547 154 445L31 457Q33 345 4 246Q112 242 172 241Q173 202 173 117H419Q417 166 411 235H442Q509 235 554 240Q598 246 627 260Q604 200 572 148L664 124Q681 151 694 178L725 175Q702 131 693 117L785 93Q811 133 826 168L895 163Q940 316 960 424Q980 532 995 709ZM488 515Q488 474 484 457Q479 440 466 434Q452 429 419 429Q400 429 388 430Q367 560 337 662Q380 667 405 667Q449 667 460 657Q473 647 480 610Q488 573 488 515Z"/><path transform="translate(0 3000)" d="M934 472Q934 600 858 692Q783 783 638 832Q494 880 291 880Q274 825 231 776Q188 727 111 672Q307 668 428 646Q549 623 606 579Q662 535 662 465Q662 405 624 371Q585 337 517 337Q497 337 476 340Q404 350 362 397Q320 444 320 513Q320 543 329 576L65 608Q58 541 58 456Q58 292 87 129L343 115Q338 140 335 165Q332 190 329 229Q378 189 444 168Q509 147 583 147Q686 147 766 188Q846 229 890 302Q934 376 934 472Z"/></svg>
+      <div class="streak s1"></div><div class="streak s2"></div><div class="streak s3"></div>
+      <div class="brand"><div class="line1"><div class="name"></div>
+          <svg class="hanko" viewBox="0 0 100 100" aria-hidden="true"><circle class="ring" cx="50" cy="50" r="46" stroke-width="5"/><circle class="ring" cx="50" cy="50" r="37.5" stroke-width="2"/><path transform="translate(23 23) scale(.054)" d="M958 299H604V320H953V710Q953 783 938 816Q923 849 870 864Q817 878 698 879Q694 835 686 804Q678 772 660 738Q640 729 604 716V871H398V752L386 772Q332 737 252 715V871H52V320H398V299H32V131H958ZM252 544 287 466H252ZM398 466H315Q363 486 398 505ZM604 537 636 466H604ZM753 466H664Q725 493 753 508ZM280 605Q340 624 398 653V604L386 623Q356 605 326 593Q297 581 252 565V666ZM604 659 628 605Q703 633 753 660V593L734 623Q706 605 676 593Q647 581 604 566ZM722 731Q740 731 746 728Q753 726 753 719V680Z"/></svg></div>
+        <div class="second"><span></span><div class="sub">BLUE HOUR AFTER THE RAIN</div></div></div>
+      <div class="foot"><div class="row"><span class="stage">Downloading</span><span class="pct">0 %</span></div>
+        <div class="meter"><div class="fill"></div><div class="head"></div></div><div class="tip"></div></div>
     </div>
     <div id="message"></div>
     <script>
@@ -140,7 +143,7 @@
       var forced = new URLSearchParams(location.search).get('dpr');
       if (forced) dpr = parseFloat(forced);
 
-      // The name letter by letter (first word), the second word under a neon rule — like the game's title.
+      // The name letter by letter (first word), the second word on the pink band — like the game's title.
       var loadingEl = document.getElementById('loading');
       var words = (loadingEl.getAttribute('data-name') || '').split(' ');
       var nameEl = loadingEl.querySelector('.name');
@@ -194,7 +197,7 @@
         var crawl = setInterval(function () { setProgress(shown + (99 - shown) * 0.02); }, 250); // a slow line never looks stuck
         window.__jmLoaded = function () {
           clearInterval(crawl); clearInterval(tipTimer); setProgress(100, 'Ready');
-          // A soft fade into the title (same face, same blue) instead of a cut.
+          // A soft fade into the title (same face, same night) instead of a cut.
           setTimeout(function () { loadingEl.classList.add('done'); }, 120);
           setTimeout(function () { loadingEl.style.display = 'none'; }, 700);
         };
