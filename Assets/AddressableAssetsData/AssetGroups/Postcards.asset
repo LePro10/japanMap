@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Postcards
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: Postcards
+  m_GUID: 8c18c651151ee42be878da7a6e3c49e3
+  m_SerializeEntries:
+  - m_GUID: a7b3fe815b7774d14ad0f22dbb85c3a2
+    m_Address: ui/postcards
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: f93b1925722a949958f60082c8ffb0e4, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: d51dfd35d3aac4739a2147399dcee747, type: 2}
+    - {fileID: 11400000, guid: c2573faaad2de4b6e8da26d4b9a07e2e, type: 2}
+    m_SchemaDisplayOrder:
+    - Postcards_BundledAssetGroupSchema
+    - Postcards_ContentUpdateGroupSchema
+  m_IncludeInBuild: 1
+  m_IncludeInBuildMigrated: 1

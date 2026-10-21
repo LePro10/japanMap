@@ -12,8 +12,8 @@ namespace JapanMap.Gameplay.Records
 {
     /// <summary>
     /// The Records tab of the menu (ASTRA §10/§11 "Analytics becomes player-readable Records"): sub-tabs Driving
-    /// (five records with their card pictures, distance, milestones), Events (best medal, best time per car and
-    /// parts) and Discoveries (eight regions × three). Tab opens it. Holds the data references for its page.
+    /// (five records as big numbers with their card pictures, milestones as a stamp book), Events (best medal, best
+    /// time per car and parts) and Discoveries (eight regions × three stamps). Tab opens it. Holds the data references.
     /// </summary>
     public sealed class RecordsSheet : MonoBehaviour
     {
@@ -82,7 +82,7 @@ namespace JapanMap.Gameplay.Records
             var text = new System.Text.StringBuilder();
             Ui.H1(body, "Records");
             Ui.Small(body, $"{_progress.Wallet.Balance:N0} Sparks  ·  {d.cars.FindAll(c => c.owned).Count}/{_progress.Fleet.vehicles.Length} cars  ·  " +
-                           $"{r.races} events finished, {r.wins} won  ·  saved: {_progress.StoreName}");
+                           $"{r.races} events · {r.wins} won");
             var tabs = Ui.Row(body, "jm-wrap");
             tabs.style.marginTop = 10;
             for (var i = 0; i < Tabs.Length; i++)
@@ -101,40 +101,40 @@ namespace JapanMap.Gameplay.Records
 
             if (_tab == 0)
             {
-                Ui.H2(body, "Driving");
-                var tiles = Ui.Row(body, "jm-wrap");
+                // Best values as big numbers (a card picture above when one was taken), then the milestones as stamps.
+                var stats = Ui.Row(body, "jm-wrap", "nm-stats");
                 foreach (var kind in RecordKeeper.Headline)
                 {
-                    var tile = Ui.Box(tiles, "jm-tile");
+                    var tile = Ui.Box(stats, "jm-tile", "nm-stat");
                     tile.style.width = 200;
-                    var pic = Ui.Box(tile, "jm-pic");
-                    pic.style.width = 180;
-                    pic.style.height = 101;
                     var tex = RecordKeeper.LoadCard(kind);
                     if (tex != null)
                     {
                         _textures.Add(tex);
+                        var pic = Ui.Box(tile, "jm-pic");
+                        pic.style.width = 180;
+                        pic.style.height = 101;
                         pic.style.backgroundImage = new StyleBackground(tex);
                     }
                     var value = RecordKeeper.Value(r, kind);
+                    Ui.Text(tile, RecordKeeper.Title(kind).ToUpperInvariant(), "nm-stat__label", "jm-small");
+                    var (number, unit) = Split(value > 0f ? RecordKeeper.Format(kind, value) : "—");
+                    var line = Ui.Row(tile, "nm-stat__value");
+                    line.style.alignItems = Align.FlexEnd;
+                    Ui.Text(line, number, "nm-num", "jm-big");
+                    Ui.Text(line, unit, "nm-unit", "jm-small").style.marginLeft = 4;
                     var card = d.records.cards.Find(c => c.kind == kind.ToString());
-                    Ui.Small(tile, RecordKeeper.Title(kind));
-                    Ui.Text(tile, value > 0f ? RecordKeeper.Format(kind, value) : "—", "jm-h2");
                     if (card != null) Ui.Small(tile, $"{card.car}{(card.place != "" ? " · " + card.place : "")}");
                 }
 
-                Ui.H2(body, "Milestones");
                 var e = _progress.Wallet.Settings;
-                var ms = Ui.Row(body, "jm-wrap");
                 var got = 0;
                 foreach (var m in e.milestones)
-                {
-                    var done = _progress.Claimed($"milestone:{m.kind}:{m.threshold}");
-                    if (done) got++;
-                    var l = Mark(ms, done, $"{RecordKeeper.Title(m.kind)} {RecordKeeper.Format(m.kind, m.threshold)}", done ? "jm-ok" : "jm-dim");
-                    l.style.width = 250;
-                    l.style.minHeight = 28;
-                }
+                    if (_progress.Claimed($"milestone:{m.kind}:{m.threshold}")) got++;
+                Nm.Kicker(body, $"Milestones {got}/{e.milestones.Length}", Jp.Done).style.marginTop = 16;
+                var grid = Ui.Row(body, "jm-wrap", "nm-stamps");
+                foreach (var m in e.milestones)
+                    Stamp(grid, _progress.Claimed($"milestone:{m.kind}:{m.threshold}"), Jp.Done, $"{StampWord(m.kind)} {RecordKeeper.Format(m.kind, m.threshold)}");
                 text.AppendLine($"Milestones {got}/{e.milestones.Length}");
             }
             else if (_tab == 1)
@@ -163,19 +163,20 @@ namespace JapanMap.Gameplay.Records
             }
             else
             {
-                Ui.H2(body, $"Discoveries · {d.discoveries.Count}/{_cards.cards.Length}");
+                Nm.Kicker(body, $"Discoveries {d.discoveries.Count}/{_cards.cards.Length}", Jp.Found);
                 foreach (var region in _regions.regions)
                 {
                     var known = d.regions.Contains(region.id);
-                    var row = Ui.Row(body, "jm-wrap");
-                    var title = Ui.Text(row, region.title, known ? "jm-body" : "jm-dim");
-                    title.style.width = 200;
+                    var head = Nm.Kicker(body, known ? region.title : "???", known ? Jp.Region(region.title) : "", "nm-region");
+                    head.style.marginTop = 12;
+                    if (!known) head.AddToClassList("jm-dim");
+                    var grid = Ui.Row(body, "jm-wrap", "nm-stamps");
                     foreach (var c in _cards.cards)
                     {
                         if (c.region != region.id) continue;
                         var found = d.discoveries.Contains(c.id);
-                        var chip = Mark(row, found, found ? c.title : "???", found ? "jm-sakura" : "jm-dim");
-                        chip.style.width = 220;
+                        Stamp(grid, found, Jp.Found, found ? c.title : "???");
+                        if (found) text.AppendLine($"found {c.title}");
                     }
                 }
                 text.AppendLine($"Discoveries {d.discoveries.Count}/{_cards.cards.Length}");
@@ -184,15 +185,51 @@ namespace JapanMap.Gameplay.Records
         }
 
         static string Clock(float s) => $"{Mathf.FloorToInt(s / 60f)}:{s % 60f:00.0}";
-        /// <summary>A done / not-yet line: drawn tick or ring, then the text (the fonts have no ✓ or ○).</summary>
-        static VisualElement Mark(VisualElement parent, bool done, string text, string cls)
+        /// <summary>
+        /// One page of the stamp book: a red hanko with its word when earned, a pale ring with "?" when not, the short
+        /// name under it.
+        /// </summary>
+        static void Stamp(VisualElement parent, bool done, string word, string name)
         {
-            var row = Ui.Row(parent);
-            var icon = new UiIcon(done ? Icon.Check : Icon.Ring, 14f) { Tint = done ? new Color(0.56f, 0.75f, 0.42f) : new Color(0.72f, 0.77f, 0.78f) };
-            icon.style.marginRight = 6;
-            row.Add(icon);
-            Ui.Text(row, text, cls);
-            return row;
+            var cell = Ui.Box(parent, "nm-stamp", done ? "nm-stamp--done" : "nm-stamp--open");
+            cell.style.width = 96;
+            cell.style.alignItems = Align.Center;
+            cell.style.marginRight = 6;
+            cell.style.marginBottom = 10;
+            var hanko = Ui.Add(cell, new Hanko(done ? word : "", 58f));
+            if (!done)
+            {
+                hanko.Ink = Palette.WashiDim.A(0.4f);
+                hanko.style.rotate = new Rotate(new Angle(0f));
+                // "?" in the UI face, not the stamp's Japanese atlas (it holds only the Jp words).
+                var q = Ui.Text(hanko, "?", "nm-stamp__q", "jm-dim");
+                q.pickingMode = PickingMode.Ignore;
+                q.style.position = Position.Absolute;
+                q.style.left = q.style.right = q.style.top = q.style.bottom = 0;
+                q.style.unityTextAlign = TextAnchor.MiddleCenter;
+                q.style.fontSize = 24;
+            }
+            var label = Ui.Text(cell, name, "nm-stamp__name", "jm-small", done ? "jm-body" : "jm-dim");
+            label.style.unityTextAlign = TextAnchor.UpperCenter;
+            label.style.whiteSpace = WhiteSpace.Normal;
+            label.style.marginTop = 4;
         }
+
+        /// <summary>"123 km/h" → ("123", "km/h"): the number big, the unit small beside it.</summary>
+        static (string number, string unit) Split(string formatted)
+        {
+            var i = formatted.LastIndexOf(' ');
+            return i < 0 ? (formatted, "") : (formatted.Substring(0, i), formatted.Substring(i + 1));
+        }
+
+        /// <summary>One word per record for the stamp names (the long titles wrap to three lines under a stamp).</summary>
+        static string StampWord(Economy.MilestoneKind k) => k switch
+        {
+            Economy.MilestoneKind.TopSpeedKmh => "Speed",
+            Economy.MilestoneKind.AirtimeSeconds => "Air",
+            Economy.MilestoneKind.JumpMetres => "Jump",
+            Economy.MilestoneKind.BankedChain => "Drift",
+            _ => "Drive",
+        };
     }
 }
