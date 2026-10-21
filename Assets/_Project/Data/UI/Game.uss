@@ -1,98 +1,180 @@
 @import url("/Assets/_Project/Data/UI/Menu.uss");
 @import url("/Assets/_Project/Data/UI/Title.uss");
 @import url("/Assets/_Project/Data/UI/Career.uss");
-/* Game UI theme — "blue hour after rain" (legacy src/ui/theme.css, ASTRA §10).
-   Dark ink panels, warm white type, amber = money/selection, sakura = discovery, nitro = boost,
-   vermilion only for braking/errors. Sizes in CSS px (UiPanel): body ≥ 16, secondary 14, targets ≥ 48. */
+@import url("/Assets/_Project/Data/UI/Hud.uss");
+/* Game UI theme "Night Meet" (D55, docs/ART-DIRECTION.md "UI"): night violet, washi paper, momo pink = action and
+   selection, sora = information, mikan = passes/stunts, shu = hanko stamps only. Type: Archivo (condensed black
+   italic for display and numbers, medium/semibold for reading) + Dela Gothic One for the Japanese words.
+   Sizes in CSS px (UiPanel): body ≥ 16, secondary 14, targets ≥ 48. C# colours: UI/NightMeet.cs Palette.
+   The old token names (--paper, --amber …) stay as aliases so older sheets follow the new palette. */
 :root {
-    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-Medium SDF.asset");
-    --ink: #06141a;
-    --ink-2: #0a242c;
-    --ink-3: #12323b;
-    --panel: rgba(10, 36, 44, 0.9);
-    --panel-solid: rgb(10, 32, 40);
-    --line: rgba(94, 214, 245, 0.22);
-    --paper: #f6efe4;
-    --paper-dim: #b7c4c8;
-    /* 2026-10-17 (owner: "dieser komische braune Look"): the accent is the blue hour's cyan; gold only for Sparks. */
-    --amber: #5ed6f5;
-    --amber-hot: #8fe6ff;
-    --gold: #ffd166;
-    --sakura: #e8a9c0;
-    --nitro: #66d7f4;
-    --vermilion: #c44536;
-    --leaf: #8fbf6a;
-    --teal: #1a6b76;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Body SDF.asset");
+    --yoru: #120e1e;
+    --yoru-2: #1e1830;
+    --yoru-3: #2a2342;
+    --washi: #f5efe4;
+    --washi-dim: #a49cb8;
+    --sumi: #17121f;
+    --momo: #ff2e7a;
+    --momo-hot: #ff5c97;
+    --sora: #8c97ff;
+    --mikan: #ff9a3c;
+    --shu: #e8402a;
+    --ok: #8fd18a;
+    --line: rgba(245, 239, 228, 0.12);
+    --glass: rgba(18, 14, 30, 0.72);
+    /* aliases (older sheets) */
+    --ink: #120e1e;
+    --ink-2: #1e1830;
+    --ink-3: #2a2342;
+    --panel: rgba(18, 14, 30, 0.88);
+    --panel-solid: #1e1830;
+    --paper: #f5efe4;
+    --paper-dim: #a49cb8;
+    --amber: #ff2e7a;
+    --amber-hot: #ff5c97;
+    --gold: #f5efe4;
+    --sakura: #ff8fbf;
+    --nitro: #8c97ff;
+    --vermilion: #e8402a;
+    --leaf: #8fd18a;
+    --teal: #8c97ff;
 }
 
 .jm-fill { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
 .jm-ignore { }
 
-Label { color: var(--paper); font-size: 16px; }
-.jm-h1 { font-size: 28px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; color: var(--paper); margin-bottom: 8px; }
-.jm-h2 { font-size: 20px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; color: var(--paper); margin-top: 14px; margin-bottom: 6px; }
-.jm-body { font-size: 16px; color: var(--paper); white-space: normal; }
-.jm-small { font-size: 14px; color: var(--paper-dim); white-space: normal; }
-.jm-dim { color: var(--paper-dim); }
-.jm-amber { color: var(--amber-hot); }
-.jm-sakura { color: var(--sakura); }
-.jm-ok { color: var(--leaf); }
-.jm-error { color: #ff8a7a; }
-.jm-big { font-size: 40px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; }
-.jm-shadow { text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8); }
+/* ── type ─────────────────────────────────────────────────────────────────────────────────────────────── */
+Label { color: var(--washi); font-size: 16px; }
+.nm-display, .jm-display, .jm-big, .jm-h1, .jm-card-title, .jm-lede, .jm-num, .nm-num, .jm-brand {
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal; }
+.nm-title, .jm-h2, .jm-carcard__name, .jm-part__title, .jm-spec__value, .jm-stat__value, .jm-result__main, .jm-result__reward {
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Title SDF.asset"); -unity-font-style: normal; }
+.nm-label, .jm-btn, .jm-kicker, .jm-seg__item, .jm-hud-text, .jm-pin__title, .jm-tab Label, .jm-touch Label, .nm-key {
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; }
+.nm-jp { -unity-font-definition: url("/Assets/_Project/Art/Fonts/Dela Gothic JP SDF.asset"); -unity-font-style: normal; }
 
-/* One surface language (2026-10-11): near-opaque dark ink, square-ish corners, hairlines instead of boxes. */
-.jm-panel {
-    background-color: rgba(7, 15, 20, 0.92);
+.nm-display, .jm-display { font-size: 60px; color: var(--washi); }
+.jm-phone .nm-display, .jm-phone .jm-display { font-size: 34px; }
+.jm-h1 { font-size: 40px; color: var(--washi); margin-bottom: 6px; }
+.jm-phone .jm-h1 { font-size: 30px; }
+.jm-h2 { font-size: 24px; color: var(--washi); margin-top: 16px; margin-bottom: 6px; }
+.jm-body { font-size: 16px; color: var(--washi); white-space: normal; }
+.jm-small { font-size: 14px; color: var(--washi-dim); white-space: normal; }
+.jm-dim { color: var(--washi-dim); }
+.jm-amber { color: var(--momo-hot); }
+.jm-sakura { color: var(--sakura); }
+.jm-ok { color: var(--ok); }
+.jm-error { color: #ff8b78; }
+.jm-big { font-size: 44px; }
+.jm-shadow { text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85); }
+.jm-lede { font-size: 24px; color: var(--washi); }
+.jm-brand { font-size: 26px; color: var(--washi); }
+.jm-card-title { font-size: 30px; }
+.jm-phone .jm-card-title { font-size: 22px; }
+.jm-kicker, .nm-kicker__en { font-size: 12px; letter-spacing: 3px; color: var(--momo); }
+.jm-phone .jm-kicker { font-size: 11px; letter-spacing: 2px; }
+.nm-kicker { flex-direction: row; align-items: center; }
+.nm-kicker__en { -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; margin-right: 8px; }
+.nm-kicker__jp { -unity-font-definition: url("/Assets/_Project/Art/Fonts/Dela Gothic JP SDF.asset"); -unity-font-style: normal;
+    font-size: 11px; color: var(--washi-dim); }
+
+/* ── surfaces ───────────────────────────────────────────────────────────────────────────────────────────── */
+/* Night glass: the world behind blurs (Unity 6.6 backdrop-filter, URP, screen panels); Low = plain ink (no extra pass). */
+.jm-panel, .nm-glass {
+    background-color: var(--glass);
     border-width: 1px;
-    border-color: rgba(246, 239, 228, 0.08);
-    border-radius: 4px;
+    border-color: var(--line);
+    border-radius: 8px;
     padding: 18px;
+    backdrop-filter: blur(10px);
 }
-.jm-plate {
-    background-color: rgba(6, 20, 26, 0.62);
-    border-radius: 12px;
-    padding: 6px 18px;
-}
+.nm-low .jm-panel, .nm-low .nm-glass { backdrop-filter: none; background-color: rgba(18, 14, 30, 0.92); }
+.nm-paper { background-color: var(--washi); border-radius: 8px; padding: 16px 18px; }
+.nm-paper Label { color: var(--sumi); }
+.nm-paper .jm-small, .nm-paper .nm-dim { color: rgba(23, 18, 31, 0.6); }
+.jm-plate { background-color: rgba(18, 14, 30, 0.66); border-radius: 8px; padding: 6px 16px; }
 .jm-row { flex-direction: row; align-items: center; }
 .jm-wrap { flex-wrap: wrap; }
 .jm-grow { flex-grow: 1; }
 .jm-gap > * { margin-right: 8px; margin-bottom: 8px; }
 
-/* Buttons: 48 px minimum, 8 px apart, focus outline, nothing needs hover. */
-.jm-btn {
-    min-height: 48px;
-    min-width: 48px;
-    padding: 0 16px;
-    margin: 0 8px 8px 0;
-    border-radius: 4px;
-    border-width: 1px;
-    border-color: rgba(246, 239, 228, 0.18);
-    background-color: rgba(246, 239, 228, 0.06);
-    color: var(--paper);
-    font-size: 16px;
-    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal;
-    -unity-text-align: middle-center;
-    white-space: normal;
-}
-.jm-btn:hover, .jm-btn:hover:enabled { background-color: rgba(246, 239, 228, 0.13); }
-.jm-btn:active, .jm-btn:active:enabled, .jm-btn:hover:active:enabled { background-color: rgba(246, 239, 228, 0.03); }
-.jm-btn:focus { border-color: var(--amber-hot); }
-.jm-btn:disabled { opacity: 0.45; }
-.jm-btn--primary { background-color: var(--amber); color: var(--ink); border-color: var(--amber-hot); min-height: 56px; font-size: 18px; }
-.jm-btn--primary:hover, .jm-btn--primary:hover:enabled { background-color: var(--amber-hot); }
-.jm-btn--on:hover:enabled { background-color: rgba(94, 214, 245, 0.2); }
-.jm-btn--on { border-color: var(--amber-hot); background-color: rgba(94, 214, 245, 0.14); color: var(--amber-hot); }
-.jm-btn--danger { background-color: rgba(196, 69, 54, 0.85); }
-.jm-btn--wide { flex-grow: 1; }
-.jm-btn--swatch { min-width: 48px; width: 48px; height: 48px; padding: 0; border-radius: 24px; }
+/* Ticket (UI/NightMeet.cs Ticket draws the paper): content padding clears the notches. */
+.nm-ticket { padding: 12px 20px 12px 22px; }
+.nm-ticket Label { color: var(--sumi); }
+.nm-ticket__route { flex-direction: row; align-items: center; }
+.nm-ticket__route Label { font-size: 11px; letter-spacing: 2px; color: var(--momo);
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; margin-right: 8px; }
+.nm-ticket__title { font-size: 24px; color: var(--sumi); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal;
+    margin-top: 2px; white-space: normal; }
+.nm-ticket__foot { flex-direction: row; justify-content: space-between; align-items: center; margin-top: 14px; }
+.nm-ticket__foot Label { font-size: 14px; color: var(--sumi); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; }
+.nm-ticket__fare { font-size: 20px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal; }
 
-/* Dark, thin scrollbars (Unity's default is a light grey bar). */
-.unity-scroller--vertical { width: 6px; }
-.unity-scroller--horizontal { height: 10px; }
+/* Hanko (UI/NightMeet.cs): pressed in big and clear, then down with a jolt. */
+.nm-hanko { align-items: center; justify-content: center; flex-shrink: 0;
+    transition-property: scale, opacity; transition-duration: 0.2s; transition-timing-function: ease-in-cubic; }
+.nm-hanko--pre { scale: 1.9 1.9; opacity: 0; }
+.nm-hanko__word { color: var(--shu); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Dela Gothic JP SDF.asset"); -unity-font-style: normal;
+    -unity-text-align: middle-center; padding: 0; margin: 0; }
+
+/* Telop: a variety-TV caption — skill only (drift, stunts, burst). */
+.nm-telop { align-items: center; rotate: -4deg; }
+.nm-telop__main { font-size: 58px; color: #ffffff; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal;
+    -unity-text-outline-width: 4px; -unity-text-outline-color: var(--momo); text-shadow: 5px 5px 0 var(--sumi); }
+.nm-telop__sub { font-size: 22px; color: var(--washi); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Title SDF.asset"); -unity-font-style: normal;
+    -unity-text-outline-width: 2px; -unity-text-outline-color: var(--sumi); margin-top: -4px; }
+.jm-phone .nm-telop__main { font-size: 36px; -unity-text-outline-width: 3px; }
+.jm-phone .nm-telop__sub { font-size: 15px; }
+.nm-low .nm-telop__main { text-shadow: none; }
+
+/* Giant outlined Japanese word behind a page. */
+.nm-superword { position: absolute; font-size: 300px; color: rgba(0, 0, 0, 0); white-space: nowrap;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Dela Gothic JP SDF.asset"); -unity-font-style: normal;
+    -unity-text-outline-width: 1.5px; -unity-text-outline-color: rgba(245, 239, 228, 0.13); }
+.jm-phone .nm-superword { font-size: 150px; }
+.nm-low .nm-superword { display: none; }
+
+/* Key caps and hints. */
+.nm-key { min-width: 30px; height: 30px; padding: 0 9px; border-radius: 6px; background-color: var(--washi); color: var(--sumi);
+    font-size: 13px; -unity-text-align: middle-center; border-bottom-width: 3px; border-color: rgba(23, 18, 31, 0.45); margin-right: 8px; }
+.nm-hint { flex-direction: row; align-items: center; margin-right: 22px; }
+.nm-hint__label { font-size: 14px; color: var(--washi); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); }
+.jm-keyhint { min-width: 28px; height: 28px; padding: 0 8px; border-radius: 6px; background-color: var(--washi); color: var(--sumi);
+    font-size: 12px; -unity-text-align: middle-center; border-bottom-width: 3px; border-color: rgba(23, 18, 31, 0.45);
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; margin-right: 8px; }
+
+/* ── buttons: 48 px minimum; the one main action is momo with a hard ink shadow ───────────────────────────── */
+.jm-btn {
+    min-height: 48px; min-width: 48px; padding: 0 18px; margin: 0 8px 8px 0;
+    border-radius: 8px; border-width: 2px; border-color: rgba(245, 239, 228, 0.22); background-color: rgba(245, 239, 228, 0.05);
+    color: var(--washi); font-size: 16px; letter-spacing: 1px; -unity-text-align: middle-center; white-space: normal;
+}
+.jm-btn:hover:enabled { background-color: rgba(245, 239, 228, 0.12); border-color: rgba(245, 239, 228, 0.5); }
+.jm-btn:active:enabled { background-color: rgba(245, 239, 228, 0.03); }
+.jm-btn:focus { border-color: var(--washi); }
+.jm-btn:disabled { opacity: 0.4; }
+.jm-btn--primary, .nm-btn--main {
+    background-color: var(--momo); border-color: var(--momo); color: #ffffff; min-height: 56px; font-size: 19px;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal; letter-spacing: 1px;
+    border-bottom-width: 5px; border-bottom-color: #a8114a;
+}
+.jm-btn--primary:hover:enabled, .nm-btn--main:hover:enabled { background-color: var(--momo-hot); border-color: var(--momo-hot); border-bottom-color: #a8114a; }
+.jm-btn--primary:focus, .nm-btn--main:focus { border-color: var(--washi); border-bottom-color: var(--washi); }
+.jm-btn--on, .jm-btn--on:hover:enabled { background-color: var(--washi); color: var(--sumi); border-color: var(--washi); }
+.jm-btn--danger { background-color: rgba(232, 64, 42, 0.85); border-color: var(--shu); }
+.jm-btn--wide { flex-grow: 1; }
+.jm-btn--swatch { min-width: 48px; width: 48px; height: 48px; padding: 0; border-radius: 24px; border-width: 3px; }
+.jm-btn--swatch.jm-btn--on { border-color: var(--washi); }
+.jm-btn.jm-locked { opacity: 0.55; padding-left: 30px; }
+
+/* Thin quiet scrollbars. */
+.unity-scroller--vertical { width: 6px; min-width: 6px; border-width: 0; background-color: rgba(0, 0, 0, 0); }
+.unity-scroller--horizontal { height: 8px; }
 .unity-scroller__low-button, .unity-scroller__high-button { display: none; }
-.unity-scroller .unity-base-slider__tracker { background-color: rgba(246, 239, 228, 0.06); border-width: 0; }
-.unity-scroller .unity-base-slider__dragger { background-color: rgba(246, 239, 228, 0.22); border-width: 0; border-radius: 5px; }
+.unity-scroller .unity-base-slider__tracker { background-color: rgba(0, 0, 0, 0); border-width: 0; }
+.unity-scroller .unity-base-slider__dragger { background-color: rgba(245, 239, 228, 0.25); border-width: 0; border-radius: 3px; width: 6px; left: 0; margin-top: 0; }
 .unity-scroller .unity-base-slider__dragger-border { display: none; }
 
 .jm-cols { flex-direction: row; flex-grow: 1; }
@@ -100,236 +182,163 @@ Label { color: var(--paper); font-size: 16px; }
 .jm-col { flex-grow: 1; flex-basis: 0; margin-right: 16px; }
 .jm-phone .jm-col { margin-right: 0; flex-basis: auto; }
 
-.jm-panel, .jm-part { background-color: rgba(8, 17, 28, 0.88); border-radius: 10px; border-width: 1px; border-color: rgba(255, 255, 255, 0.07); }
-.jm-kicker { color: var(--amber); }
-.jm-tile {
-    background-color: rgba(246, 239, 228, 0.05);
-    border-radius: 4px;
-    padding: 10px;
-    margin: 0 10px 10px 0;
-    border-width: 2px;
-    border-color: rgba(0, 0, 0, 0);
-}
-.jm-tile:hover:enabled, .jm-tile:active:enabled { background-color: rgba(246, 239, 228, 0.1); }
-.jm-tile--on { border-color: var(--amber-hot); }
-.jm-pic { background-color: rgb(10, 18, 22); border-radius: 2px; -unity-background-scale-mode: scale-and-crop; }
-.jm-chip { background-color: rgba(94, 214, 245, 0.16); border-radius: 12px; padding: 2px 10px; margin-right: 6px; font-size: 14px; color: var(--amber); }
+.jm-tile { background-color: rgba(245, 239, 228, 0.05); border-radius: 8px; padding: 0; margin: 0 10px 10px 0;
+    border-width: 2px; border-color: rgba(0, 0, 0, 0); overflow: hidden; }
+.jm-tile:hover:enabled { background-color: rgba(245, 239, 228, 0.1); border-color: rgba(245, 239, 228, 0.35); }
+.jm-tile:focus { border-color: var(--washi); }
+.jm-tile--on { border-color: var(--momo); background-color: rgba(255, 46, 122, 0.12); }
+.jm-pic { background-color: var(--yoru-2); border-radius: 4px; -unity-background-scale-mode: scale-and-crop; }
+.jm-chip { background-color: rgba(245, 239, 228, 0.1); border-radius: 12px; padding: 2px 10px; margin-right: 6px; font-size: 13px; color: var(--washi);
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; }
 
-/* Settings rows */
-.jm-setting { flex-direction: row; align-items: center; min-height: 52px; border-bottom-width: 1px; border-color: rgba(246, 239, 228, 0.08); }
-.jm-setting > Label { width: 220px; }
+/* ── settings rows ──────────────────────────────────────────────────────────────────────────────────────── */
+.jm-setting { flex-direction: row; align-items: center; min-height: 56px; border-bottom-width: 1px; border-color: var(--line); }
+.jm-setting > Label { width: 220px; font-size: 16px; }
 .jm-phone .jm-setting > Label { width: 110px; }
 .jm-phone .jm-setting .unity-slider { min-width: 80px; }
 .jm-phone .jm-value { width: 52px; }
 .jm-setting .unity-slider { flex-grow: 1; margin-right: 12px; min-width: 120px; }
 .jm-setting .unity-base-slider__input { flex-grow: 1; }
-.unity-slider .unity-base-slider__tracker { background-color: rgba(246, 239, 228, 0.18); border-width: 0; height: 6px; margin-top: -3px; border-radius: 3px; }
-.unity-slider .unity-base-slider__dragger { background-color: var(--amber-hot); border-width: 0; width: 22px; height: 22px; margin-top: -11px; border-radius: 11px; }
+.unity-slider .unity-base-slider__tracker { background-color: rgba(245, 239, 228, 0.18); border-width: 0; height: 6px; margin-top: -3px; border-radius: 3px; }
+.unity-slider .unity-base-slider__dragger { background-color: var(--momo); border-width: 3px; border-color: var(--washi); width: 24px; height: 24px; margin-top: -12px; border-radius: 12px; }
 .unity-slider .unity-base-slider__dragger-border { display: none; }
-.jm-value { width: 64px; -unity-text-align: middle-right; color: var(--amber); }
+.jm-value { width: 64px; -unity-text-align: middle-right; color: var(--washi);
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal; font-size: 18px; }
 
-/* Sheet in the middle of the screen: event card, results, purchase. */
+/* Sheet in the middle of the screen: purchase, confirmation, event card. */
 .jm-sheet { align-self: center; max-width: 720px; width: 90%; }
 .jm-center { align-items: center; justify-content: center; }
 
-/* Touch controls */
+/* ── touch controls ─────────────────────────────────────────────────────────────────────────────────────── */
 .jm-touch {
-    position: absolute;
-    border-radius: 999px;
-    border-width: 2px;
-    border-color: rgba(246, 239, 228, 0.55);
-    background-color: rgba(246, 239, 228, 0.14);
-    align-items: center;
-    justify-content: center;
+    position: absolute; border-radius: 999px; border-width: 2px; border-color: rgba(245, 239, 228, 0.6);
+    background-color: rgba(18, 14, 30, 0.42); align-items: center; justify-content: center;
 }
-.jm-touch Label { font-size: 13px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; color: var(--paper); -unity-text-align: middle-center; }
-.jm-touch--down { background-color: rgba(246, 239, 228, 0.38); }
-.jm-touch--drift { background-color: rgba(232, 120, 60, 0.35); }
-.jm-touch--brake { background-color: rgba(196, 69, 54, 0.38); }
-.jm-touch--boost { background-color: rgba(102, 215, 244, 0.35); }
-.jm-touch--on { border-color: var(--amber-hot); background-color: rgba(94, 214, 245, 0.4); }
+.jm-touch Label { font-size: 13px; color: var(--washi); -unity-text-align: middle-center; letter-spacing: 1px; }
+.jm-touch--down { background-color: rgba(245, 239, 228, 0.35); }
+.jm-touch--drift { background-color: rgba(255, 154, 60, 0.42); border-color: var(--mikan); }
+.jm-touch--brake { background-color: rgba(232, 64, 42, 0.42); border-color: var(--shu); }
+.jm-touch--boost { background-color: rgba(140, 151, 255, 0.42); border-color: var(--sora); }
+.jm-touch--on { border-color: var(--momo); background-color: rgba(255, 46, 122, 0.45); }
 
-/* ── Intro "First Drive" (FirstDrive / IntroOverlay; prototype introOverlay.css) ───────────────────────── */
+/* ── intro "First Drive" (FirstDrive / IntroOverlay) ─────────────────────────────────────────────────────── */
 .jm-intro__bar { position: absolute; left: 0; right: 0; height: 0; background-color: rgb(0, 0, 0);
     transition-property: height; transition-duration: 0.6s; transition-timing-function: ease-in-out-sine; }
 .jm-intro__bar--top { top: 0; }
 .jm-intro__bar--bottom { bottom: 0; }
 .jm-intro__bar--on { height: 11%; }
-.jm-intro__title { position: absolute; left: 0; right: 0; top: 30%; align-items: center; opacity: 0; translate: 0 12px;
+.jm-intro__title { position: absolute; left: 0; right: 0; top: 28%; align-items: center; opacity: 0; translate: 0 12px;
     transition-property: opacity, translate; transition-duration: 0.7s; }
 .jm-intro__title--on { opacity: 1; translate: 0 0; }
-.jm-intro__kicker { font-size: 13px; letter-spacing: 6px; color: var(--amber); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; }
-.jm-intro__name { font-size: 64px; letter-spacing: 14px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal;
-    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.85); margin-top: 4px; }
-.jm-intro__sub { font-size: 16px; color: var(--paper-dim); margin-top: 6px; -unity-font-style: italic; }
+.jm-intro__kicker { font-size: 13px; letter-spacing: 6px; color: var(--momo);
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; }
+.jm-intro__name { font-size: 96px; color: var(--washi); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal;
+    text-shadow: 6px 6px 0 var(--momo); margin-top: 4px; }
+.jm-intro__sub { font-size: 18px; color: var(--washi); margin-top: 6px; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9); }
 .jm-intro__prompt { position: absolute; left: 22%; right: 22%; top: 58%; align-items: center; opacity: 0; scale: 0.92 0.92;
     transition-property: opacity, scale; transition-duration: 0.25s; }
 .jm-intro__prompt--on { opacity: 1; scale: 1 1; }
 .jm-intro__prompt--big { top: 50%; }
-.jm-intro__prompt--big .jm-intro__key { font-size: 30px; min-width: 120px; height: 62px; }
-.jm-intro__prompt--hit .jm-intro__key { background-color: var(--amber-hot); color: var(--ink); border-color: var(--paper); }
+.jm-intro__prompt--big .jm-intro__key { font-size: 30px; min-width: 120px; height: 64px; }
+.jm-intro__prompt--hit .jm-intro__key { background-color: var(--momo); color: #ffffff; border-color: var(--washi); }
 .jm-intro__keys { flex-direction: row; align-items: center; }
-.jm-intro__key { font-size: 22px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; color: var(--paper); min-width: 64px; height: 50px; padding: 0 16px;
-    -unity-text-align: middle-center; background-color: rgba(6, 20, 26, 0.82); border-width: 2px; border-color: var(--paper);
-    border-bottom-width: 5px; border-radius: 10px; transition-property: background-color, color; transition-duration: 0.15s; }
-.jm-intro__plus { font-size: 20px; color: var(--paper-dim); margin: 0 8px; }
-.jm-intro__label { font-size: 26px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; color: var(--paper); margin-top: 10px;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9); }
-.jm-intro__hint { font-size: 15px; color: var(--paper-dim); margin-top: 2px; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9); }
-/* Under the HUD's toast line (~34 %): a stunt's "Frontflip · 29 m" and "Stuck the landing" came at once and overlapped. */
-.jm-intro__toast { position: absolute; left: 0; right: 0; top: 41%; -unity-text-align: middle-center; font-size: 34px;
-    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; color: var(--paper); text-shadow: 0 3px 16px rgba(0, 0, 0, 0.9); display: none; }
-.jm-intro__toast--gold { color: var(--amber-hot); }
+.jm-intro__key { font-size: 22px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal;
+    color: var(--sumi); min-width: 64px; height: 52px; padding: 0 16px; -unity-text-align: middle-center; background-color: var(--washi);
+    border-width: 0; border-bottom-width: 5px; border-color: rgba(23, 18, 31, 0.5); border-radius: 10px;
+    transition-property: background-color, color; transition-duration: 0.15s; }
+.jm-intro__plus { font-size: 20px; color: var(--washi); margin: 0 8px; }
+.jm-intro__label { font-size: 34px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal;
+    color: #ffffff; margin-top: 12px; -unity-text-outline-width: 2px; -unity-text-outline-color: var(--sumi); text-shadow: 3px 3px 0 var(--sumi); }
+.jm-intro__hint { font-size: 15px; color: var(--washi); margin-top: 2px; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9); }
+.jm-intro__toast { position: absolute; left: 0; right: 0; top: 41%; -unity-text-align: middle-center; font-size: 44px;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal; color: #ffffff;
+    -unity-text-outline-width: 3px; -unity-text-outline-color: var(--momo); text-shadow: 4px 4px 0 var(--sumi); display: none; rotate: -3deg; }
+.jm-intro__toast--gold { -unity-text-outline-color: var(--mikan); }
 .jm-intro__slow { position: absolute; left: 0; right: 0; top: 13%; align-items: center; opacity: 0;
     transition-property: opacity; transition-duration: 0.3s; }
 .jm-intro__slow--on { opacity: 1; }
-.jm-intro__slow Label { font-size: 13px; letter-spacing: 8px; color: var(--nitro); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; }
-/* In the top letterbox bar: the bottom belongs to the key overlay, the top-right corner to MENU. */
+.jm-intro__slow Label { font-size: 13px; letter-spacing: 8px; color: var(--sora);
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; }
 .jm-intro__steps { position: absolute; left: 32%; right: 32%; top: 3.6%; flex-direction: row; justify-content: center; }
 .jm-intro__steps--off { display: none; }
-.jm-intro__step { margin: 0 10px; border-top-width: 3px; border-color: rgba(246, 239, 228, 0.25); padding-top: 4px; width: 64px; }
-.jm-intro__step Label { font-size: 11px; letter-spacing: 2px; color: rgba(246, 239, 228, 0.45); -unity-text-align: middle-center; }
-.jm-intro__step--done { border-color: var(--amber); }
-.jm-intro__step--done Label { color: var(--amber); }
-.jm-intro__step--now { border-color: var(--paper); }
-.jm-intro__step--now Label { color: var(--paper); }
+.jm-intro__step { margin: 0 8px; border-top-width: 4px; border-color: rgba(245, 239, 228, 0.25); padding-top: 4px; width: 66px; }
+.jm-intro__step Label { font-size: 11px; letter-spacing: 2px; color: rgba(245, 239, 228, 0.5); -unity-text-align: middle-center;
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; }
+.jm-intro__step--done { border-color: var(--momo); }
+.jm-intro__step--done Label { color: var(--momo); }
+.jm-intro__step--now { border-color: var(--washi); }
+.jm-intro__step--now Label { color: var(--washi); }
 .jm-intro__skip { position: absolute; left: 16px; top: 2.5%; height: 36px; padding: 0 14px; border-radius: 18px;
-    background-color: rgba(6, 20, 26, 0.7); border-width: 1px; border-color: rgba(246, 239, 228, 0.35); overflow: hidden; }
-.jm-intro__skip Label { font-size: 12px; letter-spacing: 2px; color: var(--paper-dim); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; }
-.jm-intro__skipfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background-color: rgba(94, 214, 245, 0.35); }
-/* Phones: no letterbox (it covered the touch controls and the top row), no step row, skip at the top centre. */
+    background-color: rgba(18, 14, 30, 0.7); border-width: 1px; border-color: rgba(245, 239, 228, 0.35); overflow: hidden; }
+.jm-intro__skip Label { font-size: 12px; letter-spacing: 2px; color: var(--washi);
+    -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; }
+.jm-intro__skipfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background-color: rgba(255, 46, 122, 0.55); }
 .jm-phone .jm-intro__bar--on { height: 0; }
 .jm-phone .jm-intro__steps { display: none; }
 .jm-phone .jm-intro__skip { left: 50%; translate: -50% 0; top: 8px; }
 .jm-portrait .jm-intro__skip { top: auto; bottom: 236px; }
 .jm-phone .jm-intro__title { top: 22%; }
-.jm-phone .jm-intro__prompt { top: 30%; left: 30%; right: 30%; }
+.jm-phone .jm-intro__prompt { top: 30%; left: 26%; right: 26%; }
 .jm-phone .jm-intro__prompt--big { top: 26%; }
-.jm-phone .jm-intro__name { font-size: 40px; letter-spacing: 8px; }
-.jm-phone .jm-intro__label { font-size: 20px; }
-.jm-phone .jm-intro__toast { font-size: 24px; }
+.jm-phone .jm-intro__name { font-size: 52px; }
+.jm-phone .jm-intro__label { font-size: 22px; }
+.jm-phone .jm-intro__toast { font-size: 28px; }
 
-/* World pins (WorldPins.cs): label over a place, stem and dot on the spot. */
+/* ── world pins (WorldPins.cs): a paper tag over the place, stem and dot on the spot ─────────────────────── */
 .jm-pin { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
 .jm-pin__inner { position: absolute; width: 320px; left: -160px; bottom: -5px; align-items: center; }
-.jm-pin__plate {
-    background-color: rgba(4, 12, 16, 0.9);
-    border-left-width: 3px;
-    border-radius: 3px;
-    padding: 6px 12px 7px 10px;
-    align-items: flex-start;
-}
-.jm-pin__title { font-size: 15px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; letter-spacing: 2px; color: var(--paper); }
-.jm-pin__sub { font-size: 12px; color: var(--paper-dim); margin-right: 8px; }
-.jm-pin__dist { font-size: 12px; color: var(--amber); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; }
-.jm-pin__stem { width: 2px; height: 26px; opacity: 0.7; }
+.jm-pin__plate { background-color: var(--washi); border-left-width: 4px; border-radius: 4px; padding: 5px 12px 6px 10px; align-items: flex-start; }
+.jm-pin__title { font-size: 15px; letter-spacing: 1px; color: var(--sumi); }
+.jm-pin__sub { font-size: 12px; color: rgba(23, 18, 31, 0.65); margin-right: 8px; }
+.jm-pin__dist { font-size: 12px; color: var(--momo); -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Label SDF.asset"); -unity-font-style: normal; }
+.jm-pin__stem { width: 2px; height: 26px; opacity: 0.8; }
 .jm-pin__dot { width: 10px; height: 10px; border-radius: 5px; }
 
-/* Typography (2026-10-13): Barlow for reading, Saira Condensed for titles, numbers and the letter-spaced caps —
-   the default Unity font made every screen look like a tool. Fonts: Art/Fonts (OFL). */
-.jm-display, .jm-big, .jm-h1, .jm-card-title, .jm-brand, .jm-kicker, .jm-rail .jm-tab Label, .jm-tab Label,
-.jm-pin__title, .jm-lede, .jm-num { -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); -unity-font-style: normal; }
-.jm-display { font-size: 54px; letter-spacing: 1px; }
-.jm-phone .jm-display { font-size: 30px; }
-.jm-h1 { font-size: 32px; letter-spacing: 1px; }
-.jm-card-title { font-size: 28px; }
-.jm-phone .jm-card-title { font-size: 20px; }
-.jm-kicker { font-size: 13px; letter-spacing: 3px; }
-.jm-phone .jm-kicker { font-size: 11px; letter-spacing: 2px; }
-.jm-lede { font-size: 22px; }
-.jm-brand { font-size: 24px; letter-spacing: 5px; }
-.jm-rail .jm-tab Label { font-size: 17px; letter-spacing: 3px; }
-.jm-pin__title { font-size: 17px; letter-spacing: 2px; }
-
-
-/* HUD text and motion. */
-.jm-hud-text { -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; }
-.jm-hud-text.jm-num { -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); letter-spacing: 1px; }
+/* ── HUD text and motion ─────────────────────────────────────────────────────────────────────────────────── */
+.jm-hud-text.jm-num { -unity-font-definition: url("/Assets/_Project/Art/Fonts/Archivo Display SDF.asset"); -unity-font-style: normal; }
 .jm-anim { transition-property: scale, opacity, translate; transition-duration: 0.22s; transition-timing-function: ease-out-back; }
 
-/* Result hero (GameplayHud.ShowResult). */
+/* ── result (GameplayHud.ShowResult) ─────────────────────────────────────────────────────────────────────── */
 .jm-result { flex-direction: row; align-items: center; margin: 8px 0 14px 0; }
-.jm-medal {
-    width: 96px; height: 96px; border-radius: 48px; border-width: 3px;
-    -unity-text-align: middle-center; white-space: normal; font-size: 15px; letter-spacing: 1px;
-    -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset");
-    margin-right: 20px; padding: 6px;
-}
-.jm-medal--gold { background-color: rgba(143, 230, 255, 0.22); border-color: #f3c56a; color: #f3c56a; }
-.jm-medal--silver { background-color: rgba(201, 210, 218, 0.18); border-color: #c9d2da; color: #e3e9ee; }
-.jm-medal--bronze { background-color: rgba(201, 139, 91, 0.2); border-color: #c98b5b; color: #e0a578; }
-.jm-medal--none { background-color: rgba(246, 239, 228, 0.06); border-color: rgba(246, 239, 228, 0.25); color: var(--paper-dim); }
+.jm-medal { width: 104px; height: 104px; margin-right: 22px; }
 .jm-result__text { flex-grow: 1; }
-.jm-result__main { font-size: 52px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); }
-.jm-result__reward { font-size: 28px; color: var(--amber-hot); -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); }
-.jm-phone .jm-medal { width: 64px; height: 64px; border-radius: 32px; font-size: 11px; margin-right: 12px; }
-.jm-phone .jm-result__main { font-size: 32px; }
+.jm-result__main { font-size: 64px; color: #ffffff; text-shadow: 4px 4px 0 var(--momo); }
+.jm-result__reward { font-size: 30px; color: var(--washi); }
+.jm-phone .jm-medal { width: 72px; height: 72px; margin-right: 12px; }
+.jm-phone .jm-result__main { font-size: 38px; }
 .jm-phone .jm-result__reward { font-size: 20px; }
 
-/* Garage (CarsScreen Tune / Appearance). */
+/* ── garage (CarsScreen) ─────────────────────────────────────────────────────────────────────────────────── */
 .jm-perf { padding: 16px 18px 10px 18px; margin-top: 10px; }
-.jm-stat { flex-direction: row; align-items: center; height: 26px; }
-.jm-stat__name { width: 120px; font-size: 14px; color: var(--paper-dim); }
-.jm-stat__track { flex-grow: 1; height: 8px; border-radius: 4px; background-color: rgba(246, 239, 228, 0.1); overflow: hidden; }
-.jm-stat__fill, .jm-stat__ghost { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; transition: width 0.18s ease-out; }
-.jm-stat__fill { background-color: var(--amber-hot); }
-.jm-stat__ghost { background-color: #7fd18b; }
-.jm-stat__ghost--down { background-color: #e0675a; }
-.jm-stat__value { width: 96px; -unity-text-align: middle-right; font-size: 16px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); }
-.jm-stat__value--up { color: #7fd18b; }
-.jm-stat__value--down { color: #e0675a; }
-.jm-part { background-color: rgba(7, 15, 20, 0.88); border-radius: 4px; padding: 8px 14px 10px 14px; margin-top: 6px; border-left-width: 3px; border-color: rgba(94, 214, 245, 0.5); }
-.jm-part__title { font-size: 20px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); margin-right: 10px; }
-.jm-seg { flex-direction: row; margin-top: 6px; }
+.jm-stat { flex-direction: row; align-items: center; height: 28px; }
+.jm-stat__name { width: 120px; font-size: 14px; color: var(--washi-dim); }
+.jm-stat__track { flex-grow: 1; height: 10px; border-radius: 2px; background-color: rgba(245, 239, 228, 0.1); overflow: hidden; }
+.jm-stat__fill, .jm-stat__ghost { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; transition: width 0.18s ease-out; }
+.jm-stat__fill { background-color: var(--washi); }
+.jm-stat__ghost { background-color: var(--momo); }
+.jm-stat__ghost--down { background-color: var(--shu); }
+.jm-stat__value { width: 96px; -unity-text-align: middle-right; font-size: 18px; color: var(--washi); }
+.jm-stat__value--up { color: var(--momo-hot); }
+.jm-stat__value--down { color: #ff8b78; }
+.jm-part { background-color: var(--glass); border-radius: 8px; padding: 10px 14px 12px 14px; margin-top: 8px; border-width: 1px; border-color: var(--line); }
+.jm-part__title { font-size: 22px; color: var(--washi); margin-right: 10px; }
+.jm-seg { flex-direction: row; margin-top: 8px; }
 .jm-seg__item {
-    flex-grow: 1; flex-basis: 0; min-height: 40px; margin: 0 6px 0 0; border-radius: 3px; border-width: 1px;
-    border-color: rgba(246, 239, 228, 0.16); background-color: rgba(246, 239, 228, 0.05); color: var(--paper);
-    font-size: 14px; letter-spacing: 1px; -unity-font-definition: url("/Assets/_Project/Art/Fonts/Barlow-SemiBold SDF.asset"); -unity-font-style: normal; -unity-text-align: middle-center;
+    flex-grow: 1; flex-basis: 0; min-height: 44px; margin: 0 6px 0 0; border-radius: 6px; border-width: 2px;
+    border-color: rgba(245, 239, 228, 0.16); background-color: rgba(245, 239, 228, 0.04); color: var(--washi);
+    font-size: 13px; letter-spacing: 1px; -unity-text-align: middle-center;
 }
-.jm-seg__item:hover:enabled { background-color: rgba(246, 239, 228, 0.12); border-color: rgba(246, 239, 228, 0.35); }
-.jm-seg__item--on { background-color: rgba(94, 214, 245, 0.2); border-color: var(--amber-hot); color: var(--amber-hot); }
+.jm-seg__item:hover:enabled { background-color: rgba(245, 239, 228, 0.12); border-color: rgba(245, 239, 228, 0.4); }
+.jm-seg__item:focus { border-color: var(--washi); }
+.jm-seg__item--on, .jm-seg__item--on:disabled { background-color: var(--washi); border-color: var(--washi); color: var(--sumi); opacity: 1; }
 .jm-seg__item:disabled { opacity: 0.4; }
-.jm-seg__item--on:disabled { opacity: 1; background-color: rgba(94, 214, 245, 0.2); color: var(--amber-hot); border-color: var(--amber-hot); }
 .jm-phone .jm-stat__name { width: 84px; font-size: 12px; }
-.jm-phone .jm-stat__value { width: 70px; font-size: 13px; }
-.jm-phone .jm-seg__item { font-size: 12px; min-height: 40px; }
-
-/* Scroll bars: a thin, quiet line (the theme's dragger drew a 14 px amber bar next to every long page). */
-.jm-menu .unity-scroller--vertical { width: 6px; min-width: 6px; border-width: 0; background-color: rgba(0, 0, 0, 0); }
-.jm-menu .unity-scroller--vertical .unity-base-slider__dragger,
-.jm-menu .unity-scroller--vertical .unity-slider__dragger { background-color: rgba(246, 239, 228, 0.22); border-width: 0; width: 6px; left: 0; margin-top: 0; border-radius: 3px; }
-.jm-menu .unity-scroller--vertical .unity-base-slider__tracker { background-color: rgba(0, 0, 0, 0); border-width: 0; }
-
-/* ── Menu redesign 2026-10-17 ───────────────────────────────────────────────────────────────────────────────
-   Owner: brown, cluttered, no pictures, the menu covers the car. Now: a top bar (brand · tabs · Sparks · Resume),
-   one glass column on the left, the car turning in the free right half (MenuCamera frames it there); navy glass,
-   white type, cyan accent, gold only for money. */
-.jm-amber, .jm-lede, .jm-chip, .jm-value { color: var(--gold); }
-.jm-chip { background-color: rgba(255, 209, 102, 0.12); }
-.jm-btn { border-radius: 8px; border-color: rgba(255, 255, 255, 0.14); background-color: rgba(255, 255, 255, 0.06); }
-.jm-btn:hover, .jm-btn:hover:enabled { background-color: rgba(255, 255, 255, 0.14); border-color: rgba(255, 255, 255, 0.3); }
-.jm-btn--primary { background-color: var(--amber); color: #04131c; border-color: var(--amber-hot); }
-.jm-btn--primary:hover, .jm-btn--primary:hover:enabled { background-color: var(--amber-hot); }
-.jm-btn--on { background-color: rgba(94, 214, 245, 0.16); color: var(--amber-hot); border-color: var(--amber); }
-.jm-tile { background-color: rgba(255, 255, 255, 0.05); border-radius: 10px; border-width: 2px; border-color: rgba(255, 255, 255, 0.04); padding: 0; overflow: hidden; }
-.jm-tile:hover:enabled { background-color: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.18); }
-.jm-tile--on { border-color: var(--amber); background-color: rgba(94, 214, 245, 0.1); }
-
-/* Car cards with a picture (CarPortraits: the car photographed in the Open Bay). */
-.jm-cargrid { flex-direction: row; flex-wrap: wrap; margin-top: 12px; }
-.jm-carcard { width: 48%; margin: 0 2% 12px 0; }
-.jm-phone .jm-carcard { width: 47%; }
-.jm-carpic { height: 128px; background-color: rgb(9, 18, 28); -unity-background-scale-mode: scale-and-crop; }
-.jm-phone .jm-carpic { height: 84px; }
-.jm-carcard__text { padding: 8px 12px 10px 12px; }
-.jm-carcard__name { font-size: 20px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); }
-.jm-carcard__tag { font-size: 13px; color: var(--paper-dim); }
-.jm-carcard__tag--price { color: var(--gold); }
-.jm-carcard__tag--driving { color: var(--amber); }
-.jm-hero { height: 200px; border-radius: 10px; margin: 6px 0 12px 0; -unity-background-scale-mode: scale-and-crop; background-color: rgb(9, 18, 28); }
+.jm-phone .jm-stat__value { width: 70px; font-size: 14px; }
+.jm-phone .jm-seg__item { font-size: 12px; min-height: 42px; }
+.jm-hero { height: 200px; border-radius: 8px; margin: 6px 0 12px 0; -unity-background-scale-mode: scale-and-crop; background-color: var(--yoru-2); }
 .jm-phone .jm-hero { height: 120px; }
 .jm-specs { flex-direction: row; flex-wrap: wrap; margin: 10px 0 4px 0; }
-.jm-spec { width: 33%; padding: 6px 10px 8px 0; border-top-width: 1px; border-color: rgba(255, 255, 255, 0.07); }
+.jm-spec { width: 33%; padding: 6px 10px 8px 0; border-top-width: 1px; border-color: var(--line); }
 .jm-phone .jm-spec { width: 50%; }
-.jm-spec__name { font-size: 11px; letter-spacing: 2px; color: var(--paper-dim); }
-.jm-spec__value { font-size: 19px; color: var(--paper); -unity-font-definition: url("/Assets/_Project/Art/Fonts/SairaCondensed-Bold SDF.asset"); white-space: normal; }
+.jm-spec__name { font-size: 11px; letter-spacing: 2px; color: var(--washi-dim); }
+.jm-spec__value { font-size: 20px; color: var(--washi); white-space: normal; }

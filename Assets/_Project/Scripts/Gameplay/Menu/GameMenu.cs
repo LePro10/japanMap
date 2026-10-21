@@ -367,6 +367,18 @@ namespace JapanMap.Gameplay.Menu
             var changed = Current != screen;
             if (Current != null && changed) Current.Closed();
             Current = screen;
+            MarkSeen(screen);
+            RefreshCarName(screen);
+            if (_superword != null)
+            {
+                // The page's giant outlined word, nudged in from the side of its tab.
+                _superword.text = Kana(screen);
+                if (changed && !Core.GameOptions.ReducedMotion)
+                {
+                    _superword.AddToClassList(index > _shownIndex ? "nm-superword--from-right" : "nm-superword--from-left");
+                    _superword.schedule.Execute(() => { _superword.RemoveFromClassList("nm-superword--from-right"); _superword.RemoveFromClassList("nm-superword--from-left"); }).ExecuteLater(16);
+                }
+            }
             // Pages that leave the right side to the car (MenuCamera); the map and lists need the whole width.
             SetPageWidth(screen);
             for (var i = 0; i < _screens.Count; i++) Ui.On(_tabButtons[i], _screens[i] == screen, "jm-tab--on");
@@ -399,8 +411,8 @@ namespace JapanMap.Gameplay.Menu
             {
                 var w = tab.layout.width;
                 if (w < 1f) return;
-                _marker.style.left = tab.layout.x + 14f;
-                _marker.style.width = w - 28f;
+                _marker.style.left = tab.layout.x + 6f;
+                _marker.style.width = w - 12f;
             }
             Place();
             // Fresh shell: the tabs have no layout yet.
@@ -528,7 +540,7 @@ namespace JapanMap.Gameplay.Menu
             _root.EnableInClassList("jm-page--wide", !narrow);
             // Narrow: dark only behind the column, the right half clear for the car. Wide (map): evenly dark.
             // Phones upright: clear at the top (the car's window), ink from where the page starts.
-            _root.style.backgroundImage = new StyleBackground(narrow && UiPanel.IsPortrait ? BackdropTall() : Backdrop(narrow && !UiPanel.IsPortrait));
+            _root.style.backgroundImage = new StyleBackground(narrow && UiPanel.IsPortrait ? BackdropTall() : narrow ? Nm.FadeLeft() : Backdrop(false));
         }
 
         /// <summary>Share of the screen width the open page covers from the left (0 = none, 1 = all) — MenuCamera puts
@@ -579,7 +591,7 @@ namespace JapanMap.Gameplay.Menu
             _scroll = scroll;
             _body = scroll.contentContainer;
 
-            _continue = Ui.Button(null, _fromTitle ? "Back" : "Resume", Close, "jm-btn--primary", "jm-continue");
+            _continue = Ui.Button(null, _fromTitle ? "Back" : "Resume", Close, "jm-continue");
             _continue.name = "menu-resume";
             _tabs = Ui.Box(null, "jm-tabs");
             _tabButtons.Clear();
@@ -589,14 +601,19 @@ namespace JapanMap.Gameplay.Menu
                 var tab = new Button(() => { Audio.Sfx.Play("UI_Click"); Show(screen); }) { name = "tab-" + s.Title.ToLowerInvariant() };
                 tab.text = "";
                 tab.AddToClassList("jm-tab");
-                tab.Add(new UiIcon(s.Icon, UiPanel.IsPhone ? 22f : 22f));
-                tab.Add(new Label((UiPanel.IsPhone ? s.Short : s.Title).ToUpperInvariant()) { pickingMode = PickingMode.Ignore });
-                if (s.Feature.HasValue && !Core.Unlocks.IsUnlocked(s.Feature.Value))
+                if (UiPanel.IsPhone) tab.Add(new UiIcon(s.Icon, 22f));
+                else Ui.Text(tab, Kana(s), "jm-tab__kana", "nm-jp").pickingMode = PickingMode.Ignore;
+                tab.Add(new Label((UiPanel.IsPhone ? Short(s) : Label(s)).ToUpperInvariant()) { pickingMode = PickingMode.Ignore });
+                var locked = s.Feature.HasValue && !Core.Unlocks.IsUnlocked(s.Feature.Value);
+                // A locked tab is not shown at all (owner 2026-10-21: a new player saw four of six tabs padlocked); it
+                // appears with a pink dot the moment the career opens it, until first visited. Photo is a tile and P.
+                var hidden = locked || (s.Action && !UiPanel.IsPhone);
+                tab.style.display = hidden ? DisplayStyle.None : DisplayStyle.Flex;
+                tab.EnableInClassList("jm-tab--locked", locked);
+                if (!locked && s.Feature.HasValue && !Seen(s))
                 {
-                    tab.AddToClassList("jm-tab--locked");
-                    var lockIcon = new UiIcon(Icon.Lock, 12f);
-                    lockIcon.AddToClassList("jm-tab__lock");
-                    tab.Add(lockIcon);
+                    var dot = Ui.Box(tab, "jm-tab__new");
+                    dot.pickingMode = PickingMode.Ignore;
                 }
                 _tabs.Add(tab);
                 _tabButtons.Add(tab);
@@ -609,40 +626,40 @@ namespace JapanMap.Gameplay.Menu
             }
             else
             {
-                // Desktop top bar: name · Q tabs E · Sparks · Resume — every destination visible in one line,
-                // nothing over the car.
-                var brand = Ui.Box(_rail, "jm-brandbox");
-                Ui.Text(brand, Application.productName.ToUpperInvariant(), "jm-brand");
-                Ui.Text(brand, "BLUE HOUR AFTER THE RAIN", "jm-brand-sub");
+                _superword = Nm.Superword(_root, Current != null ? Kana(Current) : Jp.Play);
+                _superword.SendToBack();
+                // Desktop top bar: Q · tabs (kana over the name, a pink slant under the open one) · E · Sparks · Resume.
                 var tabRow = Ui.Row(_rail, "jm-tabrow");
-                Ui.Text(tabRow, "Q", "jm-keyhint", "jm-keyhint--tab");
+                if (!_fromTitle) Nm.Key(tabRow, "Q", "jm-tabkey");
                 var track = Ui.Box(tabRow, "jm-tabtrack");
                 track.Add(_tabs);
-                _marker = Ui.Box(track, "jm-tabmarker");
-                _marker.pickingMode = PickingMode.Ignore;
-                Ui.Text(tabRow, "E", "jm-keyhint", "jm-keyhint--tab");
+                var slant = new Slant { Fill = Palette.Momo, Lean = 8f };
+                slant.AddToClassList("jm-tabmarker");
+                track.Add(slant);
+                _marker = slant;
+                if (!_fromTitle) Nm.Key(tabRow, "E", "jm-tabkey");
                 Ui.Box(_rail).style.flexGrow = 1;
                 var chip = Ui.Row(_rail, "jm-sparkchip");
-                var spark = new UiIcon(Icon.Spark, 16f);
-                spark.Tint = new Color(1f, 0.82f, 0.4f);
+                var spark = new UiIcon(Icon.Spark, 18f) { Tint = Palette.Momo };
                 chip.Add(spark);
                 _sparks = Ui.Text(chip, "", "jm-sparks");
                 RefreshSparks();
                 _rail.Add(_continue);
-                Ui.Text(_rail, "Esc", "jm-keyhint");
-                // Foot: what the keys and pad do here (FH-style legend).
+                // Foot, right: what the keys do here (FH-style legend).
                 var foot = Ui.Row(_root, "jm-legend");
                 foot.pickingMode = PickingMode.Ignore;
-                void Key(string k, string what)
-                {
-                    var h = Ui.Row(foot, "jm-legend__item");
-                    Ui.Text(h, k, "jm-keyhint");
-                    Ui.Text(h, what, "jm-legend__label");
-                }
-                if (!_fromTitle) Key("Q  E", "Switch tab");
-                Key("↑ ↓ ← →", "Move");
-                Key("Enter", "Select");
-                Key("Esc", _fromTitle ? "Back" : "Resume");
+                if (!_fromTitle) Nm.Hint(foot, "Q E", "Tabs");
+                Nm.Hint(foot, "↑↓←→", "Move");
+                Nm.Hint(foot, "Enter", "Select");
+                Nm.Hint(foot, "Esc", _fromTitle ? "Back" : "Resume");
+            }
+            if (!UiPanel.IsPhone)
+            {
+                // The car's name over the car on the pages that show it (Play, Garage).
+                _carName = Ui.Box(_root, "nm-carname");
+                _carName.pickingMode = PickingMode.Ignore;
+                Ui.Text(_carName, "", "nm-carname__name").pickingMode = PickingMode.Ignore;
+                Ui.Text(_carName, "", "nm-carname__sub").pickingMode = PickingMode.Ignore;
             }
             _notice = Ui.Text(_root, "", "jm-notice");
             _notice.pickingMode = PickingMode.Ignore;
@@ -652,6 +669,43 @@ namespace JapanMap.Gameplay.Menu
         void Update()
         {
             if (IsOpen) Current?.Update();
+        }
+
+        Label _superword;
+        VisualElement _carName;
+
+        void RefreshCarName(MenuScreen screen)
+        {
+            if (_carName == null) return;
+            var def = player != null && player.Car != null ? player.Car.Definition : null;
+            var show = def != null && (screen is PlayScreen) && !_fromTitle;
+            _carName.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+            if (!show) return;
+            var labels = _carName.Query<Label>().ToList();
+            labels[0].text = def.displayName.ToUpperInvariant();
+            labels[1].text = $"{def.category} · driving".ToUpperInvariant();
+        }
+
+        /// <summary>The tab's English name (Cars is the garage).</summary>
+        static string Label(MenuScreen s) => s.Title == "Cars" ? "Garage" : s.Title;
+        static string Short(MenuScreen s) => s.Title == "Cars" ? "Garage" : s.Short;
+
+        /// <summary>The tab's Japanese word (UI/Jp.cs) — over the tab and as the page's giant outlined word.</summary>
+        static string Kana(MenuScreen s) => s.Title switch
+        {
+            "Play" => Jp.Play, "Cars" => Jp.Garage, "Map" => Jp.Map, "Records" => Jp.Records, "Settings" => Jp.Settings, "Photo" => Jp.Photo, _ => "",
+        };
+
+        // A tab the career opened shows a pink dot until it is first visited (per device).
+        static string SeenKey(MenuScreen s) => "nm-seen-" + s.Title;
+        static bool Seen(MenuScreen s) => PlayerPrefs.GetInt(SeenKey(s), 0) == 1;
+
+        void MarkSeen(MenuScreen s)
+        {
+            if (!s.Feature.HasValue || Seen(s)) return;
+            PlayerPrefs.SetInt(SeenKey(s), 1);
+            var i = _screens.IndexOf(s);
+            if (i >= 0 && i < _tabButtons.Count) _tabButtons[i].Q(className: "jm-tab__new")?.RemoveFromHierarchy();
         }
 
         /// <summary>Q / E (and the shoulder buttons) step through the tabs, as in every racing game's menu.</summary>

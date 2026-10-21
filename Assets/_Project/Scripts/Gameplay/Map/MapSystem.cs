@@ -78,6 +78,14 @@ namespace JapanMap.Gameplay.Map
 
         public bool Driving => player != null && player.Current == PlayerModeController.Mode.Driving;
 
+        /// <summary>The scene's map (menu tiles show its art).</summary>
+        public static MapSystem Instance { get; private set; }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() => Instance = null;
+
+        void Awake() => Instance = this;
+
         void Start() => StartCoroutine(Life.LifeContent.Load<Texture2D>(ArtAddress, t =>
         {
             _art = t;
@@ -100,6 +108,7 @@ namespace JapanMap.Gameplay.Map
         void OnDestroy()
         {
             if (_base != null) Destroy(_base);
+            if (Instance == this) Instance = null;
         }
 
         bool Explored(string id)

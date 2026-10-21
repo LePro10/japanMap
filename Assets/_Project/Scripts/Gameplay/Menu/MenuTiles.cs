@@ -32,35 +32,46 @@ namespace JapanMap.Gameplay.Menu
             public string Style = "";
             public FeatureId? Feature;
             public Action Click;
-            /// <summary>A car whose Open Bay photo fills the tile's right side (CarPortraits; arrives when taken).</summary>
+            /// <summary>A car whose Open Bay photo fills the tile (CarPortraits; arrives when taken).</summary>
             public Vehicles.VehicleDefinition Car;
+            /// <summary>A picture that fills the tile (postcard, map art).</summary>
+            public UnityEngine.Texture2D Picture;
+            /// <summary>The kicker's Japanese word (UI/Jp.cs).</summary>
+            public string Jp = "";
         }
 
-        /// <summary>A tile as one button: the whole surface is the target (48 px rule holds everywhere).</summary>
+        /// <summary>
+        /// A tile as one button (FH-style, D55): its picture fills it (a car's Open Bay photo, a postcard, the map),
+        /// ink rises from the foot, then kicker (English + Japanese), a big italic title and at most one value or meter.
+        /// No sentences, no call-to-action line: the whole surface is the target. A locked tile is not shown (owner
+        /// 2026-10-21); it still exists hidden, so tests and focus code find it.
+        /// </summary>
         public static Button Tile(VisualElement parent, Spec s)
         {
             var b = new Button { text = "" };
             if (!string.IsNullOrEmpty(s.Name)) b.name = s.Name;
             b.AddToClassList("jm-card");
-            if (!string.IsNullOrEmpty(s.Style)) b.AddToClassList(s.Style);
+            b.AddToClassList("nm-tile");
+            if (!string.IsNullOrEmpty(s.Style)) foreach (var c in s.Style.Split(' ')) if (c.Length > 0) b.AddToClassList(c);
+            var pic = Ui.Box(b, "nm-tile__pic");
+            if (s.Picture != null) pic.style.backgroundImage = new StyleBackground(s.Picture);
             if (s.Car != null)
             {
-                // The car's own photo behind the right half, fading into the tile: the tile shows what it is about.
-                b.AddToClassList("jm-card--pic");
-                var pic = Ui.Box(b, "jm-card__pic");
                 var tex = Garage.CarPortraits.Get(s.Car, got => pic.style.backgroundImage = new StyleBackground(got));
                 if (tex != null) pic.style.backgroundImage = new StyleBackground(tex);
-                Ui.Box(b, "jm-card__picfade").style.backgroundImage = new StyleBackground(Fade());
             }
-            Ui.Box(b, "jm-card__edge"); // the neon line that lights up on focus
+            if (s.Picture != null || s.Car != null) b.AddToClassList("jm-card--pic");
+            Ui.Box(b, "nm-tile__fade").style.backgroundImage = new StyleBackground(Nm.FadeUp());
             var head = Ui.Row(b, "jm-card__head");
             if (s.Icon != Icon.None)
             {
-                var icon = new UiIcon(s.Icon, 22f);
+                var icon = new UiIcon(s.Icon, 18f);
                 icon.AddToClassList("jm-card__icon");
                 head.Add(icon);
             }
             Ui.Text(head, s.Kicker, "jm-card__kicker");
+            if (!string.IsNullOrEmpty(s.Jp)) Ui.Text(head, s.Jp, "jm-card__jp", "nm-jp");
+            Ui.Box(b, "jm-grow");
             Ui.Text(b, s.Title, "jm-card__title");
             if (!string.IsNullOrEmpty(s.Body)) Ui.Text(b, s.Body, "jm-card__body");
             if (!string.IsNullOrEmpty(s.Value)) Ui.Text(b, s.Value, "jm-card__value");
@@ -71,15 +82,6 @@ namespace JapanMap.Gameplay.Menu
                 fill.style.width = Length.Percent(UnityEngine.Mathf.Clamp01(s.Meter) * 100f);
             }
             if (!string.IsNullOrEmpty(s.Note)) Ui.Text(b, s.Note, "jm-card__note");
-            Ui.Box(b, "jm-grow");
-            if (!string.IsNullOrEmpty(s.Action))
-            {
-                var cta = Ui.Row(b, "jm-card__cta");
-                Ui.Text(cta, s.Action.ToUpperInvariant(), "jm-card__cta-label");
-                var arrow = new UiIcon(Icon.Play, 12f);
-                arrow.AddToClassList("jm-card__cta-arrow");
-                cta.Add(arrow);
-            }
             foreach (var c in b.Query<VisualElement>().ToList()) if (c != b) c.pickingMode = PickingMode.Ignore;
             b.clickable = new Clickable(() =>
             {
@@ -87,7 +89,11 @@ namespace JapanMap.Gameplay.Menu
                 Audio.Sfx.Play("UI_Click");
                 s.Click?.Invoke();
             });
-            if (s.Feature.HasValue) Lock(b, s.Feature.Value);
+            if (s.Feature.HasValue && !Unlocks.IsUnlocked(s.Feature.Value))
+            {
+                Lock(b, s.Feature.Value);
+                b.style.display = DisplayStyle.None;
+            }
             parent?.Add(b);
             return b;
         }
@@ -125,19 +131,6 @@ namespace JapanMap.Gameplay.Menu
             badge.Add(icon);
             var label = Ui.Text(badge, Unlocks.Hint(feature), "jm-lock__label");
             label.pickingMode = PickingMode.Ignore;
-        }
-
-        static UnityEngine.Texture2D _fade;
-
-        /// <summary>White, opaque on the left to clear on the right; tinted to the tile's colour in USS.</summary>
-        static UnityEngine.Texture2D Fade()
-        {
-            if (_fade != null) return _fade;
-            const int w = 64;
-            _fade = new UnityEngine.Texture2D(w, 1, UnityEngine.TextureFormat.RGBA32, false) { wrapMode = UnityEngine.TextureWrapMode.Clamp, name = "TileFade" };
-            for (var x = 0; x < w; x++) _fade.SetPixel(x, 0, new UnityEngine.Color(1f, 1f, 1f, 1f - Ui.Smooth(0.35f, 1f, x / (float)(w - 1))));
-            _fade.Apply();
-            return _fade;
         }
 
         /// <summary>Last locked feature someone tried (tests read it).</summary>
