@@ -10,7 +10,7 @@ Editor — alles läuft über Agenten. Er spricht Deutsch; erkläre einfach.
 ## Sitzungsablauf
 
 1. **Start:** [docs/STATUS.md](docs/STATUS.md) lesen, dann **nur** den
-   Abschnitt der aktuellen Phase in [docs/PLAN.md](docs/PLAN.md).
+   Abschnitt der aktuellen Phase in [docs/PLAN.md](docs/PLAN.md). Code finden: `docs/CODEMAP.md` per Grep.
 2. **Arbeiten:** eine Aufgabe nach der anderen. Nach jeder Änderung prüfen
    (Skill `unity-verify`). Nach jeder fertigen Aufgabe: STATUS.md abhaken,
    committen.
@@ -94,10 +94,10 @@ dem Unity-MCP. Der MCP verbindet sich nur beim Start einer Claude-Sitzung.
     (PLAN.md) nur in `ArtSource/` und Blender; ein zweiter Agent in einer
     eigenen Projektkopie (`git worktree` `../japanMap-cli`, eigener Zweig,
     nur Batchmode, kein MCP, keine Spiel-Instanz) — der leitende Agent führt
-    zusammen: `node Tools/merge-agent.mjs <zweig>`. Subagenten für Recherche sind ok.
+    zusammen: `node Tools/merge-agent.mjs <zweig>`. Subagenten: Recherche `scout`, Tests/Merges `worker`.
     Darum committet **jede** Sitzung nur ihre eigenen Pfade (`git add <pfad>`,
     nie `-A`/`commit -a`) und liest vor einem DECISIONS-Eintrag die höchste
-    Nummer neu.
+    Nummer neu (`grep -n '^## D' docs/DECISIONS.md | tail -1`, nie die ganze Datei).
 14. **Mitdenken und gleich verbessern.** Bei Bug oder Unschönem die Ursache
     suchen. Klein: sofort beheben, prüfen, im Commit nennen. Größer: unter
     „Gefunden" in STATUS.md, bei der Aufgabe bleiben. Verbesserungen vorschlagen.
