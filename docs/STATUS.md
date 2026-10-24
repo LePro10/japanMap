@@ -3,8 +3,9 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-21 · **Phase 11 (Launch) · UI-Neubau „Night Meet" umgesetzt (D55/D56)** — Menü, Garage, Karte, Titel,
-HUD, Einstellungen, Ladeseite: https://claude.ai/artifact/Um9YHs4PmbEL5AtV4s9aoS · **jetzt bist du dran:** Punkt U
+**Stand:** 2026-10-24 · **Phase 11 (Launch) · autonomer Verbesserungslauf** (Welle 1: 30 Fehler aus dem Audit, Welle 2:
+Leistung/Größe, Welle 3: Tiere in der Welt; Details: git log) · UI „Night Meet": https://claude.ai/artifact/Um9YHs4PmbEL5AtV4s9aoS ·
+**jetzt bist du dran:** Punkt U und V
 
 ## Phase 11 — Launch
 
@@ -16,40 +17,38 @@ HUD, Einstellungen, Ladeseite: https://claude.ai/artifact/Um9YHs4PmbEL5AtV4s9aoS
   Einmündungen (Details: git log). · [x] 3j. **UI-Neubau (D55/D56)**: alle Etappen umgesetzt (Agent B: Einstellungen,
   Ladeseite, Postkarten, Stempelbuch).
 
-**Gemessen (2026-10-21, nach D56):** EditMode-Gruppen 54/54 · PlayMode UI 32/32, Spiel 44/44, Rennen 9/9 (Discovery und
-Smash nur im Gruppenlauf rot, einzeln grün) · Web 77,73 MB, Start 19,28 MB, **20,36 MB bis gameplayStart** (SDK grün) ·
-Rauchprobe 0 Fehler · M4: Low 312/344 fps (fahren/Menü), High 85/88.
-**Nicht gemessen:** Chromebook/Handy-FPS mit Milchglas (auf Low aus), Gamepad im neuen Menü, EditMode-Gesamtlauf (Kopie).
+**Gemessen (2026-10-24):** EditMode 42/42 Klassen · PlayMode Menü/Karte/AutoDrive/Touch 17/17, Life 2/2, Streaming 4/4 ·
+voller PlayMode 227/247 (vor dem Shots-Fix; rot nur Zeitbudget-Tests Smash/Schaden 2 ms unter Last) · Web 77,40 MB in
+106 Dateien, Start 19,34 MB, **20,44 MB bis gameplayStart** (SDK grün) · Rauchprobe Low 250 fps (M4 unter Last), 0 Fehler.
+**Nicht gemessen:** voller PlayMode-Lauf nach Welle 2/3 · Chromebook/Handy-FPS · Gamepad im neuen Menü · Touch-Größen am echten Handy.
 
 ## Offen / Gefunden
 
-- **UI (D56):** Start bis gameplayStart 20,36 MB (Ziel ≤ 20): Schnitt „Archivo Title" durch „Display" ersetzen und Barlow/Saira
-  prüfen spart ~0,1–0,2 MB · Handy hochkant: Knopfreihe eng, Tacho-Zahl nah am Bogen · Records-Seite (Agent B) noch ohne
-  eigenes Bild geprüft · Touch-Knöpfe noch mit Wörtern statt Symbolen · Kino-/Cockpit-Ansichten nicht neu gestaltet.
-- Neu (2026-10-18): Gesamtlauf PlayMode hat 3 reihenfolge-abhängige Rote (einzeln grün): `TouchMenuTests`,
-  `PlayerDriveTests.Touch_AutoThrottle`, `AcceptanceDriveTests.RingLap` (6,8 m neben der Mitte bei (482, −751)) →
-  Ursache suchen (welcher Test vorher Zustand hinterlässt). Verkehrstest knapp (93–99 % auf der Fahrbahn, Soll 95 %).
-- HUD: vor „Saved on this device“ fehlt ein Zeichen (Kästchen statt Symbol, `Captures/web-smoke.png`).
+- **Start 20,44 MB (Ziel ≤ 20):** kein billiger Hebel mehr — wasm schon „Size“/Stripping High, LZMA-Bundles laden im
+  Browser nicht (D36), Straßen schon 16 Bit, Tangenten braucht der Asphalt; Startauto-Bundle 0,9 MB ist Mesh. Rest:
+  Schrift „Archivo Title“ → „Display“ (~0,1 MB, Optik-Frage) oder Straßen-UV/Verge-Meshes schlanker.
+- **UI:** Handy hochkant: Knopfreihe eng, Tacho-Zahl nah am Bogen · Records-Seite ohne eigenes Bild geprüft · Touch-Knöpfe
+  mit Wörtern statt Symbolen · Kino-/Cockpit-Ansichten nicht neu gestaltet.
+- **Tests:** ein versehentlicher Gesamtlauf (Filter „Map“) hing nach 3418 s Spielzeit — welcher Test, ist ungeklärt
+  (Werkzeug sperrt den Filter jetzt). AutoDriveTests gelegentlich wackelig. Zeitbudget-Tests Smash/VehicleDamage (2 ms)
+  rot, wenn der Rechner ausgelastet ist. Verkehrstest knapp (93–99 % auf der Fahrbahn, Soll 95 %).
 - Straßen: 8 Reststufen ≤ 0,5 m an Einmündungen (5 an der Ringstraße) — feinerer Mündungs-Querschnitt (D54).
 - Schaden: Türen/Haube fallen nicht ab; Figur auf zerbrochener Bank schwebt. Kino-Kamera: „Straßenrand“ zeigt das Auto
   manchmal zu klein. Store-Videos ohne Auto-Drive-Kinofahrt. Modelle: Augpunkte/Rückfahrgläser fehlen.
 - Politur offen ([POLISH.md](POLISH.md)): Kabel zwischen Masten, Touch-Knöpfe mit Icons, Musik/Umgebungstöne (Clips fehlen),
   3D-Hebebühne in der Garage, Geist der Bestzeit, Feinregler Fahrhöhe/Sturz, Store-Videos aus dem neuen Look.
 
-- Krähen, Tauben, Shiba und Verkehrsposten (Wave) sind importiert, haben aber noch keinen Platz in der Welt (ActorSet kennt sie nicht).
-- Leistung: WebGPU später; Handy DXT→ASTC nur nach Messung (D37); Hoch-Budget (20/50 Blickpunkte > 3 M) nach deinem
-  iGPU-Test. Niedrig-DC funaura-mole 504.
-- Aus früher: Ride-Höhe „Dirt“, ASTRA §11, Gegner-Motoren, Leuchtturm, Angler, Musik; ASTRA E01/E08–E17 → Phase 12; CI → Phase 12.
+- Tiere stehen jetzt in der Welt (50: Tauben an Torii/Schrein, Krähen auf Masten/bei Fischerhütten, Shibas an Höfen;
+  Regeln in `Data/Life/AnimalSpots.asset`). Sie stehen still (keine Animation). Verkehrsposten (Wave) noch ohne Platz.
+  Aus früher: Ride-Höhe „Dirt“, ASTRA §11, Gegner-Motoren, Leuchtturm, Angler, Musik; ASTRA E01/E08–E17, CI → Phase 12.
+- Leistung: WebGPU später; Handy DXT→ASTC nur nach Messung (D37); Hoch-Budget nach deinem iGPU-Test.
 
 ### Für die Asset-Sitzung (Maße stehen in den Daten)
 
-- Hachi hat gemessen 44 000 Eckpunkte (nicht 176 000); Autos zusammen 14,0 MB nach Entdoppeln der Räder (D52).
-  Ziel Start ≤ 20 MB bleibt.
 - **Töne** (heute aus `Tools/render-sounds.mjs`; echte Aufnahmen gleichen Namens ersetzen sie — CC0/eigen, `Assets/_Project/Art/Audio/<Name>.wav`, mono 44,1/48 kHz): Motor je Auto (`Engine_<auto>_idle`
   1,0 s; `_on0…3` 0,8 s / `_off0…3` 1,0 s bei 30/50/70/92 % Drehzahl; `Lift_<auto>` 0,9 s); Welt 3–6 s `Ambience_Workshop`,
   `_NeonHum`, `_Harbour`, `_Waterwheel`, `_PassWind`; Musik 2–4 Phrasen à 20–40 s; **Intro:** `Whoosh_SlowMo` 0,6 s.
-- **Asset-Sprint 6 ist in Unity** (2026-10-16, Import: Menü „JapanMap/Art/Import Figures + Traffic“). Die Props
-  (Straßendetails, Rennen, Garage, Entdeckungen) liegen als Prefabs bereit, sind aber noch nicht in der Welt platziert.
+- Asset-Sprint 6: Props (Straßendetails, Rennen, Garage, Entdeckungen) liegen als Prefabs bereit, noch nicht platziert.
   Offen: Schanzen-Deko, Ladeninnere, Icons.
 
 ## Für dich (Mensch)
@@ -58,6 +57,9 @@ U. **Neues UI anspielen (15 Min.):** http://127.0.0.1:8092 (läuft schon; sonst 
    Fenster. Bitte je Punkt „ok" oder was stört: Titel · Esc-Menü (Kacheln, Q/E) · Garage (Auto antippen, kaufen) · Karte (M,
    Punkt antippen) · Fahren (Tacho, Minikarte, Drift-Telop, Burst = Shift doppelt, K = alle Tasten) · ein Rennen bis zum
    Ergebnis · Einstellungen. Gesperrtes ist jetzt ausgeblendet (pinker Punkt = neu frei).
+V. **Zwei Entscheidungen (je ein Wort):** (a) Medaillenstufen: ein Worker wollte „Silber“ für 10 % in „Bronze“ ändern
+   (zurückgenommen, sieht wie Absicht aus) — so lassen? (b) `terrain.jmt` (unkomprimierte Ersatzdatei für alte Browser ohne
+   DecompressionStream, z. B. Safari < 16.4) weglassen? Spart 18,9 MB im Gesamtpaket, nicht im Start.
 0. **Anspielen (20 Min.)** — Spiel-Teile (UI kommt neu, das brauchst du nicht bewerten): `node Tools/serve-web.mjs --preview`,
    http://127.0.0.1:8092: (c) **Crash** mit 100 km/h, dann **T**, (d) **Auto-Drive** (M → Punkt → „Auto-drive", G halten, C),
    (e) **Cockpit** (C) in Hachi/Kaze/Hanami/Hauler, (f) **Licht** (L, 2× L), (g) Reifen. Je Punkt „ok" oder was stört.
@@ -76,3 +78,4 @@ U. **Neues UI anspielen (15 Min.):** http://127.0.0.1:8092 (läuft schon; sonst 
 |---|---|---|---|---|
 | 2026-10-18 | Release, Runden 1–4 (Schaden, Titel, Auto-Drive, Karriere, Cockpit, Licht, Einmündungen) | 76,4 MB in 102 Dateien | 20,28 MB | 3,7 s (Rauchprobe) |
 | 2026-10-21 | Release, UI „Night Meet" komplett (D56) | 77,73 MB in 104 Dateien | 20,36 MB (SDK) | 2,6 s (Rauchprobe) |
+| 2026-10-24 | Release, Welle 1+2 (Fehler, Medium-Stufe, Hafen-Modelle) | 77,40 MB in 106 Dateien | 20,44 MB (SDK) | Rauchprobe 0 Fehler |
