@@ -62,8 +62,8 @@ Fehlt etwas: genaue Anleitung in STATUS.md „Für dich", dann stoppen.
   `node Tools/editor-restart.mjs` (verweigert nur im Play-Modus; beendet Editor + MCP-Server, öffnet neu, wartet bis
   der MCP Code ausführt). Der Mensch ist oft weg und sieht Fragen nicht.
 - **Nie offene Szenen per git zurücksetzen** (`git checkout -- Assets/.../Scenes`): Unity zeigt dann einen modalen
-  „modified externally“-Dialog und blockiert alles. Vorher per MCP eine leere Szene öffnen
-  (`EditorSceneManager.NewScene(NewSceneSetup.EmptyScene)`), dann zurücksetzen, dann `refresh_unity`.
+  „modified externally“-Dialog und blockiert alles. Immer `node Tools/revert-scenes.mjs [pfade]` (leere Szene → checkout
+  → refresh → Game.unity wieder offen). Vorher prüfen, ob der „Churn“ echte Korrekturen trägt (`MapImportTests\.Props_`).
 - **EditMode-Tests schreiben Szenen neu** (`ImportAll_TwiceGivesIdenticalMap` u. a.): danach sind ~63 Szenen/NavMeshes
   „geändert“ (gleicher Inhalt, andere Reihenfolge). Nicht mitcommitten — nur eigene Pfade `git add`.
 
