@@ -91,6 +91,8 @@ namespace JapanMap.Editor
             so.FindProperty("m_AdditionalLightShadowsSupported").boolValue = false;
             so.FindProperty("m_SupportsLightLayers").boolValue = false;
             so.FindProperty("m_EnableLODCrossFade").boolValue = false;
+            // No shader samples the scene colour (_CameraOpaqueTexture): the copy cost a full-screen blit every frame.
+            so.FindProperty("m_RequireOpaqueTexture").boolValue = false;
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(asset);
             return asset;

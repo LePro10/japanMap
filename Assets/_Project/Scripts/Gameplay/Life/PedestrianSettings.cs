@@ -11,6 +11,8 @@ namespace JapanMap.Gameplay.Life
     {
         [Header("Count (legacy high 90 / low 36 for the city alone; ours follow the player everywhere)")]
         public int countHigh = 40;
+        [Tooltip("Medium is the Intel-iGPU tier (D38): each walker is a skinned body with its own draw calls.")]
+        public int countMedium = 30;
         public int countLow = 24;
 
         [Header("Where (legacy: people are where the player is)")]
@@ -33,6 +35,10 @@ namespace JapanMap.Gameplay.Life
         public Vector2 speed = new(1.05f, 1.55f);
         public float height = 1.68f;
         public float radius = 0.3f;
+        [Tooltip("A walker that moves less than this within the stuck time gives up its target, m.")]
+        public float stuckDistance = 0.3f;
+        [Tooltip("Time without that much progress before the target is dropped, s.")]
+        public float stuckTime = 4f;
 
         [Header("Hit (legacy HIT_MIN_SPEED / HIT_DRAG / DOWN_TIME)")]
         [Tooltip("Below this car speed nobody is thrown, m/s.")]

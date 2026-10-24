@@ -286,8 +286,9 @@ MonoBehaviour:
     size: {x: 4.3, y: 2.5, z: 3.8}
     category: Stone
     gate: 0
-    library: []
-    fitHeight: 0
+    library:
+    - Tera_Steps_Stone_8m
+    fitHeight: 1
     libraryYaw: 0
   - id: chozuya
     size: {x: 3.25, y: 2.9, z: 3.25}
@@ -325,27 +326,31 @@ MonoBehaviour:
     size: {x: 3, y: 1, z: 10}
     category: Wood
     gate: 0
-    library: []
+    library:
+    - Minato_Pier_8m
     fitHeight: 0
     libraryYaw: 0
   - id: coastal_cliff_04
     size: {x: 20, y: 12, z: 20}
     category: Rock
     gate: 0
-    library: []
-    fitHeight: 0
+    library:
+    - Rock_M_Moss
+    fitHeight: 1
     libraryYaw: 0
   - id: boatRamp
     size: {x: 5.25, y: 2.53, z: 11.58}
     category: Concrete
     gate: 0
-    library: []
+    library:
+    - Minato_Slipway_8m
     fitHeight: 0
     libraryYaw: 0
   - id: jetty
     size: {x: 2.59, y: 2.6, z: 14}
     category: Wood
     gate: 0
-    library: []
+    library:
+    - Minato_Pier_8m
     fitHeight: 0
     libraryYaw: 0

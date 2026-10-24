@@ -279,6 +279,9 @@ namespace JapanMap.Editor.Content
             PlaceScenesInEditor.CloseAll();
             var game = MapScene.OpenGameScene();
             var start = StartPoint();
+            // Colliders of freshly imported parts report bounds at the origin until physics syncs; a harbour box
+            // reaching to (0,0,0) counted as "near the start" and stayed in the start download (2026-10-24).
+            Physics.SyncTransforms();
             var group = Group(s, PlacesGroup);
             var world = Group(s, WorldGroup);
             var moved = 0;
@@ -293,8 +296,14 @@ namespace JapanMap.Editor.Content
                 {
                     if (rule.keep != null && rule.keep(t)) { kept.Add(t.name); continue; }
                     var never = rule.never != null && rule.never(t);
-                    if (rule.keepNearStart && !never && NearStart(t.gameObject, start)) { kept.Add(t.name); continue; }
                     var name = Name(rule, t.name);
+                    if (rule.keepNearStart && !never && NearStart(t.gameObject, start))
+                    {
+                        kept.Add(t.name);
+                        // A scene from an earlier split would load the old copy beside this one (grey boxes next to the new models).
+                        if (AssetDatabase.DeleteAsset($"{rule.dir}/{name}.unity")) kept[^1] += " (old scene removed)";
+                        continue;
+                    }
                     var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
                     t.SetParent(null, true);
                     t.name = name; // the root carries the scene's name: the streamer finds an already open part by it

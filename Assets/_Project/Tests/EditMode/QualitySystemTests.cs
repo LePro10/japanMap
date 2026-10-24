@@ -46,5 +46,15 @@ namespace JapanMap.Tests
                 verdict = cal.Add(1f / 30f, false);
             Assert.AreEqual(QualityCalibrator.Verdict.Keep, verdict, "already the lowest tier: nothing to step to");
         }
-    }
+
+        [Test]
+        public void PixelBudget_CapsOnlyDenseScreens()
+        {
+            Assert.AreEqual(1f, World.TerrainQuality.CappedScale(1f, 2f, 0f), 1e-4f, "no budget: the asset's scale");
+            Assert.AreEqual(0.75f, World.TerrainQuality.CappedScale(1f, 2f, 1.5f), 1e-4f, "2× screen on Medium: 1.5 / 2");
+            Assert.AreEqual(1f, World.TerrainQuality.CappedScale(1f, 1f, 1.5f), 1e-4f, "1× screen: never above the asset's scale");
+            Assert.AreEqual(0.8f, World.TerrainQuality.CappedScale(0.8f, 1.25f, 1.2f), 1e-4f, "Low keeps its 0.8 when that is already below");
+            Assert.AreEqual(0.5f, World.TerrainQuality.CappedScale(1f, 3f, 1.2f), 1e-4f, "floor 0.5: never a smear");
+        }
+}
 }

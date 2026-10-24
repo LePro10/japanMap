@@ -32,6 +32,15 @@ namespace JapanMap.World
             new() { name = "Low", treeDistance = 500, buildingDistance = 450, detailDistance = 35, detailDensity = 0.3f, pixelError = 14 },
         };
 
+        [Tooltip("Most 3D pixels per CSS pixel (canvas pixel ratio × URP render scale) on Medium. A 2× laptop screen draws 4× the pixels; " +
+                 "the cap lowers only the 3D render scale, so UI text stays sharp. 0 = no cap.")]
+        public float mediumPixelBudget = 1.5f;
+        [Tooltip("The same on Low (phones and weak GPUs). Low's own render scale is 0.8.")]
+        public float lowPixelBudget = 1.2f;
+
+        // Render scale each pipeline asset was shipped with: the cap is applied on top of it, never on an already capped value.
+        static readonly System.Collections.Generic.Dictionary<UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset, float> BaseScale = new();
+
         void OnEnable()
         {
             QualitySystem.TierChanged += Apply;
@@ -54,6 +63,19 @@ namespace JapanMap.World
                 urp.shadowDistance = dist;
         }
 
+        /// <summary>Render scale that keeps pixel ratio × scale within the budget (0 = no cap); never above the asset's own scale.</summary>
+        public static float CappedScale(float assetScale, float pixelRatio, float budget) =>
+            budget > 0f && pixelRatio > 0f ? Mathf.Clamp(budget / pixelRatio, 0.5f, assetScale) : assetScale;
+
+        static void ApplyPixelBudget(float budget)
+        {
+            // Only in the player: in the editor the pixel ratio is 1 and the asset must not be changed on disk.
+            if (Application.isEditor) return;
+            if (QualitySettings.renderPipeline is not UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset urp) return;
+            if (!BaseScale.TryGetValue(urp, out var shipped)) BaseScale[urp] = shipped = urp.renderScale;
+            urp.renderScale = CappedScale(shipped, Core.Ui.UiPanel.DevicePixelRatio(), budget);
+        }
+
         public void Apply(string tierName)
         {
             var t = Array.Find(tiers, x => x.name == tierName);
@@ -64,6 +86,7 @@ namespace JapanMap.World
                 else if (r.data is PlaceInstanceData) r.maxDistance = t.buildingDistance > 0 ? t.buildingDistance : 6000;
             }
             ApplyUrlKnobs();
+            ApplyPixelBudget(tierName == "Low" ? lowPixelBudget : tierName == "Medium" ? mediumPixelBudget : 0f);
             foreach (var terrain in Terrain.activeTerrains)
             {
                 terrain.treeDistance = t.treeDistance;

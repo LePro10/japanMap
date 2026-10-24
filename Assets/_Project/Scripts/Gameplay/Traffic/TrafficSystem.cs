@@ -44,7 +44,7 @@ namespace JapanMap.Gameplay.Traffic
             {
                 _looks = looks;
                 var tier = QualitySettings.names[QualitySettings.GetQualityLevel()];
-                var count = tier == "Low" ? settings.countLow : settings.countHigh;
+                var count = tier == "Low" ? settings.countLow : tier == "Medium" ? settings.countMedium : settings.countHigh;
                 for (var i = 0; i < count; i++) _cars.Add(Build(i));
             }));
         }
@@ -217,6 +217,13 @@ namespace JapanMap.Gameplay.Traffic
             if (best.Item1 < 0) { t.gameObject.SetActive(false); return; }
             var lane = Lane(best.Item1, best.Item2, best.Item3, out _);
             if (lane.Length < 2) { t.gameObject.SetActive(false); return; }
+            // The join point can be up to 8 m away, and the pilot drives from where the car stands. Place() also stops
+            // the car, so only a real gap is snapped; a small one keeps the motion.
+            if (Flat(lane[0], at) > 1f)
+            {
+                var dir = lane[1] - lane[0];
+                t.Car.Place(lane[0], Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg, fromAbove: 3f);
+            }
             t.Pilot.Begin(t.Car, lane, false);
             t.RoadIndex = best.Item1;
         }

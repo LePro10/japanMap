@@ -26,6 +26,9 @@ namespace JapanMap.Editor.Map
         {
             Import(MapImportSettings.LoadOrCreate());
             MapScene.Save();
+            // Props stream in World/Props_* scenes: without this they stay in Game.unity, i.e. in the start download
+            // (the same slip as the vegetation import, LESSONS 2026-10-11).
+            Debug.Log(Content.StreamingSetup.Apply());
         }
 
         public static Transform Import(MapImportSettings settings)

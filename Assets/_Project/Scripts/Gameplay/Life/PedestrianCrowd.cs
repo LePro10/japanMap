@@ -34,7 +34,7 @@ namespace JapanMap.Gameplay.Life
         void Build()
         {
             var tier = QualitySettings.names[QualitySettings.GetQualityLevel()];
-            var count = tier == "Low" ? settings.countLow : settings.countHigh;
+            var count = tier == "Low" ? settings.countLow : tier == "Medium" ? settings.countMedium : settings.countHigh;
             for (var i = 0; i < count; i++)
             {
                 var speed = Mathf.Lerp(settings.speed.x, settings.speed.y, Random.value);

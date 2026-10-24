@@ -1031,7 +1031,8 @@ namespace JapanMap.Editor.Map
         {
             var v = new List<Vector3>(c.v);
             LegacySource.MirrorVertices(v);
-            var mesh = new Mesh { indexFormat = IndexFormat.UInt32 };
+            // 16-bit indices whenever they fit: roads are in the start download and most chunks stay below 65k vertices.
+            var mesh = new Mesh { indexFormat = v.Count > 65535 ? IndexFormat.UInt32 : IndexFormat.UInt16 };
             mesh.SetVertices(v);
             mesh.SetUVs(0, c.uv);
             if (c.road.Count == c.v.Count) mesh.SetUVs(3, c.road);

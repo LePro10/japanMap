@@ -92,6 +92,7 @@ namespace JapanMap.Core
             }
             Settled = true;
             PlayerPrefs.SetString(AutoKey, Current);
+            PlayerPrefs.Save(); // once per session: Update returns early after this
             Debug.Log($"[Quality] auto settled on {Current} ({MeasuredFps:0} fps)");
         }
 
@@ -102,6 +103,7 @@ namespace JapanMap.Core
             {
                 IsAuto = false;
                 PlayerPrefs.SetString(PrefsKey, tier);
+                PlayerPrefs.Save();
             }
             Apply(tier);
         }
@@ -114,6 +116,7 @@ namespace JapanMap.Core
             MeasuredFps = 0f;
             PlayerPrefs.SetString(PrefsKey, Auto);
             PlayerPrefs.DeleteKey(AutoKey);
+            PlayerPrefs.Save();
             if (_instance != null)
             {
                 _instance._calibrator.Restart();

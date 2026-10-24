@@ -10,8 +10,10 @@ namespace JapanMap.Gameplay.Traffic
     [CreateAssetMenu(menuName = "JapanMap/Life/Traffic Settings", fileName = "TrafficSettings")]
     public sealed class TrafficSettings : ScriptableObject
     {
-        [Tooltip("Cars around the player on High / Low. Prototype: 6.")]
+        [Tooltip("Cars around the player on High / Medium / Low. Prototype: 6.")]
         public int countHigh = 6;
+        [Tooltip("Medium is the Intel-iGPU tier (D38): between High and Low.")]
+        public int countMedium = 4;
         public int countLow = 3;
         [Tooltip("Road types traffic uses (roads.json type).")]
         public string[] roadTypes = { "city" };

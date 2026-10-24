@@ -99,5 +99,24 @@ namespace JapanMap.Tests
             Assert.IsTrue(game.Contains("m_Name: " + StreamingSetup.StartPlace), "Sakura Commons stays in the start");
             Assert.IsFalse(game.Contains("m_Name: Tokyo\n"), "Tokyo streams");
         }
+
+        /// <summary>
+        /// A prop group kept in the start must not also have a streamed scene: both copies load (grey placeholder
+        /// boxes beside the new harbour models, 2026-10-24).
+        /// </summary>
+        [Test]
+        public void PropGroups_LiveEitherInTheStartOrInTheirScene_NotBoth()
+        {
+            Editor.Map.MapScene.OpenGameScene();
+            var props = Editor.Map.MapScene.Root().Find("Props");
+            var inStart = props == null ? new string[0] : props.Cast<Transform>().Select(t => t.name).ToArray();
+            var twice = StreamingSetup.StreamedScenes()
+                .Select(System.IO.Path.GetFileNameWithoutExtension)
+                .Where(n => n.StartsWith("Props_"))
+                .Select(n => n.Substring("Props_".Length))
+                .Where(id => inStart.Contains(id))
+                .ToArray();
+            Assert.That(twice, Is.Empty, "prop groups both in Game.unity and in a Props_ scene");
+        }
     }
 }
