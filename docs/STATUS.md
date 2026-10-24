@@ -3,8 +3,8 @@
 > Nur der **aktuelle** Stand — keine Geschichte (die steht in `git log`).
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
-**Stand:** 2026-10-24 · **Phase 11 (Launch) · autonomer Verbesserungslauf** (Welle 1: 30 Fehler aus dem Audit, Welle 2:
-Leistung/Größe, Welle 3: Tiere in der Welt; Details: git log) · UI „Night Meet": https://claude.ai/artifact/Um9YHs4PmbEL5AtV4s9aoS ·
+**Stand:** 2026-10-25 · **Phase 11 (Launch) · autonomer Verbesserungslauf** (Welle 1: 30 Fehler aus dem Audit, Welle 2:
+Leistung/Größe, Welle 3: Tiere + Stromkabel in der Welt; Details: git log) · UI „Night Meet": https://claude.ai/artifact/Um9YHs4PmbEL5AtV4s9aoS ·
 **jetzt bist du dran:** Punkt U und V
 
 ## Phase 11 — Launch
@@ -35,11 +35,10 @@ voller PlayMode 227/247 (vor dem Shots-Fix; rot nur Zeitbudget-Tests Smash/Schad
 - Straßen: 8 Reststufen ≤ 0,5 m an Einmündungen (5 an der Ringstraße) — feinerer Mündungs-Querschnitt (D54).
 - Schaden: Türen/Haube fallen nicht ab; Figur auf zerbrochener Bank schwebt. Kino-Kamera: „Straßenrand“ zeigt das Auto
   manchmal zu klein. Store-Videos ohne Auto-Drive-Kinofahrt. Modelle: Augpunkte/Rückfahrgläser fehlen.
-- Politur offen ([POLISH.md](POLISH.md)): Kabel zwischen Masten, Touch-Knöpfe mit Icons, Musik/Umgebungstöne (Clips fehlen),
+- Politur offen ([POLISH.md](POLISH.md)): Kabel auch an den 40 Einzelmasten/in Tokio, Touch-Knöpfe mit Icons, Musik/Umgebungstöne (Clips fehlen),
   3D-Hebebühne in der Garage, Geist der Bestzeit, Feinregler Fahrhöhe/Sturz, Store-Videos aus dem neuen Look.
-
-- Tiere stehen jetzt in der Welt (50: Tauben an Torii/Schrein, Krähen auf Masten/bei Fischerhütten, Shibas an Höfen;
-  Regeln in `Data/Life/AnimalSpots.asset`). Sie stehen still (keine Animation). Verkehrsposten (Wave) noch ohne Platz.
+- Neu in der Welt: 50 Tiere (Regeln `Data/Life/AnimalSpots.asset`, stehen still) und durchhängende Stromkabel an der
+  Landleitung (26 Masten, 25 Felder, 5400 Dreiecke; Masten quer gedreht wie im Prototyp). Verkehrsposten noch ohne Platz.
   Aus früher: Ride-Höhe „Dirt“, ASTRA §11, Gegner-Motoren, Leuchtturm, Angler, Musik; ASTRA E01/E08–E17, CI → Phase 12.
 - Leistung: WebGPU später; Handy DXT→ASTC nur nach Messung (D37); Hoch-Budget nach deinem iGPU-Test.
 
@@ -76,6 +75,5 @@ V. **Zwei Entscheidungen (je ein Wort):** (a) Medaillenstufen: ein Worker wollte
 
 | Datum | Typ | Gesamt | Start bis gameplayStart | Boot (lokal) |
 |---|---|---|---|---|
-| 2026-10-18 | Release, Runden 1–4 (Schaden, Titel, Auto-Drive, Karriere, Cockpit, Licht, Einmündungen) | 76,4 MB in 102 Dateien | 20,28 MB | 3,7 s (Rauchprobe) |
 | 2026-10-21 | Release, UI „Night Meet" komplett (D56) | 77,73 MB in 104 Dateien | 20,36 MB (SDK) | 2,6 s (Rauchprobe) |
 | 2026-10-24 | Release, Welle 1+2 (Fehler, Medium-Stufe, Hafen-Modelle) | 77,40 MB in 106 Dateien | 20,44 MB (SDK) | Rauchprobe 0 Fehler |

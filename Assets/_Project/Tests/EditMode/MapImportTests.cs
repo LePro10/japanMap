@@ -261,11 +261,13 @@ namespace JapanMap.Tests
             // One instance per placement under World/Props/<id> (or its streamed scene); models may carry several colliders.
             var groups = MapScene.Parts(PropImporter.GroupName).ToList();
             Assert.IsNotEmpty(groups, "World/Props missing — run JapanMap/Map/Import Props");
-            var placed = groups.Sum(group => group.childCount);
+            // The power cables hang under the pole group as one extra object, not a placement.
+            var placed = groups.Sum(group => group.Cast<Transform>().Count(c => c.name != PowerCables.ObjectName));
             Assert.AreEqual(977, placed, "props.json has 977 placements");
             foreach (var group in groups)
             foreach (Transform instance in group)
-                Assert.That(instance.GetComponentsInChildren<Collider>(), Is.Not.Empty, $"{instance.name} has no collider");
+                if (instance.name != PowerCables.ObjectName)
+                    Assert.That(instance.GetComponentsInChildren<Collider>(), Is.Not.Empty, $"{instance.name} has no collider");
 
             // Expected position straight from the file: terrain or the fixed y (tetrapod piles, pier, jetty) + yOffset.
             var settings = MapImportSettings.LoadOrCreate();

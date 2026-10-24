@@ -133,6 +133,7 @@ namespace JapanMap.Editor.Life
                 if (group.name != id) continue;
                 foreach (Transform t in group)
                 {
+                    if (t.name == Map.PowerCables.ObjectName) continue;
                     var d = new Vector2(t.position.x - at.x, t.position.z - at.z).sqrMagnitude;
                     if (d < bestD) { bestD = d; best = t; }
                 }

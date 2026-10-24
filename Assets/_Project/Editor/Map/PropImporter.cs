@@ -83,6 +83,7 @@ namespace JapanMap.Editor.Map
                 }
                 go.transform.localScale = Vector3.one * scale;
             }
+            PowerCables.Build(parents.TryGetValue(settings.cablePole, out var poles) ? poles : null, settings);
             Debug.Log($"[Map] props imported: {props.Length} instances of {prefabs.Count} ids, {replaced} with library models");
             return group;
         }

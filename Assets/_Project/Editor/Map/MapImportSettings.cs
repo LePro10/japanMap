@@ -126,6 +126,19 @@ namespace JapanMap.Editor.Map
             Rect.MinMaxRect(300, -250, 1040, -160),
         };
 
+        [Header("Power cables between neighbouring poles (POLISH B7; legacy CityStreetDress: 3 cables, sagging)")]
+        [Tooltip("Prop id whose instances get cables, in props.json order.")]
+        public string cablePole = "powerPole";
+        [Tooltip("Only neighbours closer than this are wired (the rural line is 50.8 m; single poles stay alone).")]
+        public float cableMaxSpan = 70f;
+        [Tooltip("Attach points on the pole model, local: y = insulator top, one cable per z on the crossarm.")]
+        public float cableHeight = 11.6f;
+        public float[] cableOffsets = { -0.7f, 0.3f, 0.9f };
+        [Tooltip("Sag at mid-span as a fraction of the span (2 % ≈ 1 m on 50 m).")]
+        public float cableSag = 0.02f;
+        public float cableRadius = 0.025f;
+        [Range(4, 24)] public int cableSegments = 12;
+
         [Header("Props (placeholders until Phase 4; sizes W × H × D from legacy landmarkMeshes.ts / props.config.ts)")]
         [Tooltip("Yaw in Unity = propYawBase − rot (README: 180 − rot for models whose front is local +Z in both worlds).")]
         public float propYawBase = 180f;
