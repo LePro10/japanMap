@@ -170,9 +170,10 @@ namespace JapanMap.Gameplay.Progress
             if (!_dirty || _data == null || _store == null) return false;
             // Two copies disagree and the player has not chosen yet: writing now would decide for them.
             if (SaveSync.Pending != null) return false;
-            _dirty = false;
             _nextSave = Time.unscaledTime + 1f;
+            // Clear the flag only after a write that worked: a failed save stays dirty and is retried after the wait above.
             if (!ProgressStore.Save(_store, _data)) return false;
+            _dirty = false;
             SaveCount++;
             // One line per save (saves are rare: grants, purchases, parking) — Tools/save-web.mjs reads it.
             Debug.Log($"[Save] saved #{SaveCount} to {_store.Name}: {_data.sparks} Sparks, {_data.regions.Count} regions, {_data.discoveries.Count} cards");

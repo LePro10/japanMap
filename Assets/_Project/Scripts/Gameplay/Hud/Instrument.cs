@@ -24,7 +24,7 @@ namespace JapanMap.Gameplay.Hud
         readonly Label[] _ticks = new Label[12];
         float _rpm01, _red01 = 0.85f, _nitro = 1f, _flashUntil, _max = 8000f;
         bool _boosting;
-        string _gearText = "";
+        string _gearText = "", _unitRaw;
 
         public string GearText => _gearText;
         public string SpeedText => _speed.text;
@@ -107,8 +107,8 @@ namespace JapanMap.Gameplay.Hud
             }
             _gear.EnableInClassList("jm-instrument__gear--flash", Time.unscaledTime < _flashUntil);
             if (_speed.text != speed) _speed.text = speed;
-            var u = unit.ToUpperInvariant();
-            if (_unit.text != u) _unit.text = u;
+            // Upper-casing allocates: only when the unit itself changes (it is a constant per setting).
+            if (unit != _unitRaw) { _unitRaw = unit; _unit.text = unit.ToUpperInvariant(); }
             if (!Mathf.Approximately(max, _max) || Mathf.Abs(red - _red01) > 0.001f)
             {
                 _max = max;

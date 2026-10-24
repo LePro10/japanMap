@@ -31,16 +31,7 @@ namespace JapanMap.Tests.Content
         {
             TitleScreen.RunInEditor = false;
             Unlocks.Query = null;
-            // The shared runtime panel drew into the shot's texture: back to the screen, or every later test's clicks and
-            // taps miss the UI (screen input is not mapped into a panel with a target texture).
-            var ps = UiPanel.Get(null);
-            if (ps != null && ps.targetTexture != null)
-            {
-                var rt = ps.targetTexture;
-                ps.targetTexture = null;
-                rt.Release();
-                UnityEngine.Object.Destroy(rt);
-            }
+            RestorePanel();
             UiPanel.ForcedForm = null;
             Time.timeScale = 1f;
             AudioListener.pause = false;
@@ -107,6 +98,21 @@ namespace JapanMap.Tests.Content
             yield return Shot("menu-locked-desktop", FormFactor.Desktop, 1280, 720, 1.2f);
             yield return Shot("menu-locked-portrait", FormFactor.PhonePortrait, 390, 844, 1.2f);
             menu.Close();
+        }
+
+        /// <summary>
+        /// The shared runtime panel drew into the shot's texture: back to the screen, or every later test's clicks and
+        /// taps miss the UI (screen input is not mapped into a panel with a target texture). Every test that calls
+        /// <see cref="Shot"/> runs this in its TearDown (CareerShots once forgot it: 5 menu tests red after it).
+        /// </summary>
+        public static void RestorePanel()
+        {
+            var ps = UiPanel.Get(null);
+            if (ps == null || ps.targetTexture == null) return;
+            var rt = ps.targetTexture;
+            ps.targetTexture = null;
+            rt.Release();
+            UnityEngine.Object.Destroy(rt);
         }
 
         /// <summary>Lays the UI out for a form factor and size, waits, renders camera + UI into one PNG.</summary>

@@ -62,6 +62,14 @@ namespace JapanMap.Core.Platform
         /// <summary>CrazyGames throttles a gameplayStart within 1 s of the last one and logs it as an error (QA tool).</summary>
         const float StartGap = 1.05f;
         static bool _savedPause;
+        /// <summary>
+        /// Real-time limit for one ad. The SDK answers in practice; a lost callback would otherwise keep the game
+        /// paused and muted for good. Real time, so the paused time scale cannot stretch it.
+        /// </summary>
+        const float AdWatchdogSeconds = 90f;
+        /// <summary>Ends the running ad (the first answer wins); null when no ad runs.</summary>
+        static Action<AdOutcome> _endAd;
+        static float _adDeadline;
 
         /// <summary>Any change of <see cref="Muted"/>, <see cref="AdRunning"/> or the user.</summary>
         public static event Action Changed;
@@ -75,6 +83,7 @@ namespace JapanMap.Core.Platform
             _playing = _portalMuted = false;
             _lastStart = -10f;
             AdRunning = false;
+            _endAd = null;
             WorldReady = false;
             GameplayStarts = GameplayStops = 0;
             Changed = null;
@@ -129,6 +138,12 @@ namespace JapanMap.Core.Platform
         /// <summary>Sends gameplayStart/Stop on every change of <see cref="ShouldPlay"/>. Called each frame by the platform system.</summary>
         public static void Tick()
         {
+            // Watchdog: a lost ad callback must not freeze the game. Checked before ShouldPlay, which reads AdRunning.
+            if (_endAd != null && Time.realtimeSinceStartup >= _adDeadline)
+            {
+                Debug.LogWarning($"[Ads] no answer after {AdWatchdogSeconds:0} s — ad given up as unavailable");
+                _endAd(AdOutcome.Unavailable);
+            }
             var want = ShouldPlay;
             if (want == _playing) return;
             // A menu opened and closed within a second: play resumes, the event follows once the gap allows it.
@@ -164,19 +179,24 @@ namespace JapanMap.Core.Platform
             Time.timeScale = 0f;
             AudioListener.pause = true;
             Changed?.Invoke();
-            Tick();
+            // Per request: a late answer of an earlier ad holds its own closure, so it can never restore or reward twice.
             var answered = false;
-            request(outcome =>
+            void Answer(AdOutcome outcome)
             {
-                if (answered) return; // the SDK may report error after finish; the first answer counts
+                if (answered) return; // the SDK may report error after finish, or after the watchdog; the first answer counts
                 answered = true;
+                _endAd = null;
                 AdRunning = false;
                 // Back to exactly what was before: a menu open behind the ad keeps its pause.
                 Time.timeScale = _savedScale;
                 AudioListener.pause = _savedPause;
                 Changed?.Invoke();
                 done?.Invoke(outcome);
-            });
+            }
+            _endAd = Answer;
+            _adDeadline = Time.realtimeSinceStartup + AdWatchdogSeconds;
+            Tick();
+            request(Answer);
         }
 
         /// <summary>The platform reports a login (or another account).</summary>

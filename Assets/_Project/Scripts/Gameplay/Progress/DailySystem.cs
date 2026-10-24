@@ -22,7 +22,7 @@ namespace JapanMap.Gameplay.Progress
 
         public static DailySystem Instance { get; private set; }
 
-        float _since;
+        float _since, _nextBusyCheck;
         bool _bonusChecked;
         float _metres;
 
@@ -80,15 +80,21 @@ namespace JapanMap.Gameplay.Progress
         void Update()
         {
             if (progress == null || Data == null || settings == null) return;
-            if (Data.challengeDay != Today)
+            var today = Today; // one date string per frame: Today formats a new string on every access
+            if (Data.challengeDay != today)
             {
-                Data.challengeDay = Today;
+                Data.challengeDay = today;
                 Data.challengeProgress = 0f;
                 Data.challengeDone = false;
                 progress.MarkDirty();
             }
             _since += Time.unscaledDeltaTime;
-            if (AutoBonus && !_bonusChecked && _since > settings.delay && !Busy()) CheckBonus();
+            // Busy() searches the scene for the intro: twice a second is plenty for a toast that waits for it.
+            if (AutoBonus && !_bonusChecked && _since > settings.delay && Time.unscaledTime >= _nextBusyCheck)
+            {
+                _nextBusyCheck = Time.unscaledTime + 0.5f;
+                if (!Busy()) CheckBonus();
+            }
             if (!OwnCar || Time.timeScale <= 0f) return;
             var kmh = player.Car.Telemetry.speed * 3.6f;
             if (Challenge.goal == DailyGoal.TopSpeed) Report(kmh, max: true);
@@ -120,12 +126,12 @@ namespace JapanMap.Gameplay.Progress
             Data.dailyDay = today;
             var rewards = settings.streakRewards;
             var reward = rewards[Mathf.Clamp(Data.dailyStreak - 1, 0, rewards.Length - 1)];
-            // Toast first: it names the reward, so the HUD skips its own "+300 Sparks · Daily drive" line (both showed at once).
-            hud?.ShowToast(Data.dailyStreak > 1
+            // Grant first, toast only if paid: the toast names the reward. It also replaces the HUD's own "+300 Sparks" line, so both never show at once.
+            var granted = progress.Grant($"daily:{today}", reward, "Daily drive");
+            progress.MarkDirty();
+            if (granted) hud?.ShowToast(Data.dailyStreak > 1
                 ? $"Day {Data.dailyStreak} in a row · Daily drive +{reward:N0} Sparks"
                 : $"Daily drive · +{reward:N0} Sparks · come back tomorrow for more");
-            progress.Grant($"daily:{today}", reward, "Daily drive");
-            progress.MarkDirty();
             return true;
         }
 
@@ -161,8 +167,8 @@ namespace JapanMap.Gameplay.Progress
             if (Data.challengeProgress >= c.target)
             {
                 Data.challengeDone = true;
-                hud?.ShowToast($"Daily challenge complete · {string.Format(c.title, c.target)} · +{c.reward:N0} Sparks");
-                progress.Grant($"challenge:{Today}", c.reward, "Daily challenge");
+                if (progress.Grant($"challenge:{Today}", c.reward, "Daily challenge"))
+                    hud?.ShowToast($"Daily challenge complete · {string.Format(c.title, c.target)} · +{c.reward:N0} Sparks");
                 Core.Platform.GamePlatform.Current?.HappyTime();
             }
             if (Mathf.Abs(Data.challengeProgress - before) > 0.001f) progress.MarkDirty();

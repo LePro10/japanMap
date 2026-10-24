@@ -30,7 +30,7 @@ namespace JapanMap.Gameplay.Smash
         public const int MaxCuts = 24;
         /// <summary>Asked before a cached piece is destroyed: is it still shown (a stump, a falling top)?</summary>
         public static System.Func<Mesh, bool> InUse;
-        public static int CachedCuts => Cuts.Count;
+        public static int CachedCuts => Order.Count;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics()
@@ -154,7 +154,9 @@ namespace JapanMap.Gameplay.Smash
 
         static void Evict()
         {
-            for (var i = 0; i < Order.Count && Cuts.Count > MaxCuts; i++)
+            // Count Order, not Cuts: failed cuts are cached as null and never enter Order, and would otherwise
+            // make every new cut evict the whole cache once 24 of them exist.
+            for (var i = 0; i < Order.Count && Order.Count > MaxCuts; i++)
             {
                 var key = Order[i];
                 if (!Cuts.TryGetValue(key, out var c) || c == null) { Order.RemoveAt(i--); continue; }

@@ -73,6 +73,9 @@ namespace JapanMap.Vehicles
             Finished = false;
             _grip = 1f;
             _stuckFor = _reverseFor = 0f;
+            // Per-run counters and memory: a reused follower must not carry the last path's values.
+            Offset = _lastOffset = 0f;
+            Turns = Unsticks = 0;
         }
 
         int Segments => closed ? path.Length : path.Length - 1;
@@ -124,7 +127,8 @@ namespace JapanMap.Vehicles
             var lookSq = Mathf.Max(local.x * local.x + local.z * local.z, 1f);
             var v = Mathf.Max(speed, 2f);
             var yawNeeded = 2f * v * local.x / lookSq;
-            var spec = car.Definition.arcade;
+            // The live (tuned) spec the car drives with, not the stock one: the prediction must match the physics.
+            var spec = car.Spec;
             var lockAngle = spec.steerAngle / (1f + v / spec.steerFalloff);
             var kinMax = v * Mathf.Tan(lockAngle) / car.Definition.wheelbase;
             var cap = spec.latG * ArcadeTuning.Gravity / Mathf.Max(v, car.Tuning.yawCapSpeed);
@@ -139,7 +143,7 @@ namespace JapanMap.Vehicles
             _lastOffset = Offset;
 
             // Slowest bend within the braking distance decides the target speed.
-            var latA = car.Definition.arcade.latG * ArcadeTuning.Gravity * gripShare * _grip;
+            var latA = spec.latG * ArcadeTuning.Gravity * gripShare * _grip;
             var vMax = maxSpeedKmh / 3.6f;
             var horizon = Mathf.Max(30f, speed * speed / (2f * braking));
             // From the car itself: a bend that has already begun must count (starting at 10 m let a hairpin through at 56 km/h).

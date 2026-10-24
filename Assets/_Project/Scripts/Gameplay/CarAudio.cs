@@ -84,7 +84,7 @@ namespace JapanMap.Gameplay
             {
                 if (h.Status != UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationStatus.Succeeded)
                 {
-                    Debug.LogWarning($"[Content] engine bank {carId} failed");
+                    Debug.LogWarning($"[Content] engine bank {carId} failed: {h.OperationException?.Message}");
                     _asked.Remove(carId);
                     return;
                 }
@@ -103,16 +103,31 @@ namespace JapanMap.Gameplay
 
         void Bind(VehicleController car)
         {
+            // Start and the spawner's event can both name the same car; a second bind would stack sounds and handlers.
+            if (car == _car) return;
+            Unbind();
             _car = car;
             if (car == null) return;
             _engine = car.gameObject.AddComponent<EngineSound>();
             _engine.Bind(BankFor(car.Definition.id));
             _tyres = car.gameObject.AddComponent<TyreSound>();
-            _contacts = car.gameObject.AddComponent<ContactRelay>();
+            // Share the car's relay: DriftScorer may have added one already, and a second would count every hit twice.
+            if (!car.TryGetComponent<ContactRelay>(out _contacts)) _contacts = car.gameObject.AddComponent<ContactRelay>();
             _contacts.Touched += OnContact;
             _damage = car.GetComponent<VehicleDamage>();
             if (_damage != null) _damage.Impacted += OnDamage;
             _wasAirborne = false;
+        }
+
+        /// <summary>Lets go of the previous car. Its sources stay on it, so they are muted, not removed.</summary>
+        void Unbind()
+        {
+            if (_contacts != null) _contacts.Touched -= OnContact;
+            if (_damage != null) _damage.Impacted -= OnDamage;
+            if (_engine != null) _engine.Running = false;
+            if (_tyres != null) _tyres.Running = false;
+            _contacts = null;
+            _damage = null;
         }
 
         void OnFound(int index, int total) => Sfx.Play("Bell_Discovery");

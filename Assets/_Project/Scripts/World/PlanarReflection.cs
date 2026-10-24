@@ -22,6 +22,7 @@ namespace JapanMap.World
         Camera _mirror;
         RenderTexture _rt;
         float _scale;
+        UniversalRenderPipeline.SingleCameraRequest _request;
 
         /// <summary>The mirror rendered this frame (tests, probes).</summary>
         public bool Active { get; private set; }
@@ -72,7 +73,10 @@ namespace JapanMap.World
             EnsureCamera();
             EnsureTarget(main);
             Place(main);
-            var request = new UniversalRenderPipeline.SingleCameraRequest { destination = _rt };
+            // One request object for the whole session: a new one per frame is garbage every frame.
+            if (_request == null) _request = new UniversalRenderPipeline.SingleCameraRequest();
+            _request.destination = _rt;
+            var request = _request;
             if (!RenderPipeline.SupportsRenderRequest(_mirror, request))
             {
                 Shader.SetGlobalVector(ParamsId, Vector4.zero);

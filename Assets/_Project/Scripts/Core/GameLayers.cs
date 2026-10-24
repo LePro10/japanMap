@@ -14,11 +14,23 @@ namespace JapanMap.Core
         public const string Pedestrian = "Pedestrian";
         public const string Debris = "Debris";
 
+        // Built once on first use: these are read every frame by probes and cameras, and LayerMask.GetMask
+        // allocates a name array on each call. Layer names never change at runtime, so the cache stays valid.
+        static int _notGround;
+        static bool _masksReady;
+
+        static void EnsureMasks()
+        {
+            if (_masksReady) return;
+            _notGround = LayerMask.GetMask(Vehicle, Walker, Pedestrian, Debris, "Water", "UI") | Physics.IgnoreRaycastLayer;
+            _masksReady = true;
+        }
+
         /// <summary>Bodies that are never ground for a wheel, a walker's feet or a spawn probe.</summary>
-        public static int NotGround => LayerMask.GetMask(Vehicle, Walker, Pedestrian, Debris, "Water", "UI") | Physics.IgnoreRaycastLayer;
+        public static int NotGround { get { EnsureMasks(); return _notGround; } }
 
         /// <summary>What a follow camera may be pushed in front of: static world only.</summary>
-        public static int CameraObstacles => ~(LayerMask.GetMask(Vehicle, Walker, Pedestrian, Debris, "Water", "UI") | Physics.IgnoreRaycastLayer);
+        public static int CameraObstacles { get { EnsureMasks(); return ~_notGround; } }
 
         public static int Layer(string name) => LayerMask.NameToLayer(name);
     }

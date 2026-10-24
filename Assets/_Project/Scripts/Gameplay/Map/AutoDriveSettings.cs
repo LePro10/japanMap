@@ -29,6 +29,7 @@ namespace JapanMap.Gameplay.Map
         public float crossingReach = 18f;
         public float crossingKmh = 50f;
         [Tooltip("Points of the planned route are re-laid this far apart and smoothed, m.")]
+        [Min(0.5f)] // 0 would never advance the re-laying loop
         public float spacing = 3f;
 
         [Header("Traffic")]

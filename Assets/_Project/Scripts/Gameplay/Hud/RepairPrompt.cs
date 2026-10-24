@@ -17,6 +17,8 @@ namespace JapanMap.Gameplay.Hud
         Button _pill;
         Label _key;
         bool _touch;
+        VehicleController _damageCar; // the car _damage belongs to
+        VehicleDamage _damage;
 
         /// <summary>Shown above this much damage (0…1) — or with any bent or lost wheel.</summary>
         public const float ShowFrom = 0.1f;
@@ -93,7 +95,9 @@ namespace JapanMap.Gameplay.Hud
         {
             if (_pill == null) return;
             var car = _player != null ? _player.Car : null;
-            var damage = car != null ? car.GetComponent<VehicleDamage>() : null;
+            // GetComponent only when the car changes (respawn, garage, new car), not every frame.
+            if (car != _damageCar) { _damageCar = car; _damage = car != null ? car.GetComponent<VehicleDamage>() : null; }
+            var damage = _damage;
             // Not during the first drive: its step bar owns the top centre (the pill lay on it, UI audit 2026-10-21).
             if (!_introLooked) { _intro = FindAnyObjectByType<Intro.FirstDrive>(); _introLooked = true; }
             var intro = _intro != null && _intro.Current != Intro.FirstDrive.Beat.Off;

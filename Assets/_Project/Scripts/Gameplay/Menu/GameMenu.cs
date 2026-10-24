@@ -134,7 +134,7 @@ namespace JapanMap.Gameplay.Menu
             _submit.AddBinding("<Keyboard>/numpadEnter");
             _submit.AddBinding("<Gamepad>/buttonSouth");
             UiPanel.UserScale = UiPanel.Scales[Core.GameOptions.UiScale];
-            Ui.Clicked += () => Audio.Sfx.Play("UI_Click");
+            Ui.Clicked += OnUiClicked;
             if (actions != null)
             {
                 // Saved key bindings (Settings → Controls) before anything reads the actions.
@@ -170,13 +170,17 @@ namespace JapanMap.Gameplay.Menu
             BuildShell();
         }
 
+        // A named method, not a lambda: OnDestroy can remove it again (a scene reload makes a new menu).
+        void OnUiClicked() => Audio.Sfx.Play("UI_Click");
+
         void OnConflict(Core.Save.SaveConflict _) => SettingsScreen.ShowChoice(this);
 
         void OnEnable()
         {
             _root = _doc.rootVisualElement;
             _root.Clear();
-            if (theme != null) _root.styleSheets.Add(theme);
+            // The root survives disable/enable, so the theme must not be added a second time.
+            if (theme != null && !_root.styleSheets.Contains(theme)) _root.styleSheets.Add(theme);
             _root.AddToClassList("jm-fill");
             _root.AddToClassList("jm-menu");
             // Dark behind the rail and the text, clear on the right where the car turns (MenuCamera).
@@ -205,6 +209,9 @@ namespace JapanMap.Gameplay.Menu
 
         void OnDisable()
         {
+            // Registered on the root in OnEnable; the root outlives the disable, so remove them here.
+            _root?.UnregisterCallback<NavigationMoveEvent>(OnNavigate, TrickleDown.TrickleDown);
+            _root?.UnregisterCallback<NavigationSubmitEvent>(OnNavigateSubmit, TrickleDown.TrickleDown);
             _menu.performed -= OnMenuKey;
             _menu.Disable();
             _prevTab.performed -= OnPrevTab;
@@ -225,6 +232,7 @@ namespace JapanMap.Gameplay.Menu
         {
             Core.Save.SaveSync.ConflictRaised -= OnConflict;
             Core.Unlocks.Changed -= OnUnlocks;
+            Ui.Clicked -= OnUiClicked;
             if (Instance == this) Instance = null;
             // The scene's UI goes with the menu: no close action of a destroyed overlay may stay on the stack.
             UiStack.Clear();
@@ -717,6 +725,7 @@ namespace JapanMap.Gameplay.Menu
         {
             if (!s.Feature.HasValue || Seen(s)) return;
             PlayerPrefs.SetInt(SeenKey(s), 1);
+            PlayerPrefs.Save(); // WebGL persists PlayerPrefs only on Save()
             var i = _screens.IndexOf(s);
             if (i >= 0 && i < _tabButtons.Count) _tabButtons[i].Q(className: "jm-tab__new")?.RemoveFromHierarchy();
         }

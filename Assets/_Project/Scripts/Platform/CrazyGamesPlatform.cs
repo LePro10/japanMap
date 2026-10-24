@@ -49,20 +49,22 @@ namespace JapanMap.Platform
             }
             CrazySDK.Init(() =>
             {
-                if (Ready) return; // timed out already: keep the store the game started with
                 // The user first: the device copy is compared with the account copy of exactly this player.
                 CrazySDK.User.GetUser(user =>
                 {
-                    if (Ready) return;
+                    // A late answer (after the timeout) must not switch the save store mid-session: that would lose
+                    // or double progress. The portal still comes alive, so ads and gameplay events work.
+                    if (Ready)
+                    {
+                        AdoptPortal(user);
+                        Debug.Log($"[Platform] CrazyGames SDK answered after the timeout ({CrazySDK.Environment}) — ads on, save stays on this device");
+                        return;
+                    }
                     var owner = OwnerOf(user);
                     _store = new MirroredStore(new CrazyDataStore(), owner);
                     SaveSync.Reconcile(new PlayerPrefsStore(), _store, owner);
                     SaveStores.Current = _store;
-                    var portal = new CrazyPortal(user);
-                    GamePlatform.Current = portal;
-                    GamePlatform.PortalMuted = CrazySDK.Game.Settings?.muteAudio == true;
-                    CrazySDK.Game.AddSettingsChangeListener(s => GamePlatform.PortalMuted = s.muteAudio);
-                    if (CrazySDK.User.IsUserAccountAvailable) CrazySDK.User.AddAuthListener(OnLogin);
+                    AdoptPortal(user);
                     Mode = "crazygames";
                     Ready = true;
                     Debug.Log($"[Platform] CrazyGames SDK up ({CrazySDK.Environment}, {owner}) — saving with the data module");
@@ -72,6 +74,15 @@ namespace JapanMap.Platform
         }
 
         static string OwnerOf(PortalUser user) => user == null ? "guest" : "user:" + user.__dangerousUserId;
+
+        /// <summary>The SDK becomes the game's platform (ads, gameplay events, portal mute, user). The save is not touched here.</summary>
+        void AdoptPortal(PortalUser user)
+        {
+            GamePlatform.Current = new CrazyPortal(user);
+            GamePlatform.PortalMuted = CrazySDK.Game.Settings?.muteAudio == true;
+            CrazySDK.Game.AddSettingsChangeListener(s => GamePlatform.PortalMuted = s.muteAudio);
+            if (CrazySDK.User.IsUserAccountAvailable) CrazySDK.User.AddAuthListener(OnLogin);
+        }
 
         /// <summary>
         /// A login during play: the data module now answers with the account's copy. It is compared with the guest copy

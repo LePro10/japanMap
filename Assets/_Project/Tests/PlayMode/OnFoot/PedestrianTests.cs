@@ -23,10 +23,19 @@ namespace JapanMap.Tests.OnFoot
     [FreshSave]
     public class PedestrianTests
     {
+        float _maxDelta;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _maxDelta = Time.maximumDeltaTime;
+        }
+
         [TearDown]
         public void TearDown()
         {
             Time.timeScale = 1f;
+            Time.maximumDeltaTime = _maxDelta;
             if (Bootstrapper.Instance != null) Object.Destroy(Bootstrapper.Instance.gameObject);
         }
 

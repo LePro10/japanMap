@@ -64,6 +64,8 @@ namespace JapanMap.World
             SceneManager.sceneLoaded -= OnLoaded;
             SceneManager.sceneUnloaded -= OnUnloaded;
             QualitySystem.TierChanged -= OnTier;
+            // OnEnable scans every open scene again; keeping the old entries would double every lamp.
+            _lamps.Clear();
         }
 
         void OnTier(string tier)

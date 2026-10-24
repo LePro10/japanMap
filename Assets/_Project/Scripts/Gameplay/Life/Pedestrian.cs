@@ -22,7 +22,8 @@ namespace JapanMap.Gameplay.Life
         HitoFigure _figure;
         Transform _pose;
         string _walkClip = "Walk";
-        float _pauseUntil, _downFor, _knockedFor;
+        float _pauseUntil, _downFor, _knockedFor, _stuckFor;
+        Vector3 _stuckFrom;
         bool _fixedSpot;
 
         public State Current { get; private set; } = State.Walking;
@@ -99,6 +100,13 @@ namespace JapanMap.Gameplay.Life
                         Current = State.Paused;
                         _pauseUntil = Time.time + Random.value * _s.maxPause;
                     }
+                    else if (Stuck())
+                    {
+                        // A target it cannot reach (blocked, cut off) would keep it walking on the spot: drop it and rest.
+                        if (_agent.isOnNavMesh) _agent.ResetPath();
+                        Current = State.Paused;
+                        _pauseUntil = Time.time + Random.value * _s.maxPause;
+                    }
                     break;
             }
 
@@ -119,9 +127,24 @@ namespace JapanMap.Gameplay.Life
                 if (!NavMesh.SamplePosition(p, out var hit, 4f, _agent.areaMask)) continue;
                 if (!_agent.SetDestination(hit.position)) continue;
                 Current = State.Walking;
+                _stuckFrom = transform.position;
+                _stuckFor = 0f;
                 return;
             }
             _pauseUntil = Time.time + 1f;
+        }
+
+        /// <summary>True once the walker has stayed within the stuck distance for the stuck time.</summary>
+        bool Stuck()
+        {
+            _stuckFor += Time.deltaTime;
+            // Progress resets the clock; a walker that is merely slow is never dropped.
+            if ((transform.position - _stuckFrom).sqrMagnitude >= _s.stuckDistance * _s.stuckDistance)
+            {
+                _stuckFrom = transform.position;
+                _stuckFor = 0f;
+            }
+            return _stuckFor >= _s.stuckTime;
         }
 
         void OnTriggerEnter(Collider other)

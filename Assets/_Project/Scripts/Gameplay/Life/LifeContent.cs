@@ -41,7 +41,7 @@ namespace JapanMap.Gameplay.Life
             if (Application.isEditor && CarModels.EditorSync) op.WaitForCompletion();
             else yield return op;
             if (op.Status == AsyncOperationStatus.Succeeded) done(op.Result);
-            else Debug.LogWarning($"[Content] {address} failed");
+            else Debug.LogWarning($"[Content] {address} failed: {op.OperationException?.Message}");
         }
     }
 }

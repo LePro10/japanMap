@@ -31,6 +31,7 @@ namespace JapanMap.Gameplay.Hud
             public bool Visible = true;
             public VisualElement Box;
             public Label Distance;
+            public int DistanceSteps = int.MinValue; // last 5 m step shown; reset when the label is rebuilt
         }
 
         readonly List<Pin> _pins = new();
@@ -102,6 +103,7 @@ namespace JapanMap.Gameplay.Hud
                 row.Add(sub);
             }
             p.Distance = new Label("") { pickingMode = PickingMode.Ignore };
+            p.DistanceSteps = int.MinValue; // a new label is empty: show the distance again on the next frame
             p.Distance.AddToClassList("jm-pin__dist");
             row.Add(p.Distance);
             plate.Add(row);
@@ -155,8 +157,9 @@ namespace JapanMap.Gameplay.Hud
                 p.Box.style.opacity = fade;
                 var scale = Mathf.Lerp(1f, 0.78f, Mathf.InverseLerp(20f, range.y, d));
                 p.Box.style.scale = new Scale(new Vector3(scale, scale, 1f)); // around the anchor (transform-origin 0 0)
-                var text = $"{Mathf.RoundToInt(d / 5f) * 5} m";
-                if (p.Distance.text != text) p.Distance.text = text;
+                // Rewritten only when the 5 m step changes, not every frame.
+                var steps = Mathf.RoundToInt(d / 5f);
+                if (steps != p.DistanceSteps) { p.DistanceSteps = steps; p.Distance.text = $"{steps * 5} m"; }
             }
         }
     }

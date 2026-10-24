@@ -219,6 +219,10 @@ namespace JapanMap.Vehicles
         /// <summary>Raised at the step a shift begins (new gear, up?) — the sound's transient hangs on it.</summary>
         public event Action<int, bool> Shifted;
 
-        public static string Label(int gear) => gear < 0 ? "R" : gear == 0 ? "N" : gear.ToString();
+        // Built once: the HUD asks for the label every frame, and gear.ToString() would allocate each time.
+        // Cars have at most 7 gears (data), so the table covers any real gear.
+        static readonly string[] _labels = { "N", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12" };
+
+        public static string Label(int gear) => gear < 0 ? "R" : gear < _labels.Length ? _labels[gear] : gear.ToString();
     }
 }

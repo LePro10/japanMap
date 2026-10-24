@@ -18,9 +18,10 @@ namespace JapanMap.Core
         static void ResetStatics() => Changed = null;
 
         static float F(string k, float d) => PlayerPrefs.GetFloat(P + k, d);
-        static void SetF(string k, float v) { PlayerPrefs.SetFloat(P + k, v); Changed?.Invoke(); }
+        // Floats come from sliders that write every frame of a drag: throttled, see PrefsSaver.
+        static void SetF(string k, float v) { PlayerPrefs.SetFloat(P + k, v); PrefsSaver.Throttled(); Changed?.Invoke(); }
         static int I(string k, int d) => PlayerPrefs.GetInt(P + k, d);
-        static void SetI(string k, int v) { PlayerPrefs.SetInt(P + k, v); Changed?.Invoke(); }
+        static void SetI(string k, int v) { PlayerPrefs.SetInt(P + k, v); PlayerPrefs.Save(); Changed?.Invoke(); }
 
         /// <summary>Steering sensitivity, 0.5–1.5.</summary>
         public static float Steering { get => Mathf.Clamp(F("steer", 1f), 0.5f, 1.5f); set => SetF("steer", Mathf.Clamp(value, 0.5f, 1.5f)); }
@@ -39,7 +40,7 @@ namespace JapanMap.Core
         public static bool Vibration { get => I("vibration", 1) == 1; set => SetI("vibration", value ? 1 : 0); }
         public static bool ReducedMotion { get => I("reduced", 0) == 1; set => SetI("reduced", value ? 1 : 0); }
         /// <summary>Key overrides of the Input System (JSON from SaveBindingOverridesAsJson).</summary>
-        public static string Bindings { get => PlayerPrefs.GetString(P + "bindings", ""); set { PlayerPrefs.SetString(P + "bindings", value ?? ""); Changed?.Invoke(); } }
+        public static string Bindings { get => PlayerPrefs.GetString(P + "bindings", ""); set { PlayerPrefs.SetString(P + "bindings", value ?? ""); PlayerPrefs.Save(); Changed?.Invoke(); } }
         /// <summary>The "landscape gives a wider view" hint was dismissed once (ASTRA §10).</summary>
         public static bool LandscapeHintSeen { get => I("landhint", 0) == 1; set => SetI("landhint", value ? 1 : 0); }
 
@@ -52,7 +53,56 @@ namespace JapanMap.Core
         public static void ResetAll()
         {
             foreach (var k in new[] { "steer", "chase", "shake", "mph", "uiscale", "autothrottle", "lefthand", "reduced", "bindings", "btnscale", "vibration" }) PlayerPrefs.DeleteKey(P + k);
+            PlayerPrefs.Save();
             Changed?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// On WebGL PlayerPrefs reach the browser's storage only through PlayerPrefs.Save(), and a closed tab gives no
+    /// reliable quit event. A slider drag writes every frame, so those writes go through <see cref="Throttled"/>:
+    /// at most one Save per 0.5 s real time, plus a trailing save so the last value of a drag still lands.
+    /// </summary>
+    public static class PrefsSaver
+    {
+        const float Interval = 0.5f;
+        static float _lastSave = float.NegativeInfinity;
+        static bool _pending;
+        static Ticker _ticker;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() { _lastSave = float.NegativeInfinity; _pending = false; _ticker = null; }
+
+        /// <summary>Save for a value that may change every frame (slider drag).</summary>
+        public static void Throttled()
+        {
+            if (Time.unscaledTime - _lastSave >= Interval) { Save(); return; }
+            _pending = true;
+            if (_ticker != null) return;
+            var go = new GameObject("PrefsSaver") { hideFlags = HideFlags.HideInHierarchy };
+            UnityEngine.Object.DontDestroyOnLoad(go);
+            _ticker = go.AddComponent<Ticker>();
+        }
+
+        static void Flush()
+        {
+            if (_pending && Time.unscaledTime - _lastSave >= Interval) Save();
+        }
+
+        static void Save()
+        {
+            PlayerPrefs.Save();
+            _lastSave = Time.unscaledTime;
+            _pending = false;
+        }
+
+        /// <summary>Writes the held-back save once the interval has passed. Also flushes when the page is hidden,
+        /// so a drag that ends right before the tab closes is not lost.</summary>
+        sealed class Ticker : MonoBehaviour
+        {
+            void Update() => Flush();
+            void OnApplicationPause(bool paused) { if (paused && _pending) Save(); }
+            void OnApplicationFocus(bool focus) { if (!focus && _pending) Save(); }
         }
     }
 }

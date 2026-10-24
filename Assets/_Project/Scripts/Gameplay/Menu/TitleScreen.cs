@@ -111,6 +111,8 @@ namespace JapanMap.Gameplay.Menu
         void OnDestroy()
         {
             if (Instance == this) Instance = null;
+            // Pushed on show; a destroyed title must not stay on the stack (Pop is a no-op when it is not there).
+            UiStack.Pop(this);
         }
 
         bool Wanted()

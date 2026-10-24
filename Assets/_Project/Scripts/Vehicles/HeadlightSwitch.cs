@@ -55,6 +55,7 @@ namespace JapanMap.Vehicles
                 if (_mode == value) return;
                 _mode = value;
                 PlayerPrefs.SetInt(PrefsKey, (int)value);
+                PlayerPrefs.Save();
                 Changed?.Invoke(value);
             }
         }

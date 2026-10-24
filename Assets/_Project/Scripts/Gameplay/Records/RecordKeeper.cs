@@ -226,15 +226,17 @@ namespace JapanMap.Gameplay.Records
         public static Texture2D LoadCard(MilestoneKind kind)
         {
             if (!SaveStores.Current.TryRead(CardKeyPrefix + kind, out var b64) || string.IsNullOrEmpty(b64)) return null;
+            var tex = new Texture2D(2, 2);
             try
             {
-                var tex = new Texture2D(2, 2);
-                return tex.LoadImage(Convert.FromBase64String(b64)) ? tex : null;
+                if (tex.LoadImage(Convert.FromBase64String(b64))) return tex;
             }
             catch (FormatException)
             {
-                return null;
             }
+            // A bad picture must not leak its texture memory: the caller only gets the card on success.
+            Destroy(tex);
+            return null;
         }
     }
 }

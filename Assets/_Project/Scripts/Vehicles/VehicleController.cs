@@ -222,6 +222,10 @@ namespace JapanMap.Vehicles
             _rb.linearVelocity = Vector3.zero;
             _rb.angularVelocity = Vector3.zero;
             _dyn.Reset();
+            // A respawned car starts in first with no air time or held heading left from the last run.
+            _gearbox.Reset();
+            _airTime = 0f;
+            _holdHeading = false;
             Input = default;
             Physics.SyncTransforms();
         }

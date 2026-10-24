@@ -19,6 +19,7 @@ namespace JapanMap.Tests.Vehicles
     /// getting stuck, no respawn, staying on the road. Game time runs 10× fast.
     /// Writes Captures/acceptance-drive.txt.
     /// </summary>
+    [FreshSave]
     public class AcceptanceDriveTests
     {
         float _timeScale, _maxDelta;

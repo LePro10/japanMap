@@ -66,7 +66,11 @@ namespace JapanMap.Core.Save
             PlayerPrefs.Save();
         }
 
-        public void Delete(string key) => PlayerPrefs.DeleteKey(_prefix + key);
+        public void Delete(string key)
+        {
+            PlayerPrefs.DeleteKey(_prefix + key);
+            PlayerPrefs.Save();
+        }
     }
 
     /// <summary>For tests: a store that lives as long as the object.</summary>

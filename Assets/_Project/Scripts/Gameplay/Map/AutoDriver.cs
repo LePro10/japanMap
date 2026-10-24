@@ -36,11 +36,12 @@ namespace JapanMap.Gameplay.Map
         readonly List<Crossing> _crossings = new();
         readonly List<float> _limits = new();
         readonly List<Vector3> _path = new();
-        float _offFor, _progressAt, _progressTime, _arrivedFor, _waitFor, _passFor, _laneOffset, _bars;
+        float _offFor, _progressAt, _progressTime, _arrivedFor, _waitFor, _jamFor, _passFor, _laneOffset, _bars;
         bool _armed, _hidHud;
         Vector2 _goal;
         static readonly RaycastHit[] Hits = new RaycastHit[8];
         int _mask;
+        RouteGraph _ownGraph; // only when there is no RouteGuide; built once, ~11k nodes
 
         UIDocument _doc;
         VisualElement _top, _bottom, _info, _prompt;
@@ -172,7 +173,7 @@ namespace JapanMap.Gameplay.Map
             if (!Plan()) { Refusal = "No road leads there"; if (_hud != null) _hud.ShowToast(Refusal); return; }
             IsActive = true;
             _armed = false;
-            _arrivedFor = _waitFor = _passFor = _offFor = 0f;
+            _arrivedFor = _waitFor = _jamFor = _passFor = _offFor = 0f;
             Replans = Recoveries = 0;
             if (_rig == null) _rig = FindAnyObjectByType<CarCameraRig>();
             if (_rig != null && _rig.Cinematic != null) _rig.Cinematic.Begin(_car, d => _pilot != null ? _pilot.Ahead(d) : _car.transform.position);
@@ -200,7 +201,7 @@ namespace JapanMap.Gameplay.Map
         bool Plan()
         {
             var guide = RouteGuide.Instance;
-            var graph = guide != null ? guide.Graph : new RouteGraph(_map.Roads);
+            var graph = guide != null ? guide.Graph : (_ownGraph ??= new RouteGraph(_map.Roads));
             var from = _car.transform.position;
             var to = new Vector3(_goal.x, from.y, _goal.y);
             if (graph == null || !graph.Find(from, to, _raw, _widths, _crossings)) return false;
@@ -234,6 +235,8 @@ namespace JapanMap.Gameplay.Map
             var lanes = new List<float>();
             var cross = new List<Crossing>();
             // Even spacing: the graph's nodes jump at crossings; even points smooth evenly.
+            // Floored: a spacing of 0 would never advance the loop below (the browser tab froze).
+            var spacing = Mathf.Max(_s.spacing, 0.5f);
             var carry = 0f;
             _path.Add(_raw[0]);
             lanes.Add(Lane(_widths[0]));
@@ -243,7 +246,7 @@ namespace JapanMap.Gameplay.Map
                 var a = _raw[i - 1];
                 var b = _raw[i];
                 var len = Vector3.Distance(a, b);
-                var t = _s.spacing - carry;
+                var t = spacing - carry;
                 var first = true;
                 while (t <= len)
                 {
@@ -252,12 +255,12 @@ namespace JapanMap.Gameplay.Map
                     // The crossing node itself lands between two even points: mark the first one after it.
                     var k = Crossing.None;
                     if (first) k = _crossings[i - 1];
-                    if (t + _s.spacing > len && _crossings[i] > k) k = _crossings[i];
+                    if (t + spacing > len && _crossings[i] > k) k = _crossings[i];
                     cross.Add(k);
                     first = false;
-                    t += _s.spacing;
+                    t += spacing;
                 }
-                carry = len - (t - _s.spacing);
+                carry = len - (t - spacing);
             }
             if (Vector3.Distance(_path[^1], _raw[^1]) > 0.5f) { _path.Add(_raw[^1]); lanes.Add(0f); cross.Add(Crossing.None); }
             // Distance to the nearest crossing along the route, both ways (m): any crossing for the lane, a stepped one for the pace.
@@ -362,6 +365,8 @@ namespace JapanMap.Gameplay.Map
             _pilot.speedCap = cap;
             var blocked = cap < 2f && speed < 2f;
             _waitFor = blocked ? _waitFor + Time.fixedDeltaTime : 0f;
+            // Unlike _waitFor this is not reset by a pull-out: a jam that never clears is stuck (see Watch).
+            _jamFor = blocked ? _jamFor + Time.fixedDeltaTime : 0f;
             if (_waitFor > _s.passAfter && _passFor <= 0f)
             {
                 _passFor = 6f; // pull out into the other lane for a while
@@ -411,12 +416,14 @@ namespace JapanMap.Gameplay.Map
                 if (!Plan()) Stop("Auto-drive lost the road");
                 return;
             }
-            if (_pilot.Position > _progressAt + 3f || _waitFor > 0f)
+            // Waiting behind something is not stuck, but only for stuckSeconds: a car that never moves on
+            // (a pedestrian or parked car that stays) would otherwise wait for good.
+            if (_pilot.Position > _progressAt + 3f || (_waitFor > 0f && _jamFor < _s.stuckSeconds))
             {
                 _progressAt = _pilot.Position;
                 _progressTime = Time.time;
             }
-            else if (Time.time - _progressTime > _s.stuckSeconds) Recover();
+            else if (_waitFor > 0f || Time.time - _progressTime > _s.stuckSeconds) Recover();
         }
 
         /// <summary>Stuck for good: the car goes back onto the route a little ahead, facing along it.</summary>
@@ -428,7 +435,8 @@ namespace JapanMap.Gameplay.Map
             var dir = _pilot.Ahead(14f) - at;
             _car.Place(at, Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg, fromAbove: 3f);
             Replans++;
-            Plan();
+            _waitFor = _jamFor = 0f; // the jam was at the old place; without this Recover would fire every step
+            if (!Plan()) Stop("Auto-drive lost the road"); // same end as an off-route replan that finds no road
         }
 
         // ── look: letterbox, HUD away, a quiet line about the destination ───────

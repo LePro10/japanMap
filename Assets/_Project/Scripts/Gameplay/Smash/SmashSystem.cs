@@ -61,6 +61,16 @@ namespace JapanMap.Gameplay.Smash
         void OnEnable() => InstanceCollider.Hit += OnInstanceHit;
         void OnDisable() => InstanceCollider.Hit -= OnInstanceHit;
 
+        // Start() changes state that outlives this system (a static cutter hook, the global physics matrix).
+        // Undo it on destroy, not disable: Start runs only once, so a re-enabled system would lose its setup.
+        void OnDestroy()
+        {
+            if (MeshCutter.InUse != null && ReferenceEquals(MeshCutter.InUse.Target, this)) MeshCutter.InUse = null;
+            var debris = GameLayers.Layer(GameLayers.Debris);
+            foreach (var other in new[] { GameLayers.Vehicle, GameLayers.Walker, GameLayers.Pedestrian })
+                Physics.IgnoreLayerCollision(debris, GameLayers.Layer(other), false);
+        }
+
         void OnInstanceHit(InstanceRenderer r, int index, Collision c)
         {
             var body = c.rigidbody;

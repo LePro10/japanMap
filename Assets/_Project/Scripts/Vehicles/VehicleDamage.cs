@@ -64,6 +64,8 @@ namespace JapanMap.Vehicles
         readonly bool[] _lost = new bool[VehicleController.WheelCount];
         readonly GameObject[] _loose = new GameObject[VehicleController.WheelCount];
         readonly float[] _looseAt = new float[VehicleController.WheelCount];
+        // The loose wheels' bodies, kept with _loose so Update does not GetComponent every frame.
+        readonly Rigidbody[] _looseBody = new Rigidbody[VehicleController.WheelCount];
         readonly Dictionary<Collider, float> _slid = new();
         int _seed, _dentFrame = -1, _hitFrame = -1;
         readonly bool[] _drooped = new bool[2]; // front, rear: once per end until repaired
@@ -514,6 +516,7 @@ namespace JapanMap.Vehicles
             rb.mass = _s.looseWheelMass;
             rb.interpolation = RigidbodyInterpolation.Interpolate;
             rb.angularDamping = 0.2f;
+            _looseBody[i] = rb;
             return _loose[i] = go;
         }
 
@@ -663,7 +666,7 @@ namespace JapanMap.Vehicles
             {
                 var go = _loose[i];
                 if (go == null || !go.activeSelf || Time.time - _looseAt[i] < _s.looseWheelLife) continue;
-                var rb = go.GetComponent<Rigidbody>();
+                var rb = _looseBody[i];
                 if (!rb.isKinematic) rb.isKinematic = true;
                 go.transform.position += Vector3.down * (0.4f * Time.deltaTime);
                 if (Time.time - _looseAt[i] > _s.looseWheelLife + 3f) go.SetActive(false);

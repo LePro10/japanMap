@@ -39,9 +39,15 @@ namespace JapanMap.Gameplay.Content
         [Tooltip("Road tiles count as this fraction of their distance: they are small (< 1 s on 5 Mbit/s) and the player drives on " +
                  "bare terrain until they come; a nearby place like Tokyo took 19 s first (Phase 11, measured).")]
         [SerializeField, Range(0.05f, 1f)] float roadDistanceFactor = 0.2f;
+        [Tooltip("Seconds to wait before asking again for a place whose load failed (a network blip, not a missing place).")]
+        [SerializeField] float retryDelay = 2f;
 
+        // Same idea as StreamedTerrain: a few tries, then give up, so one bad download cannot hold the quality automatic.
+        const int Tries = 3;
         readonly HashSet<string> _loaded = new();
         readonly HashSet<string> _failed = new();
+        readonly Dictionary<string, int> _attempts = new();
+        readonly Dictionary<string, float> _retryAt = new();
         string _busy;
         float _readySince = -1f;
         bool _started;
@@ -134,13 +140,15 @@ namespace JapanMap.Gameplay.Content
             var bestD = float.MaxValue;
             foreach (var p in places)
             {
-                if (_loaded.Contains(p.address) || _failed.Contains(p.address) || p.address == _busy) continue;
+                if (_loaded.Contains(p.address) || _failed.Contains(p.address) || p.address == _busy || Waiting(p.address)) continue;
                 var d = (new Vector2(p.centre.x, p.centre.z) - new Vector2(at.x, at.z)).sqrMagnitude;
                 if (p.address.StartsWith(RoadPrefix)) d *= roadDistanceFactor * roadDistanceFactor;
                 if (d < bestD) { bestD = d; best = p.address; }
             }
             return best;
         }
+
+        bool Waiting(string address) => _retryAt.TryGetValue(address, out var until) && Time.unscaledTime < until;
 
         Vector3 PlayerPosition()
         {
@@ -167,8 +175,16 @@ namespace JapanMap.Gameplay.Content
                 if (_busy == address) _busy = null;
                 if (h.Status != AsyncOperationStatus.Succeeded)
                 {
+                    var n = _attempts.GetValueOrDefault(address) + 1;
+                    _attempts[address] = n;
+                    if (n < Tries)
+                    {
+                        _retryAt[address] = Time.unscaledTime + retryDelay;
+                        Debug.Log($"[Content] {address} failed (try {n} of {Tries}), again in {retryDelay} s: {h.OperationException?.Message}");
+                        return;
+                    }
                     _failed.Add(address);
-                    Debug.LogWarning($"[Content] {address} failed: {h.OperationException?.Message}");
+                    Debug.LogWarning($"[Content] {address} failed after {Tries} tries, giving up: {h.OperationException?.Message}");
                     return;
                 }
                 if (!Application.isEditor) Debug.Log($"[Content] {address} in {Time.realtimeSinceStartup - t0:0.0} s");

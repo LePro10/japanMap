@@ -17,8 +17,12 @@ namespace JapanMap.Tests
     {
         public static MemoryStore Store { get; private set; }
 
+        // Restored after each test, so the next class (which may not be FreshSave) gets the store it had before.
+        static ISaveStore _previous;
+
         public IEnumerator BeforeTest(ITest test)
         {
+            _previous = SaveStores.Current;
             Store = new MemoryStore();
             SaveStores.Current = Store;
             // A fresh save would get today's daily bonus a few seconds in: tests that count Sparks expect only theirs.
@@ -29,6 +33,8 @@ namespace JapanMap.Tests
         public IEnumerator AfterTest(ITest test)
         {
             JapanMap.Gameplay.Progress.DailySystem.AutoBonus = true;
+            SaveStores.Current = _previous;
+            _previous = null;
             yield break;
         }
     }

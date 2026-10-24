@@ -35,16 +35,6 @@ namespace JapanMap.Gameplay.Drift
         /// <summary>Last measured contact loss, km/h (diagnostics and tests).</summary>
         public float LastContactKmh { get; private set; }
 
-        public void Configure(DriftSettings s, DriftZoneSet z, PlayerModeController p, SparksWallet w, VehicleRespawn r = null)
-        {
-            respawn = r;
-            settings = s;
-            zones = z;
-            player = p;
-            wallet = w;
-            _chain = null;
-        }
-
         void OnEnable()
         {
             Chain.Ended += OnEnded;

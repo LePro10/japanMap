@@ -65,6 +65,8 @@ namespace JapanMap.Gameplay.Menu
         {
             _selected = "";
             FreePostcard();
+            // Build subscribes again on the next visit; MapScreen has no OnDisable, so leaving the tab is its end.
+            if (_map != null) _map.ArtLoaded -= OnArt;
         }
 
         void FreePostcard()
@@ -96,7 +98,9 @@ namespace JapanMap.Gameplay.Menu
             for (var i = 0; i < FilterNames.Length; i++)
             {
                 var f = (MapFilter)i;
-                Ui.On(Ui.Button(head, FilterNames[i], () => { _filter = f; Refresh(); Menu.Rebuild(); }, "nm-chip"), _filter == f, "nm-chip--on");
+                var chip = Ui.Button(head, FilterNames[i], () => { _filter = f; Refresh(); Menu.Rebuild(); }, "nm-chip");
+                Ui.On(chip, _filter == f, "nm-chip--on");
+                chip.name = "map-filter-" + i; // named, so GameMenu.Rebuild keeps the focus on this chip
             }
             Ui.Button(head, "Me", () => { var p = _map.PlayerPosition; _centre = new Vector2(p.x, p.z); Apply(); }, "nm-chip");
             if (_travel != null) Ui.Button(head, "Go home", () => { Menu.Close(); _travel.ToCommons(); }, "nm-chip");

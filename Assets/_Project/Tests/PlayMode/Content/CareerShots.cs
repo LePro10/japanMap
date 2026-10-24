@@ -28,6 +28,7 @@ namespace JapanMap.Tests.Content
         public void TearDown()
         {
             CareerSystem.RunInEditor = false;
+            UiShots.RestorePanel();
             UiPanel.ForcedForm = null;
             Time.timeScale = 1f;
             AudioListener.pause = false;

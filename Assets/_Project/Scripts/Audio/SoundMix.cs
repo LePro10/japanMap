@@ -1,4 +1,5 @@
 using System;
+using JapanMap.Core;
 using JapanMap.Core.Platform;
 using UnityEngine;
 
@@ -61,6 +62,7 @@ namespace JapanMap.Audio
             Load();
             _volume[(int)g] = Mathf.Clamp01(v);
             PlayerPrefs.SetFloat(Prefix + g, _volume[(int)g]);
+            PrefsSaver.Throttled(); // the volume slider calls this every frame of a drag
             Changed?.Invoke();
         }
 
@@ -75,6 +77,7 @@ namespace JapanMap.Audio
                 Load();
                 _muted = value;
                 PlayerPrefs.SetInt(Prefix + "muted", value ? 1 : 0);
+                PlayerPrefs.Save();
                 ApplyListener();
                 Changed?.Invoke();
             }

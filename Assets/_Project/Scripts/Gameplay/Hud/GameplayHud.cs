@@ -67,6 +67,11 @@ namespace JapanMap.Gameplay.Hud
         readonly Queue<string> _toasts = new();
         readonly Dictionary<object, string> _prompts = new();
         FormFactor _builtFor;
+        // Last values shown in labels: a label is rewritten only when its rounded number changes (no string per frame).
+        // ForgetShownText() clears them, since Build() makes new labels that still show nothing.
+        int _sparksShown = int.MinValue, _pointsShown = int.MinValue, _multShown = int.MinValue, _speedKey = int.MinValue, _goalDist = int.MinValue;
+        bool _speedMph, _goalMph;
+        string _speedText = "", _regionTitle, _goalTitleShown;
 
         static readonly Color Gold = new(0.95f, 0.77f, 0.42f);
         static readonly Color Rose = new(0.91f, 0.66f, 0.75f);
@@ -133,9 +138,17 @@ namespace JapanMap.Gameplay.Hud
 
         // ── build ─────────────────────────────────────────────────────────────
 
+        void ForgetShownText()
+        {
+            _sparksShown = _pointsShown = _multShown = _speedKey = _goalDist = int.MinValue;
+            _speedMph = _goalMph = false;
+            _regionTitle = _goalTitleShown = null;
+        }
+
         void Build()
         {
             _builtFor = UiPanel.Form;
+            ForgetShownText();
             var hidden = _root != null && _root.style.display == DisplayStyle.None;
             var doc = _doc.rootVisualElement;
             doc.Clear();
@@ -852,7 +865,7 @@ namespace JapanMap.Gameplay.Hud
             UpdateMap();
             if (wallet != null)
             {
-                _sparks.text = $"{wallet.Balance:N0} Sparks";
+                if (wallet.Balance != _sparksShown) { _sparksShown = wallet.Balance; _sparks.text = $"{_sparksShown:N0} Sparks"; }
                 var show = Time.unscaledTime < _sparksUntil || _savedUntil > 0f;
                 _sparks.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
             }
@@ -860,7 +873,8 @@ namespace JapanMap.Gameplay.Hud
             if (Time.time >= _toastUntil)
             {
                 var next = !_held && _toasts.Count > 0 ? _toasts.Dequeue() : "";
-                ShowToastNow(next);
+                // Touch the lane only when it changes: an empty queue would reset it every frame.
+                if (next != "" || (_toast != null && _toast.text != "")) ShowToastNow(next);
                 if (next != "") { _toastUntil = Time.time + toastSeconds; Pop(_toastRow); }
             }
             _banner.style.display = Time.time < _bannerUntil ? DisplayStyle.Flex : DisplayStyle.None;
@@ -874,9 +888,9 @@ namespace JapanMap.Gameplay.Hud
             _driftBox.style.display = showChain ? DisplayStyle.Flex : DisplayStyle.None;
             if (showChain)
             {
-                _points.text = c.Pending.ToString("N0");
-                var mult = $"×{c.Multiplier}";
-                if (_mult.text != mult) { _mult.text = mult; Pop(_mult, 1.5f); }
+                var pts = Mathf.RoundToInt(c.Pending);
+                if (pts != _pointsShown) { _pointsShown = pts; _points.text = c.Pending.ToString("N0"); }
+                if (c.Multiplier != _multShown) { _multShown = c.Multiplier; _mult.text = $"×{c.Multiplier}"; Pop(_mult, 1.5f); }
                 _barFill.style.width = Length.Percent(c.NextStepProgress * 100f);
                 // Fading link time: the chain is still alive but about to bank.
                 _points.style.opacity = c.Scoring ? 1f : 0.55f;
@@ -908,7 +922,11 @@ namespace JapanMap.Gameplay.Hud
             _burstShown = t.burst;
             _burstTag.style.opacity = Mathf.Clamp01(t.burst * 1.6f);
             if (t.burst <= 0f) _burstTag.style.display = DisplayStyle.None;
-            _instrument.Set(g.Rpm, g.Spec.redline, g.Spec.limiter, Vehicles.Gearbox.Label(g.Gear), GameOptions.Speed(t.speed), GameOptions.SpeedUnit, t.boost, t.boosting);
+            // The speed text is rebuilt only when the shown whole number or the unit changes.
+            var mph = GameOptions.Mph;
+            var speedKey = Mathf.RoundToInt(t.speed * (mph ? 2.23694f : 3.6f));
+            if (speedKey != _speedKey || mph != _speedMph) { _speedKey = speedKey; _speedMph = mph; _speedText = GameOptions.Speed(t.speed); }
+            _instrument.Set(g.Rpm, g.Spec.redline, g.Spec.limiter, Vehicles.Gearbox.Label(g.Gear), _speedText, GameOptions.SpeedUnit, t.boost, t.boosting);
             // The race checkpoint, else the player's waypoint (cleared on arrival).
             Vector3? aim = _target;
             if (!aim.HasValue && map != null && map.Waypoint.HasValue)
@@ -925,8 +943,16 @@ namespace JapanMap.Gameplay.Hud
             {
                 var flat = new Vector2(aim.Value.x - car.transform.position.x, aim.Value.z - car.transform.position.z);
                 var named = _goalAt.HasValue && map.Waypoint == _goalAt && _goalTitle != "";
-                var text = named ? $"{_goalTitle} · {GameOptions.Distance(flat.magnitude)}" : GameOptions.Distance(flat.magnitude);
-                if (_goal.text != text) _goal.text = text;
+                // Rebuilt only when the name, the unit or the shown distance changes. 10 m is finer than any step
+                // GameOptions.Distance shows (metres, 0.1 km, 0.1 mi), so the key never hides a change.
+                var dist = Mathf.RoundToInt(flat.magnitude / 10f);
+                var title = named ? _goalTitle : null;
+                if (dist != _goalDist || mph != _goalMph || title != _goalTitleShown)
+                {
+                    _goalDist = dist; _goalMph = mph; _goalTitleShown = title;
+                    var distance = GameOptions.Distance(flat.magnitude);
+                    _goal.text = named ? $"{_goalTitle} · {distance}" : distance;
+                }
             }
             _goal.style.display = labelled ? DisplayStyle.Flex : DisplayStyle.None;
             if (aim.HasValue)
@@ -967,7 +993,7 @@ namespace JapanMap.Gameplay.Hud
             if (rw != null && rw.Current >= 0)
             {
                 var title = rw.Regions.regions[rw.Current].title;
-                if (_region.text != title) { _region.text = title.ToUpperInvariant(); _regionJp.text = UI.Jp.Region(title); }
+                if (title != _regionTitle) { _regionTitle = title; _region.text = title.ToUpperInvariant(); _regionJp.text = UI.Jp.Region(title); }
             }
         }
 
@@ -1007,9 +1033,10 @@ namespace JapanMap.Gameplay.Hud
         static Label Text(VisualElement parent, float size, Color color)
         {
             var l = new Label { pickingMode = PickingMode.Ignore, enableRichText = true };
-            l.style.fontSize = size;
+            // Phone scale (k 0.62) would shrink small labels to about 7 px; 12 px is the readable floor.
+            l.style.fontSize = Mathf.Max(12f, size);
             l.style.color = color;
-            l.AddToClassList("jm-hud-text"); // Barlow SemiBold (Game.uss), not a synthesized bold
+            l.AddToClassList("jm-hud-text"); // Archivo Label SDF (Game.uss), not a synthesized bold
             l.style.unityTextAlign = TextAnchor.MiddleCenter;
             l.style.textShadow = new TextShadow { offset = new Vector2(0f, 2f), blurRadius = 6f, color = new Color(0f, 0f, 0f, 0.8f) };
             parent.Add(l);

@@ -80,7 +80,18 @@ for (;;) {
     retry = true;
     break;
   }
-  if (!d?.result?.summary) console.log(`  (no summary — job status ${d?.status}: ${JSON.stringify(d).slice(0, 300)})`);
+  if (!d?.result?.summary) {
+    console.log(`  (no summary — job status ${d?.status}: ${JSON.stringify(d).slice(0, 300)})`);
+    // A file written into Assets during the run makes Unity reload the domain and drop the job (2026-10-24: 46/247).
+    const { readdirSync, statSync } = await import('node:fs');
+    const changed = [];
+    const walk = (dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = `${dir}/${e.name}`;
+      if (e.isDirectory()) walk(p); else if (!e.name.endsWith('.meta') && statSync(p).mtimeMs > t0) changed.push(p);
+    } };
+    try { walk(new URL('../Assets/_Project', import.meta.url).pathname); } catch { /* best effort */ }
+    if (changed.length) console.log(`  files changed during the run (Unity reloaded and lost the job — never edit Assets while tests run):\n    ${changed.slice(0, 8).join('\n    ')}`);
+  }
   const ok = d?.status === 'succeeded' && s.failed === 0 && s.total > 0;
   console.log(`${ok ? 'PASS' : 'FAIL'} · ${mode}${group ? ' ' + group : ''} · ${s.passed}/${s.total} passed, ${s.failed} failed, ${s.skipped} skipped · ${Math.round(s.durationSeconds ?? 0)} s`);
   for (const f of d?.result?.results ?? d?.result?.tests ?? []) if (f.state !== 'Passed') console.log(`  ✗ ${f.fullName ?? f.name}: ${(f.message ?? '').slice(0, 400)}`);

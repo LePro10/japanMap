@@ -49,7 +49,8 @@ namespace JapanMap.Gameplay.Drift
                 var i = Multiplier - 1;
                 if (i >= steps.Length) return 1f;
                 var from = i == 0 ? 0f : steps[i - 1];
-                return Mathf.Clamp01((_driftTime - from) / (steps[i] - from));
+                // Equal steps would divide by zero; the epsilon only matters for such a broken setting.
+                return Mathf.Clamp01((_driftTime - from) / Mathf.Max(steps[i] - from, 1e-4f));
             }
         }
         public float DriftTime => _driftTime;
@@ -64,8 +65,9 @@ namespace JapanMap.Gameplay.Drift
         public float Rate(float kmh, float angleDeg)
         {
             if (kmh < _s.minKmh || angleDeg < _s.minAngle || angleDeg > _s.maxAngle) return 0f;
-            var speed = Mathf.Min(_s.speedCap, 1f + (kmh - _s.refKmh) / (_s.speedCapKmh - _s.refKmh) * (_s.speedCap - 1f));
-            var angle = Mathf.Min(_s.angleCap, 1f + (angleDeg - _s.refAngle) / (_s.angleCapDeg - _s.refAngle) * (_s.angleCap - 1f));
+            // Cap equal to reference would divide by zero (NaN rate); the epsilon keeps the factor at 1 there.
+            var speed = Mathf.Min(_s.speedCap, 1f + (kmh - _s.refKmh) / Mathf.Max(_s.speedCapKmh - _s.refKmh, 1e-4f) * (_s.speedCap - 1f));
+            var angle = Mathf.Min(_s.angleCap, 1f + (angleDeg - _s.refAngle) / Mathf.Max(_s.angleCapDeg - _s.refAngle, 1e-4f) * (_s.angleCap - 1f));
             return _s.baseRate * speed * angle;
         }
 

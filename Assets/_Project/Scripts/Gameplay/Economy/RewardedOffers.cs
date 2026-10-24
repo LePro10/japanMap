@@ -155,13 +155,20 @@ namespace JapanMap.Gameplay.Economy
         /// </summary>
         public void BorrowByAd(string carId, Action<bool> answered)
         {
+            // Check what Borrow needs before the ad: a watched ad must never end without a loan.
+            if (garage == null || progress == null || progress.Fleet == null || progress.Fleet.Get(carId) == null || garage.TestDriving)
+            {
+                answered?.Invoke(false);
+                return;
+            }
             GamePlatform.ShowRewarded(outcome =>
             {
                 var ok = outcome == AdOutcome.Rewarded;
                 answered?.Invoke(ok);
                 if (!ok) return;
                 _policy.LoanWatched();
-                garage.Borrow(carId, settings.loanSeconds);
+                // Borrow can still refuse after the ad (no car to return to); say so instead of failing silently.
+                if (!garage.Borrow(carId, settings.loanSeconds)) Debug.LogWarning($"[Ad] loan of {carId} refused after the ad");
             });
         }
 
