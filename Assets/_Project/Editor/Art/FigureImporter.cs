@@ -263,7 +263,9 @@ namespace JapanMap.Editor.Art
                 new FigureSet.AnimalLook { kind = "cat", prefabs = A("Cat_") },
                 new FigureSet.AnimalLook { kind = "chicken", prefabs = A("Chicken_") },
                 new FigureSet.AnimalLook { kind = "goat", prefabs = A("Goat") },
-                new FigureSet.AnimalLook { kind = "crow", prefabs = A("Crow") },
+                // The perched crow sits on power poles (AnimalSpots); on the ground it would look wrong.
+                new FigureSet.AnimalLook { kind = "crow", prefabs = A("Crow").Where(g => !g.name.EndsWith("_Perch")).ToArray() },
+                new FigureSet.AnimalLook { kind = "crowPerch", prefabs = A("Crow_Perch") },
                 new FigureSet.AnimalLook { kind = "pigeon", prefabs = A("Pigeon") },
                 new FigureSet.AnimalLook { kind = "dog", prefabs = A("Shiba_") },
             };

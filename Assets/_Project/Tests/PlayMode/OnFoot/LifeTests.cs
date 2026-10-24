@@ -62,12 +62,20 @@ namespace JapanMap.Tests.OnFoot
             yield return BootGame();
             var actors = Object.FindAnyObjectByType<PlaceActors>();
             Assert.NotNull(actors, "no PlaceActors in Game.unity");
-            Assert.That(actors.Count, Is.EqualTo(37), "6 Sakura + 17 Funaura + 14 Stillwater");
             var data = actors.Data.actors;
-            foreach (var kind in new[] { "worker", "fisher", "visitor", "seated", "cat", "goat", "chicken" })
+            Assert.That(data.Count(a => a.place != "world"), Is.EqualTo(37), "6 Sakura + 17 Funaura + 14 Stillwater");
+            // World animals beside map props (AnimalSpots): pigeons at shrines, crows on poles, dogs at farms.
+            Assert.That(data.Count(a => a.place == "world"), Is.InRange(30, 120), "world animals");
+            foreach (var kind in new[] { "worker", "fisher", "visitor", "seated", "cat", "goat", "chicken", "pigeon", "crow", "crowPerch", "dog" })
                 Assert.That(data.Count(a => a.kind == kind), Is.GreaterThan(0), kind);
             foreach (var a in data)
             {
+                if (a.kind == "crowPerch")
+                {
+                    Assert.IsTrue(Physics.Raycast(a.position + new Vector3(2f, -0.5f, 0f), Vector3.down, out var below, 20f, ~GameLayers.NotGround), $"pole crow at {a.position}: no ground (2 m beside the pole, clear of it)");
+                    Assert.That(a.position.y - below.point.y, Is.GreaterThan(4.5f), $"pole crow at {a.position} is not up on a pole");
+                    continue;
+                }
                 Assert.IsTrue(Physics.Raycast(a.position + Vector3.up * 3f, Vector3.down, out var hit, 10f, ~GameLayers.NotGround), $"{a.place} {a.kind}: no ground under {a.position}");
                 Assert.That(Mathf.Abs(hit.point.y - a.position.y), Is.LessThan(1f), $"{a.place} {a.kind} floats or sinks at {a.position}");
             }

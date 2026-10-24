@@ -334,6 +334,8 @@ MonoBehaviour:
   - kind: crow
     prefabs:
     - {fileID: 7295962420439738928, guid: 601ad0e21e3db469f9b16868fb8297f1, type: 3}
+  - kind: crowPerch
+    prefabs:
     - {fileID: 2308949857945392004, guid: e7c396c868029429eb70cd3cf7fdeb1d, type: 3}
   - kind: pigeon
     prefabs:

@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77d304d621a6c47049169bd2483e0050, type: 3}
+  m_Name: AnimalSpots
+  m_EditorClassIdentifier: JapanMap.Editor::JapanMap.Editor.Life.AnimalSpots
+  rules:
+  - prop: torii
+    kind: pigeon
+    every: 1
+    count: 2
+    radius: {x: 1.5, y: 4}
+    onTop: 0
+  - prop: chozuya
+    kind: pigeon
+    every: 1
+    count: 3
+    radius: {x: 2, y: 4}
+    onTop: 0
+  - prop: templeHall
+    kind: pigeon
+    every: 1
+    count: 3
+    radius: {x: 8, y: 12}
+    onTop: 0
+  - prop: powerPole
+    kind: crowPerch
+    every: 5
+    count: 1
+    radius: {x: 0, y: 0}
+    onTop: 1
+  - prop: fishHut
+    kind: crow
+    every: 2
+    count: 1
+    radius: {x: 4, y: 7}
+    onTop: 0
+  - prop: farmhouse
+    kind: dog
+    every: 2
+    count: 1
+    radius: {x: 8, y: 11}
+    onTop: 0

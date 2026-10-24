@@ -161,3 +161,203 @@ MonoBehaviour:
     kind: worker
     position: {x: -1278, y: 28.110798, z: -410}
     yaw: 31.030977
+  - place: world
+    kind: pigeon
+    position: {x: 819.8723, y: 148.37755, z: 932.3406}
+    yaw: 307.59338
+  - place: world
+    kind: pigeon
+    position: {x: 820.97144, y: 149.01723, z: 933.9961}
+    yaw: 353.9062
+  - place: world
+    kind: pigeon
+    position: {x: 823.449, y: 145.58905, z: 914.7639}
+    yaw: 202.51375
+  - place: world
+    kind: pigeon
+    position: {x: 827.1674, y: 145.31447, z: 914.2107}
+    yaw: 185.70984
+  - place: world
+    kind: pigeon
+    position: {x: 829.26953, y: 140.93971, z: 902.39374}
+    yaw: 94.61003
+  - place: world
+    kind: pigeon
+    position: {x: 826.4563, y: 140.81248, z: 901.6658}
+    yaw: 11.69728
+  - place: world
+    kind: pigeon
+    position: {x: 834.59985, y: 138.70862, z: 884.3992}
+    yaw: 328.0162
+  - place: world
+    kind: pigeon
+    position: {x: 832.2122, y: 139.21475, z: 887.61835}
+    yaw: 327.10123
+  - place: world
+    kind: pigeon
+    position: {x: 835.7431, y: 137.5598, z: 867.7654}
+    yaw: 86.07765
+  - place: world
+    kind: pigeon
+    position: {x: 836.83374, y: 137.39143, z: 867.0039}
+    yaw: 121.726326
+  - place: world
+    kind: pigeon
+    position: {x: 836.72437, y: 136.50533, z: 856.9106}
+    yaw: 319.73438
+  - place: world
+    kind: pigeon
+    position: {x: 839.6831, y: 135.6211, z: 854.5049}
+    yaw: 208.12125
+  - place: world
+    kind: pigeon
+    position: {x: 839.5932, y: 132.67868, z: 840.24005}
+    yaw: 59.491196
+  - place: world
+    kind: pigeon
+    position: {x: 840.76184, y: 132.71443, z: 840.82214}
+    yaw: 168.97507
+  - place: world
+    kind: pigeon
+    position: {x: 842.5337, y: 131.26566, z: 819.3345}
+    yaw: 189.09598
+  - place: world
+    kind: pigeon
+    position: {x: 840.25146, y: 131.34138, z: 820.1089}
+    yaw: 103.71717
+  - place: world
+    kind: pigeon
+    position: {x: 843.3789, y: 131.30655, z: 806.3613}
+    yaw: 195.44191
+  - place: world
+    kind: pigeon
+    position: {x: 844.9597, y: 131.26001, z: 808.35913}
+    yaw: 179.26305
+  - place: world
+    kind: pigeon
+    position: {x: 831.0503, y: 149.34315, z: 933.8213}
+    yaw: 99.63218
+  - place: world
+    kind: pigeon
+    position: {x: 828.81494, y: 149.07176, z: 935.187}
+    yaw: 166.29193
+  - place: world
+    kind: pigeon
+    position: {x: 831.69604, y: 149.2768, z: 933.43945}
+    yaw: 129.54889
+  - place: world
+    kind: pigeon
+    position: {x: 820.9075, y: 151.99069, z: 945.2106}
+    yaw: 335.39236
+  - place: world
+    kind: pigeon
+    position: {x: 811.71313, y: 153.56956, z: 948.2908}
+    yaw: 144.38501
+  - place: world
+    kind: pigeon
+    position: {x: 814.84595, y: 153.97336, z: 960.8596}
+    yaw: 349.48923
+  - place: world
+    kind: crowPerch
+    position: {x: -1380, y: 33.636997, z: 180}
+    yaw: 180.37645
+  - place: world
+    kind: crowPerch
+    position: {x: -1164.62, y: 34.821907, z: 45.38}
+    yaw: 129.08076
+  - place: world
+    kind: crowPerch
+    position: {x: -949.23, y: 34.821907, z: -89.23}
+    yaw: 62.476963
+  - place: world
+    kind: crowPerch
+    position: {x: -733.85, y: 35.58799, z: -223.85}
+    yaw: 233.65845
+  - place: world
+    kind: crowPerch
+    position: {x: -518.46, y: 37.283382, z: -358.46}
+    yaw: 107.928
+  - place: world
+    kind: crowPerch
+    position: {x: -303.08, y: 39.25256, z: -493.08}
+    yaw: 147.42313
+  - place: world
+    kind: crowPerch
+    position: {x: 1422.21, y: 36.548717, z: -122.16}
+    yaw: 276.83447
+  - place: world
+    kind: crowPerch
+    position: {x: 188.05, y: 44.690372, z: -174.08}
+    yaw: 205.31355
+  - place: world
+    kind: crowPerch
+    position: {x: 1290.39, y: 70.199295, z: 297.94}
+    yaw: 5.3586173
+  - place: world
+    kind: crowPerch
+    position: {x: 1007.66, y: 63.445126, z: 346.43}
+    yaw: 349.5305
+  - place: world
+    kind: crowPerch
+    position: {x: 191.33, y: 40.94318, z: -404.71}
+    yaw: 272.19458
+  - place: world
+    kind: crowPerch
+    position: {x: 267.88, y: 42.68678, z: 274.84}
+    yaw: 105.77265
+  - place: world
+    kind: crowPerch
+    position: {x: 999.65, y: 36.9457, z: -595.31}
+    yaw: 0.6223955
+  - place: world
+    kind: crowPerch
+    position: {x: 1011.34, y: 39.30958, z: -490.31}
+    yaw: 206.41588
+  - place: world
+    kind: crow
+    position: {x: 710.13184, y: 0.27272797, z: -1039.1373}
+    yaw: 323.86374
+  - place: world
+    kind: crow
+    position: {x: 730.3833, y: 1.5465965, z: -983.8312}
+    yaw: 325.28308
+  - place: world
+    kind: crow
+    position: {x: 763.0183, y: 0.28120422, z: -1009.76965}
+    yaw: 126.4682
+  - place: world
+    kind: crow
+    position: {x: 798.98364, y: 0.31809616, z: -999.68396}
+    yaw: 129.63765
+  - place: world
+    kind: crow
+    position: {x: 835.57007, y: 0.26343536, z: -1012.07635}
+    yaw: 53.054302
+  - place: world
+    kind: dog
+    position: {x: -895.1245, y: 28.028042, z: -546.9688}
+    yaw: 234.85747
+  - place: world
+    kind: dog
+    position: {x: 215.95471, y: 25.311726, z: -400.36255}
+    yaw: 144.43254
+  - place: world
+    kind: dog
+    position: {x: 987.16187, y: 25.915558, z: -551.4339}
+    yaw: 48.595985
+  - place: world
+    kind: dog
+    position: {x: 884.91235, y: 20.31937, z: -568.62756}
+    yaw: 238.93362
+  - place: world
+    kind: dog
+    position: {x: 1135.918, y: 44.872097, z: 247.90405}
+    yaw: 234.05325
+  - place: world
+    kind: dog
+    position: {x: 498.80713, y: 22.97931, z: -604.13525}
+    yaw: 239.13158
+  - place: world
+    kind: dog
+    position: {x: 168.58765, y: 43.240635, z: 351.28772}
+    yaw: 193.1746

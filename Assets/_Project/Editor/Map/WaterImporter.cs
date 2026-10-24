@@ -245,6 +245,22 @@ namespace JapanMap.Editor.Map
             mask[j * res + i] && mask[j * res + i + 1] && mask[(j + 1) * res + i] && mask[(j + 1) * res + i + 1];
 
         /// <summary>paddy.png → wet flags, index j * res + i with j south → north (PNG row 0 is north).</summary>
+        /// <summary>Is there paddy water at (or one mask cell around) this point? For placing things on dry land.</summary>
+        public static System.Func<Vector3, bool> PaddyAt(MapImportSettings settings)
+        {
+            var mask = PaddyMask(settings, out var res, out _);
+            const float worldSize = 3072f, half = worldSize / 2f; // as in PaddyMeshes
+            var step = worldSize / (res - 1);
+            return p =>
+            {
+                int ci = Mathf.RoundToInt((p.x + half) / step), cj = Mathf.RoundToInt((p.z + half) / step);
+                for (var j = cj - 1; j <= cj + 1; j++)
+                for (var i = ci - 1; i <= ci + 1; i++)
+                    if (i >= 0 && j >= 0 && i < res && j < res && mask[j * res + i]) return true;
+                return false;
+            };
+        }
+
         static bool[] PaddyMask(MapImportSettings settings, out int res, out bool[] keptDry)
         {
             var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false, true);
