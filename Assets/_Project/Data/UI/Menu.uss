@@ -197,11 +197,11 @@
 
 /* Phone on its side: a narrow rail on the left, the page in the middle, the car right. */
 .jm-menu.jm-landscape .jm-rail { width: 160px; padding: 8px 0; border-right-width: 1px; border-color: var(--line); }
-.jm-menu.jm-landscape .jm-tab { flex-direction: row; align-items: center; justify-content: flex-start; height: 42px; padding-left: 14px;
+.jm-menu.jm-landscape .jm-tab { flex-direction: row; align-items: center; justify-content: flex-start; height: 46px; padding-left: 14px;
     border-left-width: 4px; border-color: rgba(0, 0, 0, 0); }
 .jm-menu.jm-landscape .jm-tab--on { border-left-color: var(--momo); }
 .jm-menu.jm-landscape .jm-tab > Label { margin-left: 8px; font-size: 15px; }
-.jm-menu.jm-landscape .jm-continue { min-width: 0; min-height: 44px; font-size: 16px; margin: 0 10px 8px 10px; }
+.jm-menu.jm-landscape .jm-continue { min-width: 0; min-height: 48px; font-size: 16px; margin: 0 10px 8px 10px; }
 .jm-menu.jm-landscape.jm-page--narrow .jm-content { flex-grow: 0; width: 52%; margin: 8px 0 8px 10px; }
 .jm-menu.jm-landscape.jm-page--wide .jm-content { margin: 8px 8px 8px 10px; }
 
@@ -229,6 +229,9 @@
 .jm-menu .nm-carrow--on .nm-carrow__sub { color: rgba(23, 18, 31, 0.6); }
 .jm-menu .nm-carrow--on .nm-carrow__tag--driving { color: var(--momo); }
 .jm-menu.jm-phone .nm-carrow { min-height: 58px; }
+/* Touch targets on phones at least 44 CSS px (chips and back were 38/40, missed on the move). */
+.jm-menu.jm-phone .nm-chip { min-height: 44px; border-radius: 22px; }
+.jm-menu.jm-phone .nm-back { min-height: 44px; }
 .jm-menu.jm-phone .nm-carrow__pic { width: 84px; height: 44px; }
 .jm-menu.jm-phone .nm-carrow__name { font-size: 16px; }
 

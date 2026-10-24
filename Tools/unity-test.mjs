@@ -32,6 +32,11 @@ if (mode === 'EditMode' && !group) {
   console.log(`${bad ? 'FAIL' : 'PASS'} · EditMode · ${classes.length - bad}/${classes.length} classes green`);
   process.exit(bad ? 1 : 0);
 }
+// The group is a regex over full names: "Map" matched the namespace JapanMap.Tests and ran everything (2026-10-24, hung).
+if (group && new RegExp(group).test('JapanMap.Tests.')) {
+  console.error(`TEST BLOCKED · group "${group}" matches the namespace JapanMap.Tests — every test would run; use class names like "\\.MapTests\\."`);
+  process.exit(2);
+}
 const args = { mode, include_failed_tests: true, init_timeout: 120000, ...(group ? { group_names: [group] } : {}) };
 // A compile error makes Unity run the last good assemblies — tests would silently pass on old code.
 try {
