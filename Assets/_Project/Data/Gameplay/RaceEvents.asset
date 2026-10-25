@@ -212,9 +212,18 @@ MonoBehaviour:
   rescueMetres: 3
   rescueSeconds: 5
   followGap: 18
+  bandRange: 120
+  bandSpeed: 0.16
+  bandGrip: 0.12
   recoverPenalty: 3
   joinRadius: 12
   joinKmh: 15
   beaconDistance: 600
   abortDistance: 150
   abortSeconds: 10
+  ghostInTimeTrials: 1
+  ghostHz: 10
+  ghostMaterial: {fileID: 2100000, guid: c4ec30467fb94466aac05e9f1a55b547, type: 2}
+  ghostColor: {r: 0.55, g: 0.85, b: 1, a: 1}
+  ghostAlpha: 0.35
+  ghostFade: {x: 3, y: 9}

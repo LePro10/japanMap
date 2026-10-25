@@ -80,6 +80,12 @@ namespace JapanMap.Gameplay.Races
         InputAction _use;
         GameObject _traffic;
         VehicleDefinition _ownCar;
+        // Time trials: the best run so far (shown as a ghost car) and the run being recorded.
+        RaceGhost _ghost, _recording;
+        GameObject _ghostCar;
+        readonly List<Renderer> _ghostParts = new();
+        MaterialPropertyBlock _ghostBlock;
+        float _ghostClock;
 
         public State Current { get; private set; } = State.Idle;
         /// <summary>Join markers (position, event index) — map pins, travel.</summary>
@@ -89,6 +95,9 @@ namespace JapanMap.Gameplay.Races
         public RaceTrack Track => _track;
         public IReadOnlyList<Entrant> Entrants => _entrants;
         public float Elapsed { get; private set; }
+        /// <summary>The saved best run shown in this time trial (null: none yet, or not a time trial).</summary>
+        public RaceGhost Ghost => _ghost;
+        public GameObject GhostCar => _ghostCar;
         public Result Last { get; private set; }
         /// <summary>Tests and the acceptance drive: the player's car is driven by the AI as well.</summary>
         public bool Autopilot { get; set; }
@@ -230,6 +239,7 @@ namespace JapanMap.Gameplay.Races
                 car.Dynamics.BurstScale = racing ? car.Tuning.raceBurst : 1f;
             }
             ShowNearBeacons();
+            UpdateGhost();
             if (hud == null) return;
             switch (Current)
             {
@@ -403,6 +413,7 @@ namespace JapanMap.Gameplay.Races
             _penalty = _offTrack = 0f;
             _lastPassed = -1;
             Elapsed = 0f;
+            StartGhost();
             _timer = set.countdown;
             Current = State.Countdown;
             if (progress != null && progress.Data != null) { progress.Data.Event(id).runs++; progress.MarkDirty(); }
@@ -538,6 +549,9 @@ namespace JapanMap.Gameplay.Races
                 Finish(me, timedOut: true);
                 return;
             }
+            if (_recording != null)
+                while (_recording.Count <= Elapsed * _recording.hz)
+                    _recording.Add(me.car.transform.position, me.car.transform.rotation, me.progress.Progress);
             if (me.progress.Finished) Finish(me, timedOut: false);
             UpdateInfo();
             ShowGates();
@@ -650,6 +664,12 @@ namespace JapanMap.Gameplay.Races
             if (_event.kind == RaceKind.Race) lines.Add($"POS {PlaceOf(me)}/{_entrants.Count}");
             if (_track.Closed) lines.Add($"LAP {Mathf.Min(me.progress.Laps + 1, _event.laps)}/{_event.laps}");
             lines.Add(Clock(Elapsed + _penalty));
+            if (_ghost != null && Current == State.Running)
+            {
+                // Ahead (-) or behind (+) the best run at this point of the route; ASCII minus (font coverage).
+                var gap = Elapsed - _ghost.TimeAt(me.progress.Progress);
+                lines.Add($"GHOST {(gap >= 0f ? "+" : "-")}{Mathf.Abs(gap):0.0}");
+            }
             if (_event.kind == RaceKind.Drift && drift != null)
                 lines.Add($"SCORE {drift.Chain.Banked - _driftAtStart + drift.Chain.Pending:N0}");
             var k = me.progress.Passed;
@@ -713,7 +733,7 @@ namespace JapanMap.Gameplay.Races
             if (won) Core.Platform.GamePlatform.Current?.HappyTime();
             Last = result;
             if (wallet != null && sparks > 0) wallet.Add(sparks, _event.title);
-            var best = Record(me, result, timedOut);
+            var best = Record(me, result, timedOut) + SaveGhost(result, timedOut);
             var score = _event.kind == RaceKind.Drift ? $" · {result.score:N0} points" : "";
             var id = _event.id;
             var medalTier = _event.kind == RaceKind.Race ? (result.place == 1 ? 3 : result.place == 2 ? 2 : result.place == 3 ? 1 : 0)
@@ -783,6 +803,96 @@ namespace JapanMap.Gameplay.Races
             return better ? " · New best" : "";
         }
 
+        // ── Ghost ────────────────────────────────────────────────────────────
+
+        void StartGhost()
+        {
+            _ghost = _recording = null;
+            if (_event.kind != RaceKind.TimeTrial || !set.ghostInTimeTrials || set.ghostMaterial == null) return;
+            _recording = new RaceGhost { car = player.Car.Definition.id, hz = set.ghostHz };
+            if (Core.Save.SaveStores.Current.TryRead(RaceGhost.Key(_event.id), out var saved)) _ghost = RaceGhost.Decode(saved);
+            if (_ghost == null || _ghost.Count < 2) { _ghost = null; return; }
+            _ghostClock = 0f;
+            _ghostCar = BuildGhostCar(player.Car);
+            UpdateGhost();
+        }
+
+        /// <summary>Keeps the run when it beats the saved one (any car). Returns the line for the result sheet.</summary>
+        string SaveGhost(Result result, bool timedOut)
+        {
+            var run = _recording;
+            _recording = null;
+            if (run == null || timedOut || !result.completed || run.Count < 2) return "";
+            if (_ghost != null && result.seconds >= _ghost.seconds) return "";
+            run.seconds = result.seconds;
+            Core.Save.SaveStores.Current.Write(RaceGhost.Key(_event.id), run.Encode());
+            return _ghost == null ? " · Ghost saved" : " · New ghost";
+        }
+
+        /// <summary>A see-through copy of the visible car parts (no physics, no lights, no shadows).</summary>
+        GameObject BuildGhostCar(VehicleController car)
+        {
+            var root = new GameObject("RaceGhost");
+            root.transform.SetPositionAndRotation(car.transform.position, car.transform.rotation);
+            _ghostParts.Clear();
+            foreach (var mr in car.GetComponentsInChildren<MeshRenderer>())
+            {
+                var mf = mr.GetComponent<MeshFilter>();
+                if (!mr.enabled || mf == null || mf.sharedMesh == null || !Solid(mr)) continue;
+                var go = new GameObject(mr.name, typeof(MeshFilter), typeof(MeshRenderer));
+                go.transform.SetParent(root.transform, false);
+                go.transform.SetPositionAndRotation(mr.transform.position, mr.transform.rotation);
+                // Signed scale along the chain: mirrored wheels keep their mirror.
+                var scale = Vector3.one;
+                for (var t = mr.transform; t != null && t != car.transform; t = t.parent) scale = Vector3.Scale(scale, t.localScale);
+                go.transform.localScale = scale;
+                go.GetComponent<MeshFilter>().sharedMesh = mf.sharedMesh;
+                var r = go.GetComponent<MeshRenderer>();
+                var mats = new Material[mf.sharedMesh.subMeshCount];
+                for (var i = 0; i < mats.Length; i++) mats[i] = set.ghostMaterial;
+                r.sharedMaterials = mats;
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                r.receiveShadows = false;
+                _ghostParts.Add(r);
+            }
+            return root;
+        }
+
+        /// <summary>
+        /// Body parts only: light beams, flames and damage decals are all-transparent and would smear the shape. The
+        /// body mesh carries its glass as one submesh among many — it stays.
+        /// </summary>
+        static bool Solid(Renderer r)
+        {
+            foreach (var m in r.sharedMaterials)
+                if (m != null && m.renderQueue <= 2500) return true;
+            return false;
+        }
+
+        void UpdateGhost()
+        {
+            if (_ghostCar == null || _ghost == null) return;
+            // Between physics steps the ghost moves on smoothly; after the finish it drives on to its own end.
+            if (Current == State.Running) _ghostClock = Elapsed + (Time.time - Time.fixedTime);
+            else if (Current == State.Finished) _ghostClock += Time.deltaTime;
+            else _ghostClock = 0f;
+            var on = _ghostClock <= _ghost.Duration;
+            if (_ghostCar.activeSelf != on) _ghostCar.SetActive(on);
+            if (!on) return;
+            _ghost.Sample(_ghostClock, out var p, out var rot);
+            _ghostCar.transform.SetPositionAndRotation(p, rot);
+            var near = player != null && player.Car != null ? Vector3.Distance(player.Car.transform.position, p) : 99f;
+            var color = set.ghostColor;
+            color.a = set.ghostAlpha * Mathf.InverseLerp(set.ghostFade.x, set.ghostFade.y, near);
+            _ghostBlock ??= new MaterialPropertyBlock();
+            _ghostBlock.SetColor("_BaseColor", color);
+            foreach (var part in _ghostParts)
+            {
+                part.enabled = color.a > 0.01f;
+                part.SetPropertyBlock(_ghostBlock);
+            }
+        }
+
         public void Abort(string why)
         {
             if (Current == State.Idle) return;
@@ -824,6 +934,10 @@ namespace JapanMap.Gameplay.Races
             if (player != null) player.QuietPrompts = false;
             _gateA.SetActive(false);
             _gateB.SetActive(false);
+            if (_ghostCar != null) Destroy(_ghostCar);
+            _ghostCar = null;
+            _ghostParts.Clear();
+            _ghost = _recording = null;
             HoldResult = false;
             Current = State.Idle;
         }

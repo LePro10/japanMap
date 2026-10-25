@@ -113,6 +113,19 @@ namespace JapanMap.Gameplay.Races
         public float abortDistance = 150f;
         public float abortSeconds = 10f;
 
+        [Header("Ghost (POLISH E: the personal best in time trials)")]
+        [Tooltip("Time trials record the player's run and show the best one as a see-through car.")]
+        public bool ghostInTimeTrials = true;
+        [Tooltip("Samples per second of a recorded run (22 bytes each in the save).")]
+        public float ghostHz = 10f;
+        [Tooltip("See-through material of the ghost car (URP Unlit, transparent); tinted with ghostColor.")]
+        public Material ghostMaterial;
+        public Color ghostColor = new(0.55f, 0.85f, 1f, 1f);
+        [Tooltip("Ghost opacity.")]
+        [Range(0f, 1f)] public float ghostAlpha = 0.35f;
+        [Tooltip("The ghost fades out from this distance to the player's car down to that one, m (no flicker when overlapping).")]
+        public Vector2 ghostFade = new(3f, 9f);
+
         public Event? Find(string id)
         {
             foreach (var e in events) if (e.id == id) return e;

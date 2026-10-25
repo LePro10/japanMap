@@ -984,3 +984,9 @@ Plaketten, Titel, HUD ohne Kästen (Tacho, runde Minikarte, Telop, Manga-Speedli
 alle Tasten), Ergebnis mit Platz-Stempel. Agent B: Einstellungen (3 Reiter), Ladeseite, Postkarten, Stempelbuch.
 **Leistung:** Milchglas (`backdrop-filter`), Telop-Schatten und Riesenwörter fallen auf „Low" weg (`nm-low`, `Nm.Tier`).
 **Taste:** K = alle Tasten (H ist „Auto rufen").
+
+## D57 — Geist der Bestzeit im Zeitfahren: eigener Rekorder (2026-10-25)
+Unity hat keine fertige Aufzeichnung für Laufzeit-Wiedergabe im Spielstand (Timeline/Recorder sind nur Editor).
+Darum `RaceGhost`: 10 Posen/s, 22 Byte je Pose, base64 im Save (~30 KB je Zeitfahren). Das Geistauto ist eine
+Kopie der undurchsichtigen Mesh-Renderer mit einem transparenten Unlit-Material, ohne Physik und Schatten;
+es blendet nahe am Spielerauto aus. Regler in `RaceEvents.asset` (Header „Ghost").
