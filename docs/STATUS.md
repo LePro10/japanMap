@@ -4,7 +4,7 @@
 > Wird am Ende jeder Sitzung aktualisiert. Unter 80 Zeilen halten.
 
 **Stand:** 2026-10-25 · **Phase 11 (Launch) · autonomer Verbesserungslauf** (Welle 1: 30 Fehler aus dem Audit, Welle 2:
-Leistung/Größe, Welle 3: Tiere + Stromkabel in der Welt; Details: git log) · UI „Night Meet": https://claude.ai/artifact/Um9YHs4PmbEL5AtV4s9aoS ·
+Leistung/Größe, Welle 3: Tiere + Stromkabel, Welle 4: Geist, Touch-Symbole, Feinregler, Start ≤ 20 MB, UI hochkant; Details: git log) · UI „Night Meet": https://claude.ai/artifact/Um9YHs4PmbEL5AtV4s9aoS ·
 **jetzt bist du dran:** Punkt U und V
 
 ## Phase 11 — Launch
@@ -17,29 +17,26 @@ Leistung/Größe, Welle 3: Tiere + Stromkabel in der Welt; Details: git log) · 
   Einmündungen (Details: git log). · [x] 3j. **UI-Neubau (D55/D56)**: alle Etappen umgesetzt (Agent B: Einstellungen,
   Ladeseite, Postkarten, Stempelbuch).
 
-**Gemessen (2026-10-24):** EditMode 42/42 Klassen · PlayMode Menü/Karte/AutoDrive/Touch 17/17, Life 2/2, Streaming 4/4 ·
-voller PlayMode 227/247 (vor dem Shots-Fix; rot nur Zeitbudget-Tests Smash/Schaden 2 ms unter Last) · Web 77,40 MB in
-106 Dateien, Start 19,34 MB, **20,44 MB bis gameplayStart** (SDK grün) · Rauchprobe Low 250 fps (M4 unter Last), 0 Fehler.
+**Gemessen (2026-10-25):** voller PlayMode 237/248 (rot nur Zeitbudget Smash/Schaden unter Last, allein grün) · neue Tests
+Straßen-Eckpunkte, Bank-Figur, REPAIR/Turn-Karte je Form, Tagesbonus grün (vorher rot gegengeprüft) · Web 75,72 MB in
+106 Dateien, Start 18,88 MB, **19,94 MB bis gameplayStart** (SDK grün, Ziel ≤ 20 erreicht) · Rauchprobe 0 Fehler, Boot 2,6 s.
 **Nicht gemessen:** voller PlayMode-Lauf nach Welle 2/3 · Chromebook/Handy-FPS · Gamepad im neuen Menü · Touch-Größen am echten Handy.
 
 ## Offen / Gefunden
 
-- **Start 20,44 MB (Ziel ≤ 20):** kein billiger Hebel mehr — wasm schon „Size“/Stripping High, LZMA-Bundles laden im
-  Browser nicht (D36), Straßen schon 16 Bit, Tangenten braucht der Asphalt; Startauto-Bundle 0,9 MB ist Mesh. Rest:
-  Schrift „Archivo Title“ → „Display“ (~0,1 MB, Optik-Frage) oder Straßen-UV/Verge-Meshes schlanker.
-- **UI:** Handy hochkant: Knopfreihe eng, Tacho-Zahl nah am Bogen · Records-Seite ohne eigenes Bild geprüft · Touch-Knöpfe
-  mit Wörtern statt Symbolen · Kino-/Cockpit-Ansichten nicht neu gestaltet.
+- **UI:** Records-Seite ohne eigenes Bild geprüft · Kino-/Cockpit-Ansichten nicht neu gestaltet · im Editor zeigen kleine
+  Texte Striche (dynamischer Schrift-Atlas; Web-Build sauber).
 - **Tests:** ein versehentlicher Gesamtlauf (Filter „Map“) hing nach 3418 s Spielzeit — welcher Test, ist ungeklärt
   (Werkzeug sperrt den Filter jetzt). AutoDriveTests gelegentlich wackelig. Zeitbudget-Tests Smash/VehicleDamage (2 ms)
   rot, wenn der Rechner ausgelastet ist. Verkehrstest knapp (93–99 % auf der Fahrbahn, Soll 95 %).
 - Straßen: 8 Reststufen ≤ 0,5 m an Einmündungen (5 an der Ringstraße) — feinerer Mündungs-Querschnitt (D54).
-- Schaden: Türen/Haube fallen nicht ab; Figur auf zerbrochener Bank schwebt. Kino-Kamera: „Straßenrand“ zeigt das Auto
+- Schaden: Türen/Haube fallen nicht ab. Kino-Kamera: „Straßenrand“ zeigt das Auto
   manchmal zu klein. Store-Videos ohne Auto-Drive-Kinofahrt. Modelle: Augpunkte/Rückfahrgläser fehlen.
-- Politur offen ([POLISH.md](POLISH.md)): Kabel auch an den 40 Einzelmasten/in Tokio, Touch-Knöpfe mit Icons, Musik/Umgebungstöne (Clips fehlen),
-  3D-Hebebühne in der Garage, Geist der Bestzeit, Feinregler Fahrhöhe/Sturz, Store-Videos aus dem neuen Look.
+- Politur offen ([POLISH.md](POLISH.md)): Kabel auch an den 40 Einzelmasten/in Tokio, Musik/Umgebungstöne (Clips fehlen),
+  3D-Hebebühne in der Garage, Store-Videos aus dem neuen Look.
 - Neu in der Welt: 50 Tiere (Regeln `Data/Life/AnimalSpots.asset`, stehen still) und durchhängende Stromkabel an der
   Landleitung (26 Masten, 25 Felder, 5400 Dreiecke; Masten quer gedreht wie im Prototyp). Verkehrsposten noch ohne Platz.
-  Aus früher: Ride-Höhe „Dirt“, ASTRA §11, Gegner-Motoren, Leuchtturm, Angler, Musik; ASTRA E01/E08–E17, CI → Phase 12.
+  Aus früher: ASTRA §11, Gegner-Motoren, Leuchtturm, Angler, Musik; ASTRA E01/E08–E17, CI → Phase 12.
 - Leistung: WebGPU später; Handy DXT→ASTC nur nach Messung (D37); Hoch-Budget nach deinem iGPU-Test.
 
 ### Für die Asset-Sitzung (Maße stehen in den Daten)
@@ -77,3 +74,4 @@ V. **Zwei Entscheidungen (je ein Wort):** (a) Medaillenstufen: ein Worker wollte
 |---|---|---|---|---|
 | 2026-10-21 | Release, UI „Night Meet" komplett (D56) | 77,73 MB in 104 Dateien | 20,36 MB (SDK) | 2,6 s (Rauchprobe) |
 | 2026-10-24 | Release, Welle 1+2 (Fehler, Medium-Stufe, Hafen-Modelle) | 77,40 MB in 106 Dateien | 20,44 MB (SDK) | Rauchprobe 0 Fehler |
+| 2026-10-25 | Release, Welle 4 (Straßen verschweißt, Gelände JMT3 + gzip -9) | 75,72 MB in 106 Dateien | 19,94 MB (SDK) | 2,6 s (Rauchprobe) |
