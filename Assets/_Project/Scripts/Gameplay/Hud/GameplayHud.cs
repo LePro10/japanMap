@@ -79,6 +79,7 @@ namespace JapanMap.Gameplay.Hud
         internal Label Points => _points;
         internal Label Result => _result;
         internal Label Toast => _toast;
+        internal VisualElement DriftBox => _driftBox;
         internal Label Sparks => _sparks;
         public Instrument Instrument => _instrument;
         /// <summary>The cockpit view has its own speed display on the dashboard: the HUD gauge steps aside.</summary>

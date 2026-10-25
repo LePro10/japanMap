@@ -60,6 +60,43 @@ namespace JapanMap.Tests.Content
             yield return null;
         }
 
+        [UnityTest]
+        public IEnumerator Portrait_TurnNote_ClearOfTheHud()
+        {
+            SceneManager.LoadScene(Bootstrapper.BootSceneName);
+            yield return null;
+            for (var w = 0f; SceneManager.GetActiveScene().name != "Game" && w < 10f; w += Time.unscaledDeltaTime) yield return null;
+            for (var f = 0; f < 10; f++) yield return null;
+            var hud = Object.FindAnyObjectByType<GameplayHud>();
+            try
+            {
+                yield return UiShots.Layout(Core.Ui.FormFactor.PhonePortrait, 390, 844, 0.3f);
+                Object.FindAnyObjectByType<PlayerModeController>().PressVehicle();
+                for (var f = 0; f < 10; f++) yield return null;
+                VisualElement note = null;
+                foreach (var doc in Object.FindObjectsByType<UIDocument>()) note ??= doc.rootVisualElement.Q("turn-phone");
+                Assert.NotNull(note, "turn-phone note built");
+                Assert.AreEqual(DisplayStyle.Flex, note.resolvedStyle.display, "upright in the car: the note shows");
+                var r = note.worldBound;
+                // The drift box (SPOT BONUS) is hidden until a drift zone: its place, not its bound.
+                Assert.That(r.yMax, Is.LessThan(hud.DriftBox.style.top.value.value), $"note {r} over the drift box's place");
+                Assert.IsFalse(r.Overlaps(hud.Instrument.worldBound), $"note {r} on the instrument");
+                Assert.IsFalse(r.Overlaps(hud.Minimap.worldBound), $"note {r} on the minimap");
+                foreach (var doc in Object.FindObjectsByType<UIDocument>())
+                    doc.rootVisualElement.Query<VisualElement>(className: "jm-touch").ForEach(b =>
+                    {
+                        for (var e = b; e != null; e = e.parent) if (e.resolvedStyle.display == DisplayStyle.None) return;
+                        if (b.worldBound.width >= 1f) Assert.IsFalse(r.Overlaps(b.worldBound), $"note {r} on a touch button {b.worldBound}");
+                    });
+            }
+            finally
+            {
+                UiShots.RestorePanel();
+                Core.Ui.UiPanel.ForcedForm = null;
+                Core.Ui.UiPanel.Refresh(force: true);
+            }
+        }
+
         [UnityTest, Timeout(90000)]
         public IEnumerator Instrument_ShowsTheGearboxGear_MinimapZoomsOnFoot_SparksShowBriefly()
         {

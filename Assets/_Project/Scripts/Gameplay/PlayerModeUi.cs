@@ -126,6 +126,8 @@ namespace JapanMap.Gameplay
             var tl = new Label("Turn your phone") { pickingMode = PickingMode.Ignore };
             tl.AddToClassList("nm-ticket__title");
             _turn.Add(tl);
+            // Under the touch button row, above the drift box: at 40 % it lay under SPOT BONUS (2026-10-25).
+            _turn.style.top = safe.y + UiPanel.PortraitButtonRow + 64f;
             _turn.style.display = DisplayStyle.None;
             doc.Add(_turn);
 
