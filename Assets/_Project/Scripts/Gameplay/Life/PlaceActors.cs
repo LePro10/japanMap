@@ -20,6 +20,8 @@ namespace JapanMap.Gameplay.Life
         FigureSet figures; // streamed (LifeContent.Figures): looks per actor kind and the animal models
         [Tooltip("Actors farther than this from the player are switched off, m.")]
         [SerializeField] float showRadius = 220f;
+        [Tooltip("A seated actor stands up when something breaks this close to it (its bench), m.")]
+        [SerializeField] float standUpRadius = 2.5f;
 
         sealed class Live
         {
@@ -31,6 +33,7 @@ namespace JapanMap.Gameplay.Life
             public Pedestrian person;
             public float phase;
             public Renderer[] renderers;
+            public bool stood; // its seat broke: standing on the ground until the player comes back
         }
 
         readonly List<Live> _live = new();
@@ -39,6 +42,30 @@ namespace JapanMap.Gameplay.Life
         public int Count => _live.Count;
         public ActorSet Data => data;
         public int Active { get { var n = 0; foreach (var l in _live) if (l.go.activeSelf) n++; return n; } }
+
+        void OnEnable() => Smash.SmashSystem.Broke += OnBroke;
+        void OnDisable() => Smash.SmashSystem.Broke -= OnBroke;
+
+        /// <summary>A bench broke under a seated actor: it stands up (sitting, it hung in the air where the seat was).</summary>
+        void OnBroke(string kind, Vector3 at, float speed)
+        {
+            var r2 = standUpRadius * standUpRadius;
+            foreach (var l in _live)
+            {
+                if (l.stood || l.figure == null || l.person != null || l.actor.kind != "seated" || !l.go.activeSelf) continue;
+                var p = l.go.transform.position;
+                if ((new Vector3(p.x - at.x, 0f, p.z - at.z)).sqrMagnitude > r2) continue;
+                l.stood = true;
+                // Facing what hit the bench.
+                var away = new Vector3(at.x - p.x, 0f, at.z - p.z);
+                if (away.sqrMagnitude > 0.01f) l.go.transform.rotation = Quaternion.LookRotation(away);
+                l.figure.Play("Idle");
+            }
+        }
+
+        /// <summary>Something solid at seat height over the spot (the actor stands on the ground, the seat is in front of its hips).</summary>
+        public static bool SeatAt(Vector3 spot) =>
+            Physics.CheckSphere(spot + Vector3.up * 0.4f, 0.25f, ~Core.GameLayers.NotGround, QueryTriggerInteraction.Ignore);
 
         void Start() => StartCoroutine(LifeContent.Load<FigureSet>(LifeContent.Figures, f =>
         {
@@ -129,7 +156,16 @@ namespace JapanMap.Gameplay.Life
                         l.go.SetActive(true);
                         if (NavMesh.SamplePosition(l.actor.position, out var hit, 1.5f, 1 << 0)) l.person.Spawn(hit.position, l.actor.yaw, stay: true);
                     }
-                    else l.go.SetActive(near);
+                    else
+                    {
+                        // Back on its bench when the player returns — once the bench is back.
+                        if (near && l.stood && SeatAt(l.actor.position))
+                        {
+                            l.stood = false;
+                            l.go.transform.SetPositionAndRotation(l.actor.position, Quaternion.Euler(0f, l.actor.yaw, 0f));
+                        }
+                        l.go.SetActive(near);
+                    }
                 }
             }
 
@@ -154,7 +190,7 @@ namespace JapanMap.Gameplay.Life
                     var peck = l.actor.kind == "chicken" ? Mathf.Max(0f, Mathf.Sin(s * 3f)) * 12f : Mathf.Sin(s * 1.3f) * 3f;
                     l.animal.localRotation = Quaternion.Euler(peck, Mathf.Sin(s * 0.6f) * 7f, 0f);
                 }
-                else if (l.figure != null && (l.person == null || !l.person.Knocked)) l.figure.Play(l.clip);
+                else if (l.figure != null && (l.person == null || !l.person.Knocked)) l.figure.Play(l.stood ? "Idle" : l.clip);
             }
         }
     }

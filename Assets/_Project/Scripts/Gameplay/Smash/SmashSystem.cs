@@ -243,6 +243,7 @@ namespace JapanMap.Gameplay.Smash
             GiveSpeedBack(car, kind.carLoss);
             var t0 = _watch.Elapsed.TotalMilliseconds;
             var pieces = VisualsOf(b);
+            var tv = _watch.Elapsed.TotalMilliseconds;
             var done = kind.way switch
             {
                 BreakableSettings.Way.Kink => pieces.Count > 0 && Kink(b, pieces[0], kind, approach, carVelocity, contact ?? bounds.center),
@@ -255,7 +256,7 @@ namespace JapanMap.Gameplay.Smash
             var t1 = _watch.Elapsed.TotalMilliseconds;
             // Chips and dust a frame later: one frame does not carry the whole break (budget 2 ms).
             _later.Add((kind, bounds, carVelocity, false));
-            if (t1 > WorstBreakMs) WorstDetail = $"{kind.name}: before {t0:F2}, object {t1 - t0:F2} ms";
+            if (t1 > WorstBreakMs) WorstDetail = $"{kind.name}: before {t0:F2}, visuals {tv - t0:F2}, object {t1 - tv:F2} ms ({pieces.Count} meshes)";
             WorstBreakMs = Mathf.Max(WorstBreakMs, (float)_watch.Elapsed.TotalMilliseconds);
         }
 

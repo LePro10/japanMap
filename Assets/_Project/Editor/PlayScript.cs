@@ -871,6 +871,20 @@ namespace JapanMap.Editor
                     Log.AppendLine($"  ramkind {target.name} at {cK:F1}");
                     return true;
                 }
+                case "break":
+                {
+                    // break x z: pictures only — the breakable nearest to (x, z) breaks as if the player's car hit it.
+                    var smashB = Object.FindAnyObjectByType<JapanMap.Gameplay.Smash.SmashSystem>();
+                    var atB = new Vector3(F(1), 0f, F(2));
+                    var targetB = smashB.Breakables.Where(b => !b.Broken)
+                        .OrderBy(b => { var d = b.transform.position - atB; d.y = 0f; return d.sqrMagnitude; }).FirstOrDefault();
+                    if (targetB == null) { Log.AppendLine("  break: nothing"); return true; }
+                    // Break is internal to Gameplay (only tests may reach it); this picture tool goes through reflection.
+                    typeof(JapanMap.Gameplay.Smash.SmashSystem).GetMethod("Break", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                        .Invoke(smashB, new object[] { targetB, Object.FindAnyObjectByType<PlayerModeController>().Car.Body, Vector3.forward * 8f, 0f, null, null });
+                    Log.AppendLine($"  break {targetB.name} at {targetB.transform.position:F1}");
+                    return true;
+                }
                 case "ramring":
                 {
                     // ramring kmh: pictures only — the ring cherry of Sakura Commons that SmashTests rams, from inside the ring.

@@ -82,6 +82,52 @@ namespace JapanMap.Tests.OnFoot
         }
 
         [UnityTest]
+        public IEnumerator Seated_StandsUp_WhenItsBenchBreaks()
+        {
+            yield return BootGame();
+            var actors = Object.FindAnyObjectByType<PlaceActors>();
+            var smash = Object.FindAnyObjectByType<JapanMap.Gameplay.Smash.SmashSystem>();
+            var mode = Object.FindAnyObjectByType<PlayerModeController>();
+            mode.PressVehicle();
+            var spot = actors.Data.actors.First(a => a.kind == "seated");
+            var car = mode.Car;
+            car.Place(spot.position + new Vector3(8f, 0f, 8f), 0f, fromAbove: 3f);
+            GameObject seated = null;
+            for (var f = 0; f < 120 && seated == null; f++)
+            {
+                yield return null;
+                seated = actors.GetComponentsInChildren<Transform>().Select(t => t.gameObject)
+                    .FirstOrDefault(g => g.name == $"{spot.place} seated" && (g.transform.position - spot.position).sqrMagnitude < 0.01f);
+            }
+            Assert.NotNull(seated, "the seated actor is shown near the player");
+            var bench = smash.Breakables.Where(b => !b.Broken).OrderBy(b => (b.Bounds.center - spot.position).sqrMagnitude).First();
+            Assert.That(Vector3.Distance(bench.Bounds.center, spot.position), Is.LessThan(2.5f), $"no breakable seat under the seated actor ({bench.name})");
+            var figure = seated.GetComponentInChildren<JapanMap.OnFoot.HitoFigure>();
+            var sitting = figure.Clip;
+            Assert.IsTrue(PlaceActors.SeatAt(spot.position), "the seat is found before the break");
+            smash.Break(bench, car.Body, Vector3.forward * 8f);
+            for (var f = 0; f < 5; f++) yield return null;
+            Assert.IsTrue(bench.Broken);
+            Assert.AreEqual("Idle", figure.Clip, $"stood up (it hung in the air where the {bench.name} was)");
+            Assert.IsFalse(PlaceActors.SeatAt(spot.position), "no seat while the bench is broken");
+            // Away and back while the bench is still broken: stays standing. Bench back: sits again.
+            yield return AwayAndBack(car, spot.position);
+            Assert.AreEqual("Idle", figure.Clip, "no sitting on a broken bench");
+            bench.SetBroken(false);
+            yield return new WaitForFixedUpdate();
+            yield return AwayAndBack(car, spot.position);
+            Assert.AreEqual(sitting, figure.Clip, "back on the restored bench");
+        }
+
+        static IEnumerator AwayAndBack(JapanMap.Vehicles.VehicleController car, Vector3 spot)
+        {
+            car.Place(spot + new Vector3(400f, 0f, 0f), 0f, fromAbove: 600f);
+            for (var f = 0; f < 40; f++) yield return null;
+            car.Place(spot + new Vector3(8f, 0f, 8f), 0f, fromAbove: 3f);
+            for (var f = 0; f < 40; f++) yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator Walker_WalksIntoTheCornerMart()
         {
             yield return BootGame();
