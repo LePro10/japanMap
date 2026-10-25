@@ -54,6 +54,7 @@ U. **Neues UI anspielen (15 Min.):** http://127.0.0.1:8092 (läuft schon; sonst 
    Fenster. Bitte je Punkt „ok" oder was stört: Titel · Esc-Menü (Kacheln, Q/E) · Garage (Auto antippen, kaufen) · Karte (M,
    Punkt antippen) · Fahren (Tacho, Minikarte, Drift-Telop, Burst = Shift doppelt, K = alle Tasten) · ein Rennen bis zum
    Ergebnis · Einstellungen. Gesperrtes ist jetzt ausgeblendet (pinker Punkt = neu frei).
+W. **Wasser anfahren (5 Min.):** im Preview durchs Reisfeld und in den Fluss fahren — bremst/spritzt es glaubhaft, schwimmt das Auto ab 0,55 m Tiefe? „ok" oder was stört.
 V. **Zwei Entscheidungen (je ein Wort):** (a) Medaillenstufen: ein Worker wollte „Silber“ für 10 % in „Bronze“ ändern
    (zurückgenommen, sieht wie Absicht aus) — so lassen? (b) `terrain.jmt` (unkomprimierte Ersatzdatei für alte Browser ohne
    DecompressionStream, z. B. Safari < 16.4) weglassen? Spart 18,9 MB im Gesamtpaket, nicht im Start.

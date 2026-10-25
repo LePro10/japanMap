@@ -7,6 +7,7 @@
 
 | Datum | Phase | Was passiert ist | Vorkehrung (wo) | Art |
 |---|---|---|---|---|
+| 2026-10-25 | 11 | `unity-test EditMode MapImportTests` allein baut Reflexionen/Nav neu, Unity lädt neu und verliert den Job (`undefined`) | gezielt nur `MapImportTests\.Props_` oder den vollen EditMode-Lauf; danach `Tools/revert-scenes.mjs` | Ablauf |
 | 2026-10-25 | 11 | Wasser lag auf Ebene Default ohne Collider, der Code gab Tiefe fest 0 weiter: Aquaplaning, Wasser-Bremse/-Griff, `Surface.Water`, CarCall-Wassercheck — alles tote Regler seit dem Port | `WaterImporter.MakeQueryable` in beiden Importern + `RefreshPhysics` (Menü), Ebene Water stößt nichts (`GameLayers.WaterTouchesNothing`); `WaterDriveTests` prüft Ebene/Collider aller Wasserflächen und Tiefe am Auto (ohne Fix rot) | Test |
 | 2026-10-25 | 11 | `play.mjs sandbox …` schrieb Bilder in den Repo-Stamm | `Tools/play.mjs` bricht ab, wenn der Ordner nicht mit `Captures/` beginnt | Werkzeug |
 | 2026-10-25 | 11 | Voller Karten-Import für eine kleine Änderung (Tokio-Kabel) schrieb 107 Szenen/Daten mit neuen IDs um; Zurücksetzen erst nach `NewScene` (offene Szenen) | Gezielte Auffrischung `PlaceImporter.RefreshCables` (wie `RoadImporter.RefreshProfiles`): nur die betroffene Szene speichern | Werkzeug |
