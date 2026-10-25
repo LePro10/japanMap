@@ -16,6 +16,11 @@ if (!outDir || !script) {
   console.error('usage: node Tools/play.mjs <outDir> "<script>" [timeoutSeconds]');
   process.exit(2);
 }
+// Pictures belong in Captures/ (not in git): a bare name once wrote a folder into the repo root.
+if (!/^(\.\/)?Captures\//.test(outDir.replace(/\\/g, '/'))) {
+  console.error(`play.mjs: outDir must start with Captures/ (got "${outDir}")`);
+  process.exit(1);
+}
 const ROOT = resolve(new URL('..', import.meta.url).pathname);
 const mcp = (tool, args) => JSON.parse(execFileSync('node', [join(ROOT, 'Tools/mcp-call.mjs'), tool, JSON.stringify(args)], { encoding: 'utf8', maxBuffer: 16 << 20 }));
 if (!compileIfChanged()) {

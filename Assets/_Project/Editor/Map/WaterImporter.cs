@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.SceneManagement;
 
 namespace JapanMap.Editor.Map
 {
@@ -430,8 +432,52 @@ namespace JapanMap.Editor.Map
             r.sharedMaterial = material;
             r.shadowCastingMode = ShadowCastingMode.Off;
             GameObjectUtility.SetStaticEditorFlags(go, (StaticEditorFlags)~0);
+            MakeQueryable(go);
             return go;
         }
+
+        /// <summary>
+        /// Water layer plus a mesh collider, so a car can ask how deep it stands (VehicleController.WaterDepth).
+        /// The layer collides with nothing (GameLayers.WaterTouchesNothing): the collider only answers queries.
+        /// Returns true when something changed.
+        /// </summary>
+        public static bool MakeQueryable(GameObject go)
+        {
+            var mesh = go.GetComponent<MeshFilter>()?.sharedMesh;
+            if (mesh == null) return false;
+            var changed = false;
+            var layer = LayerMask.NameToLayer(JapanMap.Core.GameLayers.Water);
+            if (go.layer != layer) { go.layer = layer; changed = true; }
+            var col = go.GetComponent<MeshCollider>();
+            if (col == null) { col = go.AddComponent<MeshCollider>(); changed = true; }
+            if (col.sharedMesh != mesh) { col.sharedMesh = mesh; changed = true; }
+            return changed;
+        }
+
+        /// <summary>Every water surface in the open scenes made queryable; saves only the scenes that changed.</summary>
+        [MenuItem("JapanMap/Map/Refresh Water Physics")]
+        public static void RefreshPhysics()
+        {
+            var fixedCount = 0;
+            for (var i = 0; i < SceneManager.sceneCount; i++)
+            {
+                var scene = SceneManager.GetSceneAt(i);
+                if (!scene.isLoaded) continue;
+                var n = 0;
+                foreach (var root in scene.GetRootGameObjects())
+                foreach (var r in root.GetComponentsInChildren<MeshRenderer>(true))
+                    if (IsWater(r) && MakeQueryable(r.gameObject)) n++;
+                if (n == 0) continue;
+                fixedCount += n;
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene);
+            }
+            Debug.Log($"[Water] physics refreshed: {fixedCount} surfaces changed");
+        }
+
+        /// <summary>A water surface: one of the water materials (sea, river, paddies, place ponds).</summary>
+        public static bool IsWater(Renderer r) =>
+            r.sharedMaterial != null && r.sharedMaterial.name.StartsWith("Water") && AssetDatabase.GetAssetPath(r.sharedMaterial).StartsWith(MaterialDir);
 
         /// <summary>Created once with these values; later edits to the material are kept.</summary>
         static Material Material(string name, Color color, float smoothness)

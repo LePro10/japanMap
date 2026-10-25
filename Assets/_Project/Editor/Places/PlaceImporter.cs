@@ -693,6 +693,7 @@ namespace JapanMap.Editor.Places
             r.sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>($"{WaterImporter.MaterialDir}/Water_River.mat");
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             GameObjectUtility.SetStaticEditorFlags(go, (StaticEditorFlags)~0 & ~StaticEditorFlags.ContributeGI);
+            WaterImporter.MakeQueryable(go);
         }
 
         public static float Ground(Vector3 p)

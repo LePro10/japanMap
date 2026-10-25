@@ -36,6 +36,12 @@ namespace JapanMap.Vehicles
         public PerSurface surfaceDrag = new() { asphalt = 0f, gravel = 0.09f, terrain = 0.12f, water = 0.55f };
         [Tooltip("Time constant of the grip blend between surfaces, s.")]
         public float gripBlend = 0.25f;
+        [Tooltip("Water depth (m) from which the tyres count as in water (legacy WATER_PHYS.wetThreshold).")]
+        public float wetThreshold = 0.08f;
+        [Tooltip("From this water depth (m) the surface carries the car instead of the bed — arcade (legacy WATER_PHYS.floatDepth).")]
+        public float floatDepth = 0.55f;
+        [Tooltip("How deep a carried car sits in the water, m (legacy WATER_PHYS.draft).")]
+        public float draft = 0.18f;
         [Tooltip("Water depth (m) at which asphalt aquaplaning is full.")]
         public float aquaplaneDepth = 0.35f;
         [Tooltip("Grip lost at full aquaplaning.")]

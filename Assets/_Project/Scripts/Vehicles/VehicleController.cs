@@ -50,6 +50,8 @@ namespace JapanMap.Vehicles
             public Vector3 contact, normal;
             public Collider hitCollider;
             public int hitTriangle;
+            /// <summary>Water over the solid ground under this wheel, m (0 = dry; capped when the bed is out of reach).</summary>
+            public float waterDepth;
             /// <summary>Torn off in a crash (D47): the hub is left — a short leg that scrapes the road.</summary>
             public bool missing;
             public float hubRadius, hubFriction;
@@ -290,8 +292,8 @@ namespace JapanMap.Vehicles
                 w.load = 0f;
                 w.compression = 0f;
                 w.hitCollider = null;
-                if (!physics.Raycast(origin, -up, out var hit, reach, groundMask, QueryTriggerInteraction.Ignore)) continue;
-                if (hit.rigidbody == _rb) continue;
+                w.waterDepth = 0f;
+                if (!Contact(physics, origin, -up, reach, out var hit, out w.waterDepth)) continue;
                 var x = reach - hit.distance;
                 var over = Mathf.Max(0f, x - def.travel);
                 var pointVel = _rb.GetPointVelocity(hit.point);
@@ -329,6 +331,9 @@ namespace JapanMap.Vehicles
             var right = Vector3.Cross(n, fwd);
             var v = _rb.linearVelocity;
             var surface = airborne ? Surface.Asphalt : SurfaceOf(_wheels[bestWheel]);
+            var waterDepth = airborne ? 0f : WaterDepth();
+            // Legacy RoadGround.surface: deeper than the wet threshold, the tyres are in water (grip, sound, spray).
+            if (waterDepth > tuning.wetThreshold) surface = Surface.Water;
 
             // Air: when do the wheels come down? From the ground below and the vertical speed (ballistic).
             var toLand = 0f;
@@ -351,7 +356,7 @@ namespace JapanMap.Vehicles
                 vLat = Vector3.Dot(v, right),
                 surface = surface,
                 circuit = 0f,
-                waterDepth = 0f,
+                waterDepth = waterDepth,
                 airborne = airborne,
                 support = airborne ? 0f : tuning.SlopeSupport(n.y),
                 // What gravity actually does along forward once the springs carry the normal part.
@@ -450,6 +455,7 @@ namespace JapanMap.Vehicles
                 airborne = airborne,
                 groundedWheels = grounded,
                 surface = surface,
+                waterDepth = waterDepth,
                 support = env.support,
                 accelLong = r.accelLong,
                 accelLat = r.accelLat,
@@ -482,6 +488,51 @@ namespace JapanMap.Vehicles
             return Surface.Asphalt;
         }
 
+        /// <summary>
+        /// Where a wheel ray meets what carries it: the solid ground, or — legacy RoadGround.applyWaterSurface — the water
+        /// surface lowered by the draft once the water is deep (blended in up to floatDepth, so a shore is no step). The
+        /// water surfaces are query-only colliders on the Water layer (GameLayers.WaterTouchesNothing); a road over the
+        /// water stays road, because only water above the solid hit counts.
+        /// </summary>
+        bool Contact(PhysicsScene physics, Vector3 origin, Vector3 dir, float reach, out RaycastHit hit, out float depth)
+        {
+            depth = 0f;
+            var solid = physics.Raycast(origin, dir, out hit, reach, groundMask, QueryTriggerInteraction.Ignore) && hit.rigidbody != _rb;
+            // From above: a car standing on the bed has the surface over its wheels.
+            const float lift = 2f;
+            if (WaterLayer < 0 || !physics.Raycast(origin - dir * lift, dir, out var water, lift + (solid ? hit.distance : reach), 1 << WaterLayer, QueryTriggerInteraction.Collide))
+                return solid;
+            var surface = water.distance - lift; // along the ray from the origin; < 0 when the surface is above it
+            // Bed out of reach: look a little further, as deep as the water could still blend.
+            var bed = solid ? hit.distance
+                : physics.Raycast(origin, dir, out var deep, reach + tuning.floatDepth, groundMask, QueryTriggerInteraction.Ignore) && deep.rigidbody != _rb
+                    ? deep.distance : surface + tuning.floatDepth;
+            depth = bed - surface;
+            if (depth <= tuning.wetThreshold) return solid;
+            var floated = surface + tuning.draft;
+            if (floated >= bed) return solid;
+            var t = Mathf.Clamp01(depth / tuning.floatDepth);
+            // Sunk below the carried height, the contact sits at the ray start: full bump stop, the car rises out.
+            var d = Mathf.Max(0f, bed + (floated - bed) * (t * t * (3f - 2f * t)));
+            if (d > reach) return false;
+            var solidNormal = solid ? hit.normal : water.normal;
+            hit = water;
+            hit.point = origin + dir * d;
+            hit.distance = d;
+            hit.normal = Vector3.Slerp(solidNormal, water.normal, t);
+            return true;
+        }
+
+        /// <summary>Mean water depth under the wheels that touch, m (0 on dry land and in the air).</summary>
+        float WaterDepth()
+        {
+            var sum = 0f;
+            var n = 0;
+            for (var i = 0; i < WheelCount; i++)
+                if (_wheels[i].grounded) { sum += _wheels[i].waterDepth; n++; }
+            return n == 0 ? 0f : sum / n;
+        }
+
         static int _waterLayer = -2;
         static int WaterLayer => _waterLayer != -2 ? _waterLayer : _waterLayer = LayerMask.NameToLayer("Water");
     }
@@ -497,6 +548,8 @@ namespace JapanMap.Vehicles
         public bool airborne;
         public int groundedWheels;
         public Surface surface;
+        /// <summary>Water over the ground under the wheels, m (0 = dry).</summary>
+        public float waterDepth;
         public float support;
         public float accelLong, accelLat;
         public float stunt, spin, trick;

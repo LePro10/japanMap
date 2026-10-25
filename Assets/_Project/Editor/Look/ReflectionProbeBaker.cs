@@ -124,7 +124,7 @@ namespace JapanMap.Editor.Look
         static float Ground(Vector3 at, Bounds b)
         {
             // The terrain streams in at runtime; in the editor the roads, slabs and place colliders are the ground.
-            if (Physics.Raycast(new Vector3(at.x, b.max.y + 50f, at.z), Vector3.down, out var hit, b.size.y + 200f, ~0, QueryTriggerInteraction.Ignore))
+            if (Physics.Raycast(new Vector3(at.x, b.max.y + 50f, at.z), Vector3.down, out var hit, b.size.y + 200f, ~JapanMap.Core.GameLayers.NotGround, QueryTriggerInteraction.Ignore))
                 return hit.point.y;
             return b.min.y;
         }

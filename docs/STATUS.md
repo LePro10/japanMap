@@ -35,7 +35,7 @@ Straßen-Eckpunkte, Bank-Figur, REPAIR/Turn-Karte je Form, Tagesbonus grün (vor
 - Schaden: Stoßstange reißt beim zweiten harten Treffer ab (2,2 ms); Türen/Haube noch nicht. Store-Videos ohne Auto-Drive-Kinofahrt. Modelle: Augpunkte/Rückfahrgläser fehlen.
 - Politur offen ([POLISH.md](POLISH.md)): Musik/Umgebungstöne (Clips fehlen),
   3D-Hebebühne in der Garage, Store-Videos aus dem neuen Look.
-- Neu in der Welt: 50 Tiere (Regeln `Data/Life/AnimalSpots.asset`; Vögel fliegen auf, Katzen/Hunde/Hühner springen vor schnellen Autos zur Seite — Sprung nur im Test belegt, kein Bild) und durchhängende Stromkabel an der
+- **Wasser** hat jetzt Physik: Reisfeld/Fluss bremsen und spritzen, ab 0,55 m trägt es das Auto (wie im Prototyp; Fahrgefühl ungeprüft). Neu: 50 Tiere (Regeln `Data/Life/AnimalSpots.asset`; Vögel fliegen auf, Katzen/Hunde/Hühner springen vor schnellen Autos zur Seite — Sprung nur im Test belegt, kein Bild) und durchhängende Stromkabel an der
   Landleitung (26 Masten, 25 Felder, 5400 Dreiecke; Masten quer gedreht wie im Prototyp). Verkehrsposten noch ohne Platz.
   Aus früher: ASTRA §11, Gegner-Motoren, Leuchtturm, Angler, Musik; ASTRA E01/E08–E17, CI → Phase 12.
 - Leistung: WebGPU später; Handy DXT→ASTC nur nach Messung (D37); Hoch-Budget nach deinem iGPU-Test.
@@ -77,3 +77,4 @@ V. **Zwei Entscheidungen (je ein Wort):** (a) Medaillenstufen: ein Worker wollte
 | 2026-10-24 | Release, Welle 1+2 (Fehler, Medium-Stufe, Hafen-Modelle) | 77,40 MB in 106 Dateien | 20,44 MB (SDK) | Rauchprobe 0 Fehler |
 | 2026-10-25 | Release, Welle 4 (Straßen verschweißt, Gelände JMT3 + gzip -9) | 75,72 MB in 106 Dateien | 19,94 MB (SDK) | 2,6 s (Rauchprobe) |
 | 2026-10-25 | Release, Tiere fliehen, Tokio-Kabel, Stoßstange reißt ab | 75,80 MB in 106 Dateien | 19,98 MB (SDK) | 2,7 s (Rauchprobe, 0 Fehler) |
+| 2026-10-25 | Release, Wasser mit Physik (Collider nur für Abfragen) | 75,79 MB in 106 Dateien | 18,88 MB (size-report; SDK nicht gemessen) | 3,1 s (Rauchprobe, 0 Fehler) |
