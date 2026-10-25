@@ -64,7 +64,7 @@ namespace JapanMap.Gameplay.Intro
         IntroOverlay _ui;
         Vector3 _lip, _dir;
         float _yaw, _t, _slowTarget = 1f, _pressedFor, _driftFor, _tabHeld, _baseFixed;
-        bool _boosted, _nitroAck, _began;
+        bool _boosted, _nitroAck, _began, _replay;
         float _playerThrottle;
         Vector2 _home;
 
@@ -246,6 +246,31 @@ namespace JapanMap.Gameplay.Intro
             Debug.Log("[Intro] first drive");
         }
 
+        /// <summary>Plays the first drive again from the menu; no Sparks this time (the landing must not become a farm).</summary>
+        public bool Replay()
+        {
+            if (!CanReplay || player.Suspended) return false;
+            _replay = true;
+            Begin();
+            if (Current == Beat.Off) _replay = false;
+            return Current != Beat.Off;
+        }
+
+        /// <summary>Nothing else holds the car: no intro, race or auto-drive running (the menu asks before it closes).</summary>
+        public bool CanReplay
+        {
+            get
+            {
+                if (Current != Beat.Off || player == null || player.Car == null || settings == null || ramps == null) return false;
+                var races = map != null ? map.Races : null;
+                if (races != null && races.Current is Races.RaceDirector.State.Card or Races.RaceDirector.State.Countdown or Races.RaceDirector.State.Running) return false;
+                return Core.AutoDrive.Current == null || !Core.AutoDrive.Current.IsActive;
+            }
+        }
+
+        /// <summary>True while the intro runs as a replay (tests).</summary>
+        public bool Replaying => _replay && Current != Beat.Off;
+
         /// <summary>Hold Tab / tap SKIP / the menu: home in the car at Sakura Commons, nothing more to learn.</summary>
         public void Skip()
         {
@@ -258,6 +283,7 @@ namespace JapanMap.Gameplay.Intro
         {
             Skipped = skipped;
             Current = Beat.Off;
+            _replay = false;
             _slowTarget = 1f;
             Time.timeScale = 1f;
             Time.fixedDeltaTime = _baseFixed;
@@ -299,6 +325,7 @@ namespace JapanMap.Gameplay.Intro
 
         void Pay(int sparks, string why)
         {
+            if (_replay) return;
             Earned += sparks;
             if (wallet != null) wallet.Add(sparks, why);
         }

@@ -184,6 +184,13 @@ namespace JapanMap.Gameplay.Menu
                 var skip = Ui.Button(body, "Skip tutorial · unlock everything", ConfirmSkip, "jm-btn", "jm-rise", "nm-quiet");
                 skip.name = "career-skip";
             }
+            else if (!Menu.FromTitle && IntroDone())
+            {
+                // The jump once more (POLISH: "Intro wiederholen") — quiet, like Skip: a button, not a tile.
+                var replay = Ui.Button(body, "Replay the first drive", ReplayIntro, "jm-btn", "jm-rise", "nm-quiet");
+                replay.name = "intro-replay";
+                t.AppendLine("intro replay");
+            }
             _text = t.ToString();
 
             Button Next2(MenuTiles.Spec spec)
@@ -200,6 +207,22 @@ namespace JapanMap.Gameplay.Menu
             var b = MenuTiles.Tile(parent, s);
             b.AddToClassList("jm-rise");
             return b;
+        }
+
+        // Any time the intro is not running (seen, skipped or switched off by URL): the menu never offers it twice at once.
+        static bool IntroDone()
+        {
+            var intro = Object.FindAnyObjectByType<Intro.FirstDrive>();
+            return intro != null && intro.Current == Intro.FirstDrive.Beat.Off;
+        }
+
+        void ReplayIntro()
+        {
+            var intro = Object.FindAnyObjectByType<Intro.FirstDrive>();
+            if (intro == null) return;
+            if (!intro.CanReplay) { Menu.Notice("Not now — finish the race or stop auto-drive first"); return; }
+            Menu.Close();
+            intro.Replay();
         }
 
         static bool CareerOn => Career.CareerSystem.Instance != null && Career.CareerSystem.Instance.Active;

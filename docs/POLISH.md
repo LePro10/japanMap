@@ -24,10 +24,10 @@
 
 Fehlt: Fotomodus mit Maus/Zoom/Ultra-Qualität beim Auslösen · 3D-Garage mit Hebebühne, Kamerafahrten, Vergleich ·
 Schilder/Marker in Sakura Commons (Petal Motors, Open Bay, Event Board) + Begrüßung · Intro endet in der Garage ·
-„Intro wiederholen“ · Routen-Band auf der Straße · Wasser-Spritzer · Motorhauben-Kamera · Neon-Lichtsystem ·
+Routen-Band auf der Straße · Wasser-Spritzer · Motorhauben-Kamera · Neon-Lichtsystem ·
 Planarspiegel Tokyo · Pfützen · Fahrbahnmarkierungen/Zebrastreifen · Reisfeld-Ufer ·
 Häuser zerfallen in Teile (dein TODO).
-Erledigt 2026-10-25: Kabel zwischen Masten (Land + Tokio), Sandkasten-Code `og123` (Klick auf „Settings“).
+Erledigt 2026-10-25: Kabel zwischen Masten (Land + Tokio), Sandkasten-Code `og123` (Klick auf „Settings“), „Intro wiederholen“ (Play-Seite, ohne Intro-Bonus).
 Alles andere (Fahren, 10 Autos, Rennen, Drift, Schanzen, Entdeckungen, Zu Fuß, Verkehr, Karte, Menü, Touch) ist da.
 
 ## 3. Plan

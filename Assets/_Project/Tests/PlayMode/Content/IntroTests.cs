@@ -3,11 +3,13 @@ using JapanMap.Core;
 using JapanMap.Core.Save;
 using JapanMap.Gameplay;
 using JapanMap.Gameplay.Intro;
+using JapanMap.Gameplay.Menu;
 using JapanMap.Gameplay.Progress;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
 
 namespace JapanMap.Tests.Content
 {
@@ -72,6 +74,44 @@ namespace JapanMap.Tests.Content
             FirstDrive.RunInEditor = true;
             yield return Boot();
             Assert.AreEqual(FirstDrive.Beat.Off, Object.FindAnyObjectByType<FirstDrive>().Current);
+        }
+
+        // "Intro wiederholen" (POLISH): a returning player replays the jump from the Play page — the real run, but no
+        // Sparks a second time (the landing must not become a farm).
+        [UnityTest, Timeout(90000)]
+        public IEnumerator ReturningPlayer_ReplaysTheJump_FromThePlayPage_WithoutPay()
+        {
+            ProgressStore.Save(FreshSaveAttribute.Store, new ProgressData { claims = { FirstDrive.Claim } });
+            FirstDrive.RunInEditor = true;
+            yield return Boot();
+            var intro = Object.FindAnyObjectByType<FirstDrive>();
+            var progress = Object.FindAnyObjectByType<PlayerProgress>();
+            Assert.AreEqual(FirstDrive.Beat.Off, intro.Current);
+            var menu = GameMenu.Instance;
+            menu.Open<PlayScreen>();
+            for (var f = 0; f < 5; f++) yield return null;
+            var button = menu.Root.Q<Button>("intro-replay");
+            Assert.NotNull(button, $"the Play page offers the replay:\n{menu.Text}");
+            yield return UiSettle.Wait(button);
+            var at = button.worldBound.center;
+            foreach (var type in new[] { EventType.MouseDown, EventType.MouseUp })
+            {
+                var sys = new Event { type = type, mousePosition = at, button = 0, clickCount = 1 };
+                using (EventBase evt = type == EventType.MouseDown ? PointerDownEvent.GetPooled(sys) : PointerUpEvent.GetPooled(sys)) button.panel.visualTree.SendEvent(evt);
+                yield return null;
+            }
+            for (var f = 0; f < 3; f++) yield return null;
+            Assert.IsFalse(menu.IsOpen, "the menu closes");
+            Assert.AreNotEqual(FirstDrive.Beat.Off, intro.Current, "the intro runs again");
+            Assert.IsTrue(intro.Replaying);
+            var balance = progress.Wallet.Balance;
+            for (var w = 0f; intro.Current != FirstDrive.Beat.Landed && intro.Current != FirstDrive.Beat.Drift && w < 25f; w += Time.unscaledDeltaTime) yield return null;
+            Assert.AreEqual(FirstDrive.Beat.Landed, intro.Current, "the jump lands again");
+            Assert.AreEqual(0, intro.Earned, "no intro pay on a replay");
+            // The stunt score of the jump still pays, as it does for anyone who drives this ramp; the intro's bonus does not.
+            Assert.Less(progress.Wallet.Balance - balance, 500, "at most the ramp's own stunt score, never the landing bonus");
+            intro.Skip();
+            Assert.IsFalse(intro.Replaying);
         }
     }
 }
