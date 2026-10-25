@@ -35,6 +35,9 @@ namespace JapanMap.Vehicles
             /// <summary>Sub-mesh index ranges of the body's materials (decals and glass need them).</summary>
             public SubMeshInfo[] subMeshes;
             public Material[] materials;
+            /// <summary>Per end (0 front, 1 rear): which vertices lie in the bumper zone (made ahead, see WarmTear).</summary>
+            public bool[][] zone = new bool[2][];
+            public Vector2[] uv;
         }
 
         public struct SubMeshInfo
@@ -287,20 +290,131 @@ namespace JapanMap.Vehicles
             var shell = Shell;
             if (shell == null) return;
             Prepare(shell);
-            var b = shell.restBounds; // the modelled body, mesh space ≈ body space (the shell sits at the body root)
-            _jobs.Enqueue(new Job
-            {
-                maxTotal = maxTotal,
-                droop = new Droop
-                {
-                    end = end, side = side, amount = amount,
-                    endZ = end > 0f ? b.max.z : b.min.z,
-                    zone = Mathf.Min(0.4f, b.size.z * 0.09f),
-                    top = b.min.y + b.size.y * 0.4f,
-                    halfWidth = Mathf.Max(0.3f, b.extents.x),
-                },
-            });
+            var dr = ZoneOf(shell, end);
+            dr.side = side;
+            dr.amount = amount;
+            _jobs.Enqueue(new Job { maxTotal = maxTotal, droop = dr });
         }
+
+        /// <summary>The bumper's zone at an end: the lowest part of the last ~9 % of the modelled body.</summary>
+        static Droop ZoneOf(Part shell, float end)
+        {
+            var b = shell.restBounds; // the modelled body, mesh space ≈ body space (the shell sits at the body root)
+            return new Droop
+            {
+                end = end,
+                endZ = end > 0f ? b.max.z : b.min.z,
+                zone = Mathf.Min(0.4f, b.size.z * 0.09f),
+                top = b.min.y + b.size.y * 0.4f,
+                halfWidth = Mathf.Max(0.3f, b.extents.x),
+            };
+        }
+
+        /// <summary>
+        /// Tears the bumper at an end off the body (a second hard hit on a hanging one): its faces leave the body meshes and
+        /// come back as one mesh in body space, as they are now (dented, hanging), one sub-mesh per material. Null when
+        /// nothing lies there. <see cref="Restore"/> puts them back.
+        /// </summary>
+        public Mesh TearOff(float end, List<Material> materials)
+        {
+            var shell = Shell;
+            if (shell == null) return null;
+            Prepare(shell);
+            var dr = ZoneOf(shell, end);
+            var verts = new List<Vector3>();
+            var normals = new List<Vector3>();
+            var uvs = new List<Vector2>();
+            var subs = new List<List<int>>();
+            materials.Clear();
+            foreach (var p in _parts)
+            {
+                if (!p.filter.gameObject.activeInHierarchy) continue;
+                Prepare(p);
+                var toBody = ToBody(p);
+                var inZone = Zone(p, dr, end > 0f ? 0 : 1);
+                if (inZone == null) continue;
+                var uv = p.uv ??= p.shared.uv;
+                var map = new int[p.rest.Length]; // vertex → index in the torn mesh, +1 (0 = not yet)
+                for (var s = 0; s < p.subMeshes.Length; s++)
+                {
+                    var info = p.subMeshes[s];
+                    List<int> sub = null;
+                    for (var k = info.indexStart; k < info.indexStart + info.indexCount; k += 3)
+                    {
+                        int a = p.tris[k], b = p.tris[k + 1], c = p.tris[k + 2];
+                        if (a == b && b == c) continue;
+                        if (!inZone[a] || !inZone[b] || !inZone[c]) continue;
+                        if (sub == null)
+                        {
+                            sub = new List<int>();
+                            subs.Add(sub);
+                            materials.Add(p.materials != null && s < p.materials.Length ? p.materials[s] : null);
+                        }
+                        sub.Add(TornVertex(p, a, toBody, uv, map, verts, normals, uvs));
+                        sub.Add(TornVertex(p, b, toBody, uv, map, verts, normals, uvs));
+                        sub.Add(TornVertex(p, c, toBody, uv, map, verts, normals, uvs));
+                        p.tris[k + 1] = p.tris[k + 2] = a; // degenerate on the body: draws nothing, keeps the index count
+                    }
+                    if (sub == null) continue;
+                    if (p.work == null) Upload(p);
+                    p.work.SetIndices(p.tris, info.indexStart, info.indexCount, MeshTopology.Triangles, s, false);
+                }
+            }
+            if (verts.Count == 0) return null;
+            var mesh = new Mesh { name = "TornBumper" };
+            if (verts.Count > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            mesh.SetVertices(verts);
+            mesh.SetNormals(normals);
+            mesh.SetUVs(0, uvs);
+            mesh.subMeshCount = subs.Count;
+            for (var s = 0; s < subs.Count; s++) mesh.SetTriangles(subs[s], s, false);
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        /// <summary>
+        /// Finds the bumper zones of both ends ahead (idle frames, like the loose wheels' bodies): the tear itself then only
+        /// copies faces. Returns false once done.
+        /// </summary>
+        public bool WarmTear()
+        {
+            var shell = Shell;
+            if (shell == null || !shell.ready) return false;
+            var did = false;
+            foreach (var p in _parts)
+            {
+                if (!p.ready || p.uv != null) continue;
+                for (var e = 0; e < 2; e++) Zone(p, ZoneOf(shell, e == 0 ? 1f : -1f), e);
+                p.uv = p.shared.uv;
+                did = true;
+                break; // one part per frame
+            }
+            return did;
+        }
+
+        /// <summary>Which vertices of a part lie in an end's zone, by the modelled shape (found even crushed or hanging); null when none.</summary>
+        bool[] Zone(Part p, Droop dr, int e)
+        {
+            if (p.zone[e] != null) return p.zone[e].Length == 0 ? null : p.zone[e];
+            var toBody = ToBody(p);
+            var inZone = new bool[p.rest.Length];
+            var any = false;
+            for (var v = 0; v < p.rest.Length; v++) any |= inZone[v] = InZone(dr, toBody.MultiplyPoint3x4(p.rest[v]));
+            p.zone[e] = any ? inZone : Array.Empty<bool>();
+            return any ? inZone : null;
+        }
+
+        static int TornVertex(Part p, int v, Matrix4x4 toBody, Vector2[] uv, int[] map, List<Vector3> verts, List<Vector3> normals, List<Vector2> uvs)
+        {
+            if (map[v] > 0) return map[v] - 1;
+            map[v] = verts.Count + 1;
+            verts.Add(toBody.MultiplyPoint3x4(p.pos[v]));
+            normals.Add(toBody.MultiplyVector(p.normal[v]).normalized);
+            uvs.Add(uv != null && v < uv.Length ? uv[v] : Vector2.zero);
+            return verts.Count - 1;
+        }
+
+        static bool InZone(Droop dr, Vector3 r) => (r.z - dr.endZ) * dr.end >= -dr.zone && r.y <= dr.top;
 
         readonly Queue<Job> _jobs = new();
         Job _job;

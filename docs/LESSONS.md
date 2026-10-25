@@ -7,6 +7,7 @@
 
 | Datum | Phase | Was passiert ist | Vorkehrung (wo) | Art |
 |---|---|---|---|---|
+| 2026-10-25 | 11 | Bild-Befehle `carcam`/`damage` doppelt gebaut, weil die Befehlsliste in `Tools/play.mjs` unvollständig war (Kompilierfehler: doppeltes case) | EditMode `PlayScriptDocsTests`: jeder `case` in PlayScript muss in den Kommentaren von play.mjs stehen | Test |
 | 2026-10-25 | 11 | REPAIR-Pille lag im Handy-Hochformat auf dem Tacho; Layout-Prüfungen mit nur `ForcedForm` sahen Desktop-Koordinaten (Panelgröße blieb 1920×1080) | Test `RepairPill_ClearOfTheHud_InEveryForm` über neues `UiShots.Layout` (echte Panelgröße je Form) | Test |
 | 2026-10-25 | 11 | `play.mjs tap CAR` fand Touch-Knöpfe nicht (keine `Button`, sondern `jm-touch`-Elemente) | `PlayScript.FindButton` sucht auch `jm-touch` per Label · Editor-Striche in kleinen Texten = dynamischer Schrift-Atlas im Editor, Web-Build sauber (nicht jagen) | Werkzeug |
 | 2026-10-25 | 11 | Straßen- und Randstreifen-Meshes legten jede Station zweimal an (je Streifen eigene Eckpunkte): 13,9 MB roh statt 7,05 — niemand verglich Eckpunkte mit Dreiecken | `RoadImporter` teilt die Station im selben Chunk; `MapImportTests.Roads_ShareStationVertices` prüft das Verhältnis | Test |

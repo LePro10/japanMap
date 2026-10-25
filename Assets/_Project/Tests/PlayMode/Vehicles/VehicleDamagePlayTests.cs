@@ -156,6 +156,58 @@ namespace JapanMap.Tests.Vehicles
             Assert.That(d.ScreenCracks, Is.EqualTo(0), "repair clears them");
         }
 
+        /// <summary>A hard hit leaves the bumper hanging; the next one on that end tears it off onto the road; repair puts it back.</summary>
+        [UnityTest]
+        public IEnumerator HangingBumper_TearsOff_OnTheNextHardHit_RepairPutsItBack()
+        {
+            yield return BootGame();
+            var car = Board();
+            var d = car.GetComponent<VehicleDamage>();
+            yield return Settle(d, 0.5f);
+            var t = car.transform;
+            var nose = t.position + t.forward * 2f + t.up * 0.4f;
+            Assert.IsTrue(d.Take(nose, -t.forward, 18f, 0.6f, t.right).bumperHangs, "a hard hit on the nose: the bumper hangs");
+            yield return Settle(d);
+            Assert.IsNull(d.TornBumper(0), "hanging, not yet off");
+            var drawn = Drawn(d.Deformer);
+            var off = d.Take(nose, -t.forward, 24f, 0.6f, t.right);
+            Assert.IsTrue(off.bumperOff, "the next hard hit tears the hanging bumper off");
+            Assert.IsFalse(d.Take(nose, -t.forward, 24f, 0.6f, t.right).bumperOff, "only once");
+            yield return null;
+            yield return null;
+            var piece = d.TornBumper(0);
+            Assert.NotNull(piece, "the bumper lies in the world");
+            Assert.That(Drawn(d.Deformer), Is.LessThan(drawn - 50), "and its faces left the body");
+            var y0 = piece.GetComponent<Rigidbody>().worldCenterOfMass.y;
+            var front = t.InverseTransformPoint(piece.GetComponent<Renderer>().bounds.center).z;
+            Assert.That(front, Is.GreaterThan(1f), $"the piece is at the nose ({front:F2} m ahead)");
+            System.IO.File.WriteAllText("Captures/bumper-cost.txt", $"bumper torn: {d.TearMs:F2} ms ({d.TearDetail}), {piece.GetComponent<MeshFilter>().sharedMesh.vertexCount} vertices\n");
+            Assert.That(d.TearMs, Is.LessThan(3f), $"tearing it off fits a frame ({d.TearDetail})");
+            yield return new WaitForSeconds(1f);
+            Assert.That(piece.GetComponent<Rigidbody>().worldCenterOfMass.y, Is.LessThan(y0 - 0.05f), "it falls");
+            d.Repair();
+            yield return null;
+            Assert.IsTrue(piece == null, "repair takes the piece out of the world");
+            Assert.That(Drawn(d.Deformer), Is.GreaterThanOrEqualTo(drawn), "the bumper is back on the body");
+        }
+
+        /// <summary>Faces the body meshes draw (the degenerate ones are torn out or broken windows).</summary>
+        static int Drawn(CarBodyDeformer deformer)
+        {
+            var n = 0;
+            foreach (var f in Object.FindObjectsByType<MeshFilter>())
+            {
+                // Not the paint marks: their own mesh grows with every hit.
+                if (f.sharedMesh == null || !f.transform.IsChildOf(deformer.Body) || f.name == "DamageMarks") continue;
+                var tris = f.sharedMesh.triangles;
+                var m = 0;
+                for (var k = 0; k < tris.Length; k += 3)
+                    if (!(tris[k] == tris[k + 1] && tris[k + 1] == tris[k + 2])) m++;
+                n += m;
+            }
+            return n;
+        }
+
         [UnityTest]
         public IEnumerator HouseWall_At110_WrecksTheFront_AWheelComesOff_TheCarHangsAndPulls()
         {

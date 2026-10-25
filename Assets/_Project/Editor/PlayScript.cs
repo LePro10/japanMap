@@ -949,7 +949,7 @@ namespace JapanMap.Editor
                     var pmd = Object.FindAnyObjectByType<PlayerModeController>();
                     var dmg = pmd.Car.GetComponent<JapanMap.Vehicles.VehicleDamage>();
                     Log.AppendLine(dmg == null ? "  damage: none on this car" :
-                        $"  damage {dmg.Damage01:F2}: last hit {dmg.LastHitMs:F2} ms, crush {dmg.Deformer?.MaxDisplacement:F2} m, hits {dmg.Hits}, last Δv {dmg.Last.deltaV:F1} m/s dent {dmg.Last.dent:F2}, wheels lost {dmg.WheelsLost} bent {dmg.BentWheels}, marks {dmg.Marks?.Count}, screen cracks {dmg.ScreenCracks}, worst {dmg.WorstHitMs:F2} ms ({dmg.WorstDetail}), frame {dmg.WorstWorkMs:F2} ms; ready: {dmg.Deformer?.Readiness}, atlas {JapanMap.Vehicles.DamageMarks.AtlasReady}");
+                        $"  damage {dmg.Damage01:F2}: last hit {dmg.LastHitMs:F2} ms, crush {dmg.Deformer?.MaxDisplacement:F2} m, hits {dmg.Hits}, last Δv {dmg.Last.deltaV:F1} m/s dent {dmg.Last.dent:F2}, wheels lost {dmg.WheelsLost} bent {dmg.BentWheels}, bumper hangs {dmg.Last.bumperHangs} off {dmg.Last.bumperOff} torn {dmg.TornBumper(0) != null}/{dmg.TornBumper(1) != null}, marks {dmg.Marks?.Count}, screen cracks {dmg.ScreenCracks}, worst {dmg.WorstHitMs:F2} ms ({dmg.WorstDetail}), frame {dmg.WorstWorkMs:F2} ms; ready: {dmg.Deformer?.Readiness}, atlas {JapanMap.Vehicles.DamageMarks.AtlasReady}");
                     return true;
                 }
                 default:

@@ -29,6 +29,8 @@ MonoBehaviour:
   frameBudgetMs: 1
   droopFrom: 16
   droopMax: 0.22
+  tearFrom: 22
+  bumperMass: 9
   wheelBendPush: 0.04
   wheelOffPush: 0.1
   wheelOffDeltaV: 20
@@ -42,6 +44,8 @@ MonoBehaviour:
   looseWheelLife: 25
   glassCrackDeltaV: 6
   glassBreakDeltaV: 13
+  windscreenCrackDeltaV: 11
+  windscreenShatterDeltaV: 19
   scrapeSpeed: 4
   scratchEvery: 1.5
   sparkMaterial: {fileID: 2100000, guid: 076a60ea26e114f59b5d2a12ed3e09ba, type: 2}

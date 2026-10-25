@@ -48,6 +48,10 @@ namespace JapanMap.Vehicles
         public float droopFrom = 16f;
         [Tooltip("How far it hangs at most, m.")]
         public float droopMax = 0.22f;
+        [Tooltip("A hit at least this hard on an end whose bumper already hangs tears it off: it falls onto the road, m/s.")]
+        public float tearFrom = 22f;
+        [Tooltip("Mass of a torn-off bumper, kg.")]
+        public float bumperMass = 9f;
 
         [Header("Wheels")]
         [Tooltip("Push at the tyre that bends a wheel, m.")]

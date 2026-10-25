@@ -34,6 +34,8 @@ namespace JapanMap.Vehicles
             public int wheelsBent;
             /// <summary>The bumper at that end now hangs down.</summary>
             public bool bumperHangs;
+            /// <summary>The bumper at that end, already hanging, tore off (it falls in the next frame).</summary>
+            public bool bumperOff;
             /// <summary>The thing hit broke and the car drove through (sign, tree, lamp).</summary>
             public bool brokeThrough;
             /// <summary>What was hit (null for a hit given by hand).</summary>
@@ -69,6 +71,11 @@ namespace JapanMap.Vehicles
         readonly Dictionary<Collider, float> _slid = new();
         int _seed, _dentFrame = -1, _hitFrame = -1;
         readonly bool[] _drooped = new bool[2]; // front, rear: once per end until repaired
+        readonly GameObject[] _torn = new GameObject[2]; // the torn-off bumpers lying in the world
+        readonly float[] _tornAt = new float[2];
+        readonly GameObject[] _tornBody = new GameObject[2]; // made ahead, inactive, outside the car
+        bool _tearWarm;
+        readonly Queue<(int end, Vector3 dir)> _tearQueue = new();
         double _tGlass;
         int _marksWarmFrame;
         readonly Queue<(Vector3 at, Vector3 into, Vector3 along, float radius, DamageMarks.Tile tile)> _markQueue = new();
@@ -149,6 +156,81 @@ namespace JapanMap.Vehicles
             _marks?.Destroy();
             for (var i = 0; i < _loose.Length; i++)
                 if (_loose[i] != null) Destroy(_loose[i]);
+            DropTorn();
+            foreach (var go in _tornBody) if (go != null) Destroy(go);
+        }
+
+        /// <summary>Longest frame spent tearing a bumper off, ms (its own frame, after the hit's).</summary>
+        public float TearMs { get; private set; }
+        public string TearDetail { get; private set; } = "";
+
+        /// <summary>The torn-off bumper of an end (0 front, 1 rear) lying in the world, or null.</summary>
+        public GameObject TornBumper(int end) => _torn[end];
+
+        /// <summary>The body a torn bumper falls on: made ahead (components cost ~0.7 ms in the crash), inactive outside the car.</summary>
+        GameObject TornBody(int end)
+        {
+            if (_tornBody[end] != null) return _tornBody[end];
+            var go = new GameObject("TornBumper") { layer = DebrisLayer };
+            go.SetActive(false);
+            go.AddComponent<MeshFilter>();
+            go.AddComponent<MeshRenderer>();
+            go.AddComponent<BoxCollider>();
+            var rb = go.AddComponent<Rigidbody>();
+            rb.mass = _s.bumperMass;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            rb.maxDepenetrationVelocity = 3f; // it starts inside the wall it was torn on: slide out, not shot out
+            return _tornBody[end] = go;
+        }
+
+        bool TearQueued(int end)
+        {
+            foreach (var q in _tearQueue) if (q.end == end) return true;
+            return false;
+        }
+
+        /// <summary>Torn-off bumpers out of the world (repair puts them back on the car; a new car has its own).</summary>
+        void DropTorn()
+        {
+            _tearQueue.Clear();
+            for (var e = 0; e < _torn.Length; e++)
+            {
+                if (_torn[e] == null) continue;
+                Destroy(_torn[e].GetComponent<MeshFilter>().sharedMesh);
+                Destroy(_torn[e]);
+                _torn[e] = null;
+            }
+        }
+
+        /// <summary>
+        /// The hanging bumper of an end leaves the body and falls as its own piece: as it was (dented, hanging), with the
+        /// car's speed at that end, a little thrown off the hit. A box collider (no cooking in the crash).
+        /// </summary>
+        void TearBumper(int end, Vector3 worldDir)
+        {
+            var mats = new List<Material>();
+            var t0 = Stopwatch.GetTimestamp();
+            var mesh = _deformer.TearOff(end == 0 ? 1f : -1f, mats);
+            TearDetail = $"cut {(Stopwatch.GetTimestamp() - t0) * 1000.0 / Stopwatch.Frequency:F2} ms";
+            if (mesh == null) return;
+            var body = _deformer.Body;
+            var go = TornBody(end);
+            _tornBody[end] = null; // it is in the world now; repair or its life's end destroys it, a new one is made
+            go.transform.SetPositionAndRotation(body.position, body.rotation);
+            go.transform.localScale = body.lossyScale;
+            go.GetComponent<MeshFilter>().sharedMesh = mesh;
+            go.GetComponent<MeshRenderer>().sharedMaterials = mats.ToArray();
+            var b = mesh.bounds;
+            var col = go.GetComponent<BoxCollider>();
+            col.center = b.center;
+            col.size = Vector3.Max(b.size, Vector3.one * 0.08f);
+            go.SetActive(true);
+            var rb = go.GetComponent<Rigidbody>();
+            var at = go.transform.TransformPoint(b.center);
+            rb.linearVelocity = _car.Body.GetPointVelocity(at) * 0.8f + worldDir * 1.5f + Vector3.up * 1.5f;
+            rb.angularVelocity = transform.right * 2f;
+            _torn[end] = go;
+            _tornAt[end] = Time.time;
         }
 
         bool TryBind()
@@ -295,8 +377,16 @@ namespace JapanMap.Vehicles
                 // over ~0.1 s anyway).
                 plane = _deformer.Enqueue(dent, _s.maxDisplacement);
                 if (!float.IsNaN(plane)) hit.dent = depth;
-                // A hard hit square on an end leaves that bumper hanging down at the side it was hit.
-                if (!float.IsNaN(plane) && deltaV >= _s.droopFrom && Mathf.Abs(bd.z) > 0.7f && !_drooped[bd.z < 0f ? 0 : 1])
+                // A hard hit square on an end leaves that bumper hanging down at the side it was hit; the next one tears it
+                // off (cut out in the next frame: searching the body's faces would cost the hit's frame ~1 ms).
+                var endIndex = bd.z < 0f ? 0 : 1;
+                if (!float.IsNaN(plane) && deltaV >= _s.tearFrom && Mathf.Abs(bd.z) > 0.7f && _drooped[endIndex] && _torn[endIndex] == null
+                    && !TearQueued(endIndex))
+                {
+                    _tearQueue.Enqueue((endIndex, dir));
+                    hit.bumperOff = true;
+                }
+                else if (!float.IsNaN(plane) && deltaV >= _s.droopFrom && Mathf.Abs(bd.z) > 0.7f && !_drooped[bd.z < 0f ? 0 : 1])
                 {
                     _drooped[bd.z < 0f ? 0 : 1] = true;
                     var side = Mathf.Abs(bp.x) > 0.15f ? Mathf.Sign(bp.x) : ((_seed & 1) == 0 ? 1f : -1f); // torn off its clips where it was hit
@@ -661,6 +751,28 @@ namespace JapanMap.Vehicles
                 Physics.BakeMesh(WheelHull(_car.Definition.wheelRadius, 0.22f).GetEntityId(), true);
                 for (var i = 0; i < _loose.Length; i++) LooseBody(i);
             }
+            else if (_bound && _hullBaked && !_tearWarm && !_deformer.Busy && !_deformer.WarmTear())
+            {
+                _tearWarm = true;
+                for (var e = 0; e < _torn.Length; e++) TornBody(e);
+            }
+            while (_tearQueue.Count > 0)
+            {
+                var (end, dir) = _tearQueue.Dequeue();
+                var t0 = Stopwatch.GetTimestamp();
+                TearBumper(end, dir);
+                TearMs = Mathf.Max(TearMs, (float)((Stopwatch.GetTimestamp() - t0) * 1000.0 / Stopwatch.Frequency));
+            }
+            // Torn bumpers lie like the loose wheels, then go.
+            for (var e = 0; e < _torn.Length; e++)
+            {
+                var go = _torn[e];
+                if (go == null || Time.time - _tornAt[e] < _s.looseWheelLife) continue;
+                var rb = go.GetComponent<Rigidbody>();
+                if (!rb.isKinematic) rb.isKinematic = true;
+                go.transform.position += Vector3.down * (0.4f * Time.deltaTime);
+                if (Time.time - _tornAt[e] > _s.looseWheelLife + 3f) { Destroy(go.GetComponent<MeshFilter>().sharedMesh); Destroy(go); _torn[e] = null; }
+            }
             // Loose wheels lie a while, then sink away (they come back on repair anyway).
             for (var i = 0; i < _loose.Length; i++)
             {
@@ -706,6 +818,8 @@ namespace JapanMap.Vehicles
             _slid.Clear();
             _markQueue.Clear();
             _drooped[0] = _drooped[1] = false;
+            DropTorn();
+            _tearWarm = false; // the used bodies are made again in idle frames
             ScreenCracks = 0;
             Scrape = 0f;
             if (_bound)
