@@ -24,7 +24,7 @@ Straßen-Eckpunkte, Bank-Figur, REPAIR/Turn-Karte je Form, Tagesbonus grün (vor
 
 ## Offen / Gefunden
 
-- **UI:** Records-Seite ohne eigenes Bild geprüft · Kino-/Cockpit-Ansichten nicht neu gestaltet · im Editor zeigen kleine
+- **UI:** Kino-/Cockpit-Ansichten nicht neu gestaltet · im Editor zeigen kleine
   Texte Striche (dynamischer Schrift-Atlas; Web-Build sauber).
 - **Tests:** ein versehentlicher Gesamtlauf (Filter „Map“) hing nach 3418 s Spielzeit — welcher Test, ist ungeklärt
   (Werkzeug sperrt den Filter jetzt). AutoDriveTests gelegentlich wackelig. Zeitbudget-Tests Smash/VehicleDamage (2 ms)

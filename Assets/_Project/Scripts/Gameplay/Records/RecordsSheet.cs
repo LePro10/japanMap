@@ -5,6 +5,7 @@ using JapanMap.Gameplay.Progress;
 using JapanMap.Gameplay.Races;
 using JapanMap.Gameplay.Regions;
 using JapanMap.UI;
+using JapanMap.Core.Ui;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -106,15 +107,27 @@ namespace JapanMap.Gameplay.Records
                 foreach (var kind in RecordKeeper.Headline)
                 {
                     var tile = Ui.Box(stats, "jm-tile", "nm-stat");
-                    tile.style.width = 200;
-                    var tex = RecordKeeper.LoadCard(kind);
+                    // A share of the row, not fixed pixels: three across, two on a phone (one half-empty column upright).
+                    tile.style.width = Length.Percent(UiPanel.IsPhone ? 47f : 31f);
+                    var card = d.records.cards.Find(c => c.kind == kind.ToString());
+                    // Only a card this save lists: the picture lives in its own key and outlives a fresh or older save.
+                    var tex = card != null ? RecordKeeper.LoadCard(kind) : null;
+                    var pic = Ui.Box(tile, "jm-pic");
+                    pic.style.width = Length.Percent(100);
+                    pic.style.height = 101;
                     if (tex != null)
                     {
                         _textures.Add(tex);
-                        var pic = Ui.Box(tile, "jm-pic");
-                        pic.style.width = 180;
-                        pic.style.height = 101;
                         pic.style.backgroundImage = new StyleBackground(tex);
+                    }
+                    else
+                    {
+                        // No card picture yet (or never, like distance): an empty frame keeps the tiles one height.
+                        var mark = Ui.Text(pic, Jp.Records, "nm-jp", "jm-dim");
+                        mark.style.flexGrow = 1;
+                        mark.style.unityTextAlign = TextAnchor.MiddleCenter;
+                        mark.style.fontSize = 22;
+                        mark.style.opacity = 0.35f;
                     }
                     var value = RecordKeeper.Value(r, kind);
                     Ui.Text(tile, RecordKeeper.Title(kind).ToUpperInvariant(), "nm-stat__label", "jm-small");
@@ -123,7 +136,6 @@ namespace JapanMap.Gameplay.Records
                     line.style.alignItems = Align.FlexEnd;
                     Ui.Text(line, number, "nm-num", "jm-big");
                     Ui.Text(line, unit, "nm-unit", "jm-small").style.marginLeft = 4;
-                    var card = d.records.cards.Find(c => c.kind == kind.ToString());
                     if (card != null) Ui.Small(tile, $"{card.car}{(card.place != "" ? " · " + card.place : "")}");
                 }
 
@@ -134,7 +146,7 @@ namespace JapanMap.Gameplay.Records
                 Nm.Kicker(body, $"Milestones {got}/{e.milestones.Length}", Jp.Done).style.marginTop = 16;
                 var grid = Ui.Row(body, "jm-wrap", "nm-stamps");
                 foreach (var m in e.milestones)
-                    Stamp(grid, _progress.Claimed($"milestone:{m.kind}:{m.threshold}"), Jp.Done, $"{StampWord(m.kind)} {RecordKeeper.Format(m.kind, m.threshold)}");
+                    Stamp(grid, _progress.Claimed($"milestone:{m.kind}:{m.threshold}"), Jp.Done, $"{StampWord(m.kind)}\n{RecordKeeper.Format(m.kind, m.threshold)}"); // the value on its own line ("km/h" broke at the slash)
                 text.AppendLine($"Milestones {got}/{e.milestones.Length}");
             }
             else if (_tab == 1)

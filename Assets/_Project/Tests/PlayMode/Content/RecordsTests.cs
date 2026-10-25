@@ -15,6 +15,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
 
 namespace JapanMap.Tests.Content
 {
@@ -127,6 +128,43 @@ namespace JapanMap.Tests.Content
             Assert.AreEqual(PlayerModeController.Mode.Driving, player.Current, "back in the car");
             Assert.IsFalse(player.Suspended);
             Assert.AreEqual(balance, progress.Wallet.Balance, "opening the records pays nothing");
+        }
+
+        [UnityTest]
+        public IEnumerator Sheet_TilesOneHeight_TwoAcrossUpright_NoLeftoverCard()
+        {
+            yield return BootInCar(this);
+            // A card picture an older save left in its own key: this fresh save lists no card, so none may show.
+            var jpg = new Texture2D(8, 8);
+            JapanMap.Core.Save.SaveStores.Current.Write(RecordKeeper.CardKeyPrefix + JapanMap.Gameplay.Economy.MilestoneKind.TopSpeedKmh,
+                System.Convert.ToBase64String(jpg.EncodeToJPG()));
+            Object.Destroy(jpg);
+            yield return Tap(Key.Tab);
+            var menu = JapanMap.Gameplay.Menu.GameMenu.Instance;
+            Assert.IsTrue(menu.IsOpen, "Tab opens the records");
+            try
+            {
+                foreach (var (form, w, h) in new[] { (JapanMap.Core.Ui.FormFactor.Desktop, 1920, 1080), (JapanMap.Core.Ui.FormFactor.PhonePortrait, 390, 844) })
+                {
+                    yield return UiShots.Layout(form, w, h, 0.5f);
+                    var tiles = menu.Root.Query(className: "nm-stat").ToList();
+                    Assert.AreEqual(RecordKeeper.Headline.Length, tiles.Count, $"{form}: one tile per record");
+                    var height = tiles[0].layout.height;
+                    foreach (var t in tiles)
+                    {
+                        Assert.AreEqual(height, t.layout.height, 1f, $"{form}: tiles one height (one without a picture was shorter)");
+                        Assert.IsNull(t.Q(className: "jm-pic").resolvedStyle.backgroundImage.texture, $"{form}: a card picture this save does not list");
+                    }
+                    if (form == JapanMap.Core.Ui.FormFactor.PhonePortrait)
+                        Assert.That(tiles[0].layout.width, Is.GreaterThan(tiles[0].parent.layout.width * 0.4f), "upright two tiles fill the row (one narrow column)");
+                }
+            }
+            finally
+            {
+                UiShots.RestorePanel();
+                JapanMap.Core.Ui.UiPanel.ForcedForm = null;
+                JapanMap.Core.Ui.UiPanel.Refresh(force: true);
+            }
         }
 
         [UnityTest, Timeout(300000)]
