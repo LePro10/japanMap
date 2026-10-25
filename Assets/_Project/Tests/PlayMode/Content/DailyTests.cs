@@ -43,6 +43,7 @@ namespace JapanMap.Tests.Content
             Assert.IsTrue(daily.CheckBonus(), "first visit of the day pays");
             Assert.AreEqual(before + rewards[0], progress.Wallet.Balance);
             Assert.AreEqual(1, daily.Streak);
+            Assert.IsFalse(UnityEngine.Object.FindAnyObjectByType<GameplayHud>().BannerShown, "the toast names the reward: no second '+Sparks · Daily drive' line");
             Assert.IsFalse(daily.CheckBonus(), "only once a day");
 
             day = day.AddDays(1);

@@ -62,6 +62,7 @@ namespace JapanMap.Gameplay.Hud
         MapView _minimap;
         readonly List<MapPin> _pins = new();
         float _savedUntil, _resultUntil, _toastUntil, _bannerUntil, _sparksUntil, _span;
+        int _bannerFrame = -1;
         bool _touchSeen, _held;
         string _activity = "", _raceLines = "";
         readonly Queue<string> _toasts = new();
@@ -80,6 +81,7 @@ namespace JapanMap.Gameplay.Hud
         internal Label Result => _result;
         internal Label Toast => _toast;
         internal VisualElement DriftBox => _driftBox;
+        internal bool BannerShown => Time.time < _bannerUntil;
         internal Label Sparks => _sparks;
         public Instrument Instrument => _instrument;
         /// <summary>The cockpit view has its own speed display on the dashboard: the HUD gauge steps aside.</summary>
@@ -784,6 +786,9 @@ namespace JapanMap.Gameplay.Hud
         public void ShowToast(string text)
         {
             LastToast = text;
+            // A grant raises Earned before its own toast (daily bonus, challenge): the toast names the reward, so the
+            // "+300 Sparks · Daily drive" line set in this same frame goes (both showed at once, 2026-10-25).
+            if (_bannerFrame == Time.frameCount) _bannerUntil = 0f;
             _toasts.Enqueue(text);
         }
 
@@ -843,6 +848,7 @@ namespace JapanMap.Gameplay.Hud
             if (_held || _toasts.Count > 0 || Time.time < _toastUntil) return;
             _banner.text = $"+{amount} Sparks · {reason}";
             _bannerUntil = Time.time + toastSeconds;
+            _bannerFrame = Time.frameCount;
         }
 
         void Update()
