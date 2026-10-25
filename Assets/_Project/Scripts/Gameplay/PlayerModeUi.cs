@@ -137,22 +137,22 @@ namespace JapanMap.Gameplay
             var mirror = GameOptions.LeftHanded;
             var outer = (mirror ? safe.x : safe.z) + 12f;
             // MENU: the corner, always (pauses like Escape).
-            _menu = TouchKit.Tap(_touch, 48f, "MENU", () => GameMenu.Instance?.Escape());
+            _menu = TouchKit.Glyph(TouchKit.Tap(_touch, 48f, "MENU", () => GameMenu.Instance?.Escape()), TouchGlyph.Menu);
             _menu.name = "touch-menu";
             // Portrait: the instrument has the corner, the button row sits under it (RESET, CAM, OUT beside MENU).
             var row = safe.y + (UiPanel.IsPortrait ? UiPanel.PortraitButtonRow : 12f);
             Corner(_menu, outer, row, mirror);
             // CAR and CALL above the right-hand group (on foot JUMP/SLIDE, in the car BOOST).
             var bottom = safe.w + (UiPanel.IsPortrait ? 28f : 20f) + 64f * k * 2f + 24f;
-            _car = TouchKit.Tap(_touch, 56f * k, "CAR", () => player.PressVehicle(), "jm-touch--on");
+            _car = TouchKit.Glyph(TouchKit.Tap(_touch, 56f * k, "CAR", () => player.PressVehicle(), "jm-touch--on"), TouchGlyph.Car);
             _car.name = "touch-car";
             TouchKit.Place(_car, outer + 4f, bottom, rightSide: true, mirror);
             // In the car the right thumb's corner is the instrument and the drive group: get out sits in the top row,
             // beside RESET and CAM.
-            _carOut = TouchKit.Tap(_touch, 48f, "OUT", () => player.PressVehicle());
+            _carOut = TouchKit.Glyph(TouchKit.Tap(_touch, 48f, "OUT", () => player.PressVehicle()), TouchGlyph.Out);
             _carOut.name = "touch-out";
             Corner(_carOut, outer + 56f * 3f, row, mirror);
-            _call = TouchKit.Tap(_touch, 56f * k, "CALL", () => player.PressCall());
+            _call = TouchKit.Glyph(TouchKit.Tap(_touch, 56f * k, "CALL", () => player.PressCall()), TouchGlyph.Call);
             _call.name = "touch-call";
             TouchKit.Place(_call, outer + 4f + 56f * k + 8f, bottom, rightSide: true, mirror);
             _distance = new Label { pickingMode = PickingMode.Ignore };

@@ -23,6 +23,8 @@ namespace JapanMap.Gameplay.Progress
         [Tooltip("Fitted body kit (model aero option 0–2) and the kits bought.")]
         public int aero;
         public List<int> aeroKits = new();
+        [Tooltip("Free fine tune: ride height, camber and track steps (TuningSettings).")]
+        public CarFine fine;
     }
 
     /// <summary>A personal best in one event, with the car and parts it was set with (ASTRA §6: records by car and tiers).</summary>

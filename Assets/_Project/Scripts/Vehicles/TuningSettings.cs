@@ -34,6 +34,16 @@ namespace JapanMap.Vehicles
     }
 
     /// <summary>
+    /// Free fine tuning (POLISH D, like Drift Hunters): steps of ride height (negative = lower), camber and track.
+    /// Mostly looks (stance), each with a small, visible trade in the stats.
+    /// </summary>
+    [Serializable]
+    public struct CarFine
+    {
+        public int height, camber, track;
+    }
+
+    /// <summary>
     /// Tuning tiers, their prices and what each changes, plus the free setups and cosmetic prices.
     /// Values from legacy src/config/tuning.config.ts (tunedArcade, TUNE_PRICE, applySetup) and ASTRA §6
     /// "Tuning is a set of decisions". Always applied to the car's own stock spec, never stacked.
@@ -82,6 +92,30 @@ namespace JapanMap.Vehicles
         public float dirtLift = 0.02f;
         [Tooltip("Safe Return (Needle only): crawl share on loose ground.")]
         public float safeCrawl = 0.9f;
+
+        [Header("Fine tune (free, POLISH D): steps and what one step does")]
+        [Tooltip("Ride height steps either side of stock (−n lower … +n higher).")]
+        public int heightSteps = 2;
+        [Tooltip("Body drop or lift per step, m (visual).")]
+        public float heightStep = 0.015f;
+        [Tooltip("Lateral grip share per step lower (lower centre of gravity).")]
+        public float heightGrip = 0.01f;
+        [Tooltip("Camber steps (0 = stock … n).")]
+        public int camberSteps = 3;
+        [Tooltip("Negative camber per step, degrees (visual: tops of the wheels lean in).")]
+        public float camberStep = 2f;
+        [Tooltip("Lateral grip share per camber step.")]
+        public float camberGrip = 0.012f;
+        [Tooltip("Braking share lost per camber step (less tyre flat on the road).")]
+        public float camberBrake = 0.015f;
+        [Tooltip("Track steps (0 = stock … n wider).")]
+        public int trackSteps = 2;
+        [Tooltip("Each wheel out per step, m (visual).")]
+        public float trackStep = 0.015f;
+        [Tooltip("Steering response share lost per step wider (calmer, slower to turn in).")]
+        public float trackYaw = 0.03f;
+        [Tooltip("Lateral grip share per step wider.")]
+        public float trackGrip = 0.008f;
 
         [Header("Cosmetics, Sparks per car (ASTRA §6)")]
         public string[] palette = { "Cloud", "Ink", "Silver", "Sand", "Jade", "Deep Teal", "Navy", "Plum", "Rose", "Persimmon", "Amber", "Ice" };
@@ -137,7 +171,7 @@ namespace JapanMap.Vehicles
         /// repeated application never stacks). Engine raises force and power and solves drag so the flat top
         /// speed rises by exactly the tier's share.
         /// </summary>
-        public ArcadeSpec Apply(VehicleDefinition car, CarTune tune, CarSetupMode setup = CarSetupMode.Road)
+        public ArcadeSpec Apply(VehicleDefinition car, CarTune tune, CarSetupMode setup = CarSetupMode.Road, CarFine fine = default)
         {
             var b = car.arcade;
             var s = b.Clone();
@@ -165,7 +199,28 @@ namespace JapanMap.Vehicles
                     s.steerFalloff *= dirtFalloff;
                     break;
             }
+            fine = Clamp(fine);
+            s.latG *= (1f - fine.height * heightGrip) * (1f + fine.camber * camberGrip) * (1f + fine.track * trackGrip);
+            s.brakeG *= 1f - fine.camber * camberBrake;
+            var calm = 1f - fine.track * trackYaw;
+            s.steerRate *= calm;
+            s.yawResponse *= calm;
             return s;
+        }
+
+        public CarFine Clamp(CarFine f) => new()
+        {
+            height = Mathf.Clamp(f.height, -heightSteps, heightSteps),
+            camber = Mathf.Clamp(f.camber, 0, camberSteps),
+            track = Mathf.Clamp(f.track, 0, trackSteps),
+        };
+
+        /// <summary>The look of a setup and fine tune: body drop (m, negative = higher), camber (°), each wheel out (m).</summary>
+        public Vector3 Stance(CarSetupMode setup, CarFine fine)
+        {
+            fine = Clamp(fine);
+            var drop = -fine.height * heightStep - (setup == CarSetupMode.Dirt ? dirtLift : 0f);
+            return new Vector3(drop, fine.camber * camberStep, fine.track * trackStep);
         }
     }
 }

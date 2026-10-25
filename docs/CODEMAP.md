@@ -33,7 +33,8 @@ Automatisch erzeugt 2026-10-22 (190 Dateien). Nicht von Hand pflegen – neu erz
 ## Core/Ui/
 - **PageBridge.cs** — class PageBridge : MonoBehaviour: Loaded, Share, Stage
 - **StartFlow.cs** — class StartFlow; enum Phase: Holding, Progress()
-- **TouchKit.cs** — class TouchKit: Circle(), Hold(), Tap(); class Group: Add(), ReleaseAll(); class Stick: Axes, Held, ReleaseAll(), Place()
+- **TouchGlyph.cs** — enum TouchGlyph; class TouchGlyphElement : VisualElement: Glyph, Paint()
+- **TouchKit.cs** — class TouchKit: Circle(), Glyph(), Hold(), Tap(); class Group: Add(), ReleaseAll(); class Stick: Axes, Held, ReleaseAll(), Place()
 - **UiLayoutProbe.cs** — class UiLayoutProbe: Check(), Summary()
 - **UiPanel.cs** — enum FormFactor; class UiPanel: Scales, Form, IsPhone, IsPortrait, Size, Safe, Scale, Get(), Refresh(), DevicePixelRatio()
 - **UiPanelDriver.cs** — class UiPanelDriver : MonoBehaviour
@@ -223,7 +224,7 @@ Automatisch erzeugt 2026-10-22 (190 Dateien). Nicht von Hand pflegen – neu erz
 - **PathFollower.cs** — class PathFollower : MonoBehaviour: car, path, closed, gripShare, maxSpeedKmh, lookAheadMin, lookAheadSeconds, stopAtEnd, braking, slowForHeading, lateral, Travelled, Length, Offset
 - **PendingModel.cs** — class PendingModel : MonoBehaviour: Material, Wait()
 - **PlayerCarSpawner.cs** — class PlayerCarSpawner : MonoBehaviour: Current, Fleet, Loadout, Spawn(), SpawnAt(), Build(), AttachModel()
-- **TuningSettings.cs** — enum TuneCategory; enum CarSetupMode; struct CarTune: Code, All; class TuningSettings : ScriptableObject; struct Category: id, title, categories, engineForce, engineTopSpeed, brakeDistance, steeringDelay, tyreGrip, driftCatch, driftLock, dirtFalloff, dirtLift, safeCrawl, palette
+- **TuningSettings.cs** — enum TuneCategory; enum CarSetupMode; struct CarTune: Code, All; struct CarFine: height, camber, track; (TuningSettings: Clamp(), Stance()); class TuningSettings : ScriptableObject; struct Category: id, title, categories, engineForce, engineTopSpeed, brakeDistance, steeringDelay, tyreGrip, driftCatch, driftLock, dirtFalloff, dirtLift, safeCrawl, palette
 - **VehicleController.cs** — class VehicleController : MonoBehaviour: Input, HoldStill, Definition, Tuning, Body, Dynamics, Telemetry, Wheels; struct Wheel: local, front, grounded, compression, load, hitCollider, hitTriangle, missing, SteerBias, SetWheelMissing(), Configure(), Spec, Gearbox, Place(); struct VehicleTelemetry: boost, boosting, airborne, groundedWheels, surface, support, hop, airTrick
 - **VehicleDamage.cs** — class VehicleDamage : MonoBehaviour; struct Impact: deltaV, dent, screenCracked, wheelLost, wheelsBent, bumperHangs, brokeThrough, other; class Pending: other, soft, softDeltaV, Settings, Deformer, Marks, Effects, Bound, NeedsRepair, WheelsLost, BentWheels, IsWheelLost(), Bend(), Last
 - **VehicleDamageSettings.cs** — class VehicleDamageSettings : ScriptableObject: dentFrom, scuffFrom, depthPerDeltaV, depthPerDeltaV2, maxDepth, radiusBase, radiusPerDeltaV, radiusOverObject, narrowDepth, narrowBelow, maxDisplacement, gatherSteps, frameBudgetMs, droopFrom
@@ -232,7 +233,7 @@ Automatisch erzeugt 2026-10-22 (190 Dateien). Nicht von Hand pflegen – neu erz
 - **VehicleEffectsSettings.cs** — class VehicleEffectsSettings : ScriptableObject: skidMaterial, smokeMaterial, markFromSkid, markWidth, markSeconds, smokeRate, dustFullSpeed, smokeColor, dustColor, flameMaterial, shockMaterial, flameCore, flameEdge, burstFlame
 - **VehicleFleet.cs** — class VehicleFleet : ScriptableObject: tuning, effects, damage, vehicles, defaultId, Get(), Default
 - **VehicleRespawn.cs** — class VehicleRespawn : MonoBehaviour: Locator, Respawn()
-- **VehicleVisuals.cs** — class VehicleVisuals : MonoBehaviour: BodyRoot, Wheel(), SetWobble(), Detach(), Reattach(), Bind(), FindPrefix(), IsTuningOption()
+- **VehicleVisuals.cs** — class VehicleVisuals : MonoBehaviour: BodyRoot, Wheel(), SetWobble(), SetStance(), Detach(), Reattach(), Bind(), FindPrefix(), IsTuningOption()
 
 ## World/
 - **InstanceCollider.cs** — class InstanceCollider : MonoBehaviour: Owner, Index

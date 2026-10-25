@@ -274,6 +274,14 @@ namespace JapanMap.Gameplay.Progress
             return cost;
         }
 
+        public void SetFine(string carId, CarFine fine)
+        {
+            if (!Owns(carId) || tuning == null) return;
+            Car(carId).fine = tuning.Clamp(fine);
+            MarkDirty();
+            Flush();
+        }
+
         public void SetSetup(string carId, CarSetupMode mode)
         {
             if (!Owns(carId)) return;
@@ -334,7 +342,7 @@ namespace JapanMap.Gameplay.Progress
             var state = Owns(def.id) ? _data.Car(def.id, false) : null;
             if (state == null || tuning == null) return null;
             if (state.setup == CarSetupMode.SafeReturn) crawlShare = tuning.safeCrawl;
-            return tuning.Apply(def, state.tune, state.setup);
+            return tuning.Apply(def, state.tune, state.setup, state.fine);
         }
 
         public void Dress(VehicleDefinition def, Transform model)
@@ -343,6 +351,8 @@ namespace JapanMap.Gameplay.Progress
             if (state == null) return;
             Color? paint = string.IsNullOrEmpty(state.paint) || tuning == null ? null : tuning.PaintColor(state.paint);
             CarLooks.Apply(model, state.tune.engine, state.aero, state.wheels, paint);
+            if (tuning != null && model.parent != null && model.parent.TryGetComponent<VehicleVisuals>(out var visuals))
+                visuals.SetStance(tuning.Stance(state.setup, state.fine));
         }
     }
 }

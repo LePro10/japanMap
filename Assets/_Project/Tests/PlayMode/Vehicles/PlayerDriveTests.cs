@@ -77,6 +77,9 @@ namespace JapanMap.Tests.Vehicles
                 for (var f = 0; f < 60 && !(controls.Stick.worldBound.width > 1f && controls.Stick.panel.visualTree.worldBound.height > 1f); f++)
                     yield return null;
                 Assert.Greater(controls.Stick.worldBound.width, 1f, "touch stick never laid out");
+                // Symbols instead of words (POLISH C6); the fingers below prove the symbol does not take the touch.
+                foreach (var b in new[] { controls.BrakeButton, controls.DriftButton, controls.BoostButton })
+                    Assert.NotNull(b.Q<JapanMap.Core.Ui.TouchGlyphElement>(), $"{b.Q<Label>()?.text} shows its symbol");
                 var car = Object.FindAnyObjectByType<PlayerCarSpawner>().Current;
                 var root = controls.Stick.panel.visualTree.worldBound;
                 var px = 1f / JapanMap.Core.Ui.UiPanel.Scale;

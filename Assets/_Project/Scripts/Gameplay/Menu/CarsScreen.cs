@@ -228,7 +228,7 @@ namespace JapanMap.Gameplay.Menu
             if (driving) head.Add(new Hanko(Jp.Mine, 54f));
             // Not the car on the stage: its Open Bay photo (the car behind the menu is the one you drive).
             if (!driving) Picture(Ui.Box(p, "nm-cardetail__pic"), def);
-            var spec = _progress.Tuning.Apply(def, state?.tune ?? default, state?.setup ?? CarSetupMode.Road);
+            var spec = _progress.Tuning.Apply(def, state?.tune ?? default, state?.setup ?? CarSetupMode.Road, state?.fine ?? default);
             var stock = def.arcade;
             var max = FleetMax();
             var stats = Ui.Box(p, "nm-cardetail__stats");
@@ -291,9 +291,9 @@ namespace JapanMap.Gameplay.Menu
         // ── Tune: performance bars with a preview, parts as cards (2026-10-13: "Tuning gibt es noch gar nicht") ──
 
         /// <summary>The car's stats as 0…1 against the best any car reaches fully tuned (bars compare across the fleet).</summary>
-        float[] Stats(VehicleDefinition def, CarTune tune, CarSetupMode setup)
+        float[] Stats(VehicleDefinition def, CarTune tune, CarSetupMode setup, CarFine fine = default)
         {
-            var s = _progress.Tuning.Apply(def, tune, setup);
+            var s = _progress.Tuning.Apply(def, tune, setup, fine);
             return new[] { s.TopSpeed(def.mass), s.power / def.mass, s.latG, s.brakeG, s.steerRate };
         }
 
@@ -325,7 +325,7 @@ namespace JapanMap.Gameplay.Menu
         {
             var state = _progress.Car(def.id);
             var max = FleetMax();
-            var now = Stats(def, state.tune, state.setup);
+            var now = Stats(def, state.tune, state.setup, state.fine);
 
             // Performance: five bars; hovering a part shows where it would take the car (green up, red down).
             var perf = Ui.Box(body, "jm-panel", "jm-perf");
@@ -344,9 +344,9 @@ namespace JapanMap.Gameplay.Menu
                 bars[i] = new StatBar { Fill = fill, Ghost = ghost, Value = value };
                 t.AppendLine($"{StatNames[i]} {StatText(i, now[i])}");
             }
-            void Preview(CarTune? tune, CarSetupMode? setup)
+            void Preview(CarTune? tune, CarSetupMode? setup, CarFine? fine = null)
             {
-                var then = tune.HasValue || setup.HasValue ? Stats(def, tune ?? state.tune, setup ?? state.setup) : now;
+                var then = tune.HasValue || setup.HasValue || fine.HasValue ? Stats(def, tune ?? state.tune, setup ?? state.setup, fine ?? state.fine) : now;
                 for (var i = 0; i < 5; i++)
                 {
                     var a = Mathf.Clamp01(now[i] / max[i]);
@@ -400,6 +400,32 @@ namespace JapanMap.Gameplay.Menu
                 b.RegisterCallback<PointerLeaveEvent>(_ => Preview(null, null));
             }
             Ui.Small(body, SetupHint(state.setup));
+
+            // Fine tune (POLISH D): free steps, seen on the car at once; hovering previews the stats like the parts.
+            var set = _progress.Tuning;
+            Ui.Text(body, "FINE TUNE · FREE", "jm-kicker").style.marginTop = 18;
+            void FineRow(string title, int from, int to, int fitted, System.Func<int, string> label, System.Func<int, CarFine> with)
+            {
+                var card = Ui.Box(body, "jm-part");
+                Ui.Text(Ui.Row(card), title, "jm-part__title");
+                var seg = Ui.Row(card, "jm-seg");
+                for (var v = from; v <= to; v++)
+                {
+                    var f = with(v);
+                    var b = Ui.Button(seg, label(v), () => { _garage.Fine(f); _garage.ApplySoon(); Menu.Rebuild(); }, "jm-seg__item");
+                    Ui.On(b, v == fitted, "jm-seg__item--on");
+                    b.RegisterCallback<PointerEnterEvent>(_ => Preview(null, null, f));
+                    b.RegisterCallback<PointerLeaveEvent>(_ => Preview(null, null));
+                    b.RegisterCallback<FocusInEvent>(_ => Preview(null, null, f));
+                    t.AppendLine($"{title} {label(v)}{(v == fitted ? " fitted" : "")}");
+                }
+            }
+            var fine = set.Clamp(state.fine);
+            string Mm(float m) => m == 0f ? "STOCK" : $"{(m > 0f ? "+" : "-")}{Mathf.Abs(m) * 1000f:0} MM"; // ASCII minus (font coverage)
+            FineRow("Ride height", -set.heightSteps, set.heightSteps, fine.height, v => Mm(v * set.heightStep), v => new CarFine { height = v, camber = fine.camber, track = fine.track });
+            FineRow("Camber", 0, set.camberSteps, fine.camber, v => v == 0 ? "STOCK" : $"-{v * set.camberStep:0.#}°", v => new CarFine { height = fine.height, camber = v, track = fine.track });
+            FineRow("Track", 0, set.trackSteps, fine.track, v => Mm(v * set.trackStep), v => new CarFine { height = fine.height, camber = fine.camber, track = v });
+            Ui.Small(body, "Lower and more camber: more grip in bends, a little less braking. Wider: calmer, slower to turn in.");
             if (_garage.Status != "") Ui.Text(body, _garage.Status, "jm-body", "jm-amber");
         }
 

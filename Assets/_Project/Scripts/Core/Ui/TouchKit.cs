@@ -29,6 +29,28 @@ namespace JapanMap.Core.Ui
             return c;
         }
 
+        /// <summary>
+        /// Puts a symbol on a round button and shrinks its word to a caption under it (the word stays: first-time
+        /// players and the text-based test/tool lookups still read it). Returns the button.
+        /// </summary>
+        public static VisualElement Glyph(VisualElement button, TouchGlyph glyph)
+        {
+            var size = button.style.height.value.value;
+            var label = button.Q<Label>();
+            var color = label != null && label.style.color.keyword == StyleKeyword.Undefined ? label.style.color.value : new Color(0.965f, 0.937f, 0.894f);
+            button.Q<TouchGlyphElement>()?.RemoveFromHierarchy();
+            button.Insert(0, new TouchGlyphElement(glyph, Mathf.Round(size * 0.42f), color));
+            button.style.justifyContent = Justify.Center;
+            button.style.alignItems = Align.Center;
+            if (label != null)
+            {
+                label.style.flexGrow = 0;
+                label.style.fontSize = Mathf.Clamp(size * 0.16f, 8f, 10f);
+                label.style.marginTop = 1f;
+            }
+            return button;
+        }
+
         /// <summary>A button held by one finger; <paramref name="changed"/> true on down, false on up/cancel.</summary>
         public static VisualElement Hold(VisualElement parent, float size, string label, Action<bool> changed, params string[] classes)
         {

@@ -486,8 +486,9 @@ namespace JapanMap.Editor
                     return true; // marker only: Begin kept the agent slot's save
                 case "garage":
                 {
-                    // garage pick id | buy | fit Engine 2 | setup Drift | paint Navy | rims 1 | kit 1 | close — the sheet's own actions.
+                    // garage open | pick id | buy | fit Engine 2 | setup Drift | fine -2 3 1 | paint Navy | rims 1 | kit 1 | close — the sheet's own actions.
                     var gs = Object.FindAnyObjectByType<JapanMap.Gameplay.Garage.GarageSystem>();
+                    if (gs != null && a[1] == "open") { gs.Open(); Log.AppendLine($"  garage open → {gs.IsOpen}"); return true; }
                     if (gs == null || !gs.IsOpen) { Log.AppendLine("  garage: not open"); return true; }
                     switch (a[1])
                     {
@@ -495,6 +496,7 @@ namespace JapanMap.Editor
                         case "buy": gs.Buy(); break;
                         case "fit": gs.Fit((JapanMap.Vehicles.TuneCategory)System.Enum.Parse(typeof(JapanMap.Vehicles.TuneCategory), a[2], true), int.Parse(a[3])); break;
                         case "setup": gs.Setup((JapanMap.Vehicles.CarSetupMode)System.Enum.Parse(typeof(JapanMap.Vehicles.CarSetupMode), a[2], true)); break;
+                        case "fine": gs.Fine(new JapanMap.Vehicles.CarFine { height = int.Parse(a[2]), camber = int.Parse(a[3]), track = int.Parse(a[4]) }); break;
                         case "paint": gs.Paint(a.Length > 2 ? string.Join(" ", a, 2, a.Length - 2) : ""); break;
                         case "rims": gs.Look(false, int.Parse(a[2])); break;
                         case "kit": gs.Look(true, int.Parse(a[2])); break;

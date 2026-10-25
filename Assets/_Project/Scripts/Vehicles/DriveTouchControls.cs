@@ -166,19 +166,19 @@ namespace JapanMap.Vehicles
 
             // Right thumb: Brake lowest/outboard, Drift lowest/inboard, Boost above — one sliding group.
             _group = new TouchKit.Group();
-            BrakeButton = _group.Add(_root, big, "BRAKE", on => _brake = on, "jm-touch--brake");
+            BrakeButton = TouchKit.Glyph(_group.Add(_root, big, "BRAKE", on => _brake = on, "jm-touch--brake"), TouchGlyph.Brake);
             TouchKit.Place(BrakeButton, outerR, bottom, rightSide: true, mirror);
-            DriftButton = _group.Add(_root, big, "DRIFT", on => _handbrake = on, "jm-touch--drift");
+            DriftButton = TouchKit.Glyph(_group.Add(_root, big, "DRIFT", on => _handbrake = on, "jm-touch--drift"), TouchGlyph.Drift);
             TouchKit.Place(DriftButton, outerR + big + gap, bottom, rightSide: true, mirror);
-            BoostButton = _group.Add(_root, big, "BOOST", on => _boost = on, "jm-touch--boost");
+            BoostButton = TouchKit.Glyph(_group.Add(_root, big, "BOOST", on => _boost = on, "jm-touch--boost"), TouchGlyph.Boost);
             TouchKit.Place(BoostButton, outerR + (big + gap) * 0.5f, bottom + big + gap, rightSide: true, mirror);
-            _stunt = TouchKit.Tap(_root, 48f * k, "STUNT", () => driver?.ToggleStunt());
+            _stunt = TouchKit.Glyph(TouchKit.Tap(_root, 48f * k, "STUNT", () => driver?.ToggleStunt()), TouchGlyph.Stunt);
             // Above and inboard of the group, clear of the instrument (landscape: 144 px wide, 138 px above the bottom).
             TouchKit.Place(_stunt, outerR + (big + gap) * 2.3f, bottom + big + gap, rightSide: true, mirror);
             if (!GameOptions.AutoThrottle)
             {
                 // Manual throttle: an 80 × 64 hold zone inboard of the group.
-                var pedal = TouchKit.Hold(_root, 64f * k, "GAS", on => _pedal = on);
+                var pedal = TouchKit.Glyph(TouchKit.Hold(_root, 64f * k, "GAS", on => _pedal = on), TouchGlyph.Gas);
                 pedal.style.width = 80f * k;
                 pedal.style.borderTopLeftRadius = pedal.style.borderTopRightRadius = pedal.style.borderBottomLeftRadius = pedal.style.borderBottomRightRadius = 14f;
                 TouchKit.Place(pedal, outerR + (big + gap) * 2f, bottom, rightSide: true, mirror);
@@ -187,12 +187,12 @@ namespace JapanMap.Vehicles
             // Recover and camera: small, at the top edge (the menu button sits in the corner).
             // One row with MENU (PlayerModeUi): the top corner, in portrait under the instrument.
             var top = safe.y + (UiPanel.IsPortrait ? UiPanel.PortraitButtonRow : 12f);
-            var reset = TouchKit.Tap(_root, 48f, "RESET", () => driver?.PressRespawn());
-            var cam = TouchKit.Tap(_root, 48f, "CAM", () => driver?.PressCamera());
-            _auto = TouchKit.Tap(_root, 48f, "AUTO", () => AutoDrive.Current?.SetActive(!AutoDrive.IsActive));
+            var reset = TouchKit.Glyph(TouchKit.Tap(_root, 48f, "RESET", () => driver?.PressRespawn()), TouchGlyph.Reset);
+            var cam = TouchKit.Glyph(TouchKit.Tap(_root, 48f, "CAM", () => driver?.PressCamera()), TouchGlyph.Camera);
+            _auto = TouchKit.Glyph(TouchKit.Tap(_root, 48f, "AUTO", () => AutoDrive.Current?.SetActive(!AutoDrive.IsActive)), TouchGlyph.Auto);
             _auto.name = "touch-auto";
             // Headlights (D52): a tap toggles, a double tap is the high beam — as the L key.
-            _lights = TouchKit.Tap(_root, 48f, "LIGHT", HeadlightSwitch.Press);
+            _lights = TouchKit.Glyph(TouchKit.Tap(_root, 48f, "LIGHT", HeadlightSwitch.Press), TouchGlyph.Light);
             _lights.name = "touch-lights";
             var outerRow = (mirror ? safe.x : safe.z) + 12f;
             foreach (var (b, i) in new[] { (reset, 1), (cam, 2), (_lights, 3), (_auto, 4) })

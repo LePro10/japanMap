@@ -43,6 +43,17 @@ MonoBehaviour:
   dirtFalloff: 0.95
   dirtLift: 0.02
   safeCrawl: 0.9
+  heightSteps: 2
+  heightStep: 0.015
+  heightGrip: 0.01
+  camberSteps: 3
+  camberStep: 2
+  camberGrip: 0.012
+  camberBrake: 0.015
+  trackSteps: 2
+  trackStep: 0.015
+  trackYaw: 0.03
+  trackGrip: 0.008
   palette:
   - Cloud
   - Ink
@@ -70,3 +81,5 @@ MonoBehaviour:
   - {r: 0.95, g: 0.65, b: 0.15, a: 1}
   - {r: 0.75, g: 0.88, b: 0.95, a: 1}
   paintPrice: 120
+  wheelPrice: 450
+  kitPrice: 900

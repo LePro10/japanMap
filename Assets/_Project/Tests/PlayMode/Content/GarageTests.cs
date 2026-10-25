@@ -112,6 +112,16 @@ namespace JapanMap.Tests.Content
             Assert.AreEqual(brakeStock / progress.Tuning.brakeDistance.y, player.Car.Spec.brakeG, 1e-4f, "Street brakes on the real car");
             Assert.AreEqual(10000 - 2400 - 600, progress.Wallet.Balance);
 
+            // Fine tune (POLISH D): free, on the real car at once — more grip, wheels leaning in.
+            var gripBefore = player.Car.Spec.latG;
+            garage.Fine(new CarFine { height = -2, camber = 3 });
+            Assert.Greater(player.Car.Spec.latG, gripBefore, "lower and cambered: more grip on the real car");
+            Assert.AreEqual(10000 - 2400 - 600, progress.Wallet.Balance, "fine tune is free");
+            yield return null;
+            var visuals = player.Car.GetComponent<VehicleVisuals>();
+            if (visuals != null && visuals.Wheel(0) != null)
+                Assert.AreEqual(3 * progress.Tuning.camberStep, Vector3.Angle(visuals.Wheel(0).up, player.Car.transform.up), 1f, "the front wheel shows the camber");
+
             yield return new WaitForSeconds(0.4f);
             yield return Tap(Key.E);
             Assert.IsFalse(garage.IsOpen, "E drives out");
@@ -125,6 +135,8 @@ namespace JapanMap.Tests.Content
             var saved = JsonUtility.FromJson<ProgressData>(json);
             Assert.AreEqual("mame", saved.selectedCar);
             Assert.AreEqual(1, saved.Car("mame").tune.brakes);
+            Assert.AreEqual(-2, saved.Car("mame").fine.height);
+            Assert.AreEqual(3, saved.Car("mame").fine.camber);
             Assert.AreEqual(7000, saved.sparks);
         }
 

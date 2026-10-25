@@ -127,10 +127,11 @@ namespace JapanMap.Gameplay.Garage
 
         void OnUse(InputAction.CallbackContext _) => Use();
 
-        // Closing the menu (Continue, Esc) in the bay drives out.
+        // Closing the menu (Continue, Esc) in the bay drives out. Not while the scene tears down (the menu closes as it is
+        // destroyed): driving out then spawned a car into a dying scene ("objects were not cleaned up", 2026-10-25).
         void OnMenu(bool open)
         {
-            if (!open && IsOpen && !_closing) Close();
+            if (!open && IsOpen && !_closing && isActiveAndEnabled && spawner != null && spawner.isActiveAndEnabled) Close();
         }
 
         void Update()
@@ -278,6 +279,12 @@ namespace JapanMap.Gameplay.Garage
         {
             progress.SetSetup(_shown, mode);
             Say($"Setup: {(mode == CarSetupMode.SafeReturn ? "Safe Return" : mode.ToString())}.");
+            Show(_shown);
+        }
+
+        public void Fine(CarFine fine)
+        {
+            progress.SetFine(_shown, fine);
             Show(_shown);
         }
 

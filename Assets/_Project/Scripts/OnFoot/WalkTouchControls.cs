@@ -167,9 +167,9 @@ namespace JapanMap.OnFoot
             _root.Add(_stickBase);
 
             var outer = (mirror ? safe.x : safe.z) + 16f;
-            var jump = Button("JUMP", 64f * k, new Color(0.3f, 0.75f, 0.5f, 0.45f), on => _jump = on);
+            var jump = Core.Ui.TouchKit.Glyph(Button("JUMP", 64f * k, new Color(0.3f, 0.75f, 0.5f, 0.45f), on => _jump = on), Core.Ui.TouchGlyph.Jump);
             Core.Ui.TouchKit.Place(jump, outer, bottom, rightSide: true, mirror);
-            var slide = Button("SLIDE", 56f * k, new Color(0.95f, 0.45f, 0.2f, 0.45f), on => _slide = on);
+            var slide = Core.Ui.TouchKit.Glyph(Button("SLIDE", 56f * k, new Color(0.95f, 0.45f, 0.2f, 0.45f), on => _slide = on), Core.Ui.TouchGlyph.Slide);
             Core.Ui.TouchKit.Place(slide, outer + 64f * k + 8f * k, bottom, rightSide: true, mirror);
             _lookPad.style.right = mirror ? StyleKeyword.Auto : 0;
             _lookPad.style.left = mirror ? 0 : StyleKeyword.Auto;

@@ -22,6 +22,9 @@ namespace JapanMap.Vehicles
         readonly bool[] _detached = new bool[4];
         readonly Transform[] _wheelParent = new Transform[4];
         readonly Quaternion[] _wheelRestRot = new Quaternion[4];
+        readonly Vector3[] _wheelModel = new Vector3[4];
+        readonly float[] _camber = new float[4];
+        Vector3 _bodyModel;
         float _roll, _pitch;
 
         public Transform BodyRoot => _body;
@@ -29,6 +32,25 @@ namespace JapanMap.Vehicles
 
         /// <summary>A bent wheel wobbles as it turns (degrees of tilt, 0 = true).</summary>
         public void SetWobble(int i, float degrees) => _wobble[i] = degrees;
+
+        /// <summary>
+        /// Fine-tune stance (TuningSettings.Stance): x = body drop, m (negative = higher); y = camber, degrees (tops of
+        /// the wheels lean in); z = each wheel out, m. Looks only — the physics wheels stay where the definition has them.
+        /// </summary>
+        public void SetStance(Vector3 stance)
+        {
+            if (_body != null) _body.localPosition = _bodyModel + Vector3.down * stance.x;
+            for (var i = 0; i < 4; i++)
+            {
+                if (_wheel[i] == null) continue;
+                var side = Mathf.Sign(_wheelModel[i].x);
+                var p = _wheelModel[i] + Vector3.right * (side * stance.z);
+                // A wheel under the body would drop with it: it stays on the road.
+                if (_body != null && _wheel[i].IsChildOf(_body)) p.y += stance.x;
+                _wheelRest[i] = p;
+                _camber[i] = side * stance.y;
+            }
+        }
 
         /// <summary>The wheel leaves the car (D47): its node stops following the spring; the caller re-parents it.</summary>
         public Transform Detach(int i)
@@ -55,12 +77,16 @@ namespace JapanMap.Vehicles
             foreach (var t in model.GetComponentsInChildren<Transform>(true))
                 if (IsTuningOption(t)) t.gameObject.SetActive(false);
             _body = Find(model, "body_root");
-            if (_body != null) _bodyRest = _body.localRotation;
+            if (_body != null)
+            {
+                _bodyRest = _body.localRotation;
+                _bodyModel = _body.localPosition;
+            }
             for (var i = 0; i < 4; i++)
             {
                 _wheel[i] = Find(model, WheelNames[i]);
                 if (_wheel[i] == null) continue;
-                _wheelRest[i] = _wheel[i].localPosition;
+                _wheelRest[i] = _wheelModel[i] = _wheel[i].localPosition;
                 _wheelRestRot[i] = _wheel[i].localRotation;
                 _wheelParent[i] = _wheel[i].parent;
                 _spin[i] = Find(_wheel[i], "spin_" + WheelNames[i].Substring(6));
@@ -118,6 +144,7 @@ namespace JapanMap.Vehicles
                     var a = _spinAngle[i] * Mathf.Deg2Rad;
                     steer *= Quaternion.AngleAxis(_wobble[i], new Vector3(0f, Mathf.Cos(a), Mathf.Sin(a)));
                 }
+                if (_camber[i] != 0f) steer *= Quaternion.Euler(0f, 0f, _camber[i]);
                 _wheel[i].localRotation = steer;
             }
 
