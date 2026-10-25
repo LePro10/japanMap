@@ -179,6 +179,48 @@ namespace JapanMap.Tests.OnFoot
             Assert.That((bird.transform.position - at).magnitude, Is.LessThan(0.05f), "back on its spot");
         }
 
+        /// <summary>A car drove through a cat that sat on. Coming at speed, a ground animal dashes aside, on the ground.</summary>
+        [UnityTest]
+        public IEnumerator GroundAnimal_DashesAside_FromACarAtSpeed()
+        {
+            yield return BootGame();
+            var actors = Object.FindAnyObjectByType<PlaceActors>();
+            var mode = Object.FindAnyObjectByType<PlayerModeController>();
+            mode.PressVehicle();
+            Vector3 from = default, at = default, dir = default;
+            var found = false;
+            foreach (var a in actors.Data.actors.Where(a => a.kind is "cat" or "dog" or "chicken"))
+                for (var deg = 0; deg < 360 && !found; deg += 30)
+                {
+                    dir = Quaternion.Euler(0f, deg, 0f) * Vector3.forward;
+                    var p = a.position + dir * 16f;
+                    if (!Physics.Raycast(p + Vector3.up * 3f, Vector3.down, out var g, 6f, ~GameLayers.NotGround)) continue;
+                    if (Mathf.Abs(g.point.y - a.position.y) > 1f) continue;
+                    if (Physics.SphereCast(g.point + Vector3.up * 1.2f, 1f, -dir, out _, 16f, ~GameLayers.NotGround, QueryTriggerInteraction.Ignore)) continue;
+                    from = g.point; at = a.position; found = true;
+                }
+            Assert.IsTrue(found, "a ground animal with 16 m of open ground before it");
+            var car = mode.Car;
+            car.Place(from, Quaternion.LookRotation(-dir).eulerAngles.y, fromAbove: 1f);
+            for (var f = 0; f < 60; f++) yield return null;
+            var animal = actors.GetComponentsInChildren<Transform>().Select(t => t.gameObject)
+                .FirstOrDefault(g => (g.transform.position - at).sqrMagnitude < 0.01f);
+            Assert.NotNull(animal, "the animal is shown near the car");
+            Assert.AreEqual(0, actors.Dashed, "nothing dashed off while the car stood");
+            // The car rolls at it at 50 km/h.
+            for (var f = 0; f < 50; f++)
+            {
+                car.Body.linearVelocity = -dir * 14f;
+                yield return new WaitForFixedUpdate();
+            }
+            for (var f = 0; f < 60; f++) yield return null;
+            Assert.That(actors.Dashed, Is.GreaterThan(0), "it dashed off");
+            var moved = animal.transform.position - at;
+            Assert.That(new Vector2(moved.x, moved.z).magnitude, Is.GreaterThan(3f), $"out of the way ({animal.name})");
+            Assert.IsTrue(Physics.Raycast(animal.transform.position + Vector3.up * 1.5f, Vector3.down, out var below, 4f, ~GameLayers.NotGround), "ground under it");
+            Assert.That(Mathf.Abs(below.point.y - animal.transform.position.y), Is.LessThan(0.3f), "on the ground, not floating");
+        }
+
         [UnityTest]
         public IEnumerator Walker_WalksIntoTheCornerMart()
         {

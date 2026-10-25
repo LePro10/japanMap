@@ -33,7 +33,7 @@ Straßen-Eckpunkte, Bank-Figur, REPAIR/Turn-Karte je Form, Tagesbonus grün (vor
 - Schaden: Stoßstange reißt beim zweiten harten Treffer ab (2,2 ms); Türen/Haube noch nicht. Store-Videos ohne Auto-Drive-Kinofahrt. Modelle: Augpunkte/Rückfahrgläser fehlen.
 - Politur offen ([POLISH.md](POLISH.md)): Kabel auch an den 40 Einzelmasten/in Tokio, Musik/Umgebungstöne (Clips fehlen),
   3D-Hebebühne in der Garage, Store-Videos aus dem neuen Look.
-- Neu in der Welt: 50 Tiere (Regeln `Data/Life/AnimalSpots.asset`; Vögel fliegen auf, wenn du kommst) und durchhängende Stromkabel an der
+- Neu in der Welt: 50 Tiere (Regeln `Data/Life/AnimalSpots.asset`; Vögel fliegen auf, Katzen/Hunde/Hühner springen vor schnellen Autos zur Seite — Sprung nur im Test belegt, kein Bild) und durchhängende Stromkabel an der
   Landleitung (26 Masten, 25 Felder, 5400 Dreiecke; Masten quer gedreht wie im Prototyp). Verkehrsposten noch ohne Platz.
   Aus früher: ASTRA §11, Gegner-Motoren, Leuchtturm, Angler, Musik; ASTRA E01/E08–E17, CI → Phase 12.
 - Leistung: WebGPU später; Handy DXT→ASTC nur nach Messung (D37); Hoch-Budget nach deinem iGPU-Test.

@@ -34,6 +34,9 @@ namespace JapanMap.Gameplay.Life
         [SerializeField] float flightHeight = 9f;
         [Tooltip("Back on its spot after this many seconds, once the player is farther than fleeRadius × 2.")]
         [SerializeField] float returnAfter = 15f;
+        [Tooltip("Cats, dogs and chickens dash this far aside from a car coming at speed (within fleeRadius × 0.6), m in s.")]
+        [SerializeField] float dashDistance = 5f;
+        [SerializeField] float dashTime = 0.7f;
 
         sealed class Live
         {
@@ -48,6 +51,7 @@ namespace JapanMap.Gameplay.Life
             public bool stood; // its seat broke: standing on the ground until the player comes back
             public float flewAt = -1f; // a bird that flew off (Time.time), or -1
             public Vector3 flyFrom, flyDir;
+            public float dashAt = -1f; // a ground animal dashing aside (Time.time), or -1
         }
 
         readonly List<Live> _live = new();
@@ -61,6 +65,7 @@ namespace JapanMap.Gameplay.Life
 
         Vector3 _lastFocus;
         float _focusSpeed;
+        Vector3 _focusMove;
 
         void OnEnable() => Smash.SmashSystem.Broke += OnBroke;
         void OnDisable() => Smash.SmashSystem.Broke -= OnBroke;
@@ -147,6 +152,9 @@ namespace JapanMap.Gameplay.Life
 
         static bool IsPerson(string kind) => kind is "worker" or "fisher" or "visitor" or "seated";
         static bool IsBird(string kind) => kind is "pigeon" or "crow" or "crowPerch";
+        static bool Dashes(string kind) => kind is "cat" or "dog" or "chicken";
+        /// <summary>Ground animals that dashed aside since start (tests).</summary>
+        public int Dashed { get; private set; }
 
         Vector3 Focus()
         {
@@ -166,6 +174,7 @@ namespace JapanMap.Gameplay.Life
             {
                 var v = (focus - _lastFocus).magnitude / Time.deltaTime;
                 _focusSpeed = v > 80f ? 0f : Mathf.Lerp(_focusSpeed, v, 0.3f);
+                if (v <= 80f) _focusMove = focus - _lastFocus;
             }
             _lastFocus = focus;
             var r2 = showRadius * showRadius;
@@ -201,6 +210,12 @@ namespace JapanMap.Gameplay.Life
                             l.stood = false;
                             l.go.transform.SetPositionAndRotation(l.actor.position, Quaternion.Euler(0f, l.actor.yaw, 0f));
                         }
+                        // A dashed-off animal is back on its spot next visit.
+                        if (near && l.dashAt >= 0f)
+                        {
+                            l.dashAt = -1f;
+                            l.go.transform.SetPositionAndRotation(l.actor.position, Quaternion.Euler(0f, l.actor.yaw, 0f));
+                        }
                         l.go.SetActive(near);
                     }
                 }
@@ -228,6 +243,13 @@ namespace JapanMap.Gameplay.Life
                     var r = _focusSpeed > fleeSpeed ? fleeRadius : fleeRadiusSlow;
                     if (d.sqrMagnitude < r * r) { FlyOff(l, d, t); continue; }
                 }
+                if (l.animal != null && Dashes(l.actor.kind))
+                {
+                    if (l.dashAt >= 0f && t - l.dashAt < dashTime) { Dash(l, t); continue; }
+                    var d = l.go.transform.position - focus;
+                    var r = fleeRadius * 0.6f;
+                    if (l.dashAt < 0f && _focusSpeed > fleeSpeed && d.sqrMagnitude < r * r) { DashOff(l, d, t); continue; }
+                }
                 if (l.animal != null)
                 {
                     // Nod and turn a little (legacy: bob ± 2 cm, sway ± 0.12 rad; chickens peck).
@@ -247,6 +269,31 @@ namespace JapanMap.Gameplay.Life
             l.flyDir = Quaternion.Euler(0f, side, 0f) * away.normalized;
             l.flyFrom = l.go.transform.position;
             l.flewAt = t + Mathf.Repeat(l.phase, 0.25f); // not all in the same frame
+        }
+
+        /// <summary>Aside, not straight ahead: across the player's way to the side the animal already is on.</summary>
+        void DashOff(Live l, Vector3 away, float t)
+        {
+            away.y = 0f;
+            if (away.sqrMagnitude < 0.01f) away = l.go.transform.right;
+            var ahead = _focusMove.sqrMagnitude > 0.01f ? _focusMove.normalized : -away.normalized;
+            var side = Vector3.Cross(Vector3.up, ahead);
+            if (Vector3.Dot(side, away) < 0f) side = -side;
+            l.flyDir = (side + away.normalized * 0.5f).normalized;
+            l.flyFrom = l.go.transform.position;
+            l.dashAt = t;
+            Dashed++;
+        }
+
+        void Dash(Live l, float t)
+        {
+            var u = Mathf.Clamp01((t - l.dashAt) / dashTime);
+            var p = l.flyFrom + l.flyDir * (dashDistance * (1f - (1f - u) * (1f - u)));
+            // On the ground it runs over (a kerb, a slope); a hop while it runs.
+            if (Physics.Raycast(p + Vector3.up * 1.5f, Vector3.down, out var g, 4f, ~GameLayers.NotGround, QueryTriggerInteraction.Ignore)) p.y = g.point.y;
+            p.y += Mathf.Abs(Mathf.Sin(u * Mathf.PI * 4f)) * 0.12f;
+            l.go.transform.SetPositionAndRotation(p, Quaternion.LookRotation(l.flyDir));
+            if (l.animal != null) l.animal.localRotation = Quaternion.identity;
         }
 
         void Fly(Live l, float t)
