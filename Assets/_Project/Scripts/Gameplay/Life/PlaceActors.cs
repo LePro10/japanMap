@@ -22,6 +22,18 @@ namespace JapanMap.Gameplay.Life
         [SerializeField] float showRadius = 220f;
         [Tooltip("A seated actor stands up when something breaks this close to it (its bench), m.")]
         [SerializeField] float standUpRadius = 2.5f;
+        [Tooltip("Birds fly off when the player comes this close at speed (car), m.")]
+        [SerializeField] float fleeRadius = 14f;
+        [Tooltip("…or this close at any pace (walking up to them), m.")]
+        [SerializeField] float fleeRadiusSlow = 3.5f;
+        [Tooltip("Faster than this counts as 'at speed', m/s.")]
+        [SerializeField] float fleeSpeed = 4f;
+        [Tooltip("A flight: seconds, distance away and height gained before it is out of sight.")]
+        [SerializeField] float flightTime = 2.2f;
+        [SerializeField] float flightDistance = 22f;
+        [SerializeField] float flightHeight = 9f;
+        [Tooltip("Back on its spot after this many seconds, once the player is farther than fleeRadius × 2.")]
+        [SerializeField] float returnAfter = 15f;
 
         sealed class Live
         {
@@ -34,6 +46,8 @@ namespace JapanMap.Gameplay.Life
             public float phase;
             public Renderer[] renderers;
             public bool stood; // its seat broke: standing on the ground until the player comes back
+            public float flewAt = -1f; // a bird that flew off (Time.time), or -1
+            public Vector3 flyFrom, flyDir;
         }
 
         readonly List<Live> _live = new();
@@ -42,6 +56,11 @@ namespace JapanMap.Gameplay.Life
         public int Count => _live.Count;
         public ActorSet Data => data;
         public int Active { get { var n = 0; foreach (var l in _live) if (l.go.activeSelf) n++; return n; } }
+        /// <summary>Birds that are flying off or away right now.</summary>
+        public int Flown { get { var n = 0; foreach (var l in _live) if (l.flewAt >= 0f) n++; return n; } }
+
+        Vector3 _lastFocus;
+        float _focusSpeed;
 
         void OnEnable() => Smash.SmashSystem.Broke += OnBroke;
         void OnDisable() => Smash.SmashSystem.Broke -= OnBroke;
@@ -127,6 +146,7 @@ namespace JapanMap.Gameplay.Life
         }
 
         static bool IsPerson(string kind) => kind is "worker" or "fisher" or "visitor" or "seated";
+        static bool IsBird(string kind) => kind is "pigeon" or "crow" or "crowPerch";
 
         Vector3 Focus()
         {
@@ -141,12 +161,29 @@ namespace JapanMap.Gameplay.Life
             if (_live.Count == 0) return;
             // Visibility: a slice per frame.
             var focus = Focus();
+            // The player's pace from its own motion (car, walker, respawn alike); a jump (respawn, teleport) is not a pace.
+            if (Time.deltaTime > 0f)
+            {
+                var v = (focus - _lastFocus).magnitude / Time.deltaTime;
+                _focusSpeed = v > 80f ? 0f : Mathf.Lerp(_focusSpeed, v, 0.3f);
+            }
+            _lastFocus = focus;
             var r2 = showRadius * showRadius;
             for (var k = 0; k < 8; k++)
             {
                 var l = _live[_cursor];
                 _cursor = (_cursor + 1) % _live.Count;
                 var near = (l.actor.position - focus).sqrMagnitude < r2;
+                if (l.flewAt >= 0f)
+                {
+                    // Flown off: stays away until the player has moved on, then lands back on its spot unseen.
+                    var far = (l.actor.position - focus).sqrMagnitude > 4f * fleeRadius * fleeRadius;
+                    if (Time.time - l.flewAt < returnAfter || !far) continue;
+                    l.flewAt = -1f;
+                    l.go.transform.SetPositionAndRotation(l.actor.position, Quaternion.Euler(0f, l.actor.yaw, 0f));
+                    l.go.SetActive(near);
+                    continue;
+                }
                 if (near != l.go.activeSelf)
                 {
                     if (near && l.person != null && !l.person.Knocked)
@@ -184,6 +221,13 @@ namespace JapanMap.Gameplay.Life
                         if (r.shadowCastingMode != mode) r.shadowCastingMode = mode;
                 }
                 var s = t + l.phase;
+                if (l.flewAt >= 0f) { Fly(l, t); continue; }
+                if (l.animal != null && IsBird(l.actor.kind))
+                {
+                    var d = l.go.transform.position - focus;
+                    var r = _focusSpeed > fleeSpeed ? fleeRadius : fleeRadiusSlow;
+                    if (d.sqrMagnitude < r * r) { FlyOff(l, d, t); continue; }
+                }
                 if (l.animal != null)
                 {
                     // Nod and turn a little (legacy: bob ± 2 cm, sway ± 0.12 rad; chickens peck).
@@ -192,6 +236,30 @@ namespace JapanMap.Gameplay.Life
                 }
                 else if (l.figure != null && (l.person == null || !l.person.Knocked)) l.figure.Play(l.stood ? "Idle" : l.clip);
             }
+        }
+
+        /// <summary>A bird takes off away from the player, a little to one side (a flock spreads out).</summary>
+        void FlyOff(Live l, Vector3 away, float t)
+        {
+            away.y = 0f;
+            if (away.sqrMagnitude < 0.01f) away = l.go.transform.forward;
+            var side = Mathf.Sin(l.phase * 12.9898f) * 40f;
+            l.flyDir = Quaternion.Euler(0f, side, 0f) * away.normalized;
+            l.flyFrom = l.go.transform.position;
+            l.flewAt = t + Mathf.Repeat(l.phase, 0.25f); // not all in the same frame
+        }
+
+        void Fly(Live l, float t)
+        {
+            var u = Mathf.Clamp01((t - l.flewAt) / flightTime);
+            if (t < l.flewAt) return; // its short hesitation
+            if (u >= 1f) { l.go.SetActive(false); return; }
+            // Steep up first, then away (out of the street, over the roofs).
+            var climb = 1f - (1f - u) * (1f - u);
+            var p = l.flyFrom + l.flyDir * (flightDistance * u * u) + Vector3.up * (flightHeight * climb);
+            l.go.transform.SetPositionAndRotation(p, Quaternion.LookRotation(l.flyDir) * Quaternion.Euler(-25f * (1f - u), 0f, 0f));
+            // Wing beats read as a fast roll wobble on the static model.
+            if (l.animal != null) l.animal.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(t * 40f + l.phase) * 18f);
         }
     }
 }

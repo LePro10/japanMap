@@ -127,6 +127,58 @@ namespace JapanMap.Tests.OnFoot
             for (var f = 0; f < 40; f++) yield return null;
         }
 
+        /// <summary>Birds flew nowhere: a pigeon let the walker step on it. Walking up to one, it flies off and comes back later.</summary>
+        [UnityTest]
+        public IEnumerator Pigeon_FliesOff_WhenTheWalkerComes_AndReturns()
+        {
+            yield return BootGame();
+            var actors = Object.FindAnyObjectByType<PlaceActors>();
+            var mode = Object.FindAnyObjectByType<PlayerModeController>();
+            // Setup: 7 m before a pigeon with a clear line to it, facing it.
+            Vector3 from = default, at = default;
+            var found = false;
+            foreach (var a in actors.Data.actors.Where(a => a.kind == "pigeon"))
+                for (var deg = 0; deg < 360 && !found; deg += 30)
+                {
+                    var dir = Quaternion.Euler(0f, deg, 0f) * Vector3.forward;
+                    var p = a.position + dir * 7f;
+                    if (!Physics.Raycast(p + Vector3.up * 3f, Vector3.down, out var g, 6f, ~GameLayers.NotGround)) continue;
+                    if (Mathf.Abs(g.point.y - a.position.y) > 0.5f) continue;
+                    if (Physics.Raycast(g.point + Vector3.up * 0.8f, -dir, 7f, ~GameLayers.NotGround, QueryTriggerInteraction.Ignore)) continue;
+                    from = g.point; at = a.position; found = true;
+                }
+            Assert.IsTrue(found, "a pigeon with 7 m of open ground before it");
+            mode.Walker.Place(from, Quaternion.LookRotation(at - from).eulerAngles.y);
+            GameObject bird = null;
+            for (var f = 0; f < 120 && bird == null; f++)
+            {
+                yield return null;
+                bird = actors.GetComponentsInChildren<Transform>().Select(t => t.gameObject)
+                    .FirstOrDefault(g => g.name.EndsWith(" pigeon") && (g.transform.position - at).sqrMagnitude < 0.01f);
+            }
+            Assert.NotNull(bird, "the pigeon is shown near the walker");
+            Assert.AreEqual(0, actors.Flown, "nothing flew before the walker moved");
+            InputSystem.QueueStateEvent(_kb, new KeyboardState(Key.W));
+            InputSystem.Update();
+            var up = 0f;
+            for (var t = 0f; t < 4f; t += Time.deltaTime)
+            {
+                yield return null;
+                if (bird.activeSelf) up = Mathf.Max(up, bird.transform.position.y - at.y);
+            }
+            InputSystem.QueueStateEvent(_kb, new KeyboardState());
+            InputSystem.Update();
+            Assert.That(actors.Flown, Is.GreaterThan(0), "a bird flew off");
+            Assert.That(up, Is.GreaterThan(2f), "it rose into the air");
+            // The walker moves on: the pigeon is back on its spot once it is shown again.
+            mode.Walker.Place(at + new Vector3(60f, 0f, 0f), 0f);
+            yield return new WaitForSeconds(16f);
+            mode.Walker.Place(from, 0f);
+            for (var f = 0; f < 120; f++) yield return null;
+            Assert.IsTrue(bird.activeSelf, "shown again");
+            Assert.That((bird.transform.position - at).magnitude, Is.LessThan(0.05f), "back on its spot");
+        }
+
         [UnityTest]
         public IEnumerator Walker_WalksIntoTheCornerMart()
         {
