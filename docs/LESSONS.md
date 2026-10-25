@@ -7,6 +7,8 @@
 
 | Datum | Phase | Was passiert ist | Vorkehrung (wo) | Art |
 |---|---|---|---|---|
+| 2026-10-25 | 11 | REPAIR-Pille lag im Handy-Hochformat auf dem Tacho; Layout-Prüfungen mit nur `ForcedForm` sahen Desktop-Koordinaten (Panelgröße blieb 1920×1080) | Test `RepairPill_ClearOfTheHud_InEveryForm` über neues `UiShots.Layout` (echte Panelgröße je Form) | Test |
+| 2026-10-25 | 11 | `play.mjs tap CAR` fand Touch-Knöpfe nicht (keine `Button`, sondern `jm-touch`-Elemente) | `PlayScript.FindButton` sucht auch `jm-touch` per Label · Editor-Striche in kleinen Texten = dynamischer Schrift-Atlas im Editor, Web-Build sauber (nicht jagen) | Werkzeug |
 | 2026-10-25 | 11 | Straßen- und Randstreifen-Meshes legten jede Station zweimal an (je Streifen eigene Eckpunkte): 13,9 MB roh statt 7,05 — niemand verglich Eckpunkte mit Dreiecken | `RoadImporter` teilt die Station im selben Chunk; `MapImportTests.Roads_ShareStationVertices` prüft das Verhältnis | Test |
 | 2026-10-25 | 11 | Beenden mit offener Garage: der Szenenabbau feuerte „Menü zu“ → Garage setzte das Auto neu ein → 5 Konsolenfehler | Schutz in `GarageSystem.OnMenu` (nur aktiv und mit lebendem Spawner); Regel: Ereignisse im Abbau nie zu neuem Spawn führen lassen | Code |
 | 2026-10-11 | 11 | Handy zeigte HUD 1,3–3× zu groß und übereinander, alle Prüfungen grün: `sizes-web` lief nur mit Pixelfaktor 1 und prüfte nur „startet es?“; die UI rechnete mit `window.devicePixelRatio` statt dem Faktor des Canvas; 907×510-Desktop galt als Handy | Faktor aus dem Canvas; Handy = klein **und** Touch; `UiLayoutProbe` (`?uicheck=1`) + `sizes-web` mit Android 2,625 / iPhone 3 / hochkant, rot bei jeder Überlappung | Werkzeug/Test |

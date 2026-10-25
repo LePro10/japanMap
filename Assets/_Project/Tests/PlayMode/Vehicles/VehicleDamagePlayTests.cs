@@ -335,6 +335,43 @@ namespace JapanMap.Tests.Vehicles
         }
 
         [UnityTest]
+        public IEnumerator RepairPill_ClearOfTheHud_InEveryForm()
+        {
+            yield return BootGame();
+            var car = Board();
+            yield return RamHouse(car, 110f, 25f);
+            yield return Settle(car.GetComponent<VehicleDamage>());
+            var prompt = Object.FindAnyObjectByType<JapanMap.Gameplay.Hud.RepairPrompt>();
+            var hud = Object.FindAnyObjectByType<JapanMap.Gameplay.Hud.GameplayHud>();
+            try
+            {
+                // Upright the pill lay on the tacho (2026-10-25): the top centre there is only the gap beside the minimap.
+                foreach (var (form, w, h) in new[] { (JapanMap.Core.Ui.FormFactor.Desktop, 1920, 1080), (JapanMap.Core.Ui.FormFactor.PhoneLandscape, 844, 390), (JapanMap.Core.Ui.FormFactor.PhonePortrait, 390, 844) })
+                {
+                    yield return Content.UiShots.Layout(form, w, h, 0.3f);
+                    Assert.IsTrue(prompt.Visible, $"{form}: the pill shows on the wreck");
+                    var pill = prompt.Pill.worldBound;
+                    Assert.IsFalse(pill.Overlaps(hud.Instrument.worldBound), $"{form}: pill {pill} on the instrument {hud.Instrument.worldBound}");
+                    if (hud.Minimap != null) Assert.IsFalse(pill.Overlaps(hud.Minimap.worldBound), $"{form}: pill {pill} on the minimap {hud.Minimap.worldBound}");
+                    foreach (var doc in Object.FindObjectsByType<UnityEngine.UIElements.UIDocument>())
+                        UnityEngine.UIElements.UQueryExtensions.Query<UnityEngine.UIElements.VisualElement>(doc.rootVisualElement, className: "jm-touch").ForEach(b =>
+                        {
+                            for (var e = b; e != null; e = e.parent)
+                                if (e.resolvedStyle.display == UnityEngine.UIElements.DisplayStyle.None) return;
+                            if (b.worldBound.width < 1f) return;
+                            Assert.IsFalse(pill.Overlaps(b.worldBound), $"{form}: pill {pill} on a touch button {b.worldBound}");
+                        });
+                }
+            }
+            finally
+            {
+                Content.UiShots.RestorePanel();
+                JapanMap.Core.Ui.UiPanel.ForcedForm = null;
+                JapanMap.Core.Ui.UiPanel.Refresh(force: true);
+            }
+        }
+
+        [UnityTest]
         public IEnumerator Cost_OfAHit_AndOfEachFrame_WithinBudget()
         {
             yield return BootGame();

@@ -997,6 +997,14 @@ namespace JapanMap.Editor
                     if (string.IsNullOrEmpty(text)) { var l = UnityEngine.UIElements.UQueryExtensions.Q<UnityEngine.UIElements.Label>(b); text = l?.text ?? ""; }
                     if (text == label || b.name == label || text.StartsWith(label)) found = b;
                 });
+                // Touch controls are plain elements (TouchKit.Circle), not Buttons: match them by their label too.
+                if (found == null)
+                    UnityEngine.UIElements.UQueryExtensions.Query<UnityEngine.UIElements.VisualElement>(doc.rootVisualElement, className: "jm-touch").ForEach(b =>
+                    {
+                        if (found != null || b.worldBound.width < 1f || b.resolvedStyle.display == UnityEngine.UIElements.DisplayStyle.None) return;
+                        var text = UnityEngine.UIElements.UQueryExtensions.Q<UnityEngine.UIElements.Label>(b)?.text ?? "";
+                        if (text == label || b.name == label) found = b;
+                    });
                 if (found != null) return found;
             }
             return null;

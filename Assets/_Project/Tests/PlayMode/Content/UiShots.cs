@@ -118,6 +118,17 @@ namespace JapanMap.Tests.Content
         /// <summary>Lays the UI out for a form factor and size, waits, renders camera + UI into one PNG.</summary>
         public static IEnumerator Shot(string name, FormFactor form, int w, int h, float settle)
         {
+            yield return Layout(form, w, h, settle);
+            var ps = FindDoc() != null ? FindDoc().panelSettings : null;
+            Save(name, w, h, ps, ps != null ? ps.targetTexture : null);
+        }
+
+        /// <summary>
+        /// Lays the UI out for a form factor at a real panel size (the panel draws into a w×h texture; only forcing the
+        /// form kept the editor's panel size, so layout checks saw desktop coordinates). <see cref="RestorePanel"/> after.
+        /// </summary>
+        public static IEnumerator Layout(FormFactor form, int w, int h, float settle)
+        {
             // The shared panel draws into a texture of the shot's size; switching its target re-attaches every
             // document a few frames later, so the target is set first and the layout settles after.
             var ps = FindDoc() != null ? FindDoc().panelSettings : null;
@@ -138,7 +149,6 @@ namespace JapanMap.Tests.Content
             yield return new WaitForSecondsRealtime(settle);
             UiPanel.Apply(new Vector2Int(w, h), 1f, Vector4.zero); // a Refresh may have run meanwhile
             for (var f = 0; f < 3; f++) yield return null;
-            Save(name, w, h, ps, rt);
         }
 
         static UIDocument FindDoc()

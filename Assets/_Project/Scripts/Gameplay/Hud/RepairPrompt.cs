@@ -51,9 +51,19 @@ namespace JapanMap.Gameplay.Hud
             var s = _pill.style;
             s.marginLeft = s.marginRight = s.marginTop = s.marginBottom = 0f;
             s.position = Position.Absolute;
-            s.top = 16f + UiPanel.Safe.y;
-            s.left = Length.Percent(50);
-            s.translate = new Translate(Length.Percent(-50), 0);
+            if (UiPanel.IsPortrait)
+            {
+                // Upright the top centre is only the gap between minimap and instrument (the pill lay on the tacho):
+                // right-aligned under the instrument, above the touch button row (UiPanel.PortraitButtonRow).
+                s.top = 140f + UiPanel.Safe.y;
+                s.right = 12f + UiPanel.Safe.z;
+            }
+            else
+            {
+                s.top = 16f + UiPanel.Safe.y;
+                s.left = Length.Percent(50);
+                s.translate = new Translate(Length.Percent(-50), 0);
+            }
             s.flexDirection = FlexDirection.Row;
             s.alignItems = Align.Center;
             s.paddingLeft = s.paddingRight = 16f;
