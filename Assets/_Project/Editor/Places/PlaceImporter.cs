@@ -291,6 +291,8 @@ namespace JapanMap.Editor.Places
                     go.transform.localScale = p.scale;
                     if (p.rule.library.Contains(FleetCar)) PrepareShowCar(go);
                 }
+                var cables = Cables(kit, placed, root);
+                if (cables > 0) report.Append($"\n[Places] {place.title}: {cables} cable spans");
                 if (place.hasSpawn) SetSpawn(place.spawn, place.hasWalkSpawn ? PlaceSource.ToUnity(place.walkSpawn.x, place.walkSpawn.z) : null);
                 foreach (var m in missing) missingAll[$"{place.title}: {m.Key}"] = m.Value;
                 report.Append($"\n[Places] {place.title}: {placed.Count(p => p.prefab != null)} models from {placed.Where(p => p.prefab != null).Select(p => p.prefab).Distinct().Count()} prefabs, {place.trees.Length} trees" +
@@ -299,6 +301,46 @@ namespace JapanMap.Editor.Places
             if (missingAll.Count > 0)
                 report.Append("\n[Places] no model yet (asset session): " + string.Join(", ", missingAll.Select(m => $"{m.Key} ×{m.Value}")));
             return report.ToString();
+        }
+
+        /// <summary>
+        /// Rebuilds only the cables of every place in its open scene (no full import: that rewrites ~100 scenes with new
+        /// file ids). Exec: JapanMap.Editor.Places.PlaceImporter.RefreshCables().
+        /// </summary>
+        public static string RefreshCables()
+        {
+            var report = new StringBuilder();
+            foreach (var kit in Kits())
+            {
+                var place = PlaceSource.Load(kit.source);
+                Transform root = null;
+                for (var i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount && root == null; i++)
+                    foreach (var go in UnityEngine.SceneManagement.SceneManager.GetSceneAt(i).GetRootGameObjects())
+                    {
+                        var t = go.transform.Find(place.title) ?? (go.name == place.title ? go.transform : null);
+                        if (t != null) { root = t; break; }
+                    }
+                if (root == null) { report.Append($"{place.title}: not open; "); continue; }
+                var n = Cables(kit, Resolve(kit, place), root);
+                UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
+                UnityEditor.SceneManagement.EditorSceneManager.SaveScene(root.gameObject.scene);
+                report.Append($"{place.title}: {n} spans; ");
+            }
+            return report.ToString();
+        }
+
+        /// <summary>Utility poles of a place wired to their neighbour along the street (file order), like the rural line.</summary>
+        static int Cables(PlaceKit kit, List<Placement> placed, Transform root)
+        {
+            var s = MapImportSettings.LoadOrCreate();
+            var poles = placed.Where(p => p.prefab != null && p.item.kind == s.placeCablePole)
+                .Select(p =>
+                {
+                    var pos = p.position;
+                    pos.y = (p.item.fixedY ? p.item.y : Ground(p.centre)) + p.rule.yOffset;
+                    return Matrix4x4.TRS(pos, Quaternion.Euler(0, p.yaw, 0), p.scale);
+                }).ToList();
+            return poles.Count < 2 ? 0 : Map.PowerCables.Build(poles, root, $"{PlaceKit.Dir}/{kit.name}Cables.asset", s.placeCableMaxSpan, s);
         }
 
         /// <summary>Distance at which an object of <paramref name="size"/> m covers <paramref name="screen"/> of a 60° view's height (LODGroup thresholds → metres).</summary>

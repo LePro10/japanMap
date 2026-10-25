@@ -21,9 +21,18 @@ namespace JapanMap.Editor.Map
         public static int Build(Transform poles, MapImportSettings s)
         {
             if (poles == null) return 0;
-            var old = poles.Find(ObjectName);
+            var list = poles.Cast<Transform>().Where(c => c.name != ObjectName).Select(c => c.localToWorldMatrix).ToList();
+            return Build(list, poles, MeshPath, s.cableMaxSpan, s);
+        }
+
+        /// <summary>
+        /// The same for poles given as matrices (instanced places such as Tokyo have no pole objects): the cable object goes
+        /// under <paramref name="parent"/>, its mesh to <paramref name="meshPath"/>.
+        /// </summary>
+        public static int Build(IList<Matrix4x4> list, Transform parent, string meshPath, float maxSpan, MapImportSettings s)
+        {
+            var old = parent.Find(ObjectName);
             if (old != null) Object.DestroyImmediate(old.gameObject);
-            var list = poles.Cast<Transform>().Where(c => c.name != ObjectName).ToList();
             var v = new List<Vector3>();
             var n = new List<Vector3>();
             var t = new List<int>();
@@ -31,12 +40,12 @@ namespace JapanMap.Editor.Map
             var skewed = 0;
             for (var i = 0; i + 1 < list.Count; i++)
             {
-                Transform a = list[i], b = list[i + 1];
-                var d = b.position - a.position;
+                Matrix4x4 a = list[i], b = list[i + 1];
+                var d = (Vector3)(b.GetColumn(3) - a.GetColumn(3));
                 d.y = 0f;
-                if (d.magnitude > s.cableMaxSpan || d.magnitude < 1f) continue;
+                if (d.magnitude > maxSpan || d.magnitude < 1f) continue;
                 // Cables run across the crossarm (local z); a crossarm along the line would bunch them up.
-                if (Mathf.Abs(Vector3.Dot(a.forward, d.normalized)) > 0.7f) { skewed++; continue; }
+                if (Mathf.Abs(Vector3.Dot(((Vector3)a.GetColumn(2)).normalized, d.normalized)) > 0.7f) { skewed++; continue; }
                 var right = Vector3.Cross(Vector3.up, d).normalized;
                 var from = Attach(a, s).OrderBy(p => Vector3.Dot(p, right)).ToArray();
                 var to = Attach(b, s).OrderBy(p => Vector3.Dot(p, right)).ToArray();
@@ -51,20 +60,20 @@ namespace JapanMap.Editor.Map
             mesh.SetTriangles(t, 0);
             mesh.RecalculateBounds();
             var go = new GameObject(ObjectName, typeof(MeshFilter), typeof(MeshRenderer));
-            go.transform.SetParent(poles, false);
+            go.transform.SetParent(parent, false);
             go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-            go.GetComponent<MeshFilter>().sharedMesh = MeshAssets.Save(MeshPath, mesh, compact: true);
+            go.GetComponent<MeshFilter>().sharedMesh = MeshAssets.Save(meshPath, mesh, compact: true);
             var r = go.GetComponent<MeshRenderer>();
             r.sharedMaterial = CableMaterial();
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             r.receiveShadows = false;
             GameObjectUtility.SetStaticEditorFlags(go, (StaticEditorFlags)~0 & ~StaticEditorFlags.ContributeGI);
-            Debug.Log($"[Map] power cables: {spans} spans, {t.Count / 3} triangles{(skewed > 0 ? $", {skewed} skipped (crossarm along the line)" : "")}");
+            Debug.Log($"[Map] power cables ({parent.name}): {spans} spans, {t.Count / 3} triangles{(skewed > 0 ? $", {skewed} skipped (crossarm along the line)" : "")}");
             return spans;
         }
 
-        static IEnumerable<Vector3> Attach(Transform pole, MapImportSettings s) =>
-            s.cableOffsets.Select(z => pole.TransformPoint(new Vector3(0f, s.cableHeight, z)));
+        static IEnumerable<Vector3> Attach(Matrix4x4 pole, MapImportSettings s) =>
+            s.cableOffsets.Select(z => pole.MultiplyPoint3x4(new Vector3(0f, s.cableHeight, z)));
 
         /// <summary>A parabola from a to b sagging by cableSag × span, as a triangular tube.</summary>
         static void Tube(List<Vector3> v, List<Vector3> n, List<int> t, Vector3 a, Vector3 b, MapImportSettings s)

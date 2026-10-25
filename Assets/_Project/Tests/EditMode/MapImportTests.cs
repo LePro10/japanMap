@@ -166,6 +166,25 @@ namespace JapanMap.Tests
             Assert.IsEmpty(bad, $"steps over {JunctionCheck.Limit} m where roads meet:\n  " + string.Join("\n  ", bad));
         }
 
+        /// <summary>
+        /// Tokyo's utility poles stood without wires (only the rural line had them): poles under 40 m apart along a street
+        /// are wired as in the prototype — 32 spans, three cables each, and the Tokyo scene shows that mesh.
+        /// </summary>
+        [Test]
+        public void TokyoPoles_AreWired()
+        {
+            const string path = "Assets/_Project/Data/Places/TokyoCables.asset";
+            var mesh = UnityEditor.AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            Assert.NotNull(mesh, "no Tokyo cable mesh (PlaceImporter.RefreshCables)");
+            var s = MapImportSettings.LoadOrCreate();
+            var perSpan = s.cableOffsets.Length * s.cableSegments * 6;
+            Assert.That(mesh.triangles.Length / 3 / perSpan, Is.InRange(30, 40), "spans");
+            var guid = UnityEditor.AssetDatabase.AssetPathToGUID(path);
+            StringAssert.Contains(guid, System.IO.File.ReadAllText("Assets/_Project/Scenes/Places/Tokyo.unity"), "Tokyo.unity does not use the cable mesh");
+            // Tokyo is one street level: a cable climbing to a far pole on another level would show as a tall mesh.
+            Assert.That(mesh.bounds.size.y, Is.LessThan(30f), "one street level, no cable to a far pole");
+        }
+
         [Test]
         public void Roads_LieOnTheCarvedTerrain()
         {

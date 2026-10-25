@@ -31,7 +31,7 @@ Straßen-Eckpunkte, Bank-Figur, REPAIR/Turn-Karte je Form, Tagesbonus grün (vor
   rot, wenn der Rechner ausgelastet ist. Verkehrstest zuletzt zweimal 100 % auf der Fahrbahn.
 - Straßen: 8 Reststufen ≤ 0,5 m an Einmündungen (5 an der Ringstraße) — feinerer Mündungs-Querschnitt (D54).
 - Schaden: Stoßstange reißt beim zweiten harten Treffer ab (2,2 ms); Türen/Haube noch nicht. Store-Videos ohne Auto-Drive-Kinofahrt. Modelle: Augpunkte/Rückfahrgläser fehlen.
-- Politur offen ([POLISH.md](POLISH.md)): Kabel in Tokio (die 40 Einzelmasten bleiben ohne: verstreut 28–113 m, zufällig gedreht), Musik/Umgebungstöne (Clips fehlen),
+- Politur offen ([POLISH.md](POLISH.md)): Musik/Umgebungstöne (Clips fehlen),
   3D-Hebebühne in der Garage, Store-Videos aus dem neuen Look.
 - Neu in der Welt: 50 Tiere (Regeln `Data/Life/AnimalSpots.asset`; Vögel fliegen auf, Katzen/Hunde/Hühner springen vor schnellen Autos zur Seite — Sprung nur im Test belegt, kein Bild) und durchhängende Stromkabel an der
   Landleitung (26 Masten, 25 Felder, 5400 Dreiecke; Masten quer gedreht wie im Prototyp). Verkehrsposten noch ohne Platz.

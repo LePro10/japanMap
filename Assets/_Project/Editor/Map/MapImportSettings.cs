@@ -138,6 +138,9 @@ namespace JapanMap.Editor.Map
         public float cableSag = 0.02f;
         public float cableRadius = 0.025f;
         [Range(4, 24)] public int cableSegments = 12;
+        [Tooltip("Place item kind wired the same way along its street (Tokyo, legacy TokyoStreetFurnitureSystem: < 40 m).")]
+        public string placeCablePole = "utilityPole";
+        public float placeCableMaxSpan = 40f;
 
         [Header("Props (placeholders until Phase 4; sizes W × H × D from legacy landmarkMeshes.ts / props.config.ts)")]
         [Tooltip("Yaw in Unity = propYawBase − rot (README: 180 − rot for models whose front is local +Z in both worlds).")]
