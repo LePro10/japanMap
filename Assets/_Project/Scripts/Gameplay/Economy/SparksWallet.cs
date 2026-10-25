@@ -22,7 +22,13 @@ namespace JapanMap.Gameplay.Economy
         /// <summary>When set, nothing is earned (secret practice turbo, test drives — ASTRA §9).</summary>
         public bool Frozen { get; set; }
 
+        /// <summary>Sandbox: every purchase succeeds and costs nothing (legacy Profile: tune and paint free).</summary>
+        public bool Free { get; set; }
+
         public void Configure(EconomySettings s) => settings = s;
+
+        /// <summary>Would <see cref="Spend"/> succeed? Shops ask this, never the balance, so the sandbox opens every button.</summary>
+        public bool CanAfford(int amount) => amount >= 0 && (Free || amount <= Balance);
 
         public void Add(int amount, string reason)
         {
@@ -35,8 +41,8 @@ namespace JapanMap.Gameplay.Economy
         /// <summary>Pays <paramref name="amount"/> if the balance allows it; false leaves the balance untouched.</summary>
         public bool Spend(int amount)
         {
-            if (amount < 0 || amount > Balance) return false;
-            if (amount == 0) return true;
+            if (!CanAfford(amount)) return false;
+            if (amount == 0 || Free) return true;
             Balance -= amount;
             Changed?.Invoke();
             return true;

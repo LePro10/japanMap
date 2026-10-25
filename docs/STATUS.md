@@ -30,6 +30,8 @@ Straßen-Eckpunkte, Bank-Figur, REPAIR/Turn-Karte je Form, Tagesbonus grün (vor
   (Werkzeug sperrt den Filter jetzt). AutoDriveTests gelegentlich wackelig. Zeitbudget-Tests Smash/VehicleDamage (2 ms)
   rot, wenn der Rechner ausgelastet ist. Verkehrstest zuletzt zweimal 100 % auf der Fahrbahn.
 - Straßen: 8 Reststufen ≤ 0,5 m an Einmündungen (5 an der Ringstraße) — feinerer Mündungs-Querschnitt (D54).
+- Sandkasten: Klick auf die Überschrift „Settings“ → Code `og123` → alle Autos, alles gratis, alles frei (Test grün,
+  Feld im Bild; Tippen im echten Browser/Handy ungeprüft).
 - Schaden: Stoßstange reißt beim zweiten harten Treffer ab (2,2 ms); Türen/Haube noch nicht. Store-Videos ohne Auto-Drive-Kinofahrt. Modelle: Augpunkte/Rückfahrgläser fehlen.
 - Politur offen ([POLISH.md](POLISH.md)): Musik/Umgebungstöne (Clips fehlen),
   3D-Hebebühne in der Garage, Store-Videos aus dem neuen Look.

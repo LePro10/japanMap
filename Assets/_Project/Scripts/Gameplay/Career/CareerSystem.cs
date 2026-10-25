@@ -106,13 +106,13 @@ namespace JapanMap.Gameplay.Career
 
         /// <summary>
         /// Does this save play the career? A new save does (career:on), an old one without the claim counts as done (there
-        /// are no real players yet — D50). URL career=off/on for tests by hand; unlock=all is done.
+        /// are no real players yet — D50). URL career=off/on for tests by hand; unlock=all and the sandbox are done.
         /// </summary>
         bool Decide()
         {
             var d = _progress.Data;
             var url = Application.absoluteURL ?? "";
-            if (d.claims.Contains(CareerChain.Done) || url.Contains("career=off") || PlayerProgress.UnlockAllFromUrl(url)) return false;
+            if (d.claims.Contains(CareerChain.Done) || d.sandbox || url.Contains("career=off") || PlayerProgress.UnlockAllFromUrl(url)) return false;
             var forced = url.Contains("career=on");
             if (Application.isEditor && !RunInEditor && !forced) return false; // nothing written: the editor's saves stay as they are
             if (d.claims.Contains(CareerChain.On)) return !_chain.Complete;

@@ -190,7 +190,7 @@ namespace JapanMap.Gameplay.Menu
                 var id = def.id;
                 Ui.Button(actions, offers.LoanBuyLabel, () =>
                 {
-                    if (_progress.Wallet.Balance < offers.Settings.loanPrice)
+                    if (!_progress.Wallet.CanAfford(offers.Settings.loanPrice))
                     {
                         _loanNote = $"{offers.Settings.loanPrice - _progress.Wallet.Balance:N0} Sparks to go for the loan.";
                         Menu.Rebuild();
@@ -253,7 +253,7 @@ namespace JapanMap.Gameplay.Menu
             var actions = Ui.Row(p, "nm-cardetail__acts");
             if (state == null)
             {
-                var afford = _progress.Wallet.Balance >= def.price;
+                var afford = _progress.Wallet.CanAfford(def.price);
                 MenuTiles.Gate(Ui.Button(actions, $"Test drive · {_garage.TestDriveSeconds:0} s", () => { Menu.Close(); _garage.TestDrive(def.id); }, "nm-btn--ink"), Core.FeatureId.TestDrive);
                 var buy = Ui.Button(actions, afford ? $"Buy · {def.price:N0} Sparks" : $"{def.price - _progress.Wallet.Balance:N0} Sparks to go", () => PurchaseSheet(def), "jm-btn--primary", "jm-btn--wide");
                 buy.name = "car-buy";
@@ -460,7 +460,7 @@ namespace JapanMap.Gameplay.Menu
                 sw.style.backgroundColor = _progress.Tuning.PaintColor(colour);
                 var mine = state.paints.Contains(colour) || colour == def.factoryPaint;
                 Ui.On(sw, state.paint == colour);
-                sw.SetEnabled(mine || _progress.Wallet.Balance >= _progress.Tuning.paintPrice);
+                sw.SetEnabled(mine || _progress.Wallet.CanAfford(_progress.Tuning.paintPrice));
             }
             LookRow(body, "RIMS", false, state.wheels, state.wheelSets, _progress.Tuning.wheelPrice);
             LookRow(body, "BODY KIT", true, state.aero, state.aeroKits, _progress.Tuning.kitPrice);
@@ -486,7 +486,7 @@ namespace JapanMap.Gameplay.Menu
                 var label = (kit ? KitNames : RimNames)[o].ToUpperInvariant() + (fitted == o || mine ? "" : $" · {price:N0}");
                 var b = Ui.Button(row, label, () => { _garage.Look(kit, option); _garage.ApplySoon(); Menu.Rebuild(); }, "jm-seg__item");
                 Ui.On(b, fitted == o, "jm-seg__item--on");
-                b.SetEnabled(fitted != o && (mine || _progress.Wallet.Balance >= price));
+                b.SetEnabled(fitted != o && (mine || _progress.Wallet.CanAfford(price)));
             }
         }
 

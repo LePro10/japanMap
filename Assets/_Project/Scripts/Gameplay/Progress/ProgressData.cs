@@ -103,6 +103,8 @@ namespace JapanMap.Gameplay.Progress
         public float challengeProgress;
         public bool challengeDone;
         public long savedAt;
+        [Tooltip("Sandbox code entered (legacy og123): every car owned, every purchase free, every feature open.")]
+        public bool sandbox;
 
         public CarState Car(string id, bool create = true)
         {

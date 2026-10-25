@@ -26,7 +26,7 @@ namespace JapanMap.Gameplay.Menu
         readonly InputActionAsset _actions;
         readonly PlayerProgress _progress;
         int _page;
-        bool _keys;
+        bool _keys, _code;
         string _text = "";
         InputActionRebindingExtensions.RebindingOperation _rebind;
 
@@ -101,7 +101,11 @@ namespace JapanMap.Gameplay.Menu
             }
             else
             {
-                Ui.H1(body, "Settings");
+                // The title hides the sandbox code field (prototype: a click on the menu title) — a secret, not a row.
+                var title = Ui.H1(body, "Settings");
+                title.name = "settings-title";
+                title.RegisterCallback<ClickEvent>(_ => { _code = !_code; Menu.Rebuild(); });
+                if (_code) CodeRow(body, t);
                 var tabs = Ui.Row(body, "jm-wrap", "nm-tabs");
                 for (var i = 0; i < Pages.Length; i++)
                 {
@@ -125,6 +129,56 @@ namespace JapanMap.Gameplay.Menu
             }
             Saved(body, t);
             _text = t.ToString();
+        }
+
+        void CodeRow(VisualElement body, StringBuilder t)
+        {
+            var row = Ui.Row(body, "jm-wrap");
+            row.style.alignItems = Align.Center;
+            row.style.marginBottom = 8;
+            var field = new TextField { name = "settings-code", maxLength = 24 };
+            field.style.minWidth = 180;
+            field.style.marginRight = 8;
+            field.textEdition.placeholder = "Code";
+            row.Add(field);
+            // Night Meet look: dark glass with the pink edge, not the default white box.
+            var input = field.Q(className: TextField.inputUssClassName);
+            if (input != null)
+            {
+                input.style.backgroundColor = new Color(0f, 0f, 0f, 0.5f);
+                input.style.color = Color.white;
+                input.style.fontSize = 18;
+                input.style.borderTopColor = input.style.borderBottomColor = input.style.borderLeftColor = input.style.borderRightColor = Palette.Momo;
+                input.style.borderTopWidth = input.style.borderBottomWidth = input.style.borderLeftWidth = input.style.borderRightWidth = 2;
+                input.style.paddingLeft = 10;
+                input.style.minHeight = 40;
+            }
+            field.RegisterCallback<KeyDownEvent>(e =>
+            {
+                if (e.keyCode != KeyCode.Return && e.keyCode != KeyCode.KeypadEnter) return;
+                e.StopPropagation();
+                SubmitCode(field.value);
+            });
+            Ui.Button(row, "Enter", () => SubmitCode(field.value)).name = "settings-code-enter";
+            field.schedule.Execute(() => field.Focus());
+            t.AppendLine("code field");
+        }
+
+        /// <summary>The sandbox code: everything open and free (the career is skipped); anything else says so.</summary>
+        public bool SubmitCode(string code)
+        {
+            if (_progress == null || !_progress.EnterCode(code))
+            {
+                Sfx.Play("UI_Error");
+                Menu?.Notice("Code not recognised");
+                return false;
+            }
+            Career.CareerSystem.Instance?.Skip();
+            Sfx.Play("UI_Confirm");
+            _code = false;
+            Menu?.Notice("Sandbox open · every car and part is free");
+            Menu?.Rebuild();
+            return true;
         }
 
         /// <summary>The slanted pink bar under the open tab (the same stroke as the menu's tab marker).</summary>
@@ -312,6 +366,11 @@ namespace JapanMap.Gameplay.Menu
                 : "Saved on this device";
             Ui.Small(row, where).style.marginRight = 12;
             t.AppendLine($"store {store}");
+            if (_progress.Sandbox)
+            {
+                Ui.Small(row, "Sandbox · everything free").style.marginRight = 12;
+                t.AppendLine("sandbox on");
+            }
             if (user == null && platform.AccountsAvailable)
             {
                 Ui.Button(row, "Log in", () => platform.LogIn(_ => Menu.Rebuild()));

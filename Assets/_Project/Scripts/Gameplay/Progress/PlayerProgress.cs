@@ -51,7 +51,7 @@ namespace JapanMap.Gameplay.Progress
             if (fleet != null && UnlockAllFromUrl(Application.absoluteURL))
             {
                 // The human's preview (serve-web --preview adds ?unlock=all): every car and full Sparks to try everything.
-                foreach (var v in fleet.vehicles) if (v != null) _data.Car(v.id).owned = true;
+                OwnAll();
                 _data.sparks = MaxBalance;
                 Debug.Log("[Save] unlock=all: all cars owned, Sparks full");
             }
@@ -61,8 +61,10 @@ namespace JapanMap.Gameplay.Progress
                 if (starter != null) _data.Car(starter.id).owned = true;
                 if (fleet.Get(_data.selectedCar) == null || !Owns(_data.selectedCar)) _data.selectedCar = starter != null ? starter.id : "";
             }
+            if (_data.sandbox) OwnAll(); // a car added in an update is the sandbox's too
             if (wallet != null)
             {
+                wallet.Free = _data.sandbox;
                 wallet.Restore(_data.sparks);
                 wallet.Changed += OnWallet;
             }
@@ -140,6 +142,35 @@ namespace JapanMap.Gameplay.Progress
             if (JapanMap.Core.QualitySystem.UrlParam(url, "unlock") != "all") return false;
             var host = url.Contains("://") ? url.Substring(url.IndexOf("://", StringComparison.Ordinal) + 3).Split('/', ':', '?')[0] : "";
             return host == "127.0.0.1" || host == "localhost" || host.EndsWith(".local") || host.EndsWith(".trycloudflare.com");
+        }
+
+        /// <summary>The prototype's sandbox code (legacy Profile.SANDBOX_CODE), typed at the Settings title.</summary>
+        public const string SandboxCode = "og123";
+
+        /// <summary>The sandbox is open on this save: every car, every purchase free (the career is skipped by the caller).</summary>
+        public bool Sandbox => _data != null && _data.sandbox;
+
+        /// <summary>
+        /// True when <paramref name="raw"/> is the sandbox code — also when it was open already, so a second entry does not
+        /// look like a typo. Case and spaces do not count (a phone capitalises the first letter).
+        /// </summary>
+        public bool EnterCode(string raw)
+        {
+            if (_data == null || (raw ?? "").Trim().ToLowerInvariant() != SandboxCode) return false;
+            if (_data.sandbox) return true;
+            _data.sandbox = true;
+            OwnAll();
+            if (wallet != null) wallet.Free = true;
+            Debug.Log("[Save] sandbox code: every car owned, purchases free");
+            MarkDirty();
+            Flush();
+            return true;
+        }
+
+        void OwnAll()
+        {
+            if (fleet == null) return;
+            foreach (var v in fleet.vehicles) if (v != null) _data.Car(v.id).owned = true;
         }
 
         int MaxBalance => wallet != null && wallet.Settings != null ? wallet.Settings.maxBalance : 9_999_999;

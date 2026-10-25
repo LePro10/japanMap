@@ -3,6 +3,7 @@ using System.Linq;
 using JapanMap.Core;
 using JapanMap.Core.Ui;
 using JapanMap.Gameplay.Menu;
+using JapanMap.Gameplay.Progress;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -149,6 +150,48 @@ namespace JapanMap.Tests.Content
             Assert.AreEqual(1, SettingsScreen.NearestCamera(6f));
             Assert.AreEqual(1, SettingsScreen.NearestCamera(6.6f));
             Assert.AreEqual(2, SettingsScreen.NearestCamera(8f));
+        }
+
+        // The prototype's sandbox (og123): a click on the Settings title shows the code field; a wrong code says so, the
+        // right one (any case) owns every car and makes every purchase free, and the save line says it.
+        [UnityTest, Timeout(90000)]
+        public IEnumerator SandboxCode_AtTheTitle_OpensEverythingForFree()
+        {
+            SceneManager.LoadScene(Bootstrapper.BootSceneName);
+            yield return null;
+            for (var w = 0f; SceneManager.GetActiveScene().name != "Game" && w < 10f; w += Time.unscaledDeltaTime) yield return null;
+            for (var f = 0; f < 10; f++) yield return null;
+            var progress = Object.FindAnyObjectByType<PlayerProgress>();
+            Assert.NotNull(progress);
+            var car = progress.Fleet.vehicles.FirstOrDefault(v => v != null && !progress.Owns(v.id) && v.price > progress.Wallet.Balance);
+            Assert.NotNull(car, "precondition: a fresh save cannot afford some car");
+
+            var menu = GameMenu.Instance;
+            yield return Tap(Key.Escape);
+            yield return Tap(Key.Q);
+            Assert.IsInstanceOf<SettingsScreen>(menu.Current);
+            Assert.IsNull(menu.Root.Q<TextField>("settings-code"), "the code field is hidden");
+            yield return Click(menu.Root.Q<Label>("settings-title"));
+            var field = menu.Root.Q<TextField>("settings-code");
+            Assert.NotNull(field, "a click on the title shows the code field");
+
+            field.value = "og12";
+            yield return Click(menu.Root.Q<Button>("settings-code-enter"));
+            Assert.IsFalse(progress.Sandbox, "a wrong code opens nothing");
+            Assert.AreEqual("Code not recognised", menu.NoticeText);
+
+            field = menu.Root.Q<TextField>("settings-code");
+            field.value = " OG123 ";
+            yield return Click(menu.Root.Q<Button>("settings-code-enter"));
+            Assert.IsTrue(progress.Sandbox, "the code opens the sandbox");
+            Assert.IsTrue(progress.Data.sandbox, "… on the save");
+            Assert.IsTrue(progress.Fleet.vehicles.Where(v => v != null).All(v => progress.Owns(v.id)), "every car owned");
+            var balance = progress.Wallet.Balance;
+            Assert.IsTrue(progress.Wallet.CanAfford(balance + 1), "the shops see every price as affordable");
+            Assert.IsTrue(progress.Wallet.Spend(balance + 1000), "a purchase over the balance goes through");
+            Assert.AreEqual(balance, progress.Wallet.Balance, "… and costs nothing");
+            Assert.IsTrue(System.Enum.GetValues(typeof(FeatureId)).Cast<FeatureId>().All(Unlocks.IsUnlocked), "every feature open");
+            StringAssert.Contains("sandbox on", menu.Text, "the save line says so");
         }
     }
 }

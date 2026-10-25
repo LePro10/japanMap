@@ -1016,6 +1016,12 @@ namespace JapanMap.Editor
                         var text = UnityEngine.UIElements.UQueryExtensions.Q<UnityEngine.UIElements.Label>(b)?.text ?? "";
                         if (text == label || b.name == label) found = b;
                     });
+                // Any other element by its exact name (a clickable title such as "settings-title").
+                if (found == null)
+                {
+                    var named = UnityEngine.UIElements.UQueryExtensions.Q(doc.rootVisualElement, label);
+                    if (named != null && named.worldBound.width >= 1f) found = named;
+                }
                 if (found != null) return found;
             }
             return null;
