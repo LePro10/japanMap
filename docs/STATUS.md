@@ -74,3 +74,4 @@ V. **Zwei Entscheidungen (je ein Wort):** (a) Medaillenstufen: ein Worker wollte
 | 2026-10-21 | Release, UI „Night Meet" komplett (D56) | 77,73 MB in 104 Dateien | 20,36 MB (SDK) | 2,6 s (Rauchprobe) |
 | 2026-10-24 | Release, Welle 1+2 (Fehler, Medium-Stufe, Hafen-Modelle) | 77,40 MB in 106 Dateien | 20,44 MB (SDK) | Rauchprobe 0 Fehler |
 | 2026-10-25 | Release, Welle 4 (Straßen verschweißt, Gelände JMT3 + gzip -9) | 75,72 MB in 106 Dateien | 19,94 MB (SDK) | 2,6 s (Rauchprobe) |
+| 2026-10-25 | Release, Tiere fliehen, Tokio-Kabel, Stoßstange reißt ab | 75,80 MB in 106 Dateien | 19,98 MB (SDK) | 2,7 s (Rauchprobe, 0 Fehler) |
