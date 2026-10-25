@@ -68,7 +68,7 @@ namespace JapanMap.Core
         const float Interval = 0.5f;
         static float _lastSave = float.NegativeInfinity;
         static bool _pending;
-        static Ticker _ticker;
+        static PrefsSaverTicker _ticker;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics() { _lastSave = float.NegativeInfinity; _pending = false; _ticker = null; }
@@ -81,28 +81,22 @@ namespace JapanMap.Core
             if (_ticker != null) return;
             var go = new GameObject("PrefsSaver") { hideFlags = HideFlags.HideInHierarchy };
             UnityEngine.Object.DontDestroyOnLoad(go);
-            _ticker = go.AddComponent<Ticker>();
+            _ticker = go.AddComponent<PrefsSaverTicker>();
         }
 
-        static void Flush()
+        internal static void Flush()
         {
             if (_pending && Time.unscaledTime - _lastSave >= Interval) Save();
         }
+
+        /// <summary>Page hidden or app paused: write a held-back save right away.</summary>
+        internal static void SaveIfPending() { if (_pending) Save(); }
 
         static void Save()
         {
             PlayerPrefs.Save();
             _lastSave = Time.unscaledTime;
             _pending = false;
-        }
-
-        /// <summary>Writes the held-back save once the interval has passed. Also flushes when the page is hidden,
-        /// so a drag that ends right before the tab closes is not lost.</summary>
-        sealed class Ticker : MonoBehaviour
-        {
-            void Update() => Flush();
-            void OnApplicationPause(bool paused) { if (paused && _pending) Save(); }
-            void OnApplicationFocus(bool focus) { if (!focus && _pending) Save(); }
         }
     }
 }
