@@ -234,6 +234,29 @@ namespace JapanMap.Tests
         }
 
         [Test]
+        public void Roads_ShareStationVertices()
+        {
+            // Roads and verges are in the start download: a strip that gives each quad its own vertices doubles them
+            // (measured before the fix: roads 1.32, verges 2.0 vertices per triangle; shared: 0.67 and 1.02).
+            long roadV = 0, roadT = 0, vergeV = 0, vergeT = 0;
+            foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:Mesh", new[] { RoadImporter.MeshDir }))
+            {
+                var path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+                var name = System.IO.Path.GetFileNameWithoutExtension(path);
+                var mesh = UnityEditor.AssetDatabase.LoadAssetAtPath<Mesh>(path);
+                if (mesh == null) continue;
+                long tris = 0;
+                for (var s = 0; s < mesh.subMeshCount; s++) tris += mesh.GetIndexCount(s) / 3;
+                if (name.StartsWith("Road_")) { roadV += mesh.vertexCount; roadT += tris; }
+                else if (name.StartsWith("Verge_")) { vergeV += mesh.vertexCount; vergeT += tris; }
+            }
+            Assert.That(roadT, Is.GreaterThan(10000));
+            Assert.That(vergeT, Is.GreaterThan(10000));
+            Assert.That((double)roadV / roadT, Is.LessThan(0.9), "road vertices per triangle");
+            Assert.That((double)vergeV / vergeT, Is.LessThan(1.3), "verge vertices per triangle");
+        }
+
+        [Test]
         public void MeshAssets_SaveTwice_KeepsGuidAndTakesNewGeometry()
         {
             const string path = "Assets/_Project/Data/__test_mesh.asset";

@@ -6,13 +6,15 @@ namespace JapanMap.World
 {
     /// <summary>
     /// The terrain's grids (heights, splat weights, grass/rice density) as one lossless byte stream that gzip packs well
-    /// (D36): heights as the remainder of a plane prediction (left + up − up-left), zig-zag, split into a low and a high
-    /// byte plane (the high plane is almost all zero); splat and detail bytes as differences to the left neighbour.
+    /// (D36): heights as the remainder of a median-edge prediction (LOCO-I: left, up or the plane through left, up and
+    /// up-left), zig-zag, split into a low and a high byte plane (the high plane is almost all zero); splat weights as
+    /// they are, detail bytes as differences to the left neighbour. Where the splat weights add up to 255 everywhere, one layer is left
+    /// out and rebuilt as the rest (−0.32 MB of the start download, measured 2026-10-25).
     /// Values round-trip exactly: heights are Unity's 16-bit steps, splat weights its 8-bit steps.
     /// </summary>
     public static class TerrainPayload
     {
-        const int Magic = 0x32544D4A; // "JMT2" (with holes)
+        const int Magic = 0x33544D4A; // "JMT3" (median prediction, implied splat layer)
         const int DetailMagic = 0x31444D4A; // "JMD1"
         /// <summary>Unity keeps heights as 16-bit steps of 1/32766 of the terrain height.</summary>
         const float HeightSteps = 32766f;
@@ -104,13 +106,45 @@ namespace JapanMap.World
             }
             w.Write(lo);
             w.Write(hi);
-            WriteRows(w, g.alphas, g.alphaRes);
+            var implied = ImpliedLayer(g);
+            w.Write(implied);
+            var area = g.alphaRes * g.alphaRes;
+            var kept = new byte[(g.layers - (implied >= 0 ? 1 : 0)) * area];
+            for (int l = 0, k = 0; l < g.layers; l++)
+                if (l != implied) Array.Copy(g.alphas, l * area, kept, k++ * area, area);
+            // As they are: the weights sit in wide flat patches that gzip finds without help (raw 0.335 MB, row
+            // differences 0.353 MB).
+            w.Write(kept);
             w.Write(withDetails);
             if (withDetails) WriteRows(w, g.details, g.detailRes);
             w.Write(g.holeRes);
             WriteRows(w, g.holes, g.holeRes);
             w.Flush();
             return ms.ToArray();
+        }
+
+        /// <summary>
+        /// The splat layer that need not travel: −1 unless every pixel's weights add up to 255; then the layer that
+        /// changes most often along a row (the dearest to pack).
+        /// </summary>
+        static int ImpliedLayer(Grids g)
+        {
+            var area = g.alphaRes * g.alphaRes;
+            if (g.layers < 2) return -1;
+            for (var i = 0; i < area; i++)
+            {
+                var sum = 0;
+                for (var l = 0; l < g.layers; l++) sum += g.alphas[l * area + i];
+                if (sum != 255) return -1;
+            }
+            int best = -1, most = -1;
+            for (var l = 0; l < g.layers; l++)
+            {
+                var changes = 0;
+                for (var i = 1; i < area; i++) if (g.alphas[l * area + i] != g.alphas[l * area + i - 1]) changes++;
+                if (changes > most) { most = changes; best = l; }
+            }
+            return best;
         }
 
         static void WriteRows(BinaryWriter w, byte[] grid, int res)
@@ -125,7 +159,11 @@ namespace JapanMap.World
         {
             if (y == 0) return x == 0 ? 0 : h[x - 1];
             if (x == 0) return h[(y - 1) * n];
-            return h[y * n + x - 1] + h[(y - 1) * n + x] - h[(y - 1) * n + x - 1];
+            int a = h[y * n + x - 1], b = h[(y - 1) * n + x], c = h[(y - 1) * n + x - 1];
+            // Median edge detector: across a ridge or a cut edge the plane overshoots, one neighbour does not.
+            if (c >= Math.Max(a, b)) return Math.Min(a, b);
+            if (c <= Math.Min(a, b)) return Math.Max(a, b);
+            return a + b - c;
         }
 
         public static Grids Decode(byte[] data)
@@ -150,7 +188,19 @@ namespace JapanMap.World
                 var res = (z >> 1) ^ -(z & 1);
                 g.heights[i] = (ushort)(Predict(g.heights, n, x, y) + res);
             }
-            g.alphas = ReadRows(r, g.layers * g.alphaRes * g.alphaRes, g.alphaRes);
+            var implied = r.ReadInt32();
+            var area = g.alphaRes * g.alphaRes;
+            var kept = r.ReadBytes((g.layers - (implied >= 0 ? 1 : 0)) * area);
+            g.alphas = new byte[g.layers * area];
+            for (int l = 0, k = 0; l < g.layers; l++)
+                if (l != implied) Array.Copy(kept, k++ * area, g.alphas, l * area, area);
+            if (implied >= 0)
+                for (var i = 0; i < area; i++)
+                {
+                    var sum = 0;
+                    for (var l = 0; l < g.layers; l++) if (l != implied) sum += g.alphas[l * area + i];
+                    g.alphas[implied * area + i] = (byte)(255 - sum);
+                }
             g.details = r.ReadBoolean() ? ReadRows(r, g.detailLayers * g.detailRes * g.detailRes, g.detailRes) : null;
             g.holeRes = r.ReadInt32();
             g.holes = ReadRows(r, g.holeRes * g.holeRes, g.holeRes);

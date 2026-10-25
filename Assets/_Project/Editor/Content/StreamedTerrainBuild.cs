@@ -53,6 +53,7 @@ namespace JapanMap.Editor.Content
             void Write(string plain, string packed, byte[] bytes)
             {
                 File.WriteAllBytes(Path.Combine(dir, plain), bytes);
+                if (Gzip9(Path.Combine(dir, plain), Path.Combine(dir, packed))) return;
                 using var file = File.Create(Path.Combine(dir, packed));
                 using var gz = new GZipStream(file, System.IO.Compression.CompressionLevel.Optimal);
                 gz.Write(bytes, 0, bytes.Length);
@@ -61,6 +62,26 @@ namespace JapanMap.Editor.Content
             Write(StreamedTerrain.DetailPlainName, StreamedTerrain.DetailName, _details);
             Debug.Log($"[WebBuild] terrain file {_payload.Length / 1e6:0.00} MB raw → {new FileInfo(Path.Combine(dir, StreamedTerrain.FileName)).Length / 1e6:0.00} MB gzip");
             _payload = _details = null;
+        }
+
+        /// <summary>
+        /// The system's gzip at level 9: .NET here knows only "Optimal" (level 6), and the terrain file is in the start
+        /// download (−0.034 MB, measured 2026-10-25). False when there is no gzip; the caller packs it itself then.
+        /// </summary>
+        static bool Gzip9(string plain, string packed)
+        {
+            try
+            {
+                var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("gzip", $"-9 -n -c \"{plain}\"")
+                {
+                    UseShellExecute = false, RedirectStandardOutput = true, CreateNoWindow = true,
+                });
+                if (p == null) return false;
+                using (var file = File.Create(packed)) p.StandardOutput.BaseStream.CopyTo(file);
+                p.WaitForExit();
+                return p.ExitCode == 0 && new FileInfo(packed).Length > 0;
+            }
+            catch (System.Exception) { return false; }
         }
     }
 }

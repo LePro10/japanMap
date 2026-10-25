@@ -470,18 +470,31 @@ namespace JapanMap.Editor.Map
             }
 
             var sub = type.gravel ? Gravel : Asphalt;
+            // Consecutive stations in the same chunk share their row of vertices: roads and verges are in the start
+            // download, and a separate row per quad strip doubled their vertex count (normals are smoothed across the
+            // seam anyway, so the look stays the same).
+            Chunk lastChunk = null;
+            var lastRow = -1;
+            Strip leftStrip = default, rightStrip = default;
             for (var st = 0; st < stations - 1; st++)
             {
                 var mid = (rows[st][0] + rows[st + 1][rows[st + 1].Length - 1]) / 2;
                 var chunk = ChunkAt(chunks, mid, s.roadChunk);
                 var lanes = rows[st].Length;
-                var b0 = chunk.v.Count;
-                chunk.v.AddRange(rows[st]);
+                int b0;
+                if (chunk == lastChunk && lastRow + lanes == chunk.v.Count) b0 = lastRow;
+                else
+                {
+                    b0 = chunk.v.Count;
+                    chunk.v.AddRange(rows[st]);
+                    chunk.uv.AddRange(uvs[st]);
+                    chunk.road.AddRange(data[st]);
+                }
                 chunk.v.AddRange(rows[st + 1]);
-                chunk.uv.AddRange(uvs[st]);
                 chunk.uv.AddRange(uvs[st + 1]);
-                chunk.road.AddRange(data[st]);
                 chunk.road.AddRange(data[st + 1]);
+                lastChunk = chunk;
+                lastRow = b0 + lanes;
                 for (var k = 0; k < lanes - 1; k++)
                 {
                     int a = b0 + k, b = a + 1, c = a + lanes, d = c + 1;
@@ -495,9 +508,9 @@ namespace JapanMap.Editor.Map
                         || (!index.InJunction(a1.x, a1.y, a1.z, road, 0.5f, out _) && !index.InJunction(a2.x, a2.y, a2.z, road, 0.5f, out _));
                     // Left strip runs outer → inner, right strip inner → outer: same winding as the road (up-facing).
                     if (Free(vergeL[st][1], vergeL[st + 1][1]))
-                        AddStrip(chunk, new[] { vergeL[st][1], vergeL[st][0] }, new[] { vergeL[st + 1][1], vergeL[st + 1][0] }, arcs[st], arcs[st + 1], type.textureLength, outerFirst: true);
+                        AddStrip(chunk, st, ref leftStrip, new[] { vergeL[st][1], vergeL[st][0] }, new[] { vergeL[st + 1][1], vergeL[st + 1][0] }, arcs[st], arcs[st + 1], type.textureLength, outerFirst: true);
                     if (Free(vergeR[st][1], vergeR[st + 1][1]))
-                        AddStrip(chunk, vergeR[st], vergeR[st + 1], arcs[st], arcs[st + 1], type.textureLength, outerFirst: false);
+                        AddStrip(chunk, st, ref rightStrip, vergeR[st], vergeR[st + 1], arcs[st], arcs[st + 1], type.textureLength, outerFirst: false);
                 }
             }
         }
@@ -511,18 +524,38 @@ namespace JapanMap.Editor.Map
             return new Vector3(three.x, t.SampleHeight(u) + t.transform.position.y + 0.04f, three.z);
         }
 
-        /// <summary>A two-point-wide strip between two stations into the gravel submesh.</summary>
-        static void AddStrip(Chunk road, Vector3[] from, Vector3[] to, float arcFrom, float arcTo, float textureLength, bool outerFirst)
+        /// <summary>Where one side's verge strip ended: its chunk, the index of its last vertex pair and that station.</summary>
+        struct Strip
+        {
+            public Chunk chunk;
+            public int index, station;
+        }
+
+        /// <summary>
+        /// A two-point-wide strip between two stations into the gravel submesh; it reuses the previous station's pair
+        /// when the same side's strip runs on unbroken in the same chunk.
+        /// </summary>
+        static void AddStrip(Chunk road, int station, ref Strip last, Vector3[] from, Vector3[] to, float arcFrom, float arcTo, float textureLength, bool outerFirst)
         {
             var chunk = road.Verge;
-            var b = chunk.v.Count;
-            chunk.v.AddRange(new[] { from[0], from[1], to[0], to[1] });
-            chunk.uv.AddRange(new[] { new Vector2(0f, arcFrom / textureLength), new Vector2(0.25f, arcFrom / textureLength), new Vector2(0f, arcTo / textureLength), new Vector2(0.25f, arcTo / textureLength) });
             // Road data z = −1 marks the verge for the shader, x = 0 at the shoulder … 1 on the ground: it fades into the
             // terrain's colour there instead of ending as a hard gravel strip (owner 2026-10-17: "besserer Fade").
             float f0 = outerFirst ? 1f : 0f, f1 = 1f - f0;
-            chunk.road.AddRange(new[] { new Vector4(f0, 0f, -1f, 0f), new Vector4(f1, 0f, -1f, 0f), new Vector4(f0, 0f, -1f, 0f), new Vector4(f1, 0f, -1f, 0f) });
-            chunk.t[Gravel].AddRange(new[] { b, b + 1, b + 2, b + 1, b + 3, b + 2 });
+            int a;
+            if (last.chunk == chunk && last.station == station) a = last.index;
+            else
+            {
+                a = chunk.v.Count;
+                chunk.v.AddRange(from);
+                chunk.uv.AddRange(new[] { new Vector2(0f, arcFrom / textureLength), new Vector2(0.25f, arcFrom / textureLength) });
+                chunk.road.AddRange(new[] { new Vector4(f0, 0f, -1f, 0f), new Vector4(f1, 0f, -1f, 0f) });
+            }
+            var b = chunk.v.Count;
+            chunk.v.AddRange(to);
+            chunk.uv.AddRange(new[] { new Vector2(0f, arcTo / textureLength), new Vector2(0.25f, arcTo / textureLength) });
+            chunk.road.AddRange(new[] { new Vector4(f0, 0f, -1f, 0f), new Vector4(f1, 0f, -1f, 0f) });
+            chunk.t[Gravel].AddRange(new[] { a, a + 1, b, a + 1, b + 1, b });
+            last = new Strip { chunk = chunk, index = b, station = station + 1 };
         }
 
         static Vector3 RightHanded(Vector3 a, Vector3 b) =>
