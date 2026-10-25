@@ -83,5 +83,8 @@ MonoBehaviour:
   minGroundHeight: 0.3
   orbitSpeed: 7
   roadsidePassed: 30
+  roadsideFill: 0.2
+  roadsideSubject: 1.4
+  roadsideMinFov: 4.5
   handheldFrequency: 0.35
   aimHeight: 0.75

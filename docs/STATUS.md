@@ -30,8 +30,7 @@ Straßen-Eckpunkte, Bank-Figur, REPAIR/Turn-Karte je Form, Tagesbonus grün (vor
   (Werkzeug sperrt den Filter jetzt). AutoDriveTests gelegentlich wackelig. Zeitbudget-Tests Smash/VehicleDamage (2 ms)
   rot, wenn der Rechner ausgelastet ist. Verkehrstest knapp (93–99 % auf der Fahrbahn, Soll 95 %).
 - Straßen: 8 Reststufen ≤ 0,5 m an Einmündungen (5 an der Ringstraße) — feinerer Mündungs-Querschnitt (D54).
-- Schaden: Türen/Haube fallen nicht ab. Kino-Kamera: „Straßenrand“ zeigt das Auto
-  manchmal zu klein. Store-Videos ohne Auto-Drive-Kinofahrt. Modelle: Augpunkte/Rückfahrgläser fehlen.
+- Schaden: Türen/Haube fallen nicht ab. Store-Videos ohne Auto-Drive-Kinofahrt. Modelle: Augpunkte/Rückfahrgläser fehlen.
 - Politur offen ([POLISH.md](POLISH.md)): Kabel auch an den 40 Einzelmasten/in Tokio, Musik/Umgebungstöne (Clips fehlen),
   3D-Hebebühne in der Garage, Store-Videos aus dem neuen Look.
 - Neu in der Welt: 50 Tiere (Regeln `Data/Life/AnimalSpots.asset`, stehen still) und durchhängende Stromkabel an der

@@ -27,5 +27,20 @@ namespace JapanMap.Tests
             var cam = AssetDatabase.LoadAssetAtPath<CarCameraSettings>(AssetDatabase.GUIDToAssetPath(AssetDatabase.FindAssets("t:CarCameraSettings").First()));
             Assert.AreSame(s, cam.cinematic, "the car camera uses it");
         }
+
+        [Test]
+        public void Roadside_LensFramesTheCar_FarAndNear()
+        {
+            var s = AssetDatabase.LoadAssetAtPath<CinematicCameraSettings>(AssetDatabase.GUIDToAssetPath(AssetDatabase.FindAssets("t:CinematicCameraSettings").First()));
+            Assert.That(s.roadsideFill, Is.InRange(0.08f, 0.4f), "the car is a subject, not a dot");
+            foreach (var d in new[] { 15f, 40f, 90f })
+            {
+                var fov = CinematicCamera.FramingFov(d, s.roadsideSubject, s.roadsideFill);
+                var share = s.roadsideSubject / (2f * d * UnityEngine.Mathf.Tan(fov * 0.5f * UnityEngine.Mathf.Deg2Rad));
+                Assert.AreEqual(s.roadsideFill, share, 0.001f, $"{d} m: the car fills the set share");
+            }
+            // The camera stands up to ~100 m ahead (offset.z 60 ±20 % + speed): the longest lens still frames it there.
+            Assert.That(CinematicCamera.FramingFov(100f, s.roadsideSubject, s.roadsideFill), Is.GreaterThan(s.roadsideMinFov * 0.8f), "min fov reaches 100 m");
+        }
     }
 }

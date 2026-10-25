@@ -74,6 +74,12 @@ namespace JapanMap.Vehicles
         public float orbitSpeed = 7f;
         [Tooltip("Roadside: the shot ends this far after the car passed the camera, m.")]
         public float roadsidePassed = 30f;
+        [Tooltip("Roadside: the lens follows the distance so the car (≈ roadsideSubject tall) fills this share of the frame height — a long lens far off, the shot's wide fov as it passes. 0 = the shot's own fov over time.")]
+        public float roadsideFill = 0.2f;
+        [Tooltip("Roadside: the car's size for that framing, m (about its height).")]
+        public float roadsideSubject = 1.4f;
+        [Tooltip("Roadside: the longest lens, vertical degrees.")]
+        public float roadsideMinFov = 4.5f;
         [Tooltip("Handheld sway frequency, Hz.")]
         public float handheldFrequency = 0.35f;
         [Tooltip("Where the lens aims above the car's origin, m.")]

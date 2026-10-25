@@ -572,6 +572,17 @@ namespace JapanMap.Editor
                                    (p.pointLimit != null ? $" limited {System.Linq.Enumerable.Count(p.pointLimit, x => x < 100f)}/{p.pointLimit.Length}" : ""));
                     return true;
                 }
+                case "cine":
+                {
+                    // cine <kind>: the auto-drive camera cuts to that shot now (Roadside, Helicopter, …), if its pose is clear.
+                    var rig = Object.FindAnyObjectByType<JapanMap.Vehicles.CarCameraRig>();
+                    var ok = false;
+                    // The roadside spot is random: a few tries, as the camera's own cut would.
+                    if (rig != null && rig.Cinematic != null && System.Enum.TryParse<JapanMap.Vehicles.CineShot>(a[1], true, out var kind))
+                        for (var n = 0; n < 12 && !ok; n++) ok = rig.Cinematic.Force(kind);
+                    Log.AppendLine($"  cine {a[1]}: {(ok ? "cut" : "not possible here")} (running {rig?.Cinematic?.Running}, shot {rig?.Cinematic?.Current})");
+                    return true;
+                }
                 case "autodrive":
                     // autodrive [off]: auto-drive to the waypoint (D49), as holding G; logs a refusal.
                 {

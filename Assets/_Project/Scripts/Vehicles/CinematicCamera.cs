@@ -123,12 +123,30 @@ namespace JapanMap.Vehicles
         {
             var s = _s.shots[_shot];
             var k = Mathf.Clamp01(_shotTime / Mathf.Max(0.1f, _shotLength));
-            _cam.Lens.FieldOfView = Fit(Mathf.Lerp(s.fov.x, s.fov.y, k * k * (3f - 2f * k)));
+            var fov = Mathf.Lerp(s.fov.x, s.fov.y, k * k * (3f - 2f * k));
+            // Roadside: the camera stands 60–100 m ahead, so a fixed 34° lens showed a dot for most of the shot; the
+            // lens zooms with the distance instead and opens to the shot's wide end as the car swishes past.
+            if (s.kind == CineShot.Roadside && _s.roadsideFill > 0f)
+                fov = Mathf.Clamp(FramingFov(Vector3.Distance(pos, Focus()), _s.roadsideSubject, _s.roadsideFill), _s.roadsideMinFov, Mathf.Max(s.fov.x, s.fov.y));
+            _cam.Lens.FieldOfView = Fit(fov);
             _cam.Lens.NearClipPlane = s.kind == CineShot.Cockpit ? 0.06f : 0.2f;
-            // Handheld: slow sway in yaw, pitch and a little roll.
-            var h = s.handheld * GameOptions.CameraShake;
+            // Handheld: slow sway in yaw, pitch and a little roll — less on a long lens, where the same degrees shake the
+            // whole frame.
+            var h = s.handheld * GameOptions.CameraShake * Mathf.Min(1f, fov / Mathf.Max(1f, s.fov.x));
             var sway = Quaternion.Euler((Mathf.PerlinNoise(_seed, 1.7f) - 0.5f) * 2f * h, (Mathf.PerlinNoise(3.1f, _seed) - 0.5f) * 2f * h, (Mathf.PerlinNoise(_seed * 0.7f, 5.3f) - 0.5f) * h);
             _cam.transform.SetPositionAndRotation(pos, rot * sway);
+        }
+
+        /// <summary>Vertical fov, degrees, in which <paramref name="subject"/> m at <paramref name="distance"/> m fills <paramref name="fill"/> of the frame height.</summary>
+        public static float FramingFov(float distance, float subject, float fill) =>
+            2f * Mathf.Atan(subject / (2f * Mathf.Max(0.1f, distance) * Mathf.Max(0.01f, fill))) * Mathf.Rad2Deg;
+
+        /// <summary>Cuts to a shot of this kind now if its pose is clear (pictures, tests); false if not possible here.</summary>
+        public bool Force(CineShot kind)
+        {
+            if (!Running) return false;
+            var i = Array.FindIndex(_s.shots, x => x.kind == kind);
+            return i >= 0 && TryStart(i);
         }
 
         /// <summary>
